@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 from ROOT import TFile, gROOT, TGraph, TH2F, gStyle, TCanvas, TCut, TH1F
 from sys import argv
-from run import Run
+from src.run import Run
+from src.binning import Bins
 from os import chdir, system
 from helpers.draw import *
+from numpy import genfromtxt, polyfit, polyval, quantile
 
 widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
 plot = Draw()
@@ -24,7 +26,7 @@ def load_runinfo():
     return run_info
 
 
-def draw_hitmap(show=True, cut=None, plane=None):
+def draw_hitmap(cut=None, plane=None):
     planes = range(4) if plane is None else [int(plane)]
     cut = TCut('') if cut is None else TCut(cut)
     histos = [TH2F('h_hm{0}'.format(i_pl), 'Hitmap Plane {0}'.format(i_pl), 52, 0, 52, 80, 0, 80) for i_pl in planes]
@@ -32,7 +34,6 @@ def draw_hitmap(show=True, cut=None, plane=None):
         cut_string = cut + TCut('plane == {0}'.format(plane))
         t.Draw('row:col>>h_hm{0}'.format(plane), cut_string, 'goff')
         format_histo(histos[plane], x_tit='col', y_tit='row')
-    run.set_root_output(show)
     c = TCanvas('c_hm', 'Hitmaps', 2000, 2000)
     c.Divide(2, 2)
     for i, h in enumerate(histos, 1):
@@ -41,7 +42,22 @@ def draw_hitmap(show=True, cut=None, plane=None):
         pad.SetBottomMargin(.15)
         h.Draw('colz')
     stuff.append([histos, c])
-    run.set_root_output(True)
+
+
+def get_track_vars(roc=0, local=False):
+    return ['cluster_{}pos_{}[{}]'.format(n, 'local' if local else 'tel', roc) for n in ['x', 'y']]
+
+
+def draw_occupancies():
+    h = []
+    for i in range(z.NPlanes):
+        x, y = z.get_tree_vec(['cluster_col[{}]'.format(i), 'cluster_row[{}]'.format(i)])
+        h.append(plot.histo_2d(x, y, Bins.get_pixel(), stats=0, show=0))
+    c = plot.canvas('c', w=2, h=2, divide=(2, 2))
+    for i, h in enumerate(h, 1):
+        pad = c.cd(i)
+        pad.SetBottomMargin(.15)
+        h.Draw('colz')
 
 
 def trig_edges(nwf=None):
@@ -144,29 +160,15 @@ def load_diamond_name(ch):
     return p.get('ALIASES', dia)
 
 
-def calc_flux():
-    f = open(join(run.load_mask_file_dir(), runinfo['maskfile']), 'r')
-    data = []
-    for line in f:
-        if len(line) > 3:
-            line = line.split()
-            data.append([int(line[2])] + [int(line[3])])
-    f.close()
-    pixel_size = 0.01 * 0.015
-    area = [(data[1][0] - data[0][0]) * (data[1][1] - data[0][1]) * pixel_size, (data[3][0] - data[2][0]) * (data[3][1] - data[2][1]) * pixel_size]
-    flux = [runinfo['for{0}'.format(i + 1)] / area[i] / 1000. for i in range(2)]
-    return mean(flux)
-
-
 def get_bias(ch):
     return runinfo['dia{0}hv'.format(ch)]
 
 
 def draw_runinfo_legend(ch):
     testcamp = datetime.strptime(tc, '%Y%m')
-    leg = run.make_legend(.005, .156, y1=.003, x2=.39, nentries=2, clean=False, scale=1, margin=.05)
+    leg = Draw.make_legend(.005, .156, y1=.003, nentries=2, clean=False, scale=1, margin=.05)
     leg.SetTextSize(.05)
-    leg.AddEntry(0, 'Test Campaign: {tc}, Run {run} @ {rate:2.1f} kHz/cm^{{2}}'.format(tc=testcamp.strftime('%b %Y'), run=run, rate=run.calc_flux()), '')
+    leg.AddEntry(0, 'Test Campaign: {tc}, Run {run} @ {rate:2.1f} kHz/cm^{{2}}'.format(tc=testcamp.strftime('%b %Y'), run=run, rate=run.calculate_flux()), '')
     leg.AddEntry(0, 'Diamond: {diamond} @ {bias:+}V'.format(diamond=load_diamond_name(ch), bias=get_bias(ch)), '')
     leg.Draw()
     stuff.append(leg)
@@ -192,7 +194,6 @@ def draw_both_wf(ch, show=True):
     signal.Draw('samecol')
     leg_ch = 1 if not ch else 2
     draw_runinfo_legend(leg_ch)
-    run.save_plots('WaveForm_{run}_{ch}'.format(run=run, ch=ch, tc=tc), save_dir)
 
 
 def read_macro(f):
@@ -314,41 +315,108 @@ def convert(file_name):
         system(cmd)
 
 
+def get_z_positions(e=0):
+    x = genfromtxt(join(z.Converter.TrackingDir, 'data', 'alignments.txt'), usecols=[0, 2, 6])
+    return array([ufloat(ix, e) if e else ix for ix in x[(x[:, 0] == z.Converter.TelescopeID) & (x[:, 1] > -1)][:, 2]])  # [cm]
+
+
+def get_res_cut(res, n, cut, max_res):
+    x = array([min(i) for i in split(res, cumsum(n)[:-1])])[cut]
+    h = plot.distribution(x, make_bins(-1000, 1000, n=100), show=False)
+    m = h.GetMean()
+    return array((m - max_res < x) & (x < m + max_res))
+    # f = Draw.make_f('f', 'gaus', -1000, 1000)
+    # h.Fit(f, 'qs', '', *get_fwhm(h, ret_edges=True, err=False))
+    # f.Draw('same')
+    # return f.Integral(-1e5, 1e5) / h.GetBinWidth(1)
+    # m, s = f.Parameter(1), f.Parameter(2)
+    # return (x > m - nsig * s) & (x < m + nsig * s)
+
+
+# noinspection PyTupleAssignmentBalance
+def get_inner_efficiency(roc=1, q=.2):
+    i_pl = 2 if roc == 1 else 1
+    cut = TCut('n_clusters[0] == 1 & n_clusters[3] == 1 & n_clusters[{}] == 1'.format(i_pl))  # select only events with exactly one cluster in the other three planes
+    n_tracks = t.GetEntries(cut.GetTitle())
+    info('Found {} tracks'.format(n_tracks))
+    cut += 'n_clusters[{}] > 0'.format(roc)
+    z_ = get_z_positions()
+    x0, y0 = z.get_tree_vec(get_track_vars(roc=0), cut=cut)
+    xi, yi = z.get_tree_vec(get_track_vars(roc=i_pl), cut=cut)
+    x3, y3 = z.get_tree_vec(get_track_vars(roc=3), cut=cut)
+    (x, y), n = z.get_tree_vec(get_track_vars(roc=roc), cut=cut), z.get_tree_vec('n_clusters[{}]'.format(roc), cut, dtype='i2')
+    xfits, chi_x, _, _, _ = polyfit(z_[[0, i_pl, 3]], [x0, xi, x3], deg=1, full=True)
+    yfits, chi_y, _, _, _ = polyfit(z_[[0, i_pl, 3]], [y0, yi, y3], deg=1, full=True)
+    chi_cut = (chi_x < quantile(chi_x, q)) & (chi_y < quantile(chi_y, q))
+    dx, dy = array([polyval(xfits.repeat(n, axis=1), z_[roc]) - x, polyval(yfits.repeat(n, axis=1), z_[roc]) - y]) * 10000  # to um
+    rcut = get_res_cut(dx, n, chi_cut, 2 * z.Plane.PX * 1000) & get_res_cut(dy, n, chi_cut, 2 * z.Plane.PY * 1000)
+    # n_good = round(mean([get_res_cut(dx, n, chi_cut), get_res_cut(dy, n, chi_cut)]))
+    n_max = chi_cut[chi_cut].size
+    n_good = rcut[rcut].size
+    eff = calc_eff(n_good, n_max)
+    info('Efficiency for plane {}: ({:1.1f}+{:1.1f}-{:1.1f})%'.format(roc, *eff))
+    return eff
+
+
+def get_p_miss():
+    e1, e2 = (get_inner_efficiency(i) for i in [1, 2])
+    p_miss = (100 - ufloat(e1[0], mean(e1[1:]))) * (100 - ufloat(e2[0], mean(e2[1:]))) / 100
+    info('p-miss: {:1.3f}%'.format(p_miss))
+    return p_miss
+
+
+def get_raw_efficiency(roc=0):
+    x = get_tree_vec(t, 'n_clusters[{}]'.format(roc))
+    eff = calc_eff(values=x > 0)
+    print('Efficiency of Plane {}: ({:1.1f}+{:1.1f}-{:1.1f})%'.format(roc, *eff))
+    return eff
+
+
+def draw_eff_evo(roc=0, n=50):
+    e = get_tree_vec(t, 'n_clusters[{}]'.format(roc)) > 0
+    plot.efficiency(arange(e.size), e, make_bins(e.size, n=n))
+
+
+def get_efficiencies():
+    return [get_raw_efficiency(i) for i in range(z.NPlanes)]
+
+
 if __name__ == '__main__':
 
     parser = ArgumentParser()
     parser.add_argument('run')
+    parser.add_argument('-tc', nargs='?', default=None)
     args = parser.parse_args()
 
-    run = args.run if 'root' in args.run else '/data/pulserTest/test{0}.root'.format(args.run.zfill(6))
-    convert(run)
-    rootfile = TFile(run)
-    tc = '201807'
+    if isint(args.run):
+        z = Run(int(args.run), args.tc)
+        t = z.Tree
+    else:
+        rootfile = TFile(args.run)
+        try:
+            run = int(argv[1].split('/')[-1].strip('.root').split('00')[-1])
+        except (IndexError, ValueError):
+            if argv[1].endswith('Tracks.root'):
+                run = int(argv[1].split('/')[-1].strip('_withTracks.roottest'))
+            elif 'Tracked' in argv[1]:
+                run = int(argv[1].split('/')[-1].strip('.root').strip('TrackedRun'))
+                tc = remove_letters(args.run.split('/')[3]).replace('_', '')
+            else:
+                run = None
 
-    try:
-        run = int(argv[1].split('/')[-1].strip('.root').split('00')[-1])
-    except (IndexError, ValueError):
-        if argv[1].endswith('Tracks.root'):
-            run = int(argv[1].split('/')[-1].strip('_withTracks.roottest'))
-        elif 'Tracked' in argv[1]:
-            run = int(argv[1].split('/')[-1].strip('.root').strip('TrackedRun'))
-            tc = remove_letters(args.run.split('/')[3]).replace('_', '')
-        else:
-            run = None
+        try:
+            run = Run(run, testcampaign=args.tc, tree=False)
+            runinfo = load_runinfo()
+        except ValueError:
+            run = Run(2, testcampaign='201807', tree=False)
 
-    try:
-        run = Run(run, testcampaign=tc, tree=False)
-        runinfo = load_runinfo()
-    except ValueError:
-        run = Run(2, testcampaign='201807', tree=False)
+        channels = read_macro(rootfile)
+        t = rootfile.Get('tree')
+        entries = t.GetEntries()
+        t.SetEstimate(entries * 1024)
+        stuff = []
+        count = 0
+        save_dir = 'WaveForms/'
 
-    channels = read_macro(rootfile)
-    t = rootfile.Get('tree')
-    entries = t.GetEntries()
-    t.SetEstimate(entries * 1024)
-    stuff = []
-    count = 0
-    save_dir = 'WaveForms/'
-
-    if len(argv) > 2:
-        draw_both_wf(int(argv[2]), show=False)
+        if len(argv) > 2:
+            draw_both_wf(int(argv[2]), show=False)
