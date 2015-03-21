@@ -13,9 +13,8 @@ class Run(object):
     #@initializer
     def __init__(self,run_number):
         self.run_number = run_number
-        self.TrackingPadAnalysis['ROOTFile'] = 'runs/run_'+str(run_number)+'/track_info.root'
+        self.TrackingPadAnalysis['ROOTFile'] = '/scratch/PAD-testbeams/PSI_sept_14/software/TrackingPadAnalysis/results/runs/run_'+str(run_number)+'/track_info.root'
         #self.diamond = diamond # diamond is of type Diamond
         #RunInfo.__init__(self,*args)
 
         #self.diamond.SetName(self.runs[0]['diamond'])
-
