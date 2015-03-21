@@ -121,7 +121,7 @@ class Analysis(object):
         self.signal_canvas.SetName("signal_canvas")
         self.signal_canvas.SetTitle("Mean Signal Distribution")
 
-        nbins = self.Signal2DDistribution['Histogram'].GetNcells()
+        nbins = (self.Signal2DDistribution['Histogram'].GetNbinsX()+2)*(self.Signal2DDistribution['Histogram'].GetNbinsY()+2)
         for i in xrange(nbins):
             bincontent = self.Signal2DDistribution["Histogram"].GetBinContent(i)
             if bincontent != 0.:
