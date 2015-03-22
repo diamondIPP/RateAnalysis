@@ -45,8 +45,8 @@ if __name__ == "__main__":
             #
             newAnalysis = Analysis(run,new2DHistConfig)
             newAnalysis.DoAnalysis(minimum_statistics)
-            newAnalysis.CreatePlots(True,'2D_Signal_dist')
-            newAnalysis.CreateMeanSignalHistogram(True)
+            #newAnalysis.CreatePlots(True,'2D_Signal_dist')
+            #newAnalysis.CreateMeanSignalHistogram(True)
             newAnalysis.CreateBoth(True)
             collection.AddAnalysis(newAnalysis)
         else:
