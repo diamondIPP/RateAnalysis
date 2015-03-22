@@ -10,7 +10,7 @@ class Run(object):
     #TrackingPadAnalysis.ROOTFile = '' # filepath
     TrackingPadAnalysis = {}
 
-    def __init__(self,run_number=None, operationmode="local-ssh"):
+    def __init__(self,run_number=None, operationmode="ssh"):
         self.operationmode = operationmode
         self.runinfo = RunInfo.load('Runinfos/runs.json')
         if run_number is not None:
