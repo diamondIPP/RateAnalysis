@@ -37,18 +37,20 @@ if __name__ == "__main__":
     collection = AnalysisCollectionClass()
     for run_number in run_numbers[:MaxNrOfRuns]:
 
-        run.SetRun(run_number)
+        if run.SetRun(run_number):
 
-        print run_number
+            print run_number
 
-        new2DHistConfig = Pad2DHistConfig(50,-0.2,0.15,50,0.03,0.4)
-        #
-        newAnalysis = Analysis(run,new2DHistConfig)
-        newAnalysis.DoAnalysis(minimum_statistics)
-        newAnalysis.CreatePlots(True,'2D_Signal_dist')
-        newAnalysis.CreateMeanSignalHistogram(True)
-        newAnalysis.CreateBoth(True)
-        collection.AddAnalysis(newAnalysis)
+            new2DHistConfig = Pad2DHistConfig(50,-0.2,0.15,50,0.03,0.4)
+            #
+            newAnalysis = Analysis(run,new2DHistConfig)
+            newAnalysis.DoAnalysis(minimum_statistics)
+            newAnalysis.CreatePlots(True,'2D_Signal_dist')
+            newAnalysis.CreateMeanSignalHistogram(True)
+            newAnalysis.CreateBoth(True)
+            collection.AddAnalysis(newAnalysis)
+        else:
+            print "Analysis of run ",run_number, " failed"
 
 
     collection.CreateFWHMPlot()
