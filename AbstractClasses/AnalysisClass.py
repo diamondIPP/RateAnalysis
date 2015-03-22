@@ -177,7 +177,7 @@ class AnalysisCollectionClass(object):
         AnalysisCollectionClass.current_run_number = analysis_obj.run_object.run_number
 
 
-    def CreateFWHMPlot(self):
+    def CreateFWHMPlot(self, saveplots = True, savename = 'FWHM_Histo', ending = 'png'):
 
         self.canvas = ROOT.TCanvas("canvas", "FWHM")
         self.fwhm_histo = ROOT.TH1D("fwhm_histo", "FWHM Distribution of "+str(self.GetNumberOfAnalyses())+" runs",50,0,100)
@@ -186,6 +186,14 @@ class AnalysisCollectionClass(object):
             self.fwhm_histo.Fill(self.CalculateFWHM(False,run))
         self.canvas.cd()
         self.fwhm_histo.Draw()
+
+        if saveplots:
+            # Results directories:
+            resultsdir = 'Results/' # eg. 'Results/run_364/'
+            if not os.path.exists(resultsdir):
+                os.makedirs(resultsdir)
+
+            ROOT.gPad.Print(resultsdir+savename+'.'+ending)
         #raw_input("wait")
 
     def CalculateFWHM(self, print_result = True, run_number = None):
