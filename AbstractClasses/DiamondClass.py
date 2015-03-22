@@ -20,6 +20,7 @@ class Diamond(object):
         if name is not None:
             self.SetInfoFromName(name)
 
+
     def SetInfoFromName(self,diamondname):
         diamonds = {
             'S30':{
@@ -39,6 +40,12 @@ class Diamond(object):
                 'irradiated':   'no',
                 'thickness':    528,
                 'producer':     'E-6'
+            },
+            'S129-old-box':{
+                'crystal':      'single?',
+                'irradiated':   '?',
+                'thickness':    '',
+                'producer':     'II-IV'
             },
             'IIa-1':{
                 'crystal':      'single',
@@ -62,6 +69,12 @@ class Diamond(object):
                 'crystal':      'single',
                 'irradiated':   'no',
                 'thickness':    775,
+                'producer':     'II-a'
+            },
+            'IIa-5':{
+                'crystal':      'single?',
+                'irradiated':   '?',
+                'thickness':    '',
                 'producer':     'II-a'
             },
             '2A87-E':{
