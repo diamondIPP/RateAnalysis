@@ -198,6 +198,8 @@ class AnalysisCollectionClass(object):
                 os.makedirs(resultsdir)
 
             ROOT.gPad.Print(resultsdir+savename+'.'+ending)
+            ROOT.gPad.Print(resultsdir+savename+'.'+'root')
+
         #raw_input("wait")
 
     def CalculateFWHM(self, print_result = True, run_number = None):
