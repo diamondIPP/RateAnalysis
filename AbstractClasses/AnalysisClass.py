@@ -151,6 +151,7 @@ class Analysis(object):
         # ROOT.gStyle.SetHistFillStyle(3003)
         # self.MeanSignalHisto.UseCurrentStyle()
         self.MeanSignalHisto.Draw()
+        self.combined_canvas.cd()
 
         #savename = self.run_object.diamond.Specifications['Name']+'_'+self.run_object.diamond.Specifications['Irradiation']+'_'+savename+'_'+str(self.run_object.run_number) # diamond_irradiation_savename_runnr
         if saveplots:
