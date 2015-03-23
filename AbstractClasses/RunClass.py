@@ -12,9 +12,10 @@ class Run(object):
     #TrackingPadAnalysis.ROOTFile = '' # filepath
     TrackingPadAnalysis = {}
 
-    def __init__(self,run_number=None):
+    def __init__(self,validate = True, run_number=None):
         self.runinfo = RunInfo.load('Runinfos/runs.json')
-        self.ValidateRuns()
+        if validate:
+            self.ValidateRuns()
 
         if run_number is not None:
             assert(run_number > 0), "incorrect run_number"
@@ -22,14 +23,22 @@ class Run(object):
 
             self.SetRun(run_number)
 
-    def ValidateRuns(self):
-
-        runs = RunInfo.runs.keys()
+    def ValidateRuns(self, list_of_runs = None):
+        runs = RunInfo.runs.keys() # list of all runs
+        if list_of_runs is not None:
+            runs = list_of_runs
+        print "Validating runs: ",runs
         for run in runs:
-            self.SetRun(run)
-            if not os.path.exists(self.TrackingPadAnalysis['ROOTFile']):
-                del RunInfo.runs[run]
-                print "INFO: path of run number ",run, " not found."
+            self.ValidateRun(run)
+
+    def ValidateRun(self,run_number):
+        self.SetRun(run_number)
+        if not os.path.exists(self.TrackingPadAnalysis['ROOTFile']):
+            del RunInfo.runs[run_number]
+            print "INFO: path of run number ",run_number, " not found."
+            return False
+        else:
+            return True
 
     def SetRun(self,run_number):
 

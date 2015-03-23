@@ -152,6 +152,11 @@ class Diamond(object):
         self.Specifications['CrystalStructure'] = diamonds[diamondname]['crystal']
         self.Specifications['Irradiation'] = diamonds[diamondname]['irradiated']
         self.Specifications['Thickness'] = diamonds[diamondname]['thickness']
+        self.Position['xmin'] = diamonds[diamondname]['position']['xmin']
+        self.Position['xmax'] = diamonds[diamondname]['position']['xmax']
+        self.Position['ymin'] = diamonds[diamondname]['position']['ymin']
+        self.Position['ymax'] = diamonds[diamondname]['position']['ymax']
+
 
     def SetDetectorType(self,type = 'Pad'):
         self.Specifications['DetectorType'] = type

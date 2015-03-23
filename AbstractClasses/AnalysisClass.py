@@ -61,10 +61,10 @@ class Analysis(object):
         self.track_info = self.rootfile.Get('track_info') # Get TTree called "track_info"
 
         bins = self.config_object.bins_x
-        xmin = self.config_object.min_x
-        xmax = self.config_object.max_x
-        ymin = self.config_object.min_y
-        ymax = self.config_object.max_y
+        xmin = self.run_object.diamond.Position['xmin']
+        xmax = self.run_object.diamond.Position['xmax']
+        ymin = self.run_object.diamond.Position['ymin']
+        ymax = self.run_object.diamond.Position['ymax']
 
         # fill two 2-dim histograms to collect the hits and signal strength
         for i in xrange(self.track_info.GetEntries()):

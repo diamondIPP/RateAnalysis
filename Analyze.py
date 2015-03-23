@@ -18,7 +18,7 @@ if __name__ == "__main__":
     show_plots = True
 
     minimum_statistics = 5 # don't draw bins which contain less than minimum_statistics hits
-    run = Run()
+    run = Run(False)
 
     MaxNrOfRuns = 9999
     if(len(run_numbers) == 0):
@@ -30,25 +30,26 @@ if __name__ == "__main__":
             run.SetRun(i)
             if run.current_run['data_type'] == 0: # 0 = data, 1 = pedestrial, 2 = voltagescan, 3 =  long run, 4 = other
                 run_numbers += [i]
-    print "Starting analysis with ",len(run_numbers[:MaxNrOfRuns])," runs:"
-    print run_numbers[:MaxNrOfRuns]
+        run_numbers = run_numbers[:MaxNrOfRuns]
+    print "Starting analysis with ",len(run_numbers)," runs:"
+    run.ValidateRuns(run_numbers)
+    print run_numbers
 
 
     collection = AnalysisCollectionClass()
-    for run_number in run_numbers[:MaxNrOfRuns]:
+    for run_number in run_numbers:
 
-        if run.SetRun(run_number):
+        if run.SetRun(run_number): # run has to exist and is setted
 
             if run.diamond.Specifications['Irradiation'] == 'no':
                 print run_number
 
-                new2DHistConfig = Pad2DHistConfig()
                 #
-                newAnalysis = Analysis(run,new2DHistConfig)
+                newAnalysis = Analysis(run)
                 newAnalysis.DoAnalysis(minimum_statistics)
                 #newAnalysis.CreatePlots(True,'2D_Signal_dist')
                 #newAnalysis.CreateMeanSignalHistogram(True)
-                newAnalysis.CreateBoth(False)
+                newAnalysis.CreateBoth(True)
                 collection.AddAnalysis(newAnalysis)
         else:
             print "Analysis of run ",run_number, " failed"
