@@ -159,8 +159,8 @@ class Analysis(object):
 
     def SavePlots(self, savename, ending, saveDir):
         # Results directories:
-        #resultsdir = saveDir+'run_'+str(self.run_object.run_number)+'/' # eg. 'Results/run_364/'
-        resultsdir = saveDir # eg. 'Results/run_364/'
+        resultsdir = saveDir+'run_'+str(self.run_object.run_number)+'/' # eg. 'Results/run_364/'
+        #resultsdir = saveDir # eg. 'Results/run_364/'
         if not os.path.exists(resultsdir):
             os.makedirs(resultsdir)
 
