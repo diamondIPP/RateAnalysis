@@ -139,29 +139,29 @@ class Analysis(object):
         self.combined_canvas = ROOT.TCanvas("combined_canvas","Combined Canvas",1000,500)
         self.combined_canvas.Divide(2,1)
 
-        #self.CreatePlots(False)
-        #self.CreateMeanSignalHistogram(False)
+        self.CreatePlots(False)
+        self.CreateMeanSignalHistogram(False)
 
         self.combined_canvas.cd(1)
         self.Signal2DDistribution['Histogram'].Draw('colz')
         self.combined_canvas.cd(2)
         # ROOT.gStyle.SetPalette(53)
         # ROOT.gStyle.SetNumberContours(999)
-        # ROOT.gStyle.SetHistFillColor(7)
-        # ROOT.gStyle.SetHistFillStyle(3003)
-        # self.MeanSignalHisto.UseCurrentStyle()
+        ROOT.gStyle.SetHistFillColor(7)
+        ROOT.gStyle.SetHistFillStyle(3003)
+        self.MeanSignalHisto.UseCurrentStyle()
         self.MeanSignalHisto.Draw()
         self.combined_canvas.cd()
 
-        #savename = self.run_object.diamond.Specifications['Name']+'_'+self.run_object.diamond.Specifications['Irradiation']+'_'+savename+'_'+str(self.run_object.run_number) # diamond_irradiation_savename_runnr
+        savename = self.run_object.diamond.Specifications['Name']+'_'+self.run_object.diamond.Specifications['Irradiation']+'_'+savename+'_'+str(self.run_object.run_number) # diamond_irradiation_savename_runnr
         if saveplots:
             self.SavePlots(savename, ending, saveDir)
-            #self.SavePlots(savename, 'root', saveDir)
+            self.SavePlots(savename, 'root', saveDir)
 
     def SavePlots(self, savename, ending, saveDir):
         # Results directories:
-        resultsdir = saveDir+'run_'+str(self.run_object.run_number)+'/' # eg. 'Results/run_364/'
-        #resultsdir = saveDir # eg. 'Results/run_364/'
+        #resultsdir = saveDir+'run_'+str(self.run_object.run_number)+'/' # eg. 'Results/run_364/'
+        resultsdir = saveDir # eg. 'Results/run_364/'
         if not os.path.exists(resultsdir):
             os.makedirs(resultsdir)
 
