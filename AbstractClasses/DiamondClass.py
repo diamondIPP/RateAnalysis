@@ -63,8 +63,8 @@ class Diamond(object):
                 }
             },
             'S129-old-box':{
-                'crystal':      'single?',
-                'irradiated':   '?',
+                'crystal':      'single',
+                'irradiated':   'no',
                 'thickness':    '',
                 'producer':     'II-IV',
                 'position': {
@@ -110,22 +110,10 @@ class Diamond(object):
                     'ymax': 0.33
                 }
             },
-            'IIa-4':{
+            'IIa-5':{
                 'crystal':      'single',
                 'irradiated':   'no',
                 'thickness':    775,
-                'producer':     'II-a',
-                'position': {
-                    'xmin': -0.2,
-                    'xmax': 0.15,
-                    'ymin': 0.03,
-                    'ymax': 0.4
-                }
-            },
-            'IIa-5':{
-                'crystal':      'single?',
-                'irradiated':   '?',
-                'thickness':    '',
                 'producer':     'II-a',
                 'position': {
                     'xmin': -0.2,
