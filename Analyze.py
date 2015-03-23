@@ -42,7 +42,7 @@ if __name__ == "__main__":
             if run.diamond.Specifications['Irradiation'] == 'no':
                 print run_number
 
-                new2DHistConfig = Pad2DHistConfig(50,-0.2,0.15,50,0.03,0.4)
+                new2DHistConfig = Pad2DHistConfig()
                 #
                 newAnalysis = Analysis(run,new2DHistConfig)
                 newAnalysis.DoAnalysis(minimum_statistics)

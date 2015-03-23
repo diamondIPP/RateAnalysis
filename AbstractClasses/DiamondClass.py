@@ -13,9 +13,12 @@ class Diamond(object):
             'DetectorType':'Pad', # eg. 'Pad' or 'Pixel'
         }
 
-        self.Attributes = {
-
-        }
+        self.Position = {
+                    'xmin': -0.2, # standard position
+                    'xmax': 0.15,
+                    'ymin': 0.03,
+                    'ymax': 0.40
+                }
 
         if name is not None:
             self.SetInfoFromName(name)
@@ -27,61 +30,121 @@ class Diamond(object):
                 'crystal':      'single',
                 'irradiated':   'neutron',
                 'thickness':    539,
-                'producer':     'E-6'
+                'producer':     'E-6',
+                'position': {
+                    'xmin': -0.19,
+                    'xmax': 0.16,
+                    'ymin': 0.01,
+                    'ymax': 0.38
+                }
             },
             'S125':{
                 'crystal':      'single',
                 'irradiated':   'proton',
                 'thickness':    '',
-                'producer':     'E-6'
+                'producer':     'E-6',
+                'position': {
+                    'xmin': -0.23,
+                    'xmax': 0.12,
+                    'ymin': -0.05,
+                    'ymax': 0.32
+                }
             },
             'S129':{
                 'crystal':      'single',
                 'irradiated':   'no',
                 'thickness':    528,
-                'producer':     'E-6'
+                'producer':     'E-6',
+                'position': {
+                    'xmin': -0.17,
+                    'xmax': 0.18,
+                    'ymin': -0.14,
+                    'ymax': 0.23
+                }
             },
             'S129-old-box':{
                 'crystal':      'single?',
                 'irradiated':   '?',
                 'thickness':    '',
-                'producer':     'II-IV'
+                'producer':     'II-IV',
+                'position': {
+                    'xmin': -0.18,
+                    'xmax': 0.17,
+                    'ymin': -0.09,
+                    'ymax': 0.28
+                }
             },
             'IIa-1':{
                 'crystal':      'single',
                 'irradiated':   'no',
                 'thickness':    617,
-                'producer':     'II-a'
+                'producer':     'II-a',
+                'position': {
+                    'xmin': -0.18,
+                    'xmax': 0.17,
+                    'ymin': 0.01,
+                    'ymax': 0.38
+                }
             },
             'IIa-2':{
                 'crystal':      'single',
                 'irradiated':   'neutron',
                 'thickness':    538,
-                'producer':     'II-a'
+                'producer':     'II-a',
+                'position': {
+                    'xmin': -0.2,
+                    'xmax': 0.15,
+                    'ymin': 0.02,
+                    'ymax': 0.39
+                }
             },
             'IIa-3':{
                 'crystal':      'single',
                 'irradiated':   'neutron',
                 'thickness':    535,
-                'producer':     'II-a'
+                'producer':     'II-a',
+                'position': {
+                    'xmin': -0.21,
+                    'xmax': 0.14,
+                    'ymin': -0.04,
+                    'ymax': 0.33
+                }
             },
             'IIa-4':{
                 'crystal':      'single',
                 'irradiated':   'no',
                 'thickness':    775,
-                'producer':     'II-a'
+                'producer':     'II-a',
+                'position': {
+                    'xmin': -0.2,
+                    'xmax': 0.15,
+                    'ymin': 0.03,
+                    'ymax': 0.4
+                }
             },
             'IIa-5':{
                 'crystal':      'single?',
                 'irradiated':   '?',
                 'thickness':    '',
-                'producer':     'II-a'
+                'producer':     'II-a',
+                'position': {
+                    'xmin': -0.2,
+                    'xmax': 0.15,
+                    'ymin': -0.09,
+                    'ymax': 0.28
+                }
             },
             '2A87-E':{
                 'crystal':      'poly',
                 'irradiated':   'neutron',
                 'thickness':    500,
-                'producer':     'II-IV'
+                'producer':     'II-IV',
+                'position': {
+                    'xmin': -0.22,
+                    'xmax': 0.13,
+                    'ymin': -0.05,
+                    'ymax': 0.32
+                }
             },
         }
         self.Specifications['Name'] = diamondname

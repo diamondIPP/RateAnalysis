@@ -13,19 +13,20 @@ class Analysis(object):
 
     }
 
-    def __init__(self, run_object, config_object = Pad2DHistConfig(50,-1,1)):
+    def __init__(self, run_object, config_object = Pad2DHistConfig(50)):
         #initialize_ROOT()
+        assert(run_object.run_number > 0), "No run selected, choose run.SetRun(run_nr) before you pass the run object"
         self.run_object = run_object
         self.config_object = config_object
         self.TrackingPadAnalysisROOTFile = run_object.TrackingPadAnalysis['ROOTFile']
         self.Signal2DDistribution['Histogram'] = ROOT.TH2D("Signal2D",
                                                         "2D Signal distribution",
                                                         config_object.bins_x,
-                                                        config_object.min_x,
-                                                        config_object.max_x,
+                                                        self.run_object.diamond.Position['xmin'],
+                                                        self.run_object.diamond.Position['xmax'],
                                                         config_object.bins_y,
-                                                        config_object.min_y,
-                                                        config_object.max_y
+                                                        self.run_object.diamond.Position['ymin'],
+                                                        self.run_object.diamond.Position['ymax']
                                                         )
         self.Signal2DDistribution['Histogram'].SetDirectory(0) # is needed because of garbage collection
 
@@ -35,11 +36,11 @@ class Analysis(object):
         self.signal_sum = ROOT.TH2D("signal_sum",
                                     "Sum of signal distribution",
                                     config_object.bins_x,
-                                    config_object.min_x,
-                                    config_object.max_x,
+                                    self.run_object.diamond.Position['xmin'],
+                                    self.run_object.diamond.Position['xmax'],
                                     config_object.bins_y,
-                                    config_object.min_y,
-                                    config_object.max_y
+                                    self.run_object.diamond.Position['ymin'],
+                                    self.run_object.diamond.Position['ymax']
                                     )
         self.signal_sum.SetDirectory(0)
 
