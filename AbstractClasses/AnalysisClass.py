@@ -139,17 +139,17 @@ class Analysis(object):
         self.combined_canvas = ROOT.TCanvas("combined_canvas","Combined Canvas",1000,500)
         self.combined_canvas.Divide(2,1)
 
-        self.CreatePlots(False)
-        self.CreateMeanSignalHistogram(False)
+        #self.CreatePlots(False)
+        #self.CreateMeanSignalHistogram(False)
 
         self.combined_canvas.cd(1)
         self.Signal2DDistribution['Histogram'].Draw('colz')
         self.combined_canvas.cd(2)
         # ROOT.gStyle.SetPalette(53)
         # ROOT.gStyle.SetNumberContours(999)
-        ROOT.gStyle.SetHistFillColor(7)
-        ROOT.gStyle.SetHistFillStyle(3003)
-        self.MeanSignalHisto.UseCurrentStyle()
+        # ROOT.gStyle.SetHistFillColor(7)
+        # ROOT.gStyle.SetHistFillStyle(3003)
+        # self.MeanSignalHisto.UseCurrentStyle()
         self.MeanSignalHisto.Draw()
 
         #savename = self.run_object.diamond.Specifications['Name']+'_'+self.run_object.diamond.Specifications['Irradiation']+'_'+savename+'_'+str(self.run_object.run_number) # diamond_irradiation_savename_runnr
