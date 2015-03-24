@@ -23,7 +23,10 @@ if __name__ == "__main__":
     MaxNrOfRuns = 9999
     if(len(run_numbers) == 0):
         MaxNrOfRuns = int(raw_input("No runs specified. Set Maximal number of runs to analyze (0-999) press Enter to select all Runs: "))
-        assert (0 <= MaxNrOfRuns < 1000), "Invalid maximal run quantity"
+        if MaxNrOfRuns == '':
+            MaxNrOfRuns = 9999
+            print "All runs selected..."
+        assert (0 <= MaxNrOfRuns < 10000), "Invalid maximal run quantity"
         all_run_numbers =  RunInfo.runs.keys()
         run_numbers = []
         for i in all_run_numbers:
@@ -41,7 +44,7 @@ if __name__ == "__main__":
 
         if run.SetRun(run_number): # run has to exist and is setted
 
-            if run.diamond.Specifications['Irradiation'] == 'no':
+            if True or run.diamond.Specifications['Irradiation'] == 'no':
                 print run_number
 
                 #
@@ -50,6 +53,11 @@ if __name__ == "__main__":
                 #newAnalysis.CreatePlots(True,'2D_Signal_dist')
                 #newAnalysis.CreateMeanSignalHistogram(True)
                 newAnalysis.CreateBoth(True)
+                #print newAnalysis.Pad.ListOfBins[newAnalysis.Pad.GetBinNumber(0.05,0.05)].GetEntries()
+                newAnalysis.Pad.ShowBinXYSignalHisto(0.08,0.3)
+                newAnalysis.Pad.ShowBinXYSignalHisto(-0.04,0.3)
+                newAnalysis.CreateHitsDistribution()
+
                 collection.AddAnalysis(newAnalysis)
         else:
             print "Analysis of run ",run_number, " failed"

@@ -2,16 +2,14 @@ import ROOT
 from RunClass import Run
 import os
 import types as t
+from BinCollection import BinCollection
 from ConfigClass import *
 
 #from Configuration.initialize_ROOT import initialize_ROOT
 
 class Analysis(object):
 
-    Signal2DDistribution = {
-        'Histogram':''
-
-    }
+    Signal2DDistribution = ROOT.TH2D()
 
     def __init__(self, run_object, config_object = Pad2DHistConfig(50)):
         #initialize_ROOT()
@@ -19,33 +17,12 @@ class Analysis(object):
         self.run_object = run_object
         self.config_object = config_object
         self.TrackingPadAnalysisROOTFile = run_object.TrackingPadAnalysis['ROOTFile']
-        self.Signal2DDistribution['Histogram'] = ROOT.TH2D("Signal2D",
-                                                        "2D Signal distribution",
-                                                        config_object.bins_x,
-                                                        self.run_object.diamond.Position['xmin'],
-                                                        self.run_object.diamond.Position['xmax'],
-                                                        config_object.bins_y,
-                                                        self.run_object.diamond.Position['ymin'],
-                                                        self.run_object.diamond.Position['ymax']
-                                                        )
-        self.Signal2DDistribution['Histogram'].SetDirectory(0) # is needed because of garbage collection
+        self.Signal2DDistribution = ROOT.TH2D()
+        self.Signal2DDistribution.SetDirectory(0) # is needed because of garbage collection
 
         self.signal_canvas = ROOT.TCanvas()
         ROOT.SetOwnership(self.signal_canvas, False)
         self.MeanSignalHisto = ROOT.TH1D()
-        self.signal_sum = ROOT.TH2D("signal_sum",
-                                    "Sum of signal distribution",
-                                    config_object.bins_x,
-                                    self.run_object.diamond.Position['xmin'],
-                                    self.run_object.diamond.Position['xmax'],
-                                    config_object.bins_y,
-                                    self.run_object.diamond.Position['ymin'],
-                                    self.run_object.diamond.Position['ymax']
-                                    )
-        self.signal_sum.SetDirectory(0)
-
-        self.signal_counts = self.signal_sum.Clone("Signal Counts")
-        self.signal_counts.SetDirectory(0)
 
         # loading data file
         assert (os.path.exists(self.TrackingPadAnalysisROOTFile)), 'cannot find '+self.TrackingPadAnalysisROOTFile
@@ -55,8 +32,7 @@ class Analysis(object):
 
 
     def DoAnalysis(self,minimum_bincontent = 1):
-        assert (minimum_bincontent > 0), "minimum_bincontent has to be a positive integer"
-        minimum_statistics = minimum_bincontent # bins with less hits are ignored
+        assert (minimum_bincontent > 0), "minimum_bincontent has to be a positive integer" # bins with less hits are ignored
 
         self.track_info = self.rootfile.Get('track_info') # Get TTree called "track_info"
 
@@ -66,32 +42,19 @@ class Analysis(object):
         ymin = self.run_object.diamond.Position['ymin']
         ymax = self.run_object.diamond.Position['ymax']
 
+        self.Pad = BinCollection(bins,xmin,xmax,bins,ymin,ymax)
+
         # fill two 2-dim histograms to collect the hits and signal strength
         for i in xrange(self.track_info.GetEntries()):
-
             self.track_info.GetEntry(i)
-            self.signal_sum.Fill(self.track_info.track_x, self.track_info.track_y, self.track_info.integral50)
-            self.signal_counts.Fill(self.track_info.track_x, self.track_info.track_y, 1)
 
-        # go through every bin, calculate the average signal strength and fill the main 2D hist
-        binwidth_x = 1.*(xmax-xmin)/bins
-        binwidth_y = 1.*(ymax-ymin)/bins
-        current_pos_x = xmin + 1.*binwidth_x/2.
-        for bin_x in xrange(1,bins+1):
+            x_ = self.track_info.track_x
+            y_ = self.track_info.track_y
+            signal_ = abs(self.track_info.integral50)
 
-            current_pos_y = ymin + 1.*binwidth_y/2.
+            self.Pad.Fill(x_, y_, signal_)
 
-            for bin_y in xrange(1,bins+1):
-
-                binsignalsum = abs(self.signal_sum.GetBinContent(bin_x, bin_y))
-                binsignalcount = self.signal_counts.GetBinContent(bin_x, bin_y)
-
-                if binsignalcount >= minimum_statistics :
-                    self.Signal2DDistribution['Histogram'].Fill(current_pos_x, current_pos_y, abs(binsignalsum/binsignalcount))
-
-                current_pos_y += binwidth_y
-
-            current_pos_x += binwidth_x
+        self.Signal2DDistribution = self.Pad.GetMeanSignalDistribution(minimum_bincontent)
 
     def CreatePlots(self,saveplots = False,savename = '2DSignalDistribution',ending='png',saveDir = 'Results/'):
         #self.signal_canvas = ROOT.TCanvas()
@@ -103,9 +66,9 @@ class Analysis(object):
         # Plot the Signal2D TH2D histogram
         ROOT.gStyle.SetPalette(53)
         ROOT.gStyle.SetNumberContours(999)
-        self.Signal2DDistribution['Histogram'].SetStats(False)
+        self.Signal2DDistribution.SetStats(False)
 
-        self.Signal2DDistribution['Histogram'].Draw('colz')
+        self.Signal2DDistribution.Draw('colz')
 
         if saveplots:
             self.SavePlots(savename, ending, saveDir)
@@ -115,16 +78,16 @@ class Analysis(object):
         #ROOT.SetOwnership(self, False)
         self.signal_canvas.Clear()
 
-        minimum = self.Signal2DDistribution['Histogram'].GetMinimum()
-        maximum = self.Signal2DDistribution['Histogram'].GetMaximum()
+        minimum = self.Signal2DDistribution.GetMinimum()
+        maximum = self.Signal2DDistribution.GetMaximum()
         self.MeanSignalHisto = ROOT.TH1D("MeanSignalHisto","Mean Signal Histogram",100,minimum,maximum)
 
         self.signal_canvas.SetName("signal_canvas")
         self.signal_canvas.SetTitle("Mean Signal Distribution")
 
-        nbins = (self.Signal2DDistribution['Histogram'].GetNbinsX()+2)*(self.Signal2DDistribution['Histogram'].GetNbinsY()+2)
+        nbins = (self.Signal2DDistribution.GetNbinsX()+2)*(self.Signal2DDistribution.GetNbinsY()+2)
         for i in xrange(nbins):
-            bincontent = self.Signal2DDistribution["Histogram"].GetBinContent(i)
+            bincontent = self.Signal2DDistribution.GetBinContent(i)
             if bincontent != 0.:
                 self.MeanSignalHisto.Fill(bincontent)
 
@@ -144,7 +107,7 @@ class Analysis(object):
         self.CreateMeanSignalHistogram(False)
 
         self.combined_canvas.cd(1)
-        self.Signal2DDistribution['Histogram'].Draw('colz')
+        self.Signal2DDistribution.Draw('colz')
         self.combined_canvas.cd(2)
         # ROOT.gStyle.SetPalette(53)
         # ROOT.gStyle.SetNumberContours(999)
@@ -158,6 +121,12 @@ class Analysis(object):
         if saveplots:
             self.SavePlots(savename, ending, saveDir)
             self.SavePlots(savename, 'root', saveDir)
+
+    def CreateHitsDistribution(self):
+        canvas = ROOT.TCanvas('canvas', 'Hits')
+        canvas.cd()
+        self.Pad.counthisto.Draw('colz')
+        raw_input('hits distribution')
 
     def SavePlots(self, savename, ending, saveDir):
         # Results directories:
