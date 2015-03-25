@@ -111,8 +111,8 @@ class Analysis(object):
         self.combined_canvas.cd(2)
         # ROOT.gStyle.SetPalette(53)
         # ROOT.gStyle.SetNumberContours(999)
-        ROOT.gStyle.SetHistFillColor(7)
-        ROOT.gStyle.SetHistFillStyle(3003)
+        ROOT.gStyle.SetHistFillColor(6)#7)
+        ROOT.gStyle.SetHistFillStyle(1001)#3003)
         self.MeanSignalHisto.UseCurrentStyle()
         self.MeanSignalHisto.Draw()
         self.combined_canvas.cd()
@@ -121,11 +121,16 @@ class Analysis(object):
         if saveplots:
             self.SavePlots(savename, ending, saveDir)
             self.SavePlots(savename, 'root', saveDir)
+        ROOT.gStyle.SetHistFillColor(7)
+        ROOT.gStyle.SetHistFillStyle(3003)
 
     def CreateHitsDistribution(self):
-        canvas = ROOT.TCanvas('canvas', 'Hits')
+        #ROOT.gStyle.SetNumberContours(10)
+        canvas = ROOT.TCanvas('canvas', 'Hits',500,500)
         canvas.cd()
-        self.Pad.counthisto.Draw('colz')
+        self.Pad.counthisto.SetStats(False)
+        self.Pad.counthisto.Draw('colz')#'surf2')
+        #self.Pad.counthisto.Draw('CONT1 SAME')
         raw_input('hits distribution')
 
     def SavePlots(self, savename, ending, saveDir):

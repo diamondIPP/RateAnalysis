@@ -54,9 +54,22 @@ if __name__ == "__main__":
                 #newAnalysis.CreateMeanSignalHistogram(True)
                 newAnalysis.CreateBoth(True)
                 #print newAnalysis.Pad.ListOfBins[newAnalysis.Pad.GetBinNumber(0.05,0.05)].GetEntries()
-                newAnalysis.Pad.ShowBinXYSignalHisto(0.08,0.3)
-                newAnalysis.Pad.ShowBinXYSignalHisto(-0.04,0.3)
-                newAnalysis.CreateHitsDistribution()
+                #newAnalysis.Pad.ShowBinXYSignalHisto(0.08,0.3)
+                #newAnalysis.Pad.ShowBinXYSignalHisto(-0.04,0.3)
+
+                newAnalysis.Pad.UnselectAllBins()
+                bin = newAnalysis.Pad.GetBinByCoordinates(-0.04,0.3)
+                newAnalysis.Pad.SelectSignalStrengthRegion(bin,0.1,True,-0.09,0.02,0.22,0.36)
+
+                #newAnalysis.Pad.ShowSelectedBins()
+
+                # newAnalysis.Pad.UnselectAllBins()
+                # bin = newAnalysis.Pad.GetBinByCoordinates(0.0835,0.3)
+                # newAnalysis.Pad.SelectSignalStrengthRegion(bin,0.1,True,0.01,0.14,0.23,0.36)
+
+                newAnalysis.Pad.ShowCombinedKDistribution(True)
+
+                #newAnalysis.CreateHitsDistribution()
 
                 collection.AddAnalysis(newAnalysis)
         else:
