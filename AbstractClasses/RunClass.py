@@ -9,7 +9,6 @@ class Run(object):
     run_number = -1
     current_run = {}
     operationmode = ''
-    #TrackingPadAnalysis.ROOTFile = '' # filepath
     TrackingPadAnalysis = {}
 
     def __init__(self,validate = True, run_number=None):

@@ -6,12 +6,26 @@ from BinCollection import BinCollection
 from ConfigClass import *
 
 #from Configuration.initialize_ROOT import initialize_ROOT
+class blah(object):
+    def __init__(self):
+        pass
+
 
 class Analysis(object):
+    '''
+    An Analysis Object contains all Data and Results of a single run.
+    '''
 
     Signal2DDistribution = ROOT.TH2D()
 
     def __init__(self, run_object, config_object = Pad2DHistConfig(50)):
+        '''
+        Initializes the Analysis object.
+        :param run_object: run object of type "Run"
+        :param config_object: config object of type "Pad2DHistConfig"
+        :return: -
+        '''
+
         #initialize_ROOT()
         assert(run_object.run_number > 0), "No run selected, choose run.SetRun(run_nr) before you pass the run object"
         self.run_object = run_object
@@ -32,6 +46,13 @@ class Analysis(object):
 
 
     def DoAnalysis(self,minimum_bincontent = 1):
+        '''
+        Create a bin collection object as self.Pad and load data from ROOT TTree
+        into the Pad object. Then get the 2-dim signal distribution from self.Pad
+        :param minimum_bincontent: Bins with less hits are ignored
+        :return: -
+        '''
+
         assert (minimum_bincontent > 0), "minimum_bincontent has to be a positive integer" # bins with less hits are ignored
 
         self.track_info = self.rootfile.Get('track_info') # Get TTree called "track_info"
@@ -42,12 +63,13 @@ class Analysis(object):
         ymin = self.run_object.diamond.Position['ymin']
         ymax = self.run_object.diamond.Position['ymax']
 
+        # create a bin collection object:
         self.Pad = BinCollection(bins,xmin,xmax,bins,ymin,ymax)
 
         # fill two 2-dim histograms to collect the hits and signal strength
         for i in xrange(self.track_info.GetEntries()):
+            # read the ROOT TTree
             self.track_info.GetEntry(i)
-
             x_ = self.track_info.track_x
             y_ = self.track_info.track_y
             signal_ = abs(self.track_info.integral50)
@@ -57,6 +79,15 @@ class Analysis(object):
         self.Signal2DDistribution = self.Pad.GetMeanSignalDistribution(minimum_bincontent)
 
     def CreatePlots(self,saveplots = False,savename = '2DSignalDistribution',ending='png',saveDir = 'Results/'):
+        '''
+        Creates 2D Signal Distribution plot
+        :param saveplots: if True, save the plot
+        :param savename: filename if saveplots = True
+        :param ending: datatype of file if saveplots = True
+        :param saveDir: directory to save the plot - has to end with '/'
+        :return: -
+        '''
+
         #self.signal_canvas = ROOT.TCanvas()
         #ROOT.SetOwnership(self, False)
         self.signal_canvas.Clear()
@@ -74,6 +105,7 @@ class Analysis(object):
             self.SavePlots(savename, ending, saveDir)
 
     def CreateMeanSignalHistogram(self,saveplots = False,savename = 'MeanSignalDistribution',ending='png',saveDir = 'Results/'):
+
         #self.signal_canvas = ROOT.TCanvas()
         #ROOT.SetOwnership(self, False)
         self.signal_canvas.Clear()
@@ -99,7 +131,6 @@ class Analysis(object):
         self.MeanSignalHistoIsCreated = True
 
     def CreateBoth(self,saveplots = False,savename = 'SignalDistribution',ending='png',saveDir = 'Results/'):
-
         self.combined_canvas = ROOT.TCanvas("combined_canvas","Combined Canvas",1000,500)
         self.combined_canvas.Divide(2,1)
 
@@ -143,7 +174,10 @@ class Analysis(object):
         ROOT.gPad.Print(resultsdir+savename+'.'+ending)
 
 class AnalysisCollectionClass(object):
-
+    '''
+    An object of this class contains several analysis of runs.
+    It gives the ability to compare the data from different runs.
+    '''
     collection = {}
     current_run_number = -1
 
@@ -151,12 +185,25 @@ class AnalysisCollectionClass(object):
         pass
 
     def AddAnalysis(self,analysis_obj):
+        '''
+        Adds an Analysis object to the analysis collection object
+        :param analysis_obj: Analysis Object of type "Analysis"
+        :return: -
+        '''
 
         AnalysisCollectionClass.collection[analysis_obj.run_object.run_number] = analysis_obj
         AnalysisCollectionClass.current_run_number = analysis_obj.run_object.run_number
 
-
+    #
     def CreateFWHMPlot(self, saveplots = True, savename = 'FWHM_Histo', ending = 'png'):
+        '''
+        Creates the FWHM Distribution of all the MeanSignalHistogram histograms from all
+        Analysis object inside the analysis collection
+        :param saveplots: if True saves the plot
+        :param savename:  filename if saveplots = True
+        :param ending:  file typ if saveplots = True
+        :return: -
+        '''
 
         self.canvas = ROOT.TCanvas("canvas", "FWHM")
         self.fwhm_histo = ROOT.TH1D("fwhm_histo", "FWHM Distribution of "+str(self.GetNumberOfAnalyses())+" runs",50,0,100)
@@ -169,7 +216,7 @@ class AnalysisCollectionClass(object):
         if saveplots:
             # Results directories:
             resultsdir = 'Results/' # eg. 'Results/run_364/'
-            if not os.path.exists(resultsdir):
+            if not os.path.exists(resultsdir): # if directory doesn't exist, create it!
                 os.makedirs(resultsdir)
 
             ROOT.gPad.Print(resultsdir+savename+'.'+ending)
@@ -177,7 +224,16 @@ class AnalysisCollectionClass(object):
 
         #raw_input("wait")
 
+    #
     def CalculateFWHM(self, print_result = True, run_number = None):
+        '''
+        Calculates the FWHM of the Mean Signal Histogram (Histogram of
+        mean signal response of 2D Signal response distribution)
+        :param print_result: if True prints FWHM in console
+        :param run_number:  run number to analyze - if None it takes
+                            current run number from AnalysisCollection object
+        :return: FWHM
+        '''
         if run_number is None:
             run_number = AnalysisCollectionClass.current_run_number
         assert(type(run_number) is t.IntType and 0 < run_number < 1000), "Invalid run number"
@@ -198,4 +254,7 @@ class AnalysisCollectionClass(object):
         return fwhm
 
     def GetNumberOfAnalyses(self):
+        '''
+        :return: number of analyses that the analysis collection object contains
+        '''
         return len(AnalysisCollectionClass.collection.keys())

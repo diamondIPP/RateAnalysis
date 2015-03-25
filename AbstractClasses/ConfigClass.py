@@ -4,6 +4,7 @@
 class Pad2DHistConfig(object):
     #@initializer
     def __init__(self,bins_x,bins_y=None):
+
         self.bins_x = bins_x
         self.binsxy = bins_x
         if bins_y == None:
