@@ -80,12 +80,15 @@ class Bin(object):
         self.UpdateAttributes()
         return self.Attributes['sigma']
 
-    def CreateBinSignalHisto(self):
+    def CreateBinSignalHisto(self, saveplot = False):
         x_, y_ = self.GetBinCenter()
         canvasname = 'Bin '+str(x_)+' / '+str(y_)
         canvas = ROOT.TCanvas('canvas',canvasname+' Signal Histo')
         canvas.cd()
         title = canvasname+self.BinSignalHisto.GetTitle()
         self.BinSignalHisto.SetTitle(title)
+        self.BinSignalHisto.GetXaxis().SetTitle('Signal response')
         self.BinSignalHisto.Draw()
+        if saveplot:
+            self.bincollectionobject.SavePlots('Bin_X{:.3f}Y{:.3f}_SignalHisto'.format(x_,y_),'png','Results/')
         raw_input('Bin signal histo drawn')

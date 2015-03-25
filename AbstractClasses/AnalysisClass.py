@@ -18,7 +18,7 @@ class Analysis(object):
 
     Signal2DDistribution = ROOT.TH2D()
 
-    def __init__(self, run_object, config_object = Pad2DHistConfig(50)):
+    def __init__(self, run_object, config_object = Config()):
         '''
         Initializes the Analysis object.
         :param run_object: run object of type "Run"
@@ -30,6 +30,7 @@ class Analysis(object):
         assert(run_object.run_number > 0), "No run selected, choose run.SetRun(run_nr) before you pass the run object"
         self.run_object = run_object
         self.config_object = config_object
+        self.config_object.SetWindowFromDiamond(self.run_object.diamond)
         self.TrackingPadAnalysisROOTFile = run_object.TrackingPadAnalysis['ROOTFile']
         self.Signal2DDistribution = ROOT.TH2D()
         self.Signal2DDistribution.SetDirectory(0) # is needed because of garbage collection
@@ -57,14 +58,8 @@ class Analysis(object):
 
         self.track_info = self.rootfile.Get('track_info') # Get TTree called "track_info"
 
-        bins = self.config_object.bins_x
-        xmin = self.run_object.diamond.Position['xmin']
-        xmax = self.run_object.diamond.Position['xmax']
-        ymin = self.run_object.diamond.Position['ymin']
-        ymax = self.run_object.diamond.Position['ymax']
-
         # create a bin collection object:
-        self.Pad = BinCollection(bins,xmin,xmax,bins,ymin,ymax)
+        self.Pad = BinCollection(*self.config_object.Get2DAttributes())
 
         # fill two 2-dim histograms to collect the hits and signal strength
         for i in xrange(self.track_info.GetEntries()):
@@ -122,7 +117,6 @@ class Analysis(object):
             bincontent = self.Signal2DDistribution.GetBinContent(i)
             if bincontent != 0.:
                 self.MeanSignalHisto.Fill(bincontent)
-
         self.MeanSignalHisto.Draw()
 
         if saveplots:
@@ -130,7 +124,7 @@ class Analysis(object):
 
         self.MeanSignalHistoIsCreated = True
 
-    def CreateBoth(self,saveplots = False,savename = 'SignalDistribution',ending='png',saveDir = 'Results/'):
+    def CreateBoth(self,saveplots = False,savename = 'SignalDistribution',ending='png',saveDir = 'Results/',PS=False):
         self.combined_canvas = ROOT.TCanvas("combined_canvas","Combined Canvas",1000,500)
         self.combined_canvas.Divide(2,1)
 
@@ -138,13 +132,22 @@ class Analysis(object):
         self.CreateMeanSignalHistogram(False)
 
         self.combined_canvas.cd(1)
+        self.Signal2DDistribution.GetXaxis().SetTitle('pos x / cm')
+        self.Signal2DDistribution.GetYaxis().SetTitle('pos y / cm')
+        self.Signal2DDistribution.GetYaxis().SetTitleOffset(1.4)
         self.Signal2DDistribution.Draw('colz')
         self.combined_canvas.cd(2)
         # ROOT.gStyle.SetPalette(53)
         # ROOT.gStyle.SetNumberContours(999)
-        ROOT.gStyle.SetHistFillColor(6)#7)
-        ROOT.gStyle.SetHistFillStyle(1001)#3003)
+        if PS: #if photoshop mode, fill histogram pink
+            ROOT.gStyle.SetHistFillColor(6)
+            ROOT.gStyle.SetHistFillStyle(1001)
+        else:
+            ROOT.gStyle.SetHistFillColor(7)
+            ROOT.gStyle.SetHistFillStyle(3003)
+
         self.MeanSignalHisto.UseCurrentStyle()
+        self.MeanSignalHisto.GetXaxis().SetTitle('Signal response')
         self.MeanSignalHisto.Draw()
         self.combined_canvas.cd()
 
@@ -152,8 +155,9 @@ class Analysis(object):
         if saveplots:
             self.SavePlots(savename, ending, saveDir)
             self.SavePlots(savename, 'root', saveDir)
-        ROOT.gStyle.SetHistFillColor(7)
-        ROOT.gStyle.SetHistFillStyle(3003)
+        if PS:
+            ROOT.gStyle.SetHistFillColor(7)
+            ROOT.gStyle.SetHistFillStyle(3003)
 
     def CreateHitsDistribution(self):
         #ROOT.gStyle.SetNumberContours(10)
@@ -211,6 +215,7 @@ class AnalysisCollectionClass(object):
         for run in AnalysisCollectionClass.collection:
             self.fwhm_histo.Fill(self.CalculateFWHM(False,run))
         self.canvas.cd()
+        self.fwhm_histo.GetXaxis().SetTitle('FWHM')
         self.fwhm_histo.Draw()
 
         if saveplots:

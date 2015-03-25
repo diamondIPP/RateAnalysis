@@ -16,8 +16,8 @@ if __name__ == "__main__":
 
     # config
     show_plots = True
-
     minimum_statistics = 5 # don't draw bins which contain less than minimum_statistics hits
+
     run = Run(False)
 
     MaxNrOfRuns = 9999
@@ -53,23 +53,30 @@ if __name__ == "__main__":
                 #newAnalysis.CreatePlots(True,'2D_Signal_dist')
                 #newAnalysis.CreateMeanSignalHistogram(True)
                 newAnalysis.CreateBoth(True)
-                #print newAnalysis.Pad.ListOfBins[newAnalysis.Pad.GetBinNumber(0.05,0.05)].GetEntries()
-                #newAnalysis.Pad.ShowBinXYSignalHisto(0.08,0.3)
-                #newAnalysis.Pad.ShowBinXYSignalHisto(-0.04,0.3)
-
-                newAnalysis.Pad.UnselectAllBins()
-                bin = newAnalysis.Pad.GetBinByCoordinates(-0.04,0.3)
-                newAnalysis.Pad.SelectSignalStrengthRegion(bin,0.1,True,-0.09,0.02,0.22,0.36)
-
-                #newAnalysis.Pad.ShowSelectedBins()
-
+                #
+                # #print newAnalysis.Pad.ListOfBins[newAnalysis.Pad.GetBinNumber(0.05,0.05)].GetEntries()
+                # newAnalysis.Pad.ShowBinXYSignalHisto(0.08,0.3,True)
+                # newAnalysis.Pad.ShowBinXYSignalHisto(-0.04,0.3,True)
+                #
                 # newAnalysis.Pad.UnselectAllBins()
-                # bin = newAnalysis.Pad.GetBinByCoordinates(0.0835,0.3)
-                # newAnalysis.Pad.SelectSignalStrengthRegion(bin,0.1,True,0.01,0.14,0.23,0.36)
-
-                newAnalysis.Pad.ShowCombinedKDistribution(True)
-
-                #newAnalysis.CreateHitsDistribution()
+                # bin1 = newAnalysis.Pad.GetBinByCoordinates(-0.04,0.3)
+                # newAnalysis.Pad.SelectSignalStrengthRegion(bin1,0.1,True,-0.09,0.02,0.22,0.36)
+                #
+                # #newAnalysis.Pad.ShowSelectedBins()
+                # newAnalysis.Pad.ShowCombinedKDistribution(True,'combinedK_1')
+                #
+                # newAnalysis.Pad.UnselectAllBins()
+                # bin2 = newAnalysis.Pad.GetBinByCoordinates(0.0835,0.3)
+                # newAnalysis.Pad.SelectSignalStrengthRegion(bin2,0.1,True,0.01,0.14,0.23,0.36)
+                #
+                # newAnalysis.Pad.ShowCombinedKDistribution(True,'combinedK_2')
+                #
+                # newAnalysis.Pad.UnselectAllBins()
+                # newAnalysis.Pad.SelectSignalStrengthRegion(bin1,0.1,True,-0.09,0.02,0.22,0.36)
+                # newAnalysis.Pad.SelectSignalStrengthRegion(bin2,0.1,True,0.01,0.14,0.23,0.36)
+                # newAnalysis.Pad.ShowCombinedKDistribution(True,'combinedK_both')
+                #
+                # #newAnalysis.CreateHitsDistribution()
 
                 collection.AddAnalysis(newAnalysis)
         else:

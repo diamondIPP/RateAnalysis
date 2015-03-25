@@ -44,8 +44,8 @@ class BinCollection(object):
         self.totalsignal.Fill(x,y,signal)
         self.ListOfBins[self.GetBinNumber(x,y)].AddData(signal)
 
-    def ShowBinXYSignalHisto(self,x,y):
-        self.ListOfBins[self.GetBinNumber(x,y)].CreateBinSignalHisto()
+    def ShowBinXYSignalHisto(self,x,y,saveplot = False):
+        self.ListOfBins[self.GetBinNumber(x,y)].CreateBinSignalHisto(saveplot)
 
     def CalculateMeanSignalDistribution(self,minimum_bincontent = 1):
         assert (minimum_bincontent > 0), "minimum_bincontent has to be a positive integer"
@@ -161,6 +161,9 @@ class BinCollection(object):
                 i += 1
         selection_pad.SetTitle(str(i)+" Bins selected")
         selection_pad.SetStats(False)
+        selection_pad.GetXaxis().SetTitle('pos x / cm')
+        selection_pad.GetYaxis().SetTitle('pos y / cm')
+        selection_pad.GetYaxis().SetTitleOffset(1.4)
         if draw:
             selection_canvas.cd()
             selection_pad.Draw("col")
@@ -184,15 +187,18 @@ class BinCollection(object):
 
         selection = self.GetListOfSelectedBins()
         binmeans = []
+        n = []
         sigma = []
         for bin_nr in selection:
             binmeans.append(self.meansignaldistribution.GetBinContent(bin_nr))
             sigma.append(self.ListOfBins[bin_nr].GetSigma())
-        n = len(selection)
+            n.append(self.ListOfBins[bin_nr].GetEntries())
+        #N = len(selection)
         SIGMA = np.std(binmeans)
         sigma = np.array(sigma)
         K = SIGMA * np.sqrt(n) / sigma
         Khisto = ROOT.TH1D('Khisto', 'K Distribution', 50, 0, int(K.max())+1)
+        Khisto.GetXaxis().SetTitle('K value')
         for i in xrange(len(K)):
             Khisto.Fill(K[i])
         if draw:
@@ -213,9 +219,9 @@ class BinCollection(object):
         selection.Draw('col')
         canvas.cd(2)
         Khisto.Draw()
-        raw_input('Combined K Distribution Drawn')
         if saveplots:
             self.SavePlots(savename, ending, saveDir)
+        raw_input('Combined K Distribution Drawn')
         ROOT.gStyle.SetPalette(53)
         ROOT.gStyle.SetNumberContours(999)
 
