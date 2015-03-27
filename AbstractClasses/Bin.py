@@ -33,33 +33,33 @@ class Bin(object):
         }
         self.BinSignalHisto = ROOT.TH1D('BinSignalHisto'+str(binnumber), 'Signal Distribution',500,0,500)
 
-    def UpdateAttributes(self):
+    def AddData(self, signal, update_bin_attributes = False):
         '''
-        Updates the Attributes dict
-        :return:
+        Fill data into this bin
+        :param signal: data signal
+        :param update_bin_attributes: if True updates the bin attributes after filling
+        :return: -
         '''
-        self.Attributes['average'] = self.BinSignalHisto.GetMean()
-        self.Attributes['sigma'] = self.BinSignalHisto.GetRMS()
-        self.Attributes['entries'] = self.BinSignalHisto.GetEntries()
+        self.signals.append(signal)
+        self.BinSignalHisto.Fill(signal)
+        if update_bin_attributes: self.UpdateAttributes()
 
-        collection_attributes = self.bincollectionobject.Attributes
-        binsx_ = collection_attributes['binsx']+2
-        binsy_ = collection_attributes['binsy']+2
-        xmin_ = collection_attributes['XMIN']
-        xmax_ = collection_attributes['XMAX']
-        ymin_ = collection_attributes['YMIN']
-        ymax_ = collection_attributes['YMAX']
-        binwidthx_ = 1.*(xmax_-xmin_)/(binsx_-2)
-        binwidthy_ = 1.*(ymax_-ymin_)/(binsy_-2)
-
-        self.Attributes['coordinate_x'] = int(self.Attributes['binnumber'])%int(binsx_)
-        self.Attributes['coordinate_y'] = int(self.Attributes['binnumber'])/int(binsx_)
-        self.Attributes['bincenter_x'] = xmin_ - binwidthx_/2. + self.Attributes['coordinate_x']*binwidthx_
-        self.Attributes['bincenter_y'] = ymin_ - binwidthy_/2. + self.Attributes['coordinate_y']*binwidthy_
-        self.Attributes['minx'] = self.Attributes['bincenter_x'] - binwidthx_/2.
-        self.Attributes['maxx'] = self.Attributes['bincenter_x'] + binwidthx_/2.
-        self.Attributes['miny'] = self.Attributes['bincenter_y'] - binwidthy_/2.
-        self.Attributes['maxy'] = self.Attributes['bincenter_y'] + binwidthy_/2.
+    def CreateBinSignalHisto(self, saveplot = False):
+        '''
+        Creates and draws a histogram of the signal response contained in this bin
+        :param saveplot: if True, saves the plot as Results/Bin_X0.123Y-0.123_SignalHisto.png
+        :return: -
+        '''
+        x_, y_ = self.GetBinCenter()
+        canvasname = 'Bin '+str(x_)+' / '+str(y_)+' Signal Histo'
+        canvas = ROOT.TCanvas('canvas',canvasname)
+        canvas.cd()
+        self.BinSignalHisto.SetTitle(canvasname)
+        self.BinSignalHisto.GetXaxis().SetTitle('Signal response')
+        self.BinSignalHisto.Draw()
+        if saveplot:
+            self.bincollectionobject.SavePlots('Bin_X{:.3f}Y{:.3f}_SignalHisto'.format(x_,y_),'png','Results/')
+        raw_input('Bin signal histo drawn')
 
     def GetBinCenter(self):
         '''
@@ -80,17 +80,6 @@ class Bin(object):
         x_ = self.Attributes['coordinate_x']
         y_ = self.Attributes['coordinate_y']
         return x_, y_
-
-    def AddData(self, signal, update_bin_attributes = False):
-        '''
-        Fill data into this bin
-        :param signal: data signal
-        :param update_bin_attributes: if True updates the bin attributes after filling
-        :return: -
-        '''
-        self.signals.append(signal)
-        self.BinSignalHisto.Fill(signal)
-        if update_bin_attributes: self.UpdateAttributes()
 
     def GetEntries(self):
         '''
@@ -125,19 +114,30 @@ class Bin(object):
         self.UpdateAttributes()
         return self.Attributes['sigma']
 
-    def CreateBinSignalHisto(self, saveplot = False):
+    def UpdateAttributes(self):
         '''
-        Creates and draws a histogram of the signal response contained in this bin
-        :param saveplot: if True, saves the plot as Results/Bin_X0.123Y-0.123_SignalHisto.png
-        :return: -
+        Updates the Attributes dict
+        :return:
         '''
-        x_, y_ = self.GetBinCenter()
-        canvasname = 'Bin '+str(x_)+' / '+str(y_)+' Signal Histo'
-        canvas = ROOT.TCanvas('canvas',canvasname)
-        canvas.cd()
-        self.BinSignalHisto.SetTitle(canvasname)
-        self.BinSignalHisto.GetXaxis().SetTitle('Signal response')
-        self.BinSignalHisto.Draw()
-        if saveplot:
-            self.bincollectionobject.SavePlots('Bin_X{:.3f}Y{:.3f}_SignalHisto'.format(x_,y_),'png','Results/')
-        raw_input('Bin signal histo drawn')
+        self.Attributes['average'] = self.BinSignalHisto.GetMean()
+        self.Attributes['sigma'] = self.BinSignalHisto.GetRMS()
+        self.Attributes['entries'] = self.BinSignalHisto.GetEntries()
+
+        collection_attributes = self.bincollectionobject.Attributes
+        binsx_ = collection_attributes['binsx']+2
+        binsy_ = collection_attributes['binsy']+2
+        xmin_ = collection_attributes['XMIN']
+        xmax_ = collection_attributes['XMAX']
+        ymin_ = collection_attributes['YMIN']
+        ymax_ = collection_attributes['YMAX']
+        binwidthx_ = 1.*(xmax_-xmin_)/(binsx_-2)
+        binwidthy_ = 1.*(ymax_-ymin_)/(binsy_-2)
+
+        self.Attributes['coordinate_x'] = int(self.Attributes['binnumber'])%int(binsx_)
+        self.Attributes['coordinate_y'] = int(self.Attributes['binnumber'])/int(binsx_)
+        self.Attributes['bincenter_x'] = xmin_ - binwidthx_/2. + self.Attributes['coordinate_x']*binwidthx_
+        self.Attributes['bincenter_y'] = ymin_ - binwidthy_/2. + self.Attributes['coordinate_y']*binwidthy_
+        self.Attributes['minx'] = self.Attributes['bincenter_x'] - binwidthx_/2.
+        self.Attributes['maxx'] = self.Attributes['bincenter_x'] + binwidthx_/2.
+        self.Attributes['miny'] = self.Attributes['bincenter_y'] - binwidthy_/2.
+        self.Attributes['maxy'] = self.Attributes['bincenter_y'] + binwidthy_/2.
