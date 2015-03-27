@@ -135,10 +135,11 @@ class Analysis(object):
         self.Signal2DDistribution.GetXaxis().SetTitle('pos x / cm')
         self.Signal2DDistribution.GetYaxis().SetTitle('pos y / cm')
         self.Signal2DDistribution.GetYaxis().SetTitleOffset(1.4)
-        self.Signal2DDistribution.Draw('colz')
-        self.combined_canvas.cd(2)
-        # ROOT.gStyle.SetPalette(53)
+        #ROOT.gStyle.SetPalette(55)
         # ROOT.gStyle.SetNumberContours(999)
+        self.Signal2DDistribution.Draw('colz')#"CONT1Z")#)'colz')
+        self.combined_canvas.cd(2)
+
         if PS: #if photoshop mode, fill histogram pink
             ROOT.gStyle.SetHistFillColor(6)
             ROOT.gStyle.SetHistFillStyle(1001)

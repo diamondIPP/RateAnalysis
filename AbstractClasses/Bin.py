@@ -18,7 +18,7 @@ class Bin(object):
             'maxx': 0.,
             'miny': 0.,
             'maxy': 0.,
-            'bincenter_x': 0,
+            'bincenter_x': 0.,
             'bincenter_y': 0.,
             'coordinate_x': 0, # int
             'coordinate_y': 0 # int
@@ -75,6 +75,9 @@ class Bin(object):
     def GetMean(self):
         self.UpdateAttributes()
         return self.Attributes['average']
+
+    def GetBinNumber(self):
+        return self.Attributes['binnumber']
 
     def GetSigma(self):
         self.UpdateAttributes()

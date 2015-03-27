@@ -48,7 +48,7 @@ if __name__ == "__main__":
                 print run_number
 
                 #
-                newAnalysis = Analysis(run)
+                newAnalysis = Analysis(run,Config(70))
                 newAnalysis.DoAnalysis(minimum_statistics)
                 #newAnalysis.CreatePlots(True,'2D_Signal_dist')
                 #newAnalysis.CreateMeanSignalHistogram(True)
@@ -75,15 +75,24 @@ if __name__ == "__main__":
                 # newAnalysis.Pad.SelectSignalStrengthRegion(bin1,0.1,True,-0.09,0.02,0.22,0.36)
                 # newAnalysis.Pad.SelectSignalStrengthRegion(bin2,0.1,True,0.01,0.14,0.23,0.36)
                 # newAnalysis.Pad.ShowCombinedKDistribution(True,'combinedK_both')
-                #
-                # #newAnalysis.CreateHitsDistribution()
+
+                newAnalysis.Pad.UnselectAllBins()
+
+                bin3 = newAnalysis.Pad.GetBinByNumber(newAnalysis.Pad.GetMaximumSignalResponseBinNumber())
+                print bin3.GetBinCoordinates()
+                print bin3.GetBinCenter()
+                newAnalysis.Pad.SelectSignalStrengthRegion(bin3,0.3,True)
+                newAnalysis.Pad.ShowSelectedBins()
+                newAnalysis.Pad.ShowCombinedKDistribution(True,'combinedK_all')
+
+                #newAnalysis.CreateHitsDistribution()
 
                 collection.AddAnalysis(newAnalysis)
         else:
             print "Analysis of run ",run_number, " failed"
 
 
-    collection.CreateFWHMPlot()
+    #collection.CreateFWHMPlot()
 
 
 

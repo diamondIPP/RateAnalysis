@@ -1,13 +1,30 @@
 import ROOT
 import numpy as np
 import os
+import types as t
 from Bin import Bin
 
 class BinCollection(object):
+    '''
+    A BinCollection Object Contains Bin-objects. It is used to store the data, as well
+    as to read the data, make selections or to make Plots related to collection of many bins.
+
+    '''
 
     def __init__(self, binsx, xmin, xmax, binsy, ymin, ymax):
+        '''
+        Constructor of a Bincollection.
+        :param binsx: Number of bins in x direction, has to be of type int
+        :param xmin:
+        :param xmax:
+        :param binsy:
+        :param ymin:
+        :param ymax:
+        :return: -
+        '''
+        assert(type(binsx) is t.IntType and type(binsy) is t.IntType), "binsx and binsy have to be integer"
 
-        self.ListOfBins = [Bin(i,self) for i in xrange((binsx+2)*(binsy+2))]
+        self.ListOfBins = [Bin(i,self) for i in xrange((binsx+2)*(binsy+2))] # A list, containing all Bin objects
         self.binnumbers = [i for i in xrange((binsx+2)*(binsy+2))]
         self.Attributes = {
             'binsx': binsx, # bins in x without frame of 1 bin
@@ -39,7 +56,15 @@ class BinCollection(object):
                                     self.Attributes['YMAX']
                                     )
 
+    # !! cannot be inherented to non rectangular
     def Fill(self,x,y,signal):
+        '''
+        Adds the datapoint into the corresponding bin inside the bincollection
+        :param x:
+        :param y:
+        :param signal:
+        :return:
+        '''
         self.counthisto.Fill(x,y)
         self.totalsignal.Fill(x,y,signal)
         self.ListOfBins[self.GetBinNumber(x,y)].AddData(signal)
@@ -97,7 +122,7 @@ class BinCollection(object):
         if activate:
             for binnr in list_of_bins:
                 self.ListOfBins[binnr].selected = True
-
+        print len(list_of_bins), " bins selected (Rectangualr region)"
         return list_of_bins
 
     def UnselectAllBins(self):
@@ -113,13 +138,28 @@ class BinCollection(object):
                                    xhigh = None,
                                    ylow = None,
                                    yhigh = None):
+        '''
+        Creates and returns a list of all binnumbers in a region with bins that
+        have a similar mean signal response as the mean signal response of a
+        reference bin inside this region. If activate = True, the bins get selected
+        (bin.selection = True). If no region is passed, all bins are considered.
+        :param refBin: sets the default value of mean response
+        :param sensitivity: bins are picked inside
+            refSignal*(1-sensitivity) <= signal <= refSignal*(1+sensitivity)
+        :param activate: if True the bins get set to bin.selected = True
+        :param xlow: Window to restrict the considered bins
+        :param xhigh:
+        :param ylow:
+        :param yhigh:
+        :return:
+        '''
         selected_bins = []
         if yhigh == None:
             list_of_bins = self.binnumbers
         else:
             list_of_bins = self.SelectRectangularBins(xlow,xhigh,ylow,yhigh,False)
 
-        binnumber = refBin.Attributes['binnumber']
+        binnumber = refBin.GetBinNumber()
         assert(binnumber in list_of_bins), "Bin given is not in selected region."
 
         bin_avg_signal = self.meansignaldistribution.GetBinContent(binnumber)
@@ -128,11 +168,12 @@ class BinCollection(object):
 
         for binnumber in list_of_bins:
             signal = self.meansignaldistribution.GetBinContent(binnumber)
-            if signal_lowerbound <= signal <= signal_upperbound:
-                selected_bins.append(binnumber)
-                if activate:
-                    self.ListOfBins[binnumber].selected = True
-
+            if self.ListOfBins[binnumber].GetEntries() > 0:
+                if signal_lowerbound <= signal <= signal_upperbound:
+                    selected_bins.append(binnumber)
+                    if activate:
+                        self.ListOfBins[binnumber].selected = True
+        print len(selected_bins), " bins selected"
         return selected_bins
 
     # select a single bin with bin number binnumber
@@ -172,12 +213,47 @@ class BinCollection(object):
             ROOT.gStyle.SetNumberContours(999)
         return selection_pad
 
+    def GetSortedListOfBins(self, attribute='average', ascending = True):
+        '''
+        Returns list of bins (binnunmbers) in an order with respect to "attribute"
+        :return: ordered_list
+        '''
+        # self.UpdateBinAttributes()
+        # SortedListOfBins = sorted(self.ListOfBins, key = lambda bin: bin.Attributes[attribute], reverse = not ascending)
+        # ordered_list = [SortedListOfBins[i].Attributes['binnumber'] for i in xrange(len(SortedListOfBins))]
+        sortdata = np.ones((3,len(self.ListOfBins))) # sortdata[0,:] numbers, [1,:] means, [3,:] hits
+        count = 0
+        print "len of sortdata: ", np.shape(sortdata)
+        for i in xrange(len(self.ListOfBins)):
+            self.ListOfBins[i].UpdateAttributes()
+            if self.ListOfBins[i].Attributes['entries'] >= 5:
+                sortdata[0,i] = self.ListOfBins[i].Attributes['binnumber']
+                sortdata[1,i] = self.ListOfBins[i].Attributes['average']
+                sortdata[2,i] = self.ListOfBins[i].Attributes['entries']
+                count += 1
+                print "nr: ",sortdata[0,i]," av.: ", sortdata[1,i]," ent.: ", sortdata[2,i]
+        print "*************************************************************"
+        data = list(-sortdata[1][:])
+        arg_sorted = np.argsort(data)
+        sorted_data = sortdata[:,arg_sorted] # ?! WTF? why does sortdata[:][arg_sorted] not work??!?!
+        for i in xrange(len(sorted_data[0,:count])):
+            print "nr: ",sorted_data[0,i]," av.: ", sorted_data[1,i]," ent.: ", sorted_data[2,i]
+        means = list(sorted_data[1,:])
+        ordered_list = list(sorted_data[0,:count])
+        #print "ordered list:", ordered_list
+        # print "means: ", means
+        # print "entries : ", sorted_data[2,:]
+        # print "len of sorted_data: ", len(sorted_data)
+        return map(int,ordered_list)
+
+    def GetMaximumSignalResponseBinNumber(self):
+        return self.GetSortedListOfBins(ascending=False)[0]
 
     def GetListOfSelectedBins(self):
         selected_bins = []
         for bin in self.ListOfBins:
             if bin.selected:
-                selected_bins.append(bin.Attributes['binnumber'])
+                selected_bins.append(bin.GetBinNumber())
         return selected_bins
 
     # show distribution of K_i from SIGMA = K_i * sigma_i / sqrt(n) for selected bins
@@ -190,13 +266,18 @@ class BinCollection(object):
         n = []
         sigma = []
         for bin_nr in selection:
-            binmeans.append(self.meansignaldistribution.GetBinContent(bin_nr))
+            binmeans.append(self.ListOfBins[bin_nr].GetMean())
             sigma.append(self.ListOfBins[bin_nr].GetSigma())
             n.append(self.ListOfBins[bin_nr].GetEntries())
-        #N = len(selection)
+        N = len(selection)
         SIGMA = np.std(binmeans)
+        # print "sigmas : ",sorted(sigma)
+        # print "means : ",sorted(binmeans)
+        # print "n : ",sorted(n)
+
+
         sigma = np.array(sigma)
-        K = SIGMA * np.sqrt(n) / sigma
+        K = SIGMA * np.sqrt(N) / sigma
         Khisto = ROOT.TH1D('Khisto', 'K Distribution', 50, 0, int(K.max())+1)
         Khisto.GetXaxis().SetTitle('K value')
         for i in xrange(len(K)):
@@ -242,8 +323,17 @@ class BinCollection(object):
         binnumber = self.counthisto.FindBin(x,y)
         return binnumber
 
-    def GetBinByNumber(self, bin_nunmber):
-        return self.ListOfBins[bin_nunmber]
+    def GetBinByNumber(self, bin_number):
+        '''
+        Returns the bin object with number "bin_number"
+        :param bin_nunmber: the bin number of the bin to return
+        :return: bin with bin number bin_number
+        '''
+        if not(type(bin_number) is t.IntType):
+            binnumber = int(bin_number)
+        else:
+            binnumber = bin_number
+        return self.ListOfBins[binnumber]
 
     def GetBinByCoordinates(self, x, y):
         nr = self.GetBinNumber(x,y)
@@ -257,4 +347,8 @@ class BinCollection(object):
             os.makedirs(resultsdir)
 
         ROOT.gPad.Print(resultsdir+savename+'.'+ending)
+
+    def UpdateBinAttributes(self):
+        for i in xrange(len(self.ListOfBins)):
+            self.ListOfBins[i].UpdateAttributes()
 
