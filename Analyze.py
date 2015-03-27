@@ -81,7 +81,7 @@ if __name__ == "__main__":
                 bin3 = newAnalysis.Pad.GetBinByNumber(newAnalysis.Pad.GetMaximumSignalResponseBinNumber())
                 print bin3.GetBinCoordinates()
                 print bin3.GetBinCenter()
-                newAnalysis.Pad.SelectSignalStrengthRegion(bin3,0.3,True)
+                newAnalysis.Pad.SelectSignalStrengthRegion(bin3,0.4,True)
                 newAnalysis.Pad.ShowSelectedBins()
                 newAnalysis.Pad.ShowCombinedKDistribution(True,'combinedK_all')
 

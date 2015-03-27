@@ -42,7 +42,7 @@ class Config(object):
             },
             'Hist1': ''
         }
-        self.SetWindow(-0.23, 0.18, -0.14, 0.39)
+        self.SetWindow(-0.23, 0.18, -0.14, 0.39) # default window
 
     def Get2DAttributes(self):
         '''
@@ -80,6 +80,11 @@ class Config(object):
         self.config['2DHist']['ymax'] = ylow + binsy * binsize
 
     def SetWindowFromDiamond(self, diamond):
+        '''
+        Uses the diamond configureation
+        :param diamond:
+        :return:
+        '''
         xmin = diamond.Position['xmin']
         xmax = diamond.Position['xmax']
         ymin = diamond.Position['ymin']

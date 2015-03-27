@@ -4,6 +4,7 @@ import os
 import types as t
 from Bin import Bin
 
+
 class BinCollection(object):
     '''
     A BinCollection Object Contains Bin-objects. It is used to store the data, as well
@@ -13,16 +14,21 @@ class BinCollection(object):
 
     def __init__(self, binsx, xmin, xmax, binsy, ymin, ymax):
         '''
-        Constructor of a Bincollection.
-        :param binsx: Number of bins in x direction, has to be of type int
-        :param xmin:
-        :param xmax:
-        :param binsy:
-        :param ymin:
-        :param ymax:
+        Constructor of a Bincollection. Since the data collection is based on ROOT.TH2D,
+        the bins are ordered in a rectangular pattern inside a frame which is 1 bin thick leading
+        to a total number of bins of (binsx+2)*(binsy+2)
+        :param binsx: Number of bins in x direction of data collection window
+        :param xmin: data collection window lower x bound
+        :param xmax: data collection window upper x bound
+        :param binsy: Number of bins in y direction of data collection window
+        :param ymin: data collection window lower y bound
+        :param ymax: data collection window upper y bound
         :return: -
         '''
-        assert(type(binsx) is t.IntType and type(binsy) is t.IntType), "binsx and binsy have to be integer"
+        if type(binsx) is not t.IntType or type(binsy) is not t.IntType:
+            "INFO: binsx or binsy not of int type. Changing it to int..."
+            binsx = int(binsx)
+            binsy = int(binsy)
 
         self.ListOfBins = [Bin(i,self) for i in xrange((binsx+2)*(binsy+2))] # A list, containing all Bin objects
         self.binnumbers = [i for i in xrange((binsx+2)*(binsy+2))]
@@ -59,7 +65,8 @@ class BinCollection(object):
     # !! cannot be inherented to non rectangular
     def Fill(self,x,y,signal):
         '''
-        Adds the datapoint into the corresponding bin inside the bincollection
+        Adds the datapoint into the corresponding bin inside the bincollection as
+        well as into the two histograms counthisto and totalsignal inside this bin collection
         :param x:
         :param y:
         :param signal:
@@ -70,9 +77,22 @@ class BinCollection(object):
         self.ListOfBins[self.GetBinNumber(x,y)].AddData(signal)
 
     def ShowBinXYSignalHisto(self,x,y,saveplot = False):
+        '''
+        Shows a Histogram of the Signal response distribution inside the bin which
+        contains the coordinates (x,y)
+        :param x: coordinate x in cm which is contained in the bin of interest
+        :param y: coordinate y in cm which is contained in the bin of interest
+        :param saveplot: if True save plot as as Results/Bin_X0.123Y-0.123_SignalHisto.png
+        :return: -
+        '''
         self.ListOfBins[self.GetBinNumber(x,y)].CreateBinSignalHisto(saveplot)
 
     def CalculateMeanSignalDistribution(self,minimum_bincontent = 1):
+        '''
+
+        :param minimum_bincontent:
+        :return:
+        '''
         assert (minimum_bincontent > 0), "minimum_bincontent has to be a positive integer"
         self.meansignaldistribution = ROOT.TH2D('meansignaldistribution',
                                                 "Mean Signal Distribution",
@@ -95,7 +115,6 @@ class BinCollection(object):
 
                 binsignalsum = abs(self.totalsignal.GetBinContent(bin_x, bin_y))
                 binsignalcount = self.counthisto.GetBinContent(bin_x, bin_y)
-
                 if binsignalcount >= minimum_bincontent :
                     self.meansignaldistribution.Fill(x_, y_, abs(binsignalsum/binsignalcount))
 
@@ -223,7 +242,6 @@ class BinCollection(object):
         # ordered_list = [SortedListOfBins[i].Attributes['binnumber'] for i in xrange(len(SortedListOfBins))]
         sortdata = np.ones((3,len(self.ListOfBins))) # sortdata[0,:] numbers, [1,:] means, [3,:] hits
         count = 0
-        print "len of sortdata: ", np.shape(sortdata)
         for i in xrange(len(self.ListOfBins)):
             self.ListOfBins[i].UpdateAttributes()
             if self.ListOfBins[i].Attributes['entries'] >= 5:
@@ -231,13 +249,13 @@ class BinCollection(object):
                 sortdata[1,i] = self.ListOfBins[i].Attributes['average']
                 sortdata[2,i] = self.ListOfBins[i].Attributes['entries']
                 count += 1
-                print "nr: ",sortdata[0,i]," av.: ", sortdata[1,i]," ent.: ", sortdata[2,i]
-        print "*************************************************************"
-        data = list(-sortdata[1][:])
+                #print "nr: ",sortdata[0,i]," av.: ", sortdata[1,i]," ent.: ", sortdata[2,i]
+        #print "*************************************************************"
+        data = list(-sortdata[1][:]) #select data to sort ([1]->by average)
         arg_sorted = np.argsort(data)
         sorted_data = sortdata[:,arg_sorted] # ?! WTF? why does sortdata[:][arg_sorted] not work??!?!
-        for i in xrange(len(sorted_data[0,:count])):
-            print "nr: ",sorted_data[0,i]," av.: ", sorted_data[1,i]," ent.: ", sorted_data[2,i]
+        # for i in xrange(len(sorted_data[0,:count])):
+        #     print "nr: ",sorted_data[0,i]," av.: ", sorted_data[1,i]," ent.: ", sorted_data[2,i]
         means = list(sorted_data[1,:])
         ordered_list = list(sorted_data[0,:count])
         #print "ordered list:", ordered_list
