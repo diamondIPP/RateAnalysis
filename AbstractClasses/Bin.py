@@ -2,8 +2,16 @@ import ROOT
 
 
 class Bin(object):
-
+    '''
+    A bin contains localized signal data.
+    '''
     def __init__(self, binnumber, bincollectionobject):
+        '''
+        Constructor of a Bin object
+        :param binnumber: indistinguishable number
+        :param bincollectionobject: the bincollection object which this bin belongs to
+        :return: -
+        '''
 
         self.signals = []
         self.bincollectionobject = bincollectionobject
@@ -23,9 +31,13 @@ class Bin(object):
             'coordinate_x': 0, # int
             'coordinate_y': 0 # int
         }
-        self.BinSignalHisto = ROOT.TH1D('BinSignalHisto'+str(binnumber), ' Signal Distribution',500,0,500)
+        self.BinSignalHisto = ROOT.TH1D('BinSignalHisto'+str(binnumber), 'Signal Distribution',500,0,500)
 
     def UpdateAttributes(self):
+        '''
+        Updates the Attributes dict
+        :return:
+        '''
         self.Attributes['average'] = self.BinSignalHisto.GetMean()
         self.Attributes['sigma'] = self.BinSignalHisto.GetRMS()
         self.Attributes['entries'] = self.BinSignalHisto.GetEntries()
@@ -50,46 +62,80 @@ class Bin(object):
         self.Attributes['maxy'] = self.Attributes['bincenter_y'] + binwidthy_/2.
 
     def GetBinCenter(self):
+        '''
+        Returns the x and y coordinates in cm of this bin
+        :return: x_, y_ in cm
+        '''
         self.UpdateAttributes()
         x_ = self.Attributes['bincenter_x']
         y_ = self.Attributes['bincenter_y']
         return x_, y_
 
     def GetBinCoordinates(self):
+        '''
+        Returns the x and y coordinates in number of bins from the left and from the bottom
+        :return: x_, y_
+        '''
         self.UpdateAttributes()
         x_ = self.Attributes['coordinate_x']
         y_ = self.Attributes['coordinate_y']
         return x_, y_
 
     def AddData(self, signal, update_bin_attributes = False):
+        '''
+        Fill data into this bin
+        :param signal: data signal
+        :param update_bin_attributes: if True updates the bin attributes after filling
+        :return: -
+        '''
         self.signals.append(signal)
         self.BinSignalHisto.Fill(signal)
         if update_bin_attributes: self.UpdateAttributes()
 
     def GetEntries(self):
+        '''
+        Returns the number of signals in this bin
+        :return: self.Attributes['entries']
+        '''
         self.UpdateAttributes()
         if int(self.Attributes['entries']) != len(self.signals):
             raw_input("WARNING: Error in number of entries.. "+str(self.Attributes['entries'])+" != "+str(len(self.signals)))
         return self.Attributes['entries']
 
     def GetMean(self):
+        '''
+        Returns the mean value of the signals contained in this bin
+        :return:
+        '''
         self.UpdateAttributes()
         return self.Attributes['average']
 
     def GetBinNumber(self):
+        '''
+        Returns the bin number of this bin
+        :return: self.Attributes['binnumber']
+        '''
         return self.Attributes['binnumber']
 
     def GetSigma(self):
+        '''
+        Returns the standard deviation of the signals contained in this bin.
+        :return:
+        '''
         self.UpdateAttributes()
         return self.Attributes['sigma']
 
     def CreateBinSignalHisto(self, saveplot = False):
+        '''
+        Creates and draws a histogram of the signal response contained in this bin
+        :param saveplot: if True, saves the plot as Results/Bin_X0.123Y-0.123_SignalHisto.png
+        :return: -
+        '''
         x_, y_ = self.GetBinCenter()
-        canvasname = 'Bin '+str(x_)+' / '+str(y_)
-        canvas = ROOT.TCanvas('canvas',canvasname+' Signal Histo')
+        canvasname = 'Bin '+str(x_)+' / '+str(y_)+' Signal Histo'
+        canvas = ROOT.TCanvas('canvas',canvasname)
         canvas.cd()
-        title = canvasname+self.BinSignalHisto.GetTitle()
-        self.BinSignalHisto.SetTitle(title)
+        self.BinSignalHisto.SetTitle(canvasname)
         self.BinSignalHisto.GetXaxis().SetTitle('Signal response')
         self.BinSignalHisto.Draw()
         if saveplot:
