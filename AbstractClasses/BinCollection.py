@@ -357,6 +357,38 @@ class BinCollection(object):
         nr = self.GetBinNumber(x,y)
         return self.ListOfBins[nr]
 
+    def GetBinsInColumn(self, position):
+        '''
+
+        :param heigth:
+        :return:
+        '''
+        start_y = self.Attributes['YMIN']+ self.Attributes['binwidth_y']/2.
+        start_bin = self.GetBinByCoordinates(position, start_y)
+        start_binnumber = start_bin.GetBinNumber()
+
+        end_y = self.Attributes['YMAX']- self.Attributes['binwidth_y']/2.
+        end_bin = self.GetBinByCoordinates(position, end_y)
+        end_binnumber = end_bin.GetBinNumber()
+
+        list_of_bins = []
+        for i in xrange(self.Attributes['binsy']):
+            list_of_bins.append( self.ListOfBins[start_binnumber + i*(self.Attributes['binsx']+2)] )
+        assert (end_binnumber == start_binnumber + (self.Attributes['binsy']-1)*(self.Attributes['binsx']+2)), "Bin Mismatch in GetBinsInColumn"
+        return list_of_bins
+
+    def GetBinsInRow(self, height):
+        '''
+
+        :param heigth:
+        :return:
+        '''
+        start_x = self.Attributes['XMIN']+ self.Attributes['binwidth_x']/2.
+        start_bin = self.GetBinByCoordinates(start_x, height)
+        start_binnumber = start_bin.GetBinNumber()
+        list_of_bins = [self.ListOfBins[i] for i in xrange(start_binnumber, start_binnumber+self.Attributes['binsx'])]
+        return list_of_bins
+
     def SavePlots(self, savename, ending, saveDir):
         # Results directories:
         #resultsdir = saveDir+'run_'+str(self.run_object.run_number)+'/' # eg. 'Results/run_364/'
@@ -365,6 +397,47 @@ class BinCollection(object):
             os.makedirs(resultsdir)
 
         ROOT.gPad.Print(resultsdir+savename+'.'+ending)
+
+    def GetSignalInColumn(self, position , show = False):
+        '''
+
+        :param position:
+        :return:
+        '''
+        list_of_bins = self.GetBinsInColumn(position)
+        signals = []
+        attributes = self.Attributes['binsy'], self.Attributes['YMIN'], self.Attributes['YMAX']
+        histo = ROOT.TH1D('histo', 'bins in column', *attributes)
+        for i in xrange(len(list_of_bins)):
+            _ , y_ = list_of_bins[i].GetBinCenter()
+            signal_ = list_of_bins[i].GetMean()
+            histo.Fill(y_, signal_)
+            signals.append(signal_)
+        if show:
+            histo.Draw()
+            raw_input('show signal in row..')
+        return signals
+
+    def GetSignalInRow(self, height,show = False):
+        '''
+
+        :param height:
+        :return:
+        '''
+        list_of_bins = self.GetBinsInRow(height)
+        signals = []
+        attributes = self.Attributes['binsx'], self.Attributes['XMIN'], self.Attributes['XMAX']
+        histo = ROOT.TH1D('histo', 'bins in row', *attributes)
+        for i in xrange(len(list_of_bins)):
+            x_ , _ = list_of_bins[i].GetBinCenter()
+            signal_ = list_of_bins[i].GetMean()
+            histo.Fill(x_, signal_)
+            signals.append(signal_)
+        if show:
+            histo.Draw()
+            raw_input('show signal in row..')
+        return signals
+
 
     def UpdateBinAttributes(self):
         for i in xrange(len(self.ListOfBins)):
