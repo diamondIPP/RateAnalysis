@@ -43,24 +43,21 @@ class BinCollection(object):
             'binwidth_y': 1.*(ymax-ymin)/binsy
         }
 
-        self.counthisto = ROOT.TH2D('counthisto',
-                                    '2D hit distribution',
-                                    self.Attributes['binsx'],
-                                    self.Attributes['XMIN'],
-                                    self.Attributes['XMAX'],
-                                    self.Attributes['binsy'],
-                                    self.Attributes['YMIN'],
-                                    self.Attributes['YMAX']
-                                    )
-        self.totalsignal = ROOT.TH2D('totalsignal',
-                                    '2D total signal distribution',
-                                    self.Attributes['binsx'],
-                                    self.Attributes['XMIN'],
-                                    self.Attributes['XMAX'],
-                                    self.Attributes['binsy'],
-                                    self.Attributes['YMIN'],
-                                    self.Attributes['YMAX']
-                                    )
+        self.counthisto = ROOT.TH2D('counthisto', '2D hit distribution', *self.Get2DAttributes())
+        self.totalsignal = ROOT.TH2D('totalsignal', '2D total signal distribution', *self.Get2DAttributes())
+
+    def Get2DAttributes(self):
+        '''
+        Returns attributes to initialize a ROOT TH2D object
+        :return: binsx, xmin, xmax, binsy, ymin, ymax
+        '''
+        binsx = self.Attributes['binsx']
+        xmin = self.Attributes['XMIN']
+        xmax = self.Attributes['XMAX']
+        binsy = self.Attributes['binsy']
+        ymin = self.Attributes['YMIN']
+        ymax = self.Attributes['YMAX']
+        return binsx, xmin, xmax, binsy, ymin, ymax
 
     # !! cannot be inherented to non rectangular
     def Fill(self,x,y,signal):
@@ -268,6 +265,10 @@ class BinCollection(object):
         return self.GetSortedListOfBins(ascending=False)[0]
 
     def GetListOfSelectedBins(self):
+        '''
+        Returns a List of bin numbers, which correspond to selected bins (bin.selected = True)
+        :return: selected_bins (bin numbers)
+        '''
         selected_bins = []
         for bin in self.ListOfBins:
             if bin.selected:
@@ -276,10 +277,11 @@ class BinCollection(object):
 
     # show distribution of K_i from SIGMA = K_i * sigma_i / sqrt(n) for selected bins
     def ShowKDistribution(self,draw = True):
+        selection = self.GetListOfSelectedBins()
+        assert(len(selection) is not 0), "no Bins selected!"
         if draw:
             Kcanvas = ROOT.TCanvas('Kcanvas','K Canvas')
 
-        selection = self.GetListOfSelectedBins()
         binmeans = []
         n = []
         sigma = []
@@ -418,7 +420,7 @@ class BinCollection(object):
             raw_input('show signal in row..')
         return signals
 
-    def GetSignalInRow(self, height,show = False):
+    def GetSignalInRow(self, height, show = False):
         '''
 
         :param height:
@@ -437,6 +439,74 @@ class BinCollection(object):
             histo.Draw()
             raw_input('show signal in row..')
         return signals
+
+    def FindMaxima(self, threshold = None, show = False):
+        '''
+
+        :param threshold:
+        :param show:
+        :return: list of coordinates
+        '''
+        list_of_coordinates = []
+        if threshold is None:
+            threshold = self.meansignaldistribution.GetMean()
+        self.voting_histo = ROOT.TH2D('voting_histo', 'Voting', *self.Get2DAttributes())
+        bin_SW_coordinates = self.ListOfBins[self.Attributes['binsx']+3].GetBinCenter()
+
+        # horizontal scan:
+        def horizontal_scan(self):
+            height = bin_SW_coordinates[1]
+            # scan rows:
+            while height < self.Attributes['YMAX']:
+
+                signals = self.GetSignalInRow(height)
+                bins = self.GetBinsInRow(height)
+
+                for i in xrange(len(signals)-2):
+                    if signals[i] < signals[i+1] and signals[i+2] < signals[i+1] and signals[i+1] > threshold:
+                        binnumber = bins[i+1].GetBinNumber()
+                        FillHistoByBinnumber(self, binnumber, 1)
+
+                height += self.Attributes['binwidth_y']
+
+        def vertical_scan(self):
+            position = bin_SW_coordinates[0]
+
+            # scan rows:
+            while position < self.Attributes['XMAX']:
+
+                signals = self.GetSignalInColumn(position)
+                bins = self.GetBinsInColumn(position)
+
+                for i in xrange(len(signals)-2):
+                    if signals[i] < signals[i+1] and signals[i+2] < signals[i+1] and signals[i+1] > threshold:
+                        binnumber = bins[i+1].GetBinNumber()
+                        FillHistoByBinnumber(self, binnumber, 1)
+
+                position += self.Attributes['binwidth_x']
+
+        def FillHistoByBinnumber(self, binnumber, weight = 1):
+            bin = self.GetBinByNumber(binnumber)
+            x_, y_ = bin.GetBinCenter()
+            self.voting_histo.Fill(x_, y_, weight)
+
+        horizontal_scan(self)
+        vertical_scan(self)
+
+        if show:
+            vote_canvas = ROOT.TCanvas('vote_canvas', "find Max vote-histo")
+            vote_canvas.cd()
+            ROOT.gStyle.SetPalette(51)
+            ROOT.gStyle.SetNumberContours(5)
+            self.voting_histo.SetStats(False)
+            self.voting_histo.Draw('colz')
+            print self.voting_histo.GetMaximumBin()
+            raw_input("vote histo drawn..")
+            ROOT.gStyle.SetPalette(53)
+            ROOT.gStyle.SetNumberContours(999)
+
+
+
 
 
     def UpdateBinAttributes(self):

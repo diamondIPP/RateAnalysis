@@ -81,11 +81,12 @@ if __name__ == "__main__":
                 bin3 = newAnalysis.Pad.GetBinByNumber(newAnalysis.Pad.GetMaximumSignalResponseBinNumber())
                 print bin3.GetBinCoordinates()
                 print bin3.GetBinCenter()
-                newAnalysis.Pad.GetSignalInRow(0.31, show=True)
-                newAnalysis.Pad.GetSignalInColumn(0.07, show=True)
-                # newAnalysis.Pad.SelectSignalStrengthRegion(bin3, sensitivity=0.1, activate=True)
-                # newAnalysis.Pad.ShowSelectedBins()
-                # newAnalysis.Pad.ShowCombinedKDistribution(saveplots=True, savename='combinedK_all')
+                # newAnalysis.Pad.GetSignalInRow(0.31, show=True)
+                # newAnalysis.Pad.GetSignalInColumn(0.07, show=True)
+                newAnalysis.Pad.FindMaxima(show=True)
+                newAnalysis.Pad.SelectSignalStrengthRegion(bin3, sensitivity=0.14, activate=True)
+                newAnalysis.Pad.ShowSelectedBins()
+                newAnalysis.Pad.ShowCombinedKDistribution(saveplots=False, savename='combinedK_all')
 
                 #newAnalysis.CreateHitsDistribution()
 
