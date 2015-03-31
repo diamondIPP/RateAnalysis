@@ -94,8 +94,8 @@ class Analysis(object):
         ROOT.gStyle.SetNumberContours(999)
         self.Signal2DDistribution.SetStats(False)
 
-        self.Signal2DDistribution.Draw('colz')
-
+        self.Signal2DDistribution.Draw("SPEC dm(2,10) pa(1,1,1) ci(1,1,1) a(15,45,0) s(1,1)")
+        raw_input('2d drawn')
         if saveplots:
             self.SavePlots(savename, ending, saveDir)
 

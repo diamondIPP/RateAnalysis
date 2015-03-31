@@ -84,22 +84,14 @@ class BinCollection(object):
         '''
         self.ListOfBins[self.GetBinNumber(x,y)].CreateBinSignalHisto(saveplot)
 
-    def CalculateMeanSignalDistribution(self,minimum_bincontent = 1):
+    def CalculateMeanSignalDistribution(self, minimum_bincontent = 1):
         '''
 
         :param minimum_bincontent:
         :return:
         '''
         assert (minimum_bincontent > 0), "minimum_bincontent has to be a positive integer"
-        self.meansignaldistribution = ROOT.TH2D('meansignaldistribution',
-                                                "Mean Signal Distribution",
-                                                self.Attributes['binsx'],
-                                                self.Attributes['XMIN'],
-                                                self.Attributes['XMAX'],
-                                                self.Attributes['binsy'],
-                                                self.Attributes['YMIN'],
-                                                self.Attributes['YMAX']
-                                                )
+        self.meansignaldistribution = ROOT.TH2D('meansignaldistribution', "Mean Signal Distribution", *self.Get2DAttributes())
         # go through every bin, calculate the average signal strength and fill the main 2D hist
         binwidth_x = self.Attributes['binwidth_x']
         binwidth_y = self.Attributes['binwidth_y']
@@ -153,7 +145,8 @@ class BinCollection(object):
                                    xlow = None,
                                    xhigh = None,
                                    ylow = None,
-                                   yhigh = None):
+                                   yhigh = None,
+                                   minimum_bincontent = 5):
         '''
         Creates and returns a list of all binnumbers in a region with bins that
         have a similar mean signal response as the mean signal response of a
@@ -184,7 +177,7 @@ class BinCollection(object):
 
         for binnumber in list_of_bins:
             signal = self.meansignaldistribution.GetBinContent(binnumber)
-            if self.ListOfBins[binnumber].GetEntries() > 0:
+            if self.ListOfBins[binnumber].GetEntries() > minimum_bincontent:
                 if signal_lowerbound <= signal <= signal_upperbound:
                     selected_bins.append(binnumber)
                     if activate:
@@ -416,8 +409,10 @@ class BinCollection(object):
             histo.Fill(y_, signal_)
             signals.append(signal_)
         if show:
+            canvas = ROOT.TCanvas('signal_in_column', 'signals in column')
+            canvas.cd()
             histo.Draw()
-            raw_input('show signal in row..')
+            raw_input('show signal in column..')
         return signals
 
     def GetSignalInRow(self, height, show = False):
@@ -436,11 +431,13 @@ class BinCollection(object):
             histo.Fill(x_, signal_)
             signals.append(signal_)
         if show:
+            canvas = ROOT.TCanvas('signal_in_row', 'signals in row')
+            canvas.cd()
             histo.Draw()
             raw_input('show signal in row..')
         return signals
 
-    def FindMaxima(self, threshold = None, show = False):
+    def FindMaxima(self, threshold = None, minimum_bincount = 5,show = False):
         '''
 
         :param threshold:
@@ -452,46 +449,172 @@ class BinCollection(object):
             threshold = self.meansignaldistribution.GetMean()
         self.voting_histo = ROOT.TH2D('voting_histo', 'Voting', *self.Get2DAttributes())
         bin_SW_coordinates = self.ListOfBins[self.Attributes['binsx']+3].GetBinCenter()
+        bin_SE_coordinates = self.ListOfBins[2*self.Attributes['binsx']+2].GetBinCenter()
+        binsx_, xmin_, xmax_, binsy_, ymin_, ymax_ = self.Get2DAttributes()
 
         # horizontal scan:
         def horizontal_scan(self):
             height = bin_SW_coordinates[1]
             # scan rows:
-            while height < self.Attributes['YMAX']:
+            while height < ymax_:
 
                 signals = self.GetSignalInRow(height)
                 bins = self.GetBinsInRow(height)
 
                 for i in xrange(len(signals)-2):
-                    if signals[i] < signals[i+1] and signals[i+2] < signals[i+1] and signals[i+1] > threshold:
+                    if signals[i] < signals[i+1] and signals[i+2] < signals[i+1] and signals[i+1] > threshold and bins[i+1].GetEntries() >= minimum_bincount:
                         binnumber = bins[i+1].GetBinNumber()
                         FillHistoByBinnumber(self, binnumber, 1)
 
                 height += self.Attributes['binwidth_y']
 
+        # vertical scan:
         def vertical_scan(self):
             position = bin_SW_coordinates[0]
 
             # scan rows:
-            while position < self.Attributes['XMAX']:
+            while position < xmax_:
 
                 signals = self.GetSignalInColumn(position)
                 bins = self.GetBinsInColumn(position)
 
                 for i in xrange(len(signals)-2):
-                    if signals[i] < signals[i+1] and signals[i+2] < signals[i+1] and signals[i+1] > threshold:
+                    if signals[i] < signals[i+1] and signals[i+2] < signals[i+1] and signals[i+1] > threshold and bins[i+1].GetEntries() >= minimum_bincount:
                         binnumber = bins[i+1].GetBinNumber()
                         FillHistoByBinnumber(self, binnumber, 1)
 
                 position += self.Attributes['binwidth_x']
+
+        # southwest to northeast scan:
+        def SWNE_scan(self):
+            # creating an array containing all bin numbers
+            bin_numbers = np.ones((binsx_+2, binsy_+2))
+            for i in xrange(binsy_+2):
+                bin_numbers[:,i] = np.arange(i*(binsx_+2), (i+1)*(binsx_+2))
+                window_bin_numbers = bin_numbers[1:binsx_+1,1:binsy_+1]
+
+            def CheckBinInsideWindow(binnumber):
+                '''
+                checks if the bin number 'binnumber' lies inside the window of binsx * binsy
+                :param binnumber: the binnumber under test
+                :return: True if binnumber is contained inside window
+                '''
+                itemindex = np.where(window_bin_numbers == binnumber)
+                if np.size(itemindex) > 0:
+                    bin_in_window = True
+                else:
+                    bin_in_window = False
+                return bin_in_window
+
+            # creating the vertical start array of bins
+            vertical_bins = self.GetBinsInColumn(position=bin_SW_coordinates[0])
+            vertical_binnumbers = []
+            for i in xrange(len(vertical_bins)):
+                vertical_binnumbers.append(vertical_bins[i].GetBinNumber())
+            vertical_starts = vertical_binnumbers[::-1][2:] # reversing the list and cutting to not to start from edge
+
+            def scan_swne(start_list):
+                for nr in start_list:
+                    left_nr = nr
+                    middle_nr = left_nr + binsx_ + 3
+                    right_nr = middle_nr + binsx_ + 3
+                    while CheckBinInsideWindow(right_nr):
+                        left_signal = self.ListOfBins[left_nr].GetMean()
+                        middle_signal = self.ListOfBins[middle_nr].GetMean()
+                        right_signal = self.ListOfBins[right_nr].GetMean()
+                        if left_signal < middle_signal and right_signal < middle_signal and middle_signal > threshold and self.ListOfBins[middle_nr].GetEntries() >= minimum_bincount:
+                            FillHistoByBinnumber(self, middle_nr, 1)
+                        left_nr = middle_nr
+                        middle_nr = right_nr
+                        right_nr = right_nr + binsx_ + 3
+
+            scan_swne(vertical_starts)
+
+            horizontal_bins = self.GetBinsInRow(height=bin_SW_coordinates[1])
+            horizontal_binnumbers = []
+            for i in xrange(len(horizontal_bins)):
+                horizontal_binnumbers.append(horizontal_bins[i].GetBinNumber())
+            horizontal_starts = horizontal_binnumbers[1:-2] # cutting to not to start from edge
+
+            scan_swne(horizontal_starts)
+
+        def SENW_scan(self):
+            # creating an array containing all bin numbers
+            bin_numbers = np.ones((binsx_+2, binsy_+2))
+            for i in xrange(binsy_+2):
+                bin_numbers[:,i] = np.arange(i*(binsx_+2), (i+1)*(binsx_+2))
+                window_bin_numbers = bin_numbers[1:binsx_+1,1:binsy_+1]
+
+            def CheckBinInsideWindow(binnumber):
+                '''
+                checks if the bin number 'binnumber' lies inside the window of binsx * binsy
+                :param binnumber: the binnumber under test
+                :return: True if binnumber is contained inside window
+                '''
+                itemindex = np.where(window_bin_numbers == binnumber)
+                if np.size(itemindex) > 0:
+                    bin_in_window = True
+                else:
+                    bin_in_window = False
+                return bin_in_window
+
+            # creating the vertical start array of bins
+            vertical_bins = self.GetBinsInColumn(position=bin_SE_coordinates[0])
+            vertical_binnumbers = []
+            for i in xrange(len(vertical_bins)):
+                vertical_binnumbers.append(vertical_bins[i].GetBinNumber())
+            vertical_starts = vertical_binnumbers[::-1][2:] # reversing the list and cutting to not to start from edge
+
+            def scan_senw(start_list):
+                for nr in start_list:
+                    right_nr = nr
+                    middle_nr = right_nr + binsx_ + 1
+                    left_nr = middle_nr + binsx_ + 1
+                    while CheckBinInsideWindow(left_nr):
+                        left_signal = self.ListOfBins[left_nr].GetMean()
+                        middle_signal = self.ListOfBins[middle_nr].GetMean()
+                        right_signal = self.ListOfBins[right_nr].GetMean()
+                        if left_signal < middle_signal and right_signal < middle_signal and middle_signal > threshold and self.ListOfBins[middle_nr].GetEntries() >= minimum_bincount:
+                            FillHistoByBinnumber(self, middle_nr, 1)
+                        right_nr = middle_nr
+                        middle_nr = left_nr
+                        left_nr = left_nr + binsx_ + 1
+
+            scan_senw(vertical_starts)
+
+            horizontal_bins = self.GetBinsInRow(height=bin_SE_coordinates[1])
+            horizontal_binnumbers = []
+            for i in xrange(len(horizontal_bins)):
+                horizontal_binnumbers.append(horizontal_bins[i].GetBinNumber())
+            horizontal_starts = horizontal_binnumbers[2:-1] # cutting to not to start from edge
+
+            scan_senw(horizontal_starts)
+
 
         def FillHistoByBinnumber(self, binnumber, weight = 1):
             bin = self.GetBinByNumber(binnumber)
             x_, y_ = bin.GetBinCenter()
             self.voting_histo.Fill(x_, y_, weight)
 
+
         horizontal_scan(self)
         vertical_scan(self)
+        SWNE_scan(self)
+        SENW_scan(self)
+
+        found_maxima = []
+        itemindex = np.where(self.voting_histo == 4)
+        print 'itemindex: ',itemindex
+        nr_of_maxima = np.shape(itemindex)[1]
+        if nr_of_maxima > 0:
+            print nr_of_maxima," Maxiama found:"
+            x_coordinates = itemindex[0]
+            y_coordinates = itemindex[1]
+            for i in nr_of_maxima:
+                found_maxima.append((x_coordinates[i],y_coordinates[i]))
+            print found_maxima
+
+
 
         if show:
             vote_canvas = ROOT.TCanvas('vote_canvas', "find Max vote-histo")

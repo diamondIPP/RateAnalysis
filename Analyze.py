@@ -48,9 +48,9 @@ if __name__ == "__main__":
                 print run_number
 
                 #
-                newAnalysis = Analysis(run,Config(300))
+                newAnalysis = Analysis(run,Config(200))
                 newAnalysis.DoAnalysis(minimum_statistics)
-                #newAnalysis.CreatePlots(True,'2D_Signal_dist')
+                newAnalysis.CreatePlots(True,'2D_Signal_dist')
                 #newAnalysis.CreateMeanSignalHistogram(True)
                 newAnalysis.CreateBoth(True)
                 #
@@ -79,14 +79,18 @@ if __name__ == "__main__":
                 newAnalysis.Pad.UnselectAllBins()
 
                 bin3 = newAnalysis.Pad.GetBinByNumber(newAnalysis.Pad.GetMaximumSignalResponseBinNumber())
-                print bin3.GetBinCoordinates()
-                print bin3.GetBinCenter()
-                # newAnalysis.Pad.GetSignalInRow(0.31, show=True)
-                # newAnalysis.Pad.GetSignalInColumn(0.07, show=True)
+                # print bin3.GetBinCoordinates()
+                # print bin3.GetBinCenter()
+                # newAnalysis.Pad.GetSignalInRow(0.36, show=True)
+                # newAnalysis.Pad.ShowBinXYSignalHisto(0.02,0.36,True)
+                # newAnalysis.Pad.ShowBinXYSignalHisto(0.12,0.36,True)
+                # newAnalysis.Pad.GetSignalInColumn(0.15, show=True)
+                # newAnalysis.Pad.ShowBinXYSignalHisto(0.15,0.28,True)
+                # newAnalysis.Pad.ShowBinXYSignalHisto(0.15,0.03,True)
                 newAnalysis.Pad.FindMaxima(show=True)
                 newAnalysis.Pad.SelectSignalStrengthRegion(bin3, sensitivity=0.14, activate=True)
                 newAnalysis.Pad.ShowSelectedBins()
-                newAnalysis.Pad.ShowCombinedKDistribution(saveplots=False, savename='combinedK_all')
+                # newAnalysis.Pad.ShowCombinedKDistribution(saveplots=False, savename='combinedK_all')
 
                 #newAnalysis.CreateHitsDistribution()
 
