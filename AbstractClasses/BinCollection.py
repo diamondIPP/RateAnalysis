@@ -352,6 +352,26 @@ class BinCollection(object):
         nr = self.GetBinNumber(x,y)
         return self.ListOfBins[nr]
 
+    def GetBinCenter(self, bin_numbers):
+        '''
+        returns the coordinates of the center of a bin with bin number 'binnumbers' or the coordinates
+        of a list of bin numbers
+        :param bin_numbers:
+        :return:
+        '''
+        if type(bin_numbers) is t.ListType:
+            nr = len(bin_numbers)
+            coordinates = []
+            for i in xrange(nr):
+                coordinates.append(self.ListOfBins[bin_numbers[i]].GetBinCenter())
+            return coordinates
+        elif type(bin_numbers) is t.IntType or type(bin_numbers) is t.FloatType:
+            bin_numbers = int(bin_numbers)
+            coordinates = self.ListOfBins[bin_numbers].GetBinCenter()
+            return coordinates
+        else:
+            assert(False), "type of bin_number not accepted. bin_number as to be a list or int or of type float"
+
     def GetBinsInColumn(self, position):
         '''
 
@@ -596,25 +616,33 @@ class BinCollection(object):
             x_, y_ = bin.GetBinCenter()
             self.voting_histo.Fill(x_, y_, weight)
 
+        def GetBinsInVoteRange(votes, maxvotes=None):
+            '''
+            Returns all bin numbers which contain 'votes' number of votes or returns
+            all bins which contain at least 'votes' number of votes and at most
+            'maxvotes' number of votes
+            :param value:
+            :param maxvalue:
+            :return: found_maxima
+            '''
+            if maxvotes == None:
+                maxvotes = votes
+            found_maxima = []
+            for i in xrange((binsx_+2)*(binsy_+2)):
+                content = self.voting_histo.GetBinContent(i)
+                if content >= votes and content <= maxvotes:
+                    found_maxima.append(i)
+            return found_maxima
 
         horizontal_scan(self)
         vertical_scan(self)
         SWNE_scan(self)
         SENW_scan(self)
 
-        found_maxima = []
-        itemindex = np.where(self.voting_histo == 4)
-        print 'itemindex: ',itemindex
-        nr_of_maxima = np.shape(itemindex)[1]
-        if nr_of_maxima > 0:
-            print nr_of_maxima," Maxiama found:"
-            x_coordinates = itemindex[0]
-            y_coordinates = itemindex[1]
-            for i in nr_of_maxima:
-                found_maxima.append((x_coordinates[i],y_coordinates[i]))
-            print found_maxima
 
-
+        maxima = GetBinsInVoteRange(4)
+        print len(maxima)," maxima found: "
+        print self.GetBinCenter(maxima)
 
         if show:
             vote_canvas = ROOT.TCanvas('vote_canvas', "find Max vote-histo")
@@ -627,9 +655,6 @@ class BinCollection(object):
             raw_input("vote histo drawn..")
             ROOT.gStyle.SetPalette(53)
             ROOT.gStyle.SetNumberContours(999)
-
-
-
 
 
     def UpdateBinAttributes(self):
