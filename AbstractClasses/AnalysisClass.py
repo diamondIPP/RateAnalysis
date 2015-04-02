@@ -71,6 +71,8 @@ class Analysis(object):
 
             self.Pad.Fill(x_, y_, signal_)
 
+        self.Pad.MakeFits()
+
         self.Signal2DDistribution = self.Pad.GetMeanSignalDistribution(minimum_bincontent)
 
     def CreatePlots(self,saveplots = False,savename = '2DSignalDistribution',ending='png',saveDir = 'Results/'):

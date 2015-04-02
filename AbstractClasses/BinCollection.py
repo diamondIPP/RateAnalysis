@@ -59,6 +59,12 @@ class BinCollection(object):
         ymax = self.Attributes['YMAX']
         return binsx, xmin, xmax, binsy, ymin, ymax
 
+    def MakeFits(self,minimum_entries = 5):
+        assert(minimum_entries >= 1), "number of entries has to be greater or equal to 1"
+        for i in xrange(len(self.ListOfBins)):
+            if self.ListOfBins[i].GetEntries() >= minimum_entries:
+                self.ListOfBins[i].FitLandau()
+
     # !! cannot be inherented to non rectangular
     def Fill(self,x,y,signal):
         '''
@@ -73,7 +79,7 @@ class BinCollection(object):
         self.totalsignal.Fill(x,y,signal)
         self.ListOfBins[self.GetBinNumber(x,y)].AddData(signal)
 
-    def ShowBinXYSignalHisto(self,x,y,saveplot = False):
+    def ShowBinXYSignalHisto(self,x,y,saveplot = False, show_fit=False):
         '''
         Shows a Histogram of the Signal response distribution inside the bin which
         contains the coordinates (x,y)
@@ -82,7 +88,7 @@ class BinCollection(object):
         :param saveplot: if True save plot as as Results/Bin_X0.123Y-0.123_SignalHisto.png
         :return: -
         '''
-        self.ListOfBins[self.GetBinNumber(x,y)].CreateBinSignalHisto(saveplot)
+        self.ListOfBins[self.GetBinNumber(x,y)].CreateBinSignalHisto(saveplot,show_fit)
 
     def CalculateMeanSignalDistribution(self, minimum_bincontent = 1):
         '''
@@ -374,7 +380,8 @@ class BinCollection(object):
 
     def GetBinsInColumn(self, position):
         '''
-
+        Returns a list, containing all bin objects of a column at
+        x position 'position'
         :param heigth:
         :return:
         '''
@@ -420,19 +427,21 @@ class BinCollection(object):
         :return:
         '''
         list_of_bins = self.GetBinsInColumn(position)
+        columnposition, _ = list_of_bins[0].GetBinCenter()
         signals = []
         attributes = self.Attributes['binsy'], self.Attributes['YMIN'], self.Attributes['YMAX']
-        histo = ROOT.TH1D('histo', 'bins in column', *attributes)
+        histo = ROOT.TH1D('histo', 'bins in column at position {:.3f}'.format(columnposition), *attributes)
         for i in xrange(len(list_of_bins)):
             _ , y_ = list_of_bins[i].GetBinCenter()
             signal_ = list_of_bins[i].GetMean()
             histo.Fill(y_, signal_)
             signals.append(signal_)
         if show:
-            canvas = ROOT.TCanvas('signal_in_column', 'signals in column')
+            canvas = ROOT.TCanvas('signal_in_column', 'signals in column at position {:.3f}'.format(columnposition))
             canvas.cd()
             histo.Draw()
-            raw_input('show signal in column..')
+            self.SavePlots('signals_in_column{:.3f}'.format(columnposition),'pdf','Results/')
+            raw_input('show signal in column {:.3f}..'.format(columnposition))
         return signals
 
     def GetSignalInRow(self, height, show = False):
@@ -442,19 +451,89 @@ class BinCollection(object):
         :return:
         '''
         list_of_bins = self.GetBinsInRow(height)
+        _, rowheight = list_of_bins[0].GetBinCenter()
         signals = []
         attributes = self.Attributes['binsx'], self.Attributes['XMIN'], self.Attributes['XMAX']
-        histo = ROOT.TH1D('histo', 'bins in row', *attributes)
+        histo = ROOT.TH1D('histo', 'bins in row at height {:.3f}'.format(rowheight), *attributes)
         for i in xrange(len(list_of_bins)):
             x_ , _ = list_of_bins[i].GetBinCenter()
             signal_ = list_of_bins[i].GetMean()
             histo.Fill(x_, signal_)
             signals.append(signal_)
         if show:
-            canvas = ROOT.TCanvas('signal_in_row', 'signals in row')
+            canvas = ROOT.TCanvas('signal_in_row', 'signals in row at height {:.3f}'.format(rowheight))
             canvas.cd()
             histo.Draw()
-            raw_input('show signal in row..')
+            self.SavePlots('signals_in_row{:.3f}'.format(rowheight),'pdf','Results/')
+            raw_input('show signal in row {:.3f}..'.format(rowheight))
+        return signals
+
+    def GetMPVInColumn(self, position, show=False):
+        '''
+
+        :param height:
+        :return:
+        '''
+        list_of_bins = self.GetBinsInColumn(position)
+        columnposition, _ = list_of_bins[0].GetBinCenter()
+        signals = []
+        graph = ROOT.TGraphErrors(self.Attributes['binsy'])
+        #histo = ROOT.TH1D('histo', 'bins in row at height {:.3f}'.format(rowheight), *attributes)
+
+        count = 0
+        for i in xrange(len(list_of_bins)):
+            _ , y_ = list_of_bins[i].GetBinCenter()
+            MPV_ = list_of_bins[i].Fit['MPV']
+            MPVerr_ = list_of_bins[i].Fit['MPVErr']
+            if MPV_ is not None:
+                graph.SetPoint(count, y_ , MPV_)
+                graph.SetPointError(count, 0, MPVerr_)
+                signals.append(MPV_)
+                count += 1
+            else:
+                signals.append(0)
+        if show:
+            canvas = ROOT.TCanvas('signal_in_column', 'signals in column at position {:.3f}'.format(columnposition))
+            canvas.cd()
+            graph.SetTitle('Most Probable Signal response in bins in column at position {:.3f}'.format(columnposition))
+            graph.GetXaxis().SetTitle("y position / cm")
+            graph.GetYaxis().SetTitle("Signal")
+            graph.Draw('AP')
+            self.SavePlots('signals_in_column{:.3f}'.format(columnposition),'pdf','Results/')
+            raw_input('show signal in column {:.3f}..'.format(columnposition))
+        return signals
+
+    def GetMPVInRow(self, height, show=False):
+        '''
+
+        :param height:
+        :return:
+        '''
+        list_of_bins = self.GetBinsInRow(height)
+        _, rowheight = list_of_bins[0].GetBinCenter()
+        signals = []
+        graph = ROOT.TGraphErrors(self.Attributes['binsx'])
+        count = 0
+        for i in xrange(len(list_of_bins)):
+            x_ , _ = list_of_bins[i].GetBinCenter()
+            MPV_ = list_of_bins[i].Fit['MPV']
+            MPVerr_ = list_of_bins[i].Fit['MPVErr']
+            if MPV_ is not None:
+                graph.SetPoint(count, x_ , MPV_)
+                graph.SetPointError(count, 0, MPVerr_)
+                signals.append(MPV_)
+                count += 1
+            else:
+                signals.append(0)
+        if show:
+            canvas = ROOT.TCanvas('signal_in_row', 'signals in row at height {:.3f}'.format(rowheight))
+            canvas.cd()
+            graph.SetTitle('Most Probable Signal response in bins in row at height {:.3f}'.format(rowheight))
+            graph.GetXaxis().SetTitle("x position / cm")
+            graph.GetYaxis().SetTitle("Signal")
+            graph.Draw('AP')
+            self.SavePlots('signals_in_row{:.3f}'.format(rowheight),'pdf','Results/')
+            raw_input('show signal in row {:.3f}..'.format(rowheight))
         return signals
 
     def FindMaxima(self, threshold = None, minimum_bincount = 5,show = False):

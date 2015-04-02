@@ -31,6 +31,17 @@ class Bin(object):
             'coordinate_x': 0, # int
             'coordinate_y': 0 # int
         }
+        self.Fit = {
+            'Function': '',
+            'FunctionName': 'Landau',
+            'Constant': None,
+            'ConstantErr': None,
+            'MPV': None,
+            'MPVErr': None,
+            'Sigma': None,
+            'SigmaErr': None,
+            'Chi2': None
+        }
         self.BinSignalHisto = ROOT.TH1D('BinSignalHisto'+str(binnumber), 'Signal Distribution',500,0,500)
 
     def AddData(self, signal, update_bin_attributes = False):
@@ -44,19 +55,40 @@ class Bin(object):
         self.BinSignalHisto.Fill(signal)
         if update_bin_attributes: self.UpdateAttributes()
 
-    def CreateBinSignalHisto(self, saveplot = False):
+    def FitLandau(self):
+        '''
+        asdf
+        :return:
+        '''
+        self.BinSignalHisto.Fit('landau', 'L0Q') # 'L': Log Likelihood, '0': do not draw
+        self.Fit['Function'] = self.BinSignalHisto.GetFunction('landau')
+        self.Fit['Constant'] = self.Fit['Function'].GetParameter(0)
+        self.Fit['ConstantErr'] = self.Fit['Function'].GetParError(0)
+        self.Fit['MPV'] = self.Fit['Function'].GetParameter(1)
+        self.Fit['MPVErr'] = self.Fit['Function'].GetParError(1)
+        self.Fit['Sigma'] = self.Fit['Function'].GetParameter(2)
+        self.Fit['SigmaErr'] = self.Fit['Function'].GetParError(2)
+        self.Fit['Chi2'] = self.Fit['Function'].GetChisquare()
+
+
+    def CreateBinSignalHisto(self, saveplot = False, show_fit = False):
         '''
         Creates and draws a histogram of the signal response contained in this bin
         :param saveplot: if True, saves the plot as Results/Bin_X0.123Y-0.123_SignalHisto.png
         :return: -
         '''
         x_, y_ = self.GetBinCenter()
-        canvasname = 'Bin '+str(x_)+' / '+str(y_)+' Signal Histo'
+        canvasname = 'Bin {0:.3f} / {1:.3f} Signal Histo'.format(x_, y_)
         canvas = ROOT.TCanvas('canvas',canvasname)
         canvas.cd()
         self.BinSignalHisto.SetTitle(canvasname)
         self.BinSignalHisto.GetXaxis().SetTitle('Signal response')
         self.BinSignalHisto.Draw()
+        if self.BinSignalHisto.GetEntries() >= 5 and show_fit:
+            print "Most Probable Signal Response: {0:.2f} +- {1:.2f}".format(self.Fit['MPV'],self.Fit['MPVErr'])
+            kNotDraw = 1<<9 # bit 9
+            self.BinSignalHisto.GetFunction("landau").ResetBit(kNotDraw)
+            self.BinSignalHisto.Draw()
         if saveplot:
             self.bincollectionobject.SavePlots('Bin_X{:.3f}Y{:.3f}_SignalHisto'.format(x_,y_),'png','Results/')
         raw_input('Bin signal histo drawn')
