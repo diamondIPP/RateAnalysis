@@ -48,7 +48,7 @@ if __name__ == "__main__":
                 print run_number
 
                 #
-                newAnalysis = Analysis(run,Config(200))
+                newAnalysis = Analysis(run,Config(20))
                 newAnalysis.DoAnalysis(minimum_statistics)
                 # newAnalysis.CreatePlots(True,'2D_Signal_dist')
                 #newAnalysis.CreateMeanSignalHistogram(True)
@@ -81,11 +81,12 @@ if __name__ == "__main__":
                 # bin3 = newAnalysis.Pad.GetBinByNumber(newAnalysis.Pad.GetMaximumSignalResponseBinNumber())
                 # print bin3.GetBinCoordinates()
                 # print bin3.GetBinCenter()
-                newAnalysis.Pad.GetMPVInRow(0.33, show=True)
-                newAnalysis.Pad.ShowBinXYSignalHisto(0.02,0.36,saveplot=True, show_fit=True)
-                newAnalysis.Pad.ShowBinXYSignalHisto(0.12,0.36, saveplot=True, show_fit=True)
-                newAnalysis.Pad.GetMPVInColumn(0.13, show=True)
-                newAnalysis.Pad.ShowBinXYSignalHisto(-0.03,0.19, saveplot=True, show_fit=True)
+                newAnalysis.Pad.GetSignalInRow(height=0.33, show=True)
+                newAnalysis.Pad.GetSignalInRow(height=0.17, show=True)
+                # newAnalysis.Pad.ShowBinXYSignalHisto(0.02,0.36,saveplot=True, show_fit=True)
+                # newAnalysis.Pad.ShowBinXYSignalHisto(0.12,0.36, saveplot=True, show_fit=True)
+                newAnalysis.Pad.GetSignalInColumn(position=0.13, show=True)
+                # newAnalysis.Pad.ShowBinXYSignalHisto(-0.03,0.19, saveplot=True, show_fit=True)
                 # newAnalysis.Pad.ShowBinXYSignalHisto(0.13,0.03,True)
                 # newAnalysis.Pad.FindMaxima(show=True)
                 # newAnalysis.Pad.SelectSignalStrengthRegion(bin3, sensitivity=0.14, activate=True)

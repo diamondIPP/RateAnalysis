@@ -430,16 +430,24 @@ class BinCollection(object):
         columnposition, _ = list_of_bins[0].GetBinCenter()
         signals = []
         attributes = self.Attributes['binsy'], self.Attributes['YMIN'], self.Attributes['YMAX']
-        histo = ROOT.TH1D('histo', 'bins in column at position {:.3f}'.format(columnposition), *attributes)
+        #histo = ROOT.TH1D('histo', 'bins in column at position {:.3f}'.format(columnposition), *attributes)
+        graph = ROOT.TGraphErrors(self.Attributes['binsy'])
+        count = 0
         for i in xrange(len(list_of_bins)):
             _ , y_ = list_of_bins[i].GetBinCenter()
             signal_ = list_of_bins[i].GetMean()
-            histo.Fill(y_, signal_)
-            signals.append(signal_)
+            sigma_ = list_of_bins[i].GetSigma()
+            counts_ = list_of_bins[i].GetEntries()
+            if counts_ > 0:
+                #histo.Fill(y_, signal_)
+                graph.SetPoint(count, y_, signal_)
+                graph.SetPointError(count, 0, sigma_/np.sqrt(counts_))
+                signals.append(signal_)
+                count += 1
         if show:
             canvas = ROOT.TCanvas('signal_in_column', 'signals in column at position {:.3f}'.format(columnposition))
             canvas.cd()
-            histo.Draw()
+            graph.Draw('AP')
             self.SavePlots('signals_in_column{:.3f}'.format(columnposition),'pdf','Results/')
             raw_input('show signal in column {:.3f}..'.format(columnposition))
         return signals
@@ -454,16 +462,26 @@ class BinCollection(object):
         _, rowheight = list_of_bins[0].GetBinCenter()
         signals = []
         attributes = self.Attributes['binsx'], self.Attributes['XMIN'], self.Attributes['XMAX']
-        histo = ROOT.TH1D('histo', 'bins in row at height {:.3f}'.format(rowheight), *attributes)
+        #histo = ROOT.TH1D('histo', 'bins in row at height {:.3f}'.format(rowheight), *attributes)
+        graph = ROOT.TGraphErrors(self.Attributes['binsx'])
+        count = 0
         for i in xrange(len(list_of_bins)):
             x_ , _ = list_of_bins[i].GetBinCenter()
             signal_ = list_of_bins[i].GetMean()
-            histo.Fill(x_, signal_)
-            signals.append(signal_)
+            sigma_ = list_of_bins[i].GetSigma()
+            counts_ = list_of_bins[i].GetEntries()
+            if counts_ > 0:
+                #histo.Fill(x_, signal_)
+                graph.SetPoint(count, x_, signal_)
+                graph.SetPointError(count, 0, sigma_/np.sqrt(counts_))
+                signals.append(signal_)
+                count += 1
+            else:
+                signals.append(0)
         if show:
             canvas = ROOT.TCanvas('signal_in_row', 'signals in row at height {:.3f}'.format(rowheight))
             canvas.cd()
-            histo.Draw()
+            graph.Draw('AP')
             self.SavePlots('signals_in_row{:.3f}'.format(rowheight),'pdf','Results/')
             raw_input('show signal in row {:.3f}..'.format(rowheight))
         return signals
