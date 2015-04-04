@@ -2,10 +2,11 @@ import numpy as np
 import ROOT
 import sys # to get arguments
 import os # for folder and file handling
-from AbstractClasses.AnalysisClass import *
+from AbstractClasses.AnalysisClass import Analysis
+from AbstractClasses.AnalysisCollection import AnalysisCollection
 from AbstractClasses.RunClass import Run
 from Runinfos.RunInfo import RunInfo
-from AbstractClasses.ConfigClass import Pad2DHistConfig
+from AbstractClasses.ConfigClass import *
 #from Configuration.initialize_ROOT import initialize_ROOT
 
 
@@ -39,7 +40,7 @@ if __name__ == "__main__":
     print run_numbers
 
 
-    collection = AnalysisCollectionClass()
+    collection = AnalysisCollection()
     for run_number in run_numbers:
 
         if run.SetRun(run_number): # run has to exist and is setted
@@ -48,59 +49,60 @@ if __name__ == "__main__":
                 print run_number
 
                 #
-                newAnalysis = Analysis(run,Config(20))
+                newAnalysis = Analysis(run,Config(70))
                 newAnalysis.DoAnalysis(minimum_statistics)
                 # newAnalysis.CreatePlots(True,'2D_Signal_dist')
-                #newAnalysis.CreateMeanSignalHistogram(True)
-                # newAnalysis.CreateBoth(True)
+                # # # newAnalysis.CreateMeanSignalHistogram(True)
+                newAnalysis.CreateBoth(saveplots=False)
+                # #
+                # # #print newAnalysis.Pad.ListOfBins[newAnalysis.Pad.GetBinNumber(0.05,0.05)].GetEntries()
+                # # newAnalysis.Pad.ShowBinXYSignalHisto(0.08,0.3,True)
+                # # newAnalysis.Pad.ShowBinXYSignalHisto(-0.04,0.3,True)
+                # #
+                # # newAnalysis.Pad.UnselectAllBins()
+                # # bin1 = newAnalysis.Pad.GetBinByCoordinates(-0.04,0.3)
+                # # newAnalysis.Pad.SelectSignalStrengthRegion(bin1,0.1,True,-0.09,0.02,0.22,0.36)
+                # #
+                # # #newAnalysis.Pad.ShowSelectedBins()
+                # # newAnalysis.Pad.ShowCombinedKDistribution(True,'combinedK_1')
+                # #
+                # # newAnalysis.Pad.UnselectAllBins()
+                # # bin2 = newAnalysis.Pad.GetBinByCoordinates(0.0835,0.3)
+                # # newAnalysis.Pad.SelectSignalStrengthRegion(bin2,0.1,True,0.01,0.14,0.23,0.36)
+                # #
+                # # newAnalysis.Pad.ShowCombinedKDistribution(True,'combinedK_2')
+                # #
+                # # newAnalysis.Pad.UnselectAllBins()
+                # # newAnalysis.Pad.SelectSignalStrengthRegion(bin1,0.1,True,-0.09,0.02,0.22,0.36)
+                # # newAnalysis.Pad.SelectSignalStrengthRegion(bin2,0.1,True,0.01,0.14,0.23,0.36)
+                # # newAnalysis.Pad.ShowCombinedKDistribution(True,'combinedK_both')
                 #
-                # #print newAnalysis.Pad.ListOfBins[newAnalysis.Pad.GetBinNumber(0.05,0.05)].GetEntries()
-                # newAnalysis.Pad.ShowBinXYSignalHisto(0.08,0.3,True)
-                # newAnalysis.Pad.ShowBinXYSignalHisto(-0.04,0.3,True)
-                #
-                # newAnalysis.Pad.UnselectAllBins()
-                # bin1 = newAnalysis.Pad.GetBinByCoordinates(-0.04,0.3)
-                # newAnalysis.Pad.SelectSignalStrengthRegion(bin1,0.1,True,-0.09,0.02,0.22,0.36)
-                #
-                # #newAnalysis.Pad.ShowSelectedBins()
-                # newAnalysis.Pad.ShowCombinedKDistribution(True,'combinedK_1')
-                #
-                # newAnalysis.Pad.UnselectAllBins()
-                # bin2 = newAnalysis.Pad.GetBinByCoordinates(0.0835,0.3)
-                # newAnalysis.Pad.SelectSignalStrengthRegion(bin2,0.1,True,0.01,0.14,0.23,0.36)
-                #
-                # newAnalysis.Pad.ShowCombinedKDistribution(True,'combinedK_2')
-                #
-                # newAnalysis.Pad.UnselectAllBins()
-                # newAnalysis.Pad.SelectSignalStrengthRegion(bin1,0.1,True,-0.09,0.02,0.22,0.36)
-                # newAnalysis.Pad.SelectSignalStrengthRegion(bin2,0.1,True,0.01,0.14,0.23,0.36)
-                # newAnalysis.Pad.ShowCombinedKDistribution(True,'combinedK_both')
-
                 # newAnalysis.Pad.UnselectAllBins()
                 # #
                 # bin3 = newAnalysis.Pad.GetBinByNumber(newAnalysis.Pad.GetMaximumSignalResponseBinNumber())
                 # print bin3.GetBinCoordinates()
                 # print bin3.GetBinCenter()
-                newAnalysis.Pad.GetSignalInRow(height=0.33, show=True)
-                newAnalysis.Pad.GetSignalInRow(height=0.17, show=True)
-                # newAnalysis.Pad.ShowBinXYSignalHisto(0.02,0.36,saveplot=True, show_fit=True)
-                # newAnalysis.Pad.ShowBinXYSignalHisto(0.12,0.36, saveplot=True, show_fit=True)
-                newAnalysis.Pad.GetSignalInColumn(position=0.13, show=True)
+                # newAnalysis.Pad.GetSignalInRow(height=0.35, show=True)
+                # newAnalysis.Pad.GetSignalInRow(height=0.17, show=True)
+
+                # # newAnalysis.Pad.GetSignalInColumn(position=0.13, show=True)
                 # newAnalysis.Pad.ShowBinXYSignalHisto(-0.03,0.19, saveplot=True, show_fit=True)
-                # newAnalysis.Pad.ShowBinXYSignalHisto(0.13,0.03,True)
-                # newAnalysis.Pad.FindMaxima(show=True)
+                # # newAnalysis.Pad.ShowBinXYSignalHisto(0.13,0.03,True)
+                newAnalysis.FindMaxima(show=True)
+                newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.,0.2,saveplot=True, show_fit=True)
+                newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.12,0.33, saveplot=True, show_fit=True)
                 # newAnalysis.Pad.SelectSignalStrengthRegion(bin3, sensitivity=0.14, activate=True)
                 # newAnalysis.Pad.ShowSelectedBins()
-                # newAnalysis.Pad.ShowCombinedKDistribution(saveplots=False, savename='combinedK_all')
-
-                #newAnalysis.CreateHitsDistribution()
+                # newAnalysis.Pad.ShowCombinedKDistribution(saveplots=True, savename='combinedK_all')
+                #
+                newAnalysis.CreateHitsDistribution(saveplot=True)
 
                 collection.AddAnalysis(newAnalysis)
         else:
             print "Analysis of run ",run_number, " failed"
 
 
-    #collection.CreateFWHMPlot()
+    # collection.CreateFWHMPlot()
 
 
 
