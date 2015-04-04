@@ -1,14 +1,8 @@
 import ROOT
 from RunClass import Run
 import os
-import types as t
 from BinCollection import BinCollection
 from ConfigClass import *
-
-#from Configuration.initialize_ROOT import initialize_ROOT
-class blah(object):
-    def __init__(self):
-        pass
 
 
 class Analysis(object):
@@ -45,7 +39,6 @@ class Analysis(object):
 
         self.MeanSignalHistoIsCreated = False
 
-
     def DoAnalysis(self,minimum_bincontent = 1):
         '''
         Create a bin collection object as self.Pad and load data from ROOT TTree
@@ -74,8 +67,12 @@ class Analysis(object):
         self.Pad.MakeFits()
 
         self.Signal2DDistribution = self.Pad.GetMeanSignalDistribution(minimum_bincontent)
+        self.Signal2DDistribution.SetStats(False)
+        self.Signal2DDistribution.GetXaxis().SetTitle('pos x / cm')
+        self.Signal2DDistribution.GetYaxis().SetTitle('pos y / cm')
+        self.Signal2DDistribution.GetYaxis().SetTitleOffset(1.4)
 
-    def CreatePlots(self,saveplots = False,savename = '2DSignalDistribution',ending='png',saveDir = 'Results/'):
+    def CreatePlots(self,saveplots = False,savename = '2DSignalDistribution',ending='png',saveDir = 'Results/', show3d = False):
         '''
         Creates 2D Signal Distribution plot
         :param saveplots: if True, save the plot
@@ -94,9 +91,11 @@ class Analysis(object):
         # Plot the Signal2D TH2D histogram
         ROOT.gStyle.SetPalette(53)
         ROOT.gStyle.SetNumberContours(999)
-        self.Signal2DDistribution.SetStats(False)
-
-        self.Signal2DDistribution.Draw("SPEC dm(2,10) pa(1,1,1) ci(1,1,1) a(15,45,0) s(1,1)")
+        if show3d:
+            self.Signal2DDistribution.Draw("SPEC dm(2,10) pa(1,1,1) ci(1,1,1) a(15,45,0) s(1,1)")
+            savename += '3D'
+        else:
+            self.Signal2DDistribution.Draw('colz')
         raw_input('2d drawn')
         if saveplots:
             self.SavePlots(savename, ending, saveDir)
@@ -134,9 +133,6 @@ class Analysis(object):
         self.CreateMeanSignalHistogram(False)
 
         self.combined_canvas.cd(1)
-        self.Signal2DDistribution.GetXaxis().SetTitle('pos x / cm')
-        self.Signal2DDistribution.GetYaxis().SetTitle('pos y / cm')
-        self.Signal2DDistribution.GetYaxis().SetTitleOffset(1.4)
         #ROOT.gStyle.SetPalette(55)
         # ROOT.gStyle.SetNumberContours(999)
         self.Signal2DDistribution.Draw('colz')#"CONT1Z")#)'colz')
@@ -162,13 +158,15 @@ class Analysis(object):
             ROOT.gStyle.SetHistFillColor(7)
             ROOT.gStyle.SetHistFillStyle(3003)
 
-    def CreateHitsDistribution(self):
+    def CreateHitsDistribution(self,saveplot = False):
         #ROOT.gStyle.SetNumberContours(10)
         canvas = ROOT.TCanvas('canvas', 'Hits',500,500)
         canvas.cd()
         self.Pad.counthisto.SetStats(False)
         self.Pad.counthisto.Draw('colz')#'surf2')
         #self.Pad.counthisto.Draw('CONT1 SAME')
+        if saveplot:
+            self.SavePlots('Hits_Distribution', 'png', 'Results/')
         raw_input('hits distribution')
 
     def SavePlots(self, savename, ending, saveDir):
@@ -180,89 +178,9 @@ class Analysis(object):
 
         ROOT.gPad.Print(resultsdir+savename+'.'+ending)
 
-class AnalysisCollectionClass(object):
-    '''
-    An object of this class contains several analysis of runs.
-    It gives the ability to compare the data from different runs.
-    '''
-    collection = {}
-    current_run_number = -1
-
-    def __init__(self):
-        pass
-
-    def AddAnalysis(self,analysis_obj):
-        '''
-        Adds an Analysis object to the analysis collection object
-        :param analysis_obj: Analysis Object of type "Analysis"
-        :return: -
-        '''
-
-        AnalysisCollectionClass.collection[analysis_obj.run_object.run_number] = analysis_obj
-        AnalysisCollectionClass.current_run_number = analysis_obj.run_object.run_number
-
-    #
-    def CreateFWHMPlot(self, saveplots = True, savename = 'FWHM_Histo', ending = 'png'):
-        '''
-        Creates the FWHM Distribution of all the MeanSignalHistogram histograms from all
-        Analysis object inside the analysis collection
-        :param saveplots: if True saves the plot
-        :param savename:  filename if saveplots = True
-        :param ending:  file typ if saveplots = True
-        :return: -
-        '''
-
-        self.canvas = ROOT.TCanvas("canvas", "FWHM")
-        self.fwhm_histo = ROOT.TH1D("fwhm_histo", "FWHM Distribution of "+str(self.GetNumberOfAnalyses())+" runs",50,0,100)
-
-        for run in AnalysisCollectionClass.collection:
-            self.fwhm_histo.Fill(self.CalculateFWHM(False,run))
-        self.canvas.cd()
-        self.fwhm_histo.GetXaxis().SetTitle('FWHM')
-        self.fwhm_histo.Draw()
-
-        if saveplots:
-            # Results directories:
-            resultsdir = 'Results/' # eg. 'Results/run_364/'
-            if not os.path.exists(resultsdir): # if directory doesn't exist, create it!
-                os.makedirs(resultsdir)
-
-            ROOT.gPad.Print(resultsdir+savename+'.'+ending)
-            ROOT.gPad.Print(resultsdir+savename+'.'+'root')
-
-        #raw_input("wait")
-
-    #
-    def CalculateFWHM(self, print_result = True, run_number = None):
-        '''
-        Calculates the FWHM of the Mean Signal Histogram (Histogram of
-        mean signal response of 2D Signal response distribution)
-        :param print_result: if True prints FWHM in console
-        :param run_number:  run number to analyze - if None it takes
-                            current run number from AnalysisCollection object
-        :return: FWHM
-        '''
-        if run_number is None:
-            run_number = AnalysisCollectionClass.current_run_number
-        assert(type(run_number) is t.IntType and 0 < run_number < 1000), "Invalid run number"
-
-        analysis_obj = AnalysisCollectionClass.collection[run_number]
-
-        assert(analysis_obj.MeanSignalHistoIsCreated), "Histogram not created yet or not found"
-
-        maximum = analysis_obj.MeanSignalHisto.GetMaximum()
-        low_bin = analysis_obj.MeanSignalHisto.FindFirstBinAbove(maximum/2.)
-        high_bin = analysis_obj.MeanSignalHisto.FindLastBinAbove(maximum/2.)
-
-        fwhm = analysis_obj.MeanSignalHisto.GetBinCenter(high_bin) - analysis_obj.MeanSignalHisto.GetBinCenter(low_bin)
-
-        if print_result:
-            print "FWHM of run ",run_number," is: ",fwhm
-
-        return fwhm
-
-    def GetNumberOfAnalyses(self):
-        '''
-        :return: number of analyses that the analysis collection object contains
-        '''
-        return len(AnalysisCollectionClass.collection.keys())
+    def FindMaxima(self,show=False):
+        minimum_bincontent = 10
+        self.MaximaAnalysis = Analysis(self.run_object,Config(200))
+        self.MaximaAnalysis.DoAnalysis(minimum_bincontent)
+        self.MaximaAnalysis.CreatePlots(saveplots=True, show3d=True)
+        self.MaximaAnalysis.Pad.FindMaxima(minimum_bincount=minimum_bincontent,show=True)
