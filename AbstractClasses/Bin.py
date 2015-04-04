@@ -86,6 +86,7 @@ class Bin(object):
         self.BinSignalHisto.Draw()
         if self.BinSignalHisto.GetEntries() >= 5 and show_fit:
             print "Most Probable Signal Response: {0:.2f} +- {1:.2f}".format(self.Fit['MPV'],self.Fit['MPVErr'])
+            print "Sigma of Landau dist: {0:.3f} +- {1:.3f}".format(self.Fit['Sigma'],self.Fit['SigmaErr'])
             kNotDraw = 1<<9 # bit 9
             self.BinSignalHisto.GetFunction("landau").ResetBit(kNotDraw)
             self.BinSignalHisto.Draw()
