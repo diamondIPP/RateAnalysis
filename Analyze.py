@@ -54,6 +54,7 @@ if __name__ == "__main__":
                 # newAnalysis.CreatePlots(True,'2D_Signal_dist')
                 # # # newAnalysis.CreateMeanSignalHistogram(True)
                 newAnalysis.CreateBoth(saveplots=False)
+                # newAnalysis.CreateSignalHistogram()
                 # #
                 # # #print newAnalysis.Pad.ListOfBins[newAnalysis.Pad.GetBinNumber(0.05,0.05)].GetEntries()
                 # # newAnalysis.Pad.ShowBinXYSignalHisto(0.08,0.3,True)
