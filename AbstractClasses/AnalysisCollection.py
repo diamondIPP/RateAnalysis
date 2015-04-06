@@ -1,6 +1,7 @@
 import ROOT
 import types as t
 import os
+from ROOT import TGraphErrors
 
 class AnalysisCollection(object):
     '''
@@ -94,11 +95,12 @@ class AnalysisCollection(object):
         # self.AnalysisCollection.collection[run_number].MaximaAnalysis
         canvas = ROOT.TCanvas('MPVSigmaCanvas', 'MPVSigmaCanvas')
         canvas.cd()
-        graph = ROOT.TGraphErrors()
+        graph = TGraphErrors()
+        graph.SetNameTitle("graph", "MPV vs Sigma of underlying Landau")
 
         count = 0
         for run_number in self.collection:
-            MPVs, Sigmas, MPVErrs, SigmaErrs = self.collection[run_number].GetMPVSigmas()
+            MPVs, Sigmas, MPVErrs, SigmaErrs = self.collection[run_number].GetMPVSigmas(minimum_counts=300)
             for i in xrange(len(MPVs)):
                 graph.SetPoint(count, MPVs[i], Sigmas[i])
                 graph.SetPointError(count, MPVErrs[i], SigmaErrs[i])
