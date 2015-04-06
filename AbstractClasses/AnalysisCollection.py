@@ -83,7 +83,7 @@ class AnalysisCollection(object):
 
         return fwhm
 
-    def CreateSigmaMPVPlot(self, saveplots = True, savename = 'FWHM_Histo', ending = 'png'):
+    def CreateSigmaMPVPlot(self):
         '''
         Analysis.FindMaxima() has to be executed for all contributing analysis
         :param saveplots:
@@ -92,7 +92,22 @@ class AnalysisCollection(object):
         :return:
         '''
         # self.AnalysisCollection.collection[run_number].MaximaAnalysis
-        pass
+        canvas = ROOT.TCanvas('MPVSigmaCanvas', 'MPVSigmaCanvas')
+        canvas.cd()
+        graph = ROOT.TGraphErrors()
+
+        count = 0
+        for run_number in self.collection:
+            MPVs, Sigmas, MPVErrs, SigmaErrs = self.collection[run_number].GetMPVSigmas()
+            for i in xrange(len(MPVs)):
+                graph.SetPoint(count, MPVs[i], Sigmas[i])
+                graph.SetPointError(count, MPVErrs[i], SigmaErrs[i])
+                count += 1
+        graph.SaveAs("Total_MPV_Sigma_graph.root")
+        graph.Draw('AP')
+        ROOT.gPad.Print("Results/MPV_Sigma_graph.png")
+        ROOT.gPad.Print("Results/MPV_Sigma_graph.root")
+        raw_input("MPV vs Sigma shown...")
 
     def GetNumberOfAnalyses(self):
         '''
