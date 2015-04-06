@@ -45,6 +45,7 @@ class BinCollection(object):
 
         self.counthisto = ROOT.TH2D('counthisto', '2D hit distribution', *self.Get2DAttributes())
         self.totalsignal = ROOT.TH2D('totalsignal', '2D total signal distribution', *self.Get2DAttributes())
+        self.SignalHisto = ROOT.TH1D('SignalHisto,', 'Signal response Histogram', 500, 0, 500)
 
     def Get2DAttributes(self):
         '''
@@ -78,6 +79,7 @@ class BinCollection(object):
         self.counthisto.Fill(x,y)
         self.totalsignal.Fill(x,y,signal)
         self.ListOfBins[self.GetBinNumber(x,y)].AddData(signal)
+        self.SignalHisto.Fill(signal)
 
     def ShowBinXYSignalHisto(self,x,y,saveplot = False, show_fit=False):
         '''
@@ -444,6 +446,8 @@ class BinCollection(object):
                 graph.SetPointError(count, 0, sigma_/np.sqrt(counts_))
                 signals.append(signal_)
                 count += 1
+            else:
+                signals.append(0)
         if show:
             canvas = ROOT.TCanvas('signal_in_column', 'signals in column at position {:.3f}'.format(columnposition))
             canvas.cd()
@@ -553,6 +557,12 @@ class BinCollection(object):
             self.SavePlots('signals_in_row{:.3f}'.format(rowheight),'pdf','Results/')
             raw_input('show signal in row {:.3f}..'.format(rowheight))
         return signals
+
+    def CreateSignalHistogram(self):
+        canvas = ROOT.TCanvas('canvas', 'canvas')
+        canvas.cd()
+        self.SignalHisto.Draw()
+        raw_input('signal histo drawn...')
 
     def FindMaxima(self, threshold = None, minimum_bincount = 5,show = False):
         '''
@@ -707,7 +717,6 @@ class BinCollection(object):
 
             scan_senw(horizontal_starts)
 
-
         def FillHistoByBinnumber(self, binnumber, weight = 1):
             bin = self.GetBinByNumber(binnumber)
             x_, y_ = bin.GetBinCenter()
@@ -731,15 +740,54 @@ class BinCollection(object):
                     found_maxima.append(i)
             return found_maxima
 
+        def GetBinsInNbhd(binnumber, include_center = False):
+            '''
+            Returns the bin numbers of the surrounding bins of bin 'binnumber'
+            :param binnumber:
+            :param include_center:
+            :return:
+            '''
+            binsx = self.Attributes['binsx']
+            range_x = binsx + 2
+            nbhd = []
+            nbhd.append(binnumber+range_x-1)
+            nbhd.append(binnumber+range_x)
+            nbhd.append(binnumber+range_x+1)
+            nbhd.append(binnumber-1)
+            if include_center:
+                nbhd.append(binnumber)
+            nbhd.append(binnumber+1)
+            nbhd.append(binnumber-range_x-1)
+            nbhd.append(binnumber-range_x)
+            nbhd.append(binnumber-range_x+1)
+            return nbhd
+
+
         horizontal_scan(self)
         vertical_scan(self)
         SWNE_scan(self)
         SENW_scan(self)
 
-
         maxima = GetBinsInVoteRange(4)
-        print len(maxima)," maxima found: "
-        print self.GetBinCenter(maxima)
+        print len(maxima)," maxima found"
+
+        mean = self.SignalHisto.GetMean()
+        for i in xrange(len(maxima)):
+            center_bin = maxima[i]
+            nbhd = GetBinsInNbhd(center_bin)
+            MeanNbhdSignals = []
+            for binnr in nbhd:
+                bin_mean = self.ListOfBins[binnr].GetMean()
+                bin_entries = self.ListOfBins[binnr].GetEntries()
+                if bin_entries >= minimum_bincount:
+                    MeanNbhdSignals.append(bin_mean)
+            nbhd_mean = np.mean(MeanNbhdSignals)
+            if nbhd_mean > 1.05*mean: # 5 % bigger than overall mean
+                FillHistoByBinnumber(self,center_bin,1)
+
+        maxima2 = GetBinsInVoteRange(5)
+        print len(maxima2)," maxima found: "
+        print self.GetBinCenter(maxima2)
 
         if show:
             vote_canvas = ROOT.TCanvas('vote_canvas', "find Max vote-histo")
