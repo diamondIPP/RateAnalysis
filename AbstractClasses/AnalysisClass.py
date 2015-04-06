@@ -185,3 +185,35 @@ class Analysis(object):
         self.MaximaAnalysis.DoAnalysis(minimum_bincontent)
         # self.MaximaAnalysis.CreatePlots(saveplots=True, show3d=True)
         self.MaximaAnalysis.Pad.FindMaxima(minimum_bincount=minimum_bincontent,show=True)
+
+    def GetMPVSigmas(self,show = False, minimum_counts = 10):
+        '''
+        Returns mpvs and signals of current run
+        :return:
+        '''
+        MPVs = []
+        MPVErrs = []
+        Sigmas = []
+        SigmaErrs = []
+        for bin in self.Pad.ListOfBins:
+            entries = bin.GetEntries()
+            if entries >= minimum_counts:
+                MPVs.append(bin.Fit['MPV'])
+                MPVErrs.append(bin.Fit['MPVErr'])
+                Sigmas.append(bin.Fit['Sigma'])
+                SigmaErrs.append(bin.Fit['SigmaErr'])
+
+        if show:
+            canvas = ROOT.TCanvas('MPVSigmaCanvas', 'MPVSigmaCanvas')
+            canvas.cd()
+            graph = ROOT.TGraphErrors()
+            count = 0
+            for i in xrange(len(MPVs)):
+                graph.SetPoint(count, MPVs[i], Sigmas[i])
+                graph.SetPointError(count, MPVErrs[i], SigmaErrs[i])
+                count += 1
+            graph.Draw('AP')
+            raw_input("MPV vs Sigma shown...")
+
+        return MPVs, Sigmas, MPVErrs, SigmaErrs
+
