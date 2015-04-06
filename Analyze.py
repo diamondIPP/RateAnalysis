@@ -49,8 +49,8 @@ if __name__ == "__main__":
                 print run_number
 
                 #
-                newAnalysis = Analysis(run,Config(70))
-                # newAnalysis.DoAnalysis(minimum_statistics)
+                newAnalysis = Analysis(run,Config(100))
+                newAnalysis.DoAnalysis(minimum_statistics)
                 # # newAnalysis.CreatePlots(True,'2D_Signal_dist')
                 # # # # newAnalysis.CreateMeanSignalHistogram(True)
                 # newAnalysis.CreateBoth(saveplots=False)
@@ -89,11 +89,13 @@ if __name__ == "__main__":
                 # # newAnalysis.Pad.GetSignalInColumn(position=0.13, show=True)
                 # newAnalysis.Pad.ShowBinXYSignalHisto(-0.03,0.19, saveplot=True, show_fit=True)
                 # # newAnalysis.Pad.ShowBinXYSignalHisto(0.13,0.03,True)
-                newAnalysis.FindMaxima(show=True)
-                newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(-0.17,0.35,saveplot=True, show_fit=True)
-                # newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.12,0.33, saveplot=True, show_fit=True)
-                newAnalysis.MaximaAnalysis.Pad.GetSignalInColumn(-0.17,True)
-                newAnalysis.MaximaAnalysis.Pad.GetSignalInRow(0.35,True)
+                # newAnalysis.FindMaxima(show=False)
+                # newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(-0.17,0.35,saveplot=True, show_fit=True)
+                # # newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.12,0.33, saveplot=True, show_fit=True)
+                # newAnalysis.MaximaAnalysis.Pad.GetSignalInColumn(-0.17,True)
+                # newAnalysis.MaximaAnalysis.Pad.GetSignalInRow(0.35,True)
+                # newAnalysis.MaximaAnalysis.GetMPVSigmas(show = True)
+
 
                 # newAnalysis.Pad.SelectSignalStrengthRegion(bin3, sensitivity=0.14, activate=True)
                 # newAnalysis.Pad.ShowSelectedBins()
@@ -107,7 +109,7 @@ if __name__ == "__main__":
 
 
     # collection.CreateFWHMPlot()
-
+    collection.CreateSigmaMPVPlot()
 
 
     if show_plots: raw_input("Press ENTER to quit:")
