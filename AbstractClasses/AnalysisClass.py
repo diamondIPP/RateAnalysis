@@ -29,8 +29,6 @@ class Analysis(object):
         self.Signal2DDistribution = ROOT.TH2D()
         self.Signal2DDistribution.SetDirectory(0) # is needed because of garbage collection
 
-        self.signal_canvas = ROOT.TCanvas()
-        ROOT.SetOwnership(self.signal_canvas, False)
         self.MeanSignalHisto = ROOT.TH1D()
 
         # loading data file
@@ -82,9 +80,8 @@ class Analysis(object):
         :param saveDir: directory to save the plot - has to end with '/'
         :return: -
         '''
-
-        #self.signal_canvas = ROOT.TCanvas()
-        #ROOT.SetOwnership(self, False)
+        self.signal_canvas = ROOT.TCanvas()
+        ROOT.SetOwnership(self.signal_canvas, False)
         self.signal_canvas.Clear()
 
         self.signal_canvas.SetName("signal_canvas")
