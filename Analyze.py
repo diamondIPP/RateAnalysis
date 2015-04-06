@@ -50,11 +50,11 @@ if __name__ == "__main__":
 
                 #
                 newAnalysis = Analysis(run,Config(70))
-                newAnalysis.DoAnalysis(minimum_statistics)
-                # newAnalysis.CreatePlots(True,'2D_Signal_dist')
-                # # # newAnalysis.CreateMeanSignalHistogram(True)
-                newAnalysis.CreateBoth(saveplots=False)
-                # newAnalysis.CreateSignalHistogram()
+                # newAnalysis.DoAnalysis(minimum_statistics)
+                # # newAnalysis.CreatePlots(True,'2D_Signal_dist')
+                # # # # newAnalysis.CreateMeanSignalHistogram(True)
+                # newAnalysis.CreateBoth(saveplots=False)
+                # newAnalysis.Pad.CreateSignalHistogram()
                 # #
                 # # #print newAnalysis.Pad.ListOfBins[newAnalysis.Pad.GetBinNumber(0.05,0.05)].GetEntries()
                 # # newAnalysis.Pad.ShowBinXYSignalHisto(0.08,0.3,True)
@@ -90,13 +90,16 @@ if __name__ == "__main__":
                 # newAnalysis.Pad.ShowBinXYSignalHisto(-0.03,0.19, saveplot=True, show_fit=True)
                 # # newAnalysis.Pad.ShowBinXYSignalHisto(0.13,0.03,True)
                 newAnalysis.FindMaxima(show=True)
-                newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.,0.2,saveplot=True, show_fit=True)
-                newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.12,0.33, saveplot=True, show_fit=True)
+                newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(-0.17,0.35,saveplot=True, show_fit=True)
+                # newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.12,0.33, saveplot=True, show_fit=True)
+                newAnalysis.MaximaAnalysis.Pad.GetSignalInColumn(-0.17,True)
+                newAnalysis.MaximaAnalysis.Pad.GetSignalInRow(0.35,True)
+
                 # newAnalysis.Pad.SelectSignalStrengthRegion(bin3, sensitivity=0.14, activate=True)
                 # newAnalysis.Pad.ShowSelectedBins()
                 # newAnalysis.Pad.ShowCombinedKDistribution(saveplots=True, savename='combinedK_all')
                 #
-                newAnalysis.CreateHitsDistribution(saveplot=True)
+                # newAnalysis.CreateHitsDistribution(saveplot=True)
 
                 collection.AddAnalysis(newAnalysis)
         else:
