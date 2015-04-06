@@ -32,7 +32,6 @@ class Analysis(object):
         self.signal_canvas = ROOT.TCanvas()
         ROOT.SetOwnership(self.signal_canvas, False)
         self.MeanSignalHisto = ROOT.TH1D()
-        self.SignalHisto = ROOT.TH1D('SignalHisto,', 'Signal response Histogram', 500, 0, 500)
 
         # loading data file
         assert (os.path.exists(self.TrackingPadAnalysisROOTFile)), 'cannot find '+self.TrackingPadAnalysisROOTFile
@@ -62,9 +61,9 @@ class Analysis(object):
             x_ = self.track_info.track_x
             y_ = self.track_info.track_y
             signal_ = abs(self.track_info.integral50)
-
-            self.Pad.Fill(x_, y_, signal_)
-            self.SignalHisto.Fill(signal_)
+            calibflag = self.track_info.calibflag
+            if calibflag == 0:
+                self.Pad.Fill(x_, y_, signal_)
 
         self.Pad.MakeFits()
 
@@ -171,12 +170,6 @@ class Analysis(object):
             self.SavePlots('Hits_Distribution', 'png', 'Results/')
         raw_input('hits distribution')
 
-    def CreateSignalHistogram(self):
-        canvas = ROOT.TCanvas('canvas', 'canvas')
-        canvas.cd()
-        self.SignalHisto.Draw()
-        raw_input('signal histo drawn...')
-
     def SavePlots(self, savename, ending, saveDir):
         # Results directories:
         #resultsdir = saveDir+'run_'+str(self.run_object.run_number)+'/' # eg. 'Results/run_364/'
@@ -190,5 +183,5 @@ class Analysis(object):
         minimum_bincontent = 10
         self.MaximaAnalysis = Analysis(self.run_object,Config(200))
         self.MaximaAnalysis.DoAnalysis(minimum_bincontent)
-        self.MaximaAnalysis.CreatePlots(saveplots=True, show3d=True)
+        # self.MaximaAnalysis.CreatePlots(saveplots=True, show3d=True)
         self.MaximaAnalysis.Pad.FindMaxima(minimum_bincount=minimum_bincontent,show=True)
