@@ -49,12 +49,12 @@ if __name__ == "__main__":
                 print run_number
 
                 #
-                newAnalysis = Analysis(run,Config(100))
+                newAnalysis = Analysis(run,Config(70))
                 newAnalysis.DoAnalysis(minimum_statistics)
                 # # newAnalysis.CreatePlots(True,'2D_Signal_dist')
                 # # # # newAnalysis.CreateMeanSignalHistogram(True)
-                # newAnalysis.CreateBoth(saveplots=False)
-                # newAnalysis.Pad.CreateSignalHistogram()
+                newAnalysis.CreateBoth(saveplots=False)
+                newAnalysis.Pad.CreateSignalHistogram()
                 # #
                 # # #print newAnalysis.Pad.ListOfBins[newAnalysis.Pad.GetBinNumber(0.05,0.05)].GetEntries()
                 # # newAnalysis.Pad.ShowBinXYSignalHisto(0.08,0.3,True)
@@ -101,7 +101,7 @@ if __name__ == "__main__":
                 # newAnalysis.Pad.ShowSelectedBins()
                 # newAnalysis.Pad.ShowCombinedKDistribution(saveplots=True, savename='combinedK_all')
                 #
-                # newAnalysis.CreateHitsDistribution(saveplot=True)
+                newAnalysis.CreateHitsDistribution(saveplot=True)
 
                 collection.AddAnalysis(newAnalysis)
         else:
