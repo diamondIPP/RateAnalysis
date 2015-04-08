@@ -90,12 +90,12 @@ if __name__ == "__main__":
                 # newAnalysis.Pad.ShowBinXYSignalHisto(-0.03,0.19, saveplot=True, show_fit=True)
                 # newAnalysis.Pad.ShowBinXYSignalHisto(0.13,0.03,True)
                 newAnalysis.FindMaxima(show=True)
-                newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.06,0.3,saveplot=True, show_fit=True)
-                newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.06,0.11,saveplot=True, show_fit=True)
+                newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(-0.04,0.3,saveplot=True, show_fit=True)
+                newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.07,0.3,saveplot=True, show_fit=True)
                 # newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.12,0.33, saveplot=True, show_fit=True)
                 newAnalysis.MaximaAnalysis.Pad.GetSignalInRow(0.3,True)
                 newAnalysis.MaximaAnalysis.Pad.GetSignalInRow(0.15,True)
-                newAnalysis.MaximaAnalysis.Pad.GetSignalInColumn(0.06,True)
+                # newAnalysis.MaximaAnalysis.Pad.GetSignalInColumn(0.06,True)
                 # newAnalysis.MaximaAnalysis.Pad.GetSignalInRow(0.35,True)
                 # newAnalysis.MaximaAnalysis.GetMPVSigmas(show = True)
 
@@ -104,8 +104,8 @@ if __name__ == "__main__":
                 # newAnalysis.Pad.ShowSelectedBins()
                 # newAnalysis.Pad.ShowCombinedKDistribution(saveplots=True, savename='combinedK_all')
                 #
-                newAnalysis.CreateHitsDistribution(saveplot=True)
-
+                newAnalysis.CreateHitsDistribution(saveplot=True, drawoption='colz')
+                #newAnalysis.ExportMC()
                 collection.AddAnalysis(newAnalysis)
         else:
             print "Analysis of run ",run_number, " failed"
