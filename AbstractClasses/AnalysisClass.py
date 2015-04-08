@@ -35,7 +35,11 @@ class Analysis(object):
         assert (os.path.exists(self.TrackingPadAnalysisROOTFile)), 'cannot find '+self.TrackingPadAnalysisROOTFile
         self.rootfile = ROOT.TFile(self.TrackingPadAnalysisROOTFile)
 
-        self.MeanSignalHistoIsCreated = False
+        self.Checklist = { # True if Plot was created
+            'DoAnalysis': False,
+            'MeanSignalHisto': False,
+            'HitsDistribution': False,
+        }
 
     def DoAnalysis(self,minimum_bincontent = 1):
         '''
@@ -70,6 +74,8 @@ class Analysis(object):
         self.Signal2DDistribution.GetXaxis().SetTitle('pos x / cm')
         self.Signal2DDistribution.GetYaxis().SetTitle('pos y / cm')
         self.Signal2DDistribution.GetYaxis().SetTitleOffset(1.4)
+
+        self.Checklist['DoAnalysis'] = True
 
     def CreatePlots(self,saveplots = False,savename = '2DSignalDistribution',ending='png',saveDir = 'Results/', show3d = False):
         '''
@@ -121,7 +127,7 @@ class Analysis(object):
         if saveplots:
             self.SavePlots(savename, ending, saveDir)
 
-        self.MeanSignalHistoIsCreated = True
+        self.Checklist['MeanSignalHisto'] = True
 
     def CreateBoth(self,saveplots = False,savename = 'SignalDistribution',ending='png',saveDir = 'Results/',PS=False):
         self.combined_canvas = ROOT.TCanvas("combined_canvas","Combined Canvas",1000,500)
@@ -180,8 +186,8 @@ class Analysis(object):
         minimum_bincontent = 10
         self.MaximaAnalysis = Analysis(self.run_object,Config(200))
         self.MaximaAnalysis.DoAnalysis(minimum_bincontent)
-        # self.MaximaAnalysis.CreatePlots(saveplots=True, show3d=True)
-        self.MaximaAnalysis.Pad.FindMaxima(minimum_bincount=minimum_bincontent,show=True)
+        self.MaximaAnalysis.CreatePlots(saveplots=True, show3d=True)
+        self.MaximaAnalysis.Pad.FindMaxima(minimum_bincount=minimum_bincontent,show=show)
 
     def GetMPVSigmas(self,show = False, minimum_counts = 10):
         '''
@@ -214,3 +220,11 @@ class Analysis(object):
 
         return MPVs, Sigmas, MPVErrs, SigmaErrs
 
+    def ExportMC(self, MCDir = 'MCInputs/'):
+        '''
+        Hit distribution
+        :return:
+        '''
+        if not os.path.exists(MCDir):
+            os.makedirs(MCDir)
+        self.Pad.counthisto.SaveAs(MCDir+str(self.run_object.run_number)+'counthisto.root')
