@@ -6,12 +6,12 @@ import ConfigParser
 
 class Run(object):
 
-    run_number = -1
     current_run = {}
     operationmode = ''
     TrackingPadAnalysis = {}
 
     def __init__(self,validate = True, run_number=None):
+        self.run_number = -1
         self.runinfo = RunInfo.load('Runinfos/runs.json')
         if validate:
             self.ValidateRuns()
