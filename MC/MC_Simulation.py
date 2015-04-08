@@ -4,11 +4,17 @@ import ROOT
 from array import array
 from datetime import datetime
 
-mode = 'Gaus' # or Gaus
+SignalMode = 'Landau' # 'Landau' or 'Gaus'
+HitDistributionMode = 'Manual' # 'Manual' or 'Import' or 'Uniform'
 
 today = datetime.today()
 seed = int((today-datetime(today.year, today.month, today.day , 0, 0, 0, 0)).total_seconds() % 1800 *1e6)
 gRandom.SetSeed(seed)
+
+if HitDistributionMode is 'Import':
+    CountHistoFile = ROOT.TFile('MCInputs/364counthisto.root')
+    counthisto = CountHistoFile.Get('counthisto')
+
 
 def LateralShape(x,par):
     result = 0.1
@@ -45,7 +51,7 @@ def SignalShape(x,par):
         result += norm*TMath.Gaus(x[0], par[3+4*i], par[5+4*i])*TMath.Gaus(x[1], par[4+4*i], par[6+4*i])
     return result
 
-def CreateRandomPeaks(xmin, xmax, ymin, ymax, bkg = 120, peak_height = 0.1, npeaks = None):
+def CreateRandomPeaks(xmin, xmax, ymin, ymax, bkg = 120, peak_height = 0.1, npeaks = 0):
     if npeaks is None:
         npeaks = int(round(gRandom.Uniform(0,15)))
     parameters = np.zeros(3+4*npeaks)
@@ -59,6 +65,7 @@ def CreateRandomPeaks(xmin, xmax, ymin, ymax, bkg = 120, peak_height = 0.1, npea
         parameters[6+4*i] = gRandom.Uniform(0.02, 0.07)
     return parameters
 
+# create track_info ROOT file
 file = TFile('track_info.root','RECREATE')
 track_info_tree = TTree('track_info', 'MC track_info')
 track_x = array('f',[0])
@@ -73,7 +80,7 @@ track_info_tree.Branch('calibflag', calibflag, 'calibflag/I')
 hits = 300000
 
 MPV = 80
-sigma = 5
+sigma = 11
 center_x = -0.025
 center_y = 0.2
 sigma_x = 0.1
@@ -85,23 +92,24 @@ ymax = 0.35
 canvas = TCanvas('canvas', 'canvas')
 canvas.cd()
 
-f_lateral = TF2('f_lateral', LateralShape, xmin, xmax, ymin, ymax, 12)
-f_lateral.SetNpx(80)
-f_lateral.SetNpy(80)
-# 6 gaus centers: x1    y1     x2   y2     x3   y3    x4    y4     x5    y5   x6   y6
-par = np.array([-0.06, 0.27, 0.02, 0.27, 0.02, 0.2, -0.06, 0.2, -0.06, 0.13, 0.02, 0.13])
-f_lateral.SetParameters(par)
-# f_lateral.Draw('surf1')
-# raw_input('blah')
+if HitDistributionMode is 'Manual':
+    f_lateral = TF2('f_lateral', LateralShape, xmin, xmax, ymin, ymax, 12)
+    f_lateral.SetNpx(80)
+    f_lateral.SetNpy(80)
+    # 6 gaus centers: x1    y1     x2   y2     x3   y3    x4    y4     x5    y5   x6   y6
+    par = np.array([-0.06, 0.27, 0.02, 0.27, 0.02, 0.2, -0.06, 0.2, -0.06, 0.13, 0.02, 0.13])
+    f_lateral.SetParameters(par)
+    # f_lateral.Draw('surf1')
+    # raw_input('blah')
 a = Double()
 b = Double()
 
-if mode == 'Landau':
+if SignalMode == 'Landau':
     SignalParameters = CreateRandomPeaks(xmin, xmax, ymin, ymax, peak_height=0.5, bkg=MPV)
-elif mode == 'Gaus':
+elif SignalMode == 'Gaus':
     SignalParameters = CreateRandomPeaks(xmin, xmax, ymin, ymax, peak_height=0.5, bkg=100)
 else:
-    assert(False), "wrong mode, choose `Gaus` or `Landau`"
+    assert(False), "wrong SignalMode, choose `Gaus` or `Landau`"
 f_signal = TF2('f_signal', SignalShape, xmin, xmax, ymin, ymax, len(SignalParameters))
 f_signal.SetNpx(40)
 f_signal.SetNpy(40)
@@ -111,15 +119,22 @@ ROOT.gPad.Print('RealSignalDistribution.png')
 f_signal.SaveAs('RealSignalDistribution.root')
 answer = raw_input('for data creation, type `yes`: ')
 
+if HitDistributionMode is 'Manual':
+    CountTemplate = f_lateral
+elif HitDistributionMode is 'Import':
+    CountTemplate = counthisto
+else:
+    assert(False), 'Wrong HitDistributionMode; HitDistributionMode has to be either `Manual` or `Import`.'
+
 if answer == 'yes':
     integral50_max = 5000
     i = 0
     j = 0
     while i < hits and j < 2*hits:
-        f_lateral.GetRandom2(a,b)
-        track_x[0] = a
+        CountTemplate.GetRandom2(a,b)
+        track_x[0] = a # add a track resolution
         track_y[0] = b
-        if mode == 'Landau':
+        if SignalMode == 'Landau':
             integral50[0] = gRandom.Landau(f_signal(track_x[0], track_y[0]), sigma)
         else:
             integral50[0] = gRandom.Gaus(f_signal(track_x[0], track_y[0]), 0.6*f_signal(track_x[0], track_y[0])-33)
@@ -134,7 +149,7 @@ if answer == 'yes':
     file.Write()
 
     print "Toydata containing {:.0f} peaks generated.".format(SignalParameters[0])
-    if mode == 'Landau':
+    if SignalMode == 'Landau':
         for i in xrange(int(SignalParameters[0])):
             x = SignalParameters[3+4*i]
             y = SignalParameters[4+4*i]
