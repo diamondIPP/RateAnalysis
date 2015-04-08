@@ -558,13 +558,15 @@ class BinCollection(object):
             raw_input('show signal in row {:.3f}..'.format(rowheight))
         return signals
 
-    def CreateSignalHistogram(self):
+    def CreateSignalHistogram(self,saveplot = False):
         canvas = ROOT.TCanvas('canvas', 'canvas')
         canvas.cd()
         self.SignalHisto.Draw()
+        if saveplot:
+            self.SavePlots('TotalSignalDistribution', 'pdf', 'Results/')
         raw_input('signal histo drawn...')
 
-    def FindMaxima(self, threshold = None, minimum_bincount = 5,show = False):
+    def FindMaxima(self, threshold = None, minimum_bincount = 5, show = False):
         '''
 
         :param threshold:
@@ -793,11 +795,12 @@ class BinCollection(object):
             vote_canvas = ROOT.TCanvas('vote_canvas', "find Max vote-histo")
             vote_canvas.cd()
             ROOT.gStyle.SetPalette(51)
-            ROOT.gStyle.SetNumberContours(5)
+            ROOT.gStyle.SetNumberContours(6)
             self.voting_histo.SetStats(False)
             self.voting_histo.Draw('colz')
             print self.voting_histo.GetMaximumBin()
             raw_input("vote histo drawn..")
+            self.SavePlots('vote_histo', 'png', 'Results/')
             ROOT.gStyle.SetPalette(53)
             ROOT.gStyle.SetNumberContours(999)
 
