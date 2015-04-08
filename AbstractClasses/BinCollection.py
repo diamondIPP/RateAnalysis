@@ -452,7 +452,7 @@ class BinCollection(object):
             canvas = ROOT.TCanvas('signal_in_column', 'signals in column at position {:.3f}'.format(columnposition))
             canvas.cd()
             graph.Draw('AP')
-            self.SavePlots('signals_in_column{:.3f}'.format(columnposition),'pdf','Results/')
+            self.SavePlots('signals_in_column{:.3f}'.format(columnposition),'png','Results/')
             raw_input('show signal in column {:.3f}..'.format(columnposition))
         return signals
 
@@ -486,7 +486,7 @@ class BinCollection(object):
             canvas = ROOT.TCanvas('signal_in_row', 'signals in row at height {:.3f}'.format(rowheight))
             canvas.cd()
             graph.Draw('AP')
-            self.SavePlots('signals_in_row{:.3f}'.format(rowheight),'pdf','Results/')
+            self.SavePlots('signals_in_row{:.3f}'.format(rowheight),'png','Results/')
             raw_input('show signal in row {:.3f}..'.format(rowheight))
         return signals
 
@@ -563,7 +563,7 @@ class BinCollection(object):
         canvas.cd()
         self.SignalHisto.Draw()
         if saveplot:
-            self.SavePlots('TotalSignalDistribution', 'pdf', 'Results/')
+            self.SavePlots('TotalSignalDistribution', 'png', 'Results/')
         raw_input('signal histo drawn...')
 
     def FindMaxima(self, threshold = None, minimum_bincount = 5, show = False):
