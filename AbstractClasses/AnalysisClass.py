@@ -162,12 +162,12 @@ class Analysis(object):
             ROOT.gStyle.SetHistFillColor(7)
             ROOT.gStyle.SetHistFillStyle(3003)
 
-    def CreateHitsDistribution(self,saveplot = False):
+    def CreateHitsDistribution(self,saveplot = False, drawoption = 'colz'):
         #ROOT.gStyle.SetNumberContours(10)
         canvas = ROOT.TCanvas('canvas', 'Hits',500,500)
         canvas.cd()
         self.Pad.counthisto.SetStats(False)
-        self.Pad.counthisto.Draw('colz')#'surf2')
+        self.Pad.counthisto.Draw(drawoption)#'surf2')
         #self.Pad.counthisto.Draw('CONT1 SAME')
         if saveplot:
             self.SavePlots('Hits_Distribution', 'png', 'Results/')
@@ -228,3 +228,4 @@ class Analysis(object):
         if not os.path.exists(MCDir):
             os.makedirs(MCDir)
         self.Pad.counthisto.SaveAs(MCDir+str(self.run_object.run_number)+'counthisto.root')
+        print "CountHisto exported."
