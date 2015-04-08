@@ -17,7 +17,7 @@ if __name__ == "__main__":
 
     # config
     show_plots = True
-    minimum_statistics = 5 # don't draw bins which contain less than minimum_statistics hits
+    minimum_statistics = 10 # don't draw bins which contain less than minimum_statistics hits
 
     run = Run(False)
 
@@ -51,10 +51,10 @@ if __name__ == "__main__":
                 #
                 newAnalysis = Analysis(run,Config(70))
                 newAnalysis.DoAnalysis(minimum_statistics)
-                # # newAnalysis.CreatePlots(True,'2D_Signal_dist')
+                #newAnalysis.CreatePlots(True,'2D_Signal_dist',show3d=True)
                 # # # # newAnalysis.CreateMeanSignalHistogram(True)
-                newAnalysis.CreateBoth(saveplots=False)
-                newAnalysis.Pad.CreateSignalHistogram()
+                newAnalysis.CreateBoth(saveplots=True)
+                newAnalysis.Pad.CreateSignalHistogram(saveplot=True)
                 # #
                 # # #print newAnalysis.Pad.ListOfBins[newAnalysis.Pad.GetBinNumber(0.05,0.05)].GetEntries()
                 # # newAnalysis.Pad.ShowBinXYSignalHisto(0.08,0.3,True)
@@ -79,20 +79,23 @@ if __name__ == "__main__":
                 # # newAnalysis.Pad.ShowCombinedKDistribution(True,'combinedK_both')
                 #
                 # newAnalysis.Pad.UnselectAllBins()
-                # #
+                #
                 # bin3 = newAnalysis.Pad.GetBinByNumber(newAnalysis.Pad.GetMaximumSignalResponseBinNumber())
                 # print bin3.GetBinCoordinates()
-                # print bin3.GetBinCenter()
+                # # print bin3.GetBinCenter()
                 # newAnalysis.Pad.GetSignalInRow(height=0.35, show=True)
                 # newAnalysis.Pad.GetSignalInRow(height=0.17, show=True)
-
-                # # newAnalysis.Pad.GetSignalInColumn(position=0.13, show=True)
+                #
+                # newAnalysis.Pad.GetSignalInColumn(position=0.13, show=True)
                 # newAnalysis.Pad.ShowBinXYSignalHisto(-0.03,0.19, saveplot=True, show_fit=True)
-                # # newAnalysis.Pad.ShowBinXYSignalHisto(0.13,0.03,True)
-                # newAnalysis.FindMaxima(show=False)
-                # newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(-0.17,0.35,saveplot=True, show_fit=True)
-                # # newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.12,0.33, saveplot=True, show_fit=True)
-                # newAnalysis.MaximaAnalysis.Pad.GetSignalInColumn(-0.17,True)
+                # newAnalysis.Pad.ShowBinXYSignalHisto(0.13,0.03,True)
+                newAnalysis.FindMaxima(show=True)
+                newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.06,0.3,saveplot=True, show_fit=True)
+                newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.06,0.11,saveplot=True, show_fit=True)
+                # newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.12,0.33, saveplot=True, show_fit=True)
+                newAnalysis.MaximaAnalysis.Pad.GetSignalInRow(0.3,True)
+                newAnalysis.MaximaAnalysis.Pad.GetSignalInRow(0.15,True)
+                newAnalysis.MaximaAnalysis.Pad.GetSignalInColumn(0.06,True)
                 # newAnalysis.MaximaAnalysis.Pad.GetSignalInRow(0.35,True)
                 # newAnalysis.MaximaAnalysis.GetMPVSigmas(show = True)
 
@@ -109,7 +112,7 @@ if __name__ == "__main__":
 
 
     # collection.CreateFWHMPlot()
-    collection.CreateSigmaMPVPlot()
+    # collection.CreateSigmaMPVPlot()
 
 
     if show_plots: raw_input("Press ENTER to quit:")
