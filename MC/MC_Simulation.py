@@ -120,20 +120,24 @@ f_signal.SaveAs('RealSignalDistribution.root')
 answer = raw_input('for data creation, type `yes`: ')
 
 if HitDistributionMode is 'Manual':
-    CountTemplate = f_lateral
+    HitsTemplate = f_lateral
 elif HitDistributionMode is 'Import':
-    CountTemplate = counthisto
-else:
-    assert(False), 'Wrong HitDistributionMode; HitDistributionMode has to be either `Manual` or `Import`.'
+    HitsTemplate = counthisto
+elif HitDistributionMode is not 'Uniform':
+    assert(False), 'Wrong HitDistributionMode; HitDistributionMode has to be either `Manual`, `Import` or `Uniform`.'
 
 if answer == 'yes':
     integral50_max = 5000
     i = 0
     j = 0
     while i < hits and j < 2*hits:
-        CountTemplate.GetRandom2(a,b)
-        track_x[0] = a # add a track resolution
-        track_y[0] = b
+        if HitDistributionMode is 'Uniform':
+            track_x[0] = gRandom.Uniform(xmin,xmax)
+            track_y[0] = gRandom.Uniform(ymin,ymax)
+        else:
+            HitsTemplate.GetRandom2(a,b)
+            track_x[0] = a # add a track resolution
+            track_y[0] = b
         if SignalMode == 'Landau':
             integral50[0] = gRandom.Landau(f_signal(track_x[0], track_y[0]), sigma)
         else:
