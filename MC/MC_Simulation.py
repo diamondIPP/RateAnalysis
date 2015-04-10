@@ -5,7 +5,7 @@ from array import array
 from datetime import datetime
 
 SignalMode = 'Landau' # 'Landau' or 'Gaus'
-HitDistributionMode = 'Manual' # 'Manual' or 'Import' or 'Uniform'
+HitDistributionMode = 'Uniform' # 'Manual' or 'Import' or 'Uniform'
 
 today = datetime.today()
 seed = int((today-datetime(today.year, today.month, today.day , 0, 0, 0, 0)).total_seconds() % 1800 *1e6)
@@ -51,7 +51,7 @@ def SignalShape(x,par):
         result += norm*TMath.Gaus(x[0], par[3+4*i], par[5+4*i])*TMath.Gaus(x[1], par[4+4*i], par[6+4*i])
     return result
 
-def CreateRandomPeaks(xmin, xmax, ymin, ymax, bkg = 120, peak_height = 0.1, npeaks = 0):
+def CreateRandomPeaks(xmin, xmax, ymin, ymax, bkg = 120, peak_height = 0.1, npeaks = None):
     if npeaks is None:
         npeaks = int(round(gRandom.Uniform(0,15)))
     parameters = np.zeros(3+4*npeaks)
@@ -138,7 +138,7 @@ if answer == 'yes':
             HitsTemplate.GetRandom2(a,b)
             track_x[0] = a # add a track resolution
             track_y[0] = b
-        if SignalMode == 'Landau':
+        if SignalMode is 'Landau':
             integral50[0] = gRandom.Landau(f_signal(track_x[0], track_y[0]), sigma)
         else:
             integral50[0] = gRandom.Gaus(f_signal(track_x[0], track_y[0]), 0.6*f_signal(track_x[0], track_y[0])-33)
