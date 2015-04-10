@@ -49,12 +49,12 @@ if __name__ == "__main__":
                 print run_number
 
                 #
-                newAnalysis = Analysis(run,Config(70))
-                newAnalysis.DoAnalysis(minimum_statistics)
+                newAnalysis = Analysis(run,Config(200))
+                #newAnalysis.DoAnalysis(minimum_statistics)
                 #newAnalysis.CreatePlots(True,'2D_Signal_dist',show3d=True)
                 # # # # newAnalysis.CreateMeanSignalHistogram(True)
-                newAnalysis.CreateBoth(saveplots=True)
-                newAnalysis.Pad.CreateSignalHistogram(saveplot=True)
+                # newAnalysis.CreateBoth(saveplots=True)
+                # newAnalysis.Pad.CreateSignalHistogram(saveplot=True)
                 # #
                 # # #print newAnalysis.Pad.ListOfBins[newAnalysis.Pad.GetBinNumber(0.05,0.05)].GetEntries()
                 # # newAnalysis.Pad.ShowBinXYSignalHisto(0.08,0.3,True)
@@ -83,7 +83,7 @@ if __name__ == "__main__":
                 # bin3 = newAnalysis.Pad.GetBinByNumber(newAnalysis.Pad.GetMaximumSignalResponseBinNumber())
                 # print bin3.GetBinCoordinates()
                 # # print bin3.GetBinCenter()
-                # newAnalysis.Pad.GetSignalInRow(height=0.35, show=True)
+                # newAnalysis.Pad.GetSignalInRow(height=0.33, show=True)
                 # newAnalysis.Pad.GetSignalInRow(height=0.17, show=True)
                 #
                 # newAnalysis.Pad.GetSignalInColumn(position=0.13, show=True)
@@ -98,14 +98,14 @@ if __name__ == "__main__":
                 # newAnalysis.MaximaAnalysis.Pad.GetSignalInColumn(0.06,True)
                 # newAnalysis.MaximaAnalysis.Pad.GetSignalInRow(0.35,True)
                 # newAnalysis.MaximaAnalysis.GetMPVSigmas(show = True)
-
-
-                # newAnalysis.Pad.SelectSignalStrengthRegion(bin3, sensitivity=0.14, activate=True)
-                # newAnalysis.Pad.ShowSelectedBins()
-                # newAnalysis.Pad.ShowCombinedKDistribution(saveplots=True, savename='combinedK_all')
                 #
-                newAnalysis.CreateHitsDistribution(saveplot=True, drawoption='colz')
-                #newAnalysis.ExportMC()
+                #
+                # # newAnalysis.Pad.SelectSignalStrengthRegion(bin3, sensitivity=0.14, activate=True)
+                # # newAnalysis.Pad.ShowSelectedBins()
+                # # newAnalysis.Pad.ShowCombinedKDistribution(saveplots=True, savename='combinedK_all')
+                # #
+                # newAnalysis.CreateHitsDistribution(saveplot=True, drawoption='colz')
+                # newAnalysis.ExportMC()
                 collection.AddAnalysis(newAnalysis)
         else:
             print "Analysis of run ",run_number, " failed"
