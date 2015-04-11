@@ -51,21 +51,43 @@ class Analysis(object):
 
         assert (minimum_bincontent > 0), "minimum_bincontent has to be a positive integer" # bins with less hits are ignored
 
-        self.track_info = self.rootfile.Get('track_info') # Get TTree called "track_info"
+        if not self.run_object.IsMonteCarlo:
+            self.track_info = self.rootfile.Get('track_info') # Get TTree called "track_info"
 
         # create a bin collection object:
         self.Pad = BinCollection(*self.config_object.Get2DAttributes())
 
         # fill two 2-dim histograms to collect the hits and signal strength
-        for i in xrange(self.track_info.GetEntries()):
-            # read the ROOT TTree
-            self.track_info.GetEntry(i)
-            x_ = self.track_info.track_x
-            y_ = self.track_info.track_y
-            signal_ = abs(self.track_info.integral50)
-            calibflag = self.track_info.calibflag
-            if calibflag == 0:
-                self.Pad.Fill(x_, y_, signal_)
+        if not self.run_object.IsMonteCarlo:
+            for i in xrange(self.track_info.GetEntries()):
+                # read the ROOT TTree
+                self.track_info.GetEntry(i)
+                x_ = self.track_info.track_x
+                y_ = self.track_info.track_y
+                signal_ = abs(self.track_info.integral50)
+                calibflag = self.track_info.calibflag
+                if calibflag == 0:
+                    self.Pad.Fill(x_, y_, signal_)
+        else: # run is Monte Carlo:
+            GoOn = True
+            d = 0
+            while GoOn and d<5:
+                try:
+                    print 'try'
+                    if not self.run_object.DataIsMade:
+                        self.run_object.Simulate(save=True, draw=True)
+                    for i in xrange(self.run_object.NumberOfHits):
+                        x_ = self.run_object.Data['track_x'][i]
+                        y_ = self.run_object.Data['track_y'][i]
+                        signal_ = self.run_object.Data['integral50'][i]
+                        self.Pad.Fill(x_, y_, signal_)
+
+                except IndexError:
+                    pass
+                else:
+                    GoOn = False
+                d += 1
+
 
         self.Pad.MakeFits()
 
@@ -172,6 +194,7 @@ class Analysis(object):
         if saveplot:
             self.SavePlots('Hits_Distribution', 'png', 'Results/')
         raw_input('hits distribution')
+        self.Checklist['HitsDistribution'] = True
 
     def SavePlots(self, savename, ending, saveDir):
         # Results directories:
