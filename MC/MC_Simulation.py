@@ -5,7 +5,7 @@ from array import array
 from datetime import datetime
 
 SignalMode = 'Landau' # 'Landau' or 'Gaus'
-HitDistributionMode = 'Uniform' # 'Manual' or 'Import' or 'Uniform'
+HitDistributionMode = 'Import' # 'Manual' or 'Import' or 'Uniform'
 
 today = datetime.today()
 seed = int((today-datetime(today.year, today.month, today.day , 0, 0, 0, 0)).total_seconds() % 1800 *1e6)
@@ -136,8 +136,8 @@ if answer == 'yes':
             track_y[0] = gRandom.Uniform(ymin,ymax)
         else:
             HitsTemplate.GetRandom2(a,b)
-            track_x[0] = a # add a track resolution
-            track_y[0] = b
+            track_x[0] = gRandom.Gaus(a, 0.004) # 20mu track resolution
+            track_y[0] = gRandom.Gaus(b, 0.004)
         if SignalMode is 'Landau':
             integral50[0] = gRandom.Landau(f_signal(track_x[0], track_y[0]), sigma)
         else:
