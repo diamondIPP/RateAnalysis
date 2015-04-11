@@ -5,6 +5,7 @@ import os # for folder and file handling
 from AbstractClasses.AnalysisClass import Analysis
 from AbstractClasses.AnalysisCollection import AnalysisCollection
 from AbstractClasses.RunClass import Run
+from AbstractClasses.MCRun import MCRun
 from Runinfos.RunInfo import RunInfo
 from AbstractClasses.ConfigClass import *
 #from Configuration.initialize_ROOT import initialize_ROOT
@@ -19,7 +20,10 @@ if __name__ == "__main__":
     show_plots = True
     minimum_statistics = 10 # don't draw bins which contain less than minimum_statistics hits
 
-    run = Run(False)
+    if '-mc' in sys.argv or 'mc' in sys.argv or 'MC' in sys.argv:
+        run = MCRun(validate=False)
+    else:
+        run = Run(validate=False)
 
     MaxNrOfRuns = 9999
     if(len(run_numbers) == 0):
@@ -49,11 +53,11 @@ if __name__ == "__main__":
                 print run_number
 
                 #
-                newAnalysis = Analysis(run,Config(200))
-                #newAnalysis.DoAnalysis(minimum_statistics)
+                newAnalysis = Analysis(run,Config(70))
+                newAnalysis.DoAnalysis(minimum_statistics)
                 #newAnalysis.CreatePlots(True,'2D_Signal_dist',show3d=True)
                 # # # # newAnalysis.CreateMeanSignalHistogram(True)
-                # newAnalysis.CreateBoth(saveplots=True)
+                newAnalysis.CreateBoth(saveplots=True)
                 # newAnalysis.Pad.CreateSignalHistogram(saveplot=True)
                 # #
                 # # #print newAnalysis.Pad.ListOfBins[newAnalysis.Pad.GetBinNumber(0.05,0.05)].GetEntries()
@@ -104,7 +108,7 @@ if __name__ == "__main__":
                 # # newAnalysis.Pad.ShowSelectedBins()
                 # # newAnalysis.Pad.ShowCombinedKDistribution(saveplots=True, savename='combinedK_all')
                 # #
-                # newAnalysis.CreateHitsDistribution(saveplot=True, drawoption='colz')
+                newAnalysis.CreateHitsDistribution(saveplot=True, drawoption='colz')
                 # newAnalysis.ExportMC()
                 collection.AddAnalysis(newAnalysis)
         else:
