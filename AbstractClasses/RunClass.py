@@ -21,6 +21,7 @@ class Run(object):
             self.run_number = run_number
 
             self.SetRun(run_number)
+        self.IsMonteCarlo = False
 
     def ValidateRuns(self, list_of_runs = None):
         runs = RunInfo.runs.keys() # list of all runs
