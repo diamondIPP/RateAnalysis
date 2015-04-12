@@ -23,7 +23,6 @@ class Diamond(object):
         if name is not None:
             self.SetInfoFromName(name)
 
-
     def SetInfoFromName(self,diamondname):
         diamonds = {
             'S30':{
