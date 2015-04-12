@@ -40,6 +40,9 @@ class Run(object):
         else:
             return True
 
+    def ResetMC(self):
+        pass
+
     def SetRun(self,run_number):
 
         assert(run_number > 0), "incorrect run_number"
@@ -64,8 +67,7 @@ class Run(object):
             #a = self.current_run.__dict__
             self.diamond = Diamond( self.current_run['diamond'])
 
-
-
+            self.ResetMC()
             #self.diamond = diamond # diamond is of type Diamond
             #RunInfo.__init__(self,*args)
 
