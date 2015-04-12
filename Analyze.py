@@ -97,7 +97,7 @@ if __name__ == "__main__":
                 newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(-0.04,0.3,saveplot=True, show_fit=True)
                 newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.07,0.3,saveplot=True, show_fit=True)
                 # newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.12,0.33, saveplot=True, show_fit=True)
-                newAnalysis.MaximaAnalysis.Pad.GetSignalInRow(0.3,True)
+                #newAnalysis.MaximaAnalysis.Pad.GetSignalInRow(0.3,True)
                 newAnalysis.MaximaAnalysis.Pad.GetSignalInRow(0.15,True)
                 # newAnalysis.MaximaAnalysis.Pad.GetSignalInColumn(0.06,True)
                 # newAnalysis.MaximaAnalysis.Pad.GetSignalInRow(0.35,True)
