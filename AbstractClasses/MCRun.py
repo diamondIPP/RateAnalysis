@@ -2,6 +2,7 @@ from RunClass import Run
 from ROOT import TFile, TMath, gRandom, TCanvas, TTree, TF2, Double, gPad
 from array import array
 from datetime import datetime
+import os
 import numpy as np
 
 class MCRun(Run):
@@ -39,6 +40,14 @@ class MCRun(Run):
     def SetNumberOfHits(self, hits):
         self.NumberOfHits = hits
 
+    def ResetMC(self):
+        self.DataIsMade = False
+        self.Data = {
+            'track_x': [],
+            'track_y': [],
+            'integral50': []
+        }
+
     def ShowMCConfig(self):
         print '\nHit Distribution Mode is Set to: '+self.HitDistributionMode
         print 'Signal Mode is Set to: '+self.SignalMode
@@ -56,10 +65,20 @@ class MCRun(Run):
         # Settings:
         MPV = 80 # background for Landau MPV distribution
         sigma = 11 # Landau scaling sigma
-        xmin = -0.18
-        xmax = 0.13
-        ymin = 0.03
-        ymax = 0.35
+        MCRunPath = 'runs/MCrun_{0}/'.format(self.run_number)
+        xmin = self.diamond.Position['xmin'] + 0.01
+        xmax = self.diamond.Position['xmax'] - 0.01
+        ymin = self.diamond.Position['ymin'] + 0.01
+        ymax = self.diamond.Position['ymax'] - 0.01
+        # xmin = -0.18
+        # xmax = 0.13
+        # ymin = 0.03
+        # ymax = 0.35
+        print self.diamond.Specifications['Name']
+        print xmin
+        print xmax
+        print ymin
+        print ymax
 
         def ManualHitDistribution(x, par):
             '''
@@ -138,7 +157,9 @@ class MCRun(Run):
         if save:
             pass
         # create track_info ROOT file
-        file = TFile('track_info.root','RECREATE')
+        if not os.path.exists(MCRunPath):
+            os.makedirs(MCRunPath)
+        file = TFile(MCRunPath+'track_info.root','RECREATE')
         self.track_info = TTree('track_info', 'MC track_info')
         track_x = array('f',[0])
         track_y = array('f',[0])
@@ -172,7 +193,7 @@ class MCRun(Run):
             canvas = TCanvas('canvas', 'canvas')
             canvas.cd()
             f_signal.Draw('surf1')
-            gPad.Print('RealSignalDistribution.png')
+            gPad.Print(MCRunPath+'RealSignalDistribution.png')
             answer = raw_input('for data creation, type `yes`: ')
         else:
             answer = 'yes'
@@ -218,7 +239,7 @@ class MCRun(Run):
             # Save root file and true Signal Shape:
             if save:
                 file.Write()
-                f_signal.SaveAs('RealSignalDistribution.root')
+                f_signal.SaveAs(MCRunPath+'RealSignalDistribution.root')
 
             # Print Settings of created data:
             print "Toydata containing {:.0f} peaks generated.".format(SignalParameters[0])
