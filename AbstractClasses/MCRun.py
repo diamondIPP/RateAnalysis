@@ -12,7 +12,7 @@ class MCRun(Run):
         self.HitDistributionMode = ''
         self.SignalMode = ''
         self.NumberOfHits = 300000
-        self.SetHitDistributionMode('Manual')
+        self.SetHitDistributionMode('Uniform')
         self.SetSignalMode('Landau')
         self.IsMonteCarlo = True
         self.Data = {
@@ -70,15 +70,8 @@ class MCRun(Run):
         xmax = self.diamond.Position['xmax'] - 0.01
         ymin = self.diamond.Position['ymin'] + 0.01
         ymax = self.diamond.Position['ymax'] - 0.01
-        # xmin = -0.18
-        # xmax = 0.13
-        # ymin = 0.03
-        # ymax = 0.35
-        print self.diamond.Specifications['Name']
-        print xmin
-        print xmax
-        print ymin
-        print ymax
+        center_x = (xmax+xmin)/2.
+        center_y = (ymax+ymin)/2.
 
         def ManualHitDistribution(x, par):
             '''
@@ -172,11 +165,25 @@ class MCRun(Run):
 
 
         if self.HitDistributionMode is 'Manual':
+            dx = 0.08
+            dy = 0.07
             f_lateral = TF2('f_lateral', ManualHitDistribution, xmin, xmax, ymin, ymax, 12)
             f_lateral.SetNpx(80)
             f_lateral.SetNpy(80)
-            # 6 gaus centers: x1    y1     x2   y2     x3   y3    x4    y4     x5    y5   x6   y6
-            par = np.array([-0.06, 0.27, 0.02, 0.27, 0.02, 0.2, -0.06, 0.2, -0.06, 0.13, 0.02, 0.13])
+            # 6 gaus centers: x1             y1           x2   y2     x3   y3    x4    y4     x5    y5   x6   y6
+            par = np.array([center_x-dx/2.,     # x1
+                            center_y+dy,        # y1
+                            center_x+dx/2.,     # x2
+                            center_y+dy,        # y2
+                            center_x+dx/2.,     # x3
+                            center_y,           # y3
+                            center_x-dx/2.,     # x4
+                            center_y,           # y4
+                            center_x-dx/2.,     # x5
+                            center_y-dy,        # y5
+                            center_x+dx/2.,     # x6
+                            center_y-dy,        # y6
+            ])
             f_lateral.SetParameters(par)
         a = Double()
         b = Double()
@@ -206,7 +213,7 @@ class MCRun(Run):
 
         # Get Toy Data
         if answer == 'yes':
-            integral50_max = 5000 # Maximum of Signal response allowed (data: 500 ?)
+            integral50_max = 500 # Maximum of Signal response allowed (data: 500 ?)
             i = 0
             j = 0
             while i < self.NumberOfHits and j < 2*self.NumberOfHits:
