@@ -1,19 +1,33 @@
 from RunClass import Run
-from ROOT import TFile, TMath, gRandom, TCanvas, TTree, TF2, Double, gPad
+from ROOT import TFile, TMath, gRandom, TCanvas, TTree, TF2, Double, gPad, gStyle
 from array import array
 from datetime import datetime
 import os
 import numpy as np
+import ConfigParser
 
 class MCRun(Run):
 
-    def __init__(self, validate = True, run_number = None):
-        Run.__init__(self, validate=validate, run_number=run_number)
-        self.HitDistributionMode = ''
-        self.SignalMode = ''
+    def __init__(self, validate = True, run_number = None, verbose=False):
+        Run.__init__(self, validate=validate, run_number=run_number, verbose=verbose)
+        self.MCAttributes = {
+            'NPeaks': None,
+            'PeakHeight': 0.5,
+            'PeakSigmaX_min': 0.02,
+            'PeakSigmaX_max': 0.07,
+            'PeakSigmaY_min': 0.02,
+            'PeakSigmaY_max': 0.07,
+            'OnlyCentralPeak': False,
+            'NumberOfHits': 300000,
+            'HitDistributionMode': '',
+            'TrackResolution': 0.,
+            'SignalMode': '',
+            'Landau_MPV_bkg': 80,
+            'Landau-Sigma': 10,
+            'integral50_max': 500,
+            'MCRunPath': 'runs/MC/MC_{0}/' # {0}: placeholder for run number
+        }
         self.NumberOfHits = 300000
-        self.SetHitDistributionMode('Uniform')
-        self.SetSignalMode('Landau')
         self.IsMonteCarlo = True
         self.Data = {
             'track_x': [],
@@ -21,10 +35,66 @@ class MCRun(Run):
             'integral50': []
         }
         self.DataIsMade = False
+        self.ShowAndWait = False
+        self.LoadMCConfig()
+
+    def LoadMCConfig(self):
+        parser = ConfigParser.ConfigParser()
+        parser.read('Configuration/MonteCarloConfig.cfg')
+        SignalMode = parser.get('SIGNAL-DISTRIBUTION','SignalMode')
+
+        # LOAD SIGNAL DISTRIBUTION SETTINGS
+        npeaks = parser.get('SIGNAL-DISTRIBUTION','NPeaks')
+        if npeaks == 'None':
+            npeaks = None
+        else:
+            npeaks = int(npeaks)
+        OnlyCentralPeak = parser.get('SIGNAL-DISTRIBUTION','OnlyCentralPeak')
+        OnlyCentralPeak = OnlyCentralPeak in ['True', 'true', '1']
+        PeakHeight = float(parser.get('SIGNAL-DISTRIBUTION','PeakHeight'))
+        Landau_MPV_bkg = int(parser.get('SIGNAL-DISTRIBUTION','Landau_MPV_bkg'))
+        Landau_Sigma = int(parser.get('SIGNAL-DISTRIBUTION','Landau_Sigma'))
+        integral50_max = int(parser.get('SIGNAL-DISTRIBUTION','integral50_max'))
+        PeakSigmaX_min = float(parser.get('SIGNAL-DISTRIBUTION','PeakSigmaX_min'))
+        PeakSigmaX_max = float(parser.get('SIGNAL-DISTRIBUTION','PeakSigmaX_max'))
+        PeakSigmaY_min = float(parser.get('SIGNAL-DISTRIBUTION','PeakSigmaY_min'))
+        PeakSigmaY_max = float(parser.get('SIGNAL-DISTRIBUTION','PeakSigmaY_max'))
+
+
+        # LOAD HIT DISTRIBUTION SETTINGS
+        NumberOfHits = int(parser.get('HIT-DISTRIBUTION','NumberOfHits'))
+        TrackResolution = float(parser.get('HIT-DISTRIBUTION','TrackResolution'))
+        HitDistributionMode = parser.get('HIT-DISTRIBUTION','HitDistributionMode')
+
+        # LOAD SAVE SETTINGS
+        MCRunPath = parser.get('SAVE','MCRunPath')
+
+        # LOAD DISPLAY SETTINGS
+        ShowAndWait = parser.get('DISPLAY','ShowAndWait')
+        ShowAndWait = ShowAndWait in ['True', 'true', '1']
+
+        # APPLY SETTINGS:
+        self.MCAttributes['NPeaks'] = npeaks
+        self.MCAttributes['PeakHeight'] = PeakHeight
+        self.MCAttributes['OnlyCentralPeak'] = OnlyCentralPeak
+        self.MCAttributes['NumberOfHits'] = NumberOfHits
+        self.NumberOfHits = NumberOfHits
+        self.MCAttributes['HitDistributionMode'] = HitDistributionMode
+        self.MCAttributes['SignalMode'] = SignalMode
+        self.MCAttributes['Landau_MPV_bkg'] = Landau_MPV_bkg
+        self.MCAttributes['Landau_Sigma'] = Landau_Sigma
+        self.MCAttributes['integral50_max'] = integral50_max
+        self.MCAttributes['MCRunPath'] = MCRunPath
+        self.MCAttributes['TrackResolution'] = TrackResolution
+        self.MCAttributes['PeakSigmaX_min'] = PeakSigmaX_min
+        self.MCAttributes['PeakSigmaX_max'] = PeakSigmaX_max
+        self.MCAttributes['PeakSigmaY_min'] = PeakSigmaY_min
+        self.MCAttributes['PeakSigmaY_max'] = PeakSigmaY_max
+        self.ShowAndWait = ShowAndWait
 
     def SetHitDistributionMode(self, mode):
         if mode is 'Import' or mode is 'Manual' or mode is 'Uniform':
-            self.HitDistributionMode = mode
+            self.MCAttributes['HitDistributionMode'] = mode
         else:
             assert(False), 'Wrong Hit Distribution Mode - mode has to be `Import` or `Manual` or `Uniform`'
         if mode is 'Import':
@@ -33,12 +103,17 @@ class MCRun(Run):
 
     def SetSignalMode(self, mode):
         if mode is 'Landau' or mode is 'Gaus':
-            self.SignalMode = mode
+            self.MCAttributes['SignalMode'] = mode
         else:
             assert(False), 'Wrong Signal Mode - mode has to be `Landau` or `Gaus`'
 
     def SetNumberOfHits(self, hits):
         self.NumberOfHits = hits
+        self.MCAttributes['NumberOfHits'] = hits
+
+
+    def SetOnlyCentralPeak(self, bool):
+        self.MCAttributes['OnlyCentralPeak'] = bool
 
     def ResetMC(self):
         self.DataIsMade = False
@@ -49,11 +124,11 @@ class MCRun(Run):
         }
 
     def ShowMCConfig(self):
-        print '\nHit Distribution Mode is Set to: '+self.HitDistributionMode
-        print 'Signal Mode is Set to: '+self.SignalMode
+        print '\nHit Distribution Mode is Set to: '+self.MCAttributes['HitDistributionMode']
+        print 'Signal Mode is Set to: '+self.MCAttributes['SignalMode']
         print 'Number of Signals to produce: ', self.NumberOfHits, '\n'
 
-    def Simulate(self, save=True, draw=True):
+    def Simulate(self, save=True, draw=False):
         '''
 
         :param save: if True: saves the root file as well as the true signal distribution
@@ -63,9 +138,10 @@ class MCRun(Run):
         '''
 
         # Settings:
-        MPV = 80 # background for Landau MPV distribution
-        sigma = 11 # Landau scaling sigma
-        MCRunPath = 'runs/MCrun_{0}/'.format(self.run_number)
+        MPV = self.MCAttributes['Landau_MPV_bkg'] # background for Landau MPV distribution
+        sigma = self.MCAttributes['Landau_Sigma'] # Landau scaling sigma
+        NPeaks = self.MCAttributes['NPeaks']
+        MCRunPath = self.MCAttributes['MCRunPath'].format(self.run_number)
         xmin = self.diamond.Position['xmin'] + 0.01
         xmax = self.diamond.Position['xmax'] - 0.01
         ymin = self.diamond.Position['ymin'] + 0.01
@@ -89,7 +165,7 @@ class MCRun(Run):
                 result += norm*TMath.Gaus(x[0], par[2*i], sigma)*TMath.Gaus(x[1], par[2*i+1], sigma)
             return result
 
-        def CreateRandomPeaksConfig(xmin, xmax, ymin, ymax, bkg = 120, peak_height = 0.1, npeaks = None):
+        def CreateRandomPeaksConfig(xmin, xmax, ymin, ymax, bkg = 120, peak_height = 0.5, npeaks = NPeaks):
             '''
             Creates the input parameters for SignalShape, which describes the peak distribution in the
             Signal distribution
@@ -104,15 +180,28 @@ class MCRun(Run):
             '''
             if npeaks is None:
                 npeaks = int(round(gRandom.Uniform(0,15)))
-            parameters = np.zeros(3+4*npeaks)
-            parameters[0] = npeaks
-            parameters[1] = bkg
-            parameters[2] = peak_height
-            for i in xrange(npeaks):
-                parameters[3+4*i] = gRandom.Uniform(xmin, xmax)
-                parameters[4+4*i] = gRandom.Uniform(ymin, ymax)
-                parameters[5+4*i] = gRandom.Uniform(0.02, 0.07)
-                parameters[6+4*i] = gRandom.Uniform(0.02, 0.07)
+
+            if self.MCAttributes['OnlyCentralPeak']:
+                npeaks = 1
+                dxy = 0.02
+                parameters = np.zeros(7)
+                parameters[0] = npeaks
+                parameters[1] = bkg
+                parameters[2] = peak_height
+                parameters[3] = gRandom.Uniform(center_x-dxy, center_x+dxy)
+                parameters[4] = gRandom.Uniform(center_y-dxy, center_y+dxy)
+                parameters[5] = gRandom.Uniform(self.MCAttributes['PeakSigmaX_min'], self.MCAttributes['PeakSigmaX_max'])
+                parameters[6] = gRandom.Uniform(self.MCAttributes['PeakSigmaY_min'], self.MCAttributes['PeakSigmaY_max'])
+            else:
+                parameters = np.zeros(3+4*npeaks)
+                parameters[0] = npeaks
+                parameters[1] = bkg
+                parameters[2] = peak_height
+                for i in xrange(npeaks):
+                    parameters[3+4*i] = gRandom.Uniform(xmin, xmax)
+                    parameters[4+4*i] = gRandom.Uniform(ymin, ymax)
+                    parameters[5+4*i] = gRandom.Uniform(0.02, 0.07)
+                    parameters[6+4*i] = gRandom.Uniform(0.02, 0.07)
             return parameters
 
         def SignalShape(x, par):
@@ -147,12 +236,11 @@ class MCRun(Run):
         seed = int((today-datetime(today.year, today.month, today.day , 0, 0, 0, 0)).total_seconds() % 1800 *1e6)
         gRandom.SetSeed(seed)
 
-        if save:
-            pass
         # create track_info ROOT file
         if not os.path.exists(MCRunPath):
             os.makedirs(MCRunPath)
-        file = TFile(MCRunPath+'track_info.root','RECREATE')
+        if save:
+            file = TFile(MCRunPath+'track_info.root','RECREATE')
         self.track_info = TTree('track_info', 'MC track_info')
         track_x = array('f',[0])
         track_y = array('f',[0])
@@ -164,13 +252,13 @@ class MCRun(Run):
         self.track_info.Branch('calibflag', calibflag, 'calibflag/I')
 
 
-        if self.HitDistributionMode is 'Manual':
+        if self.MCAttributes['HitDistributionMode'] is 'Manual':
             dx = 0.08
             dy = 0.07
             f_lateral = TF2('f_lateral', ManualHitDistribution, xmin, xmax, ymin, ymax, 12)
             f_lateral.SetNpx(80)
             f_lateral.SetNpy(80)
-            # 6 gaus centers: x1             y1           x2   y2     x3   y3    x4    y4     x5    y5   x6   y6
+            # 6 gaus centers:
             par = np.array([center_x-dx/2.,     # x1
                             center_y+dy,        # y1
                             center_x+dx/2.,     # x2
@@ -182,52 +270,61 @@ class MCRun(Run):
                             center_x-dx/2.,     # x5
                             center_y-dy,        # y5
                             center_x+dx/2.,     # x6
-                            center_y-dy,        # y6
-            ])
+                            center_y-dy         # y6
+                            ])
             f_lateral.SetParameters(par)
         a = Double()
         b = Double()
 
-        if self.SignalMode is 'Landau':
-            SignalParameters = CreateRandomPeaksConfig(xmin, xmax, ymin, ymax, peak_height=0.5, bkg=MPV)
+        # Generate Signal Distribution:
+        if self.MCAttributes['SignalMode'] == 'Landau':
+            self.SignalParameters = CreateRandomPeaksConfig(xmin, xmax, ymin, ymax, peak_height=self.MCAttributes['PeakHeight'], bkg=MPV)
         else:
-            SignalParameters = CreateRandomPeaksConfig(xmin, xmax, ymin, ymax, peak_height=0.5, bkg=100)
-        f_signal = TF2('f_signal', SignalShape, xmin, xmax, ymin, ymax, len(SignalParameters))
-        f_signal.SetNpx(40)
+            self.SignalParameters = CreateRandomPeaksConfig(xmin, xmax, ymin, ymax, peak_height=self.MCAttributes['PeakHeight'], bkg=100)
+        f_signal = TF2('f_signal', SignalShape, xmin, xmax, ymin, ymax, len(self.SignalParameters))
+        f_signal.SetNpx(40) # Resolution
         f_signal.SetNpy(40)
-        f_signal.SetParameters(SignalParameters)
+        f_signal.SetParameters(self.SignalParameters)
         if draw:
             canvas = TCanvas('canvas', 'canvas')
             canvas.cd()
+            gStyle.SetPalette(55) # a Rain Bow palette is used.
+            gStyle.SetNumberContours(8)
             f_signal.Draw('surf1')
             gPad.Print(MCRunPath+'RealSignalDistribution.png')
-            answer = raw_input('for data creation, type `yes`: ')
+            if self.ShowAndWait:
+                answer = raw_input('for data creation, type `yes`: ')
+            else:
+                answer = 'yes'
         else:
             answer = 'yes'
 
         # Set the Hit distribution for Manual or Import
-        if self.HitDistributionMode is 'Manual':
+        if self.MCAttributes['HitDistributionMode'] is 'Manual':
             HitsTemplate = f_lateral
-        elif self.HitDistributionMode is 'Import':
+        elif self.MCAttributes['HitDistributionMode'] is 'Import':
             HitsTemplate = self.counthisto
 
-        # Get Toy Data
+        # Generate Toy Data:
         if answer == 'yes':
-            integral50_max = 500 # Maximum of Signal response allowed (data: 500 ?)
+            if self.verbose:
+                self.ShowMCConfig()
+            self.VerbosePrint('Creating Toy Data with {0} Hits'.format(self.NumberOfHits))
+            integral50_max = self.MCAttributes['integral50_max'] # Maximum of Signal response allowed (data: 500 ?)
             i = 0
             j = 0
             while i < self.NumberOfHits and j < 2*self.NumberOfHits:
                 # Get x and y
-                if self.HitDistributionMode is 'Uniform':
+                if self.MCAttributes['HitDistributionMode'] == 'Uniform':
                     track_x[0] = gRandom.Uniform(xmin,xmax)
                     track_y[0] = gRandom.Uniform(ymin,ymax)
                 else:
                     HitsTemplate.GetRandom2(a,b)
-                    track_x[0] = gRandom.Gaus(a, 0.002) # 20mu track resolution (first guess)
-                    track_y[0] = gRandom.Gaus(b, 0.002)
+                    track_x[0] = gRandom.Gaus(a, self.MCAttributes['TrackResolution']) # 0.002 = 20mu track resolution (first guess)
+                    track_y[0] = gRandom.Gaus(b, self.MCAttributes['TrackResolution'])
 
                 # Get Signal at x and y
-                if self.SignalMode is 'Landau':
+                if self.MCAttributes['SignalMode'] is 'Landau':
                     integral50[0] = gRandom.Landau(f_signal(track_x[0], track_y[0]), sigma)
                 else:
                     integral50[0] = gRandom.Gaus(f_signal(track_x[0], track_y[0]), 0.6*f_signal(track_x[0], track_y[0])-33)
@@ -247,20 +344,22 @@ class MCRun(Run):
             if save:
                 file.Write()
                 f_signal.SaveAs(MCRunPath+'RealSignalDistribution.root')
+                self.VerbosePrint(MCRunPath+'track_info.root has been written')
 
             # Print Settings of created data:
-            print "Toydata containing {:.0f} peaks generated.".format(SignalParameters[0])
-            if self.SignalMode is 'Landau':
-                for i in xrange(int(SignalParameters[0])):
-                    x = SignalParameters[3+4*i]
-                    y = SignalParameters[4+4*i]
-                    print "Peak {0:.0f} at position: ({1:.3f}/{2:.3f}) with Laundau Response MPV: {3:.2f} Sigma: {4:.1f}".format(i+1, x, y, f_signal(x, y),sigma)
-            else:
-                integral50[0] = gRandom.Gaus(f_signal(track_x[0], track_y[0]), 0.6*f_signal(track_x[0], track_y[0])-33)
-                for i in xrange(int(SignalParameters[0])):
-                    x = SignalParameters[3+4*i]
-                    y = SignalParameters[4+4*i]
-                    print "Peak {0:.0f} at position: ({1:.3f}/{2:.3f}) with Gaussian Response Mean: {3:.2f} Sigma: {4:.1f}".format(i+1, x, y, f_signal(x, y), 0.6*f_signal(x, y)-33)
+            if self.verbose:
+                print "\nToydata containing {:.0f} peaks generated.".format(self.SignalParameters[0])
+                if self.MCAttributes['SignalMode'] == 'Landau':
+                    for i in xrange(int(self.SignalParameters[0])):
+                        x = self.SignalParameters[3+4*i]
+                        y = self.SignalParameters[4+4*i]
+                        print "Peak {0:.0f} at position: ({1:.3f}/{2:.3f}) with Laundau Response MPV: {3:.2f} Sigma: {4:.1f}".format(i+1, x, y, f_signal(x, y),sigma)
+                else:
+                    integral50[0] = gRandom.Gaus(f_signal(track_x[0], track_y[0]), 0.6*f_signal(track_x[0], track_y[0])-33)
+                    for i in xrange(int(self.SignalParameters[0])):
+                        x = self.SignalParameters[3+4*i]
+                        y = self.SignalParameters[4+4*i]
+                        print "Peak {0:.0f} at position: ({1:.3f}/{2:.3f}) with Gaussian Response Mean: {3:.2f} Sigma: {4:.1f}".format(i+1, x, y, f_signal(x, y), 0.6*f_signal(x, y)-33)
 
             self.DataIsMade = True
-            print 'Data madeeee'
+            self.VerbosePrint('Monte Carlo Toy Data created.\n')
