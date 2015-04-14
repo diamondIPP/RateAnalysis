@@ -40,19 +40,22 @@ class SignalInRCGraph(object):
         self.canvas.Update()
 
         # scale hit histo to pad:
-        self.graph.GetYaxis().SetRangeUser(min(gPad.GetUymin(), self.hit_histo.GetMinimum()),gPad.GetUymax())
         TitleFont = self.graph.GetYaxis().GetTitleFont()
         TitleSize = self.graph.GetYaxis().GetTitleSize()
         LabelFont = self.graph.GetYaxis().GetLabelFont()
         LabelSize = self.graph.GetYaxis().GetLabelSize()
         self.canvas.Update()
         rightmax = 1.1*self.hit_histo.GetMaximum()
-        scale = gPad.GetUymax()/rightmax
+        scale = (gPad.GetUymax()-gPad.GetUymin())/rightmax
 
         self.hit_histo.SetLineColor(kColor)
         self.hit_histo.Scale(scale)
         self.hit_histo.Draw('HIST SAME')
         self.canvas.Update()
+
+        # shift histo in y direction:
+        for i in xrange(self.hit_histo.GetNbinsX()+2):
+            self.hit_histo.Fill(self.hit_histo.GetBinCenter(i), gPad.GetUymin())
 
         #draw axis on the right side:
         rightaxis = TGaxis(gPad.GetUxmax(), gPad.GetUymin(), gPad.GetUxmax(), gPad.GetUymax(), 0, rightmax, 20210, '+L')
