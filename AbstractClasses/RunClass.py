@@ -10,7 +10,8 @@ class Run(object):
     operationmode = ''
     TrackingPadAnalysis = {}
 
-    def __init__(self,validate = True, run_number=None):
+    def __init__(self,validate = True, run_number=None, verbose = False):
+        self.verbose = verbose
         self.run_number = -1
         self.runinfo = RunInfo.load('Runinfos/runs.json')
         if validate:
@@ -23,11 +24,21 @@ class Run(object):
             self.SetRun(run_number)
         self.IsMonteCarlo = False
 
+    def VerbosePrint(self, *args):
+        if self.verbose:
+            # Print each argument separately so caller doesn't need to
+            # stuff everything to be printed into a single string
+            for arg in args:
+               print arg,
+            print
+        else:
+            pass
+
     def ValidateRuns(self, list_of_runs = None):
         runs = RunInfo.runs.keys() # list of all runs
         if list_of_runs is not None:
             runs = list_of_runs
-        print "Validating runs: ",runs
+        self.VerbosePrint("Validating runs: ",runs)
         for run in runs:
             self.ValidateRun(run)
 
