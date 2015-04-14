@@ -20,10 +20,15 @@ if __name__ == "__main__":
     show_plots = True
     minimum_statistics = 10 # don't draw bins which contain less than minimum_statistics hits
 
-    if '-mc' in sys.argv or 'mc' in sys.argv or 'MC' in sys.argv:
-        run = MCRun(validate=False)
+    if 'v' in sys.argv or '-v' in sys.argv or 'V' in sys.argv:
+        verbose = True
     else:
-        run = Run(validate=False)
+        verbose = False
+
+    if '-mc' in sys.argv or 'mc' in sys.argv or 'MC' in sys.argv:
+        run = MCRun(validate=False,verbose=verbose)
+    else:
+        run = Run(validate=False,verbose=verbose)
 
     MaxNrOfRuns = 9999
     if(len(run_numbers) == 0):
@@ -57,7 +62,7 @@ if __name__ == "__main__":
                 newAnalysis.DoAnalysis(minimum_statistics)
                 #newAnalysis.CreatePlots(True,'2D_Signal_dist',show3d=True)
                 # # # # newAnalysis.CreateMeanSignalHistogram(True)
-                newAnalysis.CreateBoth(saveplots=True)
+                # newAnalysis.CreateBoth(saveplots=True)
                 # newAnalysis.Pad.CreateSignalHistogram(saveplot=True)
                 # #
                 # # #print newAnalysis.Pad.ListOfBins[newAnalysis.Pad.GetBinNumber(0.05,0.05)].GetEntries()
@@ -93,22 +98,27 @@ if __name__ == "__main__":
                 # newAnalysis.Pad.GetSignalInColumn(position=0.13, show=True)
                 # newAnalysis.Pad.ShowBinXYSignalHisto(-0.03,0.19, saveplot=True, show_fit=True)
                 # newAnalysis.Pad.ShowBinXYSignalHisto(0.13,0.03,True)
-                newAnalysis.FindMaxima(show=True)
-                newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(-0.04,0.3,saveplot=True, show_fit=True)
-                newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.07,0.3,saveplot=True, show_fit=True)
+                newAnalysis.FindMaxima(show=False)
+                # newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(-0.04,0.3,saveplot=True, show_fit=True)
+                # newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.07,0.3,saveplot=True, show_fit=True)
                 # newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.12,0.33, saveplot=True, show_fit=True)
                 #newAnalysis.MaximaAnalysis.Pad.GetSignalInRow(0.3,True)
-                newAnalysis.MaximaAnalysis.Pad.GetSignalInRow(0.15,True)
+                # newAnalysis.MaximaAnalysis.Pad.GetSignalInRow(0.15,True)
                 # newAnalysis.MaximaAnalysis.Pad.GetSignalInColumn(0.06,True)
                 # newAnalysis.MaximaAnalysis.Pad.GetSignalInRow(0.35,True)
                 # newAnalysis.MaximaAnalysis.GetMPVSigmas(show = True)
                 #
+                if run.IsMonteCarlo:
+                    print "Run is MONTE CARLO"
+                    height = run.SignalParameters[4]
+                    newAnalysis.MaximaAnalysis.Pad.GetSignalInRow(height, show=True)
+
                 #
                 # # newAnalysis.Pad.SelectSignalStrengthRegion(bin3, sensitivity=0.14, activate=True)
                 # # newAnalysis.Pad.ShowSelectedBins()
                 # # newAnalysis.Pad.ShowCombinedKDistribution(saveplots=True, savename='combinedK_all')
                 # #
-                newAnalysis.CreateHitsDistribution(saveplot=True, drawoption='colz')
+                # newAnalysis.CreateHitsDistribution(saveplot=True, drawoption='colz')
                 # newAnalysis.ExportMC()
                 collection.AddAnalysis(newAnalysis)
         else:
