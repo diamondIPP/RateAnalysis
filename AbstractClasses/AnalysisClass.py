@@ -12,7 +12,7 @@ class Analysis(object):
 
     Signal2DDistribution = ROOT.TH2D()
 
-    def __init__(self, run_object, config_object = Config()):
+    def __init__(self, run_object, config_object = Config(), verbose = False):
         '''
         Initializes the Analysis object.
         :param run_object: run object of type "Run"
@@ -22,6 +22,7 @@ class Analysis(object):
 
         #initialize_ROOT()
         assert(run_object.run_number > 0), "No run selected, choose run.SetRun(run_nr) before you pass the run object"
+        self.verbose = verbose
         self.run_object = run_object
         self.config_object = config_object
         self.config_object.SetWindowFromDiamond(self.run_object.diamond)
@@ -40,6 +41,16 @@ class Analysis(object):
             'MeanSignalHisto': False,
             'HitsDistribution': False,
         }
+
+    def VerbosePrint(self, *args):
+        if self.verbose:
+            # Print each argument separately so caller doesn't need to
+            # stuff everything to be printed into a single string
+            for arg in args:
+               print arg,
+            print
+        else:
+            pass
 
     def DoAnalysis(self,minimum_bincontent = 1):
         '''
@@ -71,11 +82,11 @@ class Analysis(object):
         else: # run is Monte Carlo:
             GoOn = True
             d = 0
-            while GoOn and d<5:
+            while GoOn and d<5: # loop for different MC Signal Distributions
                 try:
-                    print 'try'
+                    self.VerbosePrint('try a Signal Distribution')
                     if not self.run_object.DataIsMade:
-                        self.run_object.Simulate(save=True, draw=True)
+                        self.run_object.Simulate(save=True, draw=True) # if draw=False the first distribution will be taken
                     for i in xrange(self.run_object.NumberOfHits):
                         x_ = self.run_object.Data['track_x'][i]
                         y_ = self.run_object.Data['track_y'][i]
@@ -184,7 +195,7 @@ class Analysis(object):
             ROOT.gStyle.SetHistFillColor(7)
             ROOT.gStyle.SetHistFillStyle(3003)
 
-    def CreateHitsDistribution(self,saveplot = False, drawoption = 'colz'):
+    def CreateHitsDistribution(self,saveplot = False, drawoption = 'colz'): # add palette!
         #ROOT.gStyle.SetNumberContours(10)
         canvas = ROOT.TCanvas('canvas', 'Hits',500,500)
         canvas.cd()
@@ -207,10 +218,17 @@ class Analysis(object):
 
     def FindMaxima(self,show=False):
         minimum_bincontent = 10
-        self.MaximaAnalysis = Analysis(self.run_object,Config(200))
+        self.MaximaAnalysis = Analysis(self.run_object,Config(100))
         self.MaximaAnalysis.DoAnalysis(minimum_bincontent)
-        self.MaximaAnalysis.CreatePlots(saveplots=True, show3d=True)
+        if show:
+            self.MaximaAnalysis.CreatePlots(saveplots=True, show3d=True)
         self.MaximaAnalysis.Pad.FindMaxima(minimum_bincount=minimum_bincontent,show=show)
+
+    def WaldWolfowitzRunsTest(self):
+        pass
+
+    def Chi2Test(self):
+        pass
 
     def GetMPVSigmas(self,show = False, minimum_counts = 10):
         '''
@@ -239,7 +257,7 @@ class Analysis(object):
                 graph.SetPointError(count, MPVErrs[i], SigmaErrs[i])
                 count += 1
             graph.Draw('AP')
-            raw_input("MPV vs Sigma shown...")
+            raw_input("MPV vs Sigma shown. Press Enter to go on.")
 
         return MPVs, Sigmas, MPVErrs, SigmaErrs
 
@@ -248,7 +266,10 @@ class Analysis(object):
         Hit distribution
         :return:
         '''
-        if not os.path.exists(MCDir):
-            os.makedirs(MCDir)
-        self.Pad.counthisto.SaveAs(MCDir+str(self.run_object.run_number)+'counthisto.root')
-        print "CountHisto exported."
+        if not self.run_object.IsMonteCarlo:
+            if not os.path.exists(MCDir):
+                os.makedirs(MCDir)
+            self.Pad.counthisto.SaveAs(MCDir+str(self.run_object.run_number)+'counthisto.root')
+            self.VerbosePrint("CountHisto exported..")
+        else:
+            print "INFO: Monte Carlo run can not be exported as MC input"
