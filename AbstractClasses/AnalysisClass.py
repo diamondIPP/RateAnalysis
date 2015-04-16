@@ -23,6 +23,7 @@ class Analysis(object):
         #initialize_ROOT()
         assert(run_object.run_number > 0), "No run selected, choose run.SetRun(run_nr) before you pass the run object"
         self.verbose = verbose
+        self.check_offset = True
         self.run_object = run_object
         self.config_object = config_object
         self.config_object.SetWindowFromDiamond(self.run_object.diamond)
@@ -42,6 +43,13 @@ class Analysis(object):
             'HitsDistribution': False,
         }
 
+        self.MCResults ={
+            'TrueNPeaks': None,
+            'FoundNMaxima': None,
+            'Ninjas': None,
+            'Ghosts': None
+        }
+
     def VerbosePrint(self, *args):
         if self.verbose:
             # Print each argument separately so caller doesn't need to
@@ -59,35 +67,74 @@ class Analysis(object):
         :param minimum_bincontent: Bins with less hits are ignored
         :return: -
         '''
-
+        print 'Check 1 in DoAnalysis'
         assert (minimum_bincontent > 0), "minimum_bincontent has to be a positive integer" # bins with less hits are ignored
 
         if not self.run_object.IsMonteCarlo:
             self.track_info = self.rootfile.Get('track_info') # Get TTree called "track_info"
-
+        print 'Check 2 in DoAnalysis'
         # create a bin collection object:
-        self.Pad = BinCollection(*self.config_object.Get2DAttributes())
+        # HERE IT CRASHES:
+        self.Pad = BinCollection(self, *self.config_object.Get2DAttributes())
 
+        # Check for misalignment in track vs signal using calibflag:
+        if self.check_offset and not self.run_object.IsMonteCarlo:
+            offset_canvas = ROOT.TCanvas("offset_canvas", "offset_canvas")
+            th1 = ROOT.TH1D("th1", "calibration offset", 21, -10.5, 10.5)
+            self.track_info.Draw("calib_offset>>th1", "calibflag==1 && calib_offset < 50")
+            pad = offset_canvas.GetPad(0)
+            pad.SetLogy()
+            offset_canvas.Update()
+            offset = int(th1.GetBinCenter(th1.GetMaximumBin()))
+            if abs(th1.GetMean())>0.3:
+                print "\nINFO: BAD TIMING ALIGNMENT !\n"
+            print "MOST COMMON OFFSET: {0:0.0F}\n".format(offset)
+        else:
+            offset = 0
+        print 'Check 3 in DoAnalysis'
         # fill two 2-dim histograms to collect the hits and signal strength
+        # if we have an offset, pick values from different events in tree
         if not self.run_object.IsMonteCarlo:
-            for i in xrange(self.track_info.GetEntries()):
-                # read the ROOT TTree
-                self.track_info.GetEntry(i)
-                x_ = self.track_info.track_x
-                y_ = self.track_info.track_y
-                signal_ = abs(self.track_info.integral50)
-                calibflag = self.track_info.calibflag
-                if calibflag == 0:
-                    self.Pad.Fill(x_, y_, signal_)
+            if offset == 0:
+                for i in xrange(self.track_info.GetEntries()):
+                    # read the ROOT TTree
+                    self.track_info.GetEntry(i)
+                    x_ = self.track_info.track_x
+                    y_ = self.track_info.track_y
+                    signal_ = abs(self.track_info.integral50)
+                    calibflag = self.track_info.calibflag
+                    if calibflag == 0:
+                        self.Pad.Fill(x_, y_, signal_)
+            else:
+                if offset > 0:
+                    pluscorrection = offset
+                    minuscorrection = 0
+                else:
+                    pluscorrection = 0
+                    minuscorrection = abs(offset)
+
+                for i in xrange(self.track_info.GetEntries()-abs(offset)):
+                    # read the ROOT TTree
+                    self.track_info.GetEntry(i+pluscorrection)
+                    x_ = self.track_info.track_x
+                    y_ = self.track_info.track_y
+                    self.track_info.GetEntry(i+minuscorrection)
+                    signal_ = abs(self.track_info.integral50)
+                    calibflag = self.track_info.calibflag
+                    if calibflag == 0:
+                        self.Pad.Fill(x_, y_, signal_)
         else: # run is Monte Carlo:
             GoOn = True
             d = 0
             while GoOn and d<5: # loop for different MC Signal Distributions
                 try:
+                    print 'Check 4 in DoAnalysis'
                     self.VerbosePrint('try a Signal Distribution')
                     if not self.run_object.DataIsMade:
+                        print 'Check 5 in DoAnalysis'
                         self.run_object.Simulate(save=True, draw=True) # if draw=False the first distribution will be taken
                     for i in xrange(self.run_object.NumberOfHits):
+                        print 'Check 6 in DoAnalysis'
                         x_ = self.run_object.Data['track_x'][i]
                         y_ = self.run_object.Data['track_y'][i]
                         signal_ = self.run_object.Data['integral50'][i]
@@ -196,7 +243,8 @@ class Analysis(object):
             ROOT.gStyle.SetHistFillStyle(3003)
 
     def CreateHitsDistribution(self,saveplot = False, drawoption = 'colz'): # add palette!
-        #ROOT.gStyle.SetNumberContours(10)
+        ROOT.gStyle.SetPalette(53)
+        ROOT.gStyle.SetNumberContours(999)
         canvas = ROOT.TCanvas('canvas', 'Hits',500,500)
         canvas.cd()
         self.Pad.counthisto.SetStats(False)
@@ -218,11 +266,22 @@ class Analysis(object):
 
     def FindMaxima(self,show=False):
         minimum_bincontent = 10
-        self.MaximaAnalysis = Analysis(self.run_object,Config(100))
-        self.MaximaAnalysis.DoAnalysis(minimum_bincontent)
+        print 'find maxima started'
+        try:
+            print self.MaximaAnalysis
+        except AttributeError:
+            print 'self.MaximaAnalysis not yet defined'
+        else:
+            del self.MaximaAnalysis
+            print '\nself.MaximaAnalysis deleted\n'
+        self.MaximaAnalysis = Analysis(self.run_object,Config(200))
+        print 'self.MaximaAnalysis defined'
+        self.MaximaAnalysis.DoAnalysis(minimum_bincontent) # HERE IT CRASHES
+        print 'DoAnalysis executed'
         if show:
-            self.MaximaAnalysis.CreatePlots(saveplots=True, show3d=True)
+            self.MaximaAnalysis.CreatePlots(saveplots=True, show3d=False)
         self.MaximaAnalysis.Pad.FindMaxima(minimum_bincount=minimum_bincontent,show=show)
+        print 'end of findmaxima'
 
     def WaldWolfowitzRunsTest(self):
         pass
