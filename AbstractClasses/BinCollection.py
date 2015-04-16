@@ -5,6 +5,7 @@ import numpy as np
 import os
 import types as t
 from Bin import Bin
+import copy
 
 
 class BinCollection(object):
@@ -14,7 +15,7 @@ class BinCollection(object):
 
     '''
 
-    def __init__(self, binsx, xmin, xmax, binsy, ymin, ymax):
+    def __init__(self, parent_analysis_obj, binsx, xmin, xmax, binsy, ymin, ymax):
         '''
         Constructor of a Bincollection. Since the data collection is based on ROOT.TH2D,
         the bins are ordered in a rectangular pattern inside a frame which is 1 bin thick leading
@@ -27,12 +28,21 @@ class BinCollection(object):
         :param ymax: data collection window upper y bound
         :return: -
         '''
+        print 'INSIDE BINCOLLECTION INIT1'
         if type(binsx) is not t.IntType or type(binsy) is not t.IntType:
             "INFO: binsx or binsy not of int type. Changing it to int..."
             binsx = int(binsx)
             binsy = int(binsy)
-
-        self.ListOfBins = [Bin(i,self) for i in xrange((binsx+2)*(binsy+2))] # A list, containing all Bin objects
+        print 'INSIDE BINCOLLECTION INIT2'
+        self.ListOfBins = [Bin]*(binsx+2)*(binsy+2)
+        Bin(108,self)
+        print 'bin'
+        for i in xrange((binsx+2)*(binsy+2)): # HERE IT CRASHES
+            print i
+            bin = Bin(i,self)
+            self.ListOfBins[i]= bin
+        # self.ListOfBins = [Bin(i,self) for i in xrange((binsx+2)*(binsy+2))] # A list, containing all Bin objects
+        print 'INSIDE BINCOLLECTION INIT3'
         self.binnumbers = [i for i in xrange((binsx+2)*(binsy+2))]
         self.Attributes = {
             'binsx': binsx, # bins in x without frame of 1 bin
@@ -44,7 +54,10 @@ class BinCollection(object):
             'binwidth_x': 1.*(xmax-xmin)/binsx,
             'binwidth_y': 1.*(ymax-ymin)/binsy
         }
-
+        print 'INSIDE BINCOLLECTION INIT4'
+        self.parent_analysis_obj = parent_analysis_obj
+        self.run_object = parent_analysis_obj.run_object
+        print 'INSIDE BINCOLLECTION INIT5'
         self.counthisto = ROOT.TH2D('counthisto', '2D hit distribution', *self.Get2DAttributes())
         self.totalsignal = ROOT.TH2D('totalsignal', '2D total signal distribution', *self.Get2DAttributes())
         self.SignalHisto = ROOT.TH1D('SignalHisto,', 'Signal response Histogram', 500, 0, 500)
@@ -745,7 +758,7 @@ class BinCollection(object):
                     found_maxima.append(i)
             return found_maxima
 
-        def GetBinsInNbhd(binnumber, include_center = False):
+        def GetBinsInNbhd(binnumber, include_center = False, extended = False):
             '''
             Returns the bin numbers of the surrounding bins of bin 'binnumber'
             :param binnumber:
@@ -765,6 +778,19 @@ class BinCollection(object):
             nbhd.append(binnumber-range_x-1)
             nbhd.append(binnumber-range_x)
             nbhd.append(binnumber-range_x+1)
+            if extended:
+                nbhd.append(binnumber+2*range_x-1)
+                nbhd.append(binnumber+2*range_x)
+                nbhd.append(binnumber+2*range_x+1)
+                nbhd.append(binnumber+range_x-2)
+                nbhd.append(binnumber+range_x+2)
+                nbhd.append(binnumber-2)
+                nbhd.append(binnumber+2)
+                nbhd.append(binnumber-range_x-2)
+                nbhd.append(binnumber-range_x+2)
+                nbhd.append(binnumber-2*range_x-1)
+                nbhd.append(binnumber-2*range_x)
+                nbhd.append(binnumber-2*range_x+1)
             return nbhd
 
 
@@ -774,7 +800,7 @@ class BinCollection(object):
         SENW_scan(self)
 
         maxima = GetBinsInVoteRange(4)
-        print len(maxima)," maxima found"
+        print len(maxima)," maxima found containing 4 votings"
 
         mean = self.SignalHisto.GetMean()
         for i in xrange(len(maxima)):
@@ -791,8 +817,59 @@ class BinCollection(object):
                 FillHistoByBinnumber(self,center_bin,1)
 
         maxima2 = GetBinsInVoteRange(5)
-        print len(maxima2)," maxima found: "
+        print len(maxima2)," maxima found containing 5 votings: "
         print self.GetBinCenter(maxima2)
+
+
+        # If Monte Carlo, match with real peak positions:
+        if self.run_object.IsMonteCarlo:
+            npeaks = int(self.run_object.SignalParameters[0])
+            #peak_height = self.run_object.SignalParameters[2]
+            peaks_x = []
+            peaks_y = []
+            Ghosts = []
+            Ninjas = []
+            Peak_nbhd = [] # all bins around eff peaks
+            Maxima_nbhd = [] # all bins around found maxima
+            self.real_peaks = ROOT.TGraphErrors()
+            for i in xrange(npeaks):
+                x = self.run_object.SignalParameters[3+4*i]
+                y = self.run_object.SignalParameters[4+4*i]
+                peaks_x.append(x)
+                peaks_y.append(y)
+                Peak_nbhd_temp = GetBinsInNbhd(self.GetBinNumber(x, y), include_center=True, extended=True)
+                Peak_nbhd += Peak_nbhd_temp
+                self.real_peaks.SetPoint(i, x, y)
+                self.real_peaks.SetPointError(i, self.run_object.SignalParameters[5+4*i], self.run_object.SignalParameters[6+4*i])
+            for bin_nr in maxima2:
+                Maxima_nbhd_temp = GetBinsInNbhd(bin_nr, include_center=True, extended=True)
+                Maxima_nbhd += Maxima_nbhd_temp
+            # Looking for Ghosts:
+            for bin_nr in maxima2:
+                if not bin_nr in Peak_nbhd:
+                    print 'Ghost peak found at position ({0:.3f}/{1:.3f})'.format(*self.GetBinCenter(bin_nr))
+                    Ghosts.append(bin_nr)
+            # Looking for Ninjas:
+            for i in xrange(npeaks):
+                bin_nr = self.GetBinNumber(peaks_x[i],peaks_y[i])
+                if not bin_nr in Maxima_nbhd:
+                    print 'Ninja peak found at position ({0:.3f}/{1:.3f})'.format(peaks_x[i],peaks_y[i])
+                    Ninjas.append(bin_nr)
+            if npeaks > 0:
+                print "\n{0:.1f}% of generated peaks found.".format(100.*(npeaks-len(Ninjas))/npeaks)
+            print len(Ninjas)," Ninjas."
+            print len(Ghosts)," Ghosts.\n"
+            self.parent_analysis_obj.MCResults['TrueNPeaks'] = npeaks
+            self.parent_analysis_obj.MCResults['FoundNMaxima'] = len(maxima2)
+            self.parent_analysis_obj.MCResults['Ninjas'] = len(Ninjas)
+            self.parent_analysis_obj.MCResults['Ghosts'] = len(Ghosts)
+
+
+
+
+        self.found_peaks = ROOT.TGraph()
+        for i in xrange(len(maxima2)):
+            self.found_peaks.SetPoint(i, *(self.GetBinCenter(maxima2)[i]))
 
         if show:
             vote_canvas = ROOT.TCanvas('vote_canvas', "find Max vote-histo")
@@ -801,7 +878,16 @@ class BinCollection(object):
             ROOT.gStyle.SetNumberContours(6)
             self.voting_histo.SetStats(False)
             self.voting_histo.Draw('colz')
-            print self.voting_histo.GetMaximumBin()
+            self.found_peaks.SetMarkerStyle(29)
+            self.found_peaks.SetMarkerSize(2)
+            self.found_peaks.SetMarkerColor(ROOT.kMagenta)
+            self.found_peaks.Draw('SAME P0')
+            if self.run_object.IsMonteCarlo:
+                self.real_peaks.SetMarkerStyle(20)
+                self.real_peaks.SetMarkerSize(2)
+                self.real_peaks.SetMarkerColor(ROOT.kRed)
+                self.real_peaks.SetLineColor(ROOT.kRed)
+                self.real_peaks.Draw('SAME P0')
             raw_input("vote histo drawn..")
             self.SavePlots('vote_histo', 'png', 'Results/')
             ROOT.gStyle.SetPalette(53)
