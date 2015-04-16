@@ -50,7 +50,7 @@ class SignalInRCGraph(object):
 
         self.hit_histo.SetLineColor(kColor)
         self.hit_histo.Scale(scale)
-        self.hit_histo.Draw('HIST SAME')
+        self.hit_histo.Draw('HIST SAME') # set Fill color to empty!
         self.canvas.Update()
 
         # shift histo in y direction:
