@@ -49,17 +49,15 @@ class MCRun(Run):
             npeaks = None
         else:
             npeaks = int(npeaks)
-        OnlyCentralPeak = parser.get('SIGNAL-DISTRIBUTION','OnlyCentralPeak')
-        OnlyCentralPeak = OnlyCentralPeak in ['True', 'true', '1']
-        PeakHeight = float(parser.get('SIGNAL-DISTRIBUTION','PeakHeight'))
-        Landau_MPV_bkg = int(parser.get('SIGNAL-DISTRIBUTION','Landau_MPV_bkg'))
-        Landau_Sigma = int(parser.get('SIGNAL-DISTRIBUTION','Landau_Sigma'))
-        integral50_max = int(parser.get('SIGNAL-DISTRIBUTION','integral50_max'))
-        PeakSigmaX_min = float(parser.get('SIGNAL-DISTRIBUTION','PeakSigmaX_min'))
-        PeakSigmaX_max = float(parser.get('SIGNAL-DISTRIBUTION','PeakSigmaX_max'))
-        PeakSigmaY_min = float(parser.get('SIGNAL-DISTRIBUTION','PeakSigmaY_min'))
-        PeakSigmaY_max = float(parser.get('SIGNAL-DISTRIBUTION','PeakSigmaY_max'))
-
+        OnlyCentralPeak     = parser.getboolean('SIGNAL-DISTRIBUTION','OnlyCentralPeak')
+        PeakHeight          = parser.getfloat('SIGNAL-DISTRIBUTION','PeakHeight')
+        Landau_MPV_bkg      = parser.getint('SIGNAL-DISTRIBUTION','Landau_MPV_bkg')
+        Landau_Sigma        = parser.getint('SIGNAL-DISTRIBUTION','Landau_Sigma')
+        integral50_max      = parser.getint('SIGNAL-DISTRIBUTION','integral50_max')
+        PeakSigmaX_min      = parser.getfloat('SIGNAL-DISTRIBUTION','PeakSigmaX_min')
+        PeakSigmaX_max      = parser.getfloat('SIGNAL-DISTRIBUTION','PeakSigmaX_max')
+        PeakSigmaY_min      = parser.getfloat('SIGNAL-DISTRIBUTION','PeakSigmaY_min')
+        PeakSigmaY_max      = parser.getfloat('SIGNAL-DISTRIBUTION','PeakSigmaY_max')
 
         # LOAD HIT DISTRIBUTION SETTINGS
         NumberOfHits = int(parser.get('HIT-DISTRIBUTION','NumberOfHits'))
@@ -70,8 +68,7 @@ class MCRun(Run):
         MCRunPath = parser.get('SAVE','MCRunPath')
 
         # LOAD DISPLAY SETTINGS
-        ShowAndWait = parser.get('DISPLAY','ShowAndWait')
-        ShowAndWait = ShowAndWait in ['True', 'true', '1']
+        ShowAndWait = parser.getboolean('DISPLAY','ShowAndWait')
 
         # APPLY SETTINGS:
         self.MCAttributes['NPeaks'] = npeaks
@@ -251,7 +248,7 @@ class MCRun(Run):
         self.track_info.Branch('integral50', integral50, 'integral50/F')
         self.track_info.Branch('calibflag', calibflag, 'calibflag/I')
 
-
+        # Create Manual Hit Distribution:
         if self.MCAttributes['HitDistributionMode'] is 'Manual':
             dx = 0.08
             dy = 0.07
