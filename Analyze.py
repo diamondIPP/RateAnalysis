@@ -8,6 +8,8 @@ from AbstractClasses.RunClass import Run
 from AbstractClasses.MCRun import MCRun
 from Runinfos.RunInfo import RunInfo
 from AbstractClasses.ConfigClass import *
+from AbstractClasses.MCPerformanceAnalysis import MCPerformanceAnalysis # CRASH
+from AbstractClasses.MCPerformance import MCPerformance
 #from Configuration.initialize_ROOT import initialize_ROOT
 
 
@@ -49,7 +51,7 @@ if __name__ == "__main__":
     print run_numbers
 
 
-    collection = AnalysisCollection()
+    # collection = AnalysisCollection()
     for run_number in run_numbers:
 
         if run.SetRun(run_number): # run has to exist and is setted
@@ -57,10 +59,12 @@ if __name__ == "__main__":
             if True or run.diamond.Specifications['Irradiation'] == 'no':
                 print run_number
 
+                MCAnalysis = MCPerformance()
+                MCAnalysis.DoSignalHeightScan()
                 #
-                newAnalysis = Analysis(run,Config(70))
-                newAnalysis.DoAnalysis(minimum_statistics)
-                #newAnalysis.CreatePlots(True,'2D_Signal_dist',show3d=True)
+                # newAnalysis = Analysis(run,Config(70))
+                # newAnalysis.DoAnalysis(minimum_statistics)
+                # newAnalysis.CreatePlots(True,'2D_Signal_dist',show3d=True)
                 # # # # newAnalysis.CreateMeanSignalHistogram(True)
                 # newAnalysis.CreateBoth(saveplots=True)
                 # newAnalysis.Pad.CreateSignalHistogram(saveplot=True)
@@ -98,7 +102,7 @@ if __name__ == "__main__":
                 # newAnalysis.Pad.GetSignalInColumn(position=0.13, show=True)
                 # newAnalysis.Pad.ShowBinXYSignalHisto(-0.03,0.19, saveplot=True, show_fit=True)
                 # newAnalysis.Pad.ShowBinXYSignalHisto(0.13,0.03,True)
-                newAnalysis.FindMaxima(show=False)
+                # newAnalysis.FindMaxima(show=True)
                 # newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(-0.04,0.3,saveplot=True, show_fit=True)
                 # newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.07,0.3,saveplot=True, show_fit=True)
                 # newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.12,0.33, saveplot=True, show_fit=True)
@@ -108,10 +112,21 @@ if __name__ == "__main__":
                 # newAnalysis.MaximaAnalysis.Pad.GetSignalInRow(0.35,True)
                 # newAnalysis.MaximaAnalysis.GetMPVSigmas(show = True)
                 #
-                if run.IsMonteCarlo:
-                    print "Run is MONTE CARLO"
-                    height = run.SignalParameters[4]
-                    newAnalysis.MaximaAnalysis.Pad.GetSignalInRow(height, show=True)
+
+                # newAnalysis.combined_canvas.cd(1)
+                # if run.IsMonteCarlo:
+                #     print "Run is MONTE CARLO"
+                #     if run.SignalParameters[0] > 0:
+                #         height = run.SignalParameters[4]
+                #         newAnalysis.MaximaAnalysis.Pad.GetSignalInRow(height, show=True)
+                #     newAnalysis.combined_canvas.cd(1)
+                #     newAnalysis.MaximaAnalysis.Pad.real_peaks.SetMarkerColor(ROOT.kBlue)
+                #     newAnalysis.MaximaAnalysis.Pad.real_peaks.SetLineColor(ROOT.kBlue)
+                #     newAnalysis.MaximaAnalysis.Pad.real_peaks.Draw('SAME P0')
+                # newAnalysis.MaximaAnalysis.Pad.found_peaks.SetMarkerColor(ROOT.kGreen+2)
+                # newAnalysis.MaximaAnalysis.Pad.found_peaks.Draw('SAME P0')
+                # newAnalysis.combined_canvas.Update()
+
 
                 #
                 # # newAnalysis.Pad.SelectSignalStrengthRegion(bin3, sensitivity=0.14, activate=True)
@@ -120,7 +135,7 @@ if __name__ == "__main__":
                 # #
                 # newAnalysis.CreateHitsDistribution(saveplot=True, drawoption='colz')
                 # newAnalysis.ExportMC()
-                collection.AddAnalysis(newAnalysis)
+                # collection.AddAnalysis(newAnalysis)
         else:
             print "Analysis of run ",run_number, " failed"
 
