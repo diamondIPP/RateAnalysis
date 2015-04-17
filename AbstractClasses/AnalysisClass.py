@@ -67,14 +67,11 @@ class Analysis(object):
         :param minimum_bincontent: Bins with less hits are ignored
         :return: -
         '''
-        print 'Check 1 in DoAnalysis'
         assert (minimum_bincontent > 0), "minimum_bincontent has to be a positive integer" # bins with less hits are ignored
 
         if not self.run_object.IsMonteCarlo:
             self.track_info = self.rootfile.Get('track_info') # Get TTree called "track_info"
-        print 'Check 2 in DoAnalysis'
         # create a bin collection object:
-        # HERE IT CRASHES:
         self.Pad = BinCollection(self, *self.config_object.Get2DAttributes())
 
         # Check for misalignment in track vs signal using calibflag:
@@ -91,7 +88,6 @@ class Analysis(object):
             print "MOST COMMON OFFSET: {0:0.0F}\n".format(offset)
         else:
             offset = 0
-        print 'Check 3 in DoAnalysis'
         # fill two 2-dim histograms to collect the hits and signal strength
         # if we have an offset, pick values from different events in tree
         if not self.run_object.IsMonteCarlo:
@@ -128,13 +124,10 @@ class Analysis(object):
             d = 0
             while GoOn and d<5: # loop for different MC Signal Distributions
                 try:
-                    print 'Check 4 in DoAnalysis'
                     self.VerbosePrint('try a Signal Distribution')
                     if not self.run_object.DataIsMade:
-                        print 'Check 5 in DoAnalysis'
-                        self.run_object.Simulate(save=True, draw=True) # if draw=False the first distribution will be taken
+                        self.run_object.Simulate(save=True, draw=False) # if draw=False the first distribution will be taken
                     for i in xrange(self.run_object.NumberOfHits):
-                        print 'Check 6 in DoAnalysis'
                         x_ = self.run_object.Data['track_x'][i]
                         y_ = self.run_object.Data['track_y'][i]
                         signal_ = self.run_object.Data['integral50'][i]
@@ -266,22 +259,11 @@ class Analysis(object):
 
     def FindMaxima(self,show=False):
         minimum_bincontent = 10
-        print 'find maxima started'
-        try:
-            print self.MaximaAnalysis
-        except AttributeError:
-            print 'self.MaximaAnalysis not yet defined'
-        else:
-            del self.MaximaAnalysis
-            print '\nself.MaximaAnalysis deleted\n'
         self.MaximaAnalysis = Analysis(self.run_object,Config(200))
-        print 'self.MaximaAnalysis defined'
         self.MaximaAnalysis.DoAnalysis(minimum_bincontent) # HERE IT CRASHES
-        print 'DoAnalysis executed'
         if show:
             self.MaximaAnalysis.CreatePlots(saveplots=True, show3d=False)
         self.MaximaAnalysis.Pad.FindMaxima(minimum_bincount=minimum_bincontent,show=show)
-        print 'end of findmaxima'
 
     def WaldWolfowitzRunsTest(self):
         pass
