@@ -28,21 +28,18 @@ class BinCollection(object):
         :param ymax: data collection window upper y bound
         :return: -
         '''
-        print 'INSIDE BINCOLLECTION INIT1'
         if type(binsx) is not t.IntType or type(binsy) is not t.IntType:
             "INFO: binsx or binsy not of int type. Changing it to int..."
             binsx = int(binsx)
             binsy = int(binsy)
-        print 'INSIDE BINCOLLECTION INIT2'
         self.ListOfBins = [Bin]*(binsx+2)*(binsy+2)
         Bin(108,self)
         print 'bin'
         for i in xrange((binsx+2)*(binsy+2)): # HERE IT CRASHES
-            print i
+            # print i
             bin = Bin(i,self)
             self.ListOfBins[i]= bin
         # self.ListOfBins = [Bin(i,self) for i in xrange((binsx+2)*(binsy+2))] # A list, containing all Bin objects
-        print 'INSIDE BINCOLLECTION INIT3'
         self.binnumbers = [i for i in xrange((binsx+2)*(binsy+2))]
         self.Attributes = {
             'binsx': binsx, # bins in x without frame of 1 bin
@@ -54,10 +51,8 @@ class BinCollection(object):
             'binwidth_x': 1.*(xmax-xmin)/binsx,
             'binwidth_y': 1.*(ymax-ymin)/binsy
         }
-        print 'INSIDE BINCOLLECTION INIT4'
         self.parent_analysis_obj = parent_analysis_obj
         self.run_object = parent_analysis_obj.run_object
-        print 'INSIDE BINCOLLECTION INIT5'
         self.counthisto = ROOT.TH2D('counthisto', '2D hit distribution', *self.Get2DAttributes())
         self.totalsignal = ROOT.TH2D('totalsignal', '2D total signal distribution', *self.Get2DAttributes())
         self.SignalHisto = ROOT.TH1D('SignalHisto,', 'Signal response Histogram', 500, 0, 500)
