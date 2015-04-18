@@ -13,7 +13,8 @@ class Run(object):
     def __init__(self,validate = True, run_number=None, verbose = False):
         self.verbose = verbose
         self.run_number = -1
-        self.runinfo = RunInfo.load('Runinfos/runs.json')
+        RunInfo.load('Runinfos/runs.json')
+        self.runinfo = RunInfo.runs
         if validate:
             self.ValidateRuns()
 
@@ -35,9 +36,10 @@ class Run(object):
             pass
 
     def ValidateRuns(self, list_of_runs = None):
-        runs = RunInfo.runs.keys() # list of all runs
         if list_of_runs is not None:
             runs = list_of_runs
+        else:
+            runs = RunInfo.runs.keys() # list of all runs
         self.VerbosePrint("Validating runs: ",runs)
         for run in runs:
             self.ValidateRun(run)
@@ -54,10 +56,13 @@ class Run(object):
     def ResetMC(self):
         pass
 
-    def SetRun(self,run_number):
-
+    def SetRun(self, run_number, validate = False):
+        if validate:
+            boolfunc = self.ValidateRun
+        else:
+            boolfunc = lambda run: True
         assert(run_number > 0), "incorrect run_number"
-        if run_number in RunInfo.runs:
+        if run_number in RunInfo.runs and boolfunc(run_number):
             self.run_number = run_number
 
             parser = ConfigParser.ConfigParser()
