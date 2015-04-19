@@ -9,6 +9,7 @@ class Diamond(object):
             'Manufacturer':'',
             'CrystalStructure':'', # eg. 'poly' or 'single'
             'Irradiation':'', # eg. 'no' or 'neutron' or 'proton'
+            'Fluence': '',
             'Thickness':0, # in um
             'DetectorType':'Pad', # eg. 'Pad' or 'Pixel'
         }
@@ -28,6 +29,7 @@ class Diamond(object):
             'S30':{
                 'crystal':      'single',
                 'irradiated':   'neutron',
+                'fluence':      5.e13,
                 'thickness':    539,
                 'producer':     'E-6',
                 'position': {
@@ -40,6 +42,7 @@ class Diamond(object):
             'S125':{
                 'crystal':      'single',
                 'irradiated':   'proton',
+                'fluence':      None,  # ?  <---------------
                 'thickness':    '',
                 'producer':     'E-6',
                 'position': {
@@ -52,6 +55,7 @@ class Diamond(object):
             'S129':{
                 'crystal':      'single',
                 'irradiated':   'no',
+                'fluence':      0,
                 'thickness':    528,
                 'producer':     'E-6',
                 'position': {
@@ -64,6 +68,7 @@ class Diamond(object):
             'S129-old-box':{
                 'crystal':      'single',
                 'irradiated':   'no',
+                'fluence':      0,
                 'thickness':    '',
                 'producer':     'II-IV',
                 'position': {
@@ -76,6 +81,7 @@ class Diamond(object):
             'IIa-1':{
                 'crystal':      'single',
                 'irradiated':   'no',
+                'fluence':      0,
                 'thickness':    617,
                 'producer':     'II-a',
                 'position': {
@@ -88,6 +94,7 @@ class Diamond(object):
             'IIa-2':{
                 'crystal':      'single',
                 'irradiated':   'neutron',
+                'fluence':      5.e13,
                 'thickness':    538,
                 'producer':     'II-a',
                 'position': {
@@ -100,6 +107,7 @@ class Diamond(object):
             'IIa-3':{
                 'crystal':      'single',
                 'irradiated':   'neutron',
+                'fluence':      1.e14,
                 'thickness':    535,
                 'producer':     'II-a',
                 'position': {
@@ -112,6 +120,7 @@ class Diamond(object):
             'IIa-5':{
                 'crystal':      'single',
                 'irradiated':   'no',
+                'fluence':      0,
                 'thickness':    775,
                 'producer':     'II-a',
                 'position': {
@@ -124,6 +133,7 @@ class Diamond(object):
             '2A87-E':{
                 'crystal':      'poly',
                 'irradiated':   'neutron',
+                'fluence':      None, # ?  <---------------
                 'thickness':    500,
                 'producer':     'II-IV',
                 'position': {
@@ -139,6 +149,7 @@ class Diamond(object):
         self.Specifications['CrystalStructure'] = diamonds[diamondname]['crystal']
         self.Specifications['Irradiation'] = diamonds[diamondname]['irradiated']
         self.Specifications['Thickness'] = diamonds[diamondname]['thickness']
+        self.Specifications['Fluence'] = diamonds[diamondname]['fluence']
         self.Position['xmin'] = diamonds[diamondname]['position']['xmin']
         self.Position['xmax'] = diamonds[diamondname]['position']['xmax']
         self.Position['ymin'] = diamonds[diamondname]['position']['ymin']
