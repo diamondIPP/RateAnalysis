@@ -1,12 +1,14 @@
 import ROOT
 import numpy as np
 from array import array
+from Elementary import Elementary
 
 
 
-class FindExtrema(object):
+class FindExtrema(Elementary):
     
-    def __init__(self, bincollection):
+    def __init__(self, bincollection, verbose = False):
+        Elementary.__init__(self, verbose=verbose)
         self.BinCollectionObj = bincollection
         self.ExtremaType = ''
         self.SetType()
@@ -15,7 +17,10 @@ class FindExtrema(object):
         self.bin_SW_coordinates = self.BinCollectionObj.ListOfBins[self.BinCollectionObj.Attributes['binsx']+3].GetBinCenter()
         self.bin_SE_coordinates = self.BinCollectionObj.ListOfBins[2*self.BinCollectionObj.Attributes['binsx']+2].GetBinCenter()
         self.binsx_, self.xmin_, self.xmax_, self.binsy_, self.ymin_, self.ymax_ = self.BinCollectionObj.Get2DAttributes()
-        
+
+    def LoadConfig(self):
+        self.ShowAndWait = False
+
     def Local1DExtrema(self, signal_1, signal_2, signal_3, entries):
         pass
 
@@ -229,7 +234,7 @@ class FindExtrema(object):
         if threshold is None:
             self.SetThreshold()
             # self.threshold = self.BinCollectionObj.SignalHisto.GetMean()
-            print 'threshold set automatically to ', self.threshold
+            self.VerbosePrint('threshold set automatically to ', self.threshold)
         else:
             self.threshold = threshold
         self.minimum_bincount = minimum_bincount
@@ -241,7 +246,7 @@ class FindExtrema(object):
         self.SENW_scan()
     
         Vote4Extrema = self.GetBinsInVoteRange(4)
-        print len(Vote4Extrema)," "+self.ExtremaType+" found containing 4 votings"
+        self.VerbosePrint(len(Vote4Extrema)," "+self.ExtremaType+" found containing 4 votings")
     
         mean = self.BinCollectionObj.SignalHisto.GetMean()
         for i in xrange(len(Vote4Extrema)):
@@ -258,8 +263,8 @@ class FindExtrema(object):
                 self.FillHistoByBinnumber(center_bin, 1)
     
         Vote5Extrema = self.GetBinsInVoteRange(5)
-        print len(Vote5Extrema)," "+self.ExtremaType+" found containing 5 votings: "
-        print self.BinCollectionObj.GetBinCenter(Vote5Extrema)
+        self.VerbosePrint(len(Vote5Extrema)," "+self.ExtremaType+" found containing 5 votings: ")
+        self.VerbosePrint(self.BinCollectionObj.GetBinCenter(Vote5Extrema))
     
     
         # If Monte Carlo, match with real peak positions:
@@ -288,24 +293,24 @@ class FindExtrema(object):
             # Looking for Ghosts:
             for bin_nr in Vote5Extrema:
                 if not bin_nr in Peak_nbhd:
-                    print 'Ghost peak found at position ({0:.3f}/{1:.3f})'.format(*self.BinCollectionObj.GetBinCenter(bin_nr))
+                    self.VerbosePrint('Ghost peak found at position ({0:.3f}/{1:.3f})'.format(*self.BinCollectionObj.GetBinCenter(bin_nr)))
                     Ghosts.append(bin_nr)
             # Looking for Ninjas:
             for i in xrange(npeaks):
                 bin_nr = self.BinCollectionObj.GetBinNumber(peaks_x[i],peaks_y[i])
                 if not bin_nr in Maxima_nbhd:
-                    print 'Ninja peak found at position ({0:.3f}/{1:.3f})'.format(peaks_x[i],peaks_y[i])
+                    self.VerbosePrint('Ninja peak found at position ({0:.3f}/{1:.3f})'.format(peaks_x[i],peaks_y[i]))
                     Ninjas.append(bin_nr)
             if npeaks > 0:
                 print "\n{0:.1f}% of generated peaks found.".format(100.*(npeaks-len(Ninjas))/npeaks)
             print len(Ninjas)," Ninjas."
             print len(Ghosts)," Ghosts.\n"
-            self.BinCollectionObj.parent_analysis_obj.MCResults['TrueNPeaks'] = npeaks
-            self.BinCollectionObj.parent_analysis_obj.MCResults['FoundNMaxima'] = len(Vote5Extrema)
-            self.BinCollectionObj.parent_analysis_obj.MCResults['Ninjas'] = len(Ninjas)
-            self.BinCollectionObj.parent_analysis_obj.MCResults['Ghosts'] = len(Ghosts)
-            
-    
+            self.BinCollectionObj.parent_analysis_obj.ExtremaResults['TrueNPeaks'] = npeaks
+            self.BinCollectionObj.parent_analysis_obj.ExtremaResults['Ninjas'] = len(Ninjas)
+            self.BinCollectionObj.parent_analysis_obj.ExtremaResults['Ghosts'] = len(Ghosts)
+        self.BinCollectionObj.parent_analysis_obj.ExtremaResults['FoundN'+self.ExtremaType] = len(Vote5Extrema)
+        self.BinCollectionObj.parent_analysis_obj.ExtremaResults['Found'+self.ExtremaType] = self.BinCollectionObj.GetBinCenter(Vote5Extrema)
+
         self.found_extrema = ROOT.TGraph()
         for i in xrange(len(Vote5Extrema)):
             self.found_extrema.SetPoint(i, *(self.BinCollectionObj.GetBinCenter(Vote5Extrema)[i]))
@@ -328,7 +333,7 @@ class FindExtrema(object):
                 self.real_peaks.SetLineColor(ROOT.kRed)
                 self.real_peaks.Draw('SAME P0')
             vote_canvas.Update()
-            raw_input("vote histo drawn..")
+            self.IfWait("Vote Histogram drawn")
             self.BinCollectionObj.SavePlots('vote_histo', 'png', 'Results/')
             # ROOT.gStyle.SetPalette(53)
             # ROOT.gStyle.SetNumberContours(999)
