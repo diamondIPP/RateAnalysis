@@ -1,4 +1,4 @@
-from ROOT import TGraphErrors, TH1D, TCanvas, gPad, TGaxis
+from ROOT import TGraphErrors, TH1D, TCanvas, gPad, TGaxis, gStyle
 import ROOT
 
 # Color for hit distribution (2nd graph):
@@ -50,7 +50,8 @@ class SignalInRCGraph(object):
 
         self.hit_histo.SetLineColor(kColor)
         self.hit_histo.Scale(scale)
-        self.hit_histo.Draw('HIST SAME') # set Fill color to empty!
+        gStyle.SetHistFillColor(0)
+        self.hit_histo.Draw('HIST SAME')
         self.canvas.Update()
 
         # shift histo in y direction:
