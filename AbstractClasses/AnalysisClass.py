@@ -1,11 +1,13 @@
 import ROOT
 from RunClass import Run
+from AbstractClasses.Elementary import Elementary
 import os
 from BinCollection import BinCollection
 from ConfigClass import *
+import ConfigParser
 
 
-class Analysis(object):
+class Analysis(Elementary):
     '''
     An Analysis Object contains all Data and Results of a single run.
     '''
@@ -19,10 +21,9 @@ class Analysis(object):
         :param config_object: config object of type "Pad2DHistConfig"
         :return: -
         '''
-
+        Elementary.__init__(self, verbose=verbose)
         #initialize_ROOT()
         assert(run_object.run_number > 0), "No run selected, choose run.SetRun(run_nr) before you pass the run object"
-        self.verbose = verbose
         self.check_offset = True
         self.run_object = run_object
         self.config_object = config_object
@@ -43,22 +44,25 @@ class Analysis(object):
             'HitsDistribution': False,
         }
 
-        self.MCResults ={
-            'TrueNPeaks': None,
-            'FoundNMaxima': None,
-            'Ninjas': None,
-            'Ghosts': None
+        self.ExtremaResults ={
+            'TrueNPeaks': None, # MC true number of peaks
+            'FoundNMaxima': None, # number of Maxima found
+            'FoundMaxima': None, # Maxima found as list [(x1, y1), (x2, y2), ...]
+            'FoundNMinima': None, # number of Minima found
+            'FoundMinima': None, # Minima found as list [(x1, y1), (x2, y2), ...]
+            'Ninjas': None, # number of true peaks not found (only available when MC Run)
+            'Ghosts': None # nunmber of wrong Maxima found (only available when MC Run)
         }
 
-    def VerbosePrint(self, *args):
-        if self.verbose:
-            # Print each argument separately so caller doesn't need to
-            # stuff everything to be printed into a single string
-            for arg in args:
-               print arg,
-            print
-        else:
-            pass
+    def LoadConfig(self):
+        parser = ConfigParser.ConfigParser()
+        parser.read('Configuration/AnalysisConfig.cfg')
+        ShowAndWait = parser.getboolean('DISPLAY','ShowAndWait')
+        SaveMCData = parser.getboolean('SAVE','SaveMCData')
+        check_offset = parser.getboolean('DO-ANALYSIS','check_offset')
+        self.ShowAndWait = ShowAndWait
+        self.SaveMCData = SaveMCData
+        self.check_offset = check_offset
 
     def DoAnalysis(self,minimum_bincontent = 1):
         '''
@@ -126,7 +130,7 @@ class Analysis(object):
                 try:
                     self.VerbosePrint('try a Signal Distribution')
                     if not self.run_object.DataIsMade:
-                        self.run_object.Simulate(save=True, draw=True) # if draw=False the first distribution will be taken
+                        self.run_object.Simulate(save=True) # if draw=False the first distribution will be taken
                     for i in xrange(self.run_object.NumberOfHits):
                         x_ = self.run_object.Data['track_x'][i]
                         y_ = self.run_object.Data['track_y'][i]
@@ -173,7 +177,7 @@ class Analysis(object):
             savename += '3D'
         else:
             self.Signal2DDistribution.Draw('colz')
-        raw_input('2d drawn')
+        self.IfWait('2d drawn')
         if saveplots:
             self.SavePlots(savename, ending, saveDir)
 
@@ -245,7 +249,7 @@ class Analysis(object):
         if PS:
             ROOT.gStyle.SetHistFillColor(7)
             ROOT.gStyle.SetHistFillStyle(3003)
-        raw_input('combined shown')
+        self.IfWait('Combined 2D Signal DistributionsShown')
 
     def CreateHitsDistribution(self,saveplot = False, drawoption = 'colz'): # add palette!
         ROOT.gStyle.SetPalette(53)
@@ -257,17 +261,8 @@ class Analysis(object):
         #self.Pad.counthisto.Draw('CONT1 SAME')
         if saveplot:
             self.SavePlots('Hits_Distribution', 'png', 'Results/')
-        raw_input('hits distribution')
+        self.IfWait('Hits Distribution shown')
         self.Checklist['HitsDistribution'] = True
-
-    def SavePlots(self, savename, ending, saveDir):
-        # Results directories:
-        #resultsdir = saveDir+'run_'+str(self.run_object.run_number)+'/' # eg. 'Results/run_364/'
-        resultsdir = saveDir # eg. 'Results/run_364/'
-        if not os.path.exists(resultsdir):
-            os.makedirs(resultsdir)
-
-        ROOT.gPad.Print(resultsdir+savename+'.'+ending)
 
     def FindMaxima(self,show=False):
         minimum_bincontent = 10
@@ -285,7 +280,8 @@ class Analysis(object):
             self.ExtremeAnalysis = Analysis(self.run_object,Config(200))
             self.ExtremeAnalysis.DoAnalysis(minimum_bincontent)
         if show:
-            self.ExtremeAnalysis.CreateBoth(saveplots=True, savename='SignalDistribution_MINSearch') # distroys combined_canvas
+            self.ExtremeAnalysis.CreatePlots()
+            # self.ExtremeAnalysis.CreateBoth(saveplots=True, savename='SignalDistribution_MINSearch') # distroys combined_canvas
         self.ExtremeAnalysis.Pad.FindMinima(minimum_bincount=minimum_bincontent,show=show)
 
     def WaldWolfowitzRunsTest(self):
@@ -321,7 +317,7 @@ class Analysis(object):
                 graph.SetPointError(count, MPVErrs[i], SigmaErrs[i])
                 count += 1
             graph.Draw('AP')
-            raw_input("MPV vs Sigma shown. Press Enter to go on.")
+            self.IfWait("MPV vs Sigma shown")
 
         return MPVs, Sigmas, MPVErrs, SigmaErrs
 
