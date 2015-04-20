@@ -5,18 +5,19 @@ import numpy as np
 import os
 import types as t
 from AbstractClasses.FindExtrema import FindMaxima, FindMinima
+from Elementary import Elementary
 from Bin import Bin
 import copy
 
 
-class BinCollection(object):
+class BinCollection(Elementary):
     '''
     A BinCollection Object Contains Bin-objects. It is used to store the data, as well
     as to read the data, make selections or to make Plots related to collection of many bins.
 
     '''
 
-    def __init__(self, parent_analysis_obj, binsx, xmin, xmax, binsy, ymin, ymax):
+    def __init__(self, parent_analysis_obj, binsx, xmin, xmax, binsy, ymin, ymax, verbose=False):
         '''
         Constructor of a Bincollection. Since the data collection is based on ROOT.TH2D,
         the bins are ordered in a rectangular pattern inside a frame which is 1 bin thick leading
@@ -29,6 +30,7 @@ class BinCollection(object):
         :param ymax: data collection window upper y bound
         :return: -
         '''
+        Elementary.__init__(self, verbose = verbose)
         if type(binsx) is not t.IntType or type(binsy) is not t.IntType:
             "INFO: binsx or binsy not of int type. Changing it to int..."
             binsx = int(binsx)
@@ -50,6 +52,9 @@ class BinCollection(object):
         self.counthisto = ROOT.TH2D('counthisto', '2D hit distribution', *self.Get2DAttributes())
         self.totalsignal = ROOT.TH2D('totalsignal', '2D total signal distribution', *self.Get2DAttributes())
         self.SignalHisto = ROOT.TH1D('SignalHisto,', 'Signal response Histogram', 500, 0, 500)
+
+    def LoadConfig(self):
+        self.ShowAndWait = False
 
     def Get2DAttributes(self):
         '''
@@ -229,7 +234,7 @@ class BinCollection(object):
         if draw:
             selection_canvas.cd()
             selection_pad.Draw("col")
-            raw_input("Selected bins shown")
+            self.IfWait("Selected bins shown")
             ROOT.gStyle.SetPalette(53)
             ROOT.gStyle.SetNumberContours(999)
         return selection_pad
@@ -310,7 +315,7 @@ class BinCollection(object):
         if draw:
             Kcanvas.cd()
             Khisto.Draw()
-            raw_input("K dostribution shown..")
+            self.IfWait("K distribution shown..")
         return Khisto
 
     def ShowCombinedKDistribution(self, saveplots = False, savename = 'CombinedKDistribution', ending='png', saveDir = 'Results/'):
@@ -327,7 +332,7 @@ class BinCollection(object):
         Khisto.Draw()
         if saveplots:
             self.SavePlots(savename, ending, saveDir)
-        raw_input('Combined K Distribution Drawn')
+        self.IfWait('Combined K Distribution Drawn')
         ROOT.gStyle.SetPalette(53)
         ROOT.gStyle.SetNumberContours(999)
 
@@ -458,7 +463,7 @@ class BinCollection(object):
             else:
                 graph.DrawGraph()
             self.SavePlots('signals_in_column{:.3f}'.format(columnposition),'png','Results/')
-            raw_input('show signal in column {:.3f}..'.format(columnposition))
+            self.IfWait('show signal in column {:.3f}..'.format(columnposition))
         return signals
 
     def GetSignalInRow(self, height, show = False, show_hits = True):
@@ -492,7 +497,7 @@ class BinCollection(object):
             else:
                 graph.DrawGraph()
             self.SavePlots('signals_in_row{:.3f}'.format(rowheight),'png','Results/')
-            raw_input('show signal in row {:.3f}..'.format(rowheight))
+            self.IfWait('show signal in row {:.3f}..'.format(rowheight))
         return signals
 
     def GetMPVInColumn(self, position, show=False):
@@ -527,7 +532,7 @@ class BinCollection(object):
             graph.GetYaxis().SetTitle("Signal")
             graph.Draw('AP')
             self.SavePlots('signals_in_column{:.3f}'.format(columnposition),'pdf','Results/')
-            raw_input('show signal in column {:.3f}..'.format(columnposition))
+            self.IfWait('show signal in column {:.3f}..'.format(columnposition))
         return signals
 
     def GetMPVInRow(self, height, show=False):
@@ -560,7 +565,7 @@ class BinCollection(object):
             graph.GetYaxis().SetTitle("Signal")
             graph.Draw('AP')
             self.SavePlots('signals_in_row{:.3f}'.format(rowheight),'pdf','Results/')
-            raw_input('show signal in row {:.3f}..'.format(rowheight))
+            self.IfWait('show signal in row {:.3f}..'.format(rowheight))
         return signals
 
     def CreateSignalHistogram(self,saveplot = False):
@@ -569,7 +574,7 @@ class BinCollection(object):
         self.SignalHisto.Draw()
         if saveplot:
             self.SavePlots('TotalSignalDistribution', 'png', 'Results/')
-        raw_input('signal histo drawn...')
+        self.IfWait('Signal Histogram drawn')
 
     def FindMaxima(self, threshold = None, minimum_bincount = 5, show = False):
         '''
@@ -894,7 +899,6 @@ class BinCollection(object):
         '''
         self.MinimaSearch = FindMinima(self)
         self.MinimaSearch.Find(threshold=threshold, minimum_bincount=minimum_bincount, show=show)
-
 
     def UpdateBinAttributes(self):
         for i in xrange(len(self.ListOfBins)):
