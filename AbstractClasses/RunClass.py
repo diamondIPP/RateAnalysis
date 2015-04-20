@@ -1,17 +1,18 @@
 from Helper.Initializer import initializer
 from Runinfos.RunInfo import RunInfo
 from DiamondClass import Diamond
+from Elementary import Elementary
 import os
 import ConfigParser
 
-class Run(object):
+class Run(Elementary):
 
     current_run = {}
     operationmode = ''
     TrackingPadAnalysis = {}
 
     def __init__(self,validate = True, run_number=None, verbose = False):
-        self.verbose = verbose
+        Elementary.__init__(self, verbose=verbose)
         self.run_number = -1
         RunInfo.load('Runinfos/runs.json')
         self.runinfo = RunInfo.runs
@@ -25,15 +26,11 @@ class Run(object):
             self.SetRun(run_number)
         self.IsMonteCarlo = False
 
-    def VerbosePrint(self, *args):
-        if self.verbose:
-            # Print each argument separately so caller doesn't need to
-            # stuff everything to be printed into a single string
-            for arg in args:
-               print arg,
-            print
-        else:
-            pass
+    def LoadConfig(self):
+        parser = ConfigParser.ConfigParser()
+        parser.read('Configuration/Machineconfig.cfg')
+        self.operationmode = parser.get('EXEC-MACHINE','operationmode')
+        self.ShowAndWait = False
 
     def ValidateRuns(self, list_of_runs = None):
         if list_of_runs is not None:
@@ -65,17 +62,13 @@ class Run(object):
         if run_number in RunInfo.runs and boolfunc(run_number):
             self.run_number = run_number
 
-            parser = ConfigParser.ConfigParser()
-            parser.read('Configuration/Machineconfig.cfg')
-            operationmode = parser.get('EXEC-MACHINE','operationmode')
-
-            if operationmode == "local-ssh":
+            if self.operationmode == "local-ssh":
                 self.TrackingPadAnalysis['ROOTFile'] = '/Volumes/scratch/PAD-testbeams/PSI_sept_14/software/TrackingPadAnalysis/results/runs/run_'+str(run_number)+'/track_info.root'
 
-            if operationmode == "ssh":
+            if self.operationmode == "ssh":
                 self.TrackingPadAnalysis['ROOTFile'] = '/scratch/PAD-testbeams/PSI_sept_14/software/TrackingPadAnalysis/results/runs/run_'+str(run_number)+'/track_info.root'
 
-            if operationmode == "local":
+            if self.operationmode == "local":
                 self.TrackingPadAnalysis['ROOTFile'] = 'runs/run_'+str(run_number)+'/track_info.root'
 
             self.run_number = run_number
