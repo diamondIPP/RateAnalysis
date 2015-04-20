@@ -36,6 +36,8 @@ class SignalInRCGraph(object):
         self.graph.Draw(drawoption)
 
     def DrawBoth(self, drawoption='AP'):
+        # ROOT.gROOT.Reset()
+        gStyle.SetHistFillStyle(0)
         self.DrawGraph(drawoption)
         self.canvas.Update()
 
@@ -48,10 +50,11 @@ class SignalInRCGraph(object):
         rightmax = 1.1*self.hit_histo.GetMaximum()
         scale = (gPad.GetUymax()-gPad.GetUymin())/rightmax
 
+        self.hit_histo.UseCurrentStyle()
         self.hit_histo.SetLineColor(kColor)
         self.hit_histo.Scale(scale)
-        gStyle.SetHistFillColor(0)
         self.hit_histo.Draw('HIST SAME')
+        self.graph.Draw('P SAME')
         self.canvas.Update()
 
         # shift histo in y direction:
