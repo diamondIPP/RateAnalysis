@@ -3,6 +3,7 @@ from ROOT import TFile, TMath, gRandom, TCanvas, TTree, TF2, Double, gPad, gStyl
 from array import array
 from datetime import datetime
 import os
+import types as t
 import numpy as np
 import ConfigParser
 
@@ -25,7 +26,8 @@ class MCRun(Run):
             'Landau_MPV_bkg': 80,
             'Landau-Sigma': 10,
             'integral50_max': 500,
-            'MCRunPath': 'runs/MC/MC_{0}/' # {0}: placeholder for run number
+            'MCRunPath': 'runs/MC/MC_{0}/', # {0}: placeholder for run number
+            'DrawRealDistribution': False
         }
         self.NumberOfHits = 300000
         self.IsMonteCarlo = True
@@ -69,6 +71,8 @@ class MCRun(Run):
 
         # LOAD DISPLAY SETTINGS
         ShowAndWait = parser.getboolean('DISPLAY','ShowAndWait')
+        DrawRealDistribution = parser.getboolean('DISPLAY','DrawRealDistribution')
+
 
         # APPLY SETTINGS:
         self.MCAttributes['NPeaks'] = npeaks
@@ -87,6 +91,8 @@ class MCRun(Run):
         self.MCAttributes['PeakSigmaX_max'] = PeakSigmaX_max
         self.MCAttributes['PeakSigmaY_min'] = PeakSigmaY_min
         self.MCAttributes['PeakSigmaY_max'] = PeakSigmaY_max
+        self.MCAttributes['DrawRealDistribution'] = DrawRealDistribution
+
         self.ShowAndWait = ShowAndWait
 
     def SetHitDistributionMode(self, mode):
@@ -125,7 +131,7 @@ class MCRun(Run):
         print 'Signal Mode is Set to: '+self.MCAttributes['SignalMode']
         print 'Number of Signals to produce: ', self.NumberOfHits, '\n'
 
-    def Simulate(self, save=True, draw=False):
+    def Simulate(self, save=True, draw=None):
         '''
 
         :param save: if True: saves the root file as well as the true signal distribution
@@ -145,6 +151,9 @@ class MCRun(Run):
         ymax = self.diamond.Position['ymax'] - 0.01
         center_x = (xmax+xmin)/2.
         center_y = (ymax+ymin)/2.
+        if draw is not None:
+            assert(type(draw) is t.BooleanType), "draw has to be boolean type"
+            self.MCAttributes['DrawRealDistribution'] = draw
 
         def ManualHitDistribution(x, par):
             '''
@@ -282,7 +291,7 @@ class MCRun(Run):
         f_signal.SetNpx(40) # Resolution
         f_signal.SetNpy(40)
         f_signal.SetParameters(self.SignalParameters)
-        if draw:
+        if self.MCAttributes['DrawRealDistribution']:
             canvas = TCanvas('canvas', 'canvas')
             canvas.cd()
             gStyle.SetPalette(55) # a Rain Bow palette is used.
