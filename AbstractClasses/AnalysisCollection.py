@@ -1,9 +1,10 @@
 import ROOT
 import types as t
 import os
+from Elementary import Elementary
 from ROOT import TGraphErrors
 
-class AnalysisCollection(object):
+class AnalysisCollection(Elementary):
     '''
     An object of this class contains several analysis of runs.
     It gives the ability to compare the data from different runs.
@@ -11,8 +12,8 @@ class AnalysisCollection(object):
     collection = {}
     current_run_number = -1
 
-    def __init__(self):
-        pass
+    def __init__(self, verbose = False):
+        Elementary.__init__(verbose=verbose)
 
     def AddAnalysis(self,analysis_obj):
         '''
@@ -109,7 +110,7 @@ class AnalysisCollection(object):
         graph.Draw('AP')
         ROOT.gPad.Print("Results/MPV_Sigma_graph.png")
         ROOT.gPad.Print("Results/MPV_Sigma_graph.root")
-        raw_input("MPV vs Sigma shown...")
+        self.IfWait("MPV vs Sigma shown...")
 
     def GetNumberOfAnalyses(self):
         '''
