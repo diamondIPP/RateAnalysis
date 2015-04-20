@@ -126,7 +126,7 @@ class Analysis(object):
                 try:
                     self.VerbosePrint('try a Signal Distribution')
                     if not self.run_object.DataIsMade:
-                        self.run_object.Simulate(save=True, draw=False) # if draw=False the first distribution will be taken
+                        self.run_object.Simulate(save=True, draw=True) # if draw=False the first distribution will be taken
                     for i in xrange(self.run_object.NumberOfHits):
                         x_ = self.run_object.Data['track_x'][i]
                         y_ = self.run_object.Data['track_y'][i]
@@ -177,11 +177,17 @@ class Analysis(object):
         if saveplots:
             self.SavePlots(savename, ending, saveDir)
 
-    def CreateMeanSignalHistogram(self,saveplots = False,savename = 'MeanSignalDistribution',ending='png',saveDir = 'Results/'):
+    def CreateMeanSignalHistogram(self,saveplots = False,savename = 'MeanSignalDistribution',ending='png',saveDir = 'Results/', show = False):
 
         #self.signal_canvas = ROOT.TCanvas()
         #ROOT.SetOwnership(self, False)
-        self.signal_canvas.Clear()
+        if hasattr(self, 'signal_canvas'):
+            self.signal_canvas.Clear()
+        else:
+            self.signal_canvas = ROOT.TCanvas()
+            ROOT.SetOwnership(self.signal_canvas, False)
+            ROOT.gStyle.SetPalette(53)
+            ROOT.gStyle.SetNumberContours(999)
 
         minimum = self.Signal2DDistribution.GetMinimum()
         maximum = self.Signal2DDistribution.GetMaximum()
@@ -195,7 +201,8 @@ class Analysis(object):
             bincontent = self.Signal2DDistribution.GetBinContent(i)
             if bincontent != 0.:
                 self.MeanSignalHisto.Fill(bincontent)
-        self.MeanSignalHisto.Draw()
+        if show:
+            self.MeanSignalHisto.Draw()
 
         if saveplots:
             self.SavePlots(savename, ending, saveDir)
@@ -204,14 +211,17 @@ class Analysis(object):
 
     def CreateBoth(self,saveplots = False,savename = 'SignalDistribution',ending='png',saveDir = 'Results/',PS=False):
         self.combined_canvas = ROOT.TCanvas("combined_canvas","Combined Canvas",1000,500)
+        ROOT.SetOwnership(self.combined_canvas, False)
         self.combined_canvas.Divide(2,1)
 
-        self.CreatePlots(False)
-        self.CreateMeanSignalHistogram(False)
+        #self.CreatePlots(False)
+        self.CreateMeanSignalHistogram(False, show=False)
 
         self.combined_canvas.cd(1)
         #ROOT.gStyle.SetPalette(55)
         # ROOT.gStyle.SetNumberContours(999)
+        ROOT.gStyle.SetPalette(53)
+        ROOT.gStyle.SetNumberContours(999)
         self.Signal2DDistribution.Draw('colz')#"CONT1Z")#)'colz')
         self.combined_canvas.cd(2)
 
@@ -226,6 +236,7 @@ class Analysis(object):
         self.MeanSignalHisto.GetXaxis().SetTitle('Signal response')
         self.MeanSignalHisto.Draw()
         self.combined_canvas.cd()
+        self.combined_canvas.Update()
 
         savename = self.run_object.diamond.Specifications['Name']+'_'+self.run_object.diamond.Specifications['Irradiation']+'_'+savename+'_'+str(self.run_object.run_number) # diamond_irradiation_savename_runnr
         if saveplots:
@@ -234,6 +245,7 @@ class Analysis(object):
         if PS:
             ROOT.gStyle.SetHistFillColor(7)
             ROOT.gStyle.SetHistFillStyle(3003)
+        raw_input('combined shown')
 
     def CreateHitsDistribution(self,saveplot = False, drawoption = 'colz'): # add palette!
         ROOT.gStyle.SetPalette(53)
@@ -259,11 +271,22 @@ class Analysis(object):
 
     def FindMaxima(self,show=False):
         minimum_bincontent = 10
-        self.MaximaAnalysis = Analysis(self.run_object,Config(200))
-        self.MaximaAnalysis.DoAnalysis(minimum_bincontent) # HERE IT CRASHES
+        if not hasattr(self, 'ExtremeAnalysis'):
+            self.ExtremeAnalysis = Analysis(self.run_object,Config(200))
+            self.ExtremeAnalysis.DoAnalysis(minimum_bincontent)
         if show:
-            self.MaximaAnalysis.CreatePlots(saveplots=True, show3d=False)
-        self.MaximaAnalysis.Pad.FindMaxima(minimum_bincount=minimum_bincontent,show=show)
+            self.ExtremeAnalysis.CreatePlots()
+            #self.ExtremeAnalysis.CreateBoth(saveplots=True, savename='SignalDistribution_MAXSearch') # distroys combined_canvas
+        self.ExtremeAnalysis.Pad.FindMaxima(minimum_bincount=minimum_bincontent,show=show)
+
+    def FindMinima(self,show=False):
+        minimum_bincontent = 10
+        if not hasattr(self, 'ExtremeAnalysis'):
+            self.ExtremeAnalysis = Analysis(self.run_object,Config(200))
+            self.ExtremeAnalysis.DoAnalysis(minimum_bincontent)
+        if show:
+            self.ExtremeAnalysis.CreateBoth(saveplots=True, savename='SignalDistribution_MINSearch') # distroys combined_canvas
+        self.ExtremeAnalysis.Pad.FindMinima(minimum_bincount=minimum_bincontent,show=show)
 
     def WaldWolfowitzRunsTest(self):
         pass
@@ -273,7 +296,7 @@ class Analysis(object):
 
     def GetMPVSigmas(self,show = False, minimum_counts = 10):
         '''
-        Returns mpvs and signals of current run
+        Returns MPVs and signals form all Bins of current run as Lists
         :return:
         '''
         MPVs = []
