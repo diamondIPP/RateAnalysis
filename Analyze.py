@@ -8,7 +8,6 @@ from AbstractClasses.RunClass import Run
 from AbstractClasses.MCRun import MCRun
 from Runinfos.RunInfo import RunInfo
 from AbstractClasses.ConfigClass import *
-from AbstractClasses.MCPerformanceAnalysis import MCPerformanceAnalysis # CRASH
 from AbstractClasses.MCPerformance import MCPerformance
 #from Configuration.initialize_ROOT import initialize_ROOT
 
@@ -59,14 +58,12 @@ if __name__ == "__main__":
             if True or run.diamond.Specifications['Irradiation'] == 'no':
                 print run_number
 
-                MCAnalysis = MCPerformance()
-                MCAnalysis.DoSignalHeightScan()
                 #
-                # newAnalysis = Analysis(run,Config(70))
-                # newAnalysis.DoAnalysis(minimum_statistics)
+                newAnalysis = Analysis(run,Config(70))
+                newAnalysis.DoAnalysis(minimum_statistics)
                 # newAnalysis.CreatePlots(True,'2D_Signal_dist',show3d=True)
                 # # # # newAnalysis.CreateMeanSignalHistogram(True)
-                # newAnalysis.CreateBoth(saveplots=True)
+                newAnalysis.CreateBoth(saveplots=True)
                 # newAnalysis.Pad.CreateSignalHistogram(saveplot=True)
                 # #
                 # # #print newAnalysis.Pad.ListOfBins[newAnalysis.Pad.GetBinNumber(0.05,0.05)].GetEntries()
@@ -102,7 +99,8 @@ if __name__ == "__main__":
                 # newAnalysis.Pad.GetSignalInColumn(position=0.13, show=True)
                 # newAnalysis.Pad.ShowBinXYSignalHisto(-0.03,0.19, saveplot=True, show_fit=True)
                 # newAnalysis.Pad.ShowBinXYSignalHisto(0.13,0.03,True)
-                # newAnalysis.FindMaxima(show=True)
+                newAnalysis.FindMaxima(show=True)
+                # newAnalysis.FindMinima(show=True)
                 # newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(-0.04,0.3,saveplot=True, show_fit=True)
                 # newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.07,0.3,saveplot=True, show_fit=True)
                 # newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.12,0.33, saveplot=True, show_fit=True)
@@ -113,19 +111,21 @@ if __name__ == "__main__":
                 # newAnalysis.MaximaAnalysis.GetMPVSigmas(show = True)
                 #
 
-                # newAnalysis.combined_canvas.cd(1)
-                # if run.IsMonteCarlo:
-                #     print "Run is MONTE CARLO"
-                #     if run.SignalParameters[0] > 0:
-                #         height = run.SignalParameters[4]
-                #         newAnalysis.MaximaAnalysis.Pad.GetSignalInRow(height, show=True)
-                #     newAnalysis.combined_canvas.cd(1)
-                #     newAnalysis.MaximaAnalysis.Pad.real_peaks.SetMarkerColor(ROOT.kBlue)
-                #     newAnalysis.MaximaAnalysis.Pad.real_peaks.SetLineColor(ROOT.kBlue)
-                #     newAnalysis.MaximaAnalysis.Pad.real_peaks.Draw('SAME P0')
-                # newAnalysis.MaximaAnalysis.Pad.found_peaks.SetMarkerColor(ROOT.kGreen+2)
-                # newAnalysis.MaximaAnalysis.Pad.found_peaks.Draw('SAME P0')
-                # newAnalysis.combined_canvas.Update()
+                newAnalysis.combined_canvas.cd(1)
+                if run.IsMonteCarlo:
+                    print "Run is MONTE CARLO"
+                    if run.SignalParameters[0] > 0:
+                        height = run.SignalParameters[4]
+                        newAnalysis.ExtremeAnalysis.Pad.GetSignalInRow(height, show=True)
+                    newAnalysis.combined_canvas.cd(1)
+                    newAnalysis.ExtremeAnalysis.Pad.MaximaSearch.real_peaks.SetMarkerColor(ROOT.kBlue)
+                    newAnalysis.ExtremeAnalysis.Pad.MaximaSearch.real_peaks.SetLineColor(ROOT.kBlue)
+                    newAnalysis.ExtremeAnalysis.Pad.MaximaSearch.real_peaks.Draw('SAME P0')
+                newAnalysis.ExtremeAnalysis.Pad.MaximaSearch.found_extrema.SetMarkerColor(ROOT.kGreen+2)
+                newAnalysis.ExtremeAnalysis.Pad.MaximaSearch.found_extrema.Draw('SAME P0')
+                ROOT.gStyle.SetPalette(53)
+                ROOT.gStyle.SetNumberContours(999)
+                newAnalysis.combined_canvas.Update()
 
 
                 #
@@ -143,6 +143,8 @@ if __name__ == "__main__":
     # collection.CreateFWHMPlot()
     # collection.CreateSigmaMPVPlot()
 
+    # MCAnalysis = MCPerformance()
+    # MCAnalysis.DoSignalHeightScan()
 
     if show_plots: raw_input("Press ENTER to quit:")
 
