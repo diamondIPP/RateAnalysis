@@ -7,6 +7,7 @@ from AbstractClasses.AnalysisCollection import AnalysisCollection
 from AbstractClasses.RunClass import Run
 from AbstractClasses.MCRun import MCRun
 from Runinfos.RunInfo import RunInfo
+from array import array
 from AbstractClasses.ConfigClass import *
 from AbstractClasses.MCPerformance import MCPerformance
 #from Configuration.initialize_ROOT import initialize_ROOT
@@ -133,6 +134,18 @@ if __name__ == "__main__":
                     text = ROOT.TText()
                     text.SetTextColor(ROOT.kRed)
                     text.DrawText(maxima[i][0]-0.02, maxima[i][1]-0.005, 'high')
+                if len(maxima)*len(minima)>0:
+                    maxbin = newAnalysis.ExtremeAnalysis.Pad.GetBinByCoordinates(*(maxima[0]))
+                    maxbin.FitLandau()
+                    minbin = newAnalysis.ExtremeAnalysis.Pad.GetBinByCoordinates(*(minima[0]))
+                    minbin.FitLandau()
+                    print '\nApproximated Signal Amplitude: {0:-0.0f}% - (high/low approximation)\n'.format(100.*(maxbin.Fit['MPV']/minbin.Fit['MPV']-1.))
+                min_percent = 5
+                max_percent = 99
+                q = array('d', [1.*min_percent/100., 1.*max_percent/100.])
+                y = array('d', [0,0])
+                newAnalysis.ExtremeAnalysis.MeanSignalHisto.GetQuantiles(2, y, q)
+                print '\nApproximated Signal Amplitude: {0:0.0f}% - ({1:0.0f}%/{2:0.0f}% Quantiles approximation)\n'.format(100.*(y[1]/y[0]-1.), max_percent, min_percent)
                 # newAnalysis.ExtremeAnalysis.Pad.MinimaSearch.found_extrema.SetMarkerColor(ROOT.kBlue-4)
                 # newAnalysis.ExtremeAnalysis.Pad.MinimaSearch.found_extrema.Draw('SAME P0')
                 ROOT.gStyle.SetPalette(53)
