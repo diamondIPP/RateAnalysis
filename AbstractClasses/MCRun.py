@@ -80,7 +80,7 @@ class MCRun(Run):
         self.MCAttributes['OnlyCentralPeak'] = OnlyCentralPeak
         self.MCAttributes['NumberOfHits'] = NumberOfHits
         self.NumberOfHits = NumberOfHits
-        self.MCAttributes['HitDistributionMode'] = HitDistributionMode
+        self.SetHitDistributionMode(HitDistributionMode)
         self.MCAttributes['SignalMode'] = SignalMode
         self.MCAttributes['Landau_MPV_bkg'] = Landau_MPV_bkg
         self.MCAttributes['Landau_Sigma'] = Landau_Sigma
@@ -96,16 +96,16 @@ class MCRun(Run):
         self.ShowAndWait = ShowAndWait
 
     def SetHitDistributionMode(self, mode):
-        if mode is 'Import' or mode is 'Manual' or mode is 'Uniform':
+        if mode == 'Import' or mode == 'Manual' or mode == 'Uniform':
             self.MCAttributes['HitDistributionMode'] = mode
         else:
             assert(False), 'Wrong Hit Distribution Mode - mode has to be `Import` or `Manual` or `Uniform`'
-        if mode is 'Import':
+        if mode == 'Import':
             self.CountHistoFile = TFile('MCInputs/364counthisto.root')
             self.counthisto = self.CountHistoFile.Get('counthisto')
 
     def SetSignalMode(self, mode):
-        if mode is 'Landau' or mode is 'Gaus':
+        if mode == 'Landau' or mode == 'Gaus':
             self.MCAttributes['SignalMode'] = mode
         else:
             assert(False), 'Wrong Signal Mode - mode has to be `Landau` or `Gaus`'
@@ -306,9 +306,9 @@ class MCRun(Run):
             answer = 'yes'
 
         # Set the Hit distribution for Manual or Import
-        if self.MCAttributes['HitDistributionMode'] is 'Manual':
+        if self.MCAttributes['HitDistributionMode'] == 'Manual':
             HitsTemplate = f_lateral
-        elif self.MCAttributes['HitDistributionMode'] is 'Import':
+        elif self.MCAttributes['HitDistributionMode'] == 'Import':
             HitsTemplate = self.counthisto
 
         # Generate Toy Data:
