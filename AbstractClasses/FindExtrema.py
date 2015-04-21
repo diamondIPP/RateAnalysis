@@ -316,7 +316,7 @@ class FindExtrema(Elementary):
             self.found_extrema.SetPoint(i, *(self.BinCollectionObj.GetBinCenter(Vote5Extrema)[i]))
     
         if self.show:
-            vote_canvas = ROOT.TCanvas('vote_canvas_'+self.ExtremaType, "find "+self.ExtremaType+" vote-histo")
+            vote_canvas = ROOT.TCanvas('vote_canvas_'+self.ExtremaType, "find "+self.ExtremaType+" vote-histo", 500, 500)
             vote_canvas.cd()
             ROOT.gStyle.SetPalette(51)
             ROOT.gStyle.SetNumberContours(6)
