@@ -72,7 +72,7 @@ class Analysis(Elementary):
         :return: -
         '''
         assert (minimum_bincontent > 0), "minimum_bincontent has to be a positive integer" # bins with less hits are ignored
-
+        self.minimum_bincontent = minimum_bincontent
         if not self.run_object.IsMonteCarlo:
             self.track_info = self.rootfile.Get('track_info') # Get TTree called "track_info"
         # create a bin collection object:
@@ -146,7 +146,7 @@ class Analysis(Elementary):
 
         self.Pad.MakeFits()
 
-        self.Signal2DDistribution = self.Pad.GetMeanSignalDistribution(minimum_bincontent)
+        self.Signal2DDistribution = self.Pad.GetMeanSignalDistribution(self.minimum_bincontent)
         self.Signal2DDistribution.SetStats(False)
         self.Signal2DDistribution.GetXaxis().SetTitle('pos x / cm')
         self.Signal2DDistribution.GetYaxis().SetTitle('pos y / cm')
@@ -181,7 +181,7 @@ class Analysis(Elementary):
         if saveplots:
             self.SavePlots(savename, ending, saveDir)
 
-    def CreateMeanSignalHistogram(self,saveplots = False,savename = 'MeanSignalDistribution',ending='png',saveDir = 'Results/', show = False):
+    def CreateMeanSignalHistogram(self, saveplots = False, savename = 'MeanSignalDistribution',ending='png',saveDir = 'Results/', show = False):
 
         #self.signal_canvas = ROOT.TCanvas()
         #ROOT.SetOwnership(self, False)
@@ -203,7 +203,7 @@ class Analysis(Elementary):
         nbins = (self.Signal2DDistribution.GetNbinsX()+2)*(self.Signal2DDistribution.GetNbinsY()+2)
         for i in xrange(nbins):
             bincontent = self.Signal2DDistribution.GetBinContent(i)
-            if bincontent != 0.:
+            if bincontent >= self.minimum_bincontent:
                 self.MeanSignalHisto.Fill(bincontent)
         if show:
             self.MeanSignalHisto.Draw()
@@ -213,13 +213,13 @@ class Analysis(Elementary):
 
         self.Checklist['MeanSignalHisto'] = True
 
-    def CreateBoth(self,saveplots = False,savename = 'SignalDistribution',ending='png',saveDir = 'Results/',PS=False):
-        self.combined_canvas = ROOT.TCanvas("combined_canvas","Combined Canvas",1000,500)
+    def CreateBoth(self,saveplots = False,savename = 'SignalDistribution',ending='png',saveDir = 'Results/',PS=False, test=""):
+        self.combined_canvas = ROOT.TCanvas("combined_canvas"+test,"Combined Canvas",1000,500)
         ROOT.SetOwnership(self.combined_canvas, False)
         self.combined_canvas.Divide(2,1)
 
         #self.CreatePlots(False)
-        self.CreateMeanSignalHistogram(False, show=False)
+        self.CreateMeanSignalHistogram(saveplots=False, show=False)
 
         self.combined_canvas.cd(1)
         #ROOT.gStyle.SetPalette(55)
@@ -270,8 +270,8 @@ class Analysis(Elementary):
             self.ExtremeAnalysis = Analysis(self.run_object,Config(200))
             self.ExtremeAnalysis.DoAnalysis(minimum_bincontent)
         if show:
-            self.ExtremeAnalysis.CreatePlots()
-            #self.ExtremeAnalysis.CreateBoth(saveplots=True, savename='SignalDistribution_MAXSearch') # distroys combined_canvas
+            # self.ExtremeAnalysis.CreatePlots()
+            self.ExtremeAnalysis.CreateBoth(saveplots=True, savename='SignalDistribution_MAXSearch', test="maxima") # distroys combined_canvas
         self.ExtremeAnalysis.Pad.FindMaxima(minimum_bincount=minimum_bincontent,show=show)
 
     def FindMinima(self,show=False):
