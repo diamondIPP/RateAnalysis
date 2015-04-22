@@ -13,7 +13,7 @@ class AnalysisCollection(Elementary):
     current_run_number = -1
 
     def __init__(self, verbose = False):
-        Elementary.__init__(verbose=verbose)
+        Elementary.__init__(self, verbose=verbose)
 
     def AddAnalysis(self,analysis_obj):
         '''
