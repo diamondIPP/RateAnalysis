@@ -18,8 +18,8 @@ class MCRun(Run):
             'PeakSigmaX_max': 0.07,
             'PeakSigmaY_min': 0.02,
             'PeakSigmaY_max': 0.07,
-            'OnlyCentralPeak': False,
-            'NumberOfHits': 300000,
+            'SpecialDistribution': "No",
+            'NumberOfHits': 99,
             'HitDistributionMode': '',
             'TrackResolution': 0.,
             'SignalMode': '',
@@ -51,7 +51,8 @@ class MCRun(Run):
             npeaks = None
         else:
             npeaks = int(npeaks)
-        OnlyCentralPeak     = parser.getboolean('SIGNAL-DISTRIBUTION','OnlyCentralPeak')
+        SpecialDistribution     = parser.get('SIGNAL-DISTRIBUTION','SpecialDistribution')
+        assert(SpecialDistribution in ["No", "False", "4Peaks", "4peaks", "Central", "central"]), "Bad MC Config file. SpecialDistribution: "+SpecialDistribution+" in SIGNAL-DSITRIBUTION unknown"
         PeakHeight          = parser.getfloat('SIGNAL-DISTRIBUTION','PeakHeight')
         Landau_MPV_bkg      = parser.getint('SIGNAL-DISTRIBUTION','Landau_MPV_bkg')
         Landau_Sigma        = parser.getint('SIGNAL-DISTRIBUTION','Landau_Sigma')
@@ -77,7 +78,7 @@ class MCRun(Run):
         # APPLY SETTINGS:
         self.MCAttributes['NPeaks'] = npeaks
         self.MCAttributes['PeakHeight'] = PeakHeight
-        self.MCAttributes['OnlyCentralPeak'] = OnlyCentralPeak
+        self.MCAttributes['SpecialDistribution'] = SpecialDistribution
         self.MCAttributes['NumberOfHits'] = NumberOfHits
         self.NumberOfHits = NumberOfHits
         self.SetHitDistributionMode(HitDistributionMode)
@@ -110,13 +111,16 @@ class MCRun(Run):
         else:
             assert(False), 'Wrong Signal Mode - mode has to be `Landau` or `Gaus`'
 
-    def SetNumberOfHits(self, hits):
+    def SetNumberOfHits(self, hits): # Not nice
         self.NumberOfHits = hits
         self.MCAttributes['NumberOfHits'] = hits
 
 
     def SetOnlyCentralPeak(self, bool):
-        self.MCAttributes['OnlyCentralPeak'] = bool
+        if bool:
+            self.MCAttributes['SpecialDistribution'] = "Central"
+        else:
+            self.MCAttributes['SpecialDistribution'] = "No"
 
     def ResetMC(self):
         self.DataIsMade = False
@@ -129,7 +133,11 @@ class MCRun(Run):
     def ShowMCConfig(self):
         print '\nHit Distribution Mode is Set to: '+self.MCAttributes['HitDistributionMode']
         print 'Signal Mode is Set to: '+self.MCAttributes['SignalMode']
-        print 'Number of Signals to produce: ', self.NumberOfHits, '\n'
+        print 'Number of Signals to produce: ', self.NumberOfHits
+        if self.MCAttributes['NPeaks'] is not None:
+            print self.MCAttributes['NPeaks']," Peaks generated. Each Peak with amplitude: ", self.MCAttributes['PeakHeight'], '\n'
+        else:
+            print '\n'
 
     def Simulate(self, save=True, draw=None):
         '''
@@ -187,7 +195,7 @@ class MCRun(Run):
             if npeaks is None:
                 npeaks = int(round(gRandom.Uniform(0,15)))
 
-            if self.MCAttributes['OnlyCentralPeak']:
+            if self.MCAttributes['SpecialDistribution'] in ["Central", "central"]:
                 npeaks = 1
                 dxy = 0.02
                 parameters = np.zeros(7)
@@ -198,6 +206,22 @@ class MCRun(Run):
                 parameters[4] = gRandom.Uniform(center_y-dxy, center_y+dxy)
                 parameters[5] = gRandom.Uniform(self.MCAttributes['PeakSigmaX_min'], self.MCAttributes['PeakSigmaX_max'])
                 parameters[6] = gRandom.Uniform(self.MCAttributes['PeakSigmaY_min'], self.MCAttributes['PeakSigmaY_max'])
+            elif self.MCAttributes['SpecialDistribution'] in ["4Peaks", "4peaks"]:
+                npeaks = 4
+                dxy = 0.02
+                parameters = np.zeros(3+4*npeaks)
+                parameters[0] = npeaks
+                parameters[1] = bkg
+                parameters[2] = peak_height
+                # peaks:
+                peaknr = 0
+                for x in [center_x-0.07, center_x+0.07]:
+                    for y in [center_y-0.07, center_y+0.07]:
+                        parameters[3+4*peaknr] = gRandom.Uniform(x-dxy, x+dxy)
+                        parameters[4+4*peaknr] = gRandom.Uniform(y-dxy, y+dxy)
+                        parameters[5+4*peaknr] = gRandom.Uniform(self.MCAttributes['PeakSigmaX_min'], self.MCAttributes['PeakSigmaX_max'])
+                        parameters[6+4*peaknr] = gRandom.Uniform(self.MCAttributes['PeakSigmaY_min'], self.MCAttributes['PeakSigmaY_max'])
+                        peaknr += 1
             else:
                 parameters = np.zeros(3+4*npeaks)
                 parameters[0] = npeaks
@@ -208,6 +232,7 @@ class MCRun(Run):
                     parameters[4+4*i] = gRandom.Uniform(ymin, ymax)
                     parameters[5+4*i] = gRandom.Uniform(0.02, 0.07)
                     parameters[6+4*i] = gRandom.Uniform(0.02, 0.07)
+            self.MCAttributes['NPeaks'] = npeaks
             return parameters
 
         def SignalShape(x, par):
