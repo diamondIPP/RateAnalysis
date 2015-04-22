@@ -27,7 +27,8 @@ class MCRun(Run):
             'Landau-Sigma': 10,
             'integral50_max': 500,
             'MCRunPath': 'runs/MC/MC_{0}/', # {0}: placeholder for run number
-            'DrawRealDistribution': False
+            'DrawRealDistribution': False,
+            'Save': True
         }
         self.NumberOfHits = 300000
         self.IsMonteCarlo = True
@@ -69,6 +70,7 @@ class MCRun(Run):
 
         # LOAD SAVE SETTINGS
         MCRunPath = parser.get('SAVE','MCRunPath')
+        Save = parser.getboolean('SAVE', 'Save')
 
         # LOAD DISPLAY SETTINGS
         ShowAndWait = parser.getboolean('DISPLAY','ShowAndWait')
@@ -93,6 +95,7 @@ class MCRun(Run):
         self.MCAttributes['PeakSigmaY_min'] = PeakSigmaY_min
         self.MCAttributes['PeakSigmaY_max'] = PeakSigmaY_max
         self.MCAttributes['DrawRealDistribution'] = DrawRealDistribution
+        self.MCAttributes['Save'] = Save
 
         self.ShowAndWait = ShowAndWait
 
@@ -139,7 +142,7 @@ class MCRun(Run):
         else:
             print '\n'
 
-    def Simulate(self, save=True, draw=None):
+    def Simulate(self, save=None, draw=None):
         '''
 
         :param save: if True: saves the root file as well as the true signal distribution
@@ -162,6 +165,9 @@ class MCRun(Run):
         if draw is not None:
             assert(type(draw) is t.BooleanType), "draw has to be boolean type"
             self.MCAttributes['DrawRealDistribution'] = draw
+        if save is not None:
+            assert(type(save) is t.BooleanType), "save argument has to be of type boolean"
+            self.MCAttributes['Save'] = save
 
         def ManualHitDistribution(x, par):
             '''
@@ -270,7 +276,7 @@ class MCRun(Run):
         # create track_info ROOT file
         if not os.path.exists(MCRunPath):
             os.makedirs(MCRunPath)
-        if save:
+        if self.MCAttributes['Save']:
             file = TFile(MCRunPath+'track_info.root','RECREATE')
         self.track_info = TTree('track_info', 'MC track_info')
         track_x = array('f',[0])
@@ -372,7 +378,7 @@ class MCRun(Run):
                 assert(False), "Bad MC Parameters"
 
             # Save root file and true Signal Shape:
-            if save:
+            if self.MCAttributes['Save']:
                 file.Write()
                 f_signal.SaveAs(MCRunPath+'RealSignalDistribution.root')
                 self.VerbosePrint(MCRunPath+'track_info.root has been written')
