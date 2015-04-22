@@ -185,20 +185,22 @@ class Analysis(Elementary):
 
         #self.signal_canvas = ROOT.TCanvas()
         #ROOT.SetOwnership(self, False)
-        if hasattr(self, 'signal_canvas'):
-            self.signal_canvas.Clear()
-        else:
-            self.signal_canvas = ROOT.TCanvas()
-            ROOT.SetOwnership(self.signal_canvas, False)
-            ROOT.gStyle.SetPalette(53)
-            ROOT.gStyle.SetNumberContours(999)
-
+        if show:
+            if hasattr(self, 'signal_canvas'):
+                self.signal_canvas.Clear()
+            else:
+                self.signal_canvas = ROOT.TCanvas()
+                ROOT.SetOwnership(self.signal_canvas, False)
+                ROOT.gStyle.SetPalette(53)
+                ROOT.gStyle.SetNumberContours(999)
+        # print self.Signal2DDistribution
         minimum = self.Signal2DDistribution.GetMinimum()
         maximum = self.Signal2DDistribution.GetMaximum()
         self.MeanSignalHisto = ROOT.TH1D("MeanSignalHisto","Mean Signal Histogram",100,minimum,maximum)
 
-        self.signal_canvas.SetName("signal_canvas")
-        self.signal_canvas.SetTitle("Mean Signal Distribution")
+        if show:
+            self.signal_canvas.SetName("signal_canvas")
+            self.signal_canvas.SetTitle("Mean Signal Distribution")
 
         nbins = (self.Signal2DDistribution.GetNbinsX()+2)*(self.Signal2DDistribution.GetNbinsY()+2)
         for i in xrange(nbins):
@@ -254,7 +256,7 @@ class Analysis(Elementary):
     def CreateHitsDistribution(self,saveplot = False, drawoption = 'colz'): # add palette!
         ROOT.gStyle.SetPalette(53)
         ROOT.gStyle.SetNumberContours(999)
-        canvas = ROOT.TCanvas('canvas', 'Hits',500,500)
+        canvas = ROOT.TCanvas('canvas', 'Hits', 500, 500) # adjust the width slightly
         canvas.cd()
         self.Pad.counthisto.SetStats(False)
         self.Pad.counthisto.Draw(drawoption)#'surf2')
@@ -265,7 +267,7 @@ class Analysis(Elementary):
         self.Checklist['HitsDistribution'] = True
 
     def FindMaxima(self,show=False):
-        minimum_bincontent = 10
+        minimum_bincontent = 30 # add a config file for this
         if not hasattr(self, 'ExtremeAnalysis'):
             self.ExtremeAnalysis = Analysis(self.run_object,Config(200))
             self.ExtremeAnalysis.DoAnalysis(minimum_bincontent)
@@ -275,7 +277,7 @@ class Analysis(Elementary):
         self.ExtremeAnalysis.Pad.FindMaxima(minimum_bincount=minimum_bincontent,show=show)
 
     def FindMinima(self,show=False):
-        minimum_bincontent = 10
+        minimum_bincontent = 30
         if not hasattr(self, 'ExtremeAnalysis'):
             self.ExtremeAnalysis = Analysis(self.run_object,Config(200))
             self.ExtremeAnalysis.DoAnalysis(minimum_bincontent)
