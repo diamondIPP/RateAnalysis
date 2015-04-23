@@ -112,6 +112,24 @@ class AnalysisCollection(Elementary):
         ROOT.gPad.Print("Results/MPV_Sigma_graph.root")
         self.IfWait("MPV vs Sigma shown...")
 
+    def SignalHeightScan(self): # improve!
+        SignalHeightScanCanvas = ROOT.TCanvas("SignalHeightScanCanvas", "SignalHeightScan Canvas")
+        SignalHeightScanCanvas.cd()
+
+        SignalHeightScanGraph = ROOT.TGraph()
+        SignalHeightScanGraph.SetNameTitle("SignalHeightScanGraph", "Signal Height Scan")
+
+        runnumbers = self.collection.keys()
+
+        count = 0
+        for runnumber in runnumbers:
+
+            SignalHeightScanGraph.SetPoint(count, runnumber, self.collection[runnumber].ExtremaResults['SignalHeight'])
+            count += 1
+        SignalHeightScanGraph.SaveAs("SignalHeightGraph.root")
+        SignalHeightScanGraph.Draw("AP*")
+        raw_input("waiting...")
+
     def GetNumberOfAnalyses(self):
         '''
         :return: number of analyses that the analysis collection object contains
