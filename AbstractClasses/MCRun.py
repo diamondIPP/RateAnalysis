@@ -53,7 +53,7 @@ class MCRun(Run):
         else:
             npeaks = int(npeaks)
         SpecialDistribution     = parser.get('SIGNAL-DISTRIBUTION','SpecialDistribution')
-        assert(SpecialDistribution in ["No", "False", "4Peaks", "4peaks", "Central", "central"]), "Bad MC Config file. SpecialDistribution: "+SpecialDistribution+" in SIGNAL-DSITRIBUTION unknown"
+        assert(SpecialDistribution in ["No", "False", "4Peaks", "4peaks", "Central", "central", "L", "3Peaks"]), "Bad MC Config file. SpecialDistribution: "+SpecialDistribution+" in SIGNAL-DSITRIBUTION unknown"
         PeakHeight          = parser.getfloat('SIGNAL-DISTRIBUTION','PeakHeight')
         Landau_MPV_bkg      = parser.getint('SIGNAL-DISTRIBUTION','Landau_MPV_bkg')
         Landau_Sigma        = parser.getint('SIGNAL-DISTRIBUTION','Landau_Sigma')
@@ -212,7 +212,7 @@ class MCRun(Run):
                 parameters[4] = gRandom.Uniform(center_y-dxy, center_y+dxy)
                 parameters[5] = gRandom.Uniform(self.MCAttributes['PeakSigmaX_min'], self.MCAttributes['PeakSigmaX_max'])
                 parameters[6] = gRandom.Uniform(self.MCAttributes['PeakSigmaY_min'], self.MCAttributes['PeakSigmaY_max'])
-            elif self.MCAttributes['SpecialDistribution'] in ["4Peaks", "4peaks"]:
+            elif self.MCAttributes['SpecialDistribution'] in ["4Peaks", "4peaks", "L", "3Peaks"]:
                 npeaks = 4
                 dxy = 0.02
                 parameters = np.zeros(3+4*npeaks)
@@ -228,6 +228,10 @@ class MCRun(Run):
                         parameters[5+4*peaknr] = gRandom.Uniform(self.MCAttributes['PeakSigmaX_min'], self.MCAttributes['PeakSigmaX_max'])
                         parameters[6+4*peaknr] = gRandom.Uniform(self.MCAttributes['PeakSigmaY_min'], self.MCAttributes['PeakSigmaY_max'])
                         peaknr += 1
+                if self.MCAttributes['SpecialDistribution'] in ["L", "3Peaks"]:
+                    npeaks = 3
+                    parameters[0] = npeaks
+                    parameters = parameters[:3+4*npeaks]
             else:
                 parameters = np.zeros(3+4*npeaks)
                 parameters[0] = npeaks
@@ -283,10 +287,12 @@ class MCRun(Run):
         track_y = array('f',[0])
         integral50 = array('f',[0])
         calibflag = array('i',[0])
+        calib_offset = array('i',[0])
         self.track_info.Branch('track_x', track_x, 'track_x/F')
         self.track_info.Branch('track_y', track_y, 'track_y/F')
         self.track_info.Branch('integral50', integral50, 'integral50/F')
         self.track_info.Branch('calibflag', calibflag, 'calibflag/I')
+        self.track_info.Branch('calib_offset', calib_offset, 'calib_offset/I')
 
         # Create Manual Hit Distribution:
         if self.MCAttributes['HitDistributionMode'] is 'Manual':
