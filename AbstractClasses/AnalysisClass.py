@@ -4,7 +4,9 @@ from AbstractClasses.Elementary import Elementary
 import os
 from BinCollection import BinCollection
 from ConfigClass import *
+from array import array
 import ConfigParser
+from ConfigParser import NoSectionError
 
 
 class Analysis(Elementary):
@@ -24,45 +26,67 @@ class Analysis(Elementary):
         Elementary.__init__(self, verbose=verbose)
         #initialize_ROOT()
         assert(run_object.run_number > 0), "No run selected, choose run.SetRun(run_nr) before you pass the run object"
-        self.check_offset = True
         self.run_object = run_object
         self.config_object = config_object
         self.config_object.SetWindowFromDiamond(self.run_object.diamond)
-        self.TrackingPadAnalysisROOTFile = run_object.TrackingPadAnalysis['ROOTFile']
+        self.TrackingPadAnalysisROOTFile = run_object.TrackingPadAnalysis["ROOTFile"]
         self.Signal2DDistribution = ROOT.TH2D()
         self.Signal2DDistribution.SetDirectory(0) # is needed because of garbage collection
 
-        self.MeanSignalHisto = ROOT.TH1D()
 
         # loading data file
-        assert (os.path.exists(self.TrackingPadAnalysisROOTFile)), 'cannot find '+self.TrackingPadAnalysisROOTFile
+        assert (os.path.exists(self.TrackingPadAnalysisROOTFile)), "cannot find "+self.TrackingPadAnalysisROOTFile
         self.rootfile = ROOT.TFile(self.TrackingPadAnalysisROOTFile)
 
         self.Checklist = { # True if Plot was created
-            'DoAnalysis': False,
-            'MeanSignalHisto': False,
-            'HitsDistribution': False,
+            "DoAnalysis": False,
+            "MeanSignalHisto": False,
+            "HitsDistribution": False,
         }
 
         self.ExtremaResults ={
-            'TrueNPeaks': None, # MC true number of peaks
-            'FoundNMaxima': None, # number of Maxima found
-            'FoundMaxima': None, # Maxima found as list [(x1, y1), (x2, y2), ...]
-            'FoundNMinima': None, # number of Minima found
-            'FoundMinima': None, # Minima found as list [(x1, y1), (x2, y2), ...]
-            'Ninjas': None, # number of true peaks not found (only available when MC Run)
-            'Ghosts': None # nunmber of wrong Maxima found (only available when MC Run)
+            "TrueNPeaks": None, # MC true number of peaks
+            "FoundNMaxima": None, # number of Maxima found
+            "FoundMaxima": None, # Maxima found as list [(x1, y1), (x2, y2), ...]
+            "FoundNMinima": None, # number of Minima found
+            "FoundMinima": None, # Minima found as list [(x1, y1), (x2, y2), ...]
+            "Ninjas": None, # number of true peaks not found (only available when MC Run)
+            "Ghosts": None, # nunmber of wrong Maxima found (only available when MC Run)
+            "SignalHeight": 0.
         }
 
-    def LoadConfig(self):
-        parser = ConfigParser.ConfigParser()
-        parser.read('Configuration/AnalysisConfig.cfg')
-        ShowAndWait = parser.getboolean('DISPLAY','ShowAndWait')
-        SaveMCData = parser.getboolean('SAVE','SaveMCData')
-        check_offset = parser.getboolean('DO-ANALYSIS','check_offset')
-        self.ShowAndWait = ShowAndWait
-        self.SaveMCData = SaveMCData
-        self.check_offset = check_offset
+    def LoadConfig(self): # BUG: CRASH WHEN Config loaded after many runs (CWD lost)
+        # GoOn = True
+        # configfile = "Configuration/AnalysisConfig.cfg"
+        # while GoOn:
+        #     try:
+        #         parser = ConfigParser.ConfigParser()
+        #         output = parser.read(configfile)
+        #         print " ---- Config Parser Read ---- \n - ", output, " -\n"
+        #         ShowAndWait = parser.getboolean("DISPLAY","ShowAndWait")
+        #         SaveMCData = parser.getboolean("SAVE","SaveMCData")
+        #         check_offset = parser.getboolean("DO-ANALYSIS","check_offset")
+        #         self.ShowAndWait = ShowAndWait
+        #         self.SaveMCData = SaveMCData
+        #         self.check_offset = check_offset
+        #     except NoSectionError:
+        #         raw_input("\n ---- FAILED TO LOAD THE CONFIG FILE ---- \n\n")
+        #         # printanswer = raw_input("print CWD? ")
+        #         # if printanswer in ["yes", "1", '1']:
+        #         #     print "CWD: ", os.getcwd()
+        #         configfile = raw_input("Type the path of the config file again to try one more time: ")
+        #         answer = raw_input("Try one more time?")
+        #         GoOn = answer in ["yes", "True", "true", "1", '1']
+        #         if not GoOn:
+        #             self.ShowAndWait = bool(int(raw_input("Decided to not go on. Set `ShowAndWait` manually (1 or 0): ")))
+        #             self.SaveMCData = bool(int(raw_input("Set `SaveMCData` manually (1 or 0): ")))
+        #             self.check_offset = bool(int(raw_input("Set `check_offset` manually (1 or 0): ")))
+        #     else:
+        #         GoOn = False
+        self.ShowAndWait = False
+        self.SaveMCData = True
+        self.check_offset = True
+
 
     def DoAnalysis(self,minimum_bincontent = 1):
         '''
@@ -74,7 +98,7 @@ class Analysis(Elementary):
         assert (minimum_bincontent > 0), "minimum_bincontent has to be a positive integer" # bins with less hits are ignored
         self.minimum_bincontent = minimum_bincontent
         if not self.run_object.IsMonteCarlo:
-            self.track_info = self.rootfile.Get('track_info') # Get TTree called "track_info"
+            self.track_info = self.rootfile.Get("track_info") # Get TTree called "track_info"
         # create a bin collection object:
         self.Pad = BinCollection(self, *self.config_object.Get2DAttributes())
 
@@ -128,13 +152,13 @@ class Analysis(Elementary):
             d = 0
             while GoOn and d<5: # loop for different MC Signal Distributions
                 try:
-                    self.VerbosePrint('try a Signal Distribution')
+                    self.VerbosePrint("try a Signal Distribution")
                     if not self.run_object.DataIsMade:
-                        self.run_object.Simulate(save=True) # if draw=False the first distribution will be taken
+                        self.run_object.Simulate() # if draw=False the first distribution will be taken
                     for i in xrange(self.run_object.NumberOfHits):
-                        x_ = self.run_object.Data['track_x'][i]
-                        y_ = self.run_object.Data['track_y'][i]
-                        signal_ = self.run_object.Data['integral50'][i]
+                        x_ = self.run_object.Data["track_x"][i]
+                        y_ = self.run_object.Data["track_y"][i]
+                        signal_ = self.run_object.Data["integral50"][i]
                         self.Pad.Fill(x_, y_, signal_)
 
                 except IndexError:
@@ -148,13 +172,13 @@ class Analysis(Elementary):
 
         self.Signal2DDistribution = self.Pad.GetMeanSignalDistribution(self.minimum_bincontent)
         self.Signal2DDistribution.SetStats(False)
-        self.Signal2DDistribution.GetXaxis().SetTitle('pos x / cm')
-        self.Signal2DDistribution.GetYaxis().SetTitle('pos y / cm')
+        self.Signal2DDistribution.GetXaxis().SetTitle("pos x / cm")
+        self.Signal2DDistribution.GetYaxis().SetTitle("pos y / cm")
         self.Signal2DDistribution.GetYaxis().SetTitleOffset(1.4)
 
-        self.Checklist['DoAnalysis'] = True
+        self.Checklist["DoAnalysis"] = True
 
-    def CreatePlots(self,saveplots = False,savename = '2DSignalDistribution',ending='png',saveDir = 'Results/', show3d = False):
+    def CreatePlots(self,saveplots = False,savename = "2DSignalDistribution",ending="png",saveDir = "Results/", show3d = False):
         '''
         Creates 2D Signal Distribution plot
         :param saveplots: if True, save the plot
@@ -174,19 +198,19 @@ class Analysis(Elementary):
         ROOT.gStyle.SetNumberContours(999)
         if show3d:
             self.Signal2DDistribution.Draw("SPEC dm(2,10) pa(1,1,1) ci(1,1,1) a(15,45,0) s(1,1)")
-            savename += '3D'
+            savename += "3D"
         else:
-            self.Signal2DDistribution.Draw('colz')
-        self.IfWait('2d drawn')
+            self.Signal2DDistribution.Draw("colz")
+        self.IfWait("2d drawn")
         if saveplots:
             self.SavePlots(savename, ending, saveDir)
 
-    def CreateMeanSignalHistogram(self, saveplots = False, savename = 'MeanSignalDistribution',ending='png',saveDir = 'Results/', show = False):
+    def CreateMeanSignalHistogram(self, saveplots = False, savename = "MeanSignalDistribution",ending="png",saveDir = "Results/", show = False):
 
         #self.signal_canvas = ROOT.TCanvas()
         #ROOT.SetOwnership(self, False)
         if show:
-            if hasattr(self, 'signal_canvas'):
+            if hasattr(self, "signal_canvas"):
                 self.signal_canvas.Clear()
             else:
                 self.signal_canvas = ROOT.TCanvas()
@@ -196,7 +220,8 @@ class Analysis(Elementary):
         # print self.Signal2DDistribution
         minimum = self.Signal2DDistribution.GetMinimum()
         maximum = self.Signal2DDistribution.GetMaximum()
-        self.MeanSignalHisto = ROOT.TH1D("MeanSignalHisto","Mean Signal Histogram",100,minimum,maximum)
+        self.MeanSignalHisto = ROOT.TH1D("MeanSignalHisto"+str(self.GLOBAL_COUNT),"Mean Signal Histogram",100,minimum,maximum)
+        self.GLOBAL_COUNT += 1
 
         if show:
             self.signal_canvas.SetName("signal_canvas")
@@ -213,9 +238,9 @@ class Analysis(Elementary):
         if saveplots:
             self.SavePlots(savename, ending, saveDir)
 
-        self.Checklist['MeanSignalHisto'] = True
+        self.Checklist["MeanSignalHisto"] = True
 
-    def CreateBoth(self,saveplots = False,savename = 'SignalDistribution',ending='png',saveDir = 'Results/',PS=False, test=""):
+    def CreateBoth(self,saveplots = False,savename = "SignalDistribution",ending="png",saveDir = "Results/",PS=False, test=""):
         self.combined_canvas = ROOT.TCanvas("combined_canvas"+test,"Combined Canvas",1000,500)
         ROOT.SetOwnership(self.combined_canvas, False)
         self.combined_canvas.Divide(2,1)
@@ -228,7 +253,7 @@ class Analysis(Elementary):
         # ROOT.gStyle.SetNumberContours(999)
         ROOT.gStyle.SetPalette(53)
         ROOT.gStyle.SetNumberContours(999)
-        self.Signal2DDistribution.Draw('colz')#"CONT1Z")#)'colz')
+        self.Signal2DDistribution.Draw("colz")#"CONT1Z")#)'colz')
         self.combined_canvas.cd(2)
 
         if PS: #if photoshop mode, fill histogram pink
@@ -239,51 +264,51 @@ class Analysis(Elementary):
             ROOT.gStyle.SetHistFillStyle(3003)
 
         self.MeanSignalHisto.UseCurrentStyle()
-        self.MeanSignalHisto.GetXaxis().SetTitle('Signal response')
+        self.MeanSignalHisto.GetXaxis().SetTitle("Signal response")
         self.MeanSignalHisto.Draw()
         self.combined_canvas.cd()
         self.combined_canvas.Update()
 
-        savename = self.run_object.diamond.Specifications['Name']+'_'+self.run_object.diamond.Specifications['Irradiation']+'_'+savename+'_'+str(self.run_object.run_number) # diamond_irradiation_savename_runnr
+        savename = self.run_object.diamond.Specifications["Name"]+"_"+self.run_object.diamond.Specifications["Irradiation"]+"_"+savename+"_"+str(self.run_object.run_number) # diamond_irradiation_savename_runnr
         if saveplots:
             self.SavePlots(savename, ending, saveDir)
-            self.SavePlots(savename, 'root', saveDir)
+            self.SavePlots(savename, "root", saveDir)
         if PS:
             ROOT.gStyle.SetHistFillColor(7)
             ROOT.gStyle.SetHistFillStyle(3003)
-        self.IfWait('Combined 2D Signal DistributionsShown')
+        self.IfWait("Combined 2D Signal DistributionsShown")
 
-    def CreateHitsDistribution(self,saveplot = False, drawoption = 'colz'): # add palette!
+    def CreateHitsDistribution(self,saveplot = False, drawoption = "colz"): # add palette!
         ROOT.gStyle.SetPalette(53)
         ROOT.gStyle.SetNumberContours(999)
-        canvas = ROOT.TCanvas('canvas', 'Hits', 500, 500) # adjust the width slightly
+        canvas = ROOT.TCanvas("canvas", "Hits", 500, 500) # adjust the width slightly
         canvas.cd()
         self.Pad.counthisto.SetStats(False)
-        self.Pad.counthisto.Draw(drawoption)#'surf2')
-        #self.Pad.counthisto.Draw('CONT1 SAME')
+        self.Pad.counthisto.Draw(drawoption)#"surf2")
+        #self.Pad.counthisto.Draw("CONT1 SAME")
         if saveplot:
-            self.SavePlots('Hits_Distribution', 'png', 'Results/')
-        self.IfWait('Hits Distribution shown')
-        self.Checklist['HitsDistribution'] = True
+            self.SavePlots("Hits_Distribution", "png", "Results/")
+        self.IfWait("Hits Distribution shown")
+        self.Checklist["HitsDistribution"] = True
 
     def FindMaxima(self,show=False):
         minimum_bincontent = 30 # add a config file for this
-        if not hasattr(self, 'ExtremeAnalysis'):
+        if not hasattr(self, "ExtremeAnalysis"):
             self.ExtremeAnalysis = Analysis(self.run_object,Config(200))
             self.ExtremeAnalysis.DoAnalysis(minimum_bincontent)
         if show:
             # self.ExtremeAnalysis.CreatePlots()
-            self.ExtremeAnalysis.CreateBoth(saveplots=True, savename='SignalDistribution_MAXSearch', test="maxima") # distroys combined_canvas
+            self.ExtremeAnalysis.CreateBoth(saveplots=True, savename="SignalDistribution_MAXSearch", test="maxima") # distroys combined_canvas
         self.ExtremeAnalysis.Pad.FindMaxima(minimum_bincount=minimum_bincontent,show=show)
 
     def FindMinima(self,show=False):
         minimum_bincontent = 30
-        if not hasattr(self, 'ExtremeAnalysis'):
+        if not hasattr(self, "ExtremeAnalysis"):
             self.ExtremeAnalysis = Analysis(self.run_object,Config(200))
             self.ExtremeAnalysis.DoAnalysis(minimum_bincontent)
         if show:
             self.ExtremeAnalysis.CreatePlots()
-            # self.ExtremeAnalysis.CreateBoth(saveplots=True, savename='SignalDistribution_MINSearch') # distroys combined_canvas
+            # self.ExtremeAnalysis.CreateBoth(saveplots=True, savename="SignalDistribution_MINSearch") # distroys combined_canvas
         self.ExtremeAnalysis.Pad.FindMinima(minimum_bincount=minimum_bincontent,show=show)
 
     def WaldWolfowitzRunsTest(self):
@@ -304,13 +329,13 @@ class Analysis(Elementary):
         for bin in self.Pad.ListOfBins:
             entries = bin.GetEntries()
             if entries >= minimum_counts:
-                MPVs.append(bin.Fit['MPV'])
-                MPVErrs.append(bin.Fit['MPVErr'])
-                Sigmas.append(bin.Fit['Sigma'])
-                SigmaErrs.append(bin.Fit['SigmaErr'])
+                MPVs.append(bin.Fit["MPV"])
+                MPVErrs.append(bin.Fit["MPVErr"])
+                Sigmas.append(bin.Fit["Sigma"])
+                SigmaErrs.append(bin.Fit["SigmaErr"])
 
         if show:
-            canvas = ROOT.TCanvas('MPVSigmaCanvas', 'MPVSigmaCanvas')
+            canvas = ROOT.TCanvas("MPVSigmaCanvas", "MPVSigmaCanvas")
             canvas.cd()
             graph = ROOT.TGraphErrors()
             count = 0
@@ -318,12 +343,26 @@ class Analysis(Elementary):
                 graph.SetPoint(count, MPVs[i], Sigmas[i])
                 graph.SetPointError(count, MPVErrs[i], SigmaErrs[i])
                 count += 1
-            graph.Draw('AP')
+            graph.Draw("AP")
             self.IfWait("MPV vs Sigma shown")
 
         return MPVs, Sigmas, MPVErrs, SigmaErrs
 
-    def ExportMC(self, MCDir = 'MCInputs/'):
+    def GetSignalHeight(self, min_percent = 5, max_percent = 99):
+        if not hasattr(self, "ExtremeAnalysis"):
+            self.FindMaxima()
+        if not hasattr(self.ExtremeAnalysis, "MeanSignalHisto"):
+            self.ExtremeAnalysis.CreateMeanSignalHistogram()
+        q = array('d', [1.*min_percent/100., 1.*max_percent/100.])
+        y = array('d', [0,0])
+        self.ExtremeAnalysis.MeanSignalHisto.GetQuantiles(2, y, q)
+        SignalHeight = y[1]/y[0]-1.
+        self.VerbosePrint('\nApproximated Signal Amplitude: {0:0.0f}% - ({1:0.0f}%/{2:0.0f}% Quantiles approximation)\n'.format(100.*(SignalHeight), max_percent, min_percent))
+        self.ExtremaResults['SignalHeight'] = SignalHeight
+        self.ExtremeAnalysis.ExtremaResults['SignalHeight'] = SignalHeight
+        return SignalHeight
+
+    def ExportMC(self, MCDir = "MCInputs/"):
         '''
         Hit distribution
         :return:
@@ -331,7 +370,7 @@ class Analysis(Elementary):
         if not self.run_object.IsMonteCarlo:
             if not os.path.exists(MCDir):
                 os.makedirs(MCDir)
-            self.Pad.counthisto.SaveAs(MCDir+str(self.run_object.run_number)+'counthisto.root')
+            self.Pad.counthisto.SaveAs(MCDir+str(self.run_object.run_number)+"counthisto.root")
             self.VerbosePrint("CountHisto exported..")
         else:
             print "INFO: Monte Carlo run can not be exported as MC input"
