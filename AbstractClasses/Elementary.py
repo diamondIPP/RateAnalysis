@@ -6,6 +6,7 @@ class Elementary(object):
     '''
     Mother of all myPadAnalysis Objects
     '''
+    GLOBAL_COUNT = 0
 
     def __init__(self, verbose = False):
         self.verbose = verbose
