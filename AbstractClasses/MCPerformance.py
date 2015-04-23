@@ -1,6 +1,7 @@
 from AbstractClasses.AnalysisCollection import AnalysisCollection
 from AbstractClasses.AnalysisClass import Analysis
 from AbstractClasses.MCRun import MCRun
+from AbstractClasses.Elementary import Elementary
 from AbstractClasses.ConfigClass import Config
 import ROOT
 from ROOT import TFile, TTree
@@ -18,14 +19,14 @@ To improve:
     include in framework ?
 '''
 
-class MCPerformance(AnalysisCollection):
+class MCPerformance(Elementary):
 
     def DoSignalHeightScan(self, heights=None, hits_per_height=300000):
         gc.disable()
         starttime = datetime.today()
 
         # Settings:
-        tries = 20 # number of repetitions for a certain signal height
+        tries = 40 # number of repetitions for a certain signal height
         min_percent = 5   # Quantiles
         max_percent = 99  # Quantiles
 
@@ -78,10 +79,13 @@ class MCPerformance(AnalysisCollection):
                 cycle_nr += 1
                 print "\n{0}th repetition with Signal height set to: {1}\n".format(repetition, height)
                 run_object = MCRun(validate=False,verbose=self.verbose,run_number=364)
+                print "newAnalysis = Analysis(run_object)"
                 newAnalysis = Analysis(run_object)
                 run_object.MCAttributes['PeakHeight'] = height
                 run_object.SetNumberOfHits(hits_per_height)
+                print "newAnalysis.FindMaxima()"
                 newAnalysis.FindMaxima()
+                print "newAnalysis.FindMinima()"
                 newAnalysis.FindMinima()
                 npeaks = newAnalysis.ExtremeAnalysis.ExtremaResults['TrueNPeaks']
                 ninjas = newAnalysis.ExtremeAnalysis.ExtremaResults['Ninjas']
@@ -133,6 +137,7 @@ class MCPerformance(AnalysisCollection):
         rootfile.Write()
         print "ROOT File written. Write infofile"
         infofile.write("\nTotal Time elapsed: "+str(datetime.today() - starttime))
+        infofile.close()
         print "infofile written"
 
         canvas = ROOT.TCanvas('canvas', 'canvas') # HERE IT CRASHES DUE TO MEMORY PROBLEMS
