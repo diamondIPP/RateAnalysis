@@ -51,7 +51,7 @@ if __name__ == "__main__":
     print run_numbers
 
 
-    # collection = AnalysisCollection()
+    collection = AnalysisCollection()
     for run_number in run_numbers:
 
         if run.SetRun(run_number): # run has to exist and is setted
@@ -61,10 +61,10 @@ if __name__ == "__main__":
 
                 #
                 newAnalysis = Analysis(run,Config(70))
-                newAnalysis.DoAnalysis(minimum_statistics)
+                # newAnalysis.DoAnalysis(minimum_statistics)
                 # newAnalysis.CreatePlots(True,'2D_Signal_dist',show3d=True)
                 # # # # newAnalysis.CreateMeanSignalHistogram(True)
-                newAnalysis.CreateBoth(saveplots=True)
+                # newAnalysis.CreateBoth(saveplots=False)
                 # newAnalysis.Pad.CreateSignalHistogram(saveplot=True)
                 # #
                 # # #print newAnalysis.Pad.ListOfBins[newAnalysis.Pad.GetBinNumber(0.05,0.05)].GetEntries()
@@ -100,8 +100,8 @@ if __name__ == "__main__":
                 # newAnalysis.Pad.GetSignalInColumn(position=0.13, show=True)
                 # newAnalysis.Pad.ShowBinXYSignalHisto(-0.03,0.19, saveplot=True, show_fit=True)
                 # newAnalysis.Pad.ShowBinXYSignalHisto(0.13,0.03,True)
-                newAnalysis.FindMaxima(show=True)
-                newAnalysis.FindMinima(show=True)
+                # newAnalysis.FindMaxima(show=True)
+                # newAnalysis.FindMinima(show=True)
                 # newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(-0.04,0.3,saveplot=True, show_fit=True)
                 # newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.07,0.3,saveplot=True, show_fit=True)
                 # newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.12,0.33, saveplot=True, show_fit=True)
@@ -112,45 +112,49 @@ if __name__ == "__main__":
                 # newAnalysis.MaximaAnalysis.GetMPVSigmas(show = True)
                 #
 
-                newAnalysis.combined_canvas.cd(1)
-                if run.IsMonteCarlo:
-                    print "Run is MONTE CARLO"
-                    if run.SignalParameters[0] > 0:
-                        height = run.SignalParameters[4]
-                        newAnalysis.ExtremeAnalysis.Pad.GetSignalInRow(height, show=True)
-                    newAnalysis.combined_canvas.cd(1)
-                    newAnalysis.ExtremeAnalysis.Pad.MaximaSearch.real_peaks.SetMarkerColor(ROOT.kBlue)
-                    newAnalysis.ExtremeAnalysis.Pad.MaximaSearch.real_peaks.SetLineColor(ROOT.kBlue)
-                    newAnalysis.ExtremeAnalysis.Pad.MaximaSearch.real_peaks.Draw('SAME P0')
-                # newAnalysis.ExtremeAnalysis.Pad.MaximaSearch.found_extrema.SetMarkerColor(ROOT.kGreen+2)
-                # newAnalysis.ExtremeAnalysis.Pad.MaximaSearch.found_extrema.Draw('SAME P0')
-                minima = newAnalysis.ExtremeAnalysis.ExtremaResults['FoundMinima']
-                for i in xrange(len(minima)):
-                    text = ROOT.TText()
-                    text.SetTextColor(ROOT.kBlue-4)
-                    text.DrawText(minima[i][0]-0.01, minima[i][1]-0.005, 'low')
-                maxima = newAnalysis.ExtremeAnalysis.ExtremaResults['FoundMaxima']
-                for i in xrange(len(maxima)):
-                    text = ROOT.TText()
-                    text.SetTextColor(ROOT.kRed)
-                    text.DrawText(maxima[i][0]-0.02, maxima[i][1]-0.005, 'high')
-                if len(maxima)*len(minima)>0:
-                    maxbin = newAnalysis.ExtremeAnalysis.Pad.GetBinByCoordinates(*(maxima[0]))
-                    maxbin.FitLandau()
-                    minbin = newAnalysis.ExtremeAnalysis.Pad.GetBinByCoordinates(*(minima[0]))
-                    minbin.FitLandau()
-                    print '\nApproximated Signal Amplitude: {0:-0.0f}% - (high/low approximation)\n'.format(100.*(maxbin.Fit['MPV']/minbin.Fit['MPV']-1.))
-                min_percent = 5
-                max_percent = 99
-                q = array('d', [1.*min_percent/100., 1.*max_percent/100.])
-                y = array('d', [0,0])
-                newAnalysis.ExtremeAnalysis.MeanSignalHisto.GetQuantiles(2, y, q)
-                print '\nApproximated Signal Amplitude: {0:0.0f}% - ({1:0.0f}%/{2:0.0f}% Quantiles approximation)\n'.format(100.*(y[1]/y[0]-1.), max_percent, min_percent)
-                # newAnalysis.ExtremeAnalysis.Pad.MinimaSearch.found_extrema.SetMarkerColor(ROOT.kBlue-4)
-                # newAnalysis.ExtremeAnalysis.Pad.MinimaSearch.found_extrema.Draw('SAME P0')
-                ROOT.gStyle.SetPalette(53)
-                ROOT.gStyle.SetNumberContours(999)
-                newAnalysis.combined_canvas.Update()
+                # newAnalysis.combined_canvas.cd(1)
+                # if run.IsMonteCarlo:
+                #     print "Run is MONTE CARLO"
+                #     if run.SignalParameters[0] > 0:
+                #         height = run.SignalParameters[4]
+                #         newAnalysis.ExtremeAnalysis.Pad.GetSignalInRow(height, show=True)
+                #     newAnalysis.combined_canvas.cd(1)
+                #     newAnalysis.ExtremeAnalysis.Pad.MaximaSearch.real_peaks.SetMarkerColor(ROOT.kBlue)
+                #     newAnalysis.ExtremeAnalysis.Pad.MaximaSearch.real_peaks.SetLineColor(ROOT.kBlue)
+                #     newAnalysis.ExtremeAnalysis.Pad.MaximaSearch.real_peaks.Draw('SAME P0')
+                # # newAnalysis.ExtremeAnalysis.Pad.MaximaSearch.found_extrema.SetMarkerColor(ROOT.kGreen+2)
+                # # newAnalysis.ExtremeAnalysis.Pad.MaximaSearch.found_extrema.Draw('SAME P0')
+                # newAnalysis.ExtremeAnalysis.Pad.GetSignalInColumn(-0.11, show=True)
+                # newAnalysis.combined_canvas.cd(1)
+                # minima = newAnalysis.ExtremeAnalysis.ExtremaResults['FoundMinima']
+                # for i in xrange(len(minima)):
+                #     text = ROOT.TText()
+                #     text.SetTextColor(ROOT.kBlue-4)
+                #     text.DrawText(minima[i][0]-0.01, minima[i][1]-0.005, 'low')
+                # maxima = newAnalysis.ExtremeAnalysis.ExtremaResults['FoundMaxima']
+                # for i in xrange(len(maxima)):
+                #     text = ROOT.TText()
+                #     text.SetTextColor(ROOT.kRed)
+                #     text.DrawText(maxima[i][0]-0.02, maxima[i][1]-0.005, 'high')
+                # if len(maxima)*len(minima)>0:
+                #     maxbin = newAnalysis.ExtremeAnalysis.Pad.GetBinByCoordinates(*(maxima[0]))
+                #     maxbin.FitLandau()
+                #     minbin = newAnalysis.ExtremeAnalysis.Pad.GetBinByCoordinates(*(minima[0]))
+                #     minbin.FitLandau()
+                #     print '\nApproximated Signal Amplitude: {0:-0.0f}% - (high/low approximation)\n'.format(100.*(maxbin.Fit['MPV']/minbin.Fit['MPV']-1.))
+                #
+                # min_percent = 5
+                # max_percent = 99
+                # q = array('d', [1.*min_percent/100., 1.*max_percent/100.])
+                # y = array('d', [0,0])
+                # newAnalysis.ExtremeAnalysis.MeanSignalHisto.GetQuantiles(2, y, q)
+                # print '\nApproximated Signal Amplitude: {0:0.0f}% - ({1:0.0f}%/{2:0.0f}% Quantiles approximation)\n'.format(100.*(y[1]/y[0]-1.), max_percent, min_percent)
+                # # newAnalysis.ExtremeAnalysis.Pad.MinimaSearch.found_extrema.SetMarkerColor(ROOT.kBlue-4)
+                # # newAnalysis.ExtremeAnalysis.Pad.MinimaSearch.found_extrema.Draw('SAME P0')
+                # ROOT.gStyle.SetPalette(53)
+                # ROOT.gStyle.SetNumberContours(999)
+                # newAnalysis.combined_canvas.Update()
+                # ROOT.gPad.Print("Combined_Plot.png")
 
 
                 #
@@ -160,7 +164,14 @@ if __name__ == "__main__":
                 # #
                 # newAnalysis.CreateHitsDistribution(saveplot=True, drawoption='colz')
                 # newAnalysis.ExportMC()
-                # collection.AddAnalysis(newAnalysis)
+
+
+                newAnalysis.GetSignalHeight()
+
+                collection.AddAnalysis(newAnalysis)
+
+
+
         else:
             print "Analysis of run ",run_number, " failed"
 
@@ -170,6 +181,8 @@ if __name__ == "__main__":
 
     # MCAnalysis = MCPerformance()
     # MCAnalysis.DoSignalHeightScan()
+
+    collection.SignalHeightScan()
 
     if show_plots: raw_input("Press ENTER to quit:")
 
