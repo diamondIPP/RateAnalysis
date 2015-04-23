@@ -10,10 +10,10 @@ To improve:
 
 # Settings:
 hits = 30000
-tries = 20
+tries = 40
 
 PerfResults = "MC/Performance_Results/"
-foldername = "2015-04-21 16-33-42.365466/"
+foldername = "2015-04-22 22-07-50.999851/"
 filename = "MCPerformanceLog.root"
 filepath = PerfResults+foldername+filename
 
@@ -21,7 +21,8 @@ file = TFile(filepath)
 
 LogTree = file.Get("LogTree")
 
-success_graph = TGraph()
+success_graph = TGraphErrors()
+ghost_graph = TGraph()
 RecSA_MinMax_graph = TGraphErrors()
 RecSA_Quantiles_graph = TGraphErrors()
 
@@ -32,6 +33,8 @@ All_RecSA_Quantiles = []
 tmp_success = np.zeros(tries)
 tmp_RecSA_Q = np.zeros(tries)
 tmp_RecSA_M = np.zeros(tries)
+tmp_Ghosts = np.zeros(tries)
+
 
 count = 0
 for i in xrange(LogTree.GetEntries()):
@@ -42,12 +45,13 @@ for i in xrange(LogTree.GetEntries()):
     RealSignalAmplitude = LogTree.RealSignalAmplitude
     RecSA_Quantiles = LogTree.RecSA_Quantiles
     RecSA_MinMax = LogTree.RecSA_MinMax
-    # Ghosts = LogTree.Ghosts
+    Ghosts = LogTree.Ghosts
     Repetition = LogTree.Repetition
 
     tmp_success[Repetition] = 1.*(TrueNPeaks-Ninjas)/TrueNPeaks
     tmp_RecSA_M[Repetition] = RecSA_MinMax
     tmp_RecSA_Q[Repetition] = RecSA_Quantiles
+    tmp_Ghosts[Repetition] = Ghosts
 
     if Repetition == tries-1:
         mean_success = tmp_success.mean()
@@ -56,28 +60,44 @@ for i in xrange(LogTree.GetEntries()):
         # success.append(mean_success)
         # real_amplitude.append(RealSignalAmplitude)
         success_graph.SetPoint(count, RealSignalAmplitude, mean_success)
+        success_graph.SetPointError(count, 0, tmp_success.std()/np.sqrt(tries))
+
         RecSA_MinMax_graph.SetPoint(count, RealSignalAmplitude, mean_RecSA_M)
         RecSA_MinMax_graph.SetPointError(count, 0, tmp_RecSA_M.std())
 
         RecSA_Quantiles_graph.SetPoint(count, RealSignalAmplitude, mean_RecSA_Q)
         RecSA_Quantiles_graph.SetPointError(count, 0, tmp_RecSA_Q.std())
 
+        ghost_graph.SetPoint(count, RealSignalAmplitude, tmp_Ghosts.mean())
+
 
         count += 1
 
 canvas = TCanvas("canvas", "canvas")
+canvas.SetGrid()
+
 pad = canvas.GetPad(0)
 success_graph.SetNameTitle("success", "MC Performance Analysis Result ({0} Hits)".format(hits))
 success_graph.GetXaxis().SetTitle("Relative Real Signal Amplitude")
 success_graph.GetYaxis().SetTitle("Peak Finding Efficiency | Reconstructed Signal Amplitude")
 success_graph.Draw("ALP*")
 
+ghost_graph.SetNameTitle("ghost_graph", "Ghost Peaks")
+ghost_graph.Draw("SAME LP*")
+
 func = TF1("func", "x", 0,1)
 func.Draw("SAME")
 RecSA_Quantiles_graph.SetMarkerColor(ROOT.kRed)
 RecSA_Quantiles_graph.Draw("SAME P*")
-RecSA_MinMax_graph.SetMarkerColor(ROOT.kBlue)
-RecSA_MinMax_graph.Draw("SAME P*")
 ROOT.gPad.Print(PerfResults+foldername+"MC_PerformanceAnalysis_{0}_4peaks_{1}rep.png".format(hits, tries))
+# RecSA_MinMax_graph.SetMarkerColor(ROOT.kBlue)
+# RecSA_MinMax_graph.Draw("SAME P*")
+
+ghostcanvas = TCanvas("ghostcanvas", "ghostcanvas")
+ghostcanvas.cd()
+ghost_graph.GetXaxis().SetTitle("Relative Real Signal Amplitude")
+ghost_graph.GetYaxis().SetTitle("NGhostPeaks/NRepetitions")
+ghost_graph.Draw("ALP*")
+ghostcanvas.Update()
 
 raw_input("finish")
