@@ -108,7 +108,8 @@ class BinCollection(Elementary):
         :return:
         '''
         assert (minimum_bincontent > 0), "minimum_bincontent has to be a positive integer"
-        self.meansignaldistribution = ROOT.TH2D('meansignaldistribution', "Mean Signal Distribution", *self.Get2DAttributes())
+        self.meansignaldistribution = ROOT.TH2D('meansignaldistribution'+str(self.GLOBAL_COUNT), "Mean Signal Distribution", *self.Get2DAttributes())
+        self.GLOBAL_COUNT += 1
         # go through every bin, calculate the average signal strength and fill the main 2D hist
         binwidth_x = self.Attributes['binwidth_x']
         binwidth_y = self.Attributes['binwidth_y']
