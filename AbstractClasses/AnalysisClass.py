@@ -11,7 +11,7 @@ from ConfigParser import NoSectionError
 
 class Analysis(Elementary):
     '''
-    An Analysis Object contains all Data and Results of a single run.
+    An Analysis Object contains all Data and Results of a SINGLE run.
     '''
 
     Signal2DDistribution = ROOT.TH2D()
@@ -362,6 +362,15 @@ class Analysis(Elementary):
         self.ExtremaResults['SignalHeight'] = SignalHeight
         self.ExtremeAnalysis.ExtremaResults['SignalHeight'] = SignalHeight
         return SignalHeight
+
+    def ShowSignalHistogram(self, save = False, scale = False):
+        if  hasattr(self, "Pad"):
+            self.Pad.CreateSignalHistogram(saveplot=save, scale=scale)
+        elif hasattr(self, "ExtremeAnalysis") and hasattr(self.ExtremeAnalysis, "Pad"):
+            self.ExtremeAnalysis.Pad.CreateSignalHistogram(saveplot=save, scale=scale)
+        else:
+            self.DoAnalysis()
+            self.Pad.CreateSignalHistogram(saveplot=save, scale=scale)
 
     def ExportMC(self, MCDir = "MCInputs/"):
         '''
