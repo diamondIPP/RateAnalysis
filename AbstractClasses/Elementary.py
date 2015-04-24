@@ -1,5 +1,6 @@
 import os
 import ROOT
+import types as t
 
 
 class Elementary(object):
@@ -7,6 +8,7 @@ class Elementary(object):
     Mother of all myPadAnalysis Objects
     '''
     GLOBAL_COUNT = 0
+    SaveDirectory = "Results/"
 
     def __init__(self, verbose = False):
         self.verbose = verbose
@@ -30,10 +32,28 @@ class Elementary(object):
         if self.ShowAndWait:
             raw_input(message)
 
-    def SavePlots(self, savename, ending, saveDir):
+    @classmethod
+    def SetSaveDirectory(cls, directory = "Results/"):
+        Elementary.SaveDirectory = directory
+
+    @classmethod
+    def SavePlots(cls, savename, ending=None, saveDir=None):
+        if saveDir is None:
+            saveDir = Elementary.SaveDirectory
+        if ending is None:
+            ending = ""
+        else:
+            assert(type(ending) is t.StringType), "ending has to be string type"
+            ending = "."+ending
         # Results directories:
         #resultsdir = saveDir+'run_'+str(self.run_object.run_number)+'/' # eg. 'Results/run_364/'
         resultsdir = saveDir # eg. 'Results/run_364/'
         if not os.path.exists(resultsdir):
             os.makedirs(resultsdir)
-        ROOT.gPad.Print(resultsdir+savename+'.'+ending)
+        ROOT.gPad.Print(resultsdir+savename+ending)
+
+    @classmethod
+    def GC(cls):
+        gc = cls.GLOBAL_COUNT
+        cls.GLOBAL_COUNT += 1
+        return gc
