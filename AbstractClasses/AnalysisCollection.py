@@ -113,6 +113,8 @@ class AnalysisCollection(Elementary):
         self.IfWait("MPV vs Sigma shown...")
 
     def SignalHeightScan(self): # improve!
+        tmp = self.ShowAndWait
+        self.ShowAndWait = True
         SignalHeightScanCanvas = ROOT.TCanvas("SignalHeightScanCanvas", "SignalHeightScan Canvas")
         SignalHeightScanCanvas.cd()
 
@@ -120,6 +122,7 @@ class AnalysisCollection(Elementary):
         SignalHeightScanGraph.SetNameTitle("SignalHeightScanGraph", "Signal Height Scan")
 
         runnumbers = self.collection.keys()
+        runnumbers.sort()
 
         count = 0
         for runnumber in runnumbers:
@@ -127,8 +130,34 @@ class AnalysisCollection(Elementary):
             SignalHeightScanGraph.SetPoint(count, runnumber, self.collection[runnumber].ExtremaResults['SignalHeight'])
             count += 1
         SignalHeightScanGraph.SaveAs("SignalHeightGraph.root")
+        SignalHeightScanGraph.GetXaxis().SetTitle("Run Number")
+        SignalHeightScanGraph.GetYaxis().SetTitle("Reconstructed Signal Height")
         SignalHeightScanGraph.Draw("AP*")
-        raw_input("waiting...")
+        self.IfWait("SignalHeightScan shown...")
+        self.ShowAndWait = tmp
+
+    def PeakComparison(self):
+        PeakComparisonCanvas = ROOT.TCanvas("PeakComparisonCanvas", "PeakComparisonCanvas")
+        PeakComparisonCanvas.cd()
+
+        runnumbers = self.collection.keys()
+        pad_attributes = self.collection[runnumbers[0]].ExtremeAnalysis.Pad.Get2DAttributes()
+
+        PeakPad = ROOT.TH2D("PeakPad", "Peak distribution over all selected runs", *pad_attributes)
+
+        for runnumber in runnumbers:
+            analysis = self.collection[runnumber]
+            maxima = analysis.ExtremeAnalysis.ExtremaResults["FoundMaxima"]
+            if maxima is not None:
+                for peak in maxima:
+                    PeakPad.Fill(*peak)
+            else:
+                print "WARNING: No Maxima results found in run ", runnumber, ". PeakComparison will be incomplete."
+
+        PeakPad.Draw("COLZ")
+        self.SavePlots("PeakPad.png")
+
+        raw_input("peakpad")
 
     def GetNumberOfAnalyses(self):
         '''
