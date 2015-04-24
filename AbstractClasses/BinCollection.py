@@ -560,9 +560,18 @@ class BinCollection(Elementary):
             self.IfWait('show signal in row {:.3f}..'.format(rowheight))
         return signals
 
-    def CreateSignalHistogram(self,saveplot = False):
+    def CreateSignalHistogram(self,saveplot = False, scale = False):
         canvas = ROOT.TCanvas('canvas', 'canvas')
         canvas.cd()
+        self.SignalHisto.GetXaxis().SetTitle("Signal Response [ADC Units]")
+        self.SignalHisto.GetYaxis().SetTitle("Counts")
+        if scale:
+            maximum = self.SignalHisto.GetMaximum()
+            scale_val = 1./maximum
+            self.SignalHisto.Scale(scale_val)
+            scale_str = " (scaled to 1)"
+            tmpTitle = self.SignalHisto.GetTitle()
+            self.SignalHisto.SetTitle(tmpTitle+scale_str)
         self.SignalHisto.Draw()
         if saveplot:
             self.SavePlots('TotalSignalDistribution', 'png')
