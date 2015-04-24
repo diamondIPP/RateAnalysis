@@ -110,6 +110,7 @@ class Analysis(Elementary):
             pad = offset_canvas.GetPad(0)
             pad.SetLogy()
             offset_canvas.Update()
+            self.SavePlots("Offset.png")
             offset = int(th1.GetBinCenter(th1.GetMaximumBin()))
             if abs(th1.GetMean())>0.3:
                 print "\nINFO: BAD TIMING ALIGNMENT !\n"
@@ -240,7 +241,7 @@ class Analysis(Elementary):
 
         self.Checklist["MeanSignalHisto"] = True
 
-    def CreateBoth(self,saveplots = False,savename = "SignalDistribution",ending="png",saveDir = "Results/",PS=False, test=""):
+    def CreateBoth(self,saveplots = False,savename = "SignalDistribution",ending="png",saveDir = None, PS=False, test=""):
         self.combined_canvas = ROOT.TCanvas("combined_canvas"+test,"Combined Canvas",1000,500)
         ROOT.SetOwnership(self.combined_canvas, False)
         self.combined_canvas.Divide(2,1)
@@ -287,7 +288,7 @@ class Analysis(Elementary):
         self.Pad.counthisto.Draw(drawoption)#"surf2")
         #self.Pad.counthisto.Draw("CONT1 SAME")
         if saveplot:
-            self.SavePlots("Hits_Distribution", "png", "Results/")
+            self.SavePlots("Hits_Distribution", "png")
         self.IfWait("Hits Distribution shown")
         self.Checklist["HitsDistribution"] = True
 
