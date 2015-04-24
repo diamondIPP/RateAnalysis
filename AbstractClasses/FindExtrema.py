@@ -310,7 +310,7 @@ class FindExtrema(Elementary):
             self.BinCollectionObj.parent_analysis_obj.ExtremaResults['Ninjas'] = len(Ninjas)
             self.BinCollectionObj.parent_analysis_obj.ExtremaResults['Ghosts'] = len(Ghosts)
         self.BinCollectionObj.parent_analysis_obj.ExtremaResults['FoundN'+self.ExtremaType] = len(Vote5Extrema)
-        self.BinCollectionObj.parent_analysis_obj.ExtremaResults['Found'+self.ExtremaType] = self.BinCollectionObj.GetBinCenter(Vote5Extrema)
+        self.BinCollectionObj.parent_analysis_obj.ExtremaResults['Found'+self.ExtremaType] = self.BinCollectionObj.GetBinCenter(Vote5Extrema) # store REAL parent analysis, not parent.ExtremeAnalysis
 
         self.found_extrema = ROOT.TGraph()
         for i in xrange(len(Vote5Extrema)):
@@ -335,7 +335,7 @@ class FindExtrema(Elementary):
                 self.real_peaks.Draw('SAME P0')
             vote_canvas.Update()
             self.IfWait("Vote Histogram drawn")
-            self.BinCollectionObj.SavePlots('vote_histo', 'png', 'Results/')
+            self.BinCollectionObj.SavePlots('vote_histo', 'png')
             # ROOT.gStyle.SetPalette(53)
             # ROOT.gStyle.SetNumberContours(999)
 
