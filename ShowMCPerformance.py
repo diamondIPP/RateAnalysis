@@ -9,11 +9,12 @@ To improve:
 '''
 
 # Settings:
-hits = 30000
-tries = 40
+hits = 300000
+tries = 20
+peaks = "3Peaks"
 
 PerfResults = "MC/Performance_Results/"
-foldername = "2015-04-22 22-07-50.999851/"
+foldername = "2015-04-23 18-36-26.392609/"
 filename = "MCPerformanceLog.root"
 filepath = PerfResults+foldername+filename
 
@@ -89,7 +90,7 @@ func = TF1("func", "x", 0,1)
 func.Draw("SAME")
 RecSA_Quantiles_graph.SetMarkerColor(ROOT.kRed)
 RecSA_Quantiles_graph.Draw("SAME P*")
-ROOT.gPad.Print(PerfResults+foldername+"MC_PerformanceAnalysis_{0}_4peaks_{1}rep.png".format(hits, tries))
+ROOT.gPad.Print(PerfResults+foldername+("MC_PerformanceAnalysis_{0}_"+peaks+"_{1}rep.png").format(hits, tries))
 # RecSA_MinMax_graph.SetMarkerColor(ROOT.kBlue)
 # RecSA_MinMax_graph.Draw("SAME P*")
 
