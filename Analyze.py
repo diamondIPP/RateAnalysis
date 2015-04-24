@@ -100,8 +100,8 @@ if __name__ == "__main__":
                 # newAnalysis.Pad.GetSignalInColumn(position=0.13, show=True)
                 # newAnalysis.Pad.ShowBinXYSignalHisto(-0.03,0.19, saveplot=True, show_fit=True)
                 # newAnalysis.Pad.ShowBinXYSignalHisto(0.13,0.03,True)
-                # newAnalysis.FindMaxima(show=True)
-                # newAnalysis.FindMinima(show=True)
+                newAnalysis.FindMaxima(show=True)
+                newAnalysis.FindMinima(show=True)
                 # newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(-0.04,0.3,saveplot=True, show_fit=True)
                 # newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.07,0.3,saveplot=True, show_fit=True)
                 # newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.12,0.33, saveplot=True, show_fit=True)
@@ -124,8 +124,6 @@ if __name__ == "__main__":
                 #     newAnalysis.ExtremeAnalysis.Pad.MaximaSearch.real_peaks.Draw('SAME P0')
                 # # newAnalysis.ExtremeAnalysis.Pad.MaximaSearch.found_extrema.SetMarkerColor(ROOT.kGreen+2)
                 # # newAnalysis.ExtremeAnalysis.Pad.MaximaSearch.found_extrema.Draw('SAME P0')
-                # newAnalysis.ExtremeAnalysis.Pad.GetSignalInColumn(-0.11, show=True)
-                # newAnalysis.combined_canvas.cd(1)
                 # minima = newAnalysis.ExtremeAnalysis.ExtremaResults['FoundMinima']
                 # for i in xrange(len(minima)):
                 #     text = ROOT.TText()
@@ -141,7 +139,7 @@ if __name__ == "__main__":
                 #     maxbin.FitLandau()
                 #     minbin = newAnalysis.ExtremeAnalysis.Pad.GetBinByCoordinates(*(minima[0]))
                 #     minbin.FitLandau()
-                #     print '\nApproximated Signal Amplitude: {0:-0.0f}% - (high/low approximation)\n'.format(100.*(maxbin.Fit['MPV']/minbin.Fit['MPV']-1.))
+                #     print '\nApproximated Signal Amplitude: {0:0.0f}% - (high/low approximation)\n'.format(100.*(maxbin.Fit['MPV']/minbin.Fit['MPV']-1.))
                 #
                 # min_percent = 5
                 # max_percent = 99
@@ -183,6 +181,7 @@ if __name__ == "__main__":
     # MCAnalysis.DoSignalHeightScan()
 
     collection.SignalHeightScan()
+    collection.PeakComparison()
 
     if show_plots: raw_input("Press ENTER to quit:")
 
