@@ -13,11 +13,15 @@ class FindExtrema(Elementary):
         self.ExtremaType = ''
         self.SetType()
 
-        self.voting_histo = ROOT.TH2D('voting_histo_'+self.ExtremaType+str(self.GLOBAL_COUNT), 'Voting for '+self.ExtremaType, *self.BinCollectionObj.Get2DAttributes())
+        self.voting_histo_name = 'voting_histo_'+self.ExtremaType+str(self.GLOBAL_COUNT)
+        self.voting_histo = ROOT.TH2D(self.voting_histo_name, 'Voting for '+self.ExtremaType, *self.BinCollectionObj.Get2DAttributes())
         self.bin_SW_coordinates = self.BinCollectionObj.ListOfBins[self.BinCollectionObj.Attributes['binsx']+3].GetBinCenter()
         self.bin_SE_coordinates = self.BinCollectionObj.ListOfBins[2*self.BinCollectionObj.Attributes['binsx']+2].GetBinCenter()
         self.binsx_, self.xmin_, self.xmax_, self.binsy_, self.ymin_, self.ymax_ = self.BinCollectionObj.Get2DAttributes()
         self.GLOBAL_COUNT += 1
+
+    def __del__(self):
+        ROOT.gROOT.Delete(self.voting_histo_name)
 
     def LoadConfig(self):
         self.ShowAndWait = False
