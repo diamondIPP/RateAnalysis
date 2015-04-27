@@ -15,6 +15,14 @@ class AnalysisCollection(Elementary):
     def __init__(self, verbose = False):
         Elementary.__init__(self, verbose=verbose)
 
+    def __del__(self):
+        for runnumber in self.collection.keys():
+            self.collection[runnumber].__del__()
+        if hasattr(self, "FWHMcanvas"):
+            ROOT.gROOT.Delete("FWHMcanvas")
+        if hasattr(self, "fwhm_histo"):
+            ROOT.gROOT.Delete("fwhm_histo")
+
     def AddAnalysis(self,analysis_obj):
         '''
         Adds an Analysis object to the analysis collection object
@@ -36,12 +44,12 @@ class AnalysisCollection(Elementary):
         :return: -
         '''
 
-        self.canvas = ROOT.TCanvas("canvas", "FWHM")
+        self.FWHMcanvas = ROOT.TCanvas("FWHMcanvas", "FWHM")
         self.fwhm_histo = ROOT.TH1D("fwhm_histo", "FWHM Distribution of "+str(self.GetNumberOfAnalyses())+" runs",50,0,100)
 
         for run in AnalysisCollection.collection:
             self.fwhm_histo.Fill(self.CalculateFWHM(print_result=False,run_number=run))
-        self.canvas.cd()
+        self.FWHMcanvas.cd()
         self.fwhm_histo.GetXaxis().SetTitle('FWHM')
         self.fwhm_histo.Draw()
 
