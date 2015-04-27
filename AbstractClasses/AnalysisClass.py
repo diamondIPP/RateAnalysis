@@ -1,4 +1,5 @@
 import ROOT
+from ROOT import gROOT
 from RunClass import Run
 from AbstractClasses.Elementary import Elementary
 import os
@@ -14,7 +15,6 @@ class Analysis(Elementary):
     An Analysis Object contains all Data and Results of a SINGLE run.
     '''
 
-    Signal2DDistribution = ROOT.TH2D()
 
     def __init__(self, run_object, config_object = Config(), verbose = False):
         '''
@@ -30,8 +30,8 @@ class Analysis(Elementary):
         self.config_object = config_object
         self.config_object.SetWindowFromDiamond(self.run_object.diamond)
         self.TrackingPadAnalysisROOTFile = run_object.TrackingPadAnalysis["ROOTFile"]
-        self.Signal2DDistribution = ROOT.TH2D()
-        self.Signal2DDistribution.SetDirectory(0) # is needed because of garbage collection
+        # self.Signal2DDistribution = ROOT.TH2D()
+        # self.Signal2DDistribution.SetDirectory(0) # is needed because of garbage collection
 
 
         # loading data file
@@ -54,6 +54,23 @@ class Analysis(Elementary):
             "Ghosts": None, # nunmber of wrong Maxima found (only available when MC Run)
             "SignalHeight": 0.
         }
+
+    def __del__(self):
+        self.VerbosePrint("Deleting Analysis..")
+        if hasattr(self, "Pad"):
+            self.Pad.__del__()
+            del self.Pad
+            # delattr(self, "Pad")
+        # gROOT.GetListOfFiles().ls()
+        rootfile = gROOT.GetListOfFiles().FindObject(self.TrackingPadAnalysisROOTFile)
+        if rootfile:
+            rootfile.Close()
+        if hasattr(self, "ExtremeAnalysis"):
+            self.ExtremeAnalysis.__del__()
+        self.VerbosePrint("Analysis deleted")
+
+
+
 
     def LoadConfig(self): # BUG: CRASH WHEN Config loaded after many runs (CWD lost)
         # GoOn = True
@@ -172,6 +189,7 @@ class Analysis(Elementary):
         self.Pad.MakeFits()
 
         self.Signal2DDistribution = self.Pad.GetMeanSignalDistribution(self.minimum_bincontent)
+        self.Signal2DDistribution.SetDirectory(0)
         self.Signal2DDistribution.SetStats(False)
         self.Signal2DDistribution.GetXaxis().SetTitle("pos x / cm")
         self.Signal2DDistribution.GetYaxis().SetTitle("pos y / cm")
@@ -363,14 +381,14 @@ class Analysis(Elementary):
         self.ExtremeAnalysis.ExtremaResults['SignalHeight'] = SignalHeight
         return SignalHeight
 
-    def ShowSignalHistogram(self, save = False, scale = False):
+    def ShowSignalHistogram(self, save = False, scale = False, showfit=True):
         if  hasattr(self, "Pad"):
-            self.Pad.CreateSignalHistogram(saveplot=save, scale=scale)
+            self.Pad.CreateSignalHistogram(saveplot=save, scale=scale, showfit=showfit)
         elif hasattr(self, "ExtremeAnalysis") and hasattr(self.ExtremeAnalysis, "Pad"):
-            self.ExtremeAnalysis.Pad.CreateSignalHistogram(saveplot=save, scale=scale)
+            self.ExtremeAnalysis.Pad.CreateSignalHistogram(saveplot=save, scale=scale, showfit=showfit)
         else:
             self.DoAnalysis()
-            self.Pad.CreateSignalHistogram(saveplot=save, scale=scale)
+            self.Pad.CreateSignalHistogram(saveplot=save, scale=scale, showfit=showfit)
 
     def ExportMC(self, MCDir = "MCInputs/"):
         '''
