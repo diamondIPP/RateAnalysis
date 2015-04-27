@@ -64,6 +64,9 @@ class BinCollection(Elementary):
         ROOT.gROOT.Delete('SignalHisto')
         if hasattr(self, "meansignaldistribution"):
             ROOT.gROOT.Delete('meansignaldistribution')
+        if hasattr(self, "MinimaSearch"):
+            self.MinimaSearch.__del__()
+            del self.MinimaSearch
 
     def LoadConfig(self):
         self.ShowAndWait = False
