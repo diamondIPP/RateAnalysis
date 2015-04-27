@@ -82,7 +82,7 @@ class MCPerformance(Elementary):
                 print "\n{0}th repetition with Signal height set to: {1}\n".format(repetition, height)
                 run_object = MCRun(validate=False,verbose=self.verbose,run_number=364)
                 print "newAnalysis = Analysis(run_object)"
-                newAnalysis = Analysis(run_object)
+                newAnalysis = Analysis(run_object, verbose=self.verbose)
                 run_object.MCAttributes['PeakHeight'] = height
                 run_object.SetNumberOfHits(hits_per_height)
                 print "newAnalysis.FindMaxima()"
