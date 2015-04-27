@@ -54,7 +54,7 @@ if __name__ == "__main__":
     collection = AnalysisCollection()
     for run_number in run_numbers:
 
-        if run.SetRun(run_number): # run has to exist and is setted
+        if run.SetRun(run_number): # run must exist and is set
 
             if True or run.diamond.Specifications['Irradiation'] == 'no':
                 print run_number
@@ -166,6 +166,8 @@ if __name__ == "__main__":
 
                 newAnalysis.GetSignalHeight()
 
+                newAnalysis.ShowSignalHistogram()
+
                 collection.AddAnalysis(newAnalysis)
 
 
@@ -183,9 +185,11 @@ if __name__ == "__main__":
     collection.SignalHeightScan()
     collection.PeakComparison()
 
+
+
     if show_plots: raw_input("Press ENTER to quit:")
 
-
-
+    ROOT.gDirectory.GetList().ls()
+    ROOT.gROOT.GetListOfFiles().ls()
 
 
