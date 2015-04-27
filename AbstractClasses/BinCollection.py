@@ -7,6 +7,8 @@ import types as t
 from AbstractClasses.FindExtrema import FindMaxima, FindMinima
 from Elementary import Elementary
 from Bin import Bin
+from Langaus import *
+from array import array
 import copy
 
 
@@ -52,6 +54,16 @@ class BinCollection(Elementary):
         self.counthisto = ROOT.TH2D('counthisto', '2D hit distribution', *self.Get2DAttributes())
         self.totalsignal = ROOT.TH2D('totalsignal', '2D total signal distribution', *self.Get2DAttributes())
         self.SignalHisto = ROOT.TH1D('SignalHisto,', 'Signal response Histogram', 500, 0, 500)
+
+    def __del__(self):
+        for bin in self.ListOfBins:
+            bin.__del__()
+            del bin
+        ROOT.gROOT.Delete('counthisto')
+        ROOT.gROOT.Delete('totalsignal')
+        ROOT.gROOT.Delete('SignalHisto')
+        if hasattr(self, "meansignaldistribution"):
+            ROOT.gROOT.Delete('meansignaldistribution')
 
     def LoadConfig(self):
         self.ShowAndWait = False
@@ -560,12 +572,12 @@ class BinCollection(Elementary):
             self.IfWait('show signal in row {:.3f}..'.format(rowheight))
         return signals
 
-    def CreateSignalHistogram(self,saveplot = False, scale = False):
+    def CreateSignalHistogram(self,saveplot = False, scale = False, showfit = True):
         canvas = ROOT.TCanvas('canvas', 'canvas')
         canvas.cd()
         self.SignalHisto.GetXaxis().SetTitle("Signal Response [ADC Units]")
         self.SignalHisto.GetYaxis().SetTitle("Counts")
-        if scale:
+        if scale or showfit:
             maximum = self.SignalHisto.GetMaximum()
             scale_val = 1./maximum
             self.SignalHisto.Scale(scale_val)
@@ -575,6 +587,53 @@ class BinCollection(Elementary):
         self.SignalHisto.Draw()
         if saveplot:
             self.SavePlots('TotalSignalDistribution', 'png')
+        if showfit:
+            # Fitting SNR histo
+            print "Fitting...\n"
+
+            # Setting fit range and start values
+            fr = array("d", [0,0])
+            sv = array("d", [0,0,0,0])
+            pllo = array("d", [0,0,0,0])
+            plhi = array("d", [0,0,0,0])
+            fp = array("d", [0,0,0,0])
+            fpe = array("d", [0,0,0,0])
+
+            # fitrange for fit:
+            fr[0]=0.3*self.SignalHisto.GetMean()
+            fr[1]=3.0*self.SignalHisto.GetMean()
+
+            # lower parameter limits
+            pllo[0]=2.0 # par[0]=Width (scale) parameter of Landau density
+            pllo[1]=20.0 # par[1]=Most Probable (MP, location) parameter of Landau density
+            pllo[2]=1.0 # par[2]=Total area (integral -inf to inf, normalization constant)
+            pllo[3]=1.0 # par[3]=Width (sigma) of convoluted Gaussian function
+
+            # upper parameter limits
+            plhi[0]=50.0         # par[0]=Width (scale) parameter of Landau density
+            plhi[1]=250.0        # par[1]=Most Probable (MP, location) parameter of Landau density
+            plhi[2]=10000.0   # par[2]=Total area (integral -inf to inf, normalization constant)
+            plhi[3]=50.0         # par[3]=Width (sigma) of convoluted Gaussian function
+
+            # Startvalues for fit:
+            sv[0]=11.0       # par[0]=Width (scale) parameter of Landau density
+            sv[1]=self.SignalHisto.GetBinCenter(self.SignalHisto.GetMaximumBin())      # par[1]=Most Probable (MP, location) parameter of Landau density
+            sv[2]=40.0   # par[2]=Total area (integral -inf to inf, normalization constant)
+            sv[3]=11.0       # par[3]=Width (sigma) of convoluted Gaussian function
+
+            chisqr = array("d", [0]) # returns the chi square
+            ndf = array("d", [0]) # returns ndf
+
+            self.LangauFitFunction = langaufit(self.SignalHisto,fr,sv,pllo,plhi,fp,fpe,chisqr,ndf)
+
+            SNRPeak = array("d", [0])
+            SNRFWHM = array("d", [0])
+            langaupro(fp,SNRPeak,SNRFWHM)
+
+            print "Fitting done\n"
+
+            self.LangauFitFunction.Draw("lsame")
+            raw_input("WAIT!")
         self.IfWait('Signal Histogram drawn')
 
     def FindMaxima(self, threshold = None, minimum_bincount = 5, show = False):
