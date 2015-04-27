@@ -44,6 +44,9 @@ class Bin(object):
         }
         self.BinSignalHisto = ROOT.TH1D('BinSignalHisto'+str(binnumber), 'Signal Distribution',500,0,500)
 
+    def __del__(self):
+        ROOT.gROOT.Delete('BinSignalHisto'+str(self.Attributes['binnumber']))
+
     def AddData(self, signal, update_bin_attributes = False):
         '''
         Fill data into this bin
