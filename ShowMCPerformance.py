@@ -9,12 +9,12 @@ To improve:
 '''
 
 # Settings:
-hits = 300000
+hits = 30000
 tries = 20
 peaks = "3Peaks"
 
 PerfResults = "MC/Performance_Results/"
-foldername = "2015-04-23 18-36-26.392609/"
+foldername = "2015-04-27 11-13-32.668214/"
 filename = "MCPerformanceLog.root"
 filepath = PerfResults+foldername+filename
 
