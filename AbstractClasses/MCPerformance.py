@@ -137,6 +137,7 @@ class MCPerformance(Elementary):
 
         print "Write ROOT-file"
         rootfile.Write()
+        rootfile.Close()
         print "ROOT File written. Write infofile"
         infofile.write("\nTotal Time elapsed: "+str(datetime.today() - starttime))
         infofile.close()
@@ -157,6 +158,8 @@ class MCPerformance(Elementary):
         # graph2.Draw('SAME LP*')
         # self.SavePlots("PerformanceResult", "png", path+"/")
         answer = raw_input('Wanna crash?')
+        ROOT.gDirectory.GetList().ls()
+        ROOT.gROOT.GetListOfFiles().ls()
         if answer == 'yes':
             gc.collect()
 
