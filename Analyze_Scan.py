@@ -117,6 +117,8 @@ if __name__ == "__main__":
 
 
                 newAnalysis.GetSignalHeight()
+                newAnalysis.ShowSignalHistogram(save=True, showfit=True)
+                newAnalysis.SignalEvolution(Mode = "MPV", show = True, time_spacing=3)
 
                 collection.AddAnalysis(newAnalysis)
 
