@@ -2,7 +2,9 @@ import ROOT
 from ROOT import gROOT
 from RunClass import Run
 from AbstractClasses.Elementary import Elementary
+from AbstractClasses.Langau import Langau
 import os
+import numpy as np
 from BinCollection import BinCollection
 from ConfigClass import *
 from array import array
@@ -55,6 +57,15 @@ class Analysis(Elementary):
             "SignalHeight": 0.
         }
 
+        self.SignalHistoFitResults = {
+            "FitFunction": None,
+            "Peak": None,
+            "FWHM": None,
+            "Chi2": None,
+            "NDF": None,
+
+        }
+
     def __del__(self):
         self.VerbosePrint("Deleting Analysis..")
         if hasattr(self, "Pad"):
@@ -67,6 +78,11 @@ class Analysis(Elementary):
             rootfile.Close()
         if hasattr(self, "ExtremeAnalysis"):
             self.ExtremeAnalysis.__del__()
+        if hasattr(self, "combined_canvas"):
+            canvas = ROOT.gROOT.GetListOfCanvases().FindObject(self.combined_canvas_name)
+            canvas.Close()
+        if hasattr(self, "MeanSignalHisto"):
+            ROOT.gROOT.Delete(self.MeanSignalHisto_name)
         self.VerbosePrint("Analysis deleted")
 
 
@@ -104,6 +120,22 @@ class Analysis(Elementary):
         self.SaveMCData = True
         self.check_offset = True
 
+    def CheckOffset(self):
+        if self.check_offset and not self.run_object.IsMonteCarlo:
+            offset_canvas = ROOT.TCanvas("offset_canvas", "offset_canvas")
+            th1 = ROOT.TH1D("th1", "calibration offset", 21, -10.5, 10.5)
+            self.track_info.Draw("calib_offset>>th1", "calibflag==1 && calib_offset < 50")
+            pad = offset_canvas.GetPad(0)
+            pad.SetLogy()
+            offset_canvas.Update()
+            self.SavePlots("Offset.png")
+            offset = int(th1.GetBinCenter(th1.GetMaximumBin()))
+            if abs(th1.GetMean())>0.3:
+                print "\nINFO: BAD TIMING ALIGNMENT !\n"
+            print "MOST COMMON OFFSET: {0:0.0F}\n".format(offset)
+            return offset
+        else:
+            return 0
 
     def DoAnalysis(self,minimum_bincontent = 1):
         '''
@@ -120,20 +152,8 @@ class Analysis(Elementary):
         self.Pad = BinCollection(self, *self.config_object.Get2DAttributes())
 
         # Check for misalignment in track vs signal using calibflag:
-        if self.check_offset and not self.run_object.IsMonteCarlo:
-            offset_canvas = ROOT.TCanvas("offset_canvas", "offset_canvas")
-            th1 = ROOT.TH1D("th1", "calibration offset", 21, -10.5, 10.5)
-            self.track_info.Draw("calib_offset>>th1", "calibflag==1 && calib_offset < 50")
-            pad = offset_canvas.GetPad(0)
-            pad.SetLogy()
-            offset_canvas.Update()
-            self.SavePlots("Offset.png")
-            offset = int(th1.GetBinCenter(th1.GetMaximumBin()))
-            if abs(th1.GetMean())>0.3:
-                print "\nINFO: BAD TIMING ALIGNMENT !\n"
-            print "MOST COMMON OFFSET: {0:0.0F}\n".format(offset)
-        else:
-            offset = 0
+        offset = self.CheckOffset()
+
         # fill two 2-dim histograms to collect the hits and signal strength
         # if we have an offset, pick values from different events in tree
         if not self.run_object.IsMonteCarlo:
@@ -239,7 +259,8 @@ class Analysis(Elementary):
         # print self.Signal2DDistribution
         minimum = self.Signal2DDistribution.GetMinimum()
         maximum = self.Signal2DDistribution.GetMaximum()
-        self.MeanSignalHisto = ROOT.TH1D("MeanSignalHisto"+str(self.GLOBAL_COUNT),"Mean Signal Histogram",100,minimum,maximum)
+        self.MeanSignalHisto_name = "MeanSignalHisto"+str(self.GLOBAL_COUNT)
+        self.MeanSignalHisto = ROOT.TH1D(self.MeanSignalHisto_name, "Mean Signal Histogram", 100, minimum,maximum)
         self.GLOBAL_COUNT += 1
 
         if show:
@@ -260,7 +281,8 @@ class Analysis(Elementary):
         self.Checklist["MeanSignalHisto"] = True
 
     def CreateBoth(self,saveplots = False,savename = "SignalDistribution",ending="png",saveDir = None, PS=False, test=""):
-        self.combined_canvas = ROOT.TCanvas("combined_canvas"+test,"Combined Canvas",1000,500)
+        self.combined_canvas_name = "combined_canvas"+test
+        self.combined_canvas = ROOT.TCanvas(self.combined_canvas_name,"Combined Canvas",1000,500)
         ROOT.SetOwnership(self.combined_canvas, False)
         self.combined_canvas.Divide(2,1)
 
@@ -386,9 +408,91 @@ class Analysis(Elementary):
             self.Pad.CreateSignalHistogram(saveplot=save, scale=scale, showfit=showfit)
         elif hasattr(self, "ExtremeAnalysis") and hasattr(self.ExtremeAnalysis, "Pad"):
             self.ExtremeAnalysis.Pad.CreateSignalHistogram(saveplot=save, scale=scale, showfit=showfit)
+            if showfit:
+                self.GetSignalHistoFitResults() # Get the Results from self.Extremeanalysis.SignalHistoFitResults to self.SignalHistoFitResults
         else:
             self.DoAnalysis()
             self.Pad.CreateSignalHistogram(saveplot=save, scale=scale, showfit=showfit)
+
+    def GetSignalHistoFitResults(self):
+        if self.SignalHistoFitResults["Peak"] is not None:
+            FitFunction = self.SignalHistoFitResults["FitFunction"]
+            Peak = self.SignalHistoFitResults["Peak"]
+            FWHM = self.SignalHistoFitResults["FWHM"]
+            Chi2 = self.SignalHistoFitResults["Chi2"]
+            NDF = self.SignalHistoFitResults["NDF"]
+            return FitFunction, Peak, FWHM, Chi2, NDF
+        elif hasattr(self, "ExtremeAnalysis") and self.ExtremeAnalysis.SignalHistoFitResults["Peak"] is not None:
+            FitFunction = self.ExtremeAnalysis.SignalHistoFitResults["FitFunction"]
+            Peak = self.ExtremeAnalysis.SignalHistoFitResults["Peak"]
+            FWHM = self.ExtremeAnalysis.SignalHistoFitResults["FWHM"]
+            Chi2 = self.ExtremeAnalysis.SignalHistoFitResults["Chi2"]
+            NDF = self.ExtremeAnalysis.SignalHistoFitResults["NDF"]
+            self.SignalHistoFitResults["FitFunction"] = FitFunction
+            self.SignalHistoFitResults["Peak"] = Peak
+            self.SignalHistoFitResults["FWHM"] = FWHM
+            self.SignalHistoFitResults["Chi2"] = Chi2
+            self.SignalHistoFitResults["NDF"] = NDF
+            return FitFunction, Peak, FWHM, Chi2, NDF
+        else:
+            self.ShowSignalHistogram(save=False, showfit=True)
+            if (self.SignalHistoFitResults["Peak"] is not None) or (hasattr(self, "ExtremeAnalysis") and self.ExtremeAnalysis.SignalHistoFitResults["Peak"] is not None):
+                self.GetSignalHistoFitResults()
+            else:
+                assert(False), "BAD SignalHistogram Fit, Stop program due to possible infinity loop"
+
+    def SignalEvolution(self, Mode="Mean", show=True, time_spacing = 3, save = True): # not show: save evolution data
+        assert(Mode in ["Mean", "MPV"]), "Wrong Mode, Mode has to be `Mean` or `MPV`"
+        if not self.run_object.IsMonteCarlo:
+            results = {}
+            SignalEvolution = ROOT.TGraphErrors()
+            SignalEvolution.SetNameTitle("SignalEvolution", "Signal Response Evolution")
+            self.track_info.GetEntry(1)
+            starttime = self.track_info.time_stamp
+            self.track_info.GetEntry(self.track_info.GetEntries())
+            # endtime = self.track_info.time_stamp
+            for i in xrange(self.track_info.GetEntries()):
+                # read the ROOT TTree
+                self.track_info.GetEntry(i)
+                signal_ = abs(self.track_info.integral50)
+                time_ = self.track_info.time_stamp
+                deltatime_min = (time_-starttime)/60.
+                time_bucket = int(deltatime_min)/int(time_spacing)*int(time_spacing)
+                calibflag = self.track_info.calibflag
+                if calibflag == 0:
+                    try:
+                        results[time_bucket].append(signal_)
+                    except KeyError:
+                        results[time_bucket] = [signal_]
+
+            time_buckets = results.keys()
+            count = 0
+            for t in time_buckets:
+                histo = ROOT.TH1D("SignalEvolution_time_"+str(t), "Signal Response Histogram for t = {0:0.0f}-{1:0.0f}min".format(t, t+int(time_spacing)), 500, 0, 500)
+                for i in xrange(len(results[t])):
+                    histo.Fill(results[t][i])
+                if Mode == "Mean":
+                    SignalEvolution.SetPoint(count, t, histo.GetMean())
+                    SignalEvolution.SetPointError(count, 0, histo.GetRMS()/np.sqrt(histo.GetEntries()))
+                    signalname = "Mean of Signal Response"
+                elif Mode == "MPV":
+                    LanGausFit = Langau()
+                    LanGausFit.LangauFit(histo)
+                    print "MPV of LanGauFit: ", LanGausFit.GetMPV()
+                    SignalEvolution.SetPoint(count, t, LanGausFit.GetMPV())
+                    SignalEvolution.SetPointError(count, 0, LanGausFit.GetMPVError())
+                    signalname = "MPV of Signal Respose"
+                count += 1
+                del histo
+                ROOT.gROOT.Delete("SignalEvolution_time_"+str(t))
+
+            SignalEvolution.GetXaxis().SetTitle("Time / min")
+            SignalEvolution.GetYaxis().SetTitle(signalname+" / ADC Units")
+            SignalEvolution.Draw("ALP*")
+            if save:
+                self.SavePlots("SignalTimeEvolution"+Mode+".png")
+            raw_input("WAIT")
+
 
     def ExportMC(self, MCDir = "MCInputs/"):
         '''
