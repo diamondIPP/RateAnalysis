@@ -575,7 +575,7 @@ class BinCollection(Elementary):
             self.IfWait('show signal in row {:.3f}..'.format(rowheight))
         return signals
 
-    def CreateSignalHistogram(self,saveplot = False, scale = False, showfit = True):
+    def CreateSignalHistogram(self, saveplot = False, scale = False, showfit = True):
         canvas = ROOT.TCanvas('canvas', 'canvas')
         canvas.cd()
         self.SignalHisto.GetXaxis().SetTitle("Signal Response [ADC Units]")
@@ -588,8 +588,6 @@ class BinCollection(Elementary):
             tmpTitle = self.SignalHisto.GetTitle()
             self.SignalHisto.SetTitle(tmpTitle+scale_str)
         self.SignalHisto.Draw()
-        if saveplot:
-            self.SavePlots('TotalSignalDistribution', 'png')
         if showfit:
             # Fitting SNR histo
             print "Fitting...\n"
@@ -631,12 +629,23 @@ class BinCollection(Elementary):
 
             SNRPeak = array("d", [0])
             SNRFWHM = array("d", [0])
-            langaupro(fp,SNRPeak,SNRFWHM)
+            langaupro(fp,SNRPeak,SNRFWHM) # search for the peak and FWHM of landau-gaus convolute
 
             print "Fitting done\n"
 
-            self.LangauFitFunction.Draw("lsame")
+            self.LangauFitFunction.Draw("lsame") # draw also fit parameters in legend
+            canvas.Update()
+
+            self.parent_analysis_obj.SignalHistoFitResults["FitFunction"] = self.LangauFitFunction
+            self.parent_analysis_obj.SignalHistoFitResults["Peak"] = SNRPeak[0]
+            self.parent_analysis_obj.SignalHistoFitResults["FWHM"] = SNRFWHM[0]
+            self.parent_analysis_obj.SignalHistoFitResults["Chi2"] = chisqr[0]
+            self.parent_analysis_obj.SignalHistoFitResults["NDF"] = ndf[0]
+
+
             raw_input("WAIT!")
+        if saveplot:
+            self.SavePlots('TotalSignalDistribution', 'png')
         self.IfWait('Signal Histogram drawn')
 
     def FindMaxima(self, threshold = None, minimum_bincount = 5, show = False):
