@@ -6,6 +6,7 @@ from AbstractClasses.AnalysisClass import Analysis
 from AbstractClasses.AnalysisCollection import AnalysisCollection
 from AbstractClasses.RunClass import Run
 from AbstractClasses.MCRun import MCRun
+from AbstractClasses.RunSelection import RunSelection
 from Runinfos.RunInfo import RunInfo
 from array import array
 from AbstractClasses.ConfigClass import *
@@ -15,11 +16,10 @@ from AbstractClasses.Elementary import Elementary
 
 
 if __name__ == "__main__":
-    #initialize_ROOT()
-    # get run numbers to analyze from arguments (type: list):
-    run_numbers = map(int, [i for i in sys.argv if i.isdigit() == True])
 
     # config
+    Diamond = "IIa-2"
+    Bias = -500
     show_plots = True
     minimum_statistics = 10 # don't draw bins which contain less than minimum_statistics hits
 
@@ -33,27 +33,18 @@ if __name__ == "__main__":
     else:
         run = Run(validate=False,verbose=verbose)
 
-    MaxNrOfRuns = 9999
-    if(len(run_numbers) == 0):
-        MaxNrOfRuns = int(raw_input("No runs specified. Set Maximal number of runs to analyze (0-999) press Enter to select all Runs: "))
-        if MaxNrOfRuns == '':
-            MaxNrOfRuns = 9999
-            print "All runs selected..."
-        assert (0 <= MaxNrOfRuns < 10000), "Invalid maximal run quantity"
-        all_run_numbers =  RunInfo.runs.keys()
-        run_numbers = []
-        for i in all_run_numbers:
-            run.SetRun(i)
-            if run.current_run['data_type'] == 0: # 0 = data, 1 = pedestrial, 2 = voltagescan, 3 =  long run, 4 = other
-                run_numbers += [i]
-        run_numbers = run_numbers[:MaxNrOfRuns]
+    # Select Run Numbers:
+    selection = RunSelection(verbose=verbose)
+    selection.SelectDataType(0)
+    selection.UnSelectUnlessDiamond(Diamond)
+    selection.UnSelectUnlessBias(Bias)
+    run_numbers = selection.GetSelectedRuns()
+
     print "Starting analysis with ",len(run_numbers)," runs:"
     run.ValidateRuns(run_numbers)
-    print run_numbers
-
 
     # SAVE PATH
-    savepath = "Results/Scan/IIa-2_-500/"
+    savepath = "Results/Scan/"+Diamond+"_"+str(Bias)+"/"
 
     collection = AnalysisCollection()
     for run_number in run_numbers:
@@ -64,7 +55,7 @@ if __name__ == "__main__":
                 print "Starting ",run_number
 
                 #
-                newAnalysis = Analysis(run,Config(70))
+                newAnalysis = Analysis(run,Config(70),verbose=verbose)
                 newAnalysis.SetSaveDirectory(savepath+str(run_number)+"/")
                 newAnalysis.DoAnalysis(minimum_statistics)
                 newAnalysis.CreateBoth(saveplots=False)
@@ -118,7 +109,7 @@ if __name__ == "__main__":
 
                 newAnalysis.GetSignalHeight()
                 newAnalysis.ShowSignalHistogram(save=True, showfit=True)
-                newAnalysis.SignalEvolution(Mode = "MPV", show = True, time_spacing=3)
+                newAnalysis.SignalEvolution(Mode = "Mean", show = True, time_spacing=3)
 
                 collection.AddAnalysis(newAnalysis)
 
@@ -137,6 +128,7 @@ if __name__ == "__main__":
     Elementary.SetSaveDirectory(savepath)
     collection.SignalHeightScan()
     collection.PeakComparison()
+    collection.PeakSignalEvolution()
 
     if show_plots: raw_input("Press ENTER to quit:")
 
