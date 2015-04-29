@@ -643,7 +643,7 @@ class BinCollection(Elementary):
             self.parent_analysis_obj.SignalHistoFitResults["NDF"] = ndf[0]
 
 
-            raw_input("WAIT!")
+            #raw_input("WAIT!")
         if saveplot:
             self.SavePlots('TotalSignalDistribution', 'png')
         self.IfWait('Signal Histogram drawn')
