@@ -233,7 +233,7 @@ class Analysis(Elementary):
         self.signal_canvas.SetName("signal_canvas")
         self.signal_canvas.SetTitle("signal distribution")
         # Plot the Signal2D TH2D histogram
-        ROOT.gStyle.SetPalette(53)
+        ROOT.gStyle.SetPalette(53) # Dark Body Radiator palette
         ROOT.gStyle.SetNumberContours(999)
         if show3d:
             self.Signal2DDistribution.Draw("SPEC dm(2,10) pa(1,1,1) ci(1,1,1) a(15,45,0) s(1,1)")
@@ -254,7 +254,7 @@ class Analysis(Elementary):
             else:
                 self.signal_canvas = ROOT.TCanvas()
                 ROOT.SetOwnership(self.signal_canvas, False)
-                ROOT.gStyle.SetPalette(53)
+                ROOT.gStyle.SetPalette(53) # Dark Body Radiator palette
                 ROOT.gStyle.SetNumberContours(999)
         # print self.Signal2DDistribution
         minimum = self.Signal2DDistribution.GetMinimum()
@@ -335,7 +335,7 @@ class Analysis(Elementary):
     def FindMaxima(self,show=False):
         minimum_bincontent = 30 # add a config file for this
         if not hasattr(self, "ExtremeAnalysis"):
-            self.ExtremeAnalysis = Analysis(self.run_object,Config(200))
+            self.ExtremeAnalysis = Analysis(self.run_object,Config(200),verbose=self.verbose)
             self.ExtremeAnalysis.DoAnalysis(minimum_bincontent)
         if show:
             # self.ExtremeAnalysis.CreatePlots()
@@ -345,7 +345,7 @@ class Analysis(Elementary):
     def FindMinima(self,show=False):
         minimum_bincontent = 30
         if not hasattr(self, "ExtremeAnalysis"):
-            self.ExtremeAnalysis = Analysis(self.run_object,Config(200))
+            self.ExtremeAnalysis = Analysis(self.run_object,Config(200),verbose=self.verbose)
             self.ExtremeAnalysis.DoAnalysis(minimum_bincontent)
         if show:
             self.ExtremeAnalysis.CreatePlots()
@@ -447,16 +447,25 @@ class Analysis(Elementary):
             results = {}
             SignalEvolution = ROOT.TGraphErrors()
             SignalEvolution.SetNameTitle("SignalEvolution", "Signal Response Evolution")
+
             self.track_info.GetEntry(1)
             starttime = self.track_info.time_stamp
             self.track_info.GetEntry(self.track_info.GetEntries())
             # endtime = self.track_info.time_stamp
-            for i in xrange(self.track_info.GetEntries()):
+            ok_deltatime = 0
+            TimeERROR = False
+            for i in xrange(self.track_info.GetEntries()-1):
+                i += 1
                 # read the ROOT TTree
                 self.track_info.GetEntry(i)
                 signal_ = abs(self.track_info.integral50)
                 time_ = self.track_info.time_stamp
                 deltatime_min = (time_-starttime)/60.
+                if deltatime_min < -1: # possible time_stamp reset
+                    deltatime_min = ok_deltatime + time_/60.
+                    TimeERROR = True
+                else:
+                    ok_deltatime = deltatime_min
                 time_bucket = int(deltatime_min)/int(time_spacing)*int(time_spacing)
                 calibflag = self.track_info.calibflag
                 if calibflag == 0:
@@ -464,6 +473,8 @@ class Analysis(Elementary):
                         results[time_bucket].append(signal_)
                     except KeyError:
                         results[time_bucket] = [signal_]
+            if TimeERROR:
+                print "\n\n\n\n\nWARNING: Error occured in time flow of Run "+str(self.run_object.run_number)+". Possible reset of timestamp during data taking!\n\n\n\n\n"
 
             time_buckets = results.keys()
             count = 0
@@ -491,7 +502,7 @@ class Analysis(Elementary):
             SignalEvolution.Draw("ALP*")
             if save:
                 self.SavePlots("SignalTimeEvolution"+Mode+".png")
-            raw_input("WAIT")
+            #raw_input("WAIT")
 
 
     def ExportMC(self, MCDir = "MCInputs/"):
