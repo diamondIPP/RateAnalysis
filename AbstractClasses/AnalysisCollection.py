@@ -1,4 +1,5 @@
 import ROOT
+from AbstractClasses.ATH2D import ATH2D
 import types as t
 import os
 from Elementary import Elementary
@@ -144,28 +145,128 @@ class AnalysisCollection(Elementary):
         self.IfWait("SignalHeightScan shown...")
         self.ShowAndWait = tmp
 
-    def PeakComparison(self):
-        PeakComparisonCanvas = ROOT.TCanvas("PeakComparisonCanvas", "PeakComparisonCanvas")
-        PeakComparisonCanvas.cd()
+    def PeakComparison(self, show = True):
+        print "PeakComparision start"
+        if show:
+            PeakComparisonCanvasMax = ROOT.TCanvas("PeakComparisonCanvasMax", "PeakComparisonCanvas")
+            PeakComparisonCanvasMin = ROOT.TCanvas("PeakComparisonCanvasMin", "PeakComparisonCanvas")
 
         runnumbers = self.collection.keys()
         pad_attributes = self.collection[runnumbers[0]].ExtremeAnalysis.Pad.Get2DAttributes()
 
-        PeakPad = ROOT.TH2D("PeakPad", "Peak distribution over all selected runs", *pad_attributes)
+        self.PeakPadMax = ATH2D("PeakPadMax", "Peak distribution over all selected runs", *pad_attributes)
+        self.PeakPadMin = ATH2D("PeakPadMin", "Low distribution over all selected runs", *pad_attributes)
 
         for runnumber in runnumbers:
             analysis = self.collection[runnumber]
             maxima = analysis.ExtremeAnalysis.ExtremaResults["FoundMaxima"]
+            minima = analysis.ExtremeAnalysis.ExtremaResults["FoundMinima"]
             if maxima is not None:
                 for peak in maxima:
-                    PeakPad.Fill(*peak)
+                    self.PeakPadMax.Fill(*peak)
             else:
-                print "WARNING: No Maxima results found in run ", runnumber, ". PeakComparison will be incomplete."
-
-        PeakPad.Draw("COLZ")
-        self.SavePlots("PeakPad.png")
+                print "WARNING: No Maxima results found in run ", runnumber, ". PeakComparisonMax will be incomplete."
+            if minima is not None:
+                for peak in minima:
+                    self.PeakPadMin.Fill(*peak)
+            else:
+                print "WARNING: No Minima results found in run ", runnumber, ". PeakComparisonMin will be incomplete."
+        if show:
+            ROOT.gStyle.SetPalette(55) # Rainbow palette
+            PeakComparisonCanvasMax.cd()
+            self.PeakPadMax.Draw("COLZ")
+            self.SavePlots("PeakPadMax.png")
+            PeakComparisonCanvasMin.cd()
+            self.PeakPadMin.Draw("COLZ")
+            self.SavePlots("PeakPadMin.png")
 
         raw_input("peakpad")
+
+    def PeakSignalEvolution(self, NMax = 3, NMin = 3, OnThisCanvas = None):
+        if OnThisCanvas is not None:
+            assert(isinstance(OnThisCanvas, ROOT.TCanvas)), "OnThisCanvas has to be a TCanvas object"
+        print "Signal Evolution start"
+        if not hasattr(self, "PeakPadMax"):
+            self.PeakComparison(show = False)
+
+        # Find the separated peaks (binnumbers) to consider in Signal Evolution
+        peakbins = [-1]*NMax # container to store the binnumbers of the separated maximas found
+        i = 0
+        while i<int(NMax):
+            maxcount = self.PeakPadMax.GetMaximum() # counts of maximum
+            if maxcount < 1:
+                break
+            peakbins[i] = self.PeakPadMax.GetMaximumBin() # binnumber with hightest counts
+            coordinates = self.PeakPadMax.GetBinCenter(peakbins[i])
+            self.PeakPadMax.Fill(coordinates[0], coordinates[1], -maxcount) # remove content of maximum bin
+            # if the binnumber is already in a neighborhood of a found peak, don't use it:
+            IsInNBHD = False
+            for k in xrange(i):
+                IsInNBHD |= peakbins[k] in self.PeakPadMax.GetBinsInNbhd(peakbins[i], include_center=True)
+            if IsInNBHD:
+                pass
+            else:
+                i += 1
+        self.VerbosePrint("Number of separated peaks to look at: {0:0.0f}".format(i))
+        peakbins = peakbins[:i]
+
+        # Fill all graphs of all separated peaks
+        MaxGraphs = {}
+        for peakbin in peakbins:
+            MaxGraphs[peakbin] = ROOT.TGraph()
+            MaxGraphs[peakbin].SetNameTitle("MaxGraph_"+str(peakbin), "Evolution of Signal Response during Rate Scan")
+            signals = []
+            runnumbers = self.collection.keys()
+            runnumbers.sort()
+            i = 0
+            for runnumber in runnumbers:
+                self.collection[runnumber].ExtremeAnalysis.Pad.ListOfBins[peakbin].CreateBinSignalHisto(saveplot = True, savedir=self.SaveDirectory+str(runnumber)+"/",show_fit = True)
+                mpv = self.collection[runnumber].ExtremeAnalysis.Pad.ListOfBins[peakbin].Fit['MPV']
+                signals.append(mpv)
+                MaxGraphs[peakbin].SetPoint(i, runnumber, mpv)
+                i += 1
+
+        # Print all Graphs of all peaks into the same canvas
+        if len(MaxGraphs)>0:
+            marker = 20
+            npeaks = len(MaxGraphs)
+            PeakSignalEvolutionCanvas = ROOT.TCanvas("PeakSignalEvolutionCanvas", "Signal Evolution Canvas")
+            PeakSignalEvolutionCanvas.cd()
+            legend = ROOT.TLegend(0.1,0.1,0.4,0.3)
+            MaxGraphs[peakbins[0]].SetMarkerStyle(marker)
+            MaxGraphs[peakbins[0]].SetMarkerColor(ROOT.kRed)
+            MaxGraphs[peakbins[0]].SetLineColor(ROOT.kRed)
+            MaxGraphs[peakbins[0]].Draw("ALP")
+            i = 1
+            legend.AddEntry(MaxGraphs[peakbins[0]], "high"+str(i), "lp")
+            marker += 1
+            i+=1
+            for peaknr in xrange(npeaks-1):
+                MaxGraphs[peakbins[peaknr+1]].SetMarkerStyle(marker)
+                MaxGraphs[peakbins[peaknr+1]].SetMarkerColor(ROOT.kRed)
+                MaxGraphs[peakbins[peaknr+1]].SetLineColor(ROOT.kRed)
+                MaxGraphs[peakbins[peaknr+1]].Draw("SAME LP")
+                legend.AddEntry(MaxGraphs[peakbins[peaknr+1]], "high"+str(i), "lp")
+                marker += 1
+                i += 1
+
+            legend.Draw()
+            self.SavePlots("PeakSignalEvolution.png")
+            self.SavePlots("PeakSignalEvolution.root")
+
+        # show the selected bins in another canvas:
+        OnThisCanvas.cd(1)
+        i = 0
+        for peakbin in peakbins:
+            maxima = self.PeakPadMax.GetBinCenter(peakbin)
+            text = ROOT.TText()
+            text.SetTextColor(ROOT.kRed)
+            text.DrawText(maxima[i][0]-0.02, maxima[i][1]-0.005, 'high'+str(i))
+            i += 1
+
+        else:
+            print "No Maxima found over all considered Runs"
+
 
     def GetNumberOfAnalyses(self):
         '''
