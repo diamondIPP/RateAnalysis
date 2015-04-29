@@ -1,18 +1,19 @@
 import ROOT
+from AbstractClasses.Elementary import Elementary
 
 
-class Bin(object):
+class Bin(Elementary):
     '''
     A bin contains localized signal data.
     '''
-    def __init__(self, binnumber, bincollectionobject):
+    def __init__(self, binnumber, bincollectionobject, verbose = False):
         '''
         Constructor of a Bin object
         :param binnumber: indistinguishable number
         :param bincollectionobject: the bincollection object which this bin belongs to
         :return: -
         '''
-
+        Elementary.__init__(self, verbose=verbose)
         self.signals = []
         self.bincollectionobject = bincollectionobject
         self.selected = False
@@ -74,7 +75,7 @@ class Bin(object):
         self.Fit['Chi2'] = self.Fit['Function'].GetChisquare()
 
 
-    def CreateBinSignalHisto(self, saveplot = False, show_fit = False):
+    def CreateBinSignalHisto(self, saveplot = False, savedir = None, show_fit = False):
         '''
         Creates and draws a histogram of the signal response contained in this bin
         :param saveplot: if True, saves the plot as Results/Bin_X0.123Y-0.123_SignalHisto.png
@@ -88,14 +89,16 @@ class Bin(object):
         self.BinSignalHisto.GetXaxis().SetTitle('Signal response')
         self.BinSignalHisto.Draw()
         if self.BinSignalHisto.GetEntries() >= 5 and show_fit:
-            print "Most Probable Signal Response: {0:.2f} +- {1:.2f}".format(self.Fit['MPV'],self.Fit['MPVErr'])
-            print "Sigma of Landau dist: {0:.3f} +- {1:.3f}".format(self.Fit['Sigma'],self.Fit['SigmaErr'])
+            if self.Fit["MPV"] is None:
+                self.FitLandau()
+            self.VerbosePrint("Most Probable Signal Response: {0:.2f} +- {1:.2f}".format(self.Fit['MPV'],self.Fit['MPVErr']))
+            self.VerbosePrint( "Sigma of Landau dist: {0:.3f} +- {1:.3f}".format(self.Fit['Sigma'],self.Fit['SigmaErr']))
             kNotDraw = 1<<9 # bit 9
             self.BinSignalHisto.GetFunction("landau").ResetBit(kNotDraw)
             self.BinSignalHisto.Draw()
         if saveplot:
-            self.bincollectionobject.SavePlots('Bin_X{:.3f}Y{:.3f}_SignalHisto'.format(x_,y_),'png','Results/')
-        raw_input('Bin signal histo drawn')
+            self.SavePlots('Bin_X{:.3f}Y{:.3f}_SignalHisto'.format(x_,y_),'png', saveDir=savedir)
+        self.IfWait('Bin signal histo drawn')
 
     def GetBinCenter(self):
         '''
