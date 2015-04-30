@@ -1,7 +1,9 @@
 import ROOT
+from ROOT import gROOT
 from AbstractClasses.ATH2D import ATH2D
 import types as t
 import os
+import numpy as np
 from Elementary import Elementary
 from ROOT import TGraphErrors
 
@@ -17,12 +19,18 @@ class AnalysisCollection(Elementary):
         Elementary.__init__(self, verbose=verbose)
 
     def __del__(self):
+        print "deleting AnalysisCollection.."
         for runnumber in self.collection.keys():
+            print "in AnalysisCollection.__del__ : deleting Analysis of Run ", runnumber
             self.collection[runnumber].__del__()
         if hasattr(self, "FWHMcanvas"):
-            ROOT.gROOT.Delete("FWHMcanvas")
+            canvas = gROOT.FindObject("FWHMcanvas")
+            if canvas:
+                canvas.Close()
+                del canvas
         if hasattr(self, "fwhm_histo"):
-            ROOT.gROOT.Delete("fwhm_histo")
+            gROOT.Delete("fwhm_histo")
+        print "AnalyisCollection deleted"
 
     def AddAnalysis(self,analysis_obj):
         '''
@@ -138,7 +146,7 @@ class AnalysisCollection(Elementary):
 
             SignalHeightScanGraph.SetPoint(count, runnumber, self.collection[runnumber].ExtremaResults['SignalHeight'])
             count += 1
-        SignalHeightScanGraph.SaveAs("SignalHeightGraph.root")
+        SignalHeightScanGraph.SaveAs(self.SaveDirectory+"SignalHeightGraph.root")
         SignalHeightScanGraph.GetXaxis().SetTitle("Run Number")
         SignalHeightScanGraph.GetYaxis().SetTitle("Reconstructed Signal Height")
         SignalHeightScanGraph.Draw("AP*")
@@ -189,83 +197,178 @@ class AnalysisCollection(Elementary):
         if not hasattr(self, "PeakPadMax"):
             self.PeakComparison(show = False)
 
-        # Find the separated peaks (binnumbers) to consider in Signal Evolution
-        peakbins = [-1]*NMax # container to store the binnumbers of the separated maximas found
-        i = 0
-        while i<int(NMax):
-            maxcount = self.PeakPadMax.GetMaximum() # counts of maximum
-            if maxcount < 1:
-                break
-            peakbins[i] = self.PeakPadMax.GetMaximumBin() # binnumber with hightest counts
-            coordinates = self.PeakPadMax.GetBinCenter(peakbins[i])
-            self.PeakPadMax.Fill(coordinates[0], coordinates[1], -maxcount) # remove content of maximum bin
-            # if the binnumber is already in a neighborhood of a found peak, don't use it:
-            IsInNBHD = False
-            for k in xrange(i):
-                IsInNBHD |= peakbins[k] in self.PeakPadMax.GetBinsInNbhd(peakbins[i], include_center=True)
-            if IsInNBHD:
-                pass
-            else:
-                i += 1
-        self.VerbosePrint("Number of separated peaks to look at: {0:0.0f}".format(i))
-        peakbins = peakbins[:i]
-
-        # Fill all graphs of all separated peaks
-        MaxGraphs = {}
-        for peakbin in peakbins:
-            MaxGraphs[peakbin] = ROOT.TGraph()
-            MaxGraphs[peakbin].SetNameTitle("MaxGraph_"+str(peakbin), "Evolution of Signal Response during Rate Scan")
-            signals = []
-            runnumbers = self.collection.keys()
-            runnumbers.sort()
+        # Find the separated peaks / lows (binnumbers) to consider in Signal Evolution
+        def FindPeakBins(PeakPad, N):
+            peakbins = [-1]*N # container to store the binnumbers of the separated maximas found
             i = 0
-            for runnumber in runnumbers:
-                self.collection[runnumber].ExtremeAnalysis.Pad.ListOfBins[peakbin].CreateBinSignalHisto(saveplot = True, savedir=self.SaveDirectory+str(runnumber)+"/",show_fit = True)
-                mpv = self.collection[runnumber].ExtremeAnalysis.Pad.ListOfBins[peakbin].Fit['MPV']
-                signals.append(mpv)
-                MaxGraphs[peakbin].SetPoint(i, runnumber, mpv)
-                i += 1
+            while i<int(N):
+                maxcount = PeakPad.GetMaximum() # counts of maximum
+                if maxcount < 1:
+                    break
+                peakbins[i] = PeakPad.GetMaximumBin() # binnumber with hightest counts
+                coordinates = PeakPad.GetBinCenter(peakbins[i])
+                PeakPad.Fill(coordinates[0], coordinates[1], -maxcount) # remove content of maximum bin
+
+                # if the binnumber is already in a neighborhood of a found peak, don't use it:
+                IsInNBHD = False
+                for k in xrange(i):
+                    IsInNBHD |= peakbins[k] in PeakPad.GetBinsInNbhd(peakbins[i], include_center=True)
+                if IsInNBHD:
+                    pass
+                else:
+                    i += 1
+            self.VerbosePrint("Number of separated extrema to look at: {0:0.0f}".format(i))
+            peakbins = peakbins[:i]
+            return peakbins
+
+        peakbins = FindPeakBins(self.PeakPadMax, NMax)
+        lowbins = FindPeakBins(self.PeakPadMin, NMin)
+
+        # Fill all graphs of all separated peaks / lows
+        def FillGraphDict(self, GraphDict, ListOfBins):
+            for peakbin in ListOfBins:
+                GraphDict[peakbin] = ROOT.TGraph()
+                GraphDict[peakbin].SetNameTitle("MaxGraph_"+str(peakbin), "Evolution of Signal Response during Rate Scan")
+                # signals = []
+                runnumbers = self.collection.keys()
+                runnumbers.sort()
+                i = 0
+                for runnumber in runnumbers:
+                    self.collection[runnumber].ExtremeAnalysis.Pad.ListOfBins[peakbin].CreateBinSignalHisto(saveplot = True, savedir=self.SaveDirectory+str(runnumber)+"/",show_fit = True)
+                    mpv = self.collection[runnumber].ExtremeAnalysis.Pad.ListOfBins[peakbin].Fit['MPV']
+                    # signals.append(mpv)
+                    GraphDict[peakbin].SetPoint(i, runnumber, mpv)
+                    i += 1
+
+        MaxGraphs = {}
+        FillGraphDict(self, MaxGraphs, peakbins)
+        MinGraphs = {}
+        FillGraphDict(self, MinGraphs, lowbins)
 
         # Print all Graphs of all peaks into the same canvas
         if len(MaxGraphs)>0:
             marker = 20
             npeaks = len(MaxGraphs)
-            PeakSignalEvolutionCanvas = ROOT.TCanvas("PeakSignalEvolutionCanvas", "Signal Evolution Canvas")
+            PeakSignalEvolutionCanvas = ROOT.gROOT.GetListOfCanvases().FindObject("PeakSignalEvolutionCanvas")
+            if not PeakSignalEvolutionCanvas:
+                PeakSignalEvolutionCanvas = ROOT.TCanvas("PeakSignalEvolutionCanvas", "Signal Evolution Canvas")
             PeakSignalEvolutionCanvas.cd()
-            legend = ROOT.TLegend(0.1,0.1,0.4,0.3)
-            MaxGraphs[peakbins[0]].SetMarkerStyle(marker)
-            MaxGraphs[peakbins[0]].SetMarkerColor(ROOT.kRed)
-            MaxGraphs[peakbins[0]].SetLineColor(ROOT.kRed)
-            MaxGraphs[peakbins[0]].Draw("ALP")
-            i = 1
-            legend.AddEntry(MaxGraphs[peakbins[0]], "high"+str(i), "lp")
-            marker += 1
-            i+=1
-            for peaknr in xrange(npeaks-1):
-                MaxGraphs[peakbins[peaknr+1]].SetMarkerStyle(marker)
-                MaxGraphs[peakbins[peaknr+1]].SetMarkerColor(ROOT.kRed)
-                MaxGraphs[peakbins[peaknr+1]].SetLineColor(ROOT.kRed)
-                MaxGraphs[peakbins[peaknr+1]].Draw("SAME LP")
-                legend.AddEntry(MaxGraphs[peakbins[peaknr+1]], "high"+str(i), "lp")
+            legend = ROOT.TLegend(0.1,0.1,0.3,0.35)
+
+            # determine the signal range for y axis:
+            MaxSignals = []
+            MinSignals = []
+            for peakbin in peakbins:
+                MaxSignals.append(MaxGraphs[peakbin].GetYaxis().GetXmax())
+                MinSignals.append(MaxGraphs[peakbin].GetYaxis().GetXmin())
+            MaxRange_peak = 1.1*np.array(MaxSignals).max()
+            MinRange_peak = 0.9*np.array(MinSignals).min()
+
+            for peaknr in xrange(npeaks):
+                MaxGraphs[peakbins[peaknr]].SetMarkerStyle(marker)
+                MaxGraphs[peakbins[peaknr]].SetMarkerColor(ROOT.kRed)
+                MaxGraphs[peakbins[peaknr]].SetLineColor(ROOT.kRed)
+                MaxGraphs[peakbins[peaknr]].Draw("SAME LP")
+                legend.AddEntry(MaxGraphs[peakbins[peaknr]], "high"+str(peaknr+1), "lp")
                 marker += 1
-                i += 1
-
-            legend.Draw()
-            self.SavePlots("PeakSignalEvolution.png")
-            self.SavePlots("PeakSignalEvolution.root")
-
-        # show the selected bins in another canvas:
-        OnThisCanvas.cd(1)
-        i = 0
-        for peakbin in peakbins:
-            maxima = self.PeakPadMax.GetBinCenter(peakbin)
-            text = ROOT.TText()
-            text.SetTextColor(ROOT.kRed)
-            text.DrawText(maxima[i][0]-0.02, maxima[i][1]-0.005, 'high'+str(i))
-            i += 1
 
         else:
-            print "No Maxima found over all considered Runs"
+            PeakSignalEvolutionCanvas = ROOT.gROOT.GetListOfCanvases().FindObject("PeakSignalEvolutionCanvas")
+            if not PeakSignalEvolutionCanvas:
+                PeakSignalEvolutionCanvas = ROOT.TCanvas("PeakSignalEvolutionCanvas", "Signal Evolution Canvas")
+            PeakSignalEvolutionCanvas.cd()
+            legend = ROOT.TLegend(0.1,0.1,0.3,0.35)
+            MaxRange_peak = None
+            MinRange_peak = None
+
+
+        if len(MinGraphs)>0:
+            marker = 20
+            nlows = len(MinGraphs)
+
+            # determine the signal range for y axis:
+            MaxSignals = []
+            MinSignals = []
+            for lowbin in lowbins:
+                MaxSignals.append(MinGraphs[lowbin].GetYaxis().GetXmax())
+                MinSignals.append(MinGraphs[lowbin].GetYaxis().GetXmin())
+            MaxRange_low = 1.1*np.array(MaxSignals).max()
+            MinRange_low = 0.9*np.array(MinSignals).min()
+
+            for lownr in xrange(nlows):
+                MinGraphs[lowbins[lownr]].SetMarkerStyle(marker)
+                MinGraphs[lowbins[lownr]].SetMarkerColor(ROOT.kBlue)
+                MinGraphs[lowbins[lownr]].SetLineColor(ROOT.kBlue)
+                # MinGraphs[lowbins[lownr+1]].Draw("SAME LP")
+                legend.AddEntry(MinGraphs[lowbins[lownr]], "low"+str(lownr+1), "lp")
+                marker += 1
+        else:
+            MaxRange_low = None
+            MinRange_low = None
+
+
+        # Evaluate the Range in y direction:
+        MaxRange = np.array([i for i in [MaxRange_low, MaxRange_peak] if i is not None])
+        MinRange = np.array([i for i in [MinRange_low, MinRange_peak] if i is not None])
+        if len(MaxRange) > 0:
+            MaxRange = MaxRange.max()
+        else:
+            MaxRange = 200
+        if len(MinRange) > 0:
+            MinRange = MinRange.min()
+        else:
+            MinRange = 0
+
+
+        # Individual Print options:
+        NumbersOfGraphs = len(MaxGraphs) + len(MinGraphs)
+        DrawOptions = ["SAME LP"]*NumbersOfGraphs
+        try:
+            DrawOptions[0] = "ALP"
+        except IndexError: # if neither maxima nor minima found
+            pass
+
+
+        # Draw everything:
+        i = 0 # i-th draw option
+        if len(MaxGraphs) > 0:
+            MaxGraphs[peakbins[0]].GetYaxis().SetRangeUser(MinRange, MaxRange)
+            MaxGraphs[peakbins[0]].Draw(DrawOptions[i])
+            i += 1
+            for peaknr in xrange(npeaks-1):
+                MaxGraphs[peakbins[peaknr+1]].Draw(DrawOptions[i])
+                i += 1
+        if len(MinGraphs) > 0:
+            if i == 0: MinGraphs[lowbins[0]].GetYaxis().SetRangeUser(MinRange, MaxRange)
+            MinGraphs[lowbins[0]].Draw(DrawOptions[i])
+            i += 1
+            for lownr in xrange(nlows-1):
+                MinGraphs[lowbins[lownr+1]].Draw(DrawOptions[i])
+                i += 1
+        legend.Draw()
+        self.SavePlots("PeakSignalEvolution.png")
+        self.SavePlots("PeakSignalEvolution.root")
+
+        # show the selected bins in another canvas:
+        if OnThisCanvas:
+            ROOT.gStyle.SetPalette(53) # Dark Body Radiator palette
+            OnThisCanvas.cd(1)
+
+            for peaknr in xrange(npeaks):
+                maxima = self.PeakPadMax.GetBinCenter(peakbins[peaknr])
+                text = ROOT.TText()
+                text.SetTextColor(ROOT.kRed)
+                text.DrawText(maxima[0]-0.02, maxima[1]-0.005, 'high'+str(peaknr+1))
+
+            for lownr in xrange(nlows):
+                minima = self.PeakPadMin.GetBinCenter(lowbins[lownr])
+                text = ROOT.TText()
+                text.SetTextColor(ROOT.kBlue)
+                text.DrawText(minima[0]-0.01, minima[1]-0.005, 'low'+str(lownr+1))
+
+            OnThisCanvas.Update()
+            self.SavePlots("IIa-2_neutron_SignalDistribution_MAXSearch.png")
+            raw_input("wait")
 
 
     def GetNumberOfAnalyses(self):
