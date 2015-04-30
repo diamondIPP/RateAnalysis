@@ -19,7 +19,7 @@ if __name__ == "__main__":
 
     # config
     Diamond = "IIa-2"
-    Bias = -500
+    Bias = 500
     show_plots = True
     minimum_statistics = 10 # don't draw bins which contain less than minimum_statistics hits
 
@@ -86,21 +86,6 @@ if __name__ == "__main__":
                     text.SetTextColor(ROOT.kRed)
                     text.DrawText(maxima[i][0]-0.02, maxima[i][1]-0.005, 'high')
 
-                # if len(maxima)*len(minima)>0:
-                #     maxbin = newAnalysis.ExtremeAnalysis.Pad.GetBinByCoordinates(*(maxima[0]))
-                #     maxbin.FitLandau()
-                #     minbin = newAnalysis.ExtremeAnalysis.Pad.GetBinByCoordinates(*(minima[0]))
-                #     minbin.FitLandau()
-                #     print '\nApproximated Signal Amplitude: {0:0.0f}% - (high/low approximation)\n'.format(100.*(maxbin.Fit['MPV']/minbin.Fit['MPV']-1.))
-                #
-                # min_percent = 5
-                # max_percent = 99
-                # q = array('d', [1.*min_percent/100., 1.*max_percent/100.])
-                # y = array('d', [0,0])
-                # newAnalysis.ExtremeAnalysis.MeanSignalHisto.GetQuantiles(2, y, q)
-                # print '\nApproximated Signal Amplitude: {0:0.0f}% - ({1:0.0f}%/{2:0.0f}% Quantiles approximation)\n'.format(100.*(y[1]/y[0]-1.), max_percent, min_percent)
-                # # newAnalysis.ExtremeAnalysis.Pad.MinimaSearch.found_extrema.SetMarkerColor(ROOT.kBlue-4)
-                # # newAnalysis.ExtremeAnalysis.Pad.MinimaSearch.found_extrema.Draw('SAME P0')
                 ROOT.gStyle.SetPalette(53)
                 ROOT.gStyle.SetNumberContours(999)
                 newAnalysis.combined_canvas.Update()
@@ -118,21 +103,42 @@ if __name__ == "__main__":
         else:
             print "Analysis of run ",run_number, " failed"
 
-
-    # collection.CreateFWHMPlot()
-    # collection.CreateSigmaMPVPlot()
-
-    # MCAnalysis = MCPerformance()
-    # MCAnalysis.DoSignalHeightScan()
-
     Elementary.SetSaveDirectory(savepath)
     collection.SignalHeightScan()
     collection.PeakComparison()
-    collection.PeakSignalEvolution()
+
+    canvas = ROOT.gROOT.GetListOfCanvases().FindObject("combined_canvasmaxima")
+    if canvas:
+        print "combined_canvasmaxima found"
+        collection.PeakSignalEvolution(OnThisCanvas=canvas)
+    else:
+        collection.PeakSignalEvolution()
 
     if show_plots: raw_input("Press ENTER to quit:")
 
+    del collection
+
+    # print "\ngDirectory List:\n"
+    # ROOT.gDirectory.GetList().ls()
+    # print "\nListOfFiles:\n"
+    # ROOT.gROOT.GetListOfFiles().ls()
+    # print "\nListOfCanvases:\n"
+    # ROOT.gROOT.GetListOfCanvases().ls()
 
 
 
-
+# if len(maxima)*len(minima)>0:
+#     maxbin = newAnalysis.ExtremeAnalysis.Pad.GetBinByCoordinates(*(maxima[0]))
+#     maxbin.FitLandau()
+#     minbin = newAnalysis.ExtremeAnalysis.Pad.GetBinByCoordinates(*(minima[0]))
+#     minbin.FitLandau()
+#     print '\nApproximated Signal Amplitude: {0:0.0f}% - (high/low approximation)\n'.format(100.*(maxbin.Fit['MPV']/minbin.Fit['MPV']-1.))
+#
+# min_percent = 5
+# max_percent = 99
+# q = array('d', [1.*min_percent/100., 1.*max_percent/100.])
+# y = array('d', [0,0])
+# newAnalysis.ExtremeAnalysis.MeanSignalHisto.GetQuantiles(2, y, q)
+# print '\nApproximated Signal Amplitude: {0:0.0f}% - ({1:0.0f}%/{2:0.0f}% Quantiles approximation)\n'.format(100.*(y[1]/y[0]-1.), max_percent, min_percent)
+# # newAnalysis.ExtremeAnalysis.Pad.MinimaSearch.found_extrema.SetMarkerColor(ROOT.kBlue-4)
+# # newAnalysis.ExtremeAnalysis.Pad.MinimaSearch.found_extrema.Draw('SAME P0')
