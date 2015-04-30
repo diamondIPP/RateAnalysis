@@ -82,10 +82,13 @@ class Bin(Elementary):
         :return: -
         '''
         x_, y_ = self.GetBinCenter()
-        canvasname = 'Bin {0:.3f} / {1:.3f} Signal Histo'.format(x_, y_)
-        canvas = ROOT.TCanvas('canvas',canvasname)
+        title = 'Bin {0:.3f} / {1:.3f} Signal Histo'.format(x_, y_)
+        canvas = ROOT.gROOT.GetListOfCanvases().FindObject("BinSignalHistoCanvas")
+        if not canvas:
+            canvas = ROOT.TCanvas('BinSignalHistoCanvas',title)
+        canvas.SetTitle(title)
         canvas.cd()
-        self.BinSignalHisto.SetTitle(canvasname)
+        self.BinSignalHisto.SetTitle(title)
         self.BinSignalHisto.GetXaxis().SetTitle('Signal response')
         self.BinSignalHisto.Draw()
         if self.BinSignalHisto.GetEntries() >= 5 and show_fit:
