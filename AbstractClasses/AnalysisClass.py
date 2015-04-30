@@ -71,6 +71,7 @@ class Analysis(Elementary):
         if hasattr(self, "Pad"):
             self.Pad.__del__()
             del self.Pad
+            print "Pad of Analysis deleted"
             # delattr(self, "Pad")
         # gROOT.GetListOfFiles().ls()
         rootfile = gROOT.GetListOfFiles().FindObject(self.TrackingPadAnalysisROOTFile)
@@ -78,9 +79,11 @@ class Analysis(Elementary):
             rootfile.Close()
         if hasattr(self, "ExtremeAnalysis"):
             self.ExtremeAnalysis.__del__()
+            print "ExtremeAnalysis deleted"
         if hasattr(self, "combined_canvas"):
             canvas = ROOT.gROOT.GetListOfCanvases().FindObject(self.combined_canvas_name)
             canvas.Close()
+            del canvas
         if hasattr(self, "MeanSignalHisto"):
             ROOT.gROOT.Delete(self.MeanSignalHisto_name)
         self.VerbosePrint("Analysis deleted")
@@ -282,9 +285,11 @@ class Analysis(Elementary):
 
     def CreateBoth(self,saveplots = False,savename = "SignalDistribution",ending="png",saveDir = None, PS=False, test=""):
         self.combined_canvas_name = "combined_canvas"+test
-        self.combined_canvas = ROOT.TCanvas(self.combined_canvas_name,"Combined Canvas",1000,500)
-        ROOT.SetOwnership(self.combined_canvas, False)
-        self.combined_canvas.Divide(2,1)
+        self.combined_canvas = ROOT.gROOT.GetListOfCanvases().FindObject(self.combined_canvas_name)
+        if not self.combined_canvas:
+            self.combined_canvas = ROOT.TCanvas(self.combined_canvas_name,"Combined Canvas",1000,500)
+            ROOT.SetOwnership(self.combined_canvas, False)
+            self.combined_canvas.Divide(2,1)
 
         #self.CreatePlots(False)
         self.CreateMeanSignalHistogram(saveplots=False, show=False)
@@ -477,6 +482,7 @@ class Analysis(Elementary):
                 print "\n\n\n\n\nWARNING: Error occured in time flow of Run "+str(self.run_object.run_number)+". Possible reset of timestamp during data taking!\n\n\n\n\n"
 
             time_buckets = results.keys()
+            time_buckets.sort()
             count = 0
             for t in time_buckets:
                 histo = ROOT.TH1D("SignalEvolution_time_"+str(t), "Signal Response Histogram for t = {0:0.0f}-{1:0.0f}min".format(t, t+int(time_spacing)), 500, 0, 500)
