@@ -40,7 +40,7 @@ class Analysis(Elementary):
         assert (os.path.exists(self.TrackingPadAnalysisROOTFile)), "cannot find "+self.TrackingPadAnalysisROOTFile
         self.rootfile = ROOT.TFile(self.TrackingPadAnalysisROOTFile)
 
-        self.Checklist = { # True if Plot was created
+        self.Checklist = { # True if Plot was created # -> USED?!
             "DoAnalysis": False,
             "MeanSignalHisto": False,
             "HitsDistribution": False,
@@ -65,6 +65,7 @@ class Analysis(Elementary):
             "NDF": None,
 
         }
+        self.TimingAlignmentFailed = False
 
     def __del__(self):
         self.VerbosePrint("Deleting Analysis..")
@@ -130,11 +131,14 @@ class Analysis(Elementary):
             self.track_info.Draw("calib_offset>>th1", "calibflag==1 && calib_offset < 50")
             pad = offset_canvas.GetPad(0)
             pad.SetLogy()
+            offset = int(th1.GetBinCenter(th1.GetMaximumBin()))
+            good = 1.*th1.GetMaximum()/th1.GetEntries()
+            th1.SetTitle(th1.GetTitle()+" ({0:0.2f}% in peak)".format(100.*good))
             offset_canvas.Update()
             self.SavePlots("Offset.png")
-            offset = int(th1.GetBinCenter(th1.GetMaximumBin()))
-            if abs(th1.GetMean())>0.3:
-                print "\nINFO: BAD TIMING ALIGNMENT !\n"
+            if good < 0.3: # less than 30% aligned hits
+                print "\nINFO: BAD TIMING ALIGNMENT RUN!\n"
+                self.TimingAlignmentFailed = True
             print "MOST COMMON OFFSET: {0:0.0F}\n".format(offset)
             return offset
         else:
@@ -408,16 +412,16 @@ class Analysis(Elementary):
         self.ExtremeAnalysis.ExtremaResults['SignalHeight'] = SignalHeight
         return SignalHeight
 
-    def ShowSignalHistogram(self, save = False, scale = False, showfit=True):
+    def ShowTotalSignalHistogram(self, save = False, scale = False, showfit=False):
         if  hasattr(self, "Pad"):
-            self.Pad.CreateSignalHistogram(saveplot=save, scale=scale, showfit=showfit)
+            self.Pad.CreateTotalSignalHistogram(saveplot=save, scale=scale, showfit=showfit)
         elif hasattr(self, "ExtremeAnalysis") and hasattr(self.ExtremeAnalysis, "Pad"):
-            self.ExtremeAnalysis.Pad.CreateSignalHistogram(saveplot=save, scale=scale, showfit=showfit)
+            self.ExtremeAnalysis.Pad.CreateTotalSignalHistogram(saveplot=save, scale=scale, showfit=showfit)
             if showfit:
                 self.GetSignalHistoFitResults() # Get the Results from self.Extremeanalysis.SignalHistoFitResults to self.SignalHistoFitResults
         else:
             self.DoAnalysis()
-            self.Pad.CreateSignalHistogram(saveplot=save, scale=scale, showfit=showfit)
+            self.Pad.CreateTotalSignalHistogram(saveplot=save, scale=scale, showfit=showfit)
 
     def GetSignalHistoFitResults(self):
         if self.SignalHistoFitResults["Peak"] is not None:
@@ -440,13 +444,24 @@ class Analysis(Elementary):
             self.SignalHistoFitResults["NDF"] = NDF
             return FitFunction, Peak, FWHM, Chi2, NDF
         else:
-            self.ShowSignalHistogram(save=False, showfit=True)
+            self.ShowTotalSignalHistogram(save=False, showfit=True)
             if (self.SignalHistoFitResults["Peak"] is not None) or (hasattr(self, "ExtremeAnalysis") and self.ExtremeAnalysis.SignalHistoFitResults["Peak"] is not None):
                 self.GetSignalHistoFitResults()
             else:
                 assert(False), "BAD SignalHistogram Fit, Stop program due to possible infinity loop"
 
-    def SignalEvolution(self, Mode="Mean", show=True, time_spacing = 3, save = True): # not show: save evolution data
+    def SignalTimeEvolution(self, Mode="Mean", show=True, time_spacing = 3, save = True): # not show: save evolution data / Comment more
+        '''
+        Creates Signal vs time plot. The time is bunched into time buckets of width time_spaceing,
+        from all Signals inside one time bucket the Mean or the MPV is evaluated and plotted in a TGraph.
+        The Mean is taken from the histogramm of the particular time bucket. The MPV is simply the
+        Position (Center) of the Bin containing the most entries in the time bucket histogram.
+        :param Mode: What should be plotted as y: either "Mean" or "MPV"
+        :param show:
+        :param time_spacing: time bucket width in minutes
+        :param save:
+        :return:
+        '''
         assert(Mode in ["Mean", "MPV"]), "Wrong Mode, Mode has to be `Mean` or `MPV`"
         if not self.run_object.IsMonteCarlo:
             results = {}
@@ -493,11 +508,8 @@ class Analysis(Elementary):
                     SignalEvolution.SetPointError(count, 0, histo.GetRMS()/np.sqrt(histo.GetEntries()))
                     signalname = "Mean of Signal Response"
                 elif Mode == "MPV":
-                    LanGausFit = Langau()
-                    LanGausFit.LangauFit(histo)
-                    print "MPV of LanGauFit: ", LanGausFit.GetMPV()
-                    SignalEvolution.SetPoint(count, t, LanGausFit.GetMPV())
-                    SignalEvolution.SetPointError(count, 0, LanGausFit.GetMPVError())
+                    SignalEvolution.SetPoint(count, t, histo.GetBinCenter(histo.GetMaximumBin()))
+                    SignalEvolution.SetPointError(count, 0, 0)
                     signalname = "MPV of Signal Respose"
                 count += 1
                 del histo
@@ -508,6 +520,8 @@ class Analysis(Elementary):
             SignalEvolution.Draw("ALP*")
             if save:
                 self.SavePlots("SignalTimeEvolution"+Mode+".png")
+            if TimeERROR:
+                SignalEvolution.SaveAs(self.SaveDirectory+"ERROR_SignalTimeEvolution"+Mode+".root")
             #raw_input("WAIT")
 
 
