@@ -181,6 +181,18 @@ class RunSelection(Run):
         self.Log('All Selected Runs unselected if not '+str(bias)+'V bias applied. Only '+str(bias)+'V Bias Runs left. -'+str(count)+' selections')
         self.VerbosePrint('All Selected Runs unselected if not '+str(bias)+'V bias applied. Only '+str(bias)+'V Bias Runs left. -'+str(count)+' selections')
 
+    def ExcludeRun(self, run_number):
+        assert(type(run_number) is t.IntType or type(run_number) is t.ListType), "Wrong input type. run_number has to be either integer or list of integer"
+        ListOfRuns = self.GetSelectedRuns()
+        if type(run_number) is t.IntType:
+            if run_number in ListOfRuns:
+                self.selections[run_number] = False
+                self.Log("Run "+str(run_number)+" unselected. -1 selection")
+        else:
+            ListToExclude = run_number
+            for run_number in ListToExclude:
+                self.ExcludeRun(int(run_number))
+
     def ValidateSelectedRuns(self):
         self.ValidateRuns(self.GetSelectedRuns())
 
