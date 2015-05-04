@@ -143,13 +143,16 @@ class AnalysisCollection(Elementary):
 
         count = 0
         for runnumber in runnumbers:
-
-            SignalHeightScanGraph.SetPoint(count, runnumber, self.collection[runnumber].ExtremaResults['SignalHeight'])
-            count += 1
+            if not self.collection[runnumber].TimingAlignmentFailed:
+                SignalHeightScanGraph.SetPoint(count, runnumber, self.collection[runnumber].ExtremaResults['SignalHeight'])
+                count += 1
+            else:
+                print "INFO: Run number {0} excluded in SignalHeightScan plot due to bad timing alignment !"
         SignalHeightScanGraph.SaveAs(self.SaveDirectory+"SignalHeightGraph.root")
         SignalHeightScanGraph.GetXaxis().SetTitle("Run Number")
         SignalHeightScanGraph.GetYaxis().SetTitle("Reconstructed Signal Height")
         SignalHeightScanGraph.Draw("AP*")
+        self.SavePlots("SignalHeightGraph.png")
         self.IfWait("SignalHeightScan shown...")
         self.ShowAndWait = tmp
 
@@ -227,25 +230,28 @@ class AnalysisCollection(Elementary):
         # Fill all graphs of all separated peaks / lows
         def FillGraphDict(self, GraphDict, ListOfBins):
             for peakbin in ListOfBins:
-                GraphDict[peakbin] = ROOT.TGraph()
+                GraphDict[peakbin] = ROOT.TGraphErrors()
                 GraphDict[peakbin].SetNameTitle("MaxGraph_"+str(peakbin), "Evolution of Signal Response during Rate Scan")
                 # signals = []
                 runnumbers = self.collection.keys()
                 runnumbers.sort()
                 i = 0
                 for runnumber in runnumbers:
-                    self.collection[runnumber].ExtremeAnalysis.Pad.ListOfBins[peakbin].CreateBinSignalHisto(saveplot = True, savedir=self.SaveDirectory+str(runnumber)+"/",show_fit = True)
-                    mpv = self.collection[runnumber].ExtremeAnalysis.Pad.ListOfBins[peakbin].Fit['MPV']
-                    # signals.append(mpv)
-                    GraphDict[peakbin].SetPoint(i, runnumber, mpv)
-                    i += 1
-
+                    if not self.collection[runnumber].TimingAlignmentFailed:
+                        self.collection[runnumber].ExtremeAnalysis.Pad.ListOfBins[peakbin].CreateBinSignalHisto(saveplot = True, savedir=self.SaveDirectory+str(runnumber)+"/",show_fit = False)
+                        mean = self.collection[runnumber].ExtremeAnalysis.Pad.ListOfBins[peakbin].BinSignalHisto.GetMean()
+                        error = self.collection[runnumber].ExtremeAnalysis.Pad.ListOfBins[peakbin].BinSignalHisto.GetRMS()/np.sqrt(self.collection[runnumber].ExtremeAnalysis.Pad.ListOfBins[peakbin].BinSignalHisto.GetEntries())
+                        #mpv = self.collection[runnumber].ExtremeAnalysis.Pad.ListOfBins[peakbin].Fit['MPV']
+                        # signals.append(mpv)
+                        GraphDict[peakbin].SetPoint(i, runnumber, mean)
+                        GraphDict[peakbin].SetPointError(i, 0, error)
+                        i += 1
         MaxGraphs = {}
         FillGraphDict(self, MaxGraphs, peakbins)
         MinGraphs = {}
         FillGraphDict(self, MinGraphs, lowbins)
 
-        # Print all Graphs of all peaks into the same canvas
+        # Prepare for drawing: Settings, create Canvas, create Legend
         if len(MaxGraphs)>0:
             marker = 20
             npeaks = len(MaxGraphs)
@@ -271,7 +277,6 @@ class AnalysisCollection(Elementary):
                 MaxGraphs[peakbins[peaknr]].Draw("SAME LP")
                 legend.AddEntry(MaxGraphs[peakbins[peaknr]], "high"+str(peaknr+1), "lp")
                 marker += 1
-
         else:
             PeakSignalEvolutionCanvas = ROOT.gROOT.GetListOfCanvases().FindObject("PeakSignalEvolutionCanvas")
             if not PeakSignalEvolutionCanvas:
@@ -280,7 +285,6 @@ class AnalysisCollection(Elementary):
             legend = ROOT.TLegend(0.1,0.1,0.3,0.35)
             MaxRange_peak = None
             MinRange_peak = None
-
 
         if len(MinGraphs)>0:
             marker = 20
@@ -307,7 +311,7 @@ class AnalysisCollection(Elementary):
             MinRange_low = None
 
 
-        # Evaluate the Range in y direction:
+        # Prepare for drawing: Evaluate the Range in y direction:
         MaxRange = np.array([i for i in [MaxRange_low, MaxRange_peak] if i is not None])
         MinRange = np.array([i for i in [MinRange_low, MinRange_peak] if i is not None])
         if len(MaxRange) > 0:
@@ -320,7 +324,7 @@ class AnalysisCollection(Elementary):
             MinRange = 0
 
 
-        # Individual Print options:
+        # Prepare for drawing: Individual Print options:
         NumbersOfGraphs = len(MaxGraphs) + len(MinGraphs)
         DrawOptions = ["SAME LP"]*NumbersOfGraphs
         try:
@@ -328,18 +332,25 @@ class AnalysisCollection(Elementary):
         except IndexError: # if neither maxima nor minima found
             pass
 
+        # Draw rate:
+
 
         # Draw everything:
         i = 0 # i-th draw option
         if len(MaxGraphs) > 0:
             MaxGraphs[peakbins[0]].GetYaxis().SetRangeUser(MinRange, MaxRange)
+            MaxGraphs[peakbins[0]].GetXaxis().SetTitle("Run Number")
+            MaxGraphs[peakbins[0]].GetYaxis().SetTitle("Mean Signal Response")
             MaxGraphs[peakbins[0]].Draw(DrawOptions[i])
             i += 1
             for peaknr in xrange(npeaks-1):
                 MaxGraphs[peakbins[peaknr+1]].Draw(DrawOptions[i])
                 i += 1
         if len(MinGraphs) > 0:
-            if i == 0: MinGraphs[lowbins[0]].GetYaxis().SetRangeUser(MinRange, MaxRange)
+            if i == 0:
+                MinGraphs[lowbins[0]].GetYaxis().SetRangeUser(MinRange, MaxRange)
+                MinGraphs[lowbins[0]].GetXaxis().SetTitle("Run Number")
+                MinGraphs[lowbins[0]].GetYaxis().SetTitle("Mean Signal Response")
             MinGraphs[lowbins[0]].Draw(DrawOptions[i])
             i += 1
             for lownr in xrange(nlows-1):
