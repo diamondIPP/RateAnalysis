@@ -18,8 +18,8 @@ from AbstractClasses.Elementary import Elementary
 if __name__ == "__main__":
 
     # config
-    Diamond = "IIa-2"
-    Bias = 500
+    Diamond = "2A87-E"
+    Bias = -500
     show_plots = True
     minimum_statistics = 10 # don't draw bins which contain less than minimum_statistics hits
 
@@ -38,6 +38,7 @@ if __name__ == "__main__":
     selection.SelectDataType(0)
     selection.UnSelectUnlessDiamond(Diamond)
     selection.UnSelectUnlessBias(Bias)
+    selection.ExcludeRun(854)
     run_numbers = selection.GetSelectedRuns()
 
     print "Starting analysis with ",len(run_numbers)," runs:"
@@ -93,8 +94,8 @@ if __name__ == "__main__":
 
 
                 newAnalysis.GetSignalHeight()
-                newAnalysis.ShowSignalHistogram(save=True, showfit=True)
-                newAnalysis.SignalEvolution(Mode = "Mean", show = True, time_spacing=3)
+                newAnalysis.ShowTotalSignalHistogram(save=True, showfit=False)
+                newAnalysis.SignalTimeEvolution(Mode = "Mean", show = True, time_spacing=3)
 
                 collection.AddAnalysis(newAnalysis)
 
