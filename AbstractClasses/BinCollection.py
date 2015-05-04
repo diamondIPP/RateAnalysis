@@ -5,9 +5,9 @@ import numpy as np
 import os
 import types as t
 from AbstractClasses.FindExtrema import FindMaxima, FindMinima
+from AbstractClasses.Langau import Langau
 from Elementary import Elementary
 from Bin import Bin
-from Langaus import *
 from array import array
 import copy
 
@@ -575,7 +575,7 @@ class BinCollection(Elementary):
             self.IfWait('show signal in row {:.3f}..'.format(rowheight))
         return signals
 
-    def CreateSignalHistogram(self, saveplot = False, scale = False, showfit = True):
+    def CreateTotalSignalHistogram(self, saveplot = False, scale = False, showfit = False):
         canvas = ROOT.TCanvas('canvas', 'canvas')
         canvas.cd()
         self.SignalHisto.GetXaxis().SetTitle("Signal Response [ADC Units]")
@@ -589,58 +589,17 @@ class BinCollection(Elementary):
             self.SignalHisto.SetTitle(tmpTitle+scale_str)
         self.SignalHisto.Draw()
         if showfit:
-            # Fitting SNR histo
-            print "Fitting...\n"
-
-            # Setting fit range and start values
-            fr = array("d", [0,0])
-            sv = array("d", [0,0,0,0])
-            pllo = array("d", [0,0,0,0])
-            plhi = array("d", [0,0,0,0])
-            fp = array("d", [0,0,0,0])
-            fpe = array("d", [0,0,0,0])
-
-            # fitrange for fit:
-            fr[0]=0.3*self.SignalHisto.GetMean()
-            fr[1]=3.0*self.SignalHisto.GetMean()
-
-            # lower parameter limits
-            pllo[0]=2.0 # par[0]=Width (scale) parameter of Landau density
-            pllo[1]=20.0 # par[1]=Most Probable (MP, location) parameter of Landau density
-            pllo[2]=1.0 # par[2]=Total area (integral -inf to inf, normalization constant)
-            pllo[3]=1.0 # par[3]=Width (sigma) of convoluted Gaussian function
-
-            # upper parameter limits
-            plhi[0]=50.0         # par[0]=Width (scale) parameter of Landau density
-            plhi[1]=250.0        # par[1]=Most Probable (MP, location) parameter of Landau density
-            plhi[2]=10000.0   # par[2]=Total area (integral -inf to inf, normalization constant)
-            plhi[3]=50.0         # par[3]=Width (sigma) of convoluted Gaussian function
-
-            # Startvalues for fit:
-            sv[0]=11.0       # par[0]=Width (scale) parameter of Landau density
-            sv[1]=self.SignalHisto.GetBinCenter(self.SignalHisto.GetMaximumBin())      # par[1]=Most Probable (MP, location) parameter of Landau density
-            sv[2]=40.0   # par[2]=Total area (integral -inf to inf, normalization constant)
-            sv[3]=11.0       # par[3]=Width (sigma) of convoluted Gaussian function
-
-            chisqr = array("d", [0]) # returns the chi square
-            ndf = array("d", [0]) # returns ndf
-
-            self.LangauFitFunction = langaufit(self.SignalHisto,fr,sv,pllo,plhi,fp,fpe,chisqr,ndf)
-
-            SNRPeak = array("d", [0])
-            SNRFWHM = array("d", [0])
-            langaupro(fp,SNRPeak,SNRFWHM) # search for the peak and FWHM of landau-gaus convolute
-
-            print "Fitting done\n"
-
+            LanGausFit = Langau()
+            LanGausFit.LangauFit(self.SignalHisto)
+            self.LangauFitFunction = LanGausFit.FitResults["FitFunction"]
             self.LangauFitFunction.Draw("lsame") # draw also fit parameters in legend
             canvas.Update()
 
             self.parent_analysis_obj.SignalHistoFitResults["FitFunction"] = self.LangauFitFunction
-            self.parent_analysis_obj.SignalHistoFitResults["Peak"] = SNRPeak[0]
-            self.parent_analysis_obj.SignalHistoFitResults["FWHM"] = SNRFWHM[0]
-            self.parent_analysis_obj.SignalHistoFitResults["Chi2"] = chisqr[0]
-            self.parent_analysis_obj.SignalHistoFitResults["NDF"] = ndf[0]
+            self.parent_analysis_obj.SignalHistoFitResults["Peak"] = LanGausFit.FitResults["Peak"]
+            self.parent_analysis_obj.SignalHistoFitResults["FWHM"] = LanGausFit.FitResults["FWHM"]
+            self.parent_analysis_obj.SignalHistoFitResults["Chi2"] = LanGausFit.FitResults["Chi2"]
+            self.parent_analysis_obj.SignalHistoFitResults["NDF"] = LanGausFit.FitResults["NDF"]
 
 
             #raw_input("WAIT!")
