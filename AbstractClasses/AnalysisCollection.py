@@ -229,12 +229,12 @@ class AnalysisCollection(Elementary):
 
         # Fill all graphs of all separated peaks / lows
         def FillGraphDict(self, GraphDict, ListOfBins):
+            runnumbers = self.collection.keys()
+            runnumbers.sort()
             for peakbin in ListOfBins:
                 GraphDict[peakbin] = ROOT.TGraphErrors()
                 GraphDict[peakbin].SetNameTitle("MaxGraph_"+str(peakbin), "Evolution of Signal Response during Rate Scan")
                 # signals = []
-                runnumbers = self.collection.keys()
-                runnumbers.sort()
                 i = 0
                 for runnumber in runnumbers:
                     if not self.collection[runnumber].TimingAlignmentFailed:
@@ -332,7 +332,20 @@ class AnalysisCollection(Elementary):
         except IndexError: # if neither maxima nor minima found
             pass
 
-        # Draw rate:
+        # Prepare for drawing rate:
+        runnumbers = self.collection.keys()
+        runnumbers.sort()
+        first = runnumbers[0]
+        last = runnumbers[-1]
+        ratebins = last - first + 1
+        RateHisto = ROOT.TH1D("RateHisto", "Rate Histogram", ratebins, first - 0.5, last + 0.5)
+        for runnumber in runnumbers:
+            rate_raw = self.collection[runnumber].RunInfo["rate_raw"]
+            rate_kHz = 1.*rate_raw/100
+            print "runnumber: ", self.collection[runnumber].run_object.run_number," == ",  runnumber, " rate_kHz: ", rate_kHz
+            RateHisto.Fill(runnumber, rate_kHz)
+        RateHisto.GetXaxis().SetTitle("Run Number")
+        RateHisto.GetYaxis().SetTitle("Rate / kHz")
 
 
         # Draw everything:
@@ -359,6 +372,12 @@ class AnalysisCollection(Elementary):
         legend.Draw()
         self.SavePlots("PeakSignalEvolution.png")
         self.SavePlots("PeakSignalEvolution.root")
+        raw_input("waiting in AnalysisCollection->Line 375")
+        pad = PeakSignalEvolutionCanvas.GetPad(0)
+        RateHisto.SetStats(0)
+        RateHisto.Draw("HIST Y+") # include in plot instead of second plot
+        pad.SetLogy()
+        self.SavePlots("PeakSignalEvolution_Rate.png")
 
         # show the selected bins in another canvas:
         if OnThisCanvas:
