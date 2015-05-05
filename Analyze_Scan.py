@@ -18,7 +18,7 @@ from AbstractClasses.Elementary import Elementary
 if __name__ == "__main__":
 
     # config
-    Diamond = "2A87-E"
+    Diamond = "IIa-2"
     Bias = -500
     show_plots = True
     minimum_statistics = 10 # don't draw bins which contain less than minimum_statistics hits
