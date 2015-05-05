@@ -15,7 +15,8 @@ class Run(Elementary):
         Elementary.__init__(self, verbose=verbose)
         self.run_number = -1
         RunInfo.load('Runinfos/runs.json')
-        self.runinfo = RunInfo.runs
+        self.runinfo = RunInfo.runs # used at all ?!?
+        self.RunInfo = {}
         if validate:
             self.ValidateRuns()
 
@@ -73,6 +74,7 @@ class Run(Elementary):
 
             self.run_number = run_number
             self.current_run = RunInfo.runs[run_number].__dict__ # store dict containing all run infos
+            self.RunInfo = self.current_run.copy()
             #a = self.current_run.__dict__
             self.diamond = Diamond( self.current_run['diamond'])
 
