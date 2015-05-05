@@ -9,12 +9,15 @@ To improve:
 '''
 
 # Settings:
-hits = 30000
+hits = 300000
 tries = 20
 peaks = "3Peaks"
+binning = 100
+min_bincontent = 30
 
 PerfResults = "MC/Performance_Results/"
-foldername = "2015-04-27 11-13-32.668214/"
+#foldername = "2015-05-04 16-24-09.965268/"
+foldername = "_"+str(min_bincontent)+"_"+str(binning)+"_"+str(hits)+"_/"
 filename = "MCPerformanceLog.root"
 filepath = PerfResults+foldername+filename
 
@@ -81,6 +84,7 @@ pad = canvas.GetPad(0)
 success_graph.SetNameTitle("success", "MC Performance Analysis Result ({0} Hits)".format(hits))
 success_graph.GetXaxis().SetTitle("Relative Real Signal Amplitude")
 success_graph.GetYaxis().SetTitle("Peak Finding Efficiency | Reconstructed Signal Amplitude")
+success_graph.GetYaxis().SetRangeUser(0,1.1)
 success_graph.Draw("ALP*")
 
 ghost_graph.SetNameTitle("ghost_graph", "Ghost Peaks")
@@ -90,7 +94,10 @@ func = TF1("func", "x", 0,1)
 func.Draw("SAME")
 RecSA_Quantiles_graph.SetMarkerColor(ROOT.kRed)
 RecSA_Quantiles_graph.Draw("SAME P*")
-ROOT.gPad.Print(PerfResults+foldername+("MC_PerformanceAnalysis_{0}_"+peaks+"_{1}rep.png").format(hits, tries))
+PngSaveName = PerfResults+foldername+("MC_PerformanceAnalysis_{0}_"+peaks+"_{1}rep_"+str(binning)+"_"+str(min_bincontent)+".png").format(hits, tries)
+RootSaveName = PerfResults+foldername+("MC_PerformanceAnalysis_{0}_"+peaks+"_{1}rep_"+str(binning)+"_"+str(min_bincontent)+".root").format(hits, tries)
+ROOT.gPad.Print(PngSaveName)
+ROOT.gPad.Print(RootSaveName)
 # RecSA_MinMax_graph.SetMarkerColor(ROOT.kBlue)
 # RecSA_MinMax_graph.Draw("SAME P*")
 
