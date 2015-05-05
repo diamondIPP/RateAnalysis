@@ -4,6 +4,7 @@ from RunClass import Run
 from AbstractClasses.Elementary import Elementary
 from AbstractClasses.Langau import Langau
 import os
+from copy import deepcopy
 import numpy as np
 from BinCollection import BinCollection
 from ConfigClass import *
@@ -29,6 +30,7 @@ class Analysis(Elementary):
         #initialize_ROOT()
         assert(run_object.run_number > 0), "No run selected, choose run.SetRun(run_nr) before you pass the run object"
         self.run_object = run_object
+        self.RunInfo = deepcopy(run_object.RunInfo)
         self.config_object = config_object
         self.config_object.SetWindowFromDiamond(self.run_object.diamond)
         self.TrackingPadAnalysisROOTFile = run_object.TrackingPadAnalysis["ROOTFile"]
@@ -341,20 +343,19 @@ class Analysis(Elementary):
         self.IfWait("Hits Distribution shown")
         self.Checklist["HitsDistribution"] = True
 
-    def FindMaxima(self,show=False):
-        minimum_bincontent = 30 # add a config file for this
+    def FindMaxima(self,show=False, binning = 200, minimum_bincontent = 30):
+        # add a config file for minimum_bincontent
         if not hasattr(self, "ExtremeAnalysis"):
-            self.ExtremeAnalysis = Analysis(self.run_object,Config(200),verbose=self.verbose)
+            self.ExtremeAnalysis = Analysis(self.run_object,Config(binning),verbose=self.verbose)
             self.ExtremeAnalysis.DoAnalysis(minimum_bincontent)
         if show:
             # self.ExtremeAnalysis.CreatePlots()
             self.ExtremeAnalysis.CreateBoth(saveplots=True, savename="SignalDistribution_MAXSearch", test="maxima") # distroys combined_canvas
         self.ExtremeAnalysis.Pad.FindMaxima(minimum_bincount=minimum_bincontent,show=show)
 
-    def FindMinima(self,show=False):
-        minimum_bincontent = 30
+    def FindMinima(self,show=False, binning = 200, minimum_bincontent = 30):
         if not hasattr(self, "ExtremeAnalysis"):
-            self.ExtremeAnalysis = Analysis(self.run_object,Config(200),verbose=self.verbose)
+            self.ExtremeAnalysis = Analysis(self.run_object,Config(binningsize=binning),verbose=self.verbose)
             self.ExtremeAnalysis.DoAnalysis(minimum_bincontent)
         if show:
             self.ExtremeAnalysis.CreatePlots()
