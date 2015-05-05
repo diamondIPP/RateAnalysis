@@ -26,6 +26,8 @@ class MCPerformance(Elementary):
         self.tries = 20 # number of repetitions for a certain signal height
         self.min_percent = 5   # Quantiles
         self.max_percent = 99  # Quantiles
+        self.binning = 100
+        self.minimum_statistics = 30
 
     def DoSignalHeightScan(self, heights=None, hits_per_height=300000):
         gc.disable()
@@ -33,7 +35,8 @@ class MCPerformance(Elementary):
 
 
         # ROOT Logfile:
-        path = "MC/Performance_Results/"+str(starttime)
+        #path = "MC/Performance_Results/"+str(starttime)
+        path = "MC/Performance_Results/_"+str(self.minimum_statistics)+"_"+str(self.binning)+"_"+str(hits_per_height)+"_"
         os.makedirs(path)
         rootfile = TFile(path+'/MCPerformanceLog.root','RECREATE')
         LogTree = TTree('LogTree', 'MC Log Tree')
@@ -65,9 +68,13 @@ class MCPerformance(Elementary):
         # infofile:
         infofile = open(path+"/info.txt", "w")
         infofile.write("DoSignalHeightScan\n\n")
+        infofile.write("Timestamp: "+str(starttime)+"\n\n")
         infofile.write("Number of Repetitions for each Amplitude: "+str(self.tries)+"\n")
         infofile.write("Number of different Amplitudes:           "+str(len(heights))+"\n")
         infofile.write("Hits per Amplitude:                       "+str(hits_per_height)+"\n")
+        infofile.write("Quantiles:                                "+str(self.min_percent)+"/"+str(self.max_percent)+"\n")
+        infofile.write("Binning:                                  "+str(self.binning)+"\n")
+        infofile.write("Minimum Statistics:                       "+str(self.minimum_statistics)+"\n")
 
         success_prob = []
         ghost_prob = []
@@ -81,14 +88,14 @@ class MCPerformance(Elementary):
                 cycle_nr += 1
                 print "\n{0}th repetition with Signal height set to: {1}\n".format(repetition, height)
                 run_object = MCRun(validate=False,verbose=self.verbose,run_number=364)
-                print "newAnalysis = Analysis(run_object)"
-                newAnalysis = Analysis(run_object, verbose=self.verbose)
                 run_object.MCAttributes['PeakHeight'] = height
                 run_object.SetNumberOfHits(hits_per_height)
+                print "newAnalysis = Analysis(run_object)"
+                newAnalysis = Analysis(run_object, verbose=self.verbose)
                 print "newAnalysis.FindMaxima()"
-                newAnalysis.FindMaxima()
+                newAnalysis.FindMaxima(binning=self.binning, minimum_bincontent=self.minimum_statistics)
                 print "newAnalysis.FindMinima()"
-                newAnalysis.FindMinima()
+                newAnalysis.FindMinima(binning=self.binning, minimum_bincontent=self.minimum_statistics)
                 npeaks = newAnalysis.ExtremeAnalysis.ExtremaResults['TrueNPeaks']
                 ninjas = newAnalysis.ExtremeAnalysis.ExtremaResults['Ninjas']
                 ghosts = newAnalysis.ExtremeAnalysis.ExtremaResults['Ghosts']
