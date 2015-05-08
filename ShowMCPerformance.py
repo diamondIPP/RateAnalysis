@@ -11,9 +11,9 @@ To improve:
 # Settings:
 hits = 300000
 tries = 20
-peaks = "3Peaks"
-binning = 100
-min_bincontent = 30
+peaks = "Test"
+binning = 50
+min_bincontent = 10
 
 PerfResults = "MC/Performance_Results/"
 #foldername = "2015-05-04 16-24-09.965268/"
