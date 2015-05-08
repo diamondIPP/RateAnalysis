@@ -7,7 +7,7 @@ class ATH2D(TH2D):
         TH2D.__init__(self, name, title, binsx, xmin, xmax, binsy, ymin, ymax)
 
     def GetBinCenter(self, binnumber):
-        assert(type(binnumber) is t.IntType), "binnumber has to be int type"
+        assert(type(binnumber) == t.IntType), "binnumber has to be int type"
 
         xmin = self.GetXaxis().GetXmin()
         xmax = self.GetXaxis().GetXmax()
