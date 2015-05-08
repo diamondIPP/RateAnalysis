@@ -83,9 +83,9 @@ class AnalysisCollection(Elementary):
                             current run number from AnalysisCollection object
         :return: FWHM
         '''
-        if run_number is None:
+        if run_number == None:
             run_number = AnalysisCollection.current_run_number
-        assert(type(run_number) is t.IntType and 0 < run_number < 1000), "Invalid run number"
+        assert(type(run_number) == t.IntType and 0 < run_number < 1000), "Invalid run number"
 
         analysis_obj = AnalysisCollection.collection[run_number]
 
@@ -172,12 +172,12 @@ class AnalysisCollection(Elementary):
             analysis = self.collection[runnumber]
             maxima = analysis.ExtremeAnalysis.ExtremaResults["FoundMaxima"]
             minima = analysis.ExtremeAnalysis.ExtremaResults["FoundMinima"]
-            if maxima is not None:
+            if maxima != None:
                 for peak in maxima:
                     self.PeakPadMax.Fill(*peak)
             else:
                 print "WARNING: No Maxima results found in run ", runnumber, ". PeakComparisonMax will be incomplete."
-            if minima is not None:
+            if minima == not None:
                 for peak in minima:
                     self.PeakPadMin.Fill(*peak)
             else:
@@ -194,7 +194,7 @@ class AnalysisCollection(Elementary):
         raw_input("peakpad")
 
     def PeakSignalEvolution(self, NMax = 3, NMin = 3, OnThisCanvas = None):
-        if OnThisCanvas is not None:
+        if OnThisCanvas == not None:
             assert(isinstance(OnThisCanvas, ROOT.TCanvas)), "OnThisCanvas has to be a TCanvas object"
         print "Signal Evolution start"
         if not hasattr(self, "PeakPadMax"):
@@ -312,8 +312,8 @@ class AnalysisCollection(Elementary):
 
 
         # Prepare for drawing: Evaluate the Range in y direction:
-        MaxRange = np.array([i for i in [MaxRange_low, MaxRange_peak] if i is not None])
-        MinRange = np.array([i for i in [MinRange_low, MinRange_peak] if i is not None])
+        MaxRange = np.array([i for i in [MaxRange_low, MaxRange_peak] if i != None])
+        MinRange = np.array([i for i in [MinRange_low, MinRange_peak] if i != None])
         if len(MaxRange) > 0:
             MaxRange = MaxRange.max()
         else:
