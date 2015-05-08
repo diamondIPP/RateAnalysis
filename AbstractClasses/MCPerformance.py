@@ -26,8 +26,8 @@ class MCPerformance(Elementary):
         self.tries = 20 # number of repetitions for a certain signal height
         self.min_percent = 5   # Quantiles
         self.max_percent = 99  # Quantiles
-        self.binning = 100
-        self.minimum_statistics = 30
+        self.binning = 50
+        self.minimum_statistics = 10
 
     def DoSignalHeightScan(self, heights=None, hits_per_height=300000):
         gc.disable()
@@ -62,7 +62,7 @@ class MCPerformance(Elementary):
         shutil.copy("Configuration/AnalysisConfig.cfg", path+"/AnalysisConfig.cfg")
 
 
-        if heights is None:
+        if heights == None:
             heights = [0.001, 0.05, 0.08, 0.1, 0.125, 0.15, 0.175, 0.2, 0.3, 0.5, 0.8, 1.0]
 
         # infofile:
