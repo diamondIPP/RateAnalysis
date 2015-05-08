@@ -38,12 +38,12 @@ class Elementary(object):
 
     @classmethod
     def SavePlots(cls, savename, ending=None, saveDir=None):
-        if saveDir is None:
+        if saveDir == None:
             saveDir = Elementary.SaveDirectory
-        if ending is None:
+        if ending == None:
             ending = ""
         else:
-            assert(type(ending) is t.StringType), "ending has to be string type"
+            assert(type(ending) == t.StringType), "ending has to be string type"
             ending = "."+ending
         # Results directories:
         #resultsdir = saveDir+'run_'+str(self.run_object.run_number)+'/' # eg. 'Results/run_364/'
