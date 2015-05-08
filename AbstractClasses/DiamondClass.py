@@ -21,7 +21,7 @@ class Diamond(object):
                     'ymax': 0.40
                 }
 
-        if name is not None:
+        if name != None:
             self.SetInfoFromName(name)
 
     def SetInfoFromName(self,diamondname):
