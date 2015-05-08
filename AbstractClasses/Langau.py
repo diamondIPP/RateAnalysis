@@ -90,7 +90,7 @@ class Langau(Elementary):
         # Setting fit range and start values
 
         # fitrange for fit:
-        if fitrange is None:
+        if fitrange == None:
             fitrange = array("d", [0,0])
             fitrange[0]=0.3*his.GetMean()
             fitrange[1]=3.0*his.GetMean()
@@ -98,7 +98,7 @@ class Langau(Elementary):
             assert(len(fitrange)==2), "Wrong Dimensions of fitrange"
 
         # lower parameter limits
-        if parlimitslo is None:
+        if parlimitslo == None:
             parlimitslo = array("d", [0,0,0,0])
             parlimitslo[0]=2.0 # par[0]=Width (scale) parameter of Landau density
             parlimitslo[1]=20.0 # par[1]=Most Probable (MP, location) parameter of Landau density
@@ -108,7 +108,7 @@ class Langau(Elementary):
             assert(len(fitrange)==4), "Wrong Dimensions of parlimitslo"
 
         # upper parameter limits
-        if parlimitshi is None:
+        if parlimitshi == None:
             parlimitshi = array("d", [0,0,0,0])
             parlimitshi[0]=50.0         # par[0]=Width (scale) parameter of Landau density
             parlimitshi[1]=250.0        # par[1]=Most Probable (MP, location) parameter of Landau density
@@ -118,7 +118,7 @@ class Langau(Elementary):
             assert(len(fitrange)==4), "Wrong Dimensions of parlimitshi"
 
         # Startvalues for fit:
-        if startvalues is None:
+        if startvalues == None:
             startvalues = array("d", [0,0,0,0])
             startvalues[0]=11.0       # par[0]=Width (scale) parameter of Landau density
             startvalues[1]=his.GetBinCenter(his.GetMaximumBin())      # par[1]=Most Probable (MP, location) parameter of Landau density
@@ -253,7 +253,7 @@ class Langau(Elementary):
         return self.FitResults["FitParamErrors"][1]
 
     def GetFWHM(self):
-        assert(self.FitResults["FWHM"] is not None), "No fit made. Execute self.LangauFit() before calling self.GetFWHM()"
+        assert(self.FitResults["FWHM"] != None), "No fit made. Execute self.LangauFit() before calling self.GetFWHM()"
         return self.FitResults["FWHM"]
     
     
