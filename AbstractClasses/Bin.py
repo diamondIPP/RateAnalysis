@@ -92,7 +92,7 @@ class Bin(Elementary):
         self.BinSignalHisto.GetXaxis().SetTitle('Signal response')
         self.BinSignalHisto.Draw()
         if self.BinSignalHisto.GetEntries() >= 5 and show_fit:
-            if self.Fit["MPV"] is None:
+            if self.Fit["MPV"] == None:
                 self.FitLandau()
             self.VerbosePrint("Most Probable Signal Response: {0:.2f} +- {1:.2f}".format(self.Fit['MPV'],self.Fit['MPVErr']))
             self.VerbosePrint( "Sigma of Landau dist: {0:.3f} +- {1:.3f}".format(self.Fit['Sigma'],self.Fit['SigmaErr']))
