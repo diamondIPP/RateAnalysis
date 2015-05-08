@@ -56,7 +56,7 @@ class RunSelection(Run):
         self.VerbosePrint('All runs unselected')
 
     def SelectDataType(self, data_type): # data type
-        assert(type(data_type) is t.IntType and 0<=data_type<=4), "wrong data type"
+        assert(type(data_type) == t.IntType and 0<=data_type<=4), "wrong data type"
         count = 0
         for run_number in self.run_numbers:
             if self.runs[run_number]['data_type'] == data_type:
@@ -76,7 +76,7 @@ class RunSelection(Run):
 
     def SelectIrradiationRuns(self, irradiated=True, irrtype=None):
         count = 0
-        if irradiated and irrtype is None:
+        if irradiated and irrtype == None:
             for run_number in self.run_numbers:
                 self.SetRun(run_number, validate=False)
                 if self.diamond.Specifications['Irradiation'] == 'proton' or self.diamond.Specifications['Irradiation'] == 'neutron':
@@ -104,7 +104,7 @@ class RunSelection(Run):
                 self.VerbosePrint('Irradiated Runs selected with '+irrtype+' irradiation. +'+str(count)+' selections')
 
     def UnSelectUnlessDataType(self, data_type):
-        assert(type(data_type) is t.IntType and 0<=data_type<=4), "wrong data type"
+        assert(type(data_type) == t.IntType and 0<=data_type<=4), "wrong data type"
         count = 0
         for run_number in self.run_numbers:
             if self.selections[run_number]:
@@ -118,7 +118,7 @@ class RunSelection(Run):
 
     def UnSelectUnlessIrradiation(self, irradiated=True, irrtype=None):
         count = 0
-        if irradiated and irrtype is None:
+        if irradiated and irrtype == None:
             for run_number in self.run_numbers:
                 if self.selections[run_number]:
                     self.SetRun(run_number, validate=False)
@@ -169,7 +169,7 @@ class RunSelection(Run):
         self.VerbosePrint('All Selected Runs unselected if not using '+diamondname+' diamond. Only '+diamondname+' diamond Runs left. -'+str(count)+' selections')
 
     def UnSelectUnlessBias(self, bias):
-        assert(type(bias) is t.IntType), "Bias has to be int-Type"
+        assert(type(bias) == t.IntType), "Bias has to be int-Type"
         count = 0
         for run_number in self.run_numbers:
             if self.selections[run_number]:
@@ -182,9 +182,9 @@ class RunSelection(Run):
         self.VerbosePrint('All Selected Runs unselected if not '+str(bias)+'V bias applied. Only '+str(bias)+'V Bias Runs left. -'+str(count)+' selections')
 
     def ExcludeRun(self, run_number):
-        assert(type(run_number) is t.IntType or type(run_number) is t.ListType), "Wrong input type. run_number has to be either integer or list of integer"
+        assert(type(run_number) == t.IntType or type(run_number) == t.ListType), "Wrong input type. run_number has to be either integer or list of integer"
         ListOfRuns = self.GetSelectedRuns()
-        if type(run_number) is t.IntType:
+        if type(run_number) == t.IntType:
             if run_number in ListOfRuns:
                 self.selections[run_number] = False
                 self.Log("Run "+str(run_number)+" unselected. -1 selection")
