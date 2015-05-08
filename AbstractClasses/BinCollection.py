@@ -33,7 +33,7 @@ class BinCollection(Elementary):
         :return: -
         '''
         Elementary.__init__(self, verbose = verbose)
-        if type(binsx) is not t.IntType or type(binsy) is not t.IntType:
+        if type(binsx) != t.IntType or type(binsy) != t.IntType:
             "INFO: binsx or binsy not of int type. Changing it to int..."
             binsx = int(binsx)
             binsy = int(binsy)
@@ -109,8 +109,8 @@ class BinCollection(Elementary):
         '''
         Shows a Histogram of the Signal response distribution inside the bin which
         contains the coordinates (x,y)
-        :param x: coordinate x in cm which is contained in the bin of interest
-        :param y: coordinate y in cm which is contained in the bin of interest
+        :param x: coordinate x in cm which == contained in the bin of interest
+        :param y: coordinate y in cm which == contained in the bin of interest
         :param saveplot: if True save plot as as Results/Bin_X0.123Y-0.123_SignalHisto.png
         :return: -
         '''
@@ -304,7 +304,7 @@ class BinCollection(Elementary):
     # show distribution of K_i from SIGMA = K_i * sigma_i / sqrt(n) for selected bins
     def ShowKDistribution(self,draw = True):
         selection = self.GetListOfSelectedBins()
-        assert(len(selection) is not 0), "no Bins selected!"
+        assert(len(selection) != 0), "no Bins selected!"
         if draw:
             Kcanvas = ROOT.TCanvas('Kcanvas','K Canvas')
 
@@ -375,7 +375,7 @@ class BinCollection(Elementary):
         :param bin_nunmber: the bin number of the bin to return
         :return: bin with bin number bin_number
         '''
-        if not(type(bin_number) is t.IntType):
+        if not(type(bin_number) == t.IntType):
             binnumber = int(bin_number)
         else:
             binnumber = bin_number
@@ -392,13 +392,13 @@ class BinCollection(Elementary):
         :param bin_numbers:
         :return:
         '''
-        if type(bin_numbers) is t.ListType:
+        if type(bin_numbers) == t.ListType:
             nr = len(bin_numbers)
             coordinates = []
             for i in xrange(nr):
                 coordinates.append(self.ListOfBins[bin_numbers[i]].GetBinCenter())
             return coordinates
-        elif type(bin_numbers) is t.IntType or type(bin_numbers) is t.FloatType:
+        elif type(bin_numbers) == t.IntType or type(bin_numbers) == t.FloatType:
             bin_numbers = int(bin_numbers)
             coordinates = self.ListOfBins[bin_numbers].GetBinCenter()
             return coordinates
@@ -524,7 +524,7 @@ class BinCollection(Elementary):
             _ , y_ = list_of_bins[i].GetBinCenter()
             MPV_ = list_of_bins[i].Fit['MPV']
             MPVerr_ = list_of_bins[i].Fit['MPVErr']
-            if MPV_ is not None:
+            if MPV_ != None:
                 graph.SetPoint(count, y_ , MPV_)
                 graph.SetPointError(count, 0, MPVerr_)
                 signals.append(MPV_)
@@ -557,7 +557,7 @@ class BinCollection(Elementary):
             x_ , _ = list_of_bins[i].GetBinCenter()
             MPV_ = list_of_bins[i].Fit['MPV']
             MPVerr_ = list_of_bins[i].Fit['MPVErr']
-            if MPV_ is not None:
+            if MPV_ == not None:
                 graph.SetPoint(count, x_ , MPV_)
                 graph.SetPointError(count, 0, MPVerr_)
                 signals.append(MPV_)
