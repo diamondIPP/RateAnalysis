@@ -237,7 +237,7 @@ class FindExtrema(Elementary):
 
     def Find(self, threshold = None, minimum_bincount = 5, show = False):
 
-        if threshold is None:
+        if threshold == None:
             self.SetThreshold()
             # self.threshold = self.BinCollectionObj.SignalHisto.GetMean()
             self.VerbosePrint('threshold set automatically to ', self.threshold)
