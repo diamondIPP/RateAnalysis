@@ -53,7 +53,7 @@ class MCRun(Run):
         else:
             npeaks = int(npeaks)
         SpecialDistribution     = parser.get('SIGNAL-DISTRIBUTION','SpecialDistribution')
-        assert(SpecialDistribution in ["No", "False", "4Peaks", "4peaks", "Central", "central", "L", "3Peaks"]), "Bad MC Config file. SpecialDistribution: "+SpecialDistribution+" in SIGNAL-DSITRIBUTION unknown"
+        assert(SpecialDistribution in ["No", "False", "4Peaks", "4peaks", "Central", "central", "L", "3Peaks", "Testpattern", "testpattern", "Test", "test"]), "Bad MC Config file. SpecialDistribution: "+SpecialDistribution+" in SIGNAL-DSITRIBUTION unknown"
         PeakHeight          = parser.getfloat('SIGNAL-DISTRIBUTION','PeakHeight')
         Landau_MPV_bkg      = parser.getint('SIGNAL-DISTRIBUTION','Landau_MPV_bkg')
         Landau_Sigma        = parser.getint('SIGNAL-DISTRIBUTION','Landau_Sigma')
@@ -137,7 +137,7 @@ class MCRun(Run):
         print '\nHit Distribution Mode is Set to: '+self.MCAttributes['HitDistributionMode']
         print 'Signal Mode is Set to: '+self.MCAttributes['SignalMode']
         print 'Number of Signals to produce: ', self.NumberOfHits
-        if self.MCAttributes['NPeaks'] is not None:
+        if self.MCAttributes['NPeaks'] != None:
             print self.MCAttributes['NPeaks']," Peaks generated. Each Peak with amplitude: ", self.MCAttributes['PeakHeight'], '\n'
         else:
             print '\n'
@@ -162,11 +162,11 @@ class MCRun(Run):
         ymax = self.diamond.Position['ymax'] - 0.01
         center_x = (xmax+xmin)/2.
         center_y = (ymax+ymin)/2.
-        if draw is not None:
-            assert(type(draw) is t.BooleanType), "draw has to be boolean type"
+        if draw == not None:
+            assert(type(draw) == t.BooleanType), "draw has to be boolean type"
             self.MCAttributes['DrawRealDistribution'] = draw
-        if save is not None:
-            assert(type(save) is t.BooleanType), "save argument has to be of type boolean"
+        if save != None:
+            assert(type(save) == t.BooleanType), "save argument has to be of type boolean"
             self.MCAttributes['Save'] = save
 
         def ManualHitDistribution(x, par):
@@ -198,7 +198,7 @@ class MCRun(Run):
             :param npeaks: number of peaks in window - if none it picks random between 0 and 15
             :return: array containing the parameters
             '''
-            if npeaks is None:
+            if npeaks == None:
                 npeaks = int(round(gRandom.Uniform(0,15)))
 
             if self.MCAttributes['SpecialDistribution'] in ["Central", "central"]:
@@ -232,6 +232,46 @@ class MCRun(Run):
                     npeaks = 3
                     parameters[0] = npeaks
                     parameters = parameters[:3+4*npeaks]
+            elif self.MCAttributes['SpecialDistribution'] in ["Testpattern", "testpattern", "Test", "test"]:
+                npeaks = 8
+                Center_x = gRandom.Uniform(center_x-0.01, center_x+0.01)
+                Center_y = gRandom.Uniform(center_y-0.01, center_y+0.01)
+                parameters = np.zeros(3+4*npeaks)
+                parameters[0]  = npeaks
+                parameters[1]  = bkg
+                parameters[2]  = peak_height
+                parameters[3]  = Center_x - 0.1
+                parameters[4]  = Center_y + 0.08
+                parameters[5]  = 0.02
+                parameters[6]  = 0.02
+                parameters[7]  = Center_x - 0.04
+                parameters[8]  = Center_y + 0.08
+                parameters[9]  = 0.02
+                parameters[10] = 0.02
+                parameters[11]  = Center_x - 0.1
+                parameters[12]  = Center_y
+                parameters[13]  = 0.025
+                parameters[14] = 0.025
+                parameters[15]  = Center_x
+                parameters[16]  = Center_y
+                parameters[17]  = 0.02
+                parameters[18] = 0.02
+                parameters[19]  = Center_x + 0.1
+                parameters[20]  = Center_y
+                parameters[21]  = 0.03
+                parameters[22] = 0.03
+                parameters[23]  = Center_x - 0.04
+                parameters[24]  = Center_y - 0.06
+                parameters[25]  = 0.015
+                parameters[26] = 0.015
+                parameters[27]  = Center_x - 0.12
+                parameters[28]  = Center_y - 0.12
+                parameters[29]  = 0.03
+                parameters[30] = 0.03
+                parameters[31]  = Center_x + 0.08
+                parameters[32]  = Center_y - 0.12
+                parameters[33]  = 0.04
+                parameters[34] = 0.04
             else:
                 parameters = np.zeros(3+4*npeaks)
                 parameters[0] = npeaks
@@ -295,7 +335,7 @@ class MCRun(Run):
         self.track_info.Branch('calib_offset', calib_offset, 'calib_offset/I')
 
         # Create Manual Hit Distribution:
-        if self.MCAttributes['HitDistributionMode'] is 'Manual':
+        if self.MCAttributes['HitDistributionMode'] == 'Manual':
             dx = 0.08
             dy = 0.07
             f_lateral = TF2('f_lateral', ManualHitDistribution, xmin, xmax, ymin, ymax, 12)
@@ -320,7 +360,7 @@ class MCRun(Run):
         b = Double()
 
         # Generate Signal Distribution:
-        if self.MCAttributes['SignalMode'] == 'Landau':
+        if self.MCAttributes['SignalMode'] is 'Landau':
             self.SignalParameters = CreateRandomPeaksConfig(xmin, xmax, ymin, ymax, peak_height=self.MCAttributes['PeakHeight'], bkg=MPV)
         else:
             self.SignalParameters = CreateRandomPeaksConfig(xmin, xmax, ymin, ymax, peak_height=self.MCAttributes['PeakHeight'], bkg=100)
@@ -331,7 +371,7 @@ class MCRun(Run):
         if self.MCAttributes['DrawRealDistribution']:
             canvas = TCanvas('canvas', 'canvas')
             canvas.cd()
-            gStyle.SetPalette(55) # a Rain Bow palette is used.
+            gStyle.SetPalette(55) # a Rain Bow palette == used.
             gStyle.SetNumberContours(8)
             f_signal.Draw('surf1')
             gPad.Print(MCRunPath+'RealSignalDistribution.png')
@@ -367,8 +407,9 @@ class MCRun(Run):
                     track_y[0] = gRandom.Gaus(b, self.MCAttributes['TrackResolution'])
 
                 # Get Signal at x and y
-                if self.MCAttributes['SignalMode'] is 'Landau':
+                if self.MCAttributes['SignalMode'] == 'Landau':
                     integral50[0] = gRandom.Landau(f_signal(track_x[0], track_y[0]), sigma)
+                    print "\n\n\n\n\n\n\n\nSIGNALMODE\n\n\n\n\n\n\n\n\n\n"
                 else:
                     integral50[0] = gRandom.Gaus(f_signal(track_x[0], track_y[0]), 0.6*f_signal(track_x[0], track_y[0])-33)
 
