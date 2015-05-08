@@ -21,6 +21,7 @@ if __name__ == "__main__":
     # config
     show_plots = True
     minimum_statistics = 10 # don't draw bins which contain less than minimum_statistics hits
+    binsize = 50
 
     if 'v' in sys.argv or '-v' in sys.argv or 'V' in sys.argv:
         verbose = True
@@ -60,7 +61,7 @@ if __name__ == "__main__":
                 print run_number
 
                 #
-                newAnalysis = Analysis(run,Config(100))
+                newAnalysis = Analysis(run,Config(binsize))
                 newAnalysis.DoAnalysis(minimum_statistics)
                 # newAnalysis.CreatePlots(True,'2D_Signal_dist',show3d=True)
                 # # # # newAnalysis.CreateMeanSignalHistogram(True)
@@ -100,8 +101,8 @@ if __name__ == "__main__":
                 # newAnalysis.Pad.GetSignalInColumn(position=0.13, show=True)
                 # newAnalysis.Pad.ShowBinXYSignalHisto(-0.03,0.19, saveplot=True, show_fit=True)
                 # newAnalysis.Pad.ShowBinXYSignalHisto(0.13,0.03,True)
-                newAnalysis.FindMaxima(show=True, binning=100, minimum_bincontent=minimum_statistics)
-                newAnalysis.FindMinima(show=True, binning=100, minimum_bincontent=minimum_statistics)
+                newAnalysis.FindMaxima(show=True, binning=binsize, minimum_bincontent=minimum_statistics)
+                newAnalysis.FindMinima(show=True, binning=binsize, minimum_bincontent=minimum_statistics)
                 # newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(-0.04,0.3,saveplot=True, show_fit=True)
                 # newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.07,0.3,saveplot=True, show_fit=True)
                 # newAnalysis.MaximaAnalysis.Pad.ShowBinXYSignalHisto(0.12,0.33, saveplot=True, show_fit=True)
@@ -152,7 +153,7 @@ if __name__ == "__main__":
                 ROOT.gStyle.SetPalette(53)
                 ROOT.gStyle.SetNumberContours(999)
                 newAnalysis.combined_canvas.Update()
-                ROOT.gPad.Print("Combined_Plot.png")
+                ROOT.gPad.Print("Results/Combined_Plot.png")
 
 
                 #
@@ -160,13 +161,13 @@ if __name__ == "__main__":
                 # # newAnalysis.Pad.ShowSelectedBins()
                 # # newAnalysis.Pad.ShowCombinedKDistribution(saveplots=True, savename='combinedK_all')
                 # #
-                # newAnalysis.CreateHitsDistribution(saveplot=True, drawoption='colz')
+                newAnalysis.CreateHitsDistribution(saveplot=True, drawoption='colz', RemoveLowStatBins=minimum_statistics)
                 # newAnalysis.ExportMC()
 
 
                 newAnalysis.GetSignalHeight()
 
-                newAnalysis.ShowTotalSignalHistogram()
+                newAnalysis.ShowTotalSignalHistogram(save=True)
 
                 collection.AddAnalysis(newAnalysis)
 
