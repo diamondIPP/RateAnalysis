@@ -20,7 +20,7 @@ class Run(Elementary):
         if validate:
             self.ValidateRuns()
 
-        if run_number is not None:
+        if run_number != None:
             assert(run_number > 0), "incorrect run_number"
             self.run_number = run_number
 
@@ -34,7 +34,7 @@ class Run(Elementary):
         self.ShowAndWait = False
 
     def ValidateRuns(self, list_of_runs = None):
-        if list_of_runs is not None:
+        if list_of_runs != None:
             runs = list_of_runs
         else:
             runs = RunInfo.runs.keys() # list of all runs
