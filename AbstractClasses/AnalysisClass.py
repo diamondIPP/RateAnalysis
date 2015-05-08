@@ -9,6 +9,7 @@ import numpy as np
 from BinCollection import BinCollection
 from ConfigClass import *
 from array import array
+import types as t
 import ConfigParser
 from ConfigParser import NoSectionError
 
@@ -330,7 +331,20 @@ class Analysis(Elementary):
             ROOT.gStyle.SetHistFillStyle(3003)
         self.IfWait("Combined 2D Signal DistributionsShown")
 
-    def CreateHitsDistribution(self,saveplot = False, drawoption = "colz"): # add palette!
+    def CreateHitsDistribution(self,saveplot = False, drawoption = "colz", RemoveLowStatBins = 0): # add palette!
+        if RemoveLowStatBins > 0:
+            if type(RemoveLowStatBins) == t.BooleanType:
+                RemoveLowStatBins = 10
+            bins = (self.Pad.counthisto.GetNbinsX() + 2)*(self.Pad.counthisto.GetNbinsY() + 2)
+            for bin in xrange(bins):
+                if self.Pad.counthisto.GetBinContent(bin) < RemoveLowStatBins:
+                    coordinates = self.Pad.GetBinCenter(bin)
+                    content = self.Pad.counthisto.GetBinContent(bin)
+                    self.Pad.counthisto.Fill(coordinates[0], coordinates[1], -content)
+            extension = "_"+str(RemoveLowStatBins)
+        else:
+            extension = ""
+
         ROOT.gStyle.SetPalette(53)
         ROOT.gStyle.SetNumberContours(999)
         canvas = ROOT.TCanvas("canvas", "Hits", 500, 500) # adjust the width slightly
@@ -339,7 +353,7 @@ class Analysis(Elementary):
         self.Pad.counthisto.Draw(drawoption)#"surf2")
         #self.Pad.counthisto.Draw("CONT1 SAME")
         if saveplot:
-            self.SavePlots("Hits_Distribution", "png")
+            self.SavePlots("Hits_Distribution"+extension, "png")
         self.IfWait("Hits Distribution shown")
         self.Checklist["HitsDistribution"] = True
 
@@ -425,14 +439,14 @@ class Analysis(Elementary):
             self.Pad.CreateTotalSignalHistogram(saveplot=save, scale=scale, showfit=showfit)
 
     def GetSignalHistoFitResults(self):
-        if self.SignalHistoFitResults["Peak"] is not None:
+        if self.SignalHistoFitResults["Peak"] != None:
             FitFunction = self.SignalHistoFitResults["FitFunction"]
             Peak = self.SignalHistoFitResults["Peak"]
             FWHM = self.SignalHistoFitResults["FWHM"]
             Chi2 = self.SignalHistoFitResults["Chi2"]
             NDF = self.SignalHistoFitResults["NDF"]
             return FitFunction, Peak, FWHM, Chi2, NDF
-        elif hasattr(self, "ExtremeAnalysis") and self.ExtremeAnalysis.SignalHistoFitResults["Peak"] is not None:
+        elif hasattr(self, "ExtremeAnalysis") and self.ExtremeAnalysis.SignalHistoFitResults["Peak"] == not None:
             FitFunction = self.ExtremeAnalysis.SignalHistoFitResults["FitFunction"]
             Peak = self.ExtremeAnalysis.SignalHistoFitResults["Peak"]
             FWHM = self.ExtremeAnalysis.SignalHistoFitResults["FWHM"]
@@ -446,7 +460,7 @@ class Analysis(Elementary):
             return FitFunction, Peak, FWHM, Chi2, NDF
         else:
             self.ShowTotalSignalHistogram(save=False, showfit=True)
-            if (self.SignalHistoFitResults["Peak"] is not None) or (hasattr(self, "ExtremeAnalysis") and self.ExtremeAnalysis.SignalHistoFitResults["Peak"] is not None):
+            if (self.SignalHistoFitResults["Peak"] != None) or (hasattr(self, "ExtremeAnalysis") and self.ExtremeAnalysis.SignalHistoFitResults["Peak"] == not None):
                 self.GetSignalHistoFitResults()
             else:
                 assert(False), "BAD SignalHistogram Fit, Stop program due to possible infinity loop"
