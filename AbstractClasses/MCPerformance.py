@@ -24,10 +24,11 @@ class MCPerformance(Elementary):
         Elementary.__init__(self, verbose=verbose)
         # Settings:
         self.tries = 20 # number of repetitions for a certain signal height
-        self.min_percent = 5   # Quantiles
-        self.max_percent = 99  # Quantiles
-        self.binning = 50
-        self.minimum_statistics = 10
+        self.min_percent = 0   # Quantiles
+        self.max_percent = 100  # Quantiles
+        self.binning = 200
+        self.minimum_statistics = 50
+        self.extremaconfiguration = "1.04 / 55 / 0.97 / 45"
 
     def DoSignalHeightScan(self, heights=None, hits_per_height=300000):
         gc.disable()
@@ -45,6 +46,7 @@ class MCPerformance(Elementary):
         TrueNPeaks = array('i', [0])
         Ninjas = array('i',[0])
         Ghosts = array('i',[0])
+        Minimas = array('i',[0])
         RecSA_Quantiles = array('f',[0])
         RecSA_MinMax = array('f', [0])
 
@@ -53,6 +55,7 @@ class MCPerformance(Elementary):
         LogTree.Branch('TrueNPeaks', TrueNPeaks, 'TrueNPeaks/I')
         LogTree.Branch('Ninjas', Ninjas, 'Ninjas/I')
         LogTree.Branch('Ghosts', Ghosts, 'Ghosts/I')
+        LogTree.Branch('Minimas', Minimas, 'Minimas/I')
         LogTree.Branch('RecSA_Quantiles', RecSA_Quantiles, 'RecSA_Quantiles/F')
         LogTree.Branch('RecSA_MinMax', RecSA_MinMax, 'RecSA_MinMax/F')
 
@@ -63,7 +66,7 @@ class MCPerformance(Elementary):
 
 
         if heights == None:
-            heights = [0.001, 0.05, 0.08, 0.1, 0.125, 0.15, 0.175, 0.2, 0.3, 0.5, 0.8, 1.0]
+            heights = [0.0, 0.05, 0.08, 0.1, 0.125, 0.15, 0.175, 0.2, 0.3, 0.5, 0.8, 1.0]
 
         # infofile:
         infofile = open(path+"/info.txt", "w")
@@ -75,6 +78,7 @@ class MCPerformance(Elementary):
         infofile.write("Quantiles:                                "+str(self.min_percent)+"/"+str(self.max_percent)+"\n")
         infofile.write("Binning:                                  "+str(self.binning)+"\n")
         infofile.write("Minimum Statistics:                       "+str(self.minimum_statistics)+"\n")
+        infofile.write("Extrema Configuration:                    "+self.extremaconfiguration)
 
         success_prob = []
         ghost_prob = []
@@ -122,6 +126,7 @@ class MCPerformance(Elementary):
                 TrueNPeaks[0]          = npeaks
                 Ninjas[0]              = ninjas
                 Ghosts[0]              = ghosts
+                Minimas[0]             = len(minima)
                 RecSA_Quantiles[0]     = rec_sa_quantiles
                 RecSA_MinMax[0]        = rec_sa_minmax
                 LogTree.Fill()
