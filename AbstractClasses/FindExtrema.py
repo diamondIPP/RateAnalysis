@@ -235,6 +235,16 @@ class FindExtrema(Elementary):
             nbhd.append(binnumber-2*range_x+1)
         return nbhd
 
+    def GetBinsInRadius(self, center_bin, radius, include_center = True): # maybe move this to bincollection class
+        binnnumbers = self.BinCollectionObj.binnumbers
+        c_x, c_y = self.BinCollectionObj.GetBinCenter(center_bin)
+        list_of_bins = []
+        for binnumber in binnnumbers:
+            x, y = self.BinCollectionObj.GetBinCenter(binnumber)
+            if 0 < (c_x-x)**2 + (c_y-y)**2 <= radius**2 or ((c_x-x)**2 + (c_y-y)**2 == 0 and include_center):
+                list_of_bins.append(binnumber)
+        return list_of_bins
+
     def Find(self, threshold = None, minimum_bincount = 5, show = False):
 
         if threshold == None:
@@ -254,7 +264,13 @@ class FindExtrema(Elementary):
         Vote4Extrema = self.GetBinsInVoteRange(4)
         self.VerbosePrint(len(Vote4Extrema)," "+self.ExtremaType+" found containing 4 votings")
     
-        mean = self.BinCollectionObj.SignalHisto.GetMean()
+        # mean = self.BinCollectionObj.SignalHisto.GetMean()
+        if hasattr(self.BinCollectionObj.parent_analysis_obj, "MeanSignalHisto"):
+            mean = self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto.GetMean()
+        else:
+            self.BinCollectionObj.parent_analysis_obj.CreateMeanSignalHistogram()
+            mean = self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto.GetMean()
+
         for i in xrange(len(Vote4Extrema)):
             center_bin = Vote4Extrema[i]
             nbhd = self.GetBinsInNbhd(center_bin)
@@ -264,9 +280,10 @@ class FindExtrema(Elementary):
                 bin_entries = self.BinCollectionObj.ListOfBins[binnr].GetEntries()
                 if bin_entries >= self.minimum_bincount:
                     MeanNbhdSignals.append(bin_mean)
-            nbhd_mean = np.mean(MeanNbhdSignals)
-            if self.FifthVoting(nbhd_mean, mean): # 5 % bigger than overall mean
-                self.FillHistoByBinnumber(center_bin, 1)
+            if len(MeanNbhdSignals)>0:
+                nbhd_mean = np.mean(MeanNbhdSignals)
+                if self.FifthVoting(nbhd_mean, mean):
+                    self.FillHistoByBinnumber(center_bin, 1)
     
         Vote5Extrema = self.GetBinsInVoteRange(5)
         self.VerbosePrint(len(Vote5Extrema)," "+self.ExtremaType+" found containing 5 votings: ")
@@ -287,14 +304,19 @@ class FindExtrema(Elementary):
             for i in xrange(npeaks):
                 x = self.BinCollectionObj.run_object.SignalParameters[3+4*i]
                 y = self.BinCollectionObj.run_object.SignalParameters[4+4*i]
+                # sigma_x = self.BinCollectionObj.run_object.SignalParameters[5+4*i]
+                # sigma_y = self.BinCollectionObj.run_object.SignalParameters[6+4*i]
+                # sigma = 1.*(sigma_x+sigma_y)/2.
                 peaks_x.append(x)
                 peaks_y.append(y)
-                Peak_nbhd_temp = self.GetBinsInNbhd(self.BinCollectionObj.GetBinNumber(x, y), include_center=True, extended=True)
+                # Peak_nbhd_temp = self.GetBinsInNbhd(self.BinCollectionObj.GetBinNumber(x, y), include_center=True, extended=True)
+                Peak_nbhd_temp = self.GetBinsInRadius(self.BinCollectionObj.GetBinNumber(x, y), radius=0.02, include_center=True)
                 Peak_nbhd += Peak_nbhd_temp
                 self.real_peaks.SetPoint(i, x, y)
                 self.real_peaks.SetPointError(i, self.BinCollectionObj.run_object.SignalParameters[5+4*i], self.BinCollectionObj.run_object.SignalParameters[6+4*i])
             for bin_nr in Vote5Extrema:
-                Maxima_nbhd_temp = self.GetBinsInNbhd(bin_nr, include_center=True, extended=True)
+                # Maxima_nbhd_temp = self.GetBinsInNbhd(bin_nr, include_center=True, extended=True)
+                Maxima_nbhd_temp = self.GetBinsInRadius(bin_nr, radius=0.02, include_center=True)
                 Maxima_nbhd += Maxima_nbhd_temp
             # Looking for Ghosts:
             for bin_nr in Vote5Extrema:
@@ -354,7 +376,7 @@ class FindMaxima(FindExtrema):
             return False
 
     def FifthVoting(self, nbhd_mean, mean):
-        if nbhd_mean > 1.05*mean:
+        if nbhd_mean > 1.04*mean:
             return True
         else:
             return False
@@ -366,7 +388,14 @@ class FindMaxima(FindExtrema):
         percent = 55
         q = array('d', [1.*percent/100.])
         y = array('d', [0])
-        self.BinCollectionObj.SignalHisto.GetQuantiles(1, y, q)
+
+        if hasattr(self.BinCollectionObj.parent_analysis_obj, "MeanSignalHisto"):
+            self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto.GetQuantiles(1, y, q)
+        else:
+            self.BinCollectionObj.parent_analysis_obj.CreateMeanSignalHistogram()
+            self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto.GetQuantiles(1, y, q)
+
+        # self.BinCollectionObj.SignalHisto.GetQuantiles(1, y, q)
         self.threshold = y[0]
         
 class FindMinima(FindExtrema):
@@ -390,5 +419,12 @@ class FindMinima(FindExtrema):
         percent = 45
         q = array('d', [1.*percent/100.])
         y = array('d', [0])
-        self.BinCollectionObj.SignalHisto.GetQuantiles(1, y, q)
+
+        if hasattr(self.BinCollectionObj.parent_analysis_obj, "MeanSignalHisto"):
+            self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto.GetQuantiles(1, y, q)
+        else:
+            self.BinCollectionObj.parent_analysis_obj.CreateMeanSignalHistogram()
+            self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto.GetQuantiles(1, y, q)
+
+        # self.BinCollectionObj.SignalHisto.GetQuantiles(1, y, q)
         self.threshold = y[0]
