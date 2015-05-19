@@ -19,9 +19,10 @@ if __name__ == "__main__":
 
     # config
     Diamond = "IIa-2"
-    Bias = -500
+    Bias = 500
     show_plots = True
-    minimum_statistics = 10 # don't draw bins which contain less than minimum_statistics hits
+    minimum_statistics = 100 # don't draw bins which contain less than minimum_statistics hits
+    binning = 100
 
     if 'v' in sys.argv or '-v' in sys.argv or 'V' in sys.argv:
         verbose = True
@@ -56,13 +57,13 @@ if __name__ == "__main__":
                 print "Starting ",run_number
 
                 #
-                newAnalysis = Analysis(run,Config(70),verbose=verbose)
+                newAnalysis = Analysis(run,Config(binning),verbose=verbose)
                 newAnalysis.SetSaveDirectory(savepath+str(run_number)+"/")
                 newAnalysis.DoAnalysis(minimum_statistics)
                 newAnalysis.CreateBoth(saveplots=False)
 
-                newAnalysis.FindMaxima(show=True)
-                newAnalysis.FindMinima(show=True)
+                newAnalysis.FindMaxima(show=True, binning=binning, minimum_bincontent=minimum_statistics)
+                newAnalysis.FindMinima(show=True, binning=binning, minimum_bincontent=minimum_statistics)
 
                 newAnalysis.combined_canvas.cd(1)
                 if run.IsMonteCarlo:
