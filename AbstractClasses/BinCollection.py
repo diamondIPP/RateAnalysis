@@ -6,6 +6,7 @@ import os
 import types as t
 from AbstractClasses.FindExtrema import FindMaxima, FindMinima
 from AbstractClasses.Langau import Langau
+from AbstractClasses.ATH2D import ATH2D
 from Elementary import Elementary
 from Bin import Bin
 from array import array
@@ -19,7 +20,7 @@ class BinCollection(Elementary):
 
     '''
 
-    def __init__(self, parent_analysis_obj, binsx, xmin, xmax, binsy, ymin, ymax, verbose=False):
+    def __init__(self, binsx, xmin, xmax, binsy, ymin, ymax, parent_analysis_obj=None, verbose=False):
         '''
         Constructor of a Bincollection. Since the data collection is based on ROOT.TH2D,
         the bins are ordered in a rectangular pattern inside a frame which is 1 bin thick leading
@@ -50,20 +51,25 @@ class BinCollection(Elementary):
             'binwidth_y': 1.*(ymax-ymin)/binsy
         }
         self.parent_analysis_obj = parent_analysis_obj
-        self.run_object = parent_analysis_obj.run_object
-        self.counthisto = ROOT.TH2D('counthisto', '2D hit distribution', *self.Get2DAttributes())
-        self.totalsignal = ROOT.TH2D('totalsignal', '2D total signal distribution', *self.Get2DAttributes())
-        self.SignalHisto = ROOT.TH1D('SignalHisto,', 'Signal response Histogram', 500, 0, 500)
+        if self.parent_analysis_obj != None:
+            self.run_object = parent_analysis_obj.run_object
+            run_number = self.run_object.run_number
+        else:
+            run_number = -1
+        self.HistoNameAppendix = "_Run_"+str(run_number)
+        self.counthisto = ROOT.TH2D('counthisto'+self.HistoNameAppendix, '2D hit distribution', *self.Get2DAttributes())
+        self.totalsignal = ROOT.TH2D('totalsignal'+self.HistoNameAppendix, '2D total signal distribution', *self.Get2DAttributes())
+        self.SignalHisto = ROOT.TH1D('SignalHisto'+self.HistoNameAppendix, 'Signal response Histogram', 500, 0, 500)
 
     def __del__(self):
         for bin in self.ListOfBins:
             bin.__del__()
             del bin
-        ROOT.gROOT.Delete('counthisto')
-        ROOT.gROOT.Delete('totalsignal')
-        ROOT.gROOT.Delete('SignalHisto')
+        ROOT.gROOT.Delete('counthisto'+self.HistoNameAppendix)
+        ROOT.gROOT.Delete('totalsignal'+self.HistoNameAppendix)
+        ROOT.gROOT.Delete('SignalHisto'+self.HistoNameAppendix)
         if hasattr(self, "meansignaldistribution"):
-            ROOT.gROOT.Delete('meansignaldistribution')
+            ROOT.gROOT.Delete('meansignaldistribution'+self.HistoNameAppendix)
         if hasattr(self, "MinimaSearch"):
             self.MinimaSearch.__del__()
             del self.MinimaSearch
@@ -123,8 +129,7 @@ class BinCollection(Elementary):
         :return:
         '''
         assert (minimum_bincontent > 0), "minimum_bincontent has to be a positive integer"
-        self.meansignaldistribution = ROOT.TH2D('meansignaldistribution'+str(self.GLOBAL_COUNT), "Mean Signal Distribution", *self.Get2DAttributes())
-        self.GLOBAL_COUNT += 1
+        self.meansignaldistribution = ATH2D('meansignaldistribution'+self.HistoNameAppendix, "Mean Signal Distribution", *self.Get2DAttributes())
         # go through every bin, calculate the average signal strength and fill the main 2D hist
         binwidth_x = self.Attributes['binwidth_x']
         binwidth_y = self.Attributes['binwidth_y']
@@ -557,7 +562,7 @@ class BinCollection(Elementary):
             x_ , _ = list_of_bins[i].GetBinCenter()
             MPV_ = list_of_bins[i].Fit['MPV']
             MPVerr_ = list_of_bins[i].Fit['MPVErr']
-            if MPV_ == not None:
+            if MPV_ != None:
                 graph.SetPoint(count, x_ , MPV_)
                 graph.SetPointError(count, 0, MPVerr_)
                 signals.append(MPV_)
@@ -595,11 +600,12 @@ class BinCollection(Elementary):
             self.LangauFitFunction.Draw("lsame") # draw also fit parameters in legend
             canvas.Update()
 
-            self.parent_analysis_obj.SignalHistoFitResults["FitFunction"] = self.LangauFitFunction
-            self.parent_analysis_obj.SignalHistoFitResults["Peak"] = LanGausFit.FitResults["Peak"]
-            self.parent_analysis_obj.SignalHistoFitResults["FWHM"] = LanGausFit.FitResults["FWHM"]
-            self.parent_analysis_obj.SignalHistoFitResults["Chi2"] = LanGausFit.FitResults["Chi2"]
-            self.parent_analysis_obj.SignalHistoFitResults["NDF"] = LanGausFit.FitResults["NDF"]
+            if self.parent_analysis_obj != None:
+                self.parent_analysis_obj.SignalHistoFitResults["FitFunction"] = self.LangauFitFunction
+                self.parent_analysis_obj.SignalHistoFitResults["Peak"] = LanGausFit.FitResults["Peak"]
+                self.parent_analysis_obj.SignalHistoFitResults["FWHM"] = LanGausFit.FitResults["FWHM"]
+                self.parent_analysis_obj.SignalHistoFitResults["Chi2"] = LanGausFit.FitResults["Chi2"]
+                self.parent_analysis_obj.SignalHistoFitResults["NDF"] = LanGausFit.FitResults["NDF"]
 
 
             #raw_input("WAIT!")
