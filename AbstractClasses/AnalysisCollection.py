@@ -1,6 +1,6 @@
 import ROOT
-from ROOT import gROOT
 from AbstractClasses.ATH2D import ATH2D
+from AbstractClasses.BinCollection import BinCollection
 import types as t
 import os
 import numpy as np
@@ -24,12 +24,12 @@ class AnalysisCollection(Elementary):
             print "in AnalysisCollection.__del__ : deleting Analysis of Run ", runnumber
             self.collection[runnumber].__del__()
         if hasattr(self, "FWHMcanvas"):
-            canvas = gROOT.FindObject("FWHMcanvas")
+            canvas = ROOT.gROOT.FindObject("FWHMcanvas")
             if canvas:
                 canvas.Close()
                 del canvas
         if hasattr(self, "fwhm_histo"):
-            gROOT.Delete("fwhm_histo")
+            ROOT.gROOT.Delete("fwhm_histo")
         print "AnalyisCollection deleted"
 
     def AddAnalysis(self,analysis_obj):
@@ -130,8 +130,8 @@ class AnalysisCollection(Elementary):
         self.IfWait("MPV vs Sigma shown...")
 
     def SignalHeightScan(self): # improve!
-        tmp = self.ShowAndWait
-        self.ShowAndWait = True
+        #tmp = self.ShowAndWait
+        #self.ShowAndWait = True
         SignalHeightScanCanvas = ROOT.TCanvas("SignalHeightScanCanvas", "SignalHeightScan Canvas")
         SignalHeightScanCanvas.cd()
 
@@ -154,7 +154,7 @@ class AnalysisCollection(Elementary):
         SignalHeightScanGraph.Draw("AP*")
         self.SavePlots("SignalHeightGraph.png")
         self.IfWait("SignalHeightScan shown...")
-        self.ShowAndWait = tmp
+        #self.ShowAndWait = tmp
 
     def PeakComparison(self, show = True):
         print "PeakComparision start"
@@ -166,6 +166,7 @@ class AnalysisCollection(Elementary):
         pad_attributes = self.collection[runnumbers[0]].ExtremeAnalysis.Pad.Get2DAttributes()
 
         self.PeakPadMax = ATH2D("PeakPadMax", "Peak distribution over all selected runs", *pad_attributes)
+        self.PeakPadMaxPad = BinCollection(*pad_attributes) # CHANGE NAME !
         self.PeakPadMin = ATH2D("PeakPadMin", "Low distribution over all selected runs", *pad_attributes)
 
         for runnumber in runnumbers:
@@ -175,9 +176,13 @@ class AnalysisCollection(Elementary):
             if maxima != None:
                 for peak in maxima:
                     self.PeakPadMax.Fill(*peak)
+                    if not hasattr(analysis.ExtremeAnalysis.Pad, "meansignaldistribution"):
+                        analysis.ExtremeAnalysis.Pad.CalculateMeanSignalDistribution()
+                    signal_ = analysis.ExtremeAnalysis.Pad.meansignaldistribution.GetBinContent(analysis.ExtremeAnalysis.Pad.GetBinNumber(*peak))
+                    self.PeakPadMaxPad.Fill(peak[0], peak[1], signal_)
             else:
                 print "WARNING: No Maxima results found in run ", runnumber, ". PeakComparisonMax will be incomplete."
-            if minima == not None:
+            if minima != None:
                 for peak in minima:
                     self.PeakPadMin.Fill(*peak)
             else:
@@ -191,21 +196,36 @@ class AnalysisCollection(Elementary):
             self.PeakPadMin.Draw("COLZ")
             self.SavePlots("PeakPadMin.png")
 
-        raw_input("peakpad")
+        # raw_input("peakpad")
 
     def PeakSignalEvolution(self, NMax = 3, NMin = 3, OnThisCanvas = None):
-        if OnThisCanvas == not None:
+        if OnThisCanvas != None:
             assert(isinstance(OnThisCanvas, ROOT.TCanvas)), "OnThisCanvas has to be a TCanvas object"
         print "Signal Evolution start"
         if not hasattr(self, "PeakPadMax"):
             self.PeakComparison(show = False)
 
+        def BinsAreNearby(x1,y1,x2,y2, R):
+            d2 = (x1-x2)**2 + (y1-y2)**2
+            if d2 <= R**2:
+                return True
+            else:
+                return False
+
         # Find the separated peaks / lows (binnumbers) to consider in Signal Evolution
-        def FindPeakBins(PeakPad, N):
+        def FindPeakBins(PeakPad, N, maximum=False):
+            self.PeakPadMaxPad.CalculateMeanSignalDistribution()
             peakbins = [-1]*N # container to store the binnumbers of the separated maximas found
+
+
+            PeakPad2 = self.PeakPadMaxPad.meansignaldistribution # peaksearch due to mean signal content in bins
             i = 0
             while i<int(N):
+                if i == 3 and maximum:
+                    PeakPad = PeakPad2
+
                 maxcount = PeakPad.GetMaximum() # counts of maximum
+
                 if maxcount < 1:
                     break
                 peakbins[i] = PeakPad.GetMaximumBin() # binnumber with hightest counts
@@ -215,7 +235,9 @@ class AnalysisCollection(Elementary):
                 # if the binnumber is already in a neighborhood of a found peak, don't use it:
                 IsInNBHD = False
                 for k in xrange(i):
-                    IsInNBHD |= peakbins[k] in PeakPad.GetBinsInNbhd(peakbins[i], include_center=True)
+                    # IsInNBHD |= peakbins[k] in PeakPad.GetBinsInNbhd(peakbins[i], include_center=True, extended=True)
+                    other_coordinates = PeakPad.GetBinCenter(peakbins[k])
+                    IsInNBHD |= BinsAreNearby(coordinates[0], coordinates[1], other_coordinates[0], other_coordinates[1], 0.05)
                 if IsInNBHD:
                     pass
                 else:
@@ -224,7 +246,7 @@ class AnalysisCollection(Elementary):
             peakbins = peakbins[:i]
             return peakbins
 
-        peakbins = FindPeakBins(self.PeakPadMax, NMax)
+        peakbins = FindPeakBins(self.PeakPadMax, NMax, maximum=True)
         lowbins = FindPeakBins(self.PeakPadMin, NMin)
 
         # Fill all graphs of all separated peaks / lows
@@ -282,7 +304,7 @@ class AnalysisCollection(Elementary):
             if not PeakSignalEvolutionCanvas:
                 PeakSignalEvolutionCanvas = ROOT.TCanvas("PeakSignalEvolutionCanvas", "Signal Evolution Canvas")
             PeakSignalEvolutionCanvas.cd()
-            legend = ROOT.TLegend(0.1,0.1,0.3,0.35)
+            legend = ROOT.TLegend(0.1,0.1,0.2,0.25)
             MaxRange_peak = None
             MinRange_peak = None
 
@@ -319,7 +341,7 @@ class AnalysisCollection(Elementary):
         else:
             MaxRange = 200
         if len(MinRange) > 0:
-            MinRange = MinRange.min()
+            MinRange = 0.8*MinRange.min()
         else:
             MinRange = 0
 
@@ -384,17 +406,19 @@ class AnalysisCollection(Elementary):
             ROOT.gStyle.SetPalette(53) # Dark Body Radiator palette
             OnThisCanvas.cd(1)
 
-            for peaknr in xrange(npeaks):
-                maxima = self.PeakPadMax.GetBinCenter(peakbins[peaknr])
-                text = ROOT.TText()
-                text.SetTextColor(ROOT.kRed)
-                text.DrawText(maxima[0]-0.02, maxima[1]-0.005, 'high'+str(peaknr+1))
+            if len(MaxGraphs) > 0:
+                for peaknr in xrange(npeaks):
+                    maxima = self.PeakPadMax.GetBinCenter(peakbins[peaknr])
+                    text = ROOT.TText()
+                    text.SetTextColor(ROOT.kRed)
+                    text.DrawText(maxima[0]-0.02, maxima[1]-0.005, 'high'+str(peaknr+1))
 
-            for lownr in xrange(nlows):
-                minima = self.PeakPadMin.GetBinCenter(lowbins[lownr])
-                text = ROOT.TText()
-                text.SetTextColor(ROOT.kBlue)
-                text.DrawText(minima[0]-0.01, minima[1]-0.005, 'low'+str(lownr+1))
+            if len(MinGraphs) > 0:
+                for lownr in xrange(nlows):
+                    minima = self.PeakPadMin.GetBinCenter(lowbins[lownr])
+                    text = ROOT.TText()
+                    text.SetTextColor(ROOT.kBlue)
+                    text.DrawText(minima[0]-0.01, minima[1]-0.005, 'low'+str(lownr+1))
 
             OnThisCanvas.Update()
             self.SavePlots("IIa-2_neutron_SignalDistribution_MAXSearch.png")
