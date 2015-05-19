@@ -12,12 +12,13 @@ To improve:
 hits = 300000
 tries = 20
 peaks = "Test"
-binning = 50
-min_bincontent = 10
+binning = 200
+min_bincontent = 50
+pathExtension = ""
 
 PerfResults = "MC/Performance_Results/"
 #foldername = "2015-05-04 16-24-09.965268/"
-foldername = "_"+str(min_bincontent)+"_"+str(binning)+"_"+str(hits)+"_/"
+foldername = "_"+str(min_bincontent)+"_"+str(binning)+"_"+str(hits)+"_"+pathExtension+"/"
 filename = "MCPerformanceLog.root"
 filepath = PerfResults+foldername+filename
 
@@ -27,6 +28,7 @@ LogTree = file.Get("LogTree")
 
 success_graph = TGraphErrors()
 ghost_graph = TGraph()
+minimas_graph = TGraph()
 RecSA_MinMax_graph = TGraphErrors()
 RecSA_Quantiles_graph = TGraphErrors()
 
@@ -38,6 +40,7 @@ tmp_success = np.zeros(tries)
 tmp_RecSA_Q = np.zeros(tries)
 tmp_RecSA_M = np.zeros(tries)
 tmp_Ghosts = np.zeros(tries)
+tmp_Minimas = np.zeros(tries)
 
 
 count = 0
@@ -50,12 +53,14 @@ for i in xrange(LogTree.GetEntries()):
     RecSA_Quantiles = LogTree.RecSA_Quantiles
     RecSA_MinMax = LogTree.RecSA_MinMax
     Ghosts = LogTree.Ghosts
+    Minimas = LogTree.Minimas
     Repetition = LogTree.Repetition
 
     tmp_success[Repetition] = 1.*(TrueNPeaks-Ninjas)/TrueNPeaks
     tmp_RecSA_M[Repetition] = RecSA_MinMax
     tmp_RecSA_Q[Repetition] = RecSA_Quantiles
     tmp_Ghosts[Repetition] = Ghosts
+    tmp_Minimas[Repetition] = Minimas
 
     if Repetition == tries-1:
         mean_success = tmp_success.mean()
@@ -73,7 +78,7 @@ for i in xrange(LogTree.GetEntries()):
         RecSA_Quantiles_graph.SetPointError(count, 0, tmp_RecSA_Q.std())
 
         ghost_graph.SetPoint(count, RealSignalAmplitude, tmp_Ghosts.mean())
-
+        minimas_graph.SetPoint(count, RealSignalAmplitude, tmp_Minimas.mean())
 
         count += 1
 
@@ -107,5 +112,16 @@ ghost_graph.GetXaxis().SetTitle("Relative Real Signal Amplitude")
 ghost_graph.GetYaxis().SetTitle("NGhostPeaks/NRepetitions")
 ghost_graph.Draw("ALP*")
 ghostcanvas.Update()
+ROOT.gPad.Print(PerfResults+foldername+"ghosts.png")
+
+minimascanvas = TCanvas("minimascanvas", "minimascanvas")
+minimascanvas.cd()
+minimas_graph.SetNameTitle("minimas_graph", "Minimas found")
+minimas_graph.GetXaxis().SetTitle("Relative Real Signal Amplitude")
+minimas_graph.GetYaxis().SetTitle("NMinimas/NRepetitions")
+minimas_graph.Draw("ALP*")
+minimascanvas.Update()
+ROOT.gPad.Print(PerfResults+foldername+"minimas.png")
+
 
 raw_input("finish")
