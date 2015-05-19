@@ -135,6 +135,11 @@ class Analysis(Elementary):
             pad = offset_canvas.GetPad(0)
             pad.SetLogy()
             offset = int(th1.GetBinCenter(th1.GetMaximumBin()))
+            if th1.GetEntries() == 0:
+                print "Offset analysis failed."
+                offset_canvas.Update()
+                self.SavePlots("Offset.png")
+                return 0
             good = 1.*th1.GetMaximum()/th1.GetEntries()
             th1.SetTitle(th1.GetTitle()+" ({0:0.2f}% in peak)".format(100.*good))
             offset_canvas.Update()
@@ -159,7 +164,7 @@ class Analysis(Elementary):
         if not self.run_object.IsMonteCarlo:
             self.track_info = self.rootfile.Get("track_info") # Get TTree called "track_info"
         # create a bin collection object:
-        self.Pad = BinCollection(self, *self.config_object.Get2DAttributes())
+        self.Pad = BinCollection(*self.config_object.Get2DAttributes(), parent_analysis_obj=self)
 
         # Check for misalignment in track vs signal using calibflag:
         offset = self.CheckOffset()
@@ -255,6 +260,9 @@ class Analysis(Elementary):
             self.SavePlots(savename, ending, saveDir)
 
     def CreateMeanSignalHistogram(self, saveplots = False, savename = "MeanSignalDistribution",ending="png",saveDir = "Results/", show = False):
+        if not hasattr(self, "Pad"):
+            print "Performing auto analysis with minimum binhits 100"
+            self.DoAnalysis(minimum_bincontent=100)
 
         #self.signal_canvas = ROOT.TCanvas()
         #ROOT.SetOwnership(self, False)
@@ -280,7 +288,8 @@ class Analysis(Elementary):
         nbins = (self.Signal2DDistribution.GetNbinsX()+2)*(self.Signal2DDistribution.GetNbinsY()+2)
         for i in xrange(nbins):
             bincontent = self.Signal2DDistribution.GetBinContent(i)
-            if bincontent >= self.minimum_bincontent:
+            binhits = self.Pad.counthisto.GetBinContent(i)
+            if binhits >= self.minimum_bincontent:
                 self.MeanSignalHisto.Fill(bincontent)
         if show:
             self.MeanSignalHisto.Draw()
@@ -364,7 +373,7 @@ class Analysis(Elementary):
             self.ExtremeAnalysis.DoAnalysis(minimum_bincontent)
         if show:
             # self.ExtremeAnalysis.CreatePlots()
-            self.ExtremeAnalysis.CreateBoth(saveplots=True, savename="SignalDistribution_MAXSearch", test="maxima") # distroys combined_canvas
+            self.ExtremeAnalysis.CreateBoth(saveplots=False, savename="SignalDistribution_MAXSearch", test="maxima") # destroys combined_canvas
         self.ExtremeAnalysis.Pad.FindMaxima(minimum_bincount=minimum_bincontent,show=show)
 
     def FindMinima(self,show=False, binning = 200, minimum_bincontent = 30):
@@ -446,7 +455,7 @@ class Analysis(Elementary):
             Chi2 = self.SignalHistoFitResults["Chi2"]
             NDF = self.SignalHistoFitResults["NDF"]
             return FitFunction, Peak, FWHM, Chi2, NDF
-        elif hasattr(self, "ExtremeAnalysis") and self.ExtremeAnalysis.SignalHistoFitResults["Peak"] == not None:
+        elif hasattr(self, "ExtremeAnalysis") and self.ExtremeAnalysis.SignalHistoFitResults["Peak"] != None:
             FitFunction = self.ExtremeAnalysis.SignalHistoFitResults["FitFunction"]
             Peak = self.ExtremeAnalysis.SignalHistoFitResults["Peak"]
             FWHM = self.ExtremeAnalysis.SignalHistoFitResults["FWHM"]
@@ -460,7 +469,7 @@ class Analysis(Elementary):
             return FitFunction, Peak, FWHM, Chi2, NDF
         else:
             self.ShowTotalSignalHistogram(save=False, showfit=True)
-            if (self.SignalHistoFitResults["Peak"] != None) or (hasattr(self, "ExtremeAnalysis") and self.ExtremeAnalysis.SignalHistoFitResults["Peak"] == not None):
+            if (self.SignalHistoFitResults["Peak"] != None) or (hasattr(self, "ExtremeAnalysis") and self.ExtremeAnalysis.SignalHistoFitResults["Peak"] != None):
                 self.GetSignalHistoFitResults()
             else:
                 assert(False), "BAD SignalHistogram Fit, Stop program due to possible infinity loop"
@@ -537,7 +546,7 @@ class Analysis(Elementary):
                 self.SavePlots("SignalTimeEvolution"+Mode+".png")
             if TimeERROR:
                 SignalEvolution.SaveAs(self.SaveDirectory+"ERROR_SignalTimeEvolution"+Mode+".root")
-            #raw_input("WAIT")
+            self.IfWait("Showing Signal Time Evolution..")
 
 
     def ExportMC(self, MCDir = "MCInputs/"):
