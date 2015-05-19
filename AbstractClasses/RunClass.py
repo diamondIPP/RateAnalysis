@@ -11,7 +11,7 @@ class Run(Elementary):
     operationmode = ''
     TrackingPadAnalysis = {}
 
-    def __init__(self,validate = True, run_number=None, verbose = False):
+    def __init__(self, run_number=None, validate = True, verbose = False):
         Elementary.__init__(self, verbose=verbose)
         self.run_number = -1
         RunInfo.load('Runinfos/runs.json')
