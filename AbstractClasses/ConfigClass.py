@@ -22,7 +22,7 @@ class Config(object):
     A config object for analysis
     e.g. binning size
     '''
-    def __init__(self, binningsize = 70,  **kwargs):
+    def __init__(self, binningsize = 100,  **kwargs):
         '''
 
         :param binningsize: size of bins in microns
