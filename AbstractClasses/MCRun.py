@@ -162,7 +162,7 @@ class MCRun(Run):
         ymax = self.diamond.Position['ymax'] - 0.01
         center_x = (xmax+xmin)/2.
         center_y = (ymax+ymin)/2.
-        if draw == not None:
+        if draw != None:
             assert(type(draw) == t.BooleanType), "draw has to be boolean type"
             self.MCAttributes['DrawRealDistribution'] = draw
         if save != None:
@@ -360,7 +360,7 @@ class MCRun(Run):
         b = Double()
 
         # Generate Signal Distribution:
-        if self.MCAttributes['SignalMode'] is 'Landau':
+        if self.MCAttributes['SignalMode'] == 'Landau':
             self.SignalParameters = CreateRandomPeaksConfig(xmin, xmax, ymin, ymax, peak_height=self.MCAttributes['PeakHeight'], bkg=MPV)
         else:
             self.SignalParameters = CreateRandomPeaksConfig(xmin, xmax, ymin, ymax, peak_height=self.MCAttributes['PeakHeight'], bkg=100)
@@ -409,7 +409,6 @@ class MCRun(Run):
                 # Get Signal at x and y
                 if self.MCAttributes['SignalMode'] == 'Landau':
                     integral50[0] = gRandom.Landau(f_signal(track_x[0], track_y[0]), sigma)
-                    print "\n\n\n\n\n\n\n\nSIGNALMODE\n\n\n\n\n\n\n\n\n\n"
                 else:
                     integral50[0] = gRandom.Gaus(f_signal(track_x[0], track_y[0]), 0.6*f_signal(track_x[0], track_y[0])-33)
 
