@@ -20,8 +20,13 @@ if __name__ == "__main__":
 
     # config
     show_plots = True
-    minimum_statistics = 10 # don't draw bins which contain less than minimum_statistics hits
-    binsize = 50
+    minimum_statistics = 100 # don't draw bins which contain less than minimum_statistics hits
+    binsize = 100
+    min_percent = 0.001
+    max_percent = 100
+    number_of_hits = 300000 # change in MonteCarloConfig.cfg !
+    amplitude = 0. # change in MonteCarloConfig.cfg !
+    savepath = "Results/Analyze/"
 
     if 'v' in sys.argv or '-v' in sys.argv or 'V' in sys.argv:
         verbose = True
@@ -32,6 +37,8 @@ if __name__ == "__main__":
         run = MCRun(validate=False,verbose=verbose)
     else:
         run = Run(validate=False,verbose=verbose)
+
+    run.SetSaveDirectory(savepath)
 
     MaxNrOfRuns = 9999
     if(len(run_numbers) == 0):
@@ -142,18 +149,17 @@ if __name__ == "__main__":
                     minbin.FitLandau()
                     print '\nApproximated Signal Amplitude: {0:0.0f}% - (high/low approximation)\n'.format(100.*(maxbin.Fit['MPV']/minbin.Fit['MPV']-1.))
 
-                min_percent = 5
-                max_percent = 99
+
                 q = array('d', [1.*min_percent/100., 1.*max_percent/100.])
                 y = array('d', [0,0])
                 newAnalysis.ExtremeAnalysis.MeanSignalHisto.GetQuantiles(2, y, q)
-                print '\nApproximated Signal Amplitude: {0:0.0f}% - ({1:0.0f}%/{2:0.0f}% Quantiles approximation)\n'.format(100.*(y[1]/y[0]-1.), max_percent, min_percent)
+                print '\n\n\nApproximated Signal Amplitude: {0:0.0f}% - ({1:0.0f}%/{2:0.0f}% Quantiles approximation)\n\n\n'.format(100.*(y[1]/y[0]-1.), max_percent, min_percent)
                 # newAnalysis.ExtremeAnalysis.Pad.MinimaSearch.found_extrema.SetMarkerColor(ROOT.kBlue-4)
                 # newAnalysis.ExtremeAnalysis.Pad.MinimaSearch.found_extrema.Draw('SAME P0')
                 ROOT.gStyle.SetPalette(53)
                 ROOT.gStyle.SetNumberContours(999)
                 newAnalysis.combined_canvas.Update()
-                ROOT.gPad.Print("Results/Combined_Plot.png")
+                ROOT.gPad.Print(savepath+"Combined_Plot.png")
 
 
                 #
@@ -168,6 +174,8 @@ if __name__ == "__main__":
                 newAnalysis.GetSignalHeight()
 
                 newAnalysis.ShowTotalSignalHistogram(save=True)
+
+                newAnalysis.SignalTimeEvolution(time_spacing=5)
 
                 collection.AddAnalysis(newAnalysis)
 
