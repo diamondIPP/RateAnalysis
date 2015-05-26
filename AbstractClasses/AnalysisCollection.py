@@ -198,7 +198,7 @@ class AnalysisCollection(Elementary):
 
         # raw_input("peakpad")
 
-    def PeakSignalEvolution(self, NMax = 3, NMin = 3, OnThisCanvas = None):
+    def PeakSignalEvolution(self, NMax = 3, NMin = 3, OnThisCanvas = None, BinRateEvolution = False):
         if OnThisCanvas != None:
             assert(isinstance(OnThisCanvas, ROOT.TCanvas)), "OnThisCanvas has to be a TCanvas object"
         print "Signal Evolution start"
@@ -248,6 +248,30 @@ class AnalysisCollection(Elementary):
 
         peakbins = FindPeakBins(self.PeakPadMax, NMax, maximum=True)
         lowbins = FindPeakBins(self.PeakPadMin, NMin)
+
+        # Rate Time Evolution of Bin:
+        if BinRateEvolution:
+            tmpSaveDir = self.SaveDirectory
+
+            high1 = peakbins[0]
+            high2 = peakbins[1]
+            high3 = peakbins[2]
+
+            low1 = lowbins[0]
+            low2 = lowbins[1]
+            low3 = lowbins[2]
+
+            for run_number in self.collection.keys():
+                self.SetSaveDirectory(tmpSaveDir+str(run_number)+"/")
+                self.collection[run_number].RateTimeEvolution(time_spacing = 5, save = True, binnumber = high1, nameExtension = "High1")
+                self.collection[run_number].RateTimeEvolution(time_spacing = 5, save = True, binnumber = high2, nameExtension = "High2")
+                self.collection[run_number].RateTimeEvolution(time_spacing = 5, save = True, binnumber = high3, nameExtension = "High3")
+
+                self.collection[run_number].RateTimeEvolution(time_spacing = 5, save = True, binnumber = low1, nameExtension = "Low1")
+                self.collection[run_number].RateTimeEvolution(time_spacing = 5, save = True, binnumber = low2, nameExtension = "Low2")
+                self.collection[run_number].RateTimeEvolution(time_spacing = 5, save = True, binnumber = low3, nameExtension = "Low3")
+
+            self.SetSaveDirectory(tmpSaveDir)
 
         # Fill all graphs of all separated peaks / lows
         def FillGraphDict(self, GraphDict, ListOfBins):
