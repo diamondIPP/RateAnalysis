@@ -6,6 +6,9 @@ import os
 import ConfigParser
 
 class Run(Elementary):
+    '''
+
+    '''
 
     current_run = {}
     operationmode = ''
