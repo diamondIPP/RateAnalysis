@@ -72,7 +72,7 @@ if __name__ == "__main__":
                 newAnalysis.DoAnalysis(minimum_statistics)
                 # newAnalysis.CreatePlots(True,'2D_Signal_dist',show3d=True)
                 # # # # newAnalysis.CreateMeanSignalHistogram(True)
-                newAnalysis.CreateBoth(saveplots=False)
+                newAnalysis.CreateBoth(saveplots=True)
                 # newAnalysis.Pad.CreateSignalHistogram(saveplot=True)
                 # #
                 # # #print newAnalysis.Pad.ListOfBins[newAnalysis.Pad.GetBinNumber(0.05,0.05)].GetEntries()
@@ -176,6 +176,12 @@ if __name__ == "__main__":
                 newAnalysis.ShowTotalSignalHistogram(save=True)
 
                 newAnalysis.SignalTimeEvolution(time_spacing=5)
+
+                newAnalysis.RateTimeEvolution(show = True, time_spacing=3)
+
+                newAnalysis.RateTimeEvolution(show = True, time_spacing=5, binnumber=newAnalysis.Pad.GetBinNumber(-0.075,0.215))
+                newAnalysis.RateTimeEvolution(show = True, time_spacing=5, binnumber=newAnalysis.Pad.GetBinNumber(0.025,0.145))
+
 
                 collection.AddAnalysis(newAnalysis)
 
