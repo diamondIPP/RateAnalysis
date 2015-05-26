@@ -328,11 +328,14 @@ class MCRun(Run):
         integral50 = array('f',[0])
         calibflag = array('i',[0])
         calib_offset = array('i',[0])
+        time_stamp = array('f', [0])
         self.track_info.Branch('track_x', track_x, 'track_x/F')
         self.track_info.Branch('track_y', track_y, 'track_y/F')
         self.track_info.Branch('integral50', integral50, 'integral50/F')
         self.track_info.Branch('calibflag', calibflag, 'calibflag/I')
         self.track_info.Branch('calib_offset', calib_offset, 'calib_offset/I')
+        self.track_info.Branch('time_stamp', time_stamp, 'time_stamp/F')
+
 
         # Create Manual Hit Distribution:
         if self.MCAttributes['HitDistributionMode'] == 'Manual':
@@ -388,6 +391,9 @@ class MCRun(Run):
         elif self.MCAttributes['HitDistributionMode'] == 'Import':
             HitsTemplate = self.counthisto
 
+        mc_start_timestamp = 42. # arbitrary timestamp for the first MC event
+        MCEventDeltaTime = 30.*60./300000. # 1800s/300000Hits = 0.006s/Hit
+        tmp_time = mc_start_timestamp
         # Generate Toy Data:
         if answer == 'yes':
             if self.verbose:
@@ -414,6 +420,8 @@ class MCRun(Run):
 
                 # check if found values fulfill requirements
                 if xmin < track_x[0] < xmax and ymin < track_y[0] < ymax and integral50[0] < integral50_max:
+                    tmp_time += MCEventDeltaTime
+                    time_stamp[0] = tmp_time
                     self.track_info.Fill()
                     self.Data['track_x'].append(track_x[0])
                     self.Data['track_y'].append(track_y[0])
@@ -428,6 +436,7 @@ class MCRun(Run):
                 file.Write()
                 f_signal.SaveAs(MCRunPath+'RealSignalDistribution.root')
                 self.VerbosePrint(MCRunPath+'track_info.root has been written')
+                self.TrackingPadAnalysis['ROOTFile'] = MCRunPath+'track_info.root'
 
             # Print Settings of created data:
             if self.verbose:
