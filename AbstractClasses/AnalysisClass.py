@@ -34,14 +34,9 @@ class Analysis(Elementary):
         self.RunInfo = deepcopy(run_object.RunInfo)
         self.config_object = config_object
         self.config_object.SetWindowFromDiamond(self.run_object.diamond)
-        self.TrackingPadAnalysisROOTFile = run_object.TrackingPadAnalysis["ROOTFile"]
         # self.Signal2DDistribution = ROOT.TH2D()
         # self.Signal2DDistribution.SetDirectory(0) # is needed because of garbage collection
 
-
-        # loading data file
-        assert (os.path.exists(self.TrackingPadAnalysisROOTFile)), "cannot find "+self.TrackingPadAnalysisROOTFile
-        self.rootfile = ROOT.TFile(self.TrackingPadAnalysisROOTFile)
 
         self.Checklist = { # True if Plot was created # -> USED?!
             "DoAnalysis": False,
@@ -134,7 +129,7 @@ class Analysis(Elementary):
             self.track_info.Draw("calib_offset>>th1", "calibflag==1 && calib_offset < 50")
             pad = offset_canvas.GetPad(0)
             pad.SetLogy()
-            offset = int(th1.GetBinCenter(th1.GetMaximumBin()))
+            self.offset = int(th1.GetBinCenter(th1.GetMaximumBin()))
             if th1.GetEntries() == 0:
                 print "Offset analysis failed."
                 offset_canvas.Update()
@@ -147,10 +142,11 @@ class Analysis(Elementary):
             if good < 0.3: # less than 30% aligned hits
                 print "\nINFO: BAD TIMING ALIGNMENT RUN!\n"
                 self.TimingAlignmentFailed = True
-            print "MOST COMMON OFFSET: {0:0.0F}\n".format(offset)
-            return offset
+            print "MOST COMMON OFFSET: {0:0.0F}\n".format(self.offset)
+            return self.offset
         else:
-            return 0
+            self.offset = 0
+            return self.offset
 
     def DoAnalysis(self,minimum_bincontent = 1):
         '''
@@ -162,17 +158,22 @@ class Analysis(Elementary):
         assert (minimum_bincontent > 0), "minimum_bincontent has to be a positive integer" # bins with less hits are ignored
         self.minimum_bincontent = minimum_bincontent
         if not self.run_object.IsMonteCarlo:
+            # loading data file
+            self.TrackingPadAnalysisROOTFile = self.run_object.TrackingPadAnalysis["ROOTFile"]
+            assert (os.path.exists(self.TrackingPadAnalysisROOTFile)), "cannot find "+self.TrackingPadAnalysisROOTFile
+            self.rootfile = ROOT.TFile(self.TrackingPadAnalysisROOTFile)
+            print "LOADING: ", self.TrackingPadAnalysisROOTFile
             self.track_info = self.rootfile.Get("track_info") # Get TTree called "track_info"
         # create a bin collection object:
         self.Pad = BinCollection(*self.config_object.Get2DAttributes(), parent_analysis_obj=self)
 
         # Check for misalignment in track vs signal using calibflag:
-        offset = self.CheckOffset()
+        self.CheckOffset()
 
         # fill two 2-dim histograms to collect the hits and signal strength
         # if we have an offset, pick values from different events in tree
         if not self.run_object.IsMonteCarlo:
-            if offset == 0:
+            if self.offset == 0:
                 for i in xrange(self.track_info.GetEntries()):
                     # read the ROOT TTree
                     self.track_info.GetEntry(i)
@@ -183,14 +184,14 @@ class Analysis(Elementary):
                     if calibflag == 0:
                         self.Pad.Fill(x_, y_, signal_)
             else:
-                if offset > 0:
-                    pluscorrection = offset
+                if self.offset > 0:
+                    pluscorrection = self.offset
                     minuscorrection = 0
                 else:
                     pluscorrection = 0
-                    minuscorrection = abs(offset)
+                    minuscorrection = abs(self.offset)
 
-                for i in xrange(self.track_info.GetEntries()-abs(offset)):
+                for i in xrange(self.track_info.GetEntries()-abs(self.offset)):
                     # read the ROOT TTree
                     self.track_info.GetEntry(i+pluscorrection)
                     x_ = self.track_info.track_x
@@ -219,6 +220,10 @@ class Analysis(Elementary):
                 else:
                     GoOn = False
                 d += 1
+            self.TrackingPadAnalysisROOTFile = self.run_object.TrackingPadAnalysis["ROOTFile"]
+            self.rootfile = ROOT.TFile(self.TrackingPadAnalysisROOTFile)
+            print "LOADING: ", self.TrackingPadAnalysisROOTFile
+            self.track_info = self.rootfile.Get("track_info") # Get TTree called "track_info"
 
 
         self.Pad.MakeFits()
@@ -474,7 +479,7 @@ class Analysis(Elementary):
             else:
                 assert(False), "BAD SignalHistogram Fit, Stop program due to possible infinity loop"
 
-    def SignalTimeEvolution(self, Mode="Mean", show=True, time_spacing = 3, save = True): # not show: save evolution data / Comment more
+    def SignalTimeEvolution(self, Mode="Mean", show=True, time_spacing = 3, save = True, binnumber = None, RateTimeEvolution=False, nameExtension=None): # not show: save evolution data / Comment more
         '''
         Creates Signal vs time plot. The time is bunched into time buckets of width time_spaceing,
         from all Signals inside one time bucket the Mean or the MPV is evaluated and plotted in a TGraph.
@@ -487,10 +492,25 @@ class Analysis(Elementary):
         :return:
         '''
         assert(Mode in ["Mean", "MPV"]), "Wrong Mode, Mode has to be `Mean` or `MPV`"
-        if not self.run_object.IsMonteCarlo:
+        if True:#not self.run_object.IsMonteCarlo:
+
+            # Names
+            if binnumber != None:
+                binCenter = self.Pad.GetBinCenter(binnumber)
+                if nameExtension is None:
+                    nameExtension = "_Bin{0:.3f}_{1:.3f}".format(*binCenter)
+            else:
+                binCenter = 0,0
+                if nameExtension is None:
+                    nameExtension = "OverAll"
+            if RateTimeEvolution:
+                type_ = "Rate"
+            else:
+                type_ = "Signal"
+
             results = {}
             SignalEvolution = ROOT.TGraphErrors()
-            SignalEvolution.SetNameTitle("SignalEvolution", "Signal Response Evolution")
+            SignalEvolution.SetNameTitle(type_+"Evolution", type_+" Time Evolution "+nameExtension)
 
             self.track_info.GetEntry(1)
             starttime = self.track_info.time_stamp
@@ -498,7 +518,7 @@ class Analysis(Elementary):
             # endtime = self.track_info.time_stamp
             ok_deltatime = 0
             TimeERROR = False
-            for i in xrange(self.track_info.GetEntries()-1):
+            for i in xrange(self.track_info.GetEntries()-1-abs(self.offset)):
                 i += 1
                 # read the ROOT TTree
                 self.track_info.GetEntry(i)
@@ -512,7 +532,32 @@ class Analysis(Elementary):
                     ok_deltatime = deltatime_min
                 time_bucket = int(deltatime_min)/int(time_spacing)*int(time_spacing)
                 calibflag = self.track_info.calibflag
-                if calibflag == 0:
+
+                # check if hit is inside bin (ONLY FOR BIN SIGNAL TIME EVOLUTION)
+                if binnumber != None:
+                    if self.offset == 0:
+                        x_ = self.track_info.track_x
+                        y_ = self.track_info.track_y
+                        binnumber_ = self.Pad.GetBinNumber(x_, y_)
+                    else:
+                        if self.offset > 0:
+                            pluscorrection = self.offset
+                            minuscorrection = 0
+                        else:
+                            pluscorrection = 0
+                            minuscorrection = abs(self.offset)
+
+                        self.track_info.GetEntry(i+pluscorrection)
+                        x_ = self.track_info.track_x
+                        y_ = self.track_info.track_y
+                        binnumber_ = self.Pad.GetBinNumber(x_, y_)
+                        self.track_info.GetEntry(i+minuscorrection)
+                        signal_ = abs(self.track_info.integral50)
+                        calibflag = self.track_info.calibflag
+                else:
+                    binnumber_ = None
+
+                if calibflag == 0 and (binnumber == None or binnumber == binnumber_ ):
                     try:
                         results[time_bucket].append(signal_)
                     except KeyError:
@@ -522,32 +567,72 @@ class Analysis(Elementary):
 
             time_buckets = results.keys()
             time_buckets.sort()
+
+            # drop last bucket if Rate Time Scan (last bucket may be overshooting the data time window)
+            if RateTimeEvolution:
+                time_buckets = time_buckets[:-1]
+
             count = 0
+            _, xmin, xmax, _, ymin, ymax =  self.Pad.Get2DAttributes()
+            area = (xmax-xmin)*(ymax-ymin)
             for t in time_buckets:
-                histo = ROOT.TH1D("SignalEvolution_time_"+str(t), "Signal Response Histogram for t = {0:0.0f}-{1:0.0f}min".format(t, t+int(time_spacing)), 500, 0, 500)
+                histo = ROOT.TH1D(type_+"Evolution_time_"+str(t), type_+" Time Histogram for t = {0:0.0f}-{1:0.0f}min".format(t, t+int(time_spacing)), 500, 0, 500)
                 for i in xrange(len(results[t])):
                     histo.Fill(results[t][i])
-                if Mode == "Mean":
-                    SignalEvolution.SetPoint(count, t, histo.GetMean())
-                    SignalEvolution.SetPointError(count, 0, histo.GetRMS()/np.sqrt(histo.GetEntries()))
-                    signalname = "Mean of Signal Response"
+                if Mode == "Mean" or RateTimeEvolution:
+                    if RateTimeEvolution:
+                        if binnumber != None:
+                            c = 1./(60.*time_spacing*(self.config_object.config["2DHist"]["binsize"])**2)
+                            N = histo.GetEntries()
+                            SignalEvolution.SetPoint(count, t, c*N) # Rate/cm^2 = Entries/(seconds*(binsize)**2)
+                        else:
+                            c = 1./(60.*time_spacing*area)
+                            N = histo.GetEntries()
+                            SignalEvolution.SetPoint(count, t, c*N) # Rate/cm^2 = Entries/(seconds*Area)
+                        SignalEvolution.SetPointError(count,0,c*np.sqrt(N))
+                        signalname = "Rate / Hz/cm^2"
+                    else:
+                        SignalEvolution.SetPoint(count, t, histo.GetMean())
+                        SignalEvolution.SetPointError(count, 0, histo.GetRMS()/np.sqrt(histo.GetEntries()))
+                        signalname = "Mean of Signal Response"
                 elif Mode == "MPV":
                     SignalEvolution.SetPoint(count, t, histo.GetBinCenter(histo.GetMaximumBin()))
                     SignalEvolution.SetPointError(count, 0, 0)
-                    signalname = "MPV of Signal Respose"
+                    signalname = "MPV of Signal Response"
                 count += 1
                 del histo
-                ROOT.gROOT.Delete("SignalEvolution_time_"+str(t))
+                ROOT.gROOT.Delete(type_+"Evolution_time_"+str(t))
 
             SignalEvolution.GetXaxis().SetTitle("Time / min")
-            SignalEvolution.GetYaxis().SetTitle(signalname+" / ADC Units")
-            SignalEvolution.Draw("ALP*")
-            if save:
-                self.SavePlots("SignalTimeEvolution"+Mode+".png")
-            if TimeERROR:
-                SignalEvolution.SaveAs(self.SaveDirectory+"ERROR_SignalTimeEvolution"+Mode+".root")
-            self.IfWait("Showing Signal Time Evolution..")
+            SignalEvolution.GetYaxis().SetTitle(signalname)
+            SignalEvolution.GetYaxis().SetTitleOffset(1.1)
+            if RateTimeEvolution: # Start y axis from 0 when rate time evolution
+                if binnumber != None: # just one bin
+                    SignalEvolution.GetYaxis().SetRangeUser(0, 4000)#SignalEvolution.GetYaxis().GetXmax())
+                else: #overall
+                    SignalEvolution.GetYaxis().SetRangeUser(0, 1700)#SignalEvolution.GetYaxis().GetXmax())
+            canvas = ROOT.TCanvas("signaltimeevolution", "signaltimeevolution")
 
+            SignalEvolution.Draw("ALP*")
+            # Draw a second axis if it is a RateTimeEvolution:
+            if RateTimeEvolution:
+                canvas.Update()
+                rightaxis = ROOT.TGaxis(ROOT.gPad.GetUxmax(), ROOT.gPad.GetUymin(), ROOT.gPad.GetUxmax(), ROOT.gPad.GetUymax(), ROOT.gPad.GetUymin()/c, ROOT.gPad.GetUymax()/c, 20210, '+L')
+                rightaxis.SetTitle('# Hits')
+                rightaxis.SetTitleOffset(1.2)
+                ROOT.SetOwnership(rightaxis, False)
+                rightaxis.Draw('SAME')
+            if save:
+                self.SavePlots(type_+"TimeEvolution"+Mode+nameExtension+".png")
+            if TimeERROR:
+                SignalEvolution.SaveAs(self.SaveDirectory+"ERROR_"+type_+"TimeEvolution"+Mode+nameExtension+".root")
+            self.IfWait("Showing "+type_+" Time Evolution..")
+            canvas.Close()
+        else:
+            print "Run is Monte Carlo. Signal- and Rate Time Evolution cannot be created."
+
+    def RateTimeEvolution(self, show=True, time_spacing = 3, save = True, binnumber = None, nameExtension=None):
+        self.SignalTimeEvolution(Mode="Mean", show=show, time_spacing = time_spacing, save = save, binnumber = binnumber, RateTimeEvolution=True, nameExtension=nameExtension)
 
     def ExportMC(self, MCDir = "MCInputs/"):
         '''
