@@ -19,7 +19,7 @@ if __name__ == "__main__":
 
     # config
     Diamond = "IIa-2"
-    Bias = 500
+    Bias = -500
     show_plots = True
     minimum_statistics = 100 # don't draw bins which contain less than minimum_statistics hits
     binning = 100
@@ -97,6 +97,8 @@ if __name__ == "__main__":
                 newAnalysis.GetSignalHeight()
                 newAnalysis.ShowTotalSignalHistogram(save=True, showfit=False)
                 newAnalysis.SignalTimeEvolution(Mode = "Mean", show = True, time_spacing=3)
+                newAnalysis.RateTimeEvolution(show = True, time_spacing=3)
+
 
                 collection.AddAnalysis(newAnalysis)
 
@@ -112,9 +114,9 @@ if __name__ == "__main__":
     canvas = ROOT.gROOT.GetListOfCanvases().FindObject("combined_canvasmaxima")
     if canvas:
         print "combined_canvasmaxima found"
-        collection.PeakSignalEvolution(OnThisCanvas=canvas)
+        collection.PeakSignalEvolution(OnThisCanvas=canvas, BinRateEvolution=True)
     else:
-        collection.PeakSignalEvolution()
+        collection.PeakSignalEvolution(BinRateEvolution=True)
 
     if show_plots: raw_input("Press ENTER to quit:")
 
