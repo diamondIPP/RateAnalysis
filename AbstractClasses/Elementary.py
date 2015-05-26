@@ -5,7 +5,10 @@ import types as t
 
 class Elementary(object):
     '''
-    Mother of all myPadAnalysis Objects
+    The Elementary class provides default behaviour objects in
+    the analysis framework and is the Mother of all myPadAnalysis objects.
+    It provides, among other things, a verbose printing method or a
+    save plot method containing a global save directory handling.
     '''
     GLOBAL_COUNT = 0
     SaveDirectory = "Results/"
