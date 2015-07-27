@@ -120,7 +120,7 @@ class Analysis(Elementary):
         #         GoOn = False
         self.ShowAndWait = False
         self.SaveMCData = True
-        self.check_offset = True
+        self.check_offset = False
 
     def CheckOffset(self):
         if self.check_offset and not self.run_object.IsMonteCarlo:

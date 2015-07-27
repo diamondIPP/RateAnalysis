@@ -24,10 +24,10 @@ class MCPerformance(Elementary):
         Elementary.__init__(self, verbose=verbose)
         # Settings:
         self.tries = 20 # number of repetitions for a certain signal height
-        self.min_percent = 0   # Quantiles
+        self.min_percent = 0.001   # Quantiles
         self.max_percent = 100  # Quantiles
-        self.binning = 200
-        self.minimum_statistics = 50
+        self.binning = 100
+        self.minimum_statistics = 100
         self.extremaconfiguration = "1.04 / 55 / 0.97 / 45"
 
     def DoSignalHeightScan(self, heights=None, hits_per_height=300000):
