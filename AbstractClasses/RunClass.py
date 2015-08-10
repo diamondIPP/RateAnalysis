@@ -62,7 +62,7 @@ class Run(Elementary):
         runConfigParser.read('Configuration/RunConfig.cfg')
         self.filename = runConfigParser.get('BASIC', 'filename')
         self.treename = runConfigParser.get('BASIC', 'treename')
-        self.sshrunpath = runConfigParser.get('BASIC', 'sshrunpath')
+        self.sshrunpath = runConfigParser.get('BASIC', 'runpath')
         self.runinfofile = runConfigParser.get('BASIC', 'runinfofile')
 
     def LoadRunInfo(self):
