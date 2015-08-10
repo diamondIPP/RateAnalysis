@@ -1,5 +1,6 @@
 #from Helper.Initializer import initializer
 from math import ceil
+import ConfigParser
 
 class Pad2DHistConfig(object):
     #@initializer
@@ -22,7 +23,7 @@ class Config(object):
     A config object for analysis
     e.g. binning size
     '''
-    def __init__(self, binningsize = 100,  **kwargs):
+    def __init__(self, binningsize=None,  **kwargs):
         '''
 
         :param binningsize: size of bins in microns
@@ -32,7 +33,7 @@ class Config(object):
 
         self.config = {
             '2DHist': {
-                'binsize': binningsize/10000., # in cm
+                'binsize': 100/10000., # in cm
                 'binsx': 0,
                 'xmin': 0.,
                 'xmax': 0.,
@@ -42,7 +43,25 @@ class Config(object):
             },
             'Hist1': ''
         }
-        self.SetWindow(-0.23, 0.18, -0.14, 0.39) # default window
+
+        self.LoadConfigFile()
+
+        if binningsize != None:
+            self.SetBinning(binningsize)
+
+
+
+    def LoadConfigFile(self):
+        configfile = "Configuration/AnalysisConfig.cfg"
+        parser = ConfigParser.ConfigParser()
+        parser.read(configfile)
+        windowXmin = parser.getfloat("TRACKING", "windowXmin")
+        windowXmax = parser.getfloat("TRACKING", "windowXmax")
+        windowYmin = parser.getfloat("TRACKING", "windowYmin")
+        windowYmax = parser.getfloat("TRACKING", "windowYmax")
+        self.binning = parser.getfloat("TRACKING", "binning")
+        self.SetWindow(windowXmin, windowXmax, windowYmin, windowYmax) # default window
+        self.SetBinning(self.binning)
 
     def Get2DAttributes(self):
         '''
@@ -78,6 +97,10 @@ class Config(object):
         self.config['2DHist']['binsy'] = int(binsy)
         self.config['2DHist']['xmax'] = xlow + binsx * binsize
         self.config['2DHist']['ymax'] = ylow + binsy * binsize
+
+    def SetBinning(self, binning):
+        self.config['2DHist']['binsize'] = binning/10000
+        self.binning = binning
 
     def SetWindowFromDiamond(self, diamond):
         '''

@@ -14,10 +14,10 @@ class RunSelection(Run):
 
     def __init__(self, verbose = False):
         Run.__init__(self, validate=False, run_number=None, verbose=verbose)
-        self.run_numbers = self.runinfo.keys()
+        self.run_numbers = [int(self.allRunKeys[i][-3:]) for i in xrange(len(self.allRunKeys))] # list of all the run numbers found in json file
+        self.run_numbers.sort()
         self.LoadRuns()
         self.InitializeSelections()
-        self.SelectionLog = {}
 
     def __str__(self):
         nr = len(self.run_numbers)
@@ -34,12 +34,21 @@ class RunSelection(Run):
         return string
 
     def LoadRuns(self):
+        '''
+        loads all the run infos in a dict with the run numbers as keys
+        :return:
+        '''
         self.runs = {}
         for runnumber in self.run_numbers:
-            self.SetRun(runnumber, validate=False)
+            self.SetRun(runnumber, validate=False, loadROOTFile = False)
             self.runs[runnumber] = self.current_run
 
     def InitializeSelections(self):
+        '''
+        creates a dict of bools to store selections. dict is filled with False (no run selected)
+        the selections log is created/cleared
+        :return:
+        '''
         self.selections = {}
         self.SelectionLog = {}
         for runnumber in self.run_numbers:
@@ -56,14 +65,14 @@ class RunSelection(Run):
         self.VerbosePrint('All runs unselected')
 
     def SelectDataType(self, data_type): # data type
-        assert(type(data_type) == t.IntType and 0<=data_type<=4), "wrong data type"
+        assert(data_type in ["pedestal", "signal"]), "wrong data type"
         count = 0
         for run_number in self.run_numbers:
-            if self.runs[run_number]['data_type'] == data_type:
+            if self.runs[run_number]['configuration'] == data_type:
                 self.selections[run_number] = True
                 count += 1
-        self.Log('Runs of Type '+data_types[data_type]+' selected. +'+str(count)+'selections')
-        self.VerbosePrint('Runs of Type '+data_types[data_type]+' selected. +'+str(count)+' selections')
+        self.Log('Runs of Type '+data_type+' selected. +'+str(count)+' selections')
+        self.VerbosePrint('Runs of Type '+data_type+' selected. +'+str(count)+' selections')
 
     def SelectDiamondRuns(self, diamondname):
         count = 0
@@ -194,30 +203,29 @@ class RunSelection(Run):
                 self.ExcludeRun(int(run_number))
 
     def ValidateSelectedRuns(self):
-        self.ValidateRuns(self.GetSelectedRuns())
+        #self.ValidateRuns(self.GetSelectedRuns())
+        pass
 
     def ShowSelectedRuns(self, get_string=False):
         string = 'Detailed View of Selected Runs:\n'
-        string += 'Nr.\tDiamond\t\tCrystal\tIrr.\tType\t\tBias\trate_ps\trate_raw\trate_trigger\n'
+        string += 'Nr.\tDiamond1\tDiamond2\t\tType\t\tBias1\tBias2\trate_ps\trate_raw\trate_trigger\n'
         for runnumber in self.GetSelectedRuns():
-            self.SetRun(runnumber, validate=False)
-            diamond = self.runs[runnumber]['diamond']
-            irr = self.diamond.Specifications['Irradiation']
-            crystal = self.diamond.Specifications['CrystalStructure']
-            data_type = self.runs[runnumber]['data_type']
-            bias_voltage = self.runs[runnumber]['bias_voltage']
-            rate_ps = self.runs[runnumber]['rate_ps']
-            rate_raw = self.runs[runnumber]['rate_raw']
-            rate_trigger = self.runs[runnumber]['rate_trigger']
-            if data_type == 1 or data_type == 2 or data_type == 3:
-                dt_tab = '\t'
-            else:
-                dt_tab = '\t\t'
-            if diamond == 'S129-old-box':
+            self.SetRun(runnumber, validate=False, loadROOTFile = False)
+            diamond1 = self.runs[runnumber]['diamond 1']
+            diamond2 = self.runs[runnumber]['diamond 2']
+            #irr = self.diamond.Specifications['Irradiation']
+            #crystal = self.diamond.Specifications['CrystalStructure']
+            data_type = self.runs[runnumber]['type']
+            bias_voltage1 = self.runs[runnumber]['hv dia1']
+            bias_voltage2 = self.runs[runnumber]['hv dia2']
+            rate_ps = self.runs[runnumber]['prescaled rate']
+            rate_raw = self.runs[runnumber]['raw rate']
+            rate_trigger = self.runs[runnumber]['to TLU rate']
+            if diamond1 == 'S129-old-box':
                 d_tab = '\t'
             else:
                 d_tab = '\t\t'
-            string += str(runnumber)+'\t'+diamond+d_tab+crystal+'\t'+irr+'\t'+data_types[data_type]+dt_tab+str(bias_voltage)+'\t'+str(rate_ps)+'\t'+str(rate_raw)+'\t\t'+str(rate_trigger)+'\n'
+            string += str(runnumber)+'\t'+diamond1+d_tab+diamond2+d_tab+data_type+'\t'+str(bias_voltage1)+'\t'+str(bias_voltage2)+'\t'+str(rate_ps)+'\t'+str(rate_raw)+'\t\t'+str(rate_trigger)+'\n'
         if not get_string:
             print string
         else:

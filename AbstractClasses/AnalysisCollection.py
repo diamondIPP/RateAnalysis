@@ -12,11 +12,11 @@ class AnalysisCollection(Elementary):
     An object of this class contains several analysis of runs.
     It gives the ability to compare the data from different runs.
     '''
-    collection = {}
     current_run_number = -1
 
     def __init__(self, verbose = False):
         Elementary.__init__(self, verbose=verbose)
+        self.collection = {}
 
     def __del__(self):
         print "deleting AnalysisCollection.."
@@ -39,8 +39,8 @@ class AnalysisCollection(Elementary):
         :return: -
         '''
 
-        AnalysisCollection.collection[analysis_obj.run_object.run_number] = analysis_obj
-        AnalysisCollection.current_run_number = analysis_obj.run_object.run_number
+        self.collection[analysis_obj.run.run_number] = analysis_obj
+        self.current_run_number = analysis_obj.run.run_number
 
     #
     def CreateFWHMPlot(self, saveplots = True, savename = 'FWHM_Histo', ending = 'png'):
@@ -61,6 +61,7 @@ class AnalysisCollection(Elementary):
         self.FWHMcanvas.cd()
         self.fwhm_histo.GetXaxis().SetTitle('FWHM')
         self.fwhm_histo.Draw()
+        self.FWHMcanvas.Update()
 
         if saveplots:
             # Results directories:
@@ -83,24 +84,85 @@ class AnalysisCollection(Elementary):
                             current run number from AnalysisCollection object
         :return: FWHM
         '''
+        channel = 0
         if run_number == None:
             run_number = AnalysisCollection.current_run_number
         assert(type(run_number) == t.IntType and 0 < run_number < 1000), "Invalid run number"
 
         analysis_obj = AnalysisCollection.collection[run_number]
 
-        assert(analysis_obj.MeanSignalHistoIsCreated), "Histogram not created yet or not found"
+        if not hasattr(analysis_obj, "MeanSignalHisto"):
+            analysis_obj.CreateMeanSignalHistogram(channel=channel)
 
-        maximum = analysis_obj.MeanSignalHisto.GetMaximum()
-        low_bin = analysis_obj.MeanSignalHisto.FindFirstBinAbove(maximum/2.)
-        high_bin = analysis_obj.MeanSignalHisto.FindLastBinAbove(maximum/2.)
+        maximum = analysis_obj.MeanSignalHisto[channel].GetMaximum()
+        low_bin = analysis_obj.MeanSignalHisto[channel].FindFirstBinAbove(maximum/2.)
+        high_bin = analysis_obj.MeanSignalHisto[channel].FindLastBinAbove(maximum/2.)
 
-        fwhm = analysis_obj.MeanSignalHisto.GetBinCenter(high_bin) - analysis_obj.MeanSignalHisto.GetBinCenter(low_bin)
+        fwhm = analysis_obj.MeanSignalHisto[channel].GetBinCenter(high_bin) - analysis_obj.MeanSignalHisto[channel].GetBinCenter(low_bin)
 
         if print_result:
             print "FWHM of run ",run_number," is: ",fwhm
 
         return fwhm
+
+    def ShowSignalVSRate(self, canvas=None):
+        if canvas==None:
+            self.ratecanvas = ROOT.TCanvas("signalvsratecanvas", "signalvsratecanvas")
+            ROOT.SetOwnership(self.ratecanvas, False)
+            self.ratelegend = ROOT.TLegend(0.1, 0.1,0.3,0.4)
+            axisoption = "A"
+        else:
+            self.ratecanvas = canvas
+            self.ratelegend = canvas.FindObject("TPave")
+            axisoption = ""
+
+        tmpcanvas = ROOT.TCanvas("tmpcanvas", "tmpcanvas")
+        tmpcanvas.cd()
+        tmpsignalhisto = ROOT.TH1D("tmpsignalhisto", "tmpsignalhisto", 600, -100, 500)
+        runnumbers = self.collection.keys()
+        runnumbers.sort()
+        self.graphs = {}
+        self.graphs[0] = ROOT.TGraphErrors()
+        self.graphs[0].SetNameTitle("graphCh0"+self.collection[runnumbers[0]].run.diamondname[0], "Signal Rate Scan")
+        ROOT.SetOwnership(self.graphs[0], False)
+        self.graphs[3] = ROOT.TGraphErrors()
+        self.graphs[3].SetNameTitle("graphCh3"+self.collection[runnumbers[0]].run.diamondname[3], "Signal Rate Scan")
+        ROOT.SetOwnership(self.graphs[3], False)
+        results = {}
+        i = -1
+
+        for runnumber in runnumbers:
+            i += 1
+            #runnumber = self.collection[runnumber].run.run_number
+            results[runnumber] = {}
+            for channel in self.collection[runnumber].run.GetChannels():
+                print "Signal VS Rate: Processing Run {run} (Rate: {rate}) - Channel {channel}".format(run=runnumber, channel=channel, rate=self.collection[runnumber].run.RunInfo["measured flux"])
+                results[runnumber][channel] = {}
+                self.collection[runnumber].run.tree.Draw((self.collection[runnumber].signaldefinition+">>tmpsignalhisto").format(channel=channel), self.collection[runnumber].cut.format(channel=channel), "", 2000000, self.collection[runnumber].excludefirst)
+                results[runnumber][channel]["mean"] = tmpsignalhisto.GetMean()
+                results[runnumber][channel]["error"] = tmpsignalhisto.GetRMS()/np.sqrt(tmpsignalhisto.GetEntries())
+                self.graphs[channel].SetPoint(i, self.collection[runnumber].run.RunInfo["measured flux"], results[runnumber][channel]["mean"])
+                self.graphs[channel].SetPointError(i, 0, results[runnumber][channel]["error"])
+
+        #save graphs:
+        self.graphs[0].SaveAs(self.graphs[0].GetName()+".root")
+        self.graphs[3].SaveAs(self.graphs[3].GetName()+".root")
+
+        self.ratecanvas.cd()
+        if axisoption == "A":
+            self.ratecanvas.SetLogx()
+            self.graphs[0].GetYaxis().SetLimits(0, 200)
+            self.graphs[0].GetXaxis().SetLimits(0, 7000)
+        self.graphs[0].Draw(axisoption+"LP")
+        self.ratelegend.AddEntry(self.graphs[0], self.collection[runnumbers[0]].run.diamondname[0], "lep")
+        self.graphs[3].Draw("LP")
+        self.ratelegend.AddEntry(self.graphs[3], self.collection[runnumbers[0]].run.diamondname[3], "lep")
+        self.ratelegend.Draw("SAME")
+        #self.ratecanvas.Modified()
+        self.ratecanvas.Update()
+        self.ShowAndWait = True
+        self.IfWait("Signal VS Rate shown")
+
 
     def CreateSigmaMPVPlot(self):
         '''
@@ -388,7 +450,7 @@ class AnalysisCollection(Elementary):
         for runnumber in runnumbers:
             rate_raw = self.collection[runnumber].RunInfo["rate_raw"]
             rate_kHz = 1.*rate_raw/100
-            print "runnumber: ", self.collection[runnumber].run_object.run_number," == ",  runnumber, " rate_kHz: ", rate_kHz
+            print "runnumber: ", self.collection[runnumber].run.run_number," == ",  runnumber, " rate_kHz: ", rate_kHz
             RateHisto.Fill(runnumber, rate_kHz)
         RateHisto.GetXaxis().SetTitle("Run Number")
         RateHisto.GetYaxis().SetTitle("Rate / kHz")

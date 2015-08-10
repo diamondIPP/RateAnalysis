@@ -5,6 +5,8 @@ from Elementary import Elementary
 import ROOT
 import os
 import ConfigParser
+import json
+import copy
 
 class Run(Elementary):
     '''
@@ -15,21 +17,40 @@ class Run(Elementary):
     operationmode = ''
     TrackingPadAnalysis = {}
 
-    def __init__(self, run_number=None, validate = False, verbose = False):
+    def __init__(self, run_number, channels=3, validate = False, verbose = False):
+        '''
+
+        :param run_number: number of the run
+        :param channels: 0x1=ch0; 0x2=ch3
+        :param validate:
+        :param verbose:
+        :return:
+        '''
         Elementary.__init__(self, verbose=verbose)
+        assert(channels>=1 and channels<=3), "invalid channel number: 0x1=ch0; 0x2=ch3"
         self.run_number = -1
         self.LoadConfig()
-#        RunInfo.load(self.runinfofile)
-#        self.runinfo = RunInfo.runs # used at all ?!?
-        self.RunInfo = {}
+
         if validate:
             self.ValidateRuns()
 
         if run_number != None:
             assert(run_number > 0), "incorrect run_number"
-            self.run_number = run_number
-
             self.SetRun(run_number)
+        else:
+            self.LoadRunInfo()
+        self.diamondname = {
+            0: str(self.RunInfo["diamond 1"]),
+            3: str(self.RunInfo["diamond 2"])
+        }
+        self.bias = {
+            0: self.RunInfo["hv dia1"],
+            3: self.RunInfo["hv dia2"]
+        }
+        self.analyzeCh = {
+            0: (channels & 1<<0) == 1<<0,
+            3: (channels & 1<<1) == 1<<1
+        }
         self.IsMonteCarlo = False
 
     def LoadConfig(self):
@@ -41,10 +62,27 @@ class Run(Elementary):
         runConfigParser.read('Configuration/RunConfig.cfg')
         self.filename = runConfigParser.get('BASIC', 'filename')
         self.treename = runConfigParser.get('BASIC', 'treename')
-        self.signalname = runConfigParser.get('BASIC', 'signalname')
         self.sshrunpath = runConfigParser.get('BASIC', 'sshrunpath')
         self.runinfofile = runConfigParser.get('BASIC', 'runinfofile')
 
+    def LoadRunInfo(self):
+        self.RunInfo = {}
+        f = open(self.runinfofile, "r")
+        data = json.load(f)
+        f.close()
+        self.allRunKeys = copy.deepcopy(data.keys())
+
+        if self.run_number >= 0:
+            self.RunInfo = data.get("150500"+str(self.run_number).zfill(3))
+            self.current_run = self.RunInfo
+            if self.RunInfo is None:
+                self.RunInfo = {}
+                print "\nWARNING: No RunInfo could be loaded ! \n"
+                return 0
+            else:
+                return 1
+        else:
+            return 0
 
     def ValidateRuns(self, list_of_runs = None):
         if list_of_runs != None:
@@ -67,7 +105,7 @@ class Run(Elementary):
     def ResetMC(self):
         pass
 
-    def SetRun(self, run_number, validate = False):
+    def SetRun(self, run_number, validate = False, loadROOTFile = True):
         if validate:
             boolfunc = self.ValidateRun
         else:
@@ -75,20 +113,20 @@ class Run(Elementary):
         assert(run_number > 0), "incorrect run_number"
         if True or run_number in RunInfo.runs and boolfunc(run_number):
             self.run_number = run_number
+            self.LoadRunInfo()
 
             if self.operationmode == "local-ssh":
-                fullROOTFilePath = '/Volumes/'+self.sshrunpath+'/'+self.filename+str(run_number).zfill(3)+'.root'
+                fullROOTFilePath = '/Volumes'+self.sshrunpath+'/'+self.filename+str(run_number).zfill(3)+'.root'
                 self.TrackingPadAnalysis['ROOTFile'] = fullROOTFilePath
 
             if self.operationmode == "ssh":
-                fullROOTFilePath = '/'+self.sshrunpath+'/'+self.filename+str(run_number).zfill(3)+'.root'
+                fullROOTFilePath = self.sshrunpath+'/'+self.filename+str(run_number).zfill(3)+'.root'
                 self.TrackingPadAnalysis['ROOTFile'] = fullROOTFilePath
 
             if self.operationmode == "local":
                 self.TrackingPadAnalysis['ROOTFile'] = 'runs/run_'+str(run_number)+'/'+self.filename+str(run_number).zfill(3)+'.root'
 
-            self.run_number = run_number
- #           self.current_run = RunInfo.runs[run_number].__dict__ # store dict containing all run infos
+
  #           self.RunInfo = self.current_run.copy()
             #a = self.current_run.__dict__
 #            self.diamond = Diamond( self.current_run['diamond'])
@@ -97,11 +135,17 @@ class Run(Elementary):
             #self.diamond = diamond # diamond is of type Diamond
             #RunInfo.__init__(self,*args)
 
-            self.rootfile = ROOT.TFile(fullROOTFilePath)
-            print "LOADING: ", fullROOTFilePath
-            self.tree = self.rootfile.Get(self.treename) # Get TTree called "track_info"
+            if loadROOTFile:
+                print "LOADING: ", fullROOTFilePath
+                self.rootfile = ROOT.TFile(fullROOTFilePath)
+                self.tree = self.rootfile.Get(self.treename) # Get TTree called "track_info"
+
+            assert(bool(self.tree) and bool(self.rootfile)), "Could not load root file: \n\t"+fullROOTFilePath
 
             #self.diamond.SetName(self.runs[0]['diamond'])
             return True
         else:
             return False
+
+    def GetChannels(self):
+        return [i for i in self.analyzeCh.keys() if self.analyzeCh[i]]

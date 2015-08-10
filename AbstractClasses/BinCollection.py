@@ -20,7 +20,7 @@ class BinCollection(Elementary):
 
     '''
 
-    def __init__(self, binsx, xmin, xmax, binsy, ymin, ymax, parent_analysis_obj=None, verbose=False):
+    def __init__(self, binsx, xmin, xmax, binsy, ymin, ymax, channel, parent_analysis_obj,verbose=False):
         '''
         Constructor of a Bincollection. Since the data collection is based on ROOT.TH2D,
         the bins are ordered in a rectangular pattern inside a frame which is 1 bin thick leading
@@ -51,13 +51,11 @@ class BinCollection(Elementary):
             'binwidth_y': 1.*(ymax-ymin)/binsy
         }
         self.parent_analysis_obj = parent_analysis_obj
-        if self.parent_analysis_obj != None:
-            self.run_object = parent_analysis_obj.run_object
-            run_number = self.run_object.run_number
-        else:
-            run_number = -1
+        self.channel = channel
+        self.run_object = parent_analysis_obj.run
+        run_number = self.run_object.run_number
         self.HistoNameAppendix = "_Run_"+str(run_number)
-        self.counthisto = ROOT.TH2D('counthisto'+self.HistoNameAppendix, '2D hit distribution', *self.Get2DAttributes())
+        self.counthisto = ROOT.TH2D('counthisto'+self.HistoNameAppendix, 'Run{run}: {diamond} Hit Map'.format(run=run_number, diamond=self.run_object.diamondname[self.channel]), *self.Get2DAttributes())
         self.totalsignal = ROOT.TH2D('totalsignal'+self.HistoNameAppendix, '2D total signal distribution', *self.Get2DAttributes())
         self.SignalHisto = ROOT.TH1D('SignalHisto'+self.HistoNameAppendix, 'Signal response Histogram', 500, 0, 500)
 
@@ -129,7 +127,7 @@ class BinCollection(Elementary):
         :return:
         '''
         assert (minimum_bincontent > 0), "minimum_bincontent has to be a positive integer"
-        self.meansignaldistribution = ATH2D('meansignaldistribution'+self.HistoNameAppendix, "Mean Signal Distribution", *self.Get2DAttributes())
+        self.meansignaldistribution = ATH2D('meansignaldistribution'+self.HistoNameAppendix, "Run{run}: {diamond} Mean Signal Distribution".format(run=self.run_object.run_number, diamond=self.run_object.diamondname[self.channel]), *self.Get2DAttributes())
         # go through every bin, calculate the average signal strength and fill the main 2D hist
         binwidth_x = self.Attributes['binwidth_x']
         binwidth_y = self.Attributes['binwidth_y']

@@ -33,7 +33,7 @@ class Analysis(Elementary):
         self.run_object = run_object
         self.RunInfo = deepcopy(run_object.RunInfo)
         self.config_object = config_object
-        self.config_object.SetWindowFromDiamond(self.run_object.diamond)
+#        self.config_object.SetWindowFromDiamond(self.run_object.diamond)
         # self.Signal2DDistribution = ROOT.TH2D()
         # self.Signal2DDistribution.SetDirectory(0) # is needed because of garbage collection
 
@@ -148,6 +148,14 @@ class Analysis(Elementary):
             self.offset = 0
             return self.offset
 
+    def LoadROOTFile(self):
+        # loading data file
+        self.TrackingPadAnalysisROOTFile = self.run_object.TrackingPadAnalysis["ROOTFile"]
+        assert (os.path.exists(self.TrackingPadAnalysisROOTFile)), "cannot find "+self.TrackingPadAnalysisROOTFile
+        self.rootfile = ROOT.TFile(self.TrackingPadAnalysisROOTFile)
+        print "LOADING: ", self.TrackingPadAnalysisROOTFile
+        self.track_info = self.rootfile.Get(self.run_object.treename) # Get TTree called "track_info"
+
     def DoAnalysis(self,minimum_bincontent = 1):
         '''
         Create a bin collection object as self.Pad and load data from ROOT TTree
@@ -158,12 +166,7 @@ class Analysis(Elementary):
         assert (minimum_bincontent > 0), "minimum_bincontent has to be a positive integer" # bins with less hits are ignored
         self.minimum_bincontent = minimum_bincontent
         if not self.run_object.IsMonteCarlo:
-            # loading data file
-            self.TrackingPadAnalysisROOTFile = self.run_object.TrackingPadAnalysis["ROOTFile"]
-            assert (os.path.exists(self.TrackingPadAnalysisROOTFile)), "cannot find "+self.TrackingPadAnalysisROOTFile
-            self.rootfile = ROOT.TFile(self.TrackingPadAnalysisROOTFile)
-            print "LOADING: ", self.TrackingPadAnalysisROOTFile
-            self.track_info = self.rootfile.Get("track_info") # Get TTree called "track_info"
+            self.LoadROOTFile()
         # create a bin collection object:
         self.Pad = BinCollection(*self.config_object.Get2DAttributes(), parent_analysis_obj=self)
 
@@ -177,11 +180,11 @@ class Analysis(Elementary):
                 for i in xrange(self.track_info.GetEntries()):
                     # read the ROOT TTree
                     self.track_info.GetEntry(i)
-                    x_ = self.track_info.track_x
-                    y_ = self.track_info.track_y
-                    signal_ = abs(self.track_info.integral50)
-                    calibflag = self.track_info.calibflag
-                    if calibflag == 0:
+                    x_ = self.track_info.diam1_track_x
+                    y_ = self.track_info.diam1_track_y
+                    signal_ = abs(self.track_info.sig_spread[0])
+                    pulser = self.track_info.pulser
+                    if not pulser:
                         self.Pad.Fill(x_, y_, signal_)
             else:
                 if self.offset > 0:
@@ -194,12 +197,12 @@ class Analysis(Elementary):
                 for i in xrange(self.track_info.GetEntries()-abs(self.offset)):
                     # read the ROOT TTree
                     self.track_info.GetEntry(i+pluscorrection)
-                    x_ = self.track_info.track_x
-                    y_ = self.track_info.track_y
+                    x_ = self.track_info.diam1_track_x
+                    y_ = self.track_info.diam1_track_y
                     self.track_info.GetEntry(i+minuscorrection)
-                    signal_ = abs(self.track_info.integral50)
-                    calibflag = self.track_info.calibflag
-                    if calibflag == 0:
+                    signal_ = abs(self.track_info.sig_spread[0])
+                    pulser = self.track_info.pulser
+                    if not pulser:
                         self.Pad.Fill(x_, y_, signal_)
         else: # run is Monte Carlo:
             GoOn = True
@@ -223,7 +226,7 @@ class Analysis(Elementary):
             self.TrackingPadAnalysisROOTFile = self.run_object.TrackingPadAnalysis["ROOTFile"]
             self.rootfile = ROOT.TFile(self.TrackingPadAnalysisROOTFile)
             print "LOADING: ", self.TrackingPadAnalysisROOTFile
-            self.track_info = self.rootfile.Get("track_info") # Get TTree called "track_info"
+            self.track_info = self.rootfile.Get(self.run_object.treename) # Get TTree called "track_info"
 
 
         self.Pad.MakeFits()
@@ -492,6 +495,8 @@ class Analysis(Elementary):
         :return:
         '''
         assert(Mode in ["Mean", "MPV"]), "Wrong Mode, Mode has to be `Mean` or `MPV`"
+        if not hasattr(self, "track_info"):
+            self.LoadROOTFile()
         if True:#not self.run_object.IsMonteCarlo:
 
             # Names
@@ -513,17 +518,17 @@ class Analysis(Elementary):
             SignalEvolution.SetNameTitle(type_+"Evolution", type_+" Time Evolution "+nameExtension)
 
             self.track_info.GetEntry(1)
-            starttime = self.track_info.time_stamp
+            starttime = self.track_info.time
             self.track_info.GetEntry(self.track_info.GetEntries())
-            # endtime = self.track_info.time_stamp
+            # endtime = self.track_info.time
             ok_deltatime = 0
             TimeERROR = False
             for i in xrange(self.track_info.GetEntries()-1-abs(self.offset)):
                 i += 1
                 # read the ROOT TTree
                 self.track_info.GetEntry(i)
-                signal_ = abs(self.track_info.integral50)
-                time_ = self.track_info.time_stamp
+                signal_ = abs(self.track_info.sig_spread[0])
+                time_ = self.track_info.time
                 deltatime_min = (time_-starttime)/60.
                 if deltatime_min < -1: # possible time_stamp reset
                     deltatime_min = ok_deltatime + time_/60.
@@ -531,13 +536,13 @@ class Analysis(Elementary):
                 else:
                     ok_deltatime = deltatime_min
                 time_bucket = int(deltatime_min)/int(time_spacing)*int(time_spacing)
-                calibflag = self.track_info.calibflag
+                pulser = self.track_info.pulser
 
                 # check if hit is inside bin (ONLY FOR BIN SIGNAL TIME EVOLUTION)
                 if binnumber != None:
                     if self.offset == 0:
-                        x_ = self.track_info.track_x
-                        y_ = self.track_info.track_y
+                        x_ = self.track_info.diam1_track_x
+                        y_ = self.track_info.diam1_track_y
                         binnumber_ = self.Pad.GetBinNumber(x_, y_)
                     else:
                         if self.offset > 0:
@@ -548,16 +553,16 @@ class Analysis(Elementary):
                             minuscorrection = abs(self.offset)
 
                         self.track_info.GetEntry(i+pluscorrection)
-                        x_ = self.track_info.track_x
-                        y_ = self.track_info.track_y
+                        x_ = self.track_info.diam1_track_x
+                        y_ = self.track_info.diam1_track_y
                         binnumber_ = self.Pad.GetBinNumber(x_, y_)
                         self.track_info.GetEntry(i+minuscorrection)
-                        signal_ = abs(self.track_info.integral50)
-                        calibflag = self.track_info.calibflag
+                        signal_ = abs(self.track_info.sig_spread[0])
+                        pulser = self.track_info.pulser
                 else:
                     binnumber_ = None
 
-                if calibflag == 0 and (binnumber == None or binnumber == binnumber_ ):
+                if not pulser and (binnumber == None or binnumber == binnumber_ ):
                     try:
                         results[time_bucket].append(signal_)
                     except KeyError:
