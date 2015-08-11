@@ -1,6 +1,8 @@
 import ROOT
 from AbstractClasses.ATH2D import ATH2D
 from AbstractClasses.BinCollection import BinCollection
+from AbstractClasses.RunClass import Run
+from AbstractClasses.newAnalysis import Analysis
 import types as t
 import os
 import numpy as np
@@ -43,6 +45,12 @@ class AnalysisCollection(Elementary):
         self.current_run_number = analysis_obj.run.run_number
 
     #
+
+    def AddRuns(self, list):
+        assert(type(list) is t.ListType), "argument has to be a list of run numbers"
+        for runnr in list:
+            self.AddAnalysis(Analysis(Run(runnr)))
+
     def CreateFWHMPlot(self, saveplots = True, savename = 'FWHM_Histo', ending = 'png'):
         '''
         Creates the FWHM Distribution of all the MeanSignalHistogram histograms from all
