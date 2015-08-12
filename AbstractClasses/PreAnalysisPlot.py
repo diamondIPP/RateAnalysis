@@ -69,7 +69,7 @@ class PreAnalysisPlot(object):
         for i in xrange(nbins):
             self.signalProjection[i] = signaltime.ProjectionY(str(runnumber)+str(self.channel)+"signalprojection_bin_"+str(i).zfill(2), i+1,i+1)
             self.signalProjection[i].SetTitle("Run{run}Ch{channel} Signal Projection of Bin {bin}".format(run=runnumber, channel=self.channel, bin=i))
-            self.signalProjection[i].GetXaxis().SetTitle("Signal ({signal})".format(signal=self.analysis.))
+            self.signalProjection[i].GetXaxis().SetTitle("Signal ({signal})".format(signal=self.analysis.signalname))
             binProjection_ped = pedestaltime.ProjectionY("proY_ped", i+1,i+1)
             if self.signalProjection[i].GetEntries() > 0:
                 graph.SetPoint(count, (i+0.5)*totalMinutes/nbins, self.signalProjection[i].GetMean())
