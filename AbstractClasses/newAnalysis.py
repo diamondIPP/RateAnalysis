@@ -5,6 +5,7 @@ import numpy as np
 from AbstractClasses.Elementary import Elementary
 from AbstractClasses.PreAnalysisPlot import PreAnalysisPlot
 from AbstractClasses.ConfigClass import *
+from AbstractClasses.RunClass import Run
 from AbstractClasses.Langau import Langau
 import os
 import copy, collections, numpy, array
@@ -22,18 +23,22 @@ class Analysis(Elementary):
     An Analysis Object contains all Data and Results of a SINGLE run.
     '''
 
-    def __init__(self, run_object, config_object = Config(), verbose = False):
+    def __init__(self, run, config_object = Config(), verbose = False):
         '''
         Initializes the Analysis object.
-        :param run_object: run object of type "Run"
+        :param run: run object of type "Run"
         :param config_object: config object of type "Pad2DHistConfig"
         :return: -
         '''
         Elementary.__init__(self, verbose=verbose)
-        assert(run_object.run_number > 0), "No run selected, choose run.SetRun(run_nr) before you pass the run object"
-        self.run = run_object
+        if not isinstance(run, Run):
+            assert (type(run) is t.IntType), "run has to be either an instance of Run or run number (int)"
+            run = Run(run)
+        else:
+            assert(run.run_number > 0), "No run selected, choose run.SetRun(run_nr) before you pass the run object"
+        self.run = run
         self.config_object = config_object
-        self.RunInfo = copy.deepcopy(run_object.RunInfo)
+        self.RunInfo = copy.deepcopy(run.RunInfo)
 
         self.Checklist = { # True if Plot was created # -> USED?!
             "RemoveBeamInterruptions": False,
@@ -90,9 +95,10 @@ class Analysis(Elementary):
         :return:
         '''
         #c1 = ROOT.TCanvas("c1", "c1")
+        self.preAnalysis = {}
         for ch in self.run.GetChannels():
-            preanalysisCh0 = PreAnalysisPlot(self, ch)
-            preanalysisCh0.Draw()
+            self.preAnalysis[ch] = PreAnalysisPlot(self, ch)
+            self.preAnalysis[ch].Draw()
 
     def FindBeamInterruptions(self):
         '''
@@ -264,6 +270,7 @@ class Analysis(Elementary):
         if canvas == None:
             canvas = ROOT.TCanvas("landaucanvas")
         canvas.cd()
+        print "making Landau using\nSignal def:\n\t{signal}\nCut:\n\t{cut}".format(signal=self.signaldefinition, cut=self.cut)
         self.run.tree.Draw((self.signaldefinition+">>landau{run}{channel}(600, -100, 500)").format(channel=channel, run=self.run.run_number), self.cut.format(channel=channel), drawoption, 10000000, self.excludefirst)
         canvas.Update()
         histo = ROOT.gROOT.FindObject("landau{run}{channel}".format(channel=channel, run=self.run.run_number))
@@ -305,6 +312,7 @@ class Analysis(Elementary):
             signaldef = "self.run.tree.{signal}[{channel}] - self.run.tree.{pedestal}[{channel}]"
 
         print "Loading tracking informations..."
+        print "Signal def:\n\t{signal}".format(signal=signaldef)
         try:
             self.run.tree.diam1_track_x
         except AttributeError:

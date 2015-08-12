@@ -523,4 +523,4 @@ class AnalysisCollection(Elementary):
         '''
         :return: number of analyses that the analysis collection object contains
         '''
-        return len(AnalysisCollection.collection.keys())
+        return len(self.collection.keys())

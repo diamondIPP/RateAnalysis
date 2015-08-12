@@ -8,6 +8,42 @@ import ConfigParser
 import json
 import copy
 
+dummyinfo =  {
+        "persons on shift": "-",
+        "run info": "-",
+        "type": "signal",
+        "configuration": "signal",
+        "mask": "-",
+        "masked pixels": 0,
+        "diamond 1": "?",
+        "diamond 2": "?",
+        "hv dia1": 0,
+        "hv dia2": 0,
+        "fs11": 0,
+        "fsh13": 0,
+        "quadrupole": "-",
+        "analogue current": 0,
+        "digital current": 0,
+        "begin date": "-/-/-",
+        "trim time": "-:-:-",
+        "config time": "-:-:-",
+        "start time": "-:-:-",
+        "trig accept time": "-:-:-",
+        "opening time": "-:-:-",
+        "open time": "-:-:-",
+        "stop time": "-:-:-",
+        "raw rate": 0,
+        "prescaled rate": 0,
+        "to TLU rate": 0,
+        "pulser accept rate": 0,
+        "cmspixel events": 0,
+        "drs4 events": 0,
+        "datacollector events": 0,
+        "aimed flux": 0,
+        "measured flux": 0,
+        "user comments": "-"
+}
+
 class Run(Elementary):
     '''
 
@@ -67,17 +103,25 @@ class Run(Elementary):
 
     def LoadRunInfo(self):
         self.RunInfo = {}
-        f = open(self.runinfofile, "r")
-        data = json.load(f)
-        f.close()
-        self.allRunKeys = copy.deepcopy(data.keys())
+        try:
+            f = open(self.runinfofile, "r")
+            data = json.load(f)
+            f.close()
+            self.allRunKeys = copy.deepcopy(data.keys())
+            loaderror = False
+        except IOError:
+            print "WARNING: unable to load json file:\n\t{file}".format(file=self.runinfofile)
+            loaderror = True
 
         if self.run_number >= 0:
-            self.RunInfo = data.get("150500"+str(self.run_number).zfill(3))
+            if not loaderror:
+                self.RunInfo = data.get("150500"+str(self.run_number).zfill(3))
+            else:
+                self.RunInfo = dummyinfo
             self.current_run = self.RunInfo
             if self.RunInfo is None:
                 self.RunInfo = {}
-                print "\nWARNING: No RunInfo could be loaded ! \n"
+                print "\nWARNING: No RunInfo could be loaded from file! \n"
                 return 0
             else:
                 return 1

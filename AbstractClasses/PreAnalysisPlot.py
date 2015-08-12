@@ -51,6 +51,7 @@ class PreAnalysisPlot(object):
         print "Total Minutes: {tot} nbins={nbins}".format(tot=totalMinutes, nbins=nbins)
         signaltime = ROOT.TH2D("signaltime" ,"signaltime", nbins, 0, (endtime-starttime), 600, -100, 500)
         pedestaltime = ROOT.TH2D("pedestaltime" ,"pedestaltime", nbins, 0, (endtime-starttime), 600, -100, 500)
+        print "making PreAnalysis using\nSignal def:\n\t{signal}\nCut:\n\t{cut}".format(signal=self.analysis.signaldefinition, cut=self.analysis.cut)
         test = self.analysis.run.tree.Draw((self.analysis.signaldefinition+":(time-{starttime})>>signaltime").format(channel=self.channel, starttime=starttime), self.analysis.cut.format(channel=self.channel), drawOption2D, 10000000000, self.analysis.excludefirst)
         self.analysis.run.tree.Draw(self.analysis.pedestalname+"[{channel}]:(time-{starttime})>>pedestaltime".format(channel=self.channel, starttime=starttime), self.analysis.cut.format(channel=self.channel), drawOption2D, 10000000000, self.analysis.excludefirst)
 
@@ -63,12 +64,16 @@ class PreAnalysisPlot(object):
 
         count = 0
         final_i = 0
+        runnumber = self.analysis.run.run_number
+        self.signalProjection = {}
         for i in xrange(nbins):
-            binProjection = signaltime.ProjectionY("proY", i+1,i+1)
+            self.signalProjection[i] = signaltime.ProjectionY(str(runnumber)+str(self.channel)+"signalprojection_bin_"+str(i).zfill(2), i+1,i+1)
+            self.signalProjection[i].SetTitle("Run{run}Ch{channel} Signal Projection of Bin {bin}".format(run=runnumber, channel=self.channel, bin=i))
+            self.signalProjection[i].GetXaxis().SetTitle("Signal ({signal})".format(signal=self.analysis.))
             binProjection_ped = pedestaltime.ProjectionY("proY_ped", i+1,i+1)
-            if binProjection.GetEntries() > 0:
-                graph.SetPoint(count, (i+0.5)*totalMinutes/nbins, binProjection.GetMean())
-                graph.SetPointError(count, 0, binProjection.GetRMS()/ROOT.TMath.Sqrt(binProjection.GetEntries()))
+            if self.signalProjection[i].GetEntries() > 0:
+                graph.SetPoint(count, (i+0.5)*totalMinutes/nbins, self.signalProjection[i].GetMean())
+                graph.SetPointError(count, 0, self.signalProjection[i].GetRMS()/ROOT.TMath.Sqrt(self.signalProjection[i].GetEntries()))
                 pedgraph.SetPoint(count, (i+0.5)*totalMinutes/nbins, binProjection_ped.GetMean())
                 pedgraph.SetPointError(count, 0, binProjection_ped.GetRMS()/ROOT.TMath.Sqrt(binProjection_ped.GetEntries()))
                 count += 1
