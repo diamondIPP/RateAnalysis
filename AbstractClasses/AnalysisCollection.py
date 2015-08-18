@@ -18,7 +18,7 @@ class AnalysisCollection(Elementary):
 
     def __init__(self, verbose = False):
         Elementary.__init__(self, verbose=verbose)
-        self.collection = {}
+        self.collection = {} # dict where all analysis objects are saved
 
     def __del__(self):
         print "deleting AnalysisCollection.."
@@ -50,6 +50,12 @@ class AnalysisCollection(Elementary):
         assert(type(list) is t.ListType), "argument has to be a list of run numbers"
         for runnr in list:
             self.AddAnalysis(Analysis(Run(runnr)))
+
+    def RemoveBeamInterruptions(self):
+        runnumbers = self.collection.keys()
+        runnumbers.sort()
+        for runnumber in runnumbers:
+            self.collection[runnumber].RemoveBeamInterruptions()
 
     def CreateFWHMPlot(self, saveplots = True, savename = 'FWHM_Histo', ending = 'png'):
         '''
