@@ -23,7 +23,7 @@ class Analysis(Elementary):
     An Analysis Object contains all Data and Results of a SINGLE run.
     '''
 
-    def __init__(self, run, config_object = Config(), verbose = False):
+    def __init__(self, run, channels=None, config_object = Config(), verbose = False):
         '''
         Initializes the Analysis object.
         :param run: run object of type "Run"
@@ -33,7 +33,10 @@ class Analysis(Elementary):
         Elementary.__init__(self, verbose=verbose)
         if not isinstance(run, Run):
             assert (type(run) is t.IntType), "run has to be either an instance of Run or run number (int)"
-            run = Run(run)
+            if channels != None:
+                run = Run(run, channels=channels)
+            else:
+                run = Run(run)
         else:
             assert(run.run_number > 0), "No run selected, choose run.SetRun(run_nr) before you pass the run object"
         self.run = run
@@ -88,17 +91,91 @@ class Analysis(Elementary):
             self.signaldefinition = self.signalname+"[{channel}]-"+self.pedestalname+"[{channel}]"
 
 
-    def MakePreAnalysis(self):
+    def MakePreAnalysis(self, channel=None, mode="mean"):
         '''
         Creates the Signal Time distribution (and checks for beam interruptions).
         No tracking information needed -> no spatial information provided
         :return:
         '''
+        if channel != None:
+            channels = [channel]
+        else:
+            channels = self.run.GetChannels()
         #c1 = ROOT.TCanvas("c1", "c1")
         self.preAnalysis = {}
-        for ch in self.run.GetChannels():
+        for ch in channels:
             self.preAnalysis[ch] = PreAnalysisPlot(self, ch)
-            self.preAnalysis[ch].Draw()
+            self.preAnalysis[ch].Draw(mode=mode)
+
+    def ShowFFT(self, drawoption="", cut="!pulser", channel=None):
+        if channel != None:
+            channels = [channel]
+        else:
+            channels = self.run.GetChannels()
+        if drawoption in ["MC", "mc", "Mc", "mC"]:
+            cut = ""
+            drawoption = ""
+            multicolor = True
+        else:
+            multicolor = False
+        canvas = ROOT.TCanvas("fftcanvas", "fftcanvas", len(channels)*500, 500)
+        canvas.Divide(len(channels), 1)
+        canvas.cd()
+        i = 1
+        self.fftHistos = {}
+        self.fftlegend = {}
+        ROOT.gStyle.SetOptStat(0)
+        for ch in channels:
+            cut = cut.format(channel=ch)
+            self.fftHistos[ch] = ROOT.TH2D("fft_ch{channel}".format(channel=ch), "FFT {"+cut+"}", 5000, 2e-6, 0.0025, 5000, 1e1, 1e4)
+            canvas.cd(i)
+            ROOT.gPad.SetLogy()
+            ROOT.gPad.SetLogx()
+            ROOT.gPad.SetGridx()
+            ROOT.gPad.SetGridy()
+            self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}".format(channel=ch), cut)
+            self.fftHistos[ch].SetTitle("{diamond} ".format(diamond=self.run.diamondname[ch])+self.fftHistos[ch].GetTitle())
+            self.fftHistos[ch].GetXaxis().SetTitle("1/fft_max")
+            self.fftHistos[ch].GetYaxis().SetTitle("fft_mean")
+            #self.fftHistos[ch].Draw(drawoption)
+            if multicolor:
+                self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}_sat(5000, 2e-6, 0.0025, 5000, 1e1, 1e4)".format(channel=ch), "is_saturated", "")
+                saturated_histo = ROOT.gROOT.FindObject("fft_ch{channel}_sat".format(channel=ch))
+                saturated_histo.SetMarkerStyle(1)
+                saturated_histo.SetMarkerColor(6)
+                saturated_histo.SetFillColor(6)
+                self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}_med(5000, 2e-6, 0.0025, 5000, 1e1, 1e4)".format(channel=ch), "abs(median[{channel}])>8".format(channel=ch), "")
+                median_histo = ROOT.gROOT.FindObject("fft_ch{channel}_med".format(channel=ch))
+                median_histo.SetMarkerStyle(1)
+                median_histo.SetMarkerColor(8)
+                median_histo.SetFillColor(8)
+                self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}_flat(5000, 2e-6, 0.0025, 5000, 1e1, 1e4)".format(channel=ch), "sig_spread[{channel}]<10".format(channel=ch), "")
+                flat_histo = ROOT.gROOT.FindObject("fft_ch{channel}_flat".format(channel=ch))
+                flat_histo.SetMarkerStyle(1)
+                flat_histo.SetMarkerColor(4)
+                flat_histo.SetFillColor(4)
+                self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}_pulser(5000, 2e-6, 0.0025, 5000, 1e1, 1e4)".format(channel=ch), "pulser", "")
+                pulser_histo = ROOT.gROOT.FindObject("fft_ch{channel}_pulser".format(channel=ch))
+                pulser_histo.SetMarkerStyle(1)
+                pulser_histo.SetMarkerColor(2)
+                pulser_histo.SetFillColor(2)
+                self.fftHistos[ch].Draw("")
+                saturated_histo.Draw("same")
+                median_histo.Draw("same")
+                pulser_histo.Draw("same")
+                flat_histo.Draw("same")
+                self.fftlegend[ch] = ROOT.TLegend(0.1,0.1,0.3,0.3)
+                self.fftlegend[ch].AddEntry(pulser_histo, "pulser", "f")
+                self.fftlegend[ch].AddEntry(saturated_histo, "saturated", "f")
+                self.fftlegend[ch].AddEntry(median_histo, "wide peaks", "f")
+                self.fftlegend[ch].AddEntry(flat_histo, "flat lines", "f")
+                self.fftlegend[ch].Draw("same")
+            else:
+                self.fftHistos[ch].Draw(drawoption)
+            i+=1
+        canvas.Update()
+        self.IfWait("FFT shown..")
+
 
     def FindBeamInterruptions(self):
         '''

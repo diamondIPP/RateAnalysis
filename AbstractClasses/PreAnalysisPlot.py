@@ -24,19 +24,22 @@ class PreAnalysisPlot(object):
         self.signalTimeCanvas = canvas
         self.channel = channel
         
-    def Draw(self):
+    def Draw(self, mode="mean"):
+        assert(mode in ["mean", "Mean", "fit", "Fit"])
         drawOption2D = "COLZ"
         nbins = 30
 
         #define graphs:
-        graph = ROOT.TGraphErrors()
+        self.graph = ROOT.TGraphErrors()
         graphtitle = 'Run{runnumber}: {diamond} Signal Time Evolution'.format(runnumber=self.analysis.run.run_number, diamond=self.analysis.run.diamondname[self.channel])
-        graph.SetNameTitle('graph', graphtitle)
-        pedgraph = ROOT.TGraphErrors()
+        self.graph.SetNameTitle('graph', graphtitle)
+        self.pedgraph = ROOT.TGraphErrors()
         pedgraphtitle = 'Run{runnumber}: {diamond} Pedestal Time Evolution'.format(runnumber=self.analysis.run.run_number, diamond=self.analysis.run.diamondname[self.channel])
-        pedgraph.SetNameTitle('ped_graph', pedgraphtitle)
+        self.pedgraph.SetNameTitle('ped_graph', pedgraphtitle)
 
         #set Canvas
+        if not bool(self.signalTimeCanvas):
+            self.signalTimeCanvas = ROOT.TCanvas("signalTimeCanvas"+"Ch"+str(self.channel), "signalTimeCanvas"+"Ch"+str(self.channel), 650, 700)
         self.signalTimeCanvas.Divide(1,3)
         self.signalTimeCanvas.cd(1)
 
@@ -49,8 +52,8 @@ class PreAnalysisPlot(object):
         endtime = self.analysis.run.tree.time
         totalMinutes = (endtime-starttime)/60000.
         print "Total Minutes: {tot} nbins={nbins}".format(tot=totalMinutes, nbins=nbins)
-        signaltime = ROOT.TH2D("signaltime" ,"signaltime", nbins, 0, (endtime-starttime), 600, -100, 500)
-        pedestaltime = ROOT.TH2D("pedestaltime" ,"pedestaltime", nbins, 0, (endtime-starttime), 600, -100, 500)
+        signaltime = ROOT.TH2D("signaltime" ,"signaltime", nbins, 0, (endtime-starttime), 200, -100, 500)
+        pedestaltime = ROOT.TH2D("pedestaltime" ,"pedestaltime", nbins, 0, (endtime-starttime), 200, -100, 500)
         print "making PreAnalysis using\nSignal def:\n\t{signal}\nCut:\n\t{cut}".format(signal=self.analysis.signaldefinition, cut=self.analysis.cut)
         test = self.analysis.run.tree.Draw((self.analysis.signaldefinition+":(time-{starttime})>>signaltime").format(channel=self.channel, starttime=starttime), self.analysis.cut.format(channel=self.channel), drawOption2D, 10000000000, self.analysis.excludefirst)
         self.analysis.run.tree.Draw(self.analysis.pedestalname+"[{channel}]:(time-{starttime})>>pedestaltime".format(channel=self.channel, starttime=starttime), self.analysis.cut.format(channel=self.channel), drawOption2D, 10000000000, self.analysis.excludefirst)
@@ -72,10 +75,20 @@ class PreAnalysisPlot(object):
             self.signalProjection[i].GetXaxis().SetTitle("Signal ({signal})".format(signal=self.analysis.signalname))
             binProjection_ped = pedestaltime.ProjectionY("proY_ped", i+1,i+1)
             if self.signalProjection[i].GetEntries() > 0:
-                graph.SetPoint(count, (i+0.5)*totalMinutes/nbins, self.signalProjection[i].GetMean())
-                graph.SetPointError(count, 0, self.signalProjection[i].GetRMS()/ROOT.TMath.Sqrt(self.signalProjection[i].GetEntries()))
-                pedgraph.SetPoint(count, (i+0.5)*totalMinutes/nbins, binProjection_ped.GetMean())
-                pedgraph.SetPointError(count, 0, binProjection_ped.GetRMS()/ROOT.TMath.Sqrt(binProjection_ped.GetEntries()))
+                if mode in ["mean", "Mean"]:
+                    self.graph.SetPoint(count, (i+0.5)*totalMinutes/nbins, self.signalProjection[i].GetMean())
+                    self.graph.SetPointError(count, 0, self.signalProjection[i].GetRMS()/ROOT.TMath.Sqrt(self.signalProjection[i].GetEntries()))
+                elif mode in ["fit", "Fit"]:
+                    self.signalProjection[i].GetMaximum()
+                    maxposition = self.signalProjection[i].GetBinCenter(self.signalProjection[i].GetMaximumBin())
+                    self.signalProjection[i].Fit("landau", "Q","",maxposition-50,maxposition+50)
+                    fitfun = self.signalProjection[i].GetFunction("landau")
+                    mpv = fitfun.GetParameter(1)
+                    mpverr = fitfun.GetParError(1)
+                    self.graph.SetPoint(count, (i+0.5)*totalMinutes/nbins, mpv)
+                    self.graph.SetPointError(count, 0, mpverr)
+                self.pedgraph.SetPoint(count, (i+0.5)*totalMinutes/nbins, binProjection_ped.GetMean())
+                self.pedgraph.SetPointError(count, 0, binProjection_ped.GetRMS()/ROOT.TMath.Sqrt(binProjection_ped.GetEntries()))
                 count += 1
                 final_i = i
             else:
@@ -83,20 +96,23 @@ class PreAnalysisPlot(object):
 
         #draw mean signal vs time
         self.signalTimeCanvas.cd(1)
-        graph.Fit("pol0")
+        self.graph.Fit("pol0")
         ROOT.gStyle.SetOptFit(1)
-        graph.GetXaxis().SetTitleOffset(0.7)
-        graph.GetXaxis().SetTitle("time / min")
-        graph.GetXaxis().SetTitleSize(0.06)
-        graph.GetXaxis().SetLabelSize(0.06)
-        graph.GetXaxis().SetRangeUser(0, totalMinutes)
-        yTitlestr = "Mean Signal ({signalname})".format(signalname=(self.analysis.signaldefinition.format(channel=self.channel)) )
-        # graph.GetYaxis().SetRangeUser(ymin, ymax)
-        graph.GetYaxis().SetTitleOffset(0.9)
-        graph.GetYaxis().SetTitleSize(0.06)
-        graph.GetYaxis().SetLabelSize(0.06)
-        graph.GetYaxis().SetTitle(yTitlestr)
-        graph.Draw("ALP")
+        self.graph.GetXaxis().SetTitleOffset(0.7)
+        self.graph.GetXaxis().SetTitle("time / min")
+        self.graph.GetXaxis().SetTitleSize(0.06)
+        self.graph.GetXaxis().SetLabelSize(0.06)
+        self.graph.GetXaxis().SetRangeUser(0, totalMinutes)
+        if mode in ["mean", "Mean"]:
+            yTitlestr = "Mean Signal ({signalname})".format(signalname=(self.analysis.signaldefinition.format(channel=self.channel)) )
+        elif mode in ["fit", "Fit"]:
+            yTitlestr = "MPV of Signal fit ({signalname})".format(signalname=(self.analysis.signaldefinition.format(channel=self.channel)) )
+        # self.graph.GetYaxis().SetRangeUser(ymin, ymax)
+        self.graph.GetYaxis().SetTitleOffset(0.9)
+        self.graph.GetYaxis().SetTitleSize(0.06)
+        self.graph.GetYaxis().SetLabelSize(0.06)
+        self.graph.GetYaxis().SetTitle(yTitlestr)
+        self.graph.Draw("ALP")
         savename= "Run{runnumber}_{diamondname}_SignalTimeEvolution.eps".format(runnumber=self.analysis.run.run_number, diamondname=self.analysis.run.diamondname[self.channel])
         self.analysis.SavePlots(savename)
 
@@ -114,20 +130,20 @@ class PreAnalysisPlot(object):
 
         #draw mean pedestal vs time
         self.signalTimeCanvas.cd(3)
-        pedgraph.Fit("pol0")
+        self.pedgraph.Fit("pol0")
         ROOT.gStyle.SetOptFit(1)
-        pedgraph.GetXaxis().SetTitleOffset(0.7)
-        pedgraph.GetXaxis().SetTitle("time / min")
-        pedgraph.GetXaxis().SetTitleSize(0.06)
-        pedgraph.GetXaxis().SetLabelSize(0.06)
-        pedgraph.GetXaxis().SetRangeUser(0, totalMinutes)
+        self.pedgraph.GetXaxis().SetTitleOffset(0.7)
+        self.pedgraph.GetXaxis().SetTitle("time / min")
+        self.pedgraph.GetXaxis().SetTitleSize(0.06)
+        self.pedgraph.GetXaxis().SetLabelSize(0.06)
+        self.pedgraph.GetXaxis().SetRangeUser(0, totalMinutes)
         yTitlestr = "Mean Pedestal ({pedestalname})".format(pedestalname= self.analysis.pedestalname+"[{channel}]".format(channel=self.channel))
-        # pedgraph.GetYaxis().SetRangeUser(ymin, ymax)
-        pedgraph.GetYaxis().SetTitleOffset(0.9)
-        pedgraph.GetYaxis().SetTitleSize(0.06)
-        pedgraph.GetYaxis().SetLabelSize(0.06)
-        pedgraph.GetYaxis().SetTitle(yTitlestr)
-        pedgraph.Draw("ALP")
+        # self.pedgraph.GetYaxis().SetRangeUser(ymin, ymax)
+        self.pedgraph.GetYaxis().SetTitleOffset(0.9)
+        self.pedgraph.GetYaxis().SetTitleSize(0.06)
+        self.pedgraph.GetYaxis().SetLabelSize(0.06)
+        self.pedgraph.GetYaxis().SetTitle(yTitlestr)
+        self.pedgraph.Draw("ALP")
         #savename= "Run{runnumber}_{diamondname}_PedestalTimeEvolution.eps".format(runnumber=self.analysis.run.run_number, diamondname=self.analysis.run.diamondname[self.channel])
         #self.analysis.SavePlots(savename)
 
