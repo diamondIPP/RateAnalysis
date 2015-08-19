@@ -58,7 +58,7 @@ class AnalysisCollection(Elementary):
     def SetChannels(self, channels):
         runnumbers = self.GetRunNumbers()
         for runnumber in runnumbers:
-            self.collection[runnumber].run.SetChannels(channels=channels)¯
+            self.collection[runnumber].run.SetChannels(channels=channels)
 
     def RemoveBeamInterruptions(self):
         runnumbers = self.GetRunNumbers()
