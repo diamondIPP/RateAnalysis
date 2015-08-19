@@ -17,10 +17,10 @@ class PreAnalysisPlot(object):
      Analysis.RemoveBeamInterruptions() first
     '''
     
-    def __init__(self, analysis, channel=0 ,canvas=None):
+    def __init__(self, analysis, channel ,canvas=None):
         self.analysis = analysis
         if canvas == None:
-            canvas = ROOT.TCanvas("signalTimeCanvas"+"Ch"+str(channel), "signalTimeCanvas"+"Ch"+str(channel), 650, 700)
+            canvas = ROOT.TCanvas("signalTimeCanvasRun"+str(self.analysis.run.run_number)+"Ch"+str(channel), "signalTimeCanvas"+"Ch"+str(channel), 650, 700)
         self.signalTimeCanvas = canvas
         self.channel = channel
         
@@ -118,15 +118,15 @@ class PreAnalysisPlot(object):
 
         #2d distribution (high resolution)
         self.signalTimeCanvas.cd(2)
-        self.analysis.run.tree.Draw((self.analysis.signaldefinition+":(event_number)/1000>>signaltime2d({bins}, {start}, {end}, 300, 0, 500)").format(bins=200, channel=self.channel, start=startevent/1000, end=endevent/1000), self.analysis.cut.format(channel=self.channel), drawOption2D, 10000000000, self.analysis.excludefirst)
-        signaltime2d = gROOT.FindObject("signaltime2d")
-        signaltime2d.SetStats(0)
-        signaltime2d.GetXaxis().SetLabelSize(0.06)
-        signaltime2d.GetYaxis().SetLabelSize(0.06)
-        signaltime2d.GetXaxis().SetTitle("event number / 1000")
-        signaltime2d.GetXaxis().SetTitleSize(0.06)
-        signaltime2d.GetXaxis().SetTitleOffset(0.7)
-        signaltime2d.Draw(drawOption2D)
+        self.analysis.run.tree.Draw((self.analysis.signaldefinition+":(event_number)/1000>>signaltime2d{run}{channel}({bins}, {start}, {end}, 300, 0, 500)").format(bins=200, run=self.analysis.run.run_number, channel=self.channel, start=startevent/1000, end=endevent/1000), self.analysis.cut.format(channel=self.channel), drawOption2D, 10000000000, self.analysis.excludefirst)
+        self.signaltime2d = gROOT.FindObject("signaltime2d{run}{channel}".format(run=self.analysis.run.run_number, channel=self.channel))
+        self.signaltime2d.SetStats(0)
+        self.signaltime2d.GetXaxis().SetLabelSize(0.06)
+        self.signaltime2d.GetYaxis().SetLabelSize(0.06)
+        self.signaltime2d.GetXaxis().SetTitle("event number / 1000")
+        self.signaltime2d.GetXaxis().SetTitleSize(0.06)
+        self.signaltime2d.GetXaxis().SetTitleOffset(0.7)
+        self.signaltime2d.Draw(drawOption2D)
 
         #draw mean pedestal vs time
         self.signalTimeCanvas.cd(3)

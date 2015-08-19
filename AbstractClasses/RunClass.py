@@ -63,7 +63,7 @@ class Run(Elementary):
         :return:
         '''
         Elementary.__init__(self, verbose=verbose)
-        assert(channels>=1 and channels<=3), "invalid channel number: 0x1=ch0; 0x2=ch3"
+
         self.run_number = -1
         self.LoadConfig()
 
@@ -83,10 +83,7 @@ class Run(Elementary):
             0: self.RunInfo["hv dia1"],
             3: self.RunInfo["hv dia2"]
         }
-        self.analyzeCh = {
-            0: (channels & 1<<0) == 1<<0,
-            3: (channels & 1<<1) == 1<<1
-        }
+        self.SetChannels(channels)
         self.IsMonteCarlo = False
 
     def LoadConfig(self):
@@ -191,5 +188,21 @@ class Run(Elementary):
         else:
             return False
 
+    def SetChannels(self, channels):
+        assert(channels>=1 and channels<=3), "invalid channel number: 0x1=ch0; 0x2=ch3"
+        self.analyzeCh = {
+            0: (channels & 1<<0) == 1<<0,
+            3: (channels & 1<<1) == 1<<1
+        }
+
     def GetChannels(self):
         return [i for i in self.analyzeCh.keys() if self.analyzeCh[i]]
+
+    def GetDiamondName(self, channel):
+        return self.diamondname[channel]
+
+    def ShowRunInfo(self):
+        print "RUN INFO:"
+        print "\tRun Number: \t", self.run_number, " (",self.RunInfo["type"],")"
+        print "\tDiamond1:   \t", self.diamondname[0], " (",self.bias[0],") | is selected: ", self.analyzeCh[0]
+        print "\tDiamond2:   \t", self.diamondname[3], " (",self.bias[3],") | is selected: ", self.analyzeCh[3]

@@ -11,6 +11,8 @@ class Elementary(object):
     save plot method containing a global save directory handling.
     '''
     GLOBAL_COUNT = 0
+    colors = [2,3,4,6,7,8,9,1,30,40,28,38,39,20,41,42,43,44,45,46,47,48,49,12,13,14,15]
+    GLOBAL_COLOR_INDEX = 0
     SaveDirectory = "Results/"
 
     def __init__(self, verbose = False):
@@ -60,3 +62,10 @@ class Elementary(object):
         gc = cls.GLOBAL_COUNT
         cls.GLOBAL_COUNT += 1
         return gc
+
+    @classmethod
+    def GetNewColor(cls):
+        cls.GLOBAL_COLOR_INDEX %= 27
+        color = cls.colors[cls.GLOBAL_COLOR_INDEX]
+        cls.GLOBAL_COLOR_INDEX += 1
+        return color

@@ -104,7 +104,7 @@ class Analysis(Elementary):
         #c1 = ROOT.TCanvas("c1", "c1")
         self.preAnalysis = {}
         for ch in channels:
-            self.preAnalysis[ch] = PreAnalysisPlot(self, ch)
+            self.preAnalysis[ch] = PreAnalysisPlot(analysis=self, channel=ch, canvas=None)
             self.preAnalysis[ch].Draw(mode=mode)
 
     def ShowFFT(self, drawoption="", cut="!pulser", channel=None):
@@ -334,7 +334,7 @@ class Analysis(Elementary):
         included = np.delete(all_events, excluded)
         return included
 
-    def GetLandau(self, channel, canvas=None, drawoption="", color=ROOT.kBlue, normalized=True):
+    def GetLandau(self, channel=None, canvas=None, drawoption="", color=ROOT.kBlue, normalized=True):
         '''
 
         :param channel:
@@ -344,23 +344,33 @@ class Analysis(Elementary):
         :param normalized:
         :return:
         '''
+        if channel != None:
+            channels = [channel]
+        else:
+            channels = self.run.GetChannels()
         if canvas == None:
             canvas = ROOT.TCanvas("landaucanvas")
         canvas.cd()
-        print "making Landau using\nSignal def:\n\t{signal}\nCut:\n\t{cut}".format(signal=self.signaldefinition, cut=self.cut)
-        self.run.tree.Draw((self.signaldefinition+">>landau{run}{channel}(600, -100, 500)").format(channel=channel, run=self.run.run_number), self.cut.format(channel=channel), drawoption, 10000000, self.excludefirst)
-        canvas.Update()
-        histo = ROOT.gROOT.FindObject("landau{run}{channel}".format(channel=channel, run=self.run.run_number))
 
-        histo.SetLineColor(color)
-        stats = histo.FindObject("stats")
-        stats.SetTextColor(color)
-        canvas.Modified()
-
-        if normalized:
-            histo.Scale(1./histo.GetMaximum())
-            histo.Draw(drawoption)
+        for ch in channels:
+            if len(channels)>1 and drawoption=="" and ch==3:
+                drawoption = "sames"
+                color = ROOT.kRed
+            print "making Landau using\nSignal def:\n\t{signal}\nCut:\n\t{cut}".format(signal=self.signaldefinition, cut=self.cut)
+            self.run.tree.Draw((self.signaldefinition+">>landau{run}{channel}(600, -100, 500)").format(channel=ch, run=self.run.run_number), self.cut.format(channel=ch), drawoption, 10000000, self.excludefirst)
             canvas.Update()
+            histo = ROOT.gROOT.FindObject("landau{run}{channel}".format(channel=ch, run=self.run.run_number))
+
+            histo.SetLineColor(color)
+            histo.Draw(drawoption)
+            stats = histo.FindObject("stats")
+            if stats: stats.SetTextColor(color)
+            canvas.Modified()
+
+            if normalized:
+                histo.Scale(1./histo.GetMaximum())
+                histo.Draw(drawoption)
+                canvas.Update()
 
     def LoadTrackData(self, minimum_bincontent = 1): # min_bincontent in config file
         '''

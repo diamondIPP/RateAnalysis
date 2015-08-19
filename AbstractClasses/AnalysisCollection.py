@@ -16,9 +16,13 @@ class AnalysisCollection(Elementary):
     '''
     current_run_number = -1
 
-    def __init__(self, verbose = False):
+    def __init__(self, listOfRuns=None, diamonds=None, verbose = False):
         Elementary.__init__(self, verbose=verbose)
         self.collection = {} # dict where all analysis objects are saved
+        if listOfRuns != None:
+            assert(type(listOfRuns) is t.ListType), "listOfRuns has to be of type list"
+            self.AddRuns(listOfRuns, diamonds=diamonds)
+
 
     def __del__(self):
         print "deleting AnalysisCollection.."
@@ -44,16 +48,20 @@ class AnalysisCollection(Elementary):
         self.collection[analysis_obj.run.run_number] = analysis_obj
         self.current_run_number = analysis_obj.run.run_number
 
-    #
-
-    def AddRuns(self, list):
+    def AddRuns(self, list, diamonds=None):
         assert(type(list) is t.ListType), "argument has to be a list of run numbers"
+        if diamonds == None: diamonds=3
+        assert(diamonds in [1,2,3]), "'diamonds' has to be 1, 2, 3, or None (0x1: diamond1, 0x2: diamond2)"
         for runnr in list:
-            self.AddAnalysis(Analysis(Run(runnr)))
+            self.AddAnalysis(Analysis(Run(runnr, diamonds)))
+
+    def SetChannels(self, channels):
+        runnumbers = self.GetRunNumbers()
+        for runnumber in runnumbers:
+            self.collection[runnumber].run.SetChannels(channels=channels)¯
 
     def RemoveBeamInterruptions(self):
-        runnumbers = self.collection.keys()
-        runnumbers.sort()
+        runnumbers = self.GetRunNumbers()
         for runnumber in runnumbers:
             self.collection[runnumber].RemoveBeamInterruptions()
 
@@ -119,11 +127,31 @@ class AnalysisCollection(Elementary):
 
         return fwhm
 
-    def ShowSignalVSRate(self, canvas=None):
+    def MakePreAnalysis(self, channel=None, mode="mean"):
+        assert(channel in [0,3, None]), "invalid channel: channel has to be either 0, 3 or None"
+        runnumbers = self.GetRunNumbers()
+
+        for run in runnumbers:
+            if channel == None:
+                self.collection[run].MakePreAnalysis(mode=mode)
+            else:
+                self.collection[run].MakePreAnalysis(channel=channel, mode=mode)
+
+    def ShowSignalVSRate(self, canvas=None, diamonds=None): #, method="mean"
+        '''
+        Draws the signal vs rate scan into the canvas. If no canvas is given, it will create
+        a new canvas attached to the intance as self.ratecanvas .
+        If no diamonds are selected in particular, then the active diamonds of the first run will
+        be selected for the rate scan of all runs
+        :param canvas: optional. A canvas to draw the ratescan into
+        :param diamonds: 0x1: diamond1 0x2: diamond2
+        :return:
+        '''
+        assert(diamonds in [1,2,3,None]), "wrong diamonds selection: 0x1: diamond1, 0x2: diamond2"
         if canvas==None:
             self.ratecanvas = ROOT.TCanvas("signalvsratecanvas", "signalvsratecanvas")
             ROOT.SetOwnership(self.ratecanvas, False)
-            self.ratelegend = ROOT.TLegend(0.1, 0.1,0.3,0.4)
+            self.ratelegend = ROOT.TLegend(0.1, 0.1, 0.4, 0.4)
             axisoption = "A"
         else:
             self.ratecanvas = canvas
@@ -131,25 +159,32 @@ class AnalysisCollection(Elementary):
             axisoption = ""
 
         tmpcanvas = ROOT.TCanvas("tmpcanvas", "tmpcanvas")
-        tmpcanvas.cd()
         tmpsignalhisto = ROOT.TH1D("tmpsignalhisto", "tmpsignalhisto", 600, -100, 500)
-        runnumbers = self.collection.keys()
-        runnumbers.sort()
-        self.graphs = {}
-        self.graphs[0] = ROOT.TGraphErrors()
-        self.graphs[0].SetNameTitle("graphCh0"+self.collection[runnumbers[0]].run.diamondname[0], "Signal Rate Scan")
-        ROOT.SetOwnership(self.graphs[0], False)
-        self.graphs[3] = ROOT.TGraphErrors()
-        self.graphs[3].SetNameTitle("graphCh3"+self.collection[runnumbers[0]].run.diamondname[3], "Signal Rate Scan")
-        ROOT.SetOwnership(self.graphs[3], False)
-        results = {}
-        i = -1
+        runnumbers = self.GetRunNumbers()
 
-        for runnumber in runnumbers:
-            i += 1
-            #runnumber = self.collection[runnumber].run.run_number
-            results[runnumber] = {}
-            for channel in self.collection[runnumber].run.GetChannels():
+        if diamonds == None:
+            channels = self.collection[runnumbers[0]].run.GetChannels() # get channels from first run
+        elif diamonds == 1:
+            channels = [0]
+        elif diamonds == 2:
+            channels = [3]
+        else:
+            channels = [0,3]
+
+        self.graphs = {}
+        results = {}
+        for channel in channels:
+            tmpcanvas.cd()
+            color = self.GetNewColor()
+            self.graphs[channel] = ROOT.TGraphErrors()
+            self.graphs[channel].SetNameTitle("graphCh0"+self.collection[runnumbers[0]].run.diamondname[channel], "Signal Rate Scan")
+            ROOT.SetOwnership(self.graphs[channel], False)
+            i = -1
+
+            for runnumber in runnumbers:
+                i += 1
+                #runnumber = self.collection[runnumber].run.run_number
+                results[runnumber] = {}
                 print "Signal VS Rate: Processing Run {run} (Rate: {rate}) - Channel {channel}".format(run=runnumber, channel=channel, rate=self.collection[runnumber].run.RunInfo["measured flux"])
                 results[runnumber][channel] = {}
                 self.collection[runnumber].run.tree.Draw((self.collection[runnumber].signaldefinition+">>tmpsignalhisto").format(channel=channel), self.collection[runnumber].cut.format(channel=channel), "", 2000000, self.collection[runnumber].excludefirst)
@@ -158,22 +193,27 @@ class AnalysisCollection(Elementary):
                 self.graphs[channel].SetPoint(i, self.collection[runnumber].run.RunInfo["measured flux"], results[runnumber][channel]["mean"])
                 self.graphs[channel].SetPointError(i, 0, results[runnumber][channel]["error"])
 
-        #save graphs:
-        self.graphs[0].SaveAs(self.graphs[0].GetName()+".root")
-        self.graphs[3].SaveAs(self.graphs[3].GetName()+".root")
+            #save graph:
+            self.graphs[channel].SaveAs(self.graphs[channel].GetName()+".root")
 
-        self.ratecanvas.cd()
-        if axisoption == "A":
-            self.ratecanvas.SetLogx()
-            self.graphs[0].GetYaxis().SetLimits(0, 200)
-            self.graphs[0].GetXaxis().SetLimits(0, 7000)
-        self.graphs[0].Draw(axisoption+"LP")
-        self.ratelegend.AddEntry(self.graphs[0], self.collection[runnumbers[0]].run.diamondname[0], "lep")
-        self.graphs[3].Draw("LP")
-        self.ratelegend.AddEntry(self.graphs[3], self.collection[runnumbers[0]].run.diamondname[3], "lep")
+            self.ratecanvas.cd()
+            if axisoption == "A":
+                self.ratecanvas.SetLogx()
+                self.ratecanvas.SetGridx()
+                self.ratecanvas.SetGridy()
+                self.graphs[channel].GetYaxis().SetRangeUser(0, 200)
+                self.graphs[channel].GetYaxis().SetTitle("Mean Signal ({signal})".format(signal=self.collection[runnumbers[0]].signaldefinition.format(channel="")))
+                self.graphs[channel].GetXaxis().SetTitle("Rate / kHz")
+                self.graphs[channel].GetXaxis().SetLimits(1, 7000)
+            self.graphs[channel].SetLineColor(color)
+            self.graphs[channel].Draw(axisoption+"LP")
+            self.ratelegend.AddEntry(self.graphs[channel], self.collection[runnumbers[0]].run.diamondname[channel]+" "+str(self.collection[runnumbers[0]].run.bias[channel])+"V ({startrun}-{endrun})".format(startrun=runnumbers[0], endrun=runnumbers[-1]), "lep")
+            axisoption = ""
+
         self.ratelegend.Draw("SAME")
         #self.ratecanvas.Modified()
         self.ratecanvas.Update()
+        tmpcanvas.Close()
         self.ShowAndWait = True
         self.IfWait("Signal VS Rate shown")
 
@@ -524,9 +564,27 @@ class AnalysisCollection(Elementary):
             self.SavePlots("IIa-2_neutron_SignalDistribution_MAXSearch.png")
             raw_input("wait")
 
+    def GetRunNumbers(self):
+        '''
+        :return: sorted list of run numbers in AnalysisCollection instance
+        '''
+        runnumbers = self.collection.keys()
+        runnumbers.sort()
+        return runnumbers
 
     def GetNumberOfAnalyses(self):
         '''
         :return: number of analyses that the analysis collection object contains
         '''
         return len(self.collection.keys())
+
+    def ShowInfo(self):
+        print "ANALYSIS COLLECTION INFO:"
+        print "\tRuns: \tDiamond1 \tBias1 \tSelected \tDiamond2 \tBias2 \tSelected \tType"
+        contentstring = ""
+        for run in self.GetRunNumbers():
+            contentstring += "\t{run} \t{Diamond1} \t{Bias1} \t{Selected1} \t\t{Diamond2} \t{Bias2} \t{Selected2} \t\t{Type}\n".format(
+                run=str(run).zfill(3), Diamond1=self.collection[run].run.GetDiamondName(0).ljust(8), Bias1=str(self.collection[run].run.bias[0]).zfill(5), Selected1=str(self.collection[run].run.analyzeCh[0]).ljust(5),
+                Diamond2=self.collection[run].run.GetDiamondName(3).ljust(8), Bias2=str(self.collection[run].run.bias[3]).zfill(5), Selected2=str(self.collection[run].run.analyzeCh[3]).ljust(5),
+                Type=self.collection[run].run.RunInfo["type"])
+        print contentstring
