@@ -206,3 +206,63 @@ class Run(Elementary):
         print "\tRun Number: \t", self.run_number, " (",self.RunInfo["type"],")"
         print "\tDiamond1:   \t", self.diamondname[0], " (",self.bias[0],") | is selected: ", self.analyzeCh[0]
         print "\tDiamond2:   \t", self.diamondname[3], " (",self.bias[3],") | is selected: ", self.analyzeCh[3]
+
+    def DrawRunInfo(self, channel=None, canvas=None, diamondinfo=True, showcut=False, comment=None):
+        if canvas != None:
+            canvas.cd()
+        else:
+            print "Draw run info in current pad"
+            pad = ROOT.gROOT.GetSelectedPad()
+            if pad:
+                canvas = pad.GetCanvas()
+                canvas.cd()
+                pad.cd()
+            else:
+                print "ERROR: Can't access active Pad"
+
+        lines = 1
+        width = 0.25
+        if diamondinfo:
+            lines += 1
+        if showcut and hasattr(self, "analysis"):
+            lines += 1
+            width = 0.6
+        if comment != None:
+            lines += 1
+            width = max(0.4, width)
+
+        if not hasattr(self, "runInfoLegends"):
+            self.runInfoLegends = {}
+
+
+
+        if channel != None:
+            self.runInfoLegends[channel] = ROOT.TLegend(0.1, 0.86-(lines-1)*0.03, 0.1+width, 0.9)
+            self.runInfoLegends[channel].SetMargin(0.05)
+            self.runInfoLegends[channel].AddEntry(0, "Run{run} Ch{channel} ({rate})".format(run=self.run_number, channel=channel, rate=self.GetRateString()), "")
+            if diamondinfo: self.runInfoLegends[channel].AddEntry(0, "{diamond} ({bias:+}V)".format(diamond=self.diamondname[channel], bias=self.bias[channel]), "")
+            if showcut and hasattr(self, "analysis"): self.runInfoLegends[channel].AddEntry(0, "Cut: {cut}".format(cut=self.analysis.cut.format(channel=channel)), "")
+            if comment != None: self.runInfoLegends[channel].AddEntry(0, comment, "")
+            self.runInfoLegends[channel].Draw("same")
+        else:
+            if comment != None:
+                lines = 2
+            else:
+                lines = 1
+                width = 0.15
+            self.runInfoLegends[-1] = ROOT.TLegend(0.1, 0.9-lines*0.05, 0.1+width, 0.9)
+            self.runInfoLegends[-1].SetMargin(0.05)
+            self.runInfoLegends[-1].AddEntry(0, "Run{run} ({rate})".format(run=self.run_number, rate=self.GetRateString()), "")
+            if comment != None: self.runInfoLegends[-1].AddEntry(0, comment, "")
+            self.runInfoLegends[-1].Draw("same")
+            pad.Modified()
+
+    def GetRateString(self):
+        rate = self.RunInfo["measured flux"]
+        if rate>1000:
+            unit = "MHz"
+            rate = round(rate/1000.,1)
+        else:
+            unit = "kHz"
+            rate = int(round(rate,0))
+        return "{rate:>3}{unit}".format(rate=rate, unit=unit)
