@@ -1,5 +1,6 @@
 #from Helper.Initializer import initializer
 from math import ceil
+from AbstractClasses.Elementary import Elementary
 import ConfigParser
 
 class Pad2DHistConfig(object):
@@ -18,7 +19,7 @@ class MeanSignalHistConfig(object):
     def __init__(self,bins,min_x,max_x):
         pass
 
-class Config(object):
+class BinCollectionConfig(Elementary):
     '''
     A config object for analysis
     e.g. binning size
@@ -52,16 +53,18 @@ class Config(object):
 
 
     def LoadConfigFile(self):
-        configfile = "Configuration/AnalysisConfig.cfg"
+        configfile = "Configuration/AnalysisConfig_"+self.TESTCAMPAIGN+".cfg"
+        print "configclass configfile: ", configfile
         parser = ConfigParser.ConfigParser()
         parser.read(configfile)
         windowXmin = parser.getfloat("TRACKING", "windowXmin")
         windowXmax = parser.getfloat("TRACKING", "windowXmax")
         windowYmin = parser.getfloat("TRACKING", "windowYmin")
         windowYmax = parser.getfloat("TRACKING", "windowYmax")
-        self.binning = parser.getfloat("TRACKING", "binning")
-        self.SetWindow(windowXmin, windowXmax, windowYmin, windowYmax) # default window
+        self.binning = parser.getint("TRACKING", "padBinning")
         self.SetBinning(self.binning)
+        self.SetWindow(windowXmin, windowXmax, windowYmin, windowYmax) # default window
+
 
     def Get2DAttributes(self):
         '''
@@ -99,7 +102,7 @@ class Config(object):
         self.config['2DHist']['ymax'] = ylow + binsy * binsize
 
     def SetBinning(self, binning):
-        self.config['2DHist']['binsize'] = binning/10000
+        self.config['2DHist']['binsize'] = binning/10000.
         self.binning = binning
 
     def SetWindowFromDiamond(self, diamond):

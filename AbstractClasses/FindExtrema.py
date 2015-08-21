@@ -10,13 +10,14 @@ class FindExtrema(Elementary):
     def __init__(self, bincollection, verbose = False):
         Elementary.__init__(self, verbose=verbose)
         self.BinCollectionObj = bincollection
+        self.channel = self.BinCollectionObj.channel
         self.ExtremaType = ''
         self.SetType()
 
         self.voting_histo_name = 'voting_histo_'+self.ExtremaType+str(self.GLOBAL_COUNT)
         self.voting_histo = ROOT.TH2D(self.voting_histo_name, 'Voting for '+self.ExtremaType, *self.BinCollectionObj.Get2DAttributes())
-        self.bin_SW_coordinates = self.BinCollectionObj.ListOfBins[self.BinCollectionObj.Attributes['binsx']+3].GetBinCenter()
-        self.bin_SE_coordinates = self.BinCollectionObj.ListOfBins[2*self.BinCollectionObj.Attributes['binsx']+2].GetBinCenter()
+        self.bin_SW_coordinates = self.BinCollectionObj.listOfBins[self.BinCollectionObj.attributes['binsx']+3].GetBinCenter()
+        self.bin_SE_coordinates = self.BinCollectionObj.listOfBins[2*self.BinCollectionObj.attributes['binsx']+2].GetBinCenter()
         self.binsx_, self.xmin_, self.xmax_, self.binsy_, self.ymin_, self.ymax_ = self.BinCollectionObj.Get2DAttributes()
         self.GLOBAL_COUNT += 1
 
@@ -53,7 +54,7 @@ class FindExtrema(Elementary):
                     binnumber = bins[i+1].GetBinNumber()
                     self.FillHistoByBinnumber(binnumber, 1)
 
-            height += self.BinCollectionObj.Attributes['binwidth_y']
+            height += self.BinCollectionObj.attributes['binwidth_y']
 
     # vertical scan:
     def vertical_scan(self):
@@ -70,7 +71,7 @@ class FindExtrema(Elementary):
                     binnumber = bins[i+1].GetBinNumber()
                     self.FillHistoByBinnumber(binnumber, 1)
 
-            position += self.BinCollectionObj.Attributes['binwidth_x']
+            position += self.BinCollectionObj.attributes['binwidth_x']
 
     # southwest to northeast scan:
     def SWNE_scan(self):
@@ -106,10 +107,10 @@ class FindExtrema(Elementary):
                 middle_nr = left_nr + self.binsx_ + 3
                 right_nr = middle_nr + self.binsx_ + 3
                 while CheckBinInsideWindow(right_nr):
-                    left_signal = self.BinCollectionObj.ListOfBins[left_nr].GetMean()
-                    middle_signal = self.BinCollectionObj.ListOfBins[middle_nr].GetMean()
-                    right_signal = self.BinCollectionObj.ListOfBins[right_nr].GetMean()
-                    if self.Local1DExtrema(left_signal, middle_signal, right_signal, self.BinCollectionObj.ListOfBins[middle_nr].GetEntries()):
+                    left_signal = self.BinCollectionObj.listOfBins[left_nr].GetMean()
+                    middle_signal = self.BinCollectionObj.listOfBins[middle_nr].GetMean()
+                    right_signal = self.BinCollectionObj.listOfBins[right_nr].GetMean()
+                    if self.Local1DExtrema(left_signal, middle_signal, right_signal, self.BinCollectionObj.listOfBins[middle_nr].GetEntries()):
                         self.FillHistoByBinnumber(middle_nr, 1)
                     left_nr = middle_nr
                     middle_nr = right_nr
@@ -158,10 +159,10 @@ class FindExtrema(Elementary):
                 middle_nr = right_nr + self.binsx_ + 1
                 left_nr = middle_nr + self.binsx_ + 1
                 while CheckBinInsideWindow(left_nr):
-                    left_signal = self.BinCollectionObj.ListOfBins[left_nr].GetMean()
-                    middle_signal = self.BinCollectionObj.ListOfBins[middle_nr].GetMean()
-                    right_signal = self.BinCollectionObj.ListOfBins[right_nr].GetMean()
-                    if self.Local1DExtrema(left_signal, middle_signal, right_signal, self.BinCollectionObj.ListOfBins[middle_nr].GetEntries()):
+                    left_signal = self.BinCollectionObj.listOfBins[left_nr].GetMean()
+                    middle_signal = self.BinCollectionObj.listOfBins[middle_nr].GetMean()
+                    right_signal = self.BinCollectionObj.listOfBins[right_nr].GetMean()
+                    if self.Local1DExtrema(left_signal, middle_signal, right_signal, self.BinCollectionObj.listOfBins[middle_nr].GetEntries()):
                         self.FillHistoByBinnumber(middle_nr, 1)
                     right_nr = middle_nr
                     middle_nr = left_nr
@@ -207,7 +208,7 @@ class FindExtrema(Elementary):
         :param include_center:
         :return:
         '''
-        binsx = self.BinCollectionObj.Attributes['binsx']
+        binsx = self.BinCollectionObj.attributes['binsx']
         range_x = binsx + 2
         nbhd = []
         nbhd.append(binnumber+range_x-1)
@@ -266,18 +267,18 @@ class FindExtrema(Elementary):
     
         # mean = self.BinCollectionObj.SignalHisto.GetMean()
         if hasattr(self.BinCollectionObj.parent_analysis_obj, "MeanSignalHisto"):
-            mean = self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto.GetMean()
+            mean = self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto[self.channel].GetMean()
         else:
             self.BinCollectionObj.parent_analysis_obj.CreateMeanSignalHistogram()
-            mean = self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto.GetMean()
+            mean = self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto[self.channel].GetMean()
 
         for i in xrange(len(Vote4Extrema)):
             center_bin = Vote4Extrema[i]
             nbhd = self.GetBinsInNbhd(center_bin)
             MeanNbhdSignals = []
             for binnr in nbhd:
-                bin_mean = self.BinCollectionObj.ListOfBins[binnr].GetMean()
-                bin_entries = self.BinCollectionObj.ListOfBins[binnr].GetEntries()
+                bin_mean = self.BinCollectionObj.listOfBins[binnr].GetMean()
+                bin_entries = self.BinCollectionObj.listOfBins[binnr].GetEntries()
                 if bin_entries >= self.minimum_bincount:
                     MeanNbhdSignals.append(bin_mean)
             if len(MeanNbhdSignals)>0:
@@ -333,11 +334,12 @@ class FindExtrema(Elementary):
                 print "\n{0:.1f}% of generated peaks found.".format(100.*(npeaks-len(Ninjas))/npeaks)
             print len(Ninjas)," Ninjas."
             print len(Ghosts)," Ghosts.\n"
-            self.BinCollectionObj.parent_analysis_obj.ExtremaResults['TrueNPeaks'] = npeaks
-            self.BinCollectionObj.parent_analysis_obj.ExtremaResults['Ninjas'] = len(Ninjas)
-            self.BinCollectionObj.parent_analysis_obj.ExtremaResults['Ghosts'] = len(Ghosts)
-        self.BinCollectionObj.parent_analysis_obj.ExtremaResults['FoundN'+self.ExtremaType] = len(Vote5Extrema)
-        self.BinCollectionObj.parent_analysis_obj.ExtremaResults['Found'+self.ExtremaType] = self.BinCollectionObj.GetBinCenter(Vote5Extrema) # store REAL parent analysis, not parent.ExtremeAnalysis
+            self.BinCollectionObj.parent_analysis_obj.ExtremaResults[self.channel]['TrueNPeaks'] = npeaks
+            self.BinCollectionObj.parent_analysis_obj.ExtremaResults[self.channel]['Ninjas'] = len(Ninjas)
+            self.BinCollectionObj.parent_analysis_obj.ExtremaResults[self.channel]['Ghosts'] = len(Ghosts)
+        print "Export Maximaresults of channel: ", self.channel, " (", self.ExtremaType, ")"
+        self.BinCollectionObj.parent_analysis_obj.ExtremaResults[self.channel]['FoundN'+self.ExtremaType] = len(Vote5Extrema)
+        self.BinCollectionObj.parent_analysis_obj.ExtremaResults[self.channel]['Found'+self.ExtremaType] = self.BinCollectionObj.GetBinCenter(Vote5Extrema) # store REAL parent analysis, not parent.ExtremeAnalysis
 
         self.found_extrema = ROOT.TGraph()
         for i in xrange(len(Vote5Extrema)):
@@ -390,10 +392,14 @@ class FindMaxima(FindExtrema):
         y = array('d', [0])
 
         if hasattr(self.BinCollectionObj.parent_analysis_obj, "MeanSignalHisto"):
-            self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto.GetQuantiles(1, y, q)
+            if self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto.has_key(self.channel):
+                self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto[self.channel].GetQuantiles(1, y, q)
+            else:
+                self.BinCollectionObj.parent_analysis_obj.CreateMeanSignalHistogram(channel=self.channel)
+                self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto[self.channel].GetQuantiles(1, y, q)
         else:
-            self.BinCollectionObj.parent_analysis_obj.CreateMeanSignalHistogram()
-            self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto.GetQuantiles(1, y, q)
+            self.BinCollectionObj.parent_analysis_obj.CreateMeanSignalHistogram(channel=self.channel)
+            self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto[self.channel].GetQuantiles(1, y, q)
 
         # self.BinCollectionObj.SignalHisto.GetQuantiles(1, y, q)
         self.threshold = y[0]
@@ -421,10 +427,14 @@ class FindMinima(FindExtrema):
         y = array('d', [0])
 
         if hasattr(self.BinCollectionObj.parent_analysis_obj, "MeanSignalHisto"):
-            self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto.GetQuantiles(1, y, q)
+            if self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto.has_key(self.channel):
+                self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto[self.channel].GetQuantiles(1, y, q)
+            else:
+                self.BinCollectionObj.parent_analysis_obj.CreateMeanSignalHistogram(channel=self.channel)
+                self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto[self.channel].GetQuantiles(1, y, q)
         else:
-            self.BinCollectionObj.parent_analysis_obj.CreateMeanSignalHistogram()
-            self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto.GetQuantiles(1, y, q)
+            self.BinCollectionObj.parent_analysis_obj.CreateMeanSignalHistogram(channel=self.channel)
+            self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto[self.channel].GetQuantiles(1, y, q)
 
         # self.BinCollectionObj.SignalHisto.GetQuantiles(1, y, q)
         self.threshold = y[0]

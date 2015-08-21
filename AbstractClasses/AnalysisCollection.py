@@ -245,7 +245,7 @@ class AnalysisCollection(Elementary):
         ROOT.gPad.Print("Results/MPV_Sigma_graph.root")
         self.IfWait("MPV vs Sigma shown...")
 
-    def SignalHeightScan(self): # improve!
+    def SignalHeightScan(self, channel): # improve!
         #tmp = self.ShowAndWait
         #self.ShowAndWait = True
         SignalHeightScanCanvas = ROOT.TCanvas("SignalHeightScanCanvas", "SignalHeightScan Canvas")
@@ -260,7 +260,7 @@ class AnalysisCollection(Elementary):
         count = 0
         for runnumber in runnumbers:
             if not self.collection[runnumber].TimingAlignmentFailed:
-                SignalHeightScanGraph.SetPoint(count, runnumber, self.collection[runnumber].ExtremaResults['SignalHeight'])
+                SignalHeightScanGraph.SetPoint(count, runnumber, self.collection[runnumber].ExtremaResults[channel]['SignalHeight'])
                 count += 1
             else:
                 print "INFO: Run number {0} excluded in SignalHeightScan plot due to bad timing alignment !"
@@ -272,7 +272,7 @@ class AnalysisCollection(Elementary):
         self.IfWait("SignalHeightScan shown...")
         #self.ShowAndWait = tmp
 
-    def PeakComparison(self, show = True):
+    def PeakComparison(self, channel, show = True):
         print "PeakComparision start"
         if show:
             PeakComparisonCanvasMax = ROOT.TCanvas("PeakComparisonCanvasMax", "PeakComparisonCanvas")
@@ -287,8 +287,8 @@ class AnalysisCollection(Elementary):
 
         for runnumber in runnumbers:
             analysis = self.collection[runnumber]
-            maxima = analysis.ExtremeAnalysis.ExtremaResults["FoundMaxima"]
-            minima = analysis.ExtremeAnalysis.ExtremaResults["FoundMinima"]
+            maxima = analysis.ExtremeAnalysis.ExtremaResults[channel]["FoundMaxima"]
+            minima = analysis.ExtremeAnalysis.ExtremaResults[channel]["FoundMinima"]
             if maxima != None:
                 for peak in maxima:
                     self.PeakPadMax.Fill(*peak)

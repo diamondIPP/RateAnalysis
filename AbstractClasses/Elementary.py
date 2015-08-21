@@ -14,11 +14,17 @@ class Elementary(object):
     colors = [2,3,4,6,7,8,9,1,30,40,28,38,39,20,41,42,43,44,45,46,47,48,49,12,13,14,15]
     GLOBAL_COLOR_INDEX = 0
     SaveDirectory = "Results/"
+    TESTCAMPAIGN = ""
 
     def __init__(self, verbose = False):
         self.verbose = verbose
-        self.ShowAndWait = False
+        self.showAndWait = False
+        if self.TESTCAMPAIGN == "":
+            Elementary.SetTestCampaign("201508")
+            print "No Testcampaign was set. Testcampaign is now set to: 201508"
+            print "To change Testcampaign: cls.SetTestCampaign(namestring)"
         self.LoadConfig()
+
 
     def LoadConfig(self):
         pass
@@ -34,7 +40,7 @@ class Elementary(object):
             pass
 
     def IfWait(self, message):
-        if self.ShowAndWait:
+        if self.showAndWait:
             raw_input(message)
 
     @classmethod
@@ -69,3 +75,8 @@ class Elementary(object):
         color = cls.colors[cls.GLOBAL_COLOR_INDEX]
         cls.GLOBAL_COLOR_INDEX += 1
         return color
+
+    @classmethod
+    def SetTestCampaign(cls, namestring="201508"):
+        cls.TESTCAMPAIGN = namestring
+        print "Testcampaign set to: ", namestring

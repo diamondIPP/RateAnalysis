@@ -23,7 +23,7 @@ class Analysis(Elementary):
     An Analysis Object contains all Data and Results of a SINGLE run.
     '''
 
-    def __init__(self, run, channels=None, config_object = Config(), verbose = False):
+    def __init__(self, run, channels=None, config_object=None, verbose = False):
         '''
         Initializes the Analysis object.
         :param run: run object of type "Run"
@@ -31,6 +31,7 @@ class Analysis(Elementary):
         :return: -
         '''
         Elementary.__init__(self, verbose=verbose)
+        if config_object == None: config_object = BinCollectionConfig()
         if not isinstance(run, Run):
             assert (type(run) is t.IntType), "run has to be either an instance of Run or run number (int)"
             if channels != None:
@@ -50,47 +51,59 @@ class Analysis(Elementary):
             "MeanSignalHisto": False,
             "HitsDistribution": False,
         }
-#
-        #self.ExtremaResults ={
-        #    "TrueNPeaks": None, # MC true number of peaks
-        #    "FoundNMaxima": None, # number of Maxima found
-        #    "FoundMaxima": None, # Maxima found as list [(x1, y1), (x2, y2), ...]
-        #    "FoundNMinima": None, # number of Minima found
-        #    "FoundMinima": None, # Minima found as list [(x1, y1), (x2, y2), ...]
-        #    "Ninjas": None, # number of true peaks not found (only available when MC Run)
-        #    "Ghosts": None, # nunmber of wrong Maxima found (only available when MC Run)
-        #    "SignalHeight": 0.
-        #}
-#
-        #self.SignalHistoFitResults = {
-        #    "FitFunction": None,
-        #    "Peak": None,
-        #    "FWHM": None,
-        #    "Chi2": None,
-        #    "NDF": None,
-#
-        #}
+
+        ExtremaResults ={
+           "TrueNPeaks": None, # MC true number of peaks
+           "FoundNMaxima": None, # number of Maxima found
+           "FoundMaxima": None, # Maxima found as list [(x1, y1), (x2, y2), ...]
+           "FoundNMinima": None, # number of Minima found
+           "FoundMinima": None, # Minima found as list [(x1, y1), (x2, y2), ...]
+           "Ninjas": None, # number of true peaks not found (only available when MC Run)
+           "Ghosts": None, # nunmber of wrong Maxima found (only available when MC Run)
+           "SignalHeight": 0.
+        }
+        self.ExtremaResults = {
+            0: copy.deepcopy(ExtremaResults),
+            3: copy.deepcopy(ExtremaResults),
+        }
+
+        self.SignalHistoFitResults = {
+           "FitFunction": None,
+           "Peak": None,
+           "FWHM": None,
+           "Chi2": None,
+           "NDF": None,
+
+        }
 
     def LoadConfig(self):
-        configfile = "Configuration/AnalysisConfig.cfg"
+        configfile = "Configuration/AnalysisConfig_"+self.TESTCAMPAIGN+".cfg"
         parser = ConfigParser.ConfigParser()
         output = parser.read(configfile)
         print " ---- Config Parser Read ---- \n - ", output, " -\n"
 
-        self.ShowAndWait = parser.getboolean("DISPLAY","ShowAndWait")
-        self.SaveMCData = parser.getboolean("SAVE","SaveMCData")
+
+        self.showAndWait = parser.getboolean("DISPLAY","ShowAndWait")
+        self.saveMCData = parser.getboolean("SAVE","SaveMCData")
  #       self.check_offset = parser.getboolean("DO-ANALYSIS","check_offset")
         self.signalname = parser.get("BASIC", "signalname")
         self.pedestal_correction = parser.getboolean("BASIC", "pedestal_correction")
         self.pedestalname = parser.get("BASIC", "pedestalname")
         self.cut = parser.get("BASIC", "cut")
         self.excludefirst = parser.getint("BASIC", "excludefirst")
+        self.excludeBeforeJump = parser.getint("BASIC", "excludeBeforeJump")
+        self.excludeAfterJump = parser.getint("BASIC", "excludeAfterJump")
+
+        self.loadMaxEvent = parser.getint("TRACKING", "loadMaxEvent")
+        self.minimum_bincontent = parser.getint("TRACKING", "min_bincontent")
+        self.minimum_bincontent = parser.getint("TRACKING", "min_bincontent")
+        self.PadsBinning = parser.getint("TRACKING", "padBinning")
+
 
         if not self.pedestal_correction:
             self.signaldefinition = self.signalname+"[{channel}]"
         else:
             self.signaldefinition = self.signalname+"[{channel}]-"+self.pedestalname+"[{channel}]"
-
 
     def MakePreAnalysis(self, channel=None, mode="mean"):
         '''
@@ -115,38 +128,43 @@ class Analysis(Elementary):
         self.pulserRateCanvas = ROOT.TCanvas("pulserratecanvas{run}".format(run=self.run.run_number), "Pulser Rate Canvas")
         self.pulserRateCanvas.cd()
 
-        self.pulserRateGraphs = ROOT.TGraph()
-        self.pulserRateGraphs.SetNameTitle("pulserrategraph{run}".format(run=self.run.run_number), "Pulser Rate")
+        self.pulserRateGraph = ROOT.TGraph()
+        self.pulserRateGraph.SetNameTitle("pulserrategraph{run}".format(run=self.run.run_number), "Pulser Rate")
         nbins = int(self.run.tree.GetEntries())/binning
 
         for i in xrange(nbins):
             pulserevents = self.run.tree.Draw("1", "pulser", "", binning, i*binning)
             pulserrate = 1.*pulserevents/binning
-            self.pulserRateGraphs.SetPoint(i, (i+0.5)*binning, pulserrate)
-        self.pulserRateGraphs.Draw("AL")
-        self.pulserRateGraphs.GetXaxis().SetTitle("Event Number")
-        self.pulserRateGraphs.GetYaxis().SetTitle("Fraction of Pulser Events")
-        self.pulserRateGraphs.GetYaxis().SetTitleOffset(1.2)
+            self.pulserRateGraph.SetPoint(i, (i+0.5)*binning, pulserrate)
+        self.pulserRateGraph.Draw("AL")
+        self.pulserRateGraph.GetXaxis().SetTitle("Event Number")
+        self.pulserRateGraph.GetYaxis().SetTitle("Fraction of Pulser Events")
+        self.pulserRateGraph.GetYaxis().SetTitleOffset(1.2)
+        self.DrawRunInfo()
         self.pulserRateCanvas.Update()
 
     def DrawRunInfo(self, channel=None, canvas=None, diamondinfo=True, showcut=False, comment=None):
         self.run.DrawRunInfo(channel=channel, canvas=canvas, diamondinfo=diamondinfo, showcut=showcut, comment=comment)
 
 
-    def ShowFFT(self, drawoption="", cut="!pulser", channel=None, startevent=0, endevent=10000000):
+    def ShowFFT(self, drawoption="", cut=None, channel=None, startevent=0, endevent=10000000):
         if channel != None:
             channels = [channel]
         else:
             channels = self.run.GetChannels()
+
         if drawoption in ["MC", "mc", "Mc", "mC"]:
-            cut = ""
             drawoption = ""
             multicolor = True
+            if cut == None:
+                cut = ""
         else:
             multicolor = False
+        if cut == None:
+            cut = "!pulser"
         events = endevent-startevent
         if events<10000000:
-            endevent = self.run.tree.GetEntries()
+            if endevent >= 10000000: endevent = self.run.tree.GetEntries()
             comment = "Events: {start}-{end}".format(start=startevent, end=endevent)
 
         else:
@@ -158,7 +176,9 @@ class Analysis(Elementary):
         self.fftHistos = {}
         self.fftlegend = {}
         ROOT.gStyle.SetOptStat(0)
+        rawcut = cut
         for ch in channels:
+            cut = rawcut
             cut = cut.format(channel=ch)
             self.fftHistos[ch] = ROOT.TH2D("fft_ch{channel}".format(channel=ch), "FFT {"+cut+"}", 5000, 2e-6, 0.0025, 5000, 1e1, 1e4)
             canvas.cd(i)
@@ -172,22 +192,34 @@ class Analysis(Elementary):
             self.fftHistos[ch].GetYaxis().SetTitle("fft_mean")
             #self.fftHistos[ch].Draw(drawoption)
             if multicolor:
-                self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}_sat(5000, 2e-6, 0.0025, 5000, 1e1, 1e4)".format(channel=ch), "is_saturated", "", events, startevent)
+                if cut == "":
+                    self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}_sat(5000, 2e-6, 0.0025, 5000, 1e1, 1e4)".format(channel=ch), "is_saturated[{channel}]".format(channel=ch), "", events, startevent)
+                else:
+                    self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}_sat(5000, 2e-6, 0.0025, 5000, 1e1, 1e4)".format(channel=ch), (cut+"&&is_saturated[{channel}]").format(channel=ch), "", events, startevent)
                 saturated_histo = ROOT.gROOT.FindObject("fft_ch{channel}_sat".format(channel=ch))
                 saturated_histo.SetMarkerStyle(1)
                 saturated_histo.SetMarkerColor(6)
                 saturated_histo.SetFillColor(6)
-                self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}_med(5000, 2e-6, 0.0025, 5000, 1e1, 1e4)".format(channel=ch), "abs(median[{channel}])>8".format(channel=ch), "", events, startevent)
+                if cut == "":
+                    self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}_med(5000, 2e-6, 0.0025, 5000, 1e1, 1e4)".format(channel=ch), "abs(median[{channel}])>8".format(channel=ch), "", events, startevent)
+                else:
+                    self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}_med(5000, 2e-6, 0.0025, 5000, 1e1, 1e4)".format(channel=ch), (cut+"&&abs(median[{channel}])>8").format(channel=ch), "", events, startevent)
                 median_histo = ROOT.gROOT.FindObject("fft_ch{channel}_med".format(channel=ch))
                 median_histo.SetMarkerStyle(1)
                 median_histo.SetMarkerColor(8)
                 median_histo.SetFillColor(8)
-                self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}_flat(5000, 2e-6, 0.0025, 5000, 1e1, 1e4)".format(channel=ch), "sig_spread[{channel}]<10".format(channel=ch), "", events, startevent)
+                if cut == "":
+                    self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}_flat(5000, 2e-6, 0.0025, 5000, 1e1, 1e4)".format(channel=ch), "sig_spread[{channel}]<10".format(channel=ch), "", events, startevent)
+                else:
+                    self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}_flat(5000, 2e-6, 0.0025, 5000, 1e1, 1e4)".format(channel=ch), (cut+"&&sig_spread[{channel}]<10").format(channel=ch), "", events, startevent)
                 flat_histo = ROOT.gROOT.FindObject("fft_ch{channel}_flat".format(channel=ch))
                 flat_histo.SetMarkerStyle(1)
                 flat_histo.SetMarkerColor(4)
                 flat_histo.SetFillColor(4)
-                self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}_pulser(5000, 2e-6, 0.0025, 5000, 1e1, 1e4)".format(channel=ch), "pulser", "", events, startevent)
+                if cut == "":
+                    self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}_pulser(5000, 2e-6, 0.0025, 5000, 1e1, 1e4)".format(channel=ch), "pulser", "", events, startevent)
+                else:
+                    self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}_pulser(5000, 2e-6, 0.0025, 5000, 1e1, 1e4)".format(channel=ch), (cut+"&&pulser").format(channel=ch), "", events, startevent)
                 pulser_histo = ROOT.gROOT.FindObject("fft_ch{channel}_pulser".format(channel=ch))
                 pulser_histo.SetMarkerStyle(1)
                 pulser_histo.SetMarkerColor(2)
@@ -200,8 +232,8 @@ class Analysis(Elementary):
                 self.fftlegend[ch] = ROOT.TLegend(0.1,0.1,0.3,0.3)
                 self.fftlegend[ch].AddEntry(pulser_histo, "pulser", "f")
                 self.fftlegend[ch].AddEntry(saturated_histo, "saturated", "f")
-                self.fftlegend[ch].AddEntry(median_histo, "wide peaks", "f")
-                self.fftlegend[ch].AddEntry(flat_histo, "flat lines", "f")
+                self.fftlegend[ch].AddEntry(median_histo, "median", "f")
+                self.fftlegend[ch].AddEntry(flat_histo, "flat", "f")
                 self.fftlegend[ch].Draw("same")
                 self.DrawRunInfo(channel=ch, comment=comment)
             else:
@@ -358,19 +390,27 @@ class Analysis(Elementary):
 
         return self.cut
 
-    def GetIncludedEvents(self, maxevent=2000000):
+    def GetIncludedEvents(self, maxevent=2000000, excludefirst=True, excludejumps=True):
+        '''
+        Get List Of all event numbers, which are neither excluded by beaminerruptions nor
+        events from the very beginnning
+        :param maxevent: restrict the list to a maximum event number
+        :param excludefirst: if True events in the very beginning are excluded according to config file
+        :param excludejumps: if True events around beam interruptions are excluded acording to config file
+        :return: list of included event numbers
+        '''
         if maxevent>=2000000:
             maxevent = self.run.tree.GetEntries()
-        self.GetBeamInterruptions()
+
         excluded = [i for i in np.arange(0, self.excludefirst+1)] # first events
-        for jump in self.jumps:
-            excluded += [i for i in np.arange(jump-5000, jump+20001)] # events around jumps
+        for jump in self.GetBeamInterruptions():
+            excluded += [i for i in np.arange(jump-self.excludeBeforeJump, jump+self.excludeAfterJump+1)] # events around jumps
         excluded.sort()
         all_events = np.arange(0, maxevent)
         included = np.delete(all_events, excluded)
         return included
 
-    def GetLandau(self, channel=None, canvas=None, drawoption="", color=ROOT.kBlue, normalized=True):
+    def ShowLandau(self, channel=None, canvas=None, drawoption="", color=ROOT.kBlue, normalized=True):
         '''
 
         :param channel:
@@ -408,26 +448,30 @@ class Analysis(Elementary):
                 histo.Draw(drawoption)
                 canvas.Update()
 
-    def LoadTrackData(self, minimum_bincontent = 1): # min_bincontent in config file
+    def LoadTrackData(self, minimum_bincontent=None): # min_bincontent in config file
         '''
-        Create a bin collection object as self.Pad and load data from ROOT TTree
-        into the Pad object. Then get the 2-dim signal distribution from self.Pad
+        Create a bin collection object as self.Pads and load data from ROOT TTree
+        into the Pad object. Then get the 2-dim signal distribution from self.Pads
         :param minimum_bincontent: Bins with less hits are ignored
         :return: -
         '''
-        assert (minimum_bincontent > 0), "minimum_bincontent has to be a positive integer" # bins with less hits are ignored
-        self.minimum_bincontent = minimum_bincontent
+        print "Loading Track information with \n\tmin_bincontent: {mbc}\n\tfirst: {first}\n\tmaxevent: {me}".format(mbc=self.minimum_bincontent, first=self.excludefirst, me=self.loadMaxEvent)
+        if minimum_bincontent != None: self.minimum_bincontent = minimum_bincontent
+        assert (self.minimum_bincontent > 0), "minimum_bincontent has to be a positive integer" # bins with less hits are ignored
 
         # create a bin collection object:
-        self.Pad = {}
+        self.Pads = {}
         for ch in self.run.GetChannels():
-            self.Pad[ch] = BinCollection(*self.config_object.Get2DAttributes(), parent_analysis_obj=self, channel=ch)
+            self.Pads[ch] = BinCollection(*self.config_object.Get2DAttributes(), parent_analysis_obj=self, channel=ch)
 
         # fill two 2-dim histograms to collect the hits and signal strength
         x_ = {}
         y_ = {}
         channels = self.run.GetChannels()
-        included = self.GetIncludedEvents(maxevent=100000) # all event numbers without jump events and initial cut
+        if self.loadMaxEvent > 0:
+            included = self.GetIncludedEvents(maxevent=self.loadMaxEvent) # all event numbers without jump events and initial cut
+        else:
+            included = self.GetIncludedEvents() # all event numbers without jump events and initial cut
 
         if not self.pedestal_correction:
             signaldef = "self.run.tree.{signal}[{channel}]"
@@ -459,14 +503,14 @@ class Analysis(Elementary):
                 INVfft_max = 1./self.run.tree.fft_max[ch]
 
                 if (not pulser and not is_saturated and fft_mean>50 and fft_mean<500 and INVfft_max>1e-4):
-                    self.Pad[ch].Fill(x_[ch], y_[ch], signal_)
+                    self.Pads[ch].Fill(x_[ch], y_[ch], signal_)
+        print "Tracking information of ",len(included), " events loaded"
 
 
-
-        #self.Pad[channel].MakeFits()
+        #self.Pads[channel].MakeFits()
         self.Signal2DDistribution = {}
         for ch in channels:
-            self.Signal2DDistribution[ch] = self.Pad[ch].GetMeanSignalDistribution(self.minimum_bincontent)
+            self.Signal2DDistribution[ch] = self.Pads[ch].GetMeanSignalDistribution(self.minimum_bincontent)
             self.Signal2DDistribution[ch].SetDirectory(0)
             self.Signal2DDistribution[ch].SetStats(False)
             self.Signal2DDistribution[ch].GetXaxis().SetTitle("pos x / cm")
@@ -475,7 +519,7 @@ class Analysis(Elementary):
 
         self.Checklist["LoadTrackData"] = True
 
-    def CreateHitMap(self, channel, saveplot = False, drawoption = "colz", RemoveLowStatBins = 0):
+    def ShowHitMap(self, channel, saveplot = False, drawoption = "colz", RemoveLowStatBins = 0):
         assert (channel in self.run.GetChannels()), "channel not selected"
         if not self.Checklist["LoadTrackData"]:
             self.LoadTrackData()
@@ -483,12 +527,12 @@ class Analysis(Elementary):
         if RemoveLowStatBins > 0:
             if type(RemoveLowStatBins) == t.BooleanType:
                 RemoveLowStatBins = 10
-            bins = (self.Pad[channel].counthisto.GetNbinsX() + 2)*(self.Pad[channel].counthisto.GetNbinsY() + 2)
+            bins = (self.Pads[channel].counthisto.GetNbinsX() + 2)*(self.Pads[channel].counthisto.GetNbinsY() + 2)
             for bin in xrange(bins):
-                if self.Pad[channel].counthisto.GetBinContent(bin) < RemoveLowStatBins:
-                    coordinates = self.Pad[channel].GetBinCenter(bin)
-                    content = self.Pad[channel].counthisto.GetBinContent(bin)
-                    self.Pad[channel].counthisto.Fill(coordinates[0], coordinates[1], -content)
+                if self.Pads[channel].counthisto.GetBinContent(bin) < RemoveLowStatBins:
+                    coordinates = self.Pads[channel].GetBinCenter(bin)
+                    content = self.Pads[channel].counthisto.GetBinContent(bin)
+                    self.Pads[channel].counthisto.Fill(coordinates[0], coordinates[1], -content)
             extension = "_min"+str(RemoveLowStatBins)
         else:
             extension = ""
@@ -497,16 +541,16 @@ class Analysis(Elementary):
         ROOT.gStyle.SetNumberContours(999)
         canvas = ROOT.TCanvas("canvas", "Hits", 500, 500) # adjust the width slightly
         canvas.cd()
-        self.Pad[channel].counthisto.SetStats(False)
-        self.Pad[channel].counthisto.Draw(drawoption)#"surf2")
-        #self.Pad[channel].counthisto.Draw("CONT1 SAME")
+        self.Pads[channel].counthisto.SetStats(False)
+        self.Pads[channel].counthisto.Draw(drawoption)#"surf2")
+        #self.Pads[channel].counthisto.Draw("CONT1 SAME")
         if saveplot:
             self.SavePlots("HitMap"+extension, "png")
         canvas.Update()
         self.IfWait("Hits Distribution shown")
         self.Checklist["HitsDistribution"] = True
 
-    def CreateSignalMaps(self, saveplots = False, savename = "2DSignalDistribution",ending="png",saveDir = "Results/", show3d = False):
+    def ShowSignalMaps(self, saveplots = False, savename = "2DSignalDistribution",ending="png",saveDir = "Results/", show3d = False):
         '''
         Creates 2D Signal Distribution plot
         :param saveplots: if True, save the plot
@@ -554,9 +598,9 @@ class Analysis(Elementary):
         :param show:
         :return:
         '''
-        if not hasattr(self, "Pad"):
-            print "Performing auto analysis with minimum binhits 1"
-            self.LoadTrackData(minimum_bincontent=1)
+        if not hasattr(self, "Pads"):
+            print "Performing auto analysis"
+            self.LoadTrackData(minimum_bincontent=self.minimum_bincontent)
         if saveplots:
             show = True
 
@@ -581,7 +625,7 @@ class Analysis(Elementary):
         nbins = (self.Signal2DDistribution[channel].GetNbinsX()+2)*(self.Signal2DDistribution[channel].GetNbinsY()+2)
         for i in xrange(nbins):
             bincontent = self.Signal2DDistribution[channel].GetBinContent(i)
-            binhits = self.Pad[channel].counthisto.GetBinContent(i)
+            binhits = self.Pads[channel].counthisto.GetBinContent(i)
             if binhits >= self.minimum_bincontent:
                 self.MeanSignalHisto[channel].Fill(bincontent)
         if show:
@@ -595,7 +639,7 @@ class Analysis(Elementary):
 
         self.Checklist["MeanSignalHisto"] = True
 
-    def CreateExtendedSignalMaps(self,saveplots = False,savename = "SignalDistribution",ending="png",saveDir = None, PS=False, test=""):
+    def ShowExtendedSignalMaps(self,saveplots = False,savename = "SignalDistribution",ending="png",saveDir = None, PS=False, test=""):
         self.combined_canvas_name = "combined_canvas"+test
         self.combined_canvas = ROOT.gROOT.GetListOfCanvases().FindObject(self.combined_canvas_name)
 
@@ -640,5 +684,15 @@ class Analysis(Elementary):
             ROOT.gStyle.SetHistFillColor(7)
             ROOT.gStyle.SetHistFillStyle(3003)
         self.IfWait("Combined 2D Signal DistributionsShown")
+
+    def FindMaxima(self, channel, show=False):
+        if not hasattr(self, "Pads"):
+            self.LoadTrackData()
+        self.Pads[channel].FindMaxima(minimum_bincount=self.minimum_bincontent, show=show)
+
+    def FindMinima(self, channel, show=False):
+        if not hasattr(self, "Pads"):
+            self.LoadTrackData()
+        self.Pads[channel].FindMinima(minimum_bincount=self.minimum_bincontent, show=show)
 
 
