@@ -35,7 +35,7 @@ class Analysis(Elementary):
         if not isinstance(run, Run):
             assert (type(run) is t.IntType), "run has to be either an instance of Run or run number (int)"
             if channels != None:
-                run = Run(run, channels=channels)
+                run = Run(run, diamonds=channels)
             else:
                 run = Run(run)
         else:
