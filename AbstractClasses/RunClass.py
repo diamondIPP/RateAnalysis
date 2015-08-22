@@ -56,11 +56,11 @@ class Run(Elementary):
     operationmode = ''
     TrackingPadAnalysis = {}
 
-    def __init__(self, run_number, channels=3, validate = False, verbose = False):
+    def __init__(self, run_number, diamonds=3, validate = False, verbose = False):
         '''
 
         :param run_number: number of the run
-        :param channels: 0x1=ch0; 0x2=ch3
+        :param diamonds: 0x1=ch0; 0x2=ch3
         :param validate:
         :param verbose:
         :return:
@@ -86,7 +86,7 @@ class Run(Elementary):
             0: self.RunInfo["hv dia1"],
             3: self.RunInfo["hv dia2"]
         }
-        self.SetChannels(channels)
+        self.SetChannels(diamonds)
         self.IsMonteCarlo = False
 
     def LoadConfig(self):
@@ -284,11 +284,11 @@ class Run(Elementary):
         else:
             return False
 
-    def SetChannels(self, channels):
-        assert(channels>=1 and channels<=3), "invalid channel number: 0x1=ch0; 0x2=ch3"
+    def SetChannels(self, diamonds):
+        assert(diamonds>=1 and diamonds<=3), "invalid diamonds number: 0x1=ch0; 0x2=ch3"
         self.analyzeCh = {
-            0: (channels & 1<<0) == 1<<0,
-            3: (channels & 1<<1) == 1<<1
+            0: (diamonds & 1<<0) == 1<<0,
+            3: (diamonds & 1<<1) == 1<<1
         }
 
     def GetChannels(self):

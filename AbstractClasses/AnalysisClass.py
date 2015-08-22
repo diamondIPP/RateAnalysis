@@ -399,7 +399,7 @@ class Analysis(Elementary):
     def Chi2Test(self):
         pass
 
-    def GetMPVSigmas(self,show = False, minimum_counts = 10):
+    def GetMPVSigmas(self, show = False, minimum_counts = 10):
         '''
         Returns MPVs and signals form all Bins of current run as Lists
         :return:

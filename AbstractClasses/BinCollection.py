@@ -578,7 +578,14 @@ class BinCollection(Elementary):
             self.IfWait('show signal in row {:.3f}..'.format(rowheight))
         return signals
 
-    def CreateTotalsignalHistogram(self, saveplot = False, scale = False, showfit = False):
+    def CreateTotalSignalHistogram(self, saveplot = False, scale = False, showfit = False): # choose between langaus or landau fit
+        '''
+
+        :param saveplot:
+        :param scale:
+        :param showfit: if True, it will fit a 'langaus' and store it's fit results in analysis_obj.signalHistoFitResults
+        :return:
+        '''
         canvas = ROOT.TCanvas('canvas', 'canvas')
         canvas.cd()
         self.signalHisto.GetXaxis().SetTitle("Signal Response [ADC Units]")
@@ -620,6 +627,7 @@ class BinCollection(Elementary):
         '''
         self.maximaSearch = FindMaxima(self)
         self.maximaSearch.Find(threshold=threshold, minimum_bincount=minimum_bincount, show=show)
+        self.parent_analysis_obj.Checklist["FindExtrema"]["Maxima"][self.channel] = True
 
     def FindMinima(self, threshold = None, minimum_bincount = 5, show = False):
         '''
@@ -630,6 +638,7 @@ class BinCollection(Elementary):
         '''
         self.minimaSearch = FindMinima(self)
         self.minimaSearch.Find(threshold=threshold, minimum_bincount=minimum_bincount, show=show)
+        self.parent_analysis_obj.Checklist["FindExtrema"]["Minima"][self.channel] = True
 
     def UpdateBinAttributes(self):
         for i in xrange(len(self.listOfBins)):

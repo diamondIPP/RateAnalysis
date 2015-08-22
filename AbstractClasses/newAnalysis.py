@@ -48,11 +48,24 @@ class Analysis(Elementary):
         self.Checklist = { # True if Plot was created # -> USED?!
             "RemoveBeamInterruptions": False,
             "LoadTrackData": False,
-            "MeanSignalHisto": False,
+            "MeanSignalHisto": {
+                0: False,
+                3: False
+            },
             "HitsDistribution": False,
+            "FindExtrema": {
+                "Maxima": {
+                    0: False,
+                    3: False
+                },
+                "Minima": {
+                    0: False,
+                    3: False
+                }
+            }
         }
 
-        ExtremaResults ={
+        extremaResults ={
            "TrueNPeaks": None, # MC true number of peaks
            "FoundNMaxima": None, # number of Maxima found
            "FoundMaxima": None, # Maxima found as list [(x1, y1), (x2, y2), ...]
@@ -62,18 +75,21 @@ class Analysis(Elementary):
            "Ghosts": None, # nunmber of wrong Maxima found (only available when MC Run)
            "SignalHeight": 0.
         }
-        self.ExtremaResults = {
-            0: copy.deepcopy(ExtremaResults),
-            3: copy.deepcopy(ExtremaResults),
+        self.extremaResults = {
+            0: copy.deepcopy(extremaResults),
+            3: copy.deepcopy(extremaResults)
         }
 
-        self.SignalHistoFitResults = {
+        signalHistoFitResults = {
            "FitFunction": None,
            "Peak": None,
            "FWHM": None,
            "Chi2": None,
            "NDF": None,
-
+        }
+        self.signalHistoFitResults = {
+            0: copy.deepcopy(signalHistoFitResults),
+            3: copy.deepcopy(signalHistoFitResults)
         }
 
     def LoadConfig(self):
@@ -85,7 +101,6 @@ class Analysis(Elementary):
 
         self.showAndWait = parser.getboolean("DISPLAY","ShowAndWait")
         self.saveMCData = parser.getboolean("SAVE","SaveMCData")
- #       self.check_offset = parser.getboolean("DO-ANALYSIS","check_offset")
         self.signalname = parser.get("BASIC", "signalname")
         self.pedestal_correction = parser.getboolean("BASIC", "pedestal_correction")
         self.pedestalname = parser.get("BASIC", "pedestalname")
@@ -461,13 +476,13 @@ class Analysis(Elementary):
 
         # create a bin collection object:
         self.Pads = {}
-        for ch in self.run.GetChannels():
+        for ch in [0,3]: # self.run.GetChannels():
             self.Pads[ch] = BinCollection(*self.config_object.Get2DAttributes(), parent_analysis_obj=self, channel=ch)
 
         # fill two 2-dim histograms to collect the hits and signal strength
         x_ = {}
         y_ = {}
-        channels = self.run.GetChannels()
+        channels = [0,3] # self.run.GetChannels()
         if self.loadMaxEvent > 0:
             included = self.GetIncludedEvents(maxevent=self.loadMaxEvent) # all event numbers without jump events and initial cut
         else:
@@ -607,7 +622,7 @@ class Analysis(Elementary):
         #self.signal_canvas = ROOT.TCanvas()
         #ROOT.SetOwnership(self, False)
         if show:
-            if hasattr(self, "signal_canvas"):
+            if hasattr(self, "signal_canvas") and bool(self.signal_canvas):
                 self.signal_canvas.Clear()
             else:
                 self.signal_canvas = ROOT.TCanvas("signal_canvas{run}", "Mean Signal Maps")
@@ -618,7 +633,8 @@ class Analysis(Elementary):
         minimum = self.Signal2DDistribution[channel].GetMinimum()
         maximum = self.Signal2DDistribution[channel].GetMaximum()
         self.MeanSignalHisto_name = "MeanSignalHisto"+str(self.run.run_number)+str(channel)
-        self.MeanSignalHisto = {}
+        if not hasattr(self, "MeanSignalHisto"):
+            self.MeanSignalHisto = {}
         self.MeanSignalHisto[channel] = ROOT.TH1D(self.MeanSignalHisto_name, "Run{run}: {diamond} Mean Signal Histogram".format(run=self.run.run_number, diamond=self.run.diamondname[channel]), 100, minimum,maximum)
         ROOT.SetOwnership(self.MeanSignalHisto[channel], False)
 
@@ -626,7 +642,7 @@ class Analysis(Elementary):
         for i in xrange(nbins):
             bincontent = self.Signal2DDistribution[channel].GetBinContent(i)
             binhits = self.Pads[channel].counthisto.GetBinContent(i)
-            if binhits >= self.minimum_bincontent:
+            if binhits >= self.minimum_bincontent and bincontent != 0: # bincontent != 0: bins in overflow frame give 0 content by ROOT.TH2D
                 self.MeanSignalHisto[channel].Fill(bincontent)
         if show:
             self.MeanSignalHisto[channel].Draw()
@@ -637,7 +653,7 @@ class Analysis(Elementary):
         if saveplots:
             self.SavePlots(savename, ending, saveDir)
 
-        self.Checklist["MeanSignalHisto"] = True
+        self.Checklist["MeanSignalHisto"][channel] = True
 
     def ShowExtendedSignalMaps(self,saveplots = False,savename = "SignalDistribution",ending="png",saveDir = None, PS=False, test=""):
         self.combined_canvas_name = "combined_canvas"+test
@@ -695,4 +711,297 @@ class Analysis(Elementary):
             self.LoadTrackData()
         self.Pads[channel].FindMinima(minimum_bincount=self.minimum_bincontent, show=show)
 
+    def GetMPVSigmas(self, channel, show = False):
+        '''
+        Returns MPVs and sigmas form all Bins of current run as Lists.
+        If shown=True then a scatter plot is shown
+        :return:
+        '''
+        if not hasattr(self, "Pads"):
+            self.LoadTrackData()
 
+        MPVs = []
+        MPVErrs = []
+        Sigmas = []
+        SigmaErrs = []
+        for bin in self.Pads[channel].listOfBins:
+            entries = bin.GetEntries()
+            if entries >= self.minimum_bincontent:
+                if bin.Fit["MPV"] == None:
+                    bin.FitLandau()
+                MPVs.append(bin.Fit["MPV"])
+                MPVErrs.append(bin.Fit["MPVErr"])
+                Sigmas.append(bin.Fit["Sigma"])
+                SigmaErrs.append(bin.Fit["SigmaErr"])
+
+        if show:
+            canvas = ROOT.TCanvas("MPVSigmaCanvas", "MPVSigmaCanvas")
+            canvas.cd()
+            graph = ROOT.TGraphErrors()
+            graph.SetNameTitle("mpvsigmascatterplot", "Landau Fit Parameters of all Bins")
+            count = 0
+            for i in xrange(len(MPVs)):
+                graph.SetPoint(count, MPVs[i], Sigmas[i])
+                graph.SetPointError(count, MPVErrs[i], SigmaErrs[i])
+                count += 1
+            graph.Draw("AP")
+            graph.GetYaxis().SetTitle("Sigma of Landau fit")
+            graph.GetXaxis().SetTitle("MPV of Landau fit")
+            self.DrawRunInfo(channel=channel)
+            canvas.Update()
+            self.IfWait("MPV vs Sigma shown")
+
+        return MPVs, Sigmas, MPVErrs, SigmaErrs
+
+    def GetSignalHeight(self, channel, min_percent = 5, max_percent = 99):
+        '''
+        Calculates the spread of mean signal response from the 2D signal response map.
+        The spread is taken from min_percent quantile to max_percent quantile.
+        Definition: SignalHeight := max_percent_quantile / min_percent_quantile - 1
+        :param channel:
+        :param min_percent:
+        :param max_percent:
+        :return:
+        '''
+        if self.Checklist["FindExtrema"]["Maxima"][channel]:
+            self.FindMaxima(channel=channel)
+
+        if not self.Checklist["MeanSignalHisto"][channel]:
+            self.CreateMeanSignalHistogram(channel=channel)
+        q = array('d', [1.*min_percent/100., 1.*max_percent/100.])
+        y = array('d', [0,0])
+        self.MeanSignalHisto[channel].GetQuantiles(2, y, q)
+        SignalHeight = y[1]/y[0]-1.
+        self.VerbosePrint('\nApproximated Signal Amplitude: {0:0.0f}% - ({1:0.0f}%/{2:0.0f}% Quantiles approximation)\n'.format(100.*(SignalHeight), max_percent, min_percent))
+        self.extremaResults[channel]['SignalHeight'] = SignalHeight
+        return SignalHeight
+
+    def ShowTotalSignalHistogram(self, channel, save = False, scale = False, showfit=False):
+        '''
+        The same as self.ShowLandau(), but with just the data with tracking information (i.e.
+        the data that is stored in self.Pads[ch])
+        :param channel: 
+        :param save: 
+        :param scale: 
+        :param showfit: produce a 'Langaus' fit
+        :return:
+        '''
+        if  hasattr(self, "Pads"):
+            self.Pads[channel].CreateTotalSignalHistogram(saveplot=save, scale=scale, showfit=showfit)
+            # if showfit:
+            #     self.GetSignalHistoFitResults() # Get the Results from self.Extremeanalysis.signalHistoFitResults to self.signalHistoFitResults
+        else:
+            self.LoadTrackData()
+            self.Pads[channel].CreateTotalSignalHistogram(saveplot=save, scale=scale, showfit=showfit)
+
+    def GetSignalHistoFitResults(self, channel):
+        '''
+        Get Fit Results of signalHisto fit ('Langau')
+        :param channel: 
+        :return: FitFunction, Peak, FWHM, Chi2, NDF
+        '''
+        if self.signalHistoFitResults[channel]["Peak"] != None:
+            FitFunction = self.signalHistoFitResults[channel]["FitFunction"]
+            Peak = self.signalHistoFitResults[channel]["Peak"]
+            FWHM = self.signalHistoFitResults[channel]["FWHM"]
+            Chi2 = self.signalHistoFitResults[channel]["Chi2"]
+            NDF = self.signalHistoFitResults[channel]["NDF"]
+            return FitFunction, Peak, FWHM, Chi2, NDF
+        else:
+            self.ShowTotalSignalHistogram(channel=channel, save=False, showfit=True)
+            if (self.signalHistoFitResults[channel]["Peak"] != None) or (hasattr(self, "ExtremeAnalysis") and self.ExtremeAnalysis.signalHistoFitResults[channel]["Peak"] != None):
+                self.GetSignalHistoFitResults()
+            else:
+                assert(False), "BAD SignalHistogram Fit, Stop program due to possible infinity loop"
+    
+    def SignalTimeEvolution(self, channel, Mode="Mean", show=True, time_spacing = 3, save = True, binnumber = None, RateTimeEvolution=False, nameExtension=None): # CUTS!! not show: save evolution data / Comment more
+        '''
+        Creates Signal vs time plot. The time is bunched into time buckets of width time_spaceing,
+        from all Signals inside one time bucket the Mean or the MPV is evaluated and plotted in a TGraph.
+        The Mean is taken from the histogramm of the particular time bucket. The MPV is simply the
+        Position (Center) of the Bin containing the most entries in the time bucket histogram.
+        :param Mode: What should be plotted as y: either "Mean" or "MPV"
+        :param show:
+        :param time_spacing: time bucket width in minutes
+        :param save:
+        :return:
+        '''
+        True # MAKE FASTER USING self.GetEventAtTime()
+        assert(Mode in ["Mean", "MPV"]), "Wrong Mode, Mode has to be `Mean` or `MPV`"
+        if not hasattr(self, "Pads"):
+            self.LoadTrackData()
+        if True: #not self.run.IsMonteCarlo:
+
+            # Names
+            if binnumber != None:
+                binCenter = self.Pads[channel].GetBinCenter(binnumber)
+                if nameExtension is None:
+                    nameExtension = "_Bin{0:.3f}_{1:.3f}".format(*binCenter)
+            else:
+                binCenter = 0,0
+                if nameExtension is None:
+                    nameExtension = "OverAll"
+            if RateTimeEvolution:
+                type_ = "Rate"
+            else:
+                type_ = "Signal"
+
+            results = {}
+            self.SignalEvolution = ROOT.TGraphErrors()
+            self.SignalEvolution.SetNameTitle(type_+"Evolution", type_+" Time Evolution "+nameExtension)
+
+            self.run.tree.GetEntry(1)
+            starttime = self.run.tree.time
+            self.run.tree.GetEntry(self.run.tree.GetEntries())
+            # endtime = self.run.tree.time
+            ok_deltatime = 0
+            TimeERROR = False
+            for i in xrange(self.run.tree.GetEntries()-1):
+                i += 1
+                # read the ROOT TTree
+                self.run.tree.GetEntry(i)
+                signal_ = self.run.tree.sig_spread[0]
+                time_ = self.run.tree.time
+                deltatime_min = (time_-starttime)/60000.
+                if deltatime_min < -1: # possible time_stamp reset
+                    deltatime_min = ok_deltatime + time_/60000.
+                    TimeERROR = True
+                else:
+                    ok_deltatime = deltatime_min
+                time_bucket = int(deltatime_min)/int(time_spacing)*int(time_spacing)
+                pulser = self.run.tree.pulser
+
+                # check if hit is inside bin (ONLY FOR BIN SIGNAL TIME EVOLUTION)
+                if binnumber != None:
+                    x_ = self.run.tree.diam1_track_x
+                    y_ = self.run.tree.diam1_track_y
+                    binnumber_ = self.Pads[channel].GetBinNumber(x_, y_)
+                else:
+                    binnumber_ = None
+
+                if not pulser and (binnumber == None or binnumber == binnumber_ ):
+                    try:
+                        results[time_bucket].append(signal_)
+                    except KeyError:
+                        results[time_bucket] = [signal_]
+            if TimeERROR:
+                print "\n\n\n\n\nWARNING: Error occured in time flow of Run "+str(self.run.run_number)+". Possible reset of timestamp during data taking!\n\n\n\n\n"
+
+            time_buckets = results.keys()
+            time_buckets.sort()
+
+            # drop last bucket if Rate Time Scan (last bucket may be overshooting the data time window)
+            if RateTimeEvolution:
+                time_buckets = time_buckets[:-1]
+
+            count = 0
+            _, xmin, xmax, _, ymin, ymax =  self.Pads[channel].Get2DAttributes()
+            area = (xmax-xmin)*(ymax-ymin)
+            for t in time_buckets:
+                histo = ROOT.TH1D(type_+"Evolution_time_"+str(t), type_+" Time Histogram for t = {0:0.0f}-{1:0.0f}min".format(t, t+int(time_spacing)), 500, 0, 500)
+                for i in xrange(len(results[t])):
+                    histo.Fill(results[t][i])
+                if Mode == "Mean" or RateTimeEvolution:
+                    if RateTimeEvolution:
+                        if binnumber != None:
+                            c = 1./(60.*time_spacing*(self.config_object.config["2DHist"]["binsize"])**2)
+                            N = histo.GetEntries()
+                            self.SignalEvolution.SetPoint(count, t, c*N) # Rate/cm^2 = Entries/(seconds*(binsize)**2)
+                        else:
+                            c = 1./(60.*time_spacing*area)
+                            N = histo.GetEntries()
+                            self.SignalEvolution.SetPoint(count, t, c*N) # Rate/cm^2 = Entries/(seconds*Area)
+                        self.SignalEvolution.SetPointError(count,0,c*np.sqrt(N))
+                        signalname = "Rate / Hz/cm^2"
+                    else:
+                        self.SignalEvolution.SetPoint(count, t, histo.GetMean())
+                        self.SignalEvolution.SetPointError(count, 0, histo.GetRMS()/np.sqrt(histo.GetEntries()))
+                        signalname = "Mean of Signal Response"
+                elif Mode == "MPV":
+                    self.SignalEvolution.SetPoint(count, t, histo.GetBinCenter(histo.GetMaximumBin()))
+                    self.SignalEvolution.SetPointError(count, 0, 0)
+                    signalname = "MPV of Signal Response"
+                count += 1
+                del histo
+                ROOT.gROOT.Delete(type_+"Evolution_time_"+str(t))
+
+            self.SignalEvolution.GetXaxis().SetTitle("Time / min")
+            self.SignalEvolution.GetYaxis().SetTitle(signalname)
+            self.SignalEvolution.GetYaxis().SetTitleOffset(1.1)
+            if RateTimeEvolution: # Start y axis from 0 when rate time evolution
+                if binnumber != None: # just one bin
+                    self.SignalEvolution.GetYaxis().SetRangeUser(0, 4000)#self.SignalEvolution.GetYaxis().GetXmax())
+                else: #overall
+                    self.SignalEvolution.GetYaxis().SetRangeUser(0, 1700)#self.SignalEvolution.GetYaxis().GetXmax())
+            canvas = ROOT.TCanvas("signaltimeevolution", "signaltimeevolution")
+
+            self.SignalEvolution.Draw("ALP*")
+            # Draw a second axis if it is a RateTimeEvolution:
+            if RateTimeEvolution:
+                canvas.Update()
+                rightaxis = ROOT.TGaxis(ROOT.gPad.GetUxmax(), ROOT.gPad.GetUymin(), ROOT.gPad.GetUxmax(), ROOT.gPad.GetUymax(), ROOT.gPad.GetUymin()/c, ROOT.gPad.GetUymax()/c, 20210, '+L')
+                rightaxis.SetTitle('# Hits')
+                rightaxis.SetTitleOffset(1.2)
+                ROOT.SetOwnership(rightaxis, False)
+                rightaxis.Draw('SAME')
+            if save:
+                self.SavePlots(type_+"TimeEvolution"+Mode+nameExtension+".png")
+            if TimeERROR:
+                self.SignalEvolution.SaveAs(self.SaveDirectory+"ERROR_"+type_+"TimeEvolution"+Mode+nameExtension+".root")
+            self.IfWait("Showing "+type_+" Time Evolution..")
+            canvas.Close()
+        else:
+            print "Run is Monte Carlo. Signal- and Rate Time Evolution cannot be created."
+
+    def GetEventAtTime(self, dt):
+        '''
+        Returns the eventnunmber at time dt from beginning of the run.
+
+        Accuracy: +- 2 Events
+
+        The event number is evaluated using a newton's method for finding
+        roots, i.e.
+            f(e) := t(e) - t  -->  f(e) == 0
+
+            ==> iteration: e = e - f(e)/f'(e)
+
+            where t(e) is the time evaluated at event e and t := t_0 + dt
+            break if |e_old - e_new| < 2
+        :param time: time in seconds from start
+        :return: event_number
+        '''
+        time = dt*1000 # convert to milliseconds
+
+        #get t0 and tmax
+        maxevent = self.run.tree.GetEntries()
+        self.run.tree.GetEntry(0)
+        t_0 = self.run.tree.time
+        self.run.tree.GetEntry(maxevent-1)
+        t_max = self.run.tree.time
+
+        time = t_0 + time
+
+        seedEvent = int( (1.*(time - t_0) * maxevent) / (t_max - t_0) )
+
+        def slope_f(self, event):
+            self.run.tree.GetEntry(event+10)
+            time_high = self.run.tree.time
+            self.run.tree.GetEntry(event-10)
+            time_low = self.run.tree.time
+            #print "slope calculation at event ", event, ": time_high = ", time_high, " time_low = ", time_low, " -> dt/201 = ", 1.*(time_high-time_low)/201.
+            return 1.*(time_high-time_low)/21.
+
+        count = 0
+        goOn = True
+        event = seedEvent
+        while goOn and count<20:
+            old_event = event
+            self.run.tree.GetEntry(event)
+            f_event = self.run.tree.time - time
+            #print "f_event = {ftime} - {time} = ".format(ftime=self.run.tree.time, time=time), f_event
+            #print "slope_f(self, event) = ", slope_f(self, event)
+            event = int(event - 1*f_event/slope_f(self, event))
+            if abs(event-old_event)<2:
+                goOn = False
+            count += 1
+        return event

@@ -334,12 +334,12 @@ class FindExtrema(Elementary):
                 print "\n{0:.1f}% of generated peaks found.".format(100.*(npeaks-len(Ninjas))/npeaks)
             print len(Ninjas)," Ninjas."
             print len(Ghosts)," Ghosts.\n"
-            self.BinCollectionObj.parent_analysis_obj.ExtremaResults[self.channel]['TrueNPeaks'] = npeaks
-            self.BinCollectionObj.parent_analysis_obj.ExtremaResults[self.channel]['Ninjas'] = len(Ninjas)
-            self.BinCollectionObj.parent_analysis_obj.ExtremaResults[self.channel]['Ghosts'] = len(Ghosts)
+            self.BinCollectionObj.parent_analysis_obj.extremaResults[self.channel]['TrueNPeaks'] = npeaks
+            self.BinCollectionObj.parent_analysis_obj.extremaResults[self.channel]['Ninjas'] = len(Ninjas)
+            self.BinCollectionObj.parent_analysis_obj.extremaResults[self.channel]['Ghosts'] = len(Ghosts)
         print "Export Maximaresults of channel: ", self.channel, " (", self.ExtremaType, ")"
-        self.BinCollectionObj.parent_analysis_obj.ExtremaResults[self.channel]['FoundN'+self.ExtremaType] = len(Vote5Extrema)
-        self.BinCollectionObj.parent_analysis_obj.ExtremaResults[self.channel]['Found'+self.ExtremaType] = self.BinCollectionObj.GetBinCenter(Vote5Extrema) # store REAL parent analysis, not parent.ExtremeAnalysis
+        self.BinCollectionObj.parent_analysis_obj.extremaResults[self.channel]['FoundN'+self.ExtremaType] = len(Vote5Extrema)
+        self.BinCollectionObj.parent_analysis_obj.extremaResults[self.channel]['Found'+self.ExtremaType] = self.BinCollectionObj.GetBinCenter(Vote5Extrema) # store REAL parent analysis, not parent.ExtremeAnalysis
 
         self.found_extrema = ROOT.TGraph()
         for i in xrange(len(Vote5Extrema)):
