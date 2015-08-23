@@ -78,6 +78,7 @@ class Run(Elementary):
             self.SetRun(run_number)
         else:
             self.LoadRunInfo()
+        print self.RunInfo
         self.diamondname = {
             0: str(self.RunInfo["diamond 1"]),
             3: str(self.RunInfo["diamond 2"])
@@ -100,6 +101,7 @@ class Run(Elementary):
         self.treename = runConfigParser.get('BASIC', 'treename')
         self.sshrunpath = runConfigParser.get('BASIC', 'runpath')
         self.runinfofile = runConfigParser.get('BASIC', 'runinfofile')
+        self.runplaninfofile = runConfigParser.get('BASIC', 'runplaninfofile')
 
     def LoadRunInfo(self):
         self.RunInfo = {}
@@ -120,14 +122,8 @@ class Run(Elementary):
             else:
                 self.RunInfo = default_info
             self.current_run = self.RunInfo
-            if self.RunInfo is None:
-                self.RunInfo = {}
-                self.RunInfo = default_info
-                print "\nWARNING: No RunInfo could be loaded from file! \n"
-                return 0
-            else:
-                return 1
         else:
+            self.RunInfo = default_info
             return 0
 
     def RenameRunInfoKeys(self):
@@ -135,6 +131,7 @@ class Run(Elementary):
         try:
             for key in default_info.keys():
                 tmp = self.RunInfo[key]
+                del tmp
         except KeyError:
             rename = True
         else:
@@ -273,11 +270,7 @@ class Run(Elementary):
             #RunInfo.__init__(self,*args)
 
             if loadROOTFile:
-                print "LOADING: ", fullROOTFilePath
-                self.rootfile = ROOT.TFile(fullROOTFilePath)
-                self.tree = self.rootfile.Get(self.treename) # Get TTree called "track_info"
-
-            assert(bool(self.tree) and bool(self.rootfile)), "Could not load root file: \n\t"+fullROOTFilePath
+                self._LoadROOTFile(fullROOTFilePath)
 
             #self.diamond.SetName(self.runs[0]['diamond'])
             return True
@@ -306,6 +299,7 @@ class Run(Elementary):
     def DrawRunInfo(self, channel=None, canvas=None, diamondinfo=True, showcut=False, comment=None):
         if canvas != None:
             canvas.cd()
+            pad = ROOT.gROOT.GetSelectedPad()
         else:
             print "Draw run info in current pad"
             pad = ROOT.gROOT.GetSelectedPad()
@@ -335,7 +329,7 @@ class Run(Elementary):
         if channel != None:
             self.runInfoLegends[channel] = ROOT.TLegend(0.1, 0.86-(lines-1)*0.03, 0.1+width, 0.9)
             self.runInfoLegends[channel].SetMargin(0.05)
-            self.runInfoLegends[channel].AddEntry(0, "Run{run} Ch{channel} ({rate})".format(run=self.run_number, channel=channel, rate=self.GetRateString()), "")
+            self.runInfoLegends[channel].AddEntry(0, "Run{run} Ch{channel} ({rate})".format(run=self.run_number, channel=channel, rate=self._GetRateString()), "")
             if diamondinfo: self.runInfoLegends[channel].AddEntry(0, "{diamond} ({bias:+}V)".format(diamond=self.diamondname[channel], bias=self.bias[channel]), "")
             if showcut and hasattr(self, "analysis"): self.runInfoLegends[channel].AddEntry(0, "Cut: {cut}".format(cut=self.analysis.cut.format(channel=channel)), "")
             if comment != None: self.runInfoLegends[channel].AddEntry(0, comment, "")
@@ -348,12 +342,12 @@ class Run(Elementary):
                 width = 0.15
             self.runInfoLegends[-1] = ROOT.TLegend(0.1, 0.9-lines*0.05, 0.1+width, 0.9)
             self.runInfoLegends[-1].SetMargin(0.05)
-            self.runInfoLegends[-1].AddEntry(0, "Run{run} ({rate})".format(run=self.run_number, rate=self.GetRateString()), "")
+            self.runInfoLegends[-1].AddEntry(0, "Run{run} ({rate})".format(run=self.run_number, rate=self._GetRateString()), "")
             if comment != None: self.runInfoLegends[-1].AddEntry(0, comment, "")
             self.runInfoLegends[-1].Draw("same")
             pad.Modified()
 
-    def GetRateString(self):
+    def _GetRateString(self):
         rate = self.RunInfo["measured flux"]
         if rate>1000:
             unit = "MHz"
@@ -362,3 +356,9 @@ class Run(Elementary):
             unit = "kHz"
             rate = int(round(rate,0))
         return "{rate:>3}{unit}".format(rate=rate, unit=unit)
+
+    def _LoadROOTFile(self, fullROOTFilePath):
+        print "LOADING: ", fullROOTFilePath
+        self.rootfile = ROOT.TFile(fullROOTFilePath)
+        self.tree = self.rootfile.Get(self.treename) # Get TTree called "track_info"
+        assert(bool(self.tree) and bool(self.rootfile)), "Could not load root file: \n\t"+fullROOTFilePath

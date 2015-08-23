@@ -971,24 +971,21 @@ class Analysis(Elementary):
         :return: event_number
         '''
         time = dt*1000 # convert to milliseconds
+        if time == 0: return 0
 
         #get t0 and tmax
         maxevent = self.run.tree.GetEntries()
-        self.run.tree.GetEntry(0)
-        t_0 = self.run.tree.time
-        self.run.tree.GetEntry(maxevent-1)
-        t_max = self.run.tree.time
+        t_0 = self.GetTimeAtEvent(0)
+        t_max = self.GetTimeAtEvent(maxevent-1)
 
         time = t_0 + time
 
         seedEvent = int( (1.*(time - t_0) * maxevent) / (t_max - t_0) )
 
         def slope_f(self, event):
-            self.run.tree.GetEntry(event+10)
-            time_high = self.run.tree.time
-            self.run.tree.GetEntry(event-10)
-            time_low = self.run.tree.time
-            #print "slope calculation at event ", event, ": time_high = ", time_high, " time_low = ", time_low, " -> dt/201 = ", 1.*(time_high-time_low)/201.
+            if event < 0: event = 0
+            time_high = self.GetTimeAtEvent(event+10)
+            time_low = self.GetTimeAtEvent(event-10)
             return 1.*(time_high-time_low)/21.
 
         count = 0
@@ -996,12 +993,24 @@ class Analysis(Elementary):
         event = seedEvent
         while goOn and count<20:
             old_event = event
-            self.run.tree.GetEntry(event)
-            f_event = self.run.tree.time - time
+            f_event = self.GetTimeAtEvent(event) - time
             #print "f_event = {ftime} - {time} = ".format(ftime=self.run.tree.time, time=time), f_event
             #print "slope_f(self, event) = ", slope_f(self, event)
             event = int(event - 1*f_event/slope_f(self, event))
             if abs(event-old_event)<2:
                 goOn = False
             count += 1
+        self.run.tree.GetEntry(event)
         return event
+
+    def GetTimeAtEvent(self, event):
+        '''
+        Returns the time at event number 'event'.
+        For negative event numbers it will return the time for startevent (0)
+        :param event: integer event number
+        :return: timestamp for event
+        '''
+        if event < 0: event = 0
+        self.run.tree.GetEntry(event)
+        return self.run.tree.time
+
