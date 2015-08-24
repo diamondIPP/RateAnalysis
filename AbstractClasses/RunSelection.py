@@ -85,6 +85,9 @@ class RunSelection(Run):
         self._InitializeSelections()
         self.VerbosePrint('All runs unselected')
 
+    def UnselectAll(self):
+        self.UnSelectAll()
+
     def SetChannels(self, diamond1=True, diamond2=True):
         '''
         Sets the channels (diamonds) of the selected runs to active or inactive
@@ -254,6 +257,7 @@ class RunSelection(Run):
         self.VerbosePrint('All Selected Runs unselected if not '+str(bias)+'V bias applied. Only '+str(bias)+'V Bias Runs left. -'+str(count)+' selections')
 
     def _SelectRun(self, run_number):
+        assert(run_number in self.run_numbers), "run number "+str(run_number)+" not found in list of run numbers. Check run_log json file!"
         self.selections[run_number] = True
 
     def _UnselectRun(self, run_number):
@@ -392,7 +396,10 @@ class RunSelection(Run):
             print "No Runs Selected"
         return selected
 
-    def ShowRunPlans(self):
+    def ShowRunPlan(self):
+        pass
+
+    def SelectRunsFromRunPlan(self, type_="rate_scan", number=1):
         pass
 
     def AddSelectedRunsToRunPlan(self, key, run_type="rate_scan"):
@@ -405,3 +412,8 @@ class RunSelection(Run):
             self.runplans[self.TESTCAMPAIGN][run_type] = {}
             self.runplans[self.TESTCAMPAIGN][run_type][key] = self.GetSelectedRuns()
         self._SaveRunPlanInfoFile()
+
+    def SelectRuns(self, list_of_runs, select_dia1=False, select_dia2=False):
+        assert(type(list_of_runs) is t.ListType), "list_of_runs not a list"
+        for runnumber in list_of_runs:
+            self._SelectRun(runnumber)
