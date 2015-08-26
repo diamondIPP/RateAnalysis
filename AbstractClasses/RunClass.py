@@ -2,6 +2,7 @@ from Helper.Initializer import initializer
 from Runinfos.RunInfo import RunInfo
 from DiamondClass import Diamond
 from Elementary import Elementary
+from datetime import datetime as dt
 import ROOT
 import os
 import ConfigParser
@@ -26,14 +27,14 @@ default_info =  {
         "quadrupole": "-",
         "analogue current": 0,
         "digital current": 0,
-        "begin date": "-/-/-",
+        "begin date": "2999-03-14T15:26:53Z",
         "trim time": "-:-:-",
         "config time": "-:-:-",
-        "start time": "-:-:-",
+        "start time": "2999-03-14T15:26:53Z",
         "trig accept time": "-:-:-",
         "opening time": "-:-:-",
         "open time": "-:-:-",
-        "stop time": "-:-:-",
+        "stop time": "2999-03-14T16:26:53Z",
         "raw rate": 0,
         "prescaled rate": 0,
         "to TLU rate": 0,
@@ -78,6 +79,7 @@ class Run(Elementary):
             self.SetRun(run_number)
         else:
             self.LoadRunInfo()
+        self._LoadTiming()
         print self.RunInfo
         self.diamondname = {
             0: str(self.RunInfo["diamond 1"]),
@@ -118,13 +120,22 @@ class Run(Elementary):
         if self.run_number >= 0:
             if not loaderror:
                 self.RunInfo = data.get(str(self.run_number)) # may:  = data.get("150800"+str(self.run_number).zfill(3))
-                self.RenameRunInfoKeys()
+                if self.RunInfo == None:
+                    print "INFO: Run not found in json run log file. Default run info will be used."
+                    self.RunInfo = default_info
+                else:
+                    self.RenameRunInfoKeys()
             else:
                 self.RunInfo = default_info
             self.current_run = self.RunInfo
         else:
             self.RunInfo = default_info
             return 0
+
+    def _LoadTiming(self):
+        self.logStartTime = dt.strptime(self.RunInfo["start time"][:10]+"-"+self.RunInfo["start time"][11:-1], "%Y-%m-%d-%H:%M:%S")
+        self.logStopTime = dt.strptime(self.RunInfo["stop time"][:10]+"-"+self.RunInfo["stop time"][11:-1], "%Y-%m-%d-%H:%M:%S")
+        self.logRunTime = self.logStopTime - self.logStartTime
 
     def RenameRunInfoKeys(self):
 
@@ -280,8 +291,8 @@ class Run(Elementary):
     def SetChannels(self, diamonds):
         assert(diamonds>=1 and diamonds<=3), "invalid diamonds number: 0x1=ch0; 0x2=ch3"
         self.analyzeCh = {
-            0: (diamonds & 1<<0) == 1<<0,
-            3: (diamonds & 1<<1) == 1<<1
+            0: self._GetBit(diamonds, 0),
+            3: self._GetBit(diamonds, 1)
         }
 
     def GetChannels(self):
@@ -296,7 +307,9 @@ class Run(Elementary):
         print "\tDiamond1:   \t", self.diamondname[0], " (",self.bias[0],") | is selected: ", self.analyzeCh[0]
         print "\tDiamond2:   \t", self.diamondname[3], " (",self.bias[3],") | is selected: ", self.analyzeCh[3]
 
-    def DrawRunInfo(self, channel=None, canvas=None, diamondinfo=True, showcut=False, comment=None):
+    def DrawRunInfo(self, channel=None, canvas=None, diamondinfo=True, showcut=False, comment=None, infoid="", userWidth=None, userHeight=None):
+        if userHeight!= None: assert(userHeight>=0 and userHeight<=0.8), "choose userHeight between 0 and 0.8 or set it to 'None'"
+        if userWidth!= None: assert(userWidth>=0 and userWidth<=0.8), "choose userWidth between 0 and 0.8 or set it to 'None'"
         if canvas != None:
             canvas.cd()
             pad = ROOT.gROOT.GetSelectedPad()
@@ -304,9 +317,10 @@ class Run(Elementary):
             print "Draw run info in current pad"
             pad = ROOT.gROOT.GetSelectedPad()
             if pad:
-                canvas = pad.GetCanvas()
-                canvas.cd()
-                pad.cd()
+                # canvas = pad.GetCanvas()
+                # canvas.cd()
+                # pad.cd()
+                pass
             else:
                 print "ERROR: Can't access active Pad"
 
@@ -320,31 +334,39 @@ class Run(Elementary):
         if comment != None:
             lines += 1
             width = max(0.4, width)
+        height = (lines-1)*0.03
 
-        if not hasattr(self, "runInfoLegends"):
-            self.runInfoLegends = {}
+        if not hasattr(self, "_runInfoLegends"):
+            self._runInfoLegends = {}
 
+        if channel != None and channel in [0,3]:
+            # user height and width:
+            userheight = height if userHeight==None else userHeight - 0.04
+            userwidth = width if userWidth==None else userWidth
 
-
-        if channel != None:
-            self.runInfoLegends[channel] = ROOT.TLegend(0.1, 0.86-(lines-1)*0.03, 0.1+width, 0.9)
-            self.runInfoLegends[channel].SetMargin(0.05)
-            self.runInfoLegends[channel].AddEntry(0, "Run{run} Ch{channel} ({rate})".format(run=self.run_number, channel=channel, rate=self._GetRateString()), "")
-            if diamondinfo: self.runInfoLegends[channel].AddEntry(0, "{diamond} ({bias:+}V)".format(diamond=self.diamondname[channel], bias=self.bias[channel]), "")
-            if showcut and hasattr(self, "analysis"): self.runInfoLegends[channel].AddEntry(0, "Cut: {cut}".format(cut=self.analysis.cut.format(channel=channel)), "")
-            if comment != None: self.runInfoLegends[channel].AddEntry(0, comment, "")
-            self.runInfoLegends[channel].Draw("same")
+            self._runInfoLegends[str(channel)+infoid] = ROOT.TLegend(0.1, 0.86-userheight, 0.1+userwidth, 0.9)
+            self._runInfoLegends[str(channel)+infoid].SetMargin(0.05)
+            self._runInfoLegends[str(channel)+infoid].AddEntry(0, "Run{run} Ch{channel} ({rate})".format(run=self.run_number, channel=channel, rate=self._GetRateString()), "")
+            if diamondinfo: self._runInfoLegends[str(channel)+infoid].AddEntry(0, "{diamond} ({bias:+}V)".format(diamond=self.diamondname[channel], bias=self.bias[channel]), "")
+            if showcut and hasattr(self, "analysis"): self._runInfoLegends[str(channel)+infoid].AddEntry(0, "Cut: {cut}".format(cut=self.analysis.cut.format(channel=channel)), "")
+            if comment != None: self._runInfoLegends[str(channel)+infoid].AddEntry(0, comment, "")
+            self._runInfoLegends[str(channel)+infoid].Draw("same")
         else:
             if comment != None:
                 lines = 2
             else:
                 lines = 1
                 width = 0.15
-            self.runInfoLegends[-1] = ROOT.TLegend(0.1, 0.9-lines*0.05, 0.1+width, 0.9)
-            self.runInfoLegends[-1].SetMargin(0.05)
-            self.runInfoLegends[-1].AddEntry(0, "Run{run} ({rate})".format(run=self.run_number, rate=self._GetRateString()), "")
-            if comment != None: self.runInfoLegends[-1].AddEntry(0, comment, "")
-            self.runInfoLegends[-1].Draw("same")
+            height = lines*0.05
+            # user height and width:
+            userheight = height if userHeight==None else userHeight
+            userwidth = width if userWidth==None else userWidth
+
+            self._runInfoLegends["ch12"+infoid] = ROOT.TLegend(0.1, 0.9-userheight, 0.1+userwidth, 0.9)
+            self._runInfoLegends["ch12"+infoid].SetMargin(0.05)
+            self._runInfoLegends["ch12"+infoid].AddEntry(0, "Run{run} ({rate})".format(run=self.run_number, rate=self._GetRateString()), "")
+            if comment != None: self._runInfoLegends["ch12"+infoid].AddEntry(0, comment, "")
+            self._runInfoLegends["ch12"+infoid].Draw("same")
             pad.Modified()
 
     def _GetRateString(self):
@@ -356,6 +378,10 @@ class Run(Elementary):
             unit = "kHz"
             rate = int(round(rate,0))
         return "{rate:>3}{unit}".format(rate=rate, unit=unit)
+
+    def GetChannelName(self, channel):
+        self.tree.GetEntry(1)
+        return self.tree.sensor_name[channel]
 
     def _LoadROOTFile(self, fullROOTFilePath):
         print "LOADING: ", fullROOTFilePath

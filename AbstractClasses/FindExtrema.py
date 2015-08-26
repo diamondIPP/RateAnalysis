@@ -337,7 +337,6 @@ class FindExtrema(Elementary):
             self.BinCollectionObj.parent_analysis_obj.extremaResults[self.channel]['TrueNPeaks'] = npeaks
             self.BinCollectionObj.parent_analysis_obj.extremaResults[self.channel]['Ninjas'] = len(Ninjas)
             self.BinCollectionObj.parent_analysis_obj.extremaResults[self.channel]['Ghosts'] = len(Ghosts)
-        print "Export Maximaresults of channel: ", self.channel, " (", self.ExtremaType, ")"
         self.BinCollectionObj.parent_analysis_obj.extremaResults[self.channel]['FoundN'+self.ExtremaType] = len(Vote5Extrema)
         self.BinCollectionObj.parent_analysis_obj.extremaResults[self.channel]['Found'+self.ExtremaType] = self.BinCollectionObj.GetBinCenter(Vote5Extrema) # store REAL parent analysis, not parent.ExtremeAnalysis
 

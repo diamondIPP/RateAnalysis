@@ -358,6 +358,24 @@ class RunSelection(Run):
                 print multilinetext(" "+item.comment[0][:], 50)
                 print "--------------------------------------------------"
 
+    def ShowRunInfo(self, runs=[]):
+        if runs == []:
+            for runnumber in self.GetSelectedRuns():
+                self._printRunInfo(runnumber)
+        else:
+            if type(runs) is t.ListType:
+                for runnumber in runs:
+                    self._printRunInfo(runnumber)
+            elif type(runs) is t.IntType:
+                self._printRunInfo(runs)
+            else:
+                print "Wrong input type"
+
+    def _printRunInfo(self, runnumber):
+        print "--- RUN ", runnumber, " ---"
+        for key in self.runs[runnumber].keys():
+            print "{key:>20}: {value}".format(key=key, value=self.runs[runnumber][key])
+
     def ShowDiamondNames(self, getNames=False):
         diamondnames = []
         diamond1names = self._GetValues("diamond 1")

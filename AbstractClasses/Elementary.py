@@ -43,6 +43,11 @@ class Elementary(object):
         if self.showAndWait:
             raw_input(message)
 
+    def _GetBit(self, num, bit):
+        assert(num>=0 and type(num) is t.IntType), "num as to be non negative int"
+        return (num & 1<<bit) == 1<<bit
+
+
     @classmethod
     def SetSaveDirectory(cls, directory = "Results/"):
         Elementary.SaveDirectory = directory

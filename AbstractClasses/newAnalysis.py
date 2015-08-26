@@ -158,9 +158,8 @@ class Analysis(Elementary):
         self.DrawRunInfo()
         self.pulserRateCanvas.Update()
 
-    def DrawRunInfo(self, channel=None, canvas=None, diamondinfo=True, showcut=False, comment=None):
-        self.run.DrawRunInfo(channel=channel, canvas=canvas, diamondinfo=diamondinfo, showcut=showcut, comment=comment)
-
+    def DrawRunInfo(self, channel=None, canvas=None, diamondinfo=True, showcut=False, comment=None, infoid="", userHeight=None, userWidth=None):
+        self.run.DrawRunInfo(channel=channel, canvas=canvas, diamondinfo=diamondinfo, showcut=showcut, comment=comment, infoid=infoid, userHeight=userHeight, userWidth=userWidth)
 
     def ShowFFT(self, drawoption="", cut=None, channel=None, startevent=0, endevent=10000000):
         if channel != None:
@@ -299,7 +298,7 @@ class Analysis(Elementary):
         first = True
         for i in dts[101:]:
             avg = numpy.mean(deq)
-            if abs(i / avg - 1.) > 0.5: 
+            if abs(i / avg - 1.) > 0.3:
                 if first:
                     print 'found a jump here', i, 'at event number', evs[dts.index(i)]
                     self.jumps.append(evs[dts.index(i)])
@@ -971,6 +970,7 @@ class Analysis(Elementary):
         :return: event_number
         '''
         time = dt*1000 # convert to milliseconds
+
         if time == 0: return 0
 
         #get t0 and tmax
@@ -979,6 +979,7 @@ class Analysis(Elementary):
         t_max = self.GetTimeAtEvent(maxevent-1)
 
         time = t_0 + time
+        if time>t_max: return maxevent
 
         seedEvent = int( (1.*(time - t_0) * maxevent) / (t_max - t_0) )
 
@@ -1010,7 +1011,105 @@ class Analysis(Elementary):
         :param event: integer event number
         :return: timestamp for event
         '''
+        maxevent = self.run.tree.GetEntries()
         if event < 0: event = 0
+        if event >= maxevent: event = maxevent - 1
         self.run.tree.GetEntry(event)
         return self.run.tree.time
+
+    def _checkWFChannels(self):
+        nWFChannels = 0
+        wf_exist = {
+            0: False,
+            1: False,
+            2: False,
+            3: False
+        }
+        check = self.run.tree.GetBranch("wf0")
+        if check:
+            nWFChannels += 1
+            wf_exist[0] = True
+        check = self.run.tree.GetBranch("wf1")
+        if check:
+            nWFChannels += 1
+            wf_exist[1] = True
+        check = self.run.tree.GetBranch("wf2")
+        if check:
+            nWFChannels += 1
+            wf_exist[2] = True
+        check = self.run.tree.GetBranch("wf3")
+        if check:
+            nWFChannels += 1
+            wf_exist[3] = True
+        return nWFChannels, wf_exist
+
+    def ShowWaveForms(self, nevents=1000, cut="", startevent=None, channels=None, canvas=None, infoid=""):
+        if startevent != None: assert(startevent>=0), "startevent as to be >= 0"
+        maxevent = self.run.tree.GetEntries()
+        if startevent > maxevent: return False
+        # check number of wf in root file:
+        nWFChannels, draw_waveforms = self._checkWFChannels()
+        if nWFChannels == 0: return False
+
+        # if userchannels:
+        if channels != None:
+            nWFChannels = 0
+            for i in xrange(4):
+                if self._GetBit(channels, i) and draw_waveforms[i]:
+                    nWFChannels += 1
+                else:
+                    draw_waveforms[i] = False
+
+        # check if external canvas:
+        if canvas == None:
+            self.waveFormCanvas = ROOT.TCanvas("waveformcanvas{run}".format(run=self.run.run_number),"WaveFormCanvas", 750, nWFChannels*300)
+        else:
+            self.waveFormCanvas = canvas
+            self.waveFormCanvas.Clear()
+
+        self.waveFormCanvas.Divide(1, nWFChannels)
+        self.waveformplots = {}
+
+        def drawWF(self, channel, events=1000, startevent=50000, cut=""):
+            histoname = "R{run}wf{wfch}{infoID}".format(wfch=channel, run=self.run.run_number, infoID=infoid)
+            self.waveformplots[histoname] = ROOT.TH2D(histoname, self.run.GetChannelName(channel)+" {"+cut+"}", 1024, 0, 1023, 1000, -500, 500)
+            ROOT.SetOwnership(self.waveformplots[histoname], False)
+            self.waveformplots[histoname].SetStats(0)
+            print "DRAW: wf{wfch}:Iteration$>>{histoname}".format(histoname=histoname, wfch=channel)
+            print "cut: ", cut.format(channel=channel), " events: ", events, " startevent: ", startevent
+            n = self.run.tree.Draw("wf{wfch}:Iteration$>>{histoname}".format(histoname=histoname, wfch=channel), cut.format(channel=channel), "", events, startevent)
+            if cut == "":
+                self.DrawRunInfo(channel=channel, comment="{nwf} Wave Forms".format(nwf=n/1024), infoid=("wf{wf}"+infoid).format(wf=channel), userWidth=0.15, userHeight=0.15)
+            else:
+                self.DrawRunInfo(channel=channel, comment="{nwf}/{totnwf} Wave Forms".format(nwf=n/1024, totnwf=events), infoid=("wf{wf}"+infoid).format(wf=channel), userWidth=0.18, userHeight=0.15)
+            if n<=0: print "No event to draw in range. Change cut settings or increase nevents"
+
+        start = int(self.run.tree.GetEntries()/2) if startevent==None else int(startevent)
+        index = 1
+        for i in xrange(4):
+            self.waveFormCanvas.cd(index)
+            if draw_waveforms[i]:
+                drawWF(self, channel=i, events=nevents, startevent=start, cut=cut)
+                self.waveFormCanvas.Update()
+                index += 1
+            else:
+                print "Wave Form of channel ", i, " not in root file"
+
+    def ShowWaveFormsPulser(self, nevents=1000, startevent=None, channels=None):
+        nWFChannels, draw_waveforms = self._checkWFChannels()
+        self.pulserWaveformCanvas = ROOT.TCanvas("pulserWaveformCanvas", "Pulser Waveform Canvas", 1500, nWFChannels*300)
+        self.pulserWaveformCanvas.cd()
+        self.pulserWaveformCanvas.Divide(2, 1)
+        pad1 = self.pulserWaveformCanvas.cd(1)
+        pad2 = self.pulserWaveformCanvas.cd(2)
+        self.ShowWaveForms(nevents=nevents, cut="!pulser", startevent=startevent, channels=channels, canvas=pad1, infoid="notpulser")
+        # self.pulserWaveformCanvas.cd(2)
+        # pad2 = self.pulserWaveformCanvas.cd(2)
+        # pad2.Clear()
+        self.ShowWaveForms(nevents=nevents, cut="pulser", startevent=startevent, channels=channels, canvas=pad2, infoid="pulser")
+        raw_input("asdf")
+
+
+
+
 
