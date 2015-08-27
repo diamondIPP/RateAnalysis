@@ -120,7 +120,7 @@ class Analysis(Elementary):
         else:
             self.signaldefinition = self.signalname+"[{channel}]-"+self.pedestalname+"[{channel}]"
 
-    def MakePreAnalysis(self, channel=None, mode="mean"):
+    def MakePreAnalysis(self, channel=None, mode="mean", binning=5000):
         '''
         Creates the Signal Time distribution (and checks for beam interruptions).
         No tracking information needed -> no spatial information provided
@@ -133,10 +133,10 @@ class Analysis(Elementary):
         #c1 = ROOT.TCanvas("c1", "c1")
         self.preAnalysis = {}
         for ch in channels:
-            self.preAnalysis[ch] = PreAnalysisPlot(analysis=self, channel=ch, canvas=None)
+            self.preAnalysis[ch] = PreAnalysisPlot(analysis=self, channel=ch, canvas=None, binning=binning)
             self.preAnalysis[ch].Draw(mode=mode)
 
-    def ShowPulserRate(self, binning=10000):
+    def ShowPulserRate(self, binning=2000):
         assert(binning>=100), "binning too low"
         binning = int(binning)
 
@@ -1108,6 +1108,8 @@ class Analysis(Elementary):
         # pad2.Clear()
         self.ShowWaveForms(nevents=nevents, cut="pulser", startevent=startevent, channels=channels, canvas=pad2, infoid="pulser")
         raw_input("asdf")
+
+    #def Shpw
 
 
 

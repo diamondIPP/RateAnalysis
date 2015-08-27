@@ -83,5 +83,5 @@ class Elementary(object):
 
     @classmethod
     def SetTestCampaign(cls, namestring="201508"):
-        cls.TESTCAMPAIGN = namestring
+        Elementary.TESTCAMPAIGN = namestring
         print "Testcampaign set to: ", namestring

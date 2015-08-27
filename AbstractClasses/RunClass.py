@@ -103,6 +103,7 @@ class Run(Elementary):
         self.treename = runConfigParser.get('BASIC', 'treename')
         self.sshrunpath = runConfigParser.get('BASIC', 'runpath')
         self.runinfofile = runConfigParser.get('BASIC', 'runinfofile')
+        self._runlogkeyprefix = runConfigParser.get('BASIC', 'runlog_key_prefix')
         self.runplaninfofile = runConfigParser.get('BASIC', 'runplaninfofile')
 
     def LoadRunInfo(self):
@@ -114,12 +115,17 @@ class Run(Elementary):
             self.allRunKeys = copy.deepcopy(data.keys())
             loaderror = False
         except IOError:
+            print "\n-------------------------------------------------"
             print "WARNING: unable to load json file:\n\t{file}".format(file=self.runinfofile)
+            print "-------------------------------------------------\n"
             loaderror = True
 
         if self.run_number >= 0:
             if not loaderror:
                 self.RunInfo = data.get(str(self.run_number)) # may:  = data.get("150800"+str(self.run_number).zfill(3))
+                if self.RunInfo == None:
+                    # try with run_log key prefix
+                    self.RunInfo = data.get(self._runlogkeyprefix+str(self.run_number).zfill(3))
                 if self.RunInfo == None:
                     print "INFO: Run not found in json run log file. Default run info will be used."
                     self.RunInfo = default_info
@@ -133,9 +139,24 @@ class Run(Elementary):
             return 0
 
     def _LoadTiming(self):
-        self.logStartTime = dt.strptime(self.RunInfo["start time"][:10]+"-"+self.RunInfo["start time"][11:-1], "%Y-%m-%d-%H:%M:%S")
-        self.logStopTime = dt.strptime(self.RunInfo["stop time"][:10]+"-"+self.RunInfo["stop time"][11:-1], "%Y-%m-%d-%H:%M:%S")
-        self.logRunTime = self.logStopTime - self.logStartTime
+        try:
+            self.logStartTime = dt.strptime(self.RunInfo["start time"][:10]+"-"+self.RunInfo["start time"][11:-1], "%Y-%m-%d-%H:%M:%S")
+            self.logStopTime = dt.strptime(self.RunInfo["stop time"][:10]+"-"+self.RunInfo["stop time"][11:-1], "%Y-%m-%d-%H:%M:%S")
+            self.logRunTime = self.logStopTime - self.logStartTime
+            noerror = True
+        except:
+            try:
+                self.logStartTime = dt.strptime(self.RunInfo["start time"][:10]+"-"+self.RunInfo["start time"][11:-1], "%H:%M:%S")
+                self.logStopTime = dt.strptime(self.RunInfo["stop time"][:10]+"-"+self.RunInfo["stop time"][11:-1], "%H:%M:%S")
+                self.logRunTime = self.logStopTime - self.logStartTime
+                noerror = True
+            except:
+                noerror = False
+        if noerror:
+            self.VerbosePrint("Timing string translated successfully")
+        else:
+            print "INFO: The timing information string from run info couldn't be translated"
+
 
     def RenameRunInfoKeys(self):
 
@@ -189,6 +210,7 @@ class Run(Elementary):
             IsGoodRun =         KeyConfigParser.get("KEYNAMES", "IsGoodRun")
 
             runinfo = copy.deepcopy(default_info)
+            print self.RunInfo
 
             if Persons != "-1":             runinfo["persons on shift"] =   self.RunInfo[Persons]
             if Runinfo != "-1":             runinfo["run info"] =           self.RunInfo[Runinfo]

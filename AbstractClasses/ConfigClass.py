@@ -54,9 +54,12 @@ class BinCollectionConfig(Elementary):
 
     def LoadConfigFile(self):
         configfile = "Configuration/AnalysisConfig_"+self.TESTCAMPAIGN+".cfg"
-        print "configclass configfile: ", configfile
+        if self.TESTCAMPAIGN == "": "WARNING: TESTCAMPAIGN not set"
+        print self.TESTCAMPAIGN
+        print "loading configfile: ", configfile
         parser = ConfigParser.ConfigParser()
-        parser.read(configfile)
+        out = parser.read(configfile)
+        assert(out!=[]), "Configfile couldn't be loaded. Check if it exists and that the testcampaign is set properly"
         windowXmin = parser.getfloat("TRACKING", "windowXmin")
         windowXmax = parser.getfloat("TRACKING", "windowXmax")
         windowYmin = parser.getfloat("TRACKING", "windowYmin")
