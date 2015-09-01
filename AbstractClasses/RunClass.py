@@ -171,12 +171,16 @@ class Run(Elementary):
             telescopeID = 0
             assert(False), "Error. unknown TESTCAMPAIGN"
 
+        # change CWD to TrackingTelescope:
+        old_cwd = os.getcwd()
+        os.chdir(trackingFolder)
         tracking_cmd = "{trackingfolder}/TrackingTelescope {root} 0 {nr}".format(trackingfolder=trackingFolder, root=noTracksROOTFile, nr=telescopeID)
         print "\n\nSTART TRACKING..."
         print tracking_cmd
         os.system(tracking_cmd)
+        os.chdir(old_cwd)
 
-        tracksROOTFile = trackingFolder+"/test{prefix}{run}_withTracks.root"
+        tracksROOTFile = trackingFolder+"/{prefix}{run}_withTracks.root".format(prefix=converterPrefix, run=str(self.run_number).zfill(4))
 
         # move to data folder:
         os.system("mv "+tracksROOTFile+" "+self.TrackingPadAnalysis['ROOTFile'])
