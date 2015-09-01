@@ -80,7 +80,6 @@ class Run(Elementary):
         else:
             self.LoadRunInfo()
         self._LoadTiming()
-        print self.RunInfo
         self.diamondname = {
             0: str(self.RunInfo["diamond 1"]),
             3: str(self.RunInfo["diamond 2"])
@@ -137,6 +136,45 @@ class Run(Elementary):
         else:
             self.RunInfo = default_info
             return 0
+
+    def CreateROOTFile(self, do_tracking=True):
+
+        rawFolder = "/data/psi_2015_08/raw"
+        rawPrefix = "run15080"
+        eudaqFolder = "/home/testbeam/testing/mario/eudaq-drs4"
+        trackingFolder = "/home/testbeam/sdvlp/TrackingTelescope"
+
+        converter_cmd = ". {eudaq}/bin/Converter.exe -t drs4tree -c ../conf/converter.conf {rawfolder}/{prefix}{run}.raw".format(eudaq=eudaqFolder, rawFolder=rawFolder, prefix=rawPrefix, run=str(self.run_number).zfill(4))
+        print "\n\nSTART CONVERTING RAW FILE..."
+        os.system(converter_cmd)
+
+        noTracksROOTFile = eudaqFolder+"/bin/test{prefix}{run}.root".format(prefix=rawPrefix, run=str(self.run_number).zfill(4))
+        if not do_tracking:
+            # move to data folder:
+            os.system("mv "+noTracksROOTFile+" "+self.TrackingPadAnalysis['ROOTFile'])
+            self._LoadROOTFile(self.TrackingPadAnalysis['ROOTFile'])
+            print "INFO ROOT File generated with NO Tracking information"
+
+        if self.TESTCAMPAIGN == "201508":
+            tracking_cmd_number = 9
+        elif self.TESTCAMPAIGN == "201505":
+            tracking_cmd_number = 7
+        else:
+            tracking_cmd_number = 0
+            assert(False), "Error. unknown TESTCAMPAIGN"
+
+        tracking_cmd = ". {trackingfolder}/TrackingTelescope {root} 0 {nr}".format(trackingfolder=trackingFolder, root=noTracksROOTFile, nr=tracking_cmd_number)
+        print "\n\nSTART TRACKING..."
+        os.system(tracking_cmd)
+
+        tracksROOTFile = trackingFolder+"/test{prefix}{run}_withTracks.root"
+
+        # move to data folder:
+        os.system("mv "+tracksROOTFile+" "+self.TrackingPadAnalysis['ROOTFile'])
+
+        # delete no tracks file:
+        os.system("rm "+noTracksROOTFile)
+
 
     def _LoadTiming(self):
         try:
@@ -263,7 +301,7 @@ class Run(Elementary):
     def ValidateRun(self,run_number):
         self.SetRun(run_number)
         if not os.path.exists(self.TrackingPadAnalysis['ROOTFile']):
-            del RunInfo.runs[run_number]
+            #del RunInfo.runs[run_number]
             print "INFO: path of run number ",run_number, " not found."
             return False
         else:
@@ -409,4 +447,14 @@ class Run(Elementary):
         print "LOADING: ", fullROOTFilePath
         self.rootfile = ROOT.TFile(fullROOTFilePath)
         self.tree = self.rootfile.Get(self.treename) # Get TTree called "track_info"
-        assert(bool(self.tree) and bool(self.rootfile)), "Could not load root file: \n\t"+fullROOTFilePath
+        if not (bool(self.tree) and bool(self.rootfile)):
+            print "\n\nCould not load root file!"
+            print "\t>> "+fullROOTFilePath
+            answer = raw_input("generate ROOT file instead? (y/n): ")
+            if answer == "y":
+                tracking = raw_input("generate tracking information? (y/n): ")
+                if tracking == "y":
+                    self.CreateROOTFile()
+                else:
+                    self.CreateROOTFile(do_tracking=False)
+        #assert(bool(self.tree) and bool(self.rootfile)), "Could not load root file: \n\t"+fullROOTFilePath

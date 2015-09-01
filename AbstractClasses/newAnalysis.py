@@ -1111,7 +1111,8 @@ class Analysis(Elementary):
 
     #def Shpw
 
-
+    def Draw(self, varexp, selection="", drawoption="", nentries=1000000000, firstentry=0):
+        self.run.tree.Draw(varexp, selection, drawoption, nentries, firstentry)
 
 
 
