@@ -144,7 +144,7 @@ class Run(Elementary):
         eudaqFolder = "/home/testbeam/testing/mario/eudaq-drs4"
         trackingFolder = "/home/testbeam/sdvlp/TrackingTelescope"
 
-        converter_cmd = ". {eudaq}/bin/Converter.exe -t drs4tree -c ../conf/converter.conf {rawfolder}/{prefix}{run}.raw".format(eudaq=eudaqFolder, rawFolder=rawFolder, prefix=rawPrefix, run=str(self.run_number).zfill(4))
+        converter_cmd = ". {eudaq}/bin/Converter.exe -t drs4tree -c ../conf/converter.conf {rawfolder}/{prefix}{run}.raw".format(eudaq=eudaqFolder, rawfolder=rawFolder, prefix=rawPrefix, run=str(self.run_number).zfill(4))
         print "\n\nSTART CONVERTING RAW FILE..."
         os.system(converter_cmd)
 
