@@ -188,6 +188,10 @@ class Run(Elementary):
         # delete no tracks file:
         #os.system("rm "+noTracksROOTFile)
 
+        self.rootfile = ROOT.TFile(self.TrackingPadAnalysis['ROOTFile'])
+        self.tree = self.rootfile.Get(self.treename) # Get TTree called "track_info"
+
+        assert(bool(self.tree) and bool(self.rootfile)), "Could not load root file: \n\t"+self.TrackingPadAnalysis['ROOTFile']
 
     def _LoadTiming(self):
         try:
@@ -461,13 +465,15 @@ class Run(Elementary):
         self.rootfile = ROOT.TFile(fullROOTFilePath)
         self.tree = self.rootfile.Get(self.treename) # Get TTree called "track_info"
         if not (bool(self.tree) and bool(self.rootfile)):
-            print "\n\nCould not load root file!"
-            print "\t>> "+fullROOTFilePath
-            answer = raw_input("generate ROOT file instead? (y/n): ")
-            if answer == "y":
-                tracking = raw_input("generate tracking information? (y/n): ")
-                if tracking == "y":
-                    self.CreateROOTFile()
-                else:
-                    self.CreateROOTFile(do_tracking=False)
+            self.CreateROOTFile()
+
+            # print "\n\nCould not load root file!"
+            # print "\t>> "+fullROOTFilePath
+            # answer = raw_input("generate ROOT file instead? (y/n): ")
+            # if answer == "y":
+            #     tracking = raw_input("generate tracking information? (y/n): ")
+            #     if tracking == "y":
+            #         self.CreateROOTFile()
+            #     else:
+            #         self.CreateROOTFile(do_tracking=False)
         #assert(bool(self.tree) and bool(self.rootfile)), "Could not load root file: \n\t"+fullROOTFilePath
