@@ -141,15 +141,22 @@ class Run(Elementary):
 
         rawFolder = "/data/psi_2015_08/raw"
         rawPrefix = "run15080"
+        converterPrefix = "test15080"
         eudaqFolder = "/home/testbeam/testing/mario/eudaq-drs4"
         trackingFolder = "/home/testbeam/sdvlp/TrackingTelescope"
 
         converter_cmd = "{eudaq}/bin/Converter.exe -t drs4tree -c {eudaq}/conf/converter.conf {rawfolder}/{prefix}{run}.raw".format(eudaq=eudaqFolder, rawfolder=rawFolder, prefix=rawPrefix, run=str(self.run_number).zfill(4))
-        print "\n\nSTART CONVERTING RAW FILE..."
-        print converter_cmd
-        os.system(converter_cmd)
 
-        noTracksROOTFile = eudaqFolder+"/bin/test{prefix}{run}.root".format(prefix=rawPrefix, run=str(self.run_number).zfill(4))
+        noTracksROOTFile = "{prefix}{run}.root".format(prefix=converterPrefix, run=str(self.run_number).zfill(4))
+
+        if not os.path.exists(noTracksROOTFile):
+            print "\n\nSTART CONVERTING RAW FILE..."
+            print converter_cmd
+            os.system(converter_cmd)
+        else:
+            print "noTracks ROOT File found here:"
+            print "\t"+noTracksROOTFile
+
         if not do_tracking:
             # move to data folder:
             os.system("mv "+noTracksROOTFile+" "+self.TrackingPadAnalysis['ROOTFile'])
@@ -157,14 +164,14 @@ class Run(Elementary):
             print "INFO ROOT File generated with NO Tracking information"
 
         if self.TESTCAMPAIGN == "201508":
-            tracking_cmd_number = 9
+            telescopeID = 9
         elif self.TESTCAMPAIGN == "201505":
-            tracking_cmd_number = 7
+            telescopeID = 7
         else:
-            tracking_cmd_number = 0
+            telescopeID = 0
             assert(False), "Error. unknown TESTCAMPAIGN"
 
-        tracking_cmd = "{trackingfolder}/TrackingTelescope {root} 0 {nr}".format(trackingfolder=trackingFolder, root=noTracksROOTFile, nr=tracking_cmd_number)
+        tracking_cmd = "{trackingfolder}/TrackingTelescope {root} 0 {nr}".format(trackingfolder=trackingFolder, root=noTracksROOTFile, nr=telescopeID)
         print "\n\nSTART TRACKING..."
         print tracking_cmd
         os.system(tracking_cmd)
