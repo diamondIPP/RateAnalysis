@@ -182,7 +182,7 @@ class Run(Elementary):
         os.system("mv "+tracksROOTFile+" "+self.TrackingPadAnalysis['ROOTFile'])
 
         # delete no tracks file:
-        os.system("rm "+noTracksROOTFile)
+        #os.system("rm "+noTracksROOTFile)
 
 
     def _LoadTiming(self):
