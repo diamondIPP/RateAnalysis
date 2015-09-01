@@ -185,13 +185,13 @@ class Run(Elementary):
         # move to data folder:
         os.system("mv "+tracksROOTFile+" "+self.TrackingPadAnalysis['ROOTFile'])
 
-        # delete no tracks file:
-        #os.system("rm "+noTracksROOTFile)
-
         self.rootfile = ROOT.TFile(self.TrackingPadAnalysis['ROOTFile'])
         self.tree = self.rootfile.Get(self.treename) # Get TTree called "track_info"
 
         assert(bool(self.tree) and bool(self.rootfile)), "Could not load root file: \n\t"+self.TrackingPadAnalysis['ROOTFile']
+
+        # delete no tracks file:
+        os.system("rm "+noTracksROOTFile)
 
     def _LoadTiming(self):
         try:
