@@ -7,6 +7,7 @@ import ROOT
 import os
 import ConfigParser
 import json
+import csv
 import copy
 
 default_info =  {
@@ -80,6 +81,7 @@ class Run(Elementary):
         else:
             self.LoadRunInfo()
         self._LoadTiming()
+        self.CalculateRate()
         self.diamondname = {
             0: str(self.RunInfo["diamond 1"]),
             3: str(self.RunInfo["diamond 2"])
@@ -104,6 +106,7 @@ class Run(Elementary):
         self.runinfofile = runConfigParser.get('BASIC', 'runinfofile')
         self._runlogkeyprefix = runConfigParser.get('BASIC', 'runlog_key_prefix')
         self.runplaninfofile = runConfigParser.get('BASIC', 'runplaninfofile')
+        self.maskfilepath = runConfigParser.get('BASIC', 'maskfilepath')
 
     def LoadRunInfo(self):
         self.RunInfo = {}
@@ -135,6 +138,47 @@ class Run(Elementary):
             self.current_run = self.RunInfo
         else:
             self.RunInfo = default_info
+            return 0
+
+    def CalculateRate(self):
+        self.VerbosePrint("Calculate rate from mask file:\n\t"+self.RunInfo["mask"])
+        maskFilePath = self.maskfilepath+"/"+self.RunInfo["mask"] # CONFIG FILE !
+        maskdata = {
+            0: {
+                "cornBot": [],
+                "cornTop": []
+            },
+            3: {
+                "cornBot": [],
+                "cornTop": []
+            }
+        }
+        try:
+            f = open(maskFilePath, "r")
+            infile = csv.reader(f, delimiter=" ")
+            try:
+                for i in xrange(8):
+                    line = next(infile)
+                    if len(line)>=4:
+                        maskdata[int(line[1])][line[0]] = map(int, line[-2:])
+            except StopIteration:
+                pass
+            x_low = maskdata[0]["cornBot"][0]
+            y_low = maskdata[0]["cornBot"][1]
+            x_high = maskdata[0]["cornTop"][0]
+            y_high = maskdata[0]["cornTop"][1]
+
+            self.RunInfo["masked pixels"] = abs((x_high-x_low+1)*(y_high-y_low+1))
+
+            pixelarea = 0.01*0.015 # cm^2
+            masked_area = self.RunInfo["masked pixels"]*pixelarea
+            rate_Hz = 1.*self.RunInfo["raw rate"]/masked_area # in Hz/cm^2
+            self.RunInfo["measured flux"] = rate_Hz/1000. # in kHz/cm^2
+
+            f.close()
+            return rate_Hz/1000.
+        except IOError:
+            print "\nERROR: Could not load mask file, thus not re-calculate rate..\n"
             return 0
 
     def CreateROOTFile(self, do_tracking=True):
