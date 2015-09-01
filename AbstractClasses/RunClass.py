@@ -147,7 +147,7 @@ class Run(Elementary):
 
         converter_cmd = "{eudaq}/bin/Converter.exe -t drs4tree -c {eudaq}/conf/converter.conf {rawfolder}/{prefix}{run}.raw".format(eudaq=eudaqFolder, rawfolder=rawFolder, prefix=rawPrefix, run=str(self.run_number).zfill(4))
 
-        noTracksROOTFile = "{prefix}{run}.root".format(prefix=converterPrefix, run=str(self.run_number).zfill(4))
+        noTracksROOTFile = os.getcwd()+"{prefix}{run}.root".format(prefix=converterPrefix, run=str(self.run_number).zfill(4))
 
         if not os.path.exists(noTracksROOTFile):
             print "\n\nSTART CONVERTING RAW FILE..."
