@@ -144,8 +144,9 @@ class Run(Elementary):
         eudaqFolder = "/home/testbeam/testing/mario/eudaq-drs4"
         trackingFolder = "/home/testbeam/sdvlp/TrackingTelescope"
 
-        converter_cmd = ". {eudaq}/bin/Converter.exe -t drs4tree -c ../conf/converter.conf {rawfolder}/{prefix}{run}.raw".format(eudaq=eudaqFolder, rawfolder=rawFolder, prefix=rawPrefix, run=str(self.run_number).zfill(4))
+        converter_cmd = r". {eudaq}/bin/Converter.exe -t drs4tree -c ../conf/converter.conf {rawfolder}/{prefix}{run}.raw".format(eudaq=eudaqFolder, rawfolder=rawFolder, prefix=rawPrefix, run=str(self.run_number).zfill(4))
         print "\n\nSTART CONVERTING RAW FILE..."
+        print converter_cmd
         os.system(converter_cmd)
 
         noTracksROOTFile = eudaqFolder+"/bin/test{prefix}{run}.root".format(prefix=rawPrefix, run=str(self.run_number).zfill(4))
@@ -163,8 +164,9 @@ class Run(Elementary):
             tracking_cmd_number = 0
             assert(False), "Error. unknown TESTCAMPAIGN"
 
-        tracking_cmd = ". {trackingfolder}/TrackingTelescope {root} 0 {nr}".format(trackingfolder=trackingFolder, root=noTracksROOTFile, nr=tracking_cmd_number)
+        tracking_cmd = r". {trackingfolder}/TrackingTelescope {root} 0 {nr}".format(trackingfolder=trackingFolder, root=noTracksROOTFile, nr=tracking_cmd_number)
         print "\n\nSTART TRACKING..."
+        print tracking_cmd
         os.system(tracking_cmd)
 
         tracksROOTFile = trackingFolder+"/test{prefix}{run}_withTracks.root"
