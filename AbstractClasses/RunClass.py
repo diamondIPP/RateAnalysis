@@ -265,7 +265,6 @@ class Run(Elementary):
             IsGoodRun =         KeyConfigParser.get("KEYNAMES", "IsGoodRun")
 
             runinfo = copy.deepcopy(default_info)
-            print self.RunInfo
 
             if Persons != "-1":             runinfo["persons on shift"] =   self.RunInfo[Persons]
             if Runinfo != "-1":             runinfo["run info"] =           self.RunInfo[Runinfo]
