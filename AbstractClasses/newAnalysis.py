@@ -424,13 +424,18 @@ class Analysis(Elementary):
         included = np.delete(all_events, excluded)
         return included
 
-    def ShowLandau(self, channel=None, canvas=None, drawoption="", color=ROOT.kBlue, normalized=True):
+    def ShowSignalHisto(self, channel=None, canvas=None, drawoption="", color=None, normalized=True, drawruninfo=False, binning=600):
+        self._ShowHisto(self.signaldefinition, channel=channel, canvas=canvas, drawoption=drawoption, color=color, normalized=normalized, infoid="landau", drawruninfo=drawruninfo, binning=binning)
+
+    def ShowPedestalHisto(self, channel=None, canvas=None, drawoption="", color=None, normalized=True, drawruninfo=False, binning=600):
+        self._ShowHisto(self.pedestalname+"[{channel}]", channel=channel, canvas=canvas, drawoption=drawoption, color=color, normalized=normalized, infoid="pedestal", drawruninfo=drawruninfo, binning=binning)
+
+    def _ShowHisto(self, signaldef, channel=None, canvas=None, drawoption="", color=None, normalized=True, infoid="histo", drawruninfo=False, binning=600):
         '''
 
         :param channel:
         :param canvas:
         :param drawoption:
-        :param color:
         :param normalized:
         :return:
         '''
@@ -439,18 +444,22 @@ class Analysis(Elementary):
         else:
             channels = self.run.GetChannels()
         if canvas == None:
-            canvas = ROOT.TCanvas("landaucanvas")
+            canvas = ROOT.TCanvas(infoid+"canvas")
+        else:
+            drawoption = "sames"
         canvas.cd()
 
+        if color == None: color = self.GetNewColor()
         for ch in channels:
             if len(channels)>1 and drawoption=="" and ch==3:
                 drawoption = "sames"
-                color = ROOT.kRed
-            print "making Landau using\nSignal def:\n\t{signal}\nCut:\n\t{cut}".format(signal=self.signaldefinition, cut=self.cut)
-            self.run.tree.Draw((self.signaldefinition+">>landau{run}{channel}(600, -100, 500)").format(channel=ch, run=self.run.run_number), self.cut.format(channel=ch), drawoption, 10000000, self.excludefirst)
+                color = self.GetNewColor()
+            print "making "+infoid+" using\nSignal def:\n\t{signal}\nCut:\n\t{cut}".format(signal=signaldef, cut=self.cut)
+            self.run.tree.Draw((signaldef+">>{infoid}{run}{channel}({binning}, -100, 500)").format(infoid=infoid, channel=ch, run=self.run.run_number, binning=binning), self.cut.format(channel=ch), drawoption, 10000000, self.excludefirst)
             canvas.Update()
-            histo = ROOT.gROOT.FindObject("landau{run}{channel}".format(channel=ch, run=self.run.run_number))
+            histo = ROOT.gROOT.FindObject("{infoid}{run}{channel}".format(infoid=infoid, channel=ch, run=self.run.run_number))
 
+            histo.GetYaxis().SetTitle(signaldef.format(channel=""))
             histo.SetLineColor(color)
             histo.Draw(drawoption)
             stats = histo.FindObject("stats")
@@ -461,6 +470,7 @@ class Analysis(Elementary):
                 histo.Scale(1./histo.GetMaximum())
                 histo.Draw(drawoption)
                 canvas.Update()
+        if drawruninfo: self.DrawRunInfo()
 
     def LoadTrackData(self, minimum_bincontent=None): # min_bincontent in config file
         '''

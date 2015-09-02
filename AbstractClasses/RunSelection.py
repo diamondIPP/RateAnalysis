@@ -414,11 +414,29 @@ class RunSelection(Run):
             print "No Runs Selected"
         return selected
 
-    def ShowRunPlan(self):
-        pass
+    def GetSelectedDiamonds(self):
+        selected = []
+        for runnumber in self.run_numbers:
+            if self.selections[runnumber]:
+                dia1 = self.channel_selections[runnumber][0]
+                dia2 = self.channel_selections[runnumber][3]
+                diamonds = int(dia1)*(1<<0) + int(dia2)*(1<<1)
+                if diamonds == 0: diamonds = 3
+                selected.append(diamonds)
+        if self.verbose and len(selected) == 0:
+            print "No Runs Selected"
+        return selected
 
-    def SelectRunsFromRunPlan(self, type_="rate_scan", number=1):
-        pass
+    def ShowRunPlan(self):
+        print "RUN PLAN FOR TESTCAMPAIGN:", self.TESTCAMPAIGN
+        for types_ in self.runplan.keys():
+            print types_, " :"
+            for planNr in self.runplan[types_]:
+                print "\t Nr. {nr} : {runs}".format(nr=planNr, runs=self.runplan[types_][planNr])
+
+    def SelectRunsFromRunPlan(self, number, type_="rate_scan"):
+        runs = self.runplan[type_][str(number)]
+        self.SelectRuns(list_of_runs=runs)
 
     def AddSelectedRunsToRunPlan(self, key, run_type="rate_scan"):
         assert(run_type in ["rate_scan", "voltage_scan", "test"])

@@ -3,6 +3,7 @@ from AbstractClasses.ATH2D import ATH2D
 from AbstractClasses.BinCollection import BinCollection
 from AbstractClasses.RunClass import Run
 from AbstractClasses.newAnalysis import Analysis
+from AbstractClasses.RunSelection import RunSelection
 import types as t
 import os
 import numpy as np
@@ -20,8 +21,11 @@ class AnalysisCollection(Elementary):
         Elementary.__init__(self, verbose=verbose)
         self.collection = {} # dict where all analysis objects are saved
         if listOfRuns != None:
-            assert(type(listOfRuns) is t.ListType), "listOfRuns has to be of type list"
-            self.AddRuns(listOfRuns, diamonds=diamonds)
+            assert((type(listOfRuns) is t.ListType) or isinstance(listOfRuns, RunSelection)), "listOfRuns has to be of type list or instance of RunSelection"
+            if type(listOfRuns) is t.ListType:
+                self.AddRuns(listOfRuns, diamonds=diamonds)
+            else:
+                self.AddRuns(listOfRuns.GetSelectedRuns(), listOfRuns.GetSelectedDiamonds())
 
 
     def __del__(self):
@@ -48,12 +52,17 @@ class AnalysisCollection(Elementary):
         self.collection[analysis_obj.run.run_number] = analysis_obj
         self.current_run_number = analysis_obj.run.run_number
 
-    def AddRuns(self, list, diamonds=None):
-        assert(type(list) is t.ListType), "argument has to be a list of run numbers"
+    def AddRuns(self, list_, diamonds=None):
+        assert(type(list_) is t.ListType), "argument has to be a list of run numbers"
         if diamonds == None: diamonds=3
-        assert(diamonds in [1,2,3]), "'diamonds' has to be 1, 2, 3, or None (0x1: diamond1, 0x2: diamond2)"
-        for runnr in list:
-            self.AddAnalysis(Analysis(Run(runnr, diamonds)))
+        assert((type(diamonds) is t.ListType) or diamonds in [1,2,3]), "'diamonds' has to be 1, 2, 3, or None (0x1: diamond1, 0x2: diamond2)"
+        if type(diamonds) is t.ListType:
+            assert(len(diamonds) == len(list_)), "list of diamonds has to be the same length as list of runs"
+            for i in xrange(len(list_)):
+                self.AddAnalysis(Analysis(Run(list_[i], diamonds[i])))
+        else:
+            for runnr in list_:
+                self.AddAnalysis(Analysis(Run(runnr, diamonds)))
 
     def SetChannels(self, channels):
         runnumbers = self.GetRunNumbers()
