@@ -156,7 +156,11 @@ class AnalysisCollection(Elementary):
         else:
             self.ratecanvas = canvas
             self.ratelegend = canvas.FindObject("TPave")
-            axisoption = ""
+            if not bool(self.ratelegend):
+                self.ratelegend = ROOT.TLegend(0.1, 0.1, 0.4, 0.4)
+                axisoption = "A"
+            else:
+                axisoption = ""
 
         tmpcanvas = ROOT.TCanvas("tmpcanvas", "tmpcanvas")
         tmpsignalhisto = ROOT.TH1D("tmpsignalhisto", "tmpsignalhisto", 600, -100, 500)
