@@ -53,7 +53,7 @@ class Elementary(object):
         Elementary.SaveDirectory = directory
 
     @classmethod
-    def SavePlots(cls, savename, ending=None, saveDir=None):
+    def SavePlots(cls, savename, ending=None, saveDir=None, canvas=None):
         if saveDir == None:
             saveDir = Elementary.SaveDirectory
         if ending == None:
@@ -67,10 +67,11 @@ class Elementary(object):
         if not os.path.exists(resultsdir):
             os.makedirs(resultsdir)
         print "PRINT: ", [resultsdir+savename+ending]
-        pad = ROOT.gROOT.GetSelectedPad()
-        print "pad: ", pad
-        canvas = pad.GetCanvas()
+        if canvas == None:
+            pad = ROOT.gROOT.GetSelectedPad()
+            canvas = pad.GetCanvas()
         canvas.SaveAs(resultsdir+savename+ending)
+
 
     @classmethod
     def GC(cls):
