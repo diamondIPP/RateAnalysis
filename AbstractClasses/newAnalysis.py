@@ -429,7 +429,7 @@ class Analysis(Elementary):
         if not self.Checklist["RemoveBeamInterruptions"]:
             self.GetBeamInterruptions()
 
-            njumps = len(lower=self.jumpsRanges["start"])
+            njumps = len(self.jumpsRanges["start"])
             for i in xrange(njumps):
                 self.cut += "&&!(event_number<={upper}&&event_number>={lower})".format(upper=self.jumpsRanges["stop"][i], lower=self.jumpsRanges["start"][i])
             self.Checklist["RemoveBeamInterruptions"] = True
