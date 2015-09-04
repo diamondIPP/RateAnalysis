@@ -392,7 +392,7 @@ class Analysis(Elementary):
         return self.jumps
 
     def _ReduceJumps(self):
-        if not hasattr(self, "jumpsRanges"):
+        if not hasattr(self, "jumpsRanges") and len(self.jumps)>0:
             self.jumps.sort()
             events = self.GetEventAtTime(-1)
             selection = events*[0]
