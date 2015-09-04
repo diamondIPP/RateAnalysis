@@ -31,4 +31,4 @@ for runplanNr in runplans:
     rate_analyses[runplanNr].MakePreAnalysis(savePlot=True)
 
     rate_analyses[runplanNr].ShowSignalVSRate(canvas=rateScanCanvas)
-    sel.SavePlots(savename="SignalVSRate"+str(runplanNr)+".root")
+    sel.SavePlots(savename="SignalVSRate"+str(runplanNr)+".root", canvas=rateScanCanvas)
