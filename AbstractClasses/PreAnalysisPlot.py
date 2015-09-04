@@ -149,11 +149,11 @@ class PreAnalysisPlot(object):
         #savename= "Run{runnumber}_{diamondname}_PedestalTimeEvolution.eps".format(runnumber=self.analysis.run.run_number, diamondname=self.analysis.run.diamondname[self.channel])
         #self.analysis.SavePlots(savename)
 
-
         #update canvas
         self.signalTimeCanvas.Update()
         savename = "Run{run}_PreAnalysis_{diamond}".format(run=self.analysis.run.run_number, diamond=self.analysis.run.diamondname[self.channel])
         print "SAVENAME: ", savename
+        self.signalTimeCanvas.cd()
         if savePlot:
             self.analysis.SavePlots(savename, "eps")
             self.analysis.SavePlots(savename, "root")
