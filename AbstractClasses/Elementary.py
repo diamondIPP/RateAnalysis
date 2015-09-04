@@ -53,7 +53,7 @@ class Elementary(object):
         Elementary.SaveDirectory = directory
 
     @classmethod
-    def SavePlots(cls, savename, ending=None, saveDir=None, canvas=None):
+    def SavePlots(cls, savename, ending=None, saveDir=None, subDir=None, canvas=None):
         if saveDir == None:
             saveDir = Elementary.SaveDirectory
         if ending == None:
@@ -63,7 +63,11 @@ class Elementary(object):
             ending = "."+ending
         # Results directories:
         #resultsdir = saveDir+'run_'+str(self.run_object.run_number)+'/' # eg. 'Results/run_364/'
-        resultsdir = saveDir # eg. 'Results/run_364/'
+        if subDir == None:
+            subDir=""
+        else:
+            if subDir[-1] != "/": subDir = subDir+"/"
+        resultsdir = saveDir+subDir # eg. 'Results/run_364/'
         if not os.path.exists(resultsdir):
             os.makedirs(resultsdir)
         print "PRINT: ", [resultsdir+savename+ending]
