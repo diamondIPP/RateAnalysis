@@ -68,6 +68,7 @@ class Elementary(object):
             os.makedirs(resultsdir)
         print "PRINT: ", [resultsdir+savename+ending]
         pad = ROOT.gROOT.GetSelectedPad()
+        print "pad: ", pad
         canvas = pad.GetCanvas()
         canvas.SaveAs(resultsdir+savename+ending)
 

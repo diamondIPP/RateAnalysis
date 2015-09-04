@@ -1,8 +1,9 @@
 import ROOT
+from AbstractClasses.Elementary import Elementary
 from ROOT import gROOT
 
 
-class PreAnalysisPlot(object):
+class PreAnalysisPlot(Elementary):
     '''
     Produces 3 plots inside one canvas:
      - mean signal vs time distribution
@@ -156,8 +157,8 @@ class PreAnalysisPlot(object):
         self.signalTimeCanvas.cd()
         self.signalTimeCanvas.SaveAs("blablablablabla.png")
         if savePlot:
-            self.analysis.SavePlots(savename, "eps")
-            self.analysis.SavePlots(savename, "root")
+            self.SavePlots(savename, "eps")
+            self.SavePlots(savename, "root")
 
         self.analysis.IfWait("showing MakePreAnalysis plots..")
 
