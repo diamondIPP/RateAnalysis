@@ -60,7 +60,7 @@ class Elementary(object):
             ending = ""
         else:
             assert(type(ending) == t.StringType), "ending has to be string type"
-            #ending = "."+ending
+            ending = "."+ending
         # Results directories:
         #resultsdir = saveDir+'run_'+str(self.run_object.run_number)+'/' # eg. 'Results/run_364/'
         resultsdir = saveDir # eg. 'Results/run_364/'
@@ -70,8 +70,8 @@ class Elementary(object):
         if ending == None:
             ROOT.gPad.Print(resultsdir+savename+ending)
         else:
-            assert(ending in ["eps", "pdf", "Preview", "tex", "gif", "png", "jpg", "tiff", "root"])
-            ROOT.gPad.Print(resultsdir+savename, ending)
+            assert(ending in [".eps", ".pdf", ".tex", ".gif", ".png", ".jpg", ".tiff", ".root"])
+            ROOT.gPad.SaveAs(resultsdir+savename+ending)
 
     @classmethod
     def GC(cls):
