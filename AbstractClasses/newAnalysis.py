@@ -384,6 +384,8 @@ class Analysis(Elementary):
                 self._ReduceJumps()
                 jumpfile.close()
             else:
+                print "No pickle file found at: ", picklepath, "\n .. analyzing beam interruptions.. "
+                print "No pickle file found at: ", picklepath, "\n .. analyzing beam interruptions.. "
                 self._FindBeamInterruptions()
                 self._ReduceJumps()
 

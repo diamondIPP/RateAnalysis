@@ -67,11 +67,9 @@ class Elementary(object):
         if not os.path.exists(resultsdir):
             os.makedirs(resultsdir)
         print "PRINT: ", [resultsdir+savename+ending]
-        if ending == None:
-            ROOT.gPad.Print(resultsdir+savename+ending)
-        else:
-            assert(ending in [".eps", ".pdf", ".tex", ".gif", ".png", ".jpg", ".tiff", ".root"])
-            ROOT.gPad.SaveAs(resultsdir+savename+ending)
+        pad = ROOT.gROOT.GetSelectedPad()
+        canvas = pad.GetCanvas()
+        canvas.SaveAs(resultsdir+savename+ending)
 
     @classmethod
     def GC(cls):
