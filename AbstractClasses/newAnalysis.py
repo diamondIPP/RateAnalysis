@@ -259,7 +259,7 @@ class Analysis(Elementary):
         self.IfWait("FFT shown..")
 
 
-    def FindBeamInterruptions(self):
+    def _FindBeamInterruptions(self):
         '''
         Finds the beam interruptions
         :return: list of event numbers where beam interruptions occures
@@ -327,7 +327,7 @@ class Analysis(Elementary):
             os.mkdir("beaminterruptions/data")
 
         # save jump list to file
-        jumpfile = open("beaminterruptions/data/Run_{run}.pickle".format(run=self.run.run_number), "wb")
+        jumpfile = open("beaminterruptions/data/{testcampaign}Run_{run}.pickle".format(testcampaign=self.TESTCAMPAIGN, run=self.run.run_number), "wb")
         pickle.dump(self.jumps, jumpfile)
         jumpfile.close()
 
@@ -343,7 +343,7 @@ class Analysis(Elementary):
             jumps_graph.SetLineColor(ROOT.kRed)
             jumps_graph.Draw('p')
         
-            outfile = open('beaminterruptions/jumps.txt','r+a')
+            outfile = open('beaminterruptions/jumps_{testcampaign}.txt'.format(testcampaign=self.TESTCAMPAIGN),'r+a')
             # check if the run is already in the file
             runInFile = False
             lines = outfile.readlines()
@@ -364,7 +364,7 @@ class Analysis(Elementary):
             outfile.close()
                 
         
-        ROOT.c1.SaveAs('beaminterruptions/plots/jumpSearch_run%d.png' %(self.run.run_number))
+        ROOT.c1.SaveAs('beaminterruptions/plots/%djumpSearch_run%d.png' %(self.TESTCAMPAIGN, self.run.run_number))
 
         canvas.Close()
         return self.jumps
@@ -375,17 +375,50 @@ class Analysis(Elementary):
         it will create the attribute self.jumps, which is a list of event numbers, where a jump occures
         :return: list of events where beam interruptions occures
         '''
-        if not hasattr(self, "jumps"):
-            picklepath = "beaminterruptions/data/Run_{run}.pickle".format(run=self.run.run_number)
+        if not hasattr(self, "jumpsRanges"):
+            picklepath = "beaminterruptions/data/{testcampaign}Run_{run}.pickle".format(testcampaign=self.TESTCAMPAIGN, run=self.run.run_number)
             if os.path.exists(picklepath):
                 print "Loading beam interruption data from pickle file: \n\t"+picklepath
                 jumpfile = open(picklepath, "rb")
                 self.jumps = pickle.load(jumpfile)
+                self._ReduceJumps()
                 jumpfile.close()
             else:
-                self.FindBeamInterruptions()
+                self._FindBeamInterruptions()
+                self._ReduceJumps()
 
         return self.jumps
+
+    def _ReduceJumps(self):
+        if not hasattr(self, "jumpsRanges"):
+            self.jumps.sort()
+            events = self.GetEventAtTime(-1)
+            selection = events*[0]
+            high = self.excludeAfterJump
+            low = self.excludeBeforeJump
+            reduced_jumps = []
+            reduced_ends = []
+            for jump in self.jumps:
+                c = 1 if (jump-low)>0 else 0
+                selection[c*(jump-low):(jump+high+1)] = len(selection[c*(jump-low):(jump+high+1)])*[1]
+
+            for i in xrange(len(selection)-1):
+                if selection[i] != selection[i+1]:
+                    if selection[i] == 0:
+                        print "jump start: ", i+1
+                        reduced_jumps.append(i+1)
+                    else:
+                        print "jump end: ", i+1
+                        reduced_ends.append(i+1)
+            if reduced_ends[0]<reduced_jumps[0]:
+                reduced_jumps = [0]+reduced_jumps
+            if reduced_jumps[-1]>reduced_ends[-1]:
+                reduced_ends = reduced_ends+[events]
+            self.jumps = reduced_jumps
+            self.jumpsRanges = {
+                "start": reduced_jumps,
+                "end": reduced_ends
+            }
 
     def RemoveBeamInterruptions(self):
         '''
@@ -395,13 +428,10 @@ class Analysis(Elementary):
         '''
         if not self.Checklist["RemoveBeamInterruptions"]:
             self.GetBeamInterruptions()
-            # events cut away in [jump-2000, jump+10000] :
-            highcut = 20000
-            lowcut = 5000
 
-            njumps = len(self.jumps)
+            njumps = len(lower=self.jumpsRanges["start"])
             for i in xrange(njumps):
-                self.cut += "&&!(event_number<={jump}+{high}&&event_number>={jump}-{low})".format(jump=self.jumps[i], high=highcut, low=lowcut)
+                self.cut += "&&!(event_number<={upper}&&event_number>={lower})".format(upper=self.jumpsRanges["stop"][i], lower=self.jumpsRanges["start"][i])
             self.Checklist["RemoveBeamInterruptions"] = True
 
         return self.cut
@@ -988,6 +1018,7 @@ class Analysis(Elementary):
 
         #get t0 and tmax
         maxevent = self.run.tree.GetEntries()
+        if time < 0: return maxevent
         t_0 = self.GetTimeAtEvent(0)
         t_max = self.GetTimeAtEvent(maxevent-1)
 
