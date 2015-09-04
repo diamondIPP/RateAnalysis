@@ -114,8 +114,8 @@ class PreAnalysisPlot(object):
         self.graph.GetYaxis().SetLabelSize(0.06)
         self.graph.GetYaxis().SetTitle(yTitlestr)
         self.graph.Draw("ALP")
-        savename= "Run{runnumber}_{diamondname}_SignalTimeEvolution.eps".format(runnumber=self.analysis.run.run_number, diamondname=self.analysis.run.diamondname[self.channel])
-        if savePlot: self.analysis.SavePlots(savename)
+        savename= "Run{runnumber}_{diamondname}_SignalTimeEvolution".format(runnumber=self.analysis.run.run_number, diamondname=self.analysis.run.diamondname[self.channel])
+        if savePlot: self.analysis.SavePlots(savename, "eps")
 
         #2d distribution (high resolution)
         self.signalTimeCanvas.cd(2)
@@ -152,9 +152,9 @@ class PreAnalysisPlot(object):
 
         #update canvas
         self.signalTimeCanvas.Update()
-        savename = "Run{run}_PreAnalysis_{diamond}.png".format(run=self.analysis.run.run_number, diamond=self.analysis.run.diamondname[self.channel])
-        print "SAVENAME: ", savename
-        if savePlot: self.analysis.SavePlots(savename)
+        savename = "Run{run}_PreAnalysis_{diamond}".format(run=self.analysis.run.run_number, diamond=self.analysis.run.diamondname[self.channel])
+        print "SAVENAME: ", savename+".png"
+        if savePlot: self.analysis.SavePlots(savename, "png")
 
         self.analysis.IfWait("showing MakePreAnalysis plots..")
 
