@@ -153,6 +153,7 @@ class PreAnalysisPlot(object):
         #update canvas
         self.signalTimeCanvas.Update()
         savename = "Run{run}_PreAnalysis_{diamond}.png".format(run=self.analysis.run.run_number, diamond=self.analysis.run.diamondname[self.channel])
+        print "SAVENAME: ", savename
         if savePlot: self.analysis.SavePlots(savename)
 
         self.analysis.IfWait("showing MakePreAnalysis plots..")
