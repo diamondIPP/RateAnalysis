@@ -66,6 +66,7 @@ class Elementary(object):
         resultsdir = saveDir # eg. 'Results/run_364/'
         if not os.path.exists(resultsdir):
             os.makedirs(resultsdir)
+        print "PRINT: ", [resultsdir+savename+ending]
         ROOT.gPad.Print(resultsdir+savename+ending)
 
     @classmethod
