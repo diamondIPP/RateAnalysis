@@ -421,6 +421,11 @@ class Analysis(Elementary):
                 "start": reduced_jumps,
                 "stop": reduced_ends
             }
+        else:
+            self.jumpsRanges = {
+                "start": [],
+                "stop": []
+            }
 
     def RemoveBeamInterruptions(self):
         '''
