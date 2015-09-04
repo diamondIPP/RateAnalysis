@@ -25,7 +25,7 @@ class PreAnalysisPlot(object):
         self.channel = channel
         self.binning = binning
         
-    def Draw(self, mode="mean"):
+    def Draw(self, mode="mean", savePlot=True):
         assert(mode in ["mean", "Mean", "fit", "Fit"])
         drawOption2D = "COLZ"
         nbins = int(self.analysis.GetEventAtTime(9999999))/int(self.binning)
@@ -115,7 +115,7 @@ class PreAnalysisPlot(object):
         self.graph.GetYaxis().SetTitle(yTitlestr)
         self.graph.Draw("ALP")
         savename= "Run{runnumber}_{diamondname}_SignalTimeEvolution.eps".format(runnumber=self.analysis.run.run_number, diamondname=self.analysis.run.diamondname[self.channel])
-        self.analysis.SavePlots(savename)
+        if savePlot: self.analysis.SavePlots(savename)
 
         #2d distribution (high resolution)
         self.signalTimeCanvas.cd(2)
@@ -152,7 +152,7 @@ class PreAnalysisPlot(object):
 
         #update canvas
         self.signalTimeCanvas.Update()
-        self.analysis.SavePlots("Run{run}_PreAnalysis_{diamond}.png".format(run=self.analysis.run.run_number, diamond=self.analysis.run.diamondname[self.channel]))
+        if savePlot: self.analysis.SavePlots("Run{run}_PreAnalysis_{diamond}.png".format(run=self.analysis.run.run_number, diamond=self.analysis.run.diamondname[self.channel]))
 
         self.analysis.IfWait("showing MakePreAnalysis plots..")
 

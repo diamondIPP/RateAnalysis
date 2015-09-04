@@ -83,6 +83,7 @@ class AnalysisCollection(Elementary):
         :param ending:  file typ if saveplots = True
         :return: -
         '''
+        if self.GetNumberOfAnalyses() == 0: return 0
 
         self.FWHMcanvas = ROOT.TCanvas("FWHMcanvas", "FWHM")
         self.fwhm_histo = ROOT.TH1D("fwhm_histo", "FWHM Distribution of "+str(self.GetNumberOfAnalyses())+" runs",50,0,100)
@@ -115,6 +116,8 @@ class AnalysisCollection(Elementary):
                             current run number from AnalysisCollection object
         :return: FWHM
         '''
+        if self.GetNumberOfAnalyses() == 0: return 0
+
         channel = 0
         if run_number == None:
             run_number = AnalysisCollection.current_run_number
@@ -136,15 +139,16 @@ class AnalysisCollection(Elementary):
 
         return fwhm
 
-    def MakePreAnalysis(self, channel=None, mode="mean"):
+    def MakePreAnalysis(self, channel=None, mode="mean", savePlot=True):
+
         assert(channel in [0,3, None]), "invalid channel: channel has to be either 0, 3 or None"
         runnumbers = self.GetRunNumbers()
 
         for run in runnumbers:
             if channel == None:
-                self.collection[run].MakePreAnalysis(mode=mode)
+                self.collection[run].MakePreAnalysis(mode=mode, savePlot=savePlot)
             else:
-                self.collection[run].MakePreAnalysis(channel=channel, mode=mode)
+                self.collection[run].MakePreAnalysis(channel=channel, mode=mode, savePlot=savePlot)
 
     def ShowSignalVSRate(self, canvas=None, diamonds=None): #, method="mean"
         '''
@@ -156,6 +160,8 @@ class AnalysisCollection(Elementary):
         :param diamonds: 0x1: diamond1 0x2: diamond2
         :return:
         '''
+        if self.GetNumberOfAnalyses() == 0: return 0
+
         assert(diamonds in [1,2,3,None]), "wrong diamonds selection: 0x1: diamond1, 0x2: diamond2"
         if canvas==None:
             self.ratecanvas = ROOT.TCanvas("signalvsratecanvas", "signalvsratecanvas")
@@ -239,6 +245,8 @@ class AnalysisCollection(Elementary):
         :param ending:
         :return:
         '''
+        if self.GetNumberOfAnalyses() == 0: return 0
+
         # self.AnalysisCollection.collection[run_number].MaximaAnalysis
         canvas = ROOT.TCanvas('MPVSigmaCanvas', 'MPVSigmaCanvas')
         canvas.cd()
@@ -259,6 +267,8 @@ class AnalysisCollection(Elementary):
         self.IfWait("MPV vs Sigma shown...")
 
     def SignalHeightScan(self, channel): # improve!
+        if self.GetNumberOfAnalyses() == 0: return 0
+
         #tmp = self.ShowAndWait
         #self.ShowAndWait = True
         SignalHeightScanCanvas = ROOT.TCanvas("SignalHeightScanCanvas", "SignalHeightScan Canvas")
@@ -286,6 +296,8 @@ class AnalysisCollection(Elementary):
         #self.ShowAndWait = tmp
 
     def PeakComparison(self, channel, show = True):
+        if self.GetNumberOfAnalyses() == 0: return 0
+
         print "PeakComparision start"
         if show:
             PeakComparisonCanvasMax = ROOT.TCanvas("PeakComparisonCanvasMax", "PeakComparisonCanvas")
@@ -328,6 +340,8 @@ class AnalysisCollection(Elementary):
         # raw_input("peakpad")
 
     def PeakSignalEvolution(self, NMax = 3, NMin = 3, OnThisCanvas = None, BinRateEvolution = False):
+        if self.GetNumberOfAnalyses() == 0: return 0
+
         if OnThisCanvas != None:
             assert(isinstance(OnThisCanvas, ROOT.TCanvas)), "OnThisCanvas has to be a TCanvas object"
         print "Signal Evolution start"

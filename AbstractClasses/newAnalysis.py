@@ -120,7 +120,7 @@ class Analysis(Elementary):
         else:
             self.signaldefinition = self.signalname+"[{channel}]-"+self.pedestalname+"[{channel}]"
 
-    def MakePreAnalysis(self, channel=None, mode="mean", binning=5000):
+    def MakePreAnalysis(self, channel=None, mode="mean", binning=5000, savePlot=True):
         '''
         Creates the Signal Time distribution (and checks for beam interruptions).
         No tracking information needed -> no spatial information provided
@@ -134,7 +134,7 @@ class Analysis(Elementary):
         self.preAnalysis = {}
         for ch in channels:
             self.preAnalysis[ch] = PreAnalysisPlot(analysis=self, channel=ch, canvas=None, binning=binning)
-            self.preAnalysis[ch].Draw(mode=mode)
+            self.preAnalysis[ch].Draw(mode=mode, savePlot=savePlot)
 
     def ShowPulserRate(self, binning=2000):
         assert(binning>=100), "binning too low"
@@ -268,11 +268,12 @@ class Analysis(Elementary):
         nentries = self.run.tree.GetEntries()
     #    last_entry = self.run.tree.GetEntry(nentries-1)
     #    max_time = self.run.tree.time
-        
+
+        canvas = ROOT.TCanvas("beaminterruptioncanvas", "beaminterruptioncanvas")
         self.run.tree.Draw('time:event_number')
         
     #    graph = copy.deepcopy(ROOT.c1.FindObject('Graph'))
-        histo = copy.deepcopy(ROOT.c1.FindObject('htemp'))
+        histo = copy.deepcopy(canvas.FindObject('htemp'))
         
         histo.SetTitle('run %3d' %(self.run.run_number))
         histo.SetName('run %3d' %(self.run.run_number))
@@ -365,6 +366,7 @@ class Analysis(Elementary):
         
         ROOT.c1.SaveAs('beaminterruptions/plots/jumpSearch_run%d.png' %(self.run.run_number))
 
+        canvas.Close()
         return self.jumps
         
     def GetBeamInterruptions(self):
@@ -457,9 +459,10 @@ class Analysis(Elementary):
             print "making "+infoid+" using\nSignal def:\n\t{signal}\nCut:\n\t{cut}".format(signal=signaldef, cut=self.cut)
             self.run.tree.Draw((signaldef+">>{infoid}{run}{channel}({binning}, -100, 500)").format(infoid=infoid, channel=ch, run=self.run.run_number, binning=binning), self.cut.format(channel=ch), drawoption, 10000000, self.excludefirst)
             canvas.Update()
-            histo = ROOT.gROOT.FindObject("{infoid}{run}{channel}".format(infoid=infoid, channel=ch, run=self.run.run_number))
+            histoname = "{infoid}{run}{channel}".format(infoid=infoid, channel=ch, run=self.run.run_number)
+            histo = ROOT.gROOT.FindObject(histoname)
 
-            histo.GetYaxis().SetTitle(signaldef.format(channel=""))
+            histo.GetXaxis().SetTitle(signaldef.format(channel=""))
             histo.SetLineColor(color)
             histo.Draw(drawoption)
             stats = histo.FindObject("stats")
@@ -1053,7 +1056,7 @@ class Analysis(Elementary):
             wf_exist[3] = True
         return nWFChannels, wf_exist
 
-    def ShowWaveForms(self, nevents=1000, cut="", startevent=None, channels=None, canvas=None, infoid=""):
+    def ShowWaveForms(self, nevents=1000, cut="", startevent=None, channels=None, canvas=None, infoid="", drawoption=""):
         if startevent != None: assert(startevent>=0), "startevent as to be >= 0"
         maxevent = self.run.tree.GetEntries()
         if startevent > maxevent: return False
@@ -1082,12 +1085,15 @@ class Analysis(Elementary):
 
         def drawWF(self, channel, events=1000, startevent=50000, cut=""):
             histoname = "R{run}wf{wfch}{infoID}".format(wfch=channel, run=self.run.run_number, infoID=infoid)
-            self.waveformplots[histoname] = ROOT.TH2D(histoname, self.run.GetChannelName(channel)+" {"+cut+"}", 1024, 0, 1023, 1000, -500, 500)
-            ROOT.SetOwnership(self.waveformplots[histoname], False)
-            self.waveformplots[histoname].SetStats(0)
+            # self.waveformplots[histoname] = ROOT.TH2D(histoname, self.run.GetChannelName(channel)+" {"+cut.format(channel=channel)+"}", 1024, 0, 1023, 1000, -500, 500)
+            # ROOT.SetOwnership(self.waveformplots[histoname], False)
+            # self.waveformplots[histoname].SetStats(0)
             print "DRAW: wf{wfch}:Iteration$>>{histoname}".format(histoname=histoname, wfch=channel)
             print "cut: ", cut.format(channel=channel), " events: ", events, " startevent: ", startevent
-            n = self.run.tree.Draw("wf{wfch}:Iteration$>>{histoname}".format(histoname=histoname, wfch=channel), cut.format(channel=channel), "", events, startevent)
+            n = self.run.tree.Draw("wf{wfch}:Iteration$>>{histoname}(1024, 0, 1023, 1000, -500, 500)".format(histoname=histoname, wfch=channel), cut.format(channel=channel), drawoption, events, startevent)
+            self.waveformplots[histoname] = ROOT.gROOT.FindObject(histoname)
+            ROOT.SetOwnership(self.waveformplots[histoname], False)
+            self.waveformplots[histoname].SetStats(0)
             if cut == "":
                 self.DrawRunInfo(channel=channel, comment="{nwf} Wave Forms".format(nwf=n/1024), infoid=("wf{wf}"+infoid).format(wf=channel), userWidth=0.15, userHeight=0.15)
             else:
