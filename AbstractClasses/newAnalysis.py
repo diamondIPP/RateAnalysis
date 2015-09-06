@@ -162,6 +162,7 @@ class Analysis(Elementary):
         self.pulserRateGraph.GetYaxis().SetTitleOffset(1.2)
         self.DrawRunInfo()
         self.pulserRateCanvas.Update()
+        self.SavePlots("Run{run}_PulserRate.png".format(run=self.run.run_number))
 
     def DrawRunInfo(self, channel=None, canvas=None, diamondinfo=True, showcut=False, comment=None, infoid="", userHeight=None, userWidth=None):
         self.run.DrawRunInfo(channel=channel, canvas=canvas, diamondinfo=diamondinfo, showcut=showcut, comment=comment, infoid=infoid, userHeight=userHeight, userWidth=userWidth)

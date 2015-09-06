@@ -9,6 +9,7 @@ rate_analyses = {}
 
 rateScanCanvas = TCanvas("rateScanCanvas", "rateScanCanvas")
 
+
 sel = RunSelection()
 runplans =sel.runplan[runplanType].keys()
 
