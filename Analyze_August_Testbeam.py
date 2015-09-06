@@ -26,8 +26,6 @@ for runplanNr in runplans:
 
     rate_analyses[runplanNr] = AnalysisCollection(sel)
 
-    rate_analyses[runplanNr].RemoveBeamInterruptions() # include it with config file..
-
     rate_analyses[runplanNr].MakePreAnalysis(savePlot=True)
 
     rate_analyses[runplanNr].ShowSignalVSRate(canvas=rateScanCanvas)
