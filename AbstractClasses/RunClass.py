@@ -109,6 +109,7 @@ class Run(Elementary):
         self.maskfilepath = runConfigParser.get('BASIC', 'maskfilepath')
 
     def LoadRunInfo(self):
+        print "load run info"
         self.RunInfo = {}
         try:
             f = open(self.runinfofile, "r")

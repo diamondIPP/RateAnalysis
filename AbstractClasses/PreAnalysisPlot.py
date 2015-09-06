@@ -56,16 +56,16 @@ class PreAnalysisPlot(Elementary):
         print "Total Minutes: {tot} nbins={nbins}".format(tot=totalMinutes, nbins=nbins)
         signaltime = ROOT.TH2D("signaltime" ,"signaltime", nbins, 0, (endtime-starttime), 200, -100, 500)
         pedestaltime = ROOT.TH2D("pedestaltime" ,"pedestaltime", nbins, 0, (endtime-starttime), 200, -100, 500)
-        print "making PreAnalysis using\nSignal def:\n\t{signal}\nCut:\n\t{cut}".format(signal=self.analysis.signaldefinition, cut=self.analysis.cut)
-        test = self.analysis.run.tree.Draw((self.analysis.signaldefinition+":(time-{starttime})>>signaltime").format(channel=self.channel, starttime=starttime), self.analysis.cut.format(channel=self.channel), drawOption2D, 10000000000, self.analysis.excludefirst)
-        self.analysis.run.tree.Draw(self.analysis.pedestalname+"[{channel}]:(time-{starttime})>>pedestaltime".format(channel=self.channel, starttime=starttime), self.analysis.cut.format(channel=self.channel), drawOption2D, 10000000000, self.analysis.excludefirst)
+        print "making PreAnalysis using\nSignal def:\n\t{signal}\nCut:\n\t{cut}".format(signal=self.analysis.signaldefinition, cut=self.analysis.GetCut(self.channel))
+        test = self.analysis.run.tree.Draw((self.analysis.signaldefinition+":(time-{starttime})>>signaltime").format(channel=self.channel, starttime=starttime), self.analysis.GetCut(self.channel), drawOption2D, self.analysis.GetNEventsCut(), self.analysis.GetMinEventCut())
+        self.analysis.run.tree.Draw(self.analysis.pedestalname+"[{channel}]:(time-{starttime})>>pedestaltime".format(channel=self.channel, starttime=starttime), self.analysis.GetCut(self.channel), drawOption2D, self.analysis.GetNEventsCut(), self.analysis.GetMinEventCut())
 
         print "starttime: ", starttime
         print "startevent:", startevent
         print "endtime:", endtime
         print "endevent:", endevent
 
-        assert(int(test)>0), "Error: No signal event with current settings.. \nThe Cut is:\n\t"+self.analysis.cut.format(channel=self.channel)
+        assert(int(test)>0), "Error: No signal event with current settings.. \nThe Cut is:\n\t"+self.analysis.GetCut(self.channel)
 
         count = 0
         final_i = 0
@@ -120,7 +120,7 @@ class PreAnalysisPlot(Elementary):
 
         #2d distribution (high resolution)
         self.signalTimeCanvas.cd(2)
-        self.analysis.run.tree.Draw((self.analysis.signaldefinition+":(event_number)/1000>>signaltime2d{run}{channel}({bins}, {start}, {end}, 300, 0, 500)").format(bins=nbins, run=self.analysis.run.run_number, channel=self.channel, start=startevent/1000, end=endevent/1000), self.analysis.cut.format(channel=self.channel), drawOption2D, 10000000000, self.analysis.excludefirst)
+        self.analysis.run.tree.Draw((self.analysis.signaldefinition+":(event_number)/1000>>signaltime2d{run}{channel}({bins}, {start}, {end}, 300, 0, 500)").format(bins=nbins, run=self.analysis.run.run_number, channel=self.channel, start=startevent/1000, end=endevent/1000), self.analysis.GetCut(self.channel), drawOption2D, self.analysis.GetNEventsCut(), self.analysis.GetMinEventCut())
         self.signaltime2d = gROOT.FindObject("signaltime2d{run}{channel}".format(run=self.analysis.run.run_number, channel=self.channel))
         self.signaltime2d.SetStats(0)
         self.signaltime2d.GetXaxis().SetLabelSize(0.06)

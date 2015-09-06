@@ -206,7 +206,7 @@ class AnalysisCollection(Elementary):
                 results[runnumber] = {}
                 print "Signal VS Rate: Processing Run {run} (Rate: {rate}) - Channel {channel}".format(run=runnumber, channel=channel, rate=self.collection[runnumber].run.RunInfo["measured flux"])
                 results[runnumber][channel] = {}
-                self.collection[runnumber].run.tree.Draw((self.collection[runnumber].signaldefinition+">>tmpsignalhisto").format(channel=channel), self.collection[runnumber].cut.format(channel=channel), "", 2000000, self.collection[runnumber].excludefirst)
+                self.collection[runnumber].run.tree.Draw((self.collection[runnumber].signaldefinition+">>tmpsignalhisto").format(channel=channel), self.collection[runnumber].GetCut(channel), "", self.collection[runnumber].GetNEventsCut(), self.collection[runnumber].GetMinEventCut())
                 results[runnumber][channel]["mean"] = tmpsignalhisto.GetMean()
                 results[runnumber][channel]["error"] = tmpsignalhisto.GetRMS()/np.sqrt(tmpsignalhisto.GetEntries())
                 self.graphs[channel].SetPoint(i, self.collection[runnumber].run.RunInfo["measured flux"], results[runnumber][channel]["mean"])

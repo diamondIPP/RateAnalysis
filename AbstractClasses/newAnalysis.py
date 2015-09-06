@@ -6,9 +6,10 @@ from AbstractClasses.Elementary import Elementary
 from AbstractClasses.PreAnalysisPlot import PreAnalysisPlot
 from AbstractClasses.ConfigClass import *
 from AbstractClasses.RunClass import Run
+from AbstractClasses.Cut import Cut
 from AbstractClasses.Langau import Langau
 import os
-import copy, collections, numpy, array
+import copy, collections, numpy
 import sys
 import numpy as np
 from BinCollection import BinCollection
@@ -91,6 +92,7 @@ class Analysis(Elementary):
             0: copy.deepcopy(signalHistoFitResults),
             3: copy.deepcopy(signalHistoFitResults)
         }
+        self.cut = Cut(self)
 
     def LoadConfig(self):
         configfile = "Configuration/AnalysisConfig_"+self.TESTCAMPAIGN+".cfg"
@@ -104,10 +106,10 @@ class Analysis(Elementary):
         self.signalname = parser.get("BASIC", "signalname")
         self.pedestal_correction = parser.getboolean("BASIC", "pedestal_correction")
         self.pedestalname = parser.get("BASIC", "pedestalname")
-        self.cut = parser.get("BASIC", "cut")
-        self.excludefirst = parser.getint("BASIC", "excludefirst")
-        self.excludeBeforeJump = parser.getint("BASIC", "excludeBeforeJump")
-        self.excludeAfterJump = parser.getint("BASIC", "excludeAfterJump")
+        # self.cut = parser.get("BASIC", "cut")
+        # self.excludefirst = parser.getint("BASIC", "excludefirst")
+        # self.excludeBeforeJump = parser.getint("BASIC", "excludeBeforeJump")
+        # self.excludeAfterJump = parser.getint("BASIC", "excludeAfterJump")
 
         self.loadMaxEvent = parser.getint("TRACKING", "loadMaxEvent")
         self.minimum_bincontent = parser.getint("TRACKING", "min_bincontent")
@@ -119,6 +121,9 @@ class Analysis(Elementary):
             self.signaldefinition = self.signalname+"[{channel}]"
         else:
             self.signaldefinition = self.signalname+"[{channel}]-"+self.pedestalname+"[{channel}]"
+
+    def GetCut(self, channel, gen_PulserCut=True, gen_EventRange=True, gen_ExcludeFirst=True):
+        return self.cut.GetCut(channel=channel, gen_PulserCut=gen_PulserCut, gen_EventRange=gen_EventRange, gen_ExcludeFirst=gen_ExcludeFirst)
 
     def MakePreAnalysis(self, channel=None, mode="mean", binning=5000, savePlot=True):
         '''
@@ -259,191 +264,192 @@ class Analysis(Elementary):
         self.IfWait("FFT shown..")
 
 
-    def _FindBeamInterruptions(self):
-        '''
-        Finds the beam interruptions
-        :return: list of event numbers where beam interruptions occures
-        '''
-        print "Searching for beam interruptions.."
-        nentries = self.run.tree.GetEntries()
-    #    last_entry = self.run.tree.GetEntry(nentries-1)
-    #    max_time = self.run.tree.time
+    # def _FindBeamInterruptions(self):
+    #     '''
+    #     Finds the beam interruptions
+    #     :return: list of event numbers where beam interruptions occures
+    #     '''
+    #     print "Searching for beam interruptions.."
+    #     nentries = self.run.tree.GetEntries()
+    # #    last_entry = self.run.tree.GetEntry(nentries-1)
+    # #    max_time = self.run.tree.time
+    #
+    #     canvas = ROOT.TCanvas("beaminterruptioncanvas", "beaminterruptioncanvas")
+    #     self.run.tree.Draw('time:event_number')
+    #
+    # #    graph = copy.deepcopy(ROOT.c1.FindObject('Graph'))
+    #     histo = copy.deepcopy(canvas.FindObject('htemp'))
+    #
+    #     histo.SetTitle('run %3d' %(self.run.run_number))
+    #     histo.SetName('run %3d' %(self.run.run_number))
+    #
+    #     # get event numbers and dt's
+    #     dts = []
+    #     evs = []
+    #     i = self.excludefirst
+    #     step = 100
+    #     while i+step < nentries:
+    #         self.run.tree.GetEntry(i)
+    #         t1 = self.run.tree.time
+    #         evs.append(self.run.tree.event_number)
+    #         self.run.tree.GetEntry(i+step)
+    #         t2 = self.run.tree.time
+    #         dt = (t2 - t1)
+    #         dts.append(dt)
+    #         i += step
+    #
+    #     self.jumps = []
+    #
+    #     deq = collections.deque(dts[:100],100)
+    #     first = True
+    #     for i in dts[101:]:
+    #         avg = numpy.mean(deq)
+    #         if abs(i / avg - 1.) > 0.3:
+    #             if first:
+    #                 print 'found a jump here', i, 'at event number', evs[dts.index(i)]
+    #                 self.jumps.append(evs[dts.index(i)])
+    #                 first = False
+    #         else:
+    #             if not first:
+    #                 print 'back to normal at event', evs[dts.index(i)]
+    #             deq.appendleft(i)
+    #             first = True
+    #
+    #     print '\n'
+    #     print 'found %d jumps' %(len(self.jumps))
+    #     print 'they are at event numbers', self.jumps
+    #
+    #     lat = ROOT.TLatex()
+    #     lat.SetNDC()
+    #     lat.SetTextColor(ROOT.kRed)
+    #     lat.DrawLatex(0.2,0.85, 'run %d' %(self.run.run_number) )
+    #
+    #     if not os.path.exists("beaminterruptions"):
+    #         os.mkdir("beaminterruptions")
+    #     if not os.path.exists("beaminterruptions/plots"):
+    #         os.mkdir("beaminterruptions/plots")
+    #     if not os.path.exists("beaminterruptions/data"):
+    #         os.mkdir("beaminterruptions/data")
+    #
+    #     # save jump list to file
+    #     jumpfile = open("beaminterruptions/data/{testcampaign}Run_{run}.pickle".format(testcampaign=self.TESTCAMPAIGN, run=self.run.run_number), "wb")
+    #     pickle.dump(self.jumps, jumpfile)
+    #     jumpfile.close()
+    #
+    #     if len(self.jumps):
+    #         print 'the length of jumps is', len(self.jumps)
+    #         jumps_array = array('d', self.jumps)
+    #         jumps_err_array = array('d', len(self.jumps)*[histo.GetYaxis().GetXmin()])
+    #
+    #         jumps_graph = ROOT.TGraph(len(self.jumps), jumps_array, jumps_err_array)
+    #         jumps_graph.SetMarkerSize(3)
+    #         jumps_graph.SetMarkerColor(ROOT.kRed)
+    #         jumps_graph.SetMarkerStyle(33)
+    #         jumps_graph.SetLineColor(ROOT.kRed)
+    #         jumps_graph.Draw('p')
+    #
+    #         outfile = open('beaminterruptions/jumps_{testcampaign}.txt'.format(testcampaign=self.TESTCAMPAIGN),'r+a')
+    #         # check if the run is already in the file
+    #         runInFile = False
+    #         lines = outfile.readlines()
+    #         for i in lines:
+    #             if len(i.split()) > 0 and i.split()[0] == str(self.run.run_number):
+    #                 runInFile = True
+    #         if not runInFile:
+    #             outfile.write(str(self.run.run_number)+'\t\t')
+    #
+    #         lat.SetTextColor(ROOT.kBlack)
+    #         for i in self.jumps:
+    #             ind = self.jumps.index(i)
+    #             lat.DrawLatex(0.2, 0.80-ind*0.05, '#%d at %d' %(ind, i) )
+    #             if not runInFile:
+    #                 outfile.write(str(i)+'\t')
+    #         if not runInFile:
+    #             outfile.write('\n')
+    #         outfile.close()
+    #
+    #
+    #     ROOT.c1.SaveAs('beaminterruptions/plots/%djumpSearch_run%d.png' %(self.TESTCAMPAIGN, self.run.run_number))
+    #
+    #     canvas.Close()
+    #     return self.jumps
+    #
+    # def GetBeamInterruptions(self):
+    #     '''
+    #     If there is beam interruption data, it will load them - otherwise it will run the beam interruption analysis
+    #     it will create the attribute self.jumps, which is a list of event numbers, where a jump occures
+    #     :return: list of events where beam interruptions occures
+    #     '''
+    #     if not hasattr(self, "jumpsRanges"):
+    #         picklepath = "beaminterruptions/data/{testcampaign}Run_{run}.pickle".format(testcampaign=self.TESTCAMPAIGN, run=self.run.run_number)
+    #         if os.path.exists(picklepath):
+    #             print "Loading beam interruption data from pickle file: \n\t"+picklepath
+    #             jumpfile = open(picklepath, "rb")
+    #             self.jumps = pickle.load(jumpfile)
+    #             self._ReduceJumps()
+    #             jumpfile.close()
+    #         else:
+    #             print "No pickle file found at: ", picklepath, "\n .. analyzing beam interruptions.. "
+    #             print "No pickle file found at: ", picklepath, "\n .. analyzing beam interruptions.. "
+    #             self._FindBeamInterruptions()
+    #             self._ReduceJumps()
+    #
+    #     return self.jumps
+    #
+    # def _ReduceJumps(self):
+    #     if not hasattr(self, "jumpsRanges") and len(self.jumps)>0:
+    #         self.jumps.sort()
+    #         events = self.GetEventAtTime(-1)
+    #         selection = events*[0]
+    #         high = self.excludeAfterJump
+    #         low = self.excludeBeforeJump
+    #         reduced_jumps = []
+    #         reduced_ends = []
+    #         for jump in self.jumps:
+    #             c = 1 if (jump-low)>0 else 0
+    #             selection[c*(jump-low):(jump+high+1)] = len(selection[c*(jump-low):(jump+high+1)])*[1]
+    #
+    #         for i in xrange(len(selection)-1):
+    #             if selection[i] != selection[i+1]:
+    #                 if selection[i] == 0:
+    #                     print "jump start: ", i+1
+    #                     reduced_jumps.append(i+1)
+    #                 else:
+    #                     print "jump end: ", i+1
+    #                     reduced_ends.append(i+1)
+    #         if reduced_ends[0]<reduced_jumps[0]:
+    #             reduced_jumps = [0]+reduced_jumps
+    #         if reduced_jumps[-1]>reduced_ends[-1]:
+    #             reduced_ends = reduced_ends+[events]
+    #         self.jumps = reduced_jumps
+    #         self.jumpsRanges = {
+    #             "start": reduced_jumps,
+    #             "stop": reduced_ends
+    #         }
+    #     else:
+    #         self.jumpsRanges = {
+    #             "start": [],
+    #             "stop": []
+    #         }
 
-        canvas = ROOT.TCanvas("beaminterruptioncanvas", "beaminterruptioncanvas")
-        self.run.tree.Draw('time:event_number')
-        
-    #    graph = copy.deepcopy(ROOT.c1.FindObject('Graph'))
-        histo = copy.deepcopy(canvas.FindObject('htemp'))
-        
-        histo.SetTitle('run %3d' %(self.run.run_number))
-        histo.SetName('run %3d' %(self.run.run_number))
+    # def RemoveBeamInterruptions(self):
+    #     '''
+    #     This adds the restrictions to the cut string such that beam interruptions are excluded each time the
+    #     cut is applied.
+    #     :return:
+    #     '''
+    #     # if not self.Checklist["RemoveBeamInterruptions"]:
+    #     #     self.GetBeamInterruptions()
+    #     #
+    #     #     njumps = len(self.jumpsRanges["start"])
+    #     #     for i in xrange(njumps):
+    #     #         self.cut += "&&!(event_number<={upper}&&event_number>={lower})".format(upper=self.jumpsRanges["stop"][i], lower=self.jumpsRanges["start"][i])
+    #     #     self.Checklist["RemoveBeamInterruptions"] = True
+    #     #
+    #     # return self.cut
+    #     self.cut._RemoveBeamInterruptions()
 
-        # get event numbers and dt's
-        dts = []
-        evs = []
-        i = self.excludefirst
-        step = 100
-        while i+step < nentries:
-            self.run.tree.GetEntry(i)
-            t1 = self.run.tree.time
-            evs.append(self.run.tree.event_number)
-            self.run.tree.GetEntry(i+step)
-            t2 = self.run.tree.time
-            dt = (t2 - t1)
-            dts.append(dt)
-            i += step
-        
-        self.jumps = []
-        
-        deq = collections.deque(dts[:100],100)
-        first = True
-        for i in dts[101:]:
-            avg = numpy.mean(deq)
-            if abs(i / avg - 1.) > 0.3:
-                if first:
-                    print 'found a jump here', i, 'at event number', evs[dts.index(i)]
-                    self.jumps.append(evs[dts.index(i)])
-                    first = False
-            else:
-                if not first:
-                    print 'back to normal at event', evs[dts.index(i)]
-                deq.appendleft(i)
-                first = True
-        
-        print '\n'
-        print 'found %d jumps' %(len(self.jumps))
-        print 'they are at event numbers', self.jumps
-        
-        lat = ROOT.TLatex()
-        lat.SetNDC()
-        lat.SetTextColor(ROOT.kRed)
-        lat.DrawLatex(0.2,0.85, 'run %d' %(self.run.run_number) )
-            
-        if not os.path.exists("beaminterruptions"):
-            os.mkdir("beaminterruptions")
-        if not os.path.exists("beaminterruptions/plots"):
-            os.mkdir("beaminterruptions/plots")
-        if not os.path.exists("beaminterruptions/data"):
-            os.mkdir("beaminterruptions/data")
-
-        # save jump list to file
-        jumpfile = open("beaminterruptions/data/{testcampaign}Run_{run}.pickle".format(testcampaign=self.TESTCAMPAIGN, run=self.run.run_number), "wb")
-        pickle.dump(self.jumps, jumpfile)
-        jumpfile.close()
-
-        if len(self.jumps):
-            print 'the length of jumps is', len(self.jumps)
-            jumps_array = array('d', self.jumps)
-            jumps_err_array = array('d', len(self.jumps)*[histo.GetYaxis().GetXmin()])
-            
-            jumps_graph = ROOT.TGraph(len(self.jumps), jumps_array, jumps_err_array)
-            jumps_graph.SetMarkerSize(3)
-            jumps_graph.SetMarkerColor(ROOT.kRed)
-            jumps_graph.SetMarkerStyle(33)
-            jumps_graph.SetLineColor(ROOT.kRed)
-            jumps_graph.Draw('p')
-        
-            outfile = open('beaminterruptions/jumps_{testcampaign}.txt'.format(testcampaign=self.TESTCAMPAIGN),'r+a')
-            # check if the run is already in the file
-            runInFile = False
-            lines = outfile.readlines()
-            for i in lines:
-                if len(i.split()) > 0 and i.split()[0] == str(self.run.run_number):
-                    runInFile = True
-            if not runInFile:
-                outfile.write(str(self.run.run_number)+'\t\t')
-        
-            lat.SetTextColor(ROOT.kBlack)
-            for i in self.jumps:
-                ind = self.jumps.index(i)
-                lat.DrawLatex(0.2, 0.80-ind*0.05, '#%d at %d' %(ind, i) )
-                if not runInFile:
-                    outfile.write(str(i)+'\t')
-            if not runInFile:
-                outfile.write('\n')
-            outfile.close()
-                
-        
-        ROOT.c1.SaveAs('beaminterruptions/plots/%djumpSearch_run%d.png' %(self.TESTCAMPAIGN, self.run.run_number))
-
-        canvas.Close()
-        return self.jumps
-        
-    def GetBeamInterruptions(self):
-        '''
-        If there is beam interruption data, it will load them - otherwise it will run the beam interruption analysis
-        it will create the attribute self.jumps, which is a list of event numbers, where a jump occures
-        :return: list of events where beam interruptions occures
-        '''
-        if not hasattr(self, "jumpsRanges"):
-            picklepath = "beaminterruptions/data/{testcampaign}Run_{run}.pickle".format(testcampaign=self.TESTCAMPAIGN, run=self.run.run_number)
-            if os.path.exists(picklepath):
-                print "Loading beam interruption data from pickle file: \n\t"+picklepath
-                jumpfile = open(picklepath, "rb")
-                self.jumps = pickle.load(jumpfile)
-                self._ReduceJumps()
-                jumpfile.close()
-            else:
-                print "No pickle file found at: ", picklepath, "\n .. analyzing beam interruptions.. "
-                print "No pickle file found at: ", picklepath, "\n .. analyzing beam interruptions.. "
-                self._FindBeamInterruptions()
-                self._ReduceJumps()
-
-        return self.jumps
-
-    def _ReduceJumps(self):
-        if not hasattr(self, "jumpsRanges") and len(self.jumps)>0:
-            self.jumps.sort()
-            events = self.GetEventAtTime(-1)
-            selection = events*[0]
-            high = self.excludeAfterJump
-            low = self.excludeBeforeJump
-            reduced_jumps = []
-            reduced_ends = []
-            for jump in self.jumps:
-                c = 1 if (jump-low)>0 else 0
-                selection[c*(jump-low):(jump+high+1)] = len(selection[c*(jump-low):(jump+high+1)])*[1]
-
-            for i in xrange(len(selection)-1):
-                if selection[i] != selection[i+1]:
-                    if selection[i] == 0:
-                        print "jump start: ", i+1
-                        reduced_jumps.append(i+1)
-                    else:
-                        print "jump end: ", i+1
-                        reduced_ends.append(i+1)
-            if reduced_ends[0]<reduced_jumps[0]:
-                reduced_jumps = [0]+reduced_jumps
-            if reduced_jumps[-1]>reduced_ends[-1]:
-                reduced_ends = reduced_ends+[events]
-            self.jumps = reduced_jumps
-            self.jumpsRanges = {
-                "start": reduced_jumps,
-                "stop": reduced_ends
-            }
-        else:
-            self.jumpsRanges = {
-                "start": [],
-                "stop": []
-            }
-
-    def RemoveBeamInterruptions(self):
-        '''
-        This adds the restrictions to the cut string such that beam interruptions are excluded each time the
-        cut is applied.
-        :return:
-        '''
-        if not self.Checklist["RemoveBeamInterruptions"]:
-            self.GetBeamInterruptions()
-
-            njumps = len(self.jumpsRanges["start"])
-            for i in xrange(njumps):
-                self.cut += "&&!(event_number<={upper}&&event_number>={lower})".format(upper=self.jumpsRanges["stop"][i], lower=self.jumpsRanges["start"][i])
-            self.Checklist["RemoveBeamInterruptions"] = True
-
-        return self.cut
-
-    def GetIncludedEvents(self, maxevent=2000000, excludefirst=True, excludejumps=True):
+    def GetIncludedEvents(self, maxevent=10000000, excludefirst=True, excludejumps=True):
         '''
         Get List Of all event numbers, which are neither excluded by beaminerruptions nor
         events from the very beginnning
@@ -452,16 +458,25 @@ class Analysis(Elementary):
         :param excludejumps: if True events around beam interruptions are excluded acording to config file
         :return: list of included event numbers
         '''
-        if maxevent>=2000000:
-            maxevent = self.run.tree.GetEntries()
+        if maxevent>=10000000:
+            maxevent = self.GetMaxEventCut()
 
-        excluded = [i for i in np.arange(0, self.excludefirst+1)] # first events
+        excluded = [i for i in np.arange(0, self.GetMinEventCut()+1)] # first events
         for jump in self.GetBeamInterruptions():
             excluded += [i for i in np.arange(jump-self.excludeBeforeJump, jump+self.excludeAfterJump+1)] # events around jumps
         excluded.sort()
         all_events = np.arange(0, maxevent)
         included = np.delete(all_events, excluded)
         return included
+
+    def GetMinEventCut(self):
+        return self.cut.GetMinEvent()
+
+    def GetMaxEventCut(self):
+        return self.cut.GetMaxEvent()
+
+    def GetNEventsCut(self):
+        return self.cut.GetNEvents()
 
     def ShowSignalHisto(self, channel=None, canvas=None, drawoption="", color=None, normalized=True, drawruninfo=False, binning=600):
         self._ShowHisto(self.signaldefinition, channel=channel, canvas=canvas, drawoption=drawoption, color=color, normalized=normalized, infoid="landau", drawruninfo=drawruninfo, binning=binning)
@@ -493,8 +508,8 @@ class Analysis(Elementary):
             if len(channels)>1 and drawoption=="" and ch==3:
                 drawoption = "sames"
                 color = self.GetNewColor()
-            print "making "+infoid+" using\nSignal def:\n\t{signal}\nCut:\n\t{cut}".format(signal=signaldef, cut=self.cut)
-            self.run.tree.Draw((signaldef+">>{infoid}{run}{channel}({binning}, -100, 500)").format(infoid=infoid, channel=ch, run=self.run.run_number, binning=binning), self.cut.format(channel=ch), drawoption, 10000000, self.excludefirst)
+            print "making "+infoid+" using\nSignal def:\n\t{signal}\nCut:\n\t{cut}".format(signal=signaldef, cut=self.cut.GetCut(ch))
+            self.run.tree.Draw((signaldef+">>{infoid}{run}{channel}({binning}, -100, 500)").format(infoid=infoid, channel=ch, run=self.run.run_number, binning=binning), self.cut.GetCut(ch).format(channel=ch), drawoption, 10000000, self.GetMinEventCut())
             canvas.Update()
             histoname = "{infoid}{run}{channel}".format(infoid=infoid, channel=ch, run=self.run.run_number)
             histo = ROOT.gROOT.FindObject(histoname)
@@ -519,7 +534,7 @@ class Analysis(Elementary):
         :param minimum_bincontent: Bins with less hits are ignored
         :return: -
         '''
-        print "Loading Track information with \n\tmin_bincontent: {mbc}\n\tfirst: {first}\n\tmaxevent: {me}".format(mbc=self.minimum_bincontent, first=self.excludefirst, me=self.loadMaxEvent)
+        print "Loading Track information with \n\tmin_bincontent: {mbc}\n\tfirst: {first}\n\tmaxevent: {me}".format(mbc=self.minimum_bincontent, first=self.GetMinEventCut(), me=self.loadMaxEvent)
         if minimum_bincontent != None: self.minimum_bincontent = minimum_bincontent
         assert (self.minimum_bincontent > 0), "minimum_bincontent has to be a positive integer" # bins with less hits are ignored
 
