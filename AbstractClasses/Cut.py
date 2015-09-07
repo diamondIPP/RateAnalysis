@@ -387,8 +387,10 @@ class Cut(Elementary):
                     else:
                         print "jump end: ", i+1
                         reduced_ends.append(i+1)
+            if len(reduced_jumps)==0 and len(reduced_ends)>0: reduced_jumps = [0]+reduced_jumps
             if reduced_ends[0]<reduced_jumps[0]:
                 reduced_jumps = [0]+reduced_jumps
+            if len(reduced_ends)==0 and len(reduced_jumps)>0: reduced_ends = reduced_ends+[events]
             if reduced_jumps[-1]>reduced_ends[-1]:
                 reduced_ends = reduced_ends+[events]
             self.jumps = reduced_jumps
