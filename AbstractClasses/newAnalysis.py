@@ -164,7 +164,7 @@ class Analysis(Elementary):
         self.pulserRateGraph.GetYaxis().SetTitleOffset(1.2)
         self.DrawRunInfo(canvas=self.pulserRateCanvas)
         self.pulserRateCanvas.Update()
-        self.SavePlots("Run{run}_PulserRate.png".format(run=self.run.run_number))
+        self.SavePlots("Run{run}_PulserRate.png".format(run=self.run.run_number), canvas=self.pulserRateCanvas)
 
     def DrawRunInfo(self, channel=None, canvas=None, diamondinfo=True, showcut=False, comment=None, infoid="", userHeight=None, userWidth=None):
         self.run.DrawRunInfo(channel=channel, canvas=canvas, diamondinfo=diamondinfo, showcut=showcut, comment=comment, infoid=infoid, userHeight=userHeight, userWidth=userWidth)
@@ -618,7 +618,7 @@ class Analysis(Elementary):
         self.Pads[channel].counthisto.Draw(drawoption)#"surf2")
         #self.Pads[channel].counthisto.Draw("CONT1 SAME")
         if saveplot:
-            self.SavePlots("HitMap"+extension, "png")
+            self.SavePlots("HitMap"+extension, "png", canvas=canvas)
         canvas.Update()
         self.IfWait("Hits Distribution shown")
         self.Checklist["HitsDistribution"] = True
@@ -685,7 +685,7 @@ class Analysis(Elementary):
         self.signal_canvas.Update()
         self.IfWait("2d drawn")
         if saveplots:
-            self.SavePlots(savename, ending, saveDir)
+            self.SavePlots(savename, ending, saveDir, canvas=self.signal_canvas)
 
     def _DrawMinMax(self, pad, channel):
         pad.cd()
@@ -769,7 +769,7 @@ class Analysis(Elementary):
             print "INFO: MeanSignalHisto created as attribute: self.MeanSignalHisto (ROOT.TH1D)"
 
         if saveplots:
-            self.SavePlots(savename, ending, saveDir)
+            self.SavePlots(savename, ending, saveDir, canvas=self.signal_canvas)
 
         self.Checklist["MeanSignalHisto"][channel] = True
 
@@ -815,8 +815,8 @@ class Analysis(Elementary):
 
         savename = self.run.diamondname[channel]+"_"+savename+"_"+str(self.run.run_number) # diamond_irradiation_savename_runnr
         if saveplots:
-            self.SavePlots(savename, ending, saveDir)
-            self.SavePlots(savename, "root", saveDir)
+            self.SavePlots(savename, ending, saveDir, canvas=self.combined_canvas)
+            self.SavePlots(savename, "root", saveDir, canvas=self.combined_canvas)
         if PS:
             ROOT.gStyle.SetHistFillColor(7)
             ROOT.gStyle.SetHistFillStyle(3003)
@@ -1066,7 +1066,7 @@ class Analysis(Elementary):
                 ROOT.SetOwnership(rightaxis, False)
                 rightaxis.Draw('SAME')
             if save:
-                self.SavePlots(type_+"TimeEvolution"+Mode+nameExtension+".png")
+                self.SavePlots(type_+"TimeEvolution"+Mode+nameExtension+".png", canvas=canvas)
             if TimeERROR:
                 self.SignalEvolution.SaveAs(self.SaveDirectory+"ERROR_"+type_+"TimeEvolution"+Mode+nameExtension+".root")
             self.IfWait("Showing "+type_+" Time Evolution..")
