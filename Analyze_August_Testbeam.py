@@ -2,7 +2,7 @@ from AllClasses import *
 from ROOT import TCanvas
 
 runplanType     = "rate_scan"
-diamond         = "II6-B2"
+diamond         = "II6-97"
 rate_analyses = {}
 
 
