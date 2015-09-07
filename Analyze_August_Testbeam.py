@@ -2,7 +2,7 @@ from AllClasses import *
 from ROOT import TCanvas
 
 runplanType     = "rate_scan"
-diamond         = "II6-97"
+diamond         = "II6-B2"
 rate_analyses = {}
 
 
@@ -34,3 +34,37 @@ for runplanNr in runplans:
 
     rate_analyses[runplanNr].ShowSignalVSRate(canvas=rateScanCanvas)
     sel.SavePlots(savename="SignalVSRate"+str(runplanNr)+".root", canvas=rateScanCanvas)
+
+sel.UnselectAll()
+sel.SelectRunsInRange(439,459)      # select all runs from a certain run plan
+sel.SetChannels()
+
+print "Selected runs to analyze:"
+sel.ShowSelectedRuns(commentlength=0)
+
+savePath = "Results/new1/"
+sel.SetSaveDirectory(savePath)
+
+rate_analyses[10] = AnalysisCollection(sel)
+
+rate_analyses[10].MakePreAnalysis(savePlot=True)
+rate_analyses[10].ShowPulserRates()
+rate_analyses[10].ShowSignalVSRate(canvas=rateScanCanvas)
+sel.SavePlots(savename="SignalVSRate"+str(10)+".root", canvas=rateScanCanvas)
+
+sel.UnselectAll()
+sel.SelectRunsInRange(463,478)      # select all runs from a certain run plan
+sel.SetChannels()
+
+print "Selected runs to analyze:"
+sel.ShowSelectedRuns(commentlength=0)
+
+savePath = "Results/new2/"
+sel.SetSaveDirectory(savePath)
+
+rate_analyses[11] = AnalysisCollection(sel)
+
+rate_analyses[11].MakePreAnalysis(savePlot=True)
+rate_analyses[11].ShowPulserRates()
+rate_analyses[11].ShowSignalVSRate(canvas=rateScanCanvas)
+sel.SavePlots(savename="SignalVSRate"+str(11)+".root", canvas=rateScanCanvas)
