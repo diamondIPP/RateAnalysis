@@ -162,7 +162,7 @@ class Analysis(Elementary):
         self.pulserRateGraph.GetXaxis().SetTitle("Event Number")
         self.pulserRateGraph.GetYaxis().SetTitle("Fraction of Pulser Events")
         self.pulserRateGraph.GetYaxis().SetTitleOffset(1.2)
-        self.DrawRunInfo()
+        self.DrawRunInfo(canvas=self.pulserRateCanvas)
         self.pulserRateCanvas.Update()
         self.SavePlots("Run{run}_PulserRate.png".format(run=self.run.run_number))
 

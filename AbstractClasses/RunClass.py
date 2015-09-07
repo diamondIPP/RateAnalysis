@@ -434,8 +434,7 @@ class Run(Elementary):
         if userHeight!= None: assert(userHeight>=0 and userHeight<=0.8), "choose userHeight between 0 and 0.8 or set it to 'None'"
         if userWidth!= None: assert(userWidth>=0 and userWidth<=0.8), "choose userWidth between 0 and 0.8 or set it to 'None'"
         if canvas != None:
-            canvas.cd()
-            pad = ROOT.gROOT.GetSelectedPad()
+            pad = canvas.cd()
         else:
             print "Draw run info in current pad"
             pad = ROOT.gROOT.GetSelectedPad()
