@@ -250,7 +250,7 @@ class Cut(Elementary):
         deq = collections.deque(dts[:100],100)
         first = True
         for i in dts[101:]:
-            avg = numpy.mean(deq)
+            avg = np.mean(deq)
             if abs(i / avg - 1.) > 0.3:
                 if first:
                     print 'found a jump here', i, 'at event number', evs[dts.index(i)]
