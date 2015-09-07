@@ -109,7 +109,6 @@ class Run(Elementary):
         self.maskfilepath = runConfigParser.get('BASIC', 'maskfilepath')
 
     def LoadRunInfo(self):
-        print "load run info"
         self.RunInfo = {}
         try:
             f = open(self.runinfofile, "r")
@@ -181,6 +180,9 @@ class Run(Elementary):
         except IOError:
             print "\nERROR: Could not load mask file, thus not re-calculate rate..\n"
             return 0
+
+    def GetRate(self):
+        return self.RunInfo["measured flux"]
 
     def CreateROOTFile(self, do_tracking=True):
 

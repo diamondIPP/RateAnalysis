@@ -20,7 +20,7 @@ class BinCollection(Elementary):
 
     '''
 
-    def __init__(self, binsx, xmin, xmax, binsy, ymin, ymax, channel, parent_analysis_obj, verbose=False):
+    def __init__(self, parent_analysis_obj, channel, binsx, xmin, xmax, binsy, ymin, ymax, verbose=False):
         '''
         Constructor of a Bincollection. Since the data collection is based on ROOT.TH2D,
         the bins are ordered in a rectangular pattern inside a frame which is 1 bin thick leading

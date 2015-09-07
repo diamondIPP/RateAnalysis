@@ -1,7 +1,8 @@
 from AbstractClasses.Elementary import Elementary
 import ROOT
-import copy, collections, numpy, os
+import copy, collections, os
 from array import array
+import numpy as np
 import pickle
 import ConfigParser
 
@@ -90,6 +91,26 @@ class Cut(Elementary):
             self._cutTypes["EventRange"] = [self.excludefirst, max_event]
         else:
             self._cutTypes["EventRange"] = []
+
+    def GetIncludedEvents(self, maxevent=None):
+        '''
+        Get List Of all event numbers, which are neither excluded by beaminerruptions nor
+        events from the very beginnning
+        :return: list of included event numbers
+        '''
+        minevent = self.GetMinEvent()
+        if maxevent == None:
+            maxevent = self.GetMaxEvent()
+
+        excluded = [i for i in np.arange(0, minevent)] # first events
+        if self._cutTypes["noBeamInter"]:
+            self.GetBeamInterruptions()
+            for i in xrange(len(self.jumpsRanges["start"])):
+                excluded += [i for i in np.arange(self.jumpsRanges["start"][i], self.jumpsRanges["stop"][i]+1)] # events around jumps
+        excluded.sort()
+        all_events = np.arange(0, maxevent)
+        included = np.delete(all_events, excluded)
+        return included
 
     def SetExcludeFirst(self, n):
         if n >= 0:
@@ -320,6 +341,30 @@ class Cut(Elementary):
                 self._ReduceJumps()
 
         return self.jumps
+
+    def GetCutFunctionDef(self):
+        defstring_ = "lambda pulser, is_saturated, n_tracks, fft_mean, INVfft_max: "
+        def_ = ""
+
+        if self._cutTypes["noPulser"] == 1:
+            def_ += "not pulser"
+        elif self._cutTypes["noPulser"] == 0:
+            def_ += "pulser"
+
+        if self._cutTypes["notSaturated"]:
+            if def_ != "": def_ += " and "
+            def_ += "not is_saturated"
+
+        if self._cutTypes["Tracks"]:
+            if def_ != "": def_ += " and "
+            def_ += "n_tracks"
+
+        if self._cutTypes["FFT"]:
+            if def_ != "": def_ += " and "
+            assert(False), "FFT cut not yet implemented in GetCutFunctionDef() method of Cut class. "
+            # to do: FFT entry in _cutTypes should be dict and/or contain a TCutG instance
+
+        return defstring_+def_
 
     def _ReduceJumps(self):
         if not hasattr(self, "jumpsRanges") and len(self.jumps)>0:

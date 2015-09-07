@@ -6,6 +6,7 @@ from AbstractClasses.newAnalysis import Analysis
 from AbstractClasses.RunSelection import RunSelection
 import types as t
 import os
+import copy
 import numpy as np
 from Elementary import Elementary
 from ROOT import TGraphErrors
@@ -26,7 +27,6 @@ class AnalysisCollection(Elementary):
                 self.AddRuns(listOfRuns, diamonds=diamonds)
             else:
                 self.AddRuns(listOfRuns.GetSelectedRuns(), listOfRuns.GetSelectedDiamonds())
-
 
     def __del__(self):
         print "deleting AnalysisCollection.."
@@ -106,7 +106,6 @@ class AnalysisCollection(Elementary):
 
         #raw_input("wait")
 
-    #
     def CalculateFWHM(self, print_result = True, run_number = None):
         '''
         Calculates the FWHM of the Mean Signal Histogram (Histogram of
@@ -236,6 +235,10 @@ class AnalysisCollection(Elementary):
         self.ShowAndWait = True
         self.IfWait("Signal VS Rate shown")
 
+    def ShowPulserRates(self):
+        runnumbers = self.GetRunNumbers()
+        for run in runnumbers:
+            self.collection[run].ShowPulserRate()
 
     def CreateSigmaMPVPlot(self):
         '''
@@ -283,7 +286,7 @@ class AnalysisCollection(Elementary):
         count = 0
         for runnumber in runnumbers:
             if not self.collection[runnumber].TimingAlignmentFailed:
-                SignalHeightScanGraph.SetPoint(count, runnumber, self.collection[runnumber].ExtremaResults[channel]['SignalHeight'])
+                SignalHeightScanGraph.SetPoint(count, runnumber, self.collection[runnumber].extremaResults[channel]['SignalHeight'])
                 count += 1
             else:
                 print "INFO: Run number {0} excluded in SignalHeightScan plot due to bad timing alignment !"
@@ -300,26 +303,30 @@ class AnalysisCollection(Elementary):
 
         print "PeakComparision start"
         if show:
-            PeakComparisonCanvasMax = ROOT.TCanvas("PeakComparisonCanvasMax", "PeakComparisonCanvas")
-            PeakComparisonCanvasMin = ROOT.TCanvas("PeakComparisonCanvasMin", "PeakComparisonCanvas")
+            self.peakComparisonCanvasMax = ROOT.TCanvas("peakComparisonCanvasMax", "PeakComparisonCanvas")
+            self.peakComparisonCanvasMin = ROOT.TCanvas("peakComparisonCanvasMin", "PeakComparisonCanvas")
 
         runnumbers = self.collection.keys()
-        pad_attributes = self.collection[runnumbers[0]].ExtremeAnalysis.Pad.Get2DAttributes()
+        if not hasattr(self.collection[runnumbers[0]], "Pads"):
+            self.collection[runnumbers[0]].LoadTrackData()
+        pad_attributes = self.collection[runnumbers[0]].Pads[channel].Get2DAttributes()
 
         self.PeakPadMax = ATH2D("PeakPadMax", "Peak distribution over all selected runs", *pad_attributes)
-        self.PeakPadMaxPad = BinCollection(*pad_attributes) # CHANGE NAME !
+        self.PeakPadMaxPad = BinCollection(self.collection[runnumbers[0]], channel, *pad_attributes) # CHANGE NAME !
         self.PeakPadMin = ATH2D("PeakPadMin", "Low distribution over all selected runs", *pad_attributes)
 
         for runnumber in runnumbers:
             analysis = self.collection[runnumber]
-            maxima = analysis.ExtremeAnalysis.ExtremaResults[channel]["FoundMaxima"]
-            minima = analysis.ExtremeAnalysis.ExtremaResults[channel]["FoundMinima"]
+            if analysis.extremaResults[channel]["FoundMaxima"] == None: analysis.FindMaxima(channel=channel, show=False)
+            if analysis.extremaResults[channel]["FoundMinima"] == None: analysis.FindMinima(channel=channel, show=False)
+            maxima = analysis.extremaResults[channel]["FoundMaxima"]
+            minima = analysis.extremaResults[channel]["FoundMinima"]
             if maxima != None:
                 for peak in maxima:
                     self.PeakPadMax.Fill(*peak)
-                    if not hasattr(analysis.ExtremeAnalysis.Pad, "meansignaldistribution"):
-                        analysis.ExtremeAnalysis.Pad.CalculateMeanSignalDistribution()
-                    signal_ = analysis.ExtremeAnalysis.Pad.meansignaldistribution.GetBinContent(analysis.ExtremeAnalysis.Pad.GetBinNumber(*peak))
+                    if not hasattr(analysis.Pads[channel], "meansignaldistribution"):
+                        analysis.Pads[channel].CalculateMeanSignalDistribution()
+                    signal_ = analysis.Pads[channel].meansignaldistribution.GetBinContent(analysis.Pads[channel].GetBinNumber(*peak))
                     self.PeakPadMaxPad.Fill(peak[0], peak[1], signal_)
             else:
                 print "WARNING: No Maxima results found in run ", runnumber, ". PeakComparisonMax will be incomplete."
@@ -330,23 +337,23 @@ class AnalysisCollection(Elementary):
                 print "WARNING: No Minima results found in run ", runnumber, ". PeakComparisonMin will be incomplete."
         if show:
             ROOT.gStyle.SetPalette(55) # Rainbow palette
-            PeakComparisonCanvasMax.cd()
+            self.peakComparisonCanvasMax.cd()
             self.PeakPadMax.Draw("COLZ")
             self.SavePlots("PeakPadMax.png")
-            PeakComparisonCanvasMin.cd()
+            self.peakComparisonCanvasMin.cd()
             self.PeakPadMin.Draw("COLZ")
             self.SavePlots("PeakPadMin.png")
 
         # raw_input("peakpad")
 
-    def PeakSignalEvolution(self, NMax = 3, NMin = 3, OnThisCanvas = None, BinRateEvolution = False):
+    def PeakSignalEvolution(self, channel, NMax = 3, NMin = 3, OnThisCanvas = None, BinRateEvolution = False):
         if self.GetNumberOfAnalyses() == 0: return 0
 
         if OnThisCanvas != None:
             assert(isinstance(OnThisCanvas, ROOT.TCanvas)), "OnThisCanvas has to be a TCanvas object"
         print "Signal Evolution start"
         if not hasattr(self, "PeakPadMax"):
-            self.PeakComparison(show = False)
+            self.PeakComparison(channel=channel, show = False)
 
         def BinsAreNearby(x1,y1,x2,y2, R):
             d2 = (x1-x2)**2 + (y1-y2)**2
@@ -359,27 +366,28 @@ class AnalysisCollection(Elementary):
         def FindPeakBins(PeakPad, N, maximum=False):
             self.PeakPadMaxPad.CalculateMeanSignalDistribution()
             peakbins = [-1]*N # container to store the binnumbers of the separated maximas found
-
+            peakPad = PeakPad#copy.deepcopy(PeakPad)
 
             PeakPad2 = self.PeakPadMaxPad.meansignaldistribution # peaksearch due to mean signal content in bins
+            peakPad2 = PeakPad2#copy.deepcopy(PeakPad2)
             i = 0
             while i<int(N):
                 if i == 3 and maximum:
-                    PeakPad = PeakPad2
+                    peakPad = peakPad2
 
-                maxcount = PeakPad.GetMaximum() # counts of maximum
+                maxcount = peakPad.GetMaximum() # counts of maximum
 
                 if maxcount < 1:
                     break
-                peakbins[i] = PeakPad.GetMaximumBin() # binnumber with hightest counts
-                coordinates = PeakPad.GetBinCenter(peakbins[i])
-                PeakPad.Fill(coordinates[0], coordinates[1], -maxcount) # remove content of maximum bin
+                peakbins[i] = peakPad.GetMaximumBin() # binnumber with hightest counts
+                coordinates = peakPad.GetBinCenter(peakbins[i])
+                peakPad.Fill(coordinates[0], coordinates[1], -maxcount) # remove content of maximum bin
 
                 # if the binnumber is already in a neighborhood of a found peak, don't use it:
                 IsInNBHD = False
                 for k in xrange(i):
-                    # IsInNBHD |= peakbins[k] in PeakPad.GetBinsInNbhd(peakbins[i], include_center=True, extended=True)
-                    other_coordinates = PeakPad.GetBinCenter(peakbins[k])
+                    # IsInNBHD |= peakbins[k] in peakPad.GetBinsInNbhd(peakbins[i], include_center=True, extended=True)
+                    other_coordinates = peakPad.GetBinCenter(peakbins[k])
                     IsInNBHD |= BinsAreNearby(coordinates[0], coordinates[1], other_coordinates[0], other_coordinates[1], 0.05)
                 if IsInNBHD:
                     pass
@@ -426,15 +434,14 @@ class AnalysisCollection(Elementary):
                 # signals = []
                 i = 0
                 for runnumber in runnumbers:
-                    if not self.collection[runnumber].TimingAlignmentFailed:
-                        self.collection[runnumber].ExtremeAnalysis.Pad.ListOfBins[peakbin].CreateBinSignalHisto(saveplot = True, savedir=self.SaveDirectory+str(runnumber)+"/",show_fit = False)
-                        mean = self.collection[runnumber].ExtremeAnalysis.Pad.ListOfBins[peakbin].BinSignalHisto.GetMean()
-                        error = self.collection[runnumber].ExtremeAnalysis.Pad.ListOfBins[peakbin].BinSignalHisto.GetRMS()/np.sqrt(self.collection[runnumber].ExtremeAnalysis.Pad.ListOfBins[peakbin].BinSignalHisto.GetEntries())
-                        #mpv = self.collection[runnumber].ExtremeAnalysis.Pad.ListOfBins[peakbin].Fit['MPV']
-                        # signals.append(mpv)
-                        GraphDict[peakbin].SetPoint(i, runnumber, mean)
-                        GraphDict[peakbin].SetPointError(i, 0, error)
-                        i += 1
+                    self.collection[runnumber].Pads[channel].listOfBins[peakbin].CreateBinSignalHisto(saveplot = True, savedir=self.SaveDirectory+str(runnumber)+"/",show_fit = False)
+                    mean = self.collection[runnumber].Pads[channel].listOfBins[peakbin].BinSignalHisto.GetMean()
+                    error = self.collection[runnumber].Pads[channel].listOfBins[peakbin].BinSignalHisto.GetRMS()/np.sqrt(self.collection[runnumber].Pads[channel].listOfBins[peakbin].BinSignalHisto.GetEntries())
+                    #mpv = self.collection[runnumber].Pads[channel].listOfBins[peakbin].Fit['MPV']
+                    # signals.append(mpv)
+                    GraphDict[peakbin].SetPoint(i, runnumber, mean)
+                    GraphDict[peakbin].SetPointError(i, 0, error)
+                    i += 1
         MaxGraphs = {}
         FillGraphDict(self, MaxGraphs, peakbins)
         MinGraphs = {}
@@ -529,9 +536,9 @@ class AnalysisCollection(Elementary):
         ratebins = last - first + 1
         RateHisto = ROOT.TH1D("RateHisto", "Rate Histogram", ratebins, first - 0.5, last + 0.5)
         for runnumber in runnumbers:
-            rate_raw = self.collection[runnumber].RunInfo["rate_raw"]
-            rate_kHz = 1.*rate_raw/100
+            rate_kHz = self.collection[runnumber].GetRate()
             print "runnumber: ", self.collection[runnumber].run.run_number," == ",  runnumber, " rate_kHz: ", rate_kHz
+            assert(self.collection[runnumber].run.run_number == runnumber)
             RateHisto.Fill(runnumber, rate_kHz)
         RateHisto.GetXaxis().SetTitle("Run Number")
         RateHisto.GetYaxis().SetTitle("Rate / kHz")
@@ -561,10 +568,10 @@ class AnalysisCollection(Elementary):
         legend.Draw()
         self.SavePlots("PeakSignalEvolution.png")
         self.SavePlots("PeakSignalEvolution.root")
-        raw_input("waiting in AnalysisCollection->Line 375")
+        raw_input("waiting in AnalysisCollection->Line 566")
         pad = PeakSignalEvolutionCanvas.GetPad(0)
         RateHisto.SetStats(0)
-        RateHisto.Draw("HIST Y+") # include in plot instead of second plot
+        RateHisto.Draw("SAME HIST Y+") # include in plot instead of second plot
         pad.SetLogy()
         self.SavePlots("PeakSignalEvolution_Rate.png")
 

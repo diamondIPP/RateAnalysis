@@ -2,6 +2,8 @@
 from math import ceil
 from AbstractClasses.Elementary import Elementary
 import ConfigParser
+import os
+import pickle
 
 class Pad2DHistConfig(object):
     #@initializer
@@ -24,7 +26,7 @@ class BinCollectionConfig(Elementary):
     A config object for analysis
     e.g. binning size
     '''
-    def __init__(self, binningsize=None,  **kwargs):
+    def __init__(self, binningsize=None,  diamondname="", **kwargs):
         '''
 
         :param binningsize: size of bins in microns
@@ -32,6 +34,7 @@ class BinCollectionConfig(Elementary):
         :return:
         '''
 
+        self.diamondname=diamondname
         self.config = {
             '2DHist': {
                 'binsize': 100/10000., # in cm
@@ -66,7 +69,17 @@ class BinCollectionConfig(Elementary):
         windowYmax = parser.getfloat("TRACKING", "windowYmax")
         self.binning = parser.getint("TRACKING", "padBinning")
         self.SetBinning(self.binning)
-        self.SetWindow(windowXmin, windowXmax, windowYmin, windowYmax) # default window
+        windowpath = "DiamondPositions/{testcampaign}_{dia}.pickle".format(testcampaign=self.TESTCAMPAIGN, dia=self.diamondname)
+        if os.path.exists(windowpath):
+            print "Loading Diamond Window data from pickle file: \n\t"+windowpath
+            windowfile = open(windowpath, "rb")
+            window = pickle.load(windowfile)
+            self.SetWindow(window[0], window[1], window[2], window[3])
+            windowfile.close()
+        else:
+            print "No diamond window pickle file found at: ", windowpath
+            self.SetWindow(windowXmin, windowXmax, windowYmin, windowYmax)# default window
+
 
 
     def Get2DAttributes(self):
