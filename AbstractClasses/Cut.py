@@ -25,7 +25,7 @@ class Cut(Elementary):
             "noPulser":             "!pulser",
             "notSaturated":         "!saturated",
             "noBeamInter":          "!BeamInter.",
-            "FFT":                  "FFT",
+            "FFT":                  "",
             "Tracks":               "TrackRec",
         }
         self._cutTypes = { # default values
@@ -159,44 +159,69 @@ class Cut(Elementary):
         self.excludefirst = nevents
 
     def GenerateCutString(self, gen_PulserCut=True, gen_EventRange=True, gen_ExcludeFirst=True):
-        print "generate cutstring"
+        print "Generate cutstring.."
         cutstring = ""
         if self._checklist["GenerateCutString"]:
             self.LoadConfig() # re-generate
 
+        # -- EVENT RANGE CUT --
         if self._cutTypes["EventRange"] != [] and gen_EventRange:
             if cutstring != "": cutstring += "&&"
             cutstring += "(event_number<={maxevent}&&event_number>={minevent})".format(minevent=self._cutTypes["EventRange"][0], maxevent=self._cutTypes["EventRange"][1])
+            self.userCutTypes["EventRange"] = "Evts.{min}k-{max}k".format(min=int(self._cutTypes["EventRange"][0])/1000, max=int(self._cutTypes["EventRange"][1])/1000)
+            self.userCutTypes["ExcludeFirst"] = ""
         elif self._cutTypes["ExcludeFirst"] > 0 and gen_ExcludeFirst:
             if cutstring != "": cutstring += "&&"
             cutstring += "event_number>={minevent}".format(minevent=self._cutTypes["ExcludeFirst"])
+            self.userCutTypes["ExcludeFirst"] = "Evts.{min}k+".format(min=int(self._cutTypes["ExcludeFirst"])/1000)
+            self.userCutTypes["EventRange"] = ""
+        else:
+            self.userCutTypes["EventRange"] = ""
+            self.userCutTypes["ExcludeFirst"] = ""
 
+
+        # -- PULSER CUT --
         if self._cutTypes["noPulser"] in [0,1] and gen_PulserCut:
             if cutstring != "": cutstring += "&&"
             if self._cutTypes["noPulser"] == 1:
                 cutstring += "!pulser"
+                self.userCutTypes["noPulser"] = "!pulser"
             else:
                 cutstring += "pulser"
+                self.userCutTypes["noPulser"] = "pulser"
+        else:
+            self.userCutTypes["noPulser"] = ""
 
-        if self._cutTypes["notSaturated"] in [0,1]:
+        # -- SATURATED CUT --
+        if self._cutTypes["notSaturated"]:
             if cutstring != "": cutstring += "&&"
-            if self._cutTypes["notSaturated"] == 1:
-                cutstring += "!is_saturated[{channel}]"
-            else:
-                cutstring += "is_saturated[{channel}]"
+            cutstring += "!is_saturated[{channel}]"
+            self.userCutTypes["notSaturated"] = "!saturated"
+        else:
+            self.userCutTypes["notSaturated"] = ""
 
+        # -- TRACK CUT --
         if self._cutTypes["Tracks"]:
             if cutstring != "": cutstring += "&&"
             cutstring += "n_tracks"
+            self.userCutTypes["Tracks"] = "Tracks"
+        else:
+            self.userCutTypes["Tracks"] = ""
 
+        # -- set the channel on the cuts --
         for channel in [0,3]:
             self.cut[channel] += cutstring
             self.cut[channel] = self.cut[channel].format(channel=channel)
 
+        # -- BEAM INTERRUPTION CUT --
         if self._cutTypes["noBeamInter"] and self._checklist["GenerateCutString"]:
             self._RemoveBeamInterruptions(justDoIt=True)
+            self.userCutTypes["noBeamInter"] = "beamOn"
         elif self._cutTypes["noBeamInter"]:
             self._RemoveBeamInterruptions()
+            self.userCutTypes["noBeamInter"] = "BeamOn"
+        else:
+            self.userCutTypes["noBeamInter"] = ""
 
         self._checklist["GenerateCutString"] = True
         self._cutStringSettings = {
@@ -432,6 +457,10 @@ class Cut(Elementary):
 
     def GetUserCutString(self):
         string_ = ""
+        for type_ in self.userCutTypes.keys():
+            if self.userCutTypes[type_] != "":
+                string_ += self.userCutTypes[type_]+", "
+        if string_ != "": string_ = string_[:-2]
         return string_
 
     def ShowCuts(self):

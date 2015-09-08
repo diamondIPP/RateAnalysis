@@ -11,7 +11,7 @@ class Elementary(object):
     save plot method containing a global save directory handling.
     '''
     GLOBAL_COUNT = 0
-    colors = [2,3,4,6,7,8,9,1,30,40,28,38,39,20,41,42,43,44,45,46,47,48,49,12,13,14,15]
+    colors = [2,4,3,6,7,8,9,1,30,40,28,38,39,20,41,42,43,44,45,46,47,48,49,12,13,14,15]
     GLOBAL_COLOR_INDEX = 0
     SaveDirectory = "Results/"
     TESTCAMPAIGN = ""
@@ -50,6 +50,7 @@ class Elementary(object):
 
     @classmethod
     def SetSaveDirectory(cls, directory = "Results/"):
+        if not directory[-1] == "/": directory+="/"
         Elementary.SaveDirectory = directory
 
     @classmethod
@@ -89,6 +90,10 @@ class Elementary(object):
         color = cls.colors[cls.GLOBAL_COLOR_INDEX]
         cls.GLOBAL_COLOR_INDEX += 1
         return color
+
+    @classmethod
+    def ResetColorPalette(cls):
+        cls.GLOBAL_COLOR_INDEX = 0
 
     @classmethod
     def SetTestCampaign(cls, namestring="201508"):

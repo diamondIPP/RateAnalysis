@@ -26,15 +26,15 @@ class BinCollectionConfig(Elementary):
     A config object for analysis
     e.g. binning size
     '''
-    def __init__(self, binningsize=None,  diamondname="", **kwargs):
+    def __init__(self, run, binningsize=None,  channel=None, **kwargs):
         '''
 
         :param binningsize: size of bins in microns
         :param kwargs:
         :return:
         '''
-
-        self.diamondname=diamondname
+        self.run = run
+        self.channel=channel
         self.config = {
             '2DHist': {
                 'binsize': 100/10000., # in cm
@@ -69,7 +69,8 @@ class BinCollectionConfig(Elementary):
         windowYmax = parser.getfloat("TRACKING", "windowYmax")
         self.binning = parser.getint("TRACKING", "padBinning")
         self.SetBinning(self.binning)
-        windowpath = "DiamondPositions/{testcampaign}_{dia}.pickle".format(testcampaign=self.TESTCAMPAIGN, dia=self.diamondname)
+        maskname = self.run.RunInfo["mask"][:-4]
+        windowpath = "DiamondPositions/{testcampaign}_{mask}_{dia}.pickle".format(testcampaign=self.TESTCAMPAIGN, mask=maskname, dia=self.channel)
         if os.path.exists(windowpath):
             print "Loading Diamond Window data from pickle file: \n\t"+windowpath
             windowfile = open(windowpath, "rb")
@@ -79,7 +80,6 @@ class BinCollectionConfig(Elementary):
         else:
             print "No diamond window pickle file found at: ", windowpath
             self.SetWindow(windowXmin, windowXmax, windowYmin, windowYmax)# default window
-
 
 
     def Get2DAttributes(self):

@@ -123,6 +123,7 @@ class PreAnalysisPlot(Elementary):
         self.analysis.run.tree.Draw((self.analysis.signaldefinition+":(event_number)/1000>>signaltime2d{run}{channel}({bins}, {start}, {end}, 300, 0, 500)").format(bins=nbins, run=self.analysis.run.run_number, channel=self.channel, start=startevent/1000, end=endevent/1000), self.analysis.GetCut(self.channel), drawOption2D, self.analysis.GetNEventsCut(), self.analysis.GetMinEventCut())
         self.signaltime2d = gROOT.FindObject("signaltime2d{run}{channel}".format(run=self.analysis.run.run_number, channel=self.channel))
         self.signaltime2d.SetStats(0)
+        self.signaltime2d.SetTitle("{signal} vs Event {cut}".format(signal=self.analysis.signaldefinition.format(channel=self.channel), cut="{"+self.analysis.GetUserCutString()+"}"))
         self.signaltime2d.GetXaxis().SetLabelSize(0.06)
         self.signaltime2d.GetYaxis().SetLabelSize(0.06)
         self.signaltime2d.GetXaxis().SetTitle("event number / 1000")

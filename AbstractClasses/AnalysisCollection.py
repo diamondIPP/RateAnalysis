@@ -64,15 +64,10 @@ class AnalysisCollection(Elementary):
             for runnr in list_:
                 self.AddAnalysis(Analysis(Run(runnr, diamonds)))
 
-    def SetChannels(self, channels):
+    def SetDiamonds(self, diamonds):
         runnumbers = self.GetRunNumbers()
         for runnumber in runnumbers:
-            self.collection[runnumber].run.SetChannels(channels=channels)
-
-    def RemoveBeamInterruptions(self):
-        runnumbers = self.GetRunNumbers()
-        for runnumber in runnumbers:
-            self.collection[runnumber].RemoveBeamInterruptions()
+            self.collection[runnumber].run.SetChannels(diamonds=diamonds)
 
     def CreateFWHMPlot(self, saveplots = True, savename = 'FWHM_Histo', ending = 'png'):
         '''
@@ -138,7 +133,7 @@ class AnalysisCollection(Elementary):
 
         return fwhm
 
-    def MakePreAnalysis(self, channel=None, mode="mean", savePlot=True):
+    def MakePreAnalysises(self, channel=None, mode="mean", savePlot=True):
 
         assert(channel in [0,3, None]), "invalid channel: channel has to be either 0, 3 or None"
         runnumbers = self.GetRunNumbers()
@@ -212,7 +207,8 @@ class AnalysisCollection(Elementary):
                 self.graphs[channel].SetPointError(i, 0, results[runnumber][channel]["error"])
 
             #save graph:
-            self.graphs[channel].SaveAs(self.graphs[channel].GetName()+".root")
+            self.SavePlots(savename=self.graphs[channel].GetName()+".root", canvas=self.graphs[channel], subDir="IndividualRateGraphs/")
+            #self.graphs[channel].SaveAs(self.graphs[channel].GetName()+".root")
 
             self.ratecanvas.cd()
             if axisoption == "A":

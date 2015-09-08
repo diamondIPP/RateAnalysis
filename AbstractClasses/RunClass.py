@@ -460,7 +460,7 @@ class Run(Elementary):
         print "\tDiamond1:   \t", self.diamondname[0], " (",self.bias[0],") | is selected: ", self.analyzeCh[0]
         print "\tDiamond2:   \t", self.diamondname[3], " (",self.bias[3],") | is selected: ", self.analyzeCh[3]
 
-    def DrawRunInfo(self, channel=None, canvas=None, diamondinfo=True, showcut=False, comment=None, infoid="", userWidth=None, userHeight=None):
+    def DrawRunInfo(self, channel=None, canvas=None, diamondinfo=True, showcut=True, comment=None, infoid="", userWidth=None, userHeight=None):
         if userHeight!= None: assert(userHeight>=0 and userHeight<=0.8), "choose userHeight between 0 and 0.8 or set it to 'None'"
         if userWidth!= None: assert(userWidth>=0 and userWidth<=0.8), "choose userWidth between 0 and 0.8 or set it to 'None'"
         if canvas != None:
@@ -500,7 +500,7 @@ class Run(Elementary):
             self._runInfoLegends[str(channel)+infoid].SetMargin(0.05)
             self._runInfoLegends[str(channel)+infoid].AddEntry(0, "Run{run} Ch{channel} ({rate})".format(run=self.run_number, channel=channel, rate=self._GetRateString()), "")
             if diamondinfo: self._runInfoLegends[str(channel)+infoid].AddEntry(0, "{diamond} ({bias:+}V)".format(diamond=self.diamondname[channel], bias=self.bias[channel]), "")
-            if showcut and hasattr(self, "analysis"): self._runInfoLegends[str(channel)+infoid].AddEntry(0, "Cut: {cut}".format(cut=self.analysis.cut.format(channel=channel)), "")
+            if showcut and hasattr(self, "analysis"): self._runInfoLegends[str(channel)+infoid].AddEntry(0, "Cut: {cut}".format(cut=self.analysis.GetUserCutString()), "")
             if comment != None: self._runInfoLegends[str(channel)+infoid].AddEntry(0, comment, "")
             self._runInfoLegends[str(channel)+infoid].Draw("same")
         else:

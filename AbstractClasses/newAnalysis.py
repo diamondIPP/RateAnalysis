@@ -43,8 +43,8 @@ class Analysis(Elementary):
         self.run = run
         self.run.analysis = self
         self.config_object = {
-            0: BinCollectionConfig(diamondname=self.run.diamondname[0]),
-            3: BinCollectionConfig(diamondname=self.run.diamondname[3])
+            0: BinCollectionConfig(run=self.run, channel=0),
+            3: BinCollectionConfig(run=self.run, channel=3)
         }
         self.RunInfo = copy.deepcopy(run.RunInfo)
 
@@ -169,7 +169,28 @@ class Analysis(Elementary):
     def DrawRunInfo(self, channel=None, canvas=None, diamondinfo=True, showcut=False, comment=None, infoid="", userHeight=None, userWidth=None):
         self.run.DrawRunInfo(channel=channel, canvas=canvas, diamondinfo=diamondinfo, showcut=showcut, comment=comment, infoid=infoid, userHeight=userHeight, userWidth=userWidth)
 
-    def ShowFFT(self, drawoption="", cut=None, channel=None, startevent=0, endevent=10000000):
+    def ShowFFT(self, drawoption="", cut=None, channel=None, startevent=0, endevent=10000000, savePlots=True):
+        '''
+        Draws the selected Events in the fft_mean VS 1/fft_max scatter plot.
+        :param drawoption:
+            "" draws all events with the given cut
+            "mc" for multicolor: draw different colors for different waveform types
+            "col" gives colored TH2D plot (also possible: "colz")
+        :param cut:
+            if True: apply cut from Analysis instance
+            if None: "!pulser" set as default (except for "mc" drawoption)
+            costom: cut="!pulser&&!is_saturated[{channel}]"  -  syntax "[{channel}]" important for vectors
+        :param channel:
+            if None: takes the activated channels (diamonds) from Analysis instance
+            else: 0 or 3 to select one particular channel
+        :param startevent:
+            first event number to draw
+        :param endevent:
+            last event number to draw
+        :param savePlots:
+            True to save the generated scatter plots
+        :return:
+        '''
         if channel != None:
             channels = [channel]
         else:
@@ -182,8 +203,10 @@ class Analysis(Elementary):
                 cut = ""
         else:
             multicolor = False
+
         if cut == None:
             cut = "!pulser"
+
         events = endevent-startevent
         if events<10000000:
             if endevent >= 10000000: endevent = self.run.tree.GetEntries()
@@ -193,22 +216,32 @@ class Analysis(Elementary):
             comment = None
         canvas = ROOT.TCanvas("fftcanvas", "fftcanvas", len(channels)*500, 500)
         canvas.Divide(len(channels), 1)
+        if len(channels) ==2:
+            namesuffix = ""
+        else:
+            namesuffix = "_Ch{ch}".format(ch=channels[0])
+
         canvas.cd()
         i = 1
         self.fftHistos = {}
         self.fftlegend = {}
         ROOT.gStyle.SetOptStat(0)
-        rawcut = cut
         for ch in channels:
-            cut = rawcut
-            cut = cut.format(channel=ch)
-            self.fftHistos[ch] = ROOT.TH2D("fft_ch{channel}".format(channel=ch), "FFT {"+cut+"}", 5000, 2e-6, 0.0025, 5000, 1e1, 1e4)
+            if cut == True:
+                thiscut = self.GetCut(channel=ch)
+                thisusercut = self.GetUserCutString()
+                events = self.GetNEventsCut()
+                startevent = self.GetMinEventCut()
+            else:
+                thiscut = cut.format(channel=ch)
+                thisusercut = thiscut
+            self.fftHistos[ch] = ROOT.TH2D("fft_ch{channel}".format(channel=ch), "FFT {"+thisusercut+"}", 5000, 2e-6, 0.0025, 5000, 1e1, 1e4)
             canvas.cd(i)
             ROOT.gPad.SetLogy()
             ROOT.gPad.SetLogx()
             ROOT.gPad.SetGridx()
             ROOT.gPad.SetGridy()
-            self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}".format(channel=ch), cut, "", events, startevent)
+            self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}".format(channel=ch), thiscut, "", events, startevent)
             self.fftHistos[ch].SetTitle("{diamond} ".format(diamond=self.run.diamondname[ch])+self.fftHistos[ch].GetTitle())
             self.fftHistos[ch].GetXaxis().SetTitle("1/fft_max")
             self.fftHistos[ch].GetYaxis().SetTitle("fft_mean")
@@ -217,7 +250,7 @@ class Analysis(Elementary):
                 if cut == "":
                     self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}_sat(5000, 2e-6, 0.0025, 5000, 1e1, 1e4)".format(channel=ch), "is_saturated[{channel}]".format(channel=ch), "", events, startevent)
                 else:
-                    self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}_sat(5000, 2e-6, 0.0025, 5000, 1e1, 1e4)".format(channel=ch), (cut+"&&is_saturated[{channel}]").format(channel=ch), "", events, startevent)
+                    self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}_sat(5000, 2e-6, 0.0025, 5000, 1e1, 1e4)".format(channel=ch), (thiscut+"&&is_saturated[{channel}]").format(channel=ch), "", events, startevent)
                 saturated_histo = ROOT.gROOT.FindObject("fft_ch{channel}_sat".format(channel=ch))
                 saturated_histo.SetMarkerStyle(1)
                 saturated_histo.SetMarkerColor(6)
@@ -225,7 +258,7 @@ class Analysis(Elementary):
                 if cut == "":
                     self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}_med(5000, 2e-6, 0.0025, 5000, 1e1, 1e4)".format(channel=ch), "abs(median[{channel}])>8".format(channel=ch), "", events, startevent)
                 else:
-                    self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}_med(5000, 2e-6, 0.0025, 5000, 1e1, 1e4)".format(channel=ch), (cut+"&&abs(median[{channel}])>8").format(channel=ch), "", events, startevent)
+                    self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}_med(5000, 2e-6, 0.0025, 5000, 1e1, 1e4)".format(channel=ch), (thiscut+"&&abs(median[{channel}])>8").format(channel=ch), "", events, startevent)
                 median_histo = ROOT.gROOT.FindObject("fft_ch{channel}_med".format(channel=ch))
                 median_histo.SetMarkerStyle(1)
                 median_histo.SetMarkerColor(8)
@@ -233,7 +266,7 @@ class Analysis(Elementary):
                 if cut == "":
                     self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}_flat(5000, 2e-6, 0.0025, 5000, 1e1, 1e4)".format(channel=ch), "sig_spread[{channel}]<10".format(channel=ch), "", events, startevent)
                 else:
-                    self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}_flat(5000, 2e-6, 0.0025, 5000, 1e1, 1e4)".format(channel=ch), (cut+"&&sig_spread[{channel}]<10").format(channel=ch), "", events, startevent)
+                    self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}_flat(5000, 2e-6, 0.0025, 5000, 1e1, 1e4)".format(channel=ch), (thiscut+"&&sig_spread[{channel}]<10").format(channel=ch), "", events, startevent)
                 flat_histo = ROOT.gROOT.FindObject("fft_ch{channel}_flat".format(channel=ch))
                 flat_histo.SetMarkerStyle(1)
                 flat_histo.SetMarkerColor(4)
@@ -241,7 +274,7 @@ class Analysis(Elementary):
                 if cut == "":
                     self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}_pulser(5000, 2e-6, 0.0025, 5000, 1e1, 1e4)".format(channel=ch), "pulser", "", events, startevent)
                 else:
-                    self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}_pulser(5000, 2e-6, 0.0025, 5000, 1e1, 1e4)".format(channel=ch), (cut+"&&pulser").format(channel=ch), "", events, startevent)
+                    self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}_pulser(5000, 2e-6, 0.0025, 5000, 1e1, 1e4)".format(channel=ch), (thiscut+"&&pulser").format(channel=ch), "", events, startevent)
                 pulser_histo = ROOT.gROOT.FindObject("fft_ch{channel}_pulser".format(channel=ch))
                 pulser_histo.SetMarkerStyle(1)
                 pulser_histo.SetMarkerColor(2)
@@ -254,8 +287,8 @@ class Analysis(Elementary):
                 self.fftlegend[ch] = ROOT.TLegend(0.1,0.1,0.3,0.3)
                 self.fftlegend[ch].AddEntry(pulser_histo, "pulser", "f")
                 self.fftlegend[ch].AddEntry(saturated_histo, "saturated", "f")
-                self.fftlegend[ch].AddEntry(median_histo, "median", "f")
-                self.fftlegend[ch].AddEntry(flat_histo, "flat", "f")
+                self.fftlegend[ch].AddEntry(median_histo, "|median|>8", "f")
+                self.fftlegend[ch].AddEntry(flat_histo, "sig_spread<10", "f")
                 self.fftlegend[ch].Draw("same")
                 self.DrawRunInfo(channel=ch, comment=comment)
             else:
@@ -264,193 +297,12 @@ class Analysis(Elementary):
                 self.DrawRunInfo(channel=ch, comment=comment)
             i+=1
         canvas.Update()
+        if savePlots:
+            savename = "Run{run}_FFT"+namesuffix
+            self.SavePlots(savename.format(run=self.run.run_number), ending="png", canvas=canvas, subDir="png/")
+            self.SavePlots(savename.format(run=self.run.run_number), ending="root", canvas=canvas, subDir="root/")
+
         self.IfWait("FFT shown..")
-
-
-    # def _FindBeamInterruptions(self):
-    #     '''
-    #     Finds the beam interruptions
-    #     :return: list of event numbers where beam interruptions occures
-    #     '''
-    #     print "Searching for beam interruptions.."
-    #     nentries = self.run.tree.GetEntries()
-    # #    last_entry = self.run.tree.GetEntry(nentries-1)
-    # #    max_time = self.run.tree.time
-    #
-    #     canvas = ROOT.TCanvas("beaminterruptioncanvas", "beaminterruptioncanvas")
-    #     self.run.tree.Draw('time:event_number')
-    #
-    # #    graph = copy.deepcopy(ROOT.c1.FindObject('Graph'))
-    #     histo = copy.deepcopy(canvas.FindObject('htemp'))
-    #
-    #     histo.SetTitle('run %3d' %(self.run.run_number))
-    #     histo.SetName('run %3d' %(self.run.run_number))
-    #
-    #     # get event numbers and dt's
-    #     dts = []
-    #     evs = []
-    #     i = self.excludefirst
-    #     step = 100
-    #     while i+step < nentries:
-    #         self.run.tree.GetEntry(i)
-    #         t1 = self.run.tree.time
-    #         evs.append(self.run.tree.event_number)
-    #         self.run.tree.GetEntry(i+step)
-    #         t2 = self.run.tree.time
-    #         dt = (t2 - t1)
-    #         dts.append(dt)
-    #         i += step
-    #
-    #     self.jumps = []
-    #
-    #     deq = collections.deque(dts[:100],100)
-    #     first = True
-    #     for i in dts[101:]:
-    #         avg = numpy.mean(deq)
-    #         if abs(i / avg - 1.) > 0.3:
-    #             if first:
-    #                 print 'found a jump here', i, 'at event number', evs[dts.index(i)]
-    #                 self.jumps.append(evs[dts.index(i)])
-    #                 first = False
-    #         else:
-    #             if not first:
-    #                 print 'back to normal at event', evs[dts.index(i)]
-    #             deq.appendleft(i)
-    #             first = True
-    #
-    #     print '\n'
-    #     print 'found %d jumps' %(len(self.jumps))
-    #     print 'they are at event numbers', self.jumps
-    #
-    #     lat = ROOT.TLatex()
-    #     lat.SetNDC()
-    #     lat.SetTextColor(ROOT.kRed)
-    #     lat.DrawLatex(0.2,0.85, 'run %d' %(self.run.run_number) )
-    #
-    #     if not os.path.exists("beaminterruptions"):
-    #         os.mkdir("beaminterruptions")
-    #     if not os.path.exists("beaminterruptions/plots"):
-    #         os.mkdir("beaminterruptions/plots")
-    #     if not os.path.exists("beaminterruptions/data"):
-    #         os.mkdir("beaminterruptions/data")
-    #
-    #     # save jump list to file
-    #     jumpfile = open("beaminterruptions/data/{testcampaign}Run_{run}.pickle".format(testcampaign=self.TESTCAMPAIGN, run=self.run.run_number), "wb")
-    #     pickle.dump(self.jumps, jumpfile)
-    #     jumpfile.close()
-    #
-    #     if len(self.jumps):
-    #         print 'the length of jumps is', len(self.jumps)
-    #         jumps_array = array('d', self.jumps)
-    #         jumps_err_array = array('d', len(self.jumps)*[histo.GetYaxis().GetXmin()])
-    #
-    #         jumps_graph = ROOT.TGraph(len(self.jumps), jumps_array, jumps_err_array)
-    #         jumps_graph.SetMarkerSize(3)
-    #         jumps_graph.SetMarkerColor(ROOT.kRed)
-    #         jumps_graph.SetMarkerStyle(33)
-    #         jumps_graph.SetLineColor(ROOT.kRed)
-    #         jumps_graph.Draw('p')
-    #
-    #         outfile = open('beaminterruptions/jumps_{testcampaign}.txt'.format(testcampaign=self.TESTCAMPAIGN),'r+a')
-    #         # check if the run is already in the file
-    #         runInFile = False
-    #         lines = outfile.readlines()
-    #         for i in lines:
-    #             if len(i.split()) > 0 and i.split()[0] == str(self.run.run_number):
-    #                 runInFile = True
-    #         if not runInFile:
-    #             outfile.write(str(self.run.run_number)+'\t\t')
-    #
-    #         lat.SetTextColor(ROOT.kBlack)
-    #         for i in self.jumps:
-    #             ind = self.jumps.index(i)
-    #             lat.DrawLatex(0.2, 0.80-ind*0.05, '#%d at %d' %(ind, i) )
-    #             if not runInFile:
-    #                 outfile.write(str(i)+'\t')
-    #         if not runInFile:
-    #             outfile.write('\n')
-    #         outfile.close()
-    #
-    #
-    #     ROOT.c1.SaveAs('beaminterruptions/plots/%djumpSearch_run%d.png' %(self.TESTCAMPAIGN, self.run.run_number))
-    #
-    #     canvas.Close()
-    #     return self.jumps
-    #
-    # def GetBeamInterruptions(self):
-    #     '''
-    #     If there is beam interruption data, it will load them - otherwise it will run the beam interruption analysis
-    #     it will create the attribute self.jumps, which is a list of event numbers, where a jump occures
-    #     :return: list of events where beam interruptions occures
-    #     '''
-    #     if not hasattr(self, "jumpsRanges"):
-    #         picklepath = "beaminterruptions/data/{testcampaign}Run_{run}.pickle".format(testcampaign=self.TESTCAMPAIGN, run=self.run.run_number)
-    #         if os.path.exists(picklepath):
-    #             print "Loading beam interruption data from pickle file: \n\t"+picklepath
-    #             jumpfile = open(picklepath, "rb")
-    #             self.jumps = pickle.load(jumpfile)
-    #             self._ReduceJumps()
-    #             jumpfile.close()
-    #         else:
-    #             print "No pickle file found at: ", picklepath, "\n .. analyzing beam interruptions.. "
-    #             print "No pickle file found at: ", picklepath, "\n .. analyzing beam interruptions.. "
-    #             self._FindBeamInterruptions()
-    #             self._ReduceJumps()
-    #
-    #     return self.jumps
-    #
-    # def _ReduceJumps(self):
-    #     if not hasattr(self, "jumpsRanges") and len(self.jumps)>0:
-    #         self.jumps.sort()
-    #         events = self.GetEventAtTime(-1)
-    #         selection = events*[0]
-    #         high = self.excludeAfterJump
-    #         low = self.excludeBeforeJump
-    #         reduced_jumps = []
-    #         reduced_ends = []
-    #         for jump in self.jumps:
-    #             c = 1 if (jump-low)>0 else 0
-    #             selection[c*(jump-low):(jump+high+1)] = len(selection[c*(jump-low):(jump+high+1)])*[1]
-    #
-    #         for i in xrange(len(selection)-1):
-    #             if selection[i] != selection[i+1]:
-    #                 if selection[i] == 0:
-    #                     print "jump start: ", i+1
-    #                     reduced_jumps.append(i+1)
-    #                 else:
-    #                     print "jump end: ", i+1
-    #                     reduced_ends.append(i+1)
-    #         if reduced_ends[0]<reduced_jumps[0]:
-    #             reduced_jumps = [0]+reduced_jumps
-    #         if reduced_jumps[-1]>reduced_ends[-1]:
-    #             reduced_ends = reduced_ends+[events]
-    #         self.jumps = reduced_jumps
-    #         self.jumpsRanges = {
-    #             "start": reduced_jumps,
-    #             "stop": reduced_ends
-    #         }
-    #     else:
-    #         self.jumpsRanges = {
-    #             "start": [],
-    #             "stop": []
-    #         }
-
-    # def RemoveBeamInterruptions(self):
-    #     '''
-    #     This adds the restrictions to the cut string such that beam interruptions are excluded each time the
-    #     cut is applied.
-    #     :return:
-    #     '''
-    #     # if not self.Checklist["RemoveBeamInterruptions"]:
-    #     #     self.GetBeamInterruptions()
-    #     #
-    #     #     njumps = len(self.jumpsRanges["start"])
-    #     #     for i in xrange(njumps):
-    #     #         self.cut += "&&!(event_number<={upper}&&event_number>={lower})".format(upper=self.jumpsRanges["stop"][i], lower=self.jumpsRanges["start"][i])
-    #     #     self.Checklist["RemoveBeamInterruptions"] = True
-    #     #
-    #     # return self.cut
-    #     self.cut._RemoveBeamInterruptions()
 
     def GetIncludedEvents(self, maxevent):
         '''
@@ -469,13 +321,13 @@ class Analysis(Elementary):
     def GetNEventsCut(self):
         return self.cut.GetNEvents()
 
-    def ShowSignalHisto(self, channel=None, canvas=None, drawoption="", color=None, normalized=True, drawruninfo=False, binning=600):
-        self._ShowHisto(self.signaldefinition, channel=channel, canvas=canvas, drawoption=drawoption, color=color, normalized=normalized, infoid="landau", drawruninfo=drawruninfo, binning=binning)
+    def ShowSignalHisto(self, channel=None, canvas=None, drawoption="", cut="", color=None, normalized=True, drawruninfo=True, binning=600, savePlots=False):
+        self._ShowHisto(self.signaldefinition, channel=channel, canvas=canvas, drawoption=drawoption, cut=cut, color=color, normalized=normalized, infoid="SignalHisto", drawruninfo=drawruninfo, binning=binning, savePlots=savePlots)
 
-    def ShowPedestalHisto(self, channel=None, canvas=None, drawoption="", color=None, normalized=True, drawruninfo=False, binning=600):
-        self._ShowHisto(self.pedestalname+"[{channel}]", channel=channel, canvas=canvas, drawoption=drawoption, color=color, normalized=normalized, infoid="pedestal", drawruninfo=drawruninfo, binning=binning)
+    def ShowPedestalHisto(self, channel=None, canvas=None, drawoption="", color=None, normalized=True, drawruninfo=False, binning=600, savePlots=False):
+        self._ShowHisto(self.pedestalname+"[{channel}]", channel=channel, canvas=canvas, drawoption=drawoption, color=color, normalized=normalized, infoid="PedestalHisto", drawruninfo=drawruninfo, binning=binning, savePlots=savePlots)
 
-    def _ShowHisto(self, signaldef, channel=None, canvas=None, drawoption="", color=None, normalized=True, infoid="histo", drawruninfo=False, binning=600):
+    def _ShowHisto(self, signaldef, channel=None, canvas=None, drawoption="", cut="", color=None, normalized=True, infoid="histo", drawruninfo=False, binning=600, xmin=None, xmax=None, savePlots=False):
         '''
 
         :param channel:
@@ -490,33 +342,61 @@ class Analysis(Elementary):
             channels = self.run.GetChannels()
         if canvas == None:
             canvas = ROOT.TCanvas(infoid+"canvas")
+            self.ResetColorPalette()
         else:
             drawoption = "sames"
         canvas.cd()
+
+        if xmin==None:
+            xmin = -100
+        if xmax==None:
+            xmax = 500
 
         if color == None: color = self.GetNewColor()
         for ch in channels:
             if len(channels)>1 and drawoption=="" and ch==3:
                 drawoption = "sames"
                 color = self.GetNewColor()
-            print "making "+infoid+" using\nSignal def:\n\t{signal}\nCut:\n\t{cut}".format(signal=signaldef, cut=self.cut.GetCut(ch))
-            self.run.tree.Draw((signaldef+">>{infoid}{run}{channel}({binning}, -100, 500)").format(infoid=infoid, channel=ch, run=self.run.run_number, binning=binning), self.cut.GetCut(ch).format(channel=ch), drawoption, 10000000, self.GetMinEventCut())
+            if cut == "":
+                thiscut = self.GetCut(ch)
+                thisusercut = self.GetUserCutString()
+            else:
+                thiscut = cut.format(channel=ch)
+                thisusercut = thiscut
+            print "making "+infoid+" using\nSignal def:\n\t{signal}\nCut:\n\t{cut}".format(signal=signaldef, cut=thisusercut)
+            self.run.tree.Draw((signaldef+">>{infoid}{run}({binning}, {min}, {max})").format(infoid=(self.run.diamondname[ch]+"_"+infoid), channel=ch, run=self.run.run_number, binning=binning, min=xmin, max=xmax), thiscut, drawoption, self.GetNEventsCut(), self.GetMinEventCut())
             canvas.Update()
-            histoname = "{infoid}{run}{channel}".format(infoid=infoid, channel=ch, run=self.run.run_number)
+            histoname = "{infoid}{run}".format(infoid=(self.run.diamondname[ch]+"_"+infoid), run=self.run.run_number)
             histo = ROOT.gROOT.FindObject(histoname)
 
-            histo.GetXaxis().SetTitle(signaldef.format(channel=""))
-            histo.SetLineColor(color)
-            histo.Draw(drawoption)
-            stats = histo.FindObject("stats")
-            if stats: stats.SetTextColor(color)
+            if histo:
+                histo.GetXaxis().SetTitle(signaldef.format(channel=""))
+                histo.SetLineColor(color)
+                histo.Draw(drawoption)
+                histo.SetTitle("{signal} {cut}".format(signal=infoid, cut="{"+self.GetUserCutString()+"}"))
+                stats = histo.FindObject("stats")
+                if stats:
+                    stats.SetTextColor(color)
+                    if channels.index(ch) == 1: # shift second statbox down
+                        point = stats.GetBBoxCenter()
+                        point.SetY(150)
+                        stats.SetBBoxCenter(point)
             canvas.Modified()
 
             if normalized:
                 histo.Scale(1./histo.GetMaximum())
                 histo.Draw(drawoption)
-                canvas.Update()
-        if drawruninfo: self.DrawRunInfo()
+        canvas.Update()
+        if drawruninfo:
+            if len(channels) == 2:
+                self.DrawRunInfo()
+            else:
+                self.DrawRunInfo(channel=channels[0])
+        self.IfWait(infoid+" shown")
+        if savePlots:
+            self.SavePlots("Run{run}_{signal}.png".format(run=self.run.run_number, signal=infoid), canvas=canvas, subDir=infoid+"/png/")
+            self.SavePlots("Run{run}_{signal}.root".format(run=self.run.run_number, signal=infoid), canvas=canvas, subDir=infoid+"/root/")
+
 
     def LoadTrackData(self, minimum_bincontent=None): # min_bincontent in config file
         '''
@@ -592,8 +472,13 @@ class Analysis(Elementary):
 
         self.Checklist["LoadTrackData"] = True
 
-    def ShowHitMap(self, channel, saveplot = False, drawoption = "colz", RemoveLowStatBins = 0):
-        assert (channel in self.run.GetChannels()), "channel not selected"
+    def ShowHitMap(self, channel=None, saveplot = False, drawoption = "colz", RemoveLowStatBins = 0):
+        if channel != None:
+            assert (channel in self.run.GetChannels()), "channel not selected"
+            channels = [channel]
+        else:
+            channels = self.run.GetChannels()
+
         if not self.Checklist["LoadTrackData"]:
             self.LoadTrackData()
 
@@ -612,21 +497,25 @@ class Analysis(Elementary):
 
         ROOT.gStyle.SetPalette(53)
         ROOT.gStyle.SetNumberContours(999)
-        canvas = ROOT.TCanvas("canvas", "Hits", 500, 500) # adjust the width slightly
-        canvas.cd()
-        self.Pads[channel].counthisto.SetStats(False)
-        self.Pads[channel].counthisto.Draw(drawoption)#"surf2")
-        #self.Pads[channel].counthisto.Draw("CONT1 SAME")
-        if saveplot:
-            self.SavePlots("HitMap"+extension, "png", canvas=canvas)
-        canvas.Update()
+        self.hitmapcanvas = ROOT.TCanvas("hitmapcanvas", "Hits", len(channels)*500, 500) # adjust the width slightly
+        self.hitmapcanvas.Divide(len(channels), 1)
+
+        for ch in channels:
+            self.hitmapcanvas.cd(channels.index(ch)+1)
+            self.Pads[ch].counthisto.SetStats(False)
+            self.Pads[ch].counthisto.Draw(drawoption)#"surf2")
+            #self.Pads[ch].counthisto.Draw("CONT1 SAME")
+            if saveplot:
+                self.SavePlots(("Run{run}_HitMap"+extension).format(run=self.run.run_number), "png", canvas=self.hitmapcanvas)
+            self.hitmapcanvas.Update()
         self.IfWait("Hits Distribution shown")
         self.Checklist["HitsDistribution"] = True
 
     def SetDiamondPosition(self, diamonds=3):
         tmp = copy.deepcopy(self.run.analyzeCh)
         self.SetChannels(diamonds)
-        self.ShowSignalMaps()
+        self.ShowHitMap()
+        maskname = self.run.RunInfo["mask"][:-4]
         for ch in [0,3]:
             try:
                 xmin = float(raw_input("Set x_min of Diamond {dia}: ".format(dia=self.run.diamondname[ch])))
@@ -635,7 +524,7 @@ class Analysis(Elementary):
                 ymax = float(raw_input("Set y_max of Diamond {dia}: ".format(dia=self.run.diamondname[ch])))
                 window = [xmin, xmax, ymin, ymax]
                 # save list to file
-                windowfile = open("DiamondPositions/{testcampaign}_{dia}.pickle".format(testcampaign=self.TESTCAMPAIGN, dia=self.run.diamondname[ch]), "wb")
+                windowfile = open("DiamondPositions/{testcampaign}_{mask}_{dia}.pickle".format(testcampaign=self.TESTCAMPAIGN, mask=maskname, dia=ch), "wb")
                 pickle.dump(window, windowfile)
                 windowfile.close()
             except ValueError:
@@ -648,7 +537,7 @@ class Analysis(Elementary):
     def GetRate(self):
         return self.run.GetRate()
 
-    def ShowSignalMaps(self, draw_minmax=True, saveplots = False, savename = "2DSignalDistribution",ending="png",saveDir = "Results/", show3d = False):
+    def ShowSignalMaps(self, draw_minmax=True, saveplots = False, savename = "Run{run}_SignalMaps",ending="png",saveDir = "Results/", show3d = False):
         '''
         Creates 2D Signal Distribution plot
         :param saveplots: if True, save the plot
@@ -663,6 +552,10 @@ class Analysis(Elementary):
         channels = self.run.GetChannels()
         self.signal_canvas = ROOT.TCanvas("signal_canvas{run}", "Mean Signal Maps", len(channels)*500, 500)
         self.signal_canvas.Divide(len(channels), 1)
+        if len(channels) ==2:
+            namesuffix = ""
+        else:
+            namesuffix = "_Ch{ch}".format(ch=channels[0])
         self.signal_canvas.cd(1)
         ROOT.SetOwnership(self.signal_canvas, False)
 
@@ -685,7 +578,9 @@ class Analysis(Elementary):
         self.signal_canvas.Update()
         self.IfWait("2d drawn")
         if saveplots:
-            self.SavePlots(savename, ending, saveDir, canvas=self.signal_canvas)
+            savename = savename.format(run=self.run.run_number)+namesuffix
+            self.SavePlots(savename, ending, canvas=self.signal_canvas, subDir=ending)
+            self.SavePlots(savename, "root", canvas=self.signal_canvas, subDir="root")
 
     def _DrawMinMax(self, pad, channel):
         pad.cd()
@@ -1235,7 +1130,72 @@ class Analysis(Elementary):
         self.ShowWaveForms(nevents=nevents, cut="pulser", startevent=startevent, channels=channels, canvas=pad2, infoid="pulser")
         raw_input("asdf")
 
-    #def Shpw
+    def GetUserCutString(self):
+        return self.cut.GetUserCutString()
+
+    def ShowPeakPosition(self, channel=None, cut=""):
+        if channel == None:
+            channels = self.run.GetChannels()
+            namesuffix = ""
+        else:
+            channels = [channel]
+            namesuffix = "_ch{ch}".format(ch=channel)
+
+        canvas = ROOT.TCanvas("{run}signalpositioncanvas".format(run=self.run.run_number),"{run}signalpositioncanvas".format(run=self.run.run_number), 800, len(channels)*300)
+        canvas.Divide(1, len(channels))
+
+        ROOT.gStyle.SetPalette(55) # rainbow palette
+        ROOT.gStyle.SetNumberContours(200)
+
+        for ch in channels:
+            pad = canvas.cd(channels.index(ch)+1)
+            if cut == "":
+                thiscut = self.GetCut(ch)
+            else:
+                thiscut = cut.format(channel=ch)
+
+            self.Draw(("("+self.signaldefinition+"):sig_time[{channel}]>>signalposition{run}{channel}(100, 200, 300, 600, -100, 500)").format(channel=ch, run=self.run.run_number), thiscut, "colz")
+            hist = ROOT.gROOT.FindObject("signalposition{run}{channel}".format(channel=ch, run=self.run.run_number))
+            pad.SetLogz()
+            if hist:
+                hist.SetStats(0)
+                hist.SetTitle("Peak Position {"+self.cut.GetUserCutString()+"}")
+                hist.GetXaxis().SetTitle("Sample Point of Peak")
+                hist.GetXaxis().SetTitleSize(0.05)
+                hist.GetXaxis().SetLabelSize(0.05)
+                hist.GetYaxis().SetTitle("Pulse Height ({sigdef})".format(sigdef=self.signaldefinition.format(channel=ch)))
+                hist.GetYaxis().SetTitleSize(0.05)
+                hist.GetYaxis().SetLabelSize(0.05)
+
+        canvas.Update()
+        self.SavePlots("Run{run}_PeakPosition{ns}.png".format(run=self.run.run_number, ns=namesuffix), canvas=canvas)
+        self.IfWait("Peak Position shown")
+
+    def ShowSignalSpread(self, channel=None, cut=""):
+        if channel == None:
+            channels = self.run.GetChannels()
+            namesuffix = ""
+        else:
+            channels = [channel]
+            namesuffix = "_ch{ch}".format(ch=channel)
+
+        canvas = ROOT.TCanvas("{run}signalspreadcanvas".format(run=self.run.run_number),"{run}signalspreadcanvas".format(run=self.run.run_number), 800, len(channels)*300)
+        canvas.Divide(1, len(channels))
+
+        for ch in channels:
+            canvas.cd(channels.index(ch)+1)
+            if cut == "":
+                thiscut = self.GetCut(ch)
+            else:
+                thiscut = cut.format(channel=ch)
+
+            self.Draw(("sig_spread[{channel}]>>signalspread{run}{channel}(400, 0, 400)").format(channel=ch, run=self.run.run_number), thiscut)
+            hist = ROOT.gROOT.FindObject("signalspread{run}{channel}".format(channel=ch, run=self.run.run_number))
+            if hist: hist.SetStats(0)
+
+        canvas.Update()
+        self.SavePlots("Run{run}_SignalSpread{ns}.png".format(run=self.run.run_number, ns=namesuffix), canvas=canvas, subDir="Cuts")
+        self.IfWait("Peak Position shown")
 
     def Draw(self, varexp, selection="", drawoption="", nentries=1000000000, firstentry=0):
         self.run.tree.Draw(varexp, selection, drawoption, nentries, firstentry)

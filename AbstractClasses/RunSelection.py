@@ -2,6 +2,7 @@ from RunClass import Run
 import types as t
 from collections import namedtuple
 import json
+import copy
 from ROOT import TString
 
 
@@ -120,7 +121,7 @@ class RunSelection(Run):
         self.VerbosePrint('Runs of Type '+data_type+' selected. +'+str(count)+' selections')
 
     def SelectDiamondRuns(self, diamondname, only_selected_runs=False):
-        diamondnames = self.ShowDiamondNames(True)
+        diamondnames = self.ShowDiamondNames(getNames=True)
         assert(diamondname in diamondnames), "wrong diamond name. \n\tSelect diamond name from: "+str(diamondnames)
         if not only_selected_runs:
             choice = self.run_numbers
@@ -427,12 +428,34 @@ class RunSelection(Run):
             print "No Runs Selected"
         return selected
 
-    def ShowRunPlan(self):
+    def ShowRunPlan(self, detailed=True, type_="rate_scan", show_allcomments=False, commentlength=0):
         print "RUN PLAN FOR TESTCAMPAIGN:", self.TESTCAMPAIGN
-        for types_ in self.runplan.keys():
-            print types_, " :"
-            for planNr in self.runplan[types_]:
-                print "\t Nr. {nr} : {runs}".format(nr=planNr, runs=self.runplan[types_][planNr])
+        if not detailed:
+            for types_ in self.runplan.keys():
+                print types_, " :"
+                numbers = map(int, self.runplan[types_].keys())
+                numbers.sort()
+                for planNr in numbers:
+                    print "\t Nr. {nr} : {runs}".format(nr=planNr, runs=self.runplan[types_][str(planNr)])
+        else:
+            tmp_selections = copy.deepcopy(self.selections)
+            tmp_channel_selections = copy.deepcopy(self.channel_selections)
+            tmp_selectionLog = copy.deepcopy(self._selectionLog)
+
+
+            numbers = map(int, self.runplan[type_].keys())
+            numbers.sort()
+            for i in numbers:
+                self.UnselectAll()
+                self.SelectRunsFromRunPlan(i, type_=type_)
+                print "-----------------------------------------"
+                print "RUN PLAN ", i, " ({typ}) : ".format(typ=type_)
+                print "-----------------------------------------"
+                self.ShowSelectedRuns(show_allcomments=show_allcomments, commentlength=commentlength)
+                print "\n"
+            self.selections = copy.deepcopy(tmp_selections)
+            self.channel_selections = copy.deepcopy(tmp_channel_selections)
+            self._selectionLog = copy.deepcopy(tmp_selectionLog)
 
     def SelectRunsFromRunPlan(self, number, type_="rate_scan"):
         runs = self.runplan[type_][str(number)]
