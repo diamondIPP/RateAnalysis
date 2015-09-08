@@ -199,8 +199,18 @@ class Run(Elementary):
         cparser = ConfigParser.ConfigParser()
         cparser.read(eudaqFolder+"/conf/converter.conf")
         cparser.set("Converter.drs4tree", "polarities", "[{pol1},0,0,{pol2}]".format(pol1=pol_dia1, pol2=pol_dia2))
-        f = open(eudaqFolder+"/conf/converter.conf", "w")
+        f = open(eudaqFolder+"/conf/converter.conf", "wb")
         cparser.write(f)
+        f.close()
+
+        # remove white spaces:
+        f = open(eudaqFolder+"/conf/converter.conf", "r")
+        content = f.readlines()
+        f.close()
+        for i in xrange(len(content)):
+            content[i] = content[i].replace(" ", "")
+        f = open(eudaqFolder+"/conf/converter.conf", "w")
+        f.writelines(content)
         f.close()
 
     def CreateROOTFile(self, do_tracking=True):
