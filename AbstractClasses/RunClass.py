@@ -185,8 +185,8 @@ class Run(Elementary):
         return self.RunInfo["measured flux"]
 
     def _SetConverterConfigFile(self, eudaqFolder):
-        pol_dia1 = self.bias[0]
-        pol_dia2 = self.bias[3]
+        pol_dia1 = self.RunInfo["hv dia1"]
+        pol_dia2 = self.RunInfo["hv dia2"]
         assert(pol_dia1!=0 and pol_dia2!=0)
         if pol_dia1 > 0:
             pol_dia1 = 1
