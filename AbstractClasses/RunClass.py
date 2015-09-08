@@ -184,6 +184,25 @@ class Run(Elementary):
     def GetRate(self):
         return self.RunInfo["measured flux"]
 
+    def _SetConverterConfigFile(self, eudaqFolder):
+        pol_dia1 = self.bias[0]
+        pol_dia2 = self.bias[3]
+        assert(pol_dia1!=0 and pol_dia2!=0)
+        if pol_dia1 > 0:
+            pol_dia1 = 1
+        else:
+            pol_dia1 = -1
+        if pol_dia2 > 0:
+            pol_dia2 = 1
+        else:
+            pol_dia2 = -1
+        cparser = ConfigParser.ConfigParser()
+        cparser.read(eudaqFolder+"/conf/converter.conf")
+        cparser.set("Converter.drs4tree", "polarities", "[{pol1},0,0,{pol2}]".format(pol1=pol_dia1, pol2=pol_dia2))
+        f = open(eudaqFolder+"/conf/converter.conf", "w")
+        cparser.write(f)
+        f.close()
+
     def CreateROOTFile(self, do_tracking=True):
 
         rawFolder = "/data/psi_2015_08/raw"
@@ -197,6 +216,7 @@ class Run(Elementary):
         noTracksROOTFile = os.getcwd()+"/{prefix}{run}.root".format(prefix=converterPrefix, run=str(self.run_number).zfill(4))
 
         if not os.path.exists(noTracksROOTFile):
+            self._SetConverterConfigFile(eudaqFolder=eudaqFolder)
             print "\n\nSTART CONVERTING RAW FILE..."
             print converter_cmd
             os.system(converter_cmd)
