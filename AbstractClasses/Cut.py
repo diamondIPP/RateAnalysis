@@ -316,7 +316,7 @@ class Cut(Elementary):
             outfile.close()
 
 
-        canvas.SaveAs('beaminterruptions/plots/%djumpSearch_run%d.png' %(self.TESTCAMPAIGN, self.analysis.run.run_number))
+        self.SavePlots('beaminterruptions/plots/{test}jumpSearch_run{run}.png'.format(test=self.TESTCAMPAIGN, run=self.analysis.run.run_number), canvas=canvas)
 
         canvas.Close()
         return self.jumps
