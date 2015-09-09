@@ -13,7 +13,7 @@ rateScanCanvas = TCanvas("rateScanCanvas", "rateScanCanvas")
 
 sel = RunSelection()
 #runplans =sel.runplan[runplanType].keys()
-runplans = map(str, [1, 2, 11, 13])
+runplans = map(str, [1, 2, 12, 13])
 
 for runplanNr in runplans:
     sel.UnselectAll()
