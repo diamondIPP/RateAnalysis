@@ -27,23 +27,23 @@ for runplanNr in runplans:
 
     rate_analyses[runplanNr] = AnalysisCollection(sel)
 
-    sel.SetSaveDirectory("Results/{runplan}/PreAnalysis/".format(runplan=runplanType+str(runplanNr)))
-    rate_analyses[runplanNr].MakePreAnalysises(savePlot=True)
-    sel.SetSaveDirectory("Results/{runplan}/PulserRates/".format(runplan=runplanType+str(runplanNr)))
-    rate_analyses[runplanNr].ShowPulserRates()
+    # sel.SetSaveDirectory("Results/{runplan}/PreAnalysis/".format(runplan=runplanType+str(runplanNr)))
+    # rate_analyses[runplanNr].MakePreAnalysises(savePlot=True)
+    # sel.SetSaveDirectory("Results/{runplan}/PulserRates/".format(runplan=runplanType+str(runplanNr)))
+    # rate_analyses[runplanNr].ShowPulserRates()
 
-    for run in rate_analyses[runplanNr].collection.keys():
-        #sel.SetSaveDirectory("Results/{runplan}/SignalMaps/".format(runplan=runplanType+str(runplanNr)))
-        #rate_analyses[runplanNr].collection[run].ShowSignalMaps(saveplots=True)
-
-        sel.SetSaveDirectory("Results/{runplan}/FFT/".format(runplan=runplanType+str(runplanNr)))
-        rate_analyses[runplanNr].collection[run].ShowFFT(drawoption="mc", cut=True, savePlots=True)
-
-        sel.SetSaveDirectory("Results/{runplan}/Cuts/".format(runplan=runplanType+str(runplanNr)))
-        rate_analyses[runplanNr].collection[run].ShowSignalHisto(savePlots=True)
-        rate_analyses[runplanNr].collection[run]._ShowHisto(signaldef="abs(median[{channel}])", infoid="Median", savePlots=True, binning=200, xmin=-50, xmax=80)
-        rate_analyses[runplanNr].collection[run]._ShowHisto(signaldef="sig_spread", infoid="Spread", savePlots=True, binning=500, xmin=0, xmax=300)
-        rate_analyses[runplanNr].collection[run].ShowPeakPosition()
+    # for run in rate_analyses[runplanNr].collection.keys():
+    #     sel.SetSaveDirectory("Results/{runplan}/SignalMaps/".format(runplan=runplanType+str(runplanNr)))
+    #     rate_analyses[runplanNr].collection[run].ShowSignalMaps(saveplots=True)
+    #
+    #     sel.SetSaveDirectory("Results/{runplan}/FFT/".format(runplan=runplanType+str(runplanNr)))
+    #     rate_analyses[runplanNr].collection[run].ShowFFT(drawoption="mc", cut=True, savePlots=True)
+    #
+    #     sel.SetSaveDirectory("Results/{runplan}/Cuts/".format(runplan=runplanType+str(runplanNr)))
+    #     rate_analyses[runplanNr].collection[run].ShowSignalHisto(savePlots=True)
+    #     rate_analyses[runplanNr].collection[run]._ShowHisto(signaldef="abs(median[{channel}])", infoid="Median", savePlots=True, binning=200, xmin=-50, xmax=80)
+    #     rate_analyses[runplanNr].collection[run]._ShowHisto(signaldef="sig_spread", infoid="Spread", savePlots=True, binning=500, xmin=0, xmax=300)
+    #     rate_analyses[runplanNr].collection[run].ShowPeakPosition()
 
     sel.SetSaveDirectory("Results/{runplan}/".format(runplan=runplanType+str(runplanNr)))
     rate_analyses[runplanNr].ShowSignalVSRate(canvas=rateScanCanvas)
