@@ -363,7 +363,7 @@ class Analysis(Elementary):
             else:
                 thiscut = cut.format(channel=ch)
                 thisusercut = thiscut
-            print "making "+infoid+" using\nSignal def:\n\t{signal}\nCut:\n\t{cut}".format(signal=signaldef, cut=thisusercut)
+            print "making "+infoid+" using\nSignal def:\n\t{signal}\nCut:\n\t({usercut})\n\t{cut}".format(signal=signaldef, usercut=thisusercut, cut=thiscut)
             self.run.tree.Draw((signaldef+">>{infoid}{run}({binning}, {min}, {max})").format(infoid=(self.run.diamondname[ch]+"_"+infoid), channel=ch, run=self.run.run_number, binning=binning, min=xmin, max=xmax), thiscut, drawoption, self.GetNEventsCut(), self.GetMinEventCut())
             canvas.Update()
             histoname = "{infoid}{run}".format(infoid=(self.run.diamondname[ch]+"_"+infoid), run=self.run.run_number)
@@ -389,9 +389,9 @@ class Analysis(Elementary):
         canvas.Update()
         if drawruninfo:
             if len(channels) == 2:
-                self.DrawRunInfo()
+                self.DrawRunInfo(canvas=canvas)
             else:
-                self.DrawRunInfo(channel=channels[0])
+                self.DrawRunInfo(channel=channels[0], canvas=canvas)
         self.IfWait(infoid+" shown")
         if savePlots:
             self.SavePlots("Run{run}_{signal}.png".format(run=self.run.run_number, signal=infoid), canvas=canvas, subDir=infoid+"/png/")
