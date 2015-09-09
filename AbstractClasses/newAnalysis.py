@@ -290,11 +290,12 @@ class Analysis(Elementary):
                 self.fftlegend[ch].AddEntry(median_histo, "|median|>8", "f")
                 self.fftlegend[ch].AddEntry(flat_histo, "sig_spread<10", "f")
                 self.fftlegend[ch].Draw("same")
-                self.DrawRunInfo(channel=ch, comment=comment)
+                canvas.Update()
+                self.DrawRunInfo(channel=ch, comment=comment, canvas=canvas)
             else:
                 self.fftHistos[ch].Draw(drawoption)
                 canvas.Update()
-                self.DrawRunInfo(channel=ch, comment=comment)
+                self.DrawRunInfo(channel=ch, comment=comment, canvas=canvas)
             i+=1
         canvas.Update()
         if savePlots:
@@ -397,6 +398,8 @@ class Analysis(Elementary):
             self.SavePlots("Run{run}_{signal}.png".format(run=self.run.run_number, signal=infoid), canvas=canvas, subDir=infoid+"/png/")
             self.SavePlots("Run{run}_{signal}.root".format(run=self.run.run_number, signal=infoid), canvas=canvas, subDir=infoid+"/root/")
 
+    def ShowDiamondCurrents(self):
+        pass
 
     def LoadTrackData(self, minimum_bincontent=None): # min_bincontent in config file
         '''
