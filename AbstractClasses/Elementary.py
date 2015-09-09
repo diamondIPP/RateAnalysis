@@ -75,7 +75,13 @@ class Elementary(object):
         if canvas == None:
             pad = ROOT.gROOT.GetSelectedPad()
             canvas = pad.GetCanvas()
-        canvas.SaveAs(resultsdir+savename+ending)
+        try:
+            canvas.SaveAs(resultsdir+savename+ending)
+        except:
+            print "\n\n\n-----------------------------------"
+            print "ERROR in SAVE PLOTs !"
+            print "tried to save:\n\t", [resultsdir+savename+ending]
+            print "-----------------------------------\n\n\n"
 
 
     @classmethod
