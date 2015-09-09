@@ -322,13 +322,13 @@ class Analysis(Elementary):
     def GetNEventsCut(self):
         return self.cut.GetNEvents()
 
-    def ShowSignalHisto(self, channel=None, canvas=None, drawoption="", cut="", color=None, normalized=True, drawruninfo=True, binning=600, savePlots=False):
-        self._ShowHisto(self.signaldefinition, channel=channel, canvas=canvas, drawoption=drawoption, cut=cut, color=color, normalized=normalized, infoid="SignalHisto", drawruninfo=drawruninfo, binning=binning, savePlots=savePlots)
+    def ShowSignalHisto(self, channel=None, canvas=None, drawoption="", cut="", color=None, normalized=True, drawruninfo=True, binning=600, xmin=None, xmax=None, savePlots=False, logy=False, gridx=False):
+        self._ShowHisto(self.signaldefinition, channel=channel, canvas=canvas, drawoption=drawoption, cut=cut, color=color, normalized=normalized, infoid="SignalHisto", drawruninfo=drawruninfo, binning=binning, xmin=xmin, xmax=xmax,savePlots=savePlots, logy=logy, gridx=gridx)
 
-    def ShowPedestalHisto(self, channel=None, canvas=None, drawoption="", color=None, normalized=True, drawruninfo=False, binning=600, savePlots=False):
-        self._ShowHisto(self.pedestalname+"[{channel}]", channel=channel, canvas=canvas, drawoption=drawoption, color=color, normalized=normalized, infoid="PedestalHisto", drawruninfo=drawruninfo, binning=binning, savePlots=savePlots)
+    def ShowPedestalHisto(self, channel=None, canvas=None, drawoption="", color=None, normalized=True, drawruninfo=False, binning=600, xmin=None, xmax=None, savePlots=False, logy=False):
+        self._ShowHisto(self.pedestalname+"[{channel}]", channel=channel, canvas=canvas, drawoption=drawoption, color=color, normalized=normalized, infoid="PedestalHisto", drawruninfo=drawruninfo, binning=binning, xmin=xmin, xmax=xmax,savePlots=savePlots, logy=logy)
 
-    def _ShowHisto(self, signaldef, channel=None, canvas=None, drawoption="", cut="", color=None, normalized=True, infoid="histo", drawruninfo=False, binning=600, xmin=None, xmax=None, savePlots=False):
+    def _ShowHisto(self, signaldef, channel=None, canvas=None, drawoption="", cut="", color=None, normalized=True, infoid="histo", drawruninfo=False, binning=600, xmin=None, xmax=None, savePlots=False, logy=False, gridx=False):
         '''
 
         :param channel:
@@ -367,6 +367,8 @@ class Analysis(Elementary):
             print "making "+infoid+" using\nSignal def:\n\t{signal}\nCut:\n\t({usercut})\n\t{cut}".format(signal=signaldef, usercut=thisusercut, cut=thiscut)
             self.run.tree.Draw((signaldef+">>{infoid}{run}({binning}, {min}, {max})").format(infoid=(self.run.diamondname[ch]+"_"+infoid), channel=ch, run=self.run.run_number, binning=binning, min=xmin, max=xmax), thiscut, drawoption, self.GetNEventsCut(), self.GetMinEventCut())
             canvas.Update()
+            if logy: canvas.SetLogy()
+            if gridx: canvas.SetGridx()
             histoname = "{infoid}{run}".format(infoid=(self.run.diamondname[ch]+"_"+infoid), run=self.run.run_number)
             histo = ROOT.gROOT.FindObject(histoname)
 
@@ -566,7 +568,7 @@ class Analysis(Elementary):
         ROOT.gStyle.SetNumberContours(999)
 
         for channel in self.run.GetChannels():
-            self.signal_canvas.cd(channels.index(channel)+1)
+            pad = self.signal_canvas.cd(channels.index(channel)+1)
             # Plot the Signal2D TH2D histogram
 
             if show3d:
@@ -577,6 +579,8 @@ class Analysis(Elementary):
 
             if draw_minmax and not show3d:
                 self._DrawMinMax(pad = self.signal_canvas.cd(channels.index(channel)+1), channel=channel)
+
+            if not show3d: self.DrawRunInfo(canvas=pad, infoid="signalmap{run}{ch}".format(run=self.run.run_number, ch=channel))
 
         self.signal_canvas.Update()
         self.IfWait("2d drawn")
@@ -1169,6 +1173,7 @@ class Analysis(Elementary):
                 hist.GetYaxis().SetTitle("Pulse Height ({sigdef})".format(sigdef=self.signaldefinition.format(channel=ch)))
                 hist.GetYaxis().SetTitleSize(0.05)
                 hist.GetYaxis().SetLabelSize(0.05)
+            self.DrawRunInfo(channel=ch, canvas=pad, infoid="peakpos{run}{ch}".format(run=self.run.run_number, ch=ch), userWidth=0.15, userHeight=0.15)
 
         canvas.Update()
         self.SavePlots("Run{run}_PeakPosition{ns}.png".format(run=self.run.run_number, ns=namesuffix), canvas=canvas)

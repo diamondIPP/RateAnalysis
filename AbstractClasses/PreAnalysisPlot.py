@@ -119,7 +119,7 @@ class PreAnalysisPlot(Elementary):
         #if savePlot: self.analysis.SavePlots(savename, "eps")
 
         #2d distribution (high resolution)
-        self.signalTimeCanvas.cd(2)
+        pad = self.signalTimeCanvas.cd(2)
         self.analysis.run.tree.Draw((self.analysis.signaldefinition+":(event_number)/1000>>signaltime2d{run}{channel}({bins}, {start}, {end}, 300, 0, 500)").format(bins=nbins, run=self.analysis.run.run_number, channel=self.channel, start=startevent/1000, end=endevent/1000), self.analysis.GetCut(self.channel), drawOption2D, self.analysis.GetNEventsCut(), self.analysis.GetMinEventCut())
         self.signaltime2d = gROOT.FindObject("signaltime2d{run}{channel}".format(run=self.analysis.run.run_number, channel=self.channel))
         self.signaltime2d.SetStats(0)
@@ -130,6 +130,7 @@ class PreAnalysisPlot(Elementary):
         self.signaltime2d.GetXaxis().SetTitleSize(0.06)
         self.signaltime2d.GetXaxis().SetTitleOffset(0.7)
         self.signaltime2d.Draw(drawOption2D)
+        self.analysis.DrawRunInfo(channel=self.channel, canvas=pad, infoid="preanalysis{run}{ch}".format(run=self.analysis.run.run_number, ch=self.channel))
         #signaltime.Draw()
 
         #draw mean pedestal vs time
