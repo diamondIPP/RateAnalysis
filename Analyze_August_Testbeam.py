@@ -13,7 +13,7 @@ rateScanCanvas = TCanvas("rateScanCanvas", "rateScanCanvas")
 
 sel = RunSelection()
 #runplans =sel.runplan[runplanType].keys()
-runplans = map(str, [13])
+runplans = map(str, [1, 2, 11, 13])
 
 for runplanNr in runplans:
     sel.UnselectAll()
@@ -33,8 +33,8 @@ for runplanNr in runplans:
     rate_analyses[runplanNr].ShowPulserRates()
 
     for run in rate_analyses[runplanNr].collection.keys():
-        sel.SetSaveDirectory("Results/{runplan}/SignalMaps/".format(runplan=runplanType+str(runplanNr)))
-        rate_analyses[runplanNr].collection[run].ShowSignalMaps(saveplots=True)
+        #sel.SetSaveDirectory("Results/{runplan}/SignalMaps/".format(runplan=runplanType+str(runplanNr)))
+        #rate_analyses[runplanNr].collection[run].ShowSignalMaps(saveplots=True)
 
         sel.SetSaveDirectory("Results/{runplan}/FFT/".format(runplan=runplanType+str(runplanNr)))
         rate_analyses[runplanNr].collection[run].ShowFFT(drawoption="mc", cut=True, savePlots=True)
