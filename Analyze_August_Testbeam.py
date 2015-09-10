@@ -13,7 +13,7 @@ rateScanCanvas = TCanvas("rateScanCanvas", "rateScanCanvas")
 
 sel = RunSelection()
 #runplans =sel.runplan[runplanType].keys()
-runplans = map(str, [12, 13])
+runplans = map(str, [1,2,12, 13])
 
 for runplanNr in runplans:
     sel.UnselectAll()
@@ -27,17 +27,17 @@ for runplanNr in runplans:
 
     rate_analyses[runplanNr] = AnalysisCollection(sel)
 
-    sel.SetSaveDirectory("Results/{runplan}/PreAnalysis/".format(runplan=runplanType+str(runplanNr)))
-    rate_analyses[runplanNr].MakePreAnalysises(savePlot=True)
-    sel.SetSaveDirectory("Results/{runplan}/PulserRates/".format(runplan=runplanType+str(runplanNr)))
-    rate_analyses[runplanNr].ShowPulserRates()
+    # sel.SetSaveDirectory("Results/{runplan}/PreAnalysis/".format(runplan=runplanType+str(runplanNr)))
+    # rate_analyses[runplanNr].MakePreAnalysises(savePlot=True)
+    # sel.SetSaveDirectory("Results/{runplan}/PulserRates/".format(runplan=runplanType+str(runplanNr)))
+    # rate_analyses[runplanNr].ShowPulserRates()
 
     for run in rate_analyses[runplanNr].collection.keys():
         # sel.SetSaveDirectory("Results/{runplan}/SignalMaps/".format(runplan=runplanType+str(runplanNr)))
         # rate_analyses[runplanNr].collection[run].ShowSignalMaps(saveplots=True)
 
-        sel.SetSaveDirectory("Results/{runplan}/FFT/".format(runplan=runplanType+str(runplanNr)))
-        rate_analyses[runplanNr].collection[run].ShowFFT(drawoption="mc", cut=True, savePlots=True)
+        # sel.SetSaveDirectory("Results/{runplan}/FFT/".format(runplan=runplanType+str(runplanNr)))
+        # rate_analyses[runplanNr].collection[run].ShowFFT(drawoption="mc", cut=True, savePlots=True)
 
         sel.SetSaveDirectory("Results/{runplan}/Cuts/".format(runplan=runplanType+str(runplanNr)))
         rate_analyses[runplanNr].collection[run].ShowSignalHisto(savePlots=True, gridx=True, xmin=-50, xmax=200, binning=250)
@@ -45,7 +45,7 @@ for runplanNr in runplans:
         rate_analyses[runplanNr].collection[run]._ShowHisto(signaldef="sig_spread[{channel}]", infoid="Spread", drawruninfo=True, savePlots=True, logy=True, gridx=True, binning=150, xmin=0, xmax=150)
         rate_analyses[runplanNr].collection[run].ShowPeakPosition()
 
-    sel.SetSaveDirectory("Results/{runplan}/".format(runplan=runplanType+str(runplanNr)))
-    rate_analyses[runplanNr].ShowSignalVSRate(canvas=rateScanCanvas)
-    sel.SavePlots(savename="SignalVSRate"+str(runplanNr)+".root", canvas=rateScanCanvas)
-    sel.SavePlots(savename="SignalVSRate"+str(runplanNr)+".png", canvas=rateScanCanvas)
+    # sel.SetSaveDirectory("Results/{runplan}/".format(runplan=runplanType+str(runplanNr)))
+    # rate_analyses[runplanNr].ShowSignalVSRate(canvas=rateScanCanvas)
+    # sel.SavePlots(savename="SignalVSRate"+str(runplanNr)+".root", canvas=rateScanCanvas)
+    # sel.SavePlots(savename="SignalVSRate"+str(runplanNr)+".png", canvas=rateScanCanvas)

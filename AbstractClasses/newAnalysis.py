@@ -353,6 +353,8 @@ class Analysis(Elementary):
         if xmax==None:
             xmax = 500
 
+        ROOT.gStyle.SetOptStat(1)
+
         if color == None: color = self.GetNewColor()
         for ch in channels:
             if len(channels)>1 and drawoption=="" and ch==3:
