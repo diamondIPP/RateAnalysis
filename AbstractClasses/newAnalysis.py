@@ -301,7 +301,7 @@ class Analysis(Elementary):
         if savePlots:
             savename = "Run{run}_FFT"+namesuffix
             self.SavePlots(savename.format(run=self.run.run_number), ending="png", canvas=canvas, subDir="png/")
-            self.SavePlots(savename.format(run=self.run.run_number), ending="root", canvas=canvas, subDir="root/")
+            #self.SavePlots(savename.format(run=self.run.run_number), ending="root", canvas=canvas, subDir="root/")
 
         self.IfWait("FFT shown..")
 
