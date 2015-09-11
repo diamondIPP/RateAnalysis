@@ -11,6 +11,7 @@ from AbstractClasses.Langau import Langau
 import os
 import copy, collections, numpy
 import sys
+import json
 import numpy as np
 from BinCollection import BinCollection
 from array import array
@@ -94,7 +95,8 @@ class Analysis(Elementary):
             0: copy.deepcopy(signalHistoFitResults),
             3: copy.deepcopy(signalHistoFitResults)
         }
-        self.cut = Cut(self)
+        self.cut0 = Cut(self, 0)
+        self.cut3 = Cut(self, 3)
 
     def LoadConfig(self):
         configfile = "Configuration/AnalysisConfig_"+self.TESTCAMPAIGN+".cfg"
@@ -127,7 +129,7 @@ class Analysis(Elementary):
     def GetCut(self, channel, gen_PulserCut=True, gen_EventRange=True, gen_ExcludeFirst=True):
         return self.cut.GetCut(channel=channel, gen_PulserCut=gen_PulserCut, gen_EventRange=gen_EventRange, gen_ExcludeFirst=gen_ExcludeFirst)
 
-    def MakePreAnalysis(self, channel=None, mode="mean", binning=5000, savePlot=True):
+    def MakePreAnalysis(self, channel=None, mode="mean", binning=5000, savePlot=True, canvas=None):
         '''
         Creates the Signal Time distribution (and checks for beam interruptions).
         No tracking information needed -> no spatial information provided
@@ -140,14 +142,17 @@ class Analysis(Elementary):
         #c1 = ROOT.TCanvas("c1", "c1")
         self.preAnalysis = {}
         for ch in channels:
-            self.preAnalysis[ch] = PreAnalysisPlot(analysis=self, channel=ch, canvas=None, binning=binning)
+            self.preAnalysis[ch] = PreAnalysisPlot(analysis=self, channel=ch, canvas=canvas, binning=binning)
             self.preAnalysis[ch].Draw(mode=mode, savePlot=savePlot)
 
-    def ShowPulserRate(self, binning=2000):
+    def ShowPulserRate(self, binning=2000, canvas=None):
         assert(binning>=100), "binning too low"
         binning = int(binning)
 
-        self.pulserRateCanvas = ROOT.TCanvas("pulserratecanvas{run}".format(run=self.run.run_number), "Pulser Rate Canvas")
+        if canvas == None:
+            self.pulserRateCanvas = ROOT.TCanvas("pulserratecanvas{run}".format(run=self.run.run_number), "Pulser Rate Canvas")
+        else:
+            self.pulserRateCanvas = canvas
         self.pulserRateCanvas.cd()
 
         self.pulserRateGraph = ROOT.TGraph()
@@ -345,7 +350,8 @@ class Analysis(Elementary):
             canvas = ROOT.TCanvas(infoid+"canvas")
             self.ResetColorPalette()
         else:
-            drawoption = "sames"
+            pass
+            #drawoption = "sames"
         canvas.cd()
 
         if xmin==None:
@@ -1031,6 +1037,85 @@ class Analysis(Elementary):
         self.run.tree.GetEntry(event)
         return event
 
+    def _ShowPreAnalysisOverview(self, channel):
+
+        self.pAOverviewCanv = ROOT.TCanvas("PAOverviewCanvas", "PAOverviewCanvas", 1500, 900)
+        self.pAOverviewCanv.Divide(2,1)
+
+        PApad = self.pAOverviewCanv.cd(1)
+        rightPad = self.pAOverviewCanv.cd(2)
+        rightPad.Divide(1,3)
+
+        PApad.cd()
+        self.MakePreAnalysis(channel=channel, savePlot=False, canvas=PApad)
+
+        pulserPad = rightPad.cd(1)
+        self.ShowPulserRate(canvas=pulserPad)
+
+        self.ResetColorPalette()
+        spreadPad = rightPad.cd(2)
+        self._ShowHisto(signaldef="sig_spread[{channel}]", channel=channel, canvas=spreadPad, infoid="Spread", drawruninfo=True, savePlots=True, logy=True, gridx=True, binning=150, xmin=0, xmax=150)
+
+        peakPosPad = rightPad.cd(3)
+        self.ShowPeakPosition(channel=channel, canvas=peakPosPad)
+
+    def SetIndividualCuts(self):
+
+        default_dict_ = { #
+            "EventRange":           None,             # [1234, 123456]
+            "ExcludeFirst":         None,              # 50000 events
+            "noPulser":             None,              # 1: nopulser, 0: pulser, -1: no cut
+            "notSaturated":         None,
+            "noBeamInter":          None,
+            "FFT":                  None,
+            "Tracks":               None,
+            "peakPos_high":         None,
+            "spread_low":           None,
+            "absMedian_high":       None
+        }
+        self.individualCuts = {
+            0: copy.deepcopy(default_dict_),
+            3: copy.deepcopy(default_dict_)
+        }
+
+        try:
+            for ch in [0,3]:
+                self._ShowPreAnalysisOverview(channel=ch)
+                range_min = raw_input("{dia} - Event Range Cut. Enter LOWER Event Number: ".format(dia=self.run.diamondname[ch]))
+                range_max = raw_input("{dia} - Event Range Cut. Enter UPPER Event Number: ".format(dia=self.run.diamondname[ch]))
+                peakPos_high = raw_input("{dia} - Peak Position Cut. Enter maximum Peak Position Sample Point: ".format(dia=self.run.diamondname[ch]))
+                spread_low = raw_input("{dia} - Spread Cut. Enter minimum Spread (max-min): ".format(dia=self.run.diamondname[ch]))
+                absMedian_high = raw_input("{dia} - Median Cut. Enter maximum abs(median) value: ".format(dia=self.run.diamondname[ch]))
+
+                if range_max != "" and range_min != "":
+                    self.individualCuts[ch]["EventRange"] = [int(range_min), int(range_max)]
+                elif range_max != "":
+                    self.individualCuts[ch]["EventRange"] = [-1, int(range_max)]
+                elif range_min != "":
+                    self.individualCuts[ch]["ExcludeFirst"] = int(range_min)
+
+                if peakPos_high != "":
+                    self.individualCuts[ch]["peakPos_high"] = int(peakPos_high)
+
+                if spread_low != "":
+                    self.individualCuts[ch]["spread_low"] = int(spread_low)
+
+                if absMedian_high != "":
+                    self.individualCuts[ch]["absMedian_high"] = int(absMedian_high)
+        except:
+            print "Aborted."
+        else:
+            print "Creating run-specific config file:"
+            path = "Configuration/Individual_Configs/"
+            filename = "{testcp}_Run{run}.json".format(testcp=self.TESTCAMPAIGN, run=self.run.run_number)
+            print "\t"+path+filename
+
+            f = open(path+filename, "w")
+            json.dump(self.individualCuts, f, indent=2, sort_keys=True)
+            f.close()
+
+            print "done."
+
     def GetTimeAtEvent(self, event):
         '''
         Returns the time at event number 'event'.
@@ -1142,7 +1227,7 @@ class Analysis(Elementary):
     def GetUserCutString(self):
         return self.cut.GetUserCutString()
 
-    def ShowPeakPosition(self, channel=None, cut=""):
+    def ShowPeakPosition(self, channel=None, cut="", canvas=None):
         if channel == None:
             channels = self.run.GetChannels()
             namesuffix = ""
@@ -1150,7 +1235,12 @@ class Analysis(Elementary):
             channels = [channel]
             namesuffix = "_ch{ch}".format(ch=channel)
 
-        canvas = ROOT.TCanvas("{run}signalpositioncanvas".format(run=self.run.run_number),"{run}signalpositioncanvas".format(run=self.run.run_number), 800, len(channels)*300)
+        min_ = self.run.signalregion_low - 10
+        max_ = self.run.signalregion_high +10
+        binning = max_-min_
+
+        if canvas == None:
+            canvas = ROOT.TCanvas("{run}signalpositioncanvas".format(run=self.run.run_number),"{run}signalpositioncanvas".format(run=self.run.run_number), 800, len(channels)*300)
         canvas.Divide(1, len(channels))
 
         ROOT.gStyle.SetPalette(55) # rainbow palette
@@ -1163,7 +1253,7 @@ class Analysis(Elementary):
             else:
                 thiscut = cut.format(channel=ch)
 
-            self.Draw(("("+self.signaldefinition+"):sig_time[{channel}]>>signalposition{run}{channel}(100, 200, 300, 600, -100, 500)").format(channel=ch, run=self.run.run_number), thiscut, "colz")
+            self.Draw(("("+self.signaldefinition+"):sig_time[{channel}]>>signalposition{run}{channel}({bins}, {low}, {high}, 600, -100, 500)").format(channel=ch, run=self.run.run_number, bins=binning, low=min_, high=max_), thiscut, "colz")
             hist = ROOT.gROOT.FindObject("signalposition{run}{channel}".format(channel=ch, run=self.run.run_number))
             pad.SetLogz()
             pad.SetGridx()

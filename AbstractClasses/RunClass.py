@@ -107,6 +107,9 @@ class Run(Elementary):
         self._runlogkeyprefix = runConfigParser.get('BASIC', 'runlog_key_prefix')
         self.runplaninfofile = runConfigParser.get('BASIC', 'runplaninfofile')
         self.maskfilepath = runConfigParser.get('BASIC', 'maskfilepath')
+        self.createNewROOTFiles = runConfigParser.getboolean('BASIC', 'createNewROOTFiles')
+        self.signalregion_low = runConfigParser.getint('BASIC', 'signalregion_low')
+        self.signalregion_high = runConfigParser.getint('BASIC', 'signalregion_high')
 
     def LoadRunInfo(self):
         self.RunInfo = {}
@@ -288,7 +291,6 @@ class Run(Elementary):
             self.VerbosePrint("Timing string translated successfully")
         else:
             print "INFO: The timing information string from run info couldn't be translated"
-
 
     def RenameRunInfoKeys(self):
 
@@ -539,7 +541,7 @@ class Run(Elementary):
         print "LOADING: ", fullROOTFilePath
         self.rootfile = ROOT.TFile(fullROOTFilePath)
         self.tree = self.rootfile.Get(self.treename) # Get TTree called "track_info"
-        if not (bool(self.tree) and bool(self.rootfile)):
+        if not (bool(self.tree) and bool(self.rootfile)) and self.createNewROOTFiles:
             self.CreateROOTFile()
 
             # print "\n\nCould not load root file!"

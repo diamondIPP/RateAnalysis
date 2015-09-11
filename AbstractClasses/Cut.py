@@ -4,14 +4,16 @@ import copy, collections, os
 from array import array
 import numpy as np
 import pickle
+import json
 import ConfigParser
 
 
 class Cut(Elementary):
 
-    def __init__(self, parent_analysis, verbose=True):
+    def __init__(self, parent_analysis, channel, verbose=True):
         print "init cut"
         self.analysis = parent_analysis
+        self.channel = channel
         self._checklist = {
             "RemoveBeamInterruptions": {
                 0: False,
@@ -27,8 +29,11 @@ class Cut(Elementary):
             "noBeamInter":          "!BeamInter.",
             "FFT":                  "",
             "Tracks":               "TrackRec",
+            "peakPos_high":         "peakPos<250",
+            "spread_low":           "spread>20",
+            "absMedian_high":       "|median|<10"
         }
-        self._cutTypes = { # default values
+        self._cuttypes = { # default values
             "EventRange":             [],             # [1234, 123456]
             "ExcludeFirst":         0,              # 50000 events
             "noPulser":             1,              # 1: nopulser, 0: pulser, -1: no cut
@@ -36,7 +41,13 @@ class Cut(Elementary):
             "noBeamInter":          True,
             "FFT":                  False,
             "Tracks":               True,
+            "peakPos_high":         -1,
+            "spread_low":           -1,
+            "absMedian_high":       -1
         }
+        self._cutTypes = {}
+        self._cutTypes[0] = copy.deepcopy(self._cuttypes)
+        self._cutTypes[3] = copy.deepcopy(self._cuttypes)
         self.excludefirst = 0
         self.cut = {
             0: "", # cut diamond 1
@@ -56,7 +67,7 @@ class Cut(Elementary):
         self.cut[3] = parser.get("CUT", "cut2") if not parser.get("CUT", "cut2") in ["-1", "", "True", "False"] else ""
 
         # pulser cut:
-        self._cutTypes["noPulser"] = parser.getint("CUT", "notPulser")
+        self._cuttypes["noPulser"] = parser.getint("CUT", "notPulser")
 
         # exclude first: (negative: time in minutes, positive: nevents)
         excludefirst = parser.getint("CUT", "excludefirst")
@@ -68,19 +79,52 @@ class Cut(Elementary):
         self.SetEventRange(min_event=EventRange_min, max_event=EventRange_max)
 
         # not saturated cut:
-        self._cutTypes["notSaturated"] = parser.getboolean("CUT", "notSaturated")
+        self._cuttypes["notSaturated"] = parser.getboolean("CUT", "notSaturated")
 
         # not beam interruption cut:
-        self._cutTypes["noBeamInter"] = parser.getboolean("CUT", "noBeamInter")
+        self._cuttypes["noBeamInter"] = parser.getboolean("CUT", "noBeamInter")
         self.excludeBeforeJump = parser.getint("CUT", "excludeBeforeJump")
         self.excludeAfterJump = parser.getint("CUT", "excludeAfterJump")
 
         # FFT cut:
-        self._cutTypes["FFT"] = parser.getboolean("CUT", "FFT")
+        self._cuttypes["FFT"] = parser.getboolean("CUT", "FFT")
 
         # has tracks cut:
-        self._cutTypes["Tracks"] = parser.getboolean("CUT", "hasTracks")
-    
+        self._cuttypes["Tracks"] = parser.getboolean("CUT", "hasTracks")
+
+        # apply configurations to channels:
+        self._cutTypes[0] = copy.deepcopy(self._cuttypes)
+        self._cutTypes[3] = copy.deepcopy(self._cuttypes)
+        # .. and Load individual cuts, if they exists:
+        self.LoadIndividualCuts()
+
+    def LoadIndividualCuts(self):
+        path = "Configuration/Individual_Configs/"
+        filename = "{testcp}_Run{run}.json".format(testcp=self.TESTCAMPAIGN, run=self.analysis.run.run_number)
+        filepath = path+filename
+        if os.path.exists(filepath):
+            print "Loading run-specific config file:"
+            print "\t"+filepath
+
+            f = open(filepath, "r")
+            self.individualCuts = json.load(f)
+            f.close()
+            print self.individualCuts
+            for ch in [0,3]:
+                if self.individualCuts[ch]["EventRange"] != None:
+                    self.SetEventRange(min_event=int(self.individualCuts[ch]["EventRange"][0]), max_event=int(self.individualCuts[ch]["EventRange"][1]))
+                elif self.individualCuts[ch]["ExcludeFirst"] != None:
+                    self.SetExcludeFirst(n=int(self.individualCuts[ch]["ExcludeFirst"]))
+
+                if self.individualCuts[ch]["peakPos_high"] != None:
+                    self._SetPeakPos_high(high=int(self.individualCuts[ch]["peakPos_high"]))
+                    
+                if self.individualCuts[ch]["spread_low"] != None:
+                    self._SetSpread_low(low=int(self.individualCuts[ch]["spread_low"]))
+                    
+                if self.individualCuts[ch]["absMedian_high"] != None:
+                    self._SetAbsMedian_high(high=int(self.individualCuts[ch]["absMedian_high"]))
+
     def SetEventRange(self, min_event=-1, max_event=-1):
         if min_event > 0 and max_event > 0:
             self._cutTypes["EventRange"] = [min_event, max_event]
@@ -117,6 +161,21 @@ class Cut(Elementary):
             self._SetExcludeFirst(nevents=n)
         else:
             self._SetExcludeFirstTime(seconds=(-1)*n*60)
+
+    def _SetPeakPos_high(self, high):
+        if high > 0:
+            self._cutTypes["peakPos_high"] = high
+            self.userCutTypes["peakPos_high"] = "peakPos<{high}".format(high=high)
+
+    def _SetSpread_low(self, low):
+        if low > 0:
+            self._cutTypes["spread_low"] = low
+            self.userCutTypes["spread_low"] = "spread>{low}".format(low=low)
+
+    def _SetAbsMedian_high(self, high):
+        if high > 0:
+            self._cutTypes["absMedian_high"] = high
+            self.userCutTypes["absMedian_high"] = "|median|<{high}".format(high=high)
 
     def GetEventRange(self):
         return self._cutTypes["EventRange"]
@@ -447,10 +506,11 @@ class Cut(Elementary):
 
         return self.cut
 
-    def AddCutString(self, cutstring, channel=None):
+    def AddCutString(self, cutstring):
         pass
 
-    def GetCut(self, channel, gen_PulserCut=True, gen_EventRange=True, gen_ExcludeFirst=True):
+    def GetCut(self, gen_PulserCut=True, gen_EventRange=True, gen_ExcludeFirst=True):
+        channel = self.channel
         if not self._checkCutStringSettings(gen_PulserCut, gen_EventRange, gen_ExcludeFirst):
             self.GenerateCutString(gen_PulserCut, gen_EventRange, gen_ExcludeFirst)
         return self.cut[channel]
@@ -469,5 +529,5 @@ class Cut(Elementary):
     def SetCut(self):
         pass
 
-    def SetFFTCut(self, channel):
+    def SetFFTCut(self):
         pass
