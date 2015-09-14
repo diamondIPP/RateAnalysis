@@ -1093,7 +1093,12 @@ class Analysis(Elementary):
         self.run.tree.GetEntry(event)
         return event
 
-    def _ShowPreAnalysisOverview(self, channel, savePlot=False):
+    def _ShowPreAnalysisOverview(self, channel = None, savePlot=False):
+
+        if channel == None:
+            channels = self.run.GetChannels()
+        else:
+            channels = [channel]
 
         self.pAOverviewCanv = ROOT.TCanvas("PAOverviewCanvas", "PAOverviewCanvas", 1500, 900)
         self.pAOverviewCanv.Divide(2,1)
@@ -1101,21 +1106,21 @@ class Analysis(Elementary):
         PApad = self.pAOverviewCanv.cd(1)
         rightPad = self.pAOverviewCanv.cd(2)
         rightPad.Divide(1,3)
+        for ch in channels:
+            PApad.cd()
+            self.MakePreAnalysis(channel=ch, savePlot=False, canvas=PApad)
 
-        PApad.cd()
-        self.MakePreAnalysis(channel=channel, savePlot=False, canvas=PApad)
+            pulserPad = rightPad.cd(1)
+            self.ShowPulserRate(canvas=pulserPad)
 
-        pulserPad = rightPad.cd(1)
-        self.ShowPulserRate(canvas=pulserPad)
+            self.ResetColorPalette()
+            spreadPad = rightPad.cd(2)
+            self._ShowHisto(signaldef="sig_spread[{channel}]", channel=ch, canvas=spreadPad, infoid="Spread", drawruninfo=True, savePlots=True, logy=True, gridx=True, binning=150, xmin=0, xmax=150)
 
-        self.ResetColorPalette()
-        spreadPad = rightPad.cd(2)
-        self._ShowHisto(signaldef="sig_spread[{channel}]", channel=channel, canvas=spreadPad, infoid="Spread", drawruninfo=True, savePlots=True, logy=True, gridx=True, binning=150, xmin=0, xmax=150)
+            peakPosPad = rightPad.cd(3)
+            self.ShowPeakPosition(channel=ch, canvas=peakPosPad)
 
-        peakPosPad = rightPad.cd(3)
-        self.ShowPeakPosition(channel=channel, canvas=peakPosPad)
-
-        if savePlot: self.SavePlots(savename="Run{run}_PreAnalysisOverview_{dia}.png".format(run=self.run.run_number, dia=self.run.diamondname[channel]), subDir="Overview", canvas=self.pAOverviewCanv)
+            if savePlot: self.SavePlots(savename="Run{run}_PreAnalysisOverview_{dia}.png".format(run=self.run.run_number, dia=self.run.diamondname[ch]), subDir=self.run.diamondname[ch], canvas=self.pAOverviewCanv)
 
     def SetIndividualCuts(self, showOverview=True, savePlot=False):
 
