@@ -95,8 +95,10 @@ class Analysis(Elementary):
             0: copy.deepcopy(signalHistoFitResults),
             3: copy.deepcopy(signalHistoFitResults)
         }
-        self.cut0 = Cut(self, 0)
-        self.cut3 = Cut(self, 3)
+        self.cut = {
+            0: Cut(self, 0),
+            3: Cut(self, 3)
+        }
 
     def LoadConfig(self):
         configfile = "Configuration/AnalysisConfig_"+self.TESTCAMPAIGN+".cfg"
@@ -127,7 +129,7 @@ class Analysis(Elementary):
             self.signaldefinition = self.signalname+"[{channel}]-"+self.pedestalname+"[{channel}]"
 
     def GetCut(self, channel, gen_PulserCut=True, gen_EventRange=True, gen_ExcludeFirst=True):
-        return self.cut.GetCut(channel=channel, gen_PulserCut=gen_PulserCut, gen_EventRange=gen_EventRange, gen_ExcludeFirst=gen_ExcludeFirst)
+        return self.cut[channel].GetCut(gen_PulserCut=gen_PulserCut, gen_EventRange=gen_EventRange, gen_ExcludeFirst=gen_ExcludeFirst)
 
     def MakePreAnalysis(self, channel=None, mode="mean", binning=5000, savePlot=True, canvas=None):
         '''
@@ -310,22 +312,50 @@ class Analysis(Elementary):
 
         self.IfWait("FFT shown..")
 
-    def GetIncludedEvents(self, maxevent):
+    def GetIncludedEvents(self, maxevent, channel=None):
         '''
         Get List Of all event numbers, which are neither excluded by beaminerruptions nor
         events from the very beginnning
         :return: list of included event numbers
         '''
-        return self.cut.GetIncludedEvents(maxevent=maxevent)
+        if channel == None:
+            cut0 = self.cut[channel].GetIncludedEvents(maxevent=maxevent)
+            cut3 = self.cut[channel].GetIncludedEvents(maxevent=maxevent)
+            assert(cut0 == cut3), "Included Events not The same for both channels, select a particular channel"
+            return cut0
+        else:
+            assert(channel in [0,3])
+            return self.cut[channel].GetIncludedEvents(maxevent=maxevent)
 
-    def GetMinEventCut(self):
-        return self.cut.GetMinEvent()
+    def GetMinEventCut(self, channel=None):
+        if channel == None:
+            opt0 = self.cut[0].GetMinEvent()
+            opt3 = self.cut[3].GetMinEvent()
+            assert(opt0==opt3), "GetMinEvent Not the same for both cut channels. Choose a specific channel."
+            return opt0
+        else:
+            assert(channel in [0,3])
+            return self.cut[channel].GetMinEvent()
 
-    def GetMaxEventCut(self):
-        return self.cut.GetMaxEvent()
+    def GetMaxEventCut(self, channel=None):
+        if channel == None:
+            opt0 = self.cut[0].GetMaxEvent()
+            opt3 = self.cut[3].GetMaxEvent()
+            assert(opt0==opt3), "GetMaxEvent Not the same for both cut channels. Choose a specific channel."
+            return opt0
+        else:
+            assert(channel in [0,3])
+            return self.cut[channel].GetMaxEvent()
 
-    def GetNEventsCut(self):
-        return self.cut.GetNEvents()
+    def GetNEventsCut(self, channel=None):
+        if channel == None:
+            opt0 = self.cut[0].GetNEvents()
+            opt3 = self.cut[3].GetNEvents()
+            assert(opt0==opt3), "GetNEvents Not the same for both cut channels. Choose a specific channel."
+            return opt0
+        else:
+            assert(channel in [0,3])
+            return self.cut[channel].GetNEvents()
 
     def ShowSignalHisto(self, channel=None, canvas=None, drawoption="", cut="", color=None, normalized=True, drawruninfo=True, binning=600, xmin=None, xmax=None, savePlots=False, logy=False, gridx=False):
         self._ShowHisto(self.signaldefinition, channel=channel, canvas=canvas, drawoption=drawoption, cut=cut, color=color, normalized=normalized, infoid="SignalHisto", drawruninfo=drawruninfo, binning=binning, xmin=xmin, xmax=xmax,savePlots=savePlots, logy=logy, gridx=gridx)
@@ -450,8 +480,10 @@ class Analysis(Elementary):
             print "NO TRACKING INFORMATION IN ROOT FILE"
             print "------------------------------------\n\n"
 
-        cutfunction = lambda pulser, is_saturated, n_tracks, fft_mean, INVfft_max: 1
-        exec("cutfunction = {cutf}".format(cutf=self.cut.GetCutFunctionDef()))
+        cutfunctions = {}
+        #cutfunctions = lambda pulser, is_saturated, n_tracks, fft_mean, INVfft_max: 1
+        exec("cutfunctions[0] = {cutf}".format(cutf=self.cut[0].GetCutFunctionDef()))
+        exec("cutfunctions[3] = {cutf}".format(cutf=self.cut[3].GetCutFunctionDef()))
 
         for i in included:
             if i%10000==0:print "processing Event ", i
@@ -468,7 +500,10 @@ class Analysis(Elementary):
                 fft_mean = self.run.tree.fft_mean[ch]
                 INVfft_max = 1./self.run.tree.fft_max[ch]
                 n_tracks = self.run.tree.n_tracks
-                if cutfunction(pulser, is_saturated, n_tracks, fft_mean, INVfft_max): #(not pulser and not is_saturated and fft_mean>50 and fft_mean<500 and INVfft_max>1e-4):
+                sig_time = self.run.tree.sig_time[ch]
+                sig_spread = self.run.tree.sig_spread[ch]
+                median = self.run.tree.median[ch]
+                if cutfunctions[ch](pulser, is_saturated, n_tracks, fft_mean, INVfft_max, sig_time, sig_spread, median): #(not pulser and not is_saturated and fft_mean>50 and fft_mean<500 and INVfft_max>1e-4):
                     self.Pads[ch].Fill(x_[ch], y_[ch], signal_)
         print "Tracking information of ",len(included), " events loaded"
 
@@ -1224,8 +1259,15 @@ class Analysis(Elementary):
         self.ShowWaveForms(nevents=nevents, cut="pulser", startevent=startevent, channels=channels, canvas=pad2, infoid="pulser")
         raw_input("asdf")
 
-    def GetUserCutString(self):
-        return self.cut.GetUserCutString()
+    def GetUserCutString(self, channel=None):
+        if channel == None:
+            opt0 = self.cut[0].GetUserCutString()
+            opt3 = self.cut[3].GetUserCutString()
+            assert(opt0==opt3), "GetUserCutString Not the same for both cut channels. Choose a specific channel."
+            return opt0
+        else:
+            assert(channel in [0,3])
+            return self.cut[channel].GetUserCutString()
 
     def ShowPeakPosition(self, channel=None, cut="", canvas=None):
         if channel == None:
@@ -1259,7 +1301,7 @@ class Analysis(Elementary):
             pad.SetGridx()
             if hist:
                 hist.SetStats(0)
-                hist.SetTitle("Peak Position {"+self.cut.GetUserCutString()+"}")
+                hist.SetTitle("Peak Position {"+self.cut[ch].GetUserCutString()+"}")
                 hist.GetXaxis().SetTitle("Sample Point of Peak")
                 hist.GetXaxis().SetTitleSize(0.05)
                 hist.GetXaxis().SetLabelSize(0.05)

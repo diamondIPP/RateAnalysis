@@ -15,13 +15,11 @@ class Cut(Elementary):
         self.analysis = parent_analysis
         self.channel = channel
         self._checklist = {
-            "RemoveBeamInterruptions": {
-                0: False,
-                3: False
-            },
+            "RemoveBeamInterruptions": False,
             "GenerateCutString": False
         }
         self.userCutTypes = { # readable cut types
+            "IndividualChCut":      "",
             "EventRange":           "Evts.50k-1433k",
             "ExcludeFirst":         "50k+",
             "noPulser":             "!pulser",
@@ -33,7 +31,8 @@ class Cut(Elementary):
             "spread_low":           "spread>20",
             "absMedian_high":       "|median|<10"
         }
-        self._cuttypes = { # default values
+        self._cutTypes = { # default values
+            "IndividualChCut":      "",
             "EventRange":             [],             # [1234, 123456]
             "ExcludeFirst":         0,              # 50000 events
             "noPulser":             1,              # 1: nopulser, 0: pulser, -1: no cut
@@ -45,14 +44,11 @@ class Cut(Elementary):
             "spread_low":           -1,
             "absMedian_high":       -1
         }
-        self._cutTypes = {}
-        self._cutTypes[0] = copy.deepcopy(self._cuttypes)
-        self._cutTypes[3] = copy.deepcopy(self._cuttypes)
+        #self._cutTypes = {}
+        #self._cutTypes[0] = copy.deepcopy(self._cutTypes)
+        #self._cutTypes[3] = copy.deepcopy(self._cutTypes)
         self.excludefirst = 0
-        self.cut = {
-            0: "", # cut diamond 1
-            3: ""  # cut diamond 2
-        }
+        self.cut = ""
         Elementary.__init__(self, verbose=verbose)
         self.GenerateCutString()
 
@@ -63,11 +59,12 @@ class Cut(Elementary):
         parser.read(configfile)
 
         # individual additional cuts:
-        self.cut[0] = parser.get("CUT", "cut1") if not parser.get("CUT", "cut1") in ["-1", "", "True", "False"] else ""
-        self.cut[3] = parser.get("CUT", "cut2") if not parser.get("CUT", "cut2") in ["-1", "", "True", "False"] else ""
+        self.cut = parser.get("CUT", "cut"+str(self.channel)) if not parser.get("CUT", "cut"+str(self.channel)) in ["-1", "", "True", "False"] else ""
+        self._cutTypes["IndividualChCut"] = copy.deepcopy(self.cut)
+        self.userCutTypes["IndividualChCut"] = copy.deepcopy(self.cut)
 
         # pulser cut:
-        self._cuttypes["noPulser"] = parser.getint("CUT", "notPulser")
+        self._cutTypes["noPulser"] = parser.getint("CUT", "notPulser")
 
         # exclude first: (negative: time in minutes, positive: nevents)
         excludefirst = parser.getint("CUT", "excludefirst")
@@ -79,22 +76,31 @@ class Cut(Elementary):
         self.SetEventRange(min_event=EventRange_min, max_event=EventRange_max)
 
         # not saturated cut:
-        self._cuttypes["notSaturated"] = parser.getboolean("CUT", "notSaturated")
+        self._cutTypes["notSaturated"] = parser.getboolean("CUT", "notSaturated")
 
         # not beam interruption cut:
-        self._cuttypes["noBeamInter"] = parser.getboolean("CUT", "noBeamInter")
+        self._cutTypes["noBeamInter"] = parser.getboolean("CUT", "noBeamInter")
         self.excludeBeforeJump = parser.getint("CUT", "excludeBeforeJump")
         self.excludeAfterJump = parser.getint("CUT", "excludeAfterJump")
 
         # FFT cut:
-        self._cuttypes["FFT"] = parser.getboolean("CUT", "FFT")
+        self._cutTypes["FFT"] = parser.getboolean("CUT", "FFT")
 
         # has tracks cut:
-        self._cuttypes["Tracks"] = parser.getboolean("CUT", "hasTracks")
+        self._cutTypes["Tracks"] = parser.getboolean("CUT", "hasTracks")
 
-        # apply configurations to channels:
-        self._cutTypes[0] = copy.deepcopy(self._cuttypes)
-        self._cutTypes[3] = copy.deepcopy(self._cuttypes)
+        # peakPos_high cut:
+        high = parser.getint("CUT", "peakPos_high")
+        self._SetPeakPos_high(high=high)
+
+        # spread_low cut:
+        low = parser.getint("CUT", "spread_low")
+        self._SetSpread_low(low=low)
+
+        # spread_low cut:
+        high = parser.getint("CUT", "absMedian_high")
+        self._SetAbsMedian_high(high=high)
+
         # .. and Load individual cuts, if they exists:
         self.LoadIndividualCuts()
 
@@ -110,20 +116,21 @@ class Cut(Elementary):
             self.individualCuts = json.load(f)
             f.close()
             print self.individualCuts
-            for ch in [0,3]:
-                if self.individualCuts[ch]["EventRange"] != None:
-                    self.SetEventRange(min_event=int(self.individualCuts[ch]["EventRange"][0]), max_event=int(self.individualCuts[ch]["EventRange"][1]))
-                elif self.individualCuts[ch]["ExcludeFirst"] != None:
-                    self.SetExcludeFirst(n=int(self.individualCuts[ch]["ExcludeFirst"]))
+            ch = self.channel
+            if self.individualCuts[ch]["EventRange"] != None:
+                self.SetEventRange(min_event=int(self.individualCuts[ch]["EventRange"][0]), max_event=int(self.individualCuts[ch]["EventRange"][1]))
+            elif self.individualCuts[ch]["ExcludeFirst"] != None:
+                self.SetExcludeFirst(n=int(self.individualCuts[ch]["ExcludeFirst"]))
 
-                if self.individualCuts[ch]["peakPos_high"] != None:
-                    self._SetPeakPos_high(high=int(self.individualCuts[ch]["peakPos_high"]))
-                    
-                if self.individualCuts[ch]["spread_low"] != None:
-                    self._SetSpread_low(low=int(self.individualCuts[ch]["spread_low"]))
-                    
-                if self.individualCuts[ch]["absMedian_high"] != None:
-                    self._SetAbsMedian_high(high=int(self.individualCuts[ch]["absMedian_high"]))
+            if self.individualCuts[ch]["peakPos_high"] != None:
+                self._SetPeakPos_high(high=int(self.individualCuts[ch]["peakPos_high"]))
+
+            if self.individualCuts[ch]["spread_low"] != None:
+                self._SetSpread_low(low=int(self.individualCuts[ch]["spread_low"]))
+
+            if self.individualCuts[ch]["absMedian_high"] != None:
+                print "128: self.individualCuts[ch]['absMedian_high'] != None"
+                self._SetAbsMedian_high(high=int(self.individualCuts[ch]["absMedian_high"]))
 
     def SetEventRange(self, min_event=-1, max_event=-1):
         if min_event > 0 and max_event > 0:
@@ -219,9 +226,10 @@ class Cut(Elementary):
 
     def GenerateCutString(self, gen_PulserCut=True, gen_EventRange=True, gen_ExcludeFirst=True):
         print "Generate cutstring.."
-        cutstring = ""
+        #cutstring = ""
         if self._checklist["GenerateCutString"]:
             self.LoadConfig() # re-generate
+        cutstring = self.cut
 
         # -- EVENT RANGE CUT --
         if self._cutTypes["EventRange"] != [] and gen_EventRange:
@@ -267,10 +275,33 @@ class Cut(Elementary):
         else:
             self.userCutTypes["Tracks"] = ""
 
+        # -- PEAK POSITION CUT --
+        if self._cutTypes["peakPos_high"]>0:
+            if cutstring != "": cutstring += "&&"
+            cutstring += "sig_time[{channel}]<{high}".format(channel=self.channel, high=int(self._cutTypes["peakPos_high"]))
+            self.userCutTypes["peakPos_high"] = "peakPos<{high}".format(high=int(self._cutTypes["peakPos_high"]))
+        else:
+            self.userCutTypes["peakPos_high"] = ""
+
+        # -- SPREAD LOW CUT --
+        if self._cutTypes["spread_low"]>0:
+            if cutstring != "": cutstring += "&&"
+            cutstring += "sig_spread[{channel}]>{low}".format(channel=self.channel, low=int(self._cutTypes["spread_low"]))
+            self.userCutTypes["spread_low"] = "spread>{low}".format(low=int(self._cutTypes["spread_low"]))
+        else:
+            self.userCutTypes["spread_low"] = ""
+
+        # -- MEDIAN CUT --
+        if self._cutTypes["absMedian_high"]>0:
+            if cutstring != "": cutstring += "&&"
+            cutstring += "abs(median[{channel}])<{high}".format(channel=self.channel, high=int(self._cutTypes["absMedian_high"]))
+            self.userCutTypes["absMedian_high"] = "|median|<{high}".format(high=int(self._cutTypes["absMedian_high"]))
+        else:
+            self.userCutTypes["absMedian_high"] = ""
+
         # -- set the channel on the cuts --
-        for channel in [0,3]:
-            self.cut[channel] += cutstring
-            self.cut[channel] = self.cut[channel].format(channel=channel)
+        self.cut = cutstring
+        self.cut = self.cut.format(channel=self.channel)
 
         # -- BEAM INTERRUPTION CUT --
         if self._cutTypes["noBeamInter"] and self._checklist["GenerateCutString"]:
@@ -427,8 +458,11 @@ class Cut(Elementary):
         return self.jumps
 
     def GetCutFunctionDef(self):
-        defstring_ = "lambda pulser, is_saturated, n_tracks, fft_mean, INVfft_max: "
+        defstring_ = "lambda pulser, is_saturated, n_tracks, fft_mean, INVfft_max, sig_time, sig_spread, median: "
         def_ = ""
+
+        if self._cutTypes["IndividualChCut"] != "":
+            raw_input("WARNING: cut0 and cut3 cannot be applied on Tracking Data! Press Enter to Continue..")
 
         if self._cutTypes["noPulser"] == 1:
             def_ += "not pulser"
@@ -447,6 +481,18 @@ class Cut(Elementary):
             if def_ != "": def_ += " and "
             assert(False), "FFT cut not yet implemented in GetCutFunctionDef() method of Cut class. "
             # to do: FFT entry in _cutTypes should be dict and/or contain a TCutG instance
+
+        if self._cutTypes["peakPos_high"]>0:
+            if def_ != "": def_ += " and "
+            def_ += "sig_time<{high}".format(high=int(self._cutTypes["peakPos_high"]))
+
+        if self._cutTypes["spread_low"]>0:
+            if def_ != "": def_ += " and "
+            def_ += "sig_spread>{low}".format(low=int(self._cutTypes["spread_low"]))
+
+        if self._cutTypes["absMedian_high"]>0:
+            if def_ != "": def_ += " and "
+            def_ += "abs(median)>{low}".format(low=int(self._cutTypes["absMedian_high"]))
 
         return defstring_+def_
 
@@ -495,14 +541,14 @@ class Cut(Elementary):
         :return:
         '''
         for channel in [0,3]:
-            if not self._checklist["RemoveBeamInterruptions"][channel] or justDoIt:
+            if not self._checklist["RemoveBeamInterruptions"] or justDoIt:
                 self.GetBeamInterruptions()
 
                 njumps = len(self.jumpsRanges["start"])
                 for i in xrange(njumps):
-                    if self.cut[channel] != "": self.cut[channel] += "&&"
-                    self.cut[channel] += "!(event_number<={upper}&&event_number>={lower})".format(upper=self.jumpsRanges["stop"][i], lower=self.jumpsRanges["start"][i])
-                self._checklist["RemoveBeamInterruptions"][channel] = True
+                    if self.cut != "": self.cut += "&&"
+                    self.cut += "!(event_number<={upper}&&event_number>={lower})".format(upper=self.jumpsRanges["stop"][i], lower=self.jumpsRanges["start"][i])
+                self._checklist["RemoveBeamInterruptions"] = True
 
         return self.cut
 
@@ -513,7 +559,7 @@ class Cut(Elementary):
         channel = self.channel
         if not self._checkCutStringSettings(gen_PulserCut, gen_EventRange, gen_ExcludeFirst):
             self.GenerateCutString(gen_PulserCut, gen_EventRange, gen_ExcludeFirst)
-        return self.cut[channel]
+        return self.cut
 
     def GetUserCutString(self):
         string_ = ""
