@@ -236,9 +236,9 @@ class Analysis(Elementary):
         for ch in channels:
             if cut == True:
                 thiscut = self.GetCut(channel=ch)
-                thisusercut = self.GetUserCutString()
-                events = self.GetNEventsCut()
-                startevent = self.GetMinEventCut()
+                thisusercut = self.GetUserCutString(channel=ch)
+                events = self.GetNEventsCut(channel=ch)
+                startevent = self.GetMinEventCut(channel=ch)
             else:
                 thiscut = cut.format(channel=ch)
                 thisusercut = thiscut
@@ -319,10 +319,26 @@ class Analysis(Elementary):
         :return: list of included event numbers
         '''
         if channel == None:
-            cut0 = self.cut[channel].GetIncludedEvents(maxevent=maxevent)
-            cut3 = self.cut[channel].GetIncludedEvents(maxevent=maxevent)
-            assert(cut0 == cut3), "Included Events not The same for both channels, select a particular channel"
-            return cut0
+            minevent0 = self.cut[0].GetMinEvent()
+            minevent3 = self.cut[3].GetMinEvent()
+            minevent = min(minevent0, minevent3)
+            if maxevent == None:
+                maxevent0 = self.cut[0].GetMaxEvent()
+                maxevent3 = self.cut[3].GetMaxEvent()
+                maxevent = max(maxevent0, maxevent3)
+            excluded = [i for i in np.arange(0, minevent)] # first events
+            if self.cut[0]._cutTypes["noBeamInter"] and self.cut[3]._cutTypes["noBeamInter"]:
+                self.cut[0].GetBeamInterruptions()
+                for i in xrange(len(self.cut[0].jumpsRanges["start"])):
+                    excluded += [i for i in np.arange(self.cut[0].jumpsRanges["start"][i], self.cut[0].jumpsRanges["stop"][i]+1)] # events around jumps
+            excluded.sort()
+            all_events = np.arange(0, maxevent)
+            included = np.delete(all_events, excluded)
+            return included
+            # cut0 = self.cut[0].GetIncludedEvents(maxevent=maxevent)
+            # cut3 = self.cut[3].GetIncludedEvents(maxevent=maxevent)
+            # assert(cut0 == cut3), "Included Events not The same for both channels, select a particular channel"
+            # return cut0
         else:
             assert(channel in [0,3])
             return self.cut[channel].GetIncludedEvents(maxevent=maxevent)
@@ -398,12 +414,12 @@ class Analysis(Elementary):
                 color = self.GetNewColor()
             if cut == "":
                 thiscut = self.GetCut(ch)
-                thisusercut = self.GetUserCutString()
+                thisusercut = self.GetUserCutString(channel=ch)
             else:
                 thiscut = cut.format(channel=ch)
                 thisusercut = thiscut
             print "making "+infoid+" using\nSignal def:\n\t{signal}\nCut:\n\t({usercut})\n\t{cut}".format(signal=signaldef, usercut=thisusercut, cut=thiscut)
-            self.run.tree.Draw((signaldef+">>{infoid}{run}({binning}, {min}, {max})").format(infoid=(self.run.diamondname[ch]+"_"+infoid), channel=ch, run=self.run.run_number, binning=binning, min=xmin, max=xmax), thiscut, drawoption, self.GetNEventsCut(), self.GetMinEventCut())
+            self.run.tree.Draw((signaldef+">>{infoid}{run}({binning}, {min}, {max})").format(infoid=(self.run.diamondname[ch]+"_"+infoid), channel=ch, run=self.run.run_number, binning=binning, min=xmin, max=xmax), thiscut, drawoption, self.GetNEventsCut(channel=ch), self.GetMinEventCut(channel=ch))
             canvas.Update()
             if logy: canvas.SetLogy()
             if gridx: canvas.SetGridx()
@@ -414,7 +430,7 @@ class Analysis(Elementary):
                 histo.GetXaxis().SetTitle(signaldef.format(channel=""))
                 histo.SetLineColor(color)
                 histo.Draw(drawoption)
-                histo.SetTitle("{signal} {cut}".format(signal=infoid, cut="{"+self.GetUserCutString()+"}"))
+                histo.SetTitle("{signal} {cut}".format(signal=infoid, cut="{"+self.GetUserCutString(channel=ch)+"}"))
                 stats = histo.FindObject("stats")
                 if stats:
                     stats.SetTextColor(color)
@@ -448,7 +464,7 @@ class Analysis(Elementary):
         :param minimum_bincontent: Bins with less hits are ignored
         :return: -
         '''
-        print "Loading Track information with \n\tmin_bincontent: {mbc}\n\tfirst: {first}\n\tmaxevent: {me}".format(mbc=self.minimum_bincontent, first=self.GetMinEventCut(), me=self.loadMaxEvent)
+        print "Loading Track information with \n\tmin_bincontent: {mbc}\n\tfirst: {first}\n\tmaxevent: {me}".format(mbc=self.minimum_bincontent, first=self.GetMinEventCut(channel=0), me=self.loadMaxEvent)
         if minimum_bincontent != None: self.minimum_bincontent = minimum_bincontent
         assert (self.minimum_bincontent > 0), "minimum_bincontent has to be a positive integer" # bins with less hits are ignored
 
@@ -461,10 +477,15 @@ class Analysis(Elementary):
         x_ = {}
         y_ = {}
         channels = [0,3] # self.run.GetChannels()
+        includedCh = {}
         if self.loadMaxEvent > 0:
             included = self.GetIncludedEvents(maxevent=self.loadMaxEvent) # all event numbers without jump events and initial cut
+            includedCh[0] = self.GetIncludedEvents(maxevent=self.loadMaxEvent, channel=0)
+            includedCh[3] = self.GetIncludedEvents(maxevent=self.loadMaxEvent, channel=3)
         else:
             included = self.GetIncludedEvents() # all event numbers without jump events and initial cut
+            includedCh[0] = self.GetIncludedEvents(channel=0)
+            includedCh[3] = self.GetIncludedEvents(channel=3)
 
         if not self.pedestal_correction:
             signaldef = "self.run.tree.{signal}[{channel}]"
@@ -1072,7 +1093,7 @@ class Analysis(Elementary):
         self.run.tree.GetEntry(event)
         return event
 
-    def _ShowPreAnalysisOverview(self, channel):
+    def _ShowPreAnalysisOverview(self, channel, savePlot=False):
 
         self.pAOverviewCanv = ROOT.TCanvas("PAOverviewCanvas", "PAOverviewCanvas", 1500, 900)
         self.pAOverviewCanv.Divide(2,1)
@@ -1094,7 +1115,9 @@ class Analysis(Elementary):
         peakPosPad = rightPad.cd(3)
         self.ShowPeakPosition(channel=channel, canvas=peakPosPad)
 
-    def SetIndividualCuts(self):
+        if savePlot: self.SavePlots(savename="Run{run}_PreAnalysisOverview_{dia}.png".format(run=self.run.run_number, dia=self.run.diamondname[channel]), subDir="Overview", canvas=self.pAOverviewCanv)
+
+    def SetIndividualCuts(self, showOverview=True, savePlot=False):
 
         default_dict_ = { #
             "EventRange":           None,             # [1234, 123456]
@@ -1115,7 +1138,8 @@ class Analysis(Elementary):
 
         try:
             for ch in [0,3]:
-                self._ShowPreAnalysisOverview(channel=ch)
+                if showOverview:
+                    self._ShowPreAnalysisOverview(channel=ch, savePlot=savePlot)
                 range_min = raw_input("{dia} - Event Range Cut. Enter LOWER Event Number: ".format(dia=self.run.diamondname[ch]))
                 range_max = raw_input("{dia} - Event Range Cut. Enter UPPER Event Number: ".format(dia=self.run.diamondname[ch]))
                 peakPos_high = raw_input("{dia} - Peak Position Cut. Enter maximum Peak Position Sample Point: ".format(dia=self.run.diamondname[ch]))
@@ -1125,7 +1149,7 @@ class Analysis(Elementary):
                 if range_max != "" and range_min != "":
                     self.individualCuts[ch]["EventRange"] = [int(range_min), int(range_max)]
                 elif range_max != "":
-                    self.individualCuts[ch]["EventRange"] = [-1, int(range_max)]
+                    self.individualCuts[ch]["EventRange"] = [0, int(range_max)]
                 elif range_min != "":
                     self.individualCuts[ch]["ExcludeFirst"] = int(range_min)
 
@@ -1148,7 +1172,6 @@ class Analysis(Elementary):
             f = open(path+filename, "w")
             json.dump(self.individualCuts, f, indent=2, sort_keys=True)
             f.close()
-
             print "done."
 
     def GetTimeAtEvent(self, event):

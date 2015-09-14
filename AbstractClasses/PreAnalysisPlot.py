@@ -57,8 +57,8 @@ class PreAnalysisPlot(Elementary):
         signaltime = ROOT.TH2D("signaltime" ,"signaltime", nbins, 0, (endtime-starttime), 200, -100, 500)
         pedestaltime = ROOT.TH2D("pedestaltime" ,"pedestaltime", nbins, 0, (endtime-starttime), 200, -100, 500)
         print "making PreAnalysis using\nSignal def:\n\t{signal}\nCut:\n\t{cut}".format(signal=self.analysis.signaldefinition, cut=self.analysis.GetCut(self.channel))
-        test = self.analysis.run.tree.Draw((self.analysis.signaldefinition+":(time-{starttime})>>signaltime").format(channel=self.channel, starttime=starttime), self.analysis.GetCut(self.channel), drawOption2D, self.analysis.GetNEventsCut(), self.analysis.GetMinEventCut())
-        self.analysis.run.tree.Draw(self.analysis.pedestalname+"[{channel}]:(time-{starttime})>>pedestaltime".format(channel=self.channel, starttime=starttime), self.analysis.GetCut(self.channel), drawOption2D, self.analysis.GetNEventsCut(), self.analysis.GetMinEventCut())
+        test = self.analysis.run.tree.Draw((self.analysis.signaldefinition+":(time-{starttime})>>signaltime").format(channel=self.channel, starttime=starttime), self.analysis.GetCut(self.channel), drawOption2D, self.analysis.GetNEventsCut(channel=self.channel), self.analysis.GetMinEventCut(channel=self.channel))
+        self.analysis.run.tree.Draw(self.analysis.pedestalname+"[{channel}]:(time-{starttime})>>pedestaltime".format(channel=self.channel, starttime=starttime), self.analysis.GetCut(self.channel), drawOption2D, self.analysis.GetNEventsCut(channel=self.channel), self.analysis.GetMinEventCut(channel=self.channel))
 
         print "starttime: ", starttime
         print "startevent:", startevent
@@ -120,10 +120,10 @@ class PreAnalysisPlot(Elementary):
 
         #2d distribution (high resolution)
         pad = self.signalTimeCanvas.cd(2)
-        self.analysis.run.tree.Draw((self.analysis.signaldefinition+":(event_number)/1000>>signaltime2d{run}{channel}({bins}, {start}, {end}, 300, 0, 500)").format(bins=nbins, run=self.analysis.run.run_number, channel=self.channel, start=startevent/1000, end=endevent/1000), self.analysis.GetCut(self.channel), drawOption2D, self.analysis.GetNEventsCut(), self.analysis.GetMinEventCut())
+        self.analysis.run.tree.Draw((self.analysis.signaldefinition+":(event_number)/1000>>signaltime2d{run}{channel}({bins}, {start}, {end}, 300, 0, 500)").format(bins=nbins, run=self.analysis.run.run_number, channel=self.channel, start=startevent/1000, end=endevent/1000), self.analysis.GetCut(self.channel), drawOption2D, self.analysis.GetNEventsCut(channel=self.channel), self.analysis.GetMinEventCut(channel=self.channel))
         self.signaltime2d = gROOT.FindObject("signaltime2d{run}{channel}".format(run=self.analysis.run.run_number, channel=self.channel))
         self.signaltime2d.SetStats(0)
-        self.signaltime2d.SetTitle("{signal} vs Event {cut}".format(signal=self.analysis.signaldefinition.format(channel=self.channel), cut="{"+self.analysis.GetUserCutString()+"}"))
+        self.signaltime2d.SetTitle("{signal} vs Event {cut}".format(signal=self.analysis.signaldefinition.format(channel=self.channel), cut="{"+self.analysis.GetUserCutString(channel=self.channel)+"}"))
         self.signaltime2d.GetXaxis().SetLabelSize(0.06)
         self.signaltime2d.GetYaxis().SetLabelSize(0.06)
         self.signaltime2d.GetXaxis().SetTitle("event number / 1000")

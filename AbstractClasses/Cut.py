@@ -117,28 +117,32 @@ class Cut(Elementary):
             f.close()
             print self.individualCuts
             ch = self.channel
-            if self.individualCuts[ch]["EventRange"] != None:
-                self.SetEventRange(min_event=int(self.individualCuts[ch]["EventRange"][0]), max_event=int(self.individualCuts[ch]["EventRange"][1]))
-            elif self.individualCuts[ch]["ExcludeFirst"] != None:
-                self.SetExcludeFirst(n=int(self.individualCuts[ch]["ExcludeFirst"]))
+            if self.individualCuts[str(ch)]["EventRange"] != None:
+                self.SetEventRange(min_event=int(self.individualCuts[str(ch)]["EventRange"][0]), max_event=int(self.individualCuts[str(ch)]["EventRange"][1]))
+            elif self.individualCuts[str(ch)]["ExcludeFirst"] != None:
+                self.SetExcludeFirst(n=int(self.individualCuts[str(ch)]["ExcludeFirst"]))
 
-            if self.individualCuts[ch]["peakPos_high"] != None:
-                self._SetPeakPos_high(high=int(self.individualCuts[ch]["peakPos_high"]))
+            if self.individualCuts[str(ch)]["peakPos_high"] != None:
+                self._SetPeakPos_high(high=int(self.individualCuts[str(ch)]["peakPos_high"]))
 
-            if self.individualCuts[ch]["spread_low"] != None:
-                self._SetSpread_low(low=int(self.individualCuts[ch]["spread_low"]))
+            if self.individualCuts[str(ch)]["spread_low"] != None:
+                self._SetSpread_low(low=int(self.individualCuts[str(ch)]["spread_low"]))
 
-            if self.individualCuts[ch]["absMedian_high"] != None:
+            if self.individualCuts[str(ch)]["absMedian_high"] != None:
                 print "128: self.individualCuts[ch]['absMedian_high'] != None"
-                self._SetAbsMedian_high(high=int(self.individualCuts[ch]["absMedian_high"]))
+                self._SetAbsMedian_high(high=int(self.individualCuts[str(ch)]["absMedian_high"]))
 
     def SetEventRange(self, min_event=-1, max_event=-1):
-        if min_event > 0 and max_event > 0:
+        if min_event != 0 and max_event != 0:
+            if min_event < 0: min_event = self.analysis.GetEventAtTime(dt=(-1)*min_event*60)
+            if max_event < 0: max_event = self.analysis.GetEventAtTime(dt=(-1)*max_event*60)
             self._cutTypes["EventRange"] = [min_event, max_event]
-        elif min_event > 0:
+        elif min_event != 0:
+            if min_event < 0: min_event = self.analysis.GetEventAtTime(dt=(-1)*min_event*60)
             maxevent = self.analysis.GetEventAtTime(-1)
             self._cutTypes["EventRange"] = [min_event, maxevent]
-        elif max_event > 0:
+        elif max_event != 0:
+            if max_event < 0: max_event = self.analysis.GetEventAtTime(dt=(-1)*max_event*60)
             self._cutTypes["EventRange"] = [self.excludefirst, max_event]
         else:
             self._cutTypes["EventRange"] = []

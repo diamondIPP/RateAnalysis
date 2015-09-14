@@ -27,10 +27,10 @@ for runplanNr in runplans:
 
     rate_analyses[runplanNr] = AnalysisCollection(sel)
 
-    # sel.SetSaveDirectory("Results/{runplan}/PreAnalysis/".format(runplan=runplanType+str(runplanNr)))
-    # rate_analyses[runplanNr].MakePreAnalysises(savePlot=True)
-    # sel.SetSaveDirectory("Results/{runplan}/PulserRates/".format(runplan=runplanType+str(runplanNr)))
-    # rate_analyses[runplanNr].ShowPulserRates()
+    sel.SetSaveDirectory("Results/{runplan}/PreAnalysis/".format(runplan=runplanType+str(runplanNr)))
+    rate_analyses[runplanNr].MakePreAnalysises(savePlot=True)
+    sel.SetSaveDirectory("Results/{runplan}/PulserRates/".format(runplan=runplanType+str(runplanNr)))
+    rate_analyses[runplanNr].ShowPulserRates()
 
     for run in rate_analyses[runplanNr].collection.keys():
         # sel.SetSaveDirectory("Results/{runplan}/SignalMaps/".format(runplan=runplanType+str(runplanNr)))
