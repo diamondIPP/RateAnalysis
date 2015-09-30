@@ -75,6 +75,12 @@ class RunSelection(Run):
         self._GetRunPlanFromFile()
 
     def SelectAll(self, selectDiamond1=True, selectDiamond2=True):
+        '''
+        Selects all runs.
+        :param selectDiamond1:
+        :param selectDiamond2:
+        :return:
+        '''
         for run_number in self.run_numbers:
             self.selections[run_number] = True
             if selectDiamond1: self.channel_selections[run_number][0] = True
@@ -83,15 +89,24 @@ class RunSelection(Run):
         self.VerbosePrint('All runs selected')
 
     def UnSelectAll(self):
+        '''
+        Resets all selections made.
+        :return:
+        '''
         self._InitializeSelections()
         self.VerbosePrint('All runs unselected')
 
     def UnselectAll(self):
+        '''
+        Resets all selections made.
+        :return:
+        '''
         self.UnSelectAll()
 
     def SetChannels(self, diamond1=True, diamond2=True):
         '''
-        Sets the channels (diamonds) of the selected runs to active or inactive
+        Sets the channels (diamonds) of the selected runs to active or
+        inactive.
         :param diamond1:
         :param diamond2:
         :return:
@@ -105,8 +120,10 @@ class RunSelection(Run):
 
     def SelectDataType(self, data_type): # data type
         '''
+        Selects the runs according to the type of run, such as rate_scan,
+        test, voltage_scan etc..
         Selects just the runs, NOT the channels (diamonds)!
-        To select the channels use SelectChannels() or SelectDiamonds()
+        To select the channels use SelectDiamondRuns()
         :param data_type:
         :return:
         '''
@@ -121,6 +138,14 @@ class RunSelection(Run):
         self.VerbosePrint('Runs of Type '+data_type+' selected. +'+str(count)+' selections')
 
     def SelectDiamondRuns(self, diamondname, only_selected_runs=False):
+        '''
+        Selects all runs, which have the diamond with name 'diamondname'
+        in it. It Furthermore selects also the channels corresponding
+        to this diamondname.
+        :param diamondname:
+        :param only_selected_runs:
+        :return:
+        '''
         diamondnames = self.ShowDiamondNames(getNames=True)
         assert(diamondname in diamondnames), "wrong diamond name. \n\tSelect diamond name from: "+str(diamondnames)
         if not only_selected_runs:
@@ -170,6 +195,11 @@ class RunSelection(Run):
     #             self.VerbosePrint('Irradiated Runs selected with '+irrtype+' irradiation. +'+str(count)+' selections')
 
     def UnSelectUnlessDataType(self, data_type):
+        '''
+        Keeps only runs which are of type 'data_type'.
+        :param data_type:
+        :return:
+        '''
         types = self._GetValues("type")
         assert(data_type in types), "wrong data type. \n\tSelect type from: "+str(types)
         count = 0
@@ -224,6 +254,11 @@ class RunSelection(Run):
     #             self.VerbosePrint('All Selected Runs unselected if not radiated by '+irrtype+'. Only '+irrtype+'-radiated Runs left. -'+str(count)+' selections')
 
     def UnSelectUnlessDiamond(self, diamondname):
+        '''
+        Keeps only runs which hold the diamond with name 'diamondname'.
+        :param diamondname:
+        :return:
+        '''
         diamondnames = self.ShowDiamondNames(True)
         assert(diamondname in diamondnames), "wrong diamond name. \n\tSelect diamond name from: "+str(diamondnames)
         count = 0
@@ -238,6 +273,13 @@ class RunSelection(Run):
         self.VerbosePrint('All Selected Runs unselected if not using '+diamondname+' diamond. Only runs countaining '+diamondname+' left. -'+str(count)+' selections')
 
     def UnSelectUnlessBias(self, bias):
+        '''
+        Keeps only runs selected which have a diamond with a given bias
+        voltage. Diamonds with a different bias voltage will be un-
+        selected.
+        :param bias:
+        :return:
+        '''
         assert(type(bias) == t.IntType), "Bias has to be int-Type"
         count = 0
         for run_number in self.run_numbers:
@@ -267,6 +309,13 @@ class RunSelection(Run):
         self.channel_selections[run_number][3] = False
 
     def ExcludeRuns(self, run_number):
+        '''
+        This method will un-select the run with number run_number.
+        run_number has to be a single integer or a list of integers in
+        order to exclude several runs.
+        :param run_number:
+        :return:
+        '''
         assert(type(run_number) == t.IntType or type(run_number) == t.ListType), "Wrong input type. run_number has to be either integer or list of integer"
         listOfRuns = self.GetSelectedRuns()
         if type(run_number) == t.IntType:
@@ -279,11 +328,23 @@ class RunSelection(Run):
                 self.ExcludeRuns(int(run_number))
 
     def SelectRunsInRange(self, minrun, maxrun):
+        '''
+        Selects all runs with run numbers in range [minrun, .. , maxrun].
+        :param minrun:
+        :param maxrun:
+        :return:
+        '''
         for run_number in self.run_numbers:
             if run_number <= maxrun and run_number >= minrun:
                 self._SelectRun(run_number)
 
     def UnSelectUnlessInRange(self, minrun, maxrun):
+        '''
+        Keeps only runs in range [minrun, .. , maxrun].
+        :param minrun:
+        :param maxrun:
+        :return:
+        '''
         for run_number in self.GetSelectedRuns():
             if not (run_number <= maxrun and run_number >= minrun):
                 self._UnselectRun(run_number)
@@ -293,6 +354,12 @@ class RunSelection(Run):
     #     pass
 
     def ShowSelectedRuns(self, show_allcomments=False, commentlength = 15):
+        '''
+        Lists all selected runs.
+        :param show_allcomments:
+        :param commentlength:
+        :return:
+        '''
         print len(self.GetSelectedRuns()), " Runs Selected:"
         def multilinetext(text, width):
             length = len(text)
@@ -360,6 +427,11 @@ class RunSelection(Run):
                 print "--------------------------------------------------"
 
     def ShowRunInfo(self, runs=[]):
+        '''
+        Prints all run infos from the selected runs to the console.
+        :param runs:
+        :return:
+        '''
         if runs == []:
             for runnumber in self.GetSelectedRuns():
                 self._printRunInfo(runnumber)
@@ -378,6 +450,13 @@ class RunSelection(Run):
             print "{key:>20}: {value}".format(key=key, value=self.runs[runnumber][key])
 
     def ShowDiamondNames(self, getNames=False):
+        '''
+        Prints all diamond names from log file into the console.
+        If getNames is True, it will return the diamond names as a list
+        instead of printing it.
+        :param getNames:
+        :return:
+        '''
         diamondnames = []
         diamond1names = self._GetValues("diamond 1")
         diamond2names = self._GetValues("diamond 2")
@@ -393,6 +472,10 @@ class RunSelection(Run):
             return diamondnames
 
     def ShowTypes(self):
+        '''
+        Prints all run types from log file into the console.
+        :return:
+        '''
         types = self._GetValues("type")
         print "Types:"
         for i in types:
@@ -407,6 +490,10 @@ class RunSelection(Run):
         return valuelist
 
     def GetSelectedRuns(self):
+        '''
+        Returns the list of selected run numbers.
+        :return:
+        '''
         selected = []
         for runnumber in self.run_numbers:
             if self.selections[runnumber]:
@@ -416,6 +503,15 @@ class RunSelection(Run):
         return selected
 
     def GetSelectedDiamonds(self):
+        '''
+        Returns a list, containing for each selected run an integer
+        according to the diamond selection configuration. (i.e. which
+        diamonds are selected for analysis).
+            1 -> Diamond 1
+            2 -> Diamond 2
+            3 -> Diamond 1 & 2, or no diamond selection (default: both)
+        :return:
+        '''
         selected = []
         for runnumber in self.run_numbers:
             if self.selections[runnumber]:
@@ -429,6 +525,17 @@ class RunSelection(Run):
         return selected
 
     def ShowRunPlan(self, detailed=True, type_="rate_scan", show_allcomments=False, commentlength=0):
+        '''
+        Print a list of all run plans from the current test campaign
+        to the console.
+        The run plans are defined and saved via
+            AddSelectedRunsToRunPlan()
+        :param detailed:
+        :param type_:
+        :param show_allcomments:
+        :param commentlength:
+        :return:
+        '''
         print "RUN PLAN FOR TESTCAMPAIGN:", self.TESTCAMPAIGN
         if not detailed:
             for types_ in self.runplan.keys():
@@ -458,10 +565,24 @@ class RunSelection(Run):
             self._selectionLog = copy.deepcopy(tmp_selectionLog)
 
     def SelectRunsFromRunPlan(self, number, type_="rate_scan"):
+        '''
+        Selects all runs corresponding to the run plan with key 'number'.
+        :param number:
+        :param type_:
+        :return:
+        '''
         runs = self.runplan[type_][str(number)]
         self.SelectRuns(list_of_runs=runs)
 
     def AddSelectedRunsToRunPlan(self, key, run_type="rate_scan"):
+        '''
+        Saves all selected runs as a run plan with name 'key'. This
+        run plan can later be imported via
+            .SelectRunsFromRunPlan('key')
+        :param key:
+        :param run_type:
+        :return:
+        '''
         assert(run_type in ["rate_scan", "voltage_scan", "test"])
         if not type(key) is t.StringType:
             key = str(key)
@@ -473,6 +594,14 @@ class RunSelection(Run):
         self._SaveRunPlanInfoFile()
 
     def SelectRuns(self, list_of_runs, select_dia1=False, select_dia2=False):
+        '''
+        Selects all runs with run number in list_of_runs. The diamonds
+        can be selected individually.
+        :param list_of_runs:
+        :param select_dia1:
+        :param select_dia2:
+        :return:
+        '''
         assert(type(list_of_runs) is t.ListType), "list_of_runs not a list"
         for runnumber in list_of_runs:
             self._SelectRun(runnumber)

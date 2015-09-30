@@ -44,15 +44,20 @@ class AnalysisCollection(Elementary):
 
     def AddAnalysis(self,analysis_obj):
         '''
-        Adds an Analysis object to the analysis collection object
+        Adds a single Analysis object to the AnalysisCollection instance.
         :param analysis_obj: Analysis Object of type "Analysis"
         :return: -
         '''
-
         self.collection[analysis_obj.run.run_number] = analysis_obj
         self.current_run_number = analysis_obj.run.run_number
 
     def AddRuns(self, list_, diamonds=None):
+        '''
+        Creates and adds Analysis objects with run numbers in list_.
+        :param list_:
+        :param diamonds:
+        :return:
+        '''
         assert(type(list_) is t.ListType), "argument has to be a list of run numbers"
         if diamonds == None: diamonds=3
         assert((type(diamonds) is t.ListType) or diamonds in [1,2,3]), "'diamonds' has to be 1, 2, 3, or None (0x1: diamond1, 0x2: diamond2)"
@@ -65,6 +70,13 @@ class AnalysisCollection(Elementary):
                 self.AddAnalysis(Analysis(Run(runnr, diamonds)))
 
     def SetDiamonds(self, diamonds):
+        '''
+        Set the diamonds (channels) to be analyzed for all Analysis
+        objects.
+        1: Diamond 1, 2: Diamond 2, 3: Diamond 1 & 2
+        :param diamonds:
+        :return:
+        '''
         runnumbers = self.GetRunNumbers()
         for runnumber in runnumbers:
             self.collection[runnumber].run.SetChannels(diamonds=diamonds)
@@ -83,7 +95,7 @@ class AnalysisCollection(Elementary):
         self.FWHMcanvas = ROOT.TCanvas("FWHMcanvas", "FWHM")
         self.fwhm_histo = ROOT.TH1D("fwhm_histo", "FWHM Distribution of "+str(self.GetNumberOfAnalyses())+" runs",50,0,100)
 
-        for run in AnalysisCollection.collection:
+        for run in self.collection:
             self.fwhm_histo.Fill(self.CalculateFWHM(print_result=False,run_number=run))
         self.FWHMcanvas.cd()
         self.fwhm_histo.GetXaxis().SetTitle('FWHM')
@@ -114,10 +126,10 @@ class AnalysisCollection(Elementary):
 
         channel = 0
         if run_number == None:
-            run_number = AnalysisCollection.current_run_number
+            run_number = self.current_run_number
         assert(type(run_number) == t.IntType and 0 < run_number < 1000), "Invalid run number"
 
-        analysis_obj = AnalysisCollection.collection[run_number]
+        analysis_obj = self.collection[run_number]
 
         if not hasattr(analysis_obj, "MeanSignalHisto"):
             analysis_obj.CreateMeanSignalHistogram(channel=channel)
@@ -134,7 +146,14 @@ class AnalysisCollection(Elementary):
         return fwhm
 
     def MakePreAnalysises(self, channel=None, mode="mean", savePlot=True):
-
+        '''
+        Execute the MakePreAnalysis method for all runs (i.e. Analysis
+        objects) in AnalysisCollection.
+        :param channel:
+        :param mode:
+        :param savePlot:
+        :return:
+        '''
         assert(channel in [0,3, None]), "invalid channel: channel has to be either 0, 3 or None"
         runnumbers = self.GetRunNumbers()
 
@@ -146,10 +165,12 @@ class AnalysisCollection(Elementary):
 
     def ShowSignalVSRate(self, canvas=None, diamonds=None): #, method="mean"
         '''
-        Draws the signal vs rate scan into the canvas. If no canvas is given, it will create
-        a new canvas attached to the intance as self.ratecanvas .
-        If no diamonds are selected in particular, then the active diamonds of the first run will
-        be selected for the rate scan of all runs
+        Draws the signal vs rate scan into the canvas. If no canvas is
+        passed, it will create a new canvas attached to the intance as
+        self.ratecanvas .
+        If no diamonds are selected in particular, then the active
+        diamonds of the first run will be selected for the rate scan of
+        all runs.
         :param canvas: optional. A canvas to draw the ratescan into
         :param diamonds: 0x1: diamond1 0x2: diamond2
         :return:
@@ -232,6 +253,11 @@ class AnalysisCollection(Elementary):
         self.IfWait("Signal VS Rate shown")
 
     def ShowPulserRates(self):
+        '''
+        Execute the ShowPulserRate method for all runs (i.e. Analysis
+        objects) in AnalysisCollection.
+        :return:
+        '''
         runnumbers = self.GetRunNumbers()
         for run in runnumbers:
             self.collection[run].ShowPulserRate()
@@ -343,6 +369,17 @@ class AnalysisCollection(Elementary):
         # raw_input("peakpad")
 
     def PeakSignalEvolution(self, channel, NMax = 3, NMin = 3, OnThisCanvas = None, BinRateEvolution = False):
+        '''
+        Shows a rate scan of individual bins. For the plot NMax maxima
+        and NMin minima are chosen and its mean signal evolution
+        is shown as a function of run number (i.e. rate).
+        :param channel:
+        :param NMax:
+        :param NMin:
+        :param OnThisCanvas:
+        :param BinRateEvolution:
+        :return:
+        '''
         if self.GetNumberOfAnalyses() == 0: return 0
 
         if OnThisCanvas != None:
@@ -442,6 +479,8 @@ class AnalysisCollection(Elementary):
         FillGraphDict(self, MaxGraphs, peakbins)
         MinGraphs = {}
         FillGraphDict(self, MinGraphs, lowbins)
+        theseMaximas = []
+        theseMinimas = []
 
         # Prepare for drawing: Settings, create Canvas, create Legend
         if len(MaxGraphs)>0:
@@ -462,12 +501,17 @@ class AnalysisCollection(Elementary):
             MaxRange_peak = 1.1*np.array(MaxSignals).max()
             MinRange_peak = 0.9*np.array(MinSignals).min()
 
+
+
             for peaknr in xrange(npeaks):
                 MaxGraphs[peakbins[peaknr]].SetMarkerStyle(marker)
                 MaxGraphs[peakbins[peaknr]].SetMarkerColor(ROOT.kRed)
                 MaxGraphs[peakbins[peaknr]].SetLineColor(ROOT.kRed)
                 MaxGraphs[peakbins[peaknr]].Draw("SAME LP")
                 legend.AddEntry(MaxGraphs[peakbins[peaknr]], "high"+str(peaknr+1), "lp")
+
+                theseMaximas += [self.PeakPadMax.GetBinCenter(peakbins[peaknr])]
+
                 marker += 1
         else:
             PeakSignalEvolutionCanvas = ROOT.gROOT.GetListOfCanvases().FindObject("PeakSignalEvolutionCanvas")
@@ -497,6 +541,9 @@ class AnalysisCollection(Elementary):
                 MinGraphs[lowbins[lownr]].SetLineColor(ROOT.kBlue)
                 # MinGraphs[lowbins[lownr+1]].Draw("SAME LP")
                 legend.AddEntry(MinGraphs[lowbins[lownr]], "low"+str(lownr+1), "lp")
+
+                theseMinimas += [self.PeakPadMin.GetBinCenter(lowbins[lownr])]
+
                 marker += 1
         else:
             MaxRange_low = None
@@ -593,9 +640,20 @@ class AnalysisCollection(Elementary):
             OnThisCanvas.Update()
             self.SavePlots("IIa-2_neutron_SignalDistribution_MAXSearch.png")
             raw_input("wait")
+        print "Highs: ", theseMaximas
+        print "Lows: ", theseMinimas
+# In [4]: a = coll.collection[445]
+#
+# In [5]: a.ShowSignalMaps(False)
+# In [7]: c1 = ROOT.gROOT.FindObject("signal_canvas{run}")
+# In [8]: pad = c1.cd(1)
+# In [10]: a._DrawMinMax(pad, channel, theseMaximas, theseMinimas)
+# --> ADD number to high low labels..
 
     def GetRunNumbers(self):
         '''
+        Returns a sorted list of run numbers in AnalysisCollection
+        instance
         :return: sorted list of run numbers in AnalysisCollection instance
         '''
         runnumbers = self.collection.keys()
@@ -604,6 +662,8 @@ class AnalysisCollection(Elementary):
 
     def GetNumberOfAnalyses(self):
         '''
+        Returns the number of analyses that the AnalysisCollection
+        object contains
         :return: number of analyses that the analysis collection object contains
         '''
         return len(self.collection.keys())

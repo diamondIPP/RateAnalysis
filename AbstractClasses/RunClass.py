@@ -185,6 +185,15 @@ class Run(Elementary):
             return 0
 
     def GetRate(self):
+        '''
+        Returns the rate during this run. If the mask files are given,
+        the rate is calculated by the raw rate and the area of the
+        masked pixels in the silicon pixel plane.
+        If no mask files are given, the rate returned will be the logged
+        rate from the online logbook. (Typos!)
+        The rate is given in kHz/cm^2
+        :return:
+        '''
         return self.RunInfo["measured flux"]
 
     def _SetConverterConfigFile(self, eudaqFolder):
@@ -444,6 +453,15 @@ class Run(Elementary):
             return False
 
     def SetChannels(self, diamonds):
+        '''
+        Set which diamonds (channels) should be activated for the
+        analysis. The argument diamonds is an integer according to:
+            1 -> Diamond 1,
+            2 -> Diamond 2,
+            3 -> Diamond 1 & 2
+        :param diamonds:
+        :return:
+        '''
         assert(diamonds>=1 and diamonds<=3), "invalid diamonds number: 0x1=ch0; 0x2=ch3"
         self.analyzeCh = {
             0: self._GetBit(diamonds, 0),
@@ -451,18 +469,50 @@ class Run(Elementary):
         }
 
     def GetChannels(self):
+        '''
+        Returns a list of channels, which are activated for analysis.
+        e.g. [3] means only the second diamond is activated to be
+        analyzed.
+        :return:
+        '''
         return [i for i in self.analyzeCh.keys() if self.analyzeCh[i]]
 
     def GetDiamondName(self, channel):
+        '''
+        Returns the diamond name.
+        :param channel:
+        :return:
+        '''
         return self.diamondname[channel]
 
     def ShowRunInfo(self):
+        '''
+        Prints the most importnant run infos to the console. The infos
+        printed are:
+            Run number, Rate, Diamond names, Bias Voltages
+        :return:
+        '''
         print "RUN INFO:"
         print "\tRun Number: \t", self.run_number, " (",self.RunInfo["type"],")"
+        print "\tRate: \t", int(self.GetRate()), " kHz"
         print "\tDiamond1:   \t", self.diamondname[0], " (",self.bias[0],") | is selected: ", self.analyzeCh[0]
         print "\tDiamond2:   \t", self.diamondname[3], " (",self.bias[3],") | is selected: ", self.analyzeCh[3]
 
     def DrawRunInfo(self, channel=None, canvas=None, diamondinfo=True, showcut=True, comment=None, infoid="", userWidth=None, userHeight=None):
+        '''
+        Draws the run infos inside the canvas. If no canvas is given, it
+        will be drawn into the active Pad. If the channel number is
+        passed, channel number and diamond name will be drawn.
+        :param channel:
+        :param canvas:
+        :param diamondinfo:
+        :param showcut:
+        :param comment:
+        :param infoid:
+        :param userHeight:
+        :param userWidth:
+        :return:
+        '''
         if userHeight!= None: assert(userHeight>=0 and userHeight<=0.8), "choose userHeight between 0 and 0.8 or set it to 'None'"
         if userWidth!= None: assert(userWidth>=0 and userWidth<=0.8), "choose userWidth between 0 and 0.8 or set it to 'None'"
         if canvas != None:

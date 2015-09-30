@@ -89,6 +89,12 @@ class BinCollection(Elementary):
         return binsx, xmin, xmax, binsy, ymin, ymax
 
     def MakeFits(self,minimum_entries = 5):
+        '''
+        Fit all bin signal histograms by a Landau distribution. Only fit
+        if the number of hits is bigger or equal to minimum_entries.
+        :param minimum_entries:
+        :return:
+        '''
         assert(minimum_entries >= 1), "number of entries has to be greater or equal to 1"
         for i in xrange(len(self.listOfBins)):
             if self.listOfBins[i].GetEntries() >= minimum_entries:
@@ -97,8 +103,9 @@ class BinCollection(Elementary):
     # !! cannot be inherented to non rectangular
     def Fill(self,x,y,signal):
         '''
-        Adds the datapoint into the corresponding bin inside the bincollection as
-        well as into the two histograms counthisto and totalsignal inside this bin collection
+        Adds the datapoint into the corresponding bin inside the
+        bincollection as well as into the two histograms counthisto and
+        totalsignal inside this bin collection.
         :param x:
         :param y:
         :param signal:
@@ -111,8 +118,9 @@ class BinCollection(Elementary):
 
     def ShowBinXYsignalHisto(self,x,y,saveplot = False, show_fit=False):
         '''
-        Shows a Histogram of the Signal response distribution inside the bin which
-        contains the coordinates (x,y)
+        Shows a Histogram of the Signal response distribution inside the
+        bin which contains the coordinates (x,y). The coordinates are
+        given in cm.
         :param x: coordinate x in cm which == contained in the bin of interest
         :param y: coordinate y in cm which == contained in the bin of interest
         :param saveplot: if True save plot as as Results/Bin_X0.123Y-0.123_signalHisto.png
@@ -149,6 +157,17 @@ class BinCollection(Elementary):
 
     # select Bins in a rectangular region and return list of bins
     def SelectRectangularBins(self, xlow, xhigh, ylow, yhigh, activate = True):
+        '''
+        Select bins in a rectangular region and return list of
+        bin numbers. The coordinates xlow, xhigh, ylow, yhigh are given
+        in cm. If activate=False, the Bin objects are not selected.
+        :param xlow:
+        :param xhigh:
+        :param ylow:
+        :param yhigh:
+        :param activate:
+        :return:
+        '''
         list_of_bins = []
         lower_left_bin = self.GetBinNumber(xlow,ylow)
         lower_right_bin = self.GetBinNumber(xhigh,ylow)
@@ -170,6 +189,10 @@ class BinCollection(Elementary):
         return list_of_bins
 
     def UnselectAllBins(self):
+        '''
+        Sets the selected flag of all bin to False
+        :return:
+        '''
         for bin in self.listOfBins:
             bin.selected = False
 
@@ -184,10 +207,11 @@ class BinCollection(Elementary):
                                    yhigh = None,
                                    minimum_bincontent = 5):
         '''
-        Creates and returns a list of all binnumbers in a region with bins that
-        have a similar mean signal response as the mean signal response of a
-        reference bin inside this region. If activate = True, the bins get selected
-        (bin.selection = True). If no region is passed, all bins are considered.
+        Creates and returns a list of all binnumbers in a region with
+        bins that have a similar mean signal response as the mean signal
+        response of a reference bin inside this region.
+        If activate = True, the bins get selected (bin.selection=True).
+        If no region is passed, all bins are considered.
         :param refBin: sets the default value of mean response
         :param sensitivity: bins are picked inside
             refSignal*(1-sensitivity) <= signal <= refSignal*(1+sensitivity)
@@ -223,10 +247,20 @@ class BinCollection(Elementary):
 
     # select a single bin with bin number binnumber
     def SelectBin(self,binnumber):
+        '''
+        Select the Bin object with certain bin number.
+        :param binnumber:
+        :return:
+        '''
         self.listOfBins[binnumber].selected = True
 
     # draw a 2d distribution which shows the selected bins
     def ShowSelectedBins(self,draw = True):
+        '''
+        Draws a map which shows the selected bins.
+        :param draw:
+        :return:
+        '''
         if draw:
             ROOT.gStyle.SetPalette(51)
             ROOT.gStyle.SetNumberContours(2)
@@ -253,12 +287,13 @@ class BinCollection(Elementary):
         if draw:
             selection_canvas.cd()
             selection_pad.Draw("col")
+            selection_canvas.Update()
             self.IfWait("Selected bins shown")
             ROOT.gStyle.SetPalette(53)
             ROOT.gStyle.SetNumberContours(999)
         return selection_pad
 
-    def GetSortedListOfBins(self, attribute='average', ascending = True):
+    def GetSortedListOfBins(self, attribute='average', ascending = True, minimum_bincontent=5):
         '''
         Returns list of bins (binnunmbers) in an order with respect to "attribute"
         :return: ordered_list
@@ -270,7 +305,7 @@ class BinCollection(Elementary):
         count = 0
         for i in xrange(len(self.listOfBins)):
             self.listOfBins[i].UpdateAttributes()
-            if self.listOfBins[i].attributes['entries'] >= 5:
+            if self.listOfBins[i].attributes['entries'] >= minimum_bincontent:
                 sortdata[0,i] = self.listOfBins[i].attributes['binnumber']
                 sortdata[1,i] = self.listOfBins[i].attributes['average']
                 sortdata[2,i] = self.listOfBins[i].attributes['entries']
@@ -290,12 +325,18 @@ class BinCollection(Elementary):
         # print "len of sorted_data: ", len(sorted_data)
         return map(int,ordered_list)
 
-    def GetMaximumSignalResponseBinNumber(self):
-        return self.GetSortedListOfBins(ascending=False)[0]
+    def GetMaximumSignalResponseBinNumber(self, minimum_bincontent=5):
+        '''
+        Returns the bin number, which contributes to the bin which holds
+        the highest mean signal response.
+        :return:
+        '''
+        return self.GetSortedListOfBins(ascending=False, minimum_bincontent=minimum_bincontent)[0]
 
     def GetListOfSelectedBins(self):
         '''
-        Returns a List of bin numbers, which correspond to selected bins (bin.selected = True)
+        Returns a list of bin numbers, which correspond to selected bins
+        (bin.selected = True)
         :return: selected_bins (bin numbers)
         '''
         selected_bins = []
@@ -362,6 +403,12 @@ class BinCollection(Elementary):
         return self.totalsignal
 
     def GetMeanSignalDistribution(self, minimum_bincontent = 1):
+        '''
+        Returns meansignaldistrubution, a TH2D histogram containing the
+        mean signal responses.
+        :param minimum_bincontent:
+        :return:
+        '''
         self.CalculateMeanSignalDistribution(minimum_bincontent)
         return self.meansignaldistribution
 
@@ -369,12 +416,19 @@ class BinCollection(Elementary):
     #     pass
 
     def GetBinNumber(self,x,y):
+        '''
+        Returns the number of the bin, which contains the spatial
+        coordinates (x/y). The coordinates are given in cm.
+        :param x:
+        :param y:
+        :return:
+        '''
         binnumber = self.counthisto.FindBin(x,y)
         return binnumber
 
     def GetBinByNumber(self, bin_number):
         '''
-        Returns the bin object with number "bin_number"
+        Returns the Bin object with number bin_number
         :param bin_nunmber: the bin number of the bin to return
         :return: bin with bin number bin_number
         '''
@@ -385,13 +439,21 @@ class BinCollection(Elementary):
         return self.listOfBins[binnumber]
 
     def GetBinByCoordinates(self, x, y):
+        '''
+        Returns the Bin object, which contains the coordinates (x/y).
+        The coordinates are given in cm.
+        :param x:
+        :param y:
+        :return:
+        '''
         nr = self.GetBinNumber(x,y)
         return self.listOfBins[nr]
 
     def GetBinCenter(self, bin_numbers):
         '''
-        returns the coordinates of the center of a bin with bin number 'binnumbers' or the coordinates
-        of a list of bin numbers
+        Returns the coordinates of the center of a bin with bin number
+        binnumbers. If binnumbers is of type list, a list of coordinates
+        is returned.
         :param bin_numbers:
         :return:
         '''
@@ -410,8 +472,8 @@ class BinCollection(Elementary):
 
     def GetBinsInColumn(self, position):
         '''
-        Returns a list, containing all bin objects of a column at
-        x position 'position'
+        Returns a list, containing all Bin objects of a column located
+        at x position 'position'.
         :param heigth:
         :return:
         '''
@@ -431,8 +493,9 @@ class BinCollection(Elementary):
 
     def GetBinsInRow(self, height):
         '''
-        Returns a List of bin numbers in the Row at height 'height'.
-        The height doesen't have to be the height of the bin centers.
+        Returns a list, containing all Bin objects of a Row at height
+        'height'. The height doesn't have to be the height of the bin
+        centers.
         :param heigth:
         :return:
         '''
@@ -444,7 +507,9 @@ class BinCollection(Elementary):
 
     def GetSignalInColumn(self, position , show = False, show_hits = True):
         '''
-
+        Returns a list, containing all mean signal responses of bins
+        arranged in a column at a certain x position.
+        If show=True a graph is shown.
         :param position:
         :return:
         '''
@@ -580,7 +645,8 @@ class BinCollection(Elementary):
 
     def CreateTotalSignalHistogram(self, saveplot = False, scale = False, showfit = False): # choose between langaus or landau fit
         '''
-
+        Creates the histogram of all signal responses. The histogram is
+        located at the attribute .signalHisto
         :param saveplot:
         :param scale:
         :param showfit: if True, it will fit a 'langaus' and store it's fit results in analysis_obj.signalHistoFitResults
@@ -598,6 +664,7 @@ class BinCollection(Elementary):
             tmpTitle = self.signalHisto.GetTitle()
             self.signalHisto.SetTitle(tmpTitle+scale_str)
         self.signalHisto.Draw()
+        canvas.Update()
         if showfit:
             LanGausFit = Langau()
             LanGausFit.LangauFit(self.signalHisto)
@@ -606,11 +673,11 @@ class BinCollection(Elementary):
             canvas.Update()
 
             if self.parent_analysis_obj != None:
-                self.parent_analysis_obj.signalHistoFitResults["FitFunction"] = self.LangauFitFunction
-                self.parent_analysis_obj.signalHistoFitResults["Peak"] = LanGausFit.FitResults["Peak"]
-                self.parent_analysis_obj.signalHistoFitResults["FWHM"] = LanGausFit.FitResults["FWHM"]
-                self.parent_analysis_obj.signalHistoFitResults["Chi2"] = LanGausFit.FitResults["Chi2"]
-                self.parent_analysis_obj.signalHistoFitResults["NDF"] = LanGausFit.FitResults["NDF"]
+                self.parent_analysis_obj.signalHistoFitResults[self.channel]["FitFunction"] = self.LangauFitFunction
+                self.parent_analysis_obj.signalHistoFitResults[self.channel]["Peak"] = LanGausFit.FitResults["Peak"]
+                self.parent_analysis_obj.signalHistoFitResults[self.channel]["FWHM"] = LanGausFit.FitResults["FWHM"]
+                self.parent_analysis_obj.signalHistoFitResults[self.channel]["Chi2"] = LanGausFit.FitResults["Chi2"]
+                self.parent_analysis_obj.signalHistoFitResults[self.channel]["NDF"] = LanGausFit.FitResults["NDF"]
 
 
             #raw_input("WAIT!")
@@ -620,7 +687,10 @@ class BinCollection(Elementary):
 
     def FindMaxima(self, threshold = None, minimum_bincount = 5, show = False):
         '''
-
+        Conducts a maxima search using the class FindMaxima. The Results
+        are stored in the Analysis object--which contains this
+        BinCollection instance--at:
+            analysis_object.extremaResults[channel]
         :param threshold:
         :param show:
         :return: list of coordinates
@@ -631,7 +701,10 @@ class BinCollection(Elementary):
 
     def FindMinima(self, threshold = None, minimum_bincount = 5, show = False):
         '''
-
+        Conducts a minima search using the class FindMinima. The Results
+        are stored in the Analysis object--which contains this
+        BinCollection instance--at:
+            analysis_object.extremaResults[channel]
         :param threshold:
         :param show:
         :return: list of coordinates

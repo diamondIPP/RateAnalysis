@@ -30,6 +30,11 @@ class Elementary(object):
         pass
 
     def VerbosePrint(self, *args):
+        '''
+        Print command if verbose is activated.
+        :param args:
+        :return:
+        '''
         if self.verbose:
             # Print each argument separately so caller doesn't need to
             # stuff everything to be printed into a single string
@@ -50,11 +55,28 @@ class Elementary(object):
 
     @classmethod
     def SetSaveDirectory(cls, directory = "Results/"):
+        '''
+        Sets the SaveDirectory globally.
+        :param directory:
+        :return:
+        '''
         if not directory[-1] == "/": directory+="/"
         Elementary.SaveDirectory = directory
 
     @classmethod
     def SavePlots(cls, savename, ending=None, saveDir=None, subDir=None, canvas=None):
+        '''
+        Saves the canvas at the desired location. If no canvas is passed
+        as argument, the active canvas will be saved. However for appl-
+        ications without graphical interface, such as in SSl terminals,
+        it is recommended to pass the canvas to the method.
+        :param savename:
+        :param ending:
+        :param saveDir:
+        :param subDir:
+        :param canvas:
+        :return:
+        '''
         if saveDir == None:
             saveDir = Elementary.SaveDirectory
         if ending == None:
@@ -92,6 +114,11 @@ class Elementary(object):
 
     @classmethod
     def GetNewColor(cls):
+        '''
+        Returns a new color number from the global color palette, which
+        has a length of 27 colors.
+        :return:
+        '''
         cls.GLOBAL_COLOR_INDEX %= 27
         color = cls.colors[cls.GLOBAL_COLOR_INDEX]
         cls.GLOBAL_COLOR_INDEX += 1
@@ -99,9 +126,20 @@ class Elementary(object):
 
     @classmethod
     def ResetColorPalette(cls):
+        '''
+        Resets the color palette, such that the next color which will be
+        returned by the GetNewColor() method will be the first color in
+        the color palette.
+        :return:
+        '''
         cls.GLOBAL_COLOR_INDEX = 0
 
     @classmethod
     def SetTestCampaign(cls, namestring="201508"):
+        '''
+        Sets the test campaign name globally.
+        :param namestring:
+        :return:
+        '''
         Elementary.TESTCAMPAIGN = str(namestring)
         print "Testcampaign set to: ", namestring

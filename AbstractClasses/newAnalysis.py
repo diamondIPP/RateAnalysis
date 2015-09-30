@@ -25,18 +25,42 @@ class Analysis(Elementary):
     An Analysis Object contains all Data and Results of a SINGLE run.
     '''
 
-    def __init__(self, run, channels=None, verbose = False):
+    def __init__(self, run, diamonds=None, verbose = False):
         '''
         Initializes the Analysis object.
-        :param run: run object of type "Run"
-        :param config_object: config object of type "Pad2DHistConfig"
+        An Analysis Object collects all the information and data for the analysis of
+        one single run.
+        The most important fields are:
+            .run        - instance of Run class, containing run info and data
+            .cut        - dict containing two instances of Cut class
+            .RunInfo    - dict containing run infos
+            .Pads       - dict containing two intances of
+        The most important methods are:
+            .CreateMeanSignalHistogram(channel)
+            .Draw(varexp)
+            .DrawRunInfo()
+            .GetCut(channel)
+            .GetEventAtTime(dt)
+            .MakePreAnalysis()
+            .ShowPulserRate()
+
+        :param run:
+            run object of type "Run"
+        :param diamonds:
+            An integer number defining the diamonds activated for analysis:
+            0x1=ch0 (diamond 1)
+            0x2=ch3 (diamond 2)
+            e.g. 1 -> diamond 1, 2 -> diamond 2, 3 -> diamonds 1&2
+
+        :param verbose:
+            if True, verbose printing is activated
         :return: -
         '''
         Elementary.__init__(self, verbose=verbose)
         if not isinstance(run, Run):
             assert (type(run) is t.IntType), "run has to be either an instance of Run or run number (int)"
-            if channels != None:
-                run = Run(run, diamonds=channels)
+            if diamonds != None:
+                run = Run(run, diamonds=diamonds)
             else:
                 run = Run(run)
         else:
@@ -129,12 +153,24 @@ class Analysis(Elementary):
             self.signaldefinition = self.signalname+"[{channel}]-"+self.pedestalname+"[{channel}]"
 
     def GetCut(self, channel, gen_PulserCut=True, gen_EventRange=True, gen_ExcludeFirst=True):
+        '''
+        Returns the full Cut string, which corresponds to the given
+        channel (i.e. diamond). If some of the other arguments are
+        False, these cuts will be ignored.
+        :param channel:
+        :param gen_PulserCut:
+        :param gen_EventRange:
+        :param gen_ExcludeFirst:
+        :return:
+        '''
         return self.cut[channel].GetCut(gen_PulserCut=gen_PulserCut, gen_EventRange=gen_EventRange, gen_ExcludeFirst=gen_ExcludeFirst)
 
     def MakePreAnalysis(self, channel=None, mode="mean", binning=5000, savePlot=True, canvas=None):
         '''
-        Creates the Signal Time distribution (and checks for beam interruptions).
-        No tracking information needed -> no spatial information provided
+        Creates an overview plot, containing the signal time-evolution
+        as an average graph and as a 2-dimensional histogram.
+        An additional third plot shows the pedestal time-evolution.
+        For these plots is no tracking information required.
         :return:
         '''
         if channel != None:
@@ -148,6 +184,14 @@ class Analysis(Elementary):
             self.preAnalysis[ch].Draw(mode=mode, savePlot=savePlot)
 
     def ShowPulserRate(self, binning=2000, canvas=None):
+        '''
+        Shows the fraction of accepted pulser events as a function of
+        event numbers. Peaks appearing in this graph are most likely
+        beam interruptions.
+        :param binning:
+        :param canvas:
+        :return:
+        '''
         assert(binning>=100), "binning too low"
         binning = int(binning)
 
@@ -174,21 +218,44 @@ class Analysis(Elementary):
         self.SavePlots("Run{run}_PulserRate.png".format(run=self.run.run_number), canvas=self.pulserRateCanvas)
 
     def DrawRunInfo(self, channel=None, canvas=None, diamondinfo=True, showcut=False, comment=None, infoid="", userHeight=None, userWidth=None):
+        '''
+        Draws the run infos inside the canvas. If no canvas is given, it
+        will be drawn into the active Pad. If The channel number will be
+        given, channel number and diamond name will be drawn.
+        :param channel:
+        :param canvas:
+        :param diamondinfo:
+        :param showcut:
+        :param comment:
+        :param infoid:
+        :param userHeight:
+        :param userWidth:
+        :return:
+        '''
         self.run.DrawRunInfo(channel=channel, canvas=canvas, diamondinfo=diamondinfo, showcut=showcut, comment=comment, infoid=infoid, userHeight=userHeight, userWidth=userWidth)
 
     def ShowFFT(self, drawoption="", cut=None, channel=None, startevent=0, endevent=10000000, savePlots=True):
         '''
-        Draws the selected Events in the fft_mean VS 1/fft_max scatter plot.
+        Draws the fft_mean VS 1/fft_max scatter plot.
+        For the drawoption ROOT TH2D Drawoption can be used, as well as
+        "mc" for a special multicolor plot, which differentiates between
+        different waveform types.
+        The cut can be None, for using a default cut, True for using the
+        cut from the Analysis instance or can be set customly.
         :param drawoption:
             "" draws all events with the given cut
-            "mc" for multicolor: draw different colors for different waveform types
+            "mc" for multicolor: draw different colors for different
+                waveform types
             "col" gives colored TH2D plot (also possible: "colz")
         :param cut:
             if True: apply cut from Analysis instance
-            if None: "!pulser" set as default (except for "mc" drawoption)
-            costom: cut="!pulser&&!is_saturated[{channel}]"  -  syntax "[{channel}]" important for vectors
+            if None: "!pulser" set as default (except for "mc"
+                drawoption)
+            custom: cut="!pulser&&!is_saturated[{channel}]"
+                (--> syntax "[{channel}]" important for vectors!)
         :param channel:
-            if None: takes the activated channels (diamonds) from Analysis instance
+            if None: takes the activated channels (diamonds) from
+                Analysis instance
             else: 0 or 3 to select one particular channel
         :param startevent:
             first event number to draw
@@ -314,8 +381,9 @@ class Analysis(Elementary):
 
     def GetIncludedEvents(self, maxevent, channel=None):
         '''
-        Get List Of all event numbers, which are neither excluded by beaminerruptions nor
-        events from the very beginnning
+        Returns list of all event numbers, which are neither excluded by
+        beaminerruptions, by the excludeFirst cut, or are outside of a
+        event range window.
         :return: list of included event numbers
         '''
         if channel == None:
@@ -354,6 +422,14 @@ class Analysis(Elementary):
             return self.cut[channel].GetMinEvent()
 
     def GetMaxEventCut(self, channel=None):
+        '''
+        Returns the highest event number, which satisfies the cut
+        conditions. It is recommended to handle the channel ID. If no
+        channel will be passed and the event numbers differ for both
+        channels, an assertion error will be raised.
+        :param channel:
+        :return:
+        '''
         if channel == None:
             opt0 = self.cut[0].GetMaxEvent()
             opt3 = self.cut[3].GetMaxEvent()
@@ -364,6 +440,14 @@ class Analysis(Elementary):
             return self.cut[channel].GetMaxEvent()
 
     def GetNEventsCut(self, channel=None):
+        '''
+        Returns the number of events, which satisfies the cut
+        conditions. It is recommended to handle the channel ID. If no
+        channel will be passed and the event numbers differ for both
+        channels, an assertion error will be raised.
+        :param channel:
+        :return:
+        '''
         if channel == None:
             opt0 = self.cut[0].GetNEvents()
             opt3 = self.cut[3].GetNEvents()
@@ -374,10 +458,83 @@ class Analysis(Elementary):
             return self.cut[channel].GetNEvents()
 
     def ShowSignalHisto(self, channel=None, canvas=None, drawoption="", cut="", color=None, normalized=True, drawruninfo=True, binning=600, xmin=None, xmax=None, savePlots=False, logy=False, gridx=False):
+        '''
+        Shows a histogram of the signal responses for the selected
+        channels.
+        :param channel:
+        :param canvas:
+        :param drawoption:
+        :param cut:
+        :param color:
+        :param normalized:
+        :param drawruninfo:
+        :param binning:
+        :param xmin:
+        :param xmax:
+        :param savePlots:
+        :param logy:
+        :param gridx:
+        :return:
+        '''
         self._ShowHisto(self.signaldefinition, channel=channel, canvas=canvas, drawoption=drawoption, cut=cut, color=color, normalized=normalized, infoid="SignalHisto", drawruninfo=drawruninfo, binning=binning, xmin=xmin, xmax=xmax,savePlots=savePlots, logy=logy, gridx=gridx)
 
-    def ShowPedestalHisto(self, channel=None, canvas=None, drawoption="", color=None, normalized=True, drawruninfo=False, binning=600, xmin=None, xmax=None, savePlots=False, logy=False):
-        self._ShowHisto(self.pedestalname+"[{channel}]", channel=channel, canvas=canvas, drawoption=drawoption, color=color, normalized=normalized, infoid="PedestalHisto", drawruninfo=drawruninfo, binning=binning, xmin=xmin, xmax=xmax,savePlots=savePlots, logy=logy)
+    def ShowPedestalHisto(self, channel=None, canvas=None, drawoption="", color=None, normalized=True, drawruninfo=False, binning=600, xmin=None, xmax=None, savePlots=False, logy=False, cut=""):
+        '''
+        Shows a histogram of the pedestal signal responses for the
+        selected channels.
+        :param channel:
+        :param canvas:
+        :param drawoption:
+        :param color:
+        :param normalized:
+        :param drawruninfo:
+        :param binning:
+        :param xmin:
+        :param xmax:
+        :param savePlots:
+        :param logy:
+        :return:
+        '''
+        self._ShowHisto(self.pedestalname+"[{channel}]", channel=channel, canvas=canvas, drawoption=drawoption, color=color, cut=cut, normalized=normalized, infoid="PedestalHisto", drawruninfo=drawruninfo, binning=binning, xmin=xmin, xmax=xmax,savePlots=savePlots, logy=logy)
+
+    def ShowMedianHisto(self, channel=None, canvas=None, drawoption="", color=None, normalized=True, drawruninfo=True, binning=100, xmin=-30, xmax=30, savePlots=False, logy=True):
+        '''
+        Shows a histogram of the median for the selected
+        channels.
+        :param channel:
+        :param canvas:
+        :param drawoption:
+        :param color:
+        :param normalized:
+        :param drawruninfo:
+        :param binning:
+        :param xmin:
+        :param xmax:
+        :param savePlots:
+        :param logy:
+        :return:
+        '''
+        self._ShowHisto("median[{channel}]", logy=logy, infoid="median", drawruninfo=drawruninfo, xmin=xmin, xmax=xmax, binning=binning, channel=channel, canvas=canvas, drawoption=drawoption, color=color, normalized=normalized, savePlots=savePlots)
+
+    def ShowSignalPedestalHisto(self, channel, canvas=None, savePlots=True, cut="", normalized=True, drawruninfo=True, binning=600, xmin=None, xmax=None, logy=False, gridx=True):
+        if canvas == None:
+            self.signalpedestalcanvas = ROOT.TCanvas("signalpedestalcanvas{run}{channel}".format(run=self.run.run_number, channel=channel), "signalpedestalcanvas")
+        else:
+            self.signalpedestalcanvas = canvas
+
+        self.ResetColorPalette()
+        self.ShowSignalHisto(channel=channel, canvas=self.signalpedestalcanvas, savePlots=False, cut=cut, normalized=normalized, drawruninfo=False, binning=binning, xmin=xmin, xmax=xmax, logy=logy, gridx=gridx)
+        self.ShowPedestalHisto(channel=channel, canvas=self.signalpedestalcanvas, drawoption="sames", savePlots=False, cut=cut, normalized=normalized, drawruninfo=False, binning=binning, xmin=xmin, xmax=xmax, logy=logy)
+
+        if drawruninfo:
+            self.DrawRunInfo(channel=channel, canvas=self.signalpedestalcanvas, infoid="signalpedestal"+str(self.run.run_number)+str(channel))
+
+        if savePlots:
+            for ending in ["png", "root"]:
+                self.SavePlots(savename="Run{run}_SignalPedestal_Ch{channel}.{end}".format(run=self.run.run_number, channel=channel, end=ending), subDir=ending, canvas=self.signalpedestalcanvas)
+
+        self.IfWait("ShowSignalPedeslHisto")
+
 
     def _ShowHisto(self, signaldef, channel=None, canvas=None, drawoption="", cut="", color=None, normalized=True, infoid="histo", drawruninfo=False, binning=600, xmin=None, xmax=None, savePlots=False, logy=False, gridx=False):
         '''
@@ -430,7 +587,7 @@ class Analysis(Elementary):
                 histo.GetXaxis().SetTitle(signaldef.format(channel=""))
                 histo.SetLineColor(color)
                 histo.Draw(drawoption)
-                histo.SetTitle("{signal} {cut}".format(signal=infoid, cut="{"+self.GetUserCutString(channel=ch)+"}"))
+                histo.SetTitle("{signal} {cut}".format(signal=infoid, cut="{"+thisusercut+"}"))
                 stats = histo.FindObject("stats")
                 if stats:
                     stats.SetTextColor(color)
@@ -542,6 +699,15 @@ class Analysis(Elementary):
         self.Checklist["LoadTrackData"] = True
 
     def ShowHitMap(self, channel=None, saveplot = False, drawoption = "colz", RemoveLowStatBins = 0):
+        '''
+        Shows a 2-dimensional (TH2D) histogram of the hit distributions
+        on the pad.
+        :param channel:
+        :param saveplot:
+        :param drawoption:
+        :param RemoveLowStatBins:
+        :return:
+        '''
         if channel != None:
             assert (channel in self.run.GetChannels()), "channel not selected"
             channels = [channel]
@@ -581,6 +747,17 @@ class Analysis(Elementary):
         self.Checklist["HitsDistribution"] = True
 
     def SetDiamondPosition(self, diamonds=3):
+        '''
+        With this method the diamond window is set. The diamond mask
+        info is stored in DiamondPositions/ and will be loaded the next
+        time an Analysis object with the same mask file (silicon pixel
+        mask) is created.
+        The margins has to be set in the terminal window and can be
+        found by the HitMaps, which will pop up.
+        To cancel the process, just pass a non-number character.
+        :param diamonds:
+        :return:
+        '''
         tmp = copy.deepcopy(self.run.analyzeCh)
         self.SetChannels(diamonds)
         self.ShowHitMap()
@@ -601,14 +778,25 @@ class Analysis(Elementary):
         self.run.analyzeCh = copy.deepcopy(tmp)
 
     def SetChannels(self, diamonds):
+        '''
+        Sets the channels (i.e. diamonds) to be analyzed. This is just a
+        short cut for: self.run.SetChannels(diamonds)
+        :param diamonds:
+        :return:
+        '''
         self.run.SetChannels(diamonds=diamonds)
 
     def GetRate(self):
+        '''
+
+        :return:
+        '''
         return self.run.GetRate()
 
     def ShowSignalMaps(self, draw_minmax=True, saveplots = False, savename = "Run{run}_SignalMaps",ending="png",saveDir = "Results/", show3d = False):
         '''
-        Creates 2D Signal Distribution plot
+        Shows a 2-dimensional mean signal response map for each channel
+        which is activated for analysis.
         :param saveplots: if True, save the plot
         :param savename: filename if saveplots = True
         :param ending: datatype of file if saveplots = True
@@ -653,10 +841,18 @@ class Analysis(Elementary):
             self.SavePlots(savename, ending, canvas=self.signal_canvas, subDir=ending)
             self.SavePlots(savename, "root", canvas=self.signal_canvas, subDir="root")
 
-    def _DrawMinMax(self, pad, channel):
+    def _DrawMinMax(self, pad, channel, theseMaximas=None, theseMinimas=None):
         pad.cd()
-        if self.extremaResults[channel]['FoundMaxima'] == None: self.FindMaxima(channel=channel)
-        if self.extremaResults[channel]['FoundMinima'] == None: self.FindMinima(channel=channel)
+
+        if theseMaximas==None:
+            if self.extremaResults[channel]['FoundMaxima'] == None: self.FindMaxima(channel=channel)
+        else:
+            assert(type(theseMaximas) is t.ListType)
+        if theseMinimas==None:
+            if self.extremaResults[channel]['FoundMinima'] == None: self.FindMinima(channel=channel)
+        else:
+            assert(type(theseMinimas) is t.ListType)
+
         if self.run.IsMonteCarlo:
                 print "Run is MONTE CARLO"
                 if self.run.SignalParameters[0] > 0:
@@ -668,12 +864,21 @@ class Analysis(Elementary):
                 self.Pads[channel].MaximaSearch.real_peaks.Draw('SAME P0')
         # self.Pads[channel].MaximaSearch.found_extrema.SetMarkerColor(ROOT.kGreen+2)
         # self.Pads[channel].MaximaSearch.found_extrema.Draw('SAME P0')
-        minima = self.extremaResults[channel]['FoundMinima']
+        if theseMinimas==None:
+            minima = self.extremaResults[channel]['FoundMinima']
+        else:
+            minima = theseMinimas
+
         for i in xrange(len(minima)):
             text = ROOT.TText()
             text.SetTextColor(ROOT.kBlue-4)
             text.DrawText(minima[i][0]-0.01, minima[i][1]-0.005, 'low')
-        maxima = self.extremaResults[channel]['FoundMaxima']
+
+        if theseMaximas==None:
+            maxima = self.extremaResults[channel]['FoundMaxima']
+        else:
+            maxima = theseMaximas
+
         for i in xrange(len(maxima)):
             text = ROOT.TText()
             text.SetTextColor(ROOT.kRed)
@@ -687,8 +892,10 @@ class Analysis(Elementary):
 
     def CreateMeanSignalHistogram(self, channel, saveplots = False, savename = "MeanSignalDistribution",ending="png",saveDir = "Results/", show = False):
         '''
-        Creates the Mean Signal Response Histogramm of the two-dimensional Mean Signal Map (each bin
-        of the 2D dist. is one entry in the histogram)
+        Creates a histogram containing all the mean signal responses of
+        the two-dimensional mean signal map. (i.e. the mean signal value
+        of each bin of the 2D distribution is one entry in the
+        histogram)
         :param channel:
         :param saveplots:
         :param savename:
@@ -740,6 +947,20 @@ class Analysis(Elementary):
         self.Checklist["MeanSignalHisto"][channel] = True
 
     def ShowExtendedSignalMaps(self, draw_minmax=True, saveplots = False, savename = "SignalDistribution",ending="png",saveDir = None, PS=False, test=""):
+        '''
+        Shows the 2-dimensional mean signal map, as well as the
+        corresponding histogram of the mean signals inside this map.
+        (i.e. the mean of each bin corresponds to one entry in the
+        histogram)
+        :param draw_minmax:
+        :param saveplots:
+        :param savename:
+        :param ending:
+        :param saveDir:
+        :param PS:
+        :param test:
+        :return:
+        '''
         self.combined_canvas_name = "combined_canvas"+test
         self.combined_canvas = ROOT.gROOT.GetListOfCanvases().FindObject(self.combined_canvas_name)
 
@@ -789,6 +1010,14 @@ class Analysis(Elementary):
         self.IfWait("Combined 2D Signal DistributionsShown")
 
     def FindMaxima(self, channel, show=False):
+        '''
+        Conducts a maxima search using the class FindMaxima. The Results
+        are stored in the dict:
+            self.extremaResults[channel]
+        :param channel:
+        :param show:
+        :return:
+        '''
         if not hasattr(self, "Pads"):
             self.LoadTrackData()
         self.Pads[channel].FindMaxima(minimum_bincount=self.minimum_bincontent, show=show)
@@ -865,8 +1094,10 @@ class Analysis(Elementary):
 
     def ShowTotalSignalHistogram(self, channel, save = False, scale = False, showfit=False):
         '''
-        The same as self.ShowLandau(), but with just the data with tracking information (i.e.
-        the data that is stored in self.Pads[ch])
+        The same as self.ShowSignalHisto(), but concerning only data
+        with tracking information (i.e. the data that is stored in
+        self.Pads[channel]).
+        In addition,  this method also has the Langaus fit implemented.
         :param channel: 
         :param save: 
         :param scale: 
@@ -881,9 +1112,11 @@ class Analysis(Elementary):
             self.LoadTrackData()
             self.Pads[channel].CreateTotalSignalHistogram(saveplot=save, scale=scale, showfit=showfit)
 
-    def GetSignalHistoFitResults(self, channel):
+    def GetSignalHistoFitResults(self, channel, show=False):
         '''
-        Get Fit Results of signalHisto fit ('Langau')
+        Returns fit results of the signal histogram fit ('Langau'). If
+        the fits of the signal histogram does not exist, it will create
+        it and show the histogram containing the fit.
         :param channel: 
         :return: FitFunction, Peak, FWHM, Chi2, NDF
         '''
@@ -893,6 +1126,7 @@ class Analysis(Elementary):
             FWHM = self.signalHistoFitResults[channel]["FWHM"]
             Chi2 = self.signalHistoFitResults[channel]["Chi2"]
             NDF = self.signalHistoFitResults[channel]["NDF"]
+            if show: self.ShowTotalSignalHistogram(channel=channel, save=False, showfit=True)
             return FitFunction, Peak, FWHM, Chi2, NDF
         else:
             self.ShowTotalSignalHistogram(channel=channel, save=False, showfit=True)
@@ -913,132 +1147,132 @@ class Analysis(Elementary):
         :param save:
         :return:
         '''
-        True # MAKE FASTER USING self.GetEventAtTime()
-        assert(Mode in ["Mean", "MPV"]), "Wrong Mode, Mode has to be `Mean` or `MPV`"
-        if not hasattr(self, "Pads"):
-            self.LoadTrackData()
-        if True: #not self.run.IsMonteCarlo:
-
-            # Names
-            if binnumber != None:
-                binCenter = self.Pads[channel].GetBinCenter(binnumber)
-                if nameExtension is None:
-                    nameExtension = "_Bin{0:.3f}_{1:.3f}".format(*binCenter)
-            else:
-                binCenter = 0,0
-                if nameExtension is None:
-                    nameExtension = "OverAll"
-            if RateTimeEvolution:
-                type_ = "Rate"
-            else:
-                type_ = "Signal"
-
-            results = {}
-            self.SignalEvolution = ROOT.TGraphErrors()
-            self.SignalEvolution.SetNameTitle(type_+"Evolution", type_+" Time Evolution "+nameExtension)
-
-            self.run.tree.GetEntry(1)
-            starttime = self.run.tree.time
-            self.run.tree.GetEntry(self.run.tree.GetEntries())
-            # endtime = self.run.tree.time
-            ok_deltatime = 0
-            TimeERROR = False
-            for i in xrange(self.run.tree.GetEntries()-1):
-                i += 1
-                # read the ROOT TTree
-                self.run.tree.GetEntry(i)
-                signal_ = self.run.tree.sig_spread[0]
-                time_ = self.run.tree.time
-                deltatime_min = (time_-starttime)/60000.
-                if deltatime_min < -1: # possible time_stamp reset
-                    deltatime_min = ok_deltatime + time_/60000.
-                    TimeERROR = True
-                else:
-                    ok_deltatime = deltatime_min
-                time_bucket = int(deltatime_min)/int(time_spacing)*int(time_spacing)
-                pulser = self.run.tree.pulser
-
-                # check if hit is inside bin (ONLY FOR BIN SIGNAL TIME EVOLUTION)
-                if binnumber != None:
-                    x_ = self.run.tree.diam1_track_x
-                    y_ = self.run.tree.diam1_track_y
-                    binnumber_ = self.Pads[channel].GetBinNumber(x_, y_)
-                else:
-                    binnumber_ = None
-
-                if not pulser and (binnumber == None or binnumber == binnumber_ ):
-                    try:
-                        results[time_bucket].append(signal_)
-                    except KeyError:
-                        results[time_bucket] = [signal_]
-            if TimeERROR:
-                print "\n\n\n\n\nWARNING: Error occured in time flow of Run "+str(self.run.run_number)+". Possible reset of timestamp during data taking!\n\n\n\n\n"
-
-            time_buckets = results.keys()
-            time_buckets.sort()
-
-            # drop last bucket if Rate Time Scan (last bucket may be overshooting the data time window)
-            if RateTimeEvolution:
-                time_buckets = time_buckets[:-1]
-
-            count = 0
-            _, xmin, xmax, _, ymin, ymax =  self.Pads[channel].Get2DAttributes()
-            area = (xmax-xmin)*(ymax-ymin)
-            for t in time_buckets:
-                histo = ROOT.TH1D(type_+"Evolution_time_"+str(t), type_+" Time Histogram for t = {0:0.0f}-{1:0.0f}min".format(t, t+int(time_spacing)), 500, 0, 500)
-                for i in xrange(len(results[t])):
-                    histo.Fill(results[t][i])
-                if Mode == "Mean" or RateTimeEvolution:
-                    if RateTimeEvolution:
-                        if binnumber != None:
-                            c = 1./(60.*time_spacing*(self.config_object[channel].config["2DHist"]["binsize"])**2)
-                            N = histo.GetEntries()
-                            self.SignalEvolution.SetPoint(count, t, c*N) # Rate/cm^2 = Entries/(seconds*(binsize)**2)
-                        else:
-                            c = 1./(60.*time_spacing*area)
-                            N = histo.GetEntries()
-                            self.SignalEvolution.SetPoint(count, t, c*N) # Rate/cm^2 = Entries/(seconds*Area)
-                        self.SignalEvolution.SetPointError(count,0,c*np.sqrt(N))
-                        signalname = "Rate / Hz/cm^2"
-                    else:
-                        self.SignalEvolution.SetPoint(count, t, histo.GetMean())
-                        self.SignalEvolution.SetPointError(count, 0, histo.GetRMS()/np.sqrt(histo.GetEntries()))
-                        signalname = "Mean of Signal Response"
-                elif Mode == "MPV":
-                    self.SignalEvolution.SetPoint(count, t, histo.GetBinCenter(histo.GetMaximumBin()))
-                    self.SignalEvolution.SetPointError(count, 0, 0)
-                    signalname = "MPV of Signal Response"
-                count += 1
-                del histo
-                ROOT.gROOT.Delete(type_+"Evolution_time_"+str(t))
-
-            self.SignalEvolution.GetXaxis().SetTitle("Time / min")
-            self.SignalEvolution.GetYaxis().SetTitle(signalname)
-            self.SignalEvolution.GetYaxis().SetTitleOffset(1.1)
-            if RateTimeEvolution: # Start y axis from 0 when rate time evolution
-                if binnumber != None: # just one bin
-                    self.SignalEvolution.GetYaxis().SetRangeUser(0, 4000)#self.SignalEvolution.GetYaxis().GetXmax())
-                else: #overall
-                    self.SignalEvolution.GetYaxis().SetRangeUser(0, 1700)#self.SignalEvolution.GetYaxis().GetXmax())
-            canvas = ROOT.TCanvas("signaltimeevolution", "signaltimeevolution")
-
-            self.SignalEvolution.Draw("ALP*")
-            # Draw a second axis if it is a RateTimeEvolution:
-            if RateTimeEvolution:
-                canvas.Update()
-                rightaxis = ROOT.TGaxis(ROOT.gPad.GetUxmax(), ROOT.gPad.GetUymin(), ROOT.gPad.GetUxmax(), ROOT.gPad.GetUymax(), ROOT.gPad.GetUymin()/c, ROOT.gPad.GetUymax()/c, 20210, '+L')
-                rightaxis.SetTitle('# Hits')
-                rightaxis.SetTitleOffset(1.2)
-                ROOT.SetOwnership(rightaxis, False)
-                rightaxis.Draw('SAME')
-            if save:
-                self.SavePlots(type_+"TimeEvolution"+Mode+nameExtension+".png", canvas=canvas)
-            if TimeERROR:
-                self.SignalEvolution.SaveAs(self.SaveDirectory+"ERROR_"+type_+"TimeEvolution"+Mode+nameExtension+".root")
-            self.IfWait("Showing "+type_+" Time Evolution..")
-            canvas.Close()
-        else:
-            print "Run is Monte Carlo. Signal- and Rate Time Evolution cannot be created."
+        False # MAKE FASTER USING self.GetEventAtTime()
+        # assert(Mode in ["Mean", "MPV"]), "Wrong Mode, Mode has to be `Mean` or `MPV`"
+        # if not hasattr(self, "Pads"):
+        #     self.LoadTrackData()
+        # if True: #not self.run.IsMonteCarlo:
+        #
+        #     # Names
+        #     if binnumber != None:
+        #         binCenter = self.Pads[channel].GetBinCenter(binnumber)
+        #         if nameExtension is None:
+        #             nameExtension = "_Bin{0:.3f}_{1:.3f}".format(*binCenter)
+        #     else:
+        #         binCenter = 0,0
+        #         if nameExtension is None:
+        #             nameExtension = "OverAll"
+        #     if RateTimeEvolution:
+        #         type_ = "Rate"
+        #     else:
+        #         type_ = "Signal"
+        #
+        #     results = {}
+        #     self.SignalEvolution = ROOT.TGraphErrors()
+        #     self.SignalEvolution.SetNameTitle(type_+"Evolution", type_+" Time Evolution "+nameExtension)
+        #
+        #     self.run.tree.GetEntry(1)
+        #     starttime = self.run.tree.time
+        #     self.run.tree.GetEntry(self.run.tree.GetEntries())
+        #     # endtime = self.run.tree.time
+        #     ok_deltatime = 0
+        #     TimeERROR = False
+        #     for i in xrange(self.run.tree.GetEntries()-1):
+        #         i += 1
+        #         # read the ROOT TTree
+        #         self.run.tree.GetEntry(i)
+        #         signal_ = self.run.tree.sig_spread[0]
+        #         time_ = self.run.tree.time
+        #         deltatime_min = (time_-starttime)/60000.
+        #         if deltatime_min < -1: # possible time_stamp reset
+        #             deltatime_min = ok_deltatime + time_/60000.
+        #             TimeERROR = True
+        #         else:
+        #             ok_deltatime = deltatime_min
+        #         time_bucket = int(deltatime_min)/int(time_spacing)*int(time_spacing)
+        #         pulser = self.run.tree.pulser
+        #
+        #         # check if hit is inside bin (ONLY FOR BIN SIGNAL TIME EVOLUTION)
+        #         if binnumber != None:
+        #             x_ = self.run.tree.diam1_track_x
+        #             y_ = self.run.tree.diam1_track_y
+        #             binnumber_ = self.Pads[channel].GetBinNumber(x_, y_)
+        #         else:
+        #             binnumber_ = None
+        #
+        #         if not pulser and (binnumber == None or binnumber == binnumber_ ):
+        #             try:
+        #                 results[time_bucket].append(signal_)
+        #             except KeyError:
+        #                 results[time_bucket] = [signal_]
+        #     if TimeERROR:
+        #         print "\n\n\n\n\nWARNING: Error occured in time flow of Run "+str(self.run.run_number)+". Possible reset of timestamp during data taking!\n\n\n\n\n"
+        #
+        #     time_buckets = results.keys()
+        #     time_buckets.sort()
+        #
+        #     # drop last bucket if Rate Time Scan (last bucket may be overshooting the data time window)
+        #     if RateTimeEvolution:
+        #         time_buckets = time_buckets[:-1]
+        #
+        #     count = 0
+        #     _, xmin, xmax, _, ymin, ymax =  self.Pads[channel].Get2DAttributes()
+        #     area = (xmax-xmin)*(ymax-ymin)
+        #     for t in time_buckets:
+        #         histo = ROOT.TH1D(type_+"Evolution_time_"+str(t), type_+" Time Histogram for t = {0:0.0f}-{1:0.0f}min".format(t, t+int(time_spacing)), 500, 0, 500)
+        #         for i in xrange(len(results[t])):
+        #             histo.Fill(results[t][i])
+        #         if Mode == "Mean" or RateTimeEvolution:
+        #             if RateTimeEvolution:
+        #                 if binnumber != None:
+        #                     c = 1./(60.*time_spacing*(self.config_object[channel].config["2DHist"]["binsize"])**2)
+        #                     N = histo.GetEntries()
+        #                     self.SignalEvolution.SetPoint(count, t, c*N) # Rate/cm^2 = Entries/(seconds*(binsize)**2)
+        #                 else:
+        #                     c = 1./(60.*time_spacing*area)
+        #                     N = histo.GetEntries()
+        #                     self.SignalEvolution.SetPoint(count, t, c*N) # Rate/cm^2 = Entries/(seconds*Area)
+        #                 self.SignalEvolution.SetPointError(count,0,c*np.sqrt(N))
+        #                 signalname = "Rate / Hz/cm^2"
+        #             else:
+        #                 self.SignalEvolution.SetPoint(count, t, histo.GetMean())
+        #                 self.SignalEvolution.SetPointError(count, 0, histo.GetRMS()/np.sqrt(histo.GetEntries()))
+        #                 signalname = "Mean of Signal Response"
+        #         elif Mode == "MPV":
+        #             self.SignalEvolution.SetPoint(count, t, histo.GetBinCenter(histo.GetMaximumBin()))
+        #             self.SignalEvolution.SetPointError(count, 0, 0)
+        #             signalname = "MPV of Signal Response"
+        #         count += 1
+        #         del histo
+        #         ROOT.gROOT.Delete(type_+"Evolution_time_"+str(t))
+        #
+        #     self.SignalEvolution.GetXaxis().SetTitle("Time / min")
+        #     self.SignalEvolution.GetYaxis().SetTitle(signalname)
+        #     self.SignalEvolution.GetYaxis().SetTitleOffset(1.1)
+        #     if RateTimeEvolution: # Start y axis from 0 when rate time evolution
+        #         if binnumber != None: # just one bin
+        #             self.SignalEvolution.GetYaxis().SetRangeUser(0, 4000)#self.SignalEvolution.GetYaxis().GetXmax())
+        #         else: #overall
+        #             self.SignalEvolution.GetYaxis().SetRangeUser(0, 1700)#self.SignalEvolution.GetYaxis().GetXmax())
+        #     canvas = ROOT.TCanvas("signaltimeevolution", "signaltimeevolution")
+        #
+        #     self.SignalEvolution.Draw("ALP*")
+        #     # Draw a second axis if it is a RateTimeEvolution:
+        #     if RateTimeEvolution:
+        #         canvas.Update()
+        #         rightaxis = ROOT.TGaxis(ROOT.gPad.GetUxmax(), ROOT.gPad.GetUymin(), ROOT.gPad.GetUxmax(), ROOT.gPad.GetUymax(), ROOT.gPad.GetUymin()/c, ROOT.gPad.GetUymax()/c, 20210, '+L')
+        #         rightaxis.SetTitle('# Hits')
+        #         rightaxis.SetTitleOffset(1.2)
+        #         ROOT.SetOwnership(rightaxis, False)
+        #         rightaxis.Draw('SAME')
+        #     if save:
+        #         self.SavePlots(type_+"TimeEvolution"+Mode+nameExtension+".png", canvas=canvas)
+        #     if TimeERROR:
+        #         self.SignalEvolution.SaveAs(self.SaveDirectory+"ERROR_"+type_+"TimeEvolution"+Mode+nameExtension+".root")
+        #     self.IfWait("Showing "+type_+" Time Evolution..")
+        #     canvas.Close()
+        # else:
+        #     print "Run is Monte Carlo. Signal- and Rate Time Evolution cannot be created."
 
     def GetEventAtTime(self, dt):
         '''
@@ -1046,13 +1280,14 @@ class Analysis(Elementary):
 
         Accuracy: +- 2 Events
 
-        The event number is evaluated using a newton's method for finding
-        roots, i.e.
+        The event number is evaluated using a newton's method for
+        finding roots, i.e.
             f(e) := t(e) - t  -->  f(e) == 0
 
             ==> iteration: e = e - f(e)/f'(e)
 
-            where t(e) is the time evaluated at event e and t := t_0 + dt
+            where t(e) is the time evaluated at event e and
+            t := t_0 + dt
             break if |e_old - e_new| < 2
         :param time: time in seconds from start
         :return: event_number
@@ -1123,7 +1358,20 @@ class Analysis(Elementary):
             if savePlot: self.SavePlots(savename="Run{run}_PreAnalysisOverview_{dia}.png".format(run=self.run.run_number, dia=self.run.diamondname[ch]), subDir=self.run.diamondname[ch], canvas=self.pAOverviewCanv)
 
     def SetIndividualCuts(self, showOverview=True, savePlot=False):
-
+        '''
+        With this method the run-specific cuts can be configured.
+        The cuts can be set in the terminal window, where a canvas pops-
+        up in order to decide on the cut configurations.
+        The individual cut configuration is stored in
+            Configuration/Individual_Configs/
+        and will be applied the next time an Analysis object with the
+        same run number is created.
+        In order to ignore the individual cuts, the file has to be
+        removed from the directory.
+        :param showOverview:
+        :param savePlot:
+        :return:
+        '''
         default_dict_ = { #
             "EventRange":           None,             # [1234, 123456]
             "ExcludeFirst":         None,              # 50000 events
@@ -1181,8 +1429,8 @@ class Analysis(Elementary):
 
     def GetTimeAtEvent(self, event):
         '''
-        Returns the time at event number 'event'.
-        For negative event numbers it will return the time for startevent (0)
+        Returns the time stamp at event number 'event'. For negative
+        event numbers it will return the time stamp at the startevent.
         :param event: integer event number
         :return: timestamp for event
         '''
@@ -1219,6 +1467,20 @@ class Analysis(Elementary):
         return nWFChannels, wf_exist
 
     def ShowWaveForms(self, nevents=1000, cut="", startevent=None, channels=None, canvas=None, infoid="", drawoption=""):
+        '''
+        Draws stacked waveforms for the channels activated to be
+        analyzed. Of course, this requires the all waveforms in the
+        ROOT file, which due to the possible large sizes often is
+        skipped.
+        :param nevents:
+        :param cut:
+        :param startevent:
+        :param channels:
+        :param canvas:
+        :param infoid:
+        :param drawoption:
+        :return:
+        '''
         if startevent != None: assert(startevent>=0), "startevent as to be >= 0"
         maxevent = self.run.tree.GetEntries()
         if startevent > maxevent: return False
@@ -1288,6 +1550,13 @@ class Analysis(Elementary):
         raw_input("asdf")
 
     def GetUserCutString(self, channel=None):
+        '''
+        Returns a short, more user-friendly cut string, which can be
+        used to display the cut configuration as terminal prompt or to
+        mention in canvases.
+        :param channel:
+        :return:
+        '''
         if channel == None:
             opt0 = self.cut[0].GetUserCutString()
             opt3 = self.cut[3].GetUserCutString()
@@ -1298,6 +1567,15 @@ class Analysis(Elementary):
             return self.cut[channel].GetUserCutString()
 
     def ShowPeakPosition(self, channel=None, cut="", canvas=None):
+        '''
+        Generates a plot, which shows the locations of the peak
+        positions in the waveforms. In the 2-dimensional plot the pulse-
+        height vs sample point of the peak is drawn.
+        :param channel:
+        :param cut:
+        :param canvas:
+        :return:
+        '''
         if channel == None:
             channels = self.run.GetChannels()
             namesuffix = ""
@@ -1370,6 +1648,17 @@ class Analysis(Elementary):
         self.IfWait("Peak Position shown")
 
     def Draw(self, varexp, selection="", drawoption="", nentries=1000000000, firstentry=0):
+        '''
+        The ROOT TTree Draw method as a shortcut for
+        self.run.tree.Draw(varexp, selection, drawoption, nentries,
+        firstentry)
+        :param varexp:
+        :param selection:
+        :param drawoption:
+        :param nentries:
+        :param firstentry:
+        :return:
+        '''
         self.run.tree.Draw(varexp, selection, drawoption, nentries, firstentry)
 
 

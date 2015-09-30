@@ -59,7 +59,7 @@ class Bin(Elementary):
 
     def AddData(self, signal, update_bin_attributes = False):
         '''
-        Fill data into this bin
+        Fills another data point into this bin
         :param signal: data signal
         :param update_bin_attributes: if True updates the bin attributes after filling
         :return: -
@@ -152,7 +152,7 @@ class Bin(Elementary):
 
     def GetBinNumber(self):
         '''
-        Returns the bin number of this bin
+        Returns the bin number of this bin.
         :return: self.attributes['binnumber']
         '''
         return self.attributes['binnumber']
