@@ -5,7 +5,10 @@ runplanType     = "rate_scan"
 diamond1         = "II-6-94"
 diamond2         = "II-6-95"
 rate_analyses = {}
-
+mask = {
+    5: "",
+    8: ""
+}
 
 
 rateScanCanvas = TCanvas("rateScanCanvas", "rateScanCanvas")
@@ -28,7 +31,7 @@ for runplanNr in runplans:
     myselection.ShowSelectedRuns(commentlength=0)
 
     # make AnalysisCollection object of selected runs:
-    rate_analyses[runplanNr] = AnalysisCollection(myselection)
+    rate_analyses[runplanNr] = AnalysisCollection(myselection, maskfilename=mask[runplanNr])
 
     # PREANALYSIS plots:
     myselection.SetSaveDirectory("Results/{runplan}/PreAnalysis/".format(runplan=runplanType+str(runplanNr)))

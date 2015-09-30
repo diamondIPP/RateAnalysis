@@ -25,7 +25,7 @@ class Analysis(Elementary):
     An Analysis Object contains all Data and Results of a SINGLE run.
     '''
 
-    def __init__(self, run, diamonds=None, verbose = False):
+    def __init__(self, run, diamonds=None, verbose = False, maskfilename=""):
         '''
         Initializes the Analysis object.
         An Analysis Object collects all the information and data for the analysis of
@@ -60,9 +60,9 @@ class Analysis(Elementary):
         if not isinstance(run, Run):
             assert (type(run) is t.IntType), "run has to be either an instance of Run or run number (int)"
             if diamonds != None:
-                run = Run(run, diamonds=diamonds)
+                run = Run(run, diamonds=diamonds, maskfilename=maskfilename)
             else:
-                run = Run(run)
+                run = Run(run, maskfilename=maskfilename)
         else:
             assert(run.run_number > 0), "No run selected, choose run.SetRun(run_nr) before you pass the run object"
         self.run = run

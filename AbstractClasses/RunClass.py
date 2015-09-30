@@ -58,7 +58,7 @@ class Run(Elementary):
     operationmode = ''
     TrackingPadAnalysis = {}
 
-    def __init__(self, run_number, diamonds=3, validate = False, verbose = False):
+    def __init__(self, run_number, diamonds=3, validate = False, verbose = False, maskfilename=""):
         '''
 
         :param run_number: number of the run
@@ -81,7 +81,7 @@ class Run(Elementary):
         else:
             self.LoadRunInfo()
         self._LoadTiming()
-        self.CalculateRate()
+        self.CalculateRate(maskfilename=maskfilename)
         self.diamondname = {
             0: str(self.RunInfo["diamond 1"]),
             3: str(self.RunInfo["diamond 2"])
@@ -143,8 +143,9 @@ class Run(Elementary):
             self.RunInfo = default_info
             return 0
 
-    def CalculateRate(self):
+    def CalculateRate(self, maskfilename=""):
         self.VerbosePrint("Calculate rate from mask file:\n\t"+self.RunInfo["mask"])
+        if maskfilename != "": self.RunInfo["mask"] = maskfilename
         maskFilePath = self.maskfilepath+"/"+self.RunInfo["mask"] # CONFIG FILE !
         maskdata = {
             0: {
@@ -162,8 +163,10 @@ class Run(Elementary):
             try:
                 for i in xrange(8):
                     line = next(infile)
+                    self.VerbosePrint(line)
                     if len(line)>=4:
-                        maskdata[int(line[1])][line[0]] = map(int, line[-2:])
+                        #maskdata[int(line[1])][line[0]] = map(int, line[-2:])
+                        maskdata[0][line[0]] = map(int, line[-2:])
             except StopIteration:
                 pass
             x_low = maskdata[0]["cornBot"][0]
