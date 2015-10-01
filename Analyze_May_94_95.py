@@ -6,8 +6,8 @@ diamond1         = "II-6-94"
 diamond2         = "II-6-95"
 rate_analyses = {}
 mask = {
-    5: "",
-    8: ""
+    5: "polyA_II-6_94_signal_mask_2015_05_30_0219.dat",
+    8: "II-IV-95_II-IV-96_signal_mask_2015_05_31_1512.dat"
 }
 
 
@@ -15,7 +15,6 @@ rateScanCanvas = TCanvas("rateScanCanvas", "rateScanCanvas")
 
 
 myselection = RunSelection()
-#runplans =myselection.runplan[runplanType].keys()
 runplans = map(str, [5, 8])
 
 for runplanNr in runplans:
@@ -53,7 +52,7 @@ for runplanNr in runplans:
         # rate_analyses[runplanNr].collection[run]._ShowHisto(signaldef="sig_spread[{channel}]", infoid="Spread", drawruninfo=True, savePlots=True, logy=True, gridx=True, binning=150, xmin=0, xmax=150)
         # rate_analyses[runplanNr].collection[run].ShowPeakPosition()
 
-        myselection.SetSaveDirectory("Results/{runplan}/Overview_PreAnalysis/".format(runplan=runplanType+str(runplanNr)))
+        myselection.SetSaveDirectory("Results/{runplan}/Overview/".format(runplan=runplanType+str(runplanNr)))
         rate_analyses[runplanNr].collection[run]._ShowPreAnalysisOverview(savePlot=True)
 
 

@@ -145,7 +145,7 @@ class AnalysisCollection(Elementary):
 
         return fwhm
 
-    def MakePreAnalysises(self, channel=None, mode="mean", savePlot=True):
+    def MakePreAnalysises(self, channel=None, mode="mean", savePlot=True, setyscale=True):
         '''
         Execute the MakePreAnalysis method for all runs (i.e. Analysis
         objects) in AnalysisCollection.
@@ -157,11 +157,35 @@ class AnalysisCollection(Elementary):
         assert(channel in [0,3, None]), "invalid channel: channel has to be either 0, 3 or None"
         runnumbers = self.GetRunNumbers()
 
-        for run in runnumbers:
-            if channel == None:
-                self.collection[run].MakePreAnalysis(mode=mode, savePlot=savePlot)
+        if channel == None:
+            channels = [0,3]
+        else:
+            channels = [channel]
+
+        for ch in channels:
+            if setyscale: # check for y axis margins
+                sig_margins = []
+                ped_margins = []
+                for run in runnumbers:
+                    self.collection[run].MakePreAnalysis(channel=ch, mode=mode, setyscale_sig=None, setyscale_ped=None, savePlot=False)
+                    sig_margins += [self.collection[run].preAnalysis[ch].padymargins["signal"][0]]
+                    sig_margins += [self.collection[run].preAnalysis[ch].padymargins["signal"][1]]
+                    ped_margins += [self.collection[run].preAnalysis[ch].padymargins["pedestal"][0]]
+                    ped_margins += [self.collection[run].preAnalysis[ch].padymargins["pedestal"][1]]
+                sig_margins.sort()
+                ped_margins.sort()
+                setyscale_sig = [sig_margins[0], sig_margins[-1]]
+                setyscale_ped = [ped_margins[0], ped_margins[-1]]
+
+                self.collection[run].preAnalysis[ch].Draw(savePlot=savePlot, setyscale_sig=setyscale_sig, setyscale_ped=setyscale_ped)
+                print self.collection[run].preAnalysis
+                raw_input("asdasfags")
             else:
-                self.collection[run].MakePreAnalysis(channel=channel, mode=mode, savePlot=savePlot)
+                setyscale_sig = None
+                setyscale_ped = None
+
+                for run in runnumbers:
+                    self.collection[run].MakePreAnalysis(channel=ch, mode=mode, setyscale_sig=setyscale_sig, setyscale_ped=setyscale_ped, savePlot=savePlot)
 
     def ShowSignalVSRate(self, canvas=None, diamonds=None): #, method="mean"
         '''

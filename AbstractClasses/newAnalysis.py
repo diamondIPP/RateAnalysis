@@ -165,7 +165,7 @@ class Analysis(Elementary):
         '''
         return self.cut[channel].GetCut(gen_PulserCut=gen_PulserCut, gen_EventRange=gen_EventRange, gen_ExcludeFirst=gen_ExcludeFirst)
 
-    def MakePreAnalysis(self, channel=None, mode="mean", binning=5000, savePlot=True, canvas=None):
+    def MakePreAnalysis(self, channel=None, mode="mean", binning=5000, savePlot=True, canvas=None, setyscale_sig=None, setyscale_ped=None):
         '''
         Creates an overview plot, containing the signal time-evolution
         as an average graph and as a 2-dimensional histogram.
@@ -178,12 +178,14 @@ class Analysis(Elementary):
         else:
             channels = self.run.GetChannels()
         #c1 = ROOT.TCanvas("c1", "c1")
-        self.preAnalysis = {}
+        if not hasattr(self, "preAnalysis"):
+            self.preAnalysis = {}
+
         for ch in channels:
             self.preAnalysis[ch] = PreAnalysisPlot(analysis=self, channel=ch, canvas=canvas, binning=binning)
-            self.preAnalysis[ch].Draw(mode=mode, savePlot=savePlot)
+            self.preAnalysis[ch].Draw(mode=mode, savePlot=savePlot, setyscale_sig=setyscale_sig, setyscale_ped=setyscale_ped)
 
-    def ShowPulserRate(self, binning=2000, canvas=None):
+    def ShowPulserRate(self, binning=2000, canvas=None, savePlot=True):
         '''
         Shows the fraction of accepted pulser events as a function of
         event numbers. Peaks appearing in this graph are most likely
@@ -215,7 +217,7 @@ class Analysis(Elementary):
         self.pulserRateGraph.GetYaxis().SetTitleOffset(1.2)
         self.DrawRunInfo(canvas=self.pulserRateCanvas)
         self.pulserRateCanvas.Update()
-        self.SavePlots("Run{run}_PulserRate.png".format(run=self.run.run_number), canvas=self.pulserRateCanvas)
+        if savePlot: self.SavePlots("Run{run}_PulserRate.png".format(run=self.run.run_number), canvas=self.pulserRateCanvas)
 
     def DrawRunInfo(self, channel=None, canvas=None, diamondinfo=True, showcut=False, comment=None, infoid="", userHeight=None, userWidth=None):
         '''
@@ -234,7 +236,7 @@ class Analysis(Elementary):
         '''
         self.run.DrawRunInfo(channel=channel, canvas=canvas, diamondinfo=diamondinfo, showcut=showcut, comment=comment, infoid=infoid, userHeight=userHeight, userWidth=userWidth)
 
-    def ShowFFT(self, drawoption="", cut=None, channel=None, startevent=0, endevent=10000000, savePlots=True):
+    def ShowFFT(self, drawoption="", cut=None, channel=None, startevent=0, endevent=10000000, savePlots=True, canvas=None):
         '''
         Draws the fft_mean VS 1/fft_max scatter plot.
         For the drawoption ROOT TH2D Drawoption can be used, as well as
@@ -288,14 +290,20 @@ class Analysis(Elementary):
 
         else:
             comment = None
-        canvas = ROOT.TCanvas("fftcanvas", "fftcanvas", len(channels)*500, 500)
-        canvas.Divide(len(channels), 1)
+        if canvas==None:
+            self.fftcanvas = ROOT.TCanvas("fftcanvas", "fftcanvas", len(channels)*500, 500)
+        else:
+            #assert(isinstance(canvas, ROOT.TCanvas))
+            self.fftcanvas = canvas
+
+        self.fftcanvas.Divide(len(channels), 1)
+
         if len(channels) ==2:
             namesuffix = ""
         else:
             namesuffix = "_Ch{ch}".format(ch=channels[0])
 
-        canvas.cd()
+        self.fftcanvas.cd()
         i = 1
         self.fftHistos = {}
         self.fftlegend = {}
@@ -310,7 +318,7 @@ class Analysis(Elementary):
                 thiscut = cut.format(channel=ch)
                 thisusercut = thiscut
             self.fftHistos[ch] = ROOT.TH2D("fft_ch{channel}".format(channel=ch), "FFT {"+thisusercut+"}", 5000, 2e-6, 0.0025, 5000, 1e1, 1e4)
-            canvas.cd(i)
+            self.fftcanvas.cd(i)
             ROOT.gPad.SetLogy()
             ROOT.gPad.SetLogx()
             ROOT.gPad.SetGridx()
@@ -364,18 +372,18 @@ class Analysis(Elementary):
                 self.fftlegend[ch].AddEntry(median_histo, "|median|>8", "f")
                 self.fftlegend[ch].AddEntry(flat_histo, "sig_spread<10", "f")
                 self.fftlegend[ch].Draw("same")
-                canvas.Update()
-                self.DrawRunInfo(channel=ch, comment=comment, canvas=canvas)
+                self.fftcanvas.Update()
+                self.DrawRunInfo(channel=ch, comment=comment, canvas=self.fftcanvas)
             else:
                 self.fftHistos[ch].Draw(drawoption)
-                canvas.Update()
-                self.DrawRunInfo(channel=ch, comment=comment, canvas=canvas)
+                self.fftcanvas.Update()
+                self.DrawRunInfo(channel=ch, comment=comment, canvas=self.fftcanvas)
             i+=1
-        canvas.Update()
+        self.fftcanvas.Update()
         if savePlots:
             savename = "Run{run}_FFT"+namesuffix
-            self.SavePlots(savename.format(run=self.run.run_number), ending="png", canvas=canvas, subDir="png/")
-            #self.SavePlots(savename.format(run=self.run.run_number), ending="root", canvas=canvas, subDir="root/")
+            self.SavePlots(savename.format(run=self.run.run_number), ending="png", canvas=self.fftcanvas, subDir="png/")
+            #self.SavePlots(savename.format(run=self.run.run_number), ending="root", canvas=self.fftcanvas, subDir="root/")
 
         self.IfWait("FFT shown..")
 
@@ -514,7 +522,16 @@ class Analysis(Elementary):
         :param logy:
         :return:
         '''
-        self._ShowHisto("median[{channel}]", logy=logy, infoid="median", drawruninfo=drawruninfo, xmin=xmin, xmax=xmax, binning=binning, channel=channel, canvas=canvas, drawoption=drawoption, color=color, normalized=normalized, savePlots=savePlots)
+        self.medianhisto = self._ShowHisto("median[{channel}]", logy=logy, infoid="median", drawruninfo=drawruninfo, xmin=xmin, xmax=xmax, binning=binning, channel=channel, canvas=canvas, drawoption=drawoption, color=color, normalized=normalized, savePlots=savePlots)
+        if canvas==None:
+            canvas = ROOT.gROOT.FindObject("mediancanvas")
+
+        canvas.SetGridx()
+
+        if self.medianhisto:
+            self.medianhisto.GetXaxis().SetNdivisions(20)
+
+        canvas.Update()
 
     def ShowSignalPedestalHisto(self, channel, canvas=None, savePlots=True, cut="", normalized=True, drawruninfo=True, binning=600, xmin=None, xmax=None, logy=False, gridx=True):
         if canvas == None:
@@ -600,16 +617,18 @@ class Analysis(Elementary):
             if normalized:
                 histo.Scale(1./histo.GetMaximum())
                 histo.Draw(drawoption)
-        canvas.Update()
+
         if drawruninfo:
             if len(channels) == 2:
                 self.DrawRunInfo(canvas=canvas)
             else:
                 self.DrawRunInfo(channel=channels[0], canvas=canvas)
+        canvas.Update()
         self.IfWait(infoid+" shown")
         if savePlots:
             self.SavePlots("Run{run}_{signal}.png".format(run=self.run.run_number, signal=infoid), canvas=canvas, subDir=infoid+"/png/")
             self.SavePlots("Run{run}_{signal}.root".format(run=self.run.run_number, signal=infoid), canvas=canvas, subDir=infoid+"/root/")
+        return histo
 
     def ShowDiamondCurrents(self):
         pass
@@ -1328,29 +1347,38 @@ class Analysis(Elementary):
         self.run.tree.GetEntry(event)
         return event
 
-    def _ShowPreAnalysisOverview(self, channel = None, savePlot=False):
+    def _ShowPreAnalysisOverview(self, channel = None, savePlot=True):
 
         if channel == None:
             channels = self.run.GetChannels()
         else:
             channels = [channel]
 
-        self.pAOverviewCanv = ROOT.TCanvas("PAOverviewCanvas", "PAOverviewCanvas", 1500, 900)
-        self.pAOverviewCanv.Divide(2,1)
-
-        PApad = self.pAOverviewCanv.cd(1)
-        rightPad = self.pAOverviewCanv.cd(2)
-        rightPad.Divide(1,3)
         for ch in channels:
+            self.pAOverviewCanv = ROOT.TCanvas("PAOverviewCanvas", "PAOverviewCanvas", 1500, 900)
+            self.pAOverviewCanv.Divide(2,1)
+
+            PApad = self.pAOverviewCanv.cd(1)
+            rightPad = self.pAOverviewCanv.cd(2)
+            rightPad.Divide(1,3)
+
             PApad.cd()
             self.MakePreAnalysis(channel=ch, savePlot=False, canvas=PApad)
 
-            pulserPad = rightPad.cd(1)
-            self.ShowPulserRate(canvas=pulserPad)
+            upperpad = rightPad.cd(1)
+            upperpad.Divide(2,1)
+            pulserPad = upperpad.cd(1)
+            self.ShowPulserRate(canvas=pulserPad, savePlot=False)
+            fftPad = upperpad.cd(2)
+            self.ShowFFT("mc", cut=True, channel=ch, savePlots=False, canvas=fftPad)
 
             self.ResetColorPalette()
-            spreadPad = rightPad.cd(2)
-            self._ShowHisto(signaldef="sig_spread[{channel}]", channel=ch, canvas=spreadPad, infoid="Spread", drawruninfo=True, savePlots=True, logy=True, gridx=True, binning=150, xmin=0, xmax=150)
+            middlepad = rightPad.cd(2)
+            middlepad.Divide(2,1)
+            spreadPad = middlepad.cd(1)
+            self._ShowHisto(signaldef="sig_spread[{channel}]", channel=ch, canvas=spreadPad, infoid="Spread", drawruninfo=True, savePlots=False, logy=True, gridx=True, binning=150, xmin=0, xmax=150)
+            medianPad = middlepad.cd(2)
+            self.ShowMedianHisto(channel=ch, canvas=medianPad)
 
             peakPosPad = rightPad.cd(3)
             self.ShowPeakPosition(channel=ch, canvas=peakPosPad)
