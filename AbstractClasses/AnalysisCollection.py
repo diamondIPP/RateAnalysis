@@ -178,8 +178,6 @@ class AnalysisCollection(Elementary):
                 setyscale_ped = [ped_margins[0], ped_margins[-1]]
 
                 self.collection[run].preAnalysis[ch].Draw(savePlot=savePlot, setyscale_sig=setyscale_sig, setyscale_ped=setyscale_ped)
-                print self.collection[run].preAnalysis
-                raw_input("asdasfags")
             else:
                 setyscale_sig = None
                 setyscale_ped = None

@@ -522,7 +522,7 @@ class Analysis(Elementary):
         :param logy:
         :return:
         '''
-        self.medianhisto = self._ShowHisto("median[{channel}]", logy=logy, infoid="median", drawruninfo=drawruninfo, xmin=xmin, xmax=xmax, binning=binning, channel=channel, canvas=canvas, drawoption=drawoption, color=color, normalized=normalized, savePlots=savePlots)
+        self.medianhisto = self._ShowHisto("median[{channel}]", logy=logy, infoid="median", drawruninfo=drawruninfo, xmin=xmin, xmax=xmax, binning=binning, channel=channel, canvas=canvas, drawoption=drawoption, color=color, normalized=normalized, savePlots=False)
         if canvas==None:
             canvas = ROOT.gROOT.FindObject("mediancanvas")
 
@@ -532,6 +532,12 @@ class Analysis(Elementary):
             self.medianhisto.GetXaxis().SetNdivisions(20)
 
         canvas.Update()
+        if savePlots:
+            if channel != None:
+                dia = "_"+self.run.diamondname[channel]
+            else:
+                dia = ""
+            self.SavePlots("Run{run}_MedianHisto{dia}.png".format(run=self.run.run_number, dia=dia))
 
     def ShowSignalPedestalHisto(self, channel, canvas=None, savePlots=True, cut="", normalized=True, drawruninfo=True, binning=600, xmin=None, xmax=None, logy=False, gridx=True):
         if canvas == None:
@@ -1381,9 +1387,10 @@ class Analysis(Elementary):
             self.ShowMedianHisto(channel=ch, canvas=medianPad)
 
             peakPosPad = rightPad.cd(3)
-            self.ShowPeakPosition(channel=ch, canvas=peakPosPad)
+            self.ShowPeakPosition(channel=ch, canvas=peakPosPad, savePlot=savePlot)
 
-            if savePlot: self.SavePlots(savename="Run{run}_PreAnalysisOverview_{dia}.png".format(run=self.run.run_number, dia=self.run.diamondname[ch]), subDir=self.run.diamondname[ch], canvas=self.pAOverviewCanv)
+            if savePlot:
+                self.SavePlots(savename="Run{run}_PreAnalysisOverview_{dia}.png".format(run=self.run.run_number, dia=self.run.diamondname[ch]), subDir=self.run.diamondname[ch], canvas=self.pAOverviewCanv)
 
     def SetIndividualCuts(self, showOverview=True, savePlot=False):
         '''
@@ -1594,7 +1601,7 @@ class Analysis(Elementary):
             assert(channel in [0,3])
             return self.cut[channel].GetUserCutString()
 
-    def ShowPeakPosition(self, channel=None, cut="", canvas=None):
+    def ShowPeakPosition(self, channel=None, cut="", canvas=None, savePlot=True):
         '''
         Generates a plot, which shows the locations of the peak
         positions in the waveforms. In the 2-dimensional plot the pulse-
@@ -1646,7 +1653,8 @@ class Analysis(Elementary):
             self.DrawRunInfo(channel=ch, canvas=pad, infoid="peakpos{run}{ch}".format(run=self.run.run_number, ch=ch), userWidth=0.15, userHeight=0.15)
 
         canvas.Update()
-        self.SavePlots("Run{run}_PeakPosition{ns}.png".format(run=self.run.run_number, ns=namesuffix), canvas=canvas)
+        if savePlot:
+            self.SavePlots("Run{run}_PeakPosition{ns}.png".format(run=self.run.run_number, ns=namesuffix), canvas=canvas)
         self.IfWait("Peak Position shown")
 
     def ShowSignalSpread(self, channel=None, cut=""):

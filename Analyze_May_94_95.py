@@ -17,7 +17,7 @@ rateScanCanvas = TCanvas("rateScanCanvas", "rateScanCanvas")
 
 
 myselection = RunSelection()
-runplans = map(str, [5, 8])
+runplans = map(str, [5,8])
 
 for runplanNr in runplans:
     # --- change the selected run plan and diamond ---
@@ -35,8 +35,8 @@ for runplanNr in runplans:
     rate_analyses[runplanNr] = AnalysisCollection(myselection, maskfilename=mask[runplanNr])
 
     # PREANALYSIS plots:
-    myselection.SetSaveDirectory("Results/{runplan}/PreAnalysis/".format(runplan=runplanType+str(runplanNr)))
-    rate_analyses[runplanNr].MakePreAnalysises(savePlot=True)
+    # myselection.SetSaveDirectory("Results/{runplan}/PreAnalysis/".format(runplan=runplanType+str(runplanNr)))
+    # rate_analyses[runplanNr].MakePreAnalysises(savePlot=True)
     # myselection.SetSaveDirectory("Results/{runplan}/PulserRates/".format(runplan=runplanType+str(runplanNr)))
     # rate_analyses[runplanNr].ShowPulserRates()
 
