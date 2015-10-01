@@ -229,22 +229,18 @@ class Run(Elementary):
 
     def CreateROOTFile(self, do_tracking=True):
 
-        rawFolder = "/data/psi_2015_08/raw"
-        rawPrefix = "run15080"
         converterPrefix = "test15080"
         eudaqFolder = "/home/testbeam/testing/mario/eudaq-drs4"
         trackingFolder = "/home/testbeam/sdvlp/TrackingTelescope"
 
-        converter_cmd = "{eudaq}/bin/Converter.exe -t drs4tree -c {eudaq}/conf/converter.conf {rawfolder}/{prefix}{run}.raw".format(eudaq=eudaqFolder, rawfolder=rawFolder, prefix=rawPrefix, run=str(self.run_number).zfill(4))
-
+        # path and name of converter output file:
         noTracksROOTFile = os.getcwd()+"/{prefix}{run}.root".format(prefix=converterPrefix, run=str(self.run_number).zfill(4))
 
         if not os.path.exists(noTracksROOTFile):
-            self._SetConverterConfigFile(eudaqFolder=eudaqFolder)
-            print "\n\nSTART CONVERTING RAW FILE..."
-            print converter_cmd
-            os.system(converter_cmd)
+            # the no-tracks root files doesn't exiist
+            self.ConvertRAW(eudaqFolder)
         else:
+            # continue with existing file (no tracks)
             print "noTracks ROOT File found here:"
             print "\t"+noTracksROOTFile
 
@@ -253,6 +249,22 @@ class Run(Elementary):
             os.system("mv "+noTracksROOTFile+" "+self.TrackingPadAnalysis['ROOTFile'])
             self._LoadROOTFile(self.TrackingPadAnalysis['ROOTFile'])
             print "INFO ROOT File generated with NO Tracking information"
+        else:
+            self.AddTracking(trackingFolder=trackingFolder, noTracksROOTFile=noTracksROOTFile, converterPrefix=converterPrefix)
+
+    def ConvertRAW(self, eudaqFolder):
+        rawFolder = "/data/psi_2015_08/raw"
+        rawPrefix = "run15080"
+
+        # terminal command for converting raw to root
+        converter_cmd = "{eudaq}/bin/Converter.exe -t drs4tree -c {eudaq}/conf/converter.conf {rawfolder}/{prefix}{run}.raw".format(eudaq=eudaqFolder, rawfolder=rawFolder, prefix=rawPrefix, run=str(self.run_number).zfill(4))
+
+        self._SetConverterConfigFile(eudaqFolder=eudaqFolder) # prepare the config file
+        print "\n\nSTART CONVERTING RAW FILE..."
+        print converter_cmd
+        os.system(converter_cmd) # convert
+
+    def AddTracking(self, trackingFolder, noTracksROOTFile, converterPrefix):
 
         if self.TESTCAMPAIGN == "201508":
             telescopeID = 9
