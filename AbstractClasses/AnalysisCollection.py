@@ -160,7 +160,12 @@ class AnalysisCollection(Elementary):
         if channel == None:
             channels = [0,3]
         else:
-            channels = [channel]
+            try:
+                runs = self.GetRunNumbers()
+                channels = self.collection[runs[0]].GetChannels()
+            except:
+                channels = [0,3]
+
 
         for ch in channels:
             if setyscale: # check for y axis margins
