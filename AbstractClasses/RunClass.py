@@ -68,7 +68,7 @@ class Run(Elementary):
         :return:
         '''
         Elementary.__init__(self, verbose=verbose)
-
+        self.verbose = True
         self.run_number = -1
         self.LoadConfig()
 
