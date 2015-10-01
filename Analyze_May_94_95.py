@@ -1,6 +1,8 @@
 from AllClasses import *
 from ROOT import TCanvas
 
+Analysis.SetTestCampaign(201505)
+
 runplanType     = "rate_scan"
 diamond1         = "II-6-94"
 diamond2         = "II-6-95"
