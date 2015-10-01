@@ -1654,7 +1654,7 @@ class Analysis(Elementary):
 
         canvas.Update()
         if savePlot:
-            self.SavePlots("Run{run}_PeakPosition{ns}.png".format(run=self.run.run_number, ns=namesuffix), canvas=canvas)
+            self.SavePlots("Run{run}_PeakPosition{ns}.png".format(run=self.run.run_number, ns=namesuffix), canvas=canvas, subDir="PeakPosition")
         self.IfWait("Peak Position shown")
 
     def ShowSignalSpread(self, channel=None, cut=""):

@@ -35,31 +35,31 @@ for runplanNr in runplans:
     rate_analyses[runplanNr] = AnalysisCollection(myselection, maskfilename=mask[runplanNr])
 
     # PREANALYSIS plots:
-    myselection.SetSaveDirectory("Results/{runplan}/PreAnalysis/".format(runplan=runplanType+str(runplanNr)))
-    rate_analyses[runplanNr].MakePreAnalysises(savePlot=True)
-    myselection.SetSaveDirectory("Results/{runplan}/PulserRates/".format(runplan=runplanType+str(runplanNr)))
-    rate_analyses[runplanNr].ShowPulserRates()
+    # myselection.SetSaveDirectory("Results/{runplan}/PreAnalysis/".format(runplan=runplanType+str(runplanNr)))
+    # rate_analyses[runplanNr].MakePreAnalysises(savePlot=True)
+    # myselection.SetSaveDirectory("Results/{runplan}/PulserRates/".format(runplan=runplanType+str(runplanNr)))
+    # rate_analyses[runplanNr].ShowPulserRates()
 
     # do some stuff for each run individually:
     for run in rate_analyses[runplanNr].collection.keys():
-        # myselection.SetSaveDirectory("Results/{runplan}/SignalMaps/".format(runplan=runplanType+str(runplanNr)))
-        # rate_analyses[runplanNr].collection[run].ShowSignalMaps(saveplots=True)
+        myselection.SetSaveDirectory("Results/{runplan}/SignalMaps/".format(runplan=runplanType+str(runplanNr)))
+        rate_analyses[runplanNr].collection[run].ShowSignalMaps(saveplots=True)
 
-        myselection.SetSaveDirectory("Results/{runplan}/FFT/".format(runplan=runplanType+str(runplanNr)))
-        rate_analyses[runplanNr].collection[run].ShowFFT(drawoption="mc", cut=True, savePlots=True)
+        myselection.SetSaveDirectory("Results/{runplan}/FFTc/".format(runplan=runplanType+str(runplanNr)))
+        rate_analyses[runplanNr].collection[run].ShowFFT(drawoption="col", cut=True, savePlots=True)
 
-        myselection.SetSaveDirectory("Results/{runplan}/Cuts/".format(runplan=runplanType+str(runplanNr)))
-        rate_analyses[runplanNr].collection[run].ShowSignalHisto(savePlots=True, gridx=True, xmin=-50, xmax=200, binning=250)
-        rate_analyses[runplanNr].collection[run]._ShowHisto(signaldef="abs(median[{channel}])", infoid="Median", drawruninfo=True, logy=True, gridx=True, savePlots=True, binning=200, xmin=-50, xmax=80)
-        rate_analyses[runplanNr].collection[run]._ShowHisto(signaldef="sig_spread[{channel}]", infoid="Spread", drawruninfo=True, savePlots=True, logy=True, gridx=True, binning=150, xmin=0, xmax=150)
-        rate_analyses[runplanNr].collection[run].ShowPeakPosition()
+        # myselection.SetSaveDirectory("Results/{runplan}/Cuts/".format(runplan=runplanType+str(runplanNr)))
+        # rate_analyses[runplanNr].collection[run].ShowSignalHisto(savePlots=True, gridx=True, xmin=-50, xmax=200, binning=250)
+        # rate_analyses[runplanNr].collection[run]._ShowHisto(signaldef="abs(median[{channel}])", infoid="Median", drawruninfo=True, logy=True, gridx=True, savePlots=True, binning=200, xmin=-50, xmax=80)
+        # rate_analyses[runplanNr].collection[run]._ShowHisto(signaldef="sig_spread[{channel}]", infoid="Spread", drawruninfo=True, savePlots=True, logy=True, gridx=True, binning=150, xmin=0, xmax=150)
+        # rate_analyses[runplanNr].collection[run].ShowPeakPosition()
+        #
+        # myselection.SetSaveDirectory("Results/{runplan}/Overview/".format(runplan=runplanType+str(runplanNr)))
+        # rate_analyses[runplanNr].collection[run]._ShowPreAnalysisOverview(savePlot=True)
 
-        myselection.SetSaveDirectory("Results/{runplan}/Overview/".format(runplan=runplanType+str(runplanNr)))
-        rate_analyses[runplanNr].collection[run]._ShowPreAnalysisOverview(savePlot=True)
 
-
-    # create Signal_VS_Rate plot:
-    myselection.SetSaveDirectory("Results/{runplan}/".format(runplan=runplanType+str(runplanNr)))
-    rate_analyses[runplanNr].ShowSignalVSRate(canvas=rateScanCanvas)
-    myselection.SavePlots(savename="SignalVSRate"+str(runplanNr)+".root", canvas=rateScanCanvas)
-    myselection.SavePlots(savename="SignalVSRate"+str(runplanNr)+".png", canvas=rateScanCanvas)
+    # # create Signal_VS_Rate plot:
+    # myselection.SetSaveDirectory("Results/{runplan}/".format(runplan=runplanType+str(runplanNr)))
+    # rate_analyses[runplanNr].ShowSignalVSRate(canvas=rateScanCanvas)
+    # myselection.SavePlots(savename="SignalVSRate"+str(runplanNr)+".root", canvas=rateScanCanvas)
+    # myselection.SavePlots(savename="SignalVSRate"+str(runplanNr)+".png", canvas=rateScanCanvas)
