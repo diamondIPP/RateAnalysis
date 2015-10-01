@@ -162,7 +162,7 @@ class AnalysisCollection(Elementary):
         else:
             try:
                 runs = self.GetRunNumbers()
-                channels = self.collection[runs[0]].GetChannels()
+                channels = self.collection[runs[0]].run.GetChannels()
             except:
                 channels = [0,3]
 

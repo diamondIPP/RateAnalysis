@@ -133,6 +133,7 @@ class PreAnalysisPlot(Elementary):
 
             #2d distribution (high resolution)
             ROOT.gStyle.SetPalette(55) # rainbow palette
+            ROOT.gStyle.SetNumberContours(200)
             pad = self.signalTimeCanvas.cd(2)
             self.analysis.run.tree.Draw((self.analysis.signaldefinition+":(event_number)/1000>>signaltime2d{run}{channel}({bins}, {start}, {end}, 300, 0, 500)").format(bins=nbins, run=self.analysis.run.run_number, channel=self.channel, start=startevent/1000, end=endevent/1000), self.analysis.GetCut(self.channel), drawOption2D, self.analysis.GetNEventsCut(channel=self.channel), self.analysis.GetMinEventCut(channel=self.channel))
             self.signaltime2d = gROOT.FindObject("signaltime2d{run}{channel}".format(run=self.analysis.run.run_number, channel=self.channel))
