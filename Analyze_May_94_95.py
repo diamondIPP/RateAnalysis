@@ -35,8 +35,8 @@ for runplanNr in runplans:
     rate_analyses[runplanNr] = AnalysisCollection(myselection, maskfilename=mask[runplanNr])
 
     # PREANALYSIS plots:
-    # myselection.SetSaveDirectory("Results/{runplan}/PreAnalysis/".format(runplan=runplanType+str(runplanNr)))
-    # rate_analyses[runplanNr].MakePreAnalysises(savePlot=True)
+    myselection.SetSaveDirectory("Results/{runplan}/PreAnalysis/".format(runplan=runplanType+str(runplanNr)))
+    rate_analyses[runplanNr].MakePreAnalysises(savePlot=True)
     # myselection.SetSaveDirectory("Results/{runplan}/PulserRates/".format(runplan=runplanType+str(runplanNr)))
     # rate_analyses[runplanNr].ShowPulserRates()
 
@@ -45,8 +45,8 @@ for runplanNr in runplans:
         # myselection.SetSaveDirectory("Results/{runplan}/SignalMaps/".format(runplan=runplanType+str(runplanNr)))
         # rate_analyses[runplanNr].collection[run].ShowSignalMaps(saveplots=True)
 
-        # myselection.SetSaveDirectory("Results/{runplan}/FFT/".format(runplan=runplanType+str(runplanNr)))
-        # rate_analyses[runplanNr].collection[run].ShowFFT(drawoption="mc", cut=True, savePlots=True)
+        myselection.SetSaveDirectory("Results/{runplan}/FFT/".format(runplan=runplanType+str(runplanNr)))
+        rate_analyses[runplanNr].collection[run].ShowFFT(drawoption="mc", cut=True, savePlots=True)
 
         # myselection.SetSaveDirectory("Results/{runplan}/Cuts/".format(runplan=runplanType+str(runplanNr)))
         # rate_analyses[runplanNr].collection[run].ShowSignalHisto(savePlots=True, gridx=True, xmin=-50, xmax=200, binning=250)
