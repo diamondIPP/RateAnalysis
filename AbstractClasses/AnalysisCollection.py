@@ -177,7 +177,8 @@ class AnalysisCollection(Elementary):
                 setyscale_sig = [sig_margins[0], sig_margins[-1]]
                 setyscale_ped = [ped_margins[0], ped_margins[-1]]
 
-                self.collection[run].preAnalysis[ch].Draw(savePlot=savePlot, setyscale_sig=setyscale_sig, setyscale_ped=setyscale_ped)
+                for run in runnumbers:
+                    self.collection[run].preAnalysis[ch].Draw(savePlot=savePlot, setyscale_sig=setyscale_sig, setyscale_ped=setyscale_ped)
             else:
                 setyscale_sig = None
                 setyscale_ped = None
