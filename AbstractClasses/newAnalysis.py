@@ -1387,7 +1387,7 @@ class Analysis(Elementary):
             self.ShowMedianHisto(channel=ch, canvas=medianPad)
 
             peakPosPad = rightPad.cd(3)
-            self.ShowPeakPosition(channel=ch, canvas=peakPosPad, savePlot=savePlot)
+            self.ShowPeakPosition(channel=ch, canvas=peakPosPad, savePlot=False)
 
             if savePlot:
                 self.SavePlots(savename="Run{run}_PreAnalysisOverview_{dia}.png".format(run=self.run.run_number, dia=self.run.diamondname[ch]), subDir=self.run.diamondname[ch], canvas=self.pAOverviewCanv)

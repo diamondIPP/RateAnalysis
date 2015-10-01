@@ -17,7 +17,7 @@ rateScanCanvas = TCanvas("rateScanCanvas", "rateScanCanvas")
 
 
 myselection = RunSelection()
-runplans = map(str, [5,8])
+runplans = map(str, [8])
 
 for runplanNr in runplans:
     # --- change the selected run plan and diamond ---
