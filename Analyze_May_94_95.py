@@ -8,8 +8,8 @@ diamond1         = "II-6-94"
 diamond2         = "II-6-95"
 rate_analyses = {}
 mask = {
-    5: "polyA_II-6_94_signal_mask_2015_05_30_0219.dat",
-    8: "II-IV-95_II-IV-96_signal_mask_2015_05_31_1512.dat"
+    "5": "polyA_II-6_94_signal_mask_2015_05_30_0219.dat",
+    "8": "II-IV-95_II-IV-96_signal_mask_2015_05_31_1512.dat"
 }
 
 
