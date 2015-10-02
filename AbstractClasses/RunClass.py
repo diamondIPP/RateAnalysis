@@ -212,6 +212,7 @@ class Run(Elementary):
             pol_dia2 = -1
         cparser = ConfigParser.ConfigParser()
         cparser.read(eudaqFolder+"/conf/converter.conf")
+        print cparser.sections()
         cparser.set("Converter.drs4tree", "polarities", "[{pol1},0,0,{pol2}]".format(pol1=pol_dia1, pol2=pol_dia2))
         f = open(eudaqFolder+"/conf/converter.conf", "w")
         cparser.write(f)
@@ -585,7 +586,8 @@ class Run(Elementary):
             self._runInfoLegends["ch12"+infoid].AddEntry(0, "Run{run} ({rate})".format(run=self.run_number, rate=self._GetRateString()), "")
             if comment != None: self._runInfoLegends["ch12"+infoid].AddEntry(0, comment, "")
             self._runInfoLegends["ch12"+infoid].Draw("same")
-            pad.Modified()
+        pad.Modified()
+
 
     def _GetRateString(self):
         rate = self.RunInfo["measured flux"]

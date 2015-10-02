@@ -546,8 +546,8 @@ class Analysis(Elementary):
             self.signalpedestalcanvas = canvas
 
         self.ResetColorPalette()
-        self.ShowSignalHisto(channel=channel, canvas=self.signalpedestalcanvas, savePlots=False, cut=cut, normalized=normalized, drawruninfo=False, binning=binning, xmin=xmin, xmax=xmax, logy=logy, gridx=gridx)
-        self.ShowPedestalHisto(channel=channel, canvas=self.signalpedestalcanvas, drawoption="sames", savePlots=False, cut=cut, normalized=normalized, drawruninfo=False, binning=binning, xmin=xmin, xmax=xmax, logy=logy)
+        self.ShowPedestalHisto(channel=channel, canvas=self.signalpedestalcanvas, savePlots=False, cut=cut, normalized=normalized, drawruninfo=False, binning=binning, xmin=xmin, xmax=xmax, logy=logy)
+        self.ShowSignalHisto(channel=channel, canvas=self.signalpedestalcanvas, drawoption="sames", savePlots=False, cut=cut, normalized=normalized, drawruninfo=False, binning=binning, xmin=xmin, xmax=xmax, logy=logy, gridx=gridx)
 
         if drawruninfo:
             self.DrawRunInfo(channel=channel, canvas=self.signalpedestalcanvas, infoid="signalpedestal"+str(self.run.run_number)+str(channel))
@@ -1697,5 +1697,63 @@ class Analysis(Elementary):
         '''
         self.run.tree.Draw(varexp, selection, drawoption, nentries, firstentry)
 
+    def CalculateSNR(self, channel=0, signaldefinition="sig_integral2[{channel}]", pedestalname="ped_integral2", logy=False, cut="", name="SNR"):
+
+        self.snr_canvas = ROOT.TCanvas("SNR_canvas", "SNR Canvas")
+
+        self.ResetColorPalette()
+        self._ShowHisto(pedestalname+"[{channel}]", channel=channel, canvas=self.snr_canvas, drawoption="", color=None, cut=cut, normalized=False, infoid="SNRPedestalHisto", drawruninfo=False, binning=500, xmin=-100, xmax=400,savePlots=False, logy=logy)
+        self._ShowHisto(signaldefinition, channel=channel, canvas=self.snr_canvas, drawoption="sames", color=None, cut=cut, normalized=False, infoid="SNRSignalHisto", drawruninfo=False, binning=500, xmin=-100, xmax=400,savePlots=False, logy=logy)
+
+        pedestalhisto = ROOT.gROOT.FindObject("II6-97_SNRPedestalHisto445")
+        signalhisto = ROOT.gROOT.FindObject("II6-97_SNRSignalHisto445")
+
+        pedestalhisto.Fit("gaus", "","",-20,20)
+        fitfunc = pedestalhisto.GetFunction("gaus")
+        self.pedestalFitMean = fitfunc.GetParameter(1)
+        pedestalSigma = fitfunc.GetParameter(2)
+
+        signalmean = signalhisto.GetMean()
+
+        SNR = signalmean/pedestalSigma
+        print "SNR = ", SNR
+
+        self.DrawRunInfo(channel=channel, canvas=self.snr_canvas, comment="SNR: "+str(SNR))
+
+        self.SavePlots(savename=name+".pdf", saveDir="SNR", canvas=self.snr_canvas)
+
+        return  SNR
+
+    def MakeSNRAnalyis(self, channel=0):
 
 
+        SNRs = {}
+
+        windownames = ["a", "b", "c"]
+        integralnames = ["1", "2", "3"]
+        signaldefs = {
+            "a1": "sig_a1[{channel}]",
+            "a2": "sig_a2[{channel}]",
+            "a3": "sig_a3[{channel}]",
+            "b1": "sig_b1[{channel}]",
+            "b2": "sig_b2[{channel}]",
+            "b3": "sig_b3[{channel}]",
+            "c1": "sig_integral1[{channel}]",
+            "c2": "sig_integral2[{channel}]",
+            "c3": "sig_integral3[{channel}]",
+        }
+
+        for windowname in windownames:
+
+            for integralname in integralnames:
+
+                SNRs[windowname+integralname] = self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestalname="ped_integral"+integralname, name="SNR_"+windowname+integralname)
+
+                if windowname=="c":
+                    cut = self.GetCut(channel=channel)
+                    SNRs[windowname+integralname+"b"] = self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestalname="ped_integral"+integralname, cut=cut+"&&sig_peak[{channel}]<250", name="SNR_"+windowname+integralname+"b")
+
+        print SNRs
+
+        for key in SNRs.keys():
+            print key, " - ", SNRs[key]
