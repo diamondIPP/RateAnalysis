@@ -213,7 +213,7 @@ class Run(Elementary):
         cparser = ConfigParser.ConfigParser()
         cparser.read(eudaqFolder+"/conf/converter.conf")
         cparser.set("Converter.drs4tree", "polarities", "[{pol1},0,0,{pol2}]".format(pol1=pol_dia1, pol2=pol_dia2))
-        f = open(eudaqFolder+"/conf/converter.conf", "wb")
+        f = open(eudaqFolder+"/conf/converter.conf", "w")
         cparser.write(f)
         f.close()
 
