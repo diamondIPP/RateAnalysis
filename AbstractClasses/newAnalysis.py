@@ -1705,7 +1705,7 @@ class Analysis(Elementary):
         self._ShowHisto(pedestalname+"[{channel}]", channel=channel, canvas=self.snr_canvas, drawoption="", color=None, cut=cut, normalized=False, infoid="SNRPedestalHisto", drawruninfo=False, binning=500, xmin=-100, xmax=400,savePlots=False, logy=logy)
         self._ShowHisto(signaldefinition, channel=channel, canvas=self.snr_canvas, drawoption="sames", color=None, cut=cut, normalized=False, infoid="SNRSignalHisto", drawruninfo=False, binning=500, xmin=-100, xmax=400,savePlots=False, logy=logy)
 
-        pedestalhisto = ROOT.gROOT.FindObject("II6-97_SNRPedestalHisto445")
+        pedestalhisto = ROOT.gROOT.FindObject("{dia}_SNRPedestalHisto{run}".format(dia=self.run.diamondname[channel], run=self.run.run_number))
         signalhisto = ROOT.gROOT.FindObject("II6-97_SNRSignalHisto445")
 
         pedestalhisto.Fit("gaus", "","",-20,20)
