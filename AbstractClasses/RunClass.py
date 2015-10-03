@@ -124,7 +124,7 @@ class Run(Elementary):
         peakintegral3_range_low = runConfigParser.getint('ROOTFILE_GENERATION', 'peakintegral1_range_low')
         peakintegral3_range_high = runConfigParser.getint('ROOTFILE_GENERATION', 'peakintegral1_range_high')
         save_waveforms = runConfigParser.getint('ROOTFILE_GENERATION', 'save_waveforms')
-        self.converterPrefix = runConfigParser.get('ROOTFILE_GENERATION', "sconverterPrefix")
+        self.converterPrefix = runConfigParser.get('ROOTFILE_GENERATION', "converterPrefix")
         self.eudaqFolder = runConfigParser.get('ROOTFILE_GENERATION', "eudaqFolder")
         self.trackingFolder = runConfigParser.get('ROOTFILE_GENERATION', "trackingFolder")
         self.rawFolder = runConfigParser.get('ROOTFILE_GENERATION', "rawFolder")
