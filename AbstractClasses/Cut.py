@@ -277,7 +277,7 @@ class Cut(Elementary):
         self._cutTypes["ExcludeFirst"] = nevents
         self.excludefirst = nevents
 
-    def GenerateCutString(self, gen_PulserCut=True, gen_EventRange=True, gen_ExcludeFirst=True):
+    def GenerateCutString(self, gen_PulserCut=True, gen_EventRange=True, gen_ExcludeFirst=True, setChannel=True):
         '''
         Creates the cut string, which will be stored in self.cut .
         With the arguments set to False, different cut types can be
@@ -362,8 +362,9 @@ class Cut(Elementary):
             self.userCutTypes["absMedian_high"] = ""
 
         # -- set the channel on the cuts --
-        self.cut = cutstring
-        self.cut = self.cut.format(channel=self.channel)
+        if setChannel:
+            self.cut = cutstring
+            self.cut = self.cut.format(channel=self.channel)
 
         # -- BEAM INTERRUPTION CUT --
         if self._cutTypes["noBeamInter"] and self._checklist["GenerateCutString"]:
@@ -651,7 +652,7 @@ class Cut(Elementary):
     def AddCutString(self, cutstring):
         pass
 
-    def GetCut(self, gen_PulserCut=True, gen_EventRange=True, gen_ExcludeFirst=True):
+    def GetCut(self, setChannel=True, gen_PulserCut=True, gen_EventRange=True, gen_ExcludeFirst=True, ):
         '''
         Returns the cut string.
         If needed, it will re-generate the cut string.
@@ -662,7 +663,7 @@ class Cut(Elementary):
         '''
         #channel = self.channel
         if not self._checkCutStringSettings(gen_PulserCut, gen_EventRange, gen_ExcludeFirst):
-            self.GenerateCutString(gen_PulserCut, gen_EventRange, gen_ExcludeFirst)
+            self.GenerateCutString(gen_PulserCut, gen_EventRange, gen_ExcludeFirst, setChannel=setChannel)
         return self.cut
 
     def GetUserCutString(self):

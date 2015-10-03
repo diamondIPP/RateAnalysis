@@ -109,6 +109,36 @@ class Run(Elementary):
         self.createNewROOTFiles = runConfigParser.getboolean('BASIC', 'createNewROOTFiles')
         self.signalregion_low = runConfigParser.getint('BASIC', 'signalregion_low')
         self.signalregion_high = runConfigParser.getint('BASIC', 'signalregion_high')
+        
+        # Rootfile Generation Configuration:
+        signal_range_low = runConfigParser.getint('ROOTFILE_GENERATION', 'signal_range_low')
+        signal_range_high = runConfigParser.getint('ROOTFILE_GENERATION', 'signal_range_high')
+        pedestal_range_low = runConfigParser.getint('ROOTFILE_GENERATION', 'pedestal_range_low')
+        pedestal_range_high = runConfigParser.getint('ROOTFILE_GENERATION', 'pedestal_range_high')
+        pulser_range_low = runConfigParser.getint('ROOTFILE_GENERATION', 'pulser_range_low')
+        pulser_range_high = runConfigParser.getint('ROOTFILE_GENERATION', 'pulser_range_high')
+        peakintegral1_range_low = runConfigParser.getint('ROOTFILE_GENERATION', 'peakintegral1_range_low')
+        peakintegral1_range_high = runConfigParser.getint('ROOTFILE_GENERATION', 'peakintegral1_range_high')
+        peakintegral2_range_low = runConfigParser.getint('ROOTFILE_GENERATION', 'peakintegral1_range_low')
+        peakintegral2_range_high = runConfigParser.getint('ROOTFILE_GENERATION', 'peakintegral1_range_high')
+        peakintegral3_range_low = runConfigParser.getint('ROOTFILE_GENERATION', 'peakintegral1_range_low')
+        peakintegral3_range_high = runConfigParser.getint('ROOTFILE_GENERATION', 'peakintegral1_range_high')
+        save_waveforms = runConfigParser.getint('ROOTFILE_GENERATION', 'save_waveforms')
+        self.converterPrefix = runConfigParser.get('ROOTFILE_GENERATION', "sconverterPrefix")
+        self.eudaqFolder = runConfigParser.get('ROOTFILE_GENERATION', "eudaqFolder")
+        self.trackingFolder = runConfigParser.get('ROOTFILE_GENERATION', "trackingFolder")
+        self.rawFolder = runConfigParser.get('ROOTFILE_GENERATION', "rawFolder")
+        self.rawPrefix = runConfigParser.get('ROOTFILE_GENERATION', "rawPrefix")
+
+        self.rootGenerationConfig = {
+            "signal_range": [signal_range_low, signal_range_high],
+            "pedestal_range": [pedestal_range_low, pedestal_range_high],
+            "pulser_range": [pulser_range_low, pulser_range_high],
+            "peakintegral1_range": [peakintegral1_range_low, peakintegral1_range_high],
+            "peakintegral2_range": [peakintegral2_range_low, peakintegral2_range_high],
+            "peakintegral3_range": [peakintegral3_range_low, peakintegral3_range_high],
+            "save_waveforms": save_waveforms
+        }
 
     def LoadRunInfo(self):
         self.RunInfo = {}
@@ -198,7 +228,7 @@ class Run(Elementary):
         '''
         return self.RunInfo["measured flux"]
 
-    def _SetConverterConfigFile(self, eudaqFolder):
+    def _SetConverterConfigFile(self):
         pol_dia1 = self.RunInfo["hv dia1"]
         pol_dia2 = self.RunInfo["hv dia2"]
         assert(pol_dia1!=0 and pol_dia2!=0)
@@ -211,35 +241,32 @@ class Run(Elementary):
         else:
             pol_dia2 = -1
         cparser = ConfigParser.ConfigParser()
-        cparser.read(eudaqFolder+"/conf/converter.conf")
+        cparser.read(self.eudaqFolder+"/conf/converter.conf")
         print cparser.sections()
         cparser.set("Converter.drs4tree", "polarities", "[{pol1},0,0,{pol2}]".format(pol1=pol_dia1, pol2=pol_dia2))
-        f = open(eudaqFolder+"/conf/converter.conf", "w")
+        for key in self.rootGenerationConfig:
+            cparser.set("Converter.drs4tree", key, str(self.rootGenerationConfig[key]))
+        f = open(self.eudaqFolder+"/conf/converter.conf", "w")
         cparser.write(f)
         f.close()
 
         # remove white spaces:
-        f = open(eudaqFolder+"/conf/converter.conf", "r")
+        f = open(self.eudaqFolder+"/conf/converter.conf", "r")
         content = f.readlines()
         f.close()
         for i in xrange(len(content)):
             content[i] = content[i].replace(" ", "")
-        f = open(eudaqFolder+"/conf/converter.conf", "w")
+        f = open(self.eudaqFolder+"/conf/converter.conf", "w")
         f.writelines(content)
         f.close()
 
     def CreateROOTFile(self, do_tracking=True):
-
-        converterPrefix = "test15080"
-        eudaqFolder = "/home/testbeam/testing/mario/eudaq-drs4"
-        trackingFolder = "/home/testbeam/sdvlp/TrackingTelescope"
-
         # path and name of converter output file:
-        noTracksROOTFile = os.getcwd()+"/{prefix}{run}.root".format(prefix=converterPrefix, run=str(self.run_number).zfill(4))
+        noTracksROOTFile = os.getcwd()+"/{prefix}{run}.root".format(prefix=self.converterPrefix, run=str(self.run_number).zfill(4))
 
         if not os.path.exists(noTracksROOTFile):
             # the no-tracks root files doesn't exiist
-            self.ConvertRAW(eudaqFolder)
+            self._ConvertRAW()
         else:
             # continue with existing file (no tracks)
             print "noTracks ROOT File found here:"
@@ -251,21 +278,18 @@ class Run(Elementary):
             self._LoadROOTFile(self.TrackingPadAnalysis['ROOTFile'])
             print "INFO ROOT File generated with NO Tracking information"
         else:
-            self.AddTracking(trackingFolder=trackingFolder, noTracksROOTFile=noTracksROOTFile, converterPrefix=converterPrefix)
+            self._AddTracking(noTracksROOTFile=noTracksROOTFile)
 
-    def ConvertRAW(self, eudaqFolder):
-        rawFolder = "/data/psi_2015_08/raw"
-        rawPrefix = "run15080"
-
+    def _ConvertRAW(self):
         # terminal command for converting raw to root
-        converter_cmd = "{eudaq}/bin/Converter.exe -t drs4tree -c {eudaq}/conf/converter.conf {rawfolder}/{prefix}{run}.raw".format(eudaq=eudaqFolder, rawfolder=rawFolder, prefix=rawPrefix, run=str(self.run_number).zfill(4))
+        converter_cmd = "{eudaq}/bin/Converter.exe -t drs4tree -c {eudaq}/conf/converter.conf {rawfolder}/{prefix}{run}.raw".format(eudaq=self.eudaqFolder, rawfolder=self.rawFolder, prefix=self.rawPrefix, run=str(self.run_number).zfill(4))
 
-        self._SetConverterConfigFile(eudaqFolder=eudaqFolder) # prepare the config file
+        self._SetConverterConfigFile() # prepare the config file
         print "\n\nSTART CONVERTING RAW FILE..."
         print converter_cmd
         os.system(converter_cmd) # convert
 
-    def AddTracking(self, trackingFolder, noTracksROOTFile, converterPrefix):
+    def _AddTracking(self, noTracksROOTFile):
 
         if self.TESTCAMPAIGN == "201508":
             telescopeID = 9
@@ -277,14 +301,14 @@ class Run(Elementary):
 
         # change CWD to TrackingTelescope:
         old_cwd = os.getcwd()
-        os.chdir(trackingFolder)
-        tracking_cmd = "{trackingfolder}/TrackingTelescope {root} 0 {nr}".format(trackingfolder=trackingFolder, root=noTracksROOTFile, nr=telescopeID)
+        os.chdir(self.trackingFolder)
+        tracking_cmd = "{trackingfolder}/TrackingTelescope {root} 0 {nr}".format(trackingfolder=self.trackingFolder, root=noTracksROOTFile, nr=telescopeID)
         print "\n\nSTART TRACKING..."
         print tracking_cmd
         os.system(tracking_cmd)
         os.chdir(old_cwd)
 
-        tracksROOTFile = trackingFolder+"/{prefix}{run}_withTracks.root".format(prefix=converterPrefix, run=str(self.run_number).zfill(4))
+        tracksROOTFile = self.trackingFolder+"/{prefix}{run}_withTracks.root".format(prefix=self.converterPrefix, run=str(self.run_number).zfill(4))
 
         # move to data folder:
         os.system("mv "+tracksROOTFile+" "+self.TrackingPadAnalysis['ROOTFile'])
@@ -552,7 +576,7 @@ class Run(Elementary):
             width = 0.6
         if comment != None:
             lines += 1
-            width = max(0.4, width)
+            width = max(0.3, width)
         height = (lines-1)*0.03
 
         if not hasattr(self, "_runInfoLegends"):
@@ -589,7 +613,7 @@ class Run(Elementary):
         pad.Modified()
 
 
-    def _GetRateString(self):
+    def GetRateString(self):
         rate = self.RunInfo["measured flux"]
         if rate>1000:
             unit = "MHz"

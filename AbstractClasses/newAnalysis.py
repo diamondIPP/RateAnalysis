@@ -1697,18 +1697,26 @@ class Analysis(Elementary):
         '''
         self.run.tree.Draw(varexp, selection, drawoption, nentries, firstentry)
 
-    def CalculateSNR(self, channel=0, signaldefinition="sig_integral2[{channel}]", pedestalname="ped_integral2", logy=False, cut="", name="SNR"):
+    def CalculateSNR(self, channel=0, signaldefinition=None, pedestalname=None, logy=True, cut="", name="", fitwindow=40, binning=500, xmin=-100, xmax=400):
 
         self.snr_canvas = ROOT.TCanvas("SNR_canvas", "SNR Canvas")
 
+        if signaldefinition==None:
+            signaldefinition = self.signaldefinition
+        if pedestalname == None:
+            pedestalname = self.pedestalname
+
+
         self.ResetColorPalette()
-        self._ShowHisto(pedestalname+"[{channel}]", channel=channel, canvas=self.snr_canvas, drawoption="", color=None, cut=cut, normalized=False, infoid="SNRPedestalHisto", drawruninfo=False, binning=500, xmin=-100, xmax=400,savePlots=False, logy=logy)
-        self._ShowHisto(signaldefinition, channel=channel, canvas=self.snr_canvas, drawoption="sames", color=None, cut=cut, normalized=False, infoid="SNRSignalHisto", drawruninfo=False, binning=500, xmin=-100, xmax=400,savePlots=False, logy=logy)
+        self._ShowHisto(pedestalname+"[{channel}]", channel=channel, canvas=self.snr_canvas, drawoption="", color=None, cut=cut, normalized=False, infoid="SNRPedestalHisto", drawruninfo=False, binning=binning, xmin=xmin, xmax=xmax,savePlots=False, logy=logy)
+        self._ShowHisto(signaldefinition, channel=channel, canvas=self.snr_canvas, drawoption="sames", color=None, cut=cut, normalized=False, infoid="SNRSignalHisto", drawruninfo=False, binning=binning, xmin=xmin, xmax=xmax,savePlots=False, logy=logy)
 
         pedestalhisto = ROOT.gROOT.FindObject("{dia}_SNRPedestalHisto{run}".format(dia=self.run.diamondname[channel], run=self.run.run_number))
         signalhisto = ROOT.gROOT.FindObject("{dia}_SNRSignalHisto{run}".format(dia=self.run.diamondname[channel], run=self.run.run_number))
 
-        pedestalhisto.Fit("gaus", "","",-20,20)
+        ped_peakpos = pedestalhisto.GetBinCenter(pedestalhisto.GetMaximumBin())
+
+        pedestalhisto.Fit("gaus", "","",ped_peakpos-fitwindow/2.,ped_peakpos+fitwindow/2.)
         fitfunc = pedestalhisto.GetFunction("gaus")
         self.pedestalFitMean = fitfunc.GetParameter(1)
         pedestalSigma = fitfunc.GetParameter(2)
@@ -1716,44 +1724,90 @@ class Analysis(Elementary):
         signalmean = signalhisto.GetMean()
 
         SNR = signalmean/pedestalSigma
-        print "SNR = ", SNR
+        print "\n"
+        print "\tSNR = ", SNR
+        print "\n"
 
         self.DrawRunInfo(channel=channel, canvas=self.snr_canvas, comment="SNR: "+str(SNR))
 
-        self.SavePlots(savename=name+".pdf", saveDir="SNR", canvas=self.snr_canvas)
+        self.SavePlots(savename="SNR"+name+".png", saveDir="SNR/", canvas=self.snr_canvas)
+        self.SavePlots(savename="SNR"+name+".pdf", saveDir="SNR/pdf/", canvas=self.snr_canvas)
+        self.SavePlots(savename="SNR"+name+".root", saveDir="SNR/root/", canvas=self.snr_canvas)
 
         return  SNR
 
-    def MakeSNRAnalyis(self, channel=0):
-
-
+    def MakeSNRAnalyis(self, channel=0, name="", binning=1000, xmin=-500, xmax=500):
+        name = name+str(self.run.run_number)+str(channel)
+        cut = self.GetCut(channel=channel)
         SNRs = {}
 
         windownames = ["a", "b", "c"]
         integralnames = ["1", "2", "3"]
         signaldefs = {
-            "a1": "sig_a1[{channel}]",
-            "a2": "sig_a2[{channel}]",
-            "a3": "sig_a3[{channel}]",
-            "b1": "sig_b1[{channel}]",
-            "b2": "sig_b2[{channel}]",
-            "b3": "sig_b3[{channel}]",
-            "c1": "sig_integral1[{channel}]",
-            "c2": "sig_integral2[{channel}]",
-            "c3": "sig_integral3[{channel}]",
+            "a1": "sig_a1[{channel}]-ped_min_integral1[{channel}]",
+            "a2": "sig_a2[{channel}]-ped_min_integral2[{channel}]",
+            "a3": "sig_a3[{channel}]-ped_min_integral3[{channel}]",
+            "b1": "sig_b1[{channel}]-ped_min_integral1[{channel}]",
+            "b2": "sig_b2[{channel}]-ped_min_integral2[{channel}]",
+            "b3": "sig_b3[{channel}]-ped_min_integral3[{channel}]",
+            "c1": "sig_integral1[{channel}]-ped_min_integral1[{channel}]",
+            "c2": "sig_integral2[{channel}]-ped_min_integral2[{channel}]",
+            "c3": "sig_integral3[{channel}]-ped_min_integral3[{channel}]",
         }
 
         for windowname in windownames:
 
             for integralname in integralnames:
 
-                SNRs[windowname+integralname] = self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestalname="ped_integral"+integralname, name="SNR_"+windowname+integralname)
+                SNRs[windowname+integralname] = self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestalname="ped_min_integral"+integralname, name=name+"_"+windowname+integralname, binning=binning, xmin=xmin, xmax=xmax, channel=channel)
 
                 if windowname=="c":
-                    cut = self.GetCut(channel=channel)
-                    SNRs[windowname+integralname+"b"] = self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestalname="ped_integral"+integralname, cut=cut+"&&sig_peak[{channel}]<250", name="SNR_"+windowname+integralname+"b")
+                    SNRs[windowname+integralname+"b"] = self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestalname="ped_min_integral"+integralname, cut=cut+"&&sig_time[{channel}]<250", name=name+"_"+windowname+integralname+"b", binning=binning, xmin=xmin, xmax=xmax, channel=channel)
 
-        print SNRs
+        signaldefs2 = {
+            "spread": "sig_spread[{channel}]",
+            "int":  "sig_int[{channel}]-ped_min_int[{channel}]"
+        }
 
-        for key in SNRs.keys():
-            print key, " - ", SNRs[key]
+        for key in ["int"]:#signaldefs2:
+
+            SNRs[key] = self.CalculateSNR(signaldefinition=signaldefs2[key], pedestalname="ped_min_"+key, name=name+"_"+key, binning=binning, xmin=xmin, xmax=xmax, channel=channel)
+            SNRs[key+"-b"] = self.CalculateSNR(signaldefinition=signaldefs2[key], pedestalname="ped_min_"+key, name=name+"_"+key+"-b", cut=cut+"&&sig_time[{channel}]<250", binning=binning, xmin=xmin, xmax=xmax, channel=channel)
+
+        # for key in SNRs.keys():
+        #     print key, " - ", SNRs[key]
+
+        print "OUTPUT:"
+        print "a1"
+        print "a2"
+        print "a3"
+        print "b1"
+        print "b2"
+        print "b3"
+        print "c1"
+        print "c2"
+        print "c3"
+        print "c1b"
+        print "c2b"
+        print "c3b"
+        print "spread"
+        print "spread-b"
+        print "int"
+        print "int-b"
+
+        print SNRs["a1"]
+        print SNRs["a2"]
+        print SNRs["a3"]
+        print SNRs["b1"]
+        print SNRs["b2"]
+        print SNRs["b3"]
+        print SNRs["c1"]
+        print SNRs["c2"]
+        print SNRs["c3"]
+        print SNRs["c1b"]
+        print SNRs["c2b"]
+        print SNRs["c3b"]
+        print "spread"#SNRs["spread"]
+        print "spread-b"#SNRs["spread-b"]
+        print SNRs["int"]
+        print SNRs["int-b"]
