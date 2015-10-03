@@ -191,7 +191,7 @@ class AnalysisCollection(Elementary):
                 for run in runnumbers:
                     self.collection[run].MakePreAnalysis(channel=ch, mode=mode, setyscale_sig=setyscale_sig, setyscale_ped=setyscale_ped, savePlot=savePlot)
 
-    def ShowSignalVSRate(self, canvas=None, diamonds=None): #, method="mean"
+    def ShowSignalVSRate(self, canvas=None, diamonds=None, method="mean"): #, method="mean"
         '''
         Draws the signal vs rate scan into the canvas. If no canvas is
         passed, it will create a new canvas attached to the intance as
@@ -203,6 +203,7 @@ class AnalysisCollection(Elementary):
         :param diamonds: 0x1: diamond1 0x2: diamond2
         :return:
         '''
+        assert(method in ["mean", "MPVFit", "peak"])
         if self.GetNumberOfAnalyses() == 0: return 0
 
         assert(diamonds in [1,2,3,None]), "wrong diamonds selection: 0x1: diamond1, 0x2: diamond2"
@@ -245,14 +246,26 @@ class AnalysisCollection(Elementary):
 
             for runnumber in runnumbers:
                 i += 1
+                if method == "peak": self.collection[runnumber].CalculateSNR(channel=channel, name="RateScan_R{run}_C{ch}".format(run=runnumber, ch=channel), fitwindow=20)
                 #runnumber = self.collection[runnumber].run.run_number
                 results[runnumber] = {}
                 print "Signal VS Rate: Processing Run {run} (Rate: {rate}) - Channel {channel}".format(run=runnumber, channel=channel, rate=self.collection[runnumber].run.RunInfo["measured flux"])
                 results[runnumber][channel] = {}
-                self.collection[runnumber].run.tree.Draw((self.collection[runnumber].signaldefinition+">>tmpsignalhisto").format(channel=channel), self.collection[runnumber].GetCut(channel), "", self.collection[runnumber].GetNEventsCut(), self.collection[runnumber].GetMinEventCut())
-                results[runnumber][channel]["mean"] = tmpsignalhisto.GetMean()
-                results[runnumber][channel]["error"] = tmpsignalhisto.GetRMS()/np.sqrt(tmpsignalhisto.GetEntries())
-                self.graphs[channel].SetPoint(i, self.collection[runnumber].run.RunInfo["measured flux"], results[runnumber][channel]["mean"])
+                self.collection[runnumber].run.tree.Draw((self.collection[runnumber].signaldefinition+">>tmpsignalhisto").format(channel=channel), self.collection[runnumber].GetCut(channel), "", self.collection[runnumber].GetNEventsCut(channel=channel), self.collection[runnumber].GetMinEventCut(channel=channel))
+                if method == "mean":
+                    results[runnumber][channel]["signal"] = tmpsignalhisto.GetMean()
+                    results[runnumber][channel]["error"] = tmpsignalhisto.GetRMS()/np.sqrt(tmpsignalhisto.GetEntries())
+                if method == "MPVFit":
+                    peakpos = tmpsignalhisto.GetBinCenter(tmpsignalhisto.GetMaximumBin())
+                    tmpsignalhisto.Fit("landau", "","", peakpos-70, peakpos+100)
+                    fitfunc = tmpsignalhisto.GetFunction("landau")
+                    results[runnumber][channel]["signal"] = fitfunc.GetParameter(1) # MPV
+                    results[runnumber][channel]["error"]  = fitfunc.GetParameter(2) # Sigma
+                if method == "peak":
+                    peakpos = tmpsignalhisto.GetBinCenter(tmpsignalhisto.GetMaximumBin())
+                    results[runnumber][channel]["signal"] = peakpos
+                    results[runnumber][channel]["error"]  = self.collection[runnumber].pedestalSigma
+                self.graphs[channel].SetPoint(i, self.collection[runnumber].run.RunInfo["measured flux"], results[runnumber][channel]["signal"])
                 self.graphs[channel].SetPointError(i, 0, results[runnumber][channel]["error"])
 
             #save graph:

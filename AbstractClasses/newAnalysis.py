@@ -1423,7 +1423,6 @@ class Analysis(Elementary):
             0: copy.deepcopy(default_dict_),
             3: copy.deepcopy(default_dict_)
         }
-
         try:
             for ch in [0,3]:
                 if showOverview:
@@ -1697,7 +1696,7 @@ class Analysis(Elementary):
         '''
         self.run.tree.Draw(varexp, selection, drawoption, nentries, firstentry)
 
-    def CalculateSNR(self, channel=0, signaldefinition=None, pedestalname=None, logy=True, cut="", name="", fitwindow=40, binning=500, xmin=-100, xmax=400):
+    def CalculateSNR(self, channel=0, signaldefinition=None, pedestalname=None, logy=True, cut="", name="", fitwindow=40, binning=1000, xmin=-500, xmax=500, savePlots=True):
 
         self.snr_canvas = ROOT.TCanvas("SNR_canvas", "SNR Canvas")
 
@@ -1719,20 +1718,20 @@ class Analysis(Elementary):
         pedestalhisto.Fit("gaus", "","",ped_peakpos-fitwindow/2.,ped_peakpos+fitwindow/2.)
         fitfunc = pedestalhisto.GetFunction("gaus")
         self.pedestalFitMean = fitfunc.GetParameter(1)
-        pedestalSigma = fitfunc.GetParameter(2)
+        self.pedestalSigma = fitfunc.GetParameter(2)
 
         signalmean = signalhisto.GetMean()
 
-        SNR = signalmean/pedestalSigma
+        SNR = signalmean/self.pedestalSigma
         print "\n"
         print "\tSNR = ", SNR
         print "\n"
 
         self.DrawRunInfo(channel=channel, canvas=self.snr_canvas, comment="SNR: "+str(SNR))
-
-        self.SavePlots(savename="SNR"+name+".png", saveDir="SNR/", canvas=self.snr_canvas)
-        self.SavePlots(savename="SNR"+name+".pdf", saveDir="SNR/pdf/", canvas=self.snr_canvas)
-        self.SavePlots(savename="SNR"+name+".root", saveDir="SNR/root/", canvas=self.snr_canvas)
+        if savePlots:
+            self.SavePlots(savename="SNR"+name+".png", saveDir="SNR/", canvas=self.snr_canvas)
+            self.SavePlots(savename="SNR"+name+".pdf", saveDir="SNR/pdf/", canvas=self.snr_canvas)
+            self.SavePlots(savename="SNR"+name+".root", saveDir="SNR/root/", canvas=self.snr_canvas)
 
         return  SNR
 

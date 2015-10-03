@@ -589,7 +589,7 @@ class Run(Elementary):
 
             self._runInfoLegends[str(channel)+infoid] = ROOT.TLegend(0.1, 0.86-userheight, 0.1+userwidth, 0.9)
             self._runInfoLegends[str(channel)+infoid].SetMargin(0.05)
-            self._runInfoLegends[str(channel)+infoid].AddEntry(0, "Run{run} Ch{channel} ({rate})".format(run=self.run_number, channel=channel, rate=self._GetRateString()), "")
+            self._runInfoLegends[str(channel)+infoid].AddEntry(0, "Run{run} Ch{channel} ({rate})".format(run=self.run_number, channel=channel, rate=self.GetRateString()), "")
             if diamondinfo: self._runInfoLegends[str(channel)+infoid].AddEntry(0, "{diamond} ({bias:+}V)".format(diamond=self.diamondname[channel], bias=self.bias[channel]), "")
             if showcut and hasattr(self, "analysis"): self._runInfoLegends[str(channel)+infoid].AddEntry(0, "Cut: {cut}".format(cut=self.analysis.GetUserCutString()), "")
             if comment != None: self._runInfoLegends[str(channel)+infoid].AddEntry(0, comment, "")
@@ -607,7 +607,7 @@ class Run(Elementary):
 
             self._runInfoLegends["ch12"+infoid] = ROOT.TLegend(0.1, 0.9-userheight, 0.1+userwidth, 0.9)
             self._runInfoLegends["ch12"+infoid].SetMargin(0.05)
-            self._runInfoLegends["ch12"+infoid].AddEntry(0, "Run{run} ({rate})".format(run=self.run_number, rate=self._GetRateString()), "")
+            self._runInfoLegends["ch12"+infoid].AddEntry(0, "Run{run} ({rate})".format(run=self.run_number, rate=self.GetRateString()), "")
             if comment != None: self._runInfoLegends["ch12"+infoid].AddEntry(0, comment, "")
             self._runInfoLegends["ch12"+infoid].Draw("same")
         pad.Modified()
