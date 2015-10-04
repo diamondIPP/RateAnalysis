@@ -33,7 +33,7 @@ class Cut(Elementary):
             "notSaturated":         "!saturated",
             "noBeamInter":          "!BeamInter.",
             "FFT":                  "",
-            "Tracks":               "TrackRec",
+            "Tracks":               "Track",
             "peakPos_high":         "peakPos<250",
             "spread_low":           "spread>20",
             "absMedian_high":       "|median|<10"

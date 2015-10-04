@@ -1581,7 +1581,6 @@ class Analysis(Elementary):
         # pad2 = self.pulserWaveformCanvas.cd(2)
         # pad2.Clear()
         self.ShowWaveForms(nevents=nevents, cut="pulser", startevent=startevent, channels=channels, canvas=pad2, infoid="pulser")
-        raw_input("asdf")
 
     def GetUserCutString(self, channel=None):
         '''
@@ -1810,3 +1809,14 @@ class Analysis(Elementary):
         print "spread-b"#SNRs["spread-b"]
         print SNRs["int"]
         print SNRs["int-b"]
+
+
+    def MakeGlobalPedestalCorrection(self, channel=0):
+
+        self.CalculateSNR(channel=channel, signaldefinition=None, pedestalname=None, fitwindow=20, savePlots=True, name="GlobalPedestalCorrection")
+
+        signaldefinition = self.signaldefinition
+        self.signaldefinition = signaldefinition + "-" + str(self.pedestalFitMean)
+
+
+
