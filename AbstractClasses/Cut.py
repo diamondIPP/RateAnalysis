@@ -65,6 +65,9 @@ class Cut(Elementary):
         parser = ConfigParser.ConfigParser()
         parser.read(configfile)
 
+        # beam interruptions folder:
+        self.beaminterruptions_folder = parser.get("CUT", "beaminterruptions_folder")
+
         # individual additional cuts:
         self.cut = parser.get("CUT", "cut"+str(self.channel)) if not parser.get("CUT", "cut"+str(self.channel)) in ["-1", "", "True", "False"] else ""
         self._cutTypes["IndividualChCut"] = copy.deepcopy(self.cut)
@@ -449,15 +452,15 @@ class Cut(Elementary):
         lat.SetTextColor(ROOT.kRed)
         lat.DrawLatex(0.2,0.85, 'run %d' %(self.analysis.run.run_number) )
 
-        if not os.path.exists("beaminterruptions"):
-            os.mkdir("beaminterruptions")
-        if not os.path.exists("beaminterruptions/plots"):
-            os.mkdir("beaminterruptions/plots")
-        if not os.path.exists("beaminterruptions/data"):
-            os.mkdir("beaminterruptions/data")
+        if not os.path.exists(self.beaminterruptions_folder):
+            os.mkdir(self.beaminterruptions_folder)
+        if not os.path.exists(self.beaminterruptions_folder+"/plots"):
+            os.mkdir(self.beaminterruptions_folder+"/plots")
+        if not os.path.exists(self.beaminterruptions_folder+"/data"):
+            os.mkdir(self.beaminterruptions_folder+"/data")
 
         # save jump list to file
-        jumpfile = open("beaminterruptions/data/{testcampaign}Run_{run}.pickle".format(testcampaign=self.TESTCAMPAIGN, run=self.analysis.run.run_number), "wb")
+        jumpfile = open(self.beaminterruptions_folder+"/data/{testcampaign}Run_{run}.pickle".format(testcampaign=self.TESTCAMPAIGN, run=self.analysis.run.run_number), "wb")
         pickle.dump(self.jumps, jumpfile)
         jumpfile.close()
 
@@ -473,7 +476,7 @@ class Cut(Elementary):
             jumps_graph.SetLineColor(ROOT.kRed)
             jumps_graph.Draw('p')
 
-            outfile = open('beaminterruptions/jumps_{testcampaign}.txt'.format(testcampaign=self.TESTCAMPAIGN),'r+a')
+            outfile = open(self.beaminterruptions_folder+'/jumps_{testcampaign}.txt'.format(testcampaign=self.TESTCAMPAIGN),'r+a')
             # check if the run is already in the file
             runInFile = False
             lines = outfile.readlines()
@@ -494,7 +497,7 @@ class Cut(Elementary):
             outfile.close()
 
 
-        self.SavePlots('beaminterruptions/plots/{test}jumpSearch_run{run}.png'.format(test=self.TESTCAMPAIGN, run=self.analysis.run.run_number), canvas=canvas)
+        self.SavePlots(self.beaminterruptions_folder+'/plots/{test}jumpSearch_run{run}.png'.format(test=self.TESTCAMPAIGN, run=self.analysis.run.run_number), canvas=canvas)
 
         canvas.Close()
         return self.jumps
@@ -511,7 +514,7 @@ class Cut(Elementary):
         :return: list of events where beam interruptions occures
         '''
         if not hasattr(self, "jumpsRanges"):
-            picklepath = "beaminterruptions/data/{testcampaign}Run_{run}.pickle".format(testcampaign=self.TESTCAMPAIGN, run=self.analysis.run.run_number)
+            picklepath = self.beaminterruptions_folder+"/data/{testcampaign}Run_{run}.pickle".format(testcampaign=self.TESTCAMPAIGN, run=self.analysis.run.run_number)
             if os.path.exists(picklepath):
                 print "Loading beam interruption data from pickle file: \n\t"+picklepath
                 jumpfile = open(picklepath, "rb")

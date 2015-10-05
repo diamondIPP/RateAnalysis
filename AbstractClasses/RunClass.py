@@ -81,10 +81,7 @@ class Run(Elementary):
             self.LoadRunInfo()
         self._LoadTiming()
         self.CalculateRate(maskfilename=maskfilename)
-        self.diamondname = {
-            0: str(self.RunInfo["diamond 1"]),
-            3: str(self.RunInfo["diamond 2"])
-        }
+        self._SetDiamondName()
         self.bias = {
             0: self.RunInfo["hv dia1"],
             3: self.RunInfo["hv dia2"]
@@ -124,6 +121,11 @@ class Run(Elementary):
         peakintegral3_range_low = runConfigParser.getint('ROOTFILE_GENERATION', 'peakintegral3_range_low')
         peakintegral3_range_high = runConfigParser.getint('ROOTFILE_GENERATION', 'peakintegral3_range_high')
         save_waveforms = runConfigParser.getint('ROOTFILE_GENERATION', 'save_waveforms')
+        pulser_range_drs4_low = runConfigParser.getint('ROOTFILE_GENERATION', 'pulser_range_drs4_low')
+        pulser_range_drs4_high = runConfigParser.getint('ROOTFILE_GENERATION', 'pulser_range_drs4_high')
+        pulser_drs4_threshold = runConfigParser.getint('ROOTFILE_GENERATION', 'pulser_drs4_threshold')
+        pulser_channel = runConfigParser.getint('ROOTFILE_GENERATION', 'pulser_channel')
+        trigger_channel = runConfigParser.getint('ROOTFILE_GENERATION', 'trigger_channel')
         self.converterPrefix = runConfigParser.get('ROOTFILE_GENERATION', "converterPrefix")
         self.eudaqFolder = runConfigParser.get('ROOTFILE_GENERATION', "eudaqFolder")
         self.trackingFolder = runConfigParser.get('ROOTFILE_GENERATION', "trackingFolder")
@@ -137,7 +139,11 @@ class Run(Elementary):
             "peakintegral1_range": [peakintegral1_range_low, peakintegral1_range_high],
             "peakintegral2_range": [peakintegral2_range_low, peakintegral2_range_high],
             "peakintegral3_range": [peakintegral3_range_low, peakintegral3_range_high],
-            "save_waveforms": save_waveforms
+            "pulser_range_drs4": [pulser_range_drs4_low, pulser_range_drs4_high],
+            "save_waveforms": save_waveforms,
+            "pulser_drs4_threshold": pulser_drs4_threshold,
+            "pulser_channel": pulser_channel,
+            "trigger_channel": trigger_channel
         }
 
     def LoadRunInfo(self):
@@ -171,6 +177,25 @@ class Run(Elementary):
         else:
             self.RunInfo = default_info
             return 0
+
+    def _SetDiamondName(self):
+        aliasParser = ConfigParser.ConfigParser()
+        aliasParser.read('Configuration/DiamondAliases.cfg')
+        try:
+            diamondname1 = aliasParser.get('ALIASES', self.RunInfo["diamond 1"])
+        except:
+            diamondname1 = self.RunInfo["diamond 1"]
+            print "\nInfo: Diamond '{dia}' Alias not found in Configuration/DiamondAliases.cfg\n".format(dia=self.RunInfo["diamond 1"])
+        try:
+            diamondname2 = aliasParser.get('ALIASES', self.RunInfo["diamond 2"])
+        except:
+            diamondname2 = self.RunInfo["diamond 2"]
+            print "\nInfo: Diamond '{dia}' Alias not found in Configuration/DiamondAliases.cfg\n".format(dia=self.RunInfo["diamond 2"])
+
+        self.diamondname = {
+            0: diamondname1,
+            3: diamondname2
+        }
 
     def CalculateRate(self, maskfilename=""):
         self.VerbosePrint("Calculate rate from mask file:\n\t"+self.RunInfo["mask"])

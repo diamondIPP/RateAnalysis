@@ -33,6 +33,7 @@ for runplanNr in runplans:
 
     # make AnalysisCollection object of selected runs:
     rate_analyses[runplanNr] = AnalysisCollection(myselection, maskfilename=mask[runplanNr])
+    rate_analyses[runplanNr].MakeGlobalPedestalCorrections()
 
     # PREANALYSIS plots:
     # myselection.SetSaveDirectory("Results/{runplan}/PreAnalysis/".format(runplan=runplanType+str(runplanNr)))
@@ -41,7 +42,7 @@ for runplanNr in runplans:
     # rate_analyses[runplanNr].ShowPulserRates()
 
     # do some stuff for each run individually:
-    for run in rate_analyses[runplanNr].collection.keys():
+    # for run in rate_analyses[runplanNr].collection.keys():
         # myselection.SetSaveDirectory("Results/{runplan}/SignalMaps/".format(runplan=runplanType+str(runplanNr)))
         # rate_analyses[runplanNr].collection[run].ShowSignalMaps(saveplots=True)
         #
@@ -56,7 +57,6 @@ for runplanNr in runplans:
         #
         # myselection.SetSaveDirectory("Results/{runplan}/Overview/".format(runplan=runplanType+str(runplanNr)))
         # rate_analyses[runplanNr].collection[run]._ShowPreAnalysisOverview(savePlot=True)
-        rate_analyses[runplanNr].collection[run].MakeGlobalPedestalCorrection()
 
     # create Signal_VS_Rate plot:
     myselection.SetSaveDirectory("Results/{runplan}/".format(runplan=runplanType+str(runplanNr)))

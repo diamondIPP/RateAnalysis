@@ -264,7 +264,7 @@ class AnalysisCollection(Elementary):
                 if method == "peak":
                     peakpos = tmpsignalhisto.GetBinCenter(tmpsignalhisto.GetMaximumBin())
                     results[runnumber][channel]["signal"] = peakpos
-                    results[runnumber][channel]["error"]  = self.collection[runnumber].pedestalSigma
+                    results[runnumber][channel]["error"]  = self.collection[runnumber].pedestalSigma[channel]
                 self.graphs[channel].SetPoint(i, self.collection[runnumber].run.RunInfo["measured flux"], results[runnumber][channel]["signal"])
                 self.graphs[channel].SetPointError(i, 0, results[runnumber][channel]["error"])
 
@@ -719,3 +719,11 @@ class AnalysisCollection(Elementary):
                 Diamond2=self.collection[run].run.GetDiamondName(3).ljust(8), Bias2=str(self.collection[run].run.bias[3]).zfill(5), Selected2=str(self.collection[run].run.analyzeCh[3]).ljust(5),
                 Type=self.collection[run].run.RunInfo["type"])
         print contentstring
+
+    def MakeGlobalPedestalCorrections(self, channel=None):
+        for run in self.collection.keys():
+            self.collection[run].MakeGlobalPedestalCorrection(channel=channel)
+
+    def SetIndividualCuts(self, showOverview=True, savePlot=False):
+        for run in self.collection.keys():
+            self.collection[run].SetIndividualCuts(showOverview=showOverview, savePlot=savePlot)
