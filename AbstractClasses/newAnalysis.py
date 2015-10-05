@@ -165,11 +165,17 @@ class Analysis(Elementary):
     def GetSignalDefinition(self, channel=None):
 
         if channel == None:
+            assert(not self.Checklist["GlobalPedestalCorrection"][0] and not self.Checklist["GlobalPedestalCorrection"][3]), "GetSignalDefinition() not available for undefined channel and Global Pedestal Correction"
             return self.signalname+"[{channel}]"
         else:
             assert(channel in [0,3])
             return self.signaldefinition[channel]
 
+    def _GlobalPedestalSubtractionString(self, channel):
+        if self.Checklist["GlobalPedestalCorrection"][channel]:
+            return "-("+str(self.pedestalFitMean[channel])+")"
+        else:
+            return ""
 
     def GetCut(self, channel, gen_PulserCut=True, gen_EventRange=True, gen_ExcludeFirst=True):
         '''
@@ -517,7 +523,11 @@ class Analysis(Elementary):
         :param logy:
         :return:
         '''
-        self._ShowHisto(self.pedestalname+"[{channel}]", channel=channel, canvas=canvas, drawoption=drawoption, color=color, cut=cut, normalized=normalized, infoid="PedestalHisto", drawruninfo=drawruninfo, binning=binning, xmin=xmin, xmax=xmax,savePlots=savePlots, logy=logy)
+        if channel != None:
+            pedestalname = self.pedestaldefinition[channel]
+        else:
+            pedestalname = self.pedestalname+"[{channel}]"
+        self._ShowHisto(pedestalname, channel=channel, canvas=canvas, drawoption=drawoption, color=color, cut=cut, normalized=normalized, infoid="PedestalHisto", drawruninfo=drawruninfo, binning=binning, xmin=xmin, xmax=xmax,savePlots=savePlots, logy=logy)
 
     def ShowMedianHisto(self, channel=None, canvas=None, drawoption="", color=None, normalized=True, drawruninfo=True, binning=100, xmin=-30, xmax=30, savePlots=False, logy=True):
         '''
@@ -1704,16 +1714,24 @@ class Analysis(Elementary):
 
         self.snr_canvas = ROOT.TCanvas("SNR_canvas", "SNR Canvas")
 
+        if signaldefinition == None:
+            getsignaldefs = True
+        else:
+            getsignaldefs = False
+        if pedestaldefinition == None:
+            getpedestaldefs = True
+        else:
+            getpedestaldefs = False
+
         channels = self.GetChannels(channel=channel)
 
         SNRs = []
 
         for ch in channels:
-            if signaldefinition==None:
-                signaldefinition = self.signaldefinition[ch]
-            if pedestaldefinition == None:
+            if getsignaldefs:
+                signaldefinition = self.GetSignalDefinition(channel=ch)
+            if getpedestaldefs:
                 pedestaldefinition = self.pedestaldefinition[ch]
-
 
             self.ResetColorPalette()
             self._ShowHisto(pedestaldefinition, channel=ch, canvas=self.snr_canvas, drawoption="", color=None, cut=cut, normalized=False, infoid="SNRPedestalHisto", drawruninfo=False, binning=binning, xmin=xmin, xmax=xmax,savePlots=False, logy=logy)
@@ -1743,9 +1761,9 @@ class Analysis(Elementary):
                 self.SavePlots(savename="SNR"+name+".pdf", saveDir="SNR/pdf/", canvas=self.snr_canvas)
                 self.SavePlots(savename="SNR"+name+".root", saveDir="SNR/root/", canvas=self.snr_canvas)
 
-        return  SNRs
+        return  SNRs if len(SNRs)>1 else SNRs[0]
 
-    def MakeSNRAnalyis(self, channel=0, name="", binning=1000, xmin=-500, xmax=500):
+    def MakeSNRAnalyis(self, channel, name="", binning=1000, xmin=-500, xmax=500):
         name = name+str(self.run.run_number)+str(channel)
         cut = self.GetCut(channel=channel)
         SNRs = {}
@@ -1765,62 +1783,62 @@ class Analysis(Elementary):
             "c3": "sig_integral3[{channel}]-ped_min_integral3[{channel}]",
         }
 
-        for windowname in windownames:
-
-            for integralname in integralnames:
-
-                SNRs[windowname+integralname] = self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestaldefinition="ped_min_integral"+integralname+channelstring, name=name+"_"+windowname+integralname, binning=binning, xmin=xmin, xmax=xmax, channel=channel)
-
-                if windowname=="c":
-                    SNRs[windowname+integralname+"b"] = self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestaldefinition="ped_min_integral"+integralname+channelstring, cut=cut+"&&sig_time[{channel}]<250", name=name+"_"+windowname+integralname+"b", binning=binning, xmin=xmin, xmax=xmax, channel=channel)
+        # for windowname in windownames:
+        #
+        #     for integralname in integralnames:
+        #
+        #         SNRs[windowname+integralname] = self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestaldefinition="ped_min_integral"+integralname+channelstring, name=name+"_"+windowname+integralname, binning=binning, xmin=xmin, xmax=xmax, channel=channel)
+        #
+        #         if windowname=="c":
+        #             SNRs[windowname+integralname+"b"] = self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestaldefinition="ped_min_integral"+integralname+channelstring, cut=cut+"&&sig_time[{channel}]<250", name=name+"_"+windowname+integralname+"b", binning=binning, xmin=xmin, xmax=xmax, channel=channel)
 
         signaldefs2 = {
             "spread": "sig_spread[{channel}]",
             "int":  "sig_int[{channel}]-ped_min_int[{channel}]"
         }
 
-        for key in ["int"]:#signaldefs2:
+        for key in ["spread"]:#signaldefs2:
 
-            SNRs[key] = self.CalculateSNR(signaldefinition=signaldefs2[key], pedestaldefinition="ped_min_"+key+channelstring, name=name+"_"+key, binning=binning, xmin=xmin, xmax=xmax, channel=channel)
-            SNRs[key+"-b"] = self.CalculateSNR(signaldefinition=signaldefs2[key], pedestaldefinition="ped_min_"+key+channelstring, name=name+"_"+key+"-b", cut=cut+"&&sig_time[{channel}]<250", binning=binning, xmin=xmin, xmax=xmax, channel=channel)
+            SNRs[key] = self.CalculateSNR(signaldefinition=signaldefs2[key], pedestaldefinition="ped_"+key+channelstring, name=name+"_"+key, binning=binning, xmin=xmin, xmax=xmax, channel=channel, fitwindow=20)
+            SNRs[key+"-b"] = self.CalculateSNR(signaldefinition=signaldefs2[key], pedestaldefinition="ped_"+key+channelstring, name=name+"_"+key+"-b", cut=cut+"&&sig_time[{channel}]<250", binning=binning, xmin=xmin, xmax=xmax, channel=channel, fitwindow=20)
 
         # for key in SNRs.keys():
         #     print key, " - ", SNRs[key]
 
         print "OUTPUT:"
-        print "a1"
-        print "a2"
-        print "a3"
-        print "b1"
-        print "b2"
-        print "b3"
-        print "c1"
-        print "c2"
-        print "c3"
-        print "c1b"
-        print "c2b"
-        print "c3b"
+        # print "a1"
+        # print "a2"
+        # print "a3"
+        # print "b1"
+        # print "b2"
+        # print "b3"
+        # print "c1"
+        # print "c2"
+        # print "c3"
+        # print "c1b"
+        # print "c2b"
+        # print "c3b"
         print "spread"
         print "spread-b"
-        print "int"
-        print "int-b"
+        # print "int"
+        # print "int-b"
 
-        print SNRs["a1"]
-        print SNRs["a2"]
-        print SNRs["a3"]
-        print SNRs["b1"]
-        print SNRs["b2"]
-        print SNRs["b3"]
-        print SNRs["c1"]
-        print SNRs["c2"]
-        print SNRs["c3"]
-        print SNRs["c1b"]
-        print SNRs["c2b"]
-        print SNRs["c3b"]
-        print "spread"#SNRs["spread"]
-        print "spread-b"#SNRs["spread-b"]
-        print SNRs["int"]
-        print SNRs["int-b"]
+        # print SNRs["a1"]
+        # print SNRs["a2"]
+        # print SNRs["a3"]
+        # print SNRs["b1"]
+        # print SNRs["b2"]
+        # print SNRs["b3"]
+        # print SNRs["c1"]
+        # print SNRs["c2"]
+        # print SNRs["c3"]
+        # print SNRs["c1b"]
+        # print SNRs["c2b"]
+        # print SNRs["c3b"]
+        print SNRs["spread"]
+        print SNRs["spread-b"]
+        # print SNRs["int"]
+        # print SNRs["int-b"]
 
 
     def MakeGlobalPedestalCorrection(self, channel=None):
@@ -1828,12 +1846,13 @@ class Analysis(Elementary):
         channels = self.GetChannels(channel=channel)
 
         for ch in channels:
-            self.CalculateSNR(channel=ch, signaldefinition=None, pedestaldefinition=None, fitwindow=20, savePlots=True, name="GlobalPedestalCorrection")
+            if not self.Checklist["GlobalPedestalCorrection"][ch]:
+                self.CalculateSNR(channel=ch, signaldefinition=None, pedestaldefinition=None, fitwindow=20, savePlots=True, name="GlobalPedestalCorrection")
 
-            self.signaldefinition[ch] = self.signaldefinition[ch] + "-" + str(self.pedestalFitMean[ch])
-            self.pedestaldefinition[ch] = self.pedestaldefinition[ch] + "-" + str(self.pedestalFitMean[ch])
+                self.signaldefinition[ch] = self.signaldefinition[ch] + "-" + str(self.pedestalFitMean[ch])
+                self.pedestaldefinition[ch] = self.pedestaldefinition[ch] + "-" + str(self.pedestalFitMean[ch])
 
-            self.Checklist["GlobalPedestalCorrection"][ch] = True
+                self.Checklist["GlobalPedestalCorrection"][ch] = True
 
 
     def GetChannels(self, channel=None):
