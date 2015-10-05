@@ -42,11 +42,11 @@ for runplanNr in runplans:
 
     # do some stuff for each run individually:
     for run in rate_analyses[runplanNr].collection.keys():
-        myselection.SetSaveDirectory("Results/{runplan}/SignalMaps/".format(runplan=runplanType+str(runplanNr)))
-        rate_analyses[runplanNr].collection[run].ShowSignalMaps(saveplots=True)
-
-        myselection.SetSaveDirectory("Results/{runplan}/FFTc/".format(runplan=runplanType+str(runplanNr)))
-        rate_analyses[runplanNr].collection[run].ShowFFT(drawoption="col", cut=True, savePlots=True)
+        # myselection.SetSaveDirectory("Results/{runplan}/SignalMaps/".format(runplan=runplanType+str(runplanNr)))
+        # rate_analyses[runplanNr].collection[run].ShowSignalMaps(saveplots=True)
+        #
+        # myselection.SetSaveDirectory("Results/{runplan}/FFTc/".format(runplan=runplanType+str(runplanNr)))
+        # rate_analyses[runplanNr].collection[run].ShowFFT(drawoption="col", cut=True, savePlots=True)
 
         # myselection.SetSaveDirectory("Results/{runplan}/Cuts/".format(runplan=runplanType+str(runplanNr)))
         # rate_analyses[runplanNr].collection[run].ShowSignalHisto(savePlots=True, gridx=True, xmin=-50, xmax=200, binning=250)
@@ -56,10 +56,10 @@ for runplanNr in runplans:
         #
         # myselection.SetSaveDirectory("Results/{runplan}/Overview/".format(runplan=runplanType+str(runplanNr)))
         # rate_analyses[runplanNr].collection[run]._ShowPreAnalysisOverview(savePlot=True)
+        rate_analyses[runplanNr].collection[run].MakeGlobalPedestalCorrection()
 
-
-    # # create Signal_VS_Rate plot:
-    # myselection.SetSaveDirectory("Results/{runplan}/".format(runplan=runplanType+str(runplanNr)))
-    # rate_analyses[runplanNr].ShowSignalVSRate(canvas=rateScanCanvas)
-    # myselection.SavePlots(savename="SignalVSRate"+str(runplanNr)+".root", canvas=rateScanCanvas)
-    # myselection.SavePlots(savename="SignalVSRate"+str(runplanNr)+".png", canvas=rateScanCanvas)
+    # create Signal_VS_Rate plot:
+    myselection.SetSaveDirectory("Results/{runplan}/".format(runplan=runplanType+str(runplanNr)))
+    rate_analyses[runplanNr].ShowSignalVSRate(canvas=rateScanCanvas)
+    myselection.SavePlots(savename="SignalVSRate"+str(runplanNr)+".root", canvas=rateScanCanvas)
+    myselection.SavePlots(savename="SignalVSRate"+str(runplanNr)+".png", canvas=rateScanCanvas)

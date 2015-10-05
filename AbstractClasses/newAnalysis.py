@@ -1811,12 +1811,24 @@ class Analysis(Elementary):
         print SNRs["int-b"]
 
 
-    def MakeGlobalPedestalCorrection(self, channel=0):
+    def MakeGlobalPedestalCorrection(self, channel=None):
 
-        self.CalculateSNR(channel=channel, signaldefinition=None, pedestalname=None, fitwindow=20, savePlots=True, name="GlobalPedestalCorrection")
+        channels = self.GetChannels(channel=channel)
 
-        signaldefinition = self.signaldefinition
-        self.signaldefinition = signaldefinition + "-" + str(self.pedestalFitMean)
+        # TODO  account for double subtraction ! and self.signaldefinition has to be of type dict.. aaand pedestaldefinition has to be defined..
+
+        for ch in channels:
+            self.CalculateSNR(channel=ch, signaldefinition=None, pedestalname=None, fitwindow=20, savePlots=True, name="GlobalPedestalCorrection")
+
+            signaldefinition = self.signaldefinition
+            self.signaldefinition = signaldefinition + "-" + str(self.pedestalFitMean)
 
 
+    def GetChannels(self, channel=None):
 
+        if channel == None:
+            channels = self.run.GetChannels()
+        else:
+            channels = [channel]
+
+        return channels
