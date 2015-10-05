@@ -63,8 +63,8 @@ class PreAnalysisPlot(Elementary):
             print "Total Minutes: {tot} nbins={nbins}".format(tot=totalMinutes, nbins=nbins)
             signaltime = ROOT.TH2D("signaltime" ,"signaltime", nbins, 0, (endtime-starttime), 200, -100, 500)
             pedestaltime = ROOT.TH2D("pedestaltime" ,"pedestaltime", nbins, 0, (endtime-starttime), 200, -100, 500)
-            print "making PreAnalysis using\nSignal def:\n\t{signal}\nCut:\n\t{cut}".format(signal=self.analysis.signaldefinition, cut=self.analysis.GetCut(self.channel))
-            test = self.analysis.run.tree.Draw((self.analysis.signaldefinition+":(time-{starttime})>>signaltime").format(channel=self.channel, starttime=starttime), self.analysis.GetCut(self.channel), drawOption2D, self.analysis.GetNEventsCut(channel=self.channel), self.analysis.GetMinEventCut(channel=self.channel))
+            print "making PreAnalysis using\nSignal def:\n\t{signal}\nCut:\n\t{cut}".format(signal=self.analysis.signaldefinition[self.channel], cut=self.analysis.GetCut(self.channel))
+            test = self.analysis.run.tree.Draw((self.analysis.signaldefinition[self.channel]+":(time-{starttime})>>signaltime").format(channel=self.channel, starttime=starttime), self.analysis.GetCut(self.channel), drawOption2D, self.analysis.GetNEventsCut(channel=self.channel), self.analysis.GetMinEventCut(channel=self.channel))
             self.analysis.run.tree.Draw(self.analysis.pedestalname+"[{channel}]:(time-{starttime})>>pedestaltime".format(channel=self.channel, starttime=starttime), self.analysis.GetCut(self.channel), drawOption2D, self.analysis.GetNEventsCut(channel=self.channel), self.analysis.GetMinEventCut(channel=self.channel))
 
             print "starttime: ", starttime
@@ -113,9 +113,9 @@ class PreAnalysisPlot(Elementary):
             self.graph.GetXaxis().SetLabelSize(0.06)
             self.graph.GetXaxis().SetRangeUser(0, totalMinutes)
             if mode in ["mean", "Mean"]:
-                yTitlestr = "Mean Signal ({signalname})".format(signalname=(self.analysis.signaldefinition.format(channel=self.channel)) )
+                yTitlestr = "Mean Signal ({signalname})".format(signalname=(self.analysis.signaldefinition[self.channel]) )
             elif mode in ["fit", "Fit"]:
-                yTitlestr = "MPV of Signal fit ({signalname})".format(signalname=(self.analysis.signaldefinition.format(channel=self.channel)) )
+                yTitlestr = "MPV of Signal fit ({signalname})".format(signalname=(self.analysis.signaldefinition[self.channel]) )
             # self.graph.GetYaxis().SetRangeUser(ymin, ymax)
             self.graph.GetYaxis().SetTitleOffset(0.9)
             self.graph.GetYaxis().SetTitleSize(0.06)
@@ -135,10 +135,10 @@ class PreAnalysisPlot(Elementary):
             ROOT.gStyle.SetPalette(55) # rainbow palette
             ROOT.gStyle.SetNumberContours(200)
             pad = self.signalTimeCanvas.cd(2)
-            self.analysis.run.tree.Draw((self.analysis.signaldefinition+":(event_number)/1000>>signaltime2d{run}{channel}({bins}, {start}, {end}, 300, 0, 500)").format(bins=nbins, run=self.analysis.run.run_number, channel=self.channel, start=startevent/1000, end=endevent/1000), self.analysis.GetCut(self.channel), drawOption2D, self.analysis.GetNEventsCut(channel=self.channel), self.analysis.GetMinEventCut(channel=self.channel))
+            self.analysis.run.tree.Draw((self.analysis.signaldefinition[self.channel]+":(event_number)/1000>>signaltime2d{run}{channel}({bins}, {start}, {end}, 300, 0, 500)").format(bins=nbins, run=self.analysis.run.run_number, channel=self.channel, start=startevent/1000, end=endevent/1000), self.analysis.GetCut(self.channel), drawOption2D, self.analysis.GetNEventsCut(channel=self.channel), self.analysis.GetMinEventCut(channel=self.channel))
             self.signaltime2d = gROOT.FindObject("signaltime2d{run}{channel}".format(run=self.analysis.run.run_number, channel=self.channel))
             self.signaltime2d.SetStats(0)
-            self.signaltime2d.SetTitle("{signal} vs Event {cut}".format(signal=self.analysis.signaldefinition.format(channel=self.channel), cut="{"+self.analysis.GetUserCutString(channel=self.channel)+"}"))
+            self.signaltime2d.SetTitle("{signal} vs Event {cut}".format(signal=self.analysis.signaldefinition[self.channel], cut="{"+self.analysis.GetUserCutString(channel=self.channel)+"}"))
             self.signaltime2d.GetXaxis().SetLabelSize(0.06)
             self.signaltime2d.GetYaxis().SetLabelSize(0.06)
             self.signaltime2d.GetXaxis().SetTitle("event number / 1000")

@@ -73,7 +73,11 @@ class Analysis(Elementary):
         }
         self.RunInfo = copy.deepcopy(run.RunInfo)
 
-        self.Checklist = { # True if Plot was created # -> USED?!
+        self.Checklist = {
+            "GlobalPedestalCorrection": {
+                0:  False,
+                3:  False
+            },
             "RemoveBeamInterruptions": False,
             "LoadTrackData": False,
             "MeanSignalHisto": {
@@ -123,6 +127,8 @@ class Analysis(Elementary):
             0: Cut(self, 0),
             3: Cut(self, 3)
         }
+        self.pedestalFitMean = {}
+        self.pedestalSigma = {}
 
     def LoadConfig(self):
         configfile = "Configuration/AnalysisConfig_"+self.TESTCAMPAIGN+".cfg"
@@ -146,11 +152,24 @@ class Analysis(Elementary):
         self.minimum_bincontent = parser.getint("TRACKING", "min_bincontent")
         self.PadsBinning = parser.getint("TRACKING", "padBinning")
 
+        self.signaldefinition = {}
+        self.pedestaldefinition = {}
+        for ch in [0,3]:
+            if not self.pedestal_correction:
+                self.signaldefinition[ch] = self.signalname+"[{channel}]".format(channel=ch)
+            else:
+                self.signaldefinition[ch] = (self.signalname+"[{channel}]-"+self.pedestalname+"[{channel}]").format(channel=ch)
+            self.pedestaldefinition[ch] = self.pedestalname+"[{channel}]".format(channel=ch)
 
-        if not self.pedestal_correction:
-            self.signaldefinition = self.signalname+"[{channel}]"
+
+    def GetSignalDefinition(self, channel=None):
+
+        if channel == None:
+            return self.signalname+"[{channel}]"
         else:
-            self.signaldefinition = self.signalname+"[{channel}]-"+self.pedestalname+"[{channel}]"
+            assert(channel in [0,3])
+            return self.signaldefinition[channel]
+
 
     def GetCut(self, channel, gen_PulserCut=True, gen_EventRange=True, gen_ExcludeFirst=True):
         '''
@@ -173,10 +192,8 @@ class Analysis(Elementary):
         For these plots is no tracking information required.
         :return:
         '''
-        if channel != None:
-            channels = [channel]
-        else:
-            channels = self.run.GetChannels()
+        channels = self.GetChannels(channel=channel)
+
         #c1 = ROOT.TCanvas("c1", "c1")
         if not hasattr(self, "preAnalysis"):
             self.preAnalysis = {}
@@ -267,10 +284,7 @@ class Analysis(Elementary):
             True to save the generated scatter plots
         :return:
         '''
-        if channel != None:
-            channels = [channel]
-        else:
-            channels = self.run.GetChannels()
+        channels = self.GetChannels(channel=channel)
 
         if drawoption in ["MC", "mc", "Mc", "mC"]:
             drawoption = ""
@@ -484,7 +498,7 @@ class Analysis(Elementary):
         :param gridx:
         :return:
         '''
-        self._ShowHisto(self.signaldefinition, channel=channel, canvas=canvas, drawoption=drawoption, cut=cut, color=color, normalized=normalized, infoid="SignalHisto", drawruninfo=drawruninfo, binning=binning, xmin=xmin, xmax=xmax,savePlots=savePlots, logy=logy, gridx=gridx)
+        self._ShowHisto(self.GetSignalDefinition(channel=channel), channel=channel, canvas=canvas, drawoption=drawoption, cut=cut, color=color, normalized=normalized, infoid="SignalHisto", drawruninfo=drawruninfo, binning=binning, xmin=xmin, xmax=xmax,savePlots=savePlots, logy=logy, gridx=gridx)
 
     def ShowPedestalHisto(self, channel=None, canvas=None, drawoption="", color=None, normalized=True, drawruninfo=False, binning=600, xmin=None, xmax=None, savePlots=False, logy=False, cut=""):
         '''
@@ -568,10 +582,8 @@ class Analysis(Elementary):
         :param normalized:
         :return:
         '''
-        if channel != None:
-            channels = [channel]
-        else:
-            channels = self.run.GetChannels()
+        channels = self.GetChannels(channel=channel)
+
         if canvas == None:
             canvas = ROOT.TCanvas(infoid+"canvas")
             self.ResetColorPalette()
@@ -733,11 +745,7 @@ class Analysis(Elementary):
         :param RemoveLowStatBins:
         :return:
         '''
-        if channel != None:
-            assert (channel in self.run.GetChannels()), "channel not selected"
-            channels = [channel]
-        else:
-            channels = self.run.GetChannels()
+        channels = self.GetChannels(channel=channel)
 
         if not self.Checklist["LoadTrackData"]:
             self.LoadTrackData()
@@ -844,7 +852,7 @@ class Analysis(Elementary):
         ROOT.gStyle.SetPalette(53) # Dark Body Radiator palette
         ROOT.gStyle.SetNumberContours(999)
 
-        for channel in self.run.GetChannels():
+        for channel in channels:
             pad = self.signal_canvas.cd(channels.index(channel)+1)
             # Plot the Signal2D TH2D histogram
 
@@ -1355,10 +1363,7 @@ class Analysis(Elementary):
 
     def _ShowPreAnalysisOverview(self, channel = None, savePlot=True):
 
-        if channel == None:
-            channels = self.run.GetChannels()
-        else:
-            channels = [channel]
+        channels = self.GetChannels(channel=channel)
 
         for ch in channels:
             self.pAOverviewCanv = ROOT.TCanvas("PAOverviewCanvas", "PAOverviewCanvas", 1500, 900)
@@ -1634,7 +1639,7 @@ class Analysis(Elementary):
             else:
                 thiscut = cut.format(channel=ch)
 
-            self.Draw(("("+self.signaldefinition+"):sig_time[{channel}]>>signalposition{run}{channel}({bins}, {low}, {high}, 600, -100, 500)").format(channel=ch, run=self.run.run_number, bins=binning, low=min_, high=max_), thiscut, "colz")
+            self.Draw(("("+self.signaldefinition[ch]+"):sig_time[{channel}]>>signalposition{run}{channel}({bins}, {low}, {high}, 600, -100, 500)").format(channel=ch, run=self.run.run_number, bins=binning, low=min_, high=max_), thiscut, "colz")
             hist = ROOT.gROOT.FindObject("signalposition{run}{channel}".format(channel=ch, run=self.run.run_number))
             pad.SetLogz()
             pad.SetGridx()
@@ -1645,7 +1650,7 @@ class Analysis(Elementary):
                 hist.GetXaxis().SetTitleSize(0.05)
                 hist.GetXaxis().SetLabelSize(0.05)
                 hist.GetXaxis().SetNdivisions(20)
-                hist.GetYaxis().SetTitle("Pulse Height ({sigdef})".format(sigdef=self.signaldefinition.format(channel=ch)))
+                hist.GetYaxis().SetTitle("Pulse Height ({sigdef})".format(sigdef=self.signaldefinition[ch].format(channel=ch)))
                 hist.GetYaxis().SetTitleSize(0.05)
                 hist.GetYaxis().SetLabelSize(0.05)
             self.DrawRunInfo(channel=ch, canvas=pad, infoid="peakpos{run}{ch}".format(run=self.run.run_number, ch=ch), userWidth=0.15, userHeight=0.15)
@@ -1695,50 +1700,57 @@ class Analysis(Elementary):
         '''
         self.run.tree.Draw(varexp, selection, drawoption, nentries, firstentry)
 
-    def CalculateSNR(self, channel=0, signaldefinition=None, pedestalname=None, logy=True, cut="", name="", fitwindow=40, binning=1000, xmin=-500, xmax=500, savePlots=True):
+    def CalculateSNR(self, channel=None, signaldefinition=None, pedestaldefinition=None, logy=True, cut="", name="", fitwindow=40, binning=1000, xmin=-500, xmax=500, savePlots=True):
 
         self.snr_canvas = ROOT.TCanvas("SNR_canvas", "SNR Canvas")
 
-        if signaldefinition==None:
-            signaldefinition = self.signaldefinition
-        if pedestalname == None:
-            pedestalname = self.pedestalname
+        channels = self.GetChannels(channel=channel)
+
+        SNRs = []
+
+        for ch in channels:
+            if signaldefinition==None:
+                signaldefinition = self.signaldefinition[ch]
+            if pedestaldefinition == None:
+                pedestaldefinition = self.pedestaldefinition[ch]
 
 
-        self.ResetColorPalette()
-        self._ShowHisto(pedestalname+"[{channel}]", channel=channel, canvas=self.snr_canvas, drawoption="", color=None, cut=cut, normalized=False, infoid="SNRPedestalHisto", drawruninfo=False, binning=binning, xmin=xmin, xmax=xmax,savePlots=False, logy=logy)
-        self._ShowHisto(signaldefinition, channel=channel, canvas=self.snr_canvas, drawoption="sames", color=None, cut=cut, normalized=False, infoid="SNRSignalHisto", drawruninfo=False, binning=binning, xmin=xmin, xmax=xmax,savePlots=False, logy=logy)
+            self.ResetColorPalette()
+            self._ShowHisto(pedestaldefinition, channel=ch, canvas=self.snr_canvas, drawoption="", color=None, cut=cut, normalized=False, infoid="SNRPedestalHisto", drawruninfo=False, binning=binning, xmin=xmin, xmax=xmax,savePlots=False, logy=logy)
+            self._ShowHisto(signaldefinition, channel=ch, canvas=self.snr_canvas, drawoption="sames", color=None, cut=cut, normalized=False, infoid="SNRSignalHisto", drawruninfo=False, binning=binning, xmin=xmin, xmax=xmax,savePlots=False, logy=logy)
 
-        pedestalhisto = ROOT.gROOT.FindObject("{dia}_SNRPedestalHisto{run}".format(dia=self.run.diamondname[channel], run=self.run.run_number))
-        signalhisto = ROOT.gROOT.FindObject("{dia}_SNRSignalHisto{run}".format(dia=self.run.diamondname[channel], run=self.run.run_number))
+            pedestalhisto = ROOT.gROOT.FindObject("{dia}_SNRPedestalHisto{run}".format(dia=self.run.diamondname[ch], run=self.run.run_number))
+            signalhisto = ROOT.gROOT.FindObject("{dia}_SNRSignalHisto{run}".format(dia=self.run.diamondname[ch], run=self.run.run_number))
 
-        ped_peakpos = pedestalhisto.GetBinCenter(pedestalhisto.GetMaximumBin())
+            ped_peakpos = pedestalhisto.GetBinCenter(pedestalhisto.GetMaximumBin())
 
-        pedestalhisto.Fit("gaus", "","",ped_peakpos-fitwindow/2.,ped_peakpos+fitwindow/2.)
-        fitfunc = pedestalhisto.GetFunction("gaus")
-        self.pedestalFitMean = fitfunc.GetParameter(1)
-        self.pedestalSigma = fitfunc.GetParameter(2)
+            pedestalhisto.Fit("gaus", "","",ped_peakpos-fitwindow/2.,ped_peakpos+fitwindow/2.)
+            fitfunc = pedestalhisto.GetFunction("gaus")
+            self.pedestalFitMean[ch] = fitfunc.GetParameter(1)
+            self.pedestalSigma[ch] = fitfunc.GetParameter(2)
 
-        signalmean = signalhisto.GetMean()
+            signalmean = signalhisto.GetMean()
 
-        SNR = signalmean/self.pedestalSigma
-        print "\n"
-        print "\tSNR = ", SNR
-        print "\n"
+            SNR = signalmean/self.pedestalSigma[ch]
+            print "\n"
+            print "\tSNR = ", SNR
+            print "\n"
+            SNRs += [SNR]
 
-        self.DrawRunInfo(channel=channel, canvas=self.snr_canvas, comment="SNR: "+str(SNR))
-        if savePlots:
-            self.SavePlots(savename="SNR"+name+".png", saveDir="SNR/", canvas=self.snr_canvas)
-            self.SavePlots(savename="SNR"+name+".pdf", saveDir="SNR/pdf/", canvas=self.snr_canvas)
-            self.SavePlots(savename="SNR"+name+".root", saveDir="SNR/root/", canvas=self.snr_canvas)
+            self.DrawRunInfo(channel=ch, canvas=self.snr_canvas, comment="SNR: "+str(SNR))
+            if savePlots:
+                self.SavePlots(savename="SNR"+name+".png", saveDir="SNR/", canvas=self.snr_canvas)
+                self.SavePlots(savename="SNR"+name+".pdf", saveDir="SNR/pdf/", canvas=self.snr_canvas)
+                self.SavePlots(savename="SNR"+name+".root", saveDir="SNR/root/", canvas=self.snr_canvas)
 
-        return  SNR
+        return  SNRs
 
     def MakeSNRAnalyis(self, channel=0, name="", binning=1000, xmin=-500, xmax=500):
         name = name+str(self.run.run_number)+str(channel)
         cut = self.GetCut(channel=channel)
         SNRs = {}
 
+        channelstring = "[{channel}]"
         windownames = ["a", "b", "c"]
         integralnames = ["1", "2", "3"]
         signaldefs = {
@@ -1757,10 +1769,10 @@ class Analysis(Elementary):
 
             for integralname in integralnames:
 
-                SNRs[windowname+integralname] = self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestalname="ped_min_integral"+integralname, name=name+"_"+windowname+integralname, binning=binning, xmin=xmin, xmax=xmax, channel=channel)
+                SNRs[windowname+integralname] = self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestaldefinition="ped_min_integral"+integralname+channelstring, name=name+"_"+windowname+integralname, binning=binning, xmin=xmin, xmax=xmax, channel=channel)
 
                 if windowname=="c":
-                    SNRs[windowname+integralname+"b"] = self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestalname="ped_min_integral"+integralname, cut=cut+"&&sig_time[{channel}]<250", name=name+"_"+windowname+integralname+"b", binning=binning, xmin=xmin, xmax=xmax, channel=channel)
+                    SNRs[windowname+integralname+"b"] = self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestaldefinition="ped_min_integral"+integralname+channelstring, cut=cut+"&&sig_time[{channel}]<250", name=name+"_"+windowname+integralname+"b", binning=binning, xmin=xmin, xmax=xmax, channel=channel)
 
         signaldefs2 = {
             "spread": "sig_spread[{channel}]",
@@ -1769,8 +1781,8 @@ class Analysis(Elementary):
 
         for key in ["int"]:#signaldefs2:
 
-            SNRs[key] = self.CalculateSNR(signaldefinition=signaldefs2[key], pedestalname="ped_min_"+key, name=name+"_"+key, binning=binning, xmin=xmin, xmax=xmax, channel=channel)
-            SNRs[key+"-b"] = self.CalculateSNR(signaldefinition=signaldefs2[key], pedestalname="ped_min_"+key, name=name+"_"+key+"-b", cut=cut+"&&sig_time[{channel}]<250", binning=binning, xmin=xmin, xmax=xmax, channel=channel)
+            SNRs[key] = self.CalculateSNR(signaldefinition=signaldefs2[key], pedestaldefinition="ped_min_"+key+channelstring, name=name+"_"+key, binning=binning, xmin=xmin, xmax=xmax, channel=channel)
+            SNRs[key+"-b"] = self.CalculateSNR(signaldefinition=signaldefs2[key], pedestaldefinition="ped_min_"+key+channelstring, name=name+"_"+key+"-b", cut=cut+"&&sig_time[{channel}]<250", binning=binning, xmin=xmin, xmax=xmax, channel=channel)
 
         # for key in SNRs.keys():
         #     print key, " - ", SNRs[key]
@@ -1815,13 +1827,13 @@ class Analysis(Elementary):
 
         channels = self.GetChannels(channel=channel)
 
-        # TODO  account for double subtraction ! and self.signaldefinition has to be of type dict.. aaand pedestaldefinition has to be defined..
-
         for ch in channels:
-            self.CalculateSNR(channel=ch, signaldefinition=None, pedestalname=None, fitwindow=20, savePlots=True, name="GlobalPedestalCorrection")
+            self.CalculateSNR(channel=ch, signaldefinition=None, pedestaldefinition=None, fitwindow=20, savePlots=True, name="GlobalPedestalCorrection")
 
-            signaldefinition = self.signaldefinition
-            self.signaldefinition = signaldefinition + "-" + str(self.pedestalFitMean)
+            self.signaldefinition[ch] = self.signaldefinition[ch] + "-" + str(self.pedestalFitMean[ch])
+            self.pedestaldefinition[ch] = self.pedestaldefinition[ch] + "-" + str(self.pedestalFitMean[ch])
+
+            self.Checklist["GlobalPedestalCorrection"][ch] = True
 
 
     def GetChannels(self, channel=None):

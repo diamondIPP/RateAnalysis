@@ -251,7 +251,7 @@ class AnalysisCollection(Elementary):
                 results[runnumber] = {}
                 print "Signal VS Rate: Processing Run {run} (Rate: {rate}) - Channel {channel}".format(run=runnumber, channel=channel, rate=self.collection[runnumber].run.RunInfo["measured flux"])
                 results[runnumber][channel] = {}
-                self.collection[runnumber].run.tree.Draw((self.collection[runnumber].signaldefinition+">>tmpsignalhisto").format(channel=channel), self.collection[runnumber].GetCut(channel), "", self.collection[runnumber].GetNEventsCut(channel=channel), self.collection[runnumber].GetMinEventCut(channel=channel))
+                self.collection[runnumber].run.tree.Draw((self.collection[runnumber].signaldefinition[channel]+">>tmpsignalhisto"), self.collection[runnumber].GetCut(channel), "", self.collection[runnumber].GetNEventsCut(channel=channel), self.collection[runnumber].GetMinEventCut(channel=channel))
                 if method == "mean":
                     results[runnumber][channel]["signal"] = tmpsignalhisto.GetMean()
                     results[runnumber][channel]["error"] = tmpsignalhisto.GetRMS()/np.sqrt(tmpsignalhisto.GetEntries())
@@ -278,7 +278,7 @@ class AnalysisCollection(Elementary):
                 self.ratecanvas.SetGridx()
                 self.ratecanvas.SetGridy()
                 self.graphs[channel].GetYaxis().SetRangeUser(0, 200)
-                self.graphs[channel].GetYaxis().SetTitle("Mean Signal ({signal})".format(signal=self.collection[runnumbers[0]].signaldefinition.format(channel="")))
+                self.graphs[channel].GetYaxis().SetTitle("Mean Signal ({signal})".format(signal=self.collection[runnumbers[0]].signalname))
                 self.graphs[channel].GetXaxis().SetTitle("Rate / kHz")
                 self.graphs[channel].GetXaxis().SetLimits(1, 7000)
             self.graphs[channel].SetLineColor(color)
