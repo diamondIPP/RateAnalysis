@@ -1849,8 +1849,8 @@ class Analysis(Elementary):
         print SNRs["c3b"]
         print "spread"#SNRs["spread"]
         print "spread-b"#SNRs["spread-b"]
-        print "int"#SNRs["int"]
-        print "int-b"#SNRs["int-b"]
+        print SNRs["int"]
+        print SNRs["int-b"]
 
 
     def MakeGlobalPedestalCorrection(self, channel=None):
