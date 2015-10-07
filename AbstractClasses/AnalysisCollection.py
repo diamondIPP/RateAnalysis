@@ -727,3 +727,54 @@ class AnalysisCollection(Elementary):
     def SetIndividualCuts(self, showOverview=True, savePlot=False):
         for run in self.collection.keys():
             self.collection[run].SetIndividualCuts(showOverview=showOverview, savePlot=savePlot)
+
+    def AnalyzePedestalContribution(self, channel, refactor=5):
+        '''
+        Example:
+            sel = RunSelection()
+            sel.SelectRunsFromRunPlan(12)
+            sel.UnSelectUnlessInRange(439, 446)
+            coll = AnalysisCollection(sel)
+            coll.AnalyzePedestalContribution(3)
+        :param channel:
+        :param refactor:
+        :return:
+        '''
+        self.SetSaveDirectory("Results/Pedestal_Analysis/")
+        self.pedestalresults = {
+            "full": ROOT.TGraph(),
+            "no_tail": ROOT.TGraph(),
+            "no_ped": ROOT.TGraph()
+        }
+        colors = {
+            "full": ROOT.kRed,
+            "no_tail": ROOT.kBlue,
+            "no_ped": ROOT.kGreen
+        }
+        for key in self.pedestalresults.keys():
+            self.pedestalresults[key].SetNameTitle("Scan_Mean_"+key, "Scan_Mean_"+key)
+            self.pedestalresults[key].SetLineColor(colors[key])
+
+        i = 0
+        for run in self.collection.keys():
+            self.collection[run].CalculateSNR(channel=channel)
+            fullsignalhisto = self.collection[run].snr_canvas.GetPrimitive("{dia}_SNRSignalHisto{run}".format(dia=self.collection[run].run.diamondname[channel], run=self.collection[run].run.run_number))
+            self.SavePlots(savename="SignalHisto_full_{run}{ch}.png".format(run=run, ch=channel), canvas=self.collection[run].snr_canvas)
+            self.SavePlots(savename="SignalHisto_full_{run}{ch}.root".format(run=run, ch=channel), subDir="root",canvas=self.collection[run].snr_canvas)
+            mean_full = fullsignalhisto.GetMean()
+            mean, mean_nopedestal = self.collection[run].AnalyzePedestalContribution(channel=channel, refactor=refactor)
+            self.SavePlots(savename="SignalHisto_fit_{run}{ch}.png".format(run=run, ch=channel), canvas=self.collection[run].signalpedestalcanvas)
+            self.SavePlots(savename="SignalHisto_fit_{run}{ch}.root".format(run=run, ch=channel), subDir="root",canvas=self.collection[run].signalpedestalcanvas)
+
+            self.pedestalresults["full"].SetPoint(i, self.collection[run].GetRate(), mean_full)
+            self.pedestalresults["no_tail"].SetPoint(i, self.collection[run].GetRate(), mean)
+            self.pedestalresults["no_ped"].SetPoint(i, self.collection[run].GetRate(), mean_nopedestal)
+            i += 1
+        
+
+        self.pedestal_analysis_canvas = ROOT.TCanvas("pedestal_analysis_canvas", "pedestal_analysis_canvas")
+        self.pedestalresults["full"].Draw("ALP")
+        self.pedestalresults["no_tail"].Draw("LP")
+        self.pedestalresults["no_ped"].Draw("LP")
+        self.pedestal_analysis_canvas.Update()
+        

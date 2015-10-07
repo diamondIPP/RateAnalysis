@@ -1401,8 +1401,12 @@ class Analysis(Elementary):
             medianPad = middlepad.cd(2)
             self.ShowMedianHisto(channel=ch, canvas=medianPad)
 
-            peakPosPad = rightPad.cd(3)
+            lowerPad = rightPad.cd(3)
+            lowerPad.Divide(2,1)
+            peakPosPad = lowerPad.cd(1)
             self.ShowPeakPosition(channel=ch, canvas=peakPosPad, savePlot=False)
+            sigpedPad = lowerPad.cd(2)
+            self.CalculateSNR(channel=ch, name="", savePlots=False, canvas=sigpedPad)
 
             if savePlot:
                 self.SavePlots(savename="Run{run}_PreAnalysisOverview_{dia}.png".format(run=self.run.run_number, dia=self.run.diamondname[ch]), subDir=self.run.diamondname[ch], canvas=self.pAOverviewCanv)
@@ -1710,9 +1714,12 @@ class Analysis(Elementary):
         '''
         self.run.tree.Draw(varexp, selection, drawoption, nentries, firstentry)
 
-    def CalculateSNR(self, channel=None, signaldefinition=None, pedestaldefinition=None, logy=True, cut="", name="", fitwindow=40, binning=1000, xmin=-500, xmax=500, savePlots=True):
+    def CalculateSNR(self, channel=None, signaldefinition=None, pedestaldefinition=None, logy=True, cut="", name="", fitwindow=40, binning=1000, xmin=-500, xmax=500, savePlots=True, canvas=None):
 
-        self.snr_canvas = ROOT.TCanvas("SNR_canvas", "SNR Canvas")
+        if canvas==None:
+            self.snr_canvas = ROOT.TCanvas("SNR_canvas", "SNR Canvas")
+        else:
+            self.snr_canvas = canvas
 
         if signaldefinition == None:
             getsignaldefs = True
@@ -1765,42 +1772,45 @@ class Analysis(Elementary):
 
     def MakeSNRAnalyis(self, channel, name="", binning=1000, xmin=-500, xmax=500):
         name = name+str(self.run.run_number)+str(channel)
-        cut = self.GetCut(channel=channel)
+        cut0 = self.GetCut(channel=channel)
+        cut = cut0
         SNRs = {}
 
         channelstring = "[{channel}]"
         windownames = ["a", "b", "c"]
         integralnames = ["1", "2", "3"]
         signaldefs = {
-            "a1": "sig_a1[{channel}]-ped_min_integral1[{channel}]",
-            "a2": "sig_a2[{channel}]-ped_min_integral2[{channel}]",
-            "a3": "sig_a3[{channel}]-ped_min_integral3[{channel}]",
-            "b1": "sig_b1[{channel}]-ped_min_integral1[{channel}]",
-            "b2": "sig_b2[{channel}]-ped_min_integral2[{channel}]",
-            "b3": "sig_b3[{channel}]-ped_min_integral3[{channel}]",
-            "c1": "sig_integral1[{channel}]-ped_min_integral1[{channel}]",
-            "c2": "sig_integral2[{channel}]-ped_min_integral2[{channel}]",
-            "c3": "sig_integral3[{channel}]-ped_min_integral3[{channel}]",
+            "a1": "sig_a1[{channel}]-ped_integral1[{channel}]",
+            "a2": "sig_a2[{channel}]-ped_integral2[{channel}]",
+            "a3": "sig_a3[{channel}]-ped_integral3[{channel}]",
+            "b1": "sig_b1[{channel}]-ped_integral1[{channel}]",
+            "b2": "sig_b2[{channel}]-ped_integral2[{channel}]",
+            "b3": "sig_b3[{channel}]-ped_integral3[{channel}]",
+            "c1": "sig_integral1[{channel}]-ped_integral1[{channel}]",
+            "c2": "sig_integral2[{channel}]-ped_integral2[{channel}]",
+            "c3": "sig_integral3[{channel}]-ped_integral3[{channel}]",
         }
 
         for windowname in windownames:
 
             for integralname in integralnames:
-
-                SNRs[windowname+integralname] = self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestaldefinition="ped_min_integral"+integralname+channelstring, name=name+"_"+windowname+integralname, binning=binning, xmin=xmin, xmax=xmax, channel=channel)
+                self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestaldefinition="ped_min_integral"+integralname+channelstring, name=name+"_"+windowname+integralname, binning=binning, xmin=xmin, xmax=xmax, channel=channel)
+                pedestal_5_sigma_range = [self.pedestalFitMean[channel]-5*self.pedestalSigma[channel], self.pedestalFitMean[channel]+5*self.pedestalSigma[channel]]
+                cut = cut0+"&&"+self.pedestalname+"[{channel}]>"+str(pedestal_5_sigma_range[0])+"&&"+self.pedestalname+"[{channel}]<"+str(pedestal_5_sigma_range[1])
+                SNRs[windowname+integralname] = self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestaldefinition="ped_min_integral"+integralname+channelstring, cut=cut, name=name+"_"+windowname+integralname, binning=binning, xmin=xmin, xmax=xmax, channel=channel)
 
                 if windowname=="c":
                     SNRs[windowname+integralname+"b"] = self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestaldefinition="ped_min_integral"+integralname+channelstring, cut=cut+"&&sig_time[{channel}]<250", name=name+"_"+windowname+integralname+"b", binning=binning, xmin=xmin, xmax=xmax, channel=channel)
 
         signaldefs2 = {
             "spread": "sig_spread[{channel}]",
-            "int":  "sig_int[{channel}]-ped_min_int[{channel}]"
+            "int":  "sig_int[{channel}]-ped_int[{channel}]"
         }
 
-        for key in ["int"]:#signaldefs2:
-
-            SNRs[key] = self.CalculateSNR(signaldefinition=signaldefs2[key], pedestaldefinition="ped_"+key+channelstring, name=name+"_"+key, binning=binning, xmin=xmin, xmax=xmax, channel=channel, fitwindow=20)
-            SNRs[key+"-b"] = self.CalculateSNR(signaldefinition=signaldefs2[key], pedestaldefinition="ped_"+key+channelstring, name=name+"_"+key+"-b", cut=cut+"&&sig_time[{channel}]<250", binning=binning, xmin=xmin, xmax=xmax, channel=channel, fitwindow=20)
+        # for key in ["int"]:#signaldefs2:
+        #
+        #     SNRs[key] = self.CalculateSNR(signaldefinition=signaldefs2[key], pedestaldefinition="ped_"+key+channelstring, name=name+"_"+key, binning=binning, xmin=xmin, xmax=xmax, channel=channel, fitwindow=40)
+        #     SNRs[key+"-b"] = self.CalculateSNR(signaldefinition=signaldefs2[key], pedestaldefinition="ped_"+key+channelstring, name=name+"_"+key+"-b", cut=cut+"&&sig_time[{channel}]<250", binning=binning, xmin=xmin, xmax=xmax, channel=channel, fitwindow=40)
 
         # for key in SNRs.keys():
         #     print key, " - ", SNRs[key]
@@ -1863,3 +1873,117 @@ class Analysis(Elementary):
             channels = [channel]
 
         return channels
+
+    def AnalyzePedestalContribution(self, channel, refactor=5):
+        self.pedestal_analysis_canvas = ROOT.TCanvas("pedestal_analysis_canvas", "pedestal_analysis_canvas")
+
+        cut = self.GetCut(channel=channel)
+        if not hasattr(self, "pedestalFitMean"):
+            self.CalculateSNR(channel=channel, signaldefinition=None, pedestaldefinition=None, logy=True, cut="", name="", fitwindow=40, binning=1000, xmin=-500, xmax=500, savePlots=False, canvas=None)
+        else:
+            if not self.pedestalFitMean.has_key(channel):
+                self.CalculateSNR(channel=channel, signaldefinition=None, pedestaldefinition=None, logy=True, cut="", name="", fitwindow=40, binning=1000, xmin=-500, xmax=500, savePlots=False, canvas=None)
+
+        sigma = self.pedestalSigma[channel]
+        pedestalmean = self.pedestalFitMean[channel]
+
+        self.pedestal_n_sigma_range = [pedestalmean-refactor*sigma, pedestalmean+refactor*sigma]
+
+        cut = cut+"&&"+self.pedestalname+"[{channel}]>"+str(self.pedestal_n_sigma_range[0])+"&&"+self.pedestalname+"[{channel}]<"+str(self.pedestal_n_sigma_range[1])
+        self.ShowSignalPedestalHisto(channel, canvas=self.pedestal_analysis_canvas, savePlots=False, cut=cut, normalized=False, drawruninfo=True, binning=1000, xmin=-500, xmax=500, logy=True, gridx=True)
+
+        histo = ROOT.gROOT.FindObject("{dia}_SignalHisto{run}".format(dia=self.run.diamondname[channel], run=self.run.run_number))
+        self.h_nopedestal = copy.deepcopy(histo)
+
+        landauMax = histo.GetMaximum()
+        landauMaxPos = histo.GetBinCenter(histo.GetMaximumBin())
+
+        xmin = pedestalmean-5*sigma-20
+        xmax = landauMaxPos+20
+        name = "{dia}_LandauGaus{run}".format(dia=self.run.diamondname[channel], run=self.run.run_number)
+
+
+        flandaupedestal = ROOT.TF1('f_%s'%name,'gaus(0)+landau(3)',xmin,xmax)
+        flandaupedestal.SetParLimits(0,-.001,landauMax*0.1)                 # gaus: height
+        flandaupedestal.SetParLimits(1,-5,0)                                # gaus: mean
+        flandaupedestal.SetParLimits(2,sigma*0.5,sigma*1.5)                 # gaus: sigma
+        flandaupedestal.SetParLimits(3,landauMax*0.5,landauMax*10)          # landau: height
+        flandaupedestal.SetParLimits(4,landauMaxPos*0.5,landauMaxPos*1.5)   # landau: MPV
+        flandaupedestal.SetParLimits(5,5,50)                                # landau: sigma
+        #flandaupedestal.FixParameter(1,0)
+
+        histo.Fit(flandaupedestal, "", "", xmin, xmax)
+        landaugausfit = histo.GetFunction("f_"+name)
+
+        fpedestal = ROOT.TF1('fped_%s'%name,'gaus',-500,500)
+        fpedestal.SetParLimits(1,-.001,0.001)
+        fpedestal.FixParameter(1,0)
+
+        for i in range(3):
+            fpedestal.SetParameter(i,landaugausfit.GetParameter(i))
+
+        fpedestal.SetLineColor(ROOT.kGreen)
+        fpedestal.Draw("same")
+
+        self.h_nopedestal.Add(fpedestal,-1)
+        self.h_nopedestal.SetLineColor(ROOT.kGray+3)
+        self.h_nopedestal.FindObject("stats").SetTextColor(ROOT.kGray+3)
+        self.h_nopedestal.SetName("{dia}_PedCorrected{run}".format(dia=self.run.diamondname[channel], run=self.run.run_number))
+        self.h_nopedestal.Draw("sames")
+        self.pedestal_analysis_canvas.Update()
+
+        mean = histo.GetMean()
+        mean_nopedestal = self.h_nopedestal.GetMean()
+
+        return mean, mean_nopedestal
+
+'''
+htemp = copy.deepcopy(histo)
+h_nopedestal = copy.deepcopy(histo)
+xmin = -.5
+xmax = 4
+fpedestal = ROOT.TF1('fped_%s'%name,'gaus',xmin,xmax)
+# print 'set par limits 1'
+fpedestal.SetParLimits(1,-.001,0.001)
+# print 'fix par limits 1'
+fpedestal.FixParameter(1,0)
+
+sigma = pedestal_width*refactor
+# print 'SIGMA is: ',pedestal_width,refactor,sigma
+# print 'set Par limits 2'
+fpedestal.SetParLimits(2,sigma*.01,sigma*1.001)
+# print 'fix Par 2'
+fpedestal.SetParameter(2,sigma)
+# print 'fit'
+bin = find_local_minimum_left_to(0,htemp)
+max_fit_range = htemp.GetXaxis().GetBinCenter(bin)
+htemp.Fit(fpedestal,'QB','',-.2,min(.1,max_fit_range))
+htemp.Fit(fpedestal,'QB','',-.2,min(.1,max_fit_range))
+fpedestal_full = fpedestal.Clone()
+fpedestal_full.SetRange(htemp.GetXaxis().GetXmin(),htemp.GetXaxis().GetXmax())
+fpedestal_full.SetLineStyle(2)
+
+h_nopedestal.Add(fpedestal_full,-1,'')
+h_nopedestal.SetLineColor(ROOT.kBlue)
+h_nopedestal.Draw('')
+
+c = ROOT.TCanvas()
+fit = htemp.FindObject("PrevFitTMP")
+fit.GetXmin()
+fit.GetXmax()
+fit2 = ROOT.TF1("fbkg","gaus",-500,500)
+for i in range(3):
+     fit2.SetParameter(i,fit.GetParameter(i+3))
+fit2.SetLineColor(ROOT.kGreen)
+fit2.Draw("same")
+htemp2 = htemp.Clone()
+htemp2.Add(fit2,-1)
+htemp2.SetLineColor(ROOT.kBlue)
+htemp2.Draw("same")
+htemp.GetMean()
+htemp2.GetMean()
+m = htemp.GetMean()
+m2 = htemp2.GetMean()
+d = m2-m
+d/m*100
+'''
