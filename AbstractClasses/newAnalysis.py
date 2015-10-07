@@ -1791,66 +1791,70 @@ class Analysis(Elementary):
             "c3": "sig_integral3[{channel}]-ped_integral3[{channel}]",
         }
 
-        for windowname in windownames:
-
-            for integralname in integralnames:
-                self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestaldefinition="ped_integral"+integralname+channelstring, name=name+"_"+windowname+integralname, binning=binning, xmin=xmin, xmax=xmax, channel=channel)
-                pedestal_5_sigma_range = [self.pedestalFitMean[channel]-5*self.pedestalSigma[channel], self.pedestalFitMean[channel]+5*self.pedestalSigma[channel]]
-                cut = cut0+"&&"+self.pedestalname+"[{channel}]>"+str(pedestal_5_sigma_range[0])+"&&"+self.pedestalname+"[{channel}]<"+str(pedestal_5_sigma_range[1])
-                SNRs[windowname+integralname] = self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestaldefinition="ped_integral"+integralname+channelstring, cut=cut, name=name+"_"+windowname+integralname, binning=binning, xmin=xmin, xmax=xmax, channel=channel)
-
-                if windowname=="c":
-                    SNRs[windowname+integralname+"b"] = self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestaldefinition="ped_integral"+integralname+channelstring, cut=cut+"&&sig_time[{channel}]<250", name=name+"_"+windowname+integralname+"b", binning=binning, xmin=xmin, xmax=xmax, channel=channel)
+        # for windowname in windownames:
+        #
+        #     for integralname in integralnames:
+        #         self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestaldefinition="ped_integral"+integralname+channelstring, name=name+"_"+windowname+integralname, binning=binning, xmin=xmin, xmax=xmax, channel=channel)
+        #         pedestal_5_sigma_range = [self.pedestalFitMean[channel]-5*self.pedestalSigma[channel], self.pedestalFitMean[channel]+5*self.pedestalSigma[channel]]
+        #         cut = cut0+"&&"+self.pedestalname+"[{channel}]>"+str(pedestal_5_sigma_range[0])+"&&"+self.pedestalname+"[{channel}]<"+str(pedestal_5_sigma_range[1])
+        #         SNRs[windowname+integralname] = self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestaldefinition="ped_integral"+integralname+channelstring, cut=cut, name=name+"_"+windowname+integralname, binning=binning, xmin=xmin, xmax=xmax, channel=channel)
+        #
+        #         if windowname=="c":
+        #             SNRs[windowname+integralname+"b"] = self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestaldefinition="ped_integral"+integralname+channelstring, cut=cut+"&&sig_time[{channel}]<250", name=name+"_"+windowname+integralname+"b", binning=binning, xmin=xmin, xmax=xmax, channel=channel)
 
         signaldefs2 = {
             "spread": "sig_spread[{channel}]",
             "int":  "sig_int[{channel}]-ped_int[{channel}]"
         }
 
-        for key in ["int"]:#signaldefs2:
-            self.CalculateSNR(signaldefinition=signaldefs2[key], pedestaldefinition="ped_"+key+channelstring, name=name+"_"+key, binning=binning, xmin=xmin, xmax=xmax, channel=channel, fitwindow=40)
-            pedestal_5_sigma_range = [self.pedestalFitMean[channel]-5*self.pedestalSigma[channel], self.pedestalFitMean[channel]+5*self.pedestalSigma[channel]]
-            cut = cut0+"&&"+self.pedestalname+"[{channel}]>"+str(pedestal_5_sigma_range[0])+"&&"+self.pedestalname+"[{channel}]<"+str(pedestal_5_sigma_range[1])
-            SNRs[key] = self.CalculateSNR(signaldefinition=signaldefs2[key], cut=cut, pedestaldefinition="ped_"+key+channelstring, name=name+"_"+key, binning=binning, xmin=xmin, xmax=xmax, channel=channel, fitwindow=40)
-            SNRs[key+"-b"] = self.CalculateSNR(signaldefinition=signaldefs2[key], pedestaldefinition="ped_"+key+channelstring, name=name+"_"+key+"-b", cut=cut+"&&sig_time[{channel}]<250", binning=binning, xmin=xmin, xmax=xmax, channel=channel, fitwindow=40)
-
+        # for key in ["int"]:#signaldefs2:
+        #     self.CalculateSNR(signaldefinition=signaldefs2[key], pedestaldefinition="ped_"+key+channelstring, name=name+"_"+key, binning=binning, xmin=xmin, xmax=xmax, channel=channel, fitwindow=40)
+        #     pedestal_5_sigma_range = [self.pedestalFitMean[channel]-5*self.pedestalSigma[channel], self.pedestalFitMean[channel]+5*self.pedestalSigma[channel]]
+        #     cut = cut0+"&&"+self.pedestalname+"[{channel}]>"+str(pedestal_5_sigma_range[0])+"&&"+self.pedestalname+"[{channel}]<"+str(pedestal_5_sigma_range[1])
+        #     SNRs[key] = self.CalculateSNR(signaldefinition=signaldefs2[key], cut=cut, pedestaldefinition="ped_"+key+channelstring, name=name+"_"+key, binning=binning, xmin=xmin, xmax=xmax, channel=channel, fitwindow=40)
+        #     SNRs[key+"-b"] = self.CalculateSNR(signaldefinition=signaldefs2[key], pedestaldefinition="ped_"+key+channelstring, name=name+"_"+key+"-b", cut=cut+"&&sig_time[{channel}]<250", binning=binning, xmin=xmin, xmax=xmax, channel=channel, fitwindow=40)
+        key = "spread"
+        self.MakeGlobalPedestalCorrection(channel=channel)
+        cut=cut0
+        SNRs[key] = self.CalculateSNR(name=name+"_"+key, binning=binning, xmin=xmin, xmax=xmax, channel=channel, fitwindow=40)
+        SNRs[key+"-b"] = self.CalculateSNR(name=name+"_"+key+"-b", cut=cut+"&&sig_time[{channel}]<250", binning=binning, xmin=xmin, xmax=xmax, channel=channel, fitwindow=40)
         # for key in SNRs.keys():
         #     print key, " - ", SNRs[key]
 
         print "OUTPUT:"
-        print "a1"
-        print "a2"
-        print "a3"
-        print "b1"
-        print "b2"
-        print "b3"
-        print "c1"
-        print "c2"
-        print "c3"
-        print "c1b"
-        print "c2b"
-        print "c3b"
+        # print "a1"
+        # print "a2"
+        # print "a3"
+        # print "b1"
+        # print "b2"
+        # print "b3"
+        # print "c1"
+        # print "c2"
+        # print "c3"
+        # print "c1b"
+        # print "c2b"
+        # print "c3b"
         print "spread"
         print "spread-b"
-        print "int"
-        print "int-b"
+        # print "int"
+        # print "int-b"
 
-        print SNRs["a1"]
-        print SNRs["a2"]
-        print SNRs["a3"]
-        print SNRs["b1"]
-        print SNRs["b2"]
-        print SNRs["b3"]
-        print SNRs["c1"]
-        print SNRs["c2"]
-        print SNRs["c3"]
-        print SNRs["c1b"]
-        print SNRs["c2b"]
-        print SNRs["c3b"]
-        print "spread"#SNRs["spread"]
-        print "spread-b"#SNRs["spread-b"]
-        print SNRs["int"]
-        print SNRs["int-b"]
+        # print SNRs["a1"]
+        # print SNRs["a2"]
+        # print SNRs["a3"]
+        # print SNRs["b1"]
+        # print SNRs["b2"]
+        # print SNRs["b3"]
+        # print SNRs["c1"]
+        # print SNRs["c2"]
+        # print SNRs["c3"]
+        # print SNRs["c1b"]
+        # print SNRs["c2b"]
+        # print SNRs["c3b"]
+        print SNRs["spread"]
+        print SNRs["spread-b"]
+        # print SNRs["int"]
+        # print SNRs["int-b"]
 
 
     def MakeGlobalPedestalCorrection(self, channel=None):
