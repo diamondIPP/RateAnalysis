@@ -237,7 +237,7 @@ class Run(Elementary):
 
             f.close()
             return rate_Hz/1000.
-        except IOError:
+        except:
             print "\nERROR: Could not load mask file, thus not re-calculate rate..\n"
             return 0
 

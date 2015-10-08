@@ -757,7 +757,7 @@ class AnalysisCollection(Elementary):
 
         i = 0
         for run in self.collection.keys():
-            self.collection[run].CalculateSNR(channel=channel)
+            self.collection[run].CalculateSNR(channel=channel, savePlots=False)
             fullsignalhisto = self.collection[run].snr_canvas.GetPrimitive("{dia}_SNRSignalHisto{run}".format(dia=self.collection[run].run.diamondname[channel], run=self.collection[run].run.run_number))
             self.SavePlots(savename="SignalHisto_full_{run}{ch}.png".format(run=run, ch=channel), canvas=self.collection[run].snr_canvas)
             self.SavePlots(savename="SignalHisto_full_{run}{ch}.root".format(run=run, ch=channel), subDir="root",canvas=self.collection[run].snr_canvas)

@@ -36,7 +36,8 @@ class Cut(Elementary):
             "Tracks":               "Track",
             "peakPos_high":         "peakPos<250",
             "spread_low":           "spread>20",
-            "absMedian_high":       "|median|<10"
+            "absMedian_high":       "|median|<10",
+            "pedestalsigma":        "PedSigma5"
         }
         self._cutTypes = { # default values
             "IndividualChCut":      "",
@@ -49,7 +50,8 @@ class Cut(Elementary):
             "Tracks":               True,
             "peakPos_high":         -1,
             "spread_low":           -1,
-            "absMedian_high":       -1
+            "absMedian_high":       -1,
+            "pedestalsigma":        -1
         }
         #self._cutTypes = {}
         #self._cutTypes[0] = copy.deepcopy(self._cutTypes)
@@ -111,6 +113,10 @@ class Cut(Elementary):
         high = parser.getint("CUT", "absMedian_high")
         self._SetAbsMedian_high(high=high)
 
+        # pedestal sigma cut:
+        sigma = parser.getint("CUT", "pedestalsigma")
+        self._SetPedestalSigma(sigma=sigma)
+
         # .. and Load individual cuts, if they exists:
         self.LoadIndividualCuts()
 
@@ -125,6 +131,7 @@ class Cut(Elementary):
             f = open(filepath, "r")
             self.individualCuts = json.load(f)
             f.close()
+            print "INDIVIDUAL Cuts:"
             print self.individualCuts
             ch = self.channel
             if self.individualCuts[str(ch)]["EventRange"] != None:
@@ -139,7 +146,6 @@ class Cut(Elementary):
                 self._SetSpread_low(low=int(self.individualCuts[str(ch)]["spread_low"]))
 
             if self.individualCuts[str(ch)]["absMedian_high"] != None:
-                print "128: self.individualCuts[ch]['absMedian_high'] != None"
                 self._SetAbsMedian_high(high=int(self.individualCuts[str(ch)]["absMedian_high"]))
 
     def SetEventRange(self, min_event=0, max_event=0):
@@ -219,6 +225,14 @@ class Cut(Elementary):
         if high > 0:
             self._cutTypes["absMedian_high"] = high
             self.userCutTypes["absMedian_high"] = "|median|<{high}".format(high=high)
+
+    def _SetPedestalSigma(self, sigma=-1):
+        if sigma>0:
+            self.userCutTypes["pedestalsigma"] = "PedSigma"+str(sigma)
+            self._cutTypes["pedestalsigma"] = sigma
+        else:
+            self.userCutTypes["pedestalsigma"] = ""
+            self._cutTypes["pedestalsigma"] = -1
 
     def GetEventRange(self):
         '''
@@ -364,6 +378,19 @@ class Cut(Elementary):
         else:
             self.userCutTypes["absMedian_high"] = ""
 
+        # -- PEDESTAL SIGMA CUT --
+        if self._cutTypes["pedestalsigma"]>0:
+            if cutstring != "": cutstring += "&&"
+            self._LoadPedestalData(cutstring=cutstring)
+            sigma = self.pedestalSigma
+            pedestalmean = self.pedestalFitMean
+            refactor = self._cutTypes["pedestalsigma"]
+            pedestal_n_sigma_range = [pedestalmean-refactor*sigma, pedestalmean+refactor*sigma]
+            cutstring += self.analysis.pedestalname+"[{channel}]>"+str(pedestal_n_sigma_range[0])+"&&"+self.analysis.pedestalname+"[{channel}]<"+str(pedestal_n_sigma_range[1])
+            self.userCutTypes["pedestalsigma"] = "PedSigma"+str(refactor)
+        else:
+            self.userCutTypes["pedestalsigma"] = ""
+
         # -- set the channel on the cuts --
         if setChannel:
             self.cut = cutstring
@@ -391,6 +418,30 @@ class Cut(Elementary):
             return True
         else:
             return False
+
+    def _LoadPedestalData(self, cutstring):
+        picklepath = "Configuration/Individual_Configs/PedestalPeak/{tc}_{run}_{ch}_PedestalPeak.pickle".format(tc=self.TESTCAMPAIGN, run=self.analysis.run.run_number, ch=self.channel)
+        if not hasattr(self, "pedestalFitMean"):
+            if os.path.exists(picklepath):
+                print "Loading pedestal peak fit data from pickle file: \n\t"+picklepath
+                picklefile = open(picklepath, "rb")
+                fitparameters = pickle.load(picklefile)
+                picklefile.close()
+            else:
+                # do fit
+                #pedestalhisto = self.analysis._ShowHisto(self.analysis.pedestaldefinition[self.channel], channel=self.channel, canvas=None, drawoption="", color=None, cut=cutstring, normalized=False, infoid="CutPedestalFit", drawruninfo=False, binning=1000, xmin=-500, xmax=500,savePlots=False, logy=True, gridx=True)
+                self.analysis.run.tree.Draw((self.analysis.pedestaldefinition[self.channel]+">>tmphisto(1000,-500,500)").format(channel=self.channel), (cutstring[:-2]).format(channel=self.channel))
+                pedestalhisto = ROOT.gROOT.FindObject("tmphisto")
+                ped_peakpos = pedestalhisto.GetBinCenter(pedestalhisto.GetMaximumBin())
+                pedestalhisto.Fit("gaus", "","",ped_peakpos-10,ped_peakpos+10)
+                fitfunc = pedestalhisto.GetFunction("gaus")
+                fitparameters = [fitfunc.GetParameter(0), fitfunc.GetParameter(1), fitfunc.GetParameter(2)]
+                # save to file
+                picklefile = open(picklepath, "wb")
+                pickle.dump(fitparameters, picklefile)
+                picklefile.close()
+            self.pedestalFitMean = fitparameters[1]
+            self.pedestalSigma = fitparameters[2]
 
     def _FindBeamInterruptions(self):
         '''

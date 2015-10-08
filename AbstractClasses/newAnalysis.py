@@ -259,6 +259,24 @@ class Analysis(Elementary):
         '''
         self.run.DrawRunInfo(channel=channel, canvas=canvas, diamondinfo=diamondinfo, showcut=showcut, comment=comment, infoid=infoid, userHeight=userHeight, userWidth=userWidth)
 
+    def DrawPreliminary(self, canvas=None, x=0.7, y=0.14):
+        # TODO: make this work
+        if canvas != None:
+            pad = canvas.cd()
+        else:
+            print "Draw run info in current pad"
+            pad = ROOT.gROOT.GetSelectedPad()
+            if pad:
+                pass
+            else:
+                print "ERROR: Can't access active Pad"
+        pad.cd()
+        text = ROOT.TText(x,y,"Preliminary")
+        text.SetNDC()
+        text.SetTextColorAlpha(ROOT.kCyan-3, 0.7)
+        text.Draw()
+
+
     def ShowFFT(self, drawoption="", cut=None, channel=None, startevent=0, endevent=10000000, savePlots=True, canvas=None):
         '''
         Draws the fft_mean VS 1/fft_max scatter plot.
@@ -1741,11 +1759,11 @@ class Analysis(Elementary):
                 pedestaldefinition = self.pedestaldefinition[ch]
 
             self.ResetColorPalette()
-            self._ShowHisto(pedestaldefinition, channel=ch, canvas=self.snr_canvas, drawoption="", color=None, cut=cut, normalized=False, infoid="SNRPedestalHisto", drawruninfo=False, binning=binning, xmin=xmin, xmax=xmax,savePlots=False, logy=logy, gridx=True)
-            self._ShowHisto(signaldefinition, channel=ch, canvas=self.snr_canvas, drawoption="sames", color=None, cut=cut, normalized=False, infoid="SNRSignalHisto", drawruninfo=False, binning=binning, xmin=xmin, xmax=xmax,savePlots=False, logy=logy, gridx=True)
+            pedestalhisto = self._ShowHisto(pedestaldefinition, channel=ch, canvas=self.snr_canvas, drawoption="", color=None, cut=cut, normalized=False, infoid="SNRPedestalHisto", drawruninfo=False, binning=binning, xmin=xmin, xmax=xmax,savePlots=False, logy=logy, gridx=True)
+            signalhisto = self._ShowHisto(signaldefinition, channel=ch, canvas=self.snr_canvas, drawoption="sames", color=None, cut=cut, normalized=False, infoid="SNRSignalHisto", drawruninfo=False, binning=binning, xmin=xmin, xmax=xmax,savePlots=False, logy=logy, gridx=True)
 
-            pedestalhisto = ROOT.gROOT.FindObject("{dia}_SNRPedestalHisto{run}".format(dia=self.run.diamondname[ch], run=self.run.run_number))
-            signalhisto = ROOT.gROOT.FindObject("{dia}_SNRSignalHisto{run}".format(dia=self.run.diamondname[ch], run=self.run.run_number))
+            # pedestalhisto = ROOT.gROOT.FindObject("{dia}_SNRPedestalHisto{run}".format(dia=self.run.diamondname[ch], run=self.run.run_number))
+            # signalhisto = ROOT.gROOT.FindObject("{dia}_SNRSignalHisto{run}".format(dia=self.run.diamondname[ch], run=self.run.run_number))
 
             ped_peakpos = pedestalhisto.GetBinCenter(pedestalhisto.GetMaximumBin())
 
@@ -1791,16 +1809,16 @@ class Analysis(Elementary):
             "c3": "sig_integral3[{channel}]-ped_integral3[{channel}]",
         }
 
-        # for windowname in windownames:
-        #
-        #     for integralname in integralnames:
-        #         self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestaldefinition="ped_integral"+integralname+channelstring, name=name+"_"+windowname+integralname, binning=binning, xmin=xmin, xmax=xmax, channel=channel)
-        #         pedestal_5_sigma_range = [self.pedestalFitMean[channel]-5*self.pedestalSigma[channel], self.pedestalFitMean[channel]+5*self.pedestalSigma[channel]]
-        #         cut = cut0+"&&"+self.pedestalname+"[{channel}]>"+str(pedestal_5_sigma_range[0])+"&&"+self.pedestalname+"[{channel}]<"+str(pedestal_5_sigma_range[1])
-        #         SNRs[windowname+integralname] = self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestaldefinition="ped_integral"+integralname+channelstring, cut=cut, name=name+"_"+windowname+integralname, binning=binning, xmin=xmin, xmax=xmax, channel=channel)
-        #
-        #         if windowname=="c":
-        #             SNRs[windowname+integralname+"b"] = self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestaldefinition="ped_integral"+integralname+channelstring, cut=cut+"&&sig_time[{channel}]<250", name=name+"_"+windowname+integralname+"b", binning=binning, xmin=xmin, xmax=xmax, channel=channel)
+        for windowname in windownames:
+
+            for integralname in integralnames:
+                self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestaldefinition="ped_integral"+integralname+channelstring, name=name+"_"+windowname+integralname, binning=binning, xmin=xmin, xmax=xmax, channel=channel)
+                pedestal_5_sigma_range = [self.pedestalFitMean[channel]-5*self.pedestalSigma[channel], self.pedestalFitMean[channel]+5*self.pedestalSigma[channel]]
+                cut = cut0+"&&"+self.pedestalname+"[{channel}]>"+str(pedestal_5_sigma_range[0])+"&&"+self.pedestalname+"[{channel}]<"+str(pedestal_5_sigma_range[1])
+                SNRs[windowname+integralname] = self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestaldefinition="ped_integral"+integralname+channelstring, cut=cut, name=name+"_"+windowname+integralname, binning=binning, xmin=xmin, xmax=xmax, channel=channel)
+
+                if windowname=="c":
+                    SNRs[windowname+integralname+"b"] = self.CalculateSNR(signaldefinition=signaldefs[windowname+integralname], pedestaldefinition="ped_integral"+integralname+channelstring, cut=cut+"&&sig_time[{channel}]<250", name=name+"_"+windowname+integralname+"b", binning=binning, xmin=xmin, xmax=xmax, channel=channel)
 
         signaldefs2 = {
             "spread": "sig_spread[{channel}]",
@@ -1879,6 +1897,8 @@ class Analysis(Elementary):
             channels = [channel]
 
         return channels
+
+
 
     def AnalyzePedestalContribution(self, channel, refactor=5):
         self.pedestal_analysis_canvas = ROOT.TCanvas("pedestal_analysis_canvas", "pedestal_analysis_canvas")
