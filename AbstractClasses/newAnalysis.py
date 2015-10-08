@@ -650,6 +650,11 @@ class Analysis(Elementary):
                 histo.GetXaxis().SetTitle(signaldef.format(channel=""))
                 histo.SetLineColor(color)
                 histo.Draw(drawoption)
+                print "\n"
+                print "__"+infoid+"__"
+                print "\tNEvents: ", histo.GetEntries()
+                print "\tMean:    ", histo.GetMean()
+                print "\n"
                 histo.SetTitle("{signal} {cut}".format(signal=infoid, cut="{"+thisusercut+"}"))
                 stats = histo.FindObject("stats")
                 if stats:
@@ -1762,6 +1767,11 @@ class Analysis(Elementary):
             pedestalhisto = self._ShowHisto(pedestaldefinition, channel=ch, canvas=self.snr_canvas, drawoption="", color=None, cut=cut, normalized=False, infoid="SNRPedestalHisto", drawruninfo=False, binning=binning, xmin=xmin, xmax=xmax,savePlots=False, logy=logy, gridx=True)
             signalhisto = self._ShowHisto(signaldefinition, channel=ch, canvas=self.snr_canvas, drawoption="sames", color=None, cut=cut, normalized=False, infoid="SNRSignalHisto", drawruninfo=False, binning=binning, xmin=xmin, xmax=xmax,savePlots=False, logy=logy, gridx=True)
 
+            print "\n"
+            print "\tNEvents: ", signalhisto.GetEntries()
+            print "\tMean:    ", signalhisto.GetMean()
+            print "\n"
+
             # pedestalhisto = ROOT.gROOT.FindObject("{dia}_SNRPedestalHisto{run}".format(dia=self.run.diamondname[ch], run=self.run.run_number))
             # signalhisto = ROOT.gROOT.FindObject("{dia}_SNRSignalHisto{run}".format(dia=self.run.diamondname[ch], run=self.run.run_number))
 
@@ -1831,48 +1841,50 @@ class Analysis(Elementary):
         #     cut = cut0+"&&"+self.pedestalname+"[{channel}]>"+str(pedestal_5_sigma_range[0])+"&&"+self.pedestalname+"[{channel}]<"+str(pedestal_5_sigma_range[1])
         #     SNRs[key] = self.CalculateSNR(signaldefinition=signaldefs2[key], cut=cut, pedestaldefinition="ped_"+key+channelstring, name=name+"_"+key, binning=binning, xmin=xmin, xmax=xmax, channel=channel, fitwindow=40)
         #     SNRs[key+"-b"] = self.CalculateSNR(signaldefinition=signaldefs2[key], pedestaldefinition="ped_"+key+channelstring, name=name+"_"+key+"-b", cut=cut+"&&sig_time[{channel}]<250", binning=binning, xmin=xmin, xmax=xmax, channel=channel, fitwindow=40)
-        key = "spread"
-        self.MakeGlobalPedestalCorrection(channel=channel)
-        cut=cut0
-        SNRs[key] = self.CalculateSNR(name=name+"_"+key, binning=binning, xmin=xmin, xmax=xmax, channel=channel, fitwindow=40)
-        SNRs[key+"-b"] = self.CalculateSNR(name=name+"_"+key+"-b", cut=cut+"&&sig_time[{channel}]<250", binning=binning, xmin=xmin, xmax=xmax, channel=channel, fitwindow=40)
+
+        # key = "spread"
+        # self.MakeGlobalPedestalCorrection(channel=channel)
+        # cut=cut0
+        # SNRs[key] = self.CalculateSNR(name=name+"_"+key, binning=binning, xmin=xmin, xmax=xmax, channel=channel, fitwindow=40)
+        # SNRs[key+"-b"] = self.CalculateSNR(name=name+"_"+key+"-b", cut=cut+"&&sig_time[{channel}]<250", binning=binning, xmin=xmin, xmax=xmax, channel=channel, fitwindow=40)
+
         # for key in SNRs.keys():
         #     print key, " - ", SNRs[key]
 
         print "OUTPUT:"
-        # print "a1"
-        # print "a2"
-        # print "a3"
-        # print "b1"
-        # print "b2"
-        # print "b3"
-        # print "c1"
-        # print "c2"
-        # print "c3"
-        # print "c1b"
-        # print "c2b"
-        # print "c3b"
+        print "a1"
+        print "a2"
+        print "a3"
+        print "b1"
+        print "b2"
+        print "b3"
+        print "d1"
+        print "d2"
+        print "d3"
+        print "d1b"
+        print "d2b"
+        print "d3b"
         print "spread"
         print "spread-b"
-        # print "int"
-        # print "int-b"
+        print "int"
+        print "int-b"
 
-        # print SNRs["a1"]
-        # print SNRs["a2"]
-        # print SNRs["a3"]
-        # print SNRs["b1"]
-        # print SNRs["b2"]
-        # print SNRs["b3"]
-        # print SNRs["c1"]
-        # print SNRs["c2"]
-        # print SNRs["c3"]
-        # print SNRs["c1b"]
-        # print SNRs["c2b"]
-        # print SNRs["c3b"]
-        print SNRs["spread"]
-        print SNRs["spread-b"]
-        # print SNRs["int"]
-        # print SNRs["int-b"]
+        print SNRs["a1"]
+        print SNRs["a2"]
+        print SNRs["a3"]
+        print SNRs["b1"]
+        print SNRs["b2"]
+        print SNRs["b3"]
+        print SNRs["c1"]
+        print SNRs["c2"]
+        print SNRs["c3"]
+        print SNRs["c1b"]
+        print SNRs["c2b"]
+        print SNRs["c3b"]
+        print "spread"#SNRs["spread"]
+        print "spread-b"#SNRs["spread-b"]
+        print "int"#SNRs["int"]
+        print "int-b"#SNRs["int-b"]
 
 
     def MakeGlobalPedestalCorrection(self, channel=None):
