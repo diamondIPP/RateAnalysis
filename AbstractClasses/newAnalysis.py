@@ -163,10 +163,12 @@ class Analysis(Elementary):
 
 
     def GetSignalDefinition(self, channel=None):
-
         if channel == None:
             assert(not self.Checklist["GlobalPedestalCorrection"][0] and not self.Checklist["GlobalPedestalCorrection"][3]), "GetSignalDefinition() not available for undefined channel and Global Pedestal Correction"
-            return self.signalname+"[{channel}]"
+            if self.pedestal_correction:
+                return self.signalname+"[{channel}] - "+self.pedestalname+"[{channel}]"
+            else:
+                return self.signalname+"[{channel}]"
         else:
             assert(channel in [0,3])
             return self.signaldefinition[channel]
@@ -2033,6 +2035,15 @@ class Analysis(Elementary):
         print self.run.GetRate(), d2b[0], d2b_t[0], d2[0], d2_t[0]
 
         return results_mean, results_events
+
+    def AnalyzeMultiHitContribution(self):
+
+        single_particle = self.run.tree.Draw("1", "!pulser&&clusters_per_plane[0]>=1&&clusters_per_plane[1]>=1&&clusters_per_plane[2]>=1&&clusters_per_plane[3]>=1&&(clusters_per_plane[0]>1||clusters_per_plane[1]>1||clusters_per_plane[2]>1||clusters_per_plane[3]>1)")
+        multiparticle= self.run.tree.Draw("1", "!pulser&&clusters_per_plane[0]<=1&&clusters_per_plane[1]<=1&&clusters_per_plane[2]<=1&&clusters_per_plane[3]<=1")
+
+        total = single_particle + multiparticle
+
+        return 1.*multiparticle/total
 
 
 

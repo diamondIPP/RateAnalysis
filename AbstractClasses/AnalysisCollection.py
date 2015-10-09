@@ -766,9 +766,9 @@ class AnalysisCollection(Elementary):
             self.SavePlots(savename="SignalHisto_fit_{run}{ch}.png".format(run=run, ch=channel), canvas=self.collection[run].signalpedestalcanvas)
             self.SavePlots(savename="SignalHisto_fit_{run}{ch}.root".format(run=run, ch=channel), subDir="root",canvas=self.collection[run].signalpedestalcanvas)
 
-            self.pedestalresults["full"].SetPoint(i, self.collection[run].GetRate(), mean_full)
-            self.pedestalresults["no_tail"].SetPoint(i, self.collection[run].GetRate(), mean)
-            self.pedestalresults["no_ped"].SetPoint(i, self.collection[run].GetRate(), mean_nopedestal)
+            self.pedestalresults["full"].SetPoint(i, self.collection[run].GetRate(), mean_full/mean_nopedestal)
+            self.pedestalresults["no_tail"].SetPoint(i, self.collection[run].GetRate(), mean/mean_nopedestal)
+            self.pedestalresults["no_ped"].SetPoint(i, self.collection[run].GetRate(), mean_nopedestal/mean_nopedestal)
             i += 1
         
 
