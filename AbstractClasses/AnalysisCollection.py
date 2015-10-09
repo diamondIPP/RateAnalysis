@@ -728,7 +728,7 @@ class AnalysisCollection(Elementary):
         for run in self.collection.keys():
             self.collection[run].SetIndividualCuts(showOverview=showOverview, savePlot=savePlot)
 
-    def AnalyzePedestalContribution(self, channel, refactor=5):
+    def AnalyzePedestalContribution(self, channel, normalize=False, refactor=5):
         '''
         Example:
             sel = RunSelection()
@@ -756,6 +756,12 @@ class AnalysisCollection(Elementary):
             self.pedestalresults[key].SetLineColor(colors[key])
 
         i = 0
+
+        means = {
+            "full": [],
+            "no_tail": [],
+            "no_ped": []
+        }
         for run in self.collection.keys():
             self.collection[run].CalculateSNR(channel=channel, savePlots=False)
             fullsignalhisto = self.collection[run].snr_canvas.GetPrimitive("{dia}_SNRSignalHisto{run}".format(dia=self.collection[run].run.diamondname[channel], run=self.collection[run].run.run_number))
@@ -766,9 +772,18 @@ class AnalysisCollection(Elementary):
             self.SavePlots(savename="SignalHisto_fit_{run}{ch}.png".format(run=run, ch=channel), canvas=self.collection[run].signalpedestalcanvas)
             self.SavePlots(savename="SignalHisto_fit_{run}{ch}.root".format(run=run, ch=channel), subDir="root",canvas=self.collection[run].signalpedestalcanvas)
 
-            self.pedestalresults["full"].SetPoint(i, self.collection[run].GetRate(), mean_full/mean_nopedestal)
-            self.pedestalresults["no_tail"].SetPoint(i, self.collection[run].GetRate(), mean/mean_nopedestal)
-            self.pedestalresults["no_ped"].SetPoint(i, self.collection[run].GetRate(), mean_nopedestal/mean_nopedestal)
+            means["full"] += [mean_full]
+            means["no_tail"] += [mean]
+            means["no_ped"] += [mean_nopedestal]
+
+            if normalize:
+                factor = mean_nopedestal
+            else:
+                factor = 1.
+
+            self.pedestalresults["full"].SetPoint(i, self.collection[run].GetRate(), mean_full/factor)
+            self.pedestalresults["no_tail"].SetPoint(i, self.collection[run].GetRate(), mean/factor)
+            self.pedestalresults["no_ped"].SetPoint(i, self.collection[run].GetRate(), mean_nopedestal/factor)
             i += 1
         
 
@@ -777,4 +792,6 @@ class AnalysisCollection(Elementary):
         self.pedestalresults["no_tail"].Draw("LP")
         self.pedestalresults["no_ped"].Draw("LP")
         self.pedestal_analysis_canvas.Update()
-        
+
+        for key in means.keys():
+            print key, "  -  ", means[key]
