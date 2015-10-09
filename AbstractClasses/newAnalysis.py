@@ -1815,7 +1815,7 @@ class Analysis(Elementary):
             "b2": "sig_b2[{channel}]-ped_integral2[{channel}]",
             "b3": "sig_b3[{channel}]-ped_integral3[{channel}]",
             "c1": "sig_integral1[{channel}]-ped_integral1[{channel}]",
-            "c2": "sig_integral2[{channel}]-ped_integral2[{channel}]",
+            "d2": "sig_integral2[{channel}]-ped_integral2[{channel}]",
             "c3": "sig_integral3[{channel}]-ped_integral3[{channel}]",
         }
 
@@ -1876,10 +1876,10 @@ class Analysis(Elementary):
         print SNRs["b2"]
         print SNRs["b3"]
         print SNRs["c1"]
-        print SNRs["c2"]
+        print SNRs["d2"]
         print SNRs["c3"]
         print SNRs["c1b"]
-        print SNRs["c2b"]
+        print SNRs["d2b"]
         print SNRs["c3b"]
         print "spread"#SNRs["spread"]
         print "spread-b"#SNRs["spread-b"]
@@ -1974,6 +1974,68 @@ class Analysis(Elementary):
         mean_nopedestal = self.h_nopedestal.GetMean()
 
         return mean, mean_nopedestal
+
+    def AnalyzeTrackContribution(self, channel=3):
+        '''
+        -->config:
+
+        [CUT]
+        EventRange_min = 0
+        EventRange_max = 0
+        cut0 = -1
+        cut3 = -1
+        notPulser = 1
+        notSaturated = True
+        noBeamInter = True
+        excludeBeforeJump = 2000
+        excludeAfterJump = 20000
+        FFT = False
+        hasTracks = False
+        excludefirst = 0
+        peakPos_high = -1
+        spread_low = -1
+        absMedian_high = -1
+        pedestalsigma = 5
+        beaminterruptions_folder = beaminterruptions
+        '''
+        c = ROOT.TCanvas("trackanalysis", "trackanalysis")
+        self.ResetColorPalette()
+
+        def makeit(name, cut):
+            h = self._ShowHisto(self.signaldefinition[channel], channel=channel, canvas=c, drawoption="", cut=self.GetCut(channel)+cut, color=None, normalized=True, infoid=name, drawruninfo=False, binning=600, xmin=None, xmax=None, savePlots=False, logy=False, gridx=False)
+            entries = h.GetEntries()
+            mean = h.GetMean()
+            print "\n"
+            print name+":"
+            print "\tNEvents: ", entries
+            print "\tMean:    ", mean
+            return entries, mean
+
+
+        # d2:
+        d2 = makeit("d2", "")
+        # d2 | track:
+        d2_t = makeit("d2_track", "&&n_tracks")
+        # d2B:
+        d2b = makeit("d2b", "&&sig_time[{channel}]<250")
+        # d2B:
+        d2b_t = makeit("d2b_track", "&&sig_time[{channel}]<250&&n_tracks")
+
+        results_mean = str(self.run.GetRate())+" "+str(d2b[1])+" "+str(d2b_t[1])+" "+str(d2[1])+" "+str(d2_t[1])
+        results_events = str(self.run.GetRate())+" "+str(d2b[0])+" "+str(d2b_t[0])+" "+str(d2[0])+" "+str(d2_t[0])
+
+        print "\n"
+        print "Rate, ", "mean d2b ", "mean d2b_t, ", "mean d2, ", "mean d2_t"
+        print self.run.GetRate(), d2b[1], d2b_t[1], d2[1], d2_t[1]
+        print "\n"
+        print "\n"
+        print "Rate, ", "# d2b ", "# d2b_t, ", "# d2, ", "# d2_t"
+        print self.run.GetRate(), d2b[0], d2b_t[0], d2[0], d2_t[0]
+
+        return results_mean, results_events
+
+
+
 
 '''
 htemp = copy.deepcopy(histo)
