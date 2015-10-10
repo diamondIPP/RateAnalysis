@@ -437,11 +437,14 @@ class Analysis(Elementary):
         if channel == None:
             minevent0 = self.cut[0].GetMinEvent()
             minevent3 = self.cut[3].GetMinEvent()
+            maxevent0 = self.cut[0].GetMaxEvent()
+            maxevent3 = self.cut[3].GetMaxEvent()
             minevent = min(minevent0, minevent3)
             if maxevent == None:
-                maxevent0 = self.cut[0].GetMaxEvent()
-                maxevent3 = self.cut[3].GetMaxEvent()
                 maxevent = max(maxevent0, maxevent3)
+            else:
+                maxevent = min(max(maxevent0, maxevent3), maxevent)
+
             excluded = [i for i in np.arange(0, minevent)] # first events
             if self.cut[0]._cutTypes["noBeamInter"] and self.cut[3]._cutTypes["noBeamInter"]:
                 self.cut[0].GetBeamInterruptions()
