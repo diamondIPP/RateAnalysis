@@ -16,6 +16,7 @@ class RunSelection(Run):
         self.run_numbers.sort()
         self._GetRunPlanFromFile()
         self._LoadRuns()
+        # self.GetTreeInfo()
         self._InitializeSelections()
 
     def __str__(self):

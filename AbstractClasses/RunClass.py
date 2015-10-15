@@ -1,6 +1,7 @@
-from Helper.Initializer import initializer
+# ==============================================
+# IMPORTS
+# ==============================================
 from Runinfos.RunInfo import RunInfo
-from DiamondClass import Diamond
 from Elementary import Elementary
 from datetime import datetime as dt
 import ROOT
@@ -10,7 +11,7 @@ import json
 import csv
 import copy
 
-default_info =  {
+default_info = {
         "persons on shift": "-",
         "run info": "-",
         "type": "signal",
@@ -49,16 +50,20 @@ default_info =  {
         "is good run": True
 }
 
-class Run(Elementary):
-    '''
 
-    '''
+# ==============================================
+# MAIN CLASS
+# ==============================================
+class Run(Elementary):
+    """
+    Run class containing all the information for a single run from the tree and the json file.
+    """
 
     current_run = {}
     operationmode = ''
     TrackingPadAnalysis = {}
 
-    def __init__(self, run_number, diamonds=3, validate = False, verbose = False, maskfilename=""):
+    def __init__(self, run_number, diamonds=3, validate=False, verbose=False, maskfilename=""):
         '''
 
         :param run_number: number of the run
@@ -77,6 +82,7 @@ class Run(Elementary):
         if run_number != None:
             assert(run_number > 0), "incorrect run_number"
             self.SetRun(run_number)
+            self.GetTreeInfo()
         else:
             self.LoadRunInfo()
         self._LoadTiming()
@@ -88,6 +94,7 @@ class Run(Elementary):
         }
         self.SetChannels(diamonds)
         self.IsMonteCarlo = False
+
 
     def LoadConfig(self):
         machineConfigParser = ConfigParser.ConfigParser()
@@ -177,6 +184,14 @@ class Run(Elementary):
         else:
             self.RunInfo = default_info
             return 0
+
+    def GetTreeInfo(self):
+        self.startEvent = 0
+        self.startTime = self.GetTimeAtEvent(self.startEvent)
+        self.endEvent = self.tree.GetEntries() - 1
+        self.endTime = self.GetTimeAtEvent(self.endEvent)
+        self.totalTime = self.endTime - self.startTime
+        self.totalMinutes = (self.endTime - self.startTime) / 60000
 
     def _SetDiamondName(self):
         aliasParser = ConfigParser.ConfigParser()
@@ -637,7 +652,6 @@ class Run(Elementary):
             self._runInfoLegends["ch12"+infoid].Draw("same")
         pad.Modified()
 
-
     def GetRateString(self):
         rate = self.RunInfo["measured flux"]
         if rate>1000:
@@ -669,3 +683,69 @@ class Run(Elementary):
             #     else:
             #         self.CreateROOTFile(do_tracking=False)
         #assert(bool(self.tree) and bool(self.rootfile)), "Could not load root file: \n\t"+fullROOTFilePath
+
+    def GetTimeAtEvent(self, event):
+        """
+        Returns the time stamp at event number 'event'. For negative event numbers it will return the time stamp at the startevent.
+        :param event: integer event number
+        :return: timestamp for event
+        """
+        maxevent = self.tree.GetEntries()
+        if event < 0:
+            event = 0
+        elif event >= maxevent:
+            event = maxevent - 1
+        self.tree.GetEntry(event)
+        return self.tree.time
+
+    def GetEventAtTime(self, time_sec):
+        """
+        Returns the eventnunmber at time dt from beginning of the run.
+        Accuracy: +- 2 Events
+        The event number is evaluated using a newton's method for finding roots:
+            f(e) := t(e) - t  -->  f(e) == 0
+            ==> iteration: e = e - f(e)/f'(e)
+            where t(e) is the time evaluated at event e and
+            t := t_0 + dt
+            break if |e_old - e_new| < 2
+        :param time_sec: time in seconds from start
+        :return: event_number
+        """
+        time = time_sec * 1000  # convert to milliseconds
+        if time == 0:
+            return 0
+
+        # get t0 and tmax
+        maxevent = self.tree.GetEntries()
+        if time < 0:
+            return maxevent
+        t_0 = self.GetTimeAtEvent(0)
+        t_max = self.GetTimeAtEvent(maxevent - 1)
+
+        time = t_0 + time
+        if time > t_max:
+            return maxevent
+
+        seedEvent = int((1.*(time - t_0) * maxevent) / (t_max - t_0))
+
+        count = 0
+        goOn = True
+        event = seedEvent
+        while goOn and count < 20:
+            old_event = event
+            f_event = self.GetTimeAtEvent(event) - time
+            # print "f_event = {ftime} - {time} = ".format(ftime=self.run.tree.time, time=time), f_event
+            # print "slope_f(self, event) = ", slope_f(self, event)
+            event = int(event - 1 * f_event / self._slope_f(event))
+            if abs(event - old_event) < 2:
+                goOn = False
+            count += 1
+        self.tree.GetEntry(event)
+        return event
+
+    def _slope_f(self, event):
+            if event < 0:
+                event = 0
+            time_high = self.GetTimeAtEvent(event + 10)
+            time_low = self.GetTimeAtEvent(event - 10)
+            return 1. * (time_high - time_low) / 21.

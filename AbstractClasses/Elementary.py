@@ -24,7 +24,10 @@ class Elementary(object):
             print "No Testcampaign was set. Testcampaign is now set to: 201508"
             print "To change Testcampaign: cls.SetTestCampaign(namestring)"
         self.LoadConfig()
+        # self.LoadAnaConfig()
 
+    # def LoadAnaConfig(self):
+    #     pass
 
     def LoadConfig(self):
         pass

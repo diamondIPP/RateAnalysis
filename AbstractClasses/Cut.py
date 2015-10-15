@@ -161,15 +161,15 @@ class Cut(Elementary):
         :return:
         '''
         if min_event != 0 and max_event != 0:
-            if min_event < 0: min_event = self.analysis.GetEventAtTime(dt=(-1)*min_event*60)
-            if max_event < 0: max_event = self.analysis.GetEventAtTime(dt=(-1)*max_event*60)
+            if min_event < 0: min_event = self.analysis.GetEventAtTime(time_sec=(-1)*min_event*60)
+            if max_event < 0: max_event = self.analysis.GetEventAtTime(time_sec=(-1)*max_event*60)
             self._cutTypes["EventRange"] = [min_event, max_event]
         elif min_event != 0:
-            if min_event < 0: min_event = self.analysis.GetEventAtTime(dt=(-1)*min_event*60)
+            if min_event < 0: min_event = self.analysis.GetEventAtTime(time_sec=(-1)*min_event*60)
             maxevent = self.analysis.GetEventAtTime(-1)
             self._cutTypes["EventRange"] = [min_event, maxevent]
         elif max_event != 0:
-            if max_event < 0: max_event = self.analysis.GetEventAtTime(dt=(-1)*max_event*60)
+            if max_event < 0: max_event = self.analysis.GetEventAtTime(time_sec=(-1)*max_event*60)
             self._cutTypes["EventRange"] = [self.excludefirst, max_event]
         else:
             self._cutTypes["EventRange"] = []
@@ -282,7 +282,7 @@ class Cut(Elementary):
             return totEvents
 
     def _SetExcludeFirstTime(self, seconds):
-        event = self.analysis.GetEventAtTime(dt=seconds)
+        event = self.analysis.GetEventAtTime(time_sec=seconds)
         self._SetExcludeFirst(nevents=event)
         if seconds>0: self.userCutTypes["ExcludeFirst"] = str(int(seconds)/60)+"min+"
 
@@ -527,7 +527,7 @@ class Cut(Elementary):
             jumps_graph.SetLineColor(ROOT.kRed)
             jumps_graph.Draw('p')
 
-            outfile = open(self.beaminterruptions_folder+'/jumps_{testcampaign}.txt'.format(testcampaign=self.TESTCAMPAIGN),'r+a')
+            outfile = open(self.beaminterruptions_folder + '/jumps_{testcampaign}.txt'.format(testcampaign=self.TESTCAMPAIGN),'a+')
             # check if the run is already in the file
             runInFile = False
             lines = outfile.readlines()
@@ -663,11 +663,12 @@ class Cut(Elementary):
             for i in xrange(len(selection)-1):
                 if selection[i] != selection[i+1]:
                     if selection[i] == 0:
-                        print "jump start: ", i+1
+                        # print "jump start: ", i+1
                         reduced_jumps.append(i+1)
                     else:
-                        print "jump end: ", i+1
+                        # print "jump end: ", i+1
                         reduced_ends.append(i+1)
+            print "Found and corrected for {jumps} jumps".format(jumps=len(reduced_jumps))
             if len(reduced_jumps)==0 and len(reduced_ends)>0: reduced_jumps = [0]+reduced_jumps
             if reduced_ends[0]<reduced_jumps[0]:
                 reduced_jumps = [0]+reduced_jumps

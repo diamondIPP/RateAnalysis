@@ -1,4 +1,5 @@
 import ROOT
+from ROOT import gROOT
 from AbstractClasses.ATH2D import ATH2D
 from AbstractClasses.BinCollection import BinCollection
 from AbstractClasses.RunClass import Run
@@ -146,41 +147,53 @@ class AnalysisCollection(Elementary):
         return fwhm
 
     def MakePreAnalysises(self, channel=None, mode="mean", savePlot=True, setyscale=True):
-        '''
+        """
         Execute the MakePreAnalysis method for all runs (i.e. Analysis
         objects) in AnalysisCollection.
         :param channel:
         :param mode:
         :param savePlot:
         :return:
-        '''
+        """
         assert(channel in [0,3, None]), "invalid channel: channel has to be either 0, 3 or None"
         runnumbers = self.GetRunNumbers()
 
         if channel == None:
             channels = [0,3]
         else:
-            try:
-                runs = self.GetRunNumbers()
-                channels = self.collection[runs[0]].run.GetChannels()
-            except:
-                channels = [0,3]
-
+            channels = [channel]
+        # else:
+        #     try:
+        #         runs = self.GetRunNumbers()
+        #         channels = self.collection[runs[0]].run.GetChannels()
+        #     except:
+        #         channels = [0,3]
 
         for ch in channels:
+            gROOT.SetBatch(1)
             if setyscale: # check for y axis margins
                 sig_margins = []
                 ped_margins = []
+                sig = []
+                ped = []
                 for run in runnumbers:
                     self.collection[run].MakePreAnalysis(channel=ch, mode=mode, setyscale_sig=None, setyscale_ped=None, savePlot=False)
                     sig_margins += [self.collection[run].preAnalysis[ch].padymargins["signal"][0]]
                     sig_margins += [self.collection[run].preAnalysis[ch].padymargins["signal"][1]]
                     ped_margins += [self.collection[run].preAnalysis[ch].padymargins["pedestal"][0]]
                     ped_margins += [self.collection[run].preAnalysis[ch].padymargins["pedestal"][1]]
+                    sig.append(self.collection[run].preAnalysis[ch].signals['signal'])
+                    ped.append(self.collection[run].preAnalysis[ch].signals['pedestal'])
                 sig_margins.sort()
                 ped_margins.sort()
-                setyscale_sig = [sig_margins[0], sig_margins[-1]]
-                setyscale_ped = [ped_margins[0], ped_margins[-1]]
+                sig.sort()
+                ped.sort()
+                buff_sig = (sig[-1] - sig[0]) * 0.40
+                buff_ped = (ped[-1] - ped[0]) * 0.40
+                # setyscale_sig = [sig_margins[0], sig_margins[-1]]
+                # setyscale_ped = [ped_margins[0], ped_margins[-1]]
+                setyscale_sig = [sig[0] - buff_sig, sig[-1] + buff_sig]
+                setyscale_ped = [ped[0] - buff_ped, ped[-1] + buff_ped]
 
                 for run in runnumbers:
                     self.collection[run].preAnalysis[ch].Draw(savePlot=savePlot, setyscale_sig=setyscale_sig, setyscale_ped=setyscale_ped)
@@ -190,6 +203,7 @@ class AnalysisCollection(Elementary):
 
                 for run in runnumbers:
                     self.collection[run].MakePreAnalysis(channel=ch, mode=mode, setyscale_sig=setyscale_sig, setyscale_ped=setyscale_ped, savePlot=savePlot)
+        gROOT.SetBatch(0)
 
     def ShowSignalVSRate(self, canvas=None, diamonds=None, method="mean"): #, method="mean"
         '''
