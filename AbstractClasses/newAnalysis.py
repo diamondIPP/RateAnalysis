@@ -136,7 +136,7 @@ class Analysis(Elementary):
         configfile = "Configuration/AnalysisConfig_"+self.TESTCAMPAIGN+".cfg"
         parser = ConfigParser.ConfigParser()
         output = parser.read(configfile)
-        print " ---- Config Parser Read ---- \n - ", output, " -\n"
+        # print " ---- Config Parser Read ---- \n - ", output, " -\n"
 
 
         self.showAndWait = parser.getboolean("DISPLAY","ShowAndWait")

@@ -153,7 +153,7 @@ class Analysis(Elementary):
         self.TrackingPadAnalysisROOTFile = self.run_object.TrackingPadAnalysis["ROOTFile"]
         assert (os.path.exists(self.TrackingPadAnalysisROOTFile)), "cannot find "+self.TrackingPadAnalysisROOTFile
         self.rootfile = ROOT.TFile(self.TrackingPadAnalysisROOTFile)
-        print "LOADING: ", self.TrackingPadAnalysisROOTFile
+        print "LOADING infos for rootfile: ", self.TrackingPadAnalysisROOTFile.split('/')[-1]
         self.track_info = self.rootfile.Get(self.run_object.treename) # Get TTree called "track_info"
 
     def DoAnalysis(self,minimum_bincontent = 1):

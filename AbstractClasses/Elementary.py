@@ -1,6 +1,7 @@
 import os
 import ROOT
 import types as t
+from time import time
 
 
 class Elementary(object):
@@ -24,10 +25,7 @@ class Elementary(object):
             print "No Testcampaign was set. Testcampaign is now set to: 201508"
             print "To change Testcampaign: cls.SetTestCampaign(namestring)"
         self.LoadConfig()
-        # self.LoadAnaConfig()
-
-    # def LoadAnaConfig(self):
-    #     pass
+        self.aimedFluxes = [3, 20, 60, 600, 2000, 5000]
 
     def LoadConfig(self):
         pass
@@ -96,7 +94,7 @@ class Elementary(object):
         resultsdir = saveDir+subDir # eg. 'Results/run_364/'
         if not os.path.exists(resultsdir):
             os.makedirs(resultsdir)
-        print "PRINT: ", [resultsdir+savename+ending]
+        # print "PRINT: ", [resultsdir+savename+ending]
         if canvas == None:
             pad = ROOT.gROOT.GetSelectedPad()
             canvas = pad.GetCanvas()
@@ -107,7 +105,6 @@ class Elementary(object):
             print "ERROR in SAVE PLOTs !"
             print "tried to save:\n\t", [resultsdir+savename+ending]
             print "-----------------------------------\n\n\n"
-
 
     @classmethod
     def GC(cls):
@@ -146,3 +143,8 @@ class Elementary(object):
         '''
         Elementary.TESTCAMPAIGN = str(namestring)
         print "Testcampaign set to: ", namestring
+
+    @staticmethod
+    def elapsed_time(start):
+        string = str('{0:0.2f}'.format(time() - start)) + ' seconds'
+        return string

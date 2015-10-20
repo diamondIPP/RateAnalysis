@@ -1,9 +1,15 @@
+# ==============================================
+# IMPORTS
+# ==============================================
 import ROOT
 from AbstractClasses.Elementary import Elementary
 from ROOT import gROOT, TGraphErrors, TCanvas, TH2D, gStyle, TF1
 import types as t
 
 
+# ==============================================
+# MAIN CLASS
+# ==============================================
 class PreAnalysisPlot(Elementary):
     """
     Produces 3 plots inside one canvas:
@@ -35,7 +41,7 @@ class PreAnalysisPlot(Elementary):
         self.pedgraph = TGraphErrors()
         # 2D Histos
         self.signaltime = TH2D("signaltime" + str(self.analysis.run.run_number), "signaltime", self.nBins, 0, self.analysis.run.totalTime, 200, -100, 500)
-        self.pedestaltime = TH2D('pedestaltime', 'pedestaltime', self.nBins, 0, self.analysis.run.totalTime, 200, -100, 500)
+        self.pedestaltime = TH2D('pedestaltime' + str(self.analysis.run.run_number), 'pedestaltime', self.nBins, 0, self.analysis.run.totalTime, 200, -100, 500)
         self.signaltime2d = TH2D('signaltime2d{run}{channel}'.format(run=self.analysis.run.run_number, channel=self.channel), 'signaltime2d', self.nBins, self.analysis.run.startEvent / 1000,
                                  self.analysis.run.endEvent / 1000, 300, 0, 500)
         # projection
@@ -54,7 +60,8 @@ class PreAnalysisPlot(Elementary):
     def _Fill2DHistos(self, draw_option):
         # pedestal
         self.analysis.run.tree.Draw(
-                self.analysis.pedestalname + "[{channel}]:(time-{starttime})>>pedestaltime".format(channel=self.channel, starttime=self.analysis.run.startTime),
+                self.analysis.pedestalname + "[{channel}]:(time-{starttime})>>pedestaltime{run}".format(channel=self.channel, starttime=self.analysis.run.startTime,
+                                                                                                        run=self.analysis.run.run_number),
                 self.analysis.GetCut(self.channel), draw_option, self.analysis.GetNEventsCut(channel=self.channel),
                 self.analysis.GetMinEventCut(channel=self.channel))
         # signal
@@ -109,7 +116,7 @@ class PreAnalysisPlot(Elementary):
         fit = TF1('fpol0', 'pol0')
         self.pulseHeight.Fit(fit, 'Q')
         self.signals["signal"] = fit.GetParameter(0)
-        print 'signal:', self.signals['signal']
+        print 'signal:\t\t\t', self.signals['signal']
         gStyle.SetOptFit(1)
         self.pulseHeight.GetXaxis().SetTitleOffset(0.7)
         self.pulseHeight.GetXaxis().SetTitle("time / min")
@@ -133,7 +140,7 @@ class PreAnalysisPlot(Elementary):
         fit = TF1('fpol0', 'pol0')
         self.pedgraph.Fit(fit, 'Q')
         self.signals["pedestal"] = fit.GetParameter(0)
-        print 'pedestal:', self.signals['pedestal']
+        print 'pedestal:\t\t', self.signals['pedestal']
         gStyle.SetOptFit(1)
         self.pedgraph.GetXaxis().SetTitleOffset(0.7)
         self.pedgraph.GetXaxis().SetTitle("time / min")
@@ -189,27 +196,30 @@ class PreAnalysisPlot(Elementary):
             self.pedgraph.Draw()
 
     def _SavePlots(self, savePlot):
+
         savename = "Run{run}_PreAnalysis_{diamond}".format(run=self.analysis.run.run_number, diamond=self.analysis.run.diamondname[self.channel])
         name_signal = 'signal_time'
         name_pedestal = 'pedestal_time'
         name_2D = '2D_distribution'
         subdir = '15080' + str(self.analysis.run.run_number) + '/' + str(self.analysis.run.diamondname[self.channel])
-        print "SAVENAME: ", savename
+        # print "SAVENAME: ", savename
         if savePlot:
+            print '\rSaving Plots for run', self.analysis.run.run_number,
+            gROOT.ProcessLine("gErrorIgnoreLevel = kWarning;")
             self.SavePlots(savename, "png", canvas=self.signalTimeCanvas, subDir=self.analysis.run.diamondname[self.channel])
             self.SavePlots(savename, "root", canvas=self.signalTimeCanvas, subDir="root")
             gROOT.SetBatch(1)
             saveCanvas = TCanvas('c1', 'c1', 1000, 600)
             saveCanvas.cd()
-            print 'saving plots'
             self.pulseHeight.Draw("ALP")
-            self.SavePlots(name_signal, 'png',  canvas=saveCanvas, subDir=subdir)
+            self.SavePlots(name_signal, 'png', canvas=saveCanvas, subDir=subdir)
             self.pedgraph.Draw("ALP")
-            self.SavePlots(name_pedestal, 'png',  canvas=saveCanvas, subDir=subdir)
+            self.SavePlots(name_pedestal, 'png', canvas=saveCanvas, subDir=subdir)
             self.signaltime2d.Draw("colz")
-            self.SavePlots(name_2D, 'png',  canvas=saveCanvas, subDir=subdir)
+            self.SavePlots(name_2D, 'png', canvas=saveCanvas, subDir=subdir)
             saveCanvas.Close()
             gROOT.SetBatch(0)
+        gROOT.ProcessLine("gErrorIgnoreLevel = 1;")
 
     def PrintInfos(self):
         print "Total Minutes:\t{tot}\nnbins:\t\t{nbins}".format(tot=self.analysis.run.totalMinutes, nbins=self.nBins)
@@ -226,6 +236,8 @@ class PreAnalysisPlot(Elementary):
         drawOption2D = "COLZ"
         if not self.checkList['madeGraphs'][self.channel]:
 
+            print '\nAnalysing run:', self.analysis.run.run_number
+
             # divide canvas
             self.signalTimeCanvas.Divide(1, 3)
             self.signalTimeCanvas.cd(1)
@@ -240,7 +252,7 @@ class PreAnalysisPlot(Elementary):
             self._FormatSignalGraph(mode, setyscale_sig)
             self.pulseHeight.Draw("ALP")
             self.signalPad.Update()
-            self.padymargins["signal"] = [self.signalPad.GetUymin(), self.signalPad.GetUymax()]
+            # self.padymargins["signal"] = [self.signalPad.GetUymin(), self.signalPad.GetUymax()]
 
             # draw 2d distribution (high resolution)
             self.pad = self.signalTimeCanvas.cd(2)
@@ -255,7 +267,7 @@ class PreAnalysisPlot(Elementary):
             self._FormatPedGraph(setyscale_ped)
             self.pedgraph.Draw("ALP")
             self.pedPad.Update()
-            self.padymargins["pedestal"] = [self.pedPad.GetUymin(), self.pedPad.GetUymax()]
+            # self.padymargins["pedestal"] = [self.pedPad.GetUymin(), self.pedPad.GetUymax()]
 
             # self.signalTimeCanvas.Draw()
 
