@@ -17,13 +17,13 @@ class Elementary(object):
     SaveDirectory = "Results/"
     TESTCAMPAIGN = ""
 
-    def __init__(self, verbose = False):
+    def __init__(self, verbose=False):
         self.verbose = verbose
         self.showAndWait = False
         if self.TESTCAMPAIGN == "":
             Elementary.SetTestCampaign("201508")
-            print "No Testcampaign was set. Testcampaign is now set to: 201508"
-            print "To change Testcampaign: cls.SetTestCampaign(namestring)"
+            # print "No Testcampaign was set. Testcampaign is now set to: 201508"
+            # print "To change Testcampaign: cls.SetTestCampaign(namestring)"
         self.LoadConfig()
         self.aimedFluxes = [3, 20, 60, 600, 2000, 5000]
 

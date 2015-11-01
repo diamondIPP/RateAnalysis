@@ -133,6 +133,7 @@ class Run(Elementary):
         trigger_channel = runConfigParser.getint('ROOTFILE_GENERATION', 'trigger_channel')
         self.converterPrefix = runConfigParser.get('ROOTFILE_GENERATION', "converterPrefix")
         self.eudaqFolder = runConfigParser.get('ROOTFILE_GENERATION', "eudaqFolder")
+        self.converterFile = runConfigParser.get('ROOTFILE_GENERATION', 'converterFile')
         self.trackingFolder = runConfigParser.get('ROOTFILE_GENERATION', "trackingFolder")
         self.rawFolder = runConfigParser.get('ROOTFILE_GENERATION', "rawFolder")
         self.rawPrefix = runConfigParser.get('ROOTFILE_GENERATION', "rawPrefix")
@@ -267,22 +268,23 @@ class Run(Elementary):
         else:
             pol_dia2 = -1
         cparser = ConfigParser.ConfigParser()
-        cparser.read(self.eudaqFolder + "/conf/converter.conf")
+        file_path = self.eudaqFolder + '/conf/' + self.converterFile
+        cparser.read(file_path)
         print cparser.sections()
         cparser.set("Converter.drs4tree", "polarities", "[{pol1},0,0,{pol2}]".format(pol1=pol_dia1, pol2=pol_dia2))
         for key in self.rootGenerationConfig:
             cparser.set("Converter.drs4tree", key, str(self.rootGenerationConfig[key]))
-        f = open(self.eudaqFolder + "/conf/converter.conf", "w")
+        f = open(file_path, "w")
         cparser.write(f)
         f.close()
 
         # remove white spaces:
-        f = open(self.eudaqFolder + "/conf/converter.conf", "r")
+        f = open(file_path, "r")
         content = f.readlines()
         f.close()
         for i in xrange(len(content)):
             content[i] = content[i].replace(" ", "")
-        f = open(self.eudaqFolder + "/conf/converter.conf", "w")
+        f = open(file_path, "w")
         f.writelines(content)
         f.close()
 
@@ -291,7 +293,7 @@ class Run(Elementary):
         noTracksROOTFile = os.getcwd() + "/{prefix}{run}.root".format(prefix=self.converterPrefix, run=str(self.run_number).zfill(4))
 
         if not os.path.exists(noTracksROOTFile):
-            # the no-tracks root files doesn't exiist
+            # the no-tracks root files doesn't exist
             self._ConvertRAW()
         else:
             # continue with existing file (no tracks)
@@ -308,8 +310,9 @@ class Run(Elementary):
 
     def _ConvertRAW(self):
         # terminal command for converting raw to root
-        converter_cmd = "{eudaq}/bin/Converter.exe -t drs4tree -c {eudaq}/conf/converter.conf {rawfolder}/{prefix}{run}.raw".format(eudaq=self.eudaqFolder, rawfolder=self.rawFolder,
-                                                                                                                                    prefix=self.rawPrefix, run=str(self.run_number).zfill(4))
+        converter_cmd = "{eudaq}/bin/Converter.exe -t drs4tree -c {eudaq}/conf/{convFile} {rawfolder}/{prefix}{run}.raw".format(eudaq=self.eudaqFolder, rawfolder=self.rawFolder,
+                                                                                                                                prefix=self.rawPrefix, run=str(self.run_number).zfill(4),
+                                                                                                                                convFile=self.converterFile)
 
         self._SetConverterConfigFile()  # prepare the config file
         print "\n\nSTART CONVERTING RAW FILE..."

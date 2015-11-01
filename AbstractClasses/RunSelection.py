@@ -301,7 +301,7 @@ class RunSelection(Run):
         self.VerbosePrint('All Selected Runs unselected if not '+str(bias)+'V bias applied. Only '+str(bias)+'V Bias Runs left. -'+str(count)+' selections')
 
     def _SelectRun(self, run_number):
-        assert(run_number in self.run_numbers), "run number "+str(run_number)+" not found in list of run numbers. Check run_log json file!"
+        assert(run_number in self.run_numbers), "run number " + str(run_number) + " not found in list of run numbers. Check run_log json file!"
         self.selections[run_number] = True
 
     def _UnselectRun(self, run_number):
