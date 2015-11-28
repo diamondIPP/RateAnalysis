@@ -427,28 +427,50 @@ class RunSelection(Run):
                 print multilinetext(" "+item.comment[0][:], 50)
                 print "--------------------------------------------------"
 
-    def ShowRunInfo(self, runs=[]):
-        '''
+    def ShowRunInfo(self, runs=None, detailed=False):
+        """
         Prints all run infos from the selected runs to the console.
         :param runs:
         :return:
-        '''
-        if runs == []:
-            for runnumber in self.GetSelectedRuns():
-                self._printRunInfo(runnumber)
-        else:
-            if type(runs) is t.ListType:
-                for runnumber in runs:
+        """
+
+        if detailed:
+            if runs is None:
+                for runnumber in self.GetSelectedRuns():
                     self._printRunInfo(runnumber)
-            elif type(runs) is t.IntType:
-                self._printRunInfo(runs)
             else:
-                print "Wrong input type"
+                if type(runs) is list:
+                    for runnumber in runs:
+                        self._printRunInfo(runnumber)
+                elif type(runs) is int:
+                    self._printRunInfo(runs)
+                else:
+                    print "Wrong input type"
+        else:
+            if runs is None:
+                self.__print_runinfo_header()
+                for runnumber in self.GetSelectedRuns():
+                    self.__print_runinfo(runnumber)
+            else:
+                # todo:
+                print 'not yet implemented'
 
     def _printRunInfo(self, runnumber):
         print "--- RUN ", runnumber, " ---"
         for key in self.runs[runnumber].keys():
             print "{key:>20}: {value}".format(key=key, value=self.runs[runnumber][key])
+
+    def __print_runinfo(self, run):
+        dia1 = self.runs[run]['diamond 1']
+        dia2 = self.runs[run]['diamond 2']
+        flux = self.runs[run]['measured flux']
+        type = self.runs[run]['type']
+        print '{run}\t{type}\t{dia1}\t{dia2}\t{flux}'.format(run=run, dia1=dia1, dia2=dia2, flux=flux, type=type)
+
+    @staticmethod
+    def __print_runinfo_header():
+        print 'run\ttype\tdia1\tdia2\tflux'
+
 
     def ShowDiamondNames(self, getNames=False):
         '''

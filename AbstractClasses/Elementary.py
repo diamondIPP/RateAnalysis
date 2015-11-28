@@ -21,7 +21,7 @@ class Elementary(object):
         self.verbose = verbose
         self.showAndWait = False
         if self.TESTCAMPAIGN == "":
-            Elementary.SetTestCampaign("201508")
+            Elementary.SetTestCampaign("201510")
             # print "No Testcampaign was set. Testcampaign is now set to: 201508"
             # print "To change Testcampaign: cls.SetTestCampaign(namestring)"
         self.LoadConfig()
@@ -50,7 +50,7 @@ class Elementary(object):
             raw_input(message)
 
     def _GetBit(self, num, bit):
-        assert(num>=0 and type(num) is t.IntType), "num as to be non negative int"
+        assert(num>=0 and type(num) is t.IntType), "num has to be non negative int"
         return (num & 1<<bit) == 1<<bit
 
 

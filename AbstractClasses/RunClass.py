@@ -1,15 +1,17 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from Runinfos.RunInfo import RunInfo
-from Elementary import Elementary
-from datetime import datetime as dt
 import ROOT
 import os
 import ConfigParser
 import json
 import csv
 import copy
+
+from Runinfos.RunInfo import RunInfo
+from Elementary import Elementary
+from Converter import Converter
+from datetime import datetime as dt
 
 default_info = {
     "persons on shift": "-",
@@ -78,6 +80,7 @@ class Run(Elementary):
         if validate:
             self.ValidateRuns()
 
+        self.converter = Converter(self.TESTCAMPAIGN, run_number)
         if run_number is not None:
             assert (run_number > 0), "incorrect run_number"
             self.SetRun(run_number)
@@ -94,6 +97,7 @@ class Run(Elementary):
         self.SetChannels(diamonds)
         self.IsMonteCarlo = False
 
+    # todo: make dict for the varibles
     def LoadConfig(self):
         machineConfigParser = ConfigParser.ConfigParser()
         machineConfigParser.read('Configuration/Machineconfig.cfg')
@@ -103,7 +107,7 @@ class Run(Elementary):
         runConfigParser.read("Configuration/RunConfig_" + self.TESTCAMPAIGN + ".cfg")
         self.filename = runConfigParser.get('BASIC', 'filename')
         self.treename = runConfigParser.get('BASIC', 'treename')
-        self.sshrunpath = runConfigParser.get('BASIC', 'runpath')
+        self.run_path = runConfigParser.get('BASIC', 'runpath')
         self.runinfofile = runConfigParser.get('BASIC', 'runinfofile')
         self._runlogkeyprefix = runConfigParser.get('BASIC', 'runlog_key_prefix')
         self.runplaninfofile = runConfigParser.get('BASIC', 'runplaninfofile')
@@ -112,45 +116,34 @@ class Run(Elementary):
         self.signalregion_low = runConfigParser.getint('BASIC', 'signalregion_low')
         self.signalregion_high = runConfigParser.getint('BASIC', 'signalregion_high')
 
-        # Rootfile Generation Configuration:
-        signal_range_low = runConfigParser.getint('ROOTFILE_GENERATION', 'signal_range_low')
-        signal_range_high = runConfigParser.getint('ROOTFILE_GENERATION', 'signal_range_high')
-        pedestal_range_low = runConfigParser.getint('ROOTFILE_GENERATION', 'pedestal_range_low')
-        pedestal_range_high = runConfigParser.getint('ROOTFILE_GENERATION', 'pedestal_range_high')
-        pulser_range_low = runConfigParser.getint('ROOTFILE_GENERATION', 'pulser_range_low')
-        pulser_range_high = runConfigParser.getint('ROOTFILE_GENERATION', 'pulser_range_high')
-        peakintegral1_range_low = runConfigParser.getint('ROOTFILE_GENERATION', 'peakintegral1_range_low')
-        peakintegral1_range_high = runConfigParser.getint('ROOTFILE_GENERATION', 'peakintegral1_range_high')
-        peakintegral2_range_low = runConfigParser.getint('ROOTFILE_GENERATION', 'peakintegral2_range_low')
-        peakintegral2_range_high = runConfigParser.getint('ROOTFILE_GENERATION', 'peakintegral2_range_high')
-        peakintegral3_range_low = runConfigParser.getint('ROOTFILE_GENERATION', 'peakintegral3_range_low')
-        peakintegral3_range_high = runConfigParser.getint('ROOTFILE_GENERATION', 'peakintegral3_range_high')
-        save_waveforms = runConfigParser.getint('ROOTFILE_GENERATION', 'save_waveforms')
-        pulser_range_drs4_low = runConfigParser.getint('ROOTFILE_GENERATION', 'pulser_range_drs4_low')
-        pulser_range_drs4_high = runConfigParser.getint('ROOTFILE_GENERATION', 'pulser_range_drs4_high')
-        pulser_drs4_threshold = runConfigParser.getint('ROOTFILE_GENERATION', 'pulser_drs4_threshold')
-        pulser_channel = runConfigParser.getint('ROOTFILE_GENERATION', 'pulser_channel')
-        trigger_channel = runConfigParser.getint('ROOTFILE_GENERATION', 'trigger_channel')
-        self.converterPrefix = runConfigParser.get('ROOTFILE_GENERATION', "converterPrefix")
-        self.eudaqFolder = runConfigParser.get('ROOTFILE_GENERATION', "eudaqFolder")
-        self.converterFile = runConfigParser.get('ROOTFILE_GENERATION', 'converterFile')
-        self.trackingFolder = runConfigParser.get('ROOTFILE_GENERATION', "trackingFolder")
-        self.rawFolder = runConfigParser.get('ROOTFILE_GENERATION', "rawFolder")
-        self.rawPrefix = runConfigParser.get('ROOTFILE_GENERATION', "rawPrefix")
+    def SetRun(self, run_number, validate=False, loadROOTFile=True):
 
-        self.rootGenerationConfig = {
-            "signal_range": [signal_range_low, signal_range_high],
-            "pedestal_range": [pedestal_range_low, pedestal_range_high],
-            "pulser_range": [pulser_range_low, pulser_range_high],
-            "peakintegral1_range": [peakintegral1_range_low, peakintegral1_range_high],
-            "peakintegral2_range": [peakintegral2_range_low, peakintegral2_range_high],
-            "peakintegral3_range": [peakintegral3_range_low, peakintegral3_range_high],
-            "pulser_range_drs4": [pulser_range_drs4_low, pulser_range_drs4_high],
-            "save_waveforms": save_waveforms,
-            "pulser_drs4_threshold": pulser_drs4_threshold,
-            "pulser_channel": pulser_channel,
-            "trigger_channel": trigger_channel
-        }
+        assert type(run_number) is int, "incorrect run_number"
+        boolfunc = self.ValidateRun if validate else lambda run: True
+        if not boolfunc(run_number):
+            return False
+
+        self.run_number = run_number
+        self.LoadRunInfo()
+
+        # check for conversion
+        location = self.converter.find_root_file()
+        if not location:
+            self.converter.convert_run(self.RunInfo)
+
+
+        full_rootfile_path = self.run_path + '/' + self.filename + str(run_number).zfill(3) + '.root'
+        self.TrackingPadAnalysis['ROOTFile'] = full_rootfile_path
+        if self.operationmode == "local-ssh":
+            full_rootfile_path = '/Volumes' + self.run_path + '/' + self.filename + str(run_number).zfill(3) + '.root'
+            self.TrackingPadAnalysis['ROOTFile'] = full_rootfile_path
+        elif self.operationmode == "local":
+            full_rootfile_path = 'runs/run_' + str(run_number) + '/' + self.filename + str(run_number).zfill(3) + '.root'
+            self.TrackingPadAnalysis['ROOTFile'] = full_rootfile_path
+
+        if loadROOTFile:
+            self._LoadROOTFile(full_rootfile_path)
+        return True
 
     def LoadRunInfo(self):
         self.RunInfo = {}
@@ -251,42 +244,42 @@ class Run(Elementary):
 
             f.close()
             return rate_Hz / 1000.
-        except:
+        except IOError:
             print "\nERROR: Could not load mask file, thus not re-calculate rate..\n"
             return 0
 
-    def _SetConverterConfigFile(self):
-        pol_dia1 = self.RunInfo["hv dia1"]
-        pol_dia2 = self.RunInfo["hv dia2"]
-        assert (pol_dia1 != 0 and pol_dia2 != 0)
-        if pol_dia1 > 0:
-            pol_dia1 = 1
-        else:
-            pol_dia1 = -1
-        if pol_dia2 > 0:
-            pol_dia2 = 1
-        else:
-            pol_dia2 = -1
-        cparser = ConfigParser.ConfigParser()
-        file_path = self.eudaqFolder + '/conf/' + self.converterFile
-        cparser.read(file_path)
-        print cparser.sections()
-        cparser.set("Converter.drs4tree", "polarities", "[{pol1},0,0,{pol2}]".format(pol1=pol_dia1, pol2=pol_dia2))
-        for key in self.rootGenerationConfig:
-            cparser.set("Converter.drs4tree", key, str(self.rootGenerationConfig[key]))
-        f = open(file_path, "w")
-        cparser.write(f)
-        f.close()
-
-        # remove white spaces:
-        f = open(file_path, "r")
-        content = f.readlines()
-        f.close()
-        for i in xrange(len(content)):
-            content[i] = content[i].replace(" ", "")
-        f = open(file_path, "w")
-        f.writelines(content)
-        f.close()
+    # def _SetConverterConfigFile(self):
+    #     pol_dia1 = self.RunInfo["hv dia1"]
+    #     pol_dia2 = self.RunInfo["hv dia2"]
+    #     assert (pol_dia1 != 0 and pol_dia2 != 0)
+    #     if pol_dia1 > 0:
+    #         pol_dia1 = 1
+    #     else:
+    #         pol_dia1 = -1
+    #     if pol_dia2 > 0:
+    #         pol_dia2 = 1
+    #     else:
+    #         pol_dia2 = -1
+    #     cparser = ConfigParser.ConfigParser()
+    #     file_path = self.eudaqFolder + '/conf/' + self.converterFile
+    #     cparser.read(file_path)
+    #     print cparser.sections()
+    #     cparser.set("Converter.drs4tree", "polarities", "[{pol1},0,0,{pol2}]".format(pol1=pol_dia1, pol2=pol_dia2))
+    #     for key in self.rootGenerationConfig:
+    #         cparser.set("Converter.drs4tree", key, str(self.rootGenerationConfig[key]))
+    #     f = open(file_path, "w")
+    #     cparser.write(f)
+    #     f.close()
+    #
+    #     # remove white spaces:
+    #     f = open(file_path, "r")
+    #     content = f.readlines()
+    #     f.close()
+    #     for i in xrange(len(content)):
+    #         content[i] = content[i].replace(" ", "")
+    #     f = open(file_path, "w")
+    #     f.writelines(content)
+    #     f.close()
 
     def CreateROOTFile(self, do_tracking=True):
         # path and name of converter output file:
@@ -308,16 +301,16 @@ class Run(Elementary):
         else:
             self._AddTracking(noTracksROOTFile=noTracksROOTFile)
 
-    def _ConvertRAW(self):
-        # terminal command for converting raw to root
-        converter_cmd = "{eudaq}/bin/Converter.exe -t drs4tree -c {eudaq}/conf/{convFile} {rawfolder}/{prefix}{run}.raw".format(eudaq=self.eudaqFolder, rawfolder=self.rawFolder,
-                                                                                                                                prefix=self.rawPrefix, run=str(self.run_number).zfill(4),
-                                                                                                                                convFile=self.converterFile)
-
-        self._SetConverterConfigFile()  # prepare the config file
-        print "\n\nSTART CONVERTING RAW FILE..."
-        print converter_cmd
-        os.system(converter_cmd)  # convert
+    # def _ConvertRAW(self):
+    #     # terminal command for converting raw to root
+    #     converter_cmd = "{eudaq}/bin/Converter.exe -t drs4tree -c {eudaq}/conf/{convFile} {rawfolder}/{prefix}{run}.raw".format(eudaq=self.eudaqFolder, rawfolder=self.rawFolder,
+    #                                                                                                                             prefix=self.rawPrefix, run=str(self.run_number).zfill(4),
+    #                                                                                                                             convFile=self.converterFile)
+    #
+    #     self._SetConverterConfigFile()  # prepare the config file
+    #     print "\n\nSTART CONVERTING RAW FILE..."
+    #     print converter_cmd
+    #     os.system(converter_cmd)  # convert
 
     def _AddTracking(self, noTracksROOTFile):
 
@@ -326,8 +319,7 @@ class Run(Elementary):
         elif self.TESTCAMPAIGN == "201505":
             telescopeID = 7
         else:
-            telescopeID = 0
-            assert (False), "Error. unknown TESTCAMPAIGN"
+            assert False, "unknown TESTCAMPAIGN"
 
         # change CWD to TrackingTelescope:
         old_cwd = os.getcwd()
@@ -463,7 +455,7 @@ class Run(Elementary):
             self.RunInfo = runinfo
 
     def ValidateRuns(self, list_of_runs=None):
-        if list_of_runs != None:
+        if list_of_runs is not None:
             runs = list_of_runs
         else:
             runs = RunInfo.runs.keys()  # list of all runs
@@ -480,46 +472,8 @@ class Run(Elementary):
         else:
             return True
 
-    def ResetMC(self):
-        pass
-
-    def SetRun(self, run_number, validate=False, loadROOTFile=True):
-        if validate:
-            boolfunc = self.ValidateRun
-        else:
-            boolfunc = lambda run: True
-        assert (run_number > 0), "incorrect run_number"
-        if True or run_number in RunInfo.runs and boolfunc(run_number):
-            self.run_number = run_number
-            self.LoadRunInfo()
-
-            if self.operationmode == "local-ssh":
-                fullROOTFilePath = '/Volumes' + self.sshrunpath + '/' + self.filename + str(run_number).zfill(3) + '.root'
-                self.TrackingPadAnalysis['ROOTFile'] = fullROOTFilePath
-
-            if self.operationmode == "ssh":
-                fullROOTFilePath = self.sshrunpath + '/' + self.filename + str(run_number).zfill(3) + '.root'
-                self.TrackingPadAnalysis['ROOTFile'] = fullROOTFilePath
-
-            if self.operationmode == "local":
-                self.TrackingPadAnalysis['ROOTFile'] = 'runs/run_' + str(run_number) + '/' + self.filename + str(run_number).zfill(3) + '.root'
-
-
-                #           self.RunInfo = self.current_run.copy()
-                # a = self.current_run.__dict__
-            #            self.diamond = Diamond( self.current_run['diamond'])
-
-            self.ResetMC()
-            # self.diamond = diamond # diamond is of type Diamond
-            # RunInfo.__init__(self,*args)
-
-            if loadROOTFile:
-                self._LoadROOTFile(fullROOTFilePath)
-
-            # self.diamond.SetName(self.runs[0]['diamond'])
-            return True
-        else:
-            return False
+    # def ResetMC(self):
+    #     pass
 
     def SetChannels(self, diamonds):
         '''
@@ -683,19 +637,6 @@ class Run(Elementary):
         print "\nLoading infos for rootfile: ", fullROOTFilePath.split('/')[-1]
         self.rootfile = ROOT.TFile(fullROOTFilePath)
         self.tree = self.rootfile.Get(self.treename)  # Get TTree called "track_info"
-        if not (bool(self.tree) and bool(self.rootfile)) and self.createNewROOTFiles:
-            self.CreateROOTFile()
-
-            # print "\n\nCould not load root file!"
-            # print "\t>> "+fullROOTFilePath
-            # answer = raw_input("generate ROOT file instead? (y/n): ")
-            # if answer == "y":
-            #     tracking = raw_input("generate tracking information? (y/n): ")
-            #     if tracking == "y":
-            #         self.CreateROOTFile()
-            #     else:
-            #         self.CreateROOTFile(do_tracking=False)
-            # assert(bool(self.tree) and bool(self.rootfile)), "Could not load root file: \n\t"+fullROOTFilePath
 
     def GetTimeAtEvent(self, event):
         """
