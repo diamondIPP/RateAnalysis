@@ -1508,12 +1508,15 @@ class Analysis(Elementary):
         :param drawoption:
         :return:
         '''
-        if startevent != None: assert (startevent >= 0), "startevent as to be >= 0"
+        if startevent != None:
+            assert (startevent >= 0), "startevent as to be >= 0"
         maxevent = self.run.tree.GetEntries()
-        if startevent > maxevent: return False
+        if startevent > maxevent:
+            return False
         # check number of wf in root file:
         nWFChannels, draw_waveforms = self._checkWFChannels()
-        if nWFChannels == 0: return False
+        if nWFChannels == 0:
+            return False
 
         # if userchannels:
         if channels != None:

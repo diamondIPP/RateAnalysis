@@ -53,23 +53,23 @@ class PreAnalysisPlot(Elementary):
 
         self.checkList = {
             "madeGraphs": {
-                0:  False,
-                3:  False}
+                0: False,
+                3: False}
         }
 
     def _Fill2DHistos(self, draw_option):
         # pedestal
         self.analysis.run.tree.Draw(
-                self.analysis.pedestalname + "[{channel}]:(time-{starttime})>>pedestaltime{run}".format(channel=self.channel, starttime=self.analysis.run.startTime,
-                                                                                                        run=self.analysis.run.run_number),
-                self.analysis.GetCut(self.channel), draw_option, self.analysis.GetNEventsCut(channel=self.channel),
-                self.analysis.GetMinEventCut(channel=self.channel))
+            self.analysis.pedestalname + "[{channel}]:(time-{starttime})>>pedestaltime{run}".format(channel=self.channel, starttime=self.analysis.run.startTime,
+                                                                                                    run=self.analysis.run.run_number),
+            self.analysis.GetCut(self.channel), draw_option, self.analysis.GetNEventsCut(channel=self.channel),
+            self.analysis.GetMinEventCut(channel=self.channel))
         # signal
         nEntries = self.analysis.run.tree.Draw(
-                (self.analysis.signaldefinition[self.channel] + ":(time-{starttime})>>signaltime{run}").format(channel=self.channel, starttime=self.analysis.run.startTime,
-                                                                                                               run=self.analysis.run.run_number),
-                self.analysis.GetCut(self.channel), draw_option, self.analysis.GetNEventsCut(channel=self.channel),
-                self.analysis.GetMinEventCut(channel=self.channel))
+            (self.analysis.signaldefinition[self.channel] + ":(time-{starttime})>>signaltime{run}").format(channel=self.channel, starttime=self.analysis.run.startTime,
+                                                                                                           run=self.analysis.run.run_number),
+            self.analysis.GetCut(self.channel), draw_option, self.analysis.GetNEventsCut(channel=self.channel),
+            self.analysis.GetMinEventCut(channel=self.channel))
         # printable signal
         self.analysis.run.tree.Draw(
             (self.analysis.signaldefinition[self.channel] + ":(event_number)/1000>>signaltime2d{run}{channel}").format(run=self.analysis.run.run_number, channel=self.channel),

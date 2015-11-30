@@ -25,7 +25,8 @@ class Converter:
         self.root = Tk()
         self.root.withdraw()
         self.frame = Frame(self.root, bd=5, relief=GROOVE)
-        self.do_gui = False
+        self.do_gui = True
+        self.stop_conversion = False
 
         # tracking
         self.do_tracking = True
@@ -59,21 +60,10 @@ class Converter:
 
     def get_config(self):
         config = OrderedDict()
-        config['signal_range'] = json.loads(self.parser.get('ROOTFILE_GENERATION', 'signal_range'))
-        config['signal_a_region'] = json.loads(self.parser.get('ROOTFILE_GENERATION', 'signal_a_region')),
-        config['signal_b_region'] = json.loads(self.parser.get('ROOTFILE_GENERATION', 'signal_b_region')),
-        config['signal_c_region'] = json.loads(self.parser.get('ROOTFILE_GENERATION', 'signal_c_region')),
-        config['signal_d_region'] = json.loads(self.parser.get('ROOTFILE_GENERATION', 'signal_d_region')),
-        config['pedestal_range'] = json.loads(self.parser.get('ROOTFILE_GENERATION', 'pedestal_range')),
-        config['pedestal_a_region'] = json.loads(self.parser.get('ROOTFILE_GENERATION', 'pedestal_a_region')),
-        config['pedestal_aa_region'] = json.loads(self.parser.get('ROOTFILE_GENERATION', 'pedestal_aa_region')),
-        config['pedestal_b_region'] = json.loads(self.parser.get('ROOTFILE_GENERATION', 'pedestal_b_region')),
-        config['pedestal_c_region'] = json.loads(self.parser.get('ROOTFILE_GENERATION', 'pedestal_c_region')),
-        config['pulser_range'] = json.loads(self.parser.get('ROOTFILE_GENERATION', 'pulser_range')),
-        config['peakintegral1_range'] = json.loads(self.parser.get('ROOTFILE_GENERATION', 'peakintegral1_range')),
-        config['peakintegral2_range'] = json.loads(self.parser.get('ROOTFILE_GENERATION', 'peakintegral2_range')),
-        config['peakintegral3_range'] = json.loads(self.parser.get('ROOTFILE_GENERATION', 'peakintegral3_range')),
-        config['pulser_range_drs4'] = json.loads(self.parser.get('ROOTFILE_GENERATION', 'pulser_range_drs4')),
+        options = self.parser.options('ROOTFILE_GENERATION')
+        for opt in options:
+            if opt.endswith('_range') or opt.endswith('_region'):
+                config[opt] = json.loads(self.parser.get('ROOTFILE_GENERATION', opt))
         config['save_waveforms'] = self.parser.get('ROOTFILE_GENERATION', 'save_waveforms'),
         config['pulser_drs4_threshold'] = self.parser.get('ROOTFILE_GENERATION', 'pulser_drs4_threshold'),
         config['pulser_channel'] = self.parser.get('ROOTFILE_GENERATION', 'pulser_channel'),
@@ -128,9 +118,12 @@ class Converter:
             return False
 
     def convert_run(self, run_infos, run_number):
+        self.stop_conversion = False
         if self.do_gui:
             self.root.deiconify()
             self.root.mainloop()
+        if self.stop_conversion:
+            return
         file_path = self.find_raw_file(run_number)
         if not file_path:
             return
@@ -207,9 +200,13 @@ class Converter:
         dic = OrderedDict()
         dic['min'] = OrderedDict()
         dic['max'] = OrderedDict()
-        for key in self.config:
-            dic['min'][key] = Spinbox(self.frame, width=8, justify=CENTER, from_=0, to=1024, increment=10)
-            dic['max'][key] = Spinbox(self.frame, width=8, justify=CENTER, from_=0, to=1024, increment=10)
+        dic['single'] = OrderedDict()
+        for key, value in self.config.iteritems():
+            if type(value[0]) is str or type(value) is str:
+                dic['single'][key] = Spinbox(self.frame, width=8, justify=CENTER, from_=0, to=16, increment=1)
+            else:
+                dic['min'][key] = Spinbox(self.frame, width=8, justify=CENTER, from_=0, to=1024, increment=10)
+                dic['max'][key] = Spinbox(self.frame, width=8, justify=CENTER, from_=0, to=1024, increment=10)
         return dic
 
     def create_labels(self):
@@ -222,8 +219,9 @@ class Converter:
 
     def create_buttons(self):
         dic = OrderedDict()
-        dic['start'] = Button(self.frame, text='Start Convertion', width=12, command=self.root.destroy)
+        dic['start'] = Button(self.frame, text='Start', width=12, command=self.root.destroy)
         dic['save'] = Button(self.frame, text='Save Config', width=12, command=self.save_config_values)
+        dic['stop'] = Button(self.frame, text='Stop', width=12, command=self.__stop_conversion)
         return dic
 
     def create_checkbuttons(self):
@@ -243,20 +241,24 @@ class Converter:
 
     def set_start_values(self):
         for key, value in self.config.iteritems():
-            if type(value[0]) is str:
-                continue
-            value = value if type(value) is list else value[0]
-            self.spinboxes['min'][key].delete(0, 'end')
-            self.spinboxes['min'][key].insert(0, value[0])
-            self.spinboxes['max'][key].delete(0, 'end')
-            self.spinboxes['max'][key].insert(0, value[1])
+            if type(value[0]) is str or type(value) is str:
+                value = value if type(value) is str else value[0]
+                self.spinboxes['single'][key].delete(0, 'end')
+                self.spinboxes['single'][key].insert(0, value)
+            else:
+                value = value if type(value) is list else value[0]
+                self.spinboxes['min'][key].delete(0, 'end')
+                self.spinboxes['min'][key].insert(0, value[0])
+                self.spinboxes['max'][key].delete(0, 'end')
+                self.spinboxes['max'][key].insert(0, value[1])
 
     def save_config_values(self):
         for key, value in self.config.iteritems():
-            if type(value[0]) is str:
-                continue
-            lst = [int(self.spinboxes['min'][key].get()), int(self.spinboxes['max'][key].get())]
-            self.config[key] = lst
+            if type(value[0]) is str or type(value) is str:
+                self.config[key] = self.spinboxes['single'][key].get()
+            else:
+                lst = [int(self.spinboxes['min'][key].get()), int(self.spinboxes['max'][key].get())]
+                self.config[key] = lst
 
         parser = ConfigParser()
         conf_file = 'Configuration/RunConfig_' + self.test_campaign + '.cfg'
@@ -269,10 +271,16 @@ class Converter:
         parser.write(f)
         f.close()
 
+    def __stop_conversion(self):
+        self.stop_conversion = True
+        self.root.destroy()
+        return
+
     def make_gui(self):
         self.frame.pack()
         self.labels['main'].grid(columnspan=3)
         j = 0
+        k = 0
         for i, label in enumerate(self.labels['config'].values()):
             label.grid(row=i + 1)
         for i, box in enumerate(self.spinboxes['min'].values()):
@@ -280,9 +288,13 @@ class Converter:
         for i, box in enumerate(self.spinboxes['max'].values()):
             box.grid(row=i + 1, column=2)
             j = i
-        self.checkbuttons['tracking'].grid(row=j + 2, columnspan=3)
-        self.buttons['save'].grid(row=j + 3, pady=3)
-        self.buttons['start'].grid(row=j + 3, columnspan=2, column=1)
+        for i, box in enumerate(self.spinboxes['single'].values(), j + 2):
+            box.grid(row=i, column=1, columnspan=2)
+            k = i
+        self.checkbuttons['tracking'].grid(row=k + 2)
+        self.buttons['save'].grid(row=k + 2, pady=3, column=1, columnspan=2)
+        self.buttons['stop'].grid(row=k + 3)
+        self.buttons['start'].grid(row=k + 3, columnspan=2, column=1)
 
 
 if __name__ == "__main__":
