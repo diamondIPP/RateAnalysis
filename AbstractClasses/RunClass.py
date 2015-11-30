@@ -75,16 +75,42 @@ class Run(Elementary):
         """
         Elementary.__init__(self, verbose=verbose)
         self.run_number = -1
-        self.LoadConfig()
+        
+        # configuration
+        self.run_config_parser = self.load_parser()
+        self.ShowAndWait = False
+        self.filename = self.run_config_parser.get('BASIC', 'filename')
+        self.treename = self.run_config_parser.get('BASIC', 'treename')
+        self.run_path = self.run_config_parser.get('BASIC', 'runpath')
+        self.runinfofile = self.run_config_parser.get('BASIC', 'runinfofile')
+        self._runlogkeyprefix = self.run_config_parser.get('BASIC', 'runlog_key_prefix')
+        self.runplaninfofile = self.run_config_parser.get('BASIC', 'runplaninfofile')
+        self.maskfilepath = self.run_config_parser.get('BASIC', 'maskfilepath')
+        self.createNewROOTFiles = self.run_config_parser.getboolean('BASIC', 'createNewROOTFiles')
+        self.signalregion_low = self.run_config_parser.getint('BASIC', 'signalregion_low')
+        self.signalregion_high = self.run_config_parser.getint('BASIC', 'signalregion_high')
+
+        # run info
+        self.allRunKeys = None
+        self.RunInfo = None
 
         if validate:
             self.ValidateRuns()
 
-        self.converter = Converter(self.TESTCAMPAIGN, run_number)
         if run_number is not None:
+            self.converter = Converter(self.TESTCAMPAIGN)
+            print self.run_number
             assert (run_number > 0), "incorrect run_number"
             self.SetRun(run_number)
-            self.GetTreeInfo()
+
+            # tree info
+            self.startEvent = 0
+            self.startTime = self.GetTimeAtEvent(self.startEvent)
+            self.endEvent = self.tree.GetEntries() - 1
+            self.endTime = self.GetTimeAtEvent(self.endEvent)
+            self.totalTime = self.endTime - self.startTime
+            self.totalMinutes = (self.endTime - self.startTime) / 60000
+
         else:
             self.LoadRunInfo()
         self._LoadTiming()
@@ -97,24 +123,10 @@ class Run(Elementary):
         self.SetChannels(diamonds)
         self.IsMonteCarlo = False
 
-    # todo: make dict for the varibles
-    def LoadConfig(self):
-        machineConfigParser = ConfigParser.ConfigParser()
-        machineConfigParser.read('Configuration/Machineconfig.cfg')
-        self.operationmode = machineConfigParser.get('EXEC-MACHINE', 'operationmode')
-        self.ShowAndWait = False
+    def load_parser(self):
         runConfigParser = ConfigParser.ConfigParser()
         runConfigParser.read("Configuration/RunConfig_" + self.TESTCAMPAIGN + ".cfg")
-        self.filename = runConfigParser.get('BASIC', 'filename')
-        self.treename = runConfigParser.get('BASIC', 'treename')
-        self.run_path = runConfigParser.get('BASIC', 'runpath')
-        self.runinfofile = runConfigParser.get('BASIC', 'runinfofile')
-        self._runlogkeyprefix = runConfigParser.get('BASIC', 'runlog_key_prefix')
-        self.runplaninfofile = runConfigParser.get('BASIC', 'runplaninfofile')
-        self.maskfilepath = runConfigParser.get('BASIC', 'maskfilepath')
-        self.createNewROOTFiles = runConfigParser.getboolean('BASIC', 'createNewROOTFiles')
-        self.signalregion_low = runConfigParser.getint('BASIC', 'signalregion_low')
-        self.signalregion_high = runConfigParser.getint('BASIC', 'signalregion_high')
+        return runConfigParser
 
     def SetRun(self, run_number, validate=False, loadROOTFile=True):
 
@@ -127,26 +139,17 @@ class Run(Elementary):
         self.LoadRunInfo()
 
         # check for conversion
-        location = self.converter.find_root_file()
-        if not location:
-            self.converter.convert_run(self.RunInfo)
-
-
-        full_rootfile_path = self.run_path + '/' + self.filename + str(run_number).zfill(3) + '.root'
-        self.TrackingPadAnalysis['ROOTFile'] = full_rootfile_path
-        if self.operationmode == "local-ssh":
-            full_rootfile_path = '/Volumes' + self.run_path + '/' + self.filename + str(run_number).zfill(3) + '.root'
-            self.TrackingPadAnalysis['ROOTFile'] = full_rootfile_path
-        elif self.operationmode == "local":
-            full_rootfile_path = 'runs/run_' + str(run_number) + '/' + self.filename + str(run_number).zfill(3) + '.root'
-            self.TrackingPadAnalysis['ROOTFile'] = full_rootfile_path
-
         if loadROOTFile:
-            self._LoadROOTFile(full_rootfile_path)
+            location = self.converter.find_root_file(run_number)
+            if not location or location == 'tracking':
+                self.converter.convert_run(self.RunInfo, run_number)
+            self._LoadROOTFile(run_number)
+
         return True
 
     def LoadRunInfo(self):
         self.RunInfo = {}
+        data = None
         try:
             f = open(self.runinfofile, "r")
             data = json.load(f)
@@ -162,10 +165,10 @@ class Run(Elementary):
         if self.run_number >= 0:
             if not loaderror:
                 self.RunInfo = data.get(str(self.run_number))  # may:  = data.get("150800"+str(self.run_number).zfill(3))
-                if self.RunInfo == None:
+                if self.RunInfo is None:
                     # try with run_log key prefix
                     self.RunInfo = data.get(self._runlogkeyprefix + str(self.run_number).zfill(3))
-                if self.RunInfo == None:
+                if self.RunInfo is None:
                     print "INFO: Run not found in json run log file. Default run info will be used."
                     self.RunInfo = default_info
                 else:
@@ -177,25 +180,17 @@ class Run(Elementary):
             self.RunInfo = default_info
             return 0
 
-    def GetTreeInfo(self):
-        self.startEvent = 0
-        self.startTime = self.GetTimeAtEvent(self.startEvent)
-        self.endEvent = self.tree.GetEntries() - 1
-        self.endTime = self.GetTimeAtEvent(self.endEvent)
-        self.totalTime = self.endTime - self.startTime
-        self.totalMinutes = (self.endTime - self.startTime) / 60000
-
     def _SetDiamondName(self):
         aliasParser = ConfigParser.ConfigParser()
         aliasParser.read('Configuration/DiamondAliases.cfg')
         try:
             diamondname1 = aliasParser.get('ALIASES', self.RunInfo["diamond 1"])
-        except:
+        except ConfigParser.NoOptionError:
             diamondname1 = self.RunInfo["diamond 1"]
             print "\nInfo: Diamond '{dia}' Alias not found in Configuration/DiamondAliases.cfg\n".format(dia=self.RunInfo["diamond 1"])
         try:
             diamondname2 = aliasParser.get('ALIASES', self.RunInfo["diamond 2"])
-        except:
+        except ConfigParser.NoOptionError:
             diamondname2 = self.RunInfo["diamond 2"]
             print "\nInfo: Diamond '{dia}' Alias not found in Configuration/DiamondAliases.cfg\n".format(dia=self.RunInfo["diamond 2"])
 
@@ -206,7 +201,8 @@ class Run(Elementary):
 
     def CalculateRate(self, maskfilename=""):
         self.VerbosePrint("Calculate rate from mask file:\n\t" + self.RunInfo["mask"])
-        if maskfilename != "": self.RunInfo["mask"] = maskfilename
+        if maskfilename != "":
+            self.RunInfo["mask"] = maskfilename
         maskFilePath = self.maskfilepath + "/" + self.RunInfo["mask"]  # CONFIG FILE !
         maskdata = {
             0: {
@@ -281,25 +277,25 @@ class Run(Elementary):
     #     f.writelines(content)
     #     f.close()
 
-    def CreateROOTFile(self, do_tracking=True):
-        # path and name of converter output file:
-        noTracksROOTFile = os.getcwd() + "/{prefix}{run}.root".format(prefix=self.converterPrefix, run=str(self.run_number).zfill(4))
-
-        if not os.path.exists(noTracksROOTFile):
-            # the no-tracks root files doesn't exist
-            self._ConvertRAW()
-        else:
-            # continue with existing file (no tracks)
-            print "noTracks ROOT File found here:"
-            print "\t" + noTracksROOTFile
-
-        if not do_tracking:
-            # move to data folder:
-            os.system("mv " + noTracksROOTFile + " " + self.TrackingPadAnalysis['ROOTFile'])
-            self._LoadROOTFile(self.TrackingPadAnalysis['ROOTFile'])
-            print "INFO ROOT File generated with NO Tracking information"
-        else:
-            self._AddTracking(noTracksROOTFile=noTracksROOTFile)
+    # def CreateROOTFile(self, do_tracking=True):
+    #     # path and name of converter output file:
+    #     noTracksROOTFile = os.getcwd() + "/{prefix}{run}.root".format(prefix=self.converterPrefix, run=str(self.run_number).zfill(4))
+    #
+    #     if not os.path.exists(noTracksROOTFile):
+    #         # the no-tracks root files doesn't exist
+    #         self._ConvertRAW()
+    #     else:
+    #         # continue with existing file (no tracks)
+    #         print "noTracks ROOT File found here:"
+    #         print "\t" + noTracksROOTFile
+    #
+    #     if not do_tracking:
+    #         # move to data folder:
+    #         os.system("mv " + noTracksROOTFile + " " + self.TrackingPadAnalysis['ROOTFile'])
+    #         self._LoadROOTFile(self.TrackingPadAnalysis['ROOTFile'])
+    #         print "INFO ROOT File generated with NO Tracking information"
+    #     else:
+    #         self._AddTracking(noTracksROOTFile=noTracksROOTFile)
 
     # def _ConvertRAW(self):
     #     # terminal command for converting raw to root
@@ -312,36 +308,36 @@ class Run(Elementary):
     #     print converter_cmd
     #     os.system(converter_cmd)  # convert
 
-    def _AddTracking(self, noTracksROOTFile):
-
-        if self.TESTCAMPAIGN == "201508":
-            telescopeID = 9
-        elif self.TESTCAMPAIGN == "201505":
-            telescopeID = 7
-        else:
-            assert False, "unknown TESTCAMPAIGN"
-
-        # change CWD to TrackingTelescope:
-        old_cwd = os.getcwd()
-        os.chdir(self.trackingFolder)
-        tracking_cmd = "{trackingfolder}/TrackingTelescope {root} 0 {nr}".format(trackingfolder=self.trackingFolder, root=noTracksROOTFile, nr=telescopeID)
-        print "\n\nSTART TRACKING..."
-        print tracking_cmd
-        os.system(tracking_cmd)
-        os.chdir(old_cwd)
-
-        tracksROOTFile = self.trackingFolder + "/{prefix}{run}_withTracks.root".format(prefix=self.converterPrefix, run=str(self.run_number).zfill(4))
-
-        # move to data folder:
-        os.system("mv " + tracksROOTFile + " " + self.TrackingPadAnalysis['ROOTFile'])
-
-        self.rootfile = ROOT.TFile(self.TrackingPadAnalysis['ROOTFile'])
-        self.tree = self.rootfile.Get(self.treename)  # Get TTree called "track_info"
-
-        assert (bool(self.tree) and bool(self.rootfile)), "Could not load root file: \n\t" + self.TrackingPadAnalysis['ROOTFile']
-
-        # delete no tracks file:
-        os.system("rm " + noTracksROOTFile)
+    # def _AddTracking(self, noTracksROOTFile):
+    #
+    #     if self.TESTCAMPAIGN == "201508":
+    #         telescopeID = 9
+    #     elif self.TESTCAMPAIGN == "201505":
+    #         telescopeID = 7
+    #     else:
+    #         assert False, "unknown TESTCAMPAIGN"
+    #
+    #     # change CWD to TrackingTelescope:
+    #     old_cwd = os.getcwd()
+    #     os.chdir(self.trackingFolder)
+    #     tracking_cmd = "{trackingfolder}/TrackingTelescope {root} 0 {nr}".format(trackingfolder=self.trackingFolder, root=noTracksROOTFile, nr=telescopeID)
+    #     print "\n\nSTART TRACKING..."
+    #     print tracking_cmd
+    #     os.system(tracking_cmd)
+    #     os.chdir(old_cwd)
+    #
+    #     tracksROOTFile = self.trackingFolder + "/{prefix}{run}_withTracks.root".format(prefix=self.converterPrefix, run=str(self.run_number).zfill(4))
+    #
+    #     # move to data folder:
+    #     os.system("mv " + tracksROOTFile + " " + self.TrackingPadAnalysis['ROOTFile'])
+    #
+    #     self.rootfile = ROOT.TFile(self.TrackingPadAnalysis['ROOTFile'])
+    #     self.tree = self.rootfile.Get(self.treename)  # Get TTree called "track_info"
+    #
+    #     assert (bool(self.tree) and bool(self.rootfile)), "Could not load root file: \n\t" + self.TrackingPadAnalysis['ROOTFile']
+    #
+    #     # delete no tracks file:
+    #     os.system("rm " + noTracksROOTFile)
 
     def _LoadTiming(self):
         try:
@@ -633,9 +629,10 @@ class Run(Elementary):
         self.tree.GetEntry(1)
         return self.tree.sensor_name[channel]
 
-    def _LoadROOTFile(self, fullROOTFilePath):
-        print "\nLoading infos for rootfile: ", fullROOTFilePath.split('/')[-1]
-        self.rootfile = ROOT.TFile(fullROOTFilePath)
+    def _LoadROOTFile(self, run_number):
+        file_path = self.converter.get_tracking_file_path(run_number) if self.converter.do_tracking else self.converter.get_root_file_path(run_number)
+        print "\nLoading infos for rootfile: ", file_path.split('/')[-1]
+        self.rootfile = ROOT.TFile(file_path)
         self.tree = self.rootfile.Get(self.treename)  # Get TTree called "track_info"
 
     def GetTimeAtEvent(self, event):

@@ -5,6 +5,7 @@ __author__ = 'micha'
 # ==============================================
 import os
 import json
+import shutil
 
 from ConfigParser import ConfigParser
 from math import copysign
@@ -16,15 +17,20 @@ from collections import OrderedDict
 # CLASS DEFINITION
 # ==============================================
 class Converter:
-    def __init__(self, test_campaign, run_number):
+    def __init__(self, test_campaign):
 
         # main
         self.test_campaign = test_campaign
-        self.run_number = run_number
         self.parser = self.setup_configparser()
         self.root = Tk()
         self.root.withdraw()
         self.frame = Frame(self.root, bd=5, relief=GROOVE)
+        self.do_gui = False
+
+        # tracking
+        self.do_tracking = True
+        self.telescope_id = self.parser.getint('BASIC', 'telescopeID')
+        self.tracking_dir = self.parser.get('ROOTFILE_GENERATION', 'trackingfolder')
 
         # directories
         self.raw_file_dir = self.parser.get('ROOTFILE_GENERATION', 'rawfolder')
@@ -44,12 +50,13 @@ class Converter:
         self.spinboxes = self.create_spinboxes()
         self.labels = self.create_labels()
         self.buttons = self.create_buttons()
+        self.intvars = self.create_intvars()
+        self.checkbuttons = self.create_checkbuttons()
 
         self.set_start_values()
 
         self.make_gui()
 
-    # todo make small gui to enter parameters
     def get_config(self):
         config = OrderedDict()
         config['signal_range'] = json.loads(self.parser.get('ROOTFILE_GENERATION', 'signal_range'))
@@ -73,7 +80,7 @@ class Converter:
         config['trigger_channel'] = self.parser.get('ROOTFILE_GENERATION', 'trigger_channel')
         return config
 
-    def get_run_info(self):
+    def get_run_info(self, run_number):
         try:
             f = open(self.run_info_path, "r")
             data = json.load(f)
@@ -81,7 +88,7 @@ class Converter:
         except IOError:
             print 'could not read', self.run_info_path
             return
-        run_infos = data.get(str(self.run_number))
+        run_infos = data.get(str(run_number))
         try:
             run_infos['hv dia1'] = run_infos.pop('dia1hv')
             run_infos['hv dia2'] = run_infos.pop('dia2hv')
@@ -89,45 +96,75 @@ class Converter:
             pass
         return run_infos
 
-    def find_raw_file(self):
-        file_path = self.raw_file_dir + '/{pref}{run}.raw'.format(pref=self.raw_prefix, run=str(self.run_number).zfill(4))
+    def find_raw_file(self, run_number):
+        file_path = self.raw_file_dir + '/{pref}{run}.raw'.format(pref=self.raw_prefix, run=str(run_number).zfill(4))
         if os.path.exists(file_path):
             return file_path
         else:
             print file_path, 'does not exist!'
             return False
 
-    def find_root_file(self):
-        file_name = '{prefix}{run}.root'.format(prefix=self.root_prefix, run=str(self.run_number).zfill(4))
-        local_file = os.getcwd() + '/' + file_name
-        final_file = self.root_file_dir + '/' + file_name
-        print 'looking for:\n ', local_file, '\n ', final_file
-        if os.path.exists(local_file):
-            print 'found file in local folder'
-            return 'local'
+    def get_root_file_path(self, run_number):
+        file_name = '{prefix}{run}.root'.format(prefix=self.root_prefix, run=str(run_number).zfill(4))
+        return self.root_file_dir + '/' + file_name
+
+    def get_tracking_file_path(self, run_number):
+        file_name = '{prefix}{run}_withTracks.root'.format(prefix=self.root_prefix, run=str(run_number).zfill(4))
+        return self.root_file_dir + '/' + file_name
+
+    def find_root_file(self, run_number):
+        track_file = self.get_tracking_file_path(run_number)
+        final_file = self.get_root_file_path(run_number)
+        print 'looking for:\n ', track_file, '\n ', final_file
+        if os.path.exists(track_file):
+            print 'found file with tracks'
+            return True
         elif os.path.exists(final_file):
-            print 'found file in final folder'
-            return 'final'
+            print 'found file without tracks'
+            print 'did not find tracking file --> need conversion'
+            return 'tracking'
         else:
             print 'did not find any matching root file --> need conversion'
             return False
 
-    def convert_run(self, run_infos):
-        self.root.deiconify()
-        self.root.mainloop()
-        file_path = self.find_raw_file()
+    def convert_run(self, run_infos, run_number):
+        if self.do_gui:
+            self.root.deiconify()
+            self.root.mainloop()
+        file_path = self.find_raw_file(run_number)
         if not file_path:
             return
+        location = self.find_root_file(run_number)
+        if not location:
+            curr_dir = os.getcwd()
+            # goto root directory
+            os.chdir(self.root_file_dir)
+            converter_cmd = '{eudaq}/bin/Converter.exe -t drs4tree -c {eudaq}/conf/{file} {raw}'.format(eudaq=self.eudaq_dir, file=self.converter_config_path, raw=file_path)
+            self.__set_converter_configfile(run_infos)
+            print '\n========================================'
+            print 'START CONVERTING RAW FILE FOR RUN', run_number, '\n'
+            print converter_cmd
+            os.system(converter_cmd)
+            os.chdir(curr_dir)
+            if self.do_tracking:
+                self.__add_tracking(run_number)
+        if location == 'tracking':
+            if self.do_tracking:
+                self.__add_tracking(run_number)
+
+    def __add_tracking(self, run_number):
+        root_file_path = self.get_root_file_path(run_number)
         curr_dir = os.getcwd()
-        # goto root directory
-        os.chdir(self.root_file_dir)
-        converter_cmd = '{eudaq}/bin/Converter.exe -t drs4tree -c {eudaq}/conf/{file} {raw}'.format(eudaq=self.eudaq_dir, file=self.converter_config_path, raw=file_path)
-        self.__set_converter_configfile(run_infos)
-        print '\n========================================'
-        print 'START CONVERTING RAW FILE FOR RUN', self.run_number, '\n'
-        print converter_cmd
-        os.system(converter_cmd)
+        os.chdir(self.tracking_dir)
+        tracking_cmd = "{dir}/TrackingTelescope {root} 0 {nr}".format(dir=self.tracking_dir, root=root_file_path, nr=self.telescope_id)
+        print '\nSTART TRACKING FOR RUN', run_number, '\n'
+        print tracking_cmd
+        os.system(tracking_cmd)
         os.chdir(curr_dir)
+        # move file to data folder
+        file_name = '/{prefix}{run}_withTracks.root'.format(prefix=self.root_prefix, run=str(run_number).zfill(4))
+        path = self.tracking_dir + file_name
+        shutil.move(path, self.root_file_dir)
 
     def __set_converter_configfile(self, run_infos):
         pol_dia1 = int(copysign(1, run_infos['hv dia1']))
@@ -189,6 +226,21 @@ class Converter:
         dic['save'] = Button(self.frame, text='Save Config', width=12, command=self.save_config_values)
         return dic
 
+    def create_checkbuttons(self):
+        dic = OrderedDict()
+        dic['tracking'] = Checkbutton(self.frame, text='do Tracking', variable=self.intvars['tracking'], command=self.set_tracking)
+        return dic
+
+    @staticmethod
+    def create_intvars():
+        dic = OrderedDict()
+        dic['tracking'] = IntVar()
+        dic['tracking'].set(1)
+        return dic
+
+    def set_tracking(self):
+        self.do_tracking = True if self.intvars['tracking'].get() else False
+
     def set_start_values(self):
         for key, value in self.config.iteritems():
             if type(value[0]) is str:
@@ -228,13 +280,14 @@ class Converter:
         for i, box in enumerate(self.spinboxes['max'].values()):
             box.grid(row=i + 1, column=2)
             j = i
-        self.buttons['save'].grid(row=j + 2)
-        self.buttons['start'].grid(row=j + 2, columnspan=2, column=1)
+        self.checkbuttons['tracking'].grid(row=j + 2, columnspan=3)
+        self.buttons['save'].grid(row=j + 3, pady=3)
+        self.buttons['start'].grid(row=j + 3, columnspan=2, column=1)
 
 
 if __name__ == "__main__":
-    z = Converter('201510', 393)
-    run_info = z.get_run_info()
-    z.convert_run(run_info)
-    # z.root.deiconify()
-    # z.root.mainloop()
+    z = Converter('201510')
+    run_info = z.get_run_info(run_number=393)
+    # z.convert_run(run_info)
+    z.root.deiconify()
+    z.root.mainloop()
