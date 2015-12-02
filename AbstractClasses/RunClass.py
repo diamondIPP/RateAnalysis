@@ -104,12 +104,14 @@ class Run(Elementary):
             self.SetRun(run_number)
 
             # tree info
+            self.time = self.__get_time_vec()
             self.startEvent = 0
-            self.startTime = self.GetTimeAtEvent(self.startEvent)
             self.endEvent = self.tree.GetEntries() - 1
+            self.startTime = self.GetTimeAtEvent(self.startEvent)
             self.endTime = self.GetTimeAtEvent(self.endEvent)
             self.totalTime = self.endTime - self.startTime
             self.totalMinutes = (self.endTime - self.startTime) / 60000
+            self.n_entries = self.endEvent + 1
 
         else:
             self.LoadRunInfo()
@@ -250,13 +252,13 @@ class Run(Elementary):
             self.logStopTime = dt.strptime(self.RunInfo["stop time"][:10] + "-" + self.RunInfo["stop time"][11:-1], "%Y-%m-%d-%H:%M:%S")
             self.logRunTime = self.logStopTime - self.logStartTime
             noerror = True
-        except:
+        except ValueError:
             try:
                 self.logStartTime = dt.strptime(self.RunInfo["start time"][:10] + "-" + self.RunInfo["start time"][11:-1], "%H:%M:%S")
                 self.logStopTime = dt.strptime(self.RunInfo["stop time"][:10] + "-" + self.RunInfo["stop time"][11:-1], "%H:%M:%S")
                 self.logRunTime = self.logStopTime - self.logStartTime
                 noerror = True
-            except:
+            except ValueError:
                 noerror = False
         if noerror:
             self.VerbosePrint("Timing string translated successfully")
@@ -540,64 +542,44 @@ class Run(Elementary):
         self.rootfile = ROOT.TFile(file_path)
         self.tree = self.rootfile.Get(self.treename)  # Get TTree called "track_info"
 
+    def __get_time_vec(self):
+        self.tree.SetEstimate(-1)
+        entries = self.tree.Draw('Entry$:time', '', 'goff')
+        time = []
+        for i in xrange(entries):
+            time.append(self.tree.GetV2()[i])
+        return time
+
     def GetTimeAtEvent(self, event):
         """
         Returns the time stamp at event number 'event'. For negative event numbers it will return the time stamp at the startevent.
         :param event: integer event number
         :return: timestamp for event
         """
-        maxevent = self.tree.GetEntries()
-        if event < 0:
+        if event == -1:
+            event = self.endEvent
+        elif event < 0:
             event = 0
-        elif event >= maxevent:
-            event = maxevent - 1
-        self.tree.GetEntry(event)
-        return self.tree.time
+        elif event >= self.endEvent:
+            event = self.endEvent
+        return self.time[event]
 
     def GetEventAtTime(self, time_sec):
         """
-        Returns the eventnunmber at time dt from beginning of the run.
-        Accuracy: +- 2 Events
-        The event number is evaluated using a newton's method for finding roots:
-            f(e) := t(e) - t  -->  f(e) == 0
-            ==> iteration: e = e - f(e)/f'(e)
-            where t(e) is the time evaluated at event e and
-            t := t_0 + dt
-            break if |e_old - e_new| < 2
+        Returns the eventnunmber at time dt from beginning of the run. Accuracy: +- 1 Event
         :param time_sec: time in seconds from start
         :return: event_number
         """
-        time = time_sec * 1000  # convert to milliseconds
-        if time == 0:
-            return 0
-
-        # get t0 and tmax
-        maxevent = self.tree.GetEntries()
-        if time < 0:
-            return maxevent
-        t_0 = self.GetTimeAtEvent(0)
-        t_max = self.GetTimeAtEvent(maxevent - 1)
-
-        time = t_0 + time
-        if time > t_max:
-            return maxevent
-
-        seedEvent = int((1. * (time - t_0) * maxevent) / (t_max - t_0))
-
-        count = 0
-        goOn = True
-        event = seedEvent
-        while goOn and count < 20:
-            old_event = event
-            f_event = self.GetTimeAtEvent(event) - time
-            # print "f_event = {ftime} - {time} = ".format(ftime=self.run.tree.time, time=time), f_event
-            # print "slope_f(self, event) = ", slope_f(self, event)
-            event = int(event - 1 * f_event / self._slope_f(event))
-            if abs(event - old_event) < 2:
-                goOn = False
-            count += 1
-        self.tree.GetEntry(event)
-        return event
+        # return last time if input is too large
+        if time_sec > self.time[-1] / 1000.:
+            return self.time[-1]
+        last_time = 0
+        offset = self.time[0] / 1000.
+        for i, time in enumerate(self.time):
+            time /= 1000.
+            if time >= time_sec + offset >= last_time:
+                return i
+            last_time = time
 
     def _slope_f(self, event):
         if event < 0:

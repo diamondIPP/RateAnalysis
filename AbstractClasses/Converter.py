@@ -25,7 +25,7 @@ class Converter:
         self.root = Tk()
         self.root.withdraw()
         self.frame = Frame(self.root, bd=5, relief=GROOVE)
-        self.do_gui = True
+        self.do_gui = False
         self.stop_conversion = False
 
         # tracking
@@ -64,6 +64,7 @@ class Converter:
         for opt in options:
             if opt.endswith('_range') or opt.endswith('_region'):
                 config[opt] = json.loads(self.parser.get('ROOTFILE_GENERATION', opt))
+        config['pulser_range_drs4'] = json.loads(self.parser.get('ROOTFILE_GENERATION', 'pulser_range_drs4')),
         config['save_waveforms'] = self.parser.get('ROOTFILE_GENERATION', 'save_waveforms'),
         config['pulser_drs4_threshold'] = self.parser.get('ROOTFILE_GENERATION', 'pulser_drs4_threshold'),
         config['pulser_channel'] = self.parser.get('ROOTFILE_GENERATION', 'pulser_channel'),

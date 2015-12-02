@@ -445,10 +445,10 @@ class Analysis(Elementary):
                 maxevent = min(max(maxevent0, maxevent3), maxevent)
 
             excluded = [i for i in np.arange(0, minevent)]  # first events
-            if self.cut[0]._cutTypes["noBeamInter"] and self.cut[3]._cutTypes["noBeamInter"]:
+            if self.cut[0].cut_types["noBeamInter"] and self.cut[3].cut_types["noBeamInter"]:
                 self.cut[0].GetBeamInterruptions()
-                for i in xrange(len(self.cut[0].jumpsRanges["start"])):
-                    excluded += [i for i in np.arange(self.cut[0].jumpsRanges["start"][i], self.cut[0].jumpsRanges["stop"][i] + 1)]  # events around jumps
+                for i in xrange(len(self.cut[0].jump_ranges["start"])):
+                    excluded += [i for i in np.arange(self.cut[0].jump_ranges["start"][i], self.cut[0].jump_ranges["stop"][i] + 1)]  # events around jumps
             excluded.sort()
             all_events = np.arange(0, maxevent)
             included = np.delete(all_events, excluded)
