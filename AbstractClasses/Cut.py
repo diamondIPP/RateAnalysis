@@ -11,7 +11,6 @@ from AbstractClasses.Elementary import Elementary
 import ROOT
 from ROOT import TCut
 from numpy import mean
-from time import time
 
 
 class Cut(Elementary):
@@ -59,7 +58,8 @@ class Cut(Elementary):
                           "pedestalsigma": -1
                           }
 
-        self.cut_strings = {'beam_interruptions': ''}
+        self.cut_strings = {'beam_interruptions': TCut('beam_interruptions', '')}
+        self.__cutstring_settings = None
 
         # variables
         self.jumps = None
@@ -384,7 +384,8 @@ class Cut(Elementary):
 
         # -- PEDESTAL SIGMA CUT --
         if self.cut_types["pedestalsigma"] > 0:
-            if cutstring != "": cutstring += "&&"
+            if cutstring != "":
+                cutstring += "&&"
             self._LoadPedestalData(cutstring=cutstring)
             sigma = self.pedestalSigma
             pedestalmean = self.pedestalFitMean
@@ -402,16 +403,16 @@ class Cut(Elementary):
 
         # -- BEAM INTERRUPTION CUT --
         if self.cut_types["noBeamInter"] and self._checklist["GenerateCutString"]:
-            self.__RemoveBeamInterruptions(justDoIt=True)
+            self.__remove_beam_interruptions(justDoIt=True)
             self.userCutTypes["noBeamInter"] = "beamOn"
         elif self.cut_types["noBeamInter"]:
-            self.__RemoveBeamInterruptions()
+            self.__remove_beam_interruptions()
             self.userCutTypes["noBeamInter"] = "BeamOn"
         else:
             self.userCutTypes["noBeamInter"] = ""
 
         self._checklist["GenerateCutString"] = True
-        self._cutStringSettings = {
+        self.__cutstring_settings = {
             "gen_PulserCut": gen_PulserCut,
             "gen_EventRange": gen_EventRange,
             "gen_ExcludeFirst": gen_ExcludeFirst
@@ -421,8 +422,8 @@ class Cut(Elementary):
         pass
 
     def _checkCutStringSettings(self, gen_PulserCut, gen_EventRange, gen_ExcludeFirst):
-        if self._cutStringSettings["gen_PulserCut"] == gen_PulserCut and self._cutStringSettings["gen_EventRange"] == gen_EventRange and self._cutStringSettings[
-            "gen_ExcludeFirst"] == gen_ExcludeFirst:
+        if self.__cutstring_settings["gen_PulserCut"] == gen_PulserCut and self.__cutstring_settings["gen_EventRange"] == gen_EventRange \
+                and self.__cutstring_settings["gen_ExcludeFirst"] == gen_ExcludeFirst:
             return True
         else:
             return False
@@ -437,7 +438,9 @@ class Cut(Elementary):
                 picklefile.close()
             else:
                 # do fit
-                # pedestalhisto = self.analysis._ShowHisto(self.analysis.pedestaldefinition[self.channel], channel=self.channel, canvas=None, drawoption="", color=None, cut=cutstring, normalized=False, infoid="CutPedestalFit", drawruninfo=False, binning=1000, xmin=-500, xmax=500,savePlots=False, logy=True, gridx=True)
+                # pedestalhisto = self.analysis._ShowHisto(self.analysis.pedestaldefinition[self.channel], channel=self.channel,
+                #                                          canvas=None, drawoption="", color=None, cut=cutstring, normalized=False,
+                #                                          infoid="CutPedestalFit", drawruninfo=False, binning=1000, xmin=-500, xmax=500,savePlots=False, logy=True, gridx=True)
                 self.analysis.run.tree.Draw((self.analysis.pedestaldefinition[self.channel] + ">>tmphisto(1000,-500,500)").format(channel=self.channel), (cutstring[:-2]).format(channel=self.channel))
                 pedestalhisto = ROOT.gROOT.FindObject("tmphisto")
                 ped_peakpos = pedestalhisto.GetBinCenter(pedestalhisto.GetMaximumBin())
@@ -494,24 +497,28 @@ class Cut(Elementary):
         jumpfile.close()
 
     def __create_jump_ranges(self):
-        bla = time()
         if self.jump_ranges is None and len(self.jumps) > 0:
             start = []
             stop = []
             time_offset = self.analysis.run.GetTimeAtEvent(0)
             t_max = (self.analysis.run.GetTimeAtEvent(-1) - time_offset) / 1000.
+            last_stop = 0
             for tup in self.jumps:
                 t_start = (self.analysis.run.GetTimeAtEvent(tup[0]) - time_offset) / 1000.
                 t_stop = (self.analysis.run.GetTimeAtEvent(tup[1]) - time_offset) / 1000.
                 # add offsets from config file
                 t_start -= -1 * self.excludeBeforeJump if t_start >= -1 * self.excludeBeforeJump else 0
                 t_stop = t_stop + -1 * self.excludeAfterJump if t_stop + -1 * self.excludeAfterJump <= t_max else t_max
+                if t_start < last_stop:
+                    stop[-1] = self.analysis.GetEventAtTime(t_stop)
+                    last_stop = t_stop
+                    continue
                 start.append(self.analysis.GetEventAtTime(t_start))
                 stop.append(self.analysis.GetEventAtTime(t_stop))
+                last_stop = t_stop
 
             self.jump_ranges = {"start": start,
                                 "stop": stop}
-        print time() - bla
         return self.jump_ranges
 
     def GetBeamInterruptions(self):
@@ -602,7 +609,7 @@ class Cut(Elementary):
 
         return defstring_ + def_
 
-    def __RemoveBeamInterruptions(self, justDoIt=False):
+    def __remove_beam_interruptions(self, justDoIt=False):
         """
         This adds the restrictions to the cut string such that beam interruptions are excluded each time the cut is applied.
         :return: cut
@@ -611,14 +618,17 @@ class Cut(Elementary):
             self.GetBeamInterruptions()
 
             njumps = len(self.jump_ranges["start"])
+            cut_string = ''
             for i in xrange(njumps):
+                string = "!(event_number<={upper}&&event_number>={lower})".format(upper=self.jump_ranges["stop"][i], lower=self.jump_ranges["start"][i])
                 if self.cut != "":
                     self.cut += "&&"
-                self.cut += "!(event_number<={upper}&&event_number>={lower})".format(upper=self.jump_ranges["stop"][i], lower=self.jump_ranges["start"][i])
+                self.cut += string
                 # new seperate strings
-                if not self.cut_strings['beam_interruptions']:
-                    self.cut_strings['beam_interruptions'] += '&&'
-                self.cut_strings['beam_interruptions'] += "!(event_number<={upper}&&event_number>={lower})".format(upper=self.jump_ranges["stop"][i], lower=self.jump_ranges["start"][i])
+                if cut_string != '':
+                    cut_string += '&&'
+                cut_string += string
+            self.cut_strings['beam_interruptions'] = cut_string
             self._checklist["RemoveBeamInterruptions"] = True
 
         return self.cut
