@@ -5,6 +5,7 @@ class Diamond(object):
     def __init__(self,name = None):
 
         self.Specifications = {
+            'Channel': 0,
             'Name': '',
             'Manufacturer':'',
             'CrystalStructure':'', # eg. 'poly' or 'single'
@@ -15,9 +16,9 @@ class Diamond(object):
         }
 
         self.Position = {
-                    'xmin': -0.2, # standard position
-                    'xmax': 0.15,
-                    'ymin': 0.03,
+                    'xmin': -0.4, # standard position
+                    'xmax': 0.4,
+                    'ymin': -0.4,
                     'ymax': 0.40
                 }
 

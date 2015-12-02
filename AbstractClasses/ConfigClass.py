@@ -1,5 +1,9 @@
 #from Helper.Initializer import initializer
 from math import ceil
+from AbstractClasses.Elementary import Elementary
+import ConfigParser
+import os
+import pickle
 
 class Pad2DHistConfig(object):
     #@initializer
@@ -17,22 +21,23 @@ class MeanSignalHistConfig(object):
     def __init__(self,bins,min_x,max_x):
         pass
 
-class Config(object):
+class BinCollectionConfig(Elementary):
     '''
     A config object for analysis
     e.g. binning size
     '''
-    def __init__(self, binningsize = 100,  **kwargs):
+    def __init__(self, run, binningsize=None,  channel=None, **kwargs):
         '''
 
         :param binningsize: size of bins in microns
         :param kwargs:
         :return:
         '''
-
+        self.run = run
+        self.channel=channel
         self.config = {
             '2DHist': {
-                'binsize': binningsize/10000., # in cm
+                'binsize': 100/10000., # in cm
                 'binsx': 0,
                 'xmin': 0.,
                 'xmax': 0.,
@@ -42,7 +47,40 @@ class Config(object):
             },
             'Hist1': ''
         }
-        self.SetWindow(-0.23, 0.18, -0.14, 0.39) # default window
+
+        self.LoadConfigFile()
+
+        if binningsize != None:
+            self.SetBinning(binningsize)
+
+
+
+    def LoadConfigFile(self):
+        configfile = "Configuration/AnalysisConfig_"+self.TESTCAMPAIGN+".cfg"
+        if self.TESTCAMPAIGN == "": "WARNING: TESTCAMPAIGN not set"
+        print self.TESTCAMPAIGN
+        print "loading configfile: ", configfile
+        parser = ConfigParser.ConfigParser()
+        out = parser.read(configfile)
+        assert(out!=[]), "Configfile couldn't be loaded. Check if it exists and that the testcampaign is set properly"
+        windowXmin = parser.getfloat("TRACKING", "windowXmin")
+        windowXmax = parser.getfloat("TRACKING", "windowXmax")
+        windowYmin = parser.getfloat("TRACKING", "windowYmin")
+        windowYmax = parser.getfloat("TRACKING", "windowYmax")
+        self.binning = parser.getint("TRACKING", "padBinning")
+        self.SetBinning(self.binning)
+        maskname = self.run.RunInfo["mask"][:-4]
+        windowpath = "DiamondPositions/{testcampaign}_{mask}_{dia}.pickle".format(testcampaign=self.TESTCAMPAIGN, mask=maskname, dia=self.channel)
+        if os.path.exists(windowpath):
+            print "Loading Diamond Window data from pickle file: \n\t"+windowpath
+            windowfile = open(windowpath, "rb")
+            window = pickle.load(windowfile)
+            self.SetWindow(window[0], window[1], window[2], window[3])
+            windowfile.close()
+        else:
+            print "No diamond window pickle file found at: ", windowpath
+            self.SetWindow(windowXmin, windowXmax, windowYmin, windowYmax)# default window
+
 
     def Get2DAttributes(self):
         '''
@@ -78,6 +116,10 @@ class Config(object):
         self.config['2DHist']['binsy'] = int(binsy)
         self.config['2DHist']['xmax'] = xlow + binsx * binsize
         self.config['2DHist']['ymax'] = ylow + binsy * binsize
+
+    def SetBinning(self, binning):
+        self.config['2DHist']['binsize'] = binning/10000.
+        self.binning = binning
 
     def SetWindowFromDiamond(self, diamond):
         '''

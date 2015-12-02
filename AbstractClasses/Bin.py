@@ -17,7 +17,7 @@ class Bin(Elementary):
         self.signals = []
         self.bincollectionobject = bincollectionobject
         self.selected = False
-        self.Attributes = {
+        self.attributes = {
             'binnumber': binnumber,
             'average': 0.,
             'entries': 0.,
@@ -59,7 +59,7 @@ class Bin(Elementary):
 
     def AddData(self, signal, update_bin_attributes = False):
         '''
-        Fill data into this bin
+        Fills another data point into this bin
         :param signal: data signal
         :param update_bin_attributes: if True updates the bin attributes after filling
         :return: -
@@ -118,8 +118,8 @@ class Bin(Elementary):
         :return: x_, y_ in cm
         '''
         self.UpdateAttributes()
-        x_ = self.Attributes['bincenter_x']
-        y_ = self.Attributes['bincenter_y']
+        x_ = self.attributes['bincenter_x']
+        y_ = self.attributes['bincenter_y']
         return x_, y_
 
     def GetBinCoordinates(self):
@@ -128,19 +128,19 @@ class Bin(Elementary):
         :return: x_, y_
         '''
         self.UpdateAttributes()
-        x_ = self.Attributes['coordinate_x']
-        y_ = self.Attributes['coordinate_y']
+        x_ = self.attributes['coordinate_x']
+        y_ = self.attributes['coordinate_y']
         return x_, y_
 
     def GetEntries(self):
         '''
         Returns the number of signals in this bin
-        :return: self.Attributes['entries']
+        :return: self.attributes['entries']
         '''
         self.UpdateAttributes()
-        if int(self.Attributes['entries']) != len(self.signals):
-            raw_input("WARNING: Error in number of entries.. "+str(self.Attributes['entries'])+" != "+str(len(self.signals)))
-        return self.Attributes['entries']
+        if int(self.attributes['entries']) != len(self.signals):
+            raw_input("WARNING: Error in number of entries.. "+str(self.attributes['entries'])+" != "+str(len(self.signals)))
+        return self.attributes['entries']
 
     def GetMean(self):
         '''
@@ -148,14 +148,14 @@ class Bin(Elementary):
         :return:
         '''
         self.UpdateAttributes()
-        return self.Attributes['average']
+        return self.attributes['average']
 
     def GetBinNumber(self):
         '''
-        Returns the bin number of this bin
-        :return: self.Attributes['binnumber']
+        Returns the bin number of this bin.
+        :return: self.attributes['binnumber']
         '''
-        return self.Attributes['binnumber']
+        return self.attributes['binnumber']
 
     def GetSigma(self):
         '''
@@ -163,18 +163,18 @@ class Bin(Elementary):
         :return:
         '''
         self.UpdateAttributes()
-        return self.Attributes['sigma']
+        return self.attributes['sigma']
 
     def UpdateAttributes(self):
         '''
-        Updates the Attributes dict
+        Updates the attributes dict
         :return:
         '''
-        self.Attributes['average'] = self.BinSignalHisto.GetMean()
-        self.Attributes['sigma'] = self.BinSignalHisto.GetRMS()
-        self.Attributes['entries'] = self.BinSignalHisto.GetEntries()
+        self.attributes['average'] = self.BinSignalHisto.GetMean()
+        self.attributes['sigma'] = self.BinSignalHisto.GetRMS()
+        self.attributes['entries'] = self.BinSignalHisto.GetEntries()
 
-        collection_attributes = self.bincollectionobject.Attributes
+        collection_attributes = self.bincollectionobject.attributes
         binsx_ = collection_attributes['binsx']+2
         binsy_ = collection_attributes['binsy']+2
         xmin_ = collection_attributes['XMIN']
@@ -184,11 +184,11 @@ class Bin(Elementary):
         binwidthx_ = 1.*(xmax_-xmin_)/(binsx_-2)
         binwidthy_ = 1.*(ymax_-ymin_)/(binsy_-2)
 
-        self.Attributes['coordinate_x'] = int(self.Attributes['binnumber'])%int(binsx_)
-        self.Attributes['coordinate_y'] = int(self.Attributes['binnumber'])/int(binsx_)
-        self.Attributes['bincenter_x'] = xmin_ - binwidthx_/2. + self.Attributes['coordinate_x']*binwidthx_
-        self.Attributes['bincenter_y'] = ymin_ - binwidthy_/2. + self.Attributes['coordinate_y']*binwidthy_
-        self.Attributes['minx'] = self.Attributes['bincenter_x'] - binwidthx_/2.
-        self.Attributes['maxx'] = self.Attributes['bincenter_x'] + binwidthx_/2.
-        self.Attributes['miny'] = self.Attributes['bincenter_y'] - binwidthy_/2.
-        self.Attributes['maxy'] = self.Attributes['bincenter_y'] + binwidthy_/2.
+        self.attributes['coordinate_x'] = int(self.attributes['binnumber'])%int(binsx_)
+        self.attributes['coordinate_y'] = int(self.attributes['binnumber'])/int(binsx_)
+        self.attributes['bincenter_x'] = xmin_ - binwidthx_/2. + self.attributes['coordinate_x']*binwidthx_
+        self.attributes['bincenter_y'] = ymin_ - binwidthy_/2. + self.attributes['coordinate_y']*binwidthy_
+        self.attributes['minx'] = self.attributes['bincenter_x'] - binwidthx_/2.
+        self.attributes['maxx'] = self.attributes['bincenter_x'] + binwidthx_/2.
+        self.attributes['miny'] = self.attributes['bincenter_y'] - binwidthy_/2.
+        self.attributes['maxy'] = self.attributes['bincenter_y'] + binwidthy_/2.

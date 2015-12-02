@@ -1,0 +1,9 @@
+**/*.pyc
+AbstractClasses/*.pyc
+Runinfos/run_plans.json
+*.pdf
+*.root
+*.png
+*.out
+.*
+Results/
