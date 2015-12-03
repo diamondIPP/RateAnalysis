@@ -11,6 +11,8 @@ from AbstractClasses.ConfigClass import *
 from AbstractClasses.RunClass import Run
 from AbstractClasses.Cut import Cut
 from BinCollection import BinCollection
+from collections import OrderedDict
+from argparse import ArgumentParser
 
 
 class Analysis(Elementary):
@@ -65,6 +67,20 @@ class Analysis(Elementary):
             3: BinCollectionConfig(run=self.run, channel=3)
         }
         self.RunInfo = copy.deepcopy(run.RunInfo)
+
+        # tree
+        self.tree = self.run.tree
+
+        # miscellaneous
+        self.polarities = self.get_polarities()
+
+        # names
+        # todo read region and integral from config file
+        self.integral_names = self.get_integral_names()
+        self.signal_num = self.get_signal_numbers('b', 2)
+        self.signal_names = self.get_signal_names()
+        self.pedestal_num = self.get_pedestal_numbers('aa', 2)
+        self.pedestal_names = self.get_pedestal_names()
 
         self.Checklist = {
             "GlobalPedestalCorrection": {
@@ -154,6 +170,54 @@ class Analysis(Elementary):
                 self.signaldefinition[ch] = (self.signalname + "[{channel}]-" + self.pedestalname + "[{channel}]").format(channel=ch)
             self.pedestaldefinition[ch] = self.pedestalname + "[{channel}]".format(channel=ch)
 
+    # ==============================================
+    # region GET INTEGRAL NAMES
+    def get_polarities(self):
+        self.tree.GetEntry(0)
+        pols = {}
+        for ch in self.run.channels:
+            pols[ch] = self.tree.polarities[ch]
+        return pols
+
+    def get_integral_names(self):
+        names = OrderedDict()
+        self.tree.GetEntry(0)
+        for i, name in enumerate(self.tree.IntegralNames):
+            names[name] = i
+        return names
+
+    def get_signal_numbers(self, region, integral):
+        assert region in 'abcdef', 'wrong region'
+        assert integral in [1, 2, 3], 'wrong integral'
+        numbers = {}
+        for ch in self.run.channels:
+            name = 'ch{ch}_signal_{reg}_PeakIntegral{int}'.format(ch=ch, reg=region, int=integral)
+            numbers[ch] = self.integral_names[name]
+        return numbers
+
+    def get_pedestal_numbers(self, region, integral):
+        assert region in 'aabcdef', 'wrong region'
+        assert integral in [1, 2, 3], 'wrong integral'
+        numbers = {}
+        for ch in self.run.channels:
+            name = 'ch{ch}_pedestal_{reg}_PeakIntegral{int}'.format(ch=ch, reg=region, int=integral)
+            numbers[ch] = self.integral_names[name]
+        return numbers
+
+    def get_signal_names(self):
+        names = {}
+        for ch in self.run.channels:
+            names[ch] = '{pol}*IntegralValues[{num}]'.format(pol=self.polarities[ch], num=self.signal_num[ch])
+        return names
+
+    def get_pedestal_names(self):
+        names = {}
+        for ch in self.run.channels:
+             names[ch] = 'IntegralValues[{num}]'.format(num=self.pedestal_num[ch])
+        return names
+
+    # endregion
+
     def GetSignalDefinition(self, channel=None):
         if channel == None:
             assert (not self.Checklist["GlobalPedestalCorrection"][0] and not self.Checklist["GlobalPedestalCorrection"][
@@ -202,6 +266,13 @@ class Analysis(Elementary):
         for ch in channels:
             self.preAnalysis[ch] = PreAnalysisPlot(analysis=self, channel=ch, canvas=canvas, binning=binning)
             self.preAnalysis[ch].Draw(mode=mode, savePlot=savePlot, setyscale_sig=setyscale_sig, setyscale_ped=setyscale_ped)
+
+    # ==============================================
+    # region SHOW & PRINT
+    def show_integral_names(self):
+        for key, value in self.integral_names.iteritems():
+            print str(value).zfill(3), key
+        return
 
     def ShowPulserRate(self, binning=2000, canvas=None, savePlot=True):
         '''
@@ -2005,6 +2076,14 @@ class Analysis(Elementary):
         total = single_particle + multiparticle
 
         return 1. * multiparticle / total
+
+if __name__ == "__main__":
+    parser = ArgumentParser()
+    parser.add_argument('run', nargs='?', default=392)
+    args = parser.parse_args()
+    run = args.run
+    print '\nAnalysing run', run, '\n'
+    z = Analysis(run)
 
 
 '''

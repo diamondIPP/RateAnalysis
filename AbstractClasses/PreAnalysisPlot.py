@@ -62,18 +62,16 @@ class PreAnalysisPlot(Elementary):
         self.analysis.run.tree.Draw(
             self.analysis.pedestalname + "[{channel}]:(time-{starttime})>>pedestaltime{run}".format(channel=self.channel, starttime=self.analysis.run.startTime,
                                                                                                     run=self.analysis.run.run_number),
-            self.analysis.GetCut(self.channel), draw_option, self.analysis.GetNEventsCut(channel=self.channel),
-            self.analysis.GetMinEventCut(channel=self.channel))
+            self.analysis.GetCut(self.channel), draw_option)
         # signal
         nEntries = self.analysis.run.tree.Draw(
             (self.analysis.signaldefinition[self.channel] + ":(time-{starttime})>>signaltime{run}").format(channel=self.channel, starttime=self.analysis.run.startTime,
                                                                                                            run=self.analysis.run.run_number),
-            self.analysis.GetCut(self.channel), draw_option, self.analysis.GetNEventsCut(channel=self.channel),
-            self.analysis.GetMinEventCut(channel=self.channel))
+            self.analysis.GetCut(self.channel), draw_option)
         # printable signal
         self.analysis.run.tree.Draw(
             (self.analysis.signaldefinition[self.channel] + ":(event_number)/1000>>signaltime2d{run}{channel}").format(run=self.analysis.run.run_number, channel=self.channel),
-            self.analysis.GetCut(self.channel), draw_option, self.analysis.GetNEventsCut(channel=self.channel), self.analysis.GetMinEventCut(channel=self.channel))
+            self.analysis.GetCut(self.channel), draw_option)
         return nEntries
 
     def _FillGraphs(self, mode):
@@ -230,6 +228,7 @@ class PreAnalysisPlot(Elementary):
         print "endevent:\t", self.analysis.run.endEvent
 
     def Draw(self, mode="mean", savePlot=True, setyscale_sig=None, setyscale_ped=None):
+        print mode
         assert (mode in ["mean", "Mean", "fit", "Fit"])
         assert (setyscale_sig is None or type(setyscale_sig) is t.ListType)
 

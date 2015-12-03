@@ -93,6 +93,7 @@ class Run(Elementary):
         # run info
         self.allRunKeys = None
         self.RunInfo = None
+        self.channels = [0, 3]
 
         if validate:
             self.ValidateRuns()
@@ -571,7 +572,7 @@ class Run(Elementary):
         :return: event_number
         """
         # return last time if input is too large
-        if time_sec > self.time[-1] / 1000.:
+        if time_sec > self.time[-1] / 1000. or time_sec == -1:
             return self.time[-1]
         last_time = 0
         offset = self.time[0] / 1000.

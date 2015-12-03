@@ -1,16 +1,13 @@
 import copy
-import collections
 import os
-from array import array
 import numpy as np
 import pickle
 import json
 import ConfigParser
+from numpy import mean
 
 from AbstractClasses.Elementary import Elementary
-import ROOT
-from ROOT import TCut
-from numpy import mean
+from ROOT import TCut, gROOT, TH1F
 
 
 class Cut(Elementary):
@@ -30,103 +27,93 @@ class Cut(Elementary):
         self._checklist = {"RemoveBeamInterruptions": False,
                            "GenerateCutString": False}
 
+        # config
+        self.parser = self.load_parser()
+        self.beaminterruptions_folder = self.parser.get('CUT', 'beaminterruptions_folder')
+        self.exclude_before_jump = self.parser.getint('CUT', 'excludeBeforeJump')
+        self.exclude_after_jump = self.parser.getint('CUT', 'excludeAfterJump')
+
         # readable cut types
-        self.userCutTypes = {"IndividualChCut": "",
-                             "EventRange": "Evts.50k-1433k",
-                             "ExcludeFirst": "50k+",
-                             "noPulser": "!pulser",
-                             "notSaturated": "!saturated",
-                             "noBeamInter": "!BeamInter.",
-                             "FFT": "",
-                             "Tracks": "Track",
-                             "peakPos_high": "peakPos<250",
-                             "spread_low": "spread>20",
-                             "absMedian_high": "|median|<10",
-                             "pedestalsigma": "PedSigma5"}
+        self.userCutTypes = {'IndividualChCut': '',
+                             'EventRange': 'Evts.50k-1433k',
+                             'ExcludeFirst': '50k+',
+                             'noPulser': '!pulser',
+                             'notSaturated': '!saturated',
+                             'noBeamInter': '!BeamInter.',
+                             'FFT': '',
+                             'Tracks': 'Track',
+                             'peakPos_high': 'peakPos<250',
+                             'spread_low': 'spread>20',
+                             'absMedian_high': '|median|<10',
+                             'pedestalsigma': 'PedSigma5'}
         # default cut Types
-        self.cut_types = {"IndividualChCut": "",
-                          "EventRange": [],     # [1234, 123456]
-                          "ExcludeFirst": 0,    # 50000 events
-                          "noPulser": 1,        # 1: nopulser, 0: pulser, -1: no cut
-                          "notSaturated": True,
-                          "noBeamInter": True,
-                          "FFT": False,
-                          "Tracks": True,
-                          "peakPos_high": -1,
-                          "spread_low": -1,
-                          "absMedian_high": -1,
-                          "pedestalsigma": -1
+        self.cut_types = {'IndividualChCut': '',
+                          'EventRange': [],  # [1234, 123456]
+                          'ExcludeFirst': 0,  # 50000 events
+                          'noPulser': 1,  # 1: nopulser, 0: pulser, -1: no cut
+                          'notSaturated': True,
+                          'noBeamInter': True,
+                          'FFT': False,
+                          'Tracks': True,
+                          'peakPos_high': -1,
+                          'spread_low': -1,
+                          'absMedian_high': -1,
+                          'pedestalsigma': -1
                           }
 
-        self.cut_strings = {'beam_interruptions': TCut('beam_interruptions', '')}
+        self.cut_strings = {'beam_interruptions': TCut('beam_interruptions', ''),
+                            'event_range': TCut('event_range', ''),
+                            'peak_pos': TCut('peak_pos', ''),
+                            'spread_low': TCut('spread_low', ''),
+                            'median': TCut('median', ''),
+                            'ped_sigma': TCut('ped_sigma', ''),
+                            'pulser': TCut('pulser', ''),
+                            'tracks': TCut('tracks', '')}
         self.__cutstring_settings = None
+        self.individualCuts = None
 
-        # variables
+        # beam interrupts
         self.jumps = None
         self.jump_ranges = None
+
+        # pedestal sigma (gets loaded with __load_pedestal_data() )
+        self.pedestal_mean = None
+        self.pedestal_sigma = None
+
+        # miscellaneous
         self.excludefirst = 0
         self.cut = ""
         Elementary.__init__(self, verbose=verbose)
-        self.GenerateCutString()
+        self.generate_cut_string()
 
     def LoadConfig(self):
-        # print "config"
-        configfile = "Configuration/AnalysisConfig_" + self.TESTCAMPAIGN + ".cfg"
-        parser = ConfigParser.ConfigParser()
-        parser.read(configfile)
-
-        # beam interruptions folder:
-        self.beaminterruptions_folder = parser.get("CUT", "beaminterruptions_folder")
+        parser = self.parser
 
         # individual additional cuts:
-        self.cut = parser.get("CUT", "cut" + str(self.channel)) if not parser.get("CUT", "cut" + str(self.channel)) in ["-1", "", "True", "False"] else ""
-        self.cut_types["IndividualChCut"] = copy.deepcopy(self.cut)
-        self.userCutTypes["IndividualChCut"] = copy.deepcopy(self.cut)
+        self.cut = parser.get('CUT', 'cut' + str(self.channel)) if not parser.get('CUT', 'cut' + str(self.channel)) in ['-1', '', 'True', 'False'] else ''
+        self.cut_types['IndividualChCut'] = copy.deepcopy(self.cut)
+        self.userCutTypes['IndividualChCut'] = copy.deepcopy(self.cut)
 
-        # pulser cut:
-        self.cut_types["noPulser"] = parser.getint("CUT", "notPulser")
+        # general cuts
+        self.cut_types['noPulser'] = parser.getint('CUT', 'notPulser')
+        self.cut_types['ExcludeFirst'] = self.load_exclude_first(parser.getint('CUT', 'excludefirst'))
+        self.cut_types['EventRange'] = self.load_event_range(json.loads(self.parser.get('CUT', 'EventRange')))
+        self.cut_types['notSaturated'] = parser.getboolean('CUT', 'notSaturated')
+        self.cut_types['noBeamInter'] = parser.getboolean('CUT', 'noBeamInter')
+        self.cut_types['FFT'] = parser.getboolean('CUT', 'FFT')
+        self.cut_types['Tracks'] = parser.getboolean('CUT', 'hasTracks')
+        self.cut_types['peakPos_high'] = self.load_peakpos_high(parser.getint('CUT', 'peakPos_high'))
+        self.cut_types['spread_low'] = self.load_spread_low(parser.getint('CUT', 'spread_low'))
+        self.cut_types['absMedian_high'] = self.load_abs_median_high(parser.getint('CUT', 'absMedian_high'))
+        self.cut_types['pedestalsigma'] = self.load_pedestal_sigma(parser.getint('CUT', 'pedestalsigma'))
 
-        # exclude first: (negative: time in minutes, positive: nevents)
-        excludefirst = parser.getint("CUT", "excludefirst")
-        self.SetExcludeFirst(excludefirst)
-
-        # event range cuts:
-        EventRange_min = parser.getint("CUT", "EventRange_min")
-        EventRange_max = parser.getint("CUT", "EventRange_max")
-        self.SetEventRange(min_event=EventRange_min, max_event=EventRange_max)
-
-        # not saturated cut:
-        self.cut_types["notSaturated"] = parser.getboolean("CUT", "notSaturated")
-
-        # not beam interruption cut:
-        self.cut_types["noBeamInter"] = parser.getboolean("CUT", "noBeamInter")
-        self.excludeBeforeJump = parser.getint("CUT", "excludeBeforeJump")
-        self.excludeAfterJump = parser.getint("CUT", "excludeAfterJump")
-
-        # FFT cut:
-        self.cut_types["FFT"] = parser.getboolean("CUT", "FFT")
-
-        # has tracks cut:
-        self.cut_types["Tracks"] = parser.getboolean("CUT", "hasTracks")
-
-        # peakPos_high cut:
-        high = parser.getint("CUT", "peakPos_high")
-        self._SetPeakPos_high(high=high)
-
-        # spread_low cut:
-        low = parser.getint("CUT", "spread_low")
-        self._SetSpread_low(low=low)
-
-        # spread_low cut:
-        high = parser.getint("CUT", "absMedian_high")
-        self._SetAbsMedian_high(high=high)
-
-        # pedestal sigma cut:
-        sigma = parser.getint("CUT", "pedestalsigma")
-        self._SetPedestalSigma(sigma=sigma)
-
-        # .. and Load individual cuts, if they exists:
+        # individual cuts
         self.LoadIndividualCuts()
+
+    def load_parser(self):
+        runConfigParser = ConfigParser.ConfigParser()
+        runConfigParser.read('Configuration/AnalysisConfig_' + self.TESTCAMPAIGN + '.cfg')
+        return runConfigParser
 
     def LoadIndividualCuts(self):
         path = "Configuration/Individual_Configs/"
@@ -143,50 +130,52 @@ class Cut(Elementary):
             print self.individualCuts
             ch = self.channel
             if self.individualCuts[str(ch)]["EventRange"] is not None:
-                self.SetEventRange(min_event=int(self.individualCuts[str(ch)]["EventRange"][0]), max_event=int(self.individualCuts[str(ch)]["EventRange"][1]))
+                self.set_event_range([int(self.individualCuts[str(ch)]["EventRange"][0]), int(self.individualCuts[str(ch)]["EventRange"][1])])
             elif self.individualCuts[str(ch)]["ExcludeFirst"] is not None:
-                self.SetExcludeFirst(n=int(self.individualCuts[str(ch)]["ExcludeFirst"]))
+                self.set_exclude_first(value=int(self.individualCuts[str(ch)]["ExcludeFirst"]))
 
             if self.individualCuts[str(ch)]["peakPos_high"] is not None:
-                self._SetPeakPos_high(high=int(self.individualCuts[str(ch)]["peakPos_high"]))
+                self.set_peakpos_high(value=int(self.individualCuts[str(ch)]["peakPos_high"]))
 
             if self.individualCuts[str(ch)]["spread_low"] is not None:
-                self._SetSpread_low(low=int(self.individualCuts[str(ch)]["spread_low"]))
+                self.set_spread_low(low=int(self.individualCuts[str(ch)]["spread_low"]))
 
             if self.individualCuts[str(ch)]["absMedian_high"] is not None:
-                self._SetAbsMedian_high(high=int(self.individualCuts[str(ch)]["absMedian_high"]))
+                self.set_abs_median_high(high=int(self.individualCuts[str(ch)]["absMedian_high"]))
 
-    def SetEventRange(self, min_event=0, max_event=0):
+    # ==============================================
+    # region GET & SET
+
+    def load_event_range(self, event_range=None):
         """
-        Sets the event range cut. If the arguments are negative, they are interpreted as time in minutes. Therefore, e.g. 
+        Gets the event range cut. If the arguments are negative, they are interpreted as time in minutes. Therefore, e.g.
         SetEventRange(-10, 700000) means that only events are considered, which fulfill: >10 minutes after run start event number < 700000
-        :param min_event:
-        :param max_event:
+        :param event_range:
         :return:
         """
-        if min_event != 0 and max_event != 0:
-            if min_event < 0:
-                min_event = self.analysis.GetEventAtTime(time_sec=(-1) * min_event * 60)
-            if max_event < 0:
-                max_event = self.analysis.GetEventAtTime(time_sec=(-1) * max_event * 60)
-            self.cut_types["EventRange"] = [min_event, max_event]
-        elif min_event != 0:
-            if min_event < 0:
-                min_event = self.analysis.GetEventAtTime(time_sec=(-1) * min_event * 60)
-            maxevent = self.analysis.GetEventAtTime(-1)
-            self.cut_types["EventRange"] = [min_event, maxevent]
-        elif max_event != 0:
-            if max_event < 0:
-                max_event = self.analysis.GetEventAtTime(time_sec=(-1) * max_event * 60)
-            self.cut_types["EventRange"] = [self.excludefirst, max_event]
+        if not event_range:
+            event_range = [0, 0]
+        for i, value in enumerate(event_range):
+            if value < 0:
+                event_range[i] = self.analysis.GetEventAtTime(time_sec=-1 * value * 60)
+        if event_range[0] and event_range[1]:
+            pass
+        elif event_range[0]:
+            event_range[1] = self.analysis.GetEventAtTime(-1)
+        elif event_range[1]:
+            event_range[0] = self.excludefirst
         else:
-            self.cut_types["EventRange"] = []
+            event_range = []
+        return event_range
+
+    def set_event_range(self, event_range):
+        self.cut_types['EventRange'] = self.load_event_range(event_range)
 
     def GetIncludedEvents(self, maxevent=None):
         """
         Returns a list of event numbers, which are not excluded by the
         following cuts (i.e. event cuts):
-            - excludeFirst cut
+            - excludeFirst cutr
             - event-range cut
             - beam-interruptions cut
         :return: list of included event numbers
@@ -205,42 +194,70 @@ class Cut(Elementary):
         included = np.delete(all_events, excluded)
         return included
 
-    def SetExcludeFirst(self, n):
-        '''
-        Sets how many events at the very beginning of the run should be
-        excluded. if the argument is negative, it will be interpreted as
-        time in minutes. For a positive argument it is interpreted as
+    def load_exclude_first(self, value):
+        """
+        Sets how many events at the very beginning of the run should be excluded. if the argument is negative, it will be interpreted as time in minutes. For a positive argument it is interpreted as
         maximum event number.
-        :param n:
+        :param value: events or time in minutes
         :return:
-        '''
-        if n >= 0:
-            self.__SetExcludeFirst(nevents=n)
+        """
+        if value > 0:
+            self.userCutTypes['ExcludeFirst'] = str(int(value) / 1000) + 'k+'
+            return value
+        elif value == 0:
+            self.userCutTypes['ExcludeFirst'] = ''
+            return 0
         else:
-            self._SetExcludeFirstTime(seconds=(-1) * n * 60)
+            self.userCutTypes['ExcludeFirst'] = str(-1 * value) + 'min+'
+            seconds = -1 * value * 60
+            event = self.analysis.GetEventAtTime(seconds)
+            return event
 
-    def _SetPeakPos_high(self, high):
+    def set_exclude_first(self, value):
+        self.cut_types['ExcludeFirst'] = self.load_exclude_first(value)
+
+    def load_peakpos_high(self, high):
         if high > 0:
-            self.cut_types["peakPos_high"] = high
-            self.userCutTypes["peakPos_high"] = "peakPos<{high}".format(high=high)
-
-    def _SetSpread_low(self, low):
-        if low > 0:
-            self.cut_types["spread_low"] = low
-            self.userCutTypes["spread_low"] = "spread>{low}".format(low=low)
-
-    def _SetAbsMedian_high(self, high):
-        if high > 0:
-            self.cut_types["absMedian_high"] = high
-            self.userCutTypes["absMedian_high"] = "|median|<{high}".format(high=high)
-
-    def _SetPedestalSigma(self, sigma=-1):
-        if sigma > 0:
-            self.userCutTypes["pedestalsigma"] = "PedSigma" + str(sigma)
-            self.cut_types["pedestalsigma"] = sigma
+            self.userCutTypes['peakPos_high'] = 'peakPos<{high}'.format(high=high)
+            return high
         else:
-            self.userCutTypes["pedestalsigma"] = ""
-            self.cut_types["pedestalsigma"] = -1
+            return -1
+
+    def set_peakpos_high(self, value):
+        self.cut_types['peakPos_high'] = self.load_peakpos_high(value)
+
+    def load_spread_low(self, value):
+        if value > 0:
+            self.userCutTypes['spread_low'] = 'spread>{low}'.format(low=value)
+            return value
+        else:
+            return -1
+
+    def set_spread_low(self, low):
+        self.cut_types['spread_low'] = self.load_spread_low(low)
+
+    def load_abs_median_high(self, value):
+        if value > 0:
+            self.userCutTypes['absMedian_high'] = '|median|<{high}'.format(high=value)
+            return value
+        else:
+            return -1
+
+    def set_abs_median_high(self, high):
+        self.cut_types['absMedian_high'] = self.load_abs_median_high(high)
+
+    def load_pedestal_sigma(self, value):
+        if value > 0:
+            self.userCutTypes['pedestalsigma'] = 'PedSigma' + str(value)
+            return value
+        else:
+            self.userCutTypes['pedestalsigma'] = ''
+            return -1
+
+    def set_pedestal_sigma(self, sigma=-1):
+        self.cut_types['pedestalsigma'] = self.load_pedestal_sigma(sigma)
+
+    # endregion
 
     def GetEventRange(self):
         """
@@ -255,7 +272,7 @@ class Cut(Elementary):
         Returns the smallest event number satisfying the cut conditions.
         :return:
         """
-        if self.cut_types["EventRange"] != []:
+        if self.cut_types["EventRange"]:
             return self.cut_types["EventRange"][0]
         elif self.cut_types["ExcludeFirst"] > 0:
             return self.cut_types["ExcludeFirst"]
@@ -263,12 +280,12 @@ class Cut(Elementary):
             return 0
 
     def GetNEvents(self):
-        '''
+        """
         Returns the number of events satisfying the cut conditions.
         :return:
-        '''
+        """
         totEvents = self.analysis.GetEventAtTime(-1)
-        if self.cut_types["EventRange"] != []:
+        if self.cut_types["EventRange"]:
             return self.cut_types["EventRange"][1] - self.cut_types["EventRange"][0]
         elif self.cut_types["ExcludeFirst"] > 0:
             return totEvents - self.cut_types["ExcludeFirst"]
@@ -276,31 +293,25 @@ class Cut(Elementary):
             return totEvents
 
     def GetMaxEvent(self):
-        '''
+        """
         Returns the highest event number satisfying the cut conditions.
         :return:
-        '''
+        """
         totEvents = self.analysis.GetEventAtTime(-1)
-        if self.cut_types["EventRange"] != []:
+        if self.cut_types["EventRange"]:
             return self.cut_types["EventRange"][1]
         else:
             return totEvents
 
-    def _SetExcludeFirstTime(self, seconds):
-        event = self.analysis.GetEventAtTime(time_sec=seconds)
-        self.__SetExcludeFirst(nevents=event)
-        if seconds > 0:
-            self.userCutTypes["ExcludeFirst"] = str(int(seconds) / 60) + "min+"
+    # ==============================================
+    # region GENERATE CUT STRINGS
+    def generate_event_range(self):
+        if self.cut_types['EventRange']:
+            self.cut_strings['event_range'] = '(event_number<={max}&&event_number>={min})'.format(min=self.cut_types['EventRange'][0], max=self.cut_types['EventRange'][1])
+        elif self.cut_types['ExcludeFirst']:
+            self.cut_strings['event_range'] = 'event_number>={min}'.format(min=self.cut_types['ExcludeFirst'])
 
-    def __SetExcludeFirst(self, nevents):
-        if nevents > 0:
-            self.userCutTypes["ExcludeFirst"] = str(int(nevents) / 1000) + "k+"
-        else:
-            self.userCutTypes["ExcludeFirst"] = ""
-        self.cut_types["ExcludeFirst"] = nevents
-        self.excludefirst = nevents
-
-    def GenerateCutString(self, gen_PulserCut=True, gen_EventRange=True, gen_ExcludeFirst=True, setChannel=True):
+    def generate_cut_string(self, gen_PulserCut=True, gen_EventRange=True, gen_ExcludeFirst=True, setChannel=True):
         """
         Creates the cut string, which will be stored in self.cut. With the arguments set to False, different cut types can be deactivated in the cut string.
         :param gen_PulserCut:
@@ -313,6 +324,7 @@ class Cut(Elementary):
         cutstring = self.cut
 
         # -- EVENT RANGE CUT --
+        self.generate_event_range()
         if self.cut_types["EventRange"] != [] and gen_EventRange:
             if cutstring != "":
                 cutstring += "&&"
@@ -329,10 +341,11 @@ class Cut(Elementary):
             self.userCutTypes["EventRange"] = ""
             self.userCutTypes["ExcludeFirst"] = ""
 
-
         # -- PULSER CUT --
+        self.cut_strings['pulser'] = '!pulser'
         if self.cut_types["noPulser"] in [0, 1] and gen_PulserCut:
-            if cutstring != "": cutstring += "&&"
+            if cutstring != "":
+                cutstring += "&&"
             if self.cut_types["noPulser"] == 1:
                 cutstring += "!pulser"
                 self.userCutTypes["noPulser"] = "!pulser"
@@ -344,55 +357,64 @@ class Cut(Elementary):
 
         # -- SATURATED CUT --
         if self.cut_types["notSaturated"]:
-            if cutstring != "": cutstring += "&&"
-            cutstring += "!is_saturated[{channel}]"
-            self.userCutTypes["notSaturated"] = "!saturated"
-        else:
-            self.userCutTypes["notSaturated"] = ""
-
-        # -- TRACK CUT --
-        if self.cut_types["Tracks"]:
-            if cutstring != "": cutstring += "&&"
-            cutstring += "n_tracks"
-            self.userCutTypes["Tracks"] = "Tracks"
-        else:
-            self.userCutTypes["Tracks"] = ""
-
-        # -- PEAK POSITION CUT --
-        if self.cut_types["peakPos_high"] > 0:
-            if cutstring != "": cutstring += "&&"
-            cutstring += "sig_time[{channel}]<{high}".format(channel=self.channel, high=int(self.cut_types["peakPos_high"]))
-            self.userCutTypes["peakPos_high"] = "peakPos<{high}".format(high=int(self.cut_types["peakPos_high"]))
-        else:
-            self.userCutTypes["peakPos_high"] = ""
-
-        # -- SPREAD LOW CUT --
-        if self.cut_types["spread_low"] > 0:
-            if cutstring != "": cutstring += "&&"
-            cutstring += "sig_spread[{channel}]>{low}".format(channel=self.channel, low=int(self.cut_types["spread_low"]))
-            self.userCutTypes["spread_low"] = "spread>{low}".format(low=int(self.cut_types["spread_low"]))
-        else:
-            self.userCutTypes["spread_low"] = ""
-
-        # -- MEDIAN CUT --
-        if self.cut_types["absMedian_high"] > 0:
-            if cutstring != "": cutstring += "&&"
-            cutstring += "abs(median[{channel}])<{high}".format(channel=self.channel, high=int(self.cut_types["absMedian_high"]))
-            self.userCutTypes["absMedian_high"] = "|median|<{high}".format(high=int(self.cut_types["absMedian_high"]))
-        else:
-            self.userCutTypes["absMedian_high"] = ""
-
-        # -- PEDESTAL SIGMA CUT --
-        if self.cut_types["pedestalsigma"] > 0:
+            self.cut_strings['saturated'] = '!saturated'
             if cutstring != "":
                 cutstring += "&&"
-            self._LoadPedestalData(cutstring=cutstring)
-            sigma = self.pedestalSigma
-            pedestalmean = self.pedestalFitMean
-            refactor = self.cut_types["pedestalsigma"]
-            pedestal_n_sigma_range = [pedestalmean - refactor * sigma, pedestalmean + refactor * sigma]
-            cutstring += self.analysis.pedestalname + "[{channel}]>" + str(pedestal_n_sigma_range[0]) + "&&" + self.analysis.pedestalname + "[{channel}]<" + str(pedestal_n_sigma_range[1])
-            self.userCutTypes["pedestalsigma"] = "PedSigma" + str(refactor)
+            cutstring += "!is_saturated[{channel}]"
+            self.userCutTypes['notSaturated'] = '!saturated'
+        else:
+            self.userCutTypes['notSaturated'] = ''
+
+        # -- TRACK CUT --
+        self.cut_strings['tracks'] = 'n_tracks'
+        if self.cut_types['Tracks']:
+            if cutstring != '':
+                cutstring += '&&'
+            cutstring += 'n_tracks'
+            self.userCutTypes['Tracks'] = 'Tracks'
+        else:
+            self.userCutTypes['Tracks'] = ''
+
+        # -- PEAK POSITION CUT --
+        if self.cut_types['peakPos_high'] > 0:
+            self.cut_strings['peak_pos'] = 'sig_time[{ch}]<{high}'.format(ch=self.channel, high=int(self.cut_types['peakPos_high']))
+            if cutstring != '':
+                cutstring += '&&'
+            cutstring += 'sig_time[{channel}]<{high}'.format(channel=self.channel, high=int(self.cut_types['peakPos_high']))
+            self.userCutTypes['peakPos_high'] = 'peakPos<{high}'.format(high=int(self.cut_types['peakPos_high']))
+        else:
+            self.userCutTypes['peakPos_high'] = ''
+
+        # -- SPREAD LOW CUT --
+        if self.cut_types['spread_low'] > 0:
+            self.cut_strings['spread_low'] = 'sig_spread[{ch}]>{low}'.format(ch=self.channel, low=int(self.cut_types['spread_low']))
+            if cutstring != '':
+                cutstring += '&&'
+            cutstring += 'sig_spread[{channel}]>{low}'.format(channel=self.channel, low=int(self.cut_types['spread_low']))
+            self.userCutTypes['spread_low'] = 'spread>{low}'.format(low=int(self.cut_types['spread_low']))
+        else:
+            self.userCutTypes['spread_low'] = ''
+
+        # -- MEDIAN CUT --
+        if self.cut_types['absMedian_high'] > 0:
+            self.cut_strings['median'] = 'abs(median[{ch}])<{high}'.format(ch=self.channel, high=int(self.cut_types['absMedian_high']))
+            if cutstring != '':
+                cutstring += '&&'
+            cutstring += 'abs(median[{channel}])<{high}'.format(channel=self.channel, high=int(self.cut_types['absMedian_high']))
+            self.userCutTypes['absMedian_high'] = '|median|<{high}'.format(high=int(self.cut_types['absMedian_high']))
+        else:
+            self.userCutTypes['absMedian_high'] = ''
+
+        # -- PEDESTAL SIGMA CUT --
+        if self.cut_types['pedestalsigma'] > 0:
+            if cutstring != '':
+                cutstring += '&&'
+            self.__load_pedestal_data()
+            ped_range = self.__calc_pedestal_range()
+            string = '{ped}>{min}&&{ped}<{max}'.format(ped=self.analysis.pedestal_names[self.channel], min=ped_range[0], max=ped_range[1])
+            cutstring += string
+            self.userCutTypes["pedestalsigma"] = "PedSigma" + str(self.cut_types['pedestalsigma'])
+            self.cut_strings['ped_sigma'] = string
         else:
             self.userCutTypes["pedestalsigma"] = ""
 
@@ -403,10 +425,10 @@ class Cut(Elementary):
 
         # -- BEAM INTERRUPTION CUT --
         if self.cut_types["noBeamInter"] and self._checklist["GenerateCutString"]:
-            self.__remove_beam_interruptions(justDoIt=True)
+            self.__generate_beam_interruptions(justDoIt=True)
             self.userCutTypes["noBeamInter"] = "beamOn"
         elif self.cut_types["noBeamInter"]:
-            self.__remove_beam_interruptions()
+            self.__generate_beam_interruptions()
             self.userCutTypes["noBeamInter"] = "BeamOn"
         else:
             self.userCutTypes["noBeamInter"] = ""
@@ -418,8 +440,37 @@ class Cut(Elementary):
             "gen_ExcludeFirst": gen_ExcludeFirst
         }
 
-    def generate_beaminterruption_cut(self):
-        pass
+    def __calc_pedestal_range(self):
+        sigma = self.pedestal_sigma
+        ped_mean = self.pedestal_mean
+        sigma_range = self.cut_types['pedestalsigma']
+        return [ped_mean - sigma_range * sigma, ped_mean + sigma_range * sigma]
+
+    def __generate_beam_interruptions(self, justDoIt=False):
+        """
+        This adds the restrictions to the cut string such that beam interruptions are excluded each time the cut is applied.
+        :return: cut
+        """
+        if not self._checklist["RemoveBeamInterruptions"] or justDoIt:
+            self.GetBeamInterruptions()
+
+            njumps = len(self.jump_ranges["start"])
+            cut_string = ''
+            for i in xrange(njumps):
+                string = "!(event_number<={upper}&&event_number>={lower})".format(upper=self.jump_ranges["stop"][i], lower=self.jump_ranges["start"][i])
+                if self.cut != "":
+                    self.cut += "&&"
+                self.cut += string
+                # new seperate strings
+                if cut_string != '':
+                    cut_string += '&&'
+                cut_string += string
+            self.cut_strings['beam_interruptions'] = cut_string
+            self._checklist["RemoveBeamInterruptions"] = True
+
+        return self.cut
+
+    # endregion
 
     def _checkCutStringSettings(self, gen_PulserCut, gen_EventRange, gen_ExcludeFirst):
         if self.__cutstring_settings["gen_PulserCut"] == gen_PulserCut and self.__cutstring_settings["gen_EventRange"] == gen_EventRange \
@@ -428,31 +479,30 @@ class Cut(Elementary):
         else:
             return False
 
-    def _LoadPedestalData(self, cutstring):
-        picklepath = "Configuration/Individual_Configs/PedestalPeak/{tc}_{run}_{ch}_PedestalPeak.pickle".format(tc=self.TESTCAMPAIGN, run=self.analysis.run.run_number, ch=self.channel)
-        if not hasattr(self, "pedestalFitMean"):
+    def __load_pedestal_data(self):
+        picklepath = 'Configuration/Individual_Configs/PedestalPeak/{tc}_{run}_{ch}_PedestalPeak.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run.run_number, ch=self.channel)
+        if self.pedestal_mean is None:
+            # Loading pedestal peak fit data from pickle
             if os.path.exists(picklepath):
-                # print "Loading pedestal peak fit data from pickle file: \n\t"+picklepath
-                picklefile = open(picklepath, "rb")
+                picklefile = open(picklepath, 'rb')
                 fitparameters = pickle.load(picklefile)
                 picklefile.close()
+            # fitting
             else:
-                # do fit
-                # pedestalhisto = self.analysis._ShowHisto(self.analysis.pedestaldefinition[self.channel], channel=self.channel,
-                #                                          canvas=None, drawoption="", color=None, cut=cutstring, normalized=False,
-                #                                          infoid="CutPedestalFit", drawruninfo=False, binning=1000, xmin=-500, xmax=500,savePlots=False, logy=True, gridx=True)
-                self.analysis.run.tree.Draw((self.analysis.pedestaldefinition[self.channel] + ">>tmphisto(1000,-500,500)").format(channel=self.channel), (cutstring[:-2]).format(channel=self.channel))
-                pedestalhisto = ROOT.gROOT.FindObject("tmphisto")
+                gROOT.SetBatch(1)
+                pedestalhisto = TH1F('tmphisto', 'bla', 400, -100, 100)
+                self.analysis.tree.Draw(self.analysis.pedestal_names[self.channel] + '>>tmphisto')
                 ped_peakpos = pedestalhisto.GetBinCenter(pedestalhisto.GetMaximumBin())
-                pedestalhisto.Fit("gaus", "", "", ped_peakpos - 10, ped_peakpos + 10)
-                fitfunc = pedestalhisto.GetFunction("gaus")
+                pedestalhisto.Fit('gaus', '', '', ped_peakpos - 20, ped_peakpos + 20)
+                fitfunc = pedestalhisto.GetFunction('gaus')
                 fitparameters = [fitfunc.GetParameter(0), fitfunc.GetParameter(1), fitfunc.GetParameter(2)]
+                gROOT.SetBatch(0)
                 # save to file
-                picklefile = open(picklepath, "wb")
+                picklefile = open(picklepath, 'wb')
                 pickle.dump(fitparameters, picklefile)
                 picklefile.close()
-            self.pedestalFitMean = fitparameters[1]
-            self.pedestalSigma = fitparameters[2]
+            self.pedestal_mean = fitparameters[1]
+            self.pedestal_sigma = fitparameters[2]
 
     def find_beam_interruptions(self):
         """
@@ -507,8 +557,8 @@ class Cut(Elementary):
                 t_start = (self.analysis.run.GetTimeAtEvent(tup[0]) - time_offset) / 1000.
                 t_stop = (self.analysis.run.GetTimeAtEvent(tup[1]) - time_offset) / 1000.
                 # add offsets from config file
-                t_start -= -1 * self.excludeBeforeJump if t_start >= -1 * self.excludeBeforeJump else 0
-                t_stop = t_stop + -1 * self.excludeAfterJump if t_stop + -1 * self.excludeAfterJump <= t_max else t_max
+                t_start -= -1 * self.exclude_before_jump if t_start >= -1 * self.exclude_before_jump else 0
+                t_stop = t_stop + -1 * self.exclude_after_jump if t_stop + -1 * self.exclude_after_jump <= t_max else t_max
                 if t_start < last_stop:
                     stop[-1] = self.analysis.GetEventAtTime(t_stop)
                     last_stop = t_stop
@@ -583,89 +633,74 @@ class Cut(Elementary):
             def_ += "pulser"
 
         if self.cut_types["notSaturated"]:
-            if def_ != "": def_ += " and "
+            if def_ != "":
+                def_ += " and "
             def_ += "not is_saturated"
 
         if self.cut_types["Tracks"]:
-            if def_ != "": def_ += " and "
+            if def_ != "":
+                def_ += " and "
             def_ += "n_tracks"
 
         if self.cut_types["FFT"]:
-            if def_ != "": def_ += " and "
-            assert (False), "FFT cut not yet implemented in GetCutFunctionDef() method of Cut class. "
+            if def_ != "":
+                def_ += " and "
+            assert False, "FFT cut not yet implemented in GetCutFunctionDef() method of Cut class. "
             # to do: FFT entry in _cutTypes should be dict and/or contain a TCutG instance
 
         if self.cut_types["peakPos_high"] > 0:
-            if def_ != "": def_ += " and "
+            if def_ != "":
+                def_ += " and "
             def_ += "sig_time<{high}".format(high=int(self.cut_types["peakPos_high"]))
 
         if self.cut_types["spread_low"] > 0:
-            if def_ != "": def_ += " and "
+            if def_ != "":
+                def_ += " and "
             def_ += "sig_spread>{low}".format(low=int(self.cut_types["spread_low"]))
 
         if self.cut_types["absMedian_high"] > 0:
-            if def_ != "": def_ += " and "
+            if def_ != "":
+                def_ += " and "
             def_ += "abs(median)>{low}".format(low=int(self.cut_types["absMedian_high"]))
 
         return defstring_ + def_
-
-    def __remove_beam_interruptions(self, justDoIt=False):
-        """
-        This adds the restrictions to the cut string such that beam interruptions are excluded each time the cut is applied.
-        :return: cut
-        """
-        if not self._checklist["RemoveBeamInterruptions"] or justDoIt:
-            self.GetBeamInterruptions()
-
-            njumps = len(self.jump_ranges["start"])
-            cut_string = ''
-            for i in xrange(njumps):
-                string = "!(event_number<={upper}&&event_number>={lower})".format(upper=self.jump_ranges["stop"][i], lower=self.jump_ranges["start"][i])
-                if self.cut != "":
-                    self.cut += "&&"
-                self.cut += string
-                # new seperate strings
-                if cut_string != '':
-                    cut_string += '&&'
-                cut_string += string
-            self.cut_strings['beam_interruptions'] = cut_string
-            self._checklist["RemoveBeamInterruptions"] = True
-
-        return self.cut
 
     def AddCutString(self, cutstring):
         pass
 
     def GetCut(self, setChannel=True, gen_PulserCut=True, gen_EventRange=True, gen_ExcludeFirst=True, ):
-        '''
+        """
         Returns the cut string.
         If needed, it will re-generate the cut string.
         :param gen_PulserCut:
         :param gen_EventRange:
         :param gen_ExcludeFirst:
         :return:
-        '''
+        """
         # channel = self.channel
         if not self._checkCutStringSettings(gen_PulserCut, gen_EventRange, gen_ExcludeFirst):
-            self.GenerateCutString(gen_PulserCut, gen_EventRange, gen_ExcludeFirst, setChannel=setChannel)
+            self.generate_cut_string(gen_PulserCut, gen_EventRange, gen_ExcludeFirst, setChannel=setChannel)
         return self.cut
 
     def GetUserCutString(self):
-        '''
+        """
         Returns a short, more user-friendly cut string, which can be
         used to display the cut configuration as terminal prompt or
         inside a canvas.
         :return:
-        '''
+        """
         string_ = ""
         for type_ in self.userCutTypes.keys():
             if self.userCutTypes[type_] != "":
                 string_ += self.userCutTypes[type_] + ", "
-        if string_ != "": string_ = string_[:-2]
+        if string_ != "":
+            string_ = string_[:-2]
         return string_
 
-    def ShowCuts(self):
-        pass
+    def show_cuts(self):
+        for key, value in self.cut_strings.iteritems():
+            print key, value
+        return
 
     def SetFFTCut(self):
         pass
