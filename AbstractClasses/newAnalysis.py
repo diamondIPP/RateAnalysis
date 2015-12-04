@@ -138,6 +138,9 @@ class Analysis(Elementary):
         }
         self.pedestalFitMean = {}
         self.pedestalSigma = {}
+        
+        # save histos // canvases
+        self.signal_canvas = None
 
     def LoadConfig(self):
         configfile = "Configuration/AnalysisConfig_" + self.TESTCAMPAIGN + ".cfg"
@@ -928,44 +931,37 @@ class Analysis(Elementary):
         self.run.analyzeCh = copy.deepcopy(tmp)
 
     def SetChannels(self, diamonds):
-        '''
-        Sets the channels (i.e. diamonds) to be analyzed. This is just a
-        short cut for: self.run.SetChannels(diamonds)
+        """
+        Sets the channels (i.e. diamonds) to be analyzed. This is just a short cut for: self.run.SetChannels(diamonds)
         :param diamonds:
-        :return:
-        '''
+        """
         self.run.SetChannels(diamonds=diamonds)
 
     def GetEventAtTime(self, time_sec):
         return self.run.GetEventAtTime(time_sec)
 
     def GetRate(self):
-        '''
-
-        :return:
-        '''
         return self.run.GetRate()
 
     def ShowSignalMaps(self, draw_minmax=True, saveplots=False, savename="Run{run}_SignalMaps", ending="png", saveDir="Results/", show3d=False):
-        '''
-        Shows a 2-dimensional mean signal response map for each channel
-        which is activated for analysis.
+        """
+        Shows a 2-dimensional mean signal response map for each channel which is activated for analysis.
         :param saveplots: if True, save the plot
         :param savename: filename if saveplots = True
         :param ending: datatype of file if saveplots = True
         :param saveDir: directory to save the plot - has to end with '/'
         :return: -
-        '''
-        if not self.Checklist["LoadTrackData"]:
+        """
+        if not self.Checklist['LoadTrackData']:
             self.LoadTrackData()
 
         channels = self.run.GetChannels()
-        self.signal_canvas = ROOT.TCanvas("signal_canvas{run}", "Mean Signal Maps", len(channels) * 500, 500)
+        self.signal_canvas = ROOT.TCanvas('signal_canvas{run}', 'Mean Signal Maps', len(channels) * 500, 500)
         self.signal_canvas.Divide(len(channels), 1)
         if len(channels) == 2:
-            namesuffix = ""
+            namesuffix = ''
         else:
-            namesuffix = "_Ch{ch}".format(ch=channels[0])
+            namesuffix = '_Ch{ch}'.format(ch=channels[0])
         self.signal_canvas.cd(1)
         ROOT.SetOwnership(self.signal_canvas, False)
 
@@ -977,31 +973,32 @@ class Analysis(Elementary):
             # Plot the Signal2D TH2D histogram
 
             if show3d:
-                self.Signal2DDistribution[channel].Draw("SPEC dm(2,10) pa(1,1,1) ci(1,1,1) a(15,45,0) s(1,1)")
-                savename += "3D"
+                self.Signal2DDistribution[channel].Draw('SPEC dm(2,10) pa(1,1,1) ci(1,1,1) a(15,45,0) s(1,1)')
+                savename += '3D'
             else:
-                self.Signal2DDistribution[channel].Draw("colz")
+                self.Signal2DDistribution[channel].Draw('colz')
 
             if draw_minmax and not show3d:
                 self._DrawMinMax(pad=self.signal_canvas.cd(channels.index(channel) + 1), channel=channel)
 
-            if not show3d: self.DrawRunInfo(canvas=pad, infoid="signalmap{run}{ch}".format(run=self.run.run_number, ch=channel))
+            if not show3d: 
+                self.DrawRunInfo(canvas=pad, infoid='signalmap{run}{ch}'.format(run=self.run.run_number, ch=channel))
 
         self.signal_canvas.Update()
-        self.IfWait("2d drawn")
+        self.IfWait('2d drawn')
         if saveplots:
             savename = savename.format(run=self.run.run_number) + namesuffix
-            self.SavePlots(savename, ending, canvas=self.signal_canvas, subDir=ending)
-            self.SavePlots(savename, "root", canvas=self.signal_canvas, subDir="root")
+            self.SavePlots(savename, ending, canvas=self.signal_canvas, subDir=ending, saveDir=saveDir)
+            self.SavePlots(savename, 'root', canvas=self.signal_canvas, subDir="root", saveDir=saveDir)
 
     def _DrawMinMax(self, pad, channel, theseMaximas=None, theseMinimas=None):
         pad.cd()
 
-        if theseMaximas == None:
+        if theseMaximas is None:
             if self.extremaResults[channel]['FoundMaxima'] == None: self.FindMaxima(channel=channel)
         else:
             assert (type(theseMaximas) is t.ListType)
-        if theseMinimas == None:
+        if theseMinimas is None:
             if self.extremaResults[channel]['FoundMinima'] == None: self.FindMinima(channel=channel)
         else:
             assert (type(theseMinimas) is t.ListType)
