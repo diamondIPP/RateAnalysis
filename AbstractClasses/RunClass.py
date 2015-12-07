@@ -7,11 +7,13 @@ import ConfigParser
 import json
 import csv
 import copy
+import re
 
 from Runinfos.RunInfo import RunInfo
 from Elementary import Elementary
 from Converter import Converter
 from datetime import datetime as dt
+from ROOT import TFile
 
 default_info = {
     "persons on shift": "-",
@@ -126,10 +128,46 @@ class Run(Elementary):
         self.SetChannels(diamonds)
         self.IsMonteCarlo = False
 
+        # region information
+        self.region_information = self.load_regions()
+        self.pedestal_regions = self.get_regions('pedestal')
+        self.signal_regions = self.get_regions('signal')
+        self.peak_integrals = self.get_peak_integrals()
+
     def load_parser(self):
         runConfigParser = ConfigParser.ConfigParser()
         runConfigParser.read("Configuration/RunConfig_" + self.TESTCAMPAIGN + ".cfg")
         return runConfigParser
+
+    def load_regions(self):
+        root_file = TFile(self.converter.get_root_file_path(self.run_number))
+        macro = root_file.Get('region_information')
+        return macro.GetListOfLines()
+
+    def show_regions(self):
+        for line in self.region_information:
+            print line
+
+    def get_regions(self, string):
+        ranges = []
+        for line in self.region_information:
+            line = str(line)
+            if line.startswith(string):
+                data = re.split('_|:', line)
+                ranges.append(data[1])
+        return ranges
+
+    def get_peak_integrals(self):
+        integrals = []
+        for line in self.region_information:
+            line = str(line)
+            if str(line).lower().startswith('* peakintegral'):
+                data = re.split('_|:', line)
+                if data[0][-1].isdigit():
+                    integrals.append(data[0][-1])
+                else:
+                    integrals.append(data[1])
+        return integrals
 
     def SetRun(self, run_number, validate=False, loadROOTFile=True):
 

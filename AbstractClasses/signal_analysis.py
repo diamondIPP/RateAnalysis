@@ -3,7 +3,8 @@ __author__ = 'micha'
 # ==============================================
 # IMPORTS
 # ==============================================
-from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TF1, TH1F, TCut, gROOT, TLegend
+from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TF1, TH1F, gROOT, TLegend
+import ROOT
 from newAnalysis import Analysis
 # from collections import OrderedDict
 from array import array
@@ -91,52 +92,48 @@ class SignalAnalysis(Analysis):
         self.SavePlots('signal_distribution', 'png', canvas=canvas, subDir=self.save_dir)
 
     def compare_cuts(self):
-        canvas = TCanvas('bla', 'blub', 1000, 1000)
-        c2 = TCanvas('all', 'all', 1000, 1000)
-        cuts = self.ch_cut.cut_strings
-        all_cuts = TCut('all_cuts', '')
         gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
-        i_color = 2
-        histos = []
+        gROOT.SetBatch(1)
+        c1 = TCanvas('bla', 'blub', 1000, 1000)
+        c2 = TCanvas('all', 'all', 1000, 1000)
         legend = TLegend(0.7, 0.3, 0.9, .7)
+        cuts = self.ch_cut.cut_strings
+        all_cut = self.ch_cut.all_cut
+        colors = [2, 3, 4, ROOT.kOrange-3, 28, 30, 41, 46, 44, ROOT.kGreen-1, ROOT.kViolet+4]
+        histos = []
+        i = 0
         for key, value in cuts.iteritems():
-            if str(value):
-                all_cuts += value
+            if str(value) or key == 'raw':
                 print 'saving plot', key
-                canvas.cd()
+                c1.cd()
                 name = 'signal_distribution_{cut}'.format(cut=key)
                 histo = TH1F('signal b2', '', 400, -100, 300)
                 hist_name = 'signal with cut ' + key
                 histo.SetTitle(hist_name)
                 # histo.GetYaxis().SetRangeUser(0, 7000)
                 self.tree.Draw("{name}>>signal b2".format(name=self.signal_name), value)
-                self.SavePlots(name, 'png', canvas=canvas, subDir=self.save_dir)
+                self.SavePlots(name, 'png', canvas=c1, subDir=self.save_dir)
                 c2.cd()
-                c2.Update()
-                histo.SetLineColor(i_color)
-                if i_color == 2:
+                histo.SetLineColor(colors[i])
+                if not i:
                     histo.SetTitle('signal distribution with different cuts')
-                    histo.SetLineWidth(3)
                     histo.SetStats(0)
                     histo.Draw()
                 else:
                     histo.SetLineWidth(1)
                     histo.Draw('same')
                 histos.append(histo)
-                if i_color == 4:
-                   i_color += 2
-                else:
-                    i_color += 1
                 legend.AddEntry(histo, key)
+                i += 1
         # save all cuts
         print 'saving plot all cuts'
-        canvas.cd()
+        c1.cd()
         histo = TH1F('signal b2', '', 400, -100, 300)
         histo.SetTitle('signal with all cuts')
         # histo.GetYaxis().SetRangeUser(0, 7000)
-        self.tree.Draw("{name}>>signal b2".format(name=self.signal_name), all_cuts)
-        self.SavePlots('signal_distribution_all_cuts', 'png', canvas=canvas, subDir=self.save_dir)
-        canvas.Close()
+        self.tree.Draw("{name}>>signal b2".format(name=self.signal_name), all_cut)
+        self.SavePlots('signal_distribution_all_cuts', 'png', canvas=c1, subDir=self.save_dir)
+        c1.Close()
         c2.cd()
         histo.SetLineColor(1)
         histo.SetLineWidth(1)
@@ -146,6 +143,7 @@ class SignalAnalysis(Analysis):
         self.SavePlots('all', 'png', canvas=c2, subDir=self.save_dir)
         self.SavePlots('all', 'root', canvas=c2, subDir=self.save_dir)
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
+        gROOT.SetBatch(0)
 
     def show_pedestal_histo(self):
         self.tmp_histos['1'] = TH1F('ped1', 'pedestal', 100, -20, 20)

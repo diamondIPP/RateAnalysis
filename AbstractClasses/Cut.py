@@ -4,12 +4,13 @@ import numpy as np
 import pickle
 import json
 import ConfigParser
-from numpy import mean
+from numpy import mean, array, zeros
 
 from AbstractClasses.Elementary import Elementary
 from ROOT import TCut, gROOT, TH1F
 
 
+# todo: make channel cut subclass
 class Cut(Elementary):
     """
     A cut contains all cut settings which corresponds to a single diamond
@@ -44,7 +45,6 @@ class Cut(Elementary):
                              'noPulser': '!pulser',
                              'notSaturated': '!saturated',
                              'noBeamInter': '!BeamInter.',
-                             'FFT': '',
                              'Tracks': 'Track',
                              'peakPos_high': 'peakPos<250',
                              'spread_low': 'spread>20',
@@ -54,27 +54,23 @@ class Cut(Elementary):
         self.cut_types = {'IndividualChCut': '',
                           'EventRange': [],  # [1234, 123456]
                           'ExcludeFirst': 0,  # 50000 events
-                          'noPulser': 1,  # 1: nopulser, 0: pulser, -1: no cut
-                          'notSaturated': True,
-                          'noBeamInter': True,
-                          'FFT': False,
-                          'Tracks': True,
-                          'peakPos_high': -1,
                           'spread_low': -1,
                           'absMedian_high': -1,
-                          'pedestalsigma': -1
-                          }
+                          'pedestalsigma': -1,
+                          'chi2': -1,
+                          'track_angle': -1}
 
         self.cut_strings = {'beam_interruptions': TCut('beam_interruptions', ''),
                             'event_range': TCut('event_range', ''),
-                            'peak_pos': TCut('peak_pos', ''),
                             'spread_low': TCut('spread_low', ''),
                             'median': TCut('median', ''),
                             'ped_sigma': TCut('ped_sigma', ''),
                             'pulser': TCut('pulser', ''),
                             'saturated': TCut('saturated', ''),
                             'tracks': TCut('tracks', ''),
-                            'chi2': TCut('chi2', '')}
+                            'track_angle': TCut('track_angle', ''),
+                            'chi2': TCut('chi2', ''),
+                            'bucket': TCut('bucket', '')}
         self.__cutstring_settings = None
         self.individualCuts = None
 
@@ -102,17 +98,13 @@ class Cut(Elementary):
         self.userCutTypes['IndividualChCut'] = copy.deepcopy(self.cut)
 
         # general cuts
-        self.cut_types['noPulser'] = parser.getint('CUT', 'notPulser')
         self.cut_types['ExcludeFirst'] = self.load_exclude_first(parser.getint('CUT', 'excludefirst'))
         self.cut_types['EventRange'] = self.load_event_range(json.loads(self.parser.get('CUT', 'EventRange')))
-        self.cut_types['notSaturated'] = parser.getboolean('CUT', 'notSaturated')
-        self.cut_types['noBeamInter'] = parser.getboolean('CUT', 'noBeamInter')
-        self.cut_types['FFT'] = parser.getboolean('CUT', 'FFT')
-        self.cut_types['Tracks'] = parser.getboolean('CUT', 'hasTracks')
-        self.cut_types['peakPos_high'] = self.load_peakpos_high(parser.getint('CUT', 'peakPos_high'))
         self.cut_types['spread_low'] = self.load_spread_low(parser.getint('CUT', 'spread_low'))
         self.cut_types['absMedian_high'] = self.load_abs_median_high(parser.getint('CUT', 'absMedian_high'))
         self.cut_types['pedestalsigma'] = self.load_pedestal_sigma(parser.getint('CUT', 'pedestalsigma'))
+        self.cut_types['chi2'] = parser.getint('CUT', 'chi2')
+        self.cut_types['track_angle'] = parser.getint('CUT', 'track_angle')
 
         # individual cuts
         self.LoadIndividualCuts()
@@ -324,6 +316,43 @@ class Cut(Elementary):
         elif self.cut_types['ExcludeFirst']:
             self.cut_strings['event_range'] += 'event_number>={min}'.format(min=self.cut_types['ExcludeFirst'])
 
+    def generate_chi2(self):
+        gROOT.SetBatch(1)
+        h = TH1F('h', '', 200, 0, 100)
+        nq = 100
+        yq = zeros(nq)
+        xq = array([(i + 1) / float(nq) for i in range(nq)])
+        self.analysis.tree.Draw('chi2_tracks>>h')
+        h.GetQuantiles(nq, yq, xq)
+        string = 'chi2_tracks<{val}&&chi2_tracks>=0'.format(val=yq[self.cut_types['chi2']])
+        gROOT.SetBatch(0)
+        return TCut(string) if self.cut_types['chi2'] > 0 else ''
+
+    def generate_slope(self):
+        # fit the slope to get the mean
+        h_x = TH1F('hx', '', 70, -4, 4)
+        h_y = TH1F('hy', '', 70, -4, 4)
+        gROOT.SetBatch(1)
+        self.analysis.tree.Draw('slope_x>>hx', '', 'goff')
+        self.analysis.tree.Draw('slope_y>>hy', '', 'goff')
+        angle = self.cut_types['track_angle']
+        fit_result = h_x.Fit('gaus', 'qs')
+        x_mean = fit_result.Parameters()[1]
+        x = [x_mean - angle, x_mean + angle]
+        fit_result = h_y.Fit('gaus', 'qs')
+        y_mean = fit_result.Parameters()[1]
+        y = [y_mean - angle, y_mean + angle]
+        gROOT.SetBatch(0)
+        # create the cut string
+        string = 'slope_x>{minx}&&slope_x<{maxx}&&slope_y>{miny}&&slope_y<{maxy}'.format(minx=x[0], maxx=x[1], miny=y[0], maxy=y[1])
+        return TCut(string) if angle > 0 else ''
+
+    def generate_bucket(self):
+        num = self.analysis.get_signal_numbers('e', 2)
+        name = self.analysis.get_signal_names(num)[self.channel]
+        string = '{sig2}-{sig1}==0'.format(sig2=name, sig1=self.analysis.signal_names[self.channel])
+        return TCut(string)
+
     def generate_cut_string(self, gen_PulserCut=True, gen_EventRange=True, gen_ExcludeFirst=True, setChannel=True):
         """
         Creates the cut string, which will be stored in self.cut. With the arguments set to False, different cut types can be deactivated in the cut string.
@@ -332,9 +361,15 @@ class Cut(Elementary):
         :param gen_ExcludeFirst:
         :return:
         """
+
         if self._checklist["GenerateCutString"]:
             self.LoadConfig()  # re-generate
         cutstring = self.cut
+
+        # --CHI2 --
+        self.cut_strings['chi2'] = self.generate_chi2()
+        self.cut_strings['track_angle'] = self.generate_slope()
+        self.cut_strings['bucket'] = self.generate_bucket()
 
         # -- EVENT RANGE CUT --
         self.generate_event_range()
@@ -356,47 +391,12 @@ class Cut(Elementary):
 
         # -- PULSER CUT --
         self.cut_strings['pulser'] += '!pulser'
-        if self.cut_types["noPulser"] in [0, 1] and gen_PulserCut:
-            if cutstring != "":
-                cutstring += "&&"
-            if self.cut_types["noPulser"] == 1:
-                cutstring += "!pulser"
-                self.userCutTypes["noPulser"] = "!pulser"
-            else:
-                cutstring += "pulser"
-                self.userCutTypes["noPulser"] = "pulser"
-        else:
-            self.userCutTypes["noPulser"] = ""
 
         # -- SATURATED CUT --
         self.cut_strings['saturated'] = '!is_saturated[{ch}]'.format(ch=self.channel)
-        if self.cut_types["notSaturated"]:
-            if cutstring != "":
-                cutstring += "&&"
-            cutstring += "!is_saturated[{channel}]"
-            self.userCutTypes['notSaturated'] = '!saturated'
-        else:
-            self.userCutTypes['notSaturated'] = ''
 
         # -- TRACK CUT --
         self.cut_strings['tracks'] += 'n_tracks'
-        if self.cut_types['Tracks']:
-            if cutstring != '':
-                cutstring += '&&'
-            cutstring += 'n_tracks'
-            self.userCutTypes['Tracks'] = 'Tracks'
-        else:
-            self.userCutTypes['Tracks'] = ''
-
-        # -- PEAK POSITION CUT --
-        if self.cut_types['peakPos_high'] > 0:
-            # self.cut_strings['peak_pos'] += 'sig_time[{ch}]<{high}'.format(ch=self.channel, high=int(self.cut_types['peakPos_high']))
-            if cutstring != '':
-                cutstring += '&&'
-            cutstring += 'sig_time[{channel}]<{high}'.format(channel=self.channel, high=int(self.cut_types['peakPos_high']))
-            self.userCutTypes['peakPos_high'] = 'peakPos<{high}'.format(high=int(self.cut_types['peakPos_high']))
-        else:
-            self.userCutTypes['peakPos_high'] = ''
 
         # -- SPREAD LOW CUT --
         if self.cut_types['spread_low'] > 0:
@@ -437,14 +437,12 @@ class Cut(Elementary):
             self.cut = self.cut.format(channel=self.channel)
 
         # -- BEAM INTERRUPTION CUT --
-        if self.cut_types["noBeamInter"] and self._checklist["GenerateCutString"]:
+        if self._checklist["GenerateCutString"]:
             self.__generate_beam_interruptions(justDoIt=True)
             self.userCutTypes["noBeamInter"] = "beamOn"
-        elif self.cut_types["noBeamInter"]:
+        else:
             self.__generate_beam_interruptions()
             self.userCutTypes["noBeamInter"] = "BeamOn"
-        else:
-            self.userCutTypes["noBeamInter"] = ""
 
         self._checklist["GenerateCutString"] = True
         self.__cutstring_settings = {

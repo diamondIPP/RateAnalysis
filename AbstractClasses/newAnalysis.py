@@ -13,6 +13,7 @@ from AbstractClasses.Cut import Cut
 from BinCollection import BinCollection
 from collections import OrderedDict
 from argparse import ArgumentParser
+from ConfigParser import ConfigParser
 
 
 class Analysis(Elementary):
@@ -73,13 +74,17 @@ class Analysis(Elementary):
 
         # miscellaneous
         self.polarities = self.get_polarities()
+        self.parser = self.load_parser()
 
         # names
         # todo read region and integral from config file
+        self.signal_region = self.parser.get('BASIC', 'signal_region')
+        self.pedestal_region = self.parser.get('BASIC', 'pedestal_region')
+        self.peak_integral = self.parser.get('BASIC', 'peak_integral')
         self.integral_names = self.get_integral_names()
-        self.signal_num = self.get_signal_numbers('b', 2)
+        self.signal_num = self.get_signal_numbers(self.signal_region, self.peak_integral)
         self.signal_names = self.get_signal_names()
-        self.pedestal_num = self.get_pedestal_numbers('aa', 2)
+        self.pedestal_num = self.get_pedestal_numbers(self.pedestal_region, self.peak_integral)
         self.pedestal_names = self.get_pedestal_names()
 
         self.Checklist = {
@@ -141,37 +146,21 @@ class Analysis(Elementary):
         
         # save histos // canvases
         self.signal_canvas = None
+        
+    def load_parser(self):
+        parser = ConfigParser()
+        parser.read("Configuration/AnalysisConfig_" + self.TESTCAMPAIGN + ".cfg")
+        return parser
 
     def LoadConfig(self):
-        configfile = "Configuration/AnalysisConfig_" + self.TESTCAMPAIGN + ".cfg"
-        parser = ConfigParser.ConfigParser()
-        output = parser.read(configfile)
-        # print " ---- Config Parser Read ---- \n - ", output, " -\n"
+        ana_parser = self.load_parser()
+        self.showAndWait = ana_parser.getboolean("DISPLAY", "ShowAndWait")
+        self.saveMCData = ana_parser.getboolean("SAVE", "SaveMCData")
 
-
-        self.showAndWait = parser.getboolean("DISPLAY", "ShowAndWait")
-        self.saveMCData = parser.getboolean("SAVE", "SaveMCData")
-        self.signalname = parser.get("BASIC", "signalname")
-        self.pedestal_correction = parser.getboolean("BASIC", "pedestal_correction")
-        self.pedestalname = parser.get("BASIC", "pedestalname")
-        # self.cut = parser.get("BASIC", "cut")
-        # self.excludefirst = parser.getint("BASIC", "excludefirst")
-        # self.excludeBeforeJump = parser.getint("BASIC", "excludeBeforeJump")
-        # self.excludeAfterJump = parser.getint("BASIC", "excludeAfterJump")
-
-        self.loadMaxEvent = parser.getint("TRACKING", "loadMaxEvent")
-        self.minimum_bincontent = parser.getint("TRACKING", "min_bincontent")
-        self.minimum_bincontent = parser.getint("TRACKING", "min_bincontent")
-        self.PadsBinning = parser.getint("TRACKING", "padBinning")
-
-        self.signaldefinition = {}
-        self.pedestaldefinition = {}
-        for ch in [0, 3]:
-            if not self.pedestal_correction:
-                self.signaldefinition[ch] = self.signalname + "[{channel}]".format(channel=ch)
-            else:
-                self.signaldefinition[ch] = (self.signalname + "[{channel}]-" + self.pedestalname + "[{channel}]").format(channel=ch)
-            self.pedestaldefinition[ch] = self.pedestalname + "[{channel}]".format(channel=ch)
+        self.loadMaxEvent = ana_parser.getint("TRACKING", "loadMaxEvent")
+        self.minimum_bincontent = ana_parser.getint("TRACKING", "min_bincontent")
+        self.minimum_bincontent = ana_parser.getint("TRACKING", "min_bincontent")
+        self.PadsBinning = ana_parser.getint("TRACKING", "padBinning")
 
     # ==============================================
     # region GET INTEGRAL NAMES
@@ -190,8 +179,8 @@ class Analysis(Elementary):
         return names
 
     def get_signal_numbers(self, region, integral):
-        assert region in 'abcdef', 'wrong region'
-        assert integral in [1, 2, 3], 'wrong integral'
+        assert region in self.run.signal_regions, 'Invalid region {reg}!'.format(reg=region)
+        assert str(integral) in self.run.peak_integrals, 'Invalid peak integral {reg}!'.format(reg=integral)
         numbers = {}
         for ch in self.run.channels:
             name = 'ch{ch}_signal_{reg}_PeakIntegral{int}'.format(ch=ch, reg=region, int=integral)
@@ -199,24 +188,27 @@ class Analysis(Elementary):
         return numbers
 
     def get_pedestal_numbers(self, region, integral):
-        assert region in 'aabcdef', 'wrong region'
-        assert integral in [1, 2, 3], 'wrong integral'
+        assert region in self.run.pedestal_regions, 'Invalid pedestal region {reg}!'.format(reg=region)
+        assert str(integral) in self.run.peak_integrals, 'Invalid peak integral {reg}!'.format(reg=integral)
         numbers = {}
         for ch in self.run.channels:
             name = 'ch{ch}_pedestal_{reg}_PeakIntegral{int}'.format(ch=ch, reg=region, int=integral)
             numbers[ch] = self.integral_names[name]
         return numbers
 
-    def get_signal_names(self):
+    def get_signal_names(self, num=None):
         names = {}
         for ch in self.run.channels:
-            names[ch] = '{pol}*IntegralValues[{num}]'.format(pol=self.polarities[ch], num=self.signal_num[ch])
+            if num is None:
+                names[ch] = '{pol}*IntegralValues[{num}]'.format(pol=self.polarities[ch], num=self.signal_num[ch])
+            else:
+                names[ch] = '{pol}*IntegralValues[{num}]'.format(pol=self.polarities[ch], num=num[ch])
         return names
 
     def get_pedestal_names(self):
         names = {}
         for ch in self.run.channels:
-             names[ch] = 'IntegralValues[{num}]'.format(num=self.pedestal_num[ch])
+            names[ch] = 'IntegralValues[{num}]'.format(num=self.pedestal_num[ch])
         return names
 
     # endregion
@@ -2076,7 +2068,7 @@ class Analysis(Elementary):
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument('run', nargs='?', default=392)
+    parser.add_argument('run', nargs='?', default=392, type=int)
     args = parser.parse_args()
     run = args.run
     print '\nAnalysing run', run, '\n'

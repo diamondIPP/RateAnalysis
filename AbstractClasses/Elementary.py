@@ -2,6 +2,7 @@ import os
 import ROOT
 import types as t
 from time import time
+from ROOT import gROOT
 
 
 class Elementary(object):
@@ -148,3 +149,12 @@ class Elementary(object):
     def elapsed_time(start):
         string = str('{0:0.2f}'.format(time() - start)) + ' seconds'
         return string
+
+    @staticmethod
+    def set_root_output(status=True):
+        if status:
+            gROOT.SetBatch(0)
+            gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
+        else:
+            gROOT.SetBatch(1)
+            gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
