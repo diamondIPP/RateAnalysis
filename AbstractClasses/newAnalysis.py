@@ -702,11 +702,11 @@ class Analysis(Elementary):
 
         ROOT.gStyle.SetOptStat(1)
 
-        if color == None: color = self.GetNewColor()
+        if color == None: color = self.get_new_color()
         for ch in channels:
             if len(channels) > 1 and drawoption == "" and ch == 3:
                 drawoption = "sames"
-                color = self.GetNewColor()
+                color = self.get_new_color()
             if cut == "":
                 thiscut = self.GetCut(ch)
                 thisusercut = self.GetUserCutString(channel=ch)
@@ -1603,8 +1603,8 @@ class Analysis(Elementary):
             # ROOT.SetOwnership(self.waveformplots[histoname], False)
             # self.waveformplots[histoname].SetStats(0)
             print "DRAW: wf{wfch}:Iteration$>>{histoname}".format(histoname=histoname, wfch=channel)
-            print "cut: ", cut.format(channel=channel), " events: ", events, " startevent: ", startevent
-            n = self.run.tree.Draw("wf{wfch}:Iteration$>>{histoname}(1024, 0, 1023, 1000, -500, 500)".format(histoname=histoname, wfch=channel), cut.format(channel=channel), drawoption, events,
+            print "cut: ", cut, " events: ", events, " startevent: ", startevent
+            n = self.run.tree.Draw("wf{wfch}:Iteration$>>{histoname}(1024, 0, 1023, 1000, -500, 500)".format(histoname=histoname, wfch=channel), cut, drawoption, events,
                                    startevent)
             self.waveformplots[histoname] = ROOT.gROOT.FindObject(histoname)
             ROOT.SetOwnership(self.waveformplots[histoname], False)

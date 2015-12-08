@@ -3,10 +3,8 @@ __author__ = 'micha'
 # ==============================================
 # IMPORTS
 # ==============================================
-from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TF1, TH1F, gROOT, TLegend
-import ROOT
+from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TF1, TH1F, gROOT, TLegend, TCut, TGraph
 from newAnalysis import Analysis
-# from collections import OrderedDict
 from array import array
 from math import sqrt
 from argparse import ArgumentParser
@@ -58,7 +56,7 @@ class SignalAnalysis(Analysis):
         for i in xrange(self.n_bins):
             self.signal_projections[i] = self.signaltime.ProjectionY(str(self.run_number) + str(self.channel) + "signalprojection_bin_" + str(i).zfill(2), i + 1, i + 1)
             self.signal_projections[i].SetTitle("Run{run}Ch{channel} Signal Projection of Bin {bin}".format(run=self.run_number, channel=self.channel, bin=i))
-            self.signal_projections[i].GetXaxis().SetTitle("Signal ({signal})".format(signal=self.signalname))
+            self.signal_projections[i].GetXaxis().SetTitle("Signal ({signal})".format(signal=self.signal_name))
             if self.signal_projections[i].GetEntries() > 0:
                 if mode in ["mean", "Mean"]:
                     self.pulse_height.SetPoint(count, (self.time_binning[i] - self.run.startTime) / 60e3, self.signal_projections[i].GetMean())
@@ -91,59 +89,229 @@ class SignalAnalysis(Analysis):
         self.tree.Draw("{name}>>signal b2".format(name=self.signal_name))
         self.SavePlots('signal_distribution', 'png', canvas=canvas, subDir=self.save_dir)
 
-    def compare_cuts(self):
-        gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
+    def compare_single_cuts(self):
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         gROOT.SetBatch(1)
-        c1 = TCanvas('bla', 'blub', 1000, 1000)
-        c2 = TCanvas('all', 'all', 1000, 1000)
-        legend = TLegend(0.7, 0.3, 0.9, .7)
-        cuts = self.ch_cut.cut_strings
-        all_cut = self.ch_cut.all_cut
-        colors = [2, 3, 4, ROOT.kOrange-3, 28, 30, 41, 46, 44, ROOT.kGreen-1, ROOT.kViolet+4]
+        c1 = TCanvas('single', '', 1000, 1000)
+        c2 = TCanvas('all', '', 1000, 1000)
+        legend = TLegend(0.7, 0.3, 0.98, .7)
         histos = []
-        i = 0
-        for key, value in cuts.iteritems():
+        drawn_first = False
+        for key, value in self.ch_cut.cut_strings.iteritems():
             if str(value) or key == 'raw':
                 print 'saving plot', key
-                c1.cd()
-                name = 'signal_distribution_{cut}'.format(cut=key)
-                histo = TH1F('signal b2', '', 400, -100, 300)
-                hist_name = 'signal with cut ' + key
-                histo.SetTitle(hist_name)
+                save_name = 'signal_distribution_{cut}'.format(cut=key)
+                histo_name = 'signal {range}{peakint}'.format(range=self.signal_region, peakint=self.peak_integral)
+                histo_title = 'signal with cut ' + key
+                histo = TH1F(histo_name, histo_title, 400, -100, 300)
                 # histo.GetYaxis().SetRangeUser(0, 7000)
-                self.tree.Draw("{name}>>signal b2".format(name=self.signal_name), value)
-                self.SavePlots(name, 'png', canvas=c1, subDir=self.save_dir)
+                # safe single plots
+                c1.cd()
+                self.tree.Draw("{name}>>{histo}".format(name=self.signal_name, histo=histo_name), value)
+                self.SavePlots(save_name, 'png', canvas=c1, subDir=self.save_dir)
+                # draw all single plots into c2
                 c2.cd()
-                histo.SetLineColor(colors[i])
-                if not i:
+                histo.SetLineColor(self.get_color())
+                if not drawn_first:
                     histo.SetTitle('signal distribution with different cuts')
                     histo.SetStats(0)
                     histo.Draw()
+                    drawn_first = True
                 else:
-                    histo.SetLineWidth(1)
                     histo.Draw('same')
                 histos.append(histo)
                 legend.AddEntry(histo, key)
-                i += 1
-        # save all cuts
-        print 'saving plot all cuts'
-        c1.cd()
-        histo = TH1F('signal b2', '', 400, -100, 300)
-        histo.SetTitle('signal with all cuts')
-        # histo.GetYaxis().SetRangeUser(0, 7000)
-        self.tree.Draw("{name}>>signal b2".format(name=self.signal_name), all_cut)
-        self.SavePlots('signal_distribution_all_cuts', 'png', canvas=c1, subDir=self.save_dir)
-        c1.Close()
-        c2.cd()
-        histo.SetLineColor(1)
-        histo.SetLineWidth(1)
-        legend.AddEntry(histo, 'all cuts')
-        histo.Draw('same')
+        # save c2
         legend.Draw()
         self.SavePlots('all', 'png', canvas=c2, subDir=self.save_dir)
         self.SavePlots('all', 'root', canvas=c2, subDir=self.save_dir)
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
+
+    def compare_normalised_cuts(self):
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        gROOT.SetBatch(1)
+        c1 = TCanvas('single', '', 1000, 1000)
+        c2 = TCanvas('normalised', '', 1000, 1000)
+        legend = TLegend(0.7, 0.3, 0.98, .7)
+        histos = []
+        drawn_first = False
+        for key, value in self.ch_cut.cut_strings.iteritems():
+            if str(value) or key == 'raw':
+                print 'saving plot', key
+                save_name = 'signal_distribution_normalised_{cut}'.format(cut=key)
+                histo_name = 'signal {range}{peakint}'.format(range=self.signal_region, peakint=self.peak_integral)
+                histo_title = 'normalised signal with cut ' + key
+                histo = TH1F(histo_name, histo_title, 400, -100, 300)
+                # histo.GetYaxis().SetRangeUser(0, 7000)
+                # safe single plots
+                c1.cd()
+                self.tree.Draw("{name}>>{histo}".format(name=self.signal_name, histo=histo_name), value)
+                histo = self.normalise_histo(histo)
+                histo.Draw()
+                self.SavePlots(save_name, 'png', canvas=c1, subDir=self.save_dir)
+                # draw all single plots into c2
+                c2.cd()
+                histo.SetLineColor(self.get_color())
+                if not drawn_first:
+                    histo.SetTitle('signal distribution with different cuts')
+                    histo.SetStats(0)
+                    histo.Draw()
+                    drawn_first = True
+                else:
+                    histo.Draw('same')
+                histos.append(histo)
+                legend.AddEntry(histo, key)
+        # save c2
+        legend.Draw()
+        self.SavePlots('normalised', 'png', canvas=c2, subDir=self.save_dir)
+        self.SavePlots('normalised', 'root', canvas=c2, subDir=self.save_dir)
+        gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
+        gROOT.SetBatch(0)
+
+    def compare_consecutive_cuts(self):
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        gROOT.SetBatch(1)
+        c1 = TCanvas('consecutive', '', 1000, 1000)
+        c2 = TCanvas('all', '', 1000, 1000)
+        legend = TLegend(0.7, 0.3, 0.98, .7)
+        histos = []
+        drawn_first = False
+        ind = 0
+        cut = TCut('consecutive', '')
+        for key, value in self.ch_cut.cut_strings.iteritems():
+            if (str(value) or key == 'raw') and key != 'all_cuts':
+                cut += value
+                print 'saving plot with {n} cuts'.format(n=ind)
+                save_name = 'signal_distribution_{n}cuts'.format(n=ind)
+                histo_name = 'signal {range}{peakint}'.format(range=self.signal_region, peakint=self.peak_integral)
+                histo_title = 'signal with {n} cuts'.format(n=ind)
+                histo = TH1F(histo_name, histo_title, 400, -100, 500)
+                # histo.GetYaxis().SetRangeUser(0, 7000)
+                # safe single plots
+                c1.cd()
+                self.tree.Draw("{name}>>{histo}".format(name=self.signal_name, histo=histo_name), cut)
+                self.SavePlots(save_name, 'png', canvas=c1, subDir=self.save_dir)
+                # draw all single plots into c2
+                c2.cd()
+                color = self.get_color()
+                histo.SetLineColor(color)
+                histo.SetFillColor(color)
+                if not drawn_first:
+                    histo.SetTitle('signal distribution with consecutive cuts')
+                    histo.SetStats(0)
+                    histo.Draw()
+                    drawn_first = True
+                    legend.AddEntry(histo, key)
+                else:
+                    histo.Draw('same')
+                    legend.AddEntry(histo, '+ ' + key)
+                histos.append(histo)
+                ind += 1
+        # save c2
+        legend.Draw()
+        self.SavePlots('consecutive', 'png', canvas=c2, subDir=self.save_dir)
+        self.SavePlots('consecutive', 'root', canvas=c2, subDir=self.save_dir)
+        gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
+        gROOT.SetBatch(0)
+
+    @staticmethod
+    def normalise_histo(histo):
+        h = histo
+        h.GetXaxis().SetRangeUser(0, 30)
+        min_bin = h.GetMinimumBin()
+        h.GetXaxis().UnZoom()
+        max_bin = h.GetNbinsX() - 1
+        h.Scale(1 / h.Integral(min_bin, max_bin))
+        return h
+
+    def analyise_signal_histograms(self):
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        # gROOT.SetBatch(1)
+        legend = TLegend(0.7, 0.3, 0.98, .7)
+        gr1 = TGraphErrors()
+        gr1.SetTitle('mean values')
+        gr1.SetMarkerStyle(20)
+        gr2 = TGraph()
+        gr2.SetTitle('median values')
+        gr2.SetMarkerStyle(21)
+        gr2.SetMarkerColor(2)
+        gr3 = TGraph()
+        gr3.SetMarkerStyle(22)
+        gr3.SetMarkerColor(3)
+        histos = []
+        i = 0
+        for key, value in self.ch_cut.cut_strings.iteritems():
+            if str(value) or key == 'raw':
+                print 'process cut ' + key
+                h = TH1F('h', '', 600, -100, 500)
+                self.tree.Draw("{name}>>h".format(name=self.signal_name), value)
+                mean = self.__get_mean(h)
+                median = self.__get_median(h)
+                mpv = self.__get_mpv(h)
+                # print mean, median, mpv
+                gr1.SetPoint(i, i, mean[0])
+                gr1.SetPointError(i, 0, mean[1])
+                gr2.SetPoint(i, i, median)
+                gr3.SetPoint(i, i, mpv)
+                histos.append(h)
+                i += 1
+        # rename bins
+        legend.AddEntry(gr1, 'mean')
+        legend.AddEntry(gr2, 'median')
+        legend.AddEntry(gr3, 'mpv')
+        xaxis = gr1.GetXaxis()
+        i = 0
+        for key, value in self.ch_cut.cut_strings.iteritems():
+            if str(value) or key == 'raw':
+                bin_x = xaxis.FindBin(i)
+                gr1.GetXaxis().SetBinLabel(bin_x, key[:7])
+                i += 1
+        gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
+        # gROOT.SetBatch(0)
+        c1 = TCanvas('c1', '', 1000, 1000)
+        c1.cd()
+        gr1.GetXaxis().SetRangeUser(-1, len(histos) + 1)
+        gr1.Draw('alp')
+        gr2.Draw('lp')
+        gr3.Draw('lp')
+        legend.Draw()
+        return [gr1, gr2, gr3]
+
+    @staticmethod
+    def __get_histo_without_pedestal(histo):
+        h = histo
+        h.GetXaxis().SetRangeUser(0, 30)
+        min_bin = h.GetMinimumBin()
+        min_x = h.GetBinCenter(min_bin)
+        h.GetXaxis().SetRangeUser(min_x, 500)
+        return h
+
+    def __get_mean(self, histo):
+        h = self.__get_histo_without_pedestal(histo)
+        h.GetXaxis().SetRangeUser(0, 30)
+        min_bin = h.GetMinimumBin()
+        min_x = h.GetBinCenter(min_bin)
+        h.GetXaxis().SetRangeUser(min_x, 500)
+        return [h.GetMean(), h.GetMeanError()]
+
+    def __get_median(self, histo):
+        h = self.__get_histo_without_pedestal(histo)
+        integral = h.GetIntegral()
+        median_i = 0
+        for j in range(h.GetNbinsX() - 1):
+            if integral[j] < 0.5:
+                median_i = j
+            else:
+                break
+        weight = (0.5 - integral[median_i]) / (integral[median_i + 1] - integral[median_i])
+        median_x = h.GetBinCenter(median_i) + (h.GetBinCenter(median_i + 1) - h.GetBinCenter(median_i)) * weight
+        return median_x
+
+    def __get_mpv(self, histo):
+        h = self.__get_histo_without_pedestal(histo)
+        max_bin = h.GetMaximumBin()
+        return h.GetBinCenter(max_bin)
 
     def show_pedestal_histo(self):
         self.tmp_histos['1'] = TH1F('ped1', 'pedestal', 100, -20, 20)
@@ -221,9 +389,9 @@ class SignalAnalysis(Analysis):
         self.pulse_height.GetXaxis().SetLabelSize(0.06)
         # self.pulse_height.GetXaxis().SetRangeUser(0, self.analysis.run.totalMinutes)
         if mode in ["mean", "Mean"]:
-            yTitlestr = "Mean Signal ({signalname})".format(signalname=(self.signaldefinition[self.channel]))
+            yTitlestr = "Mean Signal ({signalname})".format(signalname=self.signal_name)
         else:
-            yTitlestr = "MPV of Signal fit ({signalname})".format(signalname=(self.signaldefinition[self.channel]))
+            yTitlestr = "MPV of Signal fit ({signalname})".format(signalname=self.signal_name)
         self.pulse_height.GetYaxis().SetTitleOffset(0.9)
         self.pulse_height.GetYaxis().SetTitleSize(0.06)
         self.pulse_height.GetYaxis().SetLabelSize(0.06)

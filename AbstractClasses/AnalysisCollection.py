@@ -303,7 +303,7 @@ class AnalysisCollection(Elementary):
         results = {}
         for channel in channels:
             tmpcanvas.cd()
-            color = self.GetNewColor()
+            color = self.get_new_color()
             self.graphs[channel] = ROOT.TGraphErrors()
             self.graphs[channel].SetNameTitle("graphCh0" + self.collection[runnumbers[0]].run.diamondname[channel], "Signal Rate Scan")
             ROOT.SetOwnership(self.graphs[channel], False)

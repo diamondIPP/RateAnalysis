@@ -116,6 +116,12 @@ class Run(Elementary):
             self.totalMinutes = (self.endTime - self.startTime) / 60000
             self.n_entries = self.endEvent + 1
 
+            # region info
+            self.region_information = self.load_regions()
+            self.pedestal_regions = self.get_regions('pedestal')
+            self.signal_regions = self.get_regions('signal')
+            self.peak_integrals = self.get_peak_integrals()
+
         else:
             self.LoadRunInfo()
         self._LoadTiming()
@@ -128,11 +134,6 @@ class Run(Elementary):
         self.SetChannels(diamonds)
         self.IsMonteCarlo = False
 
-        # region information
-        self.region_information = self.load_regions()
-        self.pedestal_regions = self.get_regions('pedestal')
-        self.signal_regions = self.get_regions('signal')
-        self.peak_integrals = self.get_peak_integrals()
 
     def load_parser(self):
         runConfigParser = ConfigParser.ConfigParser()

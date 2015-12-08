@@ -25,7 +25,7 @@ class Converter:
         self.root = Tk()
         self.root.withdraw()
         self.frame = Frame(self.root, bd=5, relief=GROOVE)
-        self.do_gui = True
+        self.do_gui = False
         self.stop_conversion = False
 
         # tracking
