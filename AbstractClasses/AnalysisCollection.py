@@ -15,6 +15,7 @@ from Elementary import Elementary
 from array import array
 from time import time
 from collections import OrderedDict
+from signal_analysis import SignalAnalysis
 
 
 # ==============================================

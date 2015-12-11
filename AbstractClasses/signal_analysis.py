@@ -47,7 +47,20 @@ class SignalAnalysis(Analysis):
         self.histo = None
         self.signaltime = None
 
-    def draw_pulse_height(self):
+    # todo bin size variyng by number of events
+
+    def __set_bin_size(self, value):
+        self.bin_size = value
+        self.binning = self.__get_binning()
+        self.time_binning = self.get_time_binning()
+        self.n_bins = len(self.binning)
+        return value
+
+    def draw_pulse_height(self, binning=None):
+        if binning is not None:
+            self.__set_bin_size(binning)
+        if self.signaltime is None:
+            self.make_histos()
         titlePulseHeight = 'Run{run}: {dia} Signal Time Evolution'.format(run=self.run_number, dia=self.run.diamondname[self.channel])
         self.pulse_height.SetNameTitle('graph', titlePulseHeight)
         mode = 'mean'
@@ -74,9 +87,10 @@ class SignalAnalysis(Analysis):
             else:
                 empty_bins += 1
         print 'Empty proj. bins:\t', str(empty_bins) + '/' + str(self.n_bins)
-        self.__format_signal_graph('mean', None)
+        fit = self.__format_signal_graph('mean', None)
 
         self.pulse_height.Draw('ALP')
+        return fit
 
     def get_polarity(self):
         self.tree.GetEntry(0)
@@ -401,6 +415,7 @@ class SignalAnalysis(Analysis):
             self.pulse_height.GetYaxis().SetRangeUser(setyscale[0], setyscale[1])
             self.pulse_height.Draw()
             # self.signalTimeCanvas.Update()
+        return fit
 
     def make_histos(self):
         # 2D Histos
@@ -408,7 +423,7 @@ class SignalAnalysis(Analysis):
         xbins = array('d', self.time_binning)
         # self.signaltime = TH2D(name, "signaltime", self.n_bins, 0, self.analysis.run.totalTime, 1000, -50, 300)
         self.signaltime = TH2D(name, "signaltime", len(xbins) - 1, xbins, 1000, -50, 300)
-        self.tree.Draw("{name}:time>>{histo}".format(histo=name, name=self.signal_name), self.GetCut(self.channel), self.draw_option)
+        self.tree.Draw("{name}:time>>{histo}".format(histo=name, name=self.signal_name), self.ch_cut.all_cut, self.draw_option)
 
 
 if __name__ == "__main__":
