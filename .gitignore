@@ -7,3 +7,4 @@ Runinfos/run_plans.json
 *.out
 .*
 Results/
+*.json
