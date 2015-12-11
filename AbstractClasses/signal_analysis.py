@@ -276,6 +276,7 @@ class SignalAnalysis(Analysis):
         gr2.Draw('lp')
         gr3.Draw('lp')
         legend.Draw()
+
         return [gr1, gr2, gr3]
 
     @staticmethod
