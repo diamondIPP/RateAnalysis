@@ -1,5 +1,3 @@
-__author__ = 'micha'
-
 # ==============================================
 # IMPORTS
 # ==============================================
@@ -9,8 +7,13 @@ import shutil
 
 from ConfigParser import ConfigParser
 from math import copysign
-from tkinter import *
 from collections import OrderedDict
+do_gui = False
+if do_gui:
+    from tkinter import *
+
+
+__author__ = 'micha'
 
 
 # ==============================================
@@ -22,11 +25,6 @@ class Converter:
         # main
         self.test_campaign = test_campaign
         self.parser = self.setup_configparser()
-        self.root = Tk()
-        self.root.withdraw()
-        self.frame = Frame(self.root, bd=5, relief=GROOVE)
-        self.do_gui = False
-        self.stop_conversion = False
 
         # tracking
         self.do_tracking = True
@@ -37,7 +35,7 @@ class Converter:
         self.raw_file_dir = self.parser.get('ROOTFILE_GENERATION', 'rawfolder')
         self.root_file_dir = self.parser.get('BASIC', 'runpath')
         self.eudaq_dir = self.parser.get('ROOTFILE_GENERATION', 'eudaqfolder')
-        # files pathes
+        # files paths
         self.converter_config_path = self.parser.get('ROOTFILE_GENERATION', 'converterFile')
         self.run_info_path = self.parser.get('BASIC', 'runinfofile')
         # prefixes
@@ -48,15 +46,20 @@ class Converter:
         self.config = self.get_config()
 
         # gui
-        self.spinboxes = self.create_spinboxes()
-        self.labels = self.create_labels()
-        self.buttons = self.create_buttons()
-        self.intvars = self.create_intvars()
-        self.checkbuttons = self.create_checkbuttons()
+        if do_gui:
+            self.root = Tk()
+            self.root.withdraw()
+            self.frame = Frame(self.root, bd=5, relief=GROOVE)
+            self.__stop_conversion = False
 
-        self.set_start_values()
+            self.spinboxes = self.create_spinboxes()
+            self.labels = self.create_labels()
+            self.buttons = self.create_buttons()
+            self.intvars = self.create_intvars()
+            self.checkbuttons = self.create_checkbuttons()
 
-        self.make_gui()
+            self.set_start_values()
+            self.make_gui()
 
     def get_config(self):
         config = OrderedDict()
@@ -119,12 +122,12 @@ class Converter:
             return False
 
     def convert_run(self, run_infos, run_number):
-        self.stop_conversion = False
-        if self.do_gui:
+        if do_gui:
+            self.__stop_conversion = False
             self.root.deiconify()
             self.root.mainloop()
-        if self.stop_conversion:
-            return
+            if self.__stop_conversion:
+                return
         file_path = self.find_raw_file(run_number)
         if not file_path:
             return
@@ -273,7 +276,7 @@ class Converter:
         f.close()
 
     def __stop_conversion(self):
-        self.stop_conversion = True
+        self.__stop_conversion = True
         self.root.destroy()
         return
 
