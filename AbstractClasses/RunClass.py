@@ -3,9 +3,7 @@
 # ==============================================
 import ROOT
 import os
-import ConfigParser
 import json
-import csv
 import copy
 import re
 
@@ -14,6 +12,7 @@ from Elementary import Elementary
 from Converter import Converter
 from datetime import datetime as dt
 from ROOT import TFile
+from ConfigParser import ConfigParser, NoOptionError
 
 default_info = {
     "persons on shift": "-",
@@ -21,7 +20,8 @@ default_info = {
     "type": "signal",
     "configuration": "signal",
     "mask": "-",
-    "masked pixels": 0,
+    "masked pixels1": None,
+    "masked pixels2": None,
     "diamond 1": "CH_0",
     "diamond 2": "CH_3",
     "hv dia1": 0,
@@ -67,7 +67,7 @@ class Run(Elementary):
     operationmode = ''
     TrackingPadAnalysis = {}
 
-    def __init__(self, run_number, diamonds=3, validate=False, verbose=False, maskfilename=""):
+    def __init__(self, run_number, diamonds=3, validate=False, verbose=False):
         """
         :param run_number: number of the run
         :param diamonds: 0x1=ch0; 0x2=ch3
@@ -95,7 +95,6 @@ class Run(Elementary):
         # run info
         self.allRunKeys = None
         self.RunInfo = None
-        self.channels = [0, 3]
 
         if validate:
             self.ValidateRuns()
@@ -104,7 +103,7 @@ class Run(Elementary):
             self.converter = Converter(self.TESTCAMPAIGN)
             print self.run_number
             assert (run_number > 0), "incorrect run_number"
-            self.SetRun(run_number)
+            self.set_run(run_number)
 
             # tree info
             self.time = self.__get_time_vec()
@@ -123,10 +122,13 @@ class Run(Elementary):
             self.peak_integrals = self.get_peak_integrals()
 
         else:
-            self.LoadRunInfo()
+            self.load_run_info()
+
+        # extract run info
+        self.channels = self.load_channels()
         self._LoadTiming()
-        self.CalculateRate(maskfilename=maskfilename)
-        self._SetDiamondName()
+        self.calculate_rate()
+        self.diamondname = self.__load_diamond_name()
         self.bias = {
             0: self.RunInfo["hv dia1"],
             3: self.RunInfo["hv dia2"]
@@ -134,11 +136,16 @@ class Run(Elementary):
         self.SetChannels(diamonds)
         self.IsMonteCarlo = False
 
+    def load_channels(self):
+        # todo think of how to extract the dia channels!
+        info = self.RunInfo
+        print info
+        return [0, 3]
 
     def load_parser(self):
-        runConfigParser = ConfigParser.ConfigParser()
-        runConfigParser.read("Configuration/RunConfig_" + self.TESTCAMPAIGN + ".cfg")
-        return runConfigParser
+        parser = ConfigParser()
+        parser.read("Configuration/RunConfig_" + self.TESTCAMPAIGN + ".cfg")
+        return parser
 
     def load_regions(self):
         root_file = TFile(self.converter.get_root_file_path(self.run_number))
@@ -170,7 +177,7 @@ class Run(Elementary):
                     integrals.append(data[1])
         return integrals
 
-    def SetRun(self, run_number, validate=False, loadROOTFile=True):
+    def set_run(self, run_number, validate=False, load_root_file=True):
 
         assert type(run_number) is int, "incorrect run_number"
         boolfunc = self.ValidateRun if validate else lambda run: True
@@ -178,10 +185,10 @@ class Run(Elementary):
             return False
 
         self.run_number = run_number
-        self.LoadRunInfo()
+        self.load_run_info()
 
         # check for conversion
-        if loadROOTFile:
+        if load_root_file:
             location = self.converter.find_root_file(run_number)
             if not location or location == 'tracking':
                 self.converter.convert_run(self.RunInfo, run_number)
@@ -189,7 +196,7 @@ class Run(Elementary):
 
         return True
 
-    def LoadRunInfo(self):
+    def load_run_info(self):
         self.RunInfo = {}
         data = None
         try:
@@ -222,69 +229,56 @@ class Run(Elementary):
             self.RunInfo = default_info
             return 0
 
-    def _SetDiamondName(self):
-        aliasParser = ConfigParser.ConfigParser()
-        aliasParser.read('Configuration/DiamondAliases.cfg')
-        try:
-            diamondname1 = aliasParser.get('ALIASES', self.RunInfo["diamond 1"])
-        except ConfigParser.NoOptionError:
-            diamondname1 = self.RunInfo["diamond 1"]
-            print "\nInfo: Diamond '{dia}' Alias not found in Configuration/DiamondAliases.cfg\n".format(dia=self.RunInfo["diamond 1"])
-        try:
-            diamondname2 = aliasParser.get('ALIASES', self.RunInfo["diamond 2"])
-        except ConfigParser.NoOptionError:
-            diamondname2 = self.RunInfo["diamond 2"]
-            print "\nInfo: Diamond '{dia}' Alias not found in Configuration/DiamondAliases.cfg\n".format(dia=self.RunInfo["diamond 2"])
-
-        self.diamondname = {
-            0: diamondname1,
-            3: diamondname2
-        }
-
-    def CalculateRate(self, maskfilename=""):
-        self.VerbosePrint("Calculate rate from mask file:\n\t" + self.RunInfo["mask"])
-        if maskfilename != "":
-            self.RunInfo["mask"] = maskfilename
-        maskFilePath = self.maskfilepath + "/" + self.RunInfo["mask"]  # CONFIG FILE !
-        maskdata = {
-            0: {
-                "cornBot": [],
-                "cornTop": []
-            },
-            3: {
-                "cornBot": [],
-                "cornTop": []
-            }
-        }
-        try:
-            f = open(maskFilePath, "r")
-            infile = csv.reader(f, delimiter=" ")
+    def __load_diamond_name(self):
+        parser = ConfigParser()
+        parser.read('Configuration/DiamondAliases.cfg')
+        diamondname = {}
+        for i, ch in enumerate(self.channels, 1):
+            diamondname[ch] = self.RunInfo['diamond {num}'.format(num=i)]
             try:
-                for i in xrange(8):
-                    line = next(infile)
-                    self.VerbosePrint(line)
-                    if len(line) >= 4:
-                        # maskdata[int(line[1])][line[0]] = map(int, line[-2:])
-                        maskdata[0][line[0]] = map(int, line[-2:])
-            except StopIteration:
-                pass
-            x_low = maskdata[0]["cornBot"][0]
-            y_low = maskdata[0]["cornBot"][1]
-            x_high = maskdata[0]["cornTop"][0]
-            y_high = maskdata[0]["cornTop"][1]
+                diamondname[ch] = parser.get('ALIASES', diamondname[ch])
+            except NoOptionError as err:
+                print err
+        return diamondname
 
-            self.RunInfo["masked pixels"] = abs((x_high - x_low + 1) * (y_high - y_low + 1))
+    def calculate_rate(self):
+        self.VerbosePrint('Calculate rate from mask file:\n\t' + self.RunInfo['mask'])
+        mask_file_path = self.maskfilepath + '/' + self.RunInfo['mask']
+        maskdata = {}
+        for ch in self.channels:
+            maskdata[ch] = {}
+        try:
+            # todo use inbuilt functions
+            f = open(mask_file_path, 'r')
+            last_i2c = None
+            for line in f:
+                if len(line) > 3:
+                    line = line.split()
+                    i2c = line[1]
+                    ch = self.channels[0] if last_i2c is None or i2c == last_i2c else self.channels[1]
+                    maskdata[ch][line[0]] = [int(line[2]), int(line[3])]
+                    last_i2c = i2c
+        except IOError as err:
+            print '\nERROR in calculate rate\n', err
+            return None
 
-            pixelarea = 0.01 * 0.015  # cm^2
-            masked_area = self.RunInfo["masked pixels"] * pixelarea
-            rate_Hz = 1. * self.RunInfo["raw rate"] / masked_area  # in Hz/cm^2
-            self.RunInfo["measured flux"] = rate_Hz / 1000.  # in kHz/cm^2
+        # check for corner method
+        if not maskdata[0].keys()[0].startswith('corn'):
+            return None
 
-            f.close()
-            return rate_Hz / 1000.
-        except IOError:
-            print "\nERROR: Could not load mask file, thus not re-calculate rate..\n"
-            return 0
+        for i, ch in enumerate(self.channels, 1):
+            row = [maskdata[ch]['cornBot'][0], maskdata[ch]['cornTop'][0]]
+            col = [maskdata[ch]['cornBot'][1], maskdata[ch]['cornTop'][1]]
+            masked_pixels = abs((row[1] - row[0] + 1) * (col[1] - col[0] + 1))
+            self.RunInfo['masked pixels{num}'.format(i)] = masked_pixels
+
+        pixelarea = 0.01 * 0.015  # cm^2
+        masked_area = self.RunInfo['masked pixels'] * pixelarea
+        rate = 1. * self.RunInfo['raw rate'] / masked_area  # in Hz/cm^2
+        self.RunInfo['measured flux'] = rate / 1000.  # in kHz/cm^2
+
+        f.close()
+        return rate / 1000.
 
     def _LoadTiming(self):
         try:
@@ -407,7 +401,7 @@ class Run(Elementary):
             self.ValidateRun(run)
 
     def ValidateRun(self, run_number):
-        self.SetRun(run_number)
+        self.set_run(run_number)
         if not os.path.exists(self.TrackingPadAnalysis['ROOTFile']):
             # del RunInfo.runs[run_number]
             print "INFO: path of run number ", run_number, " not found."

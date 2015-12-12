@@ -50,7 +50,7 @@ if __name__ == "__main__":
         all_run_numbers =  RunInfo.runs.keys()
         run_numbers = []
         for i in all_run_numbers:
-            run.SetRun(i)
+            run.set_run(i)
             if run.current_run['data_type'] == 0: # 0 = data, 1 = pedestrial, 2 = voltagescan, 3 =  long run, 4 = other
                 run_numbers += [i]
         run_numbers = run_numbers[:MaxNrOfRuns]
@@ -62,7 +62,7 @@ if __name__ == "__main__":
     collection = AnalysisCollection()
     for run_number in run_numbers:
 
-        if run.SetRun(run_number): # run must exist and is set
+        if run.set_run(run_number): # run must exist and is set
 
             if True or run.diamond.Specifications['Irradiation'] == 'no':
                 print run_number

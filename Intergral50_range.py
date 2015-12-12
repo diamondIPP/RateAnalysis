@@ -17,7 +17,7 @@ maxs = []
 i = 0
 for runnummer in runs:
 
-    if run.SetRun(runnummer):
+    if run.set_run(runnummer):
 
         file = TFile(run.TrackingPadAnalysis["ROOTFile"])
         track_info = file.Get("track_info")

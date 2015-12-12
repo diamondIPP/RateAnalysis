@@ -51,7 +51,7 @@ if __name__ == "__main__":
     collection = AnalysisCollection()
     for run_number in run_numbers:
 
-        if run.SetRun(run_number): # run has to exist and is setted
+        if run.set_run(run_number): # run has to exist and is setted
 
             if True or run.diamond.Specifications['Irradiation'] == 'no':
                 print "Starting ",run_number

@@ -40,7 +40,7 @@ class RunSelection(Run):
         '''
         self.runs = {}
         for runnumber in self.run_numbers:
-            self.SetRun(runnumber, validate=False, loadROOTFile = False)
+            self.set_run(runnumber, validate=False, load_root_file= False)
             self.runs[runnumber] = self.current_run
 
     def _InitializeSelections(self):
