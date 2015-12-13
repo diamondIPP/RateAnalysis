@@ -28,15 +28,15 @@ class AnalysisCollection(Elementary):
     """
     current_run_number = -1
 
-    def __init__(self, listOfRuns=None, diamonds=None, verbose=False, maskfilename=""):
+    def __init__(self, listOfRuns=None, diamonds=None, verbose=False):
         Elementary.__init__(self, verbose=verbose)
         self.collection = {}  # dict where all analysis objects are saved
         if listOfRuns is not None:
             assert ((type(listOfRuns) is t.ListType) or isinstance(listOfRuns, RunSelection)), "listOfRuns has to be of type list or instance of RunSelection"
             if type(listOfRuns) is t.ListType:
-                self.AddRuns(listOfRuns, diamonds=diamonds, maskfilename=maskfilename)
+                self.AddRuns(listOfRuns, diamonds=diamonds)
             else:
-                self.AddRuns(listOfRuns.GetSelectedRuns(), listOfRuns.GetSelectedDiamonds(), maskfilename=maskfilename)
+                self.AddRuns(listOfRuns.GetSelectedRuns(), listOfRuns.GetSelectedDiamonds())
         self.signalValues = None
 
     def __del__(self):
@@ -102,7 +102,7 @@ class AnalysisCollection(Elementary):
         self.collection[analysis_obj.run.run_number] = analysis_obj
         self.current_run_number = analysis_obj.run.run_number
 
-    def AddRuns(self, list_, diamonds=None, maskfilename=""):
+    def AddRuns(self, list_, diamonds=None):
         '''
         Creates and adds Analysis objects with run numbers in list_.
         :param list_:
@@ -115,10 +115,10 @@ class AnalysisCollection(Elementary):
         if type(diamonds) is t.ListType:
             assert (len(diamonds) == len(list_)), "list of diamonds has to be the same length as list of runs"
             for i in xrange(len(list_)):
-                self.AddAnalysis(Analysis(Run(list_[i], diamonds[i]), maskfilename=maskfilename))
+                self.AddAnalysis(Analysis(Run(list_[i], diamonds[i])))
         else:
             for runnr in list_:
-                self.AddAnalysis(Analysis(Run(runnr, diamonds), maskfilename=maskfilename))
+                self.AddAnalysis(Analysis(Run(runnr, diamonds)))
 
     def SetDiamonds(self, diamonds):
         '''

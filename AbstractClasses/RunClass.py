@@ -6,52 +6,53 @@ import os
 import json
 import copy
 import re
-
 from Runinfos.RunInfo import RunInfo
 from Elementary import Elementary
 from Converter import Converter
 from datetime import datetime as dt
 from ROOT import TFile
 from ConfigParser import ConfigParser, NoOptionError
+from numpy import mean
 
 default_info = {
-    "persons on shift": "-",
-    "run info": "-",
-    "type": "signal",
-    "configuration": "signal",
-    "mask": "-",
-    "masked pixels1": None,
-    "masked pixels2": None,
-    "diamond 1": "CH_0",
-    "diamond 2": "CH_3",
-    "hv dia1": 0,
-    "hv dia2": 0,
-    "for1": 0,
-    "for2": 0,
-    "fs11": 0,
-    "fsh13": 0,
-    "quadrupole": "-",
-    "analogue current": 0,
-    "digital current": 0,
-    "begin date": "2999-03-14T15:26:53Z",
-    "trim time": "-:-:-",
-    "config time": "-:-:-",
-    "start time": "2999-03-14T15:26:53Z",
-    "trig accept time": "-:-:-",
-    "opening time": "-:-:-",
-    "open time": "-:-:-",
-    "stop time": "2999-03-14T16:26:53Z",
-    "raw rate": 0,
-    "prescaled rate": 0,
-    "to TLU rate": 0,
-    "pulser accept rate": 0,
-    "cmspixel events": 0,
-    "drs4 events": 0,
-    "datacollector events": 0,
-    "aimed flux": 0,
-    "measured flux": 0,
-    "user comments": "-",
-    "is good run": True
+    'persons on shift': '-',
+    'run info': '-',
+    'type': 'signal',
+    'configuration': 'signal',
+    'mask': '-',
+    'masked pixels': [0] * 4,
+    'diamond 1': 'CH_0',
+    'diamond 2': 'CH_3',
+    'hv dia1': 0,
+    'hv dia2': 0,
+    'for1': 0,
+    'for2': 0,
+    'fs11': 0,
+    'fsh13': 0,
+    'quadrupole': '-',
+    'analogue current': 0,
+    'digital current': 0,
+    'begin date': '2999-03-14T15:26:53Z',
+    'trim time': '-:-:-',
+    'config time': '-:-:-',
+    'start time': '2999-03-14T15:26:53Z',
+    'trig accept time': '-:-:-',
+    'opening time': '-:-:-',
+    'open time': '-:-:-',
+    'stop time': '2999-03-14T16:26:53Z',
+    'raw rate': 0,
+    'raw rate1': None,
+    'raw rate2': None,
+    'prescaled rate': 0,
+    'to TLU rate': 0,
+    'pulser accept rate': 0,
+    'cmspixel events': 0,
+    'drs4 events': 0,
+    'datacollector events': 0,
+    'aimed flux': 0,
+    'measured flux': 0,
+    'user comments': '-',
+    'is good run': True
 }
 
 
@@ -77,7 +78,7 @@ class Run(Elementary):
         """
         Elementary.__init__(self, verbose=verbose)
         self.run_number = -1
-        
+
         # configuration
         self.run_config_parser = self.load_parser()
         self.ShowAndWait = False
@@ -126,13 +127,11 @@ class Run(Elementary):
 
         # extract run info
         self.channels = self.load_channels()
-        self._LoadTiming()
-        self.calculate_rate()
+        self.trigger_planes = [1, 2]
+        self.flux = self.calculate_flux()
+        self.__load_timing()
         self.diamondname = self.__load_diamond_name()
-        self.bias = {
-            0: self.RunInfo["hv dia1"],
-            3: self.RunInfo["hv dia2"]
-        }
+        self.bias = self.load_bias()
         self.SetChannels(diamonds)
         self.IsMonteCarlo = False
 
@@ -141,6 +140,12 @@ class Run(Elementary):
         info = self.RunInfo
         print info
         return [0, 3]
+
+    def load_bias(self):
+        bias = {}
+        for i, ch in enumerate(self.channels):
+            bias[ch] = self.RunInfo['hv dia{num}'.format(num=i)]
+        return bias
 
     def load_parser(self):
         parser = ConfigParser()
@@ -241,46 +246,48 @@ class Run(Elementary):
                 print err
         return diamondname
 
-    def calculate_rate(self):
+    def calculate_flux(self):
         self.VerbosePrint('Calculate rate from mask file:\n\t' + self.RunInfo['mask'])
         mask_file_path = self.maskfilepath + '/' + self.RunInfo['mask']
         maskdata = {}
-        for ch in self.channels:
-            maskdata[ch] = {}
+        for plane in self.trigger_planes:
+            maskdata[plane] = {}
         try:
-            # todo use inbuilt functions
             f = open(mask_file_path, 'r')
             last_i2c = None
             for line in f:
                 if len(line) > 3:
                     line = line.split()
                     i2c = line[1]
-                    ch = self.channels[0] if last_i2c is None or i2c == last_i2c else self.channels[1]
-                    maskdata[ch][line[0]] = [int(line[2]), int(line[3])]
+                    plane = self.trigger_planes[0] if last_i2c is None or i2c == last_i2c else self.trigger_planes[1]
+                    maskdata[plane][line[0]] = [int(line[2]), int(line[3])]
                     last_i2c = i2c
+            f.close()
         except IOError as err:
             print '\nERROR in calculate rate\n', err
             return None
 
         # check for corner method
-        if not maskdata[0].keys()[0].startswith('corn'):
+        if not maskdata.keys()[0].keys()[0].startswith('corn'):
             return None
 
-        for i, ch in enumerate(self.channels, 1):
-            row = [maskdata[ch]['cornBot'][0], maskdata[ch]['cornTop'][0]]
-            col = [maskdata[ch]['cornBot'][1], maskdata[ch]['cornTop'][1]]
-            masked_pixels = abs((row[1] - row[0] + 1) * (col[1] - col[0] + 1))
-            self.RunInfo['masked pixels{num}'.format(i)] = masked_pixels
+        # fill in the information to Run Info
+        masked_pixels = {}
+        for plane in self.trigger_planes:
+            row = [maskdata[plane]['cornBot'][0], maskdata[plane]['cornTop'][0]]
+            col = [maskdata[plane]['cornBot'][1], maskdata[plane]['cornTop'][1]]
+            masked_pixels[plane] = abs((row[1] - row[0] + 1) * (col[1] - col[0] + 1))
+            self.RunInfo['masked pixels'][plane] = masked_pixels[plane]
 
-        pixelarea = 0.01 * 0.015  # cm^2
-        masked_area = self.RunInfo['masked pixels'] * pixelarea
-        rate = 1. * self.RunInfo['raw rate'] / masked_area  # in Hz/cm^2
-        self.RunInfo['measured flux'] = rate / 1000.  # in kHz/cm^2
+        pixel_size = 0.01 * 0.015  # cm^2
+        flux = []
+        for i, plane in enumerate(self.channels, 1):
+            area = pixel_size * masked_pixels[plane]
+            flux.append(self.RunInfo['raw rate{pl}'.format(pl=plane)] / area / 1000)  # in kHz/cm^2
+        self.RunInfo['measured flux'] = mean(flux)
+        return mean(flux)
 
-        f.close()
-        return rate / 1000.
-
-    def _LoadTiming(self):
+    def __load_timing(self):
         try:
             self.logStartTime = dt.strptime(self.RunInfo["start time"][:10] + "-" + self.RunInfo["start time"][11:-1], "%Y-%m-%d-%H:%M:%S")
             self.logStopTime = dt.strptime(self.RunInfo["stop time"][:10] + "-" + self.RunInfo["stop time"][11:-1], "%Y-%m-%d-%H:%M:%S")

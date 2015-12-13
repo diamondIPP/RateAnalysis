@@ -134,7 +134,7 @@ class Converter:
         location = self.find_root_file(run_number)
         if not location:
             curr_dir = os.getcwd()
-            # goto root directory
+            # go to root directory
             os.chdir(self.root_file_dir)
             converter_cmd = '{eudaq}/bin/Converter.exe -t drs4tree -c {eudaq}/conf/{file} {raw}'.format(eudaq=self.eudaq_dir, file=self.converter_config_path, raw=file_path)
             self.__set_converter_configfile(run_infos)
