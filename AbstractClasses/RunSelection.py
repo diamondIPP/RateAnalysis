@@ -7,12 +7,11 @@ from ROOT import TString
 
 
 class RunSelection(Run):
-
-    def __init__(self, verbose = False):
+    def __init__(self, verbose=False):
         self.run_numbers = []
         self._selectionLog = {}
         Run.__init__(self, validate=False, run_number=None, verbose=verbose)
-        self.run_numbers = [int(self.allRunKeys[i][-3:]) for i in xrange(len(self.allRunKeys))] # list of all the run numbers found in json file
+        self.run_numbers = [int(self.allRunKeys[i][-3:]) for i in xrange(len(self.allRunKeys))]  # list of all the run numbers found in json file
         self.run_numbers.sort()
         self._GetRunPlanFromFile()
         self._LoadRuns()
@@ -22,7 +21,7 @@ class RunSelection(Run):
     def __str__(self):
         nr = len(self.run_numbers)
         selected_runs = self.GetSelectedRuns()
-        return "RunSelection Object\n"+str(len(selected_runs))+" Out of "+str(nr)+" runs selected. Selections made:"+self._Log()
+        return "RunSelection Object\n" + str(len(selected_runs)) + " Out of " + str(nr) + " runs selected. Selections made:" + self._Log()
 
     def _Log(self, event=None):
         if event is not None:
@@ -30,7 +29,7 @@ class RunSelection(Run):
             self._selectionLog[i] = event
         string = '\n'
         for i in self._selectionLog.keys():
-            string += str(i+1)+'.) '+self._selectionLog[i]+'\n'
+            string += str(i + 1) + '.) ' + self._selectionLog[i] + '\n'
         return string
 
     def _LoadRuns(self):
@@ -40,7 +39,7 @@ class RunSelection(Run):
         '''
         self.runs = {}
         for runnumber in self.run_numbers:
-            self.set_run(runnumber, validate=False, load_root_file= False)
+            self.set_run(runnumber, validate=False, load_root_file=False)
             self.runs[runnumber] = self.current_run
 
     def _InitializeSelections(self):
@@ -55,8 +54,8 @@ class RunSelection(Run):
         for runnumber in self.run_numbers:
             self.selections[runnumber] = False
             self.channel_selections[runnumber] = {
-                0 : False,
-                3 : False
+                0: False,
+                3: False
             }
 
     def _GetRunPlanFromFile(self):
@@ -115,11 +114,11 @@ class RunSelection(Run):
         for run_number in self.GetSelectedRuns():
             self.channel_selections[run_number][0] = diamond1
             self.channel_selections[run_number][3] = diamond2
-        change1 = "diamond 1 = "+str(diamond1)
-        change2 = "diamond 2 = "+str(diamond2)
-        self._Log("Channels of selected runs set: "+change1+" "+change2)
+        change1 = "diamond 1 = " + str(diamond1)
+        change2 = "diamond 2 = " + str(diamond2)
+        self._Log("Channels of selected runs set: " + change1 + " " + change2)
 
-    def SelectDataType(self, data_type): # data type
+    def SelectDataType(self, data_type):  # data type
         '''
         Selects the runs according to the type of run, such as rate_scan,
         test, voltage_scan etc..
@@ -129,14 +128,14 @@ class RunSelection(Run):
         :return:
         '''
         types = self._GetValues("type")
-        assert(data_type in types), "wrong data type. \n\tSelect type from: "+str(types)
+        assert (data_type in types), "wrong data type. \n\tSelect type from: " + str(types)
         count = 0
         for run_number in self.run_numbers:
             if self.runs[run_number]['type'] == data_type:
                 self._SelectRun(run_number)
                 count += 1
-        self._Log('Runs of Type '+data_type+' selected. +'+str(count)+' selections')
-        self.VerbosePrint('Runs of Type '+data_type+' selected. +'+str(count)+' selections')
+        self._Log('Runs of Type ' + data_type + ' selected. +' + str(count) + ' selections')
+        self.VerbosePrint('Runs of Type ' + data_type + ' selected. +' + str(count) + ' selections')
 
     def SelectDiamondRuns(self, diamondname, only_selected_runs=False):
         '''
@@ -148,7 +147,7 @@ class RunSelection(Run):
         :return:
         '''
         diamondnames = self.ShowDiamondNames(getNames=True)
-        assert(diamondname in diamondnames), "wrong diamond name. \n\tSelect diamond name from: "+str(diamondnames)
+        assert (diamondname in diamondnames), "wrong diamond name. \n\tSelect diamond name from: " + str(diamondnames)
         if not only_selected_runs:
             choice = self.run_numbers
         else:
@@ -163,8 +162,8 @@ class RunSelection(Run):
                 self.selections[run_number] = True
                 self.channel_selections[run_number][3] = True
                 count += 1
-        self._Log('Runs and Channels containing '+diamondname+' selected. +'+str(count)+' runs selected')
-        self.VerbosePrint('Runs and Channels containing '+diamondname+' selected. +'+str(count)+' runs selected')
+        self._Log('Runs and Channels containing ' + diamondname + ' selected. +' + str(count) + ' runs selected')
+        self.VerbosePrint('Runs and Channels containing ' + diamondname + ' selected. +' + str(count) + ' runs selected')
 
     # def SelectIrradiationRuns(self, irradiated=True, irrtype=None):
     #     count = 0
@@ -202,7 +201,7 @@ class RunSelection(Run):
         :return:
         '''
         types = self._GetValues("type")
-        assert(data_type in types), "wrong data type. \n\tSelect type from: "+str(types)
+        assert (data_type in types), "wrong data type. \n\tSelect type from: " + str(types)
         count = 0
         for run_number in self.run_numbers:
             if self.selections[run_number]:
@@ -211,8 +210,8 @@ class RunSelection(Run):
                 else:
                     self._UnselectRun(run_number)
                     count += 1
-        self._Log('All Selected Runs unselected if not of Type '+data_type+'. -'+str(count)+' selections')
-        self.VerbosePrint('All Selected Runs unselected if not of Type '+data_type+'. -'+str(count)+' selections')
+        self._Log('All Selected Runs unselected if not of Type ' + data_type + '. -' + str(count) + ' selections')
+        self.VerbosePrint('All Selected Runs unselected if not of Type ' + data_type + '. -' + str(count) + ' selections')
 
     # def UnSelectUnlessIrradiation(self, irradiated=True, irrtype=None):
     #     count = 0
@@ -261,7 +260,7 @@ class RunSelection(Run):
         :return:
         '''
         diamondnames = self.ShowDiamondNames(True)
-        assert(diamondname in diamondnames), "wrong diamond name. \n\tSelect diamond name from: "+str(diamondnames)
+        assert (diamondname in diamondnames), "wrong diamond name. \n\tSelect diamond name from: " + str(diamondnames)
         count = 0
         for run_number in self.run_numbers:
             if self.selections[run_number]:
@@ -270,8 +269,8 @@ class RunSelection(Run):
                 else:
                     self._UnselectRun(run_number)
                     count += 1
-        self._Log('All Selected Runs unselected if not using '+diamondname+' diamond. Only runs countaining '+diamondname+' left. -'+str(count)+' selections')
-        self.VerbosePrint('All Selected Runs unselected if not using '+diamondname+' diamond. Only runs countaining '+diamondname+' left. -'+str(count)+' selections')
+        self._Log('All Selected Runs unselected if not using ' + diamondname + ' diamond. Only runs countaining ' + diamondname + ' left. -' + str(count) + ' selections')
+        self.VerbosePrint('All Selected Runs unselected if not using ' + diamondname + ' diamond. Only runs countaining ' + diamondname + ' left. -' + str(count) + ' selections')
 
     def UnSelectUnlessBias(self, bias):
         '''
@@ -281,7 +280,7 @@ class RunSelection(Run):
         :param bias:
         :return:
         '''
-        assert(type(bias) == t.IntType), "Bias has to be int-Type"
+        assert (type(bias) == t.IntType), "Bias has to be int-Type"
         count = 0
         for run_number in self.run_numbers:
             if self.selections[run_number]:
@@ -297,11 +296,11 @@ class RunSelection(Run):
                 if unselectrun:
                     self.selections[run_number] = False
                     count += 1
-        self._Log('All Selected Runs unselected if not '+str(bias)+'V bias applied. Only '+str(bias)+'V Bias Runs left. -'+str(count)+' selections')
-        self.VerbosePrint('All Selected Runs unselected if not '+str(bias)+'V bias applied. Only '+str(bias)+'V Bias Runs left. -'+str(count)+' selections')
+        self._Log('All Selected Runs unselected if not ' + str(bias) + 'V bias applied. Only ' + str(bias) + 'V Bias Runs left. -' + str(count) + ' selections')
+        self.VerbosePrint('All Selected Runs unselected if not ' + str(bias) + 'V bias applied. Only ' + str(bias) + 'V Bias Runs left. -' + str(count) + ' selections')
 
     def _SelectRun(self, run_number):
-        assert(run_number in self.run_numbers), "run number " + str(run_number) + " not found in list of run numbers. Check run_log json file!"
+        assert (run_number in self.run_numbers), "run number " + str(run_number) + " not found in list of run numbers. Check run_log json file!"
         self.selections[run_number] = True
 
     def _UnselectRun(self, run_number):
@@ -317,12 +316,12 @@ class RunSelection(Run):
         :param run_number:
         :return:
         '''
-        assert(type(run_number) == t.IntType or type(run_number) == t.ListType), "Wrong input type. run_number has to be either integer or list of integer"
+        assert (type(run_number) == t.IntType or type(run_number) == t.ListType), "Wrong input type. run_number has to be either integer or list of integer"
         listOfRuns = self.GetSelectedRuns()
         if type(run_number) == t.IntType:
             if run_number in listOfRuns:
                 self._UnselectRun(run_number)
-                self._Log("Run "+str(run_number)+" unselected. -1 selection")
+                self._Log("Run " + str(run_number) + " unselected. -1 selection")
         else:
             ListToExclude = run_number
             for run_number in ListToExclude:
@@ -354,7 +353,7 @@ class RunSelection(Run):
     #     #self.ValidateRuns(self.GetSelectedRuns())
     #     pass
 
-    def ShowSelectedRuns(self, show_allcomments=False, commentlength = 15):
+    def ShowSelectedRuns(self, show_allcomments=False, commentlength=15):
         '''
         Lists all selected runs.
         :param show_allcomments:
@@ -362,12 +361,13 @@ class RunSelection(Run):
         :return:
         '''
         print len(self.GetSelectedRuns()), " Runs Selected:"
+
         def multilinetext(text, width):
             length = len(text)
-            word_wraps = length/int(width)
+            word_wraps = length / int(width)
             separator = "\n "
             for i in xrange(word_wraps):
-                text = text[:((i+1)*width+len(separator)*i)]+separator+text[(i+1)*width+len(separator)*i:]
+                text = text[:((i + 1) * width + len(separator) * i)] + separator + text[(i + 1) * width + len(separator) * i:]
             return text
 
         if show_allcomments:
@@ -375,7 +375,7 @@ class RunSelection(Run):
         else:
             printstring = "{nr} {type} {dia1sel}{dia1} {hv1:>5} {dia2sel}{dia2} {hv2:>5} {rate} {comment}"
 
-        Record = namedtuple("Record",["runnumber", "type", "dia1", "bias1", "dia2", "bias2", "rate", "comment"])
+        Record = namedtuple("Record", ["runnumber", "type", "dia1", "bias1", "dia2", "bias2", "rate", "comment"])
         listitems = []
         for runnumber in self.GetSelectedRuns():
             listitems += [Record(
@@ -387,22 +387,22 @@ class RunSelection(Run):
                 self.runs[runnumber]['hv dia2'],
                 int(self.runs[runnumber]['measured flux']),
                 [self.runs[runnumber]['user comments']]
-                )]
+            )]
 
         print printstring.format(
-                nr = "Nr.".ljust(3),
-                type = "Type".ljust(9),
-                dia1 = "Dia 1".ljust(7),
-                dia1sel = " ",
-                hv1 = "HV 1".ljust(5),
-                dia2 = "Dia 2".ljust(7),
-                dia2sel=" ",
-                hv2 = "HV2 ".ljust(5),
-                rate = "Rate".ljust(6),
-                comment = "Comment"
-            )
+            nr="Nr.".ljust(3),
+            type="Type".ljust(9),
+            dia1="Dia 1".ljust(7),
+            dia1sel=" ",
+            hv1="HV 1".ljust(5),
+            dia2="Dia 2".ljust(7),
+            dia2sel=" ",
+            hv2="HV2 ".ljust(5),
+            rate="Rate".ljust(6),
+            comment="Comment"
+        )
         for item in listitems:
-            if len(item.comment[0][:30])>0:
+            if len(item.comment[0][:30]) > 0:
                 marker = "* "
             else:
                 marker = ""
@@ -411,20 +411,20 @@ class RunSelection(Run):
             if self.channel_selections[item.runnumber][0]: dia1sel = "*"
             if self.channel_selections[item.runnumber][3]: dia2sel = "*"
             print printstring.format(
-                nr = str(item.runnumber).ljust(3),
-                type = item.type.ljust(9),
-                dia1 = item.dia1.ljust(7),
-                dia1sel = dia1sel,
-                hv1 = int(item.bias1),
-                dia2 = item.dia2.ljust(7),
+                nr=str(item.runnumber).ljust(3),
+                type=item.type.ljust(9),
+                dia1=item.dia1.ljust(7),
+                dia1sel=dia1sel,
+                hv1=int(item.bias1),
+                dia2=item.dia2.ljust(7),
                 dia2sel=dia2sel,
-                hv2 = int(item.bias2),
-                rate = (str(item.rate)+" kHz").rjust(8),
-                comment = (marker+item.comment[0][:commentlength]).ljust(commentlength+2)
+                hv2=int(item.bias2),
+                rate=(str(item.rate) + " kHz").rjust(8),
+                comment=(marker + item.comment[0][:commentlength]).ljust(commentlength + 2)
             )
-            if  show_allcomments and len(item.comment[0][:30])>0:
+            if show_allcomments and len(item.comment[0][:30]) > 0:
                 print "   -- COMMENT: -----------------------------------"
-                print multilinetext(" "+item.comment[0][:], 50)
+                print multilinetext(" " + item.comment[0][:], 50)
                 print "--------------------------------------------------"
 
     def ShowRunInfo(self, runs=None, detailed=False):
@@ -471,7 +471,6 @@ class RunSelection(Run):
     def __print_runinfo_header():
         print 'run\ttype\tdia1\tdia2\tflux'
 
-
     def ShowDiamondNames(self, getNames=False):
         '''
         Prints all diamond names from log file into the console.
@@ -483,14 +482,14 @@ class RunSelection(Run):
         diamondnames = []
         diamond1names = self._GetValues("diamond 1")
         diamond2names = self._GetValues("diamond 2")
-        biglist = diamond1names+diamond2names
+        biglist = diamond1names + diamond2names
         for name in biglist:
             if not name in diamondnames:
                 diamondnames += [name]
         if not getNames:
             print "Diamondnames:"
             for i in xrange(len(diamondnames)):
-                print "\t"+diamondnames[i]
+                print "\t" + diamondnames[i]
         else:
             return diamondnames
 
@@ -502,7 +501,7 @@ class RunSelection(Run):
         types = self._GetValues("type")
         print "Types:"
         for i in types:
-            print "\t"+i
+            print "\t" + i
 
     def _GetValues(self, key):
         valuelist = []
@@ -540,7 +539,7 @@ class RunSelection(Run):
             if self.selections[runnumber]:
                 dia1 = self.channel_selections[runnumber][0]
                 dia2 = self.channel_selections[runnumber][3]
-                diamonds = int(dia1)*(1<<0) + int(dia2)*(1<<1)
+                diamonds = int(dia1) * (1 << 0) + int(dia2) * (1 << 1)
                 if diamonds == 0: diamonds = 3
                 selected.append(diamonds)
         if self.verbose and len(selected) == 0:
@@ -571,7 +570,6 @@ class RunSelection(Run):
             tmp_selections = copy.deepcopy(self.selections)
             tmp_channel_selections = copy.deepcopy(self.channel_selections)
             tmp_selectionLog = copy.deepcopy(self._selectionLog)
-
 
             numbers = map(int, self.runplan[type_].keys())
             numbers.sort()
@@ -606,7 +604,7 @@ class RunSelection(Run):
         :param run_type:
         :return:
         '''
-        assert(run_type in ["rate_scan", "voltage_scan", "test"])
+        assert (run_type in ["rate_scan", "voltage_scan", "test"])
         if not type(key) is t.StringType:
             key = str(key)
         if self.runplans[self.TESTCAMPAIGN].has_key(run_type):
@@ -625,6 +623,6 @@ class RunSelection(Run):
         :param select_dia2:
         :return:
         '''
-        assert(type(list_of_runs) is t.ListType), "list_of_runs not a list"
+        assert (type(list_of_runs) is t.ListType), "list_of_runs not a list"
         for runnumber in list_of_runs:
             self._SelectRun(runnumber)
