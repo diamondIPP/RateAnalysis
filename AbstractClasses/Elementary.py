@@ -63,9 +63,9 @@ class Elementary(object):
             raw_input(message)
 
     @staticmethod
-    def _GetBit(num, bit):
-        assert (num >= 0 and type(num) is t.IntType), "num has to be non negative int"
-        return (num & 1 << bit) == 1 << bit
+    def has_bit(num, bit):
+        assert (num >= 0 and type(num) is int), 'num has to be non negative int'
+        return bool(num & 1 << bit)
 
     @classmethod
     def SetSaveDirectory(cls, directory="Results/"):

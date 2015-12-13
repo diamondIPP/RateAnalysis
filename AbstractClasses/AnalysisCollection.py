@@ -130,7 +130,7 @@ class AnalysisCollection(Elementary):
         '''
         runnumbers = self.GetRunNumbers()
         for runnumber in runnumbers:
-            self.collection[runnumber].run.SetChannels(diamonds=diamonds)
+            self.collection[runnumber].run.set_channels(diamonds=diamonds)
 
     def CreateFWHMPlot(self, saveplots=True, savename='FWHM_Histo', ending='png'):
         '''
@@ -251,7 +251,7 @@ class AnalysisCollection(Elementary):
         flux = {}
         vec = []
         for key in self.collection:
-            flux[key] = self.collection[key].run.GetFlux()
+            flux[key] = self.collection[key].run.get_flux()
         ordered = OrderedDict(sorted(flux.items()))
         for key in ordered:
             vec.append(ordered[key])
@@ -292,7 +292,7 @@ class AnalysisCollection(Elementary):
         runnumbers = self.GetRunNumbers()
 
         if diamonds == None:
-            channels = self.collection[runnumbers[0]].run.GetChannels()  # get channels from first run
+            channels = self.collection[runnumbers[0]].run.get_active_channels()  # get channels from first run
         elif diamonds == 1:
             channels = [0]
         elif diamonds == 2:
@@ -689,7 +689,7 @@ class AnalysisCollection(Elementary):
         ratebins = last - first + 1
         RateHisto = ROOT.TH1D("RateHisto", "Rate Histogram", ratebins, first - 0.5, last + 0.5)
         for runnumber in runnumbers:
-            rate_kHz = self.collection[runnumber].GetRate()
+            rate_kHz = self.collection[runnumber].get_flux()
             print "runnumber: ", self.collection[runnumber].run.run_number, " == ", runnumber, " rate_kHz: ", rate_kHz
             assert (self.collection[runnumber].run.run_number == runnumber)
             RateHisto.Fill(runnumber, rate_kHz)
@@ -785,9 +785,9 @@ class AnalysisCollection(Elementary):
         contentstring = ""
         for run in self.GetRunNumbers():
             contentstring += "\t{run} \t{Diamond1} \t{Bias1} \t{Selected1} \t\t{Diamond2} \t{Bias2} \t{Selected2} \t\t{Type}\n".format(
-                run=str(run).zfill(3), Diamond1=self.collection[run].run.GetDiamondName(0).ljust(8), Bias1=str(self.collection[run].run.bias[0]).zfill(5),
+                run=str(run).zfill(3), Diamond1=self.collection[run].run.get_diamond_name(0).ljust(8), Bias1=str(self.collection[run].run.bias[0]).zfill(5),
                 Selected1=str(self.collection[run].run.analyzeCh[0]).ljust(5),
-                Diamond2=self.collection[run].run.GetDiamondName(3).ljust(8), Bias2=str(self.collection[run].run.bias[3]).zfill(5), Selected2=str(self.collection[run].run.analyzeCh[3]).ljust(5),
+                Diamond2=self.collection[run].run.get_diamond_name(3).ljust(8), Bias2=str(self.collection[run].run.bias[3]).zfill(5), Selected2=str(self.collection[run].run.analyzeCh[3]).ljust(5),
                 Type=self.collection[run].run.RunInfo["type"])
         print contentstring
 
@@ -853,9 +853,9 @@ class AnalysisCollection(Elementary):
             else:
                 factor = 1.
 
-            self.pedestalresults["full"].SetPoint(i, self.collection[run].GetRate(), mean_full / factor)
-            self.pedestalresults["no_tail"].SetPoint(i, self.collection[run].GetRate(), mean / factor)
-            self.pedestalresults["no_ped"].SetPoint(i, self.collection[run].GetRate(), mean_nopedestal / factor)
+            self.pedestalresults["full"].SetPoint(i, self.collection[run].get_flux(), mean_full / factor)
+            self.pedestalresults["no_tail"].SetPoint(i, self.collection[run].get_flux(), mean / factor)
+            self.pedestalresults["no_ped"].SetPoint(i, self.collection[run].get_flux(), mean_nopedestal / factor)
             i += 1
 
         self.pedestal_analysis_canvas = ROOT.TCanvas("pedestal_analysis_canvas", "pedestal_analysis_canvas")

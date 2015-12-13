@@ -10,7 +10,7 @@ class RunSelection(Run):
     def __init__(self, verbose=False):
         self.run_numbers = []
         self._selectionLog = {}
-        Run.__init__(self, validate=False, run_number=None, verbose=verbose)
+        Run.__init__(self, run_number=None, verbose=verbose)
         self.run_numbers = [int(self.allRunKeys[i][-3:]) for i in xrange(len(self.allRunKeys))]  # list of all the run numbers found in json file
         self.run_numbers.sort()
         self._GetRunPlanFromFile()
@@ -39,7 +39,7 @@ class RunSelection(Run):
         '''
         self.runs = {}
         for runnumber in self.run_numbers:
-            self.set_run(runnumber, validate=False, load_root_file=False)
+            self.set_run(runnumber, load_root_file=False)
             self.runs[runnumber] = self.current_run
 
     def _InitializeSelections(self):
@@ -103,7 +103,7 @@ class RunSelection(Run):
         '''
         self.UnSelectAll()
 
-    def SetChannels(self, diamond1=True, diamond2=True):
+    def set_channels(self, diamond1=True, diamond2=True):
         '''
         Sets the channels (diamonds) of the selected runs to active or
         inactive.
@@ -427,7 +427,7 @@ class RunSelection(Run):
                 print multilinetext(" " + item.comment[0][:], 50)
                 print "--------------------------------------------------"
 
-    def ShowRunInfo(self, runs=None, detailed=False):
+    def show_run_info(self, runs=None, detailed=False):
         """
         Prints all run infos from the selected runs to the console.
         :param runs:

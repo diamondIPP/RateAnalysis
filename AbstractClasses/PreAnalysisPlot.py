@@ -35,7 +35,7 @@ class PreAnalysisPlot(Elementary):
         self.binning = binning
         self.padymargins = {}
         self.signals = {}
-        self.nBins = int(self.analysis.GetEventAtTime(9999999)) / int(self.binning)
+        self.nBins = int(self.analysis.get_event_at_time(9999999)) / int(self.binning)
         # graphs
         self.pulseHeight = TGraphErrors()
         self.pedgraph = TGraphErrors()
@@ -258,7 +258,7 @@ class PreAnalysisPlot(Elementary):
             self.signalTimeCanvas.cd(2)
             self._Format2DHisto()
             self.signaltime2d.Draw(drawOption2D)
-            self.analysis.DrawRunInfo(channel=self.channel, canvas=self.pad, infoid="preanalysis{run}{ch}".format(run=self.analysis.run.run_number, ch=self.channel))
+            self.analysis.draw_run_info(channel=self.channel, canvas=self.pad, infoid="preanalysis{run}{ch}".format(run=self.analysis.run.run_number, ch=self.channel))
             # self.pad.Update()
 
             # draw mean pedestal vs time

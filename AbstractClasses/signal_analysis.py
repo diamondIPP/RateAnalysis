@@ -389,7 +389,7 @@ class SignalAnalysis(Analysis):
     def get_time_binning(self):
         time_bins = []
         for event in self.binning:
-            time_bins.append(self.run.GetTimeAtEvent(event))
+            time_bins.append(self.run.get_time_at_event(event))
         return time_bins
     
     def __format_signal_graph(self, mode, setyscale):

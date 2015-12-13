@@ -7,7 +7,7 @@ import re
 from Elementary import Elementary
 from Converter import Converter
 from datetime import datetime as dt
-from ROOT import TFile
+from ROOT import TFile, gROOT, TLegend
 from ConfigParser import ConfigParser, NoOptionError
 from numpy import mean
 from copy import deepcopy
@@ -102,8 +102,8 @@ class Run(Elementary):
             self.time = self.__get_time_vec()
             self.startEvent = 0
             self.endEvent = self.tree.GetEntries() - 1
-            self.startTime = self.GetTimeAtEvent(self.startEvent)
-            self.endTime = self.GetTimeAtEvent(self.endEvent)
+            self.startTime = self.get_time_at_event(self.startEvent)
+            self.endTime = self.get_time_at_event(self.endEvent)
             self.totalTime = self.endTime - self.startTime
             self.totalMinutes = (self.endTime - self.startTime) / 60000
             self.n_entries = self.endEvent + 1
@@ -119,14 +119,19 @@ class Run(Elementary):
 
         # extract run info
         self.channels = self.load_channels()
+        self.analyse_ch = self.set_channels(diamonds)
         self.trigger_planes = [1, 2]
         self.flux = self.calculate_flux()
         self.__load_timing()
         self.diamondname = self.__load_diamond_name()
         self.bias = self.load_bias()
-        self.SetChannels(diamonds)
         self.IsMonteCarlo = False
 
+        # root objects
+        self.run_info_legends = {}
+
+    # ==============================================
+    # region LOAD FUNCTIONS
     def load_channels(self):
         # todo think of how to extract the dia channels!
         info = self.RunInfo
@@ -148,47 +153,6 @@ class Run(Elementary):
         root_file = TFile(self.converter.get_root_file_path(self.run_number))
         macro = root_file.Get('region_information')
         return macro.GetListOfLines()
-
-    def show_regions(self):
-        for line in self.region_information:
-            print line
-
-    def get_regions(self, string):
-        ranges = []
-        for line in self.region_information:
-            line = str(line)
-            if line.startswith(string):
-                data = re.split('_|:', line)
-                ranges.append(data[1])
-        return ranges
-
-    def get_peak_integrals(self):
-        integrals = []
-        for line in self.region_information:
-            line = str(line)
-            if str(line).lower().startswith('* peakintegral'):
-                data = re.split('_|:', line)
-                if data[0][-1].isdigit():
-                    integrals.append(data[0][-1])
-                else:
-                    integrals.append(data[1])
-        return integrals
-
-    def set_run(self, run_number, load_root_file=True):
-
-        assert type(run_number) is int, "incorrect run_number"
-
-        self.run_number = run_number
-        self.load_run_info()
-
-        # check for conversion
-        if load_root_file:
-            location = self.converter.find_root_file(run_number)
-            if not location or location == 'tracking':
-                self.converter.convert_run(self.RunInfo, run_number)
-            self._LoadROOTFile(run_number)
-
-        return True
 
     def load_run_info(self):
         self.RunInfo = {}
@@ -239,6 +203,55 @@ class Run(Elementary):
                 print err
         return diamondname
 
+    # todo fix
+    def __load_timing(self):
+        try:
+            self.logStartTime = dt.strptime(self.RunInfo["start time"][:10] + "-" + self.RunInfo["start time"][11:-1], "%Y-%m-%d-%H:%M:%S")
+            self.logStopTime = dt.strptime(self.RunInfo["stop time"][:10] + "-" + self.RunInfo["stop time"][11:-1], "%Y-%m-%d-%H:%M:%S")
+            self.logRunTime = self.logStopTime - self.logStartTime
+            noerror = True
+        except ValueError:
+            try:
+                self.logStartTime = dt.strptime(self.RunInfo["start time"][:10] + "-" + self.RunInfo["start time"][11:-1], "%H:%M:%S")
+                self.logStopTime = dt.strptime(self.RunInfo["stop time"][:10] + "-" + self.RunInfo["stop time"][11:-1], "%H:%M:%S")
+                self.logRunTime = self.logStopTime - self.logStartTime
+                noerror = True
+            except ValueError:
+                noerror = False
+        if noerror:
+            self.VerbosePrint("Timing string translated successfully")
+        else:
+            print "INFO: The timing information string from run info couldn't be translated"
+    # endregion
+
+    def set_run(self, run_number, load_root_file=True):
+
+        assert type(run_number) is int, "incorrect run_number"
+
+        self.run_number = run_number
+        self.load_run_info()
+
+        # check for conversion
+        if load_root_file:
+            location = self.converter.find_root_file(run_number)
+            if not location or location == 'tracking':
+                self.converter.convert_run(self.RunInfo, run_number)
+            self.__load_rootfile()
+
+        return True
+
+    def set_channels(self, diamonds):
+        """
+        Set which diamonds (channels) should be activated for the analysis.
+        :param diamonds: bitwise integer (1=dia1, 2=dia2, 3=1&2)
+        """
+        assert 1 <= diamonds <= 3, 'invalid diamonds number: 0x1=ch0; 0x2=ch3'
+        analyse_ch = {}
+        for i, ch in enumerate(self.channels):
+            analyse_ch[ch] = self.has_bit(diamonds, i)
+        self.analyse_ch = analyse_ch
+        return analyse_ch
+
     def calculate_flux(self):
         self.VerbosePrint('Calculate rate from mask file:\n\t' + self.RunInfo['mask'])
         mask_file_path = self.maskfilepath + '/' + self.RunInfo['mask']
@@ -283,26 +296,6 @@ class Run(Elementary):
         self.RunInfo['measured flux'] = mean(flux)
         return mean(flux)
 
-    # todo fix
-    def __load_timing(self):
-        try:
-            self.logStartTime = dt.strptime(self.RunInfo["start time"][:10] + "-" + self.RunInfo["start time"][11:-1], "%Y-%m-%d-%H:%M:%S")
-            self.logStopTime = dt.strptime(self.RunInfo["stop time"][:10] + "-" + self.RunInfo["stop time"][11:-1], "%Y-%m-%d-%H:%M:%S")
-            self.logRunTime = self.logStopTime - self.logStartTime
-            noerror = True
-        except ValueError:
-            try:
-                self.logStartTime = dt.strptime(self.RunInfo["start time"][:10] + "-" + self.RunInfo["start time"][11:-1], "%H:%M:%S")
-                self.logStopTime = dt.strptime(self.RunInfo["stop time"][:10] + "-" + self.RunInfo["stop time"][11:-1], "%H:%M:%S")
-                self.logRunTime = self.logStopTime - self.logStartTime
-                noerror = True
-            except ValueError:
-                noerror = False
-        if noerror:
-            self.VerbosePrint("Timing string translated successfully")
-        else:
-            print "INFO: The timing information string from run info couldn't be translated"
-
     def rename_runinfo_keys(self):
 
         # return, if all keys from default info are in RunInfo too
@@ -316,169 +309,51 @@ class Run(Elementary):
                 self.RunInfo[new_key] = self.RunInfo.pop(old_key)
         return
 
-    def SetChannels(self, diamonds):
-        '''
-        Set which diamonds (channels) should be activated for the
-        analysis. The argument diamonds is an integer according to:
-            1 -> Diamond 1,
-            2 -> Diamond 2,
-            3 -> Diamond 1 & 2
-        :param diamonds:
-        :return:
-        '''
-        assert (diamonds >= 1 and diamonds <= 3), "invalid diamonds number: 0x1=ch0; 0x2=ch3"
-        self.analyzeCh = {
-            0: self._GetBit(diamonds, 0),
-            3: self._GetBit(diamonds, 1)
-        }
-
-    # GET FUNCTIONS
     # ==============================================
-    def GetRate(self):
-        '''
-        Returns the rate during this run. If the mask files are given,
-        the rate is calculated by the raw rate and the area of the
-        masked pixels in the silicon pixel plane.
-        If no mask files are given, the rate returned will be the logged
-        rate from the online logbook. (Typos!)
-        The rate is given in kHz/cm^2
-        :return:
-        '''
-        return self.RunInfo["measured flux"]
+    # region GET FUNCTIONS
+    def get_flux(self):
+        return self.flux if self.flux else self.RunInfo['aimed flux']
 
-    def GetChannels(self):
-        '''
-        Returns a list of channels, which are activated for analysis.
-        e.g. [3] means only the second diamond is activated to be
-        analyzed.
-        :return:
-        '''
-        return [i for i in self.analyzeCh.keys() if self.analyzeCh[i]]
+    def get_regions(self, string):
+        ranges = []
+        for line in self.region_information:
+            line = str(line)
+            if line.startswith(string):
+                data = re.split('_|:', line)
+                ranges.append(data[1])
+        return ranges
 
-    def GetDiamondName(self, channel):
-        '''
-        Returns the diamond name.
-        :param channel:
+    def get_peak_integrals(self):
+        integrals = []
+        for line in self.region_information:
+            line = str(line)
+            if str(line).lower().startswith('* peakintegral'):
+                data = re.split('_|:', line)
+                if data[0][-1].isdigit():
+                    integrals.append(data[0][-1])
+                else:
+                    integrals.append(data[1])
+        return integrals
+
+    def get_active_channels(self):
+        """
+        Returns a list of the channels, which are activated for analysis. e.g. [3] means only the channel 3 is activated for analysis.
         :return:
-        '''
+        """
+        return [ch for ch in self.analyse_ch if self.analyse_ch[ch]]
+
+    def get_diamond_name(self, channel):
         return self.diamondname[channel]
 
-    def GetFlux(self):
-        fluxes = [3, 20, 60, 600, 2000, 5000]
-        range_low = [0, 10, 30, 300, 1000, 2500]
-        range_high = [10, 30, 300, 1000, 2500, 5000]
-        if self.TESTCAMPAIGN in ['201508', '201505']:
-            for i in range(len(fluxes)):
-                if range_low[i] < self.RunInfo['measured flux'] < range_high[i]:
-                    return fluxes[i]
-
-    def ShowRunInfo(self):
-        '''
-        Prints the most importnant run infos to the console. The infos
-        printed are:
-            Run number, Rate, Diamond names, Bias Voltages
-        :return:
-        '''
-        print "RUN INFO:"
-        print "\tRun Number: \t", self.run_number, " (", self.RunInfo["type"], ")"
-        print "\tRate: \t", int(self.GetRate()), " kHz"
-        print "\tDiamond1:   \t", self.diamondname[0], " (", self.bias[0], ") | is selected: ", self.analyzeCh[0]
-        print "\tDiamond2:   \t", self.diamondname[3], " (", self.bias[3], ") | is selected: ", self.analyzeCh[3]
-
-    def DrawRunInfo(self, channel=None, canvas=None, diamondinfo=True, showcut=True, comment=None, infoid="", userWidth=None, userHeight=None):
-        '''
-        Draws the run infos inside the canvas. If no canvas is given, it
-        will be drawn into the active Pad. If the channel number is
-        passed, channel number and diamond name will be drawn.
-        :param channel:
-        :param canvas:
-        :param diamondinfo:
-        :param showcut:
-        :param comment:
-        :param infoid:
-        :param userHeight:
-        :param userWidth:
-        :return:
-        '''
-        if userHeight != None: assert (userHeight >= 0 and userHeight <= 0.8), "choose userHeight between 0 and 0.8 or set it to 'None'"
-        if userWidth != None: assert (userWidth >= 0 and userWidth <= 0.8), "choose userWidth between 0 and 0.8 or set it to 'None'"
-        if canvas != None:
-            pad = canvas.cd()
-        else:
-            print "Draw run info in current pad"
-            pad = ROOT.gROOT.GetSelectedPad()
-            if pad:
-                # canvas = pad.GetCanvas()
-                # canvas.cd()
-                # pad.cd()
-                pass
-            else:
-                print "ERROR: Can't access active Pad"
-
-        lines = 1
-        width = 0.25
-        if diamondinfo:
-            lines += 1
-        if showcut and hasattr(self, "analysis"):
-            lines += 1
-            width = 0.6
-        if comment != None:
-            lines += 1
-            width = max(0.3, width)
-        height = (lines - 1) * 0.03
-
-        if not hasattr(self, "_runInfoLegends"):
-            self._runInfoLegends = {}
-
-        if channel != None and channel in [0, 3]:
-            # user height and width:
-            userheight = height if userHeight == None else userHeight - 0.04
-            userwidth = width if userWidth == None else userWidth
-
-            self._runInfoLegends[str(channel) + infoid] = ROOT.TLegend(0.1, 0.86 - userheight, 0.1 + userwidth, 0.9)
-            self._runInfoLegends[str(channel) + infoid].SetMargin(0.05)
-            self._runInfoLegends[str(channel) + infoid].AddEntry(0, "Run{run} Ch{channel} ({rate})".format(run=self.run_number, channel=channel, rate=self.GetRateString()), "")
-            if diamondinfo: self._runInfoLegends[str(channel) + infoid].AddEntry(0, "{diamond} ({bias:+}V)".format(diamond=self.diamondname[channel], bias=self.bias[channel]), "")
-            if showcut and hasattr(self, "analysis"): self._runInfoLegends[str(channel) + infoid].AddEntry(0, "Cut: {cut}".format(cut=self.analysis.GetUserCutString()), "")
-            if comment != None: self._runInfoLegends[str(channel) + infoid].AddEntry(0, comment, "")
-            self._runInfoLegends[str(channel) + infoid].Draw("same")
-        else:
-            if comment != None:
-                lines = 2
-            else:
-                lines = 1
-                width = 0.15
-            height = lines * 0.05
-            # user height and width:
-            userheight = height if userHeight == None else userHeight
-            userwidth = width if userWidth == None else userWidth
-
-            self._runInfoLegends["ch12" + infoid] = ROOT.TLegend(0.1, 0.9 - userheight, 0.1 + userwidth, 0.9)
-            self._runInfoLegends["ch12" + infoid].SetMargin(0.05)
-            self._runInfoLegends["ch12" + infoid].AddEntry(0, "Run{run} ({rate})".format(run=self.run_number, rate=self.GetRateString()), "")
-            if comment != None: self._runInfoLegends["ch12" + infoid].AddEntry(0, comment, "")
-            self._runInfoLegends["ch12" + infoid].Draw("same")
-        pad.Modified()
-
-    def GetRateString(self):
-        rate = self.RunInfo["measured flux"]
-        if rate > 1000:
-            unit = "MHz"
-            rate = round(rate / 1000., 1)
-        else:
-            unit = "kHz"
-            rate = int(round(rate, 0))
-        return "{rate:>3}{unit}".format(rate=rate, unit=unit)
-
-    def GetChannelName(self, channel):
-        self.tree.GetEntry(1)
+    def get_channel_name(self, channel):
+        self.tree.GetEntry()
         return self.tree.sensor_name[channel]
 
-    def _LoadROOTFile(self, run_number):
-        file_path = self.converter.get_tracking_file_path(run_number) if self.converter.do_tracking else self.converter.get_root_file_path(run_number)
-        print "\nLoading infos for rootfile: ", file_path.split('/')[-1]
-        self.rootfile = ROOT.TFile(file_path)
-        self.tree = self.rootfile.Get(self.treename)  # Get TTree called "track_info"
+    def get_rate_string(self):
+        rate = self.flux
+        unit = 'MHz/cm2' if rate > 1000 else 'kHz/cm2'
+        rate = round(rate / 1000., 1) if rate > 1000 else int(round(rate, 0))
+        return '{rate:>3} {unit}'.format(rate=rate, unit=unit)
 
     def __get_time_vec(self):
         self.tree.SetEstimate(-1)
@@ -488,9 +363,9 @@ class Run(Elementary):
             time.append(self.tree.GetV2()[i])
         return time
 
-    def GetTimeAtEvent(self, event):
+    def get_time_at_event(self, event):
         """
-        Returns the time stamp at event number 'event'. For negative event numbers it will return the time stamp at the startevent.
+        For negative event numbers it will return the time stamp at the startevent.
         :param event: integer event number
         :return: timestamp for event
         """
@@ -502,13 +377,13 @@ class Run(Elementary):
             event = self.endEvent
         return self.time[event]
 
-    def GetEventAtTime(self, time_sec):
+    def get_event_at_time(self, time_sec):
         """
         Returns the eventnunmber at time dt from beginning of the run. Accuracy: +- 1 Event
         :param time_sec: time in seconds from start
         :return: event_number
         """
-        # return last time if input is too large
+        # return time of last event if input is too large
         if time_sec > self.time[-1] / 1000. or time_sec == -1:
             return self.time[-1]
         last_time = 0
@@ -519,13 +394,107 @@ class Run(Elementary):
                 return i
             last_time = time
 
-    def _slope_f(self, event):
-        if event < 0:
-            event = 0
-        time_high = self.GetTimeAtEvent(event + 10)
-        time_low = self.GetTimeAtEvent(event - 10)
-        return 1. * (time_high - time_low) / 21.
+    # endregion
+
+    # ==============================================
+    # region SHOW RUN INFO
+    def show_regions(self):
+        for line in self.region_information:
+            print line
+
+    def show_run_info(self):
+        """
+        Prints the most importnant run infos to the console. The infos printed are: Run number, Rate, Diamond names, Bias Voltages
+        """
+        print 'RUN INFO:'
+        print '\tRun Number: \t', self.run_number, ' (', self.RunInfo['type'], ')'
+        print '\tRate: \t', self.get_flux(), ' kHz'
+        print '\tDiamond1:   \t', self.diamondname[0], ' (', self.bias[0], ') | is selected: ', self.analyse_ch[0]
+        print '\tDiamond2:   \t', self.diamondname[3], ' (', self.bias[3], ') | is selected: ', self.analyse_ch[3]
+
+    def draw_run_info(self, channel=None, canvas=None, diamondinfo=True, cut=None, comment=None, infoid='', set_width=None, set_height=None):
+        """
+        Draws the run infos inside the canvas. If no canvas is given, it will be drawn into the active Pad. 
+        If the channel number is passed, channel number and diamond name will be drawn.
+        :param channel:
+        :param canvas:
+        :param diamondinfo:
+        :param cut:
+        :param comment:
+        :param infoid:
+        :param set_height:
+        :param set_width:
+        :return:
+        """
+        if set_height is not None:
+            assert 0 <= set_height <= 0.8, 'choose height between 0 and 0.8 or set it to "None"'
+        if set_width is not None:
+            assert 0 <= set_width <= 0.8, 'choose width between 0 and 0.8 or set it to "None"'
+        if canvas is not None:
+            pad = canvas.cd()
+        else:
+            print 'Draw run info in current pad'
+            pad = gROOT.GetSelectedPad()
+            if not pad:
+                print 'ERROR: Cannot access active Pad'
+                return
+
+        lines = 1
+        width = 0.25
+        if diamondinfo:
+            lines += 1
+        if cut and hasattr(self, 'analysis'):
+            lines += 1
+            width = 0.6
+        if comment is not None:
+            lines += 1
+            width = max(0.3, width)
+        height = (lines - 1) * 0.03
+
+        if channel is not None and channel in self.channels:
+            # user height and width:
+            userheight = height if set_height is None else set_height - 0.04
+            userwidth = width if width is None else set_width
+
+            legend = TLegend(0.1, 0.86 - userheight, 0.1 + userwidth, 0.9)
+            legend.SetMargin(0.05)
+            legend.AddEntry(0, 'Run{run} Ch{ch} ({rate})'.format(run=self.run_number, ch=channel, rate=self.get_rate_string()), '')
+            if diamondinfo: 
+                legend.AddEntry(0, '{diamond} ({bias:+}V)'.format(diamond=self.diamondname[channel], bias=self.bias[channel]), '')
+            if cut and hasattr(self, 'analysis'): 
+                legend.AddEntry(0, 'Cut: {cut}'.format(cut=self.analysis.GetUserCutString()), '')
+            if comment is not None: 
+                legend.AddEntry(0, comment, '')
+            legend.Draw()
+            self.run_info_legends[str(channel) + infoid] = legend
+        else:
+            if comment is not None:
+                lines = 2
+            else:
+                lines = 1
+                width = 0.15
+            height = lines * 0.05
+            # user height and width:
+            userheight = height if set_height is None else set_height 
+            userwidth = width if width is None else set_width
+
+            legend = TLegend(0.1, 0.9 - userheight, 0.1 + userwidth, 0.9)
+            legend.SetMargin(0.05)
+            legend.AddEntry(0, 'Run{run} ({rate})'.format(run=self.run_number, rate=self.get_rate_string()), '')
+            if comment is not None:
+                legend.AddEntry(0, comment, '')
+            legend.Draw()
+            self.run_info_legends['ch12' + infoid] = legend
+        pad.Modified()
+
+    # endregion
+
+    def __load_rootfile(self):
+        file_path = self.converter.get_tracking_file_path(self.run_number) if self.converter.do_tracking else self.converter.get_root_file_path(self.run_number)
+        print "\nLoading infos for rootfile: ", file_path.split('/')[-1]
+        self.rootfile = ROOT.TFile(file_path)
+        self.tree = self.rootfile.Get(self.treename)  # Get TTree called "track_info"
 
 
 if __name__ == "__main__":
-    z = Run(None, validate=True)
+    z = Run(None)

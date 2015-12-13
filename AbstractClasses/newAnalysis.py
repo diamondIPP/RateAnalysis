@@ -318,7 +318,7 @@ class Analysis(Elementary):
         :param userWidth:
         :return:
         '''
-        self.run.DrawRunInfo(channel=channel, canvas=canvas, diamondinfo=diamondinfo, showcut=showcut, comment=comment, infoid=infoid, userHeight=userHeight, userWidth=userWidth)
+        self.run.draw_run_info(channel=channel, canvas=canvas, diamondinfo=diamondinfo, showcut=showcut, comment=comment, infoid=infoid, height=userHeight, width=userWidth)
 
     def DrawPreliminary(self, canvas=None, x=0.7, y=0.14):
         # TODO: make this work
@@ -903,7 +903,7 @@ class Analysis(Elementary):
         :param diamonds:
         :return:
         '''
-        tmp = copy.deepcopy(self.run.analyzeCh)
+        tmp = copy.deepcopy(self.run.analyse_ch)
         self.SetChannels(diamonds)
         self.ShowHitMap()
         maskname = self.run.RunInfo["mask"][:-4]
@@ -920,20 +920,20 @@ class Analysis(Elementary):
                 windowfile.close()
             except ValueError:
                 pass
-        self.run.analyzeCh = copy.deepcopy(tmp)
+        self.run.analyse_ch = copy.deepcopy(tmp)
 
     def SetChannels(self, diamonds):
         """
         Sets the channels (i.e. diamonds) to be analyzed. This is just a short cut for: self.run.SetChannels(diamonds)
         :param diamonds:
         """
-        self.run.SetChannels(diamonds=diamonds)
+        self.run.set_channels(diamonds=diamonds)
 
     def GetEventAtTime(self, time_sec):
-        return self.run.GetEventAtTime(time_sec)
+        return self.run.get_event_at_time(time_sec)
 
     def GetRate(self):
-        return self.run.GetRate()
+        return self.run.get_flux()
 
     def ShowSignalMaps(self, draw_minmax=True, saveplots=False, savename="Run{run}_SignalMaps", ending="png", saveDir="Results/", show3d=False):
         """
@@ -947,7 +947,7 @@ class Analysis(Elementary):
         if not self.Checklist['LoadTrackData']:
             self.LoadTrackData()
 
-        channels = self.run.GetChannels()
+        channels = self.run.get_active_channels()
         self.signal_canvas = ROOT.TCanvas('signal_canvas{run}', 'Mean Signal Maps', len(channels) * 500, 500)
         self.signal_canvas.Divide(len(channels), 1)
         if len(channels) == 2:
@@ -1107,7 +1107,7 @@ class Analysis(Elementary):
         self.combined_canvas_name = "combined_canvas" + test
         self.combined_canvas = ROOT.gROOT.GetListOfCanvases().FindObject(self.combined_canvas_name)
 
-        channels = self.run.GetChannels()
+        channels = self.run.get_active_channels()
 
         if not self.combined_canvas:
             self.combined_canvas = ROOT.TCanvas(self.combined_canvas_name, "Combined Canvas", 1000, len(channels) * 500)
@@ -1582,7 +1582,7 @@ class Analysis(Elementary):
         if channels != None:
             nWFChannels = 0
             for i in xrange(4):
-                if self._GetBit(channels, i) and draw_waveforms[i]:
+                if self.has_bit(channels, i) and draw_waveforms[i]:
                     nWFChannels += 1
                 else:
                     draw_waveforms[i] = False
@@ -1610,10 +1610,10 @@ class Analysis(Elementary):
             ROOT.SetOwnership(self.waveformplots[histoname], False)
             self.waveformplots[histoname].SetStats(0)
             if cut == "":
-                self.DrawRunInfo(channel=channel, comment="{nwf} Wave Forms".format(nwf=n / 1024), infoid=("wf{wf}" + infoid).format(wf=channel), userWidth=0.15, userHeight=0.15)
+                self.draw_run_info(channel=channel, comment="{nwf} Wave Forms".format(nwf=n / 1024), infoid=("wf{wf}" + infoid).format(wf=channel), width=0.15, height=0.15)
             else:
-                self.DrawRunInfo(channel=channel, comment="{nwf}/{totnwf} Wave Forms".format(nwf=n / 1024, totnwf=events), infoid=("wf{wf}" + infoid).format(wf=channel), userWidth=0.18,
-                                 userHeight=0.15)
+                self.draw_run_info(channel=channel, comment="{nwf}/{totnwf} Wave Forms".format(nwf=n / 1024, totnwf=events), infoid=("wf{wf}" + infoid).format(wf=channel), width=0.18,
+                                   height=0.15)
             if n <= 0: print "No event to draw in range. Change cut settings or increase nevents"
 
         start = int(self.run.tree.GetEntries() / 2) if startevent == None else int(startevent)
@@ -1668,7 +1668,7 @@ class Analysis(Elementary):
         :return:
         '''
         if channel == None:
-            channels = self.run.GetChannels()
+            channels = self.run.get_active_channels()
             namesuffix = ""
         else:
             channels = [channel]
@@ -1717,7 +1717,7 @@ class Analysis(Elementary):
 
     def ShowSignalSpread(self, channel=None, cut=""):
         if channel == None:
-            channels = self.run.GetChannels()
+            channels = self.run.get_active_channels()
             namesuffix = ""
         else:
             channels = [channel]
@@ -1926,7 +1926,7 @@ class Analysis(Elementary):
     def GetChannels(self, channel=None):
 
         if channel == None:
-            channels = self.run.GetChannels()
+            channels = self.run.get_active_channels()
         else:
             channels = [channel]
 
@@ -2043,16 +2043,16 @@ class Analysis(Elementary):
         # d2B:
         d2b_t = makeit("d2b_track", "&&sig_time[{channel}]<250&&n_tracks")
 
-        results_mean = str(self.run.GetRate()) + "\t" + str(d2b[1]) + "\t" + str(d2b_t[1]) + "\t" + str(d2[1]) + "\t" + str(d2_t[1])
-        results_events = str(self.run.GetRate()) + "\t" + str(d2b[0]) + "\t" + str(d2b_t[0]) + "\t" + str(d2[0]) + "\t" + str(d2_t[0])
+        results_mean = str(self.run.get_flux()) + "\t" + str(d2b[1]) + "\t" + str(d2b_t[1]) + "\t" + str(d2[1]) + "\t" + str(d2_t[1])
+        results_events = str(self.run.get_flux()) + "\t" + str(d2b[0]) + "\t" + str(d2b_t[0]) + "\t" + str(d2[0]) + "\t" + str(d2_t[0])
 
         print "\n"
         print "Rate, ", "mean d2b ", "mean d2b_t, ", "mean d2, ", "mean d2_t"
-        print self.run.GetRate(), d2b[1], d2b_t[1], d2[1], d2_t[1]
+        print self.run.get_flux(), d2b[1], d2b_t[1], d2[1], d2_t[1]
         print "\n"
         print "\n"
         print "Rate, ", "# d2b ", "# d2b_t, ", "# d2, ", "# d2_t"
-        print self.run.GetRate(), d2b[0], d2b_t[0], d2[0], d2_t[0]
+        print self.run.get_flux(), d2b[0], d2b_t[0], d2[0], d2_t[0]
 
         return results_mean, results_events
 

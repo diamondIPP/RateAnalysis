@@ -165,11 +165,11 @@ class Cut(Elementary):
             event_range = [0, 0]
         for i, value in enumerate(event_range):
             if value < 0:
-                event_range[i] = self.analysis.GetEventAtTime(time_sec=-1 * value * 60)
+                event_range[i] = self.analysis.get_event_at_time(time_sec=-1 * value * 60)
         if event_range[0] and event_range[1]:
             pass
         elif event_range[0]:
-            event_range[1] = self.analysis.GetEventAtTime(-1)
+            event_range[1] = self.analysis.get_event_at_time(-1)
         elif event_range[1]:
             event_range[0] = self.excludefirst
         else:
@@ -218,7 +218,7 @@ class Cut(Elementary):
         else:
             self.userCutTypes['ExcludeFirst'] = str(-1 * value) + 'min+'
             seconds = -1 * value * 60
-            event = self.analysis.GetEventAtTime(seconds)
+            event = self.analysis.get_event_at_time(seconds)
             return event
 
     def set_exclude_first(self, value):
@@ -292,7 +292,7 @@ class Cut(Elementary):
         Returns the number of events satisfying the cut conditions.
         :return:
         """
-        totEvents = self.analysis.GetEventAtTime(-1)
+        totEvents = self.analysis.get_event_at_time(-1)
         if self.cut_types["EventRange"]:
             return self.cut_types["EventRange"][1] - self.cut_types["EventRange"][0]
         elif self.cut_types["ExcludeFirst"] > 0:
@@ -305,7 +305,7 @@ class Cut(Elementary):
         Returns the highest event number satisfying the cut conditions.
         :return:
         """
-        totEvents = self.analysis.GetEventAtTime(-1)
+        totEvents = self.analysis.get_event_at_time(-1)
         if self.cut_types["EventRange"]:
             return self.cut_types["EventRange"][1]
         else:
@@ -568,21 +568,21 @@ class Cut(Elementary):
         if self.jump_ranges is None and len(self.jumps) > 0:
             start = []
             stop = []
-            time_offset = self.analysis.run.GetTimeAtEvent(0)
-            t_max = (self.analysis.run.GetTimeAtEvent(-1) - time_offset) / 1000.
+            time_offset = self.analysis.run.get_time_at_event(0)
+            t_max = (self.analysis.run.get_time_at_event(-1) - time_offset) / 1000.
             last_stop = 0
             for tup in self.jumps:
-                t_start = (self.analysis.run.GetTimeAtEvent(tup[0]) - time_offset) / 1000.
-                t_stop = (self.analysis.run.GetTimeAtEvent(tup[1]) - time_offset) / 1000.
+                t_start = (self.analysis.run.get_time_at_event(tup[0]) - time_offset) / 1000.
+                t_stop = (self.analysis.run.get_time_at_event(tup[1]) - time_offset) / 1000.
                 # add offsets from config file
                 t_start -= -1 * self.exclude_before_jump if t_start >= -1 * self.exclude_before_jump else 0
                 t_stop = t_stop + -1 * self.exclude_after_jump if t_stop + -1 * self.exclude_after_jump <= t_max else t_max
                 if t_start < last_stop:
-                    stop[-1] = self.analysis.GetEventAtTime(t_stop)
+                    stop[-1] = self.analysis.get_event_at_time(t_stop)
                     last_stop = t_stop
                     continue
-                start.append(self.analysis.GetEventAtTime(t_start))
-                stop.append(self.analysis.GetEventAtTime(t_stop))
+                start.append(self.analysis.get_event_at_time(t_start))
+                stop.append(self.analysis.get_event_at_time(t_stop))
                 last_stop = t_stop
 
             self.jump_ranges = {"start": start,
