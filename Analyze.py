@@ -55,7 +55,7 @@ if __name__ == "__main__":
                 run_numbers += [i]
         run_numbers = run_numbers[:MaxNrOfRuns]
     print "Starting analysis with ",len(run_numbers)," runs:"
-    run.ValidateRuns(run_numbers)
+    run.validate_runs(run_numbers)
     print run_numbers
 
 

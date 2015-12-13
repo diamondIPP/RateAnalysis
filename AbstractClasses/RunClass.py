@@ -2,17 +2,15 @@
 # IMPORTS
 # ==============================================
 import ROOT
-import os
 import json
-import copy
 import re
-from Runinfos.RunInfo import RunInfo
 from Elementary import Elementary
 from Converter import Converter
 from datetime import datetime as dt
 from ROOT import TFile
 from ConfigParser import ConfigParser, NoOptionError
 from numpy import mean
+from copy import deepcopy
 
 default_info = {
     'persons on shift': '-',
@@ -41,8 +39,6 @@ default_info = {
     'open time': '-:-:-',
     'stop time': '2999-03-14T16:26:53Z',
     'raw rate': 0,
-    'raw rate1': None,
-    'raw rate2': None,
     'prescaled rate': 0,
     'to TLU rate': 0,
     'pulser accept rate': 0,
@@ -68,11 +64,10 @@ class Run(Elementary):
     operationmode = ''
     TrackingPadAnalysis = {}
 
-    def __init__(self, run_number, diamonds=3, validate=False, verbose=False):
+    def __init__(self, run_number, diamonds=3, verbose=False):
         """
         :param run_number: number of the run
         :param diamonds: 0x1=ch0; 0x2=ch3
-        :param validate:
         :param verbose:
         :return:
         """
@@ -96,9 +91,6 @@ class Run(Elementary):
         # run info
         self.allRunKeys = None
         self.RunInfo = None
-
-        if validate:
-            self.ValidateRuns()
 
         if run_number is not None:
             self.converter = Converter(self.TESTCAMPAIGN)
@@ -143,7 +135,7 @@ class Run(Elementary):
 
     def load_bias(self):
         bias = {}
-        for i, ch in enumerate(self.channels):
+        for i, ch in enumerate(self.channels, 1):
             bias[ch] = self.RunInfo['hv dia{num}'.format(num=i)]
         return bias
 
@@ -182,12 +174,9 @@ class Run(Elementary):
                     integrals.append(data[1])
         return integrals
 
-    def set_run(self, run_number, validate=False, load_root_file=True):
+    def set_run(self, run_number, load_root_file=True):
 
         assert type(run_number) is int, "incorrect run_number"
-        boolfunc = self.ValidateRun if validate else lambda run: True
-        if not boolfunc(run_number):
-            return False
 
         self.run_number = run_number
         self.load_run_info()
@@ -205,20 +194,22 @@ class Run(Elementary):
         self.RunInfo = {}
         data = None
         try:
-            f = open(self.runinfofile, "r")
+            f = open(self.runinfofile, 'r')
             data = json.load(f)
             f.close()
-            self.allRunKeys = copy.deepcopy(data.keys())
+            self.allRunKeys = deepcopy(data.keys())
             loaderror = False
-        except IOError:
-            print "\n-------------------------------------------------"
-            print "WARNING: unable to load json file:\n\t{file}".format(file=self.runinfofile)
-            print "-------------------------------------------------\n"
+        except IOError as err:
+            print '\n' + (len(str(err)) + 9) * '-'
+            print 'WARNING:', err
+            print 'Loading default RunInfo!'
+            print (len(str(err)) + 9) * '-' + '\n'
             loaderror = True
 
         if self.run_number >= 0:
             if not loaderror:
-                self.RunInfo = data.get(str(self.run_number))  # may:  = data.get("150800"+str(self.run_number).zfill(3))
+                run_nr = '150500' + str(self.run_number).zfill(3) if self.TESTCAMPAIGN == '201505' else str(self.run_number)
+                self.RunInfo = data.get(run_nr)
                 if self.RunInfo is None:
                     # try with run_log key prefix
                     self.RunInfo = data.get(self._runlogkeyprefix + str(self.run_number).zfill(3))
@@ -226,7 +217,7 @@ class Run(Elementary):
                     print "INFO: Run not found in json run log file. Default run info will be used."
                     self.RunInfo = default_info
                 else:
-                    self.RenameRunInfoKeys()
+                    self.rename_runinfo_keys()
             else:
                 self.RunInfo = default_info
             self.current_run = self.RunInfo
@@ -240,6 +231,8 @@ class Run(Elementary):
         diamondname = {}
         for i, ch in enumerate(self.channels, 1):
             diamondname[ch] = self.RunInfo['diamond {num}'.format(num=i)]
+            if diamondname[ch].lower().startswith('ch'):
+                continue
             try:
                 diamondname[ch] = parser.get('ALIASES', diamondname[ch])
             except NoOptionError as err:
@@ -264,7 +257,10 @@ class Run(Elementary):
                     last_i2c = i2c
             f.close()
         except IOError as err:
-            print '\nERROR in calculate rate\n', err
+            print '\n' + (len(str(err)) + 9) * '-'
+            print 'WARNING:', err
+            print 'Cannot calculate flux!'
+            print (len(str(err)) + 9) * '-' + '\n'
             return None
 
         # check for corner method
@@ -283,10 +279,11 @@ class Run(Elementary):
         flux = []
         for i, plane in enumerate(self.channels, 1):
             area = pixel_size * masked_pixels[plane]
-            flux.append(self.RunInfo['raw rate{pl}'.format(pl=plane)] / area / 1000)  # in kHz/cm^2
+            flux.append(self.RunInfo['for{num}'.format(num=i)] / area / 1000)  # in kHz/cm^2
         self.RunInfo['measured flux'] = mean(flux)
         return mean(flux)
 
+    # todo fix
     def __load_timing(self):
         try:
             self.logStartTime = dt.strptime(self.RunInfo["start time"][:10] + "-" + self.RunInfo["start time"][11:-1], "%Y-%m-%d-%H:%M:%S")
@@ -306,118 +303,18 @@ class Run(Elementary):
         else:
             print "INFO: The timing information string from run info couldn't be translated"
 
-    def RenameRunInfoKeys(self):
+    def rename_runinfo_keys(self):
 
-        try:
-            for key in default_info.keys():
-                tmp = self.RunInfo[key]
-                del tmp
-        except KeyError:
-            rename = True
-        else:
-            rename = False
+        # return, if all keys from default info are in RunInfo too
+        if all([key in self.RunInfo for key in default_info]):
+            return
 
-        if rename:
-            KeyConfigParser = ConfigParser.ConfigParser()
-            KeyConfigParser.read("Configuration/RunInfoKeyConfig_" + self.TESTCAMPAIGN + ".cfg")
-            Persons = KeyConfigParser.get("KEYNAMES", "Persons")
-            Runinfo = KeyConfigParser.get("KEYNAMES", "Runinfo")
-            Typ = KeyConfigParser.get("KEYNAMES", "Typ")
-            Configuration = KeyConfigParser.get("KEYNAMES", "Configuration")
-            Mask = KeyConfigParser.get("KEYNAMES", "Mask")
-            Masked_pixels = KeyConfigParser.get("KEYNAMES", "Masked_pixels")
-            DiamondName1 = KeyConfigParser.get("KEYNAMES", "DiamondName1")
-            DiamondName2 = KeyConfigParser.get("KEYNAMES", "DiamondName2")
-            DiamondHV1 = KeyConfigParser.get("KEYNAMES", "DiamondHV1")
-            DiamondHV2 = KeyConfigParser.get("KEYNAMES", "DiamondHV2")
-            FOR1 = KeyConfigParser.get("KEYNAMES", "FOR1")
-            FOR2 = KeyConfigParser.get("KEYNAMES", "FOR2")
-            FS11 = KeyConfigParser.get("KEYNAMES", "FS11")
-            FSH13 = KeyConfigParser.get("KEYNAMES", "FSH13")
-            Quadrupole = KeyConfigParser.get("KEYNAMES", "Quadrupole")
-            AnalogCurrent = KeyConfigParser.get("KEYNAMES", "AnalogCurrent")
-            DigitalCurrent = KeyConfigParser.get("KEYNAMES", "DigitalCurrent")
-            BeginDate = KeyConfigParser.get("KEYNAMES", "BeginDate")
-            TrimTime = KeyConfigParser.get("KEYNAMES", "TrimTime")
-            ConfigTime = KeyConfigParser.get("KEYNAMES", "ConfigTime")
-            StartTime = KeyConfigParser.get("KEYNAMES", "StartTime")
-            TrigAcceptTime = KeyConfigParser.get("KEYNAMES", "TrigAcceptTime")
-            OpeningTime = KeyConfigParser.get("KEYNAMES", "OpeningTime")
-            OpenTime = KeyConfigParser.get("KEYNAMES", "OpenTime")
-            StopTime = KeyConfigParser.get("KEYNAMES", "StopTime")
-            RawRate = KeyConfigParser.get("KEYNAMES", "RawRate")
-            PrescaledRate = KeyConfigParser.get("KEYNAMES", "PrescaledRate")
-            ToTLURate = KeyConfigParser.get("KEYNAMES", "ToTLURate")
-            PulserAcceptedRate = KeyConfigParser.get("KEYNAMES", "PulserAcceptedRate")
-            CMSPixelEvents = KeyConfigParser.get("KEYNAMES", "CMSPixelEvents")
-            DRS4Events = KeyConfigParser.get("KEYNAMES", "DRS4Events")
-            DataCollectorEvents = KeyConfigParser.get("KEYNAMES", "DataCollectorEvents")
-            AimedFlux = KeyConfigParser.get("KEYNAMES", "AimedFlux")
-            MeasuredFlux = KeyConfigParser.get("KEYNAMES", "MeasuredFlux")
-            UserComment = KeyConfigParser.get("KEYNAMES", "UserComment")
-            IsGoodRun = KeyConfigParser.get("KEYNAMES", "IsGoodRun")
-
-            runinfo = copy.deepcopy(default_info)
-
-            if Persons != "-1":             runinfo["persons on shift"] = self.RunInfo[Persons]
-            if Runinfo != "-1":             runinfo["run info"] = self.RunInfo[Runinfo]
-            if Typ != "-1":                 runinfo["type"] = self.RunInfo[Typ]
-            if Configuration != "-1":       runinfo["configuration"] = self.RunInfo[Configuration]
-            if Mask != "-1":                runinfo["mask"] = self.RunInfo[Mask]
-            if Masked_pixels != "-1":       runinfo["masked pixels"] = self.RunInfo[Masked_pixels]
-            if DiamondName1 != "-1":        runinfo["diamond 1"] = self.RunInfo[DiamondName1]
-            if DiamondName2 != "-1":        runinfo["diamond 2"] = self.RunInfo[DiamondName2]
-            if DiamondHV1 != "-1":          runinfo["hv dia1"] = self.RunInfo[DiamondHV1]
-            if DiamondHV2 != "-1":          runinfo["hv dia2"] = self.RunInfo[DiamondHV2]
-            if FOR1 != "-1":                runinfo["for1"] = self.RunInfo[FOR1]
-            if FOR2 != "-1":                runinfo["for2"] = self.RunInfo[FOR2]
-            if FS11 != "-1":                runinfo["fs11"] = self.RunInfo[FS11]
-            if FSH13 != "-1":               runinfo["fsh13"] = self.RunInfo[FSH13]
-            if Quadrupole != "-1":          runinfo["quadrupole"] = self.RunInfo[Quadrupole]
-            if AnalogCurrent != "-1":       runinfo["analogue current"] = self.RunInfo[AnalogCurrent]
-            if DigitalCurrent != "-1":      runinfo["digital current"] = self.RunInfo[DigitalCurrent]
-            if BeginDate != "-1":           runinfo["begin date"] = self.RunInfo[BeginDate]
-            if TrimTime != "-1":            runinfo["trim time"] = self.RunInfo[TrimTime]
-            if ConfigTime != "-1":          runinfo["config time"] = self.RunInfo[ConfigTime]
-            if StartTime != "-1":           runinfo["start time"] = self.RunInfo[StartTime]
-            if TrigAcceptTime != "-1":      runinfo["trig accept time"] = self.RunInfo[TrigAcceptTime]
-            if OpeningTime != "-1":         runinfo["opening time"] = self.RunInfo[OpeningTime]
-            if OpenTime != "-1":            runinfo["open time"] = self.RunInfo[OpenTime]
-            if StopTime != "-1":            runinfo["stop time"] = self.RunInfo[StopTime]
-            if RawRate != "-1":             runinfo["raw rate"] = self.RunInfo[RawRate]
-            if PrescaledRate != "-1":       runinfo["prescaled rate"] = self.RunInfo[PrescaledRate]
-            if ToTLURate != "-1":           runinfo["to TLU rate"] = self.RunInfo[ToTLURate]
-            if PulserAcceptedRate != "-1":  runinfo["pulser accept rate"] = self.RunInfo[PulserAcceptedRate]
-            if CMSPixelEvents != "-1":      runinfo["cmspixel events"] = self.RunInfo[CMSPixelEvents]
-            if DRS4Events != "-1":          runinfo["drs4 events"] = self.RunInfo[DRS4Events]
-            if DataCollectorEvents != "-1": runinfo["datacollector events"] = self.RunInfo[DataCollectorEvents]
-            if AimedFlux != "-1":           runinfo["aimed flux"] = self.RunInfo[AimedFlux]
-            if MeasuredFlux != "-1":        runinfo["measured flux"] = self.RunInfo[MeasuredFlux]
-            if UserComment != "-1":         runinfo["user comments"] = self.RunInfo[UserComment]
-            if IsGoodRun != "-1":           runinfo["is good run"] = self.RunInfo[IsGoodRun]
-
-            self.RunInfo = runinfo
-
-    def ValidateRuns(self, list_of_runs=None):
-        if list_of_runs is not None:
-            runs = list_of_runs
-        else:
-            runs = RunInfo.runs.keys()  # list of all runs
-        self.VerbosePrint("Validating runs: ", runs)
-        for run in runs:
-            self.ValidateRun(run)
-
-    def ValidateRun(self, run_number):
-        self.set_run(run_number)
-        if not os.path.exists(self.TrackingPadAnalysis['ROOTFile']):
-            # del RunInfo.runs[run_number]
-            print "INFO: path of run number ", run_number, " not found."
-            return False
-        else:
-            return True
-
-    # def ResetMC(self):
-    #     pass
+        parser = ConfigParser()
+        parser.read('Configuration/KeyDict_{campaign}.cfg'.format(campaign=self.TESTCAMPAIGN))
+        for new_key, old_key in parser.items('KEYNAMES'):
+            if old_key in self.RunInfo:
+                self.RunInfo[new_key] = self.RunInfo.pop(old_key)
+        return
 
     def SetChannels(self, diamonds):
         '''
@@ -631,4 +528,4 @@ class Run(Elementary):
 
 
 if __name__ == "__main__":
-    z = Run(464)
+    z = Run(None, validate=True)

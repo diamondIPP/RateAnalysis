@@ -43,7 +43,7 @@ if __name__ == "__main__":
     run_numbers = selection.GetSelectedRuns()
 
     print "Starting analysis with ",len(run_numbers)," runs:"
-    run.ValidateRuns(run_numbers)
+    run.validate_runs(run_numbers)
 
     # SAVE PATH
     savepath = "Results/Scan/"+Diamond+"_"+str(Bias)+"/"
