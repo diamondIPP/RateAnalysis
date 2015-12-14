@@ -6,7 +6,7 @@ import json
 import re
 from Elementary import Elementary
 from Converter import Converter
-from datetime import datetime as dt
+from datetime import datetime
 from ROOT import TFile, gROOT, TLegend
 from ConfigParser import ConfigParser, NoOptionError
 from numpy import mean
@@ -47,6 +47,7 @@ default_info = {
     'datacollector events': 0,
     'aimed flux': 0,
     'measured flux': 0,
+    'mean flux': None,
     'user comments': '-',
     'is good run': True
 }
@@ -59,7 +60,6 @@ class Run(Elementary):
     """
     Run class containing all the information for a single run from the tree and the json file.
     """
-
     current_run = {}
     operationmode = ''
     TrackingPadAnalysis = {}
@@ -72,7 +72,7 @@ class Run(Elementary):
         :return:
         """
         Elementary.__init__(self, verbose=verbose)
-        self.run_number = -1
+        self.run_number = None
 
         # configuration
         self.run_config_parser = self.load_parser()
@@ -94,8 +94,7 @@ class Run(Elementary):
 
         if run_number is not None:
             self.converter = Converter(self.TESTCAMPAIGN)
-            print self.run_number
-            assert (run_number > 0), "incorrect run_number"
+            assert (run_number > 0), 'incorrect run_number'
             self.set_run(run_number)
 
             # tree info
@@ -118,26 +117,24 @@ class Run(Elementary):
             self.load_run_info()
 
         # extract run info
-        self.channels = self.load_channels()
+        self.channels = [0, 3]
         self.analyse_ch = self.set_channels(diamonds)
         self.trigger_planes = [1, 2]
         self.flux = self.calculate_flux()
-        self.__load_timing()
         self.diamondname = self.__load_diamond_name()
         self.bias = self.load_bias()
         self.IsMonteCarlo = False
 
+        # times
+        self.log_start = None
+        self.log_stop = None
+        self.duration = None
+        self.__load_timing()
         # root objects
         self.run_info_legends = {}
 
     # ==============================================
     # region LOAD FUNCTIONS
-    def load_channels(self):
-        # todo think of how to extract the dia channels!
-        info = self.RunInfo
-        print info
-        return [0, 3]
-
     def load_bias(self):
         bias = {}
         for i, ch in enumerate(self.channels, 1):
@@ -203,25 +200,18 @@ class Run(Elementary):
                 print err
         return diamondname
 
-    # todo fix
     def __load_timing(self):
         try:
-            self.logStartTime = dt.strptime(self.RunInfo["start time"][:10] + "-" + self.RunInfo["start time"][11:-1], "%Y-%m-%d-%H:%M:%S")
-            self.logStopTime = dt.strptime(self.RunInfo["stop time"][:10] + "-" + self.RunInfo["stop time"][11:-1], "%Y-%m-%d-%H:%M:%S")
-            self.logRunTime = self.logStopTime - self.logStartTime
-            noerror = True
+            self.log_start = datetime.strptime(self.RunInfo['start time'], "%Y-%m-%dT%H:%M:%SZ")
+            self.log_stop = datetime.strptime(self.RunInfo['stop time'], "%Y-%m-%dT%H:%M:%SZ")
         except ValueError:
             try:
-                self.logStartTime = dt.strptime(self.RunInfo["start time"][:10] + "-" + self.RunInfo["start time"][11:-1], "%H:%M:%S")
-                self.logStopTime = dt.strptime(self.RunInfo["stop time"][:10] + "-" + self.RunInfo["stop time"][11:-1], "%H:%M:%S")
-                self.logRunTime = self.logStopTime - self.logStartTime
-                noerror = True
-            except ValueError:
-                noerror = False
-        if noerror:
-            self.VerbosePrint("Timing string translated successfully")
-        else:
-            print "INFO: The timing information string from run info couldn't be translated"
+                self.log_start = datetime.strptime(self.RunInfo['start time'], "%H:%M:%S")
+                self.log_stop = datetime.strptime(self.RunInfo['stop time'], "%H:%M:%S")
+            except ValueError as err:
+                print err
+                return
+        self.duration = self.log_stop - self.log_start
     # endregion
 
     def set_run(self, run_number, load_root_file=True):
@@ -260,14 +250,14 @@ class Run(Elementary):
             maskdata[plane] = {}
         try:
             f = open(mask_file_path, 'r')
-            last_i2c = None
+            i2cs = []
             for line in f:
                 if len(line) > 3:
                     line = line.split()
-                    i2c = line[1]
-                    plane = self.trigger_planes[0] if last_i2c is None or i2c == last_i2c else self.trigger_planes[1]
+                    if not i2cs or i2cs[-1] != line[1]:
+                        i2cs.append(line[1])
+                    plane = self.trigger_planes[len(i2cs) - 1]
                     maskdata[plane][line[0]] = [int(line[2]), int(line[3])]
-                    last_i2c = i2c
             f.close()
         except IOError as err:
             print '\n' + (len(str(err)) + 9) * '-'
@@ -277,7 +267,7 @@ class Run(Elementary):
             return None
 
         # check for corner method
-        if not maskdata.keys()[0].keys()[0].startswith('corn'):
+        if not maskdata.values()[0].keys()[0].startswith('corn'):
             return None
 
         # fill in the information to Run Info
@@ -290,10 +280,10 @@ class Run(Elementary):
 
         pixel_size = 0.01 * 0.015  # cm^2
         flux = []
-        for i, plane in enumerate(self.channels, 1):
+        for i, plane in enumerate(self.trigger_planes, 1):
             area = pixel_size * masked_pixels[plane]
             flux.append(self.RunInfo['for{num}'.format(num=i)] / area / 1000)  # in kHz/cm^2
-        self.RunInfo['measured flux'] = mean(flux)
+        self.RunInfo['mean flux'] = mean(flux)
         return mean(flux)
 
     def rename_runinfo_keys(self):
@@ -307,6 +297,8 @@ class Run(Elementary):
         for new_key, old_key in parser.items('KEYNAMES'):
             if old_key in self.RunInfo:
                 self.RunInfo[new_key] = self.RunInfo.pop(old_key)
+            else:
+                self.RunInfo[new_key] = default_info[new_key]
         return
 
     # ==============================================
@@ -491,10 +483,10 @@ class Run(Elementary):
 
     def __load_rootfile(self):
         file_path = self.converter.get_tracking_file_path(self.run_number) if self.converter.do_tracking else self.converter.get_root_file_path(self.run_number)
-        print "\nLoading infos for rootfile: ", file_path.split('/')[-1]
+        print "\nLoading information for rootfile: ", file_path.split('/')[-1]
         self.rootfile = ROOT.TFile(file_path)
         self.tree = self.rootfile.Get(self.treename)  # Get TTree called "track_info"
 
 
 if __name__ == "__main__":
-    z = Run(None)
+    z = Run(398)

@@ -109,7 +109,7 @@ class Converter:
     def find_root_file(self, run_number):
         track_file = self.get_tracking_file_path(run_number)
         final_file = self.get_root_file_path(run_number)
-        print 'looking for:\n ', track_file, '\n ', final_file
+        # print 'looking for:\n ', track_file, '\n ', final_file
         if os.path.exists(track_file):
             print 'found file with tracks'
             return True
