@@ -28,16 +28,25 @@ class AnalysisCollection(Elementary):
     """
     current_run_number = -1
 
-    def __init__(self, listOfRuns=None, diamonds=None, verbose=False):
+    def __init__(self, list_of_runs, mode='main', diamonds=None, verbose=False):
         Elementary.__init__(self, verbose=verbose)
-        self.collection = {}  # dict where all analysis objects are saved
-        if listOfRuns is not None:
-            assert ((type(listOfRuns) is t.ListType) or isinstance(listOfRuns, RunSelection)), "listOfRuns has to be of type list or instance of RunSelection"
-            if type(listOfRuns) is t.ListType:
-                self.AddRuns(listOfRuns, diamonds=diamonds)
-            else:
-                self.AddRuns(listOfRuns.GetSelectedRuns(), listOfRuns.GetSelectedDiamonds())
+
+        # dict where all analysis objects are saved
+        self.collection = {}
+        self.mode = mode
+
+        self.__init_runs(list_of_runs, diamonds)
         self.signalValues = None
+
+    def __init_runs(self, run_list, diamonds):
+        if type(run_list) is list:
+            self.AddRuns(run_list, diamonds)
+        elif isinstance(run_list, RunSelection):
+            self.AddRuns(run_list.GetSelectedRuns(), run_list.GetSelectedDiamonds())
+        else:
+            print 'listOfRuns has to be of type list or instance of RunSelection'
+            return 1
+        return 0
 
     def __del__(self):
         print "deleting AnalysisCollection.."
@@ -102,32 +111,32 @@ class AnalysisCollection(Elementary):
         self.collection[analysis_obj.run.run_number] = analysis_obj
         self.current_run_number = analysis_obj.run.run_number
 
-    def AddRuns(self, list_, diamonds=None):
-        '''
-        Creates and adds Analysis objects with run numbers in list_.
-        :param list_:
-        :param diamonds:
-        :return:
-        '''
-        assert (type(list_) is t.ListType), "argument has to be a list of run numbers"
-        if diamonds == None: diamonds = 3
-        assert ((type(diamonds) is t.ListType) or diamonds in [1, 2, 3]), "'diamonds' has to be 1, 2, 3, or None (0x1: diamond1, 0x2: diamond2)"
-        if type(diamonds) is t.ListType:
-            assert (len(diamonds) == len(list_)), "list of diamonds has to be the same length as list of runs"
-            for i in xrange(len(list_)):
-                self.AddAnalysis(Analysis(Run(list_[i], diamonds[i])))
+    def AddRuns(self, runs, diamonds):
+        """
+        Creates and adds Analysis objects with run numbers in runs.
+        """
+        if diamonds is None:
+            diamonds = 3
+        # check if diamonds is a list or has a correct value
+        assert type(diamonds) is list or diamonds in [1, 2, 3], '"diamonds" has to be 1, 2, 3, or None (0x1: diamond1, 0x2: diamond2)'
+        if type(diamonds) is not list:
+            diamonds = [diamonds] * len(runs)
+
+        for run, dia in zip(runs, diamonds):
+            ch = 0 if dia == 1 or dia == 3 else 3
+            analysis = Analysis(run, dia) if self.mode == 'main' else SignalAnalysis(run, ch)
+            self.collection[analysis.]
+            self.AddAnalysis(Analysis(Run(runs[i], diamonds[i])))
         else:
-            for runnr in list_:
+            for runnr in runs:
                 self.AddAnalysis(Analysis(Run(runnr, diamonds)))
 
     def SetDiamonds(self, diamonds):
-        '''
-        Set the diamonds (channels) to be analyzed for all Analysis
-        objects.
-        1: Diamond 1, 2: Diamond 2, 3: Diamond 1 & 2
+        """
+        Set the diamonds (channels) to be analyzed for all Analysis objects. 1: Diamond 1, 2: Diamond 2, 3: Diamond 1 & 2
         :param diamonds:
         :return:
-        '''
+        """
         runnumbers = self.GetRunNumbers()
         for runnumber in runnumbers:
             self.collection[runnumber].run.set_channels(diamonds=diamonds)

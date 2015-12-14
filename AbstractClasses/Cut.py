@@ -119,9 +119,9 @@ class Cut(Elementary):
         return cut
 
     def load_parser(self):
-        runConfigParser = ConfigParser.ConfigParser()
-        runConfigParser.read('Configuration/AnalysisConfig_' + self.TESTCAMPAIGN + '.cfg')
-        return runConfigParser
+        parser = ConfigParser.ConfigParser()
+        parser.read('Configuration/AnalysisConfig_' + self.TESTCAMPAIGN + '.cfg')
+        return parser
 
     def LoadIndividualCuts(self):
         path = "Configuration/Individual_Configs/"
@@ -325,7 +325,7 @@ class Cut(Elementary):
         nq = 100
         yq = zeros(nq)
         xq = array([(i + 1) / float(nq) for i in range(nq)])
-        self.analysis.tree.Draw('chi2_tracks>>h')
+        self.analysis.tree.Draw('chi2_tracks>>h', '', 'goff')
         h.GetQuantiles(nq, yq, xq)
         string = 'chi2_tracks<{val}&&chi2_tracks>=0'.format(val=yq[self.cut_types['chi2']])
         gROOT.SetBatch(0)
@@ -333,9 +333,10 @@ class Cut(Elementary):
 
     def generate_slope(self):
         # fit the slope to get the mean
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        gROOT.SetBatch(1)
         h_x = TH1F('hx', '', 70, -4, 4)
         h_y = TH1F('hy', '', 70, -4, 4)
-        gROOT.SetBatch(1)
         self.analysis.tree.Draw('slope_x>>hx', '', 'goff')
         self.analysis.tree.Draw('slope_y>>hy', '', 'goff')
         angle = self.cut_types['track_angle']
@@ -345,7 +346,10 @@ class Cut(Elementary):
         fit_result = h_y.Fit('gaus', 'qs')
         y_mean = fit_result.Parameters()[1]
         y = [y_mean - angle, y_mean + angle]
+        c = gROOT.FindObject('c1')
+        c.Close()
         gROOT.SetBatch(0)
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         # create the cut string
         string = 'slope_x>{minx}&&slope_x<{maxx}&&slope_y>{miny}&&slope_y<{maxy}'.format(minx=x[0], maxx=x[1], miny=y[0], maxy=y[1])
         return TCut(string) if angle > 0 else ''
@@ -364,7 +368,7 @@ class Cut(Elementary):
         :param gen_ExcludeFirst:
         :return:
         """
-
+        gROOT.SetBatch(1)
         if self._checklist["GenerateCutString"]:
             self.LoadConfig()  # re-generate
         cutstring = self.cut
@@ -453,6 +457,7 @@ class Cut(Elementary):
             "gen_EventRange": gen_EventRange,
             "gen_ExcludeFirst": gen_ExcludeFirst
         }
+        gROOT.SetBatch(0)
 
     def __calc_pedestal_range(self):
         sigma = self.pedestal_sigma

@@ -144,7 +144,7 @@ class Analysis(Elementary):
         self.pedestalFitMean = {}
         self.pedestalSigma = {}
         
-        # save histos // canvases
+        # save histograms // canvases
         self.signal_canvas = None
         
     def load_parser(self):
@@ -929,7 +929,7 @@ class Analysis(Elementary):
         """
         self.run.set_channels(diamonds=diamonds)
 
-    def GetEventAtTime(self, time_sec):
+    def get_event_at_time(self, time_sec):
         return self.run.get_event_at_time(time_sec)
 
     def GetRate(self):

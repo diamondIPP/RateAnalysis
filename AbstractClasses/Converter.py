@@ -8,7 +8,7 @@ import shutil
 from ConfigParser import ConfigParser
 from math import copysign
 from collections import OrderedDict
-do_gui = False
+do_gui = True
 if do_gui:
     from tkinter import *
 

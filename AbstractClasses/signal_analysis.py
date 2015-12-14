@@ -43,11 +43,11 @@ class SignalAnalysis(Analysis):
         self.signals = {}
         self.tmp_histos = {}
         self.canvas = None
-        # histos
+        # histograms
         self.histo = None
         self.signaltime = None
 
-    # todo bin size variyng by number of events
+    # todo bin size varying by number of events
 
     def __set_bin_size(self, value):
         self.bin_size = value

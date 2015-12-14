@@ -20,7 +20,7 @@ class Elementary(object):
         self.verbose = verbose
         self.showAndWait = False
         if self.TESTCAMPAIGN == "":
-            Elementary.SetTestCampaign("201510")
+            Elementary.SetTestCampaign("201508")
             # print "No Testcampaign was set. Testcampaign is now set to: 201508"
             # print "To change Testcampaign: cls.SetTestCampaign(namestring)"
         self.LoadConfig()
