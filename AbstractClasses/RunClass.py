@@ -75,6 +75,8 @@ class Run(Elementary):
         self.run_number = None
 
         # configuration
+        self.channels = [0, 3]
+        self.trigger_planes = [1, 2]
         self.run_config_parser = self.load_parser()
         self.ShowAndWait = False
         self.filename = self.run_config_parser.get('BASIC', 'filename')
@@ -113,14 +115,13 @@ class Run(Elementary):
             self.signal_regions = self.get_regions('signal')
             self.peak_integrals = self.get_peak_integrals()
 
+            self.flux = self.calculate_flux()
+
         else:
             self.load_run_info()
 
         # extract run info
-        self.channels = [0, 3]
         self.analyse_ch = self.set_channels(diamonds)
-        self.trigger_planes = [1, 2]
-        self.flux = self.calculate_flux()
         self.diamondname = self.__load_diamond_name()
         self.bias = self.load_bias()
         self.IsMonteCarlo = False
@@ -307,12 +308,13 @@ class Run(Elementary):
         return self.flux if self.flux else self.RunInfo['aimed flux']
 
     def get_regions(self, string):
-        ranges = []
+        ranges = {}
         for line in self.region_information:
             line = str(line)
             if line.startswith(string):
-                data = re.split('_|:', line)
-                ranges.append(data[1])
+                data = re.split('_|:|-', line)
+                data = [data[i].strip(' ') for i in range(len(data))]
+                ranges[data[1]] = [int(data[2]), int(data[3])]
         return ranges
 
     def get_peak_integrals(self):

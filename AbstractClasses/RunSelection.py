@@ -17,6 +17,7 @@ class RunSelection(Run):
         self._LoadRuns()
         # self.GetTreeInfo()
         self._InitializeSelections()
+        self.run_plan = None
 
     def __str__(self):
         nr = len(self.run_numbers)
@@ -593,6 +594,7 @@ class RunSelection(Run):
         :return:
         '''
         runs = self.runplan[type_][str(number)]
+        self.run_plan = number
         self.SelectRuns(list_of_runs=runs)
 
     def AddSelectedRunsToRunPlan(self, key, run_type="rate_scan"):

@@ -107,6 +107,7 @@ class Cut(Elementary):
         self.cut_types['absMedian_high'] = self.load_abs_median_high(self.parser.getint('CUT', 'absMedian_high'))
         self.cut_types['pedestalsigma'] = self.load_pedestal_sigma(self.parser.getint('CUT', 'pedestalsigma'))
         self.cut_types['chi2'] = self.parser.getint('CUT', 'chi2')
+        assert type(self.cut_types['chi2']) is int and 0 < self.cut_types['chi2'] <= 100, 'chi2 quantile has to be and integer between 0 and 100'
         self.cut_types['track_angle'] = self.parser.getint('CUT', 'track_angle')
 
         # individual cuts
@@ -194,7 +195,7 @@ class Cut(Elementary):
 
         excluded = [i for i in np.arange(0, minevent)]  # first events
         if self.cut_types["noBeamInter"]:
-            self.GetBeamInterruptions()
+            self.get_beam_interruptions()
             for i in xrange(len(self.jump_ranges["start"])):
                 excluded += [i for i in np.arange(self.jump_ranges["start"][i], self.jump_ranges["stop"][i] + 1)]  # events around jumps
         excluded.sort()
@@ -320,38 +321,49 @@ class Cut(Elementary):
             self.cut_strings['event_range'] += 'event_number>={min}'.format(min=self.cut_types['ExcludeFirst'])
 
     def generate_chi2(self):
-        gROOT.SetBatch(1)
-        h = TH1F('h', '', 200, 0, 100)
-        nq = 100
-        yq = zeros(nq)
-        xq = array([(i + 1) / float(nq) for i in range(nq)])
-        self.analysis.tree.Draw('chi2_tracks>>h', '', 'goff')
-        h.GetQuantiles(nq, yq, xq)
-        string = 'chi2_tracks<{val}&&chi2_tracks>=0'.format(val=yq[self.cut_types['chi2']])
-        gROOT.SetBatch(0)
+        picklepath = 'Configuration/Individual_Configs/Chi2/{tc}_{run}_{ch}_Chi2.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run.run_number, ch=self.channel)
+        def func():
+            print 'generating chi2 cut for ch{ch}...'.format(ch=self.channel)
+            gROOT.SetBatch(1)
+            h = TH1F('h', '', 200, 0, 100)
+            nq = 100
+            chi2 = zeros(nq)
+            xq = array([(i + 1) / float(nq) for i in range(nq)])
+            self.analysis.tree.Draw('chi2_tracks>>h', '', 'goff')
+            h.GetQuantiles(nq, chi2, xq)
+            gROOT.SetBatch(0)
+            return chi2
+        chi2 = self.do_pickle(picklepath, func)
+        string = 'chi2_tracks<{val}&&chi2_tracks>=0'.format(val=chi2[self.cut_types['chi2']])
         return TCut(string) if self.cut_types['chi2'] > 0 else ''
 
     def generate_slope(self):
-        # fit the slope to get the mean
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        gROOT.SetBatch(1)
-        h_x = TH1F('hx', '', 70, -4, 4)
-        h_y = TH1F('hy', '', 70, -4, 4)
-        self.analysis.tree.Draw('slope_x>>hx', '', 'goff')
-        self.analysis.tree.Draw('slope_y>>hy', '', 'goff')
+        picklepath = 'Configuration/Individual_Configs/Slope/{tc}_{run}_{ch}_Slope.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.lowest_rate_run, ch=self.channel)
         angle = self.cut_types['track_angle']
-        fit_result = h_x.Fit('gaus', 'qs')
-        x_mean = fit_result.Parameters()[1]
-        x = [x_mean - angle, x_mean + angle]
-        fit_result = h_y.Fit('gaus', 'qs')
-        y_mean = fit_result.Parameters()[1]
-        y = [y_mean - angle, y_mean + angle]
-        c = gROOT.FindObject('c1')
-        c.Close()
-        gROOT.SetBatch(0)
-        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        def func():
+            print 'generating slope cut for ch{ch}...'.format(ch=self.channel)
+            # fit the slope to get the mean
+            gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+            gROOT.SetBatch(1)
+            h_x = TH1F('hx', '', 70, -4, 4)
+            h_y = TH1F('hy', '', 70, -4, 4)
+            self.analysis.tree.Draw('slope_x>>hx', '', 'goff')
+            self.analysis.tree.Draw('slope_y>>hy', '', 'goff')
+            fit_result = h_x.Fit('gaus', 'qs')
+            slope = {'x':[], 'y':[]}
+            x_mean = fit_result.Parameters()[1]
+            slope['x'] = [x_mean - angle, x_mean + angle]
+            fit_result = h_y.Fit('gaus', 'qs')
+            y_mean = fit_result.Parameters()[1]
+            slope['y'] = [y_mean - angle, y_mean + angle]
+            c = gROOT.FindObject('c1')
+            c.Close()
+            gROOT.SetBatch(0)
+            gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+            return slope
+        slope = self.do_pickle(picklepath, func)
         # create the cut string
-        string = 'slope_x>{minx}&&slope_x<{maxx}&&slope_y>{miny}&&slope_y<{maxy}'.format(minx=x[0], maxx=x[1], miny=y[0], maxy=y[1])
+        string = 'slope_x>{minx}&&slope_x<{maxx}&&slope_y>{miny}&&slope_y<{maxy}'.format(minx=slope['x'][0], maxx=slope['x'][1], miny=slope['y'][0], maxy=slope['y'][1])
         return TCut(string) if angle > 0 else ''
 
     def generate_bucket(self):
@@ -444,12 +456,8 @@ class Cut(Elementary):
             self.cut = self.cut.format(channel=self.channel)
 
         # -- BEAM INTERRUPTION CUT --
-        if self._checklist["GenerateCutString"]:
-            self.__generate_beam_interruptions(justDoIt=True)
-            self.userCutTypes["noBeamInter"] = "beamOn"
-        else:
-            self.__generate_beam_interruptions()
-            self.userCutTypes["noBeamInter"] = "BeamOn"
+        self.__generate_beam_interruptions()
+        self.userCutTypes["noBeamInter"] = "BeamOn"
 
         self._checklist["GenerateCutString"] = True
         self.__cutstring_settings = {
@@ -465,27 +473,26 @@ class Cut(Elementary):
         sigma_range = self.cut_types['pedestalsigma']
         return [ped_mean - sigma_range * sigma, ped_mean + sigma_range * sigma]
 
-    def __generate_beam_interruptions(self, justDoIt=False):
+    def __generate_beam_interruptions(self,):
         """
         This adds the restrictions to the cut string such that beam interruptions are excluded each time the cut is applied.
         :return: cut
         """
-        if not self._checklist["RemoveBeamInterruptions"] or justDoIt:
-            self.GetBeamInterruptions()
+        self.get_beam_interruptions()
 
-            njumps = len(self.jump_ranges["start"])
-            cut_string = ''
-            for i in xrange(njumps):
-                string = "!(event_number<={upper}&&event_number>={lower})".format(upper=self.jump_ranges["stop"][i], lower=self.jump_ranges["start"][i])
-                if self.cut != "":
-                    self.cut += "&&"
-                self.cut += string
-                # new seperate strings
-                if cut_string != '':
-                    cut_string += '&&'
-                cut_string += string
-            self.cut_strings['beam_interruptions'] += cut_string
-            self._checklist["RemoveBeamInterruptions"] = True
+        njumps = len(self.jump_ranges["start"])
+        cut_string = ''
+        for i in xrange(njumps):
+            string = "!(event_number<={upper}&&event_number>={lower})".format(upper=self.jump_ranges["stop"][i], lower=self.jump_ranges["start"][i])
+            if self.cut != "":
+                self.cut += "&&"
+            self.cut += string
+            # new separate strings
+            if cut_string != '':
+                cut_string += '&&'
+            cut_string += string
+        self.cut_strings['beam_interruptions'] += cut_string
+        self._checklist["RemoveBeamInterruptions"] = True
 
         return self.cut
 
@@ -552,9 +559,6 @@ class Cut(Elementary):
                 interrupts.append(tup)
                 tup = [0, 0]
             last_rate = value
-        self.jumps = interrupts
-        self.__save_beaminterrupts()
-        self.__create_jump_ranges()
         return interrupts
 
     def __save_beaminterrupts(self):
@@ -571,6 +575,7 @@ class Cut(Elementary):
 
     def __create_jump_ranges(self):
         if self.jump_ranges is None and len(self.jumps) > 0:
+            print 'generating jump ranges...'
             start = []
             stop = []
             time_offset = self.analysis.run.get_time_at_event(0)
@@ -592,9 +597,10 @@ class Cut(Elementary):
 
             self.jump_ranges = {"start": start,
                                 "stop": stop}
-        return self.jump_ranges
 
-    def GetBeamInterruptions(self):
+        return [self.exclude_before_jump, self.exclude_after_jump, self.jump_ranges]
+
+    def get_beam_interruptions(self):
         """
         If beam interruption data exist in beaminterruptions/data/, it will load it in order to account for beam interruptions. The data is stored as a list of jumps, dumped into a pickle file.
         If no pickle file exists, it will perform a beam interruption analysis in order to identify the beam interruptions. The found interruptions are stored in a list at .jumps and dumped into
@@ -602,16 +608,15 @@ class Cut(Elementary):
         :return: list of events where beam interruptions occures
         """
         if self.jump_ranges is None:
-            picklepath = self.beaminterruptions_folder + "/data/{testcampaign}Run_{run}.pickle".format(testcampaign=self.TESTCAMPAIGN, run=self.analysis.run.run_number)
-            if os.path.exists(picklepath):
-                # print "Loading beam interruption data from pickle file: \n\t"+picklepath
-                jumpfile = open(picklepath, "rb")
-                self.jumps = pickle.load(jumpfile)
-                self.__create_jump_ranges()
-                jumpfile.close()
-            else:
-                print "No pickle file found at: ", picklepath, "\n .. analyzing beam interruptions.. "
-                self.find_beam_interruptions()
+            jumps_pickle = self.beaminterruptions_folder + "/data/{testcampaign}Run_{run}.pickle".format(testcampaign=self.TESTCAMPAIGN, run=self.analysis.run.run_number)
+            range_pickle = self.beaminterruptions_folder + "/data/{testcampaign}_{run}_Jump_Ranges.pickle".format(testcampaign=self.TESTCAMPAIGN, run=self.analysis.run.run_number)
+            self.jumps = self.do_pickle(jumps_pickle, self.find_beam_interruptions)
+            ranges = self.do_pickle(range_pickle, self.__create_jump_ranges)
+            # redo range pickle if config parameters have changed
+            if ranges[0] != self.exclude_before_jump or ranges[1] != self.exclude_after_jump:
+                os.remove(range_pickle)
+                ranges = self.do_pickle(range_pickle, self.__create_jump_ranges)
+            self.jump_ranges = ranges[2]
         return self.jumps
 
     def GetCutFunctionDef(self):

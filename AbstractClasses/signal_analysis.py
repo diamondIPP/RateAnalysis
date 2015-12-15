@@ -8,6 +8,7 @@ from newAnalysis import Analysis
 from array import array
 from math import sqrt
 from argparse import ArgumentParser
+import os
 
 
 # ==============================================
@@ -15,13 +16,13 @@ from argparse import ArgumentParser
 # ==============================================
 class SignalAnalysis(Analysis):
 
-    def __init__(self, run, channel, binning=5000):
-        Analysis.__init__(self, run)
+    def __init__(self, run, channel, low_rate_run=None, binning=5000):
+        Analysis.__init__(self, run, low_rate=low_rate_run)
 
         # main
         self.channel = channel
         self.run_number = self.run.run_number
-        self.ch_cut = self.cut[self.channel]
+        self.cut = self.cuts[self.channel]
         self.save_dir = '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number, dia=self.run.diamondname[self.channel])
 
         # stuff
@@ -44,6 +45,7 @@ class SignalAnalysis(Analysis):
         self.tmp_histos = {}
         self.canvas = None
         # histograms
+        self.canvas = None
         self.histo = None
         self.signaltime = None
 
@@ -56,40 +58,64 @@ class SignalAnalysis(Analysis):
         self.n_bins = len(self.binning)
         return value
 
-    def draw_pulse_height(self, binning=None):
-        if binning is not None:
-            self.__set_bin_size(binning)
-        if self.signaltime is None:
-            self.make_histos()
-        titlePulseHeight = 'Run{run}: {dia} Signal Time Evolution'.format(run=self.run_number, dia=self.run.diamondname[self.channel])
-        self.pulse_height.SetNameTitle('graph', titlePulseHeight)
-        mode = 'mean'
-        empty_bins = 0
-        count = 0
-        for i in xrange(self.n_bins):
-            self.signal_projections[i] = self.signaltime.ProjectionY(str(self.run_number) + str(self.channel) + "signalprojection_bin_" + str(i).zfill(2), i + 1, i + 1)
-            self.signal_projections[i].SetTitle("Run{run}Ch{channel} Signal Projection of Bin {bin}".format(run=self.run_number, channel=self.channel, bin=i))
-            self.signal_projections[i].GetXaxis().SetTitle("Signal ({signal})".format(signal=self.signal_name))
-            if self.signal_projections[i].GetEntries() > 0:
-                if mode in ["mean", "Mean"]:
-                    self.pulse_height.SetPoint(count, (self.time_binning[i] - self.run.startTime) / 60e3, self.signal_projections[i].GetMean())
-                    self.pulse_height.SetPointError(count, 0, self.signal_projections[i].GetRMS() / sqrt(self.signal_projections[i].GetEntries()))
-                elif mode in ["fit", "Fit"]:
-                    self.signal_projections[i].GetMaximum()
-                    maxposition = self.signal_projections[i].GetBinCenter(self.signal_projections[i].GetMaximumBin())
-                    self.signal_projections[i].Fit("landau", "Q", "", maxposition - 50, maxposition + 50)
-                    fitfun = self.signal_projections[i].GetFunction("landau")
-                    mpv = fitfun.GetParameter(1)
-                    mpverr = fitfun.GetParError(1)
-                    self.pulse_height.SetPoint(count, (i + 0.5) * self.run.totalMinutes / self.n_bins, mpv)
-                    self.pulse_height.SetPointError(count, 0, mpverr)
-                count += 1
-            else:
-                empty_bins += 1
-        print 'Empty proj. bins:\t', str(empty_bins) + '/' + str(self.n_bins)
-        fit = self.__format_signal_graph('mean', None)
+    def draw_peak_values(self, region='b'):
+        self.canvas = TCanvas('c', 'PeakValues', 1000, 1000)
+        num = self.get_signal_numbers(region, self.peak_integral)[self.channel]
+        peak_val = 'IntegralPeaks[{num}]'.format(num=num)
+        title = 'Peak Values {reg}{int}'.format(reg=region, int=self.peak_integral)
+        x_low = self.run.signal_regions[region][0]
+        x_high = self.run.signal_regions[region][1]
+        h = TH1F('peakvalues', title, x_high - x_low, x_low / 2., x_high / 2.)
+        h.SetYTitle('Entries')
+        h.SetXTitle('time [ns]')
+        self.histo = h
+        cut = self.cut.cut_strings['pulser'] + self.cut.cut_strings['tracks']
+        self.tree.Draw(peak_val + '/2.>>peakvalues', cut)
+        h.SetTitle('Peak Values {reg}{int}'.format(reg=region, int=self.peak_integral))
+        h.Draw()
+        self.SavePlots('peak_values_{reg}{int}'.format(reg=region, int=self.peak_integral), 'png', canvas=self.canvas, subDir=self.save_dir)
 
-        self.pulse_height.Draw('ALP')
+    def draw_pulse_height(self, binning=None):
+        bin_size = binning if binning is not None else self.bin_size
+        picklepath = 'Configuration/Individual_Configs/Ph_fit/{tc}_{run}_{ch}_{bins}_Ph_fit.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel, bins=bin_size)
+        self.pulse_height = TGraphErrors()
+        self.signaltime = None
+        def func():
+            print 'calculating pulse height fit of ch', self.channel
+            if binning is not None:
+                self.__set_bin_size(binning)
+            if self.signaltime is None:
+                self.make_histos()
+            ph_title = 'Run{run}: {dia} Signal Time Evolution'.format(run=self.run_number, dia=self.run.diamondname[self.channel])
+            self.pulse_height.SetNameTitle('graph', ph_title)
+            mode = 'mean'
+            empty_bins = 0
+            count = 0
+            for i in xrange(self.n_bins):
+                self.signal_projections[i] = self.signaltime.ProjectionY(str(self.run_number) + str(self.channel) + "signalprojection_bin_" + str(i).zfill(2), i + 1, i + 1)
+                self.signal_projections[i].SetTitle("Run{run}Ch{channel} Signal Projection of Bin {bin}".format(run=self.run_number, channel=self.channel, bin=i))
+                self.signal_projections[i].GetXaxis().SetTitle("Signal ({signal})".format(signal=self.signal_name))
+                if self.signal_projections[i].GetEntries() > 0:
+                    if mode in ["mean", "Mean"]:
+                        self.pulse_height.SetPoint(count, (self.time_binning[i] - self.run.startTime) / 60e3, self.signal_projections[i].GetMean())
+                        self.pulse_height.SetPointError(count, 0, self.signal_projections[i].GetRMS() / sqrt(self.signal_projections[i].GetEntries()))
+                    elif mode in ["fit", "Fit"]:
+                        self.signal_projections[i].GetMaximum()
+                        maxposition = self.signal_projections[i].GetBinCenter(self.signal_projections[i].GetMaximumBin())
+                        self.signal_projections[i].Fit("landau", "Q", "", maxposition - 50, maxposition + 50)
+                        fitfun = self.signal_projections[i].GetFunction("landau")
+                        mpv = fitfun.GetParameter(1)
+                        mpverr = fitfun.GetParError(1)
+                        self.pulse_height.SetPoint(count, (i + 0.5) * self.run.totalMinutes / self.n_bins, mpv)
+                        self.pulse_height.SetPointError(count, 0, mpverr)
+                    count += 1
+                else:
+                    empty_bins += 1
+            print 'Empty proj. bins:\t', str(empty_bins) + '/' + str(self.n_bins)
+            fit = self.__format_signal_graph('mean', None)
+            self.pulse_height.Draw('ALP')
+            return fit
+        fit = self.do_pickle(picklepath, func)
         return fit
 
     def get_polarity(self):
@@ -111,7 +137,7 @@ class SignalAnalysis(Analysis):
         legend = TLegend(0.7, 0.3, 0.98, .7)
         histos = []
         drawn_first = False
-        for key, value in self.ch_cut.cut_strings.iteritems():
+        for key, value in self.cut.cut_strings.iteritems():
             if str(value) or key == 'raw':
                 print 'saving plot', key
                 save_name = 'signal_distribution_{cut}'.format(cut=key)
@@ -150,7 +176,7 @@ class SignalAnalysis(Analysis):
         legend = TLegend(0.7, 0.3, 0.98, .7)
         histos = []
         drawn_first = False
-        for key, value in self.ch_cut.cut_strings.iteritems():
+        for key, value in self.cut.cut_strings.iteritems():
             if str(value) or key == 'raw':
                 print 'saving plot', key
                 save_name = 'signal_distribution_normalised_{cut}'.format(cut=key)
@@ -193,7 +219,7 @@ class SignalAnalysis(Analysis):
         drawn_first = False
         ind = 0
         cut = TCut('consecutive', '')
-        for key, value in self.ch_cut.cut_strings.iteritems():
+        for key, value in self.cut.cut_strings.iteritems():
             if (str(value) or key == 'raw') and key != 'all_cuts':
                 cut += value
                 print 'saving plot with {n} cuts'.format(n=ind)
@@ -255,7 +281,7 @@ class SignalAnalysis(Analysis):
         gr3.SetMarkerColor(3)
         histos = []
         i = 0
-        for key, value in self.ch_cut.cut_strings.iteritems():
+        for key, value in self.cut.cut_strings.iteritems():
             if str(value) or key == 'raw':
                 print 'process cut ' + key
                 h = TH1F('h', '', 600, -100, 500)
@@ -276,7 +302,7 @@ class SignalAnalysis(Analysis):
         legend.AddEntry(gr3, 'mpv')
         xaxis = gr1.GetXaxis()
         i = 0
-        for key, value in self.ch_cut.cut_strings.iteritems():
+        for key, value in self.cut.cut_strings.iteritems():
             if str(value) or key == 'raw':
                 bin_x = xaxis.FindBin(i)
                 gr1.GetXaxis().SetBinLabel(bin_x, key[:7])
@@ -341,7 +367,7 @@ class SignalAnalysis(Analysis):
         h1.Scale(1 / h1.Integral(), 'width')
         h1.Draw()
         canvas.cd(2)
-        self.tree.Draw("{name}>>ped2".format(name=self.pedestal_name), self.ch_cut.all_cut, 'goff')
+        self.tree.Draw("{name}>>ped2".format(name=self.pedestal_name), self.cut.all_cut, 'goff')
         h2.Scale(1 / h2.Integral(), 'width')
         h2.Draw()
         canvas.cd(3)
@@ -353,7 +379,7 @@ class SignalAnalysis(Analysis):
         canvas.Update()
 
     def __get_binning(self):
-        jumps = self.ch_cut.jump_ranges
+        jumps = self.cut.jump_ranges
         n_jumps = len(jumps['start'])
         bins = [0, self.GetMinEventCut()]
         ind = 0
@@ -376,7 +402,6 @@ class SignalAnalysis(Analysis):
                 next_start = jumps['start'][ind + 1]
                 next_stop = jumps['stop'][ind + 1]
                 if bins[-1] + self.bin_size + gap > next_start:
-                    print 'double gap', bins[-1]
                     gap2 = next_stop - next_start
                     bins.append(bins[-1] + self.bin_size + gap + gap2)
                 else:
@@ -404,13 +429,13 @@ class SignalAnalysis(Analysis):
         self.pulse_height.GetXaxis().SetLabelSize(0.06)
         # self.pulse_height.GetXaxis().SetRangeUser(0, self.analysis.run.totalMinutes)
         if mode in ["mean", "Mean"]:
-            yTitlestr = "Mean Signal ({signalname})".format(signalname=self.signal_name)
+            y_title = "Mean Signal ({signalname})".format(signalname=self.signal_name)
         else:
-            yTitlestr = "MPV of Signal fit ({signalname})".format(signalname=self.signal_name)
+            y_title = "MPV of Signal fit ({signalname})".format(signalname=self.signal_name)
         self.pulse_height.GetYaxis().SetTitleOffset(0.9)
         self.pulse_height.GetYaxis().SetTitleSize(0.06)
         self.pulse_height.GetYaxis().SetLabelSize(0.06)
-        self.pulse_height.GetYaxis().SetTitle(yTitlestr)
+        self.pulse_height.GetYaxis().SetTitle(y_title)
         if setyscale is not None:
             self.pulse_height.GetYaxis().SetRangeUser(setyscale[0], setyscale[1])
             self.pulse_height.Draw()
@@ -418,12 +443,11 @@ class SignalAnalysis(Analysis):
         return fit
 
     def make_histos(self):
-        # 2D Histos
+        # 2D Histogram
         name = "signaltime_" + str(self.run_number)
         xbins = array('d', self.time_binning)
-        # self.signaltime = TH2D(name, "signaltime", self.n_bins, 0, self.analysis.run.totalTime, 1000, -50, 300)
         self.signaltime = TH2D(name, "signaltime", len(xbins) - 1, xbins, 1000, -50, 300)
-        self.tree.Draw("{name}:time>>{histo}".format(histo=name, name=self.signal_name), self.ch_cut.all_cut, self.draw_option)
+        self.tree.Draw("{name}:time>>{histo}".format(histo=name, name=self.signal_name), self.cut.all_cut, self.draw_option)
 
 
 if __name__ == "__main__":

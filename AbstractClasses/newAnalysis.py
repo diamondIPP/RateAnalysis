@@ -21,7 +21,7 @@ class Analysis(Elementary):
     An Analysis Object contains all Data and Results of a SINGLE run.
     """
 
-    def __init__(self, run, diamonds=3, verbose=False):
+    def __init__(self, run, diamonds=3, verbose=False, low_rate=None):
         """
         Initializes the Analysis object.
         An Analysis Object collects all the information and data for the analysis of
@@ -68,6 +68,7 @@ class Analysis(Elementary):
             3: BinCollectionConfig(run=self.run, channel=3)
         }
         self.RunInfo = copy.deepcopy(run.RunInfo)
+        self.lowest_rate_run = low_rate if low_rate is not None else self.run.run_number
 
         # tree
         self.tree = self.run.tree
@@ -137,7 +138,7 @@ class Analysis(Elementary):
             0: copy.deepcopy(signalHistoFitResults),
             3: copy.deepcopy(signalHistoFitResults)
         }
-        self.cut = {
+        self.cuts = {
             0: Cut(self, 0),
             3: Cut(self, 3)
         }
@@ -242,7 +243,7 @@ class Analysis(Elementary):
         :param gen_ExcludeFirst:
         :return:
         '''
-        return self.cut[channel].GetCut(gen_PulserCut=gen_PulserCut, gen_EventRange=gen_EventRange, gen_ExcludeFirst=gen_ExcludeFirst)
+        return self.cuts[channel].GetCut(gen_PulserCut=gen_PulserCut, gen_EventRange=gen_EventRange, gen_ExcludeFirst=gen_ExcludeFirst)
 
     def MakePreAnalysis(self, channel=None, mode="mean", binning=5000, savePlot=True, canvas=None, setyscale_sig=None, setyscale_ped=None):
         '''
@@ -500,10 +501,10 @@ class Analysis(Elementary):
         :return: list of included event numbers
         '''
         if channel == None:
-            minevent0 = self.cut[0].GetMinEvent()
-            minevent3 = self.cut[3].GetMinEvent()
-            maxevent0 = self.cut[0].GetMaxEvent()
-            maxevent3 = self.cut[3].GetMaxEvent()
+            minevent0 = self.cuts[0].GetMinEvent()
+            minevent3 = self.cuts[3].GetMinEvent()
+            maxevent0 = self.cuts[0].GetMaxEvent()
+            maxevent3 = self.cuts[3].GetMaxEvent()
             minevent = min(minevent0, minevent3)
             if maxevent == None:
                 maxevent = max(maxevent0, maxevent3)
@@ -511,10 +512,10 @@ class Analysis(Elementary):
                 maxevent = min(max(maxevent0, maxevent3), maxevent)
 
             excluded = [i for i in np.arange(0, minevent)]  # first events
-            if self.cut[0].cut_types["noBeamInter"] and self.cut[3].cut_types["noBeamInter"]:
-                self.cut[0].GetBeamInterruptions()
-                for i in xrange(len(self.cut[0].jump_ranges["start"])):
-                    excluded += [i for i in np.arange(self.cut[0].jump_ranges["start"][i], self.cut[0].jump_ranges["stop"][i] + 1)]  # events around jumps
+            if self.cuts[0].cut_types["noBeamInter"] and self.cuts[3].cut_types["noBeamInter"]:
+                self.cuts[0].get_beam_interruptions()
+                for i in xrange(len(self.cuts[0].jump_ranges["start"])):
+                    excluded += [i for i in np.arange(self.cuts[0].jump_ranges["start"][i], self.cuts[0].jump_ranges["stop"][i] + 1)]  # events around jumps
             excluded.sort()
             all_events = np.arange(0, maxevent)
             included = np.delete(all_events, excluded)
@@ -525,17 +526,17 @@ class Analysis(Elementary):
             # return cut0
         else:
             assert (channel in [0, 3])
-            return self.cut[channel].GetIncludedEvents(maxevent=maxevent)
+            return self.cuts[channel].GetIncludedEvents(maxevent=maxevent)
 
     def GetMinEventCut(self, channel=None):
         if channel == None:
-            opt0 = self.cut[0].GetMinEvent()
-            opt3 = self.cut[3].GetMinEvent()
+            opt0 = self.cuts[0].GetMinEvent()
+            opt3 = self.cuts[3].GetMinEvent()
             assert (opt0 == opt3), "GetMinEvent Not the same for both cut channels. Choose a specific channel."
             return opt0
         else:
             assert (channel in [0, 3])
-            return self.cut[channel].GetMinEvent()
+            return self.cuts[channel].GetMinEvent()
 
     def GetMaxEventCut(self, channel=None):
         '''
@@ -547,13 +548,13 @@ class Analysis(Elementary):
         :return:
         '''
         if channel == None:
-            opt0 = self.cut[0].GetMaxEvent()
-            opt3 = self.cut[3].GetMaxEvent()
+            opt0 = self.cuts[0].GetMaxEvent()
+            opt3 = self.cuts[3].GetMaxEvent()
             assert (opt0 == opt3), "GetMaxEvent Not the same for both cut channels. Choose a specific channel."
             return opt0
         else:
             assert (channel in [0, 3])
-            return self.cut[channel].GetMaxEvent()
+            return self.cuts[channel].GetMaxEvent()
 
     def GetNEventsCut(self, channel=None):
         '''
@@ -565,13 +566,13 @@ class Analysis(Elementary):
         :return:
         '''
         if channel == None:
-            opt0 = self.cut[0].GetNEvents()
-            opt3 = self.cut[3].GetNEvents()
+            opt0 = self.cuts[0].GetNEvents()
+            opt3 = self.cuts[3].GetNEvents()
             assert (opt0 == opt3), "GetNEvents Not the same for both cut channels. Choose a specific channel."
             return opt0
         else:
             assert (channel in [0, 3])
-            return self.cut[channel].GetNEvents()
+            return self.cuts[channel].GetNEvents()
 
     def ShowSignalHisto(self, channel=None, canvas=None, drawoption="", cut="", color=None, normalized=True, drawruninfo=True, binning=600, xmin=None, xmax=None, savePlots=False, logy=False,
                         gridx=False):
@@ -808,8 +809,8 @@ class Analysis(Elementary):
 
         cutfunctions = {}
         # cutfunctions = lambda pulser, is_saturated, n_tracks, fft_mean, INVfft_max: 1
-        exec ("cutfunctions[0] = {cutf}".format(cutf=self.cut[0].GetCutFunctionDef()))
-        exec ("cutfunctions[3] = {cutf}".format(cutf=self.cut[3].GetCutFunctionDef()))
+        exec ("cutfunctions[0] = {cutf}".format(cutf=self.cuts[0].GetCutFunctionDef()))
+        exec ("cutfunctions[3] = {cutf}".format(cutf=self.cuts[3].GetCutFunctionDef()))
 
         for i in included:
             if i % 10000 == 0: print "processing Event ", i
@@ -1649,13 +1650,13 @@ class Analysis(Elementary):
         :return:
         '''
         if channel == None:
-            opt0 = self.cut[0].GetUserCutString()
-            opt3 = self.cut[3].GetUserCutString()
+            opt0 = self.cuts[0].GetUserCutString()
+            opt3 = self.cuts[3].GetUserCutString()
             assert (opt0 == opt3), "GetUserCutString Not the same for both cut channels. Choose a specific channel."
             return opt0
         else:
             assert (channel in [0, 3])
-            return self.cut[channel].GetUserCutString()
+            return self.cuts[channel].GetUserCutString()
 
     def ShowPeakPosition(self, channel=None, cut="", canvas=None, savePlot=True):
         '''
@@ -1700,7 +1701,7 @@ class Analysis(Elementary):
             pad.SetGridx()
             if hist:
                 hist.SetStats(0)
-                hist.SetTitle("Peak Position {" + self.cut[ch].GetUserCutString() + "}")
+                hist.SetTitle("Peak Position {" + self.cuts[ch].GetUserCutString() + "}")
                 hist.GetXaxis().SetTitle("Sample Point of Peak")
                 hist.GetXaxis().SetTitleSize(0.05)
                 hist.GetXaxis().SetLabelSize(0.05)

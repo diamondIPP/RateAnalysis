@@ -3,6 +3,7 @@ import ROOT
 import types as t
 from time import time
 from ROOT import gROOT
+import pickle
 
 
 class Elementary(object):
@@ -20,7 +21,7 @@ class Elementary(object):
         self.verbose = verbose
         self.showAndWait = False
         if self.TESTCAMPAIGN == "":
-            Elementary.SetTestCampaign("201508")
+            Elementary.SetTestCampaign("201510")
             # print "No Testcampaign was set. Testcampaign is now set to: 201508"
             # print "To change Testcampaign: cls.SetTestCampaign(namestring)"
         self.LoadConfig()
@@ -157,8 +158,21 @@ class Elementary(object):
 
     @staticmethod
     def elapsed_time(start):
-        string = str('{0:0.2f}'.format(time() - start)) + ' seconds'
+        string = str('{0:2.2f}'.format(time() - start)) + ' seconds'
         return string
+
+    @staticmethod
+    def do_pickle(path, function):
+        try:
+            f = open(path, 'r')
+            ret_val = pickle.load(f)
+            f.close()
+        except IOError:
+            ret_val = function()
+            f = open(path, 'w')
+            pickle.dump(ret_val, f)
+            f.close()
+        return ret_val
 
     @staticmethod
     def set_root_output(status=True):
@@ -168,3 +182,4 @@ class Elementary(object):
         else:
             gROOT.SetBatch(1)
             gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
+

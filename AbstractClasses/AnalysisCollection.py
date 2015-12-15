@@ -5,7 +5,6 @@ import ROOT
 from ROOT import gROOT, TCanvas, TGraphErrors, kFALSE, kBlue
 from AbstractClasses.ATH2D import ATH2D
 from AbstractClasses.BinCollection import BinCollection
-from AbstractClasses.RunClass import Run
 from AbstractClasses.newAnalysis import Analysis
 from AbstractClasses.RunSelection import RunSelection
 import types as t
@@ -16,6 +15,9 @@ from array import array
 from time import time
 from collections import OrderedDict
 from signal_analysis import SignalAnalysis
+from ConfigParser import ConfigParser
+import json
+from argparse import ArgumentParser
 
 
 # ==============================================
@@ -35,18 +37,20 @@ class AnalysisCollection(Elementary):
         self.collection = {}
         self.mode = mode
 
-        self.__init_runs(list_of_runs, diamonds)
+        self.runs = self.load_runs(list_of_runs)
+        self.diamonds = self.load_diamonds(diamonds, list_of_runs)
+        self.lowest_rate_run = self.get_lowest_rate_run()
+
+        self.generate_slope_pickle()
+
+        self.add_analyses()
+
         self.signalValues = None
 
-    def __init_runs(self, run_list, diamonds):
-        if type(run_list) is list:
-            self.AddRuns(run_list, diamonds)
-        elif isinstance(run_list, RunSelection):
-            self.AddRuns(run_list.GetSelectedRuns(), run_list.GetSelectedDiamonds())
-        else:
-            print 'listOfRuns has to be of type list or instance of RunSelection'
-            return 1
-        return 0
+        # root stuff
+        self.save_dir = '{tc}_Runplan{plan}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], plan=list_of_runs.run_plan, dia=self.collection.values()[0].run.diamondname[0])
+        self.canvas = None
+        self.histo = None
 
     def __del__(self):
         print "deleting AnalysisCollection.."
@@ -102,34 +106,88 @@ class AnalysisCollection(Elementary):
         self.SavePlots('signalvalues_' + dia + str(x[1]) + '-' + str(x[-1]), 'root', canvas=c1, subDir='RunCollections')
         return plot
 
-    def AddAnalysis(self, analysis_obj):
-        '''
-        Adds a single Analysis object to the AnalysisCollection instance.
-        :param analysis_obj: Analysis Object of type "Analysis"
-        :return: -
-        '''
-        self.collection[analysis_obj.run.run_number] = analysis_obj
-        self.current_run_number = analysis_obj.run.run_number
-
-    def AddRuns(self, runs, diamonds):
+    def add_analyses(self):
         """
         Creates and adds Analysis objects with run numbers in runs.
         """
-        if diamonds is None:
-            diamonds = 3
-        # check if diamonds is a list or has a correct value
-        assert type(diamonds) is list or diamonds in [1, 2, 3], '"diamonds" has to be 1, 2, 3, or None (0x1: diamond1, 0x2: diamond2)'
-        if type(diamonds) is not list:
-            diamonds = [diamonds] * len(runs)
-
-        for run, dia in zip(runs, diamonds):
+        for run, dia in zip(self.runs, self.diamonds):
             ch = 0 if dia == 1 or dia == 3 else 3
-            analysis = Analysis(run, dia) if self.mode == 'main' else SignalAnalysis(run, ch)
-            self.collection[analysis.]
-            self.AddAnalysis(Analysis(Run(runs[i], diamonds[i])))
+            analysis = Analysis(run, dia, low_rate=self.lowest_rate_run) if self.mode == 'main' else SignalAnalysis(run, ch, self.lowest_rate_run)
+            self.collection[analysis.run.run_number] = analysis
+            self.current_run_number = analysis.run.run_number
+
+    def draw_pulse_heights(self, binning=10000):
+        gr1 = TGraphErrors()
+        gr1.SetTitle('Pulse Height {dia}'.format(dia=self.collection.values()[0].run.diamondname[0]))
+        gr1.SetName('ph_all')
+        gr1.SetMarkerStyle(20)
+        gr2 = TGraphErrors()
+        gr2.SetTitle('Pulse Height flux {dia}'.format(dia=self.collection.values()[0].run.diamondname[0]))
+        gr2.SetName('ph_all_flux')
+        gr2.SetMarkerStyle(20)
+        gROOT.SetBatch(1)
+        i = 0
+        for key, ana in self.collection.iteritems():
+            print 'getting ph for run', key
+            fit = ana.draw_pulse_height(binning)
+            flux = ana.run.flux
+            gr1.SetPoint(i, key, fit.GetParameters()[0])
+            gr2.SetPoint(i, flux, fit.GetParameters()[0])
+            gr1.SetPointError(i, 0, fit.GetParError(0))
+            gr2.SetPointError(i, 0, fit.GetParError(0))
+            i += 1
+        gROOT.SetBatch(0)
+        c = TCanvas('c1', 'dummy', 1000, 1000)
+        c.SetLogx()
+        gr2.Draw('ap')
+        self.canvas = TCanvas('c', 'Signal', 1000, 1000)
+        self.canvas.cd()
+        gr1.Draw('ap')
+        self.histo = gr1
+        self.SavePlots('PulseHeight', 'png', canvas=self.canvas, subDir=self.save_dir)
+        self.SavePlots('PulseHeightFlux', 'png', canvas=c, subDir=self.save_dir)
+        return gr2
+
+
+    def load_runs(self, run_list):
+        if type(run_list) is list:
+            return run_list
+        elif isinstance(run_list, RunSelection):
+            return run_list.GetSelectedRuns()
         else:
-            for runnr in runs:
-                self.AddAnalysis(Analysis(Run(runnr, diamonds)))
+            raise ValueError, 'listOfRuns has to be of type list or instance of RunSelection'
+
+    def load_diamonds(self, diamonds, run_list):
+        dias = diamonds if type(run_list) is list else run_list.GetSelectedDiamonds()
+        if dias is None:
+            dias = 3
+        assert type(dias) is list or dias in [1, 2, 3], '"diamonds" has to be 1, 2, 3, or None (0x1: diamond1, 0x2: diamond2)'
+        if type(dias) is not list:
+            dias = [dias] * len(run_list)
+        return dias
+
+    def get_lowest_rate_run(self):
+        parser = ConfigParser()
+        parser.read('Configuration/RunConfig_' + self.TESTCAMPAIGN + '.cfg')
+        keydict = ConfigParser()
+        keydict.read('Configuration/KeyDict_{tc}.cfg'.format(tc=self.TESTCAMPAIGN))
+        path = parser.get('BASIC', 'runinfofile')
+        flux_name = keydict.get('KEYNAMES', 'measured flux')
+        f = open(path, 'r')
+        run_log = json.load(f)
+        fluxes = {}
+        for run in self.runs:
+            flux = run_log[str(run)][flux_name]
+            print run, flux
+            fluxes[flux] = run
+        min_flux = min(fluxes)
+        return fluxes[min_flux]
+
+    def generate_slope_pickle(self):
+        picklepath = 'Configuration/Individual_Configs/Slope/{tc}_{run}_{ch}_Slope.pickle'.format(tc=self.TESTCAMPAIGN, run=self.lowest_rate_run, ch=0)
+        if os.path.exists(picklepath):
+            return
+        Analysis(self.lowest_rate_run)
 
     def SetDiamonds(self, diamonds):
         """
@@ -878,7 +936,10 @@ class AnalysisCollection(Elementary):
 
 
 if __name__ == "__main__":
+    parser = ArgumentParser()
+    parser.add_argument('runplan', nargs='?', default=3, type=int)
+    args = parser.parse_args()
+    run_plan = args.runplan
     sel = RunSelection()
-    sel.SelectRunsFromRunPlan(13)
-    z = AnalysisCollection(sel)
-    z.MakePreAnalysises(3)
+    sel.SelectRunsFromRunPlan(run_plan)
+    z = AnalysisCollection(sel, 'bla')
