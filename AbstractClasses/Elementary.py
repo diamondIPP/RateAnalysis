@@ -2,7 +2,7 @@ import os
 import ROOT
 import types as t
 from time import time
-from ROOT import gROOT
+from ROOT import gROOT, TGraphErrors
 import pickle
 
 
@@ -183,3 +183,12 @@ class Elementary(object):
             gROOT.SetBatch(1)
             gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
 
+    @staticmethod
+    def make_TGraphErrors(name, title, color=1, marker=20):
+        gr = TGraphErrors()
+        gr.SetTitle(title)
+        gr.SetName(name)
+        gr.SetMarkerStyle(marker)
+        gr.SetMarkerColor(color)
+        gr.SetLineColor(color)
+        return gr

@@ -2,7 +2,7 @@
 # IMPORTS
 # ==============================================
 import ROOT
-from ROOT import gROOT, TCanvas, TGraphErrors, kFALSE, kBlue
+from ROOT import gROOT, TCanvas, TGraphErrors, kFALSE, kBlue, TLegend
 from AbstractClasses.ATH2D import ATH2D
 from AbstractClasses.BinCollection import BinCollection
 from AbstractClasses.newAnalysis import Analysis
@@ -48,9 +48,10 @@ class AnalysisCollection(Elementary):
         self.signalValues = None
 
         # root stuff
-        self.save_dir = '{tc}_Runplan{plan}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], plan=list_of_runs.run_plan, dia=self.collection.values()[0].run.diamondname[0])
-        self.canvas = None
-        self.histo = None
+        run_plan = list_of_runs.run_plan if isinstance(list_of_runs, RunSelection) else '-'
+        self.save_dir = '{tc}_Runplan{plan}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], plan=run_plan, dia=self.collection.values()[0].run.diamondname[0])
+        self.canvases = {}
+        self.histos = {}
 
     def __del__(self):
         print "deleting AnalysisCollection.."
@@ -117,37 +118,92 @@ class AnalysisCollection(Elementary):
             self.current_run_number = analysis.run.run_number
 
     def draw_pulse_heights(self, binning=10000):
-        gr1 = TGraphErrors()
-        gr1.SetTitle('Pulse Height {dia}'.format(dia=self.collection.values()[0].run.diamondname[0]))
-        gr1.SetName('ph_all')
-        gr1.SetMarkerStyle(20)
-        gr2 = TGraphErrors()
-        gr2.SetTitle('Pulse Height flux {dia}'.format(dia=self.collection.values()[0].run.diamondname[0]))
-        gr2.SetName('ph_all_flux')
-        gr2.SetMarkerStyle(20)
+        legend = TLegend(0.7, 0.3, 0.98, .7)
+        gr1 = self.make_TGraphErrors('ph_all', 'Pulse Height {dia} vs Run'.format(dia=self.collection.values()[0].diamond_name))
+        gr2 = self.make_TGraphErrors('raw', 'Pulse Height {dia} vs Flux raw'.format(dia=self.collection.values()[0].diamond_name), self.get_color())
+        gr3 = self.make_TGraphErrors('eventwise', 'Pulse Height {dia} vs Flux eventwise correction'.format(dia=self.collection.values()[0].diamond_name), self.get_color())
+        gr4 = self.make_TGraphErrors('binwise', 'Pulse Height {dia} vs Flux binwise correction'.format(dia=self.collection.values()[0].diamond_name), self.get_color())
+        gr5 = self.make_TGraphErrors('mean ped', 'Pulse Height {dia} vs Flux mean correction'.format(dia=self.collection.values()[0].diamond_name),self.get_color())
         gROOT.SetBatch(1)
         i = 0
         for key, ana in self.collection.iteritems():
             print 'getting ph for run', key
             fit = ana.draw_pulse_height(binning)
+            fit1 = ana.draw_pulse_height(binning, ped_corr=True)
+            fit2 = ana.draw_pulse_height(binning, eventwise_corr=True)
+            ped = ana.show_pedestal_histo()
             flux = ana.run.flux
             gr1.SetPoint(i, key, fit.GetParameters()[0])
-            gr2.SetPoint(i, flux, fit.GetParameters()[0])
             gr1.SetPointError(i, 0, fit.GetParError(0))
+            gr2.SetPoint(i, flux, fit.GetParameters()[0])
+            gr3.SetPoint(i, flux, fit1.GetParameters()[0])
+            gr4.SetPoint(i, flux, fit2.GetParameters()[0])
+            gr5.SetPoint(i, flux, fit.GetParameters()[0] + ped.Parameter(1))
             gr2.SetPointError(i, 0, fit.GetParError(0))
+            gr3.SetPointError(i, 0, fit1.GetParError(0))
+            gr4.SetPointError(i, 0, fit2.GetParError(0))
+            gr5.SetPointError(i, 0, fit.GetParError(0) + ped.ParError(1))
             i += 1
         gROOT.SetBatch(0)
-        c = TCanvas('c1', 'dummy', 1000, 1000)
-        c.SetLogx()
-        gr2.Draw('ap')
-        self.canvas = TCanvas('c', 'Signal', 1000, 1000)
-        self.canvas.cd()
+        graphs = [gr2, gr3, gr4, gr5]
+        self.canvases[1] = TCanvas('c1', 'dummy', 1000, 1000)
+        self.canvases[1].SetLogx()
+        for i, gr in enumerate(graphs):
+            self.histos[i] = gr
+            legend.AddEntry(gr, gr.GetName(), 'lp')
+            if not i:
+                gr.Draw('alp')
+            else:
+                gr.Draw('lp')
+        self.histos['legend'] = legend
+        legend.Draw()
+        self.canvases[0] = TCanvas('c', 'Signal', 1000, 1000)
+        self.canvases[0].cd()
         gr1.Draw('ap')
-        self.histo = gr1
-        self.SavePlots('PulseHeight', 'png', canvas=self.canvas, subDir=self.save_dir)
-        self.SavePlots('PulseHeightFlux', 'png', canvas=c, subDir=self.save_dir)
+        self.histos[0] = gr1
+        self.SavePlots('PulseHeight', 'png', canvas=self.canvases[0], subDir=self.save_dir)
+        self.SavePlots('PulseHeightFlux', 'png', canvas=self.canvases[1], subDir=self.save_dir)
+        self.SavePlots('PulseHeightFlux', 'root', canvas=self.canvases[1], subDir=self.save_dir)
         return gr2
 
+    def draw_pedestals(self, region='ab', peak_int='2'):
+        legend = TLegend(0.7, 0.3, 0.98, .7)
+        gr1 = self.make_TGraphErrors('pedestal_all', 'Mean of Pedestals in {reg} vs Run'.format(reg=region + peak_int))
+        # gr2 = self.make_TGraphErrors('pedestal_all_flux', 'Mean of Pedestals in {reg} vs Flux'.format(reg=region + peak_int))
+        graphs = []
+        regions = self.collection.values()[0].run.pedestal_regions
+        for reg in regions:
+            graphs.append(self.make_TGraphErrors('pedestal_all_flux', 'Mean of Pedestals in {reg} vs Flux'.format(reg=reg + peak_int), color=self.get_color()))
+        gROOT.SetBatch(1)
+        i = 0
+        for key, ana in self.collection.iteritems():
+            print 'getting ph for run', key
+            fit_par = ana.show_pedestal_histo(region, peak_int)
+            flux = ana.run.flux
+            gr1.SetPoint(i, key, fit_par.Parameter(1))
+            gr1.SetPointError(i, 0, fit_par.ParError(1))
+            for reg, gr in zip(regions, graphs):
+                fit_par = ana.show_pedestal_histo(reg, peak_int)
+                gr.SetPoint(i, flux, fit_par.Parameter(1))
+                gr.SetPointError(i, 0, fit_par.ParError(1))
+            i += 1
+        gROOT.SetBatch(0)
+        self.canvas = TCanvas('c', 'Pedestal vs Run', 1000, 1000)
+        self.c1 = TCanvas('c1', 'Pedestal vs Flux', 1000, 1000)
+        self.histos[0] = gr1
+        self.canvas.cd()
+        gr1.Draw('ap')
+        self.c1.cd()
+        self.c1.SetLogx()
+        for i, gr in enumerate(graphs):
+            legend.AddEntry(gr, str(regions.values()[i]), 'p')
+            self.histos[i + 1] = gr
+            if not i:
+                gr.Draw('ap')
+            else:
+                gr.Draw('p')
+        legend.Draw()
+        self.histos['legend'] = legend
 
     def load_runs(self, run_list):
         if type(run_list) is list:
@@ -941,5 +997,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     run_plan = args.runplan
     sel = RunSelection()
+    runs = [x for x in range(392, 417)]
     sel.SelectRunsFromRunPlan(run_plan)
-    z = AnalysisCollection(sel, 'bla')
+    z = AnalysisCollection(runs, 'bla')

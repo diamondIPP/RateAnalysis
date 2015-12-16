@@ -8,20 +8,20 @@ from newAnalysis import Analysis
 from array import array
 from math import sqrt
 from argparse import ArgumentParser
-import os
+from collections import OrderedDict
 
 
 # ==============================================
 # MAIN CLASS
 # ==============================================
 class SignalAnalysis(Analysis):
-
     def __init__(self, run, channel, low_rate_run=None, binning=5000):
         Analysis.__init__(self, run, low_rate=low_rate_run)
 
         # main
         self.channel = channel
         self.run_number = self.run.run_number
+        self.diamond_name = self.run.diamondname[self.channel]
         self.cut = self.cuts[self.channel]
         self.save_dir = '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number, dia=self.run.diamondname[self.channel])
 
@@ -36,11 +36,12 @@ class SignalAnalysis(Analysis):
         # names
         self.signal_name = self.signal_names[self.channel]
         self.pedestal_name = self.pedestal_names[self.channel]
-        
+
         # projection
         self.signal_projections = {}
         # graphs
         self.pulse_height = TGraphErrors()
+        self.pedestal = None
         self.signals = {}
         self.tmp_histos = {}
         self.canvas = None
@@ -75,47 +76,93 @@ class SignalAnalysis(Analysis):
         h.Draw()
         self.SavePlots('peak_values_{reg}{int}'.format(reg=region, int=self.peak_integral), 'png', canvas=self.canvas, subDir=self.save_dir)
 
-    def draw_pulse_height(self, binning=None):
+    def draw_pedestal(self, binning=None, draw=False):
         bin_size = binning if binning is not None else self.bin_size
-        picklepath = 'Configuration/Individual_Configs/Ph_fit/{tc}_{run}_{ch}_{bins}_Ph_fit.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel, bins=bin_size)
-        self.pulse_height = TGraphErrors()
-        self.signaltime = None
+        picklepath = 'Configuration/Individual_Configs/Pedestal/{tc}_{run}_{ch}_{bins}_Ped_Means.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel, bins=bin_size)
+        gr = self.make_TGraphErrors('pedestal', 'Pedestal Run {run} Dia {dia}'.format(run=self.run_number, dia=self.diamond_name))
+
         def func():
-            print 'calculating pulse height fit of ch', self.channel
+            gROOT.SetBatch(1)
+            print 'calculating pedestal of ch', self.channel
             if binning is not None:
                 self.__set_bin_size(binning)
-            if self.signaltime is None:
-                self.make_histos()
-            ph_title = 'Run{run}: {dia} Signal Time Evolution'.format(run=self.run_number, dia=self.run.diamondname[self.channel])
-            self.pulse_height.SetNameTitle('graph', ph_title)
-            mode = 'mean'
+            ped_time = self.make_histos('pedestal')
+            means = []
             empty_bins = 0
             count = 0
             for i in xrange(self.n_bins):
-                self.signal_projections[i] = self.signaltime.ProjectionY(str(self.run_number) + str(self.channel) + "signalprojection_bin_" + str(i).zfill(2), i + 1, i + 1)
-                self.signal_projections[i].SetTitle("Run{run}Ch{channel} Signal Projection of Bin {bin}".format(run=self.run_number, channel=self.channel, bin=i))
-                self.signal_projections[i].GetXaxis().SetTitle("Signal ({signal})".format(signal=self.signal_name))
-                if self.signal_projections[i].GetEntries() > 0:
+                h_proj = ped_time.ProjectionY(str(i), i + 1, i + 1)
+                if h_proj.GetEntries() > 0:
+                    fit = self.fit_fwhm(h_proj)
+                    gr.SetPoint(count, (self.time_binning[i] - self.run.startTime) / 60e3, fit.Parameter(1))
+                    gr.SetPointError(count, 0, fit.ParError(1))
+                    count += 1
+                    means.append(fit.Parameter(1))
+                else:
+                    empty_bins += 1
+            gROOT.SetBatch(0)
+            print 'Empty proj. bins:\t', str(empty_bins) + '/' + str(self.n_bins)
+            fit_pars = self.fit_fwhm(gr, 'pol0', False)
+            print 'mean:', fit_pars.Parameter(0), '+-', fit_pars.ParError(0)
+            self.canvas = TCanvas('bla', 'blub', 1000, 1000)
+            gr.Draw()
+            self.pedestal = gr
+            return means
+        all_means = func() if draw else self.do_pickle(picklepath, func)
+        return all_means
+
+    def draw_pulse_height(self, binning=None, draw=False, ped_corr=False, eventwise_corr=False):
+        bin_size = binning if binning is not None else self.bin_size
+        correction = ''
+        if ped_corr:
+            correction = '_binwise'
+        elif eventwise_corr:
+            correction = '_eventwise'
+        picklepath = 'Configuration/Individual_Configs/Ph_fit/{tc}_{run}_{ch}_{bins}_{cor}_Ph_fit.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel,
+                                                                                                                 bins=bin_size, cor=correction)
+        self.signaltime = None
+
+        def func():
+            gROOT.SetBatch(1)
+            print 'calculating pulse height fit of ch', self.channel
+            gr = self.make_TGraphErrors('signal', 'Run{run}: {dia} Signal Time Evolution'.format(run=self.run_number, dia=self.run.diamondname[self.channel]))
+            if binning is not None:
+                self.__set_bin_size(binning)
+            sig_time = self.make_histos(corr=eventwise_corr)
+            mode = 'mean'
+            empty_bins = 0
+            count = 0
+            means = self.draw_pedestal(bin_size) if ped_corr else None
+            for i in xrange(self.n_bins):
+                h_proj = sig_time.ProjectionY(str(i), i + 1, i + 1)
+                if h_proj.GetEntries() > 0:
                     if mode in ["mean", "Mean"]:
-                        self.pulse_height.SetPoint(count, (self.time_binning[i] - self.run.startTime) / 60e3, self.signal_projections[i].GetMean())
-                        self.pulse_height.SetPointError(count, 0, self.signal_projections[i].GetRMS() / sqrt(self.signal_projections[i].GetEntries()))
+                        mean = h_proj.GetMean()
+                        mean += means[count] if ped_corr else 0
+                        gr.SetPoint(count, (self.time_binning[i] - self.run.startTime) / 60e3, mean)
+                        gr.SetPointError(count, 0, h_proj.GetRMS() / sqrt(h_proj.GetEntries()))
                     elif mode in ["fit", "Fit"]:
-                        self.signal_projections[i].GetMaximum()
-                        maxposition = self.signal_projections[i].GetBinCenter(self.signal_projections[i].GetMaximumBin())
-                        self.signal_projections[i].Fit("landau", "Q", "", maxposition - 50, maxposition + 50)
-                        fitfun = self.signal_projections[i].GetFunction("landau")
+                        h_proj.GetMaximum()
+                        maxposition = h_proj.GetBinCenter(h_proj.GetMaximumBin())
+                        h_proj.Fit("landau", "Q", "", maxposition - 50, maxposition + 50)
+                        fitfun = h_proj.GetFunction("landau")
                         mpv = fitfun.GetParameter(1)
                         mpverr = fitfun.GetParError(1)
-                        self.pulse_height.SetPoint(count, (i + 0.5) * self.run.totalMinutes / self.n_bins, mpv)
-                        self.pulse_height.SetPointError(count, 0, mpverr)
+                        gr.SetPoint(count, (i + 0.5) * self.run.totalMinutes / self.n_bins, mpv)
+                        gr.SetPointError(count, 0, mpverr)
                     count += 1
                 else:
                     empty_bins += 1
+            gROOT.SetBatch(0)
+            self.pulse_height = gr
             print 'Empty proj. bins:\t', str(empty_bins) + '/' + str(self.n_bins)
-            fit = self.__format_signal_graph('mean', None)
+            self.canvas = TCanvas('bla', 'blub', 1000, 1000)
+            fitpar = self.__format_signal_graph('mean')
             self.pulse_height.Draw('ALP')
-            return fit
-        fit = self.do_pickle(picklepath, func)
+            self.canvas.SetLeftMargin(0.14)
+            self.canvas.Update()
+            return fitpar
+        fit = func() if draw else self.do_pickle(picklepath, func)
         return fit
 
     def get_polarity(self):
@@ -354,29 +401,90 @@ class SignalAnalysis(Analysis):
         max_bin = h.GetMaximumBin()
         return h.GetBinCenter(max_bin)
 
-    def show_pedestal_histo(self):
-        self.tmp_histos['1'] = TH1F('ped1', 'pedestal', 100, -20, 20)
-        self.tmp_histos['2'] = TH1F('ped2', 'pedestal cut', 100, -20, 20)
-        h1 = self.tmp_histos['1']
-        h2 = self.tmp_histos['2']
-        self.canvas = TCanvas('bla', 'blub', 1500, 1000)
-        canvas = self.canvas
-        canvas.Divide(2, 2)
-        canvas.cd(1)
-        self.tree.Draw("{name}>>ped1".format(name=self.pedestal_name), '', 'goff')
-        h1.Scale(1 / h1.Integral(), 'width')
-        h1.Draw()
-        canvas.cd(2)
-        self.tree.Draw("{name}>>ped2".format(name=self.pedestal_name), self.cut.all_cut, 'goff')
-        h2.Scale(1 / h2.Integral(), 'width')
-        h2.Draw()
-        canvas.cd(3)
-        h2.SetLineColor(2)
-        h1.Draw()
-        h2.Draw('same')
-        self.SavePlots('pedestal_cut', 'root', canvas=h2, subDir=self.save_dir)
-        self.SavePlots('pedestal', 'root', canvas=h1, subDir=self.save_dir)
-        canvas.Update()
+    def show_pedestal_histo(self, region='aa', peak_int='2', cut=True, fwhm=True):
+        cut = self.cut.all_cut if cut else TCut()
+        fw = 'fwhm' if fwhm else 'full'
+        picklepath = 'Configuration/Individual_Configs/Pedestal/{tc}_{run}_{ch}_{reg}_{fwhm}_{cut}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel,
+                                                                                                                  reg=region + peak_int, cut=cut.GetName(), fwhm=fw)
+
+        def func():
+            h1 = TH1F('ped1', 'pedestal', 100, -20, 20)
+            c = TCanvas('bla', 'blub', 1000, 1000)
+            name = self.get_pedestal_names(region, peak_int)[self.channel]
+            self.tree.Draw('{name}>>ped1'.format(name=name), cut, 'goff')
+            # h1.Scale(1 / h1.Integral(), 'width')
+            fit_pars = self.fit_fwhm(h1, do_fwhm=fwhm)
+            h1.Draw()
+            save_name = 'pedestal_{reg}{cut}'.format(reg=region, cut=cut.GetName())
+            # self.SavePlots(save_name, 'root', canvas=c, subDir=self.save_dir)
+            self.SavePlots(save_name, 'png', canvas=c, subDir=self.save_dir)
+            self.tmp_histos[0] = h1
+            self.canvas = c
+            c.Update()
+            return fit_pars
+
+        fit_par = self.do_pickle(picklepath, func)
+        print 'mean:', fit_par.Parameter(1)
+        return fit_par
+
+    def compare_pedestals(self):
+        legend = TLegend(0.7, 0.7, 0.98, .9)
+        gr1 = TGraph()
+        gr1.SetTitle('pedestal comparison')
+        gr1.SetMarkerStyle(20)
+        gr2 = TGraph()
+        gr2.SetTitle('pedestal comparison with cuts')
+        gr2.SetMarkerStyle(20)
+        gr2.SetMarkerColor(2)
+        gr2.SetLineColor(2)
+        gr3 = TGraph()
+        gr3.SetTitle('pedestal comparison with cuts full fit')
+        gr3.SetMarkerStyle(20)
+        gr3.SetMarkerColor(3)
+        gr3.SetLineColor(3)
+        gROOT.SetBatch(1)
+        gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
+        for i, reg in enumerate(self.run.pedestal_regions):
+            print 'calculation region', reg
+            mean1 = self.show_pedestal_histo(reg).keys()[1]
+            mean2 = self.show_pedestal_histo(reg, 'median').keys()[1]
+            mean3 = self.show_pedestal_histo(reg, 'all').keys()[1]
+            gr1.SetPoint(i, i, mean1)
+            gr2.SetPoint(i, i, mean2)
+            gr3.SetPoint(i, i, mean3)
+        gROOT.SetBatch(0)
+        gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
+        for i, reg in enumerate(self.run.pedestal_regions):
+            bin_x = gr1.GetXaxis().FindBin(i)
+            gr1.GetXaxis().SetBinLabel(bin_x, reg)
+        self.canvas = TCanvas('bla', 'blub', 1000, 1000)
+        self.tmp_histos[1] = gr1
+        self.tmp_histos[0] = gr2
+        self.tmp_histos[2] = gr3
+        gr1.Draw('alp')
+        gr2.Draw('lp')
+        gr3.Draw('lp')
+        legend.AddEntry(gr1, 'mean fit fwhm w/ cuts 2', 'lp')
+        legend.AddEntry(gr2, 'mean fit fwhm w/ cuts median', 'lp')
+        legend.AddEntry(gr3, 'mean fit fwhm w/ cuts all', 'lp')
+        legend.Draw()
+        self.tmp_histos[4] = legend
+
+    @staticmethod
+    def fit_fwhm(histo, fitfunc='gaus', do_fwhm=True):
+        h = histo
+        if do_fwhm:
+            peak_pos = h.GetBinCenter(h.GetMaximumBin())
+            bin1 = h.FindFirstBinAbove(h.GetMaximum() / 2)
+            bin2 = h.FindLastBinAbove(h.GetMaximum() / 2)
+            fwhm = h.GetBinCenter(bin2) - h.GetBinCenter(bin1)
+            fit = h.Fit(fitfunc, 'qs', '', peak_pos - fwhm / 2, peak_pos + fwhm / 2)
+        else:
+            fit = h.Fit(fitfunc, 'qs')
+        # fit_par = OrderedDict()
+        # for i in range(3):
+        #     fit_par[fit.Parameter(i)] = fit.ParError(i)
+        return fit
 
     def __get_binning(self):
         jumps = self.cut.jump_ranges
@@ -385,7 +493,7 @@ class SignalAnalysis(Analysis):
         ind = 0
         for start, stop in zip(jumps['start'], jumps['stop']):
             gap = stop - start
-            # continue if first start and stop outside minevent
+            # continue if first start and stop outside min event
             if stop < bins[-1]:
                 ind += 1
                 continue
@@ -416,8 +524,8 @@ class SignalAnalysis(Analysis):
         for event in self.binning:
             time_bins.append(self.run.get_time_at_event(event))
         return time_bins
-    
-    def __format_signal_graph(self, mode, setyscale):
+
+    def __format_signal_graph(self, mode, setyscale=None):
         fit = TF1('fpol0', 'pol0')
         self.pulse_height.Fit(fit, 'Q')
         self.signals["signal"] = fit.GetParameter(0)
@@ -425,16 +533,16 @@ class SignalAnalysis(Analysis):
         gStyle.SetOptFit(1)
         self.pulse_height.GetXaxis().SetTitleOffset(0.7)
         self.pulse_height.GetXaxis().SetTitle("time / min")
-        self.pulse_height.GetXaxis().SetTitleSize(0.06)
-        self.pulse_height.GetXaxis().SetLabelSize(0.06)
+        self.pulse_height.GetXaxis().SetTitleSize(0.04)
+        self.pulse_height.GetXaxis().SetLabelSize(0.04)
         # self.pulse_height.GetXaxis().SetRangeUser(0, self.analysis.run.totalMinutes)
         if mode in ["mean", "Mean"]:
             y_title = "Mean Signal ({signalname})".format(signalname=self.signal_name)
         else:
             y_title = "MPV of Signal fit ({signalname})".format(signalname=self.signal_name)
-        self.pulse_height.GetYaxis().SetTitleOffset(0.9)
-        self.pulse_height.GetYaxis().SetTitleSize(0.06)
-        self.pulse_height.GetYaxis().SetLabelSize(0.06)
+        self.pulse_height.GetYaxis().SetTitleOffset(1.56)
+        self.pulse_height.GetYaxis().SetTitleSize(0.04)
+        self.pulse_height.GetYaxis().SetLabelSize(0.04)
         self.pulse_height.GetYaxis().SetTitle(y_title)
         if setyscale is not None:
             self.pulse_height.GetYaxis().SetRangeUser(setyscale[0], setyscale[1])
@@ -442,12 +550,19 @@ class SignalAnalysis(Analysis):
             # self.signalTimeCanvas.Update()
         return fit
 
-    def make_histos(self):
+    def make_histos(self, signal='signal', corr=False):
+        is_sig = True if signal == 'signal' else False
+        signal = self.signal_name if is_sig else self.pedestal_name
+        signal = '{sig}+{ped}'.format(sig=signal, ped=self.pedestal_name) if corr else signal
         # 2D Histogram
         name = "signaltime_" + str(self.run_number)
         xbins = array('d', self.time_binning)
-        self.signaltime = TH2D(name, "signaltime", len(xbins) - 1, xbins, 1000, -50, 300)
-        self.tree.Draw("{name}:time>>{histo}".format(histo=name, name=self.signal_name), self.cut.all_cut, self.draw_option)
+        x_min = -50 if is_sig else -20
+        x_max = 300 if is_sig else 20
+        bins = 1000 if is_sig else 40
+        self.signaltime = TH2D(name, "signaltime", len(xbins) - 1, xbins, bins, x_min, x_max)
+        self.tree.Draw("{name}:time>>{histo}".format(histo=name, name=signal), self.cut.all_cut, self.draw_option)
+        return self.signaltime
 
 
 if __name__ == "__main__":

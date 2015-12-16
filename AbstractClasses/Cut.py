@@ -114,7 +114,7 @@ class Cut(Elementary):
         self.LoadIndividualCuts()
 
     def generate_all_cut(self):
-        cut = TCut('all', '')
+        cut = TCut('all_cuts', '')
         for value in self.cut_strings.values():
             cut += value
         return cut

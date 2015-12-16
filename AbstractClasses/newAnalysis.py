@@ -192,6 +192,7 @@ class Analysis(Elementary):
         assert region in self.run.pedestal_regions, 'Invalid pedestal region {reg}!'.format(reg=region)
         assert str(integral) in self.run.peak_integrals, 'Invalid peak integral {reg}!'.format(reg=integral)
         numbers = {}
+        integral = '_' + integral if not integral.isdigit() else integral
         for ch in self.run.channels:
             name = 'ch{ch}_pedestal_{reg}_PeakIntegral{int}'.format(ch=ch, reg=region, int=integral)
             numbers[ch] = self.integral_names[name]
@@ -206,10 +207,13 @@ class Analysis(Elementary):
                 names[ch] = '{pol}*IntegralValues[{num}]'.format(pol=self.polarities[ch], num=num[ch])
         return names
 
-    def get_pedestal_names(self):
+    def get_pedestal_names(self, region=None, ped_int=None):
+        region = self.pedestal_region if region is None else region
+        ped_int = self.peak_integral if ped_int is None else ped_int
+        num = self.get_pedestal_numbers(region, ped_int)
         names = {}
         for ch in self.run.channels:
-            names[ch] = 'IntegralValues[{num}]'.format(num=self.pedestal_num[ch])
+            names[ch] = 'IntegralValues[{num}]'.format(num=num[ch])
         return names
 
     # endregion
