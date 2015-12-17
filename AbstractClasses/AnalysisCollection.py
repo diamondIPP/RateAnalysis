@@ -131,7 +131,7 @@ class AnalysisCollection(Elementary):
         self.SavePlots('PulseHeight ' + mode, 'root', canvas=self.canvases[0], subDir=self.save_dir)
         return gr2
 
-    def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False):
+    def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False):
         legend = TLegend(0.7, 0.3, 0.98, .7)
         legend.SetName('l1')
         mode = 'Flux' if flux else 'Run'
@@ -144,18 +144,19 @@ class AnalysisCollection(Elementary):
         gROOT.SetBatch(1)
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         i = 0
+        par = 2 if sigma else 1
         for key, ana in self.collection.iteritems():
-            print 'getting ph for run {n}...'.format(n=key)
+            print 'getting pedestal for run {n}...'.format(n=key)
             fit_par = ana.show_pedestal_histo(region, peak_int)
             flux = ana.run.flux
             x = ana.run.flux if flux else key
-            gr1.SetPoint(i, x, fit_par.Parameter(1))
-            gr1.SetPointError(i, 0, fit_par.ParError(1))
+            gr1.SetPoint(i, x, fit_par.Parameter(par))
+            gr1.SetPointError(i, 0, fit_par.ParError(par))
             if all_regions:
                 for reg, gr in zip(regions, graphs):
                     fit_par = ana.show_pedestal_histo(reg, peak_int)
-                    gr.SetPoint(i, x, fit_par.Parameter(1))
-                    gr.SetPointError(i, 0, fit_par.ParError(1))
+                    gr.SetPoint(i, x, fit_par.Parameter(par))
+                    gr.SetPointError(i, 0, fit_par.ParError(par))
             i += 1
         gROOT.SetBatch(0)
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
@@ -171,7 +172,7 @@ class AnalysisCollection(Elementary):
                     gr.Draw('ap')
                 else:
                     gr.Draw('p')
-        legend.Draw()
+            legend.Draw()
         self.histos[0] = gr1
         self.histos['legend'] = legend
         self.canvases[0] = c
@@ -190,14 +191,12 @@ class AnalysisCollection(Elementary):
 
     def load_diamonds(self, diamonds, run_list):
         dias = diamonds
-        print dias
         assert type(dias) is list or dias in [1, 2, 3], '"diamonds" has to be 1, 2, 3, or None (0x1: diamond1, 0x2: diamond2)'
         if dias is not None:
             if type(dias) is not list:
                 dias = [dias] * len(self.runs)
         else:
             dias = [3] * len(run_list) if type(run_list) is list else run_list.GetSelectedDiamonds()
-        print dias
         return dias
 
     def get_lowest_rate_run(self):

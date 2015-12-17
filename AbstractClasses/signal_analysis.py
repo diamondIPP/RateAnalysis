@@ -435,7 +435,7 @@ class SignalAnalysis(Analysis):
             return fit_pars
 
         fit_par = self.do_pickle(picklepath, func) if not draw else func()
-        print 'mean:', fit_par.Parameter(1)
+        # print 'mean:', fit_par.Parameter(1)
         return fit_par
 
     def compare_pedestals(self):
