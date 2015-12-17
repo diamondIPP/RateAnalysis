@@ -8,7 +8,6 @@ from newAnalysis import Analysis
 from array import array
 from math import sqrt
 from argparse import ArgumentParser
-from collections import OrderedDict
 
 
 # ==============================================
@@ -100,7 +99,8 @@ class SignalAnalysis(Analysis):
                     means.append(fit.Parameter(1))
                 else:
                     empty_bins += 1
-            gROOT.SetBatch(0)
+            if draw:
+                gROOT.SetBatch(0)
             print 'Empty proj. bins:\t', str(empty_bins) + '/' + str(self.n_bins)
             fit_pars = self.fit_fwhm(gr, 'pol0', False)
             print 'mean:', fit_pars.Parameter(0), '+-', fit_pars.ParError(0)
@@ -138,7 +138,7 @@ class SignalAnalysis(Analysis):
                 if h_proj.GetEntries() > 0:
                     if mode in ["mean", "Mean"]:
                         mean = h_proj.GetMean()
-                        mean += means[count] if ped_corr else 0
+                        mean -= self.polarity * means[count] if ped_corr else 0
                         gr.SetPoint(count, (self.time_binning[i] - self.run.startTime) / 60e3, mean)
                         gr.SetPointError(count, 0, h_proj.GetRMS() / sqrt(h_proj.GetEntries()))
                     elif mode in ["fit", "Fit"]:
@@ -153,7 +153,8 @@ class SignalAnalysis(Analysis):
                     count += 1
                 else:
                     empty_bins += 1
-            gROOT.SetBatch(0)
+            if draw:
+                gROOT.SetBatch(0)
             self.pulse_height = gr
             print 'Empty proj. bins:\t', str(empty_bins) + '/' + str(self.n_bins)
             self.canvas = TCanvas('bla', 'blub', 1000, 1000)
@@ -553,7 +554,7 @@ class SignalAnalysis(Analysis):
     def make_histos(self, signal='signal', corr=False):
         is_sig = True if signal == 'signal' else False
         signal = self.signal_name if is_sig else self.pedestal_name
-        signal = '{sig}+{ped}'.format(sig=signal, ped=self.pedestal_name) if corr else signal
+        signal = '{sig}-{pol}*{ped}'.format(sig=signal, ped=self.pedestal_name, pol=self.polarity) if corr else signal
         # 2D Histogram
         name = "signaltime_" + str(self.run_number)
         xbins = array('d', self.time_binning)

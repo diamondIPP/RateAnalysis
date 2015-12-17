@@ -30,12 +30,11 @@ class AnalysisCollection(Elementary):
     """
     current_run_number = -1
 
-    def __init__(self, list_of_runs, mode='main', diamonds=None, verbose=False):
+    def __init__(self, list_of_runs, diamonds=None, verbose=False):
         Elementary.__init__(self, verbose=verbose)
 
         # dict where all analysis objects are saved
         self.collection = {}
-        self.mode = mode
 
         self.runs = self.load_runs(list_of_runs)
         self.diamonds = self.load_diamonds(diamonds, list_of_runs)
@@ -48,8 +47,8 @@ class AnalysisCollection(Elementary):
         self.signalValues = None
 
         # root stuff
-        run_plan = list_of_runs.run_plan if isinstance(list_of_runs, RunSelection) else '-'
-        self.save_dir = '{tc}_Runplan{plan}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], plan=run_plan, dia=self.collection.values()[0].run.diamondname[0])
+        self.run_plan = list_of_runs.run_plan if isinstance(list_of_runs, RunSelection) else '-'
+        self.save_dir = '{tc}_Runplan{plan}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], plan=self.run_plan, dia=self.collection.values()[0].run.diamondname[0])
         self.canvases = {}
         self.histos = {}
 
@@ -113,18 +112,22 @@ class AnalysisCollection(Elementary):
         """
         for run, dia in zip(self.runs, self.diamonds):
             ch = 0 if dia == 1 or dia == 3 else 3
-            analysis = Analysis(run, dia, low_rate=self.lowest_rate_run) if self.mode == 'main' else SignalAnalysis(run, ch, self.lowest_rate_run)
+            analysis = SignalAnalysis(run, ch, self.lowest_rate_run)
             self.collection[analysis.run.run_number] = analysis
             self.current_run_number = analysis.run.run_number
 
-    def draw_pulse_heights(self, binning=10000):
-        legend = TLegend(0.7, 0.3, 0.98, .7)
-        gr1 = self.make_TGraphErrors('ph_all', 'Pulse Height {dia} vs Run'.format(dia=self.collection.values()[0].diamond_name))
-        gr2 = self.make_TGraphErrors('raw', 'Pulse Height {dia} vs Flux raw'.format(dia=self.collection.values()[0].diamond_name), self.get_color())
-        gr3 = self.make_TGraphErrors('eventwise', 'Pulse Height {dia} vs Flux eventwise correction'.format(dia=self.collection.values()[0].diamond_name), self.get_color())
-        gr4 = self.make_TGraphErrors('binwise', 'Pulse Height {dia} vs Flux binwise correction'.format(dia=self.collection.values()[0].diamond_name), self.get_color())
-        gr5 = self.make_TGraphErrors('mean ped', 'Pulse Height {dia} vs Flux mean correction'.format(dia=self.collection.values()[0].diamond_name),self.get_color())
+    def draw_pulse_heights(self, binning=10000, flux=True, raw=False):
+        legend = TLegend(0.79, 0.13, 0.98, .34)
+        legend.SetName('l1')
+        mode = 'Flux' if flux else 'Run'
+        prefix = 'Pulse Height {dia} vs {mode} '.format(mode=mode, dia=self.collection.values()[0].diamond_name)
+        gr1 = self.make_TGraphErrors('eventwise', prefix + 'eventwise correction', self.get_color())
+        gr2 = self.make_TGraphErrors('binwise', prefix + 'binwise correction', self.get_color())
+        gr3 = self.make_TGraphErrors('mean ped', prefix + 'mean correction', self.get_color())
+        gr4 = self.make_TGraphErrors('raw', prefix + 'raw', self.get_color())
+
         gROOT.SetBatch(1)
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         i = 0
         for key, ana in self.collection.iteritems():
             print 'getting ph for run', key
@@ -132,22 +135,23 @@ class AnalysisCollection(Elementary):
             fit1 = ana.draw_pulse_height(binning, ped_corr=True)
             fit2 = ana.draw_pulse_height(binning, eventwise_corr=True)
             ped = ana.show_pedestal_histo()
-            flux = ana.run.flux
-            gr1.SetPoint(i, key, fit.GetParameters()[0])
-            gr1.SetPointError(i, 0, fit.GetParError(0))
-            gr2.SetPoint(i, flux, fit.GetParameters()[0])
-            gr3.SetPoint(i, flux, fit1.GetParameters()[0])
-            gr4.SetPoint(i, flux, fit2.GetParameters()[0])
-            gr5.SetPoint(i, flux, fit.GetParameters()[0] + ped.Parameter(1))
-            gr2.SetPointError(i, 0, fit.GetParError(0))
-            gr3.SetPointError(i, 0, fit1.GetParError(0))
-            gr4.SetPointError(i, 0, fit2.GetParError(0))
-            gr5.SetPointError(i, 0, fit.GetParError(0) + ped.ParError(1))
+            x = ana.run.flux if flux else key
+            gr1.SetPoint(i, x, fit1.GetParameters()[0])
+            gr2.SetPoint(i, x, fit2.GetParameters()[0])
+            gr3.SetPoint(i, x, fit.GetParameters()[0] - ana.polarity * ped.Parameter(1))
+            gr4.SetPoint(i, x, fit.GetParameters()[0])
+            gr1.SetPointError(i, 0, fit1.GetParError(0))
+            gr2.SetPointError(i, 0, fit2.GetParError(0))
+            gr3.SetPointError(i, 0, fit.GetParError(0) + ped.ParError(1))
+            gr4.SetPointError(i, 0, fit.GetParError(0))
             i += 1
         gROOT.SetBatch(0)
-        graphs = [gr2, gr3, gr4, gr5]
-        self.canvases[1] = TCanvas('c1', 'dummy', 1000, 1000)
-        self.canvases[1].SetLogx()
+        gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
+        graphs = [gr1, gr2, gr3]
+        if raw:
+            graphs.append(gr4)
+        self.canvases[0] = TCanvas('c1', 'ph', 1000, 1000)
+        self.canvases[0].SetLogx()
         for i, gr in enumerate(graphs):
             self.histos[i] = gr
             legend.AddEntry(gr, gr.GetName(), 'lp')
@@ -157,13 +161,8 @@ class AnalysisCollection(Elementary):
                 gr.Draw('lp')
         self.histos['legend'] = legend
         legend.Draw()
-        self.canvases[0] = TCanvas('c', 'Signal', 1000, 1000)
-        self.canvases[0].cd()
-        gr1.Draw('ap')
-        self.histos[0] = gr1
-        self.SavePlots('PulseHeight', 'png', canvas=self.canvases[0], subDir=self.save_dir)
-        self.SavePlots('PulseHeightFlux', 'png', canvas=self.canvases[1], subDir=self.save_dir)
-        self.SavePlots('PulseHeightFlux', 'root', canvas=self.canvases[1], subDir=self.save_dir)
+        self.SavePlots('PulseHeight_' + mode, 'png', canvas=self.canvases[0], subDir=self.save_dir)
+        self.SavePlots('PulseHeight ' + mode, 'root', canvas=self.canvases[0], subDir=self.save_dir)
         return gr2
 
     def draw_pedestals(self, region='ab', peak_int='2'):
@@ -214,12 +213,15 @@ class AnalysisCollection(Elementary):
             raise ValueError, 'listOfRuns has to be of type list or instance of RunSelection'
 
     def load_diamonds(self, diamonds, run_list):
-        dias = diamonds if type(run_list) is list else run_list.GetSelectedDiamonds()
-        if dias is None:
-            dias = 3
+        dias = diamonds
+        print dias
         assert type(dias) is list or dias in [1, 2, 3], '"diamonds" has to be 1, 2, 3, or None (0x1: diamond1, 0x2: diamond2)'
-        if type(dias) is not list:
-            dias = [dias] * len(run_list)
+        if dias is not None:
+            if type(dias) is not list:
+                dias = [dias] * len(self.runs)
+        else:
+            dias = [3] * len(run_list) if type(run_list) is list else run_list.GetSelectedDiamonds()
+        print dias
         return dias
 
     def get_lowest_rate_run(self):
@@ -994,9 +996,11 @@ class AnalysisCollection(Elementary):
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument('runplan', nargs='?', default=3, type=int)
+    parser.add_argument('dia', nargs='?', default=1, type=int)
     args = parser.parse_args()
     run_plan = args.runplan
+    dias = args.dia
     sel = RunSelection()
-    runs = [x for x in range(392, 417)]
     sel.SelectRunsFromRunPlan(run_plan)
-    z = AnalysisCollection(runs, 'bla')
+    # sel = [x for x in range(392, 417)]
+    z = AnalysisCollection(sel, dias)

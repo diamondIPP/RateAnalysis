@@ -8,7 +8,8 @@ import shutil
 from ConfigParser import ConfigParser
 from math import copysign
 from collections import OrderedDict
-do_gui = True
+import re
+do_gui = False
 if do_gui:
     from tkinter import *
 
@@ -132,6 +133,7 @@ class Converter:
         if not file_path:
             return
         location = self.find_root_file(run_number)
+        print location
         if not location:
             curr_dir = os.getcwd()
             # go to root directory
