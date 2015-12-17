@@ -20,9 +20,10 @@ class SignalAnalysis(Analysis):
         # main
         self.channel = channel
         self.run_number = self.run.run_number
-        self.diamond_name = self.run.diamondname[self.channel]
-        self.cut = self.cuts[self.channel]
-        self.save_dir = '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number, dia=self.run.diamondname[self.channel])
+        self.diamond_name = self.run.diamondname[channel]
+        self.bias = self.run.bias[channel]
+        self.cut = self.cuts[channel]
+        self.save_dir = '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number, dia=self.run.diamondname[channel])
 
         # stuff
         self.draw_option = 'COLZ'
@@ -30,11 +31,11 @@ class SignalAnalysis(Analysis):
         self.binning = self.__get_binning()
         self.time_binning = self.get_time_binning()
         self.n_bins = len(self.binning)
-        self.polarity = self.polarities[self.channel]
+        self.polarity = self.polarities[channel]
 
         # names
-        self.signal_name = self.signal_names[self.channel]
-        self.pedestal_name = self.pedestal_names[self.channel]
+        self.signal_name = self.signal_names[channel]
+        self.pedestal_name = self.pedestal_names[channel]
 
         # projection
         self.signal_projections = {}
@@ -49,7 +50,15 @@ class SignalAnalysis(Analysis):
         self.histo = None
         self.signaltime = None
 
-    # todo bin size varying by number of events
+    def set_channel(self, ch):
+        self.channel = ch
+        self.diamond_name = self.run.diamondname[ch]
+        self.bias = self.run.bias[ch]
+        self.cut = self.cuts[ch]
+        self.save_dir = '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number, dia=self.run.diamondname[ch])
+        self.polarity = self.polarities[ch]
+        self.signal_name = self.signal_names[ch]
+        self.pedestal_name = self.pedestal_names[ch]
 
     def __set_bin_size(self, value):
         self.bin_size = value
@@ -402,13 +411,14 @@ class SignalAnalysis(Analysis):
         max_bin = h.GetMaximumBin()
         return h.GetBinCenter(max_bin)
 
-    def show_pedestal_histo(self, region='aa', peak_int='2', cut=True, fwhm=True):
+    def show_pedestal_histo(self, region='aa', peak_int='2', cut=True, fwhm=True, draw=False):
         cut = self.cut.all_cut if cut else TCut()
         fw = 'fwhm' if fwhm else 'full'
         picklepath = 'Configuration/Individual_Configs/Pedestal/{tc}_{run}_{ch}_{reg}_{fwhm}_{cut}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel,
                                                                                                                   reg=region + peak_int, cut=cut.GetName(), fwhm=fw)
 
         def func():
+            print 'making pedestal histo for region {reg}_{int}...'.format(reg=region, int=peak_int)
             h1 = TH1F('ped1', 'pedestal', 100, -20, 20)
             c = TCanvas('bla', 'blub', 1000, 1000)
             name = self.get_pedestal_names(region, peak_int)[self.channel]
@@ -424,7 +434,7 @@ class SignalAnalysis(Analysis):
             c.Update()
             return fit_pars
 
-        fit_par = self.do_pickle(picklepath, func)
+        fit_par = self.do_pickle(picklepath, func) if not draw else func()
         print 'mean:', fit_par.Parameter(1)
         return fit_par
 

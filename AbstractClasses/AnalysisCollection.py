@@ -2,7 +2,7 @@
 # IMPORTS
 # ==============================================
 import ROOT
-from ROOT import gROOT, TCanvas, TGraphErrors, kFALSE, kBlue, TLegend
+from ROOT import gROOT, TCanvas, TGraphErrors, kFALSE, TLegend
 from AbstractClasses.ATH2D import ATH2D
 from AbstractClasses.BinCollection import BinCollection
 from AbstractClasses.newAnalysis import Analysis
@@ -11,7 +11,6 @@ import types as t
 import os
 import numpy as np
 from Elementary import Elementary
-from array import array
 from time import time
 from collections import OrderedDict
 from signal_analysis import SignalAnalysis
@@ -34,7 +33,7 @@ class AnalysisCollection(Elementary):
         Elementary.__init__(self, verbose=verbose)
 
         # dict where all analysis objects are saved
-        self.collection = {}
+        self.collection = OrderedDict()
 
         self.runs = self.load_runs(list_of_runs)
         self.diamonds = self.load_diamonds(diamonds, list_of_runs)
@@ -45,6 +44,10 @@ class AnalysisCollection(Elementary):
         self.add_analyses()
 
         self.signalValues = None
+
+        # important information
+        self.diamond_name = self.get_first_analysis().diamond_name
+        self.bias = self.get_first_analysis().bias
 
         # root stuff
         self.run_plan = list_of_runs.run_plan if isinstance(list_of_runs, RunSelection) else '-'
@@ -66,51 +69,14 @@ class AnalysisCollection(Elementary):
             ROOT.gROOT.Delete("fwhm_histo")
         print "AnalyisCollection deleted"
 
-    def _PrintOverview(self, vec_sig=None, channel=0):
-        c1 = TCanvas('sigoverview', 'Signal overview', 1000, 1000)
-        c1.cd()
-        fluxes = self.get_fluxes()
-        y = array('d', vec_sig)
-        x = array('d', self.GetRunNumbers())
-        ey = []
-        ex = []
-        for i in range(len(fluxes)):
-            sig_at_same_flux = []
-            for j in range(len(fluxes)):
-                if fluxes[i] == fluxes[j]:
-                    sig_at_same_flux.append(vec_sig[j])
-            error = max(sig_at_same_flux) - min(sig_at_same_flux) + 0.01 * max(sig_at_same_flux)
-            ey.append(error)
-            ex.append(0)
-        ey = array('d', ey)
-        ex = array('d', ex)
-        plot = TGraphErrors(len(x), x, y, ex, ey)
-        plot.SetName('signaloverview')
-        plot.SetTitle('Signal Overview')
-        plot.GetYaxis().SetTitle('Signal')
-        xax = plot.GetXaxis()
-        xax.SetTitle('Run')
-        for value in x:
-            bin_ind = xax.FindBin(value)
-            xax.SetBinLabel(bin_ind, str(int(value)))
-        xax.LabelsOption('h')
-        plot.SetMarkerSize(3)
-        plot.SetMarkerStyle(33)
-        plot.SetMarkerColorAlpha(kBlue, 0.35)
-        plot.Draw('ALP')
-        c1.SetGrid()
-        c1.Update()
-        c1.Update()
-        dia = self.collection[self.GetRunNumbers()[0]].run.diamondname[channel]
-        self.SavePlots('signalvalues_' + dia + str(x[1]) + '-' + str(x[-1]), 'png', canvas=c1, subDir='RunCollections')
-        self.SavePlots('signalvalues_' + dia + str(x[1]) + '-' + str(x[-1]), 'root', canvas=c1, subDir='RunCollections')
-        return plot
+    def get_first_analysis(self):
+        return self.collection.values()[0]
 
     def add_analyses(self):
         """
         Creates and adds Analysis objects with run numbers in runs.
         """
-        for run, dia in zip(self.runs, self.diamonds):
+        for run, dia in sorted(zip(self.runs, self.diamonds)):
             ch = 0 if dia == 1 or dia == 3 else 3
             analysis = SignalAnalysis(run, ch, self.lowest_rate_run)
             self.collection[analysis.run.run_number] = analysis
@@ -165,52 +131,62 @@ class AnalysisCollection(Elementary):
         self.SavePlots('PulseHeight ' + mode, 'root', canvas=self.canvases[0], subDir=self.save_dir)
         return gr2
 
-    def draw_pedestals(self, region='ab', peak_int='2'):
+    def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False):
         legend = TLegend(0.7, 0.3, 0.98, .7)
-        gr1 = self.make_TGraphErrors('pedestal_all', 'Mean of Pedestals in {reg} vs Run'.format(reg=region + peak_int))
-        # gr2 = self.make_TGraphErrors('pedestal_all_flux', 'Mean of Pedestals in {reg} vs Flux'.format(reg=region + peak_int))
+        legend.SetName('l1')
+        mode = 'Flux' if flux else 'Run'
+        prefix = 'Mean of Pedestal {dia} @ {bias}V vs {mode} '.format(mode=mode, dia=self.diamond_name, bias=self.bias)
+        gr1 = self.make_TGraphErrors('pedestal', prefix + ' in {reg}'.format(reg=region + peak_int))
         graphs = []
-        regions = self.collection.values()[0].run.pedestal_regions
+        regions = self.get_first_analysis().run.pedestal_regions
         for reg in regions:
-            graphs.append(self.make_TGraphErrors('pedestal_all_flux', 'Mean of Pedestals in {reg} vs Flux'.format(reg=reg + peak_int), color=self.get_color()))
+            graphs.append(self.make_TGraphErrors('pedestal', prefix + 'in {reg}'.format(reg=reg + peak_int), color=self.get_color()))
         gROOT.SetBatch(1)
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         i = 0
         for key, ana in self.collection.iteritems():
-            print 'getting ph for run', key
+            print 'getting ph for run {n}...'.format(n=key)
             fit_par = ana.show_pedestal_histo(region, peak_int)
             flux = ana.run.flux
-            gr1.SetPoint(i, key, fit_par.Parameter(1))
+            x = ana.run.flux if flux else key
+            gr1.SetPoint(i, x, fit_par.Parameter(1))
             gr1.SetPointError(i, 0, fit_par.ParError(1))
-            for reg, gr in zip(regions, graphs):
-                fit_par = ana.show_pedestal_histo(reg, peak_int)
-                gr.SetPoint(i, flux, fit_par.Parameter(1))
-                gr.SetPointError(i, 0, fit_par.ParError(1))
+            if all_regions:
+                for reg, gr in zip(regions, graphs):
+                    fit_par = ana.show_pedestal_histo(reg, peak_int)
+                    gr.SetPoint(i, x, fit_par.Parameter(1))
+                    gr.SetPointError(i, 0, fit_par.ParError(1))
             i += 1
         gROOT.SetBatch(0)
-        self.canvas = TCanvas('c', 'Pedestal vs Run', 1000, 1000)
-        self.c1 = TCanvas('c1', 'Pedestal vs Flux', 1000, 1000)
-        self.histos[0] = gr1
-        self.canvas.cd()
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        c = TCanvas('c', 'Pedestal vs Run', 1000, 1000)
+        if flux:
+            c.SetLogx()
         gr1.Draw('ap')
-        self.c1.cd()
-        self.c1.SetLogx()
-        for i, gr in enumerate(graphs):
-            legend.AddEntry(gr, str(regions.values()[i]), 'p')
-            self.histos[i + 1] = gr
-            if not i:
-                gr.Draw('ap')
-            else:
-                gr.Draw('p')
+        if all_regions:
+            for i, gr in enumerate(graphs):
+                legend.AddEntry(gr, str(regions.values()[i]), 'p')
+                self.histos[i + 1] = gr
+                if not i:
+                    gr.Draw('ap')
+                else:
+                    gr.Draw('p')
         legend.Draw()
+        self.histos[0] = gr1
         self.histos['legend'] = legend
+        self.canvases[0] = c
+        self.SavePlots('Pedestal' + mode, 'png', canvas=self.canvases[0], subDir=self.save_dir)
+        self.SavePlots('Pedestal ' + mode, 'root', canvas=self.canvases[0], subDir=self.save_dir)
+        return gr1
 
-    def load_runs(self, run_list):
+    @staticmethod
+    def load_runs(run_list):
         if type(run_list) is list:
             return run_list
         elif isinstance(run_list, RunSelection):
             return run_list.GetSelectedRuns()
         else:
-            raise ValueError, 'listOfRuns has to be of type list or instance of RunSelection'
+            raise ValueError('listOfRuns has to be of type list or instance of RunSelection')
 
     def load_diamonds(self, diamonds, run_list):
         dias = diamonds
@@ -247,25 +223,23 @@ class AnalysisCollection(Elementary):
             return
         Analysis(self.lowest_rate_run)
 
-    def SetDiamonds(self, diamonds):
+    def set_channel(self, ch):
         """
-        Set the diamonds (channels) to be analyzed for all Analysis objects. 1: Diamond 1, 2: Diamond 2, 3: Diamond 1 & 2
-        :param diamonds:
-        :return:
+        Sets the channels to be analysed by the SignalAnalysisobjects.
+        :param ch: int (0 || 3)
         """
-        runnumbers = self.GetRunNumbers()
-        for runnumber in runnumbers:
-            self.collection[runnumber].run.set_channels(diamonds=diamonds)
+        for ana in self.collection.values():
+            ana.set_channel(ch)
 
     def CreateFWHMPlot(self, saveplots=True, savename='FWHM_Histo', ending='png'):
-        '''
+        """
         Creates the FWHM Distribution of all the MeanSignalHistogram histograms from all
         Analysis object inside the analysis collection
         :param saveplots: if True saves the plot
         :param savename:  filename if saveplots = True
         :param ending:  file typ if saveplots = True
         :return: -
-        '''
+        """
         if self.GetNumberOfAnalyses() == 0: return 0
 
         self.FWHMcanvas = ROOT.TCanvas("FWHMcanvas", "FWHM")
@@ -374,7 +348,7 @@ class AnalysisCollection(Elementary):
 
     def get_fluxes(self):
         flux = OrderedDict()
-        for key, ana in sorted(self.collection.iteritems()):
+        for key, ana in self.collection.iteritems():
             flux[key] = ana.run.get_flux()
         return flux
 
@@ -780,7 +754,6 @@ class AnalysisCollection(Elementary):
             MaxRange_low = None
             MinRange_low = None
 
-
         # Prepare for drawing: Evaluate the Range in y direction:
         MaxRange = np.array([i for i in [MaxRange_low, MaxRange_peak] if i != None])
         MinRange = np.array([i for i in [MinRange_low, MinRange_peak] if i != None])
@@ -792,7 +765,6 @@ class AnalysisCollection(Elementary):
             MinRange = 0.8 * MinRange.min()
         else:
             MinRange = 0
-
 
         # Prepare for drawing: Individual Print options:
         NumbersOfGraphs = len(MaxGraphs) + len(MinGraphs)
@@ -816,7 +788,6 @@ class AnalysisCollection(Elementary):
             RateHisto.Fill(runnumber, rate_kHz)
         RateHisto.GetXaxis().SetTitle("Run Number")
         RateHisto.GetYaxis().SetTitle("Rate / kHz")
-
 
         # Draw everything:
         i = 0  # i-th draw option
@@ -990,13 +961,13 @@ class AnalysisCollection(Elementary):
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser()
-    parser.add_argument('runplan', nargs='?', default=3, type=int)
-    parser.add_argument('dia', nargs='?', default=1, type=int)
-    args = parser.parse_args()
+    main_parser = ArgumentParser()
+    main_parser.add_argument('runplan', nargs='?', default=3, type=int)
+    main_parser.add_argument('dia', nargs='?', default=1, type=int)
+    args = main_parser.parse_args()
     run_plan = args.runplan
-    dias = args.dia
+    diamond = args.dia
     sel = RunSelection()
     sel.SelectRunsFromRunPlan(run_plan)
     # sel = [x for x in range(392, 417)]
-    z = AnalysisCollection(sel, dias)
+    z = AnalysisCollection(sel, diamond)
