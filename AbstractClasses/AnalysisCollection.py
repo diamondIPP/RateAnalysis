@@ -69,7 +69,7 @@ class AnalysisCollection(Elementary):
     def _PrintOverview(self, vec_sig=None, channel=0):
         c1 = TCanvas('sigoverview', 'Signal overview', 1000, 1000)
         c1.cd()
-        fluxes = self.GetFluxes()
+        fluxes = self.get_fluxes()
         y = array('d', vec_sig)
         x = array('d', self.GetRunNumbers())
         ey = []
@@ -372,15 +372,11 @@ class AnalysisCollection(Elementary):
         self.signalValues = sig
         print '\nThe preanalysis for this selection took', self.elapsed_time(start_time)
 
-    def GetFluxes(self):
-        flux = {}
-        vec = []
-        for key in self.collection:
-            flux[key] = self.collection[key].run.get_flux()
-        ordered = OrderedDict(sorted(flux.items()))
-        for key in ordered:
-            vec.append(ordered[key])
-        return vec
+    def get_fluxes(self):
+        flux = OrderedDict()
+        for key, ana in sorted(self.collection.iteritems()):
+            flux[key] = ana.run.get_flux()
+        return flux
 
     def ShowSignalVSRate(self, canvas=None, diamonds=None, method="mean"):  # , method="mean"
         '''
