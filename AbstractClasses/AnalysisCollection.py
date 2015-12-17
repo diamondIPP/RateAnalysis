@@ -135,7 +135,8 @@ class AnalysisCollection(Elementary):
         legend = TLegend(0.7, 0.3, 0.98, .7)
         legend.SetName('l1')
         mode = 'Flux' if flux else 'Run'
-        prefix = 'Mean of Pedestal {dia} @ {bias}V vs {mode} '.format(mode=mode, dia=self.diamond_name, bias=self.bias)
+        y_val = 'Sigma' if sigma else 'Mean'
+        prefix = '{y} of Pedestal {dia} @ {bias}V vs {mode} '.format(mode=mode, dia=self.diamond_name, bias=self.bias, y=y_val)
         gr1 = self.make_TGraphErrors('pedestal', prefix + ' in {reg}'.format(reg=region + peak_int))
         graphs = []
         regions = self.get_first_analysis().run.pedestal_regions
