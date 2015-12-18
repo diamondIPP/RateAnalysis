@@ -69,6 +69,16 @@ class AnalysisCollection(Elementary):
             ROOT.gROOT.Delete("fwhm_histo")
         print "AnalyisCollection deleted"
 
+    def select_runs_in_range(self, start, stop):
+        new_collection = OrderedDict()
+        for key, ana in self.collection.iteritems():
+            if start <= key <= stop:
+                new_collection[key] = ana
+        if not new_collection:
+            print 'You did not select any run! No changes were made!'
+        else:
+            self.collection = new_collection
+
     def get_first_analysis(self):
         return self.collection.values()[0]
 
@@ -137,7 +147,7 @@ class AnalysisCollection(Elementary):
         mode = 'Flux' if flux else 'Run'
         y_val = 'Sigma' if sigma else 'Mean'
         prefix = '{y} of Pedestal {dia} @ {bias}V vs {mode} '.format(mode=mode, dia=self.diamond_name, bias=self.bias, y=y_val)
-        gr1 = self.make_TGraphErrors('pedestal', prefix + ' in {reg}'.format(reg=region + peak_int))
+        gr1 = self.make_TGraphErrors('pedestal', prefix + 'in {reg}'.format(reg=region + peak_int))
         graphs = []
         regions = self.get_first_analysis().run.pedestal_regions
         for reg in regions:
