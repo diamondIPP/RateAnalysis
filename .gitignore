@@ -5,6 +5,6 @@ Runinfos/run_plans.json
 *.root
 *.png
 *.out
-.*
 Results/
 *.json
+*.pickle
