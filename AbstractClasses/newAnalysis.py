@@ -832,10 +832,10 @@ class Analysis(Elementary):
             includedCh[0] = self.GetIncludedEvents(channel=0)
             includedCh[3] = self.GetIncludedEvents(channel=3)
 
-        if not self.pedestal_correction:
-            signaldef = "self.run.tree.{signal}[{channel}]"
-        else:
-            signaldef = "self.run.tree.{signal}[{channel}] - self.run.tree.{pedestal}[{channel}]"
+        # if not self.pedestal_correction:
+        #     signaldef = "self.run.tree.{signal}[{channel}]"
+        # else:
+        signaldef = "self.run.tree.{signal}[{channel}] - self.run.tree.{pedestal}[{channel}]"
 
         print "Loading tracking informations..."
         print "Signal def:\n\t{signal}".format(signal=signaldef)
@@ -860,7 +860,7 @@ class Analysis(Elementary):
             x_[3] = self.run.tree.diam2_track_x
             y_[3] = self.run.tree.diam2_track_y
             for ch in channels:
-                signal_ = eval(signaldef.format(signal=self.signalname, channel=ch, pedestal=self.pedestalname))
+                signal_ = eval(signaldef.format(signal=self.signal_names[ch], channel=ch, pedestal=self.pedestal_names[ch]))
                 pulser = self.run.tree.pulser
                 is_saturated = self.run.tree.is_saturated[ch]
                 fft_mean = self.run.tree.fft_mean[ch]
