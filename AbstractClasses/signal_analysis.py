@@ -1,5 +1,3 @@
-__author__ = 'micha'
-
 # ==============================================
 # IMPORTS
 # ==============================================
@@ -8,6 +6,8 @@ from newAnalysis import Analysis
 from array import array
 from math import sqrt
 from argparse import ArgumentParser
+
+__author__ = 'micha'
 
 
 # ==============================================
@@ -217,7 +217,7 @@ class SignalAnalysis(Analysis):
                 else:
                     histo.Draw('same')
                 histos.append(histo)
-                legend.AddEntry(histo, key)
+                legend.AddEntry(histo, key, 'l')
         # save c2
         legend.Draw()
         self.SavePlots('all', 'png', canvas=c2, subDir=self.save_dir)

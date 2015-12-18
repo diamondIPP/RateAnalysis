@@ -2,7 +2,7 @@ import os
 import ROOT
 import types as t
 from time import time
-from ROOT import gROOT, TGraphErrors
+from ROOT import gROOT, TGraphErrors, TGaxis
 import pickle
 
 
@@ -192,3 +192,15 @@ class Elementary(object):
         gr.SetMarkerColor(color)
         gr.SetLineColor(color)
         return gr
+
+    @staticmethod
+    def make_TGaxis(x, y1, y2, title, color=1):
+        a = TGaxis(x, y1, x, y2, y1, y2, 510, '+SU')
+        a.SetLineColor(color)
+        a.SetTickSize(0)
+        a.SetLabelSize(0)
+        a.SetTitleSize(0.04)
+        a.SetTitleOffset(0.15)
+        a.SetTitle(title + '  ')
+        a.SetTitleColor(color)
+        return a

@@ -5,7 +5,7 @@ from array import array
 import types as t
 
 import ROOT
-from ROOT import TCanvas
+from ROOT import TCanvas, TH2F, gROOT, TGaxis
 from AbstractClasses.PreAnalysisPlot import PreAnalysisPlot
 from AbstractClasses.ConfigClass import *
 from AbstractClasses.RunClass import Run
@@ -147,6 +147,41 @@ class Analysis(Elementary):
         
         # save histograms // canvases
         self.signal_canvas = None
+        self.histos = {}
+        self.canvases = {}
+        self.lines = {}
+
+    def draw_regions(self, event=0, ped=True):
+        tit = 'Pedestal Regions' if ped else 'Signal Regions'
+        h = TH2F('regions', tit, 1024, 0, 511, 1000, -200, 50)
+        gROOT.SetBatch(1)
+        self.tree.Draw('wf0:Iteration$/2>>regions', self.cuts[0].all_cut, '', 1, 100000 + event)
+        gROOT.SetBatch(0)
+        c = TCanvas('c', 'Regions', 1000, 500)
+        h.SetStats(0)
+        xax = h.GetXaxis()
+        xax.SetNdivisions(26)
+        c.SetGrid()
+        lines = {}
+        starts = []
+        regions = self.run.pedestal_regions if ped else self.run.signal_regions
+        for reg, lst in regions.iteritems():
+            lines[reg + ' start'] = self.make_TGaxis(lst[0] / 2, -200, 50, reg, 2)
+            lines[reg + ' stop'] = self.make_TGaxis(lst[1] / 2, -200, 50, '', 2) if lst[1] - lst[0] > 1 else None
+            if lst[0] in starts:
+                lines[reg + ' start'].SetTitle('')
+            if not lst[1] - lst[0] > 1:
+                lines[reg + ' start'].SetLineColor(4)
+                lines[reg + ' start'].SetLineWidth(2)
+                lines[reg + ' start'].SetTitleColor(4)
+            starts.append(lst[0])
+        h.Draw()
+        for axis in lines.itervalues():
+            if axis is not None:
+                axis.Draw()
+        self.lines = lines
+        self.histos[0] = h
+        self.canvases[0] = c
         
     def load_parser(self):
         parser = ConfigParser()
@@ -516,10 +551,10 @@ class Analysis(Elementary):
                 maxevent = min(max(maxevent0, maxevent3), maxevent)
 
             excluded = [i for i in np.arange(0, minevent)]  # first events
-            if self.cuts[0].cut_types["noBeamInter"] and self.cuts[3].cut_types["noBeamInter"]:
-                self.cuts[0].get_beam_interruptions()
-                for i in xrange(len(self.cuts[0].jump_ranges["start"])):
-                    excluded += [i for i in np.arange(self.cuts[0].jump_ranges["start"][i], self.cuts[0].jump_ranges["stop"][i] + 1)]  # events around jumps
+            # if self.cuts[0].cut_types["noBeamInter"] and self.cuts[3].cut_types["noBeamInter"]:
+            #     self.cuts[0].get_beam_interruptions()
+            for i in xrange(len(self.cuts[0].jump_ranges["start"])):
+                excluded += [i for i in np.arange(self.cuts[0].jump_ranges["start"][i], self.cuts[0].jump_ranges["stop"][i] + 1)]  # events around jumps
             excluded.sort()
             all_events = np.arange(0, maxevent)
             included = np.delete(all_events, excluded)
