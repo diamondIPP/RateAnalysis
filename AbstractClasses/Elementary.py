@@ -4,6 +4,7 @@ import types as t
 from time import time
 from ROOT import gROOT, TGraphErrors, TGaxis
 import pickle
+import sys
 
 
 class Elementary(object):
@@ -204,3 +205,15 @@ class Elementary(object):
         a.SetTitle(title + '  ')
         a.SetTitleColor(color)
         return a
+
+    @staticmethod
+    def get_program_dir():
+        arg = 2 if len(sys.argv) > 1 else 0
+        path = os.path.dirname(os.path.realpath(sys.argv[arg])).split('/')
+        ret_val = ''
+        for i in range(len(path) - 1):
+            ret_val += path[i] + '/'
+        return ret_val
+
+if __name__ == "__main__":
+    z = Elementary()

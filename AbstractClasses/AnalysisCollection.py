@@ -34,6 +34,7 @@ class AnalysisCollection(Elementary):
 
         # dict where all analysis objects are saved
         self.collection = OrderedDict()
+        self.selection = list_of_runs if isinstance(list_of_runs, RunSelection) else self.make_runselection(list_of_runs)
 
         self.runs = self.load_runs(list_of_runs)
         self.diamonds = self.load_diamonds(diamonds, list_of_runs)
@@ -68,6 +69,13 @@ class AnalysisCollection(Elementary):
         if hasattr(self, "fwhm_histo"):
             ROOT.gROOT.Delete("fwhm_histo")
         print "AnalyisCollection deleted"
+
+    @staticmethod
+    def make_runselection(run_list):
+        assert type(run_list) is list, 'run list argument has to be a list!'
+        selection = RunSelection()
+        selection.SelectRuns(run_list)
+        return selection
 
     def select_runs_in_range(self, start, stop):
         new_collection = OrderedDict()
@@ -978,6 +986,6 @@ if __name__ == "__main__":
     run_plan = args.runplan
     diamond = args.dia
     sel = RunSelection()
-    sel.SelectRunsFromRunPlan(run_plan)
-    # sel = [x for x in range(392, 417)]
+    # sel.SelectRunsFromRunPlan(run_plan)
+    sel = [x for x in range(391, 399)]
     z = AnalysisCollection(sel, diamond)

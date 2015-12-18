@@ -354,9 +354,9 @@ class SignalAnalysis(Analysis):
                 histos.append(h)
                 i += 1
         # rename bins
-        legend.AddEntry(gr1, 'mean')
-        legend.AddEntry(gr2, 'median')
-        legend.AddEntry(gr3, 'mpv')
+        legend.AddEntry(gr1, 'mean', 'lp')
+        legend.AddEntry(gr2, 'median', 'lp')
+        legend.AddEntry(gr3, 'mpv', 'lp')
         xaxis = gr1.GetXaxis()
         i = 0
         for key, value in self.cut.cut_strings.iteritems():
@@ -373,7 +373,7 @@ class SignalAnalysis(Analysis):
         gr2.Draw('lp')
         gr3.Draw('lp')
         legend.Draw()
-
+        self.histos['legend'] = legend
         return [gr1, gr2, gr3]
 
     @staticmethod

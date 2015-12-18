@@ -13,7 +13,7 @@ class RunSelection(Run):
         Run.__init__(self, run_number=None, verbose=verbose)
         self.run_numbers = [int(self.allRunKeys[i][-3:]) for i in xrange(len(self.allRunKeys))]  # list of all the run numbers found in json file
         self.run_numbers.sort()
-        self._GetRunPlanFromFile()
+        self.__get_runplan_from_file()
         self._LoadRuns()
         # self.GetTreeInfo()
         self._InitializeSelections()
@@ -59,10 +59,11 @@ class RunSelection(Run):
                 3: False
             }
 
-    def _GetRunPlanFromFile(self):
-        runplanfile = open(self.runplaninfofile, "r")
-        self.runplans = json.load(runplanfile)
-        runplanfile.close()
+    def __get_runplan_from_file(self):
+        runplanfile = self.get_program_dir() + self.runplaninfofile
+        f = open(runplanfile, 'r')
+        self.runplans = json.load(f)
+        f.close()
         campaigns = self.runplans.keys()
         if not self.TESTCAMPAIGN in campaigns:
             self.runplans[self.TESTCAMPAIGN] = {}
@@ -73,7 +74,7 @@ class RunSelection(Run):
         f = open(self.runplaninfofile, "w")
         json.dump(self.runplans, f, indent=2, sort_keys=True)
         f.close()
-        self._GetRunPlanFromFile()
+        self.__get_runplan_from_file()
 
     def SelectAll(self, selectDiamond1=True, selectDiamond2=True):
         '''
