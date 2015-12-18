@@ -649,49 +649,49 @@ class Cut(Elementary):
         satisfying the event cuts.
         :return:
         """
-        defstring_ = "lambda pulser, is_saturated, n_tracks, fft_mean, INVfft_max, sig_time, sig_spread, median: "
-        def_ = ""
+        # defstring_ = "lambda pulser, is_saturated, n_tracks, fft_mean, INVfft_max, sig_time, sig_spread, median: "
+        # def_ = ""
+        #
+        # if self.cut_types["IndividualChCut"] != "":
+        #     raw_input("WARNING: cut0 and cut3 cannot be applied on Tracking Data! Press Enter to Continue..")
+        #
+        # if self.cut_types["noPulser"] == 1:
+        #     def_ += "not pulser"
+        # elif self.cut_types["noPulser"] == 0:
+        #     def_ += "pulser"
+        #
+        # if self.cut_types["notSaturated"]:
+        #     if def_ != "":
+        #         def_ += " and "
+        #     def_ += "not is_saturated"
+        #
+        # if self.cut_types["Tracks"]:
+        #     if def_ != "":
+        #         def_ += " and "
+        #     def_ += "n_tracks"
+        #
+        # if self.cut_types["FFT"]:
+        #     if def_ != "":
+        #         def_ += " and "
+        #     assert False, "FFT cut not yet implemented in GetCutFunctionDef() method of Cut class. "
+        #     # to do: FFT entry in _cutTypes should be dict and/or contain a TCutG instance
+        #
+        # if self.cut_types["peakPos_high"] > 0:
+        #     if def_ != "":
+        #         def_ += " and "
+        #     def_ += "sig_time<{high}".format(high=int(self.cut_types["peakPos_high"]))
+        #
+        # if self.cut_types["spread_low"] > 0:
+        #     if def_ != "":
+        #         def_ += " and "
+        #     def_ += "sig_spread>{low}".format(low=int(self.cut_types["spread_low"]))
+        #
+        # if self.cut_types["absMedian_high"] > 0:
+        #     if def_ != "":
+        #         def_ += " and "
+        #     def_ += "abs(median)>{low}".format(low=int(self.cut_types["absMedian_high"]))
 
-        if self.cut_types["IndividualChCut"] != "":
-            raw_input("WARNING: cut0 and cut3 cannot be applied on Tracking Data! Press Enter to Continue..")
-
-        if self.cut_types["noPulser"] == 1:
-            def_ += "not pulser"
-        elif self.cut_types["noPulser"] == 0:
-            def_ += "pulser"
-
-        if self.cut_types["notSaturated"]:
-            if def_ != "":
-                def_ += " and "
-            def_ += "not is_saturated"
-
-        if self.cut_types["Tracks"]:
-            if def_ != "":
-                def_ += " and "
-            def_ += "n_tracks"
-
-        if self.cut_types["FFT"]:
-            if def_ != "":
-                def_ += " and "
-            assert False, "FFT cut not yet implemented in GetCutFunctionDef() method of Cut class. "
-            # to do: FFT entry in _cutTypes should be dict and/or contain a TCutG instance
-
-        if self.cut_types["peakPos_high"] > 0:
-            if def_ != "":
-                def_ += " and "
-            def_ += "sig_time<{high}".format(high=int(self.cut_types["peakPos_high"]))
-
-        if self.cut_types["spread_low"] > 0:
-            if def_ != "":
-                def_ += " and "
-            def_ += "sig_spread>{low}".format(low=int(self.cut_types["spread_low"]))
-
-        if self.cut_types["absMedian_high"] > 0:
-            if def_ != "":
-                def_ += " and "
-            def_ += "abs(median)>{low}".format(low=int(self.cut_types["absMedian_high"]))
-
-        return defstring_ + def_
+        return self.all_cut
 
     def AddCutString(self, cutstring):
         pass
