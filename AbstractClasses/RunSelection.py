@@ -3,45 +3,63 @@ import types as t
 from collections import namedtuple
 import json
 import copy
-from ROOT import TString
+# from ConfigParser import ConfigParser
+from datetime import datetime as dt
 
 
 class RunSelection(Run):
     def __init__(self, verbose=False):
-        self.run_numbers = []
-        self._selectionLog = {}
         Run.__init__(self, run_number=None, verbose=verbose)
-        self.run_numbers = [int(self.allRunKeys[i][-3:]) for i in xrange(len(self.allRunKeys))]  # list of all the run numbers found in json file
-        self.run_numbers.sort()
-        self.__get_runplan_from_file()
+        
+        self.runplan_path = self.get_program_dir() + self.run_config_parser.get('BASIC', 'runplaninfofile')
+        self.runplan = self.load_runplan()
+        self.run_numbers = self.load_run_numbers()
+        self.logs = {}
         self._LoadRuns()
-        # self.GetTreeInfo()
         self._InitializeSelections()
         self.run_plan = None
 
     def __str__(self):
         nr = len(self.run_numbers)
         selected_runs = self.GetSelectedRuns()
-        return "RunSelection Object\n" + str(len(selected_runs)) + " Out of " + str(nr) + " runs selected. Selections made:" + self._Log()
+        return "RunSelection Object\n" + str(len(selected_runs)) + " Out of " + str(nr) + " runs selected. Selections made:" + self.get_log_string()
 
-    def _Log(self, event=None):
-        if event is not None:
-            i = len(self._selectionLog)
-            self._selectionLog[i] = event
+    def make_log_entry(self, event):
+        time_str = dt.now().strftime('%H:%M:%S')
+        self.logs[len(self.logs)] = [event, time_str]
+
+    def get_log_string(self):
         string = '\n'
-        for i in self._selectionLog.keys():
-            string += str(i + 1) + '.) ' + self._selectionLog[i] + '\n'
+        for key, log in self.logs.iteritems():
+            string += '{key}.)\t{log}'.format(key=key, log=log[0])
         return string
 
+    def print_logs(self):
+        for key, log in self.logs.iteritems():
+            print '{key}.)\t{time}\t{log}'.format(key=key, time=log[1], log=log[0])
+
+    def load_run_numbers(self):
+        run_numbers = []
+        f = open(self.runinfofile, 'r')
+        data = json.load(f)
+        f.close()
+        # parser = ConfigParser()
+        # parser.read('Configuration/KeyDict_{campaign}.cfg'.format(campaign=self.TESTCAMPAIGN))
+        # type_name = parser.get('KEYNAMES', 'type')
+        # signal_types = ['signal', 'rate_scan']
+        for key in data:
+            run_numbers.append(int(key))
+        return sorted(run_numbers)
+
     def _LoadRuns(self):
-        '''
+        """
         loads all the run infos in a dict with the run numbers as keys
         :return:
-        '''
-        self.runs = {}
+        """
+        self.run_infos = {}
         for runnumber in self.run_numbers:
             self.set_run(runnumber, load_root_file=False)
-            self.runs[runnumber] = self.current_run
+            self.run_infos[runnumber] = self.current_run
 
     def _InitializeSelections(self):
         '''
@@ -51,7 +69,7 @@ class RunSelection(Run):
         '''
         self.selections = {}
         self.channel_selections = {}
-        self._selectionLog = {}
+        self.logs = {}
         for runnumber in self.run_numbers:
             self.selections[runnumber] = False
             self.channel_selections[runnumber] = {
@@ -59,22 +77,25 @@ class RunSelection(Run):
                 3: False
             }
 
-    def __get_runplan_from_file(self):
-        runplanfile = self.get_program_dir() + self.runplaninfofile
-        f = open(runplanfile, 'r')
-        self.runplans = json.load(f)
+    def load_runplan(self):
+        f = open(self.runplan_path, 'r')
+        runplans = json.load(f)
         f.close()
-        campaigns = self.runplans.keys()
-        if not self.TESTCAMPAIGN in campaigns:
-            self.runplans[self.TESTCAMPAIGN] = {}
-            self._SaveRunPlanInfoFile()
-        self.runplan = self.runplans[self.TESTCAMPAIGN]
+        try:
+            runplan = runplans[self.TESTCAMPAIGN]
+        except KeyError:
+            print 'No runplan for {tc} available yet, creating an empty one!'.format(tc=self.TESTCAMPAIGN)
+            runplan = {}
+            self.save_runplan(runplan)
+        return runplan
 
-    def _SaveRunPlanInfoFile(self):
-        f = open(self.runplaninfofile, "w")
-        json.dump(self.runplans, f, indent=2, sort_keys=True)
+    def save_runplan(self, runplan=None):
+        f = open(self.runplan_path, 'r+')
+        runplans = json.load(f)
+        runplans[self.TESTCAMPAIGN] = self.run_plan if runplan is None else runplan
+        f.seek(0)
+        json.dump(runplans, f, indent=2, sort_keys=True)
         f.close()
-        self.__get_runplan_from_file()
 
     def SelectAll(self, selectDiamond1=True, selectDiamond2=True):
         '''
@@ -87,7 +108,7 @@ class RunSelection(Run):
             self.selections[run_number] = True
             if selectDiamond1: self.channel_selections[run_number][0] = True
             if selectDiamond2: self.channel_selections[run_number][0] = True
-        self._Log('All runs selected')
+        self.make_log_entry('All runs selected')
         self.VerbosePrint('All runs selected')
 
     def UnSelectAll(self):
@@ -105,7 +126,7 @@ class RunSelection(Run):
         '''
         self.UnSelectAll()
 
-    def set_channels(self, diamond1=True, diamond2=True):
+    def set_channelss(self, diamond1=True, diamond2=True):
         '''
         Sets the channels (diamonds) of the selected runs to active or
         inactive.
@@ -118,7 +139,7 @@ class RunSelection(Run):
             self.channel_selections[run_number][3] = diamond2
         change1 = "diamond 1 = " + str(diamond1)
         change2 = "diamond 2 = " + str(diamond2)
-        self._Log("Channels of selected runs set: " + change1 + " " + change2)
+        self.make_log_entry("Channels of selected runs set: " + change1 + " " + change2)
 
     def SelectDataType(self, data_type):  # data type
         '''
@@ -133,10 +154,10 @@ class RunSelection(Run):
         assert (data_type in types), "wrong data type. \n\tSelect type from: " + str(types)
         count = 0
         for run_number in self.run_numbers:
-            if self.runs[run_number]['type'] == data_type:
+            if self.run_infos[run_number]['type'] == data_type:
                 self._SelectRun(run_number)
                 count += 1
-        self._Log('Runs of Type ' + data_type + ' selected. +' + str(count) + ' selections')
+        self.make_log_entry('Runs of Type ' + data_type + ' selected. +' + str(count) + ' selections')
         self.VerbosePrint('Runs of Type ' + data_type + ' selected. +' + str(count) + ' selections')
 
     def SelectDiamondRuns(self, diamondname, only_selected_runs=False):
@@ -156,15 +177,15 @@ class RunSelection(Run):
             choice = self.GetSelectedRuns()
         count = 0
         for run_number in choice:
-            if self.runs[run_number]['diamond 1'] == diamondname:
+            if self.run_infos[run_number]['diamond 1'] == diamondname:
                 self.selections[run_number] = True
                 self.channel_selections[run_number][0] = True
                 count += 1
-            if self.runs[run_number]['diamond 2'] == diamondname:
+            if self.run_infos[run_number]['diamond 2'] == diamondname:
                 self.selections[run_number] = True
                 self.channel_selections[run_number][3] = True
                 count += 1
-        self._Log('Runs and Channels containing ' + diamondname + ' selected. +' + str(count) + ' runs selected')
+        self.make_log_entry('Runs and Channels containing ' + diamondname + ' selected. +' + str(count) + ' runs selected')
         self.VerbosePrint('Runs and Channels containing ' + diamondname + ' selected. +' + str(count) + ' runs selected')
 
     # def SelectIrradiationRuns(self, irradiated=True, irrtype=None):
@@ -207,12 +228,12 @@ class RunSelection(Run):
         count = 0
         for run_number in self.run_numbers:
             if self.selections[run_number]:
-                if self.runs[run_number]['type'] == data_type:
+                if self.run_infos[run_number]['type'] == data_type:
                     pass
                 else:
                     self._UnselectRun(run_number)
                     count += 1
-        self._Log('All Selected Runs unselected if not of Type ' + data_type + '. -' + str(count) + ' selections')
+        self.make_log_entry('All Selected Runs unselected if not of Type ' + data_type + '. -' + str(count) + ' selections')
         self.VerbosePrint('All Selected Runs unselected if not of Type ' + data_type + '. -' + str(count) + ' selections')
 
     # def UnSelectUnlessIrradiation(self, irradiated=True, irrtype=None):
@@ -266,12 +287,12 @@ class RunSelection(Run):
         count = 0
         for run_number in self.run_numbers:
             if self.selections[run_number]:
-                if diamondname in [self.runs[run_number]['diamond 1'], self.runs[run_number]['diamond 2']]:
+                if diamondname in [self.run_infos[run_number]['diamond 1'], self.run_infos[run_number]['diamond 2']]:
                     pass
                 else:
                     self._UnselectRun(run_number)
                     count += 1
-        self._Log('All Selected Runs unselected if not using ' + diamondname + ' diamond. Only runs countaining ' + diamondname + ' left. -' + str(count) + ' selections')
+        self.make_log_entry('All Selected Runs unselected if not using ' + diamondname + ' diamond. Only runs countaining ' + diamondname + ' left. -' + str(count) + ' selections')
         self.VerbosePrint('All Selected Runs unselected if not using ' + diamondname + ' diamond. Only runs countaining ' + diamondname + ' left. -' + str(count) + ' selections')
 
     def UnSelectUnlessBias(self, bias):
@@ -287,18 +308,18 @@ class RunSelection(Run):
         for run_number in self.run_numbers:
             if self.selections[run_number]:
                 unselectrun = True
-                if self.runs[run_number]['hv dia1'] == bias:
+                if self.run_infos[run_number]['hv dia1'] == bias:
                     unselectrun = False
                 else:
                     self.channel_selections[run_number][0] = False
-                if self.runs[run_number]['hv dia2'] == bias:
+                if self.run_infos[run_number]['hv dia2'] == bias:
                     unselectrun = False
                 else:
                     self.channel_selections[run_number][3] = False
                 if unselectrun:
                     self.selections[run_number] = False
                     count += 1
-        self._Log('All Selected Runs unselected if not ' + str(bias) + 'V bias applied. Only ' + str(bias) + 'V Bias Runs left. -' + str(count) + ' selections')
+        self.make_log_entry('All Selected Runs unselected if not ' + str(bias) + 'V bias applied. Only ' + str(bias) + 'V Bias Runs left. -' + str(count) + ' selections')
         self.VerbosePrint('All Selected Runs unselected if not ' + str(bias) + 'V bias applied. Only ' + str(bias) + 'V Bias Runs left. -' + str(count) + ' selections')
 
     def _SelectRun(self, run_number):
@@ -323,7 +344,7 @@ class RunSelection(Run):
         if type(run_number) == t.IntType:
             if run_number in listOfRuns:
                 self._UnselectRun(run_number)
-                self._Log("Run " + str(run_number) + " unselected. -1 selection")
+                self.make_log_entry("Run " + str(run_number) + " unselected. -1 selection")
         else:
             ListToExclude = run_number
             for run_number in ListToExclude:
@@ -382,13 +403,13 @@ class RunSelection(Run):
         for runnumber in self.GetSelectedRuns():
             listitems += [Record(
                 runnumber,
-                self.runs[runnumber]['type'],
-                self.runs[runnumber]['diamond 1'],
-                self.runs[runnumber]['hv dia1'],
-                self.runs[runnumber]['diamond 2'],
-                self.runs[runnumber]['hv dia2'],
-                int(self.runs[runnumber]['measured flux']),
-                [self.runs[runnumber]['user comments']]
+                self.run_infos[runnumber]['type'],
+                self.run_infos[runnumber]['diamond 1'],
+                self.run_infos[runnumber]['hv dia1'],
+                self.run_infos[runnumber]['diamond 2'],
+                self.run_infos[runnumber]['hv dia2'],
+                int(self.run_infos[runnumber]['measured flux']),
+                [self.run_infos[runnumber]['user comments']]
             )]
 
         print printstring.format(
@@ -459,14 +480,14 @@ class RunSelection(Run):
 
     def _printRunInfo(self, runnumber):
         print "--- RUN ", runnumber, " ---"
-        for key in self.runs[runnumber].keys():
-            print "{key:>20}: {value}".format(key=key, value=self.runs[runnumber][key])
+        for key in self.run_infos[runnumber].keys():
+            print "{key:>20}: {value}".format(key=key, value=self.run_infos[runnumber][key])
 
     def __print_runinfo(self, run):
-        dia1 = self.runs[run]['diamond 1']
-        dia2 = self.runs[run]['diamond 2']
-        flux = self.runs[run]['measured flux']
-        type = self.runs[run]['type']
+        dia1 = self.run_infos[run]['diamond 1']
+        dia2 = self.run_infos[run]['diamond 2']
+        flux = self.run_infos[run]['measured flux']
+        type = self.run_infos[run]['type']
         print '{run}\t{type}\t{dia1}\t{dia2}\t{flux}'.format(run=run, dia1=dia1, dia2=dia2, flux=flux, type=type)
 
     @staticmethod
@@ -507,8 +528,8 @@ class RunSelection(Run):
 
     def _GetValues(self, key):
         valuelist = []
-        for runnumber in self.runs.keys():
-            value = self.runs[runnumber][key]
+        for runnumber in self.run_infos.keys():
+            value = self.run_infos[runnumber][key]
             if not value in valuelist:
                 valuelist += [value]
         return valuelist
@@ -571,7 +592,7 @@ class RunSelection(Run):
         else:
             tmp_selections = copy.deepcopy(self.selections)
             tmp_channel_selections = copy.deepcopy(self.channel_selections)
-            tmp_selectionLog = copy.deepcopy(self._selectionLog)
+            tmp_selectionLog = copy.deepcopy(self.logs)
 
             numbers = map(int, self.runplan[type_].keys())
             numbers.sort()
@@ -585,7 +606,7 @@ class RunSelection(Run):
                 print "\n"
             self.selections = copy.deepcopy(tmp_selections)
             self.channel_selections = copy.deepcopy(tmp_channel_selections)
-            self._selectionLog = copy.deepcopy(tmp_selectionLog)
+            self.logs = copy.deepcopy(tmp_selectionLog)
 
     def SelectRunsFromRunPlan(self, number, type_="rate_scan"):
         '''
@@ -615,7 +636,7 @@ class RunSelection(Run):
         else:
             self.runplans[self.TESTCAMPAIGN][run_type] = {}
             self.runplans[self.TESTCAMPAIGN][run_type][key] = self.GetSelectedRuns()
-        self._SaveRunPlanInfoFile()
+        self.save_runplan()
 
     def SelectRuns(self, list_of_runs, select_dia1=False, select_dia2=False):
         '''
@@ -629,3 +650,6 @@ class RunSelection(Run):
         assert (type(list_of_runs) is t.ListType), "list_of_runs not a list"
         for runnumber in list_of_runs:
             self._SelectRun(runnumber)
+
+if __name__ == '__main__':
+    z = RunSelection()

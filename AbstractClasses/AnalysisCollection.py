@@ -987,5 +987,5 @@ if __name__ == "__main__":
     diamond = args.dia
     sel = RunSelection()
     # sel.SelectRunsFromRunPlan(run_plan)
-    sel = [x for x in range(391, 399)]
+    sel = [x1 for x1 in range(391, 399)]
     z = AnalysisCollection(sel, diamond)

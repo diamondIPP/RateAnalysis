@@ -10,7 +10,6 @@ from datetime import datetime
 from ROOT import TFile, gROOT, TLegend
 from ConfigParser import ConfigParser, NoOptionError
 from numpy import mean
-from copy import deepcopy
 
 default_info = {
     'persons on shift': '-',
@@ -84,14 +83,12 @@ class Run(Elementary):
         self.run_path = self.run_config_parser.get('BASIC', 'runpath')
         self.runinfofile = self.run_config_parser.get('BASIC', 'runinfofile')
         self._runlogkeyprefix = self.run_config_parser.get('BASIC', 'runlog_key_prefix')
-        self.runplaninfofile = self.run_config_parser.get('BASIC', 'runplaninfofile')
         self.maskfilepath = self.run_config_parser.get('BASIC', 'maskfilepath')
         self.createNewROOTFiles = self.run_config_parser.getboolean('BASIC', 'createNewROOTFiles')
         self.signalregion_low = self.run_config_parser.getint('BASIC', 'signalregion_low')
         self.signalregion_high = self.run_config_parser.getint('BASIC', 'signalregion_high')
 
         # run info
-        self.allRunKeys = None
         self.RunInfo = None
 
         if run_number is not None:
@@ -159,7 +156,6 @@ class Run(Elementary):
             f = open(self.runinfofile, 'r')
             data = json.load(f)
             f.close()
-            self.allRunKeys = deepcopy(data.keys())
             loaderror = False
         except IOError as err:
             print '\n' + (len(str(err)) + 9) * '-'
