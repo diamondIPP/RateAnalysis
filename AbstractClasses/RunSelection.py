@@ -144,6 +144,9 @@ class RunSelection(Elementary):
             if self.run_infos[run]['type'] == run_type:
                 self.select_run(run, False) if not unselect else self.unselect_run(run, False)
                 selected_runs += 1
+            else:
+                if not unselect:
+                    self.unselect_run(run, False)
         prefix = 'un' if unselect else ''
         self.make_log_entry('Runs of type {type} {pref}selected ({nr} {pref}selections).'.format(type=run_type, pref=prefix, nr=selected_runs))
         self.verbose_print('Runs of type {type} {pref}selected ({nr} {pref}selections).'.format(type=run_type, pref=prefix, nr=selected_runs))
@@ -161,125 +164,22 @@ class RunSelection(Elementary):
         assert diamondname in diamondnames, 'wrong diamond name. \n\t-->Select diamond name from: {dias}'.format(dias=diamondnames)
         runs = self.get_selected_runs() if only_selected_runs else self.run_numbers
         selected_runs = 0
+        unselected_runs = 0
         dia_keys = ['diamond 1', 'diamond 2']
-        for i, run in enumerate(runs):
-            if self.run_infos[run][dia_keys[i]] == diamondname:
-                self.selection[run] = True
-                self.channels[run][0] = True
-                selected_runs += 1
-            if self.run_infos[run]['diamond 2'] == diamondname:
-                self.selection[run] = True
-                self.channels[run][3] = True
-                selected_runs += 1
-        self.make_log_entry('Runs and Channels containing ' + diamondname + ' selected. +' + str(selected_runs) + ' runs selected')
-        self.verbose_print('Runs and Channels containing ' + diamondname + ' selected. +' + str(selected_runs) + ' runs selected')
-
-    # def SelectIrradiationRuns(self, irradiated=True, irrtype=None):
-    #     count = 0
-    #     if irradiated and irrtype == None:
-    #         for run_number in self.run_numbers:
-    #             self.SetRun(run_number, validate=False)
-    #             if self.diamond.Specifications['Irradiation'] == 'proton' or self.diamond.Specifications['Irradiation'] == 'neutron':
-    #                 self.selections[run_number] = True
-    #                 count += 1
-    #         self._Log('Irradiated Runs selected')
-    #     elif not irradiated:
-    #         for run_number in self.run_numbers:
-    #             self.SetRun(run_number, validate=False)
-    #             if self.diamond.Specifications['Irradiation'] == 'no':
-    #                 self.selections[run_number] = True
-    #                 count += 1
-    #         self._Log('Non-Irradiated Runs selected')
-    #     else:
-    #         assert(irrtype in ['no', 'proton', 'neutron']), 'wrong irradiation type. Choose irrtype in [`proton`, `neutron`, `no`]'
-    #         if irrtype == 'no':
-    #             self.SelectIrradiationRuns(irradiated=False)
-    #         else:
-    #             for run_number in self.run_numbers:
-    #                 self.SetRun(run_number, validate=False)
-    #                 if self.diamond.Specifications['Irradiation'] == irrtype:
-    #                     self.selections[run_number] = True
-    #                     count += 1
-    #             self._Log('Irradiated Runs selected with '+irrtype+' irradiation. +'+str(count)+' selections')
-    #             self.VerbosePrint('Irradiated Runs selected with '+irrtype+' irradiation. +'+str(count)+' selections')
-
-    def UnSelectUnlessDataType(self, data_type):
-        '''
-        Keeps only runs which are of type 'data_type'.
-        :param data_type:
-        :return:
-        '''
-        types = self.get_runinfo_values('type')
-        assert (data_type in types), 'wrong data type. \n\tSelect type from: ' + str(types)
-        count = 0
-        for run_number in self.run_numbers:
-            if self.selection[run_number]:
-                if self.run_infos[run_number]['type'] == data_type:
-                    pass
-                else:
-                    self.unselect_run(run_number)
-                    count += 1
-        self.make_log_entry('All Selected Runs unselected if not of Type ' + data_type + '. -' + str(count) + ' selections')
-        self.verbose_print('All Selected Runs unselected if not of Type ' + data_type + '. -' + str(count) + ' selections')
-
-    # def UnSelectUnlessIrradiation(self, irradiated=True, irrtype=None):
-    #     count = 0
-    #     if irradiated and irrtype == None:
-    #         for run_number in self.run_numbers:
-    #             if self.selections[run_number]:
-    #                 self.SetRun(run_number, validate=False)
-    #                 if self.diamond.Specifications['Irradiation'] == 'proton' or self.diamond.Specifications['Irradiation'] == 'neutron':
-    #                     pass
-    #                 else:
-    #                     self.selections[run_number] = False
-    #                     count += 1
-    #         self._Log('All Selected Runs unselected if non-irradiated. Only radiated Runs left. -'+str(count)+' selections')
-    #         self.VerbosePrint('All Selected Runs unselected if non-irradiated. Only radiated Runs left. -'+str(count)+' selections')
-    #     elif not irradiated:
-    #         for run_number in self.run_numbers:
-    #             if self.selections[run_number]:
-    #                 self.SetRun(run_number, validate=False)
-    #                 if self.diamond.Specifications['Irradiation'] == 'no':
-    #                     pass
-    #                 else:
-    #                     self.selections[run_number] = False
-    #                     count += 1
-    #         self._Log('All Selected Runs unselected if irradiated. Only non-radiated Runs left. -'+str(count)+' selections')
-    #         self.VerbosePrint('All Selected Runs unselected if irradiated. Only non-radiated Runs left. -'+str(count)+' selections')
-    #     else:
-    #         assert(irrtype in ['no', 'proton', 'neutron']), 'wrong irradiation type. Choose irrtype in [`proton`, `neutron`, `no`]'
-    #         if irrtype == 'no':
-    #             self.UnSelectUnlessIrradiation(irradiated=False)
-    #         else:
-    #             for run_number in self.run_numbers:
-    #                 if self.selections[run_number]:
-    #                     self.SetRun(run_number, validate=False)
-    #                     if self.diamond.Specifications['Irradiation'] == irrtype:
-    #                         pass
-    #                     else:
-    #                         self.selections[run_number] = False
-    #                         count += 1
-    #             self._Log('All Selected Runs unselected if not radiated by '+irrtype+'. Only '+irrtype+'-radiated Runs left. -'+str(count)+' selections')
-    #             self.VerbosePrint('All Selected Runs unselected if not radiated by '+irrtype+'. Only '+irrtype+'-radiated Runs left. -'+str(count)+' selections')
-
-    def UnSelectUnlessDiamond(self, diamondname):
-        '''
-        Keeps only runs which hold the diamond with name 'diamondname'.
-        :param diamondname:
-        :return:
-        '''
-        diamondnames = self.show_diamond_names(True)
-        assert (diamondname in diamondnames), 'wrong diamond name. \n\tSelect diamond name from: ' + str(diamondnames)
-        count = 0
-        for run_number in self.run_numbers:
-            if self.selection[run_number]:
-                if diamondname in [self.run_infos[run_number]['diamond 1'], self.run_infos[run_number]['diamond 2']]:
-                    pass
-                else:
-                    self.unselect_run(run_number)
-                    count += 1
-        self.make_log_entry('All Selected Runs unselected if not using ' + diamondname + ' diamond. Only runs countaining ' + diamondname + ' left. -' + str(count) + ' selections')
-        self.verbose_print('All Selected Runs unselected if not using ' + diamondname + ' diamond. Only runs countaining ' + diamondname + ' left. -' + str(count) + ' selections')
+        for run in runs:
+            found_dia = False
+            for i, ch in enumerate(self.run.channels):
+                if self.run_infos[run][dia_keys[i]] == diamondname:
+                    self.select_run(run, False)
+                    self.channels[run][ch] = True
+                    found_dia = True
+                    selected_runs += 1
+            if not found_dia and self.selection[run]:
+                self.unselect_run(run, False)
+                unselected_runs += 1
+        log = 'Runs and Channels containing {dia} selected ( {nr1} runs selected, {nr2} unselected)'.format(dia=diamondname, nr1=selected_runs, nr2=unselected_runs)
+        self.make_log_entry(log)
+        self.verbose_print(log)
 
     def UnSelectUnlessBias(self, bias):
         '''
