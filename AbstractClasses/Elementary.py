@@ -49,7 +49,7 @@ class Elementary(object):
         self.count += 1
         return color
 
-    def VerbosePrint(self, *args):
+    def verbose_print(self, *args):
         """
         Print command if verbose is activated.
         :param args:

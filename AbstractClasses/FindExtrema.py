@@ -251,7 +251,7 @@ class FindExtrema(Elementary):
         if threshold == None:
             self.SetThreshold()
             # self.threshold = self.BinCollectionObj.SignalHisto.GetMean()
-            self.VerbosePrint('threshold set automatically to ', self.threshold)
+            self.verbose_print('threshold set automatically to ', self.threshold)
         else:
             self.threshold = threshold
         self.minimum_bincount = minimum_bincount
@@ -263,7 +263,7 @@ class FindExtrema(Elementary):
         self.SENW_scan()
     
         Vote4Extrema = self.GetBinsInVoteRange(4)
-        self.VerbosePrint(len(Vote4Extrema)," "+self.ExtremaType+" found containing 4 votings")
+        self.verbose_print(len(Vote4Extrema), " " + self.ExtremaType + " found containing 4 votings")
     
         # mean = self.BinCollectionObj.SignalHisto.GetMean()
         if hasattr(self.BinCollectionObj.parent_analysis_obj, "MeanSignalHisto"):
@@ -287,8 +287,8 @@ class FindExtrema(Elementary):
                     self.FillHistoByBinnumber(center_bin, 1)
     
         Vote5Extrema = self.GetBinsInVoteRange(5)
-        self.VerbosePrint(len(Vote5Extrema)," "+self.ExtremaType+" found containing 5 votings: ")
-        self.VerbosePrint(self.BinCollectionObj.GetBinCenter(Vote5Extrema))
+        self.verbose_print(len(Vote5Extrema), " " + self.ExtremaType + " found containing 5 votings: ")
+        self.verbose_print(self.BinCollectionObj.GetBinCenter(Vote5Extrema))
     
     
         # If Monte Carlo, match with real peak positions:
@@ -322,13 +322,13 @@ class FindExtrema(Elementary):
             # Looking for Ghosts:
             for bin_nr in Vote5Extrema:
                 if not bin_nr in Peak_nbhd:
-                    self.VerbosePrint('Ghost peak found at position ({0:.3f}/{1:.3f})'.format(*self.BinCollectionObj.GetBinCenter(bin_nr)))
+                    self.verbose_print('Ghost peak found at position ({0:.3f}/{1:.3f})'.format(*self.BinCollectionObj.GetBinCenter(bin_nr)))
                     Ghosts.append(bin_nr)
             # Looking for Ninjas:
             for i in xrange(npeaks):
                 bin_nr = self.BinCollectionObj.GetBinNumber(peaks_x[i],peaks_y[i])
                 if not bin_nr in Maxima_nbhd:
-                    self.VerbosePrint('Ninja peak found at position ({0:.3f}/{1:.3f})'.format(peaks_x[i],peaks_y[i]))
+                    self.verbose_print('Ninja peak found at position ({0:.3f}/{1:.3f})'.format(peaks_x[i], peaks_y[i]))
                     Ninjas.append(bin_nr)
             if npeaks > 0:
                 print "\n{0:.1f}% of generated peaks found.".format(100.*(npeaks-len(Ninjas))/npeaks)

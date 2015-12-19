@@ -66,7 +66,7 @@ class Analysis(Elementary):
         self.TimingAlignmentFailed = False
 
     def __del__(self):
-        self.VerbosePrint("Deleting Analysis..")
+        self.verbose_print("Deleting Analysis..")
         if hasattr(self, "Pad"):
             self.Pad.__del__()
             del self.Pad
@@ -85,7 +85,7 @@ class Analysis(Elementary):
             del canvas
         if hasattr(self, "MeanSignalHisto"):
             ROOT.gROOT.Delete(self.MeanSignalHisto_name)
-        self.VerbosePrint("Analysis deleted")
+        self.verbose_print("Analysis deleted")
 
 
 
@@ -209,7 +209,7 @@ class Analysis(Elementary):
             d = 0
             while GoOn and d<5: # loop for different MC Signal Distributions
                 try:
-                    self.VerbosePrint("try a Signal Distribution")
+                    self.verbose_print("try a Signal Distribution")
                     if not self.run_object.DataIsMade:
                         self.run_object.Simulate() # if draw=False the first distribution will be taken
                     for i in xrange(self.run_object.NumberOfHits):
@@ -439,7 +439,7 @@ class Analysis(Elementary):
         y = array('d', [0,0])
         self.ExtremeAnalysis.MeanSignalHisto.GetQuantiles(2, y, q)
         SignalHeight = y[1]/y[0]-1.
-        self.VerbosePrint('\nApproximated Signal Amplitude: {0:0.0f}% - ({1:0.0f}%/{2:0.0f}% Quantiles approximation)\n'.format(100.*(SignalHeight), max_percent, min_percent))
+        self.verbose_print('\nApproximated Signal Amplitude: {0:0.0f}% - ({1:0.0f}%/{2:0.0f}% Quantiles approximation)\n'.format(100. * (SignalHeight), max_percent, min_percent))
         self.ExtremaResults['SignalHeight'] = SignalHeight
         self.ExtremeAnalysis.ExtremaResults['SignalHeight'] = SignalHeight
         return SignalHeight
@@ -648,6 +648,6 @@ class Analysis(Elementary):
             if not os.path.exists(MCDir):
                 os.makedirs(MCDir)
             self.Pad.counthisto.SaveAs(MCDir+str(self.run_object.run_number)+"counthisto.root")
-            self.VerbosePrint("CountHisto exported..")
+            self.verbose_print("CountHisto exported..")
         else:
             print "INFO: Monte Carlo run can not be exported as MC input"

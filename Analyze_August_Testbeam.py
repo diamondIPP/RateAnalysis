@@ -19,8 +19,8 @@ for runplanNr in runplans:
     sel.UnselectAll()
     sel.SelectRunsFromRunPlan(number=runplanNr, type_=runplanType)      # select all runs from a certain run plan
     #sel.UnSelectUnlessDiamond(diamondname=diamond)                      # unselect runs, which dont have the diamond in it's channels
-    sel.SelectDiamondRuns(diamondname=diamond1, only_selected_runs=True) # activate only a certain diamond for analysis
-    sel.SelectDiamondRuns(diamondname=diamond2, only_selected_runs=True)
+    sel.select_diamond_runs(diamondname=diamond1, only_selected_runs=True) # activate only a certain diamond for analysis
+    sel.select_diamond_runs(diamondname=diamond2, only_selected_runs=True)
 
     print "Selected runs to analyze:"
     sel.ShowSelectedRuns(commentlength=0)

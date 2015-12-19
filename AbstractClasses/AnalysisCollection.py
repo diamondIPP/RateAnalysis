@@ -204,7 +204,7 @@ class AnalysisCollection(Elementary):
         if type(run_list) is list:
             return run_list
         elif isinstance(run_list, RunSelection):
-            return run_list.GetSelectedRuns()
+            return run_list.get_selected_runs()
         else:
             raise ValueError('listOfRuns has to be of type list or instance of RunSelection')
 
@@ -649,7 +649,7 @@ class AnalysisCollection(Elementary):
                     pass
                 else:
                     i += 1
-            self.VerbosePrint("Number of separated extrema to look at: {0:0.0f}".format(i))
+            self.verbose_print("Number of separated extrema to look at: {0:0.0f}".format(i))
             peakbins = peakbins[:i]
             return peakbins
 

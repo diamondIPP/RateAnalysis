@@ -4,12 +4,12 @@ from AbstractClasses.RunSelection import RunSelection
 
 
 selection = RunSelection()
-selection.SelectAll()
+selection.select_all_runs()
 # selection.SelectDiamondRuns("IIa-2")
 # selection.UnSelectUnlessDataType(0)
 # selection.UnSelectUnlessBias(-500)
 
-runs = selection.GetSelectedRuns()
+runs = selection.get_selected_runs()
 
 run = Run(validate=True)
 mins = []

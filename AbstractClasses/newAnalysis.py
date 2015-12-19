@@ -1270,7 +1270,7 @@ class Analysis(Elementary):
         y = array('d', [0, 0])
         self.MeanSignalHisto[channel].GetQuantiles(2, y, q)
         SignalHeight = y[1] / y[0] - 1.
-        self.VerbosePrint('\nApproximated Signal Amplitude: {0:0.0f}% - ({1:0.0f}%/{2:0.0f}% Quantiles approximation)\n'.format(100. * (SignalHeight), max_percent, min_percent))
+        self.verbose_print('\nApproximated Signal Amplitude: {0:0.0f}% - ({1:0.0f}%/{2:0.0f}% Quantiles approximation)\n'.format(100. * (SignalHeight), max_percent, min_percent))
         self.extremaResults[channel]['SignalHeight'] = SignalHeight
         return SignalHeight
 

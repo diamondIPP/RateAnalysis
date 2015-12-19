@@ -24,8 +24,8 @@ for runplanNr in runplans:
     myselection.UnselectAll()
     myselection.SelectRunsFromRunPlan(number=runplanNr, type_=runplanType)      # select all runs from a certain run plan
     # activate only diamond with names diamond1 or diamond2:
-    myselection.SelectDiamondRuns(diamondname=diamond1, only_selected_runs=True)
-    myselection.SelectDiamondRuns(diamondname=diamond2, only_selected_runs=True)
+    myselection.select_diamond_runs(diamondname=diamond1, only_selected_runs=True)
+    myselection.select_diamond_runs(diamondname=diamond2, only_selected_runs=True)
 
     # show the runs in the terminal:
     print "Selected runs to analyze:"

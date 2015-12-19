@@ -36,11 +36,11 @@ if __name__ == "__main__":
 
     # Select Run Numbers:
     selection = RunSelection(verbose=verbose)
-    selection.SelectDataType(0)
+    selection.select_runs_of_type(0)
     selection.UnSelectUnlessDiamond(Diamond)
     selection.UnSelectUnlessBias(Bias)
     selection.ExcludeRun(854)
-    run_numbers = selection.GetSelectedRuns()
+    run_numbers = selection.get_selected_runs()
 
     print "Starting analysis with ",len(run_numbers)," runs:"
     run.validate_runs(run_numbers)
