@@ -1,6 +1,7 @@
 from RunClass import Run
 from Elementary import Elementary
 import json
+from copy import deepcopy
 from datetime import datetime as dt
 from textwrap import fill
 
@@ -77,21 +78,6 @@ class RunSelection(Elementary):
             self.save_runplan(runplan)
         return runplan
     # endregion
-
-    def save_runplan(self, runplan=None):
-        f = open(self.runplan_path, 'r+')
-        runplans = json.load(f)
-        self.rename_runplan_numbers()
-        runplans[self.TESTCAMPAIGN] = self.run_plan if runplan is None else runplan
-        f.seek(0)
-        json.dump(runplans, f, indent=2, sort_keys=True)
-        f.truncate()
-        f.close()
-
-    def rename_runplan_numbers(self):
-        for type_, plan in self.run_plan.iteritems():
-            for nr in plan:
-                self.run_plan[type_][nr.zfill(2)] = self.run_plan[type_].pop(nr)
 
     # ============================================
     # region SELECT FUNCTIONS
@@ -242,6 +228,31 @@ class RunSelection(Elementary):
             if not maxrun >= run >= minrun:
                 self.unselect_run(run, do_assert=False)
 
+    def master_selection(self):
+        self.unselect_all_runs()
+        self.show_diamond_names()
+        dia = raw_input('Which diamond do you want to select? ')
+        self.select_diamond_runs(dia)
+        self.show_hv_values(sel=True)
+        hv = int(float(raw_input('Which hv do you want to select? ')))
+        self.unselect_unless_bias(hv)
+        self.show_run_types(sel=True)
+        prompt = raw_input('Do you wish to unselect a run type (y/n)? ')
+        if prompt.lower() in ['yes', 'ja', 'y', 'j']:
+            run_type = raw_input('Which type to you want to unselect? ')
+            self.unselect_runs_of_type(run_type)
+        self.show_selected_runs()
+        prompt = raw_input('Do you wish to unselect any run (y/n)? ')
+        while prompt.lower() in ['yes', 'ja', 'y', 'j']:
+            run = raw_input('Which run do you want to unselect? ')
+            self.unselect_run(run)
+            prompt = raw_input('Do you wish to unselect another run (y/n)? ')
+        self.show_run_plan()
+        prompt = raw_input('Do you wish to save the selection to a runplan (y/n)? ')
+        if prompt.lower() in ['yes', 'ja', 'y', 'j']:
+            nr = raw_input('Enter the name/number of the runplan: ')
+            self.add_selection_to_runplan(nr)
+
     def get_selected_runs(self):
         """ :return: list of selected run numbers. """
         selected = []
@@ -267,7 +278,6 @@ class RunSelection(Elementary):
         if not selected:
             print 'No runs selected!'
         return selected
-    # endregion
 
     def show_selected_runs(self, show_allcomments=False):
         """
@@ -302,47 +312,24 @@ class RunSelection(Elementary):
             comment = self.run_infos[run_nr]['user comments']
             if show_allcomments and len(comment) > 0:
                 print 'COMMENT:\n{comment}\n{delimitor}'.format(comment=fill(comment, 51), delimitor=49 * '-')
+    # endregion
 
-    def get_diamond_names(self):
-        """
-        :return: all diamond names from the logfile
-        """
-        names = self.get_runinfo_values('diamond 1')
-        for name in self.get_runinfo_values('diamond 2'):
-            if name not in names:
-                names.append(name)
-        return sorted(names)
+    # ============================================
+    # region RUN PLAN
+    def save_runplan(self, runplan=None):
+        f = open(self.runplan_path, 'r+')
+        runplans = json.load(f)
+        self.rename_runplan_numbers()
+        runplans[self.TESTCAMPAIGN] = self.run_plan if runplan is None else runplan
+        f.seek(0)
+        json.dump(runplans, f, indent=2, sort_keys=True)
+        f.truncate()
+        f.close()
 
-    def show_diamond_names(self):
-        print 'Diamondnames:'
-        for name in self.get_diamond_names():
-            print '  ' + name
-
-    def show_run_types(self):
-        print 'Types:'
-        for type_ in self.get_runinfo_values('type'):
-            print '  ' + type_
-
-    def get_runinfo_values(self, key, sel=False):
-        """
-        :param key: key of run info
-        :param sel: False for all runs, True for all in selection
-        :return: all different values of the run info dict
-        """
-        values = []
-        run_infos = self.run_infos if sel else self.get_selection_runinfo()
-        for run, info in run_infos.iteritems():
-            value = info[key]
-            if value not in values:
-                values.append(value)
-        return sorted(values)
-
-    def get_selection_runinfo(self):
-        dic = {}
-        for run, info in self.run_infos.iteritems():
-            if self.selection[run]:
-                dic[run] = info
-        return dic
+    def rename_runplan_numbers(self):
+        for type_, plan in self.run_plan.iteritems():
+            for nr in plan:
+                self.run_plan[type_][nr.zfill(2)] = self.run_plan[type_].pop(nr)
 
     def show_run_plan(self, detailed=False, show_allcomments=False):
         """
@@ -351,9 +338,9 @@ class RunSelection(Elementary):
         :param show_allcomments:
         :return:
         """
-        old_selection = self.selection
-        old_channels = self.channels
-        old_logs = self.logs
+        old_selection = deepcopy(self.selection)
+        old_channels = deepcopy(self.channels)
+        old_logs = deepcopy(self.logs)
         print 'RUN PLAN FOR TESTCAMPAIGN: {tc}'.format(tc=self.TESTCAMPAIGN)
         for run_type, plan in self.run_plan.iteritems():
             print '{type}:'.format(type=run_type)
@@ -371,7 +358,7 @@ class RunSelection(Elementary):
                             missing_runs.append(run)
                         else:
                             i += 1
-                    dias = [str(dia) for dia in self.get_diamond_names()]
+                    dias = [str(dia) for dia in self.get_diamond_names(True)]
                     run_string = '[{min}, ... , {max}]'.format(min=str(runs[0]).zfill(3), max=str(runs[-1]).zfill(2))
                     not_string = str(missing_runs) if missing_runs else ''
                     print '  {nr}: {runs}, {miss} {dias}'.format(nr=nr, runs=run_string, miss=not_string[:15].ljust(15), dias=dias)
@@ -415,6 +402,59 @@ class RunSelection(Elementary):
 
         self.run_plan[run_type].pop(plan)
         self.save_runplan()
+    # endregion
+
+    def get_diamond_names(self, sel=False):
+        names = self.get_runinfo_values('diamond 1', sel)
+        for name in self.get_runinfo_values('diamond 2', sel):
+            if name not in names:
+                names.append(name)
+        return sorted(names)
+
+    def show_diamond_names(self, sel=False):
+        print 'Diamondnames:'
+        for name in self.get_diamond_names(sel=sel):
+            print '  ' + name
+
+    def get_hv_values(self, sel=False):
+        dias = self.get_selected_diamonds()[0] if sel else 3
+        hvs = self.get_runinfo_values('hv dia1', sel) if self.has_bit(dias, 0) else self.get_runinfo_values('hv dia2', sel)
+        if dias == 3:
+            for hv in self.get_runinfo_values('hv dia2', sel):
+                if hv not in hvs:
+                    hvs.append(hv)
+        return hvs
+
+    def show_hv_values(self, sel=False):
+        print 'HV Values:'
+        for hv in self.get_hv_values(sel=sel):
+            print '  {hv}'.format(hv=hv)
+
+    def show_run_types(self, sel=False):
+        print 'Types:'
+        for type_ in self.get_runinfo_values('type', sel=sel):
+            print '  ' + type_
+
+    def get_runinfo_values(self, key, sel=False):
+        """
+        :param key: key of run info
+        :param sel: False for all runs, True for all in selection
+        :return: all different values of the run info dict
+        """
+        values = []
+        run_infos = self.run_infos if not sel else self.get_selection_runinfo()
+        for run, info in run_infos.iteritems():
+            value = info[key]
+            if value not in values:
+                values.append(value)
+        return sorted(values)
+
+    def get_selection_runinfo(self):
+        dic = {}
+        for run, info in self.run_infos.iteritems():
+            if self.selection[run]:
+                dic[run] = info
+        return dic
 
 
 if __name__ == '__main__':
