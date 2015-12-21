@@ -215,7 +215,7 @@ class AnalysisCollection(Elementary):
             if type(dias) is not list:
                 dias = [dias] * len(self.runs)
         else:
-            dias = [3] * len(run_list) if type(run_list) is list else run_list.GetSelectedDiamonds()
+            dias = [3] * len(run_list) if type(run_list) is list else run_list.get_selected_diamonds()
         return dias
 
     def get_lowest_rate_run(self):

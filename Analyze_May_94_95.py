@@ -22,14 +22,14 @@ runplans = map(str, [5,8])
 for runplanNr in runplans:
     # --- change the selected run plan and diamond ---
     myselection.UnselectAll()
-    myselection.SelectRunsFromRunPlan(number=runplanNr, type_=runplanType)      # select all runs from a certain run plan
+    myselection.select_runs_from_runplan(number=runplanNr, type_=runplanType)      # select all runs from a certain run plan
     # activate only diamond with names diamond1 or diamond2:
     myselection.select_diamond_runs(diamondname=diamond1, only_selected_runs=True)
     myselection.select_diamond_runs(diamondname=diamond2, only_selected_runs=True)
 
     # show the runs in the terminal:
     print "Selected runs to analyze:"
-    myselection.ShowSelectedRuns(commentlength=0)
+    myselection.show_selected_runs(commentlength=0)
 
     # make AnalysisCollection object of selected runs:
     rate_analyses[runplanNr] = AnalysisCollection(myselection, maskfilename=mask[runplanNr])

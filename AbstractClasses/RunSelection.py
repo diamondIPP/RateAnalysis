@@ -1,11 +1,8 @@
 from RunClass import Run
 from Elementary import Elementary
-import types as t
-from collections import namedtuple
 import json
-import copy
-# from ConfigParser import ConfigParser
 from datetime import datetime as dt
+from textwrap import fill
 
 
 class RunSelection(Elementary):
@@ -20,6 +17,7 @@ class RunSelection(Elementary):
         self.logs = {}
         self.selection = {}
         self.channels = {}
+        self.selected_runplan = None
 
         self.init_selection()
 
@@ -52,10 +50,6 @@ class RunSelection(Elementary):
         f = open(self.run.runinfofile, 'r')
         data = json.load(f)
         f.close()
-        # parser = ConfigParser()
-        # parser.read('Configuration/KeyDict_{campaign}.cfg'.format(campaign=self.TESTCAMPAIGN))
-        # type_name = parser.get('KEYNAMES', 'type')
-        # signal_types = ['signal', 'rate_scan']
         for key in data:
             run_numbers.append(int(key))
         return sorted(run_numbers)
@@ -84,6 +78,23 @@ class RunSelection(Elementary):
         return runplan
     # endregion
 
+    def save_runplan(self, runplan=None):
+        f = open(self.runplan_path, 'r+')
+        runplans = json.load(f)
+        self.rename_runplan_numbers()
+        runplans[self.TESTCAMPAIGN] = self.run_plan if runplan is None else runplan
+        f.seek(0)
+        json.dump(runplans, f, indent=2, sort_keys=True)
+        f.truncate()
+        f.close()
+
+    def rename_runplan_numbers(self):
+        for type_, plan in self.run_plan.iteritems():
+            for nr in plan:
+                self.run_plan[type_][nr.zfill(2)] = self.run_plan[type_].pop(nr)
+
+    # ============================================
+    # region SELECT FUNCTIONS
     def reset_selection(self):
         """ Creates a dict of bools to store the selection, which is filled with False (no run selected). Resets the logs. """
         self.logs = {}
@@ -92,14 +103,6 @@ class RunSelection(Elementary):
             self.channels[run] = {}
             for ch in self.run.channels:
                 self.channels[run][ch] = False
-
-    def save_runplan(self, runplan=None):
-        f = open(self.runplan_path, 'r+')
-        runplans = json.load(f)
-        runplans[self.TESTCAMPAIGN] = self.run_plan if runplan is None else runplan
-        f.seek(0)
-        json.dump(runplans, f, indent=2, sort_keys=True)
-        f.close()
 
     def select_all_runs(self, dia1=True, dia2=True):
         for run in self.run_numbers:
@@ -181,32 +184,26 @@ class RunSelection(Elementary):
         self.make_log_entry(log)
         self.verbose_print(log)
 
-    def UnSelectUnlessBias(self, bias):
-        '''
-        Keeps only runs selected which have a diamond with a given bias
-        voltage. Diamonds with a different bias voltage will be un-
-        selected.
+    def unselect_unless_bias(self, bias):
+        """
+        Keeps only runs selected which have a diamond with a given bias voltage. Diamonds with a different bias voltage will be un- selected.
         :param bias:
-        :return:
-        '''
-        assert (type(bias) == t.IntType), 'Bias has to be int-Type'
-        count = 0
-        for run_number in self.run_numbers:
-            if self.selection[run_number]:
-                unselectrun = True
-                if self.run_infos[run_number]['hv dia1'] == bias:
-                    unselectrun = False
+        """
+        assert type(bias) is int, 'Bias has to be an integer'
+        unselected_runs = 0
+        for run in self.get_selected_runs():
+            unselect = True
+            for i, ch in enumerate(self.run.channels, 1):
+                if not self.run_infos[run]['hv dia{nr}'.format(nr=i)] == bias:
+                    self.channels[run][ch] = False
                 else:
-                    self.channels[run_number][0] = False
-                if self.run_infos[run_number]['hv dia2'] == bias:
-                    unselectrun = False
-                else:
-                    self.channels[run_number][3] = False
-                if unselectrun:
-                    self.selection[run_number] = False
-                    count += 1
-        self.make_log_entry('All Selected Runs unselected if not ' + str(bias) + 'V bias applied. Only ' + str(bias) + 'V Bias Runs left. -' + str(count) + ' selections')
-        self.verbose_print('All Selected Runs unselected if not ' + str(bias) + 'V bias applied. Only ' + str(bias) + 'V Bias Runs left. -' + str(count) + ' selections')
+                    unselect = False
+            if unselect:
+                self.selection[run] = False
+                unselected_runs += 1
+        log = 'Unselected all runs and channels if bias is not {bias}V (unselected {nr} runs).'.format(bias=bias, nr=unselected_runs)
+        self.make_log_entry(log)
+        self.verbose_print(log)
 
     def select_run(self, run_number, do_assert=True, unselect=False):
         if do_assert:
@@ -218,168 +215,93 @@ class RunSelection(Elementary):
     def unselect_run(self, run_number, do_assert=True):
         self.select_run(run_number, do_assert, unselect=True)
 
-    def ExcludeRuns(self, run_number):
-        '''
-        This method will un-select the run with number run_number.
-        run_number has to be a single integer or a list of integers in
-        order to exclude several runs.
-        :param run_number:
-        :return:
-        '''
-        assert (type(run_number) == t.IntType or type(run_number) == t.ListType), 'Wrong input type. run_number has to be either integer or list of integer'
-        listOfRuns = self.get_selected_runs()
-        if type(run_number) == t.IntType:
-            if run_number in listOfRuns:
-                self.unselect_run(run_number)
-                self.make_log_entry('Run ' + str(run_number) + ' unselected. -1 selection')
-        else:
-            ListToExclude = run_number
-            for run_number in ListToExclude:
-                self.ExcludeRuns(int(run_number))
+    def unselect_list_of_runs(self, run_list):
+        assert type(run_list) is list, 'argument has to be a list of integers'
+        unselected_runs = 0
+        selected_runs = self.get_selected_runs()
+        for run in run_list:
+            if run in selected_runs:
+                self.unselect_run(run, do_assert=False)
+                unselected_runs += 1
+            else:
+                print '{run} was not selected'.format(run=run)
+        self.make_log_entry('Unselected {n} runs'.format(n=unselected_runs))
 
-    def SelectRunsInRange(self, minrun, maxrun):
-        '''
-        Selects all runs with run numbers in range [minrun, .. , maxrun].
-        :param minrun:
-        :param maxrun:
-        :return:
-        '''
-        for run_number in self.run_numbers:
-            if run_number <= maxrun and run_number >= minrun:
-                self.select_run(run_number)
+    def select_runs_in_range(self, minrun, maxrun):
+        for run in self.run_numbers:
+            if maxrun >= run >= minrun:
+                self.select_run(run, do_assert=False)
 
-    def UnSelectUnlessInRange(self, minrun, maxrun):
-        '''
-        Keeps only runs in range [minrun, .. , maxrun].
-        :param minrun:
-        :param maxrun:
-        :return:
-        '''
-        for run_number in self.get_selected_runs():
-            if not (run_number <= maxrun and run_number >= minrun):
-                self.unselect_run(run_number)
+    def select_runs(self, run_list, do_assert=False):
+        assert type(run_list) is list, 'The run_list has to be a list of integers'
+        for run in run_list:
+            self.select_run(run, do_assert=do_assert)
 
-    # def ValidateSelectedRuns(self):
-    #     #self.ValidateRuns(self.GetSelectedRuns())
-    #     pass
+    def unselect_unless_in_range(self, minrun, maxrun):
+        for run in self.get_selected_runs():
+            if not maxrun >= run >= minrun:
+                self.unselect_run(run, do_assert=False)
 
-    def ShowSelectedRuns(self, show_allcomments=False, commentlength=15):
-        '''
-        Lists all selected runs.
+    def get_selected_runs(self):
+        """ :return: list of selected run numbers. """
+        selected = []
+        for run in self.run_numbers:
+            if self.selection[run]:
+                selected.append(run)
+        if not selected:
+            print 'No runs selected!'
+        return sorted(selected)
+
+    def get_selected_diamonds(self):
+        """
+        Returns a list, containing for each selected run an integer according to the diamond selection configuration. (i.e. which diamonds are selected for analysis).
+            1 -> Diamond 1, 2 -> Diamond 2, 3 -> Diamond 1 & 2, or no diamond selection (default: both)
+        :return: list of diamonds
+        """
+        selected = []
+        for run in self.get_selected_runs():
+            dias = [self.channels[run][ch] for ch in self.run.channels]
+            diamonds = int(dias[0]) * (1 << 0) + int(dias[1]) * (1 << 1)
+            diamonds = 3 if not diamonds else diamonds
+            selected.append(diamonds)
+        if not selected:
+            print 'No runs selected!'
+        return selected
+    # endregion
+
+    def show_selected_runs(self, show_allcomments=False):
+        """
+        Prints and overview of all selected runs.
         :param show_allcomments:
-        :param commentlength:
         :return:
-        '''
-        print len(self.get_selected_runs()), ' Runs Selected:'
+        """
+        selected_runs = self.get_selected_runs()
+        print 'The selections contains {n} runs\n'.format(n=len(selected_runs))
 
-        def multilinetext(text, width):
-            length = len(text)
-            word_wraps = length / int(width)
-            separator = '\n '
-            for i in xrange(word_wraps):
-                text = text[:((i + 1) * width + len(separator) * i)] + separator + text[(i + 1) * width + len(separator) * i:]
-            return text
+        def make_info_string(run, header=False):
+            string = str(run).ljust(4)
+            string += self.run_infos[run]['type'].ljust(9)
+            for i, ch in enumerate(self.run.channels, 1):
+                string += '*' if self.channels[run][ch] else ''
+                string += self.run_infos[run]['diamond {n}'.format(n=i)].ljust(7)
+                string += str(int(self.run_infos[run]['hv dia{n}'.format(n=i)])).ljust(6)
+            string += '{flux} kHz '.format(flux=str(int(self.run_infos[run]['measured flux'])).rjust(4))
+            if not show_allcomments:
+                comments = self.run_infos[run]['user comments'][:20]
+                string += comments
+                string += '*' if len(comments) >= 20 else ''
+            if header:
+                spaces = [int(self.channels[run][ch]) * ' ' for ch in self.run.channels]
+                string = 'Nr. ' + 'Type'.ljust(9) + 'Dia 1'.ljust(7) + spaces[0] + 'HV 1'.ljust(6) + 'Dia 2'.ljust(7) + spaces[1] + 'HV 2'.ljust(6) + 'Flux'.ljust(9)
+                string += 'Comment' if not show_allcomments else ''
+            return string
 
-        if show_allcomments:
-            printstring = '{nr} {type} {dia1sel}{dia1} {hv1:>5} {dia2sel}{dia2} {hv2:>5} {rate}'
-        else:
-            printstring = '{nr} {type} {dia1sel}{dia1} {hv1:>5} {dia2sel}{dia2} {hv2:>5} {rate} {comment}'
-
-        Record = namedtuple('Record', ['runnumber', 'type', 'dia1', 'bias1', 'dia2', 'bias2', 'rate', 'comment'])
-        listitems = []
-        for runnumber in self.get_selected_runs():
-            listitems += [Record(
-                runnumber,
-                self.run_infos[runnumber]['type'],
-                self.run_infos[runnumber]['diamond 1'],
-                self.run_infos[runnumber]['hv dia1'],
-                self.run_infos[runnumber]['diamond 2'],
-                self.run_infos[runnumber]['hv dia2'],
-                int(self.run_infos[runnumber]['measured flux']),
-                [self.run_infos[runnumber]['user comments']]
-            )]
-
-        print printstring.format(
-            nr='Nr.'.ljust(3),
-            type='Type'.ljust(9),
-            dia1='Dia 1'.ljust(7),
-            dia1sel=' ',
-            hv1='HV 1'.ljust(5),
-            dia2='Dia 2'.ljust(7),
-            dia2sel=' ',
-            hv2='HV2 '.ljust(5),
-            rate='Rate'.ljust(6),
-            comment='Comment'
-        )
-        for item in listitems:
-            if len(item.comment[0][:30]) > 0:
-                marker = '* '
-            else:
-                marker = ''
-            dia1sel = ' '
-            dia2sel = ' '
-            if self.channels[item.runnumber][0]: dia1sel = '*'
-            if self.channels[item.runnumber][3]: dia2sel = '*'
-            print printstring.format(
-                nr=str(item.runnumber).ljust(3),
-                type=item.type.ljust(9),
-                dia1=item.dia1.ljust(7),
-                dia1sel=dia1sel,
-                hv1=int(item.bias1),
-                dia2=item.dia2.ljust(7),
-                dia2sel=dia2sel,
-                hv2=int(item.bias2),
-                rate=(str(item.rate) + ' kHz').rjust(8),
-                comment=(marker + item.comment[0][:commentlength]).ljust(commentlength + 2)
-            )
-            if show_allcomments and len(item.comment[0][:30]) > 0:
-                print '   -- COMMENT: -----------------------------------'
-                print multilinetext(' ' + item.comment[0][:], 50)
-                print '--------------------------------------------------'
-
-    def show_run_info(self, runs=None, detailed=False):
-        '''
-        Prints all run infos from the selected runs to the console.
-        :param runs:
-        :return:
-        '''
-
-        if detailed:
-            if runs is None:
-                for runnumber in self.get_selected_runs():
-                    self._printRunInfo(runnumber)
-            else:
-                if type(runs) is list:
-                    for runnumber in runs:
-                        self._printRunInfo(runnumber)
-                elif type(runs) is int:
-                    self._printRunInfo(runs)
-                else:
-                    print 'Wrong input type'
-        else:
-            if runs is None:
-                self.__print_runinfo_header()
-                for runnumber in self.get_selected_runs():
-                    self.__print_runinfo(runnumber)
-            else:
-                # todo:
-                print 'not yet implemented'
-
-    def _printRunInfo(self, runnumber):
-        print '--- RUN ', runnumber, ' ---'
-        for key in self.run_infos[runnumber].keys():
-            print '{key:>20}: {value}'.format(key=key, value=self.run_infos[runnumber][key])
-
-    def __print_runinfo(self, run):
-        dia1 = self.run_infos[run]['diamond 1']
-        dia2 = self.run_infos[run]['diamond 2']
-        flux = self.run_infos[run]['measured flux']
-        type = self.run_infos[run]['type']
-        print '{run}\t{type}\t{dia1}\t{dia2}\t{flux}'.format(run=run, dia1=dia1, dia2=dia2, flux=flux, type=type)
-
-    @staticmethod
-    def __print_runinfo_header():
-        print 'run\ttype\tdia1\tdia2\tflux'
+        print make_info_string(selected_runs[0], True)
+        for run_nr in selected_runs:
+            print make_info_string(run_nr)
+            comment = self.run_infos[run_nr]['user comments']
+            if show_allcomments and len(comment) > 0:
+                print 'COMMENT:\n{comment}\n{delimitor}'.format(comment=fill(comment, 51), delimitor=49 * '-')
 
     def get_diamond_names(self):
         """
@@ -401,131 +323,99 @@ class RunSelection(Elementary):
         for type_ in self.get_runinfo_values('type'):
             print '  ' + type_
 
-    def get_runinfo_values(self, key):
-        '''
+    def get_runinfo_values(self, key, sel=False):
+        """
         :param key: key of run info
+        :param sel: False for all runs, True for all in selection
         :return: all different values of the run info dict
-        '''
+        """
         values = []
-        for run, info in self.run_infos.iteritems():
+        run_infos = self.run_infos if sel else self.get_selection_runinfo()
+        for run, info in run_infos.iteritems():
             value = info[key]
-            if not value in values:
+            if value not in values:
                 values.append(value)
         return sorted(values)
 
-    def get_selected_runs(self):
-        """ :return: list of selected run numbers. """
-        selected = []
-        for runnumber in self.run_numbers:
-            if self.selection[runnumber]:
-                selected.append(runnumber)
-        if not len(selected):
-            print 'No runs selected!'
-        return sorted(selected)
+    def get_selection_runinfo(self):
+        dic = {}
+        for run, info in self.run_infos.iteritems():
+            if self.selection[run]:
+                dic[run] = info
+        return dic
 
-    def GetSelectedDiamonds(self):
-        '''
-        Returns a list, containing for each selected run an integer
-        according to the diamond selection configuration. (i.e. which
-        diamonds are selected for analysis).
-            1 -> Diamond 1
-            2 -> Diamond 2
-            3 -> Diamond 1 & 2, or no diamond selection (default: both)
-        :return:
-        '''
-        selected = []
-        for runnumber in self.run_numbers:
-            if self.selection[runnumber]:
-                dia1 = self.channels[runnumber][0]
-                dia2 = self.channels[runnumber][3]
-                diamonds = int(dia1) * (1 << 0) + int(dia2) * (1 << 1)
-                if diamonds == 0: diamonds = 3
-                selected.append(diamonds)
-        if self.verbose and len(selected) == 0:
-            print 'No Runs Selected'
-        return selected
-
-    def ShowRunPlan(self, detailed=True, type_='rate_scan', show_allcomments=False, commentlength=0):
-        '''
-        Print a list of all run plans from the current test campaign
-        to the console.
-        The run plans are defined and saved via
-            AddSelectedRunsToRunPlan()
+    def show_run_plan(self, detailed=False, show_allcomments=False):
+        """
+        Print a list of all run plans from the current test campaign to the console.
         :param detailed:
-        :param type_:
         :param show_allcomments:
-        :param commentlength:
         :return:
-        '''
-        print 'RUN PLAN FOR TESTCAMPAIGN:', self.TESTCAMPAIGN
-        if not detailed:
-            for types_ in self.run_plan.keys():
-                print types_, ' :'
-                numbers = map(int, self.run_plan[types_].keys())
-                numbers.sort()
-                for planNr in numbers:
-                    print '\t Nr. {nr} : {runs}'.format(nr=planNr, runs=self.run_plan[types_][str(planNr)])
-        else:
-            tmp_selections = copy.deepcopy(self.selection)
-            tmp_channel_selections = copy.deepcopy(self.channels)
-            tmp_selectionLog = copy.deepcopy(self.logs)
+        """
+        old_selection = self.selection
+        old_channels = self.channels
+        old_logs = self.logs
+        print 'RUN PLAN FOR TESTCAMPAIGN: {tc}'.format(tc=self.TESTCAMPAIGN)
+        for run_type, plan in self.run_plan.iteritems():
+            print '{type}:'.format(type=run_type)
+            if not detailed:
+                print '  Nr. {range} {excl} Diamonds'.format(range='Range'.ljust(17), excl='Excluded'.ljust(15))
+            for nr, runs in sorted(plan.iteritems()):
+                self.unselect_all_runs()
+                self.select_runs_from_runplan(nr, run_type)
+                if not detailed:
+                    all_runs = [run for run in self.run_numbers if runs[-1] >= run >= runs[0]]
+                    missing_runs = []
+                    i = 0
+                    for run in all_runs:
+                        if run != runs[i]:
+                            missing_runs.append(run)
+                        else:
+                            i += 1
+                    dias = [str(dia) for dia in self.get_diamond_names()]
+                    run_string = '[{min}, ... , {max}]'.format(min=str(runs[0]).zfill(3), max=str(runs[-1]).zfill(2))
+                    not_string = str(missing_runs) if missing_runs else ''
+                    print '  {nr}: {runs}, {miss} {dias}'.format(nr=nr, runs=run_string, miss=not_string[:15].ljust(15), dias=dias)
+                else:
+                    print '{delim}\n RUN PLAN {nr} ({type})\n{delim}'.format(delim=50 * '-', nr=nr, type=run_type)
+                    self.show_selected_runs(show_allcomments=show_allcomments)
+                    print '\n'
 
-            numbers = map(int, self.run_plan[type_].keys())
-            numbers.sort()
-            for i in numbers:
-                self.UnselectAll()
-                self.SelectRunsFromRunPlan(i, type_=type_)
-                print '-----------------------------------------'
-                print 'RUN PLAN ', i, ' ({typ}) : '.format(typ=type_)
-                print '-----------------------------------------'
-                self.ShowSelectedRuns(show_allcomments=show_allcomments, commentlength=commentlength)
-                print '\n'
-            self.selection = copy.deepcopy(tmp_selections)
-            self.channels = copy.deepcopy(tmp_channel_selections)
-            self.logs = copy.deepcopy(tmp_selectionLog)
+        self.channels = old_channels
+        self.logs = old_logs
+        self.selection = old_selection
 
-    def SelectRunsFromRunPlan(self, number, type_='rate_scan'):
-        '''
-        Selects all runs corresponding to the run plan with key 'number'.
-        :param number:
-        :param type_:
-        :return:
-        '''
-        runs = self.run_plan[type_][str(number)]
-        self.run_plan = number
-        self.SelectRuns(list_of_runs=runs)
+    def select_runs_from_runplan(self, plan_nr, type_='rate_scan'):
+        plan = str(plan_nr).zfill(2) if type(plan_nr) is int else plan_nr.zfill(2)
+        self.selected_runplan = plan
+        runs = self.run_plan[type_][plan]
+        self.select_runs(runs)
 
-    def AddSelectedRunsToRunPlan(self, key, run_type='rate_scan'):
-        '''
-        Saves all selected runs as a run plan with name 'key'. This
-        run plan can later be imported via
-            .SelectRunsFromRunPlan('key')
-        :param key:
+    def add_selection_to_runplan(self, plan_nr, run_type='rate_scan'):
+        """
+        Saves all selected runs as a run plan with name 'plan_nr'.
+        :param plan_nr:
         :param run_type:
-        :return:
-        '''
-        assert (run_type in ['rate_scan', 'voltage_scan', 'test'])
-        if not type(key) is t.StringType:
-            key = str(key)
-        if self.runplans[self.TESTCAMPAIGN].has_key(run_type):
-            self.runplans[self.TESTCAMPAIGN][run_type][key] = self.get_selected_runs()
+        """
+        assert type(plan_nr) is str, 'The plan number has to be a string!'
+        types = ['rate_scan', 'voltage_scan', 'test']
+        assert run_type in types, 'This run type does not exist! Types are: {types}'.format(types=types)
+        assert self.selection, 'The run selection is completely empty!'
+
+        if run_type in self.run_plan:
+            self.run_plan[run_type][plan_nr] = self.get_selected_runs()
         else:
-            self.runplans[self.TESTCAMPAIGN][run_type] = {}
-            self.runplans[self.TESTCAMPAIGN][run_type][key] = self.get_selected_runs()
+            self.run_plan[run_type] = {}
+            self.run_plan[run_type][plan_nr] = self.get_selected_runs()
         self.save_runplan()
 
-    def SelectRuns(self, list_of_runs, select_dia1=False, select_dia2=False):
-        '''
-        Selects all runs with run number in list_of_runs. The diamonds
-        can be selected individually.
-        :param list_of_runs:
-        :param select_dia1:
-        :param select_dia2:
-        :return:
-        '''
-        assert (type(list_of_runs) is t.ListType), 'list_of_runs not a list'
-        for runnumber in list_of_runs:
-            self.select_run(runnumber)
+    def delete_runplan(self, plan_nr, run_type='rate_scan'):
+        plan = str(plan_nr).zfill(2) if type(plan_nr) is int else plan_nr.zfill(2)
+        types = ['rate_scan', 'voltage_scan', 'test']
+        assert run_type in types, 'This run type does not exist! Types are: {types}'.format(types=types)
+
+        self.run_plan[run_type].pop(plan)
+        self.save_runplan()
+
 
 if __name__ == '__main__':
     z = RunSelection()

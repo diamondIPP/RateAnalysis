@@ -38,7 +38,7 @@ if __name__ == "__main__":
     selection = RunSelection(verbose=verbose)
     selection.select_runs_of_type(0)
     selection.UnSelectUnlessDiamond(Diamond)
-    selection.UnSelectUnlessBias(Bias)
+    selection.unselect_unless_bias(Bias)
     selection.ExcludeRun(854)
     run_numbers = selection.get_selected_runs()
 
