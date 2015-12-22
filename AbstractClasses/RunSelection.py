@@ -236,12 +236,13 @@ class RunSelection(Elementary):
         self.show_hv_values(sel=True)
         hv = int(float(raw_input('Which hv do you want to select? ')))
         self.unselect_unless_bias(hv)
-        self.show_run_types(sel=True)
-        prompt = raw_input('Do you wish to unselect a run type (y/n)? ')
-        if prompt.lower() in ['yes', 'ja', 'y', 'j']:
-            run_type = raw_input('Which type to you want to unselect? ')
-            self.unselect_runs_of_type(run_type)
-        self.show_selected_runs()
+        if len(self.get_runinfo_values('type', sel=True)) > 1:
+            self.show_run_types(sel=True)
+            prompt = raw_input('Do you wish to unselect a run type (y/n)? ')
+            if prompt.lower() in ['yes', 'ja', 'y', 'j']:
+                run_type = raw_input('Which type to you want to unselect? ')
+                self.unselect_runs_of_type(run_type)
+        self.show_selected_runs(show_allcomments=True)
         prompt = raw_input('Do you wish to unselect any run (y/n)? ')
         while prompt.lower() in ['yes', 'ja', 'y', 'j']:
             run = raw_input('Which run do you want to unselect? ')
