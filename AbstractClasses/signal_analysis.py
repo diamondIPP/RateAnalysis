@@ -82,12 +82,12 @@ class SignalAnalysis(Analysis):
         self.tree.Draw(peak_val + '/2.>>peakvalues', cut)
         h.SetTitle('Peak Values {reg}{int}'.format(reg=region, int=self.peak_integral))
         h.Draw()
-        self.SavePlots('peak_values_{reg}{int}'.format(reg=region, int=self.peak_integral), 'png', canvas=self.canvas, subDir=self.save_dir)
+        self.save_plots('peak_values_{reg}{int}'.format(reg=region, int=self.peak_integral), 'png', canvas=self.canvas, sub_dir=self.save_dir)
 
     def draw_pedestal(self, binning=None, draw=False):
         bin_size = binning if binning is not None else self.bin_size
         picklepath = 'Configuration/Individual_Configs/Pedestal/{tc}_{run}_{ch}_{bins}_Ped_Means.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel, bins=bin_size)
-        gr = self.make_TGraphErrors('pedestal', 'Pedestal Run {run} Dia {dia}'.format(run=self.run_number, dia=self.diamond_name))
+        gr = self.make_tgrapherrors('pedestal', 'Pedestal Run {run} Dia {dia}'.format(run=self.run_number, dia=self.diamond_name))
 
         def func():
             gROOT.SetBatch(1)
@@ -134,7 +134,7 @@ class SignalAnalysis(Analysis):
         def func():
             gROOT.SetBatch(1)
             print 'calculating pulse height fit of ch', self.channel
-            gr = self.make_TGraphErrors('signal', 'Run{run}: {dia} Signal Time Evolution'.format(run=self.run_number, dia=self.run.diamondname[self.channel]))
+            gr = self.make_tgrapherrors('signal', 'Run{run}: {dia} Signal Time Evolution'.format(run=self.run_number, dia=self.run.diamondname[self.channel]))
             if binning is not None:
                 self.__set_bin_size(binning)
             sig_time = self.make_histos(corr=eventwise_corr)
@@ -184,7 +184,7 @@ class SignalAnalysis(Analysis):
         self.histo = TH1F('signal b2', 'signal without cuts', 400, -100, 300)
         canvas.cd()
         self.tree.Draw("{name}>>signal b2".format(name=self.signal_name))
-        self.SavePlots('signal_distribution', 'png', canvas=canvas, subDir=self.save_dir)
+        self.save_plots('signal_distribution', 'png', canvas=canvas, sub_dir=self.save_dir)
 
     def compare_single_cuts(self):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
@@ -205,7 +205,7 @@ class SignalAnalysis(Analysis):
                 # safe single plots
                 c1.cd()
                 self.tree.Draw("{name}>>{histo}".format(name=self.signal_name, histo=histo_name), value)
-                self.SavePlots(save_name, 'png', canvas=c1, subDir=self.save_dir)
+                self.save_plots(save_name, 'png', canvas=c1, sub_dir=self.save_dir)
                 # draw all single plots into c2
                 c2.cd()
                 histo.SetLineColor(self.get_color())
@@ -220,8 +220,8 @@ class SignalAnalysis(Analysis):
                 legend.AddEntry(histo, key, 'l')
         # save c2
         legend.Draw()
-        self.SavePlots('all', 'png', canvas=c2, subDir=self.save_dir)
-        self.SavePlots('all', 'root', canvas=c2, subDir=self.save_dir)
+        self.save_plots('all', 'png', canvas=c2, sub_dir=self.save_dir)
+        self.save_plots('all', 'root', canvas=c2, sub_dir=self.save_dir)
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
 
@@ -246,7 +246,7 @@ class SignalAnalysis(Analysis):
                 self.tree.Draw("{name}>>{histo}".format(name=self.signal_name, histo=histo_name), value)
                 histo = self.normalise_histo(histo)
                 histo.Draw()
-                self.SavePlots(save_name, 'png', canvas=c1, subDir=self.save_dir)
+                self.save_plots(save_name, 'png', canvas=c1, sub_dir=self.save_dir)
                 # draw all single plots into c2
                 c2.cd()
                 histo.SetLineColor(self.get_color())
@@ -261,8 +261,8 @@ class SignalAnalysis(Analysis):
                 legend.AddEntry(histo, key)
         # save c2
         legend.Draw()
-        self.SavePlots('normalised', 'png', canvas=c2, subDir=self.save_dir)
-        self.SavePlots('normalised', 'root', canvas=c2, subDir=self.save_dir)
+        self.save_plots('normalised', 'png', canvas=c2, sub_dir=self.save_dir)
+        self.save_plots('normalised', 'root', canvas=c2, sub_dir=self.save_dir)
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
 
@@ -288,7 +288,7 @@ class SignalAnalysis(Analysis):
                 # safe single plots
                 c1.cd()
                 self.tree.Draw("{name}>>{histo}".format(name=self.signal_name, histo=histo_name), cut)
-                self.SavePlots(save_name, 'png', canvas=c1, subDir=self.save_dir)
+                self.save_plots(save_name, 'png', canvas=c1, sub_dir=self.save_dir)
                 # draw all single plots into c2
                 c2.cd()
                 color = self.get_color()
@@ -307,8 +307,8 @@ class SignalAnalysis(Analysis):
                 ind += 1
         # save c2
         legend.Draw()
-        self.SavePlots('consecutive', 'png', canvas=c2, subDir=self.save_dir)
-        self.SavePlots('consecutive', 'root', canvas=c2, subDir=self.save_dir)
+        self.save_plots('consecutive', 'png', canvas=c2, sub_dir=self.save_dir)
+        self.save_plots('consecutive', 'root', canvas=c2, sub_dir=self.save_dir)
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
 
@@ -428,7 +428,7 @@ class SignalAnalysis(Analysis):
             h1.Draw()
             save_name = 'pedestal_{reg}{cut}'.format(reg=region, cut=cut.GetName())
             # self.SavePlots(save_name, 'root', canvas=c, subDir=self.save_dir)
-            self.SavePlots(save_name, 'png', canvas=c, subDir=self.save_dir)
+            self.save_plots(save_name, 'png', canvas=c, sub_dir=self.save_dir)
             self.tmp_histos[0] = h1
             self.canvas = c
             c.Update()

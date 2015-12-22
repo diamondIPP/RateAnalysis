@@ -21,7 +21,7 @@ class Langau(Elementary):
         ffitold = gROOT.GetListOfFunctions().FindObject(self.FunName)
         if ffitold: del ffitold
     
-    def LoadConfig(self):
+    def load_config(self):
         self.ShowAndWait = False
     
     @staticmethod

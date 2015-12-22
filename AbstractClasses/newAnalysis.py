@@ -166,8 +166,8 @@ class Analysis(Elementary):
         starts = []
         regions = self.run.pedestal_regions if ped else self.run.signal_regions
         for reg, lst in regions.iteritems():
-            lines[reg + ' start'] = self.make_TGaxis(lst[0] / 2, -200, 50, reg, 2)
-            lines[reg + ' stop'] = self.make_TGaxis(lst[1] / 2, -200, 50, '', 2) if lst[1] - lst[0] > 1 else None
+            lines[reg + ' start'] = self.make_tgaxis(lst[0] / 2, -200, 50, reg, 2)
+            lines[reg + ' stop'] = self.make_tgaxis(lst[1] / 2, -200, 50, '', 2) if lst[1] - lst[0] > 1 else None
             if lst[0] in starts:
                 lines[reg + ' start'].SetTitle('')
             if not lst[1] - lst[0] > 1:
@@ -188,7 +188,7 @@ class Analysis(Elementary):
         parser.read("Configuration/AnalysisConfig_" + self.TESTCAMPAIGN + ".cfg")
         return parser
 
-    def LoadConfig(self):
+    def load_config(self):
         ana_parser = self.load_parser()
         self.showAndWait = ana_parser.getboolean("DISPLAY", "ShowAndWait")
         self.saveMCData = ana_parser.getboolean("SAVE", "SaveMCData")
@@ -341,7 +341,7 @@ class Analysis(Elementary):
         self.pulserRateGraph.GetYaxis().SetTitleOffset(1.2)
         self.DrawRunInfo(canvas=self.pulserRateCanvas)
         self.pulserRateCanvas.Update()
-        if savePlot: self.SavePlots("Run{run}_PulserRate.png".format(run=self.run.run_number), canvas=self.pulserRateCanvas)
+        if savePlot: self.save_plots("Run{run}_PulserRate.png".format(run=self.run.run_number), canvas=self.pulserRateCanvas)
 
     def DrawRunInfo(self, channel=None, canvas=None, diamondinfo=True, showcut=False, comment=None, infoid="", userHeight=None, userWidth=None):
         '''
@@ -527,10 +527,10 @@ class Analysis(Elementary):
         self.fftcanvas.Update()
         if savePlots:
             savename = "Run{run}_FFT" + namesuffix
-            self.SavePlots(savename.format(run=self.run.run_number), ending="png", canvas=self.fftcanvas, subDir="png/")
+            self.save_plots(savename.format(run=self.run.run_number), file_type="png", canvas=self.fftcanvas, sub_dir="png/")
             # self.SavePlots(savename.format(run=self.run.run_number), ending="root", canvas=self.fftcanvas, subDir="root/")
 
-        self.IfWait("FFT shown..")
+        self.if_wait("FFT shown..")
 
     def GetIncludedEvents(self, maxevent, channel=None):
         '''
@@ -693,7 +693,7 @@ class Analysis(Elementary):
                 dia = "_" + self.run.diamondname[channel]
             else:
                 dia = ""
-            self.SavePlots("Run{run}_MedianHisto{dia}.png".format(run=self.run.run_number, dia=dia))
+            self.save_plots("Run{run}_MedianHisto{dia}.png".format(run=self.run.run_number, dia=dia))
 
     def ShowSignalPedestalHisto(self, channel, canvas=None, savePlots=True, cut="", normalized=True, drawruninfo=True, binning=600, xmin=None, xmax=None, logy=False, gridx=True):
         if canvas == None:
@@ -711,9 +711,9 @@ class Analysis(Elementary):
 
         if savePlots:
             for ending in ["png", "root"]:
-                self.SavePlots(savename="Run{run}_SignalPedestal_Ch{channel}.{end}".format(run=self.run.run_number, channel=channel, end=ending), subDir=ending, canvas=self.signalpedestalcanvas)
+                self.save_plots(savename="Run{run}_SignalPedestal_Ch{channel}.{end}".format(run=self.run.run_number, channel=channel, end=ending), sub_dir=ending, canvas=self.signalpedestalcanvas)
 
-        self.IfWait("ShowSignalPedeslHisto")
+        self.if_wait("ShowSignalPedeslHisto")
 
     def _ShowHisto(self, signaldef, channel=None, canvas=None, drawoption="", cut="", color=None, normalized=True, infoid="histo", drawruninfo=False, binning=600, xmin=None, xmax=None,
                    savePlots=False, logy=False, gridx=False):
@@ -792,10 +792,10 @@ class Analysis(Elementary):
             else:
                 self.DrawRunInfo(channel=channels[0], canvas=canvas)
         canvas.Update()
-        self.IfWait(infoid + " shown")
+        self.if_wait(infoid + " shown")
         if savePlots:
-            self.SavePlots("Run{run}_{signal}.png".format(run=self.run.run_number, signal=infoid), canvas=canvas, subDir=infoid + "/png/")
-            self.SavePlots("Run{run}_{signal}.root".format(run=self.run.run_number, signal=infoid), canvas=canvas, subDir=infoid + "/root/")
+            self.save_plots("Run{run}_{signal}.png".format(run=self.run.run_number, signal=infoid), canvas=canvas, sub_dir=infoid + "/png/")
+            self.save_plots("Run{run}_{signal}.root".format(run=self.run.run_number, signal=infoid), canvas=canvas, sub_dir=infoid + "/root/")
         return histo
 
     def ShowDiamondCurrents(self):
@@ -926,9 +926,9 @@ class Analysis(Elementary):
             self.Pads[ch].counthisto.Draw(drawoption)  # "surf2")
             # self.Pads[ch].counthisto.Draw("CONT1 SAME")
             if saveplot:
-                self.SavePlots(("Run{run}_HitMap" + extension).format(run=self.run.run_number), "png", canvas=self.hitmapcanvas)
+                self.save_plots(("Run{run}_HitMap" + extension).format(run=self.run.run_number), "png", canvas=self.hitmapcanvas)
             self.hitmapcanvas.Update()
-        self.IfWait("Hits Distribution shown")
+        self.if_wait("Hits Distribution shown")
         self.Checklist["HitsDistribution"] = True
 
     def SetDiamondPosition(self, diamonds=3):
@@ -1017,11 +1017,11 @@ class Analysis(Elementary):
                 self.DrawRunInfo(canvas=pad, infoid='signalmap{run}{ch}'.format(run=self.run.run_number, ch=channel))
 
         self.signal_canvas.Update()
-        self.IfWait('2d drawn')
+        self.if_wait('2d drawn')
         if saveplots:
             savename = savename.format(run=self.run.run_number) + namesuffix
-            self.SavePlots(savename, ending, canvas=self.signal_canvas, subDir=ending, saveDir=saveDir)
-            self.SavePlots(savename, 'root', canvas=self.signal_canvas, subDir="root", saveDir=saveDir)
+            self.save_plots(savename, ending, canvas=self.signal_canvas, sub_dir=ending, save_dir=saveDir)
+            self.save_plots(savename, 'root', canvas=self.signal_canvas, sub_dir="root", save_dir=saveDir)
 
     def _DrawMinMax(self, pad, channel, theseMaximas=None, theseMinimas=None):
         pad.cd()
@@ -1125,7 +1125,7 @@ class Analysis(Elementary):
             print "INFO: MeanSignalHisto created as attribute: self.MeanSignalHisto (ROOT.TH1D)"
 
         if saveplots:
-            self.SavePlots(savename, ending, saveDir, canvas=self.signal_canvas)
+            self.save_plots(savename, ending, saveDir, canvas=self.signal_canvas)
 
         self.Checklist["MeanSignalHisto"][channel] = True
 
@@ -1184,12 +1184,12 @@ class Analysis(Elementary):
 
         savename = self.run.diamondname[channel] + "_" + savename + "_" + str(self.run.run_number)  # diamond_irradiation_savename_runnr
         if saveplots:
-            self.SavePlots(savename, ending, saveDir, canvas=self.combined_canvas)
-            self.SavePlots(savename, "root", saveDir, canvas=self.combined_canvas)
+            self.save_plots(savename, ending, saveDir, canvas=self.combined_canvas)
+            self.save_plots(savename, "root", saveDir, canvas=self.combined_canvas)
         if PS:
             ROOT.gStyle.SetHistFillColor(7)
             ROOT.gStyle.SetHistFillStyle(3003)
-        self.IfWait("Combined 2D Signal DistributionsShown")
+        self.if_wait("Combined 2D Signal DistributionsShown")
 
     def FindMaxima(self, channel, show=False):
         '''
@@ -1247,7 +1247,7 @@ class Analysis(Elementary):
             graph.GetXaxis().SetTitle("MPV of Landau fit")
             self.DrawRunInfo(channel=channel)
             canvas.Update()
-            self.IfWait("MPV vs Sigma shown")
+            self.if_wait("MPV vs Sigma shown")
 
         return MPVs, Sigmas, MPVErrs, SigmaErrs
 
@@ -1451,7 +1451,7 @@ class Analysis(Elementary):
         #     if save:
         #         self.SavePlots(type_+"TimeEvolution"+Mode+nameExtension+".png", canvas=canvas)
         #     if TimeERROR:
-        #         self.SignalEvolution.SaveAs(self.SaveDirectory+"ERROR_"+type_+"TimeEvolution"+Mode+nameExtension+".root")
+        #         self.SignalEvolution.SaveAs(self.save_directory+"ERROR_"+type_+"TimeEvolution"+Mode+nameExtension+".root")
         #     self.IfWait("Showing "+type_+" Time Evolution..")
         #     canvas.Close()
         # else:
@@ -1495,8 +1495,8 @@ class Analysis(Elementary):
             self.CalculateSNR(channel=ch, name="", savePlots=False, canvas=sigpedPad)
 
             if savePlot:
-                self.SavePlots(savename="Run{run}_PreAnalysisOverview_{dia}.png".format(run=self.run.run_number, dia=self.run.diamondname[ch]), subDir=self.run.diamondname[ch],
-                               canvas=self.pAOverviewCanv)
+                self.save_plots(savename="Run{run}_PreAnalysisOverview_{dia}.png".format(run=self.run.run_number, dia=self.run.diamondname[ch]), sub_dir=self.run.diamondname[ch],
+                                canvas=self.pAOverviewCanv)
 
     def SetIndividualCuts(self, showOverview=True, savePlot=False):
         '''
@@ -1752,8 +1752,8 @@ class Analysis(Elementary):
 
         canvas.Update()
         if savePlot:
-            self.SavePlots("Run{run}_PeakPosition{ns}.png".format(run=self.run.run_number, ns=namesuffix), canvas=canvas, subDir="PeakPosition")
-        self.IfWait("Peak Position shown")
+            self.save_plots("Run{run}_PeakPosition{ns}.png".format(run=self.run.run_number, ns=namesuffix), canvas=canvas, sub_dir="PeakPosition")
+        self.if_wait("Peak Position shown")
 
     def ShowSignalSpread(self, channel=None, cut=""):
         if channel == None:
@@ -1778,8 +1778,8 @@ class Analysis(Elementary):
             if hist: hist.SetStats(0)
 
         canvas.Update()
-        self.SavePlots("Run{run}_SignalSpread{ns}.png".format(run=self.run.run_number, ns=namesuffix), canvas=canvas, subDir="Cuts")
-        self.IfWait("Peak Position shown")
+        self.save_plots("Run{run}_SignalSpread{ns}.png".format(run=self.run.run_number, ns=namesuffix), canvas=canvas, sub_dir="Cuts")
+        self.if_wait("Peak Position shown")
 
     def Draw(self, varexp, selection="", drawoption="", nentries=1000000000, firstentry=0):
         '''
@@ -1852,9 +1852,9 @@ class Analysis(Elementary):
 
             self.DrawRunInfo(channel=ch, canvas=self.snr_canvas, comment="SNR: " + str(SNR))
             if savePlots:
-                self.SavePlots(savename="SNR" + name + ".png", saveDir="SNR/", canvas=self.snr_canvas)
-                self.SavePlots(savename="SNR" + name + ".pdf", saveDir="SNR/pdf/", canvas=self.snr_canvas)
-                self.SavePlots(savename="SNR" + name + ".root", saveDir="SNR/root/", canvas=self.snr_canvas)
+                self.save_plots(savename="SNR" + name + ".png", save_dir="SNR/", canvas=self.snr_canvas)
+                self.save_plots(savename="SNR" + name + ".pdf", save_dir="SNR/pdf/", canvas=self.snr_canvas)
+                self.save_plots(savename="SNR" + name + ".root", save_dir="SNR/root/", canvas=self.snr_canvas)
 
         return SNRs if len(SNRs) > 1 else SNRs[0]
 

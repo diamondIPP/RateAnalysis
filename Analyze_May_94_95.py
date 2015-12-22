@@ -1,7 +1,7 @@
 from AllClasses import *
 from ROOT import TCanvas
 
-Analysis.SetTestCampaign(201505)
+Analysis.set_test_campaign(201505)
 
 runplanType     = "rate_scan"
 diamond1         = "II-6-94"
@@ -59,7 +59,7 @@ for runplanNr in runplans:
         # rate_analyses[runplanNr].collection[run]._ShowPreAnalysisOverview(savePlot=True)
 
     # create Signal_VS_Rate plot:
-    myselection.SetSaveDirectory("Results/{runplan}/".format(runplan=runplanType+str(runplanNr)))
+    myselection.set_save_directory("Results/{runplan}/".format(runplan=runplanType + str(runplanNr)))
     rate_analyses[runplanNr].ShowSignalVSRate(canvas=rateScanCanvas)
-    myselection.SavePlots(savename="SignalVSRate"+str(runplanNr)+".root", canvas=rateScanCanvas)
-    myselection.SavePlots(savename="SignalVSRate"+str(runplanNr)+".png", canvas=rateScanCanvas)
+    myselection.save_plots(savename="SignalVSRate" + str(runplanNr) + ".root", canvas=rateScanCanvas)
+    myselection.save_plots(savename="SignalVSRate" + str(runplanNr) + ".png", canvas=rateScanCanvas)

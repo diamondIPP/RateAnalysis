@@ -72,7 +72,7 @@ class BinCollection(Elementary):
             self.MinimaSearch.__del__()
             del self.MinimaSearch
 
-    def LoadConfig(self):
+    def load_config(self):
         self.ShowAndWait = False
 
     def Get2DAttributes(self):
@@ -288,7 +288,7 @@ class BinCollection(Elementary):
             selection_canvas.cd()
             selection_pad.Draw("col")
             selection_canvas.Update()
-            self.IfWait("Selected bins shown")
+            self.if_wait("Selected bins shown")
             ROOT.gStyle.SetPalette(53)
             ROOT.gStyle.SetNumberContours(999)
         return selection_pad
@@ -375,7 +375,7 @@ class BinCollection(Elementary):
         if draw:
             Kcanvas.cd()
             Khisto.Draw()
-            self.IfWait("K distribution shown..")
+            self.if_wait("K distribution shown..")
         return Khisto
 
     def ShowCombinedKDistribution(self, saveplots = False, savename = 'CombinedKDistribution', ending='png', saveDir = 'Results/'):
@@ -391,8 +391,8 @@ class BinCollection(Elementary):
         canvas.cd(2)
         Khisto.Draw()
         if saveplots:
-            self.SavePlots(savename, ending, saveDir)
-        self.IfWait('Combined K Distribution Drawn')
+            self.save_plots(savename, ending, saveDir)
+        self.if_wait('Combined K Distribution Drawn')
         ROOT.gStyle.SetPalette(53)
         ROOT.gStyle.SetNumberContours(999)
 
@@ -537,8 +537,8 @@ class BinCollection(Elementary):
                 graph.DrawBoth()
             else:
                 graph.DrawGraph()
-            self.SavePlots('signals_in_column{:.3f}'.format(columnposition),'png')
-            self.IfWait('show signal in column {:.3f}..'.format(columnposition))
+            self.save_plots('signals_in_column{:.3f}'.format(columnposition), 'png')
+            self.if_wait('show signal in column {:.3f}..'.format(columnposition))
         return signals
 
     def GetSignalInRow(self, height, show = False, show_hits = True):
@@ -571,8 +571,8 @@ class BinCollection(Elementary):
                 graph.DrawBoth()
             else:
                 graph.DrawGraph()
-            self.SavePlots('signals_in_row{:.3f}'.format(rowheight),'png')
-            self.IfWait('show signal in row {:.3f}..'.format(rowheight))
+            self.save_plots('signals_in_row{:.3f}'.format(rowheight), 'png')
+            self.if_wait('show signal in row {:.3f}..'.format(rowheight))
         return signals
 
     def GetMPVInColumn(self, position, show=False):
@@ -606,8 +606,8 @@ class BinCollection(Elementary):
             graph.GetXaxis().SetTitle("y position / cm")
             graph.GetYaxis().SetTitle("Signal")
             graph.Draw('AP')
-            self.SavePlots('signals_in_column{:.3f}'.format(columnposition),'pdf')
-            self.IfWait('show signal in column {:.3f}..'.format(columnposition))
+            self.save_plots('signals_in_column{:.3f}'.format(columnposition), 'pdf')
+            self.if_wait('show signal in column {:.3f}..'.format(columnposition))
         return signals
 
     def GetMPVInRow(self, height, show=False):
@@ -639,8 +639,8 @@ class BinCollection(Elementary):
             graph.GetXaxis().SetTitle("x position / cm")
             graph.GetYaxis().SetTitle("Signal")
             graph.Draw('AP')
-            self.SavePlots('signals_in_row{:.3f}'.format(rowheight),'pdf')
-            self.IfWait('show signal in row {:.3f}..'.format(rowheight))
+            self.save_plots('signals_in_row{:.3f}'.format(rowheight), 'pdf')
+            self.if_wait('show signal in row {:.3f}..'.format(rowheight))
         return signals
 
     def CreateTotalSignalHistogram(self, saveplot = False, scale = False, showfit = False): # choose between langaus or landau fit
@@ -682,8 +682,8 @@ class BinCollection(Elementary):
 
             #raw_input("WAIT!")
         if saveplot:
-            self.SavePlots('TotalSignalDistribution', 'png')
-        self.IfWait('Signal Histogram drawn')
+            self.save_plots('TotalSignalDistribution', 'png')
+        self.if_wait('Signal Histogram drawn')
 
     def FindMaxima(self, threshold = None, minimum_bincount = 5, show = False):
         '''

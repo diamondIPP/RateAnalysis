@@ -38,7 +38,7 @@ if __name__ == "__main__":
     else:
         run = Run(validate=False,verbose=verbose)
 
-    run.SetSaveDirectory(savepath)
+    run.set_save_directory(savepath)
 
     MaxNrOfRuns = 9999
     if(len(run_numbers) == 0):

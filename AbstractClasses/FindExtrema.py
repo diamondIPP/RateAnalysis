@@ -25,7 +25,7 @@ class FindExtrema(Elementary):
         ROOT.gROOT.Delete(self.voting_histo_name)
         del self.voting_histo
 
-    def LoadConfig(self):
+    def load_config(self):
         self.ShowAndWait = False
 
     def Local1DExtrema(self, signal_1, signal_2, signal_3, entries):
@@ -362,8 +362,8 @@ class FindExtrema(Elementary):
                 self.real_peaks.SetLineColor(ROOT.kRed)
                 self.real_peaks.Draw('SAME P0')
             vote_canvas.Update()
-            self.IfWait("Vote Histogram drawn")
-            self.BinCollectionObj.SavePlots('vote_histo_'+self.ExtremaType, 'png')
+            self.if_wait("Vote Histogram drawn")
+            self.BinCollectionObj.save_plots('vote_histo_' + self.ExtremaType, 'png')
             # ROOT.gStyle.SetPalette(53)
             # ROOT.gStyle.SetNumberContours(999)
 

@@ -1,10 +1,11 @@
 import os
 import ROOT
-import types as t
 from time import time
 from ROOT import gROOT, TGraphErrors, TGaxis
 import pickle
 import sys
+from glob import glob
+import re
 
 
 class Elementary(object):
@@ -12,30 +13,28 @@ class Elementary(object):
     The Elementary class provides default behaviour objects in the analysis framework and is the Mother of all myPadAnalysis objects.
     It provides, among other things, a verbose printing method or a save plot method containing a global save directory handling.
     """
-    GLOBAL_COUNT = 0
-    colors = [2, 4, 3, 6, 7, 8, 9, 1, 30, 40, 28, 38, 39, 20, 41, 42, 43, 44, 45, 46, 47, 48, 49, 12, 13, 14, 15]
-    GLOBAL_COLOR_INDEX = 0
-    SaveDirectory = "Results/"
-    TESTCAMPAIGN = ""
+
+    default_testcampaign = '201510'
 
     def __init__(self, verbose=False):
         self.verbose = verbose
-        self.showAndWait = False
-        if self.TESTCAMPAIGN == "":
-            Elementary.SetTestCampaign("201510")
-            # print "No Testcampaign was set. Testcampaign is now set to: 201508"
-            # print "To change Testcampaign: cls.SetTestCampaign(namestring)"
-        self.LoadConfig()
+        self.save_directory = self.get_program_dir() + 'Results/'
+
+        self.TESTCAMPAIGN = None
+        self.set_test_campaign(self.default_testcampaign)
+
+        self.load_config()
         self.aimedFluxes = [3, 20, 60, 600, 2000, 5000]
+        # colors
         self.count = 0
         self.colors = self.create_colorlist()
-        # self.colors = [2, 3, 4, ROOT.kOrange - 3, 28, 30, 41, 46, 44, ROOT.kGreen - 1, ROOT.kViolet + 4]
 
-    def LoadConfig(self):
+    def load_config(self):
         pass
 
-    def create_colorlist(self):
-        col_names = [ROOT.kGreen, ROOT.kYellow, ROOT.kOrange, ROOT.kRed, ROOT.kMagenta, ROOT.kViolet, ROOT.kBlue, ROOT.kAzure, ROOT.kCyan, ROOT.kTeal]
+    @staticmethod
+    def create_colorlist():
+        col_names = [ROOT.kGreen, ROOT.kOrange, ROOT.kViolet, ROOT.kYellow, ROOT.kRed, ROOT.kBlue, ROOT.kMagenta, ROOT.kAzure, ROOT.kCyan, ROOT.kTeal]
         colors = []
         for color in col_names:
             colors.append(color + 1)
@@ -49,6 +48,9 @@ class Elementary(object):
         self.count += 1
         return color
 
+    def reset_colors(self):
+        self.count = 0
+
     def verbose_print(self, *args):
         """
         Print command if verbose is activated.
@@ -60,102 +62,62 @@ class Elementary(object):
                 print arg,
             print
 
-    def IfWait(self, message):
-        if self.showAndWait:
-            raw_input(message)
-
     @staticmethod
     def has_bit(num, bit):
         assert (num >= 0 and type(num) is int), 'num has to be non negative int'
         return bool(num & 1 << bit)
 
-    @classmethod
-    def SetSaveDirectory(cls, directory="Results/"):
-        """
-        Sets the SaveDirectory globally.
-        :param directory:
-        """
+    def set_save_directory(self, directory="Results/"):
         if not directory[-1] == "/":
             directory += "/"
-        Elementary.SaveDirectory = directory
+        self.save_directory = directory
 
-    @classmethod
-    def SavePlots(cls, savename, ending=None, saveDir=None, subDir=None, canvas=None):
+    def save_plots(self, savename, file_type=None, save_dir=None, sub_dir=None, canvas=None):
         """
         Saves the canvas at the desired location. If no canvas is passed as argument, the active canvas will be saved. However for applications without graphical interface,
         such as in SSl terminals, it is recommended to pass the canvas to the method.
         :param savename:
-        :param ending:
-        :param saveDir:
-        :param subDir:
+        :param file_type:
+        :param save_dir:
+        :param sub_dir:
         :param canvas:
         """
-        if saveDir is None:
-            saveDir = Elementary.SaveDirectory
-        if ending is None:
-            ending = ""
-        else:
-            assert (type(ending) == t.StringType), "ending has to be string type"
-            ending = "." + ending
-        # Results directories:
-        # resultsdir = saveDir+'run_'+str(self.run_object.run_number)+'/' # eg. 'Results/run_364/'
-        if subDir is None:
-            subDir = ""
-        else:
-            if subDir[-1] != "/":
-                subDir += "/"
-        resultsdir = saveDir + subDir  # eg. 'Results/run_364/'
+        save_dir = self.save_directory if save_dir is None else save_dir
+        file_type = '.png' if file_type is None else '.{end}'.format(end=file_type)
+        sub_dir = '' if sub_dir is None else '{subdir}/'.format(subdir=sub_dir)
+        resultsdir = save_dir + sub_dir
         if not os.path.exists(resultsdir):
             os.makedirs(resultsdir)
-        # print "PRINT: ", [resultsdir+savename+ending]
         if canvas is None:
-            pad = ROOT.gROOT.GetSelectedPad()
-            canvas = pad.GetCanvas()
+            try:
+                pad = gROOT.GetSelectedPad()
+                canvas = pad.GetCanvas()
+            except Exception as inst:
+                print '\n\n{delim}\nERROR in save plots!\n{msg}\n{delim}\n\n'.format(delim=len(str(inst)) * '-', msg=inst)
+                return
         try:
-            canvas.SaveAs(resultsdir + savename + ending)
+            canvas.SaveAs(resultsdir + savename + file_type)
         except Exception as inst:
-            print "\n\n\n-----------------------------------"
-            print inst
-            print "ERROR in SAVE PLOTs !"
-            print "tried to save:\n\t", [resultsdir + savename + ending]
-            print "-----------------------------------\n\n\n"
+            print '\n\n{delim}\nERROR in save plots!\n{msg}\n{delim}\n\n'.format(delim=len(str(inst)) * '-', msg=inst)
 
-    @classmethod
-    def GC(cls):
-        gc = cls.GLOBAL_COUNT
-        cls.GLOBAL_COUNT += 1
-        return gc
+    def create_new_testcampaign(self):
+        # todo query date and create all new necessary configfiles etc
+        pass
 
-    @classmethod
-    def get_new_color(cls):
-        """
-        Returns a new color number from the global color palette, which has a length of 27 colors.
-        :return: color int
-        """
-        cls.GLOBAL_COLOR_INDEX %= 27
-        color = cls.colors[cls.GLOBAL_COLOR_INDEX]
-        cls.GLOBAL_COLOR_INDEX += 1
-        return color
+    def set_test_campaign(self, campaign='201508'):
+        campaigns = self.find_test_campaigns()
+        if not str(campaign) in campaigns:
+            print 'This Testcampaign does not exist yet! Use create_new_testcampaign!\nExisting campaigns: {camp}'.format(camp=campaigns)
+            return
+        self.TESTCAMPAIGN = str(campaign)
+        print 'Testcampaign set to: {tc} '.format(tc=campaign)
 
-    @classmethod
-    def ResetColorPalette(cls):
-        """
-        Resets the color palette, such that the next color which will be
-        returned by the GetNewColor() method will be the first color in
-        the color palette.
-        :return:
-        """
-        cls.GLOBAL_COLOR_INDEX = 0
-
-    @classmethod
-    def SetTestCampaign(cls, namestring="201508"):
-        """
-        Sets the test campaign name globally.
-        :param namestring:
-        :return:
-        """
-        Elementary.TESTCAMPAIGN = str(namestring)
-        print "Testcampaign set to: ", namestring
+    def find_test_campaigns(self):
+        conf_dir = self.get_program_dir() + 'Configuration/'
+        names = glob(conf_dir + 'RunConfig_*')
+        campaigns = [re.split('_|\.', name)[1] for name in names]
+        campaigns = [camp for i, camp in enumerate(campaigns) if camp not in campaigns[i + 1:]]
+        return sorted(campaigns)
 
     @staticmethod
     def elapsed_time(start):
@@ -185,7 +147,7 @@ class Elementary(object):
             gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
 
     @staticmethod
-    def make_TGraphErrors(name, title, color=1, marker=20):
+    def make_tgrapherrors(name, title, color=1, marker=20):
         gr = TGraphErrors()
         gr.SetTitle(title)
         gr.SetName(name)
@@ -195,7 +157,7 @@ class Elementary(object):
         return gr
 
     @staticmethod
-    def make_TGaxis(x, y1, y2, title, color=1):
+    def make_tgaxis(x, y1, y2, title, color=1):
         a = TGaxis(x, y1, x, y2, y1, y2, 510, '+SU')
         a.SetLineColor(color)
         a.SetTickSize(0)
@@ -208,7 +170,7 @@ class Elementary(object):
 
     @staticmethod
     def get_program_dir():
-        arg = 2 if len(sys.argv) > 1 else 0
+        arg = 2 if len(sys.argv) > 2 else 0
         path = os.path.dirname(os.path.realpath(sys.argv[arg])).split('/')
         ret_val = ''
         for i in range(len(path) - 1):

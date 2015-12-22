@@ -58,7 +58,7 @@ if __name__ == "__main__":
 
                 #
                 newAnalysis = Analysis(run,Config(binning),verbose=verbose)
-                newAnalysis.SetSaveDirectory(savepath+str(run_number)+"/")
+                newAnalysis.set_save_directory(savepath + str(run_number) + "/")
                 newAnalysis.DoAnalysis(minimum_statistics)
                 newAnalysis.CreateBoth(saveplots=False)
 
@@ -91,7 +91,7 @@ if __name__ == "__main__":
                 ROOT.gStyle.SetPalette(53)
                 ROOT.gStyle.SetNumberContours(999)
                 newAnalysis.combined_canvas.Update()
-                newAnalysis.SavePlots("Combined_Plot.png")
+                newAnalysis.save_plots("Combined_Plot.png")
 
 
                 newAnalysis.GetSignalHeight()
@@ -107,7 +107,7 @@ if __name__ == "__main__":
         else:
             print "Analysis of run ",run_number, " failed"
 
-    Elementary.SetSaveDirectory(savepath)
+    Elementary.set_save_directory(savepath)
     collection.SignalHeightScan()
     collection.PeakComparison()
 

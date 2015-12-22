@@ -45,7 +45,7 @@ for runplanNr in runplans:
         # rate_analyses[runplanNr].collection[run]._ShowHisto(signaldef="sig_spread[{channel}]", infoid="Spread", drawruninfo=True, savePlots=True, logy=True, gridx=True, binning=150, xmin=0, xmax=150)
         # rate_analyses[runplanNr].collection[run].ShowPeakPosition()
 
-        sel.SetSaveDirectory("Results/{runplan}/Overview_PreAnalysis/".format(runplan=runplanType+str(runplanNr)))
+        sel.set_save_directory("Results/{runplan}/Overview_PreAnalysis/".format(runplan=runplanType + str(runplanNr)))
         rate_analyses[runplanNr].collection[run]._ShowPreAnalysisOverview(savePlot=True)
 
     # sel.SetSaveDirectory("Results/{runplan}/".format(runplan=runplanType+str(runplanNr)))

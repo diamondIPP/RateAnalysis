@@ -204,17 +204,17 @@ class PreAnalysisPlot(Elementary):
         if savePlot:
             print '\rSaving Plots for run', self.analysis.run.run_number,
             gROOT.ProcessLine("gErrorIgnoreLevel = kWarning;")
-            self.SavePlots(savename, "png", canvas=self.signalTimeCanvas, subDir=self.analysis.run.diamondname[self.channel])
-            self.SavePlots(savename, "root", canvas=self.signalTimeCanvas, subDir="root")
+            self.save_plots(savename, "png", canvas=self.signalTimeCanvas, sub_dir=self.analysis.run.diamondname[self.channel])
+            self.save_plots(savename, "root", canvas=self.signalTimeCanvas, sub_dir="root")
             gROOT.SetBatch(1)
             saveCanvas = TCanvas('c1', 'c1', 1000, 600)
             saveCanvas.cd()
             self.pulseHeight.Draw("ALP")
-            self.SavePlots(name_signal, 'png', canvas=saveCanvas, subDir=subdir)
+            self.save_plots(name_signal, 'png', canvas=saveCanvas, sub_dir=subdir)
             self.pedgraph.Draw("ALP")
-            self.SavePlots(name_pedestal, 'png', canvas=saveCanvas, subDir=subdir)
+            self.save_plots(name_pedestal, 'png', canvas=saveCanvas, sub_dir=subdir)
             self.signaltime2d.Draw("colz")
-            self.SavePlots(name_2D, 'png', canvas=saveCanvas, subDir=subdir)
+            self.save_plots(name_2D, 'png', canvas=saveCanvas, sub_dir=subdir)
             saveCanvas.Close()
             gROOT.SetBatch(0)
         gROOT.ProcessLine("gErrorIgnoreLevel = 1;")
@@ -279,4 +279,4 @@ class PreAnalysisPlot(Elementary):
         self._SavePlots(savePlot)
 
         # leave canvas open
-        self.analysis.IfWait("showing MakePreAnalysis plots..")
+        self.analysis.if_wait("showing MakePreAnalysis plots..")

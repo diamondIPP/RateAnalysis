@@ -94,7 +94,7 @@ class Cut(Elementary):
         self.all_cut = self.generate_all_cut()
         self.cut_strings['all_cuts'] = self.all_cut
 
-    def LoadConfig(self):
+    def load_config(self):
         # individual additional cuts:
         self.cut = self.parser.get('CUT', 'cut' + str(self.channel)) if not self.parser.get('CUT', 'cut' + str(self.channel)) in ['-1', '', 'True', 'False'] else ''
         self.cut_types['IndividualChCut'] = copy.deepcopy(self.cut)
@@ -382,7 +382,7 @@ class Cut(Elementary):
         """
         gROOT.SetBatch(1)
         if self._checklist["GenerateCutString"]:
-            self.LoadConfig()  # re-generate
+            self.load_config()  # re-generate
         cutstring = self.cut
 
         # --CHI2 --

@@ -109,8 +109,8 @@ class Bin(Elementary):
             self.BinSignalHisto.GetFunction("landau").ResetBit(kNotDraw)
             self.BinSignalHisto.Draw()
         if saveplot:
-            self.SavePlots('Bin_X{:.3f}Y{:.3f}_SignalHisto'.format(x_,y_),'png', saveDir=savedir)
-        self.IfWait('Bin signal histo drawn')
+            self.save_plots('Bin_X{:.3f}Y{:.3f}_SignalHisto'.format(x_, y_), 'png', save_dir=savedir)
+        self.if_wait('Bin signal histo drawn')
 
     def GetBinCenter(self):
         '''
