@@ -1,11 +1,12 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TF1, TH1F, gROOT, TLegend, TCut, TGraph
+from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TF1, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F
 from newAnalysis import Analysis
 from array import array
 from math import sqrt
 from argparse import ArgumentParser
+from time import sleep
 
 __author__ = 'micha'
 
@@ -66,6 +67,22 @@ class SignalAnalysis(Analysis):
         self.time_binning = self.get_time_binning()
         self.n_bins = len(self.binning)
         return value
+
+    def draw_signal_map(self):
+        h = TProfile2D('signal_map', 'Signal Map', )
+
+    def find_diamond_margins(self):
+        h = TH2F('h', 'Diamond Margins', 80, -.3, .3, 52, -.3, .3)
+        nr = 1 if not self.channel else 2
+        self.tree.Draw('diam{nr}_track_x:diam{nr}_track_y>>h'.format(nr=nr), z.cut.all_cut, 'goff')
+        c = TCanvas('c', 'PeakValues', 1000, 1000)
+        h.Draw('colz')
+        for col in xrange(80):
+            proj = h.ProjectionX(str(col), col + 1, col + 1)
+            proj.Draw()
+            sleep(0.5)
+        self.histos[0] = h
+        self.canvases[0] = c
 
     def draw_peak_values(self, region='b'):
         self.canvas = TCanvas('c', 'PeakValues', 1000, 1000)
