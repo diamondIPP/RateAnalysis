@@ -5,7 +5,7 @@ from array import array
 import types as t
 
 import ROOT
-from ROOT import TCanvas, TH2F, gROOT, TGaxis
+from ROOT import TCanvas, TH2F, gROOT
 from AbstractClasses.PreAnalysisPlot import PreAnalysisPlot
 from AbstractClasses.ConfigClass import *
 from AbstractClasses.RunClass import Run
@@ -14,6 +14,7 @@ from BinCollection import BinCollection
 from collections import OrderedDict
 from argparse import ArgumentParser
 from ConfigParser import ConfigParser
+from copy import deepcopy
 
 
 class Analysis(Elementary):
@@ -23,9 +24,7 @@ class Analysis(Elementary):
 
     def __init__(self, run, diamonds=3, verbose=False, low_rate=None):
         """
-        Initializes the Analysis object.
-        An Analysis Object collects all the information and data for the analysis of
-        one single run.
+        An Analysis Object collects all the information and data for the analysis of one single run.
         The most important fields are:
             .run        - instance of Run class, containing run info and data
             .cut        - dict containing two instances of Cut class
@@ -39,35 +38,18 @@ class Analysis(Elementary):
             .GetEventAtTime(dt)
             .MakePreAnalysis()
             .ShowPulserRate()
-
-        :param run:
-            run object of type "Run"
-        :param diamonds:
-            An integer number defining the diamonds activated for analysis:
-            0x1=ch0 (diamond 1)
-            0x2=ch3 (diamond 2)
-            e.g. 1 -> diamond 1, 2 -> diamond 2, 3 -> diamonds 1&2
-
-        :param verbose:
-            if True, verbose printing is activated
-        :return: -
+        :param run:         run object of type "Run" or integer run number
+        :param diamonds:    An integer number defining the diamonds activated for analysis: 0x1=ch0 (diamond 1) 0x2=ch3 (diamond 2)
+        :param verbose:     if True, verbose printing is activated
         """
         Elementary.__init__(self, verbose=verbose)
-        if not isinstance(run, Run):
-            assert (type(run) is t.IntType), "run has to be either an instance of Run or run number (int)"
-            if diamonds is not None:
-                run = Run(run, diamonds=diamonds)
-            else:
-                run = Run(run)
-        else:
-            assert (run.run_number > 0), "No run selected, choose run.SetRun(run_nr) before you pass the run object"
-        self.run = run
+
+        # basics
+        self.diamonds = diamonds
+        self.run = self.init_run(run)
         self.run.analysis = self
-        self.config_object = {
-            0: BinCollectionConfig(run=self.run, channel=0),
-            3: BinCollectionConfig(run=self.run, channel=3)
-        }
-        self.RunInfo = copy.deepcopy(run.RunInfo)
+        self.config_object = self.load_bincollection()
+        self.RunInfo = deepcopy(self.run.RunInfo)
         self.lowest_rate_run = low_rate if low_rate is not None else self.run.run_number
 
         # tree
@@ -87,60 +69,11 @@ class Analysis(Elementary):
         self.pedestal_num = self.get_pedestal_numbers(self.pedestal_region, self.peak_integral)
         self.pedestal_names = self.get_pedestal_names()
 
-        self.Checklist = {
-            "GlobalPedestalCorrection": {
-                0: False,
-                3: False
-            },
-            "RemoveBeamInterruptions": False,
-            "LoadTrackData": False,
-            "MeanSignalHisto": {
-                0: False,
-                3: False
-            },
-            "HitsDistribution": False,
-            "FindExtrema": {
-                "Maxima": {
-                    0: False,
-                    3: False
-                },
-                "Minima": {
-                    0: False,
-                    3: False
-                }
-            }
-        }
+        self.Checklist = self.init_checklist()
+        self.ExtremaResults = self.init_extrema_results()
+        self.SignalHistoFitResults = self.init_signal_hist_fit_results()
 
-        extremaResults = {
-            "TrueNPeaks": None,  # MC true number of peaks
-            "FoundNMaxima": None,  # number of Maxima found
-            "FoundMaxima": None,  # Maxima found as list [(x1, y1), (x2, y2), ...]
-            "FoundNMinima": None,  # number of Minima found
-            "FoundMinima": None,  # Minima found as list [(x1, y1), (x2, y2), ...]
-            "Ninjas": None,  # number of true peaks not found (only available when MC Run)
-            "Ghosts": None,  # nunmber of wrong Maxima found (only available when MC Run)
-            "SignalHeight": 0.
-        }
-        self.extremaResults = {
-            0: copy.deepcopy(extremaResults),
-            3: copy.deepcopy(extremaResults)
-        }
-
-        signalHistoFitResults = {
-            "FitFunction": None,
-            "Peak": None,
-            "FWHM": None,
-            "Chi2": None,
-            "NDF": None,
-        }
-        self.signalHistoFitResults = {
-            0: copy.deepcopy(signalHistoFitResults),
-            3: copy.deepcopy(signalHistoFitResults)
-        }
-        self.cuts = {
-            0: Cut(self, 0),
-            3: Cut(self, 3)
-        }
+        self.cuts = {ch: Cut(self, ch) for ch in self.run.channels}
         self.pedestalFitMean = {}
         self.pedestalSigma = {}
         
@@ -149,6 +82,41 @@ class Analysis(Elementary):
         self.histos = {}
         self.canvases = {}
         self.lines = {}
+
+    def init_extrema_results(self):
+        names = ['TrueNPeaks', 'FoundNMaxima', 'FoundMaxima', 'FoundNMinima', 'FoundMinima', 'Ninjas', 'Ghosts']
+        sub_dic = {name: False for name in names}
+        sub_dic['SignalHeight'] = 0.
+        return {ch: sub_dic for ch in self.run.channels}
+
+    def init_signal_hist_fit_results(self):
+        names = ['FitFunction', 'Peak', 'FWHM', 'Chi2', 'NDF']
+        sub_dic = {name: False for name in names}
+        return {ch: sub_dic for ch in self.run.channels}
+
+    def init_checklist(self):
+        dic = {}
+        ch_dic = {ch: False for ch in self.run.channels}
+        dic['LoadTrackData'] = False
+        dic['HitsDistribution'] = False
+        dic['GlobalPedestalCorrection'] = ch_dic
+        dic['MeanSignalHisto'] = ch_dic
+        dic['FindExtrema'] = {'Minima': ch_dic, 'Maxima': ch_dic}
+        return dic
+
+    def init_run(self, run):
+        if not isinstance(run, Run):
+            assert type(run) is int, 'run has to be either a Run instance or an integer run number'
+            return Run(run, self.diamonds)
+        else:
+            assert run.run_number is not None, 'No run selected, choose run.SetRun(run_nr) before you pass the run object'
+            return run
+
+    def load_bincollection(self):
+        dic = {}
+        for ch in self.run.channels:
+            dic[ch] = BinCollectionConfig(run=self.run, channel=ch)
+        return dic
 
     def draw_regions(self, event=0, ped=True):
         tit = 'Pedestal Regions' if ped else 'Signal Regions'
@@ -188,14 +156,14 @@ class Analysis(Elementary):
         return parser
 
     def load_config(self):
-        ana_parser = self.load_parser()
-        self.showAndWait = ana_parser.getboolean("DISPLAY", "ShowAndWait")
-        self.saveMCData = ana_parser.getboolean("SAVE", "SaveMCData")
+        parser = self.load_parser()
+        self.showAndWait = parser.getboolean("DISPLAY", "ShowAndWait")
+        self.saveMCData = parser.getboolean("SAVE", "SaveMCData")
 
-        self.loadMaxEvent = ana_parser.getint("TRACKING", "loadMaxEvent")
-        self.minimum_bincontent = ana_parser.getint("TRACKING", "min_bincontent")
-        self.minimum_bincontent = ana_parser.getint("TRACKING", "min_bincontent")
-        self.PadsBinning = ana_parser.getint("TRACKING", "padBinning")
+        self.loadMaxEvent = parser.getint("TRACKING", "loadMaxEvent")
+        self.minimum_bincontent = parser.getint("TRACKING", "min_bincontent")
+        self.minimum_bincontent = parser.getint("TRACKING", "min_bincontent")
+        self.PadsBinning = parser.getint("TRACKING", "padBinning")
 
     # ==============================================
     # region GET INTEGRAL NAMES
@@ -1026,11 +994,11 @@ class Analysis(Elementary):
         pad.cd()
 
         if theseMaximas is None:
-            if self.extremaResults[channel]['FoundMaxima'] == None: self.FindMaxima(channel=channel)
+            if self.ExtremaResults[channel]['FoundMaxima'] == None: self.FindMaxima(channel=channel)
         else:
             assert (type(theseMaximas) is t.ListType)
         if theseMinimas is None:
-            if self.extremaResults[channel]['FoundMinima'] == None: self.FindMinima(channel=channel)
+            if self.ExtremaResults[channel]['FoundMinima'] == None: self.FindMinima(channel=channel)
         else:
             assert (type(theseMinimas) is t.ListType)
 
@@ -1046,7 +1014,7 @@ class Analysis(Elementary):
         # self.Pads[channel].MaximaSearch.found_extrema.SetMarkerColor(ROOT.kGreen+2)
         # self.Pads[channel].MaximaSearch.found_extrema.Draw('SAME P0')
         if theseMinimas == None:
-            minima = self.extremaResults[channel]['FoundMinima']
+            minima = self.ExtremaResults[channel]['FoundMinima']
         else:
             minima = theseMinimas
 
@@ -1056,7 +1024,7 @@ class Analysis(Elementary):
             text.DrawText(minima[i][0] - 0.01, minima[i][1] - 0.005, 'low')
 
         if theseMaximas == None:
-            maxima = self.extremaResults[channel]['FoundMaxima']
+            maxima = self.ExtremaResults[channel]['FoundMaxima']
         else:
             maxima = theseMaximas
 
@@ -1270,7 +1238,7 @@ class Analysis(Elementary):
         self.MeanSignalHisto[channel].GetQuantiles(2, y, q)
         SignalHeight = y[1] / y[0] - 1.
         self.verbose_print('\nApproximated Signal Amplitude: {0:0.0f}% - ({1:0.0f}%/{2:0.0f}% Quantiles approximation)\n'.format(100. * (SignalHeight), max_percent, min_percent))
-        self.extremaResults[channel]['SignalHeight'] = SignalHeight
+        self.ExtremaResults[channel]['SignalHeight'] = SignalHeight
         return SignalHeight
 
     def ShowTotalSignalHistogram(self, channel, save=False, scale=False, showfit=False):
@@ -1301,17 +1269,17 @@ class Analysis(Elementary):
         :param channel: 
         :return: FitFunction, Peak, FWHM, Chi2, NDF
         '''
-        if self.signalHistoFitResults[channel]["Peak"] != None:
-            FitFunction = self.signalHistoFitResults[channel]["FitFunction"]
-            Peak = self.signalHistoFitResults[channel]["Peak"]
-            FWHM = self.signalHistoFitResults[channel]["FWHM"]
-            Chi2 = self.signalHistoFitResults[channel]["Chi2"]
-            NDF = self.signalHistoFitResults[channel]["NDF"]
+        if self.SignalHistoFitResults[channel]["Peak"] != None:
+            FitFunction = self.SignalHistoFitResults[channel]["FitFunction"]
+            Peak = self.SignalHistoFitResults[channel]["Peak"]
+            FWHM = self.SignalHistoFitResults[channel]["FWHM"]
+            Chi2 = self.SignalHistoFitResults[channel]["Chi2"]
+            NDF = self.SignalHistoFitResults[channel]["NDF"]
             if show: self.ShowTotalSignalHistogram(channel=channel, save=False, showfit=True)
             return FitFunction, Peak, FWHM, Chi2, NDF
         else:
             self.ShowTotalSignalHistogram(channel=channel, save=False, showfit=True)
-            if (self.signalHistoFitResults[channel]["Peak"] != None) or (hasattr(self, "ExtremeAnalysis") and self.signalHistoFitResults[channel]["Peak"] != None):
+            if (self.SignalHistoFitResults[channel]["Peak"] != None) or (hasattr(self, "ExtremeAnalysis") and self.SignalHistoFitResults[channel]["Peak"] != None):
                 self.GetSignalHistoFitResults()
             else:
                 assert (False), "BAD SignalHistogram Fit, Stop program due to possible infinity loop"
@@ -2106,12 +2074,12 @@ class Analysis(Elementary):
         return 1. * multiparticle / total
 
 if __name__ == "__main__":
-    parser = ArgumentParser()
-    parser.add_argument('run', nargs='?', default=392, type=int)
-    args = parser.parse_args()
-    run = args.run
-    print '\nAnalysing run', run, '\n'
-    z = Analysis(run)
+    ana_parser = ArgumentParser()
+    ana_parser.add_argument('run', nargs='?', default=392, type=int)
+    args = ana_parser.parse_args()
+    this_run = args.run
+    print '\nAnalysing run', this_run, '\n'
+    z = Analysis(this_run)
 
 
 '''
