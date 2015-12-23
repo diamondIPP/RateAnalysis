@@ -78,7 +78,6 @@ class Analysis(Elementary):
         self.parser = self.load_parser()
 
         # names
-        # todo read region and integral from config file
         self.signal_region = self.parser.get('BASIC', 'signal_region')
         self.pedestal_region = self.parser.get('BASIC', 'pedestal_region')
         self.peak_integral = self.parser.get('BASIC', 'peak_integral')

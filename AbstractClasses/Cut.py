@@ -121,7 +121,7 @@ class Cut(Elementary):
 
     def load_parser(self):
         parser = ConfigParser.ConfigParser()
-        parser.read('Configuration/AnalysisConfig_' + self.TESTCAMPAIGN + '.cfg')
+        parser.read('Configuration/AnalysisConfig_' + self.analysis.TESTCAMPAIGN + '.cfg')
         return parser
 
     def LoadIndividualCuts(self):

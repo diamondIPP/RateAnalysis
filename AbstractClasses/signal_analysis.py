@@ -201,7 +201,6 @@ class SignalAnalysis(Analysis):
                 histo_name = 'signal {range}{peakint}'.format(range=self.signal_region, peakint=self.peak_integral)
                 histo_title = 'signal with cut ' + key
                 histo = TH1F(histo_name, histo_title, 400, -100, 300)
-                # histo.GetYaxis().SetRangeUser(0, 7000)
                 # safe single plots
                 c1.cd()
                 self.tree.Draw("{name}>>{histo}".format(name=self.signal_name, histo=histo_name), value)
@@ -240,7 +239,6 @@ class SignalAnalysis(Analysis):
                 histo_name = 'signal {range}{peakint}'.format(range=self.signal_region, peakint=self.peak_integral)
                 histo_title = 'normalised signal with cut ' + key
                 histo = TH1F(histo_name, histo_title, 400, -100, 300)
-                # histo.GetYaxis().SetRangeUser(0, 7000)
                 # safe single plots
                 c1.cd()
                 self.tree.Draw("{name}>>{histo}".format(name=self.signal_name, histo=histo_name), value)
@@ -284,7 +282,6 @@ class SignalAnalysis(Analysis):
                 histo_name = 'signal {range}{peakint}'.format(range=self.signal_region, peakint=self.peak_integral)
                 histo_title = 'signal with {n} cuts'.format(n=ind)
                 histo = TH1F(histo_name, histo_title, 400, -100, 500)
-                # histo.GetYaxis().SetRangeUser(0, 7000)
                 # safe single plots
                 c1.cd()
                 self.tree.Draw("{name}>>{histo}".format(name=self.signal_name, histo=histo_name), cut)
@@ -546,7 +543,6 @@ class SignalAnalysis(Analysis):
         self.pulse_height.GetXaxis().SetTitle("time / min")
         self.pulse_height.GetXaxis().SetTitleSize(0.04)
         self.pulse_height.GetXaxis().SetLabelSize(0.04)
-        # self.pulse_height.GetXaxis().SetRangeUser(0, self.analysis.run.totalMinutes)
         if mode in ["mean", "Mean"]:
             y_title = "Mean Signal ({signalname})".format(signalname=self.signal_name)
         else:

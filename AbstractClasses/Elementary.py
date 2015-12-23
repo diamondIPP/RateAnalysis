@@ -16,13 +16,14 @@ class Elementary(object):
     """
 
     default_testcampaign = '201510'
+    TESTCAMPAIGN = None
 
     def __init__(self, verbose=False):
         self.verbose = verbose
         self.save_directory = self.get_program_dir() + 'Results/'
 
-        self.TESTCAMPAIGN = None
-        self.set_test_campaign(self.default_testcampaign)
+        if self.TESTCAMPAIGN is None:
+            self.set_test_campaign(self.default_testcampaign)
 
         self.load_config()
         self.aimedFluxes = [3, 20, 60, 600, 2000, 5000]
@@ -134,16 +135,18 @@ class Elementary(object):
             f.writelines(lines)
             f.close()
 
-    def set_test_campaign(self, campaign='201508'):
-        campaigns = self.find_test_campaigns()
+    @classmethod
+    def set_test_campaign(cls, campaign='201508'):
+        campaigns = cls.find_test_campaigns()
         if not str(campaign) in campaigns:
             print 'This Testcampaign does not exist yet! Use create_new_testcampaign!\nExisting campaigns: {camp}'.format(camp=campaigns)
             return
-        self.TESTCAMPAIGN = str(campaign)
+        Elementary.TESTCAMPAIGN = str(campaign)
         print 'Testcampaign set to: {tc} '.format(tc=campaign)
 
-    def find_test_campaigns(self):
-        conf_dir = self.get_program_dir() + 'Configuration/'
+    @classmethod
+    def find_test_campaigns(cls):
+        conf_dir = cls.get_program_dir() + 'Configuration/'
         names = glob(conf_dir + 'RunConfig_*')
         campaigns = [re.split('_|\.', name)[1] for name in names]
         campaigns = [camp for i, camp in enumerate(campaigns) if camp not in campaigns[i + 1:]]

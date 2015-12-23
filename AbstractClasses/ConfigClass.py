@@ -22,17 +22,11 @@ class MeanSignalHistConfig(object):
         pass
 
 class BinCollectionConfig(Elementary):
-    '''
-    A config object for analysis
-    e.g. binning size
-    '''
+    """
+    A config object for analysis e.g. binning size
+    """
     def __init__(self, run, binningsize=None,  channel=None, **kwargs):
-        '''
-
-        :param binningsize: size of bins in microns
-        :param kwargs:
-        :return:
-        '''
+        Elementary.__init__(self)
         self.run = run
         self.channel=channel
         self.config = {
