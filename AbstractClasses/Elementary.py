@@ -6,6 +6,7 @@ import pickle
 import sys
 from glob import glob
 import re
+from shutil import copyfile
 
 
 class Elementary(object):
@@ -101,8 +102,37 @@ class Elementary(object):
             print '\n\n{delim}\nERROR in save plots!\n{msg}\n{delim}\n\n'.format(delim=len(str(inst)) * '-', msg=inst)
 
     def create_new_testcampaign(self):
-        # todo query date and create all new necessary configfiles etc
-        pass
+        year = raw_input('Enter the year of the test campgaign (YYYY): ')
+        month = raw_input('Enter the month of the testcampaign: ').zfill(2)
+        if year + month in self.find_test_campaigns():
+            print 'This test campaign already exists! --> returning'
+            return
+        new_tc = year + month
+        new_tc_cfg = year + month + '.cfg'
+        conf_dir = self.get_program_dir() + 'Configuration/'
+        names = []
+        old_tc_cfg = ''
+        for f in glob(conf_dir + '*'):
+            name = f.split('/')[-1].split('_')
+            if len(name) > 1 and name[1].startswith('20') and name[0] not in names:
+                if name[1] > old_tc_cfg:
+                    old_tc_cfg = name[1]
+                names.append(name[0])
+        old_tc = old_tc_cfg.split('.')[0]
+        for name in names:
+            file_name = conf_dir + name + '_'
+            copyfile(file_name + old_tc_cfg, file_name + new_tc_cfg)
+            f = open(file_name + new_tc_cfg, 'r+')
+            lines = []
+            for line in f.readlines():
+                print line
+                print old_tc[2:], new_tc[2:], old_tc[:4] + '_' + old_tc[4:], year + '_' + month
+                line = line.replace(old_tc[2:], new_tc[2:])
+                old = old_tc[:4] + '_' + old_tc[4:]
+                lines.append(line.replace(old, year + '_' + month))
+            f.seek(0)
+            f.writelines(lines)
+            f.close()
 
     def set_test_campaign(self, campaign='201508'):
         campaigns = self.find_test_campaigns()
