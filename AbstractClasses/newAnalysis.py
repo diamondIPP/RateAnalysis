@@ -51,13 +51,14 @@ class Analysis(Elementary):
         self.config_object = self.load_bincollection()
         self.RunInfo = deepcopy(self.run.RunInfo)
         self.lowest_rate_run = low_rate if low_rate is not None else self.run.run_number
+        self.parser = self.load_parser()
+        self.pickle_dir = self.parser.get('SAVE', 'pickle_dir')
 
         # tree
         self.tree = self.run.tree
 
         # miscellaneous
         self.polarities = self.get_polarities()
-        self.parser = self.load_parser()
 
         # names
         self.signal_region = self.parser.get('BASIC', 'signal_region')

@@ -6,7 +6,6 @@ from newAnalysis import Analysis
 from array import array
 from math import sqrt
 from argparse import ArgumentParser
-from time import sleep
 
 __author__ = 'micha'
 
@@ -45,7 +44,6 @@ class SignalAnalysis(Analysis):
         self.pedestal = None
         self.signals = {}
         self.tmp_histos = {}
-        self.canvas = None
         # histograms
         self.canvas = None
         self.histo = None
@@ -69,20 +67,38 @@ class SignalAnalysis(Analysis):
         return value
 
     def draw_signal_map(self):
-        h = TProfile2D('signal_map', 'Signal Map', )
+        margins = self.find_diamond_margins()
+        x = [margins['x'][0], margins['x'][1]]
+        y = [margins['y'][0], margins['y'][1]]
+        nr = 1 if not self.channel else 2
+        h = TProfile2D('signal_map', 'Signal Map', 80, x[0], x[1], 52, y[0], y[1])
+        self.tree.Draw('{z}:diam{nr}_track_x:diam{nr}_track_y>>signal_map'.format(z=self.signal_name, nr=nr), z.cut.all_cut, 'goff')
+        self.canvas = TCanvas('c', 'Signal Map', 1000, 1000)
+        gStyle.SetPalette(53)
+        h.Draw('colz')
+        self.histos[0] = h
 
     def find_diamond_margins(self):
-        h = TH2F('h', 'Diamond Margins', 80, -.3, .3, 52, -.3, .3)
-        nr = 1 if not self.channel else 2
-        self.tree.Draw('diam{nr}_track_x:diam{nr}_track_y>>h'.format(nr=nr), z.cut.all_cut, 'goff')
-        c = TCanvas('c', 'PeakValues', 1000, 1000)
-        h.Draw('colz')
-        for col in xrange(80):
-            proj = h.ProjectionX(str(col), col + 1, col + 1)
-            proj.Draw()
-            sleep(0.5)
-        self.histos[0] = h
-        self.canvases[0] = c
+        pickle_path = self.get_program_dir() + self.pickle_dir + 'Margins/{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
+
+        def func():
+            print 'getting margins for {dia} of run {run}...'.format(dia=self.diamond_name, run=self.run_number)
+            gROOT.SetBatch(1)
+            h = TH2F('h', 'Diamond Margins', 80, -.3, .3, 52, -.3, .3)
+            nr = 1 if not self.channel else 2
+            self.tree.Draw('diam{nr}_track_x:diam{nr}_track_y>>h'.format(nr=nr), z.cut.all_cut, 'goff')
+            projections = [h.ProjectionX(), h.ProjectionY()]
+            efficient_bins = [[], []]
+            for i, proj in enumerate(projections):
+                for bin_ in xrange(proj.GetNbinsX()):
+                    efficiency = proj.GetBinContent(bin_) / float(proj.GetMaximum())
+                    if efficiency > .3:
+                        efficient_bins[i].append(proj.GetBinCenter(bin_))
+            gROOT.SetBatch(0)
+            return {name: [efficient_bins[i][0], efficient_bins[i][-1]] for i, name in enumerate(['x', 'y'])}
+
+        margins = self.do_pickle(pickle_path, func)
+        return margins
 
     def draw_peak_values(self, region='b'):
         self.canvas = TCanvas('c', 'PeakValues', 1000, 1000)
@@ -595,4 +611,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     test_run = args.run
     print '\nAnalysing run', test_run, '\n'
-    z = SignalAnalysis(test_run, 0)
+    z = SignalAnalysis(test_run, 3)
