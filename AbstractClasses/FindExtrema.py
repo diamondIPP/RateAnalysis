@@ -12,7 +12,7 @@ class FindExtrema(Elementary):
         self.BinCollectionObj = bincollection
         self.channel = self.BinCollectionObj.channel
         self.ExtremaType = ''
-        self.SetType()
+        self.set_type()
 
         self.voting_histo_name = 'voting_histo_'+self.ExtremaType+str(self.GLOBAL_COUNT)
         self.voting_histo = ROOT.TH2D(self.voting_histo_name, 'Voting for '+self.ExtremaType, *self.BinCollectionObj.Get2DAttributes())
@@ -34,7 +34,7 @@ class FindExtrema(Elementary):
     def FifthVoting(self, nbhd_mean, mean):
         pass
 
-    def SetType(self):
+    def set_type(self):
         pass
 
     def SetThreshold(self):
@@ -246,9 +246,9 @@ class FindExtrema(Elementary):
                 list_of_bins.append(binnumber)
         return list_of_bins
 
-    def Find(self, threshold = None, minimum_bincount = 5, show = False):
+    def find_extrema(self, threshold=None, minimum_bincount=5, show=False):
 
-        if threshold == None:
+        if threshold is None:
             self.SetThreshold()
             # self.threshold = self.BinCollectionObj.SignalHisto.GetMean()
             self.verbose_print('threshold set automatically to ', self.threshold)
@@ -382,7 +382,7 @@ class FindMaxima(FindExtrema):
         else:
             return False
         
-    def SetType(self):
+    def set_type(self):
         self.ExtremaType = 'Maxima'
 
     def SetThreshold(self):
@@ -417,7 +417,7 @@ class FindMinima(FindExtrema):
         else:
             return False
         
-    def SetType(self):
+    def set_type(self):
         self.ExtremaType = 'Minima'
 
     def SetThreshold(self):

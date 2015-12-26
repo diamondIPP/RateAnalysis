@@ -48,6 +48,7 @@ class SignalAnalysis(Analysis):
         self.canvas = None
         self.histo = None
         self.signaltime = None
+        self.SignalMapHisto = None
 
     def set_channel(self, ch):
         self.channel = ch
@@ -66,38 +67,78 @@ class SignalAnalysis(Analysis):
         self.n_bins = len(self.binning)
         return value
 
-    def draw_signal_map(self):
-        margins = self.find_diamond_margins()
+    def draw_signal_map(self, draw_option='surf2', show=True):
+        margins = self.find_diamond_margins(show_plot=False)
         x = [margins['x'][0], margins['x'][1]]
         y = [margins['y'][0], margins['y'][1]]
         nr = 1 if not self.channel else 2
         h = TProfile2D('signal_map', 'Signal Map', 80, x[0], x[1], 52, y[0], y[1])
+        if not show:
+            gROOT.SetBatch(1)
         self.tree.Draw('{z}:diam{nr}_track_x:diam{nr}_track_y>>signal_map'.format(z=self.signal_name, nr=nr), z.cut.all_cut, 'goff')
         self.canvas = TCanvas('c', 'Signal Map', 1000, 1000)
         gStyle.SetPalette(53)
-        h.Draw('colz')
-        self.histos[0] = h
+        h.Draw(draw_option)
+        gROOT.SetBatch(0)
+        self.SignalMapHisto = h
+        return h
 
-    def find_diamond_margins(self):
+    def draw_mean_signal_distribution(self, show=True):
+        """
+        Draws the distribution of the mean pulse height values of the bins from the signal map
+        :param show: shows a plot of the canvas if True
+        """
+        sig_map = self.SignalMapHisto if self.SignalMapHisto is not None else self.draw_signal_map(show=False)
+        x = [sig_map.GetMinimum() / 10 * 10, (sig_map.GetMaximum() + 10) / 10 * 10]
+        h = TH1F('h', 'Mean Signal Distribution', 50, x[0], x[1])
+        for bin_ in xrange((sig_map.GetNbinsX() + 2) * (sig_map.GetNbinsY() + 2)):
+            h.Fill(sig_map.GetBinContent(bin_))
+        if show:
+            self.canvas = TCanvas('c', 'Mean Signal Distribution', 1000, 1000)
+            h.Draw()
+            self.histos[0] = h
+        print self.__get_median(h)
+
+    def draw_diamond_hitmap(self):
+        self.find_diamond_margins()
+
+    def find_diamond_margins(self, show_plot=True):
         pickle_path = self.get_program_dir() + self.pickle_dir + 'Margins/{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
 
         def func():
             print 'getting margins for {dia} of run {run}...'.format(dia=self.diamond_name, run=self.run_number)
-            gROOT.SetBatch(1)
+            if not show_plot:
+                gROOT.SetBatch(1)
             h = TH2F('h', 'Diamond Margins', 80, -.3, .3, 52, -.3, .3)
             nr = 1 if not self.channel else 2
             self.tree.Draw('diam{nr}_track_x:diam{nr}_track_y>>h'.format(nr=nr), z.cut.all_cut, 'goff')
             projections = [h.ProjectionX(), h.ProjectionY()]
             efficient_bins = [[], []]
+            zero_bins = [[], []]
             for i, proj in enumerate(projections):
+                last_bin = None
                 for bin_ in xrange(proj.GetNbinsX()):
                     efficiency = proj.GetBinContent(bin_) / float(proj.GetMaximum())
                     if efficiency > .3:
                         efficient_bins[i].append(proj.GetBinCenter(bin_))
+                    if bin_:
+                        if efficiency and not last_bin:
+                            zero_bins[i].append(proj.GetBinCenter(bin_ - 1))
+                        elif not efficiency and last_bin:
+                            zero_bins[i].append((proj.GetBinCenter(bin_)))
+                    last_bin = proj.GetBinContent(bin_)
+            if show_plot:
+                print zero_bins
+                self.canvas = TCanvas('c', 'Diamond Hit Map', 1000, 1000)
+                h.GetXaxis().SetRangeUser(zero_bins[0][0], zero_bins[0][1])
+                h.GetYaxis().SetRangeUser(zero_bins[1][0], zero_bins[1][1])
+                h.Draw()
+                self.histos[0] = h
+                self.save_plots('diamond_hitmap', sub_dir=self.save_dir, canvas=self.canvas)
             gROOT.SetBatch(0)
             return {name: [efficient_bins[i][0], efficient_bins[i][-1]] for i, name in enumerate(['x', 'y'])}
 
-        margins = self.do_pickle(pickle_path, func)
+        margins = self.do_pickle(pickle_path, func) if not show_plot else func()
         return margins
 
     def draw_peak_values(self, region='b'):

@@ -767,6 +767,7 @@ class Analysis(Elementary):
         return histo
 
     def ShowDiamondCurrents(self):
+        # todo
         pass
 
     def LoadTrackData(self, minimum_bincontent=None):  # min_bincontent in config file
@@ -855,90 +856,13 @@ class Analysis(Elementary):
 
         self.Checklist["LoadTrackData"] = True
 
-    def ShowHitMap(self, channel=None, saveplot=False, drawoption="colz", RemoveLowStatBins=0):
-        """
-        Shows a 2-dimensional (TH2D) histogram of the hit distributions on the pad.
-        :param channel:
-        :param saveplot:
-        :param drawoption:
-        :param RemoveLowStatBins:
-        """
-        channels = self.GetChannels(channel=channel)
-
-        if not self.Checklist["LoadTrackData"]:
-            self.LoadTrackData()
-
-        if RemoveLowStatBins > 0:
-            if type(RemoveLowStatBins) == t.BooleanType:
-                RemoveLowStatBins = 10
-            bins = (self.Pads[channel].counthisto.GetNbinsX() + 2) * (self.Pads[channel].counthisto.GetNbinsY() + 2)
-            for bin in xrange(bins):
-                if self.Pads[channel].counthisto.GetBinContent(bin) < RemoveLowStatBins:
-                    coordinates = self.Pads[channel].GetBinCenter(bin)
-                    content = self.Pads[channel].counthisto.GetBinContent(bin)
-                    self.Pads[channel].counthisto.Fill(coordinates[0], coordinates[1], -content)
-            extension = "_min" + str(RemoveLowStatBins)
-        else:
-            extension = ""
-
-        ROOT.gStyle.SetPalette(53)
-        ROOT.gStyle.SetNumberContours(999)
-        self.hitmapcanvas = ROOT.TCanvas("hitmapcanvas", "Hits", len(channels) * 500, 500)  # adjust the width slightly
-        self.hitmapcanvas.Divide(len(channels), 1)
-
-        for ch in channels:
-            self.hitmapcanvas.cd(channels.index(ch) + 1)
-            self.Pads[ch].counthisto.SetStats(False)
-            self.Pads[ch].counthisto.Draw(drawoption)  # "surf2")
-            # self.Pads[ch].counthisto.Draw("CONT1 SAME")
-            if saveplot:
-                self.save_plots(("Run{run}_HitMap" + extension).format(run=self.run.run_number), "png", canvas=self.hitmapcanvas)
-            self.hitmapcanvas.Update()
-        self.if_wait("Hits Distribution shown")
-        self.Checklist["HitsDistribution"] = True
-
-    def SetDiamondPosition(self, diamonds=3):
-        '''
-        With this method the diamond window is set. The diamond mask
-        info is stored in DiamondPositions/ and will be loaded the next
-        time an Analysis object with the same mask file (silicon pixel
-        mask) is created.
-        The margins has to be set in the terminal window and can be
-        found by the HitMaps, which will pop up.
-        To cancel the process, just pass a non-number character.
-        :param diamonds:
-        :return:
-        '''
-        tmp = copy.deepcopy(self.run.analyse_ch)
-        self.SetChannels(diamonds)
-        self.ShowHitMap()
-        maskname = self.run.RunInfo["mask"][:-4]
-        for ch in [0, 3]:
-            try:
-                xmin = float(raw_input("Set x_min of Diamond {dia}: ".format(dia=self.run.diamondname[ch])))
-                xmax = float(raw_input("Set x_max of Diamond {dia}: ".format(dia=self.run.diamondname[ch])))
-                ymin = float(raw_input("Set y_min of Diamond {dia}: ".format(dia=self.run.diamondname[ch])))
-                ymax = float(raw_input("Set y_max of Diamond {dia}: ".format(dia=self.run.diamondname[ch])))
-                window = [xmin, xmax, ymin, ymax]
-                # save list to file
-                windowfile = open("DiamondPositions/{testcampaign}_{mask}_{dia}.pickle".format(testcampaign=self.TESTCAMPAIGN, mask=maskname, dia=ch), "wb")
-                pickle.dump(window, windowfile)
-                windowfile.close()
-            except ValueError:
-                pass
-        self.run.analyse_ch = copy.deepcopy(tmp)
-
-    def SetChannels(self, diamonds):
-        """
-        Sets the channels (i.e. diamonds) to be analyzed. This is just a short cut for: self.run.SetChannels(diamonds)
-        :param diamonds:
-        """
+    def set_channels(self, diamonds):
         self.run.set_channels(diamonds=diamonds)
 
     def get_event_at_time(self, time_sec):
         return self.run.get_event_at_time(time_sec)
 
-    def GetRate(self):
+    def get_flux(self):
         return self.run.get_flux()
 
     def ShowSignalMaps(self, draw_minmax=True, saveplots=False, savename="Run{run}_SignalMaps", ending="png", saveDir="Results/", show3d=False):
@@ -1037,63 +961,6 @@ class Analysis(Elementary):
             minbin = self.Pads[channel].GetBinByCoordinates(*(minima[0]))
             minbin.FitLandau()
             print '\nApproximated Signal Amplitude: {0:0.0f}% - (high/low approximation)\n'.format(100. * (maxbin.Fit['MPV'] / minbin.Fit['MPV'] - 1.))
-
-    def CreateMeanSignalHistogram(self, channel, saveplots=False, savename="MeanSignalDistribution", ending="png", saveDir="Results/", show=False):
-        '''
-        Creates a histogram containing all the mean signal responses of
-        the two-dimensional mean signal map. (i.e. the mean signal value
-        of each bin of the 2D distribution is one entry in the
-        histogram)
-        :param channel:
-        :param saveplots:
-        :param savename:
-        :param ending:
-        :param saveDir:
-        :param show:
-        :return:
-        '''
-        if not hasattr(self, "Pads"):
-            print "Performing auto analysis"
-            self.LoadTrackData(minimum_bincontent=self.minimum_bincontent)
-        if saveplots:
-            show = True
-
-        # self.signal_canvas = ROOT.TCanvas()
-        # ROOT.SetOwnership(self, False)
-        if show:
-            if hasattr(self, "signal_canvas") and bool(self.signal_canvas):
-                self.signal_canvas.Clear()
-            else:
-                self.signal_canvas = ROOT.TCanvas("signal_canvas{run}", "Mean Signal Maps")
-                ROOT.SetOwnership(self.signal_canvas, False)
-                ROOT.gStyle.SetPalette(53)  # Dark Body Radiator palette
-                ROOT.gStyle.SetNumberContours(999)
-        # print self.Signal2DDistribution
-        minimum = self.Signal2DDistribution[channel].GetMinimum()
-        maximum = self.Signal2DDistribution[channel].GetMaximum()
-        self.MeanSignalHisto_name = "MeanSignalHisto" + str(self.run.run_number) + str(channel)
-        if not hasattr(self, "MeanSignalHisto"):
-            self.MeanSignalHisto = {}
-        self.MeanSignalHisto[channel] = ROOT.TH1D(self.MeanSignalHisto_name, "Run{run}: {diamond} Mean Signal Histogram".format(run=self.run.run_number, diamond=self.run.diamondname[channel]), 100,
-                                                  minimum, maximum)
-        ROOT.SetOwnership(self.MeanSignalHisto[channel], False)
-
-        nbins = (self.Signal2DDistribution[channel].GetNbinsX() + 2) * (self.Signal2DDistribution[channel].GetNbinsY() + 2)
-        for i in xrange(nbins):
-            bincontent = self.Signal2DDistribution[channel].GetBinContent(i)
-            binhits = self.Pads[channel].counthisto.GetBinContent(i)
-            if binhits >= self.minimum_bincontent and bincontent != 0:  # bincontent != 0: bins in overflow frame give 0 content by ROOT.TH2D
-                self.MeanSignalHisto[channel].Fill(bincontent)
-        if show:
-            self.MeanSignalHisto[channel].Draw()
-            self.signal_canvas.Update()
-        else:
-            print "INFO: MeanSignalHisto created as attribute: self.MeanSignalHisto (ROOT.TH1D)"
-
-        if saveplots:
-            self.save_plots(savename, ending, saveDir, canvas=self.signal_canvas)
-
-        self.Checklist["MeanSignalHisto"][channel] = True
 
     def ShowExtendedSignalMaps(self, draw_minmax=True, saveplots=False, savename="SignalDistribution", ending="png", saveDir=None, PS=False, test=""):
         '''

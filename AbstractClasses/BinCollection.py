@@ -696,7 +696,7 @@ class BinCollection(Elementary):
         :return: list of coordinates
         '''
         self.maximaSearch = FindMaxima(self)
-        self.maximaSearch.Find(threshold=threshold, minimum_bincount=minimum_bincount, show=show)
+        self.maximaSearch.find_extrema(threshold=threshold, minimum_bincount=minimum_bincount, show=show)
         self.parent_analysis_obj.Checklist["FindExtrema"]["Maxima"][self.channel] = True
 
     def FindMinima(self, threshold = None, minimum_bincount = 5, show = False):
@@ -710,7 +710,7 @@ class BinCollection(Elementary):
         :return: list of coordinates
         '''
         self.minimaSearch = FindMinima(self)
-        self.minimaSearch.Find(threshold=threshold, minimum_bincount=minimum_bincount, show=show)
+        self.minimaSearch.find_extrema(threshold=threshold, minimum_bincount=minimum_bincount, show=show)
         self.parent_analysis_obj.Checklist["FindExtrema"]["Minima"][self.channel] = True
 
     def UpdateBinAttributes(self):
