@@ -856,15 +856,13 @@ class Analysis(Elementary):
         self.Checklist["LoadTrackData"] = True
 
     def ShowHitMap(self, channel=None, saveplot=False, drawoption="colz", RemoveLowStatBins=0):
-        '''
-        Shows a 2-dimensional (TH2D) histogram of the hit distributions
-        on the pad.
+        """
+        Shows a 2-dimensional (TH2D) histogram of the hit distributions on the pad.
         :param channel:
         :param saveplot:
         :param drawoption:
         :param RemoveLowStatBins:
-        :return:
-        '''
+        """
         channels = self.GetChannels(channel=channel)
 
         if not self.Checklist["LoadTrackData"]:
@@ -1535,31 +1533,10 @@ class Analysis(Elementary):
             f.close()
             print "done."
 
-    def _checkWFChannels(self):
-        nWFChannels = 0
-        wf_exist = {
-            0: False,
-            1: False,
-            2: False,
-            3: False
-        }
-        check = self.run.tree.GetBranch("wf0")
-        if check:
-            nWFChannels += 1
-            wf_exist[0] = True
-        check = self.run.tree.GetBranch("wf1")
-        if check:
-            nWFChannels += 1
-            wf_exist[1] = True
-        check = self.run.tree.GetBranch("wf2")
-        if check:
-            nWFChannels += 1
-            wf_exist[2] = True
-        check = self.run.tree.GetBranch("wf3")
-        if check:
-            nWFChannels += 1
-            wf_exist[3] = True
-        return nWFChannels, wf_exist
+    def __check_wv_channels(self):
+        wf_exist = {ch: True if self.tree.FindBranch('wf{ch}'.format(ch=ch)) else False for ch in range(4)}
+        n_wf_channels = sum(wf_exist.values())
+        return n_wf_channels, wf_exist
 
     def ShowWaveForms(self, nevents=1000, cut="", startevent=None, channels=None, canvas=None, infoid="", drawoption=""):
         '''
@@ -1582,7 +1559,7 @@ class Analysis(Elementary):
         if startevent > maxevent:
             return False
         # check number of wf in root file:
-        nWFChannels, draw_waveforms = self._checkWFChannels()
+        nWFChannels, draw_waveforms = self.__check_wv_channels()
         if nWFChannels == 0:
             return False
 
@@ -1636,7 +1613,7 @@ class Analysis(Elementary):
                 print "Wave Form of channel ", i, " not in root file"
 
     def ShowWaveFormsPulser(self, nevents=1000, startevent=None, channels=None):
-        nWFChannels, draw_waveforms = self._checkWFChannels()
+        nWFChannels, draw_waveforms = self.__check_wv_channels()
         self.pulserWaveformCanvas = ROOT.TCanvas("pulserWaveformCanvas", "Pulser Waveform Canvas", 1500, nWFChannels * 300)
         self.pulserWaveformCanvas.cd()
         self.pulserWaveformCanvas.Divide(2, 1)

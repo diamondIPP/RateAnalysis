@@ -127,7 +127,7 @@ class SignalAnalysis(Analysis):
             print 'calculating pedestal of ch', self.channel
             if binning is not None:
                 self.__set_bin_size(binning)
-            ped_time = self.make_histos('pedestal')
+            ped_time = self.make_signal_histos('pedestal')
             means = []
             empty_bins = 0
             count = 0
@@ -170,7 +170,7 @@ class SignalAnalysis(Analysis):
             gr = self.make_tgrapherrors('signal', 'Run{run}: {dia} Signal Time Evolution'.format(run=self.run_number, dia=self.run.diamondname[self.channel]))
             if binning is not None:
                 self.__set_bin_size(binning)
-            sig_time = self.make_histos(corr=eventwise_corr)
+            sig_time = self.make_signal_histos(corr=eventwise_corr)
             mode = 'mean'
             empty_bins = 0
             count = 0
@@ -590,7 +590,7 @@ class SignalAnalysis(Analysis):
             # self.signalTimeCanvas.Update()
         return fit
 
-    def make_histos(self, signal='signal', corr=False):
+    def make_signal_histos(self, signal='signal', corr=False):
         is_sig = True if signal == 'signal' else False
         signal = self.signal_name if is_sig else self.pedestal_name
         signal = '{sig}-{pol}*{ped}'.format(sig=signal, ped=self.pedestal_name, pol=self.polarity) if corr else signal
@@ -611,4 +611,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     test_run = args.run
     print '\nAnalysing run', test_run, '\n'
-    z = SignalAnalysis(test_run, 3)
+    z = SignalAnalysis(test_run, 0)
