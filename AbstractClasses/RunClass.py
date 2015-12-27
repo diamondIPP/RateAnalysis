@@ -1,176 +1,181 @@
-from Helper.Initializer import initializer
-from Runinfos.RunInfo import RunInfo
-from DiamondClass import Diamond
-from Elementary import Elementary
-from datetime import datetime as dt
+# ==============================================
+# IMPORTS
+# ==============================================
 import ROOT
-import os
-import ConfigParser
 import json
-import csv
-import copy
+import re
+from Elementary import Elementary
+from Converter import Converter
+from datetime import datetime
+from ROOT import TFile, gROOT, TLegend
+from ConfigParser import ConfigParser, NoOptionError
+from numpy import mean
 
-default_info =  {
-        "persons on shift": "-",
-        "run info": "-",
-        "type": "signal",
-        "configuration": "signal",
-        "mask": "-",
-        "masked pixels": 0,
-        "diamond 1": "CH_0",
-        "diamond 2": "CH_3",
-        "hv dia1": 0,
-        "hv dia2": 0,
-        "for1": 0,
-        "for2": 0,
-        "fs11": 0,
-        "fsh13": 0,
-        "quadrupole": "-",
-        "analogue current": 0,
-        "digital current": 0,
-        "begin date": "2999-03-14T15:26:53Z",
-        "trim time": "-:-:-",
-        "config time": "-:-:-",
-        "start time": "2999-03-14T15:26:53Z",
-        "trig accept time": "-:-:-",
-        "opening time": "-:-:-",
-        "open time": "-:-:-",
-        "stop time": "2999-03-14T16:26:53Z",
-        "raw rate": 0,
-        "prescaled rate": 0,
-        "to TLU rate": 0,
-        "pulser accept rate": 0,
-        "cmspixel events": 0,
-        "drs4 events": 0,
-        "datacollector events": 0,
-        "aimed flux": 0,
-        "measured flux": 0,
-        "user comments": "-",
-        "is good run": True
+default_info = {
+    'persons on shift': '-',
+    'run info': '-',
+    'type': 'signal',
+    'configuration': 'signal',
+    'mask': '-',
+    'masked pixels': [0] * 4,
+    'diamond 1': 'CH_0',
+    'diamond 2': 'CH_3',
+    'hv dia1': 0,
+    'hv dia2': 0,
+    'for1': 0,
+    'for2': 0,
+    'fs11': 0,
+    'fsh13': 0,
+    'quadrupole': '-',
+    'analogue current': 0,
+    'digital current': 0,
+    'begin date': '2999-03-14T15:26:53Z',
+    'trim time': '-:-:-',
+    'config time': '-:-:-',
+    'start time': '2999-03-14T15:26:53Z',
+    'trig accept time': '-:-:-',
+    'opening time': '-:-:-',
+    'open time': '-:-:-',
+    'stop time': '2999-03-14T16:26:53Z',
+    'raw rate': 0,
+    'prescaled rate': 0,
+    'to TLU rate': 0,
+    'pulser accept rate': 0,
+    'cmspixel events': 0,
+    'drs4 events': 0,
+    'datacollector events': 0,
+    'aimed flux': 0,
+    'measured flux': 0,
+    'mean flux': None,
+    'user comments': '-',
+    'is good run': True
 }
 
+
+# ==============================================
+# MAIN CLASS
+# ==============================================
 class Run(Elementary):
-    '''
-
-    '''
-
+    """
+    Run class containing all the information for a single run from the tree and the json file.
+    """
     current_run = {}
     operationmode = ''
     TrackingPadAnalysis = {}
 
-    def __init__(self, run_number, diamonds=3, validate = False, verbose = False, maskfilename=""):
-        '''
-
+    def __init__(self, run_number, diamonds=3, verbose=False):
+        """
         :param run_number: number of the run
         :param diamonds: 0x1=ch0; 0x2=ch3
-        :param validate:
         :param verbose:
         :return:
-        '''
+        """
         Elementary.__init__(self, verbose=verbose)
-        self.run_number = -1
-        self.LoadConfig()
+        self.run_number = None
 
-        if validate:
-            self.ValidateRuns()
+        # configuration
+        self.channels = [0, 3]
+        self.trigger_planes = [1, 2]
+        self.run_config_parser = self.load_parser()
+        self.ShowAndWait = False
+        self.filename = self.run_config_parser.get('BASIC', 'filename')
+        self.treename = self.run_config_parser.get('BASIC', 'treename')
+        self.run_path = self.run_config_parser.get('BASIC', 'runpath')
+        self.runinfofile = self.run_config_parser.get('BASIC', 'runinfofile')
+        self._runlogkeyprefix = self.run_config_parser.get('BASIC', 'runlog_key_prefix')
+        self.maskfilepath = self.run_config_parser.get('BASIC', 'maskfilepath')
+        self.createNewROOTFiles = self.run_config_parser.getboolean('BASIC', 'createNewROOTFiles')
+        self.signalregion_low = self.run_config_parser.getint('BASIC', 'signalregion_low')
+        self.signalregion_high = self.run_config_parser.getint('BASIC', 'signalregion_high')
 
-        if run_number != None:
-            assert(run_number > 0), "incorrect run_number"
-            self.SetRun(run_number)
+        # run info
+        self.RunInfo = None
+
+        if run_number is not None:
+            self.converter = Converter(self.TESTCAMPAIGN)
+            assert (run_number > 0), 'incorrect run_number'
+            self.set_run(run_number)
+
+            # tree info
+            self.time = self.__get_time_vec()
+            self.startEvent = 0
+            self.endEvent = self.tree.GetEntries() - 1
+            self.startTime = self.get_time_at_event(self.startEvent)
+            self.endTime = self.get_time_at_event(self.endEvent)
+            self.totalTime = self.endTime - self.startTime
+            self.totalMinutes = (self.endTime - self.startTime) / 60000
+            self.n_entries = self.endEvent + 1
+
+            # region info
+            self.region_information = self.load_regions()
+            self.pedestal_regions = self.get_regions('pedestal')
+            self.signal_regions = self.get_regions('signal')
+            self.peak_integrals = self.get_peak_integrals()
+
+            self.flux = self.calculate_flux()
+
         else:
-            self.LoadRunInfo()
-        self._LoadTiming()
-        self.CalculateRate(maskfilename=maskfilename)
-        self._SetDiamondName()
-        self.bias = {
-            0: self.RunInfo["hv dia1"],
-            3: self.RunInfo["hv dia2"]
-        }
-        self.SetChannels(diamonds)
+            self.load_run_info()
+
+        # extract run info
+        self.analyse_ch = self.set_channels(diamonds)
+        self.diamondname = self.__load_diamond_name()
+        self.bias = self.load_bias()
         self.IsMonteCarlo = False
 
-    def LoadConfig(self):
-        machineConfigParser = ConfigParser.ConfigParser()
-        machineConfigParser.read('Configuration/Machineconfig.cfg')
-        self.operationmode = machineConfigParser.get('EXEC-MACHINE','operationmode')
-        self.ShowAndWait = False
-        runConfigParser = ConfigParser.ConfigParser()
-        runConfigParser.read("Configuration/RunConfig_"+self.TESTCAMPAIGN+".cfg")
-        self.filename = runConfigParser.get('BASIC', 'filename')
-        self.treename = runConfigParser.get('BASIC', 'treename')
-        self.sshrunpath = runConfigParser.get('BASIC', 'runpath')
-        self.runinfofile = runConfigParser.get('BASIC', 'runinfofile')
-        self._runlogkeyprefix = runConfigParser.get('BASIC', 'runlog_key_prefix')
-        self.runplaninfofile = runConfigParser.get('BASIC', 'runplaninfofile')
-        self.maskfilepath = runConfigParser.get('BASIC', 'maskfilepath')
-        self.createNewROOTFiles = runConfigParser.getboolean('BASIC', 'createNewROOTFiles')
-        self.signalregion_low = runConfigParser.getint('BASIC', 'signalregion_low')
-        self.signalregion_high = runConfigParser.getint('BASIC', 'signalregion_high')
-        
-        # Rootfile Generation Configuration:
-        signal_range_low = runConfigParser.getint('ROOTFILE_GENERATION', 'signal_range_low')
-        signal_range_high = runConfigParser.getint('ROOTFILE_GENERATION', 'signal_range_high')
-        pedestal_range_low = runConfigParser.getint('ROOTFILE_GENERATION', 'pedestal_range_low')
-        pedestal_range_high = runConfigParser.getint('ROOTFILE_GENERATION', 'pedestal_range_high')
-        pulser_range_low = runConfigParser.getint('ROOTFILE_GENERATION', 'pulser_range_low')
-        pulser_range_high = runConfigParser.getint('ROOTFILE_GENERATION', 'pulser_range_high')
-        peakintegral1_range_low = runConfigParser.getint('ROOTFILE_GENERATION', 'peakintegral1_range_low')
-        peakintegral1_range_high = runConfigParser.getint('ROOTFILE_GENERATION', 'peakintegral1_range_high')
-        peakintegral2_range_low = runConfigParser.getint('ROOTFILE_GENERATION', 'peakintegral2_range_low')
-        peakintegral2_range_high = runConfigParser.getint('ROOTFILE_GENERATION', 'peakintegral2_range_high')
-        peakintegral3_range_low = runConfigParser.getint('ROOTFILE_GENERATION', 'peakintegral3_range_low')
-        peakintegral3_range_high = runConfigParser.getint('ROOTFILE_GENERATION', 'peakintegral3_range_high')
-        save_waveforms = runConfigParser.getint('ROOTFILE_GENERATION', 'save_waveforms')
-        pulser_range_drs4_low = runConfigParser.getint('ROOTFILE_GENERATION', 'pulser_range_drs4_low')
-        pulser_range_drs4_high = runConfigParser.getint('ROOTFILE_GENERATION', 'pulser_range_drs4_high')
-        pulser_drs4_threshold = runConfigParser.getint('ROOTFILE_GENERATION', 'pulser_drs4_threshold')
-        pulser_channel = runConfigParser.getint('ROOTFILE_GENERATION', 'pulser_channel')
-        trigger_channel = runConfigParser.getint('ROOTFILE_GENERATION', 'trigger_channel')
-        self.converterPrefix = runConfigParser.get('ROOTFILE_GENERATION', "converterPrefix")
-        self.eudaqFolder = runConfigParser.get('ROOTFILE_GENERATION', "eudaqFolder")
-        self.trackingFolder = runConfigParser.get('ROOTFILE_GENERATION', "trackingFolder")
-        self.rawFolder = runConfigParser.get('ROOTFILE_GENERATION', "rawFolder")
-        self.rawPrefix = runConfigParser.get('ROOTFILE_GENERATION', "rawPrefix")
+        # times
+        self.log_start = None
+        self.log_stop = None
+        self.duration = None
+        self.__load_timing()
+        # root objects
+        self.run_info_legends = {}
 
-        self.rootGenerationConfig = {
-            "signal_range": [signal_range_low, signal_range_high],
-            "pedestal_range": [pedestal_range_low, pedestal_range_high],
-            "pulser_range": [pulser_range_low, pulser_range_high],
-            "peakintegral1_range": [peakintegral1_range_low, peakintegral1_range_high],
-            "peakintegral2_range": [peakintegral2_range_low, peakintegral2_range_high],
-            "peakintegral3_range": [peakintegral3_range_low, peakintegral3_range_high],
-            "pulser_range_drs4": [pulser_range_drs4_low, pulser_range_drs4_high],
-            "save_waveforms": save_waveforms,
-            "pulser_drs4_threshold": pulser_drs4_threshold,
-            "pulser_channel": pulser_channel,
-            "trigger_channel": trigger_channel
-        }
+    # ==============================================
+    # region LOAD FUNCTIONS
+    def load_bias(self):
+        bias = {}
+        for i, ch in enumerate(self.channels, 1):
+            bias[ch] = self.RunInfo['hv dia{num}'.format(num=i)]
+        return bias
 
-    def LoadRunInfo(self):
+    def load_parser(self):
+        parser = ConfigParser()
+        parser.read("Configuration/RunConfig_" + self.TESTCAMPAIGN + ".cfg")
+        return parser
+
+    def load_regions(self):
+        root_file = TFile(self.converter.get_root_file_path(self.run_number))
+        macro = root_file.Get('region_information')
+        return macro.GetListOfLines()
+
+    def load_run_info(self):
         self.RunInfo = {}
+        data = None
         try:
-            f = open(self.runinfofile, "r")
+            f = open(self.runinfofile, 'r')
             data = json.load(f)
             f.close()
-            self.allRunKeys = copy.deepcopy(data.keys())
             loaderror = False
-        except IOError:
-            print "\n-------------------------------------------------"
-            print "WARNING: unable to load json file:\n\t{file}".format(file=self.runinfofile)
-            print "-------------------------------------------------\n"
+        except IOError as err:
+            print '\n' + (len(str(err)) + 9) * '-'
+            print 'WARNING:', err
+            print 'Loading default RunInfo!'
+            print (len(str(err)) + 9) * '-' + '\n'
             loaderror = True
 
         if self.run_number >= 0:
             if not loaderror:
-                self.RunInfo = data.get(str(self.run_number)) # may:  = data.get("150800"+str(self.run_number).zfill(3))
-                if self.RunInfo == None:
+                run_nr = '150500' + str(self.run_number).zfill(3) if self.TESTCAMPAIGN == '201505' else str(self.run_number)
+                self.RunInfo = data.get(run_nr)
+                if self.RunInfo is None:
                     # try with run_log key prefix
-                    self.RunInfo = data.get(self._runlogkeyprefix+str(self.run_number).zfill(3))
-                if self.RunInfo == None:
+                    self.RunInfo = data.get(self._runlogkeyprefix + str(self.run_number).zfill(3))
+                if self.RunInfo is None:
                     print "INFO: Run not found in json run log file. Default run info will be used."
                     self.RunInfo = default_info
                 else:
-                    self.RenameRunInfoKeys()
+                    self.rename_runinfo_keys()
             else:
                 self.RunInfo = default_info
             self.current_run = self.RunInfo
@@ -178,494 +183,308 @@ class Run(Elementary):
             self.RunInfo = default_info
             return 0
 
-    def _SetDiamondName(self):
-        aliasParser = ConfigParser.ConfigParser()
-        aliasParser.read('Configuration/DiamondAliases.cfg')
-        try:
-            diamondname1 = aliasParser.get('ALIASES', self.RunInfo["diamond 1"])
-        except:
-            diamondname1 = self.RunInfo["diamond 1"]
-            print "\nInfo: Diamond '{dia}' Alias not found in Configuration/DiamondAliases.cfg\n".format(dia=self.RunInfo["diamond 1"])
-        try:
-            diamondname2 = aliasParser.get('ALIASES', self.RunInfo["diamond 2"])
-        except:
-            diamondname2 = self.RunInfo["diamond 2"]
-            print "\nInfo: Diamond '{dia}' Alias not found in Configuration/DiamondAliases.cfg\n".format(dia=self.RunInfo["diamond 2"])
-
-        self.diamondname = {
-            0: diamondname1,
-            3: diamondname2
-        }
-
-    def CalculateRate(self, maskfilename=""):
-        self.VerbosePrint("Calculate rate from mask file:\n\t"+self.RunInfo["mask"])
-        if maskfilename != "": self.RunInfo["mask"] = maskfilename
-        maskFilePath = self.maskfilepath+"/"+self.RunInfo["mask"] # CONFIG FILE !
-        maskdata = {
-            0: {
-                "cornBot": [],
-                "cornTop": []
-            },
-            3: {
-                "cornBot": [],
-                "cornTop": []
-            }
-        }
-        try:
-            f = open(maskFilePath, "r")
-            infile = csv.reader(f, delimiter=" ")
+    def __load_diamond_name(self):
+        parser = ConfigParser()
+        parser.read('Configuration/DiamondAliases.cfg')
+        diamondname = {}
+        for i, ch in enumerate(self.channels, 1):
+            diamondname[ch] = self.RunInfo['diamond {num}'.format(num=i)]
+            if diamondname[ch].lower().startswith('ch'):
+                continue
             try:
-                for i in xrange(8):
-                    line = next(infile)
-                    self.VerbosePrint(line)
-                    if len(line)>=4:
-                        #maskdata[int(line[1])][line[0]] = map(int, line[-2:])
-                        maskdata[0][line[0]] = map(int, line[-2:])
-            except StopIteration:
-                pass
-            x_low = maskdata[0]["cornBot"][0]
-            y_low = maskdata[0]["cornBot"][1]
-            x_high = maskdata[0]["cornTop"][0]
-            y_high = maskdata[0]["cornTop"][1]
+                diamondname[ch] = parser.get('ALIASES', diamondname[ch])
+            except NoOptionError as err:
+                print err
+        return diamondname
 
-            self.RunInfo["masked pixels"] = abs((x_high-x_low+1)*(y_high-y_low+1))
+    def __load_timing(self):
+        try:
+            self.log_start = datetime.strptime(self.RunInfo['start time'], "%Y-%m-%dT%H:%M:%SZ")
+            self.log_stop = datetime.strptime(self.RunInfo['stop time'], "%Y-%m-%dT%H:%M:%SZ")
+        except ValueError:
+            try:
+                self.log_start = datetime.strptime(self.RunInfo['start time'], "%H:%M:%S")
+                self.log_stop = datetime.strptime(self.RunInfo['stop time'], "%H:%M:%S")
+            except ValueError as err:
+                print err
+                return
+        self.duration = self.log_stop - self.log_start
+    # endregion
 
-            pixelarea = 0.01*0.015 # cm^2
-            masked_area = self.RunInfo["masked pixels"]*pixelarea
-            rate_Hz = 1.*self.RunInfo["raw rate"]/masked_area # in Hz/cm^2
-            self.RunInfo["measured flux"] = rate_Hz/1000. # in kHz/cm^2
+    def set_run(self, run_number, load_root_file=True):
 
+        assert type(run_number) is int, "incorrect run_number"
+
+        self.run_number = run_number
+        self.load_run_info()
+
+        # check for conversion
+        if load_root_file:
+            location = self.converter.find_root_file(run_number)
+            if not location or location == 'tracking':
+                self.converter.convert_run(self.RunInfo, run_number)
+            self.__load_rootfile()
+
+        return True
+
+    def set_channels(self, diamonds):
+        """
+        Set which diamonds (channels) should be activated for the analysis.
+        :param diamonds: bitwise integer (1=dia1, 2=dia2, 3=1&2)
+        """
+        assert 1 <= diamonds <= 3, 'invalid diamonds number: 0x1=ch0; 0x2=ch3'
+        analyse_ch = {}
+        for i, ch in enumerate(self.channels):
+            analyse_ch[ch] = self.has_bit(diamonds, i)
+        self.analyse_ch = analyse_ch
+        return analyse_ch
+
+    def calculate_flux(self):
+        self.verbose_print('Calculate rate from mask file:\n\t' + self.RunInfo['mask'])
+        mask_file_path = self.maskfilepath + '/' + self.RunInfo['mask']
+        maskdata = {}
+        for plane in self.trigger_planes:
+            maskdata[plane] = {}
+        try:
+            f = open(mask_file_path, 'r')
+            i2cs = []
+            for line in f:
+                if len(line) > 3:
+                    line = line.split()
+                    if not i2cs or i2cs[-1] != line[1]:
+                        i2cs.append(line[1])
+                    plane = self.trigger_planes[len(i2cs) - 1]
+                    maskdata[plane][line[0]] = [int(line[2]), int(line[3])]
             f.close()
-            return rate_Hz/1000.
-        except:
-            print "\nERROR: Could not load mask file, thus not re-calculate rate..\n"
-            return 0
+        except IOError as err:
+            print '\n' + (len(str(err)) + 9) * '-'
+            print 'WARNING:', err
+            print 'Cannot calculate flux!'
+            print (len(str(err)) + 9) * '-' + '\n'
+            return None
 
-    def GetRate(self):
-        '''
-        Returns the rate during this run. If the mask files are given,
-        the rate is calculated by the raw rate and the area of the
-        masked pixels in the silicon pixel plane.
-        If no mask files are given, the rate returned will be the logged
-        rate from the online logbook. (Typos!)
-        The rate is given in kHz/cm^2
+        # check for corner method
+        if not maskdata.values()[0].keys()[0].startswith('corn'):
+            return None
+
+        # fill in the information to Run Info
+        masked_pixels = {}
+        for plane in self.trigger_planes:
+            row = [maskdata[plane]['cornBot'][0], maskdata[plane]['cornTop'][0]]
+            col = [maskdata[plane]['cornBot'][1], maskdata[plane]['cornTop'][1]]
+            masked_pixels[plane] = abs((row[1] - row[0] + 1) * (col[1] - col[0] + 1))
+            self.RunInfo['masked pixels'][plane] = masked_pixels[plane]
+
+        pixel_size = 0.01 * 0.015  # cm^2
+        flux = []
+        for i, plane in enumerate(self.trigger_planes, 1):
+            area = pixel_size * masked_pixels[plane]
+            flux.append(self.RunInfo['for{num}'.format(num=i)] / area / 1000)  # in kHz/cm^2
+        self.RunInfo['mean flux'] = mean(flux)
+        return mean(flux)
+
+    def rename_runinfo_keys(self):
+
+        # return, if all keys from default info are in RunInfo too
+        if all([key in self.RunInfo for key in default_info]):
+            return
+
+        parser = ConfigParser()
+        parser.read('Configuration/KeyDict_{campaign}.cfg'.format(campaign=self.TESTCAMPAIGN))
+        for new_key, old_key in parser.items('KEYNAMES'):
+            if old_key in self.RunInfo:
+                self.RunInfo[new_key] = self.RunInfo.pop(old_key)
+            else:
+                self.RunInfo[new_key] = default_info[new_key]
+        return
+
+    # ==============================================
+    # region GET FUNCTIONS
+    def get_flux(self):
+        return self.flux if self.flux else self.RunInfo['aimed flux']
+
+    def get_regions(self, string):
+        ranges = {}
+        for line in self.region_information:
+            line = str(line)
+            if line.startswith(string):
+                data = re.split('_|:|-', line)
+                data = [data[i].strip(' ') for i in range(len(data))]
+                ranges[data[1]] = [int(data[2]), int(data[3])]
+        return ranges
+
+    def get_peak_integrals(self):
+        integrals = []
+        for line in self.region_information:
+            line = str(line)
+            if str(line).lower().startswith('* peakintegral'):
+                data = re.split('_|:', line)
+                if data[0][-1].isdigit():
+                    integrals.append(data[0][-1])
+                else:
+                    integrals.append(data[1])
+        return integrals
+
+    def get_active_channels(self):
+        """
+        Returns a list of the channels, which are activated for analysis. e.g. [3] means only the channel 3 is activated for analysis.
         :return:
-        '''
-        return self.RunInfo["measured flux"]
+        """
+        return [ch for ch in self.analyse_ch if self.analyse_ch[ch]]
 
-    def _SetConverterConfigFile(self):
-        pol_dia1 = self.RunInfo["hv dia1"]
-        pol_dia2 = self.RunInfo["hv dia2"]
-        assert(pol_dia1!=0 and pol_dia2!=0)
-        if pol_dia1 > 0:
-            pol_dia1 = 1
-        else:
-            pol_dia1 = -1
-        if pol_dia2 > 0:
-            pol_dia2 = 1
-        else:
-            pol_dia2 = -1
-        cparser = ConfigParser.ConfigParser()
-        cparser.read(self.eudaqFolder+"/conf/converter.conf")
-        print cparser.sections()
-        cparser.set("Converter.drs4tree", "polarities", "[{pol1},0,0,{pol2}]".format(pol1=pol_dia1, pol2=pol_dia2))
-        for key in self.rootGenerationConfig:
-            cparser.set("Converter.drs4tree", key, str(self.rootGenerationConfig[key]))
-        f = open(self.eudaqFolder+"/conf/converter.conf", "w")
-        cparser.write(f)
-        f.close()
-
-        # remove white spaces:
-        f = open(self.eudaqFolder+"/conf/converter.conf", "r")
-        content = f.readlines()
-        f.close()
-        for i in xrange(len(content)):
-            content[i] = content[i].replace(" ", "")
-        f = open(self.eudaqFolder+"/conf/converter.conf", "w")
-        f.writelines(content)
-        f.close()
-
-    def CreateROOTFile(self, do_tracking=True):
-        # path and name of converter output file:
-        noTracksROOTFile = os.getcwd()+"/{prefix}{run}.root".format(prefix=self.converterPrefix, run=str(self.run_number).zfill(4))
-
-        if not os.path.exists(noTracksROOTFile):
-            # the no-tracks root files doesn't exiist
-            self._ConvertRAW()
-        else:
-            # continue with existing file (no tracks)
-            print "noTracks ROOT File found here:"
-            print "\t"+noTracksROOTFile
-
-        if not do_tracking:
-            # move to data folder:
-            os.system("mv "+noTracksROOTFile+" "+self.TrackingPadAnalysis['ROOTFile'])
-            self._LoadROOTFile(self.TrackingPadAnalysis['ROOTFile'])
-            print "INFO ROOT File generated with NO Tracking information"
-        else:
-            self._AddTracking(noTracksROOTFile=noTracksROOTFile)
-
-    def _ConvertRAW(self):
-        # terminal command for converting raw to root
-        converter_cmd = "{eudaq}/bin/Converter.exe -t drs4tree -c {eudaq}/conf/converter.conf {rawfolder}/{prefix}{run}.raw".format(eudaq=self.eudaqFolder, rawfolder=self.rawFolder, prefix=self.rawPrefix, run=str(self.run_number).zfill(4))
-
-        self._SetConverterConfigFile() # prepare the config file
-        print "\n\nSTART CONVERTING RAW FILE..."
-        print converter_cmd
-        os.system(converter_cmd) # convert
-
-    def _AddTracking(self, noTracksROOTFile):
-
-        if self.TESTCAMPAIGN == "201508":
-            telescopeID = 9
-        elif self.TESTCAMPAIGN == "201505":
-            telescopeID = 7
-        else:
-            telescopeID = 0
-            assert(False), "Error. unknown TESTCAMPAIGN"
-
-        # change CWD to TrackingTelescope:
-        old_cwd = os.getcwd()
-        os.chdir(self.trackingFolder)
-        tracking_cmd = "{trackingfolder}/TrackingTelescope {root} 0 {nr}".format(trackingfolder=self.trackingFolder, root=noTracksROOTFile, nr=telescopeID)
-        print "\n\nSTART TRACKING..."
-        print tracking_cmd
-        os.system(tracking_cmd)
-        os.chdir(old_cwd)
-
-        tracksROOTFile = self.trackingFolder+"/{prefix}{run}_withTracks.root".format(prefix=self.converterPrefix, run=str(self.run_number).zfill(4))
-
-        # move to data folder:
-        os.system("mv "+tracksROOTFile+" "+self.TrackingPadAnalysis['ROOTFile'])
-
-        self.rootfile = ROOT.TFile(self.TrackingPadAnalysis['ROOTFile'])
-        self.tree = self.rootfile.Get(self.treename) # Get TTree called "track_info"
-
-        assert(bool(self.tree) and bool(self.rootfile)), "Could not load root file: \n\t"+self.TrackingPadAnalysis['ROOTFile']
-
-        # delete no tracks file:
-        os.system("rm "+noTracksROOTFile)
-
-    def _LoadTiming(self):
-        try:
-            self.logStartTime = dt.strptime(self.RunInfo["start time"][:10]+"-"+self.RunInfo["start time"][11:-1], "%Y-%m-%d-%H:%M:%S")
-            self.logStopTime = dt.strptime(self.RunInfo["stop time"][:10]+"-"+self.RunInfo["stop time"][11:-1], "%Y-%m-%d-%H:%M:%S")
-            self.logRunTime = self.logStopTime - self.logStartTime
-            noerror = True
-        except:
-            try:
-                self.logStartTime = dt.strptime(self.RunInfo["start time"][:10]+"-"+self.RunInfo["start time"][11:-1], "%H:%M:%S")
-                self.logStopTime = dt.strptime(self.RunInfo["stop time"][:10]+"-"+self.RunInfo["stop time"][11:-1], "%H:%M:%S")
-                self.logRunTime = self.logStopTime - self.logStartTime
-                noerror = True
-            except:
-                noerror = False
-        if noerror:
-            self.VerbosePrint("Timing string translated successfully")
-        else:
-            print "INFO: The timing information string from run info couldn't be translated"
-
-    def RenameRunInfoKeys(self):
-
-        try:
-            for key in default_info.keys():
-                tmp = self.RunInfo[key]
-                del tmp
-        except KeyError:
-            rename = True
-        else:
-            rename = False
-
-        if rename:
-            KeyConfigParser = ConfigParser.ConfigParser()
-            KeyConfigParser.read("Configuration/RunInfoKeyConfig_"+self.TESTCAMPAIGN+".cfg")
-            Persons =           KeyConfigParser.get("KEYNAMES", "Persons")
-            Runinfo =           KeyConfigParser.get("KEYNAMES", "Runinfo")
-            Typ =               KeyConfigParser.get("KEYNAMES", "Typ")
-            Configuration =     KeyConfigParser.get("KEYNAMES", "Configuration")
-            Mask =              KeyConfigParser.get("KEYNAMES", "Mask")
-            Masked_pixels =     KeyConfigParser.get("KEYNAMES", "Masked_pixels")
-            DiamondName1 =      KeyConfigParser.get("KEYNAMES", "DiamondName1")
-            DiamondName2 =      KeyConfigParser.get("KEYNAMES", "DiamondName2")
-            DiamondHV1 =        KeyConfigParser.get("KEYNAMES", "DiamondHV1")
-            DiamondHV2 =        KeyConfigParser.get("KEYNAMES", "DiamondHV2")
-            FOR1 =              KeyConfigParser.get("KEYNAMES", "FOR1")
-            FOR2 =              KeyConfigParser.get("KEYNAMES", "FOR2")
-            FS11 =              KeyConfigParser.get("KEYNAMES", "FS11")
-            FSH13 =             KeyConfigParser.get("KEYNAMES", "FSH13")
-            Quadrupole =        KeyConfigParser.get("KEYNAMES", "Quadrupole")
-            AnalogCurrent =     KeyConfigParser.get("KEYNAMES", "AnalogCurrent")
-            DigitalCurrent =    KeyConfigParser.get("KEYNAMES", "DigitalCurrent")
-            BeginDate =         KeyConfigParser.get("KEYNAMES", "BeginDate")
-            TrimTime =          KeyConfigParser.get("KEYNAMES", "TrimTime")
-            ConfigTime =        KeyConfigParser.get("KEYNAMES", "ConfigTime")
-            StartTime =         KeyConfigParser.get("KEYNAMES", "StartTime")
-            TrigAcceptTime =    KeyConfigParser.get("KEYNAMES", "TrigAcceptTime")
-            OpeningTime =       KeyConfigParser.get("KEYNAMES", "OpeningTime")
-            OpenTime =          KeyConfigParser.get("KEYNAMES", "OpenTime")
-            StopTime =          KeyConfigParser.get("KEYNAMES", "StopTime")
-            RawRate =           KeyConfigParser.get("KEYNAMES", "RawRate")
-            PrescaledRate =     KeyConfigParser.get("KEYNAMES", "PrescaledRate")
-            ToTLURate =         KeyConfigParser.get("KEYNAMES", "ToTLURate")
-            PulserAcceptedRate =KeyConfigParser.get("KEYNAMES", "PulserAcceptedRate")
-            CMSPixelEvents =    KeyConfigParser.get("KEYNAMES", "CMSPixelEvents")
-            DRS4Events =        KeyConfigParser.get("KEYNAMES", "DRS4Events")
-            DataCollectorEvents = KeyConfigParser.get("KEYNAMES", "DataCollectorEvents")
-            AimedFlux =         KeyConfigParser.get("KEYNAMES", "AimedFlux")
-            MeasuredFlux =      KeyConfigParser.get("KEYNAMES", "MeasuredFlux")
-            UserComment =       KeyConfigParser.get("KEYNAMES", "UserComment")
-            IsGoodRun =         KeyConfigParser.get("KEYNAMES", "IsGoodRun")
-
-            runinfo = copy.deepcopy(default_info)
-
-            if Persons != "-1":             runinfo["persons on shift"] =   self.RunInfo[Persons]
-            if Runinfo != "-1":             runinfo["run info"] =           self.RunInfo[Runinfo]
-            if Typ != "-1":                 runinfo["type"] =               self.RunInfo[Typ]
-            if Configuration != "-1":       runinfo["configuration"] =      self.RunInfo[Configuration]
-            if Mask != "-1":                runinfo["mask"] =               self.RunInfo[Mask]
-            if Masked_pixels != "-1":       runinfo["masked pixels"] =      self.RunInfo[Masked_pixels]
-            if DiamondName1 != "-1":        runinfo["diamond 1"] =          self.RunInfo[DiamondName1]
-            if DiamondName2 != "-1":        runinfo["diamond 2"] =          self.RunInfo[DiamondName2]
-            if DiamondHV1 != "-1":          runinfo["hv dia1"] =            self.RunInfo[DiamondHV1]
-            if DiamondHV2 != "-1":          runinfo["hv dia2"] =            self.RunInfo[DiamondHV2]
-            if FOR1 != "-1":                runinfo["for1"] =               self.RunInfo[FOR1]
-            if FOR2 != "-1":                runinfo["for2"] =               self.RunInfo[FOR2]
-            if FS11 != "-1":                runinfo["fs11"] =               self.RunInfo[FS11]
-            if FSH13 != "-1":               runinfo["fsh13"] =              self.RunInfo[FSH13]
-            if Quadrupole != "-1":          runinfo["quadrupole"] =         self.RunInfo[Quadrupole]
-            if AnalogCurrent != "-1":       runinfo["analogue current"] =   self.RunInfo[AnalogCurrent]
-            if DigitalCurrent != "-1":      runinfo["digital current"] =    self.RunInfo[DigitalCurrent]
-            if BeginDate != "-1":           runinfo["begin date"] =         self.RunInfo[BeginDate]
-            if TrimTime != "-1":            runinfo["trim time"] =          self.RunInfo[TrimTime]
-            if ConfigTime != "-1":          runinfo["config time"] =        self.RunInfo[ConfigTime]
-            if StartTime != "-1":           runinfo["start time"] =         self.RunInfo[StartTime]
-            if TrigAcceptTime != "-1":      runinfo["trig accept time"] =   self.RunInfo[TrigAcceptTime]
-            if OpeningTime != "-1":         runinfo["opening time"] =       self.RunInfo[OpeningTime]
-            if OpenTime != "-1":            runinfo["open time"] =          self.RunInfo[OpenTime]
-            if StopTime != "-1":            runinfo["stop time"] =          self.RunInfo[StopTime]
-            if RawRate != "-1":             runinfo["raw rate"] =           self.RunInfo[RawRate]
-            if PrescaledRate != "-1":       runinfo["prescaled rate"] =     self.RunInfo[PrescaledRate]
-            if ToTLURate != "-1":           runinfo["to TLU rate"] =        self.RunInfo[ToTLURate]
-            if PulserAcceptedRate != "-1":  runinfo["pulser accept rate"] = self.RunInfo[PulserAcceptedRate]
-            if CMSPixelEvents != "-1":      runinfo["cmspixel events"] =    self.RunInfo[CMSPixelEvents]
-            if DRS4Events != "-1":          runinfo["drs4 events"] =        self.RunInfo[DRS4Events]
-            if DataCollectorEvents != "-1": runinfo["datacollector events"]=self.RunInfo[DataCollectorEvents]
-            if AimedFlux != "-1":           runinfo["aimed flux"] =         self.RunInfo[AimedFlux]
-            if MeasuredFlux != "-1":        runinfo["measured flux"] =      self.RunInfo[MeasuredFlux]
-            if UserComment != "-1":         runinfo["user comments"] =      self.RunInfo[UserComment]
-            if IsGoodRun != "-1":           runinfo["is good run"] =        self.RunInfo[IsGoodRun]
-
-            self.RunInfo = runinfo
-
-    def ValidateRuns(self, list_of_runs = None):
-        if list_of_runs != None:
-            runs = list_of_runs
-        else:
-            runs = RunInfo.runs.keys() # list of all runs
-        self.VerbosePrint("Validating runs: ",runs)
-        for run in runs:
-            self.ValidateRun(run)
-
-    def ValidateRun(self,run_number):
-        self.SetRun(run_number)
-        if not os.path.exists(self.TrackingPadAnalysis['ROOTFile']):
-            #del RunInfo.runs[run_number]
-            print "INFO: path of run number ",run_number, " not found."
-            return False
-        else:
-            return True
-
-    def ResetMC(self):
-        pass
-
-    def SetRun(self, run_number, validate = False, loadROOTFile = True):
-        if validate:
-            boolfunc = self.ValidateRun
-        else:
-            boolfunc = lambda run: True
-        assert(run_number > 0), "incorrect run_number"
-        if True or run_number in RunInfo.runs and boolfunc(run_number):
-            self.run_number = run_number
-            self.LoadRunInfo()
-
-            if self.operationmode == "local-ssh":
-                fullROOTFilePath = '/Volumes'+self.sshrunpath+'/'+self.filename+str(run_number).zfill(3)+'.root'
-                self.TrackingPadAnalysis['ROOTFile'] = fullROOTFilePath
-
-            if self.operationmode == "ssh":
-                fullROOTFilePath = self.sshrunpath+'/'+self.filename+str(run_number).zfill(3)+'.root'
-                self.TrackingPadAnalysis['ROOTFile'] = fullROOTFilePath
-
-            if self.operationmode == "local":
-                self.TrackingPadAnalysis['ROOTFile'] = 'runs/run_'+str(run_number)+'/'+self.filename+str(run_number).zfill(3)+'.root'
-
-
- #           self.RunInfo = self.current_run.copy()
-            #a = self.current_run.__dict__
-#            self.diamond = Diamond( self.current_run['diamond'])
-
-            self.ResetMC()
-            #self.diamond = diamond # diamond is of type Diamond
-            #RunInfo.__init__(self,*args)
-
-            if loadROOTFile:
-                self._LoadROOTFile(fullROOTFilePath)
-
-            #self.diamond.SetName(self.runs[0]['diamond'])
-            return True
-        else:
-            return False
-
-    def SetChannels(self, diamonds):
-        '''
-        Set which diamonds (channels) should be activated for the
-        analysis. The argument diamonds is an integer according to:
-            1 -> Diamond 1,
-            2 -> Diamond 2,
-            3 -> Diamond 1 & 2
-        :param diamonds:
-        :return:
-        '''
-        assert(diamonds>=1 and diamonds<=3), "invalid diamonds number: 0x1=ch0; 0x2=ch3"
-        self.analyzeCh = {
-            0: self._GetBit(diamonds, 0),
-            3: self._GetBit(diamonds, 1)
-        }
-
-    def GetChannels(self):
-        '''
-        Returns a list of channels, which are activated for analysis.
-        e.g. [3] means only the second diamond is activated to be
-        analyzed.
-        :return:
-        '''
-        return [i for i in self.analyzeCh.keys() if self.analyzeCh[i]]
-
-    def GetDiamondName(self, channel):
-        '''
-        Returns the diamond name.
-        :param channel:
-        :return:
-        '''
+    def get_diamond_name(self, channel):
         return self.diamondname[channel]
 
-    def ShowRunInfo(self):
-        '''
-        Prints the most importnant run infos to the console. The infos
-        printed are:
-            Run number, Rate, Diamond names, Bias Voltages
-        :return:
-        '''
-        print "RUN INFO:"
-        print "\tRun Number: \t", self.run_number, " (",self.RunInfo["type"],")"
-        print "\tRate: \t", int(self.GetRate()), " kHz"
-        print "\tDiamond1:   \t", self.diamondname[0], " (",self.bias[0],") | is selected: ", self.analyzeCh[0]
-        print "\tDiamond2:   \t", self.diamondname[3], " (",self.bias[3],") | is selected: ", self.analyzeCh[3]
+    def get_channel_name(self, channel):
+        self.tree.GetEntry()
+        return self.tree.sensor_name[channel]
 
-    def DrawRunInfo(self, channel=None, canvas=None, diamondinfo=True, showcut=True, comment=None, infoid="", userWidth=None, userHeight=None):
-        '''
-        Draws the run infos inside the canvas. If no canvas is given, it
-        will be drawn into the active Pad. If the channel number is
-        passed, channel number and diamond name will be drawn.
+    def get_rate_string(self):
+        rate = self.flux
+        unit = 'MHz/cm2' if rate > 1000 else 'kHz/cm2'
+        rate = round(rate / 1000., 1) if rate > 1000 else int(round(rate, 0))
+        return '{rate:>3} {unit}'.format(rate=rate, unit=unit)
+
+    def __get_time_vec(self):
+        self.tree.SetEstimate(-1)
+        entries = self.tree.Draw('Entry$:time', '', 'goff')
+        time = []
+        for i in xrange(entries):
+            time.append(self.tree.GetV2()[i])
+        return time
+
+    def get_time_at_event(self, event):
+        """
+        For negative event numbers it will return the time stamp at the startevent.
+        :param event: integer event number
+        :return: timestamp for event
+        """
+        if event == -1:
+            event = self.endEvent
+        elif event < 0:
+            event = 0
+        elif event >= self.endEvent:
+            event = self.endEvent
+        return self.time[event]
+
+    def get_event_at_time(self, time_sec):
+        """
+        Returns the eventnunmber at time dt from beginning of the run. Accuracy: +- 1 Event
+        :param time_sec: time in seconds from start
+        :return: event_number
+        """
+        # return time of last event if input is too large
+        if time_sec > self.time[-1] / 1000. or time_sec == -1:
+            return self.time[-1]
+        last_time = 0
+        offset = self.time[0] / 1000.
+        for i, time in enumerate(self.time):
+            time /= 1000.
+            if time >= time_sec + offset >= last_time:
+                return i
+            last_time = time
+
+    # endregion
+
+    # ==============================================
+    # region SHOW RUN INFO
+    def show_regions(self):
+        for line in self.region_information:
+            print line
+
+    def show_run_info(self):
+        """
+        Prints the most importnant run infos to the console. The infos printed are: Run number, Rate, Diamond names, Bias Voltages
+        """
+        print 'RUN INFO:'
+        print '\tRun Number: \t', self.run_number, ' (', self.RunInfo['type'], ')'
+        print '\tRate: \t', self.get_flux(), ' kHz'
+        print '\tDiamond1:   \t', self.diamondname[0], ' (', self.bias[0], ') | is selected: ', self.analyse_ch[0]
+        print '\tDiamond2:   \t', self.diamondname[3], ' (', self.bias[3], ') | is selected: ', self.analyse_ch[3]
+
+    def draw_run_info(self, channel=None, canvas=None, diamondinfo=True, cut=None, comment=None, infoid='', set_width=None, set_height=None):
+        """
+        Draws the run infos inside the canvas. If no canvas is given, it will be drawn into the active Pad. 
+        If the channel number is passed, channel number and diamond name will be drawn.
         :param channel:
         :param canvas:
         :param diamondinfo:
-        :param showcut:
+        :param cut:
         :param comment:
         :param infoid:
-        :param userHeight:
-        :param userWidth:
+        :param set_height:
+        :param set_width:
         :return:
-        '''
-        if userHeight!= None: assert(userHeight>=0 and userHeight<=0.8), "choose userHeight between 0 and 0.8 or set it to 'None'"
-        if userWidth!= None: assert(userWidth>=0 and userWidth<=0.8), "choose userWidth between 0 and 0.8 or set it to 'None'"
-        if canvas != None:
+        """
+        if set_height is not None:
+            assert 0 <= set_height <= 0.8, 'choose height between 0 and 0.8 or set it to "None"'
+        if set_width is not None:
+            assert 0 <= set_width <= 0.8, 'choose width between 0 and 0.8 or set it to "None"'
+        if canvas is not None:
             pad = canvas.cd()
         else:
-            print "Draw run info in current pad"
-            pad = ROOT.gROOT.GetSelectedPad()
-            if pad:
-                # canvas = pad.GetCanvas()
-                # canvas.cd()
-                # pad.cd()
-                pass
-            else:
-                print "ERROR: Can't access active Pad"
+            print 'Draw run info in current pad'
+            pad = gROOT.GetSelectedPad()
+            if not pad:
+                print 'ERROR: Cannot access active Pad'
+                return
 
         lines = 1
         width = 0.25
         if diamondinfo:
             lines += 1
-        if showcut and hasattr(self, "analysis"):
+        if cut and hasattr(self, 'analysis'):
             lines += 1
             width = 0.6
-        if comment != None:
+        if comment is not None:
             lines += 1
             width = max(0.3, width)
-        height = (lines-1)*0.03
+        height = (lines - 1) * 0.03
 
-        if not hasattr(self, "_runInfoLegends"):
-            self._runInfoLegends = {}
-
-        if channel != None and channel in [0,3]:
+        if channel is not None and channel in self.channels:
             # user height and width:
-            userheight = height if userHeight==None else userHeight - 0.04
-            userwidth = width if userWidth==None else userWidth
+            userheight = height if set_height is None else set_height - 0.04
+            userwidth = width if width is None else set_width
 
-            self._runInfoLegends[str(channel)+infoid] = ROOT.TLegend(0.1, 0.86-userheight, 0.1+userwidth, 0.9)
-            self._runInfoLegends[str(channel)+infoid].SetMargin(0.05)
-            self._runInfoLegends[str(channel)+infoid].AddEntry(0, "Run{run} Ch{channel} ({rate})".format(run=self.run_number, channel=channel, rate=self.GetRateString()), "")
-            if diamondinfo: self._runInfoLegends[str(channel)+infoid].AddEntry(0, "{diamond} ({bias:+}V)".format(diamond=self.diamondname[channel], bias=self.bias[channel]), "")
-            if showcut and hasattr(self, "analysis"): self._runInfoLegends[str(channel)+infoid].AddEntry(0, "Cut: {cut}".format(cut=self.analysis.GetUserCutString()), "")
-            if comment != None: self._runInfoLegends[str(channel)+infoid].AddEntry(0, comment, "")
-            self._runInfoLegends[str(channel)+infoid].Draw("same")
+            legend = TLegend(0.1, 0.86 - userheight, 0.1 + userwidth, 0.9)
+            legend.SetMargin(0.05)
+            legend.AddEntry(0, 'Run{run} Ch{ch} ({rate})'.format(run=self.run_number, ch=channel, rate=self.get_rate_string()), '')
+            if diamondinfo: 
+                legend.AddEntry(0, '{diamond} ({bias:+}V)'.format(diamond=self.diamondname[channel], bias=self.bias[channel]), '')
+            if cut and hasattr(self, 'analysis'): 
+                legend.AddEntry(0, 'Cut: {cut}'.format(cut=self.analysis.GetUserCutString()), '')
+            if comment is not None: 
+                legend.AddEntry(0, comment, '')
+            legend.Draw()
+            self.run_info_legends[str(channel) + infoid] = legend
         else:
-            if comment != None:
+            if comment is not None:
                 lines = 2
             else:
                 lines = 1
                 width = 0.15
-            height = lines*0.05
+            height = lines * 0.05
             # user height and width:
-            userheight = height if userHeight==None else userHeight
-            userwidth = width if userWidth==None else userWidth
+            userheight = height if set_height is None else set_height 
+            userwidth = width if width is None else set_width
 
-            self._runInfoLegends["ch12"+infoid] = ROOT.TLegend(0.1, 0.9-userheight, 0.1+userwidth, 0.9)
-            self._runInfoLegends["ch12"+infoid].SetMargin(0.05)
-            self._runInfoLegends["ch12"+infoid].AddEntry(0, "Run{run} ({rate})".format(run=self.run_number, rate=self.GetRateString()), "")
-            if comment != None: self._runInfoLegends["ch12"+infoid].AddEntry(0, comment, "")
-            self._runInfoLegends["ch12"+infoid].Draw("same")
+            legend = TLegend(0.1, 0.9 - userheight, 0.1 + userwidth, 0.9)
+            legend.SetMargin(0.05)
+            legend.AddEntry(0, 'Run{run} ({rate})'.format(run=self.run_number, rate=self.get_rate_string()), '')
+            if comment is not None:
+                legend.AddEntry(0, comment, '')
+            legend.Draw()
+            self.run_info_legends['ch12' + infoid] = legend
         pad.Modified()
 
+    # endregion
 
-    def GetRateString(self):
-        rate = self.RunInfo["measured flux"]
-        if rate>1000:
-            unit = "MHz"
-            rate = round(rate/1000.,1)
-        else:
-            unit = "kHz"
-            rate = int(round(rate,0))
-        return "{rate:>3}{unit}".format(rate=rate, unit=unit)
+    def __load_rootfile(self):
+        file_path = self.converter.get_tracking_file_path(self.run_number) if self.converter.do_tracking else self.converter.get_root_file_path(self.run_number)
+        print "\nLoading information for rootfile: ", file_path.split('/')[-1]
+        self.rootfile = ROOT.TFile(file_path)
+        self.tree = self.rootfile.Get(self.treename)  # Get TTree called "track_info"
 
-    def GetChannelName(self, channel):
-        self.tree.GetEntry(1)
-        return self.tree.sensor_name[channel]
 
-    def _LoadROOTFile(self, fullROOTFilePath):
-        print "LOADING: ", fullROOTFilePath
-        self.rootfile = ROOT.TFile(fullROOTFilePath)
-        self.tree = self.rootfile.Get(self.treename) # Get TTree called "track_info"
-        if not (bool(self.tree) and bool(self.rootfile)) and self.createNewROOTFiles:
-            self.CreateROOTFile()
-
-            # print "\n\nCould not load root file!"
-            # print "\t>> "+fullROOTFilePath
-            # answer = raw_input("generate ROOT file instead? (y/n): ")
-            # if answer == "y":
-            #     tracking = raw_input("generate tracking information? (y/n): ")
-            #     if tracking == "y":
-            #         self.CreateROOTFile()
-            #     else:
-            #         self.CreateROOTFile(do_tracking=False)
-        #assert(bool(self.tree) and bool(self.rootfile)), "Could not load root file: \n\t"+fullROOTFilePath
+if __name__ == "__main__":
+    z = Run(398)

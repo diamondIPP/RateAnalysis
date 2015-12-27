@@ -66,7 +66,7 @@ class Analysis(Elementary):
         self.TimingAlignmentFailed = False
 
     def __del__(self):
-        self.VerbosePrint("Deleting Analysis..")
+        self.verbose_print("Deleting Analysis..")
         if hasattr(self, "Pad"):
             self.Pad.__del__()
             del self.Pad
@@ -85,12 +85,12 @@ class Analysis(Elementary):
             del canvas
         if hasattr(self, "MeanSignalHisto"):
             ROOT.gROOT.Delete(self.MeanSignalHisto_name)
-        self.VerbosePrint("Analysis deleted")
+        self.verbose_print("Analysis deleted")
 
 
 
 
-    def LoadConfig(self): # BUG: CRASH WHEN Config loaded after many runs (CWD lost)
+    def load_config(self): # BUG: CRASH WHEN Config loaded after many runs (CWD lost)
         # GoOn = True
         # configfile = "Configuration/AnalysisConfig.cfg"
         # while GoOn:
@@ -133,12 +133,12 @@ class Analysis(Elementary):
             if th1.GetEntries() == 0:
                 print "Offset analysis failed."
                 offset_canvas.Update()
-                self.SavePlots("Offset.png")
+                self.save_plots("Offset.png")
                 return 0
             good = 1.*th1.GetMaximum()/th1.GetEntries()
             th1.SetTitle(th1.GetTitle()+" ({0:0.2f}% in peak)".format(100.*good))
             offset_canvas.Update()
-            self.SavePlots("Offset.png")
+            self.save_plots("Offset.png")
             if good < 0.3: # less than 30% aligned hits
                 print "\nINFO: BAD TIMING ALIGNMENT RUN!\n"
                 self.TimingAlignmentFailed = True
@@ -153,7 +153,7 @@ class Analysis(Elementary):
         self.TrackingPadAnalysisROOTFile = self.run_object.TrackingPadAnalysis["ROOTFile"]
         assert (os.path.exists(self.TrackingPadAnalysisROOTFile)), "cannot find "+self.TrackingPadAnalysisROOTFile
         self.rootfile = ROOT.TFile(self.TrackingPadAnalysisROOTFile)
-        print "LOADING: ", self.TrackingPadAnalysisROOTFile
+        print "LOADING infos for rootfile: ", self.TrackingPadAnalysisROOTFile.split('/')[-1]
         self.track_info = self.rootfile.Get(self.run_object.treename) # Get TTree called "track_info"
 
     def DoAnalysis(self,minimum_bincontent = 1):
@@ -209,7 +209,7 @@ class Analysis(Elementary):
             d = 0
             while GoOn and d<5: # loop for different MC Signal Distributions
                 try:
-                    self.VerbosePrint("try a Signal Distribution")
+                    self.verbose_print("try a Signal Distribution")
                     if not self.run_object.DataIsMade:
                         self.run_object.Simulate() # if draw=False the first distribution will be taken
                     for i in xrange(self.run_object.NumberOfHits):
@@ -263,9 +263,9 @@ class Analysis(Elementary):
             savename += "3D"
         else:
             self.Signal2DDistribution.Draw("colz")
-        self.IfWait("2d drawn")
+        self.if_wait("2d drawn")
         if saveplots:
-            self.SavePlots(savename, ending, saveDir)
+            self.save_plots(savename, ending, saveDir)
 
     def CreateMeanSignalHistogram(self, saveplots = False, savename = "MeanSignalDistribution",ending="png",saveDir = "Results/", show = False):
         if not hasattr(self, "Pad"):
@@ -303,7 +303,7 @@ class Analysis(Elementary):
             self.MeanSignalHisto.Draw()
 
         if saveplots:
-            self.SavePlots(savename, ending, saveDir)
+            self.save_plots(savename, ending, saveDir)
 
         self.Checklist["MeanSignalHisto"] = True
 
@@ -341,12 +341,12 @@ class Analysis(Elementary):
 
         savename = self.run_object.diamond.Specifications["Name"]+"_"+self.run_object.diamond.Specifications["Irradiation"]+"_"+savename+"_"+str(self.run_object.run_number) # diamond_irradiation_savename_runnr
         if saveplots:
-            self.SavePlots(savename, ending, saveDir)
-            self.SavePlots(savename, "root", saveDir)
+            self.save_plots(savename, ending, saveDir)
+            self.save_plots(savename, "root", saveDir)
         if PS:
             ROOT.gStyle.SetHistFillColor(7)
             ROOT.gStyle.SetHistFillStyle(3003)
-        self.IfWait("Combined 2D Signal DistributionsShown")
+        self.if_wait("Combined 2D Signal DistributionsShown")
 
     def CreateHitsDistribution(self,saveplot = False, drawoption = "colz", RemoveLowStatBins = 0): # add palette!
         if RemoveLowStatBins > 0:
@@ -370,8 +370,8 @@ class Analysis(Elementary):
         self.Pad.counthisto.Draw(drawoption)#"surf2")
         #self.Pad.counthisto.Draw("CONT1 SAME")
         if saveplot:
-            self.SavePlots("Hits_Distribution"+extension, "png")
-        self.IfWait("Hits Distribution shown")
+            self.save_plots("Hits_Distribution" + extension, "png")
+        self.if_wait("Hits Distribution shown")
         self.Checklist["HitsDistribution"] = True
 
     def FindMaxima(self,show=False, binning = 200, minimum_bincontent = 30):
@@ -426,7 +426,7 @@ class Analysis(Elementary):
                 graph.SetPointError(count, MPVErrs[i], SigmaErrs[i])
                 count += 1
             graph.Draw("AP")
-            self.IfWait("MPV vs Sigma shown")
+            self.if_wait("MPV vs Sigma shown")
 
         return MPVs, Sigmas, MPVErrs, SigmaErrs
 
@@ -439,7 +439,7 @@ class Analysis(Elementary):
         y = array('d', [0,0])
         self.ExtremeAnalysis.MeanSignalHisto.GetQuantiles(2, y, q)
         SignalHeight = y[1]/y[0]-1.
-        self.VerbosePrint('\nApproximated Signal Amplitude: {0:0.0f}% - ({1:0.0f}%/{2:0.0f}% Quantiles approximation)\n'.format(100.*(SignalHeight), max_percent, min_percent))
+        self.verbose_print('\nApproximated Signal Amplitude: {0:0.0f}% - ({1:0.0f}%/{2:0.0f}% Quantiles approximation)\n'.format(100. * (SignalHeight), max_percent, min_percent))
         self.ExtremaResults['SignalHeight'] = SignalHeight
         self.ExtremeAnalysis.ExtremaResults['SignalHeight'] = SignalHeight
         return SignalHeight
@@ -628,10 +628,10 @@ class Analysis(Elementary):
                 ROOT.SetOwnership(rightaxis, False)
                 rightaxis.Draw('SAME')
             if save:
-                self.SavePlots(type_+"TimeEvolution"+Mode+nameExtension+".png")
+                self.save_plots(type_ + "TimeEvolution" + Mode + nameExtension + ".png")
             if TimeERROR:
-                SignalEvolution.SaveAs(self.SaveDirectory+"ERROR_"+type_+"TimeEvolution"+Mode+nameExtension+".root")
-            self.IfWait("Showing "+type_+" Time Evolution..")
+                SignalEvolution.SaveAs(self.save_directory + "ERROR_" + type_ + "TimeEvolution" + Mode + nameExtension + ".root")
+            self.if_wait("Showing " + type_ + " Time Evolution..")
             canvas.Close()
         else:
             print "Run is Monte Carlo. Signal- and Rate Time Evolution cannot be created."
@@ -648,6 +648,6 @@ class Analysis(Elementary):
             if not os.path.exists(MCDir):
                 os.makedirs(MCDir)
             self.Pad.counthisto.SaveAs(MCDir+str(self.run_object.run_number)+"counthisto.root")
-            self.VerbosePrint("CountHisto exported..")
+            self.verbose_print("CountHisto exported..")
         else:
             print "INFO: Monte Carlo run can not be exported as MC input"

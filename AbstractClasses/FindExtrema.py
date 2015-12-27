@@ -12,7 +12,7 @@ class FindExtrema(Elementary):
         self.BinCollectionObj = bincollection
         self.channel = self.BinCollectionObj.channel
         self.ExtremaType = ''
-        self.SetType()
+        self.set_type()
 
         self.voting_histo_name = 'voting_histo_'+self.ExtremaType+str(self.GLOBAL_COUNT)
         self.voting_histo = ROOT.TH2D(self.voting_histo_name, 'Voting for '+self.ExtremaType, *self.BinCollectionObj.Get2DAttributes())
@@ -25,7 +25,7 @@ class FindExtrema(Elementary):
         ROOT.gROOT.Delete(self.voting_histo_name)
         del self.voting_histo
 
-    def LoadConfig(self):
+    def load_config(self):
         self.ShowAndWait = False
 
     def Local1DExtrema(self, signal_1, signal_2, signal_3, entries):
@@ -34,7 +34,7 @@ class FindExtrema(Elementary):
     def FifthVoting(self, nbhd_mean, mean):
         pass
 
-    def SetType(self):
+    def set_type(self):
         pass
 
     def SetThreshold(self):
@@ -246,12 +246,12 @@ class FindExtrema(Elementary):
                 list_of_bins.append(binnumber)
         return list_of_bins
 
-    def Find(self, threshold = None, minimum_bincount = 5, show = False):
+    def find_extrema(self, threshold=None, minimum_bincount=5, show=False):
 
-        if threshold == None:
+        if threshold is None:
             self.SetThreshold()
             # self.threshold = self.BinCollectionObj.SignalHisto.GetMean()
-            self.VerbosePrint('threshold set automatically to ', self.threshold)
+            self.verbose_print('threshold set automatically to ', self.threshold)
         else:
             self.threshold = threshold
         self.minimum_bincount = minimum_bincount
@@ -263,7 +263,7 @@ class FindExtrema(Elementary):
         self.SENW_scan()
     
         Vote4Extrema = self.GetBinsInVoteRange(4)
-        self.VerbosePrint(len(Vote4Extrema)," "+self.ExtremaType+" found containing 4 votings")
+        self.verbose_print(len(Vote4Extrema), " " + self.ExtremaType + " found containing 4 votings")
     
         # mean = self.BinCollectionObj.SignalHisto.GetMean()
         if hasattr(self.BinCollectionObj.parent_analysis_obj, "MeanSignalHisto"):
@@ -287,8 +287,8 @@ class FindExtrema(Elementary):
                     self.FillHistoByBinnumber(center_bin, 1)
     
         Vote5Extrema = self.GetBinsInVoteRange(5)
-        self.VerbosePrint(len(Vote5Extrema)," "+self.ExtremaType+" found containing 5 votings: ")
-        self.VerbosePrint(self.BinCollectionObj.GetBinCenter(Vote5Extrema))
+        self.verbose_print(len(Vote5Extrema), " " + self.ExtremaType + " found containing 5 votings: ")
+        self.verbose_print(self.BinCollectionObj.GetBinCenter(Vote5Extrema))
     
     
         # If Monte Carlo, match with real peak positions:
@@ -322,13 +322,13 @@ class FindExtrema(Elementary):
             # Looking for Ghosts:
             for bin_nr in Vote5Extrema:
                 if not bin_nr in Peak_nbhd:
-                    self.VerbosePrint('Ghost peak found at position ({0:.3f}/{1:.3f})'.format(*self.BinCollectionObj.GetBinCenter(bin_nr)))
+                    self.verbose_print('Ghost peak found at position ({0:.3f}/{1:.3f})'.format(*self.BinCollectionObj.GetBinCenter(bin_nr)))
                     Ghosts.append(bin_nr)
             # Looking for Ninjas:
             for i in xrange(npeaks):
                 bin_nr = self.BinCollectionObj.GetBinNumber(peaks_x[i],peaks_y[i])
                 if not bin_nr in Maxima_nbhd:
-                    self.VerbosePrint('Ninja peak found at position ({0:.3f}/{1:.3f})'.format(peaks_x[i],peaks_y[i]))
+                    self.verbose_print('Ninja peak found at position ({0:.3f}/{1:.3f})'.format(peaks_x[i], peaks_y[i]))
                     Ninjas.append(bin_nr)
             if npeaks > 0:
                 print "\n{0:.1f}% of generated peaks found.".format(100.*(npeaks-len(Ninjas))/npeaks)
@@ -362,8 +362,8 @@ class FindExtrema(Elementary):
                 self.real_peaks.SetLineColor(ROOT.kRed)
                 self.real_peaks.Draw('SAME P0')
             vote_canvas.Update()
-            self.IfWait("Vote Histogram drawn")
-            self.BinCollectionObj.SavePlots('vote_histo_'+self.ExtremaType, 'png')
+            self.if_wait("Vote Histogram drawn")
+            self.BinCollectionObj.save_plots('vote_histo_' + self.ExtremaType, 'png')
             # ROOT.gStyle.SetPalette(53)
             # ROOT.gStyle.SetNumberContours(999)
 
@@ -382,7 +382,7 @@ class FindMaxima(FindExtrema):
         else:
             return False
         
-    def SetType(self):
+    def set_type(self):
         self.ExtremaType = 'Maxima'
 
     def SetThreshold(self):
@@ -417,7 +417,7 @@ class FindMinima(FindExtrema):
         else:
             return False
         
-    def SetType(self):
+    def set_type(self):
         self.ExtremaType = 'Minima'
 
     def SetThreshold(self):

@@ -398,7 +398,7 @@ class MCRun(Run):
         if answer == 'yes':
             if self.verbose:
                 self.ShowMCConfig()
-            self.VerbosePrint('Creating Toy Data with {0} Hits'.format(self.NumberOfHits))
+            self.verbose_print('Creating Toy Data with {0} Hits'.format(self.NumberOfHits))
             integral50_max = self.MCAttributes['integral50_max'] # Maximum of Signal response allowed (data: 500 ?)
             i = 0
             j = 0
@@ -435,7 +435,7 @@ class MCRun(Run):
             if self.MCAttributes['Save']:
                 file.Write()
                 f_signal.SaveAs(MCRunPath+'RealSignalDistribution.root')
-                self.VerbosePrint(MCRunPath+'track_info.root has been written')
+                self.verbose_print(MCRunPath + 'track_info.root has been written')
                 self.TrackingPadAnalysis['ROOTFile'] = MCRunPath+'track_info.root'
 
             # Print Settings of created data:
@@ -454,4 +454,4 @@ class MCRun(Run):
                         print "Peak {0:.0f} at position: ({1:.3f}/{2:.3f}) with Gaussian Response Mean: {3:.2f} Sigma: {4:.1f}".format(i+1, x, y, f_signal(x, y), 0.6*f_signal(x, y)-33)
 
             self.DataIsMade = True
-            self.VerbosePrint('Monte Carlo Toy Data created.\n')
+            self.verbose_print('Monte Carlo Toy Data created.\n')

@@ -1,0 +1,50 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="ProblematicWhitespace" enabled="true" level="WARNING" enabled_by_default="true" />
+    <inspection_tool class="PyPep8Inspection" enabled="true" level="WEAK WARNING" enabled_by_default="true">
+      <option name="ignoredErrors">
+        <list>
+          <option value="" />
+        </list>
+      </option>
+    </inspection_tool>
+    <inspection_tool class="PyUnresolvedReferencesInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredIdentifiers">
+        <list>
+          <option value="TFile" />
+          <option value="TCanvas" />
+          <option value="gROOT" />
+          <option value="TLegend" />
+          <option value="TGraphErrors" />
+          <option value="kBlue" />
+          <option value="kFALSE" />
+          <option value="gStyle" />
+          <option value="TH2D" />
+          <option value="TF1" />
+          <option value="TH1F" />
+          <option value="TCut" />
+          <option value="TGraph" />
+          <option value="TH2F" />
+          <option value="TLine" />
+          <option value="TGaxis" />
+          <option value="kTeal" />
+          <option value="kCyan" />
+          <option value="kYellow" />
+          <option value="kOrange" />
+          <option value="kAzure" />
+          <option value="kViolet" />
+          <option value="kGreen" />
+          <option value="kRed" />
+          <option value="kMagenta" />
+          <option value="TProfile2D" />
+        </list>
+      </option>
+    </inspection_tool>
+    <inspection_tool class="SpellCheckingInspection" enabled="true" level="TYPO" enabled_by_default="true">
+      <option name="processCode" value="false" />
+      <option name="processLiterals" value="false" />
+      <option name="processComments" value="true" />
+    </inspection_tool>
+  </profile>
+</component>

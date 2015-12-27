@@ -22,17 +22,11 @@ class MeanSignalHistConfig(object):
         pass
 
 class BinCollectionConfig(Elementary):
-    '''
-    A config object for analysis
-    e.g. binning size
-    '''
+    """
+    A config object for analysis e.g. binning size
+    """
     def __init__(self, run, binningsize=None,  channel=None, **kwargs):
-        '''
-
-        :param binningsize: size of bins in microns
-        :param kwargs:
-        :return:
-        '''
+        Elementary.__init__(self)
         self.run = run
         self.channel=channel
         self.config = {
@@ -58,8 +52,8 @@ class BinCollectionConfig(Elementary):
     def LoadConfigFile(self):
         configfile = "Configuration/AnalysisConfig_"+self.TESTCAMPAIGN+".cfg"
         if self.TESTCAMPAIGN == "": "WARNING: TESTCAMPAIGN not set"
-        print self.TESTCAMPAIGN
-        print "loading configfile: ", configfile
+        # print self.TESTCAMPAIGN
+        # print "loading configfile: ", configfile
         parser = ConfigParser.ConfigParser()
         out = parser.read(configfile)
         assert(out!=[]), "Configfile couldn't be loaded. Check if it exists and that the testcampaign is set properly"
@@ -78,7 +72,7 @@ class BinCollectionConfig(Elementary):
             self.SetWindow(window[0], window[1], window[2], window[3])
             windowfile.close()
         else:
-            print "No diamond window pickle file found at: ", windowpath
+            print "No diamond window pickle file found! Choosing default" # at: ", windowpath
             self.SetWindow(windowXmin, windowXmax, windowYmin, windowYmax)# default window
 
 

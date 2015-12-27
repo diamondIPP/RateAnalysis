@@ -78,6 +78,8 @@ class RunInfo:
 
                  ): # fraction of correctly matched calibration events
 
+        print 'BLAAAAAA'
+
         # Validate
         assert (type(number) is t.IntType and 0 < number < 1000), "Invalid run number"
         assert (type(begin_date) is t.StringType or type(begin_date) is t.UnicodeType ), "Invalid begin_date"
