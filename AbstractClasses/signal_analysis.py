@@ -4,8 +4,9 @@
 from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TF1, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F
 from newAnalysis import Analysis
 from array import array
-from math import sqrt
+from math import sqrt, ceil
 from argparse import ArgumentParser
+from Extrema import Extrema2D
 
 __author__ = 'micha'
 
@@ -49,6 +50,7 @@ class SignalAnalysis(Analysis):
         self.histo = None
         self.signaltime = None
         self.SignalMapHisto = None
+        self.MeanSignalHisto = None
 
     def set_channel(self, ch):
         self.channel = ch
@@ -72,7 +74,11 @@ class SignalAnalysis(Analysis):
         x = [margins['x'][0], margins['x'][1]]
         y = [margins['y'][0], margins['y'][1]]
         nr = 1 if not self.channel else 2
-        h = TProfile2D('signal_map', 'Signal Map', 80, x[0], x[1], 52, y[0], y[1])
+        # get bin size via digital resolution of the telescope pixels
+        factor = 2
+        x_bins = int(ceil(((x[1] - x[0]) / 0.015 * sqrt(12) / factor)))
+        y_bins = int(ceil((y[1] - y[0]) / 0.01 * sqrt(12) / factor))
+        h = TProfile2D('signal_map', 'Signal Map', x_bins, x[0], x[1], y_bins, y[0], y[1])
         if not show:
             gROOT.SetBatch(1)
         self.tree.Draw('{z}:diam{nr}_track_x:diam{nr}_track_y>>signal_map'.format(z=self.signal_name, nr=nr), z.cut.all_cut, 'goff')
@@ -82,6 +88,13 @@ class SignalAnalysis(Analysis):
         gROOT.SetBatch(0)
         self.SignalMapHisto = h
         return h
+
+    def find_2d_extrema(self):
+        self.draw_mean_signal_distribution(show=False)
+        extrema = Extrema2D(self.SignalMapHisto, self.MeanSignalHisto)
+        extrema.region_scan()
+        extrema.show_voting_histos()
+        return extrema
 
     def draw_mean_signal_distribution(self, show=True):
         """
@@ -96,8 +109,8 @@ class SignalAnalysis(Analysis):
         if show:
             self.canvas = TCanvas('c', 'Mean Signal Distribution', 1000, 1000)
             h.Draw()
-            self.histos[0] = h
-        print self.__get_median(h)
+        self.MeanSignalHisto = h
+        # print self.__get_median(h)
 
     def draw_diamond_hitmap(self):
         self.find_diamond_margins()
@@ -253,11 +266,12 @@ class SignalAnalysis(Analysis):
         self.tree.GetEntry(0)
         return self.tree.polarities[self.channel]
 
-    def show_signal_histo(self):
+    def show_signal_histo(self, cut=None):
         canvas = TCanvas('bla', 'blub', 1000, 1000)
         self.histo = TH1F('signal b2', 'signal without cuts', 400, -100, 300)
         canvas.cd()
-        self.tree.Draw("{name}>>signal b2".format(name=self.signal_name))
+        cut = '' if cut is None else cut
+        self.tree.Draw("{name}>>signal b2".format(name=self.signal_name), cut)
         self.save_plots('signal_distribution', 'png', canvas=canvas, sub_dir=self.save_dir)
 
     def compare_single_cuts(self):

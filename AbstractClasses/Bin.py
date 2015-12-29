@@ -44,7 +44,7 @@ class Bin(Elementary):
             'Chi2': None
         }
 
-        self.globalBinCount = self.GC()
+        self.globalBinCount = self.count
         self.binHistoName = 'BinSignalHisto'+str(self.globalBinCount)+"_"+str(binnumber)
         BinSignalHisto = ROOT.gROOT.FindObject(self.binHistoName)
         if BinSignalHisto:

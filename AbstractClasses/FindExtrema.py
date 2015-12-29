@@ -14,12 +14,12 @@ class FindExtrema(Elementary):
         self.ExtremaType = ''
         self.set_type()
 
-        self.voting_histo_name = 'voting_histo_'+self.ExtremaType+str(self.GLOBAL_COUNT)
+        self.voting_histo_name = 'voting_histo_'+self.ExtremaType+str(self.count)
         self.voting_histo = ROOT.TH2D(self.voting_histo_name, 'Voting for '+self.ExtremaType, *self.BinCollectionObj.Get2DAttributes())
         self.bin_SW_coordinates = self.BinCollectionObj.listOfBins[self.BinCollectionObj.attributes['binsx']+3].GetBinCenter()
         self.bin_SE_coordinates = self.BinCollectionObj.listOfBins[2*self.BinCollectionObj.attributes['binsx']+2].GetBinCenter()
         self.binsx_, self.xmin_, self.xmax_, self.binsy_, self.ymin_, self.ymax_ = self.BinCollectionObj.Get2DAttributes()
-        self.GLOBAL_COUNT += 1
+        self.count += 1
 
     def __del__(self):
         ROOT.gROOT.Delete(self.voting_histo_name)
@@ -386,22 +386,23 @@ class FindMaxima(FindExtrema):
         self.ExtremaType = 'Maxima'
 
     def SetThreshold(self):
-        percent = 55
-        q = array('d', [1.*percent/100.])
-        y = array('d', [0])
-
-        if hasattr(self.BinCollectionObj.parent_analysis_obj, "MeanSignalHisto"):
-            if self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto.has_key(self.channel):
-                self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto[self.channel].GetQuantiles(1, y, q)
-            else:
-                self.BinCollectionObj.parent_analysis_obj.CreateMeanSignalHistogram(channel=self.channel)
-                self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto[self.channel].GetQuantiles(1, y, q)
-        else:
-            self.BinCollectionObj.parent_analysis_obj.CreateMeanSignalHistogram(channel=self.channel)
-            self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto[self.channel].GetQuantiles(1, y, q)
-
-        # self.BinCollectionObj.SignalHisto.GetQuantiles(1, y, q)
-        self.threshold = y[0]
+        # percent = 55
+        # q = array('d', [1.*percent/100.])
+        # y = array('d', [0])
+        #
+        # if hasattr(self.BinCollectionObj.parent_analysis_obj, "MeanSignalHisto"):
+        #     if self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto.has_key(self.channel):
+        #         self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto[self.channel].GetQuantiles(1, y, q)
+        #     else:
+        #         self.BinCollectionObj.parent_analysis_obj.CreateMeanSignalHistogram(channel=self.channel)
+        #         self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto[self.channel].GetQuantiles(1, y, q)
+        # else:
+        #     self.BinCollectionObj.parent_analysis_obj.CreateMeanSignalHistogram(channel=self.channel)
+        #     self.BinCollectionObj.parent_analysis_obj.MeanSignalHisto[self.channel].GetQuantiles(1, y, q)
+        #
+        # # self.BinCollectionObj.SignalHisto.GetQuantiles(1, y, q)
+        # self.threshold = y[0]
+        self.threshold = 92
         
 class FindMinima(FindExtrema):
     
