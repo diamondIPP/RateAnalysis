@@ -817,8 +817,8 @@ class Analysis(Elementary):
 
         cutfunctions = {}
         # cutfunctions = lambda pulser, is_saturated, n_tracks, fft_mean, INVfft_max: 1
-        exec ("cutfunctions[0] = {cutf}".format(cutf=self.cuts[0].GetCutFunctionDef()))
-        exec ("cutfunctions[3] = {cutf}".format(cutf=self.cuts[3].GetCutFunctionDef()))
+        exec ("cutfunctions[0] = {cutf}".format(cutf=self.cuts[0].get_function_def()))
+        exec ("cutfunctions[3] = {cutf}".format(cutf=self.cuts[3].get_function_def()))
 
         for i in included:
             if i % 10000 == 0: print "processing Event ", i
@@ -1501,13 +1501,13 @@ class Analysis(Elementary):
         :return:
         '''
         if channel == None:
-            opt0 = self.cuts[0].GetUserCutString()
-            opt3 = self.cuts[3].GetUserCutString()
+            opt0 = self.cuts[0].get_easy_cutstring()
+            opt3 = self.cuts[3].get_easy_cutstring()
             assert (opt0 == opt3), "GetUserCutString Not the same for both cut channels. Choose a specific channel."
             return opt0
         else:
             assert (channel in [0, 3])
-            return self.cuts[channel].GetUserCutString()
+            return self.cuts[channel].get_easy_cutstring()
 
     def ShowPeakPosition(self, channel=None, cut="", canvas=None, savePlot=True):
         '''
@@ -1552,7 +1552,7 @@ class Analysis(Elementary):
             pad.SetGridx()
             if hist:
                 hist.SetStats(0)
-                hist.SetTitle("Peak Position {" + self.cuts[ch].GetUserCutString() + "}")
+                hist.SetTitle("Peak Position {" + self.cuts[ch].get_easy_cutstring() + "}")
                 hist.GetXaxis().SetTitle("Sample Point of Peak")
                 hist.GetXaxis().SetTitleSize(0.05)
                 hist.GetXaxis().SetLabelSize(0.05)

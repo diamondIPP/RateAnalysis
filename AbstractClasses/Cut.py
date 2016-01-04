@@ -1,9 +1,8 @@
 import os
-import numpy as np
 import pickle
 import json
 import ConfigParser
-from numpy import mean, array, zeros, arange
+from numpy import mean, array, zeros, arange, delete
 from AbstractClasses.Elementary import Elementary
 from ROOT import TCut, gROOT, TH1F
 from collections import OrderedDict
@@ -159,8 +158,8 @@ class Cut(Elementary):
 
     def get_included_events(self, maxevent=None):
         """
-        Returns a list of event numbers, which are not excluded by: excludeFirst, EventRange or BeamInterruptions
-        :return: list of included event numbers
+        :param maxevent:
+        :return: list of included event numbers not excluded by: excludeFirst, EventRange or BeamInterruptions
         """
         minevent = self.get_min_event()
         maxevent = self.get_max_event() if maxevent is None else maxevent
@@ -170,9 +169,8 @@ class Cut(Elementary):
             excluded += [i for i in xrange(start, stop + 1)]  # events around jumps
         excluded.sort()
         all_events = arange(0, maxevent)
-        included = np.delete(all_events, excluded)
+        included = delete(all_events, excluded)
         return included
-
 
     def load_exclude_first(self, value):
         """
@@ -270,7 +268,7 @@ class Cut(Elementary):
         for col in xrange(extrema.cols):
             all_val = [bool(extrema.VotingHistos['max'].GetBinContent(col, row)) for row in xrange(extrema.rows)]
             # print col, all_val
-            if not True in all_val:
+            if True not in all_val:
                 continue
             all_string += '||' if all_string else ''
             xmin = extrema.VotingHistos['max'].GetXaxis().GetBinLowEdge(col)
@@ -311,12 +309,12 @@ class Cut(Elementary):
             gROOT.SetBatch(1)
             h = TH1F('h', '', 200, 0, 100)
             nq = 100
-            chi2 = zeros(nq)
+            chi2s = zeros(nq)
             xq = array([(i + 1) / float(nq) for i in range(nq)])
             self.analysis.tree.Draw('chi2_tracks>>h', '', 'goff')
-            h.GetQuantiles(nq, chi2, xq)
+            h.GetQuantiles(nq, chi2s, xq)
             gROOT.SetBatch(0)
-            return chi2
+            return chi2s
 
         chi2 = self.do_pickle(picklepath, func)
         assert type(self.CutConfig['chi2']) is int and 0 < self.CutConfig['chi2'] <= 100, 'chi2 quantile has to be and integer between 0 and 100'
@@ -337,17 +335,17 @@ class Cut(Elementary):
             self.analysis.tree.Draw('slope_x>>hx', '', 'goff')
             self.analysis.tree.Draw('slope_y>>hy', '', 'goff')
             fit_result = h_x.Fit('gaus', 'qs')
-            slope = {'x': [], 'y': []}
+            slopes = {'x': [], 'y': []}
             x_mean = fit_result.Parameters()[1]
-            slope['x'] = [x_mean - angle, x_mean + angle]
+            slopes['x'] = [x_mean - angle, x_mean + angle]
             fit_result = h_y.Fit('gaus', 'qs')
             y_mean = fit_result.Parameters()[1]
-            slope['y'] = [y_mean - angle, y_mean + angle]
+            slopes['y'] = [y_mean - angle, y_mean + angle]
             c = gROOT.FindObject('c1')
             c.Close()
             gROOT.SetBatch(0)
             gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-            return slope
+            return slopes
 
         slope = self.do_pickle(picklepath, func)
         # create the cut string
@@ -360,12 +358,13 @@ class Cut(Elementary):
         string = '{sig2}-{sig1}==0'.format(sig2=name, sig1=self.analysis.signal_names[self.channel])
         return TCut(string)
 
-    def generate_cut_string(self, gen_PulserCut=True, gen_EventRange=True, gen_ExcludeFirst=True, setChannel=True):
+    def generate_cut_string(self, gen_pulser_cut=True, gen_event_range=True, gen_exclude_first=True, set_channel=True):
         """
         Creates the cut string, which will be stored in self.cut. With the arguments set to False, different cut types can be deactivated in the cut string.
-        :param gen_PulserCut:
-        :param gen_EventRange:
-        :param gen_ExcludeFirst:
+        :param gen_pulser_cut:
+        :param gen_event_range:
+        :param gen_exclude_first:
+        :param set_channel:
         :return:
         """
         gROOT.SetBatch(1)
@@ -380,13 +379,13 @@ class Cut(Elementary):
 
         # -- EVENT RANGE CUT --
         self.generate_event_range()
-        if self.CutConfig["EventRange"] != [] and gen_EventRange:
+        if self.CutConfig["EventRange"] != [] and gen_event_range:
             if cutstring != "":
                 cutstring += "&&"
             cutstring += "(event_number<={maxevent}&&event_number>={minevent})".format(minevent=self.CutConfig["EventRange"][0], maxevent=self.CutConfig["EventRange"][1])
             self.EasyCutStrings["EventRange"] = "Evts.{min}k-{max}k".format(min=int(self.CutConfig["EventRange"][0]) / 1000, max=int(self.CutConfig["EventRange"][1]) / 1000)
             self.EasyCutStrings["ExcludeFirst"] = ""
-        elif self.CutConfig["ExcludeFirst"] > 0 and gen_ExcludeFirst:
+        elif self.CutConfig["ExcludeFirst"] > 0 and gen_exclude_first:
             if cutstring != "":
                 cutstring += "&&"
             cutstring += "event_number>={minevent}".format(minevent=self.CutConfig["ExcludeFirst"])
@@ -440,7 +439,7 @@ class Cut(Elementary):
             self.EasyCutStrings["pedestalsigma"] = ""
 
         # -- set the channel on the cuts --
-        if setChannel:
+        if set_channel:
             self.cut = cutstring
             self.cut = self.cut.format(channel=self.channel)
 
@@ -450,9 +449,9 @@ class Cut(Elementary):
 
         self._checklist["GenerateCutString"] = True
         self.__cutstring_settings = {
-            "gen_PulserCut": gen_PulserCut,
-            "gen_EventRange": gen_EventRange,
-            "gen_ExcludeFirst": gen_ExcludeFirst
+            "gen_PulserCut": gen_pulser_cut,
+            "gen_EventRange": gen_event_range,
+            "gen_ExcludeFirst": gen_exclude_first
         }
         gROOT.SetBatch(0)
 
@@ -484,7 +483,6 @@ class Cut(Elementary):
         self._checklist["RemoveBeamInterruptions"] = True
 
         return self.cut
-
     # endregion
 
     def _checkCutStringSettings(self, gen_PulserCut, gen_EventRange, gen_ExcludeFirst):
@@ -608,7 +606,7 @@ class Cut(Elementary):
             self.jump_ranges = ranges[2]
         return self.jumps
 
-    def GetCutFunctionDef(self):
+    def get_function_def(self):
         """
         Returns the cut function definition, which is of type string.
         It is used for applying the cut on event-by-event readout
@@ -682,24 +680,7 @@ class Cut(Elementary):
 
         return self.all_cut
 
-    def AddCutString(self, cutstring):
-        pass
-
-    def GetCut(self, setChannel=True, gen_PulserCut=True, gen_EventRange=True, gen_ExcludeFirst=True, ):
-        """
-        Returns the cut string.
-        If needed, it will re-generate the cut string.
-        :param gen_PulserCut:
-        :param gen_EventRange:
-        :param gen_ExcludeFirst:
-        :return:
-        """
-        # channel = self.channel
-        if not self._checkCutStringSettings(gen_PulserCut, gen_EventRange, gen_ExcludeFirst):
-            self.generate_cut_string(gen_PulserCut, gen_EventRange, gen_ExcludeFirst, setChannel=setChannel)
-        return self.cut
-
-    def GetUserCutString(self):
+    def get_easy_cutstring(self):
         """
         Returns a short, more user-friendly cut string, which can be
         used to display the cut configuration as terminal prompt or
@@ -718,6 +699,3 @@ class Cut(Elementary):
         for key, value in self.cut_strings.iteritems():
             print key, value
         return
-
-    def SetFFTCut(self):
-        pass

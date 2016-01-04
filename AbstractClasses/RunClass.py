@@ -452,7 +452,7 @@ class Run(Elementary):
             if diamondinfo: 
                 legend.AddEntry(0, '{diamond} ({bias:+}V)'.format(diamond=self.diamondname[channel], bias=self.bias[channel]), '')
             if cut and hasattr(self, 'analysis'): 
-                legend.AddEntry(0, 'Cut: {cut}'.format(cut=self.analysis.GetUserCutString()), '')
+                legend.AddEntry(0, 'Cut: {cut}'.format(cut=self.analysis.get_easy_cutstring()), '')
             if comment is not None: 
                 legend.AddEntry(0, comment, '')
             legend.Draw()

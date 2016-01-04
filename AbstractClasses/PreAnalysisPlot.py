@@ -161,7 +161,7 @@ class PreAnalysisPlot(Elementary):
         # self.signaltime2d = gROOT.FindObject("signaltime2d{run}{channel}".format(run=self.analysis.run.run_number, channel=self.channel))
         self.signaltime2d.SetStats(0)
         self.signaltime2d.SetTitle("{signal} vs Event {cut}".format(signal=self.analysis.signaldefinition[self.channel],
-                                                                    cut="{" + self.analysis.GetUserCutString(channel=self.channel) + "}"))
+                                                                    cut="{" + self.analysis.get_easy_cutstring(channel=self.channel) + "}"))
         self.signaltime2d.GetXaxis().SetLabelSize(0.06)
         self.signaltime2d.GetXaxis().SetTitle("event number / 1000")
         self.signaltime2d.GetXaxis().SetTitleSize(0.06)
