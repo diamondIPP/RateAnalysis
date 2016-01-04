@@ -32,35 +32,46 @@ class Extrema2D:
 
     def horizontal_scan(self):
         for row in xrange(self.rows):
-            for col in xrange(1, self.cols):
+            for col in xrange(self.cols):
                 self.__add_local_extrema(col, row, mode='horizontal')
 
     def vertical_scan(self):
         for col in xrange(self.cols):
-            for row in xrange(1, self.rows):
+            for row in xrange(self.rows):
                 self.__add_local_extrema(col, row, mode='vertical')
 
     def sw_ne_scan(self):
-        rows = [row for row in xrange(self.rows - 3, 0, -1)]
-        cols = [0] * (self.rows - 3)
-        rows += [0] * (self.cols - 2)
-        cols += [col for col in xrange(self.cols - 2)]
+        rows = [row for row in xrange(self.rows - 2, 0, -1)]
+        cols = [0] * (self.rows - 2)
+        rows += [0] * (self.cols - 1)
+        cols += [col for col in xrange(self.cols - 1)]
         for row, col in zip(rows, cols):
-            while row < self.rows - 2 and col < self.cols - 2:
+            while row < self.rows and col < self.cols:
                 self.__add_local_extrema(col, row, mode='swne')
                 row += 1
                 col += 1
 
     def nw_se_scan(self):
-        rows = [row for row in xrange(2, self.rows - 1)]
-        cols = [0] * (self.rows - 3)
-        rows += [self.rows - 1] * (self.cols - 2)
-        cols += [col for col in xrange(self.cols - 2)]
+        rows = [row for row in xrange(1, self.rows - 1)]
+        cols = [0] * (self.rows - 2)
+        print len(rows), len(cols)
+        rows += [self.rows - 1] * (self.cols - 1)
+        cols += [col for col in xrange(self.cols - 1)]
+        print len(rows), len(cols)
         for row, col in zip(rows, cols):
-            while row >= 2 and col < self.cols - 2:
+            while row >= 0 and col < self.cols:
+                print col, row,
                 self.__add_local_extrema(col, row, mode='nwse')
                 row -= 1
                 col += 1
+            print
+
+    def make_all_line_scans(self):
+        self.horizontal_scan()
+        self.vertical_scan()
+        # self.sw_ne_scan()
+        # self.nw_se_scan()
+        self.show_voting_histos()
 
     def region_scan(self):
         for col in xrange(self.cols):
@@ -91,25 +102,20 @@ class Extrema2D:
         elif mode == 'vertical':
             cols, rows = [col] * 3, [row - 1, row, row + 1]
         elif mode == 'swne':
-            cols, rows = [col, col + 1, col + 2], [row, row + 1, row + 2]
+            cols, rows = [col - 1, col, col + 1], [row - 1, row, row + 1]
         else:
-            cols, rows = [col, col + 1, col + 2], [row, row - 1, row - 2]
+            cols, rows = [col - 1, col, col + 1], [row + 1, row, row - 1]
 
         start = self.SignalHisto.GetBinContent(cols[0], rows[0])
         center = self.SignalHisto.GetBinContent(cols[1], rows[1])
         end = self.SignalHisto.GetBinContent(cols[2], rows[2])
-        if start < center > end and center > self.Thresholds['max']:
+        print start, center, end
+        if start <= center >= end and center > self.Thresholds['max'][0]:
             old_content = self.VotingHistos['max'].GetBinContent(col, row)
-            if mode == 'horizontal' or 'vertical':
-                self.VotingHistos['max'].SetBinContent(col, row, old_content + 1)
-            else:
-                self.VotingHistos['max'].SetBinContent(cols[1], rows[1], old_content + 1)
-        elif start > center < end and center < self.Thresholds['min']:
+            self.VotingHistos['max'].SetBinContent(col, row, old_content + 1)
+        elif start >= center <= end and center < self.Thresholds['min'][-1]:
             old_content = self.VotingHistos['min'].GetBinContent(col, row)
-            if mode == 'horizontal' or 'vertical':
-                self.VotingHistos['min'].SetBinContent(col, row, old_content + 1)
-            else:
-                self.VotingHistos['min'].SetBinContent(cols[1], rows[1], old_content + 1)
+            self.VotingHistos['min'].SetBinContent(col, row, old_content + 1)
 
     def create_voting_histo(self):
         axes = [self.SignalHisto.GetXaxis(), self.SignalHisto.GetYaxis()]

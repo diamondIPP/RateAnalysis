@@ -89,6 +89,10 @@ class SignalAnalysis(Analysis):
         self.SignalMapHisto = h
         return h
 
+    def make_region_cut(self):
+        self.draw_mean_signal_distribution(show=False)
+        return self.cut.generate_region(self.SignalMapHisto, self.MeanSignalHisto)
+
     def find_2d_extrema(self):
         self.draw_mean_signal_distribution(show=False)
         extrema = Extrema2D(self.SignalMapHisto, self.MeanSignalHisto)

@@ -9,6 +9,7 @@ from numpy import mean, array, zeros
 from AbstractClasses.Elementary import Elementary
 from ROOT import TCut, gROOT, TH1F
 from collections import OrderedDict
+from Extrema import Extrema2D
 
 
 # todo: make channel cut subclass
@@ -71,6 +72,8 @@ class Cut(Elementary):
         self.cut_strings['saturated'] = TCut('saturated', '')
         self.cut_strings['bucket'] = TCut('bucket', '')
         self.cut_strings['all_cuts'] = TCut('all_cuts', '')
+
+        self.region_cut = TCut('region_cut', '')
 
         self.__cutstring_settings = None
         self.individualCuts = None
@@ -314,6 +317,42 @@ class Cut(Elementary):
 
     # ==============================================
     # region GENERATE CUT STRINGS
+    def generate_region(self, signal_histo, mean_histo):
+        extrema = Extrema2D(signal_histo, mean_histo)
+        extrema.region_scan()
+        extrema.show_voting_histos()
+        all_string = ''
+        nr = 2 if self.channel else 1
+        for col in xrange(extrema.cols):
+            all_val = [bool(extrema.VotingHistos['max'].GetBinContent(col, row)) for row in xrange(extrema.rows)]
+            # print col, all_val
+            if not True in all_val:
+                continue
+            all_string += '||' if all_string else ''
+            xmin = extrema.VotingHistos['max'].GetXaxis().GetBinLowEdge(col)
+            xmax = extrema.VotingHistos['max'].GetXaxis().GetBinUpEdge(col)
+            all_string += '(diam{nr}_track_x>{xmin}&&diam{nr}_track_x<{xmax})&&'.format(nr=nr, xmin=xmin, xmax=xmax)
+            y_string = ''
+            cont = True
+            for row in xrange(extrema.rows + 1):
+                val = extrema.VotingHistos['max'].GetBinContent(col, row) if not row == extrema.rows else 0
+                last_val = extrema.VotingHistos['max'].GetBinContent(col, row - 1) if row else 0
+                if val and not last_val:
+                    y = extrema.VotingHistos['max'].GetYaxis().GetBinLowEdge(row)
+                    if y < abs(1e-10):
+                        cont=False
+                        continue
+                    cont=True
+                    y_string += '||' if y_string else '('
+                    y_string += 'diam{nr}_track_y>{y}&&'.format(nr=nr, y=y)
+                elif not val and last_val and cont:
+                    y_string += 'diam{nr}_track_y<{y}'.format(nr=nr, y=extrema.VotingHistos['max'].GetYaxis().GetBinUpEdge(row))
+            y_string += ')'
+            all_string += y_string
+        self.region_cut += all_string
+        return extrema
+        # print all_string
+
     def generate_event_range(self):
         if self.cut_types['EventRange']:
             self.cut_strings['event_range'] += '(event_number<={max}&&event_number>={min})'.format(min=self.cut_types['EventRange'][0], max=self.cut_types['EventRange'][1])
