@@ -1,11 +1,9 @@
-import copy
 import os
 import numpy as np
 import pickle
 import json
 import ConfigParser
-from numpy import mean, array, zeros
-
+from numpy import mean, array, zeros, arange
 from AbstractClasses.Elementary import Elementary
 from ROOT import TCut, gROOT, TH1F
 from collections import OrderedDict
@@ -19,6 +17,7 @@ class Cut(Elementary):
     is loaded from the Analysis config file, whereas the individual cut settings are loaded from a JSON file located at Configuration/Individual_Configs. The JSON files are generated
     by the Analysis method SetIndividualCuts().
     """
+
     def __init__(self, parent_analysis, channel, verbose=True):
 
         self.analysis = parent_analysis
@@ -29,33 +28,28 @@ class Cut(Elementary):
         self.save_canvas = None
         self.histo = None
 
+        # readable cut types
+        self.EasyCutStrings = {'IndividualChCut': '',
+                               'EventRange': 'Evts.50k-1433k',
+                               'ExcludeFirst': '50k+',
+                               'noPulser': '!pulser',
+                               'notSaturated': '!saturated',
+                               'noBeamInter': '!BeamInter.',
+                               'Tracks': 'Track',
+                               'peakPos_high': 'peakPos<250',
+                               'spread_low': 'spread>20',
+                               'absMedian_high': '|median|<10',
+                               'pedestalsigma': 'PedSigma5'}
+
         # config
         self.parser = self.load_parser()
         self.beaminterruptions_folder = self.parser.get('CUT', 'beaminterruptions_folder')
         self.exclude_before_jump = self.parser.getint('CUT', 'excludeBeforeJump')
         self.exclude_after_jump = self.parser.getint('CUT', 'excludeAfterJump')
+        self.CutConfig = {}
 
-        # readable cut types
-        self.userCutTypes = {'IndividualChCut': '',
-                             'EventRange': 'Evts.50k-1433k',
-                             'ExcludeFirst': '50k+',
-                             'noPulser': '!pulser',
-                             'notSaturated': '!saturated',
-                             'noBeamInter': '!BeamInter.',
-                             'Tracks': 'Track',
-                             'peakPos_high': 'peakPos<250',
-                             'spread_low': 'spread>20',
-                             'absMedian_high': '|median|<10',
-                             'pedestalsigma': 'PedSigma5'}
-        # default cut Types
-        self.cut_types = {'IndividualChCut': '',
-                          'EventRange': [],  # [1234, 123456]
-                          'ExcludeFirst': 0,  # 50000 events
-                          'spread_low': -1,
-                          'absMedian_high': -1,
-                          'pedestalsigma': -1,
-                          'chi2': -1,
-                          'track_angle': -1}
+        self.IndividualCuts = None
+        self.load_individual_cuts()
 
         # define cut string dict
         self.cut_strings = OrderedDict()
@@ -76,7 +70,6 @@ class Cut(Elementary):
         self.region_cut = TCut('region_cut', '')
 
         self.__cutstring_settings = None
-        self.individualCuts = None
 
         # beam interrupts
         self.jumps = None
@@ -98,23 +91,14 @@ class Cut(Elementary):
         self.cut_strings['all_cuts'] = self.all_cut
 
     def load_config(self):
-        # individual additional cuts:
-        self.cut = self.parser.get('CUT', 'cut' + str(self.channel)) if not self.parser.get('CUT', 'cut' + str(self.channel)) in ['-1', '', 'True', 'False'] else ''
-        self.cut_types['IndividualChCut'] = copy.deepcopy(self.cut)
-        self.userCutTypes['IndividualChCut'] = copy.deepcopy(self.cut)
-
-        # general cuts
-        self.cut_types['ExcludeFirst'] = self.load_exclude_first(self.parser.getint('CUT', 'excludefirst'))
-        self.cut_types['EventRange'] = self.load_event_range(json.loads(self.parser.get('CUT', 'EventRange')))
-        self.cut_types['spread_low'] = self.load_spread_low(self.parser.getint('CUT', 'spread_low'))
-        self.cut_types['absMedian_high'] = self.load_abs_median_high(self.parser.getint('CUT', 'absMedian_high'))
-        self.cut_types['pedestalsigma'] = self.load_pedestal_sigma(self.parser.getint('CUT', 'pedestalsigma'))
-        self.cut_types['chi2'] = self.parser.getint('CUT', 'chi2')
-        assert type(self.cut_types['chi2']) is int and 0 < self.cut_types['chi2'] <= 100, 'chi2 quantile has to be and integer between 0 and 100'
-        self.cut_types['track_angle'] = self.parser.getint('CUT', 'track_angle')
-
-        # individual cuts
-        self.LoadIndividualCuts()
+        self.CutConfig['IndividualChCut'] = ''
+        self.CutConfig['ExcludeFirst'] = self.load_exclude_first(self.parser.getint('CUT', 'excludefirst'))
+        self.CutConfig['EventRange'] = self.load_event_range(json.loads(self.parser.get('CUT', 'EventRange')))
+        self.CutConfig['spread_low'] = self.load_spread_low(self.parser.getint('CUT', 'spread_low'))
+        self.CutConfig['absMedian_high'] = self.load_abs_median_high(self.parser.getint('CUT', 'absMedian_high'))
+        self.CutConfig['pedestalsigma'] = self.load_pedestal_sigma(self.parser.getint('CUT', 'pedestalsigma'))
+        self.CutConfig['chi2'] = self.parser.getint('CUT', 'chi2')
+        self.CutConfig['track_angle'] = self.parser.getint('CUT', 'track_angle')
 
     def generate_all_cut(self):
         cut = TCut('all_cuts', '')
@@ -127,33 +111,27 @@ class Cut(Elementary):
         parser.read('Configuration/AnalysisConfig_' + self.analysis.TESTCAMPAIGN + '.cfg')
         return parser
 
-    def LoadIndividualCuts(self):
-        path = "Configuration/Individual_Configs/"
-        filename = "{testcp}_Run{run}.json".format(testcp=self.TESTCAMPAIGN, run=self.analysis.run.run_number)
+    def load_individual_cuts(self):
+        path = 'Configuration/Individual_Configs/'
+        filename = '{tc}_Run{run}.json'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run.run_number)
         filepath = path + filename
         if os.path.exists(filepath):
-            print "Loading run-specific config file:"
-            print "\t" + filepath
-
-            f = open(filepath, "r")
-            self.individualCuts = json.load(f)
+            print 'Loading run-specific config file:', filepath
+            f = open(filepath, 'r')
+            self.IndividualCuts = json.load(f)
             f.close()
-            print "INDIVIDUAL Cuts:"
-            print self.individualCuts
-            ch = self.channel
-            if self.individualCuts[str(ch)]["EventRange"] is not None:
-                self.set_event_range([int(self.individualCuts[str(ch)]["EventRange"][0]), int(self.individualCuts[str(ch)]["EventRange"][1])])
-            elif self.individualCuts[str(ch)]["ExcludeFirst"] is not None:
-                self.set_exclude_first(value=int(self.individualCuts[str(ch)]["ExcludeFirst"]))
-
-            if self.individualCuts[str(ch)]["peakPos_high"] is not None:
-                self.set_peakpos_high(value=int(self.individualCuts[str(ch)]["peakPos_high"]))
-
-            if self.individualCuts[str(ch)]["spread_low"] is not None:
-                self.set_spread_low(low=int(self.individualCuts[str(ch)]["spread_low"]))
-
-            if self.individualCuts[str(ch)]["absMedian_high"] is not None:
-                self.set_abs_median_high(high=int(self.individualCuts[str(ch)]["absMedian_high"]))
+            print 'INDIVIDUAL Cuts:\n', self.IndividualCuts
+            ch = str(self.channel)
+            if self.IndividualCuts[ch]['ExcludeFirst'] is not None:
+                self.set_exclude_first(value=int(self.IndividualCuts[str(ch)]['ExcludeFirst']))
+            if self.IndividualCuts[ch]['EventRange'] is not None:
+                self.set_event_range(self.IndividualCuts[str(ch)]['EventRange'])
+            if self.IndividualCuts[ch]['peakPos_high'] is not None:
+                self.set_peakpos_high(value=int(self.IndividualCuts[str(ch)]['peakPos_high']))
+            if self.IndividualCuts[ch]['spread_low'] is not None:
+                self.set_spread_low(low=int(self.IndividualCuts[str(ch)]['spread_low']))
+            if self.IndividualCuts[ch]['absMedian_high'] is not None:
+                self.set_abs_median_high(high=int(self.IndividualCuts[str(ch)]['absMedian_high']))
 
     # ==============================================
     # region GET & SET
@@ -161,50 +139,40 @@ class Cut(Elementary):
     def load_event_range(self, event_range=None):
         """
         Gets the event range cut. If the arguments are negative, they are interpreted as time in minutes. Therefore, e.g.
-        SetEventRange(-10, 700000) means that only events are considered, which fulfill: >10 minutes after run start event number < 700000
+        load_event_range(-10, 700000) means that only events are considered, which fulfill: >10 minutes after run start event number < 700000
         :param event_range:
-        :return:
+        :return: event range
         """
-        if not event_range:
+        if event_range is None:
             event_range = [0, 0]
         for i, value in enumerate(event_range):
             if value < 0:
                 event_range[i] = self.analysis.get_event_at_time(time_sec=-1 * value * 60)
-        if event_range[0] and event_range[1]:
-            pass
-        elif event_range[0]:
+        if not event_range[1]:
             event_range[1] = self.analysis.get_event_at_time(-1)
-        elif event_range[1]:
-            event_range[0] = self.excludefirst
-        else:
-            event_range = []
+        if not event_range[0]:
+            event_range[0] = self.CutConfig['ExcludeFirst']
         return event_range
 
     def set_event_range(self, event_range):
-        self.cut_types['EventRange'] = self.load_event_range(event_range)
+        self.CutConfig['EventRange'] = self.load_event_range(event_range)
 
-    def GetIncludedEvents(self, maxevent=None):
+    def get_included_events(self, maxevent=None):
         """
-        Returns a list of event numbers, which are not excluded by the
-        following cuts (i.e. event cuts):
-            - excludeFirst cutr
-            - event-range cut
-            - beam-interruptions cut
+        Returns a list of event numbers, which are not excluded by: excludeFirst, EventRange or BeamInterruptions
         :return: list of included event numbers
         """
-        minevent = self.GetMinEvent()
-        if maxevent is None:
-            maxevent = self.GetMaxEvent()
+        minevent = self.get_min_event()
+        maxevent = self.get_max_event() if maxevent is None else maxevent
 
-        excluded = [i for i in np.arange(0, minevent)]  # first events
-        # if self.cut_types["noBeamInter"]:
-        #     self.get_beam_interruptions()
-        for i in xrange(len(self.jump_ranges["start"])):
-            excluded += [i for i in np.arange(self.jump_ranges["start"][i], self.jump_ranges["stop"][i] + 1)]  # events around jumps
+        excluded = [i for i in arange(0, minevent)]  # first events
+        for start, stop in zip(self.jump_ranges['start'], self.jump_ranges['stop']):
+            excluded += [i for i in xrange(start, stop + 1)]  # events around jumps
         excluded.sort()
-        all_events = np.arange(0, maxevent)
+        all_events = arange(0, maxevent)
         included = np.delete(all_events, excluded)
         return included
+
 
     def load_exclude_first(self, value):
         """
@@ -214,106 +182,82 @@ class Cut(Elementary):
         :return:
         """
         if value > 0:
-            self.userCutTypes['ExcludeFirst'] = str(int(value) / 1000) + 'k+'
+            self.EasyCutStrings['ExcludeFirst'] = str(int(value) / 1000) + 'k+'
             return value
         elif value == 0:
-            self.userCutTypes['ExcludeFirst'] = ''
+            self.EasyCutStrings['ExcludeFirst'] = ''
             return 0
         else:
-            self.userCutTypes['ExcludeFirst'] = str(-1 * value) + 'min+'
+            self.EasyCutStrings['ExcludeFirst'] = str(-1 * value) + 'min+'
             seconds = -1 * value * 60
             event = self.analysis.get_event_at_time(seconds)
             return event
 
     def set_exclude_first(self, value):
-        self.cut_types['ExcludeFirst'] = self.load_exclude_first(value)
+        self.CutConfig['ExcludeFirst'] = self.load_exclude_first(value)
 
     def load_peakpos_high(self, high):
         if high > 0:
-            self.userCutTypes['peakPos_high'] = 'peakPos<{high}'.format(high=high)
+            self.EasyCutStrings['peakPos_high'] = 'peakPos<{high}'.format(high=high)
             return high
         else:
             return -1
 
     def set_peakpos_high(self, value):
-        self.cut_types['peakPos_high'] = self.load_peakpos_high(value)
+        self.CutConfig['peakPos_high'] = self.load_peakpos_high(value)
 
     def load_spread_low(self, value):
         if value > 0:
-            self.userCutTypes['spread_low'] = 'spread>{low}'.format(low=value)
+            self.EasyCutStrings['spread_low'] = 'spread>{low}'.format(low=value)
             return value
         else:
             return -1
 
     def set_spread_low(self, low):
-        self.cut_types['spread_low'] = self.load_spread_low(low)
+        self.CutConfig['spread_low'] = self.load_spread_low(low)
 
     def load_abs_median_high(self, value):
         if value > 0:
-            self.userCutTypes['absMedian_high'] = '|median|<{high}'.format(high=value)
+            self.EasyCutStrings['absMedian_high'] = '|median|<{high}'.format(high=value)
             return value
         else:
             return -1
 
     def set_abs_median_high(self, high):
-        self.cut_types['absMedian_high'] = self.load_abs_median_high(high)
+        self.CutConfig['absMedian_high'] = self.load_abs_median_high(high)
 
     def load_pedestal_sigma(self, value):
         if value > 0:
-            self.userCutTypes['pedestalsigma'] = 'PedSigma' + str(value)
+            self.EasyCutStrings['pedestalsigma'] = 'PedSigma' + str(value)
             return value
         else:
-            self.userCutTypes['pedestalsigma'] = ''
+            self.EasyCutStrings['pedestalsigma'] = ''
             return -1
 
     def set_pedestal_sigma(self, sigma=-1):
-        self.cut_types['pedestalsigma'] = self.load_pedestal_sigma(sigma)
+        self.CutConfig['pedestalsigma'] = self.load_pedestal_sigma(sigma)
 
     # endregion
 
-    def GetEventRange(self):
+    def get_event_range(self):
         """
-        Returns a the lowest and highest event numbers to consider in the analysis. This event-range cut is defined either in the Analysis config file or in the indvidual cut file.
-        The returned object is a list, which is empty if no event-range cut is applied.
-        :return: cut eventrange
+        Returns a the lowest and highest event numbers to consider in the analysis.
+        :return: cut eventrange as list, empty if no cut applied
         """
-        return self.cut_types["EventRange"]
+        return self.CutConfig["EventRange"]
 
-    def GetMinEvent(self):
-        """
-        Returns the smallest event number satisfying the cut conditions.
-        :return:
-        """
-        if self.cut_types["EventRange"]:
-            return self.cut_types["EventRange"][0]
-        elif self.cut_types["ExcludeFirst"] > 0:
-            return self.cut_types["ExcludeFirst"]
-        else:
-            return 0
+    def get_min_event(self):
+        """ :return: the smallest event number satisfying the cut conditions. """
+        return self.CutConfig["EventRange"][0]
 
-    def GetNEvents(self):
-        """
-        Returns the number of events satisfying the cut conditions.
-        :return:
-        """
-        totEvents = self.analysis.get_event_at_time(-1)
-        if self.cut_types["EventRange"]:
-            return self.cut_types["EventRange"][1] - self.cut_types["EventRange"][0]
-        elif self.cut_types["ExcludeFirst"] > 0:
-            return totEvents - self.cut_types["ExcludeFirst"]
-        else:
-            return totEvents
+    def get_n_events(self):
+        """ :return: number of events in EventRange """
+        total_events = self.analysis.get_event_at_time(-1)
+        return total_events if not self.CutConfig["EventRange"] else self.CutConfig["EventRange"][1] - self.CutConfig["EventRange"][0]
 
-    def GetMaxEvent(self):
-        """
-        Returns the highest event number satisfying the cut conditions.
-        :return:
-        """
-        totEvents = self.analysis.get_event_at_time(-1)
-        if self.cut_types["EventRange"]:
-            return self.cut_types["EventRange"][1]
-        else:
-            return totEvents
+    def get_max_event(self):
+        """ :return: maximum event number """
+        return self.CutConfig["EventRange"][1]
 
     # ==============================================
     # region GENERATE CUT STRINGS
@@ -340,9 +284,9 @@ class Cut(Elementary):
                 if val and not last_val:
                     y = extrema.VotingHistos['max'].GetYaxis().GetBinLowEdge(row)
                     if y < abs(1e-10):
-                        cont=False
+                        cont = False
                         continue
-                    cont=True
+                    cont = True
                     y_string += '||' if y_string else '('
                     y_string += 'diam{nr}_track_y>{y}&&'.format(nr=nr, y=y)
                 elif not val and last_val and cont:
@@ -354,13 +298,14 @@ class Cut(Elementary):
         # print all_string
 
     def generate_event_range(self):
-        if self.cut_types['EventRange']:
-            self.cut_strings['event_range'] += '(event_number<={max}&&event_number>={min})'.format(min=self.cut_types['EventRange'][0], max=self.cut_types['EventRange'][1])
-        elif self.cut_types['ExcludeFirst']:
-            self.cut_strings['event_range'] += 'event_number>={min}'.format(min=self.cut_types['ExcludeFirst'])
+        if self.CutConfig['EventRange']:
+            self.cut_strings['event_range'] += '(event_number<={max}&&event_number>={min})'.format(min=self.CutConfig['EventRange'][0], max=self.CutConfig['EventRange'][1])
+        elif self.CutConfig['ExcludeFirst']:
+            self.cut_strings['event_range'] += 'event_number>={min}'.format(min=self.CutConfig['ExcludeFirst'])
 
     def generate_chi2(self):
         picklepath = 'Configuration/Individual_Configs/Chi2/{tc}_{run}_{ch}_Chi2.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run.run_number, ch=self.channel)
+
         def func():
             print 'generating chi2 cut for ch{ch}...'.format(ch=self.channel)
             gROOT.SetBatch(1)
@@ -372,13 +317,16 @@ class Cut(Elementary):
             h.GetQuantiles(nq, chi2, xq)
             gROOT.SetBatch(0)
             return chi2
+
         chi2 = self.do_pickle(picklepath, func)
-        string = 'chi2_tracks<{val}&&chi2_tracks>=0'.format(val=chi2[self.cut_types['chi2']])
-        return TCut(string) if self.cut_types['chi2'] > 0 else ''
+        assert type(self.CutConfig['chi2']) is int and 0 < self.CutConfig['chi2'] <= 100, 'chi2 quantile has to be and integer between 0 and 100'
+        string = 'chi2_tracks<{val}&&chi2_tracks>=0'.format(val=chi2[self.CutConfig['chi2']])
+        return TCut(string) if self.CutConfig['chi2'] > 0 else ''
 
     def generate_slope(self):
         picklepath = 'Configuration/Individual_Configs/Slope/{tc}_{run}_{ch}_Slope.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.lowest_rate_run, ch=self.channel)
-        angle = self.cut_types['track_angle']
+        angle = self.CutConfig['track_angle']
+
         def func():
             print 'generating slope cut for ch{ch}...'.format(ch=self.channel)
             # fit the slope to get the mean
@@ -389,7 +337,7 @@ class Cut(Elementary):
             self.analysis.tree.Draw('slope_x>>hx', '', 'goff')
             self.analysis.tree.Draw('slope_y>>hy', '', 'goff')
             fit_result = h_x.Fit('gaus', 'qs')
-            slope = {'x':[], 'y':[]}
+            slope = {'x': [], 'y': []}
             x_mean = fit_result.Parameters()[1]
             slope['x'] = [x_mean - angle, x_mean + angle]
             fit_result = h_y.Fit('gaus', 'qs')
@@ -400,6 +348,7 @@ class Cut(Elementary):
             gROOT.SetBatch(0)
             gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
             return slope
+
         slope = self.do_pickle(picklepath, func)
         # create the cut string
         string = 'slope_x>{minx}&&slope_x<{maxx}&&slope_y>{miny}&&slope_y<{maxy}'.format(minx=slope['x'][0], maxx=slope['x'][1], miny=slope['y'][0], maxy=slope['y'][1])
@@ -431,21 +380,21 @@ class Cut(Elementary):
 
         # -- EVENT RANGE CUT --
         self.generate_event_range()
-        if self.cut_types["EventRange"] != [] and gen_EventRange:
+        if self.CutConfig["EventRange"] != [] and gen_EventRange:
             if cutstring != "":
                 cutstring += "&&"
-            cutstring += "(event_number<={maxevent}&&event_number>={minevent})".format(minevent=self.cut_types["EventRange"][0], maxevent=self.cut_types["EventRange"][1])
-            self.userCutTypes["EventRange"] = "Evts.{min}k-{max}k".format(min=int(self.cut_types["EventRange"][0]) / 1000, max=int(self.cut_types["EventRange"][1]) / 1000)
-            self.userCutTypes["ExcludeFirst"] = ""
-        elif self.cut_types["ExcludeFirst"] > 0 and gen_ExcludeFirst:
+            cutstring += "(event_number<={maxevent}&&event_number>={minevent})".format(minevent=self.CutConfig["EventRange"][0], maxevent=self.CutConfig["EventRange"][1])
+            self.EasyCutStrings["EventRange"] = "Evts.{min}k-{max}k".format(min=int(self.CutConfig["EventRange"][0]) / 1000, max=int(self.CutConfig["EventRange"][1]) / 1000)
+            self.EasyCutStrings["ExcludeFirst"] = ""
+        elif self.CutConfig["ExcludeFirst"] > 0 and gen_ExcludeFirst:
             if cutstring != "":
                 cutstring += "&&"
-            cutstring += "event_number>={minevent}".format(minevent=self.cut_types["ExcludeFirst"])
-            self.userCutTypes["ExcludeFirst"] = "Evts.{min}k+".format(min=int(self.cut_types["ExcludeFirst"]) / 1000)
-            self.userCutTypes["EventRange"] = ""
+            cutstring += "event_number>={minevent}".format(minevent=self.CutConfig["ExcludeFirst"])
+            self.EasyCutStrings["ExcludeFirst"] = "Evts.{min}k+".format(min=int(self.CutConfig["ExcludeFirst"]) / 1000)
+            self.EasyCutStrings["EventRange"] = ""
         else:
-            self.userCutTypes["EventRange"] = ""
-            self.userCutTypes["ExcludeFirst"] = ""
+            self.EasyCutStrings["EventRange"] = ""
+            self.EasyCutStrings["ExcludeFirst"] = ""
 
         # -- PULSER CUT --
         self.cut_strings['pulser'] += '!pulser'
@@ -457,37 +406,38 @@ class Cut(Elementary):
         self.cut_strings['tracks'] += 'n_tracks'
 
         # -- SPREAD LOW CUT --
-        if self.cut_types['spread_low'] > 0:
-            self.cut_strings['spread_low'] += 'sig_spread[{ch}]>{low}'.format(ch=self.channel, low=int(self.cut_types['spread_low']))
+        if self.CutConfig['spread_low'] > 0:
+            self.cut_strings['spread_low'] += 'sig_spread[{ch}]>{low}'.format(ch=self.channel, low=int(self.CutConfig['spread_low']))
             if cutstring != '':
                 cutstring += '&&'
-            cutstring += 'sig_spread[{channel}]>{low}'.format(channel=self.channel, low=int(self.cut_types['spread_low']))
-            self.userCutTypes['spread_low'] = 'spread>{low}'.format(low=int(self.cut_types['spread_low']))
+            cutstring += 'sig_spread[{channel}]>{low}'.format(channel=self.channel, low=int(self.CutConfig['spread_low']))
+            self.EasyCutStrings['spread_low'] = 'spread>{low}'.format(low=int(self.CutConfig['spread_low']))
         else:
-            self.userCutTypes['spread_low'] = ''
+            self.EasyCutStrings['spread_low'] = ''
 
         # -- MEDIAN CUT --
-        if self.cut_types['absMedian_high'] > 0:
-            self.cut_strings['median'] += 'abs(median[{ch}])<{high}'.format(ch=self.channel, high=int(self.cut_types['absMedian_high']))
+        if self.CutConfig['absMedian_high'] > 0:
+            print 'CONFIG:', self.CutConfig['absMedian_high'], type(self.CutConfig['absMedian_high'])
+            self.cut_strings['median'] += 'abs(median[{ch}])<{high}'.format(ch=self.channel, high=int(self.CutConfig['absMedian_high']))
             if cutstring != '':
                 cutstring += '&&'
-            cutstring += 'abs(median[{channel}])<{high}'.format(channel=self.channel, high=int(self.cut_types['absMedian_high']))
-            self.userCutTypes['absMedian_high'] = '|median|<{high}'.format(high=int(self.cut_types['absMedian_high']))
+            cutstring += 'abs(median[{channel}])<{high}'.format(channel=self.channel, high=int(self.CutConfig['absMedian_high']))
+            self.EasyCutStrings['absMedian_high'] = '|median|<{high}'.format(high=int(self.CutConfig['absMedian_high']))
         else:
-            self.userCutTypes['absMedian_high'] = ''
+            self.EasyCutStrings['absMedian_high'] = ''
 
         # -- PEDESTAL SIGMA CUT --
-        if self.cut_types['pedestalsigma'] > 0:
+        if self.CutConfig['pedestalsigma'] > 0:
             if cutstring != '':
                 cutstring += '&&'
             self.__load_pedestal_data()
             ped_range = self.__calc_pedestal_range()
             string = '{ped}>{min}&&{ped}<{max}'.format(ped=self.analysis.pedestal_names[self.channel], min=ped_range[0], max=ped_range[1])
             cutstring += string
-            self.userCutTypes["pedestalsigma"] = "PedSigma" + str(self.cut_types['pedestalsigma'])
+            self.EasyCutStrings["pedestalsigma"] = "PedSigma" + str(self.CutConfig['pedestalsigma'])
             self.cut_strings['ped_sigma'] += string
         else:
-            self.userCutTypes["pedestalsigma"] = ""
+            self.EasyCutStrings["pedestalsigma"] = ""
 
         # -- set the channel on the cuts --
         if setChannel:
@@ -496,7 +446,7 @@ class Cut(Elementary):
 
         # -- BEAM INTERRUPTION CUT --
         self.__generate_beam_interruptions()
-        self.userCutTypes["noBeamInter"] = "BeamOn"
+        self.EasyCutStrings["noBeamInter"] = "BeamOn"
 
         self._checklist["GenerateCutString"] = True
         self.__cutstring_settings = {
@@ -509,10 +459,10 @@ class Cut(Elementary):
     def __calc_pedestal_range(self):
         sigma = self.pedestal_sigma
         ped_mean = self.pedestal_mean
-        sigma_range = self.cut_types['pedestalsigma']
+        sigma_range = self.CutConfig['pedestalsigma']
         return [ped_mean - sigma_range * sigma, ped_mean + sigma_range * sigma]
 
-    def __generate_beam_interruptions(self,):
+    def __generate_beam_interruptions(self, ):
         """
         This adds the restrictions to the cut string such that beam interruptions are excluded each time the cut is applied.
         :return: cut
@@ -757,9 +707,9 @@ class Cut(Elementary):
         :return:
         """
         string_ = ""
-        for type_ in self.userCutTypes.keys():
-            if self.userCutTypes[type_] != "":
-                string_ += self.userCutTypes[type_] + ", "
+        for type_ in self.EasyCutStrings.keys():
+            if self.EasyCutStrings[type_] != "":
+                string_ += self.EasyCutStrings[type_] + ", "
         if string_ != "":
             string_ = string_[:-2]
         return string_

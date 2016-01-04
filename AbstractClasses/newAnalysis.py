@@ -508,10 +508,10 @@ class Analysis(Elementary):
         :return: list of included event numbers
         '''
         if channel == None:
-            minevent0 = self.cuts[0].GetMinEvent()
-            minevent3 = self.cuts[3].GetMinEvent()
-            maxevent0 = self.cuts[0].GetMaxEvent()
-            maxevent3 = self.cuts[3].GetMaxEvent()
+            minevent0 = self.cuts[0].get_min_event()
+            minevent3 = self.cuts[3].get_min_event()
+            maxevent0 = self.cuts[0].get_max_event()
+            maxevent3 = self.cuts[3].get_max_event()
             minevent = min(minevent0, minevent3)
             if maxevent == None:
                 maxevent = max(maxevent0, maxevent3)
@@ -533,17 +533,17 @@ class Analysis(Elementary):
             # return cut0
         else:
             assert (channel in [0, 3])
-            return self.cuts[channel].GetIncludedEvents(maxevent=maxevent)
+            return self.cuts[channel].get_included_events(maxevent=maxevent)
 
     def GetMinEventCut(self, channel=None):
         if channel == None:
-            opt0 = self.cuts[0].GetMinEvent()
-            opt3 = self.cuts[3].GetMinEvent()
+            opt0 = self.cuts[0].get_min_event()
+            opt3 = self.cuts[3].get_min_event()
             assert (opt0 == opt3), "GetMinEvent Not the same for both cut channels. Choose a specific channel."
             return opt0
         else:
             assert (channel in [0, 3])
-            return self.cuts[channel].GetMinEvent()
+            return self.cuts[channel].get_min_event()
 
     def GetMaxEventCut(self, channel=None):
         '''
@@ -555,13 +555,13 @@ class Analysis(Elementary):
         :return:
         '''
         if channel == None:
-            opt0 = self.cuts[0].GetMaxEvent()
-            opt3 = self.cuts[3].GetMaxEvent()
+            opt0 = self.cuts[0].get_max_event()
+            opt3 = self.cuts[3].get_max_event()
             assert (opt0 == opt3), "GetMaxEvent Not the same for both cut channels. Choose a specific channel."
             return opt0
         else:
             assert (channel in [0, 3])
-            return self.cuts[channel].GetMaxEvent()
+            return self.cuts[channel].get_max_event()
 
     def GetNEventsCut(self, channel=None):
         '''
@@ -573,13 +573,13 @@ class Analysis(Elementary):
         :return:
         '''
         if channel == None:
-            opt0 = self.cuts[0].GetNEvents()
-            opt3 = self.cuts[3].GetNEvents()
+            opt0 = self.cuts[0].get_n_events()
+            opt3 = self.cuts[3].get_n_events()
             assert (opt0 == opt3), "GetNEvents Not the same for both cut channels. Choose a specific channel."
             return opt0
         else:
             assert (channel in [0, 3])
-            return self.cuts[channel].GetNEvents()
+            return self.cuts[channel].get_n_events()
 
     def ShowSignalHisto(self, channel=None, canvas=None, drawoption="", cut="", color=None, normalized=True, drawruninfo=True, binning=600, xmin=None, xmax=None, savePlots=False, logy=False,
                         gridx=False):
