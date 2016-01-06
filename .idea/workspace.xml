@@ -2,11 +2,65 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="e6cf272c-81a5-4f4e-9e0a-ff55b841b26f" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/MeanSignalFit/.placeholder" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_171_S129" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_171_other" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_176_other" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_178_S129" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_178_other" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_216_S129" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_217_S129" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_218_S129" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_219_S129" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_220_S129" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_221_S129" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_378_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_379_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_380_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_381_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_383_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_384_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_385_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_386_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_388_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_389_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_391_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_392_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_393_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_394_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_395_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_396_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_397_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_398_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_398_poly-D" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_399_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_400_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_401_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_402_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_403_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_404_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_405_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_406_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_407_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_408_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_409_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_410_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_411_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_412_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_413_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_414_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_415_poly-B2" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_416_poly-B2" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" afterPath="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/Configuration/AnalysisConfig_201508.cfg" afterPath="$PROJECT_DIR$/Configuration/AnalysisConfig_201508.cfg" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/Cut.py" afterPath="$PROJECT_DIR$/AbstractClasses/Cut.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/PreAnalysisPlot.py" afterPath="$PROJECT_DIR$/AbstractClasses/PreAnalysisPlot.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/RunClass.py" afterPath="$PROJECT_DIR$/AbstractClasses/RunClass.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/Configuration/DiamondAliases.cfg" afterPath="$PROJECT_DIR$/Configuration/DiamondAliases.cfg" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/Elementary.py" afterPath="$PROJECT_DIR$/AbstractClasses/Elementary.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/Configuration/RunConfig_201508.cfg" afterPath="$PROJECT_DIR$/Configuration/RunConfig_201508.cfg" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/RunSelection.py" afterPath="$PROJECT_DIR$/AbstractClasses/RunSelection.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/newAnalysis.py" afterPath="$PROJECT_DIR$/AbstractClasses/newAnalysis.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" afterPath="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
     <ignored path="myPadAnalysis.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -26,49 +80,27 @@
     <favorites_list name="myPadAnalysis" />
   </component>
   <component name="FileEditorManager">
-    <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
+    <leaf>
       <file leaf-file-name="newAnalysis.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/AbstractClasses/newAnalysis.py">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="64" column="74" selection-start-line="64" selection-start-column="74" selection-end-line="64" selection-end-column="74" />
+              <caret line="274" column="0" selection-start-line="274" selection-start-column="0" selection-end-line="274" selection-end-column="0" />
               <folding>
                 <element signature="e#0#11#0" expanded="true" />
-                <element signature="e#53188#60671#0" expanded="false" />
-                <element signature="e#60751#62527#0" expanded="false" />
-                <element signature="e#62605#65984#0" expanded="false" />
+                <element signature="e#53394#60877#0" expanded="false" />
+                <element signature="e#60957#62733#0" expanded="false" />
+                <element signature="e#62811#66190#0" expanded="false" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="ConfigClass.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/AbstractClasses/ConfigClass.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0">
-              <caret line="60" column="62" selection-start-line="60" selection-start-column="62" selection-end-line="60" selection-end-column="62" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="Extrema.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/AbstractClasses/Extrema.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0">
-              <caret line="51" column="24" selection-start-line="51" selection-start-column="24" selection-end-line="51" selection-end-column="24" />
-              <folding>
-                <element signature="e#0#30#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="Cut.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="Cut.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/AbstractClasses/Cut.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.29143646">
-              <caret line="486" column="0" selection-start-line="486" selection-start-column="0" selection-end-line="486" selection-end-column="0" />
+            <state vertical-scroll-proportion="-15.870968">
+              <caret line="525" column="53" selection-start-line="525" selection-start-column="53" selection-end-line="525" selection-end-column="53" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
               </folding>
@@ -80,7 +112,7 @@
         <entry file="file://$PROJECT_DIR$/AbstractClasses/signal_analysis.py">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="87" column="25" selection-start-line="87" selection-start-column="25" selection-end-line="87" selection-end-column="25" />
+              <caret line="117" column="32" selection-start-line="117" selection-start-column="32" selection-end-line="117" selection-end-column="32" />
               <folding>
                 <element signature="e#108#219#0" expanded="true" />
               </folding>
@@ -88,11 +120,46 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="RunClass.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/AbstractClasses/RunClass.py">
+      <file leaf-file-name="AnalysisCollection.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="229" column="8" selection-start-line="229" selection-start-column="8" selection-end-line="229" selection-end-column="8" />
+              <caret line="59" column="31" selection-start-line="59" selection-start-column="31" selection-end-line="59" selection-end-column="31" />
+              <folding>
+                <element signature="e#108#119#0" expanded="true" />
+                <element signature="e#2188#2716#0" expanded="false" />
+                <element signature="e#2773#2786#0" expanded="false" />
+                <element signature="e#5244#5261#0" expanded="false" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="AnalysisClass.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisClass.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state vertical-scroll-proportion="0.0">
+              <caret line="269" column="8" selection-start-line="269" selection-start-column="8" selection-end-line="269" selection-end-column="8" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="RunSelection.py" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/AbstractClasses/RunSelection.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state vertical-scroll-proportion="1.1025057">
+              <caret line="478" column="0" selection-start-line="478" selection-start-column="0" selection-end-line="478" selection-end-column="0" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="Elementary.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/AbstractClasses/Elementary.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state vertical-scroll-proportion="0.0">
+              <caret line="209" column="43" selection-start-line="209" selection-start-column="43" selection-end-line="209" selection-end-column="43" />
               <folding />
             </state>
           </provider>
@@ -116,24 +183,27 @@
         <option value="$PROJECT_DIR$/AbstractClasses/Converter.py" />
         <option value="$PROJECT_DIR$/Runinfos/RunInfo.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/RunClass.py" />
-        <option value="$PROJECT_DIR$/AbstractClasses/RunSelection.py" />
-        <option value="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" />
-        <option value="$PROJECT_DIR$/AbstractClasses/Elementary.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/ConfigClass.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/FindExtrema.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/Bin.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/Extrema.py" />
-        <option value="$PROJECT_DIR$/AbstractClasses/newAnalysis.py" />
-        <option value="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/Cut.py" />
+        <option value="$PROJECT_DIR$/AbstractClasses/newAnalysis.py" />
+        <option value="$PROJECT_DIR$/AbstractClasses/Elementary.py" />
+        <option value="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" />
+        <option value="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" />
+        <option value="$PROJECT_DIR$/AbstractClasses/RunSelection.py" />
       </list>
     </option>
+  </component>
+  <component name="NamedScopeManager">
+    <order />
   </component>
   <component name="ProjectFrameBounds">
     <option name="x" value="-1" />
     <option name="y" value="24" />
-    <option name="width" value="1602" />
-    <option name="height" value="853" />
+    <option name="width" value="1922" />
+    <option name="height" value="1033" />
   </component>
   <component name="ProjectInspectionProfilesVisibleTreeState">
     <entry key="Project Default">
@@ -196,11 +266,10 @@
       <autoscrollToSource />
       <autoscrollFromSource />
       <sortByType />
-      <manualOrder />
-      <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
       <pane id="Scratches" />
+      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <PATH>
@@ -370,25 +439,38 @@
   <component name="SvnConfiguration">
     <configuration />
   </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="e6cf272c-81a5-4f4e-9e0a-ff55b841b26f" name="Default" comment="" />
+      <created>1451982418783</created>
+      <option name="number" value="Default" />
+      <updated>1451982418783</updated>
+    </task>
+    <servers />
+  </component>
   <component name="ToolWindowManager">
-    <frame x="-1" y="24" width="1602" height="853" extended-state="6" />
+    <frame x="-1" y="24" width="1922" height="1033" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32891247" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.17057705" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
-      <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
-      <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
-      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
-      <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
-      <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
+      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
+      <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
+      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32819384" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Application Servers" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.17026885" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="-1" side_tool="true" content_ui="tabs" />
+      <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="-1" side_tool="true" content_ui="tabs" />
+      <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
+      <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
+      <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
     </layout>
   </component>
   <component name="Vcs.Log.UiProperties">
@@ -437,6 +519,24 @@
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/signal_analysis.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="87" column="25" selection-start-line="87" selection-start-column="25" selection-end-line="87" selection-end-column="25" />
+          <folding>
+            <element signature="e#108#219#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/RunClass.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="229" column="8" selection-start-line="229" selection-start-column="8" selection-end-line="229" selection-end-column="8" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/Converter.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
@@ -450,9 +550,9 @@
           <caret line="266" column="47" selection-start-line="266" selection-start-column="47" selection-end-line="266" selection-end-column="47" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
-            <element signature="e#53188#60671#0" expanded="false" />
-            <element signature="e#60751#62527#0" expanded="false" />
-            <element signature="e#62605#65984#0" expanded="false" />
+            <element signature="e#53394#60877#0" expanded="false" />
+            <element signature="e#60957#62733#0" expanded="false" />
+            <element signature="e#62811#66190#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -487,7 +587,6 @@
           <caret line="63" column="30" selection-start-line="63" selection-start-column="30" selection-end-line="63" selection-end-column="30" />
           <folding>
             <element signature="e#0#9#0" expanded="false" />
-            <marker date="1450875416952" expanded="true" signature="0:66" placeholder="import ..." />
           </folding>
         </state>
       </provider>
@@ -520,9 +619,9 @@
           <caret line="320" column="17" selection-start-line="320" selection-start-column="17" selection-end-line="320" selection-end-column="17" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
-            <element signature="e#53188#60671#0" expanded="false" />
-            <element signature="e#60751#62527#0" expanded="false" />
-            <element signature="e#62605#65984#0" expanded="false" />
+            <element signature="e#53394#60877#0" expanded="false" />
+            <element signature="e#60957#62733#0" expanded="false" />
+            <element signature="e#62811#66190#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -540,7 +639,6 @@
           <caret line="62" column="30" selection-start-line="62" selection-start-column="30" selection-end-line="62" selection-end-column="30" />
           <folding>
             <element signature="e#0#9#0" expanded="false" />
-            <marker date="1450875416952" expanded="true" signature="0:66" placeholder="import ..." />
           </folding>
         </state>
       </provider>
@@ -574,9 +672,9 @@
           <caret line="23" column="55" selection-start-line="23" selection-start-column="55" selection-end-line="23" selection-end-column="55" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
-            <element signature="e#53188#60671#0" expanded="false" />
-            <element signature="e#60751#62527#0" expanded="false" />
-            <element signature="e#62605#65984#0" expanded="false" />
+            <element signature="e#53394#60877#0" expanded="false" />
+            <element signature="e#60957#62733#0" expanded="false" />
+            <element signature="e#62811#66190#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -594,7 +692,6 @@
           <caret line="49" column="8" selection-start-line="49" selection-start-column="8" selection-end-line="49" selection-end-column="8" />
           <folding>
             <element signature="e#0#9#0" expanded="false" />
-            <marker date="1450875416952" expanded="true" signature="0:66" placeholder="import ..." />
           </folding>
         </state>
       </provider>
@@ -620,9 +717,9 @@
           <caret line="166" column="8" selection-start-line="166" selection-start-column="8" selection-end-line="166" selection-end-column="8" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
-            <element signature="e#53188#60671#0" expanded="false" />
-            <element signature="e#60751#62527#0" expanded="false" />
-            <element signature="e#62605#65984#0" expanded="false" />
+            <element signature="e#53394#60877#0" expanded="false" />
+            <element signature="e#60957#62733#0" expanded="false" />
+            <element signature="e#62811#66190#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -633,7 +730,6 @@
           <caret line="49" column="8" selection-start-line="49" selection-start-column="8" selection-end-line="49" selection-end-column="8" />
           <folding>
             <element signature="e#0#9#0" expanded="false" />
-            <marker date="1450875416952" expanded="true" signature="0:66" placeholder="import ..." />
           </folding>
         </state>
       </provider>
@@ -659,9 +755,9 @@
           <caret line="166" column="8" selection-start-line="166" selection-start-column="8" selection-end-line="166" selection-end-column="8" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
-            <element signature="e#53188#60671#0" expanded="false" />
-            <element signature="e#60751#62527#0" expanded="false" />
-            <element signature="e#62605#65984#0" expanded="false" />
+            <element signature="e#53394#60877#0" expanded="false" />
+            <element signature="e#60957#62733#0" expanded="false" />
+            <element signature="e#62811#66190#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -672,7 +768,6 @@
           <caret line="49" column="8" selection-start-line="49" selection-start-column="8" selection-end-line="49" selection-end-column="8" />
           <folding>
             <element signature="e#0#9#0" expanded="false" />
-            <marker date="1450875416952" expanded="true" signature="0:66" placeholder="import ..." />
           </folding>
         </state>
       </provider>
@@ -698,9 +793,9 @@
           <caret line="166" column="8" selection-start-line="166" selection-start-column="8" selection-end-line="166" selection-end-column="8" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
-            <element signature="e#53188#60671#0" expanded="false" />
-            <element signature="e#60751#62527#0" expanded="false" />
-            <element signature="e#62605#65984#0" expanded="false" />
+            <element signature="e#53394#60877#0" expanded="false" />
+            <element signature="e#60957#62733#0" expanded="false" />
+            <element signature="e#62811#66190#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -711,7 +806,6 @@
           <caret line="49" column="8" selection-start-line="49" selection-start-column="8" selection-end-line="49" selection-end-column="8" />
           <folding>
             <element signature="e#0#9#0" expanded="false" />
-            <marker date="1450875416952" expanded="true" signature="0:66" placeholder="import ..." />
           </folding>
         </state>
       </provider>
@@ -737,24 +831,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$USER_HOME$/.PyCharmEdu20/system/python_stubs/-1247972723/datetime.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="51" column="8" selection-start-line="51" selection-start-column="8" selection-end-line="51" selection-end-column="8" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file:///usr/lib/python2.7/textwrap.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="346" column="29" selection-start-line="346" selection-start-column="29" selection-end-line="346" selection-end-column="29" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/.PyCharmEdu20/system/python_stubs/-1247972723/_io.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.33287293">
-          <caret line="312" column="8" selection-start-line="312" selection-start-column="8" selection-end-line="312" selection-end-column="8" />
         </state>
       </provider>
     </entry>
@@ -765,84 +845,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/RunSelection.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="233" column="64" selection-start-line="233" selection-start-column="64" selection-end-line="233" selection-end-column="64" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/Elementary.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="137" column="16" selection-start-line="137" selection-start-column="16" selection-end-line="137" selection-end-column="16" />
-          <folding>
-            <element signature="e#0#9#0" expanded="false" />
-            <marker date="1450875416952" expanded="true" signature="0:66" placeholder="import ..." />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/RunClass.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="229" column="8" selection-start-line="229" selection-start-column="8" selection-end-line="229" selection-end-column="8" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/SignalInRCClass.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="6" column="6" selection-start-line="6" selection-start-column="6" selection-end-line="6" selection-end-column="6" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.5814917">
-          <caret line="692" column="81" selection-start-line="692" selection-start-column="81" selection-end-line="692" selection-end-column="81" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/.PyCharmEdu20/system/python_stubs/-1247972723/__builtin__.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.39502764">
-          <caret line="5109" column="8" selection-start-line="5109" selection-start-column="8" selection-end-line="5109" selection-end-column="8" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/newAnalysis.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="64" column="74" selection-start-line="64" selection-start-column="74" selection-end-line="64" selection-end-column="74" />
-          <folding>
-            <element signature="e#0#11#0" expanded="true" />
-            <element signature="e#53188#60671#0" expanded="false" />
-            <element signature="e#60751#62527#0" expanded="false" />
-            <element signature="e#62605#65984#0" expanded="false" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/signal_analysis.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="87" column="25" selection-start-line="87" selection-start-column="25" selection-end-line="87" selection-end-column="25" />
-          <folding>
-            <element signature="e#108#219#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/Extrema.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="51" column="24" selection-start-line="51" selection-start-column="24" selection-end-line="51" selection-end-column="24" />
-          <folding>
-            <element signature="e#0#30#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -875,13 +881,91 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/Extrema.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="51" column="24" selection-start-line="51" selection-start-column="24" selection-end-line="51" selection-end-column="24" />
+          <folding>
+            <element signature="e#0#30#0" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/RunClass.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.3929385">
+          <caret line="228" column="0" selection-start-line="228" selection-start-column="0" selection-end-line="228" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/Elementary.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="209" column="43" selection-start-line="209" selection-start-column="43" selection-end-line="209" selection-end-column="43" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/Cut.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.29143646">
-          <caret line="486" column="0" selection-start-line="486" selection-start-column="0" selection-end-line="486" selection-end-column="0" />
+        <state vertical-scroll-proportion="-15.870968">
+          <caret line="525" column="53" selection-start-line="525" selection-start-column="53" selection-end-line="525" selection-end-column="53" />
           <folding>
             <element signature="e#0#9#0" expanded="true" />
           </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/newAnalysis.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="274" column="0" selection-start-line="274" selection-start-column="0" selection-end-line="274" selection-end-column="0" />
+          <folding>
+            <element signature="e#0#11#0" expanded="true" />
+            <element signature="e#53394#60877#0" expanded="false" />
+            <element signature="e#60957#62733#0" expanded="false" />
+            <element signature="e#62811#66190#0" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisClass.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="269" column="8" selection-start-line="269" selection-start-column="8" selection-end-line="269" selection-end-column="8" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/signal_analysis.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="117" column="32" selection-start-line="117" selection-start-column="32" selection-end-line="117" selection-end-column="32" />
+          <folding>
+            <element signature="e#108#219#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="59" column="31" selection-start-line="59" selection-start-column="31" selection-end-line="59" selection-end-column="31" />
+          <folding>
+            <element signature="e#108#119#0" expanded="true" />
+            <element signature="e#2188#2716#0" expanded="false" />
+            <element signature="e#2773#2786#0" expanded="false" />
+            <element signature="e#5244#5261#0" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/RunSelection.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="1.1025057">
+          <caret line="478" column="0" selection-start-line="478" selection-start-column="0" selection-end-line="478" selection-end-column="0" />
+          <folding />
         </state>
       </provider>
     </entry>

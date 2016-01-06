@@ -457,6 +457,25 @@ class RunSelection(Elementary):
                 dic[run] = info
         return dic
 
+    def change_runinfo_key(self):
+        f = open(self.run.runinfofile, 'r+')
+        runs = self.get_selected_runs()
+        runinfo = json.load(f)
+        keys = [str(key) for key in runinfo.values()[0].iterkeys()]
+        print keys
+        change_key = raw_input('Enter the key you want to change: ')
+        assert change_key in keys, 'The entered key does not exist!'
+        print 'old values:'
+        for run in runs:
+            print '{run}:  {value}'.format(run=run, value=runinfo[str(run)][change_key])
+        change_value = raw_input('Enter the new value: ')
+        for run in runs:
+            runinfo[str(run)][change_key] = change_value
+        f.seek(0)
+        json.dump(runinfo, f, indent=2, sort_keys=True)
+        f.truncate()
+        f.close()
+
 
 if __name__ == '__main__':
     z = RunSelection()

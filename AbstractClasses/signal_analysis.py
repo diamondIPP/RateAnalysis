@@ -4,7 +4,7 @@
 from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TF1, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F
 from newAnalysis import Analysis
 from array import array
-from math import sqrt, ceil
+from math import sqrt, ceil, log
 from argparse import ArgumentParser
 from Extrema import Extrema2D
 
@@ -75,13 +75,15 @@ class SignalAnalysis(Analysis):
         y = [margins['y'][0], margins['y'][1]]
         nr = 1 if not self.channel else 2
         # get bin size via digital resolution of the telescope pixels
-        factor = 2
+        factor = 4
         x_bins = int(ceil(((x[1] - x[0]) / 0.015 * sqrt(12) / factor)))
         y_bins = int(ceil((y[1] - y[0]) / 0.01 * sqrt(12) / factor))
         h = TProfile2D('signal_map', 'Signal Map', x_bins, x[0], x[1], y_bins, y[0], y[1])
         if not show:
             gROOT.SetBatch(1)
-        self.tree.Draw('{z}:diam{nr}_track_x:diam{nr}_track_y>>signal_map'.format(z=self.signal_name, nr=nr), z.cut.all_cut, 'goff')
+        signal = '{sig}-{pol}*{ped}'.format(sig=self.signal_name, ped=self.pedestal_name, pol=self.polarity)
+        print 'drawing signal map of {dia} for Run {run}...'.format(dia=self.diamond_name, run=self.run_number)
+        self.tree.Draw('{z}:diam{nr}_track_x:diam{nr}_track_y>>signal_map'.format(z=signal, nr=nr), self.cut.all_cut, 'goff')
         self.canvas = TCanvas('c', 'Signal Map', 1000, 1000)
         gStyle.SetPalette(53)
         h.Draw(draw_option)
@@ -106,7 +108,7 @@ class SignalAnalysis(Analysis):
         :param show: shows a plot of the canvas if True
         """
         sig_map = self.SignalMapHisto if self.SignalMapHisto is not None else self.draw_signal_map(show=False)
-        x = [sig_map.GetMinimum() / 10 * 10, (sig_map.GetMaximum() + 10) / 10 * 10]
+        x = [int(sig_map.GetMinimum()) / 10 * 10, int(sig_map.GetMaximum() + 10) / 10 * 10]
         h = TH1F('h', 'Mean Signal Distribution', 50, x[0], x[1])
         for bin_ in xrange((sig_map.GetNbinsX() + 2) * (sig_map.GetNbinsY() + 2)):
             h.Fill(sig_map.GetBinContent(bin_))
@@ -114,7 +116,21 @@ class SignalAnalysis(Analysis):
             self.canvas = TCanvas('c', 'Mean Signal Distribution', 1000, 1000)
             h.Draw()
         self.MeanSignalHisto = h
-        # print self.__get_median(h)
+
+    def fit_mean_signal_distribution(self):
+        pickle_path = self.get_program_dir() + self.pickle_dir + 'MeanSignalFit/{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
+
+        def func():
+            self.draw_mean_signal_distribution(show=False)
+            return self.MeanSignalHisto.Fit('gaus', 'qs')
+
+        fit = self.do_pickle(pickle_path, func)
+        return fit
+
+    def get_mean_fwhm(self):
+        fit = self.fit_mean_signal_distribution()
+        conversion_factor = 2 * sqrt(2 * log(2))  # sigma to FWHM
+        return fit.Parameter(2) * conversion_factor
 
     def draw_diamond_hitmap(self):
         self.find_diamond_margins()
@@ -128,7 +144,7 @@ class SignalAnalysis(Analysis):
                 gROOT.SetBatch(1)
             h = TH2F('h', 'Diamond Margins', 80, -.3, .3, 52, -.3, .3)
             nr = 1 if not self.channel else 2
-            self.tree.Draw('diam{nr}_track_x:diam{nr}_track_y>>h'.format(nr=nr), z.cut.all_cut, 'goff')
+            self.tree.Draw('diam{nr}_track_x:diam{nr}_track_y>>h'.format(nr=nr), self.cut.all_cut, 'goff')
             projections = [h.ProjectionX(), h.ProjectionY()]
             efficient_bins = [[], []]
             zero_bins = [[], []]
@@ -272,7 +288,7 @@ class SignalAnalysis(Analysis):
 
     def show_signal_histo(self, cut=None):
         canvas = TCanvas('bla', 'blub', 1000, 1000)
-        self.histo = TH1F('signal b2', 'signal without cuts', 400, -100, 300)
+        self.histo = TH1F('signal b2', 'signal without cuts', 350, -50, 300)
         canvas.cd()
         cut = '' if cut is None else cut
         self.tree.Draw("{name}>>signal b2".format(name=self.signal_name), cut)
@@ -283,6 +299,7 @@ class SignalAnalysis(Analysis):
         gROOT.SetBatch(1)
         c1 = TCanvas('single', '', 1000, 1000)
         c2 = TCanvas('all', '', 1000, 1000)
+        c2.SetLeftMargin(0.15)
         legend = TLegend(0.7, 0.3, 0.98, .7)
         histos = []
         drawn_first = False
@@ -292,7 +309,7 @@ class SignalAnalysis(Analysis):
                 save_name = 'signal_distribution_{cut}'.format(cut=key)
                 histo_name = 'signal {range}{peakint}'.format(range=self.signal_region, peakint=self.peak_integral)
                 histo_title = 'signal with cut ' + key
-                histo = TH1F(histo_name, histo_title, 400, -100, 300)
+                histo = TH1F(histo_name, histo_title, 350, -50, 300)
                 # safe single plots
                 c1.cd()
                 self.tree.Draw("{name}>>{histo}".format(name=self.signal_name, histo=histo_name), value)
@@ -301,11 +318,13 @@ class SignalAnalysis(Analysis):
                 c2.cd()
                 histo.SetLineColor(self.get_color())
                 if not drawn_first:
-                    histo.SetTitle('signal distribution with different cuts')
+                    self.format_histo(histo, title='signal distribution of different single cuts', x_tit='pulse height [au]', y_tit='Entries [#]', y_off=2)
                     histo.SetStats(0)
                     histo.Draw()
                     drawn_first = True
                 else:
+                    if key == 'all_cuts':
+                        histo.SetLineWidth(2)
                     histo.Draw('same')
                 histos.append(histo)
                 legend.AddEntry(histo, key, 'l')
@@ -321,6 +340,7 @@ class SignalAnalysis(Analysis):
         gROOT.SetBatch(1)
         c1 = TCanvas('single', '', 1000, 1000)
         c2 = TCanvas('normalised', '', 1000, 1000)
+        c2.SetLeftMargin(0.15)
         legend = TLegend(0.7, 0.3, 0.98, .7)
         histos = []
         drawn_first = False
@@ -330,7 +350,7 @@ class SignalAnalysis(Analysis):
                 save_name = 'signal_distribution_normalised_{cut}'.format(cut=key)
                 histo_name = 'signal {range}{peakint}'.format(range=self.signal_region, peakint=self.peak_integral)
                 histo_title = 'normalised signal with cut ' + key
-                histo = TH1F(histo_name, histo_title, 400, -100, 300)
+                histo = TH1F(histo_name, histo_title, 350, -50, 300)
                 # safe single plots
                 c1.cd()
                 self.tree.Draw("{name}>>{histo}".format(name=self.signal_name, histo=histo_name), value)
@@ -341,14 +361,16 @@ class SignalAnalysis(Analysis):
                 c2.cd()
                 histo.SetLineColor(self.get_color())
                 if not drawn_first:
-                    histo.SetTitle('signal distribution with different cuts')
+                    self.format_histo(histo, title='signal distribution with different cuts', x_tit='pulse height [au]', y_tit='normalised Integral', y_off=2)
                     histo.SetStats(0)
                     histo.Draw()
                     drawn_first = True
                 else:
+                    if key == 'all_cuts':
+                        histo.SetLineWidth(2)
                     histo.Draw('same')
                 histos.append(histo)
-                legend.AddEntry(histo, key)
+                legend.AddEntry(histo, key, 'l')
         # save c2
         legend.Draw()
         self.save_plots('normalised', 'png', canvas=c2, sub_dir=self.save_dir)
@@ -361,6 +383,7 @@ class SignalAnalysis(Analysis):
         gROOT.SetBatch(1)
         c1 = TCanvas('consecutive', '', 1000, 1000)
         c2 = TCanvas('all', '', 1000, 1000)
+        c2.SetLeftMargin(0.15)
         legend = TLegend(0.7, 0.3, 0.98, .7)
         histos = []
         drawn_first = False
@@ -373,7 +396,7 @@ class SignalAnalysis(Analysis):
                 save_name = 'signal_distribution_{n}cuts'.format(n=ind)
                 histo_name = 'signal {range}{peakint}'.format(range=self.signal_region, peakint=self.peak_integral)
                 histo_title = 'signal with {n} cuts'.format(n=ind)
-                histo = TH1F(histo_name, histo_title, 400, -100, 500)
+                histo = TH1F(histo_name, histo_title, 550, -50, 500)
                 # safe single plots
                 c1.cd()
                 self.tree.Draw("{name}>>{histo}".format(name=self.signal_name, histo=histo_name), cut)
@@ -384,14 +407,14 @@ class SignalAnalysis(Analysis):
                 histo.SetLineColor(color)
                 histo.SetFillColor(color)
                 if not drawn_first:
-                    histo.SetTitle('signal distribution with consecutive cuts')
+                    self.format_histo(histo, title='signal distribution with consecutive cuts', x_tit='pulse height [au]', y_tit='Entries [#]', y_off=2)
                     histo.SetStats(0)
                     histo.Draw()
                     drawn_first = True
-                    legend.AddEntry(histo, key)
+                    legend.AddEntry(histo, key, 'f')
                 else:
                     histo.Draw('same')
-                    legend.AddEntry(histo, '+ ' + key)
+                    legend.AddEntry(histo, '+ ' + key, 'f')
                 histos.append(histo)
                 ind += 1
         # save c2
@@ -500,7 +523,7 @@ class SignalAnalysis(Analysis):
         max_bin = h.GetMaximumBin()
         return h.GetBinCenter(max_bin)
 
-    def show_pedestal_histo(self, region='aa', peak_int='2', cut=True, fwhm=True, draw=False):
+    def show_pedestal_histo(self, region='ab', peak_int='2', cut=True, fwhm=True, draw=False):
         cut = self.cut.all_cut if cut else TCut()
         fw = 'fwhm' if fwhm else 'full'
         picklepath = 'Configuration/Individual_Configs/Pedestal/{tc}_{run}_{ch}_{reg}_{fwhm}_{cut}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel,
@@ -581,9 +604,6 @@ class SignalAnalysis(Analysis):
             fit = h.Fit(fitfunc, 'qs', '', peak_pos - fwhm / 2, peak_pos + fwhm / 2)
         else:
             fit = h.Fit(fitfunc, 'qs')
-        # fit_par = OrderedDict()
-        # for i in range(3):
-        #     fit_par[fit.Parameter(i)] = fit.ParError(i)
         return fit
 
     def __get_binning(self):
@@ -667,7 +687,8 @@ class SignalAnalysis(Analysis):
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument('run', nargs='?', default=392, type=int)
+    parser.add_argument('ch', nargs='?', default=0, type=int)
     args = parser.parse_args()
     test_run = args.run
     print '\nAnalysing run', test_run, '\n'
-    z = SignalAnalysis(test_run, 0)
+    z = SignalAnalysis(test_run, args.ch)

@@ -48,7 +48,7 @@ class Analysis(Elementary):
         self.diamonds = diamonds
         self.run = self.init_run(run)
         self.run.analysis = self
-        self.config_object = self.load_bincollection()
+        # self.config_object = self.load_bincollection()
         self.RunInfo = deepcopy(self.run.RunInfo)
         self.lowest_rate_run = low_rate if low_rate is not None else self.run.run_number
         self.parser = self.load_parser()
@@ -143,10 +143,13 @@ class Analysis(Elementary):
                 lines[reg + ' start'].SetLineWidth(2)
                 lines[reg + ' start'].SetTitleColor(4)
             starts.append(lst[0])
+        self.format_histo(h, markersize=0.3, x_tit='time [ns]', y_tit='pulse height [au]')
         h.Draw()
         for axis in lines.itervalues():
             if axis is not None:
                 axis.Draw()
+        save_name = 'pedestal_regions' if ped else 'signal_regions'
+        self.save_plots(save_name, canvas=c)
         self.lines = lines
         self.histos[0] = h
         self.canvases[0] = c
@@ -1428,9 +1431,10 @@ class Analysis(Elementary):
         # check number of wf in root file:
         nWFChannels, draw_waveforms = self.__check_wv_channels()
         if nWFChannels == 0:
+            print 'No waveforms in the root file'
             return False
 
-        # if userchannels:
+        # if user channels:
         if channels != None:
             nWFChannels = 0
             for i in xrange(4):

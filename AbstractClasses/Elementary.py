@@ -202,8 +202,30 @@ class Elementary(object):
         return a
 
     @staticmethod
+    def format_histo(histo, name='', title='', x_tit='', y_tit='', marker=20, color=1, markersize=1, x_off=1, y_off=1):
+        h = histo
+        h.SetTitle(title) if title else h.SetTitle(h.GetTitle())
+        h.SetName(name) if name else h.SetName(h.GetName())
+        h.SetMarkerStyle(marker)
+        h.SetMarkerColor(color) if color is not None else h.SetMarkerColor(h.GetMarkerColor())
+        h.SetMarkerSize(markersize)
+        h.GetXaxis().SetTitle(x_tit)
+        h.GetXaxis().SetTitleOffset(x_off)
+        h.GetYaxis().SetTitle(y_tit)
+        h.GetYaxis().SetTitleOffset(y_off)
+
+    @staticmethod
+    def calc_fwhm(histo):
+        h = histo
+        max_ = h.GetMaximum()
+        bin1 = h.FindFirstBinAbove(max_ / 2)
+        bin2 = h.FindLastBinAbove(max_ / 2)
+        fwhm = h.GetBinCenter(bin2) - h.GetBinCenter(bin1)
+        return fwhm
+
+    @staticmethod
     def get_program_dir():
-        arg = 2 if len(sys.argv) > 2 else 0
+        arg = 2 if len(sys.argv) > 2 and len(sys.argv[2]) > 4 else 0
         path = os.path.dirname(os.path.realpath(sys.argv[arg])).split('/')
         ret_val = ''
         for i in range(len(path) - 1):

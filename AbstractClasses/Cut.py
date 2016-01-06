@@ -9,7 +9,6 @@ from collections import OrderedDict
 from Extrema import Extrema2D
 
 
-# todo: make channel cut subclass
 class Cut(Elementary):
     """
     A cut contains all cut settings which corresponds to a single diamond in a single run. Thus, an Analysis object holds two Cut instances, one for each diamond. The default configuration
@@ -53,12 +52,12 @@ class Cut(Elementary):
         # define cut string dict
         self.cut_strings = OrderedDict()
         self.cut_strings['raw'] = TCut('raw', '')
+        self.cut_strings['pulser'] = TCut('pulser', '')
         self.cut_strings['event_range'] = TCut('event_range', '')
         self.cut_strings['beam_interruptions'] = TCut('beam_interruptions', '')
         self.cut_strings['ped_sigma'] = TCut('ped_sigma', '')
         self.cut_strings['spread_low'] = TCut('spread_low', '')
         self.cut_strings['median'] = TCut('median', '')
-        self.cut_strings['pulser'] = TCut('pulser', '')
         self.cut_strings['tracks'] = TCut('tracks', '')
         self.cut_strings['chi2'] = TCut('chi2', '')
         self.cut_strings['track_angle'] = TCut('track_angle', '')
@@ -67,8 +66,6 @@ class Cut(Elementary):
         self.cut_strings['all_cuts'] = TCut('all_cuts', '')
 
         self.region_cut = TCut('region_cut', '')
-
-        self.__cutstring_settings = None
 
         # beam interrupts
         self.jumps = None
@@ -358,12 +355,9 @@ class Cut(Elementary):
         string = '{sig2}-{sig1}==0'.format(sig2=name, sig1=self.analysis.signal_names[self.channel])
         return TCut(string)
 
-    def generate_cut_string(self, gen_pulser_cut=True, gen_event_range=True, gen_exclude_first=True, set_channel=True):
+    def generate_cut_string(self, set_channel=True):
         """
         Creates the cut string, which will be stored in self.cut. With the arguments set to False, different cut types can be deactivated in the cut string.
-        :param gen_pulser_cut:
-        :param gen_event_range:
-        :param gen_exclude_first:
         :param set_channel:
         :return:
         """
@@ -379,13 +373,13 @@ class Cut(Elementary):
 
         # -- EVENT RANGE CUT --
         self.generate_event_range()
-        if self.CutConfig["EventRange"] != [] and gen_event_range:
+        if self.CutConfig["EventRange"]:
             if cutstring != "":
                 cutstring += "&&"
             cutstring += "(event_number<={maxevent}&&event_number>={minevent})".format(minevent=self.CutConfig["EventRange"][0], maxevent=self.CutConfig["EventRange"][1])
             self.EasyCutStrings["EventRange"] = "Evts.{min}k-{max}k".format(min=int(self.CutConfig["EventRange"][0]) / 1000, max=int(self.CutConfig["EventRange"][1]) / 1000)
             self.EasyCutStrings["ExcludeFirst"] = ""
-        elif self.CutConfig["ExcludeFirst"] > 0 and gen_exclude_first:
+        elif self.CutConfig["ExcludeFirst"] > 0:
             if cutstring != "":
                 cutstring += "&&"
             cutstring += "event_number>={minevent}".format(minevent=self.CutConfig["ExcludeFirst"])
@@ -448,11 +442,6 @@ class Cut(Elementary):
         self.EasyCutStrings["noBeamInter"] = "BeamOn"
 
         self._checklist["GenerateCutString"] = True
-        self.__cutstring_settings = {
-            "gen_PulserCut": gen_pulser_cut,
-            "gen_EventRange": gen_event_range,
-            "gen_ExcludeFirst": gen_exclude_first
-        }
         gROOT.SetBatch(0)
 
     def __calc_pedestal_range(self):
@@ -484,13 +473,6 @@ class Cut(Elementary):
 
         return self.cut
     # endregion
-
-    def _checkCutStringSettings(self, gen_PulserCut, gen_EventRange, gen_ExcludeFirst):
-        if self.__cutstring_settings["gen_PulserCut"] == gen_PulserCut and self.__cutstring_settings["gen_EventRange"] == gen_EventRange \
-                and self.__cutstring_settings["gen_ExcludeFirst"] == gen_ExcludeFirst:
-            return True
-        else:
-            return False
 
     def __load_pedestal_data(self):
         picklepath = 'Configuration/Individual_Configs/PedestalPeak/{tc}_{run}_{ch}_PedestalPeak.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run.run_number, ch=self.channel)
