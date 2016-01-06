@@ -282,6 +282,27 @@ class SignalAnalysis(Analysis):
         fit = func() if draw else self.do_pickle(picklepath, func)
         return fit
 
+    def draw_pulser_rate(self, binning=100):
+        """
+        Shows the fraction of accepted pulser events as a function of event numbers. Peaks appearing in this graph are most likely beam interruptions.
+        :param binning:
+        """
+        gr = TGraph()
+        nbins = self.run.n_entries / binning
+        gROOT.SetBatch(1)
+        for i in xrange(nbins):
+            pulser_events = self.run.tree.Draw("1", "pulser", "", binning, i * binning)
+            pulser_rate = 1. * pulser_events / binning
+            gr.SetPoint(i, (i + 0.5) * binning, pulser_rate)
+        gROOT.SetBatch(0)
+        c = TCanvas('c', 'Pulser Rate Canvas', 1000, 1000)
+        self.format_histo(gr, name='pulser_rate', title='Pulser Rate', x_tit='Event Number', y_tit='Pulser Fraction', y_off=1.3)
+        gr.Draw('al')
+        self.run.draw_run_info(canvas=c, channel=self.channel)
+        self.save_plots('pulser_rate', canvas=c, sub_dir=self.save_dir)
+        self.canvases[0] = c
+        self.histos[0] = gr
+
     def get_polarity(self):
         self.tree.GetEntry(0)
         return self.tree.polarities[self.channel]

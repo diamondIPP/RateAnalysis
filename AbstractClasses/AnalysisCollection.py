@@ -341,7 +341,7 @@ class AnalysisCollection(Elementary):
         '''
         runnumbers = self.get_run_numbers()
         for run in runnumbers:
-            self.collection[run].ShowPulserRate()
+            self.collection[run].draw_pulser_rate()
 
     def CreateSigmaMPVPlot(self):
         '''

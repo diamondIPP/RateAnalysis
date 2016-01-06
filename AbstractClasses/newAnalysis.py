@@ -280,40 +280,6 @@ class Analysis(Elementary):
             print str(value).zfill(3), key
         return
 
-    def ShowPulserRate(self, binning=2000, canvas=None, savePlot=True):
-        '''
-        Shows the fraction of accepted pulser events as a function of
-        event numbers. Peaks appearing in this graph are most likely
-        beam interruptions.
-        :param binning:
-        :param canvas:
-        :return:
-        '''
-        assert (binning >= 100), "binning too low"
-        binning = int(binning)
-
-        if canvas == None:
-            self.pulserRateCanvas = ROOT.TCanvas("pulserratecanvas{run}".format(run=self.run.run_number), "Pulser Rate Canvas")
-        else:
-            self.pulserRateCanvas = canvas
-        self.pulserRateCanvas.cd()
-
-        self.pulserRateGraph = ROOT.TGraph()
-        self.pulserRateGraph.SetNameTitle("pulserrategraph{run}".format(run=self.run.run_number), "Pulser Rate")
-        nbins = int(self.run.tree.GetEntries()) / binning
-
-        for i in xrange(nbins):
-            pulserevents = self.run.tree.Draw("1", "pulser", "", binning, i * binning)
-            pulserrate = 1. * pulserevents / binning
-            self.pulserRateGraph.SetPoint(i, (i + 0.5) * binning, pulserrate)
-        self.pulserRateGraph.Draw("AL")
-        self.pulserRateGraph.GetXaxis().SetTitle("Event Number")
-        self.pulserRateGraph.GetYaxis().SetTitle("Fraction of Pulser Events")
-        self.pulserRateGraph.GetYaxis().SetTitleOffset(1.2)
-        self.DrawRunInfo(canvas=self.pulserRateCanvas)
-        self.pulserRateCanvas.Update()
-        if savePlot: self.save_plots("Run{run}_PulserRate.png".format(run=self.run.run_number), canvas=self.pulserRateCanvas)
-
     def DrawRunInfo(self, channel=None, canvas=None, diamondinfo=True, showcut=False, comment=None, infoid="", userHeight=None, userWidth=None):
         '''
         Draws the run infos inside the canvas. If no canvas is given, it
@@ -329,7 +295,7 @@ class Analysis(Elementary):
         :param userWidth:
         :return:
         '''
-        self.run.draw_run_info(channel=channel, canvas=canvas, diamondinfo=diamondinfo, showcut=showcut, comment=comment, infoid=infoid, height=userHeight, width=userWidth)
+        self.run.draw_run_info(channel=channel, canvas=canvas, diamondinfo=diamondinfo, comment=comment, infoid=infoid, set_width=userWidth, set_height=userHeight)
 
     def DrawPreliminary(self, canvas=None, x=0.7, y=0.14):
         # TODO: make this work

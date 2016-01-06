@@ -104,7 +104,7 @@ class Run(Elementary):
             self.endTime = self.get_time_at_event(self.endEvent)
             self.totalTime = self.endTime - self.startTime
             self.totalMinutes = (self.endTime - self.startTime) / 60000
-            self.n_entries = self.endEvent + 1
+            self.n_entries = int(self.endEvent + 1)
 
             # region info
             self.region_information = self.load_regions()
@@ -444,7 +444,7 @@ class Run(Elementary):
         if channel is not None and channel in self.channels:
             # user height and width:
             userheight = height if set_height is None else set_height - 0.04
-            userwidth = width if width is None else set_width
+            userwidth = width if set_width is None else set_width
 
             legend = TLegend(0.1, 0.86 - userheight, 0.1 + userwidth, 0.9)
             legend.SetMargin(0.05)
@@ -465,8 +465,8 @@ class Run(Elementary):
                 width = 0.15
             height = lines * 0.05
             # user height and width:
-            userheight = height if set_height is None else set_height 
-            userwidth = width if width is None else set_width
+            userheight = height if set_height is None else set_height
+            userwidth = width if set_width is None else set_width
 
             legend = TLegend(0.1, 0.9 - userheight, 0.1 + userwidth, 0.9)
             legend.SetMargin(0.05)
