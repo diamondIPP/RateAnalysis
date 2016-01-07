@@ -75,6 +75,7 @@ class Analysis(Elementary):
         self.SignalHistoFitResults = self.init_signal_hist_fit_results()
 
         self.cuts = {ch: Cut(self, ch) for ch in self.run.channels}
+        self.start_event = self.cuts[0].CutConfig['EventRange'][0]
         self.pedestalFitMean = {}
         self.pedestalSigma = {}
         

@@ -69,13 +69,12 @@ class SignalAnalysis(Analysis):
         self.n_bins = len(self.binning)
         return value
 
-    def draw_signal_map(self, draw_option='surf2', show=True):
+    def draw_signal_map(self, draw_option='surf2', show=True, factor=4):
         margins = self.find_diamond_margins(show_plot=False)
         x = [margins['x'][0], margins['x'][1]]
         y = [margins['y'][0], margins['y'][1]]
         nr = 1 if not self.channel else 2
         # get bin size via digital resolution of the telescope pixels
-        factor = 4
         x_bins = int(ceil(((x[1] - x[0]) / 0.015 * sqrt(12) / factor)))
         y_bins = int(ceil((y[1] - y[0]) / 0.01 * sqrt(12) / factor))
         h = TProfile2D('signal_map', 'Signal Map', x_bins, x[0], x[1], y_bins, y[0], y[1])
@@ -302,6 +301,47 @@ class SignalAnalysis(Analysis):
         self.save_plots('pulser_rate', canvas=c, sub_dir=self.save_dir)
         self.canvases[0] = c
         self.histos[0] = gr
+
+    def check_alignment(self):
+        h = TH1F('h', 'Pixel Hits @ Pulser Events', 20, 0, 20)
+        self.tree.Draw('@col.size()>>h', 'pulser', 'goff', self.run.n_entries, self.start_event)
+        c = TCanvas('c', 'Check Alignment', 1000, 1000)
+        c.SetLeftMargin(.15)
+        h.Draw()
+        self.format_histo(h, x_tit='Pixel Hits', y_tit='Entries', y_off=2)
+        self.run.draw_run_info(channel=self.channel, canvas=c)
+        self.canvases[0] = c
+        self.histos[0] = h
+        print 'The events are {bool}aligned!'.format(bool='not ' if not self.__check_alignment_histo(h) else '')
+
+    def find_alignment_offset(self):
+        offsets = [i for i in xrange(-3, 4) if i]
+        h = TH1F('h', 'Pixel Hits @ Pulser Events', 20, 0, 20)
+        right_offset = None
+        for offset in offsets:
+            pulser_events = 0
+            for event in xrange(self.start_event, self.run.n_entries):
+                print '\rpulser events: {0:04d}'.format(pulser_events),
+                if pulser_events >= 1000:
+                    break
+                self.tree.GetEntry(event)
+                if self.tree.pulser:
+                    pulser_events += 1
+                    self.tree.GetEntry(event + offset)
+                    hits = len(self.tree.col)
+                    h.Fill(hits)
+            if self.__check_alignment_histo(h):
+                right_offset = offset
+                break
+            h.Reset()
+        h.Draw()
+        self.histos[0] = h
+        print '\nThe event offset is {off}'.format(off=right_offset)
+
+    @staticmethod
+    def __check_alignment_histo(histo):
+        h = histo
+        return True if h.GetMaximumBin() == 1 else False
 
     def get_polarity(self):
         self.tree.GetEntry(0)
