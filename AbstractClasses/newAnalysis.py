@@ -243,12 +243,13 @@ class Analysis(Elementary):
                 self.run.draw_run_info(canvas=c)
                 self.canvases[0] = c
                 self.histos[0] = h
-            aligned = self.__check_alignment_histo(h)
-            if not aligned:
-                print 'The events are not aligned!'
-            return aligned
+            align = self.__check_alignment_histo(h)
+            return align
 
-        all_means = func() if draw else self.do_pickle(pickle_path, func)
+        aligned = func() if draw else self.do_pickle(pickle_path, func)
+        if not aligned:
+            msg = 'The events are not aligned!'
+            print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * '!', msg=msg)
 
 
     def find_alignment_offset(self):

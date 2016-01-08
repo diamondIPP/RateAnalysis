@@ -283,6 +283,67 @@ class AnalysisCollection(Elementary):
         self.canvases[0] = c
         self.FWHM = gr
 
+    def draw_signal_peaks(self, flux=True, draw=True):
+        mode = 'Flux' if flux else 'Run'
+        prefix = 'Mean of Signal Peaks: {dia} @ {bias}V vs {mode} '.format(mode=mode, dia=self.collection.values()[0].diamond_name, bias=self.bias)
+        gr = self.make_tgrapherrors('gr', prefix)
+        i = 0
+        for key, ana in self.collection.iteritems():
+            fit = ana.fit_peak_values(draw=False)
+            x = ana.run.flux if flux else key
+            gr.SetPoint(i, x, fit.Parameter(1))
+            gr.SetPointError(i, 0, fit.ParError(1))
+            i += 1
+        self.format_histo(gr, x_tit='{mod}{unit}'.format(mod=mode, unit=' [kHz/cm2]' if flux else ''))
+        c = TCanvas('c', 'Mean of Signal Peaks', 1000, 1000)
+        gr.Draw('alp')
+        self.canvases = c
+        if not draw:
+            c.Close()
+        self.histos[0] = gr
+
+    def draw_signal_fwhm(self, flux=True, draw=True):
+        mode = 'Flux' if flux else 'Run'
+        prefix = 'FWHM of Signal Peaks: {dia} @ {bias}V vs {mode} '.format(mode=mode, dia=self.collection.values()[0].diamond_name, bias=self.bias)
+        gr = self.make_tgrapherrors('gr1', prefix)
+        i = 0
+        for key, ana in self.collection.iteritems():
+            fwhm = ana.calc_peak_value_fwhm()
+            x = ana.run.flux if flux else key
+            gr.SetPoint(i, x, fwhm)
+            i += 1
+        self.format_histo(gr, x_tit='{mod}{unit}'.format(mod=mode, unit=' [kHz/cm2]' if flux else ''))
+        c = TCanvas('c', 'FWHM of Signal Peaks', 1000, 1000)
+        gr.Draw('alp')
+        self.canvases = c
+        if not draw:
+            c.Close()
+        self.histos[0] = gr
+
+    def save_signal_maps(self):
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        gROOT.SetBatch(1)
+        graphs = []
+        for i, ana in enumerate(self.collection.values()):
+            h = ana.draw_signal_map(show=False)
+            h.SetContour(50)
+            graphs.append(h)
+        # find min/max
+        glob_min = int(min([gr.GetMinimum() for gr in graphs])) / 5 * 5
+        glob_max = (int(max([gr.GetMaximum() for gr in graphs])) + 5) / 5 * 5
+        print glob_min, glob_max
+
+        c = TCanvas('sig_map', 'Signal Maps', 1000, 1000)
+        c.SetTheta(55)
+        c.SetPhi(20)
+        for i, gr in enumerate(graphs):
+            gr.GetZaxis().SetRangeUser(glob_min, glob_max)
+            gr.Draw('surf2')
+            self.save_plots('map{}'.format(i), canvas=c, sub_dir=self.save_dir)
+        gROOT.SetBatch(0)
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        # return graphs
+
     def make_signal_analysis(self, saveplots=True):
         """
         Run all available signal analyises together and plot them in an overview.

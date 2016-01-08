@@ -2,56 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="e6cf272c-81a5-4f4e-9e0a-ff55b841b26f" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/Alignment/.placeholder" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_171_S129" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_171_other" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_176_other" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_178_S129" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_178_other" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_216_S129" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_217_S129" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_218_S129" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_219_S129" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_220_S129" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_221_S129" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_378_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_379_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_380_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_381_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_383_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_384_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_385_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_386_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_388_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_389_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_391_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_392_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_393_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_394_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_395_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_396_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_397_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_398_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_398_poly-D" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_399_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_400_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_401_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_402_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_403_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_404_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_405_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_406_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_407_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_408_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_409_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_410_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_411_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_412_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_413_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_414_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_415_poly-B2" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/Configuration/Individual_Configs/Margins/201510_416_poly-B2" afterPath="" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Configuration/Individual_Configs/PeakValues/.placeholder" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" afterPath="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/newAnalysis.py" afterPath="$PROJECT_DIR$/AbstractClasses/newAnalysis.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" afterPath="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
@@ -75,17 +27,17 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="newAnalysis.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="newAnalysis.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/AbstractClasses/newAnalysis.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.571754">
-              <caret line="244" column="34" selection-start-line="244" selection-start-column="34" selection-end-line="244" selection-end-column="34" />
+            <state vertical-scroll-proportion="-7.16129">
+              <caret line="237" column="127" selection-start-line="237" selection-start-column="127" selection-end-line="237" selection-end-column="127" />
               <folding>
                 <element signature="e#0#11#0" expanded="true" />
                 <element signature="e#7119#7146#0" expanded="false" />
-                <element signature="e#54198#61681#0" expanded="false" />
-                <element signature="e#61761#63537#0" expanded="false" />
-                <element signature="e#63615#66994#0" expanded="false" />
+                <element signature="e#54275#61758#0" expanded="false" />
+                <element signature="e#61838#63614#0" expanded="false" />
+                <element signature="e#63692#67071#0" expanded="false" />
               </folding>
             </state>
           </provider>
@@ -127,20 +79,20 @@
         <entry file="file://$PROJECT_DIR$/AbstractClasses/signal_analysis.py">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="231" column="0" selection-start-line="231" selection-start-column="0" selection-end-line="231" selection-end-column="0" />
+              <caret line="193" column="54" selection-start-line="193" selection-start-column="54" selection-end-line="194" selection-end-column="56" />
               <folding>
                 <element signature="e#108#229#0" expanded="true" />
-                <element signature="e#11988#14846#0" expanded="false" />
+                <element signature="e#12697#15555#0" expanded="false" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="AnalysisCollection.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="AnalysisCollection.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0">
-              <caret line="183" column="19" selection-start-line="183" selection-start-column="19" selection-end-line="183" selection-end-column="19" />
+            <state vertical-scroll-proportion="0.4214876">
+              <caret line="319" column="21" selection-start-line="319" selection-start-column="21" selection-end-line="319" selection-end-column="21" />
               <folding>
                 <element signature="e#108#119#0" expanded="true" />
                 <element signature="e#2188#2716#0" expanded="false" />
@@ -187,7 +139,7 @@
         <entry file="file://$PROJECT_DIR$/AbstractClasses/Elementary.py">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+              <caret line="76" column="8" selection-start-line="76" selection-start-column="8" selection-end-line="76" selection-end-column="8" />
               <folding />
             </state>
           </provider>
@@ -216,11 +168,11 @@
         <option value="$PROJECT_DIR$/AbstractClasses/Extrema.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/Cut.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/Elementary.py" />
-        <option value="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/RunSelection.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/RunClass.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/newAnalysis.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" />
+        <option value="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" />
       </list>
     </option>
   </component>
@@ -572,7 +524,7 @@
           <caret line="87" column="25" selection-start-line="87" selection-start-column="25" selection-end-line="87" selection-end-column="25" />
           <folding>
             <element signature="e#108#229#0" expanded="true" />
-            <element signature="e#11988#14846#0" expanded="false" />
+            <element signature="e#12697#15555#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -599,9 +551,9 @@
           <folding>
             <element signature="e#0#11#0" expanded="true" />
             <element signature="e#7119#7146#0" expanded="false" />
-            <element signature="e#54198#61681#0" expanded="false" />
-            <element signature="e#61761#63537#0" expanded="false" />
-            <element signature="e#63615#66994#0" expanded="false" />
+            <element signature="e#54275#61758#0" expanded="false" />
+            <element signature="e#61838#63614#0" expanded="false" />
+            <element signature="e#63692#67071#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -626,7 +578,7 @@
           <caret line="438" column="19" selection-start-line="438" selection-start-column="19" selection-end-line="438" selection-end-column="19" />
           <folding>
             <element signature="e#108#229#0" expanded="true" />
-            <element signature="e#11988#14846#0" expanded="false" />
+            <element signature="e#12697#15555#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -670,9 +622,9 @@
           <folding>
             <element signature="e#0#11#0" expanded="true" />
             <element signature="e#7119#7146#0" expanded="false" />
-            <element signature="e#54198#61681#0" expanded="false" />
-            <element signature="e#61761#63537#0" expanded="false" />
-            <element signature="e#63615#66994#0" expanded="false" />
+            <element signature="e#54275#61758#0" expanded="false" />
+            <element signature="e#61838#63614#0" expanded="false" />
+            <element signature="e#63692#67071#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -724,9 +676,9 @@
           <folding>
             <element signature="e#0#11#0" expanded="true" />
             <element signature="e#7119#7146#0" expanded="false" />
-            <element signature="e#54198#61681#0" expanded="false" />
-            <element signature="e#61761#63537#0" expanded="false" />
-            <element signature="e#63615#66994#0" expanded="false" />
+            <element signature="e#54275#61758#0" expanded="false" />
+            <element signature="e#61838#63614#0" expanded="false" />
+            <element signature="e#63692#67071#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -770,9 +722,9 @@
           <folding>
             <element signature="e#0#11#0" expanded="true" />
             <element signature="e#7119#7146#0" expanded="false" />
-            <element signature="e#54198#61681#0" expanded="false" />
-            <element signature="e#61761#63537#0" expanded="false" />
-            <element signature="e#63615#66994#0" expanded="false" />
+            <element signature="e#54275#61758#0" expanded="false" />
+            <element signature="e#61838#63614#0" expanded="false" />
+            <element signature="e#63692#67071#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -809,9 +761,9 @@
           <folding>
             <element signature="e#0#11#0" expanded="true" />
             <element signature="e#7119#7146#0" expanded="false" />
-            <element signature="e#54198#61681#0" expanded="false" />
-            <element signature="e#61761#63537#0" expanded="false" />
-            <element signature="e#63615#66994#0" expanded="false" />
+            <element signature="e#54275#61758#0" expanded="false" />
+            <element signature="e#61838#63614#0" expanded="false" />
+            <element signature="e#63692#67071#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -848,9 +800,9 @@
           <folding>
             <element signature="e#0#11#0" expanded="true" />
             <element signature="e#7119#7146#0" expanded="false" />
-            <element signature="e#54198#61681#0" expanded="false" />
-            <element signature="e#61761#63537#0" expanded="false" />
-            <element signature="e#63615#66994#0" expanded="false" />
+            <element signature="e#54275#61758#0" expanded="false" />
+            <element signature="e#61838#63614#0" expanded="false" />
+            <element signature="e#63692#67071#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -940,31 +892,11 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisClass.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="269" column="8" selection-start-line="269" selection-start-column="8" selection-end-line="269" selection-end-column="8" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/RunClass.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="401" column="77" selection-start-line="401" selection-start-column="77" selection-end-line="401" selection-end-column="77" />
           <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="183" column="19" selection-start-line="183" selection-start-column="19" selection-end-line="183" selection-end-column="19" />
-          <folding>
-            <element signature="e#108#119#0" expanded="true" />
-            <element signature="e#2188#2716#0" expanded="false" />
-            <element signature="e#2773#2786#0" expanded="false" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -997,32 +929,52 @@
     <entry file="file://$PROJECT_DIR$/AbstractClasses/Elementary.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
-          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <caret line="76" column="8" selection-start-line="76" selection-start-column="8" selection-end-line="76" selection-end-column="8" />
           <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisClass.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="269" column="8" selection-start-line="269" selection-start-column="8" selection-end-line="269" selection-end-column="8" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/newAnalysis.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="-7.16129">
+          <caret line="237" column="127" selection-start-line="237" selection-start-column="127" selection-end-line="237" selection-end-column="127" />
+          <folding>
+            <element signature="e#0#11#0" expanded="true" />
+            <element signature="e#7119#7146#0" expanded="false" />
+            <element signature="e#54275#61758#0" expanded="false" />
+            <element signature="e#61838#63614#0" expanded="false" />
+            <element signature="e#63692#67071#0" expanded="false" />
+          </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/signal_analysis.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
-          <caret line="231" column="0" selection-start-line="231" selection-start-column="0" selection-end-line="231" selection-end-column="0" />
+          <caret line="193" column="54" selection-start-line="193" selection-start-column="54" selection-end-line="194" selection-end-column="56" />
           <folding>
             <element signature="e#108#229#0" expanded="true" />
-            <element signature="e#11988#14846#0" expanded="false" />
+            <element signature="e#12697#15555#0" expanded="false" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/newAnalysis.py">
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.571754">
-          <caret line="244" column="34" selection-start-line="244" selection-start-column="34" selection-end-line="244" selection-end-column="34" />
+        <state vertical-scroll-proportion="0.4214876">
+          <caret line="319" column="21" selection-start-line="319" selection-start-column="21" selection-end-line="319" selection-end-column="21" />
           <folding>
-            <element signature="e#0#11#0" expanded="true" />
-            <element signature="e#7119#7146#0" expanded="false" />
-            <element signature="e#54198#61681#0" expanded="false" />
-            <element signature="e#61761#63537#0" expanded="false" />
-            <element signature="e#63615#66994#0" expanded="false" />
+            <element signature="e#108#119#0" expanded="true" />
+            <element signature="e#2188#2716#0" expanded="false" />
+            <element signature="e#2773#2786#0" expanded="false" />
           </folding>
         </state>
       </provider>
