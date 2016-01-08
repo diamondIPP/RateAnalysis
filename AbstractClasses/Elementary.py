@@ -232,5 +232,11 @@ class Elementary(object):
             ret_val += path[i] + '/'
         return ret_val
 
+    @staticmethod
+    def adj_length(value):
+        string = str(value)
+        num = len(string) / 4 * 4 + 4
+        return string.ljust(num)
+
 if __name__ == "__main__":
     z = Elementary()

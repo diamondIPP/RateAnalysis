@@ -1636,69 +1636,6 @@ class Analysis(Elementary):
         '''
         self.run.tree.Draw(varexp, selection, drawoption, nentries, firstentry)
 
-    def CalculateSNR(self, channel=None, signaldefinition=None, pedestaldefinition=None, logy=True, cut="", name="", fitwindow=40, binning=1000, xmin=-500, xmax=500, savePlots=True, canvas=None):
-
-        if canvas == None:
-            self.snr_canvas = ROOT.TCanvas("SNR_canvas", "SNR Canvas")
-        else:
-            self.snr_canvas = canvas
-
-        if signaldefinition == None:
-            getsignaldefs = True
-        else:
-            getsignaldefs = False
-        if pedestaldefinition == None:
-            getpedestaldefs = True
-        else:
-            getpedestaldefs = False
-
-        channels = self.GetChannels(channel=channel)
-
-        SNRs = []
-
-        for ch in channels:
-            if getsignaldefs:
-                signaldefinition = self.GetSignalDefinition(channel=ch)
-            if getpedestaldefs:
-                pedestaldefinition = self.pedestaldefinition[ch]
-
-            self.ResetColorPalette()
-            pedestalhisto = self._ShowHisto(pedestaldefinition, channel=ch, canvas=self.snr_canvas, drawoption="", color=None, cut=cut, normalized=False, infoid="SNRPedestalHisto", drawruninfo=False,
-                                            binning=binning, xmin=xmin, xmax=xmax, savePlots=False, logy=logy, gridx=True)
-            signalhisto = self._ShowHisto(signaldefinition, channel=ch, canvas=self.snr_canvas, drawoption="sames", color=None, cut=cut, normalized=False, infoid="SNRSignalHisto", drawruninfo=False,
-                                          binning=binning, xmin=xmin, xmax=xmax, savePlots=False, logy=logy, gridx=True)
-
-            print "\n"
-            print "\tNEvents: ", signalhisto.GetEntries()
-            print "\tMean:    ", signalhisto.GetMean()
-            print "\n"
-
-            # pedestalhisto = ROOT.gROOT.FindObject("{dia}_SNRPedestalHisto{run}".format(dia=self.run.diamondname[ch], run=self.run.run_number))
-            # signalhisto = ROOT.gROOT.FindObject("{dia}_SNRSignalHisto{run}".format(dia=self.run.diamondname[ch], run=self.run.run_number))
-
-            ped_peakpos = pedestalhisto.GetBinCenter(pedestalhisto.GetMaximumBin())
-
-            pedestalhisto.Fit("gaus", "", "", ped_peakpos - fitwindow / 2., ped_peakpos + fitwindow / 2.)
-            fitfunc = pedestalhisto.GetFunction("gaus")
-            self.pedestalFitMean[ch] = fitfunc.GetParameter(1)
-            self.pedestalSigma[ch] = fitfunc.GetParameter(2)
-
-            signalmean = signalhisto.GetMean()
-
-            SNR = signalmean / self.pedestalSigma[ch]
-            print "\n"
-            print "\tSNR = ", SNR
-            print "\n"
-            SNRs += [SNR]
-
-            self.DrawRunInfo(channel=ch, canvas=self.snr_canvas, comment="SNR: " + str(SNR))
-            if savePlots:
-                self.save_plots(savename="SNR" + name + ".png", save_dir="SNR/", canvas=self.snr_canvas)
-                self.save_plots(savename="SNR" + name + ".pdf", save_dir="SNR/pdf/", canvas=self.snr_canvas)
-                self.save_plots(savename="SNR" + name + ".root", save_dir="SNR/root/", canvas=self.snr_canvas)
-
-        return SNRs if len(SNRs) > 1 else SNRs[0]
-
     def MakeSNRAnalyis(self, channel, name="", binning=1000, xmin=-500, xmax=500):
         name = name + str(self.run.run_number) + str(channel)
         cut0 = self.GetCut(channel=channel)

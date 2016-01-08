@@ -16,7 +16,7 @@ __author__ = 'micha'
 # MAIN CLASS
 # ==============================================
 class SignalAnalysis(Analysis):
-    def __init__(self, run, channel, low_rate_run=None, binning=5000):
+    def __init__(self, run, channel, low_rate_run=None, binning=20000):
         Analysis.__init__(self, run, low_rate=low_rate_run)
 
         # main
@@ -273,7 +273,7 @@ class SignalAnalysis(Analysis):
         all_means = func() if draw else self.do_pickle(picklepath, func)
         return all_means
 
-    def draw_pulse_height(self, binning=None, draw=False, ped_corr=False, eventwise_corr=False):
+    def draw_pulse_height(self, binning=None, draw=True, ped_corr=False, eventwise_corr=False):
         bin_size = binning if binning is not None else self.bin_size
         correction = ''
         if ped_corr:
@@ -352,7 +352,7 @@ class SignalAnalysis(Analysis):
         canvas = TCanvas('bla', 'blub', 1000, 1000)
         self.histos[0] = TH1F('signal b2', 'signal without cuts', 350, -50, 300)
         canvas.cd()
-        cut = '' if cut is None else cut
+        cut = self.cut.all_cut if cut is None else cut
         self.tree.Draw("{name}>>signal b2".format(name=self.signal_name), cut)
         self.save_plots('signal_distribution', 'png', canvas=canvas, sub_dir=self.save_dir)
 
@@ -585,7 +585,7 @@ class SignalAnalysis(Analysis):
         max_bin = h.GetMaximumBin()
         return h.GetBinCenter(max_bin)
 
-    def show_pedestal_histo(self, region='ab', peak_int='2', cut=True, fwhm=True, draw=False):
+    def show_pedestal_histo(self, region='ab', peak_int='2', cut=True, fwhm=True, draw=True):
         cut = self.cut.all_cut if cut else TCut()
         fw = 'fwhm' if fwhm else 'full'
         picklepath = 'Configuration/Individual_Configs/Pedestal/{tc}_{run}_{ch}_{reg}_{fwhm}_{cut}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel,
@@ -655,6 +655,21 @@ class SignalAnalysis(Analysis):
         legend.Draw()
         self.tmp_histos[4] = legend
 
+    def calc_snr(self):
+
+        # c = TCanvas('c', 'SNR Canvas', 1000, 1000)
+
+        ped_fit = self.show_pedestal_histo(draw=False)
+        sig_fit = self.draw_pulse_height(eventwise_corr=True, draw=False)
+
+        snr = sig_fit.GetParameter(0) / ped_fit.Parameter(2)
+        print 'SNR is: ', snr
+        # self.DrawRunInfo(channel=ch, canvas=self.snr_canvas, comment='SNR: ' + str(SNR))
+        # self.save_plots(savename='SNR' + name + '.png', save_dir='SNR/', canvas=self.snr_canvas)
+
+        return snr
+
+    # region MISCELLANEOUS
     @staticmethod
     def fit_fwhm(histo, fitfunc='gaus', do_fwhm=True):
         h = histo
@@ -731,6 +746,21 @@ class SignalAnalysis(Analysis):
             # self.signalTimeCanvas.Update()
         return fit
 
+    def print_info_header(self):
+        header = ['Run', 'Type', 'Diamond', 'HV [V]', 'Region']
+        for info in header:
+            print self.adj_length(info),
+        print
+
+    def print_information(self, header=True):
+        if header:
+            self.print_info_header()
+        infos = [self.run_number, self.run.RunInfo['type'], self.diamond_name.ljust(4), self.bias, self.signal_region + self.peak_integral + '   ']
+        for info in infos:
+            print self.adj_length(info),
+        print
+    # endregion
+
     def make_signal_histos(self, signal='signal', corr=False):
         is_sig = True if signal == 'signal' else False
         signal = self.signal_name if is_sig else self.pedestal_name
@@ -744,7 +774,6 @@ class SignalAnalysis(Analysis):
         self.signaltime = TH2D(name, "signaltime", len(xbins) - 1, xbins, bins, x_min, x_max)
         self.tree.Draw("{name}:time>>{histo}".format(histo=name, name=signal), self.cut.all_cut, self.draw_option)
         return self.signaltime
-
 
 if __name__ == "__main__":
     t = time()

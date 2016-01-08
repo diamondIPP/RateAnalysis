@@ -394,16 +394,6 @@ class AnalysisCollection(Elementary):
             flux[key] = ana.run.get_flux()
         return flux
 
-    def ShowPulserRates(self):
-        '''
-        Execute the ShowPulserRate method for all runs (i.e. Analysis
-        objects) in AnalysisCollection.
-        :return:
-        '''
-        runnumbers = self.get_run_numbers()
-        for run in runnumbers:
-            self.collection[run].draw_pulser_rate()
-
     def CreateSigmaMPVPlot(self):
         '''
         Analysis.FindMaxima() has to be executed for all contributing analysis
@@ -798,27 +788,14 @@ class AnalysisCollection(Elementary):
         """ :return: number of analyses that the analysis collection object contains """
         return len(self.collection)
 
-    def ShowInfo(self):
+    def show_information(self):
         print "ANALYSIS COLLECTION INFO:"
-        print "\tRuns: \tDiamond1 \tBias1 \tSelected \tDiamond2 \tBias2 \tSelected \tType"
-        contentstring = ""
-        for run in self.get_run_numbers():
-            contentstring += "\t{run} \t{Diamond1} \t{Bias1} \t{Selected1} \t\t{Diamond2} \t{Bias2} \t{Selected2} \t\t{Type}\n".format(
-                run=str(run).zfill(3), Diamond1=self.collection[run].run.get_diamond_name(0).ljust(8), Bias1=str(self.collection[run].run.bias[0]).zfill(5),
-                Selected1=str(self.collection[run].run.analyzeCh[0]).ljust(5),
-                Diamond2=self.collection[run].run.get_diamond_name(3).ljust(8), Bias2=str(self.collection[run].run.bias[3]).zfill(5), Selected2=str(self.collection[run].run.analyzeCh[3]).ljust(5),
-                Type=self.collection[run].run.RunInfo["type"])
-        print contentstring
+        self.get_first_analysis().print_info_header()
+        for ana in self.collection.itervalues():
+            ana.print_information(header=False)
 
-    def MakeGlobalPedestalCorrections(self, channel=None):
-        for run in self.collection.keys():
-            self.collection[run].MakeGlobalPedestalCorrection(channel=channel)
 
-    def SetIndividualCuts(self, showOverview=True, savePlot=False):
-        for run in self.collection.keys():
-            self.collection[run].SetIndividualCuts(showOverview=showOverview, savePlot=savePlot)
-
-    def AnalyzePedestalContribution(self, channel, normalize=False, refactor=5):
+    def AnalyzePedestalContribution(self, channel=0, normalize=False, refactor=5):
         '''
         Example:
             sel = RunSelection()
@@ -853,7 +830,7 @@ class AnalysisCollection(Elementary):
             "no_ped": []
         }
         for run in self.collection.keys():
-            self.collection[run].CalculateSNR(channel=channel, savePlots=False)
+            self.collection[run].calc_snr(channel=channel, savePlots=False)
             fullsignalhisto = self.collection[run].snr_canvas.GetPrimitive(
                 "{dia}_SNRSignalHisto{run}".format(dia=self.collection[run].run.diamondname[channel], run=self.collection[run].run.run_number))
             self.save_plots(savename="SignalHisto_full_{run}{ch}.png".format(run=run, ch=channel), canvas=self.collection[run].snr_canvas)
