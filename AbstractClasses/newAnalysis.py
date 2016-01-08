@@ -5,7 +5,7 @@ from array import array
 import types as t
 
 import ROOT
-from ROOT import TCanvas, TH2F, gROOT
+from ROOT import TCanvas, TH2F, gROOT, TProfile
 from AbstractClasses.PreAnalysisPlot import PreAnalysisPlot
 from AbstractClasses.ConfigClass import *
 from AbstractClasses.RunClass import Run
@@ -78,6 +78,9 @@ class Analysis(Elementary):
         self.start_event = self.cuts[0].CutConfig['EventRange'][0]
         self.pedestalFitMean = {}
         self.pedestalSigma = {}
+
+        # alignment
+        self.check_alignment(draw=False)
         
         # save histograms // canvases
         self.signal_canvas = None
@@ -224,6 +227,60 @@ class Analysis(Elementary):
         return names
 
     # endregion
+
+    def check_alignment(self, binning=5000, draw=True):
+        pickle_path = 'Configuration/Individual_Configs/Alignment/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run.run_number)
+
+        def func():
+            nbins = self.run.n_entries / binning
+            h = TProfile('h','Pulser Rate', nbins, 0, self.run.n_entries)
+            self.tree.Draw('(@col.size()>1)*100:Entry$>>h', 'pulser', 'goff')
+            self.format_histo(h, name='align', title='Event Alignment', x_tit='Event Number', y_tit='Hits per Event @ Pulser Events [%]', y_off=1.3)
+            h.GetYaxis().SetRangeUser(0, 100)
+            if draw:
+                c = TCanvas('c', 'Pulser Rate Canvas', 1000, 1000)
+                h.Draw('hist')
+                self.run.draw_run_info(canvas=c)
+                self.canvases[0] = c
+                self.histos[0] = h
+            aligned = self.__check_alignment_histo(h)
+            if not aligned:
+                print 'The events are not aligned!'
+            return aligned
+
+        all_means = func() if draw else self.do_pickle(pickle_path, func)
+
+
+    def find_alignment_offset(self):
+        offsets = [i for i in xrange(-3, 4) if i]
+        h = TH1F('h', 'Pixel Hits @ Pulser Events', 20, 0, 20)
+        right_offset = None
+        for offset in offsets:
+            pulser_events = 0
+            for event in xrange(self.start_event, self.run.n_entries):
+                print '\rpulser events: {0:04d}'.format(pulser_events),
+                if pulser_events >= 1000:
+                    break
+                self.tree.GetEntry(event)
+                if self.tree.pulser:
+                    pulser_events += 1
+                    self.tree.GetEntry(event + offset)
+                    hits = len(self.tree.col)
+                    h.Fill(hits)
+            if self.__check_alignment_histo(h):
+                right_offset = offset
+                break
+            h.Reset()
+        h.Draw()
+        self.histos[0] = h
+        print '\nThe event offset is {off}'.format(off=right_offset)
+
+    def __check_alignment_histo(self, histo):
+        h = histo
+        for bin in xrange(h.FindBin(self.start_event), h.GetNbinsX()):
+            if h.GetBinContent(bin) > 40:
+                return False
+        return True
 
     def GetSignalDefinition(self, channel=None):
         if channel == None:

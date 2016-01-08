@@ -38,6 +38,7 @@
           <option value="kRed" />
           <option value="kMagenta" />
           <option value="TProfile2D" />
+          <option value="TProfile" />
         </list>
       </option>
     </inspection_tool>

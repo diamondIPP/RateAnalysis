@@ -1,12 +1,13 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TF1, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F
+from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TF1, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile
 from newAnalysis import Analysis
 from array import array
 from math import sqrt, ceil, log
 from argparse import ArgumentParser
 from Extrema import Extrema2D
+from time import time
 
 __author__ = 'micha'
 
@@ -46,11 +47,10 @@ class SignalAnalysis(Analysis):
         self.signals = {}
         self.tmp_histos = {}
         # histograms
-        self.canvas = None
-        self.histo = None
         self.signaltime = None
         self.SignalMapHisto = None
         self.MeanSignalHisto = None
+        self.PeakValues = None
 
     def set_channel(self, ch):
         self.channel = ch
@@ -83,11 +83,16 @@ class SignalAnalysis(Analysis):
         signal = '{sig}-{pol}*{ped}'.format(sig=self.signal_name, ped=self.pedestal_name, pol=self.polarity)
         print 'drawing signal map of {dia} for Run {run}...'.format(dia=self.diamond_name, run=self.run_number)
         self.tree.Draw('{z}:diam{nr}_track_x:diam{nr}_track_y>>signal_map'.format(z=signal, nr=nr), self.cut.all_cut, 'goff')
-        self.canvas = TCanvas('c', 'Signal Map', 1000, 1000)
+        c = TCanvas('c', 'Signal Map', 1000, 1000)
+        c.SetLeftMargin(0.12)
+        c.SetRightMargin(0.12)
         gStyle.SetPalette(53)
+        self.format_histo(h, x_tit='track_x [cm]', y_tit='track_y [cm]', y_off=1.6)
+        h.SetStats(0)
         h.Draw(draw_option)
         gROOT.SetBatch(0)
         self.SignalMapHisto = h
+        self.canvases[0] = c
         return h
 
     def make_region_cut(self):
@@ -112,12 +117,25 @@ class SignalAnalysis(Analysis):
         for bin_ in xrange((sig_map.GetNbinsX() + 2) * (sig_map.GetNbinsY() + 2)):
             h.Fill(sig_map.GetBinContent(bin_))
         if show:
-            self.canvas = TCanvas('c', 'Mean Signal Distribution', 1000, 1000)
+            self.canvases[0] = TCanvas('c', 'Mean Signal Distribution', 1000, 1000)
             h.Draw()
         self.MeanSignalHisto = h
 
+    def draw_error_signal_map(self):
+        self.draw_mean_signal_distribution(show=False)
+        h = self.SignalMapHisto.ProjectionXY('', 'c=e')
+        c = TCanvas('c', 'Signal Map Errors', 1000, 1000)
+        c.SetLeftMargin(0.12)
+        c.SetRightMargin(0.11)
+        self.format_histo(h, name='sig_map_errors', title='Signal Map Errors', x_tit='track_x [cm]', y_tit='track_y [cm]', y_off=1.6)
+        h.SetStats(0)
+        h.Draw('colz')
+        self.save_plots('SignalMapErrors', sub_dir=self.save_dir, canvas=c)
+        self.canvases[0] = c
+        self.histos[0] = h
+
     def fit_mean_signal_distribution(self):
-        pickle_path = self.get_program_dir() + self.pickle_dir + 'MeanSignalFit/{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
+        pickle_path = self.get_program_dir() + self.pickle_dir + 'MeanSignalFit/{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
 
         def func():
             self.draw_mean_signal_distribution(show=False)
@@ -135,7 +153,7 @@ class SignalAnalysis(Analysis):
         self.find_diamond_margins()
 
     def find_diamond_margins(self, show_plot=True):
-        pickle_path = self.get_program_dir() + self.pickle_dir + 'Margins/{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
+        pickle_path = self.get_program_dir() + self.pickle_dir + 'Margins/{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
 
         def func():
             print 'getting margins for {dia} of run {run}...'.format(dia=self.diamond_name, run=self.run_number)
@@ -173,8 +191,11 @@ class SignalAnalysis(Analysis):
         margins = self.do_pickle(pickle_path, func) if not show_plot else func()
         return margins
 
-    def draw_peak_values(self, region='b'):
-        self.canvas = TCanvas('c', 'PeakValues', 1000, 1000)
+    def draw_peak_values(self, region='b', draw=True):
+
+        if not draw:
+            gROOT.SetBatch(1)
+        c = TCanvas('c', 'PeakValues', 1000, 1000)
         num = self.get_signal_numbers(region, self.peak_integral)[self.channel]
         peak_val = 'IntegralPeaks[{num}]'.format(num=num)
         title = 'Peak Values {reg}{int}'.format(reg=region, int=self.peak_integral)
@@ -183,12 +204,31 @@ class SignalAnalysis(Analysis):
         h = TH1F('peakvalues', title, x_high - x_low, x_low / 2., x_high / 2.)
         h.SetYTitle('Entries')
         h.SetXTitle('time [ns]')
-        self.histo = h
         cut = self.cut.cut_strings['pulser'] + self.cut.cut_strings['tracks']
         self.tree.Draw(peak_val + '/2.>>peakvalues', cut)
         h.SetTitle('Peak Values {reg}{int}'.format(reg=region, int=self.peak_integral))
         h.Draw()
-        self.save_plots('peak_values_{reg}{int}'.format(reg=region, int=self.peak_integral), 'png', canvas=self.canvas, sub_dir=self.save_dir)
+        gROOT.SetBatch(0)
+        self.save_plots('peak_values_{reg}{int}'.format(reg=region, int=self.peak_integral), 'png', canvas=c, sub_dir=self.save_dir)
+        self.histos[0] = h
+        self.canvases[0] = c
+
+    def fit_peak_values(self):
+        if self.PeakValues is None:
+            self.draw_peak_values()
+        h = self.PeakValues
+        max_bin = h.GetMaximumBin()
+        x = [h.GetBinCenter(max_bin + i) for i in [-7, 1]]
+        print x
+        return h.Fit('gaus', 'qs', '', x[0], x[1])
+
+    def calc_peak_value_width(self):
+        if self.PeakValues is None:
+            self.draw_peak_values()
+        h = self.PeakValues
+        max_val = h.GetMaximum()
+        for bin in xrange(h.GetNbinsX()):
+            pass
 
     def draw_pedestal(self, binning=None, draw=False):
         bin_size = binning if binning is not None else self.bin_size
@@ -281,67 +321,21 @@ class SignalAnalysis(Analysis):
         fit = func() if draw else self.do_pickle(picklepath, func)
         return fit
 
-    def draw_pulser_rate(self, binning=100):
+    def draw_pulser_rate(self, binning=200):
         """
         Shows the fraction of accepted pulser events as a function of event numbers. Peaks appearing in this graph are most likely beam interruptions.
         :param binning:
         """
-        gr = TGraph()
         nbins = self.run.n_entries / binning
-        gROOT.SetBatch(1)
-        for i in xrange(nbins):
-            pulser_events = self.run.tree.Draw("1", "pulser", "", binning, i * binning)
-            pulser_rate = 1. * pulser_events / binning
-            gr.SetPoint(i, (i + 0.5) * binning, pulser_rate)
-        gROOT.SetBatch(0)
+        h = TProfile('h', 'Pulser Rate', nbins, 0, z.run.n_entries)
+        self.tree.Draw('(pulser!=0)*100:Entry$>>h', '', 'goff')
         c = TCanvas('c', 'Pulser Rate Canvas', 1000, 1000)
-        self.format_histo(gr, name='pulser_rate', title='Pulser Rate', x_tit='Event Number', y_tit='Pulser Fraction', y_off=1.3)
-        gr.Draw('al')
+        self.format_histo(h, name='pulser_rate', title='Pulser Rate', x_tit='Event Number', y_tit='Pulser Fraction [%]', y_off=1.3)
+        h.Draw('hist')
         self.run.draw_run_info(canvas=c, channel=self.channel)
         self.save_plots('pulser_rate', canvas=c, sub_dir=self.save_dir)
         self.canvases[0] = c
-        self.histos[0] = gr
-
-    def check_alignment(self):
-        h = TH1F('h', 'Pixel Hits @ Pulser Events', 20, 0, 20)
-        self.tree.Draw('@col.size()>>h', 'pulser', 'goff', self.run.n_entries, self.start_event)
-        c = TCanvas('c', 'Check Alignment', 1000, 1000)
-        c.SetLeftMargin(.15)
-        h.Draw()
-        self.format_histo(h, x_tit='Pixel Hits', y_tit='Entries', y_off=2)
-        self.run.draw_run_info(channel=self.channel, canvas=c)
-        self.canvases[0] = c
         self.histos[0] = h
-        print 'The events are {bool}aligned!'.format(bool='not ' if not self.__check_alignment_histo(h) else '')
-
-    def find_alignment_offset(self):
-        offsets = [i for i in xrange(-3, 4) if i]
-        h = TH1F('h', 'Pixel Hits @ Pulser Events', 20, 0, 20)
-        right_offset = None
-        for offset in offsets:
-            pulser_events = 0
-            for event in xrange(self.start_event, self.run.n_entries):
-                print '\rpulser events: {0:04d}'.format(pulser_events),
-                if pulser_events >= 1000:
-                    break
-                self.tree.GetEntry(event)
-                if self.tree.pulser:
-                    pulser_events += 1
-                    self.tree.GetEntry(event + offset)
-                    hits = len(self.tree.col)
-                    h.Fill(hits)
-            if self.__check_alignment_histo(h):
-                right_offset = offset
-                break
-            h.Reset()
-        h.Draw()
-        self.histos[0] = h
-        print '\nThe event offset is {off}'.format(off=right_offset)
-
-    @staticmethod
-    def __check_alignment_histo(histo):
-        h = histo
-        return True if h.GetMaximumBin() == 1 else False
 
     def get_polarity(self):
         self.tree.GetEntry(0)
@@ -349,7 +343,7 @@ class SignalAnalysis(Analysis):
 
     def show_signal_histo(self, cut=None):
         canvas = TCanvas('bla', 'blub', 1000, 1000)
-        self.histo = TH1F('signal b2', 'signal without cuts', 350, -50, 300)
+        self.histos[0] = TH1F('signal b2', 'signal without cuts', 350, -50, 300)
         canvas.cd()
         cut = '' if cut is None else cut
         self.tree.Draw("{name}>>signal b2".format(name=self.signal_name), cut)
@@ -641,7 +635,7 @@ class SignalAnalysis(Analysis):
         for i, reg in enumerate(self.run.pedestal_regions):
             bin_x = gr1.GetXaxis().FindBin(i)
             gr1.GetXaxis().SetBinLabel(bin_x, reg)
-        self.canvas = TCanvas('bla', 'blub', 1000, 1000)
+        self.canvases[0] = TCanvas('bla', 'blub', 1000, 1000)
         self.tmp_histos[1] = gr1
         self.tmp_histos[0] = gr2
         self.tmp_histos[2] = gr3
@@ -746,6 +740,7 @@ class SignalAnalysis(Analysis):
 
 
 if __name__ == "__main__":
+    t = time()
     parser = ArgumentParser()
     parser.add_argument('run', nargs='?', default=392, type=int)
     parser.add_argument('ch', nargs='?', default=0, type=int)
@@ -753,3 +748,4 @@ if __name__ == "__main__":
     test_run = args.run
     print '\nAnalysing run', test_run, '\n'
     z = SignalAnalysis(test_run, args.ch)
+    print 'Instantiation took:', z.elapsed_time(t)
