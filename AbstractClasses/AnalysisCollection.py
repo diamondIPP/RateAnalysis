@@ -256,6 +256,7 @@ class AnalysisCollection(Elementary):
         Creates the FWHM Distribution of all selected MeanSignalHistograms
         :param saveplots: if True saves the plot
         :param flux: draw vs flux if True else vs run
+        :param draw:
         """
         if not draw:
             gROOT.SetBatch(1)
@@ -344,6 +345,28 @@ class AnalysisCollection(Elementary):
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         # return graphs
 
+    def draw_snrs(self, flux=True, draw=True):
+        gROOT.SetBatch(1)
+        mode = 'Flux' if flux else 'Run'
+        gr = self.make_tgrapherrors('gr', 'SNR vs {mode}'.format(mode=mode))
+        i = 0
+        for key, ana in self.collection.iteritems():
+            snr = ana.calc_snr()
+            x = ana.run.flux if flux else key
+            gr.SetPoint(i, x, snr[0])
+            gr.SetPointError(i, 0, snr[1])
+            i += 1
+        if draw:
+            gROOT.SetBatch(0)
+        c = TCanvas('c', 'SNR', 1000, 1000)
+        if flux:
+            c.SetLogx()
+        gr.Draw('ap')
+        self.save_plots('SNR', canvas=c, sub_dir=self.save_dir)
+        self.canvases[0] = c
+        self.histos[0] = gr
+        gROOT.SetBatch(0)
+
     def make_signal_analysis(self, saveplots=True):
         """
         Run all available signal analyises together and plot them in an overview.
@@ -393,35 +416,6 @@ class AnalysisCollection(Elementary):
         for key, ana in self.collection.iteritems():
             flux[key] = ana.run.get_flux()
         return flux
-
-    def CreateSigmaMPVPlot(self):
-        '''
-        Analysis.FindMaxima() has to be executed for all contributing analysis
-        :param saveplots:
-        :param savename:
-        :param ending:
-        :return:
-        '''
-        if self.get_number_of_analyses() == 0: return 0
-
-        # self.AnalysisCollection.collection[run_number].MaximaAnalysis
-        canvas = ROOT.TCanvas('MPVSigmaCanvas', 'MPVSigmaCanvas')
-        canvas.cd()
-        graph = TGraphErrors()
-        graph.SetNameTitle("graph", "MPV vs Sigma of underlying Landau")
-
-        count = 0
-        for run_number in self.collection:
-            MPVs, Sigmas, MPVErrs, SigmaErrs = self.collection[run_number].GetMPVSigmas(minimum_counts=300)
-            for i in xrange(len(MPVs)):
-                graph.SetPoint(count, MPVs[i], Sigmas[i])
-                graph.SetPointError(count, MPVErrs[i], SigmaErrs[i])
-                count += 1
-        graph.SaveAs("Total_MPV_Sigma_graph.root")
-        graph.Draw('AP')
-        ROOT.gPad.Print("Results/MPV_Sigma_graph.png")
-        ROOT.gPad.Print("Results/MPV_Sigma_graph.root")
-        self.if_wait("MPV vs Sigma shown...")
 
     def SignalHeightScan(self, channel):  # improve!
         if self.get_number_of_analyses() == 0: return 0
