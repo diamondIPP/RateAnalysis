@@ -1112,29 +1112,6 @@ class Analysis(Elementary):
 
         return MPVs, Sigmas, MPVErrs, SigmaErrs
 
-    def GetSignalHeight(self, channel, min_percent=5, max_percent=99):
-        '''
-        Calculates the spread of mean signal response from the 2D signal response map.
-        The spread is taken from min_percent quantile to max_percent quantile.
-        Definition: SignalHeight := max_percent_quantile / min_percent_quantile - 1
-        :param channel:
-        :param min_percent:
-        :param max_percent:
-        :return:
-        '''
-        if self.Checklist["FindExtrema"]["Maxima"][channel]:
-            self.FindMaxima(channel=channel)
-
-        if not self.Checklist["MeanSignalHisto"][channel]:
-            self.CreateMeanSignalHistogram(channel=channel)
-        q = array('d', [1. * min_percent / 100., 1. * max_percent / 100.])
-        y = array('d', [0, 0])
-        self.MeanSignalHisto[channel].GetQuantiles(2, y, q)
-        SignalHeight = y[1] / y[0] - 1.
-        self.verbose_print('\nApproximated Signal Amplitude: {0:0.0f}% - ({1:0.0f}%/{2:0.0f}% Quantiles approximation)\n'.format(100. * (SignalHeight), max_percent, min_percent))
-        self.ExtremaResults[channel]['SignalHeight'] = SignalHeight
-        return SignalHeight
-
     def ShowTotalSignalHistogram(self, channel, save=False, scale=False, showfit=False):
         '''
         The same as self.ShowSignalHisto(), but concerning only data

@@ -417,34 +417,31 @@ class AnalysisCollection(Elementary):
             flux[key] = ana.run.get_flux()
         return flux
 
-    def SignalHeightScan(self, channel):  # improve!
-        if self.get_number_of_analyses() == 0: return 0
+    def draw_signal_spreads(self, flux=True, draw=True):
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        gROOT.SetBatch(1)
+        mode = 'Flux' if flux else 'Run'
+        gr = self.make_tgrapherrors('gr', 'Relative Spread vs {mode}'.format(mode=mode))
+        i = 0
+        for key, ana in self.collection.iteritems():
+            rel_spread = ana.calc_signal_spread()
+            x = ana.run.flux if flux else key
+            gr.SetPoint(i, x, rel_spread[0])
+            gr.SetPointError(i, 0, rel_spread[1])
+            i += 1
+        if draw:
+            gROOT.SetBatch(0)
+        c = TCanvas('c', 'SNR', 1000, 1000)
+        if flux:
+            c.SetLogx()
+        self.format_histo(gr, x_tit='{mod}{unit}'.format(mod=mode, unit=' [kHz/cm2]' if flux else ''), y_tit='Relative Spread [%]')
+        gr.Draw('ap')
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        self.save_plots('RelativeSpread', canvas=c, sub_dir=self.save_dir)
+        self.canvases[0] = c
+        self.histos[0] = gr
+        gROOT.SetBatch(0)
 
-        # tmp = self.ShowAndWait
-        # self.ShowAndWait = True
-        SignalHeightScanCanvas = ROOT.TCanvas("SignalHeightScanCanvas", "SignalHeightScan Canvas")
-        SignalHeightScanCanvas.cd()
-
-        SignalHeightScanGraph = ROOT.TGraph()
-        SignalHeightScanGraph.SetNameTitle("SignalHeightScanGraph", "Signal Height Scan")
-
-        runnumbers = self.collection.keys()
-        runnumbers.sort()
-
-        count = 0
-        for runnumber in runnumbers:
-            if not self.collection[runnumber].TimingAlignmentFailed:
-                SignalHeightScanGraph.SetPoint(count, runnumber, self.collection[runnumber].extremaResults[channel]['SignalHeight'])
-                count += 1
-            else:
-                print "INFO: Run number {0} excluded in SignalHeightScan plot due to bad timing alignment !"
-        SignalHeightScanGraph.SaveAs(self.save_directory + "SignalHeightGraph.root")
-        SignalHeightScanGraph.GetXaxis().SetTitle("Run Number")
-        SignalHeightScanGraph.GetYaxis().SetTitle("Reconstructed Signal Height")
-        SignalHeightScanGraph.Draw("AP*")
-        self.save_plots("SignalHeightGraph.png")
-        self.if_wait("SignalHeightScan shown...")
-        # self.ShowAndWait = tmp
 
     def PeakComparison(self, channel, show=True):
         if self.get_number_of_analyses() == 0: return 0

@@ -39,6 +39,7 @@
           <option value="kMagenta" />
           <option value="TProfile2D" />
           <option value="TProfile" />
+          <option value="TCutG" />
         </list>
       </option>
     </inspection_tool>

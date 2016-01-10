@@ -1,9 +1,9 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TF1, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile
+from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TF1, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG
 from newAnalysis import Analysis
-from array import array
+from numpy import array
 from math import sqrt, ceil, log
 from argparse import ArgumentParser
 from Extrema import Extrema2D
@@ -122,18 +122,20 @@ class SignalAnalysis(Analysis):
             h.Draw()
         self.MeanSignalHisto = h
 
-    def draw_error_signal_map(self):
+    def draw_error_signal_map(self, show=False):
         self.draw_mean_signal_distribution(show=False)
         h = self.SignalMapHisto.ProjectionXY('', 'c=e')
-        c = TCanvas('c', 'Signal Map Errors', 1000, 1000)
-        c.SetLeftMargin(0.12)
-        c.SetRightMargin(0.11)
-        self.format_histo(h, name='sig_map_errors', title='Signal Map Errors', x_tit='track_x [cm]', y_tit='track_y [cm]', y_off=1.6)
-        h.SetStats(0)
-        h.Draw('colz')
-        self.save_plots('SignalMapErrors', sub_dir=self.save_dir, canvas=c)
-        self.canvases[0] = c
-        self.histos[0] = h
+        if show:
+            c = TCanvas('c', 'Signal Map Errors', 1000, 1000)
+            c.SetLeftMargin(0.12)
+            c.SetRightMargin(0.11)
+            self.format_histo(h, name='sig_map_errors', title='Signal Map Errors', x_tit='track_x [cm]', y_tit='track_y [cm]', y_off=1.6)
+            h.SetStats(0)
+            h.Draw('colz')
+            self.save_plots('SignalMapErrors', sub_dir=self.save_dir, canvas=c)
+            self.canvases[0] = c
+            self.histos[0] = h
+        return h
 
     def fit_mean_signal_distribution(self):
         pickle_path = self.get_program_dir() + self.pickle_dir + 'MeanSignalFit/{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
@@ -151,9 +153,9 @@ class SignalAnalysis(Analysis):
         return fit.Parameter(2) * conversion_factor
 
     def draw_diamond_hitmap(self):
-        self.find_diamond_margins()
+        self.find_diamond_margins(show_frame=True)
 
-    def find_diamond_margins(self, show_plot=True):
+    def find_diamond_margins(self, show_plot=True, show_frame=False):
         pickle_path = self.get_program_dir() + self.pickle_dir + 'Margins/{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
 
         def func():
@@ -166,12 +168,16 @@ class SignalAnalysis(Analysis):
             projections = [h.ProjectionX(), h.ProjectionY()]
             efficient_bins = [[], []]
             zero_bins = [[], []]
+            bin_low = [[], []]
+            bin_high = [[], []]
             for i, proj in enumerate(projections):
                 last_bin = None
                 for bin_ in xrange(proj.GetNbinsX()):
                     efficiency = proj.GetBinContent(bin_) / float(proj.GetMaximum())
                     if efficiency > .3:
                         efficient_bins[i].append(proj.GetBinCenter(bin_))
+                        bin_low[i].append(proj.GetBinLowEdge(bin_))
+                        bin_high[i].append(proj.GetBinLowEdge(bin_ + 1))
                     if bin_:
                         if efficiency and not last_bin:
                             zero_bins[i].append(proj.GetBinCenter(bin_ - 1))
@@ -183,7 +189,9 @@ class SignalAnalysis(Analysis):
                 self.canvas = TCanvas('c', 'Diamond Hit Map', 1000, 1000)
                 h.GetXaxis().SetRangeUser(zero_bins[0][0], zero_bins[0][1])
                 h.GetYaxis().SetRangeUser(zero_bins[1][0], zero_bins[1][1])
-                h.Draw()
+                h.Draw('colz')
+                if show_frame:
+                    self.__show_frame(bin_low, bin_high)
                 self.histos[0] = h
                 self.save_plots('diamond_hitmap', sub_dir=self.save_dir, canvas=self.canvas)
             gROOT.SetBatch(0)
@@ -191,6 +199,20 @@ class SignalAnalysis(Analysis):
 
         margins = self.do_pickle(pickle_path, func) if not show_plot else func()
         return margins
+
+    def __show_frame(self, bin_low, bin_high):
+        frame = TCutG('frame', 4)
+        frame.SetLineColor(2)
+        frame.SetLineWidth(4)
+        frame.SetVarX('x')
+        frame.SetVarY('y')
+        frame.SetPoint(0, bin_low[0][0], bin_low[1][0])
+        frame.SetPoint(1, bin_high[0][-1], bin_low[1][0])
+        frame.SetPoint(2, bin_high[0][-1], bin_high[1][-1])
+        frame.SetPoint(3, bin_low[0][0], bin_high[1][-1])
+        frame.SetPoint(4, bin_low[0][0], bin_low[1][0])
+        frame.Draw('same')
+        self.histos[1] = frame
 
     def draw_peak_values(self, region='b', draw=True):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
@@ -683,9 +705,28 @@ class SignalAnalysis(Analysis):
         ped_sigma = ped_fit.Parameter(2)
 
         snr = sig_mean / ped_sigma
-        snr_err = sig_fit.GetParError(0) - ped_fit.ParError(2)
+        snr_err = snr * (sig_fit.GetParError(0) / sig_mean + ped_fit.ParError(2) / ped_sigma)
         print 'SNR is: {snr} +- {err}'.format(snr=snr, err=snr_err)
         return [snr, snr_err]
+
+    def calc_signal_spread(self, min_percent=5, max_percent=99):
+        """
+        Calculates the spread of mean signal response from the 2D signal response map.
+        :param min_percent: min quantile
+        :param max_percent: max quantile
+        :return: relative spread [%]
+        """
+        if self.MeanSignalHisto is None:
+            self.draw_mean_signal_distribution(show=False)
+        q = array([min_percent / 100., max_percent / 100.])
+        y = array([0., 0.])
+        self.MeanSignalHisto.GetQuantiles(2, y, q)
+        max_min_ratio = (y[1] / y[0] - 1) * 100
+        delta_y = self.draw_error_signal_map(show=False).GetMinimum()
+        # error propagation
+        err = 100 * delta_y / y[0] * (1 + y[1] / y[0])
+        print 'Relative Signal Spread is: {spr} +- {err}'.format(spr=max_min_ratio, err=err)
+        return [max_min_ratio, err]
 
     # ============================================
     # region MISCELLANEOUS
@@ -800,7 +841,7 @@ class SignalAnalysis(Analysis):
         signal = '{sig}-{pol}*{ped}'.format(sig=signal, ped=self.pedestal_name, pol=self.polarity) if corr else signal
         # 2D Histogram
         name = "signaltime_" + str(self.run_number)
-        xbins = array('d', self.time_binning)
+        xbins = array(self.time_binning)
         x_min = -50 if is_sig else -20
         x_max = 300 if is_sig else 20
         bins = 1000 if is_sig else 40
