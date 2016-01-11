@@ -80,7 +80,7 @@ class Analysis(Elementary):
         self.pedestalSigma = {}
 
         # alignment
-        self.check_alignment(draw=False)
+        self.IsAligned = self.check_alignment(draw=False)
         
         # save histograms // canvases
         self.signal_canvas = None
@@ -250,6 +250,7 @@ class Analysis(Elementary):
         if not aligned:
             msg = 'The events are not aligned!'
             print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * '!', msg=msg)
+        return aligned
 
 
     def find_alignment_offset(self):

@@ -1,5 +1,6 @@
 from numpy import zeros, array
-from ROOT import TH2F, TCanvas, gStyle
+from ROOT import TH2F, TCanvas, gStyle, TExec, kRed, kYellow, kOrange
+import array as ar
 
 __author__ = 'micha'
 
@@ -19,6 +20,7 @@ class Extrema2D:
         # new histograms
         self.VotingHistos = self.create_voting_histo()
         self.canvas = None
+        self.tmp = None
 
     def find_thresholds(self):
         dic = {}
@@ -85,16 +87,20 @@ class Extrema2D:
                         old_content = self.VotingHistos['min'].GetBinContent(col, row)
                         self.VotingHistos['min'].SetBinContent(col, row, old_content + 1)
 
-    def square_scan(self, size=1):
+    def square_scan(self, size=1, histo=None):
+        fill_histos = self.VotingHistos if histo is None else histo
         rows = [i for i in xrange(-size, size + 1)] * (2 * size + 1)
         cols = sorted(rows)
         for col in xrange(1, self.cols - 1):
             for row in xrange(1, self.rows - 1):
                 square = [self.SignalHisto.GetBinContent(col + x, row + y) for x, y in zip(cols, rows)]
                 if max(square) == self.SignalHisto.GetBinContent(col, row) and max(square) > self.Thresholds['max'][0]:
-                    self.VotingHistos['max'].SetBinContent(col, row, 1)
+                    old_content = fill_histos['max'].GetBinContent(col, row)
+                    fill_histos['max'].SetBinContent(col, row, old_content + 1)
                 elif min(square) == self.SignalHisto.GetBinContent(col, row) and min(square) < self.Thresholds['min'][-1]:
-                    self.VotingHistos['min'].SetBinContent(col, row, 1)
+                    old_content = fill_histos['min'].GetBinContent(col, row)
+                    fill_histos['min'].SetBinContent(col, row, old_content + 1)
+        self.VotingHistos = fill_histos
 
     def __add_local_extrema(self, col, row, mode):
         if mode == 'horizontal':
@@ -122,15 +128,19 @@ class Extrema2D:
         x = [self.SignalHisto.GetNbinsX(), axes[0].GetXmin(), axes[0].GetXmax()]
         y = [self.SignalHisto.GetNbinsY(), axes[1].GetXmin(), axes[1].GetXmax()]
         names = ['min', 'max']
-        return {name: TH2F('voting_{}'.format(name), 'Voting Histogram', x[0], x[1], x[2], y[0], y[1], y[2]) for name in names}
+        return {name: TH2F('voting_{}'.format(name), 'Voting Histogram ' + name, x[0], x[1], x[2], y[0], y[1], y[2]) for name in names}
 
     def show_voting_histos(self):
-        gStyle.SetPalette(51)
         c = TCanvas('c', 'Voting Histos', 1600, 800)
         c.Divide(2, 1)
+        # new_pal = ar.array('i', [kYellow, kYellow, kOrange, kOrange - 3, kOrange + 7, kRed])
+        ex = [TExec('ex1', 'gStyle->SetPalette(56);'), TExec('ex2', 'gStyle->SetPalette(51)')]
         for i, histo in enumerate(self.VotingHistos.itervalues(), 1):
             c.cd(i)
-            histo.Draw('colz')
+            histo.Draw('col')
+            ex[i - 1].Draw()
+            histo.Draw('colz same')
+        self.tmp = ex
         self.canvas = c
 
     def clear_voting_histos(self):

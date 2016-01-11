@@ -5,6 +5,7 @@
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" afterPath="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/Extrema.py" afterPath="$PROJECT_DIR$/AbstractClasses/Extrema.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/newAnalysis.py" afterPath="$PROJECT_DIR$/AbstractClasses/newAnalysis.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" afterPath="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" />
     </list>
@@ -31,22 +32,11 @@
         <entry file="file://$PROJECT_DIR$/AbstractClasses/newAnalysis.py">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="1126" column="32" selection-start-line="1126" selection-start-column="32" selection-end-line="1126" selection-end-column="32" />
+              <caret line="88" column="23" selection-start-line="88" selection-start-column="23" selection-end-line="88" selection-end-column="23" />
               <folding>
                 <element signature="e#0#11#0" expanded="true" />
-                <element signature="e#53125#60608#0" expanded="false" />
-                <element signature="e#62542#65921#0" expanded="false" />
+                <element signature="e#62582#65961#0" expanded="false" />
               </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="Bin.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/AbstractClasses/Bin.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0">
-              <caret line="79" column="62" selection-start-line="79" selection-start-column="62" selection-end-line="79" selection-end-column="62" />
-              <folding />
             </state>
           </provider>
         </entry>
@@ -63,11 +53,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="signal_analysis.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="signal_analysis.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/AbstractClasses/signal_analysis.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.60497236">
-              <caret line="721" column="27" selection-start-line="721" selection-start-column="27" selection-end-line="721" selection-end-column="27" />
+            <state vertical-scroll-proportion="0.0">
+              <caret line="107" column="0" selection-start-line="107" selection-start-column="0" selection-end-line="107" selection-end-column="0" />
               <folding>
                 <element signature="e#108#236#0" expanded="true" />
               </folding>
@@ -75,15 +65,29 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="AnalysisCollection.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py">
+      <file leaf-file-name="Extrema.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/AbstractClasses/Extrema.py">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="439" column="42" selection-start-line="439" selection-start-column="42" selection-end-line="439" selection-end-column="42" />
+              <caret line="91" column="33" selection-start-line="91" selection-start-column="33" selection-end-line="91" selection-end-column="33" />
+              <folding>
+                <element signature="e#0#30#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="AnalysisCollection.py" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state vertical-scroll-proportion="-0.18093923">
+              <caret line="411" column="31" selection-start-line="411" selection-start-column="31" selection-end-line="411" selection-end-column="31" />
               <folding>
                 <element signature="e#108#119#0" expanded="true" />
-                <element signature="e#2188#2716#0" expanded="false" />
-                <element signature="e#2773#2786#0" expanded="false" />
+                <element signature="e#2120#2648#0" expanded="false" />
+                <element signature="e#2705#2718#0" expanded="false" />
+                <element signature="e#5176#5193#0" expanded="false" />
+                <element signature="e#19532#32166#0" expanded="false" />
               </folding>
             </state>
           </provider>
@@ -139,14 +143,14 @@
         <option value="$PROJECT_DIR$/AbstractClasses/ConfigClass.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/FindExtrema.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/Bin.py" />
-        <option value="$PROJECT_DIR$/AbstractClasses/Extrema.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/Cut.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/RunSelection.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/RunClass.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/Elementary.py" />
+        <option value="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" />
+        <option value="$PROJECT_DIR$/AbstractClasses/Extrema.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/newAnalysis.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" />
-        <option value="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" />
       </list>
     </option>
   </component>
@@ -221,7 +225,6 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scratches" />
       <pane id="ProjectPane">
         <subPane>
           <PATH>
@@ -256,6 +259,7 @@
           </PATH>
         </subPane>
       </pane>
+      <pane id="Scratches" />
       <pane id="Scope" />
     </panes>
   </component>
@@ -430,7 +434,7 @@
     <frame x="-1" y="24" width="1602" height="853" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info id="Project" active="true" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.16994293" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.16994293" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
@@ -463,7 +467,6 @@
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="adding function select_runs in range" />
     <MESSAGE value="add region drawer" />
     <MESSAGE value="fix signalmaps" />
     <MESSAGE value="small changes" />
@@ -488,7 +491,8 @@
     <MESSAGE value="adding alignment check find offset function" />
     <MESSAGE value="adding save signal maps" />
     <MESSAGE value="adding snr for all regions and snr vs flux" />
-    <option name="LAST_COMMIT_MESSAGE" value="adding snr for all regions and snr vs flux" />
+    <MESSAGE value="revising relative signal spread function and fixing errors of snr" />
+    <option name="LAST_COMMIT_MESSAGE" value="revising relative signal spread function and fixing errors of snr" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -497,16 +501,6 @@
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/signal_analysis.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="87" column="25" selection-start-line="87" selection-start-column="25" selection-end-line="87" selection-end-column="25" />
-          <folding>
-            <element signature="e#108#236#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/RunClass.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
@@ -528,8 +522,7 @@
           <caret line="266" column="47" selection-start-line="266" selection-start-column="47" selection-end-line="266" selection-end-column="47" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
-            <element signature="e#53125#60608#0" expanded="false" />
-            <element signature="e#62542#65921#0" expanded="false" />
+            <element signature="e#62582#65961#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -594,8 +587,7 @@
           <caret line="320" column="17" selection-start-line="320" selection-start-column="17" selection-end-line="320" selection-end-column="17" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
-            <element signature="e#53125#60608#0" expanded="false" />
-            <element signature="e#62542#65921#0" expanded="false" />
+            <element signature="e#62582#65961#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -644,8 +636,7 @@
           <caret line="23" column="55" selection-start-line="23" selection-start-column="55" selection-end-line="23" selection-end-column="55" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
-            <element signature="e#53125#60608#0" expanded="false" />
-            <element signature="e#62542#65921#0" expanded="false" />
+            <element signature="e#62582#65961#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -686,8 +677,7 @@
           <caret line="166" column="8" selection-start-line="166" selection-start-column="8" selection-end-line="166" selection-end-column="8" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
-            <element signature="e#53125#60608#0" expanded="false" />
-            <element signature="e#62542#65921#0" expanded="false" />
+            <element signature="e#62582#65961#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -721,8 +711,7 @@
           <caret line="166" column="8" selection-start-line="166" selection-start-column="8" selection-end-line="166" selection-end-column="8" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
-            <element signature="e#53125#60608#0" expanded="false" />
-            <element signature="e#62542#65921#0" expanded="false" />
+            <element signature="e#62582#65961#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -756,8 +745,7 @@
           <caret line="166" column="8" selection-start-line="166" selection-start-column="8" selection-end-line="166" selection-end-column="8" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
-            <element signature="e#53125#60608#0" expanded="false" />
-            <element signature="e#62542#65921#0" expanded="false" />
+            <element signature="e#62582#65961#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -812,13 +800,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/FindExtrema.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="6.366022">
-          <caret line="323" column="43" selection-start-line="323" selection-start-column="43" selection-end-line="323" selection-end-column="43" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/ConfigClass.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
@@ -836,20 +817,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/BinCollection.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.020718232">
-          <caret line="22" column="8" selection-start-line="22" selection-start-column="8" selection-end-line="22" selection-end-column="8" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/Extrema.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.020718232">
-          <caret line="73" column="33" selection-start-line="73" selection-start-column="33" selection-end-line="73" selection-end-column="33" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/Bin.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
@@ -862,18 +829,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.33333334">
           <caret line="228" column="17" selection-start-line="228" selection-start-column="17" selection-end-line="228" selection-end-column="17" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/newAnalysis.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="1126" column="32" selection-start-line="1126" selection-start-column="32" selection-end-line="1126" selection-end-column="32" />
-          <folding>
-            <element signature="e#0#11#0" expanded="true" />
-            <element signature="e#53125#60608#0" expanded="false" />
-            <element signature="e#62542#65921#0" expanded="false" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -901,24 +856,73 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py">
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/ATH2D.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.10359116">
+          <caret line="5" column="8" selection-start-line="5" selection-start-column="8" selection-end-line="5" selection-end-column="8" />
+          <folding>
+            <element signature="e#0#21#0" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/BinCollection.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
-          <caret line="439" column="42" selection-start-line="439" selection-start-column="42" selection-end-line="439" selection-end-column="42" />
-          <folding>
-            <element signature="e#108#119#0" expanded="true" />
-            <element signature="e#2188#2716#0" expanded="false" />
-            <element signature="e#2773#2786#0" expanded="false" />
-          </folding>
+          <caret line="451" column="8" selection-start-line="451" selection-start-column="8" selection-end-line="451" selection-end-column="8" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/FindExtrema.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.020718232">
+          <caret line="340" column="134" selection-start-line="340" selection-start-column="134" selection-end-line="340" selection-end-column="134" />
+          <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/signal_analysis.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.60497236">
-          <caret line="721" column="27" selection-start-line="721" selection-start-column="27" selection-end-line="721" selection-end-column="27" />
+        <state vertical-scroll-proportion="0.0">
+          <caret line="107" column="0" selection-start-line="107" selection-start-column="0" selection-end-line="107" selection-end-column="0" />
           <folding>
             <element signature="e#108#236#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/Extrema.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="91" column="33" selection-start-line="91" selection-start-column="33" selection-end-line="91" selection-end-column="33" />
+          <folding>
+            <element signature="e#0#30#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/newAnalysis.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="88" column="23" selection-start-line="88" selection-start-column="23" selection-end-line="88" selection-end-column="23" />
+          <folding>
+            <element signature="e#0#11#0" expanded="true" />
+            <element signature="e#62582#65961#0" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="-0.18093923">
+          <caret line="411" column="31" selection-start-line="411" selection-start-column="31" selection-end-line="411" selection-end-column="31" />
+          <folding>
+            <element signature="e#108#119#0" expanded="true" />
+            <element signature="e#2120#2648#0" expanded="false" />
+            <element signature="e#2705#2718#0" expanded="false" />
+            <element signature="e#5176#5193#0" expanded="false" />
+            <element signature="e#19532#32166#0" expanded="false" />
           </folding>
         </state>
       </provider>

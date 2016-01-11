@@ -100,11 +100,19 @@ class SignalAnalysis(Analysis):
         self.draw_mean_signal_distribution(show=False)
         return self.cut.generate_region(self.SignalMapHisto, self.MeanSignalHisto)
 
-    def find_2d_extrema(self):
+    def find_2d_regions(self):
         self.draw_mean_signal_distribution(show=False)
         extrema = Extrema2D(self.SignalMapHisto, self.MeanSignalHisto)
         extrema.region_scan()
         extrema.show_voting_histos()
+        return extrema
+
+    def find_2d_extrema(self, size=1, histo=None, show=True):
+        self.draw_mean_signal_distribution(show=False)
+        extrema = Extrema2D(self.SignalMapHisto, self.MeanSignalHisto)
+        extrema.square_scan(size, histo)
+        if show:
+            extrema.show_voting_histos()
         return extrema
 
     def draw_mean_signal_distribution(self, show=True):

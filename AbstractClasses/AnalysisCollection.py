@@ -2,21 +2,20 @@
 # IMPORTS
 # ==============================================
 import ROOT
-from ROOT import gROOT, TCanvas, TGraphErrors, TLegend
-from AbstractClasses.ATH2D import ATH2D
-from AbstractClasses.BinCollection import BinCollection
-from AbstractClasses.newAnalysis import Analysis
-from AbstractClasses.RunSelection import RunSelection
+from ROOT import gROOT, TCanvas, TLegend, TExec
 import os
+import json
 import numpy as np
 from numpy import sqrt, log
-from Elementary import Elementary
 from time import time
 from collections import OrderedDict
 from signal_analysis import SignalAnalysis
 from ConfigParser import ConfigParser
-import json
 from argparse import ArgumentParser
+from Elementary import Elementary
+from Extrema import Extrema2D
+from newAnalysis import Analysis
+from RunSelection import RunSelection
 
 
 # ==============================================
@@ -59,6 +58,7 @@ class AnalysisCollection(Elementary):
         self.FWHM = None
         self.PulseHeight = None
         self.Pedestal = None
+        self.PeakDistribution = None
 
     def __del__(self):
         print "deleting AnalysisCollection.."
@@ -442,54 +442,34 @@ class AnalysisCollection(Elementary):
         self.histos[0] = gr
         gROOT.SetBatch(0)
 
-
-    def PeakComparison(self, channel, show=True):
-        if self.get_number_of_analyses() == 0: return 0
-
-        print "PeakComparision start"
-        if show:
-            self.peakComparisonCanvasMax = ROOT.TCanvas("peakComparisonCanvasMax", "PeakComparisonCanvas")
-            self.peakComparisonCanvasMin = ROOT.TCanvas("peakComparisonCanvasMin", "PeakComparisonCanvas")
-
-        runnumbers = self.collection.keys()
-        if not hasattr(self.collection[runnumbers[0]], "Pads"):
-            self.collection[runnumbers[0]].LoadTrackData()
-        pad_attributes = self.collection[runnumbers[0]].Pads[channel].Get2DAttributes()
-
-        self.PeakPadMax = ATH2D("PeakPadMax", "Peak distribution over all selected runs", *pad_attributes)
-        self.PeakPadMaxPad = BinCollection(self.collection[runnumbers[0]], channel, *pad_attributes)  # CHANGE NAME !
-        self.PeakPadMin = ATH2D("PeakPadMin", "Low distribution over all selected runs", *pad_attributes)
-
-        for runnumber in runnumbers:
-            analysis = self.collection[runnumber]
-            if analysis.extremaResults[channel]["FoundMaxima"] == None: analysis.FindMaxima(channel=channel, show=False)
-            if analysis.extremaResults[channel]["FoundMinima"] == None: analysis.FindMinima(channel=channel, show=False)
-            maxima = analysis.extremaResults[channel]["FoundMaxima"]
-            minima = analysis.extremaResults[channel]["FoundMinima"]
-            if maxima != None:
-                for peak in maxima:
-                    self.PeakPadMax.Fill(*peak)
-                    if not hasattr(analysis.Pads[channel], "meansignaldistribution"):
-                        analysis.Pads[channel].CalculateMeanSignalDistribution()
-                    signal_ = analysis.Pads[channel].meansignaldistribution.GetBinContent(analysis.Pads[channel].GetBinNumber(*peak))
-                    self.PeakPadMaxPad.Fill(peak[0], peak[1], signal_)
+    def show_peak_distribution(self, show=True):
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        gROOT.SetBatch(1)
+        # create an overall VotingHistogram
+        ana = self.get_first_analysis()
+        ana.draw_mean_signal_distribution(show=False)
+        extrema = Extrema2D(ana.SignalMapHisto, ana.MeanSignalHisto)
+        self.PeakDistribution = extrema.create_voting_histo()
+        for run, ana in self.collection.iteritems():
+            if ana.IsAligned:
+                ana.find_2d_extrema(histo=self.PeakDistribution, show=False)
             else:
-                print "WARNING: No Maxima results found in run ", runnumber, ". PeakComparisonMax will be incomplete."
-            if minima != None:
-                for peak in minima:
-                    self.PeakPadMin.Fill(*peak)
-            else:
-                print "WARNING: No Minima results found in run ", runnumber, ". PeakComparisonMin will be incomplete."
+                print 'Run {run} is not aligned...'.format(run=run)
+        c = TCanvas('c', 'Voting Histos', 1600, 800)
+        c.Divide(2, 1)
+        # new_pal = ar.array('i', [kYellow, kYellow, kOrange, kOrange - 3, kOrange + 7, kRed])
+        ex = [TExec('ex1', 'gStyle->SetPalette(56);'), TExec('ex2', 'gStyle->SetPalette(51)')]
         if show:
-            ROOT.gStyle.SetPalette(55)  # Rainbow palette
-            self.peakComparisonCanvasMax.cd()
-            self.PeakPadMax.Draw("COLZ")
-            self.save_plots("PeakPadMax.png")
-            self.peakComparisonCanvasMin.cd()
-            self.PeakPadMin.Draw("COLZ")
-            self.save_plots("PeakPadMin.png")
-
-            # raw_input("peakpad")
+            gROOT.SetBatch(0)
+        for i, histo in enumerate(self.PeakDistribution.itervalues(), 1):
+            c.cd(i)
+            histo.Draw('col')
+            ex[i - 1].Draw()
+            histo.Draw('colz same')
+        self.histos[0] = ex
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        gROOT.SetBatch(0)
+        self.canvases[0] = c
 
     def PeakSignalEvolution(self, channel, NMax=3, NMin=3, OnThisCanvas=None, BinRateEvolution=False):
         '''
@@ -784,76 +764,6 @@ class AnalysisCollection(Elementary):
         self.get_first_analysis().print_info_header()
         for ana in self.collection.itervalues():
             ana.print_information(header=False)
-
-
-    def AnalyzePedestalContribution(self, channel=0, normalize=False, refactor=5):
-        '''
-        Example:
-            sel = RunSelection()
-            sel.SelectRunsFromRunPlan(12)
-            sel.UnSelectUnlessInRange(439, 446)
-            coll = AnalysisCollection(sel)
-            coll.AnalyzePedestalContribution(3)
-        :param channel:
-        :param refactor:
-        :return:
-        '''
-        self.set_save_directory("Results/Pedestal_Analysis/")
-        self.pedestalresults = {
-            "full": ROOT.TGraph(),
-            "no_tail": ROOT.TGraph(),
-            "no_ped": ROOT.TGraph()
-        }
-        colors = {
-            "full": ROOT.kRed,
-            "no_tail": ROOT.kBlue,
-            "no_ped": ROOT.kGreen
-        }
-        for key in self.pedestalresults.keys():
-            self.pedestalresults[key].SetNameTitle("Scan_Mean_" + key, "Scan_Mean_" + key)
-            self.pedestalresults[key].SetLineColor(colors[key])
-
-        i = 0
-
-        means = {
-            "full": [],
-            "no_tail": [],
-            "no_ped": []
-        }
-        for run in self.collection.keys():
-            self.collection[run].calc_snr(channel=channel, savePlots=False)
-            fullsignalhisto = self.collection[run].snr_canvas.GetPrimitive(
-                "{dia}_SNRSignalHisto{run}".format(dia=self.collection[run].run.diamondname[channel], run=self.collection[run].run.run_number))
-            self.save_plots(savename="SignalHisto_full_{run}{ch}.png".format(run=run, ch=channel), canvas=self.collection[run].snr_canvas)
-            self.save_plots(savename="SignalHisto_full_{run}{ch}.root".format(run=run, ch=channel), sub_dir="root", canvas=self.collection[run].snr_canvas)
-            mean_full = fullsignalhisto.GetMean()
-            mean, mean_nopedestal = self.collection[run].AnalyzePedestalContribution(channel=channel, refactor=refactor)
-            self.save_plots(savename="SignalHisto_fit_{run}{ch}.png".format(run=run, ch=channel), canvas=self.collection[run].signalpedestalcanvas)
-            self.save_plots(savename="SignalHisto_fit_{run}{ch}.root".format(run=run, ch=channel), sub_dir="root", canvas=self.collection[run].signalpedestalcanvas)
-
-            means["full"] += [mean_full]
-            means["no_tail"] += [mean]
-            means["no_ped"] += [mean_nopedestal]
-
-            if normalize:
-                factor = mean_nopedestal
-            else:
-                factor = 1.
-
-            self.pedestalresults["full"].SetPoint(i, self.collection[run].get_flux(), mean_full / factor)
-            self.pedestalresults["no_tail"].SetPoint(i, self.collection[run].get_flux(), mean / factor)
-            self.pedestalresults["no_ped"].SetPoint(i, self.collection[run].get_flux(), mean_nopedestal / factor)
-            i += 1
-
-        self.pedestal_analysis_canvas = ROOT.TCanvas("pedestal_analysis_canvas", "pedestal_analysis_canvas")
-        self.pedestalresults["full"].Draw("ALP")
-        self.pedestalresults["no_tail"].Draw("LP")
-        self.pedestalresults["no_ped"].Draw("LP")
-        self.pedestal_analysis_canvas.Update()
-
-        for key in means.keys():
-            print key, "  -  ", means[key]
-
 
 if __name__ == "__main__":
     main_parser = ArgumentParser()
