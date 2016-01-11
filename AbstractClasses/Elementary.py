@@ -238,5 +238,11 @@ class Elementary(object):
         num = len(string) / 4 * 4 + 4
         return string.ljust(num)
 
+    @staticmethod
+    def normalise_histo(histo):
+        h = histo
+        h.Scale(1 / h.Integral(1, h.GetNbinsX()))
+        return h
+
 if __name__ == "__main__":
     z = Elementary()

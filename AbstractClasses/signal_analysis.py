@@ -3,7 +3,7 @@
 # ==============================================
 from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TF1, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG
 from newAnalysis import Analysis
-from numpy import array
+from numpy import array, zeros
 from math import sqrt, ceil, log
 from argparse import ArgumentParser
 from Extrema import Extrema2D
@@ -95,6 +95,45 @@ class SignalAnalysis(Analysis):
         self.SignalMapHisto = h
         self.canvases[0] = c
         return h
+
+    def show_chi2(self, mode=None, show=True):
+        gROOT.SetBatch(1)
+        assert mode in ['x', 'y', None], 'mode has to be in {lst}!'.format(lst=['x', 'y', None])
+        n_bins = 500 if mode is None else 1000
+        mode = 'tracks' if mode is None else mode
+        h = TH1F('h', '#chi^{2} in ' + mode, n_bins, 0, 100)
+        self.tree.Draw('chi2_{mod}>>h'.format(mod=mode), '', 'goff')
+        if show:
+            gROOT.SetBatch(0)
+        c = TCanvas('c', 'Chi2 in ' + mode, 1000, 1000)
+        c.SetLeftMargin(.13)
+        if show or mode == 'tracks':
+            yq = zeros(1)
+            h.GetQuantiles(1, yq, array([.9]))
+            h.GetXaxis().SetRangeUser(0, yq[0])
+        self.format_histo(h, x_tit='#chi^{2}', y_tit='Entries', y_off=1.8)
+        h.Draw()
+        self.histos[0] = h
+        self.canvases[0] = c
+        gROOT.SetBatch(0)
+        return h
+
+    def show_all_chi2(self):
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        histos = [self.show_chi2(mode, show=False) for mode in [None, 'x', 'y']]
+        c = TCanvas('c', 'Chi2', 1000, 1000)
+        c.SetLeftMargin(.13)
+        max_chi2 = int(max([h.GetMaximum() for h in histos])) / 1000 * 1000 + 1000
+        histos[0].GetYaxis().SetRangeUser(0, max_chi2)
+        histos[0].SetTitle('All #chi^{2}')
+        for i, h in enumerate(histos):
+            h.SetLineColor(self.get_color())
+            h.SetLineWidth(2)
+            h.Draw() if not i else h.Draw('same')
+            self.histos[i] = h
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        self.save_plots('Chi2', canvas=c, sub_dir=self.save_dir)
+        self.canvases[0] = c
 
     def make_region_cut(self):
         self.draw_mean_signal_distribution(show=False)

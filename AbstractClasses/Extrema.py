@@ -1,6 +1,5 @@
 from numpy import zeros, array
-from ROOT import TH2F, TCanvas, gStyle, TExec, kRed, kYellow, kOrange
-import array as ar
+from ROOT import TH2F, TCanvas, TExec
 
 __author__ = 'micha'
 

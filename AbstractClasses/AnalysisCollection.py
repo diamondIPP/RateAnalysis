@@ -6,7 +6,7 @@ from ROOT import gROOT, TCanvas, TLegend, TExec
 import os
 import json
 import numpy as np
-from numpy import sqrt, log
+from numpy import sqrt, log, array, zeros
 from time import time
 from collections import OrderedDict
 from signal_analysis import SignalAnalysis
@@ -390,6 +390,28 @@ class AnalysisCollection(Elementary):
         print '\nThe preanalysis for this selection took', self.elapsed_time(start_time)
     # endregion
 
+    # ============================================
+    # region SHOW
+    def show_chi2s(self, mode=None):
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        histos = [ana.show_chi2(mode=mode, show=False) for ana in self.collection.itervalues()]
+        c = TCanvas('c', 'Chi2', 1000, 1000)
+        c.SetLeftMargin(.13)
+        histos[0].SetStats(0)
+        yq = zeros(1)
+        histos[0].GetQuantiles(1, yq, array([.9]))
+        for i, h in enumerate(histos):
+            h.GetXaxis().SetRangeUser(0, yq[0])
+            self.normalise_histo(h)
+            h.SetLineColor(self.get_color())
+            h.SetLineWidth(2)
+            h.Draw() if not i else h.Draw('same')
+            self.histos[i] = h
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        self.save_plots('Chi2', canvas=c, sub_dir=self.save_dir)
+        self.canvases[0] = c
+
+    # endregion
     def select_runs_in_range(self, start, stop):
         new_collection = OrderedDict()
         for key, ana in self.collection.iteritems():
