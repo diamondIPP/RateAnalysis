@@ -466,26 +466,8 @@ class Run(Elementary):
             legend.AddEntry(0, comment, '')
         legend.Draw()
         self.run_info_legends[str(channel) + infoid] = legend
-        # else:
-        #     if comment is not None:
-        #         lines = 2
-        #     else:
-        #         lines = 1
-        #         width = 0.15
-        #     height = lines * 0.05
-        #     # user height and width:
-        #     userheight = height if set_height is None else set_height
-        #     userwidth = width if set_width is None else set_width
-        #
-        #     # legend = TLegend(0.1, 0.9 - userheight, 0.1 + userwidth, 0.9)
-        #     legend = TLegend(0, 0, userwidth, userheight)
-        #     legend.SetMargin(0.05)
-        #     legend.AddEntry(0, 'Run{run} ({rate})'.format(run=self.run_number, rate=self.get_rate_string()), '')
-        #     if comment is not None:
-        #         legend.AddEntry(0, comment, '')
-        #     legend.Draw()
-        #     self.run_info_legends['ch12' + infoid] = legend
         pad.Modified()
+        canvas.Update()
 
     # endregion
 
