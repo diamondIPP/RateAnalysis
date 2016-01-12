@@ -1,11 +1,11 @@
 import copy
 import json
 import numpy as np
-from array import array
+from numpy import array, zeros
 import types as t
 
 import ROOT
-from ROOT import TCanvas, TH2F, gROOT, TProfile
+from ROOT import TCanvas, TH2F, gROOT, TProfile, TH1F, TLegend
 from AbstractClasses.PreAnalysisPlot import PreAnalysisPlot
 from AbstractClasses.ConfigClass import *
 from AbstractClasses.RunClass import Run
@@ -48,11 +48,11 @@ class Analysis(Elementary):
         self.diamonds = diamonds
         self.run = self.init_run(run)
         self.run.analysis = self
-        # self.config_object = self.load_bincollection()
         self.RunInfo = deepcopy(self.run.RunInfo)
         self.lowest_rate_run = low_rate if low_rate is not None else self.run.run_number
         self.parser = self.load_parser()
         self.pickle_dir = self.parser.get('SAVE', 'pickle_dir')
+        self.ana_save_dir = '{tc}_{run}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run.run_number)
 
         # tree
         self.tree = self.run.tree
@@ -153,10 +153,99 @@ class Analysis(Elementary):
             if axis is not None:
                 axis.Draw()
         save_name = 'pedestal_regions' if ped else 'signal_regions'
-        self.save_plots(save_name, canvas=c)
+        self.save_plots(save_name, sub_dir=self.ana_save_dir, ch=None)
         self.lines = lines
         self.histos[0] = h
         self.canvases[0] = c
+
+    # ============================================================================================
+    # region SHOW
+    def show_chi2(self, mode=None, show=True):
+        gROOT.SetBatch(1)
+        assert mode in ['x', 'y', None], 'mode has to be in {lst}!'.format(lst=['x', 'y', None])
+        n_bins = 500 if mode is None else 1000
+        mode = 'tracks' if mode is None else mode
+        h = TH1F('h', '#chi^{2} in ' + mode, n_bins, 0, 100)
+        self.tree.Draw('chi2_{mod}>>h'.format(mod=mode), '', 'goff')
+        if show:
+            gROOT.SetBatch(0)
+        c = TCanvas('c', 'Chi2 in ' + mode, 1000, 1000)
+        c.SetLeftMargin(.13)
+        if show or mode == 'tracks':
+            yq = zeros(1)
+            h.GetQuantiles(1, yq, array([.9]))
+            h.GetXaxis().SetRangeUser(0, yq[0])
+        self.format_histo(h, x_tit='#chi^{2}', y_tit='Entries', y_off=1.8)
+        h.Draw()
+        self.histos[0] = h
+        self.canvases[0] = c
+        gROOT.SetBatch(0)
+        return h
+
+    def show_all_chi2(self):
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        histos = [self.show_chi2(mode, show=False) for mode in [None, 'x', 'y']]
+        c = TCanvas('c', 'Chi2', 1000, 1000)
+        c.SetLeftMargin(.13)
+        max_chi2 = int(max([h.GetMaximum() for h in histos])) / 1000 * 1000 + 1000
+        histos[0].GetYaxis().SetRangeUser(0, max_chi2)
+        histos[0].SetTitle('All #chi^{2}')
+        for i, h in enumerate(histos):
+            h.SetLineColor(self.get_color())
+            h.SetLineWidth(2)
+            h.Draw() if not i else h.Draw('same')
+            self.histos[i] = h
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        self.save_plots('Chi2', canvas=c, sub_dir=self.ana_save_dir, ch=None)
+        self.canvases[0] = c
+
+    def show_angle(self, mode='x', show=True):
+        """
+        Displays the angle distribution of the tracks.
+        :param mode: has to be eiher 'x' or 'y'
+        :param show:
+        :return: histogram
+        """
+        assert mode in ['x', 'y']
+        gROOT.SetBatch(1)
+        h = TH1F('h', 'Track Angle Distribution in ' + mode, 320, -4, 4)
+        self.tree.Draw('slope_{mod}>>h'.format(mod=mode), '', 'goff')
+        if show:
+            gROOT.SetBatch(0)
+        c = TCanvas('c', 'Angle in ' + mode, 1000, 1000)
+        c.SetLeftMargin(.13)
+        self.format_histo(h, x_tit='Track Angle [deg]', y_tit='Entries', y_off=1.8, lw=2)
+        h.Draw()
+        self.histos[0] = h
+        self.canvases[0] = c
+        gROOT.SetBatch(0)
+        # a = gROOT.GetListOfCanvases()
+        # print a[0]
+        self.save_plots('TrackAngle{mod}'.format(mod=mode.upper()), sub_dir=self.ana_save_dir, ch=None)
+        return h
+
+    def show_both_angles(self):
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        histos = [self.show_angle(mode, show=False) for mode in ['x', 'y']]
+        c = TCanvas('c', 'Chi2', 1000, 1000)
+        c.SetLeftMargin(.13)
+        max_angle = int(max([h.GetMaximum() for h in histos])) / 1000 * 1000 + 1000
+        histos[0].GetYaxis().SetRangeUser(0, max_angle)
+        legend = TLegend(.7, .7, .9, .9)
+        leg_names = ['Track Angle in ' + mode for mode in ['x', 'y']]
+        for i, h in enumerate(histos):
+            h.SetStats(0)
+            h.SetTitle('Track Angle Distributions')
+            h.SetLineColor(self.get_color())
+            h.Draw() if not i else h.Draw('same')
+            legend.AddEntry(h, leg_names[i], 'l')
+            self.histos[i] = h
+        legend.Draw()
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        self.canvases[0] = c
+        self.histos['legend'] = legend
+        self.save_plots('TrackAngles', sub_dir=self.ana_save_dir, ch=None)
+    # endregion
         
     def load_parser(self):
         parser = ConfigParser()
@@ -232,17 +321,20 @@ class Analysis(Elementary):
         pickle_path = 'Configuration/Individual_Configs/Alignment/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run.run_number)
 
         def func():
+            gROOT.SetBatch(1)
             nbins = self.run.n_entries / binning
             h = TProfile('h','Pulser Rate', nbins, 0, self.run.n_entries)
             self.tree.Draw('(@col.size()>1)*100:Entry$>>h', 'pulser', 'goff')
             self.format_histo(h, name='align', title='Event Alignment', x_tit='Event Number', y_tit='Hits per Event @ Pulser Events [%]', y_off=1.3)
             h.GetYaxis().SetRangeUser(0, 100)
             if draw:
-                c = TCanvas('c', 'Pulser Rate Canvas', 1000, 1000)
-                h.Draw('hist')
-                self.run.draw_run_info(canvas=c)
-                self.canvases[0] = c
-                self.histos[0] = h
+                gROOT.SetBatch(0)
+            c = TCanvas('c', 'Pulser Rate Canvas', 1000, 1000)
+            h.Draw('hist')
+            self.save_plots('EventAlignment', sub_dir=self.ana_save_dir, ch=None)
+            gROOT.SetBatch(0)
+            self.canvases[0] = c
+            self.histos[0] = h
             align = self.__check_alignment_histo(h)
             return align
 
@@ -459,7 +551,7 @@ class Analysis(Elementary):
             ROOT.gPad.SetGridx()
             ROOT.gPad.SetGridy()
             self.run.tree.Draw("fft_mean[{channel}]:1./fft_max[{channel}]>>fft_ch{channel}".format(channel=ch), thiscut, "", events, startevent)
-            self.fftHistos[ch].SetTitle("{diamond} ".format(diamond=self.run.diamondname[ch]) + self.fftHistos[ch].GetTitle())
+            self.fftHistos[ch].SetTitle("{diamond} ".format(diamond=self.run.diamond_names[ch]) + self.fftHistos[ch].GetTitle())
             self.fftHistos[ch].GetXaxis().SetTitle("1/fft_max")
             self.fftHistos[ch].GetYaxis().SetTitle("fft_mean")
             # self.fftHistos[ch].Draw(drawoption)
@@ -687,7 +779,7 @@ class Analysis(Elementary):
         canvas.Update()
         if savePlots:
             if channel != None:
-                dia = "_" + self.run.diamondname[channel]
+                dia = "_" + self.run.diamond_names[channel]
             else:
                 dia = ""
             self.save_plots("Run{run}_MedianHisto{dia}.png".format(run=self.run.run_number, dia=dia))
@@ -752,12 +844,12 @@ class Analysis(Elementary):
                 thisusercut = thiscut
             print "making " + infoid + " using\nSignal def:\n\t{signal}\nCut:\n\t({usercut})\n\t{cut}".format(signal=signaldef, usercut=thisusercut, cut=thiscut)
             self.run.tree.Draw(
-                (signaldef + ">>{infoid}{run}({binning}, {min}, {max})").format(infoid=(self.run.diamondname[ch] + "_" + infoid), channel=ch, run=self.run.run_number, binning=binning, min=xmin,
+                (signaldef + ">>{infoid}{run}({binning}, {min}, {max})").format(infoid=(self.run.diamond_names[ch] + "_" + infoid), channel=ch, run=self.run.run_number, binning=binning, min=xmin,
                                                                                 max=xmax), thiscut, drawoption, self.GetNEventsCut(channel=ch), self.GetMinEventCut(channel=ch))
             canvas.Update()
             if logy: canvas.SetLogy()
             if gridx: canvas.SetGridx()
-            histoname = "{infoid}{run}".format(infoid=(self.run.diamondname[ch] + "_" + infoid), run=self.run.run_number)
+            histoname = "{infoid}{run}".format(infoid=(self.run.diamond_names[ch] + "_" + infoid), run=self.run.run_number)
             histo = ROOT.gROOT.FindObject(histoname)
 
             if histo:
@@ -1044,7 +1136,7 @@ class Analysis(Elementary):
         self.combined_canvas.cd()
         self.combined_canvas.Update()
 
-        savename = self.run.diamondname[channel] + "_" + savename + "_" + str(self.run.run_number)  # diamond_irradiation_savename_runnr
+        savename = self.run.diamond_names[channel] + "_" + savename + "_" + str(self.run.run_number)  # diamond_irradiation_savename_runnr
         if saveplots:
             self.save_plots(savename, ending, saveDir, canvas=self.combined_canvas)
             self.save_plots(savename, "root", saveDir, canvas=self.combined_canvas)
@@ -1334,7 +1426,7 @@ class Analysis(Elementary):
             self.CalculateSNR(channel=ch, name="", savePlots=False, canvas=sigpedPad)
 
             if savePlot:
-                self.save_plots(savename="Run{run}_PreAnalysisOverview_{dia}.png".format(run=self.run.run_number, dia=self.run.diamondname[ch]), sub_dir=self.run.diamondname[ch],
+                self.save_plots(savename="Run{run}_PreAnalysisOverview_{dia}.png".format(run=self.run.run_number, dia=self.run.diamond_names[ch]), sub_dir=self.run.diamond_names[ch],
                                 canvas=self.pAOverviewCanv)
 
     def SetIndividualCuts(self, showOverview=True, savePlot=False):
@@ -1372,11 +1464,11 @@ class Analysis(Elementary):
             for ch in [0, 3]:
                 if showOverview:
                     self._ShowPreAnalysisOverview(channel=ch, savePlot=savePlot)
-                range_min = raw_input("{dia} - Event Range Cut. Enter LOWER Event Number: ".format(dia=self.run.diamondname[ch]))
-                range_max = raw_input("{dia} - Event Range Cut. Enter UPPER Event Number: ".format(dia=self.run.diamondname[ch]))
-                peakPos_high = raw_input("{dia} - Peak Position Cut. Enter maximum Peak Position Sample Point: ".format(dia=self.run.diamondname[ch]))
-                spread_low = raw_input("{dia} - Spread Cut. Enter minimum Spread (max-min): ".format(dia=self.run.diamondname[ch]))
-                absMedian_high = raw_input("{dia} - Median Cut. Enter maximum abs(median) value: ".format(dia=self.run.diamondname[ch]))
+                range_min = raw_input("{dia} - Event Range Cut. Enter LOWER Event Number: ".format(dia=self.run.diamond_names[ch]))
+                range_max = raw_input("{dia} - Event Range Cut. Enter UPPER Event Number: ".format(dia=self.run.diamond_names[ch]))
+                peakPos_high = raw_input("{dia} - Peak Position Cut. Enter maximum Peak Position Sample Point: ".format(dia=self.run.diamond_names[ch]))
+                spread_low = raw_input("{dia} - Spread Cut. Enter minimum Spread (max-min): ".format(dia=self.run.diamond_names[ch]))
+                absMedian_high = raw_input("{dia} - Median Cut. Enter maximum abs(median) value: ".format(dia=self.run.diamond_names[ch]))
 
                 if range_max != "" and range_min != "":
                     self.individualCuts[ch]["EventRange"] = [int(range_min), int(range_max)]
@@ -1749,7 +1841,7 @@ class Analysis(Elementary):
         self.ShowSignalPedestalHisto(channel, canvas=self.pedestal_analysis_canvas, savePlots=False, cut=cut, normalized=False, drawruninfo=True, binning=1000, xmin=-500, xmax=500, logy=True,
                                      gridx=True)
 
-        histo = ROOT.gROOT.FindObject("{dia}_SignalHisto{run}".format(dia=self.run.diamondname[channel], run=self.run.run_number))
+        histo = ROOT.gROOT.FindObject("{dia}_SignalHisto{run}".format(dia=self.run.diamond_names[channel], run=self.run.run_number))
         self.h_nopedestal = copy.deepcopy(histo)
 
         landauMax = histo.GetMaximum()
@@ -1757,7 +1849,7 @@ class Analysis(Elementary):
 
         xmin = pedestalmean - 5 * sigma - 20
         xmax = landauMaxPos + 20
-        name = "{dia}_LandauGaus{run}".format(dia=self.run.diamondname[channel], run=self.run.run_number)
+        name = "{dia}_LandauGaus{run}".format(dia=self.run.diamond_names[channel], run=self.run.run_number)
 
         flandaupedestal = ROOT.TF1('f_%s' % name, 'gaus(0)+landau(3)', xmin, xmax)
         flandaupedestal.SetParLimits(0, -.001, landauMax * 0.1)  # gaus: height
@@ -1784,7 +1876,7 @@ class Analysis(Elementary):
         self.h_nopedestal.Add(fpedestal, -1)
         self.h_nopedestal.SetLineColor(ROOT.kGray + 3)
         self.h_nopedestal.FindObject("stats").SetTextColor(ROOT.kGray + 3)
-        self.h_nopedestal.SetName("{dia}_PedCorrected{run}".format(dia=self.run.diamondname[channel], run=self.run.run_number))
+        self.h_nopedestal.SetName("{dia}_PedCorrected{run}".format(dia=self.run.diamond_names[channel], run=self.run.run_number))
         self.h_nopedestal.Draw("sames")
         self.pedestal_analysis_canvas.Update()
 

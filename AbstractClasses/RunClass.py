@@ -77,7 +77,6 @@ class Run(Elementary):
         self.channels = [0, 3]
         self.trigger_planes = [1, 2]
         self.run_config_parser = self.load_parser()
-        self.ShowAndWait = False
         self.filename = self.run_config_parser.get('BASIC', 'filename')
         self.treename = self.run_config_parser.get('BASIC', 'treename')
         self.run_path = self.run_config_parser.get('BASIC', 'runpath')
@@ -119,7 +118,7 @@ class Run(Elementary):
 
         # extract run info
         self.analyse_ch = self.set_channels(diamonds)
-        self.diamondname = self.__load_diamond_name()
+        self.diamond_names = self.__load_diamond_name()
         self.bias = self.load_bias()
         self.IsMonteCarlo = False
 
@@ -333,7 +332,7 @@ class Run(Elementary):
         return [ch for ch in self.analyse_ch if self.analyse_ch[ch]]
 
     def get_diamond_name(self, channel):
-        return self.diamondname[channel]
+        return self.diamond_names[channel]
 
     def get_channel_name(self, channel):
         self.tree.GetEntry()
@@ -399,8 +398,8 @@ class Run(Elementary):
         print 'RUN INFO:'
         print '\tRun Number: \t', self.run_number, ' (', self.RunInfo['type'], ')'
         print '\tRate: \t', self.get_flux(), ' kHz'
-        print '\tDiamond1:   \t', self.diamondname[0], ' (', self.bias[0], ') | is selected: ', self.analyse_ch[0]
-        print '\tDiamond2:   \t', self.diamondname[3], ' (', self.bias[3], ') | is selected: ', self.analyse_ch[3]
+        print '\tDiamond1:   \t', self.diamond_names[0], ' (', self.bias[0], ') | is selected: ', self.analyse_ch[0]
+        print '\tDiamond2:   \t', self.diamond_names[3], ' (', self.bias[3], ') | is selected: ', self.analyse_ch[3]
 
     def draw_run_info(self, channel=None, canvas=None, diamondinfo=True, cut=None, comment=None, infoid='', set_width=None, set_height=None):
         """
@@ -416,6 +415,7 @@ class Run(Elementary):
         :param set_width:
         :return:
         """
+        assert channel is None or channel in self.channels, 'wrong channel id "{ch}"'.format(ch=channel)
         if set_height is not None:
             assert 0 <= set_height <= 0.8, 'choose height between 0 and 0.8 or set it to "None"'
         if set_width is not None:
@@ -441,48 +441,50 @@ class Run(Elementary):
             width = max(0.5, width)
         height = (lines - 1) * 0.03
 
+        tc = datetime.strptime(self.TESTCAMPAIGN, '%Y%m')
         dur = '{0:02d}:{1:02.0f}'.format(int(self.totalMinutes), (self.totalMinutes - int(self.totalMinutes)) * 60)
 
         canvas.SetBottomMargin(0.144)
-        if channel is not None and channel in self.channels:
-            # user height and width:
-            userheight = height if set_height is None else set_height - 0.04
-            userwidth = width if set_width is None else set_width
+        # user height and width:
+        userheight = height if set_height is None else set_height - 0.04
+        userwidth = width if set_width is None else set_width
 
-            # legend = TLegend(0.1, 0.86 - userheight, 0.1 + userwidth, 0.9)
-            legend = TLegend(.002, .00205, userwidth, userheight + 0.04)
-            legend.SetName('l')
-            legend.SetMargin(0.05)
-            tc = datetime.strptime(self.TESTCAMPAIGN, '%Y%m')
-            legend.AddEntry(0, 'Test Campaign: {tc}'.format(tc=tc.strftime('%b %Y')), '')
-            legend.AddEntry(0, 'Run {run}: {rate}, {dur} Min ({evts} evts)'.format(run=self.run_number, rate=self.get_rate_string(), dur=dur, evts=self.n_entries), '')
-            if diamondinfo: 
-                legend.AddEntry(0, 'Diamond: {diamond} @ {bias:+}V'.format(diamond=self.diamondname[channel], bias=self.bias[channel]), '')
-            if cut and hasattr(self, 'analysis'): 
-                legend.AddEntry(0, 'Cut: {cut}'.format(cut=self.analysis.get_easy_cutstring()), '')
-            if comment is not None: 
-                legend.AddEntry(0, comment, '')
-            legend.Draw()
-            self.run_info_legends[str(channel) + infoid] = legend
+        legend = TLegend(.002, .00205, userwidth, userheight + 0.04)
+        legend.SetName('l')
+        legend.SetMargin(0.05)
+        legend.AddEntry(0, 'Test Campaign: {tc}'.format(tc=tc.strftime('%b %Y')), '')
+        legend.AddEntry(0, 'Run {run}: {rate}, {dur} Min ({evts} evts)'.format(run=self.run_number, rate=self.get_rate_string(), dur=dur, evts=self.n_entries), '')
+        if channel is None:
+            dias = ['{dia} @ {bias:2.0f}V'.format(dia=self.diamond_names[ch], bias=self.bias[ch]) for ch in self.channels]
+            dias = str(dias).strip('[]').replace('\'', '')
+            legend.AddEntry(0, 'Diamonds: {dias}'.format(dias=dias), '')
         else:
-            if comment is not None:
-                lines = 2
-            else:
-                lines = 1
-                width = 0.15
-            height = lines * 0.05
-            # user height and width:
-            userheight = height if set_height is None else set_height
-            userwidth = width if set_width is None else set_width
-
-            # legend = TLegend(0.1, 0.9 - userheight, 0.1 + userwidth, 0.9)
-            legend = TLegend(0, 0, userwidth, userheight)
-            legend.SetMargin(0.05)
-            legend.AddEntry(0, 'Run{run} ({rate})'.format(run=self.run_number, rate=self.get_rate_string()), '')
-            if comment is not None:
-                legend.AddEntry(0, comment, '')
-            legend.Draw()
-            self.run_info_legends['ch12' + infoid] = legend
+            legend.AddEntry(0, 'Diamond: {diamond} @ {bias:+}V'.format(diamond=self.diamond_names[channel], bias=self.bias[channel]), '')
+        if cut and hasattr(self, 'analysis'):
+            legend.AddEntry(0, 'Cut: {cut}'.format(cut=self.analysis.get_easy_cutstring()), '')
+        if comment is not None:
+            legend.AddEntry(0, comment, '')
+        legend.Draw()
+        self.run_info_legends[str(channel) + infoid] = legend
+        # else:
+        #     if comment is not None:
+        #         lines = 2
+        #     else:
+        #         lines = 1
+        #         width = 0.15
+        #     height = lines * 0.05
+        #     # user height and width:
+        #     userheight = height if set_height is None else set_height
+        #     userwidth = width if set_width is None else set_width
+        #
+        #     # legend = TLegend(0.1, 0.9 - userheight, 0.1 + userwidth, 0.9)
+        #     legend = TLegend(0, 0, userwidth, userheight)
+        #     legend.SetMargin(0.05)
+        #     legend.AddEntry(0, 'Run{run} ({rate})'.format(run=self.run_number, rate=self.get_rate_string()), '')
+        #     if comment is not None:
+        #         legend.AddEntry(0, comment, '')
+        #     legend.Draw()
+        #     self.run_info_legends['ch12' + infoid] = legend
         pad.Modified()
 
     # endregion

@@ -340,7 +340,7 @@ class AnalysisCollection(Elementary):
         for i, gr in enumerate(graphs):
             gr.GetZaxis().SetRangeUser(glob_min, glob_max)
             gr.Draw('surf2')
-            self.save_plots('map{}'.format(i), canvas=c, sub_dir=self.save_dir)
+            self.save_plots('map{}'.format(i), canvas=c, sub_dir=self.save_dir, ind=i)
         gROOT.SetBatch(0)
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         # return graphs

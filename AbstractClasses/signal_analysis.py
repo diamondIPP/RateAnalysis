@@ -3,7 +3,7 @@
 # ==============================================
 from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TF1, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG
 from newAnalysis import Analysis
-from numpy import array, zeros
+from numpy import array
 from math import sqrt, ceil, log
 from argparse import ArgumentParser
 from Extrema import Extrema2D
@@ -23,10 +23,10 @@ class SignalAnalysis(Analysis):
         # main
         self.channel = channel
         self.run_number = self.run.run_number
-        self.diamond_name = self.run.diamondname[channel]
+        self.diamond_name = self.run.diamond_names[channel]
         self.bias = self.run.bias[channel]
         self.cut = self.cuts[channel]
-        self.save_dir = '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number, dia=self.run.diamondname[channel])
+        self.save_dir = '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number, dia=self.diamond_name)
 
         # stuff
         self.draw_option = 'COLZ'
@@ -70,6 +70,9 @@ class SignalAnalysis(Analysis):
         self.n_bins = len(self.binning)
         return value
 
+    # ==========================================================================
+    # region 2D SIGNAL DISTRIBUTION
+
     def draw_signal_map(self, draw_option='surf2', show=True, factor=4):
         margins = self.find_diamond_margins(show_plot=False)
         x = [margins['x'][0], margins['x'][1]]
@@ -89,102 +92,15 @@ class SignalAnalysis(Analysis):
         c.SetRightMargin(0.12)
         gStyle.SetPalette(53)
         self.format_histo(h, x_tit='track_x [cm]', y_tit='track_y [cm]', y_off=1.6)
+        if draw_option == 'surf2':
+            self.format_histo(h, x_off=1.6, y_off=2.2, x_tit='track_x [cm]', y_tit='track_y [cm]')
         h.SetStats(0)
         h.Draw(draw_option)
+        self.save_plots('SignalMap2D_' + draw_option, sub_dir=self.save_dir)
         gROOT.SetBatch(0)
         self.SignalMapHisto = h
         self.canvases[0] = c
         return h
-
-    # ============================================================================================
-    # region SHOW
-    def show_chi2(self, mode=None, show=True):
-        gROOT.SetBatch(1)
-        assert mode in ['x', 'y', None], 'mode has to be in {lst}!'.format(lst=['x', 'y', None])
-        n_bins = 500 if mode is None else 1000
-        mode = 'tracks' if mode is None else mode
-        h = TH1F('h', '#chi^{2} in ' + mode, n_bins, 0, 100)
-        self.tree.Draw('chi2_{mod}>>h'.format(mod=mode), '', 'goff')
-        if show:
-            gROOT.SetBatch(0)
-        c = TCanvas('c', 'Chi2 in ' + mode, 1000, 1000)
-        c.SetLeftMargin(.13)
-        if show or mode == 'tracks':
-            yq = zeros(1)
-            h.GetQuantiles(1, yq, array([.9]))
-            h.GetXaxis().SetRangeUser(0, yq[0])
-        self.format_histo(h, x_tit='#chi^{2}', y_tit='Entries', y_off=1.8)
-        h.Draw()
-        self.histos[0] = h
-        self.canvases[0] = c
-        gROOT.SetBatch(0)
-        return h
-
-    def show_all_chi2(self):
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        histos = [self.show_chi2(mode, show=False) for mode in [None, 'x', 'y']]
-        c = TCanvas('c', 'Chi2', 1000, 1000)
-        c.SetLeftMargin(.13)
-        max_chi2 = int(max([h.GetMaximum() for h in histos])) / 1000 * 1000 + 1000
-        histos[0].GetYaxis().SetRangeUser(0, max_chi2)
-        histos[0].SetTitle('All #chi^{2}')
-        for i, h in enumerate(histos):
-            h.SetLineColor(self.get_color())
-            h.SetLineWidth(2)
-            h.Draw() if not i else h.Draw('same')
-            self.histos[i] = h
-        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.save_plots('Chi2', canvas=c, sub_dir=self.save_dir)
-        self.canvases[0] = c
-
-    def show_angle(self, mode='x', show=True):
-        """
-        Displays the angle distribution of the tracks.
-        :param mode: has to be eiher 'x' or 'y'
-        :param show:
-        :return: histogram
-        """
-        assert mode in ['x', 'y']
-        gROOT.SetBatch(1)
-        h = TH1F('h', 'Track Angle Distribution in ' + mode, 320, -4, 4)
-        self.tree.Draw('slope_{mod}>>h'.format(mod=mode), '', 'goff')
-        if show:
-            gROOT.SetBatch(0)
-        c = TCanvas('c', 'Angle in ' + mode, 1000, 1000)
-        c.SetLeftMargin(.13)
-        self.format_histo(h, x_tit='Track Angle [deg]', y_tit='Entries', y_off=1.8, lw=2)
-        h.Draw()
-        self.histos[0] = h
-        self.canvases[0] = c
-        gROOT.SetBatch(0)
-        # a = gROOT.GetListOfCanvases()
-        # print a[0]
-        self.save_plots('TrackAngle{mod}'.format(mod=mode.upper()), sub_dir=self.save_dir)
-        return h
-
-    def show_both_angles(self):
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        histos = [self.show_angle(mode, show=False) for mode in ['x', 'y']]
-        c = TCanvas('c', 'Chi2', 1000, 1000)
-        c.SetLeftMargin(.13)
-        max_angle = int(max([h.GetMaximum() for h in histos])) / 1000 * 1000 + 1000
-        histos[0].GetYaxis().SetRangeUser(0, max_angle)
-        legend = TLegend(.7, .7, .9, .9)
-        leg_names = ['Track Angle in ' + mode for mode in ['x', 'y']]
-        for i, h in enumerate(histos):
-            h.SetStats(0)
-            h.SetTitle('Track Angle Distributions')
-            h.SetLineColor(self.get_color())
-            h.Draw() if not i else h.Draw('same')
-            legend.AddEntry(h, leg_names[i], 'l')
-            self.histos[i] = h
-        legend.Draw()
-        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.canvases[0] = c
-        self.histos['legend'] = legend
-        self.save_plots('TrackAngles', sub_dir=self.save_dir)
-
-    # endregion
 
     def make_region_cut(self):
         self.draw_mean_signal_distribution(show=False)
@@ -193,16 +109,20 @@ class SignalAnalysis(Analysis):
     def find_2d_regions(self):
         self.draw_mean_signal_distribution(show=False)
         extrema = Extrema2D(self.SignalMapHisto, self.MeanSignalHisto)
+        extrema.clear_voting_histos()
         extrema.region_scan()
         extrema.show_voting_histos()
+        self.save_plots('Regions2D', sub_dir=self.save_dir)
         return extrema
 
     def find_2d_extrema(self, size=1, histo=None, show=True):
         self.draw_mean_signal_distribution(show=False)
         extrema = Extrema2D(self.SignalMapHisto, self.MeanSignalHisto)
+        extrema.clear_voting_histos()
         extrema.square_scan(size, histo)
         if show:
             extrema.show_voting_histos()
+        self.save_plots('Extrema2D', sub_dir=self.save_dir)
         return extrema
 
     def draw_mean_signal_distribution(self, show=True):
@@ -217,7 +137,9 @@ class SignalAnalysis(Analysis):
             h.Fill(sig_map.GetBinContent(bin_))
         if show:
             self.canvases[0] = TCanvas('c', 'Mean Signal Distribution', 1000, 1000)
+            self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.2)
             h.Draw()
+            self.save_plots('MeanSignalHisto', sub_dir=self.save_dir)
         self.MeanSignalHisto = h
 
     def draw_error_signal_map(self, show=False):
@@ -311,6 +233,7 @@ class SignalAnalysis(Analysis):
         frame.SetPoint(4, bin_low[0][0], bin_low[1][0])
         frame.Draw('same')
         self.histos[1] = frame
+    # endregion
 
     def draw_peak_values(self, region='b', draw=True):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
@@ -368,7 +291,7 @@ class SignalAnalysis(Analysis):
             print 'calculating pedestal of ch', self.channel
             if binning is not None:
                 self.__set_bin_size(binning)
-            ped_time = self.make_signal_histos(signal='pedestal')
+            ped_time = self.make_signal_histos(ped=True)
             means = []
             empty_bins = 0
             count = 0
@@ -410,10 +333,10 @@ class SignalAnalysis(Analysis):
         def func():
             gROOT.SetBatch(1)
             print 'calculating pulse height fit of ch', self.channel
-            gr = self.make_tgrapherrors('signal', 'Run{run}: {dia} Signal Time Evolution'.format(run=self.run_number, dia=self.run.diamondname[self.channel]))
+            gr = self.make_tgrapherrors('signal', 'Run{run}: {dia} Signal Time Evolution'.format(run=self.run_number, dia=self.diamond_name))
             if binning is not None:
                 self.__set_bin_size(binning)
-            sig_time = self.make_signal_histos(corr=eventwise_corr, sig_name=signal)
+            sig_time = self.make_signal_histos(corr=eventwise_corr, signal=signal)
             mode = 'mean'
             empty_bins = 0
             count = 0
@@ -480,6 +403,9 @@ class SignalAnalysis(Analysis):
         cut = self.cut.all_cut if cut is None else cut
         self.tree.Draw("{name}>>signal b2".format(name=self.signal_name), cut)
         self.save_plots('signal_distribution', 'png', canvas=canvas, sub_dir=self.save_dir)
+
+    # ==========================================================================
+    # region CUTS
 
     def compare_single_cuts(self):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
@@ -610,6 +536,7 @@ class SignalAnalysis(Analysis):
         self.save_plots('consecutive', 'root', canvas=c2, sub_dir=self.save_dir)
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
+    # endregion
 
     @staticmethod
     def normalise_histo(histo):
@@ -933,16 +860,16 @@ class SignalAnalysis(Analysis):
         print
     # endregion
 
-    def make_signal_histos(self, sig_name=None, signal='signal', corr=False):
-        is_sig = True if signal == 'signal' else False
-        signal = sig_name if is_sig else self.pedestal_name
+    def make_signal_histos(self, ped=False, signal=None, corr=False):
+        signal = self.signal_name if signal is None else signal
+        signal = signal if not ped else self.pedestal_name
         signal = '{sig}-{pol}*{ped}'.format(sig=signal, ped=self.pedestal_name, pol=self.polarity) if corr else signal
         # 2D Histogram
         name = "signaltime_" + str(self.run_number)
         xbins = array(self.time_binning)
-        x_min = -50 if is_sig else -20
-        x_max = 300 if is_sig else 20
-        bins = 1000 if is_sig else 40
+        x_min = -50 if not ped else -20
+        x_max = 300 if not ped else 20
+        bins = 1000 if not ped else 40
         self.signaltime = TH2D(name, "signaltime", len(xbins) - 1, xbins, bins, x_min, x_max)
         self.tree.Draw("{name}:time>>{histo}".format(histo=name, name=signal), self.cut.all_cut, 'goff')
         return self.signaltime

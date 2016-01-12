@@ -141,6 +141,7 @@ class Extrema2D:
             histo.Draw('colz same')
         self.tmp = ex
         self.canvas = c
+        return c
 
     def clear_voting_histos(self):
         for histo in self.VotingHistos.itervalues():

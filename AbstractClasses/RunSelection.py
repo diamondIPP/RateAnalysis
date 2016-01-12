@@ -248,7 +248,7 @@ class RunSelection(Elementary):
             run = raw_input('Which run do you want to unselect? ')
             self.unselect_run(run)
             prompt = raw_input('Do you wish to unselect another run (y/n)? ')
-        self.show_run_plan()
+        self.show_run_plans()
         prompt = raw_input('Do you wish to save the selection to a runplan (y/n)? ')
         if prompt.lower() in ['yes', 'ja', 'y', 'j']:
             nr = raw_input('Enter the name/number of the runplan: ')
@@ -332,7 +332,7 @@ class RunSelection(Elementary):
             for nr in plan:
                 self.run_plan[type_][nr.zfill(2)] = self.run_plan[type_].pop(nr)
 
-    def show_run_plan(self, detailed=False, show_allcomments=False):
+    def show_run_plans(self, detailed=False, show_allcomments=False):
         """
         Print a list of all run plans from the current test campaign to the console.
         :param detailed:

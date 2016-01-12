@@ -76,7 +76,7 @@ class Elementary(object):
             directory += "/"
         self.save_directory = directory
 
-    def save_plots(self, savename, file_type=None, save_dir=None, sub_dir=None, canvas=None):
+    def save_plots(self, savename, file_type=None, save_dir=None, sub_dir=None, canvas=None, ind=None, ch='dia'):
         """
         Saves the canvas at the desired location. If no canvas is passed as argument, the active canvas will be saved. However for applications without graphical interface,
         such as in SSl terminals, it is recommended to pass the canvas to the method.
@@ -85,6 +85,7 @@ class Elementary(object):
         :param save_dir:
         :param sub_dir:
         :param canvas:
+        :param ind: index of the collection
         """
         save_dir = self.save_directory if save_dir is None else save_dir
         file_type = '.png' if file_type is None else '.{end}'.format(end=file_type)
@@ -100,10 +101,11 @@ class Elementary(object):
             except Exception as inst:
                 print '\n\n{delim}\nERROR in get canvas!\n{msg}\n{delim}\n\n'.format(delim=len(str(inst)) * '-', msg=inst)
                 return
-        if self.run is not None:
-            self.run.draw_run_info(channel=self.channel, canvas=canvas)
+        if hasattr(self, 'run'):
+            self.run.draw_run_info(channel=ch if ch is None else self.channel, canvas=canvas)
         elif hasattr(self, 'collection'):
-            self.collection.values[0].run.draw_run_info(channel=0, canvas=canvas)
+            self.collection.values()[ind].run.draw_run_info(channel=0, canvas=canvas)
+        canvas.Update()
         try:
             canvas.SaveAs(resultsdir + savename + file_type)
         except Exception as inst:
