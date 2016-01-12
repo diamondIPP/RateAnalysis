@@ -429,8 +429,8 @@ class Run(Elementary):
                 print 'ERROR: Cannot access active Pad'
                 return
 
-        lines = 1
-        width = 0.25
+        lines = 2
+        width = 0.4
         if diamondinfo:
             lines += 1
         if cut and hasattr(self, 'analysis'):
@@ -438,19 +438,26 @@ class Run(Elementary):
             width = 0.6
         if comment is not None:
             lines += 1
-            width = max(0.3, width)
+            width = max(0.5, width)
         height = (lines - 1) * 0.03
 
+        dur = '{0:02d}:{1:02.0f}'.format(int(self.totalMinutes), (self.totalMinutes - int(self.totalMinutes)) * 60)
+
+        canvas.SetBottomMargin(0.144)
         if channel is not None and channel in self.channels:
             # user height and width:
             userheight = height if set_height is None else set_height - 0.04
             userwidth = width if set_width is None else set_width
 
-            legend = TLegend(0.1, 0.86 - userheight, 0.1 + userwidth, 0.9)
+            # legend = TLegend(0.1, 0.86 - userheight, 0.1 + userwidth, 0.9)
+            legend = TLegend(.002, .00205, userwidth, userheight + 0.04)
+            legend.SetName('l')
             legend.SetMargin(0.05)
-            legend.AddEntry(0, 'Run{run} Ch{ch} ({rate})'.format(run=self.run_number, ch=channel, rate=self.get_rate_string()), '')
+            tc = datetime.strptime(self.TESTCAMPAIGN, '%Y%m')
+            legend.AddEntry(0, 'Test Campaign: {tc}'.format(tc=tc.strftime('%b %Y')), '')
+            legend.AddEntry(0, 'Run {run}: {rate}, {dur} Min ({evts} evts)'.format(run=self.run_number, rate=self.get_rate_string(), dur=dur, evts=self.n_entries), '')
             if diamondinfo: 
-                legend.AddEntry(0, '{diamond} ({bias:+}V)'.format(diamond=self.diamondname[channel], bias=self.bias[channel]), '')
+                legend.AddEntry(0, 'Diamond: {diamond} @ {bias:+}V'.format(diamond=self.diamondname[channel], bias=self.bias[channel]), '')
             if cut and hasattr(self, 'analysis'): 
                 legend.AddEntry(0, 'Cut: {cut}'.format(cut=self.analysis.get_easy_cutstring()), '')
             if comment is not None: 
@@ -468,7 +475,8 @@ class Run(Elementary):
             userheight = height if set_height is None else set_height
             userwidth = width if set_width is None else set_width
 
-            legend = TLegend(0.1, 0.9 - userheight, 0.1 + userwidth, 0.9)
+            # legend = TLegend(0.1, 0.9 - userheight, 0.1 + userwidth, 0.9)
+            legend = TLegend(0, 0, userwidth, userheight)
             legend.SetMargin(0.05)
             legend.AddEntry(0, 'Run{run} ({rate})'.format(run=self.run_number, rate=self.get_rate_string()), '')
             if comment is not None:

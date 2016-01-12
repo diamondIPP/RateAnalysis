@@ -30,6 +30,8 @@ class Elementary(object):
         # colors
         self.count = 0
         self.colors = self.create_colorlist()
+        self.run = None
+        self.channel = None
 
     def load_config(self):
         pass
@@ -92,11 +94,16 @@ class Elementary(object):
             os.makedirs(resultsdir)
         if canvas is None:
             try:
-                pad = gROOT.GetSelectedPad()
-                canvas = pad.GetCanvas()
+                c = gROOT.GetListOfCanvases()
+                # pad = gROOT.GetSelectedPad()
+                canvas = c[-1]
             except Exception as inst:
-                print '\n\n{delim}\nERROR in save plots!\n{msg}\n{delim}\n\n'.format(delim=len(str(inst)) * '-', msg=inst)
+                print '\n\n{delim}\nERROR in get canvas!\n{msg}\n{delim}\n\n'.format(delim=len(str(inst)) * '-', msg=inst)
                 return
+        if self.run is not None:
+            self.run.draw_run_info(channel=self.channel, canvas=canvas)
+        elif hasattr(self, 'collection'):
+            self.collection.values[0].run.draw_run_info(channel=0, canvas=canvas)
         try:
             canvas.SaveAs(resultsdir + savename + file_type)
         except Exception as inst:
@@ -202,7 +209,7 @@ class Elementary(object):
         return a
 
     @staticmethod
-    def format_histo(histo, name='', title='', x_tit='', y_tit='', marker=20, color=1, markersize=1, x_off=1, y_off=1):
+    def format_histo(histo, name='', title='', x_tit='', y_tit='', marker=20, color=1, markersize=1, x_off=1, y_off=1, lw=1):
         h = histo
         h.SetTitle(title) if title else h.SetTitle(h.GetTitle())
         h.SetName(name) if name else h.SetName(h.GetName())
@@ -213,6 +220,7 @@ class Elementary(object):
         h.GetXaxis().SetTitleOffset(x_off)
         h.GetYaxis().SetTitle(y_tit)
         h.GetYaxis().SetTitleOffset(y_off)
+        h.SetLineWidth(lw)
 
     @staticmethod
     def calc_fwhm(histo):

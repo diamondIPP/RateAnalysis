@@ -96,6 +96,8 @@ class SignalAnalysis(Analysis):
         self.canvases[0] = c
         return h
 
+    # ============================================================================================
+    # region SHOW
     def show_chi2(self, mode=None, show=True):
         gROOT.SetBatch(1)
         assert mode in ['x', 'y', None], 'mode has to be in {lst}!'.format(lst=['x', 'y', None])
@@ -134,6 +136,55 @@ class SignalAnalysis(Analysis):
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.save_plots('Chi2', canvas=c, sub_dir=self.save_dir)
         self.canvases[0] = c
+
+    def show_angle(self, mode='x', show=True):
+        """
+        Displays the angle distribution of the tracks.
+        :param mode: has to be eiher 'x' or 'y'
+        :param show:
+        :return: histogram
+        """
+        assert mode in ['x', 'y']
+        gROOT.SetBatch(1)
+        h = TH1F('h', 'Track Angle Distribution in ' + mode, 320, -4, 4)
+        self.tree.Draw('slope_{mod}>>h'.format(mod=mode), '', 'goff')
+        if show:
+            gROOT.SetBatch(0)
+        c = TCanvas('c', 'Angle in ' + mode, 1000, 1000)
+        c.SetLeftMargin(.13)
+        self.format_histo(h, x_tit='Track Angle [deg]', y_tit='Entries', y_off=1.8, lw=2)
+        h.Draw()
+        self.histos[0] = h
+        self.canvases[0] = c
+        gROOT.SetBatch(0)
+        # a = gROOT.GetListOfCanvases()
+        # print a[0]
+        self.save_plots('TrackAngle{mod}'.format(mod=mode.upper()), sub_dir=self.save_dir)
+        return h
+
+    def show_both_angles(self):
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        histos = [self.show_angle(mode, show=False) for mode in ['x', 'y']]
+        c = TCanvas('c', 'Chi2', 1000, 1000)
+        c.SetLeftMargin(.13)
+        max_angle = int(max([h.GetMaximum() for h in histos])) / 1000 * 1000 + 1000
+        histos[0].GetYaxis().SetRangeUser(0, max_angle)
+        legend = TLegend(.7, .7, .9, .9)
+        leg_names = ['Track Angle in ' + mode for mode in ['x', 'y']]
+        for i, h in enumerate(histos):
+            h.SetStats(0)
+            h.SetTitle('Track Angle Distributions')
+            h.SetLineColor(self.get_color())
+            h.Draw() if not i else h.Draw('same')
+            legend.AddEntry(h, leg_names[i], 'l')
+            self.histos[i] = h
+        legend.Draw()
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        self.canvases[0] = c
+        self.histos['legend'] = legend
+        self.save_plots('TrackAngles', sub_dir=self.save_dir)
+
+    # endregion
 
     def make_region_cut(self):
         self.draw_mean_signal_distribution(show=False)

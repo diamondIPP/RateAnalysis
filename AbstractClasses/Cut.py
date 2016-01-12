@@ -19,7 +19,6 @@ class Cut(Elementary):
     def __init__(self, parent_analysis, channel, verbose=True):
 
         self.analysis = parent_analysis
-        self.channel = channel
         self._checklist = {"RemoveBeamInterruptions": False,
                            "GenerateCutString": False}
         # saving stuff
@@ -80,6 +79,7 @@ class Cut(Elementary):
         self.cut = ""
 
         Elementary.__init__(self, verbose=verbose)
+        self.channel = channel
 
         # generate cut strings
         self.generate_cut_string()
