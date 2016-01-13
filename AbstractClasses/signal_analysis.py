@@ -232,6 +232,25 @@ class SignalAnalysis(Analysis):
         frame.SetPoint(4, bin_low[0][0], bin_low[1][0])
         frame.Draw('same')
         self.histos[1] = frame
+
+    def calc_signal_spread(self, min_percent=5, max_percent=99):
+        """
+        Calculates the relative spread of mean signal response from the 2D signal response map.
+        :param min_percent: min quantile
+        :param max_percent: max quantile
+        :return: relative spread [%]
+        """
+        if self.MeanSignalHisto is None:
+            self.draw_mean_signal_distribution(show=False)
+        q = array([min_percent / 100., max_percent / 100.])
+        y = array([0., 0.])
+        self.MeanSignalHisto.GetQuantiles(2, y, q)
+        max_min_ratio = (y[1] / y[0] - 1) * 100
+        delta_y = self.draw_error_signal_map(show=False).GetMinimum()
+        # error propagation
+        err = 100 * delta_y / y[0] * (1 + y[1] / y[0])
+        print 'Relative Signal Spread is: {spr} +- {err}'.format(spr=max_min_ratio, err=err)
+        return [max_min_ratio, err]
     # endregion
 
     # ==========================================================================
@@ -408,7 +427,7 @@ class SignalAnalysis(Analysis):
             c.SetLeftMargin(.14)
             gStyle.SetOptFit(1)
             self.format_histo(gr, x_tit='time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6)
-            fit_par = gr.Fit('pol0', 'qs')
+            fit_par = gr.Fit('pol0', 'qs') if draw else gr.Fit('pol0', 'qs0')
             gr.Draw('alp')
             self.save_plots('PulseHeight', sub_dir=self.save_dir)
             self.PulseHeight = gr
@@ -525,10 +544,6 @@ class SignalAnalysis(Analysis):
         self.canvases[0] = c
         self.histos[0] = h
 
-    def get_polarity(self):
-        self.tree.GetEntry(0)
-        return self.tree.polarities[self.channel]
-
     # ==========================================================================
     # region CUTS
     def compare_single_cuts(self):
@@ -555,7 +570,7 @@ class SignalAnalysis(Analysis):
                 c2.cd()
                 histo.SetLineColor(self.get_color())
                 if not drawn_first:
-                    self.format_histo(histo, title='signal distribution of different single cuts', x_tit='pulse height [au]', y_tit='Entries [#]', y_off=2)
+                    self.format_histo(histo, title='Signal Distribution of Different Single Cuts', x_tit='Pulse Height [au]', y_tit='Entries', y_off=2)
                     histo.SetStats(0)
                     histo.Draw()
                     drawn_first = True
@@ -598,7 +613,7 @@ class SignalAnalysis(Analysis):
                 c2.cd()
                 histo.SetLineColor(self.get_color())
                 if not drawn_first:
-                    self.format_histo(histo, title='signal distribution with different cuts', x_tit='pulse height [au]', y_tit='normalised Integral', y_off=2)
+                    self.format_histo(histo, title='Normalised Signal Distribution with Single Cuts', x_tit='Pulse Height [au]', y_tit='Normalised Integral', y_off=2)
                     histo.SetStats(0)
                     histo.Draw()
                     drawn_first = True
@@ -644,7 +659,7 @@ class SignalAnalysis(Analysis):
                 histo.SetLineColor(color)
                 histo.SetFillColor(color)
                 if not drawn_first:
-                    self.format_histo(histo, title='signal distribution with consecutive cuts', x_tit='pulse height [au]', y_tit='Entries [#]', y_off=2)
+                    self.format_histo(histo, title='Signal Distribution with Consecutive Cuts', x_tit='Pulse Height [au]', y_tit='Entries', y_off=2)
                     histo.SetStats(0)
                     histo.Draw()
                     drawn_first = True
@@ -772,9 +787,10 @@ class SignalAnalysis(Analysis):
             bin_x = gr.GetXaxis().FindBin(i)
             gr.GetXaxis().SetBinLabel(bin_x, region)
         c = TCanvas('c', 'SNR', 1000, 1000)
+        self.format_histo(gr, y_tit='SNR [%]', y_off=1.2)
         gr.Draw('ap')
         gr.Draw('b')
-        self.save_plots('SNR', canvas=c, sub_dir=self.save_dir)
+        self.save_plots('SNR', sub_dir=self.save_dir)
         self.canvases[0] = c
         self.histos[0] = gr
 
@@ -782,35 +798,20 @@ class SignalAnalysis(Analysis):
         signal = self.signal_name if sig is None else sig
         ped_fit = self.show_pedestal_histo(draw=False)
         sig_fit = self.draw_pulse_height(eventwise_corr=True, draw=False, sig=signal)
-        sig_mean = sig_fit.GetParameter(0)
+        sig_mean = sig_fit.Parameter(0)
         ped_sigma = ped_fit.Parameter(2)
 
         snr = sig_mean / ped_sigma
-        snr_err = snr * (sig_fit.GetParError(0) / sig_mean + ped_fit.ParError(2) / ped_sigma)
+        snr_err = snr * (sig_fit.ParError(0) / sig_mean + ped_fit.ParError(2) / ped_sigma)
         print 'SNR is: {snr} +- {err}'.format(snr=snr, err=snr_err)
         return [snr, snr_err]
 
-    def calc_signal_spread(self, min_percent=5, max_percent=99):
-        """
-        Calculates the spread of mean signal response from the 2D signal response map.
-        :param min_percent: min quantile
-        :param max_percent: max quantile
-        :return: relative spread [%]
-        """
-        if self.MeanSignalHisto is None:
-            self.draw_mean_signal_distribution(show=False)
-        q = array([min_percent / 100., max_percent / 100.])
-        y = array([0., 0.])
-        self.MeanSignalHisto.GetQuantiles(2, y, q)
-        max_min_ratio = (y[1] / y[0] - 1) * 100
-        delta_y = self.draw_error_signal_map(show=False).GetMinimum()
-        # error propagation
-        err = 100 * delta_y / y[0] * (1 + y[1] / y[0])
-        print 'Relative Signal Spread is: {spr} +- {err}'.format(spr=max_min_ratio, err=err)
-        return [max_min_ratio, err]
-
     # ============================================
     # region MISCELLANEOUS
+    def get_polarity(self):
+        self.tree.GetEntry(0)
+        return self.tree.polarities[self.channel]
+
     def get_all_signal_names(self):
         names = OrderedDict()
         regions = [reg for reg in self.run.signal_regions if len(reg) < 3]

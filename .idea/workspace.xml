@@ -3,7 +3,6 @@
   <component name="ChangeListManager">
     <list default="true" id="e6cf272c-81a5-4f4e-9e0a-ff55b841b26f" name="Default" comment="">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/RunClass.py" afterPath="$PROJECT_DIR$/AbstractClasses/RunClass.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" afterPath="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" />
     </list>
     <ignored path="myPadAnalysis.iws" />
@@ -65,14 +64,16 @@
       <file leaf-file-name="signal_analysis.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/AbstractClasses/signal_analysis.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.39502764">
-              <caret line="831" column="54" selection-start-line="831" selection-start-column="54" selection-end-line="831" selection-end-column="54" />
+            <state vertical-scroll-proportion="0.3743094">
+              <caret line="791" column="20" selection-start-line="791" selection-start-column="20" selection-end-line="791" selection-end-column="20" />
               <folding>
                 <element signature="e#108#231#0" expanded="true" />
                 <element signature="e#1882#2296#0" expanded="false" />
                 <element signature="e#2343#2521#0" expanded="false" />
                 <element signature="e#2608#2639#0" expanded="false" />
-                <element signature="e#10554#10574#0" expanded="false" />
+                <element signature="e#11428#11448#0" expanded="false" />
+                <element signature="e#25539#25552#0" expanded="false" />
+                <element signature="e#36835#37493#0" expanded="false" />
               </folding>
             </state>
           </provider>
@@ -447,8 +448,7 @@
     <frame x="-1" y="24" width="1602" height="853" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.16930881" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
-      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32625994" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Project" active="true" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.16930881" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
@@ -462,6 +462,7 @@
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
       <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
+      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32625994" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
@@ -480,7 +481,6 @@
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="small changes" />
     <MESSAGE value="revising runselection class, adding time to log" />
     <MESSAGE value="revising runselection class" />
     <MESSAGE value="finish revising RunSelection class!" />
@@ -505,7 +505,8 @@
     <MESSAGE value="revising relative signal spread function and fixing errors of snr" />
     <MESSAGE value="revising peak distribution function" />
     <MESSAGE value="adding show angle disto functions and make runinfo in saveplots" />
-    <option name="LAST_COMMIT_MESSAGE" value="adding show angle disto functions and make runinfo in saveplots" />
+    <MESSAGE value="fixing plots and fucntions of signal analysis" />
+    <option name="LAST_COMMIT_MESSAGE" value="fixing plots and fucntions of signal analysis" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -566,7 +567,9 @@
             <element signature="e#1882#2296#0" expanded="false" />
             <element signature="e#2343#2521#0" expanded="false" />
             <element signature="e#2608#2639#0" expanded="false" />
-            <element signature="e#10554#10574#0" expanded="false" />
+            <element signature="e#11428#11448#0" expanded="false" />
+            <element signature="e#25539#25552#0" expanded="false" />
+            <element signature="e#36835#37493#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -936,35 +939,19 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/RunClass.py">
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/signal_analysis.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="462" column="45" selection-start-line="462" selection-start-column="45" selection-end-line="462" selection-end-column="45" />
+        <state vertical-scroll-proportion="0.3743094">
+          <caret line="791" column="20" selection-start-line="791" selection-start-column="20" selection-end-line="791" selection-end-column="20" />
           <folding>
-            <element signature="e#108#119#0" expanded="true" />
-            <marker date="1452629027731" expanded="true" signature="1688:2081" placeholder="..." />
-            <marker date="1452629027731" expanded="true" signature="17601:17623" placeholder="..." />
+            <element signature="e#108#231#0" expanded="true" />
+            <element signature="e#1882#2296#0" expanded="false" />
+            <element signature="e#2343#2521#0" expanded="false" />
+            <element signature="e#2608#2639#0" expanded="false" />
+            <element signature="e#11428#11448#0" expanded="false" />
+            <element signature="e#25539#25552#0" expanded="false" />
+            <element signature="e#36835#37493#0" expanded="false" />
           </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/Elementary.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="112" column="0" selection-start-line="112" selection-start-column="0" selection-end-line="112" selection-end-column="0" />
-          <folding>
-            <element signature="e#0#9#0" expanded="true" />
-            <marker date="1452624204521" expanded="true" signature="582:950" placeholder="..." />
-            <marker date="1452624204521" expanded="true" signature="8309:8310" placeholder="..." />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/RunSelection.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="282" column="26" selection-start-line="282" selection-start-column="26" selection-end-line="282" selection-end-column="26" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -980,16 +967,34 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/signal_analysis.py">
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/RunClass.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.39502764">
-          <caret line="831" column="54" selection-start-line="831" selection-start-column="54" selection-end-line="831" selection-end-column="54" />
+        <state vertical-scroll-proportion="0.0">
+          <caret line="462" column="45" selection-start-line="462" selection-start-column="45" selection-end-line="462" selection-end-column="45" />
           <folding>
-            <element signature="e#108#231#0" expanded="true" />
-            <element signature="e#1882#2296#0" expanded="false" />
-            <element signature="e#2343#2521#0" expanded="false" />
-            <element signature="e#2608#2639#0" expanded="false" />
-            <element signature="e#10554#10574#0" expanded="false" />
+            <element signature="e#108#119#0" expanded="true" />
+            <marker date="1452629027731" expanded="true" signature="1688:2081" placeholder="..." />
+            <marker date="1452629027731" expanded="true" signature="17601:17623" placeholder="..." />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/RunSelection.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="282" column="26" selection-start-line="282" selection-start-column="26" selection-end-line="282" selection-end-column="26" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/Elementary.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="112" column="0" selection-start-line="112" selection-start-column="0" selection-end-line="112" selection-end-column="0" />
+          <folding>
+            <element signature="e#0#9#0" expanded="true" />
+            <marker date="1452624204521" expanded="true" signature="582:950" placeholder="..." />
+            <marker date="1452624204521" expanded="true" signature="8309:8310" placeholder="..." />
           </folding>
         </state>
       </provider>
