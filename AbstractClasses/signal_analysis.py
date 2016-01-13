@@ -335,11 +335,11 @@ class SignalAnalysis(Analysis):
         gr = self.make_tgrapherrors('pedestal', 'Pedestal')
 
         def func():
-            gROOT.SetBatch(1)
             print 'calculating pedestal of ch', self.channel
             if binning is not None:
                 self.__set_bin_size(binning)
             ped_time = self.make_signal_time_histos(ped=True, show=False)
+            gROOT.SetBatch(1)
             means = []
             empty_bins = 0
             count = 0
@@ -389,7 +389,6 @@ class SignalAnalysis(Analysis):
         self.signaltime = None
 
         def func():
-            gROOT.SetBatch(1)
             print 'calculating pulse height fit of ch', self.channel
             tit_suffix = 'with {cor} Pedestal Correction'.format(cor=correction.title()) if ped_corr or eventwise_corr else ''
             gr = self.make_tgrapherrors('signal', 'Pulse Height Evolution ' + tit_suffix)
@@ -400,6 +399,7 @@ class SignalAnalysis(Analysis):
             empty_bins = 0
             count = 0
             means = self.draw_pedestal(bin_size, draw=False) if ped_corr else None
+            gROOT.SetBatch(1)
             for i in xrange(self.n_bins):
                 h_proj = sig_time.ProjectionY(str(i), i + 1, i + 1)
                 if h_proj.GetEntries() > 0:

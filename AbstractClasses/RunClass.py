@@ -401,7 +401,7 @@ class Run(Elementary):
         print '\tDiamond1:   \t', self.diamond_names[0], ' (', self.bias[0], ') | is selected: ', self.analyse_ch[0]
         print '\tDiamond2:   \t', self.diamond_names[3], ' (', self.bias[3], ') | is selected: ', self.analyse_ch[3]
 
-    def draw_run_info(self, channel=None, canvas=None, diamondinfo=True, cut=None, comment=None, infoid='', set_width=None, set_height=None):
+    def draw_run_info(self, channel=None, canvas=None, diamondinfo=True, cut=None, comment=None, infoid='', set_width=None, set_height=None, runs=None):
         """
         Draws the run infos inside the canvas. If no canvas is given, it will be drawn into the active Pad. 
         If the channel number is passed, channel number and diamond name will be drawn.
@@ -453,7 +453,10 @@ class Run(Elementary):
         legend.SetName('l')
         legend.SetMargin(0.05)
         legend.AddEntry(0, 'Test Campaign: {tc}'.format(tc=tc.strftime('%b %Y')), '')
-        legend.AddEntry(0, 'Run {run}: {rate}, {dur} Min ({evts} evts)'.format(run=self.run_number, rate=self.get_rate_string(), dur=dur, evts=self.n_entries), '')
+        if runs is None:
+            legend.AddEntry(0, 'Run {run}: {rate}, {dur} Min ({evts} evts)'.format(run=self.run_number, rate=self.get_rate_string(), dur=dur, evts=self.n_entries), '')
+        else:
+            legend.AddEntry(0, 'Runs {start}-{stop}'.format(start=runs[0], stop=runs[1]), '')
         if channel is None:
             dias = ['{dia} @ {bias:2.0f}V'.format(dia=self.diamond_names[ch], bias=self.bias[ch]) for ch in self.channels]
             dias = str(dias).strip('[]').replace('\'', '')

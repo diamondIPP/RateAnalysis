@@ -138,7 +138,7 @@ class AnalysisCollection(Elementary):
 
     # ============================================
     # region ANALYSIS
-    def draw_pulse_heights(self, binning=10000, flux=True, raw=False, all_corr=False, draw=True):
+    def draw_pulse_heights(self, binning=20000, flux=True, raw=False, all_corr=False, draw=True):
         legend = TLegend(0.79, 0.13, 0.98, .34)
         legend.SetName('l1')
         mode = 'Flux' if flux else 'Run'
@@ -153,19 +153,19 @@ class AnalysisCollection(Elementary):
         i = 0
         for key, ana in self.collection.iteritems():
             print 'getting ph for run', key
-            fit = ana.draw_pulse_height(binning)
-            fit1 = ana.draw_pulse_height(binning, ped_corr=True)
-            fit2 = ana.draw_pulse_height(binning, eventwise_corr=True)
-            ped = ana.show_pedestal_histo()
+            fit = ana.draw_pulse_height(binning, draw=False)
+            fit1 = ana.draw_pulse_height(binning, ped_corr=True, draw=False)
+            fit2 = ana.draw_pulse_height(binning, eventwise_corr=True, draw=False)
+            ped = ana.show_pedestal_histo(draw=False)
             x = ana.run.flux if flux else key
-            gr1.SetPoint(i, x, fit1.GetParameters()[0])
-            gr2.SetPoint(i, x, fit2.GetParameters()[0])
-            gr3.SetPoint(i, x, fit.GetParameters()[0] - ana.polarity * ped.Parameter(1))
-            gr4.SetPoint(i, x, fit.GetParameters()[0])
-            gr1.SetPointError(i, 0, fit1.GetParError(0))
-            gr2.SetPointError(i, 0, fit2.GetParError(0))
-            gr3.SetPointError(i, 0, fit.GetParError(0) + ped.ParError(1))
-            gr4.SetPointError(i, 0, fit.GetParError(0))
+            gr1.SetPoint(i, x, fit1.Parameter(0))
+            gr2.SetPoint(i, x, fit2.Parameter(0))
+            gr3.SetPoint(i, x, fit.Parameter(0) - ana.polarity * ped.Parameter(1))
+            gr4.SetPoint(i, x, fit.Parameter(0))
+            gr1.SetPointError(i, 0, fit1.ParError(0))
+            gr2.SetPointError(i, 0, fit2.ParError(0))
+            gr3.SetPointError(i, 0, fit.ParError(0) + ped.ParError(1))
+            gr4.SetPointError(i, 0, fit.ParError(0))
             i += 1
         if draw:
             gROOT.SetBatch(0)
