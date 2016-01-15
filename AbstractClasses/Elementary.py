@@ -104,8 +104,11 @@ class Elementary(object):
         if hasattr(self, 'run'):
             self.run.draw_run_info(channel=ch if ch is None else self.channel, canvas=canvas)
         elif hasattr(self, 'collection'):
-            runs = [self.collection.keys()[0], self.collection.keys()[-1]]
-            self.collection.values()[ind].run.draw_run_info(channel=ch if ch is None else self.collection.values()[ind].channel, canvas=canvas, runs=runs)
+            runs = [self.collection.keys()[0], self.collection.keys()[-1], self.collection.values()[0].run.get_rate_string(), self.collection.values()[-1].run.get_rate_string()]
+            if not ind:
+                self.collection.values()[ind].run.draw_run_info(channel=ch if ch is None else self.collection.values()[ind].channel, canvas=canvas, runs=runs)
+            else:
+                self.collection.values()[ind].run.draw_run_info(channel=ch if ch is None else self.collection.values()[ind].channel, canvas=canvas)
         canvas.Update()
         try:
             canvas.SaveAs(resultsdir + savename + file_type)

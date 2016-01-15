@@ -297,6 +297,12 @@ class Run(Elementary):
                 self.RunInfo[new_key] = default_info[new_key]
         return
 
+    def wf_exists(self, channel):
+        wf_exist = True if self.tree.FindBranch('wf{ch}'.format(ch=channel)) else False
+        if not wf_exist:
+            print 'The waveform for channel {ch} is not stored in the tree'.format(ch=channel)
+        return wf_exist
+
     # ==============================================
     # region GET FUNCTIONS
     def get_flux(self):
@@ -313,15 +319,15 @@ class Run(Elementary):
         return ranges
 
     def get_peak_integrals(self):
-        integrals = []
+        integrals = {}
         for line in self.region_information:
             line = str(line)
             if str(line).lower().startswith('* peakintegral'):
-                data = re.split('_|:', line)
+                data = re.split('_|:|-', line)
                 if data[0][-1].isdigit():
-                    integrals.append(data[0][-1])
+                    integrals[data[0][-1]] = [int(float(data[i])) for i in [1, 2]]
                 else:
-                    integrals.append(data[1])
+                    integrals[data[1]] = [int(float(data[i])) for i in [2, 3]]
         return integrals
 
     def get_active_channels(self):
@@ -456,7 +462,7 @@ class Run(Elementary):
         if runs is None:
             legend.AddEntry(0, 'Run {run}: {rate}, {dur} Min ({evts} evts)'.format(run=self.run_number, rate=self.get_rate_string(), dur=dur, evts=self.n_entries), '')
         else:
-            legend.AddEntry(0, 'Runs {start}-{stop}'.format(start=runs[0], stop=runs[1]), '')
+            legend.AddEntry(0, 'Runs {start}-{stop} ({flux1} - {flux2})'.format(start=runs[0], stop=runs[1], flux1=runs[2].strip(' '), flux2=runs[3].strip(' ')), '')
         if channel is None:
             dias = ['{dia} @ {bias:2.0f}V'.format(dia=self.diamond_names[ch], bias=self.bias[ch]) for ch in self.channels]
             dias = str(dias).strip('[]').replace('\'', '')

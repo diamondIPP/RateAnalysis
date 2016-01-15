@@ -126,9 +126,7 @@ class Analysis(Elementary):
     def draw_regions(self, event=0, ped=True):
         tit = 'Pedestal Regions' if ped else 'Signal Regions'
         h = TH2F('regions', tit, 1024, 0, 511, 1000, -200, 50)
-        gROOT.SetBatch(1)
-        self.tree.Draw('wf0:Iteration$/2>>regions', self.cuts[0].all_cut, '', 1, 100000 + event)
-        gROOT.SetBatch(0)
+        self.tree.Draw('wf0:Iteration$/2>>regions', self.cuts[0].all_cut, 'goff', 1, 100000 + event)
         c = TCanvas('c', 'Regions', 1000, 500)
         h.SetStats(0)
         xax = h.GetXaxis()
@@ -190,12 +188,18 @@ class Analysis(Elementary):
         max_chi2 = int(max([h.GetMaximum() for h in histos])) / 1000 * 1000 + 1000
         histos[0].GetYaxis().SetRangeUser(0, max_chi2)
         histos[0].SetTitle('All #chi^{2}')
+        legend = TLegend(.7, .7, .9, .9)
+        leg_names = ['#chi^{2} ' + mode for mode in ['of both', 'in x', 'in y']]
         for i, h in enumerate(histos):
+            h.SetStats(0)
             h.SetLineColor(self.get_color())
             h.SetLineWidth(2)
             h.Draw() if not i else h.Draw('same')
+            legend.AddEntry(h, leg_names[i], 'l')
             self.histos[i] = h
+        legend.Draw()
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        self.histos['legend'] = legend
         self.save_plots('Chi2', canvas=c, sub_dir=self.ana_save_dir, ch=None)
         self.canvases[0] = c
 
@@ -226,13 +230,14 @@ class Analysis(Elementary):
 
     def show_both_angles(self):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        self.get_color()
         histos = [self.show_angle(mode, show=False) for mode in ['x', 'y']]
         c = TCanvas('c', 'Chi2', 1000, 1000)
         c.SetLeftMargin(.13)
         max_angle = int(max([h.GetMaximum() for h in histos])) / 1000 * 1000 + 1000
         histos[0].GetYaxis().SetRangeUser(0, max_angle)
         legend = TLegend(.7, .7, .9, .9)
-        leg_names = ['Track Angle in ' + mode for mode in ['x', 'y']]
+        leg_names = ['Angle in ' + mode for mode in ['x', 'y']]
         for i, h in enumerate(histos):
             h.SetStats(0)
             h.SetTitle('Track Angle Distributions')
@@ -1497,86 +1502,6 @@ class Analysis(Elementary):
             json.dump(self.individualCuts, f, indent=2, sort_keys=True)
             f.close()
             print "done."
-
-    def __check_wv_channels(self):
-        wf_exist = {ch: True if self.tree.FindBranch('wf{ch}'.format(ch=ch)) else False for ch in range(4)}
-        n_wf_channels = sum(wf_exist.values())
-        return n_wf_channels, wf_exist
-
-    def ShowWaveForms(self, nevents=1000, cut="", startevent=None, channels=None, canvas=None, infoid="", drawoption=""):
-        '''
-        Draws stacked waveforms for the channels activated to be
-        analyzed. Of course, this requires the all waveforms in the
-        ROOT file, which due to the possible large sizes often is
-        skipped.
-        :param nevents:
-        :param cut:
-        :param startevent:
-        :param channels:
-        :param canvas:
-        :param infoid:
-        :param drawoption:
-        :return:
-        '''
-        if startevent != None:
-            assert (startevent >= 0), "startevent as to be >= 0"
-        maxevent = self.run.tree.GetEntries()
-        if startevent > maxevent:
-            return False
-        # check number of wf in root file:
-        nWFChannels, draw_waveforms = self.__check_wv_channels()
-        if nWFChannels == 0:
-            print 'No waveforms in the root file'
-            return False
-
-        # if user channels:
-        if channels != None:
-            nWFChannels = 0
-            for i in xrange(4):
-                if self.has_bit(channels, i) and draw_waveforms[i]:
-                    nWFChannels += 1
-                else:
-                    draw_waveforms[i] = False
-
-        # check if external canvas:
-        if canvas == None:
-            self.waveFormCanvas = ROOT.TCanvas("waveformcanvas{run}".format(run=self.run.run_number), "WaveFormCanvas", 750, nWFChannels * 300)
-        else:
-            self.waveFormCanvas = canvas
-            self.waveFormCanvas.Clear()
-
-        self.waveFormCanvas.Divide(1, nWFChannels)
-        self.waveformplots = {}
-
-        def drawWF(self, channel, events=1000, startevent=50000, cut=""):
-            histoname = "R{run}wf{wfch}{infoID}".format(wfch=channel, run=self.run.run_number, infoID=infoid)
-            # self.waveformplots[histoname] = ROOT.TH2D(histoname, self.run.GetChannelName(channel)+" {"+cut.format(channel=channel)+"}", 1024, 0, 1023, 1000, -500, 500)
-            # ROOT.SetOwnership(self.waveformplots[histoname], False)
-            # self.waveformplots[histoname].SetStats(0)
-            print "DRAW: wf{wfch}:Iteration$>>{histoname}".format(histoname=histoname, wfch=channel)
-            print "cut: ", cut, " events: ", events, " startevent: ", startevent
-            n = self.run.tree.Draw("wf{wfch}:Iteration$>>{histoname}(1024, 0, 1023, 1000, -500, 500)".format(histoname=histoname, wfch=channel), cut, drawoption, events,
-                                   startevent)
-            self.waveformplots[histoname] = ROOT.gROOT.FindObject(histoname)
-            ROOT.SetOwnership(self.waveformplots[histoname], False)
-            self.waveformplots[histoname].SetStats(0)
-            if cut == "":
-                self.draw_run_info(channel=channel, comment="{nwf} Wave Forms".format(nwf=n / 1024), infoid=("wf{wf}" + infoid).format(wf=channel), width=0.15, height=0.15)
-            else:
-                self.draw_run_info(channel=channel, comment="{nwf}/{totnwf} Wave Forms".format(nwf=n / 1024, totnwf=events), infoid=("wf{wf}" + infoid).format(wf=channel), width=0.18,
-                                   height=0.15)
-            if n <= 0: print "No event to draw in range. Change cut settings or increase nevents"
-
-        start = int(self.run.tree.GetEntries() / 2) if startevent == None else int(startevent)
-        index = 1
-        for i in xrange(4):
-            self.waveFormCanvas.cd(index)
-            if draw_waveforms[i]:
-                drawWF(self, channel=i, events=nevents, startevent=start, cut=cut)
-                self.waveFormCanvas.Update()
-                index += 1
-            else:
-                print "Wave Form of channel ", i, " not in root file"
 
     def ShowWaveFormsPulser(self, nevents=1000, startevent=None, channels=None):
         nWFChannels, draw_waveforms = self.__check_wv_channels()

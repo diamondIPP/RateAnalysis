@@ -362,7 +362,7 @@ class AnalysisCollection(Elementary):
         if flux:
             c.SetLogx()
         gr.Draw('ap')
-        self.save_plots('SNR', canvas=c, sub_dir=self.save_dir)
+        self.save_plots('AllSNRs', canvas=c, sub_dir=self.save_dir)
         self.canvases[0] = c
         self.histos[0] = gr
         gROOT.SetBatch(0)
@@ -400,16 +400,21 @@ class AnalysisCollection(Elementary):
         histos[0].SetStats(0)
         yq = zeros(1)
         histos[0].GetQuantiles(1, yq, array([.9]))
+        legend = TLegend(.7, .8 - self.get_number_of_analyses() * 0.03, .9, .9)
         for i, h in enumerate(histos):
             h.GetXaxis().SetRangeUser(0, yq[0])
             self.normalise_histo(h)
             h.SetLineColor(self.get_color())
             h.SetLineWidth(2)
             h.Draw() if not i else h.Draw('same')
+            legend.AddEntry(h, '{0:6.2f} kHz/cm'.format(self.collection.values()[i].get_flux()) + '^{2}', 'l')
             self.histos[i] = h
+        legend.Draw()
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.save_plots('Chi2', canvas=c, sub_dir=self.save_dir)
+        mode = '' if mode is None else mode
+        self.save_plots('AllChi2{mod}'.format(mod=mode.upper()), canvas=c, sub_dir=self.save_dir)
         self.canvases[0] = c
+        self.histos['legend'] = legend
 
     def show_angles(self, mode='x'):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
@@ -426,7 +431,7 @@ class AnalysisCollection(Elementary):
             self.histos[i] = h
         legend.Draw()
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.save_plots('TrackAngle{mod}'.format(mod=mode.upper()), sub_dir=self.save_dir)
+        self.save_plots('AllTrackAngles{mod}'.format(mod=mode.upper()), sub_dir=self.save_dir)
         self.canvases[0] = c
         self.histos['legend'] = legend
     # endregion

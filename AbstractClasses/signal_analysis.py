@@ -456,16 +456,17 @@ class SignalAnalysis(Analysis):
     def show_pedestal_histo(self, region='ab', peak_int='2', cut=True, fwhm=True, draw=True):
         cut = self.cut.all_cut if cut else TCut()
         fw = 'fwhm' if fwhm else 'full'
-        suffix = '{reg}_{fwhm}_{cut}'.format(reg=region + peak_int, cut=cut.GetName(), fwhm=fw)
+        suffix = '{reg}_{fwhm}_{cut}'.format(reg=region + str(peak_int), cut=cut.GetName(), fwhm=fw)
         picklepath = 'Configuration/Individual_Configs/Pedestal/{tc}_{run}_{ch}_{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel, suf=suffix)
 
         def func():
             gROOT.SetBatch(1)
-            print 'making pedestal histo for region {reg}_{int}...'.format(reg=region, int=peak_int)
+            print 'making pedestal histo for region {reg}{int}...'.format(reg=region, int=peak_int)
             h = TH1F('ped1', 'Pedestal Distribution', 100, -20, 20)
             name = self.get_pedestal_names(region, peak_int)[self.channel]
             self.tree.Draw('{name}>>ped1'.format(name=name), cut, 'goff')
-            fit_pars = self.fit_fwhm(h, do_fwhm=fwhm)
+            fit_pars = self.fit_fwhm(h, do_fwhm=fwhm, draw=draw)
+            gStyle.SetOptFit(1)
             if draw:
                 gROOT.SetBatch(0)
             c = TCanvas('c', 'Pedestal Distribution', 1000, 1000)
@@ -677,6 +678,52 @@ class SignalAnalysis(Analysis):
         gROOT.SetBatch(0)
     # endregion
 
+    # ==========================================================================
+    # region SHOW
+    def ShowWaveForms(self, n=1000, cut_string=None, start_event=None):
+        """
+        Draws stacked waveforms.
+        :param n: number of waveforms
+        :param cut_string:
+        :param start_event: event to start
+        :return: histo with waveform
+        """
+        start = self.start_event if start_event is None else start_event
+        assert self.run.n_entries >= start >= 0, 'The start event is not within the range of tree events!'
+        if not self.run.wf_exists(self.channel):
+            return
+
+        cut = self.cut.all_cut if cut_string is None else cut_string
+        h = TH2F('h', 'Waveform', 1024, 0, 511, 1000, -200, 50)
+            self.tree.Draw('wf0:Iteration$/2>>h', self.cuts[0].all_cut, 'goff', 1, 100000 + event)
+            # self.waveformplots[histoname] = ROOT.TH2D(histoname, self.run.GetChannelName(channel)+" {"+cut.format(channel=channel)+"}", 1024, 0, 1023, 1000, -500, 500)
+            # ROOT.SetOwnership(self.waveformplots[histoname], False)
+            # self.waveformplots[histoname].SetStats(0)
+            print "DRAW: wf{wfch}:Iteration$>>{histoname}".format(histoname=histoname, wfch=channel)
+            print "cut: ", cut_string, " events: ", events, " startevent: ", startevent
+            n = self.run.tree.Draw("wf{wfch}:Iteration$>>{histoname}(1024, 0, 1023, 1000, -500, 500)".format(histoname=histoname, wfch=channel), cut_string, drawoption, events,
+                                   startevent)
+            self.waveformplots[histoname] = ROOT.gROOT.FindObject(histoname)
+            ROOT.SetOwnership(self.waveformplots[histoname], False)
+            self.waveformplots[histoname].SetStats(0)
+            if cut_string == "":
+                self.draw_run_info(channel=channel, comment="{nwf} Wave Forms".format(nwf=n / 1024), infoid=("wf{wf}" + infoid).format(wf=channel), width=0.15, height=0.15)
+            else:
+                self.draw_run_info(channel=channel, comment="{nwf}/{totnwf} Wave Forms".format(nwf=n / 1024, totnwf=events), infoid=("wf{wf}" + infoid).format(wf=channel), width=0.18,
+                                   height=0.15)
+            if n <= 0: print "No event to draw in range. Change cut settings or increase nevents"
+
+        start_event = int(self.run.tree.GetEntries() / 2) if start_event == None else int(start_event)
+        index = 1
+        for i in xrange(4):
+            self.waveFormCanvas.cd(index)
+            if draw_waveforms[i]:
+                drawWF(self, channel=i, events=n, startevent=start_event, cut=cut)
+                self.waveFormCanvas.Update()
+                index += 1
+            else:
+                print "Wave Form of channel ", i, " not in root file"
+
     @staticmethod
     def normalise_histo(histo):
         h = histo
@@ -778,6 +825,10 @@ class SignalAnalysis(Analysis):
 
     def draw_snrs(self):
         gr = self.make_tgrapherrors('gr', 'Signal to Noise Ratios')
+        l1 = TLegend(.7,.68,.9,.9)
+        l1.SetHeader('Regions')
+        l2 = TLegend(.7,.47,.9,.67)
+        l2.SetHeader('PeakIntegrals')
         for i, name in enumerate(self.get_all_signal_names().iterkeys()):
             snr = self.calc_snr(name)
             gr.SetPoint(i, i + 1, snr[0])
@@ -787,16 +838,22 @@ class SignalAnalysis(Analysis):
             bin_x = gr.GetXaxis().FindBin(i)
             gr.GetXaxis().SetBinLabel(bin_x, region)
         c = TCanvas('c', 'SNR', 1000, 1000)
-        self.format_histo(gr, y_tit='SNR [%]', y_off=1.2)
-        gr.Draw('ap')
-        gr.Draw('b')
+        [l1.AddEntry(0, '{reg}:  {val}'.format(reg=reg, val=value), '') for reg, value in self.run.signal_regions.iteritems() if len(reg) < 2]
+        [l2.AddEntry(0, '{reg}:  {val}'.format(reg=integ, val=value), '') for integ, value in self.run.peak_integrals.iteritems() if len(integ) < 2]
+        self.format_histo(gr, y_tit='SNR', y_off=1.2, color=self.get_color())
+        gr.SetLineColor(2)
+        gr.Draw('bap')
+        l1.Draw()
+        l2.Draw()
         self.save_plots('SNR', sub_dir=self.save_dir)
         self.canvases[0] = c
         self.histos[0] = gr
+        self.histos['legend'] = [l1, l2]
 
     def calc_snr(self, sig=None):
         signal = self.signal_name if sig is None else sig
-        ped_fit = self.show_pedestal_histo(draw=False)
+        peak_int = self.get_all_signal_names()[signal][-1]
+        ped_fit = self.show_pedestal_histo(draw=False, peak_int=peak_int)
         sig_fit = self.draw_pulse_height(eventwise_corr=True, draw=False, sig=signal)
         sig_mean = sig_fit.Parameter(0)
         ped_sigma = ped_fit.Parameter(2)
@@ -827,14 +884,15 @@ class SignalAnalysis(Analysis):
         return names
 
     @staticmethod
-    def fit_fwhm(histo, fitfunc='gaus', do_fwhm=True):
+    def fit_fwhm(histo, fitfunc='gaus', do_fwhm=True, draw=False):
         h = histo
         if do_fwhm:
             peak_pos = h.GetBinCenter(h.GetMaximumBin())
             bin1 = h.FindFirstBinAbove(h.GetMaximum() / 2)
             bin2 = h.FindLastBinAbove(h.GetMaximum() / 2)
             fwhm = h.GetBinCenter(bin2) - h.GetBinCenter(bin1)
-            fit = h.Fit(fitfunc, 'qs0', '', peak_pos - fwhm / 2, peak_pos + fwhm / 2)
+            option = 'qs' if draw else 'qs0'
+            fit = h.Fit(fitfunc, option, '', peak_pos - fwhm / 2, peak_pos + fwhm / 2)
         else:
             fit = h.Fit(fitfunc, 'qs')
         return fit
