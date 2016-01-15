@@ -123,10 +123,14 @@ class Analysis(Elementary):
             dic[ch] = BinCollectionConfig(run=self.run, channel=ch)
         return dic
 
-    def draw_regions(self, event=0, ped=True):
+    def draw_regions(self, event=None, ped=True):
         tit = 'Pedestal Regions' if ped else 'Signal Regions'
-        h = TH2F('regions', tit, 1024, 0, 511, 1000, -200, 50)
-        self.tree.Draw('wf0:Iteration$/2>>regions', self.cuts[0].all_cut, 'goff', 1, 100000 + event)
+        start = self.start_event if event is None else event
+        if hasattr(self, 'draw_waveforms'):
+            h = self.draw_waveforms(n=1, show=False, start_event=start)
+        else:
+            h = TH2F('regions', tit, 1024, 0, 511, 1000, -200, 50)
+            self.tree.Draw('wf0:Iteration$/2>>regions', self.cuts[0].all_cut, 'goff', 1, start)
         c = TCanvas('c', 'Regions', 1000, 500)
         h.SetStats(0)
         xax = h.GetXaxis()
@@ -145,7 +149,7 @@ class Analysis(Elementary):
                 lines[reg + ' start'].SetLineWidth(2)
                 lines[reg + ' start'].SetTitleColor(4)
             starts.append(lst[0])
-        self.format_histo(h, markersize=0.3, x_tit='time [ns]', y_tit='pulse height [au]')
+        self.format_histo(h, markersize=0.3, x_tit='Time [ns]', y_tit='Signal [au]')
         h.Draw()
         for axis in lines.itervalues():
             if axis is not None:

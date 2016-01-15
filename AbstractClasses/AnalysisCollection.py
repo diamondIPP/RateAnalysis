@@ -387,7 +387,7 @@ class AnalysisCollection(Elementary):
             self.save_plots('Overview Plot', sub_dir=self.save_dir, canvas=c)
         self.canvases[0] = c
 
-        print '\nThe preanalysis for this selection took', self.elapsed_time(start_time)
+        print '\nThe preanalysis for this selection took', self.print_elapsed_time(start_time)
     # endregion
 
     # ====================================================================================

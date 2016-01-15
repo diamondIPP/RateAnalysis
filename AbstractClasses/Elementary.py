@@ -166,8 +166,9 @@ class Elementary(object):
         return sorted(campaigns)
 
     @staticmethod
-    def elapsed_time(start):
-        string = str('{0:2.2f}'.format(time() - start)) + ' seconds'
+    def print_elapsed_time(start, what='This'):
+        string = '{1} took {0:2.2f} seconds'.format(time() - start, what)
+        print string
         return string
 
     @staticmethod

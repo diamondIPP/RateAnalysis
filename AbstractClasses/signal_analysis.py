@@ -7,8 +7,9 @@ from numpy import array
 from math import sqrt, ceil, log
 from argparse import ArgumentParser
 from Extrema import Extrema2D
-from time import time
+from time import time, sleep
 from collections import OrderedDict
+from sys import stdout
 
 __author__ = 'micha'
 
@@ -251,6 +252,7 @@ class SignalAnalysis(Analysis):
         err = 100 * delta_y / y[0] * (1 + y[1] / y[0])
         print 'Relative Signal Spread is: {spr} +- {err}'.format(spr=max_min_ratio, err=err)
         return [max_min_ratio, err]
+
     # endregion
 
     # ==========================================================================
@@ -300,6 +302,7 @@ class SignalAnalysis(Analysis):
 
         fwhm = self.do_pickle(pickle_path, func)
         return fwhm
+
     # endregion
 
     # ==========================================================================
@@ -434,6 +437,7 @@ class SignalAnalysis(Analysis):
             self.canvas = c
             gROOT.SetBatch(0)
             return fit_par
+
         fit = self.do_pickle(picklepath, func)
         if draw and not gROOT.FindObject('bla'):
             func()
@@ -527,6 +531,7 @@ class SignalAnalysis(Analysis):
         legend.AddEntry(gr3, 'mean fit fwhm w/ cuts all', 'lp')
         legend.Draw()
         self.tmp_histos[4] = legend
+
     # endregion
 
     def draw_pulser_rate(self, binning=200):
@@ -676,53 +681,93 @@ class SignalAnalysis(Analysis):
         self.save_plots('consecutive', 'root', canvas=c2, sub_dir=self.save_dir)
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
+
     # endregion
 
     # ==========================================================================
     # region SHOW
-    def ShowWaveForms(self, n=1000, cut_string=None, start_event=None):
+    def draw_bucket_pedestal(self, show=True):
+        gROOT.SetBatch(1)
+        reg_name = 'e2'
+        three_bucket_num = self.get_signal_numbers(reg_name[0], reg_name[1])[self.channel]
+        reg_margins = self.run.signal_regions[reg_name[0]]
+        x_bins = (reg_margins[1] - reg_margins[0])
+        h = TH2F('h', 'Bucket Pedestal', x_bins, reg_margins[0] / 2., reg_margins[1] / 2., 550, -50, 500)
+        self.tree.Draw('{sig}:IntegralPeaks[{num}]/2>>h'.format(sig=self.signal_name, num=three_bucket_num), z.cut.cut_strings['tracks'] + z.cut.cut_strings['pulser'], 'goff')
+        if show:
+            gROOT.SetBatch(0)
+        c = TCanvas('c', 'Bucket Pedestal', 1000, 1000)
+        c.SetLogz()
+        self.format_histo(h, x_tit='Highest Peak Timing [ns]', y_tit='Pulse Height [au]', y_off=1.25)
+        h.SetStats(0)
+        h.Draw('colz')
+        self.save_plots('BucketPedestal', sub_dir=self.save_dir)
+        gROOT.SetBatch(0)
+        self.histos[0] = [c, h]
+
+    def draw_waveforms(self, n=1000, start_event=None, cut_string=None, show=True, ret_event=False):
         """
         Draws stacked waveforms.
         :param n: number of waveforms
         :param cut_string:
         :param start_event: event to start
+        :param show:
+        :param ret_event: return number of valid events if True
         :return: histo with waveform
         """
+        gROOT.SetBatch(1)
+        t = time()
         start = self.start_event if start_event is None else start_event
         assert self.run.n_entries >= start >= 0, 'The start event is not within the range of tree events!'
         if not self.run.wf_exists(self.channel):
             return
-
         cut = self.cut.all_cut if cut_string is None else cut_string
-        h = TH2F('h', 'Waveform', 1024, 0, 511, 1000, -200, 50)
-            self.tree.Draw('wf0:Iteration$/2>>h', self.cuts[0].all_cut, 'goff', 1, 100000 + event)
-            # self.waveformplots[histoname] = ROOT.TH2D(histoname, self.run.GetChannelName(channel)+" {"+cut.format(channel=channel)+"}", 1024, 0, 1023, 1000, -500, 500)
-            # ROOT.SetOwnership(self.waveformplots[histoname], False)
-            # self.waveformplots[histoname].SetStats(0)
-            print "DRAW: wf{wfch}:Iteration$>>{histoname}".format(histoname=histoname, wfch=channel)
-            print "cut: ", cut_string, " events: ", events, " startevent: ", startevent
-            n = self.run.tree.Draw("wf{wfch}:Iteration$>>{histoname}(1024, 0, 1023, 1000, -500, 500)".format(histoname=histoname, wfch=channel), cut_string, drawoption, events,
-                                   startevent)
-            self.waveformplots[histoname] = ROOT.gROOT.FindObject(histoname)
-            ROOT.SetOwnership(self.waveformplots[histoname], False)
-            self.waveformplots[histoname].SetStats(0)
-            if cut_string == "":
-                self.draw_run_info(channel=channel, comment="{nwf} Wave Forms".format(nwf=n / 1024), infoid=("wf{wf}" + infoid).format(wf=channel), width=0.15, height=0.15)
-            else:
-                self.draw_run_info(channel=channel, comment="{nwf}/{totnwf} Wave Forms".format(nwf=n / 1024, totnwf=events), infoid=("wf{wf}" + infoid).format(wf=channel), width=0.18,
-                                   height=0.15)
-            if n <= 0: print "No event to draw in range. Change cut settings or increase nevents"
+        n_events = self.find_n_events(n, cut, start)
+        h = TH2F('wf', 'Waveform', 1024, 0, 511, 1000, -500, 500)
+        h.SetStats(0)
+        gStyle.SetPalette(55)
+        self.tree.Draw('wf0:Iteration$/2>>wf', cut, 'goff', n_events, start)
+        h.GetYaxis().SetRangeUser(-500 + h.FindFirstBinAbove(0, 2) / 50 * 50, -450 + h.FindLastBinAbove(0, 2) / 50 * 50)
+        self.print_elapsed_time(t)
+        if show:
+            gROOT.SetBatch(0)
+        c = TCanvas('c', 'WaveForm', 1000, 500)
+        c.SetRightMargin(.045)
+        self.format_histo(h, x_tit='Time [ns]', y_tit='Signal [au]')
+        h.Draw('col')
+        gROOT.SetBatch(0)
+        if n > 1:
+            self.save_plots('WaveForms{n}'.format(n=n), sub_dir=self.save_dir)
+        self.histos[0] = [c, h]
+        return h if not ret_event else n_events
 
-        start_event = int(self.run.tree.GetEntries() / 2) if start_event == None else int(start_event)
-        index = 1
-        for i in xrange(4):
-            self.waveFormCanvas.cd(index)
-            if draw_waveforms[i]:
-                drawWF(self, channel=i, events=n, startevent=start_event, cut=cut)
-                self.waveFormCanvas.Update()
-                index += 1
-            else:
-                print "Wave Form of channel ", i, " not in root file"
+    def show_single_waveforms(self, n, cut=None):
+        ev = self.start_event
+        for i in xrange(n):
+            ev += self.draw_waveforms(n=1, cut_string=cut, ret_event=True, start_event=ev)
+            sleep(1)
+
+    # endregion
+
+    def find_n_events(self, n_events, cut, start):
+        """
+        Finds the amount of events from the startevent that are not subject to the cut.
+        :param n_events: number of wanted events
+        :param cut:
+        :param start:
+        :return: actual number of events s.t. n_events are drawn
+        """
+        print 'Finding the correct number of events',
+        n = self.tree.Draw('1', cut, 'goff', n_events, start)
+        new_events = n_events
+        while n != n_events:
+            diff = n_events - n
+            new_events += diff * 2 if abs(diff) > 1 else diff
+            print '\b.',
+            stdout.flush()
+            n = self.tree.Draw('1', cut, 'goff', new_events, start)
+        print
+        return new_events
 
     @staticmethod
     def normalise_histo(histo):
@@ -825,9 +870,9 @@ class SignalAnalysis(Analysis):
 
     def draw_snrs(self):
         gr = self.make_tgrapherrors('gr', 'Signal to Noise Ratios')
-        l1 = TLegend(.7,.68,.9,.9)
+        l1 = TLegend(.7, .68, .9, .9)
         l1.SetHeader('Regions')
-        l2 = TLegend(.7,.47,.9,.67)
+        l2 = TLegend(.7, .47, .9, .67)
         l2.SetHeader('PeakIntegrals')
         for i, name in enumerate(self.get_all_signal_names().iterkeys()):
             snr = self.calc_snr(name)
@@ -949,13 +994,15 @@ class SignalAnalysis(Analysis):
         for info in infos:
             print self.adj_length(info),
         print
+
     # endregion
 
     def __placeholder(self):
         pass
 
+
 if __name__ == "__main__":
-    t = time()
+    st = time()
     parser = ArgumentParser()
     parser.add_argument('run', nargs='?', default=392, type=int)
     parser.add_argument('ch', nargs='?', default=0, type=int)
@@ -963,4 +1010,4 @@ if __name__ == "__main__":
     test_run = args.run
     print '\nAnalysing run', test_run, '\n'
     z = SignalAnalysis(test_run, args.ch)
-    print 'Instantiation took:', z.elapsed_time(t)
+    z.print_elapsed_time(st, 'Instantiation')
