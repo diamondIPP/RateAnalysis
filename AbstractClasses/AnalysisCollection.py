@@ -507,6 +507,7 @@ class AnalysisCollection(Elementary):
             histo.Draw('col')
             ex[i - 1].Draw()
             histo.Draw('colz same')
+        self.save_plots('PeakDistribution', sub_dir=self.save_dir)
         self.histos[0] = ex
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         gROOT.SetBatch(0)
