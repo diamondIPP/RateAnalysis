@@ -944,7 +944,7 @@ class SignalAnalysis(Analysis):
         integrals = [integral for integral in self.run.peak_integrals if len(integral) < 3]
         for region in regions:
             for integral in integrals:
-                if len(integral) > 1:
+                if len(integral) > 2:
                     integral = '_' + integral
                 name = 'ch{ch}_signal_{reg}_PeakIntegral{int}'.format(ch=self.channel, reg=region, int=integral)
                 num = self.integral_names[name]
