@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="e6cf272c-81a5-4f4e-9e0a-ff55b841b26f" name="Default" comment="revision of draw_regions function and adding draw_peak_integral function">
+    <list default="true" id="e6cf272c-81a5-4f4e-9e0a-ff55b841b26f" name="Default" comment="">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/newAnalysis.py" afterPath="$PROJECT_DIR$/AbstractClasses/newAnalysis.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" afterPath="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/RunClass.py" afterPath="$PROJECT_DIR$/AbstractClasses/RunClass.py" />
     </list>
     <ignored path="myPadAnalysis.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -64,11 +63,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="signal_analysis.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="signal_analysis.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/AbstractClasses/signal_analysis.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.4558011">
-              <caret line="899" column="36" selection-start-line="899" selection-start-column="36" selection-end-line="899" selection-end-column="36" />
+            <state vertical-scroll-proportion="0.0">
+              <caret line="897" column="39" selection-start-line="897" selection-start-column="39" selection-end-line="897" selection-end-column="39" />
               <folding>
                 <element signature="e#108#231#0" expanded="true" />
               </folding>
@@ -91,15 +90,15 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="RunClass.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="RunClass.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/AbstractClasses/RunClass.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0">
-              <caret line="317" column="69" selection-start-line="317" selection-start-column="69" selection-end-line="317" selection-end-column="69" />
+            <state vertical-scroll-proportion="0.29005525">
+              <caret line="320" column="0" selection-start-line="320" selection-start-column="0" selection-end-line="320" selection-end-column="0" />
               <folding>
                 <element signature="e#108#119#0" expanded="true" />
-                <marker date="1452974173566" expanded="true" signature="1724:2117" placeholder="..." />
-                <marker date="1452974173566" expanded="true" signature="18192:18214" placeholder="..." />
+                <marker date="1452983616877" expanded="true" signature="1724:2117" placeholder="..." />
+                <marker date="1452983616877" expanded="true" signature="18356:18378" placeholder="..." />
               </folding>
             </state>
           </provider>
@@ -151,10 +150,10 @@
         <option value="$PROJECT_DIR$/AbstractClasses/RunSelection.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/Extrema.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" />
-        <option value="$PROJECT_DIR$/AbstractClasses/RunClass.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/Elementary.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/newAnalysis.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" />
+        <option value="$PROJECT_DIR$/AbstractClasses/RunClass.py" />
       </list>
     </option>
   </component>
@@ -477,7 +476,6 @@
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="fixing master selection function" />
     <MESSAGE value="revision of Elementary class" />
     <MESSAGE value="adding function to create new tc to elementary" />
     <MESSAGE value="minor fixes" />
@@ -502,7 +500,8 @@
     <MESSAGE value="improving info pave text, fixing some plots" />
     <MESSAGE value="fixing show waveform plot and adding bucket pedestal function" />
     <MESSAGE value="revision of draw_regions function and adding draw_peak_integral function" />
-    <option name="LAST_COMMIT_MESSAGE" value="revision of draw_regions function and adding draw_peak_integral function" />
+    <MESSAGE value="adding find best snr function" />
+    <option name="LAST_COMMIT_MESSAGE" value="adding find best snr function" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -517,8 +516,8 @@
           <caret line="229" column="8" selection-start-line="229" selection-start-column="8" selection-end-line="229" selection-end-column="8" />
           <folding>
             <element signature="e#108#119#0" expanded="true" />
-            <marker date="1452974173566" expanded="true" signature="1724:2117" placeholder="..." />
-            <marker date="1452974173566" expanded="true" signature="18192:18214" placeholder="..." />
+            <marker date="1452983616877" expanded="true" signature="1724:2117" placeholder="..." />
+            <marker date="1452983616877" expanded="true" signature="18356:18378" placeholder="..." />
           </folding>
         </state>
       </provider>
@@ -582,8 +581,8 @@
           <caret line="125" column="25" selection-start-line="125" selection-start-column="25" selection-end-line="125" selection-end-column="25" />
           <folding>
             <element signature="e#108#119#0" expanded="true" />
-            <marker date="1452974173566" expanded="true" signature="1724:2117" placeholder="..." />
-            <marker date="1452974173566" expanded="true" signature="18192:18214" placeholder="..." />
+            <marker date="1452983616877" expanded="true" signature="1724:2117" placeholder="..." />
+            <marker date="1452983616877" expanded="true" signature="18356:18378" placeholder="..." />
           </folding>
         </state>
       </provider>
@@ -637,8 +636,8 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#108#119#0" expanded="true" />
-            <marker date="1452974173566" expanded="true" signature="1724:2117" placeholder="..." />
-            <marker date="1452974173566" expanded="true" signature="18192:18214" placeholder="..." />
+            <marker date="1452983616877" expanded="true" signature="1724:2117" placeholder="..." />
+            <marker date="1452983616877" expanded="true" signature="18356:18378" placeholder="..." />
           </folding>
         </state>
       </provider>
@@ -656,8 +655,8 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#108#119#0" expanded="true" />
-            <marker date="1452974173566" expanded="true" signature="1724:2117" placeholder="..." />
-            <marker date="1452974173566" expanded="true" signature="18192:18214" placeholder="..." />
+            <marker date="1452983616877" expanded="true" signature="1724:2117" placeholder="..." />
+            <marker date="1452983616877" expanded="true" signature="18356:18378" placeholder="..." />
           </folding>
         </state>
       </provider>
@@ -704,8 +703,8 @@
           <caret line="281" column="0" selection-start-line="281" selection-start-column="0" selection-end-line="281" selection-end-column="0" />
           <folding>
             <element signature="e#108#119#0" expanded="true" />
-            <marker date="1452974173566" expanded="true" signature="1724:2117" placeholder="..." />
-            <marker date="1452974173566" expanded="true" signature="18192:18214" placeholder="..." />
+            <marker date="1452983616877" expanded="true" signature="1724:2117" placeholder="..." />
+            <marker date="1452983616877" expanded="true" signature="18356:18378" placeholder="..." />
           </folding>
         </state>
       </provider>
@@ -745,8 +744,8 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#108#119#0" expanded="true" />
-            <marker date="1452974173566" expanded="true" signature="1724:2117" placeholder="..." />
-            <marker date="1452974173566" expanded="true" signature="18192:18214" placeholder="..." />
+            <marker date="1452983616877" expanded="true" signature="1724:2117" placeholder="..." />
+            <marker date="1452983616877" expanded="true" signature="18356:18378" placeholder="..." />
           </folding>
         </state>
       </provider>
@@ -786,8 +785,8 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#108#119#0" expanded="true" />
-            <marker date="1452974173566" expanded="true" signature="1724:2117" placeholder="..." />
-            <marker date="1452974173566" expanded="true" signature="18192:18214" placeholder="..." />
+            <marker date="1452983616877" expanded="true" signature="1724:2117" placeholder="..." />
+            <marker date="1452983616877" expanded="true" signature="18356:18378" placeholder="..." />
           </folding>
         </state>
       </provider>
@@ -940,18 +939,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/RunClass.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="317" column="69" selection-start-line="317" selection-start-column="69" selection-end-line="317" selection-end-column="69" />
-          <folding>
-            <element signature="e#108#119#0" expanded="true" />
-            <marker date="1452974173566" expanded="true" signature="1724:2117" placeholder="..." />
-            <marker date="1452974173566" expanded="true" signature="18192:18214" placeholder="..." />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/Elementary.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
@@ -976,10 +963,22 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/signal_analysis.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.4558011">
-          <caret line="899" column="36" selection-start-line="899" selection-start-column="36" selection-end-line="899" selection-end-column="36" />
+        <state vertical-scroll-proportion="0.0">
+          <caret line="897" column="39" selection-start-line="897" selection-start-column="39" selection-end-line="897" selection-end-column="39" />
           <folding>
             <element signature="e#108#231#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/RunClass.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.29005525">
+          <caret line="320" column="0" selection-start-line="320" selection-start-column="0" selection-end-line="320" selection-end-column="0" />
+          <folding>
+            <element signature="e#108#119#0" expanded="true" />
+            <marker date="1452983616877" expanded="true" signature="1724:2117" placeholder="..." />
+            <marker date="1452983616877" expanded="true" signature="18356:18378" placeholder="..." />
           </folding>
         </state>
       </provider>

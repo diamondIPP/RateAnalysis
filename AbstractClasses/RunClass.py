@@ -326,7 +326,10 @@ class Run(Elementary):
             if str(line).lower().startswith('* peakintegral'):
                 data = re.split('_|:|-', line)
                 if data[0][-1].isdigit():
-                    integrals[data[0][-1]] = [int(float(data[i])) for i in [1, 2]]
+                    if data[0][-2].isdigit():
+                        integrals[data[0][-2:]] = [int(float(data[i])) for i in [1, 2]]
+                    else:
+                        integrals[data[0][-1]] = [int(float(data[i])) for i in [1, 2]]
                 else:
                     integrals[data[1]] = [int(float(data[i])) for i in [2, 3]]
         return integrals
