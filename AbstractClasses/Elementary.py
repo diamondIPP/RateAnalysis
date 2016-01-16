@@ -1,7 +1,7 @@
 import os
 import ROOT
 from time import time
-from ROOT import gROOT, TGraphErrors, TGaxis
+from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors
 import pickle
 import sys
 from glob import glob
@@ -194,17 +194,19 @@ class Elementary(object):
             gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
 
     @staticmethod
-    def make_tgrapherrors(name, title, color=1, marker=20):
-        gr = TGraphErrors()
+    def make_tgrapherrors(name, title, color=1, marker=20, marker_size=1, width=1, asym_err=False):
+        gr = TGraphErrors() if not asym_err else TGraphAsymmErrors()
         gr.SetTitle(title)
         gr.SetName(name)
         gr.SetMarkerStyle(marker)
         gr.SetMarkerColor(color)
         gr.SetLineColor(color)
+        gr.SetMarkerSize(marker_size)
+        gr.SetLineWidth(width)
         return gr
 
     @staticmethod
-    def make_tgaxis(x, y1, y2, title, color=1):
+    def make_tgaxis(x, y1, y2, title, color=1, width=1):
         a = TGaxis(x, y1, x, y2, y1, y2, 510, '+SU')
         a.SetLineColor(color)
         a.SetTickSize(0)
@@ -213,6 +215,7 @@ class Elementary(object):
         a.SetTitleOffset(0.15)
         a.SetTitle(title + '  ')
         a.SetTitleColor(color)
+        a.SetLineWidth(width)
         return a
 
     @staticmethod
@@ -223,11 +226,19 @@ class Elementary(object):
         h.SetMarkerStyle(marker)
         h.SetMarkerColor(color) if color is not None else h.SetMarkerColor(h.GetMarkerColor())
         h.SetMarkerSize(markersize)
-        h.GetXaxis().SetTitle(x_tit)
+        h.GetXaxis().SetTitle(x_tit) if x_tit else h.GetXaxis().GetTitle()
         h.GetXaxis().SetTitleOffset(x_off)
-        h.GetYaxis().SetTitle(y_tit)
+        h.GetYaxis().SetTitle(y_tit) if y_tit else h.GetYaxis().GetTitle()
         h.GetYaxis().SetTitleOffset(y_off)
         h.SetLineWidth(lw)
+
+    @staticmethod
+    def make_tlatex(x, y, text, align=20, color=1, size=.05):
+        l = TLatex(x, y, text)
+        l.SetTextAlign(align)
+        l.SetTextColor(color)
+        l.SetTextSize(size)
+        return l
 
     @staticmethod
     def calc_fwhm(histo):
@@ -258,6 +269,10 @@ class Elementary(object):
         h = histo
         h.Scale(1 / h.Integral(1, h.GetNbinsX()))
         return h
+
+    @staticmethod
+    def do_nothing():
+        pass
 
 if __name__ == "__main__":
     z = Elementary()

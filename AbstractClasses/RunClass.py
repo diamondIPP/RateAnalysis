@@ -10,6 +10,7 @@ from datetime import datetime
 from ROOT import TFile, gROOT, TLegend
 from ConfigParser import ConfigParser, NoOptionError
 from numpy import mean
+from collections import OrderedDict
 
 default_info = {
     'persons on shift': '-',
@@ -309,7 +310,7 @@ class Run(Elementary):
         return self.flux if self.flux else self.RunInfo['aimed flux']
 
     def get_regions(self, string):
-        ranges = {}
+        ranges = OrderedDict()
         for line in self.region_information:
             line = str(line)
             if line.startswith(string):
@@ -319,7 +320,7 @@ class Run(Elementary):
         return ranges
 
     def get_peak_integrals(self):
-        integrals = {}
+        integrals = OrderedDict()
         for line in self.region_information:
             line = str(line)
             if str(line).lower().startswith('* peakintegral'):
@@ -407,7 +408,7 @@ class Run(Elementary):
         print '\tDiamond1:   \t', self.diamond_names[0], ' (', self.bias[0], ') | is selected: ', self.analyse_ch[0]
         print '\tDiamond2:   \t', self.diamond_names[3], ' (', self.bias[3], ') | is selected: ', self.analyse_ch[3]
 
-    def draw_run_info(self, channel=None, canvas=None, diamondinfo=True, cut=None, comment=None, infoid='', set_width=None, set_height=None, runs=None):
+    def draw_run_info(self, channel=None, canvas=None, diamondinfo=True, cut=None, comment=None, set_width=None, set_height=None, runs=None):
         """
         Draws the run infos inside the canvas. If no canvas is given, it will be drawn into the active Pad. 
         If the channel number is passed, channel number and diamond name will be drawn.
@@ -416,7 +417,7 @@ class Run(Elementary):
         :param diamondinfo:
         :param cut:
         :param comment:
-        :param infoid:
+        :param runs:
         :param set_height:
         :param set_width:
         :return:
@@ -474,7 +475,7 @@ class Run(Elementary):
         if comment is not None:
             legend.AddEntry(0, comment, '')
         legend.Draw()
-        self.run_info_legends[str(channel) + infoid] = legend
+        self.run_info_legends[str(channel)] = legend
         pad.Modified()
         canvas.Update()
 

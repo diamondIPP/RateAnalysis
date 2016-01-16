@@ -41,6 +41,9 @@
           <option value="TProfile" />
           <option value="TCutG" />
           <option value="TExec" />
+          <option value="TLatex" />
+          <option value="TGraphAsymmErrors" />
+          <option value="" />
         </list>
       </option>
     </inspection_tool>

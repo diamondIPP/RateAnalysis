@@ -5,7 +5,7 @@ from numpy import array, zeros
 import types as t
 
 import ROOT
-from ROOT import TCanvas, TH2F, gROOT, TProfile, TH1F, TLegend
+from ROOT import TCanvas, TH2F, gROOT, TProfile, TH1F, TLegend, gStyle, TLatex, kGreen
 from AbstractClasses.PreAnalysisPlot import PreAnalysisPlot
 from AbstractClasses.ConfigClass import *
 from AbstractClasses.RunClass import Run
@@ -15,6 +15,7 @@ from collections import OrderedDict
 from argparse import ArgumentParser
 from ConfigParser import ConfigParser
 from copy import deepcopy
+from time import sleep
 
 
 class Analysis(Elementary):
@@ -123,42 +124,104 @@ class Analysis(Elementary):
             dic[ch] = BinCollectionConfig(run=self.run, channel=ch)
         return dic
 
-    def draw_regions(self, event=None, ped=True):
-        tit = 'Pedestal Regions' if ped else 'Signal Regions'
+    def draw_single_wf(self, event=None, show=False):
+        gROOT.SetBatch(1)
         start = self.start_event if event is None else event
         if hasattr(self, 'draw_waveforms'):
             h = self.draw_waveforms(n=1, show=False, start_event=start)
         else:
-            h = TH2F('regions', tit, 1024, 0, 511, 1000, -200, 50)
+            h = TH2F('regions', '', 1024, 0, 511, 1000, -200, 50)
             self.tree.Draw('wf0:Iteration$/2>>regions', self.cuts[0].all_cut, 'goff', 1, start)
-        c = TCanvas('c', 'Regions', 1000, 500)
-        h.SetStats(0)
-        xax = h.GetXaxis()
-        xax.SetNdivisions(26)
+        if show:
+            gROOT.SetBatch(0)
+        c = TCanvas('c2', 'Regions', 1000, 500)
+        c.SetMargin(.075, .045, .1, .1)
         c.SetGrid()
-        lines = {}
-        starts = []
-        regions = self.run.pedestal_regions if ped else self.run.signal_regions
-        for reg, lst in regions.iteritems():
-            lines[reg + ' start'] = self.make_tgaxis(lst[0] / 2, -200, 50, reg, 2)
-            lines[reg + ' stop'] = self.make_tgaxis(lst[1] / 2, -200, 50, '', 2) if lst[1] - lst[0] > 1 else None
-            if lst[0] in starts:
-                lines[reg + ' start'].SetTitle('')
-            if not lst[1] - lst[0] > 1:
-                lines[reg + ' start'].SetLineColor(4)
-                lines[reg + ' start'].SetLineWidth(2)
-                lines[reg + ' start'].SetTitleColor(4)
-            starts.append(lst[0])
+        h.SetStats(0)
+        h.GetXaxis().SetNdivisions(26)
         self.format_histo(h, markersize=0.3, x_tit='Time [ns]', y_tit='Signal [au]')
         h.Draw()
-        for axis in lines.itervalues():
-            if axis is not None:
-                axis.Draw()
-        save_name = 'pedestal_regions' if ped else 'signal_regions'
+        gROOT.SetBatch(0)
+        self.histos[0] = [c, h]
+        return h
+
+    def draw_regions(self, event=None, ped=True):
+        h = self.draw_single_wf(event=event, show=False)
+        c = TCanvas('c1', 'Regions', 1000, 500)
+        c.SetMargin(.075, .045, .1, .1)
+        c.SetGrid()
+        h.Draw()
+        tit = 'Pedestal Regions' if ped else 'Signal Regions'
+        h.SetTitle(tit)
+        lines = []
+        starts = []
+        titles = []
+        regions = self.run.pedestal_regions if ped else self.run.signal_regions
+        gr = self.make_tgrapherrors('gr', '', color=2, marker_size=0, width=3)
+        i = 0
+        gStyle.SetEndErrorSize(4)
+        sleep(.5)
+        for reg, lst in regions.iteritems():
+            if len(reg) < 3:
+                if lst[1] - lst[0] > 1:
+                    offset = 20 if not lst[0] in starts else 40
+                    gr.SetPoint(i, (lst[1] + lst[0]) / 4., c.GetUymax() - offset)
+                    gr.SetPointError(i, (lst[1] - lst[0]) / 4., 0)
+                    l = TLatex(gr.GetX()[i], gr.GetY()[i] + 3, reg)
+                    l.SetTextAlign(20)
+                    l.SetTextColor(2)
+                    gr.GetListOfFunctions().Add(l)
+                    i += 1
+                l1 = self.make_tgaxis(lst[0] / 2, -200, 50, '', 2)
+                l2 = self.make_tgaxis(lst[1] / 2, -200, 50, '', 2) if lst[1] - lst[0] > 1 else 0
+                if not lst[1] - lst[0] > 1:
+                    l1.SetLineColor(4)
+                    l1.SetLineWidth(2)
+                    l1.SetTitleColor(4)
+                    l1.SetY2(c.GetUymax() - 100)
+                    tit = TLatex(lst[0] / 2, c.GetUymax() - 97, reg)
+                    tit.SetTextAlign(20)
+                    tit.SetTextColor(4)
+                    tit.Draw()
+                    titles.append(tit)
+                l1.Draw()
+                l2.Draw() if l2 else self.do_nothing()
+                lines.append([l1, l2])
+                starts.append(lst[0])
+        gr.Draw('[]')
+        gr.Draw('p')
+        save_name = 'PedestalRegions' if ped else 'SignalRegions'
         self.save_plots(save_name, sub_dir=self.ana_save_dir, ch=None)
-        self.lines = lines
-        self.histos[0] = h
-        self.canvases[0] = c
+        self.histos[0] = [h, c, gr, lines, titles]
+
+    def draw_peak_integrals(self, event=None):
+        h = self.draw_single_wf(event=event, show=False)
+        c = TCanvas('c1', 'Regions', 1000, 500)
+        c.SetMargin(.075, .045, .1, .1)
+        c.SetGrid()
+        self.format_histo(h, title='Peak Integrals', markersize=.5)
+        h.GetXaxis().SetRangeUser(self.run.signal_regions['e'][0] / 2, self.run.signal_regions['e'][1] / 2)
+        h.Draw()
+        sleep(.5)
+        peak_pos = self.get_peak_position(event) / 2. if hasattr(self, 'get_peak_position') else self.run.signal_regions['a'][0] / 2.
+        l = self.make_tgaxis(peak_pos, c.GetUymin(), c.GetUymax() - 100, '', 4, 2)
+        l.Draw()
+        t1 = self.make_tlatex(peak_pos, c.GetUymax() - 97, 'found peak', color=4)
+        t1.Draw()
+        gr = self.make_tgrapherrors('gr', '', color=kGreen + 2, marker_size=0, asym_err=True, width=3)
+        gStyle.SetEndErrorSize(4)
+        i = 0
+        for int_, lst in self.run.peak_integrals.iteritems():
+            if len(int_) < 3:
+                gr.SetPoint(i, peak_pos, c.GetUymax() - 30 * (i + 1) - 100)
+                gr.SetPointError(i, lst[0] / 2., lst[1] / 2., 0, 0) if lst[1] - lst[0] > 1 else gr.SetPointError(i, .5, .5, 0, 0)
+                l1 = self.make_tlatex(gr.GetX()[i], gr.GetY()[i] + 5, ' ' + int_, color=kGreen + 2, align=10)
+                gr.GetListOfFunctions().Add(l1)
+                i += 1
+        gr.Draw('[]')
+        gr.Draw('p')
+        self.save_plots('IntegralPeaks', sub_dir=self.ana_save_dir, ch=None)
+        self.histos[0] = [gr, c, l, t1, h]
 
     # ============================================================================================
     # region SHOW
