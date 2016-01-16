@@ -895,6 +895,24 @@ class SignalAnalysis(Analysis):
         self.histos[0] = gr
         self.histos['legend'] = [l1, l2]
 
+    def find_best_snr(self, show=True):
+        gROOT.SetBatch(1)
+        gr = self.make_tgrapherrors('gr', 'Signal to Noise Ratios')
+        peak_integrals = OrderedDict(sorted({key:value for key, value in self.run.peak_integrals.iteritems() if len(key) < 3}.items()))
+        for i, name in enumerate(peak_integrals.iterkeys()):
+            signal = self.get_signal_names(self.get_signal_numbers('b', name))[self.channel]
+            snr = self.calc_snr(signal)
+            gr.SetPoint(i, i + 1, snr[0])
+            gr.SetPointError(i, 0, snr[1])
+        [gr.GetXaxis().SetBinLabel(gr.GetXaxis().FindBin(i), '{0}/{1}'.format(lst[0], lst[1])) for i, lst in enumerate(peak_integrals.itervalues(), 1)]
+        if show:
+            gROOT.SetBatch(0)
+        c = TCanvas('c', 'SNR', 1000, 1000)
+        gr.Draw('ap')
+        gROOT.SetBatch(0)
+        self.save_plots('BestSNR', sub_dir=self.save_dir)
+        self.histos[0] = [gr, c]
+
     def calc_snr(self, sig=None):
         signal = self.signal_name if sig is None else sig
         peak_int = self.get_all_signal_names()[signal][-1]

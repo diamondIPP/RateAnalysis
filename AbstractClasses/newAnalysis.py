@@ -124,6 +124,9 @@ class Analysis(Elementary):
             dic[ch] = BinCollectionConfig(run=self.run, channel=ch)
         return dic
 
+    # ============================================================================================
+    # region REGIONS AND PEAK INTEGRAL
+
     def draw_single_wf(self, event=None, show=False):
         gROOT.SetBatch(1)
         start = self.start_event if event is None else event
@@ -222,6 +225,7 @@ class Analysis(Elementary):
         gr.Draw('p')
         self.save_plots('IntegralPeaks', sub_dir=self.ana_save_dir, ch=None)
         self.histos[0] = [gr, c, l, t1, h]
+    # endregion
 
     # ============================================================================================
     # region SHOW
