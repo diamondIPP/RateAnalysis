@@ -899,7 +899,7 @@ class SignalAnalysis(Analysis):
 
     def calc_snr(self, sig=None):
         signal = self.signal_name if sig is None else sig
-        peak_int = self.get_all_signal_names()[signal][-1]
+        peak_int = self.get_all_signal_names()[signal][-2:] if self.get_all_signal_names()[signal][-2].isdigit() else self.get_all_signal_names()[signal][-1]
         ped_fit = self.show_pedestal_histo(draw=False, peak_int=peak_int)
         sig_fit = self.draw_pulse_height(eventwise_corr=True, draw=False, sig=signal)
         sig_mean = sig_fit.Parameter(0)

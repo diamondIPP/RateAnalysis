@@ -66,8 +66,8 @@
       <file leaf-file-name="signal_analysis.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/AbstractClasses/signal_analysis.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.6436464">
-              <caret line="935" column="0" selection-start-line="935" selection-start-column="0" selection-end-line="935" selection-end-column="0" />
+            <state vertical-scroll-proportion="0.5814917">
+              <caret line="911" column="0" selection-start-line="911" selection-start-column="0" selection-end-line="911" selection-end-column="0" />
               <folding>
                 <element signature="e#108#231#0" expanded="true" />
               </folding>
@@ -478,7 +478,6 @@
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="finished signal map and find margins functions" />
     <MESSAGE value="revision of __check_wv_channels function" />
     <MESSAGE value="adding  function for mean signal distribution and deleting the old one" />
     <MESSAGE value="adding new class extrema based on the old one with several maxima and region finding mechanisms" />
@@ -503,7 +502,8 @@
     <MESSAGE value="adding signal_vs_peakintegral function" />
     <MESSAGE value="improving signal_vs_peakintegral function" />
     <MESSAGE value="adding func get_signal_name" />
-    <option name="LAST_COMMIT_MESSAGE" value="adding func get_signal_name" />
+    <MESSAGE value="revision of best snr" />
+    <option name="LAST_COMMIT_MESSAGE" value="revision of best snr" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -980,8 +980,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/signal_analysis.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.6436464">
-          <caret line="935" column="0" selection-start-line="935" selection-start-column="0" selection-end-line="935" selection-end-column="0" />
+        <state vertical-scroll-proportion="0.5814917">
+          <caret line="911" column="0" selection-start-line="911" selection-start-column="0" selection-end-line="911" selection-end-column="0" />
           <folding>
             <element signature="e#108#231#0" expanded="true" />
           </folding>
