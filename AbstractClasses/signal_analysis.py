@@ -917,15 +917,18 @@ class SignalAnalysis(Analysis):
         gROOT.SetBatch(1)
         gr = self.make_tgrapherrors('gr', 'Signal to Noise Ratios')
         peak_integrals = OrderedDict(sorted({key: value for key, value in self.run.peak_integrals.iteritems() if len(key) < 3}.items()))
-        for i, name in enumerate(peak_integrals.iterkeys()):
+        i = 0
+        for name, value in peak_integrals.iteritems():
             signal = self.get_signal_names(self.get_signal_numbers('b', name))[self.channel]
             snr = self.calc_snr(signal)
-            gr.SetPoint(i, i + 1, snr[0])
+            gr.SetPoint(i, (value[1] + value[0]) / 2., snr[0])
             gr.SetPointError(i, 0, snr[1])
-        [gr.GetXaxis().SetBinLabel(gr.GetXaxis().FindBin(i), '{0}/{1}'.format(lst[0], lst[1])) for i, lst in enumerate(peak_integrals.itervalues(), 1)]
+            i += 1
+        # [gr.GetXaxis().SetBinLabel(gr.GetXaxis().FindBin(i), '{0}/{1}'.format(lst[0], lst[1])) for i, lst in enumerate(peak_integrals.itervalues(), 1)]
         if show:
             gROOT.SetBatch(0)
         c = TCanvas('c', 'SNR', 1000, 1000)
+        self.format_histo(gr, x_tit='Integralwidth [ns]', y_tit='SNR')
         gr.Draw('ap')
         gROOT.SetBatch(0)
         self.save_plots('BestSNR', sub_dir=self.save_dir)
@@ -937,10 +940,10 @@ class SignalAnalysis(Analysis):
         peak_integrals = OrderedDict(sorted({key: value for key, value in self.run.peak_integrals.iteritems() if len(key) < 3}.items()))
         i = 0
         for name, value in peak_integrals.iteritems():
-            sig_name = self.get_signal_names(self.get_signal_numbers('b', name))[self.channel]
+            sig_name = self.get_signal_name(peak_int=name)
             signal = self.draw_pulse_height(eventwise_corr=True, draw=False, sig=sig_name) if not ped else self.show_pedestal_histo(draw=False, peak_int=name)
             par = 2 if ped else 0
-            gr.SetPoint(i, value[1] + value[0], signal.Parameter(par))
+            gr.SetPoint(i, (value[1] + value[0]) / 2., signal.Parameter(par))
             gr.SetPointError(i, 0, signal.ParError(par))
             i += 1
         if show:
