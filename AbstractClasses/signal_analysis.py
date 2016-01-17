@@ -485,7 +485,9 @@ class SignalAnalysis(Analysis):
             return fit_pars
 
         fit_par = self.do_pickle(picklepath, func)
-        if draw and not gROOT.FindObject('ped1'):
+        if draw and gROOT.FindObject('ped1'):
+            gROOT.FindObject('ped1').Draw()
+        elif draw and not gROOT.FindObject('ped1'):
             func()
         return fit_par
 
@@ -929,22 +931,24 @@ class SignalAnalysis(Analysis):
         self.save_plots('BestSNR', sub_dir=self.save_dir)
         self.histos[0] = [gr, c]
 
-    def signal_vs_peakintegral(self, show=True):
+    def signal_vs_peakintegral(self, show=True, ped=False):
         gROOT.SetBatch(1)
-        gr = self.make_tgrapherrors('gr', 'Signal vs Peak Integral')
+        gr = self.make_tgrapherrors('gr', '{sig} vs Peak Integral'.format(sig='Signal' if not ped else 'Pedestal'))
         peak_integrals = OrderedDict(sorted({key: value for key, value in self.run.peak_integrals.iteritems() if len(key) < 3}.items()))
         i = 0
         for name, value in peak_integrals.iteritems():
             sig_name = self.get_signal_names(self.get_signal_numbers('b', name))[self.channel]
-            signal = self.draw_pulse_height(eventwise_corr=True, draw=False, sig=sig_name)
-            gr.SetPoint(i, value[1] + value[0], signal.Parameter(0))
+            signal = self.draw_pulse_height(eventwise_corr=True, draw=False, sig=sig_name) if not ped else self.show_pedestal_histo(draw=False, peak_int=name)
+            par = 2 if ped else 0
+            gr.SetPoint(i, value[1] + value[0], signal.Parameter(par))
+            gr.SetPointError(i, 0, signal.ParError(par))
             i += 1
         if show:
             gROOT.SetBatch(0)
         c = TCanvas('c', 'Signal vs Peak Integral', 1000, 1000)
         gr.Draw('ap')
         gROOT.SetBatch(0)
-        self.save_plots('SigPeakInt', sub_dir=self.save_dir)
+        self.save_plots('{sig}PeakInt'.format(sig='Ped' if ped else 'Sig'), sub_dir=self.save_dir)
         self.histos[0] = [gr, c]
 
     # endregion
