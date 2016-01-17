@@ -16,7 +16,7 @@
   </component>
   <component name="ChangesViewManager" flattened_view="true" show_ignored="false" />
   <component name="CreatePatchCommitExecutor">
-    <option name="PATCH_PATH" value="" />
+    <option name="PATCH_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="ExecutionTargetManager" SELECTED_TARGET="default_target" />
   <component name="FavoritesManager">
@@ -66,8 +66,8 @@
       <file leaf-file-name="signal_analysis.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/AbstractClasses/signal_analysis.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.8301105">
-              <caret line="950" column="0" selection-start-line="950" selection-start-column="0" selection-end-line="950" selection-end-column="0" />
+            <state vertical-scroll-proportion="0.66436464">
+              <caret line="954" column="0" selection-start-line="954" selection-start-column="0" selection-end-line="954" selection-end-column="0" />
               <folding>
                 <element signature="e#108#231#0" expanded="true" />
               </folding>
@@ -478,7 +478,6 @@
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="start revising of analysis class" />
     <MESSAGE value="starting signal map function" />
     <MESSAGE value="finished signal map and find margins functions" />
     <MESSAGE value="revision of __check_wv_channels function" />
@@ -503,7 +502,8 @@
     <MESSAGE value="fixing get peak integrals" />
     <MESSAGE value="fixing get all signal names" />
     <MESSAGE value="adding signal_vs_peakintegral function" />
-    <option name="LAST_COMMIT_MESSAGE" value="adding signal_vs_peakintegral function" />
+    <MESSAGE value="improving signal_vs_peakintegral function" />
+    <option name="LAST_COMMIT_MESSAGE" value="improving signal_vs_peakintegral function" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -980,8 +980,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/signal_analysis.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.8301105">
-          <caret line="950" column="0" selection-start-line="950" selection-start-column="0" selection-end-line="950" selection-end-column="0" />
+        <state vertical-scroll-proportion="0.66436464">
+          <caret line="954" column="0" selection-start-line="954" selection-start-column="0" selection-end-line="954" selection-end-column="0" />
           <folding>
             <element signature="e#108#231#0" expanded="true" />
           </folding>

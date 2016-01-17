@@ -955,6 +955,9 @@ class SignalAnalysis(Analysis):
 
     # ============================================
     # region MISCELLANEOUS
+    def get_signal_name(self, reg='b', peak_int='2'):
+        return self.get_signal_names(self.get_signal_numbers(reg, peak_int))[self.channel]
+
     def get_peak_position(self, event=None, region='b', peak_int='2'):
         num = self.get_signal_numbers(region=region, integral=peak_int)[self.channel]
         ev = self.start_event if event is None else event
