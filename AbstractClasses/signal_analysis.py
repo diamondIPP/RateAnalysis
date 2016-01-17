@@ -895,10 +895,26 @@ class SignalAnalysis(Analysis):
         self.histos[0] = gr
         self.histos['legend'] = [l1, l2]
 
+    def calc_snr(self, sig=None):
+        signal = self.signal_name if sig is None else sig
+        peak_int = self.get_all_signal_names()[signal][-1]
+        ped_fit = self.show_pedestal_histo(draw=False, peak_int=peak_int)
+        sig_fit = self.draw_pulse_height(eventwise_corr=True, draw=False, sig=signal)
+        sig_mean = sig_fit.Parameter(0)
+        ped_sigma = ped_fit.Parameter(2)
+
+        snr = sig_mean / ped_sigma
+        snr_err = snr * (sig_fit.ParError(0) / sig_mean + ped_fit.ParError(2) / ped_sigma)
+        print 'SNR is: {snr} +- {err}'.format(snr=snr, err=snr_err)
+        return [snr, snr_err]
+
+    # ============================================
+    # region PEAK INTEGRAL
+
     def find_best_snr(self, show=True):
         gROOT.SetBatch(1)
         gr = self.make_tgrapherrors('gr', 'Signal to Noise Ratios')
-        peak_integrals = OrderedDict(sorted({key:value for key, value in self.run.peak_integrals.iteritems() if len(key) < 3}.items()))
+        peak_integrals = OrderedDict(sorted({key: value for key, value in self.run.peak_integrals.iteritems() if len(key) < 3}.items()))
         for i, name in enumerate(peak_integrals.iterkeys()):
             signal = self.get_signal_names(self.get_signal_numbers('b', name))[self.channel]
             snr = self.calc_snr(signal)
@@ -913,18 +929,25 @@ class SignalAnalysis(Analysis):
         self.save_plots('BestSNR', sub_dir=self.save_dir)
         self.histos[0] = [gr, c]
 
-    def calc_snr(self, sig=None):
-        signal = self.signal_name if sig is None else sig
-        peak_int = self.get_all_signal_names()[signal][-1]
-        ped_fit = self.show_pedestal_histo(draw=False, peak_int=peak_int)
-        sig_fit = self.draw_pulse_height(eventwise_corr=True, draw=False, sig=signal)
-        sig_mean = sig_fit.Parameter(0)
-        ped_sigma = ped_fit.Parameter(2)
+    def signal_vs_peakintegral(self, show=True):
+        gROOT.SetBatch(1)
+        gr = self.make_tgrapherrors('gr', 'Signal vs Peak Integral')
+        peak_integrals = OrderedDict(sorted({key: value for key, value in self.run.peak_integrals.iteritems() if len(key) < 3}.items()))
+        i = 0
+        for name, value in peak_integrals.iteritems():
+            sig_name = self.get_signal_names(self.get_signal_numbers('b', name))[self.channel]
+            signal = self.draw_pulse_height(eventwise_corr=True, draw=False, sig=sig_name)
+            gr.SetPoint(i, value[1] + value[0], signal.Parameter(0))
+            i += 1
+        if show:
+            gROOT.SetBatch(0)
+        c = TCanvas('c', 'Signal vs Peak Integral', 1000, 1000)
+        gr.Draw('ap')
+        gROOT.SetBatch(0)
+        self.save_plots('SigPeakInt', sub_dir=self.save_dir)
+        self.histos[0] = [gr, c]
 
-        snr = sig_mean / ped_sigma
-        snr_err = snr * (sig_fit.ParError(0) / sig_mean + ped_fit.ParError(2) / ped_sigma)
-        print 'SNR is: {snr} +- {err}'.format(snr=snr, err=snr_err)
-        return [snr, snr_err]
+    # endregion
 
     # ============================================
     # region MISCELLANEOUS
