@@ -924,7 +924,6 @@ class SignalAnalysis(Analysis):
             gr.SetPoint(i, (value[1] + value[0]) / 2., snr[0])
             gr.SetPointError(i, 0, snr[1])
             i += 1
-        # [gr.GetXaxis().SetBinLabel(gr.GetXaxis().FindBin(i), '{0}/{1}'.format(lst[0], lst[1])) for i, lst in enumerate(peak_integrals.itervalues(), 1)]
         if show:
             gROOT.SetBatch(0)
         c = TCanvas('c', 'SNR', 1000, 1000)
