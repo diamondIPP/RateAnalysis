@@ -44,6 +44,7 @@
           <option value="TLatex" />
           <option value="TGraphAsymmErrors" />
           <option value="" />
+          <option value="TSpectrum" />
         </list>
       </option>
     </inspection_tool>

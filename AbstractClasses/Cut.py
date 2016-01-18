@@ -4,7 +4,7 @@ import json
 import ConfigParser
 from numpy import mean, array, zeros, arange, delete
 from AbstractClasses.Elementary import Elementary
-from ROOT import TCut, gROOT, TH1F
+from ROOT import TCut, gROOT, TH1F, TF1, TSpectrum
 from collections import OrderedDict
 from Extrema import Extrema2D
 
@@ -362,21 +362,41 @@ class Cut(Elementary):
                                                                                                                                      ch=self.channel, max=perc_max)
 
         def func():
+            gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
             print 'calculating signal threshold for bucket cut of run {run} and ch{ch}...'.format(run=self.analysis.run_number, ch=self.channel)
-            h = TH1F('h', 'htemp', 350, -50, 300)
-            self.analysis.tree.Draw('{name}>>h'.format(name=self.analysis.signal_names[self.channel]), self.cut_strings['tracks'] + self.cut_strings['pulser'], 'goff')
-            h.GetXaxis().SetRangeUser(0, h.GetBinCenter(h.GetMaximumBin()))
-            min_x = h.GetBinCenter(h.GetMinimumBin())
-            h.GetXaxis().SetRangeUser(min_x, 300)
-            return h.GetBinCenter(h.FindFirstBinAbove(h.GetMaximum() * perc_max))
+            h = TH1F('h', 'htemp', 250, -50, 300)
+            self.analysis.tree.Draw('{name}>>h'.format(name=self.analysis.signal_names[self.channel]),
+                                    '!({buc})&&{pul}'.format(buc=self.cut_strings['old_bucket'], pul=self.cut_strings['pulser']), 'goff')
+            entries = h.GetEntries()
+            if entries < 1000:
+                return 0
+            elif entries < 5000:
+                h.Rebin(2)
+            fit = TF1('fit', 'gaus(0) + gaus(3)')
+            s = TSpectrum(2)
+            s.Search(h)
+            fit.SetParLimits(0, .8 * s.GetPositionY()[0], 1.2 * s.GetPositionY()[0])
+            fit.SetParLimits(1, s.GetPositionX()[0] - 5, s.GetPositionX()[0] + 5)
+            fit.SetParLimits(2, 1, 10)
+            fit.SetParLimits(3, .8 * s.GetPositionY()[1], 1.2 * s.GetPositionY()[1])
+            fit.SetParLimits(4, s.GetPositionX()[1] - 10, s.GetPositionX()[1] + 10)
+            fit.SetParLimits(5, 5, 50)
+            fit_res = None
+            h.Draw()
+            for i in xrange(5):
+                fit_res = h.Fit(fit, 'qs')
+            self.histo = h
+            gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+            return fit_res
 
-        threshold = self.do_pickle(pickle_path, func)
-        return threshold
+        # threshold = self.do_pickle(pickle_path, func)
+        return func()
 
     def generate_bucket(self):
         num = self.analysis.get_signal_numbers('e', 2)
         name = self.analysis.get_signal_names(num)[self.channel]
-        threshold = self.calc_signal_threshold()
+        # threshold = self.calc_signal_threshold()
+        threshold = 0
         string = '!(({sig2}!={sig1})&&({sig1}<{thres}))'.format(sig2=name, sig1=self.analysis.signal_names[self.channel], thres=threshold)
         return TCut(string)
 
