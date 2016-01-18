@@ -265,6 +265,20 @@ class Elementary(object):
         return string.ljust(num)
 
     @staticmethod
+    def fit_fwhm(histo, fitfunc='gaus', do_fwhm=True, draw=False):
+        h = histo
+        if do_fwhm:
+            peak_pos = h.GetBinCenter(h.GetMaximumBin())
+            bin1 = h.FindFirstBinAbove(h.GetMaximum() / 2)
+            bin2 = h.FindLastBinAbove(h.GetMaximum() / 2)
+            fwhm = h.GetBinCenter(bin2) - h.GetBinCenter(bin1)
+            option = 'qs' if draw else 'qs0'
+            fit = h.Fit(fitfunc, option, '', peak_pos - fwhm / 2, peak_pos + fwhm / 2)
+        else:
+            fit = h.Fit(fitfunc, 'qs')
+        return fit
+
+    @staticmethod
     def normalise_histo(histo):
         h = histo
         h.Scale(1 / h.Integral(1, h.GetNbinsX()))

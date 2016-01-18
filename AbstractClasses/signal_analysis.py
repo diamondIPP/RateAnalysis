@@ -23,7 +23,6 @@ class SignalAnalysis(Analysis):
 
         # main
         self.channel = channel
-        self.run_number = self.run.run_number
         self.diamond_name = self.run.diamond_names[channel]
         self.bias = self.run.bias[channel]
         self.cut = self.cuts[channel]
@@ -913,7 +912,7 @@ class SignalAnalysis(Analysis):
     # ============================================
     # region PEAK INTEGRAL
 
-    def find_best_snr(self, show=True):
+    def find_best_snr(self, show=True, same_width=False):
         gROOT.SetBatch(1)
         gr = self.make_tgrapherrors('gr', 'Signal to Noise Ratios')
         peak_integrals = OrderedDict(sorted({key: value for key, value in self.run.peak_integrals.iteritems() if len(key) < 3}.items()))
@@ -921,7 +920,8 @@ class SignalAnalysis(Analysis):
         for name, value in peak_integrals.iteritems():
             signal = self.get_signal_names(self.get_signal_numbers('b', name))[self.channel]
             snr = self.calc_snr(signal)
-            gr.SetPoint(i, (value[1] + value[0]) / 2., snr[0])
+            x = (value[1] + value[0]) / 2. if not same_width else value[0] / 2.
+            gr.SetPoint(i, x, snr[0])
             gr.SetPointError(i, 0, snr[1])
             i += 1
         if show:
@@ -931,6 +931,7 @@ class SignalAnalysis(Analysis):
         gr.Draw('ap')
         gROOT.SetBatch(0)
         self.save_plots('BestSNR', sub_dir=self.save_dir)
+        self.save_plots('BestSNR', file_type='root', sub_dir=self.save_dir)
         self.histos[0] = [gr, c]
 
     def signal_vs_peakintegral(self, show=True, ped=False):
@@ -948,6 +949,7 @@ class SignalAnalysis(Analysis):
         if show:
             gROOT.SetBatch(0)
         c = TCanvas('c', 'Signal vs Peak Integral', 1000, 1000)
+        self.format_histo(gr, x_tit='Integralwidth [ns]', y_tit='Signal [au]', y_off=1.3)
         gr.Draw('ap')
         gROOT.SetBatch(0)
         self.save_plots('{sig}PeakInt'.format(sig='Ped' if ped else 'Sig'), sub_dir=self.save_dir)
@@ -983,20 +985,6 @@ class SignalAnalysis(Analysis):
                 reg = region + integral
                 names['{pol}*IntegralValues[{num}]'.format(pol=self.polarity, num=num)] = reg
         return names
-
-    @staticmethod
-    def fit_fwhm(histo, fitfunc='gaus', do_fwhm=True, draw=False):
-        h = histo
-        if do_fwhm:
-            peak_pos = h.GetBinCenter(h.GetMaximumBin())
-            bin1 = h.FindFirstBinAbove(h.GetMaximum() / 2)
-            bin2 = h.FindLastBinAbove(h.GetMaximum() / 2)
-            fwhm = h.GetBinCenter(bin2) - h.GetBinCenter(bin1)
-            option = 'qs' if draw else 'qs0'
-            fit = h.Fit(fitfunc, option, '', peak_pos - fwhm / 2, peak_pos + fwhm / 2)
-        else:
-            fit = h.Fit(fitfunc, 'qs')
-        return fit
 
     def __get_binning(self):
         jumps = self.cut.jump_ranges

@@ -391,7 +391,7 @@ class AnalysisCollection(Elementary):
     # endregion
 
     # ====================================================================================
-    # region SHOW
+    # region TRACKS
     def show_chi2s(self, mode=None):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         histos = [ana.show_chi2(mode=mode, show=False) for ana in self.collection.itervalues()]
@@ -434,6 +434,29 @@ class AnalysisCollection(Elementary):
         self.save_plots('AllTrackAngles{mod}'.format(mod=mode.upper()), sub_dir=self.save_dir)
         self.canvases[0] = c
         self.histos['legend'] = legend
+
+    def show_angle_peaks(self, mode='x', sigma=False, flux=True):
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        tit = '{mod} of Track Angle Distribution in {dir}'.format(mod='Sigma' if sigma else 'Mean', dir=mode.title())
+        gr = self.make_tgrapherrors('gr', tit)
+        i = 0
+        for key, ana in self.collection.iteritems():
+            fit = ana.calc_angle_fit(mode, show=False)
+            x = ana.run.flux if flux else key
+            par = 2 if sigma else 1
+            gr.SetPoint(i, x, fit.Parameter(par))
+            gr.SetPointError(i, 0, fit.ParError(par))
+            i += 1
+        c = TCanvas('c', 'Angle Peaks', 1000, 1000)
+        c.SetLeftMargin(.12)
+        if flux:
+            c.SetLogx()
+        self.format_histo(gr, x_tit='{mod}{unit}'.format(mod='Flux' if flux else 'Run', unit=' [kHz/cm2]' if flux else ''), y_tit='Sigma [deg]' if sigma else 'Mean [deg]', y_off=1.5)
+        gr.Draw('ap')
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        self.save_plots('TrackAngle{0}s{mod}'.format('Sigma' if sigma else 'Mean', mod=mode.title()), canvas=c, sub_dir=self.save_dir)
+        self.histos[0] = [gr, c]
+
     # endregion
 
     def select_runs_in_range(self, start, stop):

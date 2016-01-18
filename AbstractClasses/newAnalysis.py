@@ -49,6 +49,7 @@ class Analysis(Elementary):
         self.diamonds = diamonds
         self.run = self.init_run(run)
         self.run.analysis = self
+        self.run_number = self.run.run_number
         self.RunInfo = deepcopy(self.run.RunInfo)
         self.lowest_rate_run = low_rate if low_rate is not None else self.run.run_number
         self.parser = self.load_parser()
@@ -130,11 +131,12 @@ class Analysis(Elementary):
     def draw_single_wf(self, event=None, show=False):
         gROOT.SetBatch(1)
         start = self.start_event if event is None else event
-        if hasattr(self, 'draw_waveforms'):
+        if hasattr(self, 'draw_waveforms') and self.run.wf_exists(self.channel):
             h = self.draw_waveforms(n=1, show=False, start_event=start)
         else:
             h = TH2F('regions', '', 1024, 0, 511, 1000, -200, 50)
-            self.tree.Draw('wf0:Iteration$/2>>regions', self.cuts[0].all_cut, 'goff', 1, start)
+            if self.run.wf_exists(0):
+                self.tree.Draw('wf0:Iteration$/2>>regions', self.cuts[0].all_cut, 'goff', 1, start)
         if show:
             gROOT.SetBatch(0)
         c = TCanvas('c2', 'Regions', 1000, 500)
@@ -299,6 +301,16 @@ class Analysis(Elementary):
         self.save_plots('TrackAngle{mod}'.format(mod=mode.upper()), sub_dir=self.ana_save_dir, ch=None)
         return h
 
+    def calc_angle_fit(self, mode='x', show=True):
+        pickle_path = self.get_program_dir() + self.pickle_dir + 'Tracks/AngleFit_{tc}_{run}_{mod}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, mod=mode)
+
+        def func():
+            h = self.show_angle(mode, show=show)
+            return self.fit_fwhm(h, draw=show)
+
+        fit = self.do_pickle(pickle_path, func)
+        return fit
+
     def show_both_angles(self):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         self.get_color()
@@ -329,14 +341,13 @@ class Analysis(Elementary):
         return parser
 
     def load_config(self):
-        parser = self.load_parser()
-        self.showAndWait = parser.getboolean("DISPLAY", "ShowAndWait")
-        self.saveMCData = parser.getboolean("SAVE", "SaveMCData")
-
-        self.loadMaxEvent = parser.getint("TRACKING", "loadMaxEvent")
-        self.minimum_bincontent = parser.getint("TRACKING", "min_bincontent")
-        self.minimum_bincontent = parser.getint("TRACKING", "min_bincontent")
-        self.PadsBinning = parser.getint("TRACKING", "padBinning")
+        pass
+        # parser = self.load_parser()
+        # self.saveMCData = parser.getboolean("SAVE", "SaveMCData")
+        # self.loadMaxEvent = parser.getint("TRACKING", "loadMaxEvent")
+        # self.minimum_bincontent = parser.getint("TRACKING", "min_bincontent")
+        # self.minimum_bincontent = parser.getint("TRACKING", "min_bincontent")
+        # self.PadsBinning = parser.getint("TRACKING", "padBinning")
 
     # ==============================================
     # region GET INTEGRAL NAMES
@@ -393,13 +404,15 @@ class Analysis(Elementary):
 
     # endregion
 
+    # ==============================================
+    # region ALIGNMENT
     def check_alignment(self, binning=5000, draw=True):
         pickle_path = 'Configuration/Individual_Configs/Alignment/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run.run_number)
 
         def func():
             gROOT.SetBatch(1)
             nbins = self.run.n_entries / binning
-            h = TProfile('h','Pulser Rate', nbins, 0, self.run.n_entries)
+            h = TProfile('h', 'Pulser Rate', nbins, 0, self.run.n_entries)
             self.tree.Draw('(@col.size()>1)*100:Entry$>>h', 'pulser', 'goff')
             self.format_histo(h, name='align', title='Event Alignment', x_tit='Event Number', y_tit='Hits per Event @ Pulser Events [%]', y_off=1.3)
             h.GetYaxis().SetRangeUser(0, 100)
@@ -419,7 +432,6 @@ class Analysis(Elementary):
             msg = 'The events are not aligned!'
             print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * '!', msg=msg)
         return aligned
-
 
     def find_alignment_offset(self):
         offsets = [i for i in xrange(-3, 4) if i]
@@ -451,6 +463,7 @@ class Analysis(Elementary):
             if h.GetBinContent(bin) > 40:
                 return False
         return True
+    # endregion
 
     def GetSignalDefinition(self, channel=None):
         if channel == None:
