@@ -573,6 +573,13 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region CUTS
+    def analyse_bucket_cut(self):
+        n_events = self.tree.Draw('1', '!({0})'.format(self.cut.cut_strings['bucket']), 'goff')
+        n_2 = self.tree.Draw('1', '!({0})'.format(self.cut.cut_strings['old_bucket']), 'goff')
+        print '{0} / {1} = {2:4.2f}%'.format(n_events, self.run.n_entries, n_events / float(self.run.n_entries) * 100)
+        print '{0} / {1} = {2:4.2f}%'.format(n_2, self.run.n_entries, n_2 / float(self.run.n_entries) * 100)
+        return n_events
+
     def compare_single_cuts(self):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         gROOT.SetBatch(1)
@@ -800,7 +807,7 @@ class SignalAnalysis(Analysis):
         h.Scale(1 / h.Integral(min_bin, max_bin))
         return h
 
-    def analyise_signal_histograms(self):
+    def analyse_signal_histograms(self):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         # gROOT.SetBatch(1)
         legend = TLegend(0.7, 0.3, 0.98, .7)

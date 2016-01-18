@@ -61,6 +61,7 @@ class Cut(Elementary):
         self.cut_strings['chi2'] = TCut('chi2', '')
         self.cut_strings['track_angle'] = TCut('track_angle', '')
         self.cut_strings['saturated'] = TCut('saturated', '')
+        self.cut_strings['old_bucket'] = TCut('old_bucket', '')
         self.cut_strings['bucket'] = TCut('bucket', '')
         self.cut_strings['all_cuts'] = TCut('all_cuts', '')
 
@@ -98,8 +99,9 @@ class Cut(Elementary):
 
     def generate_all_cut(self):
         cut = TCut('all_cuts', '')
-        for value in self.cut_strings.values():
-            cut += value
+        for key, value in self.cut_strings.iteritems():
+            if not key.startswith('old'):
+                cut += value
         return cut
 
     def load_parser(self):
@@ -349,10 +351,33 @@ class Cut(Elementary):
         string = 'slope_x>{minx}&&slope_x<{maxx}&&slope_y>{miny}&&slope_y<{maxy}'.format(minx=slope['x'][0], maxx=slope['x'][1], miny=slope['y'][0], maxy=slope['y'][1])
         return TCut(string) if angle > 0 else ''
 
-    def generate_bucket(self):
+    def generate_old_bucket(self):
         num = self.analysis.get_signal_numbers('e', 2)
         name = self.analysis.get_signal_names(num)[self.channel]
         string = '{sig2}-{sig1}==0'.format(sig2=name, sig1=self.analysis.signal_names[self.channel])
+        return TCut(string)
+
+    def calc_signal_threshold(self, perc_max=.2):
+        pickle_path = self.get_program_dir() + self.analysis.pickle_dir + 'Cuts/SignalThreshold_{tc}_{run}_{ch}_{max}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run_number,
+                                                                                                                                     ch=self.channel, max=perc_max)
+
+        def func():
+            print 'calculating signal threshold for bucket cut of run {run} and ch{ch}...'.format(run=self.analysis.run_number, ch=self.channel)
+            h = TH1F('h', 'htemp', 350, -50, 300)
+            self.analysis.tree.Draw('{name}>>h'.format(name=self.analysis.signal_names[self.channel]), self.cut_strings['tracks'] + self.cut_strings['pulser'], 'goff')
+            h.GetXaxis().SetRangeUser(0, h.GetBinCenter(h.GetMaximumBin()))
+            min_x = h.GetBinCenter(h.GetMinimumBin())
+            h.GetXaxis().SetRangeUser(min_x, 300)
+            return h.GetBinCenter(h.FindFirstBinAbove(h.GetMaximum() * perc_max))
+
+        threshold = self.do_pickle(pickle_path, func)
+        return threshold
+
+    def generate_bucket(self):
+        num = self.analysis.get_signal_numbers('e', 2)
+        name = self.analysis.get_signal_names(num)[self.channel]
+        threshold = self.calc_signal_threshold()
+        string = '!(({sig2}!={sig1})&&({sig1}<{thres}))'.format(sig2=name, sig1=self.analysis.signal_names[self.channel], thres=threshold)
         return TCut(string)
 
     def generate_cut_string(self, set_channel=True):
@@ -366,10 +391,9 @@ class Cut(Elementary):
             self.load_config()  # re-generate
         cutstring = self.cut
 
-        # --CHI2 --
+        # --TRACKS --
         self.cut_strings['chi2'] = self.generate_chi2()
         self.cut_strings['track_angle'] = self.generate_slope()
-        self.cut_strings['bucket'] = self.generate_bucket()
 
         # -- EVENT RANGE CUT --
         self.generate_event_range()
@@ -440,6 +464,10 @@ class Cut(Elementary):
         # -- BEAM INTERRUPTION CUT --
         self.__generate_beam_interruptions()
         self.EasyCutStrings["noBeamInter"] = "BeamOn"
+
+        # --BUCKET --
+        self.cut_strings['old_bucket'] = self.generate_old_bucket()
+        self.cut_strings['bucket'] = self.generate_bucket()
 
         self._checklist["GenerateCutString"] = True
         gROOT.SetBatch(0)
@@ -588,85 +616,9 @@ class Cut(Elementary):
             self.jump_ranges = ranges[2]
         return self.jumps
 
-    def get_function_def(self):
-        """
-        Returns the cut function definition, which is of type string.
-        It is used for applying the cut on event-by-event readout
-        loops over a TTree.
-        The cut function definition defines the constraints on the
-        branches in the ROOT TTree.
-
-        Example: (considering only the branches 'pulser' and
-        'is_saturated')
-            A possible cut function definition could be:
-            'lambda pulser, is_saturated: not pulser and not is_saturated'
-        Before the iteration over the TTree branches are executed, a
-        boolean function is defined as:
-            check = exec(cut_object.GetCutFunctionDef())
-        The event selection is then based on this lambda function
-        'check':
-            for i in xrange(nentries):
-                tree.GetEntry(i)
-                signal = tree.signal
-                pulser = tree.pulser
-                saturated = tree.is_saturated
-                if check(pulser, saturated):
-                    someting.Fill(signal)
-
-        Note: the cut on the event-basis has to be applied by the
-        method .GetIncludedEvents(), which returns only the events
-        satisfying the event cuts.
-        :return:
-        """
-        # defstring_ = "lambda pulser, is_saturated, n_tracks, fft_mean, INVfft_max, sig_time, sig_spread, median: "
-        # def_ = ""
-        #
-        # if self.cut_types["IndividualChCut"] != "":
-        #     raw_input("WARNING: cut0 and cut3 cannot be applied on Tracking Data! Press Enter to Continue..")
-        #
-        # if self.cut_types["noPulser"] == 1:
-        #     def_ += "not pulser"
-        # elif self.cut_types["noPulser"] == 0:
-        #     def_ += "pulser"
-        #
-        # if self.cut_types["notSaturated"]:
-        #     if def_ != "":
-        #         def_ += " and "
-        #     def_ += "not is_saturated"
-        #
-        # if self.cut_types["Tracks"]:
-        #     if def_ != "":
-        #         def_ += " and "
-        #     def_ += "n_tracks"
-        #
-        # if self.cut_types["FFT"]:
-        #     if def_ != "":
-        #         def_ += " and "
-        #     assert False, "FFT cut not yet implemented in GetCutFunctionDef() method of Cut class. "
-        #     # to do: FFT entry in _cutTypes should be dict and/or contain a TCutG instance
-        #
-        # if self.cut_types["peakPos_high"] > 0:
-        #     if def_ != "":
-        #         def_ += " and "
-        #     def_ += "sig_time<{high}".format(high=int(self.cut_types["peakPos_high"]))
-        #
-        # if self.cut_types["spread_low"] > 0:
-        #     if def_ != "":
-        #         def_ += " and "
-        #     def_ += "sig_spread>{low}".format(low=int(self.cut_types["spread_low"]))
-        #
-        # if self.cut_types["absMedian_high"] > 0:
-        #     if def_ != "":
-        #         def_ += " and "
-        #     def_ += "abs(median)>{low}".format(low=int(self.cut_types["absMedian_high"]))
-
-        return self.all_cut
-
     def get_easy_cutstring(self):
         """
-        Returns a short, more user-friendly cut string, which can be
-        used to display the cut configuration as terminal prompt or
-        inside a canvas.
+        Returns a short, more user-friendly cut string, which can be used to display the cut configuration as terminal prompt or inside a canvas.
         :return:
         """
         string_ = ""
