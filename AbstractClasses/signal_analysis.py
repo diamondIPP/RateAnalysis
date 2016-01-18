@@ -1,7 +1,7 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG
+from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen
 from newAnalysis import Analysis
 from numpy import array
 from math import sqrt, ceil, log
@@ -134,12 +134,27 @@ class SignalAnalysis(Analysis):
         h = TH1F('h', 'Mean Signal Distribution', 50, x[0], x[1])
         for bin_ in xrange((sig_map.GetNbinsX() + 2) * (sig_map.GetNbinsY() + 2)):
             h.Fill(sig_map.GetBinContent(bin_))
+        gStyle.SetEndErrorSize(4)
+        gr1 = self.make_tgrapherrors('gr', 'errors', width=3, marker_size=0, color=kGreen + 2)
+        gr2 = self.make_tgrapherrors('gr', 'errors', width=3, marker_size=0, color=2)
+        gr1.SetPoint(0, h.GetXaxis().GetXmin() + 5, h.GetMaximum() - 2)
+        gr2.SetPoint(0, h.GetXaxis().GetXmin() + 5, h.GetMaximum() - 2)
+        errors = self.SignalMapHisto.ProjectionXY('', 'c=e')
+        gr1.SetPointError(0, errors.GetMinimum(), 0)
+        gr2.SetPointError(0, errors.GetMaximum(), 0)
+        l = self.make_tlatex(gr1.GetX()[0], gr1.GetY()[0] + 0.5, 'Errors', align=20, size=0.03)
+        gr1.GetListOfFunctions().Add(l)
         if show:
             self.canvases[0] = TCanvas('c', 'Mean Signal Distribution', 1000, 1000)
             self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.2)
             h.Draw()
+            gr2.Draw('[]')
+            gr1.Draw('[]')
+            gr2.Draw('p')
+            gr1.Draw('p')
             self.save_plots('MeanSignalHisto', sub_dir=self.save_dir)
         self.MeanSignalHisto = h
+        self.histos[0] = [gr1, gr2]
 
     def draw_error_signal_map(self, show=False):
         self.draw_mean_signal_distribution(show=False)
