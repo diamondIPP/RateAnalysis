@@ -442,19 +442,24 @@ class SignalAnalysis(Analysis):
             func()
         return fit
 
-    def show_signal_histo(self, cut=None, corr=True):
+    def show_signal_histo(self, cut=None, corr=True, show=True):
+        gROOT.SetBatch(1)
+        print 'drawing signal distribution for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name)
         suffix = 'with Pedestal Correction' if corr else ''
         h = TH1F('signal b2', 'Pulse Height ' + suffix, 350, -50, 300)
         cut = self.cut.all_cut if cut is None else cut
         signal = '{sig}-{pol}*{ped}'.format(sig=self.signal_name, ped=self.pedestal_name, pol=self.polarity) if corr else self.signal_name
         self.tree.Draw('{name}>>signal b2'.format(name=signal), cut, 'goff')
+        if show:
+            gROOT.SetBatch(0)
         c = TCanvas('c', 'Signal Distribution', 1000, 1000)
         c.SetLeftMargin(.13)
         self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.8)
         h.Draw()
         self.save_plots('SignalDistribution', sub_dir=self.save_dir)
-        self.histos[0] = h
-        self.canvases[0] = c
+        self.histos[0] = [c, h]
+        gROOT.SetBatch(0)
+        return h
 
     def show_pedestal_histo(self, region='ab', peak_int='2', cut=True, fwhm=True, draw=True):
         cut = self.cut.all_cut if cut else TCut()

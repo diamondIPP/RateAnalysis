@@ -137,7 +137,7 @@ class AnalysisCollection(Elementary):
     # endregion
 
     # ============================================
-    # region ANALYSIS
+    # region SIGNAL/PEDESTAL
     def draw_pulse_heights(self, binning=20000, flux=True, raw=False, all_corr=False, draw=True):
         legend = TLegend(0.79, 0.13, 0.98, .34)
         legend.SetName('l1')
@@ -250,6 +250,28 @@ class AnalysisCollection(Elementary):
         self.canvases[0] = c
         self.save_plots('Pedestal_' + mode, 'png', canvas=self.canvases[0], sub_dir=self.save_dir)
         self.save_plots('Pedestal_' + mode, 'root', canvas=self.canvases[0], sub_dir=self.save_dir)
+
+    def draw_signal_distributions(self, show=True):
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        gROOT.SetBatch(1) if not show else self.do_nothing()
+        histos = [ana.show_signal_histo(show=False) for ana in self.collection.itervalues()]
+        c = TCanvas('c', 'Signal Distributions', 1000, 1000)
+        c.SetLeftMargin(.13)
+        legend = TLegend(.7, .8 - self.get_number_of_analyses() * 0.03, .9, .9)
+        for i, h in enumerate(histos):
+            h.SetStats(0)
+            h.Scale(1 / h.GetMaximum())
+            h.SetLineColor(self.get_color())
+            h.SetLineWidth(2)
+            h.Draw() if not i else h.Draw('same')
+            legend.AddEntry(h, '{0:6.2f} kHz/cm'.format(self.collection.values()[i].get_flux()) + '^{2}', 'l')
+        legend.Draw()
+        gROOT.SetBatch(0)
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        self.save_plots('SignalDistributions', sub_dir=self.save_dir)
+        self.histos[0] = [c, histos, legend]
+
+    # endregion
 
     def draw_mean_fwhm(self, saveplots=True, flux=True, draw=True):
         """
