@@ -2,11 +2,12 @@ import os
 import pickle
 import json
 import ConfigParser
-from numpy import mean, array, zeros, arange, delete
+from numpy import mean, array, zeros, arange, delete, sqrt
 from AbstractClasses.Elementary import Elementary
-from ROOT import TCut, gROOT, TH1F, TF1, TSpectrum
+from ROOT import TCut, gROOT, TH1F, TF1, TSpectrum, TCanvas
 from collections import OrderedDict
 from Extrema import Extrema2D
+from copy import deepcopy
 
 
 class Cut(Elementary):
@@ -357,9 +358,8 @@ class Cut(Elementary):
         string = '{sig2}-{sig1}==0'.format(sig2=name, sig1=self.analysis.signal_names[self.channel])
         return TCut(string)
 
-    def calc_signal_threshold(self, perc_max=.2):
-        pickle_path = self.get_program_dir() + self.analysis.pickle_dir + 'Cuts/SignalThreshold_{tc}_{run}_{ch}_{max}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run_number,
-                                                                                                                                     ch=self.channel, max=perc_max)
+    def calc_signal_threshold(self, bg=False):
+        pickle_path = self.analysis.pickle_dir + 'Cuts/SignalThreshold_{tc}_{run}_{ch}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run_number, ch=self.channel)
 
         def func():
             gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
@@ -370,27 +370,72 @@ class Cut(Elementary):
             entries = h.GetEntries()
             if entries < 1000:
                 return 0
-            elif entries < 5000:
-                h.Rebin(2)
-            fit = TF1('fit', 'gaus(0) + gaus(3)')
-            s = TSpectrum(2)
-            s.Search(h)
-            fit.SetParLimits(0, .8 * s.GetPositionY()[0], 1.2 * s.GetPositionY()[0])
-            fit.SetParLimits(1, s.GetPositionX()[0] - 5, s.GetPositionX()[0] + 5)
-            fit.SetParLimits(2, 1, 10)
-            fit.SetParLimits(3, .8 * s.GetPositionY()[1], 1.2 * s.GetPositionY()[1])
-            fit.SetParLimits(4, s.GetPositionX()[1] - 10, s.GetPositionX()[1] + 10)
-            fit.SetParLimits(5, 5, 50)
-            fit_res = None
+            h.Rebin(2) if entries < 5000 else self.do_nothing()
             h.Draw()
-            for i in xrange(5):
-                fit_res = h.Fit(fit, 'qs')
-            self.histo = h
+
+            # extract fit functions
+            fit = self.triple_gauss_fit(h)
+            sig_fit = TF1('f1', 'gaus', -50, 300)
+            sig_fit.SetParameters(fit.GetParameters())
+            ped_fit = TF1('f2', 'gaus(0) + gaus(3)', -50, 300)
+            pars = [fit.GetParameter(i) for i in xrange(3,9)]
+            ped_fit.SetParameters(*pars)
+
+            # real data distribution without pedestal fit
+            signal = deepcopy(h)
+            signal.Add(ped_fit, -1)
+
+            gr1 = self.make_tgrapherrors('gr1', 'Ps(x)', marker_size=0.2)
+            gr2 = self.make_tgrapherrors('gr2', 'Pb(x)', marker_size=0.2, color=2)
+            gr3 = self.make_tgrapherrors('gr3', 'ps/pb', marker_size=0.2)
+            gr4 = self.make_tgrapherrors('gr4', 'ps/pb', marker_size=0.2)
+            xs = [i / 10. for i in xrange(-300, int(sig_fit.GetMaximumX()) * 10)]
+            errors = {}
+            for i, x in enumerate(xs):
+                ped = ped_fit.Integral(-50, x) / ped_fit.Integral(-50, 300)
+                sig = 1 - sig_fit.Integral(-50, x) / signal.Integral()
+                err = ped_fit.Integral(-50, x)/ (sqrt(sig_fit.Integral(-50, x) + ped_fit.Integral(-50, x)))
+                err1 = signal.Integral(h.FindBin(x), h.FindBin(300)) / sqrt(signal.Integral(h.FindBin(x), h.FindBin(300)) + ped_fit.Integral(x, 300))
+                errors[err1 if not bg else err] = x
+                gr1.SetPoint(i, x, ped)
+                gr2.SetPoint(i, x, sig)
+                gr4.SetPoint(i, 1 - sig, bg)
+                gr3.SetPoint(i, x, err1)
+            max_err = errors[max(errors.keys())]
+            print ped_fit.Integral(-50, max_err) / ped_fit.Integral(-50, 300), sig_fit.Integral(-50, max_err) / signal.Integral()
+            c = TCanvas()
+            gr1.Draw('apl')
+            gr2.Draw('pl')
+            c1 = TCanvas()
+            c1.SetGrid()
+            self.format_histo(gr3, y_tit='background fraction', x_tit='excluded signal fraction', markersize=0.2)
+            gr3.Draw('apl')
+            self.histo = [h, gr1, gr2, c, gr3, c1]
             gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-            return fit_res
+            return max_err
 
         # threshold = self.do_pickle(pickle_path, func)
         return func()
+
+    def triple_gauss_fit(self, histo):
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        h = histo
+        fit = TF1('fit', 'gaus(0) + gaus(3) + gaus(6)')
+        s = TSpectrum(2)
+        s.Search(h)
+        fit.SetParLimits(0, .8 * s.GetPositionY()[1], 1.2 * s.GetPositionY()[1])
+        fit.SetParLimits(1, s.GetPositionX()[1] - 10, s.GetPositionX()[1] + 10)
+        fit.SetParLimits(2, 5, 50)
+        fit.SetParLimits(3, .8 * s.GetPositionY()[0], 1.2 * s.GetPositionY()[0])
+        fit.SetParLimits(4, s.GetPositionX()[0] - 5, s.GetPositionX()[0] + 5)
+        fit.SetParLimits(5, 1, 10)
+        fit.SetParLimits(6, 10, s.GetPositionY()[1])
+        fit.SetParLimits(7, s.GetPositionX()[0], s.GetPositionX()[1])
+        fit.SetParLimits(8, 1, 10)
+        for i in xrange(5):
+            h.Fit(fit, 'qs', '', -50, s.GetPositionX()[1])
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        return fit
 
     def generate_bucket(self):
         num = self.analysis.get_signal_numbers('e', 2)

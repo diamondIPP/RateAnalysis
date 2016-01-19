@@ -53,7 +53,7 @@ class Analysis(Elementary):
         self.RunInfo = deepcopy(self.run.RunInfo)
         self.lowest_rate_run = low_rate if low_rate is not None else self.run.run_number
         self.parser = self.load_parser()
-        self.pickle_dir = self.parser.get('SAVE', 'pickle_dir')
+        self.pickle_dir = self.get_program_dir() + self.parser.get('SAVE', 'pickle_dir')
         self.ana_save_dir = '{tc}_{run}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run.run_number)
 
         # tree
@@ -302,7 +302,7 @@ class Analysis(Elementary):
         return h
 
     def calc_angle_fit(self, mode='x', show=True):
-        pickle_path = self.get_program_dir() + self.pickle_dir + 'Tracks/AngleFit_{tc}_{run}_{mod}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, mod=mode)
+        pickle_path = self.pickle_dir + 'Tracks/AngleFit_{tc}_{run}_{mod}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, mod=mode)
 
         def func():
             h = self.show_angle(mode, show=show)

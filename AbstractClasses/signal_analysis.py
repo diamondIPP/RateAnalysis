@@ -172,7 +172,7 @@ class SignalAnalysis(Analysis):
         return h
 
     def fit_mean_signal_distribution(self):
-        pickle_path = self.get_program_dir() + self.pickle_dir + 'MeanSignalFit/{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
+        pickle_path = self.pickle_dir + 'MeanSignalFit/{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
 
         def func():
             self.draw_mean_signal_distribution(show=False)
@@ -190,7 +190,7 @@ class SignalAnalysis(Analysis):
         self.find_diamond_margins(show_frame=True)
 
     def find_diamond_margins(self, show_plot=True, show_frame=False):
-        pickle_path = self.get_program_dir() + self.pickle_dir + 'Margins/{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
+        pickle_path = self.pickle_dir + 'Margins/{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
 
         def func():
             print 'getting margins for {dia} of run {run}...'.format(dia=self.diamond_name, run=self.run_number)
@@ -291,7 +291,7 @@ class SignalAnalysis(Analysis):
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
 
     def fit_peak_values(self, draw=True):
-        pickle_path = self.get_program_dir() + self.pickle_dir + 'PeakValues/Fit_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
+        pickle_path = self.pickle_dir + 'PeakValues/Fit_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
 
         def func():
             print 'Getting peak value fit for {dia} of run {run}...'.format(run=self.run_number, dia=self.diamond_name)
@@ -306,7 +306,7 @@ class SignalAnalysis(Analysis):
         return fit
 
     def calc_peak_value_fwhm(self):
-        pickle_path = self.get_program_dir() + self.pickle_dir + 'PeakValues/FWHM_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
+        pickle_path = self.pickle_dir + 'PeakValues/FWHM_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
 
         def func():
             print 'Getting peak value FWHM for {dia} of run {run}...'.format(run=self.run_number, dia=self.diamond_name)
