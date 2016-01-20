@@ -103,6 +103,8 @@ class Elementary(object):
                 return
         if hasattr(self, 'run'):
             self.run.draw_run_info(channel=ch if ch is None else self.channel, canvas=canvas)
+        elif hasattr(self, 'analysis'):
+            self.analysis.run.draw_run_info(channel=ch if ch is None else self.channel, canvas=canvas)
         elif hasattr(self, 'collection'):
             runs = [self.collection.keys()[0], self.collection.keys()[-1], self.collection.values()[0].run.get_rate_string(), self.collection.values()[-1].run.get_rate_string()]
             if not ind:
@@ -172,13 +174,13 @@ class Elementary(object):
         return string
 
     @staticmethod
-    def do_pickle(path, function):
+    def do_pickle(path, function, value=0):
         try:
             f = open(path, 'r')
             ret_val = pickle.load(f)
             f.close()
         except IOError:
-            ret_val = function()
+            ret_val = function() if not value else value
             f = open(path, 'w')
             pickle.dump(ret_val, f)
             f.close()
@@ -206,13 +208,13 @@ class Elementary(object):
         return gr
 
     @staticmethod
-    def make_tgaxis(x, y1, y2, title, color=1, width=1):
+    def make_tgaxis(x, y1, y2, title, color=1, width=1, offset=.15):
         a = TGaxis(x, y1, x, y2, y1, y2, 510, '+SU')
         a.SetLineColor(color)
         a.SetTickSize(0)
         a.SetLabelSize(0)
         a.SetTitleSize(0.04)
-        a.SetTitleOffset(0.15)
+        a.SetTitleOffset(offset)
         a.SetTitle(title + '  ')
         a.SetTitleColor(color)
         a.SetLineWidth(width)

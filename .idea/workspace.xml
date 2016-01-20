@@ -3,9 +3,7 @@
   <component name="ChangeListManager">
     <list default="true" id="e6cf272c-81a5-4f4e-9e0a-ff55b841b26f" name="Default" comment="">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/Cut.py" afterPath="$PROJECT_DIR$/AbstractClasses/Cut.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/newAnalysis.py" afterPath="$PROJECT_DIR$/AbstractClasses/newAnalysis.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" afterPath="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/Elementary.py" afterPath="$PROJECT_DIR$/AbstractClasses/Elementary.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
     <ignored path="myPadAnalysis.iws" />
@@ -44,8 +42,8 @@
       <file leaf-file-name="Cut.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/AbstractClasses/Cut.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.52164006">
-              <caret line="399" column="39" selection-start-line="399" selection-start-column="39" selection-end-line="399" selection-end-column="39" />
+            <state vertical-scroll-proportion="0.571754">
+              <caret line="469" column="30" selection-start-line="469" selection-start-column="30" selection-end-line="469" selection-end-column="30" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
               </folding>
@@ -81,7 +79,7 @@
         <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="283" column="29" selection-start-line="283" selection-start-column="29" selection-end-line="283" selection-end-column="29" />
+              <caret line="424" column="79" selection-start-line="424" selection-start-column="17" selection-end-line="424" selection-end-column="79" />
               <folding>
                 <element signature="e#108#119#0" expanded="true" />
                 <element signature="e#2134#2662#0" expanded="false" />
@@ -98,7 +96,7 @@
       <file leaf-file-name="RunClass.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/AbstractClasses/RunClass.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="-9.096774">
+            <state vertical-scroll-proportion="0.0">
               <caret line="358" column="32" selection-start-line="358" selection-start-column="31" selection-end-line="358" selection-end-column="32" />
               <folding>
                 <element signature="e#108#119#0" expanded="true" />
@@ -111,7 +109,7 @@
         <entry file="file://$PROJECT_DIR$/AbstractClasses/Elementary.py">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="196" column="8" selection-start-line="196" selection-start-column="8" selection-end-line="196" selection-end-column="8" />
+              <caret line="188" column="17" selection-start-line="188" selection-start-column="17" selection-end-line="188" selection-end-column="17" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
               </folding>
@@ -122,7 +120,7 @@
       <file leaf-file-name="signal_analysis.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/AbstractClasses/signal_analysis.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="-15.387096">
+            <state vertical-scroll-proportion="0.0">
               <caret line="306" column="0" selection-start-line="306" selection-start-column="0" selection-end-line="306" selection-end-column="0" />
               <folding>
                 <element signature="e#108#239#0" expanded="true" />
@@ -154,10 +152,10 @@
         <option value="$PROJECT_DIR$/AbstractClasses/Extrema.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/RunClass.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/Converter.py" />
-        <option value="$PROJECT_DIR$/AbstractClasses/Elementary.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/newAnalysis.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" />
+        <option value="$PROJECT_DIR$/AbstractClasses/Elementary.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/Cut.py" />
       </list>
     </option>
@@ -234,6 +232,7 @@
       <sortByType />
     </navigator>
     <panes>
+      <pane id="Scratches" />
       <pane id="ProjectPane">
         <subPane>
           <PATH>
@@ -268,7 +267,6 @@
           </PATH>
         </subPane>
       </pane>
-      <pane id="Scratches" />
       <pane id="Scope" />
     </panes>
   </component>
@@ -466,17 +464,21 @@
       <option name="project" value="LOCAL" />
       <updated>1453138764830</updated>
     </task>
-    <option name="localTasksCounter" value="10" />
+    <task id="LOCAL-00010" summary="still revision of bucket cut">
+      <created>1453221898713</created>
+      <option name="number" value="00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1453221898713</updated>
+    </task>
+    <option name="localTasksCounter" value="11" />
     <servers />
   </component>
   <component name="ToolWindowManager">
     <frame x="-1" y="24" width="1922" height="1033" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
-      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32599118" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Application Servers" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.16921455" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
@@ -487,11 +489,13 @@
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32599118" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
-      <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
       <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
+      <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
     </layout>
   </component>
   <component name="Vcs.Log.UiProperties">
@@ -506,7 +510,6 @@
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="adding change key function to runsel class, partly revisioning anacoll class, several small fixes" />
     <MESSAGE value="adding pulser rate function to signal ana" />
     <MESSAGE value="adding alignment check find offset function" />
     <MESSAGE value="adding save signal maps" />
@@ -531,7 +534,8 @@
     <MESSAGE value="adding compare landau function" />
     <MESSAGE value="adding errors to the mean_signal_distribution" />
     <MESSAGE value="start revision of bucket cut" />
-    <option name="LAST_COMMIT_MESSAGE" value="start revision of bucket cut" />
+    <MESSAGE value="still revision of bucket cut" />
+    <option name="LAST_COMMIT_MESSAGE" value="still revision of bucket cut" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -935,7 +939,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/RunClass.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="-9.096774">
+        <state vertical-scroll-proportion="0.0">
           <caret line="358" column="32" selection-start-line="358" selection-start-column="31" selection-end-line="358" selection-end-column="32" />
           <folding>
             <element signature="e#108#119#0" expanded="true" />
@@ -943,19 +947,9 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/Elementary.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="196" column="8" selection-start-line="196" selection-start-column="8" selection-end-line="196" selection-end-column="8" />
-          <folding>
-            <element signature="e#0#9#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/signal_analysis.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="-15.387096">
+        <state vertical-scroll-proportion="0.0">
           <caret line="306" column="0" selection-start-line="306" selection-start-column="0" selection-end-line="306" selection-end-column="0" />
           <folding>
             <element signature="e#108#239#0" expanded="true" />
@@ -978,7 +972,7 @@
     <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
-          <caret line="283" column="29" selection-start-line="283" selection-start-column="29" selection-end-line="283" selection-end-column="29" />
+          <caret line="424" column="79" selection-start-line="424" selection-start-column="17" selection-end-line="424" selection-end-column="79" />
           <folding>
             <element signature="e#108#119#0" expanded="true" />
             <element signature="e#2134#2662#0" expanded="false" />
@@ -991,10 +985,20 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/Elementary.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="188" column="17" selection-start-line="188" selection-start-column="17" selection-end-line="188" selection-end-column="17" />
+          <folding>
+            <element signature="e#0#9#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/Cut.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.52164006">
-          <caret line="399" column="39" selection-start-line="399" selection-start-column="39" selection-end-line="399" selection-end-column="39" />
+        <state vertical-scroll-proportion="0.571754">
+          <caret line="469" column="30" selection-start-line="469" selection-start-column="30" selection-end-line="469" selection-end-column="30" />
           <folding>
             <element signature="e#0#9#0" expanded="true" />
           </folding>
