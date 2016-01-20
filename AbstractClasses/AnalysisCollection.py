@@ -299,7 +299,7 @@ class AnalysisCollection(Elementary):
                 gr1.SetPoint(i, x, n['new'] / n['all'] * 100)
                 gr2.SetPoint(i, x, n['old'] / n['all'] * 100)
             else:
-                info = ana.show_bucket_means(show=False)
+                info = ana.show_bucket_means(show=False, plot_histos=False)
                 gr1.SetPoint(i, x, info['new'][0])
                 gr2.SetPoint(i, x, info['old'][0])
                 gr3.SetPoint(i, x, info['no'][0])

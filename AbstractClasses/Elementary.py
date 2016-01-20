@@ -227,6 +227,7 @@ class Elementary(object):
         h.SetName(name) if name else h.SetName(h.GetName())
         h.SetMarkerStyle(marker)
         h.SetMarkerColor(color) if color is not None else h.SetMarkerColor(h.GetMarkerColor())
+        h.SetLineColor(color) if color is not None else h.SetLineColor(h.GetLineColor())
         h.SetMarkerSize(markersize)
         h.GetXaxis().SetTitle(x_tit) if x_tit else h.GetXaxis().GetTitle()
         h.GetXaxis().SetTitleOffset(x_off)

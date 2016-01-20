@@ -614,7 +614,7 @@ class SignalAnalysis(Analysis):
             self.histos[0] = [c, h]
         return h
 
-    def show_bucket_means(self, show=True):
+    def show_bucket_means(self, show=True, plot_histos=True):
         pickle_path = self.pickle_dir + 'Cuts/BucketMeans_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
 
         def func():
@@ -629,13 +629,23 @@ class SignalAnalysis(Analysis):
             h1 = self.show_signal_histo(show=False, corr=True)
             h2 = self.show_signal_histo(show=False, corr=True, cut=cuts_nobucket)
             h3 = self.show_signal_histo(show=False, corr=True, cut=cuts_oldbucket)
-            result = {'old': self.__get_mean(h3), 'new': self.__get_mean(h1), 'no': self.__get_mean(h2)}
+            if plot_histos:
+                c =  TCanvas('c', 'Bucket Histos', 1000, 1000)
+                self.format_histo(h1, color=self.get_color(), lw=1, x_tit='Pulse Height [au]', y_tit='Entries')
+                h1.Draw()
+                self.format_histo(h2, color=self.get_color(), lw=1)
+                h2.Draw('same')
+                self.format_histo(h3, color=self.get_color(), lw=1)
+                h3.Draw('same')
+                self.histos[0] = [h1, h2, h3, c]
+            result = {name: [h.GetMean(), h.GetMeanError()] for name, h in zip(['new', 'no', 'old'], [h1, h2, h3])}
             gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
             if show:
                 print result
             return result
 
-        return self.do_pickle(pickle_path, func)
+        res = func() if plot_histos else 0
+        return self.do_pickle(pickle_path, func, res)
 
     def compare_single_cuts(self):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')

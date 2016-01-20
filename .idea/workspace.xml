@@ -3,9 +3,7 @@
   <component name="ChangeListManager">
     <list default="true" id="e6cf272c-81a5-4f4e-9e0a-ff55b841b26f" name="Default" comment="">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" afterPath="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/Cut.py" afterPath="$PROJECT_DIR$/AbstractClasses/Cut.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/RunClass.py" afterPath="$PROJECT_DIR$/AbstractClasses/RunClass.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/newAnalysis.py" afterPath="$PROJECT_DIR$/AbstractClasses/newAnalysis.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/Elementary.py" afterPath="$PROJECT_DIR$/AbstractClasses/Elementary.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" afterPath="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
@@ -77,11 +75,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="AnalysisCollection.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="AnalysisCollection.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0">
-              <caret line="307" column="54" selection-start-line="307" selection-start-column="54" selection-end-line="307" selection-end-column="54" />
+            <state vertical-scroll-proportion="0.6059226">
+              <caret line="300" column="17" selection-start-line="300" selection-start-column="17" selection-end-line="300" selection-end-column="17" />
               <folding>
                 <element signature="e#108#119#0" expanded="true" />
                 <element signature="e#2180#2708#0" expanded="false" />
@@ -89,7 +87,7 @@
                 <element signature="e#5798#8513#0" expanded="false" />
                 <element signature="e#8634#11127#0" expanded="false" />
                 <element signature="e#11189#12117#0" expanded="false" />
-                <element signature="e#26562#39196#0" expanded="false" />
+                <element signature="e#26581#39215#0" expanded="false" />
               </folding>
             </state>
           </provider>
@@ -111,7 +109,7 @@
         <entry file="file://$PROJECT_DIR$/AbstractClasses/Elementary.py">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="35" column="12" selection-start-line="35" selection-start-column="12" selection-end-line="35" selection-end-column="12" />
+              <caret line="225" column="64" selection-start-line="225" selection-start-column="64" selection-end-line="225" selection-end-column="64" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
               </folding>
@@ -119,11 +117,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="signal_analysis.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="signal_analysis.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/AbstractClasses/signal_analysis.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.4692483">
-              <caret line="589" column="42" selection-start-line="589" selection-start-column="42" selection-end-line="589" selection-end-column="42" />
+            <state vertical-scroll-proportion="0.0">
+              <caret line="633" column="111" selection-start-line="633" selection-start-column="111" selection-end-line="633" selection-end-column="111" />
               <folding>
                 <element signature="e#108#239#0" expanded="true" />
               </folding>
@@ -155,10 +153,10 @@
         <option value="$PROJECT_DIR$/AbstractClasses/Converter.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/Cut.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/newAnalysis.py" />
+        <option value="$PROJECT_DIR$/AbstractClasses/RunClass.py" />
+        <option value="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/Elementary.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" />
-        <option value="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" />
-        <option value="$PROJECT_DIR$/AbstractClasses/RunClass.py" />
       </list>
     </option>
   </component>
@@ -478,7 +476,13 @@
       <option name="project" value="LOCAL" />
       <updated>1453284605884</updated>
     </task>
-    <option name="localTasksCounter" value="12" />
+    <task id="LOCAL-00012" summary="adding analysis of different bucket cuts">
+      <created>1453300232622</created>
+      <option name="number" value="00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1453300232622</updated>
+    </task>
+    <option name="localTasksCounter" value="13" />
     <servers />
   </component>
   <component name="ToolWindowManager">
@@ -518,7 +522,6 @@
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="adding alignment check find offset function" />
     <MESSAGE value="adding save signal maps" />
     <MESSAGE value="adding snr for all regions and snr vs flux" />
     <MESSAGE value="revising relative signal spread function and fixing errors of snr" />
@@ -543,11 +546,12 @@
     <MESSAGE value="start revision of bucket cut" />
     <MESSAGE value="still revision of bucket cut" />
     <MESSAGE value="finish revision of bucket cut!" />
-    <option name="LAST_COMMIT_MESSAGE" value="finish revision of bucket cut!" />
+    <MESSAGE value="adding analysis of different bucket cuts" />
+    <option name="LAST_COMMIT_MESSAGE" value="adding analysis of different bucket cuts" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
-      <option name="time" value="5" />
+      <option name="time" value="11" />
     </breakpoint-manager>
     <watches-manager />
   </component>
@@ -960,32 +964,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/Elementary.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="35" column="12" selection-start-line="35" selection-start-column="12" selection-end-line="35" selection-end-column="12" />
-          <folding>
-            <element signature="e#0#9#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="307" column="54" selection-start-line="307" selection-start-column="54" selection-end-line="307" selection-end-column="54" />
-          <folding>
-            <element signature="e#108#119#0" expanded="true" />
-            <element signature="e#2180#2708#0" expanded="false" />
-            <element signature="e#5667#5691#0" expanded="false" />
-            <element signature="e#5798#8513#0" expanded="false" />
-            <element signature="e#8634#11127#0" expanded="false" />
-            <element signature="e#11189#12117#0" expanded="false" />
-            <element signature="e#26562#39196#0" expanded="false" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/RunClass.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
@@ -998,10 +976,36 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/signal_analysis.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.4692483">
-          <caret line="589" column="42" selection-start-line="589" selection-start-column="42" selection-end-line="589" selection-end-column="42" />
+        <state vertical-scroll-proportion="0.0">
+          <caret line="633" column="111" selection-start-line="633" selection-start-column="111" selection-end-line="633" selection-end-column="111" />
           <folding>
             <element signature="e#108#239#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/Elementary.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="225" column="64" selection-start-line="225" selection-start-column="64" selection-end-line="225" selection-end-column="64" />
+          <folding>
+            <element signature="e#0#9#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.6059226">
+          <caret line="300" column="17" selection-start-line="300" selection-start-column="17" selection-end-line="300" selection-end-column="17" />
+          <folding>
+            <element signature="e#108#119#0" expanded="true" />
+            <element signature="e#2180#2708#0" expanded="false" />
+            <element signature="e#5667#5691#0" expanded="false" />
+            <element signature="e#5798#8513#0" expanded="false" />
+            <element signature="e#8634#11127#0" expanded="false" />
+            <element signature="e#11189#12117#0" expanded="false" />
+            <element signature="e#26581#39215#0" expanded="false" />
           </folding>
         </state>
       </provider>
