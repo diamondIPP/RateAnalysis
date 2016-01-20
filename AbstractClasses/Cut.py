@@ -360,7 +360,7 @@ class Cut(Elementary):
         return TCut(string)
 
     def calc_signal_threshold(self, bg=False, show=True):
-        pickle_path = self.analysis.pickle_dir + 'Cuts/SignalThreshold_{tc}_{run}_{ch}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run_number, ch=self.channel)
+        pickle_path = self.analysis.pickle_dir + 'Cuts/SignalThreshold_{tc}_{run}_{ch}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.highest_rate_run, ch=self.channel)
 
         def func():
             print 'calculating signal threshold for bucket cut of run {run} and ch{ch}...'.format(run=self.analysis.run_number, ch=self.channel)
@@ -726,5 +726,6 @@ class Cut(Elementary):
 
     def show_cuts(self):
         for key, value in self.cut_strings.iteritems():
-            print key, value
+            if not key == 'all_cuts':
+                print key, value
         return

@@ -37,9 +37,10 @@ class AnalysisCollection(Elementary):
 
         self.runs = self.load_runs(list_of_runs)
         self.diamonds = self.load_diamonds(diamonds, list_of_runs)
-        self.lowest_rate_run = self.get_lowest_rate_run()
+        self.min_max_rate_runs = self.get_high_low_rate_runs()
 
         self.generate_slope_pickle()
+        self.generate_threshold_pickle()
 
         self.add_analyses()
 
@@ -82,7 +83,7 @@ class AnalysisCollection(Elementary):
         """
         for run, dia in sorted(zip(self.runs, self.diamonds)):
             ch = 0 if dia == 1 or dia == 3 else 3
-            analysis = SignalAnalysis(run, ch, self.lowest_rate_run)
+            analysis = SignalAnalysis(run, ch, self.min_max_rate_runs)
             self.collection[analysis.run.run_number] = analysis
             self.current_run_number = analysis.run.run_number
 
@@ -105,7 +106,7 @@ class AnalysisCollection(Elementary):
             dias = [3] * len(run_list) if type(run_list) is list else run_list.get_selected_diamonds()
         return dias
 
-    def get_lowest_rate_run(self):
+    def get_high_low_rate_runs(self):
         parser = ConfigParser()
         parser.read('Configuration/RunConfig_' + self.TESTCAMPAIGN + '.cfg')
         keydict = ConfigParser()
@@ -120,13 +121,21 @@ class AnalysisCollection(Elementary):
             print run, flux
             fluxes[flux] = run
         min_flux = min(fluxes)
-        return fluxes[min_flux]
+        max_flux = max(fluxes)
+        return {'min': fluxes[min_flux], 'max': fluxes[max_flux]}
 
     def generate_slope_pickle(self):
-        picklepath = 'Configuration/Individual_Configs/Slope/{tc}_{run}_{ch}_Slope.pickle'.format(tc=self.TESTCAMPAIGN, run=self.lowest_rate_run, ch=0)
+        picklepath = 'Configuration/Individual_Configs/Slope/{tc}_{run}_{ch}_Slope.pickle'.format(tc=self.TESTCAMPAIGN, run=self.min_max_rate_runs['min'], ch=0)
         if os.path.exists(picklepath):
             return
-        Analysis(self.lowest_rate_run)
+        Analysis(self.min_max_rate_runs['min'])
+
+    def generate_threshold_pickle(self):
+        picklepath = 'Configuration/Individual_Configs/Cuts/SignalThreshold_{tc}_{run}_{ch}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.min_max_rate_runs['max'], ch=0)
+        print picklepath
+        if os.path.exists(picklepath):
+            return
+        Analysis(self.min_max_rate_runs['max'])
 
     @staticmethod
     def make_runselection(run_list):
@@ -273,6 +282,51 @@ class AnalysisCollection(Elementary):
 
     # endregion
 
+    def draw_bucket_info(self, flux=True, show=True, mean=True):
+        if not show:
+            gROOT.SetBatch(1)
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        mode = 'Flux' if flux else 'Run'
+        gr1 = self.make_tgrapherrors('gr1', '', color=self.get_color())
+        prefix = 'Number of Bucket Cut Events' if not mean else 'Mean Pulse Height with Different Bucket Cuts'
+        gr2 = self.make_tgrapherrors('gr2', '{pref} vs {mod}'.format(pref=prefix,  mod=mode), color=self.get_color())
+        gr3 = self.make_tgrapherrors('gr3', '', color=self.get_color())
+        i = 0
+        for key, ana in self.collection.iteritems():
+            x = ana.run.flux if flux else key
+            if not mean:
+                n = ana.show_bucket_numbers(show=False)
+                gr1.SetPoint(i, x, n['new'] / n['all'] * 100)
+                gr2.SetPoint(i, x, n['old'] / n['all'] * 100)
+            else:
+                info = ana.show_bucket_means(show=False)
+                gr1.SetPoint(i, x, info['new'][0])
+                gr2.SetPoint(i, x, info['old'][0])
+                gr3.SetPoint(i, x, info['no'][0])
+                gr1.SetPointError(i, 0, info['new'][1])
+                gr2.SetPointError(i, 0, info['old'][1])
+                gr3.SetPointError(i, 0, info['no'][1])
+            i += 1
+        c = TCanvas('c', 'Bucket Numbers', 1000, 1000)
+        c.SetLeftMargin(.13)
+        if flux:
+            c.SetLogx()
+        self.format_histo(gr2, x_tit='{mod}{unit}'.format(mod=mode, unit=' [kHz/cm2]' if flux else ''), y_tit='Events [%]' if not mean else 'Mean [au]', y_off=1.7, color=None)
+        gr2.Draw('apl')
+        gr1.Draw('pl')
+        if mean:
+            gr3.Draw('pl')
+        leg = TLegend(.2, .8, .35, .9)
+        leg.AddEntry(gr2, 'old cut', 'pl')
+        leg.AddEntry(gr1, 'new cut', 'pl')
+        if mean:
+            leg.AddEntry(gr3, 'no bucket', 'pl')
+        leg.Draw()
+        gROOT.SetBatch(0)
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        self.save_plots('{mode}_' + mode, sub_dir=self.save_dir)
+        self.histos[0] = [c, gr1, gr2, gr3, leg]
+
     def draw_mean_fwhm(self, saveplots=True, flux=True, draw=True):
         """
         Creates the FWHM Distribution of all selected MeanSignalHistograms
@@ -410,7 +464,6 @@ class AnalysisCollection(Elementary):
         self.canvases[0] = c
 
         print '\nThe preanalysis for this selection took', self.print_elapsed_time(start_time)
-    # endregion
 
     # ====================================================================================
     # region TRACKS

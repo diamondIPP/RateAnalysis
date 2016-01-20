@@ -23,7 +23,7 @@ class Analysis(Elementary):
     An Analysis Object contains all Data and Results of a SINGLE run.
     """
 
-    def __init__(self, run, diamonds=3, verbose=False, low_rate=None):
+    def __init__(self, run, diamonds=3, verbose=False, high_low_rate=None):
         """
         An Analysis Object collects all the information and data for the analysis of one single run.
         The most important fields are:
@@ -51,7 +51,8 @@ class Analysis(Elementary):
         self.run.analysis = self
         self.run_number = self.run.run_number
         self.RunInfo = deepcopy(self.run.RunInfo)
-        self.lowest_rate_run = low_rate if low_rate is not None else self.run.run_number
+        self.lowest_rate_run = high_low_rate['min'] if high_low_rate is not None else self.run.run_number
+        self.highest_rate_run = high_low_rate['max'] if high_low_rate is not None else self.run.run_number
         self.parser = self.load_parser()
         self.pickle_dir = self.get_program_dir() + self.parser.get('SAVE', 'pickle_dir')
         self.ana_save_dir = '{tc}_{run}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run.run_number)
@@ -79,16 +80,16 @@ class Analysis(Elementary):
         self.cuts = {ch: Cut(self, ch) for ch in self.run.channels}
         self.start_event = self.cuts[0].CutConfig['EventRange'][0]
         self.pedestalFitMean = {}
-        self.pedestalSigma = {}
 
-        # alignment
-        self.IsAligned = self.check_alignment(draw=False)
-        
         # save histograms // canvases
         self.signal_canvas = None
         self.histos = {}
         self.canvases = {}
         self.lines = {}
+        self.pedestalSigma = {}
+
+        # alignment
+        self.IsAligned = self.check_alignment(draw=False)
 
     def init_extrema_results(self):
         names = ['TrueNPeaks', 'FoundNMaxima', 'FoundMaxima', 'FoundNMinima', 'FoundMinima', 'Ninjas', 'Ghosts']
@@ -422,8 +423,7 @@ class Analysis(Elementary):
             h.Draw('hist')
             self.save_plots('EventAlignment', sub_dir=self.ana_save_dir, ch=None)
             gROOT.SetBatch(0)
-            self.canvases[0] = c
-            self.histos[0] = h
+            self.histos[0] = [h, c]
             align = self.__check_alignment_histo(h)
             return align
 

@@ -18,8 +18,8 @@ __author__ = 'micha'
 # MAIN CLASS
 # ==============================================
 class SignalAnalysis(Analysis):
-    def __init__(self, run, channel, low_rate_run=None, binning=20000):
-        Analysis.__init__(self, run, low_rate=low_rate_run)
+    def __init__(self, run, channel, high_low_rate_run=None, binning=20000):
+        Analysis.__init__(self, run, high_low_rate=high_low_rate_run)
 
         # main
         self.channel = channel
@@ -186,19 +186,20 @@ class SignalAnalysis(Analysis):
         conversion_factor = 2 * sqrt(2 * log(2))  # sigma to FWHM
         return fit.Parameter(2) * conversion_factor
 
-    def draw_diamond_hitmap(self):
-        self.find_diamond_margins(show_frame=True)
+    def draw_diamond_hitmap(self, cut=None, show_frame=True):
+        self.find_diamond_margins(show_frame=show_frame, cut=cut)
 
-    def find_diamond_margins(self, show_plot=True, show_frame=False):
+    def find_diamond_margins(self, show_plot=True, show_frame=False, cut=None):
         pickle_path = self.pickle_dir + 'Margins/{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
 
         def func():
             print 'getting margins for {dia} of run {run}...'.format(dia=self.diamond_name, run=self.run_number)
+            cut_string = self.cut.all_cut if cut is None else cut
             if not show_plot:
                 gROOT.SetBatch(1)
             h = TH2F('h', 'Diamond Margins', 80, -.3, .3, 52, -.3, .3)
             nr = 1 if not self.channel else 2
-            self.tree.Draw('diam{nr}_track_x:diam{nr}_track_y>>h'.format(nr=nr), self.cut.all_cut, 'goff')
+            self.tree.Draw('diam{nr}_track_x:diam{nr}_track_y>>h'.format(nr=nr), cut_string, 'goff')
             projections = [h.ProjectionX(), h.ProjectionY()]
             efficient_bins = [[], []]
             zero_bins = [[], []]
@@ -212,14 +213,13 @@ class SignalAnalysis(Analysis):
                         efficient_bins[i].append(proj.GetBinCenter(bin_))
                         bin_low[i].append(proj.GetBinLowEdge(bin_))
                         bin_high[i].append(proj.GetBinLowEdge(bin_ + 1))
-                    if bin_:
-                        if efficiency and not last_bin:
+                    if bin_ > 1:
+                        if efficiency and last_bin:
                             zero_bins[i].append(proj.GetBinCenter(bin_ - 1))
                         elif not efficiency and last_bin:
                             zero_bins[i].append((proj.GetBinCenter(bin_)))
                     last_bin = proj.GetBinContent(bin_)
             if show_plot:
-                print zero_bins
                 self.canvas = TCanvas('c', 'Diamond Hit Map', 1000, 1000)
                 h.GetXaxis().SetRangeUser(zero_bins[0][0], zero_bins[0][1])
                 h.GetYaxis().SetRangeUser(zero_bins[1][0], zero_bins[1][1])
@@ -573,12 +573,69 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region CUTS
-    def analyse_bucket_cut(self):
-        n_events = self.tree.Draw('1', '!({0})'.format(self.cut.cut_strings['bucket']), 'goff')
-        n_2 = self.tree.Draw('1', '!({0})'.format(self.cut.cut_strings['old_bucket']), 'goff')
-        print '{0} / {1} = {2:4.2f}%'.format(n_events, self.run.n_entries, n_events / float(self.run.n_entries) * 100)
-        print '{0} / {1} = {2:4.2f}%'.format(n_2, self.run.n_entries, n_2 / float(self.run.n_entries) * 100)
-        return n_events
+    def show_bucket_numbers(self, show=True):
+        pickle_path = self.pickle_dir + 'Cuts/BucketEvents_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
+
+        def func():
+            print 'getting number of bucket events for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name)
+            n_new = self.tree.Draw('1', '!({buc})&&{pul}'.format(buc=self.cut.cut_strings['bucket'], pul=self.cut.cut_strings['pulser']), 'goff')
+            n_old = self.tree.Draw('1', '!({buc})&&{pul}'.format(buc=self.cut.cut_strings['old_bucket'], pul=self.cut.cut_strings['pulser']), 'goff')
+            if show:
+                print 'New Bucket: {0} / {1} = {2:4.2f}%'.format(n_new, self.run.n_entries, n_new / float(self.run.n_entries) * 100)
+                print 'Old Bucket: {0} / {1} = {2:4.2f}%'.format(n_old, self.run.n_entries, n_old / float(self.run.n_entries) * 100)
+            return {'old': n_old, 'new': n_new, 'all': float(self.run.n_entries)}
+
+        return self.do_pickle(pickle_path, func)
+
+    def show_bucket_hits(self, show=True):
+        # hit position
+        h = TH2F('h', 'Diamond Margins', 80, -.3, .3, 52, -.3, .3)
+        nr = 1 if not self.channel else 2
+        cut = '!({buc})&&{pul}'.format(buc=self.cut.cut_strings['old_bucket'], pul=self.cut.cut_strings['pulser'])
+        self.tree.Draw('diam{nr}_track_x:diam{nr}_track_y>>h'.format(nr=nr), cut, 'goff')
+        projections = [h.ProjectionX(), h.ProjectionY()]
+        zero_bins = [[], []]
+        for i, proj in enumerate(projections):
+            last_bin = None
+            for bin_ in xrange(proj.GetNbinsX()):
+                efficiency = proj.GetBinContent(bin_) / float(proj.GetMaximum())
+                if bin_ > 1:
+                    if efficiency > .05 and last_bin < 5:
+                        zero_bins[i].append(proj.GetBinCenter(bin_ - 1))
+                    elif efficiency < .05 and last_bin > 5:
+                        zero_bins[i].append((proj.GetBinCenter(bin_)))
+                last_bin = proj.GetBinContent(bin_)
+        if show:
+            print zero_bins
+            c = TCanvas('c', 'Diamond Hit Map', 1000, 1000)
+            h.GetXaxis().SetRangeUser(zero_bins[0][0], zero_bins[0][-1])
+            h.GetYaxis().SetRangeUser(zero_bins[1][0], zero_bins[1][-1])
+            h.Draw('colz')
+            self.histos[0] = [c, h]
+        return h
+
+    def show_bucket_means(self, show=True):
+        pickle_path = self.pickle_dir + 'Cuts/BucketMeans_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
+
+        def func():
+            gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+            cuts_nobucket = TCut('no_bucket', '')
+            cuts_oldbucket = TCut('old_bucket', '')
+            for key, value in self.cut.cut_strings.iteritems():
+                if not key.startswith('old') and key not in ['all_cuts', 'bucket']:
+                    cuts_nobucket += value
+                if key not in ['all_cuts', 'bucket']:
+                    cuts_oldbucket += value
+            h1 = self.show_signal_histo(show=False, corr=True)
+            h2 = self.show_signal_histo(show=False, corr=True, cut=cuts_nobucket)
+            h3 = self.show_signal_histo(show=False, corr=True, cut=cuts_oldbucket)
+            result = {'old': self.__get_mean(h3), 'new': self.__get_mean(h1), 'no': self.__get_mean(h2)}
+            gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+            if show:
+                print result
+            return result
+
+        return self.do_pickle(pickle_path, func)
 
     def compare_single_cuts(self):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')

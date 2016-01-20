@@ -454,7 +454,7 @@ class Run(Elementary):
         tc = datetime.strptime(self.TESTCAMPAIGN, '%Y%m')
         dur = '{0:02d}:{1:02.0f}'.format(int(self.totalMinutes), (self.totalMinutes - int(self.totalMinutes)) * 60)
 
-        canvas.SetBottomMargin(0.144)
+        canvas.SetBottomMargin(0.15)
         # user height and width:
         userheight = height if set_height is None else set_height - 0.04
         userwidth = width if set_width is None else set_width
