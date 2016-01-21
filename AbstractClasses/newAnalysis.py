@@ -5,7 +5,7 @@ from numpy import array, zeros
 import types as t
 
 import ROOT
-from ROOT import TCanvas, TH2F, gROOT, TProfile, TH1F, TLegend, gStyle, TLatex, kGreen, TArrow, kOrange
+from ROOT import TCanvas, TH2F, gROOT, TProfile, TH1F, TLegend, gStyle, kGreen, TArrow, kOrange
 from AbstractClasses.PreAnalysisPlot import PreAnalysisPlot
 from AbstractClasses.ConfigClass import *
 from AbstractClasses.RunClass import Run
