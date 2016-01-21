@@ -45,6 +45,8 @@
           <option value="TGraphAsymmErrors" />
           <option value="TSpectrum" />
           <option value="TText" />
+          <option value="TArrow" />
+          <option value="int.Parameter" />
         </list>
       </option>
     </inspection_tool>

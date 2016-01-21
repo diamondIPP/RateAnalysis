@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="e6cf272c-81a5-4f4e-9e0a-ff55b841b26f" name="Default" comment="add buckets for draw regions">
+    <list default="true" id="e6cf272c-81a5-4f4e-9e0a-ff55b841b26f" name="Default" comment="">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/RunClass.py" afterPath="$PROJECT_DIR$/AbstractClasses/RunClass.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/newAnalysis.py" afterPath="$PROJECT_DIR$/AbstractClasses/newAnalysis.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" afterPath="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
@@ -30,12 +29,13 @@
       <file leaf-file-name="newAnalysis.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/AbstractClasses/newAnalysis.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.5888383">
-              <caret line="229" column="67" selection-start-line="229" selection-start-column="67" selection-end-line="229" selection-end-column="67" />
+            <state vertical-scroll-proportion="0.41799545">
+              <caret line="206" column="19" selection-start-line="206" selection-start-column="19" selection-end-line="206" selection-end-column="19" />
               <folding>
                 <element signature="e#0#11#0" expanded="true" />
-                <element signature="e#5361#6203#0" expanded="false" />
-                <element signature="e#15826#15853#0" expanded="false" />
+                <element signature="e#5378#6220#0" expanded="false" />
+                <element signature="e#16442#16469#0" expanded="false" />
+                <marker date="1453396627252" expanded="true" signature="9389:9464" placeholder="..." />
               </folding>
             </state>
           </provider>
@@ -124,12 +124,10 @@
         <entry file="file://$PROJECT_DIR$/AbstractClasses/signal_analysis.py">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="1089" column="24" selection-start-line="1089" selection-start-column="24" selection-end-line="1089" selection-end-column="24" />
+              <caret line="299" column="31" selection-start-line="299" selection-start-column="31" selection-end-line="299" selection-end-column="31" />
               <folding>
                 <element signature="e#108#239#0" expanded="true" />
-                <element signature="e#2615#2646#0" expanded="false" />
-                <element signature="e#12270#12290#0" expanded="false" />
-                <element signature="e#37241#37254#0" expanded="false" />
+                <element signature="e#37244#37257#0" expanded="false" />
               </folding>
             </state>
           </provider>
@@ -159,9 +157,9 @@
         <option value="$PROJECT_DIR$/AbstractClasses/Converter.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/Cut.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" />
-        <option value="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/RunClass.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/Elementary.py" />
+        <option value="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/newAnalysis.py" />
       </list>
     </option>
@@ -494,7 +492,13 @@
       <option name="project" value="LOCAL" />
       <updated>1453302877723</updated>
     </task>
-    <option name="localTasksCounter" value="14" />
+    <task id="LOCAL-00014" summary="add buckets for draw regions">
+      <created>1453394670827</created>
+      <option name="number" value="00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1453394670827</updated>
+    </task>
+    <option name="localTasksCounter" value="15" />
     <servers />
   </component>
   <component name="TodoView" selected-index="4">
@@ -510,6 +514,7 @@
     <frame x="-1" y="24" width="1922" height="1033" extended-state="6" />
     <editor active="true" />
     <layout>
+      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32929516" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32599118" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
@@ -524,7 +529,6 @@
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
@@ -600,8 +604,9 @@
           <caret line="266" column="47" selection-start-line="266" selection-start-column="47" selection-end-line="266" selection-end-column="47" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
-            <element signature="e#5361#6203#0" expanded="false" />
-            <element signature="e#15826#15853#0" expanded="false" />
+            <element signature="e#5378#6220#0" expanded="false" />
+            <element signature="e#16442#16469#0" expanded="false" />
+            <marker date="1453396627252" expanded="true" signature="9389:9464" placeholder="..." />
           </folding>
         </state>
       </provider>
@@ -626,9 +631,7 @@
           <caret line="438" column="19" selection-start-line="438" selection-start-column="19" selection-end-line="438" selection-end-column="19" />
           <folding>
             <element signature="e#108#239#0" expanded="true" />
-            <element signature="e#2615#2646#0" expanded="false" />
-            <element signature="e#12270#12290#0" expanded="false" />
-            <element signature="e#37241#37254#0" expanded="false" />
+            <element signature="e#37244#37257#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -673,8 +676,9 @@
           <caret line="320" column="17" selection-start-line="320" selection-start-column="17" selection-end-line="320" selection-end-column="17" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
-            <element signature="e#5361#6203#0" expanded="false" />
-            <element signature="e#15826#15853#0" expanded="false" />
+            <element signature="e#5378#6220#0" expanded="false" />
+            <element signature="e#16442#16469#0" expanded="false" />
+            <marker date="1453396627252" expanded="true" signature="9389:9464" placeholder="..." />
           </folding>
         </state>
       </provider>
@@ -729,8 +733,9 @@
           <caret line="23" column="55" selection-start-line="23" selection-start-column="55" selection-end-line="23" selection-end-column="55" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
-            <element signature="e#5361#6203#0" expanded="false" />
-            <element signature="e#15826#15853#0" expanded="false" />
+            <element signature="e#5378#6220#0" expanded="false" />
+            <element signature="e#16442#16469#0" expanded="false" />
+            <marker date="1453396627252" expanded="true" signature="9389:9464" placeholder="..." />
           </folding>
         </state>
       </provider>
@@ -775,8 +780,9 @@
           <caret line="166" column="8" selection-start-line="166" selection-start-column="8" selection-end-line="166" selection-end-column="8" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
-            <element signature="e#5361#6203#0" expanded="false" />
-            <element signature="e#15826#15853#0" expanded="false" />
+            <element signature="e#5378#6220#0" expanded="false" />
+            <element signature="e#16442#16469#0" expanded="false" />
+            <marker date="1453396627252" expanded="true" signature="9389:9464" placeholder="..." />
           </folding>
         </state>
       </provider>
@@ -814,8 +820,9 @@
           <caret line="166" column="8" selection-start-line="166" selection-start-column="8" selection-end-line="166" selection-end-column="8" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
-            <element signature="e#5361#6203#0" expanded="false" />
-            <element signature="e#15826#15853#0" expanded="false" />
+            <element signature="e#5378#6220#0" expanded="false" />
+            <element signature="e#16442#16469#0" expanded="false" />
+            <marker date="1453396627252" expanded="true" signature="9389:9464" placeholder="..." />
           </folding>
         </state>
       </provider>
@@ -853,8 +860,9 @@
           <caret line="166" column="8" selection-start-line="166" selection-start-column="8" selection-end-line="166" selection-end-column="8" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
-            <element signature="e#5361#6203#0" expanded="false" />
-            <element signature="e#15826#15853#0" expanded="false" />
+            <element signature="e#5378#6220#0" expanded="false" />
+            <element signature="e#16442#16469#0" expanded="false" />
+            <marker date="1453396627252" expanded="true" signature="9389:9464" placeholder="..." />
           </folding>
         </state>
       </provider>
@@ -983,19 +991,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/signal_analysis.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="1089" column="24" selection-start-line="1089" selection-start-column="24" selection-end-line="1089" selection-end-column="24" />
-          <folding>
-            <element signature="e#108#239#0" expanded="true" />
-            <element signature="e#2615#2646#0" expanded="false" />
-            <element signature="e#12270#12290#0" expanded="false" />
-            <element signature="e#37241#37254#0" expanded="false" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/RunClass.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
@@ -1033,14 +1028,26 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/signal_analysis.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="299" column="31" selection-start-line="299" selection-start-column="31" selection-end-line="299" selection-end-column="31" />
+          <folding>
+            <element signature="e#108#239#0" expanded="true" />
+            <element signature="e#37244#37257#0" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/newAnalysis.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.5888383">
-          <caret line="229" column="67" selection-start-line="229" selection-start-column="67" selection-end-line="229" selection-end-column="67" />
+        <state vertical-scroll-proportion="0.41799545">
+          <caret line="206" column="19" selection-start-line="206" selection-start-column="19" selection-end-line="206" selection-end-column="19" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
-            <element signature="e#5361#6203#0" expanded="false" />
-            <element signature="e#15826#15853#0" expanded="false" />
+            <element signature="e#5378#6220#0" expanded="false" />
+            <element signature="e#16442#16469#0" expanded="false" />
+            <marker date="1453396627252" expanded="true" signature="9389:9464" placeholder="..." />
           </folding>
         </state>
       </provider>

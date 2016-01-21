@@ -302,8 +302,8 @@ class SignalAnalysis(Analysis):
             x = [h.GetBinCenter(max_bin + i) for i in [-7, 1]]
             return h.Fit('gaus', 'qs0', '', x[0], x[1])
 
-        fit = func() if draw else self.do_pickle(pickle_path, func)
-        return fit
+        fit = func() if draw else 0
+        return self.do_pickle(pickle_path, func, fit)
 
     def calc_peak_value_fwhm(self):
         pickle_path = self.pickle_dir + 'PeakValues/FWHM_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)

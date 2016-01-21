@@ -5,7 +5,7 @@ from numpy import array, zeros
 import types as t
 
 import ROOT
-from ROOT import TCanvas, TH2F, gROOT, TProfile, TH1F, TLegend, gStyle, TLatex, kGreen
+from ROOT import TCanvas, TH2F, gROOT, TProfile, TH1F, TLegend, gStyle, TLatex, kGreen, TArrow, kOrange
 from AbstractClasses.PreAnalysisPlot import PreAnalysisPlot
 from AbstractClasses.ConfigClass import *
 from AbstractClasses.RunClass import Run
@@ -202,24 +202,36 @@ class Analysis(Elementary):
         self.histos[0] = [h, c, gr, lines, titles]
 
     def __add_buckets(self):
-        # todo mark peak position
         c = gROOT.GetSelectedPad()
         axis = []
         labels = []
+        arrows = []
         start = self.run.signal_regions['b'][0] % 40
         bucket0 = self.run.signal_regions['b'][0] / 40
         l = self.make_tlatex(start - 10, c.GetUymin() - 30, 'Bucket:', align=30, color=kGreen + 2, size=0.03)
         l.Draw()
         labels.append(l)
+        l1 = self.make_tlatex(start - 10, c.GetUymin() + 5, 'PeakPos:', align=30, color=kOrange + 7, size=0.03)
+        l1.Draw()
+        labels.append(l1)
+        peak_fit = self.fit_peak_values(draw=False) if hasattr(self, 'fit_peak_values') else 0
         for i, x in enumerate(xrange(start, 401, 20), -bucket0):
             a = self.make_tgaxis(x, c.GetUymin() - 30, c.GetUymin() - 12, '', kGreen + 2)
             if x <= 380:
                 l = self.make_tlatex(x + 10, c.GetUymin() - 30, str(i), align=20, color=kGreen + 2, size=0.03)
                 labels.append(l)
                 l.Draw()
+            if peak_fit:
+                pos = peak_fit.Parameter(1) % 20
+                ar = TArrow(x + pos, c.GetUymin() + 1, x + pos, c.GetUymin() + 10, .005, '<|')
+                ar.SetLineWidth(2)
+                ar.SetFillColor(kOrange + 7)
+                ar.SetLineColor(kOrange + 7)
+                ar.Draw()
+                arrows.append(ar)
             a.Draw()
             axis.append(a)
-        self.histos[1] = [axis, labels]
+        self.histos[1] = [axis, labels, arrows]
 
     def draw_peak_integrals(self, event=None):
         h = self.draw_single_wf(event=event, show=False)
