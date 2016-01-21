@@ -154,7 +154,7 @@ class Analysis(Elementary):
     def draw_regions(self, event=None, ped=True):
         h = self.draw_single_wf(event=event, show=False)
         c = TCanvas('c1', 'Regions', 1000, 500)
-        c.SetMargin(.075, .045, .1, .1)
+        c.SetMargin(.075, .045, .2, .1)
         c.SetGrid()
         h.Draw()
         tit = 'Pedestal Regions' if ped else 'Signal Regions'
@@ -196,9 +196,30 @@ class Analysis(Elementary):
                 starts.append(lst[0])
         gr.Draw('[]')
         gr.Draw('p')
+        self.__add_buckets()
         save_name = 'PedestalRegions' if ped else 'SignalRegions'
         self.save_plots(save_name, sub_dir=self.ana_save_dir, ch=None)
         self.histos[0] = [h, c, gr, lines, titles]
+
+    def __add_buckets(self):
+        # todo mark peak position
+        c = gROOT.GetSelectedPad()
+        axis = []
+        labels = []
+        start = self.run.signal_regions['b'][0] % 40
+        bucket0 = self.run.signal_regions['b'][0] / 40
+        l = self.make_tlatex(start - 10, c.GetUymin() - 30, 'Bucket:', align=30, color=kGreen + 2, size=0.03)
+        l.Draw()
+        labels.append(l)
+        for i, x in enumerate(xrange(start, 401, 20), -bucket0):
+            a = self.make_tgaxis(x, c.GetUymin() - 30, c.GetUymin() - 12, '', kGreen + 2)
+            if x <= 380:
+                l = self.make_tlatex(x + 10, c.GetUymin() - 30, str(i), align=20, color=kGreen + 2, size=0.03)
+                labels.append(l)
+                l.Draw()
+            a.Draw()
+            axis.append(a)
+        self.histos[1] = [axis, labels]
 
     def draw_peak_integrals(self, event=None):
         h = self.draw_single_wf(event=event, show=False)

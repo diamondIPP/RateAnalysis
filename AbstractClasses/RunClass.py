@@ -11,6 +11,7 @@ from ROOT import TFile, gROOT, TLegend
 from ConfigParser import ConfigParser, NoOptionError
 from numpy import mean
 from collections import OrderedDict
+from subprocess import check_output
 
 default_info = {
     'persons on shift': '-',
@@ -454,11 +455,15 @@ class Run(Elementary):
         tc = datetime.strptime(self.TESTCAMPAIGN, '%Y%m')
         dur = '{0:02d}:{1:02.0f}'.format(int(self.totalMinutes), (self.totalMinutes - int(self.totalMinutes)) * 60)
 
-        canvas.SetBottomMargin(0.15)
+        if not canvas.GetBottomMargin() > .105:
+            canvas.SetBottomMargin(0.15)
         # user height and width:
         userheight = height if set_height is None else set_height - 0.04
         userwidth = width if set_width is None else set_width
 
+        git_text = TLegend(.85, 0, 1, .025)
+        git_text.AddEntry(0, 'git hash: {ver}'.format(ver=check_output(['git', 'describe', '--always'])), '')
+        git_text.SetLineColor(0)
         legend = TLegend(.002, .00205, userwidth, userheight + 0.04)
         legend.SetName('l')
         legend.SetMargin(0.05)
@@ -477,8 +482,9 @@ class Run(Elementary):
             legend.AddEntry(0, 'Cut: {cut}'.format(cut=self.analysis.get_easy_cutstring()), '')
         if comment is not None:
             legend.AddEntry(0, comment, '')
+        git_text.Draw()
         legend.Draw()
-        self.run_info_legends[str(channel)] = legend
+        self.run_info_legends[str(channel)] = [legend, git_text]
         pad.Modified()
         canvas.Update()
 

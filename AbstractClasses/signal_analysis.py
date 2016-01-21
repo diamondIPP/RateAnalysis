@@ -338,7 +338,7 @@ class SignalAnalysis(Analysis):
             gROOT.SetBatch(0)
             c = TCanvas('c', 'Pulse Height vs Time', 1000, 1000)
             c.SetLeftMargin(.12)
-            self.format_histo(h, x_tit='time [min]', y_tit='Pulse Height [au]', y_off=1.4)
+            self.format_histo(h, x_tit='time [ms]', y_tit='Pulse Height [au]', y_off=1.4)
             h.Draw('colz')
             self.save_plots('SignalTime', sub_dir=self.save_dir)
             self.signaltime = h
@@ -406,7 +406,7 @@ class SignalAnalysis(Analysis):
         self.signaltime = None
 
         def func():
-            print 'calculating pulse height fit of ch', self.channel
+            print 'drawing pulse height fit for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name)
             tit_suffix = 'with {cor} Pedestal Correction'.format(cor=correction.title()) if ped_corr or eventwise_corr else ''
             gr = self.make_tgrapherrors('signal', 'Pulse Height Evolution ' + tit_suffix)
             if binning is not None:
@@ -452,10 +452,8 @@ class SignalAnalysis(Analysis):
             gROOT.SetBatch(0)
             return fit_par
 
-        fit = self.do_pickle(picklepath, func)
-        if draw and not gROOT.FindObject('bla'):
-            func()
-        return fit
+        fit = func() if draw else 0
+        return self.do_pickle(picklepath, func, fit)
 
     def show_signal_histo(self, cut=None, corr=True, show=True):
         gROOT.SetBatch(1)
@@ -630,7 +628,7 @@ class SignalAnalysis(Analysis):
             h2 = self.show_signal_histo(show=False, corr=True, cut=cuts_nobucket)
             h3 = self.show_signal_histo(show=False, corr=True, cut=cuts_oldbucket)
             if plot_histos:
-                c =  TCanvas('c', 'Bucket Histos', 1000, 1000)
+                c = TCanvas('c', 'Bucket Histos', 1000, 1000)
                 self.format_histo(h1, color=self.get_color(), lw=1, x_tit='Pulse Height [au]', y_tit='Entries')
                 h1.Draw()
                 self.format_histo(h2, color=self.get_color(), lw=1)
