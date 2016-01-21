@@ -129,17 +129,16 @@ class Analysis(Elementary):
     # ============================================================================================
     # region REGIONS AND PEAK INTEGRAL
 
-    def draw_single_wf(self, event=None, show=False):
-        gROOT.SetBatch(1)
+    def draw_single_wf(self, event=None, show=True):
         start = self.start_event if event is None else event
         if hasattr(self, 'draw_waveforms') and self.run.wf_exists(self.channel):
-            h = self.draw_waveforms(n=1, show=False, start_event=start)
+            h = self.draw_waveforms(n=1, show=show, start_event=start)
         else:
             h = TH2F('regions', '', 1024, 0, 511, 1000, -200, 50)
             if self.run.wf_exists(0):
                 self.tree.Draw('wf0:Iteration$/2>>regions', self.cuts[0].all_cut, 'goff', 1, start)
-        if show:
-            gROOT.SetBatch(0)
+        if not show:
+            gROOT.SetBatch(1)
         c = TCanvas('c2', 'Regions', 1000, 500)
         c.SetMargin(.075, .045, .1, .1)
         c.SetGrid()
@@ -169,25 +168,21 @@ class Analysis(Elementary):
         sleep(.5)
         for reg, lst in regions.iteritems():
             if len(reg) < 3:
+                offset = 40 if not lst[0] in starts else 20
                 if lst[1] - lst[0] > 1:
-                    offset = 20 if not lst[0] in starts else 40
                     gr.SetPoint(i, (lst[1] + lst[0]) / 4., c.GetUymax() - offset)
                     gr.SetPointError(i, (lst[1] - lst[0]) / 4., 0)
-                    l = TLatex(gr.GetX()[i], gr.GetY()[i] + 3, reg)
-                    l.SetTextAlign(20)
-                    l.SetTextColor(2)
+                    l = self.make_tlatex(gr.GetX()[i], gr.GetY()[i] + 3, '{sig}{reg}'.format(reg=reg, sig='p' if ped else 's'), color=2, size=.04)
                     gr.GetListOfFunctions().Add(l)
                     i += 1
-                l1 = self.make_tgaxis(lst[0] / 2, -200, 50, '', 2)
-                l2 = self.make_tgaxis(lst[1] / 2, -200, 50, '', 2) if lst[1] - lst[0] > 1 else 0
+                l1 = self.make_tgaxis(lst[0] / 2, c.GetUymin(), c.GetUymax() - offset, '', 2)
+                l2 = self.make_tgaxis(lst[1] / 2, c.GetUymin(), c.GetUymax() - offset, '', 2) if lst[1] - lst[0] > 1 else 0
                 if not lst[1] - lst[0] > 1:
                     l1.SetLineColor(4)
                     l1.SetLineWidth(2)
                     l1.SetTitleColor(4)
                     l1.SetY2(c.GetUymax() - 100)
-                    tit = TLatex(lst[0] / 2, c.GetUymax() - 97, reg)
-                    tit.SetTextAlign(20)
-                    tit.SetTextColor(4)
+                    tit = self.make_tlatex(lst[0] / 2, c.GetUymax() - 97, '{sig}{reg}'.format(reg=reg, sig='p' if ped else 's'), size=.04, color=4)
                     tit.Draw()
                     titles.append(tit)
                 l1.Draw()
@@ -207,28 +202,32 @@ class Analysis(Elementary):
         labels = []
         arrows = []
         start = self.run.signal_regions['b'][0] % 40
+        stop = int(.8 * c.GetUxmax()) if c.GetUxmax() > 500 else int(c.GetUxmax())
+        print 'sta-sto:', start, stop
         bucket0 = self.run.signal_regions['b'][0] / 40
-        l = self.make_tlatex(start - 10, c.GetUymin() - 30, 'Bucket:', align=30, color=kGreen + 2, size=0.03)
+        x_range = c.GetUxmax() - c.GetUxmin()
+        print 'xrange', x_range
+        l = self.make_tlatex(c.GetUxmin() - .015 * x_range, c.GetUymin() - 30, 'Bucket:', align=30, color=kGreen + 2, size=0.03)
         l.Draw()
         labels.append(l)
-        l1 = self.make_tlatex(start - 10, c.GetUymin() + 5, 'PeakPos:', align=30, color=kOrange + 7, size=0.03)
+        l1 = self.make_tlatex(c.GetUxmin() - .015 * x_range, c.GetUymin() + 5, 'Peak:', align=30, color=kOrange + 7, size=0.03)
         l1.Draw()
         labels.append(l1)
         peak_fit = self.fit_peak_values(draw=False) if hasattr(self, 'fit_peak_values') else 0
-        for i, x in enumerate(xrange(start, 401, 20), -bucket0):
+        for i, x in enumerate(xrange(start, stop, 20), -bucket0):
             a = self.make_tgaxis(x, c.GetUymin() - 30, c.GetUymin() - 12, '', kGreen + 2)
-            if x <= 380:
+            if x <= stop - 20:
                 l = self.make_tlatex(x + 10, c.GetUymin() - 30, str(i), align=20, color=kGreen + 2, size=0.03)
                 labels.append(l)
                 l.Draw()
-            if peak_fit:
-                pos = peak_fit.Parameter(1) % 20
-                ar = TArrow(x + pos, c.GetUymin() + 1, x + pos, c.GetUymin() + 10, .005, '<|')
-                ar.SetLineWidth(2)
-                ar.SetFillColor(kOrange + 7)
-                ar.SetLineColor(kOrange + 7)
-                ar.Draw()
-                arrows.append(ar)
+                if peak_fit:
+                    pos = peak_fit.Parameter(1) % 20
+                    ar = TArrow(x + pos, c.GetUymin() + 1, x + pos, c.GetUymin() + 10, .005, '<|')
+                    ar.SetLineWidth(2)
+                    ar.SetFillColor(kOrange + 7)
+                    ar.SetLineColor(kOrange + 7)
+                    ar.Draw()
+                    arrows.append(ar)
             a.Draw()
             axis.append(a)
         self.histos[1] = [axis, labels, arrows]
@@ -236,7 +235,7 @@ class Analysis(Elementary):
     def draw_peak_integrals(self, event=None):
         h = self.draw_single_wf(event=event, show=False)
         c = TCanvas('c1', 'Regions', 1000, 500)
-        c.SetMargin(.075, .045, .1, .1)
+        c.SetMargin(.075, .045, .2, .1)
         c.SetGrid()
         self.format_histo(h, title='Peak Integrals', markersize=.5)
         h.GetXaxis().SetRangeUser(self.run.signal_regions['e'][0] / 2, self.run.signal_regions['e'][1] / 2)
@@ -259,6 +258,7 @@ class Analysis(Elementary):
                 i += 1
         gr.Draw('[]')
         gr.Draw('p')
+        self.__add_buckets()
         self.save_plots('IntegralPeaks', sub_dir=self.ana_save_dir, ch=None)
         self.histos[0] = [gr, c, l, t1, h]
     # endregion
