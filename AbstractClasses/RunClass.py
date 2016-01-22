@@ -317,7 +317,10 @@ class Run(Elementary):
             if line.startswith(string):
                 data = re.split('_|:|-', line)
                 data = [data[i].strip(' ') for i in range(len(data))]
-                ranges[data[1]] = [int(data[2]), int(data[3])]
+                try:
+                    ranges[data[1]] = [int(data[2]), int(data[3])]
+                except IndexError:
+                    ranges[data[0]] = [int(data[i]) for i in [1, 2]]
         return ranges
 
     def get_peak_integrals(self):

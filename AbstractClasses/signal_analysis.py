@@ -40,6 +40,7 @@ class SignalAnalysis(Analysis):
         # names
         self.signal_name = self.signal_names[channel]
         self.pedestal_name = self.pedestal_names[channel]
+        self.pulser_name = 0
 
         # projection
         self.signal_projections = {}
@@ -70,6 +71,20 @@ class SignalAnalysis(Analysis):
         self.time_binning = self.get_time_binning()
         self.n_bins = len(self.binning)
         return value
+
+    def get_signal_number(self, region='', peak_integral='2', sig_type='signal'):
+        assert sig_type in ['signal', 'pedestal', 'pulser'], 'Invalid type of signal'
+        if sig_type == 'signal':
+            assert region in self.run.signal_regions, 'Invalid signal region {reg}!'.format(reg=region)
+        elif sig_type == 'pedestal':
+            assert region in self.run.pedestal_regions, 'Invalid pedestal region {reg}!'.format(reg=region)
+        assert str(peak_integral) in self.run.peak_integrals, 'Invalid peak integral {reg}!'.format(reg=peak_integral)
+        int_name = 'ch{ch}_{type}{reg}_PeakIntegral{int}'.format(ch=self.channel, reg='_' + region if region else '', int=peak_integral, type=sig_type)
+        return self.integral_names[int_name]
+
+    def get_signal_name(self, region='', peak_integral='2', sig_type='signal'):
+        num = self.get_signal_number(region, peak_integral, sig_type)
+        return '{pol}*IntegralValues[{num}]'.format(pol=self.polarity, num=num)
 
     # ==========================================================================
     # region 2D SIGNAL DISTRIBUTION
@@ -272,15 +287,15 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region PEAK VALUES
-    def draw_peak_values(self, region='b', draw=True):
+    def draw_peak_values(self, region=None, type_='signal', draw=True):
+        num = self.signal_num if region is None else self.get_signal_number(region=region, sig_type=type_)
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        num = self.get_signal_numbers(region, self.peak_integral)[self.channel]
         peak_val = 'IntegralPeaks[{num}]'.format(num=num)
-        title = 'Peak Values {reg}{int}'.format(reg=region, int=self.peak_integral)
-        x = self.run.signal_regions[region]
+        title = 'Peak Values {reg}'.format(reg=region)
+        x = self.run.signal_regions[region] if type_ == 'signal' else self.run.get_regions('pulser')['pulser']
         h = TH1F('peakvalues', title, x[1] - x[0], x[0] / 2., x[1] / 2.)
         self.format_histo(h, x_tit='time [ns]', y_tit='Entries', y_off=2)
-        cut = self.cut.all_cut
+        cut = self.cut.all_cut if type_ == 'signal' else '!({0})'.format(z.cut.cut_strings['pulser'])
         self.tree.Draw(peak_val + '/2.>>peakvalues', cut, 'goff')
         if draw:
             c = TCanvas('c', 'Signal Peak Distribution', 1000, 1000)
@@ -808,6 +823,14 @@ class SignalAnalysis(Analysis):
     # endregion
 
     # ==========================================================================
+    # region PULSER
+    def show_pulser_histo(self):
+        cut = '!({0})'.format(z.cut.cut_strings['pulser'])
+        z.show_signal_histo(cut=cut, sig=self.get_signal_name(sig_type='pulser'))
+
+    # endregion
+
+    # ==========================================================================
     # region SHOW
     def draw_bucket_pedestal(self, show=True):
         gROOT.SetBatch(1)
@@ -1072,7 +1095,7 @@ class SignalAnalysis(Analysis):
         i = 0
         ratio = '{0}{1}'.format(self.run.peak_integrals.values()[0][0], self.run.peak_integrals.values()[0][1])
         for name, value in peak_integrals.iteritems():
-            sig_name = self.get_signal_name(peak_int=name)
+            sig_name = self.get_signal_name(region='b', peak_integral=name)
             signal = self.draw_pulse_height(eventwise_corr=True, draw=False, sig=sig_name) if not ped else self.show_pedestal_histo(draw=False, peak_int=name)
             par = 2 if ped else 0
             gr.SetPoint(i, (value[1] + value[0]) / 2., signal.Parameter(par))
@@ -1092,8 +1115,6 @@ class SignalAnalysis(Analysis):
 
     # ============================================
     # region MISCELLANEOUS
-    def get_signal_name(self, reg='b', peak_int='2'):
-        return self.get_signal_names(self.get_signal_numbers(reg, peak_int))[self.channel]
 
     def get_peak_position(self, event=None, region='b', peak_int='2'):
         num = self.get_signal_numbers(region=region, integral=peak_int)[self.channel]
