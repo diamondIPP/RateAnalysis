@@ -5,7 +5,7 @@ from numpy import array, zeros
 import types as t
 
 import ROOT
-from ROOT import TCanvas, TH2F, gROOT, TProfile, TH1F, TLegend, gStyle, kGreen, TArrow, kOrange
+from ROOT import TCanvas, TH2F, gROOT, TProfile, TH1F, TLegend, gStyle, kGreen, TArrow, kOrange, kViolet, kCyan
 from AbstractClasses.PreAnalysisPlot import PreAnalysisPlot
 from AbstractClasses.ConfigClass import *
 from AbstractClasses.RunClass import Run
@@ -129,7 +129,7 @@ class Analysis(Elementary):
     # ============================================================================================
     # region REGIONS AND PEAK INTEGRAL
 
-    def draw_single_wf(self, event=None, show=True):
+    def __draw_single_wf(self, event=None, show=True):
         start = self.start_event if event is None else event
         if hasattr(self, 'draw_waveforms') and self.run.wf_exists(self.channel):
             h = self.draw_waveforms(n=1, show=show, start_event=start)
@@ -150,8 +150,8 @@ class Analysis(Elementary):
         self.histos[0] = [c, h]
         return h
 
-    def draw_regions(self, event=None, ped=True):
-        h = self.draw_single_wf(event=event, show=False)
+    def draw_regions(self, ped=True, event=None):
+        h = self.__draw_single_wf(event=event, show=False)
         c = TCanvas('c1', 'Regions', 1000, 500)
         c.SetMargin(.075, .045, .2, .1)
         c.SetGrid()
@@ -191,13 +191,13 @@ class Analysis(Elementary):
                 starts.append(lst[0])
         gr.Draw('[]')
         gr.Draw('p')
-        self.__add_buckets()
+        self._add_buckets()
         save_name = 'PedestalRegions' if ped else 'SignalRegions'
         self.save_plots(save_name, sub_dir=self.ana_save_dir, ch=None)
         self.histos[0] = [h, c, gr, lines, titles]
 
-    def __add_buckets(self):
-        c = gROOT.GetSelectedPad()
+    def _add_buckets(self, canvas=None):
+        c = gROOT.GetSelectedPad() if canvas is None else canvas
         axis = []
         labels = []
         arrows = []
@@ -210,7 +210,7 @@ class Analysis(Elementary):
         l = self.make_tlatex(c.GetUxmin() - .015 * x_range, c.GetUymin() - 30, 'Bucket:', align=30, color=kGreen + 2, size=0.03)
         l.Draw()
         labels.append(l)
-        l1 = self.make_tlatex(c.GetUxmin() - .015 * x_range, c.GetUymin() + 5, 'Peak:', align=30, color=kOrange + 7, size=0.03)
+        l1 = self.make_tlatex(c.GetUxmin() - .015 * x_range, c.GetUymin() + 8, 'Peak:', align=30, color=kOrange + 7, size=0.03)
         l1.Draw()
         labels.append(l1)
         peak_fit = self.fit_peak_values(draw=False) if hasattr(self, 'fit_peak_values') else 0
@@ -233,34 +233,45 @@ class Analysis(Elementary):
         self.histos[1] = [axis, labels, arrows]
 
     def draw_peak_integrals(self, event=None):
-        h = self.draw_single_wf(event=event, show=False)
+        h = self.__draw_single_wf(event=event, show=False)
         c = TCanvas('c1', 'Regions', 1000, 500)
         c.SetMargin(.075, .045, .2, .1)
         c.SetGrid()
         self.format_histo(h, title='Peak Integrals', markersize=.5)
-        h.GetXaxis().SetRangeUser(self.run.signal_regions['e'][0] / 2, self.run.signal_regions['e'][1] / 2)
+        h.GetXaxis().SetRangeUser(self.run.signal_regions['e'][0] / 2 - 20, self.run.signal_regions['e'][1] / 2)
         h.Draw()
         sleep(.5)
+        # draw line at found peak and pedestal 'ab'
         peak_pos = self.get_peak_position(event) / 2. if hasattr(self, 'get_peak_position') else self.run.signal_regions['a'][0] / 2.
+        ped_pos = self.run.pedestal_regions['ab'][1] / 2.
         l = self.make_tgaxis(peak_pos, c.GetUymin(), c.GetUymax() - 100, '', 4, 2)
+        l2 = self.make_tgaxis(ped_pos, c.GetUymin(), c.GetUymax() - 100, '', kViolet + 3, 2)
+        l2.Draw()
         l.Draw()
         t1 = self.make_tlatex(peak_pos, c.GetUymax() - 97, 'found peak', color=4)
+        t2 = self.make_tlatex(ped_pos, c.GetUymax() - 97, 'ab', color=kViolet + 3)
         t1.Draw()
-        gr = self.make_tgrapherrors('gr', '', color=kGreen + 2, marker_size=0, asym_err=True, width=3)
+        t2.Draw()
+        # draw error bars
+        gr1 = self.make_tgrapherrors('gr1', '', color=kGreen + 2, marker_size=0, asym_err=True, width=3)
+        gr2 = self.make_tgrapherrors('gr2', '', color=kCyan - 3, marker_size=0, asym_err=True, width=3)
         gStyle.SetEndErrorSize(4)
         i = 0
         for int_, lst in self.run.peak_integrals.iteritems():
             if len(int_) < 3:
-                gr.SetPoint(i, peak_pos, c.GetUymax() - 30 * (i + 1) - 100)
-                gr.SetPointError(i, lst[0] / 2., lst[1] / 2., 0, 0) if lst[1] - lst[0] > 1 else gr.SetPointError(i, .5, .5, 0, 0)
-                l1 = self.make_tlatex(gr.GetX()[i], gr.GetY()[i] + 5, ' ' + int_, color=kGreen + 2, align=10)
-                gr.GetListOfFunctions().Add(l1)
+                gr1.SetPoint(i, peak_pos, c.GetUymax() - 30 * (i + 1) - 100)
+                gr2.SetPoint(i, ped_pos, c.GetUymax() - 33 * (i + 1) - 100)
+                gr1.SetPointError(i, lst[0] / 2., lst[1] / 2., 0, 0) if lst[1] - lst[0] > 1 else gr1.SetPointError(i, .5, .5, 0, 0)
+                gr2.SetPointError(i, lst[0] / 2., lst[1] / 2., 0, 0) if lst[1] - lst[0] > 1 else gr2.SetPointError(i, .5, .5, 0, 0)
+                l1 = self.make_tlatex(gr1.GetX()[i], gr1.GetY()[i] + 5, ' ' + int_, color=kGreen + 2, align=10)
+                gr1.GetListOfFunctions().Add(l1)
                 i += 1
-        gr.Draw('[]')
-        gr.Draw('p')
-        self.__add_buckets()
+        for gr in [gr1, gr2]:
+            gr.Draw('[]')
+            gr.Draw('p')
+        self._add_buckets()
         self.save_plots('IntegralPeaks', sub_dir=self.ana_save_dir, ch=None)
-        self.histos[0] = [gr, c, l, t1, h]
+        self.histos[0] = [gr1, gr2, c, l, t1, h, l2, t2]
     # endregion
 
     # ============================================================================================

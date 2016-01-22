@@ -435,6 +435,7 @@ class Cut(Elementary):
                 self.save_plots('ROC_Curve', file_type='root', sub_dir=self.analysis.save_dir)
 
                 c4 = TCanvas('c4', 'c', 1000, 1000)
+                c4.SetGridx()
                 self.format_histo(gr4, x_tit='Threshold', y_tit='1 / error', y_off=1.4)
                 gr4.Draw('al')
                 self.save_plots('ErrorFunction', sub_dir=self.analysis.save_dir)
@@ -447,7 +448,7 @@ class Cut(Elementary):
         return threshold
 
     @staticmethod
-    def triple_gauss_fit(histo):
+    def triple_gauss_fit(histo, show=True):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         h = histo
         fit = TF1('fit', 'gaus(0) + gaus(3) + gaus(6)')
@@ -463,7 +464,7 @@ class Cut(Elementary):
         fit.SetParLimits(7, s.GetPositionX()[0], s.GetPositionX()[1])
         fit.SetParLimits(8, 1, 10)
         for i in xrange(5):
-            h.Fit(fit, 'qs', '', -50, s.GetPositionX()[1])
+            h.Fit(fit, 'qs{0}'.format('' if show else '0'), '', -50, s.GetPositionX()[1])
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         return fit
 

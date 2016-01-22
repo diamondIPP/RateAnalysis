@@ -484,7 +484,7 @@ class Run(Elementary):
             legend.AddEntry(0, comment, '')
         git_text.Draw()
         legend.Draw()
-        self.run_info_legends[str(channel)] = [legend, git_text]
+        self.run_info_legends[0] = [legend, git_text]
         pad.Modified()
         canvas.Update()
 

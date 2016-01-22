@@ -1,7 +1,7 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen
+from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1
 from newAnalysis import Analysis
 from numpy import array
 from math import sqrt, ceil, log
@@ -10,6 +10,7 @@ from Extrema import Extrema2D
 from time import time, sleep
 from collections import OrderedDict
 from sys import stdout
+from copy import deepcopy
 
 __author__ = 'micha'
 
@@ -454,13 +455,14 @@ class SignalAnalysis(Analysis):
         fit = func() if draw else 0
         return self.do_pickle(picklepath, func, fit)
 
-    def show_signal_histo(self, cut=None, corr=True, show=True):
+    def show_signal_histo(self, cut=None, corr=True, show=True, sig=None):
         gROOT.SetBatch(1)
         print 'drawing signal distribution for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name)
         suffix = 'with Pedestal Correction' if corr else ''
         h = TH1F('signal b2', 'Pulse Height ' + suffix, 350, -50, 300)
         cut = self.cut.all_cut if cut is None else cut
-        signal = '{sig}-{pol}*{ped}'.format(sig=self.signal_name, ped=self.pedestal_name, pol=self.polarity) if corr else self.signal_name
+        sig_name = self.signal_name if sig is None else sig
+        signal = '{sig}-{pol}*{ped}'.format(sig=sig_name, ped=self.pedestal_name, pol=self.polarity) if corr else self.signal_name
         self.tree.Draw('{name}>>signal b2'.format(name=signal), cut, 'goff')
         if show:
             gROOT.SetBatch(0)
@@ -570,6 +572,35 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region CUTS
+    def show_bucket_histos(self):
+        h = TH1F('h', 'Bucket Cut Histograms', 250, -50, 300)
+        self.tree.Draw('{name}>>h'.format(name=self.signal_name), '!({buc})&&{pul}'.format(buc=self.cut.cut_strings['old_bucket'], pul=self.cut.cut_strings['pulser']), 'goff')
+        h1 = deepcopy(h)
+        fit = self.cut.triple_gauss_fit(h1, show=False)
+        sig_fit = TF1('f1', 'gaus', -50, 300)
+        sig_fit.SetParameters(fit.GetParameters())
+        ped1_fit = TF1('f2', 'gaus', -50, 300)
+        ped2_fit = TF1('f2', 'gaus', -50, 300)
+        ped1_fit.SetParameters(*[fit.GetParameter(i) for i in xrange(3, 6)])
+        ped2_fit.SetParameters(*[fit.GetParameter(i) for i in xrange(6, 9)])
+        h_sig = deepcopy(h)
+        h_ped1 = deepcopy(h)
+        h_ped2 = deepcopy(h)
+        h_sig.Add(ped1_fit, -1)
+        h_sig.Add(ped2_fit, -1)
+        h_ped1.Add(ped2_fit, -1)
+        h_ped2.Add(ped1_fit, -1)
+        h_ped1.Add(h_sig, -1)
+        h_ped2.Add(h_sig, -1)
+        c = TCanvas('c', 'Bucket Histos', 1000, 1000)
+        for i, h in enumerate([h_ped1, h_ped2, h_sig]):
+            h.SetStats(0)
+            h.SetLineColor(self.get_color())
+            h.SetLineWidth(2)
+            h.Draw('same') if i else h.Draw()
+        self.save_plots('BucketHistos', sub_dir=self.save_dir)
+        self.histos[0] = [h, h_sig, h_ped1, h_ped2, c]
+
     def show_bucket_numbers(self, show=True):
         pickle_path = self.pickle_dir + 'Cuts/BucketEvents_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
 
@@ -797,7 +828,11 @@ class SignalAnalysis(Analysis):
         gROOT.SetBatch(0)
         self.histos[0] = [c, h]
 
-    def draw_waveforms(self, n=1000, start_event=None, cut_string=None, show=True, ret_event=False):
+    def draw_single_wf(self, event=None):
+        cut = '!({0})&&!pulser'.format(self.cut.cut_strings['old_bucket'])
+        return self.draw_waveforms(n=1, cut_string=cut, add_buckets=True, ret_event=True, start_event=event)
+
+    def draw_waveforms(self, n=1000, start_event=None, cut_string=None, show=True, ret_event=False, add_buckets=False):
         """
         Draws stacked waveforms.
         :param n: number of waveforms
@@ -827,6 +862,10 @@ class SignalAnalysis(Analysis):
         c.SetRightMargin(.045)
         self.format_histo(h, x_tit='Time [ns]', y_tit='Signal [au]')
         h.Draw('col')
+        if add_buckets:
+            sleep(.2)
+            c.SetGrid()
+            self._add_buckets(c)
         gROOT.SetBatch(0)
         if n > 1:
             self.save_plots('WaveForms{n}'.format(n=n), sub_dir=self.save_dir)
@@ -890,8 +929,9 @@ class SignalAnalysis(Analysis):
         for key, value in self.cut.cut_strings.iteritems():
             if str(value) or key == 'raw':
                 print 'process cut ' + key
-                h = TH1F('h', '', 600, -100, 500)
-                self.tree.Draw("{name}>>h".format(name=self.signal_name), value)
+                # h = TH1F('h', '', 600, -100, 500)
+                # self.tree.Draw("{name}>>h".format(name=self.signal_name), value)
+                h = self.show_signal_histo(corr=True, cut=value, show=False)
                 mean = self.__get_mean(h)
                 median = self.__get_median(h)
                 mpv = self.__get_mpv(h)
@@ -1030,6 +1070,7 @@ class SignalAnalysis(Analysis):
         gr = self.make_tgrapherrors('gr', '{sig} vs Peak Integral'.format(sig='Signal' if not ped else 'Pedestal'))
         peak_integrals = OrderedDict(sorted({key: value for key, value in self.run.peak_integrals.iteritems() if len(key) < 3}.items()))
         i = 0
+        ratio = '{0}{1}'.format(self.run.peak_integrals.values()[0][0], self.run.peak_integrals.values()[0][1])
         for name, value in peak_integrals.iteritems():
             sig_name = self.get_signal_name(peak_int=name)
             signal = self.draw_pulse_height(eventwise_corr=True, draw=False, sig=sig_name) if not ped else self.show_pedestal_histo(draw=False, peak_int=name)
@@ -1043,7 +1084,8 @@ class SignalAnalysis(Analysis):
         self.format_histo(gr, x_tit='Integralwidth [ns]', y_tit='Signal [au]', y_off=1.3)
         gr.Draw('ap')
         gROOT.SetBatch(0)
-        self.save_plots('{sig}PeakInt'.format(sig='Ped' if ped else 'Sig'), sub_dir=self.save_dir)
+        self.save_plots('{sig}PeakInt_{rat}'.format(rat=ratio, sig='Ped' if ped else 'Sig'), sub_dir=self.save_dir)
+        self.save_plots('{sig}PeakInt_{rat}'.format(rat=ratio, sig='Ped' if ped else 'Sig'), sub_dir=self.save_dir, file_type='root')
         self.histos[0] = [gr, c]
 
     # endregion
