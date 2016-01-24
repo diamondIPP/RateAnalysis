@@ -354,9 +354,9 @@ class Cut(Elementary):
         return TCut(string) if angle > 0 else ''
 
     def generate_old_bucket(self):
-        num = self.analysis.get_signal_numbers('e', 2)
-        name = self.analysis.get_signal_names(num)[self.channel]
-        string = '{sig2}-{sig1}==0'.format(sig2=name, sig1=self.analysis.signal_names[self.channel])
+        sig2 = self.analysis.get_signal_name('e', 2)
+        sig1 = self.analysis.get_signal_name(region=self.analysis.SignalRegion, peak_integral=self.analysis.PeakIntegral)
+        string = '{sig2}-{sig1}==0'.format(sig2=sig2, sig1=sig1)
         return TCut(string)
 
     def calc_signal_threshold(self, bg=False, show=True):
@@ -469,11 +469,11 @@ class Cut(Elementary):
         return fit
 
     def generate_bucket(self):
-        num = self.analysis.get_signal_numbers('e', 2)
-        name = self.analysis.get_signal_names(num)[self.channel]
+        sig2 = self.analysis.get_signal_name('e', 2)
+        sig1 = self.analysis.get_signal_name(region=self.analysis.SignalRegion, peak_integral=self.analysis.PeakIntegral)
         # threshold = self.calc_signal_threshold()
         threshold = self.calc_signal_threshold(show=False)
-        string = '!(({sig2}!={sig1})&&({sig1}<{thres}))'.format(sig2=name, sig1=self.analysis.signal_names[self.channel], thres=threshold)
+        string = '!(({sig2}!={sig1})&&({sig1}<{thres}))'.format(sig2=sig2, sig1=sig1, thres=threshold)
         return TCut(string)
 
     def generate_cut_string(self, set_channel=True):
@@ -545,7 +545,7 @@ class Cut(Elementary):
                 cutstring += '&&'
             self.__load_pedestal_data()
             ped_range = self.__calc_pedestal_range()
-            string = '{ped}>{min}&&{ped}<{max}'.format(ped=self.analysis.pedestal_names[self.channel], min=ped_range[0], max=ped_range[1])
+            string = '{ped}>{min}&&{ped}<{max}'.format(ped=self.analysis.PedestalName, min=ped_range[0], max=ped_range[1])
             cutstring += string
             self.EasyCutStrings["pedestalsigma"] = "PedSigma" + str(self.CutConfig['pedestalsigma'])
             self.cut_strings['ped_sigma'] += string

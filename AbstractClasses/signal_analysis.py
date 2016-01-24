@@ -20,10 +20,11 @@ __author__ = 'micha'
 # ==============================================
 class SignalAnalysis(Analysis):
     def __init__(self, run, channel, high_low_rate_run=None, binning=20000):
+
+        self.channel = channel
         Analysis.__init__(self, run, high_low_rate=high_low_rate_run)
 
         # main
-        self.channel = channel
         self.diamond_name = self.run.diamond_names[channel]
         self.bias = self.run.bias[channel]
         self.cut = self.cuts[channel]
@@ -34,12 +35,12 @@ class SignalAnalysis(Analysis):
         self.binning = self.__get_binning()
         self.time_binning = self.get_time_binning()
         self.n_bins = len(self.binning)
-        self.polarity = self.polarities[channel]
+        self.Polarity = self.get_polarity()
 
         # names
-        self.signal_name = self.signal_names[channel]
-        self.pedestal_name = self.pedestal_names[channel]
-        self.pulser_name = 0
+        self.SignalName = self.get_signal_name(region=self.SignalRegion, peak_integral=self.PeakIntegral)
+        self.PedestalName = self.get_pedestal_name(region=self.PedestalRegion, peak_int=self.PeakIntegral)
+        self.PulserName = self.get_pulser_name()
 
         # graphs
         self.PulseHeight = None
@@ -62,24 +63,13 @@ class SignalAnalysis(Analysis):
                 if not obj.IsA().GetName() == 'TCanvas':
                     self.del_rootobj(obj)
 
-    def set_channel(self, ch):
-        self.channel = ch
-        self.diamond_name = self.run.diamondname[ch]
-        self.bias = self.run.bias[ch]
-        self.cut = self.cuts[ch]
-        self.save_dir = '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number, dia=self.run.diamondname[ch])
-        self.polarity = self.polarities[ch]
-        self.signal_name = self.signal_names[ch]
-        self.pedestal_name = self.pedestal_names[ch]
+    # ==========================================================================
+    # region INIT
+    def get_polarity(self):
+        self.tree.GetEntry(0)
+        return self.tree.polarities[self.channel]
 
-    def __set_bin_size(self, value):
-        self.bin_size = value
-        self.binning = self.__get_binning()
-        self.time_binning = self.get_time_binning()
-        self.n_bins = len(self.binning)
-        return value
-
-    def get_signal_number(self, region='', peak_integral='2', sig_type='signal'):
+    def get_signal_number(self, region='b', peak_integral='2', sig_type='signal'):
         assert sig_type in ['signal', 'pedestal', 'pulser'], 'Invalid type of signal'
         if sig_type == 'signal':
             assert region in self.run.signal_regions, 'Invalid signal region {reg}!'.format(reg=region)
@@ -87,11 +77,36 @@ class SignalAnalysis(Analysis):
             assert region in self.run.pedestal_regions, 'Invalid pedestal region {reg}!'.format(reg=region)
         assert str(peak_integral) in self.run.peak_integrals, 'Invalid peak integral {reg}!'.format(reg=peak_integral)
         int_name = 'ch{ch}_{type}{reg}_PeakIntegral{int}'.format(ch=self.channel, reg='_' + region if region else '', int=peak_integral, type=sig_type)
-        return self.integral_names[int_name]
+        return self.IntegralNames[int_name]
 
-    def get_signal_name(self, region='', peak_integral='2', sig_type='signal'):
+    def get_signal_name(self, region='b', peak_integral='2', sig_type='signal'):
         num = self.get_signal_number(region, peak_integral, sig_type)
-        return '{pol}*IntegralValues[{num}]'.format(pol=self.polarity, num=num)
+        return '{pol}*IntegralValues[{num}]'.format(pol=self.Polarity, num=num)
+
+    def get_pedestal_name(self, region='ab', peak_int='2'):
+        return '{pol}*{name}'.format(pol=self.Polarity, name=self.get_signal_name(region=region, peak_integral=peak_int, sig_type='pedestal'))
+
+    def get_pulser_name(self):
+        return self.get_signal_name(region='', sig_type='pulser')
+
+    # endregion
+
+    def set_channel(self, ch):
+        self.channel = ch
+        self.diamond_name = self.run.diamondname[ch]
+        self.bias = self.run.bias[ch]
+        self.cut = self.cuts[ch]
+        self.save_dir = '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number, dia=self.run.diamondname[ch])
+        self.Polarity = self.get_polarity()
+        self.SignalName = self.get_signal_name()
+        self.PedestalName = self.pedestal_names[ch]
+
+    def __set_bin_size(self, value):
+        self.bin_size = value
+        self.binning = self.__get_binning()
+        self.time_binning = self.get_time_binning()
+        self.n_bins = len(self.binning)
+        return value
 
     # ==========================================================================
     # region 2D SIGNAL DISTRIBUTION
@@ -106,7 +121,7 @@ class SignalAnalysis(Analysis):
         h = TProfile2D('signal_map', 'Signal Map', x_bins, x[0], x[1], y_bins, y[0], y[1])
         if not show:
             gROOT.SetBatch(1)
-        signal = '{sig}-{pol}*{ped}'.format(sig=self.signal_name, ped=self.pedestal_name, pol=self.polarity)
+        signal = '{sig}-{pol}*{ped}'.format(sig=self.SignalName, ped=self.PedestalName, pol=self.Polarity)
         print 'drawing signal map of {dia} for Run {run}...'.format(dia=self.diamond_name, run=self.run_number)
         self.tree.Draw('{z}:diam{nr}_track_x:diam{nr}_track_y>>signal_map'.format(z=signal, nr=nr), self.cut.all_cut, 'goff')
         c = TCanvas('c', 'Signal Map', 1000, 1000)
@@ -309,7 +324,7 @@ class SignalAnalysis(Analysis):
             c = TCanvas('c', 'Signal Peak Distribution', 1000, 1000)
             c.SetLeftMargin(0.14)
             h.Draw()
-            self.save_plots('peak_values_{reg}{int}'.format(reg=region, int=self.peak_integral), 'png', canvas=c, sub_dir=self.save_dir)
+            self.save_plots('peak_values_{reg}{int}'.format(reg=region, int=self.PeakIntegral), 'png', canvas=c, sub_dir=self.save_dir)
             self.canvases[0] = c
         self.PeakValues = h
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
@@ -346,9 +361,9 @@ class SignalAnalysis(Analysis):
     # region SIGNAL/PEDESTAL
     def make_signal_time_histos(self, ped=False, signal=None, corr=False, show=True):
         gROOT.SetBatch(1)
-        signal = self.signal_name if signal is None else signal
-        signal = signal if not ped else self.pedestal_name
-        signal = '{sig}-{pol}*{ped}'.format(sig=signal, ped=self.pedestal_name, pol=self.polarity) if corr else signal
+        signal = self.SignalName if signal is None else signal
+        signal = signal if not ped else self.PedestalName
+        signal = '{sig}-{pol}*{ped}'.format(sig=signal, ped=self.PedestalName, pol=self.Polarity) if corr else signal
         # 2D Histogram
         name = "signaltime_" + str(self.run_number)
         xbins = array(self.time_binning)
@@ -416,7 +431,7 @@ class SignalAnalysis(Analysis):
         return all_means
 
     def draw_pulse_height(self, binning=None, draw=True, ped_corr=False, eventwise_corr=False, sig=None):
-        signal = self.signal_name if sig is None else sig
+        signal = self.SignalName if sig is None else sig
         bin_size = binning if binning is not None else self.bin_size
         correction = ''
         if ped_corr:
@@ -445,7 +460,7 @@ class SignalAnalysis(Analysis):
                 if h_proj.GetEntries() > 0:
                     if mode in ["mean", "Mean"]:
                         mean = h_proj.GetMean()
-                        mean -= self.polarity * means[count] if ped_corr else 0
+                        mean -= self.Polarity * means[count] if ped_corr else 0
                         gr.SetPoint(count, (self.time_binning[i] - self.run.startTime) / 60e3, mean)
                         gr.SetPointError(count, 0, h_proj.GetRMS() / sqrt(h_proj.GetEntries()))
                     elif mode in ["fit", "Fit"]:
@@ -484,8 +499,8 @@ class SignalAnalysis(Analysis):
         suffix = 'with Pedestal Correction' if corr else ''
         h = TH1F('signal b2', 'Pulse Height ' + suffix, 350, -50, 300)
         cut = self.cut.all_cut if cut is None else cut
-        sig_name = self.signal_name if sig is None else sig
-        signal = '{sig}-{pol}*{ped}'.format(sig=sig_name, ped=self.pedestal_name, pol=self.polarity) if corr else self.signal_name
+        sig_name = self.SignalName if sig is None else sig
+        signal = '{sig}-{pol}*{ped}'.format(sig=sig_name, ped=self.PedestalName, pol=self.Polarity) if corr else self.SignalName
         self.tree.Draw('{name}>>signal b2'.format(name=signal), cut, 'goff')
         if show:
             gROOT.SetBatch(0)
@@ -593,7 +608,7 @@ class SignalAnalysis(Analysis):
     # region CUTS
     def show_bucket_histos(self):
         h = TH1F('h', 'Bucket Cut Histograms', 250, -50, 300)
-        self.tree.Draw('{name}>>h'.format(name=self.signal_name), '!({buc})&&{pul}'.format(buc=self.cut.cut_strings['old_bucket'], pul=self.cut.cut_strings['pulser']), 'goff')
+        self.tree.Draw('{name}>>h'.format(name=self.SignalName), '!({buc})&&{pul}'.format(buc=self.cut.cut_strings['old_bucket'], pul=self.cut.cut_strings['pulser']), 'goff')
         h1 = deepcopy(h)
         fit = self.cut.triple_gauss_fit(h1, show=False)
         sig_fit = TF1('f1', 'gaus', -50, 300)
@@ -707,12 +722,12 @@ class SignalAnalysis(Analysis):
             if str(value) or key == 'raw':
                 print 'saving plot', key
                 save_name = 'signal_distribution_{cut}'.format(cut=key)
-                histo_name = 'signal {range}{peakint}'.format(range=self.signal_region, peakint=self.peak_integral)
+                histo_name = 'signal {range}{peakint}'.format(range=self.SignalRegion, peakint=self.PeakIntegral)
                 histo_title = 'signal with cut ' + key
                 histo = TH1F(histo_name, histo_title, 350, -50, 300)
                 # safe single plots
                 c1.cd()
-                self.tree.Draw("{name}>>{histo}".format(name=self.signal_name, histo=histo_name), value)
+                self.tree.Draw("{name}>>{histo}".format(name=self.SignalName, histo=histo_name), value)
                 self.save_plots(save_name, 'png', canvas=c1, sub_dir=self.save_dir)
                 # draw all single plots into c2
                 c2.cd()
@@ -748,12 +763,12 @@ class SignalAnalysis(Analysis):
             if str(value) or key == 'raw':
                 print 'saving plot', key
                 save_name = 'signal_distribution_normalised_{cut}'.format(cut=key)
-                histo_name = 'signal {range}{peakint}'.format(range=self.signal_region, peakint=self.peak_integral)
+                histo_name = 'signal {range}{peakint}'.format(range=self.SignalRegion, peakint=self.PeakIntegral)
                 histo_title = 'normalised signal with cut ' + key
                 histo = TH1F(histo_name, histo_title, 350, -50, 300)
                 # safe single plots
                 c1.cd()
-                self.tree.Draw("{name}>>{histo}".format(name=self.signal_name, histo=histo_name), value)
+                self.tree.Draw("{name}>>{histo}".format(name=self.SignalName, histo=histo_name), value)
                 histo = self.normalise_histo(histo)
                 histo.Draw()
                 self.save_plots(save_name, 'png', canvas=c1, sub_dir=self.save_dir)
@@ -794,12 +809,12 @@ class SignalAnalysis(Analysis):
                 cut += value
                 print 'saving plot with {n} cuts'.format(n=ind)
                 save_name = 'signal_distribution_{n}cuts'.format(n=ind)
-                histo_name = 'signal {range}{peakint}'.format(range=self.signal_region, peakint=self.peak_integral)
+                histo_name = 'signal {range}{peakint}'.format(range=self.SignalRegion, peakint=self.PeakIntegral)
                 histo_title = 'signal with {n} cuts'.format(n=ind)
                 histo = TH1F(histo_name, histo_title, 550, -50, 500)
                 # safe single plots
                 c1.cd()
-                self.tree.Draw("{name}>>{histo}".format(name=self.signal_name, histo=histo_name), cut)
+                self.tree.Draw("{name}>>{histo}".format(name=self.SignalName, histo=histo_name), cut)
                 self.save_plots(save_name, 'png', canvas=c1, sub_dir=self.save_dir)
                 # draw all single plots into c2
                 c2.cd()
@@ -855,7 +870,7 @@ class SignalAnalysis(Analysis):
         reg_margins = self.run.signal_regions[reg_name[0]]
         x_bins = (reg_margins[1] - reg_margins[0])
         h = TH2F('h', 'Bucket Pedestal', x_bins, reg_margins[0] / 2., reg_margins[1] / 2., 550, -50, 500)
-        self.tree.Draw('{sig}:IntegralPeaks[{num}]/2>>h'.format(sig=self.signal_name, num=three_bucket_num), self.cut.cut_strings['tracks'] + self.cut.cut_strings['pulser'], 'goff')
+        self.tree.Draw('{sig}:IntegralPeaks[{num}]/2>>h'.format(sig=self.SignalName, num=three_bucket_num), self.cut.cut_strings['tracks'] + self.cut.cut_strings['pulser'], 'goff')
         if show:
             gROOT.SetBatch(0)
         c = TCanvas('c', 'Bucket Pedestal', 1000, 1000)
@@ -1070,7 +1085,7 @@ class SignalAnalysis(Analysis):
         self.histos['legend'] = [l1, l2]
 
     def calc_snr(self, sig=None):
-        signal = self.signal_name if sig is None else sig
+        signal = self.SignalName if sig is None else sig
         peak_int = self.get_all_signal_names()[signal][-2:] if self.get_all_signal_names()[signal][-2].isdigit() else self.get_all_signal_names()[signal][-1]
         ped_fit = self.show_pedestal_histo(draw=False, peak_int=peak_int)
         sig_fit = self.draw_pulse_height(eventwise_corr=True, draw=False, sig=signal)
@@ -1135,15 +1150,15 @@ class SignalAnalysis(Analysis):
     # ============================================
     # region MISCELLANEOUS
 
+    def get_cut(self):
+        """ :return: full cut_string """
+        return self.cut.all_cut
+
     def get_peak_position(self, event=None, region='b', peak_int='2'):
         num = self.get_signal_numbers(region=region, integral=peak_int)[self.channel]
         ev = self.start_event if event is None else event
         self.tree.GetEntry(ev)
         return self.tree.IntegralPeaks[num]
-
-    def get_polarity(self):
-        self.tree.GetEntry(0)
-        return self.tree.polarities[self.channel]
 
     def get_all_signal_names(self):
         names = OrderedDict()
@@ -1154,9 +1169,9 @@ class SignalAnalysis(Analysis):
                 if len(integral) > 2:
                     integral = '_' + integral
                 name = 'ch{ch}_signal_{reg}_PeakIntegral{int}'.format(ch=self.channel, reg=region, int=integral)
-                num = self.integral_names[name]
+                num = self.IntegralNames[name]
                 reg = region + integral
-                names['{pol}*IntegralValues[{num}]'.format(pol=self.polarity, num=num)] = reg
+                names['{pol}*IntegralValues[{num}]'.format(pol=self.Polarity, num=num)] = reg
         return names
 
     def __get_binning(self):
@@ -1207,10 +1222,16 @@ class SignalAnalysis(Analysis):
     def print_information(self, header=True):
         if header:
             self.print_info_header()
-        infos = [self.run_number, self.run.RunInfo['type'], self.diamond_name.ljust(4), self.bias, self.signal_region + self.peak_integral + '   ']
+        infos = [self.run_number, self.run.RunInfo['type'], self.diamond_name.ljust(4), self.bias, self.SignalRegion + self.PeakIntegral + '   ']
         for info in infos:
             print self.adj_length(info),
         print
+
+    def print_integral_names(self):
+        for key, value in self.IntegralNames.iteritems():
+            if key.startswith('ch{ch}'.format(ch=self.channel)):
+                print str(value).zfill(3), key
+        return
 
     # endregion
 

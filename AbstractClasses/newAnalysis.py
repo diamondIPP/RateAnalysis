@@ -6,7 +6,6 @@ import types as t
 
 import ROOT
 from ROOT import TCanvas, TH2F, gROOT, TProfile, TH1F, TLegend, gStyle, kGreen, TArrow, kOrange, kViolet, kCyan
-from AbstractClasses.PreAnalysisPlot import PreAnalysisPlot
 from AbstractClasses.ConfigClass import *
 from AbstractClasses.RunClass import Run
 from AbstractClasses.Cut import Cut
@@ -19,9 +18,7 @@ from time import sleep
 
 
 class Analysis(Elementary):
-    """
-    An Analysis Object contains all Data and Results of a SINGLE run.
-    """
+    """ Class for the analysis of the non-channel specific stuff of a single run. """
 
     def __init__(self, run, diamonds=3, verbose=False, high_low_rate=None):
         """
@@ -55,23 +52,30 @@ class Analysis(Elementary):
         self.highest_rate_run = high_low_rate['max'] if high_low_rate is not None else self.run.run_number
         self.parser = self.load_parser()
         self.pickle_dir = self.get_program_dir() + self.parser.get('SAVE', 'pickle_dir')
+        # self.saveMCData = parser.getboolean("SAVE", "SaveMCData")
         self.ana_save_dir = '{tc}_{run}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run.run_number)
 
         # tree
         self.tree = self.run.tree
 
         # miscellaneous
-        self.polarities = self.get_polarities()
+        self.Polarity = self.get_polarity() if hasattr(self, 'get_polarity') else 1
+        self.channel = self.channel if hasattr(self, 'channel') else None
 
         # names
-        self.signal_region = self.parser.get('BASIC', 'signal_region')
-        self.pedestal_region = self.parser.get('BASIC', 'pedestal_region')
-        self.peak_integral = self.parser.get('BASIC', 'peak_integral')
-        self.integral_names = self.get_integral_names()
-        self.signal_num = self.get_signal_numbers(self.signal_region, self.peak_integral)
-        self.signal_names = self.get_signal_names()
-        self.pedestal_num = self.get_pedestal_numbers(self.pedestal_region, self.peak_integral)
-        self.pedestal_names = self.get_pedestal_names()
+        self.IntegralNames = self.get_integral_names()
+        self.SignalRegion = self.parser.get('BASIC', 'signal_region')
+        self.PedestalRegion = self.parser.get('BASIC', 'pedestal_region')
+        self.PeakIntegral = self.parser.get('BASIC', 'peak_integral')
+        # todo FIX THAT
+        self.SignalName = self.get_signal_name(region=self.SignalRegion, peak_integral=self.PeakIntegral) if hasattr(self, 'get_signal_name') else None
+        self.PedestalName = self.get_pedestal_name(region=self.PedestalRegion, peak_int=self.PeakIntegral) if hasattr(self, 'get_pedestal_name') else None
+        self.PulserName = self.get_pulser_name() if hasattr(self, 'get_pulser_name') else None
+
+        # self.signal_num = self.get_signal_numbers(self.signal_region, self.peak_integral)
+        # self.signal_names = self.get_signal_names()
+        # self.pedestal_num = self.get_pedestal_numbers(self.pedestal_region, self.peak_integral)
+        # self.pedestal_names = self.get_pedestal_names()
 
         self.Checklist = self.init_checklist()
         self.ExtremaResults = self.init_extrema_results()
@@ -90,6 +94,21 @@ class Analysis(Elementary):
 
         # alignment
         self.IsAligned = self.check_alignment(draw=False)
+
+    # ============================================================================================
+    # region INIT
+
+    def load_parser(self):
+        parser = ConfigParser()
+        parser.read("Configuration/AnalysisConfig_" + self.TESTCAMPAIGN + ".cfg")
+        return parser
+
+    def get_integral_names(self):
+        names = OrderedDict()
+        self.tree.GetEntry(0)
+        for i, name in enumerate(self.tree.IntegralNames):
+            names[name] = i
+        return names
 
     def init_extrema_results(self):
         names = ['TrueNPeaks', 'FoundNMaxima', 'FoundMaxima', 'FoundNMinima', 'FoundMinima', 'Ninjas', 'Ghosts']
@@ -125,6 +144,7 @@ class Analysis(Elementary):
         for ch in self.run.channels:
             dic[ch] = BinCollectionConfig(run=self.run, channel=ch)
         return dic
+    # endregion
 
     # ============================================================================================
     # region REGIONS AND PEAK INTEGRAL
@@ -275,7 +295,7 @@ class Analysis(Elementary):
     # endregion
 
     # ============================================================================================
-    # region SHOW
+    # region TRACKS
     def show_chi2(self, mode=None, show=True):
         gROOT.SetBatch(1)
         assert mode in ['x', 'y', None], 'mode has to be in {lst}!'.format(lst=['x', 'y', None])
@@ -379,75 +399,6 @@ class Analysis(Elementary):
         self.histos['legend'] = legend
         self.save_plots('TrackAngles', sub_dir=self.ana_save_dir, ch=None)
     # endregion
-        
-    def load_parser(self):
-        parser = ConfigParser()
-        parser.read("Configuration/AnalysisConfig_" + self.TESTCAMPAIGN + ".cfg")
-        return parser
-
-    def load_config(self):
-        pass
-        # parser = self.load_parser()
-        # self.saveMCData = parser.getboolean("SAVE", "SaveMCData")
-        # self.loadMaxEvent = parser.getint("TRACKING", "loadMaxEvent")
-        # self.minimum_bincontent = parser.getint("TRACKING", "min_bincontent")
-        # self.minimum_bincontent = parser.getint("TRACKING", "min_bincontent")
-        # self.PadsBinning = parser.getint("TRACKING", "padBinning")
-
-    # ==============================================
-    # region GET INTEGRAL NAMES
-    def get_polarities(self):
-        self.tree.GetEntry(0)
-        pols = {}
-        for ch in self.run.channels:
-            pols[ch] = self.tree.polarities[ch]
-        return pols
-
-    def get_integral_names(self):
-        names = OrderedDict()
-        self.tree.GetEntry(0)
-        for i, name in enumerate(self.tree.IntegralNames):
-            names[name] = i
-        return names
-
-    def get_signal_numbers(self, region, integral):
-        assert region in self.run.signal_regions, 'Invalid region {reg}!'.format(reg=region)
-        assert str(integral) in self.run.peak_integrals, 'Invalid peak integral {reg}!'.format(reg=integral)
-        numbers = {}
-        for ch in self.run.channels:
-            name = 'ch{ch}_signal_{reg}_PeakIntegral{int}'.format(ch=ch, reg=region, int=integral)
-            numbers[ch] = self.integral_names[name]
-        return numbers
-
-    def get_pedestal_numbers(self, region, integral):
-        assert region in self.run.pedestal_regions, 'Invalid pedestal region {reg}!'.format(reg=region)
-        assert str(integral) in self.run.peak_integrals, 'Invalid peak integral {reg}!'.format(reg=integral)
-        numbers = {}
-        integral = '_' + integral if not integral.isdigit() else integral
-        for ch in self.run.channels:
-            name = 'ch{ch}_pedestal_{reg}_PeakIntegral{int}'.format(ch=ch, reg=region, int=integral)
-            numbers[ch] = self.integral_names[name]
-        return numbers
-
-    def get_signal_names(self, num=None):
-        names = {}
-        for ch in self.run.channels:
-            if num is None:
-                names[ch] = '{pol}*IntegralValues[{num}]'.format(pol=self.polarities[ch], num=self.signal_num[ch])
-            else:
-                names[ch] = '{pol}*IntegralValues[{num}]'.format(pol=self.polarities[ch], num=num[ch])
-        return names
-
-    def get_pedestal_names(self, region=None, ped_int=None):
-        region = self.pedestal_region if region is None else region
-        ped_int = self.peak_integral if ped_int is None else ped_int
-        num = self.get_pedestal_numbers(region, ped_int)
-        names = {}
-        for ch in self.run.channels:
-            names[ch] = 'IntegralValues[{num}]'.format(num=num[ch])
-        return names
-
-    # endregion
 
     # ==============================================
     # region ALIGNMENT
@@ -503,101 +454,31 @@ class Analysis(Elementary):
 
     def __check_alignment_histo(self, histo):
         h = histo
-        for bin in xrange(h.FindBin(self.start_event), h.GetNbinsX()):
-            if h.GetBinContent(bin) > 40:
+        for bin_ in xrange(h.FindBin(self.start_event), h.GetNbinsX()):
+            if h.GetBinContent(bin_) > 40:
                 return False
         return True
     # endregion
 
-    def GetSignalDefinition(self, channel=None):
-        if channel == None:
-            assert (not self.Checklist["GlobalPedestalCorrection"][0] and not self.Checklist["GlobalPedestalCorrection"][
-                3]), "GetSignalDefinition() not available for undefined channel and Global Pedestal Correction"
-            if self.pedestal_correction:
-                return self.signalname + "[{channel}] - " + self.pedestalname + "[{channel}]"
-            else:
-                return self.signalname + "[{channel}]"
-        else:
-            assert (channel in [0, 3])
-            return self.signaldefinition[channel]
-
-    def _GlobalPedestalSubtractionString(self, channel):
-        if self.Checklist["GlobalPedestalCorrection"][channel]:
-            return "-(" + str(self.pedestalFitMean[channel]) + ")"
-        else:
-            return ""
-
-    def GetCut(self, channel, gen_PulserCut=True, gen_EventRange=True, gen_ExcludeFirst=True):
-        '''
-        Returns the full Cut string, which corresponds to the given
-        channel (i.e. diamond). If some of the other arguments are
-        False, these cuts will be ignored.
-        :param channel:
-        :param gen_PulserCut:
-        :param gen_EventRange:
-        :param gen_ExcludeFirst:
-        :return:
-        '''
-        return self.cuts[channel].GetCut(gen_PulserCut=gen_PulserCut, gen_EventRange=gen_EventRange, gen_ExcludeFirst=gen_ExcludeFirst)
-
-    def MakePreAnalysis(self, channel=None, mode="mean", binning=5000, savePlot=True, canvas=None, setyscale_sig=None, setyscale_ped=None):
-        '''
-        Creates an overview plot, containing the signal time-evolution
-        as an average graph and as a 2-dimensional histogram.
-        An additional third plot shows the pedestal time-evolution.
-        For these plots is no tracking information required.
-        :return:
-        '''
-        channels = self.GetChannels(channel=channel)
-
-        # c1 = ROOT.TCanvas("c1", "c1")
-        if not hasattr(self, "preAnalysis"):
-            self.preAnalysis = {}
-
-        for ch in channels:
-            self.preAnalysis[ch] = PreAnalysisPlot(analysis=self, channel=ch, canvas=canvas, binning=binning)
-            self.preAnalysis[ch].Draw(mode=mode, savePlot=savePlot, setyscale_sig=setyscale_sig, setyscale_ped=setyscale_ped)
-
     # ==============================================
     # region SHOW & PRINT
-    def show_integral_names(self):
-        for key, value in self.integral_names.iteritems():
-            print str(value).zfill(3), key
-        return
 
-    def DrawRunInfo(self, channel=None, canvas=None, diamondinfo=True, showcut=False, comment=None, infoid="", userHeight=None, userWidth=None):
-        '''
-        Draws the run infos inside the canvas. If no canvas is given, it
-        will be drawn into the active Pad. If The channel number will be
-        given, channel number and diamond name will be drawn.
-        :param channel:
-        :param canvas:
-        :param diamondinfo:
-        :param showcut:
-        :param comment:
-        :param infoid:
-        :param userHeight:
-        :param userWidth:
-        :return:
-        '''
-        self.run.draw_run_info(channel=channel, canvas=canvas, diamondinfo=diamondinfo, comment=comment, infoid=infoid, set_width=userWidth, set_height=userHeight)
-
-    def DrawPreliminary(self, canvas=None, x=0.7, y=0.14):
-        # TODO: make this work
-        if canvas != None:
-            pad = canvas.cd()
-        else:
-            print "Draw run info in current pad"
-            pad = ROOT.gROOT.GetSelectedPad()
-            if pad:
-                pass
-            else:
-                print "ERROR: Can't access active Pad"
-        pad.cd()
-        text = ROOT.TText(x, y, "Preliminary")
-        text.SetNDC()
-        text.SetTextColorAlpha(ROOT.kCyan - 3, 0.7)
+    def draw_preliminary(self):
+        c = gROOT.GetListOfCanvases()[-1]
+        text = ROOT.TText((c.GetUxmax() - c.GetUxmin()) / 2., (c.GetUymax() - c.GetUymin()) / 2., "Preliminary")
+        text.SetTextColor(19)
+        text.SetTextSize(.2)
+        text.SetTextAngle(30)
+        text.SetTextAlign(20)
+        h = None
+        for obj in c.GetListOfPrimitives():
+            print obj.IsA().GetName()
+            if obj.IsA().GetName() in ['TH1F', 'TH2F', 'TGraph', 'TGraphErrors']:
+                h = obj
         text.Draw()
+        h.Draw('same')
+        c.RedrawAxis()
+        self.histos[1] = text
 
     def ShowFFT(self, drawoption="", cut=None, channel=None, startevent=0, endevent=10000000, savePlots=True, canvas=None):
         '''

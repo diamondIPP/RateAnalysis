@@ -30,7 +30,7 @@ class Elementary(object):
         # colors
         self.count = 0
         self.colors = self.create_colorlist()
-        self.channel = None
+        # self.channel = None
 
     def load_config(self):
         pass
@@ -101,10 +101,11 @@ class Elementary(object):
             except Exception as inst:
                 print '\n\n{delim}\nERROR in get canvas!\n{msg}\n{delim}\n\n'.format(delim=len(str(inst)) * '-', msg=inst)
                 return
+        channel = self.channel if hasattr(self, 'channel') else None
         if hasattr(self, 'run'):
-            self.run.draw_run_info(channel=ch if ch is None else self.channel, canvas=canvas)
+            self.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas)
         elif hasattr(self, 'analysis'):
-            self.analysis.run.draw_run_info(channel=ch if ch is None else self.channel, canvas=canvas)
+            self.analysis.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas)
         elif hasattr(self, 'collection'):
             runs = [self.collection.keys()[0], self.collection.keys()[-1], self.collection.values()[0].run.get_rate_string(), self.collection.values()[-1].run.get_rate_string()]
             if not ind:

@@ -62,16 +62,16 @@ class PreAnalysisPlot(Elementary):
         self.analysis.run.tree.Draw(
             self.analysis.pedestalname + "[{channel}]:(time-{starttime})>>pedestaltime{run}".format(channel=self.channel, starttime=self.analysis.run.startTime,
                                                                                                     run=self.analysis.run.run_number),
-            self.analysis.GetCut(self.channel), draw_option)
+            self.analysis.get_cut(self.channel), draw_option)
         # signal
         nEntries = self.analysis.run.tree.Draw(
             (self.analysis.signaldefinition[self.channel] + ":(time-{starttime})>>signaltime{run}").format(channel=self.channel, starttime=self.analysis.run.startTime,
                                                                                                            run=self.analysis.run.run_number),
-            self.analysis.GetCut(self.channel), draw_option)
+            self.analysis.get_cut(self.channel), draw_option)
         # printable signal
         self.analysis.run.tree.Draw(
             (self.analysis.signaldefinition[self.channel] + ":(event_number)/1000>>signaltime2d{run}{channel}").format(run=self.analysis.run.run_number, channel=self.channel),
-            self.analysis.GetCut(self.channel), draw_option)
+            self.analysis.get_cut(self.channel), draw_option)
         return nEntries
 
     def _FillGraphs(self, mode):
@@ -221,7 +221,7 @@ class PreAnalysisPlot(Elementary):
 
     def PrintInfos(self):
         print "Total Minutes:\t{tot}\nnbins:\t\t{nbins}".format(tot=self.analysis.run.totalMinutes, nbins=self.nBins)
-        print "making PreAnalysis using\nSignal def:\t{signal}\nCut:\n\t{cut}".format(signal=self.analysis.signaldefinition[self.channel], cut=self.analysis.GetCut(self.channel))
+        print "making PreAnalysis using\nSignal def:\t{signal}\nCut:\n\t{cut}".format(signal=self.analysis.signaldefinition[self.channel], cut=self.analysis.get_cut(self.channel))
         print "starttime:\t", self.analysis.run.startTime
         print "startevent:\t", self.analysis.run.startEvent
         print "endtime:\t", self.analysis.run.endTime
@@ -242,7 +242,7 @@ class PreAnalysisPlot(Elementary):
             self.signalTimeCanvas.cd(1)
 
             nEntries = self._Fill2DHistos(drawOption2D)
-            assert (int(nEntries) > 0), "Error: No signal event with current settings.. \nThe Cut is:\n\t" + self.analysis.GetCut(self.channel)
+            assert (int(nEntries) > 0), "Error: No signal event with current settings.. \nThe Cut is:\n\t" + self.analysis.get_cut(self.channel)
 
             self._FillGraphs(mode)
 
