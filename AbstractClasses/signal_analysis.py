@@ -30,7 +30,6 @@ class SignalAnalysis(Analysis):
         self.save_dir = '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number, dia=self.diamond_name)
 
         # stuff
-        self.draw_option = 'COLZ'
         self.bin_size = binning
         self.binning = self.__get_binning()
         self.time_binning = self.get_time_binning()
@@ -42,18 +41,26 @@ class SignalAnalysis(Analysis):
         self.pedestal_name = self.pedestal_names[channel]
         self.pulser_name = 0
 
-        # projection
-        self.signal_projections = {}
         # graphs
         self.PulseHeight = None
         self.Pedestal = None
-        self.signals = {}
-        self.tmp_histos = {}
         # histograms
-        self.signaltime = None
+        self.SignalTime = None
         self.SignalMapHisto = None
         self.MeanSignalHisto = None
         self.PeakValues = None
+
+    def __del__(self):
+        for obj in [self.PulseHeight, self.Pedestal, self.SignalMapHisto, self.SignalTime, self.PeakValues, self.MeanSignalHisto]:
+            self.del_rootobj(obj)
+        for c in gROOT.GetListOfCanvases():
+            c.Close()
+        for lst in self.histos.itervalues():
+            if not type(lst) is list:
+                lst = [lst]
+            for obj in lst:
+                if not obj.IsA().GetName() == 'TCanvas':
+                    self.del_rootobj(obj)
 
     def set_channel(self, ch):
         self.channel = ch
@@ -288,14 +295,15 @@ class SignalAnalysis(Analysis):
     # ==========================================================================
     # region PEAK VALUES
     def draw_peak_values(self, region=None, type_='signal', draw=True):
-        num = self.signal_num if region is None else self.get_signal_number(region=region, sig_type=type_)
+        num = self.signal_num[self.channel] if region is None else self.get_signal_number(region=region, sig_type=type_)
+        region = 'b' if region is None else region
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         peak_val = 'IntegralPeaks[{num}]'.format(num=num)
         title = 'Peak Values {reg}'.format(reg=region)
         x = self.run.signal_regions[region] if type_ == 'signal' else self.run.get_regions('pulser')['pulser']
         h = TH1F('peakvalues', title, x[1] - x[0], x[0] / 2., x[1] / 2.)
         self.format_histo(h, x_tit='time [ns]', y_tit='Entries', y_off=2)
-        cut = self.cut.all_cut if type_ == 'signal' else '!({0})'.format(z.cut.cut_strings['pulser'])
+        cut = self.cut.all_cut if type_ == 'signal' else '!({0})'.format(self.cut.cut_strings['pulser'])
         self.tree.Draw(peak_val + '/2.>>peakvalues', cut, 'goff')
         if draw:
             c = TCanvas('c', 'Signal Peak Distribution', 1000, 1000)
@@ -356,7 +364,7 @@ class SignalAnalysis(Analysis):
             self.format_histo(h, x_tit='time [ms]', y_tit='Pulse Height [au]', y_off=1.4)
             h.Draw('colz')
             self.save_plots('SignalTime', sub_dir=self.save_dir)
-            self.signaltime = h
+            self.SignalTime = h
             self.canvases[0] = c
         gROOT.SetBatch(0)
         return h
@@ -418,7 +426,7 @@ class SignalAnalysis(Analysis):
         suffix = '{bins}_{cor}_{sig}'.format(bins=bin_size, cor=correction, sig=self.get_all_signal_names()[signal])
         picklepath = 'Configuration/Individual_Configs/Ph_fit/{tc}_{run}_{ch}_{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel, suf=suffix)
 
-        self.signaltime = None
+        self.SignalTime = None
 
         def func():
             print 'drawing pulse height fit for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name)
@@ -512,8 +520,7 @@ class SignalAnalysis(Analysis):
             h.Draw()
             save_name = 'Pedestal_{reg}{cut}'.format(reg=region, cut=cut.GetName())
             self.save_plots(save_name, 'png', canvas=c, sub_dir=self.save_dir)
-            self.tmp_histos[0] = h
-            self.canvas = c
+            self.histos[0] = [h, c]
             gROOT.SetBatch(0)
             return fit_pars
 
@@ -554,10 +561,7 @@ class SignalAnalysis(Analysis):
         for i, reg in enumerate(self.run.pedestal_regions):
             bin_x = gr1.GetXaxis().FindBin(i)
             gr1.GetXaxis().SetBinLabel(bin_x, reg)
-        self.canvases[0] = TCanvas('bla', 'blub', 1000, 1000)
-        self.tmp_histos[1] = gr1
-        self.tmp_histos[0] = gr2
-        self.tmp_histos[2] = gr3
+        c = TCanvas('bla', 'blub', 1000, 1000)
         gr1.Draw('alp')
         gr2.Draw('lp')
         gr3.Draw('lp')
@@ -565,7 +569,7 @@ class SignalAnalysis(Analysis):
         legend.AddEntry(gr2, 'mean fit fwhm w/ cuts median', 'lp')
         legend.AddEntry(gr3, 'mean fit fwhm w/ cuts all', 'lp')
         legend.Draw()
-        self.tmp_histos[4] = legend
+        self.histos[0] = [gr1, gr2, gr3, c, legend]
 
     # endregion
 
@@ -575,7 +579,7 @@ class SignalAnalysis(Analysis):
         :param binning:
         """
         nbins = self.run.n_entries / binning
-        h = TProfile('h', 'Pulser Rate', nbins, 0, z.run.n_entries)
+        h = TProfile('h', 'Pulser Rate', nbins, 0, self.run.n_entries)
         self.tree.Draw('(pulser!=0)*100:Entry$>>h', '', 'goff')
         c = TCanvas('c', 'Pulser Rate Canvas', 1000, 1000)
         self.format_histo(h, name='pulser_rate', title='Pulser Rate', x_tit='Event Number', y_tit='Pulser Fraction [%]', y_off=1.3)
@@ -824,9 +828,21 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region PULSER
-    def show_pulser_histo(self):
-        cut = '!({0})'.format(z.cut.cut_strings['pulser'])
-        z.show_signal_histo(cut=cut, sig=self.get_signal_name(sig_type='pulser'))
+    def show_pulser_histo(self, show=True):
+        cut = '!({0})'.format(self.cut.cut_strings['pulser'])
+        return self.show_signal_histo(cut=cut, sig=self.get_signal_name(sig_type='pulser'), show=show)
+
+    def calc_pulser_fit(self, show=True):
+        pickle_path = self.pickle_dir + 'Pulser/HistoFit_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
+
+        def func():
+            h = self.show_pulser_histo(show=show)
+            max_n = h.GetMaximum()
+            h.GetXaxis().SetRangeUser(h.GetBinCenter(h.FindFirstBinAbove(.02 * max_n)), h.GetBinCenter(h.FindLastBinAbove(.02 * max_n)))
+            return h.Fit('gaus', 'qs{0}'.format('' if show else '0'))
+
+        fit = func() if show else 0
+        return self.do_pickle(pickle_path, func, fit)
 
     # endregion
 
@@ -839,7 +855,7 @@ class SignalAnalysis(Analysis):
         reg_margins = self.run.signal_regions[reg_name[0]]
         x_bins = (reg_margins[1] - reg_margins[0])
         h = TH2F('h', 'Bucket Pedestal', x_bins, reg_margins[0] / 2., reg_margins[1] / 2., 550, -50, 500)
-        self.tree.Draw('{sig}:IntegralPeaks[{num}]/2>>h'.format(sig=self.signal_name, num=three_bucket_num), z.cut.cut_strings['tracks'] + z.cut.cut_strings['pulser'], 'goff')
+        self.tree.Draw('{sig}:IntegralPeaks[{num}]/2>>h'.format(sig=self.signal_name, num=three_bucket_num), self.cut.cut_strings['tracks'] + self.cut.cut_strings['pulser'], 'goff')
         if show:
             gROOT.SetBatch(0)
         c = TCanvas('c', 'Bucket Pedestal', 1000, 1000)
@@ -863,6 +879,7 @@ class SignalAnalysis(Analysis):
         :param start_event: event to start
         :param show:
         :param ret_event: return number of valid events if True
+        :param add_buckets: draw buckets and most probable peak values if True
         :return: histo with waveform
         """
         gROOT.SetBatch(1)
@@ -1024,6 +1041,7 @@ class SignalAnalysis(Analysis):
         return h.GetBinCenter(max_bin)
 
     def draw_snrs(self):
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         gr = self.make_tgrapherrors('gr', 'Signal to Noise Ratios')
         l1 = TLegend(.7, .68, .9, .9)
         l1.SetHeader('Regions')
@@ -1045,6 +1063,7 @@ class SignalAnalysis(Analysis):
         gr.Draw('bap')
         l1.Draw()
         l2.Draw()
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.save_plots('SNR', sub_dir=self.save_dir)
         self.canvases[0] = c
         self.histos[0] = gr

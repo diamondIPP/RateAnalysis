@@ -282,6 +282,11 @@ class Elementary(object):
         return fit
 
     @staticmethod
+    def del_rootobj(obj):
+        if obj is not None:
+            obj.Delete()
+
+    @staticmethod
     def normalise_histo(histo):
         h = histo
         h.Scale(1 / h.Integral(1, h.GetNbinsX()))

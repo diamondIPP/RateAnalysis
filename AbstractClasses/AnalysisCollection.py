@@ -62,17 +62,18 @@ class AnalysisCollection(Elementary):
         self.PeakDistribution = None
 
     def __del__(self):
-        print "deleting AnalysisCollection.."
+        print "deleting AnalysisCollection..."
         for runnumber in self.collection.keys():
             print "in AnalysisCollection.__del__ : deleting Analysis of Run ", runnumber
             self.collection[runnumber].__del__()
-        if hasattr(self, "FWHMcanvas"):
-            canvas = ROOT.gROOT.FindObject("FWHMcanvas")
-            if canvas:
-                canvas.Close()
-                del canvas
-        if hasattr(self, "fwhm_histo"):
-            ROOT.gROOT.Delete("fwhm_histo")
+        for obj in [self.PulseHeight, self.Pedestal, self.FWHM, self.PeakDistribution]:
+            self.del_rootobj(obj)
+        for lst in self.histos.itervalues():
+            if not type(lst) is list:
+                lst = [lst]
+            for obj in lst:
+                if not obj.IsA().GetName() == 'TCanvas':
+                    self.del_rootobj(obj)
         print "AnalyisCollection deleted"
 
     # ============================================
@@ -280,7 +281,60 @@ class AnalysisCollection(Elementary):
         self.save_plots('SignalDistributions', sub_dir=self.save_dir)
         self.histos[0] = [c, histos, legend]
 
+    def draw_snrs(self, flux=True, draw=True):
+        gROOT.SetBatch(1)
+        mode = 'Flux' if flux else 'Run'
+        gr = self.make_tgrapherrors('gr', 'SNR vs {mode}'.format(mode=mode))
+        i = 0
+        for key, ana in self.collection.iteritems():
+            snr = ana.calc_snr()
+            x = ana.run.flux if flux else key
+            gr.SetPoint(i, x, snr[0])
+            gr.SetPointError(i, 0, snr[1])
+            i += 1
+        if draw:
+            gROOT.SetBatch(0)
+        c = TCanvas('c', 'SNR', 1000, 1000)
+        if flux:
+            c.SetLogx()
+        gr.Draw('ap')
+        self.save_plots('AllSNRs', canvas=c, sub_dir=self.save_dir)
+        self.canvases[0] = c
+        self.histos[0] = gr
+        gROOT.SetBatch(0)
+
     # endregion
+
+    # ============================================
+    # region PULSER
+    def draw_pulser_info(self, flux=True, show=True, mean=True):
+        if not show:
+            gROOT.SetBatch(1)
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        mode = 'Flux' if flux else 'Run'
+        title = 'Mean' if mean else 'Sigma'
+        gr = self.make_tgrapherrors('gr', '{tit} of Pulser Histogram vs {mod}'.format(tit=title, mod=mode))
+        i = 0
+        for key, ana in self.collection.iteritems():
+            x = ana.run.flux if flux else key
+            fit = ana.calc_pulser_fit(show=False)
+            par = 1 if mean else 2
+            gr.SetPoint(i, x, fit.Parameter(par))
+            gr.SetPointError(i, 0, fit.ParError(par))
+            i += 1
+        c = TCanvas('c', 'Pulser Overview', 1000, 1000)
+        c.SetLeftMargin(.125)
+        c.SetLogx() if flux else self.do_nothing()
+        self.format_histo(gr, x_tit='{mod}{unit}'.format(mod=mode, unit=' [kHz/cm2]' if flux else ''), y_tit=title + ' [au]', y_off=1.8)
+        gr.Draw('alp')
+        gROOT.SetBatch(0)
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        self.save_plots('Pulser' + title, sub_dir=self.save_dir)
+        self.histos[0] = [c, gr]
+    # endregion
+
+    # ============================================
+    # region CUTS
 
     def draw_bucket_info(self, flux=True, show=True, mean=True):
         if not show:
@@ -326,7 +380,61 @@ class AnalysisCollection(Elementary):
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.save_plots('{mode}_' + mode, sub_dir=self.save_dir)
         self.histos[0] = [c, gr1, gr2, gr3, leg]
+    # endregion
 
+    # ============================================
+    # region PEAK VALUES
+    def draw_signal_peaks(self, flux=True, draw=True):
+        """
+        Shows the means of the signal peak distribution.
+        :param flux:
+        :param draw:
+        """
+        mode = 'Flux' if flux else 'Run'
+        prefix = 'Mean of Signal Peaks: {dia} @ {bias}V vs {mode} '.format(mode=mode, dia=self.collection.values()[0].diamond_name, bias=self.bias)
+        gr = self.make_tgrapherrors('gr', prefix)
+        i = 0
+        for key, ana in self.collection.iteritems():
+            fit = ana.fit_peak_values(draw=False)
+            x = ana.run.flux if flux else key
+            gr.SetPoint(i, x, fit.Parameter(1))
+            gr.SetPointError(i, 0, fit.ParError(1))
+            i += 1
+        self.format_histo(gr, x_tit='{mod}{unit}'.format(mod=mode, unit=' [kHz/cm2]' if flux else ''))
+        c = TCanvas('c', 'Mean of Signal Peaks', 1000, 1000)
+        gr.Draw('alp')
+        self.canvases = c
+        if not draw:
+            c.Close()
+        self.histos[0] = gr
+
+    def draw_signal_fwhm(self, flux=True, draw=True):
+        """
+        Shows the FWHM of the signal peak distribution.
+        :param flux:
+        :param draw:
+        """
+        mode = 'Flux' if flux else 'Run'
+        prefix = 'FWHM of Signal Peaks: {dia} @ {bias}V vs {mode} '.format(mode=mode, dia=self.collection.values()[0].diamond_name, bias=self.bias)
+        gr = self.make_tgrapherrors('gr1', prefix)
+        i = 0
+        for key, ana in self.collection.iteritems():
+            fwhm = ana.calc_peak_value_fwhm()
+            x = ana.run.flux if flux else key
+            gr.SetPoint(i, x, fwhm)
+            i += 1
+        self.format_histo(gr, x_tit='{mod}{unit}'.format(mod=mode, unit=' [kHz/cm2]' if flux else ''))
+        c = TCanvas('c', 'FWHM of Signal Peaks', 1000, 1000)
+        gr.Draw('alp')
+        self.canvases = c
+        if not draw:
+            c.Close()
+        self.histos[0] = gr
+
+    # endregion
+
+    # ============================================
+    # region 2D SIGNAL MAP
     def draw_mean_fwhm(self, saveplots=True, flux=True, draw=True):
         """
         Creates the FWHM Distribution of all selected MeanSignalHistograms
@@ -360,43 +468,6 @@ class AnalysisCollection(Elementary):
         self.canvases[0] = c
         self.FWHM = gr
 
-    def draw_signal_peaks(self, flux=True, draw=True):
-        mode = 'Flux' if flux else 'Run'
-        prefix = 'Mean of Signal Peaks: {dia} @ {bias}V vs {mode} '.format(mode=mode, dia=self.collection.values()[0].diamond_name, bias=self.bias)
-        gr = self.make_tgrapherrors('gr', prefix)
-        i = 0
-        for key, ana in self.collection.iteritems():
-            fit = ana.fit_peak_values(draw=False)
-            x = ana.run.flux if flux else key
-            gr.SetPoint(i, x, fit.Parameter(1))
-            gr.SetPointError(i, 0, fit.ParError(1))
-            i += 1
-        self.format_histo(gr, x_tit='{mod}{unit}'.format(mod=mode, unit=' [kHz/cm2]' if flux else ''))
-        c = TCanvas('c', 'Mean of Signal Peaks', 1000, 1000)
-        gr.Draw('alp')
-        self.canvases = c
-        if not draw:
-            c.Close()
-        self.histos[0] = gr
-
-    def draw_signal_fwhm(self, flux=True, draw=True):
-        mode = 'Flux' if flux else 'Run'
-        prefix = 'FWHM of Signal Peaks: {dia} @ {bias}V vs {mode} '.format(mode=mode, dia=self.collection.values()[0].diamond_name, bias=self.bias)
-        gr = self.make_tgrapherrors('gr1', prefix)
-        i = 0
-        for key, ana in self.collection.iteritems():
-            fwhm = ana.calc_peak_value_fwhm()
-            x = ana.run.flux if flux else key
-            gr.SetPoint(i, x, fwhm)
-            i += 1
-        self.format_histo(gr, x_tit='{mod}{unit}'.format(mod=mode, unit=' [kHz/cm2]' if flux else ''))
-        c = TCanvas('c', 'FWHM of Signal Peaks', 1000, 1000)
-        gr.Draw('alp')
-        self.canvases = c
-        if not draw:
-            c.Close()
-        self.histos[0] = gr
-
     def save_signal_maps(self):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         gROOT.SetBatch(1)
@@ -421,49 +492,65 @@ class AnalysisCollection(Elementary):
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         # return graphs
 
-    def draw_snrs(self, flux=True, draw=True):
+    def draw_signal_spreads(self, flux=True, draw=True):
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         gROOT.SetBatch(1)
         mode = 'Flux' if flux else 'Run'
-        gr = self.make_tgrapherrors('gr', 'SNR vs {mode}'.format(mode=mode))
+        gr = self.make_tgrapherrors('gr', 'Relative Spread vs {mode}'.format(mode=mode))
         i = 0
         for key, ana in self.collection.iteritems():
-            snr = ana.calc_snr()
+            rel_spread = ana.calc_signal_spread()
             x = ana.run.flux if flux else key
-            gr.SetPoint(i, x, snr[0])
-            gr.SetPointError(i, 0, snr[1])
+            gr.SetPoint(i, x, rel_spread[0])
+            gr.SetPointError(i, 0, rel_spread[1])
             i += 1
         if draw:
             gROOT.SetBatch(0)
         c = TCanvas('c', 'SNR', 1000, 1000)
         if flux:
             c.SetLogx()
+        self.format_histo(gr, x_tit='{mod}{unit}'.format(mod=mode, unit=' [kHz/cm2]' if flux else ''), y_tit='Relative Spread [%]')
         gr.Draw('ap')
-        self.save_plots('AllSNRs', canvas=c, sub_dir=self.save_dir)
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        self.save_plots('RelativeSpread', canvas=c, sub_dir=self.save_dir)
         self.canvases[0] = c
         self.histos[0] = gr
         gROOT.SetBatch(0)
 
-    def make_signal_analysis(self, saveplots=True):
+    def show_peak_distribution(self, show=True):
         """
-        Run all available signal analyises together and plot them in an overview.
-        :param saveplots:
+        Shows the positions of the peaks of the 2D map.
+        :param show:
         """
-        start_time = time()
-        self.draw_pulse_heights(draw=False)
-        self.draw_pedestals(draw=False)
-        self.draw_mean_fwhm(draw=False)
-        c = TCanvas('c', 'overview', 800, 1000)
-        c.Divide(1, 3)
-        plots = [self.PulseHeight, self.Pedestal, self.FWHM]
-        for i, plot in enumerate(plots, 1):
-            pad = c.cd(i)
-            pad.SetLogx()
-            plot.Draw()
-        if saveplots:
-            self.save_plots('Overview Plot', sub_dir=self.save_dir, canvas=c)
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        gROOT.SetBatch(1)
+        # create an overall VotingHistogram
+        ana = self.get_first_analysis()
+        ana.draw_mean_signal_distribution(show=False)
+        extrema = Extrema2D(ana.SignalMapHisto, ana.MeanSignalHisto)
+        self.PeakDistribution = extrema.create_voting_histo()
+        for run, ana in self.collection.iteritems():
+            if ana.IsAligned:
+                ana.find_2d_extrema(histo=self.PeakDistribution, show=False)
+            else:
+                print 'Run {run} is not aligned...'.format(run=run)
+        c = TCanvas('c', 'Voting Histos', 1600, 800)
+        c.Divide(2, 1)
+        # new_pal = ar.array('i', [kYellow, kYellow, kOrange, kOrange - 3, kOrange + 7, kRed])
+        ex = [TExec('ex1', 'gStyle->SetPalette(56);'), TExec('ex2', 'gStyle->SetPalette(51)')]
+        if show:
+            gROOT.SetBatch(0)
+        for i, histo in enumerate(self.PeakDistribution.itervalues(), 1):
+            c.cd(i)
+            histo.Draw('col')
+            ex[i - 1].Draw()
+            histo.Draw('colz same')
+        self.save_plots('PeakDistribution', sub_dir=self.save_dir)
+        self.histos[0] = ex
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        gROOT.SetBatch(0)
         self.canvases[0] = c
-
-        print '\nThe preanalysis for this selection took', self.print_elapsed_time(start_time)
+    # endregion
 
     # ====================================================================================
     # region TRACKS
@@ -534,6 +621,28 @@ class AnalysisCollection(Elementary):
 
     # endregion
 
+    def make_signal_analysis(self, saveplots=True):
+        """
+        Run all available signal analyises together and plot them in an overview.
+        :param saveplots:
+        """
+        start_time = time()
+        self.draw_pulse_heights(draw=False)
+        self.draw_pedestals(draw=False)
+        self.draw_mean_fwhm(draw=False)
+        c = TCanvas('c', 'overview', 800, 1000)
+        c.Divide(1, 3)
+        plots = [self.PulseHeight, self.Pedestal, self.FWHM]
+        for i, plot in enumerate(plots, 1):
+            pad = c.cd(i)
+            pad.SetLogx()
+            plot.Draw()
+        if saveplots:
+            self.save_plots('Overview Plot', sub_dir=self.save_dir, canvas=c)
+        self.canvases[0] = c
+
+        print '\nThe preanalysis for this selection took', self.print_elapsed_time(start_time)
+
     def select_runs_in_range(self, start, stop):
         new_collection = OrderedDict()
         for key, ana in self.collection.iteritems():
@@ -543,9 +652,6 @@ class AnalysisCollection(Elementary):
             print 'You did not select any run! No changes were made!'
         else:
             self.collection = new_collection
-
-    def get_first_analysis(self):
-        return self.collection.values()[0]
 
     def set_channel(self, ch):
         """
@@ -561,60 +667,22 @@ class AnalysisCollection(Elementary):
             flux[key] = ana.run.get_flux()
         return flux
 
-    def draw_signal_spreads(self, flux=True, draw=True):
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        gROOT.SetBatch(1)
-        mode = 'Flux' if flux else 'Run'
-        gr = self.make_tgrapherrors('gr', 'Relative Spread vs {mode}'.format(mode=mode))
-        i = 0
-        for key, ana in self.collection.iteritems():
-            rel_spread = ana.calc_signal_spread()
-            x = ana.run.flux if flux else key
-            gr.SetPoint(i, x, rel_spread[0])
-            gr.SetPointError(i, 0, rel_spread[1])
-            i += 1
-        if draw:
-            gROOT.SetBatch(0)
-        c = TCanvas('c', 'SNR', 1000, 1000)
-        if flux:
-            c.SetLogx()
-        self.format_histo(gr, x_tit='{mod}{unit}'.format(mod=mode, unit=' [kHz/cm2]' if flux else ''), y_tit='Relative Spread [%]')
-        gr.Draw('ap')
-        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.save_plots('RelativeSpread', canvas=c, sub_dir=self.save_dir)
-        self.canvases[0] = c
-        self.histos[0] = gr
-        gROOT.SetBatch(0)
+    def get_first_analysis(self):
+        return self.collection.values()[0]
 
-    def show_peak_distribution(self, show=True):
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        gROOT.SetBatch(1)
-        # create an overall VotingHistogram
-        ana = self.get_first_analysis()
-        ana.draw_mean_signal_distribution(show=False)
-        extrema = Extrema2D(ana.SignalMapHisto, ana.MeanSignalHisto)
-        self.PeakDistribution = extrema.create_voting_histo()
-        for run, ana in self.collection.iteritems():
-            if ana.IsAligned:
-                ana.find_2d_extrema(histo=self.PeakDistribution, show=False)
-            else:
-                print 'Run {run} is not aligned...'.format(run=run)
-        c = TCanvas('c', 'Voting Histos', 1600, 800)
-        c.Divide(2, 1)
-        # new_pal = ar.array('i', [kYellow, kYellow, kOrange, kOrange - 3, kOrange + 7, kRed])
-        ex = [TExec('ex1', 'gStyle->SetPalette(56);'), TExec('ex2', 'gStyle->SetPalette(51)')]
-        if show:
-            gROOT.SetBatch(0)
-        for i, histo in enumerate(self.PeakDistribution.itervalues(), 1):
-            c.cd(i)
-            histo.Draw('col')
-            ex[i - 1].Draw()
-            histo.Draw('colz same')
-        self.save_plots('PeakDistribution', sub_dir=self.save_dir)
-        self.histos[0] = ex
-        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        gROOT.SetBatch(0)
-        self.canvases[0] = c
+    def get_run_numbers(self):
+        """ :return: sorted list of run numbers in AnalysisCollection instance """
+        return sorted(self.collection.keys())
+
+    def get_number_of_analyses(self):
+        """ :return: number of analyses that the analysis collection object contains """
+        return len(self.collection)
+
+    def show_information(self):
+        print "ANALYSIS COLLECTION INFO:"
+        self.get_first_analysis().print_info_header()
+        for ana in self.collection.itervalues():
+            ana.print_information(header=False)
 
     def PeakSignalEvolution(self, channel, NMax=3, NMin=3, OnThisCanvas=None, BinRateEvolution=False):
         '''
@@ -895,20 +963,6 @@ class AnalysisCollection(Elementary):
     # In [8]: pad = c1.cd(1)
     # In [10]: a._DrawMinMax(pad, channel, theseMaximas, theseMinimas)
     # --> ADD number to high low labels..
-
-    def get_run_numbers(self):
-        """ :return: sorted list of run numbers in AnalysisCollection instance """
-        return sorted(self.collection.keys())
-
-    def get_number_of_analyses(self):
-        """ :return: number of analyses that the analysis collection object contains """
-        return len(self.collection)
-
-    def show_information(self):
-        print "ANALYSIS COLLECTION INFO:"
-        self.get_first_analysis().print_info_header()
-        for ana in self.collection.itervalues():
-            ana.print_information(header=False)
 
 if __name__ == "__main__":
     main_parser = ArgumentParser()
