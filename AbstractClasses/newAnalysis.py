@@ -62,20 +62,11 @@ class Analysis(Elementary):
         self.Polarity = self.get_polarity() if hasattr(self, 'get_polarity') else 1
         self.channel = self.channel if hasattr(self, 'channel') else None
 
-        # names
+        # regions // ranges
         self.IntegralNames = self.get_integral_names()
         self.SignalRegion = self.parser.get('BASIC', 'signal_region')
         self.PedestalRegion = self.parser.get('BASIC', 'pedestal_region')
         self.PeakIntegral = self.parser.get('BASIC', 'peak_integral')
-        # todo FIX THAT
-        self.SignalName = self.get_signal_name(region=self.SignalRegion, peak_integral=self.PeakIntegral) if hasattr(self, 'get_signal_name') else None
-        self.PedestalName = self.get_pedestal_name(region=self.PedestalRegion, peak_int=self.PeakIntegral) if hasattr(self, 'get_pedestal_name') else None
-        self.PulserName = self.get_pulser_name() if hasattr(self, 'get_pulser_name') else None
-
-        # self.signal_num = self.get_signal_numbers(self.signal_region, self.peak_integral)
-        # self.signal_names = self.get_signal_names()
-        # self.pedestal_num = self.get_pedestal_numbers(self.pedestal_region, self.peak_integral)
-        # self.pedestal_names = self.get_pedestal_names()
 
         self.Checklist = self.init_checklist()
         self.ExtremaResults = self.init_extrema_results()

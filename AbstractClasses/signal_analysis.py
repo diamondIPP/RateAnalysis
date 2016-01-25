@@ -29,7 +29,6 @@ class SignalAnalysis(Analysis):
         self.diamond_name = self.run.diamond_names[channel]
         self.bias = self.run.bias[channel]
         self.save_dir = '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number, dia=self.diamond_name)
-        self.Cut = ChannelCut(self, channel)
 
         # stuff
         self.bin_size = binning
@@ -42,6 +41,9 @@ class SignalAnalysis(Analysis):
         self.SignalName = self.get_signal_name(region=self.SignalRegion, peak_integral=self.PeakIntegral)
         self.PedestalName = self.get_pedestal_name(region=self.PedestalRegion, peak_int=self.PeakIntegral)
         self.PulserName = self.get_pulser_name()
+
+        # cuts
+        self.Cut = ChannelCut(self, channel)
 
         # graphs
         self.PulseHeight = None

@@ -21,8 +21,6 @@ class ChannelCut(Cut):
         self.PedestalFit = None
 
         self.generate_channel_cutstrings()
-        print self.show_cuts(0)
-
         self.all_cut = self.generate_all_cut()
         self.CutStrings['all_cuts'] = self.all_cut
 
