@@ -7,6 +7,7 @@ from numpy import array
 from math import sqrt, ceil, log
 from argparse import ArgumentParser
 from Extrema import Extrema2D
+from ChannelCut import ChannelCut
 from time import time, sleep
 from collections import OrderedDict
 from sys import stdout
@@ -27,8 +28,8 @@ class SignalAnalysis(Analysis):
         # main
         self.diamond_name = self.run.diamond_names[channel]
         self.bias = self.run.bias[channel]
-        self.cut = self.cuts[channel]
         self.save_dir = '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number, dia=self.diamond_name)
+        self.Cut = ChannelCut(self, channel)
 
         # stuff
         self.bin_size = binning
@@ -95,11 +96,11 @@ class SignalAnalysis(Analysis):
         self.channel = ch
         self.diamond_name = self.run.diamondname[ch]
         self.bias = self.run.bias[ch]
-        self.cut = self.cuts[ch]
+        self.Cut = ChannelCut(self, ch)
         self.save_dir = '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number, dia=self.run.diamondname[ch])
         self.Polarity = self.get_polarity()
         self.SignalName = self.get_signal_name()
-        self.PedestalName = self.pedestal_names[ch]
+        self.PedestalName = self.get_pedestal_name()
 
     def __set_bin_size(self, value):
         self.bin_size = value
@@ -123,7 +124,7 @@ class SignalAnalysis(Analysis):
             gROOT.SetBatch(1)
         signal = '{sig}-{pol}*{ped}'.format(sig=self.SignalName, ped=self.PedestalName, pol=self.Polarity)
         print 'drawing signal map of {dia} for Run {run}...'.format(dia=self.diamond_name, run=self.run_number)
-        self.tree.Draw('{z}:diam{nr}_track_x:diam{nr}_track_y>>signal_map'.format(z=signal, nr=nr), self.cut.all_cut, 'goff')
+        self.tree.Draw('{z}:diam{nr}_track_x:diam{nr}_track_y>>signal_map'.format(z=signal, nr=nr), self.Cut.all_cut, 'goff')
         c = TCanvas('c', 'Signal Map', 1000, 1000)
         c.SetLeftMargin(0.12)
         c.SetRightMargin(0.12)
@@ -141,7 +142,7 @@ class SignalAnalysis(Analysis):
 
     def make_region_cut(self):
         self.draw_mean_signal_distribution(show=False)
-        return self.cut.generate_region(self.SignalMapHisto, self.MeanSignalHisto)
+        return self.Cut.generate_region(self.SignalMapHisto, self.MeanSignalHisto)
 
     def find_2d_regions(self):
         self.draw_mean_signal_distribution(show=False)
@@ -232,7 +233,7 @@ class SignalAnalysis(Analysis):
 
         def func():
             print 'getting margins for {dia} of run {run}...'.format(dia=self.diamond_name, run=self.run_number)
-            cut_string = self.cut.all_cut if cut is None else cut
+            cut_string = self.Cut.all_cut if cut is None else cut
             if not show_plot:
                 gROOT.SetBatch(1)
             h = TH2F('h', 'Diamond Margins', 80, -.3, .3, 52, -.3, .3)
@@ -310,7 +311,7 @@ class SignalAnalysis(Analysis):
     # ==========================================================================
     # region PEAK VALUES
     def draw_peak_values(self, region=None, type_='signal', draw=True):
-        num = self.signal_num[self.channel] if region is None else self.get_signal_number(region=region, sig_type=type_)
+        num = self.get_signal_number('b', '2') if region is None else self.get_signal_number(region=region, sig_type=type_)
         region = 'b' if region is None else region
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         peak_val = 'IntegralPeaks[{num}]'.format(num=num)
@@ -318,7 +319,7 @@ class SignalAnalysis(Analysis):
         x = self.run.signal_regions[region] if type_ == 'signal' else self.run.get_regions('pulser')['pulser']
         h = TH1F('peakvalues', title, x[1] - x[0], x[0] / 2., x[1] / 2.)
         self.format_histo(h, x_tit='time [ns]', y_tit='Entries', y_off=2)
-        cut = self.cut.all_cut if type_ == 'signal' else '!({0})'.format(self.cut.cut_strings['pulser'])
+        cut = self.Cut.all_cut if type_ == 'signal' else '!({0})'.format(self.Cut.CutStrings['pulser'])
         self.tree.Draw(peak_val + '/2.>>peakvalues', cut, 'goff')
         if draw:
             c = TCanvas('c', 'Signal Peak Distribution', 1000, 1000)
@@ -371,7 +372,7 @@ class SignalAnalysis(Analysis):
         x_max = 300 if not ped else 20
         bins = 1000 if not ped else 80
         h = TH2D(name, "signaltime", len(xbins) - 1, xbins, bins, x_min, x_max)
-        self.tree.Draw("{name}:time>>{histo}".format(histo=name, name=signal), self.cut.all_cut, 'goff')
+        self.tree.Draw("{name}:time>>{histo}".format(histo=name, name=signal), self.Cut.all_cut, 'goff')
         if show:
             gROOT.SetBatch(0)
             c = TCanvas('c', 'Pulse Height vs Time', 1000, 1000)
@@ -498,7 +499,7 @@ class SignalAnalysis(Analysis):
         print 'drawing signal distribution for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name)
         suffix = 'with Pedestal Correction' if corr else ''
         h = TH1F('signal b2', 'Pulse Height ' + suffix, 350, -50, 300)
-        cut = self.cut.all_cut if cut is None else cut
+        cut = self.Cut.all_cut if cut is None else cut
         sig_name = self.SignalName if sig is None else sig
         signal = '{sig}-{pol}*{ped}'.format(sig=sig_name, ped=self.PedestalName, pol=self.Polarity) if corr else self.SignalName
         self.tree.Draw('{name}>>signal b2'.format(name=signal), cut, 'goff')
@@ -514,7 +515,7 @@ class SignalAnalysis(Analysis):
         return h
 
     def show_pedestal_histo(self, region='ab', peak_int='2', cut=True, fwhm=True, draw=True):
-        cut = self.cut.all_cut if cut else TCut()
+        cut = self.Cut.all_cut if cut else TCut()
         fw = 'fwhm' if fwhm else 'full'
         suffix = '{reg}_{fwhm}_{cut}'.format(reg=region + str(peak_int), cut=cut.GetName(), fwhm=fw)
         picklepath = 'Configuration/Individual_Configs/Pedestal/{tc}_{run}_{ch}_{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel, suf=suffix)
@@ -523,7 +524,7 @@ class SignalAnalysis(Analysis):
             gROOT.SetBatch(1)
             print 'making pedestal histo for region {reg}{int}...'.format(reg=region, int=peak_int)
             h = TH1F('ped1', 'Pedestal Distribution', 100, -20, 20)
-            name = self.get_pedestal_names(region, peak_int)[self.channel]
+            name = self.get_pedestal_name(region, peak_int)
             self.tree.Draw('{name}>>ped1'.format(name=name), cut, 'goff')
             fit_pars = self.fit_fwhm(h, do_fwhm=fwhm, draw=draw)
             gStyle.SetOptFit(1)
@@ -588,29 +589,13 @@ class SignalAnalysis(Analysis):
 
     # endregion
 
-    def draw_pulser_rate(self, binning=200):
-        """
-        Shows the fraction of accepted pulser events as a function of event numbers. Peaks appearing in this graph are most likely beam interruptions.
-        :param binning:
-        """
-        nbins = self.run.n_entries / binning
-        h = TProfile('h', 'Pulser Rate', nbins, 0, self.run.n_entries)
-        self.tree.Draw('(pulser!=0)*100:Entry$>>h', '', 'goff')
-        c = TCanvas('c', 'Pulser Rate Canvas', 1000, 1000)
-        self.format_histo(h, name='pulser_rate', title='Pulser Rate', x_tit='Event Number', y_tit='Pulser Fraction [%]', y_off=1.3)
-        h.Draw('hist')
-        self.run.draw_run_info(canvas=c, channel=self.channel)
-        self.save_plots('pulser_rate', canvas=c, sub_dir=self.save_dir)
-        self.canvases[0] = c
-        self.histos[0] = h
-
     # ==========================================================================
     # region CUTS
     def show_bucket_histos(self):
         h = TH1F('h', 'Bucket Cut Histograms', 250, -50, 300)
-        self.tree.Draw('{name}>>h'.format(name=self.SignalName), '!({buc})&&{pul}'.format(buc=self.cut.cut_strings['old_bucket'], pul=self.cut.cut_strings['pulser']), 'goff')
+        self.tree.Draw('{name}>>h'.format(name=self.SignalName), '!({buc})&&{pul}'.format(buc=self.Cut.CutStrings['old_bucket'], pul=self.Cut.CutStrings['pulser']), 'goff')
         h1 = deepcopy(h)
-        fit = self.cut.triple_gauss_fit(h1, show=False)
+        fit = self.Cut.triple_gauss_fit(h1, show=False)
         sig_fit = TF1('f1', 'gaus', -50, 300)
         sig_fit.SetParameters(fit.GetParameters())
         ped1_fit = TF1('f2', 'gaus', -50, 300)
@@ -640,8 +625,8 @@ class SignalAnalysis(Analysis):
 
         def func():
             print 'getting number of bucket events for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name)
-            n_new = self.tree.Draw('1', '!({buc})&&{pul}'.format(buc=self.cut.cut_strings['bucket'], pul=self.cut.cut_strings['pulser']), 'goff')
-            n_old = self.tree.Draw('1', '!({buc})&&{pul}'.format(buc=self.cut.cut_strings['old_bucket'], pul=self.cut.cut_strings['pulser']), 'goff')
+            n_new = self.tree.Draw('1', '!({buc})&&{pul}'.format(buc=self.Cut.CutStrings['bucket'], pul=self.Cut.CutStrings['pulser']), 'goff')
+            n_old = self.tree.Draw('1', '!({buc})&&{pul}'.format(buc=self.Cut.CutStrings['old_bucket'], pul=self.Cut.CutStrings['pulser']), 'goff')
             if show:
                 print 'New Bucket: {0} / {1} = {2:4.2f}%'.format(n_new, self.run.n_entries, n_new / float(self.run.n_entries) * 100)
                 print 'Old Bucket: {0} / {1} = {2:4.2f}%'.format(n_old, self.run.n_entries, n_old / float(self.run.n_entries) * 100)
@@ -653,7 +638,7 @@ class SignalAnalysis(Analysis):
         # hit position
         h = TH2F('h', 'Diamond Margins', 80, -.3, .3, 52, -.3, .3)
         nr = 1 if not self.channel else 2
-        cut = '!({buc})&&{pul}'.format(buc=self.cut.cut_strings['old_bucket'], pul=self.cut.cut_strings['pulser'])
+        cut = '!({buc})&&{pul}'.format(buc=self.Cut.CutStrings['old_bucket'], pul=self.Cut.CutStrings['pulser'])
         self.tree.Draw('diam{nr}_track_x:diam{nr}_track_y>>h'.format(nr=nr), cut, 'goff')
         projections = [h.ProjectionX(), h.ProjectionY()]
         zero_bins = [[], []]
@@ -683,7 +668,7 @@ class SignalAnalysis(Analysis):
             gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
             cuts_nobucket = TCut('no_bucket', '')
             cuts_oldbucket = TCut('old_bucket', '')
-            for key, value in self.cut.cut_strings.iteritems():
+            for key, value in self.Cut.CutStrings.iteritems():
                 if not key.startswith('old') and key not in ['all_cuts', 'bucket']:
                     cuts_nobucket += value
                 if key not in ['all_cuts', 'bucket']:
@@ -718,7 +703,7 @@ class SignalAnalysis(Analysis):
         legend = TLegend(0.7, 0.3, 0.98, .7)
         histos = []
         drawn_first = False
-        for key, value in self.cut.cut_strings.iteritems():
+        for key, value in self.Cut.CutStrings.iteritems():
             if str(value) or key == 'raw':
                 print 'saving plot', key
                 save_name = 'signal_distribution_{cut}'.format(cut=key)
@@ -759,7 +744,7 @@ class SignalAnalysis(Analysis):
         legend = TLegend(0.7, 0.3, 0.98, .7)
         histos = []
         drawn_first = False
-        for key, value in self.cut.cut_strings.iteritems():
+        for key, value in self.Cut.CutStrings.iteritems():
             if str(value) or key == 'raw':
                 print 'saving plot', key
                 save_name = 'signal_distribution_normalised_{cut}'.format(cut=key)
@@ -804,7 +789,7 @@ class SignalAnalysis(Analysis):
         drawn_first = False
         ind = 0
         cut = TCut('consecutive', '')
-        for key, value in self.cut.cut_strings.iteritems():
+        for key, value in self.Cut.CutStrings.iteritems():
             if (str(value) or key == 'raw') and key != 'all_cuts':
                 cut += value
                 print 'saving plot with {n} cuts'.format(n=ind)
@@ -843,9 +828,25 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region PULSER
+    def draw_pulser_rate(self, binning=200):
+        """
+        Shows the fraction of accepted pulser events as a function of event numbers. Peaks appearing in this graph are most likely beam interruptions.
+        :param binning:
+        """
+        nbins = self.run.n_entries / binning
+        h = TProfile('h', 'Pulser Rate', nbins, 0, self.run.n_entries)
+        self.tree.Draw('(pulser!=0)*100:Entry$>>h', '', 'goff')
+        c = TCanvas('c', 'Pulser Rate Canvas', 1000, 1000)
+        self.format_histo(h, name='pulser_rate', title='Pulser Rate', x_tit='Event Number', y_tit='Pulser Fraction [%]', y_off=1.3)
+        h.Draw('hist')
+        self.run.draw_run_info(canvas=c, channel=self.channel)
+        self.save_plots('pulser_rate', canvas=c, sub_dir=self.save_dir)
+        self.canvases[0] = c
+        self.histos[0] = h
+
     def show_pulser_histo(self, show=True):
-        cut = '!({0})'.format(self.cut.cut_strings['pulser'])
-        return self.show_signal_histo(cut=cut, sig=self.get_signal_name(sig_type='pulser'), show=show)
+        cut = '!({0})'.format(self.Cut.CutStrings['pulser'])
+        return self.show_signal_histo(cut=cut, sig=self.PulserName, show=show, corr=True)
 
     def calc_pulser_fit(self, show=True):
         pickle_path = self.pickle_dir + 'Pulser/HistoFit_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
@@ -866,11 +867,11 @@ class SignalAnalysis(Analysis):
     def draw_bucket_pedestal(self, show=True):
         gROOT.SetBatch(1)
         reg_name = 'e2'
-        three_bucket_num = self.get_signal_numbers(reg_name[0], reg_name[1])[self.channel]
+        three_bucket_num = self.get_signal_number(reg_name[0], reg_name[1])
         reg_margins = self.run.signal_regions[reg_name[0]]
         x_bins = (reg_margins[1] - reg_margins[0])
         h = TH2F('h', 'Bucket Pedestal', x_bins, reg_margins[0] / 2., reg_margins[1] / 2., 550, -50, 500)
-        self.tree.Draw('{sig}:IntegralPeaks[{num}]/2>>h'.format(sig=self.SignalName, num=three_bucket_num), self.cut.cut_strings['tracks'] + self.cut.cut_strings['pulser'], 'goff')
+        self.tree.Draw('{sig}:IntegralPeaks[{num}]/2>>h'.format(sig=self.SignalName, num=three_bucket_num), self.Cut.CutStrings['tracks'] + self.Cut.CutStrings['pulser'], 'goff')
         if show:
             gROOT.SetBatch(0)
         c = TCanvas('c', 'Bucket Pedestal', 1000, 1000)
@@ -883,7 +884,7 @@ class SignalAnalysis(Analysis):
         self.histos[0] = [c, h]
 
     def draw_single_wf(self, event=None):
-        cut = '!({0})&&!pulser'.format(self.cut.cut_strings['old_bucket'])
+        cut = '!({0})&&!pulser'.format(self.Cut.CutStrings['old_bucket'])
         return self.draw_waveforms(n=1, cut_string=cut, add_buckets=True, ret_event=True, start_event=event)
 
     def draw_waveforms(self, n=1000, start_event=None, cut_string=None, show=True, ret_event=False, add_buckets=False):
@@ -903,7 +904,7 @@ class SignalAnalysis(Analysis):
         assert self.run.n_entries >= start >= 0, 'The start event is not within the range of tree events!'
         if not self.run.wf_exists(self.channel):
             return
-        cut = self.cut.all_cut if cut_string is None else cut_string
+        cut = self.Cut.all_cut if cut_string is None else cut_string
         n_events = self.find_n_events(n, cut, start)
         h = TH2F('wf', 'Waveform', 1024, 0, 511, 1000, -500, 500)
         h.SetStats(0)
@@ -981,7 +982,7 @@ class SignalAnalysis(Analysis):
         gr3.SetMarkerColor(3)
         histos = []
         i = 0
-        for key, value in self.cut.cut_strings.iteritems():
+        for key, value in self.Cut.CutStrings.iteritems():
             if str(value) or key == 'raw':
                 print 'process cut ' + key
                 # h = TH1F('h', '', 600, -100, 500)
@@ -1003,7 +1004,7 @@ class SignalAnalysis(Analysis):
         legend.AddEntry(gr3, 'mpv', 'lp')
         xaxis = gr1.GetXaxis()
         i = 0
-        for key, value in self.cut.cut_strings.iteritems():
+        for key, value in self.Cut.CutStrings.iteritems():
             if str(value) or key == 'raw':
                 bin_x = xaxis.FindBin(i)
                 gr1.GetXaxis().SetBinLabel(bin_x, key[:7])
@@ -1106,7 +1107,7 @@ class SignalAnalysis(Analysis):
         peak_integrals = OrderedDict(sorted({key: value for key, value in self.run.peak_integrals.iteritems() if len(key) < 3}.items()))
         i = 0
         for name, value in peak_integrals.iteritems():
-            signal = self.get_signal_names(self.get_signal_numbers('b', name))[self.channel]
+            signal = self.get_signal_name('b', name)
             snr = self.calc_snr(signal)
             x = (value[1] + value[0]) / 2. if not same_width else value[0] / 2.
             gr.SetPoint(i, x, snr[0])
@@ -1152,10 +1153,10 @@ class SignalAnalysis(Analysis):
 
     def get_cut(self):
         """ :return: full cut_string """
-        return self.cut.all_cut
+        return self.Cut.all_cut
 
     def get_peak_position(self, event=None, region='b', peak_int='2'):
-        num = self.get_signal_numbers(region=region, integral=peak_int)[self.channel]
+        num = self.get_signal_number(region, peak_int)
         ev = self.start_event if event is None else event
         self.tree.GetEntry(ev)
         return self.tree.IntegralPeaks[num]
@@ -1175,9 +1176,9 @@ class SignalAnalysis(Analysis):
         return names
 
     def __get_binning(self):
-        jumps = self.cut.jump_ranges
+        jumps = self.Cut.jump_ranges
         n_jumps = len(jumps['start'])
-        bins = [0, self.GetMinEventCut()]
+        bins = [0, self.Cut.get_min_event()]
         ind = 0
         for start, stop in zip(jumps['start'], jumps['stop']):
             gap = stop - start

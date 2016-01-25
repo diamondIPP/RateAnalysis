@@ -1,7 +1,7 @@
 import os
 import ROOT
 from time import time
-from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors
+from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum
 import pickle
 import sys
 from glob import glob
@@ -296,6 +296,27 @@ class Elementary(object):
     @staticmethod
     def do_nothing():
         pass
+
+    @staticmethod
+    def triple_gauss_fit(histo, show=True):
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        h = histo
+        fit = TF1('fit', 'gaus(0) + gaus(3) + gaus(6)')
+        s = TSpectrum(2)
+        s.Search(h)
+        fit.SetParLimits(0, .8 * s.GetPositionY()[1], 1.2 * s.GetPositionY()[1])
+        fit.SetParLimits(1, s.GetPositionX()[1] - 10, s.GetPositionX()[1] + 10)
+        fit.SetParLimits(2, 5, 50)
+        fit.SetParLimits(3, .8 * s.GetPositionY()[0], 1.2 * s.GetPositionY()[0])
+        fit.SetParLimits(4, s.GetPositionX()[0] - 5, s.GetPositionX()[0] + 5)
+        fit.SetParLimits(5, 1, 10)
+        fit.SetParLimits(6, 10, s.GetPositionY()[1])
+        fit.SetParLimits(7, s.GetPositionX()[0], s.GetPositionX()[1])
+        fit.SetParLimits(8, 1, 10)
+        for i in xrange(5):
+            h.Fit(fit, 'qs{0}'.format('' if show else '0'), '', -50, s.GetPositionX()[1])
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        return fit
 
 if __name__ == "__main__":
     z = Elementary()
