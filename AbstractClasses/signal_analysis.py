@@ -63,8 +63,7 @@ class SignalAnalysis(Analysis):
             if not type(lst) is list:
                 lst = [lst]
             for obj in lst:
-                if not obj.IsA().GetName() == 'TCanvas':
-                    self.del_rootobj(obj)
+                self.del_rootobj(obj)
 
     # ==========================================================================
     # region INIT
@@ -503,7 +502,7 @@ class SignalAnalysis(Analysis):
         h = TH1F('signal b2', 'Pulse Height ' + suffix, 350, -50, 300)
         cut = self.Cut.all_cut if cut is None else cut
         sig_name = self.SignalName if sig is None else sig
-        signal = '{sig}-{pol}*{ped}'.format(sig=sig_name, ped=self.PedestalName, pol=self.Polarity) if corr else self.SignalName
+        signal = '{sig}-{pol}*{ped}'.format(sig=sig_name, ped=self.PedestalName, pol=self.Polarity) if corr else sig_name
         self.tree.Draw('{name}>>signal b2'.format(name=signal), cut, 'goff')
         if show:
             gROOT.SetBatch(0)
@@ -846,15 +845,15 @@ class SignalAnalysis(Analysis):
         self.canvases[0] = c
         self.histos[0] = h
 
-    def show_pulser_histo(self, show=True):
+    def show_pulser_histo(self, show=True, corr=True):
         cut = '!({0})'.format(self.Cut.CutStrings['pulser'])
-        return self.show_signal_histo(cut=cut, sig=self.PulserName, show=show, corr=True)
+        return self.show_signal_histo(cut=cut, sig=self.PulserName, show=show, corr=corr)
 
-    def calc_pulser_fit(self, show=True):
-        pickle_path = self.pickle_dir + 'Pulser/HistoFit_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
+    def calc_pulser_fit(self, show=True, corr=True):
+        pickle_path = self.pickle_dir + 'Pulser/HistoFit_{tc}_{run}_{dia}{corr}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name, corr='_ped_corr' if corr else '')
 
         def func():
-            h = self.show_pulser_histo(show=show)
+            h = self.show_pulser_histo(show=show, corr=corr)
             max_n = h.GetMaximum()
             h.GetXaxis().SetRangeUser(h.GetBinCenter(h.FindFirstBinAbove(.02 * max_n)), h.GetBinCenter(h.FindLastBinAbove(.02 * max_n)))
             return h.Fit('gaus', 'qs{0}'.format('' if show else '0'))

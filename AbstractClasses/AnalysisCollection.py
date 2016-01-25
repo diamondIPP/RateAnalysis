@@ -68,12 +68,6 @@ class AnalysisCollection(Elementary):
             self.collection[runnumber].__del__()
         for obj in [self.PulseHeight, self.Pedestal, self.FWHM, self.PeakDistribution]:
             self.del_rootobj(obj)
-        for lst in self.histos.itervalues():
-            if not type(lst) is list:
-                lst = [lst]
-            for obj in lst:
-                if not obj.IsA().GetName() == 'TCanvas':
-                    self.del_rootobj(obj)
         print "AnalyisCollection deleted"
 
     # ============================================
@@ -133,7 +127,6 @@ class AnalysisCollection(Elementary):
 
     def generate_threshold_pickle(self):
         picklepath = 'Configuration/Individual_Configs/Cuts/SignalThreshold_{tc}_{run}_{ch}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.min_max_rate_runs['max'], ch=0)
-        print picklepath
         if os.path.exists(picklepath):
             return
         Analysis(self.min_max_rate_runs['max'])
@@ -307,7 +300,7 @@ class AnalysisCollection(Elementary):
 
     # ============================================
     # region PULSER
-    def draw_pulser_info(self, flux=True, show=True, mean=True):
+    def draw_pulser_info(self, flux=True, show=True, mean=True, corr=True):
         if not show:
             gROOT.SetBatch(1)
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
@@ -317,7 +310,7 @@ class AnalysisCollection(Elementary):
         i = 0
         for key, ana in self.collection.iteritems():
             x = ana.run.flux if flux else key
-            fit = ana.calc_pulser_fit(show=False)
+            fit = ana.calc_pulser_fit(show=False, corr=corr)
             par = 1 if mean else 2
             gr.SetPoint(i, x, fit.Parameter(par))
             gr.SetPointError(i, 0, fit.ParError(par))

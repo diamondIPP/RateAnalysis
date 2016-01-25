@@ -284,7 +284,9 @@ class Elementary(object):
 
     @staticmethod
     def del_rootobj(obj):
-        if obj is not None:
+        if obj is None:
+            return
+        if obj.IsA().GetName() != 'TCanvas':
             obj.Delete()
 
     @staticmethod
