@@ -1,12 +1,14 @@
 import os
-import ROOT
-from time import time
-from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1
 import pickle
-import sys
-from glob import glob
 import re
+import sys
+from copy import deepcopy
+from glob import glob
 from shutil import copyfile
+from time import time
+
+import ROOT
+from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1
 
 
 class Elementary(object):
@@ -319,6 +321,13 @@ class Elementary(object):
             h.Fit(fit, 'qs{0}'.format('' if show else '0'), '', -50, s.GetPositionX()[1])
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         return fit
+
+    @staticmethod
+    def make_class_from_instance(instance):
+        copy = deepcopy(instance.__dict__)
+        instance_factory = type('instance_factory', (instance.__class__, ), {})
+        instance_factory.__init__ = lambda self, *args, **kwargs: self.__dict__.update(copy)
+        return instance_factory
 
 if __name__ == "__main__":
     z = Elementary()

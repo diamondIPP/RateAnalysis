@@ -388,7 +388,7 @@ class Run(Elementary):
         """
         # return time of last event if input is too large
         if time_sec > self.time[-1] / 1000. or time_sec == -1:
-            return self.time[-1]
+            return self.n_entries
         last_time = 0
         offset = self.time[0] / 1000.
         for i, time in enumerate(self.time):

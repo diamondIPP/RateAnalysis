@@ -65,6 +65,14 @@ class SignalAnalysis(Analysis):
             for obj in lst:
                 self.del_rootobj(obj)
 
+    def show_current(self):
+        # todo Make class for dia currents!
+        pass
+
+    def show_cut_contributions(self):
+        # todo make overview of strength of the cuts
+        pass
+
     # ==========================================================================
     # region INIT
     def get_polarity(self):
@@ -946,6 +954,12 @@ class SignalAnalysis(Analysis):
         fit = func() if show else 0
         return self.do_pickle(pickle_path, func, fit)
 
+    def draw_pulser_waveform(self, n=1, start_event=None, add_buckets=False):
+        cut = '!({0})'.format(self.Cut.CutStrings['pulser'])
+        start = self.start_event + self.count if start_event is None else start_event + self.count
+        print 'Event number:', start
+        self.count += self.draw_waveforms(n=n, start_event=start, add_buckets=add_buckets, cut_string=cut, ret_event=True)
+
     # endregion
 
     # ==========================================================================
@@ -1002,8 +1016,9 @@ class SignalAnalysis(Analysis):
             gROOT.SetBatch(0)
         c = TCanvas('c', 'WaveForm', 1000, 500)
         c.SetRightMargin(.045)
-        self.format_histo(h, x_tit='Time [ns]', y_tit='Signal [au]')
-        h.Draw('col')
+        self.format_histo(h, x_tit='Time [ns]', y_tit='Signal [au]', markersize=.4)
+        draw_option = 'scat' if n == 1 else 'col'
+        h.Draw(draw_option)
         if add_buckets:
             sleep(.2)
             c.SetGrid()

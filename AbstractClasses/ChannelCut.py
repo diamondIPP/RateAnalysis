@@ -15,7 +15,8 @@ class ChannelCut(Cut):
     """ The ChannelCut contains all cut settings which corresponds to a single diamond in a single run. """
 
     def __init__(self, analysis, channel=0):
-        Cut.__init__(self, analysis)
+        Cut.__init__(self, analysis, skip=True)
+        self.__dict__.update(analysis.Cut.__dict__)
         self.channel = channel
 
         self.PedestalFit = None

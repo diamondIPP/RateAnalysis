@@ -16,36 +16,36 @@ class Cut(Elementary):
     is loaded from the Analysis config file, whereas the individual cut settings are loaded from a JSON file located at Configuration/Individual_Configs. The JSON files are generated
     by the Analysis method SetIndividualCuts().
     """
-    def __init__(self, parent_analysis, verbose=True):
+    def __init__(self, parent_analysis, verbose=True, skip=False):
 
-        self.analysis = parent_analysis
-        self._checklist = {"RemoveBeamInterruptions": False,
-                           "GenerateCutString": False}
-        # saving stuff
-        self.histos = {}
+        if not skip:
+            self.analysis = parent_analysis
 
-        # config
-        self.parser = self.load_parser()
-        self.beaminterruptions_folder = self.parser.get('CUT', 'beaminterruptions_folder')
-        self.exclude_before_jump = self.parser.getint('CUT', 'excludeBeforeJump')
-        self.exclude_after_jump = self.parser.getint('CUT', 'excludeAfterJump')
-        self.CutConfig = {}
+            # saving stuff
+            self.histos = {}
 
-        # define cut strings
-        self.EasyCutStrings = self.init_easy_cutstrings()
-        self.CutStrings = self.define_cutstrings()
+            # config
+            self.parser = self.load_parser()
+            self.beaminterruptions_folder = self.parser.get('CUT', 'beaminterruptions_folder')
+            self.exclude_before_jump = self.parser.getint('CUT', 'excludeBeforeJump')
+            self.exclude_after_jump = self.parser.getint('CUT', 'excludeAfterJump')
+            self.CutConfig = {}
 
-        self.region_cut = TCut('region_cut', '')
+            # define cut strings
+            self.EasyCutStrings = self.init_easy_cutstrings()
+            self.CutStrings = self.define_cutstrings()
 
-        # beam interrupts
-        self.jumps = None
-        self.jump_ranges = None
+            self.region_cut = TCut('region_cut', '')
 
-        Elementary.__init__(self, verbose=verbose)
+            # beam interrupts
+            self.jumps = None
+            self.jump_ranges = None
 
-        # generate cut strings
-        self.generate_cut_string()
-        self.all_cut = self.generate_all_cut()
+            Elementary.__init__(self, verbose=verbose)
+
+            # generate cut strings
+            self.generate_cut_string()
+            self.all_cut = self.generate_all_cut()
 
     def generate_all_cut(self):
         cut = TCut('all_cuts', '')
@@ -309,7 +309,6 @@ class Cut(Elementary):
         self.__generate_beam_interruptions()
         self.EasyCutStrings['noBeamInter'] = 'BeamOn'
 
-        self._checklist['GenerateCutString'] = True
         gROOT.SetBatch(0)
 
     def __generate_beam_interruptions(self, ):
@@ -327,7 +326,6 @@ class Cut(Elementary):
                 cut_string += '&&'
             cut_string += string
         self.CutStrings['beam_interruptions'] += cut_string
-        self._checklist["RemoveBeamInterruptions"] = True
     # endregion
 
     # ==============================================
