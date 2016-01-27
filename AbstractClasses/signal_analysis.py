@@ -31,7 +31,7 @@ class SignalAnalysis(Analysis):
         self.save_dir = '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number, dia=self.diamond_name)
 
         # stuff
-        self.bin_size = binning
+        self.BinSize = binning
         self.binning = self.__get_binning()
         self.time_binning = self.get_time_binning()
         self.n_bins = len(self.binning)
@@ -104,15 +104,77 @@ class SignalAnalysis(Analysis):
         self.PedestalName = self.get_pedestal_name()
 
     def __set_bin_size(self, value):
-        self.bin_size = value
+        self.BinSize = value
         self.binning = self.__get_binning()
         self.time_binning = self.get_time_binning()
         self.n_bins = len(self.binning)
         return value
 
     # ==========================================================================
+    # region BEAM PROFILE
+
+    def draw_beam_profile(self, mode='x', show=True, fit=True, fit_margin=.6):
+        assert mode.lower() in ['x', 'y'], 'Mode has to be either "x" or "y"!'
+        margins = self.find_diamond_margins(show_plot=False, make_histo=True)
+        h = deepcopy(self.histos[0])
+        if not show:
+            gROOT.SetBatch(1)
+        prof = h.ProjectionX() if mode.lower() == 'x' else h.ProjectionY()
+        margins[mode] = [prof.GetBinLowEdge(prof.FindBin(margins[mode][0]) + 1), prof.GetBinLowEdge(prof.FindBin(margins[mode][1]))]
+        c = TCanvas('c', 'Beam Profile', 1000, 1000)
+        c.SetLeftMargin(.145)
+        self.format_histo(prof, 'prof', 'Profile ' + mode.title(), y_tit='Entries', y_off=2, x_tit='Track Position {mod} [cm]'.format(mod=mode.title()))
+        prof.GetXaxis().SetRangeUser(prof.GetBinCenter(prof.FindFirstBinAbove(0) - 1), prof.GetBinCenter(prof.FindLastBinAbove(0) + 1))
+        prof.Draw()
+        sleep(.1)
+        lines = [self.make_tgaxis(x, c.GetUymin(), c.GetUymax(), '', 2, 2) for x in margins[mode]]
+        for line in lines:
+            line.Draw()
+        fit_result = self.__fit_beam_profile(prof, margins[mode], show, fit_margin=fit_margin) if fit else 0
+        c.RedrawAxis()
+        gROOT.SetBatch(0)
+        self.save_plots('Profile' + mode.title(), sub_dir=self.save_dir)
+        self.histos[1] = [prof, c, lines]
+        return fit_result if fit else prof
+
+    @staticmethod
+    def __fit_beam_profile(histo, margins, show=True, fit_margin=None):
+        h = histo
+        center = (margins[1] + margins[0]) / 2.
+        width = (h.FindBin(margins[1]) - h.FindBin(margins[0])) / 2. * fit_margin * h.GetBinWidth(1)
+        fit = h.Fit('gaus', 'qs{0}'.format('' if show else '0'), '', center - width, center + width)
+        return fit
+
+    def fit_beam_profile(self, mode='x', show=True, fit_margin=.6):
+        pickle_path = self.PickleDir + 'BeamProfile/Fit{mod}_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name, mod=mode.title())
+
+        def func():
+            return self.draw_beam_profile(mode=mode, show=show, fit_margin=fit_margin)
+
+        return self.do_pickle(pickle_path, func)
+
+    def draw_beam_fit_chi2s(self, show=True, mode='x'):
+        if not show:
+            gROOT.SetBatch(1)
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        gr = self.make_tgrapherrors('gr', 'Beam Profile Fit #chi^{2}s')
+        for i in xrange(2, 11):
+            perc = i / 10.
+            fit = self.draw_beam_profile(mode=mode, show=False, fit=True, fit_margin=perc)
+            print perc, fit.Chi2(), int(fit.Ndf())
+            if fit.Ndf():
+                gr.SetPoint(i - 1, perc, fit.Chi2() / fit.Ndf())
+        c = TCanvas('c', 'Beam Chi2', 1000, 1000)
+        gr.Draw('alp')
+        self.histos[1] = [gr, c]
+        gROOT.SetBatch(0)
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+
+    # endregion
+
+    # ==========================================================================
     # region 2D SIGNAL DISTRIBUTION
-    def draw_signal_map(self, draw_option='surf2', show=True, factor=4):
+    def draw_signal_map(self, draw_option='surf2z', show=True, factor=4):
         margins = self.find_diamond_margins(show_plot=False)
         x = [margins['x'][0], margins['x'][1]]
         y = [margins['y'][0], margins['y'][1]]
@@ -134,6 +196,7 @@ class SignalAnalysis(Analysis):
         if draw_option == 'surf2':
             self.format_histo(h, x_off=1.6, y_off=2.2, x_tit='track_x [cm]', y_tit='track_y [cm]')
         h.SetStats(0)
+        h.SetContour(50)
         h.Draw(draw_option)
         self.save_plots('SignalMap2D_' + draw_option, sub_dir=self.save_dir)
         gROOT.SetBatch(0)
@@ -212,7 +275,7 @@ class SignalAnalysis(Analysis):
         return h
 
     def fit_mean_signal_distribution(self):
-        pickle_path = self.pickle_dir + 'MeanSignalFit/{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
+        pickle_path = self.PickleDir + 'MeanSignalFit/{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
 
         def func():
             self.draw_mean_signal_distribution(show=False)
@@ -229,15 +292,15 @@ class SignalAnalysis(Analysis):
     def draw_diamond_hitmap(self, cut=None, show_frame=True):
         self.find_diamond_margins(show_frame=show_frame, cut=cut)
 
-    def find_diamond_margins(self, show_plot=True, show_frame=False, cut=None):
-        pickle_path = self.pickle_dir + 'Margins/{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
+    def find_diamond_margins(self, show_plot=True, show_frame=False, cut=None, make_histo=False):
+        pickle_path = self.PickleDir + 'Margins/{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
 
         def func():
             print 'getting margins for {dia} of run {run}...'.format(dia=self.diamond_name, run=self.run_number)
             cut_string = self.Cut.all_cut if cut is None else cut
             if not show_plot:
                 gROOT.SetBatch(1)
-            h = TH2F('h', 'Diamond Margins', 80, -.3, .3, 52, -.3, .3)
+            h = TH2F('h', 'Diamond Margins', 52, -.3, .3, 80, -.3, .3)
             nr = 1 if not self.channel else 2
             self.tree.Draw('diam{nr}_track_x:diam{nr}_track_y>>h'.format(nr=nr), cut_string, 'goff')
             projections = [h.ProjectionX(), h.ProjectionY()]
@@ -254,7 +317,7 @@ class SignalAnalysis(Analysis):
                         bin_low[i].append(proj.GetBinLowEdge(bin_))
                         bin_high[i].append(proj.GetBinLowEdge(bin_ + 1))
                     if bin_ > 1:
-                        if efficiency and last_bin:
+                        if efficiency and not last_bin:
                             zero_bins[i].append(proj.GetBinCenter(bin_ - 1))
                         elif not efficiency and last_bin:
                             zero_bins[i].append((proj.GetBinCenter(bin_)))
@@ -266,13 +329,13 @@ class SignalAnalysis(Analysis):
                 h.Draw('colz')
                 if show_frame:
                     self.__show_frame(bin_low, bin_high)
-                self.histos[0] = h
                 self.save_plots('diamond_hitmap', sub_dir=self.save_dir, canvas=self.canvas)
+            self.histos[0] = h
             gROOT.SetBatch(0)
             return {name: [efficient_bins[i][0], efficient_bins[i][-1]] for i, name in enumerate(['x', 'y'])}
 
-        margins = self.do_pickle(pickle_path, func) if not show_plot else func()
-        return margins
+        margins = func() if show_plot or make_histo else 0
+        return self.do_pickle(pickle_path, func, margins)
 
     def __show_frame(self, bin_low, bin_high):
         frame = TCutG('frame', 4)
@@ -332,7 +395,7 @@ class SignalAnalysis(Analysis):
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
 
     def fit_peak_values(self, draw=True):
-        pickle_path = self.pickle_dir + 'PeakValues/Fit_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
+        pickle_path = self.PickleDir + 'PeakValues/Fit_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
 
         def func():
             print 'Getting peak value fit for {dia} of run {run}...'.format(run=self.run_number, dia=self.diamond_name)
@@ -346,7 +409,7 @@ class SignalAnalysis(Analysis):
         return self.do_pickle(pickle_path, func)
 
     def calc_peak_value_fwhm(self):
-        pickle_path = self.pickle_dir + 'PeakValues/FWHM_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
+        pickle_path = self.PickleDir + 'PeakValues/FWHM_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
 
         def func():
             print 'Getting peak value FWHM for {dia} of run {run}...'.format(run=self.run_number, dia=self.diamond_name)
@@ -387,7 +450,7 @@ class SignalAnalysis(Analysis):
         return h
 
     def draw_pedestal(self, binning=None, draw=True):
-        bin_size = binning if binning is not None else self.bin_size
+        bin_size = binning if binning is not None else self.BinSize
         picklepath = 'Configuration/Individual_Configs/Pedestal/{tc}_{run}_{ch}_{bins}_Ped_Means.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel, bins=bin_size)
         gr = self.make_tgrapherrors('pedestal', 'Pedestal')
 
@@ -434,7 +497,7 @@ class SignalAnalysis(Analysis):
 
     def draw_pulse_height(self, binning=None, draw=True, ped_corr=False, eventwise_corr=False, sig=None):
         signal = self.SignalName if sig is None else sig
-        bin_size = binning if binning is not None else self.bin_size
+        bin_size = binning if binning is not None else self.BinSize
         correction = ''
         if ped_corr:
             correction = 'binwise'
@@ -494,6 +557,25 @@ class SignalAnalysis(Analysis):
 
         fit = func() if draw else 0
         return self.do_pickle(picklepath, func, fit)
+
+    def draw_ph_distribution(self, binning=None, show=True):
+        if not show:
+            gROOT.SetBatch(1)
+        if binning is not None:
+            self.__set_bin_size(binning)
+        sig_time = self.make_signal_time_histos(corr=True, show=False)
+        means = [h_proj.GetMean() for h_proj in [sig_time.ProjectionY(str(i), i + 1, i + 1) for i in xrange(self.n_bins)] if h_proj.GetEntries() > 100]
+        h = TH1F('h', 'Pulse Height Distribution', int(sqrt(len(means))) * 2 + 2, int(min(means)), int(max(means)) + 2)
+        for mean in means:
+            h.Fill(mean)
+        c = TCanvas('c', 'Pulse Height Distribution', 1000, 1000)
+        c.SetLeftMargin(.12)
+        self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.5)
+        h.SetFillColor(kGreen - 9)
+        h.Draw()
+        gROOT.SetBatch(0)
+        self.save_plots('SignalBin{0}Disto'.format(self.BinSize))
+        self.histos[0] = [h, c]
 
     def show_signal_histo(self, cut=None, corr=True, show=True, sig=None):
         gROOT.SetBatch(1)
@@ -622,7 +704,7 @@ class SignalAnalysis(Analysis):
         self.histos[0] = [h, h_sig, h_ped1, h_ped2, c]
 
     def show_bucket_numbers(self, show=True):
-        pickle_path = self.pickle_dir + 'Cuts/BucketEvents_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
+        pickle_path = self.PickleDir + 'Cuts/BucketEvents_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
 
         def func():
             print 'getting number of bucket events for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name)
@@ -663,7 +745,7 @@ class SignalAnalysis(Analysis):
         return h
 
     def show_bucket_means(self, show=True, plot_histos=True):
-        pickle_path = self.pickle_dir + 'Cuts/BucketMeans_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
+        pickle_path = self.PickleDir + 'Cuts/BucketMeans_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
 
         def func():
             gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
@@ -845,15 +927,18 @@ class SignalAnalysis(Analysis):
         self.canvases[0] = c
         self.histos[0] = h
 
-    def show_pulser_histo(self, show=True, corr=True):
-        cut = '!({0})'.format(self.Cut.CutStrings['pulser'])
+    def show_pulser_histo(self, show=True, corr=True, at_jumps=False):
+        cut = self.Cut.CutStrings['ped_sigma'] + self.Cut.CutStrings['event_range'] + self.Cut.CutStrings['saturated']
+        cut += TCut('{0}({1})'.format('!' if at_jumps else '', self.Cut.CutStrings['beam_interruptions']))
+        cut += '!({0})'.format(self.Cut.CutStrings['pulser'])
         return self.show_signal_histo(cut=cut, sig=self.PulserName, show=show, corr=corr)
 
-    def calc_pulser_fit(self, show=True, corr=True):
-        pickle_path = self.pickle_dir + 'Pulser/HistoFit_{tc}_{run}_{dia}{corr}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name, corr='_ped_corr' if corr else '')
+    def calc_pulser_fit(self, show=True, corr=True, at_jumps=False):
+        suffix = '{corr}_{beam}'.format(corr='_ped_corr' if corr else '', beam='BeamOff' if at_jumps else 'BeamOn')
+        pickle_path = self.PickleDir + 'Pulser/HistoFit_{tc}_{run}_{dia}{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name, suf=suffix)
 
         def func():
-            h = self.show_pulser_histo(show=show, corr=corr)
+            h = self.show_pulser_histo(show=show, corr=corr, at_jumps=at_jumps)
             max_n = h.GetMaximum()
             h.GetXaxis().SetRangeUser(h.GetBinCenter(h.FindFirstBinAbove(.02 * max_n)), h.GetBinCenter(h.FindLastBinAbove(.02 * max_n)))
             return h.Fit('gaus', 'qs{0}'.format('' if show else '0'))
@@ -1193,19 +1278,19 @@ class SignalAnalysis(Analysis):
                 ind += 1
                 continue
             # add bins until hit interrupt
-            while bins[-1] + self.bin_size < start:
-                bins.append(bins[-1] + self.bin_size)
+            while bins[-1] + self.BinSize < start:
+                bins.append(bins[-1] + self.BinSize)
             # two jumps shortly after one another
             if ind < n_jumps - 2:
                 next_start = jumps['start'][ind + 1]
                 next_stop = jumps['stop'][ind + 1]
-                if bins[-1] + self.bin_size + gap > next_start:
+                if bins[-1] + self.BinSize + gap > next_start:
                     gap2 = next_stop - next_start
-                    bins.append(bins[-1] + self.bin_size + gap + gap2)
+                    bins.append(bins[-1] + self.BinSize + gap + gap2)
                 else:
-                    bins.append(bins[-1] + self.bin_size + gap)
+                    bins.append(bins[-1] + self.BinSize + gap)
             else:
-                bins.append(bins[-1] + self.bin_size + gap)
+                bins.append(bins[-1] + self.BinSize + gap)
             ind += 1
         return bins
 

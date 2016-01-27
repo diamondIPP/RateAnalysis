@@ -9,15 +9,15 @@ maskfilepath = /data/psi_2015_10/masks
 createnewrootfiles = True
 signalregion_low = 210
 signalregion_high = 360
-telescopeid = 14
+telescopeid = 12
 
 [ROOTFILE_GENERATION]
 signal_range = [140, 220]
 pedestal_range = [10, 90]
 pulser_range = [780, 840]
 peakintegral1_range = [0, 1]
-peakintegral2_range = [10, 15]
-peakintegral3_range = [25, 55]
+peakintegral2_range = [8, 12]
+peakintegral3_range = [10, 15]
 signal_a_region = [164, 165]
 signal_b_region = [150, 190]
 signal_c_region = [190, 230]

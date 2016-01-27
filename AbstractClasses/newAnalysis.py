@@ -51,7 +51,7 @@ class Analysis(Elementary):
         self.lowest_rate_run = high_low_rate['min'] if high_low_rate is not None else self.run.run_number
         self.highest_rate_run = high_low_rate['max'] if high_low_rate is not None else self.run.run_number
         self.parser = self.load_parser()
-        self.pickle_dir = self.get_program_dir() + self.parser.get('SAVE', 'pickle_dir')
+        self.PickleDir = self.get_program_dir() + self.parser.get('SAVE', 'pickle_dir')
         # self.saveMCData = parser.getboolean("SAVE", "SaveMCData")
         self.ana_save_dir = '{tc}_{run}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run.run_number)
 
@@ -358,7 +358,7 @@ class Analysis(Elementary):
         return h
 
     def calc_angle_fit(self, mode='x', show=True):
-        pickle_path = self.pickle_dir + 'Tracks/AngleFit_{tc}_{run}_{mod}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, mod=mode)
+        pickle_path = self.PickleDir + 'Tracks/AngleFit_{tc}_{run}_{mod}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, mod=mode)
 
         def func():
             h = self.show_angle(mode, show=show)
@@ -420,7 +420,7 @@ class Analysis(Elementary):
         return aligned
 
     def find_alignment_offset(self):
-        offsets = [i for i in xrange(-3, 4) if i]
+        offsets = [i for i in xrange(-5, 5) if i]
         h = TH1F('h', 'Pixel Hits @ Pulser Events', 20, 0, 20)
         right_offset = None
         for offset in offsets:
@@ -435,7 +435,17 @@ class Analysis(Elementary):
                     self.tree.GetEntry(event + offset)
                     hits = len(self.tree.col)
                     h.Fill(hits)
-            if self.__check_alignment_histo(h):
+            h.SetName(str(offset))
+            h.Draw()
+            sleep(.2)
+            c = gROOT.GetSelectedPad()
+            c.Update()
+            sleep(2)
+            # find offset
+            glob_max = [h.GetMaximumBin(), h.GetMaximum()]
+            h.GetXaxis().SetRangeUser(1, 20)
+            hit_max = [h.GetMaximumBin(), h.GetMaximum()]
+            if glob_max[0] == 1 and glob_max[1] > 2 * hit_max[1]:
                 right_offset = offset
                 break
             h.Reset()

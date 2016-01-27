@@ -74,12 +74,12 @@ class ChannelCut(Cut):
         return TCut(string)
 
     def calc_signal_threshold(self, bg=False, show=True):
-        pickle_path = self.analysis.pickle_dir + 'Cuts/SignalThreshold_{tc}_{run}_{ch}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.highest_rate_run, ch=self.channel)
+        pickle_path = self.analysis.PickleDir + 'Cuts/SignalThreshold_{tc}_{run}_{ch}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.highest_rate_run, ch=self.channel)
 
         def func():
             print 'calculating signal threshold for bucket cut of run {run} and ch{ch}...'.format(run=self.analysis.run_number, ch=self.channel)
             h = TH1F('h', 'Bucket Cut', 250, -50, 300)
-            self.analysis.tree.Draw('{name}>>h'.format(name=self.analysis.signal_names[self.channel]),
+            self.analysis.tree.Draw('{name}>>h'.format(name=self.analysis.SignalName),
                                     '!({buc})&&{pul}'.format(buc=self.CutStrings['old_bucket'], pul=self.CutStrings['pulser']), 'goff')
             entries = h.GetEntries()
             if entries < 1000:
@@ -171,7 +171,7 @@ class ChannelCut(Cut):
 
     def generate_channel_cutstrings(self):
         # -- SATURATED CUT --
-        self.CutStrings['saturated'] = '!is_saturated[{ch}]'.format(ch=self.channel)
+        self.CutStrings['saturated'] += '!is_saturated[{ch}]'.format(ch=self.channel)
 
         # -- SPREAD LOW CUT --
         if self.CutConfig['spread_low'] > 0:

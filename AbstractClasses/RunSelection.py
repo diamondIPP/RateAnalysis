@@ -246,7 +246,7 @@ class RunSelection(Elementary):
         prompt = raw_input('Do you wish to unselect any run (y/n)? ')
         while prompt.lower() in ['yes', 'ja', 'y', 'j']:
             run = raw_input('Which run do you want to unselect? ')
-            self.unselect_run(run)
+            self.unselect_run(int(run))
             prompt = raw_input('Do you wish to unselect another run (y/n)? ')
         self.show_run_plans()
         prompt = raw_input('Do you wish to save the selection to a runplan (y/n)? ')

@@ -120,7 +120,7 @@ class AnalysisCollection(Elementary):
         return {'min': fluxes[min_flux], 'max': fluxes[max_flux]}
 
     def generate_slope_pickle(self):
-        picklepath = 'Configuration/Individual_Configs/Slope/{tc}_{run}_{ch}_Slope.pickle'.format(tc=self.TESTCAMPAIGN, run=self.min_max_rate_runs['min'], ch=0)
+        picklepath = 'Configuration/Individual_Configs/Slope/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.min_max_rate_runs['min'])
         if os.path.exists(picklepath):
             return
         Analysis(self.min_max_rate_runs['min'])
@@ -300,17 +300,17 @@ class AnalysisCollection(Elementary):
 
     # ============================================
     # region PULSER
-    def draw_pulser_info(self, flux=True, show=True, mean=True, corr=True):
+    def draw_pulser_info(self, flux=True, show=True, mean=True, corr=True, at_jumps=False):
         if not show:
             gROOT.SetBatch(1)
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         mode = 'Flux' if flux else 'Run'
-        title = 'Mean' if mean else 'Sigma'
-        gr = self.make_tgrapherrors('gr', '{tit} of Pulser Histogram vs {mod}'.format(tit=title, mod=mode))
+        title = '{mean} of Pulser vs {mod} ({ped}, {beam})'.format(mean='Mean' if mean else 'Sigma', mod=mode, ped='pedcorrected' if corr else 'uncorrected', beam='BeamOff' if at_jumps else 'BeamOn')
+        gr = self.make_tgrapherrors('gr', title)
         i = 0
         for key, ana in self.collection.iteritems():
             x = ana.run.flux if flux else key
-            fit = ana.calc_pulser_fit(show=False, corr=corr)
+            fit = ana.calc_pulser_fit(show=False, corr=corr, at_jumps=at_jumps)
             par = 1 if mean else 2
             gr.SetPoint(i, x, fit.Parameter(par))
             gr.SetPointError(i, 0, fit.ParError(par))
@@ -318,11 +318,11 @@ class AnalysisCollection(Elementary):
         c = TCanvas('c', 'Pulser Overview', 1000, 1000)
         c.SetLeftMargin(.125)
         c.SetLogx() if flux else self.do_nothing()
-        self.format_histo(gr, x_tit='{mod}{unit}'.format(mod=mode, unit=' [kHz/cm2]' if flux else ''), y_tit=title + ' [au]', y_off=1.8)
+        self.format_histo(gr, x_tit='{mod}{unit}'.format(mod=mode, unit=' [kHz/cm2]' if flux else ''), y_tit='{mean} [au]'.format(mean='Mean' if mean else 'Sigma'), y_off=1.8)
         gr.Draw('alp')
         gROOT.SetBatch(0)
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.save_plots('Pulser' + title, sub_dir=self.save_dir)
+        self.save_plots('Pulser{mean}'.format(mean='Mean' if mean else 'Sigma'), sub_dir=self.save_dir)
         self.histos[0] = [c, gr]
     # endregion
 
@@ -543,6 +543,35 @@ class AnalysisCollection(Elementary):
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         gROOT.SetBatch(0)
         self.canvases[0] = c
+    # endregion
+
+    # ====================================================================================
+    # region BEAM PROFILE
+    def draw_beam_info(self, mean=True, flux=True, show=True, direction='x', fit_margin=.6):
+        if not show:
+            gROOT.SetBatch(1)
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        mode = 'Flux' if flux else 'Run'
+        title = 'Mean' if mean else 'Sigma'
+        gr = self.make_tgrapherrors('gr', '{tit} of the Beam Profile in {dir}'.format(tit=title, dir=direction.title()))
+        i = 0
+        for key, ana in self.collection.iteritems():
+            x = ana.run.flux if flux else key
+            fit = ana.fit_beam_profile(direction, show=False, fit_margin=fit_margin)
+            par = 1 if mean else 2
+            gr.SetPoint(i, x, fit.Parameter(par))
+            gr.SetPointError(i, 0, fit.ParError(par))
+            i += 1
+        c = TCanvas('c', 'Beam Profile', 1000, 1000)
+        c.SetLeftMargin(.125)
+        c.SetLogx() if flux else self.do_nothing()
+        self.format_histo(gr, x_tit='{mod}{unit}'.format(mod=mode, unit=' [kHz/cm2]' if flux else ''), y_tit='{tit} [cm]'.format(tit=title), y_off=1.8)
+        gr.Draw('alp')
+        gROOT.SetBatch(0)
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        self.save_plots('BeamProfile{tit}{dir}'.format(tit=title, dir=direction.title()), sub_dir=self.save_dir)
+        self.histos[0] = [c, gr]
+
     # endregion
 
     # ====================================================================================

@@ -1,7 +1,7 @@
 import os
 import ROOT
 from time import time
-from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum
+from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1
 import pickle
 import sys
 from glob import glob
