@@ -2,7 +2,7 @@
 # IMPORTS
 # ==============================================
 from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1
-from newAnalysis import Analysis
+from TelescopeAnalysis import Analysis
 from numpy import array
 from math import sqrt, ceil, log
 from argparse import ArgumentParser

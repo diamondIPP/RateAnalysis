@@ -9,12 +9,12 @@ import numpy as np
 from numpy import sqrt, log, array, zeros
 from time import time
 from collections import OrderedDict
-from signal_analysis import SignalAnalysis
+from PadAnalysis import SignalAnalysis
 from ConfigParser import ConfigParser
 from argparse import ArgumentParser
 from Elementary import Elementary
 from Extrema import Extrema2D
-from newAnalysis import Analysis
+from TelescopeAnalysis import Analysis
 from RunSelection import RunSelection
 
 

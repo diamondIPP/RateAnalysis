@@ -1,16 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="e6cf272c-81a5-4f4e-9e0a-ff55b841b26f" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/AbstractClasses/TelescopeAnalysis.py" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/AbstractClasses/AnalysisClass.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/TelescopeAnalysis.py" afterPath="" />
+    <list default="true" id="e6cf272c-81a5-4f4e-9e0a-ff55b841b26f" name="Default" comment="revision of newAnalysis and rename to TelescopeAnalysis&#10;">
+      <change type="DELETED" beforePath="$PROJECT_DIR$/AbstractClasses/newAnalysis.py" afterPath="" />
+      <change type="MOVED" beforePath="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" afterPath="$PROJECT_DIR$/AbstractClasses/PadAnalysis.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/ChannelCut.py" afterPath="$PROJECT_DIR$/AbstractClasses/ChannelCut.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/Cut.py" afterPath="$PROJECT_DIR$/AbstractClasses/Cut.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/Elementary.py" afterPath="$PROJECT_DIR$/AbstractClasses/Elementary.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/RunClass.py" afterPath="$PROJECT_DIR$/AbstractClasses/RunClass.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" afterPath="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" afterPath="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" />
     </list>
     <ignored path="myPadAnalysis.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -44,11 +39,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="TelescopeAnalysis.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="TelescopeAnalysis.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/AbstractClasses/TelescopeAnalysis.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.33909574">
-              <caret line="17" column="27" selection-start-line="17" selection-start-column="27" selection-end-line="17" selection-end-column="27" />
+            <state vertical-scroll-proportion="0.0">
+              <caret line="474" column="17" selection-start-line="474" selection-start-column="17" selection-end-line="474" selection-end-column="17" />
               <folding>
                 <element signature="e#0#37#0" expanded="true" />
               </folding>
@@ -56,36 +51,23 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="AnalysisCollection.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py">
+      <file leaf-file-name="PadAnalysis.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/AbstractClasses/PadAnalysis.py">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="63" column="22" selection-start-line="63" selection-start-column="22" selection-end-line="63" selection-end-column="22" />
+              <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="AnalysisCollection.py" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state vertical-scroll-proportion="0.3723404">
+              <caret line="713" column="23" selection-start-line="713" selection-start-column="23" selection-end-line="713" selection-end-column="23" />
               <folding>
                 <element signature="e#108#119#0" expanded="true" />
-                <marker date="1453924899842" expanded="true" signature="711:43404" placeholder="..." />
-                <marker date="1453924899842" expanded="true" signature="716:856" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-                <marker date="1453924899842" expanded="true" signature="953:2147" placeholder="..." />
-                <marker date="1453924899842" expanded="true" signature="2171:2536" placeholder="..." />
-                <marker date="1453924899842" expanded="true" signature="24899:28136" placeholder="TRACKS" />
-                <marker date="1453924899842" expanded="true" signature="24951:26035" placeholder="..." />
-                <marker date="1453924899842" expanded="true" signature="26073:26956" placeholder="..." />
-                <marker date="1453924899842" expanded="true" signature="27023:28119" placeholder="..." />
-                <marker date="1453924899842" expanded="true" signature="28189:28950" placeholder="..." />
-                <marker date="1453924899842" expanded="true" signature="28198:28321" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-                <marker date="1453924899842" expanded="true" signature="29000:29331" placeholder="..." />
-                <marker date="1453924899842" expanded="true" signature="29363:29567" placeholder="..." />
-                <marker date="1453924899842" expanded="true" signature="29372:29490" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-                <marker date="1453924899842" expanded="true" signature="29594:29739" placeholder="..." />
-                <marker date="1453924899842" expanded="true" signature="29774:29817" placeholder="..." />
-                <marker date="1453924899842" expanded="true" signature="29849:29978" placeholder="..." />
-                <marker date="1453924899842" expanded="true" signature="30017:30142" placeholder="..." />
-                <marker date="1453924899842" expanded="true" signature="30175:30368" placeholder="..." />
-                <marker date="1453924899842" expanded="true" signature="30472:43404" placeholder="..." />
-                <marker date="1453924899842" expanded="true" signature="30481:30835" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-                <marker date="1453924899842" expanded="true" signature="31219:31372" placeholder="..." />
-                <marker date="1453924899842" expanded="true" signature="31513:33168" placeholder="..." />
-                <marker date="1453924899842" expanded="true" signature="34655:35890" placeholder="..." />
               </folding>
             </state>
           </provider>
@@ -95,7 +77,7 @@
         <entry file="file://$PROJECT_DIR$/AbstractClasses/RunClass.py">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="230" column="8" selection-start-line="230" selection-start-column="8" selection-end-line="230" selection-end-column="8" />
+              <caret line="14" column="0" selection-start-line="14" selection-start-column="0" selection-end-line="14" selection-end-column="0" />
               <folding>
                 <element signature="e#108#119#0" expanded="true" />
               </folding>
@@ -115,24 +97,6 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="signal_analysis.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/AbstractClasses/signal_analysis.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0">
-              <caret line="60" column="21" selection-start-line="60" selection-start-column="21" selection-end-line="60" selection-end-column="21" />
-              <folding>
-                <element signature="e#2644#2657#0" expanded="false" />
-                <element signature="e#4856#4877#0" expanded="false" />
-                <element signature="e#7885#7916#0" expanded="false" />
-                <element signature="e#17593#17613#0" expanded="false" />
-                <element signature="e#20194#20218#0" expanded="false" />
-                <element signature="e#32256#32269#0" expanded="false" />
-                <element signature="e#56478#56500#0" expanded="false" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
       <file leaf-file-name="ChannelCut.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/AbstractClasses/ChannelCut.py">
           <provider selected="true" editor-type-id="text-editor">
@@ -142,7 +106,6 @@
                 <element signature="e#0#19#0" expanded="true" />
                 <element signature="e#944#2697#0" expanded="false" />
                 <element signature="e#2742#2999#0" expanded="false" />
-                <marker date="1453930451766" expanded="true" signature="484:790" placeholder="..." />
               </folding>
             </state>
           </provider>
@@ -170,13 +133,13 @@
         <option value="$PROJECT_DIR$/AbstractClasses/Extrema.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/Converter.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/RunSelection.py" />
-        <option value="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/Elementary.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/ChannelCut.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/RunClass.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/Cut.py" />
-        <option value="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/newAnalysis.py" />
+        <option value="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" />
+        <option value="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" />
       </list>
     </option>
   </component>
@@ -561,12 +524,12 @@
     <editor active="true" />
     <layout>
       <window_info id="Project" active="true" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.16798942" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32352942" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32929516" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
-      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Application Servers" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
@@ -593,7 +556,6 @@
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="improving info pave text, fixing some plots" />
     <MESSAGE value="fixing show waveform plot and adding bucket pedestal function" />
     <MESSAGE value="revision of draw_regions function and adding draw_peak_integral function" />
     <MESSAGE value="adding find best snr function" />
@@ -618,7 +580,8 @@
     <MESSAGE value="complete revision and reorgansing of the cut class: split into main cut and channel cut" />
     <MESSAGE value="small fixes" />
     <MESSAGE value="small update" />
-    <option name="LAST_COMMIT_MESSAGE" value="small update" />
+    <MESSAGE value="revision of newAnalysis and rename to TelescopeAnalysis&#10;" />
+    <option name="LAST_COMMIT_MESSAGE" value="revision of newAnalysis and rename to TelescopeAnalysis&#10;" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -635,7 +598,6 @@
             <element signature="e#0#19#0" expanded="true" />
             <element signature="e#944#2697#0" expanded="false" />
             <element signature="e#2742#2999#0" expanded="false" />
-            <marker date="1453930451766" expanded="true" signature="484:790" placeholder="..." />
           </folding>
         </state>
       </provider>
@@ -651,22 +613,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/signal_analysis.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="438" column="19" selection-start-line="438" selection-start-column="19" selection-end-line="438" selection-end-column="19" />
-          <folding>
-            <element signature="e#2644#2657#0" expanded="false" />
-            <element signature="e#4856#4877#0" expanded="false" />
-            <element signature="e#7885#7916#0" expanded="false" />
-            <element signature="e#17593#17613#0" expanded="false" />
-            <element signature="e#20194#20218#0" expanded="false" />
-            <element signature="e#32256#32269#0" expanded="false" />
-            <element signature="e#56478#56500#0" expanded="false" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -942,39 +888,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="63" column="22" selection-start-line="63" selection-start-column="22" selection-end-line="63" selection-end-column="22" />
-          <folding>
-            <element signature="e#108#119#0" expanded="true" />
-            <marker date="1453924899842" expanded="true" signature="711:43404" placeholder="..." />
-            <marker date="1453924899842" expanded="true" signature="716:856" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1453924899842" expanded="true" signature="953:2147" placeholder="..." />
-            <marker date="1453924899842" expanded="true" signature="2171:2536" placeholder="..." />
-            <marker date="1453924899842" expanded="true" signature="24899:28136" placeholder="TRACKS" />
-            <marker date="1453924899842" expanded="true" signature="24951:26035" placeholder="..." />
-            <marker date="1453924899842" expanded="true" signature="26073:26956" placeholder="..." />
-            <marker date="1453924899842" expanded="true" signature="27023:28119" placeholder="..." />
-            <marker date="1453924899842" expanded="true" signature="28189:28950" placeholder="..." />
-            <marker date="1453924899842" expanded="true" signature="28198:28321" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1453924899842" expanded="true" signature="29000:29331" placeholder="..." />
-            <marker date="1453924899842" expanded="true" signature="29363:29567" placeholder="..." />
-            <marker date="1453924899842" expanded="true" signature="29372:29490" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1453924899842" expanded="true" signature="29594:29739" placeholder="..." />
-            <marker date="1453924899842" expanded="true" signature="29774:29817" placeholder="..." />
-            <marker date="1453924899842" expanded="true" signature="29849:29978" placeholder="..." />
-            <marker date="1453924899842" expanded="true" signature="30017:30142" placeholder="..." />
-            <marker date="1453924899842" expanded="true" signature="30175:30368" placeholder="..." />
-            <marker date="1453924899842" expanded="true" signature="30472:43404" placeholder="..." />
-            <marker date="1453924899842" expanded="true" signature="30481:30835" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1453924899842" expanded="true" signature="31219:31372" placeholder="..." />
-            <marker date="1453924899842" expanded="true" signature="31513:33168" placeholder="..." />
-            <marker date="1453924899842" expanded="true" signature="34655:35890" placeholder="..." />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/ChannelCut.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
@@ -983,17 +896,6 @@
             <element signature="e#0#19#0" expanded="true" />
             <element signature="e#944#2697#0" expanded="false" />
             <element signature="e#2742#2999#0" expanded="false" />
-            <marker date="1453930451766" expanded="true" signature="484:790" placeholder="..." />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/RunClass.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="230" column="8" selection-start-line="230" selection-start-column="8" selection-end-line="230" selection-end-column="8" />
-          <folding>
-            <element signature="e#108#119#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -1008,18 +910,12 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/signal_analysis.py">
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/RunClass.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
-          <caret line="60" column="21" selection-start-line="60" selection-start-column="21" selection-end-line="60" selection-end-column="21" />
+          <caret line="14" column="0" selection-start-line="14" selection-start-column="0" selection-end-line="14" selection-end-column="0" />
           <folding>
-            <element signature="e#2644#2657#0" expanded="false" />
-            <element signature="e#4856#4877#0" expanded="false" />
-            <element signature="e#7885#7916#0" expanded="false" />
-            <element signature="e#17593#17613#0" expanded="false" />
-            <element signature="e#20194#20218#0" expanded="false" />
-            <element signature="e#32256#32269#0" expanded="false" />
-            <element signature="e#56478#56500#0" expanded="false" />
+            <element signature="e#108#119#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -1037,10 +933,28 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/TelescopeAnalysis.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.33909574">
-          <caret line="17" column="27" selection-start-line="17" selection-start-column="27" selection-end-line="17" selection-end-column="27" />
+        <state vertical-scroll-proportion="0.0">
+          <caret line="474" column="17" selection-start-line="474" selection-start-column="17" selection-end-line="474" selection-end-column="17" />
           <folding>
             <element signature="e#0#37#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/PadAnalysis.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.3723404">
+          <caret line="713" column="23" selection-start-line="713" selection-start-column="23" selection-end-line="713" selection-end-column="23" />
+          <folding>
+            <element signature="e#108#119#0" expanded="true" />
           </folding>
         </state>
       </provider>
