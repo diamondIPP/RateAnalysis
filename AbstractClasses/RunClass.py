@@ -387,10 +387,10 @@ class Run(Elementary):
         :return: event_number
         """
         # return time of last event if input is too large
-        if time_sec > self.time[-1] / 1000. or time_sec == -1:
+        offset = self.time[0] / 1000.
+        if time_sec > self.time[-1] / 1000. - offset or time_sec == -1:
             return self.n_entries
         last_time = 0
-        offset = self.time[0] / 1000.
         for i, time in enumerate(self.time):
             time /= 1000.
             if time >= time_sec + offset >= last_time:
@@ -429,6 +429,10 @@ class Run(Elementary):
         :param set_width:
         :return:
         """
+        n_pads = 0
+        while canvas.GetPad(n_pads + 1):
+            n_pads += 1
+        canvas = canvas.GetPad(1) if n_pads else canvas
         assert channel is None or channel in self.channels, 'wrong channel id "{ch}"'.format(ch=channel)
         if set_height is not None:
             assert 0 <= set_height <= 0.8, 'choose height between 0 and 0.8 or set it to "None"'
@@ -457,6 +461,8 @@ class Run(Elementary):
 
         tc = datetime.strptime(self.TESTCAMPAIGN, '%Y%m')
         dur = '{0:02d}:{1:02.0f}'.format(int(self.totalMinutes), (self.totalMinutes - int(self.totalMinutes)) * 60)
+
+
 
         if not canvas.GetBottomMargin() > .105:
             canvas.SetBottomMargin(0.15)

@@ -2,7 +2,7 @@
 filename = test151000
 runpath = /data/psi_2015_10/root/pads
 runinfofile = /data/psi_2015_10/run_log.json
-runplaninfofile = /home/testbeam/testing/micha/myPadAnalysis/Runinfos/run_plans.json
+runplaninfofile = /Runinfos/run_plans.json
 runlog_key_prefix = 
 treename = tree
 maskfilepath = /data/psi_2015_10/masks
@@ -31,6 +31,7 @@ pedestal_c_region = [404, 405]
 pedestal_d_region = [604, 605]
 pedestal_e_region = [560, 600]
 pedestal_f_region = [560, 640]
+pulser_region = [780, 840]
 save_waveforms = 0
 pulser_channel = 1
 trigger_channel = 2

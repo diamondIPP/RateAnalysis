@@ -377,7 +377,7 @@ class Analysis(Elementary):
 
         aligned = func() if draw else self.do_pickle(pickle_path, func)
         if not aligned:
-            msg = 'The events are not aligned!'
+            msg = 'The events of RUN {run} are not aligned!'.format(run=self.run_number)
             print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * '!', msg=msg)
         return aligned
 

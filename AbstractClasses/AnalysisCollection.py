@@ -156,14 +156,14 @@ class AnalysisCollection(Elementary):
         i = 0
         for key, ana in self.collection.iteritems():
             print 'getting ph for run', key
-            fit = ana.draw_pulse_height(binning, draw=False)
-            fit1 = ana.draw_pulse_height(binning, ped_corr=True, draw=False)
-            fit2 = ana.draw_pulse_height(binning, eventwise_corr=True, draw=False)
+            fit = ana.draw_pulse_height(binning, show=False)
+            fit1 = ana.draw_pulse_height(binning, ped_corr=True, show=False)
+            fit2 = ana.draw_pulse_height(binning, eventwise_corr=True, show=False)
             ped = ana.show_pedestal_histo(draw=False)
             x = ana.run.flux if flux else key
             gr1.SetPoint(i, x, fit1.Parameter(0))
             gr2.SetPoint(i, x, fit2.Parameter(0))
-            gr3.SetPoint(i, x, fit.Parameter(0) - ana.polarity * ped.Parameter(1))
+            gr3.SetPoint(i, x, fit.Parameter(0) - ana.Polarity * ped.Parameter(1))
             gr4.SetPoint(i, x, fit.Parameter(0))
             gr1.SetPointError(i, 0, fit1.ParError(0))
             gr2.SetPointError(i, 0, fit2.ParError(0))
@@ -322,7 +322,7 @@ class AnalysisCollection(Elementary):
         gr.Draw('alp')
         gROOT.SetBatch(0)
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.save_plots('Pulser{mean}'.format(mean='Mean' if mean else 'Sigma'), sub_dir=self.save_dir)
+        self.save_plots('Pulser{mean}{a}{b}'.format(mean='Mean' if mean else 'Sigma', a=corr, b=at_jumps), sub_dir=self.save_dir)
         self.histos[0] = [c, gr]
     # endregion
 
@@ -569,7 +569,7 @@ class AnalysisCollection(Elementary):
         gr.Draw('alp')
         gROOT.SetBatch(0)
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.save_plots('BeamProfile{tit}{dir}'.format(tit=title, dir=direction.title()), sub_dir=self.save_dir)
+        self.save_plots('BeamProfile{tit}{dir}{mar}'.format(tit=title, dir=direction.title(), mar=fit_margin), sub_dir=self.save_dir)
         self.histos[0] = [c, gr]
 
     # endregion
