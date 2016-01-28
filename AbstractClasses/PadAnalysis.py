@@ -77,7 +77,7 @@ class SignalAnalysis(Analysis):
         cuts = TCut('consecutive', '')
         for cut in main_cut + self.Cut.CutStrings.values():
             name = cut.GetName()
-            if not name.startswith('old') and name != 'all_cuts' and not name in contributions and str(cut):
+            if not name.startswith('old') and name != 'all_cuts' and name not in contributions and str(cut):
                 cuts += cut
                 events = int(z.tree.Draw('1', '!({0})'.format(cuts), 'goff'))
                 events -= cutted_events
@@ -88,13 +88,19 @@ class SignalAnalysis(Analysis):
         i = 0
         colors = [self.get_color() for i in xrange(1, len(values) + 1)]
         print values, i
-        pie = TPie('pie', 'Cut Contributions', len(values), array(values), array(colors, 'i'))
-        # pie.SetAngularOffset(30.)
-        # pie.SetEntryRadiusOffset( 4, 0.1)
-        # pie.SetRadius(.35)
-        # pie.Draw('3d')
+        pie = TPie('pie', 'Cut Contributions', len(values), array(values, 'f'), array(colors, 'i'))
+        for i, label in enumerate(contributions.iterkeys()):
+            # if pie.GetEntryVal(i) < 2000:
+            pie.SetEntryRadiusOffset(i, .1)
+            pie.SetEntryLabel(i, label.title())
+        pie.SetEntryRadiusOffset(i + 1, .1)
+        pie.SetEntryLabel(i + 1, 'Good Events')
+        pie.SetRadius(.3)
+        pie.SetTextSize(.03)
+        pie.SetAngle3D(70)
+        pie.Draw('3drsc')
         self.histos[0] = [pie]
-        return pie
+        return contributions
 
     # ==========================================================================
     # region INIT
