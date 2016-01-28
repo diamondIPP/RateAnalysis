@@ -254,7 +254,7 @@ class Cut(Elementary):
         chi2 = self.do_pickle(picklepath, func)
         assert type(self.CutConfig['chi2']) is int and 0 < self.CutConfig['chi2'] <= 100, 'chi2 quantile has to be and integer between 0 and 100'
         string = 'chi2_tracks<{val}&&chi2_tracks>=0'.format(val=chi2[self.CutConfig['chi2']])
-        return TCut(string) if self.CutConfig['chi2'] > 0 else ''
+        return string if self.CutConfig['chi2'] > 0 else ''
 
     def generate_slope(self):
         picklepath = 'Configuration/Individual_Configs/Slope/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.lowest_rate_run)
@@ -285,15 +285,15 @@ class Cut(Elementary):
         slope = self.do_pickle(picklepath, func)
         # create the cut string
         string = 'slope_x>{minx}&&slope_x<{maxx}&&slope_y>{miny}&&slope_y<{maxy}'.format(minx=slope['x'][0], maxx=slope['x'][1], miny=slope['y'][0], maxy=slope['y'][1])
-        return TCut(string) if angle > 0 else ''
+        return string if angle > 0 else ''
     
     def generate_cut_string(self):
         """ Creates the cut string. """
         gROOT.SetBatch(1)
 
         # --TRACKS --
-        self.CutStrings['chi2'] = self.generate_chi2()
-        self.CutStrings['track_angle'] = self.generate_slope()
+        self.CutStrings['chi2'] += self.generate_chi2()
+        self.CutStrings['track_angle'] += self.generate_slope()
         self.CutStrings['tracks'] += 'n_tracks'
 
         # -- EVENT RANGE CUT --
@@ -319,12 +319,17 @@ class Cut(Elementary):
 
         njumps = len(self.jump_ranges["start"])
         cut_string = ''
+        start_event = self.CutConfig['EventRange'][0]
         for i in xrange(njumps):
-            string = "!(event_number<={upper}&&event_number>={lower})".format(upper=self.jump_ranges["stop"][i], lower=self.jump_ranges["start"][i])
-            # new separate strings
-            if cut_string != '':
-                cut_string += '&&'
-            cut_string += string
+            upper = self.jump_ranges["stop"][i]
+            lower = self.jump_ranges["start"][i]
+            if upper > start_event:
+                lower = start_event if lower < start_event else lower
+                string = "!(event_number<={up}&&event_number>={low})".format(up=upper, low=lower)
+                # new separate strings
+                if cut_string != '':
+                    cut_string += '&&'
+                cut_string += string
         self.CutStrings['beam_interruptions'] += cut_string
     # endregion
 

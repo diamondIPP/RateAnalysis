@@ -84,7 +84,7 @@ class ChannelCut(Cut):
                                     '!({buc})&&{pul}'.format(buc=self.CutStrings['old_bucket'], pul=self.CutStrings['pulser']), 'goff')
             entries = h.GetEntries()
             if entries < 1000:
-                return 0
+                return 30
             h.Rebin(2) if entries < 5000 else self.do_nothing()
 
             # extract fit functions
@@ -192,7 +192,7 @@ class ChannelCut(Cut):
             self.EasyCutStrings["pedestalsigma"] = "PedSigma<" + str(self.CutConfig['pedestalsigma'])
 
         # --BUCKET --
-        self.CutStrings['old_bucket'] = self.generate_old_bucket()
-        self.CutStrings['bucket'] = self.generate_bucket()
+        self.CutStrings['old_bucket'] += self.generate_old_bucket()
+        self.CutStrings['bucket'] += self.generate_bucket()
 
     # endregion

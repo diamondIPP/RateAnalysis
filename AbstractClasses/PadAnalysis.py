@@ -1,7 +1,7 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1
+from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie
 from TelescopeAnalysis import Analysis
 from numpy import array
 from math import sqrt, ceil, log
@@ -71,7 +71,30 @@ class SignalAnalysis(Analysis):
 
     def show_cut_contributions(self):
         # todo make overview of strength of the cuts
-        pass
+        main_cut = [self.Cut.CutStrings['event_range'], self.Cut.CutStrings['beam_interruptions']]
+        contributions = {}
+        cutted_events = 0
+        cuts = TCut('consecutive', '')
+        for cut in main_cut + self.Cut.CutStrings.values():
+            name = cut.GetName()
+            if not name.startswith('old') and name != 'all_cuts' and not name in contributions and str(cut):
+                cuts += cut
+                events = int(z.tree.Draw('1', '!({0})'.format(cuts), 'goff'))
+                events -= cutted_events
+                print name, events
+                contributions[cut.GetName()] = events
+                cutted_events += events
+        values = contributions.values() + [self.run.n_entries - cutted_events]
+        i = 0
+        colors = [self.get_color() for i in xrange(1, len(values) + 1)]
+        print values, i
+        pie = TPie('pie', 'Cut Contributions', len(values), array(values), array(colors, 'i'))
+        # pie.SetAngularOffset(30.)
+        # pie.SetEntryRadiusOffset( 4, 0.1)
+        # pie.SetRadius(.35)
+        # pie.Draw('3d')
+        self.histos[0] = [pie]
+        return pie
 
     # ==========================================================================
     # region INIT

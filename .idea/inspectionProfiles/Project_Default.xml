@@ -47,6 +47,7 @@
           <option value="TText" />
           <option value="TArrow" />
           <option value="int.Parameter" />
+          <option value="TPie" />
         </list>
       </option>
     </inspection_tool>
