@@ -69,39 +69,6 @@ class SignalAnalysis(Analysis):
         # todo Make class for dia currents!
         pass
 
-    def show_cut_contributions(self):
-        # todo make overview of strength of the cuts
-        main_cut = [self.Cut.CutStrings['event_range'], self.Cut.CutStrings['beam_interruptions']]
-        contributions = {}
-        cutted_events = 0
-        cuts = TCut('consecutive', '')
-        for cut in main_cut + self.Cut.CutStrings.values():
-            name = cut.GetName()
-            if not name.startswith('old') and name != 'all_cuts' and name not in contributions and str(cut):
-                cuts += cut
-                events = int(z.tree.Draw('1', '!({0})'.format(cuts), 'goff'))
-                events -= cutted_events
-                print name, events
-                contributions[cut.GetName()] = events
-                cutted_events += events
-        values = contributions.values() + [self.run.n_entries - cutted_events]
-        i = 0
-        colors = [self.get_color() for i in xrange(1, len(values) + 1)]
-        print values, i
-        pie = TPie('pie', 'Cut Contributions', len(values), array(values, 'f'), array(colors, 'i'))
-        for i, label in enumerate(contributions.iterkeys()):
-            # if pie.GetEntryVal(i) < 2000:
-            pie.SetEntryRadiusOffset(i, .1)
-            pie.SetEntryLabel(i, label.title())
-        pie.SetEntryRadiusOffset(i + 1, .1)
-        pie.SetEntryLabel(i + 1, 'Good Events')
-        pie.SetRadius(.3)
-        pie.SetTextSize(.03)
-        pie.SetAngle3D(70)
-        pie.Draw('3drsc')
-        self.histos[0] = [pie]
-        return contributions
-
     # ==========================================================================
     # region INIT
     def get_polarity(self):
@@ -468,7 +435,6 @@ class SignalAnalysis(Analysis):
         signal = self.SignalName if signal is None else signal
         signal = signal if not ped else self.PedestalName
         signal = '{sig}-{pol}*{ped}'.format(sig=signal, ped=self.PedestalName, pol=self.Polarity) if corr else signal
-        print signal
         # 2D Histogram
         name = "signaltime_" + str(self.run_number)
         xbins = array(self.time_binning)
@@ -732,6 +698,56 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region CUTS
+    def show_cut_contributions(self):
+        main_cut = [self.Cut.CutStrings['event_range'], self.Cut.CutStrings['beam_interruptions']]
+        contributions = {}
+        cutted_events = 0
+        cuts = TCut('consecutive', '')
+        for cut in main_cut + self.Cut.CutStrings.values():
+            name = cut.GetName()
+            if not name.startswith('old') and name != 'all_cuts' and name not in contributions and str(cut):
+                cuts += cut
+                events = int(z.tree.Draw('1', '!({0})'.format(cuts), 'goff'))
+                events -= cutted_events
+                print name, events
+                contributions[cut.GetName()] = events
+                cutted_events += events
+        sorted_contr = OrderedDict()
+        while contributions:
+            for key, value in contributions.iteritems():
+                if value == max(contributions.values()):
+                    sorted_contr[key] = value
+                    contributions.pop(key)
+                    break
+            for key, value in contributions.iteritems():
+                if value == min(contributions.values()):
+                    sorted_contr[key] = value
+                    contributions.pop(key)
+                    break
+        contributions = sorted_contr
+        values = contributions.values() + [self.run.n_entries - cutted_events]
+        i = 0
+        colors = [self.get_color() for i in xrange(1, len(values) + 1)]
+        print values, i
+        pie = TPie('pie', 'Cut Contributions', len(values), array(values, 'f'), array(colors, 'i'))
+        for i, label in enumerate(contributions.iterkeys()):
+            # if pie.GetEntryVal(i) < 2000:
+            pie.SetEntryRadiusOffset(i, .05)
+            pie.SetEntryLabel(i, label.title())
+        pie.SetEntryRadiusOffset(i + 1, .05)
+        pie.SetEntryLabel(i + 1, 'Good Events')
+        pie.SetHeight(.04)
+        pie.SetRadius(.2)
+        pie.SetTextSize(.025)
+        pie.SetAngle3D(70)
+        pie.SetLabelFormat('#splitline{%txt}{%perc}')
+        pie.SetAngularOffset(240)
+        c = TCanvas('c', 'Cut Pie', 1000, 1000)
+        pie.Draw('3drsc')
+        self.save_plots('CutContributions', sub_dir=self.save_dir)
+        self.histos[0] = [pie, c]
+        return contributions
+
     def show_bucket_histos(self):
         h = TH1F('h', 'Bucket Cut Histograms', 250, -50, 300)
         self.tree.Draw('{name}>>h'.format(name=self.SignalName), '!({buc})&&{pul}'.format(buc=self.Cut.CutStrings['old_bucket'], pul=self.Cut.CutStrings['pulser']), 'goff')
@@ -1329,7 +1345,7 @@ class SignalAnalysis(Analysis):
     def __get_binning(self):
         jumps = self.Cut.jump_ranges
         n_jumps = len(jumps['start'])
-        bins = [0, self.Cut.get_min_event()]
+        bins = [self.Cut.get_min_event()]
         ind = 0
         for start, stop in zip(jumps['start'], jumps['stop']):
             gap = stop - start
@@ -1356,6 +1372,10 @@ class SignalAnalysis(Analysis):
                     bins.append(bins[-1] + self.BinSize + gap)
             else:
                 bins.append(bins[-1] + self.BinSize + gap)
+            # fill up the end
+            if ind == n_jumps - 1 and bins[-1] >= stop:
+                while bins[-1] + self.BinSize < self.run.n_entries:
+                    bins.append(bins[-1] + self.BinSize)
             ind += 1
         return bins
 
