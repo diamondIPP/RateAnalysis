@@ -157,7 +157,7 @@ class AnalysisCollection(Elementary):
         for key, ana in self.collection.iteritems():
             print 'getting ph for run', key
             fit = ana.draw_pulse_height(binning, show=False)
-            fit1 = ana.draw_pulse_height(binning, ped_corr=True, show=False)
+            fit1 = ana.draw_pulse_height(binning, show=False)
             fit2 = ana.draw_pulse_height(binning, eventwise_corr=True, show=False)
             ped = ana.show_pedestal_histo(draw=False)
             x = ana.run.flux if flux else key
@@ -569,8 +569,43 @@ class AnalysisCollection(Elementary):
         gr.Draw('alp')
         gROOT.SetBatch(0)
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.save_plots('BeamProfile{tit}{dir}{mar}'.format(tit=title, dir=direction.title(), mar=fit_margin), sub_dir=self.save_dir)
+        self.save_plots('BeamProfile{tit}{dir}{mar}'.format(tit=title, dir=direction.title(), mar=fit_margin * 100), sub_dir=self.save_dir)
         self.histos[0] = [c, gr]
+        return gr
+
+    def draw_xy_profiles(self, flux=True, show=True, fitx=.4, fity=.7):
+        gr1 = self.draw_beam_info(mean=True, flux=flux, show=False, direction='x', fit_margin=fitx)
+        gr2 = self.draw_beam_info(mean=True, flux=flux, show=False, direction='y', fit_margin=fity)
+        gr3 = self.draw_beam_info(mean=False, flux=flux, show=False, direction='x', fit_margin=fitx)
+        gr4 = self.draw_beam_info(mean=False, flux=flux, show=False, direction='y', fit_margin=fity)
+        c = TCanvas('c', 'Pulse Height Distribution', 1500, 1500)
+        c.Divide(2, 2)
+        for i, gr in enumerate([gr1, gr2, gr3, gr4], 1):
+            self.format_histo(gr, y_off=1.3)
+            pad = c.cd(i)
+            pad.SetLogx() if flux else self.do_nothing()
+            pad.SetBottomMargin(.15)
+            gr.Draw('alp')
+        self.save_plots('BeamProfileOverview', sub_dir=self.save_dir)
+        self.histos[1] = [c, gr1, gr2, gr3, gr4]
+
+    def draw_beam_profiles(self, show=True, direction='x'):
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        histos = [ana.draw_beam_profile(mode=direction, show=False, fit=False) for ana in self.collection.itervalues()]
+        c = TCanvas('c', 'Chi2', 1000, 1000)
+        c.SetLeftMargin(.13)
+        legend = TLegend(.4, .6 - self.get_number_of_analyses() * 0.03, .6, .6)
+        for i, h in enumerate(histos):
+            h.SetStats(0)
+            self.normalise_histo(h)
+            h.SetLineColor(self.get_color())
+            h.SetLineWidth(2)
+            h.Draw() if not i else h.Draw('same')
+            legend.AddEntry(h, '{0:6.2f} kHz/cm'.format(self.collection.values()[i].get_flux()) + '^{2}', 'l')
+        legend.Draw()
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        self.save_plots('AllBeamProfiles{mod}'.format(mod=direction.title()), sub_dir=self.save_dir)
+        self.histos[0] = [c, legend] + histos
 
     # endregion
 

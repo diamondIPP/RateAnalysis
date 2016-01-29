@@ -124,7 +124,10 @@ class SignalAnalysis(Analysis):
         if not show:
             gROOT.SetBatch(1)
         prof = h.ProjectionX() if mode.lower() == 'x' else h.ProjectionY()
-        margins[mode] = [prof.GetBinLowEdge(prof.FindBin(margins[mode][0]) + 1), prof.GetBinLowEdge(prof.FindBin(margins[mode][1]))]
+        margins[mode] = [prof.GetBinLowEdge(prof.FindBin(margins[mode][0])), prof.GetBinLowEdge(prof.FindBin(margins[mode][1]) + 1)]
+        center = (margins[mode][1] + margins[mode][0]) / 2.
+        width = (prof.FindBin(margins[mode][1]) - prof.FindBin(margins[mode][0])) / 2. * fit_margin * prof.GetBinWidth(1)
+        fit_range = [center - width, center + width]
         c = TCanvas('c', 'Beam Profile', 1000, 1000)
         c.SetLeftMargin(.145)
         self.format_histo(prof, 'prof', 'Profile ' + mode.title(), y_tit='Entries', y_off=2, x_tit='Track Position {mod} [cm]'.format(mod=mode.title()))
@@ -134,19 +137,29 @@ class SignalAnalysis(Analysis):
         lines = [self.make_tgaxis(x, c.GetUymin(), c.GetUymax(), '', 2, 2) for x in margins[mode]]
         for line in lines:
             line.Draw()
-        fit_result = self.__fit_beam_profile(prof, margins[mode], show, fit_margin=fit_margin) if fit else 0
+        fit_result = self.__fit_beam_profile(prof, fit_range, show) if fit else 0
+        fits = None
+        if fit:
+            f1 = gROOT.GetFunction('gaus')
+            f2 = deepcopy(f1)
+            f1.SetLineColor(kGreen + 1)
+            f2.SetRange(fit_range[0], fit_range[1])
+            f1.SetLineStyle(7)
+            f1.Draw('same')
+            f2.Draw('same')
+            prof.GetXaxis().UnZoom()
+            fits = [f1, f2]
         c.RedrawAxis()
         gROOT.SetBatch(0)
-        self.save_plots('BeamProfile' + mode.title(), sub_dir=self.save_dir)
-        self.histos[1] = [prof, c, lines]
+        self.save_plots('BeamProfile{mod}{fit}'.format(mod=mode.title(), fit='Fit' if fit else ''), sub_dir=self.save_dir)
+        self.histos[1] = [prof, c, lines, fits]
         return fit_result if fit else prof
 
     @staticmethod
-    def __fit_beam_profile(histo, margins, show=True, fit_margin=None):
+    def __fit_beam_profile(histo, fit_range, show=True):
         h = histo
-        center = (margins[1] + margins[0]) / 2.
-        width = (h.FindBin(margins[1]) - h.FindBin(margins[0])) / 2. * fit_margin * h.GetBinWidth(1)
-        fit = h.Fit('gaus', 'qs{0}'.format('' if show else '0'), '', center - width, center + width)
+        print fit_range
+        fit = h.Fit('gaus', 'qs{0}'.format('' if show else '0'), '', fit_range[0], fit_range[1])
         return fit
 
     def fit_beam_profile(self, mode='x', show=True, fit_margin=.6):
@@ -157,24 +170,26 @@ class SignalAnalysis(Analysis):
 
         return self.do_pickle(pickle_path, func)
 
-    def draw_beam_fit_chi2s(self, show=True, mode='x'):
+    def draw_beam_fit_chi2s(self, show=True, mode='x', sigma=True):
         if not show:
             gROOT.SetBatch(1)
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        gr = self.make_tgrapherrors('gr', 'Beam Profile {0} Fit #chi{1}s / NDF'.format(mode.title(), '^{2}'))
-        for i in xrange(2, 11):
+        gr = self.make_tgrapherrors('gr', 'Beam Profile {0} {mod}'.format(mode.title(), mod='Fit #chi^{2}s / NDF' if not sigma else 'Sigma'))
+        for i in xrange(2, 10):
             perc = i / 10.
             fit = self.fit_beam_profile(mode=mode, show=False, fit_margin=perc)
-            print perc, fit.Chi2(), int(fit.Ndf())
+            y = fit.Parameter(2) if sigma else fit.Chi2() / fit.Ndf()
             if fit.Ndf():
-                gr.SetPoint(i - 1, perc, fit.Chi2() / fit.Ndf())
+                gr.SetPoint(i - 2, perc * 100, y)
         c = TCanvas('c', 'Beam Chi2', 1000, 1000)
-        self.format_histo(gr, x_tit='Range [%]', y_tit='#chi^{2} / NDF')
+        self.format_histo(gr, x_tit='Range [%]', y_tit='#chi^{2} / NDF' if not sigma else 'Sigma')
+        one = TF1('one', '1', 0, 100)
         gr.Draw('alp')
+        one.Draw('same')
         self.histos[1] = [gr, c]
         gROOT.SetBatch(0)
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.save_plots('BeamProfChi2s' + mode.title(), sub_dir=self.save_dir)
+        self.save_plots('BeamProf{mod}{dir}'.format(mod='Sigmas' if sigma else 'Chi2s', dir=mode.title()), sub_dir=self.save_dir)
 
     # endregion
 
@@ -329,13 +344,16 @@ class SignalAnalysis(Analysis):
                             zero_bins[i].append((proj.GetBinCenter(bin_)))
                     last_bin = proj.GetBinContent(bin_)
             if show_plot:
-                self.canvas = TCanvas('c', 'Diamond Hit Map', 1000, 1000)
+                c = TCanvas('c', 'Diamond Hit Map', 1000, 1000)
+                c.SetRightMargin(.14)
+                c.SetBottomMargin(.15)
                 h.GetXaxis().SetRangeUser(zero_bins[0][0], zero_bins[0][1])
                 h.GetYaxis().SetRangeUser(zero_bins[1][0], zero_bins[1][1])
+                h.SetStats(0)
                 h.Draw('colz')
                 if show_frame:
                     self.__show_frame(bin_low, bin_high)
-                self.save_plots('diamond_hitmap', sub_dir=self.save_dir, canvas=self.canvas)
+                self.save_plots('DiamondHitmap', sub_dir=self.save_dir)
             self.histos[0] = h
             gROOT.SetBatch(0)
             return {name: [efficient_bins[i][0], efficient_bins[i][-1]] for i, name in enumerate(['x', 'y'])}
@@ -526,13 +544,13 @@ class SignalAnalysis(Analysis):
             count = 0
             means = self.draw_pedestal(bin_size, draw=False) if ped_corr else None
             gROOT.SetBatch(1)
-            for i in xrange(self.n_bins):
+            for i in xrange(self.n_bins - 1):
                 h_proj = sig_time.ProjectionY(str(i), i + 1, i + 1)
-                if h_proj.GetEntries() > 0:
+                if h_proj.GetEntries() > 10:
                     if mode in ["mean", "Mean"]:
-                        mean = h_proj.GetMean()
-                        mean -= self.Polarity * means[count] if ped_corr else 0
-                        gr.SetPoint(count, (self.time_binning[i] - self.run.startTime) / 60e3, mean)
+                        i_mean = h_proj.GetMean()
+                        i_mean -= self.Polarity * means[count] if ped_corr else 0
+                        gr.SetPoint(count, (self.time_binning[i] - self.run.startTime) / 60e3, i_mean)
                         gr.SetPointError(count, 0, h_proj.GetRMS() / sqrt(h_proj.GetEntries()))
                     elif mode in ["fit", "Fit"]:
                         h_proj.GetMaximum()
@@ -554,7 +572,7 @@ class SignalAnalysis(Analysis):
             gStyle.SetOptFit(1)
             self.format_histo(gr, x_tit='time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6)
             fit_par = gr.Fit('pol0', 'qs')
-            gr.Draw('alp')
+            gr.Draw('ap')
             self.save_plots('PulseHeight{0}'.format(self.BinSize), sub_dir=self.save_dir)
             self.PulseHeight = gr
             self.canvas = c
@@ -570,10 +588,11 @@ class SignalAnalysis(Analysis):
         sig_time = self.make_signal_time_histos(corr=True, show=False)
         if not show:
             gROOT.SetBatch(1)
-        means = [h_proj.GetMean() for h_proj in [sig_time.ProjectionY(str(i), i + 1, i + 1) for i in xrange(self.n_bins)] if h_proj.GetEntries() > 100]
-        h = TH1F('h', 'Signal Bin{0} Distribution'.format(self.BinSize), int(sqrt(len(means))) * 2 + 2, int(min(means)), int(max(means)) + 2)
-        for mean in means:
-            h.Fill(mean)
+        means = [h_proj.GetMean() for h_proj in [sig_time.ProjectionY(str(i), i + 1, i + 1) for i in xrange(self.n_bins - 1)] if h_proj.GetEntries() > 10]
+        extrema = [int(min(means)), int(max(means))]
+        h = TH1F('h', 'Signal Bin{0} Distribution'.format(self.BinSize), int(log(len(means), 2) * 2), extrema[0] - 1, extrema[1] + 2)
+        for mean_ in means:
+            h.Fill(mean_)
         c = TCanvas('c', 'Pulse Height Distribution', 1000, 1000)
         c.SetLeftMargin(.12)
         self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.5)
@@ -1005,7 +1024,10 @@ class SignalAnalysis(Analysis):
         cut = self.Cut.CutStrings['ped_sigma'] + self.Cut.CutStrings['event_range'] + self.Cut.CutStrings['saturated']
         cut += TCut('{0}({1})'.format('!' if at_jumps else '', self.Cut.CutStrings['beam_interruptions']))
         cut += '!({0})'.format(self.Cut.CutStrings['pulser'])
-        return self.show_signal_histo(cut=cut, sig=self.PulserName, show=show, corr=corr)
+        h = self.show_signal_histo(cut=cut, sig=self.PulserName, show=show, corr=corr)
+        c = gROOT.GetListOfCanvases()[-1]
+        c.SetLogy()
+        return h
 
     def calc_pulser_fit(self, show=True, corr=True, at_jumps=False):
         suffix = '{corr}_{beam}'.format(corr='_ped_corr' if corr else '', beam='BeamOff' if at_jumps else 'BeamOn')
@@ -1024,6 +1046,7 @@ class SignalAnalysis(Analysis):
         cut = '!({0})'.format(self.Cut.CutStrings['pulser'])
         start = self.start_event + self.count if start_event is None else start_event + self.count
         print 'Event number:', start
+        # if n == 1:
         self.count += self.draw_waveforms(n=n, start_event=start, add_buckets=add_buckets, cut_string=cut, ret_event=True)
 
     # endregion
@@ -1155,12 +1178,12 @@ class SignalAnalysis(Analysis):
                 # h = TH1F('h', '', 600, -100, 500)
                 # self.tree.Draw("{name}>>h".format(name=self.signal_name), value)
                 h = self.show_signal_histo(corr=True, cut=value, show=False)
-                mean = self.__get_mean(h)
+                i_mean = self.__get_mean(h)
                 median = self.__get_median(h)
                 mpv = self.__get_mpv(h)
                 # print mean, median, mpv
-                gr1.SetPoint(i, i, mean[0])
-                gr1.SetPointError(i, 0, mean[1])
+                gr1.SetPoint(i, i, i_mean[0])
+                gr1.SetPointError(i, 0, i_mean[1])
                 gr2.SetPoint(i, i, median)
                 gr3.SetPoint(i, i, mpv)
                 histos.append(h)
