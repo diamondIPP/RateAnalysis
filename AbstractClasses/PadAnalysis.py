@@ -3,6 +3,8 @@
 # ==============================================
 from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie
 from TelescopeAnalysis import Analysis
+from CurrentInfo import KeithleyInfo
+from CurrentRootStuff import RootGraphs
 from numpy import array
 from math import sqrt, ceil, log
 from argparse import ArgumentParser
@@ -44,6 +46,11 @@ class SignalAnalysis(Analysis):
 
         # cuts
         self.Cut = ChannelCut(self, channel)
+
+        # currents
+        self.CurrentInfo = KeithleyInfo(self)
+        self.CurrentInfo.find_data()
+        self.CurrentGraphs = RootGraphs(self.CurrentInfo)
 
         # graphs
         self.PulseHeight = None
@@ -94,7 +101,6 @@ class SignalAnalysis(Analysis):
 
     def get_pulser_name(self):
         return self.get_signal_name(region='', sig_type='pulser')
-
     # endregion
 
     def set_channel(self, ch):
@@ -1054,7 +1060,7 @@ class SignalAnalysis(Analysis):
 
     def draw_pulser_waveform(self, n=1, start_event=None, add_buckets=False):
         cut = '!({0})'.format(self.Cut.CutStrings['pulser'])
-        start = self.start_event + self.count if start_event is None else start_event + self.count
+        start = self.StartEvent + self.count if start_event is None else start_event + self.count
         print 'Event number:', start
         # if n == 1:
         self.count += self.draw_waveforms(n=n, start_event=start, add_buckets=add_buckets, cut_string=cut, ret_event=True)
@@ -1099,7 +1105,7 @@ class SignalAnalysis(Analysis):
         """
         gROOT.SetBatch(1)
         t = time()
-        start = self.start_event if start_event is None else start_event
+        start = self.StartEvent if start_event is None else start_event
         assert self.run.n_entries >= start >= 0, 'The start event is not within the range of tree events!'
         if not self.run.wf_exists(self.channel):
             return
@@ -1129,7 +1135,7 @@ class SignalAnalysis(Analysis):
         return h if not ret_event else n_events
 
     def show_single_waveforms(self, n, cut=None):
-        ev = self.start_event
+        ev = self.StartEvent
         for i in xrange(n):
             ev += self.draw_waveforms(n=1, cut_string=cut, ret_event=True, start_event=ev)
             sleep(1)
@@ -1357,7 +1363,7 @@ class SignalAnalysis(Analysis):
 
     def get_peak_position(self, event=None, region='b', peak_int='2'):
         num = self.get_signal_number(region, peak_int)
-        ev = self.start_event if event is None else event
+        ev = self.StartEvent if event is None else event
         self.tree.GetEntry(ev)
         return self.tree.IntegralPeaks[num]
 

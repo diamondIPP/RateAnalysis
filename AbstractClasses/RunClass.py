@@ -429,10 +429,6 @@ class Run(Elementary):
         :param set_width:
         :return:
         """
-        # n_pads = 0
-        # while canvas.GetPad(n_pads + 1):
-        #     n_pads += 1
-        # canvas = canvas.GetPad(1) if n_pads else canvas
         assert channel is None or channel in self.channels, 'wrong channel id "{ch}"'.format(ch=channel)
         if set_height is not None:
             assert 0 <= set_height <= 0.8, 'choose height between 0 and 0.8 or set it to "None"'
@@ -489,15 +485,15 @@ class Run(Elementary):
             legend.AddEntry(0, 'Cut: {cut}'.format(cut=self.analysis.get_easy_cutstring()), '')
         if comment is not None:
             legend.AddEntry(0, comment, '')
-        n_pads = 0
-        while canvas.GetPad(n_pads + 1):
-            n_pads += 1
-        if not n_pads:
+        # while canvas.GetPad(n_pads + 1):
+        #     n_pads += 1
+        pads = [i for i in canvas.GetListOfPrimitives() if i.IsA().GetName() == 'TPad']
+        if not pads:
             git_text.Draw()
             legend.Draw()
         else:
-            for i in xrange(1, n_pads + 1):
-                canvas.cd(i)
+            for pad in pads:
+                pad.cd()
                 git_text.Draw()
                 legend.Draw()
         self.run_info_legends[0] = [legend, git_text]

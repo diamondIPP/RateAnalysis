@@ -48,6 +48,11 @@
           <option value="TArrow" />
           <option value="int.Parameter" />
           <option value="TPie" />
+          <option value="TBox" />
+          <option value="TPaveText" />
+          <option value="TPaveLabel" />
+          <option value="kCanDelete" />
+          <option value="TPad" />
         </list>
       </option>
     </inspection_tool>

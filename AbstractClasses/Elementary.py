@@ -105,8 +105,10 @@ class Elementary(object):
                 return
         channel = self.channel if hasattr(self, 'channel') else None
         if hasattr(self, 'run'):
+            print 'has run'
             self.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas)
         elif hasattr(self, 'analysis'):
+            print 'has analysis'
             self.analysis.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas)
         elif hasattr(self, 'collection'):
             runs = [self.collection.keys()[0], self.collection.keys()[-1], self.collection.values()[0].run.get_rate_string(), self.collection.values()[-1].run.get_rate_string()]
@@ -211,12 +213,13 @@ class Elementary(object):
         return gr
 
     @staticmethod
-    def make_tgaxis(x, y1, y2, title, color=1, width=1, offset=.15):
-        a = TGaxis(x, y1, x, y2, y1, y2, 510, '+SU')
+    def make_tgaxis(x, y1, y2, title, color=1, width=1, offset=.15, tit_size=.04, line=True, opt='+SU'):
+        a = TGaxis(x, y1, x, y2, y1, y2, 510, opt)
         a.SetLineColor(color)
-        a.SetTickSize(0)
-        a.SetLabelSize(0)
-        a.SetTitleSize(0.04)
+        if line:
+            a.SetTickSize(0)
+            a.SetLabelSize(0)
+        a.SetTitleSize(tit_size)
         a.SetTitleOffset(offset)
         a.SetTitle(title + '  ')
         a.SetTitleColor(color)
@@ -328,6 +331,14 @@ class Elementary(object):
         instance_factory = type('instance_factory', (instance.__class__, ), {})
         instance_factory.__init__ = lambda self, *args, **kwargs: self.__dict__.update(copy)
         return instance_factory
+
+    @staticmethod
+    def isfloat(string):
+        try:
+            float(string)
+            return True
+        except ValueError:
+            return False
 
 if __name__ == "__main__":
     z = Elementary()

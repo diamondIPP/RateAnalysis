@@ -63,7 +63,8 @@ class Analysis(Elementary):
         self.PeakIntegral = self.parser.get('BASIC', 'peak_integral')
 
         self.Cut = Cut(self)
-        self.start_event = self.Cut.CutConfig['EventRange'][0]
+        self.StartEvent = self.Cut.CutConfig['EventRange'][0]
+        self.EndEvent = self.Cut.CutConfig['EventRange'][1]
         self.pedestalFitMean = {}
 
         # save histograms // canvases
@@ -103,7 +104,7 @@ class Analysis(Elementary):
     # region REGIONS AND PEAK INTEGRAL
 
     def __draw_single_wf(self, event=None, show=True):
-        start = self.start_event if event is None else event
+        start = self.StartEvent if event is None else event
         if hasattr(self, 'draw_waveforms') and self.run.wf_exists(self.channel):
             h = self.draw_waveforms(n=1, show=show, start_event=start)
         else:
@@ -387,7 +388,7 @@ class Analysis(Elementary):
         right_offset = None
         for offset in offsets:
             pulser_events = 0
-            for event in xrange(self.start_event, self.run.n_entries):
+            for event in xrange(self.StartEvent, self.run.n_entries):
                 print '\rpulser events: {0:04d}'.format(pulser_events),
                 if pulser_events >= 1000:
                     break
@@ -417,7 +418,7 @@ class Analysis(Elementary):
 
     def __check_alignment_histo(self, histo):
         h = histo
-        for bin_ in xrange(h.FindBin(self.start_event), h.GetNbinsX()):
+        for bin_ in xrange(h.FindBin(self.StartEvent), h.GetNbinsX()):
             if h.GetBinContent(bin_) > 40:
                 return False
         return True

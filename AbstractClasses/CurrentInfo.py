@@ -1,236 +1,176 @@
 # ====================================
 # IMPORTS
 # ====================================
-import glob
-from datetime import datetime
-from collections import OrderedDict
-from RunClass import Run
-from functions1 import *
+from glob import glob
+from datetime import datetime, timedelta
+from configparser import ConfigParser
+from Elementary import Elementary
 
-weight = 0.93
+
 # ====================================
 # CLASS FOR THE DATA
 # ====================================
-class KeithleyInfo():
+class KeithleyInfo(Elementary):
     """reads in information from the keithley log file"""
 
-    def __init__(self, log, jsonfile, start, stop, number, averaging, points):
-        self.RunInfo =
+    def __init__(self, analysis, averaging=False, points=10):
+        Elementary.__init__(self)
 
-        self.single_mode = (True if number == "1" else False)
-        self.do_averaging = (True if averaging else False)
-        self.points = int(points) if is_float(points) else 10
-        self.number = number
-        if start == -1 and stop == -1:
+        self.DoAveraging = averaging
+        self.Points = points
+        self.analysis = analysis
 
-            RunInfo.__init__(self, jsonfile, start, time()+24)
-        else:
-            RunInfo.__init__(self, jsonfile, start, stop)
-        self.keithleys = OrderedDict([("Keithley1", "Silicon"),
-                                      ("Keithley2", str(self.dia1)),
-                                      ("Keithley3", str(self.dia2))])
-        self.log_dir = [str(log[0]) + "/HV*log", str(log[1]) + "/HV*log"]
-        self.keithley_name = [self.get_keithley_name(0), self.get_keithley_name(1)]
-        if self.single_mode:
-            self.keithleys = OrderedDict([("Keithley1", self.keithley_name[0])])
-        elif number == "2":
-            self.keithleys = OrderedDict([("Keithley1", self.keithley_name[0]),
-                                          ("Keithley2", self.keithley_name[1])])
-        self.dias = self.make_dict(self.dia1, self.dia2)
-        self.log_names = self.logs_from_start()
-        self.mean_curr = 0
-        self.mean_volt = 0
-        self.update_data()
+        # analysis/run info
+        self.RunInfo = analysis.run.RunInfo
+        self.RunNumber = analysis.run_number
+        self.StartEvent = analysis.StartEvent
+        self.EndEvent = analysis.EndEvent
+        self.StartTime = datetime.strptime(self.RunInfo['start time'], '%Y-%m-%dT%H:%M:%SZ') + timedelta(hours=1)
+        self.StopTime = datetime.strptime(self.RunInfo['stop time'], '%Y-%m-%dT%H:%M:%SZ') + timedelta(hours=1)
+        self.Channel = analysis.channel
+        self.DiamondName = analysis.diamond_name
 
-    def update_data(self):
-        self.data = self.find_data()
-        self.time_x = self.data[0]
-        self.current_y = self.data[1]
-        self.voltage_y = self.data[2]
+        # config
+        self.RunConfigParser = analysis.run.run_config_parser
+        self.ConfigParser = self.load_parser()
 
-    def get_keithley_name(self, num):
-        name = self.log_dir[num].split('/')
-        for i in name:
-            if i.lower().startswith('keithley') and not i.lower().endswith('client'):
-                name = i
-                break
-        return str(name)
+        # device info
+        self.Number = self.get_device_nr()
+        self.Channel = self.get_device_channel()
+        self.Brand = self.ConfigParser.get('HV' + self.Number, 'name').split('-')[0].strip('0123456789')
+        self.Model = self.ConfigParser.get('HV' + self.Number, 'model')
+        self.Name = '{0} {1}'.format(self.Brand, self.Model)
 
-    def get_lognames(self, num):
-        log_names = []
-        for name in glob.glob(self.log_dir[num]):
-            log_names.append(name)
-        log_names = sorted(log_names)
-        return log_names
+        self.DataPath = self.find_data_path()
+        self.LogNames = self.get_logs_from_start()
 
-    def get_start_log(self, num):
-        start_log = 0
-        log_names = self.get_lognames(num)
-        for i in range(len(log_names)):
-            name = log_names[i].strip('.log').split('/')
-            name = name[-1].split('_')
-            log_date = ""
-            for j in range(3, 9):
-                log_date += name[j] + " "
-            log_date = log_date.strip(' ')
-            log_date = datetime.strptime(log_date, "%Y %m %d %H %M %S")
-            if log_date >= self.start:
+        # data
+        self.Currents = []
+        self.Voltages = []
+        self.Time = []
+
+        # self.log_names = self.logs_from_start()
+        # self.mean_curr = 0
+        # self.mean_volt = 0
+        # self.update_data()
+
+    # ==========================================================================
+    # region INIT
+    def load_parser(self):
+        parser = ConfigParser()
+        parser.read(self.RunConfigParser.get('BASIC', 'hvconfigfile'))
+        return parser
+
+    def get_device_nr(self):
+        full_str = self.RunInfo['dia{dia}supply'.format(dia=1 if not self.Channel else 2)]
+        return str(full_str.split('-')[0])
+
+    def get_device_channel(self):
+        full_str = self.RunInfo['dia{dia}supply'.format(dia=1 if not self.Channel else 2)]
+        return full_str.split('-')[1] if len(full_str) > 1 else '0'
+
+    def find_data_path(self):
+        hv_datapath = self.RunConfigParser.get('BASIC', 'hvdatapath')
+        return '{data}{dev}_CH{ch}/'.format(data=hv_datapath, dev=self.ConfigParser.get('HV' + self.Number, 'name'), ch=self.Channel)
+    # endregion
+
+    def get_logs_from_start(self):
+        log_names = sorted([name for name in glob(self.DataPath + '*')])
+        start_log = None
+        for i, name in enumerate(log_names):
+            log_date = self.get_log_date(name)
+            if log_date >= self.StartTime:
                 break
             start_log = i
-        return start_log
-
-    def logs_from_start(self):
-        log_names = {}
-        ind = 0
-        for key in self.keithleys:
-            log_names[key] = []
-            for i in range(self.get_start_log(ind), len(self.get_lognames(ind))):
-                log_names[key].append(self.get_lognames(ind)[i])
-            ind +=1
-        return log_names
-
-    def create_dicts(self):
-        dicts = {}
-        for key in self.keithleys:
-            dicts[key] = []
-        return dicts
+        return log_names[start_log:]
 
     @staticmethod
     def get_log_date(name):
-        name = name.strip('.log').split('/')
-        name = name[-1].split('_')
-        log_date = ""
-        for i in range(3, 6):
-            log_date += name[i] + "-"
-        log_date = log_date.strip('-')
-        return log_date
+        log_date = name.split('/')[-1].split('_')
+        log_date = ''.join(log_date[3:])
+        return datetime.strptime(log_date, '%Y%m%d%H%M%S.log')
 
     def find_data(self):
-        self.log_names = self.logs_from_start()
-        dicts = [self.create_dicts(), self.create_dicts(), self.create_dicts()]
-        stop = [0,0,0]
-        ind = 0
-        stop_ind = 0
-        for key in self.keithleys:
-            for name in self.log_names[key]:
-                self.mean_curr = 0
-                self.mean_volt = 0
-                log_date = self.get_log_date(name)
-                data = open(name, 'r')
-                # print 'reading', name
-                if ind == 0:
-                    self.find_start(data, log_date)
-                index = 0
-                i = 0
-                info = None
-                for line in data:
-                    info = line.split()
-                    if i == 0:
-                        # print info
-                        pass
-                    i += 1
-                    if is_float(info[1]):
-                        now = datetime.strptime(log_date + " " + info[0], "%Y-%m-%d %H:%M:%S")
-                        index = self.averaging(dicts, now, info, index, key)
-                        if self.stop != -1:
-                            if self.stop < now:
-                                stop[stop_ind] = True
-                                break
-                if info:
-                    # print i,info, len(data.readlines())
-                    # print
-                    pass
-                data.close()
-                if stop[stop_ind]:
-                    stop_ind += 1
-                    break
-        self.check_empty(dicts)
-        ind += 1
-        return dicts
+        stop = False
+        for i, name in enumerate(self.LogNames):
+            self.mean_curr = 0
+            self.mean_volt = 0
+            log_date = self.get_log_date(name)
+            data = open(name, 'r')
+            # jump to the correct line of the first file
+            if not i:
+                self.find_start(data, log_date)
+            index = 0
+            for line in data:
+                info = line.split()
+                if self.isfloat(info[1]) and len(info) > 2:
+                    now = datetime.strptime(log_date.strftime('%Y%m%d') + info[0], '%Y%m%d%H:%M:%S')
+                    if self.StartTime < now < self.StopTime and float(info[2]) < 1e30:
+                        self.save_data(now, info, index)
+                        index += 1
+                    if self.StopTime < now:
+                        stop = True
+                        break
+            data.close()
+            if stop:
+                break
 
-    def averaging(self, dicts, now, info, index, key, shifting=False):
-        # for key in self.keithleys:
-        if len(info) > 2:
-            # print self.start, now, self.stop
-            if self.start < now < self.stop and float(info[2]) < 1e30:
-                index += 1
-                if self.do_averaging:
-                    if not shifting:
-                        self.mean_curr += float(info[2]) * 1e9
-                        self.mean_volt += float(info[1])
-                        if index % self.points == 0:
-                            dicts[1][key].append(self.mean_curr / self.points)
-                            dicts[0][key].append(convert_time(now))
-                            dicts[2][key].append(self.mean_volt / self.points)
-                            self.mean_curr = 0
-                            self.mean_volt = 0
-                    else:
-                        if index <= self.points:
-                            self.mean_curr += float(info[2]) * 1e9
-                            dicts[1][key].append(self.mean_curr / index)
-                            if index == self.points:
-                                self.mean_curr /= self.points
-                        else:
-                            mean_curr = self.mean_curr * weight + (1 - weight) * float(info[2]) * 1e9
-                            dicts[1][key].append(mean_curr)
-                        dicts[0][key].append(convert_time(now))
-                        dicts[2][key].append(float(info[1]))
-                else:
-                    dicts[1][key].append(float(info[2]) * 1e9)
-                    dicts[0][key].append(convert_time(now))
-                    dicts[2][key].append(float(info[1]))
-        return index
+    def save_data(self, now, info, index, shifting=False):
+        total_seconds = (now - datetime(now.year, 1, 1)).total_seconds()
+        if self.StartTime < now < self.StopTime and float(info[2]) < 1e30:
+            index += 1
+            if self.DoAveraging:
+                if not shifting:
+                    self.mean_curr += float(info[2]) * 1e9
+                    self.mean_volt += float(info[1])
+                    if index % self.Points == 0:
+                        self.Currents.append(self.mean_curr / self.Points)
+                        self.Time.append(total_seconds)
+                        self.Voltages.append(self.mean_volt / self.Points)
+                        self.mean_curr = 0
+                        self.mean_volt = 0
+                # else:
+                #     if index <= self.Points:
+                #         self.mean_curr += float(info[2]) * 1e9
+                #         dicts[1][key].append(self.mean_curr / index)
+                #         if index == self.Points:
+                #             self.mean_curr /= self.Points
+                #     else:
+                #         mean_curr = self.mean_curr * weight + (1 - weight) * float(info[2]) * 1e9
+                #         dicts[1][key].append(mean_curr)
+                #     dicts[0][key].append(convert_time(now))
+                #     dicts[2][key].append(float(info[1]))
+            else:
+                self.Currents.append(float(info[2]) * 1e9)
+                self.Time.append(total_seconds)
+                self.Voltages.append(float(info[1]))
 
     def find_start(self, data, log_date):
         lines = len(data.readlines())
-        was_lines = 0
         data.seek(0)
-        if lines > 10000:
-            for i in range(6):
-                lines /= 2
-                for j in range(lines):
-                    data.readline()
-                while True:
-                    info = data.readline().split()
-                    if not info:
+        if lines < 10000:
+            return
+        was_lines = 0
+        for i in range(6):
+            lines /= 2
+            for j in xrange(lines):
+                data.readline()
+            while True:
+                info = data.readline().split()
+                if not info:
+                    break
+                if self.isfloat(info[1]):
+                    now = datetime.strptime(log_date.strftime('%Y%m%d') + info[0], '%Y%m%d%H:%M:%S')
+                    if now < self.StartTime:
+                        was_lines += lines
                         break
-                    if is_float(info[1]):
-                        now = datetime.strptime(log_date + " " + info[0], "%Y-%m-%d %H:%M:%S")
-                        if now < self.start:
-                            was_lines += lines
-                            break
-                        else:
-                            data.seek(0)
-                            for k in range(was_lines):
-                                data.readline()
-                            break
-
-    def check_empty(self, dicts):
-        for i in range(len(dicts)):
-            for key in self.keithleys:
-                if len(dicts[i][key]) == 0:
-                    if i == 0:
-                        if self.stop != -1:
-                            dicts[i][key] = [convert_time(self.start), convert_time(self.stop)]
-                        else:
-                             dicts[i][key] = [convert_time(self.start), convert_time(time())]
                     else:
-                        dicts[i][key] = [0]
-                        dicts[i][key] = [0]
+                        data.seek(0)
+                        for k in xrange(was_lines):
+                            data.readline()
+                        break
 
-    def relative_time(self):
-        for key in self.keithleys:
-            zero = self.time_x[key][0]
-            for i in range(len(self.time_x[key])):
-                self.time_x[key][i] = self.time_x[key][i] - zero
-        return self.time_x
-
-    def make_dict(self, arg1, arg2):
-        if self.single_mode:
-            return OrderedDict([("Keithley1", arg1)])
-        elif self.number == "2":
-            return OrderedDict([("Keithley1", arg1),
-                                ("Keithley2", arg2)])
-
-if __name__ == '__main__':
-    test = KeithleyInfo('logs_237', 'test.json', '2015-06-29.10:50', '2015-06-29.12:00', '1', False, 10)
+    def convert_to_relative_time(self):
+        zero = self.Time[0]
+        for i in xrange(len(self.Time)):
+            self.Time[i] = self.Time[i] - zero

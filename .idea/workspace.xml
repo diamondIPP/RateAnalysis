@@ -1,9 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="e6cf272c-81a5-4f4e-9e0a-ff55b841b26f" name="Default" comment="">
+    <list default="true" id="e6cf272c-81a5-4f4e-9e0a-ff55b841b26f" name="Default" comment="fixing beam profile and ph overview plots &#10;">
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/AbstractClasses/CurrentRootStuff.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/CurrentInfo.py" afterPath="$PROJECT_DIR$/AbstractClasses/CurrentInfo.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/Elementary.py" afterPath="$PROJECT_DIR$/AbstractClasses/Elementary.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/PadAnalysis.py" afterPath="$PROJECT_DIR$/AbstractClasses/PadAnalysis.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/RunClass.py" afterPath="$PROJECT_DIR$/AbstractClasses/RunClass.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/TelescopeAnalysis.py" afterPath="$PROJECT_DIR$/AbstractClasses/TelescopeAnalysis.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/Configuration/RunConfig_201510.cfg" afterPath="$PROJECT_DIR$/Configuration/RunConfig_201510.cfg" />
     </list>
     <ignored path="myPadAnalysis.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -28,7 +35,7 @@
         <entry file="file://$PROJECT_DIR$/AbstractClasses/TelescopeAnalysis.py">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="353" column="15" selection-start-line="353" selection-start-column="15" selection-end-line="353" selection-end-column="15" />
+              <caret line="70" column="33" selection-start-line="70" selection-start-column="33" selection-end-line="70" selection-end-column="33" />
               <folding>
                 <element signature="e#0#37#0" expanded="true" />
               </folding>
@@ -36,19 +43,19 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="PadAnalysis.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="PadAnalysis.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/AbstractClasses/PadAnalysis.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="1.518617">
-              <caret line="553" column="21" selection-start-line="553" selection-start-column="21" selection-end-line="553" selection-end-column="21" />
+            <state vertical-scroll-proportion="0.0">
+              <caret line="53" column="0" selection-start-line="53" selection-start-column="0" selection-end-line="53" selection-end-column="0" />
               <folding>
                 <element signature="e#108#250#0" expanded="true" />
-                <element signature="e#4763#4784#0" expanded="false" />
-                <element signature="e#4873#6872#0" expanded="false" />
-                <element signature="e#9148#9179#0" expanded="false" />
-                <element signature="e#18932#18952#0" expanded="false" />
-                <element signature="e#21652#22762#0" expanded="false" />
-                <element signature="e#22826#24840#0" expanded="false" />
+                <element signature="e#5000#5021#0" expanded="false" />
+                <element signature="e#5110#7109#0" expanded="false" />
+                <element signature="e#9385#9416#0" expanded="false" />
+                <element signature="e#19169#19189#0" expanded="false" />
+                <element signature="e#21889#22999#0" expanded="false" />
+                <element signature="e#23063#25077#0" expanded="false" />
               </folding>
             </state>
           </provider>
@@ -58,9 +65,31 @@
         <entry file="file://$PROJECT_DIR$/AbstractClasses/CurrentInfo.py">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="25" column="62" selection-start-line="25" selection-start-column="62" selection-end-line="25" selection-end-column="62" />
+              <caret line="16" column="33" selection-start-line="16" selection-start-column="33" selection-end-line="16" selection-end-column="33" />
               <folding>
-                <element signature="e#88#99#0" expanded="true" />
+                <element signature="e#88#109#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="CurrentRootStuff.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/AbstractClasses/CurrentRootStuff.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state vertical-scroll-proportion="0.0">
+              <caret line="350" column="28" selection-start-line="350" selection-start-column="28" selection-end-line="350" selection-end-column="28" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="RunClass.py" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/AbstractClasses/RunClass.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state vertical-scroll-proportion="0.6463246">
+              <caret line="499" column="22" selection-start-line="499" selection-start-column="22" selection-end-line="499" selection-end-column="22" />
+              <folding>
+                <element signature="e#108#119#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -74,55 +103,6 @@
               <folding>
                 <element signature="e#108#119#0" expanded="true" />
                 <element signature="e#2628#2641#0" expanded="false" />
-                <element signature="e#5488#5512#0" expanded="false" />
-                <marker date="1454143199137" expanded="true" signature="26725:26742" placeholder="BEAM PROFILE" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="RunClass.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/AbstractClasses/RunClass.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0">
-              <caret line="88" column="51" selection-start-line="88" selection-start-column="51" selection-end-line="88" selection-end-column="51" />
-              <folding>
-                <element signature="e#108#119#0" expanded="true" />
-                <marker date="1454143199137" expanded="true" signature="1760:4365" placeholder="..." />
-                <marker date="1454143199137" expanded="true" signature="1769:1912" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-                <marker date="1454143199137" expanded="true" signature="4424:7462" placeholder="LOAD FUNCTIONS" />
-                <marker date="1454143199137" expanded="true" signature="4472:4625" placeholder="..." />
-                <marker date="1454143199137" expanded="true" signature="4653:4784" placeholder="..." />
-                <marker date="1454143199137" expanded="true" signature="4813:4981" placeholder="..." />
-                <marker date="1454143199137" expanded="true" signature="5011:6306" placeholder="..." />
-                <marker date="1454143199137" expanded="true" signature="6342:6845" placeholder="..." />
-                <marker date="1454143199137" expanded="true" signature="6875:7446" placeholder="..." />
-                <marker date="1454143199137" expanded="true" signature="7519:7954" placeholder="..." />
-                <marker date="1454143199137" expanded="true" signature="7993:8426" placeholder="..." />
-                <marker date="1454143199137" expanded="true" signature="8002:8158" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-                <marker date="1454143199137" expanded="true" signature="8457:10288" placeholder="..." />
-                <marker date="1454143199137" expanded="true" signature="10324:10861" placeholder="..." />
-                <marker date="1454143199137" expanded="true" signature="10896:11128" placeholder="..." />
-                <marker date="1454143199137" expanded="true" signature="11187:14561" placeholder="GET FUNCTIONS" />
-                <marker date="1454143199137" expanded="true" signature="11233:11303" placeholder="..." />
-                <marker date="1454143199137" expanded="true" signature="11339:11815" placeholder="..." />
-                <marker date="1454143199137" expanded="true" signature="11850:12483" placeholder="..." />
-                <marker date="1454143199137" expanded="true" signature="12519:12764" placeholder="..." />
-                <marker date="1454143199137" expanded="true" signature="12528:12695" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-                <marker date="1454143199137" expanded="true" signature="12806:12849" placeholder="..." />
-                <marker date="1454143199137" expanded="true" signature="12891:12966" placeholder="..." />
-                <marker date="1454143199137" expanded="true" signature="12998:13219" placeholder="..." />
-                <marker date="1454143199137" expanded="true" signature="13250:13462" placeholder="..." />
-                <marker date="1454143199137" expanded="true" signature="13503:13898" placeholder="..." />
-                <marker date="1454143199137" expanded="true" signature="13512:13691" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-                <marker date="1454143199137" expanded="true" signature="13942:14544" placeholder="..." />
-                <marker date="1454143199137" expanded="true" signature="13951:14140" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-                <marker date="1454143199137" expanded="true" signature="14620:19269" placeholder="SHOW RUN INFO" />
-                <marker date="1454143199137" expanded="true" signature="14670:14738" placeholder="..." />
-                <marker date="1454143199137" expanded="true" signature="14768:15318" placeholder="..." />
-                <marker date="1454143199137" expanded="true" signature="14777:14923" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-                <marker date="1454143199137" expanded="true" signature="15461:19252" placeholder="..." />
-                <marker date="1454143199137" expanded="true" signature="15470:15892" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
               </folding>
             </state>
           </provider>
@@ -132,7 +112,7 @@
         <entry file="file://$PROJECT_DIR$/AbstractClasses/Elementary.py">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="107" column="30" selection-start-line="107" selection-start-column="30" selection-end-line="107" selection-end-column="30" />
+              <caret line="111" column="33" selection-start-line="111" selection-start-column="33" selection-end-line="111" selection-end-column="33" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
               </folding>
@@ -172,16 +152,17 @@
         <option value="$PROJECT_DIR$/AbstractClasses/Extrema.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/Converter.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/RunSelection.py" />
-        <option value="$PROJECT_DIR$/AbstractClasses/Elementary.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/newAnalysis.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/signal_analysis.py" />
-        <option value="$PROJECT_DIR$/AbstractClasses/TelescopeAnalysis.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/Cut.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/ChannelCut.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" />
-        <option value="$PROJECT_DIR$/AbstractClasses/RunClass.py" />
-        <option value="$PROJECT_DIR$/AbstractClasses/CurrentInfo.py" />
+        <option value="$PROJECT_DIR$/AbstractClasses/TelescopeAnalysis.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/PadAnalysis.py" />
+        <option value="$PROJECT_DIR$/AbstractClasses/CurrentInfo.py" />
+        <option value="$PROJECT_DIR$/AbstractClasses/CurrentRootStuff.py" />
+        <option value="$PROJECT_DIR$/AbstractClasses/Elementary.py" />
+        <option value="$PROJECT_DIR$/AbstractClasses/RunClass.py" />
       </list>
     </option>
   </component>
@@ -578,12 +559,12 @@
     <editor active="true" />
     <layout>
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.16666667" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32225063" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32929516" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
-      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Application Servers" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
@@ -610,7 +591,6 @@
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="fixing get peak integrals" />
     <MESSAGE value="fixing get all signal names" />
     <MESSAGE value="adding signal_vs_peakintegral function" />
     <MESSAGE value="improving signal_vs_peakintegral function" />
@@ -635,7 +615,8 @@
     <MESSAGE value="adding pie" />
     <MESSAGE value="fixing binning algorithm and finishing pie" />
     <MESSAGE value="fixing beam profile and ph overview plots and adding currentinfo class&#10;" />
-    <option name="LAST_COMMIT_MESSAGE" value="fixing beam profile and ph overview plots and adding currentinfo class&#10;" />
+    <MESSAGE value="fixing beam profile and ph overview plots &#10;" />
+    <option name="LAST_COMMIT_MESSAGE" value="fixing beam profile and ph overview plots &#10;" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -644,35 +625,18 @@
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/Cut.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="110" column="32" selection-start-line="110" selection-start-column="32" selection-end-line="110" selection-end-column="32" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/TelescopeAnalysis.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="474" column="17" selection-start-line="474" selection-start-column="17" selection-end-line="474" selection-end-column="17" />
-          <folding>
-            <element signature="e#0#37#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/PadAnalysis.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#108#250#0" expanded="true" />
-            <element signature="e#4763#4784#0" expanded="false" />
-            <element signature="e#4873#6872#0" expanded="false" />
-            <element signature="e#9148#9179#0" expanded="false" />
-            <element signature="e#18932#18952#0" expanded="false" />
-            <element signature="e#21652#22762#0" expanded="false" />
-            <element signature="e#22826#24840#0" expanded="false" />
+            <element signature="e#5000#5021#0" expanded="false" />
+            <element signature="e#5110#7109#0" expanded="false" />
+            <element signature="e#9385#9416#0" expanded="false" />
+            <element signature="e#19169#19189#0" expanded="false" />
+            <element signature="e#21889#22999#0" expanded="false" />
+            <element signature="e#23063#25077#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -684,8 +648,6 @@
           <folding>
             <element signature="e#108#119#0" expanded="true" />
             <element signature="e#2628#2641#0" expanded="false" />
-            <element signature="e#5488#5512#0" expanded="false" />
-            <marker date="1454143199137" expanded="true" signature="26725:26742" placeholder="BEAM PROFILE" />
           </folding>
         </state>
       </provider>
@@ -696,41 +658,6 @@
           <caret line="14" column="0" selection-start-line="14" selection-start-column="0" selection-end-line="14" selection-end-column="0" />
           <folding>
             <element signature="e#108#119#0" expanded="true" />
-            <marker date="1454143199137" expanded="true" signature="1760:4365" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="1769:1912" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="4424:7462" placeholder="LOAD FUNCTIONS" />
-            <marker date="1454143199137" expanded="true" signature="4472:4625" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="4653:4784" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="4813:4981" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="5011:6306" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="6342:6845" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="6875:7446" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="7519:7954" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="7993:8426" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="8002:8158" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="8457:10288" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="10324:10861" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="10896:11128" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="11187:14561" placeholder="GET FUNCTIONS" />
-            <marker date="1454143199137" expanded="true" signature="11233:11303" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="11339:11815" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="11850:12483" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12519:12764" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12528:12695" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="12806:12849" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12891:12966" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12998:13219" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13250:13462" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13503:13898" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13512:13691" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="13942:14544" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13951:14140" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="14620:19269" placeholder="SHOW RUN INFO" />
-            <marker date="1454143199137" expanded="true" signature="14670:14738" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="14768:15318" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="14777:14923" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="15461:19252" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="15470:15892" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
           </folding>
         </state>
       </provider>
@@ -749,6 +676,11 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="6" column="0" selection-start-line="6" selection-start-column="0" selection-end-line="6" selection-end-column="0" />
+          <folding>
+            <element signature="e#0#19#0" expanded="false" />
+            <element signature="e#944#2697#0" expanded="false" />
+            <element signature="e#2742#2999#0" expanded="false" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -756,6 +688,11 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="89" column="42" selection-start-line="89" selection-start-column="42" selection-end-line="89" selection-end-column="42" />
+          <folding>
+            <element signature="e#0#19#0" expanded="false" />
+            <element signature="e#944#2697#0" expanded="false" />
+            <element signature="e#2742#2999#0" expanded="false" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -789,41 +726,6 @@
           <caret line="125" column="25" selection-start-line="125" selection-start-column="25" selection-end-line="125" selection-end-column="25" />
           <folding>
             <element signature="e#108#119#0" expanded="true" />
-            <marker date="1454143199137" expanded="true" signature="1760:4365" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="1769:1912" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="4424:7462" placeholder="LOAD FUNCTIONS" />
-            <marker date="1454143199137" expanded="true" signature="4472:4625" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="4653:4784" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="4813:4981" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="5011:6306" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="6342:6845" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="6875:7446" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="7519:7954" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="7993:8426" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="8002:8158" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="8457:10288" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="10324:10861" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="10896:11128" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="11187:14561" placeholder="GET FUNCTIONS" />
-            <marker date="1454143199137" expanded="true" signature="11233:11303" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="11339:11815" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="11850:12483" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12519:12764" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12528:12695" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="12806:12849" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12891:12966" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12998:13219" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13250:13462" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13503:13898" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13512:13691" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="13942:14544" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13951:14140" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="14620:19269" placeholder="SHOW RUN INFO" />
-            <marker date="1454143199137" expanded="true" signature="14670:14738" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="14768:15318" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="14777:14923" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="15461:19252" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="15470:15892" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
           </folding>
         </state>
       </provider>
@@ -865,41 +767,6 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#108#119#0" expanded="true" />
-            <marker date="1454143199137" expanded="true" signature="1760:4365" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="1769:1912" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="4424:7462" placeholder="LOAD FUNCTIONS" />
-            <marker date="1454143199137" expanded="true" signature="4472:4625" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="4653:4784" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="4813:4981" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="5011:6306" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="6342:6845" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="6875:7446" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="7519:7954" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="7993:8426" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="8002:8158" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="8457:10288" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="10324:10861" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="10896:11128" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="11187:14561" placeholder="GET FUNCTIONS" />
-            <marker date="1454143199137" expanded="true" signature="11233:11303" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="11339:11815" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="11850:12483" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12519:12764" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12528:12695" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="12806:12849" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12891:12966" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12998:13219" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13250:13462" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13503:13898" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13512:13691" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="13942:14544" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13951:14140" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="14620:19269" placeholder="SHOW RUN INFO" />
-            <marker date="1454143199137" expanded="true" signature="14670:14738" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="14768:15318" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="14777:14923" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="15461:19252" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="15470:15892" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
           </folding>
         </state>
       </provider>
@@ -917,41 +784,6 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#108#119#0" expanded="true" />
-            <marker date="1454143199137" expanded="true" signature="1760:4365" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="1769:1912" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="4424:7462" placeholder="LOAD FUNCTIONS" />
-            <marker date="1454143199137" expanded="true" signature="4472:4625" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="4653:4784" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="4813:4981" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="5011:6306" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="6342:6845" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="6875:7446" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="7519:7954" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="7993:8426" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="8002:8158" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="8457:10288" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="10324:10861" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="10896:11128" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="11187:14561" placeholder="GET FUNCTIONS" />
-            <marker date="1454143199137" expanded="true" signature="11233:11303" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="11339:11815" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="11850:12483" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12519:12764" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12528:12695" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="12806:12849" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12891:12966" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12998:13219" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13250:13462" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13503:13898" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13512:13691" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="13942:14544" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13951:14140" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="14620:19269" placeholder="SHOW RUN INFO" />
-            <marker date="1454143199137" expanded="true" signature="14670:14738" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="14768:15318" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="14777:14923" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="15461:19252" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="15470:15892" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
           </folding>
         </state>
       </provider>
@@ -986,41 +818,6 @@
           <caret line="281" column="0" selection-start-line="281" selection-start-column="0" selection-end-line="281" selection-end-column="0" />
           <folding>
             <element signature="e#108#119#0" expanded="true" />
-            <marker date="1454143199137" expanded="true" signature="1760:4365" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="1769:1912" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="4424:7462" placeholder="LOAD FUNCTIONS" />
-            <marker date="1454143199137" expanded="true" signature="4472:4625" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="4653:4784" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="4813:4981" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="5011:6306" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="6342:6845" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="6875:7446" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="7519:7954" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="7993:8426" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="8002:8158" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="8457:10288" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="10324:10861" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="10896:11128" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="11187:14561" placeholder="GET FUNCTIONS" />
-            <marker date="1454143199137" expanded="true" signature="11233:11303" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="11339:11815" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="11850:12483" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12519:12764" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12528:12695" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="12806:12849" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12891:12966" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12998:13219" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13250:13462" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13503:13898" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13512:13691" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="13942:14544" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13951:14140" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="14620:19269" placeholder="SHOW RUN INFO" />
-            <marker date="1454143199137" expanded="true" signature="14670:14738" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="14768:15318" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="14777:14923" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="15461:19252" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="15470:15892" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
           </folding>
         </state>
       </provider>
@@ -1048,41 +845,6 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#108#119#0" expanded="true" />
-            <marker date="1454143199137" expanded="true" signature="1760:4365" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="1769:1912" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="4424:7462" placeholder="LOAD FUNCTIONS" />
-            <marker date="1454143199137" expanded="true" signature="4472:4625" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="4653:4784" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="4813:4981" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="5011:6306" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="6342:6845" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="6875:7446" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="7519:7954" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="7993:8426" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="8002:8158" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="8457:10288" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="10324:10861" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="10896:11128" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="11187:14561" placeholder="GET FUNCTIONS" />
-            <marker date="1454143199137" expanded="true" signature="11233:11303" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="11339:11815" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="11850:12483" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12519:12764" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12528:12695" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="12806:12849" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12891:12966" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12998:13219" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13250:13462" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13503:13898" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13512:13691" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="13942:14544" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13951:14140" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="14620:19269" placeholder="SHOW RUN INFO" />
-            <marker date="1454143199137" expanded="true" signature="14670:14738" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="14768:15318" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="14777:14923" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="15461:19252" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="15470:15892" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
           </folding>
         </state>
       </provider>
@@ -1110,41 +872,6 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#108#119#0" expanded="true" />
-            <marker date="1454143199137" expanded="true" signature="1760:4365" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="1769:1912" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="4424:7462" placeholder="LOAD FUNCTIONS" />
-            <marker date="1454143199137" expanded="true" signature="4472:4625" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="4653:4784" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="4813:4981" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="5011:6306" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="6342:6845" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="6875:7446" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="7519:7954" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="7993:8426" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="8002:8158" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="8457:10288" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="10324:10861" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="10896:11128" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="11187:14561" placeholder="GET FUNCTIONS" />
-            <marker date="1454143199137" expanded="true" signature="11233:11303" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="11339:11815" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="11850:12483" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12519:12764" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12528:12695" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="12806:12849" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12891:12966" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12998:13219" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13250:13462" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13503:13898" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13512:13691" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="13942:14544" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13951:14140" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="14620:19269" placeholder="SHOW RUN INFO" />
-            <marker date="1454143199137" expanded="true" signature="14670:14738" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="14768:15318" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="14777:14923" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="15461:19252" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="15470:15892" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
           </folding>
         </state>
       </provider>
@@ -1243,20 +970,15 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/TelescopeAnalysis.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="353" column="15" selection-start-line="353" selection-start-column="15" selection-end-line="353" selection-end-column="15" />
-          <folding>
-            <element signature="e#0#37#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/ChannelCut.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="74" column="27" selection-start-line="74" selection-start-column="27" selection-end-line="74" selection-end-column="27" />
+          <folding>
+            <element signature="e#0#19#0" expanded="false" />
+            <element signature="e#944#2697#0" expanded="false" />
+            <element signature="e#2742#2999#0" expanded="false" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -1264,15 +986,30 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="8" column="34" selection-start-line="8" selection-start-column="34" selection-end-line="8" selection-end-column="34" />
+          <folding>
+            <element signature="e#2785#3177#0" expanded="false" />
+            <element signature="e#3238#3944#0" expanded="false" />
+          </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/Elementary.py">
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
-          <caret line="107" column="30" selection-start-line="107" selection-start-column="30" selection-end-line="107" selection-end-column="30" />
+          <caret line="620" column="50" selection-start-line="620" selection-start-column="50" selection-end-line="620" selection-end-column="50" />
           <folding>
-            <element signature="e#0#9#0" expanded="true" />
+            <element signature="e#108#119#0" expanded="true" />
+            <element signature="e#2628#2641#0" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/TelescopeAnalysis.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="70" column="33" selection-start-line="70" selection-start-column="33" selection-end-line="70" selection-end-column="33" />
+          <folding>
+            <element signature="e#0#37#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -1285,60 +1022,26 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/RunClass.py">
+    <entry file="file://$USER_HOME$/.PyCharmEdu20/system/python_stubs/-1247972723/datetime.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="88" column="51" selection-start-line="88" selection-start-column="51" selection-end-line="88" selection-end-column="51" />
-          <folding>
-            <element signature="e#108#119#0" expanded="true" />
-            <marker date="1454143199137" expanded="true" signature="1760:4365" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="1769:1912" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="4424:7462" placeholder="LOAD FUNCTIONS" />
-            <marker date="1454143199137" expanded="true" signature="4472:4625" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="4653:4784" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="4813:4981" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="5011:6306" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="6342:6845" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="6875:7446" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="7519:7954" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="7993:8426" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="8002:8158" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="8457:10288" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="10324:10861" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="10896:11128" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="11187:14561" placeholder="GET FUNCTIONS" />
-            <marker date="1454143199137" expanded="true" signature="11233:11303" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="11339:11815" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="11850:12483" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12519:12764" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12528:12695" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="12806:12849" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12891:12966" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="12998:13219" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13250:13462" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13503:13898" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13512:13691" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="13942:14544" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="13951:14140" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="14620:19269" placeholder="SHOW RUN INFO" />
-            <marker date="1454143199137" expanded="true" signature="14670:14738" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="14768:15318" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="14777:14923" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-            <marker date="1454143199137" expanded="true" signature="15461:19252" placeholder="..." />
-            <marker date="1454143199137" expanded="true" signature="15470:15892" placeholder="&quot;&quot;&quot;...&quot;&quot;&quot;" />
-          </folding>
+        <state vertical-scroll-proportion="0.3324468">
+          <caret line="492" column="8" selection-start-line="492" selection-start-column="8" selection-end-line="492" selection-end-column="8" />
+          <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py">
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/PadAnalysis.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
-          <caret line="620" column="50" selection-start-line="620" selection-start-column="50" selection-end-line="620" selection-end-column="50" />
+          <caret line="53" column="0" selection-start-line="53" selection-start-column="0" selection-end-line="53" selection-end-column="0" />
           <folding>
-            <element signature="e#108#119#0" expanded="true" />
-            <element signature="e#2628#2641#0" expanded="false" />
-            <element signature="e#5488#5512#0" expanded="false" />
-            <marker date="1454143199137" expanded="true" signature="26725:26742" placeholder="BEAM PROFILE" />
+            <element signature="e#108#250#0" expanded="true" />
+            <element signature="e#5000#5021#0" expanded="false" />
+            <element signature="e#5110#7109#0" expanded="false" />
+            <element signature="e#9385#9416#0" expanded="false" />
+            <element signature="e#19169#19189#0" expanded="false" />
+            <element signature="e#21889#22999#0" expanded="false" />
+            <element signature="e#23063#25077#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -1346,25 +1049,37 @@
     <entry file="file://$PROJECT_DIR$/AbstractClasses/CurrentInfo.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
-          <caret line="25" column="62" selection-start-line="25" selection-start-column="62" selection-end-line="25" selection-end-column="62" />
+          <caret line="16" column="33" selection-start-line="16" selection-start-column="33" selection-end-line="16" selection-end-column="33" />
           <folding>
-            <element signature="e#88#99#0" expanded="true" />
+            <element signature="e#88#109#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/PadAnalysis.py">
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/CurrentRootStuff.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="1.518617">
-          <caret line="553" column="21" selection-start-line="553" selection-start-column="21" selection-end-line="553" selection-end-column="21" />
+        <state vertical-scroll-proportion="0.0">
+          <caret line="350" column="28" selection-start-line="350" selection-start-column="28" selection-end-line="350" selection-end-column="28" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/Elementary.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="111" column="33" selection-start-line="111" selection-start-column="33" selection-end-line="111" selection-end-column="33" />
           <folding>
-            <element signature="e#108#250#0" expanded="true" />
-            <element signature="e#4763#4784#0" expanded="false" />
-            <element signature="e#4873#6872#0" expanded="false" />
-            <element signature="e#9148#9179#0" expanded="false" />
-            <element signature="e#18932#18952#0" expanded="false" />
-            <element signature="e#21652#22762#0" expanded="false" />
-            <element signature="e#22826#24840#0" expanded="false" />
+            <element signature="e#0#9#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/RunClass.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.6463246">
+          <caret line="499" column="22" selection-start-line="499" selection-start-column="22" selection-end-line="499" selection-end-column="22" />
+          <folding>
+            <element signature="e#108#119#0" expanded="true" />
           </folding>
         </state>
       </provider>
