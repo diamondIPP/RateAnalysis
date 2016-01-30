@@ -135,13 +135,13 @@ class SignalAnalysis(Analysis):
         prof.Draw()
         sleep(.1)
         lines = [self.make_tgaxis(x, c.GetUymin(), c.GetUymax(), '', 2, 2) for x in margins[mode]]
-        for line in lines:
-            line.Draw()
         fit_result = self.__fit_beam_profile(prof, fit_range, show) if fit else 0
         fits = None
         if fit:
             f1 = gROOT.GetFunction('gaus')
             f2 = deepcopy(f1)
+            f2.SetLineColor(2)
+            f2.SetLineStyle(1)
             f1.SetLineColor(kGreen + 1)
             f2.SetRange(fit_range[0], fit_range[1])
             f1.SetLineStyle(7)
@@ -149,6 +149,8 @@ class SignalAnalysis(Analysis):
             f2.Draw('same')
             prof.GetXaxis().UnZoom()
             fits = [f1, f2]
+        for line in lines:
+            line.Draw()
         c.RedrawAxis()
         gROOT.SetBatch(0)
         self.save_plots('BeamProfile{mod}{fit}'.format(mod=mode.title(), fit='Fit' if fit else ''), sub_dir=self.save_dir)
@@ -158,7 +160,6 @@ class SignalAnalysis(Analysis):
     @staticmethod
     def __fit_beam_profile(histo, fit_range, show=True):
         h = histo
-        print fit_range
         fit = h.Fit('gaus', 'qs{0}'.format('' if show else '0'), '', fit_range[0], fit_range[1])
         return fit
 
@@ -170,23 +171,32 @@ class SignalAnalysis(Analysis):
 
         return self.do_pickle(pickle_path, func)
 
-    def draw_beam_fit_chi2s(self, show=True, mode='x', sigma=True):
+    def draw_beam_fit_properties(self, show=True, mode='x', sigma=True):
         if not show:
             gROOT.SetBatch(1)
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         gr = self.make_tgrapherrors('gr', 'Beam Profile {0} {mod}'.format(mode.title(), mod='Fit #chi^{2}s / NDF' if not sigma else 'Sigma'))
-        for i in xrange(2, 10):
+        max_range = 11 if sigma else 10
+        index = 0
+        for i in xrange(1, max_range):
             perc = i / 10.
             fit = self.fit_beam_profile(mode=mode, show=False, fit_margin=perc)
-            y = fit.Parameter(2) if sigma else fit.Chi2() / fit.Ndf()
             if fit.Ndf():
-                gr.SetPoint(i - 2, perc * 100, y)
+                y = fit.Parameter(2) if sigma else fit.Chi2() / fit.Ndf()
+                gr.SetPoint(index, perc * 100, y)
+                t = self.make_tlatex(perc * 100 - 2, y, str(fit.Ndf()), color=807, size=.04, align=32)
+                gr.GetListOfFunctions().Add(t)
+                index += 1
         c = TCanvas('c', 'Beam Chi2', 1000, 1000)
-        self.format_histo(gr, x_tit='Range [%]', y_tit='#chi^{2} / NDF' if not sigma else 'Sigma')
+        self.format_histo(gr, x_tit='Range [%]', y_tit='#chi^{2} / NDF' if not sigma else 'Sigma', y_off=1.4)
         one = TF1('one', '1', 0, 100)
+        t1 = self.make_tlatex(15, .95 * gr.GetYaxis().GetXmax(), 'NDF:', color=807, size=0.04, align=12)
+        gr.GetListOfFunctions().Add(t1)
+        gr.GetXaxis().SetRangeUser(-5, 105)
         gr.Draw('alp')
         one.Draw('same')
-        self.histos[1] = [gr, c]
+
+        self.histos[1] = [gr, c, t1]
         gROOT.SetBatch(0)
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.save_plots('BeamProf{mod}{dir}'.format(mod='Sigmas' if sigma else 'Chi2s', dir=mode.title()), sub_dir=self.save_dir)
@@ -590,7 +600,7 @@ class SignalAnalysis(Analysis):
             gROOT.SetBatch(1)
         means = [h_proj.GetMean() for h_proj in [sig_time.ProjectionY(str(i), i + 1, i + 1) for i in xrange(self.n_bins - 1)] if h_proj.GetEntries() > 10]
         extrema = [int(min(means)), int(max(means))]
-        h = TH1F('h', 'Signal Bin{0} Distribution'.format(self.BinSize), int(log(len(means), 2) * 2), extrema[0] - 1, extrema[1] + 2)
+        h = TH1F('h', 'Signal Bin{0} Distribution'.format(self.BinSize), int(log(len(means), 2) * 2), extrema[0], extrema[1] + 2)
         for mean_ in means:
             h.Fill(mean_)
         c = TCanvas('c', 'Pulse Height Distribution', 1000, 1000)
