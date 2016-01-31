@@ -1,16 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="e6cf272c-81a5-4f4e-9e0a-ff55b841b26f" name="Default" comment="fixing beam profile and ph overview plots &#10;">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/AbstractClasses/CurrentRootStuff.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" />
+    <list default="true" id="e6cf272c-81a5-4f4e-9e0a-ff55b841b26f" name="Default" comment="">
+      <change type="DELETED" beforePath="$PROJECT_DIR$/AbstractClasses/CurrentRootStuff.py" afterPath="" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/CurrentInfo.py" afterPath="$PROJECT_DIR$/AbstractClasses/CurrentInfo.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/Elementary.py" afterPath="$PROJECT_DIR$/AbstractClasses/Elementary.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/PadAnalysis.py" afterPath="$PROJECT_DIR$/AbstractClasses/PadAnalysis.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/RunClass.py" afterPath="$PROJECT_DIR$/AbstractClasses/RunClass.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/TelescopeAnalysis.py" afterPath="$PROJECT_DIR$/AbstractClasses/TelescopeAnalysis.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/Configuration/RunConfig_201510.cfg" afterPath="$PROJECT_DIR$/Configuration/RunConfig_201510.cfg" />
     </list>
     <ignored path="myPadAnalysis.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -47,47 +42,38 @@
         <entry file="file://$PROJECT_DIR$/AbstractClasses/PadAnalysis.py">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="53" column="0" selection-start-line="53" selection-start-column="0" selection-end-line="53" selection-end-column="0" />
+              <caret line="3" column="142" selection-start-line="3" selection-start-column="142" selection-end-line="3" selection-end-column="142" />
               <folding>
-                <element signature="e#108#250#0" expanded="true" />
-                <element signature="e#5000#5021#0" expanded="false" />
-                <element signature="e#5110#7109#0" expanded="false" />
-                <element signature="e#9385#9416#0" expanded="false" />
-                <element signature="e#19169#19189#0" expanded="false" />
-                <element signature="e#21889#22999#0" expanded="false" />
-                <element signature="e#23063#25077#0" expanded="false" />
+                <element signature="e#4854#4875#0" expanded="false" />
+                <element signature="e#4964#6963#0" expanded="false" />
+                <element signature="e#9239#9270#0" expanded="false" />
+                <element signature="e#19023#19043#0" expanded="false" />
+                <element signature="e#21743#22853#0" expanded="false" />
+                <element signature="e#22917#24931#0" expanded="false" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="CurrentInfo.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="CurrentInfo.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/AbstractClasses/CurrentInfo.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0">
-              <caret line="16" column="33" selection-start-line="16" selection-start-column="33" selection-end-line="16" selection-end-column="33" />
+            <state vertical-scroll-proportion="0.41888297">
+              <caret line="206" column="30" selection-start-line="206" selection-start-column="30" selection-end-line="206" selection-end-column="30" />
               <folding>
                 <element signature="e#88#109#0" expanded="true" />
+                <element signature="e#2459#2472#0" expanded="false" />
+                <element signature="e#3320#3341#0" expanded="false" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="CurrentRootStuff.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/AbstractClasses/CurrentRootStuff.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0">
-              <caret line="350" column="28" selection-start-line="350" selection-start-column="28" selection-end-line="350" selection-end-column="28" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="RunClass.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="RunClass.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/AbstractClasses/RunClass.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.6463246">
-              <caret line="499" column="22" selection-start-line="499" selection-start-column="22" selection-end-line="499" selection-end-column="22" />
+            <state vertical-scroll-proportion="0.0">
+              <caret line="488" column="25" selection-start-line="488" selection-start-column="25" selection-end-line="488" selection-end-column="25" />
               <folding>
                 <element signature="e#108#119#0" expanded="true" />
               </folding>
@@ -112,7 +98,7 @@
         <entry file="file://$PROJECT_DIR$/AbstractClasses/Elementary.py">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="111" column="33" selection-start-line="111" selection-start-column="33" selection-end-line="111" selection-end-column="33" />
+              <caret line="97" column="26" selection-start-line="97" selection-start-column="26" selection-end-line="97" selection-end-column="26" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
               </folding>
@@ -158,19 +144,19 @@
         <option value="$PROJECT_DIR$/AbstractClasses/ChannelCut.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/TelescopeAnalysis.py" />
-        <option value="$PROJECT_DIR$/AbstractClasses/PadAnalysis.py" />
-        <option value="$PROJECT_DIR$/AbstractClasses/CurrentInfo.py" />
-        <option value="$PROJECT_DIR$/AbstractClasses/CurrentRootStuff.py" />
-        <option value="$PROJECT_DIR$/AbstractClasses/Elementary.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/RunClass.py" />
+        <option value="$PROJECT_DIR$/AbstractClasses/CurrentRootStuff.py" />
+        <option value="$PROJECT_DIR$/AbstractClasses/PadAnalysis.py" />
+        <option value="$PROJECT_DIR$/AbstractClasses/Elementary.py" />
+        <option value="$PROJECT_DIR$/AbstractClasses/CurrentInfo.py" />
       </list>
     </option>
   </component>
   <component name="ProjectFrameBounds">
     <option name="x" value="65" />
-    <option name="y" value="24" />
+    <option name="y" value="-4" />
     <option name="width" value="1535" />
-    <option name="height" value="852" />
+    <option name="height" value="880" />
   </component>
   <component name="ProjectInspectionProfilesVisibleTreeState">
     <entry key="Project Default">
@@ -279,7 +265,6 @@
     <property name="settings.editor.selected.configurable" value="Errors" />
     <property name="settings.editor.splitter.proportion" value="0.2" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$/../travian" />
-    <property name="FullScreen" value="false" />
   </component>
   <component name="RunManager">
     <configuration default="true" type="PythonConfigurationType" factoryName="Python">
@@ -555,16 +540,16 @@
     </todo-panel>
   </component>
   <component name="ToolWindowManager">
-    <frame x="65" y="24" width="1535" height="852" extended-state="6" />
+    <frame x="65" y="-4" width="1535" height="880" extended-state="6" />
     <editor active="true" />
     <layout>
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.16666667" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
-      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32225063" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32929516" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
+      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Application Servers" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
@@ -591,7 +576,6 @@
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="fixing get all signal names" />
     <MESSAGE value="adding signal_vs_peakintegral function" />
     <MESSAGE value="improving signal_vs_peakintegral function" />
     <MESSAGE value="adding func get_signal_name" />
@@ -616,7 +600,8 @@
     <MESSAGE value="fixing binning algorithm and finishing pie" />
     <MESSAGE value="fixing beam profile and ph overview plots and adding currentinfo class&#10;" />
     <MESSAGE value="fixing beam profile and ph overview plots &#10;" />
-    <option name="LAST_COMMIT_MESSAGE" value="fixing beam profile and ph overview plots &#10;" />
+    <MESSAGE value="almost finishing current plots" />
+    <option name="LAST_COMMIT_MESSAGE" value="almost finishing current plots" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -630,13 +615,12 @@
         <state vertical-scroll-proportion="0.0">
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
-            <element signature="e#108#250#0" expanded="true" />
-            <element signature="e#5000#5021#0" expanded="false" />
-            <element signature="e#5110#7109#0" expanded="false" />
-            <element signature="e#9385#9416#0" expanded="false" />
-            <element signature="e#19169#19189#0" expanded="false" />
-            <element signature="e#21889#22999#0" expanded="false" />
-            <element signature="e#23063#25077#0" expanded="false" />
+            <element signature="e#4854#4875#0" expanded="false" />
+            <element signature="e#4964#6963#0" expanded="false" />
+            <element signature="e#9239#9270#0" expanded="false" />
+            <element signature="e#19023#19043#0" expanded="false" />
+            <element signature="e#21743#22853#0" expanded="false" />
+            <element signature="e#22917#24931#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -676,11 +660,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="6" column="0" selection-start-line="6" selection-start-column="0" selection-end-line="6" selection-end-column="0" />
-          <folding>
-            <element signature="e#0#19#0" expanded="false" />
-            <element signature="e#944#2697#0" expanded="false" />
-            <element signature="e#2742#2999#0" expanded="false" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -688,11 +667,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="89" column="42" selection-start-line="89" selection-start-column="42" selection-end-line="89" selection-end-column="42" />
-          <folding>
-            <element signature="e#0#19#0" expanded="false" />
-            <element signature="e#944#2697#0" expanded="false" />
-            <element signature="e#2742#2999#0" expanded="false" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -974,11 +948,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="74" column="27" selection-start-line="74" selection-start-column="27" selection-end-line="74" selection-end-column="27" />
-          <folding>
-            <element signature="e#0#19#0" expanded="false" />
-            <element signature="e#944#2697#0" expanded="false" />
-            <element signature="e#2742#2999#0" expanded="false" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -986,10 +955,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="8" column="34" selection-start-line="8" selection-start-column="34" selection-end-line="8" selection-end-column="34" />
-          <folding>
-            <element signature="e#2785#3177#0" expanded="false" />
-            <element signature="e#3238#3944#0" expanded="false" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -1026,60 +991,52 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.3324468">
           <caret line="492" column="8" selection-start-line="492" selection-start-column="8" selection-end-line="492" selection-end-column="8" />
-          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/RunClass.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="488" column="25" selection-start-line="488" selection-start-column="25" selection-end-line="488" selection-end-column="25" />
+          <folding>
+            <element signature="e#108#119#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/PadAnalysis.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
-          <caret line="53" column="0" selection-start-line="53" selection-start-column="0" selection-end-line="53" selection-end-column="0" />
+          <caret line="3" column="142" selection-start-line="3" selection-start-column="142" selection-end-line="3" selection-end-column="142" />
           <folding>
-            <element signature="e#108#250#0" expanded="true" />
-            <element signature="e#5000#5021#0" expanded="false" />
-            <element signature="e#5110#7109#0" expanded="false" />
-            <element signature="e#9385#9416#0" expanded="false" />
-            <element signature="e#19169#19189#0" expanded="false" />
-            <element signature="e#21889#22999#0" expanded="false" />
-            <element signature="e#23063#25077#0" expanded="false" />
+            <element signature="e#4854#4875#0" expanded="false" />
+            <element signature="e#4964#6963#0" expanded="false" />
+            <element signature="e#9239#9270#0" expanded="false" />
+            <element signature="e#19023#19043#0" expanded="false" />
+            <element signature="e#21743#22853#0" expanded="false" />
+            <element signature="e#22917#24931#0" expanded="false" />
           </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/CurrentInfo.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="16" column="33" selection-start-line="16" selection-start-column="33" selection-end-line="16" selection-end-column="33" />
-          <folding>
-            <element signature="e#88#109#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/CurrentRootStuff.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="350" column="28" selection-start-line="350" selection-start-column="28" selection-end-line="350" selection-end-column="28" />
-          <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/Elementary.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
-          <caret line="111" column="33" selection-start-line="111" selection-start-column="33" selection-end-line="111" selection-end-column="33" />
+          <caret line="97" column="26" selection-start-line="97" selection-start-column="26" selection-end-line="97" selection-end-column="26" />
           <folding>
             <element signature="e#0#9#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/RunClass.py">
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/CurrentInfo.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.6463246">
-          <caret line="499" column="22" selection-start-line="499" selection-start-column="22" selection-end-line="499" selection-end-column="22" />
+        <state vertical-scroll-proportion="0.41888297">
+          <caret line="206" column="30" selection-start-line="206" selection-start-column="30" selection-end-line="206" selection-end-column="30" />
           <folding>
-            <element signature="e#108#119#0" expanded="true" />
+            <element signature="e#88#109#0" expanded="true" />
+            <element signature="e#2459#2472#0" expanded="false" />
+            <element signature="e#3320#3341#0" expanded="false" />
           </folding>
         </state>
       </provider>

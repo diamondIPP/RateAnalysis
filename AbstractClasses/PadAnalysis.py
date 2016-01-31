@@ -3,8 +3,7 @@
 # ==============================================
 from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie
 from TelescopeAnalysis import Analysis
-from CurrentInfo import KeithleyInfo
-from CurrentRootStuff import RootGraphs
+from CurrentInfo import Currents
 from numpy import array
 from math import sqrt, ceil, log
 from argparse import ArgumentParser
@@ -48,9 +47,7 @@ class SignalAnalysis(Analysis):
         self.Cut = ChannelCut(self, channel)
 
         # currents
-        self.CurrentInfo = KeithleyInfo(self)
-        self.CurrentInfo.find_data()
-        self.CurrentGraphs = RootGraphs(self.CurrentInfo)
+        self.Currents = Currents(self)
 
         # graphs
         self.PulseHeight = None

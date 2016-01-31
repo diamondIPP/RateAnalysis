@@ -4,13 +4,25 @@
 from glob import glob
 from datetime import datetime, timedelta
 from configparser import ConfigParser
+from numpy import array
+from ROOT import TCanvas, TPad, TText, TGraph, kCanDelete
 from Elementary import Elementary
+from time import sleep
+
+
+# ====================================
+# CONSTANTS
+# ====================================
+axis_title_size = 0.05
+label_size = .03
+col_vol = 807
+col_cur = 418
 
 
 # ====================================
 # CLASS FOR THE DATA
 # ====================================
-class KeithleyInfo(Elementary):
+class Currents(Elementary):
     """reads in information from the keithley log file"""
 
     def __init__(self, analysis, averaging=False, points=10):
@@ -48,11 +60,18 @@ class KeithleyInfo(Elementary):
         self.Currents = []
         self.Voltages = []
         self.Time = []
+        self.MeanCurrent = 0
+        self.MeanVoltage = 0
 
-        # self.log_names = self.logs_from_start()
-        # self.mean_curr = 0
-        # self.mean_volt = 0
-        # self.update_data()
+        # plotting
+        self.CurrentGraph = None
+        self.VoltageGraph = None
+        self.Margins = None
+        # graph pads
+        self.VoltagePad = None
+        self.CurrentPad = None
+        self.TitlePad = None
+        self.Histos = {}
 
     # ==========================================================================
     # region INIT
@@ -74,6 +93,8 @@ class KeithleyInfo(Elementary):
         return '{data}{dev}_CH{ch}/'.format(data=hv_datapath, dev=self.ConfigParser.get('HV' + self.Number, 'name'), ch=self.Channel)
     # endregion
 
+    # ==========================================================================
+    # region ACQUIRE DATA
     def get_logs_from_start(self):
         log_names = sorted([name for name in glob(self.DataPath + '*')])
         start_log = None
@@ -93,8 +114,8 @@ class KeithleyInfo(Elementary):
     def find_data(self):
         stop = False
         for i, name in enumerate(self.LogNames):
-            self.mean_curr = 0
-            self.mean_volt = 0
+            self.MeanCurrent = 0
+            self.MeanVoltage = 0
             log_date = self.get_log_date(name)
             data = open(name, 'r')
             # jump to the correct line of the first file
@@ -121,14 +142,14 @@ class KeithleyInfo(Elementary):
             index += 1
             if self.DoAveraging:
                 if not shifting:
-                    self.mean_curr += float(info[2]) * 1e9
-                    self.mean_volt += float(info[1])
+                    self.MeanCurrent += float(info[2]) * 1e9
+                    self.MeanVoltage += float(info[1])
                     if index % self.Points == 0:
-                        self.Currents.append(self.mean_curr / self.Points)
+                        self.Currents.append(self.MeanCurrent / self.Points)
                         self.Time.append(total_seconds)
-                        self.Voltages.append(self.mean_volt / self.Points)
-                        self.mean_curr = 0
-                        self.mean_volt = 0
+                        self.Voltages.append(self.MeanVoltage / self.Points)
+                        self.MeanCurrent = 0
+                        self.MeanVoltage = 0
                 # else:
                 #     if index <= self.Points:
                 #         self.mean_curr += float(info[2]) * 1e9
@@ -174,3 +195,147 @@ class KeithleyInfo(Elementary):
         zero = self.Time[0]
         for i in xrange(len(self.Time)):
             self.Time[i] = self.Time[i] - zero
+
+    # endregion
+
+    # ==========================================================================
+    # region PLOTTING
+    def draw_graphs(self, relative_time=False):
+        if not self.Currents:
+            self.find_data()
+        if self.Margins is None:
+            self.set_margins()
+        if relative_time:
+            self.convert_to_relative_time()
+            sleep(.1)
+            self.make_graphs()
+            self.set_margins()
+        print self.CurrentGraph
+        if self.CurrentGraph is None:
+            self.make_graphs()
+        c = TCanvas('c', 'Keithley Currents for Run {0}'.format(self.RunNumber), 1000, 1000)
+        self.make_pads()
+        self.draw_pads()
+
+        self.VoltagePad.cd()
+        self.draw_voltage_frame()
+        self.VoltageGraph.Draw('p')
+        a = self.make_voltage_axis()
+        a.Draw()
+
+        self.TitlePad.cd()
+        t = self.make_pad_title()
+        t.Draw()
+
+        self.CurrentPad.cd()
+        self.draw_current_frame()
+        self.CurrentGraph.Draw('pl')
+
+        c.Update()
+
+        self.Histos[0] = [c, t, a]
+        self.save_plots('Currents', sub_dir=self.analysis.save_dir)
+
+    def make_pads(self):
+        self.VoltagePad = self.make_tpad('p1', gridy=True, margins=[.08, .07, .15, .15])
+        self.CurrentPad = self.make_tpad('p2', gridx=True, margins=[.08, .07, .15, .15], transparent=True)
+        self.TitlePad = self.make_tpad('p3', transparent=True)
+
+    def draw_pads(self):
+        for p in [self.VoltagePad, self.TitlePad, self.CurrentPad]:
+            p.Draw()
+
+    def make_pad_title(self):
+        text = 'Currents measured by {0}'.format(self.Name)
+        t1 = TText(0.08, 0.88, text)
+        t1.SetTextSize(0.06)
+        return t1
+
+    def find_margins(self):
+        x = [min(self.Time), max(self.Time)]
+        dx = .05 * (x[1] - x[0])
+        y = [min(self.Currents), max(self.Currents)]
+        dy = .01 * (y[1] - y[0])
+        return {'x': [x[0] - dx, x[1] + dx], 'y': [y[0] - dy, y[1] + dy]}
+
+    def set_margins(self):
+        self.Margins = self.find_margins()
+
+    def make_graphs(self):
+        tit = ' measured by {0}'.format(self.Name)
+        x = array(self.Time)
+        # current
+        y = array(self.Currents)
+        g1 = TGraph(len(x), x, y)
+        self.format_histo(g1, 'Current', 'Current' + tit, color=col_cur, markersize=.5)
+        # voltage
+        y = array(self.Voltages)
+        g2 = TGraph(len(x), x, y)
+        self.format_histo(g2, 'Voltage', 'Voltage' + tit, color=col_vol, markersize=.5)
+        self.CurrentGraph = g1
+        self.VoltageGraph = g2
+
+    def make_tpad(self, name, tit='', fill_col=0, gridx=False, gridy=False, margins=None, transparent=False):
+        margins = [.1, .1, .1, .1] if margins is None else margins
+        p = TPad(name, tit, 0, 0, 1, 1)
+        p.SetFillColor(fill_col)
+        p.SetMargin(*margins)
+        p.ResetBit(kCanDelete)
+        if gridx:
+            p.SetGridx()
+        if gridy:
+            p.SetGridy()
+        if transparent:
+            self.make_transparent(p)
+        return p
+
+    def make_voltage_axis(self):
+        a1 = self.make_tgaxis(self.Margins['x'][1], -1100, 1100, '#font[22]{Voltage [V]}', color=col_vol, offset=.6, tit_size=.05, line=False, opt='+L', width=2)
+        a1.CenterTitle()
+        a1.SetLabelSize(label_size)
+        a1.SetLabelColor(col_vol)
+        a1.SetLabelOffset(0.01)
+        return a1
+
+    def draw_current_frame(self):
+        m = self.Margins
+        h2 = self.CurrentPad.DrawFrame(m['x'][0], m['y'][0], m['x'][1], m['y'][1])
+        # X-axis
+        h2.GetXaxis().SetTitle("#font[22]{time [hh:mm]}")
+        h2.GetXaxis().SetTimeFormat("%H:%M")
+        h2.GetXaxis().SetTimeOffset(-3600)
+        h2.GetXaxis().SetTimeDisplay(1)
+        h2.GetXaxis().SetLabelSize(label_size)
+        h2.GetXaxis().SetTitleSize(axis_title_size)
+        h2.GetXaxis().SetTitleOffset(1.05)
+        h2.GetXaxis().SetTitleSize(0.05)
+        # Y-axis
+        h2.GetYaxis().SetTitleOffset(0.6)
+        h2.GetYaxis().SetTitleSize(0.05)
+        h2.GetYaxis().SetTitle("#font[22]{Current [nA]}")
+        h2.GetYaxis().SetTitleColor(col_cur)
+        h2.GetYaxis().SetLabelColor(col_cur)
+        h2.GetYaxis().SetAxisColor(col_cur)
+        h2.GetYaxis().CenterTitle()
+        h2.GetYaxis().SetLabelSize(label_size)
+        h2.GetYaxis().SetTitleSize(axis_title_size)
+        h2.GetYaxis().SetTitleOffset(.6)
+
+    def draw_voltage_frame(self):
+        m = self.Margins
+        h1 = self.VoltagePad.DrawFrame(m['x'][0], -1100, m['x'][1], 1100)
+        h1.SetTitleSize(axis_title_size)
+        h1.GetXaxis().SetTickLength(0)
+        h1.GetYaxis().SetTickLength(0)
+        h1.GetXaxis().SetLabelOffset(99)
+        h1.GetYaxis().SetLabelOffset(99)
+        h1.GetYaxis().SetAxisColor(0)
+        h1.SetLineColor(0)
+        
+    # endregion
+
+    @staticmethod
+    def make_transparent(pad):
+        pad.SetFillStyle(4000)
+        pad.SetFillColor(0)
+        pad.SetFrameFillStyle(4000)
