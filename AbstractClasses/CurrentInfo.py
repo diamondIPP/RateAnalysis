@@ -1,14 +1,15 @@
 # ====================================
 # IMPORTS
 # ====================================
-from glob import glob
 from datetime import datetime, timedelta
-from configparser import ConfigParser
-from numpy import array
-from ROOT import TCanvas, TPad, TText, TGraph, kCanDelete
-from Elementary import Elementary
+from glob import glob
 from time import sleep
 
+from ROOT import TCanvas, TPad, TText, TGraph, kCanDelete
+from configparser import ConfigParser
+from numpy import array
+
+from Elementary import Elementary
 
 # ====================================
 # CONSTANTS

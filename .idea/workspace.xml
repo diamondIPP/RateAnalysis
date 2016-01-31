@@ -2,10 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="e6cf272c-81a5-4f4e-9e0a-ff55b841b26f" name="Default" comment="">
-      <change type="DELETED" beforePath="$PROJECT_DIR$/AbstractClasses/CurrentRootStuff.py" afterPath="" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/CurrentInfo.py" afterPath="$PROJECT_DIR$/AbstractClasses/CurrentInfo.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/PadAnalysis.py" afterPath="$PROJECT_DIR$/AbstractClasses/PadAnalysis.py" />
     </list>
     <ignored path="myPadAnalysis.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -58,12 +56,13 @@
       <file leaf-file-name="CurrentInfo.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/AbstractClasses/CurrentInfo.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.41888297">
-              <caret line="206" column="30" selection-start-line="206" selection-start-column="30" selection-end-line="206" selection-end-column="30" />
+            <state vertical-scroll-proportion="0.43882978">
+              <caret line="22" column="38" selection-start-line="22" selection-start-column="38" selection-end-line="22" selection-end-column="38" />
               <folding>
-                <element signature="e#88#109#0" expanded="true" />
-                <element signature="e#2459#2472#0" expanded="false" />
-                <element signature="e#3320#3341#0" expanded="false" />
+                <element signature="e#88#128#0" expanded="true" />
+                <element signature="e#2460#2473#0" expanded="false" />
+                <element signature="e#3321#3342#0" expanded="false" />
+                <element signature="e#7562#7579#0" expanded="false" />
               </folding>
             </state>
           </provider>
@@ -544,12 +543,12 @@
     <editor active="true" />
     <layout>
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.16666667" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32225063" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32929516" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
-      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Application Servers" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
@@ -576,7 +575,6 @@
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="adding signal_vs_peakintegral function" />
     <MESSAGE value="improving signal_vs_peakintegral function" />
     <MESSAGE value="adding func get_signal_name" />
     <MESSAGE value="revision of best snr" />
@@ -601,7 +599,8 @@
     <MESSAGE value="fixing beam profile and ph overview plots and adding currentinfo class&#10;" />
     <MESSAGE value="fixing beam profile and ph overview plots &#10;" />
     <MESSAGE value="almost finishing current plots" />
-    <option name="LAST_COMMIT_MESSAGE" value="almost finishing current plots" />
+    <MESSAGE value="finish current plot class" />
+    <option name="LAST_COMMIT_MESSAGE" value="finish current plot class" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -1031,12 +1030,13 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/CurrentInfo.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.41888297">
-          <caret line="206" column="30" selection-start-line="206" selection-start-column="30" selection-end-line="206" selection-end-column="30" />
+        <state vertical-scroll-proportion="0.43882978">
+          <caret line="22" column="38" selection-start-line="22" selection-start-column="38" selection-end-line="22" selection-end-column="38" />
           <folding>
-            <element signature="e#88#109#0" expanded="true" />
-            <element signature="e#2459#2472#0" expanded="false" />
-            <element signature="e#3320#3341#0" expanded="false" />
+            <element signature="e#88#128#0" expanded="true" />
+            <element signature="e#2460#2473#0" expanded="false" />
+            <element signature="e#3321#3342#0" expanded="false" />
+            <element signature="e#7562#7579#0" expanded="false" />
           </folding>
         </state>
       </provider>
