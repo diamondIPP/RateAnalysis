@@ -69,9 +69,8 @@ class SignalAnalysis(Analysis):
             for obj in lst:
                 self.del_rootobj(obj)
 
-    def show_current(self):
-        # todo Make class for dia currents!
-        pass
+    def show_current(self, relative_time=True):
+        self.Currents.draw_graphs(relative_time=relative_time)
 
     # ==========================================================================
     # region INIT
@@ -1123,7 +1122,9 @@ class SignalAnalysis(Analysis):
         h.Draw(draw_option)
         if add_buckets:
             sleep(.2)
+            h.GetXaxis().SetNdivisions(26)
             c.SetGrid()
+            c.SetBottomMargin(.186)
             self._add_buckets(c)
         gROOT.SetBatch(0)
         if n > 1:

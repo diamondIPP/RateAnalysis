@@ -180,23 +180,23 @@ class Analysis(Elementary):
         print 'sta-sto:', start, stop
         bucket0 = self.run.signal_regions['b'][0] / 40
         x_range = c.GetUxmax() - c.GetUxmin()
-        print 'xrange', x_range
-        l = self.make_tlatex(c.GetUxmin() - .015 * x_range, c.GetUymin() - 30, 'Bucket:', align=30, color=kGreen + 2, size=0.03)
+        y_range = c.GetUymax() - c.GetUymin()
+        l = self.make_tlatex(c.GetUxmin() - .015 * x_range, c.GetUymin() - 0.1 * y_range, 'Bucket:', align=30, color=kGreen + 2, size=0.03)
         l.Draw()
         labels.append(l)
-        l1 = self.make_tlatex(c.GetUxmin() - .015 * x_range, c.GetUymin() + 8, 'Peak:', align=30, color=kOrange + 7, size=0.03)
+        l1 = self.make_tlatex(c.GetUxmin() - .015 * x_range, c.GetUymin() + 0.04 * y_range, 'Peak:', align=30, color=kOrange + 7, size=0.03)
         l1.Draw()
         labels.append(l1)
         peak_fit = self.fit_peak_values(draw=False) if hasattr(self, 'fit_peak_values') else 0
         for i, x in enumerate(xrange(start, stop, 20), -bucket0):
-            a = self.make_tgaxis(x, c.GetUymin() - 30, c.GetUymin() - 12, '', kGreen + 2)
+            a = self.make_tgaxis(x, c.GetUymin() - 0.12 * y_range, c.GetUymin() - 0.05 * y_range, '', kGreen + 2)
             if x <= stop - 20:
-                l = self.make_tlatex(x + 10, c.GetUymin() - 30, str(i), align=20, color=kGreen + 2, size=0.03)
+                l = self.make_tlatex(x + 10, c.GetUymin() - 0.1 * y_range, str(i), align=20, color=kGreen + 2, size=0.03)
                 labels.append(l)
                 l.Draw()
                 if peak_fit:
                     pos = peak_fit.Parameter(1) % 20
-                    ar = TArrow(x + pos, c.GetUymin() + 1, x + pos, c.GetUymin() + 10, .005, '<|')
+                    ar = TArrow(x + pos, c.GetUymin() + 1, x + pos, c.GetUymin() + 0.04 * y_range, .005, '<|')
                     ar.SetLineWidth(2)
                     ar.SetFillColor(kOrange + 7)
                     ar.SetLineColor(kOrange + 7)
@@ -369,6 +369,7 @@ class Analysis(Elementary):
             if draw:
                 gROOT.SetBatch(0)
             c = TCanvas('c', 'Pulser Rate Canvas', 1000, 1000)
+            h.SetStats(0)
             h.Draw('hist')
             self.save_plots('EventAlignment', sub_dir=self.ana_save_dir, ch=None)
             gROOT.SetBatch(0)
