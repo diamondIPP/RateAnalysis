@@ -156,9 +156,9 @@ class AnalysisCollection(Elementary):
         i = 0
         for key, ana in self.collection.iteritems():
             print 'getting ph for run', key
-            fit = ana.draw_pulse_height(binning, show=False)
+            fit = ana.draw_pulse_height(binning, eventwise_corr=False, show=False)
             fit1 = ana.draw_pulse_height(binning, show=False)
-            fit2 = ana.draw_pulse_height(binning, eventwise_corr=True, show=False)
+            fit2 = ana.draw_pulse_height(binning, ped_corr=True, show=False)
             ped = ana.show_pedestal_histo(draw=False)
             x = ana.run.flux if flux else key
             gr1.SetPoint(i, x, fit1.Parameter(0))

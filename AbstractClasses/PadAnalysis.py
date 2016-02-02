@@ -1054,8 +1054,8 @@ class SignalAnalysis(Analysis):
         fit = func() if show else 0
         return self.do_pickle(pickle_path, func, fit)
 
-    def draw_pulser_waveform(self, n=1, start_event=None, add_buckets=False):
-        cut = '!({0})'.format(self.Cut.CutStrings['pulser'])
+    def draw_pulser_waveform(self, n=1, start_event=None, add_buckets=False, cut=None):
+        cut = '!({0})'.format(self.Cut.CutStrings['pulser']) if cut is None else cut
         start = self.StartEvent + self.count if start_event is None else start_event + self.count
         print 'Event number:', start
         # if n == 1:
@@ -1132,7 +1132,7 @@ class SignalAnalysis(Analysis):
         self.histos[0] = [c, h]
         return h if not ret_event else n_events
 
-    def show_single_waveforms(self, n, cut=None):
+    def show_single_waveforms(self, n=1, cut=None):
         ev = self.StartEvent
         for i in xrange(n):
             ev += self.draw_waveforms(n=1, cut_string=cut, ret_event=True, start_event=ev)
