@@ -2,58 +2,6 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="e6cf272c-81a5-4f4e-9e0a-ff55b841b26f" name="Default" comment="">
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_216.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_217.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_218.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_219.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_220.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_221.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_378.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_379.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_380.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_381.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_383.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_384.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_385.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_386.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_388.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_389.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_391.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_399.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_400.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_401.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_402.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_403.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_404.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_405.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_406.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_407.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_408.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_409.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_410.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_411.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_412.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_413.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_414.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_415.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_416.pickle" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_458.pickle" afterPath="" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_171.pickle" afterPath="$PROJECT_DIR$/beaminterruptions/data/201510Run_171.pickle" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_172.pickle" afterPath="$PROJECT_DIR$/beaminterruptions/data/201510Run_172.pickle" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_173.pickle" afterPath="$PROJECT_DIR$/beaminterruptions/data/201510Run_173.pickle" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_176.pickle" afterPath="$PROJECT_DIR$/beaminterruptions/data/201510Run_176.pickle" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_177.pickle" afterPath="$PROJECT_DIR$/beaminterruptions/data/201510Run_177.pickle" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_178.pickle" afterPath="$PROJECT_DIR$/beaminterruptions/data/201510Run_178.pickle" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_392.pickle" afterPath="$PROJECT_DIR$/beaminterruptions/data/201510Run_392.pickle" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_393.pickle" afterPath="$PROJECT_DIR$/beaminterruptions/data/201510Run_393.pickle" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_394.pickle" afterPath="$PROJECT_DIR$/beaminterruptions/data/201510Run_394.pickle" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_395.pickle" afterPath="$PROJECT_DIR$/beaminterruptions/data/201510Run_395.pickle" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_397.pickle" afterPath="$PROJECT_DIR$/beaminterruptions/data/201510Run_397.pickle" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_398.pickle" afterPath="$PROJECT_DIR$/beaminterruptions/data/201510Run_398.pickle" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" afterPath="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/ChannelCut.py" afterPath="$PROJECT_DIR$/AbstractClasses/ChannelCut.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/Cut.py" afterPath="$PROJECT_DIR$/AbstractClasses/Cut.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/PadAnalysis.py" afterPath="$PROJECT_DIR$/AbstractClasses/PadAnalysis.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
     <ignored path="myPadAnalysis.iws" />
@@ -107,8 +55,8 @@
       <file leaf-file-name="AnalysisCollection.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.51025057">
-              <caret line="429" column="51" selection-start-line="429" selection-start-column="51" selection-end-line="429" selection-end-column="51" />
+            <state vertical-scroll-proportion="0.32232347">
+              <caret line="418" column="20" selection-start-line="418" selection-start-column="20" selection-end-line="418" selection-end-column="20" />
               <folding>
                 <element signature="e#108#117#0" expanded="true" />
                 <element signature="e#2607#2620#0" expanded="false" />
@@ -631,7 +579,13 @@
       <option name="project" value="LOCAL" />
       <updated>1455531681493</updated>
     </task>
-    <option name="localTasksCounter" value="25" />
+    <task id="LOCAL-00025" summary="adding pulser info to peak values">
+      <created>1455548778841</created>
+      <option name="number" value="00025" />
+      <option name="project" value="LOCAL" />
+      <updated>1455548778841</updated>
+    </task>
+    <option name="localTasksCounter" value="26" />
     <servers />
   </component>
   <component name="TodoView" selected-index="4">
@@ -680,7 +634,6 @@
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="fixing calc_snr" />
     <MESSAGE value="adding angle fit functions and fixing snr functions" />
     <MESSAGE value="adding compare landau function" />
     <MESSAGE value="adding errors to the mean_signal_distribution" />
@@ -705,7 +658,8 @@
     <MESSAGE value="small fix" />
     <MESSAGE value="update" />
     <MESSAGE value="update and small fixes&#10;" />
-    <option name="LAST_COMMIT_MESSAGE" value="update and small fixes&#10;" />
+    <MESSAGE value="adding pulser info to peak values" />
+    <option name="LAST_COMMIT_MESSAGE" value="adding pulser info to peak values" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -1165,8 +1119,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.51025057">
-          <caret line="429" column="51" selection-start-line="429" selection-start-column="51" selection-end-line="429" selection-end-column="51" />
+        <state vertical-scroll-proportion="0.32232347">
+          <caret line="418" column="20" selection-start-line="418" selection-start-column="20" selection-end-line="418" selection-end-column="20" />
           <folding>
             <element signature="e#108#117#0" expanded="true" />
             <element signature="e#2607#2620#0" expanded="false" />
