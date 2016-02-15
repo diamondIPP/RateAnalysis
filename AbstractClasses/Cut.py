@@ -358,17 +358,17 @@ class Cut(Elementary):
         nbins = int(self.analysis.run.tree.GetEntries()) / binning
         rate = []
         for i in xrange(nbins):
-            pulserevents = self.analysis.run.tree.Draw("1", "pulser", "", binning, i * binning)
-            rate.append(1. * pulserevents / binning)
+            pulserevents = self.analysis.run.tree.Draw("1", "pulser", "goff", binning, i * binning)
+            rate.append(100 * pulserevents / binning)
         mean_rate = mean(rate)
         interrupts = []
         last_rate = 0
         tup = [0, 0]
-        fac = 2
+        cut = 30  # if rate goes higher than n %
         for i, value in enumerate(rate):
-            if value > fac * mean_rate > last_rate:
+            if value > cut > last_rate:
                 tup[0] = i * binning
-            elif value < fac * mean_rate < last_rate:
+            elif value < cut < last_rate:
                 tup[1] = i * binning
                 interrupts.append(tup)
                 tup = [0, 0]

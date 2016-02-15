@@ -427,23 +427,23 @@ class SignalAnalysis(Analysis):
             c.SetLeftMargin(0.14)
             h.Draw()
             self.save_plots('peak_values_{reg}{int}'.format(reg=region, int=self.PeakIntegral), 'png', canvas=c, sub_dir=self.save_dir)
-            self.canvases[0] = c
+            self.histos[0] = c
         self.PeakValues = h
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
 
-    def fit_peak_values(self, draw=True):
-        pickle_path = self.PickleDir + 'PeakValues/Fit_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
+    def fit_peak_values(self, draw=True, pulser=False):
+        pickle_path = self.PickleDir + 'PeakValues/Fit_{tc}_{run}_{dia}{pul}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name, pul='_pulser' if pulser else '')
 
         def func():
             print 'Getting peak value fit for {dia} of run {run}...'.format(run=self.run_number, dia=self.diamond_name)
-            if self.PeakValues is None:
-                self.draw_peak_values(draw=False)
+            self.draw_peak_values(draw=draw) if not pulser else self.draw_pulser_peakvalues(draw=draw)
             h = self.PeakValues
             max_bin = h.GetMaximumBin()
-            x = [h.GetBinCenter(max_bin + i) for i in [-7, 1]]
+            x = [h.GetBinCenter(max_bin + i) for i in [-7, 1]] if not pulser else [h.GetXaxis().GetXmin() + 1, h.GetXaxis().GetXmax() - 1]
             return h.Fit('gaus', 'qs{0}'.format('' if draw else '0'), '', x[0], x[1])
 
-        return self.do_pickle(pickle_path, func)
+        mean = func() if draw else 0
+        return self.do_pickle(pickle_path, func, mean)
 
     def calc_peak_value_fwhm(self):
         pickle_path = self.PickleDir + 'PeakValues/FWHM_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
@@ -650,7 +650,7 @@ class SignalAnalysis(Analysis):
         gROOT.SetBatch(1)
         print 'drawing signal distribution for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name)
         suffix = 'with Pedestal Correction' if evnt_corr else ''
-        h = TH1F('signal b2', 'Pulse Height ' + suffix, 350, -50, 300)
+        h = TH1F('signal b2', 'Pulse Height ' + suffix, 700, -50, 300)
         cut = self.Cut.all_cut if cut is None else cut
         sig_name = self.SignalName if sig is None else sig
         # sig_name = self.__generate_signal_name(sig_name, evnt_corr, off_corr, False, cut)
@@ -1071,11 +1071,13 @@ class SignalAnalysis(Analysis):
         fit = func() if show else 0
         return self.do_pickle(pickle_path, func, fit)
 
+    def draw_pulser_peakvalues(self, draw=True):
+        self.draw_peak_values('', 'pulser', ucut=self.Cut.generate_pulser_cut(), draw=draw)
+
     def draw_pulser_waveform(self, n=1, start_event=None, add_buckets=False, cut=None):
         cut = '!({0})'.format(self.Cut.CutStrings['pulser']) if cut is None else cut
         start = self.StartEvent + self.count if start_event is None else start_event + self.count
         print 'Event number:', start
-        # if n == 1:
         cnt = self.draw_waveforms(n=n, start_event=start, add_buckets=add_buckets, cut_string=cut, ret_event=True)
         if cnt is None:
             return

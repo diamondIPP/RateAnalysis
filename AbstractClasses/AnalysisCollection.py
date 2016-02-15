@@ -205,19 +205,16 @@ class AnalysisCollection(Elementary):
         legend.SetName('l1')
         mode = 'Flux' if flux else 'Run'
         y_val = 'Sigma' if sigma else 'Mean'
-        prefix = '{y} of Pedestal {dia} @ {bias}V vs {mode} '.format(mode=mode, dia=self.diamond_name, bias=self.bias, y=y_val)
-        gr1 = self.make_tgrapherrors('pedestal', prefix + 'in {reg}'.format(reg=region + peak_int))
-        graphs = []
+        gr1 = self.make_tgrapherrors('pedestal', 'Pedestal {y} in {reg}'.format(y=y_val, reg=region + peak_int))
         regions = self.get_first_analysis().run.pedestal_regions
-        for reg in regions:
-            graphs.append(self.make_tgrapherrors('pedestal', prefix + 'in {reg}'.format(reg=reg + peak_int), color=self.get_color()))
+        graphs = [self.make_tgrapherrors('pedestal', 'Pedestal {y} in {reg}'.format(y=y_val, reg=reg + peak_int), color=self.get_color()) for reg in regions]
         gROOT.SetBatch(1)
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         i = 0
         par = 2 if sigma else 1
         for key, ana in self.collection.iteritems():
             print 'getting pedestal for run {n}...'.format(n=key)
-            fit_par = ana.show_pedestal_histo(region, peak_int, cut=cut)
+            fit_par = ana.show_pedestal_histo(region, peak_int, cut=cut, draw=False)
             flux = ana.run.flux
             x = ana.run.flux if flux else key
             gr1.SetPoint(i, x, fit_par.Parameter(par))
@@ -232,27 +229,22 @@ class AnalysisCollection(Elementary):
             gROOT.SetBatch(0)
             gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         c = TCanvas('c', 'Pedestal vs Run', 1000, 1000)
-        c.SetLeftMargin(0.14)
         if flux:
             c.SetLogx()
-        gr1.Draw('ap')
+        self.format_histo(gr1, color=None, x_tit=self.make_x_tit(mode, flux), y_tit='Mean Pedestal [au]')
+        gr1.Draw('alp')
         if all_regions:
             for i, gr in enumerate(graphs):
                 legend.AddEntry(gr, str(regions.values()[i]), 'p')
-                self.format_histo(gr, title=prefix, color=None, x_tit='Flux [kHz/cm2]', y_tit='Pulse Height [au]', y_off=2)
-                self.histos[i + 1] = gr
-                if not i:
-                    gr.Draw('ap')
-                else:
-                    gr.Draw('p')
+                gr.Draw('alp') if not i else gr.Draw('lp')
             legend.Draw()
         gROOT.SetBatch(0)
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.Pedestal = gr1
-        self.histos['legend'] = legend
-        self.canvases[0] = c
-        self.save_plots('Pedestal_' + mode, 'png', canvas=self.canvases[0], sub_dir=self.save_dir)
-        self.save_plots('Pedestal_{mod}{cut}'.format(mod=mode, cut='' if cut is None else cut.GetName()), 'root', sub_dir=self.save_dir)
+        self.histos[0] = [graphs, legend, c]
+        save_name = 'Pedestal_{mod}{cut}'.format(mod=mode, cut='' if cut is None else cut.GetName())
+        self.save_plots(save_name, sub_dir=self.save_dir)
+        self.save_plots(save_name, 'root', sub_dir=self.save_dir)
 
     def draw_signal_distributions(self, show=True):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
@@ -301,8 +293,6 @@ class AnalysisCollection(Elementary):
     # ============================================
     # region PULSER
     def draw_pulser_info(self, flux=True, show=True, mean=True, corr=True, no_jumps=True):
-        if not show:
-            gROOT.SetBatch(1)
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         mode = 'Flux' if flux else 'Run'
         title = '{mean} of Pulser vs {mod} ({ped}, {beam})'.format(mean='Mean' if mean else 'Sigma', mod=mode, ped='pedcorrected' if corr else 'uncorrected', beam='BeamOff' if not no_jumps else 'BeamOn')
@@ -316,13 +306,15 @@ class AnalysisCollection(Elementary):
                 gr.SetPoint(i, x, fit.Parameter(par))
                 gr.SetPointError(i, 0, fit.ParError(par))
                 i += 1
+        if not show:
+            gROOT.SetBatch(1)
         c = TCanvas('c', 'Pulser Overview', 1000, 1000)
         if corr and no_jumps:
             gStyle.SetOptFit(1)
             gr.Fit('pol0', 'q')
         c.SetLeftMargin(.125)
         c.SetLogx() if flux else self.do_nothing()
-        self.format_histo(gr, x_tit='{mod}{unit}'.format(mod=mode, unit=' [kHz/cm2]' if flux else ''), y_tit='{mean} [au]'.format(mean='Mean' if mean else 'Sigma'), y_off=1.8)
+        self.format_histo(gr, x_tit=self.make_x_tit(mode, flux), y_tit='{mean} [au]'.format(mean='Mean' if mean else 'Sigma'), y_off=1.8)
         gr.Draw('alp')
         gROOT.SetBatch(0)
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
@@ -330,8 +322,31 @@ class AnalysisCollection(Elementary):
         self.histos[0] = [c, gr]
         return gr
 
+    def draw_pulser_histos(self, show=True, corr=True):
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        histos = [ana.show_pulser_histo(show=False, corr=corr) for ana in self.collection.itervalues()]
+        if not show:
+            gROOT.SetBatch(1)
+        c = TCanvas('c', 'Pulser Histos', 1000, 1000)
+        c.SetLeftMargin(.13)
+        legend = TLegend(.4, .6 - self.get_number_of_analyses() * 0.03, .6, .6)
+        histos[0].SetTitle('Pulser Distributions {0}Corrected'.format('Pedestal' if corr else 'Un'))
+        for i, h in enumerate(histos):
+            h.SetStats(0)
+            h.Scale(1 / h.GetMaximum())
+            h.SetLineColor(self.get_color())
+            h.SetLineWidth(2)
+            h.Draw() if not i else h.Draw('same')
+            legend.AddEntry(h, '{0:6.2f} kHz/cm'.format(self.collection.values()[i].get_flux()) + '^{2}', 'l')
+        legend.Draw()
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        gROOT.SetBatch(0)
+        self.save_plots('AllPulserHistos' + 'Uncorrected' if not corr else '', sub_dir=self.save_dir)
+        self.histos[0] = [c, legend] + histos
+        z.reset_colors()
+
     def draw_all_pulser_info(self, mean=True):
-        graphs = [self.draw_pulser_info(show=False, mean=mean, corr=x, no_jumps=y) for x,y in zip([1, 1, 0, 0], [1, 0, 1, 0])]
+        graphs = [self.draw_pulser_info(show=False, mean=mean, corr=x, no_jumps=y) for x, y in zip([1, 1, 0, 0], [1, 0, 1, 0])]
         c = TCanvas('c', 'Pulser Info', 1500, 1500)
         c.Divide(2, 2)
         for i, gr in enumerate(graphs, 1):
@@ -397,24 +412,26 @@ class AnalysisCollection(Elementary):
 
     # ============================================
     # region PEAK VALUES
-    def draw_signal_peaks(self, flux=True, draw=True):
+    def draw_signal_peaks(self, flux=True, draw=True, pulser=False):
         """
         Shows the means of the signal peak distribution.
         :param flux:
         :param draw:
         """
         mode = 'Flux' if flux else 'Run'
+        signal = 'Pulser' if pulser else 'Signal'
         prefix = 'Mean of Signal Peaks: {dia} @ {bias}V vs {mode} '.format(mode=mode, dia=self.collection.values()[0].diamond_name, bias=self.bias)
         gr = self.make_tgrapherrors('gr', prefix)
         i = 0
         for key, ana in self.collection.iteritems():
-            fit = ana.fit_peak_values(draw=False)
+            fit = ana.fit_peak_values(draw=False, pulser=pulser)
             x = ana.run.flux if flux else key
             gr.SetPoint(i, x, fit.Parameter(1))
             gr.SetPointError(i, 0, fit.ParError(1))
             i += 1
         self.format_histo(gr, x_tit='{mod}{unit}'.format(mod=mode, unit=' [kHz/cm2]' if flux else ''))
-        c = TCanvas('c', 'Mean of Signal Peaks', 1000, 1000)
+        c = TCanvas('c', 'Mean of {0} Peaks'.format(signal), 1000, 1000)
+        c.SetLogx()
         gr.Draw('alp')
         self.canvases = c
         if not draw:
@@ -766,6 +783,10 @@ class AnalysisCollection(Elementary):
         self.get_first_analysis().print_info_header()
         for ana in self.collection.itervalues():
             ana.print_information(header=False)
+
+    @staticmethod
+    def make_x_tit(mode, flux):
+        return '{mod}{unit}'.format(mod=mode, unit=' [kHz/cm2]' if flux else '')
 
 if __name__ == "__main__":
     main_parser = ArgumentParser()

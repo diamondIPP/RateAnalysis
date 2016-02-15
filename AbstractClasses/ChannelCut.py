@@ -199,6 +199,7 @@ class ChannelCut(Cut):
 
     def generate_pulser_cut(self, no_jumps=True):
         cut = self.CutStrings['ped_sigma'] + self.CutStrings['event_range'] + self.CutStrings['saturated']
+        cut.SetName('Pulser')
         cut += self.CutStrings['beam_interruptions'] if no_jumps else '!({0})'.format(self.JumpCut)
         cut += '!({0})'.format(self.CutStrings['pulser'])
         return cut

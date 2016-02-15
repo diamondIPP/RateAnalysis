@@ -2,11 +2,57 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="e6cf272c-81a5-4f4e-9e0a-ff55b841b26f" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/.idea/codeStyleSettings.xml" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_216.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_217.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_218.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_219.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_220.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_221.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_378.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_379.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_380.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_381.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_383.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_384.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_385.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_386.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_388.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_389.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_391.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_399.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_400.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_401.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_402.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_403.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_404.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_405.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_406.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_407.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_408.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_409.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_410.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_411.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_412.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_413.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_414.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_415.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_416.pickle" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_458.pickle" afterPath="" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_171.pickle" afterPath="$PROJECT_DIR$/beaminterruptions/data/201510Run_171.pickle" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_172.pickle" afterPath="$PROJECT_DIR$/beaminterruptions/data/201510Run_172.pickle" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_173.pickle" afterPath="$PROJECT_DIR$/beaminterruptions/data/201510Run_173.pickle" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_176.pickle" afterPath="$PROJECT_DIR$/beaminterruptions/data/201510Run_176.pickle" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_177.pickle" afterPath="$PROJECT_DIR$/beaminterruptions/data/201510Run_177.pickle" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_178.pickle" afterPath="$PROJECT_DIR$/beaminterruptions/data/201510Run_178.pickle" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_392.pickle" afterPath="$PROJECT_DIR$/beaminterruptions/data/201510Run_392.pickle" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_393.pickle" afterPath="$PROJECT_DIR$/beaminterruptions/data/201510Run_393.pickle" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_394.pickle" afterPath="$PROJECT_DIR$/beaminterruptions/data/201510Run_394.pickle" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_395.pickle" afterPath="$PROJECT_DIR$/beaminterruptions/data/201510Run_395.pickle" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_397.pickle" afterPath="$PROJECT_DIR$/beaminterruptions/data/201510Run_397.pickle" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/beaminterruptions/data/201510Run_398.pickle" afterPath="$PROJECT_DIR$/beaminterruptions/data/201510Run_398.pickle" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" afterPath="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/ChannelCut.py" afterPath="$PROJECT_DIR$/AbstractClasses/ChannelCut.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/Cut.py" afterPath="$PROJECT_DIR$/AbstractClasses/Cut.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/Elementary.py" afterPath="$PROJECT_DIR$/AbstractClasses/Elementary.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/PadAnalysis.py" afterPath="$PROJECT_DIR$/AbstractClasses/PadAnalysis.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
@@ -29,11 +75,11 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="TelescopeAnalysis.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="TelescopeAnalysis.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/AbstractClasses/TelescopeAnalysis.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.14920273">
-              <caret line="217" column="51" selection-start-line="217" selection-start-column="51" selection-end-line="217" selection-end-column="51" />
+            <state vertical-scroll-proportion="0.0">
+              <caret line="235" column="72" selection-start-line="235" selection-start-column="72" selection-end-line="235" selection-end-column="72" />
               <folding>
                 <element signature="e#0#37#0" expanded="true" />
               </folding>
@@ -45,12 +91,34 @@
         <entry file="file://$PROJECT_DIR$/AbstractClasses/PadAnalysis.py">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="636" column="40" selection-start-line="636" selection-start-column="40" selection-end-line="636" selection-end-column="40" />
+              <caret line="419" column="72" selection-start-line="419" selection-start-column="72" selection-end-line="419" selection-end-column="72" />
               <folding>
                 <element signature="e#108#250#0" expanded="true" />
+                <element signature="e#4833#4854#0" expanded="false" />
                 <element signature="e#9218#9249#0" expanded="false" />
-                <element signature="e#19002#19022#0" expanded="false" />
-                <element signature="e#35162#35175#0" expanded="false" />
+                <element signature="e#21840#21864#0" expanded="false" />
+                <element signature="e#35344#35357#0" expanded="false" />
+                <element signature="e#52325#52338#0" expanded="false" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="AnalysisCollection.py" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state vertical-scroll-proportion="0.51025057">
+              <caret line="429" column="51" selection-start-line="429" selection-start-column="51" selection-end-line="429" selection-end-column="51" />
+              <folding>
+                <element signature="e#108#117#0" expanded="true" />
+                <element signature="e#2607#2620#0" expanded="false" />
+                <element signature="e#5467#5491#0" expanded="false" />
+                <element signature="e#5598#8318#0" expanded="false" />
+                <element signature="e#12491#12506#0" expanded="false" />
+                <element signature="e#15889#15902#0" expanded="false" />
+                <element signature="e#20210#20232#0" expanded="false" />
+                <element signature="e#23728#25122#0" expanded="false" />
+                <element signature="e#28747#28762#0" expanded="false" />
               </folding>
             </state>
           </provider>
@@ -60,7 +128,7 @@
         <entry file="file://$PROJECT_DIR$/AbstractClasses/ChannelCut.py">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="189" column="52" selection-start-line="189" selection-start-column="52" selection-end-line="189" selection-end-column="52" />
+              <caret line="185" column="48" selection-start-line="185" selection-start-column="48" selection-end-line="185" selection-end-column="48" />
               <folding>
                 <element signature="e#944#2697#0" expanded="false" />
                 <element signature="e#2742#2999#0" expanded="false" />
@@ -76,7 +144,7 @@
         <entry file="file://$PROJECT_DIR$/AbstractClasses/Cut.py">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="347" column="46" selection-start-line="347" selection-start-column="46" selection-end-line="347" selection-end-column="46" />
+              <caret line="376" column="0" selection-start-line="376" selection-start-column="0" selection-end-line="376" selection-end-column="0" />
               <folding>
                 <element signature="e#4050#4069#0" expanded="false" />
               </folding>
@@ -106,22 +174,6 @@
               <caret line="488" column="25" selection-start-line="488" selection-start-column="25" selection-end-line="488" selection-end-column="25" />
               <folding>
                 <element signature="e#108#119#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="AnalysisCollection.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0">
-              <caret line="246" column="32" selection-start-line="246" selection-start-column="32" selection-end-line="246" selection-end-column="32" />
-              <folding>
-                <element signature="e#108#117#0" expanded="true" />
-                <element signature="e#2607#2620#0" expanded="false" />
-                <element signature="e#17301#17321#0" expanded="false" />
-                <element signature="e#22811#24205#0" expanded="false" />
-                <element signature="e#27830#27845#0" expanded="false" />
               </folding>
             </state>
           </provider>
@@ -178,10 +230,10 @@
         <option value="$PROJECT_DIR$/AbstractClasses/TelescopeAnalysis.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/RunSelection.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/Elementary.py" />
-        <option value="$PROJECT_DIR$/AbstractClasses/Cut.py" />
-        <option value="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/ChannelCut.py" />
+        <option value="$PROJECT_DIR$/AbstractClasses/Cut.py" />
         <option value="$PROJECT_DIR$/AbstractClasses/PadAnalysis.py" />
+        <option value="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" />
       </list>
     </option>
   </component>
@@ -573,7 +625,13 @@
       <option name="project" value="LOCAL" />
       <updated>1454435276437</updated>
     </task>
-    <option name="localTasksCounter" value="24" />
+    <task id="LOCAL-00024" summary="update and small fixes&#10;">
+      <created>1455531681493</created>
+      <option name="number" value="00024" />
+      <option name="project" value="LOCAL" />
+      <updated>1455531681493</updated>
+    </task>
+    <option name="localTasksCounter" value="25" />
     <servers />
   </component>
   <component name="TodoView" selected-index="4">
@@ -589,6 +647,7 @@
     <frame x="0" y="24" width="1920" height="1032" extended-state="6" />
     <editor active="true" />
     <layout>
+      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32929516" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.3215859" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
@@ -603,7 +662,6 @@
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
@@ -622,7 +680,6 @@
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="revision of best snr" />
     <MESSAGE value="fixing calc_snr" />
     <MESSAGE value="adding angle fit functions and fixing snr functions" />
     <MESSAGE value="adding compare landau function" />
@@ -647,7 +704,8 @@
     <MESSAGE value="finish current plot class" />
     <MESSAGE value="small fix" />
     <MESSAGE value="update" />
-    <option name="LAST_COMMIT_MESSAGE" value="update" />
+    <MESSAGE value="update and small fixes&#10;" />
+    <option name="LAST_COMMIT_MESSAGE" value="update and small fixes&#10;" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -680,9 +738,11 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#108#250#0" expanded="true" />
+            <element signature="e#4833#4854#0" expanded="false" />
             <element signature="e#9218#9249#0" expanded="false" />
-            <element signature="e#19002#19022#0" expanded="false" />
-            <element signature="e#35162#35175#0" expanded="false" />
+            <element signature="e#21840#21864#0" expanded="false" />
+            <element signature="e#35344#35357#0" expanded="false" />
+            <element signature="e#52325#52338#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -694,9 +754,13 @@
           <folding>
             <element signature="e#108#117#0" expanded="true" />
             <element signature="e#2607#2620#0" expanded="false" />
-            <element signature="e#17301#17321#0" expanded="false" />
-            <element signature="e#22811#24205#0" expanded="false" />
-            <element signature="e#27830#27845#0" expanded="false" />
+            <element signature="e#5467#5491#0" expanded="false" />
+            <element signature="e#5598#8318#0" expanded="false" />
+            <element signature="e#12491#12506#0" expanded="false" />
+            <element signature="e#15889#15902#0" expanded="false" />
+            <element signature="e#20210#20232#0" expanded="false" />
+            <element signature="e#23728#25122#0" expanded="false" />
+            <element signature="e#28747#28762#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -1050,20 +1114,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/Cut.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="347" column="46" selection-start-line="347" selection-start-column="46" selection-end-line="347" selection-end-column="46" />
-          <folding>
-            <element signature="e#4050#4069#0" expanded="false" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/ChannelCut.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
-          <caret line="189" column="52" selection-start-line="189" selection-start-column="52" selection-end-line="189" selection-end-column="52" />
+          <caret line="185" column="48" selection-start-line="185" selection-start-column="48" selection-end-line="185" selection-end-column="48" />
           <folding>
             <element signature="e#944#2697#0" expanded="false" />
             <element signature="e#2742#2999#0" expanded="false" />
@@ -1074,16 +1128,12 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py">
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/Cut.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
-          <caret line="246" column="32" selection-start-line="246" selection-start-column="32" selection-end-line="246" selection-end-column="32" />
+          <caret line="376" column="0" selection-start-line="376" selection-start-column="0" selection-end-line="376" selection-end-column="0" />
           <folding>
-            <element signature="e#108#117#0" expanded="true" />
-            <element signature="e#2607#2620#0" expanded="false" />
-            <element signature="e#17301#17321#0" expanded="false" />
-            <element signature="e#22811#24205#0" expanded="false" />
-            <element signature="e#27830#27845#0" expanded="false" />
+            <element signature="e#4050#4069#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -1091,22 +1141,42 @@
     <entry file="file://$PROJECT_DIR$/AbstractClasses/PadAnalysis.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
-          <caret line="636" column="40" selection-start-line="636" selection-start-column="40" selection-end-line="636" selection-end-column="40" />
+          <caret line="419" column="72" selection-start-line="419" selection-start-column="72" selection-end-line="419" selection-end-column="72" />
           <folding>
             <element signature="e#108#250#0" expanded="true" />
+            <element signature="e#4833#4854#0" expanded="false" />
             <element signature="e#9218#9249#0" expanded="false" />
-            <element signature="e#19002#19022#0" expanded="false" />
-            <element signature="e#35162#35175#0" expanded="false" />
+            <element signature="e#21840#21864#0" expanded="false" />
+            <element signature="e#35344#35357#0" expanded="false" />
+            <element signature="e#52325#52338#0" expanded="false" />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/AbstractClasses/TelescopeAnalysis.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.14920273">
-          <caret line="217" column="51" selection-start-line="217" selection-start-column="51" selection-end-line="217" selection-end-column="51" />
+        <state vertical-scroll-proportion="0.0">
+          <caret line="235" column="72" selection-start-line="235" selection-start-column="72" selection-end-line="235" selection-end-column="72" />
           <folding>
             <element signature="e#0#37#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.51025057">
+          <caret line="429" column="51" selection-start-line="429" selection-start-column="51" selection-end-line="429" selection-end-column="51" />
+          <folding>
+            <element signature="e#108#117#0" expanded="true" />
+            <element signature="e#2607#2620#0" expanded="false" />
+            <element signature="e#5467#5491#0" expanded="false" />
+            <element signature="e#5598#8318#0" expanded="false" />
+            <element signature="e#12491#12506#0" expanded="false" />
+            <element signature="e#15889#15902#0" expanded="false" />
+            <element signature="e#20210#20232#0" expanded="false" />
+            <element signature="e#23728#25122#0" expanded="false" />
+            <element signature="e#28747#28762#0" expanded="false" />
           </folding>
         </state>
       </provider>
