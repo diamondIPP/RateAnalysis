@@ -36,6 +36,7 @@ class Cut(Elementary):
             self.CutStrings = self.define_cutstrings()
 
             self.region_cut = TCut('region_cut', '')
+            self.JumpCut = TCut('JumpCut', '')
 
             # beam interrupts
             self.jumps = None
@@ -309,6 +310,8 @@ class Cut(Elementary):
         self.__generate_beam_interruptions()
         self.EasyCutStrings['noBeamInter'] = 'BeamOn'
 
+        self.generate_jump_cut()
+
         gROOT.SetBatch(0)
 
     def __generate_beam_interruptions(self, ):
@@ -335,6 +338,16 @@ class Cut(Elementary):
 
     # ==============================================
     # region BEAM INTERRUPTS
+    def generate_jump_cut(self):
+        cut_string = ''
+        start_event = self.CutConfig['EventRange'][0]
+        for tup in self.jumps:
+            if tup[1] > start_event:
+                low = start_event if tup[0] < start_event else tup[0]
+                cut_string += '&&' if cut_string else ''
+                cut_string += '!(event_number<={up}&&event_number>={low})'.format(up=tup[1], low=low)
+        self.JumpCut += cut_string
+
     def find_beam_interruptions(self):
         """
         Looking for the beam interruptions

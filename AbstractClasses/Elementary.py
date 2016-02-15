@@ -105,7 +105,6 @@ class Elementary(object):
                 return
         channel = self.channel if hasattr(self, 'channel') else None
         if hasattr(self, 'run'):
-            print 'has run'
             self.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas)
         elif hasattr(self, 'analysis'):
             print 'has analysis'
@@ -180,12 +179,17 @@ class Elementary(object):
 
     @staticmethod
     def do_pickle(path, function, value=0):
+        if value:
+            f = open(path, 'w')
+            pickle.dump(value, f)
+            f.close()
+            return value
         try:
             f = open(path, 'r')
             ret_val = pickle.load(f)
             f.close()
         except IOError:
-            ret_val = function() if not value else value
+            ret_val = function()
             f = open(path, 'w')
             pickle.dump(ret_val, f)
             f.close()

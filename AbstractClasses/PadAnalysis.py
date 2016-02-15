@@ -93,7 +93,7 @@ class SignalAnalysis(Analysis):
         return '{pol}*IntegralValues[{num}]'.format(pol=self.Polarity, num=num)
 
     def get_pedestal_name(self, region='ab', peak_int='2'):
-        return '{pol}*{name}'.format(pol=self.Polarity, name=self.get_signal_name(region=region, peak_integral=peak_int, sig_type='pedestal'))
+        return self.get_signal_name(region=region, peak_integral=peak_int, sig_type='pedestal')
 
     def get_pulser_name(self):
         return self.get_signal_name(region='', sig_type='pulser')
@@ -207,7 +207,7 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region 2D SIGNAL DISTRIBUTION
-    def draw_signal_map(self, draw_option='surf2z', show=True, factor=4):
+    def draw_signal_map(self, draw_option='surf3z', show=True, factor=4):
         margins = self.find_diamond_margins(show_plot=False)
         x = [margins['x'][0], margins['x'][1]]
         y = [margins['y'][0], margins['y'][1]]
@@ -410,7 +410,7 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region PEAK VALUES
-    def draw_peak_values(self, region=None, type_='signal', draw=True):
+    def draw_peak_values(self, region=None, type_='signal', draw=True, ucut=None):
         num = self.get_signal_number('b', '2') if region is None else self.get_signal_number(region=region, sig_type=type_)
         region = 'b' if region is None else region
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
@@ -420,6 +420,7 @@ class SignalAnalysis(Analysis):
         h = TH1F('peakvalues', title, x[1] - x[0], x[0] / 2., x[1] / 2.)
         self.format_histo(h, x_tit='time [ns]', y_tit='Entries', y_off=2)
         cut = self.Cut.all_cut if type_ == 'signal' else '!({0})'.format(self.Cut.CutStrings['pulser'])
+        cut = cut if ucut is None else ucut
         self.tree.Draw(peak_val + '/2.>>peakvalues', cut, 'goff')
         if draw:
             c = TCanvas('c', 'Signal Peak Distribution', 1000, 1000)
@@ -460,11 +461,22 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region SIGNAL/PEDESTAL
-    def make_signal_time_histos(self, ped=False, signal=None, corr=False, show=True):
+    def __generate_signal_name(self, signal, evnt_corr, off_corr, bin_corr, cut=None):
+        sig_name = signal
+        if bin_corr:
+            return sig_name
+        elif off_corr:
+            ped_fit = self.show_pedestal_histo(cut=cut, draw=False)
+            sig_name += '-{0}'.format(ped_fit.Parameter(1))
+        elif evnt_corr:
+            sig_name += '-{ped}'.format(sig=sig_name, ped=self.PedestalName, pol=self.Polarity)
+        return sig_name
+
+    def make_signal_time_histos(self, ped=False, signal=None, evnt_corr=False, off_corr=False, show=True, bin_corr=False):
         gROOT.SetBatch(1)
         signal = self.SignalName if signal is None else signal
         signal = signal if not ped else self.PedestalName
-        signal = '{sig}-{pol}*{ped}'.format(sig=signal, ped=self.PedestalName, pol=self.Polarity) if corr else signal
+        signal = self.__generate_signal_name(signal, evnt_corr, off_corr, bin_corr)
         # 2D Histogram
         name = "signaltime_" + str(self.run_number)
         xbins = array(self.time_binning)
@@ -531,13 +543,15 @@ class SignalAnalysis(Analysis):
             func()
         return all_means
 
-    def draw_pulse_height(self, binning=None, show=True, save_graph=False, ped_corr=False, eventwise_corr=True, sig=None):
+    def draw_pulse_height(self, binning=None, show=True, save_graph=False, evnt_corr=True, bin_corr=False, off_corr=False, sig=None):
         signal = self.SignalName if sig is None else sig
         bin_size = binning if binning is not None else self.BinSize
         correction = ''
-        if ped_corr:
+        if bin_corr:
             correction = 'binwise'
-        elif eventwise_corr:
+        elif off_corr:
+            correction = 'constant'
+        elif evnt_corr:
             correction = 'eventwise'
         suffix = '{bins}_{cor}_{sig}'.format(bins=bin_size, cor=correction, sig=self.get_all_signal_names()[signal])
         picklepath = 'Configuration/Individual_Configs/Ph_fit/{tc}_{run}_{ch}_{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel, suf=suffix)
@@ -548,20 +562,20 @@ class SignalAnalysis(Analysis):
             print 'drawing pulse height fit for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name)
             if binning is not None:
                 self.__set_bin_size(binning)
-            tit_suffix = 'with {cor} Pedestal Correction'.format(cor=correction.title()) if ped_corr or eventwise_corr else ''
+            tit_suffix = 'with {cor} Pedestal Correction'.format(cor=correction.title()) if bin_corr or evnt_corr or off_corr else ''
             gr = self.make_tgrapherrors('signal', 'Pulse Height Evolution Bin{0} '.format(self.BinSize) + tit_suffix)
-            sig_time = self.make_signal_time_histos(corr=eventwise_corr, signal=signal, show=False)
+            sig_time = self.make_signal_time_histos(evnt_corr=evnt_corr, signal=signal, show=False, off_corr=off_corr, bin_corr=bin_corr)
             mode = 'mean'
             empty_bins = 0
             count = 0
-            means = self.draw_pedestal(bin_size, draw=False) if ped_corr else None
+            means = self.draw_pedestal(bin_size, draw=False) if bin_corr else None
             gROOT.SetBatch(1)
             for i in xrange(self.n_bins - 1):
                 h_proj = sig_time.ProjectionY(str(i), i + 1, i + 1)
                 if h_proj.GetEntries() > 10:
                     if mode in ["mean", "Mean"]:
                         i_mean = h_proj.GetMean()
-                        i_mean -= self.Polarity * means[count] if ped_corr else 0
+                        i_mean -= means[count] if bin_corr else 0
                         gr.SetPoint(count, (self.time_binning[i] - self.run.startTime) / 60e3, i_mean)
                         gr.SetPointError(count, 0, h_proj.GetRMS() / sqrt(h_proj.GetEntries()))
                     elif mode in ["fit", "Fit"]:
@@ -584,7 +598,7 @@ class SignalAnalysis(Analysis):
             gStyle.SetOptFit(1)
             self.format_histo(gr, x_tit='time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6)
             fit_par = gr.Fit('pol0', 'qs')
-            gr.Draw('ap')
+            gr.Draw('apl')
             self.save_plots('PulseHeight{0}'.format(self.BinSize), sub_dir=self.save_dir)
             self.PulseHeight = gr
             self.canvas = c
@@ -597,7 +611,7 @@ class SignalAnalysis(Analysis):
     def draw_ph_distribution(self, binning=None, show=True, fit=True):
         if binning is not None:
             self.__set_bin_size(binning)
-        sig_time = self.make_signal_time_histos(corr=True, show=False)
+        sig_time = self.make_signal_time_histos(evnt_corr=True, show=False)
         if not show:
             gROOT.SetBatch(1)
         means = [h_proj.GetMean() for h_proj in [sig_time.ProjectionY(str(i), i + 1, i + 1) for i in xrange(self.n_bins - 1)] if h_proj.GetEntries() > 10]
@@ -632,15 +646,17 @@ class SignalAnalysis(Analysis):
         self.save_plots('PHEvolutionOverview{0}'.format(self.BinSize), sub_dir=self.save_dir)
         self.histos[1] = [c]
 
-    def show_signal_histo(self, cut=None, corr=True, show=True, sig=None):
+    def show_signal_histo(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None):
         gROOT.SetBatch(1)
         print 'drawing signal distribution for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name)
-        suffix = 'with Pedestal Correction' if corr else ''
+        suffix = 'with Pedestal Correction' if evnt_corr else ''
         h = TH1F('signal b2', 'Pulse Height ' + suffix, 350, -50, 300)
         cut = self.Cut.all_cut if cut is None else cut
         sig_name = self.SignalName if sig is None else sig
-        signal = '{sig}-{pol}*{ped}'.format(sig=sig_name, ped=self.PedestalName, pol=self.Polarity) if corr else sig_name
-        self.tree.Draw('{name}>>signal b2'.format(name=signal), cut, 'goff')
+        # sig_name = self.__generate_signal_name(sig_name, evnt_corr, off_corr, False, cut)
+        sig_name = self.__generate_signal_name(sig_name, evnt_corr, off_corr, False, cut)
+        print sig_name
+        self.tree.Draw('{name}>>signal b2'.format(name=sig_name), cut, 'goff')
         if show:
             gROOT.SetBatch(0)
         c = TCanvas('c', 'Signal Distribution', 1000, 1000)
@@ -652,8 +668,9 @@ class SignalAnalysis(Analysis):
         gROOT.SetBatch(0)
         return h
 
-    def show_pedestal_histo(self, region='ab', peak_int='2', cut=True, fwhm=True, draw=True):
-        cut = self.Cut.all_cut if cut else TCut()
+    def show_pedestal_histo(self, region='ab', peak_int='2', cut=None, fwhm=True, draw=True):
+        cut = self.Cut.all_cut if cut is None else cut
+        cut = TCut('', cut) if type(cut) is str else cut
         fw = 'fwhm' if fwhm else 'full'
         suffix = '{reg}_{fwhm}_{cut}'.format(reg=region + str(peak_int), cut=cut.GetName(), fwhm=fw)
         picklepath = 'Configuration/Individual_Configs/Pedestal/{tc}_{run}_{ch}_{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel, suf=suffix)
@@ -678,12 +695,8 @@ class SignalAnalysis(Analysis):
             gROOT.SetBatch(0)
             return fit_pars
 
-        fit_par = self.do_pickle(picklepath, func)
-        if draw and gROOT.FindObject('ped1'):
-            gROOT.FindObject('ped1').Draw()
-        elif draw and not gROOT.FindObject('ped1'):
-            func()
-        return fit_par
+        fit_par = func() if draw else 0
+        return self.do_pickle(picklepath, func, fit_par)
 
     def compare_pedestals(self):
         legend = TLegend(0.7, 0.7, 0.98, .9)
@@ -861,9 +874,9 @@ class SignalAnalysis(Analysis):
                     cuts_nobucket += value
                 if key not in ['all_cuts', 'bucket']:
                     cuts_oldbucket += value
-            h1 = self.show_signal_histo(show=False, corr=True)
-            h2 = self.show_signal_histo(show=False, corr=True, cut=cuts_nobucket)
-            h3 = self.show_signal_histo(show=False, corr=True, cut=cuts_oldbucket)
+            h1 = self.show_signal_histo(show=False, evnt_corr=True)
+            h2 = self.show_signal_histo(show=False, evnt_corr=True, cut=cuts_nobucket)
+            h3 = self.show_signal_histo(show=False, evnt_corr=True, cut=cuts_oldbucket)
             if plot_histos:
                 c = TCanvas('c', 'Bucket Histos', 1000, 1000)
                 self.format_histo(h1, color=self.get_color(), lw=1, x_tit='Pulse Height [au]', y_tit='Entries')
@@ -1032,24 +1045,28 @@ class SignalAnalysis(Analysis):
         self.canvases[0] = c
         self.histos[0] = h
 
-    def show_pulser_histo(self, show=True, corr=True, at_jumps=False):
-        cut = self.Cut.CutStrings['ped_sigma'] + self.Cut.CutStrings['event_range'] + self.Cut.CutStrings['saturated']
-        cut += TCut('{0}({1})'.format('!' if at_jumps else '', self.Cut.CutStrings['beam_interruptions']))
-        cut += '!({0})'.format(self.Cut.CutStrings['pulser'])
-        h = self.show_signal_histo(cut=cut, sig=self.PulserName, show=show, corr=corr)
+    def show_pulser_histo(self, show=True, corr=True, no_jumps=True):
+        cut = self.Cut.generate_pulser_cut(no_jumps)
+        h = self.show_signal_histo(cut=cut, sig=self.PulserName, show=show, off_corr=corr, evnt_corr=False)
         c = gROOT.GetListOfCanvases()[-1]
         c.SetLogy()
         return h
 
-    def calc_pulser_fit(self, show=True, corr=True, at_jumps=False):
-        suffix = '{corr}_{beam}'.format(corr='_ped_corr' if corr else '', beam='BeamOff' if at_jumps else 'BeamOn')
+    def calc_pulser_fit(self, show=True, corr=True, no_jumps=True):
+        suffix = '{corr}_{beam}'.format(corr='_ped_corr' if corr else '', beam='BeamOff' if not no_jumps else 'BeamOn')
         pickle_path = self.PickleDir + 'Pulser/HistoFit_{tc}_{run}_{dia}{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name, suf=suffix)
 
         def func():
-            h = self.show_pulser_histo(show=show, corr=corr, at_jumps=at_jumps)
-            max_n = h.GetMaximum()
-            h.GetXaxis().SetRangeUser(h.GetBinCenter(h.FindFirstBinAbove(.02 * max_n)), h.GetBinCenter(h.FindLastBinAbove(.02 * max_n)))
-            return h.Fit('gaus', 'qs{0}'.format('' if show else '0'))
+            gStyle.SetOptFit(1)
+            h = self.show_pulser_histo(show=show, corr=corr, no_jumps=no_jumps)
+            fit_func = h.Fit('gaus', 'qs{0}'.format('' if show else '0'), '', 0, h.GetBinCenter(h.GetMaximumBin() + 2))
+            f = gROOT.GetFunction('gaus')
+            f.SetLineStyle(7)
+            f.SetRange(0, 500)
+            f.Draw('same')
+            self.histos[1] = [f]
+            self.save_plots('PulserHisto', sub_dir=self.save_dir)
+            return fit_func
 
         fit = func() if show else 0
         return self.do_pickle(pickle_path, func, fit)
@@ -1059,7 +1076,10 @@ class SignalAnalysis(Analysis):
         start = self.StartEvent + self.count if start_event is None else start_event + self.count
         print 'Event number:', start
         # if n == 1:
-        self.count += self.draw_waveforms(n=n, start_event=start, add_buckets=add_buckets, cut_string=cut, ret_event=True)
+        cnt = self.draw_waveforms(n=n, start_event=start, add_buckets=add_buckets, cut_string=cut, ret_event=True)
+        if cnt is None:
+            return
+        self.count += cnt
 
     # endregion
 
@@ -1129,6 +1149,8 @@ class SignalAnalysis(Analysis):
         gROOT.SetBatch(0)
         if n > 1:
             self.save_plots('WaveForms{n}'.format(n=n), sub_dir=self.save_dir)
+        else:
+            self.save_plots('SingleWaveForm', sub_dir=self.save_dir)
         self.histos[0] = [c, h]
         return h if not ret_event else n_events
 
@@ -1191,7 +1213,7 @@ class SignalAnalysis(Analysis):
                 print 'process cut ' + key
                 # h = TH1F('h', '', 600, -100, 500)
                 # self.tree.Draw("{name}>>h".format(name=self.signal_name), value)
-                h = self.show_signal_histo(corr=True, cut=value, show=False)
+                h = self.show_signal_histo(evnt_corr=True, cut=value, show=False)
                 i_mean = self.__get_mean(h)
                 median = self.__get_median(h)
                 mpv = self.__get_mpv(h)
@@ -1293,7 +1315,7 @@ class SignalAnalysis(Analysis):
         signal = self.SignalName if sig is None else sig
         peak_int = self.get_all_signal_names()[signal][-2:] if self.get_all_signal_names()[signal][-2].isdigit() else self.get_all_signal_names()[signal][-1]
         ped_fit = self.show_pedestal_histo(draw=False, peak_int=peak_int)
-        sig_fit = self.draw_pulse_height(eventwise_corr=True, show=False, sig=signal)
+        sig_fit = self.draw_pulse_height(evnt_corr=True, show=False, sig=signal)
         sig_mean = sig_fit.Parameter(0)
         ped_sigma = ped_fit.Parameter(2)
 
@@ -1335,7 +1357,7 @@ class SignalAnalysis(Analysis):
         ratio = '{0}{1}'.format(self.run.peak_integrals.values()[0][0], self.run.peak_integrals.values()[0][1])
         for name, value in peak_integrals.iteritems():
             sig_name = self.get_signal_name(region='b', peak_integral=name)
-            signal = self.draw_pulse_height(eventwise_corr=True, show=False, sig=sig_name) if not ped else self.show_pedestal_histo(draw=False, peak_int=name)
+            signal = self.draw_pulse_height(evnt_corr=True, show=False, sig=sig_name) if not ped else self.show_pedestal_histo(draw=False, peak_int=name)
             par = 2 if ped else 0
             gr.SetPoint(i, (value[1] + value[0]) / 2., signal.Parameter(par))
             gr.SetPointError(i, 0, signal.ParError(par))

@@ -163,7 +163,7 @@ class ChannelCut(Cut):
         return threshold
 
     def __calc_pedestal_range(self):
-        fit = self.analysis.show_pedestal_histo(region=self.analysis.PedestalRegion, peak_int=self.analysis.PeakIntegral, draw=False, cut=False)
+        fit = self.analysis.show_pedestal_histo(region=self.analysis.PedestalRegion, peak_int=self.analysis.PeakIntegral, draw=False, cut='')
         sigma = fit.Parameter(2)
         mean = fit.Parameter(1)
         self.PedestalFit = fit
@@ -196,3 +196,9 @@ class ChannelCut(Cut):
         self.CutStrings['bucket'] += self.generate_bucket()
 
     # endregion
+
+    def generate_pulser_cut(self, no_jumps=True):
+        cut = self.CutStrings['ped_sigma'] + self.CutStrings['event_range'] + self.CutStrings['saturated']
+        cut += self.CutStrings['beam_interruptions'] if no_jumps else '!({0})'.format(self.JumpCut)
+        cut += '!({0})'.format(self.CutStrings['pulser'])
+        return cut
