@@ -53,6 +53,7 @@
           <option value="TPaveLabel" />
           <option value="kCanDelete" />
           <option value="TPad" />
+          <option value="TMath" />
         </list>
       </option>
     </inspection_tool>

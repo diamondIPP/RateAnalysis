@@ -226,8 +226,8 @@ class SignalAnalysis(Analysis):
         c.SetRightMargin(0.12)
         gStyle.SetPalette(53)
         self.format_histo(h, x_tit='track_x [cm]', y_tit='track_y [cm]', y_off=1.6)
-        if draw_option == 'surf2':
-            self.format_histo(h, x_off=1.6, y_off=2.2, x_tit='track_x [cm]', y_tit='track_y [cm]')
+        if draw_option.lower().startswith('surf'):
+            self.format_histo(h, x_off=2, y_off=2.4, x_tit='track_x [cm]', y_tit='track_y [cm]')
         h.SetStats(0)
         h.SetContour(50)
         h.Draw(draw_option)
@@ -1073,6 +1073,31 @@ class SignalAnalysis(Analysis):
 
     def draw_pulser_peakvalues(self, draw=True):
         self.draw_peak_values('', 'pulser', ucut=self.Cut.generate_pulser_cut(), draw=draw)
+
+    def show_pulser_pedestal(self, show=True):
+        return z.show_pedestal_histo(cut=self.Cut.generate_pulser_cut(), draw=show)
+
+    def compare_pulser_pedestal(self, show=True):
+        self.show_pedestal_histo()
+        h1 = deepcopy(self.histos[0][0])
+        self.show_pulser_pedestal()
+        h2 = self.histos[0][0]
+        print h1, h2
+        gROOT.SetBatch(0) if show else gROOT.SetBatch(1)
+        c = TCanvas('c', 'Pulser Pedestal Comparison', 1000, 1000)
+        legend = TLegend(.7, .78, .88, .88)
+        names = ['Signal', 'Pulser']
+        for i, h in enumerate([h1, h2]):
+            self.format_histo(h, color=self.get_color(), lw=2)
+            h.SetStats(0)
+            h.Scale(1 / h.GetMaximum())
+            h.GetYaxis().SetRangeUser(0, 1.1)
+            h.Draw() if not i else h.Draw('same')
+            legend.AddEntry(h, names[i])
+        legend.Draw()
+        gROOT.SetBatch(0)
+        self.save_plots('PulserPedestalComparison', sub_dir=self.save_dir)
+        self.histos[1] = [c, h1, h2, legend]
 
     def draw_pulser_waveform(self, n=1, start_event=None, add_buckets=False, cut=None):
         cut = '!({0})'.format(self.Cut.CutStrings['pulser']) if cut is None else cut

@@ -368,8 +368,8 @@ class AnalysisCollection(Elementary):
         self.save_plots('AllPulserOverview{0}'.format('Mean' if mean else 'Sigma'), sub_dir=self.save_dir)
 
     def compare_pedestals(self, show=True):
-        gr1 = self.draw_pedestals()
-        gr2 = self.draw_pedestals(cut='pulser')
+        gr1 = self.draw_pedestals(show=False)
+        gr2 = self.draw_pedestals(cut='pulser', show=False)
         gROOT.SetBatch(0) if show else gROOT.SetBatch(1)
         c = TCanvas('c', 'Pulser Pedestal Comparison', 1000, 1000)
         c.SetLogx()
