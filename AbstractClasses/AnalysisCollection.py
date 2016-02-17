@@ -9,7 +9,7 @@ from collections import OrderedDict
 from ConfigParser import ConfigParser
 from argparse import ArgumentParser
 
-from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle
+from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMath
 
 from PadAnalysis import SignalAnalysis
 from Elementary import Elementary
@@ -200,7 +200,7 @@ class AnalysisCollection(Elementary):
         self.canvases[0] = c
         self.PulseHeight = gr1
 
-    def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False, draw=True, cut=None):
+    def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False, show=True, cut=None):
         legend = TLegend(0.7, 0.3, 0.98, .7)
         legend.SetName('l1')
         mode = 'Flux' if flux else 'Run'
@@ -212,20 +212,23 @@ class AnalysisCollection(Elementary):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         i = 0
         par = 2 if sigma else 1
+        cut_string = None
         for key, ana in self.collection.iteritems():
             print 'getting pedestal for run {n}...'.format(n=key)
-            fit_par = ana.show_pedestal_histo(region, peak_int, cut=cut, draw=False)
+            cut_string = ana.Cut.generate_pulser_cut() if cut == 'pulser' else cut
+            fit_par = ana.show_pedestal_histo(region, peak_int, cut=cut_string, draw=False)
+            print fit_par.Parameter(par)
             flux = ana.run.flux
             x = ana.run.flux if flux else key
             gr1.SetPoint(i, x, fit_par.Parameter(par))
             gr1.SetPointError(i, 0, fit_par.ParError(par))
             if all_regions:
                 for reg, gr in zip(regions, graphs):
-                    fit_par = ana.show_pedestal_histo(reg, peak_int)
+                    fit_par = ana.show_pedestal_histo(reg, peak_int, draw=False)
                     gr.SetPoint(i, x, fit_par.Parameter(par))
                     gr.SetPointError(i, 0, fit_par.ParError(par))
             i += 1
-        if draw:
+        if show:
             gROOT.SetBatch(0)
             gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         c = TCanvas('c', 'Pedestal vs Run', 1000, 1000)
@@ -242,9 +245,11 @@ class AnalysisCollection(Elementary):
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.Pedestal = gr1
         self.histos[0] = [graphs, legend, c]
-        save_name = 'Pedestal_{mod}{cut}'.format(mod=mode, cut='' if cut is None else cut.GetName())
+        save_name = 'Pedestal_{mod}{cut}'.format(mod=mode, cut='' if cut is None else cut_string.GetName())
         self.save_plots(save_name, sub_dir=self.save_dir)
         self.save_plots(save_name, 'root', sub_dir=self.save_dir)
+        self.reset_colors()
+        return gr1
 
     def draw_signal_distributions(self, show=True):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
@@ -347,9 +352,12 @@ class AnalysisCollection(Elementary):
 
     def draw_all_pulser_info(self, mean=True):
         graphs = [self.draw_pulser_info(show=False, mean=mean, corr=x, no_jumps=y) for x, y in zip([1, 1, 0, 0], [1, 0, 1, 0])]
+        extrema = [max([TMath.MaxElement(gr.GetN(), gr.GetY()) for gr in graphs]), min([TMath.MinElement(gr.GetN(), gr.GetY()) for gr in graphs])]
+        print extrema[1] - (extrema[0] - extrema[1]) * .1, extrema[0] + (extrema[0] - extrema[1]) * .1
         c = TCanvas('c', 'Pulser Info', 1500, 1500)
         c.Divide(2, 2)
         for i, gr in enumerate(graphs, 1):
+            gr.GetYaxis().SetRangeUser(extrema[1] - (extrema[0] - extrema[1]) * .1, extrema[0] + (extrema[0] - extrema[1]) * .1)
             self.format_histo(gr, y_off=1.3)
             pad = c.cd(i)
             pad.SetLogx()
@@ -358,6 +366,23 @@ class AnalysisCollection(Elementary):
         gROOT.SetBatch(0)
         self.histos[1] = [graphs, c]
         self.save_plots('AllPulserOverview{0}'.format('Mean' if mean else 'Sigma'), sub_dir=self.save_dir)
+
+    def compare_pedestals(self, show=True):
+        gr1 = self.draw_pedestals()
+        gr2 = self.draw_pedestals(cut='pulser')
+        gROOT.SetBatch(0) if show else gROOT.SetBatch(1)
+        c = TCanvas('c', 'Pulser Pedestal Comparison', 1000, 1000)
+        c.SetLogx()
+        legend = TLegend(.7, .78, .88, .88)
+        names = ['Signal', 'Pulser']
+        for i, gr in enumerate([gr1, gr2]):
+            self.format_histo(gr, color=self.get_color())
+            gr.Draw('lp') if i else gr.Draw('alp')
+            legend.AddEntry(gr, names[i], 'pl')
+        legend.Draw()
+        gROOT.SetBatch(0)
+        self.save_plots('PulserPedestalComparison', sub_dir=self.save_dir)
+        self.histos[1] = [c, gr1, gr2, legend]
 
     # endregion
 
@@ -420,7 +445,7 @@ class AnalysisCollection(Elementary):
         """
         mode = 'Flux' if flux else 'Run'
         signal = 'Pulser' if pulser else 'Signal'
-        prefix = 'Mean of Signal Peaks: {dia} @ {bias}V vs {mode} '.format(mode=mode, dia=self.collection.values()[0].diamond_name, bias=self.bias)
+        prefix = 'Mean of {pul} Peaks: {dia} @ {bias}V vs {mode} '.format(mode=mode, dia=self.collection.values()[0].diamond_name, bias=self.bias, pul='Pulser' if pulser else 'Signal')
         gr = self.make_tgrapherrors('gr', prefix)
         i = 0
         for key, ana in self.collection.iteritems():
@@ -728,7 +753,7 @@ class AnalysisCollection(Elementary):
         """
         start_time = time()
         self.draw_pulse_heights(draw=False)
-        self.draw_pedestals(draw=False)
+        self.draw_pedestals(show=False)
         self.draw_mean_fwhm(draw=False)
         c = TCanvas('c', 'overview', 800, 1000)
         c.Divide(1, 3)
