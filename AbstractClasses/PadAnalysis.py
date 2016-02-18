@@ -646,11 +646,11 @@ class SignalAnalysis(Analysis):
         self.save_plots('PHEvolutionOverview{0}'.format(self.BinSize), sub_dir=self.save_dir)
         self.histos[1] = [c]
 
-    def show_signal_histo(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None):
+    def show_signal_histo(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None, binning=350):
         gROOT.SetBatch(1)
         print 'drawing signal distribution for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name)
         suffix = 'with Pedestal Correction' if evnt_corr else ''
-        h = TH1F('signal b2', 'Pulse Height ' + suffix, 700, -50, 300)
+        h = TH1F('signal b2', 'Pulse Height ' + suffix, binning, -50, 300)
         cut = self.Cut.all_cut if cut is None else cut
         sig_name = self.SignalName if sig is None else sig
         # sig_name = self.__generate_signal_name(sig_name, evnt_corr, off_corr, False, cut)
@@ -1047,7 +1047,7 @@ class SignalAnalysis(Analysis):
 
     def show_pulser_histo(self, show=True, corr=True, no_jumps=True):
         cut = self.Cut.generate_pulser_cut(no_jumps)
-        h = self.show_signal_histo(cut=cut, sig=self.PulserName, show=show, off_corr=corr, evnt_corr=False)
+        h = self.show_signal_histo(cut=cut, sig=self.PulserName, show=show, off_corr=corr, evnt_corr=False, binning=700)
         c = gROOT.GetListOfCanvases()[-1]
         c.SetLogy()
         return h

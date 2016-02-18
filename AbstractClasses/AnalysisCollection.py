@@ -329,15 +329,15 @@ class AnalysisCollection(Elementary):
 
     def draw_pulser_histos(self, show=True, corr=True):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        histos = [ana.show_pulser_histo(show=False, corr=corr) for ana in self.collection.itervalues()]
+        histos = [ana.show_pulser_histo(show=False, corr=corr) for ana in self.collection.itervalues() if ana.IsAligned]
         if not show:
             gROOT.SetBatch(1)
         c = TCanvas('c', 'Pulser Histos', 1000, 1000)
-        c.SetLeftMargin(.13)
-        legend = TLegend(.4, .6 - self.get_number_of_analyses() * 0.03, .6, .6)
+        legend = TLegend(.13, .88 - self.get_number_of_analyses() * 0.03, .33, .88)
         histos[0].SetTitle('Pulser Distributions {0}Corrected'.format('Pedestal' if corr else 'Un'))
         for i, h in enumerate(histos):
             h.SetStats(0)
+            h.GetXaxis().SetRangeUser(h.GetBinCenter(h.FindFirstBinAbove(2) * 10 / 10 - 20), h.GetBinCenter(h.FindLastBinAbove(2) * 10 / 10 + 10))
             h.Scale(1 / h.GetMaximum())
             h.SetLineColor(self.get_color())
             h.SetLineWidth(2)
@@ -346,7 +346,7 @@ class AnalysisCollection(Elementary):
         legend.Draw()
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         gROOT.SetBatch(0)
-        self.save_plots('AllPulserHistos' + 'Uncorrected' if not corr else '', sub_dir=self.save_dir)
+        self.save_plots('AllPulserHistos{0}'.format('Uncorrected' if not corr else ''), sub_dir=self.save_dir)
         self.histos[0] = [c, legend] + histos
         z.reset_colors()
 
