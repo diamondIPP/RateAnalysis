@@ -42,6 +42,7 @@ class RunSelection(Elementary):
     def print_logs(self):
         for key, log in self.logs.iteritems():
             print '{key}.)\t{time}\t{log}'.format(key=key, time=log[1], log=log[0])
+
     # endregion
 
     # ============================================
@@ -77,6 +78,7 @@ class RunSelection(Elementary):
             runplan = {}
             self.save_runplan(runplan)
         return runplan
+
     # endregion
 
     # ============================================
@@ -238,19 +240,15 @@ class RunSelection(Elementary):
         self.unselect_unless_bias(hv)
         if len(self.get_runinfo_values('type', sel=True)) > 1:
             self.show_run_types(sel=True)
-            prompt = raw_input('Do you wish to unselect a run type (y/n)? ')
-            if prompt.lower() in ['yes', 'ja', 'y', 'j']:
+            if verify('Do you wish to unselect a run type'):
                 run_type = raw_input('Which type to you want to unselect? ')
                 self.unselect_runs_of_type(run_type)
         self.show_selected_runs(show_allcomments=True)
-        prompt = raw_input('Do you wish to unselect any run (y/n)? ')
-        while prompt.lower() in ['yes', 'ja', 'y', 'j']:
+        while verify('Do you wish to unselect a run'):
             run = raw_input('Which run do you want to unselect? ')
             self.unselect_run(int(run))
-            prompt = raw_input('Do you wish to unselect another run (y/n)? ')
         self.show_run_plans()
-        prompt = raw_input('Do you wish to save the selection to a runplan (y/n)? ')
-        if prompt.lower() in ['yes', 'ja', 'y', 'j']:
+        if verify('Do you wish to save the selection to a runplan'):
             nr = raw_input('Enter the name/number of the runplan: ')
             self.add_selection_to_runplan(nr)
 
@@ -313,6 +311,7 @@ class RunSelection(Elementary):
             comment = self.run_infos[run_nr]['user comments']
             if show_allcomments and len(comment) > 0:
                 print 'COMMENT:\n{comment}\n{delimitor}'.format(comment=fill(comment, 51), delimitor=49 * '-')
+
     # endregion
 
     # ============================================
@@ -403,6 +402,7 @@ class RunSelection(Elementary):
 
         self.run_plan[run_type].pop(plan)
         self.save_runplan()
+
     # endregion
 
     def get_diamond_names(self, sel=False):
@@ -476,6 +476,15 @@ class RunSelection(Elementary):
         f.truncate()
         f.close()
 
+
+def verify(msg):
+    for n in xrange(3):
+        prompt = raw_input('{0} (y/n)? '.format(msg))
+        if prompt.lower() in ['yes', 'ja', 'y', 'j']:
+            return True
+        elif prompt.lower() in ['no', 'n']:
+            return False
+    raise ValueError('Are you too stupid to say yes or no??')
 
 if __name__ == '__main__':
     z = RunSelection()
