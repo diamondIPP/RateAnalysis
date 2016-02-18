@@ -2,10 +2,6 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="e6cf272c-81a5-4f4e-9e0a-ff55b841b26f" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.gitignore" afterPath="$PROJECT_DIR$/.gitignore" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" afterPath="$PROJECT_DIR$/AbstractClasses/AnalysisCollection.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AbstractClasses/PadAnalysis.py" afterPath="$PROJECT_DIR$/AbstractClasses/PadAnalysis.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/Runinfos/run_plans.json" afterPath="$PROJECT_DIR$/Runinfos/run_plans.json" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
     <ignored path="myPadAnalysis.iws" />
@@ -613,7 +609,13 @@
       <option name="project" value="LOCAL" />
       <updated>1455790996542</updated>
     </task>
-    <option name="localTasksCounter" value="29" />
+    <task id="LOCAL-00029" summary="plot fixing for pulser">
+      <created>1455807029343</created>
+      <option name="number" value="00029" />
+      <option name="project" value="LOCAL" />
+      <updated>1455807029343</updated>
+    </task>
+    <option name="localTasksCounter" value="30" />
     <servers />
   </component>
   <component name="TodoView" selected-index="4">
@@ -662,7 +664,6 @@
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="start revision of bucket cut" />
     <MESSAGE value="still revision of bucket cut" />
     <MESSAGE value="finish revision of bucket cut!" />
     <MESSAGE value="adding analysis of different bucket cuts" />
@@ -687,7 +688,8 @@
     <MESSAGE value="fixing cut for pulser pedestal and adding function to compare signal and pulser pedestal" />
     <MESSAGE value="adding compare pulser and signal pedestal for a PadAnalysis" />
     <MESSAGE value="fixing master selection and adding function verify&#10;" />
-    <option name="LAST_COMMIT_MESSAGE" value="fixing master selection and adding function verify&#10;" />
+    <MESSAGE value="plot fixing for pulser" />
+    <option name="LAST_COMMIT_MESSAGE" value="plot fixing for pulser" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
