@@ -1028,14 +1028,15 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region PULSER
-    def draw_pulser_rate(self, binning=200):
+    def draw_pulser_rate(self, binning=200, cut=None):
         """
         Shows the fraction of accepted pulser events as a function of event numbers. Peaks appearing in this graph are most likely beam interruptions.
         :param binning:
         """
+        cut = '' if cut is None else cut
         nbins = self.run.n_entries / binning
         h = TProfile('h', 'Pulser Rate', nbins, 0, self.run.n_entries)
-        self.tree.Draw('(pulser!=0)*100:Entry$>>h', '', 'goff')
+        self.tree.Draw('(pulser!=0)*100:Entry$>>h', cut, 'goff')
         c = TCanvas('c', 'Pulser Rate Canvas', 1000, 1000)
         self.format_histo(h, name='pulser_rate', title='Pulser Rate', x_tit='Event Number', y_tit='Pulser Fraction [%]', y_off=1.3)
         h.Draw('hist')
