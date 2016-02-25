@@ -653,7 +653,6 @@ class SignalAnalysis(Analysis):
         h = TH1F('signal b2', 'Pulse Height ' + suffix, binning, -50, 300)
         cut = self.Cut.all_cut if cut is None else cut
         sig_name = self.SignalName if sig is None else sig
-        # sig_name = self.__generate_signal_name(sig_name, evnt_corr, off_corr, False, cut)
         sig_name = self.__generate_signal_name(sig_name, evnt_corr, off_corr, False, cut)
         print sig_name
         self.tree.Draw('{name}>>signal b2'.format(name=sig_name), cut, 'goff')
@@ -1045,20 +1044,50 @@ class SignalAnalysis(Analysis):
         self.canvases[0] = c
         self.histos[0] = h
 
-    def show_pulser_histo(self, show=True, corr=True, no_jumps=True):
-        cut = self.Cut.generate_pulser_cut(no_jumps)
-        h = self.show_signal_histo(cut=cut, sig=self.PulserName, show=show, off_corr=corr, evnt_corr=False, binning=700)
+    def draw_pulser_pulseheight(self, binning=20000, draw_opt='hist'):
+        """
+        Shows the average pulse height as a function of event numbers.
+        :param binning:
+        """
+        nbins = self.run.n_entries / binning
+        h = TProfile('h', 'Pulser Pulse Height', nbins, 0, self.run.n_entries)
+        cut = self.Cut.generate_pulser_cut()
+        signal = self.__generate_signal_name(self.PulserName, False, True, False, cut)
+        print signal
+        self.tree.Draw('{0}:Entry$>>h'.format(signal), cut, 'goff')
+        c = TCanvas('c', 'Pulser Rate Canvas', 1000, 1000)
+        c.SetGridy()
+        self.format_histo(h, name='h', title='Pulser Pulse Height', x_tit='Event Number', y_tit='Pulse Height [au]', y_off=1.3)
+        gStyle.SetStatY(.65)
+        gStyle.SetStatX(.65)
+        h.Draw(draw_opt)
+        self.run.draw_run_info(canvas=c, channel=self.channel)
+        self.save_plots('PulserPulseHeight', sub_dir=self.save_dir)
+        self.canvases[0] = c
+        self.histos[0] = h
+        return h
+
+    def fit_pulser_pulseheight(self):
+        h = self.draw_pulser_pulseheight(draw_opt='')
+        gStyle.SetOptFit()
+        fit = h.Fit('pol0', 'qs')
+        return fit
+
+
+    def show_pulser_histo(self, show=True, corr=True, beam_on=True, binning=700):
+        cut = self.Cut.generate_pulser_cut(beam_on)
+        h = self.show_signal_histo(cut=cut, sig=self.PulserName, show=show, off_corr=corr, evnt_corr=False, binning=binning)
         c = gROOT.GetListOfCanvases()[-1]
         c.SetLogy()
         return h
 
-    def calc_pulser_fit(self, show=True, corr=True, no_jumps=True):
-        suffix = '{corr}_{beam}'.format(corr='_ped_corr' if corr else '', beam='BeamOff' if not no_jumps else 'BeamOn')
+    def calc_pulser_fit(self, show=True, corr=True, beam_on=True):
+        suffix = '{corr}_{beam}'.format(corr='_ped_corr' if corr else '', beam='BeamOff' if not beam_on else 'BeamOn')
         pickle_path = self.PickleDir + 'Pulser/HistoFit_{tc}_{run}_{dia}{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name, suf=suffix)
 
         def func():
             gStyle.SetOptFit(1)
-            h = self.show_pulser_histo(show=show, corr=corr, no_jumps=no_jumps)
+            h = self.show_pulser_histo(show=show, corr=corr, beam_on=beam_on, binning=350)
             fit_func = h.Fit('gaus', 'qs{0}'.format('' if show else '0'), '', 0, h.GetBinCenter(h.GetMaximumBin() + 2))
             f = gROOT.GetFunction('gaus')
             f.SetLineStyle(7)
@@ -1100,7 +1129,8 @@ class SignalAnalysis(Analysis):
         self.histos[1] = [c, h1, h2, legend]
 
     def draw_pulser_waveform(self, n=1, start_event=None, add_buckets=False, cut=None):
-        cut = '!({0})'.format(self.Cut.CutStrings['pulser']) if cut is None else cut
+        # cut = '!({0})'.format(self.Cut.CutStrings['pulser']) if cut is None else cut
+        cut = self.Cut.generate_pulser_cut() if cut is None else cut
         start = self.StartEvent + self.count if start_event is None else start_event + self.count
         print 'Event number:', start
         cnt = self.draw_waveforms(n=n, start_event=start, add_buckets=add_buckets, cut_string=cut, ret_event=True)
@@ -1362,6 +1392,7 @@ class SignalAnalysis(Analysis):
         for name, value in peak_integrals.iteritems():
             signal = self.get_signal_name('b', name)
             snr = self.calc_snr(signal)
+            print value
             x = (value[1] + value[0]) / 2. if not same_width else value[0] / 2.
             gr.SetPoint(i, x, snr[0])
             gr.SetPointError(i, 0, snr[1])

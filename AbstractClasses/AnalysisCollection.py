@@ -322,19 +322,19 @@ class AnalysisCollection(Elementary):
         gr.Draw('alp')
         gROOT.SetBatch(0)
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.save_plots('Pulser{mean}{a}{b}'.format(mean='Mean' if mean else 'Sigma', a=corr, b=no_jumps), sub_dir=self.save_dir)
+        self.save_plots('Pulser{mean}{a}{b}'.format(mean='Mean' if mean else 'Sigma', a=corr, b=beam_on), sub_dir=self.save_dir)
         self.histos[0] = [c, gr]
         return gr
 
     def draw_pulser_histos(self, show=True, corr=True):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        histos = [ana.show_pulser_histo(show=False, corr=corr) for ana in self.collection.itervalues() if ana.IsAligned]
+        histos = {i: ana.show_pulser_histo(show=False, corr=corr) for i, ana in enumerate(self.collection.itervalues()) if ana.IsAligned}
         if not show:
             gROOT.SetBatch(1)
         c = TCanvas('c', 'Pulser Histos', 1000, 1000)
         legend = TLegend(.13, .88 - self.get_number_of_analyses() * 0.03, .33, .88)
         histos[0].SetTitle('Pulser Distributions {0}Corrected'.format('Pedestal' if corr else 'Un'))
-        for i, h in enumerate(histos):
+        for i, h in histos.iteritems():
             h.SetStats(0)
             h.GetXaxis().SetRangeUser(h.GetBinCenter(h.FindFirstBinAbove(2) * 10 / 10 - 20), h.GetBinCenter(h.FindLastBinAbove(2) * 10 / 10 + 10))
             h.Scale(1 / h.GetMaximum())
@@ -346,17 +346,16 @@ class AnalysisCollection(Elementary):
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         gROOT.SetBatch(0)
         self.save_plots('AllPulserHistos{0}'.format('Uncorrected' if not corr else ''), sub_dir=self.save_dir)
-        self.histos[0] = [c, legend] + histos
+        self.histos[0] = [c, legend] + histos.values()
         z.reset_colors()
 
     def draw_all_pulser_info(self, mean=True):
-        graphs = [self.draw_pulser_info(show=False, mean=mean, corr=x, no_jumps=y) for x, y in zip([1, 1, 0, 0], [1, 0, 1, 0])]
-        extrema = [max([TMath.MaxElement(gr.GetN(), gr.GetY()) for gr in graphs]), min([TMath.MinElement(gr.GetN(), gr.GetY()) for gr in graphs])]
-        print extrema[1] - (extrema[0] - extrema[1]) * .1, extrema[0] + (extrema[0] - extrema[1]) * .1
+        graphs = [self.draw_pulser_info(show=False, mean=mean, corr=x, beam_on=y) for x, y in zip([1, 1, 0, 0], [1, 0, 1, 0])]
+        margins = self.find_graph_margins(graphs)
         c = TCanvas('c', 'Pulser Info', 1500, 1500)
         c.Divide(2, 2)
         for i, gr in enumerate(graphs, 1):
-            gr.GetYaxis().SetRangeUser(extrema[1] - (extrema[0] - extrema[1]) * .1, extrema[0] + (extrema[0] - extrema[1]) * .1)
+            gr.GetYaxis().SetRangeUser(*margins)
             self.format_histo(gr, y_off=1.3)
             pad = c.cd(i)
             pad.SetLogx()
@@ -369,19 +368,23 @@ class AnalysisCollection(Elementary):
     def compare_pedestals(self, show=True):
         gr1 = self.draw_pedestals(show=False)
         gr2 = self.draw_pedestals(cut='pulser', show=False)
+        gr3 = self.draw_pedestals(cut='pulser', show=False, beam_on=False)
+        graphs = [gr1, gr2, gr3]
+        margins = self.find_graph_margins(graphs)
         gROOT.SetBatch(0) if show else gROOT.SetBatch(1)
         c = TCanvas('c', 'Pulser Pedestal Comparison', 1000, 1000)
         c.SetLogx()
         legend = TLegend(.7, .78, .88, .88)
-        names = ['Signal', 'Pulser']
-        for i, gr in enumerate([gr1, gr2]):
+        names = ['Signal', 'Pulser', 'BeamOff']
+        for i, gr in enumerate(graphs):
+            gr.GetYaxis().SetRangeUser(*margins)
             self.format_histo(gr, color=self.get_color())
             gr.Draw('lp') if i else gr.Draw('alp')
             legend.AddEntry(gr, names[i], 'pl')
         legend.Draw()
         gROOT.SetBatch(0)
         self.save_plots('PulserPedestalComparison', sub_dir=self.save_dir)
-        self.histos[1] = [c, gr1, gr2, legend]
+        self.histos[1] = [c, graphs, legend]
 
     # endregion
 

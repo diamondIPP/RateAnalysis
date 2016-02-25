@@ -8,7 +8,7 @@ from shutil import copyfile
 from time import time
 
 import ROOT
-from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1
+from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath
 
 
 class Elementary(object):
@@ -343,6 +343,11 @@ class Elementary(object):
             return True
         except ValueError:
             return False
+
+    @staticmethod
+    def find_graph_margins(graphs):
+        extrema = [max([TMath.MaxElement(gr.GetN(), gr.GetY()) for gr in graphs]), min([TMath.MinElement(gr.GetN(), gr.GetY()) for gr in graphs])]
+        return [extrema[1] - (extrema[0] - extrema[1]) * .1, extrema[0] + (extrema[0] - extrema[1]) * .1]
 
 if __name__ == "__main__":
     z = Elementary()
