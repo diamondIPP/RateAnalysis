@@ -306,14 +306,17 @@ class AnalysisCollection(Elementary):
             x = ana.run.flux if flux else key
             fit = ana.calc_pulser_fit(show=False, corr=corr, beam_on=beam_on)
             par = 1 if mean else 2
+            cut = ana.Cut.generate_pulser_cut(beam_on)
+            ped_fit = ana.show_pedestal_histo(cut=cut, draw=False)
+            ped_err = ped_fit.ParError(par)
             if ana.IsAligned:
                 gr.SetPoint(i, x, fit.Parameter(par))
-                gr.SetPointError(i, 0, fit.ParError(par))
+                gr.SetPointError(i, 0, sqrt(pow(fit.ParError(par), 2) + pow(ped_err, 2)))
                 i += 1
         if not show:
             gROOT.SetBatch(1)
         c = TCanvas('c', 'Pulser Overview', 1000, 1000)
-        if corr and beam_on:
+        if corr:
             gStyle.SetOptFit(1)
             gr.Fit('pol0', 'q')
         c.SetLeftMargin(.125)

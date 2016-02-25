@@ -54,6 +54,7 @@
           <option value="kCanDelete" />
           <option value="TPad" />
           <option value="TMath" />
+          <option value="AbstractClasses.AnalysisCollection.ROOT" />
         </list>
       </option>
     </inspection_tool>
