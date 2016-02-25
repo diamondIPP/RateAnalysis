@@ -9,7 +9,7 @@ from collections import OrderedDict
 from ConfigParser import ConfigParser
 from argparse import ArgumentParser
 
-from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMath
+from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle
 
 from PadAnalysis import SignalAnalysis
 from Elementary import Elementary
@@ -200,7 +200,7 @@ class AnalysisCollection(Elementary):
         self.canvases[0] = c
         self.PulseHeight = gr1
 
-    def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False, show=True, cut=None):
+    def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False, show=True, cut=None, beam_on=True):
         legend = TLegend(0.7, 0.3, 0.98, .7)
         legend.SetName('l1')
         mode = 'Flux' if flux else 'Run'
@@ -215,9 +215,8 @@ class AnalysisCollection(Elementary):
         cut_string = None
         for key, ana in self.collection.iteritems():
             print 'getting pedestal for run {n}...'.format(n=key)
-            cut_string = ana.Cut.generate_pulser_cut() if cut == 'pulser' else cut
+            cut_string = ana.Cut.generate_pulser_cut(beam_on=beam_on) if cut == 'pulser' else cut
             fit_par = ana.show_pedestal_histo(region, peak_int, cut=cut_string, draw=False)
-            print fit_par.Parameter(par)
             flux = ana.run.flux
             x = ana.run.flux if flux else key
             gr1.SetPoint(i, x, fit_par.Parameter(par))
@@ -297,15 +296,15 @@ class AnalysisCollection(Elementary):
 
     # ============================================
     # region PULSER
-    def draw_pulser_info(self, flux=True, show=True, mean=True, corr=True, no_jumps=True):
+    def draw_pulser_info(self, flux=True, show=True, mean=True, corr=True, beam_on=True):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         mode = 'Flux' if flux else 'Run'
-        title = '{mean} of Pulser vs {mod} ({ped}, {beam})'.format(mean='Mean' if mean else 'Sigma', mod=mode, ped='pedcorrected' if corr else 'uncorrected', beam='BeamOff' if not no_jumps else 'BeamOn')
+        title = '{mean} of Pulser vs {mod} ({ped}, {beam})'.format(mean='Mean' if mean else 'Sigma', mod=mode, ped='pedcorrected' if corr else 'uncorrected', beam='BeamOff' if not beam_on else 'BeamOn')
         gr = self.make_tgrapherrors('gr', title)
         i = 0
         for key, ana in self.collection.iteritems():
             x = ana.run.flux if flux else key
-            fit = ana.calc_pulser_fit(show=False, corr=corr, no_jumps=no_jumps)
+            fit = ana.calc_pulser_fit(show=False, corr=corr, beam_on=beam_on)
             par = 1 if mean else 2
             if ana.IsAligned:
                 gr.SetPoint(i, x, fit.Parameter(par))
@@ -314,7 +313,7 @@ class AnalysisCollection(Elementary):
         if not show:
             gROOT.SetBatch(1)
         c = TCanvas('c', 'Pulser Overview', 1000, 1000)
-        if corr and no_jumps:
+        if corr and beam_on:
             gStyle.SetOptFit(1)
             gr.Fit('pol0', 'q')
         c.SetLeftMargin(.125)
