@@ -389,6 +389,28 @@ class AnalysisCollection(Elementary):
         self.save_plots('PulserPedestalComparison', sub_dir=self.save_dir)
         self.histos[1] = [c, graphs, legend]
 
+    def draw_pulser_rates(self, show=True, flux=True):
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        gROOT.SetBatch(1)
+        mode = 'Flux' if flux else 'Run'
+        title = 'Pulser Rate vs {mod} '.format(mod=mode)
+        gr = self.make_tgrapherrors('gr', title)
+        for i, (key, ana) in enumerate(self.collection.iteritems()):
+            x = ana.run.flux if flux else key
+            fit = ana.fit_pulser_rate(show=False)
+            gr.SetPoint(i, x, fit.Parameter(0))
+            gr.SetPointError(i, 0, fit.ParError(0))
+        gROOT.SetBatch(0) if show else self.do_nothing()
+        c = TCanvas('c', 'Pulser Rates', 1000, 1000)
+        c.SetLogx() if flux else self.do_nothing()
+        self.format_histo(gr, x_tit=self.make_x_tit(mode, flux), y_tit='Pulser Rate [Hz]')
+        gr.Draw('alp')
+        gROOT.SetBatch(0)
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        self.save_plots('PulserRate{0}'.format(mode), sub_dir=self.save_dir)
+        self.histos[0] = [c, gr]
+        return gr
+
     # endregion
 
     # ============================================

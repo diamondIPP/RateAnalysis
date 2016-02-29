@@ -1028,22 +1028,33 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region PULSER
-    def draw_pulser_rate(self, binning=200, cut=None):
+    def draw_pulser_rate(self, binning=200, cut=None, show=True):
         """
         Shows the fraction of accepted pulser events as a function of event numbers. Peaks appearing in this graph are most likely beam interruptions.
         :param binning:
         """
+        gROOT.SetBatch(1)
         cut = '' if cut is None else cut
         nbins = self.run.n_entries / binning
         h = TProfile('h', 'Pulser Rate', nbins, 0, self.run.n_entries)
         self.tree.Draw('(pulser!=0)*100:Entry$>>h', cut, 'goff')
+        gROOT.SetBatch(0) if show else self.do_nothing()
         c = TCanvas('c', 'Pulser Rate Canvas', 1000, 1000)
         self.format_histo(h, name='pulser_rate', title='Pulser Rate', x_tit='Event Number', y_tit='Pulser Fraction [%]', y_off=1.3)
         h.Draw('hist')
-        self.run.draw_run_info(canvas=c, channel=self.channel)
         self.save_plots('pulser_rate', canvas=c, sub_dir=self.save_dir)
         self.canvases[0] = c
         self.histos[0] = h
+        gROOT.SetBatch(0)
+        return h
+
+    def fit_pulser_rate(self, binning=2000, show=True):
+        cut = self.Cut.CutStrings['event_range'] + self.Cut.CutStrings['beam_interruptions']
+        h = self.draw_pulser_rate(show=show, cut=cut, binning=binning)
+        gStyle.SetOptFit(1)
+        fit = h.Fit('pol0', 'qs{0}'.format('' if show else 0))
+        print 'Pulser Rate: {0} +- {1}'.format(fit.Parameter(0), fit.ParError(0))
+        return fit
 
     def draw_pulser_pulseheight(self, binning=20000, draw_opt='hist'):
         """
@@ -1073,7 +1084,6 @@ class SignalAnalysis(Analysis):
         gStyle.SetOptFit()
         fit = h.Fit('pol0', 'qs')
         return fit
-
 
     def show_pulser_histo(self, show=True, corr=True, beam_on=True, binning=700):
         cut = self.Cut.generate_pulser_cut(beam_on)
