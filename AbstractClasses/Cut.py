@@ -99,6 +99,7 @@ class Cut(Elementary):
         dic['median'] = TCut('median', '')
         dic['tracks'] = TCut('tracks', '')
         dic['chi2'] = TCut('chi2', '')
+        dic['chi2'] = TCut('chi2', '')
         dic['track_angle'] = TCut('track_angle', '')
         dic['saturated'] = TCut('saturated', '')
         dic['old_bucket'] = TCut('old_bucket', '')

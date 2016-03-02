@@ -646,7 +646,7 @@ class SignalAnalysis(Analysis):
         self.save_plots('PHEvolutionOverview{0}'.format(self.BinSize), sub_dir=self.save_dir)
         self.histos[1] = [c]
 
-    def show_signal_histo(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None, binning=350):
+    def show_signal_histo(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None, binning=350, events=None, start=None):
         gROOT.SetBatch(1)
         print 'drawing signal distribution for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name)
         suffix = 'with Pedestal Correction' if evnt_corr else ''
@@ -654,8 +654,9 @@ class SignalAnalysis(Analysis):
         cut = self.Cut.all_cut if cut is None else cut
         sig_name = self.SignalName if sig is None else sig
         sig_name = self.__generate_signal_name(sig_name, evnt_corr, off_corr, False, cut)
-        print sig_name
-        self.tree.Draw('{name}>>signal b2'.format(name=sig_name), cut, 'goff')
+        start_event = int(float(start)) if start is not None else 0
+        n_events = self.find_n_events(n_events=events, cut=str(cut), start=start_event) if events is not None else self.run.n_entries
+        self.tree.Draw('{name}>>signal b2'.format(name=sig_name), str(cut), 'goff', n_events, start_event)
         if show:
             gROOT.SetBatch(0)
         c = TCanvas('c', 'Signal Distribution', 1000, 1000)
@@ -1085,20 +1086,23 @@ class SignalAnalysis(Analysis):
         fit = h.Fit('pol0', 'qs')
         return fit
 
-    def show_pulser_histo(self, show=True, corr=True, beam_on=True, binning=700):
+    def show_pulser_histo(self, show=True, corr=True, beam_on=True, binning=700, events=None, start=None):
         cut = self.Cut.generate_pulser_cut(beam_on)
-        h = self.show_signal_histo(cut=cut, sig=self.PulserName, show=show, off_corr=corr, evnt_corr=False, binning=binning)
+        h = self.show_signal_histo(cut=cut, sig=self.PulserName, show=show, off_corr=corr, evnt_corr=False, binning=binning, events=events, start=start)
         c = gROOT.GetListOfCanvases()[-1]
         c.SetLogy()
+        c.Update()
         return h
 
-    def calc_pulser_fit(self, show=True, corr=True, beam_on=True):
-        suffix = '{corr}_{beam}'.format(corr='_ped_corr' if corr else '', beam='BeamOff' if not beam_on else 'BeamOn')
+    def calc_pulser_fit(self, show=True, corr=True, beam_on=True, events=None, start=None, binning=350):
+        start_string = '_{0}'.format(start) if start is not None else ''
+        events_string = '_{0}'.format(events) if events is not None else ''
+        suffix = '{corr}_{beam}{st}{ev}'.format(corr='_ped_corr' if corr else '', beam='BeamOff' if not beam_on else 'BeamOn', st=start_string, ev=events_string)
         pickle_path = self.PickleDir + 'Pulser/HistoFit_{tc}_{run}_{dia}{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name, suf=suffix)
 
         def func():
             gStyle.SetOptFit(1)
-            h = self.show_pulser_histo(show=show, corr=corr, beam_on=beam_on, binning=350)
+            h = self.show_pulser_histo(show=show, corr=corr, beam_on=beam_on, binning=binning, events=events, start=start)
             fit_func = h.Fit('gaus', 'qs{0}'.format('' if show else '0'), '', 0, h.GetBinCenter(h.GetMaximumBin() + 2))
             f = gROOT.GetFunction('gaus')
             f.SetLineStyle(7)
@@ -1157,6 +1161,23 @@ class SignalAnalysis(Analysis):
             self.count = 0
             self.draw_pulser_waveform(n=1000, start_event=start, fixed_range=frange)
             self.save_plots('WaveForms{0}'.format(i), sub_dir='{0}/WaveForms'.format(self.save_dir))
+
+    def draw_pulser_vs_time(self, n_points=5, mean=True, show=True):
+        events_spacing = (self.EndEvent - self.StartEvent) / n_points
+        start_events = [self.StartEvent + events_spacing * i for i in xrange(n_points)]
+        mode = 'Mean' if mean else 'Sigma'
+        gr = self.make_tgrapherrors('gr', '{0} of Pulser vs Time'.format(mode))
+        for i, start in enumerate(start_events):
+            fit = self.calc_pulser_fit(show=False, start=start, events=1000, binning=200)
+            par = 1 if mean else 2
+            gr.SetPoint(i, (self.run.get_time_at_event(start) - self.run.startTime) / 60e3, fit.Parameter(par))
+            gr.SetPointError(i, 0, fit.ParError(par))
+        gROOT.SetBatch(0) if show else gROOT.SetBatch(1)
+        c = TCanvas('c', '{0} of Pulser vs Time'.format(mode), 1000, 1000)
+        gr.Draw('alp')
+        self.save_plots('Pulser{0}VsTime'.format(mode), sub_dir=self.save_dir)
+        gROOT.SetBatch(0)
+        self.histos[2] = [c, gr]
 
     # endregion
 
