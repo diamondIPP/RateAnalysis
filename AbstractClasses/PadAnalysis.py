@@ -1139,15 +1139,24 @@ class SignalAnalysis(Analysis):
         self.save_plots('PulserPedestalComparison', sub_dir=self.save_dir)
         self.histos[1] = [c, h1, h2, legend]
 
-    def draw_pulser_waveform(self, n=1, start_event=None, add_buckets=False, cut=None):
-        # cut = '!({0})'.format(self.Cut.CutStrings['pulser']) if cut is None else cut
+    def draw_pulser_waveform(self, n=1, start_event=None, add_buckets=False, cut=None, fixed_range=None):
         cut = self.Cut.generate_pulser_cut() if cut is None else cut
         start = self.StartEvent + self.count if start_event is None else start_event + self.count
         print 'Event number:', start
-        cnt = self.draw_waveforms(n=n, start_event=start, add_buckets=add_buckets, cut_string=cut, ret_event=True)
+        cnt = self.draw_waveforms(n=n, start_event=start, add_buckets=add_buckets, cut_string=cut, ret_event=True, fixed_range=fixed_range)
+        print cnt
         if cnt is None:
             return
         self.count += cnt
+
+    def save_pulser_shapes(self, n_pics=5, fixed_range=None):
+        frange = [-100, 50] if fixed_range is None else fixed_range
+        events_spacing = (self.EndEvent - self.StartEvent) / n_pics
+        start_events = [self.StartEvent + events_spacing * i for i in xrange(n_pics)]
+        for i, start in enumerate(start_events):
+            self.count = 0
+            self.draw_pulser_waveform(n=1000, start_event=start, fixed_range=frange)
+            self.save_plots('WaveForms{0}'.format(i), sub_dir='{0}/WaveForms'.format(self.save_dir))
 
     # endregion
 
@@ -1176,7 +1185,7 @@ class SignalAnalysis(Analysis):
         cut = '!({0})&&!pulser'.format(self.Cut.CutStrings['old_bucket'])
         return self.draw_waveforms(n=1, cut_string=cut, add_buckets=True, ret_event=True, start_event=event)
 
-    def draw_waveforms(self, n=1000, start_event=None, cut_string=None, show=True, ret_event=False, add_buckets=False):
+    def draw_waveforms(self, n=1000, start_event=None, cut_string=None, show=True, ret_event=False, add_buckets=False, fixed_range=None):
         """
         Draws stacked waveforms.
         :param n: number of waveforms
@@ -1199,7 +1208,11 @@ class SignalAnalysis(Analysis):
         h.SetStats(0)
         gStyle.SetPalette(55)
         self.tree.Draw('wf0:Iteration$/2>>wf', cut, 'goff', n_events, start)
-        h.GetYaxis().SetRangeUser(-500 + h.FindFirstBinAbove(0, 2) / 50 * 50, -450 + h.FindLastBinAbove(0, 2) / 50 * 50)
+        if fixed_range is None:
+            h.GetYaxis().SetRangeUser(-500 + h.FindFirstBinAbove(0, 2) / 50 * 50, -450 + h.FindLastBinAbove(0, 2) / 50 * 50)
+        else:
+            assert type(fixed_range) is list, 'Range has to be a list!'
+            h.GetYaxis().SetRangeUser(fixed_range[0], fixed_range[1])
         self.print_elapsed_time(t)
         if show:
             gROOT.SetBatch(0)
@@ -1241,12 +1254,15 @@ class SignalAnalysis(Analysis):
         print 'Finding the correct number of events',
         n = self.tree.Draw('1', cut, 'goff', n_events, start)
         new_events = n_events
+        ratio = n_events / float(n)
+        last_diff = 0
         while n != n_events:
             diff = n_events - n
-            new_events += diff * 2 if abs(diff) > 1 else diff
+            new_events += int(diff * ratio) if not last_diff == -diff else int(diff * ratio / 2)
             print '\b.',
             stdout.flush()
             n = self.tree.Draw('1', cut, 'goff', new_events, start)
+            last_diff = diff
         print
         return new_events
 
