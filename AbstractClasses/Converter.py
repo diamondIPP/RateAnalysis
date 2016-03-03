@@ -44,8 +44,9 @@ class Converter:
         self.root_prefix = self.parser.get('ROOTFILE_GENERATION', "converterPrefix")
         self.raw_prefix = self.parser.get('ROOTFILE_GENERATION', "rawprefix")
 
-        # configuration
-        self.config = self.get_config()
+        # configuration for pad
+        if (self.Type == "pad"):
+            self.config = self.get_config()
 
         # gui
         if do_gui:

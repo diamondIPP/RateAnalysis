@@ -56,16 +56,17 @@ class Analysis(Elementary):
         # miscellaneous
         self.channel = self.channel if hasattr(self, 'channel') else None
 
-        # regions // ranges
-        self.IntegralNames = self.get_integral_names()
-        self.SignalRegion = self.parser.get('BASIC', 'signal_region')
-        self.PedestalRegion = self.parser.get('BASIC', 'pedestal_region')
-        self.PeakIntegral = self.parser.get('BASIC', 'peak_integral')
+        # regions // ranges // for PAD
+        if (self.run.DUTType == "pad"):
+            self.IntegralNames = self.get_integral_names()
+            self.SignalRegion = self.parser.get('BASIC', 'signal_region')
+            self.PedestalRegion = self.parser.get('BASIC', 'pedestal_region')
+            self.PeakIntegral = self.parser.get('BASIC', 'peak_integral')
 
-        self.Cut = Cut(self)
-        self.StartEvent = self.Cut.CutConfig['EventRange'][0]
-        self.EndEvent = self.Cut.CutConfig['EventRange'][1]
-        self.pedestalFitMean = {}
+            self.Cut = Cut(self)
+            self.StartEvent = self.Cut.CutConfig['EventRange'][0]
+            self.EndEvent = self.Cut.CutConfig['EventRange'][1]
+            self.pedestalFitMean = {}
 
         # save histograms // canvases
         self.signal_canvas = None
@@ -73,8 +74,9 @@ class Analysis(Elementary):
         self.canvases = {}
         self.lines = {}
 
-        # alignment
-        self.IsAligned = self.check_alignment(draw=False)
+        # alignment // for PAD
+        if (self.run.DUTType == "pad"):
+            self.IsAligned = self.check_alignment(draw=False)
 
     # ============================================================================================
     # region INIT
