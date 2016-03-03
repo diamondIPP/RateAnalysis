@@ -21,7 +21,7 @@ __author__ = 'micha'
 # CLASS DEFINITION
 # ==============================================
 class Converter:
-    def __init__(self, test_campaign):
+    def __init__(self, test_campaign, type):
 
         # main
         self.test_campaign = test_campaign

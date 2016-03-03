@@ -79,6 +79,7 @@ class Run(Elementary):
         self.channels = [0, 3]
         self.trigger_planes = [1, 2]
         self.run_config_parser = self.load_parser()
+        self.RunType = self.run_config_parser.get("BASIC","type")
         self.filename = self.run_config_parser.get('BASIC', 'filename')
         self.treename = self.run_config_parser.get('BASIC', 'treename')
         self.run_path = self.run_config_parser.get('BASIC', 'runpath')
@@ -88,12 +89,12 @@ class Run(Elementary):
         self.createNewROOTFiles = self.run_config_parser.getboolean('BASIC', 'createNewROOTFiles')
         self.signalregion_low = self.run_config_parser.getint('BASIC', 'signalregion_low')
         self.signalregion_high = self.run_config_parser.getint('BASIC', 'signalregion_high')
-
+        
         # run info
         self.RunInfo = None
 
         if run_number is not None:
-            self.converter = Converter(self.TESTCAMPAIGN)
+            self.converter = Converter(self.TESTCAMPAIGN, self.RunType)
             assert (run_number > 0), 'incorrect run_number'
             self.set_run(run_number)
 
