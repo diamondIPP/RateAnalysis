@@ -351,17 +351,16 @@ class Cut(Elementary):
 
     def find_beam_interruptions(self):
         """
-        Looking for the beam interruptions
+        Looking for the beam interruptions by investigating the pulser rate.
         :return: interrupt list
         """
         print 'Searching for beam interruptions...'
-        binning = 100
+        binning = 200
         nbins = int(self.analysis.run.tree.GetEntries()) / binning
         rate = []
         for i in xrange(nbins):
-            pulserevents = self.analysis.run.tree.Draw("1", "pulser", "goff", binning, i * binning)
+            pulserevents = self.analysis.run.tree.Draw('1', 'pulser', 'goff', binning, i * binning)
             rate.append(100 * pulserevents / binning)
-        mean_rate = mean(rate)
         interrupts = []
         last_rate = 0
         tup = [0, 0]
@@ -380,11 +379,11 @@ class Cut(Elementary):
         # check if directories exist
         if not os.path.exists(self.beaminterruptions_folder):
             os.mkdir(self.beaminterruptions_folder)
-        if not os.path.exists(self.beaminterruptions_folder + "/data"):
-            os.mkdir(self.beaminterruptions_folder + "/data")
+        if not os.path.exists(self.beaminterruptions_folder + '/data'):
+            os.mkdir(self.beaminterruptions_folder + '/data')
 
         # save jump list to file
-        jumpfile = open(self.beaminterruptions_folder + "/data/{testcampaign}Run_{run}.pickle".format(testcampaign=self.TESTCAMPAIGN, run=self.analysis.run.run_number), "wb")
+        jumpfile = open(self.beaminterruptions_folder + '/data/{testcampaign}Run_{run}.pickle'.format(testcampaign=self.TESTCAMPAIGN, run=self.analysis.run.run_number), 'wb')
         pickle.dump(self.jumps, jumpfile)
         jumpfile.close()
 
