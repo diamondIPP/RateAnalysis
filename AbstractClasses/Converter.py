@@ -26,6 +26,7 @@ class Converter:
         # main
         self.test_campaign = test_campaign
         self.parser = self.setup_configparser()
+        self.Type = type
 
         # tracking
         self.do_tracking = True
@@ -138,8 +139,11 @@ class Converter:
             curr_dir = os.getcwd()
             # go to root directory
             os.chdir(self.root_file_dir)
-            converter_cmd = '{eudaq}/bin/Converter.exe -t drs4tree -c {eudaq}/conf/{file} {raw}'.format(eudaq=self.eudaq_dir, file=self.converter_config_path, raw=file_path)
-            self.__set_converter_configfile(run_infos)
+            if (self.Type == "pad"):
+                converter_cmd = '{eudaq}/bin/Converter.exe -t drs4tree -c {eudaq}/conf/{file} {raw}'.format(eudaq=self.eudaq_dir, file=self.converter_config_path, raw=file_path)
+                self.__set_converter_configfile(run_infos)
+            else:
+                converter_cmd = '{eudaq}/bin/Converter.exe -t telescopetree {raw}'.format(eudaq=self.eudaq_dir, raw=file_path)
             print '\n========================================'
             print 'START CONVERTING RAW FILE FOR RUN', run_number, '\n'
             print converter_cmd
