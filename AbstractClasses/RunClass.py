@@ -79,6 +79,7 @@ class Run(Elementary):
         self.channels = [0, 3]
         self.trigger_planes = [1, 2]
         self.run_config_parser = self.load_parser()
+        self.DUTType = self.load_dut_type()
         self.filename = self.run_config_parser.get('BASIC', 'filename')
         self.treename = self.run_config_parser.get('BASIC', 'treename')
         self.run_path = self.run_config_parser.get('BASIC', 'runpath')
@@ -88,12 +89,12 @@ class Run(Elementary):
         self.createNewROOTFiles = self.run_config_parser.getboolean('BASIC', 'createNewROOTFiles')
         self.signalregion_low = self.run_config_parser.getint('BASIC', 'signalregion_low')
         self.signalregion_high = self.run_config_parser.getint('BASIC', 'signalregion_high')
-
+        
         # run info
         self.RunInfo = None
 
         if run_number is not None:
-            self.converter = Converter(self.TESTCAMPAIGN)
+            self.converter = Converter(self.TESTCAMPAIGN, self.DUTType)
             assert (run_number > 0), 'incorrect run_number'
             self.set_run(run_number)
 
@@ -106,14 +107,15 @@ class Run(Elementary):
             self.totalTime = self.endTime - self.startTime
             self.totalMinutes = (self.endTime - self.startTime) / 60000
             self.n_entries = int(self.endEvent + 1)
-
+            
             # region info
-            self.region_information = self.load_regions()
-            self.pedestal_regions = self.get_regions('pedestal')
-            self.signal_regions = self.get_regions('signal')
-            self.peak_integrals = self.get_peak_integrals()
+            if (self.DUTType == "pad"):
+                self.region_information = self.load_regions()
+                self.pedestal_regions = self.get_regions('pedestal')
+                self.signal_regions = self.get_regions('signal')
+                self.peak_integrals = self.get_peak_integrals()
 
-            self.flux = self.calculate_flux()
+            self.flux = self.calculate_flux()    
 
         else:
             self.load_run_info()
@@ -139,6 +141,11 @@ class Run(Elementary):
         for i, ch in enumerate(self.channels, 1):
             bias[ch] = self.RunInfo['hv dia{num}'.format(num=i)]
         return bias
+    
+    def load_dut_type(self):
+        type = self.run_config_parser.get("BASIC","type")
+        assert type.lower() in ["pixel", "pad"], "The DUT type {0} should be 'pixel' or 'pad'".format(type)
+        return type
 
     def load_parser(self):
         parser = ConfigParser()
