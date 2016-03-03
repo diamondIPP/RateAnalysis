@@ -4,7 +4,7 @@
 from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie
 from TelescopeAnalysis import Analysis
 from CurrentInfo import Currents
-from numpy import array
+from numpy import array, mean
 from math import sqrt, ceil, log
 from argparse import ArgumentParser
 from Extrema import Extrema2D
@@ -1162,14 +1162,15 @@ class SignalAnalysis(Analysis):
             self.draw_pulser_waveform(n=1000, start_event=start, fixed_range=frange)
             self.save_plots('WaveForms{0}'.format(i), sub_dir='{0}/WaveForms'.format(self.save_dir))
 
-    def draw_pulser_vs_time(self, n_points=5, mean=True, show=True):
+    def draw_pulser_vs_time(self, n_points=5, _mean=True, show=True, corr=True, events=5000):
         events_spacing = (self.EndEvent - self.StartEvent) / n_points
         start_events = [self.StartEvent + events_spacing * i for i in xrange(n_points)]
-        mode = 'Mean' if mean else 'Sigma'
+        mode = 'Mean' if _mean else 'Sigma'
         gr = self.make_tgrapherrors('gr', '{0} of Pulser vs Time'.format(mode))
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         for i, start in enumerate(start_events):
-            fit = self.calc_pulser_fit(show=False, start=start, events=1000, binning=200)
-            par = 1 if mean else 2
+            fit = self.calc_pulser_fit(show=False, start=start, events=events, binning=200, corr=corr)
+            par = 1 if _mean else 2
             gr.SetPoint(i, (self.run.get_time_at_event(start) - self.run.startTime) / 60e3, fit.Parameter(par))
             gr.SetPointError(i, 0, fit.ParError(par))
         gROOT.SetBatch(0) if show else gROOT.SetBatch(1)
@@ -1177,6 +1178,7 @@ class SignalAnalysis(Analysis):
         gr.Draw('alp')
         self.save_plots('Pulser{0}VsTime'.format(mode), sub_dir=self.save_dir)
         gROOT.SetBatch(0)
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.histos[2] = [c, gr]
 
     # endregion
@@ -1273,13 +1275,15 @@ class SignalAnalysis(Analysis):
         :return: actual number of events s.t. n_events are drawn
         """
         print 'Finding the correct number of events',
-        n = self.tree.Draw('1', cut, 'goff', n_events, start)
+        n = mean([self.tree.Draw('1', cut, 'goff', n_events, start + i * n_events) for i in xrange(4)])
         new_events = n_events
-        ratio = n_events / float(n)
+        ratio = n_events / float(n) if n else 5
         last_diff = 0
         while n != n_events:
             diff = n_events - n
-            new_events += int(diff * ratio) if not last_diff == -diff else int(diff * ratio / 2)
+            # print n, diff, new_events
+            new_events += int(diff * ratio) if not last_diff == abs(diff) else int(diff * ratio / 3)
+            new_events += 1 if abs(diff) < 3 else 0
             print '\b.',
             stdout.flush()
             n = self.tree.Draw('1', cut, 'goff', new_events, start)
