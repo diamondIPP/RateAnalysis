@@ -49,6 +49,9 @@ class Analysis(Elementary):
         self.PickleDir = self.get_program_dir() + self.parser.get('SAVE', 'pickle_dir')
         # self.saveMCData = parser.getboolean("SAVE", "SaveMCData")
         self.ana_save_dir = '{tc}_{run}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run.run_number)
+
+        # DUT
+        self.DUTType = self.run.DUTType
         
         # tree
         self.tree = self.run.tree
@@ -57,16 +60,16 @@ class Analysis(Elementary):
         self.channel = self.channel if hasattr(self, 'channel') else None
 
         # regions // ranges // for PAD
-        if (self.run.DUTType == "pad"):
+        if self.DUTType == 'pad':
             self.IntegralNames = self.get_integral_names()
             self.SignalRegion = self.parser.get('BASIC', 'signal_region')
             self.PedestalRegion = self.parser.get('BASIC', 'pedestal_region')
             self.PeakIntegral = self.parser.get('BASIC', 'peak_integral')
 
-            self.Cut = Cut(self)
-            self.StartEvent = self.Cut.CutConfig['EventRange'][0]
-            self.EndEvent = self.Cut.CutConfig['EventRange'][1]
-            self.pedestalFitMean = {}
+        # general cut
+        self.Cut = Cut(self)
+        self.StartEvent = self.Cut.CutConfig['EventRange'][0]
+        self.EndEvent = self.Cut.CutConfig['EventRange'][1]
 
         # save histograms // canvases
         self.signal_canvas = None
@@ -74,9 +77,8 @@ class Analysis(Elementary):
         self.canvases = {}
         self.lines = {}
 
-        # alignment // for PAD
-        if (self.run.DUTType == "pad"):
-            self.IsAligned = self.check_alignment(draw=False)
+        # alignment
+        self.IsAligned = self.check_alignment(draw=False)
 
     # ============================================================================================
     # region INIT
@@ -362,22 +364,26 @@ class Analysis(Elementary):
         pickle_path = 'Configuration/Individual_Configs/Alignment/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run.run_number)
 
         def func():
-            gROOT.SetBatch(1)
-            nbins = self.run.n_entries / binning
-            h = TProfile('h', 'Pulser Rate', nbins, 0, self.run.n_entries)
-            self.tree.Draw('(@col.size()>1)*100:Entry$>>h', 'pulser', 'goff')
-            self.format_histo(h, name='align', title='Event Alignment', x_tit='Event Number', y_tit='Hits per Event @ Pulser Events [%]', y_off=1.3)
-            h.GetYaxis().SetRangeUser(0, 100)
-            if draw:
+            if self.DUTType == 'pad':
+                gROOT.SetBatch(1)
+                nbins = self.run.n_entries / binning
+                h = TProfile('h', 'Pulser Rate', nbins, 0, self.run.n_entries)
+                self.tree.Draw('(@col.size()>1)*100:Entry$>>h', 'pulser', 'goff')
+                self.format_histo(h, name='align', title='Event Alignment', x_tit='Event Number', y_tit='Hits per Event @ Pulser Events [%]', y_off=1.3)
+                h.GetYaxis().SetRangeUser(0, 100)
+                if draw:
+                    gROOT.SetBatch(0)
+                c = TCanvas('c', 'Pulser Rate Canvas', 1000, 1000)
+                h.SetStats(0)
+                h.Draw('hist')
+                self.save_plots('EventAlignment', sub_dir=self.ana_save_dir, ch=None)
                 gROOT.SetBatch(0)
-            c = TCanvas('c', 'Pulser Rate Canvas', 1000, 1000)
-            h.SetStats(0)
-            h.Draw('hist')
-            self.save_plots('EventAlignment', sub_dir=self.ana_save_dir, ch=None)
-            gROOT.SetBatch(0)
-            self.histos[0] = [h, c]
-            align = self.__check_alignment_histo(h)
-            return align
+                self.histos[0] = [h, c]
+                align = self.__check_alignment_histo(h)
+                return align
+            else:
+                # todo put some function for the pixel here!
+                pass
 
         aligned = func() if draw else self.do_pickle(pickle_path, func)
         if not aligned:
