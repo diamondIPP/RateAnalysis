@@ -56,6 +56,8 @@
           <option value="TMath" />
           <option value="AbstractClasses.AnalysisCollection.ROOT" />
           <option value="AbstractClasses.PadAnalysis.ROOT" />
+          <option value="AbstractClasses.TelescopeAnalysis.ROOT" />
+          <option value="ROOT" />
         </list>
       </option>
     </inspection_tool>

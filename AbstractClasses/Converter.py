@@ -17,19 +17,22 @@ if do_gui:
 __author__ = 'micha'
 
 
+def print_banner(message):
+    print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * '=', msg=message)
+
+
 # ==============================================
 # CLASS DEFINITION
 # ==============================================
 class Converter:
-    def __init__(self, test_campaign, type):
+    def __init__(self, test_campaign, dut_type):
 
         # main
         self.test_campaign = test_campaign
         self.parser = self.setup_configparser()
-        self.Type = type
+        self.Type = dut_type
 
         # tracking
-        self.do_tracking = True
         self.telescope_id = self.parser.getint('BASIC', 'telescopeID')
         self.tracking_dir = self.parser.get('ROOTFILE_GENERATION', 'trackingfolder')
 
@@ -45,8 +48,7 @@ class Converter:
         self.raw_prefix = self.parser.get('ROOTFILE_GENERATION', "rawprefix")
 
         # configuration for pad
-        if (self.Type == "pad"):
-            self.config = self.get_config()
+        self.config = self.get_config() if self.Type == 'pad' else None
 
         # gui
         if do_gui:
@@ -59,7 +61,6 @@ class Converter:
             self.labels = self.create_labels()
             self.buttons = self.create_buttons()
             self.intvars = self.create_intvars()
-            self.checkbuttons = self.create_checkbuttons()
 
             self.set_start_values()
             self.make_gui()
