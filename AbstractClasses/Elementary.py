@@ -6,6 +6,7 @@ from copy import deepcopy
 from glob import glob
 from shutil import copyfile
 from time import time
+from ConfigParser import ConfigParser
 
 import ROOT
 from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath
@@ -26,16 +27,26 @@ class Elementary(object):
 
         if self.TESTCAMPAIGN is None:
             self.set_test_campaign(self.default_testcampaign)
+        #Read configuration files
+        self.ana_config_parser = self.load_ana_config()
+        self.run_config_parser = self.load_run_config()
 
-        self.load_config()
         self.aimedFluxes = [3, 20, 60, 600, 2000, 5000]
         # colors
         self.count = 0
         self.colors = self.create_colorlist()
         # self.channel = None
 
-    def load_config(self):
-        pass
+
+    def load_run_config(self):
+        run_parser = ConfigParser()
+        run_parser.read("Configuration/RunConfig_" + self.TESTCAMPAIGN + ".cfg")
+        return run_parser
+
+    def load_ana_config(self):
+        ana_parser = ConfigParser()
+        ana_parser.read('Configuration/AnalysisConfig_' + self.TESTCAMPAIGN + '.cfg')
+        return ana_parser
 
     @staticmethod
     def create_colorlist():

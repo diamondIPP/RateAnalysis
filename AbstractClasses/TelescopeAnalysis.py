@@ -45,9 +45,8 @@ class Analysis(Elementary):
         self.RunInfo = deepcopy(self.run.RunInfo)
         self.lowest_rate_run = high_low_rate['min'] if high_low_rate is not None else self.run.run_number
         self.highest_rate_run = high_low_rate['max'] if high_low_rate is not None else self.run.run_number
-        self.parser = self.load_parser()
-        self.PickleDir = self.get_program_dir() + self.parser.get('SAVE', 'pickle_dir')
-        # self.saveMCData = parser.getboolean("SAVE", "SaveMCData")
+        self.PickleDir = self.get_program_dir() + self.ana_config_parser.get('SAVE', 'pickle_dir')
+        # self.saveMCData = self.ana_config_parser.getboolean("SAVE", "SaveMCData")
         self.ana_save_dir = '{tc}_{run}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run.run_number)
         
         # tree
@@ -59,32 +58,27 @@ class Analysis(Elementary):
         # regions // ranges // for PAD
         if (self.run.DUTType == "pad"):
             self.IntegralNames = self.get_integral_names()
-            self.SignalRegion = self.parser.get('BASIC', 'signal_region')
-            self.PedestalRegion = self.parser.get('BASIC', 'pedestal_region')
-            self.PeakIntegral = self.parser.get('BASIC', 'peak_integral')
-
-            self.Cut = Cut(self)
-            self.StartEvent = self.Cut.CutConfig['EventRange'][0]
-            self.EndEvent = self.Cut.CutConfig['EventRange'][1]
+            self.SignalRegion = self.ana_config_parser.get('BASIC', 'signal_region')
+            self.PedestalRegion = self.ana_config_parser.get('BASIC', 'pedestal_region')
+            self.PeakIntegral = self.ana_config_parser.get('BASIC', 'peak_integral')
             self.pedestalFitMean = {}
-
+        
+        # general for pads and pixels
+        self.Cut = Cut(self)
+        self.StartEvent = self.Cut.CutConfig['EventRange'][0]
+        self.EndEvent = self.Cut.CutConfig['EventRange'][1]
+        
         # save histograms // canvases
         self.signal_canvas = None
         self.histos = {}
         self.canvases = {}
         self.lines = {}
 
-        # alignment // for PAD
-        if (self.run.DUTType == "pad"):
-            self.IsAligned = self.check_alignment(draw=False)
+        # alignment
+        self.IsAligned = self.check_alignment(draw=False)
 
     # ============================================================================================
     # region INIT
-
-    def load_parser(self):
-        parser = ConfigParser()
-        parser.read("Configuration/AnalysisConfig_" + self.TESTCAMPAIGN + ".cfg")
-        return parser
 
     def get_integral_names(self):
         names = OrderedDict()

@@ -19,16 +19,17 @@ class Cut(Elementary):
     def __init__(self, parent_analysis, verbose=True, skip=False):
 
         if not skip:
+            Elementary.__init__(self, verbose=verbose)
             self.analysis = parent_analysis
 
             # saving stuff
             self.histos = {}
 
             # config
-            self.parser = self.load_parser()
-            self.beaminterruptions_folder = self.parser.get('CUT', 'beaminterruptions_folder')
-            self.exclude_before_jump = self.parser.getint('CUT', 'excludeBeforeJump')
-            self.exclude_after_jump = self.parser.getint('CUT', 'excludeAfterJump')
+            self.DUTType = self.load_dut_type()
+            self.beaminterruptions_folder = self.ana_config_parser.get('CUT', 'beaminterruptions_folder')
+            self.exclude_before_jump = self.ana_config_parser.getint('CUT', 'excludeBeforeJump')
+            self.exclude_after_jump = self.ana_config_parser.getint('CUT', 'excludeAfterJump')
             self.CutConfig = {}
 
             # define cut strings
@@ -43,7 +44,7 @@ class Cut(Elementary):
             self.jump_ranges = None
 
             Elementary.__init__(self, verbose=verbose)
-
+            self.load_config()
             # generate cut strings
             self.generate_cut_string()
             self.all_cut = self.generate_all_cut()
@@ -108,20 +109,24 @@ class Cut(Elementary):
 
     # ==============================================
     # region GET CONFIG
-    def load_parser(self):
-        parser = ConfigParser.ConfigParser()
-        parser.read('Configuration/AnalysisConfig_' + self.analysis.TESTCAMPAIGN + '.cfg')
-        return parser
+    
+    def load_dut_type(self):
+        dut_type = self.run_config_parser.get("BASIC","type")
+        assert dut_type.lower() in ["pixel", "pad"], "The DUT type {0} should be 'pixel' or 'pad'".format(dut_type)
+        return dut_type
 
     def load_config(self):
         self.CutConfig['IndividualChCut'] = ''
-        self.CutConfig['ExcludeFirst'] = self.load_exclude_first(self.parser.getint('CUT', 'excludefirst'))
-        self.CutConfig['EventRange'] = self.load_event_range(json.loads(self.parser.get('CUT', 'EventRange')))
-        self.CutConfig['spread_low'] = self.load_spread_low(self.parser.getint('CUT', 'spread_low'))
-        self.CutConfig['absMedian_high'] = self.load_abs_median_high(self.parser.getint('CUT', 'absMedian_high'))
-        self.CutConfig['pedestalsigma'] = self.load_pedestal_sigma(self.parser.getint('CUT', 'pedestalsigma'))
-        self.CutConfig['chi2'] = self.parser.getint('CUT', 'chi2')
-        self.CutConfig['track_angle'] = self.parser.getint('CUT', 'track_angle')
+        self.CutConfig['ExcludeFirst'] = self.load_exclude_first(self.ana_config_parser.getint('CUT', 'excludefirst'))
+        self.CutConfig['EventRange'] = self.load_event_range(json.loads(self.ana_config_parser.get('CUT', 'EventRange')))
+        self.CutConfig['chi2'] = self.ana_config_parser.getint('CUT', 'chi2')
+        self.CutConfig['track_angle'] = self.ana_config_parser.getint('CUT', 'track_angle')
+        #cuts only for pad
+        if (self.DUTType == "pad"):
+            self.CutConfig['spread_low'] = self.load_spread_low(self.ana_config_parser.getint('CUT', 'spread_low'))
+            self.CutConfig['absMedian_high'] = self.load_abs_median_high(self.ana_config_parser.getint('CUT', 'absMedian_high'))
+            self.CutConfig['pedestalsigma'] = self.load_pedestal_sigma(self.ana_config_parser.getint('CUT', 'pedestalsigma'))
+        #cuts only for pixel TODO DA
 
     def load_event_range(self, event_range=None):
         """
@@ -307,14 +312,17 @@ class Cut(Elementary):
         self.CutStrings['pulser'] += '!pulser'
 
         # -- BEAM INTERRUPTION CUT --
-        self.__generate_beam_interruptions()
+        # Do beam interruptions cut only for pad, for now TODO DA
+        if (self.DUTType == "pad"):
+            self.__generate_beam_interruptions()
         self.EasyCutStrings['noBeamInter'] = 'BeamOn'
-
-        self.generate_jump_cut()
+        # Do this only fo pad, for now. TODO DA
+        if (self.DUTType == "pad"):
+            self.generate_jump_cut()
 
         gROOT.SetBatch(0)
 
-    def __generate_beam_interruptions(self, ):
+    def __generate_beam_interruptions(self):
         """
         This adds the restrictions to the cut string such that beam interruptions are excluded each time the cut is applied.
         """
@@ -424,13 +432,15 @@ class Cut(Elementary):
         if self.jump_ranges is None:
             jumps_pickle = self.beaminterruptions_folder + "/data/{testcampaign}Run_{run}.pickle".format(testcampaign=self.TESTCAMPAIGN, run=self.analysis.run.run_number)
             range_pickle = self.beaminterruptions_folder + "/data/{testcampaign}_{run}_Jump_Ranges.pickle".format(testcampaign=self.TESTCAMPAIGN, run=self.analysis.run.run_number)
-            self.jumps = self.do_pickle(jumps_pickle, self.find_beam_interruptions)
-            ranges = self.do_pickle(range_pickle, self.__create_jump_ranges)
-            # redo range pickle if config parameters have changed
-            if ranges[0] != self.exclude_before_jump or ranges[1] != self.exclude_after_jump:
-                os.remove(range_pickle)
+            #DO THIS ANALYSIS FOR PAD ONLY, FOR NOW TODO DA
+            if (self.DUTType == "pad"):
+                self.jumps = self.do_pickle(jumps_pickle, self.find_beam_interruptions)
                 ranges = self.do_pickle(range_pickle, self.__create_jump_ranges)
-            self.jump_ranges = ranges[2]
+                # redo range pickle if config parameters have changed
+                if ranges[0] != self.exclude_before_jump or ranges[1] != self.exclude_after_jump:
+                    os.remove(range_pickle)
+                    ranges = self.do_pickle(range_pickle, self.__create_jump_ranges)
+                self.jump_ranges = ranges[2]
         return self.jumps
     # endregion
 

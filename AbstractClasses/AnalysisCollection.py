@@ -102,11 +102,9 @@ class AnalysisCollection(Elementary):
         return dias
 
     def get_high_low_rate_runs(self):
-        parser = ConfigParser()
-        parser.read('Configuration/RunConfig_' + self.TESTCAMPAIGN + '.cfg')
         keydict = ConfigParser()
         keydict.read('Configuration/KeyDict_{tc}.cfg'.format(tc=self.TESTCAMPAIGN))
-        path = parser.get('BASIC', 'runinfofile')
+        path = self.run_config_parser.get('BASIC', 'runinfofile')
         flux_name = keydict.get('KEYNAMES', 'measured flux')
         f = open(path, 'r')
         run_log = json.load(f)

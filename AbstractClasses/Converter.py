@@ -21,12 +21,12 @@ __author__ = 'micha'
 # CLASS DEFINITION
 # ==============================================
 class Converter:
-    def __init__(self, test_campaign, type):
+    def __init__(self, test_campaign, dut_type):
 
         # main
         self.test_campaign = test_campaign
         self.parser = self.setup_configparser()
-        self.Type = type
+        self.Type = dut_type
 
         # tracking
         self.do_tracking = True
