@@ -349,5 +349,9 @@ class Elementary(object):
         extrema = [max([TMath.MaxElement(gr.GetN(), gr.GetY()) for gr in graphs]), min([TMath.MinElement(gr.GetN(), gr.GetY()) for gr in graphs])]
         return [extrema[1] - (extrema[0] - extrema[1]) * .1, extrema[0] + (extrema[0] - extrema[1]) * .1]
 
+    @staticmethod
+    def print_banner(msg):
+        print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * '=', msg=msg)
+
 if __name__ == "__main__":
     z = Elementary()

@@ -1,7 +1,6 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-import ROOT
 import json
 import re
 from Elementary import Elementary
@@ -109,7 +108,7 @@ class Run(Elementary):
             self.n_entries = int(self.endEvent + 1)
             
             # region info
-            if (self.DUTType == "pad"):
+            if self.DUTType == 'pad':
                 self.region_information = self.load_regions()
                 self.pedestal_regions = self.get_regions('pedestal')
                 self.signal_regions = self.get_regions('signal')
