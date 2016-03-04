@@ -8,7 +8,7 @@ import shutil
 from ConfigParser import ConfigParser
 from math import copysign
 from collections import OrderedDict
-import re
+from re import sub
 do_gui = False
 if do_gui:
     from tkinter import *
@@ -121,12 +121,12 @@ class Converter:
         if os.path.exists(track_file):
             print 'found file with tracks'
             return 'found_file'
+        elif os.path.exists(old_track_file):
+            return 'found_old'
         elif os.path.exists(final_file):
             print 'found file without tracks'
             print 'did not find tracking file --> need conversion'
             return 'found_untracked'
-        elif os.path.exists(old_track_file):
-            return 'found_old'
         else:
             print 'did not find any matching root file --> need conversion'
             return False
@@ -145,10 +145,12 @@ class Converter:
             return
         if found_root_file == 'found_old':
             self.__rename_tracking_file(run_number)
+            return
         if not found_root_file:
             curr_dir = os.getcwd()
             # check if raw file exists
-            assert self.find_raw_file(run_number)
+            raw_file_path = self.find_raw_file(run_number)
+            assert raw_file_path
             # go to root directory
             os.chdir(self.root_file_dir)
             # prepare converter command
@@ -204,7 +206,7 @@ class Converter:
         content = f.readlines()
         for i, line in enumerate(content):
             line = line.replace('peaki', 'PeakI')
-            line = re.sub('[)(\' ]', '', line)
+            line = sub('[)(\' ]', '', line)
             if len(line) > 3 and line[-2] == ',':
                 line = line[:-2] + '\n'
             content[i] = line
