@@ -142,9 +142,9 @@ class Run(Elementary):
         return bias
     
     def load_dut_type(self):
-        type = self.run_config_parser.get("BASIC","type")
-        assert type.lower() in ["pixel", "pad"], "The DUT type {0} should be 'pixel' or 'pad'".format(type)
-        return type
+        _type = self.run_config_parser.get('BASIC', 'type')
+        assert _type.lower() in ["pixel", "pad"], "The DUT type {0} should be 'pixel' or 'pad'".format(_type)
+        return _type
 
     def load_parser(self):
         parser = ConfigParser()
@@ -152,8 +152,7 @@ class Run(Elementary):
         return parser
 
     def load_regions(self):
-        root_file = TFile(self.converter.get_root_file_path(self.run_number))
-        macro = root_file.Get('region_information')
+        macro = self.rootfile.Get('region_information')
         return macro.GetListOfLines()
 
     def load_run_info(self):
@@ -227,9 +226,7 @@ class Run(Elementary):
 
         # check for conversion
         if load_root_file:
-            location = self.converter.find_root_file(run_number)
-            if not location or location == 'tracking':
-                self.converter.convert_run(self.RunInfo, run_number)
+            self.converter.convert_run(self.RunInfo, run_number)
             self.__load_rootfile()
 
         return True
@@ -509,9 +506,9 @@ class Run(Elementary):
     # endregion
 
     def __load_rootfile(self):
-        file_path = self.converter.get_tracking_file_path(self.run_number) if self.converter.do_tracking else self.converter.get_root_file_path(self.run_number)
+        file_path = self.converter.get_final_file_path(self.run_number)
         print "\nLoading information for rootfile: ", file_path.split('/')[-1]
-        self.rootfile = ROOT.TFile(file_path)
+        self.rootfile = TFile(file_path)
         self.tree = self.rootfile.Get(self.treename)  # Get TTree called "track_info"
 
 
