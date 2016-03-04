@@ -8,7 +8,7 @@ import shutil
 from ConfigParser import ConfigParser
 from math import copysign
 from collections import OrderedDict
-import re
+from re import sub
 do_gui = False
 if do_gui:
     from tkinter import *
@@ -17,18 +17,22 @@ if do_gui:
 __author__ = 'micha'
 
 
+def print_banner(message):
+    print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * '=', msg=message)
+
+
 # ==============================================
 # CLASS DEFINITION
 # ==============================================
 class Converter:
-    def __init__(self, test_campaign):
+    def __init__(self, test_campaign, dut_type):
 
         # main
         self.test_campaign = test_campaign
         self.parser = self.setup_configparser()
+        self.Type = dut_type
 
         # tracking
-        self.do_tracking = True
         self.telescope_id = self.parser.getint('BASIC', 'telescopeID')
         self.tracking_dir = self.parser.get('ROOTFILE_GENERATION', 'trackingfolder')
 
@@ -43,8 +47,8 @@ class Converter:
         self.root_prefix = self.parser.get('ROOTFILE_GENERATION', "converterPrefix")
         self.raw_prefix = self.parser.get('ROOTFILE_GENERATION', "rawprefix")
 
-        # configuration
-        self.config = self.get_config()
+        # configuration for pad
+        self.config = self.get_config() if self.Type == 'pad' else None
 
         # gui
         if do_gui:
@@ -57,7 +61,6 @@ class Converter:
             self.labels = self.create_labels()
             self.buttons = self.create_buttons()
             self.intvars = self.create_intvars()
-            self.checkbuttons = self.create_checkbuttons()
 
             self.set_start_values()
             self.make_gui()
@@ -107,49 +110,66 @@ class Converter:
         file_name = '{prefix}{run}_withTracks.root'.format(prefix=self.root_prefix, run=str(run_number).zfill(4))
         return self.root_file_dir + '/' + file_name
 
+    def get_final_file_path(self, run_number):
+        return '{dir}/TrackedRun{run:03d}.root'.format(run=run_number, dir=self.root_file_dir)
+
     def find_root_file(self, run_number):
-        track_file = self.get_tracking_file_path(run_number)
+        old_track_file = self.get_tracking_file_path(run_number)
+        track_file = self.get_final_file_path(run_number)
         final_file = self.get_root_file_path(run_number)
         # print 'looking for:\n ', track_file, '\n ', final_file
         if os.path.exists(track_file):
             print 'found file with tracks'
-            return True
+            return 'found_file'
+        elif os.path.exists(old_track_file):
+            return 'found_old'
         elif os.path.exists(final_file):
             print 'found file without tracks'
             print 'did not find tracking file --> need conversion'
-            return 'tracking'
+            return 'found_untracked'
         else:
             print 'did not find any matching root file --> need conversion'
             return False
 
     def convert_run(self, run_infos, run_number):
-        if do_gui:
+        if do_gui and self.Type == 'pad':
             self.__stop_conversion = False
             self.root.deiconify()
             self.root.mainloop()
             if self.__stop_conversion:
                 return
-        file_path = self.find_raw_file(run_number)
-        if not file_path:
+        # check whether the root file w/ our w/o tracks already exist
+        found_root_file = self.find_root_file(run_number)
+        print found_root_file
+        if found_root_file == 'found_file':
             return
-        location = self.find_root_file(run_number)
-        print location
-        if not location:
+        if found_root_file == 'found_old':
+            self.__rename_tracking_file(run_number)
+            return
+        if not found_root_file:
             curr_dir = os.getcwd()
+            # check if raw file exists
+            raw_file_path = self.find_raw_file(run_number)
+            assert raw_file_path
             # go to root directory
             os.chdir(self.root_file_dir)
-            converter_cmd = '{eudaq}/bin/Converter.exe -t drs4tree -c {eudaq}/conf/{file} {raw}'.format(eudaq=self.eudaq_dir, file=self.converter_config_path, raw=file_path)
-            self.__set_converter_configfile(run_infos)
-            print '\n========================================'
-            print 'START CONVERTING RAW FILE FOR RUN', run_number, '\n'
+            # prepare converter command
+            conf_string = '-c {eudaq}/conf/{file}'.format(eudaq=self.eudaq_dir, file=self.converter_config_path) if self.Type == 'pad' else ''
+            tree_string = '-t {tree}'.format(tree='drs4tree' if self.Type == 'pad' else 'telescopetree')
+            converter_cmd = '{eudaq}/bin/Converter.exe {tree} {conf} {raw}'.format(eudaq=self.eudaq_dir, raw=raw_file_path, tree=tree_string, conf=conf_string)
+            if self.Type == 'pad':
+                self.__set_converter_configfile(run_infos)
+            print_banner('START CONVERTING RAW FILE FOR RUN {0}'.format(run_number))
             print converter_cmd
             os.system(converter_cmd)
             os.chdir(curr_dir)
-            if self.do_tracking:
-                self.__add_tracking(run_number)
-        if location == 'tracking':
-            if self.do_tracking:
-                self.__add_tracking(run_number)
+        self.__add_tracking(run_number)
+        self.__rename_tracking_file(run_number)
+        os.remove(self.get_root_file_path(run_number))
+
+    def __rename_tracking_file(self, run_number):
+        print self.get_tracking_file_path(run_number), self.get_final_file_path(run_number)
+        os.rename(self.get_tracking_file_path(run_number), self.get_final_file_path(run_number))
 
     def __add_tracking(self, run_number):
         root_file_path = self.get_root_file_path(run_number)
@@ -186,7 +206,7 @@ class Converter:
         content = f.readlines()
         for i, line in enumerate(content):
             line = line.replace('peaki', 'PeakI')
-            line = re.sub('[)(\' ]', '', line)
+            line = sub('[)(\' ]', '', line)
             if len(line) > 3 and line[-2] == ',':
                 line = line[:-2] + '\n'
             content[i] = line
@@ -219,7 +239,7 @@ class Converter:
         dic = OrderedDict()
         dic['main'] = Label(self.frame, text='Converter', font='font/Font 16 bold')
         dic['config'] = OrderedDict()
-        for key in self.config:
+        for key in self.config.iterkeys():
             dic['config'][key] = Label(self.frame, text=key, width=20, anchor=W)
         return dic
 
@@ -230,20 +250,12 @@ class Converter:
         dic['stop'] = Button(self.frame, text='Stop', width=12, command=self.__stop_conversion)
         return dic
 
-    def create_checkbuttons(self):
-        dic = OrderedDict()
-        dic['tracking'] = Checkbutton(self.frame, text='do Tracking', variable=self.intvars['tracking'], command=self.set_tracking)
-        return dic
-
     @staticmethod
     def create_intvars():
         dic = OrderedDict()
         dic['tracking'] = IntVar()
         dic['tracking'].set(1)
         return dic
-
-    def set_tracking(self):
-        self.do_tracking = True if self.intvars['tracking'].get() else False
 
     def set_start_values(self):
         for key, value in self.config.iteritems():
@@ -297,14 +309,13 @@ class Converter:
         for i, box in enumerate(self.spinboxes['single'].values(), j + 2):
             box.grid(row=i, column=1, columnspan=2)
             k = i
-        self.checkbuttons['tracking'].grid(row=k + 2)
         self.buttons['save'].grid(row=k + 2, pady=3, column=1, columnspan=2)
         self.buttons['stop'].grid(row=k + 3)
         self.buttons['start'].grid(row=k + 3, columnspan=2, column=1)
 
 
 if __name__ == "__main__":
-    z = Converter('201510')
+    z = Converter('201510', 'pad')
     run_info = z.get_run_info(run_number=393)
     # z.convert_run(run_info)
     z.root.deiconify()

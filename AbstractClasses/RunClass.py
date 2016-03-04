@@ -1,7 +1,6 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-import ROOT
 import json
 import re
 from Elementary import Elementary
@@ -10,6 +9,8 @@ from datetime import datetime
 from ROOT import TFile, gROOT, TLegend
 from ConfigParser import ConfigParser, NoOptionError
 from numpy import mean
+from collections import OrderedDict
+from subprocess import check_output
 
 default_info = {
     'persons on shift': '-',
@@ -77,7 +78,7 @@ class Run(Elementary):
         self.channels = [0, 3]
         self.trigger_planes = [1, 2]
         self.run_config_parser = self.load_parser()
-        self.ShowAndWait = False
+        self.DUTType = self.load_dut_type()
         self.filename = self.run_config_parser.get('BASIC', 'filename')
         self.treename = self.run_config_parser.get('BASIC', 'treename')
         self.run_path = self.run_config_parser.get('BASIC', 'runpath')
@@ -87,12 +88,12 @@ class Run(Elementary):
         self.createNewROOTFiles = self.run_config_parser.getboolean('BASIC', 'createNewROOTFiles')
         self.signalregion_low = self.run_config_parser.getint('BASIC', 'signalregion_low')
         self.signalregion_high = self.run_config_parser.getint('BASIC', 'signalregion_high')
-
+        
         # run info
         self.RunInfo = None
 
         if run_number is not None:
-            self.converter = Converter(self.TESTCAMPAIGN)
+            self.converter = Converter(self.TESTCAMPAIGN, self.DUTType)
             assert (run_number > 0), 'incorrect run_number'
             self.set_run(run_number)
 
@@ -104,22 +105,23 @@ class Run(Elementary):
             self.endTime = self.get_time_at_event(self.endEvent)
             self.totalTime = self.endTime - self.startTime
             self.totalMinutes = (self.endTime - self.startTime) / 60000
-            self.n_entries = self.endEvent + 1
-
+            self.n_entries = int(self.endEvent + 1)
+            
             # region info
-            self.region_information = self.load_regions()
-            self.pedestal_regions = self.get_regions('pedestal')
-            self.signal_regions = self.get_regions('signal')
-            self.peak_integrals = self.get_peak_integrals()
+            if self.DUTType == 'pad':
+                self.region_information = self.load_regions()
+                self.pedestal_regions = self.get_regions('pedestal')
+                self.signal_regions = self.get_regions('signal')
+                self.peak_integrals = self.get_peak_integrals()
 
-            self.flux = self.calculate_flux()
+            self.flux = self.calculate_flux()    
 
         else:
             self.load_run_info()
 
         # extract run info
         self.analyse_ch = self.set_channels(diamonds)
-        self.diamondname = self.__load_diamond_name()
+        self.diamond_names = self.__load_diamond_name()
         self.bias = self.load_bias()
         self.IsMonteCarlo = False
 
@@ -138,6 +140,11 @@ class Run(Elementary):
         for i, ch in enumerate(self.channels, 1):
             bias[ch] = self.RunInfo['hv dia{num}'.format(num=i)]
         return bias
+    
+    def load_dut_type(self):
+        _type = self.run_config_parser.get('BASIC', 'type')
+        assert _type.lower() in ["pixel", "pad"], "The DUT type {0} should be 'pixel' or 'pad'".format(_type)
+        return _type
 
     def load_parser(self):
         parser = ConfigParser()
@@ -145,8 +152,7 @@ class Run(Elementary):
         return parser
 
     def load_regions(self):
-        root_file = TFile(self.converter.get_root_file_path(self.run_number))
-        macro = root_file.Get('region_information')
+        macro = self.rootfile.Get('region_information')
         return macro.GetListOfLines()
 
     def load_run_info(self):
@@ -220,9 +226,7 @@ class Run(Elementary):
 
         # check for conversion
         if load_root_file:
-            location = self.converter.find_root_file(run_number)
-            if not location or location == 'tracking':
-                self.converter.convert_run(self.RunInfo, run_number)
+            self.converter.convert_run(self.RunInfo, run_number)
             self.__load_rootfile()
 
         return True
@@ -298,31 +302,43 @@ class Run(Elementary):
                 self.RunInfo[new_key] = default_info[new_key]
         return
 
+    def wf_exists(self, channel):
+        wf_exist = True if self.tree.FindBranch('wf{ch}'.format(ch=channel)) else False
+        if not wf_exist:
+            print 'The waveform for channel {ch} is not stored in the tree'.format(ch=channel)
+        return wf_exist
+
     # ==============================================
     # region GET FUNCTIONS
     def get_flux(self):
         return self.flux if self.flux else self.RunInfo['aimed flux']
 
     def get_regions(self, string):
-        ranges = {}
+        ranges = OrderedDict()
         for line in self.region_information:
             line = str(line)
             if line.startswith(string):
                 data = re.split('_|:|-', line)
                 data = [data[i].strip(' ') for i in range(len(data))]
-                ranges[data[1]] = [int(data[2]), int(data[3])]
+                try:
+                    ranges[data[1]] = [int(data[2]), int(data[3])]
+                except IndexError:
+                    ranges[data[0]] = [int(data[i]) for i in [1, 2]]
         return ranges
 
     def get_peak_integrals(self):
-        integrals = []
+        integrals = OrderedDict()
         for line in self.region_information:
             line = str(line)
             if str(line).lower().startswith('* peakintegral'):
-                data = re.split('_|:', line)
+                data = re.split('_|:|-', line)
                 if data[0][-1].isdigit():
-                    integrals.append(data[0][-1])
+                    if data[0][-2].isdigit():
+                        integrals[data[0][-2:]] = [int(float(data[i])) for i in [1, 2]]
+                    else:
+                        integrals[data[0][-1]] = [int(float(data[i])) for i in [1, 2]]
                 else:
-                    integrals.append(data[1])
+                    integrals[data[1]] = [int(float(data[i])) for i in [2, 3]]
         return integrals
 
     def get_active_channels(self):
@@ -333,7 +349,7 @@ class Run(Elementary):
         return [ch for ch in self.analyse_ch if self.analyse_ch[ch]]
 
     def get_diamond_name(self, channel):
-        return self.diamondname[channel]
+        return self.diamond_names[channel]
 
     def get_channel_name(self, channel):
         self.tree.GetEntry()
@@ -374,10 +390,10 @@ class Run(Elementary):
         :return: event_number
         """
         # return time of last event if input is too large
-        if time_sec > self.time[-1] / 1000. or time_sec == -1:
-            return self.time[-1]
-        last_time = 0
         offset = self.time[0] / 1000.
+        if time_sec > self.time[-1] / 1000. - offset or time_sec == -1:
+            return self.n_entries
+        last_time = 0
         for i, time in enumerate(self.time):
             time /= 1000.
             if time >= time_sec + offset >= last_time:
@@ -399,10 +415,10 @@ class Run(Elementary):
         print 'RUN INFO:'
         print '\tRun Number: \t', self.run_number, ' (', self.RunInfo['type'], ')'
         print '\tRate: \t', self.get_flux(), ' kHz'
-        print '\tDiamond1:   \t', self.diamondname[0], ' (', self.bias[0], ') | is selected: ', self.analyse_ch[0]
-        print '\tDiamond2:   \t', self.diamondname[3], ' (', self.bias[3], ') | is selected: ', self.analyse_ch[3]
+        print '\tDiamond1:   \t', self.diamond_names[0], ' (', self.bias[0], ') | is selected: ', self.analyse_ch[0]
+        print '\tDiamond2:   \t', self.diamond_names[3], ' (', self.bias[3], ') | is selected: ', self.analyse_ch[3]
 
-    def draw_run_info(self, channel=None, canvas=None, diamondinfo=True, cut=None, comment=None, infoid='', set_width=None, set_height=None):
+    def draw_run_info(self, channel=None, canvas=None, diamondinfo=True, cut=None, comment=None, set_width=None, set_height=None, runs=None):
         """
         Draws the run infos inside the canvas. If no canvas is given, it will be drawn into the active Pad. 
         If the channel number is passed, channel number and diamond name will be drawn.
@@ -411,11 +427,12 @@ class Run(Elementary):
         :param diamondinfo:
         :param cut:
         :param comment:
-        :param infoid:
+        :param runs:
         :param set_height:
         :param set_width:
         :return:
         """
+        assert channel is None or channel in self.channels, 'wrong channel id "{ch}"'.format(ch=channel)
         if set_height is not None:
             assert 0 <= set_height <= 0.8, 'choose height between 0 and 0.8 or set it to "None"'
         if set_width is not None:
@@ -429,8 +446,8 @@ class Run(Elementary):
                 print 'ERROR: Cannot access active Pad'
                 return
 
-        lines = 1
-        width = 0.25
+        lines = 2
+        width = 0.4
         if diamondinfo:
             lines += 1
         if cut and hasattr(self, 'analysis'):
@@ -438,51 +455,60 @@ class Run(Elementary):
             width = 0.6
         if comment is not None:
             lines += 1
-            width = max(0.3, width)
+            width = max(0.5, width)
         height = (lines - 1) * 0.03
 
-        if channel is not None and channel in self.channels:
-            # user height and width:
-            userheight = height if set_height is None else set_height - 0.04
-            userwidth = width if width is None else set_width
+        tc = datetime.strptime(self.TESTCAMPAIGN, '%Y%m')
+        dur = '{0:02d}:{1:02.0f}'.format(int(self.totalMinutes), (self.totalMinutes - int(self.totalMinutes)) * 60)
 
-            legend = TLegend(0.1, 0.86 - userheight, 0.1 + userwidth, 0.9)
-            legend.SetMargin(0.05)
-            legend.AddEntry(0, 'Run{run} Ch{ch} ({rate})'.format(run=self.run_number, ch=channel, rate=self.get_rate_string()), '')
-            if diamondinfo: 
-                legend.AddEntry(0, '{diamond} ({bias:+}V)'.format(diamond=self.diamondname[channel], bias=self.bias[channel]), '')
-            if cut and hasattr(self, 'analysis'): 
-                legend.AddEntry(0, 'Cut: {cut}'.format(cut=self.analysis.GetUserCutString()), '')
-            if comment is not None: 
-                legend.AddEntry(0, comment, '')
-            legend.Draw()
-            self.run_info_legends[str(channel) + infoid] = legend
+        if not canvas.GetBottomMargin() > .105:
+            canvas.SetBottomMargin(0.15)
+        # user height and width:
+        userheight = height if set_height is None else set_height - 0.04
+        userwidth = width if set_width is None else set_width
+
+        git_text = TLegend(.85, 0, 1, .025)
+        git_text.AddEntry(0, 'git hash: {ver}'.format(ver=check_output(['git', 'describe', '--always'])), '')
+        git_text.SetLineColor(0)
+        legend = TLegend(.002, .00205, userwidth, userheight + 0.04)
+        legend.SetName('l')
+        legend.SetMargin(0.05)
+        legend.AddEntry(0, 'Test Campaign: {tc}'.format(tc=tc.strftime('%b %Y')), '')
+        if runs is None:
+            legend.AddEntry(0, 'Run {run}: {rate}, {dur} Min ({evts} evts)'.format(run=self.run_number, rate=self.get_rate_string(), dur=dur, evts=self.n_entries), '')
         else:
-            if comment is not None:
-                lines = 2
-            else:
-                lines = 1
-                width = 0.15
-            height = lines * 0.05
-            # user height and width:
-            userheight = height if set_height is None else set_height 
-            userwidth = width if width is None else set_width
-
-            legend = TLegend(0.1, 0.9 - userheight, 0.1 + userwidth, 0.9)
-            legend.SetMargin(0.05)
-            legend.AddEntry(0, 'Run{run} ({rate})'.format(run=self.run_number, rate=self.get_rate_string()), '')
-            if comment is not None:
-                legend.AddEntry(0, comment, '')
+            legend.AddEntry(0, 'Runs {start}-{stop} ({flux1} - {flux2})'.format(start=runs[0], stop=runs[1], flux1=runs[2].strip(' '), flux2=runs[3].strip(' ')), '')
+        if channel is None:
+            dias = ['{dia} @ {bias:2.0f}V'.format(dia=self.diamond_names[ch], bias=self.bias[ch]) for ch in self.channels]
+            dias = str(dias).strip('[]').replace('\'', '')
+            legend.AddEntry(0, 'Diamonds: {dias}'.format(dias=dias), '')
+        else:
+            legend.AddEntry(0, 'Diamond: {diamond} @ {bias:+}V'.format(diamond=self.diamond_names[channel], bias=self.bias[channel]), '')
+        if cut and hasattr(self, 'analysis'):
+            legend.AddEntry(0, 'Cut: {cut}'.format(cut=self.analysis.get_easy_cutstring()), '')
+        if comment is not None:
+            legend.AddEntry(0, comment, '')
+        # while canvas.GetPad(n_pads + 1):
+        #     n_pads += 1
+        pads = [i for i in canvas.GetListOfPrimitives() if i.IsA().GetName() == 'TPad']
+        if not pads:
+            git_text.Draw()
             legend.Draw()
-            self.run_info_legends['ch12' + infoid] = legend
+        else:
+            for pad in pads:
+                pad.cd()
+                git_text.Draw()
+                legend.Draw()
+        self.run_info_legends[0] = [legend, git_text]
         pad.Modified()
+        canvas.Update()
 
     # endregion
 
     def __load_rootfile(self):
-        file_path = self.converter.get_tracking_file_path(self.run_number) if self.converter.do_tracking else self.converter.get_root_file_path(self.run_number)
+        file_path = self.converter.get_final_file_path(self.run_number)
         print "\nLoading information for rootfile: ", file_path.split('/')[-1]
-        self.rootfile = ROOT.TFile(file_path)
+        self.rootfile = TFile(file_path)
         self.tree = self.rootfile.Get(self.treename)  # Get TTree called "track_info"
 
 

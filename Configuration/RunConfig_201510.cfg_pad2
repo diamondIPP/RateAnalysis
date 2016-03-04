@@ -1,5 +1,4 @@
 [BASIC]
-type = pad
 filename = test151000
 runpath = /data/psi_2015_10/root/pads
 runinfofile = /data/psi_2015_10/run_log.json

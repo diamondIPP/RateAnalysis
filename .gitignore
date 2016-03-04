@@ -6,3 +6,5 @@
 Results/
 *.json
 *.pickle
+*~
+.idea/workspace.xml

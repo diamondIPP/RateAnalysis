@@ -38,6 +38,26 @@
           <option value="kRed" />
           <option value="kMagenta" />
           <option value="TProfile2D" />
+          <option value="TProfile" />
+          <option value="TCutG" />
+          <option value="TExec" />
+          <option value="TLatex" />
+          <option value="TGraphAsymmErrors" />
+          <option value="TSpectrum" />
+          <option value="TText" />
+          <option value="TArrow" />
+          <option value="int.Parameter" />
+          <option value="TPie" />
+          <option value="TBox" />
+          <option value="TPaveText" />
+          <option value="TPaveLabel" />
+          <option value="kCanDelete" />
+          <option value="TPad" />
+          <option value="TMath" />
+          <option value="AbstractClasses.AnalysisCollection.ROOT" />
+          <option value="AbstractClasses.PadAnalysis.ROOT" />
+          <option value="AbstractClasses.TelescopeAnalysis.ROOT" />
+          <option value="ROOT" />
         </list>
       </option>
     </inspection_tool>
