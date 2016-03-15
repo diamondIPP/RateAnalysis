@@ -2,7 +2,7 @@ import os
 import pickle
 import json
 import ConfigParser
-from numpy import mean, array, zeros, arange, delete
+from numpy import array, zeros, arange, delete
 from AbstractClasses.Elementary import Elementary
 # from newAnalysis import Analysis
 # from signal_analysis import SignalAnalysis
@@ -98,8 +98,8 @@ class Cut(Elementary):
         dic['spread_low'] = TCut('spread_low', '')
         dic['median'] = TCut('median', '')
         dic['tracks'] = TCut('tracks', '')
-        dic['chi2'] = TCut('chi2', '')
-        dic['chi2'] = TCut('chi2', '')
+        dic['chi2X'] = TCut('chi2X', '')
+        dic['chi2Y'] = TCut('chi2Y', '')
         dic['track_angle'] = TCut('track_angle', '')
         dic['saturated'] = TCut('saturated', '')
         dic['old_bucket'] = TCut('old_bucket', '')
@@ -121,7 +121,8 @@ class Cut(Elementary):
         self.CutConfig['spread_low'] = self.load_spread_low(self.parser.getint('CUT', 'spread_low'))
         self.CutConfig['absMedian_high'] = self.load_abs_median_high(self.parser.getint('CUT', 'absMedian_high'))
         self.CutConfig['pedestalsigma'] = self.load_pedestal_sigma(self.parser.getint('CUT', 'pedestalsigma'))
-        self.CutConfig['chi2'] = self.parser.getint('CUT', 'chi2')
+        self.CutConfig['chi2X'] = self.parser.getint('CUT', 'chi2X')
+        self.CutConfig['chi2Y'] = self.parser.getint('CUT', 'chi2Y')
         self.CutConfig['track_angle'] = self.parser.getint('CUT', 'track_angle')
 
     def load_event_range(self, event_range=None):
@@ -238,25 +239,26 @@ class Cut(Elementary):
         elif self.CutConfig['ExcludeFirst']:
             self.CutStrings['event_range'] += 'event_number>={min}'.format(min=self.CutConfig['ExcludeFirst'])
 
-    def generate_chi2(self):
-        picklepath = 'Configuration/Individual_Configs/Chi2/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run.run_number)
+    def generate_chi2(self, mode='x'):
+        picklepath = 'Configuration/Individual_Configs/Chi2/{tc}_{run}_{mod}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run.run_number, mod=mode.title())
 
         def func():
-            print 'generating chi2 cut for run {run}...'.format(run=self.analysis.run_number)
+            print 'generating chi2 cut in {mod} for run {run}...'.format(run=self.analysis.run_number, mod=mode)
             gROOT.SetBatch(1)
             h = TH1F('h', '', 200, 0, 100)
             nq = 100
             chi2s = zeros(nq)
             xq = array([(i + 1) / float(nq) for i in range(nq)])
-            self.analysis.tree.Draw('chi2_tracks>>h', '', 'goff')
+            self.analysis.tree.Draw('chi2_{mod}>>h'.format(mod=mode), '', 'goff')
             h.GetQuantiles(nq, chi2s, xq)
             gROOT.SetBatch(0)
             return chi2s
 
         chi2 = self.do_pickle(picklepath, func)
-        assert type(self.CutConfig['chi2']) is int and 0 < self.CutConfig['chi2'] <= 100, 'chi2 quantile has to be and integer between 0 and 100'
-        string = 'chi2_tracks<{val}&&chi2_tracks>=0'.format(val=chi2[self.CutConfig['chi2']])
-        return string if self.CutConfig['chi2'] > 0 else ''
+        quantile = self.CutConfig['chi2{mod}'.format(mod=mode.title())]
+        assert type(quantile) is int and 0 < quantile <= 100, 'chi2 quantile has to be and integer between 0 and 100'
+        string = 'chi2_{mod}<{val}&&chi2_{mod}>=0'.format(val=chi2[quantile], mod=mode)
+        return string if quantile > 0 else ''
 
     def generate_slope(self):
         picklepath = 'Configuration/Individual_Configs/Slope/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.lowest_rate_run)
@@ -294,7 +296,8 @@ class Cut(Elementary):
         gROOT.SetBatch(1)
 
         # --TRACKS --
-        self.CutStrings['chi2'] += self.generate_chi2()
+        self.CutStrings['chi2X'] += self.generate_chi2('x')
+        self.CutStrings['chi2Y'] += self.generate_chi2('y')
         self.CutStrings['track_angle'] += self.generate_slope()
         self.CutStrings['tracks'] += 'n_tracks'
 
