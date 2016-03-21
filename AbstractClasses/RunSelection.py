@@ -11,7 +11,7 @@ class RunSelection(Elementary):
         Elementary.__init__(self, verbose)
         self.run = Run(run_number=None, verbose=verbose)
 
-        self.runplan_path = self.get_program_dir() + self.run.run_config_parser.get('BASIC', 'runplaninfofile')
+        self.runplan_path = self.get_program_dir() + self.run_config_parser.get('BASIC', 'runplaninfofile')
         self.run_plan = self.load_runplan()
         self.run_numbers = self.load_run_numbers()
         self.run_infos = self.load_run_infos()

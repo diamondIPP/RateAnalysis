@@ -1,11 +1,8 @@
 import os
 import pickle
 import json
-import ConfigParser
 from numpy import array, zeros, arange, delete
-from AbstractClasses.Elementary import Elementary
-# from newAnalysis import Analysis
-# from signal_analysis import SignalAnalysis
+from Elementary import Elementary
 from ROOT import TCut, gROOT, TH1F
 from collections import OrderedDict
 
@@ -19,16 +16,17 @@ class Cut(Elementary):
     def __init__(self, parent_analysis, verbose=True, skip=False):
 
         if not skip:
+            Elementary.__init__(self, verbose=verbose)
             self.analysis = parent_analysis
 
             # saving stuff
             self.histos = {}
 
             # config
-            self.parser = self.load_parser()
-            self.beaminterruptions_folder = self.parser.get('CUT', 'beaminterruptions_folder')
-            self.exclude_before_jump = self.parser.getint('CUT', 'excludeBeforeJump')
-            self.exclude_after_jump = self.parser.getint('CUT', 'excludeAfterJump')
+            self.DUTType = self.load_dut_type()
+            self.beaminterruptions_folder = self.ana_config_parser.get('CUT', 'beaminterruptions_folder')
+            self.exclude_before_jump = self.ana_config_parser.getint('CUT', 'excludeBeforeJump')
+            self.exclude_after_jump = self.ana_config_parser.getint('CUT', 'excludeAfterJump')
             self.CutConfig = {}
 
             # define cut strings
@@ -42,8 +40,7 @@ class Cut(Elementary):
             self.jumps = None
             self.jump_ranges = None
 
-            Elementary.__init__(self, verbose=verbose)
-
+            self.load_config()
             # generate cut strings
             self.generate_cut_string()
             self.all_cut = self.generate_all_cut()
@@ -109,21 +106,28 @@ class Cut(Elementary):
 
     # ==============================================
     # region GET CONFIG
-    def load_parser(self):
-        parser = ConfigParser.ConfigParser()
-        parser.read('Configuration/AnalysisConfig_' + self.analysis.TESTCAMPAIGN + '.cfg')
-        return parser
+    
+    def load_dut_type(self):
+        dut_type = self.run_config_parser.get("BASIC", "type")
+        assert dut_type.lower() in ["pixel", "pad"], "The DUT type {0} should be 'pixel' or 'pad'".format(dut_type)
+        return dut_type
 
     def load_config(self):
         self.CutConfig['IndividualChCut'] = ''
-        self.CutConfig['ExcludeFirst'] = self.load_exclude_first(self.parser.getint('CUT', 'excludefirst'))
-        self.CutConfig['EventRange'] = self.load_event_range(json.loads(self.parser.get('CUT', 'EventRange')))
-        self.CutConfig['spread_low'] = self.load_spread_low(self.parser.getint('CUT', 'spread_low'))
-        self.CutConfig['absMedian_high'] = self.load_abs_median_high(self.parser.getint('CUT', 'absMedian_high'))
-        self.CutConfig['pedestalsigma'] = self.load_pedestal_sigma(self.parser.getint('CUT', 'pedestalsigma'))
-        self.CutConfig['chi2X'] = self.parser.getint('CUT', 'chi2X')
-        self.CutConfig['chi2Y'] = self.parser.getint('CUT', 'chi2Y')
-        self.CutConfig['track_angle'] = self.parser.getint('CUT', 'track_angle')
+        self.CutConfig['ExcludeFirst'] = self.load_exclude_first(self.ana_config_parser.getint('CUT', 'excludefirst'))
+        self.CutConfig['EventRange'] = self.load_event_range(json.loads(self.ana_config_parser.get('CUT', 'EventRange')))
+        self.CutConfig['chi2X'] = self.ana_config_parser.getint('CUT', 'chi2X')
+        self.CutConfig['chi2Y'] = self.ana_config_parser.getint('CUT', 'chi2Y')
+        self.CutConfig['track_angle'] = self.ana_config_parser.getint('CUT', 'track_angle')
+        # pad cuts
+        if self.DUTType == 'pad':
+            self.CutConfig['spread_low'] = self.load_spread_low(self.ana_config_parser.getint('CUT', 'spread_low'))
+            self.CutConfig['absMedian_high'] = self.load_abs_median_high(self.ana_config_parser.getint('CUT', 'absMedian_high'))
+            self.CutConfig['pedestalsigma'] = self.load_pedestal_sigma(self.ana_config_parser.getint('CUT', 'pedestalsigma'))
+        # pixel cuts
+        else:
+            pass
+            # todo: cuts only for pixel, DA
 
     def load_event_range(self, event_range=None):
         """
@@ -313,12 +317,11 @@ class Cut(Elementary):
         # -- BEAM INTERRUPTION CUT --
         self.__generate_beam_interruptions()
         self.EasyCutStrings['noBeamInter'] = 'BeamOn'
-
         self.generate_jump_cut()
 
         gROOT.SetBatch(0)
 
-    def __generate_beam_interruptions(self, ):
+    def __generate_beam_interruptions(self):
         """
         This adds the restrictions to the cut string such that beam interruptions are excluded each time the cut is applied.
         """
@@ -353,6 +356,9 @@ class Cut(Elementary):
         self.JumpCut += cut_string
 
     def find_beam_interruptions(self):
+        return self.find_pad_beam_interruptions() if self.DUTType == 'pad' else self.find_pixel_beam_interruptions()
+
+    def find_pad_beam_interruptions(self):
         """
         Looking for the beam interruptions by investigating the pulser rate.
         :return: interrupt list
@@ -377,6 +383,10 @@ class Cut(Elementary):
                 tup = [0, 0]
             last_rate = value
         return interrupts
+
+    def find_pixel_beam_interruptions(self):
+        # todo DA, just return the same format as find_pad_beam_interruptions does
+        pass
 
     def __save_beaminterrupts(self):
         # check if directories exist

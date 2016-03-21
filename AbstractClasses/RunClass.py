@@ -77,7 +77,6 @@ class Run(Elementary):
         # configuration
         self.channels = [0, 3]
         self.trigger_planes = [1, 2]
-        self.run_config_parser = self.load_parser()
         self.DUTType = self.load_dut_type()
         self.filename = self.run_config_parser.get('BASIC', 'filename')
         self.treename = self.run_config_parser.get('BASIC', 'treename')
@@ -145,11 +144,6 @@ class Run(Elementary):
         _type = self.run_config_parser.get('BASIC', 'type')
         assert _type.lower() in ["pixel", "pad"], "The DUT type {0} should be 'pixel' or 'pad'".format(_type)
         return _type
-
-    def load_parser(self):
-        parser = ConfigParser()
-        parser.read("Configuration/RunConfig_" + self.TESTCAMPAIGN + ".cfg")
-        return parser
 
     def load_regions(self):
         macro = self.rootfile.Get('region_information')
