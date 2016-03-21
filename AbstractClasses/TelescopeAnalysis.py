@@ -436,6 +436,24 @@ class Analysis(Elementary):
     # ==============================================
     # region SHOW & PRINT
 
+    def draw_pix_map(self, n=1, start=None, plane=1):
+        start_event = self.StartEvent if start is None else start
+        h = TH2F('h', 'Pixel Map', 52, 0, 51, 80, 0, 79)
+        self.tree.GetEntry(start_event)
+        for pln, col, row, adc in zip(self.tree.plane, self.tree.col, self.tree.row, self.tree.adc):
+            if pln == plane:
+                h.SetBinContent(col + 1, row + 1, -adc)
+        c = TCanvas('c', 'Pixel Map', 1000, 1000)
+        c.SetBottomMargin(.15)
+        c.SetRightMargin(.14)
+        h.SetStats(0)
+        h.GetZaxis().SetTitle('adc [au]')
+        h.GetZaxis().SetTitleOffset(1.3)
+        self.format_histo(h, x_tit='col', y_tit='row')
+        h.Draw('colz')
+        self.histos[0] = [c, h]
+        self.save_plots('PixMapPlane{pln}{evts}'.format(pln=plane, evts=n), sub_dir=self.ana_save_dir, ch=None)
+
     def draw_preliminary(self):
         c = gROOT.GetListOfCanvases()[-1]
         text = TText((c.GetUxmax() - c.GetUxmin()) / 2., (c.GetUymax() - c.GetUymin()) / 2., "Preliminary")
