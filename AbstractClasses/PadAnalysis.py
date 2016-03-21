@@ -579,6 +579,7 @@ class SignalAnalysis(Analysis):
                         i_mean -= means[count] if bin_corr else 0
                         gr.SetPoint(count, (self.time_binning[i] - self.run.startTime) / 60e3, i_mean)
                         gr.SetPointError(count, 0, h_proj.GetRMS() / sqrt(h_proj.GetEntries()))
+                        count += 1
                     elif mode in ["fit", "Fit"]:
                         h_proj.GetMaximum()
                         maxposition = h_proj.GetBinCenter(h_proj.GetMaximumBin())
@@ -588,7 +589,6 @@ class SignalAnalysis(Analysis):
                         mpverr = fitfun.GetParError(1)
                         gr.SetPoint(count, (i + 0.5) * self.run.totalMinutes / self.n_bins, mpv)
                         gr.SetPointError(count, 0, mpverr)
-                    count += 1
                 else:
                     empty_bins += 1
             print 'Empty proj. bins:\t', str(empty_bins) + '/' + str(self.n_bins)
