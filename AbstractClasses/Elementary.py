@@ -6,6 +6,7 @@ from copy import deepcopy
 from glob import glob
 from shutil import copyfile
 from time import time
+from datetime import datetime
 
 import ROOT
 from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath
@@ -24,8 +25,7 @@ class Elementary(object):
         self.verbose = verbose
         self.save_directory = self.get_program_dir() + 'Results/'
 
-        if self.TESTCAMPAIGN is None:
-            self.set_test_campaign(self.default_testcampaign)
+        self.set_test_campaign(self.default_testcampaign)
 
         self.load_config()
         self.aimedFluxes = [3, 20, 60, 600, 2000, 5000]
@@ -160,8 +160,12 @@ class Elementary(object):
         if not str(campaign) in campaigns:
             print 'This Testcampaign does not exist yet! Use create_new_testcampaign!\nExisting campaigns: {camp}'.format(camp=campaigns)
             return
-        Elementary.TESTCAMPAIGN = str(campaign)
-        print 'Testcampaign set to: {tc} '.format(tc=campaign)
+        if Elementary.TESTCAMPAIGN is None:
+            Elementary.TESTCAMPAIGN = str(campaign)
+
+    def print_testcampaign(self):
+        tc = datetime.strptime(self.TESTCAMPAIGN, '%Y%m')
+        print 'TESTCAMPAIGN:', tc.strftime('%b %Y')
 
     @classmethod
     def find_test_campaigns(cls):
@@ -350,8 +354,8 @@ class Elementary(object):
         return [extrema[1] - (extrema[0] - extrema[1]) * .1, extrema[0] + (extrema[0] - extrema[1]) * .1]
 
     @staticmethod
-    def print_banner(msg):
-        print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * '=', msg=msg)
+    def print_banner(msg, symbol='='):
+        print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * symbol, msg=msg)
 
 if __name__ == "__main__":
     z = Elementary()
