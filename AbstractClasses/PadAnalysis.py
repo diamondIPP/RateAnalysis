@@ -3,6 +3,7 @@
 # ==============================================
 from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie
 from TelescopeAnalysis import Analysis
+from Elementary import Elementary
 from CurrentInfo import Currents
 from numpy import array, mean
 from math import sqrt, ceil, log
@@ -442,8 +443,8 @@ class SignalAnalysis(Analysis):
             x = [h.GetBinCenter(max_bin + i) for i in [-7, 1]] if not pulser else [h.GetXaxis().GetXmin() + 1, h.GetXaxis().GetXmax() - 1]
             return h.Fit('gaus', 'qs{0}'.format('' if draw else '0'), '', x[0], x[1])
 
-        mean = func() if draw else 0
-        return self.do_pickle(pickle_path, func, mean)
+        mean_val = func() if draw else 0
+        return self.do_pickle(pickle_path, func, mean_val)
 
     def calc_peak_value_fwhm(self):
         pickle_path = self.PickleDir + 'PeakValues/FWHM_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
@@ -578,6 +579,7 @@ class SignalAnalysis(Analysis):
                         i_mean -= means[count] if bin_corr else 0
                         gr.SetPoint(count, (self.time_binning[i] - self.run.startTime) / 60e3, i_mean)
                         gr.SetPointError(count, 0, h_proj.GetRMS() / sqrt(h_proj.GetEntries()))
+                        count += 1
                     elif mode in ["fit", "Fit"]:
                         h_proj.GetMaximum()
                         maxposition = h_proj.GetBinCenter(h_proj.GetMaximumBin())
@@ -587,7 +589,6 @@ class SignalAnalysis(Analysis):
                         mpverr = fitfun.GetParError(1)
                         gr.SetPoint(count, (i + 0.5) * self.run.totalMinutes / self.n_bins, mpv)
                         gr.SetPointError(count, 0, mpverr)
-                    count += 1
                 else:
                     empty_bins += 1
             print 'Empty proj. bins:\t', str(empty_bins) + '/' + str(self.n_bins)
@@ -1033,6 +1034,8 @@ class SignalAnalysis(Analysis):
         """
         Shows the fraction of accepted pulser events as a function of event numbers. Peaks appearing in this graph are most likely beam interruptions.
         :param binning:
+        :param cut:
+        :param show:
         """
         gROOT.SetBatch(1)
         cut = '' if cut is None else cut
@@ -1061,6 +1064,7 @@ class SignalAnalysis(Analysis):
         """
         Shows the average pulse height as a function of event numbers.
         :param binning:
+        :param draw_opt:
         """
         nbins = self.run.n_entries / binning
         h = TProfile('h', 'Pulser Pulse Height', nbins, 0, self.run.n_entries)
@@ -1146,7 +1150,7 @@ class SignalAnalysis(Analysis):
     def draw_pulser_waveform(self, n=1, start_event=None, add_buckets=False, cut=None, fixed_range=None):
         cut = self.Cut.generate_pulser_cut() if cut is None else cut
         start = self.StartEvent + self.count if start_event is None else start_event + self.count
-        print 'Event number:', start
+        print 'Start at event number:', start
         cnt = self.draw_waveforms(n=n, start_event=start, add_buckets=add_buckets, cut_string=cut, ret_event=True, fixed_range=fixed_range)
         print cnt
         if cnt is None:
@@ -1217,6 +1221,7 @@ class SignalAnalysis(Analysis):
         :param show:
         :param ret_event: return number of valid events if True
         :param add_buckets: draw buckets and most probable peak values if True
+        :param fixed_range: fixes x-range to given value if set
         :return: histo with waveform
         """
         gROOT.SetBatch(1)
@@ -1277,17 +1282,19 @@ class SignalAnalysis(Analysis):
         print 'Finding the correct number of events',
         n = mean([self.tree.Draw('1', cut, 'goff', n_events, start + i * n_events) for i in xrange(4)])
         new_events = n_events
-        ratio = n_events / float(n) if n else 5
-        last_diff = 0
+        ratio = n_events / n if n else 5
+        i = 0
         while n != n_events:
             diff = n_events - n
             # print n, diff, new_events
-            new_events += int(diff * ratio) if not last_diff == abs(diff) else int(diff * ratio / 3)
-            new_events += 1 if abs(diff) < 3 else 0
+            if i < 3:
+                new_events += int(diff * ratio)
+            else:
+                new_events += int(diff * ratio / i)
             print '\b.',
             stdout.flush()
             n = self.tree.Draw('1', cut, 'goff', new_events, start)
-            last_diff = diff
+            i += 1
         print
         return new_events
 
@@ -1587,6 +1594,9 @@ if __name__ == "__main__":
     parser.add_argument('ch', nargs='?', default=0, type=int)
     args = parser.parse_args()
     test_run = args.run
-    print '\nAnalysing run', test_run, '\n'
+    message = 'STARTING PAD-ANALYSIS OF RUN {0}'.format(test_run)
+    print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(message)) * '=', msg=message)
+    a = Elementary()
+    a.print_testcampaign()
     z = SignalAnalysis(test_run, args.ch)
     z.print_elapsed_time(st, 'Instantiation')

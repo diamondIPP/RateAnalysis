@@ -1,4 +1,5 @@
 [BASIC]
+type = pad
 filename = test151000
 runpath = /data/psi_2015_10/root/pads
 runinfofile = /data/psi_2015_10/run_log.json
@@ -33,6 +34,7 @@ pedestal_c_region = [374, 375]
 pedestal_d_region = [574, 575]
 pedestal_e_region = [560, 600]
 pedestal_f_region = [560, 640]
+pulser_region = [890, 930]
 save_waveforms = 0
 pulser_channel = 2
 trigger_channel = 1

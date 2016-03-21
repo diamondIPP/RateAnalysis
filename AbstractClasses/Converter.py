@@ -18,7 +18,7 @@ __author__ = 'micha'
 
 
 def print_banner(message):
-    print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * '=', msg=message)
+    print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(message)) * '=', msg=message)
 
 
 # ==============================================
@@ -119,12 +119,10 @@ class Converter:
         final_file = self.get_root_file_path(run_number)
         # print 'looking for:\n ', track_file, '\n ', final_file
         if os.path.exists(track_file):
-            print 'found file with tracks'
             return 'found_file'
         elif os.path.exists(old_track_file):
             return 'found_old'
         elif os.path.exists(final_file):
-            print 'found file without tracks'
             print 'did not find tracking file --> need conversion'
             return 'found_untracked'
         else:
@@ -140,7 +138,6 @@ class Converter:
                 return
         # check whether the root file w/ our w/o tracks already exist
         found_root_file = self.find_root_file(run_number)
-        print found_root_file
         if found_root_file == 'found_file':
             return
         if found_root_file == 'found_old':
@@ -168,7 +165,6 @@ class Converter:
         os.remove(self.get_root_file_path(run_number))
 
     def __rename_tracking_file(self, run_number):
-        print self.get_tracking_file_path(run_number), self.get_final_file_path(run_number)
         os.rename(self.get_tracking_file_path(run_number), self.get_final_file_path(run_number))
 
     def __add_tracking(self, run_number):

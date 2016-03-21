@@ -1,11 +1,8 @@
 import os
 import pickle
 import json
-import ConfigParser
-from numpy import mean, array, zeros, arange, delete
-from AbstractClasses.Elementary import Elementary
-# from newAnalysis import Analysis
-# from signal_analysis import SignalAnalysis
+from numpy import array, zeros, arange, delete
+from Elementary import Elementary
 from ROOT import TCut, gROOT, TH1F
 from collections import OrderedDict
 
@@ -19,16 +16,17 @@ class Cut(Elementary):
     def __init__(self, parent_analysis, verbose=True, skip=False):
 
         if not skip:
+            Elementary.__init__(self, verbose=verbose)
             self.analysis = parent_analysis
 
             # saving stuff
             self.histos = {}
 
             # config
-            self.parser = self.load_parser()
-            self.beaminterruptions_folder = self.parser.get('CUT', 'beaminterruptions_folder')
-            self.exclude_before_jump = self.parser.getint('CUT', 'excludeBeforeJump')
-            self.exclude_after_jump = self.parser.getint('CUT', 'excludeAfterJump')
+            self.DUTType = self.load_dut_type()
+            self.beaminterruptions_folder = self.ana_config_parser.get('CUT', 'beaminterruptions_folder')
+            self.exclude_before_jump = self.ana_config_parser.getint('CUT', 'excludeBeforeJump')
+            self.exclude_after_jump = self.ana_config_parser.getint('CUT', 'excludeAfterJump')
             self.CutConfig = {}
 
             # define cut strings
@@ -42,8 +40,7 @@ class Cut(Elementary):
             self.jumps = None
             self.jump_ranges = None
 
-            Elementary.__init__(self, verbose=verbose)
-
+            self.load_config()
             # generate cut strings
             self.generate_cut_string()
             self.all_cut = self.generate_all_cut()
@@ -98,8 +95,8 @@ class Cut(Elementary):
         dic['spread_low'] = TCut('spread_low', '')
         dic['median'] = TCut('median', '')
         dic['tracks'] = TCut('tracks', '')
-        dic['chi2'] = TCut('chi2', '')
-        dic['chi2'] = TCut('chi2', '')
+        dic['chi2X'] = TCut('chi2X', '')
+        dic['chi2Y'] = TCut('chi2Y', '')
         dic['track_angle'] = TCut('track_angle', '')
         dic['saturated'] = TCut('saturated', '')
         dic['old_bucket'] = TCut('old_bucket', '')
@@ -109,20 +106,28 @@ class Cut(Elementary):
 
     # ==============================================
     # region GET CONFIG
-    def load_parser(self):
-        parser = ConfigParser.ConfigParser()
-        parser.read('Configuration/AnalysisConfig_' + self.analysis.TESTCAMPAIGN + '.cfg')
-        return parser
+    
+    def load_dut_type(self):
+        dut_type = self.run_config_parser.get("BASIC", "type")
+        assert dut_type.lower() in ["pixel", "pad"], "The DUT type {0} should be 'pixel' or 'pad'".format(dut_type)
+        return dut_type
 
     def load_config(self):
         self.CutConfig['IndividualChCut'] = ''
-        self.CutConfig['ExcludeFirst'] = self.load_exclude_first(self.parser.getint('CUT', 'excludefirst'))
-        self.CutConfig['EventRange'] = self.load_event_range(json.loads(self.parser.get('CUT', 'EventRange')))
-        self.CutConfig['spread_low'] = self.load_spread_low(self.parser.getint('CUT', 'spread_low'))
-        self.CutConfig['absMedian_high'] = self.load_abs_median_high(self.parser.getint('CUT', 'absMedian_high'))
-        self.CutConfig['pedestalsigma'] = self.load_pedestal_sigma(self.parser.getint('CUT', 'pedestalsigma'))
-        self.CutConfig['chi2'] = self.parser.getint('CUT', 'chi2')
-        self.CutConfig['track_angle'] = self.parser.getint('CUT', 'track_angle')
+        self.CutConfig['ExcludeFirst'] = self.load_exclude_first(self.ana_config_parser.getint('CUT', 'excludefirst'))
+        self.CutConfig['EventRange'] = self.load_event_range(json.loads(self.ana_config_parser.get('CUT', 'EventRange')))
+        self.CutConfig['chi2X'] = self.ana_config_parser.getint('CUT', 'chi2X')
+        self.CutConfig['chi2Y'] = self.ana_config_parser.getint('CUT', 'chi2Y')
+        self.CutConfig['track_angle'] = self.ana_config_parser.getint('CUT', 'track_angle')
+        # pad cuts
+        if self.DUTType == 'pad':
+            self.CutConfig['spread_low'] = self.load_spread_low(self.ana_config_parser.getint('CUT', 'spread_low'))
+            self.CutConfig['absMedian_high'] = self.load_abs_median_high(self.ana_config_parser.getint('CUT', 'absMedian_high'))
+            self.CutConfig['pedestalsigma'] = self.load_pedestal_sigma(self.ana_config_parser.getint('CUT', 'pedestalsigma'))
+        # pixel cuts
+        else:
+            pass
+            # todo: cuts only for pixel, DA
 
     def load_event_range(self, event_range=None):
         """
@@ -238,25 +243,26 @@ class Cut(Elementary):
         elif self.CutConfig['ExcludeFirst']:
             self.CutStrings['event_range'] += 'event_number>={min}'.format(min=self.CutConfig['ExcludeFirst'])
 
-    def generate_chi2(self):
-        picklepath = 'Configuration/Individual_Configs/Chi2/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run.run_number)
+    def generate_chi2(self, mode='x'):
+        picklepath = 'Configuration/Individual_Configs/Chi2/{tc}_{run}_{mod}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run.run_number, mod=mode.title())
 
         def func():
-            print 'generating chi2 cut for run {run}...'.format(run=self.analysis.run_number)
+            print 'generating chi2 cut in {mod} for run {run}...'.format(run=self.analysis.run_number, mod=mode)
             gROOT.SetBatch(1)
             h = TH1F('h', '', 200, 0, 100)
             nq = 100
             chi2s = zeros(nq)
             xq = array([(i + 1) / float(nq) for i in range(nq)])
-            self.analysis.tree.Draw('chi2_tracks>>h', '', 'goff')
+            self.analysis.tree.Draw('chi2_{mod}>>h'.format(mod=mode), '', 'goff')
             h.GetQuantiles(nq, chi2s, xq)
             gROOT.SetBatch(0)
             return chi2s
 
         chi2 = self.do_pickle(picklepath, func)
-        assert type(self.CutConfig['chi2']) is int and 0 < self.CutConfig['chi2'] <= 100, 'chi2 quantile has to be and integer between 0 and 100'
-        string = 'chi2_tracks<{val}&&chi2_tracks>=0'.format(val=chi2[self.CutConfig['chi2']])
-        return string if self.CutConfig['chi2'] > 0 else ''
+        quantile = self.CutConfig['chi2{mod}'.format(mod=mode.title())]
+        assert type(quantile) is int and 0 < quantile <= 100, 'chi2 quantile has to be and integer between 0 and 100'
+        string = 'chi2_{mod}<{val}&&chi2_{mod}>=0'.format(val=chi2[quantile], mod=mode)
+        return string if quantile > 0 else ''
 
     def generate_slope(self):
         picklepath = 'Configuration/Individual_Configs/Slope/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.lowest_rate_run)
@@ -294,7 +300,8 @@ class Cut(Elementary):
         gROOT.SetBatch(1)
 
         # --TRACKS --
-        self.CutStrings['chi2'] += self.generate_chi2()
+        self.CutStrings['chi2X'] += self.generate_chi2('x')
+        self.CutStrings['chi2Y'] += self.generate_chi2('y')
         self.CutStrings['track_angle'] += self.generate_slope()
         self.CutStrings['tracks'] += 'n_tracks'
 
@@ -310,12 +317,11 @@ class Cut(Elementary):
         # -- BEAM INTERRUPTION CUT --
         self.__generate_beam_interruptions()
         self.EasyCutStrings['noBeamInter'] = 'BeamOn'
-
         self.generate_jump_cut()
 
         gROOT.SetBatch(0)
 
-    def __generate_beam_interruptions(self, ):
+    def __generate_beam_interruptions(self):
         """
         This adds the restrictions to the cut string such that beam interruptions are excluded each time the cut is applied.
         """
@@ -350,6 +356,9 @@ class Cut(Elementary):
         self.JumpCut += cut_string
 
     def find_beam_interruptions(self):
+        return self.find_pad_beam_interruptions() if self.DUTType == 'pad' else self.find_pixel_beam_interruptions()
+
+    def find_pad_beam_interruptions(self):
         """
         Looking for the beam interruptions by investigating the pulser rate.
         :return: interrupt list
@@ -374,6 +383,10 @@ class Cut(Elementary):
                 tup = [0, 0]
             last_rate = value
         return interrupts
+
+    def find_pixel_beam_interruptions(self):
+        # todo DA, just return the same format as find_pad_beam_interruptions does
+        pass
 
     def __save_beaminterrupts(self):
         # check if directories exist

@@ -44,7 +44,6 @@ class Currents(Elementary):
         self.DiamondName = analysis.diamond_name
 
         # config
-        self.RunConfigParser = analysis.run.run_config_parser
         self.ConfigParser = self.load_parser()
 
         # device info
@@ -78,7 +77,7 @@ class Currents(Elementary):
     # region INIT
     def load_parser(self):
         parser = ConfigParser()
-        parser.read(self.RunConfigParser.get('BASIC', 'hvconfigfile'))
+        parser.read(self.run_config_parser.get('BASIC', 'hvconfigfile'))
         return parser
 
     def get_device_nr(self):
@@ -90,7 +89,7 @@ class Currents(Elementary):
         return full_str.split('-')[1] if len(full_str) > 1 else '0'
 
     def find_data_path(self):
-        hv_datapath = self.RunConfigParser.get('BASIC', 'hvdatapath')
+        hv_datapath = self.run_config_parser.get('BASIC', 'hvdatapath')
         return '{data}{dev}_CH{ch}/'.format(data=hv_datapath, dev=self.ConfigParser.get('HV' + self.Number, 'name'), ch=self.Channel)
     # endregion
 

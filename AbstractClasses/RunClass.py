@@ -77,7 +77,6 @@ class Run(Elementary):
         # configuration
         self.channels = [0, 3]
         self.trigger_planes = [1, 2]
-        self.run_config_parser = self.load_parser()
         self.DUTType = self.load_dut_type()
         self.filename = self.run_config_parser.get('BASIC', 'filename')
         self.treename = self.run_config_parser.get('BASIC', 'treename')
@@ -145,11 +144,6 @@ class Run(Elementary):
         _type = self.run_config_parser.get('BASIC', 'type')
         assert _type.lower() in ["pixel", "pad"], "The DUT type {0} should be 'pixel' or 'pad'".format(_type)
         return _type
-
-    def load_parser(self):
-        parser = ConfigParser()
-        parser.read("Configuration/RunConfig_" + self.TESTCAMPAIGN + ".cfg")
-        return parser
 
     def load_regions(self):
         macro = self.rootfile.Get('region_information')
@@ -507,9 +501,9 @@ class Run(Elementary):
 
     def __load_rootfile(self):
         file_path = self.converter.get_final_file_path(self.run_number)
-        print "\nLoading information for rootfile: ", file_path.split('/')[-1]
+        print 'Loading information for rootfile: {file}'.format(file=file_path.split('/')[-1])
         self.rootfile = TFile(file_path)
-        self.tree = self.rootfile.Get(self.treename)  # Get TTree called "track_info"
+        self.tree = self.rootfile.Get(self.treename)
 
 
 if __name__ == "__main__":

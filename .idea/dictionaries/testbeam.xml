@@ -2,6 +2,7 @@
   <dictionary name="testbeam">
     <words>
       <w>fwhm</w>
+      <w>pulser</w>
     </words>
   </dictionary>
 </component>

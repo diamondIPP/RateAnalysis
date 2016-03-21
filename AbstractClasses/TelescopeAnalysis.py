@@ -1,4 +1,3 @@
-from ConfigParser import ConfigParser
 from argparse import ArgumentParser
 from collections import OrderedDict
 from copy import deepcopy
@@ -45,9 +44,8 @@ class Analysis(Elementary):
         self.RunInfo = deepcopy(self.run.RunInfo)
         self.lowest_rate_run = high_low_rate['min'] if high_low_rate is not None else self.run.run_number
         self.highest_rate_run = high_low_rate['max'] if high_low_rate is not None else self.run.run_number
-        self.parser = self.load_parser()
-        self.PickleDir = self.get_program_dir() + self.parser.get('SAVE', 'pickle_dir')
-        # self.saveMCData = parser.getboolean("SAVE", "SaveMCData")
+        self.PickleDir = self.get_program_dir() + self.ana_config_parser.get('SAVE', 'pickle_dir')
+        # self.saveMCData = self.ana_config_parser.getboolean("SAVE", "SaveMCData")
         self.ana_save_dir = '{tc}_{run}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run.run_number)
 
         # DUT
@@ -62,11 +60,11 @@ class Analysis(Elementary):
         # regions // ranges // for PAD
         if self.DUTType == 'pad':
             self.IntegralNames = self.get_integral_names()
-            self.SignalRegion = self.parser.get('BASIC', 'signal_region')
-            self.PedestalRegion = self.parser.get('BASIC', 'pedestal_region')
-            self.PeakIntegral = self.parser.get('BASIC', 'peak_integral')
+            self.SignalRegion = self.ana_config_parser.get('BASIC', 'signal_region')
+            self.PedestalRegion = self.ana_config_parser.get('BASIC', 'pedestal_region')
+            self.PeakIntegral = self.ana_config_parser.get('BASIC', 'peak_integral')
 
-        # general cut
+        # general for pads and pixels
         self.Cut = Cut(self)
         self.StartEvent = self.Cut.CutConfig['EventRange'][0]
         self.EndEvent = self.Cut.CutConfig['EventRange'][1]
@@ -82,11 +80,6 @@ class Analysis(Elementary):
 
     # ============================================================================================
     # region INIT
-
-    def load_parser(self):
-        parser = ConfigParser()
-        parser.read("Configuration/AnalysisConfig_" + self.TESTCAMPAIGN + ".cfg")
-        return parser
 
     def get_integral_names(self):
         names = OrderedDict()
@@ -435,6 +428,24 @@ class Analysis(Elementary):
 
     # ==============================================
     # region SHOW & PRINT
+
+    def draw_pix_map(self, n=1, start=None, plane=1):
+        start_event = self.StartEvent if start is None else start
+        h = TH2F('h', 'Pixel Map', 52, 0, 51, 80, 0, 79)
+        self.tree.GetEntry(start_event)
+        for pln, col, row, adc in zip(self.tree.plane, self.tree.col, self.tree.row, self.tree.adc):
+            if pln == plane:
+                h.SetBinContent(col + 1, row + 1, -adc)
+        c = TCanvas('c', 'Pixel Map', 1000, 1000)
+        c.SetBottomMargin(.15)
+        c.SetRightMargin(.14)
+        h.SetStats(0)
+        h.GetZaxis().SetTitle('adc [au]')
+        h.GetZaxis().SetTitleOffset(1.3)
+        self.format_histo(h, x_tit='col', y_tit='row')
+        h.Draw('colz')
+        self.histos[0] = [c, h]
+        self.save_plots('PixMapPlane{pln}{evts}'.format(pln=plane, evts=n), sub_dir=self.ana_save_dir, ch=None)
 
     def draw_preliminary(self):
         c = gROOT.GetListOfCanvases()[-1]
