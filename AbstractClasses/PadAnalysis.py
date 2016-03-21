@@ -1594,6 +1594,9 @@ if __name__ == "__main__":
     parser.add_argument('ch', nargs='?', default=0, type=int)
     args = parser.parse_args()
     test_run = args.run
-    print '\nAnalysing run', test_run, '\n'
+    message = 'STARTING PAD-ANALYSIS OF RUN {0}'.format(test_run)
+    print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(message)) * '=', msg=message)
+    a = Elementary()
+    a.print_testcampaign()
     z = SignalAnalysis(test_run, args.ch)
     z.print_elapsed_time(st, 'Instantiation')
