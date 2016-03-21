@@ -3,6 +3,7 @@
 # ==============================================
 from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie
 from TelescopeAnalysis import Analysis
+from Elementary import Elementary
 from CurrentInfo import Currents
 from numpy import array, mean
 from math import sqrt, ceil, log
@@ -442,8 +443,8 @@ class SignalAnalysis(Analysis):
             x = [h.GetBinCenter(max_bin + i) for i in [-7, 1]] if not pulser else [h.GetXaxis().GetXmin() + 1, h.GetXaxis().GetXmax() - 1]
             return h.Fit('gaus', 'qs{0}'.format('' if draw else '0'), '', x[0], x[1])
 
-        mean = func() if draw else 0
-        return self.do_pickle(pickle_path, func, mean)
+        mean_val = func() if draw else 0
+        return self.do_pickle(pickle_path, func, mean_val)
 
     def calc_peak_value_fwhm(self):
         pickle_path = self.PickleDir + 'PeakValues/FWHM_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
@@ -1033,6 +1034,8 @@ class SignalAnalysis(Analysis):
         """
         Shows the fraction of accepted pulser events as a function of event numbers. Peaks appearing in this graph are most likely beam interruptions.
         :param binning:
+        :param cut:
+        :param show:
         """
         gROOT.SetBatch(1)
         cut = '' if cut is None else cut
@@ -1061,6 +1064,7 @@ class SignalAnalysis(Analysis):
         """
         Shows the average pulse height as a function of event numbers.
         :param binning:
+        :param draw_opt:
         """
         nbins = self.run.n_entries / binning
         h = TProfile('h', 'Pulser Pulse Height', nbins, 0, self.run.n_entries)
@@ -1146,7 +1150,7 @@ class SignalAnalysis(Analysis):
     def draw_pulser_waveform(self, n=1, start_event=None, add_buckets=False, cut=None, fixed_range=None):
         cut = self.Cut.generate_pulser_cut() if cut is None else cut
         start = self.StartEvent + self.count if start_event is None else start_event + self.count
-        print 'Event number:', start
+        print 'Start at event number:', start
         cnt = self.draw_waveforms(n=n, start_event=start, add_buckets=add_buckets, cut_string=cut, ret_event=True, fixed_range=fixed_range)
         print cnt
         if cnt is None:
@@ -1217,6 +1221,7 @@ class SignalAnalysis(Analysis):
         :param show:
         :param ret_event: return number of valid events if True
         :param add_buckets: draw buckets and most probable peak values if True
+        :param fixed_range: fixes x-range to given value if set
         :return: histo with waveform
         """
         gROOT.SetBatch(1)
