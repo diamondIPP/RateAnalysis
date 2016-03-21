@@ -507,9 +507,9 @@ class Run(Elementary):
 
     def __load_rootfile(self):
         file_path = self.converter.get_final_file_path(self.run_number)
-        print "\nLoading information for rootfile: ", file_path.split('/')[-1]
+        print 'Loading information for rootfile: {file}'.format(file=file_path.split('/')[-1])
         self.rootfile = TFile(file_path)
-        self.tree = self.rootfile.Get(self.treename)  # Get TTree called "track_info"
+        self.tree = self.rootfile.Get(self.treename)
 
 
 if __name__ == "__main__":
