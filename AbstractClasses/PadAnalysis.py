@@ -1282,17 +1282,19 @@ class SignalAnalysis(Analysis):
         print 'Finding the correct number of events',
         n = mean([self.tree.Draw('1', cut, 'goff', n_events, start + i * n_events) for i in xrange(4)])
         new_events = n_events
-        ratio = n_events / float(n) if n else 5
-        last_diff = 0
+        ratio = n_events / n if n else 5
+        i = 0
         while n != n_events:
             diff = n_events - n
             # print n, diff, new_events
-            new_events += int(diff * ratio) if not last_diff == abs(diff) else int(diff * ratio / 3)
-            new_events += 1 if abs(diff) < 3 else 0
+            if i < 3:
+                new_events += int(diff * ratio)
+            else:
+                new_events += int(diff * ratio / i)
             print '\b.',
             stdout.flush()
             n = self.tree.Draw('1', cut, 'goff', new_events, start)
-            last_diff = diff
+            i += 1
         print
         return new_events
 
