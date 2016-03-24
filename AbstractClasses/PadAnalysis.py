@@ -420,7 +420,7 @@ class SignalAnalysis(Analysis):
         title = 'Peak Values {reg}'.format(reg=region)
         x = self.run.signal_regions[region] if type_ == 'signal' else self.run.get_regions('pulser')['pulser']
         h = TH1F('peakvalues', title, x[1] - x[0], x[0] / 2., x[1] / 2.)
-        self.format_histo(h, x_tit='time [ns]', y_tit='Entries', y_off=2)
+        self.format_histo(h, x_tit='time [ns]', y_tit='Entries', y_off=2, fill_color=17)
         cut = self.Cut.all_cut if type_ == 'signal' else '!({0})'.format(self.Cut.CutStrings['pulser'])
         cut = cut if ucut is None else ucut
         self.tree.Draw(peak_val + '/2.>>peakvalues', cut, 'goff')
