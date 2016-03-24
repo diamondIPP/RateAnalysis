@@ -246,7 +246,7 @@ class Elementary(object):
         return a
 
     @staticmethod
-    def format_histo(histo, name='', title='', x_tit='', y_tit='', marker=20, color=1, markersize=1, x_off=1, y_off=1, lw=1):
+    def format_histo(histo, name='', title='', x_tit='', y_tit='', marker=20, color=1, markersize=1, x_off=1, y_off=1, lw=1, fill_color=0):
         h = histo
         h.SetTitle(title) if title else h.SetTitle(h.GetTitle())
         h.SetName(name) if name else h.SetName(h.GetName())
@@ -258,6 +258,7 @@ class Elementary(object):
         h.GetXaxis().SetTitleOffset(x_off)
         h.GetYaxis().SetTitle(y_tit) if y_tit else h.GetYaxis().GetTitle()
         h.GetYaxis().SetTitleOffset(y_off)
+        h.SetFillColor(fill_color)
         h.SetLineWidth(lw)
 
     @staticmethod
