@@ -119,15 +119,6 @@ class Cut(Elementary):
         self.CutConfig['chi2X'] = self.ana_config_parser.getint('CUT', 'chi2X')
         self.CutConfig['chi2Y'] = self.ana_config_parser.getint('CUT', 'chi2Y')
         self.CutConfig['track_angle'] = self.ana_config_parser.getint('CUT', 'track_angle')
-        # pad cuts
-        if self.DUTType == 'pad':
-            self.CutConfig['spread_low'] = self.load_spread_low(self.ana_config_parser.getint('CUT', 'spread_low'))
-            self.CutConfig['absMedian_high'] = self.load_abs_median_high(self.ana_config_parser.getint('CUT', 'absMedian_high'))
-            self.CutConfig['pedestalsigma'] = self.load_pedestal_sigma(self.ana_config_parser.getint('CUT', 'pedestalsigma'))
-        # pixel cuts
-        else:
-            pass
-            # todo: cuts only for pixel, DA
 
     def load_event_range(self, event_range=None):
         """
