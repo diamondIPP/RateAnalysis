@@ -90,15 +90,19 @@ class Cut(Elementary):
         dic['raw'] = TCut('raw', '')
         dic['pulser'] = TCut('pulser', '')
         dic['event_range'] = TCut('event_range', '')
+        # waveform
         dic['beam_interruptions'] = TCut('beam_interruptions', '')
         dic['ped_sigma'] = TCut('ped_sigma', '')
         dic['spread_low'] = TCut('spread_low', '')
         dic['median'] = TCut('median', '')
+        # tracks
         dic['tracks'] = TCut('tracks', '')
         dic['chi2X'] = TCut('chi2X', '')
         dic['chi2Y'] = TCut('chi2Y', '')
         dic['track_angle'] = TCut('track_angle', '')
+        # waveform
         dic['saturated'] = TCut('saturated', '')
+        dic['signal_peak_pos'] = TCut('signal_peak_pos', '')
         dic['old_bucket'] = TCut('old_bucket', '')
         dic['bucket'] = TCut('bucket', '')
         dic['all_cuts'] = TCut('all_cuts', '')
