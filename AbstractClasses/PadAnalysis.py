@@ -41,6 +41,7 @@ class SignalAnalysis(Analysis):
 
         # names
         self.SignalName = self.get_signal_name(region=self.SignalRegion, peak_integral=self.PeakIntegral)
+        self.SignalNumber = self.get_signal_number(self.SignalRegion, self.PeakIntegral)
         self.PedestalName = self.get_pedestal_name(region=self.PedestalRegion, peak_int=self.PeakIntegral)
         self.PulserName = self.get_pulser_name()
 
