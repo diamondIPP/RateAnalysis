@@ -670,6 +670,29 @@ class SignalAnalysis(Analysis):
         gROOT.SetBatch(0)
         return h
 
+    def draw_signal_vs_peakpos(self, show=True):
+        gr = self.make_tgrapherrors('gr', 'Signal vs Peak Position')
+        i = 0
+        for peak_pos in xrange(120, 151):
+            print 'calculating peak pos:', peak_pos
+            self.Cut.add_signal_peak_pos_cut([peak_pos, peak_pos + 1])
+            events = self.tree.Draw('1', self.Cut.all_cut, 'goff')
+            print events
+            if events > 100:
+                ph_fit = self.draw_pulse_height(show=False, save_graph=True)
+                print ph_fit.Parameter(0)
+                gr.SetPoint(i, peak_pos, ph_fit.Parameter(0))
+                gr.SetPointError(i, 0, ph_fit.ParError(0))
+                i += 1
+        gROOT.SetBatch(1) if not show else self.do_nothing()
+        c = TCanvas('c', 'Signal Distribution', 1000, 1000)
+        c.SetLeftMargin(.11)
+        self.format_histo(gr, x_tit='Signal Peak Position', y_tit='Pulse Height [au]', y_off=1.2)
+        gr.Draw('alp')
+        self.save_plots('SignalVsPeakPos', sub_dir=self.save_dir)
+        self.histos[0] = [c, gr]
+        gROOT.SetBatch(0)
+
     def show_pedestal_histo(self, region='ab', peak_int='2', cut=None, fwhm=True, draw=True):
         cut = self.Cut.all_cut if cut is None else cut
         cut = TCut('', cut) if type(cut) is str else cut
