@@ -180,30 +180,6 @@ class Cut(Elementary):
         else:
             return -1
 
-    def set_spread_low(self, low):
-        self.CutConfig['spread_low'] = self.load_spread_low(low)
-
-    def load_abs_median_high(self, value):
-        if value > 0:
-            self.EasyCutStrings['absMedian_high'] = '|median|<{high}'.format(high=value)
-            return value
-        else:
-            return -1
-
-    def set_abs_median_high(self, high):
-        self.CutConfig['absMedian_high'] = self.load_abs_median_high(high)
-
-    def load_pedestal_sigma(self, value):
-        if value > 0:
-            self.EasyCutStrings['pedestalsigma'] = 'PedSigma' + str(value)
-            return value
-        else:
-            self.EasyCutStrings['pedestalsigma'] = ''
-            return -1
-
-    def set_pedestal_sigma(self, sigma=-1):
-        self.CutConfig['pedestalsigma'] = self.load_pedestal_sigma(sigma)
-
     # endregion
 
     def get_event_range(self):

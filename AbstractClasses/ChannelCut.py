@@ -33,6 +33,30 @@ class ChannelCut(Cut):
         self.CutConfig['spread_low'] = self.load_spread_low(self.ana_config_parser.getint('CUT', 'spread_low'))
         self.CutConfig['absMedian_high'] = self.load_abs_median_high(self.ana_config_parser.getint('CUT', 'absMedian_high'))
         self.CutConfig['pedestalsigma'] = self.load_pedestal_sigma(self.ana_config_parser.getint('CUT', 'pedestalsigma'))
+
+    def set_spread_low(self, low):
+        self.CutConfig['spread_low'] = self.load_spread_low(low)
+
+    def load_abs_median_high(self, value):
+        if value > 0:
+            self.EasyCutStrings['absMedian_high'] = '|median|<{high}'.format(high=value)
+            return value
+        else:
+            return -1
+
+    def set_abs_median_high(self, high):
+        self.CutConfig['absMedian_high'] = self.load_abs_median_high(high)
+
+    def load_pedestal_sigma(self, value):
+        if value > 0:
+            self.EasyCutStrings['pedestalsigma'] = 'PedSigma' + str(value)
+            return value
+        else:
+            self.EasyCutStrings['pedestalsigma'] = ''
+            return -1
+
+    def set_pedestal_sigma(self, sigma=-1):
+        self.CutConfig['pedestalsigma'] = self.load_pedestal_sigma(sigma)
     # region GENERATE CUT STRINGS
     def generate_region(self, signal_histo, mean_histo):
         extrema = Extrema2D(signal_histo, mean_histo)
