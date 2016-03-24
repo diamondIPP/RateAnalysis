@@ -57,6 +57,14 @@ class ChannelCut(Cut):
 
     def set_pedestal_sigma(self, sigma=-1):
         self.CutConfig['pedestalsigma'] = self.load_pedestal_sigma(sigma)
+
+    def set_peak_value_pos(self, vec):
+        assert type(vec) is list and len(vec) == 2, 'wrong peak_value_pos input: {0}, must be list with min and max!'.format(vec)
+        self.CutConfig['signal_peak_pos'] = vec
+        self.EasyCutStrings['SignalPeakPos'] = 'Signal Peak in {0}'.format(vec)
+    # endregion
+
+    # ==============================================
     # region GENERATE CUT STRINGS
     def generate_region(self, signal_histo, mean_histo):
         extrema = Extrema2D(signal_histo, mean_histo)
@@ -92,6 +100,17 @@ class ChannelCut(Cut):
             all_string += y_string
         self.region_cut += all_string
         return extrema
+
+    def generate_signal_peak_pos(self):
+        lst = self.CutConfig['signal_peak_pos']
+        if lst:
+            self.CutStrings['signal_peak_pos'] += 'IntegralPeaks[{num}] < {max} && IntegralPeaks[{num}] >= {min}'.format(num=self.analysis.SignalNumber, min=lst[0], max=lst[1])
+
+    def add_signal_peak_pos_cut(self, value=None):
+        self.set_peak_value_pos(value) if value is not None else self.do_nothing()
+        self.CutStrings['signal_peak_pos'] = TCut('signal_peak_pos', '')
+        self.generate_signal_peak_pos()
+        self.all_cut = self.generate_all_cut()
 
     def generate_old_bucket(self):
         sig2 = self.analysis.get_signal_name('e', 2)
