@@ -19,6 +19,8 @@ class ChannelCut(Cut):
         self.__dict__.update(analysis.Cut.__dict__)
         self.channel = channel
 
+        self.load_channel_config()
+
         self.PedestalFit = None
 
         self.generate_channel_cutstrings()
@@ -26,6 +28,11 @@ class ChannelCut(Cut):
         self.CutStrings['all_cuts'] = self.all_cut
 
     # ==============================================
+    # region GET CONFIG
+    def load_channel_config(self):
+        self.CutConfig['spread_low'] = self.load_spread_low(self.ana_config_parser.getint('CUT', 'spread_low'))
+        self.CutConfig['absMedian_high'] = self.load_abs_median_high(self.ana_config_parser.getint('CUT', 'absMedian_high'))
+        self.CutConfig['pedestalsigma'] = self.load_pedestal_sigma(self.ana_config_parser.getint('CUT', 'pedestalsigma'))
     # region GENERATE CUT STRINGS
     def generate_region(self, signal_histo, mean_histo):
         extrema = Extrema2D(signal_histo, mean_histo)
