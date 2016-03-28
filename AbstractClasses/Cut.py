@@ -103,6 +103,7 @@ class Cut(Elementary):
         # waveform
         dic['saturated'] = TCut('saturated', '')
         dic['signal_peak_pos'] = TCut('signal_peak_pos', '')
+        dic['trigger_cell'] = TCut('trigger_cell', '')
         dic['old_bucket'] = TCut('old_bucket', '')
         dic['bucket'] = TCut('bucket', '')
         dic['all_cuts'] = TCut('all_cuts', '')
