@@ -462,6 +462,34 @@ class SignalAnalysis(Analysis):
     # endregion
 
     # ==========================================================================
+    # region TRIGGER CELL
+    def draw_trigger_cell(self, show=True, cut=None):
+        h = TH1F('tc', 'Trigger Cell', 256, 0, 256)
+        cut = self.Cut.all_cut if cut is None else cut
+        self.tree.Draw('trigger_cell[{ch}]>>tc'.format(ch=self.channel), cut, 'goff')
+        self.format_histo(h, x_tit='trigger cell', y_tit='#', y_off=1.7)
+        h.SetStats(0)
+        h.GetYaxis().SetRangeUser(0, h.GetMaximum() * 1.05)
+        self.histos.append(self.draw_histo(h, 'TriggerCell', show, self.save_dir, lm=.11))
+
+    def draw_trigger_cell_vs_peakpos(self, show=True, cut=None, tprofile=True):
+        x = self.run.signal_regions[self.SignalRegion]
+        if not tprofile:
+            h = TH2D('tcpp', 'Trigger Cell vs. Signal Peak Position', 256, 0, 256, x[1] - x[0], x[0] / 2., x[1] / 2.)
+        else:
+            h = TProfile2D('tcpp', 'Trigger Cell vs. Signal Peak Position', 256, 0, 256, x[1] - x[0], x[0] / 2., x[1] / 2.)
+        cut = self.Cut.all_cut if cut is None else cut
+        prof = '' if not tprofile else ':'
+        sig = '' if not tprofile else self.SignalName
+        gStyle.SetPalette(55)
+        self.tree.Draw('{z}{prof}IntegralPeaks[{num}]/2.:trigger_cell[{ch}]>>tcpp'.format(ch=self.channel, num=self.SignalNumber, z=sig, prof=prof), cut, 'goff')
+        self.format_histo(h, x_tit='trigger cell', y_tit='signal peak pos [ns]', y_off=1.4)
+        h.SetStats(0)
+        self.histos.append(self.draw_histo(h, 'TriggerCellVsPeakPos', show, self.save_dir, lm=.11, draw_opt='colz', rm=.11))
+
+    # endregion
+
+    # ==========================================================================
     # region SIGNAL/PEDESTAL
     def __generate_signal_name(self, signal, evnt_corr, off_corr, bin_corr, cut=None):
         sig_name = signal
