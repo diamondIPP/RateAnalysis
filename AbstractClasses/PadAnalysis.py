@@ -1,7 +1,7 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie
+from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie, THStack
 from TelescopeAnalysis import Analysis
 from Elementary import Elementary
 from CurrentInfo import Currents
@@ -411,7 +411,7 @@ class SignalAnalysis(Analysis):
     # endregion
 
     # ==========================================================================
-    # region PEAK VALUES
+    # region SIGNAL PEAK POSITION
     def draw_peak_values(self, region=None, type_='signal', draw=True, ucut=None):
         num = self.get_signal_number('b', '2') if region is None else self.get_signal_number(region=region, sig_type=type_)
         region = 'b' if region is None else region
@@ -592,7 +592,8 @@ class SignalAnalysis(Analysis):
                         gr.SetPointError(count, 0, mpverr)
                 else:
                     empty_bins += 1
-            print 'Empty proj. bins:\t', str(empty_bins) + '/' + str(self.n_bins)
+            if empty_bins:
+                print 'Empty proj. bins:\t', str(empty_bins) + '/' + str(self.n_bins)
             if show:
                 gROOT.SetBatch(0)
             c = TCanvas('bla', 'blub', 1000, 1000)
@@ -649,7 +650,6 @@ class SignalAnalysis(Analysis):
         self.histos[1] = [c]
 
     def show_signal_histo(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None, binning=350, events=None, start=None):
-        gROOT.SetBatch(1)
         print 'drawing signal distribution for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name)
         suffix = 'with Pedestal Correction' if evnt_corr else ''
         h = TH1F('signal b2', 'Pulse Height ' + suffix, binning, -50, 300)
@@ -686,6 +686,7 @@ class SignalAnalysis(Analysis):
                 gr.SetPoint(i, peak_pos, ph_fit.Parameter(0))
                 gr.SetPointError(i, 0, ph_fit.ParError(0))
                 i += 1
+        gStyle.SetPalette(55)
         gROOT.SetBatch(1) if not show else self.do_nothing()
         c = TCanvas('c', 'Signal Distribution', 1000, 1000)
         c.SetLeftMargin(.11)
@@ -696,6 +697,24 @@ class SignalAnalysis(Analysis):
         gROOT.SetBatch(0)
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
 
+    def draw_landau_vs_peakpos(self, show=True):
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        hs = THStack('lpp', 'Landau vs. Signal Peak Postion;pulse height;#')
+        for peak_pos in xrange(120, 151):
+            print '\rcalculating peak pos: {0:03d}'.format(peak_pos),
+            self.Cut.add_signal_peak_pos_cut([peak_pos, peak_pos + 1])
+            events = self.tree.Draw('1', self.Cut.all_cut, 'goff')
+            print '({0:05d})'.format(events),
+            stdout.flush()
+            if events > 500:
+                h = self.show_signal_histo(show=False)
+                h.SetLineColor(self.get_color())
+                h.Scale(1/h.GetMaximum())
+                hs.Add(h)
+        gStyle.SetPalette(55)
+        self.format_histo(hs, y_tit='Pulse Height [au]', y_off=1.2)
+        self.histos.append(self.draw_histo(hs, 'SignalVsTriggerCell', show, self.save_dir, lm=.11, draw_opt='nostack'))
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
     def show_pedestal_histo(self, region='ab', peak_int='2', cut=None, fwhm=True, draw=True):
         cut = self.Cut.all_cut if cut is None else cut
         cut = TCut('', cut) if type(cut) is str else cut
