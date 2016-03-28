@@ -264,6 +264,16 @@ class Elementary(object):
         except AttributeError or ReferenceError:
             pass
 
+    def draw_histo(self, histo, save_name, show, save_dir, lm=.1, rm=0.1, draw_opt='', x=2000, y=2000):
+        h = histo
+        gROOT.SetBatch(1) if not show else self.do_nothing()
+        c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x, y)
+        c.SetMargin(lm, rm, .15, .1)
+        h.Draw(draw_opt)
+        self.save_plots(save_name, sub_dir=save_dir)
+        gROOT.SetBatch(0)
+        return [c, h]
+
     @staticmethod
     def make_tlatex(x, y, text, align=20, color=1, size=.05):
         l = TLatex(x, y, text)
