@@ -688,14 +688,13 @@ class SignalAnalysis(Analysis):
         n_events = self.find_n_events(n_events=events, cut=str(cut), start=start_event) if events is not None else self.run.n_entries
         self.tree.Draw('{name}>>signal b2'.format(name=sig_name), str(cut), 'goff', n_events, start_event)
         if show:
+            c = TCanvas('c', 'Signal Distribution', 1000, 1000)
+            c.SetLeftMargin(.13)
+            self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.8)
+            h.Draw()
+            self.save_plots('SignalDistribution', sub_dir=self.save_dir)
+            self.histos[0] = [c, h]
             gROOT.SetBatch(0)
-        c = TCanvas('c', 'Signal Distribution', 1000, 1000)
-        c.SetLeftMargin(.13)
-        self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.8)
-        h.Draw()
-        self.save_plots('SignalDistribution', sub_dir=self.save_dir)
-        self.histos[0] = [c, h]
-        gROOT.SetBatch(0)
         return h
 
     def draw_signal_vs_peakpos(self, show=True):
