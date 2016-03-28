@@ -10,7 +10,7 @@ from datetime import datetime
 from ConfigParser import ConfigParser
 
 import ROOT
-from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath
+from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas
 
 
 class Elementary(object):
@@ -250,16 +250,19 @@ class Elementary(object):
         h = histo
         h.SetTitle(title) if title else h.SetTitle(h.GetTitle())
         h.SetName(name) if name else h.SetName(h.GetName())
-        h.SetMarkerStyle(marker)
-        h.SetMarkerColor(color) if color is not None else h.SetMarkerColor(h.GetMarkerColor())
-        h.SetLineColor(color) if color is not None else h.SetLineColor(h.GetLineColor())
-        h.SetMarkerSize(markersize)
-        h.GetXaxis().SetTitle(x_tit) if x_tit else h.GetXaxis().GetTitle()
-        h.GetXaxis().SetTitleOffset(x_off)
-        h.GetYaxis().SetTitle(y_tit) if y_tit else h.GetYaxis().GetTitle()
-        h.GetYaxis().SetTitleOffset(y_off)
-        h.SetFillColor(fill_color)
-        h.SetLineWidth(lw)
+        try:
+            h.SetMarkerStyle(marker)
+            h.SetMarkerColor(color) if color is not None else h.SetMarkerColor(h.GetMarkerColor())
+            h.SetLineColor(color) if color is not None else h.SetLineColor(h.GetLineColor())
+            h.SetMarkerSize(markersize)
+            h.SetFillColor(fill_color)
+            h.SetLineWidth(lw)
+            h.GetXaxis().SetTitle(x_tit) if x_tit else h.GetXaxis().GetTitle()
+            h.GetXaxis().SetTitleOffset(x_off)
+            h.GetYaxis().SetTitle(y_tit) if y_tit else h.GetYaxis().GetTitle()
+            h.GetYaxis().SetTitleOffset(y_off)
+        except AttributeError or ReferenceError:
+            pass
 
     @staticmethod
     def make_tlatex(x, y, text, align=20, color=1, size=.05):
