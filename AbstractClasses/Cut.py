@@ -48,7 +48,7 @@ class Cut(Elementary):
     def generate_all_cut(self):
         cut = TCut('all_cuts', '')
         for key, value in self.CutStrings.iteritems():
-            if not key.startswith('old'):
+            if not key.startswith('old') and not key.startswith('all_cut'):
                 cut += value
         return cut
 
@@ -431,6 +431,13 @@ class Cut(Elementary):
         if string_ != "":
             string_ = string_[:-2]
         return string_
+
+    def reset_cut(self, name):
+        if name in self.CutStrings:
+            self.CutStrings[name].SetTitle('')
+        else:
+            print 'There is no cut with the name "{name}"!'.format(name=name)
+        self.all_cut = self.generate_all_cut()
 
     def show_cuts(self, easy=True):
         cuts = self.EasyCutStrings if easy else self.CutStrings
