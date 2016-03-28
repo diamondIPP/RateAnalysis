@@ -742,6 +742,23 @@ class SignalAnalysis(Analysis):
         self.format_histo(hs, y_tit='Pulse Height [au]', y_off=1.2)
         self.histos.append(self.draw_histo(hs, 'SignalVsTriggerCell', show, self.save_dir, lm=.11, draw_opt='nostack'))
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+
+    def draw_signal_vs_triggercell(self, show=True, bins=1):
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        gr = self.make_tgrapherrors('stc', 'Signal vs Trigger Cell')
+        i = 0
+        for tc in xrange(0, 256 - bins, bins):
+            print '\rcalculating pulse height for trigger cell: {0:03d}'.format(tc),
+            self.Cut.add_trigger_cell_cut(tc, tc + bins)
+            stdout.flush()
+            ph_fit = self.draw_pulse_height(show=False, save_graph=True)
+            gr.SetPoint(i, tc, ph_fit.Parameter(0))
+            gr.SetPointError(i, 0, ph_fit.ParError(0))
+            i += 1
+        self.format_histo(gr, x_tit='Signal Peak Position', y_tit='Pulse Height [au]', y_off=1.2)
+        self.histos.append(self.draw_histo(gr, 'SignalVsTriggerCell', show, self.save_dir, lm=.11, draw_opt='alp'))
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+
     def show_pedestal_histo(self, region='ab', peak_int='2', cut=None, fwhm=True, draw=True):
         cut = self.Cut.all_cut if cut is None else cut
         cut = TCut('', cut) if type(cut) is str else cut
