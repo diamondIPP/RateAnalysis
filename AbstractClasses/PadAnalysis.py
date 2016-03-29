@@ -412,33 +412,28 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region SIGNAL PEAK POSITION
-    def draw_peak_values(self, region=None, type_='signal', draw=True, ucut=None):
-        num = self.get_signal_number('b', '2') if region is None else self.get_signal_number(region=region, sig_type=type_)
-        region = 'b' if region is None else region
+    def draw_peak_position(self, region=None, type_='signal', show=True, ucut=None):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        num = self.SignalNumber if region is None else self.get_signal_number(region=region, sig_type=type_)
+        region = self.SignalRegion if region is None else region
         peak_val = 'IntegralPeaks[{num}]'.format(num=num)
-        title = 'Peak Values {reg}'.format(reg=region)
+        title = '{typ} Peak Positions'.format(typ=type_.title())
         x = self.run.signal_regions[region] if type_ == 'signal' else self.run.get_regions('pulser')['pulser']
         h = TH1F('peakvalues', title, x[1] - x[0], x[0] / 2., x[1] / 2.)
         self.format_histo(h, x_tit='time [ns]', y_tit='Entries', y_off=2, fill_color=17)
         cut = self.Cut.all_cut if type_ == 'signal' else '!({0})'.format(self.Cut.CutStrings['pulser'])
         cut = cut if ucut is None else ucut
-        self.tree.Draw(peak_val + '/2.>>peakvalues', cut, 'goff')
-        if draw:
-            c = TCanvas('c', 'Signal Peak Distribution', 1000, 1000)
-            c.SetLeftMargin(0.14)
-            h.Draw()
-            self.save_plots('peak_values_{reg}{int}'.format(reg=region, int=self.PeakIntegral), 'png', canvas=c, sub_dir=self.save_dir)
-            self.histos[0] = c
-        self.PeakValues = h
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        self.tree.Draw(peak_val + '/2.>>peakvalues', cut, 'goff')
+        self.histos.append(self.draw_histo(h, '{typ}PeakPositions'.format(typ=type_.title()), show, self.save_dir, lm=.14))
+        self.PeakValues = h
 
     def fit_peak_values(self, draw=True, pulser=False):
         pickle_path = self.PickleDir + 'PeakValues/Fit_{tc}_{run}_{dia}{pul}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name, pul='_pulser' if pulser else '')
 
         def func():
             print 'Getting peak value fit for {dia} of run {run}...'.format(run=self.run_number, dia=self.diamond_name)
-            self.draw_peak_values(draw=draw) if not pulser else self.draw_pulser_peakvalues(draw=draw)
+            self.draw_peak_position(show=draw) if not pulser else self.draw_pulser_peakvalues(draw=draw)
             h = self.PeakValues
             max_bin = h.GetMaximumBin()
             x = [h.GetBinCenter(max_bin + i) for i in [-7, 1]] if not pulser else [h.GetXaxis().GetXmin() + 1, h.GetXaxis().GetXmax() - 1]
@@ -453,7 +448,7 @@ class SignalAnalysis(Analysis):
         def func():
             print 'Getting peak value FWHM for {dia} of run {run}...'.format(run=self.run_number, dia=self.diamond_name)
             if self.PeakValues is None:
-                self.draw_peak_values(draw=False)
+                self.draw_peak_position(show=False)
             return self.calc_fwhm(self.PeakValues)
 
         fwhm = self.do_pickle(pickle_path, func)
@@ -1210,7 +1205,7 @@ class SignalAnalysis(Analysis):
         return self.do_pickle(pickle_path, func, fit)
 
     def draw_pulser_peakvalues(self, draw=True):
-        self.draw_peak_values('', 'pulser', ucut=self.Cut.generate_pulser_cut(), draw=draw)
+        self.draw_peak_position('', 'pulser', ucut=self.Cut.generate_pulser_cut(), show=draw)
 
     def show_pulser_pedestal(self, show=True):
         return z.show_pedestal_histo(cut=self.Cut.generate_pulser_cut(), draw=show)
