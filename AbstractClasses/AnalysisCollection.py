@@ -847,4 +847,8 @@ if __name__ == "__main__":
     diamond = args.dia
     sel = RunSelection()
     sel.select_runs_from_runplan(run_plan)
+    message = 'STARTING PAD-ANALYSIS COLLECTION OF RUNPLAN {0:02d}'.format(run_plan)
+    print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(message)) * '=', msg=message)
+    a = Elementary()
+    a.print_testcampaign()
     z = AnalysisCollection(sel, diamond)
