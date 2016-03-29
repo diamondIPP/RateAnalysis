@@ -485,12 +485,13 @@ class SignalAnalysis(Analysis):
             h = TProfile2D('tcpp', 'Trigger Cell vs. Signal Peak Position', 256, 0, 256, x[1] - x[0], x[0] / 2., x[1] / 2.)
         cut = self.Cut.all_cut if cut is None else cut
         prof = '' if not tprofile else ':'
-        sig = '' if not tprofile else self.SignalName
+        sig = '' if not tprofile else '{sig}-{ped}'.format(sig=self.SignalName, ped=self.PedestalName)
         gStyle.SetPalette(55)
         self.tree.Draw('{z}{prof}IntegralPeaks[{num}]/2.:trigger_cell[{ch}]>>tcpp'.format(ch=self.channel, num=self.SignalNumber, z=sig, prof=prof), cut, 'goff')
-        self.format_histo(h, x_tit='trigger cell', y_tit='signal peak pos [ns]', y_off=1.4)
+        self.format_histo(h, x_tit='trigger cell', y_tit='signal peak pos [ns]', y_off=1.4, z_tit='pulse height [au]' if tprofile else 'entries', z_off=1.2)
+        h.GetZaxis().SetRangeUser(60, 120) if tprofile else self.do_nothing()
         h.SetStats(0)
-        self.histos.append(self.draw_histo(h, 'TriggerCellVsPeakPos', show, self.save_dir, lm=.11, draw_opt='colz', rm=.11))
+        self.histos.append(self.draw_histo(h, 'TriggerCellVsPeakPos{0}'.format('Signal' if tprofile else ''), show, self.save_dir, lm=.11, draw_opt='colz', rm=.15))
 
     # endregion
 
