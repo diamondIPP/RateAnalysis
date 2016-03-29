@@ -704,30 +704,26 @@ class SignalAnalysis(Analysis):
         return h
 
     def draw_signal_vs_peakpos(self, show=True):
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         gr = self.make_tgrapherrors('gr', 'Signal vs Peak Position')
         i = 0
-        for peak_pos in xrange(120, 151):
+        x = self.run.signal_regions[self.SignalRegion]
+        self.draw_peak_position(show=False)
+        h = self.PeakValues
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        for peak_pos in xrange(x[0] + 2, x[1] - 2):
             print '\rcalculating peak pos: {0:03d}'.format(peak_pos),
-            self.Cut.add_signal_peak_pos_cut([peak_pos, peak_pos + 1])
-            events = self.tree.Draw('1', self.Cut.all_cut, 'goff')
-            print '({0:5d})'.format(events),
+            self.Cut.add_signal_peak_pos_cut(peak_pos, peak_pos + 1)
+            events = int(h.GetBinContent(h.FindBin(peak_pos / 2.)))
+            print '({0:05d})'.format(events),
             stdout.flush()
             if events > 500:
                 ph_fit = self.draw_pulse_height(show=False, save_graph=True)
-                print ph_fit.Parameter(0)
-                gr.SetPoint(i, peak_pos, ph_fit.Parameter(0))
+                gr.SetPoint(i, peak_pos / 2., ph_fit.Parameter(0))
                 gr.SetPointError(i, 0, ph_fit.ParError(0))
                 i += 1
-        gStyle.SetPalette(55)
-        gROOT.SetBatch(1) if not show else self.do_nothing()
-        c = TCanvas('c', 'Signal Distribution', 1000, 1000)
-        c.SetLeftMargin(.11)
-        self.format_histo(gr, x_tit='Signal Peak Position', y_tit='Pulse Height [au]', y_off=1.2)
-        gr.Draw('alp')
-        self.save_plots('SignalVsPeakPos', sub_dir=self.save_dir)
-        self.histos[0] = [c, gr]
-        gROOT.SetBatch(0)
+        gr.GetXaxis().SetLimits(x[0] / 2., x[1] / 2.)
+        self.format_histo(gr, x_tit='Signal Peak Position [ns]', y_tit='Pulse Height [au]', y_off=1.4)
+        self.histos.append(self.draw_histo(gr, 'SignalVsPeakPos', show, self.save_dir, lm=.11, draw_opt='alp'))
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
 
     def draw_landau_vs_peakpos(self, show=True):
