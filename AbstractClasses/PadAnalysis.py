@@ -471,9 +471,10 @@ class SignalAnalysis(Analysis):
         h = TH1F('tc', 'Trigger Cell', 256, 0, 256)
         cut = self.Cut.all_cut if cut is None else cut
         self.tree.Draw('trigger_cell[{ch}]>>tc'.format(ch=self.channel), cut, 'goff')
-        self.format_histo(h, x_tit='trigger cell', y_tit='#', y_off=1.7)
+        self.format_histo(h, x_tit='trigger cell', y_tit='Entries', y_off=1.7, fill_color=17)
         h.SetStats(0)
         h.GetYaxis().SetRangeUser(0, h.GetMaximum() * 1.05)
+        h.Fit('pol0', 'qs')
         self.histos.append(self.draw_histo(h, 'TriggerCell', show, self.save_dir, lm=.11))
 
     def draw_trigger_cell_vs_peakpos(self, show=True, cut=None, tprofile=True):
