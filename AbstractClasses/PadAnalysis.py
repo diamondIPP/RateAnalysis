@@ -726,24 +726,32 @@ class SignalAnalysis(Analysis):
         self.histos.append(self.draw_histo(gr, 'SignalVsPeakPos', show, self.save_dir, lm=.11, draw_opt='alp'))
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
 
-    def draw_landau_vs_peakpos(self, show=True):
+    def draw_landau_vs_peakpos(self, show=True, bins=2):
+        hs = THStack('lpp', 'Landau vs. Signal Peak Postion;pulse height;entries')
+        x = self.run.signal_regions[self.SignalRegion]
+        self.Cut.reset_cut('signal_peak_pos')
+        self.draw_peak_position(show=False)
+        h_pv = self.PeakValues
+        l = TLegend(.7, .38, .90, .88)
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        hs = THStack('lpp', 'Landau vs. Signal Peak Postion;pulse height;#')
-        for peak_pos in xrange(120, 151):
+        for peak_pos in xrange(x[0] + 2, x[1] - 2, bins):
             print '\rcalculating peak pos: {0:03d}'.format(peak_pos),
-            self.Cut.add_signal_peak_pos_cut([peak_pos, peak_pos + 1])
-            events = self.tree.Draw('1', self.Cut.all_cut, 'goff')
+            self.Cut.add_signal_peak_pos_cut(peak_pos, peak_pos + bins)
+            events = 0
+            for pp in xrange(peak_pos, peak_pos + bins):
+                events += int(h_pv.GetBinContent(h_pv.FindBin(peak_pos / 2.)))
             print '({0:05d})'.format(events),
             stdout.flush()
-            if events > 500:
-                h = self.show_signal_histo(show=False)
+            if events > 10000:
+                h = self.show_signal_histo(show=False, binning=100)
                 h.SetLineColor(self.get_color())
-                h.Scale(1/h.GetMaximum())
+                h.Scale(1 / h.GetMaximum())
+                l.AddEntry(h, '[{0},{1}]'.format(peak_pos, peak_pos + bins), 'l')
                 hs.Add(h)
-        gStyle.SetPalette(55)
-        self.format_histo(hs, y_tit='Pulse Height [au]', y_off=1.2)
-        self.histos.append(self.draw_histo(hs, 'SignalVsTriggerCell', show, self.save_dir, lm=.11, draw_opt='nostack'))
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        self.reset_colors()
+        self.format_histo(hs, y_tit='Pulse Height [au]', y_off=1.2)
+        self.histos.append(self.draw_histo(hs, 'LandauVsPeakPos', show, self.save_dir, lm=.11, draw_opt='nostack', l=l))
 
     def draw_signal_vs_triggercell(self, show=True, bins=1):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
