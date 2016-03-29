@@ -261,18 +261,21 @@ class Elementary(object):
             h.GetXaxis().SetTitleOffset(x_off)
             h.GetYaxis().SetTitle(y_tit) if y_tit else h.GetYaxis().GetTitle()
             h.GetYaxis().SetTitleOffset(y_off)
+            h.GetZaxis().SetTitle(z_tit) if z_tit else h.GetZaxis().GetTitle()
+            h.GetZaxis().SetTitleOffset(z_off)
         except AttributeError or ReferenceError:
             pass
 
-    def draw_histo(self, histo, save_name, show, save_dir, lm=.1, rm=0.1, draw_opt='', x=2000, y=2000):
+    def draw_histo(self, histo, save_name, show, save_dir, lm=.1, rm=0.1, draw_opt='', x=1000, y=1000, l=None):
         h = histo
         gROOT.SetBatch(1) if not show else self.do_nothing()
         c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x, y)
         c.SetMargin(lm, rm, .15, .1)
         h.Draw(draw_opt)
+        l.Draw() if l is not None else self.do_nothing()
         self.save_plots(save_name, sub_dir=save_dir)
         gROOT.SetBatch(0)
-        return [c, h]
+        return [c, h, l] if l is not None else [c, h]
 
     @staticmethod
     def make_tlatex(x, y, text, align=20, color=1, size=.05):
