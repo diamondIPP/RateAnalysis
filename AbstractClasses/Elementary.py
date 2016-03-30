@@ -6,6 +6,7 @@ from copy import deepcopy
 from glob import glob
 from shutil import copyfile
 from time import time
+from datetime import datetime
 from ConfigParser import ConfigParser
 
 import ROOT
@@ -25,18 +26,17 @@ class Elementary(object):
         self.verbose = verbose
         self.save_directory = self.get_program_dir() + 'Results/'
 
-        if self.TESTCAMPAIGN is None:
-            self.set_test_campaign(self.default_testcampaign)
-        #Read configuration files
-        self.ana_config_parser = self.load_ana_config()
+        self.set_test_campaign(self.default_testcampaign)
+
+        # read configuration files
         self.run_config_parser = self.load_run_config()
+        self.ana_config_parser = self.load_ana_config()
 
         self.aimedFluxes = [3, 20, 60, 600, 2000, 5000]
         # colors
         self.count = 0
         self.colors = self.create_colorlist()
         # self.channel = None
-
 
     def load_run_config(self):
         run_parser = ConfigParser()
@@ -171,8 +171,12 @@ class Elementary(object):
         if not str(campaign) in campaigns:
             print 'This Testcampaign does not exist yet! Use create_new_testcampaign!\nExisting campaigns: {camp}'.format(camp=campaigns)
             return
-        Elementary.TESTCAMPAIGN = str(campaign)
-        print 'Testcampaign set to: {tc} '.format(tc=campaign)
+        if Elementary.TESTCAMPAIGN is None:
+            Elementary.TESTCAMPAIGN = str(campaign)
+
+    def print_testcampaign(self):
+        tc = datetime.strptime(self.TESTCAMPAIGN, '%Y%m')
+        print 'TESTCAMPAIGN:', tc.strftime('%b %Y')
 
     @classmethod
     def find_test_campaigns(cls):
@@ -359,6 +363,10 @@ class Elementary(object):
     def find_graph_margins(graphs):
         extrema = [max([TMath.MaxElement(gr.GetN(), gr.GetY()) for gr in graphs]), min([TMath.MinElement(gr.GetN(), gr.GetY()) for gr in graphs])]
         return [extrema[1] - (extrema[0] - extrema[1]) * .1, extrema[0] + (extrema[0] - extrema[1]) * .1]
+
+    @staticmethod
+    def print_banner(msg, symbol='='):
+        print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * symbol, msg=msg)
 
 if __name__ == "__main__":
     z = Elementary()

@@ -1,11 +1,8 @@
 import os
 import pickle
 import json
-import ConfigParser
-from numpy import mean, array, zeros, arange, delete
-from AbstractClasses.Elementary import Elementary
-# from newAnalysis import Analysis
-# from signal_analysis import SignalAnalysis
+from numpy import array, zeros, arange, delete
+from Elementary import Elementary
 from ROOT import TCut, gROOT, TH1F
 from collections import OrderedDict
 
@@ -43,7 +40,6 @@ class Cut(Elementary):
             self.jumps = None
             self.jump_ranges = None
 
-            Elementary.__init__(self, verbose=verbose)
             self.load_config()
             # generate cut strings
             self.generate_cut_string()
@@ -99,7 +95,8 @@ class Cut(Elementary):
         dic['spread_low'] = TCut('spread_low', '')
         dic['median'] = TCut('median', '')
         dic['tracks'] = TCut('tracks', '')
-        dic['chi2'] = TCut('chi2', '')
+        dic['chi2X'] = TCut('chi2X', '')
+        dic['chi2Y'] = TCut('chi2Y', '')
         dic['track_angle'] = TCut('track_angle', '')
         dic['saturated'] = TCut('saturated', '')
         dic['old_bucket'] = TCut('old_bucket', '')
@@ -111,7 +108,7 @@ class Cut(Elementary):
     # region GET CONFIG
     
     def load_dut_type(self):
-        dut_type = self.run_config_parser.get("BASIC","type")
+        dut_type = self.run_config_parser.get("BASIC", "type")
         assert dut_type.lower() in ["pixel", "pad"], "The DUT type {0} should be 'pixel' or 'pad'".format(dut_type)
         return dut_type
 
@@ -119,14 +116,18 @@ class Cut(Elementary):
         self.CutConfig['IndividualChCut'] = ''
         self.CutConfig['ExcludeFirst'] = self.load_exclude_first(self.ana_config_parser.getint('CUT', 'excludefirst'))
         self.CutConfig['EventRange'] = self.load_event_range(json.loads(self.ana_config_parser.get('CUT', 'EventRange')))
-        self.CutConfig['chi2'] = self.ana_config_parser.getint('CUT', 'chi2')
+        self.CutConfig['chi2X'] = self.ana_config_parser.getint('CUT', 'chi2X')
+        self.CutConfig['chi2Y'] = self.ana_config_parser.getint('CUT', 'chi2Y')
         self.CutConfig['track_angle'] = self.ana_config_parser.getint('CUT', 'track_angle')
-        #cuts only for pad
-        if (self.DUTType == "pad"):
+        # pad cuts
+        if self.DUTType == 'pad':
             self.CutConfig['spread_low'] = self.load_spread_low(self.ana_config_parser.getint('CUT', 'spread_low'))
             self.CutConfig['absMedian_high'] = self.load_abs_median_high(self.ana_config_parser.getint('CUT', 'absMedian_high'))
             self.CutConfig['pedestalsigma'] = self.load_pedestal_sigma(self.ana_config_parser.getint('CUT', 'pedestalsigma'))
-        #cuts only for pixel TODO DA
+        # pixel cuts
+        else:
+            pass
+            # todo: cuts only for pixel, DA
 
     def load_event_range(self, event_range=None):
         """
@@ -242,25 +243,26 @@ class Cut(Elementary):
         elif self.CutConfig['ExcludeFirst']:
             self.CutStrings['event_range'] += 'event_number>={min}'.format(min=self.CutConfig['ExcludeFirst'])
 
-    def generate_chi2(self):
-        picklepath = 'Configuration/Individual_Configs/Chi2/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run.run_number)
+    def generate_chi2(self, mode='x'):
+        picklepath = 'Configuration/Individual_Configs/Chi2/{tc}_{run}_{mod}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run.run_number, mod=mode.title())
 
         def func():
-            print 'generating chi2 cut for run {run}...'.format(run=self.analysis.run_number)
+            print 'generating chi2 cut in {mod} for run {run}...'.format(run=self.analysis.run_number, mod=mode)
             gROOT.SetBatch(1)
             h = TH1F('h', '', 200, 0, 100)
             nq = 100
             chi2s = zeros(nq)
             xq = array([(i + 1) / float(nq) for i in range(nq)])
-            self.analysis.tree.Draw('chi2_tracks>>h', '', 'goff')
+            self.analysis.tree.Draw('chi2_{mod}>>h'.format(mod=mode), '', 'goff')
             h.GetQuantiles(nq, chi2s, xq)
             gROOT.SetBatch(0)
             return chi2s
 
         chi2 = self.do_pickle(picklepath, func)
-        assert type(self.CutConfig['chi2']) is int and 0 < self.CutConfig['chi2'] <= 100, 'chi2 quantile has to be and integer between 0 and 100'
-        string = 'chi2_tracks<{val}&&chi2_tracks>=0'.format(val=chi2[self.CutConfig['chi2']])
-        return string if self.CutConfig['chi2'] > 0 else ''
+        quantile = self.CutConfig['chi2{mod}'.format(mod=mode.title())]
+        assert type(quantile) is int and 0 < quantile <= 100, 'chi2 quantile has to be and integer between 0 and 100'
+        string = 'chi2_{mod}<{val}&&chi2_{mod}>=0'.format(val=chi2[quantile], mod=mode)
+        return string if quantile > 0 else ''
 
     def generate_slope(self):
         picklepath = 'Configuration/Individual_Configs/Slope/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.lowest_rate_run)
@@ -298,7 +300,8 @@ class Cut(Elementary):
         gROOT.SetBatch(1)
 
         # --TRACKS --
-        self.CutStrings['chi2'] += self.generate_chi2()
+        self.CutStrings['chi2X'] += self.generate_chi2('x')
+        self.CutStrings['chi2Y'] += self.generate_chi2('y')
         self.CutStrings['track_angle'] += self.generate_slope()
         self.CutStrings['tracks'] += 'n_tracks'
 
@@ -312,13 +315,9 @@ class Cut(Elementary):
         self.CutStrings['pulser'] += '!pulser'
 
         # -- BEAM INTERRUPTION CUT --
-        # Do beam interruptions cut only for pad, for now TODO DA
-        if (self.DUTType == "pad"):
-            self.__generate_beam_interruptions()
+        self.__generate_beam_interruptions()
         self.EasyCutStrings['noBeamInter'] = 'BeamOn'
-        # Do this only fo pad, for now. TODO DA
-        if (self.DUTType == "pad"):
-            self.generate_jump_cut()
+        self.generate_jump_cut()
 
         gROOT.SetBatch(0)
 
@@ -357,18 +356,20 @@ class Cut(Elementary):
         self.JumpCut += cut_string
 
     def find_beam_interruptions(self):
+        return self.find_pad_beam_interruptions() if self.DUTType == 'pad' else self.find_pixel_beam_interruptions()
+
+    def find_pad_beam_interruptions(self):
         """
-        Looking for the beam interruptions
+        Looking for the beam interruptions by investigating the pulser rate.
         :return: interrupt list
         """
         print 'Searching for beam interruptions...'
-        binning = 100
+        binning = 200
         nbins = int(self.analysis.run.tree.GetEntries()) / binning
         rate = []
         for i in xrange(nbins):
-            pulserevents = self.analysis.run.tree.Draw("1", "pulser", "goff", binning, i * binning)
+            pulserevents = self.analysis.run.tree.Draw('1', 'pulser', 'goff', binning, i * binning)
             rate.append(100 * pulserevents / binning)
-        mean_rate = mean(rate)
         interrupts = []
         last_rate = 0
         tup = [0, 0]
@@ -383,15 +384,19 @@ class Cut(Elementary):
             last_rate = value
         return interrupts
 
+    def find_pixel_beam_interruptions(self):
+        # todo DA, just return the same format as find_pad_beam_interruptions does
+        pass
+
     def __save_beaminterrupts(self):
         # check if directories exist
         if not os.path.exists(self.beaminterruptions_folder):
             os.mkdir(self.beaminterruptions_folder)
-        if not os.path.exists(self.beaminterruptions_folder + "/data"):
-            os.mkdir(self.beaminterruptions_folder + "/data")
+        if not os.path.exists(self.beaminterruptions_folder + '/data'):
+            os.mkdir(self.beaminterruptions_folder + '/data')
 
         # save jump list to file
-        jumpfile = open(self.beaminterruptions_folder + "/data/{testcampaign}Run_{run}.pickle".format(testcampaign=self.TESTCAMPAIGN, run=self.analysis.run.run_number), "wb")
+        jumpfile = open(self.beaminterruptions_folder + '/data/{testcampaign}Run_{run}.pickle'.format(testcampaign=self.TESTCAMPAIGN, run=self.analysis.run.run_number), 'wb')
         pickle.dump(self.jumps, jumpfile)
         jumpfile.close()
 
@@ -432,15 +437,13 @@ class Cut(Elementary):
         if self.jump_ranges is None:
             jumps_pickle = self.beaminterruptions_folder + "/data/{testcampaign}Run_{run}.pickle".format(testcampaign=self.TESTCAMPAIGN, run=self.analysis.run.run_number)
             range_pickle = self.beaminterruptions_folder + "/data/{testcampaign}_{run}_Jump_Ranges.pickle".format(testcampaign=self.TESTCAMPAIGN, run=self.analysis.run.run_number)
-            #DO THIS ANALYSIS FOR PAD ONLY, FOR NOW TODO DA
-            if (self.DUTType == "pad"):
-                self.jumps = self.do_pickle(jumps_pickle, self.find_beam_interruptions)
+            self.jumps = self.do_pickle(jumps_pickle, self.find_beam_interruptions)
+            ranges = self.do_pickle(range_pickle, self.__create_jump_ranges)
+            # redo range pickle if config parameters have changed
+            if ranges[0] != self.exclude_before_jump or ranges[1] != self.exclude_after_jump:
+                os.remove(range_pickle)
                 ranges = self.do_pickle(range_pickle, self.__create_jump_ranges)
-                # redo range pickle if config parameters have changed
-                if ranges[0] != self.exclude_before_jump or ranges[1] != self.exclude_after_jump:
-                    os.remove(range_pickle)
-                    ranges = self.do_pickle(range_pickle, self.__create_jump_ranges)
-                self.jump_ranges = ranges[2]
+            self.jump_ranges = ranges[2]
         return self.jumps
     # endregion
 

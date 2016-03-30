@@ -1,7 +1,6 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-import ROOT
 import json
 import re
 from Elementary import Elementary
@@ -108,7 +107,7 @@ class Run(Elementary):
             self.n_entries = int(self.endEvent + 1)
             
             # region info
-            if (self.DUTType == "pad"):
+            if self.DUTType == 'pad':
                 self.region_information = self.load_regions()
                 self.pedestal_regions = self.get_regions('pedestal')
                 self.signal_regions = self.get_regions('signal')
@@ -142,13 +141,12 @@ class Run(Elementary):
         return bias
     
     def load_dut_type(self):
-        _type = self.run_config_parser.get("BASIC","type")
+        _type = self.run_config_parser.get('BASIC', 'type')
         assert _type.lower() in ["pixel", "pad"], "The DUT type {0} should be 'pixel' or 'pad'".format(_type)
         return _type
 
     def load_regions(self):
-        root_file = TFile(self.converter.get_root_file_path(self.run_number))
-        macro = root_file.Get('region_information')
+        macro = self.rootfile.Get('region_information')
         return macro.GetListOfLines()
 
     def load_run_info(self):
@@ -222,9 +220,7 @@ class Run(Elementary):
 
         # check for conversion
         if load_root_file:
-            location = self.converter.find_root_file(run_number)
-            if not location or location == 'tracking':
-                self.converter.convert_run(self.RunInfo, run_number)
+            self.converter.convert_run(self.RunInfo, run_number)
             self.__load_rootfile()
 
         return True
@@ -504,10 +500,10 @@ class Run(Elementary):
     # endregion
 
     def __load_rootfile(self):
-        file_path = self.converter.get_tracking_file_path(self.run_number) if self.converter.do_tracking else self.converter.get_root_file_path(self.run_number)
-        print "\nLoading information for rootfile: ", file_path.split('/')[-1]
-        self.rootfile = ROOT.TFile(file_path)
-        self.tree = self.rootfile.Get(self.treename)  # Get TTree called "track_info"
+        file_path = self.converter.get_final_file_path(self.run_number)
+        print 'Loading information for rootfile: {file}'.format(file=file_path.split('/')[-1])
+        self.rootfile = TFile(file_path)
+        self.tree = self.rootfile.Get(self.treename)
 
 
 if __name__ == "__main__":

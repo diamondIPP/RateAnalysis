@@ -1,4 +1,3 @@
-from ConfigParser import ConfigParser
 from argparse import ArgumentParser
 from collections import OrderedDict
 from copy import deepcopy
@@ -48,6 +47,9 @@ class Analysis(Elementary):
         self.PickleDir = self.get_program_dir() + self.ana_config_parser.get('SAVE', 'pickle_dir')
         # self.saveMCData = self.ana_config_parser.getboolean("SAVE", "SaveMCData")
         self.ana_save_dir = '{tc}_{run}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run.run_number)
+
+        # DUT
+        self.DUTType = self.run.DUTType
         
         # tree
         self.tree = self.run.tree
@@ -56,18 +58,17 @@ class Analysis(Elementary):
         self.channel = self.channel if hasattr(self, 'channel') else None
 
         # regions // ranges // for PAD
-        if (self.run.DUTType == "pad"):
+        if self.DUTType == 'pad':
             self.IntegralNames = self.get_integral_names()
             self.SignalRegion = self.ana_config_parser.get('BASIC', 'signal_region')
             self.PedestalRegion = self.ana_config_parser.get('BASIC', 'pedestal_region')
             self.PeakIntegral = self.ana_config_parser.get('BASIC', 'peak_integral')
-            self.pedestalFitMean = {}
-        
+
         # general for pads and pixels
         self.Cut = Cut(self)
         self.StartEvent = self.Cut.CutConfig['EventRange'][0]
         self.EndEvent = self.Cut.CutConfig['EventRange'][1]
-        
+
         # save histograms // canvases
         self.signal_canvas = None
         self.histos = {}
@@ -356,22 +357,26 @@ class Analysis(Elementary):
         pickle_path = 'Configuration/Individual_Configs/Alignment/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run.run_number)
 
         def func():
-            gROOT.SetBatch(1)
-            nbins = self.run.n_entries / binning
-            h = TProfile('h', 'Pulser Rate', nbins, 0, self.run.n_entries)
-            self.tree.Draw('(@col.size()>1)*100:Entry$>>h', 'pulser', 'goff')
-            self.format_histo(h, name='align', title='Event Alignment', x_tit='Event Number', y_tit='Hits per Event @ Pulser Events [%]', y_off=1.3)
-            h.GetYaxis().SetRangeUser(0, 100)
-            if draw:
+            if self.DUTType == 'pad':
+                gROOT.SetBatch(1)
+                nbins = self.run.n_entries / binning
+                h = TProfile('h', 'Pulser Rate', nbins, 0, self.run.n_entries)
+                self.tree.Draw('(@col.size()>1)*100:Entry$>>h', 'pulser', 'goff')
+                self.format_histo(h, name='align', title='Event Alignment', x_tit='Event Number', y_tit='Hits per Event @ Pulser Events [%]', y_off=1.3)
+                h.GetYaxis().SetRangeUser(0, 100)
+                if draw:
+                    gROOT.SetBatch(0)
+                c = TCanvas('c', 'Pulser Rate Canvas', 1000, 1000)
+                h.SetStats(0)
+                h.Draw('hist')
+                self.save_plots('EventAlignment', sub_dir=self.ana_save_dir, ch=None)
                 gROOT.SetBatch(0)
-            c = TCanvas('c', 'Pulser Rate Canvas', 1000, 1000)
-            h.SetStats(0)
-            h.Draw('hist')
-            self.save_plots('EventAlignment', sub_dir=self.ana_save_dir, ch=None)
-            gROOT.SetBatch(0)
-            self.histos[0] = [h, c]
-            align = self.__check_alignment_histo(h)
-            return align
+                self.histos[0] = [h, c]
+                align = self.__check_alignment_histo(h)
+                return align
+            else:
+                # todo put some function for the pixel here!
+                pass
 
         aligned = func() if draw else self.do_pickle(pickle_path, func)
         if not aligned:
@@ -423,6 +428,24 @@ class Analysis(Elementary):
 
     # ==============================================
     # region SHOW & PRINT
+
+    def draw_pix_map(self, n=1, start=None, plane=1):
+        start_event = self.StartEvent if start is None else start
+        h = TH2F('h', 'Pixel Map', 52, 0, 51, 80, 0, 79)
+        self.tree.GetEntry(start_event)
+        for pln, col, row, adc in zip(self.tree.plane, self.tree.col, self.tree.row, self.tree.adc):
+            if pln == plane:
+                h.SetBinContent(col + 1, row + 1, -adc)
+        c = TCanvas('c', 'Pixel Map', 1000, 1000)
+        c.SetBottomMargin(.15)
+        c.SetRightMargin(.14)
+        h.SetStats(0)
+        h.GetZaxis().SetTitle('adc [au]')
+        h.GetZaxis().SetTitleOffset(1.3)
+        self.format_histo(h, x_tit='col', y_tit='row')
+        h.Draw('colz')
+        self.histos[0] = [c, h]
+        self.save_plots('PixMapPlane{pln}{evts}'.format(pln=plane, evts=n), sub_dir=self.ana_save_dir, ch=None)
 
     def draw_preliminary(self):
         c = gROOT.GetListOfCanvases()[-1]
