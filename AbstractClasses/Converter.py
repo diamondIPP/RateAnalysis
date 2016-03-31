@@ -25,12 +25,12 @@ def print_banner(message):
 # CLASS DEFINITION
 # ==============================================
 class Converter:
-    def __init__(self, test_campaign, dut_type):
+    def __init__(self, test_campaign):
 
         # main
         self.test_campaign = test_campaign
         self.parser = self.setup_configparser()
-        self.Type = dut_type
+        self.Type = self.parser.get('BASIC', 'type')
 
         # tracking
         self.telescope_id = self.parser.getint('BASIC', 'telescopeID')
@@ -151,7 +151,7 @@ class Converter:
             # go to root directory
             os.chdir(self.root_file_dir)
             # prepare converter command
-            conf_string = '-c {eudaq}/conf/{file}'.format(eudaq=self.eudaq_dir, file=self.converter_config_path) if self.Type == 'pad' else ''
+            conf_string = '-c {eudaq}/conf/{file}'.format(eudaq=self.eudaq_dir, file=self.converter_config_path)
             tree_string = '-t {tree}'.format(tree='drs4tree' if self.Type == 'pad' else 'telescopetree')
             converter_cmd = '{eudaq}/bin/Converter.exe {tree} {conf} {raw}'.format(eudaq=self.eudaq_dir, raw=raw_file_path, tree=tree_string, conf=conf_string)
             if self.Type == 'pad':
@@ -311,7 +311,7 @@ class Converter:
 
 
 if __name__ == "__main__":
-    z = Converter('201510', 'pad')
+    z = Converter('201510')
     run_info = z.get_run_info(run_number=393)
     # z.convert_run(run_info)
     z.root.deiconify()
