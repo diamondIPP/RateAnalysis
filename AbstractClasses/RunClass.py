@@ -92,7 +92,7 @@ class Run(Elementary):
         self.RunInfo = None
 
         if run_number is not None:
-            self.converter = Converter(self.TESTCAMPAIGN, self.DUTType)
+            self.converter = Converter(self.TESTCAMPAIGN)
             assert (run_number > 0), 'incorrect run_number'
             self.set_run(run_number)
 

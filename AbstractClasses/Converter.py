@@ -25,7 +25,7 @@ def print_banner(message):
 # CLASS DEFINITION
 # ==============================================
 class Converter:
-    def __init__(self, test_campaign, dut_type):
+    def __init__(self, test_campaign):
 
         # main
         self.test_campaign = test_campaign
@@ -311,7 +311,7 @@ class Converter:
 
 
 if __name__ == "__main__":
-    z = Converter('201510', 'pad')
+    z = Converter('201510')
     run_info = z.get_run_info(run_number=393)
     # z.convert_run(run_info)
     z.root.deiconify()
