@@ -47,6 +47,7 @@ class SignalAnalysis(Analysis):
 
         # cuts
         self.Cut = ChannelCut(self, channel)
+        self.AllCuts = self.Cut.all_cut
 
         # currents
         self.Currents = Currents(self)
