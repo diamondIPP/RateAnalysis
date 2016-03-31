@@ -67,8 +67,8 @@ class ChannelCut(Cut):
         self.EasyCutStrings['SignalPeakPos'] = 'Signal Peak in {0}'.format([x_min, x_max])
 
     def set_trigger_cell(self, x_min, x_max):
-        assert 0 <= x_min <= 256, 'min trigger cell has to be in [0, 256], not "{min}"'.format(min=x_min)
-        assert 0 <= x_max <= 256, 'max trigger cell has to be in [0, 256], not "{max}"'.format(max=x_max)
+        assert 0 <= x_min <= 1024, 'min trigger cell has to be in [0, 256], not "{min}"'.format(min=x_min)
+        assert 0 <= x_max <= 1024, 'max trigger cell has to be in [0, 256], not "{max}"'.format(max=x_max)
         if x_max < x_min:
             x_min, x_max = x_max, x_min
         self.CutConfig['trigger_cell'] = [x_min, x_max]
@@ -120,7 +120,7 @@ class ChannelCut(Cut):
     def generate_trigger_cell(self):
         lst = self.CutConfig['trigger_cell']
         if lst:
-            self.CutStrings['trigger_cell'] += 'trigger_cell[{ch}] < {max} && trigger_cell[{ch}] >= {min}'.format(ch=self.channel, min=lst[0], max=lst[1])
+            self.CutStrings['trigger_cell'] += 'trigger_cell < {max} && trigger_cell >= {min}'.format(min=lst[0], max=lst[1])
 
     def add_signal_peak_pos_cut(self, xmin, xmax):
         self.set_peak_value_pos(xmin, xmax)
