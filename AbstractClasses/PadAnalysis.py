@@ -159,7 +159,7 @@ class SignalAnalysis(Analysis):
         c.RedrawAxis()
         gROOT.SetBatch(0)
         self.save_plots('BeamProfile{mod}{fit}'.format(mod=mode.title(), fit='Fit' if fit else ''), sub_dir=self.save_dir)
-        self.histos[1] = [prof, c, lines, fits]
+        self.histos.append([prof, c, lines, fits])
         return fit_result if fit else prof
 
     @staticmethod
@@ -201,7 +201,7 @@ class SignalAnalysis(Analysis):
         gr.Draw('alp')
         one.Draw('same')
 
-        self.histos[1] = [gr, c, t1]
+        self.histos.append([gr, c, t1])
         gROOT.SetBatch(0)
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.save_plots('BeamProf{mod}{dir}'.format(mod='Sigmas' if sigma else 'Chi2s', dir=mode.title()), sub_dir=self.save_dir)
@@ -293,7 +293,7 @@ class SignalAnalysis(Analysis):
             gr1.Draw('p')
             self.save_plots('MeanSignalHisto', sub_dir=self.save_dir)
         self.MeanSignalHisto = h
-        self.histos[0] = [gr1, gr2]
+        self.histos.append([gr1, gr2])
 
     def draw_error_signal_map(self, show=False):
         self.draw_mean_signal_distribution(show=False)
@@ -306,8 +306,7 @@ class SignalAnalysis(Analysis):
             h.SetStats(0)
             h.Draw('colz')
             self.save_plots('SignalMapErrors', sub_dir=self.save_dir, canvas=c)
-            self.canvases[0] = c
-            self.histos[0] = h
+            self.histos.append([h, c])
         return h
 
     def fit_mean_signal_distribution(self):
@@ -369,7 +368,7 @@ class SignalAnalysis(Analysis):
                 if show_frame:
                     self.__show_frame(bin_low, bin_high)
                 self.save_plots('DiamondHitmap', sub_dir=self.save_dir)
-            self.histos[0] = h
+            self.histos.append(h)
             gROOT.SetBatch(0)
             return {name: [efficient_bins[i][0], efficient_bins[i][-1]] for i, name in enumerate(['x', 'y'])}
 
@@ -388,7 +387,7 @@ class SignalAnalysis(Analysis):
         frame.SetPoint(3, bin_low[0][0], bin_high[1][-1])
         frame.SetPoint(4, bin_low[0][0], bin_low[1][0])
         frame.Draw('same')
-        self.histos[1] = frame
+        self.histos.append(frame)
 
     def calc_signal_spread(self, min_percent=5, max_percent=99):
         """
@@ -666,7 +665,7 @@ class SignalAnalysis(Analysis):
         h.Draw()
         gROOT.SetBatch(0)
         self.save_plots('SignalBin{0}Disto'.format(self.BinSize), sub_dir=self.save_dir)
-        self.histos[0] = [h, c]
+        self.histos.append([h, c])
         return h
 
     def show_ph_overview(self, binning=None):
@@ -682,7 +681,7 @@ class SignalAnalysis(Analysis):
             pad.SetBottomMargin(.15)
             h.Draw()
         self.save_plots('PHEvolutionOverview{0}'.format(self.BinSize), sub_dir=self.save_dir)
-        self.histos[1] = [c]
+        self.histos.append([h2, c])
 
     def show_signal_histo(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None, binning=350, events=None, start=None):
         print 'drawing signal distribution for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name)
@@ -700,7 +699,7 @@ class SignalAnalysis(Analysis):
             self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.8)
             h.Draw()
             self.save_plots('SignalDistribution', sub_dir=self.save_dir)
-            self.histos[0] = [c, h]
+            self.histos.append([h, c])
             gROOT.SetBatch(0)
         return h
 
@@ -793,7 +792,7 @@ class SignalAnalysis(Analysis):
             h.Draw()
             save_name = 'Pedestal_{reg}{cut}'.format(reg=region, cut=cut.GetName())
             self.save_plots(save_name, 'png', canvas=c, sub_dir=self.save_dir)
-            self.histos[0] = [h, c]
+            self.histos.append([h, c])
             gROOT.SetBatch(0)
             return fit_pars
 
@@ -838,7 +837,7 @@ class SignalAnalysis(Analysis):
         legend.AddEntry(gr2, 'mean fit fwhm w/ cuts median', 'lp')
         legend.AddEntry(gr3, 'mean fit fwhm w/ cuts all', 'lp')
         legend.Draw()
-        self.histos[0] = [gr1, gr2, gr3, c, legend]
+        self.histos.append([gr1, gr2, gr3, c, legend])
 
     # endregion
 
@@ -853,7 +852,7 @@ class SignalAnalysis(Analysis):
             name = cut.GetName()
             if not name.startswith('old') and name != 'all_cuts' and name not in contributions and str(cut):
                 cuts += cut
-                events = int(z.tree.Draw('1', '!({0})'.format(cuts), 'goff'))
+                events = int(self.tree.Draw('1', '!({0})'.format(cuts), 'goff'))
                 events -= cutted_events
                 print name, events
                 contributions[cut.GetName()] = events
@@ -891,7 +890,7 @@ class SignalAnalysis(Analysis):
         c = TCanvas('c', 'Cut Pie', 1000, 1000)
         pie.Draw('3drsc')
         self.save_plots('CutContributions', sub_dir=self.save_dir)
-        self.histos[0] = [pie, c]
+        self.histos.append([pie, c])
         return contributions
 
     def show_bucket_histos(self):
@@ -921,7 +920,7 @@ class SignalAnalysis(Analysis):
             h.SetLineWidth(2)
             h.Draw('same') if i else h.Draw()
         self.save_plots('BucketHistos', sub_dir=self.save_dir)
-        self.histos[0] = [h, h_sig, h_ped1, h_ped2, c]
+        self.histos.append([h, h_sig, h_ped1, h_ped2, c])
 
     def show_bucket_numbers(self, show=True):
         pickle_path = self.PickleDir + 'Cuts/BucketEvents_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
@@ -961,7 +960,7 @@ class SignalAnalysis(Analysis):
             h.GetXaxis().SetRangeUser(zero_bins[0][0], zero_bins[0][-1])
             h.GetYaxis().SetRangeUser(zero_bins[1][0], zero_bins[1][-1])
             h.Draw('colz')
-            self.histos[0] = [c, h]
+            self.histos.append([h, c])
         return h
 
     def show_bucket_means(self, show=True, plot_histos=True):
@@ -987,7 +986,7 @@ class SignalAnalysis(Analysis):
                 h2.Draw('same')
                 self.format_histo(h3, color=self.get_color(), lw=1)
                 h3.Draw('same')
-                self.histos[0] = [h1, h2, h3, c]
+                self.histos.append([h1, h2, h3, c])
             result = {name: [h.GetMean(), h.GetMeanError()] for name, h in zip(['new', 'no', 'old'], [h1, h2, h3])}
             gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
             if show:
@@ -1148,8 +1147,7 @@ class SignalAnalysis(Analysis):
         self.format_histo(h, name='pulser_rate', title='Pulser Rate', x_tit='Event Number', y_tit='Pulser Fraction [%]', y_off=1.3)
         h.Draw('hist')
         self.save_plots('pulser_rate', canvas=c, sub_dir=self.save_dir)
-        self.canvases[0] = c
-        self.histos[0] = h
+        self.histos.append([h, c])
         gROOT.SetBatch(0)
         return h
 
@@ -1181,8 +1179,7 @@ class SignalAnalysis(Analysis):
         h.Draw(draw_opt)
         self.run.draw_run_info(canvas=c, channel=self.channel)
         self.save_plots('PulserPulseHeight', sub_dir=self.save_dir)
-        self.canvases[0] = c
-        self.histos[0] = h
+        self.histos.append([h, c])
         return h
 
     def fit_pulser_pulseheight(self):
@@ -1213,7 +1210,7 @@ class SignalAnalysis(Analysis):
             f.SetLineStyle(7)
             f.SetRange(0, 500)
             f.Draw('same')
-            self.histos[1] = [f]
+            self.histos.append([f])
             self.save_plots('PulserHisto', sub_dir=self.save_dir)
             return fit_func
 
@@ -1224,13 +1221,13 @@ class SignalAnalysis(Analysis):
         self.draw_peak_position('', 'pulser', ucut=self.Cut.generate_pulser_cut(), show=draw)
 
     def show_pulser_pedestal(self, show=True):
-        return z.show_pedestal_histo(cut=self.Cut.generate_pulser_cut(), draw=show)
+        return self.show_pedestal_histo(cut=self.Cut.generate_pulser_cut(), draw=show)
 
     def compare_pulser_pedestal(self, show=True):
         self.show_pedestal_histo()
-        h1 = deepcopy(self.histos[0][0])
+        h1 = deepcopy(self.histos[-1][0])
         self.show_pulser_pedestal()
-        h2 = self.histos[0][0]
+        h2 = self.histos[-1][0]
         print h1, h2
         gROOT.SetBatch(0) if show else gROOT.SetBatch(1)
         c = TCanvas('c', 'Pulser Pedestal Comparison', 1000, 1000)
@@ -1246,7 +1243,7 @@ class SignalAnalysis(Analysis):
         legend.Draw()
         gROOT.SetBatch(0)
         self.save_plots('PulserPedestalComparison', sub_dir=self.save_dir)
-        self.histos[1] = [c, h1, h2, legend]
+        self.histos.append([c, h1, h2, legend])
 
     def draw_pulser_waveform(self, n=1, start_event=None, add_buckets=False, cut=None, fixed_range=None):
         cut = self.Cut.generate_pulser_cut() if cut is None else cut
@@ -1284,7 +1281,7 @@ class SignalAnalysis(Analysis):
         self.save_plots('Pulser{0}VsTime'.format(mode), sub_dir=self.save_dir)
         gROOT.SetBatch(0)
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.histos[2] = [c, gr]
+        self.histos.append([gr, c])
 
     # endregion
 
@@ -1307,7 +1304,7 @@ class SignalAnalysis(Analysis):
         h.Draw('colz')
         self.save_plots('BucketPedestal', sub_dir=self.save_dir)
         gROOT.SetBatch(0)
-        self.histos[0] = [c, h]
+        self.histos.append([h, c])
 
     def draw_single_wf(self, event=None):
         cut = '!({0})&&!pulser'.format(self.Cut.CutStrings['old_bucket'])
@@ -1361,7 +1358,7 @@ class SignalAnalysis(Analysis):
             self.save_plots('WaveForms{n}'.format(n=n), sub_dir=self.save_dir)
         else:
             self.save_plots('SingleWaveForm', sub_dir=self.save_dir)
-        self.histos[0] = [c, h]
+        self.histos.append([c, h])
         return h if not ret_event else n_events
 
     def show_single_waveforms(self, n=1, cut=None):
@@ -1461,7 +1458,7 @@ class SignalAnalysis(Analysis):
         gr2.Draw('lp')
         gr3.Draw('lp')
         legend.Draw()
-        self.histos['legend'] = legend
+        self.histos.append(legend)
         return [gr1, gr2, gr3]
 
     @staticmethod
@@ -1524,9 +1521,7 @@ class SignalAnalysis(Analysis):
         l2.Draw()
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.save_plots('SNR', sub_dir=self.save_dir)
-        self.canvases[0] = c
-        self.histos[0] = gr
-        self.histos['legend'] = [l1, l2]
+        self.histos.append([gr, l1, l2, c])
 
     def calc_snr(self, sig=None):
         signal = self.SignalName if sig is None else sig
@@ -1565,7 +1560,7 @@ class SignalAnalysis(Analysis):
         gROOT.SetBatch(0)
         self.save_plots('BestSNR', sub_dir=self.save_dir)
         self.save_plots('BestSNR', file_type='root', sub_dir=self.save_dir)
-        self.histos[0] = [gr, c]
+        self.histos.append([gr, c])
 
     def signal_vs_peakintegral(self, show=True, ped=False):
         gROOT.SetBatch(1)
@@ -1588,7 +1583,7 @@ class SignalAnalysis(Analysis):
         gROOT.SetBatch(0)
         self.save_plots('{sig}PeakInt_{rat}'.format(rat=ratio, sig='Ped' if ped else 'Sig'), sub_dir=self.save_dir)
         self.save_plots('{sig}PeakInt_{rat}'.format(rat=ratio, sig='Ped' if ped else 'Sig'), sub_dir=self.save_dir, file_type='root')
-        self.histos[0] = [gr, c]
+        self.histos.append([gr, c])
 
     # endregion
 
