@@ -71,7 +71,7 @@ class Analysis(Elementary):
 
         # save histograms // canvases
         self.signal_canvas = None
-        self.histos = {}
+        self.histos = []
         self.canvases = {}
         self.lines = {}
 
@@ -288,7 +288,7 @@ class Analysis(Elementary):
             self.histos[i] = h
         legend.Draw()
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.histos['legend'] = legend
+        self.histos.append(legend)
         self.save_plots('Chi2', canvas=c, sub_dir=self.ana_save_dir, ch=None)
         self.canvases[0] = c
 
@@ -347,7 +347,7 @@ class Analysis(Elementary):
         legend.Draw()
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.canvases[0] = c
-        self.histos['legend'] = legend
+        self.histos.append(legend)
         self.save_plots('TrackAngles', sub_dir=self.ana_save_dir, ch=None)
     # endregion
 
