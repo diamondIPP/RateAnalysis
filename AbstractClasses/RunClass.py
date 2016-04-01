@@ -166,8 +166,7 @@ class Run(Elementary):
 
         if self.run_number >= 0:
             if not loaderror:
-                run_nr = '150500' + str(self.run_number).zfill(3) if self.TESTCAMPAIGN == '201505' else str(self.run_number)
-                self.RunInfo = data.get(run_nr)
+                self.RunInfo = data.get(str(self.run_number))
                 if self.RunInfo is None:
                     # try with run_log key prefix
                     self.RunInfo = data.get(self._runlogkeyprefix + str(self.run_number).zfill(3))
@@ -285,6 +284,8 @@ class Run(Elementary):
 
         # return, if all keys from default info are in RunInfo too
         if all([key in self.RunInfo for key in default_info]):
+            return
+        if self.TESTCAMPAIGN == '201505':
             return
 
         parser = ConfigParser()
