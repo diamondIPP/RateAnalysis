@@ -144,6 +144,14 @@ class ChannelCut(Cut):
         sig = self.analysis.get_signal_name(region=self.analysis.SignalRegion, peak_integral=self.analysis.PeakIntegral)
         threshold = self.calc_signal_threshold(show=False)
         string = '!(!({old_buck})&&({sig}<{thres}))'.format(sig=sig, thres=threshold, old_buck=self.CutStrings['old_bucket'])
+
+    def add_signal_peak_time_cut(self, low, up):
+        self.reset_cut('signal_peak_time')
+        self.CutStrings['signal_peak_time'] += self.generate_signal_peak_time(low, up)
+        self.update_all_cut()
+
+    def generate_signal_peak_time(self, low = 67.068, up = 72.750):
+        string = '{low}<IntegralPeakTime[{num}]&&IntegralPeakTime[{num}]<{up}'.format(low=low, up=up, num=self.analysis.SignalNumber)
         return TCut(string)
 
     def calc_signal_threshold(self, bg=False, show=True):
@@ -262,6 +270,10 @@ class ChannelCut(Cut):
             ped_range = self.__calc_pedestal_range()
             self.CutStrings['ped_sigma'] += '{ped}>{min}&&{ped}<{max}'.format(ped=self.analysis.PedestalName, min=ped_range[0], max=ped_range[1])
             self.EasyCutStrings["pedestalsigma"] = "PedSigma<" + str(self.CutConfig['pedestalsigma'])
+
+        # --PEAK POSITION TIMING--
+        # todo: add a method that fits the real time disto and sets the cut to 4 sigma!
+        # self.CutStrings['signal_peak_time'] += self.generate_signal_peak_time()
 
         # --BUCKET --
         self.CutStrings['old_bucket'] += self.generate_old_bucket()
