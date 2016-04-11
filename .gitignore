@@ -2,9 +2,11 @@
 *.pdf
 *.root
 *.png
+*.eps
 *.out
 Results/
 *.json
 *.pickle
 *~
 .idea/workspace.xml
+*.bak
