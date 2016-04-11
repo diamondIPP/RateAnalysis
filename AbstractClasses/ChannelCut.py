@@ -174,13 +174,13 @@ class ChannelCut(Cut):
         def func():
             print 'calculating signal threshold for bucket cut of run {run} and ch{ch}...'.format(run=self.analysis.run_number, ch=self.channel)
             h = TH1F('h', 'Bucket Cut', 250, -50, 300)
-            self.analysis.tree.Draw('{name}>>h'.format(name=self.analysis.SignalName),
-                                    '!({buc})&&{pul}'.format(buc=self.CutStrings['old_bucket'], pul=self.CutStrings['pulser']), 'goff')
+            draw_string = '{name}>>h'.format(name=self.analysis.SignalName)
+            cut_string = '!({buc})&&{pul}'.format(buc=self.CutStrings['old_bucket'], pul=self.CutStrings['pulser'])
+            self.analysis.tree.Draw(draw_string, cut_string, 'goff')
             entries = h.GetEntries()
             if entries < 1000:
                 return 30
             h.Rebin(2) if entries < 5000 else self.do_nothing()
-
             # extract fit functions
             fit = self.triple_gauss_fit(h)
             sig_fit = TF1('f1', 'gaus', -50, 300)
@@ -218,8 +218,14 @@ class ChannelCut(Cut):
                 sleep(.1)
                 a = self.make_tgaxis(max_err, c1.GetUymin(), c1.GetUymax(), 'threshold', offset=.3)
                 a.Draw()
+                # add subfunction to the plot
+                ped_fit.SetLineStyle(2)
+                ped_fit.Draw('same')
+                sig_fit.SetLineColor(4)
+                sig_fit.SetLineStyle(3)
+                sig_fit.Draw('same')
+                c1.Update()
                 self.save_plots('BucketCut', sub_dir=self.analysis.save_dir)
-
                 c2 = TCanvas('c2', 'c', 1000, 1000)
                 self.format_histo(gr1, title='Efficiencies', x_tit='Threshold', y_tit='Efficiency', markersize=.2)
                 gr1.Draw('apl')
