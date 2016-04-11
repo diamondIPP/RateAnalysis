@@ -45,6 +45,24 @@ class Cut(Elementary):
             self.generate_cut_string()
             self.all_cut = self.generate_all_cut()
 
+    def generate_special_cut(self, excluded_cuts=None, included_cuts=None, name='special_cut'):
+        cut = TCut(name, '')
+        n_cuts = 0
+        for key, value in self.CutStrings.iteritems():
+            if excluded_cuts and key in excluded_cuts:
+                continue
+            if included_cuts and key not in included_cuts:
+                continue
+            if key.startswith('old') or key.startswith('all_cut'):
+                continue
+            if value.GetTitle() == '':
+                continue
+            print 'add ', key, value.GetTitle()
+            cut += value
+            n_cuts += 1
+        print 'generated {name} cut with {num} cuts'.format(name=name, num=n_cuts)
+        return cut
+
     def generate_all_cut(self):
         cut = TCut('all_cuts', '')
         for key, value in self.CutStrings.iteritems():
