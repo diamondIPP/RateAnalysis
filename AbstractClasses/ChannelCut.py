@@ -134,16 +134,30 @@ class ChannelCut(Cut):
         self.generate_trigger_cell()
         self.all_cut = self.generate_all_cut()
 
-    def generate_old_bucket(self):
-        sig2 = self.analysis.get_signal_name('e', 2)
-        sig1 = self.analysis.get_signal_name(region=self.analysis.SignalRegion, peak_integral=self.analysis.PeakIntegral)
-        string = '{sig2}=={sig1}'.format(sig2=sig2, sig1=sig1)
-        return TCut(string)
+    def update_all_cut(self):
+        self.all_cut = self.generate_all_cut()
 
-    def generate_bucket(self):
-        sig = self.analysis.get_signal_name(region=self.analysis.SignalRegion, peak_integral=self.analysis.PeakIntegral)
-        threshold = self.calc_signal_threshold(show=False)
+    def update_bucket(self, threshold=None):
+        threshold = self.calc_signal_threshold(show=False) if threshold is None else threshold
+        self.reset_cut('bucket')
+        self.CutStrings['bucket'] += self.generate_bucket(threshold)
+        self.update_all_cut()
+
+    def generate_old_bucket(self):
+        # only generate the cut if the region e2 exists! todo: find a smarter solution for that!
+        try:
+            sig2 = self.analysis.get_signal_name('e', 2)
+            string = '{sig2}=={sig1}'.format(sig2=sig2, sig1=self.analysis.SignalName)
+            return TCut(string)
+        except:
+            return TCut('')
+
+    def generate_bucket(self, threshold=None):
+        sig = self.analysis.SignalName
+        threshold = self.calc_signal_threshold(show=False) if threshold is None else threshold
         string = '!(!({old_buck})&&({sig}<{thres}))'.format(sig=sig, thres=threshold, old_buck=self.CutStrings['old_bucket'])
+        cut =  TCut(string) if self.CutStrings['old_bucket'].GetTitle() else TCut('')
+        return cut
 
     def add_signal_peak_time_cut(self, low, up):
         self.reset_cut('signal_peak_time')
