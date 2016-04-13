@@ -385,5 +385,13 @@ class Elementary(object):
     def print_banner(msg, symbol='='):
         print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * symbol, msg=msg)
 
+    @staticmethod
+    def write_cfile(file_name, args, var):
+        f = open('{nam}.C'.format(nam=file_name), 'w')
+        f.write('float {nam}() {{\n'.format(nam=file_name))
+        f.write('\treturn {var} * {var} * {p2} + {var} * {p1} + {p0};\n'.format(var=var, p0=args[0], p1=args[1], p2=args[2]))
+        f.write('}\n')
+        f.close()
+
 if __name__ == "__main__":
     z = Elementary()

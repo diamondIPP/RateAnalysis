@@ -21,6 +21,7 @@ class Cut(Elementary):
 
             # saving stuff
             self.histos = {}
+            self.data = []
 
             # config
             self.DUTType = self.load_dut_type()
@@ -45,7 +46,7 @@ class Cut(Elementary):
             self.generate_cut_string()
             self.all_cut = self.generate_all_cut()
 
-    def generate_special_cut(self, excluded_cuts=None, included_cuts=None, name='special_cut'):
+    def generate_special_cut(self, excluded_cuts=None, included_cuts=None, name='special_cut', verbose=False):
         cut = TCut(name, '')
         n_cuts = 0
         for key, value in self.CutStrings.iteritems():
@@ -57,10 +58,12 @@ class Cut(Elementary):
                 continue
             if value.GetTitle() == '':
                 continue
-            print 'add ', key, value.GetTitle()
+            if verbose:
+                print 'add ', key, value.GetTitle()
             cut += value
             n_cuts += 1
-        print 'generated {name} cut with {num} cuts'.format(name=name, num=n_cuts)
+        if verbose:
+            print 'generated {name} cut with {num} cuts'.format(name=name, num=n_cuts)
         return cut
 
     def generate_all_cut(self):
@@ -111,7 +114,6 @@ class Cut(Elementary):
         # waveform
         dic['beam_interruptions'] = TCut('beam_interruptions', '')
         dic['ped_sigma'] = TCut('ped_sigma', '')
-        dic['spread_low'] = TCut('spread_low', '')
         dic['median'] = TCut('median', '')
         # tracks
         dic['tracks'] = TCut('tracks', '')
@@ -121,8 +123,9 @@ class Cut(Elementary):
         # waveform
         dic['saturated'] = TCut('saturated', '')
         dic['signal_peak_pos'] = TCut('signal_peak_pos', '')
-        dic['signal_peak_time']  = TCut('signal_peak_time', '')
+        dic['signal_peak_time'] = TCut('signal_peak_time', '')
         dic['trigger_cell'] = TCut('trigger_cell', '')
+        dic['timing'] = TCut('timing', '')
         dic['old_bucket'] = TCut('old_bucket', '')
         dic['bucket'] = TCut('bucket', '')
         dic['all_cuts'] = TCut('all_cuts', '')
@@ -196,13 +199,6 @@ class Cut(Elementary):
 
     def set_peakpos_high(self, value):
         self.CutConfig['peakPos_high'] = self.load_peakpos_high(value)
-
-    def load_spread_low(self, value):
-        if value > 0:
-            self.EasyCutStrings['spread_low'] = 'spread>{low}'.format(low=value)
-            return value
-        else:
-            return -1
 
     # endregion
 
@@ -303,7 +299,8 @@ class Cut(Elementary):
             self.EasyCutStrings['ExcludeFirst'] = 'Evts.{min}k+'.format(min=int(self.CutConfig['ExcludeFirst']) / 1000) if self.CutConfig['ExcludeFirst'] > 0 else ''
 
         # -- PULSER CUT --
-        self.CutStrings['pulser'] += '!pulser'
+        if self.DUTType == 'pad':
+            self.CutStrings['pulser'] += '!pulser'
 
         # -- BEAM INTERRUPTION CUT --
         self.__generate_beam_interruptions()
@@ -456,6 +453,9 @@ class Cut(Elementary):
             self.CutStrings[name].SetTitle('')
         else:
             print 'There is no cut with the name "{name}"!'.format(name=name)
+        self.all_cut = self.generate_all_cut()
+
+    def update_all_cut(self):
         self.all_cut = self.generate_all_cut()
 
     def show_cuts(self, easy=True):

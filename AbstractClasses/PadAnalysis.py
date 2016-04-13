@@ -39,10 +39,17 @@ class SignalAnalysis(Analysis):
         self.n_bins = len(self.binning)
         self.Polarity = self.get_polarity()
 
+        # regions // ranges
+        self.IntegralNames = self.get_integral_names()
+        self.SignalRegion = self.__load_signal_region()
+        self.PedestalRegion = self.__load_pedestal_region()
+        self.PeakIntegral = self.__load_peak_integral()
+
         # names
-        self.SignalName = self.get_signal_name(region=self.SignalRegion, peak_integral=self.PeakIntegral)
-        self.SignalNumber = self.get_signal_number(self.SignalRegion, self.PeakIntegral)
-        self.PedestalName = self.get_pedestal_name(region=self.PedestalRegion, peak_int=self.PeakIntegral)
+        self.SignalDefinition = '({pol}*IntegralValues[{num}])'
+        self.SignalNumber = self.get_signal_number()
+        self.SignalName = self.get_signal_name()
+        self.PedestalName = self.get_pedestal_name()
         self.PulserName = self.get_pulser_name()
 
         # cuts
@@ -77,25 +84,59 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region INIT
+    def get_integral_names(self):
+        names = OrderedDict()
+        self.tree.GetEntry(0)
+        for i, name in enumerate(self.tree.IntegralNames):
+            names[name] = i
+        return names
+
     def get_polarity(self):
         self.tree.GetEntry(0)
         return self.tree.polarities[self.channel]
 
-    def get_signal_number(self, region='b', peak_integral='2', sig_type='signal'):
+    def __load_signal_region(self):
+        sig_region = self.ana_config_parser.get('BASIC', 'signal_region')
+        return sig_region if sig_region in self.run.signal_regions else self.run.signal_regions.keys()[0]
+
+    def __load_pedestal_region(self):
+        ped_region = self.ana_config_parser.get('BASIC', 'pedestal_region')
+        return ped_region if ped_region in self.run.pedestal_regions else self.run.pedestal_regions.keys()[0]
+
+    def __load_peak_integral(self):
+        peak_int = self.ana_config_parser.get('BASIC', 'peak_integral')
+        return peak_int if peak_int in self.run.peak_integrals else self.run.peak_integrals.keys()[0]
+
+    def get_signal_number(self, region=None, peak_integral=None, sig_type='signal'):
+        this_region = self.SignalRegion if sig_type == 'signal' else self.PedestalRegion
+        region = this_region if region is None else region
+        peak_integral = self.PeakIntegral if peak_integral is None else peak_integral
         assert sig_type in ['signal', 'pedestal', 'pulser'], 'Invalid type of signal'
-        if sig_type == 'signal':
-            assert region in self.run.signal_regions, 'Invalid signal region {reg}!'.format(reg=region)
-        elif sig_type == 'pedestal':
-            assert region in self.run.pedestal_regions, 'Invalid pedestal region {reg}!'.format(reg=region)
+        if sig_type != 'pulser':
+            assert region in self.run.signal_regions or region in self.run.pedestal_regions, 'Invalid {typ} region: {reg}!'.format(reg=region, typ=sig_type)
         assert str(peak_integral) in self.run.peak_integrals, 'Invalid peak integral {reg}!'.format(reg=peak_integral)
         int_name = 'ch{ch}_{type}{reg}_PeakIntegral{int}'.format(ch=self.channel, reg='_' + region if region else '', int=peak_integral, type=sig_type)
         return self.IntegralNames[int_name]
 
-    def get_signal_name(self, region='b', peak_integral='2', sig_type='signal'):
+    def get_signal_name(self, region=None, peak_integral=None, sig_type='signal'):
         num = self.get_signal_number(region, peak_integral, sig_type)
-        return '{pol}*IntegralValues[{num}]'.format(pol=self.Polarity, num=num)
+        return self.SignalDefinition.format(pol=self.Polarity, num=num)
 
-    def get_pedestal_name(self, region='ab', peak_int='2'):
+    def set_signal_definitions(self, use_time=True, sig_region=None, ped_region=None, peak_int=None):
+        signal = 'TimeIntegralValues' if use_time else 'IntegralValues'
+        signal = '({{pol}}*{sig}[{{num}}])'.format(sig=signal)
+        print 'changed SignalDefinition to:', signal
+        print 'changed '
+        self.SignalDefinition = signal
+        self.update_signal_definitions(sig_region, ped_region, peak_int)
+
+    def update_signal_definitions(self, sig_region=None, ped_region=None, peak_int=None):
+        self.SignalNumber = self.get_signal_number(sig_region, peak_int)
+        self.SignalName = self.get_signal_name(sig_region, peak_int)
+        self.PedestalName = self.get_pedestal_name(ped_region, peak_int)
+        self.PulserName = self.get_pulser_name()
+
+    def get_pedestal_name(self, region=None, peak_int=None):
         return self.get_signal_name(region=region, peak_integral=peak_int, sig_type='pedestal')
 
     def get_pulser_name(self):
@@ -412,11 +453,11 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region SIGNAL PEAK POSITION
-    def draw_peak_position(self, region=None, type_='signal', show=True, ucut=None):
+    def draw_peak_position(self, region=None, type_='signal', show=True, ucut=None, fixed=False):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         num = self.SignalNumber if region is None else self.get_signal_number(region=region, sig_type=type_)
         region = self.SignalRegion if region is None else region
-        peak_val = 'IntegralPeaks[{num}]'.format(num=num)
+        peak_val = 'IntegralPeaks[{num}]'.format(num=num) if not fixed else 'IntegralPeakTime[{num}]'.format(num=num)
         title = '{typ} Peak Positions'.format(typ=type_.title())
         x = self.run.signal_regions[region] if type_ == 'signal' else self.run.get_regions('pulser')['pulser']
         h = TH1F('peakvalues', title, x[1] - x[0], x[0] / 2., x[1] / 2.)
@@ -424,7 +465,10 @@ class SignalAnalysis(Analysis):
         cut = self.Cut.all_cut if type_ == 'signal' else '!({0})'.format(self.Cut.CutStrings['pulser'])
         cut = cut if ucut is None else ucut
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.tree.Draw(peak_val + '/2.>>peakvalues', cut, 'goff')
+        if fixed:
+            self.tree.Draw(peak_val + '>>peakvalues', cut, 'goff')
+        else:
+            self.tree.Draw(peak_val + '/2.>>peakvalues', cut, 'goff')
         self.histos.append(self.draw_histo(h, '{typ}PeakPositions'.format(typ=type_.title()), show, self.save_dir, lm=.14))
         self.PeakValues = h
 
@@ -454,12 +498,13 @@ class SignalAnalysis(Analysis):
         fwhm = self.do_pickle(pickle_path, func)
         return fwhm
 
-    def draw_forc_times(self, show=True):
-        self.tree.Draw('forc_time', 'forc_time>20', 'goff')
+    def draw_forc_times(self, show=True, corr=False):
+        self.tree.Draw('forc_pos', 'forc_pos[0]>20', 'goff')
         htemp = gROOT.FindObject('htemp')
         x = [int(htemp.GetBinCenter(htemp.FindFirstBinAbove(5000))) - 10, int(htemp.GetBinCenter(htemp.FindLastBinAbove(5000))) + 10]
         h = TH1F('ft', 'FORC Timing', x[1] - x[0], x[0] / 2., x[1] / 2.)
-        self.tree.Draw('forc_time/2.>>ft', self.Cut.all_cut, 'goff')
+        forc = 'forc_pos/2.' if not corr else 'forc_time'
+        self.tree.Draw('{forc}>>ft'.format(forc=forc), self.Cut.all_cut, 'goff')
         self.format_histo(h, x_tit='time [ns]', y_tit='Entries', y_off=2, fill_color=17)
         self.histos.append(self.draw_histo(h, 'FORCTiming', show, self.save_dir, lm=.14))
 
@@ -477,7 +522,7 @@ class SignalAnalysis(Analysis):
         h.Fit('pol0', 'qs')
         self.histos.append(self.draw_histo(h, 'TriggerCell', show, self.save_dir, lm=.11))
 
-    def draw_trigger_cell_vs_peakpos(self, show=True, cut=None, tprofile=True):
+    def draw_trigger_cell_vs_peakpos(self, show=True, cut=None, tprofile=True, corr=False):
         x = self.run.signal_regions[self.SignalRegion]
         if not tprofile:
             h = TH2D('tcpp', 'Trigger Cell vs. Signal Peak Position', 1024, 0, 1024, x[1] - x[0], x[0] / 2., x[1] / 2.)
@@ -487,15 +532,17 @@ class SignalAnalysis(Analysis):
         prof = '' if not tprofile else ':'
         sig = '' if not tprofile else '{sig}-{ped}'.format(sig=self.SignalName, ped=self.PedestalName)
         gStyle.SetPalette(55)
-        self.tree.Draw('{z}{prof}IntegralPeaks[{num}]/2.:trigger_cell>>tcpp'.format(num=self.SignalNumber, z=sig, prof=prof), cut, 'goff')
+        peaks = 'IntegralPeaks[{num}]/2.' if not corr else 'IntegralPeakTime[{num}]'
+        peaks = peaks.format(num=self.SignalNumber)
+        self.tree.Draw('{z}{prof}{peaks}:trigger_cell>>tcpp'.format(z=sig, prof=prof, peaks=peaks), cut, 'goff')
         self.format_histo(h, x_tit='trigger cell', y_tit='signal peak pos [ns]', y_off=1.4, z_tit='pulse height [au]' if tprofile else 'entries', z_off=1.2)
         h.GetZaxis().SetRangeUser(60, 120) if tprofile else self.do_nothing()
         h.SetStats(0)
         self.histos.append(self.draw_histo(h, 'TriggerCellVsPeakPos{0}'.format('Signal' if tprofile else ''), show, self.save_dir, lm=.11, draw_opt='colz', rm=.15))
 
-    def draw_trigger_cell_vs_forc(self, show=True, cut=None, full_range=False):
+    def draw_trigger_cell_vs_forc(self, show=True, cut=None, full_range=False, corr=False):
         if not full_range:
-            self.tree.Draw('forc_time', 'forc_time>20', 'goff')
+            self.tree.Draw('forc_pos', 'forc_pos[0]>20', 'goff')
             htemp = gROOT.FindObject('htemp')
             x = [int(htemp.GetBinCenter(htemp.FindFirstBinAbove(5000))) - 10, int(htemp.GetBinCenter(htemp.FindLastBinAbove(5000))) + 10]
         else:
@@ -503,7 +550,8 @@ class SignalAnalysis(Analysis):
         h = TH2D('tcf', 'Trigger Cell vs. FORC Timing', 1024, 0, 1024, x[1] - x[0], x[0] / 2., x[1] / 2.)
         cut = self.AllCuts if cut is None else cut
         gStyle.SetPalette(55)
-        self.tree.Draw('forc_time/2.:trigger_cell>>tcf', cut, 'goff')
+        forc = 'forc_pos/2.' if not corr else 'forc_time'
+        self.tree.Draw('{forc}:trigger_cell>>tcf'.format(forc=forc), cut, 'goff')
         self.format_histo(h, x_tit='trigger cell', y_tit='forc timing [ns]', y_off=1.4)
         h.SetStats(0)
         self.histos.append(self.draw_histo(h, 'TriggerCellVsFORC{0}'.format('FullRange' if full_range else ''), show, self.save_dir, lm=.11, draw_opt='colz', rm=.15))
@@ -604,7 +652,8 @@ class SignalAnalysis(Analysis):
             correction = 'constant'
         elif evnt_corr:
             correction = 'eventwise'
-        suffix = '{bins}_{cor}_{sig}'.format(bins=bin_size, cor=correction, sig=self.get_all_signal_names()[signal])
+        # suffix = '{bins}_{cor}_{sig}'.format(bins=bin_size, cor=correction, sig=self.get_all_signal_names()[signal])
+        suffix = 'bla'
         picklepath = 'Configuration/Individual_Configs/Ph_fit/{tc}_{run}_{ch}_{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel, suf=suffix)
 
         self.SignalTime = None
@@ -718,16 +767,17 @@ class SignalAnalysis(Analysis):
             gROOT.SetBatch(0)
         return h
 
-    def draw_signal_vs_peakpos(self, show=True):
+    def draw_signal_vs_peakpos(self, show=True, corr=False):
         gr = self.make_tgrapherrors('gr', 'Signal vs Peak Position')
         i = 0
         x = self.run.signal_regions[self.SignalRegion]
-        self.draw_peak_position(show=False)
+        self.draw_peak_position(show=False, fixed=corr)
         h = self.PeakValues
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         for peak_pos in xrange(x[0] + 2, x[1] - 2):
             print '\rcalculating peak pos: {0:03d}'.format(peak_pos),
-            self.Cut.add_signal_peak_pos_cut(peak_pos, peak_pos + 1)
+            self.Cut.add_signal_peak_pos_cut(peak_pos, peak_pos + 1) if not corr else self.Cut.add_peak_position_time_cut(peak_pos / 2., (peak_pos + 1) / 2.)
+            print peak_pos / 2., (peak_pos + 1) / 2.
             events = int(h.GetBinContent(h.FindBin(peak_pos / 2.)))
             print '({0:05d})'.format(events),
             stdout.flush()
@@ -761,7 +811,7 @@ class SignalAnalysis(Analysis):
                 h = self.show_signal_histo(show=False, binning=100)
                 h.SetLineColor(self.get_color())
                 h.Scale(1 / h.GetMaximum())
-                l.AddEntry(h, '[{0},{1}]'.format(peak_pos, peak_pos + bins), 'l')
+                l.AddEntry(h, '[{0},{1}] ns'.format(int(peak_pos / 2.), int(peak_pos / 2. + bins / 2.)), 'l')
                 hs.Add(h)
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.reset_colors()
@@ -890,6 +940,7 @@ class SignalAnalysis(Analysis):
         contributions = sorted_contr
         values = contributions.values() + [self.run.n_entries - cutted_events]
         i = 0
+        self.reset_colors()
         colors = [self.get_color() for i in xrange(1, len(values) + 1)]
         print values, i
         pie = TPie('pie', 'Cut Contributions', len(values), array(values, 'f'), array(colors, 'i'))
@@ -1055,92 +1106,140 @@ class SignalAnalysis(Analysis):
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
 
-    def compare_normalised_cuts(self):
+    def compare_normalised_cuts(self, scale=False, plot=False):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        gROOT.SetBatch(1)
+        if not plot:
+            gROOT.SetBatch(1)
+        self.reset_colors()
         c1 = TCanvas('single', '', 1000, 1000)
-        c2 = TCanvas('normalised', '', 1000, 1000)
-        c2.SetLeftMargin(0.15)
+        name = 'sCutComparison'
+        if scale:
+            name += "_scaled"
+        else:
+            name += "_noarmalized"
+        if scale:
+            title = 'Scaled Signal Distribution with Single Cuts'
+        else:
+            title = 'Normalised Signal Distribution with Single Cuts'
+        title += ';Pulse Height [au];entries a.u.'
+
+        stack = THStack(name, title)
+
         legend = TLegend(0.7, 0.3, 0.98, .7)
         histos = []
-        drawn_first = False
         for key, value in self.Cut.CutStrings.iteritems():
             if str(value) or key == 'raw':
                 print 'saving plot', key
                 save_name = 'signal_distribution_normalised_{cut}'.format(cut=key)
                 histo_name = 'signal {range}{peakint}'.format(range=self.SignalRegion, peakint=self.PeakIntegral)
-                histo_title = 'normalised signal with cut ' + key
+                histo_title = 'normalized' if not scale else 'scaled'
+                histo_title += ' signal with cut ' + key
                 histo = TH1F(histo_name, histo_title, 350, -50, 300)
                 # safe single plots
                 c1.cd()
                 self.tree.Draw("{name}>>{histo}".format(name=self.SignalName, histo=histo_name), value)
-                histo = self.normalise_histo(histo)
+                if scale:
+                    histo = self.scale_histo(histo)
+                else:
+                    histo = self.normalise_histo(histo)
                 histo.Draw()
+                c1.Update()
                 self.save_plots(save_name, 'png', canvas=c1, sub_dir=self.save_dir)
                 # draw all single plots into c2
-                c2.cd()
                 histo.SetLineColor(self.get_color())
-                if not drawn_first:
-                    self.format_histo(histo, title='Normalised Signal Distribution with Single Cuts', x_tit='Pulse Height [au]', y_tit='Normalised Integral', y_off=2)
-                    histo.SetStats(0)
-                    histo.Draw()
-                    drawn_first = True
-                else:
-                    if key == 'all_cuts':
-                        histo.SetLineWidth(2)
-                    histo.Draw('same')
+
+                if key == 'all_cuts':
+                    histo.SetLineWidth(2)
+                stack.Add(histo)
                 histos.append(histo)
                 legend.AddEntry(histo, key, 'l')
         # save c2
+        c1.SetName('normalised')
+        c1.SetLeftMargin(0.15)
+        for h in histos:
+            h.SetStats(False)
+        stack.Draw('nostack')
         legend.Draw()
-        self.save_plots('normalised', 'png', canvas=c2, sub_dir=self.save_dir)
-        self.save_plots('normalised', 'root', canvas=c2, sub_dir=self.save_dir)
+        if plot:
+            self.histos.append(histos)
+            self.histos.append(stack)
+            self.root_objects.append(legend)
+            c1.Update()
+
+        if scale:
+            self.save_plots('scaled', 'png', canvas=c1, sub_dir=self.save_dir)
+            self.save_plots('scaled', 'root', canvas=c1, sub_dir=self.save_dir)
+        else:
+            self.save_plots('normalised', 'png', canvas=c1, sub_dir=self.save_dir)
+            self.save_plots('normalised', 'root', canvas=c1, sub_dir=self.save_dir)
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
 
-    def compare_consecutive_cuts(self):
+    def compare_consecutive_cuts(self, scale=False, plot=False):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        gROOT.SetBatch(1)
+        if not plot:
+            gROOT.SetBatch(1)
+        self.reset_colors()
         c1 = TCanvas('consecutive', '', 1000, 1000)
-        c2 = TCanvas('all', '', 1000, 1000)
-        c2.SetLeftMargin(0.15)
         legend = TLegend(0.7, 0.3, 0.98, .7)
         histos = []
         drawn_first = False
         ind = 0
         cut = TCut('consecutive', '')
+        stack = THStack('sConsecutiveCuts', 'Signal Distribution with Consecutive Cuts;Pulse Height [au];Entries')
         for key, value in self.Cut.CutStrings.iteritems():
+            if key == 'old_bucket':
+                continue
             if (str(value) or key == 'raw') and key != 'all_cuts':
                 cut += value
-                print 'saving plot with {n} cuts'.format(n=ind)
+                print 'saving plot with {n} cuts, added {key}'.format(n=ind,key=key)
                 save_name = 'signal_distribution_{n}cuts'.format(n=ind)
-                histo_name = 'signal {range}{peakint}'.format(range=self.SignalRegion, peakint=self.PeakIntegral)
+                histo_name = 'h_signal_{range}_{peakint}_{n}cuts'.format(range=self.SignalRegion, peakint=self.PeakIntegral, n=ind)
+                if scale:
+                    histo_name += '_scaled'
                 histo_title = 'signal with {n} cuts'.format(n=ind)
                 histo = TH1F(histo_name, histo_title, 550, -50, 500)
                 # safe single plots
                 c1.cd()
+                print self.SignalName
                 self.tree.Draw("{name}>>{histo}".format(name=self.SignalName, histo=histo_name), cut)
+                if scale:
+                    histo = self.scale_histo(histo)
+                histo.SetName(histo_name)
                 self.save_plots(save_name, 'png', canvas=c1, sub_dir=self.save_dir)
                 # draw all single plots into c2
-                c2.cd()
                 color = self.get_color()
                 histo.SetLineColor(color)
-                histo.SetFillColor(color)
+                histo.SetStats(0)
+                if not scale:
+                    histo.SetFillColor(color)
+                stack.Add(histo)
                 if not drawn_first:
-                    self.format_histo(histo, title='Signal Distribution with Consecutive Cuts', x_tit='Pulse Height [au]', y_tit='Entries', y_off=2)
-                    histo.SetStats(0)
-                    histo.Draw()
                     drawn_first = True
-                    legend.AddEntry(histo, key, 'f')
+                    legend_entry = key
                 else:
-                    histo.Draw('same')
-                    legend.AddEntry(histo, '+ ' + key, 'f')
+                    legend_entry = '+ ' + key
+                if scale:
+                    legend.AddEntry(histo, legend_entry, 'l')
+                else:
+                    legend.AddEntry(histo, legend_entry, 'f')
                 histos.append(histo)
                 ind += 1
-        # save c2
+        c1.SetName('all')
+        c1.SetLeftMargin(0.15)
+        stack.Draw('nostack')
         legend.Draw()
-        self.save_plots('consecutive', 'png', canvas=c2, sub_dir=self.save_dir)
-        self.save_plots('consecutive', 'root', canvas=c2, sub_dir=self.save_dir)
+        if plot:
+            self.root_objects.append(legend)
+            self.histos.append(histos)
+            self.histos.append(stack)
+
+        if scale:
+            self.save_plots('consecutive_scaled', 'png', canvas=c1, sub_dir=self.save_dir)
+            self.save_plots('consecutive_scaled', 'root', canvas=c1, sub_dir=self.save_dir)
+        else:
+            self.save_plots('consecutive', 'png', canvas=c1, sub_dir=self.save_dir)
+            self.save_plots('consecutive', 'root', canvas=c1, sub_dir=self.save_dir)
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
 
@@ -1305,21 +1404,28 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region SHOW
-    def draw_bucket_pedestal(self, show=True):
+    def draw_bucket_pedestal(self, show=True, trigger_cell=False, additional_cut=None, draw_option='colz'):
         gROOT.SetBatch(1)
         reg_name = 'e2'
-        three_bucket_num = self.get_signal_number(reg_name[0], reg_name[1])
+        # three_bucket_num = self.get_signal_number(reg_name[0], reg_name[1])
         reg_margins = self.run.signal_regions[reg_name[0]]
         x_bins = (reg_margins[1] - reg_margins[0])
         h = TH2F('h', 'Bucket Pedestal', x_bins, reg_margins[0] / 2., reg_margins[1] / 2., 550, -50, 500)
-        self.tree.Draw('{sig}:IntegralPeaks[{num}]/2>>h'.format(sig=self.SignalName, num=three_bucket_num), self.Cut.CutStrings['tracks'] + self.Cut.CutStrings['pulser'], 'goff')
+        peak_string = 'IntegralPeaks' if trigger_cell else 'IntegralPeakTime'
+        draw_string = '{sig}:{peaks}[{num}]{scale}>>h'.format(sig=self.SignalName, num=self.SignalNumber, peaks=peak_string, scale='/2.' if trigger_cell else '')
+        print draw_string
+        cut_string = self.Cut.CutStrings['tracks'] + self.Cut.CutStrings['pulser']
+        if additional_cut:
+            cut_string += additional_cut
+        print cut_string
+        self.tree.Draw(draw_string, cut_string, 'goff')
         if show:
             gROOT.SetBatch(0)
         c = TCanvas('c', 'Bucket Pedestal', 1000, 1000)
         c.SetLogz()
         self.format_histo(h, x_tit='Highest Peak Timing [ns]', y_tit='Pulse Height [au]', y_off=1.25)
         h.SetStats(0)
-        h.Draw('colz')
+        h.Draw(draw_option)
         self.save_plots('BucketPedestal', sub_dir=self.save_dir)
         gROOT.SetBatch(0)
         self.histos.append([h, c])
@@ -1424,6 +1530,15 @@ class SignalAnalysis(Analysis):
         h.Scale(1 / h.Integral(min_bin, max_bin))
         return h
 
+    @staticmethod
+    def scale_histo(histo):
+        h = histo
+        h.GetXaxis().SetRangeUser(0, 30)
+        h.GetXaxis().UnZoom()
+        maximum = h.GetBinContent(h.GetMaximumBin())
+        h.Scale(1. / maximum)
+        return h
+
     def analyse_signal_histograms(self):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         # gROOT.SetBatch(1)
@@ -1522,7 +1637,7 @@ class SignalAnalysis(Analysis):
         l2 = TLegend(.7, .47, .9, .67)
         l2.SetHeader('PeakIntegrals')
         for i, name in enumerate(self.get_all_signal_names().iterkeys()):
-            snr = self.calc_snr(name)
+            snr = self.calc_snr(sig=name, name=self.get_all_signal_names()[name])
             gr.SetPoint(i, i + 1, snr[0])
             gr.SetPointError(i, 0, snr[1])
         # rename bins
@@ -1530,9 +1645,9 @@ class SignalAnalysis(Analysis):
             bin_x = gr.GetXaxis().FindBin(i)
             gr.GetXaxis().SetBinLabel(bin_x, region)
         c = TCanvas('c', 'SNR', 1000, 1000)
-        [l1.AddEntry(0, '{reg}:  {val}'.format(reg=reg, val=value), '') for reg, value in self.run.signal_regions.iteritems() if len(reg) < 2]
-        [l2.AddEntry(0, '{reg}:  {val}'.format(reg=integ, val=value), '') for integ, value in self.run.peak_integrals.iteritems() if len(integ) < 2]
-        self.format_histo(gr, y_tit='SNR', y_off=1.2, color=self.get_color())
+        [l1.AddEntry(0, '{reg}:  {val}'.format(reg=reg, val=value), '') for reg, value in self.run.signal_regions.iteritems() if len(reg) <= 2]
+        [l2.AddEntry(0, '{reg}:  {val}'.format(reg=integ, val=value), '') for integ, value in self.run.peak_integrals.iteritems() if len(integ) <= 2]
+        self.format_histo(gr, y_tit='SNR', y_off=1.2, color=self.get_color(), fill_color=1)
         gr.SetLineColor(2)
         gr.Draw('bap')
         l1.Draw()
@@ -1541,7 +1656,7 @@ class SignalAnalysis(Analysis):
         self.save_plots('SNR', sub_dir=self.save_dir)
         self.histos.append([gr, l1, l2, c])
 
-    def calc_snr(self, sig=None):
+    def calc_snr(self, sig=None, name=''):
         signal = self.SignalName if sig is None else sig
         peak_int = self.get_all_signal_names()[signal][-2:] if self.get_all_signal_names()[signal][-2].isdigit() else self.get_all_signal_names()[signal][-1]
         ped_fit = self.show_pedestal_histo(draw=False, peak_int=peak_int)
@@ -1551,7 +1666,7 @@ class SignalAnalysis(Analysis):
 
         snr = sig_mean / ped_sigma
         snr_err = snr * (sig_fit.ParError(0) / sig_mean + ped_fit.ParError(2) / ped_sigma)
-        print 'SNR is: {snr} +- {err}'.format(snr=snr, err=snr_err)
+        print '{name}\t| SNR is: {snr} +- {err}'.format(name=name, snr=snr, err=snr_err)
         return [snr, snr_err]
 
     # ============================================

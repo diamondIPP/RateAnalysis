@@ -45,6 +45,8 @@ class Analysis(Elementary):
         self.lowest_rate_run = high_low_rate['min'] if high_low_rate is not None else self.run.run_number
         self.highest_rate_run = high_low_rate['max'] if high_low_rate is not None else self.run.run_number
         self.PickleDir = self.get_program_dir() + self.ana_config_parser.get('SAVE', 'pickle_dir')
+        if self.ana_config_parser.has_option('SAVE','ActivateTitle'):
+            gStyle.SetOptTitle(self.ana_config_parser.getboolean('SAVE','ActivateTitle'))
         # self.saveMCData = self.ana_config_parser.getboolean("SAVE", "SaveMCData")
         self.ana_save_dir = '{tc}_{run}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run.run_number)
 
@@ -57,13 +59,6 @@ class Analysis(Elementary):
         # miscellaneous
         self.channel = self.channel if hasattr(self, 'channel') else None
 
-        # regions // ranges // for PAD
-        if self.DUTType == 'pad':
-            self.IntegralNames = self.get_integral_names()
-            self.SignalRegion = self.ana_config_parser.get('BASIC', 'signal_region')
-            self.PedestalRegion = self.ana_config_parser.get('BASIC', 'pedestal_region')
-            self.PeakIntegral = self.ana_config_parser.get('BASIC', 'peak_integral')
-
         # general for pads and pixels
         self.Cut = Cut(self)
         self.StartEvent = self.Cut.CutConfig['EventRange'][0]
@@ -74,19 +69,13 @@ class Analysis(Elementary):
         self.histos = []
         self.canvases = {}
         self.lines = {}
+        self.root_objects = []
 
         # alignment
         self.IsAligned = self.check_alignment(draw=False)
 
     # ============================================================================================
     # region INIT
-
-    def get_integral_names(self):
-        names = OrderedDict()
-        self.tree.GetEntry(0)
-        for i, name in enumerate(self.tree.IntegralNames):
-            names[name] = i
-        return names
 
     def init_run(self, run):
         if not isinstance(run, Run):
@@ -165,7 +154,7 @@ class Analysis(Elementary):
         self._add_buckets()
         save_name = 'PedestalRegions' if ped else 'SignalRegions'
         self.save_plots(save_name, sub_dir=self.ana_save_dir, ch=None)
-        self.histos[0] = [h, c, gr, lines, titles]
+        self.histos.append([h, c, gr, lines, titles])
 
     def _add_buckets(self, canvas=None):
         c = gROOT.GetSelectedPad() if canvas is None else canvas
@@ -201,7 +190,7 @@ class Analysis(Elementary):
                     arrows.append(ar)
             a.Draw()
             axis.append(a)
-        self.histos[1] = [axis, labels, arrows]
+        self.histos.append([axis, labels, arrows])
 
     def draw_peak_integrals(self, event=None):
         h = self.__draw_single_wf(event=event, show=False)
@@ -242,7 +231,7 @@ class Analysis(Elementary):
             gr.Draw('p')
         self._add_buckets()
         self.save_plots('IntegralPeaks', sub_dir=self.ana_save_dir, ch=None)
-        self.histos[0] = [gr1, gr2, c, l, t1, h, l2, t2]
+        self.histos.append([gr1, gr2, c, l, t1, h, l2, t2])
     # endregion
 
     # ============================================================================================
