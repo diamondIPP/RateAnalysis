@@ -58,6 +58,12 @@ class Elementary(object):
             colors.append(color + 3)
         return colors
 
+    @staticmethod
+    def ensure_dir(f):
+        d = os.path.dirname(f)
+        if not os.path.exists(d):
+            os.makedirs(d)
+
     def get_color(self):
         self.count %= 20
         color = self.colors[self.count]
@@ -88,22 +94,35 @@ class Elementary(object):
             directory += "/"
         self.save_directory = directory
 
-    def save_plots(self, savename, file_type=None, save_dir=None, sub_dir=None, canvas=None, ind=0, ch='dia'):
+
+    def save_canvas(self,canvas,resultdir='',name=None):
+        canvas.Update()
+        if name is None:
+            name=canvas.GetName()
+        save_dir = self.save_directory if save_dir is None else save_dir
+        fname = save_dir
+        fname +='/%s/'+resultdir+'/'+name+'.%s'
+        ftypes = ['png','eps','root']
+        for f in ftypes:
+            self.ensure_dir(fname%(f,f))
+            canvas.SaveAs(fname%(f,f))
+
+    def save_plots(self, savename, sub_dir=None, canvas=None, ind=0, ch='dia', file_type=None, save_dir=None):
         """
         Saves the canvas at the desired location. If no canvas is passed as argument, the active canvas will be saved. However for applications without graphical interface,
         such as in SSl terminals, it is recommended to pass the canvas to the method.
         :param savename:
-        :param file_type:
-        :param save_dir:
+        # :param file_type:
+        # :param save_dir:
         :param sub_dir:
         :param canvas:
         :param ind: index of the collection
         :param ch: if None print both dias (dirty fix)
         """
-        save_dir = self.save_directory if save_dir is None else save_dir
-        file_type = '.png' if file_type is None else '.{end}'.format(end=file_type)
+        # save_dir = self.save_directory if save_dir is None else save_dir
+        # file_type = '.png' if file_type is None else '.{end}'.format(end=file_type)
         sub_dir = '' if sub_dir is None else '{subdir}/'.format(subdir=sub_dir)
-        resultsdir = save_dir + sub_dir
+        resultsdir = sub_dir
         if not os.path.exists(resultsdir):
             os.makedirs(resultsdir)
         if canvas is None:
@@ -128,7 +147,8 @@ class Elementary(object):
                 self.collection.values()[ind].run.draw_run_info(channel=ch if ch is None else self.collection.values()[ind].channel, canvas=canvas)
         canvas.Update()
         try:
-            canvas.SaveAs(resultsdir + savename + file_type)
+            self.save_canvas(canvas,resultdir=resultsdir,name=savename)
+            # canvas.SaveAs(resultsdir + savename + file_type)
         except Exception as inst:
             print '\n\n{delim}\nERROR in save plots!\n{msg}\n{delim}\n\n'.format(delim=len(str(inst)) * '-', msg=inst)
 
