@@ -30,7 +30,7 @@ class SignalAnalysis(Analysis):
         # main
         self.diamond_name = self.run.diamond_names[channel]
         self.bias = self.run.bias[channel]
-        self.save_dir = '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number, dia=self.diamond_name)
+        self.save_dir = '{dia}/{run}/'.format(run=self.run_number, dia=self.diamond_name)
 
         # stuff
         self.BinSize = binning
@@ -469,7 +469,7 @@ class SignalAnalysis(Analysis):
             self.tree.Draw(peak_val + '>>peakvalues', cut, 'goff')
         else:
             self.tree.Draw(peak_val + '/2.>>peakvalues', cut, 'goff')
-        self.histos.append(self.draw_histo(h, '{typ}PeakPositions'.format(typ=type_.title()), show, self.save_dir, lm=.14))
+        self.histos.append(self.draw_histo(h, '{typ}PeakPositions'.format(typ=type_.title()), show, subdir=self.save_dir, lm=.14))
         self.PeakValues = h
 
     def fit_peak_values(self, draw=True, pulser=False):
@@ -506,7 +506,7 @@ class SignalAnalysis(Analysis):
         forc = 'forc_pos/2.' if not corr else 'forc_time'
         self.tree.Draw('{forc}>>ft'.format(forc=forc), self.Cut.all_cut, 'goff')
         self.format_histo(h, x_tit='time [ns]', y_tit='Entries', y_off=2, fill_color=17)
-        self.histos.append(self.draw_histo(h, 'FORCTiming', show, self.save_dir, lm=.14))
+        self.histos.append(self.draw_histo(h, 'FORCTiming', show, subdir=self.save_dir, lm=.14))
 
     # endregion
 
@@ -520,7 +520,7 @@ class SignalAnalysis(Analysis):
         h.SetStats(0)
         h.GetYaxis().SetRangeUser(0, h.GetMaximum() * 1.05)
         h.Fit('pol0', 'qs')
-        self.histos.append(self.draw_histo(h, 'TriggerCell', show, self.save_dir, lm=.11))
+        self.histos.append(self.draw_histo(h, 'TriggerCell', show, subdir=self.save_dir, lm=.11))
 
     def draw_trigger_cell_vs_peakpos(self, show=True, cut=None, tprofile=True, corr=False):
         x = self.run.signal_regions[self.SignalRegion]
@@ -859,7 +859,7 @@ class SignalAnalysis(Analysis):
             self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.8)
             h.Draw()
             save_name = 'Pedestal_{reg}{cut}'.format(reg=region, cut=cut.GetName())
-            self.save_plots(save_name, 'png', canvas=c, sub_dir=self.save_dir)
+            self.save_plots(save_name,  canvas=c, sub_dir=self.save_dir)
             self.histos.append([h, c])
             gROOT.SetBatch(0)
             return fit_pars
@@ -916,15 +916,19 @@ class SignalAnalysis(Analysis):
         contributions = {}
         cutted_events = 0
         cuts = TCut('consecutive', '')
+        total_events = self.run.n_entries
+        output = OrderedDict()
         for cut in main_cut + self.Cut.CutStrings.values():
             name = cut.GetName()
             if not name.startswith('old') and name != 'all_cuts' and name not in contributions and str(cut):
                 cuts += cut
                 events = int(self.tree.Draw('1', '!({0})'.format(cuts), 'goff'))
+                output[name] = (1.-float(events)/total_events)*100.
                 events -= cutted_events
                 print name, events
                 contributions[cut.GetName()] = events
                 cutted_events += events
+        print output
         sorted_contr = OrderedDict()
         while contributions:
             for key, value in contributions.iteritems():
@@ -1084,7 +1088,7 @@ class SignalAnalysis(Analysis):
                 # safe single plots
                 c1.cd()
                 self.tree.Draw("{name}>>{histo}".format(name=self.SignalName, histo=histo_name), value)
-                self.save_plots(save_name, 'png', canvas=c1, sub_dir=self.save_dir)
+                self.save_plots(save_name,  canvas=c1, sub_dir=self.save_dir)
                 # draw all single plots into c2
                 c2.cd()
                 histo.SetLineColor(self.get_color())
@@ -1101,7 +1105,7 @@ class SignalAnalysis(Analysis):
                 legend.AddEntry(histo, key, 'l')
         # save c2
         legend.Draw()
-        self.save_plots('all', 'png', canvas=c2, sub_dir=self.save_dir)
+        self.save_plots('all',  canvas=c2, sub_dir=self.save_dir)
         self.save_plots('all', 'root', canvas=c2, sub_dir=self.save_dir)
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
@@ -1144,7 +1148,7 @@ class SignalAnalysis(Analysis):
                     histo = self.normalise_histo(histo)
                 histo.Draw()
                 c1.Update()
-                self.save_plots(save_name, 'png', canvas=c1, sub_dir=self.save_dir)
+                self.save_plots(save_name,  canvas=c1, sub_dir=self.save_dir)
                 # draw all single plots into c2
                 histo.SetLineColor(self.get_color())
 
@@ -1167,10 +1171,10 @@ class SignalAnalysis(Analysis):
             c1.Update()
 
         if scale:
-            self.save_plots('scaled', 'png', canvas=c1, sub_dir=self.save_dir)
+            self.save_plots('scaled',  canvas=c1, sub_dir=self.save_dir)
             self.save_plots('scaled', 'root', canvas=c1, sub_dir=self.save_dir)
         else:
-            self.save_plots('normalised', 'png', canvas=c1, sub_dir=self.save_dir)
+            self.save_plots('normalised',  canvas=c1, sub_dir=self.save_dir)
             self.save_plots('normalised', 'root', canvas=c1, sub_dir=self.save_dir)
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
@@ -1181,7 +1185,7 @@ class SignalAnalysis(Analysis):
             gROOT.SetBatch(1)
         self.reset_colors()
         c1 = TCanvas('consecutive', '', 1000, 1000)
-        legend = TLegend(0.7, 0.3, 0.98, .7)
+        legend = TLegend(0.7, 0.52, 0.98, .92)
         histos = []
         drawn_first = False
         ind = 0
@@ -1201,12 +1205,11 @@ class SignalAnalysis(Analysis):
                 histo = TH1F(histo_name, histo_title, 550, -50, 500)
                 # safe single plots
                 c1.cd()
-                print self.SignalName
                 self.tree.Draw("{name}>>{histo}".format(name=self.SignalName, histo=histo_name), cut)
                 if scale:
                     histo = self.scale_histo(histo)
                 histo.SetName(histo_name)
-                self.save_plots(save_name, 'png', canvas=c1, sub_dir=self.save_dir)
+                self.save_plots(save_name, canvas=c1, sub_dir=self.save_dir)
                 # draw all single plots into c2
                 color = self.get_color()
                 histo.SetLineColor(color)
@@ -1238,7 +1241,7 @@ class SignalAnalysis(Analysis):
             c1.SetLogy()
             self.save_plots('consecutive_scaled_logy', canvas=c1, sub_dir=self.save_dir)
         else:
-            self.save_plots('consecutive_logy',  canvas=c1, sub_dir=self.save_dir)
+            self.save_plots('consecutive',  canvas=c1, sub_dir=self.save_dir)
             c1.SetLogy()
             self.save_plots('consecutive_logy', canvas=c1, sub_dir=self.save_dir)
 
@@ -1821,6 +1824,7 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument('run', nargs='?', default=392, type=int)
     parser.add_argument('ch', nargs='?', default=0, type=int)
+    parser.add_argument('-tc', '--test_campaign', nargs='?', default='201510')
     args = parser.parse_args()
     test_run = args.run
     message = 'STARTING PAD-ANALYSIS OF RUN {0}'.format(test_run)
@@ -1828,4 +1832,6 @@ if __name__ == "__main__":
     a = Elementary()
     a.print_testcampaign()
     z = SignalAnalysis(test_run, args.ch)
+    if args.test_campaign in self.find_testcampaign():
+        self.set_testcampaign(args.test_campaign)
     z.print_elapsed_time(st, 'Instantiation')

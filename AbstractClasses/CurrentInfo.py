@@ -45,10 +45,13 @@ class Currents(Elementary):
 
         # config
         self.ConfigParser = self.load_parser()
-
         # device info
         self.Number = self.get_device_nr()
         self.Channel = self.get_device_channel()
+
+        if self.ConfigParser is None:
+            return
+
         self.Brand = self.ConfigParser.get('HV' + self.Number, 'name').split('-')[0].strip('0123456789')
         self.Model = self.ConfigParser.get('HV' + self.Number, 'model')
         self.Name = '{0} {1}'.format(self.Brand, self.Model)
@@ -77,8 +80,11 @@ class Currents(Elementary):
     # region INIT
     def load_parser(self):
         parser = ConfigParser()
-        parser.read(self.run_config_parser.get('BASIC', 'hvconfigfile'))
-        return parser
+        if parser.has_option('BASIC', 'hvconfigfile'):
+            parser.read(self.run_config_parser.get('BASIC', 'hvconfigfile'))
+            return parser
+        else:
+            return None
 
     def get_device_nr(self):
         full_str = self.RunInfo['dia{dia}supply'.format(dia=1 if not self.Channel else 2)]

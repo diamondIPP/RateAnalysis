@@ -109,6 +109,7 @@ class Cut(Elementary):
     def define_cutstrings():
         dic = OrderedDict()
         dic['raw'] = TCut('raw', '')
+        dic['saturated'] = TCut('saturated', '')
         dic['pulser'] = TCut('pulser', '')
         dic['event_range'] = TCut('event_range', '')
         # waveform
@@ -121,7 +122,6 @@ class Cut(Elementary):
         dic['chi2Y'] = TCut('chi2Y', '')
         dic['track_angle'] = TCut('track_angle', '')
         # waveform
-        dic['saturated'] = TCut('saturated', '')
         dic['signal_peak_pos'] = TCut('signal_peak_pos', '')
         dic['signal_peak_time'] = TCut('signal_peak_time', '')
         dic['trigger_cell'] = TCut('trigger_cell', '')
@@ -297,10 +297,6 @@ class Cut(Elementary):
         if self.CutConfig['EventRange']:
             self.EasyCutStrings['EventRange'] = 'Evts.{min}k-{max}k'.format(min=int(self.CutConfig['EventRange'][0]) / 1000, max=int(self.CutConfig['EventRange'][1]) / 1000)
             self.EasyCutStrings['ExcludeFirst'] = 'Evts.{min}k+'.format(min=int(self.CutConfig['ExcludeFirst']) / 1000) if self.CutConfig['ExcludeFirst'] > 0 else ''
-
-        # -- PULSER CUT --
-        if self.DUTType == 'pad':
-            self.CutStrings['pulser'] += '!pulser'
 
         # -- BEAM INTERRUPTION CUT --
         self.__generate_beam_interruptions()

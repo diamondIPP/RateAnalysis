@@ -19,20 +19,17 @@ class Elementary(object):
     It provides, among other things, a verbose printing method or a save plot method containing a global save directory handling.
     """
 
-    default_testcampaign = '201510'
-    TESTCAMPAIGN = None
-
-    def __init__(self, verbose=False):
+    def __init__(self, testcampaign='201510', verbose=False):
         self.verbose = verbose
-        self.save_directory = self.get_program_dir() + 'Results/'
-
-        self.set_test_campaign(self.default_testcampaign)
 
         # read configuration files
         self.run_config_parser = self.load_run_config()
         self.ana_config_parser = self.load_ana_config()
 
-        self.aimedFluxes = [3, 20, 60, 600, 2000, 5000]
+        self.TESTCAMPAIGN = None
+        self.set_test_campaign(testcampaign)
+        self.save_directory = '{dir}/Results{tc}/'.format(dir=self.get_program_dir(), tc=self.TESTCAMPAIGN)
+
         # colors
         self.count = 0
         self.colors = self.create_colorlist()
@@ -90,24 +87,45 @@ class Elementary(object):
         return bool(num & 1 << bit)
 
     def set_save_directory(self, directory="Results/"):
-        if not directory[-1] == "/":
-            directory += "/"
+        if not directory[-1] == '/':
+            directory += '/'
         self.save_directory = directory
 
-
-    def save_canvas(self,canvas,resultdir='',name=None):
+    def save_canvas(self, canvas, sub_dir='', name=None, print_names=True):
         canvas.Update()
-        if name is None:
-            name=canvas.GetName()
-        save_dir = self.save_directory if save_dir is None else save_dir
-        fname = save_dir
-        fname +='/%s/'+resultdir+'/'+name+'.%s'
-        ftypes = ['png','eps','root']
+        name = canvas.GetName() if name is None else name
+        file_name = '{nam}.{{ext}}'.format(nam=name)
+        fname = '{save_dir}{res}/{{typ}}/{file}'.format(res=sub_dir, file=file_name, save_dir=self.save_directory)
+        ftypes = ['png', 'eps', 'root']
+        gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
+        out = 'Creating plots: '
+        run_number = None
+        if hasattr(self, 'run_number'):
+            run_number = self.run_number
+        elif hasattr(self, 'analysis'):
+            run_number = self.analysis.run_number
+        elif hasattr(self,'collection') or hasattr(self,'runs'):
+            try:
+                min_run = min(self.runs)
+                max_run = max(self.runs)
+                len_runs=len(self.runs)
+                run_number = "{0}_to_{1}_with_{2}_runs".format(min_run,max_run,len_runs)
+            except:
+                pass
+        print 'run_number: ',run_number
         for f in ftypes:
-            self.ensure_dir(fname%(f,f))
-            canvas.SaveAs(fname%(f,f))
+            ext = f
+            if f == 'eps':
+                if not run_number is None:
+                    ext = '{0}.{1}'.format(run_number,f)
+            self.ensure_dir(fname.format(typ=f,ext=ext))
+            out += file_name.format(typ=f,ext=ext) + ', '
+            canvas.SaveAs(fname.format(typ=f,ext=ext))
+        if print_names:
+            print out.strip(', ')
+        gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
 
-    def save_plots(self, savename, sub_dir=None, canvas=None, ind=0, ch='dia', file_type=None, save_dir=None):
+    def save_plots(self, savename, sub_dir=None, canvas=None, ind=0, ch='dia'):
         """
         Saves the canvas at the desired location. If no canvas is passed as argument, the active canvas will be saved. However for applications without graphical interface,
         such as in SSl terminals, it is recommended to pass the canvas to the method.
@@ -121,10 +139,10 @@ class Elementary(object):
         """
         # save_dir = self.save_directory if save_dir is None else save_dir
         # file_type = '.png' if file_type is None else '.{end}'.format(end=file_type)
+
         sub_dir = '' if sub_dir is None else '{subdir}/'.format(subdir=sub_dir)
         resultsdir = sub_dir
-        if not os.path.exists(resultsdir):
-            os.makedirs(resultsdir)
+
         if canvas is None:
             try:
                 c = gROOT.GetListOfCanvases()
@@ -137,7 +155,6 @@ class Elementary(object):
         if hasattr(self, 'run'):
             self.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas)
         elif hasattr(self, 'analysis'):
-            print 'has analysis'
             self.analysis.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas)
         elif hasattr(self, 'collection'):
             runs = [self.collection.keys()[0], self.collection.keys()[-1], self.collection.values()[0].run.get_rate_string(), self.collection.values()[-1].run.get_rate_string()]
@@ -146,9 +163,9 @@ class Elementary(object):
             else:
                 self.collection.values()[ind].run.draw_run_info(channel=ch if ch is None else self.collection.values()[ind].channel, canvas=canvas)
         canvas.Update()
+
         try:
-            self.save_canvas(canvas,resultdir=resultsdir,name=savename)
-            # canvas.SaveAs(resultsdir + savename + file_type)
+            self.save_canvas(canvas, sub_dir=resultsdir, name=savename)
         except Exception as inst:
             print '\n\n{delim}\nERROR in save plots!\n{msg}\n{delim}\n\n'.format(delim=len(str(inst)) * '-', msg=inst)
 
@@ -286,14 +303,14 @@ class Elementary(object):
         except AttributeError or ReferenceError:
             pass
 
-    def draw_histo(self, histo, save_name, show, save_dir, lm=.1, rm=0.1, draw_opt='', x=1000, y=1000, l=None):
+    def draw_histo(self, histo, save_name, show, sub_dir=None, lm=.1, rm=0.1, draw_opt='', x=1000, y=1000, l=None):
         h = histo
         gROOT.SetBatch(1) if not show else self.do_nothing()
         c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x, y)
         c.SetMargin(lm, rm, .15, .1)
         h.Draw(draw_opt)
         l.Draw() if l is not None else self.do_nothing()
-        self.save_plots(save_name, sub_dir=save_dir)
+        self.save_plots(save_name, sub_dir=sub_dir)
         gROOT.SetBatch(0)
         return [c, h, l] if l is not None else [c, h]
 

@@ -35,6 +35,10 @@ class Analysis(Elementary):
         :param verbose:     if True, verbose printing is activated
         """
         Elementary.__init__(self, verbose=verbose)
+        self.histos = []
+        self.canvases = {}
+        self.lines = {}
+        self.root_objects = []
 
         # basics
         self.diamonds = diamonds
@@ -45,8 +49,8 @@ class Analysis(Elementary):
         self.lowest_rate_run = high_low_rate['min'] if high_low_rate is not None else self.run.run_number
         self.highest_rate_run = high_low_rate['max'] if high_low_rate is not None else self.run.run_number
         self.PickleDir = self.get_program_dir() + self.ana_config_parser.get('SAVE', 'pickle_dir')
-        if self.ana_config_parser.has_option('SAVE','ActivateTitle'):
-            gStyle.SetOptTitle(self.ana_config_parser.getboolean('SAVE','ActivateTitle'))
+        if self.ana_config_parser.has_option('SAVE', 'ActivateTitle'):
+            gStyle.SetOptTitle(self.ana_config_parser.getboolean('SAVE', 'ActivateTitle'))
         # self.saveMCData = self.ana_config_parser.getboolean("SAVE", "SaveMCData")
         self.ana_save_dir = '{tc}_{run}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run.run_number)
 
@@ -66,10 +70,6 @@ class Analysis(Elementary):
 
         # save histograms // canvases
         self.signal_canvas = None
-        self.histos = []
-        self.canvases = {}
-        self.lines = {}
-        self.root_objects = []
 
         # alignment
         self.IsAligned = self.check_alignment(draw=False)
@@ -250,10 +250,10 @@ class Analysis(Elementary):
         if show or mode == 'tracks':
             yq = zeros(1)
             h.GetQuantiles(1, yq, array([.9]))
-            h.GetXaxis().SetRangeUser(0, yq[0])
+            # h.GetXaxis().SetRangeUser(0, yq[0])
         self.format_histo(h, x_tit='#chi^{2}', y_tit='Entries', y_off=1.8)
         h.Draw()
-        self.histos[0] = h
+        self.histos.append(h)
         self.canvases[0] = c
         gROOT.SetBatch(0)
         return h
@@ -360,7 +360,7 @@ class Analysis(Elementary):
                 h.Draw('hist')
                 self.save_plots('EventAlignment', sub_dir=self.ana_save_dir, ch=None)
                 gROOT.SetBatch(0)
-                self.histos[0] = [h, c]
+                self.histos.append([h, c])
                 align = self.__check_alignment_histo(h)
                 return align
             else:

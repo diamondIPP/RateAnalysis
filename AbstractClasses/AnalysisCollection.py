@@ -148,6 +148,8 @@ class AnalysisCollection(Elementary):
         gr2 = self.make_tgrapherrors('binwise', prefix + 'binwise correction', self.get_color())
         gr3 = self.make_tgrapherrors('mean ped', prefix + 'mean correction', self.get_color())
         gr4 = self.make_tgrapherrors('raw', prefix + 'raw', self.get_color())
+        gr_first = self.make_tgrapherrors('first', prefix + 'first',marker=22,color=gr1.GetLineColor())
+        gr_last = self.make_tgrapherrors('last', prefix + 'last',marker=23,color=gr1.GetLineColor())
 
         gROOT.SetBatch(1)
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
@@ -167,11 +169,15 @@ class AnalysisCollection(Elementary):
             gr2.SetPointError(i, 0, fit2.ParError(0))
             gr3.SetPointError(i, 0, fit3.ParError(0))
             gr4.SetPointError(i, 0, fit4.ParError(0))
+            if i == 0:
+                gr_first.SetPoint(0,x,fit1.Parameter(0))
+            if i == len(self.collection)-1:
+                gr_last.SetPoint(0,x,fit1.Parameter(0))
             i += 1
         if draw:
             gROOT.SetBatch(0)
             gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
-        graphs = [gr1]
+        graphs = [gr1,gr_first,gr_last]
         if all_corr:
             graphs += [gr2, gr3]
         if raw:
@@ -193,8 +199,7 @@ class AnalysisCollection(Elementary):
             legend.Draw()
         gROOT.SetBatch(0)
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
-        self.save_plots('PulseHeight_' + mode, 'png', canvas=c, sub_dir=self.save_dir)
-        self.save_plots('PulseHeight_' + mode, 'root', canvas=c, sub_dir=self.save_dir)
+        self.save_plots('PulseHeight_' + mode, canvas=c, sub_dir=self.save_dir)
         self.canvases[0] = c
         self.PulseHeight = gr1
 
@@ -244,7 +249,6 @@ class AnalysisCollection(Elementary):
         self.histos[0] = [graphs, legend, c]
         save_name = 'Pedestal_{mod}{cut}'.format(mod=mode, cut='' if cut is None else cut_string.GetName())
         self.save_plots(save_name, sub_dir=self.save_dir)
-        self.save_plots(save_name, 'root', sub_dir=self.save_dir)
         self.reset_colors()
         return gr1
 
