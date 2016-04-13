@@ -301,7 +301,7 @@ class ChannelCut(Cut):
     def calc_timing_range(self, sigma):
         num = self.analysis.SignalNumber
         # estimate timing
-        cut = self.generate_special_cut(excluded_cuts=['bucket'])
+        cut = self.generate_special_cut(excluded_cuts=['bucket','timing'])
         draw_string = 'IntegralPeakTime[{num}]>>h1'.format(num=num)
         self.analysis.tree.Draw(draw_string, cut, 'goff')
         h1 = gROOT.FindObject('h1')
@@ -317,7 +317,7 @@ class ChannelCut(Cut):
 
         # get time corrected sigma
         h3 = TH1F('h3','Corrected Timing', 100, original_mpv - 10, original_mpv + 10)
-        self.analysis.tree.Draw('(IntegralPeakTime[{num}] + {t_corr}) >> h3'.format(num=num, t_corr=t_correction), cut, 'goff')
+        self.analysis.tree.Draw('(IntegralPeakTime[{num}] - {t_corr}) >> h3'.format(num=num, t_corr=t_correction), cut, 'goff')
         fit3 = self.fit_fwhm(h3, draw=1)
         self.data.append(self.draw_histo(h3, 'bla', 1, self.save_directory))
 
@@ -375,7 +375,10 @@ class ChannelCut(Cut):
         timingCut = TCut('{lowEdge} < {peakTime} - {correctedTime} &&{peakTime} - {correctedTime} < {upEdge}'.format(
             lowEdge=lowEdge,upEdge=upEdge,correctedTime=timing_correction,peakTime=peakTime))
         timingCut.SetName('timing')
+        self.analysis.correctedTime ='({peakTime}-{correction})'
+        newTime =
 
+        'TMath::Abs({correctedTime} - {MP})/{sigma} < {n_sigma}'
         gROOT.SetBatch(0)
         if show:
             self.analysis.histos.append(hTimingVsTriggerCell_pfy)

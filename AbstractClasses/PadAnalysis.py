@@ -1233,13 +1233,14 @@ class SignalAnalysis(Analysis):
             self.root_objects.append(legend)
             self.histos.append(histos)
             self.histos.append(stack)
-
         if scale:
-            self.save_plots('consecutive_scaled', 'png', canvas=c1, sub_dir=self.save_dir)
-            self.save_plots('consecutive_scaled', 'root', canvas=c1, sub_dir=self.save_dir)
+            self.save_plots('consecutive_scaled', canvas=c1, sub_dir=self.save_dir,add_logy=True)
+            c1.SetLogy()
+            self.save_plots('consecutive_scaled_logy', canvas=c1, sub_dir=self.save_dir,add_logy=True)
         else:
-            self.save_plots('consecutive', 'png', canvas=c1, sub_dir=self.save_dir)
-            self.save_plots('consecutive', 'root', canvas=c1, sub_dir=self.save_dir)
+            self.save_plots('consecutive_logy',  canvas=c1, sub_dir=self.save_dir)
+            c1.SetLogy()
+            self.save_plots('consecutive_logy', canvas=c1, sub_dir=self.save_dir,add_logy=True)
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
 
@@ -1533,8 +1534,6 @@ class SignalAnalysis(Analysis):
     @staticmethod
     def scale_histo(histo):
         h = histo
-        h.GetXaxis().SetRangeUser(0, 30)
-        h.GetXaxis().UnZoom()
         maximum = h.GetBinContent(h.GetMaximumBin())
         h.Scale(1. / maximum)
         return h
