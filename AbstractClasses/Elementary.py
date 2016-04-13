@@ -336,7 +336,7 @@ class Elementary(object):
             peak_pos = h.GetBinCenter(h.GetMaximumBin())
             bin1 = h.FindFirstBinAbove(h.GetMaximum() / 2)
             bin2 = h.FindLastBinAbove(h.GetMaximum() / 2)
-            fwhm = h.GetBinUpEdge(bin2+1) - h.GetBeinLowEdge(bin1-1)
+            fwhm = h.GetBinLowEdge(bin2 + 2) - h.GetBinLowEdge(bin1 - 1)
             option = 'qs' if draw else 'qs0'
             fit = h.Fit(fitfunc, option, '', peak_pos - fwhm / 2, peak_pos + fwhm / 2)
         else:
