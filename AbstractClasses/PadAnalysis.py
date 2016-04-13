@@ -1234,13 +1234,14 @@ class SignalAnalysis(Analysis):
             self.histos.append(histos)
             self.histos.append(stack)
         if scale:
-            self.save_plots('consecutive_scaled', canvas=c1, sub_dir=self.save_dir,add_logy=True)
+            self.save_plots('consecutive_scaled', canvas=c1, sub_dir=self.save_dir)
             c1.SetLogy()
-            self.save_plots('consecutive_scaled_logy', canvas=c1, sub_dir=self.save_dir,add_logy=True)
+            self.save_plots('consecutive_scaled_logy', canvas=c1, sub_dir=self.save_dir)
         else:
             self.save_plots('consecutive_logy',  canvas=c1, sub_dir=self.save_dir)
             c1.SetLogy()
-            self.save_plots('consecutive_logy', canvas=c1, sub_dir=self.save_dir,add_logy=True)
+            self.save_plots('consecutive_logy', canvas=c1, sub_dir=self.save_dir)
+
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
 
