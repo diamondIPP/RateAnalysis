@@ -28,7 +28,7 @@ class AnalysisCollection(Elementary):
     """
     current_run_number = -1
 
-    def __init__(self, list_of_runs, diamonds=None, verbose=False):
+    def __init__(self, list_of_runs, diamonds=None, verbose=False, run_plan = None):
         Elementary.__init__(self, verbose=verbose)
 
         # dict where all analysis objects are saved
@@ -38,7 +38,7 @@ class AnalysisCollection(Elementary):
         self.runs = self.load_runs(list_of_runs)
         self.diamonds = self.load_diamonds(diamonds, list_of_runs)
         self.min_max_rate_runs = self.get_high_low_rate_runs()
-
+        self.run_plan = run_plan
         self.generate_slope_pickle()
         self.generate_threshold_pickle()
 
@@ -851,4 +851,4 @@ if __name__ == "__main__":
     print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(message)) * '=', msg=message)
     a = Elementary()
     a.print_testcampaign()
-    z = AnalysisCollection(sel, diamond)
+    z = AnalysisCollection(sel, diamond,run_plan=run_plan)
