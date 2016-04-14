@@ -912,7 +912,9 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region CUTS
-    def show_cut_contributions(self):
+    def show_cut_contributions(self,show=True):
+        if not show:
+            gROOT.SetBatch(1)
         main_cut = [self.Cut.CutStrings['event_range'], self.Cut.CutStrings['beam_interruptions']]
         contributions = {}
         cutted_events = 0
@@ -965,6 +967,7 @@ class SignalAnalysis(Analysis):
         pie.Draw('3drsc')
         self.save_plots('CutContributions', sub_dir=self.save_dir)
         self.histos.append([pie, c])
+        gROOT.SetBatch(0)
         return contributions
 
     def show_bucket_histos(self):
@@ -1427,6 +1430,8 @@ class SignalAnalysis(Analysis):
         self.tree.Draw(draw_string, cut_string, 'goff')
         if show:
             gROOT.SetBatch(0)
+        else:
+            gROOT.SetBatch(1)
         c = TCanvas('c', 'Bucket Pedestal', 1000, 1000)
         c.SetLogz()
         self.format_histo(h, x_tit='Highest Peak Timing [ns]', y_tit='Pulse Height [au]', y_off=1.25)

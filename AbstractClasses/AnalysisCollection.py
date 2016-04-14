@@ -138,6 +138,13 @@ class AnalysisCollection(Elementary):
         return selection
     # endregion
 
+    def create_all_single_run_plots(self):
+         for key, ana in self.collection.iteritems():
+            print 'Create Plots for Run ',key
+            ana.compare_consecutive_cuts(scale=False)
+            ana.compare_consecutive_cuts(scale=True)
+            ana.show_cut_contributions(show=False)
+            ana.draw_bucket_pedestal(show=False)
     # ============================================
     # region SIGNAL/PEDESTAL
     def draw_pulse_heights(self, binning=20000, flux=True, raw=False, all_corr=False, draw=True):
@@ -862,7 +869,7 @@ if __name__ == "__main__":
     diamond = args.dia
     a = Elementary(tc)
     a.print_testcampaign()
-    sel = RunSelection()
+    sel = RunSelection(testcampaign=tc)
     sel.select_runs_from_runplan(run_plan)
     message = 'STARTING PAD-ANALYSIS COLLECTION OF RUNPLAN {0:02d}'.format(run_plan)
     print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(message)) * '=', msg=message)

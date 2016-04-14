@@ -13,6 +13,8 @@ print args
 
 testcampaign=str(args.testcampaign)
 print 'TestCampaingn: "{tc}"'.format(tc=testcampaign)
+a = Elementary(testcampaign=testcampaign)
+a.print_testcampaign()
 z=RunSelection(testcampaign=testcampaign)
 if args.RunPlan != -1:
     print 'RunPlan:',args.RunPlan

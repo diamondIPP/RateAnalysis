@@ -7,7 +7,7 @@ from textwrap import fill
 
 
 class RunSelection(Elementary):
-    def __init__(self, testcampaign='201510',verbose=False):
+    def __init__(self, testcampaign=None,verbose=False):
         Elementary.__init__(self, verbose=verbose,testcampaign=testcampaign)
         self.run = Run(run_number=None, verbose=verbose)
         self.runplan_path = self.get_program_dir() + self.run_config_parser.get('BASIC', 'runplaninfofile')
