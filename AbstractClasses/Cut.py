@@ -310,7 +310,8 @@ class Cut(Elementary):
         This adds the restrictions to the cut string such that beam interruptions are excluded each time the cut is applied.
         """
         self.get_beam_interruptions()
-
+        if self.jump_ranges == None:
+            self.__create_jump_ranges()
         njumps = len(self.jump_ranges["start"])
         cut_string = ''
         start_event = self.CutConfig['EventRange'][0]
