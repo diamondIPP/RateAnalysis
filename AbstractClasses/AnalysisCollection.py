@@ -55,6 +55,7 @@ class AnalysisCollection(Elementary):
         self.save_dir = '{tc}_Runplan{plan}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], plan=self.run_plan, dia=self.diamond_name)
         self.canvases = {}
         self.histos = {}
+        self.root_objects = []
         # important plots
         self.FWHM = None
         self.PulseHeight = None
@@ -179,6 +180,8 @@ class AnalysisCollection(Elementary):
         if draw:
             gROOT.SetBatch(0)
             gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
+        gr_first.SetMarkerSize(3)
+        gr_last.SetMarkerSize(3)
         graphs = [gr1,gr_first,gr_last]
         print graphs
         print gr_first,gr_first.GetN()
@@ -205,9 +208,9 @@ class AnalysisCollection(Elementary):
         gROOT.SetBatch(0)
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         self.save_plots('PulseHeight_' + mode, canvas=c, sub_dir=self.save_dir)
-        self.canvases[0] = c
+        self.canvases.append(c)
         self.PulseHeight = gr1
-        return [gr1,gr_first,gr_last]
+        self.root_objects.append([gr1,gr_last,gr_first])
 
     def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False, show=True, cut=None, beam_on=True):
         legend = TLegend(0.7, 0.3, 0.98, .7)
@@ -252,7 +255,7 @@ class AnalysisCollection(Elementary):
         gROOT.SetBatch(0)
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.Pedestal = gr1
-        self.histos[0] = [graphs, legend, c]
+        self.histos.append(graphs, legend, c)
         save_name = 'Pedestal_{mod}{cut}'.format(mod=mode, cut='' if cut is None else cut_string.GetName())
         self.save_plots(save_name, sub_dir=self.save_dir)
         self.reset_colors()
@@ -296,7 +299,7 @@ class AnalysisCollection(Elementary):
             c.SetLogx()
         gr.Draw('ap')
         self.save_plots('AllSNRs', canvas=c, sub_dir=self.save_dir)
-        self.canvases[0] = c
+        self.canvases.append(c)
         self.histos[0] = gr
         gROOT.SetBatch(0)
 
@@ -555,7 +558,7 @@ class AnalysisCollection(Elementary):
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         if saveplots:
             self.save_plots('Mean_FWHM_' + mode, canvas=c, sub_dir=self.save_dir)
-        self.canvases[0] = c
+        self.canvases.append(c)
         self.FWHM = gr
 
     def save_signal_maps(self):
@@ -603,7 +606,7 @@ class AnalysisCollection(Elementary):
         gr.Draw('ap')
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.save_plots('RelativeSpread', canvas=c, sub_dir=self.save_dir)
-        self.canvases[0] = c
+        self.canvases.append(c)
         self.histos[0] = gr
         gROOT.SetBatch(0)
 
@@ -639,7 +642,7 @@ class AnalysisCollection(Elementary):
         self.histos[0] = ex
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         gROOT.SetBatch(0)
-        self.canvases[0] = c
+        self.canvases.append(c)
     # endregion
 
     # ====================================================================================
@@ -735,7 +738,7 @@ class AnalysisCollection(Elementary):
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         mode = '' if mode is None else mode
         self.save_plots('AllChi2{mod}'.format(mod=mode.upper()), canvas=c, sub_dir=self.save_dir)
-        self.canvases[0] = c
+        self.canvases.append(c)
         self.histos['legend'] = legend
 
     def show_angles(self, mode='x'):
@@ -754,7 +757,7 @@ class AnalysisCollection(Elementary):
         legend.Draw()
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.save_plots('AllTrackAngles{mod}'.format(mod=mode.upper()), sub_dir=self.save_dir)
-        self.canvases[0] = c
+        self.canvases.append(c)
         self.histos['legend'] = legend
 
     def show_angle_peaks(self, mode='x', sigma=False, flux=True):
@@ -799,7 +802,7 @@ class AnalysisCollection(Elementary):
             plot.Draw()
         if saveplots:
             self.save_plots('Overview Plot', sub_dir=self.save_dir, canvas=c)
-        self.canvases[0] = c
+        self.canvases.append(c)
 
         print '\nThe preanalysis for this selection took', self.print_elapsed_time(start_time)
 

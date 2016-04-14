@@ -313,6 +313,9 @@ class Cut(Elementary):
         if self.jump_ranges == None:
             self.__create_jump_ranges()
             print self.jump_ranges
+        if self.jump_ranges is None:
+            raise Exception('jump ranges is invalid')
+        njumps = len(self.jump_ranges["start"])
         cut_string = ''
         start_event = self.CutConfig['EventRange'][0]
         if self.jump_ranges is not None:
@@ -431,6 +434,7 @@ class Cut(Elementary):
                 os.remove(range_pickle)
                 ranges = self.do_pickle(range_pickle, self.__create_jump_ranges)
             self.jump_ranges = ranges[2]
+        print 'Jumps: ',self.jumps
         return self.jumps
     # endregion
 

@@ -205,8 +205,10 @@ class Elementary(object):
             f.writelines(lines)
             f.close()
 
-    def set_test_campaign(self, campaign='201508'):
-        campaigns = self.find_test_campaigns()
+    @classmethod
+    def set_test_campaign(cls, campaign='201508'):
+        print 'campaign',campaign
+        campaigns = cls.find_test_campaigns()
         if not str(campaign) in campaigns:
             print 'This Testcampaign does not exist yet! Use create_new_testcampaign!\nExisting campaigns: {camp}'.format(camp=campaigns)
             return
