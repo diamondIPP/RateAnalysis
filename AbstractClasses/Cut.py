@@ -312,19 +312,21 @@ class Cut(Elementary):
         self.get_beam_interruptions()
         if self.jump_ranges == None:
             self.__create_jump_ranges()
-        njumps = len(self.jump_ranges["start"])
+            print self.jump_ranges
         cut_string = ''
         start_event = self.CutConfig['EventRange'][0]
-        for i in xrange(njumps):
-            upper = self.jump_ranges["stop"][i]
-            lower = self.jump_ranges["start"][i]
-            if upper > start_event:
-                lower = start_event if lower < start_event else lower
-                string = "!(event_number<={up}&&event_number>={low})".format(up=upper, low=lower)
-                # new separate strings
-                if cut_string != '':
-                    cut_string += '&&'
-                cut_string += string
+        if self.jump_ranges is not None:
+            njumps = len(self.jump_ranges["start"])
+            for i in xrange(njumps):
+                upper = self.jump_ranges["stop"][i]
+                lower = self.jump_ranges["start"][i]
+                if upper > start_event:
+                    lower = start_event if lower < start_event else lower
+                    string = "!(event_number<={up}&&event_number>={low})".format(up=upper, low=lower)
+                    # new separate strings
+                    if cut_string != '':
+                        cut_string += '&&'
+                    cut_string += string
         self.CutStrings['beam_interruptions'] += cut_string
     # endregion
 

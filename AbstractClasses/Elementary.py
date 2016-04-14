@@ -11,6 +11,7 @@ from ConfigParser import ConfigParser
 
 import ROOT
 from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas
+tc = None
 
 
 class Elementary(object):
@@ -19,16 +20,22 @@ class Elementary(object):
     It provides, among other things, a verbose printing method or a save plot method containing a global save directory handling.
     """
 
-    def __init__(self, testcampaign='201510', verbose=False):
+    def __init__(self, testcampaign=None, verbose=False):
         self.verbose = verbose
+        self.TESTCAMPAIGN = None
+        if testcampaign is not None:
+            global tc
+            tc = testcampaign 
+        if tc is not None:
+            self.set_test_campaign(tc)
+        else:
+            self.TESTCAMPAIGN = '201510'
+        self.print_testcampaign()
+        self.save_directory = '{dir}/Results{tc}/'.format(dir=self.get_program_dir(), tc=self.TESTCAMPAIGN)
 
         # read configuration files
         self.run_config_parser = self.load_run_config()
         self.ana_config_parser = self.load_ana_config()
-
-        self.TESTCAMPAIGN = None
-        self.set_test_campaign(testcampaign)
-        self.save_directory = '{dir}/Results{tc}/'.format(dir=self.get_program_dir(), tc=self.TESTCAMPAIGN)
 
         # colors
         self.count = 0
@@ -99,12 +106,8 @@ class Elementary(object):
         ftypes = ['png', 'eps', 'root']
         gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
         out = 'Creating plots: '
-        run_number = None
-        if hasattr(self, 'run_number'):
-            run_number = self.run_number
-        elif hasattr(self, 'analysis'):
-            run_number = self.analysis.run_number
-        elif hasattr(self,'collection') or hasattr(self,'runs'):
+        run_number = self.run_number if hasattr(self, 'run_number') else None
+        if hasattr(self,'collection') or hasattr(self,'runs'):
             try:
                 min_run = min(self.runs)
                 max_run = max(self.runs)
@@ -202,23 +205,22 @@ class Elementary(object):
             f.writelines(lines)
             f.close()
 
-    @classmethod
-    def set_test_campaign(cls, campaign='201508'):
-        campaigns = cls.find_test_campaigns()
+    def set_test_campaign(self, campaign='201508'):
+        campaigns = self.find_test_campaigns()
         if not str(campaign) in campaigns:
             print 'This Testcampaign does not exist yet! Use create_new_testcampaign!\nExisting campaigns: {camp}'.format(camp=campaigns)
             return
-        if Elementary.TESTCAMPAIGN is None:
-            Elementary.TESTCAMPAIGN = str(campaign)
+        self.TESTCAMPAIGN = str(campaign)
 
     def print_testcampaign(self):
-        tc = datetime.strptime(self.TESTCAMPAIGN, '%Y%m')
-        print 'TESTCAMPAIGN:', tc.strftime('%b %Y')
+        out = datetime.strptime(self.TESTCAMPAIGN, '%Y%m')
+        print 'TESTCAMPAIGN:', out.strftime('%b %Y')
 
     @classmethod
     def find_test_campaigns(cls):
         conf_dir = cls.get_program_dir() + 'Configuration/'
-        names = glob(conf_dir + 'RunConfig_*')
+        f_location = conf_dir +  'RunConfig_*'
+        names = glob(f_location)
         campaigns = [re.split('_|\.', name)[1] for name in names]
         campaigns = [camp for i, camp in enumerate(campaigns) if camp not in campaigns[i + 1:]]
         return sorted(campaigns)
@@ -333,6 +335,7 @@ class Elementary(object):
 
     @staticmethod
     def get_program_dir():
+        return os.getcwd()+'/'
         arg = 2 if len(sys.argv) > 2 and len(sys.argv[2]) > 4 else 0
         path = os.path.dirname(os.path.realpath(sys.argv[arg])).split('/')
         ret_val = ''

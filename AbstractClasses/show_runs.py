@@ -4,18 +4,19 @@ from sys import argv
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument("RunPlan",help = "Displays the deltailed overview about one Runplan", type=int,default = -1)
+parser.add_argument("-R","--RunPlan",help = "Displays the deltailed overview about one Runplan", type=int,default = -1)
 
-parser.add_argument("-tc", "--testcampaign", type=int,default=201510,
+parser.add_argument("-tc", "--testcampaign", type=str,default="201510",
                     help="TestCampaign: default=201510")
 args = parser.parse_args()
 print args
-for arg in args:
-    print '*',arg
 
-raw_input()
-z=RunSelection()
-z.set_test_campaign(str(args.testcampaign))
+testcampaign=str(args.testcampaign)
+print 'TestCampaingn: "{tc}"'.format(tc=testcampaign)
+z=RunSelection(testcampaign=testcampaign)
 if args.RunPlan != -1:
+    print 'RunPlan:',args.RunPlan
     z.select_runs_from_runplan(args.RunPlan)
-z.show_selected_runs()
+    z.show_selected_runs()
+else:
+    z.show_run_plans()

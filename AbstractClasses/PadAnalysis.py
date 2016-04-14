@@ -15,6 +15,7 @@ from collections import OrderedDict
 from sys import stdout
 from copy import deepcopy
 
+tc = None
 __author__ = 'micha'
 
 
@@ -1824,14 +1825,13 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument('run', nargs='?', default=392, type=int)
     parser.add_argument('ch', nargs='?', default=0, type=int)
-    parser.add_argument('-tc', '--test_campaign', nargs='?', default='201510')
+    parser.add_argument('-tc', '--testcampaign', nargs='?', default='201510')
     args = parser.parse_args()
+    tc = args.testcampaign if args.testcampaign.startswith('201') else '201510'
     test_run = args.run
     message = 'STARTING PAD-ANALYSIS OF RUN {0}'.format(test_run)
     print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(message)) * '=', msg=message)
-    a = Elementary()
+    a = Elementary(tc)
     a.print_testcampaign()
     z = SignalAnalysis(test_run, args.ch)
-    if args.test_campaign in self.find_testcampaign():
-        self.set_testcampaign(args.test_campaign)
     z.print_elapsed_time(st, 'Instantiation')

@@ -149,7 +149,9 @@ class AnalysisCollection(Elementary):
         gr3 = self.make_tgrapherrors('mean ped', prefix + 'mean correction', self.get_color())
         gr4 = self.make_tgrapherrors('raw', prefix + 'raw', self.get_color())
         gr_first = self.make_tgrapherrors('first', prefix + 'first',marker=22,color=gr1.GetLineColor())
+        gr_first.SetMarkerSize(2)
         gr_last = self.make_tgrapherrors('last', prefix + 'last',marker=23,color=gr1.GetLineColor())
+        gr_last.SetMarkerSize(2)
 
         gROOT.SetBatch(1)
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
@@ -178,6 +180,9 @@ class AnalysisCollection(Elementary):
             gROOT.SetBatch(0)
             gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         graphs = [gr1,gr_first,gr_last]
+        print graphs
+        print gr_first,gr_first.GetN()
+        print gr_last, gr_last.GetN()
         if all_corr:
             graphs += [gr2, gr3]
         if raw:
@@ -202,6 +207,7 @@ class AnalysisCollection(Elementary):
         self.save_plots('PulseHeight_' + mode, canvas=c, sub_dir=self.save_dir)
         self.canvases[0] = c
         self.PulseHeight = gr1
+        return [gr1,gr_first,gr_last]
 
     def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False, show=True, cut=None, beam_on=True):
         legend = TLegend(0.7, 0.3, 0.98, .7)
@@ -846,13 +852,16 @@ if __name__ == "__main__":
     main_parser = ArgumentParser()
     main_parser.add_argument('runplan', nargs='?', default=3, type=int)
     main_parser.add_argument('dia', nargs='?', default=1, type=int)
+    main_parser.add_argument('-tc', '--testcampaign', nargs='?', default='201510')
     args = main_parser.parse_args()
+    tc = args.testcampaign if args.testcampaign.startswith('201') else '201510'
     run_plan = args.runplan
     diamond = args.dia
+    a = Elementary(tc)
+    a.print_testcampaign()
     sel = RunSelection()
     sel.select_runs_from_runplan(run_plan)
     message = 'STARTING PAD-ANALYSIS COLLECTION OF RUNPLAN {0:02d}'.format(run_plan)
     print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(message)) * '=', msg=message)
-    a = Elementary()
-    a.print_testcampaign()
+
     z = AnalysisCollection(sel, diamond,run_plan=run_plan)
