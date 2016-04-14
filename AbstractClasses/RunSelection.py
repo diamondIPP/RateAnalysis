@@ -7,7 +7,7 @@ from textwrap import fill
 
 
 class RunSelection(Elementary):
-    def __init__(self, verbose=False):
+    def __init__(self, testcampaign='201510',verbose=False):
         Elementary.__init__(self, verbose)
         self.run = Run(run_number=None, verbose=verbose)
 
