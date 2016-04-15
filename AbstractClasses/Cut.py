@@ -271,8 +271,6 @@ class Cut(Elementary):
             fit_result = h_y.Fit('gaus', 'qs')
             y_mean = fit_result.Parameters()[1]
             slopes['y'] = [y_mean - angle, y_mean + angle]
-            c = gROOT.FindObject('c1')
-            c.Close()
             gROOT.SetBatch(0)
             gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
             return slopes
@@ -299,42 +297,35 @@ class Cut(Elementary):
             self.EasyCutStrings['ExcludeFirst'] = 'Evts.{min}k+'.format(min=int(self.CutConfig['ExcludeFirst']) / 1000) if self.CutConfig['ExcludeFirst'] > 0 else ''
 
         # -- BEAM INTERRUPTION CUT --
-        self.__generate_beam_interruptions()
-        self.EasyCutStrings['noBeamInter'] = 'BeamOn'
-        self.generate_jump_cut()
+        self.CutStrings['beam_interruptions'] += self.generate_beam_interruptions()
+        self.JumpCut += self.generate_jump_cut()
 
         gROOT.SetBatch(0)
 
-    def __generate_beam_interruptions(self):
+    def generate_beam_interruptions(self):
         """
         This adds the restrictions to the cut string such that beam interruptions are excluded each time the cut is applied.
         """
         self.get_beam_interruptions()
-        if self.jump_ranges == None:
-            self.__create_jump_ranges()
-            print self.jump_ranges
         if self.jump_ranges is None:
-            raise Exception('jump ranges is invalid')
-        njumps = len(self.jump_ranges["start"])
-        cut_string = ''
-        start_event = self.CutConfig['EventRange'][0]
-        if self.jump_ranges is not None:
-            njumps = len(self.jump_ranges["start"])
-            for i in xrange(njumps):
-                upper = self.jump_ranges["stop"][i]
-                lower = self.jump_ranges["start"][i]
-                if upper > start_event:
-                    lower = start_event if lower < start_event else lower
-                    string = "!(event_number<={up}&&event_number>={low})".format(up=upper, low=lower)
-                    # new separate strings
-                    if cut_string != '':
-                        cut_string += '&&'
-                    cut_string += string
-        self.CutStrings['beam_interruptions'] += cut_string
-    # endregion
+            return TCut('')
 
-    # ==============================================
-    # region BEAM INTERRUPTS
+        cut_string = ''
+        njumps = len(self.jump_ranges['start'])
+        start_event = self.CutConfig['EventRange'][0]
+        for i in xrange(njumps):
+            upper = self.jump_ranges['stop'][i]
+            lower = self.jump_ranges['start'][i]
+            if upper > start_event:
+                lower = start_event if lower < start_event else lower
+                string = '!(event_number<={up}&&event_number>={low})'.format(up=upper, low=lower)
+                # new separate strings
+                if cut_string != '':
+                    cut_string += '&&'
+                cut_string += string
+        self.EasyCutStrings['noBeamInter'] = 'BeamOn'
+        return TCut(cut_string)
+
     def generate_jump_cut(self):
         cut_string = ''
         start_event = self.CutConfig['EventRange'][0]
@@ -343,8 +334,11 @@ class Cut(Elementary):
                 low = start_event if tup[0] < start_event else tup[0]
                 cut_string += '&&' if cut_string else ''
                 cut_string += '!(event_number<={up}&&event_number>={low})'.format(up=tup[1], low=low)
-        self.JumpCut += cut_string
+        return TCut(cut_string)
+    # endregion
 
+    # ==============================================
+    # region BEAM INTERRUPTS
     def find_beam_interruptions(self):
         return self.find_pad_beam_interruptions() if self.DUTType == 'pad' else self.find_pixel_beam_interruptions()
 
@@ -434,7 +428,6 @@ class Cut(Elementary):
                 os.remove(range_pickle)
                 ranges = self.do_pickle(range_pickle, self.__create_jump_ranges)
             self.jump_ranges = ranges[2]
-        print 'Jumps: ',self.jumps
         return self.jumps
     # endregion
 

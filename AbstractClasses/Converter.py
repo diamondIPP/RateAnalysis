@@ -3,12 +3,14 @@
 # ==============================================
 import os
 import json
-import shutil
 
 from ConfigParser import ConfigParser
 from math import copysign
 from collections import OrderedDict
 from re import sub
+from shutil import move
+from os import remove
+from glob import glob
 do_gui = False
 if do_gui:
     from tkinter import *
@@ -160,9 +162,19 @@ class Converter:
             print converter_cmd
             os.system(converter_cmd)
             os.chdir(curr_dir)
+        self.remove_pickle_files(run_number)
         self.__add_tracking(run_number)
         self.__rename_tracking_file(run_number)
         os.remove(self.get_root_file_path(run_number))
+
+    @staticmethod
+    def remove_pickle_files(run_number):
+        program_dir = ''
+        for i in __file__.split('/')[:-2]:
+            program_dir += i + '/'
+        files = glob('{prog}Configuration/Individual_Configs/*/*{run}*'.format(prog=program_dir, run=run_number))
+        for _file in files:
+            remove(_file)
 
     def __rename_tracking_file(self, run_number):
         os.rename(self.get_tracking_file_path(run_number), self.get_final_file_path(run_number))
@@ -179,7 +191,7 @@ class Converter:
         # move file to data folder
         file_name = '/{prefix}{run}_withTracks.root'.format(prefix=self.root_prefix, run=str(run_number).zfill(4))
         path = self.tracking_dir + file_name
-        shutil.move(path, self.root_file_dir)
+        move(path, self.root_file_dir)
 
     def __set_converter_configfile(self, run_infos):
         pol_dia1 = int(copysign(1, run_infos['hv dia1']))

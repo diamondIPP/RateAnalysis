@@ -1,7 +1,6 @@
 import os
 import pickle
 import re
-import sys
 from copy import deepcopy
 from glob import glob
 from shutil import copyfile
@@ -11,6 +10,7 @@ from ConfigParser import ConfigParser
 
 import ROOT
 from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas
+# global test campaign
 tc = None
 
 
@@ -22,15 +22,9 @@ class Elementary(object):
 
     def __init__(self, testcampaign=None, verbose=False):
         self.verbose = verbose
+
         self.TESTCAMPAIGN = None
-        if testcampaign is not None:
-            global tc
-            tc = testcampaign 
-        if tc is not None:
-            self.set_test_campaign(tc)
-        else:
-            self.TESTCAMPAIGN = '201510'
-        self.print_testcampaign()
+        self.set_global_testcampaign(testcampaign)
         self.save_directory = '{dir}/Results{tc}/'.format(dir=self.get_program_dir(), tc=self.TESTCAMPAIGN)
 
         # read configuration files
@@ -40,7 +34,6 @@ class Elementary(object):
         # colors
         self.count = 0
         self.colors = self.create_colorlist()
-        # self.channel = None
 
     def load_run_config(self):
         run_parser = ConfigParser()
@@ -51,6 +44,15 @@ class Elementary(object):
         ana_parser = ConfigParser()
         ana_parser.read('Configuration/AnalysisConfig_' + self.TESTCAMPAIGN + '.cfg')
         return ana_parser
+
+    def set_global_testcampaign(self, testcampaign):
+        if testcampaign is not None:
+            global tc
+            tc = testcampaign
+        if tc is not None:
+            self.set_test_campaign(tc)
+        else:
+            self.TESTCAMPAIGN = '201510'
 
     @staticmethod
     def create_colorlist():
@@ -104,26 +106,20 @@ class Elementary(object):
         file_name = '{nam}.{{ext}}'.format(nam=name)
         fname = '{save_dir}{res}/{{typ}}/{file}'.format(res=sub_dir, file=file_name, save_dir=self.save_directory)
         ftypes = ['png', 'eps', 'root']
-        gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
         out = 'Creating plots: '
         run_number = self.run_number if hasattr(self, 'run_number') else None
-        if hasattr(self,'collection') or hasattr(self,'runs'):
-            try:
-                min_run = min(self.runs)
-                max_run = max(self.runs)
-                len_runs=len(self.runs)
-                run_number = "{0}_to_{1}_with_{2}_runs".format(min_run,max_run,len_runs)
-            except:
-                pass
-        print 'run_number: ',run_number
+        if hasattr(self, 'runs'):
+            run_number = "{0}_to_{1}_with_{2}_runs".format(min(self.runs), max(self.runs), len(self.runs))
+
+        gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
         for f in ftypes:
             ext = f
             if f == 'eps':
-                if not run_number is None:
-                    ext = '{0}.{1}'.format(run_number,f)
-            self.ensure_dir(fname.format(typ=f,ext=ext))
-            out += file_name.format(typ=f,ext=ext) + ', '
-            canvas.SaveAs(fname.format(typ=f,ext=ext))
+                if run_number is not None:
+                    ext = '{0}.{1}'.format(run_number, f)
+            self.ensure_dir(fname.format(typ=f, ext=ext))
+            out += file_name.format(typ=f, ext=ext) + ', '
+            canvas.SaveAs(fname.format(typ=f, ext=ext))
         if print_names:
             print out.strip(', ')
         gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
@@ -205,10 +201,8 @@ class Elementary(object):
             f.writelines(lines)
             f.close()
 
-    @classmethod
-    def set_test_campaign(cls, campaign='201508'):
-        print 'campaign',campaign
-        campaigns = cls.find_test_campaigns()
+    def set_test_campaign(self, campaign='201508'):
+        campaigns = self.find_test_campaigns()
         if not str(campaign) in campaigns:
             print 'This Testcampaign does not exist yet! Use create_new_testcampaign!\nExisting campaigns: {camp}'.format(camp=campaigns)
             return
@@ -221,7 +215,7 @@ class Elementary(object):
     @classmethod
     def find_test_campaigns(cls):
         conf_dir = cls.get_program_dir() + 'Configuration/'
-        f_location = conf_dir +  'RunConfig_*'
+        f_location = conf_dir + 'RunConfig_*'
         names = glob(f_location)
         campaigns = [re.split('_|\.', name)[1] for name in names]
         campaigns = [camp for i, camp in enumerate(campaigns) if camp not in campaigns[i + 1:]]
@@ -337,12 +331,9 @@ class Elementary(object):
 
     @staticmethod
     def get_program_dir():
-        return os.getcwd()+'/'
-        arg = 2 if len(sys.argv) > 2 and len(sys.argv[2]) > 4 else 0
-        path = os.path.dirname(os.path.realpath(sys.argv[arg])).split('/')
         ret_val = ''
-        for i in range(len(path) - 1):
-            ret_val += path[i] + '/'
+        for i in __file__.split('/')[:-2]:
+            ret_val += i + '/'
         return ret_val
 
     @staticmethod

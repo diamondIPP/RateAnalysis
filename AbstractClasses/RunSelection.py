@@ -4,11 +4,12 @@ import json
 from copy import deepcopy
 from datetime import datetime as dt
 from textwrap import fill
+from sys import argv
 
 
 class RunSelection(Elementary):
-    def __init__(self, testcampaign=None,verbose=False):
-        Elementary.__init__(self, verbose=verbose,testcampaign=testcampaign)
+    def __init__(self, testcampaign=None, verbose=False):
+        Elementary.__init__(self, verbose=verbose, testcampaign=testcampaign)
         self.run = Run(run_number=None, verbose=verbose)
         self.runplan_path = self.get_program_dir() + self.run_config_parser.get('BASIC', 'runplaninfofile')
         self.run_plan = self.load_runplan()
@@ -127,7 +128,7 @@ class RunSelection(Elementary):
         :param only_selected:
         """
         types = self.get_runinfo_values('type')
-        assert run_type in types, 'wrong data type.\n\t-->Select type from: {types}'.format(types=types)
+        assert run_type in types, 'wrong data type.\n\t-->Select type of these: {types}'.format(types=types)
         runs = self.get_selected_runs() if only_selected else self.run_numbers
         selected_runs = 0
         for run in runs:
@@ -151,7 +152,7 @@ class RunSelection(Elementary):
         :param only_selected_runs:
         """
         diamondnames = self.get_diamond_names()
-        assert diamondname in diamondnames, 'wrong diamond name. \n\t-->Select diamond name from: {dias}'.format(dias=diamondnames)
+        assert diamondname in diamondnames, 'wrong diamond name.\n\t-->Select diamond of these:'.format(dias=diamondnames)
         runs = self.get_selected_runs() if only_selected_runs else self.run_numbers
         selected_runs = 0
         unselected_runs = 0
@@ -486,4 +487,5 @@ def verify(msg):
     raise ValueError('Are you too stupid to say yes or no??')
 
 if __name__ == '__main__':
-    z = RunSelection()
+    tc = None if not str(argv[-1]).isdigit() else argv[-1]
+    z = RunSelection(tc)

@@ -470,7 +470,7 @@ class SignalAnalysis(Analysis):
             self.tree.Draw(peak_val + '>>peakvalues', cut, 'goff')
         else:
             self.tree.Draw(peak_val + '/2.>>peakvalues', cut, 'goff')
-        self.histos.append(self.draw_histo(h, '{typ}PeakPositions'.format(typ=type_.title()), show, subdir=self.save_dir, lm=.14))
+        self.histos.append(self.draw_histo(h, '{typ}PeakPositions'.format(typ=type_.title()), show, sub_dir=self.save_dir, lm=.14))
         self.PeakValues = h
 
     def fit_peak_values(self, draw=True, pulser=False):
@@ -507,7 +507,7 @@ class SignalAnalysis(Analysis):
         forc = 'forc_pos/2.' if not corr else 'forc_time'
         self.tree.Draw('{forc}>>ft'.format(forc=forc), self.Cut.all_cut, 'goff')
         self.format_histo(h, x_tit='time [ns]', y_tit='Entries', y_off=2, fill_color=17)
-        self.histos.append(self.draw_histo(h, 'FORCTiming', show, subdir=self.save_dir, lm=.14))
+        self.histos.append(self.draw_histo(h, 'FORCTiming', show, sub_dir=self.save_dir, lm=.14))
 
     # endregion
 
@@ -521,7 +521,7 @@ class SignalAnalysis(Analysis):
         h.SetStats(0)
         h.GetYaxis().SetRangeUser(0, h.GetMaximum() * 1.05)
         h.Fit('pol0', 'qs')
-        self.histos.append(self.draw_histo(h, 'TriggerCell', show, subdir=self.save_dir, lm=.11))
+        self.histos.append(self.draw_histo(h, 'TriggerCell', show, sub_dir=self.save_dir, lm=.11))
 
     def draw_trigger_cell_vs_peakpos(self, show=True, cut=None, tprofile=True, corr=False):
         x = self.run.signal_regions[self.SignalRegion]
@@ -777,7 +777,7 @@ class SignalAnalysis(Analysis):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         for peak_pos in xrange(x[0] + 2, x[1] - 2):
             print '\rcalculating peak pos: {0:03d}'.format(peak_pos),
-            self.Cut.add_signal_peak_pos_cut(peak_pos, peak_pos + 1) if not corr else self.Cut.add_peak_position_time_cut(peak_pos / 2., (peak_pos + 1) / 2.)
+            self.Cut.set_signal_peak_pos(peak_pos, peak_pos + 1) if not corr else self.Cut.set_signal_peak_time(peak_pos / 2., (peak_pos + 1) / 2.)
             print peak_pos / 2., (peak_pos + 1) / 2.
             events = int(h.GetBinContent(h.FindBin(peak_pos / 2.)))
             print '({0:05d})'.format(events),
@@ -802,7 +802,7 @@ class SignalAnalysis(Analysis):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         for peak_pos in xrange(x[0] + 2, x[1] - 2, bins):
             print '\rcalculating peak pos: {0:03d}'.format(peak_pos),
-            self.Cut.add_signal_peak_pos_cut(peak_pos, peak_pos + bins)
+            self.Cut.set_signal_peak_pos(peak_pos, peak_pos + bins)
             events = 0
             for pp in xrange(peak_pos, peak_pos + bins):
                 events += int(h_pv.GetBinContent(h_pv.FindBin(peak_pos / 2.)))
@@ -823,14 +823,14 @@ class SignalAnalysis(Analysis):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         gr = self.make_tgrapherrors('stc', 'Signal vs Trigger Cell')
         i = 0
-        for tc in xrange(0, 1024 - bins, bins):
-            if tc:
+        for tcell in xrange(0, 1024 - bins, bins):
+            if tcell:
                 print '\033[F',
-            print '\rcalculating pulse height for trigger cell: {0:03d}'.format(tc),
-            self.Cut.add_trigger_cell_cut(tc, tc + bins)
+            print '\rcalculating pulse height for trigger cell: {0:03d}'.format(tcell),
+            self.Cut.set_trigger_cell(tcell, tcell + bins)
             stdout.flush()
             ph_fit = self.draw_pulse_height(show=False, save_graph=True)
-            gr.SetPoint(i, tc, ph_fit.Parameter(0))
+            gr.SetPoint(i, tcell, ph_fit.Parameter(0))
             gr.SetPointError(i, 0, ph_fit.ParError(0))
             i += 1
         print
@@ -912,7 +912,7 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region CUTS
-    def show_cut_contributions(self,show=True):
+    def show_cut_contributions(self, show=True):
         if not show:
             gROOT.SetBatch(1)
         main_cut = [self.Cut.CutStrings['event_range'], self.Cut.CutStrings['beam_interruptions']]
@@ -1109,8 +1109,7 @@ class SignalAnalysis(Analysis):
                 legend.AddEntry(histo, key, 'l')
         # save c2
         legend.Draw()
-        self.save_plots('all',  canvas=c2, sub_dir=self.save_dir)
-        self.save_plots('all', 'root', canvas=c2, sub_dir=self.save_dir)
+        self.save_plots('all', canvas=c2, sub_dir=self.save_dir)
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
 
@@ -1176,10 +1175,8 @@ class SignalAnalysis(Analysis):
 
         if scale:
             self.save_plots('scaled',  canvas=c1, sub_dir=self.save_dir)
-            self.save_plots('scaled', 'root', canvas=c1, sub_dir=self.save_dir)
         else:
             self.save_plots('normalised',  canvas=c1, sub_dir=self.save_dir)
-            self.save_plots('normalised', 'root', canvas=c1, sub_dir=self.save_dir)
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
 
@@ -1200,7 +1197,7 @@ class SignalAnalysis(Analysis):
                 continue
             if (str(value) or key == 'raw') and key != 'all_cuts':
                 cut += value
-                print 'saving plot with {n} cuts, added {key}'.format(n=ind,key=key)
+                print 'saving plot with {n} cuts, added {key}'.format(n=ind, key=key)
                 save_name = 'signal_distribution_{n}cuts'.format(n=ind)
                 histo_name = 'h_signal_{range}_{peakint}_{n}cuts'.format(range=self.SignalRegion, peakint=self.PeakIntegral, n=ind)
                 if scale:
@@ -1538,14 +1535,17 @@ class SignalAnalysis(Analysis):
         min_bin = h.GetMinimumBin()
         h.GetXaxis().UnZoom()
         max_bin = h.GetNbinsX() - 1
-        h.Scale(1 / h.Integral(min_bin, max_bin))
+        integral = h.Integral(min_bin, max_bin)
+        if integral:
+            h.Scale(1 / integral)
         return h
 
     @staticmethod
     def scale_histo(histo):
         h = histo
         maximum = h.GetBinContent(h.GetMaximumBin())
-        h.Scale(1. / maximum)
+        if maximum:
+            h.Scale(1. / maximum)
         return h
 
     def analyse_signal_histograms(self):
@@ -1701,7 +1701,6 @@ class SignalAnalysis(Analysis):
         gr.Draw('ap')
         gROOT.SetBatch(0)
         self.save_plots('BestSNR', sub_dir=self.save_dir)
-        self.save_plots('BestSNR', file_type='root', sub_dir=self.save_dir)
         self.histos.append([gr, c])
 
     def signal_vs_peakintegral(self, show=True, ped=False):
@@ -1724,7 +1723,6 @@ class SignalAnalysis(Analysis):
         gr.Draw('ap')
         gROOT.SetBatch(0)
         self.save_plots('{sig}PeakInt_{rat}'.format(rat=ratio, sig='Ped' if ped else 'Sig'), sub_dir=self.save_dir)
-        self.save_plots('{sig}PeakInt_{rat}'.format(rat=ratio, sig='Ped' if ped else 'Sig'), sub_dir=self.save_dir, file_type='root')
         self.histos.append([gr, c])
 
     # endregion
@@ -1758,6 +1756,9 @@ class SignalAnalysis(Analysis):
 
     def __get_binning(self):
         jumps = self.Cut.jump_ranges
+        if jumps is None:
+            jumps = {'start': [self.EndEvent], 'stop': [self.EndEvent]}
+
         n_jumps = len(jumps['start'])
         bins = [self.Cut.get_min_event()]
         ind = 0
@@ -1786,11 +1787,11 @@ class SignalAnalysis(Analysis):
                     bins.append(bins[-1] + self.BinSize + gap)
             else:
                 bins.append(bins[-1] + self.BinSize + gap)
-            # fill up the end
-            if ind == n_jumps - 1 and bins[-1] >= stop:
-                while bins[-1] + self.BinSize < self.run.n_entries:
-                    bins.append(bins[-1] + self.BinSize)
             ind += 1
+        # fill up the end
+        if ind == n_jumps - 1 and bins[-1] >= jumps['stop'][-1] or ind ==  n_jumps:
+            while bins[-1] + self.BinSize < self.run.n_entries:
+                bins.append(bins[-1] + self.BinSize)
         return bins
 
     def get_time_binning(self):

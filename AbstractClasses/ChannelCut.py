@@ -55,6 +55,9 @@ class ChannelCut(Cut):
     def set_signal_peak_pos(self, x_min, x_max):
         self.set_cut('signal_peak_pos', [x_min, x_max])
 
+    def set_signal_peak_time(self, x_min, x_max):
+        self.set_cut('signal_peak_time', [x_min, x_max])
+
     def set_trigger_cell(self, x_min, x_max):
         self.set_cut('trigger_cell', [x_min, x_max])
 
@@ -71,6 +74,8 @@ class ChannelCut(Cut):
             return self.generate_pedestalsigma(value)
         if name == 'signal_peak_pos':
             return self.generate_signal_peak_pos(value)
+        if name == 'signal_peak_time':
+            return self.generate_signal_peak_time(value)
         if name == 'trigger_cell':
             return self.generate_trigger_cell(value)
         if name == 'bucket':
@@ -166,11 +171,15 @@ class ChannelCut(Cut):
         return cut
 
     def generate_timing(self, n_sigma=3):
-        dic = self.calc_timing_range()
+        dic = self.calc_timing_range(show=False)
         num = self.analysis.SignalNumber
-        t_correction = '({p1}* trigger_cell + {p2} * trigger_cell*trigger_cell)'.format(p1=dic['t_corr'].Parameter(1), p2=dic['t_corr'].Parameter(2))
+        t_correction = '({p1}* trigger_cell + {p2} * trigger_cell*trigger_cell)'.format(p1=dic['t_corr'].GetParameter(1), p2=dic['t_corr'].GetParameter(2))
         corrected_time = 'IntegralPeakTime[{num}] - {t_corr}'.format(num=num, t_corr=t_correction)
-        string = 'TMath::Abs({cor_t} - {mp}) / {sigma} < {n_sigma}'.format(cor_t=corrected_time, mp=dic['timing_corr'].Parameter(1), sigma=dic['timing_corr'].Parameter(2), n_sigma=n_sigma)
+        try:
+            string = 'TMath::Abs({cor_t} - {mp}) / {sigma} < {n_sigma}'.format(cor_t=corrected_time, mp=dic['timing_corr'].GetParameter(1), sigma=dic['timing_corr'].GetParameter(2), n_sigma=n_sigma)
+        except: 
+            print dic['timing_corr']
+            raise Exception()
         return TCut(string), corrected_time, t_correction
 
     # special cut for analysis
@@ -313,39 +322,91 @@ class ChannelCut(Cut):
         self.PedestalFit = fit
         return [mean - sigma_range * sigma, mean + sigma_range * sigma]
 
-    def calc_timing_range(self, show=False):
+    def calc_timing_range(self, show=True, n_sigma=4):
         pickle_path = self.analysis.PickleDir + 'Cuts/TimingRange_{tc}_{run}_{ch}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run_number, ch=self.channel)
 
         def func():
-            if not show:
-                gROOT.SetBatch(1)
+            print 'generating timing cut for {dia} of run {run}...'.format(run=self.analysis.run_number, dia=self.analysis.diamond_name)
+
+            gROOT.SetBatch(1) if not show else self.do_nothing()
             num = self.analysis.SignalNumber
+            cut = self.generate_special_cut(excluded_cuts=['bucket', 'timing'])
 
             # estimate timing
-            cut = self.generate_special_cut(excluded_cuts=['bucket', 'timing'])
             draw_string = 'IntegralPeakTime[{num}]>>h1'.format(num=num)
             self.analysis.tree.Draw(draw_string, cut, 'goff')
             h1 = gROOT.FindObject('h1')
-            fit1 = h1.Fit('gaus', 'qs0')
-            original_mpv = fit1.Parameter(1)
-            print 'mean: {0}, sigma: {1}'.format(original_mpv, fit1.Parameter(2))
+            fit1= TF1('fit1', 'gaus', -50, 1024)
+            h1.Fit(fit1, 'q0')
+            h1.GetListOfFunctions().Add(fit1)
+            original_mpv = fit1.GetParameter(1)
+            print 'mean: {0}, sigma: {1}'.format(original_mpv, fit1.GetParameter(2))
 
             # extract timing correction
             h2 = TProfile('tcorr', 'Original Peak Position vs Trigger Cell', 1024, 0, 1024)
             self.analysis.tree.Draw('IntegralPeakTime[{num}]:trigger_cell>>tcorr'.format(num=num), cut, 'goff')
-            fit2 = h2.Fit('pol2', 'qs0')
-            self.format_histo(h2, x_tit='trigger cell', y_tit='signal peak time')
-            self.data.append(self.draw_histo(h2, 'OriPeakPosVsTriggerCell', 0, self.analysis.save_dir))
-
-            print list(fit2.Parameters())[:3]
-            t_correction = '({p1}* trigger_cell + {p2} * trigger_cell*trigger_cell)'.format(p1=fit2.Parameter(1), p2=fit2.Parameter(2))
+            fit2 = TF1('fit2','pol2', -50, 1024)
+            h2.Fit(fit2, 'q0',)
+            h2.GetListOfFunctions().Add(fit2)
+            self.format_histo(h2, x_tit='trigger cell', y_tit='signal peak time', y_off=1.5)
+            self.data.append(self.draw_histo(h2, 'OriPeakPosVsTriggerCell', False, self.analysis.save_dir, lm=.12))
+            t_correction = '({p1}* trigger_cell + {p2} * trigger_cell*trigger_cell)'.format(p1=fit2.GetParameter(1), p2=fit2.GetParameter(2))
 
             # get time corrected sigma
-            h3 = TH1F('h3','Corrected Timing', 50, original_mpv - 10, original_mpv + 10)
+            h3 = TH1F('h3','Corrected Timing', 80, int(original_mpv - 10), int(original_mpv + 10))
             self.analysis.tree.Draw('(IntegralPeakTime[{num}] - {t_corr}) >> h3'.format(num=num, t_corr=t_correction), cut, 'goff')
-            fit3 = h3.Fit('gaus', 'qs0',)
-            self.data.append(self.draw_histo(h3, 'bla', 0 ))
+            fit3 = TF1('fit3', 'gaus', -50, 1024)
+            h3.Fit(fit3, 'q0')
+            h3.GetListOfFunctions().Add(fit3)
+            self.format_histo(h3, x_tit='time [ns]', y_tit='entries', y_off=2.1)
+            self.data.append(self.draw_histo(h3, 'TimingCorrection', False, self.analysis.save_dir, lm=.15))
             gROOT.SetBatch(0)
+
+            if show:
+                corrected_time = 'IntegralPeakTime[{num}] - {t_corr}'.format(num=num, t_corr=t_correction)
+                t_cut = TCut('TMath::Abs({cor_t} - {mp}) / {sigma} < {n_sigma}'.format(cor_t=corrected_time, mp=fit3.GetParameter(1), sigma=fit3.GetParameter(2), n_sigma=n_sigma))
+                # print results
+                c = TCanvas('c_timing', 'Timing Cut Results', 1000, 1000)
+                c.Divide(2, 2)
+                # fit for correction
+                c.cd(1)
+                h2.Draw()
+                # corrected timing
+                c.cd(2)
+                h4 = TProfile('h4','Corrected Peak Position vs Trigger Cell', 512, 0, 1024)
+                h5 = TProfile('h5','Corrected Peak Position vs Trigger Cell with Cut', 512, 0, 1024)
+                self.analysis.tree.Draw('{cor}:trigger_cell>>h4'.format(num=num, cor=corrected_time), cut, 'goff')
+                self.analysis.tree.Draw('{cor}:trigger_cell>>h5'.format(num=num, cor=corrected_time), cut + t_cut, 'goff')
+                self.format_histo(h4, x_tit='trigger cell', y_tit='signal peak times [ns]', y_off=1.6, color=self.get_color(), markersize=.5)
+                self.format_histo(h5, color=self.get_color(), markersize=.5)
+                h4.SetLineColor(1)
+                h5.SetLineColor(1)
+                self.reset_colors()
+                h4.SetStats(0)
+                h4.Draw()
+                h5.Draw('same')
+                # compare distributions
+                c.cd(3)
+                h6 = TH1F('h6','Corrected Timing with Cut', 80, int(original_mpv - 10), int(original_mpv + 10))
+                self.analysis.tree.Draw('(IntegralPeakTime[{num}] - {t_corr}) >> h6'.format(num=num, t_corr=t_correction), cut + t_cut, 'goff')
+                stack = THStack('stack', 'Time Comparison;time [ns];entries')
+                mu = 0
+                for h in [h1, h3, h6]:
+                    h.SetStats(0)
+                    h.SetLineColor(self.get_color())
+                    if len(h.GetListOfFunctions()):
+                        fit = h.GetListOfFunctions()[-1]
+                        fit.SetLineColor(h.GetLineColor())
+                        mu = fit.GetParameter(1)
+                        fit.SetParameter(1, 0)
+                    xax = h.GetXaxis()
+                    xax.SetLimits(xax.GetXmin() - mu, xax.GetXmax() - mu)
+                    stack.Add(h)
+                stack.Draw('nostack')
+
+
+                self.data.append([c, h4, h5, h6, h1, stack])
+
             return {'t_corr': fit2, 'timing_corr': fit3}
         fits = func() if show else 0
         fits = self.do_pickle(pickle_path, func, fits)

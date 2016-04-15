@@ -85,8 +85,6 @@ class Run(Elementary):
         self._runlogkeyprefix = self.run_config_parser.get('BASIC', 'runlog_key_prefix')
         self.maskfilepath = self.run_config_parser.get('BASIC', 'maskfilepath')
         self.createNewROOTFiles = self.run_config_parser.getboolean('BASIC', 'createNewROOTFiles')
-        self.signalregion_low = self.run_config_parser.getint('BASIC', 'signalregion_low')
-        self.signalregion_high = self.run_config_parser.getint('BASIC', 'signalregion_high')
         
         # run info
         self.RunInfo = None
@@ -274,11 +272,24 @@ class Run(Elementary):
 
         pixel_size = 0.01 * 0.015  # cm^2
         flux = []
-        for i, plane in enumerate(self.trigger_planes, 1):
-            area = pixel_size * masked_pixels[plane]
-            flux.append(self.RunInfo['for{num}'.format(num=i)] / area / 1000)  # in kHz/cm^2
+        # self.find_for_in_comment()
+        if self.RunInfo['for1'] and self.RunInfo['for2']:
+            for i, plane in enumerate(self.trigger_planes, 1):
+                area = pixel_size * masked_pixels[plane]
+                flux.append(self.RunInfo['for{num}'.format(num=i)] / area / 1000)  # in kHz/cm^2
+        else:
+            flux.append(self.RunInfo['measured flux'])
         self.RunInfo['mean flux'] = mean(flux)
         return mean(flux)
+
+    def find_for_in_comment(self):
+        for name in ['for1', 'for2']:
+            if not self.RunInfo[name]:
+                for cmt in self.RunInfo['user comments'].split('\r\n'):
+                    cmt = cmt.replace(':', '')
+                    cmt = cmt.split(' ')
+                    if str(cmt[0].lower()) == name:
+                        self.RunInfo[name] = int(cmt[1])
 
     def rename_runinfo_keys(self):
 
