@@ -19,11 +19,61 @@ class ChannelCut(Cut):
         self.__dict__.update(analysis.Cut.__dict__)
         self.channel = channel
 
+        self.load_channel_config()
+
         self.PedestalFit = None
 
         self.generate_channel_cutstrings()
         self.all_cut = self.generate_all_cut()
         self.CutStrings['all_cuts'] = self.all_cut
+
+    # ==============================================
+    # region GET CONFIG
+    def load_channel_config(self):
+        self.CutConfig['spread_low'] = self.load_spread_low(self.ana_config_parser.getint('CUT', 'spread_low'))
+        self.CutConfig['absMedian_high'] = self.load_abs_median_high(self.ana_config_parser.getint('CUT', 'absMedian_high'))
+        self.CutConfig['pedestalsigma'] = self.load_pedestal_sigma(self.ana_config_parser.getint('CUT', 'pedestalsigma'))
+
+    def set_spread_low(self, low):
+        self.CutConfig['spread_low'] = self.load_spread_low(low)
+
+    def load_abs_median_high(self, value):
+        if value > 0:
+            self.EasyCutStrings['absMedian_high'] = '|median|<{high}'.format(high=value)
+            return value
+        else:
+            return -1
+
+    def set_abs_median_high(self, high):
+        self.CutConfig['absMedian_high'] = self.load_abs_median_high(high)
+
+    def load_pedestal_sigma(self, value):
+        if value > 0:
+            self.EasyCutStrings['pedestalsigma'] = 'PedSigma' + str(value)
+            return value
+        else:
+            self.EasyCutStrings['pedestalsigma'] = ''
+            return -1
+
+    def set_pedestal_sigma(self, sigma=-1):
+        self.CutConfig['pedestalsigma'] = self.load_pedestal_sigma(sigma)
+
+    def set_peak_value_pos(self, x_min, x_max):
+        assert 0 <= x_min <= 1024, 'min signal peak has to be in [0, 1024], not "{min}"'.format(min=x_min)
+        assert 0 <= x_max <= 1024, 'max trigger cell has to be in [0, 1024], not "{max}"'.format(max=x_max)
+        if x_max < x_min:
+            x_min, x_max = x_max, x_min
+        self.CutConfig['signal_peak_pos'] = [x_min, x_max]
+        self.EasyCutStrings['SignalPeakPos'] = 'Signal Peak in {0}'.format([x_min, x_max])
+
+    def set_trigger_cell(self, x_min, x_max):
+        assert 0 <= x_min <= 1024, 'min trigger cell has to be in [0, 256], not "{min}"'.format(min=x_min)
+        assert 0 <= x_max <= 1024, 'max trigger cell has to be in [0, 256], not "{max}"'.format(max=x_max)
+        if x_max < x_min:
+            x_min, x_max = x_max, x_min
+        self.CutConfig['trigger_cell'] = [x_min, x_max]
+        self.EasyCutStrings['TriggerCell'] = 'Trigger Cell in {0}'.format([x_min, x_max])
+    # endregion
 
     # ==============================================
     # region GENERATE CUT STRINGS
@@ -61,6 +111,28 @@ class ChannelCut(Cut):
             all_string += y_string
         self.region_cut += all_string
         return extrema
+
+    def generate_signal_peak_pos(self):
+        lst = self.CutConfig['signal_peak_pos']
+        if lst:
+            self.CutStrings['signal_peak_pos'] += 'IntegralPeaks[{num}] < {max} && IntegralPeaks[{num}] >= {min}'.format(num=self.analysis.SignalNumber, min=lst[0], max=lst[1])
+
+    def generate_trigger_cell(self):
+        lst = self.CutConfig['trigger_cell']
+        if lst:
+            self.CutStrings['trigger_cell'] += 'trigger_cell < {max} && trigger_cell >= {min}'.format(min=lst[0], max=lst[1])
+
+    def add_signal_peak_pos_cut(self, xmin, xmax):
+        self.set_peak_value_pos(xmin, xmax)
+        self.CutStrings['signal_peak_pos'].SetTitle('')
+        self.generate_signal_peak_pos()
+        self.all_cut = self.generate_all_cut()
+
+    def add_trigger_cell_cut(self, xmin, xmax):
+        self.set_trigger_cell(xmin, xmax)
+        self.CutStrings['trigger_cell'].SetTitle('')
+        self.generate_trigger_cell()
+        self.all_cut = self.generate_all_cut()
 
     def generate_old_bucket(self):
         sig2 = self.analysis.get_signal_name('e', 2)

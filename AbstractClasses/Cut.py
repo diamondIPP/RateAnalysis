@@ -48,7 +48,7 @@ class Cut(Elementary):
     def generate_all_cut(self):
         cut = TCut('all_cuts', '')
         for key, value in self.CutStrings.iteritems():
-            if not key.startswith('old'):
+            if not key.startswith('old') and not key.startswith('all_cut'):
                 cut += value
         return cut
 
@@ -90,15 +90,20 @@ class Cut(Elementary):
         dic['raw'] = TCut('raw', '')
         dic['pulser'] = TCut('pulser', '')
         dic['event_range'] = TCut('event_range', '')
+        # waveform
         dic['beam_interruptions'] = TCut('beam_interruptions', '')
         dic['ped_sigma'] = TCut('ped_sigma', '')
         dic['spread_low'] = TCut('spread_low', '')
         dic['median'] = TCut('median', '')
+        # tracks
         dic['tracks'] = TCut('tracks', '')
         dic['chi2X'] = TCut('chi2X', '')
         dic['chi2Y'] = TCut('chi2Y', '')
         dic['track_angle'] = TCut('track_angle', '')
+        # waveform
         dic['saturated'] = TCut('saturated', '')
+        dic['signal_peak_pos'] = TCut('signal_peak_pos', '')
+        dic['trigger_cell'] = TCut('trigger_cell', '')
         dic['old_bucket'] = TCut('old_bucket', '')
         dic['bucket'] = TCut('bucket', '')
         dic['all_cuts'] = TCut('all_cuts', '')
@@ -119,15 +124,6 @@ class Cut(Elementary):
         self.CutConfig['chi2X'] = self.ana_config_parser.getint('CUT', 'chi2X')
         self.CutConfig['chi2Y'] = self.ana_config_parser.getint('CUT', 'chi2Y')
         self.CutConfig['track_angle'] = self.ana_config_parser.getint('CUT', 'track_angle')
-        # pad cuts
-        if self.DUTType == 'pad':
-            self.CutConfig['spread_low'] = self.load_spread_low(self.ana_config_parser.getint('CUT', 'spread_low'))
-            self.CutConfig['absMedian_high'] = self.load_abs_median_high(self.ana_config_parser.getint('CUT', 'absMedian_high'))
-            self.CutConfig['pedestalsigma'] = self.load_pedestal_sigma(self.ana_config_parser.getint('CUT', 'pedestalsigma'))
-        # pixel cuts
-        else:
-            pass
-            # todo: cuts only for pixel, DA
 
     def load_event_range(self, event_range=None):
         """
@@ -188,30 +184,6 @@ class Cut(Elementary):
             return value
         else:
             return -1
-
-    def set_spread_low(self, low):
-        self.CutConfig['spread_low'] = self.load_spread_low(low)
-
-    def load_abs_median_high(self, value):
-        if value > 0:
-            self.EasyCutStrings['absMedian_high'] = '|median|<{high}'.format(high=value)
-            return value
-        else:
-            return -1
-
-    def set_abs_median_high(self, high):
-        self.CutConfig['absMedian_high'] = self.load_abs_median_high(high)
-
-    def load_pedestal_sigma(self, value):
-        if value > 0:
-            self.EasyCutStrings['pedestalsigma'] = 'PedSigma' + str(value)
-            return value
-        else:
-            self.EasyCutStrings['pedestalsigma'] = ''
-            return -1
-
-    def set_pedestal_sigma(self, sigma=-1):
-        self.CutConfig['pedestalsigma'] = self.load_pedestal_sigma(sigma)
 
     # endregion
 
@@ -459,6 +431,13 @@ class Cut(Elementary):
         if string_ != "":
             string_ = string_[:-2]
         return string_
+
+    def reset_cut(self, name):
+        if name in self.CutStrings:
+            self.CutStrings[name].SetTitle('')
+        else:
+            print 'There is no cut with the name "{name}"!'.format(name=name)
+        self.all_cut = self.generate_all_cut()
 
     def show_cuts(self, easy=True):
         cuts = self.EasyCutStrings if easy else self.CutStrings

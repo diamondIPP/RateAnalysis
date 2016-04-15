@@ -58,6 +58,7 @@
           <option value="AbstractClasses.PadAnalysis.ROOT" />
           <option value="AbstractClasses.TelescopeAnalysis.ROOT" />
           <option value="ROOT" />
+          <option value="THStack" />
         </list>
       </option>
     </inspection_tool>
