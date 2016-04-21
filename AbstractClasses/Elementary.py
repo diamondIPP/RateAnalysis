@@ -9,7 +9,7 @@ from datetime import datetime
 from ConfigParser import ConfigParser
 
 import ROOT
-from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas
+from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle
 # global test campaign
 tc = None
 
@@ -28,21 +28,28 @@ class Elementary(object):
         self.save_directory = '{dir}/Results{tc}/'.format(dir=self.get_program_dir(), tc=self.TESTCAMPAIGN)
 
         # read configuration files
+        self.MainConfigParser = self.load_main_config()
         self.run_config_parser = self.load_run_config()
         self.ana_config_parser = self.load_ana_config()
 
         # colors
         self.count = 0
         self.colors = self.create_colorlist()
+        gStyle.SetLegendFont(42)
+
+    def load_main_config(self):
+        parser = ConfigParser()
+        parser.read('{dir}/Configuration/main.cfg'.format(dir=self.get_program_dir()))
+        return parser
 
     def load_run_config(self):
-        run_parser = ConfigParser()
-        run_parser.read("Configuration/RunConfig_" + self.TESTCAMPAIGN + ".cfg")
+        run_parser = ConfigParser({'excluded_runs': '[]'})
+        run_parser.read('Configuration/RunConfig_{tc}.cfg'.format(tc=self.TESTCAMPAIGN))
         return run_parser
 
     def load_ana_config(self):
         ana_parser = ConfigParser()
-        ana_parser.read('Configuration/AnalysisConfig_' + self.TESTCAMPAIGN + '.cfg')
+        ana_parser.read('Configuration/AnalysisConfig_{tc}.cfg'.format(tc=self.TESTCAMPAIGN))
         return ana_parser
 
     def set_global_testcampaign(self, testcampaign):

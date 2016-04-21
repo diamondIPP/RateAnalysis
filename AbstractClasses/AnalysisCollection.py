@@ -108,9 +108,10 @@ class AnalysisCollection(Elementary):
         f = open(path, 'r')
         run_log = json.load(f)
         fluxes = {}
+        print 'RUN   FLUX'
         for run in self.runs:
             flux = run_log[str(run)][flux_name]
-            print run, flux
+            print '{run:3d} {flux:6.1f}'.format(run=run, flux=flux)
             fluxes[flux] = run
         min_flux = min(fluxes)
         max_flux = max(fluxes)
@@ -147,30 +148,28 @@ class AnalysisCollection(Elementary):
     # ============================================
     # region SIGNAL/PEDESTAL
     def draw_pulse_heights(self, binning=20000, flux=True, raw=False, all_corr=False, draw=True):
-        legend = TLegend(0.79, 0.13, 0.98, .34)
-        legend.SetName('l1')
         mode = 'Flux' if flux else 'Run'
-        prefix = 'Pulse Height {dia} @ {bias}V vs {mode} '.format(mode=mode, dia=self.collection.values()[0].diamond_name, bias=self.bias)
+        prefix = 'Pulse Height vs {mod} - '.format(mod=mode)
         gr1 = self.make_tgrapherrors('eventwise', prefix + 'eventwise correction', self.get_color())
         gr2 = self.make_tgrapherrors('binwise', prefix + 'binwise correction', self.get_color())
         gr3 = self.make_tgrapherrors('mean ped', prefix + 'mean correction', self.get_color())
         gr4 = self.make_tgrapherrors('raw', prefix + 'raw', self.get_color())
-        gr_first = self.make_tgrapherrors('first', prefix + 'first', marker=22, color=2)
+        gr_first = self.make_tgrapherrors('first run', prefix + 'first', marker=22, color=2)
         gr_first.SetMarkerSize(2)
-        gr_last = self.make_tgrapherrors('last', prefix + 'last', marker=23, color=2)
+        gr_last = self.make_tgrapherrors('last run', prefix + 'last', marker=23, color=2)
         gr_last.SetMarkerSize(2)
 
         gROOT.SetBatch(1)
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         i, j = 0, 0
         for key, ana in self.collection.iteritems():
-            print 'getting ph for run', key, 'ph:',
             fit1 = ana.draw_pulse_height(binning, evnt_corr=True, show=False)
             fit2 = ana.draw_pulse_height(binning, bin_corr=True, show=False)
             fit3 = ana.draw_pulse_height(binning, off_corr=True, show=False, evnt_corr=False)
             fit4 = ana.draw_pulse_height(binning, evnt_corr=False, show=False)
+            print '\033[1A', '{0:5.1f}'.format(fit1.Parameter(0))
             x = ana.run.flux if flux else key
-            if fit1.Parameter(0) > 20:
+            if fit1.Parameter(0) > 10:
                 gr1.SetPoint(i, x, fit1.Parameter(0))
                 gr2.SetPoint(i, x, fit2.Parameter(0))
                 gr3.SetPoint(i, x, fit3.Parameter(0))
@@ -190,6 +189,8 @@ class AnalysisCollection(Elementary):
             gROOT.SetBatch(0)
             gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         graphs = [gr1, gr_first, gr_last]
+        legend = TLegend(0.7, 0.2, 0.88, .4)
+        legend.SetName('l1')
         if all_corr:
             graphs += [gr2, gr3]
         if raw:
@@ -199,14 +200,14 @@ class AnalysisCollection(Elementary):
         if flux:
             c.SetLogx()
         for i, gr in enumerate(graphs):
-            legend.AddEntry(gr, gr.GetName(), 'lp')
+            # leg_opt = 'p' if gr.GetName() in ['first', 'last'] else 'lp'
+            legend.AddEntry(gr, gr.GetName(), 'p')
             if not i:
-                self.format_histo(gr, title=prefix, color=None, x_tit='Flux [kHz/cm2]', y_tit='Pulse Height [au]', y_off=2)
+                self.format_histo(gr, title=prefix, color=None, x_tit=mode + ' [kHz/cm^{2}]' if flux else '', y_tit='Pulse Height [au]', y_off=2, x_off=1.3)
                 gr.Draw('alp')
             else:
                 gr.Draw('lp')
-        if all_corr or raw:
-            legend.Draw()
+        legend.Draw()
         gROOT.SetBatch(0)
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         self.save_plots('PulseHeight_' + mode, canvas=c, sub_dir=self.save_dir)

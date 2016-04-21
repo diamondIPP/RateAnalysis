@@ -375,36 +375,54 @@ class Analysis(Elementary):
 
     def find_alignment_offset(self):
         offsets = [i for i in xrange(-5, 5) if i]
-        h = TH1F('h', 'Pixel Hits @ Pulser Events', 20, 0, 20)
+        histos = {}
+        h = TH1F('h', 'Pixel Hits @ Pulser Events', 20, -.5, 19.5)
         right_offset = None
-        for offset in offsets:
-            pulser_events = 0
-            for event in xrange(self.StartEvent, self.run.n_entries):
-                print '\rpulser events: {0:04d}'.format(pulser_events),
-                if pulser_events >= 1000:
-                    break
+        c = None
+        pulser_events = []
+        pulsers = []
+
+        for event in xrange(self.StartEvent, self.run.n_entries):
+                #print '\rpulser events: {0:04d}'.format(pulser_events),
                 self.tree.GetEntry(event)
                 if self.tree.pulser:
-                    pulser_events += 1
-                    self.tree.GetEntry(event + offset)
-                    hits = len(self.tree.col)
-                    h.Fill(hits)
+                    n_hits = {}
+                    #n_hits[0] = (len(self.tree.col))
+                    print 'found', event,
+                    for x in range(-5,6):
+                        self.tree.GetEntry(event+x)
+                        n_hits[x] =(len(self.tree.col))
+                    print n_hits
+                    pulser_events.append(n_hits)
+                #pulsers.append(self.tree.pulser)
+                if len(pulser_events)>1000:
+                    break
+
+
+        for offset in offsets:
+            for i in pulser_events:
+                h.Fill(i[offset])
             h.SetName(str(offset))
             h.Draw()
             sleep(.2)
             c = gROOT.GetSelectedPad()
+            if c is None:
+                c = TCanvas()
             c.Update()
             sleep(2)
             # find offset
             glob_max = [h.GetMaximumBin(), h.GetMaximum()]
-            h.GetXaxis().SetRangeUser(1, 20)
+            h.GetXaxis().SetRangeUser(-1, 20)
             hit_max = [h.GetMaximumBin(), h.GetMaximum()]
+            histos[offset]=deepcopy(h)
+            print offset, glob_max
             if glob_max[0] == 1 and glob_max[1] > 2 * hit_max[1]:
                 right_offset = offset
                 break
             h.Reset()
         h.Draw()
-        self.histos[0] = h
+        self.histos.append(h)
+        return histos
         print '\nThe event offset is {off}'.format(off=right_offset)
 
     def __check_alignment_histo(self, histo):

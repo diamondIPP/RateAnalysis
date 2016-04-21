@@ -36,18 +36,18 @@ class Converter:
 
         # tracking
         self.telescope_id = self.parser.getint('BASIC', 'telescopeID')
-        self.tracking_dir = self.parser.get('ROOTFILE_GENERATION', 'trackingfolder')
+        self.tracking_dir = self.parser.get('ConverterFolders', 'trackingfolder')
 
         # directories
-        self.raw_file_dir = self.parser.get('ROOTFILE_GENERATION', 'rawfolder')
+        self.raw_file_dir = self.parser.get('ConverterFolders', 'rawfolder')
         self.root_file_dir = self.parser.get('BASIC', 'runpath')
-        self.eudaq_dir = self.parser.get('ROOTFILE_GENERATION', 'eudaqfolder')
+        self.eudaq_dir = self.parser.get('ConverterFolders', 'eudaqfolder')
         # files paths
-        self.converter_config_path = self.parser.get('ROOTFILE_GENERATION', 'converterFile')
+        self.converter_config_path = self.parser.get('ConverterFolders', 'converterFile')
         self.run_info_path = self.parser.get('BASIC', 'runinfofile')
         # prefixes
-        self.root_prefix = self.parser.get('ROOTFILE_GENERATION', "converterPrefix")
-        self.raw_prefix = self.parser.get('ROOTFILE_GENERATION', "rawprefix")
+        self.root_prefix = self.parser.get('ConverterFolders', "converterPrefix")
+        self.raw_prefix = self.parser.get('ConverterFolders', "rawprefix")
 
         # configuration for pad
         self.config = self.get_config() if self.Type == 'pad' else None
@@ -73,11 +73,9 @@ class Converter:
         for opt in options:
             if opt.endswith('_range') or opt.endswith('_region'):
                 config[opt] = json.loads(self.parser.get('ROOTFILE_GENERATION', opt))
-        config['pulser_range_drs4'] = json.loads(self.parser.get('ROOTFILE_GENERATION', 'pulser_range_drs4')),
-        config['save_waveforms'] = self.parser.get('ROOTFILE_GENERATION', 'save_waveforms'),
-        config['pulser_drs4_threshold'] = self.parser.get('ROOTFILE_GENERATION', 'pulser_drs4_threshold'),
-        config['pulser_channel'] = self.parser.get('ROOTFILE_GENERATION', 'pulser_channel'),
-        config['trigger_channel'] = self.parser.get('ROOTFILE_GENERATION', 'trigger_channel')
+            elif opt not in ['pulser_range_drs4']:
+                config[opt] = self.parser.getint('ROOTFILE_GENERATION', opt)
+        config['pulser_range_drs4'] = json.loads(self.parser.get('ROOTFILE_GENERATION', 'pulser_range_drs4'))
         return config
 
     def get_run_info(self, run_number):
@@ -201,6 +199,13 @@ class Converter:
         conf_file = '{eudaq}/conf/{file}'.format(eudaq=self.eudaq_dir, file=self.converter_config_path)
         parser.read(conf_file)
         parser.set('Converter.drs4tree', 'polarities', '[{pol1},0,0,{pol2}]'.format(pol1=pol_dia1, pol2=pol_dia2))
+
+        # remove unset ranges and regions
+        new_options = self.parser.options('ROOTFILE_GENERATION')
+        for opt in parser.options('Converter.drs4tree'):
+            if (opt.endswith('_range') or opt.endswith('_region')) and opt not in new_options:
+                parser.remove_option('Converter.drs4tree', opt)
+        # set the new settings
         for key, value in self.config.iteritems():
             parser.set('Converter.drs4tree', key, value)
 

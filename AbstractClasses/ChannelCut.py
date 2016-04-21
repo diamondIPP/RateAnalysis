@@ -333,10 +333,12 @@ class ChannelCut(Cut):
             cut = self.generate_special_cut(excluded_cuts=['bucket', 'timing'])
 
             # estimate timing
-            draw_string = 'IntegralPeakTime[{num}]>>h1'.format(num=num)
+            draw_string = 'IntegralPeakTime[{num}]'.format(num=num)
             self.analysis.tree.Draw(draw_string, cut, 'goff')
-            h1 = gROOT.FindObject('h1')
-            fit1= TF1('fit1', 'gaus', -50, 1024)
+            h1 = gROOT.FindObject('htemp')
+            fit1 = TF1('fit1', 'gaus', -50, 1024)
+            max_bin = h1.GetBinCenter(h1.GetMaximumBin())
+            fit1.SetParLimits(1, max_bin - 5, max_bin + 5)
             h1.Fit(fit1, 'q0')
             h1.GetListOfFunctions().Add(fit1)
             original_mpv = fit1.GetParameter(1)
@@ -345,7 +347,7 @@ class ChannelCut(Cut):
             # extract timing correction
             h2 = TProfile('tcorr', 'Original Peak Position vs Trigger Cell', 1024, 0, 1024)
             self.analysis.tree.Draw('IntegralPeakTime[{num}]:trigger_cell>>tcorr'.format(num=num), cut, 'goff')
-            fit2 = TF1('fit2','pol2', -50, 1024)
+            fit2 = TF1('fit2', 'pol2', -50, 1024)
             h2.Fit(fit2, 'q0',)
             h2.GetListOfFunctions().Add(fit2)
             self.format_histo(h2, x_tit='trigger cell', y_tit='signal peak time', y_off=1.5)
@@ -353,7 +355,7 @@ class ChannelCut(Cut):
             t_correction = '({p1}* trigger_cell + {p2} * trigger_cell*trigger_cell)'.format(p1=fit2.GetParameter(1), p2=fit2.GetParameter(2))
 
             # get time corrected sigma
-            h3 = TH1F('h3','Corrected Timing', 80, int(original_mpv - 10), int(original_mpv + 10))
+            h3 = TH1F('h3', 'Corrected Timing', 80, int(original_mpv - 10), int(original_mpv + 10))
             self.analysis.tree.Draw('(IntegralPeakTime[{num}] - {t_corr}) >> h3'.format(num=num, t_corr=t_correction), cut, 'goff')
             fit3 = TF1('fit3', 'gaus', -50, 1024)
             h3.Fit(fit3, 'q0')
@@ -373,8 +375,8 @@ class ChannelCut(Cut):
                 h2.Draw()
                 # corrected timing
                 c.cd(2)
-                h4 = TProfile('h4','Corrected Peak Position vs Trigger Cell', 512, 0, 1024)
-                h5 = TProfile('h5','Corrected Peak Position vs Trigger Cell with Cut', 512, 0, 1024)
+                h4 = TProfile('h4', 'Corrected Peak Position vs Trigger Cell', 512, 0, 1024)
+                h5 = TProfile('h5', 'Corrected Peak Position vs Trigger Cell with Cut', 512, 0, 1024)
                 self.analysis.tree.Draw('{cor}:trigger_cell>>h4'.format(num=num, cor=corrected_time), cut, 'goff')
                 self.analysis.tree.Draw('{cor}:trigger_cell>>h5'.format(num=num, cor=corrected_time), cut + t_cut, 'goff')
                 self.format_histo(h4, x_tit='trigger cell', y_tit='signal peak times [ns]', y_off=1.6, color=self.get_color(), markersize=.5)
@@ -387,7 +389,7 @@ class ChannelCut(Cut):
                 h5.Draw('same')
                 # compare distributions
                 c.cd(3)
-                h6 = TH1F('h6','Corrected Timing with Cut', 80, int(original_mpv - 10), int(original_mpv + 10))
+                h6 = TH1F('h6', 'Corrected Timing with Cut', 80, int(original_mpv - 10), int(original_mpv + 10))
                 self.analysis.tree.Draw('(IntegralPeakTime[{num}] - {t_corr}) >> h6'.format(num=num, t_corr=t_correction), cut + t_cut, 'goff')
                 stack = THStack('stack', 'Time Comparison;time [ns];entries')
                 mu = 0
@@ -404,14 +406,12 @@ class ChannelCut(Cut):
                     stack.Add(h)
                 stack.Draw('nostack')
 
-
                 self.data.append([c, h4, h5, h6, h1, stack])
 
             return {'t_corr': fit2, 'timing_corr': fit3}
         fits = func() if show else 0
         fits = self.do_pickle(pickle_path, func, fits)
         return fits
-
 
     def generate_timing_cut(self, sigma=4, show=False):
         # picklepath = 'Configuration/Individual_Configs/TimingCut/{tc}_{run}_{mod}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run.run_number, mod=mode.title())

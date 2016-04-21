@@ -1,7 +1,7 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie, THStack
+from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie, THStack, TArrow, kOrange
 from TelescopeAnalysis import Analysis
 from Elementary import Elementary
 from CurrentInfo import Currents
@@ -14,6 +14,8 @@ from time import time, sleep
 from collections import OrderedDict
 from sys import stdout
 from copy import deepcopy
+from json import loads
+from ConfigParser import ConfigParser
 
 tc = None
 __author__ = 'micha'
@@ -26,6 +28,7 @@ class SignalAnalysis(Analysis):
     def __init__(self, run, channel, high_low_rate_run=None, binning=20000):
 
         self.channel = channel
+        self.RunNumber = run
         Analysis.__init__(self, run, high_low_rate=high_low_rate_run)
 
         # main
@@ -85,6 +88,21 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region INIT
+
+    # overriding elementary method to choose config by run number
+    def load_run_config(self):
+        run_parser = ConfigParser({'excluded_runs': '[]'})
+        if self.MainConfigParser.has_section(self.TESTCAMPAIGN):
+            n_splits = self.MainConfigParser.getint(self.TESTCAMPAIGN, 'n_splits')
+            split_runs = [0] + loads(self.MainConfigParser.get(self.TESTCAMPAIGN, 'split_runs')) + [int(1e10)]
+            for i in xrange(1, n_splits + 1):
+                if split_runs[i - 1] <= self.RunNumber < split_runs[i]:
+                    run_parser.read('{dir}/Configuration/RunConfig_{tc}_pad{i}.cfg'.format(dir=self.get_program_dir(), tc=self.TESTCAMPAIGN, i=i))
+                    break
+        else:
+            run_parser.read('Configuration/RunConfig_{tc}.cfg'.format(tc=self.TESTCAMPAIGN))
+        return run_parser
+
     def get_integral_names(self):
         names = OrderedDict()
         self.tree.GetEntry(0)
@@ -699,7 +717,16 @@ class SignalAnalysis(Analysis):
             c.SetLeftMargin(.14)
             gStyle.SetOptFit(1)
             self.format_histo(gr, x_tit='time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6)
-            fit_par = gr.Fit('pol0', 'qs')
+            # excludes points that are too low for the fit
+            max_fit_pos = gr.GetX()[gr.GetN() - 1] + 10
+            sum_ph = gr.GetY()[0]
+            for i in xrange(1, gr.GetN()):
+                sum_ph += gr.GetY()[i]
+                if gr.GetY()[i] < .7 * sum_ph / (i + 1):
+                    print 'Found huge ph fluctiation! Stopping Fit', gr.GetY()[i], sum_ph / (i + 1)
+                    max_fit_pos = gr.GetX()[i - 1]
+                    break
+            fit_par = gr.Fit('pol0', 'qs', '', 0, max_fit_pos)
             gr.Draw('apl')
             self.save_plots('PulseHeight{0}'.format(self.BinSize), sub_dir=self.save_dir)
             self.PulseHeight = gr
@@ -838,7 +865,9 @@ class SignalAnalysis(Analysis):
         self.format_histo(gr, x_tit='trigger cell', y_tit='pulse height [au]', y_off=1.2)
         self.histos.append(self.draw_histo(gr, 'SignalVsTriggerCell', show, self.save_dir, lm=.11, draw_opt='alp'))
 
-    def show_pedestal_histo(self, region='ab', peak_int='2', cut=None, fwhm=True, draw=True):
+    def show_pedestal_histo(self, region=None, peak_int=None, cut=None, fwhm=True, draw=True):
+        region = self.PedestalRegion if region is None else region
+        peak_int = self.PeakIntegral if peak_int is None else peak_int
         cut = self.Cut.all_cut if cut is None else cut
         cut = TCut('', cut) if type(cut) is str else cut
         fw = 'fwhm' if fwhm else 'full'
@@ -1465,7 +1494,7 @@ class SignalAnalysis(Analysis):
         h = TH2F('wf', 'Waveform', 1024, 0, 511, 1000, -500, 500)
         h.SetStats(0)
         gStyle.SetPalette(55)
-        self.tree.Draw('wf0:Iteration$/2>>wf', cut, 'goff', n_events, start)
+        self.tree.Draw('wf{ch}:Iteration$/2>>wf'.format(ch=self.channel), cut, 'goff', n_events, start)
         if fixed_range is None:
             h.GetYaxis().SetRangeUser(-500 + h.FindFirstBinAbove(0, 2) / 50 * 50, -450 + h.FindLastBinAbove(0, 2) / 50 * 50)
         else:
@@ -1517,10 +1546,10 @@ class SignalAnalysis(Analysis):
         while n != n_events:
             diff = n_events - n
             # print n, diff, new_events
-            if i < 3:
+            if abs(diff) > 2:
                 new_events += int(diff * ratio)
             else:
-                new_events += int(diff * ratio / i)
+                new_events += int(diff * (ratio / i + 1))
             print '\b.',
             stdout.flush()
             n = self.tree.Draw('1', cut, 'goff', new_events, start)
@@ -1789,7 +1818,7 @@ class SignalAnalysis(Analysis):
                 bins.append(bins[-1] + self.BinSize + gap)
             ind += 1
         # fill up the end
-        if ind == n_jumps - 1 and bins[-1] >= jumps['stop'][-1] or ind ==  n_jumps:
+        if ind == n_jumps - 1 and bins[-1] >= jumps['stop'][-1] or ind == n_jumps:
             while bins[-1] + self.BinSize < self.run.n_entries:
                 bins.append(bins[-1] + self.BinSize)
         return bins
@@ -1821,6 +1850,57 @@ class SignalAnalysis(Analysis):
         return
 
     # endregion
+
+    def fixed_integrals(self):
+        tcals =  [0.4813, 0.5666, 0.3698, 0.6393, 0.3862, 0.5886, 0.5101, 0.5675, 0.4033, 0.6211, 0.4563, 0.5919, 0.4781, 0.5947, 0.417, 0.5269,
+                  0.5022, 0.5984, 0.4463, 0.622, 0.4326, 0.5603, 0.3712, 0.6168, 0.5238, 0.5515, 0.514, 0.5949, 0.4198, 0.5711, 0.5344, 0.5856,
+                  0.3917, 0.6125, 0.4335, 0.5817, 0.4658, 0.5338, 0.4442, 0.5865, 0.4482, 0.5778, 0.4755, 0.6118, 0.4113, 0.5609, 0.465, 0.6188,
+                  0.3908, 0.5736, 0.5223, 0.5222, 0.5109, 0.493, 0.4421, 0.5908, 0.4555, 0.6737, 0.371, 0.5172, 0.5362, 0.5982, 0.5017, 0.4976,
+                  0.5568, 0.5519, 0.416, 0.5788, 0.476, 0.5636, 0.4424, 0.5773, 0.4472, 0.6109, 0.4123, 0.616]
+        n = [8,12]
+        sum_time = 0
+        times = []
+        for i in range(40):
+            times.append(sum_time)
+            sum_time += tcals[i]
+        print times
+
+        h = TH1F('h', 'h', len(times) - 1, array(times, 'f'))
+        self.tree.GetEntry(200002)
+        pos = self.tree.IntegralPeaks[self.SignalNumber]
+        wf = list(self.tree.wf0)
+        mid = times[15] + tcals[15]/2.
+        for i in range(40):
+            h.SetBinContent(i, abs((wf[pos - 16 + i])))
+
+        points_x1 = [mid - 4, mid - 4 , h.GetBinLowEdge(9), h.GetBinLowEdge(9), mid - 4 ]
+        points_x2 = [mid +6 , mid +6 , h.GetBinLowEdge(27), h.GetBinLowEdge(27), mid +6 ]
+        points_y1 = [0, -1*wf[pos-8]-.3, -1*wf[pos-8]-.3, 0, 0]
+        points_y2 = [0, -1*wf[pos+11]-.3, -1*wf[pos+11]-.3, 0, 0]
+        gr1 = TGraph(5, array(points_x1,'d'), array(points_y1,'d'))
+        gr2 = TGraph(5, array(points_x2,'d'), array(points_y2,'d'))
+        gr1.SetFillColor(kOrange+7)
+        gr2.SetFillColor(kOrange+7)
+        gr3 = TGraph(2, array([mid, mid],'d'), array([0, -1*wf[pos]], 'd'))
+        gr3.SetLineWidth(2)
+        ar = TArrow(mid - 4, 50, mid +6 , 50, .015, '<|>')
+        ar.SetLineWidth(2)
+        ar.SetFillColor(1)
+        ar.SetLineColor(1)
+
+        h1 = h.Clone()
+        h1.GetXaxis().SetRangeUser(mid - 4 +.5, mid +6 -.7)
+        h1.SetFillColor(2)
+        h.SetLineWidth(2)
+        h.Draw()
+        h1.Draw('same][')
+        gr1.Draw('f')
+        gr2.Draw('f')
+        gr3.Draw('l')
+        print mid - 4 , mid +6
+        ar.Draw()
+        self.histos.append([h, h1, gr1, gr2, gr3, ar])
+
 
     def __placeholder(self):
         pass

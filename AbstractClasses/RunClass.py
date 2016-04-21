@@ -272,7 +272,7 @@ class Run(Elementary):
 
         pixel_size = 0.01 * 0.015  # cm^2
         flux = []
-        # self.find_for_in_comment()
+        self.find_for_in_comment()
         if self.RunInfo['for1'] and self.RunInfo['for2']:
             for i, plane in enumerate(self.trigger_planes, 1):
                 area = pixel_size * masked_pixels[plane]
@@ -485,7 +485,7 @@ class Run(Elementary):
         else:
             legend.AddEntry(0, 'Runs {start}-{stop} ({flux1} - {flux2})'.format(start=runs[0], stop=runs[1], flux1=runs[2].strip(' '), flux2=runs[3].strip(' ')), '')
         if channel is None:
-            dias = ['{dia} @ {bias:2.0f}V'.format(dia=self.diamond_names[ch], bias=self.bias[ch]) for ch in self.channels]
+            dias = ['{dia} @ {bias:+2.0f}V'.format(dia=self.diamond_names[ch], bias=self.bias[ch]) for ch in self.channels]
             dias = str(dias).strip('[]').replace('\'', '')
             legend.AddEntry(0, 'Diamonds: {dias}'.format(dias=dias), '')
         else:
