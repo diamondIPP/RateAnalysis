@@ -1,7 +1,7 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie, THStack, TArrow, kOrange
+from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie, THStack, TArrow, kOrange, TSpectrum
 from TelescopeAnalysis import Analysis
 from Elementary import Elementary
 from CurrentInfo import Currents
@@ -1850,6 +1850,24 @@ class SignalAnalysis(Analysis):
         return
 
     # endregion
+    def spec(self, it=20, noise=20):
+        self.decon = array(1024*[0], 'f')
+        self.s = TSpectrum(25)
+        self.peaks = []
+        for i in xrange(it):
+            self.tree.GetEntry(300000 + i)
+            data = array([-1 * self.tree.wf0[j] for j in xrange(1024)], 'f')
+            thr = 100 * 2 * noise / max(data)
+            print thr
+            p = self.s.SearchHighRes(data, self.decon, 1024, 5, thr, True, 3, True, 5)
+            xpos = [self.s.GetPositionX()[i] for i in xrange(p)]
+            self.peaks.append(xpos)
+
+    def com(self, i):
+        print self.peaks[i]
+        self.tree.Draw('-1*wf0:Iteration$','','cl',1,300000+i)
+        self.tree.GetEntry(300000+i)
+        self.data = array([-1*self.tree.wf0[i] for i in xrange(1024)],'f')
 
     def fixed_integrals(self):
         tcals =  [0.4813, 0.5666, 0.3698, 0.6393, 0.3862, 0.5886, 0.5101, 0.5675, 0.4033, 0.6211, 0.4563, 0.5919, 0.4781, 0.5947, 0.417, 0.5269,

@@ -1,7 +1,9 @@
 *.pyc
 *.pdf
 *.root
+# ignore pictures
 *.png
+*.jpg
 *.eps
 *.out
 Results/
