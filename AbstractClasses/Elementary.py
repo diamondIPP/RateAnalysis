@@ -308,11 +308,13 @@ class Elementary(object):
         except AttributeError or ReferenceError:
             pass
 
-    def draw_histo(self, histo, save_name, show, sub_dir=None, lm=.1, rm=0.1, draw_opt='', x=1000, y=1000, l=None):
+    def draw_histo(self, histo, save_name, show, sub_dir=None, lm=.1, rm=0.1, draw_opt='', x=1000, y=1000, l=None, canvas=None, logy=False):
         h = histo
         gROOT.SetBatch(1) if not show else self.do_nothing()
-        c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x, y)
+        c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x, y) if canvas is None else canvas
         c.SetMargin(lm, rm, .15, .1)
+        if logy:
+            c.SetLogy()
         h.Draw(draw_opt)
         l.Draw() if l is not None else self.do_nothing()
         self.save_plots(save_name, sub_dir=sub_dir)
