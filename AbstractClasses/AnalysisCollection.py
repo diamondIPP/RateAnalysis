@@ -9,7 +9,7 @@ from collections import OrderedDict
 from ConfigParser import ConfigParser
 from argparse import ArgumentParser
 
-from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle
+from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph
 
 from PadAnalysis import SignalAnalysis
 from Elementary import Elementary
@@ -135,6 +135,7 @@ class AnalysisCollection(Elementary):
         selection = RunSelection()
         selection.select_runs(run_list, do_assert=True)
         return selection
+
     # endregion
 
     def create_all_single_run_plots(self):
@@ -147,7 +148,7 @@ class AnalysisCollection(Elementary):
 
     # ============================================
     # region SIGNAL/PEDESTAL
-    def draw_pulse_heights(self, binning=20000, flux=True, raw=False, all_corr=False, draw=True):
+    def draw_pulse_heights(self, binning=20000, flux=True, raw=False, all_corr=False, show=True):
         mode = 'Flux' if flux else 'Run'
         prefix = 'Pulse Height vs {mod} - '.format(mod=mode)
         gr1 = self.make_tgrapherrors('eventwise', prefix + 'eventwise correction', self.get_color())
@@ -159,8 +160,6 @@ class AnalysisCollection(Elementary):
         gr_last = self.make_tgrapherrors('last run', prefix + 'last', marker=23, color=2)
         gr_last.SetMarkerSize(2)
 
-        gROOT.SetBatch(1)
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         i, j = 0, 0
         for key, ana in self.collection.iteritems():
             fit1 = ana.draw_pulse_height(binning, evnt_corr=True, show=False)
@@ -185,39 +184,49 @@ class AnalysisCollection(Elementary):
                     gr_last.SetPoint(0, x, fit1.Parameter(0))
                 i += 1
             j += 1
-        if draw:
-            gROOT.SetBatch(0)
-            gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
+        gROOT.SetBatch(1)
         graphs = [gr1, gr_first, gr_last]
-        legend = TLegend(0.7, 0.2, 0.88, .4)
+        legend = TLegend(0.7, 0.18, 0.88, .3)
         legend.SetName('l1')
+        legend.SetFillColor(0)
+        legend.SetFillStyle(0)
         if all_corr:
             graphs += [gr2, gr3]
         if raw:
             graphs.append(gr4)
-        c = TCanvas('c1', 'ph', 1000, 1000)
-        c.SetLeftMargin(0.14)
-        if flux:
-            c.SetLogx()
-        for i, gr in enumerate(graphs):
-            # leg_opt = 'p' if gr.GetName() in ['first', 'last'] else 'lp'
+
+        mg = TMultiGraph('mg_ph', prefix + self.diamond_name,)
+        for gr in graphs:
             legend.AddEntry(gr, gr.GetName(), 'p')
-            if not i:
-                self.format_histo(gr, title=prefix, color=None, x_tit=mode + ' [kHz/cm^{2}]' if flux else '', y_tit='Pulse Height [au]', y_off=2, x_off=1.3)
-                gr.Draw('alp')
-            else:
-                gr.Draw('lp')
-        legend.Draw()
+            mg.Add(gr, 'lp')
+        mg.Draw('a')
         gROOT.SetBatch(0)
-        gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
-        self.save_plots('PulseHeight_' + mode, canvas=c, sub_dir=self.save_dir)
-        ymax = graphs[0].GetYaxis().GetXmax() * 1.1
-        graphs[0].GetYaxis().SetRangeUser(0, ymax)
-        c.Update()
-        self.save_plots('PulseHeight_zero_' + mode, canvas=c, sub_dir=self.save_dir)
-        self.RootObjects.append([c, legend])
+        ymin = mg.GetYaxis().GetXmin()
+        ymax = mg.GetYaxis().GetXmax()
+
+        # small range
+        self.format_histo(mg, color=None, x_tit=mode + ' [kHz/cm^{2}]' if flux else '', y_tit='Pulse Height [au]', y_off=1.6, x_off=1.3)
+        mg.GetYaxis().SetRangeUser(ymin - (ymax - ymin) * .3, ymax)
+        self.RootObjects.append(self.save_histo(mg, 'PulseHeight{mod}'.format(mod=mode.title()), False, self.save_dir, lm=.14, draw_opt='A', l=legend))
+
+        # no zero suppression
+        mg1 = mg.Clone()
+        mg1.SetName('mg1_ph')
+        mg1.GetYaxis().SetRangeUser(0, ymax * 1.1)
+        self.RootObjects.append(self.save_histo(mg1, 'PulseHeightZero{mod}'.format(mod=mode.title()), False, self.save_dir, lm=.14, draw_opt='A', l=legend))
+
+        gROOT.SetBatch(1) if not show else self.do_nothing()
+        c = TCanvas('c_phall', 'Rate Scan', 2000, 1000)
+        c.Divide(2)
+        for i, gr in enumerate([mg, mg1], 1):
+            pad = c.cd(i)
+            pad.SetMargin(.13, .1, .15, .1)
+            gr.Draw('a')
+        self.RootObjects.append(c)
+        self.save_plots('PHOverview{mod}'.format(mod=mode), self.save_dir)
+        gROOT.SetBatch(0)
+
         self.PulseHeight = gr1
-        self.RootObjects.append(graphs)
 
     def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False, show=True, cut=None, beam_on=True):
         legend = TLegend(0.7, 0.3, 0.98, .7)
@@ -441,7 +450,7 @@ class AnalysisCollection(Elementary):
         mode = 'Flux' if flux else 'Run'
         gr1 = self.make_tgrapherrors('gr1', '', color=self.get_color())
         prefix = 'Number of Bucket Cut Events' if not mean else 'Mean Pulse Height with Different Bucket Cuts'
-        gr2 = self.make_tgrapherrors('gr2', '{pref} vs {mod}'.format(pref=prefix,  mod=mode), color=self.get_color())
+        gr2 = self.make_tgrapherrors('gr2', '{pref} vs {mod}'.format(pref=prefix, mod=mode), color=self.get_color())
         gr3 = self.make_tgrapherrors('gr3', '', color=self.get_color())
         i = 0
         for key, ana in self.collection.iteritems():
@@ -478,6 +487,7 @@ class AnalysisCollection(Elementary):
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.save_plots('{mode}_' + mode, sub_dir=self.save_dir)
         self.RootObjects.append([c, gr1, gr2, gr3, leg])
+
     # endregion
 
     # ============================================
@@ -647,6 +657,7 @@ class AnalysisCollection(Elementary):
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         gROOT.SetBatch(0)
         self.RootObjects.append([c, ex])
+
     # endregion
 
     # ====================================================================================
@@ -792,7 +803,7 @@ class AnalysisCollection(Elementary):
         :param saveplots:
         """
         start_time = time()
-        self.draw_pulse_heights(draw=False)
+        self.draw_pulse_heights(show=False)
         self.draw_pedestals(show=False)
         self.draw_mean_fwhm(draw=False)
         c = TCanvas('c', 'overview', 800, 1000)
@@ -852,6 +863,7 @@ class AnalysisCollection(Elementary):
     @staticmethod
     def make_x_tit(mode, flux):
         return '{mod}{unit}'.format(mod=mode, unit=' [kHz/cm2]' if flux else '')
+
 
 if __name__ == "__main__":
     main_parser = ArgumentParser()

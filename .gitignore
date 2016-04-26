@@ -6,7 +6,7 @@
 *.jpg
 *.eps
 *.out
-Results/
+Results*/
 *.json
 *.pickle
 *~

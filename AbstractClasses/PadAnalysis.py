@@ -160,6 +160,7 @@ class SignalAnalysis(Analysis):
 
     def get_pulser_name(self):
         return self.get_signal_name(region='', sig_type='pulser')
+
     # endregion
 
     def set_channel(self, ch):
@@ -488,7 +489,7 @@ class SignalAnalysis(Analysis):
             self.tree.Draw(peak_val + '>>peakvalues', cut, 'goff')
         else:
             self.tree.Draw(peak_val + '/2.>>peakvalues', cut, 'goff')
-        self.histos.append(self.draw_histo(h, '{typ}PeakPositions'.format(typ=type_.title()), show, sub_dir=self.save_dir, lm=.14))
+        self.histos.append(self.save_histo(h, '{typ}PeakPositions'.format(typ=type_.title()), show, sub_dir=self.save_dir, lm=.14))
         self.PeakValues = h
 
     def fit_peak_values(self, draw=True, pulser=False):
@@ -525,7 +526,7 @@ class SignalAnalysis(Analysis):
         forc = 'forc_pos/2.' if not corr else 'forc_time'
         self.tree.Draw('{forc}>>ft'.format(forc=forc), self.Cut.all_cut, 'goff')
         self.format_histo(h, x_tit='time [ns]', y_tit='Entries', y_off=2, fill_color=17)
-        self.histos.append(self.draw_histo(h, 'FORCTiming', show, sub_dir=self.save_dir, lm=.14))
+        self.histos.append(self.save_histo(h, 'FORCTiming', show, sub_dir=self.save_dir, lm=.14))
 
     # endregion
 
@@ -539,7 +540,7 @@ class SignalAnalysis(Analysis):
         h.SetStats(0)
         h.GetYaxis().SetRangeUser(0, h.GetMaximum() * 1.05)
         h.Fit('pol0', 'qs')
-        self.histos.append(self.draw_histo(h, 'TriggerCell', show, sub_dir=self.save_dir, lm=.11))
+        self.histos.append(self.save_histo(h, 'TriggerCell', show, sub_dir=self.save_dir, lm=.11))
 
     def draw_trigger_cell_vs_peakpos(self, show=True, cut=None, tprofile=True, corr=False):
         x = self.run.signal_regions[self.SignalRegion]
@@ -557,7 +558,7 @@ class SignalAnalysis(Analysis):
         self.format_histo(h, x_tit='trigger cell', y_tit='signal peak pos [ns]', y_off=1.4, z_tit='pulse height [au]' if tprofile else 'entries', z_off=1.2)
         h.GetZaxis().SetRangeUser(60, 120) if tprofile else self.do_nothing()
         h.SetStats(0)
-        self.histos.append(self.draw_histo(h, 'TriggerCellVsPeakPos{0}'.format('Signal' if tprofile else ''), show, self.save_dir, lm=.11, draw_opt='colz', rm=.15))
+        self.histos.append(self.save_histo(h, 'TriggerCellVsPeakPos{0}'.format('Signal' if tprofile else ''), show, self.save_dir, lm=.11, draw_opt='colz', rm=.15))
 
     def draw_trigger_cell_vs_forc(self, show=True, cut=None, full_range=False, corr=False):
         if not full_range:
@@ -573,7 +574,7 @@ class SignalAnalysis(Analysis):
         self.tree.Draw('{forc}:trigger_cell>>tcf'.format(forc=forc), cut, 'goff')
         self.format_histo(h, x_tit='trigger cell', y_tit='forc timing [ns]', y_off=1.4)
         h.SetStats(0)
-        self.histos.append(self.draw_histo(h, 'TriggerCellVsFORC{0}'.format('FullRange' if full_range else ''), show, self.save_dir, lm=.11, draw_opt='colz', rm=.15))
+        self.histos.append(self.save_histo(h, 'TriggerCellVsFORC{0}'.format('FullRange' if full_range else ''), show, self.save_dir, lm=.11, draw_opt='colz', rm=.15))
 
     # endregion
 
@@ -689,6 +690,8 @@ class SignalAnalysis(Analysis):
             count = 0
             means = self.draw_pedestal(bin_size, draw=False) if bin_corr else None
             gROOT.SetBatch(1)
+            if sig_time.GetEntries() == 0:
+                raise Exception('Empty histogram')
             for i in xrange(self.n_bins - 1):
                 h_proj = sig_time.ProjectionY(str(i), i + 1, i + 1)
                 if h_proj.GetEntries() > 10:
@@ -718,6 +721,7 @@ class SignalAnalysis(Analysis):
             gStyle.SetOptFit(1)
             self.format_histo(gr, x_tit='time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6)
             # excludes points that are too low for the fit
+            print gr.GetN()
             max_fit_pos = gr.GetX()[gr.GetN() - 1] + 10
             sum_ph = gr.GetY()[0]
             for i in xrange(1, gr.GetN()):
@@ -816,7 +820,7 @@ class SignalAnalysis(Analysis):
                 i += 1
         gr.GetXaxis().SetLimits(x[0] / 2., x[1] / 2.)
         self.format_histo(gr, x_tit='Signal Peak Position [ns]', y_tit='Pulse Height [au]', y_off=1.4)
-        self.histos.append(self.draw_histo(gr, 'SignalVsPeakPos', show, self.save_dir, lm=.11, draw_opt='alp'))
+        self.histos.append(self.save_histo(gr, 'SignalVsPeakPos', show, self.save_dir, lm=.11, draw_opt='alp'))
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
 
     def draw_landau_vs_peakpos(self, show=True, bins=2):
@@ -844,7 +848,7 @@ class SignalAnalysis(Analysis):
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.reset_colors()
         self.format_histo(hs, y_tit='Pulse Height [au]', y_off=1.2)
-        self.histos.append(self.draw_histo(hs, 'LandauVsPeakPos', show, self.save_dir, lm=.11, draw_opt='nostack', l=l))
+        self.histos.append(self.save_histo(hs, 'LandauVsPeakPos', show, self.save_dir, lm=.11, draw_opt='nostack', l=l))
 
     def draw_signal_vs_triggercell(self, show=True, bins=10):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
@@ -863,7 +867,7 @@ class SignalAnalysis(Analysis):
         print
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.format_histo(gr, x_tit='trigger cell', y_tit='pulse height [au]', y_off=1.2)
-        self.histos.append(self.draw_histo(gr, 'SignalVsTriggerCell', show, self.save_dir, lm=.11, draw_opt='alp'))
+        self.histos.append(self.save_histo(gr, 'SignalVsTriggerCell', show, self.save_dir, lm=.11, draw_opt='alp'))
 
     def show_pedestal_histo(self, region=None, peak_int=None, cut=None, fwhm=True, draw=True):
         region = self.PedestalRegion if region is None else region
@@ -889,7 +893,7 @@ class SignalAnalysis(Analysis):
             self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.8)
             h.Draw()
             save_name = 'Pedestal_{reg}{cut}'.format(reg=region, cut=cut.GetName())
-            self.save_plots(save_name,  canvas=c, sub_dir=self.save_dir)
+            self.save_plots(save_name, canvas=c, sub_dir=self.save_dir)
             self.histos.append([h, c])
             gROOT.SetBatch(0)
             return fit_pars
@@ -955,7 +959,7 @@ class SignalAnalysis(Analysis):
             if not name.startswith('old') and name != 'all_cuts' and name not in contributions and str(cut):
                 cuts += cut
                 events = int(self.tree.Draw('1', '!({0})'.format(cuts), 'goff'))
-                output[name] = (1.-float(events)/total_events)*100.
+                output[name] = (1. - float(events) / total_events) * 100.
                 events -= cutted_events
                 print name, events
                 contributions[cut.GetName()] = events
@@ -1121,7 +1125,7 @@ class SignalAnalysis(Analysis):
                 # safe single plots
                 c1.cd()
                 self.tree.Draw("{name}>>{histo}".format(name=self.SignalName, histo=histo_name), value)
-                self.save_plots(save_name,  canvas=c1, sub_dir=self.save_dir)
+                self.save_plots(save_name, canvas=c1, sub_dir=self.save_dir)
                 # draw all single plots into c2
                 c2.cd()
                 histo.SetLineColor(self.get_color())
@@ -1180,7 +1184,7 @@ class SignalAnalysis(Analysis):
                     histo = self.normalise_histo(histo)
                 histo.Draw()
                 c1.Update()
-                self.save_plots(save_name,  canvas=c1, sub_dir=self.save_dir)
+                self.save_plots(save_name, canvas=c1, sub_dir=self.save_dir)
                 # draw all single plots into c2
                 histo.SetLineColor(self.get_color())
 
@@ -1203,9 +1207,9 @@ class SignalAnalysis(Analysis):
             c1.Update()
 
         if scale:
-            self.save_plots('scaled',  canvas=c1, sub_dir=self.save_dir)
+            self.save_plots('scaled', canvas=c1, sub_dir=self.save_dir)
         else:
-            self.save_plots('normalised',  canvas=c1, sub_dir=self.save_dir)
+            self.save_plots('normalised', canvas=c1, sub_dir=self.save_dir)
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
 
@@ -1271,7 +1275,7 @@ class SignalAnalysis(Analysis):
             c1.SetLogy()
             self.save_plots('consecutive_scaled_logy', canvas=c1, sub_dir=self.save_dir)
         else:
-            self.save_plots('consecutive',  canvas=c1, sub_dir=self.save_dir)
+            self.save_plots('consecutive', canvas=c1, sub_dir=self.save_dir)
             c1.SetLogy()
             self.save_plots('consecutive_logy', canvas=c1, sub_dir=self.save_dir)
 
@@ -1850,64 +1854,57 @@ class SignalAnalysis(Analysis):
         return
 
     # endregion
-    def spec(self, it=20, noise=20):
-        self.decon = array(1024*[0], 'f')
-        self.s = TSpectrum(25)
-        self.peaks = []
+
+    def spectrum(self, it=20, noise=20):
+        decon = array(1024 * [0], 'f')
+        s = TSpectrum(25)
+        peaks = []
         for i in xrange(it):
             self.tree.GetEntry(300000 + i)
             data = array([-1 * self.tree.wf0[j] for j in xrange(1024)], 'f')
             thr = 100 * 2 * noise / max(data)
             print thr
-            p = self.s.SearchHighRes(data, self.decon, 1024, 5, thr, True, 3, True, 5)
-            xpos = [self.s.GetPositionX()[i] for i in xrange(p)]
-            self.peaks.append(xpos)
-
-    def com(self, i):
-        print self.peaks[i]
-        self.tree.Draw('-1*wf0:Iteration$','','cl',1,300000+i)
-        self.tree.GetEntry(300000+i)
-        self.data = array([-1*self.tree.wf0[i] for i in xrange(1024)],'f')
+            p = s.SearchHighRes(data, decon, 1024, 5, thr, True, 3, True, 5)
+            xpos = [s.GetPositionX()[i] for i in xrange(p)]
+            peaks.append(xpos)
+        return decon, s, peaks
 
     def fixed_integrals(self):
-        tcals =  [0.4813, 0.5666, 0.3698, 0.6393, 0.3862, 0.5886, 0.5101, 0.5675, 0.4033, 0.6211, 0.4563, 0.5919, 0.4781, 0.5947, 0.417, 0.5269,
-                  0.5022, 0.5984, 0.4463, 0.622, 0.4326, 0.5603, 0.3712, 0.6168, 0.5238, 0.5515, 0.514, 0.5949, 0.4198, 0.5711, 0.5344, 0.5856,
-                  0.3917, 0.6125, 0.4335, 0.5817, 0.4658, 0.5338, 0.4442, 0.5865, 0.4482, 0.5778, 0.4755, 0.6118, 0.4113, 0.5609, 0.465, 0.6188,
-                  0.3908, 0.5736, 0.5223, 0.5222, 0.5109, 0.493, 0.4421, 0.5908, 0.4555, 0.6737, 0.371, 0.5172, 0.5362, 0.5982, 0.5017, 0.4976,
-                  0.5568, 0.5519, 0.416, 0.5788, 0.476, 0.5636, 0.4424, 0.5773, 0.4472, 0.6109, 0.4123, 0.616]
-        n = [8,12]
+        tcals = [0.4813, 0.5666, 0.3698, 0.6393, 0.3862, 0.5886, 0.5101, 0.5675, 0.4033, 0.6211, 0.4563, 0.5919, 0.4781, 0.5947, 0.417, 0.5269,
+                 0.5022, 0.5984, 0.4463, 0.622, 0.4326, 0.5603, 0.3712, 0.6168, 0.5238, 0.5515, 0.514, 0.5949, 0.4198, 0.5711, 0.5344, 0.5856,
+                 0.3917, 0.6125, 0.4335, 0.5817, 0.4658, 0.5338, 0.4442, 0.5865, 0.4482, 0.5778, 0.4755, 0.6118, 0.4113, 0.5609, 0.465, 0.6188,
+                 0.3908, 0.5736, 0.5223, 0.5222, 0.5109, 0.493, 0.4421, 0.5908, 0.4555, 0.6737, 0.371, 0.5172, 0.5362, 0.5982, 0.5017, 0.4976,
+                 0.5568, 0.5519, 0.416, 0.5788, 0.476, 0.5636, 0.4424, 0.5773, 0.4472, 0.6109, 0.4123, 0.616]
         sum_time = 0
         times = []
         for i in range(40):
             times.append(sum_time)
             sum_time += tcals[i]
-        print times
-
         h = TH1F('h', 'h', len(times) - 1, array(times, 'f'))
         self.tree.GetEntry(200002)
-        pos = self.tree.IntegralPeaks[self.SignalNumber]
+        peak_pos = self.tree.IntegralPeaks[self.SignalNumber]
         wf = list(self.tree.wf0)
-        mid = times[15] + tcals[15]/2.
+        mid = times[15] + tcals[15] / 2.
         for i in range(40):
-            h.SetBinContent(i, abs((wf[pos - 16 + i])))
+            h.SetBinContent(i, abs((wf[peak_pos - 16 + i])))
 
-        points_x1 = [mid - 4, mid - 4 , h.GetBinLowEdge(9), h.GetBinLowEdge(9), mid - 4 ]
-        points_x2 = [mid +6 , mid +6 , h.GetBinLowEdge(27), h.GetBinLowEdge(27), mid +6 ]
-        points_y1 = [0, -1*wf[pos-8]-.3, -1*wf[pos-8]-.3, 0, 0]
-        points_y2 = [0, -1*wf[pos+11]-.3, -1*wf[pos+11]-.3, 0, 0]
-        gr1 = TGraph(5, array(points_x1,'d'), array(points_y1,'d'))
-        gr2 = TGraph(5, array(points_x2,'d'), array(points_y2,'d'))
-        gr1.SetFillColor(kOrange+7)
-        gr2.SetFillColor(kOrange+7)
-        gr3 = TGraph(2, array([mid, mid],'d'), array([0, -1*wf[pos]], 'd'))
+        points_x1 = [mid - 4, mid - 4, h.GetBinLowEdge(9), h.GetBinLowEdge(9), mid - 4]
+        points_x2 = [mid + 6, mid + 6, h.GetBinLowEdge(27), h.GetBinLowEdge(27), mid + 6]
+        points_y1 = [0, -1 * wf[peak_pos - 8] - .3, -1 * wf[peak_pos - 8] - .3, 0, 0]
+        points_y2 = [0, -1 * wf[peak_pos + 11] - .3, -1 * wf[peak_pos + 11] - .3, 0, 0]
+        gr1 = TGraph(5, array(points_x1, 'd'), array(points_y1, 'd'))
+        gr2 = TGraph(5, array(points_x2, 'd'), array(points_y2, 'd'))
+        gr1.SetFillColor(kOrange + 7)
+        gr2.SetFillColor(kOrange + 7)
+        gr3 = TGraph(2, array([mid, mid], 'd'), array([0, -1 * wf[peak_pos]], 'd'))
         gr3.SetLineWidth(2)
-        ar = TArrow(mid - 4, 50, mid +6 , 50, .015, '<|>')
+        ar = TArrow(mid - 4, 50, mid + 6, 50, .015, '<|>')
         ar.SetLineWidth(2)
         ar.SetFillColor(1)
         ar.SetLineColor(1)
 
         h1 = h.Clone()
-        h1.GetXaxis().SetRangeUser(mid - 4 +.5, mid +6 -.7)
+        h1.GetXaxis().SetRangeUser(mid - 4 + .5, mid + 6 - .7)
         h1.SetFillColor(2)
         h.SetLineWidth(2)
         h.Draw()
@@ -1915,10 +1912,9 @@ class SignalAnalysis(Analysis):
         gr1.Draw('f')
         gr2.Draw('f')
         gr3.Draw('l')
-        print mid - 4 , mid +6
+        print mid - 4, mid + 6
         ar.Draw()
         self.histos.append([h, h1, gr1, gr2, gr3, ar])
-
 
     def __placeholder(self):
         pass

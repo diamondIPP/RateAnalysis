@@ -351,7 +351,7 @@ class ChannelCut(Cut):
             h2.Fit(fit2, 'q0',)
             h2.GetListOfFunctions().Add(fit2)
             self.format_histo(h2, x_tit='trigger cell', y_tit='signal peak time', y_off=1.5)
-            self.data.append(self.draw_histo(h2, 'OriPeakPosVsTriggerCell', False, self.analysis.save_dir, lm=.12))
+            self.data.append(self.save_histo(h2, 'OriPeakPosVsTriggerCell', False, self.analysis.save_dir, lm=.12))
             t_correction = '({p1}* trigger_cell + {p2} * trigger_cell*trigger_cell)'.format(p1=fit2.GetParameter(1), p2=fit2.GetParameter(2))
 
             # get time corrected sigma
@@ -361,7 +361,7 @@ class ChannelCut(Cut):
             h3.Fit(fit3, 'q0')
             h3.GetListOfFunctions().Add(fit3)
             self.format_histo(h3, x_tit='time [ns]', y_tit='entries', y_off=2.1)
-            self.data.append(self.draw_histo(h3, 'TimingCorrection', False, self.analysis.save_dir, lm=.15))
+            self.data.append(self.save_histo(h3, 'TimingCorrection', False, self.analysis.save_dir, lm=.15))
             gROOT.SetBatch(0)
 
             if show:

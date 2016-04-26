@@ -292,13 +292,22 @@ class Elementary(object):
         h = histo
         h.SetTitle(title) if title else h.SetTitle(h.GetTitle())
         h.SetName(name) if name else h.SetName(h.GetName())
+        # markers
         try:
             h.SetMarkerStyle(marker)
             h.SetMarkerColor(color) if color is not None else h.SetMarkerColor(h.GetMarkerColor())
-            h.SetLineColor(color) if color is not None else h.SetLineColor(h.GetLineColor())
             h.SetMarkerSize(markersize)
+        except AttributeError or ReferenceError:
+            pass
+        # lines/fill
+        try:
+            h.SetLineColor(color) if color is not None else h.SetLineColor(h.GetLineColor())
             h.SetFillColor(fill_color)
             h.SetLineWidth(lw)
+        except AttributeError or ReferenceError:
+            pass
+        # axis titles
+        try:
             h.GetXaxis().SetTitle(x_tit) if x_tit else h.GetXaxis().GetTitle()
             h.GetXaxis().SetTitleOffset(x_off)
             h.GetYaxis().SetTitle(y_tit) if y_tit else h.GetYaxis().GetTitle()
@@ -308,15 +317,19 @@ class Elementary(object):
         except AttributeError or ReferenceError:
             pass
 
-    def draw_histo(self, histo, save_name, show, sub_dir=None, lm=.1, rm=0.1, draw_opt='', x=1000, y=1000, l=None):
+    def save_histo(self, histo, save_name, show, sub_dir=None, lm=.1, rm=0.1, draw_opt='', x=1000, y=1000, l=None):
         h = histo
-        gROOT.SetBatch(1) if not show else self.do_nothing()
+        if not show:
+            gROOT.SetBatch(1)
+            gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
         c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x, y)
         c.SetMargin(lm, rm, .15, .1)
+
         h.Draw(draw_opt)
         l.Draw() if l is not None else self.do_nothing()
         self.save_plots(save_name, sub_dir=sub_dir)
         gROOT.SetBatch(0)
+        gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         return [c, h, l] if l is not None else [c, h]
 
     @staticmethod

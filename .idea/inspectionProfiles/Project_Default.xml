@@ -59,6 +59,8 @@
           <option value="AbstractClasses.TelescopeAnalysis.ROOT" />
           <option value="ROOT" />
           <option value="THStack" />
+          <option value="TMultiGraph" />
+          <option value="" />
         </list>
       </option>
     </inspection_tool>
