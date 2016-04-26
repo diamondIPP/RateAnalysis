@@ -207,19 +207,21 @@ class AnalysisCollection(Elementary):
         # small range
         self.format_histo(mg, color=None, x_tit=mode + ' [kHz/cm^{2}]' if flux else '', y_tit='Pulse Height [au]', y_off=1.6, x_off=1.3)
         mg.GetYaxis().SetRangeUser(ymin - (ymax - ymin) * .3, ymax)
-        self.RootObjects.append(self.save_histo(mg, 'PulseHeight{mod}'.format(mod=mode.title()), False, self.save_dir, lm=.14, draw_opt='A', l=legend))
+        mg.GetXaxis().SetLimits(gr_first.GetX()[0] * 0.8, gr_last.GetX()[0] * 1.2)
+        self.RootObjects.append(self.save_histo(mg, 'PulseHeight{mod}'.format(mod=mode.title()), False, self.save_dir, lm=.14, draw_opt='A', l=legend, logx=True))
 
         # no zero suppression
         mg1 = mg.Clone()
         mg1.SetName('mg1_ph')
         mg1.GetYaxis().SetRangeUser(0, ymax * 1.1)
-        self.RootObjects.append(self.save_histo(mg1, 'PulseHeightZero{mod}'.format(mod=mode.title()), False, self.save_dir, lm=.14, draw_opt='A', l=legend))
+        self.RootObjects.append(self.save_histo(mg1, 'PulseHeightZero{mod}'.format(mod=mode.title()), False, self.save_dir, lm=.14, draw_opt='A', l=legend, logx=True))
 
         gROOT.SetBatch(1) if not show else self.do_nothing()
         c = TCanvas('c_phall', 'Rate Scan', 2000, 1000)
         c.Divide(2)
         for i, gr in enumerate([mg, mg1], 1):
             pad = c.cd(i)
+            pad.SetLogx()
             pad.SetMargin(.13, .1, .15, .1)
             gr.Draw('a')
         self.RootObjects.append(c)
