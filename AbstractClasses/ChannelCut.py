@@ -353,6 +353,7 @@ class ChannelCut(Cut):
             self.format_histo(h2, x_tit='trigger cell', y_tit='signal peak time', y_off=1.5)
             self.data.append(self.save_histo(h2, 'OriPeakPosVsTriggerCell', False, self.analysis.save_dir, lm=.12))
             t_correction = '({p1}* trigger_cell + {p2} * trigger_cell*trigger_cell)'.format(p1=fit2.GetParameter(1), p2=fit2.GetParameter(2))
+            print t_correction
 
             # get time corrected sigma
             h3 = TH1F('h3', 'Corrected Timing', 80, int(original_mpv - 10), int(original_mpv + 10))
@@ -393,20 +394,26 @@ class ChannelCut(Cut):
                 self.analysis.tree.Draw('(IntegralPeakTime[{num}] - {t_corr}) >> h6'.format(num=num, t_corr=t_correction), cut + t_cut, 'goff')
                 stack = THStack('stack', 'Time Comparison;time [ns];entries')
                 mu = 0
-                for h in [h1, h3, h6]:
+                l = TLegend(.6, .78, .88, .88)
+                l_names = ['before', 'after', 'after']
+                for i, h in enumerate([h1, h3, h6]):
                     h.SetStats(0)
                     h.SetLineColor(self.get_color())
                     if len(h.GetListOfFunctions()):
-                        fit = h.GetListOfFunctions()[-1]
+                        fit = deepcopy(h.GetListOfFunctions()[-1])
                         fit.SetLineColor(h.GetLineColor())
                         mu = fit.GetParameter(1)
+                        sig = fit.GetParameter(2)
+                        l.AddEntry(fit, 'sigma {nam} corr.: {sig:1.2} ns'.format(nam=l_names[i], sig=sig), 'l')
                         fit.SetParameter(1, 0)
                     xax = h.GetXaxis()
                     xax.SetLimits(xax.GetXmin() - mu, xax.GetXmax() - mu)
                     stack.Add(h)
                 stack.Draw('nostack')
+                stack.GetXaxis().SetRangeUser(-4, 4)
+                l.Draw()
 
-                self.data.append([c, h4, h5, h6, h1, stack])
+                self.data.append([c, h4, h5, h6, h1, stack, l])
 
             return {'t_corr': fit2, 'timing_corr': fit3}
         fits = func() if show else 0

@@ -1,7 +1,7 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie, THStack, TArrow, kOrange, TSpectrum
+from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie, THStack, TArrow, kOrange, TSpectrum, gRandom
 from TelescopeAnalysis import Analysis
 from Elementary import Elementary
 from CurrentInfo import Currents
@@ -505,6 +505,27 @@ class SignalAnalysis(Analysis):
 
         mean_val = func() if draw else 0
         return self.do_pickle(pickle_path, func, mean_val)
+
+    def draw_peak_timings(self, show=True):
+        h = TH1F('h_pt', 'Peak Timings', 1024, 0, 512)
+        self.tree.Draw('peaks{ch}_x_time>>h_pt'.format(ch=self.channel), z.AllCuts, 'goff')
+        self.format_histo(h, x_tit='time [ns]', y_tit='number of entries', y_off=1.5, fill_color=836, lw=2)
+
+        self.histos.append(self.save_histo(h, 'PeakTimings', show, self.save_dir, logy=True))
+
+    def draw_n_peaks(self, show=True, p1=0.7, p2=1):
+        h = TH1F('h_pn', 'Number of Peaks', 12, -.5, 11.5)
+        h1 = TH1F('h_pn1', 'Number of Peaks', 12, -.5, 11.5)
+        self.tree.Draw('@peaks{ch}_x.size()>>h_pn'.format(ch=self.channel), self.AllCuts, 'goff')
+        self.format_histo(h, x_tit='number of peaks', y_tit='number of entries', y_off=1.5, fill_color=836, lw=2)
+        h.SetFillStyle(3004)
+        self.histos.append(self.save_histo(h, 'PeakNumbers', show, self.save_dir, logy=True))
+        while h1.GetBinContent(2) != h.GetBinContent(2):
+            h1.Fill(gRandom.Poisson(24 * self.get_flux() / 5e4 * .5 * .5 * p2) + gRandom.Binomial(1, p1))
+        self.format_histo(h1, x_tit='number of peaks', y_tit='number of entries', y_off=1.5, fill_color=896, lw=2)
+        h1.SetFillStyle(3005)
+        h1.Draw('same')
+        self.histos.append(h1)
 
     def calc_peak_value_fwhm(self):
         pickle_path = self.PickleDir + 'PeakValues/FWHM_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
@@ -1880,7 +1901,7 @@ class SignalAnalysis(Analysis):
         for i in range(40):
             times.append(sum_time)
             sum_time += tcals[i]
-        h = TH1F('h', 'h', len(times) - 1, array(times, 'f'))
+        h = TH1F('h', 'Integral Length', len(times) - 1, array(times, 'f'))
         self.tree.GetEntry(200002)
         peak_pos = self.tree.IntegralPeaks[self.SignalNumber]
         wf = list(self.tree.wf0)
@@ -1903,6 +1924,9 @@ class SignalAnalysis(Analysis):
         ar.SetFillColor(1)
         ar.SetLineColor(1)
 
+        c = TCanvas('c', 'c', 2500, 1500)
+        self.format_histo(h, x_tit='time [ns]', y_tit='pulse height [a.u.]')
+        h.SetStats(0)
         h1 = h.Clone()
         h1.GetXaxis().SetRangeUser(mid - 4 + .5, mid + 6 - .7)
         h1.SetFillColor(2)
@@ -1914,7 +1938,29 @@ class SignalAnalysis(Analysis):
         gr3.Draw('l')
         print mid - 4, mid + 6
         ar.Draw()
-        self.histos.append([h, h1, gr1, gr2, gr3, ar])
+        self.histos.append([h, h1, gr1, gr2, gr3, ar, c])
+
+    def draw_tcal(self, show=True):
+        f = open('{dir}/Configuration/tcal.txt'.format(dir=self.get_program_dir()))
+        tcal = [float(i) for i in f.readline().split(',')]
+        f.close()
+        tcal = tcal[:1024]
+        gr = self.make_tgrapherrors('gr_tcal', 'DRS4 Bin Sizes', marker_size=.5)
+        for i, j in enumerate(tcal):
+            gr.SetPoint(i, i, j)
+        self.format_histo(gr, x_tit='bin number', y_tit='time [ns]', y_off=1.5)
+        gr.Fit('pol0', 'qs')
+        gStyle.SetOptFit(1)
+        gr.GetYaxis().SetRangeUser(0, 1)
+        c = TCanvas('c_tcal', 'DRS4 Bin Sizes', 2500, 1000)
+        self.histos.append(self.save_histo(gr, 'DRSBinSizes', show, self.save_dir, canvas=c))
+
+        h = TH1F('h_tcal', 'Bin Size Distribution', 40, 0, 1)
+        for value in tcal:
+            h.Fill(value)
+        self.format_histo(h, x_tit='time [ns]', y_tit='number of entries', y_off=1.5)
+        h.Fit('gaus', 'qs')
+        self.histos.append(self.save_histo(h, 'DRSBinSizeDisto', show, self.save_dir))
 
     def __placeholder(self):
         pass
