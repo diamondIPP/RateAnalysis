@@ -549,7 +549,7 @@ class SignalAnalysis(Analysis):
         h.Fit('pol0', 'qs')
         self.histos.append(self.draw_histo(h, 'TriggerCell', show, self.save_dir, lm=.11))
 
-    def draw_trigger_cell_vs_peakpos(self, show=True, cut=None, tprofile=True):
+    def draw_trigger_cell_vs_peakpos(self, show=True, cut=None, tprofile=True, corr=False):
         x = self.run.signal_regions[self.SignalRegion]
         if not tprofile:
             h = TH2D('tcpp', 'Trigger Cell vs. Signal Peak Position', 1024, 0, 1024, x[1] - x[0], x[0] / 2., x[1] / 2.)
@@ -559,15 +559,17 @@ class SignalAnalysis(Analysis):
         prof = '' if not tprofile else ':'
         sig = '' if not tprofile else '{sig}-{ped}'.format(sig=self.SignalName, ped=self.PedestalName)
         gStyle.SetPalette(55)
-        self.tree.Draw('{z}{prof}IntegralPeaks[{num}]/2.:trigger_cell>>tcpp'.format(num=self.SignalNumber, z=sig, prof=prof), cut, 'goff')
+        peaks = 'IntegralPeaks[{num}]/2.' if not corr else 'IntegralPeakTime[{num}]'
+        peaks = peaks.format(num=self.SignalNumber)
+        self.tree.Draw('{z}{prof}{peaks}:trigger_cell>>tcpp'.format(z=sig, prof=prof, peaks=peaks), cut, 'goff')
         self.format_histo(h, x_tit='trigger cell', y_tit='signal peak pos [ns]', y_off=1.4, z_tit='pulse height [au]' if tprofile else 'entries', z_off=1.2)
         h.GetZaxis().SetRangeUser(60, 120) if tprofile else self.do_nothing()
         h.SetStats(0)
-        self.histos.append(self.draw_histo(h, 'TriggerCellVsPeakPos{0}'.format('Signal' if tprofile else ''), show, self.save_dir, lm=.11, draw_opt='colz', rm=.15))
+        self.histos.append(self.save_histo(h, 'TriggerCellVsPeakPos{0}'.format('Signal' if tprofile else ''), show, self.save_dir, lm=.11, draw_opt='colz', rm=.15))
 
-    def draw_trigger_cell_vs_forc(self, show=True, cut=None, full_range=False):
+    def draw_trigger_cell_vs_forc(self, show=True, cut=None, full_range=False, corr=False):
         if not full_range:
-            self.tree.Draw('forc_time', 'forc_time>20', 'goff')
+            self.tree.Draw('forc_pos', 'forc_pos[0]>20', 'goff')
             htemp = gROOT.FindObject('htemp')
             x = [int(htemp.GetBinCenter(htemp.FindFirstBinAbove(5000))) - 10, int(htemp.GetBinCenter(htemp.FindLastBinAbove(5000))) + 10]
         else:
@@ -575,10 +577,11 @@ class SignalAnalysis(Analysis):
         h = TH2D('tcf', 'Trigger Cell vs. FORC Timing', 1024, 0, 1024, x[1] - x[0], x[0] / 2., x[1] / 2.)
         cut = self.AllCuts if cut is None else cut
         gStyle.SetPalette(55)
-        self.tree.Draw('forc_time/2.:trigger_cell>>tcf', cut, 'goff')
+        forc = 'forc_pos/2.' if not corr else 'forc_time'
+        self.tree.Draw('{forc}:trigger_cell>>tcf'.format(forc=forc), cut, 'goff')
         self.format_histo(h, x_tit='trigger cell', y_tit='forc timing [ns]', y_off=1.4)
         h.SetStats(0)
-        self.histos.append(self.draw_histo(h, 'TriggerCellVsFORC{0}'.format('FullRange' if full_range else ''), show, self.save_dir, lm=.11, draw_opt='colz', rm=.15))
+        self.histos.append(self.save_histo(h, 'TriggerCellVsFORC{0}'.format('FullRange' if full_range else ''), show, self.save_dir, lm=.11, draw_opt='colz', rm=.15))
 
     # endregion
 
