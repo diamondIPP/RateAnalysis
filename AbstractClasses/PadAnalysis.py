@@ -875,7 +875,9 @@ class SignalAnalysis(Analysis):
         self.format_histo(gr, x_tit='trigger cell', y_tit='pulse height [au]', y_off=1.2)
         self.histos.append(self.save_histo(gr, 'SignalVsTriggerCell', show, self.save_dir, lm=.11, draw_opt='alp'))
 
-    def show_pedestal_histo(self, region='ab', peak_int='2', cut=None, fwhm=True, draw=True):
+    def show_pedestal_histo(self, region=None, peak_int=None, cut=None, fwhm=True, draw=True):
+        region = self.PedestalRegion if region is None else region
+        peak_int = self.PeakIntegral if peak_int is None else peak_int
         cut = self.Cut.all_cut if cut is None else cut
         cut = TCut('', cut) if type(cut) is str else cut
         fw = 'fwhm' if fwhm else 'full'
@@ -897,7 +899,7 @@ class SignalAnalysis(Analysis):
             self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.8)
             h.Draw()
             save_name = 'Pedestal_{reg}{cut}'.format(reg=region, cut=cut.GetName())
-            self.save_plots(save_name, 'png', canvas=c, sub_dir=self.save_dir)
+            self.save_plots(save_name, canvas=c, sub_dir=self.save_dir)
             self.histos.append([h, c])
             gROOT.SetBatch(0)
             return fit_pars
