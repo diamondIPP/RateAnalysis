@@ -296,9 +296,6 @@ class Cut(Elementary):
             self.EasyCutStrings['EventRange'] = 'Evts.{min}k-{max}k'.format(min=int(self.CutConfig['EventRange'][0]) / 1000, max=int(self.CutConfig['EventRange'][1]) / 1000)
             self.EasyCutStrings['ExcludeFirst'] = 'Evts.{min}k+'.format(min=int(self.CutConfig['ExcludeFirst']) / 1000) if self.CutConfig['ExcludeFirst'] > 0 else ''
 
-        # -- PULSER CUT --
-        self.CutStrings['pulser'] += '!pulser'
-
         # -- BEAM INTERRUPTION CUT --
         self.__generate_beam_interruptions()
         self.EasyCutStrings['noBeamInter'] = 'BeamOn'
