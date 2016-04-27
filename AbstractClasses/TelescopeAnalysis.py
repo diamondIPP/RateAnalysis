@@ -16,23 +16,11 @@ class Analysis(Elementary):
 
     def __init__(self, run, diamonds=3, verbose=False, high_low_rate=None):
         """
-        An Analysis Object collects all the information and data for the analysis of one single run.
-        The most important fields are:
-            .run        - instance of Run class, containing run info and data
-            .cut        - dict containing two instances of Cut class
-            .RunInfo    - dict containing run infos
-            .Pads       - dict containing two intances of
-        The most important methods are:
-            .CreateMeanSignalHistogram(channel)
-            .Draw(varexp)
-            .DrawRunInfo()
-            .GetCut(channel)
-            .GetEventAtTime(dt)
-            .MakePreAnalysis()
-            .ShowPulserRate()
-        :param run:         run object of type "Run" or integer run number
-        :param diamonds:    An integer number defining the diamonds activated for analysis: 0x1=ch0 (diamond 1) 0x2=ch3 (diamond 2)
-        :param verbose:     if True, verbose printing is activated
+        Parent class for all analyses, which contains all the basic stuff about the Telescope.
+        :param run:             run object of type "Run" or integer run number
+        :param diamonds:        an integer number defining the diamonds activated for analysis: 0x1=ch0 (diamond 1) 0x2=ch3 (diamond 2)
+        :param verbose:         if True, verbose printing is activated
+        :param high_low_rate:   list of highest and lowest rate runs for an analysis collection
         """
         Elementary.__init__(self, verbose=verbose)
 
