@@ -159,14 +159,15 @@ class ChannelCut(Cut):
             sig2 = self.analysis.get_signal_name('e', 2)
             string = '{sig2}=={sig1}'.format(sig2=sig2, sig1=self.analysis.SignalName)
             return TCut(string)
-        except:
+        except AssertionError as err:
+            print err
             return TCut('')
 
     def generate_bucket(self, threshold=None):
         sig = self.analysis.SignalName
         threshold = self.calc_signal_threshold(show=False) if threshold is None else threshold
-        string = '!(!({old_buck})&&({sig}<{thres}))'.format(sig=sig, thres=threshold, old_buck=self.CutStrings['old_bucket'])
-        cut =  TCut(string) if self.CutStrings['old_bucket'].GetTitle() else TCut('')
+        string = '!(!({old_buck}) && ({sig} < {thres}))'.format(sig=sig, thres=threshold, old_buck=self.CutStrings['old_bucket'])
+        cut = TCut(string) if self.CutStrings['old_bucket'].GetTitle() else TCut('')
         return cut
 
     def add_signal_peak_time_cut(self, low, up):
