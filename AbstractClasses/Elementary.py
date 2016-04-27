@@ -1,7 +1,6 @@
 import os
 import pickle
 import re
-import sys
 from copy import deepcopy
 from glob import glob
 from shutil import copyfile
@@ -9,7 +8,6 @@ from time import time
 from datetime import datetime
 from ConfigParser import ConfigParser
 
-import ROOT
 from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle
 # global test campaign
 tc = None
@@ -33,11 +31,9 @@ class Elementary(object):
         self.run_config_parser = self.load_run_config()
         self.ana_config_parser = self.load_ana_config()
 
-        self.aimedFluxes = [3, 20, 60, 600, 2000, 5000]
         # colors
         self.count = 0
         self.colors = self.create_colorlist()
-        # self.channel = None
 
     # ============================================
     # region CONFIG
@@ -47,13 +43,13 @@ class Elementary(object):
         return parser
 
     def load_run_config(self):
-        run_parser = ConfigParser()
-        run_parser.read("Configuration/RunConfig_" + self.TESTCAMPAIGN + ".cfg")
+        run_parser = ConfigParser({'excluded_runs': '[]'})
+        run_parser.read('Configuration/RunConfig_{tc}.cfg'.format(tc=self.TESTCAMPAIGN))
         return run_parser
 
     def load_ana_config(self):
         ana_parser = ConfigParser()
-        ana_parser.read('Configuration/AnalysisConfig_' + self.TESTCAMPAIGN + '.cfg')
+        ana_parser.read('Configuration/AnalysisConfig_{tc}.cfg'.format(tc=self.TESTCAMPAIGN))
         return ana_parser
 
     def set_global_testcampaign(self, testcampaign):
@@ -127,11 +123,6 @@ class Elementary(object):
     def has_bit(num, bit):
         assert (num >= 0 and type(num) is int), 'num has to be non negative int'
         return bool(num & 1 << bit)
-
-    def set_save_directory(self, directory="Results/"):
-        if not directory[-1] == "/":
-            directory += "/"
-        self.save_directory = directory
 
 
     def save_canvas(self,canvas,resultdir='',name=None):
@@ -343,11 +334,9 @@ class Elementary(object):
 
     @staticmethod
     def get_program_dir():
-        arg = 2 if len(sys.argv) > 2 and len(sys.argv[2]) > 4 else 0
-        path = os.path.dirname(os.path.realpath(sys.argv[arg])).split('/')
         ret_val = ''
-        for i in range(len(path) - 1):
-            ret_val += path[i] + '/'
+        for i in __file__.split('/')[:-2]:
+            ret_val += i + '/'
         return ret_val
 
     @staticmethod
@@ -363,7 +352,7 @@ class Elementary(object):
             peak_pos = h.GetBinCenter(h.GetMaximumBin())
             bin1 = h.FindFirstBinAbove(h.GetMaximum() / 2)
             bin2 = h.FindLastBinAbove(h.GetMaximum() / 2)
-            fwhm = h.GetBinCenter(bin2) - h.GetBinCenter(bin1)
+            fwhm = h.GetBinLowEdge(bin2 + 2) - h.GetBinLowEdge(bin1 - 1)
             option = 'qs' if draw else 'qs0'
             fit = h.Fit(fitfunc, option, '', peak_pos - fwhm / 2, peak_pos + fwhm / 2)
         else:
