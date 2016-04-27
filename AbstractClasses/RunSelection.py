@@ -4,11 +4,12 @@ import json
 from copy import deepcopy
 from datetime import datetime as dt
 from textwrap import fill
+from sys import argv
 
 
 class RunSelection(Elementary):
-    def __init__(self, verbose=False):
-        Elementary.__init__(self, verbose)
+    def __init__(self, testcampaign=None, verbose=False):
+        Elementary.__init__(self, verbose=verbose, testcampaign=testcampaign)
         self.run = Run(run_number=None, verbose=verbose)
 
         self.runplan_path = self.get_program_dir() + self.run_config_parser.get('BASIC', 'runplaninfofile')
@@ -487,4 +488,5 @@ def verify(msg):
     raise ValueError('Are you too stupid to say yes or no??')
 
 if __name__ == '__main__':
-    z = RunSelection()
+    tc = None if not str(argv[-1]).isdigit() else argv[-1]
+    z = RunSelection(tc)
