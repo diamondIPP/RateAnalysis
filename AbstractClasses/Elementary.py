@@ -34,6 +34,7 @@ class Elementary(object):
         # colors
         self.count = 0
         self.colors = self.create_colorlist()
+        gStyle.SetLegendFont(42)
 
     # ============================================
     # region CONFIG
