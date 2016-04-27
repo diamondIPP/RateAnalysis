@@ -170,14 +170,37 @@ class ChannelCut(Cut):
         cut = TCut(string) if self.CutStrings['old_bucket'].GetTitle() else TCut('')
         return cut
 
-    def add_signal_peak_time_cut(self, low, up):
-        self.reset_cut('signal_peak_time')
-        self.CutStrings['signal_peak_time'] += self.generate_signal_peak_time(low, up)
-        self.update_all_cut()
 
-    def generate_signal_peak_time(self, low = 67.068, up = 72.750):
-        string = '{low}<IntegralPeakTime[{num}]&&IntegralPeakTime[{num}]<{up}'.format(low=low, up=up, num=self.analysis.SignalNumber)
-        return TCut(string)
+    # special cut for analysis
+    def generate_pulser_cut(self, beam_on=True):
+        cut = self.CutStrings['ped_sigma'] + self.CutStrings['event_range'] + self.CutStrings['saturated']
+        cut.SetName('Pulser{0}'.format('BeamOn' if beam_on else 'BeamOff'))
+        cut += self.CutStrings['beam_interruptions'] if beam_on else '!({0})'.format(self.JumpCut)
+        cut += '!({0})'.format(self.CutStrings['pulser'])
+        return cut
+
+    def generate_channel_cutstrings(self):
+
+        # -- PULSER CUT --
+        self.CutStrings['pulser'] += '!pulser'
+
+        # -- SATURATED CUT --
+        self.CutStrings['saturated'] += '!is_saturated[{ch}]'.format(ch=self.channel)
+
+        # -- MEDIAN CUT --
+        self.CutStrings['median'] += self.generate_median()
+
+        # -- PEDESTAL SIGMA CUT --
+        self.CutStrings['ped_sigma'] += self.generate_pedestalsigma()
+
+        # --BUCKET --
+        self.CutStrings['old_bucket'] += self.generate_old_bucket()
+        self.CutStrings['bucket'] += self.generate_bucket()
+
+    # endregion
+
+    # ==============================================
+    # HELPER FUNCTIONS
 
     def calc_signal_threshold(self, bg=False, show=True):
         pickle_path = self.analysis.PickleDir + 'Cuts/SignalThreshold_{tc}_{run}_{ch}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.highest_rate_run, ch=self.channel)
