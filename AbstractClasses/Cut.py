@@ -297,36 +297,35 @@ class Cut(Elementary):
             self.EasyCutStrings['ExcludeFirst'] = 'Evts.{min}k+'.format(min=int(self.CutConfig['ExcludeFirst']) / 1000) if self.CutConfig['ExcludeFirst'] > 0 else ''
 
         # -- BEAM INTERRUPTION CUT --
-        self.__generate_beam_interruptions()
-        self.EasyCutStrings['noBeamInter'] = 'BeamOn'
-        self.generate_jump_cut()
+        self.CutStrings['beam_interruptions'] += self.generate_beam_interruptions()
+        self.JumpCut += self.generate_jump_cut()
 
         gROOT.SetBatch(0)
 
-    def __generate_beam_interruptions(self):
+    def generate_beam_interruptions(self):
         """
         This adds the restrictions to the cut string such that beam interruptions are excluded each time the cut is applied.
         """
         self.get_beam_interruptions()
+        if self.jump_ranges is None:
+            return TCut('')
 
-        njumps = len(self.jump_ranges["start"])
         cut_string = ''
+        njumps = len(self.jump_ranges['start'])
         start_event = self.CutConfig['EventRange'][0]
         for i in xrange(njumps):
-            upper = self.jump_ranges["stop"][i]
-            lower = self.jump_ranges["start"][i]
+            upper = self.jump_ranges['stop'][i]
+            lower = self.jump_ranges['start'][i]
             if upper > start_event:
                 lower = start_event if lower < start_event else lower
-                string = "!(event_number<={up}&&event_number>={low})".format(up=upper, low=lower)
+                string = '!(event_number<={up}&&event_number>={low})'.format(up=upper, low=lower)
                 # new separate strings
                 if cut_string != '':
                     cut_string += '&&'
                 cut_string += string
-        self.CutStrings['beam_interruptions'] += cut_string
-    # endregion
+        self.EasyCutStrings['noBeamInter'] = 'BeamOn'
+        return TCut(cut_string)
 
-    # ==============================================
-    # region BEAM INTERRUPTS
     def generate_jump_cut(self):
         cut_string = ''
         start_event = self.CutConfig['EventRange'][0]
@@ -335,8 +334,11 @@ class Cut(Elementary):
                 low = start_event if tup[0] < start_event else tup[0]
                 cut_string += '&&' if cut_string else ''
                 cut_string += '!(event_number<={up}&&event_number>={low})'.format(up=tup[1], low=low)
-        self.JumpCut += cut_string
+        return TCut(cut_string)
+    # endregion
 
+    # ==============================================
+    # region BEAM INTERRUPTS
     def find_beam_interruptions(self):
         return self.find_pad_beam_interruptions() if self.DUTType == 'pad' else self.find_pixel_beam_interruptions()
 
