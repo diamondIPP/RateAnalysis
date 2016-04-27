@@ -109,12 +109,12 @@ class Cut(Elementary):
     def define_cutstrings():
         dic = OrderedDict()
         dic['raw'] = TCut('raw', '')
+        dic['saturated'] = TCut('saturated', '')
         dic['pulser'] = TCut('pulser', '')
         dic['event_range'] = TCut('event_range', '')
         # waveform
         dic['beam_interruptions'] = TCut('beam_interruptions', '')
         dic['ped_sigma'] = TCut('ped_sigma', '')
-        dic['spread_low'] = TCut('spread_low', '')
         dic['median'] = TCut('median', '')
         # tracks
         dic['tracks'] = TCut('tracks', '')
@@ -122,10 +122,10 @@ class Cut(Elementary):
         dic['chi2Y'] = TCut('chi2Y', '')
         dic['track_angle'] = TCut('track_angle', '')
         # waveform
-        dic['saturated'] = TCut('saturated', '')
         dic['signal_peak_pos'] = TCut('signal_peak_pos', '')
-        dic['signal_peak_time']  = TCut('signal_peak_time', '')
+        dic['signal_peak_time'] = TCut('signal_peak_time', '')
         dic['trigger_cell'] = TCut('trigger_cell', '')
+        dic['timing'] = TCut('timing', '')
         dic['old_bucket'] = TCut('old_bucket', '')
         dic['bucket'] = TCut('bucket', '')
         dic['all_cuts'] = TCut('all_cuts', '')
@@ -199,13 +199,6 @@ class Cut(Elementary):
 
     def set_peakpos_high(self, value):
         self.CutConfig['peakPos_high'] = self.load_peakpos_high(value)
-
-    def load_spread_low(self, value):
-        if value > 0:
-            self.EasyCutStrings['spread_low'] = 'spread>{low}'.format(low=value)
-            return value
-        else:
-            return -1
 
     # endregion
 
