@@ -243,6 +243,9 @@ class ChannelCut(Cut):
                 gr2.SetPoint(i, x, sig)
                 gr3.SetPoint(i, sig, ped)
                 gr4.SetPoint(i, x, err1 if not bg else err)
+            if len(errors) == 0:
+                print ValueError('errors has a length of 0')
+                return -30
             max_err = errors[max(errors.keys())]
             if show:
                 c1 = TCanvas('c1', 'c', 1000, 1000)
@@ -281,7 +284,6 @@ class ChannelCut(Cut):
                 gr.GetListOfFunctions().Add(l)
                 gr.Draw('p')
                 self.save_plots('ROC_Curve', sub_dir=self.analysis.save_dir)
-                self.save_plots('ROC_Curve', file_type='root', sub_dir=self.analysis.save_dir)
 
                 c4 = TCanvas('c4', 'c', 1000, 1000)
                 c4.SetGridx()
@@ -289,7 +291,7 @@ class ChannelCut(Cut):
                 gr4.Draw('al')
                 self.save_plots('ErrorFunction', sub_dir=self.analysis.save_dir)
 
-                self.histos[0] = [h, gr1, gr2, c1, gr3, c2, c3, c4, gr4, a, leg, gr]
+                self.RootObjects.append([h, gr1, gr2, c1, gr3, c2, c3, c4, gr4, a, leg, gr])
             return max_err
 
         threshold = func() if show else 0
