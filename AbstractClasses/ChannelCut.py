@@ -30,12 +30,12 @@ class ChannelCut(Cut):
     # ==============================================
     # region GET CONFIG
     def load_channel_config(self):
-        self.CutConfig['spread_low'] = self.load_spread_low(self.ana_config_parser.getint('CUT', 'spread_low'))
-        self.CutConfig['absMedian_high'] = self.load_abs_median_high(self.ana_config_parser.getint('CUT', 'absMedian_high'))
-        self.CutConfig['pedestalsigma'] = self.load_pedestal_sigma(self.ana_config_parser.getint('CUT', 'pedestalsigma'))
+        self.CutConfig['absMedian_high'] = self.load_config_data('absMedian_high')
+        self.CutConfig['pedestalsigma'] = self.load_config_data('pedestalsigma')
 
-    def set_spread_low(self, low):
-        self.CutConfig['spread_low'] = self.load_spread_low(low)
+    def load_config_data(self, name):
+        value = self.ana_config_parser.getint('CUT', name)
+        return value if value > 0 else None
 
     def load_abs_median_high(self, value):
         if value > 0:
