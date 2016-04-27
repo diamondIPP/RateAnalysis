@@ -81,6 +81,25 @@ class ChannelCut(Cut):
         if name == 'bucket':
             return self.generate_bucket(value)
 
+    def generate_median(self, high=None):
+        value = self.CutConfig['absMedian_high'] if high is None else high
+        string = ''
+        if value is not None:
+            assert value > 0, 'The median has to be a positive number!'
+            string = 'abs(median[{ch}])<{high}'.format(ch=self.channel, high=float(high))
+            self.EasyCutStrings['absMedian_high'] = '|median|<{high}'.format(high=value)
+        return TCut(string)
+
+    def generate_pedestalsigma(self, sigma=None):
+        sigma = self.CutConfig['pedestalsigma'] if sigma is None else sigma
+        string = ''
+        if sigma is not None:
+            assert sigma > 0, 'The sigma has to be a positive number!'
+            ped_range = self.__calc_pedestal_range(sigma)
+            string = '{ped}>{min}&&{ped}<{max}'.format(ped=self.analysis.PedestalName, min=ped_range[0], max=ped_range[1])
+            self.EasyCutStrings['pedestalsigma'] = 'PedSigma<{0}'.format(sigma)
+        return TCut(string)
+
     def generate_region(self, signal_histo, mean_histo):
         extrema = Extrema2D(signal_histo, mean_histo)
         extrema.region_scan()
