@@ -696,6 +696,8 @@ class SignalAnalysis(Analysis):
             count = 0
             means = self.draw_pedestal(bin_size, draw=False) if bin_corr else None
             gROOT.SetBatch(1)
+            if sig_time.GetEntries() == 0:
+                raise Exception('Empty histogram')
             for i in xrange(self.n_bins - 1):
                 h_proj = sig_time.ProjectionY(str(i), i + 1, i + 1)
                 if h_proj.GetEntries() > 10:
@@ -724,7 +726,17 @@ class SignalAnalysis(Analysis):
             c.SetLeftMargin(.14)
             gStyle.SetOptFit(1)
             self.format_histo(gr, x_tit='time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6)
-            fit_par = gr.Fit('pol0', 'qs')
+            # excludes points that are too low for the fit
+            print gr.GetN()
+            max_fit_pos = gr.GetX()[gr.GetN() - 1] + 10
+            sum_ph = gr.GetY()[0]
+            for i in xrange(1, gr.GetN()):
+                sum_ph += gr.GetY()[i]
+                if gr.GetY()[i] < .7 * sum_ph / (i + 1):
+                    print 'Found huge ph fluctiation! Stopping Fit', gr.GetY()[i], sum_ph / (i + 1)
+                    max_fit_pos = gr.GetX()[i - 1]
+                    break
+            fit_par = gr.Fit('pol0', 'qs', '', 0, max_fit_pos)
             gr.Draw('apl')
             self.save_plots('PulseHeight{0}'.format(self.BinSize), sub_dir=self.save_dir)
             self.PulseHeight = gr
