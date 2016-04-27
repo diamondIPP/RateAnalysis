@@ -492,6 +492,27 @@ class SignalAnalysis(Analysis):
         mean_val = func() if draw else 0
         return self.do_pickle(pickle_path, func, mean_val)
 
+    def draw_peak_timings(self, show=True):
+        h = TH1F('h_pt', 'Peak Timings', 1024, 0, 512)
+        self.tree.Draw('peaks{ch}_x_time>>h_pt'.format(ch=self.channel), z.AllCuts, 'goff')
+        self.format_histo(h, x_tit='time [ns]', y_tit='number of entries', y_off=1.5, fill_color=836, lw=2)
+
+        self.histos.append(self.save_histo(h, 'PeakTimings', show, self.save_dir, logy=True))
+
+    def draw_n_peaks(self, show=True, p1=0.7, p2=1):
+        h = TH1F('h_pn', 'Number of Peaks', 12, -.5, 11.5)
+        h1 = TH1F('h_pn1', 'Number of Peaks', 12, -.5, 11.5)
+        self.tree.Draw('@peaks{ch}_x.size()>>h_pn'.format(ch=self.channel), self.AllCuts, 'goff')
+        self.format_histo(h, x_tit='number of peaks', y_tit='number of entries', y_off=1.5, fill_color=836, lw=2)
+        h.SetFillStyle(3004)
+        self.histos.append(self.save_histo(h, 'PeakNumbers', show, self.save_dir, logy=True))
+        while h1.GetBinContent(2) != h.GetBinContent(2):
+            h1.Fill(gRandom.Poisson(24 * self.get_flux() / 5e4 * .5 * .5 * p2) + gRandom.Binomial(1, p1))
+        self.format_histo(h1, x_tit='number of peaks', y_tit='number of entries', y_off=1.5, fill_color=896, lw=2)
+        h1.SetFillStyle(3005)
+        h1.Draw('same')
+        self.histos.append(h1)
+
     def calc_peak_value_fwhm(self):
         pickle_path = self.PickleDir + 'PeakValues/FWHM_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
 
