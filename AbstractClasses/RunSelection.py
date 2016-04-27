@@ -128,7 +128,7 @@ class RunSelection(Elementary):
         :param only_selected:
         """
         types = self.get_runinfo_values('type')
-        assert run_type in types, 'wrong data type.\n\t-->Select type from: {types}'.format(types=types)
+        assert run_type in types, 'wrong data type.\n\t-->Select type of these: {types}'.format(types=types)
         runs = self.get_selected_runs() if only_selected else self.run_numbers
         selected_runs = 0
         for run in runs:
@@ -152,7 +152,7 @@ class RunSelection(Elementary):
         :param only_selected_runs:
         """
         diamondnames = self.get_diamond_names()
-        assert diamondname in diamondnames, 'wrong diamond name. \n\t-->Select diamond name from: {dias}'.format(dias=diamondnames)
+        assert diamondname in diamondnames, 'wrong diamond name.\n\t-->Select diamond of these:'.format(dias=diamondnames)
         runs = self.get_selected_runs() if only_selected_runs else self.run_numbers
         selected_runs = 0
         unselected_runs = 0
