@@ -9,7 +9,7 @@ from collections import OrderedDict
 from ConfigParser import ConfigParser
 from argparse import ArgumentParser
 
-from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle
+from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph
 
 from PadAnalysis import SignalAnalysis
 from Elementary import Elementary
@@ -139,63 +139,87 @@ class AnalysisCollection(Elementary):
 
     # ============================================
     # region SIGNAL/PEDESTAL
-    def draw_pulse_heights(self, binning=20000, flux=True, raw=False, all_corr=False, draw=True):
-        legend = TLegend(0.79, 0.13, 0.98, .34)
-        legend.SetName('l1')
+    def draw_pulse_heights(self, binning=20000, flux=True, raw=False, all_corr=False, show=True):
         mode = 'Flux' if flux else 'Run'
-        prefix = 'Pulse Height {dia} @ {bias}V vs {mode} '.format(mode=mode, dia=self.collection.values()[0].diamond_name, bias=self.bias)
+        prefix = 'Pulse Height vs {mod} - '.format(mod=mode)
         gr1 = self.make_tgrapherrors('eventwise', prefix + 'eventwise correction', self.get_color())
         gr2 = self.make_tgrapherrors('binwise', prefix + 'binwise correction', self.get_color())
         gr3 = self.make_tgrapherrors('mean ped', prefix + 'mean correction', self.get_color())
         gr4 = self.make_tgrapherrors('raw', prefix + 'raw', self.get_color())
+        gr_first = self.make_tgrapherrors('first run', prefix + 'first', marker=22, color=2)
+        gr_first.SetMarkerSize(2)
+        gr_last = self.make_tgrapherrors('last run', prefix + 'last', marker=23, color=2)
+        gr_last.SetMarkerSize(2)
 
-        gROOT.SetBatch(1)
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        i = 0
+        i, j = 0, 0
         for key, ana in self.collection.iteritems():
-            print 'getting ph for run', key
             fit1 = ana.draw_pulse_height(binning, evnt_corr=True, show=False)
             fit2 = ana.draw_pulse_height(binning, bin_corr=True, show=False)
             fit3 = ana.draw_pulse_height(binning, off_corr=True, show=False, evnt_corr=False)
             fit4 = ana.draw_pulse_height(binning, evnt_corr=False, show=False)
+            print '\033[1A', '{0:5.1f}'.format(fit1.Parameter(0))
             x = ana.run.flux if flux else key
-            gr1.SetPoint(i, x, fit1.Parameter(0))
-            gr2.SetPoint(i, x, fit2.Parameter(0))
-            gr3.SetPoint(i, x, fit3.Parameter(0))
-            gr4.SetPoint(i, x, fit4.Parameter(0))
-            gr1.SetPointError(i, 0, fit1.ParError(0))
-            gr2.SetPointError(i, 0, fit2.ParError(0))
-            gr3.SetPointError(i, 0, fit3.ParError(0))
-            gr4.SetPointError(i, 0, fit4.ParError(0))
-            i += 1
-        if draw:
-            gROOT.SetBatch(0)
-            gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
-        graphs = [gr1]
+            if fit1.Parameter(0) > 10:
+                gr1.SetPoint(i, x, fit1.Parameter(0))
+                gr2.SetPoint(i, x, fit2.Parameter(0))
+                gr3.SetPoint(i, x, fit3.Parameter(0))
+                gr4.SetPoint(i, x, fit4.Parameter(0))
+                gr1.SetPointError(i, 0, fit1.ParError(0))
+                gr2.SetPointError(i, 0, fit2.ParError(0))
+                gr3.SetPointError(i, 0, fit3.ParError(0))
+                gr4.SetPointError(i, 0, fit4.ParError(0))
+                # set special markers for the first and last run
+                if i == 0:
+                    gr_first.SetPoint(0, x, fit1.Parameter(0))
+                if j == len(self.collection) - 1:
+                    gr_last.SetPoint(0, x, fit1.Parameter(0))
+                i += 1
+            j += 1
+        gROOT.SetBatch(1)
+        graphs = [gr1, gr_first, gr_last]
+        legend = TLegend(0.7, 0.18, 0.88, .3)
+        legend.SetName('l1')
+        legend.SetFillColor(0)
+        legend.SetFillStyle(0)
         if all_corr:
             graphs += [gr2, gr3]
         if raw:
             graphs.append(gr4)
-        c = TCanvas('c1', 'ph', 1000, 1000)
-        c.SetLeftMargin(0.14)
-        if flux:
-            c.SetLogx()
-        for i, gr in enumerate(graphs):
-            self.histos[i] = gr
-            legend.AddEntry(gr, gr.GetName(), 'lp')
-            if not i:
-                self.format_histo(gr, title=prefix, color=None, x_tit='Flux [kHz/cm2]', y_tit='Pulse Height [au]', y_off=2)
-                gr.Draw('alp')
-            else:
-                gr.Draw('lp')
-        self.histos['legend'] = legend
-        if all_corr or raw:
-            legend.Draw()
+
+        mg = TMultiGraph('mg_ph', prefix + self.diamond_name,)
+        for gr in graphs:
+            legend.AddEntry(gr, gr.GetName(), 'p')
+            mg.Add(gr, 'lp')
+        mg.Draw('a')
         gROOT.SetBatch(0)
-        gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
-        self.save_plots('PulseHeight_' + mode, 'png', canvas=c, sub_dir=self.save_dir)
-        self.save_plots('PulseHeight_' + mode, 'root', canvas=c, sub_dir=self.save_dir)
-        self.canvases[0] = c
+        ymin = mg.GetYaxis().GetXmin()
+        ymax = mg.GetYaxis().GetXmax()
+
+        # small range
+        self.format_histo(mg, color=None, x_tit=mode + ' [kHz/cm^{2}]' if flux else '', y_tit='Pulse Height [au]', y_off=1.6, x_off=1.3)
+        mg.GetYaxis().SetRangeUser(ymin - (ymax - ymin) * .3, ymax)
+        mg.GetXaxis().SetLimits(gr_first.GetX()[0] * 0.8, gr_last.GetX()[0] * 1.2)
+        self.RootObjects.append(self.save_histo(mg, 'PulseHeight{mod}'.format(mod=mode.title()), False, self.save_dir, lm=.14, draw_opt='A', l=legend, logx=True))
+
+        # no zero suppression
+        mg1 = mg.Clone()
+        mg1.SetName('mg1_ph')
+        mg1.GetYaxis().SetRangeUser(0, ymax * 1.1)
+        self.RootObjects.append(self.save_histo(mg1, 'PulseHeightZero{mod}'.format(mod=mode.title()), False, self.save_dir, lm=.14, draw_opt='A', l=legend, logx=True))
+
+        gROOT.SetBatch(1) if not show else self.do_nothing()
+        c = TCanvas('c_phall', 'Rate Scan', 2000, 1000)
+        c.Divide(2)
+        for i, gr in enumerate([mg, mg1], 1):
+            pad = c.cd(i)
+            pad.SetLogx()
+            pad.SetMargin(.13, .1, .15, .1)
+            gr.Draw('a')
+            legend.Draw()
+        self.RootObjects.append(c)
+        self.save_plots('PHOverview{mod}'.format(mod=mode), self.save_dir)
+        gROOT.SetBatch(0)
+
         self.PulseHeight = gr1
 
     def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False, show=True, cut=None, beam_on=True):
