@@ -85,8 +85,6 @@ class Run(Elementary):
         self._runlogkeyprefix = self.run_config_parser.get('BASIC', 'runlog_key_prefix')
         self.maskfilepath = self.run_config_parser.get('BASIC', 'maskfilepath')
         self.createNewROOTFiles = self.run_config_parser.getboolean('BASIC', 'createNewROOTFiles')
-        self.signalregion_low = self.run_config_parser.getint('BASIC', 'signalregion_low')
-        self.signalregion_high = self.run_config_parser.getint('BASIC', 'signalregion_high')
         
         # run info
         self.RunInfo = None
