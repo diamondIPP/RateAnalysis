@@ -284,7 +284,7 @@ class SignalAnalysis(Analysis):
         self.save_plots('SignalMap2D_' + draw_option, sub_dir=self.save_dir)
         gROOT.SetBatch(0)
         self.SignalMapHisto = h
-        self.canvases[0] = c
+        self.RootObjects.append(c)
         return h
 
     def make_region_cut(self):
@@ -331,7 +331,7 @@ class SignalAnalysis(Analysis):
         l = self.make_tlatex(gr1.GetX()[0], gr1.GetY()[0] + 0.5, 'Errors', align=20, size=0.03)
         gr1.GetListOfFunctions().Add(l)
         if show:
-            self.canvases[0] = TCanvas('c', 'Mean Signal Distribution', 1000, 1000)
+            c = TCanvas('c', 'Mean Signal Distribution', 1000, 1000)
             self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.2)
             h.Draw()
             gr2.Draw('[]')
@@ -339,8 +339,8 @@ class SignalAnalysis(Analysis):
             gr2.Draw('p')
             gr1.Draw('p')
             self.save_plots('MeanSignalHisto', sub_dir=self.save_dir)
+            self.histos.append([gr1, gr2, c])
         self.MeanSignalHisto = h
-        self.histos.append([gr1, gr2])
 
     def draw_error_signal_map(self, show=False):
         self.draw_mean_signal_distribution(show=False)
@@ -547,7 +547,7 @@ class SignalAnalysis(Analysis):
         h.SetStats(0)
         h.GetYaxis().SetRangeUser(0, h.GetMaximum() * 1.05)
         h.Fit('pol0', 'qs')
-        self.histos.append(self.draw_histo(h, 'TriggerCell', show, self.save_dir, lm=.11))
+        self.histos.append(self.save_histo(h, 'TriggerCell', show, sub_dir=self.save_dir, lm=.11))
 
     def draw_trigger_cell_vs_peakpos(self, show=True, cut=None, tprofile=True, corr=False):
         x = self.run.signal_regions[self.SignalRegion]
@@ -619,7 +619,7 @@ class SignalAnalysis(Analysis):
             h.Draw('colz')
             self.save_plots('SignalTime', sub_dir=self.save_dir)
             self.SignalTime = h
-            self.canvases[0] = c
+            self.RootObjects.append(c)
         gROOT.SetBatch(0)
         return h
 
@@ -660,7 +660,7 @@ class SignalAnalysis(Analysis):
             gr.Draw()
             self.save_plots('Pedestal', sub_dir=self.save_dir)
             self.Pedestal = gr
-            self.canvases[0] = c
+            self.RootObjects.append(c)
             gROOT.SetBatch(0)
             return means
 
