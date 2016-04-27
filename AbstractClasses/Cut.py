@@ -20,7 +20,7 @@ class Cut(Elementary):
             Elementary.__init__(self, verbose=self.analysis.verbose)
 
             # saving stuff
-            self.histos = {}
+            self.RootObjects = []
 
             # config
             self.DUTType = self.load_dut_type()
@@ -45,10 +45,10 @@ class Cut(Elementary):
             self.generate_cut_string()
             self.all_cut = self.generate_all_cut()
 
-    def generate_special_cut(self, excluded_cuts=None, included_cuts=None, name='special_cut'):
     def load_run_config(self):
         return self.load_run_configs(self.analysis.run_number)
 
+    def generate_special_cut(self, excluded_cuts=None, included_cuts=None, name='special_cut'):
         cut = TCut(name, '')
         n_cuts = 0
         for key, value in self.CutStrings.iteritems():
@@ -60,10 +60,10 @@ class Cut(Elementary):
                 continue
             if value.GetTitle() == '':
                 continue
-            print 'add ', key, value.GetTitle()
+            self.log_info('add {key} {tit}'.format(key=key, tit=value.GetTitle()))
             cut += value
             n_cuts += 1
-        print 'generated {name} cut with {num} cuts'.format(name=name, num=n_cuts)
+        self.log_info('generated {name} cut with {num} cuts'.format(name=name, num=n_cuts))
         return cut
 
     def generate_all_cut(self):
@@ -278,8 +278,6 @@ class Cut(Elementary):
             fit_result = h_y.Fit('gaus', 'qs')
             y_mean = fit_result.Parameters()[1]
             slopes['y'] = [y_mean - angle, y_mean + angle]
-            c = gROOT.FindObject('c1')
-            c.Close()
             gROOT.SetBatch(0)
             gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
             return slopes
