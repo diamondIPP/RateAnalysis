@@ -298,12 +298,11 @@ class ChannelCut(Cut):
         threshold = self.do_pickle(pickle_path, func, threshold)
         return threshold
 
-    def __calc_pedestal_range(self):
+    def __calc_pedestal_range(self, sigma_range):
         fit = self.analysis.show_pedestal_histo(region=self.analysis.PedestalRegion, peak_int=self.analysis.PeakIntegral, draw=False, cut='')
         sigma = fit.Parameter(2)
         mean = fit.Parameter(1)
         self.PedestalFit = fit
-        sigma_range = self.CutConfig['pedestalsigma']
         return [mean - sigma_range * sigma, mean + sigma_range * sigma]
 
     def generate_channel_cutstrings(self):
