@@ -322,34 +322,6 @@ class ChannelCut(Cut):
         self.PedestalFit = fit
         return [mean - sigma_range * sigma, mean + sigma_range * sigma]
 
-    def generate_channel_cutstrings(self):
-        # -- SATURATED CUT --
-        self.CutStrings['saturated'] += '!is_saturated[{ch}]'.format(ch=self.channel)
-
-        # -- SPREAD LOW CUT --
-        if self.CutConfig['spread_low'] > 0:
-            self.CutStrings['spread_low'] += 'sig_spread[{ch}]>{low}'.format(ch=self.channel, low=int(self.CutConfig['spread_low']))
-            self.EasyCutStrings['spread_low'] = 'spread>{low}'.format(low=int(self.CutConfig['spread_low']))
-
-        # -- MEDIAN CUT --
-        if self.CutConfig['absMedian_high'] > 0:
-            print 'CONFIG:', self.CutConfig['absMedian_high'], type(self.CutConfig['absMedian_high'])
-            self.CutStrings['median'] += 'abs(median[{ch}])<{high}'.format(ch=self.channel, high=int(self.CutConfig['absMedian_high']))
-            self.EasyCutStrings['absMedian_high'] = '|median|<{high}'.format(high=int(self.CutConfig['absMedian_high']))
-
-        # -- PEDESTAL SIGMA CUT --
-        if self.CutConfig['pedestalsigma'] > 0:
-            ped_range = self.__calc_pedestal_range()
-            self.CutStrings['ped_sigma'] += '{ped}>{min}&&{ped}<{max}'.format(ped=self.analysis.PedestalName, min=ped_range[0], max=ped_range[1])
-            self.EasyCutStrings["pedestalsigma"] = "PedSigma<" + str(self.CutConfig['pedestalsigma'])
-
-        # --PEAK POSITION TIMING--
-        # todo: add a method that fits the real time disto and sets the cut to 4 sigma!
-        # self.CutStrings['signal_peak_time'] += self.generate_signal_peak_time()
-
-        # --BUCKET --
-        self.CutStrings['old_bucket'] += self.generate_old_bucket()
-        self.CutStrings['bucket'] += self.generate_bucket()
     def calc_timing_range(self, show=True, n_sigma=4):
         pickle_path = self.analysis.PickleDir + 'Cuts/TimingRange_{tc}_{run}_{ch}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run_number, ch=self.channel)
 
@@ -393,12 +365,6 @@ class ChannelCut(Cut):
             self.RootObjects.append(self.save_histo(h3, 'TimingCorrection', False, self.analysis.save_dir, lm=.15))
             gROOT.SetBatch(0)
 
-    def generate_pulser_cut(self, beam_on=True):
-        cut = self.CutStrings['ped_sigma'] + self.CutStrings['event_range'] + self.CutStrings['saturated']
-        cut.SetName('Pulser{0}'.format('BeamOn' if beam_on else 'BeamOff'))
-        cut += self.CutStrings['beam_interruptions'] if beam_on else '!({0})'.format(self.JumpCut)
-        cut += '!({0})'.format(self.CutStrings['pulser'])
-        return cut
             if show:
                 corrected_time = 'IntegralPeakTime[{num}] - {t_corr}'.format(num=num, t_corr=t_correction)
                 t_cut = TCut('TMath::Abs({cor_t} - {mp}) / {sigma} < {n_sigma}'.format(cor_t=corrected_time, mp=fit3.GetParameter(1), sigma=fit3.GetParameter(2), n_sigma=n_sigma))
