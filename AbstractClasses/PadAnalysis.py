@@ -14,6 +14,8 @@ from time import time, sleep
 from collections import OrderedDict
 from sys import stdout
 from copy import deepcopy
+from json import loads
+from ConfigParser import ConfigParser
 
 __author__ = 'micha'
 
@@ -77,6 +79,21 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region INIT
+
+    # overriding elementary method to choose config by run number
+    def load_run_config(self):
+        run_parser = ConfigParser({'excluded_runs': '[]'})
+        if self.MainConfigParser.has_section(self.TESTCAMPAIGN):
+            n_splits = self.MainConfigParser.getint(self.TESTCAMPAIGN, 'n_splits')
+            split_runs = [0] + loads(self.MainConfigParser.get(self.TESTCAMPAIGN, 'split_runs')) + [int(1e10)]
+            for i in xrange(1, n_splits + 1):
+                if split_runs[i - 1] <= self.RunNumber < split_runs[i]:
+                    run_parser.read('{dir}/Configuration/RunConfig_{tc}_pad{i}.cfg'.format(dir=self.get_program_dir(), tc=self.TESTCAMPAIGN, i=i))
+                    break
+        else:
+            run_parser.read('Configuration/RunConfig_{tc}.cfg'.format(tc=self.TESTCAMPAIGN))
+        return run_parser
+
     def get_polarity(self):
         self.tree.GetEntry(0)
         return self.tree.polarities[self.channel]

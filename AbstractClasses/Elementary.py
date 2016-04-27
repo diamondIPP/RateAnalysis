@@ -29,6 +29,7 @@ class Elementary(object):
         self.set_test_campaign(self.default_testcampaign)
 
         # read configuration files
+        self.MainConfigParser = self.load_main_config()
         self.run_config_parser = self.load_run_config()
         self.ana_config_parser = self.load_ana_config()
 
@@ -37,6 +38,11 @@ class Elementary(object):
         self.count = 0
         self.colors = self.create_colorlist()
         # self.channel = None
+
+    def load_main_config(self):
+        parser = ConfigParser()
+        parser.read('{dir}/Configuration/main.cfg'.format(dir=self.get_program_dir()))
+        return parser
 
     def load_run_config(self):
         run_parser = ConfigParser()
