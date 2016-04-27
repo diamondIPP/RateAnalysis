@@ -47,9 +47,10 @@ class SignalAnalysis(Analysis):
         self.PeakIntegral = self.__load_peak_integral()
 
         # names
-        self.SignalName = self.get_signal_name(region=self.SignalRegion, peak_integral=self.PeakIntegral)
-        self.SignalNumber = self.get_signal_number(self.SignalRegion, self.PeakIntegral)
-        self.PedestalName = self.get_pedestal_name(region=self.PedestalRegion, peak_int=self.PeakIntegral)
+        self.SignalDefinition = '({pol}*IntegralValues[{num}])'
+        self.SignalNumber = self.get_signal_number()
+        self.SignalName = self.get_signal_name()
+        self.PedestalName = self.get_pedestal_name()
         self.PulserName = self.get_pulser_name()
 
         # cuts
@@ -100,21 +101,35 @@ class SignalAnalysis(Analysis):
         self.tree.GetEntry(0)
         return self.tree.polarities[self.channel]
 
-    def get_signal_number(self, region='b', peak_integral='2', sig_type='signal'):
+    def __load_signal_region(self):
+        sig_region = self.ana_config_parser.get('BASIC', 'signal_region')
+        return sig_region if sig_region in self.run.signal_regions else self.run.signal_regions.keys()[0]
+
+    def __load_pedestal_region(self):
+        ped_region = self.ana_config_parser.get('BASIC', 'pedestal_region')
+        return ped_region if ped_region in self.run.pedestal_regions else self.run.pedestal_regions.keys()[0]
+
+    def __load_peak_integral(self):
+        peak_int = self.ana_config_parser.get('BASIC', 'peak_integral')
+        return peak_int if peak_int in self.run.peak_integrals else self.run.peak_integrals.keys()[0]
+
+    def get_signal_number(self, region=None, peak_integral=None, sig_type='signal'):
+        this_region = self.SignalRegion if sig_type == 'signal' else self.PedestalRegion
+        region = this_region if region is None else region
+        peak_integral = self.PeakIntegral if peak_integral is None else peak_integral
         assert sig_type in ['signal', 'pedestal', 'pulser'], 'Invalid type of signal'
-        if sig_type == 'signal':
-            assert region in self.run.signal_regions, 'Invalid signal region {reg}!'.format(reg=region)
-        elif sig_type == 'pedestal':
-            assert region in self.run.pedestal_regions, 'Invalid pedestal region {reg}!'.format(reg=region)
+        if sig_type != 'pulser':
+            assert region in self.run.signal_regions or region in self.run.pedestal_regions, 'Invalid {typ} region: {reg}!'.format(reg=region, typ=sig_type)
         assert str(peak_integral) in self.run.peak_integrals, 'Invalid peak integral {reg}!'.format(reg=peak_integral)
         int_name = 'ch{ch}_{type}{reg}_PeakIntegral{int}'.format(ch=self.channel, reg='_' + region if region else '', int=peak_integral, type=sig_type)
         return self.IntegralNames[int_name]
 
-    def get_signal_name(self, region='b', peak_integral='2', sig_type='signal'):
+    def get_signal_name(self, region=None, peak_integral=None, sig_type='signal'):
         num = self.get_signal_number(region, peak_integral, sig_type)
-        return '{pol}*IntegralValues[{num}]'.format(pol=self.Polarity, num=num)
+        return self.SignalDefinition.format(pol=self.Polarity, num=num)
 
-    def get_pedestal_name(self, region='ab', peak_int='2'):
+
+    def get_pedestal_name(self, region=None, peak_int=None):
         return self.get_signal_name(region=region, peak_integral=peak_int, sig_type='pedestal')
 
     def get_pulser_name(self):
