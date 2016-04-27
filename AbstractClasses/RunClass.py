@@ -130,7 +130,7 @@ class Run(Elementary):
         self.duration = None
         self.__load_timing()
         # root objects
-        self.run_info_legends = {}
+        self.RunInfoLegeds = None
 
     # ==============================================
     # region LOAD FUNCTIONS
@@ -462,29 +462,32 @@ class Run(Elementary):
         userheight = height if set_height is None else set_height - 0.04
         userwidth = width if set_width is None else set_width
 
-        git_text = TLegend(.85, 0, 1, .025)
-        git_text.AddEntry(0, 'git hash: {ver}'.format(ver=check_output(['git', 'describe', '--always'])), '')
-        git_text.SetLineColor(0)
-        legend = TLegend(.002, .00205, userwidth, userheight + 0.04)
-        legend.SetName('l')
-        legend.SetMargin(0.05)
-        legend.AddEntry(0, 'Test Campaign: {tc}'.format(tc=tc.strftime('%b %Y')), '')
-        if runs is None:
-            legend.AddEntry(0, 'Run {run}: {rate}, {dur} Min ({evts} evts)'.format(run=self.run_number, rate=self.get_rate_string(), dur=dur, evts=self.n_entries), '')
+        if self.RunInfoLegeds is None:
+            git_text = TLegend(.85, 0, 1, .025)
+            git_text.AddEntry(0, 'git hash: {ver}'.format(ver=check_output(['git', 'describe', '--always'])), '')
+            git_text.SetLineColor(0)
+            legend = TLegend(.002, .00205, userwidth, userheight + 0.04)
+            legend.SetName('l')
+            legend.SetMargin(0.05)
+            legend.AddEntry(0, 'Test Campaign: {tc}'.format(tc=tc.strftime('%b %Y')), '')
+            if runs is None:
+                legend.AddEntry(0, 'Run {run}: {rate}, {dur} Min ({evts} evts)'.format(run=self.run_number, rate=self.get_rate_string(), dur=dur, evts=self.n_entries), '')
+            else:
+                legend.AddEntry(0, 'Runs {start}-{stop} ({flux1} - {flux2})'.format(start=runs[0], stop=runs[1], flux1=runs[2].strip(' '), flux2=runs[3].strip(' ')), '')
+            if channel is None:
+                dias = ['{dia} @ {bias:+2.0f}V'.format(dia=self.diamond_names[ch], bias=self.bias[ch]) for ch in self.channels]
+                dias = str(dias).strip('[]').replace('\'', '')
+                legend.AddEntry(0, 'Diamonds: {dias}'.format(dias=dias), '')
+            else:
+                legend.AddEntry(0, 'Diamond: {diamond} @ {bias:+}V'.format(diamond=self.diamond_names[channel], bias=self.bias[channel]), '')
+            if cut and hasattr(self, 'analysis'):
+                legend.AddEntry(0, 'Cut: {cut}'.format(cut=self.analysis.get_easy_cutstring()), '')
+            if comment is not None:
+                legend.AddEntry(0, comment, '')
+            self.RunInfoLegeds = [legend, git_text]
         else:
-            legend.AddEntry(0, 'Runs {start}-{stop} ({flux1} - {flux2})'.format(start=runs[0], stop=runs[1], flux1=runs[2].strip(' '), flux2=runs[3].strip(' ')), '')
-        if channel is None:
-            dias = ['{dia} @ {bias:2.0f}V'.format(dia=self.diamond_names[ch], bias=self.bias[ch]) for ch in self.channels]
-            dias = str(dias).strip('[]').replace('\'', '')
-            legend.AddEntry(0, 'Diamonds: {dias}'.format(dias=dias), '')
-        else:
-            legend.AddEntry(0, 'Diamond: {diamond} @ {bias:+}V'.format(diamond=self.diamond_names[channel], bias=self.bias[channel]), '')
-        if cut and hasattr(self, 'analysis'):
-            legend.AddEntry(0, 'Cut: {cut}'.format(cut=self.analysis.get_easy_cutstring()), '')
-        if comment is not None:
-            legend.AddEntry(0, comment, '')
-        # while canvas.GetPad(n_pads + 1):
-        #     n_pads += 1
+            git_text = self.RunInfoLegeds[1]
+            legend = self.RunInfoLegeds[0]
         pads = [i for i in canvas.GetListOfPrimitives() if i.IsA().GetName() == 'TPad']
         if not pads:
             git_text.Draw()
@@ -494,7 +497,6 @@ class Run(Elementary):
                 pad.cd()
                 git_text.Draw()
                 legend.Draw()
-        self.run_info_legends[0] = [legend, git_text]
         pad.Modified()
         canvas.Update()
 
