@@ -27,11 +27,11 @@ class Currents(Elementary):
     """reads in information from the keithley log file"""
 
     def __init__(self, analysis, averaging=False, points=10):
+        self.analysis = analysis
         Elementary.__init__(self)
 
         self.DoAveraging = averaging
         self.Points = points
-        self.analysis = analysis
 
         # analysis/run info
         self.RunInfo = analysis.run.RunInfo
@@ -75,8 +75,12 @@ class Currents(Elementary):
 
     # ==========================================================================
     # region INIT
+    def load_run_config(self):
+        return self.load_run_configs(self.analysis.run_number)
+
     def load_parser(self):
         parser = ConfigParser()
+        assert self.run_config_parser.has_option('BASIC', 'hvconfigfile'), 'Missing hv info in RunConfig file'
         parser.read(self.run_config_parser.get('BASIC', 'hvconfigfile'))
         return parser
 
