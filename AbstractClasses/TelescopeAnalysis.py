@@ -23,6 +23,8 @@ class Analysis(Elementary):
         :param high_low_rate:   list of highest and lowest rate runs for an analysis collection
         """
         Elementary.__init__(self, verbose=verbose)
+        self.histos = []
+        self.RootObjects = []
 
         # basics
         self.diamonds = diamonds
@@ -59,9 +61,6 @@ class Analysis(Elementary):
 
         # save histograms // canvases
         self.signal_canvas = None
-        self.histos = []
-        self.canvases = {}
-        self.lines = {}
 
         # alignment
         self.IsAligned = self.check_alignment(draw=False)
@@ -153,7 +152,7 @@ class Analysis(Elementary):
         self._add_buckets()
         save_name = 'PedestalRegions' if ped else 'SignalRegions'
         self.save_plots(save_name, sub_dir=self.ana_save_dir, ch=None)
-        self.histos[0] = [h, c, gr, lines, titles]
+        self.histos.append([h, c, gr, lines, titles])
 
     def _add_buckets(self, canvas=None):
         c = gROOT.GetSelectedPad() if canvas is None else canvas
@@ -189,7 +188,7 @@ class Analysis(Elementary):
                     arrows.append(ar)
             a.Draw()
             axis.append(a)
-        self.histos[1] = [axis, labels, arrows]
+        self.histos.append([axis, labels, arrows])
 
     def draw_peak_integrals(self, event=None):
         h = self.__draw_single_wf(event=event, show=False)
@@ -230,7 +229,7 @@ class Analysis(Elementary):
             gr.Draw('p')
         self._add_buckets()
         self.save_plots('IntegralPeaks', sub_dir=self.ana_save_dir, ch=None)
-        self.histos[0] = [gr1, gr2, c, l, t1, h, l2, t2]
+        self.histos.append([gr1, gr2, c, l, t1, h, l2, t2])
     # endregion
 
     # ============================================================================================
@@ -249,11 +248,10 @@ class Analysis(Elementary):
         if show or mode == 'tracks':
             yq = zeros(1)
             h.GetQuantiles(1, yq, array([.9]))
-            h.GetXaxis().SetRangeUser(0, yq[0])
+            # h.GetXaxis().SetRangeUser(0, yq[0])
         self.format_histo(h, x_tit='#chi^{2}', y_tit='Entries', y_off=1.8)
         h.Draw()
-        self.histos[0] = h
-        self.canvases[0] = c
+        self.histos.append([h, c])
         gROOT.SetBatch(0)
         return h
 
@@ -273,12 +271,10 @@ class Analysis(Elementary):
             h.SetLineWidth(2)
             h.Draw() if not i else h.Draw('same')
             legend.AddEntry(h, leg_names[i], 'l')
-            self.histos[i] = h
         legend.Draw()
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.histos.append(legend)
+        self.RootObjects.append([legend, histos, c])
         self.save_plots('Chi2', canvas=c, sub_dir=self.ana_save_dir, ch=None)
-        self.canvases[0] = c
 
     def show_angle(self, mode='x', show=True):
         """
@@ -297,8 +293,7 @@ class Analysis(Elementary):
         c.SetLeftMargin(.13)
         self.format_histo(h, x_tit='Track Angle [deg]', y_tit='Entries', y_off=1.8, lw=2)
         h.Draw()
-        self.histos[0] = h
-        self.canvases[0] = c
+        self.RootObjects.append([h, c])
         gROOT.SetBatch(0)
         # a = gROOT.GetListOfCanvases()
         # print a[0]
@@ -331,11 +326,9 @@ class Analysis(Elementary):
             h.SetLineColor(self.get_color())
             h.Draw() if not i else h.Draw('same')
             legend.AddEntry(h, leg_names[i], 'l')
-            self.histos[i] = h
         legend.Draw()
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.canvases[0] = c
-        self.histos.append(legend)
+        self.RootObjects.append([legend, c, histos])
         self.save_plots('TrackAngles', sub_dir=self.ana_save_dir, ch=None)
     # endregion
 
@@ -359,7 +352,7 @@ class Analysis(Elementary):
                 h.Draw('hist')
                 self.save_plots('EventAlignment', sub_dir=self.ana_save_dir, ch=None)
                 gROOT.SetBatch(0)
-                self.histos[0] = [h, c]
+                self.histos.append([h, c])
                 align = self.__check_alignment_histo(h)
                 return align
             else:
