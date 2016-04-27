@@ -125,20 +125,31 @@ class Elementary(object):
         assert (num >= 0 and type(num) is int), 'num has to be non negative int'
         return bool(num & 1 << bit)
 
-
-    def save_canvas(self,canvas,resultdir='',name=None):
+    def save_canvas(self, canvas, sub_dir='', name=None, print_names=True):
         canvas.Update()
-        if name is None:
-            name=canvas.GetName()
-        save_dir = self.save_directory if save_dir is None else save_dir
-        fname = save_dir
-        fname +='/%s/'+resultdir+'/'+name+'.%s'
-        ftypes = ['png','eps','root']
-        for f in ftypes:
-            self.ensure_dir(fname%(f,f))
-            canvas.SaveAs(fname%(f,f))
+        name = canvas.GetName() if name is None else name
+        file_name = '{nam}.{{ext}}'.format(nam=name)
+        fname = '{save_dir}{res}/{{typ}}/{file}'.format(res=sub_dir, file=file_name, save_dir=self.save_directory)
+        ftypes = ['png', 'eps', 'root']
+        out = 'Creating plots: '
+        run_number = self.run_number if hasattr(self, 'run_number') else None
+        if hasattr(self, 'runs'):
+            run_number = "{0}_to_{1}_with_{2}_runs".format(min(self.runs), max(self.runs), len(self.runs))
 
-    def save_plots(self, savename, sub_dir=None, canvas=None, ind=0, ch='dia', file_type=None, save_dir=None):
+        gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
+        for f in ftypes:
+            ext = f
+            if f == 'eps':
+                if run_number is not None:
+                    ext = '{0}.{1}'.format(run_number, f)
+            self.ensure_dir(fname.format(typ=f, ext=ext))
+            out += file_name.format(typ=f, ext=ext) + ', '
+            canvas.SaveAs(fname.format(typ=f, ext=ext))
+        if print_names:
+            print out.strip(', ')
+        gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
+
+    def save_plots(self, savename, sub_dir=None, canvas=None, ind=0, ch='dia'):
         """
         Saves the canvas at the desired location. If no canvas is passed as argument, the active canvas will be saved. However for applications without graphical interface,
         such as in SSl terminals, it is recommended to pass the canvas to the method.
@@ -152,10 +163,10 @@ class Elementary(object):
         """
         # save_dir = self.save_directory if save_dir is None else save_dir
         # file_type = '.png' if file_type is None else '.{end}'.format(end=file_type)
+
         sub_dir = '' if sub_dir is None else '{subdir}/'.format(subdir=sub_dir)
         resultsdir = sub_dir
-        if not os.path.exists(resultsdir):
-            os.makedirs(resultsdir)
+
         if canvas is None:
             try:
                 c = gROOT.GetListOfCanvases()
@@ -168,7 +179,6 @@ class Elementary(object):
         if hasattr(self, 'run'):
             self.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas)
         elif hasattr(self, 'analysis'):
-            print 'has analysis'
             self.analysis.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas)
         elif hasattr(self, 'collection'):
             runs = [self.collection.keys()[0], self.collection.keys()[-1], self.collection.values()[0].run.get_rate_string(), self.collection.values()[-1].run.get_rate_string()]
@@ -177,9 +187,9 @@ class Elementary(object):
             else:
                 self.collection.values()[ind].run.draw_run_info(channel=ch if ch is None else self.collection.values()[ind].channel, canvas=canvas)
         canvas.Update()
+
         try:
-            self.save_canvas(canvas,resultdir=resultsdir,name=savename)
-            # canvas.SaveAs(resultsdir + savename + file_type)
+            self.save_canvas(canvas, sub_dir=resultsdir, name=savename)
         except Exception as inst:
             print '\n\n{delim}\nERROR in save plots!\n{msg}\n{delim}\n\n'.format(delim=len(str(inst)) * '-', msg=inst)
 
@@ -305,15 +315,20 @@ class Elementary(object):
         except AttributeError or ReferenceError:
             pass
 
-    def draw_histo(self, histo, save_name, show, save_dir, lm=.1, rm=0.1, draw_opt='', x=1000, y=1000, l=None):
+    def save_histo(self, histo, save_name, show, sub_dir=None, lm=.1, rm=0.1, draw_opt='', x=1000, y=1000, l=None, logy=False, logx=False, canvas=None):
         h = histo
-        gROOT.SetBatch(1) if not show else self.do_nothing()
-        c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x, y)
+        if not show:
+            gROOT.SetBatch(1)
+            gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
+        c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x, y) if canvas is None else canvas
         c.SetMargin(lm, rm, .15, .1)
+        c.SetLogy() if logy else self.do_nothing()
+        c.SetLogx() if logx else self.do_nothing()
         h.Draw(draw_opt)
         l.Draw() if l is not None else self.do_nothing()
-        self.save_plots(save_name, sub_dir=save_dir)
+        self.save_plots(save_name, sub_dir=sub_dir)
         gROOT.SetBatch(0)
+        gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         return [c, h, l] if l is not None else [c, h]
 
     @staticmethod
