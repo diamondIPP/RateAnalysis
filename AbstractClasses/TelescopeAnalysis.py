@@ -36,6 +36,7 @@ class Analysis(Elementary):
         self.PickleDir = self.get_program_dir() + self.ana_config_parser.get('SAVE', 'pickle_dir')
         # self.saveMCData = self.ana_config_parser.getboolean("SAVE", "SaveMCData")
         self.ana_save_dir = '{tc}_{run}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run.run_number)
+        self.set_root_titles()
 
         # DUT
         self.DUTType = self.run.DUTType
@@ -67,6 +68,10 @@ class Analysis(Elementary):
         else:
             assert run.run_number is not None, 'No run selected, choose run.SetRun(run_nr) before you pass the run object'
             return run
+
+    def set_root_titles(self):
+        if self.ana_config_parser.has_option('SAVE', 'ActivateTitle'):
+            gStyle.SetOptTitle(self.ana_config_parser.getboolean('SAVE', 'ActivateTitle'))
     # endregion
 
     # ============================================================================================
