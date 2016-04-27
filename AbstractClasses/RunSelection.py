@@ -13,6 +13,7 @@ class RunSelection(Elementary):
         self.run = Run(run_number=None, verbose=verbose)
 
         self.runplan_path = self.get_program_dir() + self.run_config_parser.get('BASIC', 'runplaninfofile')
+        self.ExcludedRuns = json.loads(self.run_config_parser.get('BASIC', 'excluded_runs'))
         self.run_plan = self.load_runplan()
         self.run_numbers = self.load_run_numbers()
         self.run_infos = self.load_run_infos()
@@ -49,12 +50,10 @@ class RunSelection(Elementary):
     # ============================================
     # region INIT
     def load_run_numbers(self):
-        run_numbers = []
         f = open(self.run.runinfofile, 'r')
         data = json.load(f)
         f.close()
-        for key in data:
-            run_numbers.append(int(key))
+        run_numbers = [int(key) for key in data if int(key) not in self.ExcludedRuns]
         return sorted(run_numbers)
 
     def load_run_infos(self):
