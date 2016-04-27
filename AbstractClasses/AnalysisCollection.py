@@ -108,9 +108,10 @@ class AnalysisCollection(Elementary):
         f = open(path, 'r')
         run_log = json.load(f)
         fluxes = {}
+        print 'RUN   FLUX'
         for run in self.runs:
             flux = run_log[str(run)][flux_name]
-            print run, flux
+            print '{run:3d} {flux:6.1f}'.format(run=run, flux=flux)
             fluxes[flux] = run
         min_flux = min(fluxes)
         max_flux = max(fluxes)
@@ -326,7 +327,8 @@ class AnalysisCollection(Elementary):
     def draw_pulser_info(self, flux=True, show=True, mean=True, corr=True, beam_on=True):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         mode = 'Flux' if flux else 'Run'
-        title = '{mean} of Pulser vs {mod} ({ped}, {beam})'.format(mean='Mean' if mean else 'Sigma', mod=mode, ped='pedcorrected' if corr else 'uncorrected', beam='BeamOff' if not beam_on else 'BeamOn')
+        title = '{mean} of Pulser vs {mod} ({ped}, {beam})'.format(mean='Mean' if mean else 'Sigma', mod=mode,
+                                                                   ped='pedcorrected' if corr else 'uncorrected', beam='BeamOff' if not beam_on else 'BeamOn')
         gr = self.make_tgrapherrors('gr', title)
         i = 0
         for key, ana in self.collection.iteritems():
@@ -450,7 +452,7 @@ class AnalysisCollection(Elementary):
         mode = 'Flux' if flux else 'Run'
         gr1 = self.make_tgrapherrors('gr1', '', color=self.get_color())
         prefix = 'Number of Bucket Cut Events' if not mean else 'Mean Pulse Height with Different Bucket Cuts'
-        gr2 = self.make_tgrapherrors('gr2', '{pref} vs {mod}'.format(pref=prefix,  mod=mode), color=self.get_color())
+        gr2 = self.make_tgrapherrors('gr2', '{pref} vs {mod}'.format(pref=prefix, mod=mode), color=self.get_color())
         gr3 = self.make_tgrapherrors('gr3', '', color=self.get_color())
         i = 0
         for key, ana in self.collection.iteritems():
@@ -497,6 +499,7 @@ class AnalysisCollection(Elementary):
         Shows the means of the signal peak distribution.
         :param flux:
         :param draw:
+        :param pulser:
         """
         mode = 'Flux' if flux else 'Run'
         signal = 'Pulser' if pulser else 'Signal'
@@ -802,7 +805,7 @@ class AnalysisCollection(Elementary):
         :param saveplots:
         """
         start_time = time()
-        self.draw_pulse_heights(draw=False)
+        self.draw_pulse_heights(show=False)
         self.draw_pedestals(show=False)
         self.draw_mean_fwhm(draw=False)
         c = TCanvas('c', 'overview', 800, 1000)
