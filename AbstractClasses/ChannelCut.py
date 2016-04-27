@@ -135,36 +135,23 @@ class ChannelCut(Cut):
         self.region_cut += all_string
         return extrema
 
-    def generate_signal_peak_pos(self):
-        lst = self.CutConfig['signal_peak_pos']
-        if lst:
-            self.CutStrings['signal_peak_pos'] += 'IntegralPeaks[{num}] < {max} && IntegralPeaks[{num}] >= {min}'.format(num=self.analysis.SignalNumber, min=lst[0], max=lst[1])
+    def generate_signal_peak_pos(self, min_max):
+        assert 0 <= min_max[0] <= 1024, 'min signal peak has to be in [0, 1024], not "{min}"'.format(min=min_max[0])
+        assert 0 <= min_max[1] <= 1024, 'max signal peak has to be in [0, 1024], not "{max}"'.format(max=min_max[1])
+        self.EasyCutStrings['SignalPeakPos'] = 'Signal Peak in {0}'.format(min_max)
+        return TCut('IntegralPeaks[{num}] < {max} && IntegralPeaks[{num}] >= {min}'.format(num=self.analysis.SignalNumber, min=min_max[0], max=min_max[1]))
 
-    def generate_trigger_cell(self):
-        lst = self.CutConfig['trigger_cell']
-        if lst:
-            self.CutStrings['trigger_cell'] += 'trigger_cell < {max} && trigger_cell >= {min}'.format(min=lst[0], max=lst[1])
+    def generate_signal_peak_time(self, min_max):
+        assert 0 <= min_max[0] <= 1024, 'min signal peak time has to be in [0, 1024], not "{min}"'.format(min=min_max[0])
+        assert 0 <= min_max[1] <= 1024, 'max signal peak time has to be in [0, 1024], not "{max}"'.format(max=min_max[1])
+        self.EasyCutStrings['SignalPeakTime'] = 'Signal Peak Time in {0}'.format(min_max)
+        return TCut('IntegralPeakTime[{num}] < {max} && IntegralPeakTime[{num}] >= {min}'.format(num=self.analysis.SignalNumber, min=min_max[0], max=min_max[1]))
 
-    def add_signal_peak_pos_cut(self, xmin, xmax):
-        self.set_peak_value_pos(xmin, xmax)
-        self.CutStrings['signal_peak_pos'].SetTitle('')
-        self.generate_signal_peak_pos()
-        self.all_cut = self.generate_all_cut()
-
-    def add_trigger_cell_cut(self, xmin, xmax):
-        self.set_trigger_cell(xmin, xmax)
-        self.CutStrings['trigger_cell'].SetTitle('')
-        self.generate_trigger_cell()
-        self.all_cut = self.generate_all_cut()
-
-    def update_all_cut(self):
-        self.all_cut = self.generate_all_cut()
-
-    def update_bucket(self, threshold=None):
-        threshold = self.calc_signal_threshold(show=False) if threshold is None else threshold
-        self.reset_cut('bucket')
-        self.CutStrings['bucket'] += self.generate_bucket(threshold)
-        self.update_all_cut()
+    def generate_trigger_cell(self, min_max):
+        assert 0 <= min_max[0] <= 1024, 'min trigger cell has to be in [0, 1024], not "{min}"'.format(min=min_max[0])
+        assert 0 <= min_max[1] <= 1024, 'max trigger cell has to be in [0, 1024], not "{max}"'.format(min=min_max[1])
+        self.EasyCutStrings['TriggerCell'] = 'Trigger Cell in {0}'.format(min_max)
+        return TCut('trigger_cell < {max} && trigger_cell >= {min}'.format(min=min_max[0], max=min_max[1]))
 
     def generate_old_bucket(self):
         # only generate the cut if the region e2 exists! todo: find a smarter solution for that!
