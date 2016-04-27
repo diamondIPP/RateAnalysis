@@ -73,11 +73,9 @@ class Converter:
         for opt in options:
             if opt.endswith('_range') or opt.endswith('_region'):
                 config[opt] = json.loads(self.parser.get('ROOTFILE_GENERATION', opt))
-        config['pulser_range_drs4'] = json.loads(self.parser.get('ROOTFILE_GENERATION', 'pulser_range_drs4')),
-        config['save_waveforms'] = self.parser.get('ROOTFILE_GENERATION', 'save_waveforms'),
-        config['pulser_drs4_threshold'] = self.parser.get('ROOTFILE_GENERATION', 'pulser_drs4_threshold'),
-        config['pulser_channel'] = self.parser.get('ROOTFILE_GENERATION', 'pulser_channel'),
-        config['trigger_channel'] = self.parser.get('ROOTFILE_GENERATION', 'trigger_channel')
+            elif opt not in ['pulser_range_drs4']:
+                config[opt] = self.parser.getint('ROOTFILE_GENERATION', opt)
+        config['pulser_range_drs4'] = json.loads(self.parser.get('ROOTFILE_GENERATION', 'pulser_range_drs4'))
         return config
 
     def get_run_info(self, run_number):
@@ -191,7 +189,7 @@ class Converter:
         # move file to data folder
         file_name = '/{prefix}{run}_withTracks.root'.format(prefix=self.root_prefix, run=str(run_number).zfill(4))
         path = self.tracking_dir + file_name
-        shutil.move(path, self.root_file_dir)
+        move(path, self.root_file_dir)
 
     def __set_converter_configfile(self, run_infos):
         pol_dia1 = int(copysign(1, run_infos['hv dia1']))
