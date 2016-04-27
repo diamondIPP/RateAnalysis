@@ -449,6 +449,9 @@ class Cut(Elementary):
             self.CutStrings[name].SetTitle('')
         else:
             print 'There is no cut with the name "{name}"!'.format(name=name)
+        self.update_all_cut()
+
+    def update_all_cut(self):
         self.all_cut = self.generate_all_cut()
 
     def show_cuts(self, easy=True):
