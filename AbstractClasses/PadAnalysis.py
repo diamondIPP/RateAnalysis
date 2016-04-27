@@ -128,6 +128,19 @@ class SignalAnalysis(Analysis):
         num = self.get_signal_number(region, peak_integral, sig_type)
         return self.SignalDefinition.format(pol=self.Polarity, num=num)
 
+    def set_signal_definitions(self, use_time=True, sig_region=None, ped_region=None, peak_int=None):
+        signal = 'TimeIntegralValues' if use_time else 'IntegralValues'
+        signal = '({{pol}}*{sig}[{{num}}])'.format(sig=signal)
+        print 'changed SignalDefinition to:', signal
+        print 'changed '
+        self.SignalDefinition = signal
+        self.update_signal_definitions(sig_region, ped_region, peak_int)
+
+    def update_signal_definitions(self, sig_region=None, ped_region=None, peak_int=None):
+        self.SignalNumber = self.get_signal_number(sig_region, peak_int)
+        self.SignalName = self.get_signal_name(sig_region, peak_int)
+        self.PedestalName = self.get_pedestal_name(ped_region, peak_int)
+        self.PulserName = self.get_pulser_name()
 
     def get_pedestal_name(self, region=None, peak_int=None):
         return self.get_signal_name(region=region, peak_integral=peak_int, sig_type='pedestal')
