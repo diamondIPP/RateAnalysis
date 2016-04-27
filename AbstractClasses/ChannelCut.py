@@ -37,42 +37,32 @@ class ChannelCut(Cut):
         value = self.ana_config_parser.getint('CUT', name)
         return value if value > 0 else None
 
-    def load_abs_median_high(self, value):
-        if value > 0:
-            self.EasyCutStrings['absMedian_high'] = '|median|<{high}'.format(high=value)
-            return value
-        else:
-            return -1
+    # endregion
 
-    def set_abs_median_high(self, high):
-        self.CutConfig['absMedian_high'] = self.load_abs_median_high(high)
+    # ==============================================
+    # region SET CUTS
+    def set_cut(self, name, value):
+        self.reset_cut(name)
+        self.CutStrings[name] += self.generate_cut(name, value)
+        self.update_all_cut()
 
-    def load_pedestal_sigma(self, value):
-        if value > 0:
-            self.EasyCutStrings['pedestalsigma'] = 'PedSigma' + str(value)
-            return value
-        else:
-            self.EasyCutStrings['pedestalsigma'] = ''
-            return -1
+    def set_abs_median_high(self, high=None):
+        self.set_cut('median', high)
 
-    def set_pedestal_sigma(self, sigma=-1):
-        self.CutConfig['pedestalsigma'] = self.load_pedestal_sigma(sigma)
+    def set_pedestal_sigma(self, sigma=None):
+        self.set_cut('pedestalsigma', sigma)
 
-    def set_peak_value_pos(self, x_min, x_max):
-        assert 0 <= x_min <= 1024, 'min signal peak has to be in [0, 1024], not "{min}"'.format(min=x_min)
-        assert 0 <= x_max <= 1024, 'max trigger cell has to be in [0, 1024], not "{max}"'.format(max=x_max)
-        if x_max < x_min:
-            x_min, x_max = x_max, x_min
-        self.CutConfig['signal_peak_pos'] = [x_min, x_max]
-        self.EasyCutStrings['SignalPeakPos'] = 'Signal Peak in {0}'.format([x_min, x_max])
+    def set_signal_peak_pos(self, x_min, x_max):
+        self.set_cut('signal_peak_pos', [x_min, x_max])
+
+    def set_signal_peak_time(self, x_min, x_max):
+        self.set_cut('signal_peak_time', [x_min, x_max])
 
     def set_trigger_cell(self, x_min, x_max):
-        assert 0 <= x_min <= 1024, 'min trigger cell has to be in [0, 256], not "{min}"'.format(min=x_min)
-        assert 0 <= x_max <= 1024, 'max trigger cell has to be in [0, 256], not "{max}"'.format(max=x_max)
-        if x_max < x_min:
-            x_min, x_max = x_max, x_min
-        self.CutConfig['trigger_cell'] = [x_min, x_max]
-        self.EasyCutStrings['TriggerCell'] = 'Trigger Cell in {0}'.format([x_min, x_max])
+        self.set_cut('trigger_cell', [x_min, x_max])
+
+    def set_bucket(self, value):
+        self.set_cut('bucket', value)
     # endregion
 
     # ==============================================
