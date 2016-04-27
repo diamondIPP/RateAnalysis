@@ -1723,11 +1723,13 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument('run', nargs='?', default=392, type=int)
     parser.add_argument('ch', nargs='?', default=0, type=int)
+    parser.add_argument('-tc', '--testcampaign', nargs='?', default='201510')
     args = parser.parse_args()
+    tc = args.testcampaign if args.testcampaign.startswith('201') else '201510'
     test_run = args.run
     message = 'STARTING PAD-ANALYSIS OF RUN {0}'.format(test_run)
     print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(message)) * '=', msg=message)
-    a = Elementary()
+    a = Elementary(tc)
     a.print_testcampaign()
     z = SignalAnalysis(test_run, args.ch)
     z.print_elapsed_time(st, 'Instantiation')

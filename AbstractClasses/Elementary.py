@@ -10,7 +10,9 @@ from datetime import datetime
 from ConfigParser import ConfigParser
 
 import ROOT
-from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas
+from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle
+# global test campaign
+tc = None
 
 
 class Elementary(object):
@@ -19,14 +21,12 @@ class Elementary(object):
     It provides, among other things, a verbose printing method or a save plot method containing a global save directory handling.
     """
 
-    default_testcampaign = '201510'
-    TESTCAMPAIGN = None
-
-    def __init__(self, verbose=False):
+    def __init__(self, testcampaign=None, verbose=False):
         self.verbose = verbose
-        self.save_directory = self.get_program_dir() + 'Results/'
 
-        self.set_test_campaign(self.default_testcampaign)
+        self.TESTCAMPAIGN = None
+        self.set_global_testcampaign(testcampaign)
+        self.save_directory = '{dir}/Results{tc}/'.format(dir=self.get_program_dir(), tc=self.TESTCAMPAIGN)
 
         # read configuration files
         self.MainConfigParser = self.load_main_config()
@@ -39,6 +39,8 @@ class Elementary(object):
         self.colors = self.create_colorlist()
         # self.channel = None
 
+    # ============================================
+    # region CONFIG
     def load_main_config(self):
         parser = ConfigParser()
         parser.read('{dir}/Configuration/main.cfg'.format(dir=self.get_program_dir()))
@@ -53,6 +55,37 @@ class Elementary(object):
         ana_parser = ConfigParser()
         ana_parser.read('Configuration/AnalysisConfig_' + self.TESTCAMPAIGN + '.cfg')
         return ana_parser
+
+    def set_global_testcampaign(self, testcampaign):
+        if testcampaign is not None:
+            global tc
+            tc = testcampaign
+        if tc is not None:
+            self.set_test_campaign(tc)
+        else:
+            self.TESTCAMPAIGN = '201510'
+
+    def set_test_campaign(self, campaign='201508'):
+        campaigns = self.find_test_campaigns()
+        if not str(campaign) in campaigns:
+            print 'This Testcampaign does not exist yet! Use create_new_testcampaign!\nExisting campaigns: {camp}'.format(camp=campaigns)
+            return
+        self.TESTCAMPAIGN = str(campaign)
+
+    def print_testcampaign(self):
+        out = datetime.strptime(self.TESTCAMPAIGN, '%Y%m')
+        print 'TESTCAMPAIGN:', out.strftime('%b %Y')
+
+    @classmethod
+    def find_test_campaigns(cls):
+        conf_dir = cls.get_program_dir() + 'Configuration/'
+        f_location = conf_dir + 'RunConfig_*'
+        names = glob(f_location)
+        campaigns = [re.split('_|\.', name)[1] for name in names]
+        campaigns = [camp for i, camp in enumerate(campaigns) if camp not in campaigns[i + 1:]]
+        return sorted(campaigns)
+
+    # endregion
 
     @staticmethod
     def create_colorlist():
@@ -190,27 +223,6 @@ class Elementary(object):
             f.seek(0)
             f.writelines(lines)
             f.close()
-
-    @classmethod
-    def set_test_campaign(cls, campaign='201508'):
-        campaigns = cls.find_test_campaigns()
-        if not str(campaign) in campaigns:
-            print 'This Testcampaign does not exist yet! Use create_new_testcampaign!\nExisting campaigns: {camp}'.format(camp=campaigns)
-            return
-        if Elementary.TESTCAMPAIGN is None:
-            Elementary.TESTCAMPAIGN = str(campaign)
-
-    def print_testcampaign(self):
-        tc = datetime.strptime(self.TESTCAMPAIGN, '%Y%m')
-        print 'TESTCAMPAIGN:', tc.strftime('%b %Y')
-
-    @classmethod
-    def find_test_campaigns(cls):
-        conf_dir = cls.get_program_dir() + 'Configuration/'
-        names = glob(conf_dir + 'RunConfig_*')
-        campaigns = [re.split('_|\.', name)[1] for name in names]
-        campaigns = [camp for i, camp in enumerate(campaigns) if camp not in campaigns[i + 1:]]
-        return sorted(campaigns)
 
     @staticmethod
     def print_elapsed_time(start, what='This'):
