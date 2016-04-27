@@ -839,7 +839,7 @@ class SignalAnalysis(Analysis):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         for peak_pos in xrange(x[0] + 2, x[1] - 2, bins):
             print '\rcalculating peak pos: {0:03d}'.format(peak_pos),
-            self.Cut.add_signal_peak_pos_cut(peak_pos, peak_pos + bins)
+            self.Cut.set_signal_peak_pos(peak_pos, peak_pos + bins)
             events = 0
             for pp in xrange(peak_pos, peak_pos + bins):
                 events += int(h_pv.GetBinContent(h_pv.FindBin(peak_pos / 2.)))
@@ -849,12 +849,12 @@ class SignalAnalysis(Analysis):
                 h = self.show_signal_histo(show=False, binning=100)
                 h.SetLineColor(self.get_color())
                 h.Scale(1 / h.GetMaximum())
-                l.AddEntry(h, '[{0},{1}]'.format(peak_pos, peak_pos + bins), 'l')
+                l.AddEntry(h, '[{0},{1}] ns'.format(int(peak_pos / 2.), int(peak_pos / 2. + bins / 2.)), 'l')
                 hs.Add(h)
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.reset_colors()
         self.format_histo(hs, y_tit='Pulse Height [au]', y_off=1.2)
-        self.histos.append(self.draw_histo(hs, 'LandauVsPeakPos', show, self.save_dir, lm=.11, draw_opt='nostack', l=l))
+        self.histos.append(self.save_histo(hs, 'LandauVsPeakPos', show, self.save_dir, lm=.11, draw_opt='nostack', l=l))
 
     def draw_signal_vs_triggercell(self, show=True, bins=10):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
