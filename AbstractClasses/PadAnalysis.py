@@ -41,6 +41,12 @@ class SignalAnalysis(Analysis):
         self.n_bins = len(self.binning)
         self.Polarity = self.get_polarity()
 
+        # regions // ranges
+        self.IntegralNames = self.get_integral_names()
+        self.SignalRegion = self.__load_signal_region()
+        self.PedestalRegion = self.__load_pedestal_region()
+        self.PeakIntegral = self.__load_peak_integral()
+
         # names
         self.SignalName = self.get_signal_name(region=self.SignalRegion, peak_integral=self.PeakIntegral)
         self.SignalNumber = self.get_signal_number(self.SignalRegion, self.PeakIntegral)
@@ -93,6 +99,13 @@ class SignalAnalysis(Analysis):
         else:
             run_parser.read('Configuration/RunConfig_{tc}.cfg'.format(tc=self.TESTCAMPAIGN))
         return run_parser
+
+    def get_integral_names(self):
+        names = OrderedDict()
+        self.tree.GetEntry(0)
+        for i, name in enumerate(self.tree.IntegralNames):
+            names[name] = i
+        return names
 
     def get_polarity(self):
         self.tree.GetEntry(0)

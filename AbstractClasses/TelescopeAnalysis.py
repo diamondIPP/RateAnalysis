@@ -1,5 +1,4 @@
 from argparse import ArgumentParser
-from collections import OrderedDict
 from copy import deepcopy
 from time import sleep
 
@@ -47,13 +46,6 @@ class Analysis(Elementary):
         # miscellaneous
         self.channel = self.channel if hasattr(self, 'channel') else None
 
-        # regions // ranges // for PAD
-        if self.DUTType == 'pad':
-            self.IntegralNames = self.get_integral_names()
-            self.SignalRegion = self.ana_config_parser.get('BASIC', 'signal_region')
-            self.PedestalRegion = self.ana_config_parser.get('BASIC', 'pedestal_region')
-            self.PeakIntegral = self.ana_config_parser.get('BASIC', 'peak_integral')
-
         # general for pads and pixels
         self.Cut = Cut(self)
         self.StartEvent = self.Cut.CutConfig['EventRange'][0]
@@ -67,13 +59,6 @@ class Analysis(Elementary):
 
     # ============================================================================================
     # region INIT
-
-    def get_integral_names(self):
-        names = OrderedDict()
-        self.tree.GetEntry(0)
-        for i, name in enumerate(self.tree.IntegralNames):
-            names[name] = i
-        return names
 
     def init_run(self, run):
         if not isinstance(run, Run):
