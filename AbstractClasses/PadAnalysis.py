@@ -459,11 +459,11 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region SIGNAL PEAK POSITION
-    def draw_peak_position(self, region=None, type_='signal', show=True, ucut=None):
+    def draw_peak_position(self, region=None, type_='signal', show=True, ucut=None, fixed=False):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         num = self.SignalNumber if region is None else self.get_signal_number(region=region, sig_type=type_)
         region = self.SignalRegion if region is None else region
-        peak_val = 'IntegralPeaks[{num}]'.format(num=num)
+        peak_val = 'IntegralPeaks[{num}]'.format(num=num) if not fixed else 'IntegralPeakTime[{num}]'.format(num=num)
         title = '{typ} Peak Positions'.format(typ=type_.title())
         x = self.run.signal_regions[region] if type_ == 'signal' else self.run.get_regions('pulser')['pulser']
         h = TH1F('peakvalues', title, x[1] - x[0], x[0] / 2., x[1] / 2.)
@@ -471,8 +471,11 @@ class SignalAnalysis(Analysis):
         cut = self.Cut.all_cut if type_ == 'signal' else '!({0})'.format(self.Cut.CutStrings['pulser'])
         cut = cut if ucut is None else ucut
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.tree.Draw(peak_val + '/2.>>peakvalues', cut, 'goff')
-        self.histos.append(self.draw_histo(h, '{typ}PeakPositions'.format(typ=type_.title()), show, self.save_dir, lm=.14))
+        if fixed:
+            self.tree.Draw(peak_val + '>>peakvalues', cut, 'goff')
+        else:
+            self.tree.Draw(peak_val + '/2.>>peakvalues', cut, 'goff')
+        self.histos.append(self.save_histo(h, '{typ}PeakPositions'.format(typ=type_.title()), show, sub_dir=self.save_dir, lm=.14))
         self.PeakValues = h
 
     def fit_peak_values(self, draw=True, pulser=False):
