@@ -22,11 +22,11 @@ __author__ = 'micha'
 # MAIN CLASS
 # ==============================================
 class SignalAnalysis(Analysis):
-    def __init__(self, run, channel, high_low_rate_run=None, binning=20000):
+    def __init__(self, run, channel, high_low_rate_run=None, binning=20000, verbose=False):
 
         self.channel = channel
         self.RunNumber = run
-        Analysis.__init__(self, run, high_low_rate=high_low_rate_run)
+        Analysis.__init__(self, run, high_low_rate=high_low_rate_run, verbose=verbose)
 
         # main
         self.diamond_name = self.run.diamond_names[channel]
@@ -1726,6 +1726,7 @@ if __name__ == "__main__":
     parser.add_argument('run', nargs='?', default=392, type=int)
     parser.add_argument('ch', nargs='?', default=0, type=int)
     parser.add_argument('-tc', '--testcampaign', nargs='?', default='201510')
+    parser.add_argument('-v', '--verbose', nargs='?', default=False, type=bool)
     args = parser.parse_args()
     tc = args.testcampaign if args.testcampaign.startswith('201') else '201510'
     test_run = args.run
@@ -1733,5 +1734,5 @@ if __name__ == "__main__":
     print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(message)) * '=', msg=message)
     a = Elementary(tc)
     a.print_testcampaign()
-    z = SignalAnalysis(test_run, args.ch)
+    z = SignalAnalysis(test_run, args.ch, verbose=args.verbose)
     z.print_elapsed_time(st, 'Instantiation')
