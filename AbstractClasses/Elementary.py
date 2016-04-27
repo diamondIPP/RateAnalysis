@@ -288,13 +288,22 @@ class Elementary(object):
         h = histo
         h.SetTitle(title) if title else h.SetTitle(h.GetTitle())
         h.SetName(name) if name else h.SetName(h.GetName())
+        # markers
         try:
             h.SetMarkerStyle(marker)
             h.SetMarkerColor(color) if color is not None else h.SetMarkerColor(h.GetMarkerColor())
-            h.SetLineColor(color) if color is not None else h.SetLineColor(h.GetLineColor())
             h.SetMarkerSize(markersize)
+        except AttributeError or ReferenceError:
+            pass
+        # lines/fill
+        try:
+            h.SetLineColor(color) if color is not None else h.SetLineColor(h.GetLineColor())
             h.SetFillColor(fill_color)
             h.SetLineWidth(lw)
+        except AttributeError or ReferenceError:
+            pass
+        # axis titles
+        try:
             h.GetXaxis().SetTitle(x_tit) if x_tit else h.GetXaxis().GetTitle()
             h.GetXaxis().SetTitleOffset(x_off)
             h.GetYaxis().SetTitle(y_tit) if y_tit else h.GetYaxis().GetTitle()
