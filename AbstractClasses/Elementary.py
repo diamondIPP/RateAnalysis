@@ -7,7 +7,9 @@ from shutil import copyfile
 from time import time
 from datetime import datetime
 from ConfigParser import ConfigParser
+from json import loads
 
+import ROOT
 from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle
 # global test campaign
 tc = None
@@ -46,6 +48,19 @@ class Elementary(object):
     def load_run_config(self):
         run_parser = ConfigParser({'excluded_runs': '[]'})
         run_parser.read('Configuration/RunConfig_{tc}.cfg'.format(tc=self.TESTCAMPAIGN))
+        return run_parser
+
+    def load_run_configs(self, run_number):
+        run_parser = ConfigParser({'excluded_runs': '[]'})
+        if self.MainConfigParser.has_section(self.TESTCAMPAIGN):
+            n_splits = self.MainConfigParser.getint(self.TESTCAMPAIGN, 'n_splits')
+            split_runs = [0] + loads(self.MainConfigParser.get(self.TESTCAMPAIGN, 'split_runs')) + [int(1e10)]
+            for i in xrange(1, n_splits + 1):
+                if split_runs[i - 1] <= run_number < split_runs[i]:
+                    run_parser.read('{dir}/Configuration/RunConfig_{tc}_pad{i}.cfg'.format(dir=self.get_program_dir(), tc=self.TESTCAMPAIGN, i=i))
+                    break
+        else:
+            run_parser.read('Configuration/RunConfig_{tc}.cfg'.format(tc=self.TESTCAMPAIGN))
         return run_parser
 
     def load_ana_config(self):

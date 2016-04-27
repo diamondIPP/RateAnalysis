@@ -64,15 +64,15 @@ class Run(Elementary):
     operationmode = ''
     TrackingPadAnalysis = {}
 
-    def __init__(self, run_number, diamonds=3, verbose=False):
+    def __init__(self, run_number=None, diamonds=3, verbose=False):
         """
         :param run_number: number of the run
         :param diamonds: 0x1=ch0; 0x2=ch3
         :param verbose:
         :return:
         """
+        self.run_number = run_number if not isinstance(run_number, Run) else run_number.run_number
         Elementary.__init__(self, verbose=verbose)
-        self.run_number = None
 
         # configuration
         self.channels = [0, 3]
@@ -82,7 +82,6 @@ class Run(Elementary):
         self.treename = self.run_config_parser.get('BASIC', 'treename')
         self.run_path = self.run_config_parser.get('BASIC', 'runpath')
         self.runinfofile = self.run_config_parser.get('BASIC', 'runinfofile')
-        self._runlogkeyprefix = self.run_config_parser.get('BASIC', 'runlog_key_prefix')
         self.maskfilepath = self.run_config_parser.get('BASIC', 'maskfilepath')
         self.createNewROOTFiles = self.run_config_parser.getboolean('BASIC', 'createNewROOTFiles')
         
@@ -90,7 +89,7 @@ class Run(Elementary):
         self.RunInfo = None
 
         if run_number is not None:
-            self.converter = Converter(self.TESTCAMPAIGN)
+            self.converter = Converter(self.TESTCAMPAIGN, self.run_config_parser)
             assert (run_number > 0), 'incorrect run_number'
             self.set_run(run_number)
 
@@ -132,6 +131,9 @@ class Run(Elementary):
 
     # ==============================================
     # region LOAD FUNCTIONS
+    def load_run_config(self):
+        return self.load_run_configs(self.run_number)
+
     def load_bias(self):
         bias = {}
         for i, ch in enumerate(self.channels, 1):
@@ -167,7 +169,7 @@ class Run(Elementary):
                 self.RunInfo = data.get(str(self.run_number))
                 if self.RunInfo is None:
                     # try with run_log key prefix
-                    self.RunInfo = data.get(self._runlogkeyprefix + str(self.run_number).zfill(3))
+                    self.RunInfo = data.get(str(self.run_number).zfill(3))
                 if self.RunInfo is None:
                     print "INFO: Run not found in json run log file. Default run info will be used."
                     self.RunInfo = default_info

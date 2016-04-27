@@ -27,11 +27,11 @@ def print_banner(message):
 # CLASS DEFINITION
 # ==============================================
 class Converter:
-    def __init__(self, test_campaign):
+    def __init__(self, test_campaign, parser):
 
         # main
         self.test_campaign = test_campaign
-        self.parser = self.setup_configparser()
+        self.parser = parser
         self.Type = self.parser.get('BASIC', 'type')
 
         # tracking
@@ -73,7 +73,7 @@ class Converter:
         for opt in options:
             if opt.endswith('_range') or opt.endswith('_region'):
                 config[opt] = json.loads(self.parser.get('ROOTFILE_GENERATION', opt))
-            elif opt not in ['pulser_range_drs4']:
+            elif opt not in ['pulser_range_drs4', 'excluded_runs']:
                 config[opt] = self.parser.getint('ROOTFILE_GENERATION', opt)
         config['pulser_range_drs4'] = json.loads(self.parser.get('ROOTFILE_GENERATION', 'pulser_range_drs4'))
         return config
@@ -228,11 +228,6 @@ class Converter:
         f.truncate()
         f.close()
 
-    def setup_configparser(self):
-        conf = ConfigParser()
-        conf.read('Configuration/RunConfig_' + self.test_campaign + '.cfg')
-        return conf
-
     # ============================================
     # WIDGETS
     def create_spinboxes(self):
@@ -328,7 +323,7 @@ class Converter:
 
 
 if __name__ == "__main__":
-    z = Converter('201510')
+    z = Converter('201510', None)
     run_info = z.get_run_info(run_number=393)
     # z.convert_run(run_info)
     z.root.deiconify()
