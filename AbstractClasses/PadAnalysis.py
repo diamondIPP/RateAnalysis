@@ -525,14 +525,15 @@ class SignalAnalysis(Analysis):
         fwhm = self.do_pickle(pickle_path, func)
         return fwhm
 
-    def draw_forc_times(self, show=True):
-        self.tree.Draw('forc_time', 'forc_time>20', 'goff')
+    def draw_forc_times(self, show=True, corr=False):
+        self.tree.Draw('forc_pos', 'forc_pos[0]>20', 'goff')
         htemp = gROOT.FindObject('htemp')
         x = [int(htemp.GetBinCenter(htemp.FindFirstBinAbove(5000))) - 10, int(htemp.GetBinCenter(htemp.FindLastBinAbove(5000))) + 10]
         h = TH1F('ft', 'FORC Timing', x[1] - x[0], x[0] / 2., x[1] / 2.)
-        self.tree.Draw('forc_time/2.>>ft', self.Cut.all_cut, 'goff')
+        forc = 'forc_pos/2.' if not corr else 'forc_time'
+        self.tree.Draw('{forc}>>ft'.format(forc=forc), self.Cut.all_cut, 'goff')
         self.format_histo(h, x_tit='time [ns]', y_tit='Entries', y_off=2, fill_color=17)
-        self.histos.append(self.draw_histo(h, 'FORCTiming', show, self.save_dir, lm=.14))
+        self.histos.append(self.save_histo(h, 'FORCTiming', show, sub_dir=self.save_dir, lm=.14))
 
     # endregion
 
