@@ -137,6 +137,14 @@ class AnalysisCollection(Elementary):
         return selection
     # endregion
 
+    def create_all_single_run_plots(self):
+        for key, ana in self.collection.iteritems():
+            print 'Create Plots for Run ', key
+            ana.compare_consecutive_cuts(scale=False)
+            ana.compare_consecutive_cuts(scale=True)
+            ana.show_cut_contributions(show=False)
+            ana.draw_bucket_pedestal(show=False)
+
     # ============================================
     # region SIGNAL/PEDESTAL
     def draw_pulse_heights(self, binning=20000, flux=True, raw=False, all_corr=False, show=True):
