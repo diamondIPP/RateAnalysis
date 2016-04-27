@@ -199,6 +199,13 @@ class Converter:
         conf_file = '{eudaq}/conf/{file}'.format(eudaq=self.eudaq_dir, file=self.converter_config_path)
         parser.read(conf_file)
         parser.set('Converter.drs4tree', 'polarities', '[{pol1},0,0,{pol2}]'.format(pol1=pol_dia1, pol2=pol_dia2))
+
+        # remove unset ranges and regions
+        new_options = self.parser.options('ROOTFILE_GENERATION')
+        for opt in parser.options('Converter.drs4tree'):
+            if (opt.endswith('_range') or opt.endswith('_region')) and opt not in new_options:
+                parser.remove_option('Converter.drs4tree', opt)
+        # set the new settings
         for key, value in self.config.iteritems():
             parser.set('Converter.drs4tree', key, value)
 
