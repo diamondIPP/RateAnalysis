@@ -13,11 +13,11 @@ class Cut(Elementary):
     is loaded from the Analysis config file, whereas the individual cut settings are loaded from a JSON file located at Configuration/Individual_Configs. The JSON files are generated
     by the Analysis method SetIndividualCuts().
     """
-    def __init__(self, parent_analysis, verbose=True, skip=False):
+    def __init__(self, parent_analysis, skip=False):
 
         if not skip:
             self.analysis = parent_analysis
-            Elementary.__init__(self, verbose=verbose)
+            Elementary.__init__(self, verbose=self.analysis.verbose)
 
             # saving stuff
             self.histos = {}
