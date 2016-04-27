@@ -34,18 +34,18 @@ class Converter:
 
         # tracking
         self.telescope_id = self.parser.getint('BASIC', 'telescopeID')
-        self.tracking_dir = self.parser.get('ROOTFILE_GENERATION', 'trackingfolder')
+        self.tracking_dir = self.parser.get('ConverterFolders', 'trackingfolder')
 
         # directories
-        self.raw_file_dir = self.parser.get('ROOTFILE_GENERATION', 'rawfolder')
+        self.raw_file_dir = self.parser.get('ConverterFolders', 'rawfolder')
         self.root_file_dir = self.parser.get('BASIC', 'runpath')
-        self.eudaq_dir = self.parser.get('ROOTFILE_GENERATION', 'eudaqfolder')
+        self.eudaq_dir = self.parser.get('ConverterFolders', 'eudaqfolder')
         # files paths
-        self.converter_config_path = self.parser.get('ROOTFILE_GENERATION', 'converterFile')
+        self.converter_config_path = self.parser.get('ConverterFolders', 'converterFile')
         self.run_info_path = self.parser.get('BASIC', 'runinfofile')
         # prefixes
-        self.root_prefix = self.parser.get('ROOTFILE_GENERATION', "converterPrefix")
-        self.raw_prefix = self.parser.get('ROOTFILE_GENERATION', "rawprefix")
+        self.root_prefix = self.parser.get('ConverterFolders', "converterPrefix")
+        self.raw_prefix = self.parser.get('ConverterFolders', "rawprefix")
 
         # configuration for pad
         self.config = self.get_config() if self.Type == 'pad' else None
