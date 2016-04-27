@@ -16,8 +16,8 @@ class Cut(Elementary):
     def __init__(self, parent_analysis, verbose=True, skip=False):
 
         if not skip:
-            Elementary.__init__(self, verbose=verbose)
             self.analysis = parent_analysis
+            Elementary.__init__(self, verbose=verbose)
 
             # saving stuff
             self.histos = {}
@@ -46,6 +46,9 @@ class Cut(Elementary):
             self.all_cut = self.generate_all_cut()
 
     def generate_special_cut(self, excluded_cuts=None, included_cuts=None, name='special_cut'):
+    def load_run_config(self):
+        return self.load_run_configs(self.analysis.run_number)
+
         cut = TCut(name, '')
         n_cuts = 0
         for key, value in self.CutStrings.iteritems():
