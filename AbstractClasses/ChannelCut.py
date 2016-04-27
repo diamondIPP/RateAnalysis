@@ -67,6 +67,20 @@ class ChannelCut(Cut):
 
     # ==============================================
     # region GENERATE CUT STRINGS
+    def generate_cut(self, name, value):
+        if name == 'median':
+            return self.generate_median(value)
+        if name == 'pedestalsigma':
+            return self.generate_pedestalsigma(value)
+        if name == 'signal_peak_pos':
+            return self.generate_signal_peak_pos(value)
+        if name == 'signal_peak_time':
+            return self.generate_signal_peak_time(value)
+        if name == 'trigger_cell':
+            return self.generate_trigger_cell(value)
+        if name == 'bucket':
+            return self.generate_bucket(value)
+
     def generate_region(self, signal_histo, mean_histo):
         extrema = Extrema2D(signal_histo, mean_histo)
         extrema.region_scan()
