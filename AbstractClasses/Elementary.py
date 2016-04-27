@@ -135,6 +135,10 @@ class Elementary(object):
                 print arg,
             print
 
+    def log_info(self, msg):
+        if self.verbose:
+            print msg
+
     @staticmethod
     def has_bit(num, bit):
         assert (num >= 0 and type(num) is int), 'num has to be non negative int'
