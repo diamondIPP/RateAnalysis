@@ -353,7 +353,6 @@ class ChannelCut(Cut):
             self.format_histo(h2, x_tit='trigger cell', y_tit='signal peak time', y_off=1.5)
             self.RootObjects.append(self.save_histo(h2, 'OriPeakPosVsTriggerCell', False, self.analysis.save_dir, lm=.12))
             t_correction = '({p1}* trigger_cell + {p2} * trigger_cell*trigger_cell)'.format(p1=fit2.GetParameter(1), p2=fit2.GetParameter(2))
-            print t_correction
 
             # get time corrected sigma
             h3 = TH1F('h3', 'Corrected Timing', 80, int(original_mpv - 10), int(original_mpv + 10))
