@@ -159,6 +159,7 @@ class AnalysisCollection(Elementary):
         gr_first.SetMarkerSize(2)
         gr_last = self.make_tgrapherrors('last run', prefix + 'last', marker=23, color=2)
         gr_last.SetMarkerSize(2)
+        not_found_for = False in [coll.run.FoundForRate for coll in self.collection.itervalues()]
 
         i, j = 0, 0
         for key, ana in self.collection.iteritems():
@@ -167,7 +168,9 @@ class AnalysisCollection(Elementary):
             fit3 = ana.draw_pulse_height(binning, off_corr=True, show=False, evnt_corr=False)
             fit4 = ana.draw_pulse_height(binning, evnt_corr=False, show=False)
             print '\033[1A', '{0:5.1f}'.format(fit1.Parameter(0))
-            x = ana.run.flux if flux else key
+            x = key
+            if flux:
+                x = ana.run.RunInfo['measured flux'] if not_found_for else ana.run.flux
             if fit1.Parameter(0) > 10:
                 gr1.SetPoint(i, x, fit1.Parameter(0))
                 gr2.SetPoint(i, x, fit2.Parameter(0))
@@ -205,29 +208,31 @@ class AnalysisCollection(Elementary):
         ymax = mg.GetYaxis().GetXmax()
 
         # small range
-        self.format_histo(mg, color=None, x_tit=mode + ' [kHz/cm^{2}]' if flux else '', y_tit='Pulse Height [au]', y_off=1.6, x_off=1.3)
+        self.format_histo(mg, color=None, x_tit=mode + ' [kHz/cm^{2}]' if flux else '', y_tit='Pulse Height [au]', y_off=1.75, x_off=1.3)
         mg.GetYaxis().SetRangeUser(ymin - (ymax - ymin) * .3, ymax)
-        mg.GetXaxis().SetLimits(gr_first.GetX()[0] * 0.8, gr_last.GetX()[0] * 1.2)
-        self.RootObjects.append(self.save_histo(mg, 'PulseHeight{mod}'.format(mod=mode.title()), False, self.save_dir, lm=.14, draw_opt='A', l=legend, logx=True))
+        x_vals = sorted([gr1.GetX()[i] for i in xrange(gr1.GetN())])
+        mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 1.2) if flux else self.do_nothing()
+        self.RootObjects.append(self.save_histo(mg, 'PulseHeight{mod}'.format(mod=mode.title()), False, self.save_dir, lm=.14, draw_opt='A', l=legend, logx=True if flux else 0))
 
         # no zero suppression
         mg1 = mg.Clone()
         mg1.SetName('mg1_ph')
         mg1.GetYaxis().SetRangeUser(0, ymax * 1.1)
-        self.RootObjects.append(self.save_histo(mg1, 'PulseHeightZero{mod}'.format(mod=mode.title()), False, self.save_dir, lm=.14, draw_opt='A', l=legend, logx=True))
+        self.RootObjects.append(self.save_histo(mg1, 'PulseHeightZero{mod}'.format(mod=mode.title()), False, self.save_dir, lm=.14, draw_opt='A', l=legend, logx=True if flux else 0))
 
         gROOT.SetBatch(1) if not show else self.do_nothing()
         c = TCanvas('c_phall', 'Rate Scan', 2000, 1000)
         c.Divide(2)
         for i, gr in enumerate([mg, mg1], 1):
             pad = c.cd(i)
-            pad.SetLogx()
+            pad.SetLogx() if flux else self.do_nothing()
             pad.SetMargin(.13, .1, .15, .1)
             gr.Draw('a')
             legend.Draw()
         self.RootObjects.append(c)
         self.save_plots('PHOverview{mod}'.format(mod=mode), self.save_dir)
         gROOT.SetBatch(0)
+        self.reset_colors()
 
         self.PulseHeight = gr1
 
