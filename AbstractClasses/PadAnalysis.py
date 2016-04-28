@@ -951,20 +951,26 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region CUTS
-    def show_cut_contributions(self):
+    def show_cut_contributions(self, show=True):
+        if not show:
+            gROOT.SetBatch(1)
         main_cut = [self.Cut.CutStrings['event_range'], self.Cut.CutStrings['beam_interruptions']]
         contributions = {}
         cutted_events = 0
         cuts = TCut('consecutive', '')
+        total_events = self.run.n_entries
+        output = OrderedDict()
         for cut in main_cut + self.Cut.CutStrings.values():
             name = cut.GetName()
             if not name.startswith('old') and name != 'all_cuts' and name not in contributions and str(cut):
                 cuts += cut
                 events = int(self.tree.Draw('1', '!({0})'.format(cuts), 'goff'))
+                output[name] = (1. - float(events) / total_events) * 100.
                 events -= cutted_events
-                print name, events
+                print name.rjust(18), '{0:5d} {1:04.1f}%'.format(events, output[name])
                 contributions[cut.GetName()] = events
                 cutted_events += events
+        # sort contributions by size
         sorted_contr = OrderedDict()
         while contributions:
             for key, value in contributions.iteritems():
@@ -980,8 +986,8 @@ class SignalAnalysis(Analysis):
         contributions = sorted_contr
         values = contributions.values() + [self.run.n_entries - cutted_events]
         i = 0
+        self.reset_colors()
         colors = [self.get_color() for i in xrange(1, len(values) + 1)]
-        print values, i
         pie = TPie('pie', 'Cut Contributions', len(values), array(values, 'f'), array(colors, 'i'))
         for i, label in enumerate(contributions.iterkeys()):
             # if pie.GetEntryVal(i) < 2000:
@@ -999,6 +1005,7 @@ class SignalAnalysis(Analysis):
         pie.Draw('3drsc')
         self.save_plots('CutContributions', sub_dir=self.save_dir)
         self.histos.append([pie, c])
+        gROOT.SetBatch(0)
         return contributions
 
     def show_bucket_histos(self):
