@@ -1851,6 +1851,20 @@ class SignalAnalysis(Analysis):
 
     # endregion
 
+    def spectrum(self, it=20, noise=20):
+        decon = array(1024 * [0], 'f')
+        s = TSpectrum(25)
+        peaks = []
+        for i in xrange(it):
+            self.tree.GetEntry(300000 + i)
+            data = array([-1 * self.tree.wf0[j] for j in xrange(1024)], 'f')
+            thr = 100 * 2 * noise / max(data)
+            print thr
+            p = s.SearchHighRes(data, decon, 1024, 5, thr, True, 3, True, 5)
+            xpos = [s.GetPositionX()[i] for i in xrange(p)]
+            peaks.append(xpos)
+        return decon, s, peaks
+
     def __placeholder(self):
         pass
 
