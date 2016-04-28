@@ -1547,10 +1547,10 @@ class SignalAnalysis(Analysis):
         while n != n_events:
             diff = n_events - n
             # print n, diff, new_events
-            if i < 3:
+            if abs(diff) > 2:
                 new_events += int(diff * ratio)
             else:
-                new_events += int(diff * ratio / i)
+                new_events += int(diff * (ratio / i + 1))
             print '\b.',
             stdout.flush()
             n = self.tree.Draw('1', cut, 'goff', new_events, start)
