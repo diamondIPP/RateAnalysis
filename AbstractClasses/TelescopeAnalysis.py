@@ -70,8 +70,8 @@ class Analysis(Elementary):
             return run
 
     def set_root_titles(self):
-        if self.ana_config_parser.has_option('SAVE', 'ActivateTitle'):
-            gStyle.SetOptTitle(self.ana_config_parser.getboolean('SAVE', 'ActivateTitle'))
+        if self.MainConfigParser.has_option('SAVE', 'activate_title'):
+            gStyle.SetOptTitle(self.MainConfigParser.getboolean('SAVE', 'activate_title'))
     # endregion
 
     # ============================================================================================
