@@ -192,7 +192,6 @@ class Elementary(object):
         # file_type = '.png' if file_type is None else '.{end}'.format(end=file_type)
 
         sub_dir = '' if sub_dir is None else '{subdir}/'.format(subdir=sub_dir)
-        resultsdir = sub_dir
 
         if canvas is None:
             try:
@@ -216,7 +215,7 @@ class Elementary(object):
         canvas.Update()
 
         try:
-            self.save_canvas(canvas, sub_dir=resultsdir, name=savename)
+            self.save_canvas(canvas, sub_dir=sub_dir, name=savename)
         except Exception as inst:
             print '\n\n{delim}\nERROR in save plots!\n{msg}\n{delim}\n\n'.format(delim=len(str(inst)) * '-', msg=inst)
 
@@ -253,10 +252,9 @@ class Elementary(object):
             f.writelines(lines)
             f.close()
 
-    @staticmethod
-    def print_elapsed_time(start, what='This'):
+    def print_elapsed_time(self, start, what='This'):
         string = '{1} took {0:2.2f} seconds'.format(time() - start, what)
-        print string
+        self.print_banner(string)
         return string
 
     @staticmethod
