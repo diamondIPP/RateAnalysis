@@ -1785,6 +1785,9 @@ class SignalAnalysis(Analysis):
 
     def __get_binning(self):
         jumps = self.Cut.jump_ranges
+        if jumps is None:
+            jumps = {'start': [self.EndEvent], 'stop': [self.EndEvent]}
+
         n_jumps = len(jumps['start'])
         bins = [self.Cut.get_min_event()]
         ind = 0
@@ -1813,11 +1816,11 @@ class SignalAnalysis(Analysis):
                     bins.append(bins[-1] + self.BinSize + gap)
             else:
                 bins.append(bins[-1] + self.BinSize + gap)
-            # fill up the end
-            if ind == n_jumps - 1 and bins[-1] >= stop:
-                while bins[-1] + self.BinSize < self.run.n_entries:
-                    bins.append(bins[-1] + self.BinSize)
             ind += 1
+        # fill up the end
+        if ind == n_jumps - 1 and bins[-1] >= jumps['stop'][-1] or ind == n_jumps:
+            while bins[-1] + self.BinSize < self.run.n_entries:
+                bins.append(bins[-1] + self.BinSize)
         return bins
 
     def get_time_binning(self):
