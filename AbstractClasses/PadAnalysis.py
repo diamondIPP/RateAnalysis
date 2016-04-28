@@ -31,7 +31,7 @@ class SignalAnalysis(Analysis):
         # main
         self.diamond_name = self.run.diamond_names[channel]
         self.bias = self.run.bias[channel]
-        self.save_dir = '{dia}/{run}/'.format(run=self.run_number, dia=self.diamond_name)
+        self.save_dir = '{dia}/{run}/'.format(run=str(self.run_number).zfill(3), dia=self.diamond_name)
 
         # stuff
         self.BinSize = binning
