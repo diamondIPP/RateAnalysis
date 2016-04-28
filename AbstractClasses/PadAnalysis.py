@@ -1495,7 +1495,7 @@ class SignalAnalysis(Analysis):
         h = TH2F('wf', 'Waveform', 1024, 0, 511, 1000, -500, 500)
         h.SetStats(0)
         gStyle.SetPalette(55)
-        self.tree.Draw('wf0:Iteration$/2>>wf', cut, 'goff', n_events, start)
+        self.tree.Draw('wf{ch}:Iteration$/2>>wf'.format(ch=self.channel), cut, 'goff', n_events, start)
         if fixed_range is None:
             h.GetYaxis().SetRangeUser(-500 + h.FindFirstBinAbove(0, 2) / 50 * 50, -450 + h.FindLastBinAbove(0, 2) / 50 * 50)
         else:
