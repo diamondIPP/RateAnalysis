@@ -1865,6 +1865,56 @@ class SignalAnalysis(Analysis):
             peaks.append(xpos)
         return decon, s, peaks
 
+    def fixed_integrals(self):
+        tcals = [0.4813, 0.5666, 0.3698, 0.6393, 0.3862, 0.5886, 0.5101, 0.5675, 0.4033, 0.6211, 0.4563, 0.5919, 0.4781, 0.5947, 0.417, 0.5269,
+                 0.5022, 0.5984, 0.4463, 0.622, 0.4326, 0.5603, 0.3712, 0.6168, 0.5238, 0.5515, 0.514, 0.5949, 0.4198, 0.5711, 0.5344, 0.5856,
+                 0.3917, 0.6125, 0.4335, 0.5817, 0.4658, 0.5338, 0.4442, 0.5865, 0.4482, 0.5778, 0.4755, 0.6118, 0.4113, 0.5609, 0.465, 0.6188,
+                 0.3908, 0.5736, 0.5223, 0.5222, 0.5109, 0.493, 0.4421, 0.5908, 0.4555, 0.6737, 0.371, 0.5172, 0.5362, 0.5982, 0.5017, 0.4976,
+                 0.5568, 0.5519, 0.416, 0.5788, 0.476, 0.5636, 0.4424, 0.5773, 0.4472, 0.6109, 0.4123, 0.616]
+        sum_time = 0
+        times = []
+        for i in range(40):
+            times.append(sum_time)
+            sum_time += tcals[i]
+        h = TH1F('h', 'Integral Length', len(times) - 1, array(times, 'f'))
+        self.tree.GetEntry(200002)
+        peak_pos = self.tree.IntegralPeaks[self.SignalNumber]
+        wf = list(self.tree.wf0)
+        mid = times[15] + tcals[15] / 2.
+        for i in range(40):
+            h.SetBinContent(i, abs((wf[peak_pos - 16 + i])))
+
+        points_x1 = [mid - 4, mid - 4, h.GetBinLowEdge(9), h.GetBinLowEdge(9), mid - 4]
+        points_x2 = [mid + 6, mid + 6, h.GetBinLowEdge(27), h.GetBinLowEdge(27), mid + 6]
+        points_y1 = [0, -1 * wf[peak_pos - 8] - .3, -1 * wf[peak_pos - 8] - .3, 0, 0]
+        points_y2 = [0, -1 * wf[peak_pos + 11] - .3, -1 * wf[peak_pos + 11] - .3, 0, 0]
+        gr1 = TGraph(5, array(points_x1, 'd'), array(points_y1, 'd'))
+        gr2 = TGraph(5, array(points_x2, 'd'), array(points_y2, 'd'))
+        gr1.SetFillColor(kOrange + 7)
+        gr2.SetFillColor(kOrange + 7)
+        gr3 = TGraph(2, array([mid, mid], 'd'), array([0, -1 * wf[peak_pos]], 'd'))
+        gr3.SetLineWidth(2)
+        ar = TArrow(mid - 4, 50, mid + 6, 50, .015, '<|>')
+        ar.SetLineWidth(2)
+        ar.SetFillColor(1)
+        ar.SetLineColor(1)
+
+        c = TCanvas('c', 'c', 2500, 1500)
+        self.format_histo(h, x_tit='time [ns]', y_tit='pulse height [a.u.]')
+        h.SetStats(0)
+        h1 = h.Clone()
+        h1.GetXaxis().SetRangeUser(mid - 4 + .5, mid + 6 - .7)
+        h1.SetFillColor(2)
+        h.SetLineWidth(2)
+        h.Draw()
+        h1.Draw('same][')
+        gr1.Draw('f')
+        gr2.Draw('f')
+        gr3.Draw('l')
+        print mid - 4, mid + 6
+        ar.Draw()
+        self.histos.append([h, h1, gr1, gr2, gr3, ar, c])
+
     def __placeholder(self):
         pass
 
