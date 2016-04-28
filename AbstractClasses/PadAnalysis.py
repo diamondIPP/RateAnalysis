@@ -679,7 +679,7 @@ class SignalAnalysis(Analysis):
             correction = 'constant'
         elif evnt_corr:
             correction = 'eventwise'
-        suffix = '{bins}_{cor}_{sig}'.format(bins=bin_size, cor=correction, sig=self.get_all_signal_names()[signal])
+        suffix = '{bins}_{cor}_{reg}{int}'.format(bins=bin_size, cor=correction, reg=self.SignalRegion, int=self.PeakIntegral)
         picklepath = 'Configuration/Individual_Configs/Ph_fit/{tc}_{run}_{ch}_{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel, suf=suffix)
 
         self.SignalTime = None
