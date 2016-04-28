@@ -45,6 +45,8 @@ class Currents(Elementary):
 
         # config
         self.ConfigParser = self.load_parser()
+        if self.ConfigParser is None:
+            return
 
         # device info
         self.Number = self.get_device_nr()
@@ -80,7 +82,9 @@ class Currents(Elementary):
 
     def load_parser(self):
         parser = ConfigParser()
-        assert self.run_config_parser.has_option('BASIC', 'hvconfigfile'), 'Missing hv info in RunConfig file'
+        if not self.run_config_parser.has_option('BASIC', 'hvconfigfile'):
+            self.log_warning('Missing hv info in RunConfig file')
+            return None
         parser.read(self.run_config_parser.get('BASIC', 'hvconfigfile'))
         return parser
 
