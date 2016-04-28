@@ -159,10 +159,9 @@ class Elementary(object):
         file_name = '{nam}.{{ext}}'.format(nam=name)
         fname = '{save_dir}{res}/{{typ}}/{file}'.format(res=sub_dir, file=file_name, save_dir=self.save_directory)
         ftypes = ['png', 'eps', 'root']
-        out = 'Creating plots: '
+        out = 'Saving plots: {nam} as '.format(nam=name)
         run_number = self.run_number if hasattr(self, 'run_number') else None
-        if hasattr(self, 'runs'):
-            run_number = "{0}_to_{1}_with_{2}_runs".format(min(self.runs), max(self.runs), len(self.runs))
+        run_number = 'rp{nr}'.format(nr=self.run_plan) if hasattr(self, 'run_plan') else run_number
 
         gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
         for f in ftypes:
@@ -171,7 +170,7 @@ class Elementary(object):
                 if run_number is not None:
                     ext = '{0}.{1}'.format(run_number, f)
             self.ensure_dir(fname.format(typ=f, ext=ext))
-            out += file_name.format(typ=f, ext=ext) + ', '
+            out += f + ', '
             canvas.SaveAs(fname.format(typ=f, ext=ext))
         if print_names:
             print out.strip(', ')
