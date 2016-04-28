@@ -1130,7 +1130,7 @@ class SignalAnalysis(Analysis):
                 # safe single plots
                 c1.cd()
                 self.tree.Draw("{name}>>{histo}".format(name=self.SignalName, histo=histo_name), value)
-                self.save_plots(save_name, 'png', canvas=c1, sub_dir=self.save_dir)
+                self.save_plots(save_name, canvas=c1, sub_dir=self.save_dir)
                 # draw all single plots into c2
                 c2.cd()
                 histo.SetLineColor(self.get_color())
@@ -1147,8 +1147,7 @@ class SignalAnalysis(Analysis):
                 legend.AddEntry(histo, key, 'l')
         # save c2
         legend.Draw()
-        self.save_plots('all', 'png', canvas=c2, sub_dir=self.save_dir)
-        self.save_plots('all', 'root', canvas=c2, sub_dir=self.save_dir)
+        self.save_plots('all', canvas=c2, sub_dir=self.save_dir)
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
 
@@ -1676,7 +1675,7 @@ class SignalAnalysis(Analysis):
         l2 = TLegend(.7, .47, .9, .67)
         l2.SetHeader('PeakIntegrals')
         for i, name in enumerate(self.get_all_signal_names().iterkeys()):
-            snr = self.calc_snr(name)
+            snr = self.calc_snr(sig=name, name=self.get_all_signal_names()[name])
             gr.SetPoint(i, i + 1, snr[0])
             gr.SetPointError(i, 0, snr[1])
         # rename bins
@@ -1684,9 +1683,9 @@ class SignalAnalysis(Analysis):
             bin_x = gr.GetXaxis().FindBin(i)
             gr.GetXaxis().SetBinLabel(bin_x, region)
         c = TCanvas('c', 'SNR', 1000, 1000)
-        [l1.AddEntry(0, '{reg}:  {val}'.format(reg=reg, val=value), '') for reg, value in self.run.signal_regions.iteritems() if len(reg) < 2]
-        [l2.AddEntry(0, '{reg}:  {val}'.format(reg=integ, val=value), '') for integ, value in self.run.peak_integrals.iteritems() if len(integ) < 2]
-        self.format_histo(gr, y_tit='SNR', y_off=1.2, color=self.get_color())
+        [l1.AddEntry(0, '{reg}:  {val}'.format(reg=reg, val=value), '') for reg, value in self.run.signal_regions.iteritems() if len(reg) <= 2]
+        [l2.AddEntry(0, '{reg}:  {val}'.format(reg=integ, val=value), '') for integ, value in self.run.peak_integrals.iteritems() if len(integ) <= 2]
+        self.format_histo(gr, y_tit='SNR', y_off=1.2, color=self.get_color(), fill_color=1)
         gr.SetLineColor(2)
         gr.Draw('bap')
         l1.Draw()
@@ -1695,7 +1694,7 @@ class SignalAnalysis(Analysis):
         self.save_plots('SNR', sub_dir=self.save_dir)
         self.histos.append([gr, l1, l2, c])
 
-    def calc_snr(self, sig=None):
+    def calc_snr(self, sig=None, name=''):
         signal = self.SignalName if sig is None else sig
         peak_int = self.get_all_signal_names()[signal][-2:] if self.get_all_signal_names()[signal][-2].isdigit() else self.get_all_signal_names()[signal][-1]
         ped_fit = self.show_pedestal_histo(draw=False, peak_int=peak_int)
@@ -1705,7 +1704,7 @@ class SignalAnalysis(Analysis):
 
         snr = sig_mean / ped_sigma
         snr_err = snr * (sig_fit.ParError(0) / sig_mean + ped_fit.ParError(2) / ped_sigma)
-        print 'SNR is: {snr} +- {err}'.format(snr=snr, err=snr_err)
+        print '{name}\t| SNR is: {snr} +- {err}'.format(name=name, snr=snr, err=snr_err)
         return [snr, snr_err]
 
     # ============================================
@@ -1731,7 +1730,6 @@ class SignalAnalysis(Analysis):
         gr.Draw('ap')
         gROOT.SetBatch(0)
         self.save_plots('BestSNR', sub_dir=self.save_dir)
-        self.save_plots('BestSNR', file_type='root', sub_dir=self.save_dir)
         self.histos.append([gr, c])
 
     def signal_vs_peakintegral(self, show=True, ped=False):
@@ -1754,7 +1752,6 @@ class SignalAnalysis(Analysis):
         gr.Draw('ap')
         gROOT.SetBatch(0)
         self.save_plots('{sig}PeakInt_{rat}'.format(rat=ratio, sig='Ped' if ped else 'Sig'), sub_dir=self.save_dir)
-        self.save_plots('{sig}PeakInt_{rat}'.format(rat=ratio, sig='Ped' if ped else 'Sig'), sub_dir=self.save_dir, file_type='root')
         self.histos.append([gr, c])
 
     # endregion
