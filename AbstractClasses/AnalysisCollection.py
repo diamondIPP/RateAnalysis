@@ -114,9 +114,7 @@ class AnalysisCollection(Elementary):
             flux = run_log[str(run)][flux_name]
             print '{run:3d} {flux:6.1f}'.format(run=run, flux=flux)
             fluxes[flux] = run
-        min_flux = min(fluxes)
-        max_flux = max(fluxes)
-        return {'min': fluxes[min_flux], 'max': fluxes[max_flux]}
+        return {'min': fluxes[min(fluxes)], 'max': fluxes[max(fluxes)]}
 
     def generate_slope_pickle(self):
         picklepath = 'Configuration/Individual_Configs/Slope/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.min_max_rate_runs['min'])
@@ -874,6 +872,7 @@ class AnalysisCollection(Elementary):
 
 
 if __name__ == "__main__":
+    st = time()
     main_parser = ArgumentParser()
     main_parser.add_argument('runplan', nargs='?', default=3, type=int)
     main_parser.add_argument('dia', nargs='?', default=1, type=int)
@@ -883,10 +882,11 @@ if __name__ == "__main__":
     run_plan = args.runplan
     diamond = args.dia
     a = Elementary(tc)
-    a.print_testcampaign()
     sel = RunSelection(testcampaign=tc)
     sel.select_runs_from_runplan(run_plan)
     message = 'STARTING PAD-ANALYSIS COLLECTION OF RUNPLAN {0:02d}'.format(run_plan)
     print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(message)) * '=', msg=message)
+    a.print_testcampaign()
 
     z = AnalysisCollection(sel, diamond)
+    z.print_elapsed_time(st, 'Instantiation')
