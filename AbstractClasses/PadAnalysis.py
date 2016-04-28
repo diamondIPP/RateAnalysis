@@ -1449,24 +1449,24 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region SHOW
-    def draw_bucket_pedestal(self, show=True):
-        gROOT.SetBatch(1)
-        reg_name = 'e2'
-        three_bucket_num = self.get_signal_number(reg_name[0], reg_name[1])
-        reg_margins = self.run.signal_regions[reg_name[0]]
-        x_bins = (reg_margins[1] - reg_margins[0])
-        h = TH2F('h', 'Bucket Pedestal', x_bins, reg_margins[0] / 2., reg_margins[1] / 2., 550, -50, 500)
-        self.tree.Draw('{sig}:IntegralPeaks[{num}]/2>>h'.format(sig=self.SignalName, num=three_bucket_num), self.Cut.CutStrings['tracks'] + self.Cut.CutStrings['pulser'], 'goff')
-        if show:
-            gROOT.SetBatch(0)
-        c = TCanvas('c', 'Bucket Pedestal', 1000, 1000)
-        c.SetLogz()
-        self.format_histo(h, x_tit='Highest Peak Timing [ns]', y_tit='Pulse Height [au]', y_off=1.25)
-        h.SetStats(0)
-        h.Draw('colz')
-        self.save_plots('BucketPedestal', sub_dir=self.save_dir)
-        gROOT.SetBatch(0)
-        self.histos.append([h, c])
+    def draw_signal_vs_peak_position(self, region=None, peak_int=None, show=True, corr=True, cut=None, draw_opt='colz', nbins=4, save_name='SignalVsPeakPos'):
+        region = self.SignalRegion if region is None else region
+        peak_int = self.PeakIntegral if peak_int is None else peak_int
+        cut = self.Cut.generate_special_cut(excluded_cuts=[self.Cut.CutStrings['timing']]) if cut is None else cut
+        num = self.get_signal_number(region, peak_int)
+        reg_margins = self.run.signal_regions[region]
+        x_bins = (reg_margins[1] - reg_margins[0]) * nbins
+        h = TH2F('h_spp', 'Signal Vs Peak Positions', x_bins, reg_margins[0] / 2., reg_margins[1] / 2., 550, -50, 500)
+        peak_string = 'IntegralPeaks' if not corr else 'IntegralPeakTime'
+        draw_string = '{sig}:{peaks}[{num}]{scale}>>h_spp'.format(sig=self.SignalName, num=num, peaks=peak_string, scale='/2.' if not corr else '')
+        self.tree.Draw(draw_string, cut, 'goff')
+        self.format_histo(h, x_tit='Highest Peak Timing [ns]', y_tit='Pulse Height [au]', y_off=1.25, stats=0, z_tit='Entries')
+        self.RootObjects.append(self.save_histo(h, save_name, show, self.save_dir, draw_opt=draw_opt, logz=True, rm=.12))
+
+    def draw_bucket_pedestal(self, show=True, corr=True, additional_cut='', draw_option='colz'):
+        cut_string = self.Cut.CutStrings['tracks'] + self.Cut.CutStrings['pulser'] + self.Cut.CutStrings['saturated']
+        cut_string += additional_cut
+        self.draw_signal_vs_peak_position('e', '2', show, corr, cut_string, draw_option, 1, 'BucketPedestal')
 
     def draw_single_wf(self, event=None):
         cut = '!({0})&&!pulser'.format(self.Cut.CutStrings['old_bucket'])
