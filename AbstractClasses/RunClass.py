@@ -110,7 +110,8 @@ class Run(Elementary):
                 self.signal_regions = self.get_regions('signal')
                 self.peak_integrals = self.get_peak_integrals()
 
-            self.flux = self.calculate_flux()    
+            self.FoundForRate = False
+            self.flux = self.calculate_flux()
 
         else:
             self.load_run_info()
@@ -276,6 +277,7 @@ class Run(Elementary):
         flux = []
         self.find_for_in_comment()
         if self.RunInfo['for1'] and self.RunInfo['for2']:
+            self.FoundForRate = True
             for i, plane in enumerate(self.trigger_planes, 1):
                 area = pixel_size * masked_pixels[plane]
                 flux.append(self.RunInfo['for{num}'.format(num=i)] / area / 1000)  # in kHz/cm^2
