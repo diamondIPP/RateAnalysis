@@ -52,7 +52,7 @@ class AnalysisCollection(Elementary):
 
         # root stuff
         self.run_plan = list_of_runs.selected_runplan if isinstance(list_of_runs, RunSelection) else '-'
-        self.save_dir = '{tc}_Runplan{plan}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], plan=self.run_plan, dia=self.diamond_name)
+        self.save_dir = '{dia}/runplan{plan}'.format(tc=self.TESTCAMPAIGN[2:], plan=self.run_plan, dia=self.diamond_name)
         self.RootObjects = []
         # important plots
         self.FWHM = None
