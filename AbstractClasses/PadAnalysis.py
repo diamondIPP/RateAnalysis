@@ -132,7 +132,6 @@ class SignalAnalysis(Analysis):
         signal = 'TimeIntegralValues' if use_time else 'IntegralValues'
         signal = '({{pol}}*{sig}[{{num}}])'.format(sig=signal)
         print 'changed SignalDefinition to:', signal
-        print 'changed '
         self.SignalDefinition = signal
         self.update_signal_definitions(sig_region, ped_region, peak_int)
 
@@ -623,7 +622,7 @@ class SignalAnalysis(Analysis):
         gROOT.SetBatch(0)
         return h
 
-    def draw_pedestal(self, binning=None, draw=True):
+    def draw_pedestal(self, binning=None, show=True):
         bin_size = binning if binning is not None else self.BinSize
         picklepath = 'Configuration/Individual_Configs/Pedestal/{tc}_{run}_{ch}_{bins}_Ped_Means.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel, bins=bin_size)
         gr = self.make_tgrapherrors('pedestal', 'Pedestal')
@@ -647,9 +646,10 @@ class SignalAnalysis(Analysis):
                     means.append(fit.Parameter(1))
                 else:
                     empty_bins += 1
-            if draw:
+            if show:
                 gROOT.SetBatch(0)
-            print 'Empty proj. bins:\t', str(empty_bins) + '/' + str(self.n_bins)
+            if empty_bins:
+                print 'Empty proj. bins:\t', str(empty_bins) + '/' + str(self.n_bins)
             fit_pars = gr.Fit('pol0', 'qs')
             print 'mean:', fit_pars.Parameter(0), '+-', fit_pars.ParError(0)
             c = TCanvas('bla', 'blub', 1000, 1000)
@@ -664,10 +664,8 @@ class SignalAnalysis(Analysis):
             gROOT.SetBatch(0)
             return means
 
-        all_means = self.do_pickle(picklepath, func)
-        if draw and not gROOT.FindObject('pedestal'):
-            func()
-        return all_means
+        all_means = func() if show else 0
+        return self.do_pickle(picklepath, func, all_means)
 
     def draw_pulse_height(self, binning=None, show=True, save_graph=False, evnt_corr=True, bin_corr=False, off_corr=False, sig=None):
         signal = self.SignalName if sig is None else sig
@@ -694,7 +692,7 @@ class SignalAnalysis(Analysis):
             mode = 'mean'
             empty_bins = 0
             count = 0
-            means = self.draw_pedestal(bin_size, draw=False) if bin_corr else None
+            means = self.draw_pedestal(bin_size, show=False) if bin_corr else None
             gROOT.SetBatch(1)
             if sig_time.GetEntries() == 0:
                 raise Exception('Empty histogram')
@@ -727,7 +725,6 @@ class SignalAnalysis(Analysis):
             gStyle.SetOptFit(1)
             self.format_histo(gr, x_tit='time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6)
             # excludes points that are too low for the fit
-            print gr.GetN()
             max_fit_pos = gr.GetX()[gr.GetN() - 1] + 10
             sum_ph = gr.GetY()[0]
             for i in xrange(1, gr.GetN()):
