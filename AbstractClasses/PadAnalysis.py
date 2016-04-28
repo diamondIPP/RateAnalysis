@@ -47,7 +47,7 @@ class SignalAnalysis(Analysis):
         self.PeakIntegral = self.__load_peak_integral()
 
         # names
-        self.SignalDefinition = '({pol}*IntegralValues[{num}])'
+        self.SignalDefinition = '({pol}*TimeIntegralValues[{num}])'
         self.SignalNumber = self.get_signal_number()
         self.SignalName = self.get_signal_name()
         self.PedestalName = self.get_pedestal_name()
