@@ -1565,7 +1565,17 @@ class SignalAnalysis(Analysis):
         min_bin = h.GetMinimumBin()
         h.GetXaxis().UnZoom()
         max_bin = h.GetNbinsX() - 1
-        h.Scale(1 / h.Integral(min_bin, max_bin))
+        integral = h.Integral(min_bin, max_bin)
+        if integral:
+            h.Scale(1 / integral)
+        return h
+
+    @staticmethod
+    def scale_histo(histo):
+        h = histo
+        maximum = h.GetBinContent(h.GetMaximumBin())
+        if maximum:
+            h.Scale(1. / maximum)
         return h
 
     def analyse_signal_histograms(self):
