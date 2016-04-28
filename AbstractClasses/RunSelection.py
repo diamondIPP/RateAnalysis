@@ -49,6 +49,9 @@ class RunSelection(Elementary):
 
     # ============================================
     # region INIT
+    def load_run_config(self):
+        return self.load_run_configs(0)
+
     def load_run_numbers(self):
         f = open(self.run.runinfofile, 'r')
         data = json.load(f)

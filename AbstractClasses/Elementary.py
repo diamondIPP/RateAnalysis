@@ -52,6 +52,8 @@ class Elementary(object):
 
     def load_run_configs(self, run_number):
         run_parser = ConfigParser({'excluded_runs': '[]'})
+        # set run_number to zero if none is given to prevent crash
+        run_number = 0 if run_number is None else run_number
         if self.MainConfigParser.has_section(self.TESTCAMPAIGN):
             n_splits = self.MainConfigParser.getint(self.TESTCAMPAIGN, 'n_splits')
             split_runs = [0] + loads(self.MainConfigParser.get(self.TESTCAMPAIGN, 'split_runs')) + [int(1e10)]

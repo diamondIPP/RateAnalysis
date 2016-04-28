@@ -71,6 +71,9 @@ class AnalysisCollection(Elementary):
 
     # ============================================
     # region INIT
+    def load_run_config(self):
+        return self.load_run_configs(0)
+
     def add_analyses(self):
         """
         Creates and adds Analysis objects with run numbers in runs.
