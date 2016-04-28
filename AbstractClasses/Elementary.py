@@ -8,6 +8,7 @@ from time import time
 from datetime import datetime
 from ConfigParser import ConfigParser
 from json import loads
+from termcolor import colored
 
 import ROOT
 from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle
@@ -139,7 +140,13 @@ class Elementary(object):
 
     def log_info(self, msg):
         if self.verbose:
-            print msg
+            t = datetime.now().strftime('%H:%M:%S')
+            print 'INFO: {t} --> {msg}'.format(t=t, msg=msg)
+
+    @staticmethod
+    def log_warning(msg):
+        t = datetime.now().strftime('%H:%M:%S')
+        print '{head} {t} --> {msg}'.format(t=t, msg=msg, head=colored('WARNING:', 'red'))
 
     @staticmethod
     def has_bit(num, bit):
