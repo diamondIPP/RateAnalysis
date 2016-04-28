@@ -1152,92 +1152,139 @@ class SignalAnalysis(Analysis):
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
 
-    def compare_normalised_cuts(self):
+    def compare_normalised_cuts(self, scale=False, plot=False):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        gROOT.SetBatch(1)
+        if not plot:
+            gROOT.SetBatch(1)
+        self.reset_colors()
         c1 = TCanvas('single', '', 1000, 1000)
-        c2 = TCanvas('normalised', '', 1000, 1000)
-        c2.SetLeftMargin(0.15)
+        name = 'sCutComparison'
+        if scale:
+            name += "_scaled"
+        else:
+            name += "_noarmalized"
+        if scale:
+            title = 'Scaled Signal Distribution with Single Cuts'
+        else:
+            title = 'Normalised Signal Distribution with Single Cuts'
+        title += ';Pulse Height [au];entries a.u.'
+
+        stack = THStack(name, title)
+
         legend = TLegend(0.7, 0.3, 0.98, .7)
         histos = []
-        drawn_first = False
         for key, value in self.Cut.CutStrings.iteritems():
             if str(value) or key == 'raw':
                 print 'saving plot', key
                 save_name = 'signal_distribution_normalised_{cut}'.format(cut=key)
                 histo_name = 'signal {range}{peakint}'.format(range=self.SignalRegion, peakint=self.PeakIntegral)
-                histo_title = 'normalised signal with cut ' + key
+                histo_title = 'normalized' if not scale else 'scaled'
+                histo_title += ' signal with cut ' + key
                 histo = TH1F(histo_name, histo_title, 350, -50, 300)
                 # safe single plots
                 c1.cd()
                 self.tree.Draw("{name}>>{histo}".format(name=self.SignalName, histo=histo_name), value)
-                histo = self.normalise_histo(histo)
-                histo.Draw()
-                self.save_plots(save_name, 'png', canvas=c1, sub_dir=self.save_dir)
-                # draw all single plots into c2
-                c2.cd()
-                histo.SetLineColor(self.get_color())
-                if not drawn_first:
-                    self.format_histo(histo, title='Normalised Signal Distribution with Single Cuts', x_tit='Pulse Height [au]', y_tit='Normalised Integral', y_off=2)
-                    histo.SetStats(0)
-                    histo.Draw()
-                    drawn_first = True
+                if scale:
+                    histo = self.scale_histo(histo)
                 else:
-                    if key == 'all_cuts':
-                        histo.SetLineWidth(2)
-                    histo.Draw('same')
+                    histo = self.normalise_histo(histo)
+                histo.Draw()
+                c1.Update()
+                self.save_plots(save_name, canvas=c1, sub_dir=self.save_dir)
+                # draw all single plots into c2
+                histo.SetLineColor(self.get_color())
+
+                if key == 'all_cuts':
+                    histo.SetLineWidth(2)
+                stack.Add(histo)
                 histos.append(histo)
                 legend.AddEntry(histo, key, 'l')
         # save c2
+        c1.SetName('normalised')
+        c1.SetLeftMargin(0.15)
+        for h in histos:
+            h.SetStats(False)
+        stack.Draw('nostack')
         legend.Draw()
-        self.save_plots('normalised', 'png', canvas=c2, sub_dir=self.save_dir)
-        self.save_plots('normalised', 'root', canvas=c2, sub_dir=self.save_dir)
+        if plot:
+            self.histos.append(histos)
+            self.histos.append(stack)
+            self.RootObjects.append(legend)
+            c1.Update()
+
+        if scale:
+            self.save_plots('scaled', canvas=c1, sub_dir=self.save_dir)
+        else:
+            self.save_plots('normalised', canvas=c1, sub_dir=self.save_dir)
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
 
-    def compare_consecutive_cuts(self):
+    def compare_consecutive_cuts(self, scale=False, plot=False):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        gROOT.SetBatch(1)
+        if not plot:
+            gROOT.SetBatch(1)
+        self.reset_colors()
         c1 = TCanvas('consecutive', '', 1000, 1000)
-        c2 = TCanvas('all', '', 1000, 1000)
-        c2.SetLeftMargin(0.15)
-        legend = TLegend(0.7, 0.3, 0.98, .7)
+        legend = TLegend(0.7, 0.52, 0.98, .92)
         histos = []
         drawn_first = False
         ind = 0
         cut = TCut('consecutive', '')
+        stack = THStack('sConsecutiveCuts', 'Signal Distribution with Consecutive Cuts;Pulse Height [au];Entries')
         for key, value in self.Cut.CutStrings.iteritems():
+            if key == 'old_bucket':
+                continue
             if (str(value) or key == 'raw') and key != 'all_cuts':
                 cut += value
-                print 'saving plot with {n} cuts'.format(n=ind)
+                print 'saving plot with {n} cuts, added {key}'.format(n=ind, key=key)
                 save_name = 'signal_distribution_{n}cuts'.format(n=ind)
-                histo_name = 'signal {range}{peakint}'.format(range=self.SignalRegion, peakint=self.PeakIntegral)
+                histo_name = 'h_signal_{range}_{peakint}_{n}cuts'.format(range=self.SignalRegion, peakint=self.PeakIntegral, n=ind)
+                if scale:
+                    histo_name += '_scaled'
                 histo_title = 'signal with {n} cuts'.format(n=ind)
                 histo = TH1F(histo_name, histo_title, 550, -50, 500)
                 # safe single plots
                 c1.cd()
                 self.tree.Draw("{name}>>{histo}".format(name=self.SignalName, histo=histo_name), cut)
-                self.save_plots(save_name, 'png', canvas=c1, sub_dir=self.save_dir)
+                if scale:
+                    histo = self.scale_histo(histo)
+                histo.SetName(histo_name)
+                self.save_plots(save_name, canvas=c1, sub_dir=self.save_dir)
                 # draw all single plots into c2
-                c2.cd()
                 color = self.get_color()
                 histo.SetLineColor(color)
-                histo.SetFillColor(color)
+                histo.SetStats(0)
+                if not scale:
+                    histo.SetFillColor(color)
+                stack.Add(histo)
                 if not drawn_first:
-                    self.format_histo(histo, title='Signal Distribution with Consecutive Cuts', x_tit='Pulse Height [au]', y_tit='Entries', y_off=2)
-                    histo.SetStats(0)
-                    histo.Draw()
                     drawn_first = True
-                    legend.AddEntry(histo, key, 'f')
+                    legend_entry = key
                 else:
-                    histo.Draw('same')
-                    legend.AddEntry(histo, '+ ' + key, 'f')
+                    legend_entry = '+ ' + key
+                if scale:
+                    legend.AddEntry(histo, legend_entry, 'l')
+                else:
+                    legend.AddEntry(histo, legend_entry, 'f')
                 histos.append(histo)
                 ind += 1
-        # save c2
+        c1.SetName('all')
+        c1.SetLeftMargin(0.15)
+        stack.Draw('nostack')
         legend.Draw()
-        self.save_plots('consecutive', 'png', canvas=c2, sub_dir=self.save_dir)
-        self.save_plots('consecutive', 'root', canvas=c2, sub_dir=self.save_dir)
+        if plot:
+            self.RootObjects.append(legend)
+            self.histos.append(histos)
+            self.histos.append(stack)
+        if scale:
+            self.save_plots('consecutive_scaled', canvas=c1, sub_dir=self.save_dir)
+            c1.SetLogy()
+            self.save_plots('consecutive_scaled_logy', canvas=c1, sub_dir=self.save_dir)
+        else:
+            self.save_plots('consecutive', canvas=c1, sub_dir=self.save_dir)
+            c1.SetLogy()
+            self.save_plots('consecutive_logy', canvas=c1, sub_dir=self.save_dir)
+
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
 
