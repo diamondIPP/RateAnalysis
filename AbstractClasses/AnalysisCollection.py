@@ -61,13 +61,11 @@ class AnalysisCollection(Elementary):
         self.PeakDistribution = None
 
     def __del__(self):
-        print "deleting AnalysisCollection..."
-        for runnumber in self.collection.keys():
-            print "in AnalysisCollection.__del__ : deleting Analysis of Run ", runnumber
-            self.collection[runnumber].__del__()
-        for obj in [self.PulseHeight, self.Pedestal, self.FWHM, self.PeakDistribution]:
-            self.del_rootobj(obj)
-        print "AnalyisCollection deleted"
+        print 'deleting AnalysisCollection...'
+        for nr, ana in self.collection.iteritems():
+            ana.__del__()
+            print '  deleted Analysis of Run {nr}'.format(nr=nr)
+        print 'AnalyisCollection deleted'
 
     # ============================================
     # region INIT

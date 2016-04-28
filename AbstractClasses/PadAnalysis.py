@@ -74,7 +74,7 @@ class SignalAnalysis(Analysis):
             self.del_rootobj(obj)
         for c in gROOT.GetListOfCanvases():
             c.Close()
-        for lst in self.histos.itervalues():
+        for lst in self.histos + self.RootObjects:
             if not type(lst) is list:
                 lst = [lst]
             for obj in lst:
