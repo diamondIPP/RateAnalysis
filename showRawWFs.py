@@ -40,12 +40,15 @@ for i in xrange(10):
 print 'mean signal is:', mean_sig / 10
 pol = 1 if mean_sig > 0 else -1
 h2 = TH1F('pv', 'Peak Values', 40, signal_range[0], signal_range[1])
+
 for i in xrange(n/2, n):
     tree.GetEntry(i)
     lst = list(tree.wf0)
     vec = lst[signal_range[0]:signal_range[1]]
     extrema = lst.index(min(vec)) if mean_sig < 0 else lst.index(max(vec))
-    h2.Fill(extrema)
+    min_max =  min(vec) if mean_sig < 0 else max(vec)
+    if abs(min_max) > 20:
+        h2.Fill(extrema)
 c1 = TCanvas('c1', 'WaveForm', 900, 300)
 c1.SetRightMargin(.045)
 h2.Draw()
