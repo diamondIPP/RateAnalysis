@@ -87,6 +87,8 @@ class Run(Elementary):
         
         # run info
         self.RunInfo = None
+        self.tree = None
+        self.RootFile = None
 
         if run_number is not None:
             self.converter = Converter(self.TESTCAMPAIGN, self.run_config_parser)
@@ -147,7 +149,7 @@ class Run(Elementary):
         return _type
 
     def load_regions(self):
-        macro = self.rootfile.Get('region_information')
+        macro = self.RootFile.Get('region_information')
         return macro.GetListOfLines()
 
     def load_run_info(self):
@@ -255,23 +257,20 @@ class Run(Elementary):
                     maskdata[plane][line[0]] = [int(line[2]), int(line[3])]
             f.close()
         except IOError as err:
-            print '\n' + (len(str(err)) + 9) * '-'
-            print 'WARNING:', err
-            print 'Cannot calculate flux!'
-            print (len(str(err)) + 9) * '-' + '\n'
-            return None
+            self.log_warning(err)
 
+        unmasked_pixels = {}
         # check for corner method
-        if not maskdata.values()[0].keys()[0].startswith('corn'):
-            return None
-
-        # fill in the information to Run Info
-        masked_pixels = {}
-        for plane in self.trigger_planes:
-            row = [maskdata[plane]['cornBot'][0], maskdata[plane]['cornTop'][0]]
-            col = [maskdata[plane]['cornBot'][1], maskdata[plane]['cornTop'][1]]
-            masked_pixels[plane] = abs((row[1] - row[0] + 1) * (col[1] - col[0] + 1))
-            self.RunInfo['masked pixels'][plane] = masked_pixels[plane]
+        if not maskdata[self.trigger_planes[0]] or not maskdata.values()[0].keys()[0].startswith('corn'):
+            self.log_warning('Invalid mask file. Not taking any mask!')
+            for plane in self.trigger_planes:
+                unmasked_pixels[plane] = 4160
+        else:
+            for plane in self.trigger_planes:
+                row = [maskdata[plane]['cornBot'][0], maskdata[plane]['cornTop'][0]]
+                col = [maskdata[plane]['cornBot'][1], maskdata[plane]['cornTop'][1]]
+                unmasked_pixels[plane] = abs((row[1] - row[0] + 1) * (col[1] - col[0] + 1))
+                self.RunInfo['masked pixels'][plane] = unmasked_pixels[plane]
 
         pixel_size = 0.01 * 0.015  # cm^2
         flux = []
@@ -279,7 +278,7 @@ class Run(Elementary):
         if self.RunInfo['for1'] and self.RunInfo['for2']:
             self.FoundForRate = True
             for i, plane in enumerate(self.trigger_planes, 1):
-                area = pixel_size * masked_pixels[plane]
+                area = pixel_size * unmasked_pixels[plane]
                 flux.append(self.RunInfo['for{num}'.format(num=i)] / area / 1000)  # in kHz/cm^2
         else:
             flux.append(self.RunInfo['measured flux'])
@@ -520,8 +519,8 @@ class Run(Elementary):
     def __load_rootfile(self):
         file_path = self.converter.get_final_file_path(self.run_number)
         print 'Loading information for rootfile: {file}'.format(file=file_path.split('/')[-1])
-        self.rootfile = TFile(file_path)
-        self.tree = self.rootfile.Get(self.treename)
+        self.RootFile = TFile(file_path)
+        self.tree = self.RootFile.Get(self.treename)
 
 
 if __name__ == "__main__":
