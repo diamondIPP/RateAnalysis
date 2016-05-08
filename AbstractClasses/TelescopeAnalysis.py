@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 from copy import deepcopy
 from time import sleep
 
-from ROOT import TCanvas, TH2F, gROOT, TProfile, TH1F, TLegend, gStyle, kGreen, TArrow, kOrange, kViolet, kCyan, TText
+from ROOT import TCanvas, TH2F, gROOT, TProfile, TH1F, TLegend, gStyle, kGreen, TArrow, kOrange, kViolet, kCyan, TText, TCut
 from numpy import array, zeros
 
 from Elementary import Elementary
@@ -35,7 +35,7 @@ class Analysis(Elementary):
         self.highest_rate_run = high_low_rate['max'] if high_low_rate is not None else self.run.run_number
         self.PickleDir = self.get_program_dir() + self.ana_config_parser.get('SAVE', 'pickle_dir')
         # self.saveMCData = self.ana_config_parser.getboolean("SAVE", "SaveMCData")
-        self.ana_save_dir = '{tc}_{run}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run.run_number)
+        self.ana_save_dir = '{run}'.format(run=self.run.run_number)
         self.set_root_titles()
 
         # DUT
@@ -322,6 +322,29 @@ class Analysis(Elementary):
         self.save_plots('TrackAngles', sub_dir=self.ana_save_dir, ch=None)
     # endregion
 
+    # ============================================================================================
+    # region PIXEL
+    def draw_hitmap(self, show=True, cut=None, plane=None):
+        planes = [0, 1, 2, 3] if plane is None else [int(plane)]
+        cut = self.Cut.all_cut if cut is None else cut
+        histos = [TH2F('h_hm{0}'.format(i_pl), 'Hitmap Plane {0}'.format(i_pl), 52, 0, 52, 80, 0, 80) for i_pl in planes]
+        for plane in planes:
+            cut_string = cut + TCut('plane == {0}'.format(plane))
+            self.tree.Draw('row:col>>h_hm{0}'.format(plane), cut_string, 'goff')
+            self.format_histo(histos[plane], x_tit='col', y_tit='row')
+            self.RootObjects.append(self.save_histo(histos[plane], 'HitMap{0}'.format(plane), False, self.ana_save_dir, draw_opt='colz'))
+        gROOT.SetBatch(1) if not show else self.do_nothing()
+        c = TCanvas('c_hm', 'Hitmaps', 2000, 2000)
+        c.Divide(2, 2)
+        for i, h in enumerate(histos, 1):
+            h.SetStats(0)
+            pad = c.cd(i)
+            pad.SetBottomMargin(.15)
+            h.Draw('colz')
+        self.save_plots('HitMap', sub_dir=self.ana_save_dir, ch=None)
+        gROOT.SetBatch(1)
+
+    # endregion
     # ==============================================
     # region ALIGNMENT
     def check_alignment(self, binning=5000, draw=True):
