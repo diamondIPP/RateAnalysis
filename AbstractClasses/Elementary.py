@@ -158,7 +158,7 @@ class Elementary(object):
         name = canvas.GetName() if name is None else name
         file_name = '{nam}.{{ext}}'.format(nam=name)
         fname = '{save_dir}{res}/{{typ}}/{file}'.format(res=sub_dir, file=file_name, save_dir=self.save_directory)
-        ftypes = ['png', 'eps', 'root']
+        ftypes = ['png', 'pdf', 'root']
         out = 'Saving plots: {nam} as '.format(nam=name)
         run_number = self.run_number if hasattr(self, 'run_number') else None
         run_number = 'rp{nr}'.format(nr=self.run_plan) if hasattr(self, 'run_plan') else run_number
@@ -166,8 +166,9 @@ class Elementary(object):
         gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
         for f in ftypes:
             ext = f
-            if f == 'eps':
+            if f == 'pdf':
                 if run_number is not None:
+                    fname = fname.replace('.', '')
                     ext = '{0}.{1}'.format(run_number, f)
             self.ensure_dir(fname.format(typ=f, ext=ext))
             out += f + ', '
