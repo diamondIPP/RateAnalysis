@@ -351,7 +351,7 @@ class RunSelection(Elementary):
         for run_type, plan in self.run_plan.iteritems():
             print '{type}:'.format(type=run_type)
             if not detailed:
-                print '  Nr. {range} {excl} Diamonds'.format(range='Range'.ljust(17), excl='Excluded'.ljust(15))
+                print '  Nr. {range} {excl} {dia} Voltages'.format(range='Range'.ljust(17), excl='Excluded'.ljust(15), dia='Diamonds'.ljust(20))
             for nr, runs in sorted(plan.iteritems()):
                 self.unselect_all_runs()
                 self.select_runs_from_runplan(nr, run_type)
@@ -365,9 +365,10 @@ class RunSelection(Elementary):
                         else:
                             i += 1
                     dias = [str(dia) for dia in self.get_diamond_names(True)]
-                    run_string = '[{min}, ... , {max}]'.format(min=str(runs[0]).zfill(3), max=str(runs[-1]).zfill(2))
+                    run_string = '[{min}, ... , {max}]'.format(min=str(runs[0]).zfill(3), max=str(runs[-1]).zfill(3))
                     not_string = str(missing_runs) if missing_runs else ''
-                    print '  {nr}: {runs}, {miss} {dias}'.format(nr=nr, runs=run_string, miss=not_string[:15].ljust(15), dias=dias)
+                    voltages = self.get_hv_values(sel=True)
+                    print '  {nr}: {runs}, {miss} {dias} {hv}'.format(nr=nr, runs=run_string, miss=not_string[:15].ljust(15), dias=str(dias).ljust(20), hv=voltages)
                 else:
                     print '{delim}\n RUN PLAN {nr} ({type})\n{delim}'.format(delim=50 * '-', nr=nr, type=run_type)
                     self.show_selected_runs(show_allcomments=show_allcomments)
