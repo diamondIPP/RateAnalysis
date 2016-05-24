@@ -352,27 +352,20 @@ class Analysis(Elementary):
 
         def func():
             if self.DUTType == 'pad':
-                gROOT.SetBatch(1)
                 nbins = self.run.n_entries / binning
                 h = TProfile('h', 'Pulser Rate', nbins, 0, self.run.n_entries)
                 self.tree.Draw('(@col.size()>1)*100:Entry$>>h', 'pulser', 'goff')
-                self.format_histo(h, name='align', title='Event Alignment', x_tit='Event Number', y_tit='Hits per Event @ Pulser Events [%]', y_off=1.3)
-                h.GetYaxis().SetRangeUser(0, 100)
-                if draw:
-                    gROOT.SetBatch(0)
-                c = TCanvas('c', 'Pulser Rate Canvas', 1000, 1000)
-                h.SetStats(0)
-                h.Draw('hist')
-                self.save_plots('EventAlignment', sub_dir=self.ana_save_dir, ch=None)
-                gROOT.SetBatch(0)
-                self.histos.append([h, c])
+                self.format_histo(h, name='align', title='Event Alignment', x_tit='Event Number', y_tit='Hits per Event @ Pulser Events [%]', y_off=1.3, stats=0, fill_color=821)
+                h.GetYaxis().SetRangeUser(0, 105)
+                self.RootObjects.append(self.save_histo(h, 'EventAlignment', draw, self.ana_save_dir, draw_opt='hist'))
                 align = self.__check_alignment_histo(h)
                 return align
             else:
                 # todo put some function for the pixel here!
                 pass
 
-        aligned = func() if draw else self.do_pickle(pickle_path, func)
+        aligned = func() if draw else None
+        aligned = self.do_pickle(pickle_path, func, aligned)
         if not aligned:
             msg = 'The events of RUN {run} are not aligned!'.format(run=self.run_number)
             print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * '!', msg=msg)
