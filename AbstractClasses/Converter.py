@@ -11,6 +11,8 @@ from re import sub
 from shutil import move
 from os import remove
 from glob import glob
+from Utils import *
+from ROOT import TProfile, TFile
 do_gui = False
 if do_gui:
     from tkinter import *
@@ -27,11 +29,12 @@ def print_banner(message):
 # CLASS DEFINITION
 # ==============================================
 class Converter:
-    def __init__(self, test_campaign, parser):
+    def __init__(self, test_campaign, parser, run_number):
 
         # main
         self.test_campaign = test_campaign
         self.parser = parser
+        self.Run = run_number
         self.Type = self.parser.get('BASIC', 'type')
 
         # tracking

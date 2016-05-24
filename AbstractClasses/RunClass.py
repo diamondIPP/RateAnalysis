@@ -91,7 +91,7 @@ class Run(Elementary):
         self.RootFile = None
 
         if run_number is not None:
-            self.converter = Converter(self.TESTCAMPAIGN, self.run_config_parser)
+            self.converter = Converter(self.TESTCAMPAIGN, self.run_config_parser, self.run_number)
             assert (run_number > 0), 'incorrect run_number'
             self.set_run(run_number)
 
