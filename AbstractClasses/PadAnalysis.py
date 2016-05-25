@@ -418,7 +418,7 @@ class SignalAnalysis(Analysis):
             gROOT.SetBatch(0)
             return {name: [efficient_bins[i][0], efficient_bins[i][-1]] for i, name in enumerate(['x', 'y'])}
 
-        margins = func() if show_plot or make_histo else 0
+        margins = func() if show_plot or make_histo else None
         return self.do_pickle(pickle_path, func, margins)
 
     def __show_frame(self, bin_low, bin_high):
@@ -488,7 +488,7 @@ class SignalAnalysis(Analysis):
             x = [h.GetBinCenter(max_bin + i) for i in [-7, 1]] if not pulser else [h.GetXaxis().GetXmin() + 1, h.GetXaxis().GetXmax() - 1]
             return h.Fit('gaus', 'qs{0}'.format('' if draw else '0'), '', x[0], x[1])
 
-        mean_val = func() if draw else 0
+        mean_val = func() if draw else None
         return self.do_pickle(pickle_path, func, mean_val)
 
     def draw_peak_timings(self, show=True):
@@ -664,7 +664,7 @@ class SignalAnalysis(Analysis):
             gROOT.SetBatch(0)
             return means
 
-        all_means = func() if show else 0
+        all_means = func() if show else None
         return self.do_pickle(picklepath, func, all_means)
 
     def draw_pulse_height(self, binning=None, show=True, save_graph=False, evnt_corr=True, bin_corr=False, off_corr=False, sig=None):
@@ -741,7 +741,7 @@ class SignalAnalysis(Analysis):
             gROOT.SetBatch(0)
             return fit_par
 
-        fit = func() if show or save_graph else 0
+        fit = func() if show or save_graph else None
         return self.do_pickle(picklepath, func, fit)
 
     def draw_ph_distribution(self, binning=None, show=True, fit=True):
@@ -901,7 +901,7 @@ class SignalAnalysis(Analysis):
             gROOT.SetBatch(0)
             return fit_pars
 
-        fit_par = func() if draw else 0
+        fit_par = func() if draw else None
         return self.do_pickle(picklepath, func, fit_par)
 
     def compare_pedestals(self):
@@ -1105,7 +1105,7 @@ class SignalAnalysis(Analysis):
                 print result
             return result
 
-        res = func() if plot_histos else 0
+        res = func() if plot_histos else None
         return self.do_pickle(pickle_path, func, res)
 
     def compare_single_cuts(self):
@@ -1372,7 +1372,7 @@ class SignalAnalysis(Analysis):
             self.save_plots('PulserHisto', sub_dir=self.save_dir)
             return fit_func
 
-        fit = func() if show else 0
+        fit = func() if show else None
         return self.do_pickle(pickle_path, func, fit)
 
     def draw_pulser_peakvalues(self, draw=True):
