@@ -1283,6 +1283,28 @@ class SignalAnalysis(Analysis):
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
 
+    def draw_cut_means(self):
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        gr = self.make_tgrapherrors('gr_cm', 'Mean of Pulse Height for Consecutive Cuts')
+        cut = TCut('consecutive', '')
+        names = []
+        i = 1
+        gr.SetPoint(0, 0, 0)
+        for key, value in self.Cut.CutStrings.iteritems():
+            if (str(value) or key == 'raw') and key not in ['all_cuts', 'old_bucket']:
+                cut += value
+                h = self.show_signal_histo(cut=cut, show=False)
+                print key, h.GetMean(), h.GetMeanError()
+                gr.SetPoint(i, i, h.GetMean())
+                gr.SetPointError(i, 0, h.GetMeanError())
+                names.append(key)
+                i += 1
+        for i in xrange(1, gr.GetN()):
+            bin_x = gr.GetXaxis().FindBin(i)
+            gr.GetXaxis().SetBinLabel(bin_x, names[i - 1])
+        self.RootObjects.append(self.save_histo(gr, 'CutMeans', True, self.save_dir, bm=.35, draw_opt='bap'))
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+
     # endregion
 
     # ==========================================================================
