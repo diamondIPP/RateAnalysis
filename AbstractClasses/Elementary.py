@@ -11,7 +11,7 @@ from json import loads
 from termcolor import colored
 
 import ROOT
-from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle
+from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend
 # global test campaign
 tc = None
 
@@ -310,6 +310,21 @@ class Elementary(object):
         a.SetTitleColor(color)
         a.SetLineWidth(width)
         return a
+
+    def make_legend(self, x1=.6, y2=.9, nentries=2, w=.3):
+        x2 = x1 + w
+        y1 = y2 - nentries * .05
+        l = TLegend(x1, y1, x2, y2)
+        l.SetName('l')
+        l.SetTextFont(42)
+        l.SetTextSize(0.03)
+        if self.MainConfigParser.get('SAVE', 'legend_style') == 'felix':
+            l.SetLineWidth(2)
+            l.SetBorderSize(0)
+            l.SetFillColor(0)
+            l.SetFillStyle(0)
+            l.SetTextAlign(12)
+        return l
 
     @staticmethod
     def format_histo(histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=20, color=1, markersize=1, x_off=1, y_off=1, z_off=1, lw=1, fill_color=0, stats=True):
