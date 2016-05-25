@@ -171,7 +171,7 @@ class SignalAnalysis(Analysis):
     def draw_beam_profile(self, mode='x', show=True, fit=True, fit_margin=.6):
         assert mode.lower() in ['x', 'y'], 'Mode has to be either "x" or "y"!'
         margins = self.find_diamond_margins(show_plot=False, make_histo=True)
-        h = deepcopy(self.histos[0])
+        h = deepcopy(self.histos[-1])
         if not show:
             gROOT.SetBatch(1)
         prof = h.ProjectionX() if mode.lower() == 'x' else h.ProjectionY()
@@ -269,7 +269,7 @@ class SignalAnalysis(Analysis):
             gROOT.SetBatch(1)
         signal = '{sig}-{pol}*{ped}'.format(sig=self.SignalName, ped=self.PedestalName, pol=self.Polarity)
         print 'drawing signal map of {dia} for Run {run}...'.format(dia=self.diamond_name, run=self.run_number)
-        self.tree.Draw('{z}:diam{nr}_track_x:diam{nr}_track_y>>signal_map'.format(z=signal, nr=nr), self.Cut.all_cut, 'goff')
+        self.tree.Draw('{z}:diam{nr}_track_y:diam{nr}_track_x>>signal_map'.format(z=signal, nr=nr), self.Cut.all_cut, 'goff')
         c = TCanvas('c', 'Signal Map', 1000, 1000)
         c.SetLeftMargin(0.12)
         c.SetRightMargin(0.12)
@@ -381,9 +381,9 @@ class SignalAnalysis(Analysis):
             cut_string = self.Cut.all_cut if cut is None else cut
             if not show_plot:
                 gROOT.SetBatch(1)
-            h = TH2F('h', 'Diamond Margins', 52, -.3, .3, 80, -.3, .3)
+            h = TH2F('h', 'Diamond Margins', 52, -.4, .4, 80, -.4, .4)
             nr = 1 if not self.channel else 2
-            self.tree.Draw('diam{nr}_track_x:diam{nr}_track_y>>h'.format(nr=nr), cut_string, 'goff')
+            self.tree.Draw('diam{nr}_track_y:diam{nr}_track_x>>h'.format(nr=nr), cut_string, 'goff')
             projections = [h.ProjectionX(), h.ProjectionY()]
             efficient_bins = [[], []]
             zero_bins = [[], []]
@@ -458,7 +458,7 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region SIGNAL PEAK POSITION
-    def draw_peak_position(self, region=None, type_='signal', show=True, ucut=None, fixed=False):
+    def draw_peak_position(self, region=None, type_='signal', show=True, ucut=None, fixed=True):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         num = self.SignalNumber if region is None else self.get_signal_number(region=region, sig_type=type_)
         region = self.SignalRegion if region is None else region
@@ -494,9 +494,8 @@ class SignalAnalysis(Analysis):
     def draw_peak_timings(self, show=True):
         h = TH1F('h_pt', 'Peak Timings', 1024, 0, 512)
         self.tree.Draw('peaks{ch}_x_time>>h_pt'.format(ch=self.channel), z.AllCuts, 'goff')
-        self.format_histo(h, x_tit='time [ns]', y_tit='number of entries', y_off=1.5, fill_color=836, lw=2)
-
-        self.histos.append(self.save_histo(h, 'PeakTimings', show, self.save_dir, logy=True))
+        self.format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=.4, fill_color=836, lw=2, tit_size=.05, stats=0)
+        self.histos.append(self.save_histo(h, 'PeakTimings', show, self.save_dir, logy=True, lm=.045, rm=.045, x=2000, y=500))
 
     def draw_n_peaks(self, show=True, p1=0.7, p2=1):
         h = TH1F('h_pn', 'Number of Peaks', 12, -.5, 11.5)
@@ -507,7 +506,7 @@ class SignalAnalysis(Analysis):
         self.histos.append(self.save_histo(h, 'PeakNumbers', show, self.save_dir, logy=True))
         while h1.GetBinContent(2) != h.GetBinContent(2):
             h1.Fill(gRandom.Poisson(24 * self.get_flux() / 5e4 * .5 * .5 * p2) + gRandom.Binomial(1, p1))
-        self.format_histo(h1, x_tit='number of peaks', y_tit='number of entries', y_off=1.5, fill_color=896, lw=2)
+        self.format_histo(h1, x_tit='number of peaks', y_tit='Number of Entries', y_off=1.5, fill_color=896, lw=2)
         h1.SetFillStyle(3005)
         h1.Draw('same')
         self.histos.append(h1)
