@@ -1570,6 +1570,7 @@ class SignalAnalysis(Analysis):
     # endregion
 
     def find_n_events(self, n_events, cut, start):
+        # todo: use same method as below
         """
         Finds the amount of events from the startevent that are not subject to the cut.
         :param n_events: number of wanted events
@@ -1578,6 +1579,8 @@ class SignalAnalysis(Analysis):
         :return: actual number of events s.t. n_events are drawn
         """
         print 'Finding the correct number of events',
+        if n_events < 2:
+            return self.find_single_event(cut, start)
         n = mean([self.tree.Draw('1', cut, 'goff', n_events, start + i * n_events) for i in xrange(4)])
         new_events = n_events
         ratio = n_events / n if n else 5
@@ -1595,6 +1598,13 @@ class SignalAnalysis(Analysis):
             i += 1
         print
         return new_events
+
+    def find_single_event(self, cut, start):
+        n_events = self.tree.Draw('event_number', cut, 'goff')
+        evt_nmbrs = [self.tree.GetV1()[i] for i in xrange(n_events)]
+        for nr in evt_nmbrs:
+            if start <= nr:
+                return int(nr - start + 1)
 
     @staticmethod
     def normalise_histo(histo):
