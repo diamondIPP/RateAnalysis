@@ -155,24 +155,22 @@ class Elementary(object):
 
     def save_canvas(self, canvas, sub_dir='', name=None, print_names=True):
         canvas.Update()
-        name = canvas.GetName() if name is None else name
-        file_name = '{nam}.{{ext}}'.format(nam=name)
-        fname = '{save_dir}{res}/{{typ}}/{file}'.format(res=sub_dir, file=file_name, save_dir=self.save_directory)
-        ftypes = ['png', 'pdf', 'root']
+        file_name = canvas.GetName() if name is None else name
+        file_path = '{save_dir}{res}/{{typ}}/{file}'.format(res=sub_dir, file=file_name, save_dir=self.save_directory)
+        ftypes = ['root', 'png', 'pdf', 'eps']
         out = 'Saving plots: {nam} as '.format(nam=name)
         run_number = self.run_number if hasattr(self, 'run_number') else None
         run_number = 'rp{nr}'.format(nr=self.run_plan) if hasattr(self, 'run_plan') else run_number
-
         gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
         for f in ftypes:
-            ext = f
-            if f == 'pdf':
-                if run_number is not None:
-                    fname = fname.replace('.', '')
-                    ext = '{0}.{1}'.format(run_number, f)
-            self.ensure_dir(fname.format(typ=f, ext=ext))
+            ext = '.{typ}'.format(typ=f)
+            if not f == 'png' and run_number is not None:
+                ext = '_{0}.{1}'.format(run_number, f)
+            self.ensure_dir(file_path.format(typ=f))
             out += f + ', '
-            canvas.SaveAs(fname.format(typ=f, ext=ext))
+            out_file = '{fname}{ext}'.format(fname=file_path, ext=ext).format(typ=f)
+            print out_file
+            canvas.SaveAs(out_file)
         if print_names:
             print out.strip(', ')
         gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
