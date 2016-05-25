@@ -311,12 +311,15 @@ class Elementary(object):
         return a
 
     @staticmethod
-    def format_histo(histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=20, color=1, markersize=1, x_off=1, y_off=1, z_off=1, lw=1, fill_color=0, stats=True):
+    def format_histo(histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=20, color=1, markersize=1, x_off=1, y_off=1, z_off=1, lw=1, fill_color=0, stats=True,
+                     tit_size=.04):
         h = histo
         h.SetTitle(title) if title else h.SetTitle(h.GetTitle())
         h.SetName(name) if name else h.SetName(h.GetName())
-        if not stats:
-            h.SetStats(0)
+        try:
+            h.SetStats(stats)
+        except AttributeError or ReferenceError:
+            pass
         # markers
         try:
             h.SetMarkerStyle(marker)
