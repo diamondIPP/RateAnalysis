@@ -257,8 +257,8 @@ class Elementary(object):
         return string
 
     @staticmethod
-    def do_pickle(path, function, value=0):
-        if value:
+    def do_pickle(path, function, value=None):
+        if value is not None:
             f = open(path, 'w')
             pickle.dump(value, f)
             f.close()
