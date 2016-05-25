@@ -251,9 +251,9 @@ class Elementary(object):
             f.writelines(lines)
             f.close()
 
-    def print_elapsed_time(self, start, what='This'):
+    def print_elapsed_time(self, start, what='This', show=True):
         string = '{1} took {0:2.2f} seconds'.format(time() - start, what)
-        self.print_banner(string)
+        self.print_banner(string) if show else self.do_nothing()
         return string
 
     @staticmethod
@@ -325,12 +325,15 @@ class Elementary(object):
         return l
 
     @staticmethod
-    def format_histo(histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=20, color=1, markersize=1, x_off=1, y_off=1, z_off=1, lw=1, fill_color=0, stats=True):
+    def format_histo(histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=20, color=1, markersize=1, x_off=1, y_off=1, z_off=1, lw=1, fill_color=0, stats=True,
+                     tit_size=.04):
         h = histo
         h.SetTitle(title) if title else h.SetTitle(h.GetTitle())
         h.SetName(name) if name else h.SetName(h.GetName())
-        if not stats:
-            h.SetStats(0)
+        try:
+            h.SetStats(stats)
+        except AttributeError or ReferenceError:
+            pass
         # markers
         try:
             h.SetMarkerStyle(marker)
@@ -349,23 +352,27 @@ class Elementary(object):
         try:
             h.GetXaxis().SetTitle(x_tit) if x_tit else h.GetXaxis().GetTitle()
             h.GetXaxis().SetTitleOffset(x_off)
+            h.GetXaxis().SetTitleSize(tit_size)
             h.GetYaxis().SetTitle(y_tit) if y_tit else h.GetYaxis().GetTitle()
             h.GetYaxis().SetTitleOffset(y_off)
+            h.GetYaxis().SetTitleSize(tit_size)
             h.GetZaxis().SetTitle(z_tit) if z_tit else h.GetZaxis().GetTitle()
             h.GetZaxis().SetTitleOffset(z_off)
+            h.GetZaxis().SetTitleSize(tit_size)
         except AttributeError or ReferenceError:
             pass
 
-    def save_histo(self, histo, save_name, show, sub_dir=None, lm=.1, rm=0.1, draw_opt='', x=1000, y=1000, l=None, logy=False, logx=False, logz=False, canvas=None):
+    def save_histo(self, histo, save_name, show, sub_dir=None, lm=.1, rm=0.1, bm=.15, draw_opt='', x=1000, y=1000, l=None, logy=False, logx=False, logz=False, canvas=None, grid=False):
         h = histo
         if not show:
             gROOT.SetBatch(1)
             gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
         c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x, y) if canvas is None else canvas
-        c.SetMargin(lm, rm, .15, .1)
+        c.SetMargin(lm, rm, bm, .1)
         c.SetLogx() if logx else self.do_nothing()
         c.SetLogy() if logy else self.do_nothing()
         c.SetLogz() if logz else self.do_nothing()
+        c.SetGrid() if grid else self.do_nothing()
         h.Draw(draw_opt)
         l.Draw() if l is not None else self.do_nothing()
         self.save_plots(save_name, sub_dir=sub_dir)

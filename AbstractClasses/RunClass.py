@@ -111,6 +111,7 @@ class Run(Elementary):
                 self.pedestal_regions = self.get_regions('pedestal')
                 self.signal_regions = self.get_regions('signal')
                 self.peak_integrals = self.get_peak_integrals()
+                self.DRS4Channels = self.load_drs4_channels()
 
             self.FoundForRate = False
             self.flux = self.calculate_flux()
@@ -150,7 +151,7 @@ class Run(Elementary):
 
     def load_regions(self):
         macro = self.RootFile.Get('region_information')
-        return macro.GetListOfLines()
+        return [str(line) for line in macro.GetListOfLines()]
 
     def load_run_info(self):
         self.RunInfo = {}
@@ -334,6 +335,12 @@ class Run(Elementary):
                 except IndexError:
                     ranges[data[0]] = [int(data[i]) for i in [1, 2]]
         return ranges
+
+    def load_drs4_channels(self):
+        for i, line in enumerate(self.region_information):
+            if 'Sensor Names' in line:
+                data = self.region_information[i + 1].strip(' ').split(',')
+                return data
 
     def get_peak_integrals(self):
         integrals = OrderedDict()

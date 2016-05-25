@@ -171,7 +171,7 @@ class SignalAnalysis(Analysis):
     def draw_beam_profile(self, mode='x', show=True, fit=True, fit_margin=.6):
         assert mode.lower() in ['x', 'y'], 'Mode has to be either "x" or "y"!'
         margins = self.find_diamond_margins(show_plot=False, make_histo=True)
-        h = deepcopy(self.histos[0])
+        h = deepcopy(self.histos[-1])
         if not show:
             gROOT.SetBatch(1)
         prof = h.ProjectionX() if mode.lower() == 'x' else h.ProjectionY()
@@ -269,7 +269,7 @@ class SignalAnalysis(Analysis):
             gROOT.SetBatch(1)
         signal = '{sig}-{pol}*{ped}'.format(sig=self.SignalName, ped=self.PedestalName, pol=self.Polarity)
         print 'drawing signal map of {dia} for Run {run}...'.format(dia=self.diamond_name, run=self.run_number)
-        self.tree.Draw('{z}:diam{nr}_track_x:diam{nr}_track_y>>signal_map'.format(z=signal, nr=nr), self.Cut.all_cut, 'goff')
+        self.tree.Draw('{z}:diam{nr}_track_y:diam{nr}_track_x>>signal_map'.format(z=signal, nr=nr), self.Cut.all_cut, 'goff')
         c = TCanvas('c', 'Signal Map', 1000, 1000)
         c.SetLeftMargin(0.12)
         c.SetRightMargin(0.12)
@@ -381,9 +381,9 @@ class SignalAnalysis(Analysis):
             cut_string = self.Cut.all_cut if cut is None else cut
             if not show_plot:
                 gROOT.SetBatch(1)
-            h = TH2F('h', 'Diamond Margins', 52, -.3, .3, 80, -.3, .3)
+            h = TH2F('h', 'Diamond Margins', 52, -.4, .4, 80, -.4, .4)
             nr = 1 if not self.channel else 2
-            self.tree.Draw('diam{nr}_track_x:diam{nr}_track_y>>h'.format(nr=nr), cut_string, 'goff')
+            self.tree.Draw('diam{nr}_track_y:diam{nr}_track_x>>h'.format(nr=nr), cut_string, 'goff')
             projections = [h.ProjectionX(), h.ProjectionY()]
             efficient_bins = [[], []]
             zero_bins = [[], []]
@@ -458,7 +458,7 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region SIGNAL PEAK POSITION
-    def draw_peak_position(self, region=None, type_='signal', show=True, ucut=None, fixed=False):
+    def draw_peak_position(self, region=None, type_='signal', show=True, ucut=None, fixed=True):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         num = self.SignalNumber if region is None else self.get_signal_number(region=region, sig_type=type_)
         region = self.SignalRegion if region is None else region
@@ -494,9 +494,8 @@ class SignalAnalysis(Analysis):
     def draw_peak_timings(self, show=True):
         h = TH1F('h_pt', 'Peak Timings', 1024, 0, 512)
         self.tree.Draw('peaks{ch}_x_time>>h_pt'.format(ch=self.channel), z.AllCuts, 'goff')
-        self.format_histo(h, x_tit='time [ns]', y_tit='number of entries', y_off=1.5, fill_color=836, lw=2)
-
-        self.histos.append(self.save_histo(h, 'PeakTimings', show, self.save_dir, logy=True))
+        self.format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=.4, fill_color=836, lw=2, tit_size=.05, stats=0)
+        self.histos.append(self.save_histo(h, 'PeakTimings', show, self.save_dir, logy=True, lm=.045, rm=.045, x=2000, y=500))
 
     def draw_n_peaks(self, show=True, p1=0.7, p2=1):
         h = TH1F('h_pn', 'Number of Peaks', 12, -.5, 11.5)
@@ -507,7 +506,7 @@ class SignalAnalysis(Analysis):
         self.histos.append(self.save_histo(h, 'PeakNumbers', show, self.save_dir, logy=True))
         while h1.GetBinContent(2) != h.GetBinContent(2):
             h1.Fill(gRandom.Poisson(24 * self.get_flux() / 5e4 * .5 * .5 * p2) + gRandom.Binomial(1, p1))
-        self.format_histo(h1, x_tit='number of peaks', y_tit='number of entries', y_off=1.5, fill_color=896, lw=2)
+        self.format_histo(h1, x_tit='number of peaks', y_tit='Number of Entries', y_off=1.5, fill_color=896, lw=2)
         h1.SetFillStyle(3005)
         h1.Draw('same')
         self.histos.append(h1)
@@ -1284,6 +1283,28 @@ class SignalAnalysis(Analysis):
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
 
+    def draw_cut_means(self):
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        gr = self.make_tgrapherrors('gr_cm', 'Mean of Pulse Height for Consecutive Cuts')
+        cut = TCut('consecutive', '')
+        names = []
+        i = 1
+        gr.SetPoint(0, 0, 0)
+        for key, value in self.Cut.CutStrings.iteritems():
+            if (str(value) or key == 'raw') and key not in ['all_cuts', 'old_bucket']:
+                cut += value
+                h = self.show_signal_histo(cut=cut, show=False)
+                print key, h.GetMean(), h.GetMeanError()
+                gr.SetPoint(i, i, h.GetMean())
+                gr.SetPointError(i, 0, h.GetMeanError())
+                names.append(key)
+                i += 1
+        for i in xrange(1, gr.GetN()):
+            bin_x = gr.GetXaxis().FindBin(i)
+            gr.GetXaxis().SetBinLabel(bin_x, names[i - 1])
+        self.RootObjects.append(self.save_histo(gr, 'CutMeans', True, self.save_dir, bm=.35, draw_opt='bap'))
+        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+
     # endregion
 
     # ==========================================================================
@@ -1407,7 +1428,7 @@ class SignalAnalysis(Analysis):
         cut = self.Cut.generate_pulser_cut() if cut is None else cut
         start = self.StartEvent + self.count if start_event is None else start_event + self.count
         print 'Start at event number:', start
-        cnt = self.draw_waveforms(n=n, start_event=start, add_buckets=add_buckets, cut_string=cut, ret_event=True, fixed_range=fixed_range)
+        cnt = self.draw_waveforms(n=n, start_event=start, add_buckets=add_buckets, cut_string=cut, fixed_range=fixed_range)[1]
         print cnt
         if cnt is None:
             return
@@ -1466,43 +1487,48 @@ class SignalAnalysis(Analysis):
 
     def draw_single_wf(self, event=None):
         cut = '!({0})&&!pulser'.format(self.Cut.CutStrings['old_bucket'])
-        return self.draw_waveforms(n=1, cut_string=cut, add_buckets=True, ret_event=True, start_event=event)
+        return self.draw_waveforms(n=1, cut_string=cut, add_buckets=True, start_event=event)
 
-    def draw_waveforms(self, n=1000, start_event=None, cut_string=None, show=True, ret_event=False, add_buckets=False, fixed_range=None):
+    def draw_waveforms(self, n=1000, start_event=None, cut_string=None, show=True, add_buckets=False, fixed_range=None, ch=None):
         """
         Draws stacked waveforms.
         :param n: number of waveforms
         :param cut_string:
         :param start_event: event to start
         :param show:
-        :param ret_event: return number of valid events if True
         :param add_buckets: draw buckets and most probable peak values if True
         :param fixed_range: fixes x-range to given value if set
+        :param ch: channel of the DRS4
         :return: histo with waveform
         """
         gROOT.SetBatch(1)
         t = time()
         start = self.StartEvent if start_event is None else start_event
         assert self.run.n_entries >= start >= 0, 'The start event is not within the range of tree events!'
-        if not self.run.wf_exists(self.channel):
+        channel = self.channel if ch is None else ch
+        if not self.run.wf_exists(channel):
             return
         cut = self.Cut.all_cut if cut_string is None else cut_string
         n_events = self.find_n_events(n, cut, start)
         h = TH2F('wf', 'Waveform', 1024, 0, 511, 1000, -500, 500)
         h.SetStats(0)
         gStyle.SetPalette(55)
-        self.tree.Draw('wf{ch}:Iteration$/2>>wf'.format(ch=self.channel), cut, 'goff', n_events, start)
-        if fixed_range is None:
+        self.tree.Draw('wf{ch}:Iteration$/2>>wf'.format(ch=channel), cut, 'goff', n_events, start)
+        h = TGraph(self.tree.GetSelectedRows(), self.tree.GetV2(), self.tree.GetV1()) if n == 1 else h
+        if fixed_range is None and n > 1:
             h.GetYaxis().SetRangeUser(-500 + h.FindFirstBinAbove(0, 2) / 50 * 50, -450 + h.FindLastBinAbove(0, 2) / 50 * 50)
-        else:
+        elif fixed_range:
             assert type(fixed_range) is list, 'Range has to be a list!'
             h.GetYaxis().SetRangeUser(fixed_range[0], fixed_range[1])
-        self.print_elapsed_time(t)
+        self.log_warning(self.print_elapsed_time(t, show=False))
         if show:
             gROOT.SetBatch(0)
-        c = TCanvas('c', 'WaveForm', 1000, 500)
+        c = TCanvas('c', 'WaveForm', 2000, 500)
         c.SetRightMargin(.045)
-        self.format_histo(h, x_tit='Time [ns]', y_tit='Signal [au]', markersize=.4)
+        c.SetLeftMargin(.06)
+        self.format_histo(h, title='Waveform', name='wf', x_tit='Time [ns]', y_tit='Signal [au]', markersize=.4, y_off=.4)
+        h.GetXaxis().SetTitleSize(.05)
+        h.GetYaxis().SetTitleSize(.05)
         draw_option = 'scat' if n == 1 else 'col'
         h.Draw(draw_option)
         if add_buckets:
@@ -1517,17 +1543,34 @@ class SignalAnalysis(Analysis):
         else:
             self.save_plots('SingleWaveForm', sub_dir=self.save_dir)
         self.histos.append([c, h])
-        return h if not ret_event else n_events
+        return h, n_events
 
-    def show_single_waveforms(self, n=1, cut=None):
-        ev = self.StartEvent
-        for i in xrange(n):
-            ev += self.draw_waveforms(n=1, cut_string=cut, ret_event=True, start_event=ev)
-            sleep(1)
+    def show_single_waveforms(self, n=1, cut='', start_event=None):
+        start = self.StartEvent + self.count if start_event is None else start_event + self.count
+        activated_wfs = [wf for wf in xrange(4) if self.run.wf_exists(wf)]
+        print 'activated wafeforms:', activated_wfs
+        print 'Start at event number:', start
+        wfs = [self.draw_waveforms(n=n, start_event=start, cut_string=cut, show=False, ch=wf) for wf in activated_wfs]
+        n_wfs = len(activated_wfs)
+        if not gROOT.GetListOfCanvases()[-1].GetName() == 'c_wfs':
+            c = TCanvas('c_wfs', 'Waveforms', 2000, n_wfs * 500)
+            c.Divide(1, n_wfs)
+        else:
+            c = gROOT.GetListOfCanvases()[-1]
+        for i, wf in enumerate(wfs, 1):
+            wf[0].SetTitle('{nam} WaveForm'.format(nam=self.run.DRS4Channels[activated_wfs[i - 1]]))
+            c.cd(i)
+            wf[0].Draw('aclp')
+        self.RootObjects.append([c, wfs])
+        cnt = wfs[0][1]
+        # if cnt is None:
+        #     return
+        self.count += cnt
 
     # endregion
 
     def find_n_events(self, n_events, cut, start):
+        # todo: use same method as below
         """
         Finds the amount of events from the startevent that are not subject to the cut.
         :param n_events: number of wanted events
@@ -1536,6 +1579,8 @@ class SignalAnalysis(Analysis):
         :return: actual number of events s.t. n_events are drawn
         """
         print 'Finding the correct number of events',
+        if n_events < 2:
+            return self.find_single_event(cut, start)
         n = mean([self.tree.Draw('1', cut, 'goff', n_events, start + i * n_events) for i in xrange(4)])
         new_events = n_events
         ratio = n_events / n if n else 5
@@ -1553,6 +1598,13 @@ class SignalAnalysis(Analysis):
             i += 1
         print
         return new_events
+
+    def find_single_event(self, cut, start):
+        n_events = self.tree.Draw('event_number', cut, 'goff')
+        evt_nmbrs = [self.tree.GetV1()[i] for i in xrange(n_events)]
+        for nr in evt_nmbrs:
+            if start <= nr:
+                return int(nr - start + 1)
 
     @staticmethod
     def normalise_histo(histo):

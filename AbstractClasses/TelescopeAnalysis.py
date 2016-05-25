@@ -80,22 +80,14 @@ class Analysis(Elementary):
     def __draw_single_wf(self, event=None, show=True):
         start = self.StartEvent if event is None else event
         if hasattr(self, 'draw_waveforms') and self.run.wf_exists(self.channel):
-            h = self.draw_waveforms(n=1, show=show, start_event=start)
+            h = self.draw_waveforms(n=1, show=show, start_event=start)[0]
         else:
             h = TH2F('regions', '', 1024, 0, 511, 1000, -200, 50)
             if self.run.wf_exists(0):
                 self.tree.Draw('wf0:Iteration$/2>>regions', self.Cut.all_cut, 'goff', 1, start)
-        if not show:
-            gROOT.SetBatch(1)
-        c = TCanvas('c2', 'Regions', 1000, 500)
-        c.SetMargin(.075, .045, .1, .1)
-        c.SetGrid()
-        h.SetStats(0)
         h.GetXaxis().SetNdivisions(26)
-        self.format_histo(h, markersize=0.3, x_tit='Time [ns]', y_tit='Signal [au]')
-        h.Draw()
-        gROOT.SetBatch(0)
-        self.histos[0] = [c, h]
+        self.format_histo(h, markersize=0.3, x_tit='Time [ns]', y_tit='Signal [au]', stats=0)
+        self.RootObjects.append(self.save_histo(h, 'Regions', show, self.ana_save_dir, lm=.075, rm=.045, x=2000, y=1000))
         return h
 
     def draw_regions(self, ped=True, event=None):
@@ -180,7 +172,7 @@ class Analysis(Elementary):
             axis.append(a)
         self.histos.append([axis, labels, arrows])
 
-    def draw_peak_integrals(self, event=None):
+    def draw_peak_integrals(self, event=None, add_buckets=True):
         h = self.__draw_single_wf(event=event, show=False)
         c = TCanvas('c1', 'Regions', 1000, 500)
         c.SetMargin(.075, .045, .2, .1)
@@ -217,7 +209,7 @@ class Analysis(Elementary):
         for gr in [gr1, gr2]:
             gr.Draw('[]')
             gr.Draw('p')
-        self._add_buckets()
+        self._add_buckets() if add_buckets else self.do_nothing()
         self.save_plots('IntegralPeaks', sub_dir=self.ana_save_dir, ch=None)
         self.histos.append([gr1, gr2, c, l, t1, h, l2, t2])
     # endregion
