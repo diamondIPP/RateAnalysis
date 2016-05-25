@@ -252,9 +252,9 @@ class Elementary(object):
             f.writelines(lines)
             f.close()
 
-    def print_elapsed_time(self, start, what='This'):
+    def print_elapsed_time(self, start, what='This', show=True):
         string = '{1} took {0:2.2f} seconds'.format(time() - start, what)
-        self.print_banner(string)
+        self.print_banner(string) if show else self.do_nothing()
         return string
 
     @staticmethod
