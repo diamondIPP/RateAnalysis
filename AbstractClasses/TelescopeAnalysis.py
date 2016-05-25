@@ -370,40 +370,6 @@ class Analysis(Elementary):
             print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * '!', msg=msg)
         return aligned
 
-    def find_alignment_offset(self):
-        offsets = [i for i in xrange(-5, 5) if i]
-        h = TH1F('h', 'Pixel Hits @ Pulser Events', 20, 0, 20)
-        right_offset = None
-        for offset in offsets:
-            pulser_events = 0
-            for event in xrange(self.StartEvent, self.run.n_entries):
-                print '\rpulser events: {0:04d}'.format(pulser_events),
-                if pulser_events >= 1000:
-                    break
-                self.tree.GetEntry(event)
-                if self.tree.pulser:
-                    pulser_events += 1
-                    self.tree.GetEntry(event + offset)
-                    hits = len(self.tree.col)
-                    h.Fill(hits)
-            h.SetName(str(offset))
-            h.Draw()
-            sleep(.2)
-            c = gROOT.GetSelectedPad()
-            c.Update()
-            sleep(2)
-            # find offset
-            glob_max = [h.GetMaximumBin(), h.GetMaximum()]
-            h.GetXaxis().SetRangeUser(1, 20)
-            hit_max = [h.GetMaximumBin(), h.GetMaximum()]
-            if glob_max[0] == 1 and glob_max[1] > 2 * hit_max[1]:
-                right_offset = offset
-                break
-            h.Reset()
-        h.Draw()
-        self.histos[0] = h
-        print '\nThe event offset is {off}'.format(off=right_offset)
-
     def __check_alignment_histo(self, histo):
         h = histo
         for bin_ in xrange(h.FindBin(self.StartEvent), h.GetNbinsX()):

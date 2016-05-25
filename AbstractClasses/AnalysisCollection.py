@@ -9,7 +9,7 @@ from collections import OrderedDict
 from ConfigParser import ConfigParser
 from argparse import ArgumentParser
 
-from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph
+from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack
 
 from PadAnalysis import SignalAnalysis
 from Elementary import Elementary
@@ -285,23 +285,31 @@ class AnalysisCollection(Elementary):
 
     def draw_signal_distributions(self, show=True):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        gROOT.SetBatch(1) if not show else self.do_nothing()
-        histos = [ana.show_signal_histo(show=False) for ana in self.collection.itervalues()]
-        c = TCanvas('c', 'Signal Distributions', 1000, 1000)
-        c.SetLeftMargin(.13)
+        stack = THStack('hsd', 'Pulse Height Distributions;Pulse Height [au];Number of Entries')
         legend = TLegend(.7, .8 - self.get_number_of_analyses() * 0.03, .9, .9)
+        histos = [ana.show_signal_histo(show=False) for ana in self.collection.itervalues()]
         for i, h in enumerate(histos):
-            h.SetStats(0)
+            self.format_histo(h, lw=2, color=self.get_color())
             h.Scale(1 / h.GetMaximum())
-            h.SetLineColor(self.get_color())
-            h.SetLineWidth(2)
-            h.Draw() if not i else h.Draw('same')
-            legend.AddEntry(h, '{0:6.2f} kHz/cm'.format(self.collection.values()[i].get_flux()) + '^{2}', 'l')
-        legend.Draw()
+            stack.Add(h)
+            legend.AddEntry(h, '{0:06.1f} kHz/cm'.format(self.collection.values()[i].get_flux()) + '^{2}', 'l')
+        self.RootObjects.append(self.save_histo(stack, 'SignalDistributions', False, self.save_dir, lm=.13, draw_opt='nostack', l=legend))
+        stack.GetYaxis().SetTitleOffset(1.55)
+        self.RootObjects.append(self.save_histo(stack, 'SignalDistributions', False, self.save_dir, lm=.13, draw_opt='nostack', l=legend))
+        log_stack = stack.Clone()
+        log_stack.SetMaximum(3)
+        log_stack.SetNameTitle('hsdl', 'Signal Distribution LogY')
+        self.RootObjects.append(self.save_histo(log_stack, 'SignalDistributionsLogY', False, self.save_dir, lm=.13, draw_opt='nostack', logy=True, l=legend))
+        c = TCanvas('c_sd1', 'Signal Distributions', 1500, 750)
+        c.Divide(2)
+        gROOT.SetBatch(1) if not show else self.do_nothing()
+        for i, s in enumerate([stack, log_stack], 1):
+            pad = c.cd(i)
+            pad.SetLogy() if i == 2 else self.do_nothing()
+            s.Draw('nostack')
+            legend.Draw()
+        self.RootObjects.append([c])
         gROOT.SetBatch(0)
-        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.save_plots('SignalDistributions', sub_dir=self.save_dir)
-        self.RootObjects.append([c, histos, legend])
 
     def draw_snrs(self, flux=True, draw=True):
         gROOT.SetBatch(1)

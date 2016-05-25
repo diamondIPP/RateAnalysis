@@ -198,7 +198,10 @@ class RunSelection(Elementary):
 
     def select_run(self, run_number, do_assert=True, unselect=False):
         if do_assert:
-            assert run_number in self.run_numbers, 'run {run} not found in list of run numbers. Check run_log json file!'.format(run=run_number)
+            if run_number not in self.run_numbers:
+                self.log_warning('run {run} not found in list of run numbers. Check run_log json file!'.format(run=run_number))
+                return
+
         self.selection[run_number] = True if not unselect else False
         if unselect:
             self.reset_channels(run_number)
