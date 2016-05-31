@@ -1393,9 +1393,12 @@ class SignalAnalysis(Analysis):
     def show_pulser_histo(self, show=True, corr=True, beam_on=True, binning=700, events=None, start=None):
         cut = self.Cut.generate_pulser_cut(beam_on)
         h = self.show_signal_histo(cut=cut, sig=self.PulserName, show=show, off_corr=corr, evnt_corr=False, binning=binning, events=events, start=start)
-        c = gROOT.GetListOfCanvases()[-1]
-        c.SetLogy()
-        c.Update()
+        try:
+            c = gROOT.GetListOfCanvases()[-1]
+            c.SetLogy()
+            c.Update()
+        except IndexError:
+            pass
         return h
 
     def calc_pulser_fit(self, show=True, corr=True, beam_on=True, events=None, start=None, binning=350):
@@ -1407,7 +1410,10 @@ class SignalAnalysis(Analysis):
         def func():
             gStyle.SetOptFit(1)
             h = self.show_pulser_histo(show=show, corr=corr, beam_on=beam_on, binning=binning, events=events, start=start)
-            fit_func = h.Fit('gaus', 'qs{0}'.format('' if show else '0'), '', 0, h.GetBinCenter(h.GetMaximumBin() + 2))
+            same_pols = self.PulserPolarity == self.Polarity
+            x_min = 0 if same_pols else h.GetBinCenter(h.GetMaximumBin() - 2)
+            x_max = h.GetBinCenter(h.GetMaximumBin() + 2) if same_pols else h.GetBinCenter(h.GetNbinsX() - 1)
+            fit_func = h.Fit('gaus', 'qs{0}'.format('' if show else '0'), '', x_min, x_max)
             f = gROOT.GetFunction('gaus')
             f.SetLineStyle(7)
             f.SetRange(0, 500)
