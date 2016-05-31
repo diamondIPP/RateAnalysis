@@ -169,7 +169,6 @@ class Elementary(object):
             self.ensure_dir(file_path.format(typ=f))
             out += f + ', '
             out_file = '{fname}{ext}'.format(fname=file_path, ext=ext).format(typ=f)
-            print out_file
             canvas.SaveAs(out_file)
         if print_names:
             print out.strip(', ')
@@ -299,14 +298,28 @@ class Elementary(object):
     def make_tgaxis(x, y1, y2, title, color=1, width=1, offset=.15, tit_size=.04, line=True, opt='+SU'):
         a = TGaxis(x, y1, x, y2, y1, y2, 510, opt)
         a.SetLineColor(color)
+        a.SetLineWidth(width)
         if line:
             a.SetTickSize(0)
             a.SetLabelSize(0)
         a.SetTitleSize(tit_size)
         a.SetTitleOffset(offset)
-        a.SetTitle(title + '  ')
+        a.SetTitle(title)
         a.SetTitleColor(color)
+        return a
+
+    @staticmethod
+    def make_tgxaxis(x1, x2, y, title, color=1, width=1, offset=.15, tit_size=.04, line=True, opt='+SU'):
+        a = TGaxis(x1, y, x2, y, x1, x2, 510, opt)
+        a.SetLineColor(color)
         a.SetLineWidth(width)
+        if line:
+            a.SetTickSize(0)
+            a.SetLabelSize(0)
+        a.SetTitleSize(tit_size)
+        a.SetTitleOffset(offset)
+        a.SetTitle(title)
+        a.SetTitleColor(color)
         return a
 
     def make_legend(self, x1=.6, y2=.9, nentries=2, w=.3):
