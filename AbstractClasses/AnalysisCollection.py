@@ -365,10 +365,11 @@ class AnalysisCollection(Elementary):
         self.reset_colors()
         return gr1
 
-    def draw_signal_distributions(self, show=True):
+    def draw_signal_distributions(self, show=True, off=3):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        z.reset_colors()
         stack = THStack('hsd', 'Pulse Height Distributions;Pulse Height [au];Number of Entries')
-        legend = TLegend(.7, .8 - self.get_number_of_analyses() * 0.03, .9, .9)
+        legend = self.make_legend(nentries=self.get_number_of_analyses())
         histos = [ana.show_signal_histo(show=False) for ana in self.collection.itervalues()]
         for i, h in enumerate(histos):
             self.format_histo(h, lw=2, color=self.get_color())
@@ -379,18 +380,19 @@ class AnalysisCollection(Elementary):
         stack.GetYaxis().SetTitleOffset(1.55)
         self.RootObjects.append(self.save_histo(stack, 'SignalDistributions', False, self.save_dir, lm=.13, draw_opt='nostack', l=legend))
         log_stack = stack.Clone()
-        log_stack.SetMaximum(3)
+        log_stack.SetMaximum(off)
         log_stack.SetNameTitle('hsdl', 'Signal Distribution LogY')
         self.RootObjects.append(self.save_histo(log_stack, 'SignalDistributionsLogY', False, self.save_dir, lm=.13, draw_opt='nostack', logy=True, l=legend))
         c = TCanvas('c_sd1', 'Signal Distributions', 1500, 750)
         c.Divide(2)
         gROOT.SetBatch(1) if not show else self.do_nothing()
+        legends = [legend, legend.Clone()]
         for i, s in enumerate([stack, log_stack], 1):
             pad = c.cd(i)
             pad.SetLogy() if i == 2 else self.do_nothing()
             s.Draw('nostack')
-            legend.Draw()
-        self.RootObjects.append([c])
+            legends[i - 1].Draw()
+        self.RootObjects.append([c, legends])
         gROOT.SetBatch(0)
 
     def draw_snrs(self, flux=True, draw=True):
