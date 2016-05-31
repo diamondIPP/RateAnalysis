@@ -320,6 +320,7 @@ class SignalAnalysis(Analysis):
         Draws the distribution of the mean pulse height values of the bins from the signal map
         :param show: shows a plot of the canvas if True
         """
+        # todo: save mean
         sig_map = self.SignalMapHisto if self.SignalMapHisto is not None else self.draw_signal_map(show=False)
         x = [int(sig_map.GetMinimum()) / 10 * 10, int(sig_map.GetMaximum() + 10) / 10 * 10]
         h = TH1F('h', 'Mean Signal Distribution', 50, x[0], x[1])
@@ -593,13 +594,16 @@ class SignalAnalysis(Analysis):
     # region SIGNAL/PEDESTAL
     def __generate_signal_name(self, signal, evnt_corr, off_corr, bin_corr, cut=None):
         sig_name = signal
+        print signal
+        pol = str(self.Polarity) if not signal == z.PulserName else str(self.PulserPolarity)
         if bin_corr:
             return sig_name
         elif off_corr:
             ped_fit = self.show_pedestal_histo(cut=cut, draw=False)
-            sig_name += '-{0}'.format(ped_fit.Parameter(1))
+            sig_name += '-{pol}*{ped}'.format(ped=ped_fit.Parameter(1), pol=pol)
         elif evnt_corr:
-            sig_name += '-{ped}'.format(sig=sig_name, ped=self.PedestalName, pol=self.Polarity)
+            sig_name += '-{pol}*{ped}'.format(ped=self.PedestalName, pol=pol)
+        print sig_name
         return sig_name
 
     def make_signal_time_histos(self, ped=False, signal=None, evnt_corr=False, off_corr=False, show=True, bin_corr=False):
