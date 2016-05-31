@@ -370,7 +370,7 @@ class SignalPixAnalysis(Analysis):
             gROOT.SetBatch(0)
             return {name: [efficient_bins[i][0], efficient_bins[i][-1]] for i, name in enumerate(['x', 'y'])}
 
-        margins = func() if show_plot or make_histo else 0
+        margins = func() if show_plot or make_histo else None
         return self.do_pickle(pickle_path, func, margins)
 
     def __show_frame(self, bin_low, bin_high):
@@ -442,7 +442,7 @@ class SignalPixAnalysis(Analysis):
             x = [h.GetBinCenter(max_bin + i) for i in [-7, 1]] if not pulser else [h.GetXaxis().GetXmin() + 1, h.GetXaxis().GetXmax() - 1]
             return h.Fit('gaus', 'qs{0}'.format('' if draw else '0'), '', x[0], x[1])
 
-        mean = func() if draw else 0
+        mean = func() if draw else None
         return self.do_pickle(pickle_path, func, mean)
 
     def calc_peak_value_fwhm(self):
@@ -605,7 +605,7 @@ class SignalPixAnalysis(Analysis):
             gROOT.SetBatch(0)
             return fit_par
 
-        fit = func() if show or save_graph else 0
+        fit = func() if show or save_graph else None
         return self.do_pickle(picklepath, func, fit)
 
     def draw_ph_distribution(self, binning=None, show=True, fit=True):
@@ -694,7 +694,7 @@ class SignalPixAnalysis(Analysis):
             gROOT.SetBatch(0)
             return fit_pars
 
-        fit_par = func() if draw else 0
+        fit_par = func() if draw else None
         return self.do_pickle(picklepath, func, fit_par)
 
     def compare_pedestals(self):
@@ -891,7 +891,7 @@ class SignalPixAnalysis(Analysis):
                 print result
             return result
 
-        res = func() if plot_histos else 0
+        res = func() if plot_histos else None
         return self.do_pickle(pickle_path, func, res)
 
     def compare_single_cuts(self):
@@ -1108,7 +1108,7 @@ class SignalPixAnalysis(Analysis):
             self.save_plots('PulserHisto', sub_dir=self.save_dir)
             return fit_func
 
-        fit = func() if show else 0
+        fit = func() if show else None
         return self.do_pickle(pickle_path, func, fit)
 
     def draw_pulser_peakvalues(self, draw=True):
