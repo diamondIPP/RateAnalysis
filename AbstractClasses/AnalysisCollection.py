@@ -153,8 +153,60 @@ class AnalysisCollection(Elementary):
 
     # ============================================
     # region SIGNAL/PEDESTAL
-    def draw_pulse_heights(self, binning=20000, flux=True, raw=False, all_corr=False, show=True):
-        mode = 'Flux' if flux else 'Run'
+    def draw_ph_with_currents(self):
+        ph = self.draw_pulse_heights(show=False, vs_time=True)
+        self.Currents.set_graphs()
+        cur = self.Currents.CurrentGraph.Clone()
+        cur.SetLineColor(899)
+        scale = ph.GetListOfGraphs()[0].GetY()[0]
+        pul = self.draw_pulser_info(show=False, do_fit=False, vs_time=True, scale=scale)
+        pul.SetLineColor(859)
+        pul.SetMarkerColor(859)
+
+        entries = [1, 3, 1]
+        legends = [self.make_legend(.1, .35, nentries=entries[i], scale=1.7, w=.2) for i in xrange(3)]
+        for gr in ph.GetListOfGraphs():
+            if gr.GetName() != 'flux':
+                legends[1].AddEntry(gr, gr.GetName(), 'p')
+        legends[1].AddEntry(0, 'flux in kHz/cm^{2}', 'p')
+        legends[1].AddEntry('flux', 'duration', 'l')
+        legends[0].AddEntry(pul, 'pulser', 'p')
+        legends[2].AddEntry(cur, 'current', 'l')
+
+        c = TCanvas('c', 'c', 1500, 1000)
+        margins = [[.075, .05, 0, .1], [.075, .05, 0, 0], [.075, .05, .15, 0]]
+        pads = [self.Currents.make_tpad('p{0}'.format(i + 1), 'p{0}'.format(i + 1), pos=[0, i / 3., 1, (i + 1) / 3.], gridx=True, margins=margins[2 - i]) for i in xrange(3)]
+        for pad in pads:
+            pad.Draw()
+        # c.Divide(1, 3)
+        draw_opts = ['pl', '', 'l']
+        y_tits = ['Pulse Height [au] ', 'Pulse Height [au] ', 'Current [nA] ']
+
+        for i, gr in enumerate([pul, ph, cur], 1):
+            pad = pads[3 - i]
+            pad.cd()
+            pad.SetMargin(*margins[i - 1])
+            ymin, ymax = gr.GetYaxis().GetXmin(), gr.GetYaxis().GetXmax()
+            if i == 1:
+                ymin, ymax = scale_margins(pul, ph)
+            if i == 2:
+                ymin, ymax = scale_margins(ph, pul)
+            self.Currents.draw_frame(pad, ymin, ymax, y_tits[i - 1])
+            if i == 2:
+                self.Currents.draw_time_axis(ymin, opt='t')
+            if i == 3:
+                self.Currents.draw_time_axis(ymax, opt='t')
+            gr.Draw(draw_opts[i - 1])
+            legends[i - 1].Draw()
+
+        run_info = self.collection.values()[0].run.get_runinfo(self.channel)
+        run_info[0].SetX2NDC(.25)
+        run_info[0].SetY2NDC(.145)
+        run_info[0].Draw()
+        run_info[1].Draw()
+        c.Update()
+        self.RootObjects.append([ph, cur, pul, c, legends, pads])
+
         prefix = 'Pulse Height vs {mod} - '.format(mod=mode)
         gr1 = self.make_tgrapherrors('eventwise', prefix + 'eventwise correction', self.get_color())
         gr2 = self.make_tgrapherrors('binwise', prefix + 'binwise correction', self.get_color())
