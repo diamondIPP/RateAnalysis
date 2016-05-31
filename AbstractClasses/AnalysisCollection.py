@@ -420,13 +420,16 @@ class AnalysisCollection(Elementary):
 
     # ============================================
     # region PULSER
-    def draw_pulser_info(self, flux=True, show=True, mean=True, corr=True, beam_on=True):
+    def draw_pulser_info(self, flux=True, show=True, mean=True, corr=True, beam_on=True, vs_time=False, do_fit=True, scale=1):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        flux = False if vs_time else flux
         mode = 'Flux' if flux else 'Run'
+        mode = 'Time' if vs_time else mode
         title = '{mean} of Pulser vs {mod} ({ped}, {beam})'.format(mean='Mean' if mean else 'Sigma', mod=mode,
                                                                    ped='pedcorrected' if corr else 'uncorrected', beam='BeamOff' if not beam_on else 'BeamOn')
         gr = self.make_tgrapherrors('gr', title)
         i = 0
+        y0 = None
         for key, ana in self.collection.iteritems():
             x = ana.run.flux if flux else key
             fit = ana.calc_pulser_fit(show=False, corr=corr, beam_on=beam_on)
@@ -434,14 +437,27 @@ class AnalysisCollection(Elementary):
             cut = ana.Cut.generate_pulser_cut(beam_on)
             ped_fit = ana.show_pedestal_histo(cut=cut, draw=False)
             ped_err = ped_fit.ParError(par)
+            if vs_time:
+                xerr = ana.run.duration.seconds / 2.
+                x = int(ana.run.log_start.strftime('%s')) + xerr - self.StartTime
+            y = fit.Parameter(par)
+            y0 = y if y0 is None else y0
+            yerr = sqrt(pow(fit.ParError(par), 2) + pow(ped_err, 2))
+            if scale != 1:
+                y *= scale / y0
+                yerr *= scale / y0
             if ana.IsAligned:
-                gr.SetPoint(i, x, fit.Parameter(par))
-                gr.SetPointError(i, 0, sqrt(pow(fit.ParError(par), 2) + pow(ped_err, 2)))
+                gr.SetPoint(i, x, y)
+                gr.SetPointError(i, 0, yerr)
                 i += 1
+        if vs_time:
+            gr.GetXaxis().SetTimeDisplay(1)
+            gr.GetXaxis().SetTimeFormat('%H:%M%F2000-02-28 23:00:00')
+            gr.GetXaxis().SetLabelSize(.03)
         if not show:
             gROOT.SetBatch(1)
         c = TCanvas('c', 'Pulser Overview', 1000, 1000)
-        if corr:
+        if do_fit:
             gStyle.SetOptFit(1)
             gr.Fit('pol0', 'q')
         c.SetLeftMargin(.125)
