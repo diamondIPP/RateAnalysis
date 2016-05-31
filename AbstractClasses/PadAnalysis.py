@@ -1644,7 +1644,9 @@ class SignalAnalysis(Analysis):
     @staticmethod
     def scale_histo(histo):
         h = histo
+        h.GetXaxis().SetRangeUser(30, 500)
         maximum = h.GetBinContent(h.GetMaximumBin())
+        h.GetXaxis().UnZoom()
         if maximum:
             h.Scale(1. / maximum)
         return h
