@@ -62,6 +62,11 @@ class AnalysisCollection(Elementary):
         self.Pedestal = None
         self.PeakDistribution = None
 
+        # current information
+        self.StartTime = float(self.get_first_analysis().run.log_start.strftime('%s'))
+        self.channel = self.get_first_analysis().channel
+        self.Currents = Currents(self)
+
     def __del__(self):
         print 'deleting AnalysisCollection...'
         for nr, ana in self.collection.iteritems():
