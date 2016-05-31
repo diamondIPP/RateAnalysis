@@ -957,7 +957,7 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region CUTS
-    def show_cut_contributions(self, show=True):
+    def show_cut_contributions(self, show=True, flat=False):
         if not show:
             gROOT.SetBatch(1)
         main_cut = [self.Cut.CutStrings['event_range'], self.Cut.CutStrings['beam_interruptions']]
@@ -976,7 +976,46 @@ class SignalAnalysis(Analysis):
                 print name.rjust(18), '{0:5d} {1:04.1f}%'.format(events, output[name])
                 contributions[cut.GetName()] = events
                 cutted_events += events
+
         # sort contributions by size
+        names = ['event', 'track_', 'pul', 'bucket', 'beam', 'sat', 'tracks', 'tim', 'chi2Y', 'ped', 'chi2X']
+        sorted_contr = OrderedDict()
+        for name in names:
+            for key, value in contributions.iteritems():
+                if key.startswith(name):
+                    if key.startswith('beam'):
+                        key = 'beam_stops'
+                    sorted_contr[key] = value
+                    break
+
+        # contributions = self.sort_contributions(contributions)
+        contributions = sorted_contr
+        values = contributions.values() + [self.run.n_entries - cutted_events]
+        i = 0
+        self.reset_colors()
+        colors = [self.get_color() for i in xrange(1, len(values) + 1)]
+        pie = TPie('pie', 'Cut Contributions', len(values), array(values, 'f'), array(colors, 'i'))
+        for i, label in enumerate(contributions.iterkeys()):
+            pie.SetEntryRadiusOffset(i, .05)
+            pie.SetEntryLabel(i, label.title())
+        pie.SetEntryRadiusOffset(i + 1, .05)
+        pie.SetEntryLabel(i + 1, 'Good Events')
+        pie.SetHeight(.04)
+        pie.SetRadius(.2)
+        pie.SetTextSize(.025)
+        pie.SetAngle3D(70)
+        pie.SetLabelFormat('%txt (%perc)')
+        # pie.SetLabelFormat('#splitline{%txt}{%perc}')
+        pie.SetAngularOffset(280)
+        c = TCanvas('c', 'Cut Pie', 1000, 1000)
+        pie.Draw('{0}rsc'.format('3d' if not flat else ''))
+        self.save_plots('CutContributions', sub_dir=self.save_dir)
+        self.histos.append([pie, c])
+        gROOT.SetBatch(0)
+        return contributions
+
+    @staticmethod
+    def sort_contributions(contributions):
         sorted_contr = OrderedDict()
         while contributions:
             for key, value in contributions.iteritems():
@@ -989,30 +1028,7 @@ class SignalAnalysis(Analysis):
                     sorted_contr[key] = value
                     contributions.pop(key)
                     break
-        contributions = sorted_contr
-        values = contributions.values() + [self.run.n_entries - cutted_events]
-        i = 0
-        self.reset_colors()
-        colors = [self.get_color() for i in xrange(1, len(values) + 1)]
-        pie = TPie('pie', 'Cut Contributions', len(values), array(values, 'f'), array(colors, 'i'))
-        for i, label in enumerate(contributions.iterkeys()):
-            # if pie.GetEntryVal(i) < 2000:
-            pie.SetEntryRadiusOffset(i, .05)
-            pie.SetEntryLabel(i, label.title())
-        pie.SetEntryRadiusOffset(i + 1, .05)
-        pie.SetEntryLabel(i + 1, 'Good Events')
-        pie.SetHeight(.04)
-        pie.SetRadius(.2)
-        pie.SetTextSize(.025)
-        pie.SetAngle3D(70)
-        pie.SetLabelFormat('#splitline{%txt}{%perc}')
-        pie.SetAngularOffset(240)
-        c = TCanvas('c', 'Cut Pie', 1000, 1000)
-        pie.Draw('3drsc')
-        self.save_plots('CutContributions', sub_dir=self.save_dir)
-        self.histos.append([pie, c])
-        gROOT.SetBatch(0)
-        return contributions
+        return sorted_contr
 
     def show_bucket_histos(self):
         h = TH1F('h', 'Bucket Cut Histograms', 250, -50, 300)
