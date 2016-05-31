@@ -322,13 +322,13 @@ class Elementary(object):
         a.SetTitleColor(color)
         return a
 
-    def make_legend(self, x1=.6, y2=.9, nentries=2, w=.3):
+    def make_legend(self, x1=.6, y2=.9, nentries=2, w=.3, scale=1):
         x2 = x1 + w
-        y1 = y2 - nentries * .05
+        y1 = y2 - nentries * .05 * scale
         l = TLegend(x1, y1, x2, y2)
         l.SetName('l')
         l.SetTextFont(42)
-        l.SetTextSize(0.03)
+        l.SetTextSize(0.03 * scale)
         if self.MainConfigParser.get('SAVE', 'legend_style') == 'felix':
             l.SetLineWidth(2)
             l.SetBorderSize(0)
