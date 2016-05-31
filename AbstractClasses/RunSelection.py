@@ -368,7 +368,8 @@ class RunSelection(Elementary):
                     run_string = '[{min}, ... , {max}]'.format(min=str(runs[0]).zfill(3), max=str(runs[-1]).zfill(3))
                     not_string = str(missing_runs) if missing_runs else ''
                     voltages = self.get_hv_values(sel=True)
-                    print '  {nr}: {runs}, {miss} {dias} {hv}'.format(nr=nr, runs=run_string, miss=not_string[:15].ljust(15), dias=str(dias).ljust(20), hv=voltages)
+                    nr += ':'
+                    print '  {nr}   {runs}, {miss} {dias} {hv}'.format(nr=nr.ljust(5), runs=run_string, miss=not_string[:15].ljust(15), dias=str(dias).ljust(20), hv=voltages)
                 else:
                     print '{delim}\n RUN PLAN {nr} ({type})\n{delim}'.format(delim=50 * '-', nr=nr, type=run_type)
                     self.show_selected_runs(show_allcomments=show_allcomments)
@@ -379,7 +380,7 @@ class RunSelection(Elementary):
         self.selection = old_selection
 
     def select_runs_from_runplan(self, plan_nr, type_='rate_scan'):
-        plan = str(plan_nr).zfill(2) if type(plan_nr) is int else plan_nr.zfill(2)
+        plan = self.make_runplan_string(plan_nr)
         self.selected_runplan = plan
         runs = self.run_plan[type_][plan]
         self.select_runs(runs)
@@ -390,7 +391,7 @@ class RunSelection(Elementary):
         :param plan_nr:
         :param run_type:
         """
-        assert type(plan_nr) is str, 'The plan number has to be a string!'
+        plan_nr = self.make_runplan_string(plan_nr)
         types = ['rate_scan', 'voltage_scan', 'test']
         assert run_type in types, 'This run type does not exist! Types are: {types}'.format(types=types)
         assert self.selection, 'The run selection is completely empty!'
@@ -411,6 +412,11 @@ class RunSelection(Elementary):
         self.save_runplan()
 
     # endregion
+
+    @staticmethod
+    def make_runplan_string(nr):
+        nr = str(nr)
+        return nr.zfill(2) if len(nr) <= 2 else nr.zfill(4)
 
     def get_diamond_names(self, sel=False):
         names = self.get_runinfo_values('diamond 1', sel)
