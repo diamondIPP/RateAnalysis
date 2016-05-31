@@ -434,7 +434,7 @@ class Run(Elementary):
         print '\tDiamond1:   \t', self.diamond_names[0], ' (', self.bias[0], ') | is selected: ', self.analyse_ch[0]
         print '\tDiamond2:   \t', self.diamond_names[3], ' (', self.bias[3], ') | is selected: ', self.analyse_ch[3]
 
-    def draw_run_info(self, channel=None, canvas=None, diamondinfo=True, cut=None, comment=None, set_width=None, set_height=None, runs=None):
+    def draw_run_info(self, channel=None, canvas=None, diamondinfo=True, cut=None, comment=None, set_width=None, set_height=None, runs=None, show=True):
         """
         Draws the run infos inside the canvas. If no canvas is given, it will be drawn into the active Pad. 
         If the channel number is passed, channel number and diamond name will be drawn.
@@ -446,6 +446,7 @@ class Run(Elementary):
         :param runs:
         :param set_height:
         :param set_width:
+        :param show:
         :return:
         """
         assert channel is None or channel in self.channels, 'wrong channel id "{ch}"'.format(ch=channel)
@@ -477,8 +478,9 @@ class Run(Elementary):
         tc = datetime.strptime(self.TESTCAMPAIGN, '%Y%m')
         dur = '{0:02d}:{1:02.0f}'.format(int(self.totalMinutes), (self.totalMinutes - int(self.totalMinutes)) * 60)
 
-        if not canvas.GetBottomMargin() > .105:
-            canvas.SetBottomMargin(0.15)
+        if show:
+            if not canvas.GetBottomMargin() > .105:
+                canvas.SetBottomMargin(0.15)
         # user height and width:
         userheight = height if set_height is None else set_height - 0.04
         userwidth = width if set_width is None else set_width
@@ -509,17 +511,26 @@ class Run(Elementary):
         else:
             git_text = self.RunInfoLegeds[1]
             legend = self.RunInfoLegeds[0]
-        pads = [i for i in canvas.GetListOfPrimitives() if i.IsA().GetName() == 'TPad']
-        if not pads:
-            git_text.Draw()
-            legend.Draw()
-        else:
-            for pad in pads:
-                pad.cd()
+        if show:
+            pads = [i for i in canvas.GetListOfPrimitives() if i.IsA().GetName() == 'TPad']
+            if not pads:
                 git_text.Draw()
                 legend.Draw()
-        pad.Modified()
-        canvas.Update()
+            else:
+                for pad in pads:
+                    pad.cd()
+                    git_text.Draw()
+                    legend.Draw()
+            pad.Modified()
+            canvas.Update()
+        else:
+            return legend, git_text
+
+    def get_runinfo(self, ch, height=None, width=None):
+        runs = []
+        if hasattr(self, 'collection'):
+            runs = [self.collection.keys()[0], self.collection.keys()[-1], self.collection.values()[0].run.get_rate_string(), self.collection.values()[-1].run.get_rate_string()]
+        return self.draw_run_info(show=False, runs=runs, channel=ch, set_height=height, set_width=width)
 
     # endregion
 
@@ -531,4 +542,4 @@ class Run(Elementary):
 
 
 if __name__ == "__main__":
-    z = Run(398)
+    z = Run()
