@@ -207,11 +207,20 @@ class AnalysisCollection(Elementary):
         c.Update()
         self.RootObjects.append([ph, cur, pul, c, legends, pads])
 
+    def draw_pulse_heights(self, binning=20000, flux=True, raw=False, all_corr=False, show=True, vs_time=False):
+        flux = False if vs_time else flux
+        mode = 'Run'
+        if flux:
+            mode = 'Flux'
+        if vs_time:
+            mode = 'Time'
         prefix = 'Pulse Height vs {mod} - '.format(mod=mode)
         gr1 = self.make_tgrapherrors('eventwise', prefix + 'eventwise correction', self.get_color())
         gr2 = self.make_tgrapherrors('binwise', prefix + 'binwise correction', self.get_color())
         gr3 = self.make_tgrapherrors('mean ped', prefix + 'mean correction', self.get_color())
         gr4 = self.make_tgrapherrors('raw', prefix + 'raw', self.get_color())
+        gr5 = self.make_tgrapherrors('flux', 'bla', 1, width=3, marker_size=0)
+        gStyle.SetEndErrorSize(4)
         gr_first = self.make_tgrapherrors('first run', prefix + 'first', marker=22, color=2)
         gr_first.SetMarkerSize(2)
         gr_last = self.make_tgrapherrors('last run', prefix + 'last', marker=23, color=2)
@@ -224,10 +233,17 @@ class AnalysisCollection(Elementary):
             fit2 = ana.draw_pulse_height(binning, bin_corr=True, show=False)
             fit3 = ana.draw_pulse_height(binning, off_corr=True, show=False, evnt_corr=False)
             fit4 = ana.draw_pulse_height(binning, evnt_corr=False, show=False)
-            print '\033[1A', '{0:5.1f}'.format(fit1.Parameter(0))
+            # print '\033[1A', '{0:5.1f}'.format(fit1.Parameter(0))
             x = key
             if flux:
                 x = ana.run.RunInfo['measured flux'] if not_found_for else ana.run.flux
+            if vs_time:
+                x_err = ana.run.duration.seconds / 2.
+                x = int(ana.run.log_start.strftime('%s')) + x_err - self.StartTime
+                gr5.SetPoint(i, x, fit1.Parameter(0))
+                gr5.SetPointError(i, x_err, 0)
+                l1 = self.make_tlatex(gr5.GetX()[i] - x_err, gr5.GetY()[i] + .03, '{0:5.0f}'.format(ana.run.flux), color=1, align=10, size=.04)
+                gr1.GetListOfFunctions().Add(l1)
             if fit1.Parameter(0) > 10:
                 gr1.SetPoint(i, x, fit1.Parameter(0))
                 gr2.SetPoint(i, x, fit2.Parameter(0))
@@ -246,20 +262,19 @@ class AnalysisCollection(Elementary):
             j += 1
         gROOT.SetBatch(1)
         graphs = [gr1, gr_first, gr_last]
-        legend = TLegend(0.7, 0.18, 0.88, .3)
-        legend.SetName('l1')
-        legend.SetFillColor(0)
-        legend.SetFillStyle(0)
         if all_corr:
             graphs += [gr2, gr3]
         if raw:
             graphs.append(gr4)
+        legend = self.make_legend(.65, .35, nentries=len(graphs))
+        gr1.SetName('data') if len(graphs) == 3 else self.do_nothing()
 
         mg = TMultiGraph('mg_ph', prefix + self.diamond_name,)
         for gr in graphs:
             legend.AddEntry(gr, gr.GetName(), 'p')
             mg.Add(gr, 'lp')
         mg.Draw('a')
+
         gROOT.SetBatch(0)
         ymin = mg.GetYaxis().GetXmin()
         ymax = mg.GetYaxis().GetXmax()
@@ -267,9 +282,16 @@ class AnalysisCollection(Elementary):
         # small range
         self.format_histo(mg, color=None, x_tit=mode + ' [kHz/cm^{2}]' if flux else '', y_tit='Pulse Height [au]', y_off=1.75, x_off=1.3)
         mg.GetYaxis().SetRangeUser(ymin - (ymax - ymin) * .3, ymax)
+        if vs_time:
+            mg.Add(gr5, '[]')
+            mg.Add(gr5, 'p')
+            mg.GetXaxis().SetTimeDisplay(1)
+            mg.GetXaxis().SetTimeFormat('%H:%M%F2000-02-28 23:00:00')
+            mg.GetXaxis().SetLabelSize(.03)
         x_vals = sorted([gr1.GetX()[i] for i in xrange(gr1.GetN())])
         mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 1.2) if flux else self.do_nothing()
-        self.RootObjects.append(self.save_histo(mg, 'PulseHeight{mod}'.format(mod=mode.title()), False, self.save_dir, lm=.14, draw_opt='A', l=legend, logx=True if flux else 0))
+        self.RootObjects.append(self.save_histo(mg, 'PulseHeight{mod}'.format(mod=mode.title()), False, self.save_dir, lm=.14, draw_opt='A', l=legend, logx=True if flux else 0,
+                                                grid=1 if vs_time else 0))
 
         # no zero suppression
         mg1 = mg.Clone()
@@ -292,6 +314,7 @@ class AnalysisCollection(Elementary):
         self.reset_colors()
 
         self.PulseHeight = gr1
+        return mg
 
     def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False, show=True, cut=None, beam_on=True):
         legend = TLegend(0.7, 0.3, 0.98, .7)
