@@ -7,14 +7,14 @@ from time import sleep
 
 from ROOT import TCanvas, TPad, TText, TGraph, kCanDelete
 from ConfigParser import ConfigParser
-from numpy import array
+from numpy import array, mean
 
 from Elementary import Elementary
 
 # ====================================
 # CONSTANTS
 # ====================================
-axis_title_size = 0.05
+axis_title_size = 0.04
 label_size = .03
 col_vol = 807
 col_cur = 418
@@ -28,18 +28,17 @@ class Currents(Elementary):
 
     def __init__(self, analysis, averaging=False, points=10):
         self.analysis = analysis
+        self.IsCollection = hasattr(analysis, 'runs')
         Elementary.__init__(self)
 
         self.DoAveraging = averaging
         self.Points = points
 
         # analysis/run info
-        self.RunInfo = analysis.run.RunInfo
-        self.RunNumber = analysis.run_number
-        self.StartEvent = analysis.StartEvent
-        self.EndEvent = analysis.EndEvent
-        self.StartTime = datetime.strptime(self.RunInfo['start time'], '%Y-%m-%dT%H:%M:%SZ') + timedelta(hours=1)
-        self.StopTime = datetime.strptime(self.RunInfo['stop time'], '%Y-%m-%dT%H:%M:%SZ') + timedelta(hours=1)
+        self.RunInfo = analysis.run.RunInfo if not self.IsCollection else analysis.get_first_analysis().RunInfo
+        self.RunNumber = analysis.run_number if not self.IsCollection else analysis.run_plan
+        self.StartTime = self.load_start_time()
+        self.StopTime = self.load_stop_time()
         self.Channel = analysis.channel
         self.DiamondName = analysis.diamond_name
 
@@ -56,6 +55,7 @@ class Currents(Elementary):
         self.Name = '{0} {1}'.format(self.Brand, self.Model)
 
         self.DataPath = self.find_data_path()
+        self.OldDataPath = self.find_data_path(old=True)
         self.LogNames = self.get_logs_from_start()
 
         # data
@@ -74,11 +74,13 @@ class Currents(Elementary):
         self.CurrentPad = None
         self.TitlePad = None
         self.Histos = {}
+        self.Stuff = []
 
     # ==========================================================================
     # region INIT
     def load_run_config(self):
-        return self.load_run_configs(self.analysis.run_number)
+        nr = self.analysis.run_number if not self.IsCollection else self.analysis.get_first_analysis().run_number
+        return self.load_run_configs(nr)
 
     def load_parser(self):
         parser = ConfigParser()
@@ -96,15 +98,22 @@ class Currents(Elementary):
         full_str = self.RunInfo['dia{dia}supply'.format(dia=1 if not self.Channel else 2)]
         return full_str.split('-')[1] if len(full_str) > 1 else '0'
 
-    def find_data_path(self):
+    def find_data_path(self, old=False):
         hv_datapath = self.run_config_parser.get('BASIC', 'hvdatapath')
-        return '{data}{dev}_CH{ch}/'.format(data=hv_datapath, dev=self.ConfigParser.get('HV' + self.Number, 'name'), ch=self.Channel)
+        string = '{data}{dev}_CH{ch}/' if not old else '{data}{dev}/'
+        return string.format(data=hv_datapath, dev=self.ConfigParser.get('HV' + self.Number, 'name'), ch=self.Channel)
+
+    def load_start_time(self):
+        return self.analysis.get_first_analysis().run.log_start + timedelta(hours=1) if self.IsCollection else self.analysis.run.log_start + timedelta(hours=1)
+
+    def load_stop_time(self):
+        return self.analysis.get_last_analysis().run.log_stop + timedelta(hours=1) if self.IsCollection else self.analysis.run.log_stop + timedelta(hours=1)
     # endregion
 
     # ==========================================================================
     # region ACQUIRE DATA
     def get_logs_from_start(self):
-        log_names = sorted([name for name in glob(self.DataPath + '*')])
+        log_names = sorted([name for name in glob(self.DataPath + '*')] + [name for name in glob(self.OldDataPath + '*')])
         start_log = None
         for i, name in enumerate(log_names):
             log_date = self.get_log_date(name)
@@ -119,8 +128,21 @@ class Currents(Elementary):
         log_date = ''.join(log_date[3:])
         return datetime.strptime(log_date, '%Y%m%d%H%M%S.log')
 
+    def set_start(self, zero=False):
+        self.Currents.append(self.Currents[-1] if not zero else 0)
+        self.Voltages.append(self.Voltages[-1] if not zero else 0)
+        self.Time.append((self.StartTime - datetime(self.StartTime.year, 1, 1)).total_seconds())
+
+    def set_stop(self, zero=False):
+        self.Currents.append(self.Currents[-1] if not zero else 0)
+        self.Voltages.append(self.Voltages[-1] if not zero else 0)
+        self.Time.append((self.StopTime - datetime(self.StopTime.year, 1, 1)).total_seconds())
+
     def find_data(self):
+        if self.Currents:
+            return
         stop = False
+        index = None
         for i, name in enumerate(self.LogNames):
             self.MeanCurrent = 0
             self.MeanVoltage = 0
@@ -130,6 +152,8 @@ class Currents(Elementary):
             if not i:
                 self.find_start(data, log_date)
             index = 0
+            if index == 1:
+                self.set_start()
             for line in data:
                 info = line.split()
                 if self.isfloat(info[1]) and len(info) > 2:
@@ -143,6 +167,11 @@ class Currents(Elementary):
             data.close()
             if stop:
                 break
+        if index > 1:
+            self.set_stop()
+        if not self.Currents:
+            self.set_start(zero=True)
+            self.set_stop(zero=True)
 
     def save_data(self, now, info, index, shifting=False):
         total_seconds = (now - datetime(now.year, 1, 1)).total_seconds()
@@ -153,11 +182,12 @@ class Currents(Elementary):
                     self.MeanCurrent += float(info[2]) * 1e9
                     self.MeanVoltage += float(info[1])
                     if index % self.Points == 0:
-                        self.Currents.append(self.MeanCurrent / self.Points)
-                        self.Time.append(total_seconds)
-                        self.Voltages.append(self.MeanVoltage / self.Points)
-                        self.MeanCurrent = 0
-                        self.MeanVoltage = 0
+                        if mean(self.Currents) < 5 * self.MeanCurrent / self.Points:
+                            self.Currents.append(self.MeanCurrent / self.Points)
+                            self.Time.append(total_seconds)
+                            self.Voltages.append(self.MeanVoltage / self.Points)
+                            self.MeanCurrent = 0
+                            self.MeanVoltage = 0
                 # else:
                 #     if index <= self.Points:
                 #         self.mean_curr += float(info[2]) * 1e9
@@ -170,6 +200,8 @@ class Currents(Elementary):
                 #     dicts[0][key].append(convert_time(now))
                 #     dicts[2][key].append(float(info[1]))
             else:
+                if len(self.Currents) > 100 and abs(self.Currents[-1] * 100) < abs(float(info[2]) * 1e9):
+                    return
                 self.Currents.append(float(info[2]) * 1e9)
                 self.Time.append(total_seconds)
                 self.Voltages.append(float(info[1]))
@@ -208,6 +240,13 @@ class Currents(Elementary):
 
     # ==========================================================================
     # region PLOTTING
+    def set_graphs(self):
+        self.find_data()
+        self.convert_to_relative_time()
+        sleep(.1)
+        self.make_graphs()
+        self.set_margins()
+
     def draw_graphs(self, relative_time=False):
         if not self.Currents:
             self.find_data()
@@ -283,9 +322,10 @@ class Currents(Elementary):
         self.CurrentGraph = g1
         self.VoltageGraph = g2
 
-    def make_tpad(self, name, tit='', fill_col=0, gridx=False, gridy=False, margins=None, transparent=False):
+    def make_tpad(self, name, tit='', pos=None, fill_col=0, gridx=False, gridy=False, margins=None, transparent=False):
         margins = [.1, .1, .1, .1] if margins is None else margins
-        p = TPad(name, tit, 0, 0, 1, 1)
+        pos = [0, 0, 1, 1] if pos is None else pos
+        p = TPad(name, tit, *pos)
         p.SetFillColor(fill_col)
         p.SetMargin(*margins)
         p.ResetBit(kCanDelete)
@@ -304,6 +344,26 @@ class Currents(Elementary):
         a1.SetLabelColor(col_vol)
         a1.SetLabelOffset(0.01)
         return a1
+
+    def draw_current_axis(self):
+        y = self.Margins['y']
+        yadd = (y[1] - y[0]) * .1
+        diff = (y[1] - y[0])
+        a1 = self.make_tgaxis(self.Margins['x'][1], y[0] - yadd, y[1] + yadd + diff, 'Current [nA]', offset=.7, tit_size=.04, line=False, opt='+L', width=2)
+        a1.SetLabelSize(label_size)
+        a1.SetLabelOffset(0.01)
+        a1.Draw()
+        self.Stuff.append(a1)
+
+    def draw_pulser_axis(self, ymin, ymax):
+        x = self.Margins['x'][0] - (self.Margins['x'][1] - self.Margins['x'][0]) * .07
+        a1 = self.make_tgaxis(x, ymin, ymax, 'Pulse Height [au]', offset=.8, tit_size=.04, line=False, opt='-R', width=2)
+        a1.SetLabelColor(859)
+        a1.SetLineColor(859)
+        a1.SetLabelSize(label_size)
+        a1.SetLabelOffset(0.01)
+        a1.Draw()
+        self.Stuff.append(a1)
 
     def draw_current_frame(self):
         m = self.Margins
@@ -328,6 +388,28 @@ class Currents(Elementary):
         h2.GetYaxis().SetLabelSize(label_size)
         h2.GetYaxis().SetTitleSize(axis_title_size)
         h2.GetYaxis().SetTitleOffset(.6)
+        self.Stuff.append(h2)
+
+    def draw_ph_frame(self, pad, margins):
+        pad.cd()
+        m = self.Margins
+        h2 = pad.DrawFrame(m['x'][0], margins[0], m['x'][1], margins[1])
+        # X-axis
+        h2.GetXaxis().SetTitle("time [hh:mm]")
+        h2.GetXaxis().SetTimeFormat("%H:%M")
+        h2.GetXaxis().SetTimeOffset(-3600)
+        h2.GetXaxis().SetTimeDisplay(1)
+        h2.GetXaxis().SetLabelSize(label_size)
+        h2.GetXaxis().SetTitleSize(axis_title_size)
+        h2.GetXaxis().SetTitleOffset(1.05)
+        h2.GetXaxis().SetTitleSize(0.04)
+        # Y-axis
+        h2.GetYaxis().SetTitleOffset(0.6)
+        h2.GetYaxis().SetTitleSize(0.04)
+        # h2.GetYaxis().SetTitle("Pulse Height [au]")
+        h2.GetYaxis().SetLabelSize(label_size)
+        h2.GetYaxis().SetTitleSize(0.04)
+        h2.GetYaxis().SetTitleOffset(0.75)
 
     def draw_voltage_frame(self):
         m = self.Margins
@@ -339,6 +421,60 @@ class Currents(Elementary):
         h1.GetYaxis().SetLabelOffset(99)
         h1.GetYaxis().SetAxisColor(0)
         h1.SetLineColor(0)
+
+    def draw_curr_frame(self, pad):
+        pad.cd()
+        m = self.Margins
+        y = m['y']
+        yadd = (y[1] - y[0]) * .1
+        diff = (m['y'][1] - m['y'][0])
+        h1 = pad.DrawFrame(m['x'][0], m['y'][0] - yadd, m['x'][1], m['y'][1] + diff + yadd)
+        h1.SetTitleSize(axis_title_size)
+        h1.GetXaxis().SetTickLength(0)
+        h1.GetYaxis().SetTickLength(0)
+        h1.GetXaxis().SetLabelOffset(99)
+        h1.GetYaxis().SetLabelOffset(99)
+        h1.SetLineColor(0)
+        
+    def draw_pulser_frame(self, pad, ymin, ymax):
+        pad.cd()
+        m = self.Margins
+        h1 = pad.DrawFrame(m['x'][0], ymin, m['x'][1], ymax)
+        self.format_frame(h1)
+
+    @staticmethod
+    def format_frame(frame):
+        fr = frame
+        fr.GetYaxis().SetTitleSize(.06)
+        fr.GetYaxis().SetTitleOffset(.6)
+        fr.GetYaxis().SetLabelSize(.06)
+        fr.SetTitleSize(axis_title_size)
+        fr.GetXaxis().SetTickLength(0)
+        # fr.GetYaxis().SetTickLength(0)
+        fr.GetXaxis().SetLabelOffset(99)
+        # fr.GetYaxis().SetLabelOffset(99)
+        fr.SetLineColor(0)
+        fr.GetXaxis().SetTimeDisplay(1)
+
+    def draw_frame(self, pad, ymin, ymax, tit):
+        pad.cd()
+        x = self.Margins['x']
+        fr = pad.DrawFrame(x[0], ymin, x[1], ymax)
+        pad.Modified()
+        fr.GetYaxis().SetTitle(tit)
+        self.format_frame(fr)
+
+    def draw_time_axis(self, y, opt=''):
+        x = self.Margins['x']
+        a1 = self.make_tgxaxis(x[0], x[1], y, 'Time [hh:mm]    ', offset=1.2, tit_size=.05, line=False, opt=opt)
+        a1.SetLabelSize(.05)
+        a1.SetTickSize(.3)
+        a1.SetTitle("Time [hh:mm]")
+        a1.SetTimeFormat("%H:%M")
+        a1.SetTimeOffset(-3600)
+        a1.SetLabelOffset(0.01)
+        a1.Draw()
+        self.Stuff.append(a1)
         
     # endregion
 
