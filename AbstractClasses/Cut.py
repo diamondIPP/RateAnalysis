@@ -116,11 +116,6 @@ class Cut(Elementary):
         dic['beam_interruptions'] = TCut('beam_interruptions', '')
         dic['ped_sigma'] = TCut('ped_sigma', '')
         dic['median'] = TCut('median', '')
-        # tracks
-        dic['tracks'] = TCut('tracks', '')
-        dic['chi2X'] = TCut('chi2X', '')
-        dic['chi2Y'] = TCut('chi2Y', '')
-        dic['track_angle'] = TCut('track_angle', '')
         # waveform
         dic['signal_peak_pos'] = TCut('signal_peak_pos', '')
         dic['signal_peak_time'] = TCut('signal_peak_time', '')
@@ -128,6 +123,11 @@ class Cut(Elementary):
         dic['timing'] = TCut('timing', '')
         dic['old_bucket'] = TCut('old_bucket', '')
         dic['bucket'] = TCut('bucket', '')
+        # tracks
+        dic['tracks'] = TCut('tracks', '')
+        dic['chi2X'] = TCut('chi2X', '')
+        dic['chi2Y'] = TCut('chi2Y', '')
+        dic['track_angle'] = TCut('track_angle', '')
         dic['all_cuts'] = TCut('all_cuts', '')
         return dic
 
