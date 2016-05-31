@@ -960,6 +960,9 @@ class AnalysisCollection(Elementary):
     def get_first_analysis(self):
         return self.collection.values()[0]
 
+    def get_last_analysis(self):
+        return self.collection.values()[-1]
+
     def get_run_numbers(self):
         """ :return: sorted list of run numbers in AnalysisCollection instance """
         return sorted(self.collection.keys())
@@ -982,7 +985,7 @@ class AnalysisCollection(Elementary):
 if __name__ == "__main__":
     st = time()
     main_parser = ArgumentParser()
-    main_parser.add_argument('runplan', nargs='?', default=3, type=int)
+    main_parser.add_argument('runplan', nargs='?', default=3)
     main_parser.add_argument('dia', nargs='?', default=1, type=int)
     main_parser.add_argument('-tc', '--testcampaign', nargs='?', default='201510')
     args = main_parser.parse_args()
@@ -992,7 +995,7 @@ if __name__ == "__main__":
     a = Elementary(tc)
     sel = RunSelection(testcampaign=tc)
     sel.select_runs_from_runplan(run_plan)
-    message = 'STARTING PAD-ANALYSIS COLLECTION OF RUNPLAN {0:02d}'.format(run_plan)
+    message = 'STARTING PAD-ANALYSIS COLLECTION OF RUNPLAN {0}'.format(run_plan)
     print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(message)) * '=', msg=message)
     a.print_testcampaign()
 
