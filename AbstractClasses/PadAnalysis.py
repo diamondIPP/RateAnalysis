@@ -39,6 +39,7 @@ class SignalAnalysis(Analysis):
         self.time_binning = self.get_time_binning()
         self.n_bins = len(self.binning)
         self.Polarity = self.get_polarity()
+        self.PulserPolarity = self.get_pulser_polarity()
 
         # regions // ranges
         self.IntegralNames = self.get_integral_names()
@@ -101,6 +102,10 @@ class SignalAnalysis(Analysis):
         self.tree.GetEntry(0)
         return self.tree.polarities[self.channel]
 
+    def get_pulser_polarity(self):
+        self.tree.GetEntry(0)
+        return self.tree.pulser_polarities[self.channel]
+
     def __load_signal_region(self):
         sig_region = self.ana_config_parser.get('BASIC', 'signal_region')
         return sig_region if sig_region in self.run.signal_regions else self.run.signal_regions.keys()[0]
@@ -144,8 +149,9 @@ class SignalAnalysis(Analysis):
     def get_pedestal_name(self, region=None, peak_int=None):
         return self.get_signal_name(region=region, peak_integral=peak_int, sig_type='pedestal')
 
-    def get_pulser_name(self):
-        return self.get_signal_name(region='', sig_type='pulser')
+    def get_pulser_name(self, peak_int=None):
+        num = self.get_signal_number('', peak_int, 'pulser')
+        return self.SignalDefinition.format(pol=self.PulserPolarity, num=num)
     # endregion
 
     def set_channel(self, ch):
