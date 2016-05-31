@@ -1173,10 +1173,9 @@ class SignalAnalysis(Analysis):
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
 
-    def compare_normalised_cuts(self, scale=False, plot=False):
+    def compare_normalised_cuts(self, scale=False, show=True):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        if not plot:
-            gROOT.SetBatch(1)
+        gROOT.SetBatch(1)
         self.reset_colors()
         c1 = TCanvas('single', '', 1000, 1000)
         name = 'sCutComparison'
@@ -1188,15 +1187,18 @@ class SignalAnalysis(Analysis):
             title = 'Scaled Signal Distribution with Single Cuts'
         else:
             title = 'Normalised Signal Distribution with Single Cuts'
-        title += ';Pulse Height [au];entries a.u.'
+        title += ';Pulse Height [au];Normalised Entries'
 
         stack = THStack(name, title)
 
-        legend = TLegend(0.7, 0.3, 0.98, .7)
+        entries = 0
+        for value in self.Cut.CutStrings.itervalues():
+            if str(value):
+                entries += 1
+        legend = self.make_legend(x1=.57, nentries=entries - 2)
         histos = []
         for key, value in self.Cut.CutStrings.iteritems():
             if str(value) or key == 'raw':
-                print 'saving plot', key
                 save_name = 'signal_distribution_normalised_{cut}'.format(cut=key)
                 histo_name = 'signal {range}{peakint}'.format(range=self.SignalRegion, peakint=self.PeakIntegral)
                 histo_title = 'normalized' if not scale else 'scaled'
@@ -1220,23 +1222,14 @@ class SignalAnalysis(Analysis):
                 stack.Add(histo)
                 histos.append(histo)
                 legend.AddEntry(histo, key, 'l')
-        # save c2
-        c1.SetName('normalised')
-        c1.SetLeftMargin(0.15)
+        stack.Draw()
+        gROOT.SetBatch(0)
+
         for h in histos:
             h.SetStats(False)
-        stack.Draw('nostack')
-        legend.Draw()
-        if plot:
-            self.histos.append(histos)
-            self.histos.append(stack)
-            self.RootObjects.append(legend)
-            c1.Update()
-
-        if scale:
-            self.save_plots('scaled', canvas=c1, sub_dir=self.save_dir)
-        else:
-            self.save_plots('normalised', canvas=c1, sub_dir=self.save_dir)
+        name = '{0}Cuts'.format('Normalised' if not scale else 'Scaled')
+        self.format_histo(stack, y_off=1.4, x_off=1.1)
+        self.RootObjects.append(self.save_histo(stack, name, show, self.save_dir, lm=.15, l=legend, draw_opt='nostack'))
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
 
