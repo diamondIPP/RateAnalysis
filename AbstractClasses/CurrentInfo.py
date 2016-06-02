@@ -34,18 +34,19 @@ class Currents(Elementary):
         self.DoAveraging = averaging
         self.Points = points
 
-        # analysis/run info
-        self.RunInfo = analysis.run.RunInfo if not self.IsCollection else analysis.get_first_analysis().RunInfo
-        self.RunNumber = analysis.run_number if not self.IsCollection else analysis.run_plan
-        self.StartTime = self.load_start_time()
-        self.StopTime = self.load_stop_time()
-        self.Channel = analysis.channel
-        self.DiamondName = analysis.diamond_name
-
         # config
         self.ConfigParser = self.load_parser()
         if self.ConfigParser is None:
             return
+
+        # analysis/run info
+        self.RunInfo = analysis.run.RunInfo if not self.IsCollection else analysis.get_first_analysis().RunInfo
+        self.RunNumber = analysis.run_number if not self.IsCollection else analysis.run_plan
+        self.TimeOffset = self.run_config_parser.getint('BASIC', 'hvtimeoffset')
+        self.StartTime = self.load_start_time()
+        self.StopTime = self.load_stop_time()
+        self.Channel = analysis.channel
+        self.DiamondName = analysis.diamond_name
 
         # device info
         self.Number = self.get_device_nr()
@@ -104,10 +105,10 @@ class Currents(Elementary):
         return string.format(data=hv_datapath, dev=self.ConfigParser.get('HV' + self.Number, 'name'), ch=self.Channel)
 
     def load_start_time(self):
-        return self.analysis.get_first_analysis().run.log_start + timedelta(hours=1) if self.IsCollection else self.analysis.run.log_start + timedelta(hours=1)
+        return self.analysis.get_first_analysis().run.log_start + timedelta(hours=self.TimeOffset) if self.IsCollection else self.analysis.run.log_start + timedelta(hours=self.TimeOffset)
 
     def load_stop_time(self):
-        return self.analysis.get_last_analysis().run.log_stop + timedelta(hours=1) if self.IsCollection else self.analysis.run.log_stop + timedelta(hours=1)
+        return self.analysis.get_last_analysis().run.log_stop + timedelta(hours=self.TimeOffset) if self.IsCollection else self.analysis.run.log_stop + timedelta(hours=self.TimeOffset)
     # endregion
 
     # ==========================================================================
