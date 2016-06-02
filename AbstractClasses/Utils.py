@@ -21,3 +21,6 @@ def scale_margins(gr1, gr2):
     ymax = ymax1 if ymax1 > ymax2 else ymax2
     return ymin, ymax
 
+
+def do_nothing():
+    pass
