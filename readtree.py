@@ -40,10 +40,10 @@ def draw_waveforms(n=1000, start_event=0, cut_string=None, show=True, add_bucket
     cut = cut_string
     n_events = find_n_events(n, cut, start)
     print n_events
-    h = TH2F('wf', 'Waveform', 1024, 0, 511, 1000, -500, 500)
+    h = TH2F('wf', 'Waveform', 1024, 0, 1024, 1000, -500, 500)
     h.SetStats(0)
     gStyle.SetPalette(55)
-    t.Draw('wf{ch}:Iteration$/2>>wf'.format(ch=channel), cut, 'goff', n_events, start)
+    t.Draw('wf{ch}:Iteration$>>wf'.format(ch=channel), cut, 'goff', n_events, start)
     h = TGraph(t.GetSelectedRows(), t.GetV2(), t.GetV1()) if n == 1 else h
     if fixed_range is None and n > 1:
         h.GetYaxis().SetRangeUser(-500 + h.FindFirstBinAbove(0, 2) / 50 * 50, -450 + h.FindLastBinAbove(0, 2) / 50 * 50)
@@ -54,7 +54,7 @@ def draw_waveforms(n=1000, start_event=0, cut_string=None, show=True, add_bucket
         gROOT.SetBatch(0)
     c = TCanvas('c', 'WaveForm', 1000, 500)
     c.SetRightMargin(.045)
-    format_histo(h, x_tit='Time [ns]', y_tit='Signal [au]', markersize=.4, x_off=0.67, y_off=0.43)
+    format_histo(h, x_tit='DRS4 Bin Number', y_tit='Signal [au]', markersize=.4, x_off=1, y_off=0.43)
     draw_option = 'scat' if n == 1 else 'col'
     h.Draw(draw_option)
     gROOT.SetBatch(0)
