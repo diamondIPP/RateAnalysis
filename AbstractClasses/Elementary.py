@@ -14,6 +14,7 @@ import ROOT
 from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend
 # global test campaign
 tc = None
+default_tc = '201508'
 
 
 class Elementary(object):
@@ -78,7 +79,7 @@ class Elementary(object):
         if tc is not None:
             self.set_test_campaign(tc)
         else:
-            self.TESTCAMPAIGN = '201510'
+            self.TESTCAMPAIGN = default_tc
 
     def set_test_campaign(self, campaign='201508'):
         campaigns = self.find_test_campaigns()

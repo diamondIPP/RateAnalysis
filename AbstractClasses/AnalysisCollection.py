@@ -987,9 +987,9 @@ if __name__ == "__main__":
     main_parser = ArgumentParser()
     main_parser.add_argument('runplan', nargs='?', default=3)
     main_parser.add_argument('dia', nargs='?', default=1, type=int)
-    main_parser.add_argument('-tc', '--testcampaign', nargs='?', default='201510')
+    main_parser.add_argument('-tc', '--testcampaign', nargs='?', default='')
     args = main_parser.parse_args()
-    tc = args.testcampaign if args.testcampaign.startswith('201') else '201510'
+    tc = args.testcampaign if args.testcampaign.startswith('201') else None
     run_plan = args.runplan
     diamond = args.dia
     a = Elementary(tc)
