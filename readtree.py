@@ -91,6 +91,7 @@ def show_single_waveforms(n=1, cut='', start_event=0):
     count += cnt
 
 def find_n_events(n_events, cut, start):
+    # todo: use same method as below
     """
     Finds the amount of events from the startevent that are not subject to the cut.
     :param n_events: number of wanted events
@@ -98,23 +99,21 @@ def find_n_events(n_events, cut, start):
     :param start:
     :return: actual number of events s.t. n_events are drawn
     """
+    print 'Finding the correct number of events',
     if n_events < 2:
         return find_single_event(cut, start)
-    print 'Finding the correct number of events',
     n = mean([t.Draw('1', cut, 'goff', n_events, start + i * n_events) for i in xrange(4)])
     new_events = n_events
-    ratio = n_events / n if n else 100
-    # print '\nratio', ratio
-    print
-    i = 1
+    ratio = n_events / n if n else 5
+    i = 0
     while n != n_events:
         diff = n_events - n
-        print n, diff, new_events
-        if abs(diff) > 2 or n_events < 2:
+        # print n, diff, new_events
+        if abs(diff) > 2:
             new_events += int(diff * ratio)
         else:
-            new_events += int(diff * (ratio / i))
-        # print '\b.',
+            new_events += int(diff * (ratio / i + 1))
+        print '\b.',
         stdout.flush()
         n = t.Draw('1', cut, 'goff', new_events, start)
         i += 1
@@ -127,20 +126,6 @@ def find_single_event(cut, start):
     for nr in evt_nmbrs:
         if start <= nr:
             return int(nr - start + 1)
-
-    # print 'all cut events', all_cut_events
-    # ratio = int(t.GetEntries() / float(all_cut_events) / 4.)
-    # ratio = 1 if not ratio else ratio
-    # new_events = ratio
-    # n = t.Draw('1', cut, 'goff', new_events, start)
-    # print 'Start Values:', ratio, n
-    # while n != 1:
-    #     diff = 1 - n
-    #     print n, diff, new_events
-    #     new_events += int(diff * ratio)
-    #     n = t.Draw('1', cut, 'goff', new_events, start)
-    # return new_events
-
 
 def wf_exists(channel):
     wf_exist = True if t.FindBranch('wf{ch}'.format(ch=channel)) else False
