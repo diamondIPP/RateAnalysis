@@ -656,16 +656,18 @@ class SignalAnalysis(Analysis):
     # region SIGNAL/PEDESTAL
     def __generate_signal_name(self, signal, evnt_corr, off_corr, bin_corr, cut=None):
         sig_name = signal
-        print signal
-        pol = str(self.Polarity) if not signal == z.PulserName else str(self.PulserPolarity)
+        # pedestal polarity is always the same as signal polarity
+        ped_pol = '1'
+        # change polarity if pulser has opposite polarity to signal
+        if signal == self.PulserName:
+            ped_pol = '-1' if self.PulserPolarity != self.Polarity else ped_pol
         if bin_corr:
             return sig_name
         elif off_corr:
             ped_fit = self.show_pedestal_histo(cut=cut, draw=False)
-            sig_name += '-{pol}*{ped}'.format(ped=ped_fit.Parameter(1), pol=pol)
+            sig_name += '-{pol}*{ped}'.format(ped=ped_fit.Parameter(1), pol=ped_pol)
         elif evnt_corr:
-            sig_name += '-{pol}*{ped}'.format(ped=self.PedestalName, pol=pol)
-        print sig_name
+            sig_name += '-{pol}*{ped}'.format(ped=self.PedestalName, pol=ped_pol)
         return sig_name
 
     def make_signal_time_histos(self, ped=False, signal=None, evnt_corr=False, off_corr=False, show=True, bin_corr=False):
