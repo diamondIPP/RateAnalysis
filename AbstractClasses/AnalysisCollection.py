@@ -153,8 +153,8 @@ class AnalysisCollection(Elementary):
 
     # ============================================
     # region SIGNAL/PEDESTAL
-    def draw_ph_with_currents(self):
-        ph = self.draw_pulse_heights(show=False, vs_time=True)
+    def draw_ph_with_currents(self, show=True):
+        ph = self.draw_pulse_heights(show=False, vs_time=True, fl=False)
         self.Currents.set_graphs()
         cur = self.Currents.CurrentGraph.Clone()
         cur.SetLineColor(899)
@@ -164,15 +164,17 @@ class AnalysisCollection(Elementary):
         pul.SetMarkerColor(859)
 
         entries = [1, 3, 1]
-        legends = [self.make_legend(.1, .35, nentries=entries[i], scale=1.7, w=.2) for i in xrange(3)]
+        legends = [self.make_legend(.8, .7, nentries=entries[i], scale=1.7, w=.2) for i in xrange(3)]
         for gr in ph.GetListOfGraphs():
             if gr.GetName() != 'flux':
                 legends[1].AddEntry(gr, gr.GetName(), 'p')
+        dummy_gr = self.make_tgrapherrors('g', 'g', width=2)
         legends[1].AddEntry(0, 'flux in kHz/cm^{2}', 'p')
-        legends[1].AddEntry('flux', 'duration', 'l')
+        legends[1].AddEntry(dummy_gr, 'duration', 'l')
         legends[0].AddEntry(pul, 'pulser', 'p')
         legends[2].AddEntry(cur, 'current', 'l')
 
+        gROOT.SetBatch(1) if not show else do_nothing()
         c = TCanvas('c', 'c', 1500, 1000)
         margins = [[.075, .05, 0, .1], [.075, .05, 0, 0], [.075, .05, .15, 0]]
         pads = [self.Currents.make_tpad('p{0}'.format(i + 1), 'p{0}'.format(i + 1), pos=[0, i / 3., 1, (i + 1) / 3.], gridx=True, margins=margins[2 - i]) for i in xrange(3)]
@@ -182,6 +184,7 @@ class AnalysisCollection(Elementary):
         draw_opts = ['pl', '', 'l']
         y_tits = ['Pulse Height [au] ', 'Pulse Height [au] ', 'Current [nA] ']
 
+        pad = None
         for i, gr in enumerate([pul, ph, cur], 1):
             pad = pads[3 - i]
             pad.cd()
@@ -197,17 +200,20 @@ class AnalysisCollection(Elementary):
             if i == 3:
                 self.Currents.draw_time_axis(ymax, opt='t')
             gr.Draw(draw_opts[i - 1])
+            # pad.SetLogx()
             legends[i - 1].Draw()
 
-        run_info = self.collection.values()[0].run.get_runinfo(self.channel)
+        run_info = self.collection.values()[0].run.get_runinfo(self.channel, pad=pad)
         run_info[0].SetX2NDC(.25)
         run_info[0].SetY2NDC(.145)
         run_info[0].Draw()
         run_info[1].Draw()
         c.Update()
+        gROOT.SetBatch(0)
+        self.save_canvas(c, self.save_dir, 'PhPulserCurrent')
         self.RootObjects.append([ph, cur, pul, c, legends, pads])
 
-    def draw_pulse_heights(self, binning=20000, flux=True, raw=False, all_corr=False, show=True, vs_time=False):
+    def draw_pulse_heights(self, binning=20000, flux=True, raw=False, all_corr=False, show=True, vs_time=False, fl=True):
         flux = False if vs_time else flux
         mode = 'Run'
         if flux:
