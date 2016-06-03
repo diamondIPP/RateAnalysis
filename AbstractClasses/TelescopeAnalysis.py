@@ -289,8 +289,8 @@ class Analysis(Elementary):
             h = self.show_angle(mode, show=show)
             return self.fit_fwhm(h, draw=show)
 
-        fit = self.do_pickle(pickle_path, func)
-        return fit
+        fit = func() if show else 0
+        return self.do_pickle(pickle_path, func, fit)
 
     def show_both_angles(self):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
