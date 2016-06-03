@@ -879,7 +879,7 @@ class SignalAnalysis(Analysis):
         gr = self.make_tgrapherrors('gr', 'Signal vs Peak Position')
         i = 0
         x = self.run.signal_regions[self.SignalRegion]
-        self.draw_peak_position(show=False, fixed=corr)
+        self.draw_peak_timing(show=False, corr=corr)
         h = self.PeakValues
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         for peak_pos in xrange(x[0] + 2, x[1] - 2):
@@ -903,7 +903,7 @@ class SignalAnalysis(Analysis):
         hs = THStack('lpp', 'Landau vs. Signal Peak Postion;pulse height;entries')
         x = self.run.signal_regions[self.SignalRegion]
         self.Cut.reset_cut('signal_peak_pos')
-        self.draw_peak_position(show=False)
+        self.draw_peak_timing(show=False)
         h_pv = self.PeakValues
         l = TLegend(.7, .38, .90, .88)
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
