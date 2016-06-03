@@ -455,9 +455,10 @@ class Elementary(object):
             obj.Delete()
 
     @staticmethod
-    def normalise_histo(histo):
+    def normalise_histo(histo, to100=False):
         h = histo
-        h.Scale(1 / h.Integral(1, h.GetNbinsX()))
+        fac = 100 if to100 else 1
+        h.Scale(fac / h.Integral(1, h.GetNbinsX()))
         return h
 
     @staticmethod
