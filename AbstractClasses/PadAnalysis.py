@@ -1297,74 +1297,36 @@ class SignalAnalysis(Analysis):
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
 
-    def compare_consecutive_cuts(self, scale=False, plot=False):
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        if not plot:
-            gROOT.SetBatch(1)
+    def compare_consecutive_cuts(self, scale=False, show=True):
         self.reset_colors()
-        c1 = TCanvas('consecutive', '', 1000, 1000)
-        legend = TLegend(0.7, 0.52, 0.98, .92)
-        histos = []
-        drawn_first = False
-        ind = 0
+        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        legend = self.make_legend(.7, .9, nentries=len(self.Cut.ConsecutiveCuts) - 3, w=.17)
         cut = TCut('consecutive', '')
-        stack = THStack('sConsecutiveCuts', 'Signal Distribution with Consecutive Cuts;Pulse Height [au];Entries')
-        for key, value in self.Cut.CutStrings.iteritems():
-            if key == 'old_bucket':
-                continue
-            if (str(value) or key == 'raw') and key != 'all_cuts':
-                cut += value
-                print 'saving plot with {n} cuts, added {key}'.format(n=ind, key=key)
-                save_name = 'signal_distribution_{n}cuts'.format(n=ind)
-                histo_name = 'h_signal_{range}_{peakint}_{n}cuts'.format(range=self.SignalRegion, peakint=self.PeakIntegral, n=ind)
-                if scale:
-                    histo_name += '_scaled'
-                histo_title = 'signal with {n} cuts'.format(n=ind)
-                histo = TH1F(histo_name, histo_title, 550, -50, 500)
-                # safe single plots
-                c1.cd()
-                self.tree.Draw("{name}>>{histo}".format(name=self.SignalName, histo=histo_name), cut)
-                if scale:
-                    histo = self.scale_histo(histo)
-                histo.SetName(histo_name)
-                self.save_plots(save_name, canvas=c1, sub_dir=self.save_dir)
-                # draw all single plots into c2
-                color = self.get_color()
-                histo.SetLineColor(color)
-                histo.SetStats(0)
-                if not scale:
-                    histo.SetFillColor(color)
-                stack.Add(histo)
-                if not drawn_first:
-                    drawn_first = True
-                    legend_entry = key
-                else:
-                    legend_entry = '+ ' + key
-                if scale:
-                    legend.AddEntry(histo, legend_entry, 'l')
-                else:
-                    legend.AddEntry(histo, legend_entry, 'f')
-                histos.append(histo)
-                ind += 1
-        c1.SetName('all')
-        c1.SetLeftMargin(0.15)
-        stack.Draw('nostack')
-        legend.Draw()
-        if plot:
-            self.RootObjects.append(legend)
-            self.histos.append(histos)
-            self.histos.append(stack)
-        if scale:
-            self.save_plots('consecutive_scaled', canvas=c1, sub_dir=self.save_dir)
-            c1.SetLogy()
-            self.save_plots('consecutive_scaled_logy', canvas=c1, sub_dir=self.save_dir)
-        else:
-            self.save_plots('consecutive', canvas=c1, sub_dir=self.save_dir)
-            c1.SetLogy()
-            self.save_plots('consecutive_logy', canvas=c1, sub_dir=self.save_dir)
-
+        stack = THStack('scc', 'Signal Distribution with Consecutive Cuts')
+        for i, (key, value) in enumerate(self.Cut.ConsecutiveCuts.iteritems()):
+            key = 'beam_stops' if key.startswith('beam') else key
+            print 'saving plot with {n} cuts, added {key}'.format(n=i, key=key)
+            cut += value
+            save_name = 'signal_distribution_{n}cuts'.format(n=i)
+            h = TH1F('h_{0}'.format(i), 'signal with {n} cuts'.format(n=i), 550, -50, 500)
+            self.tree.Draw('{name}>>h_{i}'.format(name=self.SignalName, i=i), cut, 'goff')
+            if scale:
+                self.scale_histo(h)
+            self.save_histo(h, save_name, False, self.save_dir)
+            color = self.get_color()
+            self.format_histo(h, color=color, stats=0)
+            if not scale:
+                h.SetFillColor(color)
+            stack.Add(h)
+            leg_entry = '+ {0}'.format(key) if not i else key
+            leg_style = 'l' if scale else 'f'
+            legend.AddEntry(h, leg_entry, leg_style)
+        self.format_histo(stack, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.9, draw_first=True)
+        self.RootObjects.append(self.save_histo(stack, 'Consecutive{0}'.format('Scaled' if scale else ''), show, self.save_dir, l=legend, draw_opt='nostack', lm=0.14))
+        stack.SetName(stack.GetName() + 'logy')
+        stack.SetMaximum(stack.GetMaximum() * 1.2)
+        self.RootObjects.append(self.save_histo(stack, 'Consecutive{0}Logy'.format('Scaled' if scale else '', ), show, self.save_dir, logy=True, l=legend, draw_opt='nostack', lm=0.14))
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
-        gROOT.SetBatch(0)
 
     def draw_cut_means(self, show=True):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
