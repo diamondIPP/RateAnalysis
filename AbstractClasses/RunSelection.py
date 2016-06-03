@@ -302,8 +302,9 @@ class RunSelection(Elementary):
                 string += str(int(self.run_infos[run]['hv dia{n}'.format(n=i)])).ljust(6)
             string += '{flux} kHz '.format(flux=str(int(self.run_infos[run]['measured flux'])).rjust(4))
             if not show_allcomments:
-                comments = self.run_infos[run]['user comments'][:20]
-                string += comments
+                comments = self.run_infos[run]['user comments']
+                show_comment = comments[:20].replace('\r\n', ' ')
+                string += show_comment
                 string += '*' if len(comments) >= 20 else ''
             if header:
                 spaces = [int(self.channels[run][ch]) * ' ' for ch in self.run.channels]
