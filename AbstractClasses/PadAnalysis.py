@@ -1665,7 +1665,7 @@ class SignalAnalysis(Analysis):
                 return int(nr - start + 1)
 
     @staticmethod
-    def normalise_histo(histo):
+    def normalise_histo(histo, to100=False):
         h = histo
         h.GetXaxis().SetRangeUser(0, 30)
         min_bin = h.GetMinimumBin()
@@ -1673,7 +1673,8 @@ class SignalAnalysis(Analysis):
         max_bin = h.GetNbinsX() - 1
         integral = h.Integral(min_bin, max_bin)
         if integral:
-            h.Scale(1 / integral)
+            fac = 100 if to100 else 1
+            h.Scale(fac / integral)
         return h
 
     @staticmethod
