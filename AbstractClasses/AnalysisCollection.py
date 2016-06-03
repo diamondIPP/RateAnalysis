@@ -853,46 +853,51 @@ class AnalysisCollection(Elementary):
 
     # ====================================================================================
     # region TRACKS
-    def show_chi2s(self, mode=None):
+    def show_chi2s(self, mode=None, show=True):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        self.reset_colors()
         histos = [ana.show_chi2(mode=mode, show=False) for ana in self.collection.itervalues()]
-        c = TCanvas('c', 'Chi2', 1000, 1000)
-        c.SetLeftMargin(.13)
-        histos[0].SetStats(0)
         yq = zeros(1)
         histos[0].GetQuantiles(1, yq, array([.9]))
-        legend = TLegend(.7, .8 - self.get_number_of_analyses() * 0.03, .9, .9)
+        legend = self.make_legend(nentries=self.get_number_of_analyses())
+        stack = THStack('hx2', '#chi^{{2}}{mode}'.format(mode=' in ' + mode if mode is not None else ''))
         for i, h in enumerate(histos):
+            self.format_histo(h, stats=0, color=self.get_color(), lw=2)
             h.GetXaxis().SetRangeUser(0, yq[0])
-            self.normalise_histo(h)
-            h.SetLineColor(self.get_color())
-            h.SetLineWidth(2)
-            h.Draw() if not i else h.Draw('same')
-            legend.AddEntry(h, '{0:6.2f} kHz/cm'.format(self.collection.values()[i].get_flux()) + '^{2}', 'l')
-            self.RootObjects.append(h)
-        legend.Draw()
+            self.normalise_histo(h, to100=True)
+            stack.Add(h)
+            legend.AddEntry(h, '{0: 6.0f} kHz/cm^{{2}}'.format(self.collection.values()[i].get_flux()), 'l')
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        self.format_histo(stack, x_tit='#chi^{2}', y_tit='Probability [%]', y_off=1.5, draw_first=True)
+        stack.GetXaxis().SetRangeUser(0, yq[0])
         mode = '' if mode is None else mode
-        self.save_plots('AllChi2{mod}'.format(mod=mode.upper()), canvas=c, sub_dir=self.save_dir)
-        self.RootObjects.append([legend, c])
+        self.RootObjects.append(self.save_histo(stack, 'AllChi2{mod}'.format(mod=mode.upper()), show, self.save_dir, lm=.15, draw_opt='nostack', l=legend))
 
-    def show_angles(self, mode='x'):
+    def draw_all_chi2s(self, show=True):
+        self.show_chi2s(show=show)
+        self.show_chi2s('x', show)
+        self.show_chi2s('y', show)
+
+    def show_angles(self, mode='x', show=True):
+        self.reset_colors()
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         histos = [ana.show_angle(mode=mode, show=False) for ana in self.collection.itervalues()]
-        c = TCanvas('c', 'Chi2', 1000, 1000)
-        c.SetLeftMargin(.13)
-        legend = TLegend(.7, .8 - self.get_number_of_analyses() * 0.03, .9, .9)
-        for i, h in enumerate(histos):
-            h.SetStats(0)
-            self.normalise_histo(h)
-            h.SetLineColor(self.get_color())
-            h.Draw() if not i else h.Draw('same')
-            legend.AddEntry(h, '{0:6.2f} kHz/cm'.format(self.collection.values()[i].get_flux()) + '^{2}', 'l')
-            self.RootObjects.append(h)
-        legend.Draw()
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.save_plots('AllTrackAngles{mod}'.format(mod=mode.upper()), sub_dir=self.save_dir)
-        self.RootObjects.append([legend, c])
+
+        legend = self.make_legend(nentries=self.get_number_of_analyses())
+        stack = THStack('has', 'Track Angles in {mode}'.format(mode=mode.title()))
+        for i, h in enumerate(histos):
+            self.format_histo(h, stats=0, color=self.get_color())
+            self.normalise_histo(h, to100=True)
+            stack.Add(h)
+            legend.AddEntry(h, '{0: 6.0f} kHz/cm^{{2}}'.format(self.collection.values()[i].get_flux()), 'l')
+        self.format_histo(stack, x_tit='Angle [deg]', y_tit='Probability [%]', y_off=1.5, draw_first=True)
+        stack.GetXaxis().SetRangeUser(-3, 4)
+        self.RootObjects.append(self.save_histo(stack, 'AllTrackAngles{mod}'.format(mod=mode.title()), show, self.save_dir, lm=.15, draw_opt='nostack', l=legend))
+
+    def draw_both_angles(self, show=True):
+        self.show_angles('x', show)
+        self.show_angles('y', show)
 
     def show_angle_peaks(self, mode='x', sigma=False, flux=True):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
