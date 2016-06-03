@@ -225,7 +225,7 @@ class AnalysisCollection(Elementary):
         gr2 = self.make_tgrapherrors('binwise', prefix + 'binwise correction', self.get_color())
         gr3 = self.make_tgrapherrors('mean ped', prefix + 'mean correction', self.get_color())
         gr4 = self.make_tgrapherrors('raw', prefix + 'raw', self.get_color())
-        gr5 = self.make_tgrapherrors('flux', 'bla', 1, width=3, marker_size=0)
+        gr5 = self.make_tgrapherrors('flux', 'bla', 1, width=1, marker_size=0)
         gStyle.SetEndErrorSize(4)
         gr_first = self.make_tgrapherrors('first run', prefix + 'first', marker=22, color=2)
         gr_first.SetMarkerSize(2)
@@ -267,13 +267,15 @@ class AnalysisCollection(Elementary):
                 i += 1
             j += 1
         gROOT.SetBatch(1)
-        graphs = [gr1, gr_first, gr_last]
+        graphs = [gr1]
+        if fl:
+            graphs += [gr_first, gr_last]
         if all_corr:
             graphs += [gr2, gr3]
         if raw:
             graphs.append(gr4)
         legend = self.make_legend(.65, .35, nentries=len(graphs))
-        gr1.SetName('data') if len(graphs) == 3 else self.do_nothing()
+        gr1.SetName('data') if len(graphs) < 4 else self.do_nothing()
 
         mg = TMultiGraph('mg_ph', prefix + self.diamond_name,)
         for gr in graphs:
@@ -339,7 +341,6 @@ class AnalysisCollection(Elementary):
             print 'getting pedestal for run {n}...'.format(n=key)
             cut_string = ana.Cut.generate_pulser_cut(beam_on=beam_on) if cut == 'pulser' else cut
             fit_par = ana.show_pedestal_histo(region, peak_int, cut=cut_string, draw=False)
-            flux = ana.run.flux
             x = ana.run.flux if flux else key
             gr1.SetPoint(i, x, fit_par.Parameter(par))
             gr1.SetPointError(i, 0, fit_par.ParError(par))
@@ -373,7 +374,7 @@ class AnalysisCollection(Elementary):
 
     def draw_signal_distributions(self, show=True, off=3):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        z.reset_colors()
+        self.reset_colors()
         stack = THStack('hsd', 'Pulse Height Distributions;Pulse Height [au];Number of Entries')
         legend = self.make_legend(nentries=self.get_number_of_analyses())
         histos = [ana.show_signal_histo(show=False) for ana in self.collection.itervalues()]
@@ -381,7 +382,7 @@ class AnalysisCollection(Elementary):
             self.format_histo(h, lw=2, color=self.get_color())
             h.Scale(1 / h.GetMaximum())
             stack.Add(h)
-            legend.AddEntry(h, '{0:06.1f} kHz/cm'.format(self.collection.values()[i].get_flux()) + '^{2}', 'l')
+            legend.AddEntry(h, '{0:06.1f} kHz/cm^{{2}}'.format(self.collection.values()[i].get_flux()), 'l')
         self.RootObjects.append(self.save_histo(stack, 'SignalDistributions', False, self.save_dir, lm=.13, draw_opt='nostack', l=legend))
         stack.GetYaxis().SetTitleOffset(1.55)
         self.RootObjects.append(self.save_histo(stack, 'SignalDistributions', False, self.save_dir, lm=.13, draw_opt='nostack', l=legend))
