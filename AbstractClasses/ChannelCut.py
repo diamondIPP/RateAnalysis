@@ -4,6 +4,7 @@ from copy import deepcopy
 from ROOT import TCut, TH1F, TH2F, TF1, TCanvas, TLegend, gROOT, TProfile, THStack
 from time import sleep
 from numpy import sqrt
+from collections import OrderedDict
 
 __author__ = 'micha'
 
@@ -26,6 +27,8 @@ class ChannelCut(Cut):
         self.generate_channel_cutstrings()
         self.all_cut = self.generate_all_cut()
         self.CutStrings['all_cuts'] = self.all_cut
+
+        self.ConsecutiveCuts = self.load_consecutive_cuts()
 
     # ==============================================
     # region GET CONFIG
@@ -63,6 +66,13 @@ class ChannelCut(Cut):
 
     def set_bucket(self, value):
         self.set_cut('bucket', value)
+
+    def load_consecutive_cuts(self):
+        dic = OrderedDict()
+        for key, value in self.CutStrings.iteritems():
+            if (str(value) or key == 'raw') and key != 'all_cuts' and not key.startswith('old'):
+                dic[key] = value
+        return dic
     # endregion
 
     # ==============================================
