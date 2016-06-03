@@ -610,20 +610,29 @@ class SignalAnalysis(Analysis):
     def draw_trigger_cell_vs_peakpos(self, show=True, cut=None, tprofile=True, corr=False):
         x = self.run.signal_regions[self.SignalRegion]
         if not tprofile:
-            h = TH2D('tcpp', 'Trigger Cell vs. Signal Peak Position', 1024, 0, 1024, x[1] - x[0], x[0] / 2., x[1] / 2.)
+            h = TH2D('tcpp', 'Trigger Cell vs. Signal Peak Position', 1024, 0, 1024, (x[1] - x[0]) * 4, x[0] / 2., x[1] / 2.)
         else:
             h = TProfile2D('tcpp', 'Trigger Cell vs. Signal Peak Position', 1024, 0, 1024, x[1] - x[0], x[0] / 2., x[1] / 2.)
-        cut = self.Cut.all_cut if cut is None else cut
+        h1 = TProfile('hpr', 'hpr', 100, 0, 1024)
+
+        cut = self.Cut.generate_special_cut(excluded_cuts=['timing']) if cut is None else cut
+        # cut = self.Cut.all_cut if cut is None else cut
         prof = '' if not tprofile else ':'
         sig = '' if not tprofile else '{sig}-{ped}'.format(sig=self.SignalName, ped=self.PedestalName)
         gStyle.SetPalette(55)
         peaks = 'IntegralPeaks[{num}]/2.' if not corr else 'IntegralPeakTime[{num}]'
         peaks = peaks.format(num=self.SignalNumber)
         self.tree.Draw('{z}{prof}{peaks}:trigger_cell>>tcpp'.format(z=sig, prof=prof, peaks=peaks), cut, 'goff')
-        self.format_histo(h, x_tit='trigger cell', y_tit='signal peak pos [ns]', y_off=1.4, z_tit='pulse height [au]' if tprofile else 'entries', z_off=1.2)
+        self.tree.Draw('{peaks}:trigger_cell>>hpr'.format(peaks=peaks), self.AllCuts, 'goff')
+        self.format_histo(h, x_tit='trigger cell', y_tit='Signal Peak Timing [ns]', y_off=1.25, z_tit='Pulse Height [au]' if tprofile else 'Number of Entries', z_off=1.2, stats=0)
+        self.format_histo(h1, color=1, lw=3)
         h.GetZaxis().SetRangeUser(60, 120) if tprofile else self.do_nothing()
-        h.SetStats(0)
-        self.histos.append(self.save_histo(h, 'TriggerCellVsPeakPos{0}'.format('Signal' if tprofile else ''), show, self.save_dir, lm=.11, draw_opt='colz', rm=.15))
+        fit = h.ProjectionY().Fit('gaus', 'qs')
+        h.GetYaxis().SetRangeUser(fit.Parameter(1) - 4 * fit.Parameter(2), fit.Parameter(1) + 5 * fit.Parameter(2))
+        self.histos.append(self.save_histo(h, 'TriggerCellVsPeakPos{0}'.format('Signal' if tprofile else ''), show, self.save_dir, lm=.11, draw_opt='colz', rm=.15, logz=True))
+        h1.Draw('hist same')
+        self.save_plots('TriggerCellVsPeakPos{0}'.format('Signal' if tprofile else ''), self.save_dir)
+        self.RootObjects.append(h1)
 
     def draw_trigger_cell_vs_forc(self, show=True, cut=None, full_range=False, corr=False):
         if not full_range:
