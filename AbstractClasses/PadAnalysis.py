@@ -1437,7 +1437,9 @@ class SignalAnalysis(Analysis):
             gStyle.SetOptFit(1)
             h = self.show_pulser_histo(show=show, corr=corr, beam_on=beam_on, binning=binning, events=events, start=start)
             same_pols = self.PulserPolarity == self.Polarity
-            x_min = 0 if same_pols else h.GetBinCenter(h.GetMaximumBin() - 2)
+            h.GetXaxis().SetRangeUser(20, h.GetXaxis().GetXmax())
+            x_min = 10 if same_pols else h.GetBinCenter(h.GetMaximumBin() - 2)
+            h.GetXaxis().UnZoom()
             x_max = h.GetBinCenter(h.GetMaximumBin() + 2) if same_pols else h.GetBinCenter(h.GetNbinsX() - 1)
             fit_func = h.Fit('gaus', 'qs{0}'.format('' if show else '0'), '', x_min, x_max)
             f = gROOT.GetFunction('gaus')
@@ -1452,7 +1454,7 @@ class SignalAnalysis(Analysis):
         return self.do_pickle(pickle_path, func, fit)
 
     def draw_pulser_peakvalues(self, draw=True):
-        self.draw_peak_position('', 'pulser', ucut=self.Cut.generate_pulser_cut(), show=draw)
+        self.draw_peak_timing('', 'pulser', ucut=self.Cut.generate_pulser_cut(), show=draw)
 
     def show_pulser_pedestal(self, show=True):
         return self.show_pedestal_histo(cut=self.Cut.generate_pulser_cut(), draw=show)
