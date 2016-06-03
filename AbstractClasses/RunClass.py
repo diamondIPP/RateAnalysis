@@ -526,11 +526,11 @@ class Run(Elementary):
         else:
             return legend, git_text
 
-    def get_runinfo(self, ch, height=None, width=None):
+    def get_runinfo(self, ch, height=None, width=None, pad=None):
         runs = []
         if hasattr(self, 'collection'):
             runs = [self.collection.keys()[0], self.collection.keys()[-1], self.collection.values()[0].run.get_rate_string(), self.collection.values()[-1].run.get_rate_string()]
-        return self.draw_run_info(show=False, runs=runs, channel=ch, set_height=height, set_width=width)
+        return self.draw_run_info(show=False, runs=runs, channel=ch, set_height=height, set_width=width, canvas=pad)
 
     # endregion
 
