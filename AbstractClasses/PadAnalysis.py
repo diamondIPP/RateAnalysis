@@ -542,7 +542,7 @@ class SignalAnalysis(Analysis):
 
         def func():
             print 'Getting peak value fit for {dia} of run {run}...'.format(run=self.run_number, dia=self.diamond_name)
-            self.draw_peak_position(show=draw) if not pulser else self.draw_pulser_peakvalues(draw=draw)
+            self.draw_peak_timing(show=draw) if not pulser else self.draw_pulser_peakvalues(draw=draw)
             h = self.PeakValues
             max_bin = h.GetMaximumBin()
             x = [h.GetBinCenter(max_bin + i) for i in [-7, 1]] if not pulser else [h.GetXaxis().GetXmin() + 1, h.GetXaxis().GetXmax() - 1]
@@ -577,7 +577,7 @@ class SignalAnalysis(Analysis):
         def func():
             print 'Getting peak value FWHM for {dia} of run {run}...'.format(run=self.run_number, dia=self.diamond_name)
             if self.PeakValues is None:
-                self.draw_peak_position(show=False)
+                self.draw_peak_timing(show=False)
             return self.calc_fwhm(self.PeakValues)
 
         fwhm = self.do_pickle(pickle_path, func)
