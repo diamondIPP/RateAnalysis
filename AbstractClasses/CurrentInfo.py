@@ -202,7 +202,8 @@ class Currents(Elementary):
                 #     dicts[2][key].append(float(info[1]))
             else:
                 if len(self.Currents) > 100 and abs(self.Currents[-1] * 100) < abs(float(info[2]) * 1e9):
-                    return
+                    if self.Currents[-1] > 0.01:
+                        return
                 self.Currents.append(float(info[2]) * 1e9)
                 self.Time.append(total_seconds)
                 self.Voltages.append(float(info[1]))
