@@ -465,24 +465,77 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region SIGNAL PEAK POSITION
-    def draw_peak_position(self, region=None, type_='signal', show=True, ucut=None, fixed=True):
+    def draw_peak_timing(self, region=None, type_='signal', show=True, ucut=None, corr=True):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         num = self.SignalNumber if region is None else self.get_signal_number(region=region, sig_type=type_)
         region = self.SignalRegion if region is None else region
-        peak_val = 'IntegralPeaks[{num}]'.format(num=num) if not fixed else 'IntegralPeakTime[{num}]'.format(num=num)
+        peak_val = 'IntegralPeaks[{num}]'.format(num=num) if not corr else 'IntegralPeakTime[{num}]'.format(num=num)
         title = '{typ} Peak Positions'.format(typ=type_.title())
         x = self.run.signal_regions[region] if type_ == 'signal' else self.run.get_regions('pulser')['pulser']
-        h = TH1F('peakvalues', title, x[1] - x[0], x[0] / 2., x[1] / 2.)
-        self.format_histo(h, x_tit='time [ns]', y_tit='Entries', y_off=2, fill_color=17)
-        cut = self.Cut.all_cut if type_ == 'signal' else '!({0})'.format(self.Cut.CutStrings['pulser'])
+        n_bins = (x[1] - x[0]) * 4 if corr else (x[1] - x[0])
+        h = TH1F('hpv', title, n_bins, x[0] / 2., x[1] / 2.)
+        l = self.make_legend(.14, nentries=3)
+        self.format_histo(h, x_tit='Signal Peak Timing [ns]', y_tit='Number of Entries', y_off=1.3, stats=0)
+        cut = self.Cut.generate_special_cut(excluded_cuts=['timing']) if type_ == 'signal' else '!({0})'.format(self.Cut.CutStrings['pulser'])
         cut = cut if ucut is None else ucut
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        if fixed:
-            self.tree.Draw(peak_val + '>>peakvalues', cut, 'goff')
-        else:
-            self.tree.Draw(peak_val + '/2.>>peakvalues', cut, 'goff')
-        self.histos.append(self.save_histo(h, '{typ}PeakPositions'.format(typ=type_.title()), show, sub_dir=self.save_dir, lm=.14))
+        dic = self.Cut.calc_timing_range(show=False)
+        t_correction = '({p1}* trigger_cell + {p2} * trigger_cell*trigger_cell)'.format(p1=dic['t_corr'].GetParameter(1), p2=dic['t_corr'].GetParameter(2))
+        draw_string = '{peaks}{op}>>hpv'.format(peaks=peak_val, op='/2.' if not corr else '-' + t_correction)
+        self.tree.Draw(draw_string, cut, 'goff')
+        self.histos.append(self.save_histo(h, '{typ}PeakPositions'.format(typ=type_.title()), show, sub_dir=self.save_dir, lm=.12, logy=True))
+        g = self.__draw_timing_cut()
+        f, fit, fit1 = self.fit_peak_timing(h)
+        l2 = self.make_legend(.52, nentries=3)
+        l2.AddEntry(0, 'Fit Results:', '')
+        l2.AddEntry(0, '{0}{1:5.2f} #pm {2:5.2f} ns'.format('Mean:'.ljust(7), f.Parameter(1), f.ParError(1)), '')
+        l2.AddEntry(0, '{0} {1:5.2f} #pm {2:5.2f} ns'.format('Sigma:'.ljust(7), f.Parameter(2), f.ParError(2)), '')
+        l.AddEntry(g, 'Timing Cut', 'fl')
+        l.AddEntry(fit1, 'Fitting Range', 'l')
+        l.AddEntry(fit, 'Fit Function', 'l')
+        l.Draw()
+        l2.Draw()
+        h.Draw('same')
+        self.save_plots('{typ}PeakPositions'.format(typ=type_.title()), self.save_dir)
         self.PeakValues = h
+        self.RootObjects.append([l, l2])
+        return f
+
+    def __draw_timing_cut(self):
+        timing_fit = z.Cut.calc_timing_range(show=False)['timing_corr']
+        xmin, xmax = timing_fit.GetParameter(1) - 3 * timing_fit.GetParameter(2), timing_fit.GetParameter(1) + 3 * timing_fit.GetParameter(2)
+        print xmin, xmax, timing_fit.GetParameter(1)
+        g = TCutG('timing', 5)
+        g.SetVarX('y')
+        g.SetVarY('x')
+        ymin, ymax = -10, 1e7
+        for i, (x, y) in enumerate([(xmin, ymin), (xmin, ymax), (xmax, ymax), (xmax, ymin), (xmin, ymin)]):
+            g.SetPoint(i, x, y)
+        g.SetLineColor(827)
+        g.SetLineWidth(2)
+        g.SetFillColor(827)
+        g.SetFillStyle(3001)
+        g.Draw('f')
+        g.Draw('l')
+        self.RootObjects.append(g)
+        return g
+
+    def fit_peak_timing(self, histo):
+        h = histo
+        fit1 = h.Fit('gaus', 'qs0')
+        mean_, sigma = fit1.Parameter(1), fit1.Parameter(2)
+        fit = h.Fit('gaus', 'qs', '', mean_ - sigma, mean_ + sigma)
+        fit2 = TF1('f1', 'gaus', mean_ - 5 * sigma, mean_ + 5 * sigma)
+        fit3 = TF1('f2', 'gaus', mean_ - sigma, mean_ + sigma)
+        pars = [fit.Parameter(i) for i in xrange(3)]
+        fit2.SetParameters(*pars)
+        fit3.SetParameters(*pars)
+        fit3.SetLineWidth(2)
+        fit3.SetLineColor(2)
+        fit2.SetLineStyle(2)
+        fit2.Draw('same')
+        self.RootObjects.append([fit2, fit3])
+        return fit, fit2, fit3
 
     def fit_peak_values(self, draw=True, pulser=False):
         pickle_path = self.PickleDir + 'PeakValues/Fit_{tc}_{run}_{dia}{pul}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name, pul='_pulser' if pulser else '')
