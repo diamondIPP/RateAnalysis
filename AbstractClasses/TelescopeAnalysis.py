@@ -431,41 +431,6 @@ class Analysis(Elementary):
 
     # endregion
 
-    def ShowSignalSpread(self, channel=None, cut=""):
-        if channel == None:
-            channels = self.run.get_active_channels()
-            namesuffix = ""
-        else:
-            channels = [channel]
-            namesuffix = "_ch{ch}".format(ch=channel)
-
-        canvas = TCanvas("{run}signalspreadcanvas".format(run=self.run.run_number), "{run}signalspreadcanvas".format(run=self.run.run_number), 800, len(channels) * 300)
-        canvas.Divide(1, len(channels))
-
-        for ch in channels:
-            canvas.cd(channels.index(ch) + 1)
-            if cut == "":
-                thiscut = self.GetCut(ch)
-            else:
-                thiscut = cut.format(channel=ch)
-
-            self.Draw(("sig_spread[{channel}]>>signalspread{run}{channel}(400, 0, 400)").format(channel=ch, run=self.run.run_number), thiscut)
-            hist = gROOT.FindObject("signalspread{run}{channel}".format(channel=ch, run=self.run.run_number))
-            if hist: hist.SetStats(0)
-
-        canvas.Update()
-        self.save_plots("Run{run}_SignalSpread{ns}.png".format(run=self.run.run_number, ns=namesuffix), canvas=canvas, sub_dir="Cuts")
-        self.if_wait("Peak Position shown")
-
-    def AnalyzeMultiHitContribution(self):
-
-        single_particle = self.run.tree.Draw("1",
-                                             "!pulser&&clusters_per_plane[0]>=1&&clusters_per_plane[1]>=1&&clusters_per_plane[2]>=1&&clusters_per_plane[3]>=1&&(clusters_per_plane[0]>1||clusters_per_plane[1]>1||clusters_per_plane[2]>1||clusters_per_plane[3]>1)")
-        multiparticle = self.run.tree.Draw("1", "!pulser&&clusters_per_plane[0]<=1&&clusters_per_plane[1]<=1&&clusters_per_plane[2]<=1&&clusters_per_plane[3]<=1")
-
-        total = single_particle + multiparticle
-
-        return 1. * multiparticle / total
 
 if __name__ == "__main__":
     ana_parser = ArgumentParser()
