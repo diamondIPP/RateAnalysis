@@ -56,7 +56,7 @@ class Analysis(Elementary):
         self.signal_canvas = None
 
         # alignment
-        self.IsAligned = self.check_alignment(draw=False)
+        self.IsAligned = self.check_alignment(draw=False, save_plot=False)
 
     # ============================================================================================
     # region INIT
@@ -339,7 +339,7 @@ class Analysis(Elementary):
     # endregion
     # ==============================================
     # region ALIGNMENT
-    def check_alignment(self, binning=5000, draw=True):
+    def check_alignment(self, binning=5000, draw=True, save_plot=True):
         pickle_path = 'Configuration/Individual_Configs/Alignment/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run.run_number)
 
         def func():
@@ -349,7 +349,8 @@ class Analysis(Elementary):
                 self.tree.Draw('(@col.size()>1)*100:Entry$>>h', 'pulser', 'goff')
                 self.format_histo(h, name='align', title='Event Alignment', x_tit='Event Number', y_tit='Hits per Event @ Pulser Events [%]', y_off=1.3, stats=0, fill_color=821)
                 h.GetYaxis().SetRangeUser(0, 105)
-                self.RootObjects.append(self.save_histo(h, 'EventAlignment', draw, self.ana_save_dir, draw_opt='hist'))
+                if save_plot:
+                    self.RootObjects.append(self.save_histo(h, 'EventAlignment', draw, self.ana_save_dir, draw_opt='hist'))
                 align = self.__check_alignment_histo(h)
                 return align
             else:
