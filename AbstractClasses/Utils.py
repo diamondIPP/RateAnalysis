@@ -22,5 +22,13 @@ def scale_margins(gr1, gr2):
     return ymin, ymax
 
 
+def untitle(string):
+    s = ''
+    for word in string.split(' '):
+        if word:
+            s += word[0].lower() + word[1:] + ' '
+    return s.strip(' ')
+
+
 def do_nothing():
     pass
