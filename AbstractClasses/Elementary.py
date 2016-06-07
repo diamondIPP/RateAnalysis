@@ -389,23 +389,30 @@ class Elementary(object):
         except AttributeError or ReferenceError:
             pass
 
-    def save_histo(self, histo, save_name, show, sub_dir=None, lm=.1, rm=0.1, bm=.15, draw_opt='', x=1000, y=1000, l=None, logy=False, logx=False, logz=False, canvas=None, grid=False):
+    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=0.1, bm=.15, tm=.1, draw_opt='', x=x_res, y=y_res,
+                   l=None, logy=False, logx=False, logz=False, canvas=None, grid=False, save=True):
         h = histo
         if not show:
             gROOT.SetBatch(1)
             gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
         c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x, y) if canvas is None else canvas
-        c.SetMargin(lm, rm, bm, .1)
+        c.SetMargin(lm, rm, bm, tm)
         c.SetLogx() if logx else self.do_nothing()
         c.SetLogy() if logy else self.do_nothing()
         c.SetLogz() if logz else self.do_nothing()
         c.SetGrid() if grid else self.do_nothing()
         h.Draw(draw_opt)
         l.Draw() if l is not None else self.do_nothing()
-        self.save_plots(save_name, sub_dir=sub_dir)
+        if save:
+            sub_dir = self.save_dir if hasattr(self, 'save_dir') and sub_dir is None else sub_dir
+            self.save_plots(save_name, sub_dir=sub_dir)
         gROOT.SetBatch(0)
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         return [c, h, l] if l is not None else [c, h]
+
+    def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=0.1, bm=.15, tm=.1, draw_opt='', x=x_res, y=y_res,
+                   l=None, logy=False, logx=False, logz=False, canvas=None, grid=False):
+        return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, l, logy, logx, logz, canvas, grid, save=False)
 
     @staticmethod
     def make_tlatex(x, y, text, align=20, color=1, size=.05):
