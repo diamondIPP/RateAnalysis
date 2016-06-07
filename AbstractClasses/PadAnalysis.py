@@ -5,7 +5,7 @@ from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut
 from TelescopeAnalysis import Analysis
 from Elementary import Elementary
 from CurrentInfo import Currents
-from numpy import array, mean
+from numpy import array
 from math import sqrt, ceil, log
 from argparse import ArgumentParser
 from Extrema import Extrema2D
@@ -1627,42 +1627,10 @@ class SignalAnalysis(Analysis):
 
     # endregion
 
-    def find_n_events(self, n_events, cut, start):
-        # todo: use same method as below
-        """
-        Finds the amount of events from the startevent that are not subject to the cut.
-        :param n_events: number of wanted events
-        :param cut:
-        :param start:
-        :return: actual number of events s.t. n_events are drawn
-        """
-        print 'Finding the correct number of events',
-        if n_events < 2:
-            return self.find_single_event(cut, start)
-        n = mean([self.tree.Draw('1', cut, 'goff', n_events, start + i * n_events) for i in xrange(4)])
-        new_events = n_events
-        ratio = n_events / n if n else 5
-        i = 0
-        while n != n_events:
-            diff = n_events - n
-            # print n, diff, new_events
-            if abs(diff) > 2:
-                new_events += int(diff * ratio)
-            else:
-                new_events += int(diff * (ratio / i + 1))
-            print '\b.',
-            stdout.flush()
-            n = self.tree.Draw('1', cut, 'goff', new_events, start)
-            i += 1
-        print
-        return new_events
-
-    def find_single_event(self, cut, start):
-        n_events = self.tree.Draw('event_number', cut, 'goff')
-        evt_nmbrs = [self.tree.GetV1()[i] for i in xrange(n_events)]
-        for nr in evt_nmbrs:
-            if start <= nr:
-                return int(nr - start + 1)
+    def find_n_events(self, n, cut, start):
+        total_events = self.tree.Draw('event_number', cut, 'goff', self.run.n_entries, start)
+        evt_numbers = [self.tree.GetV1()[i] for i in xrange(total_events)]
+        return int(evt_numbers[:n][-1] + 1 - start)
 
     @staticmethod
     def normalise_histo(histo, to100=False):
