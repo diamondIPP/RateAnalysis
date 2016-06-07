@@ -262,7 +262,7 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region 2D SIGNAL DISTRIBUTION
-    def draw_signal_map(self, draw_option='surf3z', show=True, factor=4):
+    def draw_signal_map(self, draw_option='surf3z', show=True, factor=1.5):
         margins = self.find_diamond_margins(show_plot=False)
         x = [margins['x'][0], margins['x'][1]]
         y = [margins['y'][0], margins['y'][1]]
@@ -271,25 +271,18 @@ class SignalAnalysis(Analysis):
         x_bins = int(ceil(((x[1] - x[0]) / 0.015 * sqrt(12) / factor)))
         y_bins = int(ceil((y[1] - y[0]) / 0.01 * sqrt(12) / factor))
         h = TProfile2D('signal_map', 'Signal Map', x_bins, x[0], x[1], y_bins, y[0], y[1])
-        if not show:
-            gROOT.SetBatch(1)
         signal = '{sig}-{pol}*{ped}'.format(sig=self.SignalName, ped=self.PedestalName, pol=self.Polarity)
         print 'drawing signal map of {dia} for Run {run}...'.format(dia=self.diamond_name, run=self.run_number)
         self.tree.Draw('{z}:diam{nr}_track_y:diam{nr}_track_x>>signal_map'.format(z=signal, nr=nr), self.Cut.all_cut, 'goff')
-        c = TCanvas('c', 'Signal Map', 1000, 1000)
-        c.SetLeftMargin(0.12)
-        c.SetRightMargin(0.12)
         gStyle.SetPalette(53)
-        self.format_histo(h, x_tit='track_x [cm]', y_tit='track_y [cm]', y_off=1.6)
-        if draw_option.lower().startswith('surf'):
-            self.format_histo(h, x_off=2, y_off=2.4, x_tit='track_x [cm]', y_tit='track_y [cm]')
-        h.SetStats(0)
+        is_surf = draw_option.lower().startswith('surf')
+        self.format_histo(h, x_tit='track_x [cm]', y_tit='track_y [cm]', y_off=1.4, z_off=1.3, stats=0, z_tit='Pulse Height [au]')
+        if is_surf:
+            self.format_histo(h, x_off=2, y_off=2.4, x_tit='track_x [cm]', y_tit='track_y [cm]', stats=0)
+        h.GetXaxis().SetNdivisions(5)
         h.SetContour(50)
-        h.Draw(draw_option)
-        self.save_plots('SignalMap2D_' + draw_option, sub_dir=self.save_dir)
-        gROOT.SetBatch(0)
+        self.RootObjects.append(self.save_histo(h, 'SignalMap2D{0}'.format(draw_option.title()), show, lm=.12, rm=.16 if not is_surf else .12, draw_opt=draw_option))
         self.SignalMapHisto = h
-        self.RootObjects.append(c)
         return h
 
     def make_region_cut(self):
