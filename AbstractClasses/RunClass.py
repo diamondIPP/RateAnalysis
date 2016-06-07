@@ -315,7 +315,7 @@ class Run(Elementary):
     def wf_exists(self, channel):
         wf_exist = True if self.tree.FindBranch('wf{ch}'.format(ch=channel)) else False
         if not wf_exist:
-            print 'The waveform for channel {ch} is not stored in the tree'.format(ch=channel)
+            print self.log_warning('The waveform for channel {ch} is not stored in the tree'.format(ch=channel))
         return wf_exist
 
     # ==============================================
