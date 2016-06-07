@@ -168,18 +168,18 @@ class Elementary(object):
         out = 'Saving plots: {nam} as '.format(nam=name)
         run_number = self.run_number if hasattr(self, 'run_number') else None
         run_number = 'rp{nr}'.format(nr=self.run_plan) if hasattr(self, 'run_plan') else run_number
-        tc = '_{0}'.format(self.TESTCAMPAIGN) if self.MainConfigParser.get('SAVE', 'save_tc') else ''
+        tc_ = '_{0}'.format(self.TESTCAMPAIGN) if self.MainConfigParser.get('SAVE', 'save_tc') else ''
         gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
         for f in ftypes:
             ext = '.{typ}'.format(typ=f)
             if not f == 'png' and run_number is not None:
-                ext = '{2}_{0}.{1}'.format(run_number, f, tc)
+                ext = '{2}_{0}.{1}'.format(run_number, f, tc_)
             self.ensure_dir(file_path.format(typ=f))
             out += f + ', '
             out_file = '{fname}{ext}'.format(fname=file_path, ext=ext).format(typ=f)
             canvas.SaveAs(out_file)
         if print_names:
-            print out.strip(', ')
+            log_message(out.strip(', '))
         gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
 
     def save_plots(self, savename, sub_dir=None, canvas=None, ind=0, ch='dia'):
@@ -223,7 +223,7 @@ class Elementary(object):
         try:
             self.save_canvas(canvas, sub_dir=sub_dir, name=savename)
         except Exception as inst:
-            print '\n\n{delim}\nERROR in save plots!\n{msg}\n{delim}\n\n'.format(delim=len(str(inst)) * '-', msg=inst)
+            print self.print_banner('ERROR in save plots!\n{0}'.format(inst), '-')
 
     def create_new_testcampaign(self):
         year = raw_input('Enter the year of the test campgaign (YYYY): ')
@@ -330,11 +330,11 @@ class Elementary(object):
         a.SetTitleColor(color)
         return a
 
-    def make_legend(self, x1=.58, y2=.88, nentries=2, w=.3, scale=1):
+    def make_legend(self, x1=.58, y2=.88, nentries=2, w=.3, scale=1, name='l'):
         x2 = x1 + w
         y1 = y2 - nentries * .05 * scale
         l = TLegend(x1, y1, x2, y2)
-        l.SetName('l')
+        l.SetName(name)
         l.SetTextFont(42)
         l.SetTextSize(0.03 * scale)
         if self.Felix:
@@ -374,9 +374,9 @@ class Elementary(object):
             pass
         # axis titles
         try:
-            x_tit = x_tit.lower() if self.Felix else x_tit
-            y_tit = y_tit.lower() if self.Felix else y_tit
-            z_tit = z_tit.lower() if self.Felix else z_tit
+            x_tit = untitle(x_tit) if self.Felix else x_tit
+            y_tit = untitle(y_tit) if self.Felix else y_tit
+            z_tit = untitle(z_tit) if self.Felix else z_tit
             h.GetXaxis().SetTitle(x_tit) if x_tit else h.GetXaxis().GetTitle()
             h.GetXaxis().SetTitleOffset(x_off)
             h.GetXaxis().SetTitleSize(tit_size)
