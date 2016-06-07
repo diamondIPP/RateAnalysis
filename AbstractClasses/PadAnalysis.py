@@ -467,7 +467,7 @@ class SignalAnalysis(Analysis):
         x = self.run.signal_regions[region] if type_ == 'signal' else self.run.get_regions('pulser')['pulser']
         n_bins = (x[1] - x[0]) * 4 if corr else (x[1] - x[0])
         h = TH1F('hpv', title, n_bins, x[0] / 2., x[1] / 2.)
-        l = self.make_legend(.14, nentries=3)
+        l = self.make_legend(.58, nentries=3)
         self.format_histo(h, x_tit='Signal Peak Timing [ns]', y_tit='Number of Entries', y_off=1.3, stats=0)
         cut = self.Cut.generate_special_cut(excluded_cuts=['timing']) if type_ == 'signal' else '!({0})'.format(self.Cut.CutStrings['pulser'])
         cut = cut if ucut is None else ucut
@@ -476,10 +476,10 @@ class SignalAnalysis(Analysis):
         t_correction = '({p1}* trigger_cell + {p2} * trigger_cell*trigger_cell)'.format(p1=dic['t_corr'].GetParameter(1), p2=dic['t_corr'].GetParameter(2))
         draw_string = '{peaks}{op}>>hpv'.format(peaks=peak_val, op='/2.' if not corr else '-' + t_correction)
         self.tree.Draw(draw_string, cut, 'goff')
-        self.histos.append(self.save_histo(h, '{typ}PeakPositions'.format(typ=type_.title()), show, sub_dir=self.save_dir, lm=.12, logy=True))
+        self.histos.append(self.draw_histo(h, show=show, sub_dir=self.save_dir, lm=.12, logy=True))
         g = self.__draw_timing_cut()
         f, fit, fit1 = self.fit_peak_timing(h)
-        l2 = self.make_legend(.52, nentries=3)
+        l2 = self.make_legend(.52, .7, nentries=3, name='fr')
         l2.AddEntry(0, 'Fit Results:', '')
         l2.AddEntry(0, '{0}{1:5.2f} #pm {2:5.2f} ns'.format('Mean:'.ljust(7), f.Parameter(1), f.ParError(1)), '')
         l2.AddEntry(0, '{0} {1:5.2f} #pm {2:5.2f} ns'.format('Sigma:'.ljust(7), f.Parameter(2), f.ParError(2)), '')
@@ -489,15 +489,15 @@ class SignalAnalysis(Analysis):
         l.Draw()
         l2.Draw()
         h.Draw('same')
+        h.GetXaxis().SetRangeUser(f.Parameter(1) - 10 * f.Parameter(2), h.GetXaxis().GetXmax())
         self.save_plots('{typ}PeakPositions'.format(typ=type_.title()), self.save_dir)
         self.PeakValues = h
         self.RootObjects.append([l, l2])
         return f
 
     def __draw_timing_cut(self):
-        timing_fit = z.Cut.calc_timing_range(show=False)['timing_corr']
+        timing_fit = self.Cut.calc_timing_range(show=False)['timing_corr']
         xmin, xmax = timing_fit.GetParameter(1) - 3 * timing_fit.GetParameter(2), timing_fit.GetParameter(1) + 3 * timing_fit.GetParameter(2)
-        print xmin, xmax, timing_fit.GetParameter(1)
         g = TCutG('timing', 5)
         g.SetVarX('y')
         g.SetVarY('x')
@@ -600,10 +600,10 @@ class SignalAnalysis(Analysis):
         h.Fit('pol0', 'qs')
         self.histos.append(self.save_histo(h, 'TriggerCell', show, sub_dir=self.save_dir, lm=.11))
 
-    def draw_trigger_cell_vs_peakpos(self, show=True, cut=None, tprofile=True, corr=False):
+    def draw_trigger_cell_vs_peakpos(self, show=True, cut=None, tprofile=False, corr=False):
         x = self.run.signal_regions[self.SignalRegion]
         if not tprofile:
-            h = TH2D('tcpp', 'Trigger Cell vs. Signal Peak Position', 1024, 0, 1024, (x[1] - x[0]) * 4, x[0] / 2., x[1] / 2.)
+            h = TH2D('tcpp', 'Trigger Cell vs. Signal Peak Position', 1024, 0, 1024, (x[1] - x[0]), x[0] / 2., x[1] / 2.)
         else:
             h = TProfile2D('tcpp', 'Trigger Cell vs. Signal Peak Position', 1024, 0, 1024, x[1] - x[0], x[0] / 2., x[1] / 2.)
         h1 = TProfile('hpr', 'hpr', 100, 0, 1024)
@@ -620,9 +620,9 @@ class SignalAnalysis(Analysis):
         self.format_histo(h, x_tit='trigger cell', y_tit='Signal Peak Timing [ns]', y_off=1.25, z_tit='Pulse Height [au]' if tprofile else 'Number of Entries', z_off=1.2, stats=0)
         self.format_histo(h1, color=1, lw=3)
         h.GetZaxis().SetRangeUser(60, 120) if tprofile else self.do_nothing()
-        fit = h.ProjectionY().Fit('gaus', 'qs')
+        fit = h.ProjectionY().Fit('gaus', 'qs0')
         h.GetYaxis().SetRangeUser(fit.Parameter(1) - 4 * fit.Parameter(2), fit.Parameter(1) + 5 * fit.Parameter(2))
-        self.histos.append(self.save_histo(h, 'TriggerCellVsPeakPos{0}'.format('Signal' if tprofile else ''), show, self.save_dir, lm=.11, draw_opt='colz', rm=.15, logz=True))
+        self.histos.append(self.draw_histo(h, 'TriggerCellVsPeakPos{0}'.format('Signal' if tprofile else ''), show, self.save_dir, lm=.11, draw_opt='colz', rm=.15, logz=True))
         h1.Draw('hist same')
         self.save_plots('TriggerCellVsPeakPos{0}'.format('Signal' if tprofile else ''), self.save_dir)
         self.RootObjects.append(h1)
@@ -642,6 +642,28 @@ class SignalAnalysis(Analysis):
         self.format_histo(h, x_tit='trigger cell', y_tit='forc timing [ns]', y_off=1.4)
         h.SetStats(0)
         self.histos.append(self.save_histo(h, 'TriggerCellVsFORC{0}'.format('FullRange' if full_range else ''), show, self.save_dir, lm=.11, draw_opt='colz', rm=.15))
+
+    def draw_intlength_vs_triggercell(self, show=True, bin_size=32):
+        h = TProfile('hltc', 'Integral Length vs. Triggercell', 1024 / bin_size, 0, 1024)
+        self.tree.Draw('IntegralLength[{num}]:trigger_cell>>hltc'.format(num=self.SignalNumber), self.Cut.all_cut, 'goff')
+        self.format_histo(h, x_tit='Triggercell', y_tit='Integral Length [ns]', stats=0, y_off=1.4)
+        self.RootObjects.append(self.save_histo(h, 'IntLengthVsTriggerCell', show, draw_opt='', lm=.12))
+
+    def draw_intdiff_vs_triggercell(self, show=True):
+        h = TH2F('hdtc', 'Difference of the Integral Definitions vs Triggercell', 1024 / 2, 0, 1024, 200, 0, 25)
+        hprof = TProfile('hdtc_p', 'Difference of the Integral Definitions vs Triggercell', 1024 / 8, 0, 1024)
+        self.tree.Draw('(TimeIntegralValues[{num}]-IntegralValues[{num}]):trigger_cell>>hdtc'.format(num=self.SignalNumber), z.Cut.all_cut, 'goff')
+        self.tree.Draw('(TimeIntegralValues[{num}]-IntegralValues[{num}]):trigger_cell>>hdtc_p'.format(num=self.SignalNumber), z.Cut.all_cut, 'goff')
+        gStyle.SetPalette(53)
+        self.format_histo(h, x_tit='Triggercell', y_tit='Integral2 - Integral1 [ns]', z_tit='Number of Entries', stats=0, y_off=1.4, z_off=1.1)
+        self.RootObjects.append(self.draw_histo(h, '', show, draw_opt='colz', lm=.12, rm=.15))
+        self.format_histo(hprof, lw=3, color=600)
+        hprof.Draw('hist same')
+        p = h.ProjectionY()
+        h.GetYaxis().SetRangeUser(0, p.GetBinCenter(p.FindLastBinAbove(p.GetMaximum() / 15.)))
+        self.RootObjects.append(hprof)
+        self.save_plots('IntLengthVsTriggerCell', self.save_dir)
+        gStyle.SetPalette(1)
 
     # endregion
 
@@ -856,7 +878,7 @@ class SignalAnalysis(Analysis):
         sig_name = self.SignalName if sig is None else sig
         sig_name = self.__generate_signal_name(sig_name, evnt_corr, off_corr, False, cut)
         start_event = int(float(start)) if start is not None else 0
-        n_events = self.find_n_events(n_events=events, cut=str(cut), start=start_event) if events is not None else self.run.n_entries
+        n_events = self.find_n_events(n=events, cut=str(cut), start=start_event) if events is not None else self.run.n_entries
         self.tree.Draw('{name}>>signal b2'.format(name=sig_name), str(cut), 'goff', n_events, start_event)
         if show:
             c = TCanvas('c', 'Signal Distribution', 1000, 1000)
@@ -1290,28 +1312,28 @@ class SignalAnalysis(Analysis):
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
 
-    def compare_consecutive_cuts(self, scale=False, show=True):
+    def compare_consecutive_cuts(self, scale=False, show=True, save_single=True):
         self.reset_colors()
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        legend = self.make_legend(.7, .9, nentries=len(self.Cut.ConsecutiveCuts) - 3, w=.17)
+        legend = self.make_legend(.65, .9, nentries=len(self.Cut.ConsecutiveCuts) - 3, w=.17)
         cut = TCut('consecutive', '')
         stack = THStack('scc', 'Signal Distribution with Consecutive Cuts')
         for i, (key, value) in enumerate(self.Cut.ConsecutiveCuts.iteritems()):
             key = 'beam_stops' if key.startswith('beam') else key
-            print 'saving plot with {n} cuts, added {key}'.format(n=i, key=key)
             cut += value
             save_name = 'signal_distribution_{n}cuts'.format(n=i)
             h = TH1F('h_{0}'.format(i), 'signal with {n} cuts'.format(n=i), 550, -50, 500)
             self.tree.Draw('{name}>>h_{i}'.format(name=self.SignalName, i=i), cut, 'goff')
             if scale:
                 self.scale_histo(h)
-            self.save_histo(h, save_name, False, self.save_dir)
+            if save_single:
+                self.save_histo(h, save_name, False, self.save_dir)
             color = self.get_color()
             self.format_histo(h, color=color, stats=0)
             if not scale:
                 h.SetFillColor(color)
             stack.Add(h)
-            leg_entry = '+ {0}'.format(key) if not i else key
+            leg_entry = '+ {0}'.format(key) if i else key
             leg_style = 'l' if scale else 'f'
             legend.AddEntry(h, leg_entry, leg_style)
         self.format_histo(stack, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.9, draw_first=True)
@@ -1330,21 +1352,23 @@ class SignalAnalysis(Analysis):
         gr.SetPoint(0, 0, 0)
         for key, value in self.Cut.CutStrings.iteritems():
             if (str(value) or key == 'raw') and key not in ['all_cuts', 'old_bucket']:
+                key = 'beam_stops' if key.startswith('beam') else key
                 cut += value
                 h = self.show_signal_histo(cut=cut, show=False)
-                print key, h.GetMean(), h.GetMeanError()
+                self.log_info('{0}, {1}, {2}'.format(key, h.GetMean(), h.GetMeanError()))
                 gr.SetPoint(i, i, h.GetMean())
                 gr.SetPointError(i, 0, h.GetMeanError())
                 names.append(key)
                 i += 1
-        self.format_histo(gr, markersize=.2, fill_color=821)
+        self.format_histo(gr, markersize=.2, fill_color=821, y_tit='Mean Pulse Height [au]', y_off=1.4)
         y = [gr.GetY()[i] for i in xrange(1, gr.GetN())]
         gr.SetFillColor(821)
         gr.GetYaxis().SetRangeUser(min(y) - 1, max(y) + 1)
+        gr.GetXaxis().SetLabelSize(.05)
         for i in xrange(1, gr.GetN()):
             bin_x = gr.GetXaxis().FindBin(i)
             gr.GetXaxis().SetBinLabel(bin_x, names[i - 1])
-        self.RootObjects.append(self.save_histo(gr, 'CutMeans', show, self.save_dir, bm=.35, draw_opt='bap'))
+        self.RootObjects.append(self.save_histo(gr, 'CutMeans', show, self.save_dir, bm=.30, draw_opt='bap', lm=.12))
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
 
     # endregion
@@ -1552,8 +1576,6 @@ class SignalAnalysis(Analysis):
         :param ch: channel of the DRS4
         :return: histo with waveform
         """
-        gROOT.SetBatch(1)
-        t = time()
         start = self.StartEvent if start_event is None else start_event
         assert self.run.n_entries >= start >= 0, 'The start event is not within the range of tree events!'
         channel = self.channel if ch is None else ch
@@ -1562,38 +1584,28 @@ class SignalAnalysis(Analysis):
         cut = self.Cut.all_cut if cut_string is None else cut_string
         n_events = self.find_n_events(n, cut, start)
         h = TH2F('wf', 'Waveform', 1024, 0, 511, 1000, -500, 500)
-        h.SetStats(0)
         gStyle.SetPalette(55)
         self.tree.Draw('wf{ch}:Iteration$/2>>wf'.format(ch=channel), cut, 'goff', n_events, start)
         h = TGraph(self.tree.GetSelectedRows(), self.tree.GetV2(), self.tree.GetV1()) if n == 1 else h
         if fixed_range is None and n > 1:
-            h.GetYaxis().SetRangeUser(-500 + h.FindFirstBinAbove(0, 2) / 50 * 50, -450 + h.FindLastBinAbove(0, 2) / 50 * 50)
+            fit = self.draw_pulse_height(show=False)
+            pol = self.Polarity
+            ymin = fit.Parameter(0) * 3 / 50 * 50 * pol if pol < 0 else -100
+            ymax = fit.Parameter(0) * 3 / 50 * 50 * pol if pol > 0 else 100
+            h.GetYaxis().SetRangeUser(ymin, ymax)
         elif fixed_range:
             assert type(fixed_range) is list, 'Range has to be a list!'
             h.GetYaxis().SetRangeUser(fixed_range[0], fixed_range[1])
-        self.log_warning(self.print_elapsed_time(t, show=False))
-        if show:
-            gROOT.SetBatch(0)
-        c = TCanvas('c', 'WaveForm', 2000, 500)
-        c.SetRightMargin(.045)
-        c.SetLeftMargin(.06)
-        self.format_histo(h, title='Waveform', name='wf', x_tit='Time [ns]', y_tit='Signal [au]', markersize=.4, y_off=.4)
-        h.GetXaxis().SetTitleSize(.05)
-        h.GetYaxis().SetTitleSize(.05)
-        draw_option = 'scat' if n == 1 else 'col'
-        h.Draw(draw_option)
+        self.format_histo(h, title='Waveform', name='wf', x_tit='Time [ns]', y_tit='Signal [mV]', markersize=.4, y_off=.4, stats=0, tit_size=.05)
+        save_name = '{1}Waveforms{0}'.format(n, 'Pulser' if cut.GetName().startswith('Pulser') else 'Signal')
+        self.RootObjects.append(self.save_histo(h, save_name, show, self.save_dir, lm=.06, rm=.045, draw_opt='scat' if n == 1 else 'col', x=3000, y=1000))
         if add_buckets:
             sleep(.2)
             h.GetXaxis().SetNdivisions(26)
+            c = gROOT.GetListOfCanvases[-1]
             c.SetGrid()
             c.SetBottomMargin(.186)
             self._add_buckets(c)
-        gROOT.SetBatch(0)
-        if n > 1:
-            self.save_plots('WaveForms{n}'.format(n=n), sub_dir=self.save_dir)
-        else:
-            self.save_plots('SingleWaveForm', sub_dir=self.save_dir)
-        self.histos.append([c, h])
         return h, n_events
 
     def show_single_waveforms(self, n=1, cut='', start_event=None):
