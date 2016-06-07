@@ -136,35 +136,34 @@ class Analysis(Elementary):
         self.save_plots(save_name, sub_dir=self.ana_save_dir, ch=None)
         self.histos.append([h, c, gr, lines, titles])
 
-    def _add_buckets(self, canvas=None):
-        c = gROOT.GetSelectedPad() if canvas is None else canvas
+    def _add_buckets(self, ymin, ymax, xmin, xmax):
         axis = []
         labels = []
         arrows = []
         start = self.run.signal_regions['b'][0] % 40
-        stop = int(.8 * c.GetUxmax()) if c.GetUxmax() > 500 else int(c.GetUxmax())
+        stop = int(.8 * xmax) if xmax > 500 else int(xmax)
         bucket0 = self.run.signal_regions['b'][0] / 40
-        x_range = c.GetUxmax() - c.GetUxmin()
-        y_range = c.GetUymax() - c.GetUymin()
-        l = self.make_tlatex(c.GetUxmin() - .015 * x_range, c.GetUymin() - 0.1 * y_range, 'Bucket:', align=30, color=kGreen + 2, size=0.03)
+        x_range = xmax - xmin
+        y_range = ymax - ymin
+        l = self.make_tlatex(xmin - .015 * x_range, ymin - 0.1 * y_range, 'Bucket:', align=30, color=kGreen + 2, size=0.03)
         l.Draw()
         labels.append(l)
 
         # peak_fit = self.fit_peak_values(draw=False) if hasattr(self, 'fit_peak_values') else 0
         peak_fit = self.run.signal_regions['a'][0] / 2.
         for i, x in enumerate(xrange(start, stop, 20), -bucket0):
-            a = self.make_tgaxis(x, c.GetUymin() - 0.12 * y_range, c.GetUymin() - 0.05 * y_range, '', kGreen + 2)
+            a = self.make_tgaxis(x, ymin - 0.12 * y_range, ymin - 0.05 * y_range, '', kGreen + 2)
             if x <= stop - 20:
-                l = self.make_tlatex(x + 10, c.GetUymin() - 0.1 * y_range, str(i), align=20, color=kGreen + 2, size=0.03)
+                l = self.make_tlatex(x + 10, ymin - 0.1 * y_range, str(i), align=20, color=kGreen + 2, size=0.03)
                 labels.append(l)
                 l.Draw()
                 if peak_fit:
                     pos = peak_fit % 20
                     if i == -2:
-                        l1 = self.make_tlatex(x + pos, c.GetUymin() + 0.05 * y_range, 'Average Peak Position', color=kOrange + 7, size=0.03)
+                        l1 = self.make_tlatex(x + pos, ymin + 0.05 * y_range, 'Average Peak Position', color=kOrange + 7, size=0.03)
                         l1.Draw()
                         labels.append(l1)
-                    ar = TArrow(x + pos, c.GetUymin() + 1, x + pos, c.GetUymin() + 0.04 * y_range, .005, '<|')
+                    ar = TArrow(x + pos, ymin + 1, x + pos, ymin + 0.04 * y_range, .005, '<|')
                     ar.SetLineWidth(2)
                     ar.SetFillColor(kOrange + 7)
                     ar.SetLineColor(kOrange + 7)
@@ -174,25 +173,27 @@ class Analysis(Elementary):
             axis.append(a)
         self.histos.append([axis, labels, arrows])
 
-    def draw_peak_integrals(self, event=None, add_buckets=True):
+    def draw_peak_integrals(self, event=None, add_buckets=True, show=True):
         h = self.__draw_single_wf(event=event, show=False)
-        self.format_histo(h, title='Waveform', name='wf', x_tit='Time [ns]', y_tit='Signal [mV]', markersize=.5, y_off=.4, stats=0, tit_size=.05)
-        h.GetXaxis().SetRangeUser(self.run.signal_regions['e'][0] / 2 - 20, self.run.signal_regions['e'][1] / 2)
-        stuff = self.draw_histo(h, lm=.06, rm=.045, bm=.2, x=3000, y=1000, grid=True)
-        c = gROOT.GetListOfCanvases()[-1]
+        self.format_histo(h, title='Waveform', name='wf', x_tit='Time [ns]', y_tit='Signal [mV]', markersize=.8, y_off=.4, stats=0, tit_size=.05)
+        xmin, xmax = self.run.signal_regions['e'][0] / 2 - 20, self.run.signal_regions['e'][1] / 2
+        h.GetXaxis().SetRangeUser(xmin, xmax)
+        stuff = self.draw_histo(h, show=show, lm=.06, rm=.045, bm=.2, x=3000, y=1000, grid=True)
+        gROOT.SetBatch(1) if not show else self.do_nothing()
         sleep(.5)
         # draw line at found peak and pedestal region
-        peak_pos, ped_pos = self.__draw_peak_pos(event, c)
+        ymin, ymax = h.GetYaxis().GetXmin(), h.GetYaxis().GetXmax()
+        peak_pos, ped_pos = self.__draw_peak_pos(event, ymin, ymax)
         # draw error bars
         gr1 = self.make_tgrapherrors('gr1', '', color=kGreen + 2, marker_size=0, asym_err=True, width=2)
         gr2 = self.make_tgrapherrors('gr2', '', color=kCyan - 3, marker_size=0, asym_err=True, width=2)
         gStyle.SetEndErrorSize(5)
         i = 0
-        y = c.GetUymax() - c.GetUymin()
+        y = ymax - ymin
         for int_, lst in self.run.peak_integrals.iteritems():
             if len(int_) < 3:
-                gr1.SetPoint(i, peak_pos, c.GetUymax() - y * ((i + 1) / 6. + 1 / 3.))
-                gr2.SetPoint(i, ped_pos, c.GetUymax() - y * ((i + 1) / 6. + 1 / 3.))
+                gr1.SetPoint(i, peak_pos, ymax - y * ((i + 1) / 6. + 1 / 3.))
+                gr2.SetPoint(i, ped_pos, ymax - y * ((i + 1) / 6. + 1 / 3.))
                 gr1.SetPointError(i, lst[0] / 2., lst[1] / 2., 0, 0) if lst[1] - lst[0] > 1 else gr1.SetPointError(i, .5, .5, 0, 0)
                 gr2.SetPointError(i, lst[0] / 2., lst[1] / 2., 0, 0) if lst[1] - lst[0] > 1 else gr2.SetPointError(i, .5, .5, 0, 0)
                 l1 = self.make_tlatex(gr1.GetX()[i], gr1.GetY()[i] + 5, ' ' + int_, color=kGreen + 2, align=10)
@@ -201,22 +202,22 @@ class Analysis(Elementary):
         for gr in [gr1, gr2]:
             gr.Draw('[]')
             gr.Draw('p')
-        self._add_buckets() if add_buckets else self.do_nothing()
+        self._add_buckets(ymin, ymax, xmin, xmax) if add_buckets else self.do_nothing()
         self.save_plots('IntegralPeaks', sub_dir=self.ana_save_dir, ch=None)
+        gROOT.SetBatch(0)
         self.histos.append([stuff, gr1, gr2])
 
-    def __draw_peak_pos(self, event, canvas):
-        c = canvas
+    def __draw_peak_pos(self, event, ymin, ymax):
         peak_pos = self.get_peak_position(event) / 2. if hasattr(self, 'get_peak_position') else self.run.signal_regions['a'][0] / 2.
         ped_region = self.PedestalRegion if hasattr(self, 'PedestalRegion') else 'ab'
         ped_pos = self.run.pedestal_regions[ped_region][1] / 2.
-        y = c.GetUymax() - c.GetUymin()
-        l = self.make_tgaxis(peak_pos, c.GetUymin(), c.GetUymax() - y / 3., '', 4, 2)
-        l2 = self.make_tgaxis(ped_pos, c.GetUymin(), c.GetUymax() - y / 3, '', kViolet + 3, 2)
+        y = ymax - ymin
+        l = self.make_tgaxis(peak_pos, ymin, ymax - y / 3., '', 4, 2)
+        l2 = self.make_tgaxis(ped_pos, ymin, ymax - y / 3, '', kViolet + 3, 2)
         l2.Draw()
         l.Draw()
-        t1 = self.make_tlatex(peak_pos, c.GetUymax() - y / 3.1, 'found peak', color=4)
-        t2 = self.make_tlatex(ped_pos, c.GetUymax() - y / 3.1, 'ab', color=kViolet + 3)
+        t1 = self.make_tlatex(peak_pos, ymax - y / 3.1, 'found peak', color=4)
+        t2 = self.make_tlatex(ped_pos, ymax - y / 3.1, 'ab', color=kViolet + 3)
         t1.Draw()
         t2.Draw()
         self.RootObjects.append([t1, l, l2, t2])
