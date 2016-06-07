@@ -5,16 +5,20 @@ from copy import deepcopy
 from glob import glob
 from shutil import copyfile
 from time import time
-from datetime import datetime
 from ConfigParser import ConfigParser
 from json import loads
-from termcolor import colored
+from Utils import *
+from screeninfo import get_monitors
 
 import ROOT
 from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend
 # global test campaign
 tc = None
 default_tc = '201510'
+
+m = get_monitors()[0]
+x_res = m.height / 1000 * 1000
+y_res = x_res
 
 
 class Elementary(object):
