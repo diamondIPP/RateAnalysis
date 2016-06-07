@@ -14,6 +14,11 @@ def log_warning(msg):
     print '{head} {t} --> {msg}'.format(t=t, msg=msg, head=colored('WARNING:', 'red'))
 
 
+def log_message(msg):
+    t = datetime.now().strftime('%H:%M:%S')
+    print '{t} --> {msg}'.format(t=t, msg=msg, head=colored('WARNING:', 'red'))
+
+
 def scale_margins(gr1, gr2):
     ymin1, ymax1 = gr1.GetYaxis().GetXmin(), gr1.GetYaxis().GetXmax()
     ymin2, ymax2 = gr2.GetYaxis().GetXmin(), gr2.GetYaxis().GetXmax()
