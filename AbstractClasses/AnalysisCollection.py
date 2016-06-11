@@ -74,6 +74,10 @@ class AnalysisCollection(Elementary):
             print '  deleted Analysis of Run {nr}'.format(nr=nr)
         print 'AnalyisCollection deleted'
 
+    def close_files(self):
+        for ana in self.collection.itervalues():
+            ana.run.RootFile.Close()
+
     # ============================================
     # region INIT
     def load_run_config(self):
@@ -383,16 +387,15 @@ class AnalysisCollection(Elementary):
             h.Scale(1 / h.GetMaximum())
             stack.Add(h)
             legend.AddEntry(h, '{0:06.1f} kHz/cm^{{2}}'.format(self.collection.values()[i].get_flux()), 'l')
-        self.RootObjects.append(self.save_histo(stack, 'SignalDistributions', False, self.save_dir, lm=.13, draw_opt='nostack', l=legend))
-        stack.GetYaxis().SetTitleOffset(1.55)
+        self.format_histo(stack, y_off=1.55, draw_first=True)
         self.RootObjects.append(self.save_histo(stack, 'SignalDistributions', False, self.save_dir, lm=.13, draw_opt='nostack', l=legend))
         log_stack = stack.Clone()
         log_stack.SetMaximum(off)
         log_stack.SetNameTitle('hsdl', 'Signal Distribution LogY')
         self.RootObjects.append(self.save_histo(log_stack, 'SignalDistributionsLogY', False, self.save_dir, lm=.13, draw_opt='nostack', logy=True, l=legend))
+        gROOT.SetBatch(1) if not show else self.do_nothing()
         c = TCanvas('c_sd1', 'Signal Distributions', 1500, 750)
         c.Divide(2)
-        gROOT.SetBatch(1) if not show else self.do_nothing()
         legends = [legend, legend.Clone()]
         for i, s in enumerate([stack, log_stack], 1):
             pad = c.cd(i)
