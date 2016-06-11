@@ -4,6 +4,7 @@
 
 from datetime import datetime
 from termcolor import colored
+from ROOT import gStyle
 
 
 # ==============================================
@@ -33,6 +34,13 @@ def untitle(string):
         if word:
             s += word[0].lower() + word[1:] + ' '
     return s.strip(' ')
+
+
+def set_statbox(x=.98, y=.98, w=.16, entries=3):
+    gStyle.SetStatX(x)
+    gStyle.SetStatY(y)
+    gStyle.SetStatW(w)
+    gStyle.SetStatH(.05 * entries)
 
 
 def do_nothing():
