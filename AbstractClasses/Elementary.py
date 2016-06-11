@@ -211,7 +211,10 @@ class Elementary(object):
         if hasattr(self, 'run'):
             self.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas)
         elif hasattr(self, 'analysis'):
-            self.analysis.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas)
+            try:
+                self.analysis.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas)
+            except AttributeError as err:
+                self.log_warning(err)
         elif hasattr(self, 'collection'):
             runs = [self.collection.keys()[0], self.collection.keys()[-1], self.collection.values()[0].run.get_rate_string(), self.collection.values()[-1].run.get_rate_string()]
             if not ind:
