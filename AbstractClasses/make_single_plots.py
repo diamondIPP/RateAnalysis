@@ -13,6 +13,7 @@ for run in [392, 398]:
     z = SignalAnalysis(run, 0)
     z.save_dir = '{tc}_{dia}_{hv}_{rp}'.format(tc=z.TESTCAMPAIGN, dia=z.diamond_name, hv=z.bias, rp=z.run_number)
     z.draw_trigger_cell_vs_peakpos(show=False)
+    z.draw_trigger_cell_vs_peakpos(show=False, corr=True)
     z.draw_bucket_pedestal(show=False)
     z.draw_peak_timing(show=False)
     z.show_cut_contributions(flat=True, show=False)
@@ -24,6 +25,6 @@ for run in [392, 398]:
     z.draw_intlength_vs_triggercell(show=False)
     z.draw_peak_integrals(show=False, event=120040)
     z.draw_cut_means(show=False)
-    z.draw_intlength_vs_triggercell(show=False)
+    z.draw_intdiff_vs_triggercell(show=False)
     z.draw_signal_map(draw_option='colz', show=False)
 
