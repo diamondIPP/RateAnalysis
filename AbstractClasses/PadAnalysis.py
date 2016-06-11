@@ -14,6 +14,7 @@ from time import time, sleep
 from collections import OrderedDict
 from sys import stdout
 from copy import deepcopy
+from Utils import *
 
 __author__ = 'micha'
 
@@ -546,7 +547,7 @@ class SignalAnalysis(Analysis):
 
     def draw_peak_timings(self, show=True):
         h = TH1F('h_pt', 'Peak Timings', 1024, 0, 512)
-        self.tree.Draw('peaks{ch}_x_time>>h_pt'.format(ch=self.channel), z.AllCuts, 'goff')
+        self.tree.Draw('peaks{ch}_x_time>>h_pt'.format(ch=self.channel), self.AllCuts, 'goff')
         self.format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=.4, fill_color=836, lw=2, tit_size=.05, stats=0)
         self.histos.append(self.save_histo(h, 'PeakTimings', show, self.save_dir, logy=True, lm=.045, rm=.045, x=2000, y=500))
 
@@ -603,7 +604,8 @@ class SignalAnalysis(Analysis):
     def draw_trigger_cell_vs_peakpos(self, show=True, cut=None, tprofile=False, corr=False):
         x = self.run.signal_regions[self.SignalRegion]
         if not tprofile:
-            h = TH2D('tcpp', 'Trigger Cell vs. Signal Peak Position', 1024, 0, 1024, (x[1] - x[0]), x[0] / 2., x[1] / 2.)
+            ybins = (x[1] - x[0]) if not corr else 4 * (x[1] - x[0])
+            h = TH2D('tcpp', 'Trigger Cell vs. Signal Peak Position', 1024, 0, 1024, ybins, x[0] / 2., x[1] / 2.)
         else:
             h = TProfile2D('tcpp', 'Trigger Cell vs. Signal Peak Position', 1024, 0, 1024, x[1] - x[0], x[0] / 2., x[1] / 2.)
         h1 = TProfile('hpr', 'hpr', 100, 0, 1024)
@@ -673,8 +675,8 @@ class SignalAnalysis(Analysis):
     def draw_intdiff_vs_triggercell(self, show=True):
         h = TH2F('hdtc', 'Difference of the Integral Definitions vs Triggercell', 1024 / 2, 0, 1024, 200, 0, 25)
         hprof = TProfile('hdtc_p', 'Difference of the Integral Definitions vs Triggercell', 1024 / 8, 0, 1024)
-        self.tree.Draw('(TimeIntegralValues[{num}]-IntegralValues[{num}]):trigger_cell>>hdtc'.format(num=self.SignalNumber), z.Cut.all_cut, 'goff')
-        self.tree.Draw('(TimeIntegralValues[{num}]-IntegralValues[{num}]):trigger_cell>>hdtc_p'.format(num=self.SignalNumber), z.Cut.all_cut, 'goff')
+        self.tree.Draw('(TimeIntegralValues[{num}]-IntegralValues[{num}]):trigger_cell>>hdtc'.format(num=self.SignalNumber), self.Cut.all_cut, 'goff')
+        self.tree.Draw('(TimeIntegralValues[{num}]-IntegralValues[{num}]):trigger_cell>>hdtc_p'.format(num=self.SignalNumber), self.Cut.all_cut, 'goff')
         gStyle.SetPalette(53)
         self.format_histo(h, x_tit='Triggercell', y_tit='Integral2 - Integral1 [ns]', z_tit='Number of Entries', stats=0, y_off=1.4, z_off=1.1)
         self.RootObjects.append(self.draw_histo(h, '', show, draw_opt='colz', lm=.12, rm=.15))
@@ -1634,7 +1636,7 @@ class SignalAnalysis(Analysis):
             h.GetYaxis().SetRangeUser(fixed_range[0], fixed_range[1])
         self.format_histo(h, title='Waveform', name='wf', x_tit='Time [ns]', y_tit='Signal [mV]', markersize=.4, y_off=.4, stats=0, tit_size=.05)
         save_name = '{1}Waveforms{0}'.format(n, 'Pulser' if cut.GetName().startswith('Pulser') else 'Signal')
-        self.RootObjects.append(self.save_histo(h, save_name, show, self.save_dir, lm=.06, rm=.045, draw_opt='scat' if n == 1 else 'col', x=3000, y=1000))
+        self.RootObjects.append(self.save_histo(h, save_name, show, self.save_dir, lm=.06, rm=.045, draw_opt='scat' if n == 1 else 'col', x=1500, y=500))
         if add_buckets:
             sleep(.2)
             h.GetXaxis().SetNdivisions(26)
