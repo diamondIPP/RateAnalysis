@@ -643,11 +643,32 @@ class SignalAnalysis(Analysis):
         h.SetStats(0)
         self.histos.append(self.save_histo(h, 'TriggerCellVsFORC{0}'.format('FullRange' if full_range else ''), show, self.save_dir, lm=.11, draw_opt='colz', rm=.15))
 
-    def draw_intlength_vs_triggercell(self, show=True, bin_size=32):
-        h = TProfile('hltc', 'Integral Length vs. Triggercell', 1024 / bin_size, 0, 1024)
+    def draw_intlength_vs_triggercell(self, show=True, bin_size=2, prof=False):
+        if prof:
+            h = TProfile('hltc', 'Integral Length vs. Triggercell', 1024 / bin_size, 0, 1024)
+        else:
+            y_expect = (self.run.peak_integrals[self.PeakIntegral][0] + self.run.peak_integrals[self.PeakIntegral][1]) * .5
+            h = TH2F('hltc', 'Integral Length vs. Triggercell', 1024 / bin_size, 0, 1024, 100, y_expect - 2, y_expect + 2)
         self.tree.Draw('IntegralLength[{num}]:trigger_cell>>hltc'.format(num=self.SignalNumber), self.Cut.all_cut, 'goff')
-        self.format_histo(h, x_tit='Triggercell', y_tit='Integral Length [ns]', stats=0, y_off=1.4)
-        self.RootObjects.append(self.save_histo(h, 'IntLengthVsTriggerCell', show, draw_opt='', lm=.12))
+        self.format_histo(h, x_tit='Triggercell', y_tit='Integral Length [ns]', y_off=1.4, z_tit='Number of Entries', z_off=1.2)
+        self.RootObjects.append(self.draw_histo(h, 'IntLengthVsTriggerCell', show, draw_opt='' if prof else 'colz', lm=.12, rm=.16 if not prof else .1))
+        if not prof:
+            gStyle.SetOptFit(1)
+            gStyle.SetOptStat(0)
+            gStyle.SetPalette(53)
+            set_statbox(.82, .88, .15, 5)
+            h_y = h.ProjectionY()
+            fit = h_y.Fit('gaus', 'qs0')
+            h.GetYaxis().SetRangeUser(fit.Parameter(1) - 5 * fit.Parameter(2), fit.Parameter(1) + 5 * fit.Parameter(2))
+            f = TF1('f', '[0]*sin([1]*x - [2]) + [3]')
+            f.SetLineColor(600)
+            for i, name in enumerate(['y_sc', 'x_sc', 'x_off', 'y_off']):
+                f.SetParName(i, name)
+            f.SetParLimits(0, .1, 3)
+            f.SetParLimits(1, 1e-4, 1e-2)
+            h.Fit(f, 'q')
+        self.save_plots('IntLengthVsTriggerCell', self.save_dir)
+        gStyle.SetPalette(1)
 
     def draw_intdiff_vs_triggercell(self, show=True):
         h = TH2F('hdtc', 'Difference of the Integral Definitions vs Triggercell', 1024 / 2, 0, 1024, 200, 0, 25)
