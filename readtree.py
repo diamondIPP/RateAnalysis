@@ -15,12 +15,13 @@ for i, line in enumerate(regions):
         channels = regions[i + 1].strip(' ').split(',')
 print channels
 t = f.Get('tree')
+entries = t.GetEntries()
 histos = []
 count = 0
 bla = 5
 
 
-def draw_waveforms(n=1000, start_event=0, cut_string=None, show=True, add_buckets=False, fixed_range=None, ch=None):
+def draw_waveforms(n=1000, start_event=0, cut_string='', show=True, add_buckets=False, fixed_range=None, ch=0):
     """
     Draws stacked waveforms.
     :param n: number of waveforms
@@ -41,7 +42,6 @@ def draw_waveforms(n=1000, start_event=0, cut_string=None, show=True, add_bucket
     n_events = find_n_events(n, cut, start)
     print n_events
     h = TH2F('wf', 'Waveform', 1024, 0, 1024, 1000, -500, 500)
-    h.SetStats(0)
     gStyle.SetPalette(55)
     t.Draw('wf{ch}:Iteration$>>wf'.format(ch=channel), cut, 'goff', n_events, start)
     h = TGraph(t.GetSelectedRows(), t.GetV2(), t.GetV1()) if n == 1 else h
@@ -90,42 +90,10 @@ def show_single_waveforms(n=1, cut='', start_event=0):
     #     return
     count += cnt
 
-def find_n_events(n_events, cut, start):
-    # todo: use same method as below
-    """
-    Finds the amount of events from the startevent that are not subject to the cut.
-    :param n_events: number of wanted events
-    :param cut:
-    :param start:
-    :return: actual number of events s.t. n_events are drawn
-    """
-    print 'Finding the correct number of events',
-    if n_events < 2:
-        return find_single_event(cut, start)
-    n = mean([t.Draw('1', cut, 'goff', n_events, start + i * n_events) for i in xrange(4)])
-    new_events = n_events
-    ratio = n_events / n if n else 5
-    i = 0
-    while n != n_events:
-        diff = n_events - n
-        # print n, diff, new_events
-        if abs(diff) > 2:
-            new_events += int(diff * ratio)
-        else:
-            new_events += int(diff * (ratio / i + 1))
-        print '\b.',
-        stdout.flush()
-        n = t.Draw('1', cut, 'goff', new_events, start)
-        i += 1
-    print
-    return new_events
-
-def find_single_event(cut, start):
-    n_events = t.Draw('event_number', cut, 'goff')
-    evt_nmbrs = [t.GetV1()[i] for i in xrange(n_events)]
-    for nr in evt_nmbrs:
-        if start <= nr:
-            return int(nr - start + 1)
+def find_n_events(n, cut, start):
+    total_events = t.Draw('event_number', cut, 'goff', n, start)
+    evt_numbers = [t.GetV1()[i] for i in xrange(total_events)]
+    return int(evt_numbers[:n][-1] + 1 - start)
 
 def wf_exists(channel):
     wf_exist = True if t.FindBranch('wf{ch}'.format(ch=channel)) else False
@@ -163,3 +131,9 @@ def format_histo(histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=
         h.GetZaxis().SetTitleOffset(z_off)
     except AttributeError or ReferenceError:
         pass
+
+def get_branch(n, name='IntegralPeaks[13]'):
+    t.GetEntry(n)
+    info = None
+    exec 'info = t.{br}'.format(br=name)
+    print info
