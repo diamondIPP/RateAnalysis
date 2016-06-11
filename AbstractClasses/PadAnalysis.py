@@ -935,6 +935,21 @@ class SignalAnalysis(Analysis):
         self.histos.append(self.save_histo(gr, 'SignalVsPeakPos', show, self.save_dir, lm=.11, draw_opt='alp'))
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
 
+    def draw_sig_vs_corr_peaktiming(self, show=True, prof=False):
+        x = self.run.signal_regions[self.SignalRegion]
+        h = TProfile('hspt', 'Signal vs. Corrected Peak Timing', (x[1] - x[0]), x[0] / 2, x[1] / 2)
+        if not prof:
+            h = TH2F('hspt', 'Signal vs. Corrected Peak Timing', (x[1] - x[0]), x[0] / 2, x[1] / 2, 350, -50, 300)
+        dic = self.Cut.calc_timing_range(show=False)
+        t_correction = '({p1}* trigger_cell + {p2} * trigger_cell*trigger_cell)'.format(p1=dic['t_corr'].GetParameter(1), p2=dic['t_corr'].GetParameter(2))
+        draw_string = '{sig}:IntegralPeakTime[{num}]-{tc}>>hspt'.format(sig=self.SignalName, num=self.SignalNumber, tc=t_correction)
+        exluded_cuts = ['timing', 'bucket', 'tracks', 'chi2X', 'chi2Y', 'track_angle']
+        cut = self.Cut.generate_special_cut(excluded_cuts=exluded_cuts)
+        self.tree.Draw(draw_string, cut, 'goff')
+        self.format_histo(h, fill_color=1)
+        self.RootObjects.append(self.draw_histo(h, show=show, draw_opt='colz'))
+        z.__draw_timing_cut()
+
     def draw_landau_vs_peakpos(self, show=True, bins=2):
         hs = THStack('lpp', 'Landau vs. Signal Peak Postion;pulse height;entries')
         x = self.run.signal_regions[self.SignalRegion]
