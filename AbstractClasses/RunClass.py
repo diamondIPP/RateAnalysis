@@ -87,8 +87,8 @@ class Run(Elementary):
         
         # run info
         self.RunInfo = None
-        self.tree = None
         self.RootFile = None
+        self.tree = None
 
         if run_number is not None:
             self.converter = Converter(self.TESTCAMPAIGN, self.run_config_parser, self.run_number)
@@ -155,33 +155,24 @@ class Run(Elementary):
 
     def load_run_info(self):
         self.RunInfo = {}
-        data = None
         try:
             f = open(self.runinfofile, 'r')
             data = json.load(f)
             f.close()
-            loaderror = False
         except IOError as err:
-            print '\n' + (len(str(err)) + 9) * '-'
-            print 'WARNING:', err
-            print 'Loading default RunInfo!'
-            print (len(str(err)) + 9) * '-' + '\n'
-            loaderror = True
+            self.log_warning('{err}\nCould not load default RunInfo! --> Using default'.format(err))
+            self.RunInfo = default_info
+            return -1
 
         if self.run_number >= 0:
-            if not loaderror:
-                self.RunInfo = data.get(str(self.run_number))
-                if self.RunInfo is None:
-                    # try with run_log key prefix
-                    self.RunInfo = data.get(str(self.run_number).zfill(3))
-                if self.RunInfo is None:
-                    print "INFO: Run not found in json run log file. Default run info will be used."
-                    self.RunInfo = default_info
-                else:
-                    self.rename_runinfo_keys()
-            else:
+            self.RunInfo = data.get(str(self.run_number))
+            if self.RunInfo is None:
+                # try with run_log key prefix
+                self.RunInfo = data.get('{tc}{run}'.format(tc=self.TESTCAMPAIGN[2:], run=str(self.run_number).zfill(5)))
+            if self.RunInfo is None:
+                self.log_warning('Run not found in json run log file! --> Using default')
                 self.RunInfo = default_info
-            self.current_run = self.RunInfo
+            self.rename_runinfo_keys()
         else:
             self.RunInfo = default_info
             return 0
@@ -299,8 +290,6 @@ class Run(Elementary):
 
         # return, if all keys from default info are in RunInfo too
         if all([key in self.RunInfo for key in default_info]):
-            return
-        if self.TESTCAMPAIGN == '201505':
             return
 
         parser = ConfigParser()
