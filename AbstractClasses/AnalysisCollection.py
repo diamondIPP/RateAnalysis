@@ -186,7 +186,8 @@ class AnalysisCollection(Elementary):
             pad.Draw()
         # c.Divide(1, 3)
         draw_opts = ['pl', '', 'l']
-        y_tits = ['Pulse Height [au] ', 'Pulse Height [au] ', 'Current [nA] ']
+        # y_tits = ['Pulse Height [au] ', 'Pulse Height [au] ', 'Current [nA] ']
+        y_tits = ['pulse height [au] ', 'pulse height [au] ', 'current [nA] ']
 
         pad = None
         for i, gr in enumerate([pul, ph, cur], 1):
@@ -326,7 +327,13 @@ class AnalysisCollection(Elementary):
         self.reset_colors()
 
         self.PulseHeight = gr1
-        return mg
+        self.save_combined_pulse_heights(mg,mg1,legend,ymin,ymax)
+        return mg,mg1
+
+    def save_combined_pulse_heights(self, mg, mg1, lengend,ymin,ymax):
+        pass
+
+
 
     def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False, show=True, cut=None, beam_on=True):
         legend = TLegend(0.7, 0.3, 0.98, .7)
