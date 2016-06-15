@@ -1628,6 +1628,15 @@ class SignalAnalysis(Analysis):
         cut_string += additional_cut
         self.draw_signal_vs_peak_position('e', '2', show, corr, cut_string, draw_option, 1, 'BucketPedestal')
 
+    def draw_signal_vs_signale(self, show=True):
+        cut = self.Cut.generate_special_cut(excluded_cuts=['bucket'])
+        num = self.get_signal_number(region='e')
+        cut += TCut('IntegralPeakTime[{0}]<94&&IntegralPeakTime[{0}]>84'.format(num))
+        h = TH2F('hsse', 'Signal b vs Signal e', 250, -50, 200, 250, -50, 200)
+        self.tree.Draw('{sige}:{sigb}>>hsse'.format(sigb=self.SignalName, sige=self.get_signal_name(region='e')), cut, 'goff')
+        self.format_histo(h, x_tit='Signal s_b [au]', y_tit='Signal s_e [au]', z_tit='Number of Entries', z_off=1.1, y_off=1.5, stats=0)
+        self.RootObjects.append(self.save_histo(h, 'SignalEvsSignalB', show, rm=.15, lm=.13, draw_opt='colz'))
+
     def draw_single_wf(self, event=None):
         cut = '!({0})&&!pulser'.format(self.Cut.CutStrings['old_bucket'])
         return self.draw_waveforms(n=1, cut_string=cut, add_buckets=True, start_event=event)
