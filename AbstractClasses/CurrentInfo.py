@@ -7,7 +7,7 @@ from time import sleep
 from json import load
 from collections import OrderedDict
 
-from ROOT import TCanvas, TPad, TText, TGraph, kCanDelete
+from ROOT import TCanvas, TPad, TText, TGraph
 from ConfigParser import ConfigParser
 from numpy import array, mean
 from argparse import ArgumentParser
@@ -401,13 +401,14 @@ class Currents(Elementary):
         self.CurrentGraph = g1
         self.VoltageGraph = g2
 
-    def make_tpad(self, name, tit='', pos=None, fill_col=0, gridx=False, gridy=False, margins=None, transparent=False):
+    def make_tpad(self, name, tit='', pos=None, fill_col=0, gridx=False, gridy=False, margins=None, transparent=False, logy=False, logx=False):
         margins = [.1, .1, .1, .1] if margins is None else margins
         pos = [0, 0, 1, 1] if pos is None else pos
         p = TPad(name, tit, *pos)
         p.SetFillColor(fill_col)
         p.SetMargin(*margins)
-        p.ResetBit(kCanDelete)
+        p.SetLogy() if logy else self.do_nothing()
+        p.SetLogx() if logx else self.do_nothing()
         if gridx:
             p.SetGridx()
         if gridy:
