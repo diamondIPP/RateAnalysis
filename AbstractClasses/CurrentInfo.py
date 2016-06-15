@@ -175,7 +175,7 @@ class Currents(Elementary):
     @staticmethod
     def get_log_date(name):
         log_date = name.split('/')[-1].split('_')
-        log_date = ''.join(log_date[-5:])
+        log_date = ''.join(log_date[-6:])
         return datetime.strptime(log_date, '%Y%m%d%H%M%S.log')
 
     def set_start(self, zero=False):
@@ -192,7 +192,6 @@ class Currents(Elementary):
         if self.Currents:
             return
         stop = False
-        set_stop = False
         self.LogNames = self.get_logs_from_start()
         for i, name in enumerate(self.LogNames):
             self.MeanCurrent = 0
@@ -220,9 +219,8 @@ class Currents(Elementary):
             data.close()
             if stop:
                 break
-            if index > 1 and not set_stop:
-                self.set_stop()
-                set_stop = True
+        if self.Currents:
+            self.set_stop()
         if not self.Currents:
             self.set_start(zero=True)
             self.set_stop(zero=True)
@@ -255,7 +253,7 @@ class Currents(Elementary):
                 #     dicts[2][key].append(float(info[1]))
             else:
                 if len(self.Currents) > 100 and abs(self.Currents[-1] * 100) < abs(float(info[2]) * 1e9):
-                    if self.Currents[-1] > 0.01:
+                    if abs(self.Currents[-1]) > 0.01:
                         return
                 self.Currents.append(float(info[2]) * 1e9)
                 self.Time.append(total_seconds)
@@ -439,7 +437,7 @@ class Currents(Elementary):
 
     def draw_pulser_axis(self, ymin, ymax):
         x = self.Margins['x'][0] - (self.Margins['x'][1] - self.Margins['x'][0]) * .07
-        a1 = self.make_tgaxis(x, ymin, ymax, 'Pulse Height [au]', offset=.8, tit_size=.04, line=False, opt='-R', width=2)
+        a1 = self.make_tgaxis(x, ymin, ymax, 'pulse height [au]', offset=.8, tit_size=.04, line=False, opt='-R', width=2)
         a1.SetLabelColor(859)
         a1.SetLineColor(859)
         a1.SetLabelSize(label_size)
