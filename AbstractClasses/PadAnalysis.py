@@ -601,7 +601,7 @@ class SignalAnalysis(Analysis):
         h.Fit('pol0', 'qs')
         self.histos.append(self.save_histo(h, 'TriggerCell', show, sub_dir=self.save_dir, lm=.11))
 
-    def draw_trigger_cell_vs_peakpos(self, show=True, cut=None, tprofile=False, corr=False):
+    def draw_trigger_cell_vs_peakpos(self, show=True, cut=None, tprofile=False, corr=True, t_corr=False):
         x = self.run.signal_regions[self.SignalRegion]
         if not tprofile:
             ybins = (x[1] - x[0]) if not corr else 4 * (x[1] - x[0])
@@ -617,8 +617,10 @@ class SignalAnalysis(Analysis):
         gStyle.SetPalette(55)
         peaks = 'IntegralPeaks[{num}]/2.' if not corr else 'IntegralPeakTime[{num}]'
         peaks = peaks.format(num=self.SignalNumber)
-        self.tree.Draw('{z}{prof}{peaks}:trigger_cell>>tcpp'.format(z=sig, prof=prof, peaks=peaks), cut, 'goff')
-        self.tree.Draw('{peaks}:trigger_cell>>hpr'.format(peaks=peaks), self.AllCuts, 'goff')
+        dic = self.Cut.calc_timing_range(show=False)
+        t_correction = '-({p1}* trigger_cell + {p2} * trigger_cell*trigger_cell)'.format(p1=dic['t_corr'].GetParameter(1), p2=dic['t_corr'].GetParameter(2)) if t_corr else ''
+        self.tree.Draw('{z}{prof}{peaks}{tc}:trigger_cell>>tcpp'.format(z=sig, prof=prof, peaks=peaks, tc=t_correction), cut, 'goff')
+        self.tree.Draw('{peaks}{tc}:trigger_cell>>hpr'.format(peaks=peaks, tc=t_correction), self.AllCuts, 'goff')
         self.format_histo(h, x_tit='trigger cell', y_tit='Signal Peak Timing [ns]', y_off=1.25, z_tit='Pulse Height [au]' if tprofile else 'Number of Entries', z_off=1.2, stats=0)
         self.format_histo(h1, color=1, lw=3)
         h.GetZaxis().SetRangeUser(60, 120) if tprofile else self.do_nothing()
@@ -626,7 +628,7 @@ class SignalAnalysis(Analysis):
         h.GetYaxis().SetRangeUser(fit.Parameter(1) - 4 * fit.Parameter(2), fit.Parameter(1) + 5 * fit.Parameter(2))
         self.histos.append(self.draw_histo(h, 'TriggerCellVsPeakPos{0}'.format('Signal' if tprofile else ''), show, self.save_dir, lm=.11, draw_opt='colz', rm=.15, logz=True))
         h1.Draw('hist same')
-        self.save_plots('TriggerCellVsPeakPos{0}'.format('Signal' if tprofile else ''), self.save_dir)
+        self.save_plots('TriggerCellVsPeakPos{0}{1}{2}'.format('Signal' if tprofile else '', 'BothCorr' if t_corr else '', 'Corr' if corr else ''), self.save_dir)
         self.RootObjects.append(h1)
 
     def draw_trigger_cell_vs_forc(self, show=True, cut=None, full_range=False, corr=False):
