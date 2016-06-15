@@ -66,6 +66,7 @@ class SignalAnalysis(Analysis):
         self.PulseHeight = None
         self.Pedestal = None
         # histograms
+        self.PedestalHisto = None
         self.SignalTime = None
         self.SignalMapHisto = None
         self.MeanSignalHisto = None
@@ -680,14 +681,14 @@ class SignalAnalysis(Analysis):
         self.tree.Draw('(TimeIntegralValues[{num}]-IntegralValues[{num}]):trigger_cell>>hdtc'.format(num=self.SignalNumber), self.Cut.all_cut, 'goff')
         self.tree.Draw('(TimeIntegralValues[{num}]-IntegralValues[{num}]):trigger_cell>>hdtc_p'.format(num=self.SignalNumber), self.Cut.all_cut, 'goff')
         gStyle.SetPalette(53)
-        self.format_histo(h, x_tit='Triggercell', y_tit='Integral2 - Integral1 [ns]', z_tit='Number of Entries', stats=0, y_off=1.4, z_off=1.1)
+        self.format_histo(h, x_tit='Triggercell', y_tit='Integral2 - Integral1 [au]', z_tit='Number of Entries', stats=0, y_off=1.4, z_off=1.1)
         self.RootObjects.append(self.draw_histo(h, '', show, draw_opt='colz', lm=.12, rm=.15))
         self.format_histo(hprof, lw=3, color=600)
         hprof.Draw('hist same')
         p = h.ProjectionY()
         h.GetYaxis().SetRangeUser(0, p.GetBinCenter(p.FindLastBinAbove(p.GetMaximum() / 15.)))
         self.RootObjects.append(hprof)
-        self.save_plots('IntLengthVsTriggerCell', self.save_dir)
+        self.save_plots('IntDiffVsTriggerCell', self.save_dir)
         gStyle.SetPalette(1)
 
     # endregion
@@ -1566,11 +1567,11 @@ class SignalAnalysis(Analysis):
         self.save_plots('PulserPedestalComparison', sub_dir=self.save_dir)
         self.histos.append([c, h1, h2, legend])
 
-    def draw_pulser_waveform(self, n=1, start_event=None, add_buckets=False, cut=None, fixed_range=None):
+    def draw_pulser_waveform(self, n=1, start_event=None, add_buckets=False, cut=None, fixed_range=None, show=True):
         cut = self.Cut.generate_pulser_cut() if cut is None else cut
         start = self.StartEvent + self.count if start_event is None else start_event + self.count
         print 'Start at event number:', start
-        cnt = self.draw_waveforms(n=n, start_event=start, add_buckets=add_buckets, cut_string=cut, fixed_range=fixed_range)[1]
+        cnt = self.draw_waveforms(n=n, start_event=start, add_buckets=add_buckets, cut_string=cut, fixed_range=fixed_range, show=show)[1]
         print cnt
         if cnt is None:
             return
@@ -2060,7 +2061,7 @@ class SignalAnalysis(Analysis):
         ar.SetLineColor(1)
 
         c = TCanvas('c', 'c', 2500, 1500)
-        self.format_histo(h, x_tit='time [ns]', y_tit='pulse height [a.u.]')
+        self.format_histo(h, x_tit='Time [ns]', y_tit='Pulse Height [au]')
         h.SetStats(0)
         h1 = h.Clone()
         h1.GetXaxis().SetRangeUser(mid - 4 + .5, mid + 6 - .7)
