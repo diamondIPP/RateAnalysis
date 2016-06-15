@@ -1033,6 +1033,32 @@ class SignalAnalysis(Analysis):
 
         fit_par = func() if draw else None
         return self.do_pickle(picklepath, func, fit_par)
+    
+    def draw_ped_sigma_selection(self, show=True):
+        set_statbox(.88, .88, w=.25, entries=3)
+        gStyle.SetOptStat(0011)
+        gStyle.SetFitFormat('5.3g')
+        self.show_pedestal_histo(cut=self.Cut.generate_special_cut(excluded_cuts=['ped_sigma']), nbins=512, x_range=[-50, 200], logy=True, show=False)
+        h = self.PedestalHisto
+        # self.show_pedestal_histo(cut=z.Cut.generate_special_cut(),nbins=512,x_range=[-50,206],logy=True)
+        # h_cut = deepcopy(self.histos[-1][0])
+        # h.SetLineColor(kBlack)
+        # h_cut.SetLineColor(kGreen)
+        g = TCutG('cut_ped_sigma', 5)
+        x = self.Cut.ped_range
+        for i, (x, y) in enumerate([(x[0], -1e9), (x[0], +1e9), (x[1], +1e9), (x[1], -1e9), (x[0], -1e9)]):
+            g.SetPoint(i, x, y)
+        g.SetLineColor(2)
+        g.SetLineStyle(2)
+        g.SetFillColor(827)
+        g.SetFillStyle(3001)
+        self.format_histo(h, name='Fit Results', x_tit='Pulser Range Integral [au]', y_tit='Number of Entries', y_off=1.2)
+        self.RootObjects.append(self.draw_histo(h, '', show, logy=True))
+        g.Draw('f')
+        g.Draw('l')
+        h.Draw('same')
+        self.save_plots('PedSigmaSelection', self.save_dir)
+        self.RootObjects.append(g)
 
     def compare_pedestals(self):
         legend = TLegend(0.7, 0.7, 0.98, .9)
