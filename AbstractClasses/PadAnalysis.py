@@ -1000,7 +1000,8 @@ class SignalAnalysis(Analysis):
         self.format_histo(gr, x_tit='trigger cell', y_tit='pulse height [au]', y_off=1.2)
         self.histos.append(self.save_histo(gr, 'SignalVsTriggerCell', show, self.save_dir, lm=.11, draw_opt='alp'))
 
-    def show_pedestal_histo(self, region=None, peak_int=None, cut=None, fwhm=True, draw=True):
+    def show_pedestal_histo(self, region=None, peak_int=None, cut=None, fwhm=True, show=True, draw=True, x_range=None, nbins=100, logy=False):
+        x_range = [-20, 20] if x_range is None else x_range
         region = self.PedestalRegion if region is None else region
         peak_int = self.PeakIntegral if peak_int is None else peak_int
         cut = self.Cut.all_cut if cut is None else cut
@@ -1009,24 +1010,25 @@ class SignalAnalysis(Analysis):
         suffix = '{reg}_{fwhm}_{cut}'.format(reg=region + str(peak_int), cut=cut.GetName(), fwhm=fw)
         picklepath = 'Configuration/Individual_Configs/Pedestal/{tc}_{run}_{ch}_{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel, suf=suffix)
 
-        def func():
-            gROOT.SetBatch(1)
+        def func(x=x_range):
+            if not show:
+                gROOT.SetBatch(1)
             print 'making pedestal histo for region {reg}{int}...'.format(reg=region, int=peak_int)
-            h = TH1F('ped1', 'Pedestal Distribution', 100, -20, 20)
+            if x[0] >= x[1]:
+                x = sorted(x)
+            h = TH1F('ped1', 'Pedestal Distribution', nbins, x[0], x[1])
             name = self.get_pedestal_name(region, peak_int)
             self.tree.Draw('{name}>>ped1'.format(name=name), cut, 'goff')
             fit_pars = self.fit_fwhm(h, do_fwhm=fwhm, draw=draw)
+            f = deepcopy(h.GetFunction('gaus'))
+            f.SetNpx(1000)
+            f.SetRange(x[0], x[1])
+            f.SetLineStyle(2)
+            h.GetListOfFunctions().Add(f)
             gStyle.SetOptFit(1)
-            if draw:
-                gROOT.SetBatch(0)
-            c = TCanvas('c', 'Pedestal Distribution', 1000, 1000)
-            c.SetLeftMargin(.13)
-            self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.8)
-            h.Draw()
-            save_name = 'Pedestal_{reg}{cut}'.format(reg=region, cut=cut.GetName())
-            self.save_plots(save_name, canvas=c, sub_dir=self.save_dir)
-            self.histos.append([h, c])
-            gROOT.SetBatch(0)
+            self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.8)
+            self.RootObjects.append(self.save_histo(h, 'Pedestal_{reg}{cut}'.format(reg=region, cut=cut.GetName()), draw, logy=logy, lm=.13))
+            self.PedestalHisto = h
             return fit_pars
 
         fit_par = func() if draw else None
