@@ -304,7 +304,7 @@ class AnalysisCollection(Elementary):
         x_vals = sorted([gr1.GetX()[i] for i in xrange(gr1.GetN())])
         mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 1.2) if flux else self.do_nothing()
         self.RootObjects.append(self.save_histo(mg, 'PulseHeight{mod}'.format(mod=mode.title()), False, self.save_dir, lm=.14, draw_opt='A', l=legend, logx=True if flux else 0,
-                                                grid=1 if vs_time else 0))
+                                                gridy=1 if vs_time else 0, gridx=True if vs_time else 0))
 
         # no zero suppression
         mg1 = mg.Clone()
