@@ -74,4 +74,3 @@ class PulserAnalysis(Elementary):
         self.format_histo(h, stats=0, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.3)
         self.save_histo(h, 'PulserDistribution', show, logy=True, lm=.12)
         return h
-

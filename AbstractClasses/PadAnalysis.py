@@ -70,6 +70,7 @@ class PadAnalysis(Analysis):
         self.PulseHeight = None
         self.Pedestal = None
         # histograms
+        self.PedestalHisto = None
         self.SignalTime = None
         self.SignalMapHisto = None
         self.MeanSignalHisto = None
@@ -608,7 +609,7 @@ class PadAnalysis(Analysis):
         h.Fit('pol0', 'qs')
         self.histos.append(self.save_histo(h, 'TriggerCell', show, sub_dir=self.save_dir, lm=.11))
 
-    def draw_trigger_cell_vs_peakpos(self, show=True, cut=None, tprofile=False, corr=False):
+    def draw_trigger_cell_vs_peakpos(self, show=True, cut=None, tprofile=False, corr=True, t_corr=False):
         x = self.run.signal_regions[self.SignalRegion]
         if not tprofile:
             ybins = (x[1] - x[0]) if not corr else 4 * (x[1] - x[0])
@@ -624,8 +625,10 @@ class PadAnalysis(Analysis):
         gStyle.SetPalette(55)
         peaks = 'IntegralPeaks[{num}]/2.' if not corr else 'IntegralPeakTime[{num}]'
         peaks = peaks.format(num=self.SignalNumber)
-        self.tree.Draw('{z}{prof}{peaks}:trigger_cell>>tcpp'.format(z=sig, prof=prof, peaks=peaks), cut, 'goff')
-        self.tree.Draw('{peaks}:trigger_cell>>hpr'.format(peaks=peaks), self.AllCuts, 'goff')
+        dic = self.Cut.calc_timing_range(show=False)
+        t_correction = '-({p1}* trigger_cell + {p2} * trigger_cell*trigger_cell)'.format(p1=dic['t_corr'].GetParameter(1), p2=dic['t_corr'].GetParameter(2)) if t_corr else ''
+        self.tree.Draw('{z}{prof}{peaks}{tc}:trigger_cell>>tcpp'.format(z=sig, prof=prof, peaks=peaks, tc=t_correction), cut, 'goff')
+        self.tree.Draw('{peaks}{tc}:trigger_cell>>hpr'.format(peaks=peaks, tc=t_correction), self.AllCuts, 'goff')
         self.format_histo(h, x_tit='trigger cell', y_tit='Signal Peak Timing [ns]', y_off=1.25, z_tit='Pulse Height [au]' if tprofile else 'Number of Entries', z_off=1.2, stats=0)
         self.format_histo(h1, color=1, lw=3)
         h.GetZaxis().SetRangeUser(60, 120) if tprofile else self.do_nothing()
@@ -633,7 +636,7 @@ class PadAnalysis(Analysis):
         h.GetYaxis().SetRangeUser(fit.Parameter(1) - 4 * fit.Parameter(2), fit.Parameter(1) + 5 * fit.Parameter(2))
         self.histos.append(self.draw_histo(h, 'TriggerCellVsPeakPos{0}'.format('Signal' if tprofile else ''), show, self.save_dir, lm=.11, draw_opt='colz', rm=.15, logz=True))
         h1.Draw('hist same')
-        self.save_plots('TriggerCellVsPeakPos{0}'.format('Signal' if tprofile else ''), self.save_dir)
+        self.save_plots('TriggerCellVsPeakPos{0}{1}{2}'.format('Signal' if tprofile else '', 'BothCorr' if t_corr else '', 'Corr' if corr else ''), self.save_dir)
         self.RootObjects.append(h1)
 
     def draw_trigger_cell_vs_forc(self, show=True, cut=None, full_range=False, corr=False):
@@ -685,14 +688,14 @@ class PadAnalysis(Analysis):
         self.tree.Draw('(TimeIntegralValues[{num}]-IntegralValues[{num}]):trigger_cell>>hdtc'.format(num=self.SignalNumber), self.Cut.all_cut, 'goff')
         self.tree.Draw('(TimeIntegralValues[{num}]-IntegralValues[{num}]):trigger_cell>>hdtc_p'.format(num=self.SignalNumber), self.Cut.all_cut, 'goff')
         gStyle.SetPalette(53)
-        self.format_histo(h, x_tit='Triggercell', y_tit='Integral2 - Integral1 [ns]', z_tit='Number of Entries', stats=0, y_off=1.4, z_off=1.1)
+        self.format_histo(h, x_tit='Triggercell', y_tit='Integral2 - Integral1 [au]', z_tit='Number of Entries', stats=0, y_off=1.4, z_off=1.1)
         self.RootObjects.append(self.draw_histo(h, '', show, draw_opt='colz', lm=.12, rm=.15))
         self.format_histo(hprof, lw=3, color=600)
         hprof.Draw('hist same')
         p = h.ProjectionY()
         h.GetYaxis().SetRangeUser(0, p.GetBinCenter(p.FindLastBinAbove(p.GetMaximum() / 15.)))
         self.RootObjects.append(hprof)
-        self.save_plots('IntLengthVsTriggerCell', self.save_dir)
+        self.save_plots('IntDiffVsTriggerCell', self.save_dir)
         gStyle.SetPalette(1)
 
     # endregion
@@ -1005,7 +1008,8 @@ class PadAnalysis(Analysis):
         self.format_histo(gr, x_tit='trigger cell', y_tit='pulse height [au]', y_off=1.2)
         self.histos.append(self.save_histo(gr, 'SignalVsTriggerCell', show, self.save_dir, lm=.11, draw_opt='alp'))
 
-    def show_pedestal_histo(self, region=None, peak_int=None, cut=None, fwhm=True, draw=True):
+    def show_pedestal_histo(self, region=None, peak_int=None, cut=None, fwhm=True, show=True, draw=True, x_range=None, nbins=100, logy=False):
+        x_range = [-20, 20] if x_range is None else x_range
         region = self.PedestalRegion if region is None else region
         peak_int = self.PeakIntegral if peak_int is None else peak_int
         cut = self.Cut.all_cut if cut is None else cut
@@ -1014,28 +1018,55 @@ class PadAnalysis(Analysis):
         suffix = '{reg}_{fwhm}_{cut}'.format(reg=region + str(peak_int), cut=cut.GetName(), fwhm=fw)
         picklepath = 'Configuration/Individual_Configs/Pedestal/{tc}_{run}_{ch}_{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel, suf=suffix)
 
-        def func():
-            gROOT.SetBatch(1)
+        def func(x=x_range):
+            if not show:
+                gROOT.SetBatch(1)
             print 'making pedestal histo for region {reg}{int}...'.format(reg=region, int=peak_int)
-            h = TH1F('ped1', 'Pedestal Distribution', 100, -20, 20)
+            if x[0] >= x[1]:
+                x = sorted(x)
+            h = TH1F('ped1', 'Pedestal Distribution', nbins, x[0], x[1])
             name = self.get_pedestal_name(region, peak_int)
             self.tree.Draw('{name}>>ped1'.format(name=name), cut, 'goff')
             fit_pars = self.fit_fwhm(h, do_fwhm=fwhm, draw=draw)
+            f = deepcopy(h.GetFunction('gaus'))
+            f.SetNpx(1000)
+            f.SetRange(x[0], x[1])
+            f.SetLineStyle(2)
+            h.GetListOfFunctions().Add(f)
             gStyle.SetOptFit(1)
-            if draw:
-                gROOT.SetBatch(0)
-            c = TCanvas('c', 'Pedestal Distribution', 1000, 1000)
-            c.SetLeftMargin(.13)
-            self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.8)
-            h.Draw()
-            save_name = 'Pedestal_{reg}{cut}'.format(reg=region, cut=cut.GetName())
-            self.save_plots(save_name, canvas=c, sub_dir=self.save_dir)
-            self.histos.append([h, c])
-            gROOT.SetBatch(0)
+            self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.8)
+            self.RootObjects.append(self.save_histo(h, 'Pedestal_{reg}{cut}'.format(reg=region, cut=cut.GetName()), draw, logy=logy, lm=.13))
+            self.PedestalHisto = h
             return fit_pars
 
         fit_par = func() if draw else None
         return self.do_pickle(picklepath, func, fit_par)
+    
+    def draw_ped_sigma_selection(self, show=True):
+        set_statbox(.88, .88, w=.25, entries=3)
+        gStyle.SetOptStat(0011)
+        gStyle.SetFitFormat('5.3g')
+        self.show_pedestal_histo(cut=self.Cut.generate_special_cut(excluded_cuts=['ped_sigma']), nbins=512, x_range=[-50, 200], logy=True, show=False)
+        h = self.PedestalHisto
+        # self.show_pedestal_histo(cut=z.Cut.generate_special_cut(),nbins=512,x_range=[-50,206],logy=True)
+        # h_cut = deepcopy(self.histos[-1][0])
+        # h.SetLineColor(kBlack)
+        # h_cut.SetLineColor(kGreen)
+        g = TCutG('cut_ped_sigma', 5)
+        x = self.Cut.ped_range
+        for i, (x, y) in enumerate([(x[0], -1e9), (x[0], +1e9), (x[1], +1e9), (x[1], -1e9), (x[0], -1e9)]):
+            g.SetPoint(i, x, y)
+        g.SetLineColor(2)
+        g.SetLineStyle(2)
+        g.SetFillColor(827)
+        g.SetFillStyle(3001)
+        self.format_histo(h, name='Fit Results', x_tit='Pulser Range Integral [au]', y_tit='Number of Entries', y_off=1.2)
+        self.RootObjects.append(self.draw_histo(h, '', show, logy=True))
+        g.Draw('f')
+        g.Draw('l')
+        h.Draw('same')
+        self.save_plots('PedSigmaSelection', self.save_dir)
+        self.RootObjects.append(g)
 
     def compare_pedestals(self):
         legend = TLegend(0.7, 0.7, 0.98, .9)
@@ -1543,11 +1574,11 @@ class PadAnalysis(Analysis):
         self.save_plots('PulserPedestalComparison', sub_dir=self.save_dir)
         self.histos.append([c, h1, h2, legend])
 
-    def draw_pulser_waveform(self, n=1, start_event=None, add_buckets=False, cut=None, fixed_range=None):
+    def draw_pulser_waveform(self, n=1, start_event=None, add_buckets=False, cut=None, fixed_range=None, show=True):
         cut = self.Cut.generate_pulser_cut() if cut is None else cut
         start = self.StartEvent + self.count if start_event is None else start_event + self.count
         print 'Start at event number:', start
-        cnt = self.draw_waveforms(n=n, start_event=start, add_buckets=add_buckets, cut_string=cut, fixed_range=fixed_range)[1]
+        cnt = self.draw_waveforms(n=n, start_event=start, add_buckets=add_buckets, cut_string=cut, fixed_range=fixed_range, show=show)[1]
         print cnt
         if cnt is None:
             return
@@ -1604,6 +1635,15 @@ class PadAnalysis(Analysis):
         cut_string = self.Cut.CutStrings['tracks'] + self.Cut.CutStrings['pulser'] + self.Cut.CutStrings['saturated']
         cut_string += additional_cut
         self.draw_signal_vs_peak_position('e', '2', show, corr, cut_string, draw_option, 1, 'BucketPedestal')
+
+    def draw_signal_vs_signale(self, show=True):
+        cut = self.Cut.generate_special_cut(excluded_cuts=['bucket'])
+        num = self.get_signal_number(region='e')
+        cut += TCut('IntegralPeakTime[{0}]<94&&IntegralPeakTime[{0}]>84'.format(num))
+        h = TH2F('hsse', 'Signal b vs Signal e', 250, -50, 200, 250, -50, 200)
+        self.tree.Draw('{sige}:{sigb}>>hsse'.format(sigb=self.SignalName, sige=self.get_signal_name(region='e')), cut, 'goff')
+        self.format_histo(h, x_tit='Signal s_b [au]', y_tit='Signal s_e [au]', z_tit='Number of Entries', z_off=1.1, y_off=1.5, stats=0)
+        self.RootObjects.append(self.save_histo(h, 'SignalEvsSignalB', show, rm=.15, lm=.13, draw_opt='colz'))
 
     def draw_single_wf(self, event=None):
         cut = '!({0})&&!pulser'.format(self.Cut.CutStrings['old_bucket'])
@@ -2028,7 +2068,7 @@ class PadAnalysis(Analysis):
         ar.SetLineColor(1)
 
         c = TCanvas('c', 'c', 2500, 1500)
-        self.format_histo(h, x_tit='time [ns]', y_tit='pulse height [a.u.]')
+        self.format_histo(h, x_tit='Time [ns]', y_tit='Pulse Height [au]')
         h.SetStats(0)
         h1 = h.Clone()
         h1.GetXaxis().SetRangeUser(mid - 4 + .5, mid + 6 - .7)

@@ -46,5 +46,33 @@ def set_statbox(x=.98, y=.98, w=.16, entries=3, only_fit=False):
     gStyle.SetStatH(.02 * entries)
 
 
+def draw_frame(pad, x, y, base=False, x_tit='', y_tit='', y_off=1, x_off=1):
+    pad.cd()
+    fr = pad.DrawFrame(x[0], y[0], x[1], y[1])
+    pad.Modified()
+    fr.GetXaxis().SetTitleOffset(x_off)
+    fr.GetYaxis().SetTitleOffset(y_off)
+    format_base_frame(fr, x_tit, y_tit) if base else format_transparent_frame(fr)
+
+
+def format_transparent_frame(frame):
+    fr = frame
+    fr.GetXaxis().SetTickLength(0)
+    fr.GetYaxis().SetTickLength(0)
+    fr.GetXaxis().SetLabelOffset(99)
+    fr.GetYaxis().SetLabelOffset(99)
+    # fr.GetYaxis().SetAxisColor(0)
+    fr.SetLineColor(0)
+    
+
+def format_base_frame(frame, x_tit, y_tit):
+    fr = frame
+    # X-axis
+    fr.GetXaxis().SetTitle(x_tit)
+    fr.GetXaxis().SetTitleOffset(1.05)
+    # Y-axis
+    fr.GetYaxis().SetTitle(y_tit)
+
+
 def do_nothing():
     pass

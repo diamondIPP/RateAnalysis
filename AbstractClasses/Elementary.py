@@ -36,6 +36,7 @@ class Elementary(object):
         self.ana_config_parser = self.load_ana_config()
 
         self.Felix = self.MainConfigParser.get('SAVE', 'felix')
+        self.Stuff = []
 
         # set resolution
         m = get_monitors()[0]
@@ -315,10 +316,12 @@ class Elementary(object):
         return gr
 
     @staticmethod
-    def make_tgaxis(x, y1, y2, title, color=1, width=1, offset=.15, tit_size=.04, line=True, opt='+SU'):
+    def make_tgaxis(x, y1, y2, title, color=1, width=1, offset=.15, tit_size=.035, line=True, opt='+SU'):
         a = TGaxis(x, y1, x, y2, y1, y2, 510, opt)
+        a.SetName('ax')
         a.SetLineColor(color)
         a.SetLineWidth(width)
+        a.SetLabelSize(.035)
         if line:
             a.SetTickSize(0)
             a.SetLabelSize(0)
@@ -328,8 +331,16 @@ class Elementary(object):
         a.SetTitleColor(color)
         return a
 
+    def draw_x_axis(self, x, ymin, ymax, tit, col=1, off=1, w=1):
+        a1 = self.make_tgaxis(x, ymin, ymax, tit, color=col, offset=off, line=False, opt='+L', width=w)
+        a1.SetLabelOffset(0.01)
+        a1.SetLabelFont(42)
+        a1.SetTitleFont(42)
+        a1.Draw()
+        self.Stuff.append(a1)
+
     @staticmethod
-    def make_tgxaxis(x1, x2, y, title, color=1, width=1, offset=.15, tit_size=.04, line=True, opt='+SU'):
+    def make_tgxaxis(x1, x2, y, title, color=1, width=1, offset=.15, tit_size=.035, line=True, opt='+SU'):
         a = TGaxis(x1, y, x2, y, x1, x2, 510, opt)
         a.SetLabelFont(1)
         a.SetTitleFont(1)

@@ -23,6 +23,7 @@ class ChannelCut(Cut):
         self.load_channel_config()
 
         self.PedestalFit = None
+        self.ped_range = None
 
         self.generate_channel_cutstrings()
         self.all_cut = self.generate_all_cut()
@@ -106,6 +107,7 @@ class ChannelCut(Cut):
         if sigma is not None:
             assert sigma > 0, 'The sigma has to be a positive number!'
             ped_range = self.__calc_pedestal_range(sigma)
+            self.ped_range = ped_range
             string = '{ped}>{min}&&{ped}<{max}'.format(ped=self.analysis.PedestalName, min=ped_range[0], max=ped_range[1])
             self.EasyCutStrings['pedestalsigma'] = 'PedSigma<{0}'.format(sigma)
         return TCut(string)

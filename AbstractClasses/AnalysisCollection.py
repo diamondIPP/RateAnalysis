@@ -186,7 +186,8 @@ class AnalysisCollection(Elementary):
             pad.Draw()
         # c.Divide(1, 3)
         draw_opts = ['pl', '', 'l']
-        y_tits = ['Pulse Height [au] ', 'Pulse Height [au] ', 'Current [nA] ']
+        # y_tits = ['Pulse Height [au] ', 'Pulse Height [au] ', 'Current [nA] ']
+        y_tits = ['pulse height [au] ', 'pulse height [au] ', 'current [nA] ']
 
         pad = None
         for i, gr in enumerate([pul, ph, cur], 1):
@@ -326,7 +327,32 @@ class AnalysisCollection(Elementary):
         self.reset_colors()
 
         self.PulseHeight = gr1
-        return mg
+        self.save_combined_pulse_heights(mg, mg1, legend)
+        return mg, mg1
+
+    def save_combined_pulse_heights(self, mg, mg1, legend):
+        gROOT.SetBatch(0)
+        c = TCanvas('c', 'c', 2000, 2000)
+        margins = [.13, .13, .15, .1]
+        p0 = self.Currents.make_tpad('p0', 'p0', margins=margins, logx=True)
+        p1 = self.Currents.make_tpad('p1', 'p1', margins=margins, logx=True, transparent=True)
+        for pad in [p0, p1]:
+            pad.Draw()
+
+        x = [mg.GetXaxis().GetXmin(), mg.GetXaxis().GetXmax()]
+        y = [mg.GetYaxis().GetXmin(), mg.GetYaxis().GetXmax()]
+        # first graph
+        y0 = [y[0] - (y[1] - y[0]) * .3, y[1]]
+        draw_frame(p0, x, y0, base=True, x_tit='flux [kHz/cm^{2}]', y_tit='pulse height [au]', y_off=1.7, x_off=1.2)
+        mg.Draw()
+        legend.Draw()
+        # second graph
+        y1 = [0, y[1] * 1.1]
+        draw_frame(p1, x, y1)
+        self.draw_x_axis(x[1], y1[0], y1[1], 'pulse height [au]', off=1.5)
+        mg1.Draw()
+        self.save_plots('CombinedPulseHeights', self.save_dir)
+        self.RootObjects.append([c])
 
     def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False, show=True, cut=None, beam_on=True):
         legend = TLegend(0.7, 0.3, 0.98, .7)
@@ -379,7 +405,7 @@ class AnalysisCollection(Elementary):
     def draw_signal_distributions(self, show=True, off=3):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         self.reset_colors()
-        stack = THStack('hsd', 'Pulse Height Distributions;Pulse Height [au];Number of Entries')
+        stack = THStack('hsd', 'Pulse Height Distributions')
         legend = self.make_legend(nentries=self.get_number_of_analyses())
         histos = [ana.show_signal_histo(show=False) for ana in self.collection.itervalues()]
         for i, h in enumerate(histos):
@@ -387,7 +413,7 @@ class AnalysisCollection(Elementary):
             h.Scale(1 / h.GetMaximum())
             stack.Add(h)
             legend.AddEntry(h, '{0:06.1f} kHz/cm^{{2}}'.format(self.collection.values()[i].get_flux()), 'l')
-        self.format_histo(stack, y_off=1.55, draw_first=True)
+        self.format_histo(stack, y_off=1.55, draw_first=True, x_tit='Pulse Height [au]', y_tit='Number of Entries')
         self.RootObjects.append(self.save_histo(stack, 'SignalDistributions', False, self.save_dir, lm=.13, draw_opt='nostack', l=legend))
         log_stack = stack.Clone()
         log_stack.SetMaximum(off)

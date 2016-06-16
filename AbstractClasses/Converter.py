@@ -184,6 +184,7 @@ class Converter:
 
     @staticmethod
     def remove_pickle_files(run_number):
+        log_message('Removing all pickle files for run {}'.format(run_number))
         program_dir = ''
         for i in __file__.split('/')[:-2]:
             program_dir += i + '/'
