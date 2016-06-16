@@ -14,7 +14,7 @@ from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack
 from CurrentInfo import Currents
 from Elementary import Elementary
 from Extrema import Extrema2D
-from PadAnalysis import SignalAnalysis
+from PadAnalysis import PadAnalysis
 from RunSelection import RunSelection
 from TelescopeAnalysis import Analysis
 from Utils import *

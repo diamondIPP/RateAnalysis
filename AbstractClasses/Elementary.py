@@ -205,8 +205,7 @@ class Elementary(object):
         # save_dir = self.save_directory if save_dir is None else save_dir
         # file_type = '.png' if file_type is None else '.{end}'.format(end=file_type)
 
-        sub_dir = '' if sub_dir is None else '{subdir}/'.format(subdir=sub_dir)
-
+        sub_dir = self.save_dir if hasattr(self, 'save_dir') and sub_dir is None else '{subdir}/'.format(subdir=sub_dir)
         if canvas is None:
             try:
                 c = gROOT.GetListOfCanvases()
@@ -218,6 +217,8 @@ class Elementary(object):
         channel = self.channel if hasattr(self, 'channel') else None
         if hasattr(self, 'run'):
             self.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas)
+        if hasattr(self, 'Run'):
+            self.Run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas)
         elif hasattr(self, 'analysis'):
             try:
                 self.analysis.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas)
