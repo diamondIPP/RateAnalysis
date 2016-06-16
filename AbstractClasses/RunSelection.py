@@ -5,6 +5,7 @@ from copy import deepcopy
 from datetime import datetime as dt
 from textwrap import fill
 from sys import argv
+from collections import OrderedDict
 
 
 class RunSelection(Elementary):
@@ -487,6 +488,36 @@ class RunSelection(Elementary):
             runinfo[str(run)][change_key] = change_value
         f.seek(0)
         json.dump(runinfo, f, indent=2, sort_keys=True)
+        f.truncate()
+        f.close()
+
+    def add_runinfo_key(self):
+        runs = self.get_selected_runs()
+        f, runinfo = self.get_sorted_runinfo()
+        new_key = raw_input('Enter the key you want to add: ')
+        new_value = raw_input('Enter the new value: ')
+        for run in runs:
+            runinfo[str(run)][new_key] = new_value
+        self.save_runinfo(f, runinfo)
+
+    def remove_runinfo_key(self):
+        runs = self.get_selected_runs()
+        f, runinfo = self.get_sorted_runinfo()
+        pop_key = raw_input('Enter the key you want to remove: ')
+        for run in runs:
+            runinfo[str(run)].pop(pop_key)
+        self.save_runinfo(f, runinfo)
+
+    def get_sorted_runinfo(self):
+        f = open(self.run.runinfofile, 'r+')
+        runinfo = json.load(f)
+        sorted_runinfo = OrderedDict(sorted(runinfo.items(), key=lambda t: int(t[0])))
+        return f, sorted_runinfo
+
+    @staticmethod
+    def save_runinfo(f, runinfo):
+        f.seek(0)
+        json.dump(runinfo, f, indent=2)
         f.truncate()
         f.close()
 
