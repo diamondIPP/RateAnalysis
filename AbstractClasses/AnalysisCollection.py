@@ -327,10 +327,10 @@ class AnalysisCollection(Elementary):
         self.reset_colors()
 
         self.PulseHeight = gr1
-        self.save_combined_pulse_heights(mg, mg1, legend)
+        self.save_combined_pulse_heights(mg, mg1)
         return mg, mg1
 
-    def save_combined_pulse_heights(self, mg, mg1, legend):
+    def save_combined_pulse_heights(self, mg, mg1):
         gROOT.SetBatch(0)
         c = TCanvas('c', 'c', 2000, 2000)
         margins = [.13, .13, .15, .1]
@@ -338,21 +338,31 @@ class AnalysisCollection(Elementary):
         p1 = self.Currents.make_tpad('p1', 'p1', margins=margins, logx=True, transparent=True)
         for pad in [p0, p1]:
             pad.Draw()
-
+        # legend
+        l = self.make_legend(.63, .38, nentries=4)
+        l.AddEntry(mg1.GetListOfGraphs()[0], 'data (right)', 'p')
+        tits = ['data (left)', 'first run', 'last run']
+        for i, gr in enumerate(mg.GetListOfGraphs()):
+            l.AddEntry(gr, tits[i], 'p')
         x = [mg.GetXaxis().GetXmin(), mg.GetXaxis().GetXmax()]
         y = [mg.GetYaxis().GetXmin(), mg.GetYaxis().GetXmax()]
         # first graph
-        y0 = [y[0] - (y[1] - y[0]) * .3, y[1]]
-        draw_frame(p0, x, y0, base=True, x_tit='flux [kHz/cm^{2}]', y_tit='pulse height [au]', y_off=1.7, x_off=1.2)
+        diff = (y[1] - y[0])
+        y0 = [y[0] - diff * .3, y[1] + diff * .1]
+        mg.GetListOfGraphs()[0].SetLineColor(1)
+        mg.GetListOfGraphs()[0].SetMarkerColor(1)
+        draw_frame(p0, x, y0, base=True, x_tit='flux [kHz/cm^{2}]', y_tit='pulse height [au]', y_off=1.85, x_off=1.2)
         mg.Draw()
-        legend.Draw()
+        l.Draw()
         # second graph
         y1 = [0, y[1] * 1.1]
         draw_frame(p1, x, y1)
-        self.draw_x_axis(x[1], y1[0], y1[1], 'pulse height [au]', off=1.5)
+        self.draw_x_axis(x[1], y1[0], y1[1], 'pulse height [au]', off=1.5, col=2)
+        mg1.GetListOfGraphs()[0].SetLineColor(2)
+        mg1.GetListOfGraphs()[0].SetMarkerColor(2)
         mg1.Draw()
         self.save_plots('CombinedPulseHeights', self.save_dir)
-        self.RootObjects.append([c])
+        self.RootObjects.append([c, l])
 
     def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False, show=True, cut=None, beam_on=True):
         legend = TLegend(0.7, 0.3, 0.98, .7)

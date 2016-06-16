@@ -320,6 +320,7 @@ class Elementary(object):
         a.SetTitleOffset(offset)
         a.SetTitle(title)
         a.SetTitleColor(color)
+        a.SetLabelColor(color)
         return a
 
     def draw_x_axis(self, x, ymin, ymax, tit, col=1, off=1, w=1):
