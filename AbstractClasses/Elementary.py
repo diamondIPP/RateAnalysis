@@ -14,11 +14,7 @@ import ROOT
 from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend
 # global test campaign
 tc = None
-default_tc = '201510'
-
-m = get_monitors()[0]
-x_res = m.height / 1000 * 1000
-y_res = x_res
+default_tc = '201505'
 
 
 class Elementary(object):
@@ -40,6 +36,11 @@ class Elementary(object):
         self.ana_config_parser = self.load_ana_config()
 
         self.Felix = self.MainConfigParser.get('SAVE', 'felix')
+
+        # set resolution
+        m = get_monitors()[0]
+        self.ResX = m.height / 1000 * 1000
+        self.ResY = self.ResX
 
         # colors
         self.count = 0
@@ -94,9 +95,12 @@ class Elementary(object):
             return
         self.TESTCAMPAIGN = str(campaign)
 
-    def print_testcampaign(self):
+    def print_testcampaign(self, pr=True):
         out = datetime.strptime(self.TESTCAMPAIGN, '%Y%m')
-        print 'TESTCAMPAIGN:', out.strftime('%b %Y')
+        out = 'TESTCAMPAIGN: {0}'.format(out.strftime('%b %Y'))
+        if pr:
+            print out
+        return out
 
     @classmethod
     def find_test_campaigns(cls):
@@ -322,6 +326,9 @@ class Elementary(object):
     @staticmethod
     def make_tgxaxis(x1, x2, y, title, color=1, width=1, offset=.15, tit_size=.04, line=True, opt='+SU'):
         a = TGaxis(x1, y, x2, y, x1, x2, 510, opt)
+        a.SetLabelFont(1)
+        a.SetTitleFont(1)
+        a.SetTextFont(1)
         a.SetLineColor(color)
         a.SetLineWidth(width)
         if line:
@@ -392,8 +399,10 @@ class Elementary(object):
         except AttributeError or ReferenceError:
             pass
 
-    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=0.1, bm=.15, tm=.1, draw_opt='', x=x_res, y=y_res,
+    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=0.1, bm=.15, tm=.1, draw_opt='', x=None, y=None,
                    l=None, logy=False, logx=False, logz=False, canvas=None, grid=False, save=True):
+        x = self.ResX if x is None else x
+        y = self.ResY if y is None else y
         h = histo
         if not show:
             gROOT.SetBatch(1)
@@ -413,7 +422,7 @@ class Elementary(object):
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         return [c, h, l] if l is not None else [c, h]
 
-    def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=0.1, bm=.15, tm=.1, draw_opt='', x=x_res, y=y_res,
+    def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=0.1, bm=.15, tm=.1, draw_opt='', x=None, y=None,
                    l=None, logy=False, logx=False, logz=False, canvas=None, grid=False):
         return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, l, logy, logx, logz, canvas, grid, save=False)
 
