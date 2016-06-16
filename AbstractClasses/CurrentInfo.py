@@ -1,18 +1,20 @@
 # ====================================
 # IMPORTS
 # ====================================
-from datetime import datetime, timedelta
+from datetime import timedelta
 from glob import glob
 from time import sleep
 from json import load
 from collections import OrderedDict
 
+from Elementary import Elementary
+from RunSelection import RunSelection
 from ROOT import TCanvas, TPad, TText, TGraph
 from ConfigParser import ConfigParser
 from numpy import array, mean
 from argparse import ArgumentParser
 
-from Elementary import Elementary
+from Utils import *
 
 # ====================================
 # CONSTANTS
@@ -20,7 +22,7 @@ from Elementary import Elementary
 axis_title_size = 0.04
 label_size = .03
 col_vol = 602  # 807
-col_cur = 418
+col_cur = 899  # 418
 
 
 # ====================================
@@ -29,7 +31,7 @@ col_cur = 418
 class Currents(Elementary):
     """reads in information from the keithley log file"""
 
-    def __init__(self, analysis, averaging=False, points=10, hv_nr=None, verbose=False):
+    def __init__(self, analysis, averaging=False, points=10, dia=None, start_run=None, verbose=False):
         self.analysis = analysis
         self.IsCollection = hasattr(analysis, 'runs')
         Elementary.__init__(self, verbose=verbose)
@@ -49,13 +51,15 @@ class Currents(Elementary):
         if analysis is not None:
             self.RunInfo = analysis.run.RunInfo if not self.IsCollection else analysis.get_first_analysis().RunInfo
             self.Channel = analysis.channel
-            self.DiamondName = analysis.diamond_name
+        self.DiamondName = self.load_dia_name()
+        self.Bias = self.load_dia_name()
+        self.StartRun = start_run
         self.StartTime = self.load_start_time()
         self.StopTime = self.load_stop_time()
 
         # device info
-        self.Number = self.get_device_nr(hv_nr)
-        self.Channel = self.get_device_channel()
+        self.Number = self.get_device_nr(dia)
+        self.Channel = self.get_device_channel(dia)
         self.Brand = self.ConfigParser.get('HV' + self.Number, 'name').split('-')[0].strip('0123456789')
         self.Model = self.ConfigParser.get('HV' + self.Number, 'model')
         self.Name = '{0} {1}'.format(self.Brand, self.Model)
@@ -66,6 +70,7 @@ class Currents(Elementary):
 
         # data
         self.Currents = []
+        self.IgnoreJumps = True
         self.Voltages = []
         self.Time = []
         self.MeanCurrent = 0
@@ -82,17 +87,14 @@ class Currents(Elementary):
         self.Histos = {}
         self.Stuff = []
 
-    def __del__(self):
-        print 'Cleaning up'
-        for pad in [self.TitlePad, self.VoltagePad, self.CurrentPad]:
-            try:
-                print pad
-            except Exception as err:
-                self.log_warning(err)
-
-
     # ==========================================================================
     # region INIT
+    def load_dia_name(self):
+        return self.analysis.diamond_name if self.analysis is not None else None
+
+    def load_bias(self):
+        return self.analysis.run.bias if self.analysis is not None else None
+
     def load_run_number(self):
         nr = None
         if self.analysis is not None:
@@ -105,10 +107,10 @@ class Currents(Elementary):
             data = load(f)
             f.close()
         except IOError as err:
-            self.log_warning('{err}\nCould not load default RunInfo!'.format(err))
+            self.log_warning('{err}\nCould not load default RunInfo!'.format(err=err))
             return None
-        RunLogs = OrderedDict(sorted(data.iteritems()))
-        return RunLogs
+        run_logs = OrderedDict(sorted(data.iteritems()))
+        return run_logs
 
     def load_run_config(self):
         nr = None
@@ -125,15 +127,20 @@ class Currents(Elementary):
         self.log_info('HV Devices: {0}'.format([name for name in parser.sections() if name.startswith('HV')]))
         return parser
 
-    def get_device_nr(self, hv_nr):
+    def get_device_nr(self, dia):
         if self.analysis is None:
-            return hv_nr
+            try:
+                full_str = self.RunLogs[self.StartRun]['dia{0}supply'.format(dia)]
+                return str(full_str.split('-')[0])
+            except KeyError:
+                return dia
         full_str = self.RunInfo['dia{dia}supply'.format(dia=1 if not self.Channel else 2)]
         return str(full_str.split('-')[0])
 
-    def get_device_channel(self):
+    def get_device_channel(self, dia):
         if self.analysis is None:
-            return '0'
+            full_str = self.RunLogs[self.StartRun]['dia{dia}supply'.format(dia=dia)]
+            return full_str.split('-')[1] if len(full_str) > 1 else '0'
         full_str = self.RunInfo['dia{dia}supply'.format(dia=1 if not self.Channel else 2)]
         return full_str.split('-')[1] if len(full_str) > 1 else '0'
 
@@ -154,9 +161,46 @@ class Currents(Elementary):
         else:
             return None
 
-    def set_start_stop(self, start, stop):
-        self.StartTime = datetime.strptime(start, '%Y/%m/%d-%H:%M:%S')
-        self.StopTime = datetime.strptime(stop, '%Y/%m/%d-%H:%M:%S')
+    def set_start_stop(self, sta, sto=None):
+        if not sta.isdigit():
+            start_string = '{y}/{s}'.format(y=self.TESTCAMPAIGN[:4], s=sta)
+            stop_string = '{y}/{e}'.format(y=self.TESTCAMPAIGN[:4], e=sto)
+            self.StartTime = datetime.strptime(start_string, '%Y/%m/%d-%H:%M:%S')
+            self.StopTime = datetime.strptime(stop_string, '%Y/%m/%d-%H:%M:%S')
+        elif sto is None:
+            self.StartRun = sta
+            run = sta
+            if not self.run_exists(run):
+                return
+            log = self.RunLogs[run]
+            self.StartTime = datetime.strptime('{d} {t}'.format(d=log['begin date'], t=log['start time']), '%m/%d/%Y %H:%M:%S')
+            self.StopTime = datetime.strptime('{d} {t}'.format(d=log['begin date'], t=log['stop time']), '%m/%d/%Y %H:%M:%S')
+            if self.StartTime > self.StopTime:
+                self.StopTime += timedelta(days=1)
+        else:
+            self.StartRun = sta
+            log1 = self.RunLogs[sta]
+            log2 = self.RunLogs[sto]
+            try:
+                self.StartTime = datetime.strptime('{d} {t}'.format(d=log1['begin date'], t=log1['start time']), '%m/%d/%Y %H:%M:%S')
+                self.StopTime = datetime.strptime('{d} {t}'.format(d=log2['begin date'], t=log2['stop time']), '%m/%d/%Y %H:%M:%S')
+            except KeyError:
+                self.StartTime = datetime.strptime(log1['starttime0'], '%Y-%m-%dT%H:%M:%SZ') + timedelta(hours=1)
+                self.StopTime = datetime.strptime(log2['endtime'], '%Y-%m-%dT%H:%M:%SZ') + timedelta(hours=1)
+
+    def set_device(self, nr, dia):
+        self.reset_data()
+        self.Number = self.get_device_nr(str(nr))
+        self.Channel = self.get_device_channel(dia)
+        self.Brand = self.ConfigParser.get('HV' + self.Number, 'name').split('-')[0].strip('0123456789')
+        self.Model = self.ConfigParser.get('HV' + self.Number, 'model')
+        self.Name = '{0} {1}'.format(self.Brand, self.Model)
+        self.DataPath = self.find_data_path()
+
+    def reset_data(self):
+        self.Currents = []
+        self.Voltages = []
+        self.Time = []
     # endregion
 
     # ==========================================================================
@@ -252,9 +296,10 @@ class Currents(Elementary):
                 #     dicts[0][key].append(convert_time(now))
                 #     dicts[2][key].append(float(info[1]))
             else:
-                if len(self.Currents) > 100 and abs(self.Currents[-1] * 100) < abs(float(info[2]) * 1e9):
-                    if abs(self.Currents[-1]) > 0.01:
-                        return
+                if self.IgnoreJumps:
+                    if len(self.Currents) > 100 and abs(self.Currents[-1] * 100) < abs(float(info[2]) * 1e9):
+                        if abs(self.Currents[-1]) > 0.01:
+                            return
                 self.Currents.append(float(info[2]) * 1e9)
                 self.Time.append(total_seconds)
                 self.Voltages.append(float(info[1]))
@@ -300,82 +345,51 @@ class Currents(Elementary):
         self.make_graphs()
         self.set_margins()
 
-    def draw_graphs(self, relative_time=False):
-        if not self.Currents:
-            self.find_data()
-        if self.Margins is None:
-            self.set_margins()
-        if relative_time:
-            self.convert_to_relative_time()
-            sleep(.1)
-            self.make_graphs()
-            self.set_margins()
-        if self.CurrentGraph is None:
-            self.make_graphs()
-        c = TCanvas('c', 'Keithley Currents for Run {0}'.format(self.RunNumber), 1000, 1000)
-        self.make_pads()
-        self.draw_pads()
-
-        self.VoltagePad.cd()
-        self.draw_voltage_frame()
-        self.VoltageGraph.Draw('p')
-        a = self.draw_voltage_axis()
-        a.Draw()
-
-        self.TitlePad.cd()
-        t = self.draw_title_pad()
-        t.Draw()
-
-        self.CurrentPad.cd()
-        self.draw_current_frame()
-        self.CurrentGraph.Draw('pl')
-
-        c.Update()
-
-        self.Histos[0] = [c, t, a]
-        self.save_plots('Currents', sub_dir=self.analysis.save_dir)
-
-    def draw_indep_graphs(self, rel_time=False):
+    def draw_indep_graphs(self, rel_time=False, ignore_jumps=True):
+        self.IgnoreJumps = ignore_jumps
         if not self.Currents:
             self.set_graphs(rel_time)
-        c = TCanvas('c', 'Keithley Currents for Run {0}'.format(self.RunNumber), 1500, 750)
-        self.make_pads()
-        self.draw_pads()
+        c = TCanvas('c', 'Keithley Currents for Run {0}'.format(self.RunNumber), int(self.ResX * 1.5), int(self.ResX * .75))
+        pads = self.make_pads()
+        self.draw_pads(pads)
 
-        self.draw_voltage_pad()
-        self.draw_title_pad()
-        self.draw_current_pad()
+        self.draw_voltage_pad(pads[0])
+        self.draw_title_pad(pads[1])
+        self.draw_current_pad(pads[2])
 
-        self.Stuff.append(c)
-        self.save_plots('Currents', sub_dir='Currents')
+        self.Stuff.append([c] + pads)
 
-    def draw_current_pad(self):
-        self.CurrentPad.cd()
-        self.draw_current_frame()
+        self.save_plots('{dia}_{bias}'.format(dia=self.DiamondName, bias=self.Bias), sub_dir='Currents')
+
+    def draw_current_pad(self, pad):
+        pad.cd()
+        self.draw_current_frame(pad)
         self.CurrentGraph.Draw('pl')
 
-    def draw_voltage_pad(self):
-        self.VoltagePad.cd()
-        self.draw_voltage_frame()
+    def draw_voltage_pad(self, pad):
+        pad.cd()
+        self.draw_voltage_frame(pad)
         self.VoltageGraph.Draw('p')
         self.draw_voltage_axis()
 
-    def make_pads(self):
-        self.VoltagePad = self.make_tpad('p1', gridy=True, margins=[.08, .07, .15, .15])
-        self.CurrentPad = self.make_tpad('p2', gridx=True, margins=[.08, .07, .15, .15], transparent=True)
-        self.TitlePad = self.make_tpad('p3', transparent=True)
-
-    def draw_pads(self):
-        for p in [self.VoltagePad, self.TitlePad, self.CurrentPad]:
-            p.Draw()
-
-    def draw_title_pad(self):
-        self.TitlePad.cd()
-        text = 'Currents measured by {0}'.format(self.Name)
+    def draw_title_pad(self, pad):
+        pad.cd()
+        text = 'Currents of {dia} at {bias} V'.format(dia=self.DiamondName, bias=self.Bias)
         t1 = TText(0.08, 0.88, text)
         t1.SetTextSize(0.05)
         t1.Draw()
         self.Stuff.append(t1)
+
+    def make_pads(self):
+        p1 = self.make_tpad('p1', gridy=True, margins=[.08, .07, .15, .15])
+        p2 = self.make_tpad('p2', transparent=True)
+        p3 = self.make_tpad('p3', gridx=True, margins=[.08, .07, .15, .15], transparent=True)
+        return [p1, p2, p3]
+
+    @staticmethod
+    def draw_pads(pads):
+        for p in pads:
+            p.Draw()
 
     def find_margins(self):
         x = [min(self.Time), max(self.Time)]
@@ -446,9 +460,9 @@ class Currents(Elementary):
         a1.Draw()
         self.Stuff.append(a1)
 
-    def draw_current_frame(self):
+    def draw_current_frame(self, pad):
         m = self.Margins
-        h2 = self.CurrentPad.DrawFrame(m['x'][0], m['y'][0], m['x'][1], m['y'][1])
+        h2 = pad.DrawFrame(m['x'][0], m['y'][0], m['x'][1], m['y'][1])
         # X-axis
         h2.GetXaxis().SetTitle("#font[22]{time [hh:mm]}")
         h2.GetXaxis().SetTimeFormat("%H:%M")
@@ -469,7 +483,7 @@ class Currents(Elementary):
         h2.GetYaxis().SetLabelSize(label_size)
         h2.GetYaxis().SetTitleSize(axis_title_size)
         h2.GetYaxis().SetTitleOffset(.6)
-        self.Stuff.append(h2)
+        # self.Stuff.append(h2)
 
     def draw_ph_frame(self, pad, margins):
         pad.cd()
@@ -492,15 +506,14 @@ class Currents(Elementary):
         h2.GetYaxis().SetTitleSize(0.04)
         h2.GetYaxis().SetTitleOffset(0.75)
 
-    def draw_voltage_frame(self):
+    def draw_voltage_frame(self, pad):
         m = self.Margins
-        h1 = self.VoltagePad.DrawFrame(m['x'][0], -1100, m['x'][1], 1100)
+        h1 = pad.DrawFrame(m['x'][0], -1100, m['x'][1], 1100)
         h1.SetTitleSize(axis_title_size)
         h1.GetXaxis().SetTickLength(0)
         h1.GetYaxis().SetTickLength(0)
         h1.GetXaxis().SetLabelOffset(99)
         h1.GetYaxis().SetLabelOffset(99)
-        h1.GetYaxis().SetAxisColor(0)
         h1.SetLineColor(0)
 
     def draw_curr_frame(self, pad):
@@ -559,6 +572,25 @@ class Currents(Elementary):
         
     # endregion
 
+    # ==========================================================================
+    # region MISCELLANEOUS
+    def run_exists(self, run):
+        if run in self.RunLogs:
+            return True
+        else:
+            self.log_warning('Run {run} does not exist in {tc}!'.format(run=run, tc=self.print_testcampaign(pr=False)))
+            return False
+
+    def print_run_times(self, run):
+        run = str(run)
+        if not self.run_exists(run):
+            return
+        log = self.RunLogs[run]
+        out = '{date}: {start}-{stop}'.format(date=log['begin date'], start=log['start time'], stop=log['stop time'])
+        print out
+
+    # endregion
+
     @staticmethod
     def make_transparent(pad):
         pad.SetFillStyle(4000)
@@ -568,15 +600,28 @@ class Currents(Elementary):
 
 if __name__ == "__main__":
     pars = ArgumentParser()
-    pars.add_argument('start', nargs='?', default='')
-    pars.add_argument('stop', nargs='?', default='2099')
-    pars.add_argument('-hv', nargs='?', default='1')
+    pars.add_argument('start', nargs='?', default='01/01-00:00:00')
+    pars.add_argument('stop', nargs='?', default=None)
+    pars.add_argument('-d', '--dia', nargs='?', default='1')
     pars.add_argument('-tc', '--testcampaign', nargs='?', default='')
     pars.add_argument('-v', '--verbose', nargs='?', default=True, type=bool)
+    pars.add_argument('-rp', '--runplan', nargs='?', default=None)
     args = pars.parse_args()
     tc = args.testcampaign if args.testcampaign.startswith('201') else None
     a = Elementary(tc)
     a.print_banner('STARTING CURRENT TOOL')
     a.print_testcampaign()
-    z = Currents(None, hv_nr=args.hv, verbose=args.verbose)
-    z.set_start_stop('{y}/{s}'.format(y=a.TESTCAMPAIGN[:4], s=args.start), '{y}/{e}'.format(y=a.TESTCAMPAIGN[:4], e=args.stop))
+    start, end = args.start, args.stop
+    if args.runplan is not None:
+        sel = RunSelection(testcampaign=tc)
+        sel.select_runs_from_runplan(args.runplan)
+        start = str(sel.get_selected_runs()[0])
+        end = str(sel.get_selected_runs()[-1])
+    z = Currents(None, dia=args.dia, start_run=start, verbose=args.verbose)
+    z.set_start_stop(start, end)
+    try:
+        z.DiamondName = z.RunLogs[start]['diamond {0}'.format(int(args.dia))] if start.isdigit() else None
+        z.Bias = z.RunLogs[start]['hv dia{0}'.format(int(args.dia))] if start.isdigit() else None
+    except KeyError:
+        z.DiamondName = z.RunLogs[start]['dia{0}'.format(int(args.dia))] if start.isdigit() else None
+        z.Bias = z.RunLogs[start]['dia{0}hv'.format(int(args.dia))] if start.isdigit() else None

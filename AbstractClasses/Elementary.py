@@ -16,10 +16,6 @@ from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectr
 tc = None
 default_tc = '201510'
 
-m = get_monitors()[0]
-x_res = m.height / 1000 * 1000
-y_res = x_res
-
 
 class Elementary(object):
     """
@@ -42,9 +38,18 @@ class Elementary(object):
         self.Felix = self.MainConfigParser.get('SAVE', 'felix')
         self.Stuff = []
 
+        # set resolution
+        m = get_monitors()[0]
+        self.ResX = m.height / 1000 * 1000
+        self.ResY = self.ResX
+
+        # container for the ROOT objects
+        self.ROOTObjects = []
+
         # colors
         self.count = 0
         self.colors = self.create_colorlist()
+        self.FillColor = 821
         gStyle.SetLegendFont(42)
 
     # ============================================
@@ -95,9 +100,12 @@ class Elementary(object):
             return
         self.TESTCAMPAIGN = str(campaign)
 
-    def print_testcampaign(self):
+    def print_testcampaign(self, pr=True):
         out = datetime.strptime(self.TESTCAMPAIGN, '%Y%m')
-        print 'TESTCAMPAIGN:', out.strftime('%b %Y')
+        out = 'TESTCAMPAIGN: {0}'.format(out.strftime('%b %Y'))
+        if pr:
+            print out
+        return out
 
     @classmethod
     def find_test_campaigns(cls):
@@ -198,8 +206,7 @@ class Elementary(object):
         # save_dir = self.save_directory if save_dir is None else save_dir
         # file_type = '.png' if file_type is None else '.{end}'.format(end=file_type)
 
-        sub_dir = '' if sub_dir is None else '{subdir}/'.format(subdir=sub_dir)
-
+        sub_dir = self.save_dir if hasattr(self, 'save_dir') and sub_dir is None else '{subdir}/'.format(subdir=sub_dir)
         if canvas is None:
             try:
                 c = gROOT.GetListOfCanvases()
@@ -211,6 +218,8 @@ class Elementary(object):
         channel = self.channel if hasattr(self, 'channel') else None
         if hasattr(self, 'run'):
             self.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas)
+        if hasattr(self, 'Run'):
+            self.Run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas)
         elif hasattr(self, 'analysis'):
             try:
                 self.analysis.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas)
@@ -334,6 +343,9 @@ class Elementary(object):
     @staticmethod
     def make_tgxaxis(x1, x2, y, title, color=1, width=1, offset=.15, tit_size=.035, line=True, opt='+SU'):
         a = TGaxis(x1, y, x2, y, x1, x2, 510, opt)
+        a.SetLabelFont(1)
+        a.SetTitleFont(1)
+        a.SetTextFont(1)
         a.SetLineColor(color)
         a.SetLineWidth(width)
         if line:
@@ -361,7 +373,7 @@ class Elementary(object):
         return l
 
     def format_histo(self, histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=20, color=1, markersize=1, x_off=1, y_off=1, z_off=1, lw=1, fill_color=0, stats=True,
-                     tit_size=.04, draw_first=False):
+                     tit_size=.04, draw_first=False, x_range=None, y_range=None):
         h = histo
         if draw_first:
             gROOT.SetBatch(1)
@@ -392,20 +404,29 @@ class Elementary(object):
             x_tit = untitle(x_tit) if self.Felix else x_tit
             y_tit = untitle(y_tit) if self.Felix else y_tit
             z_tit = untitle(z_tit) if self.Felix else z_tit
-            h.GetXaxis().SetTitle(x_tit) if x_tit else h.GetXaxis().GetTitle()
-            h.GetXaxis().SetTitleOffset(x_off)
-            h.GetXaxis().SetTitleSize(tit_size)
-            h.GetYaxis().SetTitle(y_tit) if y_tit else h.GetYaxis().GetTitle()
-            h.GetYaxis().SetTitleOffset(y_off)
-            h.GetYaxis().SetTitleSize(tit_size)
+            # x-axis
+            x_axis = h.GetXaxis()
+            x_axis.SetTitle(x_tit) if x_tit else h.GetXaxis().GetTitle()
+            x_axis.SetTitleOffset(x_off)
+            x_axis.SetTitleSize(tit_size)
+            x_axis.SetRangeUser(x_range[0], x_range[1]) if x_range is not None else do_nothing()
+            # y-axis
+            y_axis = h.GetYaxis()
+            y_axis.SetTitle(y_tit) if y_tit else y_axis.GetTitle()
+            y_axis.SetTitleOffset(y_off)
+            y_axis.SetTitleSize(tit_size)
+            y_axis.SetRangeUser(y_range[0], y_range[1]) if y_range is not None else do_nothing()
+            # z-axis
             h.GetZaxis().SetTitle(z_tit) if z_tit else h.GetZaxis().GetTitle()
             h.GetZaxis().SetTitleOffset(z_off)
             h.GetZaxis().SetTitleSize(tit_size)
         except AttributeError or ReferenceError:
             pass
 
-    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=0.1, bm=.15, tm=.1, draw_opt='', x=x_res, y=y_res,
-                   l=None, logy=False, logx=False, logz=False, canvas=None, grid=False, save=True):
+    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=0.1, bm=.15, tm=.1, draw_opt='', x=None, y=None,
+                   l=None, logy=False, logx=False, logz=False, canvas=None, gridx=False, gridy=False, save=True):
+        x = self.ResX if x is None else x
+        y = self.ResY if y is None else y
         h = histo
         if not show:
             gROOT.SetBatch(1)
@@ -415,19 +436,21 @@ class Elementary(object):
         c.SetLogx() if logx else self.do_nothing()
         c.SetLogy() if logy else self.do_nothing()
         c.SetLogz() if logz else self.do_nothing()
-        c.SetGrid() if grid else self.do_nothing()
+        c.SetGridx() if gridx else self.do_nothing()
+        c.SetGridy() if gridy else self.do_nothing()
         h.Draw(draw_opt)
         l.Draw() if l is not None else self.do_nothing()
         if save:
-            sub_dir = self.save_dir if hasattr(self, 'save_dir') and sub_dir is None else sub_dir
             self.save_plots(save_name, sub_dir=sub_dir)
         gROOT.SetBatch(0)
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
-        return [c, h, l] if l is not None else [c, h]
+        lst = [c, h, l] if l is not None else [c, h]
+        self.ROOTObjects.append(lst)
+        return lst
 
-    def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=0.1, bm=.15, tm=.1, draw_opt='', x=x_res, y=y_res,
-                   l=None, logy=False, logx=False, logz=False, canvas=None, grid=False):
-        return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, l, logy, logx, logz, canvas, grid, save=False)
+    def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=0.1, bm=.15, tm=.1, draw_opt='', x=None, y=None,
+                   l=None, logy=False, logx=False, logz=False, canvas=None, gridy=False, gridx=False):
+        return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, l, logy, logx, logz, canvas, gridx, gridy, save=False)
 
     @staticmethod
     def make_tlatex(x, y, text, align=20, color=1, size=.05):

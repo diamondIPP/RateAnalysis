@@ -14,7 +14,7 @@ from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack
 from CurrentInfo import Currents
 from Elementary import Elementary
 from Extrema import Extrema2D
-from PadAnalysis import SignalAnalysis
+from PadAnalysis import PadAnalysis
 from RunSelection import RunSelection
 from TelescopeAnalysis import Analysis
 from Utils import *
@@ -89,7 +89,7 @@ class AnalysisCollection(Elementary):
         """
         for run, dia in sorted(zip(self.runs, self.diamonds)):
             ch = 0 if dia == 1 or dia == 3 else 3
-            analysis = SignalAnalysis(run, ch, self.min_max_rate_runs)
+            analysis = PadAnalysis(run, ch, self.min_max_rate_runs)
             self.collection[analysis.run.run_number] = analysis
             self.current_run_number = analysis.run.run_number
 

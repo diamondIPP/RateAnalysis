@@ -1,19 +1,23 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie, THStack, TArrow, kOrange, TSpectrum, gRandom
-from TelescopeAnalysis import Analysis
-from Elementary import Elementary
-from CurrentInfo import Currents
-from numpy import array
-from math import sqrt, ceil, log
 from argparse import ArgumentParser
-from Extrema import Extrema2D
-from ChannelCut import ChannelCut
-from time import time, sleep
 from collections import OrderedDict
-from sys import stdout
 from copy import deepcopy
+from math import sqrt, ceil, log
+from numpy import array
+from sys import stdout
+from time import time, sleep
+
+from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie,\
+    THStack, TArrow, kOrange, TSpectrum, gRandom
+
+from ChannelCut import ChannelCut
+from CurrentInfo import Currents
+from Elementary import Elementary
+from Extrema import Extrema2D
+from TelescopeAnalysis import Analysis
+from Pulser import PulserAnalysis
 from Utils import *
 
 __author__ = 'micha'
@@ -22,7 +26,7 @@ __author__ = 'micha'
 # ==============================================
 # MAIN CLASS
 # ==============================================
-class SignalAnalysis(Analysis):
+class PadAnalysis(Analysis):
     def __init__(self, run, channel, high_low_rate_run=None, binning=20000, verbose=False):
 
         self.channel = channel
@@ -72,6 +76,8 @@ class SignalAnalysis(Analysis):
         self.MeanSignalHisto = None
         self.PeakValues = None
 
+        self.Pulser = PulserAnalysis(self)
+
     def __del__(self):
         for obj in [self.PulseHeight, self.Pedestal, self.SignalMapHisto, self.SignalTime, self.PeakValues, self.MeanSignalHisto]:
             self.del_rootobj(obj)
@@ -84,7 +90,8 @@ class SignalAnalysis(Analysis):
                 self.del_rootobj(obj)
 
     def show_current(self, relative_time=True):
-        self.Currents.draw_graphs(relative_time=relative_time)
+        # todo: write a new function for that ;)
+        pass
 
     # ==========================================================================
     # region INIT
@@ -695,7 +702,7 @@ class SignalAnalysis(Analysis):
 
     # ==========================================================================
     # region SIGNAL/PEDESTAL
-    def __generate_signal_name(self, signal, evnt_corr, off_corr, bin_corr, cut=None):
+    def generate_signal_name(self, signal, evnt_corr=True, off_corr=False, bin_corr=False, cut=None):
         sig_name = signal
         # pedestal polarity is always the same as signal polarity
         ped_pol = '1'
@@ -715,7 +722,7 @@ class SignalAnalysis(Analysis):
         gROOT.SetBatch(1)
         signal = self.SignalName if signal is None else signal
         signal = signal if not ped else self.PedestalName
-        signal = self.__generate_signal_name(signal, evnt_corr, off_corr, bin_corr)
+        signal = self.generate_signal_name(signal, evnt_corr, off_corr, bin_corr)
         # 2D Histogram
         name = "signaltime_" + str(self.run_number)
         xbins = array(self.time_binning)
@@ -902,7 +909,7 @@ class SignalAnalysis(Analysis):
         h = TH1F('signal b2', 'Pulse Height ' + suffix, binning, -50, 300)
         cut = self.Cut.all_cut if cut is None else cut
         sig_name = self.SignalName if sig is None else sig
-        sig_name = self.__generate_signal_name(sig_name, evnt_corr, off_corr, False, cut)
+        sig_name = self.generate_signal_name(sig_name, evnt_corr, off_corr, False, cut)
         start_event = int(float(start)) if start is not None else 0
         n_events = self.find_n_events(n=events, cut=str(cut), start=start_event) if events is not None else self.run.n_entries
         self.tree.Draw('{name}>>signal b2'.format(name=sig_name), str(cut), 'goff', n_events, start_event)
@@ -1482,7 +1489,7 @@ class SignalAnalysis(Analysis):
         nbins = self.run.n_entries / binning
         h = TProfile('h', 'Pulser Pulse Height', nbins, 0, self.run.n_entries)
         cut = self.Cut.generate_pulser_cut()
-        signal = self.__generate_signal_name(self.PulserName, False, True, False, cut)
+        signal = self.generate_signal_name(self.PulserName, False, True, False, cut)
         print signal
         self.tree.Draw('{0}:Entry$>>h'.format(signal), cut, 'goff')
         c = TCanvas('c', 'Pulser Rate Canvas', 1000, 1000)
@@ -2116,5 +2123,5 @@ if __name__ == "__main__":
     print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(message)) * '=', msg=message)
     a = Elementary(tc)
     a.print_testcampaign()
-    z = SignalAnalysis(test_run, args.ch, verbose=args.verbose)
+    z = PadAnalysis(test_run, args.ch, verbose=args.verbose)
     z.print_elapsed_time(st, 'Instantiation')

@@ -36,7 +36,10 @@ def untitle(string):
     return s.strip(' ')
 
 
-def set_statbox(x=.98, y=.98, w=.16, entries=3):
+def set_statbox(x=.98, y=.98, w=.16, entries=3, only_fit=False):
+    if only_fit:
+        gStyle.SetOptStat(0011)
+        gStyle.SetOptFit(1)
     gStyle.SetStatX(x)
     gStyle.SetStatY(y)
     gStyle.SetStatW(w)
