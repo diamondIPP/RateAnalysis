@@ -14,7 +14,7 @@ import ROOT
 from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend
 # global test campaign
 tc = None
-default_tc = '201505'
+default_tc = '201510'
 
 
 class Elementary(object):
@@ -42,9 +42,13 @@ class Elementary(object):
         self.ResX = m.height / 1000 * 1000
         self.ResY = self.ResX
 
+        # container for the ROOT objects
+        self.ROOTObjects = []
+
         # colors
         self.count = 0
         self.colors = self.create_colorlist()
+        self.FillColor = 821
         gStyle.SetLegendFont(42)
 
     # ============================================
