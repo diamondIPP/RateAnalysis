@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from PadAnalysis import SignalAnalysis
+from PadAnalysis import PadAnalysis
 from Elementary import Elementary
 
 tc = '201510'
@@ -10,7 +10,7 @@ a.print_testcampaign()
 
 
 for run in [392, 398]:
-    z = SignalAnalysis(run, 0)
+    z = PadAnalysis(run, 0)
     z.save_dir = '{tc}_{dia}_{hv}_{rp}'.format(tc=z.TESTCAMPAIGN, dia=z.diamond_name, hv=z.bias, rp=z.run_number)
     z.draw_trigger_cell_vs_peakpos(show=False)
     z.draw_trigger_cell_vs_peakpos(show=False, corr=True)
