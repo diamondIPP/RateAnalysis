@@ -75,7 +75,7 @@ class PadAnalysis(Analysis):
         self.MeanSignalHisto = None
         self.PeakValues = None
 
-        self.PulserAnalysis = PulserAnalysis(self)
+        self.Pulser = PulserAnalysis(self)
 
     def __del__(self):
         for obj in [self.PulseHeight, self.Pedestal, self.SignalMapHisto, self.SignalTime, self.PeakValues, self.MeanSignalHisto]:
