@@ -486,14 +486,13 @@ class PadAnalysis(Analysis):
         draw_string = '{peaks}{op}>>hpv'.format(peaks=peak_val, op='/2.' if not corr else '-' + t_correction)
         self.tree.Draw(draw_string, cut, 'goff')
         self.histos.append(self.draw_histo(h, show=show, sub_dir=self.save_dir, lm=.12, logy=True))
-        if draw_cut:
-            g = self.__draw_timing_cut()
         f, fit, fit1 = self.fit_peak_timing(h)
         l2 = self.make_legend(.52, .7, nentries=3, name='fr')
         l2.AddEntry(0, 'Fit Results:', '')
         l2.AddEntry(0, '{0}{1:5.2f} #pm {2:5.2f} ns'.format('Mean:'.ljust(7), f.Parameter(1), f.ParError(1)), '')
         l2.AddEntry(0, '{0} {1:5.2f} #pm {2:5.2f} ns'.format('Sigma:'.ljust(7), f.Parameter(2), f.ParError(2)), '')
         if draw_cut:
+            g = self.__draw_timing_cut()
             l.AddEntry(g, 'Timing Cut', 'fl')
         l.AddEntry(fit1, 'Fitting Range', 'l')
         l.AddEntry(fit, 'Fit Function', 'l')
@@ -559,7 +558,7 @@ class PadAnalysis(Analysis):
         h = TH1F('h_pt', 'Peak Timings', 1024, 0, 512)
         self.tree.Draw('peaks{ch}_x_time>>h_pt'.format(ch=self.channel), self.AllCuts, 'goff')
         self.format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=.4, fill_color=836, lw=2, tit_size=.05, stats=0)
-        self.histos.append(self.save_histo(h, 'PeakTimings', show, self.save_dir, logy=True, lm=.045, rm=.045, x=2000, y=500))
+        self.histos.append(self.save_histo(h, 'PeakTimings', show, self.save_dir, logy=True, lm=.045, rm=.045, x_fac=4, y_fac=.5))
 
     def draw_n_peaks(self, show=True, p1=0.7, p2=1):
         h = TH1F('h_pn', 'Number of Peaks', 12, -.5, 11.5)
