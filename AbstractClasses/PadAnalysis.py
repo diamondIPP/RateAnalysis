@@ -1666,6 +1666,8 @@ class PadAnalysis(Analysis):
         :return: histo with waveform
         """
         start = self.StartEvent if start_event is None else start_event
+        start += self.count
+        print 'Drawing waveform, start event:', start
         assert self.run.n_entries >= start >= 0, 'The start event is not within the range of tree events!'
         channel = self.channel if ch is None else ch
         if not self.run.wf_exists(channel):
@@ -1687,14 +1689,17 @@ class PadAnalysis(Analysis):
             h.GetYaxis().SetRangeUser(fixed_range[0], fixed_range[1])
         self.format_histo(h, title='Waveform', name='wf', x_tit='Time [ns]', y_tit='Signal [mV]', markersize=.4, y_off=.4, stats=0, tit_size=.05)
         save_name = '{1}Waveforms{0}'.format(n, 'Pulser' if cut.GetName().startswith('Pulser') else 'Signal')
-        self.RootObjects.append(self.save_histo(h, save_name, show, self.save_dir, lm=.06, rm=.045, draw_opt='scat' if n == 1 else 'col', x=1500, y=500))
+        self.RootObjects.append(self.save_histo(h, save_name, show, self.save_dir, lm=.06, rm=.045, draw_opt='scat' if n == 1 else 'col', x_fac=1.5, y_fac=.5))
         if add_buckets:
             sleep(.2)
             h.GetXaxis().SetNdivisions(26)
             c = gROOT.GetListOfCanvases[-1]
             c.SetGrid()
             c.SetBottomMargin(.186)
-            self._add_buckets(c)
+            y = h.GetYaxis().GetXmin(), h.GetYaxis().GetXmax()
+            x = h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax()
+            self._add_buckets(y[0], y[1], x[0], x[1])
+        self.count += n_events
         return h, n_events
 
     def show_single_waveforms(self, n=1, cut='', start_event=None):
