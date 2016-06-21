@@ -69,7 +69,6 @@ def format_base_frame(frame, x_tit, y_tit):
     fr = frame
     # X-axis
     fr.GetXaxis().SetTitle(x_tit)
-    fr.GetXaxis().SetTitleOffset(1.05)
     # Y-axis
     fr.GetYaxis().SetTitle(y_tit)
 
