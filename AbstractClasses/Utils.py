@@ -73,5 +73,20 @@ def format_base_frame(frame, x_tit, y_tit):
     fr.GetYaxis().SetTitle(y_tit)
 
 
+def round_down_to(num, val):
+    return num / val * val
+
+
+def scale_multigraph(mg, val=1):
+    first = mg.GetListOfGraphs()[0].GetY()[0]
+    for gr in mg.GetListOfGraphs():
+        for i in xrange(gr.GetN()):
+            gr.SetPoint(i, gr.GetX()[i], gr.GetY()[i] / first * val)
+            try:
+                gr.SetPointError(i, gr.GetErrorX(i), gr.GetErrorY(i) / first * val)
+            except Exception as err:
+                print err
+                pass
+
 def do_nothing():
     pass
