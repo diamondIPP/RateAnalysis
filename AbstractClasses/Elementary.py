@@ -367,13 +367,15 @@ class Elementary(object):
 
     def draw_x_axis(self, y, xmin, xmax, tit, col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035):
         self.draw_axis(xmin, xmax, y, y, tit, col=col, off=off, opt=opt, w=w, tit_size=tit_size, lab_size=lab_size)
+
+    def make_legend(self, x1=.58, y2=.88, nentries=2, w=.3, scale=1, name='l', felix=True):
         x2 = x1 + w
         y1 = y2 - nentries * .05 * scale
         l = TLegend(x1, y1, x2, y2)
         l.SetName(name)
         l.SetTextFont(42)
         l.SetTextSize(0.03 * scale)
-        if self.Felix:
+        if self.Felix and felix:
             l.SetLineWidth(2)
             l.SetBorderSize(0)
             l.SetFillColor(0)
