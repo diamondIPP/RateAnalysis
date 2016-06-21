@@ -304,7 +304,7 @@ class AnalysisCollection(Elementary):
         x_vals = sorted([gr1.GetX()[i] for i in xrange(gr1.GetN())])
         mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 1.2) if flux else self.do_nothing()
         self.RootObjects.append(self.save_histo(mg, 'PulseHeight{mod}'.format(mod=mode.title()), False, self.save_dir, lm=.14, draw_opt='A', l=legend, logx=True if flux else 0,
-                                                gridx=1 if vs_time else 0, gridy=1 if vs_time else 0))
+                                                gridy=1 if vs_time else 0, gridx=True if vs_time else 0))
 
         # no zero suppression
         mg1 = mg.Clone()
@@ -330,8 +330,8 @@ class AnalysisCollection(Elementary):
         self.save_combined_pulse_heights(mg, mg1)
         return mg
 
-    def save_combined_pulse_heights(self, mg, mg1):
-        gROOT.SetBatch(0)
+    def save_combined_pulse_heights(self, mg, mg1, show=False):
+        gROOT.SetBatch(1) if not show else gROOT.SetBatch(0)
         c = TCanvas('c', 'c', self.ResX, self.ResY)
         margins = [.13, .13, .15, .1]
         p0 = self.Currents.make_tpad('p0', 'p0', margins=margins, logx=True)
@@ -339,11 +339,14 @@ class AnalysisCollection(Elementary):
         for pad in [p0, p1]:
             pad.Draw()
         # legend
-        l = self.make_legend(.63, .38, nentries=4)
-        l.AddEntry(mg1.GetListOfGraphs()[0], 'data (right)', 'p')
-        tits = ['data (left)', 'first run', 'last run']
+        l = self.make_legend(.5, .38, nentries=4)
+        l.AddEntry(mg1.GetListOfGraphs()[0], 'full-range (right)', 'p')
+        tits = ['zero-surpressed (left)', 'first run', 'last run']
         for i, gr in enumerate(mg.GetListOfGraphs()):
             l.AddEntry(gr, tits[i], 'p')
+            gr.SetMarkerSize(1.5) if not i else gr.SetMarkerSize(3)
+        for i, gr in enumerate(mg1.GetListOfGraphs()):
+            gr.SetMarkerSize(1.5) if not i else gr.SetMarkerSize(3)
         x = [mg.GetXaxis().GetXmin(), mg.GetXaxis().GetXmax()]
         y = [mg.GetYaxis().GetXmin(), mg.GetYaxis().GetXmax()]
         # first graph
@@ -351,18 +354,20 @@ class AnalysisCollection(Elementary):
         y0 = [y[0] - diff * .3, y[1] + diff * .1]
         mg.GetListOfGraphs()[0].SetLineColor(1)
         mg.GetListOfGraphs()[0].SetMarkerColor(1)
-        draw_frame(p0, x, y0, base=True, x_tit='flux [kHz/cm^{2}]', y_tit='pulse height [au]', y_off=1.85, x_off=1.2)
+        draw_frame(p0, x, y0, base=True, x_tit='flux [kHz/cm^{2}]', y_tit='pulse height [au]', y_off=1.85, x_off=1.3)
         mg.Draw()
         l.Draw()
         # second graph
         y1 = [0, y[1] * 1.1]
         draw_frame(p1, x, y1)
-        self.draw_x_axis(x[1], y1[0], y1[1], 'pulse height [au]', off=1.5, col=2)
-        mg1.GetListOfGraphs()[0].SetLineColor(2)
-        mg1.GetListOfGraphs()[0].SetMarkerColor(2)
+        col1 = 4
+        self.draw_x_axis(x[1], y1[0], y1[1], 'pulse height [au]', off=1.5, col=col1)
+        mg1.GetListOfGraphs()[0].SetLineColor(col1)
+        mg1.GetListOfGraphs()[0].SetMarkerColor(col1)
         mg1.Draw()
-        self.save_plots('CombinedPulseHeights', self.save_dir)
-        self.RootObjects.append([c, l])
+        self.save_plots('CombinedPulseHeights')
+        self.RootObjects.append([c, l, p0, p1])
+        gROOT.SetBatch(0)
 
     def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False, show=True, cut=None, beam_on=True):
         legend = TLegend(0.7, 0.3, 0.98, .7)

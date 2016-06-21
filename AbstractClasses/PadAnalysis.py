@@ -467,7 +467,7 @@ class PadAnalysis(Analysis):
 
     # ==========================================================================
     # region SIGNAL PEAK POSITION
-    def draw_peak_timing(self, region=None, type_='signal', show=True, ucut=None, corr=True):
+    def draw_peak_timing(self, region=None, type_='signal', show=True, ucut=None, corr=True, draw_cut=True):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         num = self.SignalNumber if region is None else self.get_signal_number(region=region, sig_type=type_)
         region = self.SignalRegion if region is None else region
@@ -486,13 +486,14 @@ class PadAnalysis(Analysis):
         draw_string = '{peaks}{op}>>hpv'.format(peaks=peak_val, op='/2.' if not corr else '-' + t_correction)
         self.tree.Draw(draw_string, cut, 'goff')
         self.histos.append(self.draw_histo(h, show=show, sub_dir=self.save_dir, lm=.12, logy=True))
-        g = self.__draw_timing_cut()
         f, fit, fit1 = self.fit_peak_timing(h)
         l2 = self.make_legend(.52, .7, nentries=3, name='fr')
         l2.AddEntry(0, 'Fit Results:', '')
         l2.AddEntry(0, '{0}{1:5.2f} #pm {2:5.2f} ns'.format('Mean:'.ljust(7), f.Parameter(1), f.ParError(1)), '')
         l2.AddEntry(0, '{0} {1:5.2f} #pm {2:5.2f} ns'.format('Sigma:'.ljust(7), f.Parameter(2), f.ParError(2)), '')
-        l.AddEntry(g, 'Timing Cut', 'fl')
+        if draw_cut:
+            g = self.__draw_timing_cut()
+            l.AddEntry(g, 'Timing Cut', 'fl')
         l.AddEntry(fit1, 'Fitting Range', 'l')
         l.AddEntry(fit, 'Fit Function', 'l')
         l.Draw()
@@ -557,7 +558,7 @@ class PadAnalysis(Analysis):
         h = TH1F('h_pt', 'Peak Timings', 1024, 0, 512)
         self.tree.Draw('peaks{ch}_x_time>>h_pt'.format(ch=self.channel), self.AllCuts, 'goff')
         self.format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=.4, fill_color=836, lw=2, tit_size=.05, stats=0)
-        self.histos.append(self.save_histo(h, 'PeakTimings', show, self.save_dir, logy=True, lm=.045, rm=.045, x=2000, y=500))
+        self.histos.append(self.save_histo(h, 'PeakTimings', show, self.save_dir, logy=True, lm=.045, rm=.045, x_fac=4, y_fac=.5))
 
     def draw_n_peaks(self, show=True, p1=0.7, p2=1):
         h = TH1F('h_pn', 'Number of Peaks', 12, -.5, 11.5)
@@ -1008,8 +1009,8 @@ class PadAnalysis(Analysis):
         self.format_histo(gr, x_tit='trigger cell', y_tit='pulse height [au]', y_off=1.2)
         self.histos.append(self.save_histo(gr, 'SignalVsTriggerCell', show, self.save_dir, lm=.11, draw_opt='alp'))
 
-    def show_pedestal_histo(self, region=None, peak_int=None, cut=None, fwhm=True, show=True, draw=True, x_range=None, nbins=100, logy=False):
-        x_range = [-20, 20] if x_range is None else x_range
+    def show_pedestal_histo(self, region=None, peak_int=None, cut=None, fwhm=True, show=True, draw=True, x_range=None, nbins=100, logy=False, fit=True):
+        x_range = [-20, 30] if x_range is None else x_range
         region = self.PedestalRegion if region is None else region
         peak_int = self.PeakIntegral if peak_int is None else peak_int
         cut = self.Cut.all_cut if cut is None else cut
@@ -1024,18 +1025,20 @@ class PadAnalysis(Analysis):
             print 'making pedestal histo for region {reg}{int}...'.format(reg=region, int=peak_int)
             if x[0] >= x[1]:
                 x = sorted(x)
+            set_statbox(.88, .88, entries=4, only_fit=True)
             h = TH1F('ped1', 'Pedestal Distribution', nbins, x[0], x[1])
             name = self.get_pedestal_name(region, peak_int)
             self.tree.Draw('{name}>>ped1'.format(name=name), cut, 'goff')
-            fit_pars = self.fit_fwhm(h, do_fwhm=fwhm, draw=draw)
-            f = deepcopy(h.GetFunction('gaus'))
-            f.SetNpx(1000)
-            f.SetRange(x[0], x[1])
-            f.SetLineStyle(2)
-            h.GetListOfFunctions().Add(f)
-            gStyle.SetOptFit(1)
-            self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.8)
-            self.RootObjects.append(self.save_histo(h, 'Pedestal_{reg}{cut}'.format(reg=region, cut=cut.GetName()), draw, logy=logy, lm=.13))
+            self.format_histo(h, name='Fit Result', x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.8)
+            self.draw_histo(h, '', show)
+            fit_pars = self.fit_fwhm(h, do_fwhm=fwhm, draw=show)
+            if fit:
+                f = deepcopy(h.GetFunction('gaus'))
+                f.SetNpx(1000)
+                f.SetRange(x[0], x[1])
+                f.SetLineStyle(2)
+                h.GetListOfFunctions().Add(f)
+            self.save_histo(h, 'Pedestal_{reg}{cut}'.format(reg=region, cut=cut.GetName()), show, logy=logy, lm=.13)
             self.PedestalHisto = h
             return fit_pars
 
@@ -1662,6 +1665,8 @@ class PadAnalysis(Analysis):
         :return: histo with waveform
         """
         start = self.StartEvent if start_event is None else start_event
+        start += self.count
+        print 'Drawing waveform, start event:', start
         assert self.run.n_entries >= start >= 0, 'The start event is not within the range of tree events!'
         channel = self.channel if ch is None else ch
         if not self.run.wf_exists(channel):
@@ -1683,14 +1688,17 @@ class PadAnalysis(Analysis):
             h.GetYaxis().SetRangeUser(fixed_range[0], fixed_range[1])
         self.format_histo(h, title='Waveform', name='wf', x_tit='Time [ns]', y_tit='Signal [mV]', markersize=.4, y_off=.4, stats=0, tit_size=.05)
         save_name = '{1}Waveforms{0}'.format(n, 'Pulser' if cut.GetName().startswith('Pulser') else 'Signal')
-        self.RootObjects.append(self.save_histo(h, save_name, show, self.save_dir, lm=.06, rm=.045, draw_opt='scat' if n == 1 else 'col', x=1500, y=500))
+        self.RootObjects.append(self.save_histo(h, save_name, show, self.save_dir, lm=.06, rm=.045, draw_opt='scat' if n == 1 else 'col', x_fac=1.5, y_fac=.5))
         if add_buckets:
             sleep(.2)
             h.GetXaxis().SetNdivisions(26)
             c = gROOT.GetListOfCanvases[-1]
             c.SetGrid()
             c.SetBottomMargin(.186)
-            self._add_buckets(c)
+            y = h.GetYaxis().GetXmin(), h.GetYaxis().GetXmax()
+            x = h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax()
+            self._add_buckets(y[0], y[1], x[0], x[1])
+        self.count += n_events
         return h, n_events
 
     def show_single_waveforms(self, n=1, cut='', start_event=None):
