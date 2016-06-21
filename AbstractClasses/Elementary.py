@@ -423,15 +423,15 @@ class Elementary(object):
         except AttributeError or ReferenceError:
             pass
 
-    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=0.1, bm=.15, tm=.1, draw_opt='', x=None, y=None,
+    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=0.1, bm=.15, tm=.1, draw_opt='', x_fac=None, y_fac=None,
                    l=None, logy=False, logx=False, logz=False, canvas=None, gridx=False, gridy=False, save=True):
-        x = self.ResX if x is None else x
-        y = self.ResY if y is None else y
+        x_fac = self.ResX if x_fac is None else int(x_fac * self.ResX)
+        y_fac = self.ResY if y_fac is None else int(y_fac * self.ResY)
         h = histo
         if not show:
             gROOT.SetBatch(1)
             gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
-        c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x, y) if canvas is None else canvas
+        c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x_fac, y_fac) if canvas is None else canvas
         c.SetMargin(lm, rm, bm, tm)
         c.SetLogx() if logx else self.do_nothing()
         c.SetLogy() if logy else self.do_nothing()
