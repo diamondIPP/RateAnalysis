@@ -158,10 +158,12 @@ class AnalysisCollection(Elementary):
     # ============================================
     # region SIGNAL/PEDESTAL
     def draw_ph_with_currents(self, show=True):
-        ph = self.draw_pulse_heights(show=False, vs_time=True, fl=False)
+        phs = self.draw_pulse_heights(show=False, vs_time=True, fl=False)
+        ph = phs[0]
         self.Currents.set_graphs()
         cur = self.Currents.CurrentGraph.Clone()
         cur.SetLineColor(899)
+        #print ph
         scale = ph.GetListOfGraphs()[0].GetY()[0]
         pul = self.draw_pulser_info(show=False, do_fit=False, vs_time=True, scale=scale)
         pul.SetLineColor(859)

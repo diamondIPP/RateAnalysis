@@ -28,7 +28,7 @@ if only10:
         for ch in chs:
             z = load_collection(rp, ch)
 
-            z.draw_ph_with_currents(show=False)
+            #z.draw_ph_with_currents(show=False)
             z.draw_pulse_heights(show=False)
             z.close_files()
 

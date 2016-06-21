@@ -16,6 +16,17 @@ from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectr
 tc = None
 default_tc = '201510'
 
+try:
+    m = get_monitors()[0]
+    x_res = m.height / 1000 * 1000
+except:
+    x_res =  0
+
+if x_res == 0:
+    x_res = 800
+y_res = x_res
+
+print 'XRES: ',x_res
 
 class Elementary(object):
     """
@@ -25,6 +36,7 @@ class Elementary(object):
 
     def __init__(self, testcampaign=None, verbose=False):
         self.verbose = verbose
+        self.add_postfix = False
 
         self.TESTCAMPAIGN = None
         self.set_global_testcampaign(testcampaign)
@@ -35,12 +47,23 @@ class Elementary(object):
         self.run_config_parser = self.load_run_config()
         self.ana_config_parser = self.load_ana_config()
 
+        try:
+            m = get_monitors()[0]
+            x_res = m.height / 1000 * 1000
+        except:
+            x_res =  0
+
+        if x_res == 0:
+            x_res = 800
+
         self.Felix = self.MainConfigParser.get('SAVE', 'felix')
+        if self.Felix:
+            self.add_postfix=True
+            x_res = 1000
         self.Stuff = []
 
         # set resolution
-        m = get_monitors()[0]
-        self.ResX = m.height / 1000 * 1000
+        self.ResX = x_res
         self.ResY = self.ResX
 
         # container for the ROOT objects
@@ -169,6 +192,15 @@ class Elementary(object):
         assert (num >= 0 and type(num) is int), 'num has to be non negative int'
         return bool(num & 1 << bit)
 
+    @staticmethod
+    def bias_string(bias):
+        if bias < 0:
+            polarity = 'm'
+        else:
+            polarity = 'p'
+        return '{pol}{abs_bias:04d}'.format(pol = polarity, abs_bias = int(abs(bias)))
+
+
     def save_canvas(self, canvas, sub_dir='', name=None, print_names=True):
         canvas.Update()
         file_name = canvas.GetName() if name is None else name
@@ -179,13 +211,30 @@ class Elementary(object):
         run_number = 'rp{nr}'.format(nr=self.run_plan) if hasattr(self, 'run_plan') else run_number
         tc_ = '_{0}'.format(self.TESTCAMPAIGN) if self.MainConfigParser.get('SAVE', 'save_tc') else ''
         gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
+        postfix = ''
+        if self.add_postfix:
+            dia = self.diamond_name if hasattr(self,'diamond_name') else ''
+            bias = self.bias if hasattr(self,'bias') else ''
+            if dia != '' and bias != '':
+                postfix = '.{dia}_{bias}'.format(dia=dia, bias=self.bias_string(bias))
+                postfix = postfix.replace('-','')
+
         for f in ftypes:
-            ext = '.{typ}'.format(typ=f)
+            if self.Felix:
+                ext = '{postfix}.{typ}'.format(postfix = postfix.replace('.','_'), typ = f)
+            else:
+                ext = '.{typ}'.format(typ=f)
             if not f == 'png' and run_number is not None:
-                ext = '{2}_{0}.{1}'.format(run_number, f, tc_)
+                if self.Felix:
+                    ext = '.{tc}{postfix}.{run_number}.{typ}'.format(tc = tc_.strip('_'),run_number=run_number,postfix = postfix, typ = f)
+                else:
+                    ext = '{2}_{0}.{1}'.format(run_number, f, tc_)
+
             self.ensure_dir(file_path.format(typ=f))
             out += f + ', '
-            out_file = '{fname}{ext}'.format(fname=file_path, ext=ext).format(typ=f)
+            out_file = '{fname}{ext}'.format(fname=file_path, ext=ext)
+            out_file = out_file.format(typ=f)
+            print out_file
             canvas.SaveAs(out_file)
         if print_names:
             log_message(out.strip(', '))
@@ -425,8 +474,8 @@ class Elementary(object):
 
     def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=0.1, bm=.15, tm=.1, draw_opt='', x=None, y=None,
                    l=None, logy=False, logx=False, logz=False, canvas=None, gridx=False, gridy=False, save=True):
-        x = self.ResX if x is None else x
-        y = self.ResY if y is None else y
+        x = self.ResX #if x is None else x
+        y = self.ResY #if y is None else y
         h = histo
         if not show:
             gROOT.SetBatch(1)
