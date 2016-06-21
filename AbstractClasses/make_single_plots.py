@@ -12,6 +12,7 @@ a.print_testcampaign()
 for run in [392, 398]:
     z = PadAnalysis(run, 0)
     z.save_dir = '{tc}_{dia}_{hv}_{rp}'.format(tc=z.TESTCAMPAIGN, dia=z.diamond_name, hv=z.bias, rp=z.run_number)
+    z.ana_save_dir = '{tc}_{dia}_{hv}_{rp}'.format(tc=z.TESTCAMPAIGN, dia=z.diamond_name, hv=z.bias, rp=z.run_number)
     z.draw_trigger_cell_vs_peakpos(show=False, corr=False)
     z.draw_trigger_cell_vs_peakpos(show=False, corr=True)
     z.draw_trigger_cell_vs_peakpos(show=False, corr=True, t_corr=True)
