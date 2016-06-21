@@ -38,10 +38,8 @@ class Elementary(object):
         self.Felix = self.MainConfigParser.get('SAVE', 'felix')
         self.Stuff = []
 
-        # set resolution
-        m = get_monitors()[0]
-        self.ResX = m.height / 1000 * 1000
-        self.ResY = self.ResX
+        # screen resolution
+        self.Res = self.load_resolution()
 
         # container for the ROOT objects
         self.ROOTObjects = []
@@ -83,6 +81,15 @@ class Elementary(object):
         ana_parser = ConfigParser()
         ana_parser.read('Configuration/AnalysisConfig_{tc}.cfg'.format(tc=self.TESTCAMPAIGN))
         return ana_parser
+
+    @staticmethod
+    def load_resolution():
+        try:
+            m = get_monitors()[0]
+            return round_down_to(m.height, 500)
+        except Exception as err:
+            log_warning(err)
+            return 1000
 
     def set_global_testcampaign(self, testcampaign):
         if testcampaign is not None:
@@ -439,8 +446,8 @@ class Elementary(object):
 
     def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=0.1, bm=.15, tm=.1, draw_opt='', x_fac=None, y_fac=None,
                    l=None, logy=False, logx=False, logz=False, canvas=None, gridx=False, gridy=False, save=True):
-        x_fac = self.ResX if x_fac is None else int(x_fac * self.ResX)
-        y_fac = self.ResY if y_fac is None else int(y_fac * self.ResY)
+        x_fac = self.Res if x_fac is None else int(x_fac * self.Res)
+        y_fac = self.Res if y_fac is None else int(y_fac * self.Res)
         h = histo
         if not show:
             gROOT.SetBatch(1)
