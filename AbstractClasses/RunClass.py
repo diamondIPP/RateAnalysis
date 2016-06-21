@@ -516,6 +516,21 @@ class Run(Elementary):
         else:
             return legend, git_text
 
+    def scale_runinfo_legend(self, txt_size, w, h):
+        if self.RunInfoLegends is None:
+            self.log_warning('RunInfo legend was not created yet!')
+            return
+        l = self.RunInfoLegends[0]
+        l.SetY2NDC(h)
+        l.SetX2NDC(w)
+        l.SetTextSize(txt_size)
+
+    def reset_info_legend(self):
+        l = self.RunInfoLegends[0]
+        l.SetY2NDC(.1)
+        l.SetX2NDC(.435)
+        l.SetTextSize(.0195)
+
     def get_runinfo(self, ch, height=None, width=None, pad=None):
         runs = []
         if hasattr(self, 'collection'):
