@@ -87,7 +87,7 @@ class Analysis(Elementary):
                 self.tree.Draw('wf0:Iteration$/2>>regions', self.Cut.all_cut, 'goff', 1, start)
         h.GetXaxis().SetNdivisions(26)
         self.format_histo(h, markersize=0.3, x_tit='Time [ns]', y_tit='Signal [au]', stats=0)
-        self.RootObjects.append(self.save_histo(h, 'Regions', show, self.ana_save_dir, lm=.075, rm=.045, x=2000, y=1000))
+        self.RootObjects.append(self.save_histo(h, 'Regions', show, self.ana_save_dir, lm=.075, rm=.045, x_fac=2000, y_fac=1000))
         return h
 
     def draw_regions(self, ped=True, event=None):
@@ -178,7 +178,7 @@ class Analysis(Elementary):
         self.format_histo(h, title='Waveform', name='wf', x_tit='Time [ns]', y_tit='Signal [mV]', markersize=.8, y_off=.4, stats=0, tit_size=.05)
         xmin, xmax = self.run.signal_regions['e'][0] / 2 - 20, self.run.signal_regions['e'][1] / 2
         h.GetXaxis().SetRangeUser(xmin, xmax)
-        stuff = self.draw_histo(h, show=show, lm=.06, rm=.045, bm=.2, x=3000, y=1000, grid=True)
+        self.draw_histo(h, show=show, lm=.06, rm=.045, bm=.2, x=3000, y=1000, gridy=True, gridx=True)
         gROOT.SetBatch(1) if not show else self.do_nothing()
         sleep(.5)
         # draw line at found peak and pedestal region
@@ -205,7 +205,7 @@ class Analysis(Elementary):
         self._add_buckets(ymin, ymax, xmin, xmax) if add_buckets else self.do_nothing()
         self.save_plots('IntegralPeaks', sub_dir=self.ana_save_dir, ch=None)
         gROOT.SetBatch(0)
-        self.histos.append([stuff, gr1, gr2])
+        self.histos.append([gr1, gr2])
 
     def __draw_peak_pos(self, event, ymin, ymax):
         peak_pos = self.get_peak_position(event) / 2. if hasattr(self, 'get_peak_position') else self.run.signal_regions['a'][0] / 2.
