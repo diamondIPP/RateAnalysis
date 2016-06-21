@@ -467,7 +467,7 @@ class PadAnalysis(Analysis):
 
     # ==========================================================================
     # region SIGNAL PEAK POSITION
-    def draw_peak_timing(self, region=None, type_='signal', show=True, ucut=None, corr=True):
+    def draw_peak_timing(self, region=None, type_='signal', show=True, ucut=None, corr=True, draw_cut=True):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         num = self.SignalNumber if region is None else self.get_signal_number(region=region, sig_type=type_)
         region = self.SignalRegion if region is None else region
@@ -486,13 +486,15 @@ class PadAnalysis(Analysis):
         draw_string = '{peaks}{op}>>hpv'.format(peaks=peak_val, op='/2.' if not corr else '-' + t_correction)
         self.tree.Draw(draw_string, cut, 'goff')
         self.histos.append(self.draw_histo(h, show=show, sub_dir=self.save_dir, lm=.12, logy=True))
-        g = self.__draw_timing_cut()
+        if draw_cut:
+            g = self.__draw_timing_cut()
         f, fit, fit1 = self.fit_peak_timing(h)
         l2 = self.make_legend(.52, .7, nentries=3, name='fr')
         l2.AddEntry(0, 'Fit Results:', '')
         l2.AddEntry(0, '{0}{1:5.2f} #pm {2:5.2f} ns'.format('Mean:'.ljust(7), f.Parameter(1), f.ParError(1)), '')
         l2.AddEntry(0, '{0} {1:5.2f} #pm {2:5.2f} ns'.format('Sigma:'.ljust(7), f.Parameter(2), f.ParError(2)), '')
-        l.AddEntry(g, 'Timing Cut', 'fl')
+        if draw_cut:
+            l.AddEntry(g, 'Timing Cut', 'fl')
         l.AddEntry(fit1, 'Fitting Range', 'l')
         l.AddEntry(fit, 'Fit Function', 'l')
         l.Draw()
