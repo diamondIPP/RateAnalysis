@@ -184,7 +184,8 @@ class Elementary(object):
         else:
             return ''
 
-    def save_canvas(self, canvas, sub_dir='', name=None, print_names=True):
+    def save_canvas(self, canvas, sub_dir=None, name=None, print_names=True):
+        sub_dir = self.save_dir if hasattr(self, 'save_dir') and sub_dir is None else '{subdir}/'.format(subdir=sub_dir)
         canvas.Update()
         file_name = canvas.GetName() if name is None else name
         file_path = '{save_dir}{res}/{{typ}}/{file}'.format(res=sub_dir, file=file_name, save_dir=self.save_directory)
@@ -227,7 +228,6 @@ class Elementary(object):
         # save_dir = self.save_directory if save_dir is None else save_dir
         # file_type = '.png' if file_type is None else '.{end}'.format(end=file_type)
 
-        sub_dir = self.save_dir if hasattr(self, 'save_dir') and sub_dir is None else '{subdir}/'.format(subdir=sub_dir)
         if canvas is None:
             try:
                 c = gROOT.GetListOfCanvases()
