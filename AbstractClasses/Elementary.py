@@ -337,12 +337,13 @@ class Elementary(object):
         return gr
 
     @staticmethod
-    def make_tgaxis(x, y1, y2, title, color=1, width=1, offset=.15, tit_size=.035, line=True, opt='+SU'):
-        a = TGaxis(x, y1, x, y2, y1, y2, 510, opt)
+    def make_tgaxis(x1, x2, y1, y2, title, color=1, width=1, offset=.15, tit_size=.035, lab_size=0.035, line=True, opt='+SU'):
+        ran = [y1, y2] if x1 == x2 else [x1, x2]
+        a = TGaxis(x1, y1, x2, y2, ran[0], ran[1], 510, opt)
         a.SetName('ax')
         a.SetLineColor(color)
         a.SetLineWidth(width)
-        a.SetLabelSize(.035)
+        a.SetLabelSize(lab_size)
         if line:
             a.SetTickSize(0)
             a.SetLabelSize(0)
@@ -353,32 +354,19 @@ class Elementary(object):
         a.SetLabelColor(color)
         return a
 
-    def draw_x_axis(self, x, ymin, ymax, tit, col=1, off=1, w=1):
-        a1 = self.make_tgaxis(x, ymin, ymax, tit, color=col, offset=off, line=False, opt='+L', width=w)
+    def draw_axis(self, xmin, xmax, ymin, ymax, tit, col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035):
+        a1 = self.make_tgaxis(xmin, xmax, ymin, ymax, tit, color=col, offset=off, line=False, opt=opt, width=w, tit_size=tit_size, lab_size=lab_size)
         a1.SetLabelOffset(0.01)
         a1.SetLabelFont(42)
         a1.SetTitleFont(42)
         a1.Draw()
         self.Stuff.append(a1)
 
-    @staticmethod
-    def make_tgxaxis(x1, x2, y, title, color=1, width=1, offset=.15, tit_size=.035, line=True, opt='+SU'):
-        a = TGaxis(x1, y, x2, y, x1, x2, 510, opt)
-        a.SetLabelFont(1)
-        a.SetTitleFont(1)
-        a.SetTextFont(1)
-        a.SetLineColor(color)
-        a.SetLineWidth(width)
-        if line:
-            a.SetTickSize(0)
-            a.SetLabelSize(0)
-        a.SetTitleSize(tit_size)
-        a.SetTitleOffset(offset)
-        a.SetTitle(title)
-        a.SetTitleColor(color)
-        return a
+    def draw_y_axis(self, x, ymin, ymax, tit, col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035):
+        self.draw_axis(x, x, ymin, ymax, tit, col=col, off=off, opt=opt, w=w, tit_size=tit_size, lab_size=lab_size)
 
-    def make_legend(self, x1=.58, y2=.88, nentries=2, w=.3, scale=1, name='l'):
+    def draw_x_axis(self, y, xmin, xmax, tit, col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035):
+        self.draw_axis(xmin, xmax, y, y, tit, col=col, off=off, opt=opt, w=w, tit_size=tit_size, lab_size=lab_size)
         x2 = x1 + w
         y1 = y2 - nentries * .05 * scale
         l = TLegend(x1, y1, x2, y2)
