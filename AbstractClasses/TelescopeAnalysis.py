@@ -133,7 +133,7 @@ class Analysis(Elementary):
         gr.Draw('p')
         self._add_buckets()
         save_name = 'PedestalRegions' if ped else 'SignalRegions'
-        self.save_plots(save_name, sub_dir=self.ana_save_dir, ch=None)
+        self.save_plots(save_name, ch=None)
         self.histos.append([h, c, gr, lines, titles])
 
     def _add_buckets(self, ymin, ymax, xmin, xmax):
@@ -178,7 +178,7 @@ class Analysis(Elementary):
         self.format_histo(h, title='Waveform', name='wf', x_tit='Time [ns]', y_tit='Signal [mV]', markersize=.8, y_off=.4, stats=0, tit_size=.05)
         xmin, xmax = self.run.signal_regions['e'][0] / 2 - 20, self.run.signal_regions['e'][1] / 2
         h.GetXaxis().SetRangeUser(xmin, xmax)
-        stuff = self.draw_histo(h, show=show, lm=.06, rm=.045, bm=.2, x=3000, y=1000, grid=True)
+        stuff = self.draw_histo(h, show=show, lm=.06, rm=.045, bm=.2, x=3000, y=1000, gridx=True, gridy=True)
         gROOT.SetBatch(1) if not show else self.do_nothing()
         sleep(.5)
         # draw line at found peak and pedestal region
@@ -203,7 +203,7 @@ class Analysis(Elementary):
             gr.Draw('[]')
             gr.Draw('p')
         self._add_buckets(ymin, ymax, xmin, xmax) if add_buckets else self.do_nothing()
-        self.save_plots('IntegralPeaks', sub_dir=self.ana_save_dir, ch=None)
+        self.save_plots('IntegralPeaks',  ch=None)
         gROOT.SetBatch(0)
         self.histos.append([stuff, gr1, gr2])
 

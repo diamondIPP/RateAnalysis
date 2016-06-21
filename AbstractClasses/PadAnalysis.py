@@ -499,7 +499,7 @@ class PadAnalysis(Analysis):
         l2.Draw()
         h.Draw('same')
         h.GetXaxis().SetRangeUser(f.Parameter(1) - 10 * f.Parameter(2), h.GetXaxis().GetXmax())
-        self.save_plots('{typ}PeakPositions'.format(typ=type_.title()), self.save_dir)
+        self.save_plots('{typ}PeakPositions'.format(typ=type_.title()))
         self.PeakValues = h
         self.RootObjects.append([l, l2])
         return f

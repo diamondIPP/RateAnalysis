@@ -158,12 +158,10 @@ class AnalysisCollection(Elementary):
     # ============================================
     # region SIGNAL/PEDESTAL
     def draw_ph_with_currents(self, show=True):
-        phs = self.draw_pulse_heights(show=False, vs_time=True, fl=False)
-        ph = phs[0]
+        ph = self.draw_pulse_heights(show=False, vs_time=True, fl=False)
         self.Currents.set_graphs()
         cur = self.Currents.CurrentGraph.Clone()
         cur.SetLineColor(899)
-        #print ph
         scale = ph.GetListOfGraphs()[0].GetY()[0]
         pul = self.draw_pulser_info(show=False, do_fit=False, vs_time=True, scale=scale)
         pul.SetLineColor(859)
@@ -306,7 +304,7 @@ class AnalysisCollection(Elementary):
         x_vals = sorted([gr1.GetX()[i] for i in xrange(gr1.GetN())])
         mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 1.2) if flux else self.do_nothing()
         self.RootObjects.append(self.save_histo(mg, 'PulseHeight{mod}'.format(mod=mode.title()), False, self.save_dir, lm=.14, draw_opt='A', l=legend, logx=True if flux else 0,
-                                                grid=1 if vs_time else 0))
+                                                gridx=1 if vs_time else 0, gridy=1 if vs_time else 0))
 
         # no zero suppression
         mg1 = mg.Clone()
@@ -330,11 +328,11 @@ class AnalysisCollection(Elementary):
 
         self.PulseHeight = gr1
         self.save_combined_pulse_heights(mg, mg1)
-        return mg, mg1
+        return mg
 
     def save_combined_pulse_heights(self, mg, mg1):
         gROOT.SetBatch(0)
-        c = TCanvas('c', 'c', 2000, 2000)
+        c = TCanvas('c', 'c', self.ResX, self.ResY)
         margins = [.13, .13, .15, .1]
         p0 = self.Currents.make_tpad('p0', 'p0', margins=margins, logx=True)
         p1 = self.Currents.make_tpad('p1', 'p1', margins=margins, logx=True, transparent=True)
