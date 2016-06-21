@@ -10,13 +10,15 @@ a.print_banner('STARTING RATE SCAN PLOT GENERATION')
 
 only10 = True
 
-def load_collection(rp, ch):
+
+def load_collection(plan, channel):
     sel = RunSelection(testcampaign=tc)
-    sel.select_runs_from_runplan(rp)
+    sel.select_runs_from_runplan(plan)
     a.print_testcampaign()
-    z = AnalysisCollection(sel, ch)
-    z.save_dir = '{tc}_{dia}_{hv}_{rp}'.format(tc=z.TESTCAMPAIGN, dia=z.diamond_name, hv=z.bias, rp=z.run_plan)
-    return z
+    ana = AnalysisCollection(sel, channel)
+    ana.save_dir = '{tc}_{dia}_{hv}_{rp}'.format(tc=ana.TESTCAMPAIGN, dia=ana.diamond_name, hv=ana.bias, rp=ana.run_plan)
+    return ana
+
 
 if only10:
 
@@ -28,8 +30,9 @@ if only10:
         for ch in chs:
             z = load_collection(rp, ch)
 
-            #z.draw_ph_with_currents(show=False)
+            z.draw_ph_with_currents(show=False)
             z.draw_pulse_heights(show=False)
+            z.draw_pulser_info(show=False)
             z.close_files()
 
     for rp, chs in upscans10.iteritems():
@@ -57,6 +60,7 @@ else:
 
             z.draw_ph_with_currents(show=False)
             z.draw_pulse_heights(show=False)
+            z.draw_pulser_info(show=False)
             z.close_files()
 
     for rp, chs in upscans08.iteritems():
