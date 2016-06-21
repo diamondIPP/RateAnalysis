@@ -1010,8 +1010,8 @@ class PadAnalysis(Analysis):
         self.format_histo(gr, x_tit='trigger cell', y_tit='pulse height [au]', y_off=1.2)
         self.histos.append(self.save_histo(gr, 'SignalVsTriggerCell', show, self.save_dir, lm=.11, draw_opt='alp'))
 
-    def show_pedestal_histo(self, region=None, peak_int=None, cut=None, fwhm=True, show=True, draw=True, x_range=None, nbins=100, logy=False):
-        x_range = [-20, 20] if x_range is None else x_range
+    def show_pedestal_histo(self, region=None, peak_int=None, cut=None, fwhm=True, show=True, draw=True, x_range=None, nbins=100, logy=False, fit=True):
+        x_range = [-20, 30] if x_range is None else x_range
         region = self.PedestalRegion if region is None else region
         peak_int = self.PeakIntegral if peak_int is None else peak_int
         cut = self.Cut.all_cut if cut is None else cut
@@ -1026,18 +1026,20 @@ class PadAnalysis(Analysis):
             print 'making pedestal histo for region {reg}{int}...'.format(reg=region, int=peak_int)
             if x[0] >= x[1]:
                 x = sorted(x)
+            set_statbox(.88, .88, entries=4, only_fit=True)
             h = TH1F('ped1', 'Pedestal Distribution', nbins, x[0], x[1])
             name = self.get_pedestal_name(region, peak_int)
             self.tree.Draw('{name}>>ped1'.format(name=name), cut, 'goff')
-            fit_pars = self.fit_fwhm(h, do_fwhm=fwhm, draw=draw)
-            f = deepcopy(h.GetFunction('gaus'))
-            f.SetNpx(1000)
-            f.SetRange(x[0], x[1])
-            f.SetLineStyle(2)
-            h.GetListOfFunctions().Add(f)
-            gStyle.SetOptFit(1)
-            self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.8)
-            self.RootObjects.append(self.save_histo(h, 'Pedestal_{reg}{cut}'.format(reg=region, cut=cut.GetName()), draw, logy=logy, lm=.13))
+            self.format_histo(h, name='Fit Result', x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.8)
+            self.draw_histo(h, '', show)
+            fit_pars = self.fit_fwhm(h, do_fwhm=fwhm, draw=show)
+            if fit:
+                f = deepcopy(h.GetFunction('gaus'))
+                f.SetNpx(1000)
+                f.SetRange(x[0], x[1])
+                f.SetLineStyle(2)
+                h.GetListOfFunctions().Add(f)
+            self.save_histo(h, 'Pedestal_{reg}{cut}'.format(reg=region, cut=cut.GetName()), show, logy=logy, lm=.13)
             self.PedestalHisto = h
             return fit_pars
 
