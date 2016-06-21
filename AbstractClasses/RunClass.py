@@ -131,7 +131,7 @@ class Run(Elementary):
         self.duration = None
         self.__load_timing()
         # root objects
-        self.RunInfoLegeds = None
+        self.RunInfoLegends = None
 
     # ==============================================
     # region LOAD FUNCTIONS
@@ -362,7 +362,7 @@ class Run(Elementary):
 
     def get_rate_string(self):
         rate = self.flux
-        unit = 'MHz/cm2' if rate > 1000 else 'kHz/cm2'
+        unit = 'MHz/cm^{2}' if rate > 1000 else 'kHz/cm^{2}'
         rate = round(rate / 1000., 1) if rate > 1000 else int(round(rate, 0))
         return '{rate:>3} {unit}'.format(rate=rate, unit=unit)
 
@@ -462,7 +462,7 @@ class Run(Elementary):
         if comment is not None:
             lines += 1
             width = max(0.5, width)
-        height = (lines - 1) * 0.03
+        # height = (lines - 1) * 0.03
 
         tc = datetime.strptime(self.TESTCAMPAIGN, '%Y%m')
         dur = '{0:02d}:{1:02.0f}'.format(int(self.totalMinutes), (self.totalMinutes - int(self.totalMinutes)) * 60)
@@ -471,14 +471,15 @@ class Run(Elementary):
             if not canvas.GetBottomMargin() > .105:
                 canvas.SetBottomMargin(0.15)
         # user height and width:
-        userheight = height if set_height is None else set_height - 0.04
+        # userheight = height if set_height is None else set_height - 0.04
         userwidth = width if set_width is None else set_width
 
-        if self.RunInfoLegeds is None:
+        if self.RunInfoLegends is None:
             git_text = TLegend(.85, 0, 1, .025)
             git_text.AddEntry(0, 'git hash: {ver}'.format(ver=check_output(['git', 'describe', '--always'])), '')
             git_text.SetLineColor(0)
-            legend = TLegend(.002, .00205, userwidth, userheight + 0.04)
+            legend = self.make_legend(.005, .1, w=userwidth + .03, nentries=3, felix=False, scale=.65)
+            # legend = TLegend(.002, .00205, userwidth, userheight + 0.04)
             legend.SetName('l')
             legend.SetMargin(0.05)
             legend.AddEntry(0, 'Test Campaign: {tc}'.format(tc=tc.strftime('%b %Y')), '')
@@ -496,10 +497,10 @@ class Run(Elementary):
                 legend.AddEntry(0, 'Cut: {cut}'.format(cut=self.analysis.get_easy_cutstring()), '')
             if comment is not None:
                 legend.AddEntry(0, comment, '')
-            self.RunInfoLegeds = [legend, git_text]
+            self.RunInfoLegends = [legend, git_text]
         else:
-            git_text = self.RunInfoLegeds[1]
-            legend = self.RunInfoLegeds[0]
+            git_text = self.RunInfoLegends[1]
+            legend = self.RunInfoLegends[0]
         if show:
             pads = [i for i in canvas.GetListOfPrimitives() if i.IsA().GetName() == 'TPad']
             if not pads:
