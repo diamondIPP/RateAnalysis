@@ -88,5 +88,27 @@ def scale_multigraph(mg, val=1):
                 print err
                 pass
 
+
+def make_transparent(pad):
+    pad.SetFillStyle(4000)
+    pad.SetFillColor(0)
+    pad.SetFrameFillStyle(4000)
+
+
+def hide_axis(axis):
+    axis.SetTickLength(0)
+    axis.SetLabelOffset(99)
+    axis.SetTitleOffset(99)
+
+
+def move_legend(l, x1, y1):
+    xdiff = l.GetX2NDC() - l.GetX1NDC()
+    ydiff = l.GetY2NDC() - l.GetY1NDC()
+    l.SetX1NDC(x1)
+    l.SetX2NDC(x1 + xdiff)
+    l.SetY1NDC(y1)
+    l.SetY2NDC(y1 + ydiff)
+
+
 def do_nothing():
     pass
