@@ -511,14 +511,14 @@ class Run(Elementary):
         else:
             return legend, git_text
 
-    def scale_runinfo_legend(self, txt_size, w, h):
+    def scale_runinfo_legend(self, txt_size=None, w=None, h=None):
         if self.RunInfoLegends is None:
             self.log_warning('RunInfo legend was not created yet!')
             return
         l = self.RunInfoLegends[0]
-        l.SetY2NDC(h)
-        l.SetX2NDC(w)
-        l.SetTextSize(txt_size)
+        l.SetY2NDC(h) if h is not None else self.do_nothing()
+        l.SetX2NDC(w) if w is not None else self.do_nothing()
+        l.SetTextSize(txt_size) if txt_size is not None else self.do_nothing()
 
     def reset_info_legend(self):
         l = self.RunInfoLegends[0]
