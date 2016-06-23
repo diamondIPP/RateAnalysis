@@ -430,7 +430,7 @@ class Run(Elementary):
         print '\tDiamond1:   \t', self.diamond_names[0], ' (', self.bias[0], ') | is selected: ', self.analyse_ch[0]
         print '\tDiamond2:   \t', self.diamond_names[3], ' (', self.bias[3], ') | is selected: ', self.analyse_ch[3]
 
-    def draw_run_info(self, channel=None, canvas=None, diamondinfo=True, cut=None, comment=None, set_width=None, set_height=None, runs=None, show=True):
+    def draw_run_info(self, channel=None, canvas=None, diamondinfo=True, cut=None, comment=None, runs=None, show=True, x=1, y=1):
         """
         Draws the run infos inside the canvas. If no canvas is given, it will be drawn into the active Pad. 
         If the channel number is passed, channel number and diamond name will be drawn.
@@ -440,16 +440,10 @@ class Run(Elementary):
         :param cut:
         :param comment:
         :param runs:
-        :param set_height:
-        :param set_width:
         :param show:
         :return:
         """
         assert channel is None or channel in self.channels, 'wrong channel id "{ch}"'.format(ch=channel)
-        if set_height is not None:
-            assert 0 <= set_height <= 0.8, 'choose height between 0 and 0.8 or set it to "None"'
-        if set_width is not None:
-            assert 0 <= set_width <= 0.8, 'choose width between 0 and 0.8 or set it to "None"'
         if canvas is not None:
             pad = canvas.cd()
         else:
@@ -460,15 +454,12 @@ class Run(Elementary):
                 return
 
         lines = 2
-        width = 0.4
         if diamondinfo:
             lines += 1
         if cut and hasattr(self, 'analysis'):
             lines += 1
-            width = 0.6
         if comment is not None:
             lines += 1
-            width = max(0.5, width)
         # height = (lines - 1) * 0.03
 
         tc = datetime.strptime(self.TESTCAMPAIGN, '%Y%m')
@@ -477,23 +468,20 @@ class Run(Elementary):
         if show:
             if not canvas.GetBottomMargin() > .105:
                 canvas.SetBottomMargin(0.15)
-        # user height and width:
-        # userheight = height if set_height is None else set_height - 0.04
-        userwidth = width if set_width is None else set_width
 
         if self.RunInfoLegends is None:
             git_text = TLegend(.85, 0, 1, .025)
             git_text.AddEntry(0, 'git hash: {ver}'.format(ver=check_output(['git', 'describe', '--always'])), '')
             git_text.SetLineColor(0)
-            legend = self.make_legend(.005, .1, w=userwidth + .03, nentries=3, felix=False, scale=.65)
-            # legend = TLegend(.002, .00205, userwidth, userheight + 0.04)
-            legend.SetName('l')
+            if runs is None:
+                run_string = 'Run {run}: {rate}, {dur} Min ({evts} evts)'.format(run=self.run_number, rate=self.get_rate_string(), dur=dur, evts=self.n_entries)
+            else:
+                run_string = 'Runs {start}-{stop} ({flux1} - {flux2})'.format(start=runs[0], stop=runs[1], flux1=runs[2].strip(' '), flux2=runs[3].strip(' '))
+            width = len(run_string) * .01 if x == y else len(run_string) * 0.015 * y / x
+            legend = self.make_legend(.005, .1, y1=.003, w=width, nentries=3, felix=False, scale=.75)
             legend.SetMargin(0.05)
             legend.AddEntry(0, 'Test Campaign: {tc}'.format(tc=tc.strftime('%b %Y')), '')
-            if runs is None:
-                legend.AddEntry(0, 'Run {run}: {rate}, {dur} Min ({evts} evts)'.format(run=self.run_number, rate=self.get_rate_string(), dur=dur, evts=self.n_entries), '')
-            else:
-                legend.AddEntry(0, 'Runs {start}-{stop} ({flux1} - {flux2})'.format(start=runs[0], stop=runs[1], flux1=runs[2].strip(' '), flux2=runs[3].strip(' ')), '')
+            legend.AddEntry(0, run_string, '')
             if channel is None:
                 dias = ['{dia} @ {bias:+2.0f}V'.format(dia=self.diamond_names[ch], bias=self.bias[ch]) for ch in self.channels]
                 dias = str(dias).strip('[]').replace('\'', '')
