@@ -209,7 +209,7 @@ class Elementary(object):
         file_name = canvas.GetName() if name is None else name
         file_path = '{save_dir}{res}/{{typ}}/{file}'.format(res=sub_dir, file=file_name, save_dir=self.results_directory)
         ftypes = ['root', 'png', 'pdf', 'eps']
-        out = 'Saving plots: {nam} as '.format(nam=name)
+        out = 'Saving plots: {nam}'.format(nam=name)
         run_number = self.run_number if hasattr(self, 'run_number') else None
         run_number = 'rp{nr}'.format(nr=self.run_plan) if hasattr(self, 'run_plan') else run_number
         file_path += self.make_info_string()
@@ -219,12 +219,11 @@ class Elementary(object):
             if not f == 'png' and run_number is not None:
                 ext = '_{run}.{typ}'.format(run=run_number, typ=f)
             self.ensure_dir(file_path.format(typ=f))
-            out += f + ', '
             out_file = '{fname}{ext}'.format(fname=file_path, ext=ext)
             out_file = out_file.format(typ=f)
             canvas.SaveAs(out_file)
         if print_names:
-            log_message(out.strip(', '))
+            log_message(out)
         gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
 
     def save_plots(self, savename, sub_dir=None, canvas=None, ind=0, ch='dia'):
