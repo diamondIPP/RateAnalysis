@@ -10,10 +10,10 @@ from json import loads
 from Utils import *
 from screeninfo import get_monitors
 
-import ROOT
-from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend
-# global test campaign
+from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend, TLine
+# global test campaign and resolution
 tc = None
+res = None
 default_tc = '201510'
 
 
@@ -23,7 +23,7 @@ class Elementary(object):
     It provides, among other things, a verbose printing method or a save plot method containing a global save directory handling.
     """
 
-    def __init__(self, testcampaign=None, verbose=False):
+    def __init__(self, testcampaign=None, verbose=False, resolution=None):
         self.verbose = verbose
 
         self.TESTCAMPAIGN = None
@@ -36,10 +36,11 @@ class Elementary(object):
         self.ana_config_parser = self.load_ana_config()
 
         self.Felix = self.MainConfigParser.get('SAVE', 'felix')
+
         self.Stuff = []
 
         # screen resolution
-        self.Res = self.load_resolution()
+        self.Res = self.load_resolution(resolution)
 
         # container for the ROOT objects
         self.ROOTObjects = []
@@ -83,13 +84,19 @@ class Elementary(object):
         return ana_parser
 
     @staticmethod
-    def load_resolution():
-        try:
-            m = get_monitors()[0]
-            return round_down_to(m.height, 500)
-        except Exception as err:
-            log_warning(err)
-            return 1000
+    def load_resolution(resolution):
+        if resolution is not None:
+            global res
+            res = resolution
+        if res is not None:
+            return round_down_to(res, 500)
+        else:
+            try:
+                m = get_monitors()
+                return round_down_to(m[0].height, 500)
+            except Exception as err:
+                log_warning(err)
+                return 1000
 
     def set_global_testcampaign(self, testcampaign):
         if testcampaign is not None:
