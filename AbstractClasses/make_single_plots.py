@@ -9,10 +9,16 @@ a.print_banner('STARTING SINGLE PLOT GENERATION')
 a.print_testcampaign()
 
 
-for run in [392, 398]:
+def set_save_dirs(ana):
+    ana.save_dir = '{info}_{rp}'.format(info=ana.make_info_string().strip('_'), rp=ana.run_number)
+    ana.ana_save_dir = '{info}_{rp}'.format(info=ana.make_info_string().strip('_'), rp=ana.run_number)
+    ana.set_save_directory('PlotsFelix')
+    
+
+# for run in [392, 398]:
+for run in [398]:
     z = PadAnalysis(run, 0)
-    z.save_dir = '{tc}_{dia}_{hv}_{rp}'.format(tc=z.TESTCAMPAIGN, dia=z.diamond_name, hv=z.bias, rp=z.run_number)
-    z.ana_save_dir = '{tc}_{dia}_{hv}_{rp}'.format(tc=z.TESTCAMPAIGN, dia=z.diamond_name, hv=z.bias, rp=z.run_number)
+    set_save_dirs(z)
     z.draw_trigger_cell_vs_peakpos(show=False, corr=False)
     z.draw_trigger_cell_vs_peakpos(show=False, corr=True)
     z.draw_trigger_cell_vs_peakpos(show=False, corr=True, t_corr=True)
@@ -31,7 +37,9 @@ for run in [392, 398]:
     z.draw_signal_map(draw_option='colz', show=False)
     z.draw_signal_vs_signale(show=False)
     z.draw_ped_sigma_selection(show=False)
+    if run == 398:
+        z.draw_bucket_waveforms(show=False)
 
 z = PadAnalysis(171, 0)
-z.save_dir = '{tc}_{dia}_{hv}_{rp}'.format(tc=z.TESTCAMPAIGN, dia=z.diamond_name, hv=z.bias, rp=z.run_number)
+set_save_dirs(z)
 z.draw_pulser_waveform(20, show=False)
