@@ -10,7 +10,7 @@ from sys import stdout
 from time import time, sleep
 
 from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie,\
-    THStack, TArrow, kOrange, TSpectrum, gRandom
+    THStack, TArrow, kOrange, TSpectrum, gRandom, TMultiGraph
 
 from ChannelCut import ChannelCut
 from CurrentInfo import Currents
@@ -1257,6 +1257,30 @@ class PadAnalysis(Analysis):
             h.Draw('colz')
             self.histos.append([h, c])
         return h
+
+    def draw_bucket_waveforms(self, show=True):
+        good = self.draw_waveforms(1, show=False, start_event=120000, t_corr=True)[0]
+        cut = self.Cut.generate_special_cut(excluded_cuts=['bucket', 'timing']) + TCut('!({0})'.format(self.Cut.CutStrings['bucket']))
+        bucket = self.draw_waveforms(1, cut_string=cut, show=False, start_event=100000, t_corr=True)[0]
+        cut = self.Cut.generate_special_cut(excluded_cuts=['bucket', 'timing']) + TCut('{buc}&&!({old})'.format(buc=self.Cut.CutStrings['bucket'], old=self.Cut.CutStrings['old_bucket']))
+        bad_bucket = self.draw_waveforms(1, cut_string=cut, show=False, t_corr=True)[0]
+        self.reset_colors()
+        mg = TMultiGraph('mg_bw', 'Bucket Waveforms')
+        l = self.make_legend(.85, .4, nentries=3, w=.1)
+        names = ['good wf', 'bucket wf', 'both wf']
+        for i, gr in enumerate([good, bucket, bad_bucket]):
+            self.format_histo(gr, color=self.get_color(), markersize=.5)
+            mg.Add(gr, 'lp')
+            l.AddEntry(gr, names[i], 'lp')
+        self.format_histo(mg, draw_first=True, x_tit='Time [ns]', y_tit='Signal [mV]')
+        x = [self.run.signal_regions['e'][0] / 2, self.run.signal_regions['e'][1] / 2 + 20]
+        self.format_histo(mg, x_range=x, y_off=.7)
+        y = mg.GetYaxis().GetXmin(), mg.GetYaxis().GetXmax()
+        print x, y
+        self.draw_histo(mg, show=show, draw_opt='A', x=1.5, y=0.75, lm=.07, rm=.045, bm=.2, l=l)
+        self._add_buckets(y[0], y[1], x[0], x[1], avr_pos=-1, full_line=True)
+        self.save_plots('BucketWaveforms')
+        self.reset_colors()
 
     def show_bucket_means(self, show=True, plot_histos=True):
         pickle_path = self.PickleDir + 'Cuts/BucketMeans_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
