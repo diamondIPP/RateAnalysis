@@ -351,8 +351,8 @@ class Elementary(object):
 
     @staticmethod
     def make_tgaxis(x1, x2, y1, y2, title, color=1, width=1, offset=.15, tit_size=.035, lab_size=0.035, line=True, opt='+SU'):
-        ran = [y1, y2] if x1 == x2 else [x1, x2]
-        a = TGaxis(x1, y1, x2, y2, ran[0], ran[1], 510, opt)
+        range_ = [y1, y2] if x1 == x2 else [x1, x2]
+        a = TGaxis(x1, y1, x2, y2, range_[0], range_[1], 510, opt)
         a.SetName('ax')
         a.SetLineColor(color)
         a.SetLineWidth(width)
