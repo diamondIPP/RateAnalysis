@@ -961,7 +961,7 @@ class PadAnalysis(Analysis):
         self.tree.Draw(draw_string, cut, 'goff')
         self.format_histo(h, fill_color=1)
         self.RootObjects.append(self.draw_histo(h, show=show, draw_opt='colz'))
-        z.__draw_timing_cut()
+        self.__draw_timing_cut()
 
     def draw_landau_vs_peakpos(self, show=True, bins=2):
         hs = THStack('lpp', 'Landau vs. Signal Peak Postion;pulse height;entries')
@@ -1257,6 +1257,12 @@ class PadAnalysis(Analysis):
             h.Draw('colz')
             self.histos.append([h, c])
         return h
+
+    def draw_bucket_pedestal(self, show=True, corr=True, additional_cut='', draw_option='colz'):
+        gStyle.SetPalette(55)
+        cut_string = self.Cut.CutStrings['tracks'] + self.Cut.CutStrings['pulser'] + self.Cut.CutStrings['saturated']
+        cut_string += additional_cut
+        self.draw_signal_vs_peak_position('e', '2', show, corr, cut_string, draw_option, 1, 'BucketPedestal')
 
     def draw_bucket_waveforms(self, show=True):
         good = self.draw_waveforms(1, show=False, start_event=120000, t_corr=True)[0]
@@ -1656,12 +1662,6 @@ class PadAnalysis(Analysis):
         self.tree.Draw(draw_string, cut, 'goff')
         self.format_histo(h, x_tit='Highest Peak Timing [ns]', y_tit='Pulse Height [au]', y_off=1.35, z_off=1.2, stats=0, z_tit='Number of Entries')
         self.RootObjects.append(self.save_histo(h, save_name, show, self.save_dir, draw_opt=draw_opt, logz=True, rm=.15, lm=.12))
-
-    def draw_bucket_pedestal(self, show=True, corr=True, additional_cut='', draw_option='colz'):
-        gStyle.SetPalette(55)
-        cut_string = self.Cut.CutStrings['tracks'] + self.Cut.CutStrings['pulser'] + self.Cut.CutStrings['saturated']
-        cut_string += additional_cut
-        self.draw_signal_vs_peak_position('e', '2', show, corr, cut_string, draw_option, 1, 'BucketPedestal')
 
     def draw_signal_vs_signale(self, show=True):
         cut = self.Cut.generate_special_cut(excluded_cuts=['bucket'])
