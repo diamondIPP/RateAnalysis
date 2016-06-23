@@ -28,7 +28,7 @@ class Elementary(object):
 
         self.TESTCAMPAIGN = None
         self.set_global_testcampaign(testcampaign)
-        self.save_directory = '{dir}/Results{tc}/'.format(dir=self.get_program_dir(), tc=self.TESTCAMPAIGN)
+        self.results_directory = '{dir}/Results{tc}/'.format(dir=self.get_program_dir(), tc=self.TESTCAMPAIGN)
 
         # read configuration files
         self.MainConfigParser = self.load_main_config()
@@ -97,6 +97,9 @@ class Elementary(object):
             except Exception as err:
                 log_warning(err)
                 return 1000
+
+    def set_save_directory(self, name):
+        self.results_directory = '{dir}/{nam}/'.format(dir=self.get_program_dir(), nam=name)
 
     def set_global_testcampaign(self, testcampaign):
         if testcampaign is not None:
