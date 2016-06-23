@@ -410,9 +410,9 @@ class Elementary(object):
                      tit_size=.04, draw_first=False, x_range=None, y_range=None):
         h = histo
         if draw_first:
-            gROOT.SetBatch(1)
+            self.set_root_output(False)
             h.Draw('a')
-            gROOT.SetBatch(0)
+            self.set_root_output(True)
         h.SetTitle(title) if title else h.SetTitle(h.GetTitle())
         h.SetName(name) if name else h.SetName(h.GetName())
         try:
