@@ -1676,7 +1676,7 @@ class PadAnalysis(Analysis):
         cut = '!({0})&&!pulser'.format(self.Cut.CutStrings['old_bucket'])
         return self.draw_waveforms(n=1, cut_string=cut, add_buckets=True, start_event=event)
 
-    def draw_waveforms(self, n=1000, start_event=None, cut_string=None, show=True, add_buckets=False, fixed_range=None, ch=None):
+    def draw_waveforms(self, n=1000, start_event=None, cut_string=None, show=True, add_buckets=False, fixed_range=None, ch=None, t_corr=False):
         """
         Draws stacked waveforms.
         :param n: number of waveforms
@@ -1700,7 +1700,8 @@ class PadAnalysis(Analysis):
         h = TH2F('wf', 'Waveform', 1024, 0, 511, 1000, -500, 500)
         gStyle.SetPalette(55)
         self.tree.Draw('wf{ch}:Iteration$/2>>wf'.format(ch=channel), cut, 'goff', n_events, start)
-        h = TGraph(self.tree.GetSelectedRows(), self.tree.GetV2(), self.tree.GetV1()) if n == 1 else h
+        t = self.tree.GetV2() if not t_corr else self.corrected_time(start + n_events - 1)
+        h = TGraph(self.tree.GetSelectedRows(), t, self.tree.GetV1()) if n == 1 else h
         if fixed_range is None and n > 1:
             fit = self.draw_pulse_height(show=False)
             pol = self.Polarity
@@ -1724,6 +1725,16 @@ class PadAnalysis(Analysis):
             self._add_buckets(y[0], y[1], x[0], x[1])
         self.count += n_events
         return h, n_events
+
+    def corrected_time(self, evt):
+        self.tree.GetEntry(evt)
+        tcell = None
+        exec 'tcell = self.tree.trigger_cell'
+        t = [self.run.TCal[tcell]]
+        n_samples = 1024
+        for i in xrange(1, n_samples):
+            t.append(self.run.TCal[(tcell + i) % n_samples] + t[-1])
+        return array(t, 'd')
 
     def show_single_waveforms(self, n=1, cut='', start_event=None):
         start = self.StartEvent + self.count if start_event is None else start_event + self.count
