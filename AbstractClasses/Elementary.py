@@ -226,7 +226,7 @@ class Elementary(object):
             log_message(out)
         gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
 
-    def save_plots(self, savename, sub_dir=None, canvas=None, ind=0, ch='dia'):
+    def save_plots(self, savename, sub_dir=None, canvas=None, ind=0, ch='dia', x=1, y=1, prnt=True):
         """
         Saves the canvas at the desired location. If no canvas is passed as argument, the active canvas will be saved. However for applications without graphical interface,
         such as in SSl terminals, it is recommended to pass the canvas to the method.
@@ -251,24 +251,24 @@ class Elementary(object):
                 return
         channel = self.channel if hasattr(self, 'channel') else None
         if hasattr(self, 'run'):
-            self.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas)
+            self.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas, x=x, y=y)
         if hasattr(self, 'Run'):
-            self.Run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas)
+            self.Run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas, x=x, y=y)
         elif hasattr(self, 'analysis'):
             try:
-                self.analysis.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas)
+                self.analysis.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas, x=x, y=y)
             except AttributeError as err:
                 self.log_warning(err)
         elif hasattr(self, 'collection'):
             runs = [self.collection.keys()[0], self.collection.keys()[-1], self.collection.values()[0].run.get_rate_string(), self.collection.values()[-1].run.get_rate_string()]
             if not ind:
-                self.collection.values()[ind].run.draw_run_info(channel=ch if ch is None else self.collection.values()[ind].channel, canvas=canvas, runs=runs)
+                self.collection.values()[ind].run.draw_run_info(channel=ch if ch is None else self.collection.values()[ind].channel, canvas=canvas, runs=runs, x=x, y=y)
             else:
-                self.collection.values()[ind].run.draw_run_info(channel=ch if ch is None else self.collection.values()[ind].channel, canvas=canvas)
+                self.collection.values()[ind].run.draw_run_info(channel=ch if ch is None else self.collection.values()[ind].channel, canvas=canvas, x=x, y=y)
         canvas.Update()
 
         try:
-            self.save_canvas(canvas, sub_dir=sub_dir, name=savename)
+            self.save_canvas(canvas, sub_dir=sub_dir, name=savename, print_names=prnt)
         except Exception as inst:
             print self.print_banner('ERROR in save plots!\n{0}'.format(inst), '-')
 
@@ -448,13 +448,13 @@ class Elementary(object):
             pass
 
     def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=0.1, bm=.15, tm=.1, draw_opt='', x_fac=None, y_fac=None,
-                   l=None, logy=False, logx=False, logz=False, canvas=None, gridx=False, gridy=False, save=True):
+                   l=None, logy=False, logx=False, logz=False, canvas=None, gridx=False, gridy=False, save=True, ch='dia', prnt=True):
         x_fac = self.Res if x_fac is None else int(x_fac * self.Res)
         y_fac = self.Res if y_fac is None else int(y_fac * self.Res)
         h = histo
         if not show:
-            gROOT.SetBatch(1)
             gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
+            gROOT.SetBatch(1)
         c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x_fac, y_fac) if canvas is None else canvas
         c.SetMargin(lm, rm, bm, tm)
         c.SetLogx() if logx else self.do_nothing()
@@ -465,7 +465,7 @@ class Elementary(object):
         h.Draw(draw_opt)
         l.Draw() if l is not None else self.do_nothing()
         if save:
-            self.save_plots(save_name, sub_dir=sub_dir)
+            self.save_plots(save_name, sub_dir=sub_dir, x=x_fac, y=y_fac, ch=ch, prnt=prnt)
         gROOT.SetBatch(0)
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         lst = [c, h, l] if l is not None else [c, h]
@@ -473,8 +473,8 @@ class Elementary(object):
         return lst
 
     def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=0.1, bm=.15, tm=.1, draw_opt='', x=None, y=None,
-                   l=None, logy=False, logx=False, logz=False, canvas=None, gridy=False, gridx=False):
-        return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, l, logy, logx, logz, canvas, gridx, gridy, save=False)
+                   l=None, logy=False, logx=False, logz=False, canvas=None, gridy=False, gridx=False, ch='dia', prnt=True):
+        return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, l, logy, logx, logz, canvas, gridx, gridy, False, ch, prnt)
 
     @staticmethod
     def make_tlatex(x, y, text, align=20, color=1, size=.05):
