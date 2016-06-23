@@ -112,6 +112,7 @@ class Run(Elementary):
                 self.signal_regions = self.get_regions('signal')
                 self.peak_integrals = self.get_peak_integrals()
                 self.DRS4Channels = self.load_drs4_channels()
+                self.TCal = self.load_tcal()
 
             self.FoundForRate = False
             self.flux = self.calculate_flux()
@@ -329,6 +330,12 @@ class Run(Elementary):
         for i, line in enumerate(self.region_information):
             if 'Sensor Names' in line:
                 data = self.region_information[i + 1].strip(' ').split(',')
+                return data
+
+    def load_tcal(self):
+        for i, line in enumerate(self.region_information):
+            if 'tcal' in line:
+                data = [float(i) for i in line.strip('tcal []').split(',') if self.isfloat(i)]
                 return data
 
     def get_peak_integrals(self):
