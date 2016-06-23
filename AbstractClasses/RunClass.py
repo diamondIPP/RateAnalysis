@@ -526,17 +526,17 @@ class Run(Elementary):
         l.SetX2NDC(.435)
         l.SetTextSize(.0195)
 
-    def get_runinfo(self, ch, height=None, width=None, pad=None):
+    def get_runinfo(self, ch, pad=None):
         runs = []
         if hasattr(self, 'collection'):
             runs = [self.collection.keys()[0], self.collection.keys()[-1], self.collection.values()[0].run.get_rate_string(), self.collection.values()[-1].run.get_rate_string()]
-        return self.draw_run_info(show=False, runs=runs, channel=ch, set_height=height, set_width=width, canvas=pad)
+        return self.draw_run_info(show=False, runs=runs, channel=ch, canvas=pad)
 
     # endregion
 
     def __load_rootfile(self):
         file_path = self.converter.get_final_file_path(self.run_number)
-        print 'Loading information for rootfile: {file}'.format(file=file_path.split('/')[-1])
+        print '\033[1A\rLoading information for rootfile: {file}'.format(file=file_path.split('/')[-1])
         self.RootFile = TFile(file_path)
         self.tree = self.RootFile.Get(self.treename)
 
