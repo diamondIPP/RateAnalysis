@@ -349,23 +349,33 @@ class Elementary(object):
         gr.SetLineWidth(width)
         return gr
 
-    @staticmethod
-    def make_tgaxis(x1, x2, y1, y2, title, color=1, width=1, offset=.15, tit_size=.035, lab_size=0.035, line=True, opt='+SU'):
+    def draw_axis(self, x1, x2, y1, y2, title, col=1, width=1, off=.15, tit_size=.035, lab_size=0.035, line=True, opt='+SU', tick_size=0.03, l_off=.01):
         range_ = [y1, y2] if x1 == x2 else [x1, x2]
         a = TGaxis(x1, y1, x2, y2, range_[0], range_[1], 510, opt)
         a.SetName('ax')
-        a.SetLineColor(color)
+        a.SetLineColor(col)
         a.SetLineWidth(width)
         a.SetLabelSize(lab_size)
         if line:
             a.SetTickSize(0)
             a.SetLabelSize(0)
         a.SetTitleSize(tit_size)
-        a.SetTitleOffset(offset)
+        a.SetTitleOffset(off)
         a.SetTitle(title)
-        a.SetTitleColor(color)
-        a.SetLabelColor(color)
-        return a
+        a.SetTitleColor(col)
+        a.SetLabelColor(col)
+        a.SetLabelFont(42)
+        a.SetTitleFont(42)
+        a.SetTickSize(tick_size)
+        a.SetLabelOffset(l_off)
+        a.Draw()
+        self.ROOTObjects.append(a)
+
+    def draw_y_axis(self, x, ymin, ymax, tit, col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035, tick_size=0.03, l_off=.01):
+        self.draw_axis(x, x, ymin, ymax, tit, col=col, off=off, opt=opt, width=w, tit_size=tit_size, lab_size=lab_size, tick_size=tick_size, l_off=l_off)
+
+    def draw_x_axis(self, y, xmin, xmax, tit, col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035, tick_size=0.03, l_off=.01):
+        self.draw_axis(xmin, xmax, y, y, tit, col=col, off=off, opt=opt, width=w, tit_size=tit_size, lab_size=lab_size, tick_size=tick_size, l_off=l_off)
 
     def draw_line(self, x1, x2, y1, y2, color=1, width=1, style=1):
         l = TLine(x1, y1, x2, y2)
@@ -380,19 +390,6 @@ class Elementary(object):
 
     def draw_horizontal_line(self, y, xmin, xmax, color=1, w=1, style=1):
         self.draw_line(xmin, xmax, y, y, color=color, width=w, style=style)
-
-        a1 = self.make_tgaxis(xmin, xmax, ymin, ymax, tit, color=col, offset=off, line=False, opt=opt, width=w, tit_size=tit_size, lab_size=lab_size)
-        a1.SetLabelOffset(0.01)
-        a1.SetLabelFont(42)
-        a1.SetTitleFont(42)
-        a1.Draw()
-        self.Stuff.append(a1)
-
-    def draw_y_axis(self, x, ymin, ymax, tit, col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035):
-        self.draw_axis(x, x, ymin, ymax, tit, col=col, off=off, opt=opt, w=w, tit_size=tit_size, lab_size=lab_size)
-
-    def draw_x_axis(self, y, xmin, xmax, tit, col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035):
-        self.draw_axis(xmin, xmax, y, y, tit, col=col, off=off, opt=opt, w=w, tit_size=tit_size, lab_size=lab_size)
 
     def make_legend(self, x1=.58, y2=.88, nentries=2, w=.3, scale=1, name='l', felix=True):
         x2 = x1 + w
