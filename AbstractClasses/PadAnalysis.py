@@ -200,7 +200,7 @@ class PadAnalysis(Analysis):
         prof.GetXaxis().SetRangeUser(prof.GetBinCenter(prof.FindFirstBinAbove(0) - 1), prof.GetBinCenter(prof.FindLastBinAbove(0) + 1))
         prof.Draw()
         sleep(.1)
-        lines = [self.make_tgaxis(x, c.GetUymin(), c.GetUymax(), '', 2, 2) for x in margins[mode]]
+        lines = [self.draw_axis(x, c.GetUymin(), c.GetUymax(), '', 2, 2) for x in margins[mode]]
         fit_result = self.__fit_beam_profile(prof, fit_range, show) if fit else 0
         fits = None
         if fit:
@@ -250,13 +250,13 @@ class PadAnalysis(Analysis):
             if fit.Ndf():
                 y = fit.Parameter(2) if sigma else fit.Chi2() / fit.Ndf()
                 gr.SetPoint(index, perc * 100, y)
-                t = self.make_tlatex(perc * 100 - 2, y, str(fit.Ndf()), color=807, size=.04, align=32)
+                t = self.draw_tlatex(perc * 100 - 2, y, str(fit.Ndf()), color=807, size=.04, align=32)
                 gr.GetListOfFunctions().Add(t)
                 index += 1
         c = TCanvas('c', 'Beam Chi2', 1000, 1000)
         self.format_histo(gr, x_tit='Range [%]', y_tit='#chi^{2} / NDF' if not sigma else 'Sigma', y_off=1.4)
         one = TF1('one', '1', 0, 100)
-        t1 = self.make_tlatex(15, .95 * gr.GetYaxis().GetXmax(), 'NDF:', color=807, size=0.04, align=12)
+        t1 = self.draw_tlatex(15, .95 * gr.GetYaxis().GetXmax(), 'NDF:', color=807, size=0.04, align=12)
         gr.GetListOfFunctions().Add(t1)
         gr.GetXaxis().SetRangeUser(-5, 105)
         gr.Draw('alp')
@@ -336,7 +336,7 @@ class PadAnalysis(Analysis):
         errors = self.SignalMapHisto.ProjectionXY('', 'c=e')
         gr1.SetPointError(0, errors.GetMinimum(), 0)
         gr2.SetPointError(0, errors.GetMaximum(), 0)
-        l = self.make_tlatex(gr1.GetX()[0], gr1.GetY()[0] + 0.5, 'Errors', align=20, size=0.03)
+        l = self.draw_tlatex(gr1.GetX()[0], gr1.GetY()[0] + 0.5, 'Errors', align=20, size=0.03)
         gr1.GetListOfFunctions().Add(l)
         if show:
             c = TCanvas('c', 'Mean Signal Distribution', 1000, 1000)
