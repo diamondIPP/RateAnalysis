@@ -1660,7 +1660,7 @@ class PadAnalysis(Analysis):
         peak_string = 'IntegralPeaks' if not corr else 'IntegralPeakTime'
         draw_string = '{sig}:{peaks}[{num}]{scale}>>h_spp'.format(sig=self.SignalName, num=num, peaks=peak_string, scale='/2.' if not corr else '')
         self.tree.Draw(draw_string, cut, 'goff')
-        self.format_histo(h, x_tit='Highest Peak Timing [ns]', y_tit='Pulse Height [au]', y_off=1.35, z_off=1.2, stats=0, z_tit='Number of Entries')
+        self.format_histo(h, x_tit='Peak Timing [ns]', y_tit='Pulse Height [au]', y_off=1.35, z_off=1.2, stats=0, z_tit='Number of Entries')
         self.RootObjects.append(self.save_histo(h, save_name, show, self.save_dir, draw_opt=draw_opt, logz=True, rm=.15, lm=.12))
 
     def draw_signal_vs_signale(self, show=True):
