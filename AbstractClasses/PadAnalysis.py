@@ -905,7 +905,7 @@ class PadAnalysis(Analysis):
         self.histos.append([h2, c])
 
     def show_signal_histo(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None, binning=350, events=None, start=None):
-        print 'drawing signal distribution for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name)
+        self.log_info('drawing signal distribution for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name))
         suffix = 'with Pedestal Correction' if evnt_corr else ''
         h = TH1F('signal b2', 'Pulse Height ' + suffix, binning, -50, 300)
         cut = self.Cut.all_cut if cut is None else cut
