@@ -367,7 +367,20 @@ class Elementary(object):
         a.SetLabelColor(color)
         return a
 
-    def draw_axis(self, xmin, xmax, ymin, ymax, tit, col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035):
+    def draw_line(self, x1, x2, y1, y2, color=1, width=1, style=1):
+        l = TLine(x1, y1, x2, y2)
+        l.SetLineColor(color)
+        l.SetLineWidth(width)
+        l.SetLineStyle(style)
+        l.Draw()
+        self.ROOTObjects.append(l)
+
+    def draw_vertical_line(self, x, ymin, ymax, color=1, w=1, style=1):
+        self.draw_line(x, x, ymin, ymax, color=color, width=w, style=style)
+
+    def draw_horizontal_line(self, y, xmin, xmax, color=1, w=1, style=1):
+        self.draw_line(xmin, xmax, y, y, color=color, width=w, style=style)
+
         a1 = self.make_tgaxis(xmin, xmax, ymin, ymax, tit, color=col, offset=off, line=False, opt=opt, width=w, tit_size=tit_size, lab_size=lab_size)
         a1.SetLabelOffset(0.01)
         a1.SetLabelFont(42)
