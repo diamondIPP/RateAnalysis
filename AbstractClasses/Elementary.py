@@ -194,21 +194,25 @@ class Elementary(object):
         else:
             return ''
 
-    def save_canvas(self, canvas, sub_dir=None, name=None, print_names=True):
-        sub_dir = self.save_dir if hasattr(self, 'save_dir') and sub_dir is None else '{subdir}/'.format(subdir=sub_dir)
-        canvas.Update()
-        file_name = canvas.GetName() if name is None else name
-        file_path = '{save_dir}{res}/{{typ}}/{file}'.format(res=sub_dir, file=file_name, save_dir=self.save_directory)
-        ftypes = ['root', 'png', 'pdf', 'eps']
-        out = 'Saving plots: {nam} as '.format(nam=name)
-        run_number = self.run_number if hasattr(self, 'run_number') else None
-        run_number = 'rp{nr}'.format(nr=self.run_plan) if hasattr(self, 'run_plan') else run_number
+    def make_info_string(self):
+        info = ''
         if not self.MainConfigParser.getboolean('SAVE', 'short_name'):
             info = '_{dia}'.format(dia=self.diamond_name) if hasattr(self, 'diamond_name') else ''
             info += self.make_bias_string()
             info += '_{tc}'.format(tc=self.TESTCAMPAIGN)
             info = info.replace('-', '')
-            file_path += info
+        return info
+
+    def save_canvas(self, canvas, sub_dir=None, name=None, print_names=True):
+        sub_dir = self.save_dir if hasattr(self, 'save_dir') and sub_dir is None else '{subdir}/'.format(subdir=sub_dir)
+        canvas.Update()
+        file_name = canvas.GetName() if name is None else name
+        file_path = '{save_dir}{res}/{{typ}}/{file}'.format(res=sub_dir, file=file_name, save_dir=self.results_directory)
+        ftypes = ['root', 'png', 'pdf', 'eps']
+        out = 'Saving plots: {nam} as '.format(nam=name)
+        run_number = self.run_number if hasattr(self, 'run_number') else None
+        run_number = 'rp{nr}'.format(nr=self.run_plan) if hasattr(self, 'run_plan') else run_number
+        file_path += self.make_info_string()
         gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
         for f in ftypes:
             ext = '.{typ}'.format(typ=f)
