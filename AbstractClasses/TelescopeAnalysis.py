@@ -240,35 +240,21 @@ class Analysis(Elementary):
         self.RootObjects.append([legend, histos, c])
         self.save_plots('Chi2', canvas=c, sub_dir=self.ana_save_dir, ch=None)
 
-    def show_angle(self, mode='x', show=True):
-        """
-        Displays the angle distribution of the tracks.
-        :param mode: has to be eiher 'x' or 'y'
-        :param show:
-        :return: histogram
-        """
+    def draw_angle_distribution(self, mode='x', show=True, print_msg=True):
+        """ Displays the angle distribution of the tracks. """
         assert mode in ['x', 'y']
-        gROOT.SetBatch(1)
-        h = TH1F('h', 'Track Angle Distribution in ' + mode, 320, -4, 4)
-        self.tree.Draw('slope_{mod}>>h'.format(mod=mode), '', 'goff')
-        if show:
-            gROOT.SetBatch(0)
-        c = TCanvas('c', 'Angle in ' + mode, 1000, 1000)
-        c.SetLeftMargin(.13)
+        self.set_root_output(False)
+        h = TH1F('had', 'Track Angle Distribution in ' + mode, 320, -4, 4)
+        self.tree.Draw('slope_{mod}>>had'.format(mod=mode), '', 'goff')
         self.format_histo(h, x_tit='Track Angle [deg]', y_tit='Entries', y_off=1.8, lw=2)
-        h.Draw()
-        self.RootObjects.append([h, c])
-        gROOT.SetBatch(0)
-        # a = gROOT.GetListOfCanvases()
-        # print a[0]
-        self.save_plots('TrackAngle{mod}'.format(mod=mode.upper()), sub_dir=self.ana_save_dir, ch=None)
+        self.save_histo(h, 'TrackAngle{mod}'.format(mod=mode.upper()), show, lm=.13, prnt=print_msg)
         return h
 
     def calc_angle_fit(self, mode='x', show=True):
         pickle_path = self.PickleDir + 'Tracks/AngleFit_{tc}_{run}_{mod}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, mod=mode)
 
         def func():
-            h = self.show_angle(mode, show=show)
+            h = self.draw_angle_distribution(mode, show=show)
             return self.fit_fwhm(h, draw=show)
 
         fit = func() if show else 0
