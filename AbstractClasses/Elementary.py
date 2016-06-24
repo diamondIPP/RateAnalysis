@@ -349,16 +349,13 @@ class Elementary(object):
         gr.SetLineWidth(width)
         return gr
 
-    def draw_axis(self, x1, x2, y1, y2, title, col=1, width=1, off=.15, tit_size=.035, lab_size=0.035, line=True, opt='+SU', tick_size=0.03, l_off=.01):
+    def draw_axis(self, x1, x2, y1, y2, title, col=1, width=1, off=.15, tit_size=.035, lab_size=0.035, line=False, opt='+SU', tick_size=0.03, l_off=.01):
         range_ = [y1, y2] if x1 == x2 else [x1, x2]
         a = TGaxis(x1, y1, x2, y2, range_[0], range_[1], 510, opt)
         a.SetName('ax')
         a.SetLineColor(col)
         a.SetLineWidth(width)
         a.SetLabelSize(lab_size)
-        if line:
-            a.SetTickSize(0)
-            a.SetLabelSize(0)
         a.SetTitleSize(tit_size)
         a.SetTitleOffset(off)
         a.SetTitle(title)
@@ -368,15 +365,18 @@ class Elementary(object):
         a.SetTitleFont(42)
         a.SetTickSize(tick_size)
         a.SetLabelOffset(l_off)
+        if line:
+            a.SetTickSize(0)
+            a.SetLabelSize(0)
         a.Draw()
         self.ROOTObjects.append(a)
         return a
 
-    def draw_y_axis(self, x, ymin, ymax, tit, col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035, tick_size=0.03, l_off=.01):
-        return self.draw_axis(x, x, ymin, ymax, tit, col=col, off=off, opt=opt, width=w, tit_size=tit_size, lab_size=lab_size, tick_size=tick_size, l_off=l_off)
+    def draw_y_axis(self, x, ymin, ymax, tit, col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035, tick_size=0.03, l_off=.01, line=False):
+        return self.draw_axis(x, x, ymin, ymax, tit, col=col, off=off, opt=opt, width=w, tit_size=tit_size, lab_size=lab_size, tick_size=tick_size, l_off=l_off, line=line)
 
-    def draw_x_axis(self, y, xmin, xmax, tit, col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035, tick_size=0.03, l_off=.01):
-        return self.draw_axis(xmin, xmax, y, y, tit, col=col, off=off, opt=opt, width=w, tit_size=tit_size, lab_size=lab_size, tick_size=tick_size, l_off=l_off)
+    def draw_x_axis(self, y, xmin, xmax, tit, col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035, tick_size=0.03, l_off=.01, line=False):
+        return self.draw_axis(xmin, xmax, y, y, tit, col=col, off=off, opt=opt, width=w, tit_size=tit_size, lab_size=lab_size, tick_size=tick_size, l_off=l_off, line=line)
 
     def draw_line(self, x1, x2, y1, y2, color=1, width=1, style=1):
         l = TLine(x1, y1, x2, y2)

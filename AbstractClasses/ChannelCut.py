@@ -282,8 +282,7 @@ class ChannelCut(Cut):
                 self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.8)
                 h.Draw()
                 sleep(.1)
-                a = self.make_tgaxis(max_err, c1.GetUymin(), c1.GetUymax(), 'threshold', offset=.3)
-                a.Draw()
+                self.draw_y_axis(max_err, c1.GetUymin(), c1.GetUymax(), 'threshold  ', off=.3)
                 # add subfunction to the plot
                 ped_fit.SetLineStyle(2)
                 ped_fit.Draw('same')
@@ -309,7 +308,7 @@ class ChannelCut(Cut):
                 gr3.Draw('apl')
                 gr = self.make_tgrapherrors('gr', 'working point', color=2)
                 gr.SetPoint(0, 1 - sig_fit.Integral(-50, max_err) / signal.Integral(), ped_fit.Integral(-50, max_err) / ped_fit.Integral(-50, 300))
-                l = self.make_tlatex(gr.GetX()[0], gr.GetY()[0] + .01, 'Working Point', color=2, size=.04)
+                l = self.draw_tlatex(gr.GetX()[0], gr.GetY()[0] + .01, 'Working Point', color=2, size=.04)
                 gr.GetListOfFunctions().Add(l)
                 gr.Draw('p')
                 self.save_plots('ROC_Curve', sub_dir=self.analysis.save_dir)
@@ -320,7 +319,7 @@ class ChannelCut(Cut):
                 gr4.Draw('al')
                 self.save_plots('ErrorFunction', sub_dir=self.analysis.save_dir)
 
-                self.RootObjects.append([h, gr1, gr2, c1, gr3, c2, c3, c4, gr4, a, leg, gr])
+                self.RootObjects.append([h, gr1, gr2, c1, gr3, c2, c3, c4, gr4, leg, gr])
             return max_err
 
         threshold = func() if show else None
