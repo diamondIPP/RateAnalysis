@@ -84,12 +84,10 @@ class AnalysisCollection(Elementary):
         return self.load_run_configs(0)
 
     def add_analyses(self):
-        """
-        Creates and adds Analysis objects with run numbers in runs.
-        """
+        """ Creates and adds Analysis objects with run numbers in runs. """
         for run, dia in sorted(zip(self.runs, self.diamonds)):
             ch = 0 if dia == 1 or dia == 3 else 3
-            analysis = PadAnalysis(run, ch, self.min_max_rate_runs)
+            analysis = PadAnalysis(run, ch, self.min_max_rate_runs, verbose=self.verbose)
             self.collection[analysis.run.run_number] = analysis
             self.current_run_number = analysis.run.run_number
 
