@@ -1,16 +1,20 @@
 import os
 import pickle
 import re
-import sys
 from copy import deepcopy
 from glob import glob
 from shutil import copyfile
 from time import time
-from datetime import datetime
 from ConfigParser import ConfigParser
+from json import loads
+from Utils import *
+from screeninfo import get_monitors
 
-import ROOT
-from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas
+from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend, TLine, TColor, TArrow
+# global test campaign and resolution
+tc = None
+res = None
+default_tc = '201510'
 
 
 class Elementary(object):
@@ -19,44 +23,133 @@ class Elementary(object):
     It provides, among other things, a verbose printing method or a save plot method containing a global save directory handling.
     """
 
-    default_testcampaign = '201510'
-    TESTCAMPAIGN = None
-
-    def __init__(self, verbose=False):
+    def __init__(self, testcampaign=None, verbose=False, resolution=None):
         self.verbose = verbose
-        self.save_directory = self.get_program_dir() + 'Results/'
 
-        self.set_test_campaign(self.default_testcampaign)
+        self.TESTCAMPAIGN = None
+        self.set_global_testcampaign(testcampaign)
+        self.results_directory = '{dir}/Results{tc}/'.format(dir=self.get_program_dir(), tc=self.TESTCAMPAIGN)
 
         # read configuration files
+        self.MainConfigParser = self.load_main_config()
         self.run_config_parser = self.load_run_config()
         self.ana_config_parser = self.load_ana_config()
 
-        self.aimedFluxes = [3, 20, 60, 600, 2000, 5000]
+        self.Felix = self.MainConfigParser.get('SAVE', 'felix')
+
+        self.Stuff = []
+
+        # screen resolution
+        self.Res = self.load_resolution(resolution)
+
+        # container for the ROOT objects
+        self.ROOTObjects = []
+
         # colors
         self.count = 0
         self.colors = self.create_colorlist()
-        # self.channel = None
+        self.FillColor = 821
+        gStyle.SetLegendFont(42)
+
+    # ============================================
+    # region CONFIG
+    def load_main_config(self):
+        parser = ConfigParser()
+        parser.read('{dir}/Configuration/main.cfg'.format(dir=self.get_program_dir()))
+        return parser
 
     def load_run_config(self):
-        run_parser = ConfigParser()
-        run_parser.read("Configuration/RunConfig_" + self.TESTCAMPAIGN + ".cfg")
+        run_parser = ConfigParser({'excluded_runs': '[]'})
+        run_parser.read('Configuration/RunConfig_{tc}.cfg'.format(tc=self.TESTCAMPAIGN))
+        return run_parser
+
+    def load_run_configs(self, run_number):
+        run_parser = ConfigParser({'excluded_runs': '[]'})
+        # set run_number to zero if none is given to prevent crash
+        run_number = 0 if run_number is None else run_number
+        if self.MainConfigParser.has_section(self.TESTCAMPAIGN):
+            n_splits = self.MainConfigParser.getint(self.TESTCAMPAIGN, 'n_splits')
+            split_runs = [0] + loads(self.MainConfigParser.get(self.TESTCAMPAIGN, 'split_runs')) + [int(1e10)]
+            for i in xrange(1, n_splits + 1):
+                if split_runs[i - 1] <= run_number < split_runs[i]:
+                    run_parser.read('{dir}/Configuration/RunConfig_{tc}_pad{i}.cfg'.format(dir=self.get_program_dir(), tc=self.TESTCAMPAIGN, i=i))
+                    break
+        else:
+            run_parser.read('Configuration/RunConfig_{tc}.cfg'.format(tc=self.TESTCAMPAIGN))
         return run_parser
 
     def load_ana_config(self):
         ana_parser = ConfigParser()
-        ana_parser.read('Configuration/AnalysisConfig_' + self.TESTCAMPAIGN + '.cfg')
+        ana_parser.read('Configuration/AnalysisConfig_{tc}.cfg'.format(tc=self.TESTCAMPAIGN))
         return ana_parser
 
     @staticmethod
+    def load_resolution(resolution):
+        if resolution is not None:
+            global res
+            res = resolution
+        if res is not None:
+            return round_down_to(res, 500)
+        else:
+            try:
+                m = get_monitors()
+                return round_down_to(m[0].height, 500)
+            except Exception as err:
+                log_warning(err)
+                return 1000
+
+    def set_save_directory(self, name):
+        self.results_directory = '{dir}/{nam}/'.format(dir=self.get_program_dir(), nam=name)
+
+    def set_global_testcampaign(self, testcampaign):
+        if testcampaign is not None:
+            global tc
+            tc = testcampaign
+        if tc is not None:
+            self.set_test_campaign(tc)
+        else:
+            self.TESTCAMPAIGN = default_tc
+
+    def set_test_campaign(self, campaign='201508'):
+        campaigns = self.find_test_campaigns()
+        if not str(campaign) in campaigns:
+            print 'This Testcampaign does not exist yet! Use create_new_testcampaign!\nExisting campaigns: {camp}'.format(camp=campaigns)
+            return
+        self.TESTCAMPAIGN = str(campaign)
+
+    def print_testcampaign(self, pr=True):
+        out = datetime.strptime(self.TESTCAMPAIGN, '%Y%m')
+        out = 'TESTCAMPAIGN: {0}'.format(out.strftime('%b %Y'))
+        if pr:
+            print out
+        return out
+
+    @classmethod
+    def find_test_campaigns(cls):
+        conf_dir = cls.get_program_dir() + 'Configuration/'
+        f_location = conf_dir + 'RunConfig_*'
+        names = glob(f_location)
+        campaigns = [re.split('_|\.', name)[1] for name in names]
+        campaigns = [camp for i, camp in enumerate(campaigns) if camp not in campaigns[i + 1:]]
+        return sorted(campaigns)
+
+    # endregion
+
+    @staticmethod
     def create_colorlist():
-        col_names = [ROOT.kGreen, ROOT.kOrange, ROOT.kViolet, ROOT.kYellow, ROOT.kRed, ROOT.kBlue, ROOT.kMagenta, ROOT.kAzure, ROOT.kCyan, ROOT.kTeal]
+        col_names = [TColor.kGreen, TColor.kOrange, TColor.kViolet, TColor.kYellow, TColor.kRed, TColor.kBlue, TColor.kMagenta, TColor.kAzure, TColor.kCyan, TColor.kTeal]
         colors = []
         for color in col_names:
             colors.append(color + 1)
         for color in col_names:
             colors.append(color + 3)
         return colors
+
+    @staticmethod
+    def ensure_dir(f):
+        d = os.path.dirname(f)
+        if not os.path.exists(d):
+            os.makedirs(d)
 
     def get_color(self):
         self.count %= 20
@@ -78,34 +171,76 @@ class Elementary(object):
                 print arg,
             print
 
+    def log_info(self, msg):
+        if self.verbose:
+            t = datetime.now().strftime('%H:%M:%S')
+            print 'INFO: {t} --> {msg}'.format(t=t, msg=msg)
+
+    @staticmethod
+    def log_warning(msg):
+        t = datetime.now().strftime('%H:%M:%S')
+        print '{head} {t} --> {msg}'.format(t=t, msg=msg, head=colored('WARNING:', 'red'))
+
     @staticmethod
     def has_bit(num, bit):
         assert (num >= 0 and type(num) is int), 'num has to be non negative int'
         return bool(num & 1 << bit)
 
-    def set_save_directory(self, directory="Results/"):
-        if not directory[-1] == "/":
-            directory += "/"
-        self.save_directory = directory
+    def make_bias_string(self):
+        if hasattr(self, 'bias'):
+            bias = self.bias
+            pol = 'm' if bias < 0 else 'p'
+            return '_{pol}{bias:04d}'.format(pol=pol, bias=int(abs(bias)))
+        else:
+            return ''
 
-    def save_plots(self, savename, file_type=None, save_dir=None, sub_dir=None, canvas=None, ind=0, ch='dia'):
+    def make_info_string(self):
+        info = ''
+        if not self.MainConfigParser.getboolean('SAVE', 'short_name'):
+            info = '_{dia}'.format(dia=self.diamond_name) if hasattr(self, 'diamond_name') else ''
+            info += self.make_bias_string()
+            info += '_{tc}'.format(tc=self.TESTCAMPAIGN)
+            info = info.replace('-', '')
+        return info
+
+    def save_canvas(self, canvas, sub_dir=None, name=None, print_names=True):
+        sub_dir = self.save_dir if hasattr(self, 'save_dir') and sub_dir is None else '{subdir}/'.format(subdir=sub_dir)
+        canvas.Update()
+        file_name = canvas.GetName() if name is None else name
+        file_path = '{save_dir}{res}/{{typ}}/{file}'.format(res=sub_dir, file=file_name, save_dir=self.results_directory)
+        ftypes = ['root', 'png', 'pdf', 'eps']
+        out = 'Saving plots: {nam}'.format(nam=name)
+        run_number = self.run_number if hasattr(self, 'run_number') else None
+        run_number = 'rp{nr}'.format(nr=self.run_plan) if hasattr(self, 'run_plan') else run_number
+        file_path += self.make_info_string()
+        gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
+        for f in ftypes:
+            ext = '.{typ}'.format(typ=f)
+            if not f == 'png' and run_number is not None:
+                ext = '_{run}.{typ}'.format(run=run_number, typ=f)
+            self.ensure_dir(file_path.format(typ=f))
+            out_file = '{fname}{ext}'.format(fname=file_path, ext=ext)
+            out_file = out_file.format(typ=f)
+            canvas.SaveAs(out_file)
+        if print_names:
+            log_message(out)
+        gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
+
+    def save_plots(self, savename, sub_dir=None, canvas=None, ind=0, ch='dia', x=1, y=1, prnt=True):
         """
         Saves the canvas at the desired location. If no canvas is passed as argument, the active canvas will be saved. However for applications without graphical interface,
         such as in SSl terminals, it is recommended to pass the canvas to the method.
         :param savename:
-        :param file_type:
-        :param save_dir:
+        # :param file_type:
+        # :param save_dir:
         :param sub_dir:
         :param canvas:
         :param ind: index of the collection
         :param ch: if None print both dias (dirty fix)
         """
-        save_dir = self.save_directory if save_dir is None else save_dir
-        file_type = '.png' if file_type is None else '.{end}'.format(end=file_type)
-        sub_dir = '' if sub_dir is None else '{subdir}/'.format(subdir=sub_dir)
-        resultsdir = save_dir + sub_dir
-        if not os.path.exists(resultsdir):
-            os.makedirs(resultsdir)
+        # save_dir = self.save_directory if save_dir is None else save_dir
+        # file_type = '.png' if file_type is None else '.{end}'.format(end=file_type)
+
         if canvas is None:
             try:
                 c = gROOT.GetListOfCanvases()
@@ -116,21 +251,26 @@ class Elementary(object):
                 return
         channel = self.channel if hasattr(self, 'channel') else None
         if hasattr(self, 'run'):
-            self.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas)
+            self.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas, x=x, y=y)
+        if hasattr(self, 'Run'):
+            self.Run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas, x=x, y=y)
         elif hasattr(self, 'analysis'):
-            print 'has analysis'
-            self.analysis.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas)
+            try:
+                self.analysis.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas, x=x, y=y)
+            except AttributeError as err:
+                self.log_warning(err)
         elif hasattr(self, 'collection'):
             runs = [self.collection.keys()[0], self.collection.keys()[-1], self.collection.values()[0].run.get_rate_string(), self.collection.values()[-1].run.get_rate_string()]
             if not ind:
-                self.collection.values()[ind].run.draw_run_info(channel=ch if ch is None else self.collection.values()[ind].channel, canvas=canvas, runs=runs)
+                self.collection.values()[ind].run.draw_run_info(channel=ch if ch is None else self.collection.values()[ind].channel, canvas=canvas, runs=runs, x=x, y=y)
             else:
-                self.collection.values()[ind].run.draw_run_info(channel=ch if ch is None else self.collection.values()[ind].channel, canvas=canvas)
+                self.collection.values()[ind].run.draw_run_info(channel=ch if ch is None else self.collection.values()[ind].channel, canvas=canvas, x=x, y=y)
         canvas.Update()
+
         try:
-            canvas.SaveAs(resultsdir + savename + file_type)
+            self.save_canvas(canvas, sub_dir=sub_dir, name=savename, print_names=prnt)
         except Exception as inst:
-            print '\n\n{delim}\nERROR in save plots!\n{msg}\n{delim}\n\n'.format(delim=len(str(inst)) * '-', msg=inst)
+            print self.print_banner('ERROR in save plots!\n{0}'.format(inst), '-')
 
     def create_new_testcampaign(self):
         year = raw_input('Enter the year of the test campgaign (YYYY): ')
@@ -165,36 +305,14 @@ class Elementary(object):
             f.writelines(lines)
             f.close()
 
-    @classmethod
-    def set_test_campaign(cls, campaign='201508'):
-        campaigns = cls.find_test_campaigns()
-        if not str(campaign) in campaigns:
-            print 'This Testcampaign does not exist yet! Use create_new_testcampaign!\nExisting campaigns: {camp}'.format(camp=campaigns)
-            return
-        if Elementary.TESTCAMPAIGN is None:
-            Elementary.TESTCAMPAIGN = str(campaign)
-
-    def print_testcampaign(self):
-        tc = datetime.strptime(self.TESTCAMPAIGN, '%Y%m')
-        print 'TESTCAMPAIGN:', tc.strftime('%b %Y')
-
-    @classmethod
-    def find_test_campaigns(cls):
-        conf_dir = cls.get_program_dir() + 'Configuration/'
-        names = glob(conf_dir + 'RunConfig_*')
-        campaigns = [re.split('_|\.', name)[1] for name in names]
-        campaigns = [camp for i, camp in enumerate(campaigns) if camp not in campaigns[i + 1:]]
-        return sorted(campaigns)
-
-    @staticmethod
-    def print_elapsed_time(start, what='This'):
+    def print_elapsed_time(self, start, what='This', show=True):
         string = '{1} took {0:2.2f} seconds'.format(time() - start, what)
-        print string
+        self.print_banner(string) if show else self.do_nothing()
         return string
 
     @staticmethod
-    def do_pickle(path, function, value=0):
-        if value:
+    def do_pickle(path, function, value=None):
+        if value is not None:
             f = open(path, 'w')
             pickle.dump(value, f)
             f.close()
@@ -231,59 +349,159 @@ class Elementary(object):
         gr.SetLineWidth(width)
         return gr
 
-    @staticmethod
-    def make_tgaxis(x, y1, y2, title, color=1, width=1, offset=.15, tit_size=.04, line=True, opt='+SU'):
-        a = TGaxis(x, y1, x, y2, y1, y2, 510, opt)
-        a.SetLineColor(color)
-        if line:
-            a.SetTickSize(0)
-            a.SetLabelSize(0)
-        a.SetTitleSize(tit_size)
-        a.SetTitleOffset(offset)
-        a.SetTitle(title + '  ')
-        a.SetTitleColor(color)
+    def draw_axis(self, x1, x2, y1, y2, title, col=1, width=1, off=.15, tit_size=.035, lab_size=0.035, line=False, opt='+SU', tick_size=0.03, l_off=.01):
+        range_ = [y1, y2] if x1 == x2 else [x1, x2]
+        a = TGaxis(x1, y1, x2, y2, range_[0], range_[1], 510, opt)
+        a.SetName('ax')
+        a.SetLineColor(col)
         a.SetLineWidth(width)
+        a.SetLabelSize(lab_size if not line else 0)
+        a.SetTitleSize(tit_size)
+        a.SetTitleOffset(off)
+        a.SetTitle(title)
+        a.SetTitleColor(col)
+        a.SetLabelColor(col)
+        a.SetLabelFont(42)
+        a.SetTitleFont(42)
+        a.SetTickSize(tick_size if not line else 0)
+        a.SetNdivisions(0) if line else self.do_nothing()
+        a.SetLabelOffset(l_off)
+        a.Draw()
+        self.ROOTObjects.append(a)
         return a
 
-    @staticmethod
-    def format_histo(histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=20, color=1, markersize=1, x_off=1, y_off=1, z_off=1, lw=1, fill_color=0):
+    def draw_y_axis(self, x, ymin, ymax, tit, col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035, tick_size=0.03, l_off=.01, line=False):
+        return self.draw_axis(x, x, ymin, ymax, tit, col=col, off=off, opt=opt, width=w, tit_size=tit_size, lab_size=lab_size, tick_size=tick_size, l_off=l_off, line=line)
+
+    def draw_x_axis(self, y, xmin, xmax, tit, col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035, tick_size=0.03, l_off=.01, line=False):
+        return self.draw_axis(xmin, xmax, y, y, tit, col=col, off=off, opt=opt, width=w, tit_size=tit_size, lab_size=lab_size, tick_size=tick_size, l_off=l_off, line=line)
+
+    def draw_line(self, x1, x2, y1, y2, color=1, width=1, style=1):
+        l = TLine(x1, y1, x2, y2)
+        l.SetLineColor(color)
+        l.SetLineWidth(width)
+        l.SetLineStyle(style)
+        l.Draw()
+        self.ROOTObjects.append(l)
+
+    def draw_vertical_line(self, x, ymin, ymax, color=1, w=1, style=1):
+        self.draw_line(x, x, ymin, ymax, color=color, width=w, style=style)
+
+    def draw_horizontal_line(self, y, xmin, xmax, color=1, w=1, style=1):
+        self.draw_line(xmin, xmax, y, y, color=color, width=w, style=style)
+
+    def make_legend(self, x1=.58, y2=.88, nentries=2, w=.3, scale=1, name='l', y1=None, felix=True):
+        x2 = x1 + w
+        y1 = y2 - nentries * .05 * scale if y1 is None else y1
+        l = TLegend(x1, y1, x2, y2)
+        l.SetName(name)
+        l.SetTextFont(42)
+        l.SetTextSize(0.03 * scale)
+        if self.Felix and felix:
+            l.SetLineWidth(2)
+            l.SetBorderSize(0)
+            l.SetFillColor(0)
+            l.SetFillStyle(0)
+            l.SetTextAlign(12)
+        return l
+
+    def format_histo(self, histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=20, color=1, markersize=1, x_off=1, y_off=1, z_off=1, lw=1, fill_color=0, stats=True,
+                     tit_size=.04, draw_first=False, x_range=None, y_range=None):
         h = histo
+        if draw_first:
+            self.set_root_output(False)
+            h.Draw('a')
+            self.set_root_output(True)
         h.SetTitle(title) if title else h.SetTitle(h.GetTitle())
         h.SetName(name) if name else h.SetName(h.GetName())
         try:
+            h.SetStats(stats)
+        except AttributeError or ReferenceError:
+            pass
+        # markers
+        try:
             h.SetMarkerStyle(marker)
             h.SetMarkerColor(color) if color is not None else h.SetMarkerColor(h.GetMarkerColor())
-            h.SetLineColor(color) if color is not None else h.SetLineColor(h.GetLineColor())
             h.SetMarkerSize(markersize)
+        except AttributeError or ReferenceError:
+            pass
+        # lines/fill
+        try:
+            h.SetLineColor(color) if color is not None else h.SetLineColor(h.GetLineColor())
             h.SetFillColor(fill_color)
             h.SetLineWidth(lw)
-            h.GetXaxis().SetTitle(x_tit) if x_tit else h.GetXaxis().GetTitle()
-            h.GetXaxis().SetTitleOffset(x_off)
-            h.GetYaxis().SetTitle(y_tit) if y_tit else h.GetYaxis().GetTitle()
-            h.GetYaxis().SetTitleOffset(y_off)
+        except AttributeError or ReferenceError:
+            pass
+        # axis titles
+        try:
+            x_tit = untitle(x_tit) if self.Felix else x_tit
+            y_tit = untitle(y_tit) if self.Felix else y_tit
+            z_tit = untitle(z_tit) if self.Felix else z_tit
+            # x-axis
+            x_axis = h.GetXaxis()
+            x_axis.SetTitle(x_tit) if x_tit else h.GetXaxis().GetTitle()
+            x_axis.SetTitleOffset(x_off)
+            x_axis.SetTitleSize(tit_size)
+            x_axis.SetRangeUser(x_range[0], x_range[1]) if x_range is not None else do_nothing()
+            # y-axis
+            y_axis = h.GetYaxis()
+            y_axis.SetTitle(y_tit) if y_tit else y_axis.GetTitle()
+            y_axis.SetTitleOffset(y_off)
+            y_axis.SetTitleSize(tit_size)
+            y_axis.SetRangeUser(y_range[0], y_range[1]) if y_range is not None else do_nothing()
+            # z-axis
             h.GetZaxis().SetTitle(z_tit) if z_tit else h.GetZaxis().GetTitle()
             h.GetZaxis().SetTitleOffset(z_off)
+            h.GetZaxis().SetTitleSize(tit_size)
         except AttributeError or ReferenceError:
             pass
 
-    def draw_histo(self, histo, save_name, show, save_dir, lm=.1, rm=0.1, draw_opt='', x=1000, y=1000, l=None):
+    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=0.1, bm=.15, tm=.1, draw_opt='', x_fac=None, y_fac=None,
+                   l=None, logy=False, logx=False, logz=False, canvas=None, gridx=False, gridy=False, save=True, ch='dia', prnt=True):
+        x_fac = self.Res if x_fac is None else int(x_fac * self.Res)
+        y_fac = self.Res if y_fac is None else int(y_fac * self.Res)
         h = histo
-        gROOT.SetBatch(1) if not show else self.do_nothing()
-        c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x, y)
-        c.SetMargin(lm, rm, .15, .1)
+        if not show:
+            gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
+            gROOT.SetBatch(1)
+        c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x_fac, y_fac) if canvas is None else canvas
+        c.SetMargin(lm, rm, bm, tm)
+        c.SetLogx() if logx else self.do_nothing()
+        c.SetLogy() if logy else self.do_nothing()
+        c.SetLogz() if logz else self.do_nothing()
+        c.SetGridx() if gridx else self.do_nothing()
+        c.SetGridy() if gridy else self.do_nothing()
         h.Draw(draw_opt)
         l.Draw() if l is not None else self.do_nothing()
-        self.save_plots(save_name, sub_dir=save_dir)
+        if save:
+            self.save_plots(save_name, sub_dir=sub_dir, x=x_fac, y=y_fac, ch=ch, prnt=prnt)
         gROOT.SetBatch(0)
-        return [c, h, l] if l is not None else [c, h]
+        gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
+        lst = [c, h, l] if l is not None else [c, h]
+        self.ROOTObjects.append(lst)
+        return lst
 
-    @staticmethod
-    def make_tlatex(x, y, text, align=20, color=1, size=.05):
+    def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=0.1, bm=.15, tm=.1, draw_opt='', x=None, y=None,
+                   l=None, logy=False, logx=False, logz=False, canvas=None, gridy=False, gridx=False, ch='dia', prnt=True):
+        return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, l, logy, logx, logz, canvas, gridx, gridy, False, ch, prnt)
+
+    def draw_tlatex(self, x, y, text, align=20, color=1, size=.05):
         l = TLatex(x, y, text)
+        l.SetName(text)
         l.SetTextAlign(align)
         l.SetTextColor(color)
         l.SetTextSize(size)
+        l.Draw()
+        self.ROOTObjects.append(l)
         return l
+
+    def draw_arrow(self, x1, x2, y1, y2, col=1, width=1, opt='<|', size=.005):
+        ar = TArrow(x1, y1, x2, y2, size, opt)
+        ar.SetLineWidth(width)
+        ar.SetLineColor(col)
+        ar.SetFillColor(col)
+        ar.Draw()
+        self.ROOTObjects.append(ar)
 
     @staticmethod
     def calc_fwhm(histo):
@@ -296,11 +514,9 @@ class Elementary(object):
 
     @staticmethod
     def get_program_dir():
-        arg = 2 if len(sys.argv) > 2 and len(sys.argv[2]) > 4 else 0
-        path = os.path.dirname(os.path.realpath(sys.argv[arg])).split('/')
         ret_val = ''
-        for i in range(len(path) - 1):
-            ret_val += path[i] + '/'
+        for i in __file__.split('/')[:-2]:
+            ret_val += i + '/'
         return ret_val
 
     @staticmethod
@@ -316,7 +532,7 @@ class Elementary(object):
             peak_pos = h.GetBinCenter(h.GetMaximumBin())
             bin1 = h.FindFirstBinAbove(h.GetMaximum() / 2)
             bin2 = h.FindLastBinAbove(h.GetMaximum() / 2)
-            fwhm = h.GetBinCenter(bin2) - h.GetBinCenter(bin1)
+            fwhm = h.GetBinLowEdge(bin2 + 2) - h.GetBinLowEdge(bin1 - 1)
             option = 'qs' if draw else 'qs0'
             fit = h.Fit(fitfunc, option, '', peak_pos - fwhm / 2, peak_pos + fwhm / 2)
         else:
@@ -331,9 +547,10 @@ class Elementary(object):
             obj.Delete()
 
     @staticmethod
-    def normalise_histo(histo):
+    def normalise_histo(histo, to100=False):
         h = histo
-        h.Scale(1 / h.Integral(1, h.GetNbinsX()))
+        fac = 100 if to100 else 1
+        h.Scale(fac / h.Integral(1, h.GetNbinsX()))
         return h
 
     @staticmethod
@@ -342,23 +559,27 @@ class Elementary(object):
 
     @staticmethod
     def triple_gauss_fit(histo, show=True):
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
         h = histo
-        fit = TF1('fit', 'gaus(0) + gaus(3) + gaus(6)')
+        fit = TF1('fit', 'gaus(0) + gaus(3) + gaus(6)', h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax())
         s = TSpectrum(2)
         s.Search(h)
-        fit.SetParLimits(0, .8 * s.GetPositionY()[1], 1.2 * s.GetPositionY()[1])
-        fit.SetParLimits(1, s.GetPositionX()[1] - 10, s.GetPositionX()[1] + 10)
-        fit.SetParLimits(2, 5, 50)
-        fit.SetParLimits(3, .8 * s.GetPositionY()[0], 1.2 * s.GetPositionY()[0])
-        fit.SetParLimits(4, s.GetPositionX()[0] - 5, s.GetPositionX()[0] + 5)
-        fit.SetParLimits(5, 1, 10)
-        fit.SetParLimits(6, 10, s.GetPositionY()[1])
-        fit.SetParLimits(7, s.GetPositionX()[0], s.GetPositionX()[1])
-        fit.SetParLimits(8, 1, 10)
-        for i in xrange(5):
+        y = s.GetPositionY()[0], s.GetPositionY()[1]
+        x = s.GetPositionX()[0], s.GetPositionX()[1]
+        for i, par in enumerate([y[1], x[1], 10, y[0], x[0], 5, 10, x[0] + 10, 5]):
+            fit.SetParameter(i, par)
+        # fit.SetParLimits(0, .5 * y[1], 1.5 * y[1])
+        # fit.SetParLimits(1, x[1] - 25, x[1] + 10)
+        # fit.SetParLimits(2, 5, 50)
+        # fit.SetParLimits(3, .5 * y[0], 1.5 * y[0])
+        # fit.SetParLimits(4, x[0] - 5, x[0] + 5)
+        # fit.SetParLimits(5, 1, 10)
+        # fit.SetParLimits(6, 1, s.GetPositionY()[1])
+        # fit.SetParLimits(7, x[0] + 5, x[1] - 20)
+        # fit.SetParLimits(8, 1, 10)
+        for i in xrange(1):
             h.Fit(fit, 'qs{0}'.format('' if show else '0'), '', -50, s.GetPositionX()[1])
-        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
         return fit
 
     @staticmethod

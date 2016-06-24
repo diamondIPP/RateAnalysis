@@ -4,14 +4,17 @@ import json
 from copy import deepcopy
 from datetime import datetime as dt
 from textwrap import fill
+from sys import argv
+from collections import OrderedDict
 
 
 class RunSelection(Elementary):
-    def __init__(self, verbose=False):
-        Elementary.__init__(self, verbose)
+    def __init__(self, testcampaign=None, verbose=False):
+        Elementary.__init__(self, verbose=verbose, testcampaign=testcampaign)
         self.run = Run(run_number=None, verbose=verbose)
 
         self.runplan_path = self.get_program_dir() + self.run_config_parser.get('BASIC', 'runplaninfofile')
+        self.ExcludedRuns = json.loads(self.run_config_parser.get('BASIC', 'excluded_runs'))
         self.run_plan = self.load_runplan()
         self.run_numbers = self.load_run_numbers()
         self.run_infos = self.load_run_infos()
@@ -47,13 +50,14 @@ class RunSelection(Elementary):
 
     # ============================================
     # region INIT
+    def load_run_config(self):
+        return self.load_run_configs(0)
+
     def load_run_numbers(self):
-        run_numbers = []
         f = open(self.run.runinfofile, 'r')
         data = json.load(f)
         f.close()
-        for key in data:
-            run_numbers.append(int(key))
+        run_numbers = [int(key) for key in data if int(key) not in self.ExcludedRuns]
         return sorted(run_numbers)
 
     def load_run_infos(self):
@@ -128,7 +132,7 @@ class RunSelection(Elementary):
         :param only_selected:
         """
         types = self.get_runinfo_values('type')
-        assert run_type in types, 'wrong data type.\n\t-->Select type from: {types}'.format(types=types)
+        assert run_type in types, 'wrong data type.\n\t-->Select type of these: {types}'.format(types=types)
         runs = self.get_selected_runs() if only_selected else self.run_numbers
         selected_runs = 0
         for run in runs:
@@ -152,7 +156,7 @@ class RunSelection(Elementary):
         :param only_selected_runs:
         """
         diamondnames = self.get_diamond_names()
-        assert diamondname in diamondnames, 'wrong diamond name. \n\t-->Select diamond name from: {dias}'.format(dias=diamondnames)
+        assert diamondname in diamondnames, 'wrong diamond name.\n\t-->Select diamond of these:'.format(dias=diamondnames)
         runs = self.get_selected_runs() if only_selected_runs else self.run_numbers
         selected_runs = 0
         unselected_runs = 0
@@ -195,7 +199,10 @@ class RunSelection(Elementary):
 
     def select_run(self, run_number, do_assert=True, unselect=False):
         if do_assert:
-            assert run_number in self.run_numbers, 'run {run} not found in list of run numbers. Check run_log json file!'.format(run=run_number)
+            if run_number not in self.run_numbers:
+                self.log_warning('run {run} not found in list of run numbers. Check run_log json file!'.format(run=run_number))
+                return
+
         self.selection[run_number] = True if not unselect else False
         if unselect:
             self.reset_channels(run_number)
@@ -296,8 +303,9 @@ class RunSelection(Elementary):
                 string += str(int(self.run_infos[run]['hv dia{n}'.format(n=i)])).ljust(6)
             string += '{flux} kHz '.format(flux=str(int(self.run_infos[run]['measured flux'])).rjust(4))
             if not show_allcomments:
-                comments = self.run_infos[run]['user comments'][:20]
-                string += comments
+                comments = self.run_infos[run]['user comments']
+                show_comment = comments[:20].replace('\r\n', ' ')
+                string += show_comment
                 string += '*' if len(comments) >= 20 else ''
             if header:
                 spaces = [int(self.channels[run][ch]) * ' ' for ch in self.run.channels]
@@ -345,7 +353,7 @@ class RunSelection(Elementary):
         for run_type, plan in self.run_plan.iteritems():
             print '{type}:'.format(type=run_type)
             if not detailed:
-                print '  Nr. {range} {excl} Diamonds'.format(range='Range'.ljust(17), excl='Excluded'.ljust(15))
+                print '  Nr. {range} {excl} {dia} Voltages'.format(range='Range'.ljust(17), excl='Excluded'.ljust(15), dia='Diamonds'.ljust(20))
             for nr, runs in sorted(plan.iteritems()):
                 self.unselect_all_runs()
                 self.select_runs_from_runplan(nr, run_type)
@@ -359,9 +367,11 @@ class RunSelection(Elementary):
                         else:
                             i += 1
                     dias = [str(dia) for dia in self.get_diamond_names(True)]
-                    run_string = '[{min}, ... , {max}]'.format(min=str(runs[0]).zfill(3), max=str(runs[-1]).zfill(2))
+                    run_string = '[{min}, ... , {max}]'.format(min=str(runs[0]).zfill(3), max=str(runs[-1]).zfill(3))
                     not_string = str(missing_runs) if missing_runs else ''
-                    print '  {nr}: {runs}, {miss} {dias}'.format(nr=nr, runs=run_string, miss=not_string[:15].ljust(15), dias=dias)
+                    voltages = self.get_hv_values(sel=True)
+                    nr += ':'
+                    print '  {nr}   {runs}, {miss} {dias} {hv}'.format(nr=nr.ljust(5), runs=run_string, miss=not_string[:15].ljust(15), dias=str(dias).ljust(20), hv=voltages)
                 else:
                     print '{delim}\n RUN PLAN {nr} ({type})\n{delim}'.format(delim=50 * '-', nr=nr, type=run_type)
                     self.show_selected_runs(show_allcomments=show_allcomments)
@@ -372,7 +382,7 @@ class RunSelection(Elementary):
         self.selection = old_selection
 
     def select_runs_from_runplan(self, plan_nr, type_='rate_scan'):
-        plan = str(plan_nr).zfill(2) if type(plan_nr) is int else plan_nr.zfill(2)
+        plan = self.make_runplan_string(plan_nr)
         self.selected_runplan = plan
         runs = self.run_plan[type_][plan]
         self.select_runs(runs)
@@ -383,7 +393,7 @@ class RunSelection(Elementary):
         :param plan_nr:
         :param run_type:
         """
-        assert type(plan_nr) is str, 'The plan number has to be a string!'
+        plan_nr = self.make_runplan_string(plan_nr)
         types = ['rate_scan', 'voltage_scan', 'test']
         assert run_type in types, 'This run type does not exist! Types are: {types}'.format(types=types)
         assert self.selection, 'The run selection is completely empty!'
@@ -404,6 +414,11 @@ class RunSelection(Elementary):
         self.save_runplan()
 
     # endregion
+
+    @staticmethod
+    def make_runplan_string(nr):
+        nr = str(nr)
+        return nr.zfill(2) if len(nr) <= 2 else nr.zfill(4)
 
     def get_diamond_names(self, sel=False):
         names = self.get_runinfo_values('diamond 1', sel)
@@ -476,6 +491,36 @@ class RunSelection(Elementary):
         f.truncate()
         f.close()
 
+    def add_runinfo_key(self):
+        runs = self.get_selected_runs()
+        f, runinfo = self.get_sorted_runinfo()
+        new_key = raw_input('Enter the key you want to add: ')
+        new_value = raw_input('Enter the new value: ')
+        for run in runs:
+            runinfo[str(run)][new_key] = new_value
+        self.save_runinfo(f, runinfo)
+
+    def remove_runinfo_key(self):
+        runs = self.get_selected_runs()
+        f, runinfo = self.get_sorted_runinfo()
+        pop_key = raw_input('Enter the key you want to remove: ')
+        for run in runs:
+            runinfo[str(run)].pop(pop_key)
+        self.save_runinfo(f, runinfo)
+
+    def get_sorted_runinfo(self):
+        f = open(self.run.runinfofile, 'r+')
+        runinfo = json.load(f)
+        sorted_runinfo = OrderedDict(sorted(runinfo.items(), key=lambda t: int(t[0])))
+        return f, sorted_runinfo
+
+    @staticmethod
+    def save_runinfo(f, runinfo):
+        f.seek(0)
+        json.dump(runinfo, f, indent=2)
+        f.truncate()
+        f.close()
+
 
 def verify(msg):
     for n in xrange(3):
@@ -487,4 +532,5 @@ def verify(msg):
     raise ValueError('Are you too stupid to say yes or no??')
 
 if __name__ == '__main__':
-    z = RunSelection()
+    tc = None if not str(argv[-1]).isdigit() else argv[-1]
+    z = RunSelection(tc)

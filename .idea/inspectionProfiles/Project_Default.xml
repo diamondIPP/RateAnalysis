@@ -2,6 +2,7 @@
   <profile version="1.0">
     <option name="myName" value="Project Default" />
     <inspection_tool class="ProblematicWhitespace" enabled="true" level="WARNING" enabled_by_default="true" />
+    <inspection_tool class="PyIncorrectDocstringInspection" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
     <inspection_tool class="PyPep8Inspection" enabled="true" level="WEAK WARNING" enabled_by_default="true">
       <option name="ignoredErrors">
         <list>
@@ -59,6 +60,9 @@
           <option value="AbstractClasses.TelescopeAnalysis.ROOT" />
           <option value="ROOT" />
           <option value="THStack" />
+          <option value="TMultiGraph" />
+          <option value="gRandom" />
+          <option value="TColor" />
         </list>
       </option>
     </inspection_tool>

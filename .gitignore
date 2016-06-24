@@ -1,10 +1,18 @@
 *.pyc
 *.pdf
 *.root
+# ignore pictures
 *.png
+*.jpg
+*.eps
 *.out
-Results/
+Results*/
 *.json
 *.pickle
 *~
 .idea/workspace.xml
+*.bak
+test*
+*.tar
+*.gz
+bak/

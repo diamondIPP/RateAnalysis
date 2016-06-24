@@ -64,15 +64,15 @@ class Run(Elementary):
     operationmode = ''
     TrackingPadAnalysis = {}
 
-    def __init__(self, run_number, diamonds=3, verbose=False):
+    def __init__(self, run_number=None, diamonds=3, verbose=False):
         """
         :param run_number: number of the run
         :param diamonds: 0x1=ch0; 0x2=ch3
         :param verbose:
         :return:
         """
+        self.run_number = run_number if not isinstance(run_number, Run) else run_number.run_number
         Elementary.__init__(self, verbose=verbose)
-        self.run_number = None
 
         # configuration
         self.channels = [0, 3]
@@ -82,17 +82,16 @@ class Run(Elementary):
         self.treename = self.run_config_parser.get('BASIC', 'treename')
         self.run_path = self.run_config_parser.get('BASIC', 'runpath')
         self.runinfofile = self.run_config_parser.get('BASIC', 'runinfofile')
-        self._runlogkeyprefix = self.run_config_parser.get('BASIC', 'runlog_key_prefix')
         self.maskfilepath = self.run_config_parser.get('BASIC', 'maskfilepath')
         self.createNewROOTFiles = self.run_config_parser.getboolean('BASIC', 'createNewROOTFiles')
-        self.signalregion_low = self.run_config_parser.getint('BASIC', 'signalregion_low')
-        self.signalregion_high = self.run_config_parser.getint('BASIC', 'signalregion_high')
         
         # run info
         self.RunInfo = None
+        self.RootFile = None
+        self.tree = None
 
         if run_number is not None:
-            self.converter = Converter(self.TESTCAMPAIGN)
+            self.converter = Converter(self.TESTCAMPAIGN, self.run_config_parser, self.run_number)
             assert (run_number > 0), 'incorrect run_number'
             self.set_run(run_number)
 
@@ -112,8 +111,11 @@ class Run(Elementary):
                 self.pedestal_regions = self.get_regions('pedestal')
                 self.signal_regions = self.get_regions('signal')
                 self.peak_integrals = self.get_peak_integrals()
+                self.DRS4Channels = self.load_drs4_channels()
+                self.TCal = self.load_tcal()
 
-            self.flux = self.calculate_flux()    
+            self.FoundForRate = False
+            self.flux = self.calculate_flux()
 
         else:
             self.load_run_info()
@@ -130,10 +132,13 @@ class Run(Elementary):
         self.duration = None
         self.__load_timing()
         # root objects
-        self.run_info_legends = {}
+        self.RunInfoLegends = None
 
     # ==============================================
     # region LOAD FUNCTIONS
+    def load_run_config(self):
+        return self.load_run_configs(self.run_number)
+
     def load_bias(self):
         bias = {}
         for i, ch in enumerate(self.channels, 1):
@@ -146,38 +151,29 @@ class Run(Elementary):
         return _type
 
     def load_regions(self):
-        macro = self.rootfile.Get('region_information')
-        return macro.GetListOfLines()
+        macro = self.RootFile.Get('region_information')
+        return [str(line) for line in macro.GetListOfLines()]
 
     def load_run_info(self):
         self.RunInfo = {}
-        data = None
         try:
             f = open(self.runinfofile, 'r')
             data = json.load(f)
             f.close()
-            loaderror = False
         except IOError as err:
-            print '\n' + (len(str(err)) + 9) * '-'
-            print 'WARNING:', err
-            print 'Loading default RunInfo!'
-            print (len(str(err)) + 9) * '-' + '\n'
-            loaderror = True
+            self.log_warning('{err}\nCould not load default RunInfo! --> Using default'.format(err))
+            self.RunInfo = default_info
+            return -1
 
         if self.run_number >= 0:
-            if not loaderror:
-                self.RunInfo = data.get(str(self.run_number))
-                if self.RunInfo is None:
-                    # try with run_log key prefix
-                    self.RunInfo = data.get(self._runlogkeyprefix + str(self.run_number).zfill(3))
-                if self.RunInfo is None:
-                    print "INFO: Run not found in json run log file. Default run info will be used."
-                    self.RunInfo = default_info
-                else:
-                    self.rename_runinfo_keys()
-            else:
+            self.RunInfo = data.get(str(self.run_number))
+            if self.RunInfo is None:
+                # try with run_log key prefix
+                self.RunInfo = data.get('{tc}{run}'.format(tc=self.TESTCAMPAIGN[2:], run=str(self.run_number).zfill(5)))
+            if self.RunInfo is None:
+                self.log_warning('Run not found in json run log file! --> Using default')
                 self.RunInfo = default_info
-            self.current_run = self.RunInfo
+            self.rename_runinfo_keys()
         else:
             self.RunInfo = default_info
             return 0
@@ -254,38 +250,47 @@ class Run(Elementary):
                     maskdata[plane][line[0]] = [int(line[2]), int(line[3])]
             f.close()
         except IOError as err:
-            print '\n' + (len(str(err)) + 9) * '-'
-            print 'WARNING:', err
-            print 'Cannot calculate flux!'
-            print (len(str(err)) + 9) * '-' + '\n'
-            return None
+            self.log_warning(err)
 
+        unmasked_pixels = {}
         # check for corner method
-        if not maskdata.values()[0].keys()[0].startswith('corn'):
-            return None
-
-        # fill in the information to Run Info
-        masked_pixels = {}
-        for plane in self.trigger_planes:
-            row = [maskdata[plane]['cornBot'][0], maskdata[plane]['cornTop'][0]]
-            col = [maskdata[plane]['cornBot'][1], maskdata[plane]['cornTop'][1]]
-            masked_pixels[plane] = abs((row[1] - row[0] + 1) * (col[1] - col[0] + 1))
-            self.RunInfo['masked pixels'][plane] = masked_pixels[plane]
+        if not maskdata[self.trigger_planes[0]] or not maskdata.values()[0].keys()[0].startswith('corn'):
+            self.log_warning('Invalid mask file. Not taking any mask!')
+            for plane in self.trigger_planes:
+                unmasked_pixels[plane] = 4160
+        else:
+            for plane in self.trigger_planes:
+                row = [maskdata[plane]['cornBot'][0], maskdata[plane]['cornTop'][0]]
+                col = [maskdata[plane]['cornBot'][1], maskdata[plane]['cornTop'][1]]
+                unmasked_pixels[plane] = abs((row[1] - row[0] + 1) * (col[1] - col[0] + 1))
+                self.RunInfo['masked pixels'][plane] = unmasked_pixels[plane]
 
         pixel_size = 0.01 * 0.015  # cm^2
         flux = []
-        for i, plane in enumerate(self.trigger_planes, 1):
-            area = pixel_size * masked_pixels[plane]
-            flux.append(self.RunInfo['for{num}'.format(num=i)] / area / 1000)  # in kHz/cm^2
+        self.find_for_in_comment()
+        if self.RunInfo['for1'] and self.RunInfo['for2']:
+            self.FoundForRate = True
+            for i, plane in enumerate(self.trigger_planes, 1):
+                area = pixel_size * unmasked_pixels[plane]
+                flux.append(self.RunInfo['for{num}'.format(num=i)] / area / 1000)  # in kHz/cm^2
+        else:
+            flux.append(self.RunInfo['measured flux'])
         self.RunInfo['mean flux'] = mean(flux)
         return mean(flux)
+
+    def find_for_in_comment(self):
+        for name in ['for1', 'for2']:
+            if not self.RunInfo[name]:
+                for cmt in self.RunInfo['user comments'].split('\r\n'):
+                    cmt = cmt.replace(':', '')
+                    cmt = cmt.split(' ')
+                    if str(cmt[0].lower()) == name:
+                        self.RunInfo[name] = int(cmt[1])
 
     def rename_runinfo_keys(self):
 
         # return, if all keys from default info are in RunInfo too
         if all([key in self.RunInfo for key in default_info]):
-            return
-        if self.TESTCAMPAIGN == '201505':
             return
 
         parser = ConfigParser()
@@ -300,7 +305,7 @@ class Run(Elementary):
     def wf_exists(self, channel):
         wf_exist = True if self.tree.FindBranch('wf{ch}'.format(ch=channel)) else False
         if not wf_exist:
-            print 'The waveform for channel {ch} is not stored in the tree'.format(ch=channel)
+            print self.log_warning('The waveform for channel {ch} is not stored in the tree'.format(ch=channel))
         return wf_exist
 
     # ==============================================
@@ -320,6 +325,18 @@ class Run(Elementary):
                 except IndexError:
                     ranges[data[0]] = [int(data[i]) for i in [1, 2]]
         return ranges
+
+    def load_drs4_channels(self):
+        for i, line in enumerate(self.region_information):
+            if 'Sensor Names' in line:
+                data = self.region_information[i + 1].strip(' ').split(',')
+                return data
+
+    def load_tcal(self):
+        for i, line in enumerate(self.region_information):
+            if 'tcal' in line:
+                data = [float(i) for i in line.strip('tcal []').split(',') if self.isfloat(i)]
+                return data
 
     def get_peak_integrals(self):
         integrals = OrderedDict()
@@ -352,7 +369,7 @@ class Run(Elementary):
 
     def get_rate_string(self):
         rate = self.flux
-        unit = 'MHz/cm2' if rate > 1000 else 'kHz/cm2'
+        unit = 'MHz/cm^{2}' if rate > 1000 else 'kHz/cm^{2}'
         rate = round(rate / 1000., 1) if rate > 1000 else int(round(rate, 0))
         return '{rate:>3} {unit}'.format(rate=rate, unit=unit)
 
@@ -413,7 +430,7 @@ class Run(Elementary):
         print '\tDiamond1:   \t', self.diamond_names[0], ' (', self.bias[0], ') | is selected: ', self.analyse_ch[0]
         print '\tDiamond2:   \t', self.diamond_names[3], ' (', self.bias[3], ') | is selected: ', self.analyse_ch[3]
 
-    def draw_run_info(self, channel=None, canvas=None, diamondinfo=True, cut=None, comment=None, set_width=None, set_height=None, runs=None):
+    def draw_run_info(self, channel=None, canvas=None, diamondinfo=True, cut=None, comment=None, runs=None, show=True, x=1, y=1):
         """
         Draws the run infos inside the canvas. If no canvas is given, it will be drawn into the active Pad. 
         If the channel number is passed, channel number and diamond name will be drawn.
@@ -423,15 +440,10 @@ class Run(Elementary):
         :param cut:
         :param comment:
         :param runs:
-        :param set_height:
-        :param set_width:
+        :param show:
         :return:
         """
         assert channel is None or channel in self.channels, 'wrong channel id "{ch}"'.format(ch=channel)
-        if set_height is not None:
-            assert 0 <= set_height <= 0.8, 'choose height between 0 and 0.8 or set it to "None"'
-        if set_width is not None:
-            assert 0 <= set_width <= 0.8, 'choose width between 0 and 0.8 or set it to "None"'
         if canvas is not None:
             pad = canvas.cd()
         else:
@@ -442,70 +454,92 @@ class Run(Elementary):
                 return
 
         lines = 2
-        width = 0.4
         if diamondinfo:
             lines += 1
         if cut and hasattr(self, 'analysis'):
             lines += 1
-            width = 0.6
         if comment is not None:
             lines += 1
-            width = max(0.5, width)
-        height = (lines - 1) * 0.03
+        # height = (lines - 1) * 0.03
 
         tc = datetime.strptime(self.TESTCAMPAIGN, '%Y%m')
         dur = '{0:02d}:{1:02.0f}'.format(int(self.totalMinutes), (self.totalMinutes - int(self.totalMinutes)) * 60)
 
-        if not canvas.GetBottomMargin() > .105:
-            canvas.SetBottomMargin(0.15)
-        # user height and width:
-        userheight = height if set_height is None else set_height - 0.04
-        userwidth = width if set_width is None else set_width
+        if show:
+            if not canvas.GetBottomMargin() > .105:
+                canvas.SetBottomMargin(0.15)
 
-        git_text = TLegend(.85, 0, 1, .025)
-        git_text.AddEntry(0, 'git hash: {ver}'.format(ver=check_output(['git', 'describe', '--always'])), '')
-        git_text.SetLineColor(0)
-        legend = TLegend(.002, .00205, userwidth, userheight + 0.04)
-        legend.SetName('l')
-        legend.SetMargin(0.05)
-        legend.AddEntry(0, 'Test Campaign: {tc}'.format(tc=tc.strftime('%b %Y')), '')
-        if runs is None:
-            legend.AddEntry(0, 'Run {run}: {rate}, {dur} Min ({evts} evts)'.format(run=self.run_number, rate=self.get_rate_string(), dur=dur, evts=self.n_entries), '')
+        if self.RunInfoLegends is None:
+            git_text = TLegend(.85, 0, 1, .025)
+            git_text.AddEntry(0, 'git hash: {ver}'.format(ver=check_output(['git', 'describe', '--always'])), '')
+            git_text.SetLineColor(0)
+            if runs is None:
+                run_string = 'Run {run}: {rate}, {dur} Min ({evts} evts)'.format(run=self.run_number, rate=self.get_rate_string(), dur=dur, evts=self.n_entries)
+            else:
+                run_string = 'Runs {start}-{stop} ({flux1} - {flux2})'.format(start=runs[0], stop=runs[1], flux1=runs[2].strip(' '), flux2=runs[3].strip(' '))
+            width = len(run_string) * .01 if x == y else len(run_string) * 0.015 * y / x
+            legend = self.make_legend(.005, .1, y1=.003, w=width, nentries=3, felix=False, scale=.75)
+            legend.SetMargin(0.05)
+            legend.AddEntry(0, 'Test Campaign: {tc}'.format(tc=tc.strftime('%b %Y')), '')
+            legend.AddEntry(0, run_string, '')
+            if channel is None:
+                dias = ['{dia} @ {bias:+2.0f}V'.format(dia=self.diamond_names[ch], bias=self.bias[ch]) for ch in self.channels]
+                dias = str(dias).strip('[]').replace('\'', '')
+                legend.AddEntry(0, 'Diamonds: {dias}'.format(dias=dias), '')
+            else:
+                legend.AddEntry(0, 'Diamond: {diamond} @ {bias:+}V'.format(diamond=self.diamond_names[channel], bias=self.bias[channel]), '')
+            if cut and hasattr(self, 'analysis'):
+                legend.AddEntry(0, 'Cut: {cut}'.format(cut=self.analysis.get_easy_cutstring()), '')
+            if comment is not None:
+                legend.AddEntry(0, comment, '')
+            self.RunInfoLegends = [legend, git_text]
         else:
-            legend.AddEntry(0, 'Runs {start}-{stop} ({flux1} - {flux2})'.format(start=runs[0], stop=runs[1], flux1=runs[2].strip(' '), flux2=runs[3].strip(' ')), '')
-        if channel is None:
-            dias = ['{dia} @ {bias:2.0f}V'.format(dia=self.diamond_names[ch], bias=self.bias[ch]) for ch in self.channels]
-            dias = str(dias).strip('[]').replace('\'', '')
-            legend.AddEntry(0, 'Diamonds: {dias}'.format(dias=dias), '')
-        else:
-            legend.AddEntry(0, 'Diamond: {diamond} @ {bias:+}V'.format(diamond=self.diamond_names[channel], bias=self.bias[channel]), '')
-        if cut and hasattr(self, 'analysis'):
-            legend.AddEntry(0, 'Cut: {cut}'.format(cut=self.analysis.get_easy_cutstring()), '')
-        if comment is not None:
-            legend.AddEntry(0, comment, '')
-        # while canvas.GetPad(n_pads + 1):
-        #     n_pads += 1
-        pads = [i for i in canvas.GetListOfPrimitives() if i.IsA().GetName() == 'TPad']
-        if not pads:
-            git_text.Draw()
-            legend.Draw()
-        else:
-            for pad in pads:
-                pad.cd()
+            git_text = self.RunInfoLegends[1]
+            legend = self.RunInfoLegends[0]
+        if show:
+            pads = [i for i in canvas.GetListOfPrimitives() if i.IsA().GetName() == 'TPad']
+            if not pads:
                 git_text.Draw()
                 legend.Draw()
-        self.run_info_legends[0] = [legend, git_text]
-        pad.Modified()
-        canvas.Update()
+            else:
+                for pad in pads:
+                    pad.cd()
+                    git_text.Draw()
+                    legend.Draw()
+            pad.Modified()
+            canvas.Update()
+        else:
+            return legend, git_text
+
+    def scale_runinfo_legend(self, txt_size=None, w=None, h=None):
+        if self.RunInfoLegends is None:
+            self.log_warning('RunInfo legend was not created yet!')
+            return
+        l = self.RunInfoLegends[0]
+        l.SetY2NDC(h) if h is not None else self.do_nothing()
+        l.SetX2NDC(w) if w is not None else self.do_nothing()
+        l.SetTextSize(txt_size) if txt_size is not None else self.do_nothing()
+
+    def reset_info_legend(self):
+        l = self.RunInfoLegends[0]
+        l.SetY2NDC(.1)
+        l.SetX2NDC(.435)
+        l.SetTextSize(.0195)
+
+    def get_runinfo(self, ch, pad=None):
+        runs = []
+        if hasattr(self, 'collection'):
+            runs = [self.collection.keys()[0], self.collection.keys()[-1], self.collection.values()[0].run.get_rate_string(), self.collection.values()[-1].run.get_rate_string()]
+        return self.draw_run_info(show=False, runs=runs, channel=ch, canvas=pad)
 
     # endregion
 
     def __load_rootfile(self):
         file_path = self.converter.get_final_file_path(self.run_number)
-        print 'Loading information for rootfile: {file}'.format(file=file_path.split('/')[-1])
-        self.rootfile = TFile(file_path)
-        self.tree = self.rootfile.Get(self.treename)
+        print '\033[1A\rLoading information for rootfile: {file}'.format(file=file_path.split('/')[-1])
+        self.RootFile = TFile(file_path)
+        self.tree = self.RootFile.Get(self.treename)
 
 
 if __name__ == "__main__":
-    z = Run(398)
+    z = Run()

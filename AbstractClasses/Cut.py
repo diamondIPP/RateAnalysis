@@ -13,14 +13,14 @@ class Cut(Elementary):
     is loaded from the Analysis config file, whereas the individual cut settings are loaded from a JSON file located at Configuration/Individual_Configs. The JSON files are generated
     by the Analysis method SetIndividualCuts().
     """
-    def __init__(self, parent_analysis, verbose=True, skip=False):
+    def __init__(self, parent_analysis, skip=False):
 
         if not skip:
-            Elementary.__init__(self, verbose=verbose)
             self.analysis = parent_analysis
+            Elementary.__init__(self, verbose=self.analysis.verbose)
 
             # saving stuff
-            self.histos = {}
+            self.RootObjects = []
 
             # config
             self.DUTType = self.load_dut_type()
@@ -44,6 +44,27 @@ class Cut(Elementary):
             # generate cut strings
             self.generate_cut_string()
             self.all_cut = self.generate_all_cut()
+
+    def load_run_config(self):
+        return self.load_run_configs(self.analysis.run_number)
+
+    def generate_special_cut(self, excluded_cuts=None, included_cuts=None, name='special_cut'):
+        cut = TCut(name, '')
+        n_cuts = 0
+        for key, value in self.CutStrings.iteritems():
+            if excluded_cuts and key in excluded_cuts:
+                continue
+            if included_cuts and key not in included_cuts:
+                continue
+            if key.startswith('old') or key.startswith('all_cut'):
+                continue
+            if value.GetTitle() == '':
+                continue
+            self.log_info('add {key} {tit}'.format(key=key, tit=value.GetTitle()))
+            cut += value
+            n_cuts += 1
+        self.log_info('generated {name} cut with {num} cuts'.format(name=name, num=n_cuts))
+        return cut
 
     def generate_all_cut(self):
         cut = TCut('all_cuts', '')
@@ -88,24 +109,25 @@ class Cut(Elementary):
     def define_cutstrings():
         dic = OrderedDict()
         dic['raw'] = TCut('raw', '')
+        dic['saturated'] = TCut('saturated', '')
         dic['pulser'] = TCut('pulser', '')
         dic['event_range'] = TCut('event_range', '')
         # waveform
         dic['beam_interruptions'] = TCut('beam_interruptions', '')
         dic['ped_sigma'] = TCut('ped_sigma', '')
-        dic['spread_low'] = TCut('spread_low', '')
         dic['median'] = TCut('median', '')
+        # waveform
+        dic['signal_peak_pos'] = TCut('signal_peak_pos', '')
+        dic['signal_peak_time'] = TCut('signal_peak_time', '')
+        dic['trigger_cell'] = TCut('trigger_cell', '')
+        dic['timing'] = TCut('timing', '')
+        dic['old_bucket'] = TCut('old_bucket', '')
+        dic['bucket'] = TCut('bucket', '')
         # tracks
         dic['tracks'] = TCut('tracks', '')
         dic['chi2X'] = TCut('chi2X', '')
         dic['chi2Y'] = TCut('chi2Y', '')
         dic['track_angle'] = TCut('track_angle', '')
-        # waveform
-        dic['saturated'] = TCut('saturated', '')
-        dic['signal_peak_pos'] = TCut('signal_peak_pos', '')
-        dic['trigger_cell'] = TCut('trigger_cell', '')
-        dic['old_bucket'] = TCut('old_bucket', '')
-        dic['bucket'] = TCut('bucket', '')
         dic['all_cuts'] = TCut('all_cuts', '')
         return dic
 
@@ -178,13 +200,6 @@ class Cut(Elementary):
     def set_peakpos_high(self, value):
         self.CutConfig['peakPos_high'] = self.load_peakpos_high(value)
 
-    def load_spread_low(self, value):
-        if value > 0:
-            self.EasyCutStrings['spread_low'] = 'spread>{low}'.format(low=value)
-            return value
-        else:
-            return -1
-
     # endregion
 
     def get_event_range(self):
@@ -256,8 +271,6 @@ class Cut(Elementary):
             fit_result = h_y.Fit('gaus', 'qs')
             y_mean = fit_result.Parameters()[1]
             slopes['y'] = [y_mean - angle, y_mean + angle]
-            c = gROOT.FindObject('c1')
-            c.Close()
             gROOT.SetBatch(0)
             gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
             return slopes
@@ -283,40 +296,36 @@ class Cut(Elementary):
             self.EasyCutStrings['EventRange'] = 'Evts.{min}k-{max}k'.format(min=int(self.CutConfig['EventRange'][0]) / 1000, max=int(self.CutConfig['EventRange'][1]) / 1000)
             self.EasyCutStrings['ExcludeFirst'] = 'Evts.{min}k+'.format(min=int(self.CutConfig['ExcludeFirst']) / 1000) if self.CutConfig['ExcludeFirst'] > 0 else ''
 
-        # -- PULSER CUT --
-        self.CutStrings['pulser'] += '!pulser'
-
         # -- BEAM INTERRUPTION CUT --
-        self.__generate_beam_interruptions()
-        self.EasyCutStrings['noBeamInter'] = 'BeamOn'
-        self.generate_jump_cut()
+        self.CutStrings['beam_interruptions'] += self.generate_beam_interruptions()
+        self.JumpCut += self.generate_jump_cut()
 
         gROOT.SetBatch(0)
 
-    def __generate_beam_interruptions(self):
+    def generate_beam_interruptions(self):
         """
         This adds the restrictions to the cut string such that beam interruptions are excluded each time the cut is applied.
         """
         self.get_beam_interruptions()
+        if self.jump_ranges is None:
+            return TCut('')
 
-        njumps = len(self.jump_ranges["start"])
         cut_string = ''
+        njumps = len(self.jump_ranges['start'])
         start_event = self.CutConfig['EventRange'][0]
         for i in xrange(njumps):
-            upper = self.jump_ranges["stop"][i]
-            lower = self.jump_ranges["start"][i]
+            upper = self.jump_ranges['stop'][i]
+            lower = self.jump_ranges['start'][i]
             if upper > start_event:
                 lower = start_event if lower < start_event else lower
-                string = "!(event_number<={up}&&event_number>={low})".format(up=upper, low=lower)
+                string = '!(event_number<={up}&&event_number>={low})'.format(up=upper, low=lower)
                 # new separate strings
                 if cut_string != '':
                     cut_string += '&&'
                 cut_string += string
-        self.CutStrings['beam_interruptions'] += cut_string
-    # endregion
+        self.EasyCutStrings['noBeamInter'] = 'BeamOn'
+        return TCut(cut_string)
 
-    # ==============================================
-    # region BEAM INTERRUPTS
     def generate_jump_cut(self):
         cut_string = ''
         start_event = self.CutConfig['EventRange'][0]
@@ -325,8 +334,11 @@ class Cut(Elementary):
                 low = start_event if tup[0] < start_event else tup[0]
                 cut_string += '&&' if cut_string else ''
                 cut_string += '!(event_number<={up}&&event_number>={low})'.format(up=tup[1], low=low)
-        self.JumpCut += cut_string
+        return TCut(cut_string)
+    # endregion
 
+    # ==============================================
+    # region BEAM INTERRUPTS
     def find_beam_interruptions(self):
         return self.find_pad_beam_interruptions() if self.DUTType == 'pad' else self.find_pixel_beam_interruptions()
 
@@ -437,6 +449,9 @@ class Cut(Elementary):
             self.CutStrings[name].SetTitle('')
         else:
             print 'There is no cut with the name "{name}"!'.format(name=name)
+        self.update_all_cut()
+
+    def update_all_cut(self):
         self.all_cut = self.generate_all_cut()
 
     def show_cuts(self, easy=True):
