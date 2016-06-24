@@ -1015,6 +1015,12 @@ class AnalysisCollection(Elementary):
             flux[key] = ana.run.get_flux()
         return flux
 
+    @staticmethod
+    def get_mode(flux, vs_time):
+        string = 'Run'
+        string = 'Flux' if flux else string
+        return 'Time' if vs_time else string
+
     def get_first_analysis(self):
         return self.collection.values()[0]
 
@@ -1034,6 +1040,9 @@ class AnalysisCollection(Elementary):
         self.get_first_analysis().print_info_header()
         for ana in self.collection.itervalues():
             ana.print_information(header=False)
+
+    def print_loaded(self):
+        print '\033[1A\rRuns {0}-{1} were successfully loaded!{2}\n'.format(self.runs[0], self.runs[-1], 20 * ' ')
 
     @staticmethod
     def make_x_tit(mode, flux):
