@@ -349,7 +349,7 @@ class Currents(Elementary):
         self.IgnoreJumps = ignore_jumps
         if not self.Currents:
             self.set_graphs(rel_time)
-        c = TCanvas('c', 'Keithley Currents for Run {0}'.format(self.RunNumber), int(self.ResX * 1.5), int(self.ResX * .75))
+        c = TCanvas('c', 'Keithley Currents for Run {0}'.format(self.RunNumber), int(self.Res * 1.5), int(self.Res * .75))
         pads = self.make_pads()
         self.draw_pads(pads)
 
@@ -432,33 +432,18 @@ class Currents(Elementary):
         return p
 
     def draw_voltage_axis(self):
-        a1 = self.make_tgaxis(self.Margins['x'][1], -1100, 1100, '#font[22]{Voltage [V]}', color=col_vol, offset=.6, tit_size=.05, line=False, opt='+L', width=2)
+        a1 = self.draw_y_axis(self.Margins['x'][1], -1100, 1100, '#font[22]{Voltage [V]}', col=col_vol, off=.6, tit_size=.05, opt='+L', w=2, lab_size=label_size, l_off=.01)
         a1.CenterTitle()
-        a1.SetLabelSize(label_size)
-        a1.SetLabelColor(col_vol)
-        a1.SetLabelOffset(0.01)
-        a1.Draw()
-        self.Stuff.append(a1)
 
     def draw_current_axis(self):
         y = self.Margins['y']
         yadd = (y[1] - y[0]) * .1
         diff = (y[1] - y[0])
-        a1 = self.make_tgaxis(self.Margins['x'][1], y[0] - yadd, y[1] + yadd + diff, 'Current [nA]', offset=.7, tit_size=.04, line=False, opt='+L', width=2)
-        a1.SetLabelSize(label_size)
-        a1.SetLabelOffset(0.01)
-        a1.Draw()
-        self.Stuff.append(a1)
+        self.draw_y_axis(self.Margins['x'][1], y[0] - yadd, y[1] + yadd + diff, 'Current [nA]', off=.7, tit_size=.04, opt='+L', w=2, l_off=.01, lab_size=label_size)
 
     def draw_pulser_axis(self, ymin, ymax):
         x = self.Margins['x'][0] - (self.Margins['x'][1] - self.Margins['x'][0]) * .07
-        a1 = self.make_tgaxis(x, ymin, ymax, 'pulse height [au]', offset=.8, tit_size=.04, line=False, opt='-R', width=2)
-        a1.SetLabelColor(859)
-        a1.SetLineColor(859)
-        a1.SetLabelSize(label_size)
-        a1.SetLabelOffset(0.01)
-        a1.Draw()
-        self.Stuff.append(a1)
+        self.draw_y_axis(x, ymin, ymax, 'pulse height [au]', off=.8, tit_size=.04, opt='-R', w=2, col=859, lab_size=label_size, l_off=.01)
 
     def draw_current_frame(self, pad):
         m = self.Margins
@@ -560,16 +545,10 @@ class Currents(Elementary):
 
     def draw_time_axis(self, y, opt=''):
         x = self.Margins['x']
-        a1 = self.make_tgxaxis(x[0], x[1], y, 'Time [hh:mm]    ', offset=1.2, tit_size=.05, line=False, opt=opt)
-        a1.SetLabelSize(.05)
-        a1.SetTickSize(.3)
-        a1.SetTitle("Time [hh:mm]")
+        a1 = self.draw_x_axis(x[0], x[1], y, 'Time [hh:mm]    ', off=1.2, tit_size=.05, opt=opt, lab_size=.05, tick_size=.3, l_off=.01)
         a1.SetTimeFormat("%H:%M")
         a1.SetTimeOffset(-3600)
-        a1.SetLabelOffset(0.01)
-        a1.Draw()
-        self.Stuff.append(a1)
-        
+
     # endregion
 
     # ==========================================================================
