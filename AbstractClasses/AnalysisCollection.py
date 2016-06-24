@@ -1062,9 +1062,9 @@ if __name__ == "__main__":
     a = Elementary(tc)
     sel = RunSelection(testcampaign=tc)
     sel.select_runs_from_runplan(run_plan)
-    message = 'STARTING PAD-ANALYSIS COLLECTION OF RUNPLAN {0}'.format(run_plan)
-    print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(message)) * '=', msg=message)
+    a.print_banner('STARTING PAD-ANALYSIS COLLECTION OF RUNPLAN {0}'.format(run_plan))
     a.print_testcampaign()
 
-    z = AnalysisCollection(sel, diamond)
+    z = AnalysisCollection(sel, diamond, verbose=True)
+    z.print_loaded()
     z.print_elapsed_time(st, 'Instantiation')
