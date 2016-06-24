@@ -69,14 +69,13 @@ class AnalysisCollection(Elementary):
         self.Currents = Currents(self)
 
     def __del__(self):
-        print 'deleting AnalysisCollection...'
+        print '\ndeleting AnalysisCollection...'
         for nr, ana in self.collection.iteritems():
             ana.__del__()
-            print '  deleted Analysis of Run {nr}'.format(nr=nr)
-        print 'AnalyisCollection deleted'
 
     def close_files(self):
         for ana in self.collection.itervalues():
+            ana.run.tree.Delete()
             ana.run.RootFile.Close()
 
     # ============================================
