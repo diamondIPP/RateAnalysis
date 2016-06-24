@@ -10,7 +10,7 @@ from json import loads
 from Utils import *
 from screeninfo import get_monitors
 
-from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend, TLine
+from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend, TLine, TColor, TArrow
 # global test campaign and resolution
 tc = None
 res = None
@@ -137,7 +137,7 @@ class Elementary(object):
 
     @staticmethod
     def create_colorlist():
-        col_names = [ROOT.kGreen, ROOT.kOrange, ROOT.kViolet, ROOT.kYellow, ROOT.kRed, ROOT.kBlue, ROOT.kMagenta, ROOT.kAzure, ROOT.kCyan, ROOT.kTeal]
+        col_names = [TColor.kGreen, TColor.kOrange, TColor.kViolet, TColor.kYellow, TColor.kRed, TColor.kBlue, TColor.kMagenta, TColor.kAzure, TColor.kCyan, TColor.kTeal]
         colors = []
         for color in col_names:
             colors.append(color + 1)
@@ -495,6 +495,14 @@ class Elementary(object):
         l.Draw()
         self.ROOTObjects.append(l)
         return l
+
+    def draw_arrow(self, x1, x2, y1, y2, col=1, width=1, opt='<|', size=.005):
+        ar = TArrow(x1, y1, x2, y2, size, opt)
+        ar.SetLineWidth(width)
+        ar.SetLineColor(col)
+        ar.SetFillColor(col)
+        ar.Draw()
+        self.ROOTObjects.append(ar)
 
     @staticmethod
     def calc_fwhm(histo):
