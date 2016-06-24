@@ -117,12 +117,12 @@ class AnalysisCollection(Elementary):
         flux_name = keydict.get('KEYNAMES', 'measured flux')
         f = open(path, 'r')
         run_log = json.load(f)
-        fluxes = {}
-        print 'RUN   FLUX'
-        for run in self.runs:
-            flux = run_log[str(run)][flux_name]
-            print '{run:3d} {flux:6.1f}'.format(run=run, flux=flux)
-            fluxes[flux] = run
+        fluxes = {run_log[str(run)][flux_name]: run for run in self.runs}
+        if self.verbose:
+            print 'RUN FLUX [kHz/cm2]'
+            for run in self.runs:
+                print '{run:3d} {flux:9d}'.format(run=run, flux=int(run_log[str(run)][flux_name]))
+        print '\n'
         return {'min': fluxes[min(fluxes)], 'max': fluxes[max(fluxes)]}
 
     def generate_slope_pickle(self):
