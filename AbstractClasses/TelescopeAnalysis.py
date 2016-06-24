@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 from copy import deepcopy
 from time import sleep
 
-from ROOT import TCanvas, TH2F, gROOT, TProfile, TH1F, TLegend, gStyle, kGreen, TArrow, kOrange, kViolet, kCyan, TText, TCut
+from ROOT import TCanvas, TH2F, gROOT, TProfile, TH1F, TLegend, gStyle, kGreen, TArrow, kCyan, TText, TCut
 from numpy import array, zeros
 
 from Elementary import Elementary
@@ -80,7 +80,7 @@ class Analysis(Elementary):
     def __draw_single_wf(self, event=None, show=True):
         start = self.StartEvent if event is None else event
         if hasattr(self, 'draw_waveforms') and self.run.wf_exists(self.channel):
-            h = self.draw_waveforms(n=1, show=show, start_event=start)[0]
+            return self.draw_waveforms(n=1, show=show, start_event=start)[0]
         else:
             h = TH2F('regions', '', 1024, 0, 511, 1000, -200, 50)
             if self.run.wf_exists(0):
@@ -90,17 +90,13 @@ class Analysis(Elementary):
         self.RootObjects.append(self.save_histo(h, 'Regions', show, self.ana_save_dir, lm=.075, rm=.045, x_fac=2000, y_fac=1000))
         return h
 
-    def draw_regions(self, ped=True, event=None):
+    def draw_regions(self, ped=True, event=None, show=True):
         h = self.__draw_single_wf(event=event, show=False)
-        c = TCanvas('c1', 'Regions', 1000, 500)
-        c.SetMargin(.075, .045, .2, .1)
-        c.SetGrid()
-        h.Draw()
-        tit = 'Pedestal Regions' if ped else 'Signal Regions'
-        h.SetTitle(tit)
-        lines = []
+        self.draw_histo(h, show=show, lm=.07, rm=.045, bm=.2, x=1.5, y=.75)
+        ymin, ymax = h.GetYaxis().GetXmin(), h.GetYaxis().GetXmax()
+        ydiff = ymax - ymin
+        h.SetTitle('Pedestal Regions' if ped else 'Signal Regions')
         starts = []
-        titles = []
         regions = self.run.pedestal_regions if ped else self.run.signal_regions
         gr = self.make_tgrapherrors('gr', '', color=2, marker_size=0, width=3)
         i = 0
@@ -108,33 +104,26 @@ class Analysis(Elementary):
         sleep(.5)
         for reg, lst in regions.iteritems():
             if len(reg) < 3:
-                offset = 40 if not lst[0] in starts else 20
+                offset = ydiff * .4 if not all(i[0] < lst[0] < i[1] for i in starts) or not all(i[0] < lst[1] < i[1] for i in starts) else ydiff * .2
                 if lst[1] - lst[0] > 1:
-                    gr.SetPoint(i, (lst[1] + lst[0]) / 4., c.GetUymax() - offset)
+                    gr.SetPoint(i, (lst[1] + lst[0]) / 4., ymax - offset)
                     gr.SetPointError(i, (lst[1] - lst[0]) / 4., 0)
-                    l = self.make_tlatex(gr.GetX()[i], gr.GetY()[i] + 3, '{sig}{reg}'.format(reg=reg, sig='p' if ped else 's'), color=2, size=.04)
+                    l = self.draw_tlatex(gr.GetX()[i], gr.GetY()[i] + 3, '{sig}{reg}'.format(reg=reg, sig='p' if ped else 's'), color=2, size=.04)
                     gr.GetListOfFunctions().Add(l)
                     i += 1
-                l1 = self.make_tgaxis(lst[0] / 2, c.GetUymin(), c.GetUymax() - offset, '', 2)
-                l2 = self.make_tgaxis(lst[1] / 2, c.GetUymin(), c.GetUymax() - offset, '', 2) if lst[1] - lst[0] > 1 else 0
-                if not lst[1] - lst[0] > 1:
-                    l1.SetLineColor(4)
-                    l1.SetLineWidth(2)
-                    l1.SetTitleColor(4)
-                    l1.SetY2(c.GetUymax() - 100)
-                    tit = self.make_tlatex(lst[0] / 2, c.GetUymax() - 97, '{sig}{reg}'.format(reg=reg, sig='p' if ped else 's'), size=.04, color=4)
-                    tit.Draw()
-                    titles.append(tit)
-                l1.Draw()
-                l2.Draw() if l2 else self.do_nothing()
-                lines.append([l1, l2])
-                starts.append(lst[0])
+                if lst[1] - lst[0] > 1:
+                    self.draw_vertical_line(lst[0] / 2, ymin, ymax - offset, color=2)
+                    starts.append(lst)
+                else:
+                    self.draw_vertical_line(lst[0] / 2, ymin, ymax - ydiff * .5, color=4, w=2)
+                    self.draw_tlatex(lst[0] / 2, ymax - ydiff * .49, '{sig}{reg}'.format(reg=reg, sig='p' if ped else 's'), size=.04, color=4)
+                self.draw_vertical_line(lst[1] / 2, ymin, ymax - offset, color=2) if lst[1] - lst[0] > 1 else self.do_nothing()
         gr.Draw('[]')
         gr.Draw('p')
-        self._add_buckets()
+        self._add_buckets(ymin, ymax, avr_pos=6, full_line=True)
         save_name = 'PedestalRegions' if ped else 'SignalRegions'
         self.save_plots(save_name, ch=None)
-        self.histos.append([h, c, gr, lines, titles])
+        self.histos.append([h, gr])
 
     def _add_buckets(self, ymin, ymax, xmin, xmax):
         axis = []
