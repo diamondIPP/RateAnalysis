@@ -461,17 +461,18 @@ class AnalysisCollection(Elementary):
 
     # ============================================
     # region PULSER
-    def draw_pulser_info(self, flux=True, show=True, mean=True, corr=True, beam_on=True, vs_time=False, do_fit=True, scale=1):
+    def draw_pulser_info(self, flux=True, show=True, mean=True, corr=True, beam_on=True, vs_time=False, do_fit=True, scale=1, save_comb=True):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         flux = False if vs_time else flux
         mode = 'Flux' if flux else 'Run'
         mode = 'Time' if vs_time else mode
         title = '{mean} of Pulser vs {mod} ({ped}, {beam})'.format(mean='Mean' if mean else 'Sigma', mod=mode,
                                                                    ped='pedcorrected' if corr else 'uncorrected', beam='BeamOff' if not beam_on else 'BeamOn')
-        gr = self.make_tgrapherrors('gr', title)
-        i = 0
+        gr = self.make_tgrapherrors('data', title, color=602)
+        gr1 = self.make_tgrapherrors('first run', 'first', marker=22, color=2, marker_size=2)
+        gr2 = self.make_tgrapherrors('last run', 'last', marker=23, color=2, marker_size=2)
         y0 = None
-        for key, ana in self.collection.iteritems():
+        for i, (key, ana) in enumerate(self.collection.iteritems()):
             x = ana.run.flux if flux else key
             fit = ana.calc_pulser_fit(show=False, corr=corr, beam_on=beam_on)
             par = 1 if mean else 2
@@ -487,28 +488,41 @@ class AnalysisCollection(Elementary):
             if scale != 1:
                 y *= scale / y0
                 yerr *= scale / y0
-            if ana.IsAligned:
-                gr.SetPoint(i, x, y)
-                gr.SetPointError(i, 0, yerr)
-                i += 1
+            gr.SetPoint(i, x, y)
+            gr.SetPointError(i, 0, yerr)
+            if i == 0:
+                gr1.SetPoint(0, x, y)
+            if i == len(self.collection) - 1:
+                gr2.SetPoint(0, x, y)
+            i += 1
         if vs_time:
             gr.GetXaxis().SetTimeDisplay(1)
             gr.GetXaxis().SetTimeFormat('%H:%M%F2000-02-28 23:00:00')
             gr.GetXaxis().SetLabelSize(.03)
-        if not show:
-            gROOT.SetBatch(1)
-        c = TCanvas('c', 'Pulser Overview', 1000, 1000)
         if do_fit:
             gStyle.SetOptFit(1)
             gr.Fit('pol0', 'q')
-        c.SetLeftMargin(.125)
-        c.SetLogx() if flux else self.do_nothing()
-        self.format_histo(gr, x_tit=self.make_x_tit(mode, flux), y_tit='{mean} [au]'.format(mean='Mean' if mean else 'Sigma'), y_off=1.8)
-        gr.Draw('alp')
-        gROOT.SetBatch(0)
-        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.save_plots('Pulser{mean}{a}{b}'.format(mean='Mean' if mean else 'Sigma', a=corr, b=beam_on), sub_dir=self.save_dir)
-        self.RootObjects.append([gr, c])
+        mg = TMultiGraph('mg_pph', 'Pulser Signal vs {mod}'.format(mod=mode))
+        graphs = [gr]
+        if not vs_time:
+            graphs += [gr1, gr2]
+        l = self.make_legend(.65, .35, nentries=3)
+        for graph in graphs:
+            l.AddEntry(graph, graph.GetName(), 'p')
+            mg.Add(graph, 'lp')
+
+        gROOT.SetBatch(1)
+        self.format_histo(mg, x_tit=self.make_x_tit(mode, flux), y_tit='{mean} [au]'.format(mean='Mean' if mean else 'Sigma'), draw_first=True)
+        y = mg.GetYaxis().GetXmin(), mg.GetYaxis().GetXmax()
+        mg_y = y[0] * 1.3 - y[1] * .3
+        self.format_histo(mg, y_range=[mg_y, y[1]], y_off=1.75, x_off=1.3)
+        x_vals = sorted([gr.GetX()[i] for i in xrange(gr.GetN())])
+        mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 1.2) if flux else self.do_nothing()
+        self.save_histo(mg, 'Pulser{mean}{a}{b}'.format(mean='Mean' if mean else 'Sigma', a=corr, b=beam_on), lm=.14, draw_opt='A', logx=True if flux else 0, l=l, show=False)
+        mg1 = mg.Clone()
+        if save_comb:
+            self.save_combined_pulse_heights(mg, mg1, l, mg_y, show, name='CombinedPulserPulseHeights')
+            self.ROOTObjects.append(mg1)
         return gr
 
     def draw_pulser_histos(self, show=True, corr=True):
