@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 from copy import deepcopy
 from time import sleep
 
-from ROOT import TCanvas, TH2F, gROOT, TProfile, TH1F, TLegend, gStyle, kGreen, TArrow, kCyan, TText, TCut
+from ROOT import TCanvas, TH2F, gROOT, TProfile, TH1F, TLegend, gStyle, kGreen, kCyan, TText, TCut
 from numpy import array, zeros
 
 from Elementary import Elementary
@@ -167,7 +167,7 @@ class Analysis(Elementary):
                 gr2.SetPoint(i, ped_pos, ymax - y * ((i + 1) / 6. + 1 / 3.))
                 gr1.SetPointError(i, lst[0] / 2., lst[1] / 2., 0, 0) if lst[1] - lst[0] > 1 else gr1.SetPointError(i, .5, .5, 0, 0)
                 gr2.SetPointError(i, lst[0] / 2., lst[1] / 2., 0, 0) if lst[1] - lst[0] > 1 else gr2.SetPointError(i, .5, .5, 0, 0)
-                l1 = self.make_tlatex(gr1.GetX()[i], gr1.GetY()[i] + 5, ' ' + int_, color=kGreen + 2, align=10)
+                l1 = self.draw_tlatex(gr1.GetX()[i], gr1.GetY()[i] + 5, ' ' + int_, color=kGreen + 2, align=10)
                 gr1.GetListOfFunctions().Add(l1)
                 i += 1
         for gr in [gr1, gr2]:
@@ -183,15 +183,13 @@ class Analysis(Elementary):
         ped_region = self.PedestalRegion if hasattr(self, 'PedestalRegion') else 'ab'
         ped_pos = self.run.pedestal_regions[ped_region][1] / 2.
         y = ymax - ymin
-        l = self.make_tgaxis(peak_pos, ymin, ymax - y / 3., '', 4, 2)
-        l2 = self.make_tgaxis(ped_pos, ymin, ymax - y / 3, '', kViolet + 3, 2)
-        l2.Draw()
-        l.Draw()
-        t1 = self.make_tlatex(peak_pos, ymax - y / 3.1, 'found peak', color=4)
-        t2 = self.make_tlatex(ped_pos, ymax - y / 3.1, 'ab', color=kViolet + 3)
+        self.draw_vertical_line(peak_pos, ymin, ymax - y / 3., color=4, w=2)
+        self.draw_vertical_line(ped_pos, ymin, ymax - y / 3, color=883, w=2)
+        t1 = self.draw_tlatex(peak_pos, ymax - y / 3.1, 'found peak', color=4)
+        t2 = self.draw_tlatex(ped_pos, ymax - y / 3.1, 'ab', color=883)
         t1.Draw()
         t2.Draw()
-        self.RootObjects.append([t1, l, l2, t2])
+        self.RootObjects.append([t1, t2])
         return peak_pos, ped_pos
 
     # endregion
@@ -263,7 +261,7 @@ class Analysis(Elementary):
     def show_both_angles(self):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         self.get_color()
-        histos = [self.show_angle(mode, show=False) for mode in ['x', 'y']]
+        histos = [self.draw_angle_distribution(mode, show=False) for mode in ['x', 'y']]
         c = TCanvas('c', 'Chi2', 1000, 1000)
         c.SetLeftMargin(.13)
         max_angle = int(max([h.GetMaximum() for h in histos])) / 1000 * 1000 + 1000
