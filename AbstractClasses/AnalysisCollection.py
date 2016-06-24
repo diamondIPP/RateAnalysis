@@ -928,9 +928,7 @@ class AnalysisCollection(Elementary):
 
     def show_angles(self, mode='x', show=True):
         self.reset_colors()
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        histos = [ana.show_angle(mode=mode, show=False) for ana in self.collection.itervalues()]
-        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        histos = [ana.draw_angle_distribution(mode=mode, show=False, print_msg=False) for ana in self.collection.itervalues()]
 
         legend = self.make_legend(nentries=self.get_number_of_analyses())
         stack = THStack('has', 'Track Angles in {mode}'.format(mode=mode.title()))
@@ -1039,7 +1037,7 @@ class AnalysisCollection(Elementary):
 
     @staticmethod
     def make_x_tit(mode, flux):
-        return '{mod}{unit}'.format(mod=mode, unit=' [kHz/cm2]' if flux else '')
+        return '{mod}{unit}'.format(mod=mode, unit=' [kHz/cm^{2}]' if flux else '')
 
 
 if __name__ == "__main__":
