@@ -210,7 +210,6 @@ class Analysis(Elementary):
         if show or mode == 'tracks':
             yq = zeros(1)
             h.GetQuantiles(1, yq, array([.9]))
-            # h.GetXaxis().SetRangeUser(0, yq[0])
         self.format_histo(h, x_tit='#chi^{2}', y_tit='Entries', y_off=1.8)
         h.Draw()
         self.histos.append([h, c])
