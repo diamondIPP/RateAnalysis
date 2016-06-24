@@ -355,7 +355,7 @@ class Elementary(object):
         a.SetName('ax')
         a.SetLineColor(col)
         a.SetLineWidth(width)
-        a.SetLabelSize(lab_size)
+        a.SetLabelSize(lab_size if not line else 0)
         a.SetTitleSize(tit_size)
         a.SetTitleOffset(off)
         a.SetTitle(title)
@@ -363,11 +363,9 @@ class Elementary(object):
         a.SetLabelColor(col)
         a.SetLabelFont(42)
         a.SetTitleFont(42)
-        a.SetTickSize(tick_size)
+        a.SetTickSize(tick_size if not line else 0)
+        a.SetNdivisions(0) if line else self.do_nothing()
         a.SetLabelOffset(l_off)
-        if line:
-            a.SetTickSize(0)
-            a.SetLabelSize(0)
         a.Draw()
         self.ROOTObjects.append(a)
         return a
