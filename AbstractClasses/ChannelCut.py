@@ -236,7 +236,7 @@ class ChannelCut(Cut):
 
         def func():
             print 'calculating signal threshold for bucket cut of run {run} and ch{ch}...'.format(run=self.analysis.run_number, ch=self.channel)
-            h = TH1F('h', 'Bucket Cut', 250, -50, 300)
+            h = TH1F('h', 'Bucket Cut', 100, -50, 150)
             draw_string = '{name}>>h'.format(name=self.analysis.SignalName)
             cut_string = '!({buc})&&{pul}'.format(buc=self.CutStrings['old_bucket'], pul=self.CutStrings['pulser'])
             self.analysis.tree.Draw(draw_string, cut_string, 'goff')
@@ -282,7 +282,7 @@ class ChannelCut(Cut):
                 self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.8)
                 h.Draw()
                 sleep(.1)
-                self.draw_y_axis(max_err, c1.GetUymin(), c1.GetUymax(), 'threshold  ', off=.3)
+                self.draw_y_axis(max_err, c1.GetUymin(), c1.GetUymax(), 'threshold  ', off=.3, line=True)
                 # add subfunction to the plot
                 ped_fit.SetLineStyle(2)
                 ped_fit.Draw('same')

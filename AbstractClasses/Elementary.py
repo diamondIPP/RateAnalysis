@@ -561,23 +561,27 @@ class Elementary(object):
 
     @staticmethod
     def triple_gauss_fit(histo, show=True):
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
         h = histo
-        fit = TF1('fit', 'gaus(0) + gaus(3) + gaus(6)')
+        fit = TF1('fit', 'gaus(0) + gaus(3) + gaus(6)', h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax())
         s = TSpectrum(2)
         s.Search(h)
-        fit.SetParLimits(0, .8 * s.GetPositionY()[1], 1.2 * s.GetPositionY()[1])
-        fit.SetParLimits(1, s.GetPositionX()[1] - 10, s.GetPositionX()[1] + 10)
-        fit.SetParLimits(2, 5, 50)
-        fit.SetParLimits(3, .8 * s.GetPositionY()[0], 1.2 * s.GetPositionY()[0])
-        fit.SetParLimits(4, s.GetPositionX()[0] - 5, s.GetPositionX()[0] + 5)
-        fit.SetParLimits(5, 1, 10)
-        fit.SetParLimits(6, 10, s.GetPositionY()[1])
-        fit.SetParLimits(7, s.GetPositionX()[0], s.GetPositionX()[1])
-        fit.SetParLimits(8, 1, 10)
-        for i in xrange(5):
+        y = s.GetPositionY()[0], s.GetPositionY()[1]
+        x = s.GetPositionX()[0], s.GetPositionX()[1]
+        for i, par in enumerate([y[1], x[1], 10, y[0], x[0], 5, 10, x[0] + 10, 5]):
+            fit.SetParameter(i, par)
+        # fit.SetParLimits(0, .5 * y[1], 1.5 * y[1])
+        # fit.SetParLimits(1, x[1] - 25, x[1] + 10)
+        # fit.SetParLimits(2, 5, 50)
+        # fit.SetParLimits(3, .5 * y[0], 1.5 * y[0])
+        # fit.SetParLimits(4, x[0] - 5, x[0] + 5)
+        # fit.SetParLimits(5, 1, 10)
+        # fit.SetParLimits(6, 1, s.GetPositionY()[1])
+        # fit.SetParLimits(7, x[0] + 5, x[1] - 20)
+        # fit.SetParLimits(8, 1, 10)
+        for i in xrange(1):
             h.Fit(fit, 'qs{0}'.format('' if show else '0'), '', -50, s.GetPositionX()[1])
-        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
         return fit
 
     @staticmethod
