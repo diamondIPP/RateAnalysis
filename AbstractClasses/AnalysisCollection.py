@@ -45,6 +45,7 @@ class AnalysisCollection(Elementary):
         self.generate_threshold_pickle()
 
         self.add_analyses()
+        self.FirstAnalysis = self.get_first_analysis()
 
         self.signalValues = None
 
