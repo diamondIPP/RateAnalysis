@@ -62,6 +62,7 @@
           <option value="THStack" />
           <option value="TMultiGraph" />
           <option value="gRandom" />
+          <option value="TColor" />
         </list>
       </option>
     </inspection_tool>

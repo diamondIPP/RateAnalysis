@@ -58,7 +58,7 @@ for rp, chs in runplans.iteritems():
         z.draw_ph_with_currents(show=False)
         z.draw_pulse_heights(show=False)
         z.draw_pulser_info(show=False, do_fit=False)
-        del_redundant_plots(z.save_directory, z.save_dir)
+        del_redundant_plots(z.results_directory, z.save_dir)
         z.close_files()
         z.__del__()
 
