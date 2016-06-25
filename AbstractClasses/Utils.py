@@ -110,5 +110,9 @@ def move_legend(l, x1, y1):
     l.SetY2NDC(y1 + ydiff)
 
 
+def print_banner(msg, symbol='='):
+    print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * symbol, msg=msg)
+
+
 def do_nothing():
     pass
