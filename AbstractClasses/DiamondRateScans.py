@@ -9,6 +9,8 @@ from ConfigParser import ConfigParser, NoOptionError
 from Utils import *
 from time import time
 from argparse import ArgumentParser
+from RunSelection import RunSelection
+from json import load
 
 
 class DiaScans(Elementary):
@@ -18,6 +20,9 @@ class DiaScans(Elementary):
 
         self.DiamondName = self.load_diamond(diamond)
         self.TestCampaigns = self.load_tcs(testcampaigns)
+        self.RunInfos = self.load_runinfos()
+        self.AllRunPlans = self.load_all_runplans()
+        self.RunPlans = 1
 
     def load_diamond(self, dia):
         parser = ConfigParser()
@@ -43,6 +48,34 @@ class DiaScans(Elementary):
             exit()
         else:
             return tcs
+
+    def load_all_runplans(self):
+        runplan_path = self.get_program_dir() + self.MainConfigParser.get('MISC', 'runplan_file')
+        f = open(runplan_path, 'r')
+        runplans = load(f)
+        f.close()
+        return runplans
+
+    def find_diamond_runplans(self):
+        runplans = []
+        for tc in self.TestCampaigns:
+            print tc
+            for rp, runs in self.AllRunPlans[tc]['rate_scan'].iteritems():
+                print rp
+                for run in runs:
+
+                    print run, self.load_diamond(self.RunInfos[tc][str(run)]['dia1']), self.load_diamond(self.RunInfos[tc][str(run)]['dia2'])
+
+    def load_runinfos(self):
+        run_infos = {}
+        for tc in self.TestCampaigns:
+            self.TESTCAMPAIGN = tc
+            parser = self.load_run_configs(None)
+            file_path = parser.get('BASIC', 'runinfofile')
+            f = open(file_path)
+            run_infos[tc] = load(f)
+            f.close()
+        return run_infos
 
 if __name__ == "__main__":
     st = time()
