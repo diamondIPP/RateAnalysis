@@ -114,5 +114,8 @@ def print_banner(msg, symbol='='):
     print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * symbol, msg=msg)
 
 
+def print_small_banner(msg, symbol='-'):
+    print '\n{delim}\n{msg}\n'.format(delim=len(str(msg)) * symbol, msg=msg)
+
 def do_nothing():
     pass
