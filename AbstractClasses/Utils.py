@@ -5,6 +5,7 @@
 from datetime import datetime
 from termcolor import colored
 from ROOT import gStyle
+from math import sqrt
 
 
 # ==============================================
@@ -36,7 +37,7 @@ def untitle(string):
     return s.strip(' ')
 
 
-def set_statbox(x=.98, y=.98, w=.16, entries=3, only_fit=False):
+def set_statbox(x=.96, y=.96, w=.16, entries=3, only_fit=False):
     if only_fit:
         gStyle.SetOptStat(0011)
         gStyle.SetOptFit(1)
@@ -77,6 +78,10 @@ def round_down_to(num, val):
     return num / val * val
 
 
+def round_up_to(num, val):
+    return num / val * val + val
+
+
 def scale_multigraph(mg, val=1):
     first = mg.GetListOfGraphs()[0].GetY()[0]
     for gr in mg.GetListOfGraphs():
@@ -110,12 +115,27 @@ def move_legend(l, x1, y1):
     l.SetY2NDC(y1 + ydiff)
 
 
+def calc_mean(l):
+    mean = sum(l) / len(l)
+    mean2 = sum(map(lambda x: x**2, l)) / len(l)
+    sigma = sqrt(mean2 - mean**2)
+    return mean, sigma
+
+
+def calc_weighted_mean(means, sigmas):
+    weights = map(lambda x: x**(-2), sigmas)
+    variance = 1 / sum(weights)
+    mean = sum(map(lambda x, y: x * y, means, weights))
+    return mean * variance, sqrt(variance)
+
+
 def print_banner(msg, symbol='='):
     print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * symbol, msg=msg)
 
 
 def print_small_banner(msg, symbol='-'):
     print '\n{delim}\n{msg}\n'.format(delim=len(str(msg)) * symbol, msg=msg)
+
 
 def do_nothing():
     pass
