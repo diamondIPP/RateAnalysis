@@ -457,7 +457,7 @@ class Elementary(object):
         except AttributeError or ReferenceError:
             pass
 
-    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=0.1, bm=.15, tm=.1, draw_opt='', x_fac=None, y_fac=None,
+    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=0.02, bm=.15, tm=.02, draw_opt='', x_fac=None, y_fac=None,
                    l=None, logy=False, logx=False, logz=False, canvas=None, gridx=False, gridy=False, save=True, ch='dia', prnt=True):
         x_fac = self.Res if x_fac is None else int(x_fac * self.Res)
         y_fac = self.Res if y_fac is None else int(y_fac * self.Res)
@@ -482,7 +482,7 @@ class Elementary(object):
         self.ROOTObjects.append(lst)
         return lst
 
-    def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=0.1, bm=.15, tm=.1, draw_opt='', x=None, y=None,
+    def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=0.02, bm=.15, tm=.02, draw_opt='', x=None, y=None,
                    l=None, logy=False, logx=False, logz=False, canvas=None, gridy=False, gridx=False, ch='dia', prnt=True):
         return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, l, logy, logx, logz, canvas, gridx, gridy, False, ch, prnt)
 
