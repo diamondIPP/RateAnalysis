@@ -390,13 +390,14 @@ class Elementary(object):
     def draw_horizontal_line(self, y, xmin, xmax, color=1, w=1, style=1):
         self.draw_line(xmin, xmax, y, y, color=color, width=w, style=style)
 
-    def make_legend(self, x1=.58, y2=.88, nentries=2, w=.3, scale=1, name='l', y1=None, felix=True):
+    def make_legend(self, x1=.58, y2=.88, nentries=2, w=.3, scale=1, name='l', y1=None, felix=True, margin=.25):
         x2 = x1 + w
         y1 = y2 - nentries * .05 * scale if y1 is None else y1
         l = TLegend(x1, y1, x2, y2)
         l.SetName(name)
         l.SetTextFont(42)
         l.SetTextSize(0.03 * scale)
+        l.SetMargin(margin)
         if self.Felix and felix:
             l.SetLineWidth(2)
             l.SetBorderSize(0)
