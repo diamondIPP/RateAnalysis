@@ -62,7 +62,6 @@ def format_transparent_frame(frame):
     fr.GetYaxis().SetTickLength(0)
     fr.GetXaxis().SetLabelOffset(99)
     fr.GetYaxis().SetLabelOffset(99)
-    # fr.GetYaxis().SetAxisColor(0)
     fr.SetLineColor(0)
     
 

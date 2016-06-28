@@ -91,7 +91,7 @@ def show_single_waveforms(n=1, cut='', start_event=0):
     count += cnt
 
 def find_n_events(n, cut, start):
-    total_events = t.Draw('event_number', cut, 'goff', n, start)
+    total_events = t.Draw('event_number', cut, 'goff', entries, start)
     evt_numbers = [t.GetV1()[i] for i in xrange(total_events)]
     return int(evt_numbers[:n][-1] + 1 - start)
 
