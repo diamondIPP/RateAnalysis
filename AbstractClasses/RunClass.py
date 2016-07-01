@@ -444,14 +444,15 @@ class Run(Elementary):
         :return:
         """
         assert channel is None or channel in self.channels, 'wrong channel id "{ch}"'.format(ch=channel)
-        if canvas is not None:
-            pad = canvas.cd()
-        else:
-            print 'Draw run info in current pad'
-            pad = gROOT.GetSelectedPad()
-            if not pad:
-                print 'ERROR: Cannot access active Pad'
-                return
+        if show:
+            if canvas is not None:
+                pad = canvas.cd()
+            else:
+                print 'Draw run info in current pad'
+                pad = gROOT.GetSelectedPad()
+                if not pad:
+                    print 'ERROR: Cannot access active Pad'
+                    return
 
         lines = 2
         if diamondinfo:
@@ -463,7 +464,7 @@ class Run(Elementary):
         # height = (lines - 1) * 0.03
 
         tc = datetime.strptime(self.TESTCAMPAIGN, '%Y%m')
-        dur = '{0:02d}:{1:02.0f}'.format(int(self.totalMinutes), (self.totalMinutes - int(self.totalMinutes)) * 60)
+        dur = '{0:02d}:{1:02.0f}'.format(int(self.totalMinutes), (self.totalMinutes - int(self.totalMinutes)) * 60) if runs is None else ''
 
         if show:
             if not canvas.GetBottomMargin() > .105:
@@ -499,14 +500,16 @@ class Run(Elementary):
         if show:
             pads = [i for i in canvas.GetListOfPrimitives() if i.IsA().GetName() == 'TPad']
             if not pads:
-                git_text.Draw()
+                if self.MainConfigParser.getboolean('SAVE', 'git_hash'):
+                    git_text.Draw()
                 legend.Draw()
             else:
                 for pad in pads:
                     pad.cd()
-                    git_text.Draw()
+                    if self.MainConfigParser.getboolean('SAVE', 'git_hash'):
+                        git_text.Draw()
                     legend.Draw()
-            pad.Modified()
+                    pad.Modified()
             canvas.Update()
         else:
             return legend, git_text
@@ -526,8 +529,8 @@ class Run(Elementary):
         l.SetX2NDC(.435)
         l.SetTextSize(.0195)
 
-    def get_runinfo(self, ch, pad=None):
-        runs = []
+    def get_runinfo(self, ch, pad=None, runs=None):
+        runs = runs if runs is not None else []
         if hasattr(self, 'collection'):
             runs = [self.collection.keys()[0], self.collection.keys()[-1], self.collection.values()[0].run.get_rate_string(), self.collection.values()[-1].run.get_rate_string()]
         return self.draw_run_info(show=False, runs=runs, channel=ch, canvas=pad)
