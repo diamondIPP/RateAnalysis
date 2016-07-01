@@ -46,6 +46,11 @@ class PulserAnalysis(Elementary):
 
     def draw_pulseheight(self, binning=20000, draw_opt='histe', show=True):
         """ Shows the average pulse height of the pulser as a function of event numbers. """
+    def calc_real_fraction(self):
+        in_rate = 40 if self.Ana.run.flux < 10 else 100
+        diamond_size = .4 * .4
+        particle_rate = self.Ana.run.flux * diamond_size
+        return in_rate / particle_rate
         entries = self.Run.n_entries
         nbins = entries / binning
         h = TProfile('hpph', 'Pulser Pulse Height', nbins, 0, entries)
