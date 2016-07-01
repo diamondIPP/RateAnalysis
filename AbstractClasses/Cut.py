@@ -60,10 +60,10 @@ class Cut(Elementary):
                 continue
             if value.GetTitle() == '':
                 continue
-            self.log_info('add {key} {tit}'.format(key=key, tit=value.GetTitle()))
+            # self.log_info('add {key} {tit}'.format(key=key, tit=value.GetTitle()))
             cut += value
             n_cuts += 1
-        self.log_info('generated {name} cut with {num} cuts'.format(name=name, num=n_cuts))
+        # self.log_info('generated {name} cut with {num} cuts'.format(name=name, num=n_cuts))
         return cut
 
     def generate_all_cut(self):
