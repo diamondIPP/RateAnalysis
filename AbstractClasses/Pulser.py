@@ -44,29 +44,30 @@ class PulserAnalysis(Elementary):
         self.log_info('The fraction of pulser events is: {0:5.2f} +- {1:4.2f}%'.format(fit.Parameter(0), fit.ParError(0)))
         return fit.Parameter(0), fit.ParError(0)
 
-    def draw_pulseheight(self, binning=20000, draw_opt='histe', show=True):
-        """ Shows the average pulse height of the pulser as a function of event numbers. """
     def calc_real_fraction(self):
         in_rate = 40 if self.Ana.run.flux < 10 else 100
         diamond_size = .4 * .4
         particle_rate = self.Ana.run.flux * diamond_size
         return in_rate / particle_rate
+
+    def draw_pulseheight(self, binning=10000, draw_opt='histe', show=True):
+        """ Shows the average pulse height of the pulser as a function of event number """
         entries = self.Run.n_entries
         nbins = entries / binning
         h = TProfile('hpph', 'Pulser Pulse Height', nbins, 0, entries)
         signal = self.Ana.generate_signal_name(self.Ana.PulserName, evnt_corr=False, off_corr=True, cut=self.PulserCut)
         self.Tree.Draw('{sig}:Entry$>>hpph'.format(sig=signal), self.PulserCut, 'goff')
         values = [h.GetBinContent(i) for i in xrange(h.GetNbinsX()) if h.GetBinContent(i)]
-        diff = max(values) - min(values)
-        self.format_histo(h, x_tit='Event Number', y_tit='Pulse Height [au]', y_off=1.7, stats=0, y_range=[min(values) - diff, max(values) + diff * 2], fill_color=self.FillColor)
-        self.draw_histo(h, '', show, gridy=True, draw_opt=draw_opt, lm=.15)
+        y_range = increased_range([min(values), max(values)], .7, .7)
+        self.format_histo(h, x_tit='Event Number', y_tit='Pulse Height [au]', y_off=1.7, stats=0, fill_color=self.FillColor, y_range=y_range)
+        set_statbox(x=.91, entries=2, only_fit=True)
+        self.draw_histo(h, '', show, gridy=True, draw_opt=draw_opt, lm=.14, rm=.07)
         h.Draw('same')
         self.save_plots('PulserPulserHeight', self.save_dir)
         return h
 
     def draw_pulseheight_fit(self, show=True):
         """ Shows the pulse height fit for the pulser. """
-        set_statbox(.88, .88, only_fit=True)
         h = self.draw_pulseheight(show=show)
         h.SetName('Fit Result')
         h.SetStats(1)
