@@ -38,7 +38,7 @@ def untitle(string):
     return s.strip(' ')
 
 
-def set_statbox(x=.96, y=.96, w=.16, entries=3, only_fit=False):
+def set_statbox(x=.95, y=.95, w=.16, entries=3, only_fit=False):
     if only_fit:
         gStyle.SetOptStat(0011)
         gStyle.SetOptFit(1)
@@ -64,7 +64,7 @@ def format_transparent_frame(frame):
     fr.GetXaxis().SetLabelOffset(99)
     fr.GetYaxis().SetLabelOffset(99)
     fr.SetLineColor(0)
-    
+
 
 def format_base_frame(frame, x_tit, y_tit):
     fr = frame
