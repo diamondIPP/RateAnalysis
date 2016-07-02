@@ -4,7 +4,7 @@
 from argparse import ArgumentParser
 from collections import OrderedDict
 from copy import deepcopy
-from math import sqrt, ceil, log
+from math import ceil, log
 from numpy import array
 from sys import stdout
 from time import time, sleep
@@ -703,7 +703,7 @@ class PadAnalysis(Analysis):
         if bin_corr:
             return sig_name
         elif off_corr:
-            ped_fit = self.show_pedestal_histo(cut=cut, draw=False)
+            ped_fit = self.show_pedestal_histo(cut=cut, show=False)
             sig_name += '-{pol}*{ped}'.format(ped=ped_fit.Parameter(1), pol=ped_pol)
         elif evnt_corr:
             sig_name += '-{pol}*{ped}'.format(ped=self.PedestalName, pol=ped_pol)
@@ -994,10 +994,10 @@ class PadAnalysis(Analysis):
         def func(x=x_range):
             if not show:
                 gROOT.SetBatch(1)
-            print 'making pedestal histo for region {reg}{int}...'.format(reg=region, int=peak_int)
+            self.log_info('Making pedestal histo for region {reg}{int}...'.format(reg=region, int=peak_int))
             if x[0] >= x[1]:
                 x = sorted(x)
-            set_statbox(.88, .88, entries=4, only_fit=True)
+            set_statbox(.95, .95, entries=4, only_fit=True)
             h = TH1F('ped1', 'Pedestal Distribution', nbins, x[0], x[1])
             name = self.get_pedestal_name(region, peak_int)
             self.tree.Draw('{name}>>ped1'.format(name=name), cut, 'goff')
@@ -1010,7 +1010,8 @@ class PadAnalysis(Analysis):
                 f.SetRange(x[0], x[1])
                 f.SetLineStyle(2)
                 h.GetListOfFunctions().Add(f)
-            self.save_histo(h, 'Pedestal_{reg}{cut}'.format(reg=region, cut=cut.GetName()), show, logy=logy, lm=.13)
+            if show:
+                self.save_histo(h, 'Pedestal_{reg}{cut}'.format(reg=region, cut=cut.GetName()), show, logy=logy, lm=.13)
             self.PedestalHisto = h
             return fit_pars
 
@@ -1471,13 +1472,15 @@ class PadAnalysis(Analysis):
         self.RootObjects.append(self.save_histo(h, save_name, show, self.save_dir, draw_opt=draw_opt, logz=True, rm=.15, lm=.12))
 
     def draw_signal_vs_signale(self, show=True):
+        gStyle.SetPalette(53)
         cut = self.Cut.generate_special_cut(excluded_cuts=['bucket'])
         num = self.get_signal_number(region='e')
         cut += TCut('IntegralPeakTime[{0}]<94&&IntegralPeakTime[{0}]>84'.format(num))
-        h = TH2F('hsse', 'Signal b vs Signal e', 250, -50, 200, 250, -50, 200)
+        h = TH2F('hsse', 'Signal b vs Signal e', 62, -50, 200, 50, 0, 200)
         self.tree.Draw('{sige}:{sigb}>>hsse'.format(sigb=self.SignalName, sige=self.get_signal_name(region='e')), cut, 'goff')
         self.format_histo(h, x_tit='Signal s_b [au]', y_tit='Signal s_e [au]', z_tit='Number of Entries', z_off=1.1, y_off=1.5, stats=0)
         self.RootObjects.append(self.save_histo(h, 'SignalEvsSignalB', show, rm=.15, lm=.13, draw_opt='colz'))
+        gStyle.SetPalette(1)
 
     def draw_single_wf(self, event=None):
         cut = '!({0})&&!pulser'.format(self.Cut.CutStrings['old_bucket'])
@@ -1803,7 +1806,7 @@ class PadAnalysis(Analysis):
                 name = 'ch{ch}_signal_{reg}_PeakIntegral{int}'.format(ch=self.channel, reg=region, int=integral)
                 num = self.IntegralNames[name]
                 reg = region + integral
-                names['{pol}*IntegralValues[{num}]'.format(pol=self.Polarity, num=num)] = reg
+                names['({pol}*TimeIntegralValues[{num}])'.format(pol=self.Polarity, num=num)] = reg
         return names
 
     def __get_binning(self):
@@ -1978,5 +1981,6 @@ if __name__ == "__main__":
     print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(message)) * '=', msg=message)
     a = Elementary(tc)
     a.print_testcampaign()
+    print
     z = PadAnalysis(test_run, args.ch, verbose=args.verbose)
     z.print_elapsed_time(st, 'Instantiation')
