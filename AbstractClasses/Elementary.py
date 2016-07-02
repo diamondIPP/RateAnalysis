@@ -233,23 +233,16 @@ class Elementary(object):
         Saves the canvas at the desired location. If no canvas is passed as argument, the active canvas will be saved. However for applications without graphical interface,
         such as in SSl terminals, it is recommended to pass the canvas to the method.
         :param savename:
-        # :param file_type:
-        # :param save_dir:
         :param sub_dir:
-        :param canvas:
         :param ind: index of the collection
         :param ch: if None print both dias (dirty fix)
         """
-        # save_dir = self.save_directory if save_dir is None else save_dir
-        # file_type = '.png' if file_type is None else '.{end}'.format(end=file_type)
 
         if canvas is None:
             try:
-                c = gROOT.GetListOfCanvases()
-                # pad = gROOT.GetSelectedPad()
-                canvas = c[-1]
+                canvas = gROOT.GetListOfCanvases()[-1]
             except Exception as inst:
-                print '\n\n{delim}\nERROR in get canvas!\n{msg}\n{delim}\n\n'.format(delim=len(str(inst)) * '-', msg=inst)
+                print log_warning('Error in save canvas: {err}'.format(err=inst))
                 return
         channel = self.channel if hasattr(self, 'channel') else None
         if hasattr(self, 'run'):
@@ -267,12 +260,12 @@ class Elementary(object):
                 self.collection.values()[ind].run.draw_run_info(channel=ch if ch is None else self.collection.values()[ind].channel, canvas=canvas, runs=runs, x=x, y=y)
             else:
                 self.collection.values()[ind].run.draw_run_info(channel=ch if ch is None else self.collection.values()[ind].channel, canvas=canvas, x=x, y=y)
+        canvas.Modified()
         canvas.Update()
-
         try:
             self.save_canvas(canvas, sub_dir=sub_dir, name=savename, print_names=prnt)
         except Exception as inst:
-            print self.print_banner('ERROR in save plots!\n{0}'.format(inst), '-')
+            print log_warning('Error in save_canvas:\n{0}'.format(inst))
 
     def create_new_testcampaign(self):
         year = raw_input('Enter the year of the test campgaign (YYYY): ')
