@@ -455,34 +455,35 @@ class Elementary(object):
         except AttributeError or ReferenceError:
             pass
 
-    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=0.02, bm=.15, tm=.02, draw_opt='', x_fac=None, y_fac=None,
-                   l=None, logy=False, logx=False, logz=False, canvas=None, gridx=False, gridy=False, save=True, ch='dia', prnt=True):
-        x_fac = self.Res if x_fac is None else int(x_fac * self.Res)
-        y_fac = self.Res if y_fac is None else int(y_fac * self.Res)
+    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=.03, draw_opt='', x_fac=None, y_fac=None,
+                   l=None, logy=False, logx=False, logz=False, canvas=None, gridx=False, gridy=False, save=True, ch='dia', prnt=True, phi=None, theta=None):
+        x = self.Res if x_fac is None else int(x_fac * self.Res)
+        y = self.Res if y_fac is None else int(y_fac * self.Res)
         h = histo
-        if not show:
-            gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
-            gROOT.SetBatch(1)
-        c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x_fac, y_fac) if canvas is None else canvas
+        self.set_root_output(show)
+        c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x, y) if canvas is None else canvas
         c.SetMargin(lm, rm, bm, tm)
         c.SetLogx() if logx else self.do_nothing()
         c.SetLogy() if logy else self.do_nothing()
         c.SetLogz() if logz else self.do_nothing()
         c.SetGridx() if gridx else self.do_nothing()
         c.SetGridy() if gridy else self.do_nothing()
+        c.SetPhi(phi) if phi is not None else do_nothing()
+        c.SetTheta(theta) if theta is not None else do_nothing()
         h.Draw(draw_opt)
-        l.Draw() if l is not None else self.do_nothing()
+        if l is not None:
+            l = [l] if type(l) is not list else l
+            for i in l:
+                i.Draw()
         if save:
             self.save_plots(save_name, sub_dir=sub_dir, x=x_fac, y=y_fac, ch=ch, prnt=prnt)
-        gROOT.SetBatch(0)
-        gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
+        self.set_root_output(True)
         lst = [c, h, l] if l is not None else [c, h]
         self.ROOTObjects.append(lst)
-        return lst
 
-    def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=0.02, bm=.15, tm=.02, draw_opt='', x=None, y=None,
-                   l=None, logy=False, logx=False, logz=False, canvas=None, gridy=False, gridx=False, ch='dia', prnt=True):
-        return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, l, logy, logx, logz, canvas, gridx, gridy, False, ch, prnt)
+    def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=.03, draw_opt='', x=None, y=None,
+                   l=None, logy=False, logx=False, logz=False, canvas=None, gridy=False, gridx=False, ch='dia', prnt=True, phi=None, theta=None):
+        return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, l, logy, logx, logz, canvas, gridx, gridy, False, ch, prnt, phi, theta)
 
     def draw_tlatex(self, x, y, text, align=20, color=1, size=.05):
         l = TLatex(x, y, text)
