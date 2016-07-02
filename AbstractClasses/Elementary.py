@@ -565,24 +565,16 @@ class Elementary(object):
         gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
         h = histo
         fit = TF1('fit', 'gaus(0) + gaus(3) + gaus(6)', h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax())
-        s = TSpectrum(2)
-        s.Search(h)
-        y = s.GetPositionY()[0], s.GetPositionY()[1]
-        x = s.GetPositionX()[0], s.GetPositionX()[1]
+        s = TSpectrum(3)
+        n = s.Search(h, 5)
+        y = s.GetPositionY()[0], s.GetPositionY()[1] if n == 2 else s.GetPositionY()[2]
+        x = s.GetPositionX()[0], s.GetPositionX()[1] if n == 2 else s.GetPositionX()[2]
         for i, par in enumerate([y[1], x[1], 10, y[0], x[0], 5, 10, x[0] + 10, 5]):
             fit.SetParameter(i, par)
-        # fit.SetParLimits(0, .5 * y[1], 1.5 * y[1])
-        # fit.SetParLimits(1, x[1] - 25, x[1] + 10)
-        # fit.SetParLimits(2, 5, 50)
-        # fit.SetParLimits(3, .5 * y[0], 1.5 * y[0])
-        # fit.SetParLimits(4, x[0] - 5, x[0] + 5)
-        # fit.SetParLimits(5, 1, 10)
-        # fit.SetParLimits(6, 1, s.GetPositionY()[1])
-        # fit.SetParLimits(7, x[0] + 5, x[1] - 20)
-        # fit.SetParLimits(8, 1, 10)
+        fit.SetParLimits(7, x[0] + 5, x[1] - 20)
         for i in xrange(1):
-            h.Fit(fit, 'qs{0}'.format('' if show else '0'), '', -50, s.GetPositionX()[1])
-        gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
+            h.Fit(fit, 'qs{0}'.format('' if show else '0'), '', -50, x[1])
+        gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         return fit
 
     @staticmethod
