@@ -36,6 +36,7 @@ class Elementary(object):
         self.ana_config_parser = self.load_ana_config()
 
         self.Felix = self.MainConfigParser.get('SAVE', 'felix')
+        self.set_root_titles()
 
         self.Stuff = []
 
@@ -53,6 +54,10 @@ class Elementary(object):
 
     # ============================================
     # region CONFIG
+    def set_root_titles(self):
+        if self.MainConfigParser.has_option('SAVE', 'activate_title'):
+            gStyle.SetOptTitle(self.MainConfigParser.getboolean('SAVE', 'activate_title'))
+
     def load_main_config(self):
         parser = ConfigParser()
         parser.read('{dir}/Configuration/main.cfg'.format(dir=self.get_program_dir()))
