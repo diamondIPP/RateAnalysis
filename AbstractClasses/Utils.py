@@ -115,6 +115,59 @@ def hide_axis(axis):
     axis.SetTitleOffset(99)
 
 
+def set_graph_color(mg, color=None, do_marker=True, marker_size=None):
+    try:
+        for g in mg.GetListOfGraphs():
+            set_graph_color(g, color=color, do_marker=do_marker, marker_size=marker_size)
+    except AttributeError:
+        mg.SetLineColor(color)
+        if do_marker:
+            mg.SetMarkerColor(color)
+        if marker_size:
+            mg.SetMarkerSize(marker_size)
+
+
+def get_graph_data(g):
+    n = g.GetN()
+    x = [g.GetX()[i] for i in range(n)]
+    y = [g.GetY()[i] for i in range(n)]
+    ex = [g.GetEX()[i] for i in range(n)]
+    ey = [g.GetEY()[i] for i in range(n)]
+    return n, x, y, ex, ey
+
+
+def get_bias_root_string(biases):
+    if type(biases) == list:
+        retval = ''
+        for b in biases:
+            if -1 * b in biases:
+                b_str = '+-{:4.0f} V'.format(abs(b))
+            else:
+                b_str = '{:+4.0f} V'.format(b)
+            if b_str not in retval:
+                if retval != '':
+                    retval += ', '
+                retval += b_str
+    elif type(biases) in [float, int]:
+        retval = '{:+5.0f} V'.format(biases)
+    else:
+        retval = '{}'.format(biases)
+    retval = retval.replace('+-', '#pm')
+    retval = retval.replace('+/-', '#pm')
+    retval = retval.replace('+', '#plus')
+    retval = retval.replace('-', '#minus')
+    return retval
+
+
+def resize_markers(mg, default_size=0, marker_sizes=None):
+    marker_sizes = {} if marker_sizes is None else marker_sizes
+    try:
+        for g in mg.GetListOfGraphs():
+            resize_markers(g, default_size=default_size, marker_sizes=marker_sizes)
+    except AttributeError:
+        mg.SetMarkerSize(marker_sizes.get(mg.GetName(), default_size))
+
+
 def move_legend(l, x1, y1):
     xdiff = l.GetX2NDC() - l.GetX1NDC()
     ydiff = l.GetY2NDC() - l.GetY1NDC()
