@@ -123,10 +123,9 @@ class Elementary(object):
         self.TESTCAMPAIGN = str(campaign)
 
     def print_testcampaign(self, pr=True):
-        out = datetime.strptime(self.TESTCAMPAIGN, '%Y%m')
-        out = 'TESTCAMPAIGN: {0}'.format(out.strftime('%b %Y'))
+        out = datetime.strptime(self.TESTCAMPAIGN, '%Y%m').strftime('%b %Y')
         if pr:
-            print out
+            print 'TESTCAMPAIGN: {0}'.format(out)
         return out
 
     @classmethod
@@ -191,13 +190,11 @@ class Elementary(object):
         assert (num >= 0 and type(num) is int), 'num has to be non negative int'
         return bool(num & 1 << bit)
 
-    def make_bias_string(self):
-        if hasattr(self, 'bias'):
-            bias = self.bias
-            pol = 'm' if bias < 0 else 'p'
-            return '_{pol}{bias:04d}'.format(pol=pol, bias=int(abs(bias)))
-        else:
-            return ''
+    def make_bias_string(self, bias=None):
+        if bias is None:
+            return self.make_bias_string(self.bias) if hasattr(self, 'bias') else ''
+        pol = 'm' if bias < 0 else 'p'
+        return '_{pol}{bias:04d}'.format(pol=pol, bias=int(abs(bias)))
 
     def make_info_string(self):
         info = ''
