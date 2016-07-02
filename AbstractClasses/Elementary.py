@@ -401,8 +401,8 @@ class Elementary(object):
             l.SetTextAlign(12)
         return l
 
-    def format_histo(self, histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=20, color=1, markersize=1, x_off=1, y_off=1, z_off=1, lw=1, fill_color=0, stats=True,
-                     tit_size=.04, draw_first=False, x_range=None, y_range=None):
+    def format_histo(self, histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=20, color=1, markersize=1, x_off=None, y_off=None, z_off=None, lw=1, fill_color=0,
+                     stats=True, tit_size=.04, draw_first=False, x_range=None, y_range=None, z_range=None, do_marker=True):
         h = histo
         if draw_first:
             self.set_root_output(False)
@@ -416,9 +416,10 @@ class Elementary(object):
             pass
         # markers
         try:
-            h.SetMarkerStyle(marker)
-            h.SetMarkerColor(color) if color is not None else h.SetMarkerColor(h.GetMarkerColor())
-            h.SetMarkerSize(markersize)
+            if do_marker:
+                h.SetMarkerStyle(marker) if marker is not None else do_nothing()
+                h.SetMarkerColor(color) if color is not None else do_nothing()
+                h.SetMarkerSize(markersize) if markersize is not None else do_nothing()
         except AttributeError or ReferenceError:
             pass
         # lines/fill
@@ -433,22 +434,24 @@ class Elementary(object):
             x_tit = untitle(x_tit) if self.Felix else x_tit
             y_tit = untitle(y_tit) if self.Felix else y_tit
             z_tit = untitle(z_tit) if self.Felix else z_tit
-            # x-axis
             x_axis = h.GetXaxis()
-            x_axis.SetTitle(x_tit) if x_tit else h.GetXaxis().GetTitle()
-            x_axis.SetTitleOffset(x_off)
-            x_axis.SetTitleSize(tit_size)
-            x_axis.SetRangeUser(x_range[0], x_range[1]) if x_range is not None else do_nothing()
-            # y-axis
+            if x_axis:
+                x_axis.SetTitle(x_tit) if x_tit else h.GetXaxis().GetTitle()
+                x_axis.SetTitleOffset(x_off) if x_off is not None else do_nothing()
+                x_axis.SetTitleSize(tit_size)
+                x_axis.SetRangeUser(x_range[0], x_range[1]) if x_range is not None else do_nothing()
             y_axis = h.GetYaxis()
-            y_axis.SetTitle(y_tit) if y_tit else y_axis.GetTitle()
-            y_axis.SetTitleOffset(y_off)
-            y_axis.SetTitleSize(tit_size)
-            y_axis.SetRangeUser(y_range[0], y_range[1]) if y_range is not None else do_nothing()
-            # z-axis
-            h.GetZaxis().SetTitle(z_tit) if z_tit else h.GetZaxis().GetTitle()
-            h.GetZaxis().SetTitleOffset(z_off)
-            h.GetZaxis().SetTitleSize(tit_size)
+            if y_axis:
+                y_axis.SetTitle(y_tit) if y_tit else y_axis.GetTitle()
+                y_axis.SetTitleOffset(y_off) if y_off is not None else do_nothing()
+                y_axis.SetTitleSize(tit_size)
+                y_axis.SetRangeUser(y_range[0], y_range[1]) if y_range is not None else do_nothing()
+            z_axis = h.GetZaxis()
+            if z_axis:
+                z_axis.SetTitle(z_tit) if z_tit else h.GetZaxis().GetTitle()
+                z_axis.SetTitleOffset(z_off) if z_off is not None else do_nothing()
+                z_axis.SetTitleSize(tit_size)
+                z_axis.SetRangeUser(z_range[0], z_range[1]) if z_range is not None else do_nothing()
         except AttributeError or ReferenceError:
             pass
 
