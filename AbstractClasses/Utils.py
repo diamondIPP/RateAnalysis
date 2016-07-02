@@ -177,6 +177,10 @@ def move_legend(l, x1, y1):
     l.SetY2NDC(y1 + ydiff)
 
 
+def increased_range(ran, fac_bot=0, fac_top=0):
+    return [(1 + fac_bot) * ran[0] - fac_bot * ran[1], (1 + fac_top) * ran[1] - fac_top * ran[0]]
+
+
 def calc_mean(l):
     mean = sum(l) / len(l)
     mean2 = sum(map(lambda x: x**2, l)) / len(l)
