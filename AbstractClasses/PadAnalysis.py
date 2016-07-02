@@ -1685,44 +1685,49 @@ class PadAnalysis(Analysis):
         max_bin = h.GetMaximumBin()
         return h.GetBinCenter(max_bin)
 
-    def draw_snrs(self):
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+    def draw_snrs(self, show=True, lego=True):
+        self.verbose = False
         gr = self.make_tgrapherrors('gr', 'Signal to Noise Ratios')
+        h = TProfile2D('h_snr', 'Signal to Noise Ratios', 12, 1, 7, 12, 3, 9)
         l1 = TLegend(.7, .68, .9, .9)
         l1.SetHeader('Regions')
         l2 = TLegend(.7, .47, .9, .67)
         l2.SetHeader('PeakIntegrals')
         for i, name in enumerate(self.get_all_signal_names().iterkeys()):
+            peak_int = self.run.peak_integrals[self.get_all_signal_names()[name][1:]]
             snr = self.calc_snr(sig=name, name=self.get_all_signal_names()[name])
+            h.Fill(peak_int[0] / 2., peak_int[1] / 2., snr[0])
             gr.SetPoint(i, i + 1, snr[0])
             gr.SetPointError(i, 0, snr[1])
-        # rename bins
-        for i, region in enumerate(self.get_all_signal_names().itervalues(), 1):
-            bin_x = gr.GetXaxis().FindBin(i)
-            gr.GetXaxis().SetBinLabel(bin_x, region)
-        c = TCanvas('c', 'SNR', 1000, 1000)
+        if not lego:
+            for i, region in enumerate(self.get_all_signal_names().itervalues(), 1):
+                bin_x = gr.GetXaxis().FindBin(i)
+                gr.GetXaxis().SetBinLabel(bin_x, region)
         [l1.AddEntry(0, '{reg}:  {val}'.format(reg=reg, val=value), '') for reg, value in self.run.signal_regions.iteritems() if len(reg) <= 2]
         [l2.AddEntry(0, '{reg}:  {val}'.format(reg=integ, val=value), '') for integ, value in self.run.peak_integrals.iteritems() if len(integ) <= 2]
         self.format_histo(gr, y_tit='SNR', y_off=1.2, color=self.get_color(), fill_color=1)
         gr.SetLineColor(2)
-        gr.Draw('bap')
-        l1.Draw()
-        l2.Draw()
-        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.save_plots('SNR', sub_dir=self.save_dir)
-        self.histos.append([gr, l1, l2, c])
+        vals = sorted([h.GetBinContent(i) for i in xrange(h.GetNbinsX() * h.GetNbinsY()) if h.GetBinContent(i)])
+        self.format_histo(h, x_tit='Left Length [ns]', x_off=1.45, y_tit='Right Length [ns]', y_off=1.6, z_tit='snr', z_off=1.6, stats=0, z_range=[vals[2], max(vals)])
+        h.SetContour(50)
+        if lego:
+            gStyle.SetPalette(53)
+            self.save_histo(h, 'SNRLego', show, draw_opt='lego2', bm=.2, rm=.1, lm=.13, phi=-30, theta=40)
+            gStyle.SetPalette(1)
+        else:
+            self.save_histo(gr, 'SNR', show, l=[l1, l2], draw_opt='bap')
 
     def calc_snr(self, sig=None, name=''):
         signal = self.SignalName if sig is None else sig
         peak_int = self.get_all_signal_names()[signal][-2:] if self.get_all_signal_names()[signal][-2].isdigit() else self.get_all_signal_names()[signal][-1]
-        ped_fit = self.show_pedestal_histo(draw=False, peak_int=peak_int)
-        sig_fit = self.draw_pulse_height(evnt_corr=True, show=False, sig=signal)
+        ped_fit = self.show_pedestal_histo(draw=False, peak_int=peak_int, show=False)
+        sig_fit = self.draw_pulse_height(evnt_corr=True, save_graph=False, sig=signal)
         sig_mean = sig_fit.Parameter(0)
         ped_sigma = ped_fit.Parameter(2)
 
         snr = sig_mean / ped_sigma
         snr_err = snr * (sig_fit.ParError(0) / sig_mean + ped_fit.ParError(2) / ped_sigma)
-        print '{name}\t| SNR is: {snr} +- {err}'.format(name=name, snr=snr, err=snr_err)
+        print '{name} {0}\t| SNR is: {snr} +- {err}\t {1} {2}'.format(self.run.peak_integrals[peak_int], sig_mean, ped_sigma, name=name, snr=snr, err=snr_err)
         return [snr, snr_err]
 
     # ============================================
