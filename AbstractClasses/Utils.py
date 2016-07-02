@@ -95,6 +95,14 @@ def scale_multigraph(mg, val=1):
                 log_warning('Error in scale multigraph: {err}'.format(err=err))
 
 
+def move_element(odict, thekey, newpos):
+    odict[thekey] = odict.pop(thekey)
+    for i, (key, value) in enumerate(odict.items()):
+        if key != thekey and i >= newpos:
+            odict[key] = odict.pop(key)
+    return odict
+
+
 def make_transparent(pad):
     pad.SetFillStyle(4000)
     pad.SetFillColor(0)
