@@ -19,6 +19,8 @@ def set_save_dirs(ana):
 for run in [398]:
     z = PadAnalysis(run, 0)
     set_save_dirs(z)
+    if run == 398:
+        z.draw_bucket_waveforms(show=False)
     z.draw_trigger_cell_vs_peakpos(show=False, corr=False)
     z.draw_trigger_cell_vs_peakpos(show=False, corr=True)
     z.draw_trigger_cell_vs_peakpos(show=False, corr=True, t_corr=True)
@@ -37,9 +39,7 @@ for run in [398]:
     z.draw_signal_map(draw_option='colz', show=False)
     z.draw_signal_vs_signale(show=False)
     z.draw_ped_sigma_selection(show=False)
-    if run == 398:
-        z.draw_bucket_waveforms(show=False)
 
 z = PadAnalysis(171, 0)
 set_save_dirs(z)
-z.draw_pulser_waveform(20, show=False)
+z.Pulser.draw_waveform(20, show=False)
