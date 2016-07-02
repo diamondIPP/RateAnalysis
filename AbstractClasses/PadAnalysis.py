@@ -844,27 +844,21 @@ class PadAnalysis(Analysis):
         fit = func() if show else None
         return self.do_pickle(picklepath, func, fit)
 
-    def draw_ph_distribution(self, binning=None, show=True, fit=True):
+    def draw_ph_distribution(self, binning=None, show=True, fit=True, xmin=0, xmax=160, bin_size=.5, save=True):
         if binning is not None:
             self.__set_bin_size(binning)
         sig_time = self.make_signal_time_histos(evnt_corr=True, show=False)
         if not show:
             gROOT.SetBatch(1)
         means = [h_proj.GetMean() for h_proj in [sig_time.ProjectionY(str(i), i + 1, i + 1) for i in xrange(self.n_bins - 1)] if h_proj.GetEntries() > 10]
-        extrema = [int(min(means)), int(max(means))]
-        h = TH1F('h', 'Signal Bin{0} Distribution'.format(self.BinSize), int(log(len(means), 2) * 2), extrema[0], extrema[1] + 2)
+        nbins = int((xmax - xmin) / bin_size)
+        h = TH1F('h', 'Signal Bin{0} Distribution'.format(self.BinSize), nbins, xmin, xmax)  # int(log(len(means), 2) * 2), extrema[0], extrema[1] + 2)
         for mean_ in means:
             h.Fill(mean_)
-        c = TCanvas('c', 'Pulse Height Distribution', 1000, 1000)
-        c.SetLeftMargin(.12)
-        self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.5)
-        if fit:
-            h.Fit('gaus', 'q')
-        h.SetFillColor(kGreen - 9)
-        h.Draw()
-        gROOT.SetBatch(0)
-        self.save_plots('SignalBin{0}Disto'.format(self.BinSize), sub_dir=self.save_dir)
-        self.histos.append([h, c])
+        self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.5, fill_color=407)
+        h.Fit('gaus', 'q') if fit else do_nothing()
+        if save:
+            self.save_histo(h, 'SignalBin{0}Disto'.format(self.BinSize), lm=.12)
         return h
 
     def show_ph_overview(self, binning=None):
