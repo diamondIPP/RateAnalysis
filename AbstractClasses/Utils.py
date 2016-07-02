@@ -83,15 +83,16 @@ def round_up_to(num, val):
 
 
 def scale_multigraph(mg, val=1):
-    first = mg.GetListOfGraphs()[0].GetY()[0]
+    g = mg.GetListOfGraphs()[0]
+    points = {g.GetX()[i]: g.GetY()[i] for i in xrange(g.GetN())}
+    y = points[min(points)]
     for gr in mg.GetListOfGraphs():
         for i in xrange(gr.GetN()):
-            gr.SetPoint(i, gr.GetX()[i], gr.GetY()[i] / first * val)
+            gr.SetPoint(i, gr.GetX()[i], gr.GetY()[i] / y * val)
             try:
-                gr.SetPointError(i, gr.GetErrorX(i), gr.GetErrorY(i) / first * val)
+                gr.SetPointError(i, gr.GetErrorX(i), gr.GetErrorY(i) / y * val)
             except Exception as err:
-                print err
-                pass
+                log_warning('Error in scale multigraph: {err}'.format(err=err))
 
 
 def make_transparent(pad):
