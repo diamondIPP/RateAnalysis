@@ -779,7 +779,8 @@ class PadAnalysis(Analysis):
         all_means = func() if show else None
         return self.do_pickle(picklepath, func, all_means)
 
-    def draw_pulse_height(self, binning=None, show=True, save_graph=False, evnt_corr=True, bin_corr=False, off_corr=False, sig=None):
+    def draw_pulse_height(self, binning=None, show=True, save_graph=True, evnt_corr=True, bin_corr=False, off_corr=False, sig=None):
+        show = False if not save_graph else show
         signal = self.SignalName if sig is None else sig
         bin_size = binning if binning is not None else self.BinSize
         correction = ''
@@ -789,13 +790,14 @@ class PadAnalysis(Analysis):
             correction = 'constant'
         elif evnt_corr:
             correction = 'eventwise'
-        suffix = '{bins}_{cor}_{reg}{int}'.format(bins=bin_size, cor=correction, reg=self.SignalRegion, int=self.PeakIntegral)
+        peak_int = self.get_all_signal_names()[sig][1:] if sig is not None else self.PeakIntegral
+        suffix = '{bins}_{cor}_{reg}{int}'.format(bins=bin_size, cor=correction, reg=self.SignalRegion, int=peak_int)
         picklepath = 'Configuration/Individual_Configs/Ph_fit/{tc}_{run}_{ch}_{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel, suf=suffix)
 
         self.SignalTime = None
 
         def func():
-            print 'drawing pulse height fit for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name)
+            self.log_info('drawing pulse height fit for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name))
             if binning is not None:
                 self.__set_bin_size(binning)
             tit_suffix = 'with {cor} Pedestal Correction'.format(cor=correction.title()) if bin_corr or evnt_corr or off_corr else ''
@@ -817,24 +819,11 @@ class PadAnalysis(Analysis):
                         gr.SetPoint(count, (self.time_binning[i] - self.run.startTime) / 60e3, i_mean)
                         gr.SetPointError(count, 0, h_proj.GetRMS() / sqrt(h_proj.GetEntries()))
                         count += 1
-                    elif mode in ["fit", "Fit"]:
-                        h_proj.GetMaximum()
-                        maxposition = h_proj.GetBinCenter(h_proj.GetMaximumBin())
-                        h_proj.Fit("landau", "Q", "", maxposition - 50, maxposition + 50)
-                        fitfun = h_proj.GetFunction("landau")
-                        mpv = fitfun.GetParameter(1)
-                        mpverr = fitfun.GetParError(1)
-                        gr.SetPoint(count, (i + 0.5) * self.run.totalMinutes / self.n_bins, mpv)
-                        gr.SetPointError(count, 0, mpverr)
                 else:
                     empty_bins += 1
             if empty_bins:
                 print 'Empty proj. bins:\t', str(empty_bins) + '/' + str(self.n_bins)
-            if show:
-                gROOT.SetBatch(0)
-            c = TCanvas('bla', 'blub', 1000, 1000)
-            c.SetLeftMargin(.14)
-            gStyle.SetOptFit(1)
+            set_statbox(entries=3, only_fit=True)
             self.format_histo(gr, x_tit='time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6)
             # excludes points that are too low for the fit
             max_fit_pos = gr.GetX()[gr.GetN() - 1] + 10
@@ -845,15 +834,14 @@ class PadAnalysis(Analysis):
                     print 'Found huge ph fluctiation! Stopping Fit', gr.GetY()[i], sum_ph / (i + 1)
                     max_fit_pos = gr.GetX()[i - 1]
                     break
+            self.draw_histo(gr, '', show, lm=.14, draw_opt='apl')
             fit_par = gr.Fit('pol0', 'qs', '', 0, max_fit_pos)
-            gr.Draw('apl')
-            self.save_plots('PulseHeight{0}'.format(self.BinSize), sub_dir=self.save_dir)
+            if save_graph:
+                self.save_plots('PulseHeight{0}'.format(self.BinSize), sub_dir=self.save_dir)
             self.PulseHeight = gr
-            self.canvas = c
-            gROOT.SetBatch(0)
             return fit_par
 
-        fit = func() if show or save_graph else None
+        fit = func() if show else None
         return self.do_pickle(picklepath, func, fit)
 
     def draw_ph_distribution(self, binning=None, show=True, fit=True):
