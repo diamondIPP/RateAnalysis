@@ -9,7 +9,7 @@ from collections import OrderedDict
 
 from Elementary import Elementary
 from RunSelection import RunSelection
-from ROOT import TCanvas, TPad, TText, TGraph
+from ROOT import TCanvas, TText, TGraph
 from ConfigParser import ConfigParser
 from numpy import array, mean
 from argparse import ArgumentParser
@@ -381,9 +381,9 @@ class Currents(Elementary):
         self.Stuff.append(t1)
 
     def make_pads(self):
-        p1 = self.make_tpad('p1', gridy=True, margins=[.08, .07, .15, .15])
-        p2 = self.make_tpad('p2', transparent=True)
-        p3 = self.make_tpad('p3', gridx=True, margins=[.08, .07, .15, .15], transparent=True)
+        p1 = self.draw_tpad('p1', gridy=True, margins=[.08, .07, .15, .15])
+        p2 = self.draw_tpad('p2', transparent=True)
+        p3 = self.draw_tpad('p3', gridx=True, margins=[.08, .07, .15, .15], transparent=True)
         return [p1, p2, p3]
 
     @staticmethod
@@ -414,22 +414,6 @@ class Currents(Elementary):
         self.format_histo(g2, 'Voltage', 'Voltage' + tit, color=col_vol, markersize=.5)
         self.CurrentGraph = g1
         self.VoltageGraph = g2
-
-    def make_tpad(self, name, tit='', pos=None, fill_col=0, gridx=False, gridy=False, margins=None, transparent=False, logy=False, logx=False):
-        margins = [.1, .1, .1, .1] if margins is None else margins
-        pos = [0, 0, 1, 1] if pos is None else pos
-        p = TPad(name, tit, *pos)
-        p.SetFillColor(fill_col)
-        p.SetMargin(*margins)
-        p.SetLogy() if logy else self.do_nothing()
-        p.SetLogx() if logx else self.do_nothing()
-        if gridx:
-            p.SetGridx()
-        if gridy:
-            p.SetGridy()
-        if transparent:
-            self.make_transparent(p)
-        return p
 
     def draw_voltage_axis(self):
         a1 = self.draw_y_axis(self.Margins['x'][1], -1100, 1100, '#font[22]{Voltage [V]}', col=col_vol, off=.6, tit_size=.05, opt='+L', w=2, lab_size=label_size, l_off=.01)
@@ -486,7 +470,6 @@ class Currents(Elementary):
         # Y-axis
         h2.GetYaxis().SetTitleOffset(0.6)
         h2.GetYaxis().SetTitleSize(0.04)
-        # h2.GetYaxis().SetTitle("Pulse Height [au]")
         h2.GetYaxis().SetLabelSize(label_size)
         h2.GetYaxis().SetTitleSize(0.04)
         h2.GetYaxis().SetTitleOffset(0.75)
@@ -529,9 +512,7 @@ class Currents(Elementary):
         fr.GetYaxis().SetLabelSize(.06)
         fr.SetTitleSize(axis_title_size)
         fr.GetXaxis().SetTickLength(0)
-        # fr.GetYaxis().SetTickLength(0)
         fr.GetXaxis().SetLabelOffset(99)
-        # fr.GetYaxis().SetLabelOffset(99)
         fr.SetLineColor(0)
         fr.GetXaxis().SetTimeDisplay(1)
 
@@ -545,14 +526,12 @@ class Currents(Elementary):
 
     def draw_time_axis(self, y, opt=''):
         x = self.Margins['x']
-        a1 = self.draw_x_axis(x[0], x[1], y, 'Time [hh:mm]    ', off=1.2, tit_size=.05, opt=opt, lab_size=.05, tick_size=.3, l_off=.01)
+        a1 = self.draw_x_axis(y, x[0], x[1], 'Time [hh:mm]    ', off=1.2, tit_size=.05, opt=opt, lab_size=.05, tick_size=.3, l_off=.01)
         a1.SetTimeFormat("%H:%M")
         a1.SetTimeOffset(-3600)
 
     # endregion
 
-    # ==========================================================================
-    # region MISCELLANEOUS
     def run_exists(self, run):
         if run in self.RunLogs:
             return True
@@ -567,14 +546,6 @@ class Currents(Elementary):
         log = self.RunLogs[run]
         out = '{date}: {start}-{stop}'.format(date=log['begin date'], start=log['start time'], stop=log['stop time'])
         print out
-
-    # endregion
-
-    @staticmethod
-    def make_transparent(pad):
-        pad.SetFillStyle(4000)
-        pad.SetFillColor(0)
-        pad.SetFrameFillStyle(4000)
 
 
 if __name__ == "__main__":
