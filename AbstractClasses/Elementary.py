@@ -10,7 +10,8 @@ from json import loads
 from Utils import *
 from screeninfo import get_monitors
 
-from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend, TLine, TColor, TArrow
+from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend, TLine, TColor, TArrow, TPad
+
 # global test campaign and resolution
 tc = None
 res = None
@@ -600,6 +601,74 @@ class Elementary(object):
     @staticmethod
     def print_banner(msg, symbol='='):
         print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * symbol, msg=msg)
+
+    def save_combined_pulse_heights(self, mg, mg1, l, mg_y, show=True, name=None, pulser_leg=None,
+                                    x_range=None, y_range=None, rel_y_range=None, run_info=None):
+        self.set_root_output(show)
+        c = TCanvas('c', 'c', int(self.Res * 10 / 11.), self.Res)
+        make_transparent(c)
+        bm = .11
+        pm = bm + (1 - bm - .1) / 5.
+        p0 = self.draw_tpad('p0', 'p0', pos=[0, 0, 1, pm], margins=[.14, .03, bm / pm, 0], transparent=True, logx=True, gridy=True)
+        p1 = self.draw_tpad('p1', 'p1', pos=[0, pm, 1, 1], margins=[.14, .03, 0, .03], transparent=True, logx=True)
+        p0.Draw()
+        p1.Draw()
+
+        # bottom pad with 20%
+        p0.cd()
+        scale_multigraph(mg1)
+        rel_y_range = [.7, 1.3] if rel_y_range is None else rel_y_range
+        self.format_histo(mg1, y_range=rel_y_range, y_tit='Relatvie ph in [au]', y_off=.66, tit_size=.1, x_off=99)
+        mg1.GetYaxis().SetLabelSize(.1)
+        mg1.GetYaxis().SetNdivisions(3)
+        mg1.Draw('alp')
+        x_range = [mg1.GetXaxis().GetXmin(), mg1.GetXaxis().GetXmax()] if x_range is None else x_range
+        self.draw_x_axis(1.3, x_range[0], x_range[1], mg1.GetXaxis().GetTitle() + ' ', opt='SG+-=', tit_size=.1, lab_size=0.1, off=99, tick_size=.1)
+        hide_axis(mg1.GetXaxis())
+
+        # top pad with zero suppression
+        p1.cd()
+        mg.Draw('alp')
+        if pulser_leg:
+            pulser_leg()
+        if y_range:
+            mg.SetMinimum(y_range[0])
+            mg.SetMaximum(y_range[1])
+        self.draw_x_axis(mg_y, x_range[0], x_range[1], mg1.GetXaxis().GetTitle() + ' ', opt='SG-', tit_size=.035, lab_size=0.035, off=1, l_off=99)
+        move_legend(l, .17, .03)
+        l.Draw()
+
+        if hasattr(self, 'FirstAnalysis'):
+            self.FirstAnalysis.run.scale_runinfo_legend(txt_size=.075, w=.435, h=0.1 / pm)
+            if run_info is None and hasattr(self, 'channel'):
+                run_info = self.FirstAnalysis.run.get_runinfo(self.channel)
+        if run_info:
+            p0.cd()
+            run_info[0].Draw()
+            run_info[1].Draw() if self.MainConfigParser.getboolean('SAVE', 'git_hash') else do_nothing()
+
+        self.save_canvas(c, name='CombinedPulseHeights' if name is None else name)
+
+        self.ROOTObjects.append([p0, p1, c])
+        self.set_root_output(True)
+        if hasattr(self, 'FirstAnalysis'):
+            self.FirstAnalysis.run.reset_info_legend()
+
+    def draw_tpad(self, name, tit='', pos=None, fill_col=0, gridx=False, gridy=False, margins=None, transparent=False, logy=False, logx=False):
+        margins = [.1, .1, .1, .1] if margins is None else margins
+        pos = [0, 0, 1, 1] if pos is None else pos
+        p = TPad(name, tit, *pos)
+        p.SetFillColor(fill_col)
+        p.SetMargin(*margins)
+        p.SetLogy() if logy else do_nothing()
+        p.SetLogx() if logx else do_nothing()
+        p.SetGridx() if gridx else do_nothing()
+        p.SetGridy() if gridy else do_nothing()
+        make_transparent(p) if transparent else do_nothing()
+        p.Draw()
+        self.ROOTObjects.append(p)
+        return p
+
 
 if __name__ == "__main__":
     z = Elementary()
