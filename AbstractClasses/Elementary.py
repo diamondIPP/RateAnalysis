@@ -543,8 +543,11 @@ class Elementary(object):
     def del_rootobj(obj):
         if obj is None:
             return
-        if obj.IsA().GetName() != 'TCanvas':
-            obj.Delete()
+        try:
+            if obj.IsA().GetName() != 'TCanvas':
+                obj.Delete()
+        except AttributeError:
+            pass
 
     @staticmethod
     def normalise_histo(histo, to100=False):
