@@ -1,6 +1,7 @@
-#
-# Created by Micha on 19.05.16.
-#
+# --------------------------------------------------------
+#       UTILITY FUNCTIONS
+# created on May 19th 2016 by M. Reichmann
+# --------------------------------------------------------
 
 from datetime import datetime
 from termcolor import colored
