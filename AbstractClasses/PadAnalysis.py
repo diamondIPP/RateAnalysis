@@ -1024,10 +1024,6 @@ class PadAnalysis(Analysis):
         gStyle.SetFitFormat('5.3g')
         self.show_pedestal_histo(cut=self.Cut.generate_special_cut(excluded_cuts=['ped_sigma']), nbins=512, x_range=[-50, 200], logy=True, show=False)
         h = self.PedestalHisto
-        # self.show_pedestal_histo(cut=z.Cut.generate_special_cut(),nbins=512,x_range=[-50,206],logy=True)
-        # h_cut = deepcopy(self.histos[-1][0])
-        # h.SetLineColor(kBlack)
-        # h_cut.SetLineColor(kGreen)
         g = TCutG('cut_ped_sigma', 5)
         x = self.Cut.ped_range
         for i, (x, y) in enumerate([(x[0], -1e9), (x[0], +1e9), (x[1], +1e9), (x[1], -1e9), (x[0], -1e9)]):
@@ -1037,7 +1033,7 @@ class PadAnalysis(Analysis):
         g.SetFillColor(827)
         g.SetFillStyle(3001)
         self.format_histo(h, name='Fit Results', x_tit='Pulser Range Integral [au]', y_tit='Number of Entries', y_off=1.2)
-        self.RootObjects.append(self.draw_histo(h, '', show, logy=True))
+        self.draw_histo(h, '', show, logy=True)
         g.Draw('f')
         g.Draw('l')
         h.Draw('same')
@@ -1136,7 +1132,7 @@ class PadAnalysis(Analysis):
         pie.SetTextSize(.025)
         pie.SetAngle3D(70)
         pie.SetLabelFormat('%txt (%perc)')
-        # pie.SetLabelFormat('#splitline{%txt}{%perc}')
+        # pie.SetLabelFormat('#splitline{%txt}{%percent}')
         pie.SetAngularOffset(280)
         c = TCanvas('c', 'Cut Pie', 1000, 1000)
         pie.Draw('{0}rsc'.format('3d' if not flat else ''))
