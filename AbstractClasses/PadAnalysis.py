@@ -544,20 +544,6 @@ class PadAnalysis(Analysis):
         self.RootObjects.append([fit2, fit3])
         return fit, fit2, fit3
 
-    def fit_peak_values(self, draw=True, pulser=False):
-        pickle_path = self.PickleDir + 'PeakValues/Fit_{tc}_{run}_{dia}{pul}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name, pul='_pulser' if pulser else '')
-
-        def func():
-            print 'Getting peak value fit for {dia} of run {run}...'.format(run=self.run_number, dia=self.diamond_name)
-            self.draw_peak_timing(show=draw) if not pulser else self.draw_pulser_peakvalues(draw=draw)
-            h = self.PeakValues
-            max_bin = h.GetMaximumBin()
-            x = [h.GetBinCenter(max_bin + i) for i in [-7, 1]] if not pulser else [h.GetXaxis().GetXmin() + 1, h.GetXaxis().GetXmax() - 1]
-            return h.Fit('gaus', 'qs{0}'.format('' if draw else '0'), '', x[0], x[1])
-
-        mean_val = func() if draw else None
-        return self.do_pickle(pickle_path, func, mean_val)
-
     def draw_peak_timings(self, show=True):
         h = TH1F('h_pt', 'Peak Timings', 1024, 0, 512)
         self.tree.Draw('peaks{ch}_x_time>>h_pt'.format(ch=self.channel), self.AllCuts, 'goff')
