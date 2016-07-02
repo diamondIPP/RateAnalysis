@@ -231,8 +231,9 @@ class ChannelCut(Cut):
     # ==============================================
     # HELPER FUNCTIONS
 
-    def calc_signal_threshold(self, bg=False, show=True):
+    def calc_signal_threshold(self, bg=False, show=True, show_all=False):
         pickle_path = self.analysis.PickleDir + 'Cuts/SignalThreshold_{tc}_{run}_{ch}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.highest_rate_run, ch=self.channel)
+        show = False if show_all else show
 
         def func():
             print 'calculating signal threshold for bucket cut of run {run} and ch{ch}...'.format(run=self.analysis.run_number, ch=self.channel)
@@ -245,12 +246,14 @@ class ChannelCut(Cut):
                 return 30
             h.Rebin(2) if entries < 5000 else self.do_nothing()
             # extract fit functions
+            self.set_root_output(False)
             fit = self.triple_gauss_fit(h)
             sig_fit = TF1('f1', 'gaus', -50, 300)
             sig_fit.SetParameters(fit.GetParameters())
             ped_fit = TF1('f2', 'gaus(0) + gaus(3)', -50, 300)
             pars = [fit.GetParameter(i) for i in xrange(3, 9)]
             ped_fit.SetParameters(*pars)
+            self.set_root_output(True)
 
             # real data distribution without pedestal fit
             signal = deepcopy(h)
@@ -276,58 +279,57 @@ class ChannelCut(Cut):
                 print ValueError('errors has a length of 0')
                 return -30
             max_err = errors[max(errors.keys())]
-            if show:
-                c1 = TCanvas('c1', 'c', 1000, 1000)
-                c1.SetLeftMargin(.127)
-                self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.8)
-                h.Draw()
-                sleep(.1)
-                self.draw_y_axis(max_err, c1.GetUymin(), c1.GetUymax(), 'threshold  ', off=.3, line=True)
-                # add subfunction to the plot
-                ped_fit.SetLineStyle(2)
-                ped_fit.Draw('same')
-                sig_fit.SetLineColor(4)
-                sig_fit.SetLineStyle(3)
-                sig_fit.Draw('same')
-                c1.Update()
-                self.save_plots('BucketCut', sub_dir=self.analysis.save_dir)
-                c2 = TCanvas('c2', 'c', 1000, 1000)
-                self.format_histo(gr1, title='Efficiencies', x_tit='Threshold', y_tit='Efficiency', markersize=.2)
-                gr1.Draw('apl')
-                gr2.Draw('pl')
-                leg = TLegend(.75, .8, .9, .9)
-                gr5 = deepcopy(gr1)
-                gr5.SetTitle('#varepsilon_{bg}')
-                [leg.AddEntry(gr, gr.GetTitle(), 'l') for gr in [gr5, gr2]]
-                leg.Draw()
-                self.save_plots('Efficiencies', sub_dir=self.analysis.save_dir)
 
-                c3 = TCanvas('c3', 'c', 1000, 1000)
-                c3.SetGrid()
-                self.format_histo(gr3, y_tit='background fraction', x_tit='excluded signal fraction', markersize=0.2, y_off=1.2)
-                gr3.Draw('apl')
-                gr = self.make_tgrapherrors('gr', 'working point', color=2)
-                gr.SetPoint(0, 1 - sig_fit.Integral(-50, max_err) / signal.Integral(), ped_fit.Integral(-50, max_err) / ped_fit.Integral(-50, 300))
-                l = self.draw_tlatex(gr.GetX()[0], gr.GetY()[0] + .01, 'Working Point', color=2, size=.04)
-                gr.GetListOfFunctions().Add(l)
-                gr.Draw('p')
-                self.save_plots('ROC_Curve', sub_dir=self.analysis.save_dir)
+            c = None
+            if show_all:
+                self.set_root_output(True)
+                c = TCanvas('c_all', 'Signal Threshold Overview', self.Res, self.Res)
+                c.Divide(2, 2)
 
-                c4 = TCanvas('c4', 'c', 1000, 1000)
-                c4.SetGridx()
-                self.format_histo(gr4, x_tit='Threshold', y_tit='1 / error', y_off=1.4)
-                gr4.Draw('al')
-                self.save_plots('ErrorFunction', sub_dir=self.analysis.save_dir)
+            # Bucket cut plot
+            self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.8, stats=0)
+            self.draw_histo(h, '', show, lm=.135, canvas=c.cd(1) if show_all else None)
+            self.draw_y_axis(max_err, h.GetYaxis().GetXmin(), h.GetMaximum(), 'threshold  ', off=.3, line=True)
+            ped_fit.SetLineStyle(2)
+            ped_fit.Draw('same')
+            sig_fit.SetLineColor(4)
+            sig_fit.SetLineStyle(3)
+            sig_fit.Draw('same')
+            self.save_plots('BucketCut', sub_dir=self.analysis.save_dir)
 
-                self.RootObjects.append([h, gr1, gr2, c1, gr3, c2, c3, c4, gr4, leg, gr])
+            # Efficiency plot
+            self.format_histo(gr1, title='Efficiencies', x_tit='Threshold', y_tit='Efficiency', markersize=.2)
+            l2 = self.make_legend(.78, .3, w=.2)
+            tits = ['#varepsilon_{bg}', gr2.GetTitle()]
+            [l2.AddEntry(p, tits[i], 'l') for i, p in enumerate([gr1, gr2])]
+            self.draw_histo(gr1, '', False, draw_opt='apl', l=l2, canvas=c.cd(2) if show_all else None)
+            gr2.Draw('pl')
+            self.save_plots('Efficiencies')
+
+            # ROC Curve
+            self.format_histo(gr3, y_tit='background fraction', x_tit='excluded signal fraction', markersize=0.2, y_off=1.2)
+            self.draw_histo(gr3, '', False, gridx=True, gridy=True, draw_opt='apl', canvas=c.cd(3) if show_all else None)
+            p = self.make_tgrapherrors('gr', 'working point', color=2)
+            p.SetPoint(0, 1 - sig_fit.Integral(-50, max_err) / signal.Integral(), ped_fit.Integral(-50, max_err) / ped_fit.Integral(-50, 300))
+            l = self.draw_tlatex(p.GetX()[0], p.GetY()[0] + .01, 'Working Point', color=2, size=.04)
+            p.GetListOfFunctions().Add(l)
+            p.Draw('p')
+            self.save_plots('ROC_Curve', sub_dir=self.analysis.save_dir)
+
+            # Error Function plot
+            self.format_histo(gr4, x_tit='Threshold', y_tit='1 / error', y_off=1.4)
+            self.save_histo(gr4, 'ErrorFunction', False, gridx=True, draw_opt='al', canvas=c.cd(4) if show_all else None)
+
+            self.RootObjects.append([sig_fit, ped_fit, gr2, c])
+
             return max_err
 
-        threshold = func() if show else None
+        threshold = func() if show or show_all else None
         threshold = self.do_pickle(pickle_path, func, threshold)
         return threshold
 
     def __calc_pedestal_range(self, sigma_range):
-        fit = self.analysis.show_pedestal_histo(region=self.analysis.PedestalRegion, peak_int=self.analysis.PeakIntegral, draw=False, cut='')
+        fit = self.analysis.show_pedestal_histo(region=self.analysis.PedestalRegion, peak_int=self.analysis.PeakIntegral, draw=False, cut='', show=False)
         sigma = fit.Parameter(2)
         mean = fit.Parameter(1)
         self.PedestalFit = fit
