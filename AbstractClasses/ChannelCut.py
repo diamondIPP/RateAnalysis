@@ -2,7 +2,6 @@ from Cut import Cut
 from Extrema import Extrema2D
 from copy import deepcopy
 from ROOT import TCut, TH1F, TH2F, TF1, TCanvas, TLegend, gROOT, TProfile, THStack
-from time import sleep
 from numpy import sqrt
 from collections import OrderedDict
 
@@ -28,6 +27,7 @@ class ChannelCut(Cut):
         self.generate_channel_cutstrings()
         self.all_cut = self.generate_all_cut()
         self.CutStrings['all_cuts'] = self.all_cut
+        self.run_number = self.analysis.run_number
 
         self.ConsecutiveCuts = self.load_consecutive_cuts()
 
@@ -161,7 +161,7 @@ class ChannelCut(Cut):
 
     def generate_trigger_cell(self, min_max):
         assert 0 <= min_max[0] <= 1024, 'min trigger cell has to be in [0, 1024], not "{min}"'.format(min=min_max[0])
-        assert 0 <= min_max[1] <= 1024, 'max trigger cell has to be in [0, 1024], not "{max}"'.format(min=min_max[1])
+        assert 0 <= min_max[1] <= 1024, 'max trigger cell has to be in [0, 1024], not "{max}"'.format(max=min_max[1])
         self.EasyCutStrings['TriggerCell'] = 'Trigger Cell in {0}'.format(min_max)
         return TCut('trigger_cell < {max} && trigger_cell >= {min}'.format(min=min_max[0], max=min_max[1]))
 
