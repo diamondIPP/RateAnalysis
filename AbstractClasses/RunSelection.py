@@ -6,6 +6,7 @@ from datetime import datetime as dt
 from textwrap import fill
 from sys import argv
 from collections import OrderedDict
+from ConfigParser import ConfigParser
 
 
 class RunSelection(Elementary):
@@ -21,7 +22,11 @@ class RunSelection(Elementary):
         self.logs = {}
         self.selection = {}
         self.channels = {}
-        self.selected_runplan = None
+        
+        # selection
+        self.SelectedRunplan = None
+        self.SelectedBias = None
+        self.Diamond = None
 
         self.init_selection()
 
@@ -381,11 +386,16 @@ class RunSelection(Elementary):
         self.logs = old_logs
         self.selection = old_selection
 
-    def select_runs_from_runplan(self, plan_nr, type_='rate_scan'):
+    def select_runs_from_runplan(self, plan_nr, type_='rate_scan', ch=1):
         plan = self.make_runplan_string(plan_nr)
-        self.selected_runplan = plan
         runs = self.run_plan[type_][plan]
+        self.SelectedRunplan = plan
+
         self.select_runs(runs)
+        self.SelectedBias = self.run_infos[self.get_selected_runs()[0]]['hv dia{0}'.format(ch)]
+        parser = ConfigParser()
+        parser.read('Configuration/DiamondAliases.cfg')
+        self.Diamond = parser.get('ALIASES', self.run_infos[self.get_selected_runs()[0]]['diamond {0}'.format(ch)])
 
     def add_selection_to_runplan(self, plan_nr, run_type='rate_scan'):
         """
