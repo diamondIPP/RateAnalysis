@@ -6,10 +6,10 @@ import os
 from ConfigParser import ConfigParser
 from argparse import ArgumentParser
 from collections import OrderedDict
-from numpy import sqrt, log, array, zeros
+from numpy import log, array, zeros
 from time import time
 
-from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack
+from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1, TCutG, kRed
 
 from CurrentInfo import Currents
 from Elementary import Elementary
@@ -54,7 +54,7 @@ class AnalysisCollection(Elementary):
         self.bias = self.get_first_analysis().bias
 
         # root stuff
-        self.run_plan = list_of_runs.selected_runplan if isinstance(list_of_runs, RunSelection) else '-'
+        self.run_plan = list_of_runs.SelectedRunplan if isinstance(list_of_runs, RunSelection) else '-'
         self.save_dir = '{dia}/runplan{plan}'.format(tc=self.TESTCAMPAIGN[2:], plan=self.run_plan, dia=self.diamond_name)
         self.RootObjects = []
         # important plots
