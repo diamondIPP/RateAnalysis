@@ -414,6 +414,99 @@ class AnalysisCollection(Elementary):
         self.RootObjects.append([gr, c])
         gROOT.SetBatch(0)
 
+    def draw_all_ph_distributions(self, binning=5000, show=False):
+
+        pickle_path = self.FirstAnalysis.PickleDir + 'Ph_fit/Ph_distos_fits_{tc}_{rp}_{dia}_{bin}.pickle'.format(tc=self.TESTCAMPAIGN, rp=self.run_plan, dia=self.diamond_name, bin=binning)
+
+        def func():
+            collimator_settings = [(ana.run.RunInfo['fs11'], ana.run.RunInfo['fsh13']) for key, ana in self.collection.iteritems()]
+            collimator_settings = set(collimator_settings)
+            fits = {}
+            for s in collimator_settings:
+                retval = self.draw_ph_distributions(binning, show=show, fs11=s[0], fsh13=s[1])
+                fits[s] = retval
+            return fits
+
+        res = func() if show else None
+        return self.do_pickle(pickle_path, func, res)
+
+    def draw_ph_distributions(self, binning=5000, fsh13=.5, fs11=65, show=True):
+        runs = self.get_runs_by_collimator(fsh13=fsh13, fs11=fs11)
+        return self.draw_combined_ph_distributions(runs, binning, show)
+
+    def draw_ph_distributions_below_flux(self, binning=5000, flux=150, show=True, save_plot=True):
+        pickle_path = self.FirstAnalysis.PickleDir + 'Ph_fit/PhDistoBel_{tc}_{rp}_{dia}_{bin}_{flux}.pickle'.format(tc=self.TESTCAMPAIGN, rp=self.run_plan, dia=self.diamond_name, bin=binning,
+                                                                                                                    flux=flux)
+
+        def func():
+            runs = self.get_runs_below_flux(flux)
+            return self.draw_combined_ph_distributions(runs, binning, show)
+
+        err = func() if save_plot else None
+        return self.do_pickle(pickle_path, func, err)
+
+    def draw_combined_ph_distributions(self, runs, binning=5000, show=True):
+        stack = THStack('s_phd', 'Pulse Height Distributions')
+        self.reset_colors()
+        for run in runs:
+            ana = self.collection[run]
+            self.set_root_output(False)
+            h = ana.draw_ph_distribution(show=False, binning=binning, fit=False, save=False)
+            self.set_root_output(True)
+            self.format_histo(h, fill_color=4000)
+            h.SetStats(False)
+            h.SetLineColor(self.get_color())
+            stack.Add(h)
+        self.draw_histo(stack, '', show, draw_opt='')
+        summed_stack = stack.GetStack().Last().Clone()
+        summed_stack.SetFillStyle(0)
+
+        fit = TF1('fit', 'gaus', 0, 160)
+        fit.SetNpx()
+        fitptr = summed_stack.Fit(fit, 'SQ0', 'same')
+        summed_stack.SetStats(1)
+        set_statbox(only_fit=True)
+        summed_stack.SetName('Fit Results')
+        summed_stack.Draw('sames')
+        stack.GetXaxis().SetRange(summed_stack.FindFirstBinAbove(0) - 2, summed_stack.FindLastBinAbove(0) + 2)
+        fit.Draw('same')
+        self.ROOTObjects.append(summed_stack)
+        self.ROOTObjects.append(fit)
+        self.save_plots('PulseHeightDistributions')
+        return fitptr.Parameter(1), fitptr.Parameter(2), fitptr.Chi2() / fitptr.Ndf()
+
+    def calc_pedestal_spread(self, fsh13=.5, fs11=65):
+        runs = self.get_runs_by_collimator(fs11, fsh13)
+        values = []
+        for run in runs:
+            ana = self.collection[run]
+            fit = ana.show_pedestal_histo(draw=False)
+            values.append(fit.Parameter(1))
+        return max(values) - min(values)
+
+    def calc_all_pedestal_spreads(self, recalc=False):
+
+        pickle_path = self.FirstAnalysis.PickleDir + 'Pedestal/PedSpread_{tc}_{rp}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, rp=self.run_plan, dia=self.diamond_name)
+
+        def func():
+            collimator_settings = [(ana.run.RunInfo['fs11'], ana.run.RunInfo['fsh13']) for key, ana in self.collection.iteritems()]
+            collimator_settings = set(collimator_settings)
+            mins = {}
+            for s in collimator_settings:
+                retval = self.calc_pedestal_spread(s[1], s[0])
+                mins[s] = retval
+            return mins
+
+        res = func() if recalc else None
+        return self.do_pickle(pickle_path, func, res)
+
+    def calc_full_pedestal_spread(self):
+        values = []
+        for ana in self.collection.values():
+            fit = ana.show_pedestal_histo(draw=False)
+            values.append(fit.Parameter(1))
+        return max(values) - min(values)
+
     # endregion
 
     # ============================================
