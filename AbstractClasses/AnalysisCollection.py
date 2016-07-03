@@ -337,8 +337,6 @@ class AnalysisCollection(Elementary):
         gr1 = self.make_tgrapherrors('pedestal', 'Pedestal {y} in {reg}'.format(y=y_val, reg=region + peak_int))
         regions = self.get_first_analysis().run.pedestal_regions
         graphs = [self.make_tgrapherrors('pedestal', 'Pedestal {y} in {reg}'.format(y=y_val, reg=reg + peak_int), color=self.get_color()) for reg in regions]
-        gROOT.SetBatch(1)
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         i = 0
         par = 2 if sigma else 1
         cut_string = None
@@ -355,25 +353,14 @@ class AnalysisCollection(Elementary):
                     gr.SetPoint(i, x, fit_par.Parameter(par))
                     gr.SetPointError(i, 0, fit_par.ParError(par))
             i += 1
-        if show:
-            gROOT.SetBatch(0)
-            gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        c = TCanvas('c', 'Pedestal vs Run', 1000, 1000)
-        if flux:
-            c.SetLogx()
-        self.format_histo(gr1, color=None, x_tit=self.make_x_tit(mode, flux), y_tit='Mean Pedestal [au]')
-        gr1.Draw('alp')
+        self.format_histo(gr1, color=None, x_tit=self.make_x_tit(mode, flux), y_tit='Mean Pedestal [au]', y_off=1.45)
         if all_regions:
             for i, gr in enumerate(graphs):
                 legend.AddEntry(gr, str(regions.values()[i]), 'p')
                 gr.Draw('alp') if not i else gr.Draw('lp')
-            legend.Draw()
-        gROOT.SetBatch(0)
-        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.Pedestal = gr1
-        self.RootObjects.append([graphs, legend, c])
         save_name = 'Pedestal_{mod}{cut}'.format(mod=mode, cut='' if cut is None else cut_string.GetName())
-        self.save_plots(save_name, sub_dir=self.save_dir)
+        self.save_histo(gr1, save_name=save_name, show=show, logx=True if flux else False, l=legend if all_regions else None, lm=.12)
         self.reset_colors()
         return gr1
 
