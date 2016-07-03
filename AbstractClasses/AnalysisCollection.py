@@ -215,149 +215,119 @@ class AnalysisCollection(Elementary):
         self.RootObjects.append([ph, cur, pul, c, legends, pads])
         self.FirstAnalysis.run.reset_info_legend()
 
-    def draw_pulse_heights(self, binning=20000, flux=True, raw=False, all_corr=False, show=True, vs_time=False, fl=True, save_comb=True):
+    def draw_pulse_heights(self, binning=20000, flux=True, raw=False, all_corr=False, show=True, save_plots=True, vs_time=False, fl=True, save_comb=True):
+
+        pickle_path = self.FirstAnalysis.PickleDir + 'Ph_fit/PulseHeights_{tc}_{rp}_{dia}_{bin}.pickle'.format(tc=self.TESTCAMPAIGN, rp=self.run_plan, dia=self.diamond_name, bin=binning)
         flux = False if vs_time else flux
-        mode = self.get_mode(flux, vs_time)
-        prefix = 'Pulse Height vs {mod} - '.format(mod=mode)
-        gr1 = self.make_tgrapherrors('eventwise', prefix + 'eventwise correction', self.get_color())
-        gr2 = self.make_tgrapherrors('binwise', prefix + 'binwise correction', self.get_color())
-        gr3 = self.make_tgrapherrors('mean ped', prefix + 'mean correction', self.get_color())
-        gr4 = self.make_tgrapherrors('raw', prefix + 'raw', self.get_color())
-        gr5 = self.make_tgrapherrors('flux', 'bla', 1, width=1, marker_size=0)
-        gStyle.SetEndErrorSize(4)
-        gr_first = self.make_tgrapherrors('first run', prefix + 'first', marker=22, color=2)
-        gr_first.SetMarkerSize(2)
-        gr_last = self.make_tgrapherrors('last run', prefix + 'last', marker=23, color=2)
-        gr_last.SetMarkerSize(2)
-        not_found_for = False in [coll.run.FoundForRate for coll in self.collection.itervalues()]
 
-        i, j = 0, 0
-        for key, ana in self.collection.iteritems():
-            fit1 = ana.draw_pulse_height(binning, evnt_corr=True, show=False)
-            fit2 = ana.draw_pulse_height(binning, bin_corr=True, show=False)
-            fit3 = ana.draw_pulse_height(binning, off_corr=True, show=False, evnt_corr=False)
-            fit4 = ana.draw_pulse_height(binning, evnt_corr=False, show=False)
-            x = key
-            if flux:
-                x = ana.run.RunInfo['measured flux'] if not_found_for else ana.run.flux
+        def func():
+
+            mode = self.get_mode(flux, vs_time)
+            prefix = 'Pulse Height vs {mod} - '.format(mod=mode)
+            gr1 = self.make_tgrapherrors('gStatError', 'stat. error', self.get_color())
+            gr2 = self.make_tgrapherrors('gBinWise', prefix + 'binwise correction', self.get_color())
+            gr3 = self.make_tgrapherrors('gMeanPed', prefix + 'mean correction', self.get_color())
+            gr4 = self.make_tgrapherrors('gRaw', prefix + 'raw', self.get_color())
+            gr5 = self.make_tgrapherrors('gFlux', 'bla', 1, width=1, marker_size=0)
+            gStyle.SetEndErrorSize(4)
+            gr_first = self.make_tgrapherrors('gFirst', 'first run', marker=22, color=2, marker_size=2)
+            gr_last = self.make_tgrapherrors('gLast', 'last run', marker=23, color=2, marker_size=2)
+            gr_errors = self.make_tgrapherrors('gFullError', 'stat. + repr. error', marker=0, color=602, marker_size=0)
+            not_found_for = False in [coll.run.FoundForRate for coll in self.collection.itervalues()]
+
+            flux_errors = self.draw_ph_distributions_below_flux(flux=80, show=False, save_plot=False)
+            rel_sys_error = flux_errors[1] / flux_errors[0]
+            i, j = 0, 0
+            for key, ana in self.collection.iteritems():
+                fit1 = ana.draw_pulse_height(binning, evnt_corr=True, show=False)
+                if all_corr:
+                    fit2 = ana.draw_pulse_height(binning, bin_corr=True, show=False)
+                    fit3 = ana.draw_pulse_height(binning, off_corr=True, show=False, evnt_corr=False)
+                    fit4 = ana.draw_pulse_height(binning, evnt_corr=False, show=False)
+                x = key
+                if flux:
+                    x = ana.run.RunInfo['measured flux'] if not_found_for else ana.run.flux
+                if vs_time:
+                    self.set_root_output(False)
+                    x_err = ana.run.duration.seconds / 2.
+                    x = int(ana.run.log_start.strftime('%s')) + x_err - self.StartTime
+                    gr5.SetPoint(i, x, fit1.Parameter(0))
+                    gr5.SetPointError(i, x_err, 0)
+                    l1 = self.draw_tlatex(gr5.GetX()[i] - x_err, gr5.GetY()[i] + .03, '{0:5.0f}'.format(ana.run.flux), color=1, align=10, size=.04)
+                    gr1.GetListOfFunctions().Add(l1)
+                if fit1.Parameter(0) > 10:
+                    gr1.SetPoint(i, x, fit1.Parameter(0))
+                    gr1.SetPointError(i, .1 * x if flux else 0, fit1.ParError(0))
+                    gr_errors.SetPoint(i, x, fit1.Parameter(0))
+                    gr_errors.SetPointError(i, .1 * x if flux else 0, fit1.ParError(0) + rel_sys_error * fit1.Parameter(0))
+                    if all_corr:
+                        gr2.SetPoint(i, x, fit2.Parameter(0))
+                        gr3.SetPoint(i, x, fit3.Parameter(0))
+                        gr4.SetPoint(i, x, fit4.Parameter(0))
+                        gr2.SetPointError(i, 0, fit2.ParError(0))
+                        gr3.SetPointError(i, 0, fit3.ParError(0))
+                        gr4.SetPointError(i, 0, fit4.ParError(0))
+                    # set special markers for the first and last run
+                    if i == 0:
+                        gr_first.SetPoint(0, x, fit1.Parameter(0))
+                    if j == len(self.collection) - 1:
+                        gr_last.SetPoint(0, x, fit1.Parameter(0))
+                    i += 1
+                j += 1
+            graphs = [gr_errors, gr1]
+            gr_line = gr1.Clone()
+            self.format_histo(gr_line, name='gLine', color=920)
+            if fl:
+                graphs += [gr_first, gr_last]
+            if all_corr:
+                graphs += [gr2, gr3]
+            if raw:
+                graphs.append(gr4)
+            legend = self.make_legend(.65, .35, nentries=len(graphs))
+            # gr1.SetName('data') if len(graphs) < 5 else self.do_nothing()
+
+            mg = TMultiGraph('mg_ph', prefix + self.diamond_name)
+            mg.Add(gr_line, 'l')
+            for gr in graphs:
+                if gr.GetName().startswith('gFull'):
+                    legend.AddEntry(gr, gr.GetTitle(), 'l')
+                else:
+                    legend.AddEntry(gr, gr.GetTitle(), 'p')
+                mg.Add(gr, 'p')
+
+            # small range
+            self.format_histo(mg, color=None, x_tit=mode + ' [kHz/cm^{2}]' if flux else '', y_tit='Pulse Height [au]', y_off=1.75, x_off=1.3, draw_first=True)
+            ymin, ymax = mg.GetYaxis().GetXmin(), mg.GetYaxis().GetXmax()
+            mg_y = ymin - (ymax - ymin) * .3
+            mg.GetYaxis().SetRangeUser(mg_y, ymax)
             if vs_time:
-                self.set_root_output(False)
-                x_err = ana.run.duration.seconds / 2.
-                x = int(ana.run.log_start.strftime('%s')) + x_err - self.StartTime
-                gr5.SetPoint(i, x, fit1.Parameter(0))
-                gr5.SetPointError(i, x_err, 0)
-                l1 = self.draw_tlatex(gr5.GetX()[i] - x_err, gr5.GetY()[i] + .03, '{0:5.0f}'.format(ana.run.flux), color=1, align=10, size=.04)
-                gr1.GetListOfFunctions().Add(l1)
-            if fit1.Parameter(0) > 10:
-                gr1.SetPoint(i, x, fit1.Parameter(0))
-                gr2.SetPoint(i, x, fit2.Parameter(0))
-                gr3.SetPoint(i, x, fit3.Parameter(0))
-                gr4.SetPoint(i, x, fit4.Parameter(0))
-                gr1.SetPointError(i, 0, fit1.ParError(0))
-                gr2.SetPointError(i, 0, fit2.ParError(0))
-                gr3.SetPointError(i, 0, fit3.ParError(0))
-                gr4.SetPointError(i, 0, fit4.ParError(0))
-                # set special markers for the first and last run
-                if i == 0:
-                    gr_first.SetPoint(0, x, fit1.Parameter(0))
-                if j == len(self.collection) - 1:
-                    gr_last.SetPoint(0, x, fit1.Parameter(0))
-                i += 1
-            j += 1
-        graphs = [gr1]
-        if fl:
-            graphs += [gr_first, gr_last]
-        if all_corr:
-            graphs += [gr2, gr3]
-        if raw:
-            graphs.append(gr4)
-        legend = self.make_legend(.65, .35, nentries=len(graphs))
-        gr1.SetName('data') if len(graphs) < 4 else self.do_nothing()
+                mg.Add(gr5, '[]')
+                mg.Add(gr5, 'p')
+                mg.GetXaxis().SetTimeDisplay(1)
+                mg.GetXaxis().SetTimeFormat('%H:%M%F2000-02-28 23:00:00')
+                mg.GetXaxis().SetLabelSize(.03)
+            x_vals = sorted([gr1.GetX()[i] for i in xrange(gr1.GetN())])
+            mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 1.2) if flux else self.do_nothing()
+            self.save_histo(mg, 'PulseHeight{mod}'.format(mod=mode.title()), False, self.save_dir, lm=.14, draw_opt='A', l=legend, logx=True if flux else 0, gridy=1 if vs_time else 0,
+                            gridx=True if vs_time else 0)
 
-        mg = TMultiGraph('mg_ph', prefix + self.diamond_name,)
-        for gr in graphs:
-            legend.AddEntry(gr, gr.GetName(), 'p')
-            mg.Add(gr, 'lp')
+            # no zero suppression
+            mg1 = mg.Clone()
+            mg1.SetName('mg1_ph')
+            mg1.GetListOfGraphs()[0].SetLineColor(self.colors[0])
+            mg1.GetYaxis().SetRangeUser(0, ymax * 1.1)
+            self.save_histo(mg1, 'PulseHeightZero{mod}'.format(mod=mode.title()), False, self.save_dir, lm=.14, draw_opt='A', l=legend, logx=True if flux else 0)
 
-        # small range
-        self.format_histo(mg, color=None, x_tit=mode + ' [kHz/cm^{2}]' if flux else '', y_tit='Pulse Height [au]', y_off=1.75, x_off=1.3, draw_first=True)
-        ymin, ymax = mg.GetYaxis().GetXmin(), mg.GetYaxis().GetXmax()
-        mg_y = ymin - (ymax - ymin) * .3
-        mg.GetYaxis().SetRangeUser(mg_y, ymax)
-        if vs_time:
-            mg.Add(gr5, '[]')
-            mg.Add(gr5, 'p')
-            mg.GetXaxis().SetTimeDisplay(1)
-            mg.GetXaxis().SetTimeFormat('%H:%M%F2000-02-28 23:00:00')
-            mg.GetXaxis().SetLabelSize(.03)
-        x_vals = sorted([gr1.GetX()[i] for i in xrange(gr1.GetN())])
-        mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 1.2) if flux else self.do_nothing()
-        self.RootObjects.append(self.save_histo(mg, 'PulseHeight{mod}'.format(mod=mode.title()), False, self.save_dir, lm=.14, draw_opt='A', l=legend, logx=True if flux else 0,
-                                                gridy=1 if vs_time else 0, gridx=True if vs_time else 0))
+            self.reset_colors()
 
-        # no zero suppression
-        mg1 = mg.Clone()
-        mg1.SetName('mg1_ph')
-        mg1.GetYaxis().SetRangeUser(0, ymax * 1.1)
-        self.RootObjects.append(self.save_histo(mg1, 'PulseHeightZero{mod}'.format(mod=mode.title()), False, self.save_dir, lm=.14, draw_opt='A', l=legend, logx=True if flux else 0))
+            self.PulseHeight = gr1
+            if save_comb:
+                run_info = self.collection.values()[0].run.get_runinfo(self.channel)
+                self.save_combined_pulse_heights(mg, mg1, legend, mg_y, show=show, run_info=run_info)
+            return mg
 
-        # gROOT.SetBatch(1) if not show else self.do_nothing()
-        # c = TCanvas('c_phall', 'Rate Scan', 2000, 1000)
-        # c.Divide(2)
-        # for i, gr in enumerate([mg, mg1], 1):
-        #     pad = c.cd(i)
-        #     pad.SetLogx() if flux else self.do_nothing()
-        #     pad.SetMargin(.13, .1, .15, .1)
-        #     gr.Draw('a')
-        #     legend.Draw()
-        # self.RootObjects.append(c)
-        # self.save_plots('PHOverview{mod}'.format(mod=mode), self.save_dir)
-        gROOT.SetBatch(0)
-        self.reset_colors()
-
-        self.PulseHeight = gr1
-        if save_comb:
-            self.save_combined_pulse_heights(mg, mg1, legend, mg_y, show=show)
-        return mg
-
-    def save_combined_pulse_heights(self, mg, mg1, l, mg_y, show=True, name=None):
-        self.set_root_output(show)
-        c = TCanvas('c', 'c', int(self.Res * 10 / 11.), self.Res)
-        make_transparent(c)
-        bm = .11
-        pm = bm + (1 - bm - .1) / 5.
-        p0 = self.Currents.make_tpad('p0', 'p0', pos=[0, 0, 1, pm], margins=[.14, .1, bm / pm, 0], transparent=True, logx=True, gridy=True)
-        p1 = self.Currents.make_tpad('p1', 'p1', pos=[0, pm, 1, 1], margins=[.14, .1, 0, .1], transparent=True, logx=True)
-        p0.Draw()
-        p1.Draw()
-
-        # bottom pad with 20%
-        p0.cd()
-        scale_multigraph(mg1)
-        self.format_histo(mg1, y_range=[.76, 1.24], y_tit='Relative ph [au]', y_off=.66, tit_size=.1, x_off=99)
-        mg1.GetYaxis().SetLabelSize(.1)
-        mg1.GetYaxis().SetNdivisions(3)
-        mg1.Draw('alp')
-        self.draw_x_axis(1.24, mg1.GetXaxis().GetXmin(), mg1.GetXaxis().GetXmax(), mg1.GetXaxis().GetTitle() + ' ', opt='SG+-=', tit_size=.1, lab_size=0.1, off=99, tick_size=.1)
-        hide_axis(mg1.GetXaxis())
-
-        # top pad with zero suppression
-        p1.cd()
-        mg.Draw('alp')
-        self.draw_x_axis(mg_y, mg1.GetXaxis().GetXmin(), mg1.GetXaxis().GetXmax(), mg1.GetXaxis().GetTitle() + ' ', opt='SG-', tit_size=.035, lab_size=0.035, off=1, l_off=99)
-        move_legend(l, .7, .1)
-        l.Draw()
-
-        run_info = self.collection.values()[0].run.get_runinfo(self.channel, pad=p0)
-        self.FirstAnalysis.run.scale_runinfo_legend(txt_size=.075, w=.435, h=0.1 / pm)
-        run_info[0].Draw()
-        run_info[1].Draw()
-
-        self.save_canvas(c, name='CombinedPulseHeights' if name is None else name)
-
-        self.RootObjects.append([p0, p1, c])
-        self.set_root_output(True)
-        self.FirstAnalysis.run.reset_info_legend()
+        mg2 = func() if save_plots else None
+        return self.do_pickle(pickle_path, func, mg2)
 
     def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False, show=True, cut=None, beam_on=True):
         legend = TLegend(0.7, 0.3, 0.98, .7)
