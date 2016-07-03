@@ -121,7 +121,7 @@ class Analysis(Elementary):
         self.histos.append([h, gr])
 
     def _add_buckets(self, ymin, ymax, xmin=0, xmax=512, avr_pos=-2, full_line=False):
-        start = self.run.signal_regions['b'][0] % 40
+        start = self.run.signal_regions['b'][0] % 40 / 2
         stop = int(.8 * xmax) if xmax > 500 else int(xmax)
         bucket0 = self.run.signal_regions['b'][0] / 40
         x_range = xmax - xmin
@@ -135,9 +135,11 @@ class Analysis(Elementary):
                 self.draw_tlatex(x + 10, ymin - 0.1 * y_range, str(i), align=20, color=418, size=0.03)
                 if peak_fit:
                     pos = peak_fit % 20
+                    p_pos = round_down_to(x, 20) + pos
+                    p_pos += 20 if p_pos < x else 0
                     if i == avr_pos:
-                        self.draw_tlatex(x + pos, ymin + 0.05 * y_range, 'Average Peak Position', color=807, size=0.03)
-                    self.draw_arrow(x + pos, x + pos, ymin + 1, ymin + 0.04 * y_range, col=807, width=2)
+                        self.draw_tlatex(p_pos, ymin + 0.05 * y_range, 'Average Peak Position', color=807, size=0.03)
+                    self.draw_arrow(p_pos, p_pos, ymin + 1, ymin + 0.04 * y_range, col=807, width=2)
 
     def draw_peak_integrals(self, event=None, add_buckets=True, show=True):
         h = self.__draw_single_wf(event=event, show=False)
