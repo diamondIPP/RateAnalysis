@@ -159,17 +159,17 @@ class AnalysisCollection(Elementary):
         ph = self.draw_pulse_heights(show=False, vs_time=True, fl=False, save_comb=False)
         self.Currents.set_graphs()
         cur = self.Currents.CurrentGraph.Clone()
-        cur.SetLineColor(899)
+        y = [cur.GetYaxis().GetXmin(), cur.GetYaxis().GetXmin()]
+        self.format_histo(cur, color=899, y_range=increased_range(y, 0.3))
         scale = ph.GetListOfGraphs()[0].GetY()[0]
         pul = self.draw_pulser_info(show=False, do_fit=False, vs_time=True, scale=scale, save_comb=False)
         pul.SetLineColor(859)
         pul.SetMarkerColor(859)
 
         entries = [1, 3, 1]
-        legends = [self.make_legend(.8, .7, nentries=entries[i], scale=1.7, w=.2) for i in xrange(3)]
-        for gr in ph.GetListOfGraphs():
-            if gr.GetName() != 'flux':
-                legends[1].AddEntry(gr, gr.GetName(), 'p')
+        positions = [[.84, .7], [.84, .7], [.84, .2]]
+        legends = [self.make_legend(*positions[i], nentries=entries[i], scale=1.7, w=.15) for i in xrange(3)]
+        legends[1].AddEntry(ph.GetListOfGraphs()[0], 'data', 'p')
         dummy_gr = self.make_tgrapherrors('g', 'g', width=2)
         legends[1].AddEntry(0, 'flux in kHz/cm^{2}', 'p')
         legends[1].AddEntry(dummy_gr, 'duration', 'l')
@@ -179,7 +179,7 @@ class AnalysisCollection(Elementary):
         gROOT.SetBatch(1) if not show else do_nothing()
         c = TCanvas('c', 'c', 1500, 1000)
         margins = [[.075, .05, 0, .1], [.075, .05, 0, 0], [.075, .05, 0.05, 0]]
-        pads = [self.Currents.make_tpad('p{0}'.format(i + 1), 'p{0}'.format(i + 1), pos=[0, (3 * i + 1) / 10., 1, ((i + 1) * 3 + 1) / 10.], gridx=True, margins=margins[2 - i]) for i in xrange(3)]
+        pads = [self.Currents.draw_tpad('p{0}'.format(i + 1), 'p{0}'.format(i + 1), pos=[0, (3 * i + 1) / 10., 1, ((i + 1) * 3 + 1) / 10.], gridx=True, margins=margins[2 - i]) for i in xrange(3)]
         for pad in pads:
             pad.Draw()
         draw_opts = ['pl', '', 'l']
