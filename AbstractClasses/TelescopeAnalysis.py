@@ -8,6 +8,7 @@ from numpy import array, zeros
 from Elementary import Elementary
 from RunClass import Run
 from Cut import Cut
+from Utils import *
 
 
 class Analysis(Elementary):
@@ -196,7 +197,7 @@ class Analysis(Elementary):
     def show_chi2(self, mode=None, show=True):
         gROOT.SetBatch(1)
         assert mode in ['x', 'y', None], 'mode has to be in {lst}!'.format(lst=['x', 'y', None])
-        n_bins = 500 if mode is None else 1000
+        n_bins = 500 if mode is None else 200
         mode = 'tracks' if mode is None else mode
         h = TH1F('h', '#chi^{2} in ' + mode, n_bins, 0, 100)
         self.tree.Draw('chi2_{mod}>>h'.format(mod=mode), '', 'goff')
@@ -207,7 +208,7 @@ class Analysis(Elementary):
         if show or mode == 'tracks':
             yq = zeros(1)
             h.GetQuantiles(1, yq, array([.9]))
-        self.format_histo(h, x_tit='#chi^{2}', y_tit='Entries', y_off=1.8)
+        self.format_histo(h, x_tit='#chi^{2}', y_tit='Number of Entries', y_off=1.8)
         h.Draw()
         self.histos.append([h, c])
         gROOT.SetBatch(0)
