@@ -51,6 +51,12 @@ class RunSelection(Elementary):
         for key, log in self.logs.iteritems():
             print '{key}.)\t{time}\t{log}'.format(key=key, time=log[1], log=log[0])
 
+    def get_runinfo(self, ch):
+        runs = [self.get_selected_runs()[0], self.get_selected_runs()[-1], '', '']
+        self.run.diamond_names[ch] = self.Diamond
+        self.run.bias[ch] = self.SelectedBias
+        return self.run.get_runinfo(ch, runs=runs)
+
     # endregion
 
     # ============================================
