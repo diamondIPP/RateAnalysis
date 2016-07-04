@@ -368,7 +368,7 @@ class AnalysisCollection(Elementary):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         self.reset_colors()
         stack = THStack('hsd', 'Pulse Height Distributions')
-        legend = self.make_legend(nentries=self.get_number_of_analyses())
+        legend = self.make_legend(.69, .95, nentries=self.get_number_of_analyses())
         histos = [ana.show_signal_histo(show=False) for ana in self.collection.itervalues()]
         for i, h in enumerate(histos):
             self.format_histo(h, lw=2, color=self.get_color())
@@ -511,69 +511,97 @@ class AnalysisCollection(Elementary):
 
     # ============================================
     # region PULSER
-    def draw_pulser_info(self, flux=True, show=True, mean=True, corr=True, beam_on=True, vs_time=False, do_fit=True, scale=1, save_comb=True):
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        flux = False if vs_time else flux
-        mode = 'Flux' if flux else 'Run'
-        mode = 'Time' if vs_time else mode
-        title = '{mean} of Pulser vs {mod} ({ped}, {beam})'.format(mean='Mean' if mean else 'Sigma', mod=mode,
-                                                                   ped='pedcorrected' if corr else 'uncorrected', beam='BeamOff' if not beam_on else 'BeamOn')
-        gr = self.make_tgrapherrors('data', title, color=602)
-        gr1 = self.make_tgrapherrors('first run', 'first', marker=22, color=2, marker_size=2)
-        gr2 = self.make_tgrapherrors('last run', 'last', marker=23, color=2, marker_size=2)
-        y0 = None
-        for i, (key, ana) in enumerate(self.collection.iteritems()):
-            x = ana.run.flux if flux else key
-            fit = ana.calc_pulser_fit(show=False, corr=corr, beam_on=beam_on)
-            par = 1 if mean else 2
-            cut = ana.Cut.generate_pulser_cut(beam_on)
-            ped_fit = ana.show_pedestal_histo(cut=cut, draw=False)
-            ped_err = ped_fit.ParError(par)
-            if vs_time:
-                xerr = ana.run.duration.seconds / 2.
-                x = int(ana.run.log_start.strftime('%s')) + xerr - self.StartTime
-            y = fit.Parameter(par)
-            y0 = y if y0 is None else y0
-            yerr = sqrt(pow(fit.ParError(par), 2) + pow(ped_err, 2))
-            if scale != 1:
-                y *= scale / y0
-                yerr *= scale / y0
-            gr.SetPoint(i, x, y)
-            gr.SetPointError(i, 0, yerr)
-            if i == 0:
-                gr1.SetPoint(0, x, y)
-            if i == len(self.collection) - 1:
-                gr2.SetPoint(0, x, y)
-            i += 1
-        if vs_time:
-            gr.GetXaxis().SetTimeDisplay(1)
-            gr.GetXaxis().SetTimeFormat('%H:%M%F2000-02-28 23:00:00')
-            gr.GetXaxis().SetLabelSize(.03)
-        if do_fit:
-            gStyle.SetOptFit(1)
-            gr.Fit('pol0', 'q')
-        mg = TMultiGraph('mg_pph', 'Pulser Signal vs {mod}'.format(mod=mode))
-        graphs = [gr]
-        if not vs_time:
-            graphs += [gr1, gr2]
-        l = self.make_legend(.65, .35, nentries=3)
-        for graph in graphs:
-            l.AddEntry(graph, graph.GetName(), 'p')
-            mg.Add(graph, 'lp')
+    def draw_pulser_info(self, flux=True, show=True, mean=True, corr=True, beam_on=True, vs_time=False, do_fit=True, scale=1, save_comb=True, save=True, ret_mg=False):
 
-        gROOT.SetBatch(1)
-        self.format_histo(mg, x_tit=self.make_x_tit(mode, flux), y_tit='{mean} [au]'.format(mean='Mean' if mean else 'Sigma'), draw_first=True)
-        y = mg.GetYaxis().GetXmin(), mg.GetYaxis().GetXmax()
-        mg_y = y[0] * 1.3 - y[1] * .3
-        self.format_histo(mg, y_range=[mg_y, y[1]], y_off=1.75, x_off=1.3)
-        x_vals = sorted([gr.GetX()[i] for i in xrange(gr.GetN())])
-        mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 1.2) if flux else self.do_nothing()
-        self.save_histo(mg, 'Pulser{mean}{a}{b}'.format(mean='Mean' if mean else 'Sigma', a=corr, b=beam_on), lm=.14, draw_opt='A', logx=True if flux else 0, l=l, show=False)
-        mg1 = mg.Clone()
-        if save_comb:
-            self.save_combined_pulse_heights(mg, mg1, l, mg_y, show, name='CombinedPulserPulseHeights')
-            self.ROOTObjects.append(mg1)
-        return gr
+        pickle_path = self.FirstAnalysis.PickleDir + 'Pulser/PulseHeights_{tc}_{rp}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, rp=self.run_plan, dia=self.diamond_name)
+        flux = False if vs_time else flux
+        mode = self.get_mode(flux, vs_time)
+
+        def func():
+            gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+            gr = self.make_tgrapherrors('data', 'pulser data', color=602)
+            gr1 = self.make_tgrapherrors('gFirst', 'first run', marker=22, color=2, marker_size=2)
+            gr2 = self.make_tgrapherrors('gLast', 'last run', marker=23, color=2, marker_size=2)
+            y0 = None
+            for i, (key, ana) in enumerate(self.collection.iteritems()):
+                x = ana.run.flux if flux else key
+                fit = ana.calc_pulser_fit(show=False, corr=corr, beam_on=beam_on)
+                par = 1 if mean else 2
+                cut = ana.Cut.generate_pulser_cut(beam_on)
+                ped_fit = ana.show_pedestal_histo(cut=cut, draw=False)
+                ped_err = ped_fit.ParError(par)
+                if vs_time:
+                    xerr = ana.run.duration.seconds / 2.
+                    x = int(ana.run.log_start.strftime('%s')) + xerr - self.StartTime
+                y = fit.Parameter(par)
+                y0 = y if y0 is None else y0
+                yerr = sqrt(pow(fit.ParError(par), 2) + pow(ped_err, 2))
+                if scale != 1:
+                    y *= scale / y0
+                    yerr *= scale / y0
+                gr.SetPoint(i, x, y)
+                gr.SetPointError(i, .1 * x if flux else 0, yerr)
+                if i == 0:
+                    gr1.SetPoint(0, x, y)
+                if i == len(self.collection) - 1:
+                    gr2.SetPoint(0, x, y)
+                i += 1
+            if vs_time:
+                gr.GetXaxis().SetTimeDisplay(1)
+                gr.GetXaxis().SetTimeFormat('%H:%M%F2000-02-28 23:00:00')
+                gr.GetXaxis().SetLabelSize(.03)
+            if do_fit:
+                gStyle.SetOptFit(1)
+                gr.Fit('pol0', 'q')
+            mg = TMultiGraph('mg_pph', 'Pulser Signal vs {mod}'.format(mod=mode))
+            gr_line = gr.Clone()
+            self.format_histo(gr_line, name='gLine', color=920)
+            graphs = [gr]
+            if not vs_time:
+                graphs += [gr1, gr2]
+            l = self.make_legend(.65, .35, nentries=3)
+            mg.Add(gr_line, 'l')
+            for graph in graphs:
+                l.AddEntry(graph, graph.GetTitle(), 'p')
+                mg.Add(graph, 'p')
+
+            gROOT.SetBatch(1)
+            self.format_histo(mg, x_tit=self.make_x_tit(mode, flux), y_tit='{mean} [au]'.format(mean='Pulse Height' if mean else 'Sigma'), draw_first=True)
+            y = mg.GetYaxis().GetXmin(), mg.GetYaxis().GetXmax()
+            mg_y = y[0] * 1.3 - y[1] * .3
+            self.format_histo(mg, y_range=[mg_y, y[1] + (y[1] - y[0]) * .3], y_off=1.75, x_off=1.3)
+            x_vals = sorted([gr.GetX()[i] for i in xrange(gr.GetN())])
+            mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 1.2) if flux else self.do_nothing()
+            self.save_histo(mg, 'Pulser{mean}{a}{b}'.format(mean='Mean' if mean else 'Sigma', a=corr, b=beam_on), lm=.14, draw_opt='A', logx=True if flux else 0, l=l, show=False)
+            mg1 = mg.Clone()
+            mg1.GetListOfGraphs()[0].SetLineColor(602)
+            self.__draw_pulser_legend()
+            if save_comb:
+                self.save_combined_pulse_heights(mg, mg1, l, mg_y, show, name='CombinedPulserPulseHeights', pulser_leg=self.__draw_pulser_legend)
+                self.ROOTObjects.append(mg1)
+            return mg
+
+        gra = func() if save else None
+        gra = self.do_pickle(pickle_path, func, gra)
+        return gra if ret_mg else gra.GetListOfGraphs()[1]
+
+    def __draw_pulser_legend(self):
+        try:
+            typ = self.FirstAnalysis.RunInfo['pulser']
+            pol = 'positive' if self.FirstAnalysis.PulserPolarity > 0 else 'negative'
+            sig = 'positive' if self.FirstAnalysis.Polarity > 0 else 'negative'
+            l1 = self.make_legend(.7, .95, nentries=3, margin=.05, w=.25)
+            l1.AddEntry(0, 'Type:', '')
+            l1.AddEntry(0, typ, '').SetTextAlign(32)
+            l1.AddEntry(0, 'Pulser Polarity:', '')
+            l1.AddEntry(0, pol, '').SetTextAlign(32)
+            l1.AddEntry(0, 'Signal Polarity:', '')
+            l1.AddEntry(0, sig, '').SetTextAlign(32)
+            l1.SetNColumns(2)
+            l1.Draw()
+            self.ROOTObjects.append(l1)
+        except KeyError:
+            pass
 
     def draw_pulser_histos(self, show=True, corr=True):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
@@ -635,27 +663,44 @@ class AnalysisCollection(Elementary):
         self.save_plots('PulserPedestalComparison', sub_dir=self.save_dir)
         self.RootObjects.append([c, graphs, legend])
 
-    def draw_pulser_rates(self, show=True, flux=True):
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        gROOT.SetBatch(1)
-        mode = 'Flux' if flux else 'Run'
-        title = 'Pulser Rate vs {mod} '.format(mod=mode)
-        gr = self.make_tgrapherrors('gr', title)
+    def draw_pulser_rates(self, show=True, flux=True, real=False):
+        mode = self.get_mode(flux)
+        gr = self.make_tgrapherrors('gr', 'Pulser Rate vs {mod} '.format(mod=mode))
         for i, (key, ana) in enumerate(self.collection.iteritems()):
             x = ana.run.flux if flux else key
-            fit = ana.fit_pulser_rate(show=False)
-            gr.SetPoint(i, x, fit.Parameter(0))
-            gr.SetPointError(i, 0, fit.ParError(0))
-        gROOT.SetBatch(0) if show else self.do_nothing()
-        c = TCanvas('c', 'Pulser Rates', 1000, 1000)
-        c.SetLogx() if flux else self.do_nothing()
+            fit = ana.Pulser.calc_fraction() if not real else ana.Pulser.calc_real_fraction(), 0
+            gr.SetPoint(i, x, fit[0])
+            gr.SetPointError(i, 0, fit[1])
         self.format_histo(gr, x_tit=self.make_x_tit(mode, flux), y_tit='Pulser Rate [Hz]')
-        gr.Draw('alp')
-        gROOT.SetBatch(0)
-        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.save_plots('PulserRate{0}'.format(mode), sub_dir=self.save_dir)
-        self.RootObjects.append([gr, c])
+        self.save_histo(gr, 'PulserRate{0}'.format(mode), show, logx=flux, draw_opt='alp')
         return gr
+
+    def calc_pulser_error(self, fs11=65, fsh13=.5):
+        runs = self.get_runs_by_collimator(fs11=fs11, fsh13=fsh13)
+        means = []
+        errors = []
+        for run in runs:
+            ana = self.collection[run]
+            fit = ana.calc_pulser_fit(show=False)
+            means.append(fit.Parameter(1))
+            errors.append(fit.ParError(1))
+        means_ = calc_mean(means)
+        w_means = calc_weighted_mean(means, errors)
+        return means_ if means_[1] > w_means[1] else w_means
+
+    def calc_all_pulser_errors(self, recalc=False):
+        pickle_path = self.FirstAnalysis.PickleDir + 'Ph_fit/PulserErrros_{tc}_{rp}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, rp=self.run_plan, dia=self.diamond_name)
+
+        def func():
+            collimator_settings = set([(ana.run.RunInfo['fs11'], ana.run.RunInfo['fsh13']) for key, ana in self.collection.iteritems()])
+            fits = {}
+            for s in collimator_settings:
+                retval = self.calc_pulser_error(fs11=s[0], fsh13=s[1])
+                fits[s] = retval
+            return fits
+
+        errors = func() if recalc else None
+        return self.do_pickle(pickle_path, func, errors)
 
     # endregion
 
@@ -956,20 +1001,49 @@ class AnalysisCollection(Elementary):
         self.reset_colors()
         histos = [ana.show_chi2(mode=mode, show=False) for ana in self.collection.itervalues()]
         yq = zeros(1)
-        histos[0].GetQuantiles(1, yq, array([.9]))
-        legend = self.make_legend(nentries=self.get_number_of_analyses())
+        cuts = []
+        for h in histos:
+            h.GetQuantiles(1, yq, array([.9]))
+            cuts.append(yq[0])
+        min_cut = min(cuts)
+        max_cut = max(cuts)
+        xmax = max_cut * 1.1
+        print 'cut:', min_cut, max_cut
+        g_cut = TCutG('cut', 5)
+        g_cut.SetPoint(0, min_cut, -1e9)
+        g_cut.SetPoint(1, min_cut, +1e9)
+        g_cut.SetPoint(2, max_cut, +1e9)
+        g_cut.SetPoint(3, max_cut, -1e9)
+        g_cut.SetPoint(4, min_cut, -1e9)
+        g_cut.SetFillStyle(3144)
+        g_cut.SetFillColor(kRed)
+        g_cut.SetLineStyle(2)
+        g_cut.SetLineColor(kRed)
+        legend = self.make_legend(nentries=self.get_number_of_analyses() + 1)
         stack = THStack('hx2', '#chi^{{2}}{mode}'.format(mode=' in ' + mode if mode is not None else ''))
+        ymax = 0
         for i, h in enumerate(histos):
             self.format_histo(h, stats=0, color=self.get_color(), lw=2)
-            h.GetXaxis().SetRangeUser(0, yq[0])
+            # h.GetXaxis().SetRangeUser(0, yq[0])
             self.normalise_histo(h, to100=True)
             stack.Add(h)
+            ymax = max(ymax, h.GetBinContent(h.GetMaximumBin()))
             legend.AddEntry(h, '{0: 6.0f} kHz/cm^{{2}}'.format(self.collection.values()[i].get_flux()), 'l')
+        legend.AddEntry(g_cut, 'cut: 90% quantile', 'l')
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.format_histo(stack, x_tit='#chi^{2}', y_tit='Probability [%]', y_off=1.5, draw_first=True)
-        stack.GetXaxis().SetRangeUser(0, yq[0])
+        self.format_histo(stack, x_tit='#chi^{2}', y_tit='Fraction of Events [%]', y_off=1.5, draw_first=True)
+        stack.GetXaxis().SetRangeUser(0, xmax)
         mode = '' if mode is None else mode
-        self.RootObjects.append(self.save_histo(stack, 'AllChi2{mod}'.format(mod=mode.upper()), show, self.save_dir, lm=.15, draw_opt='nostack', l=legend))
+        self.draw_histo(stack, '', show, self.save_dir, lm=.15, draw_opt='nostack', l=legend)
+        if mode is not None:
+            g_cut.Draw('same')
+            nominal_chi2 = TF1("f", "[1]*ROOT::Math::chisquared_pdf(x,[0])", 0, xmax)
+            nominal_chi2.SetParameter(0, 2)
+            nominal_chi2.SetParameter(1, ymax / .5)
+            nominal_chi2.SetNpx(1000)
+            self.RootObjects.append(nominal_chi2)
+        self.RootObjects.append(g_cut)
+        self.save_plots('AllChi2{mod}'.format(mod=mode.upper()))
 
     def draw_all_chi2s(self, show=True):
         self.show_chi2s(show=show)
@@ -1041,6 +1115,35 @@ class AnalysisCollection(Elementary):
 
         print '\nThe preanalysis for this selection took', self.print_elapsed_time(start_time)
 
+    def get_systematic_error_table(self, latex=False):
+        f = open('PlotsFelix/table_{tc}_{rp}_{dia}.txt'.format(tc=self.TESTCAMPAIGN, rp=self.run_plan, dia=self.diamond_name), 'w')
+        l = '&\t' if latex else ''
+        print 'Pulser', 'SignalFlux', 'Signal < 150', 'Signal < 80', 'Full Pulser Spread', 'Single Pulser Spreads'
+        pulser_err = self.calc_all_pulser_errors().values()
+        p_mean = calc_mean([x[0] for x in pulser_err])
+        out = '{0:2.2f}\t{l}{1:2.2f}\t{l}{2:2.2f}\t{l}'.format(min(x[1] / x[0] for x in pulser_err) * 100, max(x[1] / x[0] for x in pulser_err) * 100, p_mean[1] / p_mean[0] * 100, l=l)
+        scan_errors = self.draw_all_ph_distributions(show=False).values()
+        out += '{0:2.2f}\t{l}{1:2.2f}\t{l}'.format(min(x[1] / x[0] for x in scan_errors) * 100, max(x[1] / x[0] for x in scan_errors) * 100, l=l)
+        flux_errors = self.draw_ph_distributions_below_flux(flux=150, show=False)
+        out += '{0:2.2f}\t{l}'.format(flux_errors[1] / flux_errors[0] * 100, l=l)
+        flux_errors = self.draw_ph_distributions_below_flux(flux=80, show=False)
+        out += '{0:2.2f}\t{l}'.format(flux_errors[1] / flux_errors[0] * 100, l=l)
+        out += '{0:2.2f}\t{l}'.format(self.calc_full_pedestal_spread(), l=l)
+        spreads = self.calc_all_pedestal_spreads().values()
+        try:
+            min_spread = min(x for x in spreads if x)
+        except ValueError:
+            min_spread = 0
+        out += '{0:2.2f}\t{l}{1:2.2f}'.format(min_spread, max(x for x in spreads), l=l)
+        print out
+        f.write(out)
+
+    def get_runs_by_collimator(self, fs11=65, fsh13=.5):
+        return [key for key, ana in self.collection.iteritems() if ana.run.RunInfo['fs11'] == fs11 and ana.run.RunInfo['fsh13'] == fsh13]
+
+    def get_runs_below_flux(self, flux):
+        return [key for key, ana in self.collection.iteritems() if ana.run.flux < flux]
+
     def select_runs_in_range(self, start, stop):
         new_collection = OrderedDict()
         for key, ana in self.collection.iteritems():
@@ -1066,7 +1169,7 @@ class AnalysisCollection(Elementary):
         return flux
 
     @staticmethod
-    def get_mode(flux, vs_time):
+    def get_mode(flux, vs_time=False):
         string = 'Run'
         string = 'Flux' if flux else string
         return 'Time' if vs_time else string
