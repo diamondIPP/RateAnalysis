@@ -1684,8 +1684,9 @@ class PadAnalysis(Analysis):
         max_bin = h.GetMaximumBin()
         return h.GetBinCenter(max_bin)
 
-    def draw_snrs(self, show=True, lego=True):
+    def draw_snrs(self, show=True, lego=True, proj=False):
         self.verbose = False
+        lego = False if proj else lego
         gr = self.make_tgrapherrors('gr', 'Signal to Noise Ratios')
         h = TProfile2D('h_snr', 'Signal to Noise Ratios', 12, 1, 7, 12, 3, 9)
         l1 = TLegend(.7, .68, .9, .9)
@@ -1698,23 +1699,38 @@ class PadAnalysis(Analysis):
             h.Fill(peak_int[0] / 2., peak_int[1] / 2., snr[0])
             gr.SetPoint(i, i + 1, snr[0])
             gr.SetPointError(i, 0, snr[1])
-        if not lego:
-            for i, region in enumerate(self.get_all_signal_names().itervalues(), 1):
-                bin_x = gr.GetXaxis().FindBin(i)
-                gr.GetXaxis().SetBinLabel(bin_x, region)
+        for i, region in enumerate(self.get_all_signal_names().itervalues(), 1):
+            bin_x = gr.GetXaxis().FindBin(i)
+            gr.GetXaxis().SetBinLabel(bin_x, region)
         [l1.AddEntry(0, '{reg}:  {val}'.format(reg=reg, val=value), '') for reg, value in self.run.signal_regions.iteritems() if len(reg) <= 2]
         [l2.AddEntry(0, '{reg}:  {val}'.format(reg=integ, val=value), '') for integ, value in self.run.peak_integrals.iteritems() if len(integ) <= 2]
         self.format_histo(gr, y_tit='SNR', y_off=1.2, color=self.get_color(), fill_color=1)
         gr.SetLineColor(2)
         vals = sorted([h.GetBinContent(i) for i in xrange(h.GetNbinsX() * h.GetNbinsY()) if h.GetBinContent(i)])
+        self.__draw_profiles(h, proj)
         self.format_histo(h, x_tit='Left Length [ns]', x_off=1.45, y_tit='Right Length [ns]', y_off=1.6, z_tit='snr', z_off=1.6, stats=0, z_range=[vals[2], max(vals)])
         h.SetContour(50)
-        if lego:
-            gStyle.SetPalette(53)
-            self.save_histo(h, 'SNRLego', show, draw_opt='lego2', bm=.2, rm=.1, lm=.13, phi=-30, theta=40)
-            gStyle.SetPalette(1)
-        else:
-            self.save_histo(gr, 'SNR', show, l=[l1, l2], draw_opt='bap')
+        gStyle.SetPalette(53)
+        self.save_histo(h, 'SNRLego', show and lego, draw_opt='colz', bm=.2, rm=.1, lm=.13, phi=-30, theta=40)
+        gStyle.SetPalette(1)
+        self.save_histo(gr, 'SNR', not (lego or proj) and show, l=[l1, l2], draw_opt='bap')
+
+    def __draw_profiles(self, histo, show=True):
+        h = histo
+        py = h.ProfileY('Right Length')
+        px = h.ProfileX('Left Length')
+        vals = [py.GetBinContent(i) for i in xrange(py.GetNbinsX()) if py.GetBinContent(i)] + [px.GetBinContent(i) for i in xrange(px.GetNbinsX()) if px.GetBinContent(i)]
+        self.format_histo(py, style=3004, fill_color=2, stats=0)
+        self.format_histo(px, style=3005, fill_color=3, stats=0)
+        l = self.make_legend(.68, .95)
+        [l.AddEntry(p, p.GetName(), 'fp') for p in [py, px]]
+        stack = THStack('s_sp', 'SNR Profiles')
+        stack.Add(py, 'histe')
+        stack.Add(px, 'histe')
+        self.format_histo(stack, draw_first=True, x_tit='Integral Length [ns]', y_tit='snr [au]', y_off=1.35)
+        stack.SetMinimum(increased_range([min(vals), max(vals)], .5, .5)[0])
+        stack.SetMaximum(increased_range([min(vals), max(vals)], .5, .5)[1])
+        self.save_histo(stack, 'SNRProfiles', show, draw_opt='nostack', l=l, lm=.13)
 
     def calc_snr(self, sig=None, name=''):
         signal = self.SignalName if sig is None else sig
