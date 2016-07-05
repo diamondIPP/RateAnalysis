@@ -22,8 +22,12 @@ class PulserAnalysis(Elementary):
         self.save_dir = self.Ana.save_dir
         self.PulserCut = self.Cut.generate_pulser_cut()
         self.Polarity = self.Ana.PulserPolarity
+        self.Type = self.load_type()
 
         self.ROOTObjects = []
+
+    def load_type(self):
+        return str(self.Ana.RunInfo['pulser']) if 'pulser' in self.Ana.RunInfo else None
 
     def draw_rate(self, evts_per_bin=1000, cut=None, show=True):
         """ Shows the fraction of pulser events as a function of the event number. Peaks appearing in this graph are most likely beam interruptions. """
