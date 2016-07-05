@@ -2007,6 +2007,12 @@ class PadAnalysis(Analysis):
         h.Fit('gaus', 'qs')
         self.histos.append(self.save_histo(h, 'DRSBinSizeDisto', show, self.save_dir))
 
+    def save_felix(self):
+        self.save_dir = '{info}_{rp}'.format(info=self.make_info_string().strip('_'), rp=self.run_number)
+        self.ana_save_dir = '{info}_{rp}'.format(info=self.make_info_string().strip('_'), rp=self.run_number)
+        self.set_save_directory('PlotsFelix')
+        self.Pulser.save_felix()
+
     def __placeholder(self):
         pass
 
