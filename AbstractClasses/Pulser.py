@@ -162,23 +162,16 @@ class PulserAnalysis(Elementary):
             self.save_plots('WaveForms{0}'.format(i), sub_dir='{0}/WaveForms'.format(self.save_dir))
 
     def draw_pulser_vs_time(self, n_points=5, _mean=True, show=True, corr=True, events=5000):
-        events_spacing = (self.EndEvent - self.StartEvent) / n_points
-        start_events = [self.StartEvent + events_spacing * i for i in xrange(n_points)]
+        events_spacing = (self.Ana.EndEvent - self.Ana.StartEvent) / n_points
+        start_events = [self.Ana.StartEvent + events_spacing * i for i in xrange(n_points)]
         mode = 'Mean' if _mean else 'Sigma'
         gr = self.make_tgrapherrors('gr', '{0} of Pulser vs Time'.format(mode))
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         for i, start in enumerate(start_events):
-            fit = self.calc_pulser_fit(show=False, start=start, events=events, binning=200, corr=corr)
+            fit = self.draw_distribution_fit(show=False, start=start, events=events, binning=200, corr=corr)
             par = 1 if _mean else 2
-            gr.SetPoint(i, (self.run.get_time_at_event(start) - self.run.startTime) / 60e3, fit.Parameter(par))
+            gr.SetPoint(i, (self.Ana.run.get_time_at_event(start) - self.Ana.run.startTime) / 60e3, fit.Parameter(par))
             gr.SetPointError(i, 0, fit.ParError(par))
-        gROOT.SetBatch(0) if show else gROOT.SetBatch(1)
-        c = TCanvas('c', '{0} of Pulser vs Time'.format(mode), 1000, 1000)
-        gr.Draw('alp')
-        self.save_plots('Pulser{0}VsTime'.format(mode), sub_dir=self.save_dir)
-        gROOT.SetBatch(0)
-        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.histos.append([gr, c])
+        self.save_histo(gr, 'Pulser{0}VsTime'.format(mode), show, draw_opt='alp')
 
     def save_felix(self):
         self.save_dir = self.Ana.save_dir
