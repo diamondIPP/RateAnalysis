@@ -70,7 +70,7 @@ for rp, chs in upscans.iteritems():
         a.print_banner('Starting AnalysisCollection for rp {0} and ch {1}'.format(rp, ch), '-')
         z = load_collection(rp, ch)
         z.draw_signal_distributions(show=False, off=200)
-        if rp == 3:
+        if rp == 3 or rp == 8:
             z.draw_all_chi2s(show=False)
             z.draw_both_angles(show=False)
         z.close_files()
