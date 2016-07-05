@@ -70,9 +70,9 @@ class PulserAnalysis(Elementary):
         self.save_plots('PulserPulserHeight', self.save_dir)
         return h
 
-    def draw_pulseheight_fit(self, show=True):
+    def draw_pulseheight_fit(self, show=True, draw_opt='histe'):
         """ Shows the pulse height fit for the pulser. """
-        h = self.draw_pulseheight(show=show)
+        h = self.draw_pulseheight(show=show, draw_opt=draw_opt)
         h.SetName('Fit Result')
         h.SetStats(1)
         fit = h.Fit('pol0', 'qs')
