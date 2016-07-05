@@ -34,7 +34,7 @@ class DiaScans(Elementary):
         self.RunPlans = self.find_diamond_runplans()
         self.Bias = None
         self.save_dir = 'DiaScans/'
-        self.used_colors = []
+        self.UsedColors = self.init_colors()
 
         # run plan selection
         self.Selections = self.load_selections()
@@ -45,31 +45,25 @@ class DiaScans(Elementary):
         self.ROOTObjects = []
         self.PickleDir = self.get_program_dir() + self.ana_config_parser.get('SAVE', 'pickle_dir')
 
-    def reset_colors(self):
-        self.used_colors = []
+    @staticmethod
+    def init_colors():
+        return {'pulser': 0, 'neg': 0, 'pos': 0}
 
     def get_next_color(self, bias, pulser):
-        try:
-            i = 0
-            neg_colors = [kBlack, kBlue, kGreen + 2]
-            pos_colors = [kRed, kOrange, kPink]
-            pul_colors = [kGreen, kCyan, kViolet, kBlue,kYellow+1]
-            while True:
-                if pulser:
-                    color = pul_colors[i]
-                elif bias < 0:
-                    color = neg_colors[i]
-                else:
-                    color = pos_colors[i]
-                if color in self.used_colors:
-                    i += 1
-                else:
-                    self.used_colors.append(color)
-                    break
+        colors = {'neg': [1, kBlue, kGreen + 2], 'pos': [kRed, kOrange, kPink], 'pulser': [kGreen, kViolet, kBlue, kYellow + 1, kCyan]}
+        n_col = 3 if not pulser else 5
+
+        def get_col(tag):
+            color = colors[tag][self.UsedColors[tag] % n_col]
+            self.UsedColors[tag] += 1
             return color
-        except:
-            self.reset_colors()
-            return self.get_next_color(bias,pulser)
+
+        if pulser:
+            return get_col('pulser')
+        elif bias < 0:
+            return get_col('neg')
+        else:
+            return get_col('pos')
 
     # ==========================================================================
     # region INIT
