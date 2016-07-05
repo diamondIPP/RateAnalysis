@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 from copy import deepcopy
 from time import sleep
 
-from ROOT import TCanvas, TH2F, gROOT, TProfile, TH1F, TLegend, gStyle, kGreen, kCyan, TText, TCut
+from ROOT import TCanvas, TH2F, gROOT, TProfile, TH1F, TLegend, gStyle, kGreen, kCyan, TText, TCut, TF1
 from numpy import array, zeros
 
 from Elementary import Elementary
@@ -194,24 +194,26 @@ class Analysis(Elementary):
 
     # ============================================================================================
     # region TRACKS
-    def show_chi2(self, mode=None, show=True):
-        gROOT.SetBatch(1)
+    def show_chi2(self, mode=None, show=True, save=True, fit=False, prnt=True):
         assert mode in ['x', 'y', None], 'mode has to be in {lst}!'.format(lst=['x', 'y', None])
-        n_bins = 500 if mode is None else 200
+        n_bins = 500 if mode is None else 250
         mode = 'tracks' if mode is None else mode
-        h = TH1F('h', '#chi^{2} in ' + mode, n_bins, 0, 100)
+        self.set_root_output(False)
+        h = TH1F('h', '#chi^{2} in ' + mode, n_bins, 0, 100 if mode == 'tracks' else 50)
         self.tree.Draw('chi2_{mod}>>h'.format(mod=mode), '', 'goff')
         if show:
-            gROOT.SetBatch(0)
-        c = TCanvas('c', 'Chi2 in ' + mode, 1000, 1000)
-        c.SetLeftMargin(.13)
-        if show or mode == 'tracks':
             yq = zeros(1)
-            h.GetQuantiles(1, yq, array([.9]))
-        self.format_histo(h, x_tit='#chi^{2}', y_tit='Number of Entries', y_off=1.8)
-        h.Draw()
-        self.histos.append([h, c])
-        gROOT.SetBatch(0)
+            h.GetQuantiles(1, yq, array([.99]))
+            h.GetXaxis().SetRangeUser(0, yq[0])
+        if fit:
+            f_string = '[0]*TMath::GammaDist(x, {ndf}/2, 0, 2)'.format(ndf=4 if mode == 'tracks' else 2)
+            print f_string
+            f = TF1('f', f_string)
+            h.Fit(f, 'q')
+            h.SetStats(1)
+            set_statbox(only_fit=True)
+        self.format_histo(h, x_tit='#chi^{2}', y_tit='Number of Entries', y_off=1.8, stats=0)
+        self.save_histo(h, 'Chi2{0}'.format(mode.title() if mode is not 'tracks' else 'All'), show, save=save, lm=.13, prnt=prnt)
         return h
 
     def show_all_chi2(self):
