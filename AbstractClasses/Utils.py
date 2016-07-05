@@ -75,11 +75,11 @@ def format_base_frame(frame, x_tit, y_tit):
 
 
 def round_down_to(num, val):
-    return num / val * val
+    return int(num) / val * val
 
 
 def round_up_to(num, val):
-    return num / val * val + val
+    return int(num) / val * val + val
 
 
 def scale_multigraph(mg, val=1):
