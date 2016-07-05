@@ -10,7 +10,7 @@ from sys import stdout
 from time import time, sleep
 
 from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie,\
-    THStack, TArrow, kOrange, TSpectrum, gRandom, TMultiGraph
+    THStack, TArrow, kOrange, TSpectrum, gRandom, TMultiGraph, Long
 
 from ChannelCut import ChannelCut
 from CurrentInfo import Currents
@@ -1696,8 +1696,9 @@ class PadAnalysis(Analysis):
         max_bin = h.GetMaximumBin()
         return h.GetBinCenter(max_bin)
 
-    def draw_snrs(self, show=True, lego=True, proj=False):
+    def draw_snrs(self, show=True, lego=True, proj=False, draw_opt='lego2'):
         self.verbose = False
+        gStyle.SetPaintTextFormat('5.4g')
         lego = False if proj else lego
         gr = self.make_tgrapherrors('gr', 'Signal to Noise Ratios')
         h = TProfile2D('h_snr', 'Signal to Noise Ratios', 12, 1, 7, 12, 3, 9)
@@ -1719,21 +1720,40 @@ class PadAnalysis(Analysis):
         self.format_histo(gr, y_tit='SNR', y_off=1.2, color=self.get_color(), fill_color=1)
         gr.SetLineColor(2)
         vals = sorted([h.GetBinContent(i) for i in xrange(h.GetNbinsX() * h.GetNbinsY()) if h.GetBinContent(i)])
-        self.__draw_profiles(h, proj)
+        x, y, z1 = Long(0), Long(0), Long(0)
+        xmin, ymin = h.GetXaxis().GetXmin(), h.GetYaxis().GetXmin()
+        h.GetBinXYZ(h.GetMaximumBin(), x, y, z1)
+        x1, y1 = (x - 1) / 2. + xmin, (y - 1) / 2. + ymin
+        self.__draw_profiles(h, x, y, proj)
         self.format_histo(h, x_tit='Left Length [ns]', x_off=1.45, y_tit='Right Length [ns]', y_off=1.6, z_tit='snr', z_off=1.6, stats=0, z_range=[vals[2], max(vals)])
         h.SetContour(50)
         gStyle.SetPalette(53)
-        self.save_histo(h, 'SNRLego', show and lego, draw_opt='colz', bm=.2, rm=.1, lm=.13, phi=-30, theta=40)
+        if draw_opt == 'coltext':
+            self.show_best_snr(h, x1, y1, show)
+        else:
+            self.save_histo(h, 'SNRLego', show and lego, draw_opt=draw_opt, bm=.2, rm=.1, lm=.13, phi=-30, theta=40)
         gStyle.SetPalette(1)
         self.save_histo(gr, 'SNR', not (lego or proj) and show, l=[l1, l2], draw_opt='bap')
 
-    def __draw_profiles(self, histo, show=True):
+    def show_best_snr(self, histo, x, y, show):
         h = histo
-        py = h.ProfileY('Right Length')
-        px = h.ProfileX('Left Length')
+        self.format_histo(h, x_off=1, y_off=1.15, stats=0, z_tit='snr [au]', z_off=1.35)
+        self.draw_histo(h, '', show, draw_opt='colztext', rm=.16)
+        self.draw_vertical_line(x, -1e5, 1e5, color=2, style=2, name='a', w=2)
+        self.draw_vertical_line(x + .5, -1e5, 1e5, color=2, style=2, name='b', w=2)
+        self.draw_horizontal_line(y, 0, 10, color=418, style=2, w=2, name='c')
+        self.draw_horizontal_line(y + .5, 0, 100, color=418, style=2, w=2, name='d')
+        self.save_plots('SNRColText')
+
+    def __draw_profiles(self, histo, x, y, show=True):
+        h = histo
+        py = h.ProfileY('Right Length', x, x)
+        px = h.ProfileX('Left Length', y, y)
         vals = [py.GetBinContent(i) for i in xrange(py.GetNbinsX()) if py.GetBinContent(i)] + [px.GetBinContent(i) for i in xrange(px.GetNbinsX()) if px.GetBinContent(i)]
-        self.format_histo(py, style=3004, fill_color=2, stats=0)
-        self.format_histo(px, style=3005, fill_color=3, stats=0)
+        self.format_histo(py, stats=0, lw=2)
+        self.format_histo(px, stats=0, lw=2)
+        py.SetLineColor(2)
+        px.SetLineColor(418)
         l = self.make_legend(.68, .95)
         [l.AddEntry(p, p.GetName(), 'fp') for p in [py, px]]
         stack = THStack('s_sp', 'SNR Profiles')
