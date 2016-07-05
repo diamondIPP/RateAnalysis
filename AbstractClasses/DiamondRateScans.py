@@ -22,7 +22,7 @@ class DiaScans(Elementary):
     def __init__(self, diamond, testcampaigns=None, verbose=False):
         Elementary.__init__(self, verbose=verbose)
         self.Selection = []
-        self.key = None
+        self.Name = None
 
         self.Parser = self.load_diamond_parser()
 
@@ -38,7 +38,7 @@ class DiaScans(Elementary):
 
         # run plan selection
         self.Selections = self.load_selections()
-        self.Selection = self.set_selection()
+        self.Selection = self.load_selection()
         self.set_save_directory('PlotsFelix')
 
         # Save
@@ -69,14 +69,14 @@ class DiaScans(Elementary):
     # region INIT
 
     def set_selection(self, key=None):
-
-        if key == None:
+        if key is None:
             key = self.DiamondName
-        if not key in self.Selections.keys():
-            raise Exception('"{selection} does not exist in {Selections}'.format(selection=key, Selections=self.Selections))
-        print 'Set Selection ', key
+        if key not in self.Selections.keys():
+            log_warning('"{selection} does not exist in {Selections}'.format(selection=key, Selections=self.Selections))
+            return
+        self.log_info('Set Selection {0}'.format(key))
         self.Selection = self.Selections[key]
-        self.key = key
+        self.Name = key
 
     def load_selections(self):
         file_path = self.get_program_dir() + self.MainConfigParser.get('MISC', 'runplan_selection_file')
