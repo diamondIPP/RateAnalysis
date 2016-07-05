@@ -206,9 +206,7 @@ class Analysis(Elementary):
             h.GetQuantiles(1, yq, array([.99]))
             h.GetXaxis().SetRangeUser(0, yq[0])
         if fit:
-            f_string = '[0]*TMath::GammaDist(x, {ndf}/2, 0, 2)'.format(ndf=4 if mode == 'tracks' else 2)
-            print f_string
-            f = TF1('f', f_string)
+            f = TF1('f', '[0]*TMath::GammaDist(x, {ndf}/2, 0, 2)'.format(ndf=4 if mode == 'tracks' else 2))
             h.Fit(f, 'q')
             h.SetStats(1)
             set_statbox(only_fit=True)
