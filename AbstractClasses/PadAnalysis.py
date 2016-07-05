@@ -1244,12 +1244,12 @@ class PadAnalysis(Analysis):
         self.format_histo(h, x_range=[self.run.signal_regions[self.SignalRegion][0] / 2, self.run.signal_regions['e'][1] / 2], stats=0)
         self.save_plots('BucketPedestal')
 
-    def draw_bucket_waveforms(self, show=True):
-        good = self.draw_waveforms(1, show=False, start_event=120000, t_corr=True)[0]
+    def draw_bucket_waveforms(self, show=True, t_corr=True, start=100000):
+        good = self.draw_waveforms(1, show=False, start_event=None, t_corr=t_corr, save=False)[0]
         cut = self.Cut.generate_special_cut(excluded_cuts=['bucket', 'timing']) + TCut('!({0})'.format(self.Cut.CutStrings['bucket']))
-        bucket = self.draw_waveforms(1, cut_string=cut, show=False, start_event=100000, t_corr=True)[0]
+        bucket = self.draw_waveforms(1, cut_string=cut, show=False, start_event=start, t_corr=t_corr, save=False)[0]
         cut = self.Cut.generate_special_cut(excluded_cuts=['bucket', 'timing']) + TCut('{buc}&&!({old})'.format(buc=self.Cut.CutStrings['bucket'], old=self.Cut.CutStrings['old_bucket']))
-        bad_bucket = self.draw_waveforms(1, cut_string=cut, show=False, t_corr=True)[0]
+        bad_bucket = self.draw_waveforms(1, cut_string=cut, show=False, t_corr=t_corr, start_event=None, save=False)[0]
         self.reset_colors()
         mg = TMultiGraph('mg_bw', 'Bucket Waveforms')
         l = self.make_legend(.85, .4, nentries=3, w=.1)
@@ -1262,7 +1262,6 @@ class PadAnalysis(Analysis):
         x = [self.run.signal_regions['e'][0] / 2, self.run.signal_regions['e'][1] / 2 + 20]
         self.format_histo(mg, x_range=x, y_off=.7)
         y = mg.GetYaxis().GetXmin(), mg.GetYaxis().GetXmax()
-        print x, y
         self.draw_histo(mg, show=show, draw_opt='A', x=1.5, y=0.75, lm=.07, rm=.045, bm=.2, l=l)
         self._add_buckets(y[0], y[1], x[0], x[1], avr_pos=-1, full_line=True)
         self.save_plots('BucketWaveforms')
