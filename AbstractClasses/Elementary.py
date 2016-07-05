@@ -606,7 +606,7 @@ class Elementary(object):
         print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * symbol, msg=msg)
 
     def save_combined_pulse_heights(self, mg, mg1, l, mg_y, show=True, name=None, pulser_leg=None,
-                                    x_range=None, y_range=None, rel_y_range=None, run_info=None):
+                                    x_range=None, y_range=None, rel_y_range=None, run_info=None, draw_objects=None):
         self.set_root_output(show)
         c = TCanvas('c', 'c', int(self.Res * 10 / 11.), self.Res)
         make_transparent(c)
@@ -619,9 +619,10 @@ class Elementary(object):
 
         # bottom pad with 20%
         p0.cd()
+        make_transparent(p0)
         scale_multigraph(mg1)
         rel_y_range = [.7, 1.3] if rel_y_range is None else rel_y_range
-        self.format_histo(mg1, y_range=rel_y_range, y_tit='Relatvie ph in [au]', y_off=.66, tit_size=.1, x_off=99)
+        self.format_histo(mg1, y_range=rel_y_range, y_tit='Relatvie ph [au]', y_off=.66, tit_size=.1, x_off=99)
         mg1.GetYaxis().SetLabelSize(.1)
         mg1.GetYaxis().SetNdivisions(3)
         mg1.Draw('alp')
@@ -640,6 +641,9 @@ class Elementary(object):
         self.draw_x_axis(mg_y, x_range[0], x_range[1], mg1.GetXaxis().GetTitle() + ' ', opt='SG-', tit_size=.035, lab_size=0.035, off=1, l_off=99)
         move_legend(l, .17, .03)
         l.Draw()
+        if draw_objects is not None:
+            for obj, opt in draw_objects:
+                obj.Draw(opt)
 
         if hasattr(self, 'FirstAnalysis'):
             self.FirstAnalysis.run.scale_runinfo_legend(txt_size=.075, w=.435, h=0.1 / pm)
@@ -652,7 +656,7 @@ class Elementary(object):
 
         self.save_canvas(c, name='CombinedPulseHeights' if name is None else name)
 
-        self.ROOTObjects.append([p0, p1, c])
+        self.ROOTObjects.append([p0, p1, c, draw_objects])
         self.set_root_output(True)
         if hasattr(self, 'FirstAnalysis'):
             self.FirstAnalysis.run.reset_info_legend()
