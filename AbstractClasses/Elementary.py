@@ -388,8 +388,8 @@ class Elementary(object):
     def draw_horizontal_line(self, y, xmin, xmax, color=1, w=1, style=1, name='li'):
         return self.draw_line(xmin, xmax, y, y, color=color, width=w, style=style, name=name)
 
-    def make_legend(self, x1=.58, y2=.88, nentries=2, w=.3, scale=1, name='l', y1=None, felix=True, margin=.25):
-        x2 = x1 + w
+    def make_legend(self, x1=.65, y2=.95, nentries=2, w=.3, scale=1, name='l', y1=None, felix=True, margin=.25, x2=None):
+        x2 = x1 + w if x2 is None else x2
         y1 = y2 - nentries * .05 * scale if y1 is None else y1
         l = TLegend(x1, y1, x2, y2)
         l.SetName(name)
