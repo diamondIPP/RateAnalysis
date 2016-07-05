@@ -179,3 +179,7 @@ class PulserAnalysis(Elementary):
         gROOT.SetBatch(0)
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.histos.append([gr, c])
+
+    def save_felix(self):
+        self.save_dir = self.Ana.save_dir
+        self.set_save_directory('PlotsFelix')
