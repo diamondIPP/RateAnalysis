@@ -9,8 +9,9 @@ from ConfigParser import ConfigParser
 from json import loads
 from Utils import *
 from screeninfo import get_monitors
+from numpy import array
 
-from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend, TLine, TColor, TArrow, TPad
+from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend, TColor, TArrow, TPad, TCutG
 
 # global test campaign and resolution
 tc = None
@@ -372,19 +373,20 @@ class Elementary(object):
     def draw_x_axis(self, y, xmin, xmax, tit, col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035, tick_size=0.03, l_off=.01, line=False):
         return self.draw_axis(xmin, xmax, y, y, tit, col=col, off=off, opt=opt, width=w, tit_size=tit_size, lab_size=lab_size, tick_size=tick_size, l_off=l_off, line=line)
 
-    def draw_line(self, x1, x2, y1, y2, color=1, width=1, style=1):
-        l = TLine(x1, y1, x2, y2)
+    def draw_line(self, x1, x2, y1, y2, color=1, width=1, style=1, name='li'):
+        l = TCutG(name, 2, array([x1, x2], 'd'), array([y1, y2], 'd'))
         l.SetLineColor(color)
         l.SetLineWidth(width)
         l.SetLineStyle(style)
-        l.Draw()
+        l.Draw('same')
         self.ROOTObjects.append(l)
+        return l
 
-    def draw_vertical_line(self, x, ymin, ymax, color=1, w=1, style=1):
-        self.draw_line(x, x, ymin, ymax, color=color, width=w, style=style)
+    def draw_vertical_line(self, x, ymin, ymax, color=1, w=1, style=1, name='li'):
+        return self.draw_line(x, x, ymin, ymax, color=color, width=w, style=style, name=name)
 
-    def draw_horizontal_line(self, y, xmin, xmax, color=1, w=1, style=1):
-        self.draw_line(xmin, xmax, y, y, color=color, width=w, style=style)
+    def draw_horizontal_line(self, y, xmin, xmax, color=1, w=1, style=1, name='li'):
+        return self.draw_line(xmin, xmax, y, y, color=color, width=w, style=style, name=name)
 
     def make_legend(self, x1=.58, y2=.88, nentries=2, w=.3, scale=1, name='l', y1=None, felix=True, margin=.25):
         x2 = x1 + w
