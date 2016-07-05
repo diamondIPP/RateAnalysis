@@ -1003,7 +1003,7 @@ class PadAnalysis(Analysis):
             self.tree.Draw('{name}>>ped1'.format(name=name), cut, 'goff')
             self.format_histo(h, name='Fit Result', x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.8)
             self.draw_histo(h, '', show)
-            fit_pars = self.fit_fwhm(h, do_fwhm=fwhm, draw=show)
+            fit_pars = self.fit_fwhm(h, do_fwhm=fwhm, draw=fit)
             if fit:
                 f = deepcopy(h.GetFunction('gaus'))
                 f.SetNpx(1000)
@@ -1403,7 +1403,7 @@ class PadAnalysis(Analysis):
     def compare_consecutive_cuts(self, scale=False, show=True, save_single=True):
         self.reset_colors()
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        legend = self.make_legend(.65, .9, nentries=len(self.Cut.ConsecutiveCuts) - 3, w=.17)
+        legend = self.make_legend(.73, .95, nentries=len(self.Cut.ConsecutiveCuts) - 3, w=.17)
         cut = TCut('consecutive', '')
         stack = THStack('scc', 'Signal Distribution with Consecutive Cuts')
         for i, (key, value) in enumerate(self.Cut.ConsecutiveCuts.iteritems()):
@@ -1463,7 +1463,7 @@ class PadAnalysis(Analysis):
 
     # ==========================================================================
     # region SHOW
-    def draw_signal_vs_peak_position(self, region=None, peak_int=None, show=True, corr=True, cut=None, draw_opt='colz', nbins=4, save_name='SignalVsPeakPos'):
+    def draw_signal_vs_peak_position(self, region=None, peak_int=None, show=True, corr=True, cut=None, draw_opt='colz', nbins=4, save=True):
         region = self.SignalRegion if region is None else region
         peak_int = self.PeakIntegral if peak_int is None else peak_int
         cut = self.Cut.generate_special_cut(excluded_cuts=[self.Cut.CutStrings['timing']]) if cut is None else cut
@@ -1475,7 +1475,8 @@ class PadAnalysis(Analysis):
         draw_string = '{sig}:{peaks}[{num}]{scale}>>h_spp'.format(sig=self.SignalName, num=num, peaks=peak_string, scale='/2.' if not corr else '')
         self.tree.Draw(draw_string, cut, 'goff')
         self.format_histo(h, x_tit='Peak Timing [ns]', y_tit='Pulse Height [au]', y_off=1.35, z_off=1.2, stats=0, z_tit='Number of Entries')
-        self.RootObjects.append(self.save_histo(h, save_name, show, self.save_dir, draw_opt=draw_opt, logz=True, rm=.15, lm=.12))
+        self.save_histo(h, 'SignalVsPeakPos', show, draw_opt=draw_opt, logz=True, rm=.15, lm=.12, save=save)
+        return h
 
     def draw_signal_vs_signale(self, show=True):
         gStyle.SetPalette(53)
@@ -1492,7 +1493,7 @@ class PadAnalysis(Analysis):
         cut = '!({0})&&!pulser'.format(self.Cut.CutStrings['old_bucket'])
         return self.draw_waveforms(n=1, cut_string=cut, add_buckets=True, start_event=event)
 
-    def draw_waveforms(self, n=1000, start_event=None, cut_string=None, show=True, add_buckets=False, fixed_range=None, ch=None, t_corr=False):
+    def draw_waveforms(self, n=1000, start_event=None, cut_string=None, show=True, add_buckets=False, fixed_range=None, ch=None, t_corr=False, save=True):
         """
         Draws stacked waveforms.
         :param n: number of waveforms
@@ -1529,7 +1530,8 @@ class PadAnalysis(Analysis):
             h.GetYaxis().SetRangeUser(fixed_range[0], fixed_range[1])
         self.format_histo(h, title='Waveform', name='wf', x_tit='Time [ns]', y_tit='Signal [mV]', markersize=.4, y_off=.4, stats=0, tit_size=.05)
         save_name = '{1}Waveforms{0}'.format(n, 'Pulser' if cut.GetName().startswith('Pulser') else 'Signal')
-        self.RootObjects.append(self.save_histo(h, save_name, show, self.save_dir, lm=.06, rm=.045, draw_opt='scat' if n == 1 else 'col', x_fac=1.5, y_fac=.5))
+        if save:
+            self.RootObjects.append(self.save_histo(h, save_name, show, self.save_dir, lm=.06, rm=.045, draw_opt='apl' if n == 1 else 'col', x_fac=1.5, y_fac=.5))
         if add_buckets:
             sleep(.2)
             h.GetXaxis().SetNdivisions(26)
