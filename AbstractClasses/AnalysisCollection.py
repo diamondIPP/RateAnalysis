@@ -9,7 +9,7 @@ from collections import OrderedDict
 from numpy import log, array, zeros
 from time import time
 
-from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1, TCutG, kRed
+from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1
 
 from CurrentInfo import Currents
 from Elementary import Elementary
@@ -525,7 +525,7 @@ class AnalysisCollection(Elementary):
             y0 = None
             for i, (key, ana) in enumerate(self.collection.iteritems()):
                 x = ana.run.flux if flux else key
-                fit = ana.calc_pulser_fit(show=False, corr=corr, beam_on=beam_on)
+                fit = ana.Pulser.draw_distribution_fit(show=False, corr=corr, beam_on=beam_on)
                 par = 1 if mean else 2
                 cut = ana.Cut.generate_pulser_cut(beam_on)
                 ped_fit = ana.show_pedestal_histo(cut=cut, draw=False)
@@ -1046,7 +1046,7 @@ class AnalysisCollection(Elementary):
             self.normalise_histo(h, to100=True)
             stack.Add(h)
             legend.AddEntry(h, '{0: 6.0f} kHz/cm^{{2}}'.format(self.collection.values()[i].get_flux()), 'l')
-        self.format_histo(stack, x_tit='Angle [deg]', y_tit='Probability [%]', y_off=1.5, draw_first=True)
+        self.format_histo(stack, x_tit='Angle [deg]', y_tit='Fraction of Events [%]', y_off=1.5, draw_first=True)
         stack.GetXaxis().SetRangeUser(-3, 4)
         self.RootObjects.append(self.save_histo(stack, 'AllTrackAngles{mod}'.format(mod=mode.title()), show, self.save_dir, lm=.15, draw_opt='nostack', l=legend))
 
