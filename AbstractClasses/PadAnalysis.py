@@ -1238,9 +1238,11 @@ class PadAnalysis(Analysis):
 
     def draw_bucket_pedestal(self, show=True, corr=True, additional_cut='', draw_option='colz'):
         gStyle.SetPalette(55)
-        cut_string = self.Cut.CutStrings['tracks'] + self.Cut.CutStrings['pulser'] + self.Cut.CutStrings['saturated']
+        cut_string = self.Cut.generate_special_cut(included_cuts=['tracks', 'pulser', 'saturated', 'timing'])
         cut_string += additional_cut
-        self.draw_signal_vs_peak_position('e', '2', show, corr, cut_string, draw_option, 1, 'BucketPedestal')
+        h = self.draw_signal_vs_peak_position('e', '2', show, corr, cut_string, draw_option, 1, save=False)
+        self.format_histo(h, x_range=[self.run.signal_regions[self.SignalRegion][0] / 2, self.run.signal_regions['e'][1] / 2], stats=0)
+        self.save_plots('BucketPedestal')
 
     def draw_bucket_waveforms(self, show=True):
         good = self.draw_waveforms(1, show=False, start_event=120000, t_corr=True)[0]
