@@ -63,6 +63,9 @@
           <option value="TMultiGraph" />
           <option value="gRandom" />
           <option value="TColor" />
+          <option value="Long" />
+          <option value="kGray" />
+          <option value="kPink" />
         </list>
       </option>
     </inspection_tool>
