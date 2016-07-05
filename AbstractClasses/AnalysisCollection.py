@@ -996,54 +996,39 @@ class AnalysisCollection(Elementary):
 
     # ====================================================================================
     # region TRACKS
-    def show_chi2s(self, mode=None, show=True):
+    def show_chi2s(self, mode=None, show=True, disto=False):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         self.reset_colors()
-        histos = [ana.show_chi2(mode=mode, show=False) for ana in self.collection.itervalues()]
+        histos = [ana.show_chi2(mode=mode, show=False, prnt=False) for ana in self.collection.itervalues()]
         yq = zeros(1)
         cuts = []
         for h in histos:
             h.GetQuantiles(1, yq, array([.9]))
             cuts.append(yq[0])
-        min_cut = min(cuts)
-        max_cut = max(cuts)
-        xmax = max_cut * 1.1
-        print 'cut:', min_cut, max_cut
-        g_cut = TCutG('cut', 5)
-        g_cut.SetPoint(0, min_cut, -1e9)
-        g_cut.SetPoint(1, min_cut, +1e9)
-        g_cut.SetPoint(2, max_cut, +1e9)
-        g_cut.SetPoint(3, max_cut, -1e9)
-        g_cut.SetPoint(4, min_cut, -1e9)
-        g_cut.SetFillStyle(3144)
-        g_cut.SetFillColor(kRed)
-        g_cut.SetLineStyle(2)
-        g_cut.SetLineColor(kRed)
-        legend = self.make_legend(nentries=self.get_number_of_analyses() + 1)
+        cut = min(cuts)
+        xmax = max(cuts) * 1.1
+        legend = self.make_legend(y2=.95, nentries=self.get_number_of_analyses() + 1)
         stack = THStack('hx2', '#chi^{{2}}{mode}'.format(mode=' in ' + mode if mode is not None else ''))
         ymax = 0
         for i, h in enumerate(histos):
             self.format_histo(h, stats=0, color=self.get_color(), lw=2)
-            # h.GetXaxis().SetRangeUser(0, yq[0])
             self.normalise_histo(h, to100=True)
             stack.Add(h)
             ymax = max(ymax, h.GetBinContent(h.GetMaximumBin()))
             legend.AddEntry(h, '{0: 6.0f} kHz/cm^{{2}}'.format(self.collection.values()[i].get_flux()), 'l')
-        legend.AddEntry(g_cut, 'cut: 90% quantile', 'l')
-        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.format_histo(stack, x_tit='#chi^{2}', y_tit='Fraction of Events [%]', y_off=1.5, draw_first=True)
         stack.GetXaxis().SetRangeUser(0, xmax)
         mode = '' if mode is None else mode
         self.draw_histo(stack, '', show, self.save_dir, lm=.15, draw_opt='nostack', l=legend)
-        if mode is not None:
-            g_cut.Draw('same')
-            nominal_chi2 = TF1("f", "[1]*ROOT::Math::chisquared_pdf(x,[0])", 0, xmax)
-            nominal_chi2.SetParameter(0, 2)
-            nominal_chi2.SetParameter(1, ymax / .5)
+        l = self.draw_vertical_line(cut, -1e9, 1e9, color=2, style=2)
+        legend.AddEntry(l, 'cut: 90% quantile', 'l')
+        if disto:
+            nominal_chi2 = TF1('f', '[1]*ROOT::Math::chisquared_pdf(x, {ndf})'.format(ndf=4 if not mode else 2), 0, xmax)
+            histos[0].Fit(nominal_chi2, 'q0')
             nominal_chi2.SetNpx(1000)
+            nominal_chi2.Draw('same')
             self.RootObjects.append(nominal_chi2)
-        self.RootObjects.append(g_cut)
-        self.save_plots('AllChi2{mod}'.format(mod=mode.upper()))
+        self.save_plots('AllChi2{mod}'.format(mod=mode.title()))
 
     def draw_all_chi2s(self, show=True):
         self.show_chi2s(show=show)
