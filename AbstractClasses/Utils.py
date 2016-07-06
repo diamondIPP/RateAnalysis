@@ -129,10 +129,10 @@ def set_graph_color(mg, color=None, do_marker=True, marker_size=None):
 
 def get_graph_data(g):
     n = g.GetN()
-    x = [g.GetX()[i] for i in range(n)]
-    y = [g.GetY()[i] for i in range(n)]
-    ex = [g.GetEX()[i] for i in range(n)]
-    ey = [g.GetEY()[i] for i in range(n)]
+    x = [g.GetX()[i] for i in xrange(n)]
+    y = [g.GetY()[i] for i in xrange(n)]
+    ex = [g.GetEX()[i] for i in xrange(n)]
+    ey = [g.GetEY()[i] for i in xrange(n)]
     return n, x, y, ex, ey
 
 
