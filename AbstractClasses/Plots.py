@@ -1,7 +1,7 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kRed, kBlack, kBlue, kMagenta, kGreen, TF1, TPie
+from ROOT import TGraphErrors, TCanvas, TH1D, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kRed, kBlack, kBlue, kMagenta, kGreen, TF1, TPie
 # from TelescopeAnalysis import Analysis
 # from CurrentInfo import Currents
 # from numpy import array
@@ -12,7 +12,7 @@ from math import sqrt, ceil, log
 # from time import time, sleep
 # from collections import OrderedDict
 # from sys import stdout
-# from copy import deepcopy
+from copy import deepcopy
 
 __author__ = 'DA'
 
@@ -45,15 +45,15 @@ class Plots:
             'ymax': 6,
             'nBinCol': 52,
             'minCol': 0,
-            'maxCol': 51,
+            'maxCol': 52,
             'nBinRow': 80,
             'minRow': 0,
-            'maxRow': 79,
-            'deltaX': float((xmax-xmin)/nBinsX),
-            'deltaY': float((ymax-ymin)/nBinsY),
+            'maxRow': 80,
             'binWidthTGraph': 200000,
             'num_diff_cluster_sizes': 4
         }
+        self.plot_settings['deltaX'] = float(self.plot_settings['xmax']-self.plot_settings['xmin'])/self.plot_settings['nBinsX']
+        self.plot_settings['deltaY'] = float(self.plot_settings['ymax']-self.plot_settings['ymin'])/self.plot_settings['nBinsY']
 
     def create_TGraphErrors(self, title='tgraph', xTitle='X', yTitle='Y', linecolor=kBlack, markercolor=kBlack):
         graph = TGraphErrors()
@@ -68,7 +68,7 @@ class Plots:
         ph1Dbins = self.plot_settings['ph1Dbins']
         ph1Dmin = self.plot_settings['ph1Dmin']
         ph1Dmax = self.plot_settings['ph1Dmax']
-        histo1D = TH1D(name, title, int(ph1Dbins + 1), ph1Dmin - float((ph1Dmax - ph1Dmin)/(2*ph1Dbins)), ph1Dmax + float((ph1Dmax - ph1Dmin)/(2*ph1Dbins)))
+        histo1D = TH1D(name, title, int(ph1Dbins + 1), ph1Dmin - float(ph1Dmax - ph1Dmin)/(2*ph1Dbins), ph1Dmax + float(ph1Dmax - ph1Dmin)/(2*ph1Dbins))
         self.set_1D_options(histo1D, xTitle, yTitle, color, min_val)
         return deepcopy(histo1D)
 
@@ -86,7 +86,8 @@ class Plots:
         ybins = self.plot_settings['nBinsY'] if type is 'spatial' else self.plot_settings['nBinRow']
         ymin = self.plot_settings['ymin'] if type is 'spatial' else self.plot_settings['minRow']
         ymax = self.plot_settings['ymax'] if type is 'spatial' else self.plot_settings['maxRow']
-        histo2D = TH2D(name, title, int(xbins + 1), xmin - float((xmax-xmin)/(2*xbins)), xmax + float((xmax-xmin)/(2*xbins)), int(ybins + 1), ymin - float((ymax-ymin)/(2*ybins)), ymax + float((ymax-ymin)/(2*ybins)))
+        histo2D = TH2D(name, title, int(xbins + 1), xmin - float(xmax-xmin)/(2*xbins), xmax + float(xmax-xmin)/(2*xbins),
+                       int(ybins + 1), ymin - float(ymax-ymin)/(2*ybins), ymax + float(ymax-ymin)/(2*ybins))
         self.set_2D_options(histo2D, xTitle, yTitle, min_val, max_val)
         return deepcopy(histo2D)
 

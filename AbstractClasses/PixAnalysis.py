@@ -83,15 +83,16 @@ class SignalPixAnalysis(Analysis):
         self.kmax = int(self.plots.plot_settings['num_diff_cluster_sizes'] + 1)
         self.deltaX = self.plots.plot_settings['deltaX']
         self.deltaY = self.plots.plot_settings['deltaY']
-        if do_pulse_height: self.valueAverage = {iroc: {k: 0 for k in xrange(kmax)} for iroc in xrange(self.num_devices)}
-        if do_pulse_height: self.nAverage = {iroc: {k: 0 for k in xrange(kmax)} for iroc in xrange(self.num_devices)}
+        if do_pulse_height: self.valueAverage = {iroc: {k: 0 for k in xrange(self.kmax)} for iroc in xrange(self.num_devices)}
+        if do_pulse_height: self.nAverage = {iroc: {k: 0 for k in xrange(self.kmax)} for iroc in xrange(self.num_devices)}
         self.print_banner('Start Looping over Tree:', '%')
         widgets = [
             progressbar.Percentage(),
             ' ', progressbar.Bar(marker='>'),
-            ' ', progressbar.ETA(),
-            ' ', progressbar.AdaptiveETA(),
-            ' ', progressbar.AdaptiveTransferSpeed(),
+            ' ', progressbar.Timer(),
+            ' ', progressbar.ETA()  #, DA: this two work great!
+            # ' ', progressbar.AdaptiveETA(),
+            # ' ', progressbar.AdaptiveTransferSpeed(),
         ]
         bar = progressbar.ProgressBar(widgets=widgets, max_value=self.run.n_entries)
         bar.start()
@@ -100,8 +101,8 @@ class SignalPixAnalysis(Analysis):
             self.col = self.tree.col
             self.row = self.tree.row
             self.plane = self.tree.plane
-            self.clust_per_plane = self.tree.clust_per_plane
-            self.charge_all = {}
+            self.clust_per_plane = self.tree.clusters_per_plane
+            self.charge_all = {i: 0 for i in xrange(self.num_devices)}
             self.clust_Telescope_X = {}
             self.clust_Telescope_Y = {}
             self.clust_Local_X = {}
@@ -112,20 +113,22 @@ class SignalPixAnalysis(Analysis):
             self.ph_2cl = {}
             self.ph_3cl = {}
             self.ph_M4cl = {}
-            exec('self.charge_all = {i: self.tree.charge_all_ROC{n} for i in xrange(self.num_devices)}'.format(n=i))
-            exec('self.clust_Telescope_X = {i: self.tree.cluster_pos_ROC{n}_Telescope_X for i in xrange(self.num_devices)}'.format(n=i))
-            exec('self.clust_Telescope_Y = {i: self.tree.cluster_pos_ROC{n}_Telescope_Y for i in xrange(self.num_devices)}'.format(n=i))
-            exec('self.clust_Local_X = {i: self.tree.cluster_pos_ROC{n}_Local_X for i in xrange(self.num_devices)}'.format(n=i))
-            exec('self.clust_Local_Y = {i: self.tree.cluster_pos_ROC{n}_Local_Y for i in xrange(self.num_devices)}'.format(n=i))
-            exec('self.clust_col = {i: self.tree.cluster_col_ROC{n} for i in xrange(self.num_devices)}'.format(n=i))
-            exec('self.clust_row = {i: self.tree.cluster_row_ROC{n} for i in xrange(self.num_devices)}'.format(n=i))
-            exec('self.ph_1cl = {i: self.tree.pulse_height_ROC{n}_1_cluster for i in xrange(self.num_devices)}'.format(n=i))
-            exec('self.ph_2cl = {i: self.tree.pulse_height_ROC{n}_2_cluster for i in xrange(self.num_devices)}'.format(n=i))
-            exec('self.ph_3cl = {i: self.tree.pulse_height_ROC{n}_3_cluster for i in xrange(self.num_devices)}'.format(n=i))
-            exec('self.ph_M4cl = {i: self.tree.pulse_height_ROC{n}_More4_cluster for i in xrange(self.num_devices)}'.format(n=i))
+            for i in xrange(self.num_devices):
+                exec('self.charge_all[{n}] = self.tree.charge_all_ROC{n}'.format(n=i)) in locals()
+                exec('self.clust_Telescope_X[{n}] = self.tree.cluster_pos_ROC{n}_Telescope_X'.format(n=i)) in locals()
+                exec('self.clust_Telescope_Y[{n}] = self.tree.cluster_pos_ROC{n}_Telescope_Y'.format(n=i)) in locals()
+                exec('self.clust_Local_X[{n}] = self.tree.cluster_pos_ROC{n}_Local_X'.format(n=i)) in locals()
+                exec('self.clust_Local_Y[{n}] = self.tree.cluster_pos_ROC{n}_Local_Y'.format(n=i)) in locals()
+                exec('self.clust_col[{n}] = self.tree.cluster_col_ROC{n}'.format(n=i)) in locals()
+                exec('self.clust_row[{n}] = self.tree.cluster_row_ROC{n}'.format(n=i)) in locals()
+                exec('self.ph_1cl[{n}] = self.tree.pulse_height_ROC{n}_1_cluster'.format(n=i)) in locals()
+                exec('self.ph_2cl[{n}] = self.tree.pulse_height_ROC{n}_2_cluster'.format(n=i)) in locals()
+                exec('self.ph_3cl[{n}] = self.tree.pulse_height_ROC{n}_3_cluster'.format(n=i)) in locals()
+                exec('self.ph_M4cl[{n}] = self.tree.pulse_height_ROC{n}_More4_cluster'.format(n=i)) in locals()
             if len(self.col) == len(self.row) == len(self.plane):
-                if do_occupancy: self.fill_ocupancy()
+                if do_occupancy: self.fill_occupancy()
                 if do_pulse_height: self.do_pulse_height_analysis(event)
+            bar.update(event + 1)
         bar.finish()
         self.print_banner('Looping over Tree -> Done', '%')
 
@@ -166,12 +169,12 @@ class SignalPixAnalysis(Analysis):
 
     def fill_occupancy(self):
         for i in xrange(len(self.plane)):
-            if 0 <= plane_vector[i] < self.num_devices:
-                self.plots.hitMap[plane_vector[i]].Fill(self.col[i], self.row[i])
+            if 0 <= self.plane[i] < self.num_devices:
+                self.plots.hitMap[self.plane[i]].Fill(self.col[i], self.row[i])
 
     def do_pulse_height_analysis(self, event):
         for iROC in xrange(self.num_devices):
-            numClusters = int(self.clust_per_plane[iROC])
+            numClusters = ord(self.clust_per_plane[iROC])
             self.Ph1DHistogramsExtraction(numClusters, self.ph_1cl[iROC], self.ph_2cl[iROC], self.ph_3cl[iROC],
                                           self.ph_M4cl[iROC], self.plots.phROC_all[iROC], self.plots.phROC_1cl[iROC],
                                           self.plots.phROC_2cl[iROC], self.plots.phROC_3cl[iROC], self.plots.phROC_M4cl[iROC])
@@ -180,7 +183,7 @@ class SignalPixAnalysis(Analysis):
                                          self.deltaX, self.deltaY, kFALSE)
             self.Ph2DHistogramExtraction(numClusters, self.ph_1cl[iROC], self.clust_Telescope_X[iROC],
                                          self.clust_Telescope_Y[iROC], self.plots.avPhROC_telescope_1cl[iROC],
-                                         self.plots.phROC_hitMap_telescope_1cl[iROC], self.deltaX, self.deltaY, kFASLE)
+                                         self.plots.phROC_hitMap_telescope_1cl[iROC], self.deltaX, self.deltaY, kFALSE)
             self.Ph2DHistogramExtraction(numClusters, self.ph_1cl[iROC], self.clust_col[iROC], self.clust_row[iROC],
                                          self.plots.avPhROC_pixelated_1cl[iROC], self.plots.phROC_hitMap_pixelated_1cl[iROC],
                                          1, 1, kTRUE)
@@ -208,14 +211,16 @@ class SignalPixAnalysis(Analysis):
         if numClusters is not 0:
             numPhROC = len(phROC)
             tempBinX, tempBinY, tempPH = 0, 0, 0
-            xmin = self.plots.plot_settings['xmin']
-            ymin = self.plots.plot_settings['ymin']
+            xmin = self.plots.plot_settings['minCol'] if isRowCol else self.plots.plot_settings['xmin']
+            ymin = self.plots.plot_settings['minRow'] if isRowCol else self.plots.plot_settings['ymin']
             divx = self.plots.plot_settings['nBinCol'] if isRowCol else self.plots.plot_settings['nBinsX']
             divy = self.plots.plot_settings['nBinRow'] if isRowCol else self.plots.plot_settings['nBinsY']
             for i in xrange(numPhROC):
                 if (len(clust_ROC_X) >= numPhROC) and (len(clust_ROC_Y) >= numPhROC):
-                    tempBinX = int(clust_ROC_X[i] + 1) if isRowCol else int(ceil(float(clust_ROC_X[i]*10-xmin)/deltaX + 0.5))
-                    tempBinY = int(clust_ROC_Y[i] + 1) if isRowCol else int(ceil(float(clust_ROC_Y[i]*10-ymin)/deltaY + 0.5))
+                    tempBinX = int(ceil(float(clust_ROC_X[i]-xmin)/deltaX+0.5)) if isRowCol else int(ceil(float(clust_ROC_X[i]*10-xmin)/deltaX + 0.5))
+                    tempBinY = int(ceil(float(clust_ROC_Y[i]-ymin)/deltaY+0.5)) if isRowCol else int(ceil(float(clust_ROC_Y[i]*10-ymin)/deltaY + 0.5))
+                    # tempBinX = int(clust_ROC_X[i] + 1) if isRowCol else int(ceil(float(clust_ROC_X[i]*10-xmin)/deltaX + 0.5))
+                    # tempBinY = int(clust_ROC_Y[i] + 1) if isRowCol else int(ceil(float(clust_ROC_Y[i]*10-ymin)/deltaY + 0.5))
                     #if masked:  # DA: TODO: make masked pixels exclusion
                     if (1 <= tempBinX <= divx) and (1 <= tempBinY <= divy):
                         tempPH = float(avPHDUT.GetBinContent(tempBinX, tempBinY) + phROC[i])
