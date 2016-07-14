@@ -65,9 +65,13 @@ class Analysis(Elementary):
             self.PeakIntegral = self.ana_config_parser.get('BASIC', 'peak_integral')
 
         # general for pads and pixels
-        self.Cut = Cut(self)
-        self.StartEvent = self.Cut.CutConfig['EventRange'][0]
-        self.EndEvent = self.Cut.CutConfig['EventRange'][1]
+        if self.DUTType == 'pad':
+            self.Cut = Cut(self)
+            self.StartEvent = self.Cut.CutConfig['EventRange'][0]
+            self.EndEvent = self.Cut.CutConfig['EventRange'][1]
+        else:
+            self.StartEvent = 1  # DA: for now... TODO pixel cuts!
+
 
         # save histograms // canvases
         self.signal_canvas = None
@@ -375,8 +379,7 @@ class Analysis(Elementary):
                 align = self.__check_alignment_histo(h)
                 return align
             else:
-                # todo put some function for the pixel here!
-                pass
+                return True  # DA: pixel doesn't have pulser, todo make correlations between planes to test misalignment
 
         aligned = func() if draw else self.do_pickle(pickle_path, func)
         if not aligned:

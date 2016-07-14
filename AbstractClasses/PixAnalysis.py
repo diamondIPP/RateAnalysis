@@ -1,18 +1,20 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie
+from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie, kFALSE, kTRUE
 from TelescopeAnalysis import Analysis
 from CurrentInfo import Currents
+from Extrema import Extrema2D
+from Plots import Plots
 from numpy import array
 from math import sqrt, ceil, log
 from argparse import ArgumentParser
-from Extrema import Extrema2D
 from ChannelCut import ChannelCut
 from time import time, sleep
 from collections import OrderedDict
 from sys import stdout
 from copy import deepcopy
+import progressbar
 
 __author__ = 'DA'
 
@@ -29,6 +31,11 @@ class SignalPixAnalysis(Analysis):
         self.diamond_name = self.run.diamond_names[channel]
         self.bias = self.run.bias[channel]
         self.save_dir = '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number, dia=self.diamond_name)
+        self.num_devices = 7  # DA: set default to 7
+        self.roc_diam1 = 4
+        self.roc_diam2 = 5
+        self.roc_si = 6
+        self.roc_tel = [0, 1, 2, 3]
 
         # stuff
         #self.BinSize = binning
@@ -58,7 +65,8 @@ class SignalPixAnalysis(Analysis):
         #self.PeakValues = None
 
     def __del__(self):
-        for obj in [self.PulseHeight, self.Pedestal, self.SignalMapHisto, self.SignalTime, self.PeakValues, self.MeanSignalHisto]:
+        for obj in [self.PulseHeight, self.Pedestal, self.SignalMapHisto, self.SignalTime, self.PeakValues,
+                    self.MeanSignalHisto]:
             self.del_rootobj(obj)
         for c in gROOT.GetListOfCanvases():
             c.Close()
@@ -67,6 +75,218 @@ class SignalPixAnalysis(Analysis):
                 lst = [lst]
             for obj in lst:
                 self.del_rootobj(obj)
+
+    def do_analysis(self, do_occupancy=True, do_pulse_height=True):
+        self.plots = Plots(self.run.n_entries, self.run_number, do_occupancy, do_pulse_height, self.num_devices, -1,
+                           self.RunInfo)
+        self.plots.create_histograms()
+        self.kmax = int(self.plots.plot_settings['num_diff_cluster_sizes'] + 1)
+        self.deltaX = self.plots.plot_settings['deltaX']
+        self.deltaY = self.plots.plot_settings['deltaY']
+        if do_pulse_height: self.valueAverage = {iroc: {k: 0 for k in xrange(kmax)} for iroc in xrange(self.num_devices)}
+        if do_pulse_height: self.nAverage = {iroc: {k: 0 for k in xrange(kmax)} for iroc in xrange(self.num_devices)}
+        self.print_banner('Start Looping over Tree:', '%')
+        widgets = [
+            progressbar.Percentage(),
+            ' ', progressbar.Bar(marker='>'),
+            ' ', progressbar.ETA(),
+            ' ', progressbar.AdaptiveETA(),
+            ' ', progressbar.AdaptiveTransferSpeed(),
+        ]
+        bar = progressbar.ProgressBar(widgets=widgets, max_value=self.run.n_entries)
+        bar.start()
+        for event in xrange(self.run.startEvent, self.run.endEvent):
+            self.tree.GetEntry(event)
+            self.col = self.tree.col
+            self.row = self.tree.row
+            self.plane = self.tree.plane
+            self.clust_per_plane = self.tree.clust_per_plane
+            self.charge_all = {}
+            self.clust_Telescope_X = {}
+            self.clust_Telescope_Y = {}
+            self.clust_Local_X = {}
+            self.clust_Local_Y = {}
+            self.clust_row = {}
+            self.clust_col = {}
+            self.ph_1cl = {}
+            self.ph_2cl = {}
+            self.ph_3cl = {}
+            self.ph_M4cl = {}
+            exec('self.charge_all = {i: self.tree.charge_all_ROC{n} for i in xrange(self.num_devices)}'.format(n=i))
+            exec('self.clust_Telescope_X = {i: self.tree.cluster_pos_ROC{n}_Telescope_X for i in xrange(self.num_devices)}'.format(n=i))
+            exec('self.clust_Telescope_Y = {i: self.tree.cluster_pos_ROC{n}_Telescope_Y for i in xrange(self.num_devices)}'.format(n=i))
+            exec('self.clust_Local_X = {i: self.tree.cluster_pos_ROC{n}_Local_X for i in xrange(self.num_devices)}'.format(n=i))
+            exec('self.clust_Local_Y = {i: self.tree.cluster_pos_ROC{n}_Local_Y for i in xrange(self.num_devices)}'.format(n=i))
+            exec('self.clust_col = {i: self.tree.cluster_col_ROC{n} for i in xrange(self.num_devices)}'.format(n=i))
+            exec('self.clust_row = {i: self.tree.cluster_row_ROC{n} for i in xrange(self.num_devices)}'.format(n=i))
+            exec('self.ph_1cl = {i: self.tree.pulse_height_ROC{n}_1_cluster for i in xrange(self.num_devices)}'.format(n=i))
+            exec('self.ph_2cl = {i: self.tree.pulse_height_ROC{n}_2_cluster for i in xrange(self.num_devices)}'.format(n=i))
+            exec('self.ph_3cl = {i: self.tree.pulse_height_ROC{n}_3_cluster for i in xrange(self.num_devices)}'.format(n=i))
+            exec('self.ph_M4cl = {i: self.tree.pulse_height_ROC{n}_More4_cluster for i in xrange(self.num_devices)}'.format(n=i))
+            if len(self.col) == len(self.row) == len(self.plane):
+                if do_occupancy: self.fill_ocupancy()
+                if do_pulse_height: self.do_pulse_height_analysis(event)
+        bar.finish()
+        self.print_banner('Looping over Tree -> Done', '%')
+
+        if do_pulse_height:
+            self.print_banner('Averaging PH for DUTs...', '#')
+            self.plots.DoAverageHistogramDUT(self.plots.avPhROC_local_1cl[self.roc_diam1], self.plots.phROC_hitMap_local_1cl[self.roc_diam1],
+                                             self.plots.avPhROC_local_1cl[self.roc_diam2], self.plots.phROC_hitMap_local_1cl[self.roc_diam2],
+                                             self.plots.avPhROC_local_1cl[self.roc_si], self.plots.phROC_hitMap_local_1cl[self.roc_si],
+                                             int(self.plots.plot_settings['nBinsX']+1), int(self.plots.plot_settings['nBinsY']+1))
+            self.plots.DoAverageHistogramDUT(self.plots.avPhROC_telescope_1cl[self.roc_diam1], self.plots.phROC_hitMap_telescope_1cl[self.roc_diam1],
+                                             self.plots.avPhROC_telescope_1cl[self.roc_diam2], self.plots.phROC_hitMap_telescope_1cl[self.roc_diam2],
+                                             self.plots.avPhROC_telescope_1cl[self.roc_si], self.plots.phROC_hitMap_telescope_1cl[self.roc_si],
+                                             int(self.plots.plot_settings['nBinsX']+1), int(self.plots.plot_settings['nBinsY']+1))
+            self.plots.DoAverageHistogramDUT(self.plots.avPhROC_pixelated_1cl[self.roc_diam1], self.plots.phROC_hitMap_pixelated_1cl[self.roc_diam1],
+                                             self.plots.avPhROC_pixelated_1cl[self.roc_diam2], self.plots.phROC_hitMap_pixelated_1cl[self.roc_diam2],
+                                             self.plots.avPhROC_pixelated_1cl[self.roc_si], self.plots.phROC_hitMap_pixelated_1cl[self.roc_si],
+                                             int(self.plots.plot_settings['nBinCol']+1), int(self.plots.plot_settings['nBinRow']+1))
+            self.print_banner('Averaging PH for DUTs -> Done', '#')
+
+            self.print_banner('Averaging PH for telescope planes...', '#')
+            self.plots.DoAverageHistogramTPlanes(self.plots.avPhROC_local_1cl[self.roc_tel[0]], self.plots.phROC_hitMap_local_1cl[self.roc_tel[0]],
+                                                 self.plots.avPhROC_local_1cl[self.roc_tel[1]], self.plots.phROC_hitMap_local_1cl[self.roc_tel[1]],
+                                                 self.plots.avPhROC_local_1cl[self.roc_tel[2]], self.plots.phROC_hitMap_local_1cl[self.roc_tel[2]],
+                                                 self.plots.avPhROC_local_1cl[self.roc_tel[3]], self.plots.phROC_hitMap_local_1cl[self.roc_tel[3]],
+                                                 int(self.plots.plot_settings['nBinsX']+1), int(self.plots.plot_settings['nBinsY']+1))
+            self.plots.DoAverageHistogramTPlanes(self.plots.avPhROC_telescope_1cl[self.roc_tel[0]], self.plots.phROC_hitMap_telescope_1cl[self.roc_tel[0]],
+                                                 self.plots.avPhROC_telescope_1cl[self.roc_tel[1]], self.plots.phROC_hitMap_telescope_1cl[self.roc_tel[1]],
+                                                 self.plots.avPhROC_telescope_1cl[self.roc_tel[2]], self.plots.phROC_hitMap_telescope_1cl[self.roc_tel[2]],
+                                                 self.plots.avPhROC_telescope_1cl[self.roc_tel[3]], self.plots.phROC_hitMap_telescope_1cl[self.roc_tel[3]],
+                                                 int(self.plots.plot_settings['nBinsX']+1), int(self.plots.plot_settings['nBinsY']+1))
+            self.plots.DoAverageHistogramTPlanes(self.plots.avPhROC_pixelated_1cl[self.roc_tel[0]], self.plots.phROC_hitMap_pixelated_1cl[self.roc_tel[0]],
+                                                 self.plots.avPhROC_pixelated_1cl[self.roc_tel[1]], self.plots.phROC_hitMap_pixelated_1cl[self.roc_tel[1]],
+                                                 self.plots.avPhROC_pixelated_1cl[self.roc_tel[2]], self.plots.phROC_hitMap_pixelated_1cl[self.roc_tel[2]],
+                                                 self.plots.avPhROC_pixelated_1cl[self.roc_tel[3]], self.plots.phROC_hitMap_pixelated_1cl[self.roc_tel[3]],
+                                                 int(self.plots.plot_settings['nBinCol']+1), int(self.plots.plot_settings['nBinRow']+1))
+            self.print_banner('Averaging PH for telescope planes -> Done', '#')
+
+
+    def fill_occupancy(self):
+        for i in xrange(len(self.plane)):
+            if 0 <= plane_vector[i] < self.num_devices:
+                self.plots.hitMap[plane_vector[i]].Fill(self.col[i], self.row[i])
+
+    def do_pulse_height_analysis(self, event):
+        for iROC in xrange(self.num_devices):
+            numClusters = int(self.clust_per_plane[iROC])
+            self.Ph1DHistogramsExtraction(numClusters, self.ph_1cl[iROC], self.ph_2cl[iROC], self.ph_3cl[iROC],
+                                          self.ph_M4cl[iROC], self.plots.phROC_all[iROC], self.plots.phROC_1cl[iROC],
+                                          self.plots.phROC_2cl[iROC], self.plots.phROC_3cl[iROC], self.plots.phROC_M4cl[iROC])
+            self.Ph2DHistogramExtraction(numClusters, self.ph_1cl[iROC], self.clust_Local_X[iROC], self.clust_Local_Y[iROC],
+                                         self.plots.avPhROC_local_1cl[iROC], self.plots.phROC_hitMap_local_1cl[iROC],
+                                         self.deltaX, self.deltaY, kFALSE)
+            self.Ph2DHistogramExtraction(numClusters, self.ph_1cl[iROC], self.clust_Telescope_X[iROC],
+                                         self.clust_Telescope_Y[iROC], self.plots.avPhROC_telescope_1cl[iROC],
+                                         self.plots.phROC_hitMap_telescope_1cl[iROC], self.deltaX, self.deltaY, kFASLE)
+            self.Ph2DHistogramExtraction(numClusters, self.ph_1cl[iROC], self.clust_col[iROC], self.clust_row[iROC],
+                                         self.plots.avPhROC_pixelated_1cl[iROC], self.plots.phROC_hitMap_pixelated_1cl[iROC],
+                                         1, 1, kTRUE)
+            self.DoAveragePulseHeight(event, numClusters, iROC, self.ph_1cl[iROC], self.ph_2cl[iROC], self.ph_3cl[iROC],
+                                      self.ph_M4cl[iROC], self.plots.meanPhROC_all[iROC], self.plots.meanPhROC_1cl[iROC],
+                                      self.plots.meanPhROC_2cl[iROC], self.plots.meanPhROC_3cl[iROC],
+                                      self.plots.meanPhROC_M4cl[iROC])
+
+    def Ph1DHistogramsExtraction(self, numClusters, ph1, ph2, ph3, phM4, phHall, phH1, phH2, phH3, phHM4):
+        if numClusters is not 0:
+            for i in xrange(len(ph1)):
+                phH1.Fill(ph1[i])
+                phHall.Fill(ph1[i])
+            for i in xrange(len(ph2)):
+                phH2.Fill(ph2[i])
+                phHall.Fill(ph2[i])
+            for i in xrange(len(ph3)):
+                phH3.Fill(ph3[i])
+                phHall.Fill(ph3[i])
+            for i in xrange(len(phM4)):
+                phHM4.Fill(phM4[i])
+                phHall.Fill(phM4[i])
+
+    def Ph2DHistogramExtraction(self, numClusters, phROC, clust_ROC_X, clust_ROC_Y, avPHDUT, hitMapPHDUT, deltaX, deltaY, isRowCol=kFALSE):
+        if numClusters is not 0:
+            numPhROC = len(phROC)
+            tempBinX, tempBinY, tempPH = 0, 0, 0
+            xmin = self.plots.plot_settings['xmin']
+            ymin = self.plots.plot_settings['ymin']
+            divx = self.plots.plot_settings['nBinCol'] if isRowCol else self.plots.plot_settings['nBinsX']
+            divy = self.plots.plot_settings['nBinRow'] if isRowCol else self.plots.plot_settings['nBinsY']
+            for i in xrange(numPhROC):
+                if (len(clust_ROC_X) >= numPhROC) and (len(clust_ROC_Y) >= numPhROC):
+                    tempBinX = int(clust_ROC_X[i] + 1) if isRowCol else int(ceil(float(clust_ROC_X[i]*10-xmin)/deltaX + 0.5))
+                    tempBinY = int(clust_ROC_Y[i] + 1) if isRowCol else int(ceil(float(clust_ROC_Y[i]*10-ymin)/deltaY + 0.5))
+                    #if masked:  # DA: TODO: make masked pixels exclusion
+                    if (1 <= tempBinX <= divx) and (1 <= tempBinY <= divy):
+                        tempPH = float(avPHDUT.GetBinContent(tempBinX, tempBinY) + phROC[i])
+                        avPHDUT.SetBinContent(tempBinX, tempBinY, tempPH)
+                        if isRowCol:
+                            hitMapPHDUT.Fill(clust_ROC_X[i], clust_ROC_Y[i])
+                        else:
+                            hitMapPHDUT.Fill(10*clust_ROC_X[i], 10*clust_ROC_Y[i])
+                    # close if of masked DA: TODO: make masked pixels exclusion
+
+    def DoAveragePulseHeight(self, ievent, numcl, iroc, ph1, ph2, ph3, phM4, phGall, phG1, phG2, phG3, phGM4):
+        binWidth = self.plots.plot_settings['binWidthTGraph']
+        if (ievent - self.plots.nPointsTGraph * binWidth) > self.plots.plot_settings['binWidthTGraph']:
+            # All cluster sizes
+            phGall.Set(int(self.plots.nPointsTGraph+1))
+            phGall.SetPoint(int(self.plots.nPointsTGraph), ievent-float(binWidth)/2, self.valueAverage[iroc][0])
+            phGall.SetPointError(int(self.plots.nPointsTGraph), binWidth/2.0, self.valueAverage[iroc][0]/sqrt(self.nAverage[iroc][0]))
+            self.nAverage[iroc][0] = 0
+            self.valueAverage[iroc][0] = 0
+            # 1 pix cluster size
+            phG1.Set(int(self.plots.nPointsTGraph+1))
+            phG1.SetPoint(int(self.plots.nPointsTGraph), ievent-float(binWidth)/2.0, self.valueAverage[iroc][1])
+            phG1.SetPointError(int(self.plots.nPointsTGraph), binWidth/2.0, self.valueAverage[iroc][1]/sqrt(self.nAverage[iroc][1]))
+            self.nAverage[iroc][1] = 0
+            self.valueAverage[iroc][1] = 0
+            # 2 pix cluster size
+            phG2.Set(int(self.plots.nPointsTGraph+1))
+            phG2.SetPoint(int(self.plots.nPointsTGraph), ievent-float(binWidth)/2.0, self.valueAverage[iroc][2])
+            phG2.SetPointError(int(self.plots.nPointsTGraph), binWidth/2.0, self.valueAverage[iroc][2]/sqrt(self.nAverage[iroc][2]))
+            self.nAverage[iroc][2] = 0
+            self.valueAverage[iroc][2] = 0
+            # 3 pix cluster size
+            phG3.Set(int(self.plots.nPointsTGraph+1))
+            phG3.SetPoint(int(self.plots.nPointsTGraph), ievent-float(binWidth)/2.0, self.valueAverage[iroc][3])
+            phG3.SetPointError(int(self.plots.nPointsTGraph), binWidth/2.0, self.valueAverage[iroc][3]/sqrt(self.nAverage[iroc][3]))
+            self.nAverage[iroc][3] = 0
+            self.valueAverage[iroc][3] = 0
+            # 4 or more pix cluster size
+            phGM4.Set(int(self.plots.nPointsTGraph+1))
+            phGM4.SetPoint(int(self.plots.nPointsTGraph), ievent-float(binWidth)/2.0, self.valueAverage[iroc][4])
+            phGM4.SetPointError(int(self.plots.nPointsTGraph), binWidth/2.0, self.valueAverage[iroc][4]/sqrt(self.nAverage[iroc][4]))
+            self.nAverage[iroc][4] = 0
+            self.valueAverage[iroc][4] = 0
+            if int(iroc) is 6: self.plots.nPointsTGraph += 1
+        if numcl is not 0:
+            # update average of 1 pix size clusters (and all size clusters) for ROC = iroc 
+            for i in xrange(len(ph1)):
+                self.valueAverage[iroc][0] = self.valueAverage[iroc][0]*self.nAverage[iroc][0]/float(self.nAverage[iroc][0]+1) + ph1[i]/float(self.nAverage[iroc][0]+1)
+                self.nAverage[iroc][0] += 1
+                self.valueAverage[iroc][1] = self.valueAverage[iroc][1]*self.nAverage[iroc][1]/float(self.nAverage[iroc][1]+1) + ph1[i]/float(self.nAverage[iroc][1]+1)
+                self.nAverage[iroc][1] += 1
+            # update average of 2 pix size clusters (and all size clusters) for ROC = iroc 
+            for i in xrange(len(ph1)):
+                self.valueAverage[iroc][0] = self.valueAverage[iroc][0]*self.nAverage[iroc][0]/float(self.nAverage[iroc][0]+1) + ph1[i]/float(self.nAverage[iroc][0]+1)
+                self.nAverage[iroc][0] += 1
+                self.valueAverage[iroc][2] = self.valueAverage[iroc][2]*self.nAverage[iroc][2]/float(self.nAverage[iroc][2]+1) + ph1[i]/float(self.nAverage[iroc][2]+1)
+                self.nAverage[iroc][2] += 1
+            # update average of 3 pix size clusters (and all size clusters) for ROC = iroc 
+            for i in xrange(len(ph1)):
+                self.valueAverage[iroc][0] = self.valueAverage[iroc][0]*self.nAverage[iroc][0]/float(self.nAverage[iroc][0]+1) + ph1[i]/float(self.nAverage[iroc][0]+1)
+                self.nAverage[iroc][0] += 1
+                self.valueAverage[iroc][3] = self.valueAverage[iroc][3]*self.nAverage[iroc][3]/float(self.nAverage[iroc][3]+1) + ph1[i]/float(self.nAverage[iroc][3]+1)
+                self.nAverage[iroc][3] += 1
+            # update average of 4 or more pix size clusters (and all size clusters) for ROC = iroc 
+            for i in xrange(len(ph1)):
+                self.valueAverage[iroc][0] = self.valueAverage[iroc][0]*self.nAverage[iroc][0]/float(self.nAverage[iroc][0]+1) + ph1[i]/float(self.nAverage[iroc][0]+1)
+                self.nAverage[iroc][0] += 1
+                self.valueAverage[iroc][4] = self.valueAverage[iroc][4]*self.nAverage[iroc][4]/float(self.nAverage[iroc][4]+1) + ph1[i]/float(self.nAverage[iroc][4]+1)
+                self.nAverage[iroc][4] += 1
+
+
 
     def show_current(self, relative_time=True):
         self.Currents.draw_graphs(relative_time=relative_time)
