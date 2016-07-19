@@ -43,12 +43,12 @@ class Plots:
             'nBinsY': 120,
             'ymin': -6,
             'ymax': 6,
-            'nBinCol': 52,
+            'nBinCol': 51,
             'minCol': 0,
-            'maxCol': 52,
-            'nBinRow': 80,
+            'maxCol': 51,
+            'nBinRow': 79,
             'minRow': 0,
-            'maxRow': 80,
+            'maxRow': 79,
             'binWidthTGraph': 200000,
             'num_diff_cluster_sizes': 4
         }
@@ -72,12 +72,32 @@ class Plots:
         self.set_1D_options(histo1D, xTitle, yTitle, color, min_val)
         return deepcopy(histo1D)
 
+    def create_1D_profile(self, name='histo', title='histo', xTitle='X', yTitle='Y', color=kBlack, min_val=0):
+        ph1Dbins = self.plot_settings['ph1Dbins']
+        ph1Dmin = self.plot_settings['ph1Dmin']
+        ph1Dmax = self.plot_settings['ph1Dmax']
+        histo1D = TProfile(name, title, int(ph1Dbins + 1), ph1Dmin - float(ph1Dmax - ph1Dmin)/(2*ph1Dbins), ph1Dmax + float(ph1Dmax - ph1Dmin)/(2*ph1Dbins))
+        self.set_1D_options(histo1D, xTitle, yTitle, color, min_val)
+        return deepcopy(histo1D)
+
     def set_1D_options(self, histo, xTitle='X', yTitle='Y', color=kBlack, min_val=0):
         histo.GetXaxis().SetTitle(xTitle)
         histo.GetYaxis().SetTitle(yTitle)
         histo.SetMaximum(self.plot_settings['maxphplots'])
         histo.SetMinimum(min_val)
         histo.SetLineColor(color)
+
+    def create_2D_profile(self, type='spatial', name='histo', title='histo', xTitle='X', yTitle='Y', min_val=0, max_val=-1):
+        xbins = self.plot_settings['nBinsX'] if type is 'spatial' else self.plot_settings['nBinCol']
+        xmin = self.plot_settings['xmin'] if type is 'spatial' else self.plot_settings['minCol']
+        xmax = self.plot_settings['xmax'] if type is 'spatial' else self.plot_settings['maxCol']
+        ybins = self.plot_settings['nBinsY'] if type is 'spatial' else self.plot_settings['nBinRow']
+        ymin = self.plot_settings['ymin'] if type is 'spatial' else self.plot_settings['minRow']
+        ymax = self.plot_settings['ymax'] if type is 'spatial' else self.plot_settings['maxRow']
+        histo2D = TProfile2D(name, title, int(xbins + 1), xmin - float(xmax-xmin)/(2*xbins), xmax + float(xmax-xmin)/(2*xbins),
+                       int(ybins + 1), ymin - float(ymax-ymin)/(2*ybins), ymax + float(ymax-ymin)/(2*ybins))
+        self.set_2D_options(histo2D, xTitle, yTitle, min_val, max_val)
+        return deepcopy(histo2D)
 
     def create_2D_histogram(self, type='spatial', name='histo', title='histo', xTitle='X', yTitle='Y', min_val=0, max_val=-1):
         xbins = self.plot_settings['nBinsX'] if type is 'spatial' else self.plot_settings['nBinCol']
@@ -120,36 +140,65 @@ class Plots:
             # 2D
             self.hitMap = {i: self.create_2D_histogram('pixel', 'hitMapROC{n}'.format(n=i), 'Hit Map ROC {n}'.format(n=i),
                                                        'Column', 'Row', 0, -1) for i in xrange(self.num_devices)}
-            self.avPhROC_local_1cl = {i: self.create_2D_histogram('spatial', 'avPh_ROC{n}_local_1cl'.format(n=i),
+            # self.avPhROC_local_1cl = {i: self.create_2D_histogram('spatial', 'avPh_ROC{n}_local_1cl'.format(n=i),
+            #                                                       'Average Pulse Height ROC {n} Local Coord. 1pix cluster'.format(n=i),
+            #                                                       'x (mm)', 'y (mm)', 0, -1) for i in xrange(self.num_devices)}
+            # self.phROC_hitMap_local_1cl = {i: self.create_2D_histogram('spatial', 'ph_ROC{n}_hitMap_local_1cl'.format(n=i),
+            #                                                            'Pulse Height ROC {n} Hit Map Local Coord. 1pix cluster'.format(n=i),
+            #                                                            'x (mm)', 'y (mm)', 0, -1) for i in xrange(self.num_devices)}
+            # self.avPhROC_telescope_1cl = {i: self.create_2D_histogram('spatial', 'avPh_ROC{n}_telescope_1cl',
+            #                                                           'Average Pulse Height ROC {n} telescope Coord. 1 pix cluster'.format(n=i),
+            #                                                           'x (mm)', 'y (mm)', 0, -1) for i in xrange(self.num_devices)}
+            # self.phROC_hitMap_telescope_1cl = {i: self.create_2D_histogram('spatial', 'ph_ROC{n}_hitMap_telescope_1cl'.format(n=i),
+            #                                                            'Pulse Height ROC {n} Hit Map telescope Coord. 1pix cluster'.format(n=i),
+            #                                                            'x (mm)', 'y (mm)', 0, -1) for i in xrange(self.num_devices)}
+            # self.avPhROC_pixelated_1cl = {i: self.create_2D_histogram('pixel', 'avPh_ROC{n}_pixelated_1cl',
+            #                                                           'Average Pulse Height ROC {n} pixelated Coord. 1 pix cluster'.format(n=i),
+            #                                                           'Column', 'Row', 0, -1) for i in xrange(self.num_devices)}
+            # self.phROC_hitMap_pixelated_1cl = {i: self.create_2D_histogram('pixel', 'ph_ROC{n}_hitMap_pixelated_1cl'.format(n=i),
+            #                                                            'Pulse Height ROC {n} Hit Map pixelated Coord. 1pix cluster'.format(n=i),
+            #                                                            'Column', 'Row', 0, -1) for i in xrange(self.num_devices)}
+
+            # alternative 2D
+            self.avPhROC_local_1cl2 = {i: self.create_2D_profile('spatial', 'avPh_ROC{n}_local_1cl_2'.format(n=i),
                                                                   'Average Pulse Height ROC {n} Local Coord. 1pix cluster'.format(n=i),
                                                                   'x (mm)', 'y (mm)', 0, -1) for i in xrange(self.num_devices)}
-            self.phROC_hitMap_local_1cl = {i: self.create_2D_histogram('spatial', 'ph_ROC{n}_hitMap_local_1cl'.format(n=i),
-                                                                       'Pulse Height ROC {n} Hit Map Local Coord. 1pix cluster'.format(n=i),
-                                                                       'x (mm)', 'y (mm)', 0, -1) for i in xrange(self.num_devices)}
-            self.avPhROC_telescope_1cl = {i: self.create_2D_histogram('spatial', 'avPh_ROC{n}_telescope_1cl',
+            self.avPhROC_telescope_1cl2 = {i: self.create_2D_profile('spatial', 'avPh_ROC{n}_telescope_1cl_2',
                                                                       'Average Pulse Height ROC {n} telescope Coord. 1 pix cluster'.format(n=i),
                                                                       'x (mm)', 'y (mm)', 0, -1) for i in xrange(self.num_devices)}
-            self.phROC_hitMap_telescope_1cl = {i: self.create_2D_histogram('spatial', 'ph_ROC{n}_hitMap_telescope_1cl'.format(n=i),
-                                                                       'Pulse Height ROC {n} Hit Map telescope Coord. 1pix cluster'.format(n=i),
-                                                                       'x (mm)', 'y (mm)', 0, -1) for i in xrange(self.num_devices)}
-            self.avPhROC_pixelated_1cl = {i: self.create_2D_histogram('pixel', 'avPh_ROC{n}_pixelated_1cl',
+            self.avPhROC_pixelated_1cl2 = {i: self.create_2D_profile('pixel', 'avPh_ROC{n}_pixelated_1cl_2',
                                                                       'Average Pulse Height ROC {n} pixelated Coord. 1 pix cluster'.format(n=i),
                                                                       'Column', 'Row', 0, -1) for i in xrange(self.num_devices)}
-            self.phROC_hitMap_pixelated_1cl = {i: self.create_2D_histogram('pixel', 'ph_ROC{n}_hitMap_pixelated_1cl'.format(n=i),
-                                                                       'Pulse Height ROC {n} Hit Map pixelated Coord. 1pix cluster'.format(n=i),
-                                                                       'Column', 'Row', 0, -1) for i in xrange(self.num_devices)}
+
             # TGraphErrors
-            self.meanPhROC_all = {i: self.create_TGraphErrors('meanPHROC{n}_all'.format(n=i), 'Event', 'Charge (e)',
-                                                              kBlack, kBlack) for i in xrange(self.num_devices)}
-            self.meanPhROC_1cl = {i: self.create_TGraphErrors('meanPHROC{n}_1cl'.format(n=i), 'Event', 'Charge (e)',
-                                                              kBlack, kBlack) for i in xrange(self.num_devices)}
-            self.meanPhROC_2cl = {i: self.create_TGraphErrors('meanPHROC{n}_2cl'.format(n=i), 'Event', 'Charge (e)',
-                                                              kBlack, kBlack) for i in xrange(self.num_devices)}
-            self.meanPhROC_3cl = {i: self.create_TGraphErrors('meanPHROC{n}_3cl'.format(n=i), 'Event', 'Charge (e)',
-                                                              kBlack, kBlack) for i in xrange(self.num_devices)}
-            self.meanPhROC_M4cl = {i: self.create_TGraphErrors('meanPHROC{n}_M4cl'.format(n=i), 'Event', 'Charge (e)',
-                                                              kBlack, kBlack) for i in xrange(self.num_devices)}
-            self.nPointsTGraph = 0
+            # self.meanPhROC_all = {i: self.create_TGraphErrors('meanPHROC{n}_all'.format(n=i), 'Event', 'Charge (e)',
+            #                                                   kBlack, kBlack) for i in xrange(self.num_devices)}
+            # self.meanPhROC_1cl = {i: self.create_TGraphErrors('meanPHROC{n}_1cl'.format(n=i), 'Event', 'Charge (e)',
+            #                                                   kBlack, kBlack) for i in xrange(self.num_devices)}
+            # self.meanPhROC_2cl = {i: self.create_TGraphErrors('meanPHROC{n}_2cl'.format(n=i), 'Event', 'Charge (e)',
+            #                                                   kBlack, kBlack) for i in xrange(self.num_devices)}
+            # self.meanPhROC_3cl = {i: self.create_TGraphErrors('meanPHROC{n}_3cl'.format(n=i), 'Event', 'Charge (e)',
+            #                                                   kBlack, kBlack) for i in xrange(self.num_devices)}
+            # self.meanPhROC_M4cl = {i: self.create_TGraphErrors('meanPHROC{n}_M4cl'.format(n=i), 'Event', 'Charge (e)',
+            #                                                   kBlack, kBlack) for i in xrange(self.num_devices)}
+            # self.nPointsTGraph = 0
+
+            # Alternative to TGraphErrors
+            self.meanPhROC_all2 = {i: self.create_1D_profile('meanPHROC{n}_all_2'.format(n=i),
+                                                               'Mean PH ROC {n} all cluster sizes'.format(n=i), 'Event',
+                                                               'Charge(e)', kBlack, 0) for i in xrange(self.num_devices)}
+            self.meanPhROC_1cl2 = {i: self.create_1D_profile('meanPHROC{n}_1cl_2'.format(n=i),
+                                                               'Mean PH ROC {n} 1 pix cluster'.format(n=i), 'Event',
+                                                               'Charge(e)', kBlack, 0) for i in xrange(self.num_devices)}
+            self.meanPhROC_2cl2 = {i: self.create_1D_profile('meanPHROC{n}_2cl_2'.format(n=i),
+                                                               'Mean PH ROC {n} 2 pix cluster'.format(n=i), 'Event',
+                                                               'Charge(e)', kBlack, 0) for i in xrange(self.num_devices)}
+            self.meanPhROC_3cl2 = {i: self.create_1D_profile('meanPHROC{n}_3cl_2'.format(n=i),
+                                                               'Mean PH ROC {n} 3 pix cluster'.format(n=i), 'Event',
+                                                               'Charge(e)', kBlack, 0) for i in xrange(self.num_devices)}
+            self.meanPhROC_M4cl2 = {i: self.create_1D_profile('meanPHROC{n}_M4cl_2'.format(n=i),
+                                                                'Mean PH ROC {n} 4 or more pixs cluster'.format(n=i),
+                                                                'Event', 'Charge(e)', kBlack, 0) for i in xrange(self.num_devices)}
 
     def AverageBinHistogram(self, histToAv, histHits, binx, biny):
         temp = float(histToAv.GetBinContent(binx, biny))/float(histHits.GetBinContent(binx,biny))

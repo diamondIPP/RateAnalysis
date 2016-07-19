@@ -9,6 +9,7 @@ from numpy import array, zeros
 from Elementary import Elementary
 from RunClass import Run
 from Cut import Cut
+from CutPix import CutPix
 
 
 class Analysis(Elementary):
@@ -70,6 +71,7 @@ class Analysis(Elementary):
             self.StartEvent = self.Cut.CutConfig['EventRange'][0]
             self.EndEvent = self.Cut.CutConfig['EventRange'][1]
         else:
+            self.Cut = CutPix(self)
             self.StartEvent = 1  # DA: for now... TODO pixel cuts!
 
 

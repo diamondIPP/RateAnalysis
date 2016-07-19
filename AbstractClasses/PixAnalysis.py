@@ -132,39 +132,39 @@ class SignalPixAnalysis(Analysis):
         bar.finish()
         self.print_banner('Looping over Tree -> Done', '%')
 
-        if do_pulse_height:
-            self.print_banner('Averaging PH for DUTs...', '#')
-            self.plots.DoAverageHistogramDUT(self.plots.avPhROC_local_1cl[self.roc_diam1], self.plots.phROC_hitMap_local_1cl[self.roc_diam1],
-                                             self.plots.avPhROC_local_1cl[self.roc_diam2], self.plots.phROC_hitMap_local_1cl[self.roc_diam2],
-                                             self.plots.avPhROC_local_1cl[self.roc_si], self.plots.phROC_hitMap_local_1cl[self.roc_si],
-                                             int(self.plots.plot_settings['nBinsX']+1), int(self.plots.plot_settings['nBinsY']+1))
-            self.plots.DoAverageHistogramDUT(self.plots.avPhROC_telescope_1cl[self.roc_diam1], self.plots.phROC_hitMap_telescope_1cl[self.roc_diam1],
-                                             self.plots.avPhROC_telescope_1cl[self.roc_diam2], self.plots.phROC_hitMap_telescope_1cl[self.roc_diam2],
-                                             self.plots.avPhROC_telescope_1cl[self.roc_si], self.plots.phROC_hitMap_telescope_1cl[self.roc_si],
-                                             int(self.plots.plot_settings['nBinsX']+1), int(self.plots.plot_settings['nBinsY']+1))
-            self.plots.DoAverageHistogramDUT(self.plots.avPhROC_pixelated_1cl[self.roc_diam1], self.plots.phROC_hitMap_pixelated_1cl[self.roc_diam1],
-                                             self.plots.avPhROC_pixelated_1cl[self.roc_diam2], self.plots.phROC_hitMap_pixelated_1cl[self.roc_diam2],
-                                             self.plots.avPhROC_pixelated_1cl[self.roc_si], self.plots.phROC_hitMap_pixelated_1cl[self.roc_si],
-                                             int(self.plots.plot_settings['nBinCol']+1), int(self.plots.plot_settings['nBinRow']+1))
-            self.print_banner('Averaging PH for DUTs -> Done', '#')
-
-            self.print_banner('Averaging PH for telescope planes...', '#')
-            self.plots.DoAverageHistogramTPlanes(self.plots.avPhROC_local_1cl[self.roc_tel[0]], self.plots.phROC_hitMap_local_1cl[self.roc_tel[0]],
-                                                 self.plots.avPhROC_local_1cl[self.roc_tel[1]], self.plots.phROC_hitMap_local_1cl[self.roc_tel[1]],
-                                                 self.plots.avPhROC_local_1cl[self.roc_tel[2]], self.plots.phROC_hitMap_local_1cl[self.roc_tel[2]],
-                                                 self.plots.avPhROC_local_1cl[self.roc_tel[3]], self.plots.phROC_hitMap_local_1cl[self.roc_tel[3]],
-                                                 int(self.plots.plot_settings['nBinsX']+1), int(self.plots.plot_settings['nBinsY']+1))
-            self.plots.DoAverageHistogramTPlanes(self.plots.avPhROC_telescope_1cl[self.roc_tel[0]], self.plots.phROC_hitMap_telescope_1cl[self.roc_tel[0]],
-                                                 self.plots.avPhROC_telescope_1cl[self.roc_tel[1]], self.plots.phROC_hitMap_telescope_1cl[self.roc_tel[1]],
-                                                 self.plots.avPhROC_telescope_1cl[self.roc_tel[2]], self.plots.phROC_hitMap_telescope_1cl[self.roc_tel[2]],
-                                                 self.plots.avPhROC_telescope_1cl[self.roc_tel[3]], self.plots.phROC_hitMap_telescope_1cl[self.roc_tel[3]],
-                                                 int(self.plots.plot_settings['nBinsX']+1), int(self.plots.plot_settings['nBinsY']+1))
-            self.plots.DoAverageHistogramTPlanes(self.plots.avPhROC_pixelated_1cl[self.roc_tel[0]], self.plots.phROC_hitMap_pixelated_1cl[self.roc_tel[0]],
-                                                 self.plots.avPhROC_pixelated_1cl[self.roc_tel[1]], self.plots.phROC_hitMap_pixelated_1cl[self.roc_tel[1]],
-                                                 self.plots.avPhROC_pixelated_1cl[self.roc_tel[2]], self.plots.phROC_hitMap_pixelated_1cl[self.roc_tel[2]],
-                                                 self.plots.avPhROC_pixelated_1cl[self.roc_tel[3]], self.plots.phROC_hitMap_pixelated_1cl[self.roc_tel[3]],
-                                                 int(self.plots.plot_settings['nBinCol']+1), int(self.plots.plot_settings['nBinRow']+1))
-            self.print_banner('Averaging PH for telescope planes -> Done', '#')
+        # if do_pulse_height:
+        #     self.print_banner('Averaging PH for DUTs...', '#')
+        #     self.plots.DoAverageHistogramDUT(self.plots.avPhROC_local_1cl[self.roc_diam1], self.plots.phROC_hitMap_local_1cl[self.roc_diam1],
+        #                                      self.plots.avPhROC_local_1cl[self.roc_diam2], self.plots.phROC_hitMap_local_1cl[self.roc_diam2],
+        #                                      self.plots.avPhROC_local_1cl[self.roc_si], self.plots.phROC_hitMap_local_1cl[self.roc_si],
+        #                                      int(self.plots.plot_settings['nBinsX']+1), int(self.plots.plot_settings['nBinsY']+1))
+        #     self.plots.DoAverageHistogramDUT(self.plots.avPhROC_telescope_1cl[self.roc_diam1], self.plots.phROC_hitMap_telescope_1cl[self.roc_diam1],
+        #                                      self.plots.avPhROC_telescope_1cl[self.roc_diam2], self.plots.phROC_hitMap_telescope_1cl[self.roc_diam2],
+        #                                      self.plots.avPhROC_telescope_1cl[self.roc_si], self.plots.phROC_hitMap_telescope_1cl[self.roc_si],
+        #                                      int(self.plots.plot_settings['nBinsX']+1), int(self.plots.plot_settings['nBinsY']+1))
+        #     self.plots.DoAverageHistogramDUT(self.plots.avPhROC_pixelated_1cl[self.roc_diam1], self.plots.phROC_hitMap_pixelated_1cl[self.roc_diam1],
+        #                                      self.plots.avPhROC_pixelated_1cl[self.roc_diam2], self.plots.phROC_hitMap_pixelated_1cl[self.roc_diam2],
+        #                                      self.plots.avPhROC_pixelated_1cl[self.roc_si], self.plots.phROC_hitMap_pixelated_1cl[self.roc_si],
+        #                                      int(self.plots.plot_settings['nBinCol']+1), int(self.plots.plot_settings['nBinRow']+1))
+        #     self.print_banner('Averaging PH for DUTs -> Done', '#')
+        #
+        #     self.print_banner('Averaging PH for telescope planes...', '#')
+        #     self.plots.DoAverageHistogramTPlanes(self.plots.avPhROC_local_1cl[self.roc_tel[0]], self.plots.phROC_hitMap_local_1cl[self.roc_tel[0]],
+        #                                          self.plots.avPhROC_local_1cl[self.roc_tel[1]], self.plots.phROC_hitMap_local_1cl[self.roc_tel[1]],
+        #                                          self.plots.avPhROC_local_1cl[self.roc_tel[2]], self.plots.phROC_hitMap_local_1cl[self.roc_tel[2]],
+        #                                          self.plots.avPhROC_local_1cl[self.roc_tel[3]], self.plots.phROC_hitMap_local_1cl[self.roc_tel[3]],
+        #                                          int(self.plots.plot_settings['nBinsX']+1), int(self.plots.plot_settings['nBinsY']+1))
+        #     self.plots.DoAverageHistogramTPlanes(self.plots.avPhROC_telescope_1cl[self.roc_tel[0]], self.plots.phROC_hitMap_telescope_1cl[self.roc_tel[0]],
+        #                                          self.plots.avPhROC_telescope_1cl[self.roc_tel[1]], self.plots.phROC_hitMap_telescope_1cl[self.roc_tel[1]],
+        #                                          self.plots.avPhROC_telescope_1cl[self.roc_tel[2]], self.plots.phROC_hitMap_telescope_1cl[self.roc_tel[2]],
+        #                                          self.plots.avPhROC_telescope_1cl[self.roc_tel[3]], self.plots.phROC_hitMap_telescope_1cl[self.roc_tel[3]],
+        #                                          int(self.plots.plot_settings['nBinsX']+1), int(self.plots.plot_settings['nBinsY']+1))
+        #     self.plots.DoAverageHistogramTPlanes(self.plots.avPhROC_pixelated_1cl[self.roc_tel[0]], self.plots.phROC_hitMap_pixelated_1cl[self.roc_tel[0]],
+        #                                          self.plots.avPhROC_pixelated_1cl[self.roc_tel[1]], self.plots.phROC_hitMap_pixelated_1cl[self.roc_tel[1]],
+        #                                          self.plots.avPhROC_pixelated_1cl[self.roc_tel[2]], self.plots.phROC_hitMap_pixelated_1cl[self.roc_tel[2]],
+        #                                          self.plots.avPhROC_pixelated_1cl[self.roc_tel[3]], self.plots.phROC_hitMap_pixelated_1cl[self.roc_tel[3]],
+        #                                          int(self.plots.plot_settings['nBinCol']+1), int(self.plots.plot_settings['nBinRow']+1))
+        #     self.print_banner('Averaging PH for telescope planes -> Done', '#')
 
 
     def fill_occupancy(self):
@@ -178,19 +178,33 @@ class SignalPixAnalysis(Analysis):
             self.Ph1DHistogramsExtraction(numClusters, self.ph_1cl[iROC], self.ph_2cl[iROC], self.ph_3cl[iROC],
                                           self.ph_M4cl[iROC], self.plots.phROC_all[iROC], self.plots.phROC_1cl[iROC],
                                           self.plots.phROC_2cl[iROC], self.plots.phROC_3cl[iROC], self.plots.phROC_M4cl[iROC])
-            self.Ph2DHistogramExtraction(numClusters, self.ph_1cl[iROC], self.clust_Local_X[iROC], self.clust_Local_Y[iROC],
-                                         self.plots.avPhROC_local_1cl[iROC], self.plots.phROC_hitMap_local_1cl[iROC],
-                                         self.deltaX, self.deltaY, kFALSE)
-            self.Ph2DHistogramExtraction(numClusters, self.ph_1cl[iROC], self.clust_Telescope_X[iROC],
-                                         self.clust_Telescope_Y[iROC], self.plots.avPhROC_telescope_1cl[iROC],
-                                         self.plots.phROC_hitMap_telescope_1cl[iROC], self.deltaX, self.deltaY, kFALSE)
-            self.Ph2DHistogramExtraction(numClusters, self.ph_1cl[iROC], self.clust_col[iROC], self.clust_row[iROC],
-                                         self.plots.avPhROC_pixelated_1cl[iROC], self.plots.phROC_hitMap_pixelated_1cl[iROC],
-                                         1, 1, kTRUE)
-            self.DoAveragePulseHeight(event, numClusters, iROC, self.ph_1cl[iROC], self.ph_2cl[iROC], self.ph_3cl[iROC],
-                                      self.ph_M4cl[iROC], self.plots.meanPhROC_all[iROC], self.plots.meanPhROC_1cl[iROC],
-                                      self.plots.meanPhROC_2cl[iROC], self.plots.meanPhROC_3cl[iROC],
-                                      self.plots.meanPhROC_M4cl[iROC])
+
+            # self.Ph2DHistogramExtraction(numClusters, self.ph_1cl[iROC], self.clust_Local_X[iROC], self.clust_Local_Y[iROC],
+            #                              self.plots.avPhROC_local_1cl[iROC], self.plots.phROC_hitMap_local_1cl[iROC],
+            #                              self.deltaX, self.deltaY, kFALSE)
+            # self.Ph2DHistogramExtraction(numClusters, self.ph_1cl[iROC], self.clust_Telescope_X[iROC],
+            #                              self.clust_Telescope_Y[iROC], self.plots.avPhROC_telescope_1cl[iROC],
+            #                              self.plots.phROC_hitMap_telescope_1cl[iROC], self.deltaX, self.deltaY, kFALSE)
+            # self.Ph2DHistogramExtraction(numClusters, self.ph_1cl[iROC], self.clust_col[iROC], self.clust_row[iROC],
+            #                              self.plots.avPhROC_pixelated_1cl[iROC], self.plots.phROC_hitMap_pixelated_1cl[iROC],
+            #                              1, 1, kTRUE)
+
+            self.Ph2DHistogramExtraction2(numClusters, self.ph_1cl[iROC], self.clust_Local_X[iROC], self.clust_Local_Y[iROC],
+                                         self.plots.avPhROC_local_1cl2[iROC], kFALSE)
+            self.Ph2DHistogramExtraction2(numClusters, self.ph_1cl[iROC], self.clust_Telescope_X[iROC],
+                                         self.clust_Telescope_Y[iROC], self.plots.avPhROC_telescope_1cl2[iROC], kFALSE)
+            self.Ph2DHistogramExtraction2(numClusters, self.ph_1cl[iROC], self.clust_col[iROC], self.clust_row[iROC],
+                                         self.plots.avPhROC_pixelated_1cl2[iROC], kTRUE)
+
+            # self.DoAveragePulseHeight(event, numClusters, iROC, self.ph_1cl[iROC], self.ph_2cl[iROC], self.ph_3cl[iROC],
+            #                           self.ph_M4cl[iROC], self.plots.meanPhROC_all[iROC], self.plots.meanPhROC_1cl[iROC],
+            #                           self.plots.meanPhROC_2cl[iROC], self.plots.meanPhROC_3cl[iROC],
+            #                           self.plots.meanPhROC_M4cl[iROC])
+
+            self.DoAveragePulseHeight2(event, numClusters, self.ph_1cl[iROC], self.ph_2cl[iROC], self.ph_3cl[iROC],
+                                      self.ph_M4cl[iROC], self.plots.meanPhROC_all2[iROC], self.plots.meanPhROC_1cl2[iROC],
+                                      self.plots.meanPhROC_2cl2[iROC], self.plots.meanPhROC_3cl2[iROC],
+                                      self.plots.meanPhROC_M4cl2[iROC])
 
     def Ph1DHistogramsExtraction(self, numClusters, ph1, ph2, ph3, phM4, phHall, phH1, phH2, phH3, phHM4):
         if numClusters is not 0:
@@ -206,6 +220,13 @@ class SignalPixAnalysis(Analysis):
             for i in xrange(len(phM4)):
                 phHM4.Fill(phM4[i])
                 phHall.Fill(phM4[i])
+
+    def Ph2DHistogramExtraction2(self, numClusters, phROC, clust_ROC_X, clust_ROC_Y, avPHDUT, isRowCol=kFALSE):
+        if numClusters is not 0:
+            numPhROC = len(phROC)
+            for i in xrange(numPhROC):
+                if (len(clust_ROC_X) >= numPhROC) and (len(clust_ROC_Y) >= numPhROC):
+                    avPHDUT.Fill(clust_ROC_X[i], clust_ROC_Y[i], phROC[i]) if isRowCol else avPHDUT.Fill(clust_ROC_X[i]*10, clust_ROC_Y[i]*10, phROC[i])
 
     def Ph2DHistogramExtraction(self, numClusters, phROC, clust_ROC_X, clust_ROC_Y, avPHDUT, hitMapPHDUT, deltaX, deltaY, isRowCol=kFALSE):
         if numClusters is not 0:
@@ -230,6 +251,21 @@ class SignalPixAnalysis(Analysis):
                         else:
                             hitMapPHDUT.Fill(10*clust_ROC_X[i], 10*clust_ROC_Y[i])
                     # close if of masked DA: TODO: make masked pixels exclusion
+
+    def DoAveragePulseHeight2(self, ievent, numcl, ph1, ph2, ph3, phM4, phGall, phG1, phG2, phG3, phGM4):
+        if numcl is not 0:
+            for i in xrange(len(ph1)):
+                phGall.Fill(ievent, ph1[i])
+                phG1.Fill(ievent, ph1[i])
+            for i in xrange(len(ph2)):
+                phGall.Fill(ievent, ph2[i])
+                phG2.Fill(ievent, ph2[i])
+            for i in xrange(len(ph3)):
+                phGall.Fill(ievent, ph3[i])
+                phG3.Fill(ievent, ph3[i])
+            for i in xrange(len(phM4)):
+                phGall.Fill(ievent, phM4[i])
+                phGM4.Fill(ievent, phM4[i])
 
     def DoAveragePulseHeight(self, ievent, numcl, iroc, ph1, ph2, ph3, phM4, phGall, phG1, phG2, phG3, phGM4):
         binWidth = self.plots.plot_settings['binWidthTGraph']
