@@ -140,83 +140,31 @@ class Plots:
             # 2D
             self.hitMap = {i: self.create_2D_histogram('pixel', 'hitMapROC{n}'.format(n=i), 'Hit Map ROC {n}'.format(n=i),
                                                        'Column', 'Row', 0, -1) for i in xrange(self.num_devices)}
-            # self.avPhROC_local_1cl = {i: self.create_2D_histogram('spatial', 'avPh_ROC{n}_local_1cl'.format(n=i),
-            #                                                       'Average Pulse Height ROC {n} Local Coord. 1pix cluster'.format(n=i),
-            #                                                       'x (mm)', 'y (mm)', 0, -1) for i in xrange(self.num_devices)}
-            # self.phROC_hitMap_local_1cl = {i: self.create_2D_histogram('spatial', 'ph_ROC{n}_hitMap_local_1cl'.format(n=i),
-            #                                                            'Pulse Height ROC {n} Hit Map Local Coord. 1pix cluster'.format(n=i),
-            #                                                            'x (mm)', 'y (mm)', 0, -1) for i in xrange(self.num_devices)}
-            # self.avPhROC_telescope_1cl = {i: self.create_2D_histogram('spatial', 'avPh_ROC{n}_telescope_1cl',
-            #                                                           'Average Pulse Height ROC {n} telescope Coord. 1 pix cluster'.format(n=i),
-            #                                                           'x (mm)', 'y (mm)', 0, -1) for i in xrange(self.num_devices)}
-            # self.phROC_hitMap_telescope_1cl = {i: self.create_2D_histogram('spatial', 'ph_ROC{n}_hitMap_telescope_1cl'.format(n=i),
-            #                                                            'Pulse Height ROC {n} Hit Map telescope Coord. 1pix cluster'.format(n=i),
-            #                                                            'x (mm)', 'y (mm)', 0, -1) for i in xrange(self.num_devices)}
-            # self.avPhROC_pixelated_1cl = {i: self.create_2D_histogram('pixel', 'avPh_ROC{n}_pixelated_1cl',
-            #                                                           'Average Pulse Height ROC {n} pixelated Coord. 1 pix cluster'.format(n=i),
-            #                                                           'Column', 'Row', 0, -1) for i in xrange(self.num_devices)}
-            # self.phROC_hitMap_pixelated_1cl = {i: self.create_2D_histogram('pixel', 'ph_ROC{n}_hitMap_pixelated_1cl'.format(n=i),
-            #                                                            'Pulse Height ROC {n} Hit Map pixelated Coord. 1pix cluster'.format(n=i),
-            #                                                            'Column', 'Row', 0, -1) for i in xrange(self.num_devices)}
 
             # alternative 2D
-            self.avPhROC_local_1cl2 = {i: self.create_2D_profile('spatial', 'avPh_ROC{n}_local_1cl_2'.format(n=i),
+            self.avPhROC_local_1cl = {i: self.create_2D_profile('spatial', 'avPh_ROC{n}_local_1cl_2'.format(n=i),
                                                                   'Average Pulse Height ROC {n} Local Coord. 1pix cluster'.format(n=i),
                                                                   'x (mm)', 'y (mm)', 0, -1) for i in xrange(self.num_devices)}
-            self.avPhROC_telescope_1cl2 = {i: self.create_2D_profile('spatial', 'avPh_ROC{n}_telescope_1cl_2',
+            self.avPhROC_telescope_1cl = {i: self.create_2D_profile('spatial', 'avPh_ROC{n}_telescope_1cl_2',
                                                                       'Average Pulse Height ROC {n} telescope Coord. 1 pix cluster'.format(n=i),
                                                                       'x (mm)', 'y (mm)', 0, -1) for i in xrange(self.num_devices)}
-            self.avPhROC_pixelated_1cl2 = {i: self.create_2D_profile('pixel', 'avPh_ROC{n}_pixelated_1cl_2',
+            self.avPhROC_pixelated_1cl = {i: self.create_2D_profile('pixel', 'avPh_ROC{n}_pixelated_1cl_2',
                                                                       'Average Pulse Height ROC {n} pixelated Coord. 1 pix cluster'.format(n=i),
                                                                       'Column', 'Row', 0, -1) for i in xrange(self.num_devices)}
 
-            # TGraphErrors
-            # self.meanPhROC_all = {i: self.create_TGraphErrors('meanPHROC{n}_all'.format(n=i), 'Event', 'Charge (e)',
-            #                                                   kBlack, kBlack) for i in xrange(self.num_devices)}
-            # self.meanPhROC_1cl = {i: self.create_TGraphErrors('meanPHROC{n}_1cl'.format(n=i), 'Event', 'Charge (e)',
-            #                                                   kBlack, kBlack) for i in xrange(self.num_devices)}
-            # self.meanPhROC_2cl = {i: self.create_TGraphErrors('meanPHROC{n}_2cl'.format(n=i), 'Event', 'Charge (e)',
-            #                                                   kBlack, kBlack) for i in xrange(self.num_devices)}
-            # self.meanPhROC_3cl = {i: self.create_TGraphErrors('meanPHROC{n}_3cl'.format(n=i), 'Event', 'Charge (e)',
-            #                                                   kBlack, kBlack) for i in xrange(self.num_devices)}
-            # self.meanPhROC_M4cl = {i: self.create_TGraphErrors('meanPHROC{n}_M4cl'.format(n=i), 'Event', 'Charge (e)',
-            #                                                   kBlack, kBlack) for i in xrange(self.num_devices)}
-            # self.nPointsTGraph = 0
-
             # Alternative to TGraphErrors
-            self.meanPhROC_all2 = {i: self.create_1D_profile('meanPHROC{n}_all_2'.format(n=i),
+            self.meanPhROC_all = {i: self.create_1D_profile('meanPHROC{n}_all_2'.format(n=i),
                                                                'Mean PH ROC {n} all cluster sizes'.format(n=i), 'Event',
                                                                'Charge(e)', kBlack, 0) for i in xrange(self.num_devices)}
-            self.meanPhROC_1cl2 = {i: self.create_1D_profile('meanPHROC{n}_1cl_2'.format(n=i),
+            self.meanPhROC_1cl = {i: self.create_1D_profile('meanPHROC{n}_1cl_2'.format(n=i),
                                                                'Mean PH ROC {n} 1 pix cluster'.format(n=i), 'Event',
                                                                'Charge(e)', kBlack, 0) for i in xrange(self.num_devices)}
-            self.meanPhROC_2cl2 = {i: self.create_1D_profile('meanPHROC{n}_2cl_2'.format(n=i),
+            self.meanPhROC_2cl = {i: self.create_1D_profile('meanPHROC{n}_2cl_2'.format(n=i),
                                                                'Mean PH ROC {n} 2 pix cluster'.format(n=i), 'Event',
                                                                'Charge(e)', kBlack, 0) for i in xrange(self.num_devices)}
-            self.meanPhROC_3cl2 = {i: self.create_1D_profile('meanPHROC{n}_3cl_2'.format(n=i),
+            self.meanPhROC_3cl = {i: self.create_1D_profile('meanPHROC{n}_3cl_2'.format(n=i),
                                                                'Mean PH ROC {n} 3 pix cluster'.format(n=i), 'Event',
                                                                'Charge(e)', kBlack, 0) for i in xrange(self.num_devices)}
-            self.meanPhROC_M4cl2 = {i: self.create_1D_profile('meanPHROC{n}_M4cl_2'.format(n=i),
+            self.meanPhROC_M4cl = {i: self.create_1D_profile('meanPHROC{n}_M4cl_2'.format(n=i),
                                                                 'Mean PH ROC {n} 4 or more pixs cluster'.format(n=i),
                                                                 'Event', 'Charge(e)', kBlack, 0) for i in xrange(self.num_devices)}
-
-    def AverageBinHistogram(self, histToAv, histHits, binx, biny):
-        temp = float(histToAv.GetBinContent(binx, biny))/float(histHits.GetBinContent(binx,biny))
-        histToAv.SetBinContent(binx, biny, temp)
-
-    def DoAverageHistogramDUT(self, histToAvDUT1, histHitsDUT1, histToAvDUT2, histHitsDUT2, histToAvDUT3, histHitsDUT3,
-                              xbins, ybins):
-        for i in xrange(1, xbins + 1):
-            for j in xrange(1, ybins + 1):
-                if histHitsDUT1.GetBinContent(i,j) >= 1: self.AverageBinHistogram(histToAvDUT1, histHitsDUT1, i, j)
-                if histHitsDUT2.GetBinContent(i,j) >= 1: self.AverageBinHistogram(histToAvDUT2, histHitsDUT2, i, j)
-                if histHitsDUT3.GetBinContent(i,j) >= 1: self.AverageBinHistogram(histToAvDUT3, histHitsDUT3, i, j)
-
-    def DoAverageHistogramTPlanes(self, histToAvPlane0, histHitsPlane0, histToAvPlane1, histHitsPlane1, histToAvPlane2,
-                                  histHitsPlane2, histToAvPlane3, histHitsPlane3, xbins, ybins):
-        for i in xrange(1,xbins + 1):
-            for j in xrange(1,ybins + 1):
-                if histHitsPlane0.GetBinContent(i,j) >= 1: self.AverageBinHistogram(histToAvPlane0, histHitsPlane0, i, j)
-                if histHitsPlane1.GetBinContent(i,j) >= 1: self.AverageBinHistogram(histToAvPlane1, histHitsPlane1, i, j)
-                if histHitsPlane2.GetBinContent(i,j) >= 1: self.AverageBinHistogram(histToAvPlane2, histHitsPlane2, i, j)
-                if histHitsPlane3.GetBinContent(i,j) >= 1: self.AverageBinHistogram(histToAvPlane3, histHitsPlane3, i, j)
