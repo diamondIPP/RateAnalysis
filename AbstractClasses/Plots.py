@@ -22,7 +22,7 @@ __author__ = 'DA'
 # ==============================================
 
 class Plots:
-    def __init__(self, num_entries, run=312, do_hit_map=True, do_pulse_height=True, num_devices=7, binning=-1, runinfo=None):
+    def __init__(self, num_entries, run=312, num_devices=7, binning=-1, runinfo=None):
         gStyle.SetPalette(53)
         gStyle.SetNumberContours(999)
         self.do_hit_map = do_hit_map
@@ -138,73 +138,70 @@ class Plots:
         if max_val is not -1: histo.SetMaximum(max_val)
 
     def create_histograms(self):
-        if self.do_hit_map:
-            pass
-        if self.do_pulse_height:
-            # 1D Histograms
-            self.phROC_all = {i: self.create_1D_histogram('landau', 'phROC{n}_all'.format(n=i),
-                                                          'Pulse Height ROC {n} all cluster sizes'.format(n=i), 'Charge (e)',
-                                                          'Num Clusters', kBlack) for i in xrange(self.num_devices)}
-            self.phROC_1cl = {i: self.create_1D_histogram('landau', 'phROC{n}_1cl'.format(n=i),
-                                                          'Pulse Height ROC {n} 1pix cluster'.format(n=i), 'Charge (e)',
-                                                          'Num Clusters', kBlue) for i in xrange(self.num_devices)}
-            self.phROC_2cl = {i: self.create_1D_histogram('landau', 'phROC{n}_2cl'.format(n=i),
-                                                          'Pulse Height ROC {n} 2pix cluster'.format(n=i), 'Charge (e)',
-                                                          'Num Clusters', kGreen) for i in xrange(self.num_devices)}
-            self.phROC_3cl = {i: self.create_1D_histogram('landau', 'phROC{n}_3cl'.format(n=i),
-                                                          'Pulse Height ROC {n} 3pix cluster'.format(n=i), 'Charge (e)',
-                                                          'Num Clusters', kRed) for i in xrange(self.num_devices)}
-            self.phROC_M4cl = {i: self.create_1D_histogram('landau', 'phROC{n}_M4cl'.format(n=i),
-                                                           'Pulse Height ROC {n} 4 or more pix cluster'.format(n=i), 'Charge (e)',
-                                                           'Num Clusters', kMagenta) for i in xrange(self.num_devices)}
-            # 2D Histograms
-            self.hitMap = {i: self.create_2D_histogram('pixel', 'hitMapROC{n}'.format(n=i), 'Hit Map ROC {n}'.format(n=i),
-                                                       'Column', 'Row', 0, -1) for i in xrange(self.num_devices)}
-            self.hitMap_cuts = {i: self.create_2D_histogram('pixel', 'hitMapROC{n}_cuts'.format(n=i), 'Hit Map ROC {n} after cuts'.format(n=i),
-                                                       'Column', 'Row', 0, -1) for i in xrange(self.num_devices)}
-            self.ph1cl_vs_event = {i: self.create_2D_histogram('event', 'phCl1VsEventROC{n}'.format(n=i),
-                                                               'PH 1 pix cluster Vs Event ROC {n}'.format(n=i), 'Event',
-                                                               'Charge (e)', 0, -1) for i in xrange(self.num_devices)}
-            self.ph2cl_vs_event = {i: self.create_2D_histogram('event', 'phCl2VsEventROC{n}'.format(n=i),
-                                                               'PH 2 pix cluster Vs Event ROC {n}'.format(n=i), 'Event',
-                                                               'Charge (e)', 0, -1) for i in xrange(self.num_devices)}
-            self.ph3cl_vs_event = {i: self.create_2D_histogram('event', 'phCl3VsEventROC{n}'.format(n=i),
-                                                               'PH 3 pix cluster Vs Event ROC {n}'.format(n=i), 'Event',
-                                                               'Charge (e)', 0, -1) for i in xrange(self.num_devices)}
-            self.phM4cl_vs_event = {i: self.create_2D_histogram('event', 'phClM4VsEventROC{n}'.format(n=i),
-                                                                'PH 4 or more pix cluster Vs Event ROC {n}'.format(n=i),
-                                                                'Event', 'Charge (e)', 0, -1) for i in xrange(self.num_devices)}
-            self.phAll_vs_event = {i: self.create_2D_histogram('event', 'phAllVsEventROC{n}'.format(n=i),
-                                                               'PH all cluster sizes Vs Event ROC {n}'.format(n=i), 'Event',
-                                                               'Charge (e)', 0, -1) for i in xrange(self.num_devices)}
+        # 1D Histograms
+        self.phROC_all = {i: self.create_1D_histogram('landau', 'phROC{n}_all'.format(n=i),
+                                                      'Pulse Height ROC {n} all cluster sizes'.format(n=i), 'Charge (e)',
+                                                      'Num Clusters', kBlack) for i in xrange(self.num_devices)}
+        self.phROC_1cl = {i: self.create_1D_histogram('landau', 'phROC{n}_1cl'.format(n=i),
+                                                      'Pulse Height ROC {n} 1pix cluster'.format(n=i), 'Charge (e)',
+                                                      'Num Clusters', kBlue) for i in xrange(self.num_devices)}
+        self.phROC_2cl = {i: self.create_1D_histogram('landau', 'phROC{n}_2cl'.format(n=i),
+                                                      'Pulse Height ROC {n} 2pix cluster'.format(n=i), 'Charge (e)',
+                                                      'Num Clusters', kGreen) for i in xrange(self.num_devices)}
+        self.phROC_3cl = {i: self.create_1D_histogram('landau', 'phROC{n}_3cl'.format(n=i),
+                                                      'Pulse Height ROC {n} 3pix cluster'.format(n=i), 'Charge (e)',
+                                                      'Num Clusters', kRed) for i in xrange(self.num_devices)}
+        self.phROC_M4cl = {i: self.create_1D_histogram('landau', 'phROC{n}_M4cl'.format(n=i),
+                                                       'Pulse Height ROC {n} 4 or more pix cluster'.format(n=i), 'Charge (e)',
+                                                       'Num Clusters', kMagenta) for i in xrange(self.num_devices)}
+        # 2D Histograms
+        self.hitMap = {i: self.create_2D_histogram('pixel', 'hitMapROC{n}'.format(n=i), 'Hit Map ROC {n}'.format(n=i),
+                                                   'Column', 'Row', 0, -1) for i in xrange(self.num_devices)}
+        self.hitMap_cuts = {i: self.create_2D_histogram('pixel', 'hitMapROC{n}_cuts'.format(n=i), 'Hit Map ROC {n} after cuts'.format(n=i),
+                                                   'Column', 'Row', 0, -1) for i in xrange(self.num_devices)}
+        self.ph1cl_vs_event = {i: self.create_2D_histogram('event', 'phCl1VsEventROC{n}'.format(n=i),
+                                                           'PH 1 pix cluster Vs Event ROC {n}'.format(n=i), 'Event',
+                                                           'Charge (e)', 0, -1) for i in xrange(self.num_devices)}
+        self.ph2cl_vs_event = {i: self.create_2D_histogram('event', 'phCl2VsEventROC{n}'.format(n=i),
+                                                           'PH 2 pix cluster Vs Event ROC {n}'.format(n=i), 'Event',
+                                                           'Charge (e)', 0, -1) for i in xrange(self.num_devices)}
+        self.ph3cl_vs_event = {i: self.create_2D_histogram('event', 'phCl3VsEventROC{n}'.format(n=i),
+                                                           'PH 3 pix cluster Vs Event ROC {n}'.format(n=i), 'Event',
+                                                           'Charge (e)', 0, -1) for i in xrange(self.num_devices)}
+        self.phM4cl_vs_event = {i: self.create_2D_histogram('event', 'phClM4VsEventROC{n}'.format(n=i),
+                                                            'PH 4 or more pix cluster Vs Event ROC {n}'.format(n=i),
+                                                            'Event', 'Charge (e)', 0, -1) for i in xrange(self.num_devices)}
+        self.phAll_vs_event = {i: self.create_2D_histogram('event', 'phAllVsEventROC{n}'.format(n=i),
+                                                           'PH all cluster sizes Vs Event ROC {n}'.format(n=i), 'Event',
+                                                           'Charge (e)', 0, -1) for i in xrange(self.num_devices)}
 
-            # alternative 2D
-            self.avPhROC_local_all = {i: self.create_2D_profile('spatial', 'avPh_ROC{n}_local_all'.format(n=i),
-                                                                  'Average Pulse Height ROC {n} Local Coord. all cluster sizes'.format(n=i),
+        # alternative 2D
+        self.avPhROC_local_all = {i: self.create_2D_profile('spatial', 'avPh_ROC{n}_local_all'.format(n=i),
+                                                              'Average Pulse Height ROC {n} Local Coord. all cluster sizes'.format(n=i),
+                                                              'x (mm)', 'y (mm)', 0, -1) for i in xrange(self.num_devices)}
+        self.avPhROC_telescope_all = {i: self.create_2D_profile('spatial', 'avPh_ROC{n}_telescope_all'.format(n=i),
+                                                                  'Average Pulse Height ROC {n} telescope Coord. all cluster sizes'.format(n=i),
                                                                   'x (mm)', 'y (mm)', 0, -1) for i in xrange(self.num_devices)}
-            self.avPhROC_telescope_all = {i: self.create_2D_profile('spatial', 'avPh_ROC{n}_telescope_all'.format(n=i),
-                                                                      'Average Pulse Height ROC {n} telescope Coord. all cluster sizes'.format(n=i),
-                                                                      'x (mm)', 'y (mm)', 0, -1) for i in xrange(self.num_devices)}
-            self.avPhROC_pixelated_all = {i: self.create_2D_profile('pixel', 'avPh_ROC{n}_pixelated_all'.format(n=i),
-                                                                      'Average Pulse Height ROC {n} pixelated Coord. all cluster sizes'.format(n=i),
-                                                                      'Column', 'Row', 0, -1) for i in xrange(self.num_devices)}
+        self.avPhROC_pixelated_all = {i: self.create_2D_profile('pixel', 'avPh_ROC{n}_pixelated_all'.format(n=i),
+                                                                  'Average Pulse Height ROC {n} pixelated Coord. all cluster sizes'.format(n=i),
+                                                                  'Column', 'Row', 0, -1) for i in xrange(self.num_devices)}
 
-            # Alternative to TGraphErrors
-            self.meanPhROC_all = {i: self.create_1D_profile('event', 'meanPHROC{n}_all'.format(n=i),
-                                                            'Mean PH ROC {n} all cluster sizes'.format(n=i), 'Event',
-                                                            'Charge(e)', kBlack, 0) for i in xrange(self.num_devices)}
-            self.meanPhROC_1cl = {i: self.create_1D_profile('event', 'meanPHROC{n}_1cl'.format(n=i),
-                                                            'Mean PH ROC {n} 1 pix cluster'.format(n=i), 'Event',
-                                                            'Charge(e)', kBlack, 0) for i in xrange(self.num_devices)}
-            self.meanPhROC_2cl = {i: self.create_1D_profile('event', 'meanPHROC{n}_2cl'.format(n=i),
-                                                            'Mean PH ROC {n} 2 pix cluster'.format(n=i), 'Event',
-                                                            'Charge(e)', kBlack, 0) for i in xrange(self.num_devices)}
-            self.meanPhROC_3cl = {i: self.create_1D_profile('event', 'meanPHROC{n}_3cl'.format(n=i),
-                                                            'Mean PH ROC {n} 3 pix cluster'.format(n=i), 'Event',
-                                                            'Charge(e)', kBlack, 0) for i in xrange(self.num_devices)}
-            self.meanPhROC_M4cl = {i: self.create_1D_profile('event', 'meanPHROC{n}_M4cl'.format(n=i),
-                                                             'Mean PH ROC {n} 4 or more pixs cluster'.format(n=i), 'Event',
-                                                             'Charge(e)', kBlack, 0) for i in xrange(self.num_devices)}
-            self.meanPhROC_all = {i: self.create_1D_profile('event', 'meanPHROC{n}_all'.format(n=i),
-                                                            'Mean PH ROC {n} for all cluster sizes'.format(n=i), 'Event',
-                                                            'Charge (e)', kOrange, 0) for i in xrange(self.num_devices)}
+        # Alternative to TGraphErrors
+        self.meanPhROC_all = {i: self.create_1D_profile('event', 'meanPHROC{n}_all'.format(n=i),
+                                                        'Mean PH ROC {n} all cluster sizes'.format(n=i), 'Event',
+                                                        'Charge(e)', kBlack, 0) for i in xrange(self.num_devices)}
+        self.meanPhROC_1cl = {i: self.create_1D_profile('event', 'meanPHROC{n}_1cl'.format(n=i),
+                                                        'Mean PH ROC {n} 1 pix cluster'.format(n=i), 'Event',
+                                                        'Charge(e)', kBlack, 0) for i in xrange(self.num_devices)}
+        self.meanPhROC_2cl = {i: self.create_1D_profile('event', 'meanPHROC{n}_2cl'.format(n=i),
+                                                        'Mean PH ROC {n} 2 pix cluster'.format(n=i), 'Event',
+                                                        'Charge(e)', kBlack, 0) for i in xrange(self.num_devices)}
+        self.meanPhROC_3cl = {i: self.create_1D_profile('event', 'meanPHROC{n}_3cl'.format(n=i),
+                                                        'Mean PH ROC {n} 3 pix cluster'.format(n=i), 'Event',
+                                                        'Charge(e)', kBlack, 0) for i in xrange(self.num_devices)}
+        self.meanPhROC_M4cl = {i: self.create_1D_profile('event', 'meanPHROC{n}_M4cl'.format(n=i),
+                                                         'Mean PH ROC {n} 4 or more pixs cluster'.format(n=i), 'Event',
+                                                         'Charge(e)', kBlack, 0) for i in xrange(self.num_devices)}
+        self.meanPhROC_all = {i: self.create_1D_profile('event', 'meanPHROC{n}_all'.format(n=i),
+                                                        'Mean PH ROC {n} for all cluster sizes'.format(n=i), 'Event',
+                                                        'Charge (e)', kOrange, 0) for i in xrange(self.num_devices)}

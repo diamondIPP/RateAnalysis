@@ -3,7 +3,7 @@ import pickle
 import json
 from numpy import array, zeros, arange, delete
 from Elementary import Elementary
-from ROOT import TCut, gROOT, TH1F
+from ROOT import TCut, gROOT, TH1F, kRed
 from collections import OrderedDict
 
 
@@ -13,12 +13,12 @@ class CutPix(Elementary):
     is loaded from the Analysis config file, whereas the individual cut settings are loaded from a JSON file located at Configuration/Individual_Configs. The JSON files are generated
     by the Analysis method SetIndividualCuts().
     """
-    def __init__(self, parent_analysis, verbose=True, skip=False):
+    def __init__(self, plot_settings=None, verbose=True, skip=False):
 
         if not skip:
             Elementary.__init__(self, verbose=verbose)
-            self.analysis = parent_analysis
-
+            # self.analysis = parent_analysis
+            self.plot_settings = print_settings
             # saving stuff
             self.histos = {}
 
@@ -42,7 +42,8 @@ class CutPix(Elementary):
 
             self.load_config()
             # generate cut strings
-            self.generate_cut_string()  # DA TODO
+            self.generate_fid_cut()
+            # self.generate_cut_string()  # DA TODO
             # self.all_cut = self.generate_all_cut()  # DA TODO
 
     def generate_all_cut(self):
@@ -152,6 +153,59 @@ class CutPix(Elementary):
         self.CutConfig['FidRegionDUT3'] = self.ana_config_parser.get('CUT', 'FidRegionDUT3') if self.ana_config_parser.\
             has_option('CUT', 'FidRegionDUT3') else ''
 
+    def generate_fid_cuts(self):
+        self.fid_cut_hitmap_roc = {}
+        self.fid_cut_pixelated_roc = {}
+        self.fid_cut_local_roc = {}
+        self.fid_cut_telescope_dut = {}
+        self.generate_fid_cuts_DUT(1)
+        self.generate_fid_cuts_DUT(2)
+        self.generate_fid_cuts_DUT(3)
+
+    def generate_fid_cuts_DUT(self, dut):
+        fidcutstring = self.CutConfig['FidRegionDUT{d}'.format(d=dut)]
+        roc = 4 if dut is 1 else 5 if dut is 2 else 6
+        varx = 'col'
+        vary = 'row'
+        xmin = self.plot_settings['minCol']
+        xmax = self.plot_settings['maxCol']
+        ymin = self.plot_settings['minRow']
+        ymax = self.plot_settings['maxRow']
+        deltax = 1
+        deltay = 1
+        if fidcutstring is not '':
+            fidcutstring = fidcutstring.replace(']', '').replace('[', '')
+            if fidcutstring is not '':
+                fidcutstring = fidcutstring.split(';')
+                roc = int(fidcutstring[0])
+                xmin = int(fidcutstring[1].split(',')[0])
+                xmax = int(fidcutstring[1].split(',')[1])
+                ymin = int(fidcutstring[2].split(',')[0])
+                ymax = int(fidcutstring[2].split(',')[1])
+        self.fid_cut_hitmap_dut[dut] = self.make_fid_cut('fidcut_hitmap_roc{r}'.format(r=roc), varx, vary, xmin, xmax,
+                                                         deltax, ymin, ymax, deltay)
+        varx = 'cluster_col_ROC{n}'.format(n=roc)
+        vary = 'cluster_row_ROC{n}'.format(n=roc)
+        self.fid_cut_pixelated_dut[dut] = self.make_fid_cut('fidcut_pixelated_roc{r}'.format(r=roc), varx, vary, xmin,
+                                                            xmax, deltax, ymin, ymax, deltay)
+        self.fid_cut_local_dut[dut] = self.make_fid_cut('fidcut_local_roc{r}'.format(r=roc), varx, vary, xmin,
+                                                            xmax, deltax, ymin, ymax, deltay)
+        self.fid_cut_telescope_dut[dut] = self.make_fid_cut('fidcut_telescope_roc{r}'.format(r=roc), varx, vary, xmin,
+                                                            xmax, deltax, ymin, ymax, deltay)
+
+        
+    def make_fid_cut(self, name='fidcut', varx='col', vary='row', xmin, xmax, deltax, ymin, ymax, deltay):
+        cut = TCutG(name, 5)
+        cut.SetVarX(varx)
+        cut.SetVarY(vary)
+        cut.SetPoint(0, xmin - deltax/2, ymin - deltay/2)
+        cut.SetPoint(1, xmin - deltax/2, ymax + deltay/2)
+        cut.SetPoint(2, xmax + deltax/2, ymax + deltay/2)
+        cut.SetPoint(3, xmax + deltax/2, ymin - deltay/2)
+        cut.SetPoint(4, xmin - deltax/2, ymin - deltay/2)
+        cut.SetLineColor(kRed)
+        cut.SetLineWidth(3)
+        return cut
 
     def load_event_range(self, event_range=None):
         """

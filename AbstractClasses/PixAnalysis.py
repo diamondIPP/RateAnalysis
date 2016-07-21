@@ -31,7 +31,6 @@ class SignalPixAnalysis(Analysis):
         self.diamond_name = self.run.diamond_names[channel]
         self.bias = self.run.bias[channel]
         self.save_dir = '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number, dia=self.diamond_name)
-        self.num_devices = 7  # DA: set default to 7
         self.roc_diam1 = 4
         self.roc_diam2 = 5
         self.roc_si = 6
@@ -79,8 +78,6 @@ class SignalPixAnalysis(Analysis):
                 self.del_rootobj(obj)
 
     def do_analysis(self, do_occupancy=True, do_pulse_height=True):
-        self.plots = Plots(self.run.n_entries, self.run_number, do_occupancy, do_pulse_height, self.num_devices, -1,
-                           self.RunInfo)
         self.plots.create_histograms()
         self.kmax = int(self.plots.plot_settings['num_diff_cluster_sizes'] + 1)
         self.deltaX = self.plots.plot_settings['deltaX']

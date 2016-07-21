@@ -10,6 +10,7 @@ from Elementary import Elementary
 from RunClass import Run
 from Cut import Cut
 from CutPix import CutPix
+from Plots import Plots
 
 
 class Analysis(Elementary):
@@ -71,7 +72,9 @@ class Analysis(Elementary):
             self.StartEvent = self.Cut.CutConfig['EventRange'][0]
             self.EndEvent = self.Cut.CutConfig['EventRange'][1]
         else:
-            self.Cut = CutPix(self)
+            self.num_devices = 7
+            self.plots = Plots(self.run.n_entries, self.run_number, self.num_devices, -1, self.RunInfo)
+            self.Cut = CutPix(self, self.plots.plot_settings)
             self.StartEvent = 1  # DA: for now... TODO pixel cuts!
 
 
