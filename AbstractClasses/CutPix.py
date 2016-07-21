@@ -42,7 +42,7 @@ class CutPix(Elementary):
 
             self.load_config()
             # generate cut strings
-            # self.generate_cut_string()  # DA TODO
+            self.generate_cut_string()  # DA TODO
             # self.all_cut = self.generate_all_cut()  # DA TODO
 
     def generate_all_cut(self):
@@ -300,24 +300,29 @@ class CutPix(Elementary):
         gROOT.SetBatch(1)
 
         # --TRACKS --
-        self.CutStrings['chi2X'] += self.generate_chi2('x')
-        self.CutStrings['chi2Y'] += self.generate_chi2('y')
-        self.CutStrings['track_angle'] += self.generate_slope()
-        self.CutStrings['tracks'] += 'n_tracks'
+        # self.CutStrings['chi2X'] += self.generate_chi2('x')
+        # self.CutStrings['chi2Y'] += self.generate_chi2('y')
+        # self.CutStrings['track_angle'] += self.generate_slope()
+        # self.CutStrings['tracks'] += 'n_tracks'
 
         # -- EVENT RANGE CUT --
-        self.generate_event_range()
-        if self.CutConfig['EventRange']:
-            self.EasyCutStrings['EventRange'] = 'Evts.{min}k-{max}k'.format(min=int(self.CutConfig['EventRange'][0]) / 1000, max=int(self.CutConfig['EventRange'][1]) / 1000)
-            self.EasyCutStrings['ExcludeFirst'] = 'Evts.{min}k+'.format(min=int(self.CutConfig['ExcludeFirst']) / 1000) if self.CutConfig['ExcludeFirst'] > 0 else ''
+        # self.generate_event_range()
+        # if self.CutConfig['EventRange']:
+        #     self.EasyCutStrings['EventRange'] = 'Evts.{min}k-{max}k'.format(min=int(self.CutConfig['EventRange'][0]) / 1000, max=int(self.CutConfig['EventRange'][1]) / 1000)
+        #     self.EasyCutStrings['ExcludeFirst'] = 'Evts.{min}k+'.format(min=int(self.CutConfig['ExcludeFirst']) / 1000) if self.CutConfig['ExcludeFirst'] > 0 else ''
 
         # -- PULSER CUT --
-        self.CutStrings['pulser'] += '!pulser'
+        # self.CutStrings['pulser'] += '!pulser'
 
         # -- BEAM INTERRUPTION CUT --
-        self.__generate_beam_interruptions()
-        self.EasyCutStrings['noBeamInter'] = 'BeamOn'
-        self.generate_jump_cut()
+        # self.__generate_beam_interruptions()
+        # self.EasyCutStrings['noBeamInter'] = 'BeamOn'
+        # self.generate_jump_cut()
+
+        # -- MASK PIXELS --
+
+
+        # -- FIDUCIAL REGION --
 
         gROOT.SetBatch(0)
 

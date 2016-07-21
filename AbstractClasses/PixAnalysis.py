@@ -124,13 +124,31 @@ class SignalPixAnalysis(Analysis):
         #         if do_occupancy: self.fill_occupancy()
         #         if do_pulse_height: self.do_pulse_height_analysis(event)
         #     bar.update(event + 1)
+        if do_occupancy: self.fill_occupancy()
         if do_pulse_height: self.do_pulse_height_analysis()
         # self.print_banner('Looping over Tree -> Done', '%')
 
     def fill_occupancy(self):
-        for i in xrange(len(self.plane)):
-            if 0 <= self.plane[i] < self.num_devices:
-                self.plots.hitMap[self.plane[i]].Fill(self.col[i], self.row[i])
+        # for i in xrange(len(self.plane)):
+        #     if 0 <= self.plane[i] < self.num_devices:
+        #         self.plots.hitMap[self.plane[i]].Fill(self.col[i], self.row[i])
+        self.print_banner('Starting Occupancy Analysis...', '%')
+        widgets = [
+            progressbar.Percentage(),
+            ' ', progressbar.Bar(marker='>'),
+            ' ', progressbar.Timer(),
+            ' ', progressbar.ETA()  #, DA: this two work great!
+            # ' ', progressbar.AdaptiveETA(),
+            # ' ', progressbar.AdaptiveTransferSpeed(),
+            ]
+        bar = progressbar.ProgressBar(widgets=widgets, max_value=self.num_devices)
+        bar.start()
+        for iROC in xrange(self.num_devices):
+            self.tree.Draw('row:col >> hitMapROC{n}'.format(n=iROC), 'plane == {n}'.format(n=iROC), 'goff')
+            self.tree.Draw('row:col >> hitMapROC{n}_cuts'.format(n=iROC), 'plane == {n}'.format(n=iROC), 'goff')
+            bar.update(iROC + 1)
+        bar.finish()
+        self.print_banner('Occupancy Analysis -> Done', '%')
 
     def do_pulse_height_analysis(self):  # DA: before (self, event)
         # for iROC in xrange(self.num_devices):
@@ -150,6 +168,7 @@ class SignalPixAnalysis(Analysis):
         #                               self.ph_M4cl[iROC], self.plots.meanPhROC_all[iROC], self.plots.meanPhROC_1cl[iROC],
         #                               self.plots.meanPhROC_2cl[iROC], self.plots.meanPhROC_3cl[iROC],
         #                               self.plots.meanPhROC_M4cl[iROC])
+        self.print_banner('Starting Pulse Height Analysis...', '%')
         widgets = [
             progressbar.Percentage(),
             ' ', progressbar.Bar(marker='>'),
@@ -161,10 +180,31 @@ class SignalPixAnalysis(Analysis):
         bar = progressbar.ProgressBar(widgets=widgets, max_value=self.num_devices)
         bar.start()
         for iROC in xrange(self.num_devices):
-
-            self.DoAveragePulseHeight2(iROC)
+            self.Ph2DHistogramExtraction(iROC, 'pixelated')
+            self.Ph2DHistogramExtraction(iROC, 'local')
+            self.Ph2DHistogramExtraction(iROC, 'telescope')
+            self.DoAveragePulseHeight(iROC)
+            self.PhVsEventExtraction(iROC)
             bar.update(iROC + 1)
         bar.finish()
+        self.print_banner('Pulse Height Analysis -> Done', '%')
+
+    def PhVsEventExtraction(self, roc=4):
+        self.tree.Draw('charge_all_ROC{n}:event_number >> phCl1VsEventROC{n}'.format(n=roc),
+                       'cluster_size_ROC{n}==1'.format(n=roc), 'goff')
+        self.tree.Draw('charge_all_ROC{n}:event_number >> phCl2VsEventROC{n}'.format(n=roc),
+                       'cluster_size_ROC{n}==2'.format(n=roc), 'goff')
+        self.tree.Draw('charge_all_ROC{n}:event_number >> phCl3VsEventROC{n}'.format(n=roc),
+                       'cluster_size_ROC{n}==3'.format(n=roc), 'goff')
+        self.tree.Draw('charge_all_ROC{n}:event_number >> phClM4VsEventROC{n}'.format(n=roc),
+                       'cluster_size_ROC{n}>=4'.format(n=roc), 'goff')
+        self.tree.Draw('charge_all_ROC{n}:event_number >> phAllVsEventROC{n}'.format(n=roc),
+                       'cluster_size_ROC{n}>0'.format(n=roc), 'goff')
+        self.plots.ph1cl_vs_event[roc].ProjectionY('phROC{n}_1cl'.format(n=roc), 0, -1, 'e')
+        self.plots.ph2cl_vs_event[roc].ProjectionY('phROC{n}_2cl'.format(n=roc), 0, -1, 'e')
+        self.plots.ph3cl_vs_event[roc].ProjectionY('phROC{n}_3cl'.format(n=roc), 0, -1, 'e')
+        self.plots.phM4cl_vs_event[roc].ProjectionY('phROC{n}_M4cl'.format(n=roc), 0, -1, 'e')
+        self.plots.phAll_vs_event[roc].ProjectionY('phROC{n}_all'.format(n=roc), 0, -1, 'e')
 
 
     def Ph1DHistogramsExtraction(self, numClusters, ph1, ph2, ph3, phM4, phHall, phH1, phH2, phH3, phHM4):
@@ -182,37 +222,43 @@ class SignalPixAnalysis(Analysis):
                 phHM4.Fill(phM4[i])
                 phHall.Fill(phM4[i])
 
-    def Ph2DHistogramExtraction(self, numClusters, phROC, clust_ROC_X, clust_ROC_Y, avPHDUT, isRowCol=kFALSE):
-        if numClusters is not 0:
-            numPhROC = len(phROC)
-            for i in xrange(numPhROC):
-                if (len(clust_ROC_X) >= numPhROC) and (len(clust_ROC_Y) >= numPhROC):
-                    # if masked:  # DA: TODO: make masked pixels exclusion
-                    avPHDUT.Fill(clust_ROC_X[i], clust_ROC_Y[i], phROC[i]) if isRowCol else avPHDUT.Fill(clust_ROC_X[i]*10, clust_ROC_Y[i]*10, phROC[i])
+    # def Ph2DHistogramExtraction(self, numClusters, phROC, clust_ROC_X, clust_ROC_Y, avPHDUT, isRowCol=kFALSE):
+    #     if numClusters is not 0:
+    #         numPhROC = len(phROC)
+    #         for i in xrange(numPhROC):
+    #             if (len(clust_ROC_X) >= numPhROC) and (len(clust_ROC_Y) >= numPhROC):
+    #                 # if masked:  # DA: TODO: make masked pixels exclusion
+    #                 avPHDUT.Fill(clust_ROC_X[i], clust_ROC_Y[i], phROC[i]) if isRowCol else avPHDUT.Fill(clust_ROC_X[i]*10, clust_ROC_Y[i]*10, phROC[i])
 
-    def Ph2DHistogramExtraction2(self, roc, isRowCol=kFALSE):
-        if isRowCol:
-            self.tree.Draw('cluster_col_ROC{n}:cluster_row_ROC{n}:pulse_height_ROC{n}_1_cluster'.format(n=roc), '', 'prof goff')
+    def Ph2DHistogramExtraction(self, roc, type):
+        if type is 'pixelated':
+            self.tree.Draw('charge_all_ROC{n}:cluster_row_ROC{n}:cluster_col_ROC{n} >> avPh_ROC{n}_pixelated_all'.format(n=roc), '', 'prof goff')
+        elif type is 'local':
+            self.tree.Draw('charge_all_ROC{n}:cluster_pos_ROC{n}_Local_Y*10:cluster_pos_ROC{n}_Local_X*10 >> avPh_ROC{n}_local_all'.format(n=roc), '', 'prof goff')
         else:
-            self.tree.Draw('')  # DA: TODO terminar esto!!!!!!!!
+            self.tree.Draw('charge_all_ROC{n}:cluster_pos_ROC{n}_Telescope_Y*10:cluster_pos_ROC{n}_Telescope_X*10 >> avPh_ROC{n}_telescope_all'.format(n=roc), '', 'prof goff')
 
-    def DoAveragePulseHeight(self, ievent, numcl, ph1, ph2, ph3, phM4, phGall, phG1, phG2, phG3, phGM4):
-        if numcl is not 0:
-            for i in xrange(len(ph1)):
-                phGall.Fill(ievent, ph1[i])
-                phG1.Fill(ievent, ph1[i])
-            for i in xrange(len(ph2)):
-                phGall.Fill(ievent, ph2[i])
-                phG2.Fill(ievent, ph2[i])
-            for i in xrange(len(ph3)):
-                phGall.Fill(ievent, ph3[i])
-                phG3.Fill(ievent, ph3[i])
-            for i in xrange(len(phM4)):
-                phGall.Fill(ievent, phM4[i])
-                phGM4.Fill(ievent, phM4[i])
+    # def DoAveragePulseHeight(self, ievent, numcl, ph1, ph2, ph3, phM4, phGall, phG1, phG2, phG3, phGM4):
+    #     if numcl is not 0:
+    #         for i in xrange(len(ph1)):
+    #             phGall.Fill(ievent, ph1[i])
+    #             phG1.Fill(ievent, ph1[i])
+    #         for i in xrange(len(ph2)):
+    #             phGall.Fill(ievent, ph2[i])
+    #             phG2.Fill(ievent, ph2[i])
+    #         for i in xrange(len(ph3)):
+    #             phGall.Fill(ievent, ph3[i])
+    #             phG3.Fill(ievent, ph3[i])
+    #         for i in xrange(len(phM4)):
+    #             phGall.Fill(ievent, phM4[i])
+    #             phGM4.Fill(ievent, phM4[i])
 
-    def DoAveragePulseHeight2(self, roc):
-        self.tree.Draw('pulse_height_ROC{iroc}_1_cluster:event_number >> meanPHROC{iroc}_1cl_2'.format(iroc=roc), 'pulse_height_ROC{iroc}_1_cluster&&clusters_per_plane[{iroc}]!=0'.format(iroc=roc), 'prof goff')
+    def DoAveragePulseHeight(self, roc):
+        self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_1cl'.format(iroc=roc), 'cluster_size_ROC{iroc}==1&&clusters_per_plane[{iroc}]!=0'.format(iroc=roc), 'prof goff')
+        self.tree.Draw('pulse_height_ROC{iroc}_2_cluster:event_number >> meanPHROC{iroc}_2cl'.format(iroc=roc), 'cluster_size_ROC{iroc}==2&&clusters_per_plane[{iroc}]!=0'.format(iroc=roc), 'prof goff')
+        self.tree.Draw('pulse_height_ROC{iroc}_3_cluster:event_number >> meanPHROC{iroc}_3cl'.format(iroc=roc), 'cluster_size_ROC{iroc}==3&&clusters_per_plane[{iroc}]!=0'.format(iroc=roc), 'prof goff')
+        self.tree.Draw('pulse_height_ROC{iroc}_More4_cluster:event_number >> meanPHROC{iroc}_M4cl'.format(iroc=roc), '(cluster_size_ROC{iroc}>=4)&&clusters_per_plane[{iroc}]!=0'.format(iroc=roc), 'prof goff')
+        self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_all'.format(iroc=roc), 'charge_all_ROC{iroc}&&clusters_per_plane[{iroc}]!=0'.format(iroc=roc), 'prof goff')
 
     def show_current(self, relative_time=True):
         self.Currents.draw_graphs(relative_time=relative_time)
