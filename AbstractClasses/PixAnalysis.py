@@ -15,6 +15,7 @@ from collections import OrderedDict
 from sys import stdout
 from copy import deepcopy
 import progressbar
+import os
 
 __author__ = 'DA'
 
@@ -30,7 +31,9 @@ class SignalPixAnalysis(Analysis):
         # main
         self.diamond_name = self.run.diamond_names[channel]
         self.bias = self.run.bias[channel]
-        self.save_dir = '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number, dia=self.diamond_name)
+        self.save_dir = '{tc}_{run}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number)  # '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number, dia=self.diamond_name)
+        if not os.path.isdir(self.save_dir):
+            os.makedirs(self.save_dir)
         self.roc_diam1 = 4
         self.roc_diam2 = 5
         self.roc_si = 6
@@ -125,6 +128,7 @@ class SignalPixAnalysis(Analysis):
         if do_pulse_height: self.do_pulse_height_analysis()
         # self.print_banner('Looping over Tree -> Done', '%')
 
+
     def fill_occupancy(self):
         # for i in xrange(len(self.plane)):
         #     if 0 <= self.plane[i] < self.num_devices:
@@ -141,8 +145,14 @@ class SignalPixAnalysis(Analysis):
         bar = progressbar.ProgressBar(widgets=widgets, max_value=self.num_devices)
         bar.start()
         for iROC in xrange(self.num_devices):
-            self.tree.Draw('row:col >> hitMapROC{n}'.format(n=iROC), 'plane == {n}'.format(n=iROC), 'goff')
-            self.tree.Draw('row:col >> hitMapROC{n}_cuts'.format(n=iROC), 'plane == {n}'.format(n=iROC), 'goff')
+            if iROC not in self.roc_tel:
+                self.tree.Draw('row:col >> hitMapROC{n}'.format(n=iROC), 'plane == {n} && {mask}'.format(n=iROC, mask=self.Cut.mask_hitmap_roc[iROC].GetTitle()), 'goff')
+                self.tree.Draw('row:col >> hitMapROC{n}_cuts'.format(n=iROC), 'plane == {n} && {mask} && fidcut_hitmap_roc{n}'.format(n=iROC, mask=self.Cut.mask_hitmap_roc[iROC].GetTitle()), 'goff')
+                self.plots.save_individual_plots(self.plots.hitMap[iROC], self.plots.hitMap[iROC].GetName(), self.plots.hitMap[iROC].GetTitle(), self.Cut.fid_cut_hitmap_roc[iROC], 'colz', 0, self.save_dir)
+                self.plots.save_individual_plots(self.plots.hitMap_cuts[iROC], self.plots.hitMap_cuts[iROC].GetName(), self.plots.hitMap_cuts[iROC].GetTitle(), self.Cut.fid_cut_hitmap_roc[iROC], 'colz', 0, self.save_dir)
+            else:
+                self.tree.Draw('row:col >> hitMapROC{n}'.format(n=iROC), 'plane == {n}'.format(n=iROC), 'goff')
+                # self.tree.Draw('row:col >> hitMapROC{n}_cuts'.format(n=iROC), 'plane == {n}'.format(n=iROC), 'goff')
             bar.update(iROC + 1)
         bar.finish()
         self.print_banner('Occupancy Analysis -> Done', '%')
@@ -187,37 +197,102 @@ class SignalPixAnalysis(Analysis):
         self.print_banner('Pulse Height Analysis -> Done', '%')
 
     def PhVsEventExtraction(self, roc=4):
-        self.tree.Draw('charge_all_ROC{n}:event_number >> phCl1VsEventROC{n}'.format(n=roc),
-                       'cluster_size_ROC{n}==1'.format(n=roc), 'goff')
-        self.tree.Draw('charge_all_ROC{n}:event_number >> phCl2VsEventROC{n}'.format(n=roc),
-                       'cluster_size_ROC{n}==2'.format(n=roc), 'goff')
-        self.tree.Draw('charge_all_ROC{n}:event_number >> phCl3VsEventROC{n}'.format(n=roc),
-                       'cluster_size_ROC{n}==3'.format(n=roc), 'goff')
-        self.tree.Draw('charge_all_ROC{n}:event_number >> phClM4VsEventROC{n}'.format(n=roc),
-                       'cluster_size_ROC{n}>=4'.format(n=roc), 'goff')
-        self.tree.Draw('charge_all_ROC{n}:event_number >> phAllVsEventROC{n}'.format(n=roc),
-                       'cluster_size_ROC{n}>0'.format(n=roc), 'goff')
+        if roc not in self.roc_tel:
+            self.tree.Draw('charge_all_ROC{n}:event_number >> phCl1VsEventROC{n}'.format(n=roc),
+                           'cluster_size_ROC{n}==1 && {mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+            self.tree.Draw('charge_all_ROC{n}:event_number >> phCl2VsEventROC{n}'.format(n=roc),
+                           'cluster_size_ROC{n}==2 && {mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+            self.tree.Draw('charge_all_ROC{n}:event_number >> phCl3VsEventROC{n}'.format(n=roc),
+                           'cluster_size_ROC{n}==3 && {mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+            self.tree.Draw('charge_all_ROC{n}:event_number >> phClM4VsEventROC{n}'.format(n=roc),
+                           'cluster_size_ROC{n}>=4 && {mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+            self.tree.Draw('charge_all_ROC{n}:event_number >> phAllVsEventROC{n}'.format(n=roc),
+                           'cluster_size_ROC{n}>0 && {mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+
+            self.plots.save_individual_plots(self.plots.ph1cl_vs_event[roc], self.plots.ph1cl_vs_event[roc].GetName(), self.plots.ph1cl_vs_event[roc].GetTitle(), None, 'colz', 0, self.save_dir)
+            self.plots.save_individual_plots(self.plots.ph2cl_vs_event[roc], self.plots.ph2cl_vs_event[roc].GetName(), self.plots.ph2cl_vs_event[roc].GetTitle(), None, 'colz', 0, self.save_dir)
+            self.plots.save_individual_plots(self.plots.ph3cl_vs_event[roc], self.plots.ph3cl_vs_event[roc].GetName(), self.plots.ph3cl_vs_event[roc].GetTitle(), None, 'colz', 0, self.save_dir)
+            self.plots.save_individual_plots(self.plots.phM4cl_vs_event[roc], self.plots.phM4cl_vs_event[roc].GetName(), self.plots.phM4cl_vs_event[roc].GetTitle(), None, 'colz', 0, self.save_dir)
+            self.plots.save_individual_plots(self.plots.phAll_vs_event[roc], self.plots.phAll_vs_event[roc].GetName(), self.plots.phAll_vs_event[roc].GetTitle(), None, 'colz', 0, self.save_dir)
+
+            self.tree.Draw('charge_all_ROC{n}:event_number >> phCl1VsEventROC{n}_cuts'.format(n=roc),
+                           'fidcut_pixelated_roc{n}&&cluster_size_ROC{n}==1&&{mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+            self.tree.Draw('charge_all_ROC{n}:event_number >> phCl2VsEventROC{n}_cuts'.format(n=roc),
+                           'fidcut_pixelated_roc{n}&&cluster_size_ROC{n}==2&&{mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+            self.tree.Draw('charge_all_ROC{n}:event_number >> phCl3VsEventROC{n}_cuts'.format(n=roc),
+                           'fidcut_pixelated_roc{n}&&cluster_size_ROC{n}==3&&{mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+            self.tree.Draw('charge_all_ROC{n}:event_number >> phClM4VsEventROC{n}_cuts'.format(n=roc),
+                           'fidcut_pixelated_roc{n}&&cluster_size_ROC{n}>=4&&{mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+            self.tree.Draw('charge_all_ROC{n}:event_number >> phAllVsEventROC{n}_cuts'.format(n=roc),
+                           'fidcut_pixelated_roc{n}&&cluster_size_ROC{n}>0&&{mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+
+            self.plots.save_individual_plots(self.plots.ph1cl_vs_event_cuts[roc], self.plots.ph1cl_vs_event_cuts[roc].GetName(), self.plots.ph1cl_vs_event_cuts[roc].GetTitle(), None, 'colz', 0, self.save_dir)
+            self.plots.save_individual_plots(self.plots.ph2cl_vs_event_cuts[roc], self.plots.ph2cl_vs_event_cuts[roc].GetName(), self.plots.ph2cl_vs_event_cuts[roc].GetTitle(), None, 'colz', 0, self.save_dir)
+            self.plots.save_individual_plots(self.plots.ph3cl_vs_event_cuts[roc], self.plots.ph3cl_vs_event_cuts[roc].GetName(), self.plots.ph3cl_vs_event_cuts[roc].GetTitle(), None, 'colz', 0, self.save_dir)
+            self.plots.save_individual_plots(self.plots.phM4cl_vs_event_cuts[roc], self.plots.phM4cl_vs_event_cuts[roc].GetName(), self.plots.phM4cl_vs_event_cuts[roc].GetTitle(), None, 'colz', 0, self.save_dir)
+            self.plots.save_individual_plots(self.plots.phAll_vs_event_cuts[roc], self.plots.phAll_vs_event_cuts[roc].GetName(), self.plots.phAll_vs_event_cuts[roc].GetTitle(), None, 'colz', 0, self.save_dir)
+
+            self.plots.ph1cl_vs_event_cuts[roc].ProjectionY('phROC{n}_1cl_cuts'.format(n=roc), 0, -1, 'e')
+            self.plots.ph2cl_vs_event_cuts[roc].ProjectionY('phROC{n}_2cl_cuts'.format(n=roc), 0, -1, 'e')
+            self.plots.ph3cl_vs_event_cuts[roc].ProjectionY('phROC{n}_3cl_cuts'.format(n=roc), 0, -1, 'e')
+            self.plots.phM4cl_vs_event_cuts[roc].ProjectionY('phROC{n}_M4cl_cuts'.format(n=roc), 0, -1, 'e')
+            self.plots.phAll_vs_event_cuts[roc].ProjectionY('phROC{n}_all_cuts'.format(n=roc), 0, -1, 'e')
+
+            self.plots.save_individual_plots(self.plots.phROC_1cl_cuts[roc], self.plots.phROC_1cl_cuts[roc].GetName(), self.plots.phROC_1cl_cuts[roc].GetTitle(), None, '', 1, self.save_dir)
+            self.plots.save_individual_plots(self.plots.phROC_2cl_cuts[roc], self.plots.phROC_2cl_cuts[roc].GetName(), self.plots.phROC_2cl_cuts[roc].GetTitle(), None, '', 1, self.save_dir)
+            self.plots.save_individual_plots(self.plots.phROC_3cl_cuts[roc], self.plots.phROC_3cl_cuts[roc].GetName(), self.plots.phROC_3cl_cuts[roc].GetTitle(), None, '', 1, self.save_dir)
+            self.plots.save_individual_plots(self.plots.phROC_M4cl_cuts[roc], self.plots.phROC_M4cl_cuts[roc].GetName(), self.plots.phROC_M4cl_cuts[roc].GetTitle(), None, '', 1, self.save_dir)
+            self.plots.save_individual_plots(self.plots.phROC_all_cuts[roc], self.plots.phROC_all_cuts[roc].GetName(), self.plots.phROC_all_cuts[roc].GetTitle(), None, '', 1, self.save_dir)
+
+        else:
+            self.tree.Draw('charge_all_ROC{n}:event_number >> phCl1VsEventROC{n}'.format(n=roc),
+                           'cluster_size_ROC{n}==1'.format(n=roc), 'goff')
+            self.tree.Draw('charge_all_ROC{n}:event_number >> phCl2VsEventROC{n}'.format(n=roc),
+                           'cluster_size_ROC{n}==2'.format(n=roc), 'goff')
+            self.tree.Draw('charge_all_ROC{n}:event_number >> phCl3VsEventROC{n}'.format(n=roc),
+                           'cluster_size_ROC{n}==3'.format(n=roc), 'goff')
+            self.tree.Draw('charge_all_ROC{n}:event_number >> phClM4VsEventROC{n}'.format(n=roc),
+                           'cluster_size_ROC{n}>=4'.format(n=roc), 'goff')
+            self.tree.Draw('charge_all_ROC{n}:event_number >> phAllVsEventROC{n}'.format(n=roc),
+                           'cluster_size_ROC{n}>0'.format(n=roc), 'goff')
+
+            # self.tree.Draw('charge_all_ROC{n}:event_number >> phCl1VsEventROC{n}_cuts'.format(n=roc),
+            #                'cluster_size_ROC{n}==1'.format(n=roc), 'goff')
+            # self.tree.Draw('charge_all_ROC{n}:event_number >> phCl2VsEventROC{n}_cuts'.format(n=roc),
+            #                'cluster_size_ROC{n}==2'.format(n=roc), 'goff')
+            # self.tree.Draw('charge_all_ROC{n}:event_number >> phCl3VsEventROC{n}_cuts'.format(n=roc),
+            #                'cluster_size_ROC{n}==3'.format(n=roc), 'goff')
+            # self.tree.Draw('charge_all_ROC{n}:event_number >> phClM4VsEventROC{n}_cuts'.format(n=roc),
+            #                'cluster_size_ROC{n}>=4'.format(n=roc), 'goff')
+            # self.tree.Draw('charge_all_ROC{n}:event_number >> phAllVsEventROC{n}_cuts'.format(n=roc),
+            #                'cluster_size_ROC{n}>0'.format(n=roc), 'goff')
+
         self.plots.ph1cl_vs_event[roc].ProjectionY('phROC{n}_1cl'.format(n=roc), 0, -1, 'e')
         self.plots.ph2cl_vs_event[roc].ProjectionY('phROC{n}_2cl'.format(n=roc), 0, -1, 'e')
         self.plots.ph3cl_vs_event[roc].ProjectionY('phROC{n}_3cl'.format(n=roc), 0, -1, 'e')
         self.plots.phM4cl_vs_event[roc].ProjectionY('phROC{n}_M4cl'.format(n=roc), 0, -1, 'e')
         self.plots.phAll_vs_event[roc].ProjectionY('phROC{n}_all'.format(n=roc), 0, -1, 'e')
 
+        self.plots.save_individual_plots(self.plots.phROC_1cl[roc], self.plots.phROC_1cl[roc].GetName(), self.plots.phROC_1cl[roc].GetTitle(), None, '', 1, self.save_dir)
+        self.plots.save_individual_plots(self.plots.phROC_2cl[roc], self.plots.phROC_2cl[roc].GetName(), self.plots.phROC_2cl[roc].GetTitle(), None, '', 1, self.save_dir)
+        self.plots.save_individual_plots(self.plots.phROC_3cl[roc], self.plots.phROC_3cl[roc].GetName(), self.plots.phROC_3cl[roc].GetTitle(), None, '', 1, self.save_dir)
+        self.plots.save_individual_plots(self.plots.phROC_M4cl[roc], self.plots.phROC_M4cl[roc].GetName(), self.plots.phROC_M4cl[roc].GetTitle(), None, '', 1, self.save_dir)
+        self.plots.save_individual_plots(self.plots.phROC_all[roc], self.plots.phROC_all[roc].GetName(), self.plots.phROC_all[roc].GetTitle(), None, '', 1, self.save_dir)
 
-    def Ph1DHistogramsExtraction(self, numClusters, ph1, ph2, ph3, phM4, phHall, phH1, phH2, phH3, phHM4):
-        if numClusters is not 0:
-            for i in xrange(len(ph1)):
-                phH1.Fill(ph1[i])
-                phHall.Fill(ph1[i])
-            for i in xrange(len(ph2)):
-                phH2.Fill(ph2[i])
-                phHall.Fill(ph2[i])
-            for i in xrange(len(ph3)):
-                phH3.Fill(ph3[i])
-                phHall.Fill(ph3[i])
-            for i in xrange(len(phM4)):
-                phHM4.Fill(phM4[i])
-                phHall.Fill(phM4[i])
+    # def Ph1DHistogramsExtraction(self, numClusters, ph1, ph2, ph3, phM4, phHall, phH1, phH2, phH3, phHM4):
+    #     if numClusters is not 0:
+    #         for i in xrange(len(ph1)):
+    #             phH1.Fill(ph1[i])
+    #             phHall.Fill(ph1[i])
+    #         for i in xrange(len(ph2)):
+    #             phH2.Fill(ph2[i])
+    #             phHall.Fill(ph2[i])
+    #         for i in xrange(len(ph3)):
+    #             phH3.Fill(ph3[i])
+    #             phHall.Fill(ph3[i])
+    #         for i in xrange(len(phM4)):
+    #             phHM4.Fill(phM4[i])
+    #             phHall.Fill(phM4[i])
 
     # def Ph2DHistogramExtraction(self, numClusters, phROC, clust_ROC_X, clust_ROC_Y, avPHDUT, isRowCol=kFALSE):
     #     if numClusters is not 0:
@@ -228,12 +303,28 @@ class SignalPixAnalysis(Analysis):
     #                 avPHDUT.Fill(clust_ROC_X[i], clust_ROC_Y[i], phROC[i]) if isRowCol else avPHDUT.Fill(clust_ROC_X[i]*10, clust_ROC_Y[i]*10, phROC[i])
 
     def Ph2DHistogramExtraction(self, roc, type):
-        if type is 'pixelated':
-            self.tree.Draw('charge_all_ROC{n}:cluster_row_ROC{n}:cluster_col_ROC{n} >> avPh_ROC{n}_pixelated_all'.format(n=roc), '', 'prof goff')
-        elif type is 'local':
-            self.tree.Draw('charge_all_ROC{n}:cluster_pos_ROC{n}_Local_Y*10:cluster_pos_ROC{n}_Local_X*10 >> avPh_ROC{n}_local_all'.format(n=roc), '', 'prof goff')
+        if roc not in self.roc_tel:
+            if type is 'pixelated':
+                self.tree.Draw('charge_all_ROC{n}:cluster_row_ROC{n}:cluster_col_ROC{n} >> avPh_ROC{n}_pixelated_all'.format(n=roc), self.Cut.mask_pixelated_roc[roc], 'prof goff')
+                self.tree.Draw('charge_all_ROC{n}:cluster_row_ROC{n}:cluster_col_ROC{n} >> avPh_ROC{n}_pixelated_all_cuts'.format(n=roc), 'fidcut_pixelated_roc{n}&&{mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'prof goff')
+                self.plots.save_individual_plots(self.plots.avPhROC_pixelated_all[roc], self.plots.avPhROC_pixelated_all[roc].GetName(), self.plots.avPhROC_pixelated_all[roc].GetTitle(), self.Cut.fid_cut_pixelated_roc[roc], 'colz', 0, self.save_dir)
+                self.plots.save_individual_plots(self.plots.avPhROC_pixelated_all_cuts[roc], self.plots.avPhROC_pixelated_all_cuts[roc].GetName(), self.plots.avPhROC_pixelated_all_cuts[roc].GetTitle(), self.Cut.fid_cut_pixelated_roc[roc], 'colz', 0, self.save_dir)
+            elif type is 'local':
+                self.tree.Draw('charge_all_ROC{n}:cluster_pos_ROC{n}_Local_Y*10:cluster_pos_ROC{n}_Local_X*10 >> avPh_ROC{n}_local_all'.format(n=roc), self.Cut.mask_pixelated_roc[roc], 'prof goff')
+                self.tree.Draw('charge_all_ROC{n}:cluster_pos_ROC{n}_Local_Y*10:cluster_pos_ROC{n}_Local_X*10 >> avPh_ROC{n}_local_all_cuts'.format(n=roc), 'fidcut_pixelated_roc{n}&&{mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'prof goff')
+            else:
+                self.tree.Draw('charge_all_ROC{n}:cluster_pos_ROC{n}_Telescope_Y*10:cluster_pos_ROC{n}_Telescope_X*10 >> avPh_ROC{n}_telescope_all'.format(n=roc), self.Cut.mask_pixelated_roc[roc], 'prof goff')
+                self.tree.Draw('charge_all_ROC{n}:cluster_pos_ROC{n}_Telescope_Y*10:cluster_pos_ROC{n}_Telescope_X*10 >> avPh_ROC{n}_telescope_all_cuts'.format(n=roc), 'fidcut_pixelated_roc{n}&&{mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'prof goff')
         else:
-            self.tree.Draw('charge_all_ROC{n}:cluster_pos_ROC{n}_Telescope_Y*10:cluster_pos_ROC{n}_Telescope_X*10 >> avPh_ROC{n}_telescope_all'.format(n=roc), '', 'prof goff')
+            if type is 'pixelated':
+                self.tree.Draw('charge_all_ROC{n}:cluster_row_ROC{n}:cluster_col_ROC{n} >> avPh_ROC{n}_pixelated_all'.format(n=roc), '', 'prof goff')
+                # self.tree.Draw('charge_all_ROC{n}:cluster_row_ROC{n}:cluster_col_ROC{n} >> avPh_ROC{n}_pixelated_all_cuts'.format(n=roc), '', 'prof goff')
+            elif type is 'local':
+                self.tree.Draw('charge_all_ROC{n}:cluster_pos_ROC{n}_Local_Y*10:cluster_pos_ROC{n}_Local_X*10 >> avPh_ROC{n}_local_all'.format(n=roc), '', 'prof goff')
+                # self.tree.Draw('charge_all_ROC{n}:cluster_pos_ROC{n}_Local_Y*10:cluster_pos_ROC{n}_Local_X*10 >> avPh_ROC{n}_local_all_cuts'.format(n=roc), '', 'prof goff')
+            else:
+                self.tree.Draw('charge_all_ROC{n}:cluster_pos_ROC{n}_Telescope_Y*10:cluster_pos_ROC{n}_Telescope_X*10 >> avPh_ROC{n}_telescope_all'.format(n=roc), '', 'prof goff')
+                # self.tree.Draw('charge_all_ROC{n}:cluster_pos_ROC{n}_Telescope_Y*10:cluster_pos_ROC{n}_Telescope_X*10 >> avPh_ROC{n}_telescope_all_cuts'.format(n=roc), '', 'prof goff')
 
     # def DoAveragePulseHeight(self, ievent, numcl, ph1, ph2, ph3, phM4, phGall, phG1, phG2, phG3, phGM4):
     #     if numcl is not 0:
@@ -251,11 +342,43 @@ class SignalPixAnalysis(Analysis):
     #             phGM4.Fill(ievent, phM4[i])
 
     def DoAveragePulseHeight(self, roc):
-        self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_1cl'.format(iroc=roc), 'cluster_size_ROC{iroc}==1&&clusters_per_plane[{iroc}]!=0'.format(iroc=roc), 'prof goff')
-        self.tree.Draw('pulse_height_ROC{iroc}_2_cluster:event_number >> meanPHROC{iroc}_2cl'.format(iroc=roc), 'cluster_size_ROC{iroc}==2&&clusters_per_plane[{iroc}]!=0'.format(iroc=roc), 'prof goff')
-        self.tree.Draw('pulse_height_ROC{iroc}_3_cluster:event_number >> meanPHROC{iroc}_3cl'.format(iroc=roc), 'cluster_size_ROC{iroc}==3&&clusters_per_plane[{iroc}]!=0'.format(iroc=roc), 'prof goff')
-        self.tree.Draw('pulse_height_ROC{iroc}_More4_cluster:event_number >> meanPHROC{iroc}_M4cl'.format(iroc=roc), '(cluster_size_ROC{iroc}>=4)&&clusters_per_plane[{iroc}]!=0'.format(iroc=roc), 'prof goff')
-        self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_all'.format(iroc=roc), 'charge_all_ROC{iroc}&&clusters_per_plane[{iroc}]!=0'.format(iroc=roc), 'prof goff')
+        if roc not in self.roc_tel:
+            self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_1cl'.format(iroc=roc), 'cluster_size_ROC{iroc}==1&&clusters_per_plane[{iroc}]!=0&&{mask}'.format(iroc=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'prof goff')
+            self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_2cl'.format(iroc=roc), 'cluster_size_ROC{iroc}==2&&clusters_per_plane[{iroc}]!=0&&{mask}'.format(iroc=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'prof goff')
+            self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_3cl'.format(iroc=roc), 'cluster_size_ROC{iroc}==3&&clusters_per_plane[{iroc}]!=0&&{mask}'.format(iroc=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'prof goff')
+            self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_M4cl'.format(iroc=roc), 'cluster_size_ROC{iroc}>=4&&clusters_per_plane[{iroc}]!=0&&{mask}'.format(iroc=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'prof goff')
+            self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_all'.format(iroc=roc), 'charge_all_ROC{iroc}&&clusters_per_plane[{iroc}]!=0&&{mask}'.format(iroc=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'prof goff')
+
+            self.plots.save_individual_plots(self.plots.meanPhROC_1cl[roc], self.plots.meanPhROC_1cl[roc].GetName(), self.plots.meanPhROC_1cl[roc].GetTitle(), None, '', 1, self.save_dir)
+            self.plots.save_individual_plots(self.plots.meanPhROC_2cl[roc], self.plots.meanPhROC_2cl[roc].GetName(), self.plots.meanPhROC_2cl[roc].GetTitle(), None, '', 1, self.save_dir)
+            self.plots.save_individual_plots(self.plots.meanPhROC_3cl[roc], self.plots.meanPhROC_3cl[roc].GetName(), self.plots.meanPhROC_3cl[roc].GetTitle(), None, '', 1, self.save_dir)
+            self.plots.save_individual_plots(self.plots.meanPhROC_M4cl[roc], self.plots.meanPhROC_M4cl[roc].GetName(), self.plots.meanPhROC_M4cl[roc].GetTitle(), None, '', 1, self.save_dir)
+            self.plots.save_individual_plots(self.plots.meanPhROC_all[roc], self.plots.meanPhROC_all[roc].GetName(), self.plots.meanPhROC_all[roc].GetTitle(), None, '', 1, self.save_dir)
+
+            self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_1cl_cuts'.format(iroc=roc), 'cluster_size_ROC{iroc}==1&&clusters_per_plane[{iroc}]!=0&&fidcut_pixelated_roc{iroc}&&{mask}'.format(iroc=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'prof goff')
+            self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_2cl_cuts'.format(iroc=roc), 'cluster_size_ROC{iroc}==2&&clusters_per_plane[{iroc}]!=0&&fidcut_pixelated_roc{iroc}&&{mask}'.format(iroc=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'prof goff')
+            self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_3cl_cuts'.format(iroc=roc), 'cluster_size_ROC{iroc}==3&&clusters_per_plane[{iroc}]!=0&&fidcut_pixelated_roc{iroc}&&{mask}'.format(iroc=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'prof goff')
+            self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_M4cl_cuts'.format(iroc=roc), 'cluster_size_ROC{iroc}>=4&&clusters_per_plane[{iroc}]!=0&&fidcut_pixelated_roc{iroc}&&{mask}'.format(iroc=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'prof goff')
+            self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_all_cuts'.format(iroc=roc), 'charge_all_ROC{iroc}&&clusters_per_plane[{iroc}]!=0&&fidcut_pixelated_roc{iroc}&&{mask}'.format(iroc=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'prof goff')
+            
+            self.plots.save_individual_plots(self.plots.meanPhROC_1cl_cuts[roc], self.plots.meanPhROC_1cl_cuts[roc].GetName(), self.plots.meanPhROC_1cl_cuts[roc].GetTitle(), None, '', 1, self.save_dir)
+            self.plots.save_individual_plots(self.plots.meanPhROC_2cl_cuts[roc], self.plots.meanPhROC_2cl_cuts[roc].GetName(), self.plots.meanPhROC_2cl_cuts[roc].GetTitle(), None, '', 1, self.save_dir)
+            self.plots.save_individual_plots(self.plots.meanPhROC_3cl_cuts[roc], self.plots.meanPhROC_3cl_cuts[roc].GetName(), self.plots.meanPhROC_3cl_cuts[roc].GetTitle(), None, '', 1, self.save_dir)
+            self.plots.save_individual_plots(self.plots.meanPhROC_M4cl_cuts[roc], self.plots.meanPhROC_M4cl_cuts[roc].GetName(), self.plots.meanPhROC_M4cl_cuts[roc].GetTitle(), None, '', 1, self.save_dir)
+            self.plots.save_individual_plots(self.plots.meanPhROC_all_cuts[roc], self.plots.meanPhROC_all_cuts[roc].GetName(), self.plots.meanPhROC_all_cuts[roc].GetTitle(), None, '', 1, self.save_dir)
+
+        else:
+            self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_1cl'.format(iroc=roc), 'cluster_size_ROC{iroc}==1&&clusters_per_plane[{iroc}]!=0'.format(iroc=roc), 'prof goff')
+            self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_2cl'.format(iroc=roc), 'cluster_size_ROC{iroc}==2&&clusters_per_plane[{iroc}]!=0'.format(iroc=roc), 'prof goff')
+            self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_3cl'.format(iroc=roc), 'cluster_size_ROC{iroc}==3&&clusters_per_plane[{iroc}]!=0'.format(iroc=roc), 'prof goff')
+            self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_M4cl'.format(iroc=roc), 'cluster_size_ROC{iroc}>=4&&clusters_per_plane[{iroc}]!=0'.format(iroc=roc), 'prof goff')
+            self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_all'.format(iroc=roc), 'charge_all_ROC{iroc}&&clusters_per_plane[{iroc}]!=0'.format(iroc=roc), 'prof goff')
+
+            # self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_1cl_cuts'.format(iroc=roc), 'cluster_size_ROC{iroc}==1&&clusters_per_plane[{iroc}]!=0'.format(iroc=roc), 'prof goff')
+            # self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_2cl_cuts'.format(iroc=roc), 'cluster_size_ROC{iroc}==2&&clusters_per_plane[{iroc}]!=0'.format(iroc=roc), 'prof goff')
+            # self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_3cl_cuts'.format(iroc=roc), 'cluster_size_ROC{iroc}==3&&clusters_per_plane[{iroc}]!=0'.format(iroc=roc), 'prof goff')
+            # self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_M4cl_cuts'.format(iroc=roc), 'cluster_size_ROC{iroc}>=4&&clusters_per_plane[{iroc}]!=0'.format(iroc=roc), 'prof goff')
+            # self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_all_cuts'.format(iroc=roc), 'charge_all_ROC{iroc}&&clusters_per_plane[{iroc}]!=0'.format(iroc=roc), 'prof goff')
 
     def show_current(self, relative_time=True):
         self.Currents.draw_graphs(relative_time=relative_time)

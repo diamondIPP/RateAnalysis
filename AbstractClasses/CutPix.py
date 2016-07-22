@@ -3,7 +3,7 @@ import pickle
 import json
 from numpy import array, zeros, arange, delete
 from Elementary import Elementary
-from ROOT import TCut, gROOT, TH1F, kRed
+from ROOT import TCut, gROOT, TH1F, kRed, TCutG
 from collections import OrderedDict
 
 
@@ -13,12 +13,12 @@ class CutPix(Elementary):
     is loaded from the Analysis config file, whereas the individual cut settings are loaded from a JSON file located at Configuration/Individual_Configs. The JSON files are generated
     by the Analysis method SetIndividualCuts().
     """
-    def __init__(self, plot_settings=None, verbose=True, skip=False):
+    def __init__(self, parent_analysis, verbose=True, skip=False):
 
         if not skip:
             Elementary.__init__(self, verbose=verbose)
-            # self.analysis = parent_analysis
-            self.plot_settings = print_settings
+            self.analysis = parent_analysis
+            self.plot_settings = self.analysis.plots.plot_settings
             # saving stuff
             self.histos = {}
 
@@ -42,7 +42,8 @@ class CutPix(Elementary):
 
             self.load_config()
             # generate cut strings
-            self.generate_fid_cut()
+            self.generate_fid_cuts()
+            self.generate_masks()
             # self.generate_cut_string()  # DA TODO
             # self.all_cut = self.generate_all_cut()  # DA TODO
 
@@ -156,8 +157,8 @@ class CutPix(Elementary):
     def generate_fid_cuts(self):
         self.fid_cut_hitmap_roc = {}
         self.fid_cut_pixelated_roc = {}
-        self.fid_cut_local_roc = {}
-        self.fid_cut_telescope_dut = {}
+        # self.fid_cut_local_roc = {}
+        # self.fid_cut_telescope_roc = {}
         self.generate_fid_cuts_DUT(1)
         self.generate_fid_cuts_DUT(2)
         self.generate_fid_cuts_DUT(3)
@@ -182,30 +183,135 @@ class CutPix(Elementary):
                 xmax = int(fidcutstring[1].split(',')[1])
                 ymin = int(fidcutstring[2].split(',')[0])
                 ymax = int(fidcutstring[2].split(',')[1])
-        self.fid_cut_hitmap_dut[dut] = self.make_fid_cut('fidcut_hitmap_roc{r}'.format(r=roc), varx, vary, xmin, xmax,
+        self.fid_cut_hitmap_roc[roc] = self.make_fid_cut('fidcut_hitmap_roc{r}'.format(r=roc), varx, vary, xmin, xmax,
                                                          deltax, ymin, ymax, deltay)
-        varx = 'cluster_col_ROC{n}'.format(n=roc)
-        vary = 'cluster_row_ROC{n}'.format(n=roc)
-        self.fid_cut_pixelated_dut[dut] = self.make_fid_cut('fidcut_pixelated_roc{r}'.format(r=roc), varx, vary, xmin,
+        varx2 = 'cluster_col_ROC{n}'.format(n=roc)
+        vary2 = 'cluster_row_ROC{n}'.format(n=roc)
+        self.fid_cut_pixelated_roc[roc] = self.make_fid_cut('fidcut_pixelated_roc{r}'.format(r=roc), varx2, vary2, xmin,
                                                             xmax, deltax, ymin, ymax, deltay)
-        self.fid_cut_local_dut[dut] = self.make_fid_cut('fidcut_local_roc{r}'.format(r=roc), varx, vary, xmin,
-                                                            xmax, deltax, ymin, ymax, deltay)
-        self.fid_cut_telescope_dut[dut] = self.make_fid_cut('fidcut_telescope_roc{r}'.format(r=roc), varx, vary, xmin,
-                                                            xmax, deltax, ymin, ymax, deltay)
+        # self.fid_cut_local_roc[roc] = self.make_fid_cut('fidcut_local_roc{r}'.format(r=roc), varx, vary, xmin,
+        #                                                     xmax, deltax, ymin, ymax, deltay)
+        # self.fid_cut_telescope_roc[roc] = self.make_fid_cut('fidcut_telescope_roc{r}'.format(r=roc), varx, vary, xmin,
+        #                                                     xmax, deltax, ymin, ymax, deltay)
 
         
-    def make_fid_cut(self, name='fidcut', varx='col', vary='row', xmin, xmax, deltax, ymin, ymax, deltay):
+    def make_fid_cut(self, name='fidcut', varx='col', vary='row', xmin=0, xmax=51, deltax=1, ymin=0, ymax=79, deltay=1):
         cut = TCutG(name, 5)
         cut.SetVarX(varx)
         cut.SetVarY(vary)
-        cut.SetPoint(0, xmin - deltax/2, ymin - deltay/2)
-        cut.SetPoint(1, xmin - deltax/2, ymax + deltay/2)
-        cut.SetPoint(2, xmax + deltax/2, ymax + deltay/2)
-        cut.SetPoint(3, xmax + deltax/2, ymin - deltay/2)
-        cut.SetPoint(4, xmin - deltax/2, ymin - deltay/2)
+        cut.SetPoint(0, float(xmin) - float(deltax)/2, float(ymin) - float(deltay)/2)
+        cut.SetPoint(1, float(xmin) - float(deltax)/2, float(ymax) + float(deltay)/2)
+        cut.SetPoint(2, float(xmax) + float(deltax)/2, float(ymax) + float(deltay)/2)
+        cut.SetPoint(3, float(xmax) + float(deltax)/2, float(ymin) - float(deltay)/2)
+        cut.SetPoint(4, float(xmin) - float(deltax)/2, float(ymin) - float(deltay)/2)
         cut.SetLineColor(kRed)
         cut.SetLineWidth(3)
         return cut
+
+    def generate_masks(self):
+        self.mask_hitmap_roc = {}
+        self.mask_pixelated_roc = {}
+        self.generate_col_masks()
+        self.generate_row_masks()
+        self.generate_pixel_masks()
+
+    def generate_col_masks(self):
+        self.col_mask_hitmap_roc = {}
+        self.col_mask_pixelate_roc = {}
+        self.generate_col_masks_DUT(1)
+        self.generate_col_masks_DUT(2)
+        self.generate_col_masks_DUT(3)
+
+    def generate_col_masks_DUT(self, dut):
+        maskcolstring = self.CutConfig['MaskColsDUT{d}'.format(d=dut)]
+        roc = 4 if dut is 1 else 5 if dut is 2 else 6
+        title = ''
+        name = 'mask_col_hitmap_roc{r}'.format(r=roc)
+        mask_col_hitmap_temp = TCut('temp0', title)
+        if maskcolstring is not '':
+            maskcolstring = maskcolstring.replace('[', '').replace(']', '')
+            if maskcolstring is not '':
+                maskcolstring = maskcolstring.split(';')
+                roc = int(maskcolstring[0])
+                for i in xrange(1, len(maskcolstring)):
+                    if ':' in maskcolstring[i]:
+                        tempstring = maskcolstring[i].split(':')
+                        tempmask = TCut('temp', '(col<{inf}||col>{sup})'.format(inf=tempstring[0], sup=tempstring[1]))
+                    else:
+                        tempmask = TCut('temp', '(col!={val})'.format(val=maskcolstring[i]))
+                    mask_col_hitmap_temp = mask_col_hitmap_temp + tempmask
+        self.col_mask_hitmap_roc[roc] = TCut(name, '')
+        self.col_mask_hitmap_roc[roc] = self.col_mask_hitmap_roc[roc] + mask_col_hitmap_temp
+        name2 = 'mask_col_pixelated_roc{r}'.format(r=roc)
+        self.col_mask_pixelate_roc[roc] = TCut(name2, self.col_mask_hitmap_roc[roc].GetTitle().replace('col', 'cluster_col_ROC{n}'.format(n=roc)))
+        name3 = 'mask_hitmap_roc{r}'.format(r=roc)
+        self.mask_hitmap_roc[roc] = TCut(name3, '')
+        self.mask_hitmap_roc[roc] = self.mask_hitmap_roc[roc] + self.col_mask_hitmap_roc[roc]
+        name4 = 'mask_pixelated_roc{r}'.format(r=roc)
+        self.mask_pixelated_roc[roc] = TCut(name4, '')
+        self.mask_pixelated_roc[roc] = self.mask_pixelated_roc[roc] + self.col_mask_pixelate_roc[roc]
+
+    def generate_row_masks(self):
+        self.row_mask_hitmap_roc = {}
+        self.row_mask_pixelated_roc = {}
+        self.generate_row_masks_DUT(1)
+        self.generate_row_masks_DUT(2)
+        self.generate_row_masks_DUT(3)
+
+    def generate_row_masks_DUT(self, dut):
+        maskrowstring = self.CutConfig['MaskRowsDUT{d}'.format(d=dut)]
+        roc = 4 if dut is 1 else 5 if dut is 2 else 6
+        title = ''
+        name = 'mask_row_hitmap_roc{r}'.format(r=roc)
+        mask_row_hitmap_temp = TCut('temp0', title)
+        if maskrowstring is not '':
+            maskrowstring = maskrowstring.replace('[', '').replace(']', '')
+            if maskrowstring is not '':
+                maskrowstring = maskrowstring.split(';')
+                roc = int(maskrowstring[0])
+                for i in xrange(1,len(maskrowstring)):
+                    if ':' in maskrowstring[i]:
+                        tempstring = maskrowstring[i].split(':')
+                        tempmask = TCut('temp', '(row<{inf}||row>{sup})'.format(inf=tempstring[0], sup=tempstring[1]))
+                    else:
+                        tempmask = TCut('temp', '(row!={val})'.format(val=maskrowstring[i]))
+                    mask_row_hitmap_temp = mask_row_hitmap_temp + tempmask
+        self.row_mask_hitmap_roc[roc] = TCut(name, '')
+        self.row_mask_hitmap_roc[roc] = self.row_mask_hitmap_roc[roc] + mask_row_hitmap_temp
+        name2 = 'mask_row_pixelated_roc{r}'.format(r=roc)
+        self.row_mask_pixelated_roc[roc] = TCut(name2, self.row_mask_hitmap_roc[roc].GetTitle().replace('row', 'cluster_row_ROC{n}'.format(n=roc)))
+        self.mask_hitmap_roc[roc] = self.mask_hitmap_roc[roc] + self.row_mask_hitmap_roc[roc]
+        self.mask_pixelated_roc[roc] = self.mask_pixelated_roc[roc] + self.row_mask_pixelated_roc[roc]
+        
+    def generate_pixel_masks(self):
+        self.pixel_mask_hitmap_roc = {}
+        self.pixel_mask_pixelated_roc = {}
+        self.generate_pixel_masks_DUT(1)
+        self.generate_pixel_masks_DUT(2)
+        self.generate_pixel_masks_DUT(3)
+
+    def generate_pixel_masks_DUT(self, dut):
+        maskpixelstring = self.CutConfig['MaskPixelsDUT{d}'.format(d=dut)]
+        roc = 4 if dut is 1 else 5 if dut is 2 else 6
+        title = ''
+        name = 'mask_pixel_hitmap_roc{r}'.format(r=roc)
+        mask_pixel_hitmap_temp = TCut('temp0', title)
+        if maskpixelstring is not '':
+            maskpixelstring = maskpixelstring.replace('[', '').replace(']', '')
+            if maskpixelstring is not '':
+                maskpixelstring = maskpixelstring.split(';')
+                roc = int(maskpixelstring[0])
+                for i in xrange(1, len(maskpixelstring)):
+                    if ',' in maskpixelstring[i]:
+                        tempstring = maskpixelstring[i].split(',')
+                        tempmask = TCut('temp', '(col!={x}||row!={y})'.format(x=tempstring[0], y=tempstring[1]))
+                        mask_pixel_hitmap_temp = mask_pixel_hitmap_temp + tempmask
+        self.pixel_mask_hitmap_roc[roc] = TCut(name, '')
+        self.pixel_mask_hitmap_roc[roc] = self.pixel_mask_hitmap_roc[roc] + mask_pixel_hitmap_temp
+        name2 = 'mask_pixel_pixelated_roc{r}'.format(r=roc)
+        self.pixel_mask_pixelated_roc[roc] = TCut(name2, self.pixel_mask_hitmap_roc[roc].GetTitle().replace('row', 'cluster_row_ROC{n}'.format(n=roc)).replace('col', 'cluster_col_ROC{n}'.format(n=roc)))
+        self.mask_hitmap_roc[roc] = self.mask_hitmap_roc[roc] + self.pixel_mask_hitmap_roc[roc]
+        self.mask_pixelated_roc[roc] = self.mask_pixelated_roc[roc] + self.pixel_mask_pixelated_roc[roc]
 
     def load_event_range(self, event_range=None):
         """
