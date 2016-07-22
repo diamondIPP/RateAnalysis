@@ -1860,3 +1860,4 @@ if __name__ == "__main__":
     print '\nAnalysing run', test_run, '\n'
     z = SignalPixAnalysis(test_run, args.ch)
     z.print_elapsed_time(st, 'Instantiation')
+    z.do_analysis(True, True)
