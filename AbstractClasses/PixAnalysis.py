@@ -158,7 +158,7 @@ class SignalPixAnalysis(Analysis):
                 self.tree.Draw('row:col >> hitMapROC{n}'.format(n=iROC), 'plane == {n}'.format(n=iROC), 'goff')
                 # self.tree.Draw('row:col >> hitMapROC{n}_cuts'.format(n=iROC), 'plane == {n}'.format(n=iROC), 'goff')
             if show_progressBar: bar.update(iROC + 1)
-            self.print_banner('ROC {r} analysis -> Done')
+            self.print_banner('ROC {r} analysis -> Done'.format(r=iROC))
         if show_progressBar: bar.finish()
         self.print_banner('Occupancy Analysis -> Done', '%')
 
@@ -200,7 +200,7 @@ class SignalPixAnalysis(Analysis):
             self.DoAveragePulseHeight(iROC)
             self.PhVsEventExtraction(iROC)
             if show_progressBar: bar.update(iROC + 1)
-            self.print_banner('ROC {r} analysis -> Done')
+            self.print_banner('ROC {r} analysis -> Done'.format(r=iROC))
         if show_progressBar: bar.finish()
         self.print_banner('Pulse Height Analysis -> Done', '%')
 
@@ -1862,10 +1862,12 @@ if __name__ == "__main__":
     st = time()
     parser = ArgumentParser()
     parser.add_argument('run', nargs='?', default=312, type=int)
+    parser.add_argument('pbar', nargs='?', default=False, type=bool)
     parser.add_argument('ch', nargs='?', default=0, type=int)
     args = parser.parse_args()
     test_run = args.run
+    pbar = args.pbar
     print '\nAnalysing run', test_run, '\n'
     z = SignalPixAnalysis(test_run, args.ch)
     z.print_elapsed_time(st, 'Instantiation')
-    z.do_analysis(True, True, False)
+    z.do_analysis(True, True, pbar)
