@@ -80,8 +80,10 @@ class SignalPixAnalysis(Analysis):
             for obj in lst:
                 self.del_rootobj(obj)
 
-    def do_analysis(self, do_occupancy=True, do_pulse_height=True):
+    def do_analysis(self, do_occupancy=True, do_pulse_height=True, show_progressBar=False):
+        self.print_banner('Creating histograms...')
         self.plots.create_histograms()
+        self.print_banner('Histograms cration -> Done')
         self.kmax = int(self.plots.plot_settings['num_diff_cluster_sizes'] + 1)
         self.deltaX = self.plots.plot_settings['deltaX']
         self.deltaY = self.plots.plot_settings['deltaY']
@@ -124,28 +126,30 @@ class SignalPixAnalysis(Analysis):
         #         if do_occupancy: self.fill_occupancy()
         #         if do_pulse_height: self.do_pulse_height_analysis(event)
         #     bar.update(event + 1)
-        if do_occupancy: self.fill_occupancy()
-        if do_pulse_height: self.do_pulse_height_analysis()
+        if do_occupancy: self.fill_occupancy(show_progressBar)
+        if do_pulse_height: self.do_pulse_height_analysis(show_progressBar)
         # self.print_banner('Looping over Tree -> Done', '%')
 
 
-    def fill_occupancy(self):
+    def fill_occupancy(self, show_progressBar=False):
         # for i in xrange(len(self.plane)):
         #     if 0 <= self.plane[i] < self.num_devices:
         #         self.plots.hitMap[self.plane[i]].Fill(self.col[i], self.row[i])
         self.print_banner('Starting Occupancy Analysis...', '%')
-        widgets = [
-            progressbar.Percentage(),
-            ' ', progressbar.Bar(marker='>'),
-            ' ', progressbar.Timer(),
-            ' ', progressbar.ETA()  #, DA: this two work great!
-            # ' ', progressbar.AdaptiveETA(),
-            # ' ', progressbar.AdaptiveTransferSpeed(),
-            ]
-        bar = progressbar.ProgressBar(widgets=widgets, max_value=self.num_devices)
-        bar.start()
+        if show_progressBar:
+            widgets = [
+                progressbar.Percentage(),
+                ' ', progressbar.Bar(marker='>'),
+                ' ', progressbar.Timer(),
+                ' ', progressbar.ETA()  #, DA: this two work great!
+                # ' ', progressbar.AdaptiveETA(),
+                # ' ', progressbar.AdaptiveTransferSpeed(),
+                ]
+            bar = progressbar.ProgressBar(widgets=widgets, max_value=self.num_devices)
+            bar.start()
         for iROC in xrange(self.num_devices):
             if iROC not in self.roc_tel:
+                self.print_banner('Analysing ROC {r}...'.format(r=iROC))
                 self.tree.Draw('row:col >> hitMapROC{n}'.format(n=iROC), 'plane == {n} && {mask}'.format(n=iROC, mask=self.Cut.mask_hitmap_roc[iROC].GetTitle()), 'goff')
                 self.tree.Draw('row:col >> hitMapROC{n}_cuts'.format(n=iROC), 'plane == {n} && {mask} && fidcut_hitmap_roc{n}'.format(n=iROC, mask=self.Cut.mask_hitmap_roc[iROC].GetTitle()), 'goff')
                 self.plots.save_individual_plots(self.plots.hitMap[iROC], self.plots.hitMap[iROC].GetName(), self.plots.hitMap[iROC].GetTitle(), self.Cut.fid_cut_hitmap_roc[iROC], 'colz', 0, self.save_dir)
@@ -153,11 +157,12 @@ class SignalPixAnalysis(Analysis):
             else:
                 self.tree.Draw('row:col >> hitMapROC{n}'.format(n=iROC), 'plane == {n}'.format(n=iROC), 'goff')
                 # self.tree.Draw('row:col >> hitMapROC{n}_cuts'.format(n=iROC), 'plane == {n}'.format(n=iROC), 'goff')
-            bar.update(iROC + 1)
-        bar.finish()
+            if show_progressBar: bar.update(iROC + 1)
+            self.print_banner('ROC {r} analysis -> Done')
+        if show_progressBar: bar.finish()
         self.print_banner('Occupancy Analysis -> Done', '%')
 
-    def do_pulse_height_analysis(self):  # DA: before (self, event)
+    def do_pulse_height_analysis(self, show_progressBar=False):  # DA: before (self, event)
         # for iROC in xrange(self.num_devices):
         #     numClusters = ord(self.clust_per_plane[iROC])
         #     self.Ph1DHistogramsExtraction(numClusters, self.ph_1cl[iROC], self.ph_2cl[iROC], self.ph_3cl[iROC],
@@ -176,24 +181,27 @@ class SignalPixAnalysis(Analysis):
         #                               self.plots.meanPhROC_2cl[iROC], self.plots.meanPhROC_3cl[iROC],
         #                               self.plots.meanPhROC_M4cl[iROC])
         self.print_banner('Starting Pulse Height Analysis...', '%')
-        widgets = [
-            progressbar.Percentage(),
-            ' ', progressbar.Bar(marker='>'),
-            ' ', progressbar.Timer(),
-            ' ', progressbar.ETA()  #, DA: this two work great!
-            # ' ', progressbar.AdaptiveETA(),
-            # ' ', progressbar.AdaptiveTransferSpeed(),
-            ]
-        bar = progressbar.ProgressBar(widgets=widgets, max_value=self.num_devices)
-        bar.start()
+        if show_progressBar:
+            widgets = [
+                progressbar.Percentage(),
+                ' ', progressbar.Bar(marker='>'),
+                ' ', progressbar.Timer(),
+                ' ', progressbar.ETA()  #, DA: this two work great!
+                # ' ', progressbar.AdaptiveETA(),
+                # ' ', progressbar.AdaptiveTransferSpeed(),
+                ]
+            bar = progressbar.ProgressBar(widgets=widgets, max_value=self.num_devices)
+            bar.start()
         for iROC in xrange(self.num_devices):
+            self.print_banner('Analysing ROC {r}...'.format(r=iROC))
             self.Ph2DHistogramExtraction(iROC, 'pixelated')
             self.Ph2DHistogramExtraction(iROC, 'local')
             self.Ph2DHistogramExtraction(iROC, 'telescope')
             self.DoAveragePulseHeight(iROC)
             self.PhVsEventExtraction(iROC)
-            bar.update(iROC + 1)
-        bar.finish()
+            if show_progressBar: bar.update(iROC + 1)
+            self.print_banner('ROC {r} analysis -> Done')
+        if show_progressBar: bar.finish()
         self.print_banner('Pulse Height Analysis -> Done', '%')
 
     def PhVsEventExtraction(self, roc=4):
@@ -1860,4 +1868,4 @@ if __name__ == "__main__":
     print '\nAnalysing run', test_run, '\n'
     z = SignalPixAnalysis(test_run, args.ch)
     z.print_elapsed_time(st, 'Instantiation')
-    z.do_analysis(True, True)
+    z.do_analysis(True, True, False)

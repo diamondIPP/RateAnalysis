@@ -6,6 +6,7 @@ from ROOT import TGraphErrors, TCanvas, TH1D, TH2D, gStyle, TH1F, gROOT, TLegend
 # from CurrentInfo import Currents
 # from numpy import array
 from math import sqrt, ceil, log
+from Elementary import Elementary
 # from argparse import ArgumentParser
 # from Extrema import Extrema2D
 # from ChannelCut import ChannelCut
@@ -21,8 +22,9 @@ __author__ = 'DA'
 # MAIN CLASS
 # ==============================================
 
-class Plots:
+class Plots(Elementary):
     def __init__(self, num_entries, run=None, num_devices=7, binning=-1):
+        Elementary.__init__(self)
         gStyle.SetPalette(53)
         gStyle.SetNumberContours(999)
         self.run = run
@@ -138,6 +140,7 @@ class Plots:
 
     def create_histograms(self):
         # 1D Histograms
+        self.print_banner('Creating 1D histograms...')
         self.phROC_all = {i: self.create_1D_histogram('landau', 'phROC{n}_all'.format(n=i),
                                                       'Pulse Height ROC {n} all cluster sizes'.format(n=i), 'Charge (e)',
                                                       'Num Clusters', kBlack) for i in xrange(self.num_devices)}
@@ -168,7 +171,9 @@ class Plots:
         self.phROC_M4cl_cuts = {i: self.create_1D_histogram('landau', 'phROC{n}_M4cl_cuts'.format(n=i),
                                                             'Pulse Height ROC {n} 4 or more pix cluster after cuts'.format(n=i), 'Charge (e)',
                                                             'Num Clusters', kMagenta) for i in xrange(self.num_devices)}
+        self.print_banner('1D histograms creation -> Done')
         # 2D Histograms
+        self.print_banner('Creating 2D histograms...')
         self.hitMap = {i: self.create_2D_histogram('pixel', 'hitMapROC{n}'.format(n=i), 'Hit Map ROC {n}'.format(n=i),
                                                    'Column', 'Row', 'Entries', 0, -1) for i in xrange(self.num_devices)}
         self.hitMap_cuts = {i: self.create_2D_histogram('pixel', 'hitMapROC{n}_cuts'.format(n=i), 'Hit Map ROC {n} after cuts'.format(n=i),
@@ -203,7 +208,9 @@ class Plots:
         self.phAll_vs_event_cuts = {i: self.create_2D_histogram('event', 'phAllVsEventROC{n}_cuts'.format(n=i),
                                                                 'PH all cluster sizes Vs Event ROC {n} after cuts'.format(n=i), 'Event',
                                                                 'Charge (e)', 'Entries', 0, -1) for i in xrange(self.num_devices)}
+        self.print_banner('2D histograms creation -> Done')
         # alternative 2D
+        self.print_banner('Creating 2D profiles...')
         self.avPhROC_local_all = {i: self.create_2D_profile('spatial', 'avPh_ROC{n}_local_all'.format(n=i),
                                                             'Average Pulse Height ROC {n} Local Coord. all cluster sizes'.format(n=i),
                                                             'x (mm)', 'y (mm)', 'Charge (e)', 0, -1) for i in xrange(self.num_devices)}
@@ -222,8 +229,10 @@ class Plots:
         self.avPhROC_pixelated_all_cuts = {i: self.create_2D_profile('pixel', 'avPh_ROC{n}_pixelated_all_cuts'.format(n=i),
                                                                      'Average Pulse Height ROC {n} pixelated Coord. all cluster sizes after cuts'.format(n=i),
                                                                      'Column', 'Row', 'Charge (e)', 0, -1) for i in xrange(self.num_devices)}
+        self.print_banner('2D profiles creation -> Done')
 
         # Alternative to TGraphErrors
+        self.print_banner('Creating 1D profiles...')
         self.meanPhROC_all = {i: self.create_1D_profile('event', 'meanPHROC{n}_all'.format(n=i),
                                                         'Mean PH ROC {n} all cluster sizes'.format(n=i), 'Event',
                                                         'Charge(e)', kBlack, 0) for i in xrange(self.num_devices)}
@@ -254,8 +263,10 @@ class Plots:
         self.meanPhROC_M4cl_cuts = {i: self.create_1D_profile('event', 'meanPHROC{n}_M4cl_cuts'.format(n=i),
                                                               'Mean PH ROC {n} 4 or more pixs cluster after cuts'.format(n=i), 'Event',
                                                               'Charge(e)', kMagenta, 0) for i in xrange(self.num_devices)}
+        self.print_banner('1D profiles creation -> Done')
 
     def save_individual_plots(self, histo, name, title, tcutg=None, draw_opt='', opt_stats=0, path='./'):
+        self.print_banner('Saving {n}...'.format(n=name))
         c0 = TCanvas('c_{n}'.format(n=name), title)
         gStyle.SetOptStat(opt_stats)
         c0.cd()
@@ -265,4 +276,5 @@ class Plots:
         c0.SaveAs('{dir}/c_{n}.root'.format(dir=path, n=name))
         c0.SaveAs('{dir}/c_{n}.png'.format(dir=path, n=name))
         c0.Close()
+        self.print_banner('{n} save -> Done'.format(n=name))
         del c0
