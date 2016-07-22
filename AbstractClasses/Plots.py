@@ -55,6 +55,8 @@ class Plots(Elementary):
             'maxRow': 79,
             'num_diff_cluster_sizes': 4
         }
+        self.plot_settings['event_bins'] = int(ceil(float(self.num_entries)/10)) if self.num_entries <= 100000 else \
+            int(ceil(float(self.num_entries)/100)) if self.num_entries <= 500000 else int(ceil(float(self.num_entries)/self.plot_settings['nEventsAv']))
         self.plot_settings['deltaX'] = float(self.plot_settings['xmax']-self.plot_settings['xmin'])/self.plot_settings['nBinsX']
         self.plot_settings['deltaY'] = float(self.plot_settings['ymax']-self.plot_settings['ymin'])/self.plot_settings['nBinsY']
 
@@ -278,3 +280,4 @@ class Plots(Elementary):
         c0.Close()
         self.print_banner('{n} save -> Done'.format(n=name))
         del c0
+        del histo
