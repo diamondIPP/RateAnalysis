@@ -200,6 +200,10 @@ def file_exists(path):
     return os.path.isfile(path)
 
 
+def make_col_str(col):
+    return '{0:2d}'.format(int(col)) if int(col) < 1 else '{0:3.1f}'.format(col)
+
+
 def print_banner(msg, symbol='='):
     print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * symbol, msg=msg)
 
