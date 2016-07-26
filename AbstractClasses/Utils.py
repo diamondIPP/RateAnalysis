@@ -7,6 +7,7 @@ from datetime import datetime
 from termcolor import colored
 from ROOT import gStyle
 from math import sqrt
+import os
 
 
 # ==============================================
@@ -193,6 +194,10 @@ def calc_weighted_mean(means, sigmas):
     variance = 1 / sum(weights)
     mean = sum(map(lambda x, y: x * y, means, weights))
     return mean * variance, sqrt(variance)
+
+
+def file_exists(path):
+    return os.path.isfile(path)
 
 
 def print_banner(msg, symbol='='):
