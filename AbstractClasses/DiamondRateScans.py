@@ -690,6 +690,40 @@ class DiaScans(Elementary):
         self.format_histo(h, x_tit='fs11', y_tit='fsh13', y_off=1.3, stats=0, z_off=1.1, z_tit='Number of Entries', z_range=[0, 80])
         self.save_histo(h, 'CollimatorSettings', show, draw_opt='colz', lm=.12, rm=.16)
 
+    def draw_flux_distribution(self, fs11, fsh13, tc=None, do_fit=True, show=True, run_thr=None):
+        values = []
+        for tc in self.TestCampaigns if tc is None else [tc]:
+            for run, data in sorted(self.RunInfos[tc].iteritems()):
+                if run_thr is not None:
+                    if run_thr > 0 and int(run) < run_thr:
+                        continue
+                    elif run_thr < 0 and int(run) > abs(run_thr):
+                        continue
+                try:
+                    if data['fs11'] == fs11 and data['fs13'] == fsh13:
+                        flux = self.calc_flux(data, tc)
+                        # print tc, run, flux
+                        values.append(flux) if flux > 1 else do_nothing()
+                except KeyError:
+                    pass
+        if not values:
+            return
+        spread = max(values) - min(values)
+        self.set_root_output(False)
+        h = TH1F('h_fd', 'Flux Distribution for {0}/{1}'.format(fs11, fsh13), int(sqrt(len(values))) + 5, min(values) - .2 * spread, max(values) + .2 * spread)
+        for val in values:
+            h.Fill(val)
+        set_statbox(only_fit=True, w=.25) if do_fit else do_nothing()
+        self.format_histo(h, x_tit='Flux in kHz/cm^{2}', y_tit='Number of Entries', y_off=1.3, stats=0 if not do_fit else 1)
+        self.draw_histo(h, '', show)
+        fit = None
+        if do_fit:
+            h.SetName('Fit Results')
+            self.set_root_output(show)
+            fit = h.Fit('gaus', 'qs')
+        self.save_plots('FluxDistribution{0}_{1}'.format(int(fs11), int(fsh13)), show=show)
+        return fit
+
     @staticmethod
     def calc_flux(info, tc):
         if 'for1' not in info or info['for1'] == 0:
