@@ -706,6 +706,28 @@ class DiaScans(Elementary):
         self.format_histo(gr, x_tit='fs11', x_off=1.3, y_tit='fsh13', y_off=1.9, stats=0, z_off=1.8, z_tit='Flux kHz/cm^{2}')
         self.save_plots('FluxVsCollimators', show=show)
 
+    def draw_flux_variations(self, show=True, rel_sigma=False):
+        gr = self.make_tgrapherrors('gr_fd', 'Flux Variations')
+        col_settings = Counter([(data['fs11'], data['fs13']) for tc in self.TestCampaigns for data in self.RunInfos[tc].itervalues() if 'fs11' in data and data['fs11'] > 0])
+        i = 0
+        for col, nr in sorted(col_settings.iteritems()):
+            if nr > 30:
+                flux_fit = z.draw_flux_distribution(col[0], col[1], show=False)
+                if flux_fit is not None:
+                    gr.SetPoint(i, flux_fit.Parameter(1), flux_fit.Parameter(2) if not rel_sigma else flux_fit.Parameter(2) / flux_fit.Parameter(1))
+                    yerr = flux_fit.ParError(2) + .5 * flux_fit.Parameter(2)
+                    if rel_sigma:
+                        yerr = flux_fit.Parameter(2) / flux_fit.Parameter(1) * sqrt(sum([((flux_fit.ParError(j) + .5 * flux_fit.Parameter(2) if rel_sigma else 0) / flux_fit.Parameter(j)) ** 2
+                                                                                         for j in xrange(1, 3)]))
+                    gr.SetPointError(i, flux_fit.ParError(1), yerr)
+                    l1 = self.draw_tlatex(gr.GetX()[i] * 1.05, gr.GetY()[i], '{0}/{1}'.format(make_col_str(col[0]), make_col_str(col[1])), color=1, align=10, size=.03)
+                    gr.GetListOfFunctions().Add(l1)
+                    i += 1
+        self.format_histo(gr, x_tit='Mean Flux [au]', y_tit='{0}Sigma [au]'.format('Relative ' if rel_sigma else ''), y_off=1.3)
+        self.draw_histo(gr, 'FluxVariations', show, draw_opt='alp', logx=True, logy=not rel_sigma, lm=.12)
+        gr.GetXaxis().SetLimits(gr.GetX()[0] / 2, gr.GetX()[gr.GetN() - 1] * 4)
+        self.save_plots('FluxVariations{0}'.format('Rel' if rel_sigma else ''), show=show)
+
     def draw_flux_distribution(self, fs11, fsh13, tc=None, do_fit=True, show=True, run_thr=None):
         values = []
         for tc in self.TestCampaigns if tc is None else [tc]:
