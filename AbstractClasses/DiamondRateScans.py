@@ -33,14 +33,14 @@ class DiaScans(Elementary):
         self.AllRunPlans = self.load_all_runplans()
         self.RunPlans = self.find_diamond_runplans()
         self.Bias = None
-        self.save_dir = 'DiaScans/'
+        self.set_save_directory('Results/')
+        self.save_dir = ''
         self.UsedColors = self.init_colors()
 
         # run plan selection
         self.Selections = self.load_selections()
         self.Selection = self.load_selection()
         self.RunSelections = None
-        self.set_save_directory('PlotsFelix')
 
         # Save
         self.ROOTObjects = []
