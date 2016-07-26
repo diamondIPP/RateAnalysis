@@ -13,7 +13,7 @@ from RunSelection import RunSelection
 from json import load, dump
 from math import sqrt
 from collections import OrderedDict
-from ROOT import TMultiGraph, TGraphErrors, kRed, kOrange, kBlue, kGreen, kCyan, kViolet, kPink, kYellow, gStyle, TF1
+from ROOT import TMultiGraph, TGraphErrors, kRed, kOrange, kBlue, kGreen, kCyan, kViolet, kPink, kYellow, gStyle, TF1, TH2F, TH1F, TGraph2DErrors
 import pickle
 
 
@@ -678,6 +678,17 @@ class DiaScans(Elementary):
         print 'The following selections exists:'
         for key, sel in self.Selections.items():
             print '* "{key}": {sel}'.format(key=key, sel=sel)
+
+    def draw_collimator_settings(self, show=True):
+        h = TH2F('h_cs', 'Collimator Settings', 125, 50, 300, 75, 0, 150)
+        for tc in self.TestCampaigns:
+            for run, data in self.RunInfos[tc].iteritems():
+                try:
+                    h.Fill(data['fs11'], data['fs13'])
+                except KeyError:
+                    pass
+        self.format_histo(h, x_tit='fs11', y_tit='fsh13', y_off=1.3, stats=0, z_off=1.1, z_tit='Number of Entries', z_range=[0, 80])
+        self.save_histo(h, 'CollimatorSettings', show, draw_opt='colz', lm=.12, rm=.16)
 
 
 if __name__ == '__main__':
