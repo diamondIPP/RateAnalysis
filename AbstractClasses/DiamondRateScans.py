@@ -18,7 +18,7 @@ import pickle
 
 
 class DiaScans(Elementary):
-    def __init__(self, diamond, testcampaigns=None, verbose=False):
+    def __init__(self, diamond=None, testcampaigns=None, verbose=False):
         Elementary.__init__(self, verbose=verbose)
         self.Selection = []
         self.Name = None
