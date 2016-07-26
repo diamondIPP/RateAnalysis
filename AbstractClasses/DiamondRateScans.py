@@ -11,10 +11,10 @@ from Utils import *
 from argparse import ArgumentParser
 from RunSelection import RunSelection
 from json import load, dump
-from math import sqrt
 from collections import OrderedDict
 from ROOT import TMultiGraph, TGraphErrors, kRed, kOrange, kBlue, kGreen, kCyan, kViolet, kPink, kYellow, gStyle, TF1, TH2F, TH1F, TGraph2DErrors
 import pickle
+from numpy import mean, sqrt
 
 
 class DiaScans(Elementary):
@@ -689,6 +689,29 @@ class DiaScans(Elementary):
                     pass
         self.format_histo(h, x_tit='fs11', y_tit='fsh13', y_off=1.3, stats=0, z_off=1.1, z_tit='Number of Entries', z_range=[0, 80])
         self.save_histo(h, 'CollimatorSettings', show, draw_opt='colz', lm=.12, rm=.16)
+
+    @staticmethod
+    def calc_flux(info, tc):
+        if 'for1' not in info or info['for1'] == 0:
+            if 'measuredflux' in info:
+                # return str('{0:5.0f}'.format(info['measuredflux'] * 2.48))
+                return
+        path = '/data/psi_{0}_{1}/masks/{mask}'.format(tc[:4], tc[-2:], mask=info['maskfile'])
+        if file_exists(path):
+            f = open(path, 'r')
+        else:
+            return
+        data = []
+        for line in f:
+            if len(line) > 3:
+                line = line.split()
+                data.append([int(line[2])] + [int(line[3])])
+        f.close()
+        pixel_size = 0.01 * 0.015
+        area = [(data[1][0] - data[0][0]) * (data[1][1] - data[0][1]) * pixel_size, (data[3][0] - data[2][0]) * (data[3][1] - data[2][1]) * pixel_size]
+        # print area
+        flux = [info['for{0}'.format(i + 1)] / area[i] / 1000. for i in xrange(2)]
+        return mean(flux)
 
 
 if __name__ == '__main__':
