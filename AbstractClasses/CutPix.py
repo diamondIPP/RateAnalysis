@@ -205,7 +205,7 @@ class CutPix(Elementary):
         cut.SetPoint(3, float(xmax) + float(deltax)/2, float(ymin) - float(deltay)/2)
         cut.SetPoint(4, float(xmin) - float(deltax)/2, float(ymin) - float(deltay)/2)
         cut.SetLineColor(kRed)
-        cut.SetLineWidth(3)
+        cut.SetLineWidth(3*3)
         return cut
 
     def generate_masks(self):

@@ -33,18 +33,18 @@ class Plots(Elementary):
         self.num_devices = num_devices
         self.num_entries = num_entries
         self.plot_settings = {
-            'ph1Dbins': 100,
+            'ph1Dbins': 200,
             'ph1Dmin': 0,
-            'ph1Dmax': 50000,
+            'ph1Dmax': 100000,
             'nEventsAv': 1000,
             'event_bins': int(ceil(float(self.num_entries)/10)),
             'event_min': 0,
             'event_max': self.num_entries,
             'maxphplots': int(ceil(8*self.num_entries/100)),  ## for landau histograms histograms
-            'nBinsX': 80,  # 277
+            'nBinsX': 240,  #80 # 277 #240
             'xmin': -6,
             'xmax': 6,
-            'nBinsY': 120,  # 415
+            'nBinsY': 360,  #120 # 415 #360
             'ymin': -6,
             'ymax': 6,
             'nBinCol': 51,
@@ -89,9 +89,11 @@ class Plots(Elementary):
     def set_1D_options(self, type='event', histo='histo', xTitle='X', yTitle='Y', color=kBlack, min_val=0):
         histo.GetXaxis().SetTitle(xTitle)
         histo.GetYaxis().SetTitle(yTitle)
+        histo.GetYaxis().SetTitleOffset(1.3)
         if type is 'event': histo.SetMaximum(self.plot_settings['ph1Dmax'])
         histo.SetMinimum(min_val)
         histo.SetLineColor(color)
+        histo.SetLineWidth(3*gStyle.GetLineWidth())
 
     def create_2D_profile(self, type='spatial', name='histo', title='histo', xTitle='X', yTitle='Y', zTitle='Z', min_val=0, max_val=-1):
         xbins = self.plot_settings['nBinsX'] if type is 'spatial' else self.plot_settings['nBinCol']
@@ -137,6 +139,9 @@ class Plots(Elementary):
         histo.GetXaxis().SetTitle(xTitle)
         histo.GetYaxis().SetTitle(yTitle)
         histo.GetZaxis().SetTitle(zTitle)
+        histo.GetYaxis().SetTitleOffset(1.3)
+        histo.GetZaxis().SetTitleOffset(1.4)
+        histo.GetZaxis().CenterTitle(True)
         histo.SetMinimum(min_val)
         if max_val is not -1: histo.SetMaximum(max_val)
 
@@ -267,9 +272,12 @@ class Plots(Elementary):
                                                               'Charge(e)', kMagenta, 0) for i in xrange(self.num_devices)}
         self.print_banner('1D profiles creation -> Done')
 
-    def save_individual_plots(self, histo, name, title, tcutg=None, draw_opt='', opt_stats=0, path='./'):
-        self.print_banner('Saving {n}...'.format(n=name))
-        c0 = TCanvas('c_{n}'.format(n=name), title)
+    def save_individual_plots(self, histo, name, title, tcutg=None, draw_opt='', opt_stats=0, path='./', verbosity=False):
+        if verbosity: self.print_banner('Saving {n}...'.format(n=name))
+        gROOT.SetBatch(True)
+        c0 = TCanvas('c_{n}'.format(n=name), title, 2100, 1500)
+        c0.SetLeftMargin(0.1)
+        c0.SetRightMargin(0.2)
         gStyle.SetOptStat(opt_stats)
         c0.cd()
         histo.Draw(draw_opt)
@@ -278,6 +286,6 @@ class Plots(Elementary):
         c0.SaveAs('{dir}/c_{n}.root'.format(dir=path, n=name))
         c0.SaveAs('{dir}/c_{n}.png'.format(dir=path, n=name))
         c0.Close()
-        self.print_banner('{n} save -> Done'.format(n=name))
+        gROOT.SetBatch(False)
+        if verbosity: self.print_banner('{n} save -> Done'.format(n=name))
         del c0
-        del histo
