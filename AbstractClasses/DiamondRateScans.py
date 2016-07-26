@@ -11,7 +11,7 @@ from Utils import *
 from argparse import ArgumentParser
 from RunSelection import RunSelection
 from json import load, dump
-from collections import OrderedDict
+from collections import OrderedDict, Counter
 from ROOT import TMultiGraph, TGraphErrors, kRed, kOrange, kBlue, kGreen, kCyan, kViolet, kPink, kYellow, gStyle, TF1, TH2F, TH1F, TGraph2DErrors
 import pickle
 from numpy import mean, sqrt
@@ -689,6 +689,22 @@ class DiaScans(Elementary):
                     pass
         self.format_histo(h, x_tit='fs11', y_tit='fsh13', y_off=1.3, stats=0, z_off=1.1, z_tit='Number of Entries', z_range=[0, 80])
         self.save_histo(h, 'CollimatorSettings', show, draw_opt='colz', lm=.12, rm=.16)
+
+    def draw_flux_vs_collimators(self, show=True):
+        gr = TGraph2DErrors()
+        gr.SetNameTitle('gr_fc', 'Flux Vs. Collimators')
+        col_settings = Counter([(data['fs11'], data['fs13']) for tc in self.TestCampaigns for data in self.RunInfos[tc].itervalues() if 'fs11' in data and data['fs11'] > 0])
+        i = 0
+        for col, nr in col_settings.iteritems():
+            if nr > 10:
+                flux_fit = z.draw_flux_distribution(col[0], col[1], show=False)
+                if flux_fit is not None:
+                    gr.SetPoint(i, col[0], col[1], flux_fit.Parameter(1))
+                    gr.SetPointError(i, 0, 0, flux_fit.Parameter(2))
+                    i += 1
+        self.draw_histo(gr, 'FluxVsCollimators', show, draw_opt='surf1', lm=.15, phi=17, theta=35)
+        self.format_histo(gr, x_tit='fs11', x_off=1.3, y_tit='fsh13', y_off=1.9, stats=0, z_off=1.8, z_tit='Flux kHz/cm^{2}')
+        self.save_plots('FluxVsCollimators', show=show)
 
     def draw_flux_distribution(self, fs11, fsh13, tc=None, do_fit=True, show=True, run_thr=None):
         values = []
