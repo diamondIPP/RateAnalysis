@@ -95,7 +95,7 @@ class DiaScans(Elementary):
 
     def load_tcs(self, tcs):
         if tcs is None:
-            return ['201508', '201510']
+            return ['201505', '201508', '201510']
         valid_tcs = self.find_test_campaigns()
         tcs = [tcs] if type(tcs) is not list else tcs
         if not all(tc in valid_tcs for tc in tcs):
