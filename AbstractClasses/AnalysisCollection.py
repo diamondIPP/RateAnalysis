@@ -2,12 +2,12 @@
 # IMPORTS
 # ==============================================
 import json
-import os
 from ConfigParser import ConfigParser
 from argparse import ArgumentParser
 from collections import OrderedDict
 from numpy import log, array, zeros
 from time import time
+from screeninfo import get_monitors
 
 from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1
 
@@ -1206,7 +1206,9 @@ if __name__ == "__main__":
     tc = args.testcampaign if args.testcampaign.startswith('201') else None
     run_plan = args.runplan
     diamond = args.dia
-    a = Elementary(tc)
+    m = get_monitors()
+    resolution = round_down_to(m[0].height, 500)
+    a = Elementary(tc, True, resolution)
     sel = RunSelection(testcampaign=tc)
     sel.select_runs_from_runplan(run_plan)
     a.print_banner('STARTING PAD-ANALYSIS COLLECTION OF RUNPLAN {0}'.format(run_plan))
