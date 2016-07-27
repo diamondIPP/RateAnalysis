@@ -221,7 +221,7 @@ class AnalysisCollection(Elementary):
         run_info[1].Draw()
         c.Update()
         gROOT.SetBatch(0)
-        self.save_canvas(c, self.save_dir, 'PhPulserCurrent')
+        self.save_canvas(c, self.save_dir, 'PhPulserCurrent', show=show)
         self.RootObjects.append([ph, cur, pul, c, legends, pads])
         self.FirstAnalysis.run.reset_info_legend()
 
@@ -249,11 +249,11 @@ class AnalysisCollection(Elementary):
             rel_sys_error = flux_errors[1] / flux_errors[0]
             i, j = 0, 0
             for key, ana in self.collection.iteritems():
-                fit1 = ana.draw_pulse_height(binning, evnt_corr=True, show=False)
+                fit1 = ana.draw_pulse_height(binning, evnt_corr=True, save=False)
                 if all_corr:
-                    fit2 = ana.draw_pulse_height(binning, bin_corr=True, show=False)
-                    fit3 = ana.draw_pulse_height(binning, off_corr=True, show=False, evnt_corr=False)
-                    fit4 = ana.draw_pulse_height(binning, evnt_corr=False, show=False)
+                    fit2 = ana.draw_pulse_height(binning, bin_corr=True, save=False)
+                    fit3 = ana.draw_pulse_height(binning, off_corr=True, save=False, evnt_corr=False)
+                    fit4 = ana.draw_pulse_height(binning, evnt_corr=False, save=False)
                 x = key
                 if flux:
                     x = ana.run.RunInfo['measured flux'] if not_found_for else ana.run.flux
@@ -351,15 +351,14 @@ class AnalysisCollection(Elementary):
         par = 2 if sigma else 1
         cut_string = None
         for key, ana in self.collection.iteritems():
-            print 'getting pedestal for run {n}...'.format(n=key)
             cut_string = ana.Cut.generate_pulser_cut(beam_on=beam_on) if cut == 'pulser' else cut
-            fit_par = ana.show_pedestal_histo(region, peak_int, cut=cut_string, draw=False)
+            fit_par = ana.show_pedestal_histo(region, peak_int, cut=cut_string, save=False, show=False)
             x = ana.run.flux if flux else key
             gr1.SetPoint(i, x, fit_par.Parameter(par))
             gr1.SetPointError(i, 0, fit_par.ParError(par))
             if all_regions:
                 for reg, gr in zip(regions, graphs):
-                    fit_par = ana.show_pedestal_histo(reg, peak_int, draw=False)
+                    fit_par = ana.show_pedestal_histo(reg, peak_int, save=False)
                     gr.SetPoint(i, x, fit_par.Parameter(par))
                     gr.SetPointError(i, 0, fit_par.ParError(par))
             i += 1
@@ -490,7 +489,7 @@ class AnalysisCollection(Elementary):
         values = []
         for run in runs:
             ana = self.collection[run]
-            fit = ana.show_pedestal_histo(draw=False)
+            fit = ana.show_pedestal_histo(save=False)
             values.append(fit.Parameter(1))
         return max(values) - min(values)
 
@@ -513,7 +512,7 @@ class AnalysisCollection(Elementary):
     def calc_full_pedestal_spread(self):
         values = []
         for ana in self.collection.values():
-            fit = ana.show_pedestal_histo(draw=False)
+            fit = ana.show_pedestal_histo(save=False)
             values.append(fit.Parameter(1))
         return max(values) - min(values)
 
@@ -535,10 +534,10 @@ class AnalysisCollection(Elementary):
             y0 = None
             for i, (key, ana) in enumerate(self.collection.iteritems()):
                 x = ana.run.flux if flux else key
-                fit = ana.Pulser.draw_distribution_fit(show=False, corr=corr, beam_on=beam_on)
+                fit = ana.Pulser.draw_distribution_fit(save=False, corr=corr, beam_on=beam_on)
                 par = 1 if mean else 2
                 cut = ana.Cut.generate_pulser_cut(beam_on)
-                ped_fit = ana.show_pedestal_histo(cut=cut, draw=False)
+                ped_fit = ana.show_pedestal_histo(cut=cut, save=False)
                 ped_err = ped_fit.ParError(par)
                 if vs_time:
                     xerr = ana.run.duration.seconds / 2.
