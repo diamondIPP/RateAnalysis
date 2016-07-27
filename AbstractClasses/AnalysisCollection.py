@@ -155,6 +155,16 @@ class AnalysisCollection(Elementary):
 
     # ============================================
     # region SIGNAL/PEDESTAL
+    def draw_all(self):
+        self.draw_ph_with_currents(show=False)
+        self.draw_pulse_heights(show=False)
+        self.draw_pulser_info(do_fit=False, show=False)
+        self.draw_pedestals(show=False)
+
+    def draw_single_all(self):
+        for ana in self.collection.itervalues():
+            ana.draw_all()
+
     def draw_ph_with_currents(self, show=True):
         ph = self.draw_pulse_heights(show=False, vs_time=True, fl=False, save_comb=False)
         self.Currents.set_graphs()
