@@ -242,7 +242,7 @@ class ChannelCut(Cut):
             cut_string = '!({buc})&&{pul}'.format(buc=self.CutStrings['old_bucket'], pul=self.CutStrings['pulser'])
             self.analysis.tree.Draw(draw_string, cut_string, 'goff')
             entries = h.GetEntries()
-            if entries < 1000:
+            if entries < 2000:
                 return 30
             h.Rebin(2) if entries < 5000 else self.do_nothing()
             # extract fit functions
@@ -329,7 +329,7 @@ class ChannelCut(Cut):
         return threshold
 
     def __calc_pedestal_range(self, sigma_range):
-        fit = self.analysis.show_pedestal_histo(region=self.analysis.PedestalRegion, peak_int=self.analysis.PeakIntegral, draw=False, cut='', show=False)
+        fit = self.analysis.show_pedestal_histo(region=self.analysis.PedestalRegion, peak_int=self.analysis.PeakIntegral, save=False, cut='', show=False)
         sigma = fit.Parameter(2)
         mean = fit.Parameter(1)
         self.PedestalFit = fit
