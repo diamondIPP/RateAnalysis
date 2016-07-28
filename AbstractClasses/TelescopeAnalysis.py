@@ -62,6 +62,10 @@ class Analysis(Elementary):
     # region INIT
 
     def init_run(self, run):
+        """
+
+        :type run: object
+        """
         if not isinstance(run, Run):
             assert type(run) is int, 'run has to be either a Run instance or an integer run number'
             return Run(run, self.diamonds)
@@ -73,10 +77,10 @@ class Analysis(Elementary):
     # ============================================================================================
     # region REGIONS AND PEAK INTEGRAL
 
-    def __draw_single_wf(self, event=None, show=True):
+    def __draw_single_wf(self, event=None, show=True, tcorr=False):
         start = self.StartEvent if event is None else event
         if hasattr(self, 'draw_waveforms') and self.run.wf_exists(self.channel):
-            return self.draw_waveforms(n=1, show=show, start_event=start)[0]
+            return self.draw_waveforms(n=1, show=show, start_event=start, t_corr=tcorr)[0]
         else:
             h = TH2F('regions', '', 1024, 0, 511, 1000, -200, 50)
             if self.run.wf_exists(0):
@@ -131,7 +135,7 @@ class Analysis(Elementary):
         peak_fit = self.run.signal_regions['a'][0] / 2.
         for i, x in enumerate(xrange(start, stop, 20), -bucket0):
             y2 = ymax if full_line else ymin - 0.05 * y_range
-            self.draw_vertical_line(x, ymin - 0.12 * y_range, y2, 418, style=3 if full_line else 1)
+            self.draw_vertical_line(x, ymin - 0.12 * y_range, y2, 418, style=3 if full_line else 1, tline=True)
             if x <= stop - 20:
                 self.draw_tlatex(x + 10, ymin - 0.1 * y_range, str(i), align=20, color=418, size=0.03)
                 if peak_fit:
@@ -143,7 +147,7 @@ class Analysis(Elementary):
                     self.draw_arrow(p_pos, p_pos, ymin + 1, ymin + 0.04 * y_range, col=807, width=2)
 
     def draw_peak_integrals(self, event=None, add_buckets=True, show=True):
-        h = self.__draw_single_wf(event=event, show=False)
+        h = self.__draw_single_wf(event=event, show=False, tcorr=True)
         self.format_histo(h, title='Waveform', name='wf', x_tit='Time [ns]', y_tit='Signal [mV]', markersize=.8, y_off=.7, stats=0, tit_size=.05)
         xmin, xmax = self.run.signal_regions['e'][0] / 2 - 20, self.run.signal_regions['e'][1] / 2
         h.GetXaxis().SetRangeUser(xmin, xmax)
@@ -171,18 +175,18 @@ class Analysis(Elementary):
         for gr in [gr1, gr2]:
             gr.Draw('[]')
             gr.Draw('p')
-        self._add_buckets(ymin, ymax, xmin, xmax) if add_buckets else self.do_nothing()
+        self._add_buckets(ymin, ymax, xmin, xmax, full_line=True) if add_buckets else self.do_nothing()
         self.save_plots('IntegralPeaks',  ch=None)
         gROOT.SetBatch(0)
         self.histos.append([gr1, gr2])
 
     def __draw_peak_pos(self, event, ymin, ymax):
-        peak_pos = self.get_peak_position(event) / 2. if hasattr(self, 'get_peak_position') else self.run.signal_regions['a'][0] / 2.
+        peak_pos = self.get_peak_position(event, tcorr=True) if hasattr(self, 'get_peak_position') else self.run.signal_regions['a'][0] / 2.
         ped_region = self.PedestalRegion if hasattr(self, 'PedestalRegion') else 'ab'
         ped_pos = self.run.pedestal_regions[ped_region][1] / 2.
         y = ymax - ymin
-        self.draw_vertical_line(peak_pos, ymin, ymax - y / 3., color=4, w=2)
-        self.draw_vertical_line(ped_pos, ymin, ymax - y / 3, color=883, w=2)
+        self.draw_vertical_line(peak_pos, ymin, ymax - y / 3., color=4, w=2, name='peak')
+        self.draw_vertical_line(ped_pos, ymin, ymax - y / 3, color=883, w=2, name='ped')
         t1 = self.draw_tlatex(peak_pos, ymax - y / 3.1, 'found peak', color=4)
         t2 = self.draw_tlatex(ped_pos, ymax - y / 3.1, 'ab', color=883)
         t1.Draw()
