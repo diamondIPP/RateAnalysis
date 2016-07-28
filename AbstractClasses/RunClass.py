@@ -161,7 +161,7 @@ class Run(Elementary):
             data = json.load(f)
             f.close()
         except IOError as err:
-            self.log_warning('{err}\nCould not load default RunInfo! --> Using default'.format(err))
+            self.log_warning('{err}\nCould not load default RunInfo! --> Using default'.format(err=err))
             self.RunInfo = default_info
             return -1
 
