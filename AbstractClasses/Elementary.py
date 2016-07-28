@@ -1,4 +1,3 @@
-import os
 import pickle
 import re
 from copy import deepcopy
@@ -468,7 +467,7 @@ class Elementary(object):
         except AttributeError or ReferenceError:
             pass
 
-    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=.03, draw_opt='', x_fac=None, y_fac=None,
+    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=.1, draw_opt='', x_fac=None, y_fac=None,
                    l=None, logy=False, logx=False, logz=False, canvas=None, gridx=False, gridy=False, save=True, ch='dia', prnt=True, phi=None, theta=None):
         x = self.Res if x_fac is None else int(x_fac * self.Res)
         y = self.Res if y_fac is None else int(y_fac * self.Res)
@@ -488,13 +487,12 @@ class Elementary(object):
             l = [l] if type(l) is not list else l
             for i in l:
                 i.Draw()
-        if save:
-            self.save_plots(save_name, sub_dir=sub_dir, x=x_fac, y=y_fac, ch=ch, prnt=prnt)
+        self.save_plots(save_name, sub_dir=sub_dir, x=x_fac, y=y_fac, ch=ch, prnt=prnt, save=save, show=show)
         self.set_root_output(True)
         lst = [c, h, l] if l is not None else [c, h]
         self.ROOTObjects.append(lst)
 
-    def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=.03, draw_opt='', x=None, y=None,
+    def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=.1, draw_opt='', x=None, y=None,
                    l=None, logy=False, logx=False, logz=False, canvas=None, gridy=False, gridx=False, ch='dia', prnt=True, phi=None, theta=None):
         return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, l, logy, logx, logz, canvas, gridx, gridy, False, ch, prnt, phi, theta)
 
@@ -663,7 +661,7 @@ class Elementary(object):
             run_info[0].Draw()
             run_info[1].Draw() if self.MainConfigParser.getboolean('SAVE', 'git_hash') else do_nothing()
 
-        self.save_canvas(c, name='CombinedPulseHeights' if name is None else name)
+        self.save_canvas(c, name='CombinedPulseHeights' if name is None else name, show=show)
 
         self.ROOTObjects.append([p0, p1, c, draw_objects])
         self.set_root_output(True)
