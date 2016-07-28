@@ -779,13 +779,13 @@ class PadAnalysis(Analysis):
         all_means = func() if show else None
         return self.do_pickle(picklepath, func, all_means)
 
-    def draw_pulse_height(self, binning=None, show=True, save_graph=True, evnt_corr=True, bin_corr=False, off_corr=False, sig=None):
-        show = False if not save_graph else show
     def draw_all(self):
         self.draw_pulse_height(show=False)
         self.Pulser.draw_distribution_fit(show=False)
         self.show_pedestal_histo(show=False)
 
+    def draw_pulse_height(self, binning=None, show=True, save=True, evnt_corr=True, bin_corr=False, off_corr=False, sig=None):
+        show = False if not save else show
         signal = self.SignalName if sig is None else sig
         bin_size = binning if binning is not None else self.BinSize
         correction = ''
@@ -828,7 +828,7 @@ class PadAnalysis(Analysis):
                     empty_bins += 1
             if empty_bins:
                 print 'Empty proj. bins:\t', str(empty_bins) + '/' + str(self.n_bins)
-            set_statbox(entries=3, only_fit=True)
+            set_statbox(entries=4, only_fit=True)
             self.format_histo(gr, x_tit='time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6)
             # excludes points that are too low for the fit
             max_fit_pos = gr.GetX()[gr.GetN() - 1] + 10
@@ -841,12 +841,11 @@ class PadAnalysis(Analysis):
                     break
             self.draw_histo(gr, '', show, lm=.14, draw_opt='apl')
             fit_par = gr.Fit('pol0', 'qs', '', 0, max_fit_pos)
-            if save_graph:
-                self.save_plots('PulseHeight{0}'.format(self.BinSize), sub_dir=self.save_dir)
+            self.save_plots('PulseHeight{0}'.format(self.BinSize), show=show)
             self.PulseHeight = gr
             return fit_par
 
-        fit = func() if show else None
+        fit = func() if save else None
         return self.do_pickle(picklepath, func, fit)
 
     def draw_ph_distribution(self, binning=None, show=True, fit=True, xmin=0, xmax=160, bin_size=.5, save=True):
@@ -867,7 +866,7 @@ class PadAnalysis(Analysis):
         return h
 
     def show_ph_overview(self, binning=None):
-        self.draw_pulse_height(binning=binning, show=False, save_graph=True)
+        self.draw_pulse_height(binning=binning, show=False, save=True)
         h1 = self.PulseHeight
         self.format_histo(h1, y_off=1.4)
         h2 = self.draw_ph_distribution(binning=binning, show=False)
@@ -916,7 +915,7 @@ class PadAnalysis(Analysis):
             print '({0:05d})'.format(events),
             stdout.flush()
             if events > 500:
-                ph_fit = self.draw_pulse_height(show=False, save_graph=True)
+                ph_fit = self.draw_pulse_height(show=False, save=True)
                 gr.SetPoint(i, peak_pos / 2., ph_fit.Parameter(0))
                 gr.SetPointError(i, 0, ph_fit.ParError(0))
                 i += 1
@@ -977,7 +976,7 @@ class PadAnalysis(Analysis):
             print '\rcalculating pulse height for trigger cell: {0:03d}'.format(tcell),
             self.Cut.set_trigger_cell(tcell, tcell + bins)
             stdout.flush()
-            ph_fit = self.draw_pulse_height(show=False, save_graph=True)
+            ph_fit = self.draw_pulse_height(show=False, save=True)
             gr.SetPoint(i, tcell, ph_fit.Parameter(0))
             gr.SetPointError(i, 0, ph_fit.ParError(0))
             i += 1
@@ -986,7 +985,7 @@ class PadAnalysis(Analysis):
         self.format_histo(gr, x_tit='trigger cell', y_tit='pulse height [au]', y_off=1.2)
         self.histos.append(self.save_histo(gr, 'SignalVsTriggerCell', show, self.save_dir, lm=.11, draw_opt='alp'))
 
-    def show_pedestal_histo(self, region=None, peak_int=None, cut=None, fwhm=True, show=True, draw=True, x_range=None, nbins=100, logy=False, fit=True):
+    def show_pedestal_histo(self, region=None, peak_int=None, cut=None, fwhm=True, show=True, save=True, x_range=None, nbins=100, logy=False, fit=True):
         x_range = [-20, 30] if x_range is None else x_range
         region = self.PedestalRegion if region is None else region
         peak_int = self.PeakIntegral if peak_int is None else peak_int
@@ -1002,7 +1001,7 @@ class PadAnalysis(Analysis):
             self.log_info('Making pedestal histo for region {reg}{int}...'.format(reg=region, int=peak_int))
             if x[0] >= x[1]:
                 x = sorted(x)
-            set_statbox(.95, .95, entries=4, only_fit=True)
+            set_statbox(.95, .95, entries=4, only_fit=True, w=.3)
             h = TH1F('ped1', 'Pedestal Distribution', nbins, x[0], x[1])
             name = self.get_pedestal_name(region, peak_int)
             self.tree.Draw('{name}>>ped1'.format(name=name), cut, 'goff')
@@ -1015,12 +1014,11 @@ class PadAnalysis(Analysis):
                 f.SetRange(x[0], x[1])
                 f.SetLineStyle(2)
                 h.GetListOfFunctions().Add(f)
-            if show:
-                self.save_histo(h, 'Pedestal_{reg}{cut}'.format(reg=region, cut=cut.GetName()), show, logy=logy, lm=.13)
+            self.save_histo(h, 'Pedestal_{reg}{cut}'.format(reg=region, cut=cut.GetName()), show, save=save, logy=logy, lm=.13)
             self.PedestalHisto = h
             return fit_pars
 
-        fit_par = func() if draw else None
+        fit_par = func() if save else None
         return self.do_pickle(picklepath, func, fit_par)
     
     def draw_ped_sigma_selection(self, show=True):
@@ -1408,7 +1406,7 @@ class PadAnalysis(Analysis):
     def compare_consecutive_cuts(self, scale=False, show=True, save_single=True):
         self.reset_colors()
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        legend = self.make_legend(.73, .95, nentries=len(self.Cut.ConsecutiveCuts) - 3, w=.17)
+        legend = self.make_legend(.73, .95, nentries=len(self.Cut.ConsecutiveCuts) + 3, w=.23)
         cut = TCut('consecutive', '')
         stack = THStack('scc', 'Signal Distribution with Consecutive Cuts')
         for i, (key, value) in enumerate(self.Cut.ConsecutiveCuts.iteritems()):
@@ -1432,8 +1430,8 @@ class PadAnalysis(Analysis):
         self.format_histo(stack, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.9, draw_first=True)
         self.RootObjects.append(self.save_histo(stack, 'Consecutive{0}'.format('Scaled' if scale else ''), show, self.save_dir, l=legend, draw_opt='nostack', lm=0.14))
         stack.SetName(stack.GetName() + 'logy')
-        stack.SetMaximum(stack.GetMaximum() * 1.2)
-        self.RootObjects.append(self.save_histo(stack, 'Consecutive{0}Logy'.format('Scaled' if scale else '', ), show, self.save_dir, logy=True, l=legend, draw_opt='nostack', lm=0.14))
+        # stack.SetMaximum(stack.GetMaximum() * 1.2)
+        self.RootObjects.append(self.save_histo(stack, 'Consecutive{0}Logy'.format('Scaled' if scale else '', ), show, self.save_dir, logy=True, draw_opt='nostack', lm=0.14))
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
 
     def draw_cut_means(self, show=True):
@@ -1781,8 +1779,8 @@ class PadAnalysis(Analysis):
     def calc_snr(self, sig=None, name=''):
         signal = self.SignalName if sig is None else sig
         peak_int = self.get_all_signal_names()[signal][-2:] if self.get_all_signal_names()[signal][-2].isdigit() else self.get_all_signal_names()[signal][-1]
-        ped_fit = self.show_pedestal_histo(draw=False, peak_int=peak_int, show=False)
-        sig_fit = self.draw_pulse_height(evnt_corr=True, save_graph=False, sig=signal)
+        ped_fit = self.show_pedestal_histo(save=False, peak_int=peak_int, show=False)
+        sig_fit = self.draw_pulse_height(evnt_corr=True, save=False, sig=signal)
         sig_mean = sig_fit.Parameter(0)
         ped_sigma = ped_fit.Parameter(2)
 
@@ -1824,7 +1822,7 @@ class PadAnalysis(Analysis):
         ratio = '{0}{1}'.format(self.run.peak_integrals.values()[0][0], self.run.peak_integrals.values()[0][1])
         for name, value in peak_integrals.iteritems():
             sig_name = self.get_signal_name(region='b', peak_integral=name)
-            signal = self.draw_pulse_height(evnt_corr=True, show=False, sig=sig_name) if not ped else self.show_pedestal_histo(draw=False, peak_int=name)
+            signal = self.draw_pulse_height(evnt_corr=True, show=False, sig=sig_name) if not ped else self.show_pedestal_histo(save=False, peak_int=name)
             par = 2 if ped else 0
             gr.SetPoint(i, (value[1] + value[0]) / 2., signal.Parameter(par))
             gr.SetPointError(i, 0, signal.ParError(par))
@@ -1847,11 +1845,11 @@ class PadAnalysis(Analysis):
         """ :return: full cut_string """
         return self.Cut.all_cut
 
-    def get_peak_position(self, event=None, region='b', peak_int='2'):
+    def get_peak_position(self, event=None, region='b', peak_int='2', tcorr=False):
         num = self.get_signal_number(region, peak_int)
         ev = self.StartEvent if event is None else event
         self.tree.GetEntry(ev)
-        return self.tree.IntegralPeaks[num]
+        return self.calc_corr_time(ev, self.tree.IntegralPeaks[num]) if tcorr else self.tree.IntegralPeaks[num]
 
     def get_all_signal_names(self):
         names = OrderedDict()
