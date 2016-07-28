@@ -11,7 +11,7 @@ from Utils import *
 from screeninfo import get_monitors
 from numpy import array
 
-from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend, TColor, TArrow, TPad, TCutG
+from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend, TColor, TArrow, TPad, TCutG, TLine
 
 # global test campaign and resolution
 tc = None
@@ -382,11 +382,20 @@ class Elementary(object):
         self.ROOTObjects.append(l)
         return l
 
-    def draw_vertical_line(self, x, ymin, ymax, color=1, w=1, style=1, name='li'):
-        return self.draw_line(x, x, ymin, ymax, color=color, width=w, style=style, name=name)
+    def draw_tline(self, x1, x2, y1, y2, color=1, width=1, style=1):
+        l = TLine(x1, y1, x2, y2)
+        l.SetLineColor(color)
+        l.SetLineWidth(width)
+        l.SetLineStyle(style)
+        l.Draw()
+        self.ROOTObjects.append(l)
+        return l
 
-    def draw_horizontal_line(self, y, xmin, xmax, color=1, w=1, style=1, name='li'):
-        return self.draw_line(xmin, xmax, y, y, color=color, width=w, style=style, name=name)
+    def draw_vertical_line(self, x, ymin, ymax, color=1, w=1, style=1, name='li', tline=False):
+        return self.draw_line(x, x, ymin, ymax, color, w, style, name) if not tline else self.draw_tline(x, x, ymin, ymax, color, w, style)
+
+    def draw_horizontal_line(self, y, xmin, xmax, color=1, w=1, style=1, name='li', tline=False):
+        return self.draw_line(xmin, xmax, y, y, color, w, style, name) if not tline else self.draw_tline(xmin, xmax, y, y, color, w, style)
 
     def make_legend(self, x1=.65, y2=.95, nentries=2, w=.3, scale=1, name='l', y1=None, felix=True, margin=.25, x2=None):
         x2 = x1 + w if x2 is None else x2
