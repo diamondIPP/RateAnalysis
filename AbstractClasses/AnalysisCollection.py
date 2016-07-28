@@ -1087,6 +1087,16 @@ class AnalysisCollection(Elementary):
 
     # endregion
 
+    def make_flux_table(self):
+        # for ana in self.collection.itervalues():
+        #     print ana.run.RunInfo
+        fluxes = OrderedDict(sorted({cs: [] for cs in set([(ana.run.RunInfo['fs11'], ana.run.RunInfo['fs13']) for ana in self.collection.itervalues()])}.iteritems()))
+        for ana in self.collection.itervalues():
+            fluxes[(ana.run.RunInfo['fs11'], ana.run.RunInfo['fs13'])].append(calc_flux(ana.run.RunInfo, self.TESTCAMPAIGN))
+
+        print make_latex_table(header=fluxes.keys(), cols=fluxes.values())
+
+
     def make_signal_analysis(self, saveplots=True):
         """
         Run all available signal analyises together and plot them in an overview.
