@@ -781,6 +781,11 @@ class PadAnalysis(Analysis):
 
     def draw_pulse_height(self, binning=None, show=True, save_graph=True, evnt_corr=True, bin_corr=False, off_corr=False, sig=None):
         show = False if not save_graph else show
+    def draw_all(self):
+        self.draw_pulse_height(show=False)
+        self.Pulser.draw_distribution_fit(show=False)
+        self.show_pedestal_histo(show=False)
+
         signal = self.SignalName if sig is None else sig
         bin_size = binning if binning is not None else self.BinSize
         correction = ''
