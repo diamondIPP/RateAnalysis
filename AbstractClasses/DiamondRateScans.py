@@ -14,7 +14,7 @@ from json import load, dump
 from collections import OrderedDict, Counter
 from ROOT import TMultiGraph, TGraphErrors, kRed, kOrange, kBlue, kGreen, kCyan, kViolet, kPink, kYellow, gStyle, TF1, TH2F, TH1F, TGraph2DErrors
 import pickle
-from numpy import mean, sqrt
+from numpy import sqrt
 
 
 class DiaScans(Elementary):
@@ -707,7 +707,7 @@ class DiaScans(Elementary):
         self.save_plots('FluxVsCollimators', show=show)
 
     def draw_flux_variations(self, show=True, rel_sigma=False):
-        gr = self.make_tgrapherrors('gr_fd', 'Flux Variations')
+        gr = self.make_tgrapherrors('gr_fd', 'Flux Deviations')
         col_settings = Counter([(data['fs11'], data['fs13']) for tc in self.TestCampaigns for data in self.RunInfos[tc].itervalues() if 'fs11' in data and data['fs11'] > 0])
         i = 0
         for col, nr in sorted(col_settings.iteritems()):
@@ -739,7 +739,7 @@ class DiaScans(Elementary):
                         continue
                 try:
                     if data['fs11'] == fs11 and data['fs13'] == fsh13:
-                        flux = self.calc_flux(data, tc)
+                        flux = calc_flux(data, tc)
                         # print tc, run, flux
                         values.append(flux) if flux > 1 else do_nothing()
                 except KeyError:
@@ -761,29 +761,6 @@ class DiaScans(Elementary):
             fit = h.Fit('gaus', 'qs')
         self.save_plots('FluxDistribution{0}_{1}'.format(int(fs11), int(fsh13)), show=show)
         return fit
-
-    @staticmethod
-    def calc_flux(info, tc):
-        if 'for1' not in info or info['for1'] == 0:
-            if 'measuredflux' in info:
-                # return str('{0:5.0f}'.format(info['measuredflux'] * 2.48))
-                return
-        path = '/data/psi_{0}_{1}/masks/{mask}'.format(tc[:4], tc[-2:], mask=info['maskfile'])
-        if file_exists(path):
-            f = open(path, 'r')
-        else:
-            return
-        data = []
-        for line in f:
-            if len(line) > 3:
-                line = line.split()
-                data.append([int(line[2])] + [int(line[3])])
-        f.close()
-        pixel_size = 0.01 * 0.015
-        area = [(data[1][0] - data[0][0]) * (data[1][1] - data[0][1]) * pixel_size, (data[3][0] - data[2][0]) * (data[3][1] - data[2][1]) * pixel_size]
-        # print area
-        flux = [info['for{0}'.format(i + 1)] / area[i] / 1000. for i in xrange(2)]
-        return mean(flux)
 
 
 if __name__ == '__main__':
