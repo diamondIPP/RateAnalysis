@@ -205,7 +205,7 @@ class Elementary(object):
             info = info.replace('-', '')
         return info
 
-    def save_canvas(self, canvas, sub_dir=None, name=None, print_names=True):
+    def save_canvas(self, canvas, sub_dir=None, name=None, print_names=True, show=True):
         sub_dir = self.save_dir if hasattr(self, 'save_dir') and sub_dir is None else '{subdir}/'.format(subdir=sub_dir)
         canvas.Update()
         file_name = canvas.GetName() if name is None else name
@@ -214,21 +214,22 @@ class Elementary(object):
         out = 'Saving plots: {nam}'.format(nam=name)
         run_number = self.run_number if hasattr(self, 'run_number') else None
         run_number = 'rp{nr}'.format(nr=self.run_plan) if hasattr(self, 'run_plan') else run_number
-        file_path += self.make_info_string()
+        self.set_root_output(show)
         gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
+        info = self.make_info_string()
         for f in ftypes:
             ext = '.{typ}'.format(typ=f)
             if not f == 'png' and run_number is not None:
-                ext = '_{run}.{typ}'.format(run=run_number, typ=f)
+                ext = '{str}_{run}.{typ}'.format(str=info, run=run_number, typ=f)
             self.ensure_dir(file_path.format(typ=f))
             out_file = '{fname}{ext}'.format(fname=file_path, ext=ext)
             out_file = out_file.format(typ=f)
             canvas.SaveAs(out_file)
         if print_names:
             log_message(out)
-        gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
+        self.set_root_output(True)
 
-    def save_plots(self, savename, sub_dir=None, canvas=None, ind=0, ch='dia', x=1, y=1, prnt=True):
+    def save_plots(self, savename, sub_dir=None, canvas=None, ind=0, ch='dia', x=1, y=1, prnt=True, save=True, show=True):
         """
         Saves the canvas at the desired location. If no canvas is passed as argument, the active canvas will be saved. However for applications without graphical interface,
         such as in SSl terminals, it is recommended to pass the canvas to the method.
@@ -262,10 +263,11 @@ class Elementary(object):
                 self.collection.values()[ind].run.draw_run_info(channel=ch if ch is None else self.collection.values()[ind].channel, canvas=canvas, x=x, y=y)
         canvas.Modified()
         canvas.Update()
-        try:
-            self.save_canvas(canvas, sub_dir=sub_dir, name=savename, print_names=prnt)
-        except Exception as inst:
-            print log_warning('Error in save_canvas:\n{0}'.format(inst))
+        if save:
+            try:
+                self.save_canvas(canvas, sub_dir=sub_dir, name=savename, print_names=prnt, show=show)
+            except Exception as inst:
+                print log_warning('Error in save_canvas:\n{0}'.format(inst))
 
     def create_new_testcampaign(self):
         year = raw_input('Enter the year of the test campgaign (YYYY): ')
