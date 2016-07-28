@@ -183,17 +183,19 @@ def increased_range(ran, fac_bot=0, fac_top=0):
 
 
 def calc_mean(l):
-    mean = sum(l) / len(l)
+    mean_ = sum(l) / len(l)
     mean2 = sum(map(lambda x: x ** 2, l)) / len(l)
-    sigma = sqrt(mean2 - mean ** 2)
-    return mean, sigma
+    sigma = sqrt(mean2 - mean_ ** 2)
+    return mean_, sigma
 
 
 def calc_weighted_mean(means, sigmas):
     weights = map(lambda x: x ** (-2), sigmas)
     variance = 1 / sum(weights)
-    mean = sum(map(lambda x, y: x * y, means, weights))
-    return mean * variance, sqrt(variance)
+    mean_ = sum(map(lambda x, y: x * y, means, weights))
+    return mean_ * variance, sqrt(variance)
+
+
 
 
 def file_exists(path):
