@@ -37,10 +37,8 @@ class Elementary(object):
         self.run_config_parser = self.load_run_config()
         self.ana_config_parser = self.load_ana_config()
 
-        self.Felix = self.MainConfigParser.get('SAVE', 'felix')
+        self.Felix = self.MainConfigParser.getboolean('SAVE', 'felix')
         self.set_root_titles()
-
-        self.Stuff = []
 
         # screen resolution
         self.Res = self.load_resolution(resolution)
