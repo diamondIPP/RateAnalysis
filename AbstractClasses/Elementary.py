@@ -144,9 +144,9 @@ class Elementary(object):
         col_names = [TColor.kGreen, TColor.kOrange, TColor.kViolet, TColor.kYellow, TColor.kRed, TColor.kBlue, TColor.kMagenta, TColor.kAzure, TColor.kCyan, TColor.kTeal]
         colors = []
         for color in col_names:
-            colors.append(color + 1)
+            colors.append(color + (1 if color != 632 else -7))
         for color in col_names:
-            colors.append(color + 3)
+            colors.append(color + (3 if color != 800 else 9))
         return colors
 
     @staticmethod
