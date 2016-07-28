@@ -520,7 +520,7 @@ class AnalysisCollection(Elementary):
 
     # ============================================
     # region PULSER
-    def draw_pulser_info(self, flux=True, show=True, mean=True, corr=True, beam_on=True, vs_time=False, do_fit=True, scale=1, save_comb=True, save=True, ret_mg=False):
+    def draw_pulser_info(self, flux=True, show=True, mean_=True, corr=True, beam_on=True, vs_time=False, do_fit=True, scale=1, save_comb=True, save=True, ret_mg=False):
 
         pickle_path = self.FirstAnalysis.PickleDir + 'Pulser/PulseHeights_{tc}_{rp}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, rp=self.run_plan, dia=self.diamond_name)
         flux = False if vs_time else flux
@@ -535,7 +535,7 @@ class AnalysisCollection(Elementary):
             for i, (key, ana) in enumerate(self.collection.iteritems()):
                 x = ana.run.flux if flux else key
                 fit = ana.Pulser.draw_distribution_fit(save=False, corr=corr, beam_on=beam_on)
-                par = 1 if mean else 2
+                par = 1 if mean_ else 2
                 cut = ana.Cut.generate_pulser_cut(beam_on)
                 ped_fit = ana.show_pedestal_histo(cut=cut, save=False)
                 ped_err = ped_fit.ParError(par)
@@ -575,13 +575,13 @@ class AnalysisCollection(Elementary):
                 mg.Add(graph, 'p')
 
             gROOT.SetBatch(1)
-            self.format_histo(mg, x_tit=self.make_x_tit(mode, flux), y_tit='{mean} [au]'.format(mean='Pulse Height' if mean else 'Sigma'), draw_first=True)
+            self.format_histo(mg, x_tit=self.make_x_tit(mode, flux), y_tit='{mean} [au]'.format(mean='Pulse Height' if mean_ else 'Sigma'), draw_first=True)
             y = mg.GetYaxis().GetXmin(), mg.GetYaxis().GetXmax()
             mg_y = y[0] * 1.3 - y[1] * .3
             self.format_histo(mg, y_range=[mg_y, y[1] + (y[1] - y[0]) * .3], y_off=1.75, x_off=1.3)
             x_vals = sorted([gr.GetX()[i] for i in xrange(gr.GetN())])
             mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 1.2) if flux else self.do_nothing()
-            self.save_histo(mg, 'Pulser{mean}{a}{b}'.format(mean='Mean' if mean else 'Sigma', a=corr, b=beam_on), lm=.14, draw_opt='A', logx=True if flux else 0, l=l, show=False)
+            self.save_histo(mg, 'Pulser{mean}{a}{b}'.format(mean='Mean' if mean_ else 'Sigma', a=corr, b=beam_on), lm=.14, draw_opt='A', logx=True if flux else 0, l=l, show=False)
             mg1 = mg.Clone()
             mg1.GetListOfGraphs()[0].SetLineColor(602)
             self.__draw_pulser_legend()
@@ -635,8 +635,8 @@ class AnalysisCollection(Elementary):
         self.RootObjects.append([c, legend] + histos.values())
         z.reset_colors()
 
-    def draw_all_pulser_info(self, mean=True):
-        graphs = [self.draw_pulser_info(show=False, mean=mean, corr=x, beam_on=y) for x, y in zip([1, 1, 0, 0], [1, 0, 1, 0])]
+    def draw_all_pulser_info(self, mean_=True):
+        graphs = [self.draw_pulser_info(show=False, mean_=mean_, corr=x, beam_on=y) for x, y in zip([1, 1, 0, 0], [1, 0, 1, 0])]
         margins = self.find_graph_margins(graphs)
         c = TCanvas('c', 'Pulser Info', 1500, 1500)
         c.Divide(2, 2)
@@ -649,7 +649,7 @@ class AnalysisCollection(Elementary):
             gr.Draw('alp')
         gROOT.SetBatch(0)
         self.RootObjects.append([graphs, c])
-        self.save_plots('AllPulserOverview{0}'.format('Mean' if mean else 'Sigma'), sub_dir=self.save_dir)
+        self.save_plots('AllPulserOverview{0}'.format('Mean' if mean_ else 'Sigma'), sub_dir=self.save_dir)
 
     def compare_pedestals(self, show=True):
         gr1 = self.draw_pedestals(show=False)
@@ -716,19 +716,19 @@ class AnalysisCollection(Elementary):
     # ============================================
     # region CUTS
 
-    def draw_bucket_info(self, flux=True, show=True, mean=True):
+    def draw_bucket_info(self, flux=True, show=True, mean_=True):
         if not show:
             gROOT.SetBatch(1)
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         mode = 'Flux' if flux else 'Run'
         gr1 = self.make_tgrapherrors('gr1', '', color=self.get_color())
-        prefix = 'Number of Bucket Cut Events' if not mean else 'Mean Pulse Height with Different Bucket Cuts'
+        prefix = 'Number of Bucket Cut Events' if not mean_ else 'Mean Pulse Height with Different Bucket Cuts'
         gr2 = self.make_tgrapherrors('gr2', '{pref} vs {mod}'.format(pref=prefix, mod=mode), color=self.get_color())
         gr3 = self.make_tgrapherrors('gr3', '', color=self.get_color())
         i = 0
         for key, ana in self.collection.iteritems():
             x = ana.run.flux if flux else key
-            if not mean:
+            if not mean_:
                 n = ana.show_bucket_numbers(show=False)
                 gr1.SetPoint(i, x, n['new'] / n['all'] * 100)
                 gr2.SetPoint(i, x, n['old'] / n['all'] * 100)
@@ -745,15 +745,15 @@ class AnalysisCollection(Elementary):
         c.SetLeftMargin(.13)
         if flux:
             c.SetLogx()
-        self.format_histo(gr2, x_tit='{mod}{unit}'.format(mod=mode, unit=' [kHz/cm2]' if flux else ''), y_tit='Events [%]' if not mean else 'Mean [au]', y_off=1.7, color=None)
+        self.format_histo(gr2, x_tit='{mod}{unit}'.format(mod=mode, unit=' [kHz/cm2]' if flux else ''), y_tit='Events [%]' if not mean_ else 'Mean [au]', y_off=1.7, color=None)
         gr2.Draw('apl')
         gr1.Draw('pl')
-        if mean:
+        if mean_:
             gr3.Draw('pl')
         leg = TLegend(.2, .8, .35, .9)
         leg.AddEntry(gr2, 'old cut', 'pl')
         leg.AddEntry(gr1, 'new cut', 'pl')
-        if mean:
+        if mean_:
             leg.AddEntry(gr3, 'no bucket', 'pl')
         leg.Draw()
         gROOT.SetBatch(0)
@@ -935,18 +935,18 @@ class AnalysisCollection(Elementary):
 
     # ====================================================================================
     # region BEAM PROFILE
-    def draw_beam_info(self, mean=True, flux=True, show=True, direction='x', fit_margin=.6):
+    def draw_beam_info(self, mean_=True, flux=True, show=True, direction='x', fit_margin=.6):
         if not show:
             gROOT.SetBatch(1)
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         mode = 'Flux' if flux else 'Run'
-        title = 'Mean' if mean else 'Sigma'
+        title = 'Mean' if mean_ else 'Sigma'
         gr = self.make_tgrapherrors('gr', '{tit} of the Beam Profile in {dir}'.format(tit=title, dir=direction.title()))
         i = 0
         for key, ana in self.collection.iteritems():
             x = ana.run.flux if flux else key
             fit = ana.fit_beam_profile(direction, show=False, fit_margin=fit_margin)
-            par = 1 if mean else 2
+            par = 1 if mean_ else 2
             gr.SetPoint(i, x, fit.Parameter(par))
             gr.SetPointError(i, 0, fit.ParError(par))
             i += 1
@@ -962,10 +962,10 @@ class AnalysisCollection(Elementary):
         return gr
 
     def draw_xy_profiles(self, flux=True, show=True, fitx=.4, fity=.7):
-        gr1 = self.draw_beam_info(mean=True, flux=flux, show=False, direction='x', fit_margin=fitx)
-        gr2 = self.draw_beam_info(mean=True, flux=flux, show=False, direction='y', fit_margin=fity)
-        gr3 = self.draw_beam_info(mean=False, flux=flux, show=False, direction='x', fit_margin=fitx)
-        gr4 = self.draw_beam_info(mean=False, flux=flux, show=False, direction='y', fit_margin=fity)
+        gr1 = self.draw_beam_info(mean_=True, flux=flux, show=False, direction='x', fit_margin=fitx)
+        gr2 = self.draw_beam_info(mean_=True, flux=flux, show=False, direction='y', fit_margin=fity)
+        gr3 = self.draw_beam_info(mean_=False, flux=flux, show=False, direction='x', fit_margin=fitx)
+        gr4 = self.draw_beam_info(mean_=False, flux=flux, show=False, direction='y', fit_margin=fity)
         if not show:
             gROOT.SetBatch(1)
         c = TCanvas('c', 'Pulse Height Distribution', 1500, 1500)
@@ -1095,7 +1095,6 @@ class AnalysisCollection(Elementary):
             fluxes[(ana.run.RunInfo['fs11'], ana.run.RunInfo['fs13'])].append(calc_flux(ana.run.RunInfo, self.TESTCAMPAIGN))
 
         print make_latex_table(header=fluxes.keys(), cols=fluxes.values())
-
 
     def make_signal_analysis(self, saveplots=True):
         """
