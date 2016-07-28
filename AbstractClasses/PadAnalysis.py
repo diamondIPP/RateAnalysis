@@ -1549,6 +1549,15 @@ class PadAnalysis(Analysis):
         self.count += n_events
         return h, n_events
 
+    def calc_corr_time(self, evt, bin_nr):
+        self.tree.GetEntry(evt)
+        tcell = None
+        exec 'tcell = self.tree.trigger_cell'
+        t = 0
+        for i in xrange(bin_nr + 1):
+            t += self.run.TCal[(tcell + i) % 1024]
+        return t
+
     def corrected_time(self, evt):
         self.tree.GetEntry(evt)
         tcell = None
