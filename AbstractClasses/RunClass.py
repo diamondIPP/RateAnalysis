@@ -64,7 +64,7 @@ class Run(Elementary):
     operationmode = ''
     TrackingPadAnalysis = {}
 
-    def __init__(self, run_number=None, diamonds=3, verbose=False):
+    def __init__(self, run_number=None, diamonds=3, load_tree=True, verbose=False):
         """
         :param run_number: number of the run
         :param diamonds: 0x1=ch0; 0x2=ch3
@@ -90,7 +90,7 @@ class Run(Elementary):
         self.RootFile = None
         self.tree = None
 
-        if run_number is not None:
+        if run_number is not None and load_tree:
             self.converter = Converter(self.TESTCAMPAIGN, self.run_config_parser, self.run_number)
             assert (run_number > 0), 'incorrect run_number'
             self.set_run(run_number)
