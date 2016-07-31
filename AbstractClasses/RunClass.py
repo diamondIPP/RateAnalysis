@@ -233,8 +233,8 @@ class Run(Elementary):
         return analyse_ch
 
     def calculate_flux(self):
-        self.verbose_print('Calculate rate from mask file:\n\t' + self.RunInfo['mask'])
-        mask_file_path = self.maskfilepath + '/' + self.RunInfo['mask']
+        self.verbose_print('Calculate rate from mask file:\n\t' + self.RunInfo['maskfile'])
+        mask_file_path = self.maskfilepath + '/' + self.RunInfo['maskfile']
         maskdata = {}
         for plane in self.trigger_planes:
             maskdata[plane] = {}
