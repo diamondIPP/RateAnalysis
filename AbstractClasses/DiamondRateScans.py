@@ -703,7 +703,11 @@ class DiaScans(Elementary):
                     gr.SetPointError(i, 0, 0, flux_fit.Parameter(2))
                     i += 1
         self.draw_histo(gr, 'FluxVsCollimators', show, draw_opt='surf1', lm=.15, phi=17, theta=35)
-        self.format_histo(gr, x_tit='fs11', x_off=1.3, y_tit='fsh13', y_off=1.9, stats=0, z_off=1.8, z_tit='Flux kHz/cm^{2}')
+        self.format_histo(gr, x_tit='fs11', x_off=1.3, y_tit='fsh13', y_off=1.9, stats=0, z_off=1.9, z_tit='Flux kHz/cm^{2}', markersize=2, y_range=[0, 130])
+        self.save_plots('FluxVsCollimators', show=show, prnt=False)
+        h = gr.Clone()
+        h.Draw('samep')
+        self.ROOTObjects.append(h)
         self.save_plots('FluxVsCollimators', show=show)
 
     def draw_flux_variations(self, show=True, rel_sigma=False):
