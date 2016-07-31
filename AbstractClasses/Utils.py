@@ -183,6 +183,7 @@ def increased_range(ran, fac_bot=0, fac_top=0):
 
 
 def calc_mean(l):
+    l = [float(i) for i in l]
     mean_ = sum(l) / len(l)
     mean2 = sum(map(lambda x: x ** 2, l)) / len(l)
     sigma = sqrt(mean2 - mean_ ** 2)
