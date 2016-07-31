@@ -446,7 +446,7 @@ class Run(Elementary):
         assert channel is None or channel in self.channels, 'wrong channel id "{ch}"'.format(ch=channel)
         if show:
             if canvas is not None:
-                pad = canvas.cd()
+                canvas.cd()
             else:
                 print 'Draw run info in current pad'
                 pad = gROOT.GetSelectedPad()
