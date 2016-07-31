@@ -1093,9 +1093,13 @@ class AnalysisCollection(Elementary):
         #     print ana.run.RunInfo
         fluxes = OrderedDict(sorted({cs: [] for cs in set([(ana.run.RunInfo['fs11'], ana.run.RunInfo['fs13']) for ana in self.collection.itervalues()])}.iteritems()))
         for ana in self.collection.itervalues():
-            fluxes[(ana.run.RunInfo['fs11'], ana.run.RunInfo['fs13'])].append(calc_flux(ana.run.RunInfo, self.TESTCAMPAIGN))
-
-        print make_latex_table(header=fluxes.keys(), cols=fluxes.values())
+            fluxes[(ana.run.RunInfo['fs11'], ana.run.RunInfo['fs13'])].append('{0:3.1f}'.format(calc_flux(ana.run.RunInfo, self.TESTCAMPAIGN)))
+        first_col = [[''] * max([len(col) for col in fluxes.itervalues()])]
+        header = ['FS11/FSH13'] + ['{0}/{1}'.format(make_col_str(head[0]), make_col_str(head[1])) for head in fluxes.iterkeys()]
+        print make_latex_table(header=header, cols=first_col + fluxes.values(), endline=True),
+        print make_latex_table_row(['Mean'] + ['{0:3.1f}'.format(calc_mean(flux)[0]) for flux in fluxes.values()]),
+        print make_latex_table_row(['Sigma'] + ['{0:3.1f}'.format(calc_mean(flux)[1]) for flux in fluxes.values()]),
+        print '\\bottomrule'
 
     def make_signal_analysis(self, saveplots=True):
         """
