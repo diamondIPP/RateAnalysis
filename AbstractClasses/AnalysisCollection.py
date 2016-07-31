@@ -30,7 +30,7 @@ class AnalysisCollection(Elementary):
     """
     current_run_number = -1
 
-    def __init__(self, list_of_runs, diamonds=None, verbose=False):
+    def __init__(self, list_of_runs, diamonds=None, load_tree=True, verbose=False):
         Elementary.__init__(self, verbose=verbose)
 
         # dict where all analysis objects are saved
@@ -41,10 +41,11 @@ class AnalysisCollection(Elementary):
         self.diamonds = self.load_diamonds(diamonds, list_of_runs)
         self.min_max_rate_runs = self.get_high_low_rate_runs()
 
-        self.generate_slope_pickle()
-        self.generate_threshold_pickle()
+        if load_tree:
+            self.generate_slope_pickle()
+            self.generate_threshold_pickle()
 
-        self.add_analyses()
+        self.add_analyses(load_tree)
         self.FirstAnalysis = self.get_first_analysis()
 
         self.signalValues = None
@@ -83,11 +84,11 @@ class AnalysisCollection(Elementary):
     def load_run_config(self):
         return self.load_run_configs(0)
 
-    def add_analyses(self):
+    def add_analyses(self, load_tree):
         """ Creates and adds Analysis objects with run numbers in runs. """
         for run, dia in sorted(zip(self.runs, self.diamonds)):
             ch = 0 if dia == 1 or dia == 3 else 3
-            analysis = PadAnalysis(run, ch, self.min_max_rate_runs, verbose=self.verbose)
+            analysis = PadAnalysis(run, ch, self.min_max_rate_runs, load_tree=load_tree, verbose=self.verbose)
             self.collection[analysis.run.run_number] = analysis
             self.current_run_number = analysis.run.run_number
 
@@ -1211,6 +1212,7 @@ if __name__ == "__main__":
     main_parser.add_argument('runplan', nargs='?', default=3)
     main_parser.add_argument('dia', nargs='?', default=1, type=int)
     main_parser.add_argument('-tc', '--testcampaign', nargs='?', default='')
+    main_parser.add_argument('-t', '--tree', default=True, action='store_false')
     args = main_parser.parse_args()
     tc = args.testcampaign if args.testcampaign.startswith('201') else None
     run_plan = args.runplan
@@ -1223,6 +1225,6 @@ if __name__ == "__main__":
     a.print_banner('STARTING PAD-ANALYSIS COLLECTION OF RUNPLAN {0}'.format(run_plan))
     a.print_testcampaign()
 
-    z = AnalysisCollection(sel, diamond, verbose=True)
+    z = AnalysisCollection(sel, diamond, load_tree=args.tree, verbose=True)
     z.print_loaded()
     z.print_elapsed_time(st, 'Instantiation')
