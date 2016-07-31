@@ -11,7 +11,7 @@ from Elementary import Elementary
 from RunSelection import RunSelection
 from ROOT import TCanvas, TText, TGraph
 from ConfigParser import ConfigParser
-from numpy import array, mean
+from numpy import array
 from argparse import ArgumentParser
 
 from Utils import *
