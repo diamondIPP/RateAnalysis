@@ -27,11 +27,11 @@ __author__ = 'micha'
 # MAIN CLASS
 # ==============================================
 class PadAnalysis(Analysis):
-    def __init__(self, run, channel, high_low_rate_run=None, binning=20000, verbose=False):
+    def __init__(self, run, channel, high_low_rate_run=None, binning=20000, load_tree=True, verbose=False):
 
         self.channel = channel
         self.RunNumber = run
-        Analysis.__init__(self, run, high_low_rate=high_low_rate_run, verbose=verbose)
+        Analysis.__init__(self, run, high_low_rate=high_low_rate_run, verbose=verbose, load_tree=load_tree)
 
         # main
         self.diamond_name = self.run.diamond_names[channel]
@@ -39,29 +39,35 @@ class PadAnalysis(Analysis):
         self.save_dir = '{dia}/{run}/'.format(run=str(self.run_number).zfill(3), dia=self.diamond_name)
 
         # stuff
-        self.BinSize = binning
-        self.binning = self.__get_binning()
-        self.time_binning = self.get_time_binning()
-        self.n_bins = len(self.binning)
-        self.Polarity = self.get_polarity()
-        self.PulserPolarity = self.get_pulser_polarity()
+        if load_tree:
+            self.BinSize = binning
+            self.binning = self.__get_binning()
+            self.time_binning = self.get_time_binning()
+            self.n_bins = len(self.binning)
+
+        # polarities
+            self.Polarity = self.get_polarity()
+            self.PulserPolarity = self.get_pulser_polarity()
 
         # regions // ranges
-        self.IntegralNames = self.get_integral_names()
-        self.SignalRegion = self.__load_signal_region()
-        self.PedestalRegion = self.__load_pedestal_region()
-        self.PeakIntegral = self.__load_peak_integral()
+            self.IntegralNames = self.get_integral_names()
+            self.SignalRegion = self.__load_signal_region()
+            self.PedestalRegion = self.__load_pedestal_region()
+            self.PeakIntegral = self.__load_peak_integral()
 
         # names
-        self.SignalDefinition = '({pol}*TimeIntegralValues[{num}])'
-        self.SignalNumber = self.get_signal_number()
-        self.SignalName = self.get_signal_name()
-        self.PedestalName = self.get_pedestal_name()
-        self.PulserName = self.get_pulser_name()
+            self.SignalDefinition = '({pol}*TimeIntegralValues[{num}])'
+            self.SignalNumber = self.get_signal_number()
+            self.SignalName = self.get_signal_name()
+            self.PedestalName = self.get_pedestal_name()
+            self.PulserName = self.get_pulser_name()
 
         # cuts
-        self.Cut = ChannelCut(self, channel)
-        self.AllCuts = self.Cut.all_cut
+            self.Cut = ChannelCut(self, channel)
+            self.AllCuts = self.Cut.all_cut
+
+        # subclasses
+            self.Pulser = PulserAnalysis(self)
 
         # currents
         self.Currents = Currents(self)
@@ -75,8 +81,6 @@ class PadAnalysis(Analysis):
         self.SignalMapHisto = None
         self.MeanSignalHisto = None
         self.PeakValues = None
-
-        self.Pulser = PulserAnalysis(self)
 
     def __del__(self):
         for obj in [self.PulseHeight, self.Pedestal, self.SignalMapHisto, self.SignalTime, self.PeakValues, self.MeanSignalHisto]:
@@ -2036,13 +2040,13 @@ if __name__ == "__main__":
     parser.add_argument('ch', nargs='?', default=0, type=int)
     parser.add_argument('-tc', '--testcampaign', nargs='?', default='')
     parser.add_argument('-v', '--verbose', nargs='?', default=False, type=bool)
+    parser.add_argument('-t', '--tree', default=True, action='store_false')
     args = parser.parse_args()
     tc = args.testcampaign if args.testcampaign.startswith('201') else None
     test_run = args.run
-    message = 'STARTING PAD-ANALYSIS OF RUN {0}'.format(test_run)
-    print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(message)) * '=', msg=message)
     a = Elementary(tc)
     a.print_testcampaign()
+    a.print_banner('STARTING PAD-ANALYSIS OF RUN {0}'.format(test_run))
     print
-    z = PadAnalysis(test_run, args.ch, verbose=args.verbose)
+    z = PadAnalysis(test_run, args.ch, verbose=args.verbose, load_tree=args.tree)
     z.print_elapsed_time(st, 'Instantiation')

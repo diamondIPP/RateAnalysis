@@ -14,7 +14,7 @@ from Utils import *
 class Analysis(Elementary):
     """ Class for the analysis of the non-channel specific stuff of a single run. """
 
-    def __init__(self, run, diamonds=3, verbose=False, high_low_rate=None):
+    def __init__(self, run, diamonds=3, verbose=False, high_low_rate=None, load_tree=True):
         """
         Parent class for all analyses, which contains all the basic stuff about the Telescope.
         :param run:             run object of type "Run" or integer run number
@@ -28,7 +28,7 @@ class Analysis(Elementary):
 
         # basics
         self.diamonds = diamonds
-        self.run = self.init_run(run)
+        self.run = self.init_run(run, load_tree)
         self.run.analysis = self
         self.run_number = self.run.run_number
         self.RunInfo = deepcopy(self.run.RunInfo)
@@ -48,27 +48,28 @@ class Analysis(Elementary):
         self.channel = self.channel if hasattr(self, 'channel') else None
 
         # general for pads and pixels
-        self.Cut = Cut(self)
-        self.StartEvent = self.Cut.CutConfig['EventRange'][0]
-        self.EndEvent = self.Cut.CutConfig['EventRange'][1]
+        self.Cut = Cut(self, skip=not load_tree)
+        if load_tree:
+            self.StartEvent = self.Cut.CutConfig['EventRange'][0]
+            self.EndEvent = self.Cut.CutConfig['EventRange'][1]
+
+        # alignment
+            self.IsAligned = self.check_alignment(draw=False, save_plot=False)
 
         # save histograms // canvases
         self.signal_canvas = None
 
-        # alignment
-        self.IsAligned = self.check_alignment(draw=False, save_plot=False)
-
     # ============================================================================================
     # region INIT
 
-    def init_run(self, run):
+    def init_run(self, run, load_tree):
         """
 
         :type run: object
         """
         if not isinstance(run, Run):
             assert type(run) is int, 'run has to be either a Run instance or an integer run number'
-            return Run(run, self.diamonds)
+            return Run(run, self.diamonds, load_tree)
         else:
             assert run.run_number is not None, 'No run selected, choose run.SetRun(run_nr) before you pass the run object'
             return run
