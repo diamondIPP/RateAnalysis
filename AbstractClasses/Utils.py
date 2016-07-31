@@ -197,21 +197,24 @@ def calc_weighted_mean(means, sigmas):
     return mean_ * variance, sqrt(variance)
 
 
-def make_latex_table(header, cols):
-    header = ['{0}/{1}'.format(make_col_str(head[0]), make_col_str(head[1])) for head in header]
+def make_latex_table_row(row, hline=False):
+    return '{0}\\\\{1}\n'.format('\t& '.join(row), '\\hline' if hline else '')
+
+
+def make_latex_table(header, cols, endline=False):
+    header = ['\\textbf{0}{1}{2}'.format('{', head, '}') if head else '' for head in header]
     l = max([len(col) for col in cols])
     rows = []
     for col in cols:
-        print col
         for i in xrange(l):
-            if len(rows) <= l:
+            if len(rows) < l:
                 rows.append([])
-            rows[i].append('{0:3.1f}'.format(col[i]) if len(col) > i else '')
+            rows[i].append(col[i] if len(col) > i else '')
     out = '\\toprule\n'
-    out += '{0}\\\\\\hline\n'.format('\t& '.join(header))
-    for row in rows:
-        out += '{0}\\\\\n'.format('\t& '.join(row))
-    out += '\\bottomrule'
+    out += make_latex_table_row(header, hline=True)
+    for i, row in enumerate(rows, 1):
+        out += make_latex_table_row(row) if i != len(rows) else make_latex_table_row(row, endline)
+    out += '\\bottomrule' if not endline else ''
     return out
 
 
