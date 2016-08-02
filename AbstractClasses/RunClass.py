@@ -80,7 +80,7 @@ class Run(Elementary):
         self.DUTType = self.load_dut_type()
         self.filename = self.run_config_parser.get('BASIC', 'filename')
         self.treename = self.run_config_parser.get('BASIC', 'treename')
-        self.run_path = self.run_config_parser.get('BASIC', 'runpath')
+        self.run_pathruninfofile = self.run_config_parser.get('BASIC', 'runpath')
         self.runinfofile = self.run_config_parser.get('BASIC', 'runinfofile')
         self._runlogkeyprefix = self.run_config_parser.get('BASIC', 'runlog_key_prefix')
         self.maskfilepath = self.run_config_parser.get('BASIC', 'maskfilepath')

@@ -44,6 +44,9 @@ class CutPix(Elementary):
             # generate cut strings
             self.generate_fid_cuts()
             self.generate_masks()
+            self.generate_chi2_cuts()
+            self.add_cuts()
+
             # self.generate_cut_string()  # DA TODO
             # self.all_cut = self.generate_all_cut()  # DA TODO
 
@@ -153,6 +156,35 @@ class CutPix(Elementary):
             has_option('CUT', 'FidRegionDUT2') else ''
         self.CutConfig['FidRegionDUT3'] = self.ana_config_parser.get('CUT', 'FidRegionDUT3') if self.ana_config_parser.\
             has_option('CUT', 'FidRegionDUT3') else ''
+
+    def add_cuts(self):
+        self.cuts_hitmap_roc = {}
+        self.cuts_pixelated_roc = {}
+        for iROC in xrange(4,7):
+        self.cuts_hitmap_roc[iROC] = self.mask_hitmap_roc[iROC] + self.chi2x_cut + self.chi2y_cut
+        self.cuts_pixelated_roc[iROC] = self.mask_pixelated_roc[iROC] + self.chi2x_cut + self.chi2y_cut
+
+    def generate_chi2_cuts(self):
+        self.generate_chi2('x')
+        self.generate_chi2('y')
+
+    def generate_chi2(self, mode='x'):
+        gROOT.SetBatch(1)
+        h = TH1F('h', 'h', 2001, -0.05, 200.05)
+        nq = 100
+        chi2s = zeros(nq)
+        xq = array([(i + 1) / float(nq) for i in xrange(nq)])
+        self.analysis.tree.Draw('chi2_{mod}>>h'.format(mod=mode), '', 'goff')
+        h.GetQuantiles(nq, chi2s, xq)
+        gROOT.SetBatch(0)
+        quantile = self.CutConfig['chi2{mod}'.format(mod=mode.title())]
+        assert type(quantile) is int and 0 < quantile <= 100, 'chi2 quantile has to be an integer between (0, 100]'
+        string = 'chi2_{mod}<{val}&&chi2_{mod}>=0'.format(val=chi2s[quantile], mod=mode)
+        print string
+        if quantile > 0:
+            exec('self.chi2{mode}_cut = TCut("chi2_cut_{mode}", "{cut}")'.format(mode=mode, cut=string))
+        else:
+            exec('self.chi2{mode}_cut = TCut("chi2_cut_{mode}", {cut})'.format(mode=mode, cut=''))
 
     def generate_fid_cuts(self):
         self.fid_cut_hitmap_roc = {}
@@ -403,26 +435,26 @@ class CutPix(Elementary):
         elif self.CutConfig['ExcludeFirst']:
             self.CutStrings['event_range'] += 'event_number>={min}'.format(min=self.CutConfig['ExcludeFirst'])
 
-    def generate_chi2(self, mode='x'):
-        picklepath = 'Configuration/Individual_Configs/Chi2/{tc}_{run}_{mod}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run.run_number, mod=mode.title())
-
-        def func():
-            print 'generating chi2 cut in {mod} for run {run}...'.format(run=self.analysis.run_number, mod=mode)
-            gROOT.SetBatch(1)
-            h = TH1F('h', '', 200, 0, 100)
-            nq = 100
-            chi2s = zeros(nq)
-            xq = array([(i + 1) / float(nq) for i in range(nq)])
-            self.analysis.tree.Draw('chi2_{mod}>>h'.format(mod=mode), '', 'goff')
-            h.GetQuantiles(nq, chi2s, xq)
-            gROOT.SetBatch(0)
-            return chi2s
-
-        chi2 = self.do_pickle(picklepath, func)
-        quantile = self.CutConfig['chi2{mod}'.format(mod=mode.title())]
-        assert type(quantile) is int and 0 < quantile <= 100, 'chi2 quantile has to be and integer between 0 and 100'
-        string = 'chi2_{mod}<{val}&&chi2_{mod}>=0'.format(val=chi2[quantile], mod=mode)
-        return string if quantile > 0 else ''
+    # def generate_chi2(self, mode='x'):
+    #     picklepath = 'Configuration/Individual_Configs/Chi2/{tc}_{run}_{mod}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run.run_number, mod=mode.title())
+    #
+    #     def func():
+    #         print 'generating chi2 cut in {mod} for run {run}...'.format(run=self.analysis.run_number, mod=mode)
+    #         gROOT.SetBatch(1)
+    #         h = TH1F('h', '', 200, 0, 100)
+    #         nq = 100
+    #         chi2s = zeros(nq)
+    #         xq = array([(i + 1) / float(nq) for i in range(nq)])
+    #         self.analysis.tree.Draw('chi2_{mod}>>h'.format(mod=mode), '', 'goff')
+    #         h.GetQuantiles(nq, chi2s, xq)
+    #         gROOT.SetBatch(0)
+    #         return chi2s
+    #
+    #     chi2 = self.do_pickle(picklepath, func)
+    #     quantile = self.CutConfig['chi2{mod}'.format(mod=mode.title())]
+    #     assert type(quantile) is int and 0 < quantile <= 100, 'chi2 quantile has to be and integer between 0 and 100'
+    #     string = 'chi2_{mod}<{val}&&chi2_{mod}>=0'.format(val=chi2[quantile], mod=mode)
+    #     return string if quantile > 0 else ''
 
     def generate_slope(self):
         picklepath = 'Configuration/Individual_Configs/Slope/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.lowest_rate_run)

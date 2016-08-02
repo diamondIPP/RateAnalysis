@@ -31,7 +31,7 @@ class SignalPixAnalysis(Analysis):
         # main
         self.diamond_name = self.run.diamond_names[channel]
         self.bias = self.run.bias[channel]
-        self.save_dir = '{tc}_{run}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number)  # '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number, dia=self.diamond_name)
+        self.save_dir = 'Results/{tc}_{run}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number)  # '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number, dia=self.diamond_name)
         if not os.path.isdir(self.save_dir):
             os.makedirs(self.save_dir)
         self.roc_diam1 = 4
@@ -80,7 +80,7 @@ class SignalPixAnalysis(Analysis):
             for obj in lst:
                 self.del_rootobj(obj)
 
-    def do_analysis(self, do_occupancy=True, do_pulse_height=True, show_progressBar=False, verbosity=False):
+    def do_analysis(self, do_occupancy=True, do_pulse_height=True, do_tlscp=False, show_progressBar=False, verbosity=False):
         self.print_banner('Creating histograms...')
         self.plots.create_histograms()
         self.print_banner('Histograms cration -> Done')
@@ -126,12 +126,12 @@ class SignalPixAnalysis(Analysis):
         #         if do_occupancy: self.fill_occupancy()
         #         if do_pulse_height: self.do_pulse_height_analysis(event)
         #     bar.update(event + 1)
-        if do_occupancy: self.fill_occupancy(show_progressBar, verbosity)
-        if do_pulse_height: self.do_pulse_height_analysis(show_progressBar, verbosity)
+        if do_occupancy: self.fill_occupancy(show_progressBar, do_tlscp, verbosity)
+        if do_pulse_height: self.do_pulse_height_analysis(show_progressBar, do_tlscp, verbosity)
         # self.print_banner('Looping over Tree -> Done', '%')
 
 
-    def fill_occupancy(self, show_progressBar=False, verbosity=False):
+    def fill_occupancy(self, show_progressBar=False, do_tlscp=False, verbosity=False):
         # for i in xrange(len(self.plane)):
         #     if 0 <= self.plane[i] < self.num_devices:
         #         self.plots.hitMap[self.plane[i]].Fill(self.col[i], self.row[i])
@@ -151,10 +151,10 @@ class SignalPixAnalysis(Analysis):
             if iROC not in self.roc_tel:
                 if verbosity: self.print_banner('Analysing ROC {r}...'.format(r=iROC))
                 self.tree.Draw('row:col >> hitMapROC{n}'.format(n=iROC), 'plane == {n} && {mask}'.format(n=iROC, mask=self.Cut.mask_hitmap_roc[iROC].GetTitle()), 'goff')
-                self.tree.Draw('row:col >> hitMapROC{n}_cuts'.format(n=iROC), 'plane == {n} && {mask} && fidcut_hitmap_roc{n}'.format(n=iROC, mask=self.Cut.mask_hitmap_roc[iROC].GetTitle()), 'goff')
+                self.tree.Draw('row:col >> hitMapROC{n}_cuts'.format(n=iROC), 'plane == {n} && {mask} && fidcut_hitmap_roc{n}'.format(n=iROC, mask=self.Cut.cuts_hitmap_roc[iROC].GetTitle()), 'goff')
                 self.plots.save_individual_plots(self.plots.hitMap[iROC], self.plots.hitMap[iROC].GetName(), self.plots.hitMap[iROC].GetTitle(), self.Cut.fid_cut_hitmap_roc[iROC], 'colz', 0, self.save_dir, verbosity)
                 self.plots.save_individual_plots(self.plots.hitMap_cuts[iROC], self.plots.hitMap_cuts[iROC].GetName(), self.plots.hitMap_cuts[iROC].GetTitle(), self.Cut.fid_cut_hitmap_roc[iROC], 'colz', 0, self.save_dir, verbosity)
-            else:
+            elif do_tlscp:
                 self.tree.Draw('row:col >> hitMapROC{n}'.format(n=iROC), 'plane == {n}'.format(n=iROC), 'goff')
                 # self.tree.Draw('row:col >> hitMapROC{n}_cuts'.format(n=iROC), 'plane == {n}'.format(n=iROC), 'goff')
             if show_progressBar: bar.update(iROC + 1)
@@ -162,7 +162,7 @@ class SignalPixAnalysis(Analysis):
         if show_progressBar: bar.finish()
         self.print_banner('Occupancy Analysis -> Done', '%')
 
-    def do_pulse_height_analysis(self, show_progressBar=False, verbosity=False):  # DA: before (self, event)
+    def do_pulse_height_analysis(self, show_progressBar=False, do_tlscp=False, verbosity=False):  # DA: before (self, event)
         # for iROC in xrange(self.num_devices):
         #     numClusters = ord(self.clust_per_plane[iROC])
         #     self.Ph1DHistogramsExtraction(numClusters, self.ph_1cl[iROC], self.ph_2cl[iROC], self.ph_3cl[iROC],
@@ -193,14 +193,23 @@ class SignalPixAnalysis(Analysis):
             bar = progressbar.ProgressBar(widgets=widgets, max_value=self.num_devices)
             bar.start()
         for iROC in xrange(self.num_devices):
-            if verbosity: self.print_banner('Analysing ROC {r}...'.format(r=iROC))
-            self.Ph2DHistogramExtraction(iROC, 'pixelated', verbosity)
-            self.Ph2DHistogramExtraction(iROC, 'local', verbosity)
-            self.Ph2DHistogramExtraction(iROC, 'telescope', verbosity)
-            self.DoAveragePulseHeight(iROC, verbosity)
-            self.PhVsEventExtraction(iROC, verbosity)
+            if iROC not in self.roc_tel:
+                if verbosity: self.print_banner('Analysing ROC {r}...'.format(r=iROC))
+                self.Ph2DHistogramExtraction(iROC, 'pixelated', verbosity)
+                self.Ph2DHistogramExtraction(iROC, 'local', verbosity)
+                self.Ph2DHistogramExtraction(iROC, 'telescope', verbosity)
+                self.DoAveragePulseHeight(iROC, verbosity)
+                self.PhVsEventExtraction(iROC, verbosity)
+                if verbosity: self.print_banner('ROC {r} analysis -> Done'.format(r=iROC))
+            elif do_tlscp:
+                if verbosity: self.print_banner('Analysing ROC {r}...'.format(r=iROC))
+                self.Ph2DHistogramExtraction(iROC, 'pixelated', verbosity)
+                self.Ph2DHistogramExtraction(iROC, 'local', verbosity)
+                self.Ph2DHistogramExtraction(iROC, 'telescope', verbosity)
+                self.DoAveragePulseHeight(iROC, verbosity)
+                self.PhVsEventExtraction(iROC, verbosity)
+                if verbosity: self.print_banner('ROC {r} analysis -> Done'.format(r=iROC))
             if show_progressBar: bar.update(iROC + 1)
-            if verbosity: self.print_banner('ROC {r} analysis -> Done'.format(r=iROC))
         if show_progressBar: bar.finish()
         self.print_banner('Pulse Height Analysis -> Done', '%')
 
@@ -224,15 +233,15 @@ class SignalPixAnalysis(Analysis):
             self.plots.save_individual_plots(self.plots.phAll_vs_event[roc], self.plots.phAll_vs_event[roc].GetName(), self.plots.phAll_vs_event[roc].GetTitle(), None, 'colz', 0, self.save_dir, verbosity)
 
             self.tree.Draw('charge_all_ROC{n}:event_number >> phCl1VsEventROC{n}_cuts'.format(n=roc),
-                           'fidcut_pixelated_roc{n}&&cluster_size_ROC{n}==1&&{mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+                           'fidcut_pixelated_roc{n}&&cluster_size_ROC{n}==1&&{mask}'.format(n=roc, mask=self.Cut.cuts_pixelated_roc[roc].GetTitle()), 'goff')
             self.tree.Draw('charge_all_ROC{n}:event_number >> phCl2VsEventROC{n}_cuts'.format(n=roc),
-                           'fidcut_pixelated_roc{n}&&cluster_size_ROC{n}==2&&{mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+                           'fidcut_pixelated_roc{n}&&cluster_size_ROC{n}==2&&{mask}'.format(n=roc, mask=self.Cut.cuts_pixelated_roc[roc].GetTitle()), 'goff')
             self.tree.Draw('charge_all_ROC{n}:event_number >> phCl3VsEventROC{n}_cuts'.format(n=roc),
-                           'fidcut_pixelated_roc{n}&&cluster_size_ROC{n}==3&&{mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+                           'fidcut_pixelated_roc{n}&&cluster_size_ROC{n}==3&&{mask}'.format(n=roc, mask=self.Cut.cuts_pixelated_roc[roc].GetTitle()), 'goff')
             self.tree.Draw('charge_all_ROC{n}:event_number >> phClM4VsEventROC{n}_cuts'.format(n=roc),
-                           'fidcut_pixelated_roc{n}&&cluster_size_ROC{n}>=4&&{mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+                           'fidcut_pixelated_roc{n}&&cluster_size_ROC{n}>=4&&{mask}'.format(n=roc, mask=self.Cut.cuts_pixelated_roc[roc].GetTitle()), 'goff')
             self.tree.Draw('charge_all_ROC{n}:event_number >> phAllVsEventROC{n}_cuts'.format(n=roc),
-                           'fidcut_pixelated_roc{n}&&cluster_size_ROC{n}>0&&{mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+                           'fidcut_pixelated_roc{n}&&cluster_size_ROC{n}>0&&{mask}'.format(n=roc, mask=self.Cut.cuts_pixelated_roc[roc].GetTitle()), 'goff')
 
             self.plots.save_individual_plots(self.plots.ph1cl_vs_event_cuts[roc], self.plots.ph1cl_vs_event_cuts[roc].GetName(), self.plots.ph1cl_vs_event_cuts[roc].GetTitle(), None, 'colz', 0, self.save_dir, verbosity)
             self.plots.save_individual_plots(self.plots.ph2cl_vs_event_cuts[roc], self.plots.ph2cl_vs_event_cuts[roc].GetName(), self.plots.ph2cl_vs_event_cuts[roc].GetTitle(), None, 'colz', 0, self.save_dir, verbosity)
@@ -314,12 +323,12 @@ class SignalPixAnalysis(Analysis):
         if roc not in self.roc_tel:
             if type is 'pixelated':
                 self.tree.Draw('charge_all_ROC{n}:cluster_row_ROC{n}:cluster_col_ROC{n} >> avPh_ROC{n}_pixelated_all'.format(n=roc), self.Cut.mask_pixelated_roc[roc], 'prof goff')
-                self.tree.Draw('charge_all_ROC{n}:cluster_row_ROC{n}:cluster_col_ROC{n} >> avPh_ROC{n}_pixelated_all_cuts'.format(n=roc), 'fidcut_pixelated_roc{n}&&{mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'prof goff')
+                self.tree.Draw('charge_all_ROC{n}:cluster_row_ROC{n}:cluster_col_ROC{n} >> avPh_ROC{n}_pixelated_all_cuts'.format(n=roc), 'fidcut_pixelated_roc{n}&&{mask}'.format(n=roc, mask=self.Cut.cuts_pixelated_roc[roc].GetTitle()), 'prof goff')
                 self.plots.save_individual_plots(self.plots.avPhROC_pixelated_all[roc], self.plots.avPhROC_pixelated_all[roc].GetName(), self.plots.avPhROC_pixelated_all[roc].GetTitle(), self.Cut.fid_cut_pixelated_roc[roc], 'colz', 0, self.save_dir, verbosity)
                 self.plots.save_individual_plots(self.plots.avPhROC_pixelated_all_cuts[roc], self.plots.avPhROC_pixelated_all_cuts[roc].GetName(), self.plots.avPhROC_pixelated_all_cuts[roc].GetTitle(), self.Cut.fid_cut_pixelated_roc[roc], 'colz', 0, self.save_dir, verbosity)
             elif type is 'local':
                 self.tree.Draw('charge_all_ROC{n}:cluster_pos_ROC{n}_Local_Y*10:cluster_pos_ROC{n}_Local_X*10 >> avPh_ROC{n}_local_all'.format(n=roc), self.Cut.mask_pixelated_roc[roc], 'prof goff')
-                self.tree.Draw('charge_all_ROC{n}:cluster_pos_ROC{n}_Local_Y*10:cluster_pos_ROC{n}_Local_X*10 >> avPh_ROC{n}_local_all_cuts'.format(n=roc), 'fidcut_pixelated_roc{n}&&{mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'prof goff')
+                self.tree.Draw('charge_all_ROC{n}:cluster_pos_ROC{n}_Local_Y*10:cluster_pos_ROC{n}_Local_X*10 >> avPh_ROC{n}_local_all_cuts'.format(n=roc), 'fidcut_pixelated_roc{n}&&{mask}'.format(n=roc, mask=self.Cut.cuts_pixelated_roc[roc].GetTitle()), 'prof goff')
                 self.plots.save_individual_plots(self.plots.avPhROC_local_all[roc],
                                                  self.plots.avPhROC_local_all[roc].GetName(),
                                                  self.plots.avPhROC_local_all[roc].GetTitle(),
@@ -332,7 +341,7 @@ class SignalPixAnalysis(Analysis):
                                                  verbosity)
             else:
                 self.tree.Draw('charge_all_ROC{n}:cluster_pos_ROC{n}_Telescope_Y*10:cluster_pos_ROC{n}_Telescope_X*10 >> avPh_ROC{n}_telescope_all'.format(n=roc), self.Cut.mask_pixelated_roc[roc], 'prof goff')
-                self.tree.Draw('charge_all_ROC{n}:cluster_pos_ROC{n}_Telescope_Y*10:cluster_pos_ROC{n}_Telescope_X*10 >> avPh_ROC{n}_telescope_all_cuts'.format(n=roc), 'fidcut_pixelated_roc{n}&&{mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'prof goff')
+                self.tree.Draw('charge_all_ROC{n}:cluster_pos_ROC{n}_Telescope_Y*10:cluster_pos_ROC{n}_Telescope_X*10 >> avPh_ROC{n}_telescope_all_cuts'.format(n=roc), 'fidcut_pixelated_roc{n}&&{mask}'.format(n=roc, mask=self.Cut.cuts_pixelated_roc[roc].GetTitle()), 'prof goff')
                 self.plots.save_individual_plots(self.plots.avPhROC_telescope_all[roc],
                                                  self.plots.avPhROC_telescope_all[roc].GetName(),
                                                  self.plots.avPhROC_telescope_all[roc].GetTitle(),
@@ -383,11 +392,11 @@ class SignalPixAnalysis(Analysis):
             self.plots.save_individual_plots(self.plots.meanPhROC_M4cl[roc], self.plots.meanPhROC_M4cl[roc].GetName(), self.plots.meanPhROC_M4cl[roc].GetTitle(), None, '', 1, self.save_dir, verbosity)
             self.plots.save_individual_plots(self.plots.meanPhROC_all[roc], self.plots.meanPhROC_all[roc].GetName(), self.plots.meanPhROC_all[roc].GetTitle(), None, '', 1, self.save_dir, verbosity)
 
-            self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_1cl_cuts'.format(iroc=roc), 'cluster_size_ROC{iroc}==1&&clusters_per_plane[{iroc}]!=0&&fidcut_pixelated_roc{iroc}&&{mask}'.format(iroc=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'prof goff')
-            self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_2cl_cuts'.format(iroc=roc), 'cluster_size_ROC{iroc}==2&&clusters_per_plane[{iroc}]!=0&&fidcut_pixelated_roc{iroc}&&{mask}'.format(iroc=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'prof goff')
-            self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_3cl_cuts'.format(iroc=roc), 'cluster_size_ROC{iroc}==3&&clusters_per_plane[{iroc}]!=0&&fidcut_pixelated_roc{iroc}&&{mask}'.format(iroc=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'prof goff')
-            self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_M4cl_cuts'.format(iroc=roc), 'cluster_size_ROC{iroc}>=4&&clusters_per_plane[{iroc}]!=0&&fidcut_pixelated_roc{iroc}&&{mask}'.format(iroc=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'prof goff')
-            self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_all_cuts'.format(iroc=roc), 'charge_all_ROC{iroc}&&clusters_per_plane[{iroc}]!=0&&fidcut_pixelated_roc{iroc}&&{mask}'.format(iroc=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'prof goff')
+            self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_1cl_cuts'.format(iroc=roc), 'cluster_size_ROC{iroc}==1&&clusters_per_plane[{iroc}]!=0&&fidcut_pixelated_roc{iroc}&&{mask}'.format(iroc=roc, mask=self.Cut.cuts_pixelated_roc[roc].GetTitle()), 'prof goff')
+            self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_2cl_cuts'.format(iroc=roc), 'cluster_size_ROC{iroc}==2&&clusters_per_plane[{iroc}]!=0&&fidcut_pixelated_roc{iroc}&&{mask}'.format(iroc=roc, mask=self.Cut.cuts_pixelated_roc[roc].GetTitle()), 'prof goff')
+            self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_3cl_cuts'.format(iroc=roc), 'cluster_size_ROC{iroc}==3&&clusters_per_plane[{iroc}]!=0&&fidcut_pixelated_roc{iroc}&&{mask}'.format(iroc=roc, mask=self.Cut.cuts_pixelated_roc[roc].GetTitle()), 'prof goff')
+            self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_M4cl_cuts'.format(iroc=roc), 'cluster_size_ROC{iroc}>=4&&clusters_per_plane[{iroc}]!=0&&fidcut_pixelated_roc{iroc}&&{mask}'.format(iroc=roc, mask=self.Cut.cuts_pixelated_roc[roc].GetTitle()), 'prof goff')
+            self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_all_cuts'.format(iroc=roc), 'charge_all_ROC{iroc}&&clusters_per_plane[{iroc}]!=0&&fidcut_pixelated_roc{iroc}&&{mask}'.format(iroc=roc, mask=self.Cut.cuts_pixelated_roc[roc].GetTitle()), 'prof goff')
             
             self.plots.save_individual_plots(self.plots.meanPhROC_1cl_cuts[roc], self.plots.meanPhROC_1cl_cuts[roc].GetName(), self.plots.meanPhROC_1cl_cuts[roc].GetTitle(), None, '', 1, self.save_dir, verbosity)
             self.plots.save_individual_plots(self.plots.meanPhROC_2cl_cuts[roc], self.plots.meanPhROC_2cl_cuts[roc].GetName(), self.plots.meanPhROC_2cl_cuts[roc].GetTitle(), None, '', 1, self.save_dir, verbosity)
@@ -1882,14 +1891,16 @@ if __name__ == "__main__":
     st = time()
     parser = ArgumentParser()
     parser.add_argument('run', nargs='?', default=312, type=int)
+    parser.add_argument('doTelscp', nargs='?', default=False, type=bool)
     parser.add_argument('pbar', nargs='?', default=False, type=bool)
     parser.add_argument('verb', nargs='?', default=False, type=bool)
     parser.add_argument('ch', nargs='?', default=0, type=int)
     args = parser.parse_args()
     test_run = args.run
+    doTelscp = args.doTelscp
     pbar = args.pbar
     verb = args.verb
     print '\nAnalysing run', test_run, '\n'
     z = SignalPixAnalysis(test_run, args.ch)
     z.print_elapsed_time(st, 'Instantiation')
-    z.do_analysis(True, True, pbar, verb)
+    z.do_analysis(True, True, doTelscp, pbar, verb)
