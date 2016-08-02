@@ -161,8 +161,8 @@ class CutPix(Elementary):
         self.cuts_hitmap_roc = {}
         self.cuts_pixelated_roc = {}
         for iROC in xrange(4,7):
-        self.cuts_hitmap_roc[iROC] = self.mask_hitmap_roc[iROC] + self.chi2x_cut + self.chi2y_cut
-        self.cuts_pixelated_roc[iROC] = self.mask_pixelated_roc[iROC] + self.chi2x_cut + self.chi2y_cut
+            self.cuts_hitmap_roc[iROC] = self.mask_hitmap_roc[iROC] + self.chi2x_cut + self.chi2y_cut
+            self.cuts_pixelated_roc[iROC] = self.mask_pixelated_roc[iROC] + self.chi2x_cut + self.chi2y_cut
 
     def generate_chi2_cuts(self):
         self.generate_chi2('x')
