@@ -132,7 +132,7 @@ class CutPix(Elementary):
             has_option('CUT', 'chi2X') else ''
         self.CutConfig['chi2Y'] = self.ana_config_parser.getint('CUT', 'chi2Y') if self.ana_config_parser.\
             has_option('CUT', 'chi2Y') else ''
-        self.CutConfig['track_angle'] = self.ana_config_parser.getint('CUT', 'track_angle') if self.ana_config_parser.\
+        self.CutConfig['track_angle'] = self.ana_config_parser.getfloat('CUT', 'track_angle') if self.ana_config_parser.\
             has_option('CUT', 'track_angle') else ''
         self.CutConfig['MaskRowsDUT1'] = self.ana_config_parser.get('CUT', 'MaskRowsDUT1') if self.ana_config_parser.\
             has_option('CUT', 'MaskRowsDUT1') else ''
@@ -158,8 +158,6 @@ class CutPix(Elementary):
             has_option('CUT', 'FidRegionDUT2') else ''
         self.CutConfig['FidRegionDUT3'] = self.ana_config_parser.get('CUT', 'FidRegionDUT3') if self.ana_config_parser.\
             has_option('CUT', 'FidRegionDUT3') else ''
-        self.CutConfig['track_angle'] = self.ana_config_parser.get('CUT', 'track_angle') if self.ana_config_parser.\
-            has_option('CUT', 'track_angle') else ''
 
     def add_cuts(self):
         self.cuts_hitmap_roc = {}
@@ -367,10 +365,17 @@ class CutPix(Elementary):
             # gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         gROOT.SetBatch(1)
         h = TH1F('h', 'h', 61, -3.05, 3.05)
-        self.analysis.tree.Draw('slope_{x}>>h', '', 'goff'.format(x=mode))
+        self.analysis.tree.Draw('slope_{x}>>h'.format(x=mode), '', 'goff')
         fit_result = h.Fit('gaus', 'qs')
-        x_mean = fit_result.Parameters()[1]
-        slope = [x_mean - angle, x_mean + angle]
+        x_mean = fit_result.Parameter(1)
+        x_sigm = fit_result.Parameter(2)
+        xmin = x_mean - x_sigm
+        xmax = x_mean + x_sigm
+        h1 = TH1F('h1', 'h1', 51, xmin - 2*x_sigm/100, xmax + 2*x_sigm/100)
+        self.analysis.tree.Draw('slope_{x}>>h1'.format(x=mode), '', 'goff')
+        fit_result1 = h1.Fit('gaus', 'qs')
+        x_mean = fit_result1.Parameter(1)
+        slopes = [x_mean - angle, x_mean + angle]
             # c = gROOT.FindObject('c1')
             # c.Close()
         gROOT.SetBatch(0)
@@ -379,8 +384,8 @@ class CutPix(Elementary):
 
         # slope = self.do_pickle(picklepath, func)
         # create the cut string
-        string = 'slope_{x}>{minx}&&slope_{x}<{maxx}'.format(x=mode, minx=slope[0], maxx=slope[1])
-        if angle > 0 :
+        string = 'slope_{x}>={minx}&&slope_{x}<={maxx}'.format(x=mode, minx=slopes[0], maxx=slopes[1])
+        if angle > 0:
             exec('self.angle_{x}_cut = TCut("angle_cut_{x}", "{cut}")'.format(x=mode, cut=string))
         else:
             exec('self.angle_{x}_cut = TCut("angle_cut_{x}", {cut})'.format(x=mode, cut=''))

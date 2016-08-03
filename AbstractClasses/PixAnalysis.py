@@ -439,12 +439,16 @@ class SignalPixAnalysis(Analysis):
             bar = progressbar.ProgressBar(widgets=widgets, max_value=4)
             bar.start()
         self.correlate_planes(planeTel1, DUT1, 'col', verbosity)
+        self.correlate_planes(planeTel1, DUT1, 'x', verbosity)
         if pbar: bar.update(1)
         self.correlate_planes(planeTel1, DUT1, 'row', verbosity)
+        self.correlate_planes(planeTel1, DUT1, 'y', verbosity)
         if pbar: bar.update(2)
         self.correlate_planes(planeTel2, DUT2, 'col', verbosity)
+        self.correlate_planes(planeTel2, DUT2, 'x', verbosity)
         if pbar: bar.update(3)
         self.correlate_planes(planeTel2, DUT2, 'row', verbosity)
+        self.correlate_planes(planeTel2, DUT2, 'y', verbosity)
         if pbar: bar.update(4)
         if pbar: bar.finish()
         self.print_banner('Creating transposed correlations ...')
@@ -456,7 +460,9 @@ class SignalPixAnalysis(Analysis):
     def correlate_planes(self, rocx=1, rocy=4, var='col', verbosity=False):
         if var is 'col' or var is 'row':
             self.tree.Draw('cluster_{v}_ROC{rx}:cluster_{v}_ROC{ry} >> corr_{rx}_{ry}_{v}'.format(v=var, rx=rocx, ry=rocy), self.Cut.cuts_pixelated_roc[rocy], 'goff')
-            self.plots.save_individual_plots(self.plots.correl_col[rocx][rocy], self.plots.correl_col[rocx][rocy].GetName(), self.plots.correl_col[rocx][rocy].GetTitle(), None, 'colz', 0, self.save_dir, verbosity)
+        elif var is 'x' or var is 'y':
+            self.tree.Draw('cluster_pos_ROC{rx}_Telescope_{v}:cluster_pos_ROC{ry}_Telescope_{vv} >> corr_{rx}_{ry}_{v}'.format(v=var, rx=rocx, ry=rocy, vv=var.title()), self.Cut.cuts_pixelated_roc[rocy], 'goff')
+        exec("self.plots.save_individual_plots(self.plots.correl_{v}[rocx][rocy], self.plots.correl_{v}[rocx][rocy].GetName(), self.plots.correl_{v}[rocx][rocy].GetTitle(), None, 'colz', 0, self.save_dir, verbosity)".format(v=var))
 
     def show_current(self, relative_time=True):
         self.Currents.draw_graphs(relative_time=relative_time)
