@@ -46,6 +46,7 @@ class CutPix(Elementary):
             self.generate_masks()
             self.generate_chi2_cuts()
             self.generate_tracks_cut()
+            self.generate_slope_cuts()
             self.add_cuts()
 
             # self.generate_cut_string()  # DA TODO
@@ -157,13 +158,17 @@ class CutPix(Elementary):
             has_option('CUT', 'FidRegionDUT2') else ''
         self.CutConfig['FidRegionDUT3'] = self.ana_config_parser.get('CUT', 'FidRegionDUT3') if self.ana_config_parser.\
             has_option('CUT', 'FidRegionDUT3') else ''
+        self.CutConfig['track_angle'] = self.ana_config_parser.get('CUT', 'track_angle') if self.ana_config_parser.\
+            has_option('CUT', 'track_angle') else ''
 
     def add_cuts(self):
         self.cuts_hitmap_roc = {}
         self.cuts_pixelated_roc = {}
         for iROC in xrange(4, 7):
-            self.cuts_hitmap_roc[iROC] = self.mask_hitmap_roc[iROC] + self.chi2x_cut + self.chi2y_cut + self.cut_tracks
-            self.cuts_pixelated_roc[iROC] = self.mask_pixelated_roc[iROC] + self.chi2x_cut + self.chi2y_cut + self.cut_tracks
+            self.cuts_hitmap_roc[iROC] = self.mask_hitmap_roc[iROC] + self.chi2x_cut + self.chi2y_cut \
+                                         + self.cut_tracks + self.angle_x_cut + self.angle_y_cut
+            self.cuts_pixelated_roc[iROC] = self.mask_pixelated_roc[iROC] + self.chi2x_cut + self.chi2y_cut \
+                                            + self.cut_tracks + self.angle_x_cut + self.angle_y_cut
 
     def generate_tracks_cut(self):
         self.cut_tracks = TCut('cut_tracks', 'n_tracks')
@@ -348,6 +353,38 @@ class CutPix(Elementary):
         self.mask_hitmap_roc[roc] = self.mask_hitmap_roc[roc] + self.pixel_mask_hitmap_roc[roc]
         self.mask_pixelated_roc[roc] = self.mask_pixelated_roc[roc] + self.pixel_mask_pixelated_roc[roc]
 
+    def generate_slope_cuts(self):
+        self.generate_slope('x')
+        self.generate_slope('y')
+
+    def generate_slope(self, mode='x'):
+        # picklepath = 'Configuration/Individual_Configs/Slope/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.lowest_rate_run)
+        angle = self.CutConfig['track_angle']
+
+        # def func():
+        #     print 'generating slope cut for run {run}...'.format(run=self.analysis.run_number)
+            # fit the slope to get the mean
+            # gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+        gROOT.SetBatch(1)
+        h = TH1F('h', 'h', 81, -4.05, 4.05)
+        self.analysis.tree.Draw('slope_{x}>>h', '', 'goff'.format(x=mode))
+        fit_result = h.Fit('gaus', 'qs')
+        x_mean = fit_result.Parameters()[1]
+        slope = [x_mean - angle, x_mean + angle]
+            # c = gROOT.FindObject('c1')
+            # c.Close()
+        gROOT.SetBatch(0)
+            # gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+            # return slopes
+
+        # slope = self.do_pickle(picklepath, func)
+        # create the cut string
+        string = 'slope_{x}>{minx}&&slope_{x}<{maxx}'.format(x=mode, minx=slope[0], maxx=slope[1])
+        if angle > 0 :
+            exec('self.angle_{x}_cut = TCut("angle_cut_{x}", "{cut}")'.format(x=mode, cut=string))
+        else:
+            exec('self.angle_{x}_cut = TCut("angle_cut_{x}", {cut})'.format(x=mode, cut=''))
+
     def load_event_range(self, event_range=None):
         """
         Gets the event range cut. If the arguments are negative, they are interpreted as time in minutes. Therefore, e.g.
@@ -459,36 +496,7 @@ class CutPix(Elementary):
     #     string = 'chi2_{mod}<{val}&&chi2_{mod}>=0'.format(val=chi2[quantile], mod=mode)
     #     return string if quantile > 0 else ''
 
-    def generate_slope(self):
-        picklepath = 'Configuration/Individual_Configs/Slope/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.lowest_rate_run)
-        angle = self.CutConfig['track_angle']
 
-        def func():
-            print 'generating slope cut for run {run}...'.format(run=self.analysis.run_number)
-            # fit the slope to get the mean
-            gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-            gROOT.SetBatch(1)
-            h_x = TH1F('hx', '', 70, -4, 4)
-            h_y = TH1F('hy', '', 70, -4, 4)
-            self.analysis.tree.Draw('slope_x>>hx', '', 'goff')
-            self.analysis.tree.Draw('slope_y>>hy', '', 'goff')
-            fit_result = h_x.Fit('gaus', 'qs')
-            slopes = {'x': [], 'y': []}
-            x_mean = fit_result.Parameters()[1]
-            slopes['x'] = [x_mean - angle, x_mean + angle]
-            fit_result = h_y.Fit('gaus', 'qs')
-            y_mean = fit_result.Parameters()[1]
-            slopes['y'] = [y_mean - angle, y_mean + angle]
-            c = gROOT.FindObject('c1')
-            c.Close()
-            gROOT.SetBatch(0)
-            gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-            return slopes
-
-        slope = self.do_pickle(picklepath, func)
-        # create the cut string
-        string = 'slope_x>{minx}&&slope_x<{maxx}&&slope_y>{miny}&&slope_y<{maxy}'.format(minx=slope['x'][0], maxx=slope['x'][1], miny=slope['y'][0], maxy=slope['y'][1])
-        return string if angle > 0 else ''
     
     def generate_cut_string(self):
         """ Creates the cut string. """
