@@ -38,6 +38,11 @@ class SignalPixAnalysis(Analysis):
         self.roc_diam2 = 5
         self.roc_si = 6
         self.roc_tel = [0, 1, 2, 3]
+        self.plots.roc_tel = self.roc_tel
+        self.plots.roc_d1 = self.roc_diam1
+        self.plots.roc_d2 = self.roc_diam2
+        self.plots.roc_si = self.roc_si
+        self.plots.save_dir = self.save_dir
 
 
         # stuff
@@ -80,10 +85,10 @@ class SignalPixAnalysis(Analysis):
             for obj in lst:
                 self.del_rootobj(obj)
 
-    def do_analysis(self, do_occupancy=True, do_pulse_height=True, do_tlscp=False, show_progressBar=False, verbosity=False):
-        self.print_banner('Creating histograms...')
-        self.plots.create_histograms()
-        self.print_banner('Histograms cration -> Done')
+    def do_analysis(self, do_occupancy=True, do_pulse_height=True, do_correlations=True, do_tlscp=False, show_progressBar=False, verbosity=False):
+        self.print_banner('Creating histograms...', '%')
+        self.plots.create_histograms(do_tlscp)
+        self.print_banner('Histograms cration -> Done', '%')
         self.kmax = int(self.plots.plot_settings['num_diff_cluster_sizes'] + 1)
         self.deltaX = self.plots.plot_settings['deltaX']
         self.deltaY = self.plots.plot_settings['deltaY']
@@ -128,6 +133,7 @@ class SignalPixAnalysis(Analysis):
         #     bar.update(event + 1)
         if do_occupancy: self.fill_occupancy(show_progressBar, do_tlscp, verbosity)
         if do_pulse_height: self.do_pulse_height_analysis(show_progressBar, do_tlscp, verbosity)
+        if do_correlations: self.do_correlations(self.roc_tel[1], self.roc_tel[2], self.roc_diam1, self.roc_si, show_progressBar, verbosity)
         # self.print_banner('Looping over Tree -> Done', '%')
 
 
@@ -145,9 +151,10 @@ class SignalPixAnalysis(Analysis):
                 # ' ', progressbar.AdaptiveETA(),
                 # ' ', progressbar.AdaptiveTransferSpeed(),
                 ]
-            bar = progressbar.ProgressBar(widgets=widgets, max_value=self.num_devices)
+            bar = progressbar.ProgressBar(widgets=widgets, max_value=self.num_devices) if do_tlscp else progressbar.ProgressBar(widgets=widgets, max_value=self.num_devices-len(self.roc_tel))
             bar.start()
-        for iROC in xrange(self.num_devices):
+        devini = 0 if do_tlscp else self.num_devices - len(self.roc_tel) + 1
+        for iROC in xrange(devini, self.num_devices):
             if iROC not in self.roc_tel:
                 if verbosity: self.print_banner('Analysing ROC {r}...'.format(r=iROC))
                 self.tree.Draw('row:col >> hitMapROC{n}'.format(n=iROC), 'plane == {n} && {mask}'.format(n=iROC, mask=self.Cut.mask_hitmap_roc[iROC].GetTitle()), 'goff')
@@ -157,7 +164,7 @@ class SignalPixAnalysis(Analysis):
             elif do_tlscp:
                 self.tree.Draw('row:col >> hitMapROC{n}'.format(n=iROC), 'plane == {n}'.format(n=iROC), 'goff')
                 # self.tree.Draw('row:col >> hitMapROC{n}_cuts'.format(n=iROC), 'plane == {n}'.format(n=iROC), 'goff')
-            if show_progressBar: bar.update(iROC + 1)
+            if show_progressBar: bar.update(iROC + 1 - devini)
             if verbosity: self.print_banner('ROC {r} analysis -> Done'.format(r=iROC))
         if show_progressBar: bar.finish()
         self.print_banner('Occupancy Analysis -> Done', '%')
@@ -190,9 +197,10 @@ class SignalPixAnalysis(Analysis):
                 # ' ', progressbar.AdaptiveETA(),
                 # ' ', progressbar.AdaptiveTransferSpeed(),
                 ]
-            bar = progressbar.ProgressBar(widgets=widgets, max_value=self.num_devices)
+            bar = progressbar.ProgressBar(widgets=widgets, max_value=self.num_devices) if do_tlscp else progressbar.ProgressBar(widgets=widgets, max_value=self.num_devices-len(self.roc_tel))
             bar.start()
-        for iROC in xrange(self.num_devices):
+        devini = 0 if do_tlscp else self.num_devices - len(self.roc_tel) + 1
+        for iROC in xrange(devini, self.num_devices):
             if iROC not in self.roc_tel:
                 if verbosity: self.print_banner('Analysing ROC {r}...'.format(r=iROC))
                 self.Ph2DHistogramExtraction(iROC, 'pixelated', verbosity)
@@ -209,7 +217,7 @@ class SignalPixAnalysis(Analysis):
                 self.DoAveragePulseHeight(iROC, verbosity)
                 self.PhVsEventExtraction(iROC, verbosity)
                 if verbosity: self.print_banner('ROC {r} analysis -> Done'.format(r=iROC))
-            if show_progressBar: bar.update(iROC + 1)
+            if show_progressBar: bar.update(iROC + 1 - devini)
         if show_progressBar: bar.finish()
         self.print_banner('Pulse Height Analysis -> Done', '%')
 
@@ -397,7 +405,7 @@ class SignalPixAnalysis(Analysis):
             self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_3cl_cuts'.format(iroc=roc), 'cluster_size_ROC{iroc}==3&&clusters_per_plane[{iroc}]!=0&&fidcut_pixelated_roc{iroc}&&{mask}'.format(iroc=roc, mask=self.Cut.cuts_pixelated_roc[roc].GetTitle()), 'prof goff')
             self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_M4cl_cuts'.format(iroc=roc), 'cluster_size_ROC{iroc}>=4&&clusters_per_plane[{iroc}]!=0&&fidcut_pixelated_roc{iroc}&&{mask}'.format(iroc=roc, mask=self.Cut.cuts_pixelated_roc[roc].GetTitle()), 'prof goff')
             self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_all_cuts'.format(iroc=roc), 'charge_all_ROC{iroc}&&clusters_per_plane[{iroc}]!=0&&fidcut_pixelated_roc{iroc}&&{mask}'.format(iroc=roc, mask=self.Cut.cuts_pixelated_roc[roc].GetTitle()), 'prof goff')
-            
+
             self.plots.save_individual_plots(self.plots.meanPhROC_1cl_cuts[roc], self.plots.meanPhROC_1cl_cuts[roc].GetName(), self.plots.meanPhROC_1cl_cuts[roc].GetTitle(), None, '', 1, self.save_dir, verbosity)
             self.plots.save_individual_plots(self.plots.meanPhROC_2cl_cuts[roc], self.plots.meanPhROC_2cl_cuts[roc].GetName(), self.plots.meanPhROC_2cl_cuts[roc].GetTitle(), None, '', 1, self.save_dir, verbosity)
             self.plots.save_individual_plots(self.plots.meanPhROC_3cl_cuts[roc], self.plots.meanPhROC_3cl_cuts[roc].GetName(), self.plots.meanPhROC_3cl_cuts[roc].GetTitle(), None, '', 1, self.save_dir, verbosity)
@@ -416,6 +424,39 @@ class SignalPixAnalysis(Analysis):
             # self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_3cl_cuts'.format(iroc=roc), 'cluster_size_ROC{iroc}==3&&clusters_per_plane[{iroc}]!=0'.format(iroc=roc), 'prof goff')
             # self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_M4cl_cuts'.format(iroc=roc), 'cluster_size_ROC{iroc}>=4&&clusters_per_plane[{iroc}]!=0'.format(iroc=roc), 'prof goff')
             # self.tree.Draw('charge_all_ROC{iroc}:event_number >> meanPHROC{iroc}_all_cuts'.format(iroc=roc), 'charge_all_ROC{iroc}&&clusters_per_plane[{iroc}]!=0'.format(iroc=roc), 'prof goff')
+
+    def do_correlations(self, planeTel1=1, planeTel2=2, DUT1=4, DUT2=6, pbar=False, verbosity=False):
+        self.print_banner('Creating main correlations ...', '%')
+        if pbar:
+            widgets = [
+                progressbar.Percentage(),
+                ' ', progressbar.Bar(marker='>'),
+                ' ', progressbar.Timer(),
+                ' ', progressbar.ETA()  #, DA: this two work great!
+                # ' ', progressbar.AdaptiveETA(),
+                # ' ', progressbar.AdaptiveTransferSpeed(),
+                ]
+            bar = progressbar.ProgressBar(widgets=widgets, max_value=4)
+            bar.start()
+        self.correlate_planes(planeTel1, DUT1, 'col', verbosity)
+        if pbar: bar.update(1)
+        self.correlate_planes(planeTel1, DUT1, 'row', verbosity)
+        if pbar: bar.update(2)
+        self.correlate_planes(planeTel2, DUT2, 'col', verbosity)
+        if pbar: bar.update(3)
+        self.correlate_planes(planeTel2, DUT2, 'row', verbosity)
+        if pbar: bar.update(4)
+        if pbar: bar.finish()
+        self.print_banner('Creating transposed correlations ...')
+        self.plots.clone_correlation_histograms(planeTel1, DUT1, verbosity)
+        self.plots.clone_correlation_histograms(planeTel2, DUT2, verbosity)
+        self.print_banner('Transposed correlation creation -> Done')
+        self.print_banner('Main correlations creation -> Done', '%')
+
+    def correlate_planes(self, rocx=self.roc_tel[1], rocy=self.roc_diam1, var='col', verbosity=False):
+        if var is 'col' or var is 'row':
+            self.tree.Draw('cluster_{v}_ROC{rx}:cluster_{v}_ROC{ry} >> corr_{rx}_{ry}_{v}'.format(v=var, rx=rocx, ry=rocy), 'fidcut_pixelated_roc{n}&&{mask}'.format(n=rocy, mask=self.Cut.cuts_pixelated_roc[rocy].GetTitle()), 'goff')
+            self.plots.save_individual_plots(self.plots.correl_col[rocx][rocy], self.plots.correl_col[rocx][rocy].GetName(), self.plots.correl_col[rocx][rocy].GetTitle(), None, 'colz', 0, self.save_dir, verbosity)
 
     def show_current(self, relative_time=True):
         self.Currents.draw_graphs(relative_time=relative_time)
@@ -1891,16 +1932,16 @@ if __name__ == "__main__":
     st = time()
     parser = ArgumentParser()
     parser.add_argument('run', nargs='?', default=312, type=int)
-    parser.add_argument('doTelscp', nargs='?', default=False, type=bool)
-    parser.add_argument('pbar', nargs='?', default=False, type=bool)
-    parser.add_argument('verb', nargs='?', default=False, type=bool)
+    parser.add_argument('doTelscp', nargs='?', default=0, type=int)
+    parser.add_argument('pbar', nargs='?', default=0, type=int)
+    parser.add_argument('verb', nargs='?', default=0, type=int)
     parser.add_argument('ch', nargs='?', default=0, type=int)
     args = parser.parse_args()
-    test_run = args.run
-    doTelscp = args.doTelscp
-    pbar = args.pbar
-    verb = args.verb
+    test_run = int(args.run)
+    doTelscp = int(args.doTelscp)
+    pbar = int(args.pbar)
+    verb = int(args.verb)
     print '\nAnalysing run', test_run, '\n'
     z = SignalPixAnalysis(test_run, args.ch)
     z.print_elapsed_time(st, 'Instantiation')
-    z.do_analysis(True, True, doTelscp, pbar, verb)
+    z.do_analysis(True, True, True, doTelscp, pbar, verb)

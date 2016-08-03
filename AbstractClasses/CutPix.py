@@ -45,6 +45,7 @@ class CutPix(Elementary):
             self.generate_fid_cuts()
             self.generate_masks()
             self.generate_chi2_cuts()
+            self.generate_tracks_cut()
             self.add_cuts()
 
             # self.generate_cut_string()  # DA TODO
@@ -160,9 +161,12 @@ class CutPix(Elementary):
     def add_cuts(self):
         self.cuts_hitmap_roc = {}
         self.cuts_pixelated_roc = {}
-        for iROC in xrange(4,7):
-            self.cuts_hitmap_roc[iROC] = self.mask_hitmap_roc[iROC] + self.chi2x_cut + self.chi2y_cut
-            self.cuts_pixelated_roc[iROC] = self.mask_pixelated_roc[iROC] + self.chi2x_cut + self.chi2y_cut
+        for iROC in xrange(4, 7):
+            self.cuts_hitmap_roc[iROC] = self.mask_hitmap_roc[iROC] + self.chi2x_cut + self.chi2y_cut + self.cut_tracks
+            self.cuts_pixelated_roc[iROC] = self.mask_pixelated_roc[iROC] + self.chi2x_cut + self.chi2y_cut + self.cut_tracks
+
+    def generate_tracks_cut(self):
+        self.cut_tracks = TCut('cut_tracks', 'n_tracks')
 
     def generate_chi2_cuts(self):
         self.generate_chi2('x')
@@ -180,7 +184,6 @@ class CutPix(Elementary):
         quantile = self.CutConfig['chi2{mod}'.format(mod=mode.title())]
         assert type(quantile) is int and 0 < quantile <= 100, 'chi2 quantile has to be an integer between (0, 100]'
         string = 'chi2_{mod}<{val}&&chi2_{mod}>=0'.format(val=chi2s[quantile], mod=mode)
-        print string
         if quantile > 0:
             exec('self.chi2{mode}_cut = TCut("chi2_cut_{mode}", "{cut}")'.format(mode=mode, cut=string))
         else:
