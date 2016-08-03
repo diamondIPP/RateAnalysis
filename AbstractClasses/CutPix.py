@@ -366,7 +366,7 @@ class CutPix(Elementary):
             # fit the slope to get the mean
             # gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         gROOT.SetBatch(1)
-        h = TH1F('h', 'h', 81, -4.05, 4.05)
+        h = TH1F('h', 'h', 61, -3.05, 3.05)
         self.analysis.tree.Draw('slope_{x}>>h', '', 'goff'.format(x=mode))
         fit_result = h.Fit('gaus', 'qs')
         x_mean = fit_result.Parameters()[1]
