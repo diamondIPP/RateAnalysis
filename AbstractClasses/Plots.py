@@ -126,19 +126,19 @@ class Plots(Elementary):
             ymin = self.plot_settings['minRow']
             ymax = self.plot_settings['maxRow']
         elif type is 'correlpixcol':
-            xbins = self.plot_settings['nBinsX']
-            xmin = self.plot_settings['xmin']
-            xmax = self.plot_settings['xmax']
-            ybins = self.plot_settings['nBinsX']
-            ymin = self.plot_settings['xmin']
-            ymax = self.plot_settings['xmax']
+            xbins = self.plot_settings['nBinCol']
+            xmin = self.plot_settings['minCol']
+            xmax = self.plot_settings['maxCol']
+            ybins = self.plot_settings['nBinCol']
+            ymin = self.plot_settings['minCol']
+            ymax = self.plot_settings['maxCol']
         elif type is 'correlpixrow':
-            xbins = self.plot_settings['nBinsY']
-            xmin = self.plot_settings['ymin']
-            xmax = self.plot_settings['ymax']
-            ybins = self.plot_settings['nBinsy']
-            ymin = self.plot_settings['ymin']
-            ymax = self.plot_settings['ymax']
+            xbins = self.plot_settings['nBinRow']
+            xmin = self.plot_settings['minRow']
+            xmax = self.plot_settings['maxRow']
+            ybins = self.plot_settings['nBinRow']
+            ymin = self.plot_settings['minRow']
+            ymax = self.plot_settings['maxRow']
         else:
             xbins = self.plot_settings['event_bins']
             xmin = self.plot_settings['event_min']
@@ -236,10 +236,10 @@ class Plots(Elementary):
         self.correl_col, self.correl_row = {}, {}
         self.correl_col[self.roc_tel[1]], self.correl_col[self.roc_d1], self.correl_col[self.roc_si], self.correl_col[self.roc_tel[2]] = {}, {}, {}, {}
         self.correl_row[self.roc_tel[1]], self.correl_row[self.roc_d1], self.correl_row[self.roc_si], self.correl_row[self.roc_tel[2]] = {}, {}, {}, {}
-        self.correl_col[self.roc_tel[1]][self.roc_d1] = self.create_2D_histogram('correlpixcol', 'corr_{rx}_{ry}_col'.format(rx=self.roc_tel[1], ry=self.roc_d1), 'Col correlation between ROCs {rx} and {ry}'.format(rx=self.roc_tel[1], ry=self.roc_d1), 'col ROC {rx}', 'col ROC {ry}'.format(rx=self.roc_tel[1], ry=self.roc_d1), 'Entries', 0, -1)
-        self.correl_col[self.roc_tel[2]][self.roc_si] = self.create_2D_histogram('correlpixcol', 'corr_{rx}_{ry}_col'.format(rx=self.roc_tel[2], ry=self.roc_si), 'Col correlation between ROCs {rx} and {ry}'.format(rx=self.roc_tel[2], ry=self.roc_si), 'col ROC {rx}', 'col ROC {ry}'.format(rx=self.roc_tel[2], ry=self.roc_si), 'Entries', 0, -1)
-        self.correl_row[self.roc_tel[1]][self.roc_d1] = self.create_2D_histogram('correlpixrow', 'corr_{rx}_{ry}_row'.format(rx=self.roc_tel[1], ry=self.roc_d1), 'Row correlation between ROCs {rx} and {ry}'.format(rx=self.roc_tel[1], ry=self.roc_d1), 'row ROC {rx}', 'row ROC {ry}'.format(rx=self.roc_tel[1], ry=self.roc_d1), 'Entries', 0, -1)
-        self.correl_row[self.roc_tel[2]][self.roc_si] = self.create_2D_histogram('correlpixrow', 'corr_{rx}_{ry}_row'.format(rx=self.roc_tel[2], ry=self.roc_si), 'Row correlation between ROCs {rx} and {ry}'.format(rx=self.roc_tel[2], ry=self.roc_si), 'row ROC {rx}', 'row ROC {ry}'.format(rx=self.roc_tel[2], ry=self.roc_si), 'Entries', 0, -1)
+        self.correl_col[self.roc_tel[1]][self.roc_d1] = self.create_2D_histogram('correlpixcol', 'corr_{rx}_{ry}_col'.format(rx=self.roc_tel[1], ry=self.roc_d1), 'Col correlation between ROCs {rx} and {ry}'.format(rx=self.roc_tel[1], ry=self.roc_d1), 'col ROC {rx}'.format(rx=self.roc_tel[1]), 'col ROC {ry}'.format(ry=self.roc_d1), 'Entries', 0, -1)
+        self.correl_col[self.roc_tel[2]][self.roc_si] = self.create_2D_histogram('correlpixcol', 'corr_{rx}_{ry}_col'.format(rx=self.roc_tel[2], ry=self.roc_si), 'Col correlation between ROCs {rx} and {ry}'.format(rx=self.roc_tel[2], ry=self.roc_si), 'col ROC {rx}'.format(rx=self.roc_tel[2]), 'col ROC {ry}'.format(ry=self.roc_si), 'Entries', 0, -1)
+        self.correl_row[self.roc_tel[1]][self.roc_d1] = self.create_2D_histogram('correlpixrow', 'corr_{rx}_{ry}_row'.format(rx=self.roc_tel[1], ry=self.roc_d1), 'Row correlation between ROCs {rx} and {ry}'.format(rx=self.roc_tel[1], ry=self.roc_d1), 'row ROC {rx}'.format(rx=self.roc_tel[1]), 'row ROC {ry}'.format(ry=self.roc_d1), 'Entries', 0, -1)
+        self.correl_row[self.roc_tel[2]][self.roc_si] = self.create_2D_histogram('correlpixrow', 'corr_{rx}_{ry}_row'.format(rx=self.roc_tel[2], ry=self.roc_si), 'Row correlation between ROCs {rx} and {ry}'.format(rx=self.roc_tel[2], ry=self.roc_si), 'row ROC {rx}'.format(rx=self.roc_tel[2]), 'row ROC {ry}'.format(ry=self.roc_si), 'Entries', 0, -1)
 
         self.print_banner('2D histograms creation -> Done')
         # alternative 2D
@@ -298,7 +298,7 @@ class Plots(Elementary):
                                                               'Charge(e)', kMagenta, 0) for i in xrange(devini, self.num_devices)}
         self.print_banner('1D profiles creation -> Done')
 
-    def save_individual_plots(self, histo, name, title, tcutg=None, draw_opt='', opt_stats=0, path=self.save_dir, verbosity=False):
+    def save_individual_plots(self, histo, name, title, tcutg=None, draw_opt='', opt_stats=0, path='./', verbosity=False):
         if verbosity: self.print_banner('Saving {n}...'.format(n=name))
         gROOT.SetBatch(True)
         c0 = TCanvas('c_{n}'.format(n=name), title, 2100, 1500)

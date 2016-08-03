@@ -453,9 +453,9 @@ class SignalPixAnalysis(Analysis):
         self.print_banner('Transposed correlation creation -> Done')
         self.print_banner('Main correlations creation -> Done', '%')
 
-    def correlate_planes(self, rocx=self.roc_tel[1], rocy=self.roc_diam1, var='col', verbosity=False):
+    def correlate_planes(self, rocx=1, rocy=4, var='col', verbosity=False):
         if var is 'col' or var is 'row':
-            self.tree.Draw('cluster_{v}_ROC{rx}:cluster_{v}_ROC{ry} >> corr_{rx}_{ry}_{v}'.format(v=var, rx=rocx, ry=rocy), 'fidcut_pixelated_roc{n}&&{mask}'.format(n=rocy, mask=self.Cut.cuts_pixelated_roc[rocy].GetTitle()), 'goff')
+            self.tree.Draw('cluster_{v}_ROC{rx}:cluster_{v}_ROC{ry} >> corr_{rx}_{ry}_{v}'.format(v=var, rx=rocx, ry=rocy), self.Cut.cuts_pixelated_roc[rocy], 'goff')
             self.plots.save_individual_plots(self.plots.correl_col[rocx][rocy], self.plots.correl_col[rocx][rocy].GetName(), self.plots.correl_col[rocx][rocy].GetTitle(), None, 'colz', 0, self.save_dir, verbosity)
 
     def show_current(self, relative_time=True):
