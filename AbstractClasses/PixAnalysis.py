@@ -461,7 +461,7 @@ class SignalPixAnalysis(Analysis):
         if var is 'col' or var is 'row':
             self.tree.Draw('cluster_{v}_ROC{rx}:cluster_{v}_ROC{ry} >> corr_{rx}_{ry}_{v}'.format(v=var, rx=rocx, ry=rocy), self.Cut.cuts_pixelated_roc[rocy], 'goff')
         elif var is 'x' or var is 'y':
-            self.tree.Draw('cluster_pos_ROC{rx}_Telescope_{v}:cluster_pos_ROC{ry}_Telescope_{vv} >> corr_{rx}_{ry}_{v}'.format(v=var, rx=rocx, ry=rocy, vv=var.title()), self.Cut.cuts_pixelated_roc[rocy], 'goff')
+            self.tree.Draw('cluster_pos_ROC{rx}_Telescope_{vv}*10:cluster_pos_ROC{ry}_Telescope_{vv}*10 >> corr_{rx}_{ry}_{v}'.format(v=var, rx=rocx, ry=rocy, vv=var.title()), self.Cut.cuts_pixelated_roc[rocy], 'goff')
         exec("self.plots.save_individual_plots(self.plots.correl_{v}[rocx][rocy], self.plots.correl_{v}[rocx][rocy].GetName(), self.plots.correl_{v}[rocx][rocy].GetTitle(), None, 'colz', 0, self.save_dir, verbosity)".format(v=var))
 
     def show_current(self, relative_time=True):
@@ -1950,4 +1950,4 @@ if __name__ == "__main__":
     print '\nAnalysing run', test_run, '\n'
     z = SignalPixAnalysis(test_run, args.ch)
     z.print_elapsed_time(st, 'Instantiation')
-    z.do_analysis(True, True, True, doTelscp, pbar, verb)
+    z.do_analysis(False, False, True, doTelscp, pbar, verb)

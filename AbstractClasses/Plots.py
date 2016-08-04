@@ -135,9 +135,9 @@ class Plots(Elementary):
         elif type is 'correlpixx':
             xbins = self.plot_settings['nBinsX']
             xmin = self.plot_settings['xmin']
-            xmax = self.plot_settings['xmin']
+            xmax = self.plot_settings['xmax']
             ybins = self.plot_settings['nBinsX']
-            ymin = self.plot_settings['xmax']
+            ymin = self.plot_settings['xmin']
             ymax = self.plot_settings['xmax']
         elif type is 'correlpixrow':
             xbins = self.plot_settings['nBinRow']
