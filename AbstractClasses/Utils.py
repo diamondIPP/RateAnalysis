@@ -242,6 +242,11 @@ def calc_flux(info, tc):
     return mean(flux)
 
 
+def make_dia_str(dia):
+    dia = dia.replace('-', '')
+    return '{0}{1}'.format(dia[0].title(), dia[1:])
+
+
 def file_exists(path):
     return os.path.isfile(path)
 
