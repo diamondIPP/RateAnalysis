@@ -194,6 +194,7 @@ class CutPix(Elementary):
         bins = int((last_t-first_t)/float(5000))
         gROOT.SetBatch(True)
         h = TH1F('h', 'h', bins+1, first_t-(last_t-first_t)/float(2*bins), last_t+(last_t-first_t)/float(2*bins))
+        self.analysis.tree.Draw('time>>h','','goff')
         mean = h.Integral()/float(h.GetNbinsX())
         self.beam_interr_cut = TCut('beam_interruptions_cut', '')
         for t in xrange(1, h.GetNbinsX()+1):
