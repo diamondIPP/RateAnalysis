@@ -35,7 +35,6 @@ def draw_hitmap(show=True, cut=None, plane=None):
         cut_string = cut + TCut('plane == {0}'.format(plane))
         t.Draw('row:col>>h_hm{0}'.format(plane), cut_string, 'goff')
         el.format_histo(histos[plane], x_tit='col', y_tit='row')
-        # el.draw_histo(histos[plane], 'HitMap{0}'.format(plane),, draw_opt='colz'))
     el.set_root_output(show)
     c = TCanvas('c_hm', 'Hitmaps', 2000, 2000)
     c.Divide(2, 2)
