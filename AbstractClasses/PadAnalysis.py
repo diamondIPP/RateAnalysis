@@ -1000,8 +1000,7 @@ class PadAnalysis(Analysis):
         picklepath = 'Configuration/Individual_Configs/Pedestal/{tc}_{run}_{ch}_{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel, suf=suffix)
 
         def func(x=x_range):
-            if not show:
-                gROOT.SetBatch(1)
+            self.set_root_output(show)
             self.log_info('Making pedestal histo for region {reg}{int}...'.format(reg=region, int=peak_int))
             if x[0] >= x[1]:
                 x = sorted(x)
@@ -1011,6 +1010,11 @@ class PadAnalysis(Analysis):
             self.tree.Draw('{name}>>ped1'.format(name=name), cut, 'goff')
             self.format_histo(h, name='Fit Result', x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.8)
             self.draw_histo(h, '', show)
+            # generate large sigma if histogram is empty
+            if not h.GetEffectiveEntries():
+                for val in [-10, 0, 0, 10]:
+                    h.Fill(val)
+                return h.Fit('gaus', 'qs')
             fit_pars = self.fit_fwhm(h, do_fwhm=fwhm, draw=fit)
             if fit:
                 f = deepcopy(h.GetFunction('gaus'))
