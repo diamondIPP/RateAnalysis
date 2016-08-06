@@ -1263,7 +1263,7 @@ class PadAnalysis(Analysis):
         bad_bucket = self.draw_waveforms(1, cut_string=cut, show=False, t_corr=t_corr, start_event=None, save=False)[0]
         self.reset_colors()
         mg = TMultiGraph('mg_bw', 'Bucket Waveforms')
-        l = self.make_legend(.85, .4, nentries=3, w=.1)
+        l = self.make_legend(.85, .4, nentries=3)
         names = ['good wf', 'bucket wf', 'both wf']
         for i, gr in enumerate([good, bucket, bad_bucket]):
             self.format_histo(gr, color=self.get_color(), markersize=.5)
@@ -1411,13 +1411,18 @@ class PadAnalysis(Analysis):
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
 
-    def compare_consecutive_cuts(self, scale=False, show=True, save_single=True):
+    def compare_consecutive_cuts(self, scale=False, show=True, save_single=True, short=False):
         self.reset_colors()
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        legend = self.make_legend(.73, .95, nentries=len(self.Cut.ConsecutiveCuts) + 3, w=.23)
+        legend = self.make_legend(.75 if short else .71, .88, nentries=len(self.Cut.ConsecutiveCuts) + 2 if not short else 5)
         cut = TCut('consecutive', '')
         stack = THStack('scc', 'Signal Distribution with Consecutive Cuts')
-        for i, (key, value) in enumerate(self.Cut.ConsecutiveCuts.iteritems()):
+        i = 0
+        for key, value in self.Cut.ConsecutiveCuts.iteritems():
+            if short:
+                self.log_info('adding cut {0}'.format(key))
+                if key not in ['raw', 'saturated', 'timing', 'pulser', 'bucket']:
+                    continue
             key = 'beam_stops' if key.startswith('beam') else key
             cut += value
             save_name = 'signal_distribution_{n}cuts'.format(n=i)
@@ -1425,8 +1430,7 @@ class PadAnalysis(Analysis):
             self.tree.Draw('{name}>>h_{i}'.format(name=self.SignalName, i=i), cut, 'goff')
             if scale:
                 self.scale_histo(h)
-            if save_single:
-                self.save_histo(h, save_name, False, self.save_dir)
+            self.save_histo(h, save_name, show=False, save=save_single)
             color = self.get_color()
             self.format_histo(h, color=color, stats=0)
             if not scale:
@@ -1435,11 +1439,13 @@ class PadAnalysis(Analysis):
             leg_entry = '+ {0}'.format(key) if i else key
             leg_style = 'l' if scale else 'f'
             legend.AddEntry(h, leg_entry, leg_style)
+            i += 1
         self.format_histo(stack, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.9, draw_first=True)
-        self.RootObjects.append(self.save_histo(stack, 'Consecutive{0}'.format('Scaled' if scale else ''), show, self.save_dir, l=legend, draw_opt='nostack', lm=0.14))
+        save_name = 'Consecutive{1}{0}'.format('Scaled' if scale else '', 'Short' if short else '')
+        self.RootObjects.append(self.save_histo(stack, save_name, show, self.save_dir, l=legend, draw_opt='nostack', lm=0.14))
         stack.SetName(stack.GetName() + 'logy')
         # stack.SetMaximum(stack.GetMaximum() * 1.2)
-        self.RootObjects.append(self.save_histo(stack, 'Consecutive{0}Logy'.format('Scaled' if scale else '', ), show, self.save_dir, logy=True, draw_opt='nostack', lm=0.14))
+        self.RootObjects.append(self.save_histo(stack, '{name}LogY'.format(name=save_name), show, self.save_dir, logy=True, draw_opt='nostack', lm=0.14))
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
 
     def draw_cut_means(self, show=True):
