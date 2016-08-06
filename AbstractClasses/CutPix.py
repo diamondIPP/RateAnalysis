@@ -47,6 +47,8 @@ class CutPix(Elementary):
             self.generate_chi2_cuts()
             self.generate_tracks_cut()
             self.generate_slope_cuts()
+            self.generate_ini_fin_cuts()
+            self.generate_beam_interruption_cut()
             self.add_cuts()
 
             # self.generate_cut_string()  # DA TODO
@@ -126,7 +128,12 @@ class CutPix(Elementary):
 
     def load_config(self):
         # self.CutConfig['IndividualChCut'] = ''
-        # self.CutConfig['ExcludeFirst'] = self.load_exclude_first(self.ana_config_parser.getint('CUT', 'excludefirst'))
+        self.CutConfig['ExcludeFirst'] = self.ana_config_parser.getint('CUT', 'excludefirst') if self.ana_config_parser.\
+            has_option('CUT', 'excludefirst') else 0
+        self.CutConfig['ExcludeBeforeJump'] = self.ana_config_parser.getint('CUT', 'excludeBeforeJump') if self.ana_config_parser.\
+            has_option('CUT', 'excludeBeforeJump') else 0
+        self.CutConfig['ExcludeAfterJump'] = self.ana_config_parser.getint('CUT', 'excludeAfterJump') if self.ana_config_parser.\
+            has_option('CUT', 'excludeAfterJump') else 0
         # self.CutConfig['EventRange'] = self.load_event_range(json.loads(self.ana_config_parser.get('CUT', 'EventRange')))
         self.CutConfig['chi2X'] = self.ana_config_parser.getint('CUT', 'chi2X') if self.ana_config_parser.\
             has_option('CUT', 'chi2X') else ''
@@ -164,9 +171,35 @@ class CutPix(Elementary):
         self.cuts_pixelated_roc = {}
         for iROC in xrange(4, 7):
             self.cuts_hitmap_roc[iROC] = self.mask_hitmap_roc[iROC] + self.chi2x_cut + self.chi2y_cut \
-                                         + self.cut_tracks + self.angle_x_cut + self.angle_y_cut
+                                         + self.cut_tracks + self.angle_x_cut + self.angle_y_cut + self.ini_fin_cut \
+                                         + self.beam_interr_cut
             self.cuts_pixelated_roc[iROC] = self.mask_pixelated_roc[iROC] + self.chi2x_cut + self.chi2y_cut \
-                                            + self.cut_tracks + self.angle_x_cut + self.angle_y_cut
+                                            + self.cut_tracks + self.angle_x_cut + self.angle_y_cut + self.ini_fin_cut \
+                                            + self.beam_interr_cut
+
+    def generate_ini_fin_cuts(self):
+        nentries = self.analysis.tree.GetEntries()
+        self.analysis.tree.GetEntry(0)
+        first_t = self.analysis.tree.time
+        self.analysis.tree.GetEntry(nentries-1)
+        last_t = self.analysis.tree.time
+        self.ini_fin_cut = TCut('initial_final_cuts', 'time>{ini}&&time<{fin}'.format(ini=first_t + abs(self.CutConfig['ExcludeFirst'])*1000, fin=last_t - abs(self.CutConfig['ExcludeFirst'])*1000))
+
+    def generate_beam_interruption_cut(self):
+        nentries = self.analysis.tree.GetEntries()
+        self.analysis.tree.GetEntry(0)
+        first_t = self.analysis.tree.time
+        self.analysis.tree.GetEntry(nentries-1)
+        last_t = self.analysis.tree.time
+        bins = int((last_t-first_t)/float(5000))
+        gROOT.SetBatch(True)
+        h = TH1F('h', 'h', bins+1, first_t-(last_t-first_t)/float(2*bins), last_t+(last_t-first_t)/float(2*bins))
+        mean = h.Integral()/float(h.GetNbinsX())
+        self.beam_interr_cut = TCut('beam_interruptions_cut', '')
+        for t in xrange(1, h.GetNbinsX()+1):
+            if h.GetBinContent(t) < mean*0.9:
+                self.beam_interr_cut=self.beam_interr_cut+TCut('bi{i}'.format(i=t), 'time<{low}&&time>{high}'.format(low=h.GetBinLowEdge(t)-abs(self.CutConfig['ExcludeBeforeJump'])*1000, high=h.GetBinLowEdge(t)+h.GetBinWidth(t)+abs(self.CutConfig['ExcludeAfterJump'])*1000))
+        gROOT.SetBatch(False)
 
     def generate_tracks_cut(self):
         self.cut_tracks = TCut('cut_tracks', 'n_tracks')

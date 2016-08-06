@@ -452,8 +452,8 @@ class SignalPixAnalysis(Analysis):
         if pbar: bar.update(4)
         if pbar: bar.finish()
         self.print_banner('Creating transposed correlations ...')
-        self.plots.clone_correlation_histograms(planeTel1, DUT1, verbosity)
-        self.plots.clone_correlation_histograms(planeTel2, DUT2, verbosity)
+        exec("self.plots.clone_correlation_histograms(planeTel1, DUT1, verbosity, 1001, self.corrf_col_rocs_{rx}_{ry}, self.corrf_row_rocs_{rx}_{ry}, self.corrf_x_rocs_{rx}_{ry}, self.corrf_y_rocs_{rx}_{ry})".format(rx=planeTel1, ry=DUT1))
+        exec("self.plots.clone_correlation_histograms(planeTel2, DUT2, verbosity, 1001, self.corrf_col_rocs_{rx}_{ry}, self.corrf_row_rocs_{rx}_{ry}, self.corrf_x_rocs_{rx}_{ry}, self.corrf_y_rocs_{rx}_{ry})".format(rx=planeTel2, ry=DUT2))
         self.print_banner('Transposed correlation creation -> Done')
         self.print_banner('Main correlations creation -> Done', '%')
 
@@ -462,7 +462,12 @@ class SignalPixAnalysis(Analysis):
             self.tree.Draw('cluster_{v}_ROC{rx}:cluster_{v}_ROC{ry} >> corr_{rx}_{ry}_{v}'.format(v=var, rx=rocx, ry=rocy), self.Cut.cuts_pixelated_roc[rocy], 'goff')
         elif var is 'x' or var is 'y':
             self.tree.Draw('cluster_pos_ROC{rx}_Telescope_{vv}*10:cluster_pos_ROC{ry}_Telescope_{vv}*10 >> corr_{rx}_{ry}_{v}'.format(v=var, rx=rocx, ry=rocy, vv=var.title()), self.Cut.cuts_pixelated_roc[rocy], 'goff')
-        exec("self.plots.save_individual_plots(self.plots.correl_{v}[rocx][rocy], self.plots.correl_{v}[rocx][rocy].GetName(), self.plots.correl_{v}[rocx][rocy].GetTitle(), None, 'colz', 0, self.save_dir, verbosity)".format(v=var))
+        gROOT.SetBatch(True)
+        exec("self.fit_{x}_rocs_{rx}_{ry} = self.plots.correl_{x}[rocx][rocy].Fit('pol1', 'qsfm')".format(x=var, rx=rocx, ry=rocy))
+        gROOT.SetBatch(False)
+        exec("self.fit_{x}_rocs_{rx}_{ry}_slope = self.fit_{x}_rocs_{rx}_{ry}.Parameter(1)".format(x=var, rx=rocx, ry=rocy))
+        exec("self.corrf_{x}_rocs_{rx}_{ry} = self.plots.correl_{x}[rocx][rocy].GetCorrelationFactor()".format(x=var, rx=rocx, ry=rocy))
+        exec("self.plots.save_individual_plots(self.plots.correl_{v}[rocx][rocy], self.plots.correl_{v}[rocx][rocy].GetName(), self.plots.correl_{v}[rocx][rocy].GetTitle(), None, 'colz', 1000000011, self.save_dir, verbosity, 1001, self.corrf_{v}_rocs_{rx}_{ry})".format(v=var, rx=rocx, ry=rocy))
 
     def show_current(self, relative_time=True):
         self.Currents.draw_graphs(relative_time=relative_time)
@@ -1950,4 +1955,4 @@ if __name__ == "__main__":
     print '\nAnalysing run', test_run, '\n'
     z = SignalPixAnalysis(test_run, args.ch)
     z.print_elapsed_time(st, 'Instantiation')
-    z.do_analysis(False, False, True, doTelscp, pbar, verb)
+    z.do_analysis(True, True, True, doTelscp, pbar, verb)

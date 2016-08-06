@@ -1,7 +1,7 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from ROOT import TGraphErrors, TCanvas, TH1D, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kRed, kBlack, kBlue, kMagenta, kGreen, kOrange, TF1, TPie
+from ROOT import TGraphErrors, TCanvas, TH1D, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kRed, kBlack, kBlue, kMagenta, kGreen, kOrange, TF1, TPie, gPad, TLatex
 # from TelescopeAnalysis import Analysis
 # from CurrentInfo import Currents
 # from numpy import array
@@ -320,15 +320,32 @@ class Plots(Elementary):
                                                               'Charge(e)', kMagenta, 0) for i in xrange(devini, self.num_devices)}
         self.print_banner('1D profiles creation -> Done')
 
-    def save_individual_plots(self, histo, name, title, tcutg=None, draw_opt='', opt_stats=0, path='./', verbosity=False):
+    def save_individual_plots(self, histo, name, title, tcutg=None, draw_opt='', opt_stats=0, path='./', verbosity=False, opt_fit=0, addElem='', clone=False):
         if verbosity: self.print_banner('Saving {n}...'.format(n=name))
         gROOT.SetBatch(True)
         c0 = TCanvas('c_{n}'.format(n=name), title, 2100, 1500)
         c0.SetLeftMargin(0.1)
         c0.SetRightMargin(0.2)
+        histo.SetStats(1)
+        gStyle.SetOptFit(opt_fit)
         gStyle.SetOptStat(opt_stats)
+        gStyle.SetStatX(0.4)
+        gStyle.SetStatY(0.9)
+        gStyle.SetStatW(0.15)
+        gStyle.SetStatH(0.15)
         c0.cd()
         histo.Draw(draw_opt)
+        if addElem is not '':
+            c0.Update()
+            st = c0.GetPrimitive('stats') if not clone else c0.GetPrimitive('stats')
+            st.SetName('mystats') if not clone else st.SetName('mystats')
+            lines = st.GetListOfLines()
+            text = TLatex(0, 0, 'Correlation coef     {val}'.format(val=addElem))
+            lines.Add(text)
+            #st.AddText('Correlation coef     {val}'.format(val=addElem))
+            histo.SetStats(0)
+            st.Draw()
+            c0.Modified()
         if tcutg is not None:
             tcutg.Draw('same')
         c0.SaveAs('{dir}/c_{n}.root'.format(dir=path, n=name))
@@ -338,17 +355,17 @@ class Plots(Elementary):
         if verbosity: self.print_banner('{n} save -> Done'.format(n=name))
         del c0
 
-    def clone_correlation_histograms(self, rocx, rocy, verbosity=False):
+    def clone_correlation_histograms(self, rocx, rocy, verbosity=False, optfit=0, extra1='', extra2='', extra3='', extra4=''):
         self.correl_col[rocy][rocx] = self.correl_col[rocx][rocy].Clone('corr_{ry}_{rx}_col'.format(ry=rocy, rx=rocx))
         self.correl_col[rocy][rocx].SetTitle('Col correlation between ROCs {ry} and {rx}'.format(ry=rocy, rx=rocx))
-        self.save_individual_plots(self.correl_col[rocy][rocx], self.correl_col[rocy][rocx].GetName(), self.correl_col[rocy][rocx].GetTitle(), None, 'colz', 0, self.save_dir, verbosity)
+        self.save_individual_plots(self.correl_col[rocy][rocx], self.correl_col[rocy][rocx].GetName(), self.correl_col[rocy][rocx].GetTitle(), None, 'colz', 1000000011, self.save_dir, verbosity, optfit, extra1, True)
         self.correl_row[rocy][rocx] = self.correl_row[rocx][rocy].Clone('corr_{ry}_{rx}_row'.format(ry=rocy, rx=rocx))
         self.correl_row[rocy][rocx].SetTitle('Row correlation between ROCs {ry} and {rx}'.format(ry=rocy, rx=rocx))
-        self.save_individual_plots(self.correl_row[rocy][rocx], self.correl_row[rocy][rocx].GetName(), self.correl_row[rocy][rocx].GetTitle(), None, 'colz', 0, self.save_dir, verbosity)
+        self.save_individual_plots(self.correl_row[rocy][rocx], self.correl_row[rocy][rocx].GetName(), self.correl_row[rocy][rocx].GetTitle(), None, 'colz', 1000000011, self.save_dir, verbosity, optfit, extra2, True)
         
         self.correl_x[rocy][rocx] = self.correl_x[rocx][rocy].Clone('corr_{ry}_{rx}_x'.format(ry=rocy, rx=rocx))
         self.correl_x[rocy][rocx].SetTitle('X correlation between ROCs {ry} and {rx}'.format(ry=rocy, rx=rocx))
-        self.save_individual_plots(self.correl_x[rocy][rocx], self.correl_x[rocy][rocx].GetName(), self.correl_x[rocy][rocx].GetTitle(), None, 'colz', 0, self.save_dir, verbosity)
+        self.save_individual_plots(self.correl_x[rocy][rocx], self.correl_x[rocy][rocx].GetName(), self.correl_x[rocy][rocx].GetTitle(), None, 'colz', 1000000011, self.save_dir, verbosity, optfit, extra3, True)
         self.correl_y[rocy][rocx] = self.correl_y[rocx][rocy].Clone('corr_{ry}_{rx}_y'.format(ry=rocy, rx=rocx))
         self.correl_y[rocy][rocx].SetTitle('Y correlation between ROCs {ry} and {rx}'.format(ry=rocy, rx=rocx))
-        self.save_individual_plots(self.correl_y[rocy][rocx], self.correl_y[rocy][rocx].GetName(), self.correl_y[rocy][rocx].GetTitle(), None, 'colz', 0, self.save_dir, verbosity)
+        self.save_individual_plots(self.correl_y[rocy][rocx], self.correl_y[rocy][rocx].GetName(), self.correl_y[rocy][rocx].GetTitle(), None, 'colz', 1000000011, self.save_dir, verbosity, optfit, extra4, True)
