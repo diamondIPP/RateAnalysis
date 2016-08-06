@@ -329,10 +329,16 @@ class Plots(Elementary):
         histo.SetStats(1)
         gStyle.SetOptFit(opt_fit)
         gStyle.SetOptStat(opt_stats)
-        gStyle.SetStatX(0.4)
-        gStyle.SetStatY(0.9)
-        gStyle.SetStatW(0.15)
-        gStyle.SetStatH(0.15)
+        if addElem is not '':
+            gStyle.SetStatX(0.4)
+            gStyle.SetStatY(0.9)
+            gStyle.SetStatW(0.15)
+            gStyle.SetStatH(0.15)
+        else:
+            gStyle.SetStatX(0.8)
+            gStyle.SetStatY(0.9)
+            gStyle.SetStatW(0.15)
+            gStyle.SetStatH(0.15)
         c0.cd()
         histo.Draw(draw_opt)
         if addElem is not '':

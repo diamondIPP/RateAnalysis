@@ -199,7 +199,7 @@ class CutPix(Elementary):
         self.beam_interr_cut = TCut('beam_interruptions_cut', '')
         for t in xrange(1, h.GetNbinsX()+1):
             if h.GetBinContent(t) < mean*0.9:
-                self.beam_interr_cut=self.beam_interr_cut+TCut('bi{i}'.format(i=t), 'time<{low}&&time>{high}'.format(low=h.GetBinLowEdge(t)-abs(self.CutConfig['ExcludeBeforeJump'])*1000, high=h.GetBinLowEdge(t)+h.GetBinWidth(t)+abs(self.CutConfig['ExcludeAfterJump'])*1000))
+                self.beam_interr_cut=self.beam_interr_cut+TCut('bi{i}'.format(i=t), 'time<{low}||time>{high}'.format(low=h.GetBinLowEdge(t)-abs(self.CutConfig['ExcludeBeforeJump'])*1000, high=h.GetBinLowEdge(t)+h.GetBinWidth(t)+abs(self.CutConfig['ExcludeAfterJump'])*1000))
         gROOT.SetBatch(False)
 
     def generate_tracks_cut(self):
