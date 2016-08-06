@@ -1,10 +1,10 @@
-import os
 import pickle
 import json
 from numpy import array, zeros, arange, delete
 from Elementary import Elementary
 from ROOT import TCut, gROOT, TH1F
 from collections import OrderedDict
+from Utils import *
 
 
 class Cut(Elementary):
@@ -262,9 +262,13 @@ class Cut(Elementary):
             gROOT.SetBatch(1)
             h_x = TH1F('hx', '', 70, -4, 4)
             h_y = TH1F('hy', '', 70, -4, 4)
-            self.analysis.tree.Draw('slope_x>>hx', '', 'goff')
-            self.analysis.tree.Draw('slope_y>>hy', '', 'goff')
-            fit_result = h_x.Fit('gaus', 'qs')
+            self.analysis.tree.Draw('slope_x>>hx', 'slope_x > -100', 'goff')
+            self.analysis.tree.Draw('slope_y>>hy', 'slope_y > -100', 'goff')
+            if h_x.GetEntries() > 500 and h_y.GetEntries() > 500:
+                fit_result = h_x.Fit('gaus', 'qs')
+            else:
+                log_warning('Empty slope histogram! Using default values!')
+                return {'x': [-4., 4.], 'y': [-4., 4.]}
             slopes = {'x': [], 'y': []}
             x_mean = fit_result.Parameters()[1]
             slopes['x'] = [x_mean - angle, x_mean + angle]
