@@ -649,7 +649,9 @@ class DiaScans(Elementary):
         if self.RunSelections is not None and not redo:
             return self.RunSelections
         run_selections = OrderedDict()
+        vals = OrderedDict()
         for tc, rps in sorted(self.Selection.iteritems()):
+            vals[tc] = {}
             for rp, chs in sorted(rps.iteritems()):
                 if type(chs) is not list:
                     chs = [chs]
@@ -658,8 +660,14 @@ class DiaScans(Elementary):
                     sel.select_runs_from_runplan(rp, ch=ch)
                     self.log_info('Loaded runplan {rp} of testcampaign {tc} and ch {ch} ({dia})'.format(rp=rp.rjust(4), tc=datetime.strptime(tc, '%Y%m').strftime('%b %Y'), ch=ch, dia=sel.Diamond))
                     run_selections[sel] = ch
-        self.RunSelections = run_selections
-        return run_selections
+        sorted_sel = OrderedDict()
+        for i, sel in enumerate(run_selections.iterkeys()):
+            vals[sel.TESTCAMPAIGN][sel.SelectedBias] = i
+        order = [i for val in vals.itervalues() for bias, i in sorted(val.iteritems(), reverse=True)]
+        for i in order:
+            sorted_sel[run_selections.keys()[i]] = run_selections.values()[i]
+        self.RunSelections = sorted_sel
+        return sorted_sel
 
     def create_combined_plots(self, flux_up_down=False, scaled=True):
         mg = self.draw_rate_scans(include_zero=False, do_scale=scaled, pulser=False, draw_single_plots=True)
