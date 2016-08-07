@@ -263,5 +263,10 @@ def print_small_banner(msg, symbol='-'):
     print '\n{delim}\n{msg}\n'.format(delim=len(str(msg)) * symbol, msg=msg)
 
 
+def has_bit(num, bit):
+    assert (num >= 0 and type(num) is int), 'num has to be non negative int'
+    return bool(num & 1 << bit)
+
+
 def do_nothing():
     pass
