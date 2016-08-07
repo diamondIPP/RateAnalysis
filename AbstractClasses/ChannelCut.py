@@ -12,7 +12,7 @@ __author__ = 'micha'
 # MAIN CLASS
 # ==============================================
 class ChannelCut(Cut):
-    """ The ChannelCut contains all cut settings which corresponds to a single diamond in a single run. """
+    """The ChannelCut contains all cut settings which corresponds to a single diamond in a single run. """
 
     def __init__(self, analysis, channel=0):
         Cut.__init__(self, analysis, skip=True)
@@ -299,7 +299,7 @@ class ChannelCut(Cut):
 
             # Efficiency plot
             self.format_histo(gr1, title='Efficiencies', x_tit='Threshold', y_tit='Efficiency', markersize=.2)
-            l2 = self.make_legend(.78, .3, w=.2)
+            l2 = self.make_legend(.78, .3)
             tits = ['#varepsilon_{bg}', gr2.GetTitle()]
             [l2.AddEntry(p, tits[i], 'l') for i, p in enumerate([gr1, gr2])]
             self.draw_histo(gr1, '', False, draw_opt='apl', l=l2, canvas=c.cd(2) if show_all else None)
