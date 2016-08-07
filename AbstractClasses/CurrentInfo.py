@@ -51,6 +51,9 @@ class Currents(Elementary):
         if analysis is not None:
             self.RunInfo = analysis.run.RunInfo if not self.IsCollection else analysis.get_first_analysis().RunInfo
             self.Channel = analysis.channel
+        # todo: add a method to extract the currents for may
+        if 'dia1supply' not in self.RunInfo:
+            return
         self.DiamondName = self.load_dia_name()
         self.Bias = self.load_dia_name()
         self.StartRun = start_run
