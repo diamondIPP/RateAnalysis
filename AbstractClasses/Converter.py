@@ -36,6 +36,10 @@ class Converter:
         self.Run = run_number
         self.Type = self.parser.get('BASIC', 'type')
 
+        # digitizer
+        self.ConverterTree = '{0}tree'.format(self.parser.get('BASIC', 'digitizer').lower() if self.Type == 'pad' else 'telescope')
+        self.NChannels = 9 if self.ConverterTree.startswith('caen') else 4
+
         # tracking
         self.telescope_id = self.parser.getint('BASIC', 'telescopeID')
         self.tracking_dir = self.parser.get('ConverterFolders', 'trackingfolder')
