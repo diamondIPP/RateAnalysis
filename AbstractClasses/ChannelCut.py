@@ -2,8 +2,8 @@ from Cut import Cut
 from Extrema import Extrema2D
 from copy import deepcopy
 from ROOT import TCut, TH1F, TH2F, TF1, TCanvas, TLegend, gROOT, TProfile, THStack
-from numpy import sqrt
 from collections import OrderedDict
+from Utils import *
 
 __author__ = 'micha'
 
@@ -328,8 +328,14 @@ class ChannelCut(Cut):
         threshold = self.do_pickle(pickle_path, func, threshold)
         return threshold
 
+    def find_ped_range(self):
+        self.analysis.tree.Draw(self.analysis.PedestalName, '', 'goff', 1000)
+        return calc_mean([self.analysis.tree.GetV1()[i] for i in xrange(1000)])
+
     def __calc_pedestal_range(self, sigma_range):
-        fit = self.analysis.show_pedestal_histo(region=self.analysis.PedestalRegion, peak_int=self.analysis.PeakIntegral, save=False, cut='', show=False)
+        ped_range = self.find_ped_range()
+        x_range = [ped_range[0] - 5 * ped_range[1], ped_range[0] + 10 * ped_range[1]]
+        fit = self.analysis.show_pedestal_histo(region=self.analysis.PedestalRegion, peak_int=self.analysis.PeakIntegral, save=False, cut='', show=False, x_range=x_range)
         sigma = fit.Parameter(2)
         mean = fit.Parameter(1)
         self.PedestalFit = fit
