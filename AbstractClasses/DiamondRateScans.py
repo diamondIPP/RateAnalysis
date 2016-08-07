@@ -774,10 +774,49 @@ class DiaScans(Elementary):
         self.save_plots('FluxDistribution{0}_{1}'.format(int(fs11), int(fsh13)), show=show)
         return fit
 
+    def draw_dia_rate_scans(self):
+        run_selections = self.load_run_selections()
+        mg = TMultiGraph('mg_ph', '{dia} Rate Scans at {bias} V;Flux [kHz/cm^{{2}}]; pulse height [au]'.format(dia=self.DiamondName, bias=500))
+        legend = self.make_legend(.66, .4, nentries=4)
+        legend.SetNColumns(2)
+        colors = [4, 419, 2, 800]
+        tits = ['unirradiated', 'unirradiated', '5e14 n/cm^{2}', '5e14 n/cm^{2}']
+        for i, (sel, ch) in enumerate(run_selections.iteritems()):
+            try:
+                path = self.PickleDir + 'Ph_fit/PulseHeights_{tc}_{rp}_{dia}_{bin}.pickle'.format(tc=sel.TESTCAMPAIGN, rp=sel.SelectedRunplan, dia=self.DiamondName, bin=20000)
+                f = open(path, 'r')
+                mg_ph_ana = pickle.load(f)
+                f.close()
+            except IOError:
+                Elementary(sel.TESTCAMPAIGN)
+                ana = AnalysisCollection(sel, ch, self.verbose)
+                mg_ph_ana = ana.draw_pulse_heights(show=False)
+                ana.close_files()
+            for g in mg_ph_ana.GetListOfGraphs():
+                g.SetMarkerSize(.5)
+                self.format_histo(g, color=colors[i])
+                if g.GetName() == 'gFirst':
+                    self.format_histo(g, color=1, marker=26, markersize=1.2)
+                elif g.GetName() == 'gLast':
+                    self.format_histo(g, color=1, marker=23, markersize=1.2)
+                # elif g.GetName() == 'gStatError':
+                #     l.AddEntry(g, g.GetTitle(), 'l')
+                # elif not g.GetName() == 'gLine':
+                #     l.AddEntry(g, g.GetTitle(), 'p')
+            legend.AddEntry(mg_ph_ana.GetListOfGraphs()[0], tits[i], 'lp')
+            legend.AddEntry(0, get_bias_root_string(sel.SelectedBias), '')
+            mg.Add(mg_ph_ana)
+        x_vals = sorted([gr.GetX()[i] for gr in mg.GetListOfGraphs() for i in xrange(gr.GetN())])
+        y_vals = sorted([gr.GetY()[i] for gr in mg.GetListOfGraphs() for i in xrange(gr.GetN())])
+        self.format_histo(mg, draw_first=True, y_tit='Pulse Height [au]')
+        mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 1.2)
+        mg.GetYaxis().SetRangeUser(0, y_vals[-1] * 1.1)
+        self.save_histo(mg, 'DiaScans{dia}'.format(dia=make_dia_str(self.DiamondName)), draw_opt='a', logx=True, l=legend, x_fac=1.5, lm=.092, bm=.11)
+
 
 if __name__ == '__main__':
     main_parser = ArgumentParser()
-    main_parser.add_argument('dia', nargs='?', default='S129')
+    main_parser.add_argument('dia', nargs='?', default='b2')
     main_parser.add_argument('-tcs', nargs='?', default=None)
     args = main_parser.parse_args()
     print args
@@ -791,7 +830,7 @@ if __name__ == '__main__':
             z.create_combined_plots()
             if key_ in ['poly-D', 'poly-B2_irradiated']:
                 z.create_combined_plots(flux_up_down=True)
-    z.set_selection('poly-D')
+    # z.set_selection('poly-B2')
     # if raw_input('press y for creating all plots').lower() == 'y':
     #     for key in ['poly-B2_irradiated',  # ,'poly-B2_unirradiated',
     #                 'poly-D'
