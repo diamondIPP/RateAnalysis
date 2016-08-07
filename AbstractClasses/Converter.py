@@ -1,7 +1,6 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-import os
 import json
 
 from ConfigParser import ConfigParser
