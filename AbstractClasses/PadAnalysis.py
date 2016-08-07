@@ -1005,7 +1005,7 @@ class PadAnalysis(Analysis):
             self.log_info('Making pedestal histo for region {reg}{int}...'.format(reg=region, int=peak_int))
             if x[0] >= x[1]:
                 x = sorted(x)
-            set_statbox(.95, .95, entries=4, only_fit=True, w=.3)
+            set_statbox(.95, .88, entries=4, only_fit=True, w=.3)
             h = TH1F('ped1', 'Pedestal Distribution', nbins, x[0], x[1])
             name = self.get_pedestal_name(region, peak_int)
             self.tree.Draw('{name}>>ped1'.format(name=name), cut, 'goff')
