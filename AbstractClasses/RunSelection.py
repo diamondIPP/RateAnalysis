@@ -171,7 +171,7 @@ class RunSelection(Elementary):
         runs = self.get_selected_runs() if only_selected_runs else self.run_numbers
         selected_runs = 0
         unselected_runs = 0
-        dia_keys = ['diamond 1', 'diamond 2']
+        dia_keys = ['dia1', 'dia2']
         for run in runs:
             found_dia = False
             for i, ch in enumerate(self.run.channels):
@@ -197,7 +197,7 @@ class RunSelection(Elementary):
         for run in self.get_selected_runs():
             unselect = True
             for i, ch in enumerate(self.run.channels, 1):
-                if not self.run_infos[run]['hv dia{nr}'.format(nr=i)] == bias:
+                if not self.run_infos[run]['dia{nr}hv'.format(nr=i)] == bias:
                     self.channels[run][ch] = False
                 else:
                     unselect = False
@@ -310,8 +310,8 @@ class RunSelection(Elementary):
             string += self.run_infos[run]['type'].ljust(9)
             for i, ch in enumerate(self.run.channels, 1):
                 string += '*' if self.channels[run][ch] else ''
-                string += self.run_infos[run]['diamond {n}'.format(n=i)].ljust(7)
-                string += str(int(self.run_infos[run]['hv dia{n}'.format(n=i)])).ljust(6)
+                string += self.run_infos[run]['dia{n}'.format(n=i)].ljust(7)
+                string += str(int(self.run_infos[run]['dia{n}hv'.format(n=i)])).ljust(6)
             string += '{flux} kHz '.format(flux=str(int(self.run_infos[run]['measured flux'])).rjust(4))
             if not show_allcomments:
                 comments = self.run_infos[run]['user comments']
@@ -398,10 +398,10 @@ class RunSelection(Elementary):
         self.SelectedRunplan = plan
 
         self.select_runs(runs)
-        self.SelectedBias = self.run_infos[self.get_selected_runs()[0]]['hv dia{0}'.format(ch)]
+        self.SelectedBias = self.run_infos[self.get_selected_runs()[0]]['dia{0}hv'.format(ch)]
         parser = ConfigParser()
         parser.read('Configuration/DiamondAliases.cfg')
-        self.Diamond = parser.get('ALIASES', self.run_infos[self.get_selected_runs()[0]]['diamond {0}'.format(ch)])
+        self.Diamond = parser.get('ALIASES', self.run_infos[self.get_selected_runs()[0]]['dia{0}'.format(ch)])
 
     def add_selection_to_runplan(self, plan_nr, run_type='rate_scan'):
         """
@@ -437,8 +437,8 @@ class RunSelection(Elementary):
         return nr.zfill(2) if len(nr) <= 2 else nr.zfill(4)
 
     def get_diamond_names(self, sel=False):
-        names = self.get_runinfo_values('diamond 1', sel)
-        for name in self.get_runinfo_values('diamond 2', sel):
+        names = self.get_runinfo_values('dia1', sel)
+        for name in self.get_runinfo_values('dia2', sel):
             if name not in names:
                 names.append(name)
         return sorted(names)
@@ -450,9 +450,9 @@ class RunSelection(Elementary):
 
     def get_hv_values(self, sel=False):
         dias = self.get_selected_diamonds()[0] if sel else 3
-        hvs = self.get_runinfo_values('hv dia1', sel) if self.has_bit(dias, 0) else self.get_runinfo_values('hv dia2', sel)
+        hvs = self.get_runinfo_values('dia1hv', sel) if self.has_bit(dias, 0) else self.get_runinfo_values('dia2hv', sel)
         if dias == 3:
-            for hv in self.get_runinfo_values('hv dia2', sel):
+            for hv in self.get_runinfo_values('dia2hv', sel):
                 if hv not in hvs:
                     hvs.append(hv)
         return hvs
