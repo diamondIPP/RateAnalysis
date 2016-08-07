@@ -147,7 +147,7 @@ class Run(Elementary):
     def load_bias(self):
         bias = {}
         for i, ch in enumerate(self.channels, 1):
-            bias[ch] = self.RunInfo['hv dia{num}'.format(num=i)]
+            bias[ch] = self.RunInfo['dia{num}hv'.format(num=i)]
         return bias
     
     def load_dut_type(self):
@@ -188,7 +188,7 @@ class Run(Elementary):
         parser.read('Configuration/DiamondAliases.cfg')
         diamondname = {}
         for i, ch in enumerate(self.channels, 1):
-            diamondname[ch] = self.RunInfo['diamond {num}'.format(num=i)]
+            diamondname[ch] = self.RunInfo['dia{num}'.format(num=i)]
             if diamondname[ch].lower().startswith('ch'):
                 continue
             try:
@@ -199,12 +199,12 @@ class Run(Elementary):
 
     def __load_timing(self):
         try:
-            self.log_start = datetime.strptime(self.RunInfo['start time'], "%Y-%m-%dT%H:%M:%SZ")
-            self.log_stop = datetime.strptime(self.RunInfo['stop time'], "%Y-%m-%dT%H:%M:%SZ")
+            self.log_start = datetime.strptime(self.RunInfo['starttime0'], "%Y-%m-%dT%H:%M:%SZ")
+            self.log_stop = datetime.strptime(self.RunInfo['endtime'], "%Y-%m-%dT%H:%M:%SZ")
         except ValueError:
             try:
-                self.log_start = datetime.strptime(self.RunInfo['start time'], "%H:%M:%S")
-                self.log_stop = datetime.strptime(self.RunInfo['stop time'], "%H:%M:%S")
+                self.log_start = datetime.strptime(self.RunInfo['starttime0'], "%H:%M:%S")
+                self.log_stop = datetime.strptime(self.RunInfo['endtime'], "%H:%M:%S")
             except ValueError as err:
                 print err
                 return
@@ -279,14 +279,14 @@ class Run(Elementary):
                 area = pixel_size * unmasked_pixels[plane]
                 flux.append(self.RunInfo['for{num}'.format(num=i)] / area / 1000)  # in kHz/cm^2
         else:
-            flux.append(self.RunInfo['measured flux'])
+            flux.append(self.RunInfo['measuredflux'])
         self.RunInfo['mean flux'] = mean(flux)
         return mean(flux)
 
     def find_for_in_comment(self):
         for name in ['for1', 'for2']:
             if not self.RunInfo[name]:
-                for cmt in self.RunInfo['user comments'].split('\r\n'):
+                for cmt in self.RunInfo['comments'].split('\r\n'):
                     cmt = cmt.replace(':', '')
                     cmt = cmt.split(' ')
                     if str(cmt[0].lower()) == name:
@@ -484,7 +484,7 @@ class Run(Elementary):
             else:
                 run_string = 'Runs {start}-{stop} ({flux1} - {flux2})'.format(start=runs[0], stop=runs[1], flux1=runs[2].strip(' '), flux2=runs[3].strip(' '))
             width = len(run_string) * .01 if x == y else len(run_string) * 0.015 * y / x
-            legend = self.make_legend(.005, .1, y1=.003, w=width, nentries=3, felix=False, scale=.75)
+            legend = self.make_legend(.005, .1, y1=.003, x2=width, nentries=3, felix=False, scale=.75)
             legend.SetMargin(0.05)
             legend.AddEntry(0, 'Test Campaign: {tc}'.format(tc=tc.strftime('%b %Y')), '')
             legend.AddEntry(0, run_string, '')
