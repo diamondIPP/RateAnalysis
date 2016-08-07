@@ -103,7 +103,7 @@ class Converter:
 
     def find_raw_file(self, run_number):
         file_path = self.raw_file_dir + '/{pref}{run}.raw'.format(pref=self.raw_prefix, run=str(run_number).zfill(4))
-        if os.path.exists(file_path):
+        if file_exists(file_path):
             return file_path
         else:
             print file_path, 'does not exist!'
