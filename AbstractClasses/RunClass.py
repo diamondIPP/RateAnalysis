@@ -75,7 +75,8 @@ class Run(Elementary):
         Elementary.__init__(self, verbose=verbose)
 
         # configuration
-        self.channels = [0, 3]
+        self.NChannels = 9 if self.run_config_parser.get('BASIC', 'digitizer').lower() == 'caen' else 4
+        self.channels = self.load_channels()
         self.trigger_planes = [1, 2]
         self.DUTType = self.load_dut_type()
         self.filename = self.run_config_parser.get('BASIC', 'filename')
@@ -138,6 +139,10 @@ class Run(Elementary):
     # region LOAD FUNCTIONS
     def load_run_config(self):
         return self.load_run_configs(self.run_number)
+
+    def load_channels(self):
+        binary = self.run_config_parser.getint('ROOTFILE_GENERATION', 'active_regions')
+        return [i for i in xrange(self.NChannels) if self.has_bit(binary, i)]
 
     def load_bias(self):
         bias = {}
