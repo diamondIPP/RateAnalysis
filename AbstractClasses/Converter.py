@@ -161,7 +161,7 @@ class Converter:
             os.chdir(self.root_file_dir)
             # prepare converter command
             conf_string = '-c {eudaq}/conf/{file}'.format(eudaq=self.eudaq_dir, file=self.converter_config_path)
-            tree_string = '-t {tree}'.format(tree='drs4tree' if self.Type == 'pad' else 'telescopetree')
+            tree_string = '-t {tree}'.format(tree=self.ConverterTree)
             converter_cmd = '{eudaq}/bin/Converter.exe {tree} {conf} {raw}'.format(eudaq=self.eudaq_dir, raw=raw_file_path, tree=tree_string, conf=conf_string)
             if self.Type == 'pad':
                 self.__set_converter_configfile(run_infos)
@@ -215,23 +215,34 @@ class Converter:
         path = self.tracking_dir + file_name
         move(path, self.root_file_dir)
 
-    def __set_converter_configfile(self, run_infos):
-        pol_dia1 = int(copysign(1, run_infos['hv dia1']))
-        pol_dia2 = int(copysign(1, run_infos['hv dia2']))
+    def load_polarities(self, info):
+        active_regions = self.parser.getint('ROOTFILE_GENERATION', 'active_regions')
+        pols = []
+        i = 1
+        for j in xrange(self.NChannels):
+            if has_bit(active_regions, j):
+                pols.append(int(copysign(1, info['dia{0}hv'.format(i)])))
+                i += 1
+            else:
+                pols.append(0)
+        return str(pols)
 
+    def __set_converter_configfile(self, run_infos):
         parser = ConfigParser()
         conf_file = '{eudaq}/conf/{file}'.format(eudaq=self.eudaq_dir, file=self.converter_config_path)
         parser.read(conf_file)
-        parser.set('Converter.drs4tree', 'polarities', '[{pol1},0,0,{pol2}]'.format(pol1=pol_dia1, pol2=pol_dia2))
+        converter_section = 'Converter.{0}'.format(self.ConverterTree)
+        print self.load_polarities(run_infos)
+        parser.set(converter_section, 'polarities', self.load_polarities(run_infos))
 
         # remove unset ranges and regions
         new_options = self.parser.options('ROOTFILE_GENERATION')
-        for opt in parser.options('Converter.drs4tree'):
+        for opt in parser.options(converter_section):
             if (opt.endswith('_range') or opt.endswith('_region')) and opt not in new_options:
-                parser.remove_option('Converter.drs4tree', opt)
+                parser.remove_option(converter_section, opt)
         # set the new settings
         for key, value in self.config.iteritems():
-            parser.set('Converter.drs4tree', key, value)
+            parser.set(converter_section, key, value)
 
         # write changes
         f = open(conf_file, 'w')
