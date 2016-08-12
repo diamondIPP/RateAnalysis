@@ -109,6 +109,7 @@ class Cut(Elementary):
     def define_cutstrings():
         dic = OrderedDict()
         dic['raw'] = TCut('raw', '')
+        dic['fiducial'] = TCut('fiducial', '')
         dic['saturated'] = TCut('saturated', '')
         dic['pulser'] = TCut('pulser', '')
         dic['event_range'] = TCut('event_range', '')
@@ -116,6 +117,7 @@ class Cut(Elementary):
         dic['beam_interruptions'] = TCut('beam_interruptions', '')
         dic['ped_sigma'] = TCut('ped_sigma', '')
         dic['median'] = TCut('median', '')
+        dic['threshold'] = TCut('threshold', '')
         # waveform
         dic['signal_peak_pos'] = TCut('signal_peak_pos', '')
         dic['signal_peak_time'] = TCut('signal_peak_time', '')
