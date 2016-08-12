@@ -14,8 +14,8 @@ spread_low = -1
 absMedian_high = -1
 pedestalsigma = 3
 # quantile
-chi2X = 50
-chi2Y = 50
+chi2X = 75
+chi2Y = 75
 # degrees
 track_angle = 1
 Mask rows # [roc; list (: means a range) (; is used to separate)]
