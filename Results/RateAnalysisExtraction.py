@@ -227,6 +227,7 @@ if __name__ == '__main__':
     s = int(options.s)
     a = int(options.a)
     if a is 0:
+        gROOT.SetBatch(True)
         for di in xrange(4,7):
             for cs in xrange(0,5):
                 exec('d{di}_s{cs} = RateAnalysisExtraction(ini, fin, {di}, camp, e, {cs})'.format(di=di, cs=cs))
