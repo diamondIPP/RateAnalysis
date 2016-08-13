@@ -1,9 +1,11 @@
 from Cut import Cut
 from Extrema import Extrema2D
 from copy import deepcopy
-from ROOT import TCut, TH1F, TH2F, TF1, TCanvas, TLegend, gROOT, TProfile, THStack
+from ROOT import TCut, TH1F, TH2F, TF1, TCanvas, TLegend, gROOT, TProfile, THStack, TCutG, TSpectrum
 from collections import OrderedDict
 from Utils import *
+from json import loads
+from numpy import array
 from ConfigParser import NoOptionError
 
 __author__ = 'micha'
@@ -37,6 +39,8 @@ class ChannelCut(Cut):
     def load_channel_config(self):
         self.CutConfig['absMedian_high'] = self.load_config_data('absMedian_high')
         self.CutConfig['pedestalsigma'] = self.load_config_data('pedestalsigma')
+        self.CutConfig['fiducial'] = self.load_dia_config('fid_cuts')
+        self.CutConfig['threshold'] = self.load_dia_config('threshold', store_true=True)
 
     def load_config_data(self, name):
         value = self.ana_config_parser.getint('CUT', name)
@@ -205,6 +209,20 @@ class ChannelCut(Cut):
             raise Exception()
         return TCut(string), corrected_time, t_correction
 
+    def generate_threshold(self):
+        return TCut('{sig}>{thresh}'.format(sig=self.analysis.SignalName, thresh=self.calc_threshold(show=False))) if self.CutConfig['threshold'] else TCut('')
+
+    def generate_fiducial(self):
+        xy = self.CutConfig['fiducial']
+        cut = None
+        if xy is not None:
+            cut = TCutG('fid', 5, array([xy[0], xy[0], xy[1], xy[1], xy[0]], 'd'), array([xy[2], xy[3], xy[3], xy[2], xy[2]], 'd'))
+            nr = self.analysis.run.channels.index(self.analysis.channel) + 1
+            cut.SetVarX('diam{0}_track_x'.format(nr))
+            cut.SetVarY('diam{0}_track_y'.format(nr))
+            self.ROOTObjects.append(cut)
+        return TCut(cut.GetName() if cut is not None else '')
+
     # special cut for analysis
     def generate_pulser_cut(self, beam_on=True):
         cut = self.CutStrings['ped_sigma'] + self.CutStrings['event_range'] + self.CutStrings['saturated']
@@ -214,6 +232,12 @@ class ChannelCut(Cut):
         return cut
 
     def generate_channel_cutstrings(self):
+
+        # --THRESHOLD --
+        self.CutStrings['threshold'] += self.generate_threshold()
+
+        # -- FIDUCIAL --
+        self.CutStrings['fiducial'] += self.generate_fiducial()
 
         # -- PULSER CUT --
         self.CutStrings['pulser'] += '!pulser'
@@ -348,9 +372,30 @@ class ChannelCut(Cut):
         x_range = [ped_range[0] - 5 * ped_range[1], ped_range[0] + 10 * ped_range[1]]
         fit = self.analysis.show_pedestal_histo(region=self.analysis.PedestalRegion, peak_int=self.analysis.PeakIntegral, save=False, cut='', show=False, x_range=x_range)
         sigma = fit.Parameter(2)
-        mean = fit.Parameter(1)
+        mean_ = fit.Parameter(1)
         self.PedestalFit = fit
-        return [mean - sigma_range * sigma, mean + sigma_range * sigma]
+        return [mean_ - sigma_range * sigma, mean_ + sigma_range * sigma]
+
+    def calc_threshold(self, show=True):
+        pickle_path = self.analysis.PickleDir + 'Cuts/Threshold_{tc}_{run}_{ch}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run_number, ch=self.channel)
+
+        def func():
+            self.analysis.tree.Draw(self.analysis.SignalName, '', 'goff', 5000)
+            xvals = sorted([self.analysis.tree.GetV1()[i] for i in xrange(5000)])
+            x_range = [xvals[0] - 5, xvals[-5]]
+            h = self.analysis.show_signal_histo(show=show, cut=self.generate_fiducial(), x_range=x_range, binning=int(x_range[1] - x_range[0]))
+            s = TSpectrum(3)
+            s.Search(h)
+            peaks = [s.GetPositionX()[i] for i in xrange(s.GetNPeaks())]
+            h.GetXaxis().SetRangeUser(peaks[0], peaks[-1])
+            x_start = h.GetBinCenter(h.GetMinimumBin())
+            h.GetXaxis().UnZoom()
+            fit = TF1('fit', 'landau', x_start, h.GetXaxis().GetXmax())
+            h.Fit(fit, 'q{0}'.format(0 if not show else ''), '', x_start, h.GetXaxis().GetXmax())
+            return fit.GetX(.1, 0, peaks[-1])
+
+        threshold = func() if show else None
+        return self.do_pickle(pickle_path, func, threshold)
 
     def calc_timing_range(self, show=True, n_sigma=4):
         pickle_path = self.analysis.PickleDir + 'Cuts/TimingRange_{tc}_{run}_{ch}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run_number, ch=self.channel)
