@@ -367,7 +367,7 @@ class Cut(Elementary):
         for i, value in enumerate(rate):
             if value > cut > last_rate:
                 tup[0] = i * binning
-            elif value < cut < last_rate:
+            elif value < cut <= last_rate:
                 tup[1] = i * binning
                 interrupts.append(tup)
                 tup = [0, 0]
