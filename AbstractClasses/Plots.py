@@ -34,10 +34,16 @@ class Plots(Elementary):
         self.num_devices = num_devices
         self.num_entries = num_entries
         self.plot_settings = {
-            'ph1Dbins': 200,
-            'ph1Dmin': 0,
-            'ph1Dmax': 100000,
-            'nEventsAv': 1000,
+            'ph1DbinsD4': 200,
+            'ph1DminD4': 0,
+            'ph1DmaxD4': 30000,
+            'ph1DbinsD5': 200,
+            'ph1DminD5': 0,
+            'ph1DmaxD5': 60000,
+            'ph1DbinsSi': 200,
+            'ph1DminSi': 0,
+            'ph1DmaxSi': 90000,
+            'nEventsAv': 10000,
             'event_bins': int(ceil(float(self.num_entries)/10)),
             'event_min': 0,
             'event_max': self.num_entries,
@@ -72,10 +78,10 @@ class Plots(Elementary):
         graph.GetYaxis().SetTitle(yTitle)
         return (graph)
 
-    def create_1D_histogram(self, type='landau', name='histo', title='histo', xTitle='X', yTitle='Y', color=kBlack, min_val=0):
-        ph1Dbins = self.plot_settings['ph1Dbins']
-        ph1Dmin = self.plot_settings['ph1Dmin']
-        ph1Dmax = self.plot_settings['ph1Dmax']
+    def create_1D_histogram(self, type='landau', name='histo', title='histo', xTitle='X', yTitle='Y', color=kBlack, min_val=0, roc=4):
+        ph1Dbins = self.plot_settings['ph1DbinsD4'] if roc is 4 else self.plot_settings['ph1DbinsD5'] if roc is 5 else self.plot_settings['ph1DbinsSi']
+        ph1Dmin = self.plot_settings['ph1DminD4'] if roc is 4 else self.plot_settings['ph1DminD5'] if roc is 5 else self.plot_settings['ph1DminSi']
+        ph1Dmax = self.plot_settings['ph1DmaxD4'] if roc is 4 else self.plot_settings['ph1DmaxD5'] if roc is 5 else self.plot_settings['ph1DmaxSi']
         histo1D = TH1D(name, title, int(ph1Dbins + 1), ph1Dmin - float(ph1Dmax - ph1Dmin)/(2*ph1Dbins),
                        ph1Dmax + float(ph1Dmax - ph1Dmin)/(2*ph1Dbins))
         self.set_1D_options(type, histo1D, xTitle, yTitle, color, min_val)
@@ -111,7 +117,7 @@ class Plots(Elementary):
         self.set_2D_options(histo2D, xTitle, yTitle, zTitle, min_val, max_val)
         return histo2D
 
-    def create_2D_histogram(self, type='spatial', name='histo', title='histo', xTitle='X', yTitle='Y', zTitle='Z', min_val=0, max_val=-1):
+    def create_2D_histogram(self, type='spatial', name='histo', title='histo', xTitle='X', yTitle='Y', zTitle='Z', min_val=0, max_val=-1, roc=4):
         if type is 'spatial':
             xbins = self.plot_settings['nBinsX']
             xmin = self.plot_settings['xmin']
@@ -158,9 +164,9 @@ class Plots(Elementary):
             xbins = self.plot_settings['event_bins']
             xmin = self.plot_settings['event_min']
             xmax = self.plot_settings['event_max']
-            ybins = self.plot_settings['ph1Dbins']
-            ymin = self.plot_settings['ph1Dmin']
-            ymax = self.plot_settings['ph1Dmax']
+            ybins = self.plot_settings['ph1DbinsD4'] if roc is 4 else self.plot_settings['ph1DbinsD5'] if roc is 5 else self.plot_settings['ph1DbinsSi']
+            ymin = self.plot_settings['ph1DminD4'] if roc is 4 else self.plot_settings['ph1DminD5'] if roc is 5 else self.plot_settings['ph1DminSi']
+            ymax = self.plot_settings['ph1DmaxD4'] if roc is 4 else self.plot_settings['ph1DmaxD5'] if roc is 5 else self.plot_settings['ph1DmaxSi']
         histo2D = TH2D(name, title, int(xbins + 1), xmin - float(xmax-xmin)/(2*xbins), xmax + float(xmax-xmin)/(2*xbins),
                        int(ybins + 1), ymin - float(ymax-ymin)/(2*ybins), ymax + float(ymax-ymin)/(2*ybins))
         self.set_2D_options(histo2D, xTitle, yTitle, zTitle, min_val, max_val)
@@ -182,34 +188,34 @@ class Plots(Elementary):
         self.print_banner('Creating 1D histograms...')
         self.phROC_all = {i: self.create_1D_histogram('landau', 'phROC{n}_all'.format(n=i),
                                                       'Pulse Height ROC {n} all cluster sizes'.format(n=i), 'Charge (e)',
-                                                      'Num Clusters', kBlack) for i in xrange(devini, self.num_devices)}
+                                                      'Num Clusters', kBlack, i) for i in xrange(devini, self.num_devices)}
         self.phROC_all_cuts = {i: self.create_1D_histogram('landau', 'phROC{n}_all_cuts'.format(n=i),
                                                            'Pulse Height ROC {n} all cluster sizes after cuts'.format(n=i), 'Charge (e)',
-                                                           'Num Clusters', kBlack) for i in xrange(devini, self.num_devices)}
+                                                           'Num Clusters', kBlack, i) for i in xrange(devini, self.num_devices)}
         self.phROC_1cl = {i: self.create_1D_histogram('landau', 'phROC{n}_1cl'.format(n=i),
                                                       'Pulse Height ROC {n} 1pix cluster'.format(n=i), 'Charge (e)',
-                                                      'Num Clusters', kBlue) for i in xrange(devini, self.num_devices)}
+                                                      'Num Clusters', kBlue, i) for i in xrange(devini, self.num_devices)}
         self.phROC_1cl_cuts = {i: self.create_1D_histogram('landau', 'phROC{n}_1cl_cuts'.format(n=i),
                                                            'Pulse Height ROC {n} 1pix cluster after cuts'.format(n=i), 'Charge (e)',
-                                                           'Num Clusters', kBlue) for i in xrange(devini, self.num_devices)}
+                                                           'Num Clusters', kBlue, i) for i in xrange(devini, self.num_devices)}
         self.phROC_2cl = {i: self.create_1D_histogram('landau', 'phROC{n}_2cl'.format(n=i),
                                                       'Pulse Height ROC {n} 2pix cluster'.format(n=i), 'Charge (e)',
-                                                      'Num Clusters', kGreen) for i in xrange(devini, self.num_devices)}
+                                                      'Num Clusters', kGreen, i) for i in xrange(devini, self.num_devices)}
         self.phROC_2cl_cuts = {i: self.create_1D_histogram('landau', 'phROC{n}_2cl_cuts'.format(n=i),
                                                            'Pulse Height ROC {n} 2pix cluster after cuts'.format(n=i), 'Charge (e)',
-                                                           'Num Clusters', kGreen) for i in xrange(devini, self.num_devices)}
+                                                           'Num Clusters', kGreen, i) for i in xrange(devini, self.num_devices)}
         self.phROC_3cl = {i: self.create_1D_histogram('landau', 'phROC{n}_3cl'.format(n=i),
                                                       'Pulse Height ROC {n} 3pix cluster'.format(n=i), 'Charge (e)',
-                                                      'Num Clusters', kRed) for i in xrange(devini, self.num_devices)}
+                                                      'Num Clusters', kRed, i) for i in xrange(devini, self.num_devices)}
         self.phROC_3cl_cuts = {i: self.create_1D_histogram('landau', 'phROC{n}_3cl_cuts'.format(n=i),
                                                            'Pulse Height ROC {n} 3pix cluster after cuts'.format(n=i), 'Charge (e)',
-                                                           'Num Clusters', kRed) for i in xrange(devini, self.num_devices)}
+                                                           'Num Clusters', kRed, i) for i in xrange(devini, self.num_devices)}
         self.phROC_M4cl = {i: self.create_1D_histogram('landau', 'phROC{n}_M4cl'.format(n=i),
                                                        'Pulse Height ROC {n} 4 or more pix cluster'.format(n=i), 'Charge (e)',
-                                                       'Num Clusters', kMagenta) for i in xrange(devini, self.num_devices)}
+                                                       'Num Clusters', kMagenta, i) for i in xrange(devini, self.num_devices)}
         self.phROC_M4cl_cuts = {i: self.create_1D_histogram('landau', 'phROC{n}_M4cl_cuts'.format(n=i),
                                                             'Pulse Height ROC {n} 4 or more pix cluster after cuts'.format(n=i), 'Charge (e)',
-                                                            'Num Clusters', kMagenta) for i in xrange(devini, self.num_devices)}
+                                                            'Num Clusters', kMagenta, i) for i in xrange(devini, self.num_devices)}
         self.print_banner('1D histograms creation -> Done')
         # 2D Histograms
         self.print_banner('Creating 2D histograms...')
