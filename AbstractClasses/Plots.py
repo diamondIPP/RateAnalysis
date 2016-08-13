@@ -79,27 +79,33 @@ class Plots(Elementary):
         return (graph)
 
     def create_1D_histogram(self, type='landau', name='histo', title='histo', xTitle='X', yTitle='Y', color=kBlack, min_val=0, roc=4):
-        ph1Dbins = self.plot_settings['ph1DbinsD4'] if roc is 4 else self.plot_settings['ph1DbinsD5'] if roc is 5 else self.plot_settings['ph1DbinsSi']
-        ph1Dmin = self.plot_settings['ph1DminD4'] if roc is 4 else self.plot_settings['ph1DminD5'] if roc is 5 else self.plot_settings['ph1DminSi']
-        ph1Dmax = self.plot_settings['ph1DmaxD4'] if roc is 4 else self.plot_settings['ph1DmaxD5'] if roc is 5 else self.plot_settings['ph1DmaxSi']
+        ph1Dbins = self.plot_settings['ph1DbinsD4'] if roc is self.roc_d1 else self.plot_settings['ph1DbinsD5'] if roc is self.roc_d2 else self.plot_settings['ph1DbinsSi']
+        ph1Dmin = self.plot_settings['ph1DminD4'] if roc is self.roc_d1 else self.plot_settings['ph1DminD5'] if roc is self.roc_d2 else self.plot_settings['ph1DminSi']
+        ph1Dmax = self.plot_settings['ph1DmaxD4'] if roc is self.roc_d1 else self.plot_settings['ph1DmaxD5'] if roc is self.roc_d2 else self.plot_settings['ph1DmaxSi']
         histo1D = TH1D(name, title, int(ph1Dbins + 1), ph1Dmin - float(ph1Dmax - ph1Dmin)/(2*ph1Dbins),
                        ph1Dmax + float(ph1Dmax - ph1Dmin)/(2*ph1Dbins))
         self.set_1D_options(type, histo1D, xTitle, yTitle, color, min_val)
         return (histo1D)
 
-    def create_1D_profile(self, type='event', name='histo', title='histo', xTitle='X', yTitle='Y', color=kBlack, min_val=0):
+    def create_1D_profile(self, type='event', name='histo', title='histo', xTitle='X', yTitle='Y', color=kBlack, min_val=0, roc=4):
         nbins = int(ceil(float(self.plot_settings['event_max'] - self.plot_settings['event_min'])/self.plot_settings['nEventsAv']))
         xmin = self.plot_settings['event_min']
         xmax = self.plot_settings['event_max']
         histo1D = TProfile(name, title, int(nbins + 1), xmin - float(xmax - xmin)/(2*nbins), xmax + float(xmax - xmin)/(2*nbins))
-        self.set_1D_options(type, histo1D, xTitle, yTitle, color, min_val)
+        self.set_1D_options(type, histo1D, xTitle, yTitle, color, min_val, roc)
         return (histo1D)
 
-    def set_1D_options(self, type='event', histo='histo', xTitle='X', yTitle='Y', color=kBlack, min_val=0):
+    def set_1D_options(self, type='event', histo='histo', xTitle='X', yTitle='Y', color=kBlack, min_val=0, roc=4):
         histo.GetXaxis().SetTitle(xTitle)
         histo.GetYaxis().SetTitle(yTitle)
         histo.GetYaxis().SetTitleOffset(1.3)
-        if type is 'event': histo.SetMaximum(self.plot_settings['ph1Dmax'])
+        if type is 'event':
+            if roc is self.roc_d1:
+                histo.SetMaximum(self.plot_settings['ph1DmaxD4'])
+            elif roc is self.roc_d2:
+                histo.SetMaximum(self.plot_settings['ph1DmaxD5'])
+            else:
+                histo.SetMaximum(self.plot_settings['ph1DmaxSi'])
         histo.SetMinimum(min_val)
         histo.SetLineColor(color)
         histo.SetLineWidth(3*gStyle.GetLineWidth())
@@ -164,9 +170,9 @@ class Plots(Elementary):
             xbins = self.plot_settings['event_bins']
             xmin = self.plot_settings['event_min']
             xmax = self.plot_settings['event_max']
-            ybins = self.plot_settings['ph1DbinsD4'] if roc is 4 else self.plot_settings['ph1DbinsD5'] if roc is 5 else self.plot_settings['ph1DbinsSi']
-            ymin = self.plot_settings['ph1DminD4'] if roc is 4 else self.plot_settings['ph1DminD5'] if roc is 5 else self.plot_settings['ph1DminSi']
-            ymax = self.plot_settings['ph1DmaxD4'] if roc is 4 else self.plot_settings['ph1DmaxD5'] if roc is 5 else self.plot_settings['ph1DmaxSi']
+            ybins = self.plot_settings['ph1DbinsD4'] if roc is self.roc_d1 else self.plot_settings['ph1DbinsD5'] if roc is self.roc_d2 else self.plot_settings['ph1DbinsSi']
+            ymin = self.plot_settings['ph1DminD4'] if roc is self.roc_d1 else self.plot_settings['ph1DminD5'] if roc is self.roc_d2 else self.plot_settings['ph1DminSi']
+            ymax = self.plot_settings['ph1DmaxD4'] if roc is self.roc_d1 else self.plot_settings['ph1DmaxD5'] if roc is self.roc_d2 else self.plot_settings['ph1DmaxSi']
         histo2D = TH2D(name, title, int(xbins + 1), xmin - float(xmax-xmin)/(2*xbins), xmax + float(xmax-xmin)/(2*xbins),
                        int(ybins + 1), ymin - float(ymax-ymin)/(2*ybins), ymax + float(ymax-ymin)/(2*ybins))
         self.set_2D_options(histo2D, xTitle, yTitle, zTitle, min_val, max_val)
@@ -184,7 +190,7 @@ class Plots(Elementary):
 
     def create_histograms(self, doTlscp=False):
         # 1D Histograms
-        devini = 0 if doTlscp else 4
+        devini = 0 if doTlscp else self.roc_d1
         self.print_banner('Creating 1D histograms...')
         self.phROC_all = {i: self.create_1D_histogram('landau', 'phROC{n}_all'.format(n=i),
                                                       'Pulse Height ROC {n} all cluster sizes'.format(n=i), 'Charge (e)',
@@ -297,34 +303,34 @@ class Plots(Elementary):
         self.print_banner('Creating 1D profiles...')
         self.meanPhROC_all = {i: self.create_1D_profile('event', 'meanPHROC{n}_all'.format(n=i),
                                                         'Mean PH ROC {n} all cluster sizes'.format(n=i), 'Event',
-                                                        'Charge(e)', kBlack, 0) for i in xrange(devini, self.num_devices)}
+                                                        'Charge(e)', kBlack, 0, i) for i in xrange(devini, self.num_devices)}
         self.meanPhROC_all_cuts = {i: self.create_1D_profile('event', 'meanPHROC{n}_all_cuts'.format(n=i),
                                                              'Mean PH ROC {n} all cluster sizes after cuts'.format(n=i), 'Event',
-                                                             'Charge(e)', kBlack, 0) for i in xrange(devini, self.num_devices)}
+                                                             'Charge(e)', kBlack, 0, i) for i in xrange(devini, self.num_devices)}
         self.meanPhROC_1cl = {i: self.create_1D_profile('event', 'meanPHROC{n}_1cl'.format(n=i),
                                                         'Mean PH ROC {n} 1 pix cluster'.format(n=i), 'Event',
-                                                        'Charge(e)', kBlue, 0) for i in xrange(devini, self.num_devices)}
+                                                        'Charge(e)', kBlue, 0, i) for i in xrange(devini, self.num_devices)}
         self.meanPhROC_1cl_cuts = {i: self.create_1D_profile('event', 'meanPHROC{n}_1cl_cuts'.format(n=i),
                                                              'Mean PH ROC {n} 1 pix cluster after cuts'.format(n=i), 'Event',
-                                                             'Charge(e)', kBlue, 0) for i in xrange(devini, self.num_devices)}
+                                                             'Charge(e)', kBlue, 0, i) for i in xrange(devini, self.num_devices)}
         self.meanPhROC_2cl = {i: self.create_1D_profile('event', 'meanPHROC{n}_2cl'.format(n=i),
                                                         'Mean PH ROC {n} 2 pix cluster'.format(n=i), 'Event',
-                                                        'Charge(e)', kGreen, 0) for i in xrange(devini, self.num_devices)}
+                                                        'Charge(e)', kGreen, 0, i) for i in xrange(devini, self.num_devices)}
         self.meanPhROC_2cl_cuts = {i: self.create_1D_profile('event', 'meanPHROC{n}_2cl_cuts'.format(n=i),
                                                              'Mean PH ROC {n} 2 pix cluster after cuts'.format(n=i), 'Event',
-                                                             'Charge(e)', kGreen, 0) for i in xrange(devini, self.num_devices)}
+                                                             'Charge(e)', kGreen, 0, i) for i in xrange(devini, self.num_devices)}
         self.meanPhROC_3cl = {i: self.create_1D_profile('event', 'meanPHROC{n}_3cl'.format(n=i),
                                                         'Mean PH ROC {n} 3 pix cluster'.format(n=i), 'Event',
-                                                        'Charge(e)', kRed, 0) for i in xrange(devini, self.num_devices)}
+                                                        'Charge(e)', kRed, 0, i) for i in xrange(devini, self.num_devices)}
         self.meanPhROC_3cl_cuts = {i: self.create_1D_profile('event', 'meanPHROC{n}_3cl_cuts'.format(n=i),
                                                              'Mean PH ROC {n} 3 pix cluster after cuts'.format(n=i), 'Event',
-                                                             'Charge(e)', kRed, 0) for i in xrange(devini, self.num_devices)}
+                                                             'Charge(e)', kRed, 0, i) for i in xrange(devini, self.num_devices)}
         self.meanPhROC_M4cl = {i: self.create_1D_profile('event', 'meanPHROC{n}_M4cl'.format(n=i),
                                                          'Mean PH ROC {n} 4 or more pixs cluster'.format(n=i), 'Event',
-                                                         'Charge(e)', kMagenta, 0) for i in xrange(devini, self.num_devices)}
+                                                         'Charge(e)', kMagenta, 0, i) for i in xrange(devini, self.num_devices)}
         self.meanPhROC_M4cl_cuts = {i: self.create_1D_profile('event', 'meanPHROC{n}_M4cl_cuts'.format(n=i),
                                                               'Mean PH ROC {n} 4 or more pixs cluster after cuts'.format(n=i), 'Event',
-                                                              'Charge(e)', kMagenta, 0) for i in xrange(devini, self.num_devices)}
+                                                              'Charge(e)', kMagenta, 0, i) for i in xrange(devini, self.num_devices)}
         self.print_banner('1D profiles creation -> Done')
 
     def save_individual_plots(self, histo, name, title, tcutg=None, draw_opt='', opt_stats=0, path='./', verbosity=False, opt_fit=0, addElem='', clone=False):
