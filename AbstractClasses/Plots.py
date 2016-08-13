@@ -1,7 +1,7 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from ROOT import TGraphErrors, TCanvas, TH1D, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kRed, kBlack, kBlue, kMagenta, kGreen, kOrange, TF1, TPie, gPad, TLatex
+from ROOT import TGraphErrors, TCanvas, TH1D, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kRed, kBlack, kPink, kBlue, kViolet ,kMagenta, kTeal, kGreen, kOrange, TF1, TPie, gPad, TLatex, THStack
 # from TelescopeAnalysis import Analysis
 # from CurrentInfo import Currents
 # from numpy import array
@@ -68,8 +68,8 @@ class Plots(Elementary):
             'slope_1Dmin': -3,
             'slope_1Dmax': 3,
             'rhit_1Dbins': 100,
-            'rhit_1Dmin': -2,
-            'rhit_1Dmax': 2
+            'rhit_1Dmin': 0,
+            'rhit_1Dmax': 10
         }
         self.plot_settings['event_bins'] = int(ceil(float(self.num_entries)/10)) if self.num_entries <= 100000 else \
             int(ceil(float(self.num_entries)/100)) if self.num_entries <= 500000 else int(ceil(float(self.num_entries)/self.plot_settings['nEventsAv']))
@@ -223,8 +223,19 @@ class Plots(Elementary):
         self.slope_x_cut = self.create_1D_histogram('slope', 'slope_x_cut', 'Slope in X after cut', 'slope_x', 'Num Entries', kRed)
         self.slope_y = self.create_1D_histogram('slope', 'slope_y', 'Slope in Y', 'slope_y', 'Num Entries', kBlue)
         self.slope_y_cut = self.create_1D_histogram('slope', 'slope_y_cut', 'Slope in Y after cut', 'slope_y', 'Num Entries', kRed)
-        self.rhit = {i: self.create_1D_histogram('rhit', 'rhit_ROC{n}'.format(n=i), 'Distance between Cluster and track positions in ROC {n}'.format(n=i),
-                                                 'R Hit', 'Num Events', kBlue, roc=i) for i in xrange(devini, self.num_devices)}
+        self.rhit = {i: self.create_1D_histogram('rhit', 'rhit_ROC{n}'.format(n=i), 'Cluster - track positions distance ROC {n}'.format(n=i),
+                                                 'R Hit (mm)', 'Num Events', kBlue, roc=i) for i in xrange(devini, self.num_devices)}
+
+        self.colors = [kBlack, kBlue, kRed, kOrange, kGreen, kMagenta, kViolet, kTeal]
+        self.landaus = {}
+        self.cuts = ['no', 'mask', 'fid', 'beam', 'tracks', 'angle', 'chi2', 'rhit']
+        for j in xrange(len(self.cuts)):
+            self.landaus[self.cuts[j]] = {i: self.create_1D_histogram('landau', 'phROC{n}_all_{cut}'.format(n=i, cut=self.cuts[j]),
+                                                                      'Pulse Height ROC {n} all cluster sizes after {c} cut'.format(n=i, c=self.cuts[j]),
+                                                                      'Charge (e)', 'Num Clusters',self.colors[j], 0.1, i) for i in xrange(devini, self.num_devices)}
+
+        self.rhit_cut = {i: self.create_1D_histogram('rhit', 'rhit_ROC{n}_cut'.format(n=i), 'Cluster - track positions distance ROC {n} after cut'.format(n=i),
+                                                     'R Hit (mm)', 'Num Events', kRed, roc=i) for i in xrange(devini, self.num_devices)}
 
         self.phROC_all = {i: self.create_1D_histogram('landau', 'phROC{n}_all'.format(n=i),
                                                       'Pulse Height ROC {n} all cluster sizes'.format(n=i), 'Charge (e)',
@@ -429,6 +440,52 @@ class Plots(Elementary):
         histo1.Draw(draw_opt)
         histo2.Draw(draw_opt+'SAME')
         c0.Update()
+        c0.BuildLegend(0.65, 0.7, 0.9, 0.9)
+        if not os.path.isdir('{dir}/Plots'.format(dir=path)):
+            os.makedirs('{dir}/Plots'.format(dir=path))
+        if not os.path.isdir('{dir}/Root'.format(dir=path)):
+            os.makedirs('{dir}/Root'.format(dir=path))
+        c0.SaveAs('{dir}/Root/c_{n}.root'.format(dir=path, n=name))
+        c0.SaveAs('{dir}/Plots/c_{n}.png'.format(dir=path, n=name))
+        c0.Close()
+        gROOT.SetBatch(False)
+        if verbosity: self.print_banner('{n} save -> Done'.format(n=name))
+        del c0
+
+    def save_cuts_overlay(self, histo0, histo1, histo2, histo3, histo4, histo5, histo6, histo7, name, title, draw_opt='', opt_stats=0, path='./', verbosity=False):
+        if verbosity: self.print_banner('Saving {n}'.format(n=name))
+        gROOT.SetBatch(True)
+        c0 = TCanvas('c_{n}'.format(n=name), title, 2100, 1500)
+        c0.SetLeftMargin(0.1)
+        c0.SetRightMargin(0.1)
+        histo1.SetStats(0)
+        histo2.SetStats(1)
+        gStyle.SetOptStat(opt_stats)
+        gStyle.SetStatX(0.8)
+        gStyle.SetStatY(0.9)
+        gStyle.SetStatW(0.15)
+        gStyle.SetStatH(0.15)
+        c0.cd()
+        s1 = THStack('s_{n}'.format(n=name), 's_{n}'.format(n=name))
+        s1.Add(histo7)
+        s1.Add(histo6)
+        s1.Add(histo5)
+        s1.Add(histo4)
+        s1.Add(histo3)
+        s1.Add(histo2)
+        s1.Add(histo1)
+        s1.Add(histo0)
+        # histo0.Draw(draw_opt)
+        # histo1.Draw(draw_opt+'SAME')
+        # histo2.Draw(draw_opt+'SAME')
+        # histo3.Draw(draw_opt+'SAME')
+        # histo4.Draw(draw_opt+'SAME')
+        # histo5.Draw(draw_opt+'SAME')
+        # histo6.Draw(draw_opt+'SAME')
+        # histo7.Draw(draw_opt+'SAME')
+        s1.Draw('nostack')
+        c0.Update()
+        c0.SetLogy()
         c0.BuildLegend(0.65, 0.7, 0.9, 0.9)
         if not os.path.isdir('{dir}/Plots'.format(dir=path)):
             os.makedirs('{dir}/Plots'.format(dir=path))

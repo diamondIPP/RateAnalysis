@@ -49,6 +49,7 @@ class CutPix(Elementary):
             self.generate_slope_cuts()
             self.generate_ini_fin_cuts()
             self.generate_beam_interruption_cut()
+            self.generate_rhit_cuts()
             self.add_cuts()
 
             # self.generate_cut_string()  # DA TODO
@@ -139,6 +140,8 @@ class CutPix(Elementary):
             has_option('CUT', 'chi2X') else ''
         self.CutConfig['chi2Y'] = self.ana_config_parser.getint('CUT', 'chi2Y') if self.ana_config_parser.\
             has_option('CUT', 'chi2Y') else ''
+        self.CutConfig['rhit'] = self.ana_config_parser.getint('CUT', 'rhit') if self.ana_config_parser.\
+            has_option('CUT', 'rhit') else ''
         self.CutConfig['track_angle'] = self.ana_config_parser.getfloat('CUT', 'track_angle') if self.ana_config_parser.\
             has_option('CUT', 'track_angle') else ''
         self.CutConfig['MaskRowsDUT1'] = self.ana_config_parser.get('CUT', 'MaskRowsDUT1') if self.ana_config_parser.\
@@ -172,10 +175,10 @@ class CutPix(Elementary):
         for iROC in xrange(4, 7):
             self.cuts_hitmap_roc[iROC] = self.mask_hitmap_roc[iROC] + self.chi2x_cut + self.chi2y_cut \
                                          + self.cut_tracks + self.angle_x_cut + self.angle_y_cut + self.ini_fin_cut \
-                                         + self.beam_interr_cut
+                                         + self.beam_interr_cut + self.rhit_cut[iROC]
             self.cuts_pixelated_roc[iROC] = self.mask_pixelated_roc[iROC] + self.chi2x_cut + self.chi2y_cut \
                                             + self.cut_tracks + self.angle_x_cut + self.angle_y_cut + self.ini_fin_cut \
-                                            + self.beam_interr_cut
+                                            + self.beam_interr_cut + self.rhit_cut[iROC]
 
     def generate_ini_fin_cuts(self):
         nentries = self.analysis.tree.GetEntries()
@@ -201,6 +204,25 @@ class CutPix(Elementary):
             if h.GetBinContent(t) < mean*0.9:
                 self.beam_interr_cut=self.beam_interr_cut+TCut('bi{i}'.format(i=t), 'time<{low}||time>{high}'.format(low=h.GetBinLowEdge(t)-abs(self.CutConfig['ExcludeBeforeJump'])*1000, high=h.GetBinLowEdge(t)+h.GetBinWidth(t)+abs(self.CutConfig['ExcludeAfterJump'])*1000))
         gROOT.SetBatch(False)
+
+    def generate_rhit_cuts(self):
+        self.rhit_cut = {}
+        self.generate_rhit_cuts_DUT(4)
+        self.generate_rhit_cuts_DUT(5)
+        self.generate_rhit_cuts_DUT(6)
+
+    def generate_rhit_cuts_DUT(self, dut):
+        # gROOT.SetBatch(1)
+        # h = TH1F('h', 'h', 101, -0.03, 6.03)
+        # nq = 100
+        # rhits = zeros(nq)
+        # xq = array([(i + 1) / float(nq) for i in xrange(nq)])
+        # self.analysis.tree.Draw('sqrt((10*(track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_X))**2+(10*(track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_Y))**2)>>h'.format(n=dut),'','goff')
+        # h.GetQuantiles(nq, rhits, xq)
+        # gROOT.SetBatch(0)
+        value = self.CutConfig['rhit']
+        string = 'sqrt((10*(track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_X))**2+(10*(track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_Y))**2)<{val}&&sqrt((10*(track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_X))**2+(10*(track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_Y))**2)>0'.format(n=dut, val=value)
+        self.rhit_cut[dut] = TCut("rhit_ROC{dut}_cut".format(dut=dut), string)
 
     def generate_tracks_cut(self):
         self.cut_tracks = TCut('cut_tracks', 'n_tracks')

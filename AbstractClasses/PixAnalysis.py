@@ -155,8 +155,28 @@ class SignalPixAnalysis(Analysis):
             exec("self.plots.save_cuts_distributions(self.plots.slope_{mode}, self.plots.slope_{mode}_cut, 'slope_{mode}_cut_overlay', 'Slope {mode} Cut Overlay', '', 1000000011, self.save_dir, False)".format(mode=mod))
         if verbosity: self.print_banner('Analysing cluster - tracking positions')
         for i in xrange(min([self.roc_diam1, self.roc_diam2, self.roc_si]), max([self.roc_diam1, self.roc_diam2, self.roc_si]) + 1):
-            self.tree.Draw('sqrt(track_x_ROC{n}**2+track_x_ROC{n}**2>>rhit_ROC{n}'.format(n=i))
-            self.plots.save_cuts_distributions(self.plots.rhit[i], self.plots.rhit[i], 'rhit_ROC{n}'.format(n=i), 'Distance between cluster and track positions ROC{n}'.format(n=i), '', 1000000011, self.save_dir, False)
+            self.tree.Draw('sqrt((10*(track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_X))**2+(10*(track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_Y))**2)>>rhit_ROC{n}'.format(n=i),self.Cut.chi2x_cut+self.Cut.chi2y_cut,'goff')
+            self.tree.Draw('sqrt((10*(track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_X))**2+(10*(track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_Y))**2)>>rhit_ROC{n}_cut'.format(n=i),self.Cut.rhit_cut[i]+self.Cut.chi2x_cut+self.Cut.chi2y_cut,'goff')
+            self.plots.save_cuts_distributions(self.plots.rhit[i], self.plots.rhit_cut[i], 'rhit_ROC{n}'.format(n=i), 'Distance between cluster and track positions ROC{n}'.format(n=i), '', 1000000011, self.save_dir, False)
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_all_{cut}'.format(n=i, cut=self.plots.cuts[0]), '', 'goff')
+            cut = self.Cut.mask_pixelated_roc[i]
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_all_{cut}'.format(n=i, cut=self.plots.cuts[1]), cut, 'goff')
+            cutf = self.Cut.fid_cut_pixelated_roc[i].GetName()
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_all_{cut}'.format(n=i, cut=self.plots.cuts[2]), '{c}&&{cf}'.format(c=cut, cf=cutf), 'goff')
+            cut = cut + self.Cut.beam_interr_cut
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_all_{cut}'.format(n=i, cut=self.plots.cuts[3]), '{c}&&{cf}'.format(c=cut, cf=cutf), 'goff')
+            cut = cut + self.Cut.cut_tracks
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_all_{cut}'.format(n=i, cut=self.plots.cuts[4]), '{c}&&{cf}'.format(c=cut, cf=cutf), 'goff')
+            cut = cut + self.Cut.angle_x_cut + self.Cut.angle_y_cut
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_all_{cut}'.format(n=i, cut=self.plots.cuts[5]), '{c}&&{cf}'.format(c=cut, cf=cutf), 'goff')
+            cut = cut + self.Cut.chi2x_cut + self.Cut.chi2y_cut
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_all_{cut}'.format(n=i, cut=self.plots.cuts[6]), '{c}&&{cf}'.format(c=cut, cf=cutf), 'goff')
+            cut = cut + self.Cut.rhit_cut[i]
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_all_{cut}'.format(n=i, cut=self.plots.cuts[7]), '{c}&&{cf}'.format(c=cut, cf=cutf), 'goff')
+            self.plots.save_cuts_overlay(self.plots.landaus['no'][i], self.plots.landaus['mask'][i], self.plots.landaus['fid'][i], self.plots.landaus['beam'][i],
+                                         self.plots.landaus['tracks'][i], self.plots.landaus['angle'][i], self.plots.landaus['chi2'][i], self.plots.landaus['rhit'][i],
+                                         'successive_cuts_overlay_{n}'.format(n=i), 'Successive Cuts overlay {n}'.format(n=i), '', 1000000011, self.save_dir, False)
+
 
     def fill_occupancy(self, show_progressBar=False, do_tlscp=False, verbosity=False):
         # for i in xrange(len(self.plane)):
