@@ -15,7 +15,7 @@ from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectr
 # global test campaign and resolution
 tc = None
 res = None
-default_tc = '201510'
+default_tc = '201608'
 
 
 class Elementary(object):
