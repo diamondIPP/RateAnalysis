@@ -7,6 +7,7 @@ from textwrap import fill
 from sys import argv
 from collections import OrderedDict
 from ConfigParser import ConfigParser
+from Utils import *
 
 
 class RunSelection(Elementary):
@@ -312,22 +313,22 @@ class RunSelection(Elementary):
                 string += '*' if self.channels[run][ch] else ''
                 string += self.run_infos[run]['dia{n}'.format(n=i)].ljust(7)
                 string += str(int(self.run_infos[run]['dia{n}hv'.format(n=i)])).ljust(6)
-            string += '{flux} kHz '.format(flux=str(int(self.run_infos[run]['measured flux'])).rjust(4))
+            string += '{flux:3.2f}'.format(flux=calc_flux(self.run_infos[run], self.TESTCAMPAIGN)).ljust(15)
             if not show_allcomments:
-                comments = self.run_infos[run]['user comments']
+                comments = self.run_infos[run]['comments']
                 show_comment = comments[:20].replace('\r\n', ' ')
                 string += show_comment
                 string += '*' if len(comments) >= 20 else ''
             if header:
                 spaces = [int(self.channels[run][ch]) * ' ' for ch in self.run.channels]
-                string = 'Nr. ' + 'Type'.ljust(9) + 'Dia 1'.ljust(7) + spaces[0] + 'HV 1'.ljust(6) + 'Dia 2'.ljust(7) + spaces[1] + 'HV 2'.ljust(6) + 'Flux'.ljust(9)
+                string = 'Nr. ' + 'Type'.ljust(9) + 'Dia 1'.ljust(7) + spaces[0] + 'HV 1'.ljust(6) + 'Dia 2'.ljust(7) + spaces[1] + 'HV 2'.ljust(6) + 'Flux [kHz/cm2]'.ljust(15)
                 string += 'Comment' if not show_allcomments else ''
             return string
 
         print make_info_string(selected_runs[0], True)
         for run_nr in selected_runs:
             print make_info_string(run_nr)
-            comment = self.run_infos[run_nr]['user comments']
+            comment = self.run_infos[run_nr]['comments']
             if show_allcomments and len(comment) > 0:
                 print 'COMMENT:\n{comment}\n{delimitor}'.format(comment=fill(comment, 51), delimitor=49 * '-')
 
