@@ -115,14 +115,13 @@ class AnalysisCollection(Elementary):
         keydict = ConfigParser()
         keydict.read('Configuration/KeyDict_{tc}.cfg'.format(tc=self.TESTCAMPAIGN))
         path = self.run_config_parser.get('BASIC', 'runinfofile')
-        flux_name = keydict.get('KEYNAMES', 'measured flux')
         f = open(path, 'r')
         run_log = json.load(f)
-        fluxes = {run_log[str(run)][flux_name]: run for run in self.runs}
+        fluxes = {calc_flux(run_log[str(run)], self.TESTCAMPAIGN): run for run in self.runs}
         if self.verbose:
             print 'RUN FLUX [kHz/cm2]'
             for run in self.runs:
-                print '{run:3d} {flux:9d}'.format(run=run, flux=int(run_log[str(run)][flux_name]))
+                print '{run:3d} {flux:9.2f}'.format(run=run, flux=calc_flux(run_log[str(run)], self.TESTCAMPAIGN))
         print '\n'
         return {'min': fluxes[min(fluxes)], 'max': fluxes[max(fluxes)]}
 
