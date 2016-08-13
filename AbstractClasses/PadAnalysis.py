@@ -275,7 +275,7 @@ class PadAnalysis(Analysis):
 
     # ==========================================================================
     # region 2D SIGNAL DISTRIBUTION
-    def draw_signal_map(self, draw_option='surf3z', show=True, factor=1.5):
+    def draw_signal_map(self, draw_option='surf3z', show=True, factor=1.5, cut=None):
         margins = self.find_diamond_margins(show_plot=False)
         x = [margins['x'][0], margins['x'][1]]
         y = [margins['y'][0], margins['y'][1]]
@@ -286,7 +286,8 @@ class PadAnalysis(Analysis):
         h = TProfile2D('signal_map', 'Signal Map', x_bins, x[0], x[1], y_bins, y[0], y[1])
         signal = '{sig}-{pol}*{ped}'.format(sig=self.SignalName, ped=self.PedestalName, pol=self.Polarity)
         print 'drawing signal map of {dia} for Run {run}...'.format(dia=self.diamond_name, run=self.run_number)
-        self.tree.Draw('{z}:diam{nr}_track_y:diam{nr}_track_x>>signal_map'.format(z=signal, nr=nr), self.Cut.all_cut, 'goff')
+        cut = self.Cut.all_cut if cut is None else cut
+        self.tree.Draw('{z}:diam{nr}_track_y:diam{nr}_track_x>>signal_map'.format(z=signal, nr=nr), cut, 'goff')
         gStyle.SetPalette(53)
         is_surf = draw_option.lower().startswith('surf')
         self.format_histo(h, x_tit='track_x [cm]', y_tit='track_y [cm]', y_off=1.4, z_off=1.3, stats=0, z_tit='Pulse Height [au]')
