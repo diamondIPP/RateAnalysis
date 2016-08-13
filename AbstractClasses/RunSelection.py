@@ -365,25 +365,21 @@ class RunSelection(Elementary):
         for run_type, plan in self.run_plan.iteritems():
             print '{type}:'.format(type=run_type)
             if not detailed:
-                print '  Nr. {range} {excl} {dia} Voltages'.format(range='Range'.ljust(17), excl='Excluded'.ljust(15), dia='Diamonds'.ljust(20))
+                print '  Nr.  {range} {excl} {dia} Voltages'.format(range='Range'.ljust(17), excl='Excluded'.ljust(15), dia='Diamonds'.ljust(20))
             for nr, runs in sorted(plan.iteritems()):
                 self.unselect_all_runs()
                 self.select_runs_from_runplan(nr, run_type)
                 if not detailed:
                     all_runs = [run for run in self.run_numbers if runs[-1] >= run >= runs[0]]
-                    missing_runs = []
-                    i = 0
-                    for run in all_runs:
-                        if run != runs[i]:
-                            missing_runs.append(run)
-                        else:
-                            i += 1
+                    missing_runs = [run for run in all_runs if run not in runs]
+                    missing_runs = missing_runs if len(missing_runs) <= 3 else '{0}, ...]'.format(str(missing_runs[:2]).strip(']'))
                     dias = [str(dia) for dia in self.get_diamond_names(True)]
                     run_string = '[{min}, ... , {max}]'.format(min=str(runs[0]).zfill(3), max=str(runs[-1]).zfill(3))
                     not_string = str(missing_runs) if missing_runs else ''
                     voltages = self.get_hv_values(sel=True)
+                    voltages = voltages if len(voltages) <= 4 else '{0}, ...]'.format(str(voltages[:3]).strip(']'))
                     nr += ':'
-                    print '  {nr}   {runs}, {miss} {dias} {hv}'.format(nr=nr.ljust(5), runs=run_string, miss=not_string[:15].ljust(15), dias=str(dias).ljust(20), hv=voltages)
+                    print '  {nr}{runs}, {miss} {dias} {hv}'.format(nr=nr.ljust(5), runs=run_string, miss=not_string[:15].ljust(15), dias=str(dias).ljust(20), hv=voltages)
                 else:
                     print '{delim}\n RUN PLAN {nr} ({type})\n{delim}'.format(delim=50 * '-', nr=nr, type=run_type)
                     self.show_selected_runs(show_allcomments=show_allcomments)
