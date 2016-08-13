@@ -136,11 +136,27 @@ class SignalPixAnalysis(Analysis):
         #         if do_occupancy: self.fill_occupancy()
         #         if do_pulse_height: self.do_pulse_height_analysis(event)
         #     bar.update(event + 1)
+        self.do_cuts_study(verbosity)
         if do_occupancy: self.fill_occupancy(show_progressBar, do_tlscp, verbosity)
         if do_pulse_height: self.do_pulse_height_analysis(show_progressBar, do_tlscp, verbosity)
         if do_correlations: self.do_correlations(self.roc_tel[1], self.roc_tel[2], self.roc_diam1, self.roc_si, show_progressBar, verbosity)
         # self.print_banner('Looping over Tree -> Done', '%')
 
+    def do_cuts_study(self, verbosity):
+        if verbosity: self.print_banner('Analysing chi2...')
+        for mod in ['x', 'y']:
+            self.tree.Draw('chi2_{mode}>>chi2_{mode}'.format(mode=mod), '', 'goff')
+            exec("self.tree.Draw('chi2_{mode}>>chi2_{mode}_cut',self.Cut.chi2{mode}_cut,'goff')".format(mode=mod))
+            exec("self.plots.save_cuts_distributions(self.plots.chi2_{mode}, self.plots.chi2_{mode}_cut, 'chi2_{mode}_cut_overlay', 'Chi2 {mode} Cut Overlay', '', 1000000011, self.save_dir, False)".format(mode=mod))
+        if verbosity: self.print_banner('Analysing angle...')
+        for mod in ['x', 'y']:
+            self.tree.Draw('slope_{mode}>>slope_{mode}'.format(mode=mod), '', 'goff')
+            exec("self.tree.Draw('slope_{mode}>>slope_{mode}_cut',self.Cut.angle_{mode}_cut,'goff')".format(mode=mod))
+            exec("self.plots.save_cuts_distributions(self.plots.slope_{mode}, self.plots.slope_{mode}_cut, 'slope_{mode}_cut_overlay', 'Slope {mode} Cut Overlay', '', 1000000011, self.save_dir, False)".format(mode=mod))
+        if verbosity: self.print_banner('Analysing cluster - tracking positions')
+        for i in xrange(min([self.roc_diam1, self.roc_diam2, self.roc_si]), max([self.roc_diam1, self.roc_diam2, self.roc_si]) + 1):
+            self.tree.Draw('sqrt(track_x_ROC{n}**2+track_x_ROC{n}**2>>rhit_ROC{n}'.format(n=i))
+            self.plots.save_cuts_distributions(self.plots.rhit[i], self.plots.rhit[i], 'rhit_ROC{n}'.format(n=i), 'Distance between cluster and track positions ROC{n}'.format(n=i), '', 1000000011, self.save_dir, False)
 
     def fill_occupancy(self, show_progressBar=False, do_tlscp=False, verbosity=False):
         # for i in xrange(len(self.plane)):
@@ -1960,4 +1976,4 @@ if __name__ == "__main__":
     print '\nAnalysing run', test_run, '\n'
     z = SignalPixAnalysis(test_run, args.ch)
     z.print_elapsed_time(st, 'Instantiation')
-    z.do_analysis(True, True, True, doTelscp, pbar, verb)
+    z.do_analysis(False, False, False, doTelscp, pbar, verb)

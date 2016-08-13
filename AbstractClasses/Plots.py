@@ -60,7 +60,16 @@ class Plots(Elementary):
             'nBinRow': 79,
             'minRow': 0,
             'maxRow': 79,
-            'num_diff_cluster_sizes': 4
+            'num_diff_cluster_sizes': 4,
+            'chi2_1Dbins': 200,
+            'chi2_1Dmin': 0,
+            'chi2_1Dmax': 100,
+            'slope_1Dbins': 60,
+            'slope_1Dmin': -3,
+            'slope_1Dmax': 3,
+            'rhit_1Dbins': 100,
+            'rhit_1Dmin': -2,
+            'rhit_1Dmax': 2
         }
         self.plot_settings['event_bins'] = int(ceil(float(self.num_entries)/10)) if self.num_entries <= 100000 else \
             int(ceil(float(self.num_entries)/100)) if self.num_entries <= 500000 else int(ceil(float(self.num_entries)/self.plot_settings['nEventsAv']))
@@ -79,9 +88,22 @@ class Plots(Elementary):
         return (graph)
 
     def create_1D_histogram(self, type='landau', name='histo', title='histo', xTitle='X', yTitle='Y', color=kBlack, min_val=0, roc=4):
-        ph1Dbins = self.plot_settings['ph1DbinsD4'] if roc is self.roc_d1 else self.plot_settings['ph1DbinsD5'] if roc is self.roc_d2 else self.plot_settings['ph1DbinsSi']
-        ph1Dmin = self.plot_settings['ph1DminD4'] if roc is self.roc_d1 else self.plot_settings['ph1DminD5'] if roc is self.roc_d2 else self.plot_settings['ph1DminSi']
-        ph1Dmax = self.plot_settings['ph1DmaxD4'] if roc is self.roc_d1 else self.plot_settings['ph1DmaxD5'] if roc is self.roc_d2 else self.plot_settings['ph1DmaxSi']
+        if type is 'landau':
+            ph1Dbins = self.plot_settings['ph1DbinsD4'] if roc is self.roc_d1 else self.plot_settings['ph1DbinsD5'] if roc is self.roc_d2 else self.plot_settings['ph1DbinsSi']
+            ph1Dmin = self.plot_settings['ph1DminD4'] if roc is self.roc_d1 else self.plot_settings['ph1DminD5'] if roc is self.roc_d2 else self.plot_settings['ph1DminSi']
+            ph1Dmax = self.plot_settings['ph1DmaxD4'] if roc is self.roc_d1 else self.plot_settings['ph1DmaxD5'] if roc is self.roc_d2 else self.plot_settings['ph1DmaxSi']
+        elif type is 'chi2':
+            ph1Dbins = self.plot_settings['chi2_1Dbins']
+            ph1Dmin = self.plot_settings['chi2_1Dmin']
+            ph1Dmax = self.plot_settings['chi2_1Dmax']
+        elif type is 'slope':
+            ph1Dbins = self.plot_settings['slope_1Dbins']
+            ph1Dmin = self.plot_settings['slope_1Dmin']
+            ph1Dmax = self.plot_settings['slope_1Dmax']
+        elif type is 'rhit':
+            ph1Dbins = self.plot_settings['rhit_1Dbins']
+            ph1Dmin = self.plot_settings['rhit_1Dmin']
+            ph1Dmax = self.plot_settings['rhit_1Dmax']
         histo1D = TH1D(name, title, int(ph1Dbins + 1), ph1Dmin - float(ph1Dmax - ph1Dmin)/(2*ph1Dbins),
                        ph1Dmax + float(ph1Dmax - ph1Dmin)/(2*ph1Dbins))
         self.set_1D_options(type, histo1D, xTitle, yTitle, color, min_val)
@@ -192,6 +214,18 @@ class Plots(Elementary):
         # 1D Histograms
         devini = 0 if doTlscp else self.roc_d1
         self.print_banner('Creating 1D histograms...')
+
+        self.chi2_x = self.create_1D_histogram('chi2', 'chi2_x', 'Chi2 in X', 'chi2_x', 'Num Entries', kBlue)
+        self.chi2_x_cut = self.create_1D_histogram('chi2', 'chi2_x_cut', 'Chi2 in X after cut', 'chi2_x', 'Num Entries', kRed)
+        self.chi2_y = self.create_1D_histogram('chi2', 'chi2_y', 'Chi2 in Y', 'chi2_y', 'Num Entries', kBlue)
+        self.chi2_y_cut = self.create_1D_histogram('chi2', 'chi2_y_cut', 'Chi2 in Y after cut', 'chi2_y', 'Num Entries', kRed)
+        self.slope_x = self.create_1D_histogram('slope', 'slope_x', 'Slope in X', 'slope_x', 'Num Entries', kBlue)
+        self.slope_x_cut = self.create_1D_histogram('slope', 'slope_x_cut', 'Slope in X after cut', 'slope_x', 'Num Entries', kRed)
+        self.slope_y = self.create_1D_histogram('slope', 'slope_y', 'Slope in Y', 'slope_y', 'Num Entries', kBlue)
+        self.slope_y_cut = self.create_1D_histogram('slope', 'slope_y_cut', 'Slope in Y after cut', 'slope_y', 'Num Entries', kRed)
+        self.rhit = {i: self.create_1D_histogram('rhit', 'rhit_ROC{n}'.format(n=i), 'Distance between Cluster and track positions in ROC {n}'.format(n=i),
+                                                 'R Hit', 'Num Events', kBlue, roc=i) for i in xrange(devini, self.num_devices)}
+
         self.phROC_all = {i: self.create_1D_histogram('landau', 'phROC{n}_all'.format(n=i),
                                                       'Pulse Height ROC {n} all cluster sizes'.format(n=i), 'Charge (e)',
                                                       'Num Clusters', kBlack, roc=i) for i in xrange(devini, self.num_devices)}
@@ -367,6 +401,35 @@ class Plots(Elementary):
             c0.Modified()
         if tcutg is not None:
             tcutg.Draw('same')
+        if not os.path.isdir('{dir}/Plots'.format(dir=path)):
+            os.makedirs('{dir}/Plots'.format(dir=path))
+        if not os.path.isdir('{dir}/Root'.format(dir=path)):
+            os.makedirs('{dir}/Root'.format(dir=path))
+        c0.SaveAs('{dir}/Root/c_{n}.root'.format(dir=path, n=name))
+        c0.SaveAs('{dir}/Plots/c_{n}.png'.format(dir=path, n=name))
+        c0.Close()
+        gROOT.SetBatch(False)
+        if verbosity: self.print_banner('{n} save -> Done'.format(n=name))
+        del c0
+
+    def save_cuts_distributions(self, histo1, histo2, name, title, draw_opt='', opt_stats=0, path='./', verbosity=False):
+        if verbosity: self.print_banner('Saving {n}'.format(n=name))
+        gROOT.SetBatch(True)
+        c0 = TCanvas('c_{n}'.format(n=name), title, 2100, 1500)
+        c0.SetLeftMargin(0.1)
+        c0.SetRightMargin(0.1)
+        histo1.SetStats(0)
+        histo2.SetStats(1)
+        gStyle.SetOptStat(opt_stats)
+        gStyle.SetStatX(0.8)
+        gStyle.SetStatY(0.9)
+        gStyle.SetStatW(0.15)
+        gStyle.SetStatH(0.15)
+        c0.cd()
+        histo1.Draw(draw_opt)
+        histo2.Draw(draw_opt+'SAME')
+        c0.Update()
+        c0.BuildLegend(0.65, 0.7, 0.9, 0.9)
         if not os.path.isdir('{dir}/Plots'.format(dir=path)):
             os.makedirs('{dir}/Plots'.format(dir=path))
         if not os.path.isdir('{dir}/Root'.format(dir=path)):
