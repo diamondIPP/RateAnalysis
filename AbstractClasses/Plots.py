@@ -7,6 +7,7 @@ from ROOT import TGraphErrors, TCanvas, TH1D, TH2D, gStyle, TH1F, gROOT, TLegend
 # from numpy import array
 from math import sqrt, ceil, log
 from Elementary import Elementary
+import os
 # from argparse import ArgumentParser
 # from Extrema import Extrema2D
 # from ChannelCut import ChannelCut
@@ -354,8 +355,12 @@ class Plots(Elementary):
             c0.Modified()
         if tcutg is not None:
             tcutg.Draw('same')
-        c0.SaveAs('{dir}/c_{n}.root'.format(dir=path, n=name))
-        c0.SaveAs('{dir}/c_{n}.png'.format(dir=path, n=name))
+        if not os.path.isdir('{dir}/Plots'.format(dir=path)):
+            os.makedirs('{dir}/Plots'.format(dir=path))
+        if not os.path.isdir('{dir}/Root'.format(dir=path)):
+            os.makedirs('{dir}/Root'.format(dir=path))
+        c0.SaveAs('{dir}/Root/c_{n}.root'.format(dir=path, n=name))
+        c0.SaveAs('{dir}/Plots/c_{n}.png'.format(dir=path, n=name))
         c0.Close()
         gROOT.SetBatch(False)
         if verbosity: self.print_banner('{n} save -> Done'.format(n=name))

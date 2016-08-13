@@ -22,6 +22,12 @@ class RateAnalysisExtraction:
         self.runs = self.get_runs()
         self.runs = sorted(self.runs)
         self.runs = self.runs[self.runs.index(self.ini):self.runs.index(self.fin)+1]
+        self.dir_roots = 'Ini_{i}_Fin_{f}_Exc_{e}/Root'.format(i=self.ini, f=self.fin, e=self.excl)
+        self.dir_plots = 'Ini_{i}_Fin_{f}_Exc_{e}/Plots'.format(i=self.ini, f=self.fin, e=self.excl)
+        if not os.path.isdir(self.dir_roots):
+            os.makedirs(self.dir_roots)
+        if not os.path.isdir(self.dir_plots):
+            os.makedirs(self.dir_plots)
         if self.exclude[0] is not '':
             for excl in self.exclude:
                 if int(excl) in self.runs:
@@ -37,7 +43,7 @@ class RateAnalysisExtraction:
         elif self.dia is 6:
             self.histos = {run: self.get_histo(run, 'c_phAllVsEventROC6') for run in self.runs} if size is 0 else {run: self.get_histo(run, 'c_phCl1VsEventROC6') for run in self.runs} if size is 1 else {run: self.get_histo(run, 'c_phCl2VsEventROC6') for run in self.runs} if size is 2 else {run: self.get_histo(run, 'c_phCl3VsEventROC6') for run in self.runs} if size is 3 else {run: self.get_histo(run, 'c_phClM4VsEventROC6') for run in self.runs}
             self.histos_cuts = {run: self.get_histo(run, 'c_phAllVsEventROC6_cuts') for run in self.runs} if size is 0 else {run: self.get_histo(run, 'c_phCl1VsEventROC6_cuts') for run in self.runs} if size is 1 else {run: self.get_histo(run, 'c_phCl2VsEventROC6_cuts') for run in self.runs} if size is 2 else {run: self.get_histo(run, 'c_phCl3VsEventROC6_cuts') for run in self.runs} if size is 3 else {run: self.get_histo(run, 'c_phClM4VsEventROC6_cuts') for run in self.runs}
-        self.projs = {run: self.do_projection(run) for run in self.runs}
+        self.projs = {run: self.do_projection(run, False) for run in self.runs}
         self.projs_cuts = {run: self.do_projection(run, True) for run in self.runs}
         self.means = {run: self.projs[run].GetMean() for run in self.runs}
         self.means_cuts = {run: self.projs_cuts[run].GetMean() for run in self.runs}
@@ -82,7 +88,7 @@ class RateAnalysisExtraction:
             self.graph_cuts.SetPoint(i, self.fluxes[self.runs[i]], self.means_cuts[self.runs[i]])
             self.graph_cuts.SetPointError(i, self.fluxes[self.runs[i]] * 0.1, self.sigmas_cuts[self.runs[i]])
         self.set_1D_options(self.graph, 'PH_Flux_Scan', 'Flux (kHz/cm^{2}/s)', 'mean Charge (e)',kBlue, 20, 2, 0, self.graph.GetMaximum())
-        self.set_1D_options(self.graph_cuts, 'PH_Flux_Scan', 'Flux (kHz/cm^{2}/s)', 'mean Charge (e)',kBlue, 20, 2, 0, self.graph_cuts.GetMaximum())
+        self.set_1D_options(self.graph_cuts, 'PH_Flux_Scan_with_cuts', 'Flux (kHz/cm^{2}/s)', 'mean Charge (e)',kBlue, 20, 2, 0, self.graph_cuts.GetMaximum())
         self.CreateCanvas('Charge_Vs_Flux', 2)
         self.CreateCanvas('Charge_Vs_Flux_with_cuts', 2)
         self.startPoint = TGraph(1)
@@ -133,28 +139,28 @@ class RateAnalysisExtraction:
         self.finishPoint.Draw('P')
         self.cCharge_Vs_Flux.BuildLegend(0.65, 0.2, 0.9, 0.4)
         if self.cl_size is 0:
-            self.cCharge_Vs_Flux.SaveAs('Charge_Vs_Flux_ROC{d}_All_Cl_sizes_Ini_{i}_Fin_{f}_Exc_{e}.root'.format(d=self.dia, i=self.ini, f=self.fin, e=self.excl))
-            self.cCharge_Vs_Flux.SaveAs('Charge_Vs_Flux_ROC{d}_All_Cl_sizes_Ini_{i}_Fin_{f}_Exc_{e}.png'.format(d=self.dia, i=self.ini, f=self.fin, e=self.excl))
+            self.cCharge_Vs_Flux.SaveAs('{dir}/Charge_Vs_Flux_ROC{d}_All_Cl_sizes_Ini_{i}_Fin_{f}_Exc_{e}.root'.format(dir=self.dir_roots, d=self.dia, i=self.ini, f=self.fin, e=self.excl))
+            self.cCharge_Vs_Flux.SaveAs('{dir}/Charge_Vs_Flux_ROC{d}_All_Cl_sizes_Ini_{i}_Fin_{f}_Exc_{e}.png'.format(dir=self.dir_plots, d=self.dia, i=self.ini, f=self.fin, e=self.excl))
         elif self.cl_size < 4:
-            self.cCharge_Vs_Flux.SaveAs('Charge_Vs_Flux_ROC{d}_{s}_pix_Cl_size_Ini_{i}_Fin_{f}_Exc_{e}.root'.format(d=self.dia, s=self.cl_size, i=self.ini, f=self.fin, e=self.excl))
-            self.cCharge_Vs_Flux.SaveAs('Charge_Vs_Flux_ROC{d}_{s}_pix_Cl_size_Ini_{i}_Fin_{f}_Exc_{e}.png'.format(d=self.dia, s=self.cl_size, i=self.ini, f=self.fin, e=self.excl))
+            self.cCharge_Vs_Flux.SaveAs('{dir}/Charge_Vs_Flux_ROC{d}_{s}_pix_Cl_size_Ini_{i}_Fin_{f}_Exc_{e}.root'.format(dir=self.dir_roots, d=self.dia, s=self.cl_size, i=self.ini, f=self.fin, e=self.excl))
+            self.cCharge_Vs_Flux.SaveAs('{dir}/Charge_Vs_Flux_ROC{d}_{s}_pix_Cl_size_Ini_{i}_Fin_{f}_Exc_{e}.png'.format(dir=self.dir_plots, d=self.dia, s=self.cl_size, i=self.ini, f=self.fin, e=self.excl))
         else:
-            self.cCharge_Vs_Flux.SaveAs('Charge_Vs_Flux_ROC{d}_{s}_pix_Cl_size_Ini_{i}_Fin_{f}_Exc_{e}.root'.format(d=self.dia, s='4More', i=self.ini, f=self.fin, e=self.excl))
-            self.cCharge_Vs_Flux.SaveAs('Charge_Vs_Flux_ROC{d}_{s}_pix_Cl_size_Ini_{i}_Fin_{f}_Exc_{e}.png'.format(d=self.dia, s='4More', i=self.ini, f=self.fin, e=self.excl))
+            self.cCharge_Vs_Flux.SaveAs('{dir}/Charge_Vs_Flux_ROC{d}_{s}_pix_Cl_size_Ini_{i}_Fin_{f}_Exc_{e}.root'.format(dir=self.dir_roots, d=self.dia, s='4More', i=self.ini, f=self.fin, e=self.excl))
+            self.cCharge_Vs_Flux.SaveAs('{dir}/Charge_Vs_Flux_ROC{d}_{s}_pix_Cl_size_Ini_{i}_Fin_{f}_Exc_{e}.png'.format(dir=self.dir_plots, d=self.dia, s='4More', i=self.ini, f=self.fin, e=self.excl))
         self.cCharge_Vs_Flux_with_cuts.cd()
         self.graph_cuts.Draw('APL')
         self.startPoint_cuts.Draw('P')
         self.finishPoint_cuts.Draw('P')
         self.cCharge_Vs_Flux_with_cuts.BuildLegend(0.65, 0.2, 0.9, 0.4)
         if self.cl_size is 0:
-            self.cCharge_Vs_Flux_with_cuts.SaveAs('Charge_Vs_Flux_with_cuts_ROC{d}_All_Cl_sizes_Ini_{i}_Fin_{f}_Exc_{e}.root'.format(d=self.dia, i=self.ini, f=self.fin, e=self.excl))
-            self.cCharge_Vs_Flux_with_cuts.SaveAs('Charge_Vs_Flux_with_cuts_ROC{d}_All_Cl_sizes_Ini_{i}_Fin_{f}_Exc_{e}.png'.format(d=self.dia, i=self.ini, f=self.fin, e=self.excl))
+            self.cCharge_Vs_Flux_with_cuts.SaveAs('{dir}/Charge_Vs_Flux_with_cuts_ROC{d}_All_Cl_sizes_Ini_{i}_Fin_{f}_Exc_{e}.root'.format(dir=self.dir_roots, d=self.dia, i=self.ini, f=self.fin, e=self.excl))
+            self.cCharge_Vs_Flux_with_cuts.SaveAs('{dir}/Charge_Vs_Flux_with_cuts_ROC{d}_All_Cl_sizes_Ini_{i}_Fin_{f}_Exc_{e}.png'.format(dir=self.dir_plots, d=self.dia, i=self.ini, f=self.fin, e=self.excl))
         elif self.cl_size < 4:
-            self.cCharge_Vs_Flux_with_cuts.SaveAs('Charge_Vs_Flux_with_cuts_ROC{d}_{s}_pix_Cl_size_Ini_{i}_Fin_{f}_Exc_{e}.root'.format(d=self.dia, s=self.cl_size, i=self.ini, f=self.fin, e=self.excl))
-            self.cCharge_Vs_Flux_with_cuts.SaveAs('Charge_Vs_Flux_with_cuts_ROC{d}_{s}_pix_Cl_size_Ini_{i}_Fin_{f}_Exc_{e}.png'.format(d=self.dia, s=self.cl_size, i=self.ini, f=self.fin, e=self.excl))
+            self.cCharge_Vs_Flux_with_cuts.SaveAs('{dir}/Charge_Vs_Flux_with_cuts_ROC{d}_{s}_pix_Cl_size_Ini_{i}_Fin_{f}_Exc_{e}.root'.format(dir=self.dir_roots, d=self.dia, s=self.cl_size, i=self.ini, f=self.fin, e=self.excl))
+            self.cCharge_Vs_Flux_with_cuts.SaveAs('{dir}/Charge_Vs_Flux_with_cuts_ROC{d}_{s}_pix_Cl_size_Ini_{i}_Fin_{f}_Exc_{e}.png'.format(dir=self.dir_plots, d=self.dia, s=self.cl_size, i=self.ini, f=self.fin, e=self.excl))
         else:
-            self.cCharge_Vs_Flux_with_cuts.SaveAs('Charge_Vs_Flux_with_cuts_ROC{d}_{s}_pix_Cl_size_Ini_{i}_Fin_{f}_Exc_{e}.root'.format(d=self.dia, s='4More', i=self.ini, f=self.fin, e=self.excl))
-            self.cCharge_Vs_Flux_with_cuts.SaveAs('Charge_Vs_Flux_with_cuts_ROC{d}_{s}_pix_Cl_size_Ini_{i}_Fin_{f}_Exc_{e}.png'.format(d=self.dia, s='4More', i=self.ini, f=self.fin, e=self.excl))
+            self.cCharge_Vs_Flux_with_cuts.SaveAs('{dir}/Charge_Vs_Flux_with_cuts_ROC{d}_{s}_pix_Cl_size_Ini_{i}_Fin_{f}_Exc_{e}.root'.format(dir=self.dir_roots, d=self.dia, s='4More', i=self.ini, f=self.fin, e=self.excl))
+            self.cCharge_Vs_Flux_with_cuts.SaveAs('{dir}/Charge_Vs_Flux_with_cuts_ROC{d}_{s}_pix_Cl_size_Ini_{i}_Fin_{f}_Exc_{e}.png'.format(dir=self.dir_plots, d=self.dia, s='4More', i=self.ini, f=self.fin, e=self.excl))
 
     def get_runinfo(self):
         self.config_file = ConfigParser()

@@ -34,6 +34,10 @@ class SignalPixAnalysis(Analysis):
         self.save_dir = 'Results/{tc}_{run}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number)  # '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number, dia=self.diamond_name)
         if not os.path.isdir(self.save_dir):
             os.makedirs(self.save_dir)
+        if not os.path.isdir('{dir}/Plots'.format(dir=self.save_dir)):
+            os.makedirs('{dir}/Plots'.format(dir=self.save_dir))
+        if not os.path.isdir('{dir}/Root'.format(dir=self.save_dir)):
+            os.makedirs('{dir}/Root'.format(dir=self.save_dir))
         self.roc_diam1 = 4
         self.roc_diam2 = 5
         self.roc_si = 6
