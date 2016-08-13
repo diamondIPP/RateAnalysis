@@ -231,6 +231,49 @@ class AnalysisCollection(Elementary):
         self.RootObjects.append([ph, cur, pul, c, legends, pads])
         self.FirstAnalysis.run.reset_info_legend()
 
+    def draw_ph_vs_voltage(self, binning=20000):
+        gr1 = self.make_tgrapherrors('gStatError', 'stat. error', self.get_color())
+        gStyle.SetEndErrorSize(4)
+        gr_first = self.make_tgrapherrors('gFirst', 'first run', marker=22, color=2, marker_size=2)
+        gr_last = self.make_tgrapherrors('gLast', 'last run', marker=23, color=2, marker_size=2)
+        gr_errors = self.make_tgrapherrors('gFullError', 'stat. + repr. error', marker=0, color=602, marker_size=0)
+
+        flux_errors = self.draw_ph_distributions_below_flux(flux=80, show=False, save_plot=False)
+        rel_sys_error = flux_errors[1] / flux_errors[0]
+        i, j = 0, 0
+        for key, ana in self.collection.iteritems():
+            fit1 = ana.draw_pulse_height(binning, evnt_corr=True, save=False)
+            x = ana.run.RunInfo['dia1hv']
+            print x, '\t',
+            gr1.SetPoint(i, x, fit1.Parameter(0))
+            print fit1.Parameter(0)
+            gr1.SetPointError(i, 0, fit1.ParError(0))
+            gr_errors.SetPoint(i, x, fit1.Parameter(0))
+            gr_errors.SetPointError(i, 0, fit1.ParError(0) + rel_sys_error * fit1.Parameter(0))
+            # set special markers for the first and last run
+            if i == 0:
+                gr_first.SetPoint(0, x, fit1.Parameter(0))
+            if j == len(self.collection) - 1:
+                gr_last.SetPoint(0, x, fit1.Parameter(0))
+            i += 1
+            j += 1
+        graphs = [gr_errors, gr1]
+        gr_line = gr1.Clone()
+        self.format_histo(gr_line, name='gLine', color=920)
+        graphs += [gr_first, gr_last]
+        legend = self.make_legend(.65, .35, nentries=len(graphs))
+        # gr1.SetName('data') if len(graphs) < 5 else self.do_nothing()
+
+        mg = TMultiGraph('mg_ph', '' + self.diamond_name)
+        mg.Add(gr_line, 'l')
+        for gr in graphs:
+            if gr.GetName().startswith('gFull'):
+                legend.AddEntry(gr, gr.GetTitle(), 'l')
+            else:
+                legend.AddEntry(gr, gr.GetTitle(), 'p')
+            mg.Add(gr, 'p')
+        self.draw_histo(mg, draw_opt='a')
+
     def draw_pulse_heights(self, binning=20000, flux=True, raw=False, all_corr=False, show=True, save_plots=True, vs_time=False, fl=True, save_comb=True):
 
         pickle_path = self.FirstAnalysis.PickleDir + 'Ph_fit/PulseHeights_{tc}_{rp}_{dia}_{bin}.pickle'.format(tc=self.TESTCAMPAIGN, rp=self.run_plan, dia=self.diamond_name, bin=binning)
