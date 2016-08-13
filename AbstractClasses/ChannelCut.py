@@ -4,6 +4,7 @@ from copy import deepcopy
 from ROOT import TCut, TH1F, TH2F, TF1, TCanvas, TLegend, gROOT, TProfile, THStack
 from collections import OrderedDict
 from Utils import *
+from ConfigParser import NoOptionError
 
 __author__ = 'micha'
 
@@ -40,6 +41,16 @@ class ChannelCut(Cut):
     def load_config_data(self, name):
         value = self.ana_config_parser.getint('CUT', name)
         return value if value > 0 else None
+
+    def load_dia_config(self, name, store_true=False):
+        try:
+            conf = loads(self.ana_config_parser.get('CUT', name))
+            if not store_true:
+                return conf[self.analysis.diamond_name] if self.analysis.diamond_name in conf else None
+            else:
+                return True if self.analysis.diamond_name in conf else False
+        except NoOptionError:
+            log_warning('No option {0} in the analysis config for {1}!'.format(name, make_tc_str(self.TESTCAMPAIGN)))
 
     # endregion
 
