@@ -155,6 +155,12 @@ class AnalysisCollection(Elementary):
 
     # ============================================
     # region SIGNAL/PEDESTAL
+    def print_all_off_results(self):
+        string = 'Signal\tPedest.\tPulser\n'
+        for ana in self.collection.itervalues():
+            string += '{0}\n'.format(ana.print_off_results(prnt=False))
+        print string
+
     def draw_all(self):
         self.draw_ph_with_currents(show=False)
         self.draw_pulse_heights(show=False)
