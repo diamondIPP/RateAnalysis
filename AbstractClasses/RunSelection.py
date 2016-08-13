@@ -339,8 +339,8 @@ class RunSelection(Elementary):
     def save_runplan(self, runplan=None):
         f = open(self.runplan_path, 'r+')
         runplans = json.load(f)
-        self.rename_runplan_numbers()
         runplans[self.TESTCAMPAIGN] = self.run_plan if runplan is None else runplan
+        self.rename_runplan_numbers() if runplan else self.do_nothing()
         f.seek(0)
         json.dump(runplans, f, indent=2, sort_keys=True)
         f.truncate()
