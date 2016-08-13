@@ -1417,7 +1417,8 @@ class PadAnalysis(Analysis):
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
 
-    def compare_consecutive_cuts(self, scale=False, show=True, save_single=True, short=False):
+    def compare_consecutive_cuts(self, scale=False, show=True, save_single=True, short=False, x_range=None):
+        x_range = [-50, 500] if x_range is None else x_range
         self.reset_colors()
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         legend = self.make_legend(.75 if short else .71, .88, nentries=len(self.Cut.ConsecutiveCuts) + 2 if not short else 5)
@@ -1432,7 +1433,7 @@ class PadAnalysis(Analysis):
             key = 'beam_stops' if key.startswith('beam') else key
             cut += value
             save_name = 'signal_distribution_{n}cuts'.format(n=i)
-            h = TH1F('h_{0}'.format(i), 'signal with {n} cuts'.format(n=i), 550, -50, 500)
+            h = TH1F('h_{0}'.format(i), 'signal with {n} cuts'.format(n=i), 550, *x_range)
             self.tree.Draw('{name}>>h_{i}'.format(name=self.SignalName, i=i), cut, 'goff')
             if scale:
                 self.scale_histo(h)
