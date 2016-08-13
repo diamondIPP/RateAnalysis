@@ -222,7 +222,7 @@ def calc_flux(info, tc):
     if 'for1' not in info or info['for1'] == 0:
         if 'measuredflux' in info:
             return
-    path = '/data/psi_{0}_{1}/masks/{mask}'.format(tc[:4], tc[-2:], mask=info['mask'])
+    path = '/data/psi_{0}_{1}/masks/{mask}'.format(tc[:4], tc[-2:], mask=info['maskfile'])
     if file_exists(path):
         f = open(path, 'r')
     else:
@@ -238,7 +238,6 @@ def calc_flux(info, tc):
     area = [(data[1][0] - data[0][0]) * (data[1][1] - data[0][1]) * pixel_size, (data[3][0] - data[2][0]) * (data[3][1] - data[2][1]) * pixel_size]
     # print area
     flux = [info['for{0}'.format(i + 1)] / area[i] / 1000. for i in xrange(2)]
-    print mean(flux), type(mean(flux))
     return mean(flux)
 
 
