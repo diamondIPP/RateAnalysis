@@ -43,7 +43,7 @@ class Plots(Elementary):
             'ph1DbinsSi': 180,
             'ph1DminSi': 0,
             'ph1DmaxSi': 90000,
-            'nEventsAv': 50000,
+            'nEventsAv': 20000,
             'event_bins': int(ceil(float(self.num_entries)/10)),
             'event_min': 0,
             'event_max': self.num_entries,

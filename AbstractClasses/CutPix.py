@@ -175,7 +175,7 @@ class CutPix(Elementary):
         for iROC in xrange(4, 7):
             self.cuts_hitmap_roc[iROC] = self.mask_hitmap_roc[iROC] + self.chi2x_cut + self.chi2y_cut \
                                          + self.cut_tracks + self.angle_x_cut + self.angle_y_cut + self.ini_fin_cut \
-                                         + self.beam_interr_cut + self.rhit_cut[iROC]
+                                         + self.beam_interr_cut
             self.cuts_pixelated_roc[iROC] = self.mask_pixelated_roc[iROC] + self.chi2x_cut + self.chi2y_cut \
                                             + self.cut_tracks + self.angle_x_cut + self.angle_y_cut + self.ini_fin_cut \
                                             + self.beam_interr_cut + self.rhit_cut[iROC]
