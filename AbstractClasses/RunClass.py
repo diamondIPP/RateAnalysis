@@ -399,7 +399,12 @@ class Run(Elementary):
             event = 0
         elif event >= self.endEvent:
             event = self.endEvent
-        return self.time[event]
+        t = []
+        for i in xrange(event, self.endEvent + 1):
+            t.append(self.time[i])
+            if t[-1] != -1:
+                break
+        return t[-1]
 
     def get_event_at_time(self, time_sec):
         """
