@@ -130,10 +130,10 @@ class Converter:
         elif os.path.exists(old_track_file):
             return 'found_old'
         elif os.path.exists(final_file):
-            print 'did not find tracking file --> need conversion'
+            log_message('did not find tracking file --> need conversion')
             return 'found_untracked'
         else:
-            print 'did not find any matching root file --> need conversion'
+            log_message('did not find any matching root file --> need conversion')
             return False
 
     def convert_run(self, run_infos, run_number):
@@ -232,7 +232,6 @@ class Converter:
         conf_file = '{eudaq}/conf/{file}'.format(eudaq=self.eudaq_dir, file=self.converter_config_path)
         parser.read(conf_file)
         converter_section = 'Converter.{0}'.format(self.ConverterTree)
-        print self.load_polarities(run_infos)
         parser.set(converter_section, 'polarities', self.load_polarities(run_infos))
 
         # remove unset ranges and regions
