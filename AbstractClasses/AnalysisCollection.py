@@ -184,7 +184,7 @@ class AnalysisCollection(Elementary):
 
         entries = [1, 3, 1]
         positions = [[.84, .7], [.84, .7], [.84, .2]]
-        legends = [self.make_legend(*positions[i], nentries=entries[i], scale=1.7, w=.15) for i in xrange(3)]
+        legends = [self.make_legend(*positions[i], nentries=entries[i], scale=1.7) for i in xrange(3)]
         legends[1].AddEntry(ph.GetListOfGraphs()[0], 'data', 'p')
         dummy_gr = self.make_tgrapherrors('g', 'g', width=2)
         legends[1].AddEntry(0, 'flux in kHz/cm^{2}', 'p')
@@ -648,7 +648,7 @@ class AnalysisCollection(Elementary):
             typ = self.FirstAnalysis.RunInfo['pulser']
             pol = 'positive' if self.FirstAnalysis.PulserPolarity > 0 else 'negative'
             sig = 'positive' if self.FirstAnalysis.Polarity > 0 else 'negative'
-            l1 = self.make_legend(.7, .95, nentries=3, margin=.05, w=.25)
+            l1 = self.make_legend(.7, .95, nentries=3, margin=.05)
             l1.AddEntry(0, 'Type:', '')
             l1.AddEntry(0, typ, '').SetTextAlign(32)
             l1.AddEntry(0, 'Pulser Polarity:', '')
