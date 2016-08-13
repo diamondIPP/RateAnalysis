@@ -34,16 +34,16 @@ class Plots(Elementary):
         self.num_devices = num_devices
         self.num_entries = num_entries
         self.plot_settings = {
-            'ph1DbinsD4': 200,
+            'ph1DbinsD4': 60,
             'ph1DminD4': 0,
             'ph1DmaxD4': 30000,
-            'ph1DbinsD5': 200,
+            'ph1DbinsD5': 120,
             'ph1DminD5': 0,
             'ph1DmaxD5': 60000,
-            'ph1DbinsSi': 200,
+            'ph1DbinsSi': 180,
             'ph1DminSi': 0,
             'ph1DmaxSi': 90000,
-            'nEventsAv': 10000,
+            'nEventsAv': 50000,
             'event_bins': int(ceil(float(self.num_entries)/10)),
             'event_min': 0,
             'event_max': self.num_entries,
@@ -194,71 +194,71 @@ class Plots(Elementary):
         self.print_banner('Creating 1D histograms...')
         self.phROC_all = {i: self.create_1D_histogram('landau', 'phROC{n}_all'.format(n=i),
                                                       'Pulse Height ROC {n} all cluster sizes'.format(n=i), 'Charge (e)',
-                                                      'Num Clusters', kBlack, i) for i in xrange(devini, self.num_devices)}
+                                                      'Num Clusters', kBlack, roc=i) for i in xrange(devini, self.num_devices)}
         self.phROC_all_cuts = {i: self.create_1D_histogram('landau', 'phROC{n}_all_cuts'.format(n=i),
                                                            'Pulse Height ROC {n} all cluster sizes after cuts'.format(n=i), 'Charge (e)',
-                                                           'Num Clusters', kBlack, i) for i in xrange(devini, self.num_devices)}
+                                                           'Num Clusters', kBlack, roc=i) for i in xrange(devini, self.num_devices)}
         self.phROC_1cl = {i: self.create_1D_histogram('landau', 'phROC{n}_1cl'.format(n=i),
                                                       'Pulse Height ROC {n} 1pix cluster'.format(n=i), 'Charge (e)',
-                                                      'Num Clusters', kBlue, i) for i in xrange(devini, self.num_devices)}
+                                                      'Num Clusters', kBlue, roc=i) for i in xrange(devini, self.num_devices)}
         self.phROC_1cl_cuts = {i: self.create_1D_histogram('landau', 'phROC{n}_1cl_cuts'.format(n=i),
                                                            'Pulse Height ROC {n} 1pix cluster after cuts'.format(n=i), 'Charge (e)',
-                                                           'Num Clusters', kBlue, i) for i in xrange(devini, self.num_devices)}
+                                                           'Num Clusters', kBlue, roc=i) for i in xrange(devini, self.num_devices)}
         self.phROC_2cl = {i: self.create_1D_histogram('landau', 'phROC{n}_2cl'.format(n=i),
                                                       'Pulse Height ROC {n} 2pix cluster'.format(n=i), 'Charge (e)',
-                                                      'Num Clusters', kGreen, i) for i in xrange(devini, self.num_devices)}
+                                                      'Num Clusters', kGreen, roc=i) for i in xrange(devini, self.num_devices)}
         self.phROC_2cl_cuts = {i: self.create_1D_histogram('landau', 'phROC{n}_2cl_cuts'.format(n=i),
                                                            'Pulse Height ROC {n} 2pix cluster after cuts'.format(n=i), 'Charge (e)',
-                                                           'Num Clusters', kGreen, i) for i in xrange(devini, self.num_devices)}
+                                                           'Num Clusters', kGreen, roc=i) for i in xrange(devini, self.num_devices)}
         self.phROC_3cl = {i: self.create_1D_histogram('landau', 'phROC{n}_3cl'.format(n=i),
                                                       'Pulse Height ROC {n} 3pix cluster'.format(n=i), 'Charge (e)',
-                                                      'Num Clusters', kRed, i) for i in xrange(devini, self.num_devices)}
+                                                      'Num Clusters', kRed, roc=i) for i in xrange(devini, self.num_devices)}
         self.phROC_3cl_cuts = {i: self.create_1D_histogram('landau', 'phROC{n}_3cl_cuts'.format(n=i),
                                                            'Pulse Height ROC {n} 3pix cluster after cuts'.format(n=i), 'Charge (e)',
-                                                           'Num Clusters', kRed, i) for i in xrange(devini, self.num_devices)}
+                                                           'Num Clusters', kRed, roc=i) for i in xrange(devini, self.num_devices)}
         self.phROC_M4cl = {i: self.create_1D_histogram('landau', 'phROC{n}_M4cl'.format(n=i),
                                                        'Pulse Height ROC {n} 4 or more pix cluster'.format(n=i), 'Charge (e)',
-                                                       'Num Clusters', kMagenta, i) for i in xrange(devini, self.num_devices)}
+                                                       'Num Clusters', kMagenta, roc=i) for i in xrange(devini, self.num_devices)}
         self.phROC_M4cl_cuts = {i: self.create_1D_histogram('landau', 'phROC{n}_M4cl_cuts'.format(n=i),
                                                             'Pulse Height ROC {n} 4 or more pix cluster after cuts'.format(n=i), 'Charge (e)',
-                                                            'Num Clusters', kMagenta, i) for i in xrange(devini, self.num_devices)}
+                                                            'Num Clusters', kMagenta, roc=i) for i in xrange(devini, self.num_devices)}
         self.print_banner('1D histograms creation -> Done')
         # 2D Histograms
         self.print_banner('Creating 2D histograms...')
         self.hitMap = {i: self.create_2D_histogram('pixel', 'hitMapROC{n}'.format(n=i), 'Hit Map ROC {n}'.format(n=i),
-                                                   'Column', 'Row', 'Entries', 0, -1) for i in xrange(devini, self.num_devices)}
+                                                   'Column', 'Row', 'Entries', 0, -1, roc=i) for i in xrange(devini, self.num_devices)}
         self.hitMap_cuts = {i: self.create_2D_histogram('pixel', 'hitMapROC{n}_cuts'.format(n=i), 'Hit Map ROC {n} after cuts'.format(n=i),
-                                                        'Column', 'Row', 'Entries', 0, -1) for i in xrange(devini, self.num_devices)}
+                                                        'Column', 'Row', 'Entries', 0, -1, roc=i) for i in xrange(devini, self.num_devices)}
         self.ph1cl_vs_event = {i: self.create_2D_histogram('event', 'phCl1VsEventROC{n}'.format(n=i),
                                                            'PH 1 pix cluster Vs Event ROC {n}'.format(n=i), 'Event',
-                                                           'Charge (e)', 'Entries', 0, -1) for i in xrange(devini, self.num_devices)}
+                                                           'Charge (e)', 'Entries', 0, -1, roc=i) for i in xrange(devini, self.num_devices)}
         self.ph1cl_vs_event_cuts = {i: self.create_2D_histogram('event', 'phCl1VsEventROC{n}_cuts'.format(n=i),
                                                                 'PH 1 pix cluster Vs Event ROC {n} after cuts'.format(n=i), 'Event',
-                                                                'Charge (e)', 'Entries', 0, -1) for i in xrange(devini, self.num_devices)}
+                                                                'Charge (e)', 'Entries', 0, -1, roc=i) for i in xrange(devini, self.num_devices)}
         self.ph2cl_vs_event = {i: self.create_2D_histogram('event', 'phCl2VsEventROC{n}'.format(n=i),
                                                            'PH 2 pix cluster Vs Event ROC {n}'.format(n=i), 'Event',
-                                                           'Charge (e)', 'Entries', 0, -1) for i in xrange(devini, self.num_devices)}
+                                                           'Charge (e)', 'Entries', 0, -1, roc=i) for i in xrange(devini, self.num_devices)}
         self.ph2cl_vs_event_cuts = {i: self.create_2D_histogram('event', 'phCl2VsEventROC{n}_cuts'.format(n=i),
                                                                 'PH 2 pix cluster Vs Event ROC {n} after cuts'.format(n=i), 'Event',
-                                                                'Charge (e)', 'Entries', 0, -1) for i in xrange(devini, self.num_devices)}
+                                                                'Charge (e)', 'Entries', 0, -1, roc=i) for i in xrange(devini, self.num_devices)}
         self.ph3cl_vs_event = {i: self.create_2D_histogram('event', 'phCl3VsEventROC{n}'.format(n=i),
                                                            'PH 3 pix cluster Vs Event ROC {n}'.format(n=i), 'Event',
-                                                           'Charge (e)', 'Entries', 0, -1) for i in xrange(devini, self.num_devices)}
+                                                           'Charge (e)', 'Entries', 0, -1, roc=i) for i in xrange(devini, self.num_devices)}
         self.ph3cl_vs_event_cuts = {i: self.create_2D_histogram('event', 'phCl3VsEventROC{n}_cuts'.format(n=i),
                                                                 'PH 3 pix cluster Vs Event ROC {n} after cuts'.format(n=i), 'Event',
-                                                                'Charge (e)', 'Entries', 0, -1) for i in xrange(devini, self.num_devices)}
+                                                                'Charge (e)', 'Entries', 0, -1, roc=i) for i in xrange(devini, self.num_devices)}
         self.phM4cl_vs_event = {i: self.create_2D_histogram('event', 'phClM4VsEventROC{n}'.format(n=i),
                                                             'PH 4 or more pix cluster Vs Event ROC {n}'.format(n=i),
-                                                            'Event', 'Charge (e)', 'Entries', 0, -1) for i in xrange(devini, self.num_devices)}
+                                                            'Event', 'Charge (e)', 'Entries', 0, -1, roc=i) for i in xrange(devini, self.num_devices)}
         self.phM4cl_vs_event_cuts = {i: self.create_2D_histogram('event', 'phClM4VsEventROC{n}_cuts'.format(n=i),
                                                                  'PH 4 or more pix cluster Vs Event ROC {n} after cuts'.format(n=i),
-                                                                 'Event', 'Charge (e)', 'Entries', 0, -1) for i in xrange(devini, self.num_devices)}
+                                                                 'Event', 'Charge (e)', 'Entries', 0, -1, roc=i) for i in xrange(devini, self.num_devices)}
         self.phAll_vs_event = {i: self.create_2D_histogram('event', 'phAllVsEventROC{n}'.format(n=i),
                                                            'PH all cluster sizes Vs Event ROC {n}'.format(n=i), 'Event',
-                                                           'Charge (e)', 'Entries', 0, -1) for i in xrange(devini, self.num_devices)}
+                                                           'Charge (e)', 'Entries', 0, -1, roc=i) for i in xrange(devini, self.num_devices)}
         self.phAll_vs_event_cuts = {i: self.create_2D_histogram('event', 'phAllVsEventROC{n}_cuts'.format(n=i),
                                                                 'PH all cluster sizes Vs Event ROC {n} after cuts'.format(n=i), 'Event',
-                                                                'Charge (e)', 'Entries', 0, -1) for i in xrange(devini, self.num_devices)}
+                                                                'Charge (e)', 'Entries', 0, -1, roc=i) for i in xrange(devini, self.num_devices)}
 
         self.correl_col, self.correl_row = {}, {}
         self.correl_col[self.roc_tel[1]], self.correl_col[self.roc_d1], self.correl_col[self.roc_si], self.correl_col[self.roc_tel[2]] = {}, {}, {}, {}

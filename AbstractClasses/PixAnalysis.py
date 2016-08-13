@@ -1,7 +1,7 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, TH1D, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie, kFALSE, kTRUE, kBlack, kRed, kBlue, kMagenta
+from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, TH1D, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie, kFALSE, kTRUE, kBlack, kRed, kBlue, kMagenta, TFormula
 from TelescopeAnalysis import Analysis
 from CurrentInfo import Currents
 from Extrema import Extrema2D
@@ -90,6 +90,7 @@ class SignalPixAnalysis(Analysis):
                 self.del_rootobj(obj)
 
     def do_analysis(self, do_occupancy=True, do_pulse_height=True, do_correlations=True, do_tlscp=False, show_progressBar=False, verbosity=False):
+        TFormula.SetMaxima(100000,1000,1000000)  # (1000,1000,1000)
         self.print_banner('Creating histograms...', '%')
         self.plots.create_histograms(do_tlscp)
         self.print_banner('Histograms cration -> Done', '%')
