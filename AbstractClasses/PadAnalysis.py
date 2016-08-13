@@ -1536,19 +1536,23 @@ class PadAnalysis(Analysis):
         channel = self.channel if ch is None else ch
         if not self.run.wf_exists(channel):
             return
-        cut = self.Cut.all_cut if cut_string is None else cut_string
+        cut = self.Cut.all_cut if cut_string is None else TCut(cut_string)
         n_events = self.find_n_events(n, cut, start)
-        h = TH2F('wf', 'Waveform', 1024, 0, 511, 1000, -500, 500)
+        h = TH2F('wf', 'Waveform', 1024, 0, 511, 4000, -512, 512)
         gStyle.SetPalette(55)
         self.tree.Draw('wf{ch}:Iteration$/2>>wf'.format(ch=channel), cut, 'goff', n_events, start)
         t = self.tree.GetV2() if not t_corr else self.corrected_time(start + n_events - 1)
         h = TGraph(self.tree.GetSelectedRows(), t, self.tree.GetV1()) if n == 1 else h
         if fixed_range is None and n > 1:
-            fit = self.draw_pulse_height(show=False)
-            pol = self.Polarity
-            ymin = fit.Parameter(0) * 3 / 50 * 50 * pol if pol < 0 else -100
-            ymax = fit.Parameter(0) * 3 / 50 * 50 * pol if pol > 0 else 100
-            h.GetYaxis().SetRangeUser(ymin, ymax)
+            # fit = self.draw_pulse_height(show=False)
+            # pol = self.Polarity
+            # ymin = fit.Parameter(0) * 3 / 50 * 50 * pol if pol < 0 else -100
+            # ymax = fit.Parameter(0) * 3 / 50 * 50 * pol if pol > 0 else 100
+            # h.GetYaxis().SetRangeUser(ymin, ymax)
+            # FIXME: temp fix
+            ymin, ymax = h.GetYaxis().GetBinCenter(h.FindFirstBinAbove(0, 2)), h.GetYaxis().GetBinCenter(h.FindLastBinAbove(0, 2))
+            diff = ymax - ymin
+            h.GetYaxis().SetRangeUser(ymin - diff * .1, ymax + diff * .1)
         elif fixed_range:
             assert type(fixed_range) is list, 'Range has to be a list!'
             h.GetYaxis().SetRangeUser(fixed_range[0], fixed_range[1])
