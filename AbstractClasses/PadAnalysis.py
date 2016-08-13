@@ -699,10 +699,10 @@ class PadAnalysis(Analysis):
     # ==========================================================================
     # region SIGNAL/PEDESTAL
     def print_off_results(self, prnt=True):
-        ph, ped, pul = self.draw_pulse_height(show=False), self.show_pedestal_histo(show=False), self.Pulser.draw_pulseheight_fit(show=False)
-        string = '{0:3.2f}\t{1:3.2f}\t{2:3.2f}'.format(ph.Parameter(0), ped.Parameter(1), pul[0])
+        ph, ped, pul = self.draw_pulse_height(save=False), self.show_pedestal_histo(save=False), self.Pulser.draw_distribution_fit(save=False)
+        string = '{0:3.2f}\t{1:3.2f}\t{2:3.2f}'.format(ph.Parameter(0), ped.Parameter(1), pul.Parameter(1))
         if prnt:
-            print 'Signal\tPedest.l\tPulser'
+            print 'Signal\tPedest.\tPulser'
             print string
         else:
             return string
