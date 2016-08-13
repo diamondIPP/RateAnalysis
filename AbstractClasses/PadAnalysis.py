@@ -392,7 +392,7 @@ class PadAnalysis(Analysis):
 
         def func():
             print 'getting margins for {dia} of run {run}...'.format(dia=self.diamond_name, run=self.run_number)
-            cut_string = self.Cut.all_cut if cut is None else cut
+            cut_string = self.Cut.generate_special_cut(excluded_cuts=['fiducial']) if cut is None else cut
             if not show_plot:
                 gROOT.SetBatch(1)
             h = TH2F('h', 'Diamond Margins', 52, -.4, .4, 80, -.4, .4)
