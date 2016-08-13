@@ -11,6 +11,7 @@ from ConfigParser import ConfigParser, NoOptionError
 from numpy import mean
 from collections import OrderedDict
 from subprocess import check_output
+import sys
 
 default_info = {
     'persons on shift': '-',
@@ -176,8 +177,8 @@ class Run(Elementary):
                 # try with run_log key prefix
                 self.RunInfo = data.get('{tc}{run}'.format(tc=self.TESTCAMPAIGN[2:], run=str(self.run_number).zfill(5)))
             if self.RunInfo is None:
-                self.log_warning('Run not found in json run log file! --> Using default')
-                self.RunInfo = default_info
+                self.log_warning('Run not found in json run log file!')
+                sys.exit(5)
             self.rename_runinfo_keys()
         else:
             self.RunInfo = default_info
