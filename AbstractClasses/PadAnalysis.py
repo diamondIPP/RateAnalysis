@@ -732,8 +732,8 @@ class PadAnalysis(Analysis):
         name = "signaltime_" + str(self.run_number)
         xbins = array(self.time_binning)
         x_min = -50 if not ped else -20
-        x_max = 300 if not ped else 20
-        bins = 1000 if not ped else 80
+        x_max = 500 if not ped else 20
+        bins = 1100 if not ped else 80
         h = TH2D(name, "signaltime", len(xbins) - 1, xbins, bins, x_min, x_max)
         self.tree.Draw("{name}:time>>{histo}".format(histo=name, name=signal), self.Cut.all_cut, 'goff')
         if show:
