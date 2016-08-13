@@ -115,8 +115,8 @@ class PulserAnalysis(Elementary):
         fit = func() if save else None
         return self.do_pickle(pickle_path, func, fit)
 
-    def draw_peak_timing(self, show=True):
-        self.Ana.draw_peak_timing('', 'pulser', ucut=self.PulserCut, show=show, draw_cut=False)
+    def draw_peak_timing(self, show=True, corr=False):
+        self.Ana.draw_peak_timing('', 'pulser', ucut=self.PulserCut, show=show, draw_cut=False, corr=corr)
 
     def draw_pedestal(self, show=True, fit=True, x_range=None):
         return self.Ana.show_pedestal_histo(cut=self.PulserCut, show=show, fit=fit, x_range=x_range)
