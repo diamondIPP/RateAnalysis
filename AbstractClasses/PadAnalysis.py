@@ -905,14 +905,9 @@ class PadAnalysis(Analysis):
         start_event = int(float(start)) if start is not None else 0
         n_events = self.find_n_events(n=events, cut=str(cut), start=start_event) if events is not None else self.run.n_entries
         self.tree.Draw('{name}>>signal b2'.format(name=sig_name), str(cut), 'goff', n_events, start_event)
-        if show:
-            c = TCanvas('c', 'Signal Distribution', 1000, 1000)
-            c.SetLeftMargin(.13)
-            self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.8)
-            h.Draw()
-            self.save_plots('SignalDistribution', sub_dir=self.save_dir)
-            self.histos.append([h, c])
-            gROOT.SetBatch(0)
+        set_statbox(entries=6)
+        self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.8)
+        self.save_histo(h, 'SignalDistribution', lm=.13, show=show)
         return h
 
     def draw_signal_vs_peakpos(self, show=True, corr=False):
