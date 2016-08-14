@@ -88,7 +88,7 @@ class Plots(Elementary):
         return (graph)
 
     def create_1D_histogram(self, type='landau', name='histo', title='histo', xTitle='X', yTitle='Y', color=kBlack, min_val=0, roc=4):
-        if type is 'landau':
+        if type is 'landau' or type is 'landaus':
             ph1Dbins = self.plot_settings['ph1DbinsD4'] if roc is self.roc_d1 else self.plot_settings['ph1DbinsD5'] if roc is self.roc_d2 else self.plot_settings['ph1DbinsSi']
             ph1Dmin = self.plot_settings['ph1DminD4'] if roc is self.roc_d1 else self.plot_settings['ph1DminD5'] if roc is self.roc_d2 else self.plot_settings['ph1DminSi']
             ph1Dmax = self.plot_settings['ph1DmaxD4'] if roc is self.roc_d1 else self.plot_settings['ph1DmaxD5'] if roc is self.roc_d2 else self.plot_settings['ph1DmaxSi']
@@ -131,6 +131,8 @@ class Plots(Elementary):
         histo.SetMinimum(min_val)
         histo.SetLineColor(color)
         histo.SetLineWidth(3*gStyle.GetLineWidth())
+        if type is 'landaus':
+            histo.SetFillColor(color)
 
     def create_2D_profile(self, type='spatial', name='histo', title='histo', xTitle='X', yTitle='Y', zTitle='Z', min_val=0, max_val=-1):
         xbins = self.plot_settings['nBinsX'] if type is 'spatial' else self.plot_settings['nBinCol']
@@ -227,12 +229,35 @@ class Plots(Elementary):
                                                  'R Hit (mm)', 'Num Events', kBlue, roc=i) for i in xrange(devini, self.num_devices)}
 
         self.colors = [kBlack, kBlue, kRed, kOrange, kGreen, kMagenta, kViolet, kTeal]
-        self.landaus = {}
         self.cuts = ['no', 'mask', 'fid', 'beam', 'tracks', 'angle', 'chi2', 'rhit']
+        self.landaus0 = {}
         for j in xrange(len(self.cuts)):
-            self.landaus[self.cuts[j]] = {i: self.create_1D_histogram('landau', 'phROC{n}_all_{cut}'.format(n=i, cut=self.cuts[j]),
-                                                                      'Pulse Height ROC {n} all cluster sizes after {c} cut'.format(n=i, c=self.cuts[j]),
-                                                                      'Charge (e)', 'Num Clusters',self.colors[j], 0.1, i) for i in xrange(devini, self.num_devices)}
+            self.landaus0[self.cuts[j]] = {i: self.create_1D_histogram('landaus', 'phROC{n}_all_{cut}'.format(n=i, cut=self.cuts[j]),
+                                                                       'Pulse Height ROC {n} all cluster sizes after {c} cut'.format(n=i, c=self.cuts[j]),
+                                                                       'Charge (e)', 'Num Clusters', self.colors[j], 0.1, i) for i in xrange(devini, self.num_devices)}
+        self.landaus1 = {}
+        for j in xrange(len(self.cuts)):
+            self.landaus1[self.cuts[j]] = {i: self.create_1D_histogram('landaus', 'phROC{n}_1cl_{cut}'.format(n=i, cut=self.cuts[j]),
+                                                                       'Pulse Height ROC {n} 1 pix cluster size after {c} cut'.format(n=i, c=self.cuts[j]),
+                                                                       'Charge (e)', 'Num Clusters', self.colors[j], 0.1, i) for i in xrange(devini, self.num_devices)}
+
+        self.landaus2 = {}
+        for j in xrange(len(self.cuts)):
+            self.landaus2[self.cuts[j]] = {i: self.create_1D_histogram('landaus', 'phROC{n}_2cl_{cut}'.format(n=i, cut=self.cuts[j]),
+                                                                       'Pulse Height ROC {n} 2 pix cluster size after {c} cut'.format(n=i, c=self.cuts[j]),
+                                                                       'Charge (e)', 'Num Clusters', self.colors[j], 0.1, i) for i in xrange(devini, self.num_devices)}
+
+        self.landaus3 = {}
+        for j in xrange(len(self.cuts)):
+            self.landaus3[self.cuts[j]] = {i: self.create_1D_histogram('landaus', 'phROC{n}_3cl_{cut}'.format(n=i, cut=self.cuts[j]),
+                                                                       'Pulse Height ROC {n} 3 pix cluster size after {c} cut'.format(n=i, c=self.cuts[j]),
+                                                                       'Charge (e)', 'Num Clusters', self.colors[j], 0.1, i) for i in xrange(devini, self.num_devices)}
+
+        self.landausM4 = {}
+        for j in xrange(len(self.cuts)):
+            self.landausM4[self.cuts[j]] = {i: self.create_1D_histogram('landaus', 'phROC{n}_M4cl_{cut}'.format(n=i, cut=self.cuts[j]),
+                                                                       'Pulse Height ROC {n} 4 or more pix cluster sizes after {c} cut'.format(n=i, c=self.cuts[j]),
+                                                                       'Charge (e)', 'Num Clusters', self.colors[j], 0.1, i) for i in xrange(devini, self.num_devices)}
 
         self.rhit_cut = {i: self.create_1D_histogram('rhit', 'rhit_ROC{n}_cut'.format(n=i), 'Cluster - track positions distance ROC {n} after cut'.format(n=i),
                                                      'R Hit (mm)', 'Num Events', kRed, roc=i) for i in xrange(devini, self.num_devices)}
@@ -267,6 +292,28 @@ class Plots(Elementary):
         self.phROC_M4cl_cuts = {i: self.create_1D_histogram('landau', 'phROC{n}_M4cl_cuts'.format(n=i),
                                                             'Pulse Height ROC {n} 4 or more pix cluster after cuts'.format(n=i), 'Charge (e)',
                                                             'Num Clusters', kMagenta, roc=i) for i in xrange(devini, self.num_devices)}
+        
+        self.smallChROC_all = {i: self.create_1D_histogram('landau', 'small_charge_ROC{n}_all'.format(n=i), 'Smallest Charge ROC {n} all cluster sizes'.format(n=i),
+                                                           'Charge (e)', 'Num Clusters', kBlack, 0, i) for i in xrange(devini, self.num_devices)}
+        self.smallChROC_all_cuts = {i: self.create_1D_histogram('landau', 'small_charge_ROC{n}_all_cuts'.format(n=i), 'Smallest Charge ROC {n} all cluster sizes after cuts'.format(n=i),
+                                                           'Charge (e)', 'Num Clusters', kBlack, 0, i) for i in xrange(devini, self.num_devices)}
+        self.smallChROC_1cl = {i: self.create_1D_histogram('landau', 'small_charge_ROC{n}_1cl'.format(n=i), 'Smallest Charge ROC {n} 1pix cluster size'.format(n=i),
+                                                           'Charge (e)', 'Num Clusters', kBlack, 0, i) for i in xrange(devini, self.num_devices)}
+        self.smallChROC_1cl_cuts = {i: self.create_1D_histogram('landau', 'small_charge_ROC{n}_1cl_cuts'.format(n=i), 'Smallest Charge ROC {n} 1pix cluster size after cuts'.format(n=i),
+                                                           'Charge (e)', 'Num Clusters', kBlack, 0, i) for i in xrange(devini, self.num_devices)}
+        self.smallChROC_2cl = {i: self.create_1D_histogram('landau', 'small_charge_ROC{n}_2cl'.format(n=i), 'Smallest Charge ROC {n} 2pix cluster size'.format(n=i),
+                                                           'Charge (e)', 'Num Clusters', kBlack, 0, i) for i in xrange(devini, self.num_devices)}
+        self.smallChROC_2cl_cuts = {i: self.create_1D_histogram('landau', 'small_charge_ROC{n}_2cl_cuts'.format(n=i), 'Smallest Charge ROC {n} 2pix cluster size after cuts'.format(n=i),
+                                                           'Charge (e)', 'Num Clusters', kBlack, 0, i) for i in xrange(devini, self.num_devices)}
+        self.smallChROC_3cl = {i: self.create_1D_histogram('landau', 'small_charge_ROC{n}_3cl'.format(n=i), 'Smallest Charge ROC {n} 3pix cluster size'.format(n=i),
+                                                           'Charge (e)', 'Num Clusters', kBlack, 0, i) for i in xrange(devini, self.num_devices)}
+        self.smallChROC_3cl_cuts = {i: self.create_1D_histogram('landau', 'small_charge_ROC{n}_3cl_cuts'.format(n=i), 'Smallest Charge ROC {n} 3pix cluster size after cuts'.format(n=i),
+                                                                'Charge (e)', 'Num Clusters', kBlack, 0, i) for i in xrange(devini, self.num_devices)}
+        self.smallChROC_M4cl = {i: self.create_1D_histogram('landau', 'small_charge_ROC{n}_M4cl'.format(n=i), 'Smallest Charge ROC {n} 4 or mor pix clusters'.format(n=i),
+                                                            'Charge (e)', 'Num Clusters', kBlack, 0, i) for i in xrange(devini, self.num_devices)}
+        self.smallChROC_M4cl_cuts = {i: self.create_1D_histogram('landau', 'small_charge_ROC{n}_M4cl_cuts'.format(n=i), 'Smallest Charge ROC {n} 4 or mor pix clusters after cuts'.format(n=i),
+                                                                 'Charge (e)', 'Num Clusters', kBlack, 0, i) for i in xrange(devini, self.num_devices)}
+        
         self.print_banner('1D histograms creation -> Done')
         # 2D Histograms
         self.print_banner('Creating 2D histograms...')
@@ -376,6 +423,7 @@ class Plots(Elementary):
         self.meanPhROC_M4cl_cuts = {i: self.create_1D_profile('event', 'meanPHROC{n}_M4cl_cuts'.format(n=i),
                                                               'Mean PH ROC {n} 4 or more pixs cluster after cuts'.format(n=i), 'Event',
                                                               'Charge(e)', kMagenta, 0, i) for i in xrange(devini, self.num_devices)}
+                
         self.print_banner('1D profiles creation -> Done')
 
     def save_individual_plots(self, histo, name, title, tcutg=None, draw_opt='', opt_stats=0, path='./', verbosity=False, opt_fit=0, addElem='', clone=False):
@@ -467,14 +515,14 @@ class Plots(Elementary):
         gStyle.SetStatH(0.15)
         c0.cd()
         s1 = THStack('s_{n}'.format(n=name), 's_{n}'.format(n=name))
-        s1.Add(histo7)
-        s1.Add(histo6)
-        s1.Add(histo5)
-        s1.Add(histo4)
-        s1.Add(histo3)
-        s1.Add(histo2)
-        s1.Add(histo1)
         s1.Add(histo0)
+        s1.Add(histo1)
+        s1.Add(histo2)
+        s1.Add(histo3)
+        s1.Add(histo4)
+        s1.Add(histo5)
+        s1.Add(histo6)
+        s1.Add(histo7)
         # histo0.Draw(draw_opt)
         # histo1.Draw(draw_opt+'SAME')
         # histo2.Draw(draw_opt+'SAME')

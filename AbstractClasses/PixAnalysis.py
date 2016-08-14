@@ -143,6 +143,7 @@ class SignalPixAnalysis(Analysis):
         # self.print_banner('Looping over Tree -> Done', '%')
 
     def do_cuts_study(self, verbosity):
+        self.print_banner('Starting Cuts Analysis...')
         if verbosity: self.print_banner('Analysing chi2...')
         for mod in ['x', 'y']:
             self.tree.Draw('chi2_{mode}>>chi2_{mode}'.format(mode=mod), '', 'goff')
@@ -158,24 +159,70 @@ class SignalPixAnalysis(Analysis):
             self.tree.Draw('sqrt((10*(track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_X))**2+(10*(track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_Y))**2)>>rhit_ROC{n}'.format(n=i),self.Cut.chi2x_cut+self.Cut.chi2y_cut,'goff')
             self.tree.Draw('sqrt((10*(track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_X))**2+(10*(track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_Y))**2)>>rhit_ROC{n}_cut'.format(n=i),self.Cut.rhit_cut[i]+self.Cut.chi2x_cut+self.Cut.chi2y_cut,'goff')
             self.plots.save_cuts_distributions(self.plots.rhit[i], self.plots.rhit_cut[i], 'rhit_ROC{n}'.format(n=i), 'Distance between cluster and track positions ROC{n}'.format(n=i), '', 1000000011, self.save_dir, False)
+
             self.tree.Draw('charge_all_ROC{n}>>phROC{n}_all_{cut}'.format(n=i, cut=self.plots.cuts[0]), '', 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_1cl_{cut}'.format(n=i, cut=self.plots.cuts[0]), 'cluster_size_ROC{n}==1'.format(n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_2cl_{cut}'.format(n=i, cut=self.plots.cuts[0]), 'cluster_size_ROC{n}==2'.format(n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_3cl_{cut}'.format(n=i, cut=self.plots.cuts[0]), 'cluster_size_ROC{n}==3'.format(n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_M4cl_{cut}'.format(n=i, cut=self.plots.cuts[0]), 'cluster_size_ROC{n}>=4'.format(n=i), 'goff')
             cut = self.Cut.mask_pixelated_roc[i]
-            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_all_{cut}'.format(n=i, cut=self.plots.cuts[1]), cut, 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_all_{cut}'.format(n=i, cut=self.plots.cuts[1]), '{c}'.format(c=cut, n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_1cl_{cut}'.format(n=i, cut=self.plots.cuts[1]), '{c}&&cluster_size_ROC{n}==1'.format(c=cut, n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_2cl_{cut}'.format(n=i, cut=self.plots.cuts[1]), '{c}&&cluster_size_ROC{n}==2'.format(c=cut, n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_3cl_{cut}'.format(n=i, cut=self.plots.cuts[1]), '{c}&&cluster_size_ROC{n}==3'.format(c=cut, n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_M4cl_{cut}'.format(n=i, cut=self.plots.cuts[1]), '{c}&&cluster_size_ROC{n}>=4'.format(c=cut, n=i), 'goff')
             cutf = self.Cut.fid_cut_pixelated_roc[i].GetName()
-            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_all_{cut}'.format(n=i, cut=self.plots.cuts[2]), '{c}&&{cf}'.format(c=cut, cf=cutf), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_all_{cut}'.format(n=i, cut=self.plots.cuts[2]), '{c}&&{cf}'.format(c=cut, cf=cutf, n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_1cl_{cut}'.format(n=i, cut=self.plots.cuts[2]), '{c}&&{cf}&&cluster_size_ROC{n}==1'.format(c=cut, cf=cutf, n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_2cl_{cut}'.format(n=i, cut=self.plots.cuts[2]), '{c}&&{cf}&&cluster_size_ROC{n}==2'.format(c=cut, cf=cutf, n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_3cl_{cut}'.format(n=i, cut=self.plots.cuts[2]), '{c}&&{cf}&&cluster_size_ROC{n}==3'.format(c=cut, cf=cutf, n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_M4cl_{cut}'.format(n=i, cut=self.plots.cuts[2]), '{c}&&{cf}&&cluster_size_ROC{n}>=4'.format(c=cut, cf=cutf, n=i), 'goff')
             cut = cut + self.Cut.beam_interr_cut
-            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_all_{cut}'.format(n=i, cut=self.plots.cuts[3]), '{c}&&{cf}'.format(c=cut, cf=cutf), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_all_{cut}'.format(n=i, cut=self.plots.cuts[3]), '{c}&&{cf}'.format(c=cut, cf=cutf, n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_1cl_{cut}'.format(n=i, cut=self.plots.cuts[3]), '{c}&&{cf}&&cluster_size_ROC{n}==1'.format(c=cut, cf=cutf, n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_2cl_{cut}'.format(n=i, cut=self.plots.cuts[3]), '{c}&&{cf}&&cluster_size_ROC{n}==2'.format(c=cut, cf=cutf, n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_3cl_{cut}'.format(n=i, cut=self.plots.cuts[3]), '{c}&&{cf}&&cluster_size_ROC{n}==3'.format(c=cut, cf=cutf, n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_M4cl_{cut}'.format(n=i, cut=self.plots.cuts[3]), '{c}&&{cf}&&cluster_size_ROC{n}>=4'.format(c=cut, cf=cutf, n=i), 'goff')
             cut = cut + self.Cut.cut_tracks
-            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_all_{cut}'.format(n=i, cut=self.plots.cuts[4]), '{c}&&{cf}'.format(c=cut, cf=cutf), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_all_{cut}'.format(n=i, cut=self.plots.cuts[4]), '{c}&&{cf}'.format(c=cut, cf=cutf, n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_1cl_{cut}'.format(n=i, cut=self.plots.cuts[4]), '{c}&&{cf}&&cluster_size_ROC{n}==1'.format(c=cut, cf=cutf, n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_2cl_{cut}'.format(n=i, cut=self.plots.cuts[4]), '{c}&&{cf}&&cluster_size_ROC{n}==2'.format(c=cut, cf=cutf, n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_3cl_{cut}'.format(n=i, cut=self.plots.cuts[4]), '{c}&&{cf}&&cluster_size_ROC{n}==3'.format(c=cut, cf=cutf, n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_M4cl_{cut}'.format(n=i, cut=self.plots.cuts[4]), '{c}&&{cf}&&cluster_size_ROC{n}>=4'.format(c=cut, cf=cutf, n=i), 'goff')
             cut = cut + self.Cut.angle_x_cut + self.Cut.angle_y_cut
-            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_all_{cut}'.format(n=i, cut=self.plots.cuts[5]), '{c}&&{cf}'.format(c=cut, cf=cutf), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_all_{cut}'.format(n=i, cut=self.plots.cuts[5]), '{c}&&{cf}'.format(c=cut, cf=cutf, n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_1cl_{cut}'.format(n=i, cut=self.plots.cuts[5]), '{c}&&{cf}&&cluster_size_ROC{n}==1'.format(c=cut, cf=cutf, n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_2cl_{cut}'.format(n=i, cut=self.plots.cuts[5]), '{c}&&{cf}&&cluster_size_ROC{n}==2'.format(c=cut, cf=cutf, n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_3cl_{cut}'.format(n=i, cut=self.plots.cuts[5]), '{c}&&{cf}&&cluster_size_ROC{n}==3'.format(c=cut, cf=cutf, n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_M4cl_{cut}'.format(n=i, cut=self.plots.cuts[5]), '{c}&&{cf}&&cluster_size_ROC{n}>=4'.format(c=cut, cf=cutf, n=i), 'goff')
             cut = cut + self.Cut.chi2x_cut + self.Cut.chi2y_cut
-            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_all_{cut}'.format(n=i, cut=self.plots.cuts[6]), '{c}&&{cf}'.format(c=cut, cf=cutf), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_all_{cut}'.format(n=i, cut=self.plots.cuts[6]), '{c}&&{cf}'.format(c=cut, cf=cutf, n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_1cl_{cut}'.format(n=i, cut=self.plots.cuts[6]), '{c}&&{cf}&&cluster_size_ROC{n}==1'.format(c=cut, cf=cutf, n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_2cl_{cut}'.format(n=i, cut=self.plots.cuts[6]), '{c}&&{cf}&&cluster_size_ROC{n}==2'.format(c=cut, cf=cutf, n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_3cl_{cut}'.format(n=i, cut=self.plots.cuts[6]), '{c}&&{cf}&&cluster_size_ROC{n}==3'.format(c=cut, cf=cutf, n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_M4cl_{cut}'.format(n=i, cut=self.plots.cuts[6]), '{c}&&{cf}&&cluster_size_ROC{n}>=4'.format(c=cut, cf=cutf, n=i), 'goff')
             cut = cut + self.Cut.rhit_cut[i]
-            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_all_{cut}'.format(n=i, cut=self.plots.cuts[7]), '{c}&&{cf}'.format(c=cut, cf=cutf), 'goff')
-            self.plots.save_cuts_overlay(self.plots.landaus['no'][i], self.plots.landaus['mask'][i], self.plots.landaus['fid'][i], self.plots.landaus['beam'][i],
-                                         self.plots.landaus['tracks'][i], self.plots.landaus['angle'][i], self.plots.landaus['chi2'][i], self.plots.landaus['rhit'][i],
-                                         'successive_cuts_overlay_{n}'.format(n=i), 'Successive Cuts overlay {n}'.format(n=i), '', 1000000011, self.save_dir, False)
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_all_{cut}'.format(n=i, cut=self.plots.cuts[7]), '{c}&&{cf}'.format(c=cut, cf=cutf, n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_1cl_{cut}'.format(n=i, cut=self.plots.cuts[7]), '{c}&&{cf}&&cluster_size_ROC{n}==1'.format(c=cut, cf=cutf, n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_2cl_{cut}'.format(n=i, cut=self.plots.cuts[7]), '{c}&&{cf}&&cluster_size_ROC{n}==2'.format(c=cut, cf=cutf, n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_3cl_{cut}'.format(n=i, cut=self.plots.cuts[7]), '{c}&&{cf}&&cluster_size_ROC{n}==3'.format(c=cut, cf=cutf, n=i), 'goff')
+            self.tree.Draw('charge_all_ROC{n}>>phROC{n}_M4cl_{cut}'.format(n=i, cut=self.plots.cuts[7]), '{c}&&{cf}&&cluster_size_ROC{n}>=4'.format(c=cut, cf=cutf, n=i), 'goff')
+            self.plots.save_cuts_overlay(self.plots.landaus0['no'][i], self.plots.landaus0['mask'][i], self.plots.landaus0['fid'][i], self.plots.landaus0['beam'][i],
+                                         self.plots.landaus0['tracks'][i], self.plots.landaus0['angle'][i], self.plots.landaus0['chi2'][i], self.plots.landaus0['rhit'][i],
+                                         'successive_cuts_overlay_all_ROC{n}'.format(n=i), 'Successive Cuts overlay all cl sizes ROC{n}'.format(n=i), '', 1000000011, self.save_dir, False)
+            self.plots.save_cuts_overlay(self.plots.landaus1['no'][i], self.plots.landaus1['mask'][i], self.plots.landaus1['fid'][i], self.plots.landaus1['beam'][i],
+                                         self.plots.landaus1['tracks'][i], self.plots.landaus1['angle'][i], self.plots.landaus1['chi2'][i], self.plots.landaus1['rhit'][i],
+                                         'successive_cuts_overlay_1cl_ROC{n}'.format(n=i), 'Successive Cuts overlay 1pix cl size ROC{n}'.format(n=i), '', 1000000011, self.save_dir, False)
+            self.plots.save_cuts_overlay(self.plots.landaus2['no'][i], self.plots.landaus2['mask'][i], self.plots.landaus2['fid'][i], self.plots.landaus2['beam'][i],
+                                         self.plots.landaus2['tracks'][i], self.plots.landaus2['angle'][i], self.plots.landaus2['chi2'][i], self.plots.landaus2['rhit'][i],
+                                         'successive_cuts_overlay_2cl_ROC{n}'.format(n=i), 'Successive Cuts overlay 2pix cl size ROC{n}'.format(n=i), '', 1000000011, self.save_dir, False)
+            self.plots.save_cuts_overlay(self.plots.landaus3['no'][i], self.plots.landaus3['mask'][i], self.plots.landaus3['fid'][i], self.plots.landaus3['beam'][i],
+                                         self.plots.landaus3['tracks'][i], self.plots.landaus3['angle'][i], self.plots.landaus3['chi2'][i], self.plots.landaus3['rhit'][i],
+                                         'successive_cuts_overlay_3cl_ROC{n}'.format(n=i), 'Successive Cuts overlay 3pix cl size ROC{n}'.format(n=i), '', 1000000011, self.save_dir, False)
+            self.plots.save_cuts_overlay(self.plots.landausM4['no'][i], self.plots.landausM4['mask'][i], self.plots.landausM4['fid'][i], self.plots.landausM4['beam'][i],
+                                         self.plots.landausM4['tracks'][i], self.plots.landausM4['angle'][i], self.plots.landausM4['chi2'][i], self.plots.landausM4['rhit'][i],
+                                         'successive_cuts_overlay_M4cl_ROC{n}'.format(n=i), 'Successive Cuts overlay 4 or more cl size ROC{n}'.format(n=i), '', 1000000011, self.save_dir, False)
+        self.print_banner('Cut Analysis -> done.')
 
 
     def fill_occupancy(self, show_progressBar=False, do_tlscp=False, verbosity=False):
@@ -249,6 +296,7 @@ class SignalPixAnalysis(Analysis):
                 self.Ph2DHistogramExtraction(iROC, 'telescope', verbosity)
                 self.DoAveragePulseHeight(iROC, verbosity)
                 self.PhVsEventExtraction(iROC, verbosity)
+                self.SmallesChargeExtraction(iROC, verbosity)
                 if verbosity: self.print_banner('ROC {r} analysis -> Done'.format(r=iROC))
             elif do_tlscp:
                 if verbosity: self.print_banner('Analysing ROC {r}...'.format(r=iROC))
@@ -257,10 +305,47 @@ class SignalPixAnalysis(Analysis):
                 self.Ph2DHistogramExtraction(iROC, 'telescope', verbosity)
                 self.DoAveragePulseHeight(iROC, verbosity)
                 self.PhVsEventExtraction(iROC, verbosity)
+                self.SmallesChargeExtraction(iROC, verbosity)
                 if verbosity: self.print_banner('ROC {r} analysis -> Done'.format(r=iROC))
             if show_progressBar: bar.update(iROC + 1 - devini)
         if show_progressBar: bar.finish()
         self.print_banner('Pulse Height Analysis -> Done', '%')
+
+    def SmallesChargeExtraction(self, roc=4, verbosity=False):
+        if roc not in self.roc_tel:
+            self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_all'.format(n=roc), 
+                           '{mask}'.format(mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+            self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_1cl'.format(n=roc), 
+                           '{cluster_size_ROC{n}==1&&mask}'.format(n=i, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+            self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_2cl'.format(n=roc), 
+                           '{cluster_size_ROC{n}==2&&mask}'.format(n=i, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+            self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_3cl'.format(n=roc), 
+                           '{cluster_size_ROC{n}==3&&mask}'.format(n=i, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+            self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_M4cl'.format(n=roc), 
+                           '{cluster_size_ROC{n}>=4&&mask}'.format(n=i, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+            
+            self.plots.save_individual_plots(self.plots.smallChROC_all[roc], self.plots.smallChROC_all[roc].GetName(), self.plots.smallChROC_all[roc].GetTitle(), None, '', 1, self.save_dir, verbosity)
+            self.plots.save_individual_plots(self.plots.smallChROC_1cl[roc], self.plots.smallChROC_1cl[roc].GetName(), self.plots.smallChROC_1cl[roc].GetTitle(), None, '', 1, self.save_dir, verbosity)
+            self.plots.save_individual_plots(self.plots.smallChROC_2cl[roc], self.plots.smallChROC_2cl[roc].GetName(), self.plots.smallChROC_2cl[roc].GetTitle(), None, '', 1, self.save_dir, verbosity)
+            self.plots.save_individual_plots(self.plots.smallChROC_3cl[roc], self.plots.smallChROC_3cl[roc].GetName(), self.plots.smallChROC_3cl[roc].GetTitle(), None, '', 1, self.save_dir, verbosity)
+            self.plots.save_individual_plots(self.plots.smallChROC_M4cl[roc], self.plots.smallChROC_M4cl[roc].GetName(), self.plots.smallChROC_M4cl[roc].GetTitle(), None, '', 1, self.save_dir, verbosity)
+            
+            self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_all_cuts'.format(n=roc), 
+                           '{mask}'.format(mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+            self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_1cl_cuts'.format(n=roc), 
+                           '{cluster_size_ROC{n}==1&&mask}'.format(n=i, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+            self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_2cl_cuts'.format(n=roc), 
+                           '{cluster_size_ROC{n}==2&&mask}'.format(n=i, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+            self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_3cl_cuts'.format(n=roc), 
+                           '{cluster_size_ROC{n}==3&&mask}'.format(n=i, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+            self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_M4cl_cuts'.format(n=roc), 
+                           '{cluster_size_ROC{n}>=4&&mask}'.format(n=i, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+            
+            self.plots.save_individual_plots(self.plots.smallChROC_all_cuts[roc], self.plots.smallChROC_all_cuts[roc].GetName(), self.plots.smallChROC_all_cuts[roc].GetTitle(), None, '', 1, self.save_dir, verbosity)
+            self.plots.save_individual_plots(self.plots.smallChROC_1cl_cuts[roc], self.plots.smallChROC_1cl_cuts[roc].GetName(), self.plots.smallChROC_1cl_cuts[roc].GetTitle(), None, '', 1, self.save_dir, verbosity)
+            self.plots.save_individual_plots(self.plots.smallChROC_2cl_cuts[roc], self.plots.smallChROC_2cl_cuts[roc].GetName(), self.plots.smallChROC_2cl_cuts[roc].GetTitle(), None, '', 1, self.save_dir, verbosity)
+            self.plots.save_individual_plots(self.plots.smallChROC_3cl_cuts[roc], self.plots.smallChROC_3cl_cuts[roc].GetName(), self.plots.smallChROC_3cl_cuts[roc].GetTitle(), None, '', 1, self.save_dir, verbosity)
+            self.plots.save_individual_plots(self.plots.smallChROC_M4cl_cuts[roc], self.plots.smallChROC_M4cl_cuts[roc].GetName(), self.plots.smallChROC_M4cl_cuts[roc].GetTitle(), None, '', 1, self.save_dir, verbosity)
 
     def PhVsEventExtraction(self, roc=4, verbosity=False):
         if roc not in self.roc_tel:
@@ -273,7 +358,7 @@ class SignalPixAnalysis(Analysis):
             self.tree.Draw('charge_all_ROC{n}:event_number >> phClM4VsEventROC{n}'.format(n=roc),
                            'cluster_size_ROC{n}>=4 && {mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
             self.tree.Draw('charge_all_ROC{n}:event_number >> phAllVsEventROC{n}'.format(n=roc),
-                           'cluster_size_ROC{n}>0 && {mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+                           '{mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
 
             self.plots.save_individual_plots(self.plots.ph1cl_vs_event[roc], self.plots.ph1cl_vs_event[roc].GetName(), self.plots.ph1cl_vs_event[roc].GetTitle(), None, 'colz', 0, self.save_dir, verbosity)
             self.plots.save_individual_plots(self.plots.ph2cl_vs_event[roc], self.plots.ph2cl_vs_event[roc].GetName(), self.plots.ph2cl_vs_event[roc].GetTitle(), None, 'colz', 0, self.save_dir, verbosity)
@@ -290,7 +375,7 @@ class SignalPixAnalysis(Analysis):
             self.tree.Draw('charge_all_ROC{n}:event_number >> phClM4VsEventROC{n}_cuts'.format(n=roc),
                            'fidcut_pixelated_roc{n}&&cluster_size_ROC{n}>=4&&{mask}'.format(n=roc, mask=self.Cut.cuts_pixelated_roc[roc].GetTitle()), 'goff')
             self.tree.Draw('charge_all_ROC{n}:event_number >> phAllVsEventROC{n}_cuts'.format(n=roc),
-                           'fidcut_pixelated_roc{n}&&cluster_size_ROC{n}>0&&{mask}'.format(n=roc, mask=self.Cut.cuts_pixelated_roc[roc].GetTitle()), 'goff')
+                           'fidcut_pixelated_roc{n}&&{mask}'.format(n=roc, mask=self.Cut.cuts_pixelated_roc[roc].GetTitle()), 'goff')
 
             self.plots.save_individual_plots(self.plots.ph1cl_vs_event_cuts[roc], self.plots.ph1cl_vs_event_cuts[roc].GetName(), self.plots.ph1cl_vs_event_cuts[roc].GetTitle(), None, 'colz', 0, self.save_dir, verbosity)
             self.plots.save_individual_plots(self.plots.ph2cl_vs_event_cuts[roc], self.plots.ph2cl_vs_event_cuts[roc].GetName(), self.plots.ph2cl_vs_event_cuts[roc].GetTitle(), None, 'colz', 0, self.save_dir, verbosity)
@@ -1996,4 +2081,4 @@ if __name__ == "__main__":
     print '\nAnalysing run', test_run, '\n'
     z = SignalPixAnalysis(test_run, args.ch)
     z.print_elapsed_time(st, 'Instantiation')
-    z.do_analysis(True, True, True, doTelscp, pbar, verb)
+    z.do_analysis(False, False, False, doTelscp, pbar, verb)
