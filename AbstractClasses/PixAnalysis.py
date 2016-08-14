@@ -316,13 +316,13 @@ class SignalPixAnalysis(Analysis):
             self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_all'.format(n=roc), 
                            '{mask}'.format(mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
             self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_1cl'.format(n=roc), 
-                           '{cluster_size_ROC{n}==1&&mask}'.format(n=i, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+                           '{cluster_size_ROC{n}==1&&mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
             self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_2cl'.format(n=roc), 
-                           '{cluster_size_ROC{n}==2&&mask}'.format(n=i, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+                           '{cluster_size_ROC{n}==2&&mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
             self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_3cl'.format(n=roc), 
-                           '{cluster_size_ROC{n}==3&&mask}'.format(n=i, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+                           '{cluster_size_ROC{n}==3&&mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
             self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_M4cl'.format(n=roc), 
-                           '{cluster_size_ROC{n}>=4&&mask}'.format(n=i, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+                           '{cluster_size_ROC{n}>=4&&mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
             
             self.plots.save_individual_plots(self.plots.smallChROC_all[roc], self.plots.smallChROC_all[roc].GetName(), self.plots.smallChROC_all[roc].GetTitle(), None, '', 1, self.save_dir, verbosity)
             self.plots.save_individual_plots(self.plots.smallChROC_1cl[roc], self.plots.smallChROC_1cl[roc].GetName(), self.plots.smallChROC_1cl[roc].GetTitle(), None, '', 1, self.save_dir, verbosity)
@@ -333,13 +333,13 @@ class SignalPixAnalysis(Analysis):
             self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_all_cuts'.format(n=roc), 
                            '{mask}'.format(mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
             self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_1cl_cuts'.format(n=roc), 
-                           '{cluster_size_ROC{n}==1&&mask}'.format(n=i, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+                           '{cluster_size_ROC{n}==1&&mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
             self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_2cl_cuts'.format(n=roc), 
-                           '{cluster_size_ROC{n}==2&&mask}'.format(n=i, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+                           '{cluster_size_ROC{n}==2&&mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
             self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_3cl_cuts'.format(n=roc), 
-                           '{cluster_size_ROC{n}==3&&mask}'.format(n=i, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+                           '{cluster_size_ROC{n}==3&&mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
             self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_M4cl_cuts'.format(n=roc), 
-                           '{cluster_size_ROC{n}>=4&&mask}'.format(n=i, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
+                           '{cluster_size_ROC{n}>=4&&mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
             
             self.plots.save_individual_plots(self.plots.smallChROC_all_cuts[roc], self.plots.smallChROC_all_cuts[roc].GetName(), self.plots.smallChROC_all_cuts[roc].GetTitle(), None, '', 1, self.save_dir, verbosity)
             self.plots.save_individual_plots(self.plots.smallChROC_1cl_cuts[roc], self.plots.smallChROC_1cl_cuts[roc].GetName(), self.plots.smallChROC_1cl_cuts[roc].GetTitle(), None, '', 1, self.save_dir, verbosity)
