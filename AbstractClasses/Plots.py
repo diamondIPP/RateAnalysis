@@ -1,7 +1,7 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from ROOT import TGraphErrors, TCanvas, TH1D, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kRed, kBlack, kPink, kBlue, kViolet ,kMagenta, kTeal, kGreen, kOrange, TF1, TPie, gPad, TLatex, THStack
+from ROOT import TGraphErrors, TCanvas, TH1D, TH2D, gStyle, TH1F, gROOT, gErrorIgnoreLevel, kError,TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kRed, kBlack, kPink, kBlue, kViolet ,kMagenta, kTeal, kGreen, kOrange, TF1, TPie, gPad, TLatex, THStack
 # from TelescopeAnalysis import Analysis
 # from CurrentInfo import Currents
 # from numpy import array
@@ -429,6 +429,7 @@ class Plots(Elementary):
     def save_individual_plots(self, histo, name, title, tcutg=None, draw_opt='', opt_stats=0, path='./', verbosity=False, opt_fit=0, addElem='', clone=False):
         if verbosity: self.print_banner('Saving {n}...'.format(n=name))
         gROOT.SetBatch(True)
+        blabla = gROOT.ProcessLine("gErrorIgnoreLevel = {f};".format(f=kError))
         c0 = TCanvas('c_{n}'.format(n=name), title, 2100, 1500)
         c0.SetLeftMargin(0.1)
         c0.SetRightMargin(0.2)
@@ -474,6 +475,7 @@ class Plots(Elementary):
     def save_cuts_distributions(self, histo1, histo2, name, title, draw_opt='', opt_stats=0, path='./', verbosity=False):
         if verbosity: self.print_banner('Saving {n}'.format(n=name))
         gROOT.SetBatch(True)
+        blabla = gROOT.ProcessLine("gErrorIgnoreLevel = {f};".format(f=kError))
         c0 = TCanvas('c_{n}'.format(n=name), title, 2100, 1500)
         c0.SetLeftMargin(0.1)
         c0.SetRightMargin(0.1)
@@ -503,6 +505,7 @@ class Plots(Elementary):
     def save_cuts_overlay(self, histo0, histo1, histo2, histo3, histo4, histo5, histo6, histo7, name, title, draw_opt='', opt_stats=0, path='./', verbosity=False):
         if verbosity: self.print_banner('Saving {n}'.format(n=name))
         gROOT.SetBatch(True)
+        blabla = gROOT.ProcessLine("gErrorIgnoreLevel = {f};".format(f=kError))
         c0 = TCanvas('c_{n}'.format(n=name), title, 2100, 1500)
         c0.SetLeftMargin(0.1)
         c0.SetRightMargin(0.1)
@@ -560,3 +563,9 @@ class Plots(Elementary):
         self.correl_y[rocy][rocx] = self.correl_y[rocx][rocy].Clone('corr_{ry}_{rx}_y'.format(ry=rocy, rx=rocx))
         self.correl_y[rocy][rocx].SetTitle('Y correlation between ROCs {ry} and {rx}'.format(ry=rocy, rx=rocx))
         self.save_individual_plots(self.correl_y[rocy][rocx], self.correl_y[rocy][rocx].GetName(), self.correl_y[rocy][rocx].GetTitle(), None, 'colz', 1000000011, self.save_dir, verbosity, optfit, extra4, True)
+
+    def check_plot_existence(self, path, name):
+        if os.path.isfile('{p}/Plots/{n}.png'.format(p=path, n=name)):
+            return True
+        else:
+            return False
