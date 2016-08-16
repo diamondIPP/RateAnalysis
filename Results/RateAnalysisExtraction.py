@@ -76,7 +76,7 @@ class RateAnalysisExtraction:
         else:
             return self.histos[run].ProjectionY('p_{n}'.format(n=name))
 
-    def plot_results(self):
+    def plot_rate_results(self):
         self.graph = TGraphErrors(len(self.means))
         self.graph.SetNameTitle('fluxes', 'fluxes')
         self.graph_cuts = TGraphErrors(len(self.means_cuts))
@@ -237,7 +237,7 @@ if __name__ == '__main__':
         for di in xrange(4,7):
             for cs in xrange(0,5):
                 exec('d{di}_s{cs} = RateAnalysisExtraction(ini, fin, {di}, camp, e, {cs})'.format(di=di, cs=cs))
-                exec('d{di}_s{cs}.plot_results()'.format(di=di, cs=cs))
+                exec('d{di}_s{cs}.plot_rate_results()'.format(di=di, cs=cs))
     else:
         z = RateAnalysisExtraction(ini, fin, dia, camp, e, s)
-        z.plot_results()
+        z.plot_rate_results()
