@@ -776,7 +776,7 @@ class PadAnalysis(Analysis):
             if show:
                 gROOT.SetBatch(0)
             if empty_bins:
-                print 'Empty proj. bins:\t', str(empty_bins) + '/' + str(self.n_bins)
+                self.log_info('Empty proj. bins:\t{0}'.format(str(empty_bins) + '/' + str(self.n_bins)))
             fit_pars = gr.Fit('pol0', 'qs')
             print 'mean:', fit_pars.Parameter(0), '+-', fit_pars.ParError(0)
             c = TCanvas('bla', 'blub', 1000, 1000)
@@ -842,7 +842,7 @@ class PadAnalysis(Analysis):
                 else:
                     empty_bins += 1
             if empty_bins:
-                print 'Empty proj. bins:\t', str(empty_bins) + '/' + str(self.n_bins)
+                self.log_info('Empty proj. bins:\t{0}'.format(str(empty_bins) + '/' + str(self.n_bins)))
             set_statbox(entries=4, only_fit=True)
             self.format_histo(gr, x_tit='time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6)
             # excludes points that are too low for the fit
@@ -863,13 +863,14 @@ class PadAnalysis(Analysis):
         fit = func() if save else None
         return self.do_pickle(picklepath, func, fit)
 
-    def draw_ph_distribution(self, binning=None, show=True, fit=True, xmin=0, xmax=160, bin_size=.5, save=True):
+    def draw_ph_distribution(self, binning=None, show=True, fit=True, xmin=0, xmax=270., bin_size=.5, save=True):
         if binning is not None:
             self.__set_bin_size(binning)
         sig_time = self.make_signal_time_histos(evnt_corr=True, show=False)
         if not show:
             gROOT.SetBatch(1)
         means = [h_proj.GetMean() for h_proj in [sig_time.ProjectionY(str(i), i + 1, i + 1) for i in xrange(self.n_bins - 1)] if h_proj.GetEntries() > 10]
+        # xmin, xmax = increased_range([min(means), max(means)], .3, .3)
         nbins = int((xmax - xmin) / bin_size)
         h = TH1F('h', 'Signal Bin{0} Distribution'.format(self.BinSize), nbins, xmin, xmax)  # int(log(len(means), 2) * 2), extrema[0], extrema[1] + 2)
         for mean_ in means:
@@ -906,8 +907,7 @@ class PadAnalysis(Analysis):
         start_event = int(float(start)) if start is not None else 0
         n_events = self.find_n_events(n=events, cut=str(cut), start=start_event) if events is not None else self.run.n_entries
         self.tree.Draw('{name}>>signal b2'.format(name=sig_name), str(cut), 'goff', n_events, start_event)
-        set_statbox(entries=6)
-        self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.8)
+        self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.8, stats=0)
         self.save_histo(h, 'SignalDistribution', lm=.13, show=show)
         return h
 
@@ -997,6 +997,7 @@ class PadAnalysis(Analysis):
         self.histos.append(self.save_histo(gr, 'SignalVsTriggerCell', show, self.save_dir, lm=.11, draw_opt='alp'))
 
     def show_pedestal_histo(self, region=None, peak_int=None, cut=None, fwhm=True, show=True, save=True, x_range=None, nbins=100, logy=False, fit=True):
+        show = False if not save else show
         x_range = [-20, 30] if x_range is None else x_range
         region = self.PedestalRegion if region is None else region
         peak_int = self.PeakIntegral if peak_int is None else peak_int
