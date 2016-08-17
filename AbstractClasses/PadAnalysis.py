@@ -794,11 +794,6 @@ class PadAnalysis(Analysis):
         all_means = func() if show else None
         return self.do_pickle(picklepath, func, all_means)
 
-    def draw_all(self):
-        self.draw_pulse_height(show=False)
-        self.Pulser.draw_distribution_fit(show=False)
-        self.show_pedestal_histo(show=False)
-
     def draw_pulse_height(self, binning=None, show=True, save=True, evnt_corr=True, bin_corr=False, off_corr=False, sig=None):
         show = False if not save else show
         signal = self.SignalName if sig is None else sig
