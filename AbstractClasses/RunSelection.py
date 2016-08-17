@@ -308,7 +308,7 @@ class RunSelection(Elementary):
 
         def make_info_string(run, header=False):
             string = str(run).ljust(4)
-            string += self.run_infos[run]['type'].ljust(9)
+            string += self.run_infos[run]['type'].ljust(11)
             for i, ch in enumerate(self.run.channels, 1):
                 string += '*' if self.channels[run][ch] else ''
                 string += self.run_infos[run]['dia{n}'.format(n=i)].ljust(7)
@@ -321,7 +321,7 @@ class RunSelection(Elementary):
                 string += '*' if len(comments) >= 20 else ''
             if header:
                 spaces = [int(self.channels[run][ch]) * ' ' for ch in self.run.channels]
-                string = 'Nr. ' + 'Type'.ljust(9) + 'Dia 1'.ljust(7) + spaces[0] + 'HV 1'.ljust(6) + 'Dia 2'.ljust(7) + spaces[1] + 'HV 2'.ljust(6) + 'Flux [kHz/cm2]'.ljust(15)
+                string = 'Nr. ' + 'Type'.ljust(11) + 'Dia 1'.ljust(7) + spaces[0] + 'HV 1'.ljust(6) + 'Dia 2'.ljust(7) + spaces[1] + 'HV 2'.ljust(6) + 'Flux [kHz/cm2]'.ljust(15)
                 string += 'Comment' if not show_allcomments else ''
             return string
 
