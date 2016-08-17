@@ -363,7 +363,7 @@ class Cut(Elementary):
         interrupts = []
         last_rate = 0
         tup = [0, 0]
-        cut = 30  # if rate goes higher than n %
+        cut = 40  # if rate goes higher than n %
         for i, value in enumerate(rate):
             if value > cut > last_rate:
                 tup[0] = i * binning
