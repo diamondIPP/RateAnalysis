@@ -178,7 +178,7 @@ def move_legend(l, x1, y1):
     l.SetY2NDC(y1 + ydiff)
 
 
-def increased_range(ran, fac_bot=0, fac_top=0):
+def increased_range(ran, fac_bot=0., fac_top=0.):
     return [(1 + fac_bot) * ran[0] - fac_bot * ran[1], (1 + fac_top) * ran[1] - fac_top * ran[0]]
 
 
@@ -221,7 +221,7 @@ def make_latex_table(header, cols, endline=False):
 def calc_flux(info, tc):
     if 'for1' not in info or info['for1'] == 0:
         if 'measuredflux' in info:
-            return
+            return float(info['measuredflux'])
     path = '/data/psi_{0}_{1}/masks/{mask}'.format(tc[:4], tc[-2:], mask=info['maskfile'])
     if file_exists(path):
         f = open(path, 'r')
