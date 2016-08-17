@@ -274,5 +274,12 @@ def make_tc_str(tc, txt=True):
         return datetime.strptime(tc, '%b%y').strftime('%Y%m' if txt else '%B %Y')
 
 
+def set_drawing_range(h, legend=True, lfac=None, rfac=None):
+    range_ = [h.GetBinCenter(i) for i in [h.FindFirstBinAbove(10), h.FindLastBinAbove(10)]]
+    lfac = lfac if lfac is not None else .2
+    rfac = rfac if rfac is not None else .55 if legend else .1
+    h.GetXaxis().SetRangeUser(*increased_range(range_, lfac, rfac))
+
+
 def do_nothing():
     pass
