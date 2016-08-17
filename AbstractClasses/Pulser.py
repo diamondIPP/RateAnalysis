@@ -13,7 +13,6 @@ class PulserAnalysis(Elementary):
 
     def __init__(self, pad_analysis):
         self.Ana = pad_analysis
-        # self.Ana = PadAnalysis(5, 5)
         Elementary.__init__(self, verbose=self.Ana.verbose)
         self.Run = self.Ana.run
         self.Channel = self.Ana.channel
@@ -83,7 +82,7 @@ class PulserAnalysis(Elementary):
         """ Shows the distribution of the pulser integrals. """
         cut = self.Cut.generate_pulser_cut(beam_on=beam_on)
         h = self.Ana.show_signal_histo(cut=cut, sig=self.Ana.PulserName, show=False, off_corr=corr, evnt_corr=False, binning=binning, events=events, start=start)
-        self.format_histo(h, stats=stats, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.3)
+        self.format_histo(h, name='p_hd', stats=stats, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.3)
         self.save_histo(h, 'PulserDistribution', show, logy=True, lm=.12)
         return h
 
@@ -95,8 +94,9 @@ class PulserAnalysis(Elementary):
         pickle_path = self.Ana.PickleDir + 'Pulser/HistoFit_{tc}_{run}_{dia}{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.Ana.run_number, dia=self.Ana.diamond_name, suf=suffix)
 
         def func():
-            set_statbox(only_fit=True)
+            set_statbox(only_fit=True, w=.25)
             h = self.draw_distribution(show=show, corr=corr, beam_on=beam_on, binning=binning, events=events, start=start, stats=True)
+            h.SetName('Fit Result')
             same_pols = self.Polarity == self.Ana.Polarity
             h.GetXaxis().SetRangeUser(20, h.GetXaxis().GetXmax())
             x_min = 10 if same_pols else h.GetBinCenter(h.GetMaximumBin() - 2)
@@ -106,8 +106,8 @@ class PulserAnalysis(Elementary):
             f = deepcopy(gROOT.GetFunction('gaus'))
             f.SetLineStyle(7)
             f.SetRange(0, 500)
-            f.Draw('same')
-            h.SetName('Fit Results')
+            h.GetListOfFunctions().Add(f)
+            set_drawing_range(h)
             self.Ana.RootObjects.append(f)
             self.save_plots('PulserDistributionFit', show=show)
             return fit_func
