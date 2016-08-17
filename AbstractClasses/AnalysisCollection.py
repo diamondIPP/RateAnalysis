@@ -147,12 +147,15 @@ class AnalysisCollection(Elementary):
     # endregion
 
     def create_all_single_run_plots(self):
+        old_verbose = self.FirstAnalysis.verbose
+        self.set_verbose(False)
         for key, ana in self.collection.iteritems():
             print 'Create Plots for Run ', key
             ana.compare_consecutive_cuts(scale=False)
             ana.compare_consecutive_cuts(scale=True)
             ana.show_cut_contributions(show=False)
             ana.draw_bucket_pedestal(show=False)
+        self.set_verbose(old_verbose)
 
     # ============================================
     # region SIGNAL/PEDESTAL
@@ -163,14 +166,14 @@ class AnalysisCollection(Elementary):
         print string
 
     def draw_all(self):
+        old_verbose = self.FirstAnalysis.verbose
+        self.set_verbose(False)
         self.draw_ph_with_currents(show=False)
         self.draw_pulse_heights(show=False)
         self.draw_pulser_info(do_fit=False, show=False)
-        self.draw_pedestals(show=False)
-
-    def draw_single_all(self):
-        for ana in self.collection.itervalues():
-            ana.draw_all()
+        self.draw_pedestals(show=False, save=True)
+        self.set_verbose(old_verbose)
+        self.print_all_off_results()
 
     def draw_ph_with_currents(self, show=True):
         ph = self.draw_pulse_heights(show=False, vs_time=True, fl=False, save_comb=False)
