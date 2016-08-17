@@ -388,9 +388,23 @@ class Run(Elementary):
     def __get_time_vec(self):
         self.tree.SetEstimate(-1)
         entries = self.tree.Draw('Entry$:time', '', 'goff')
+        time = [self.tree.GetV2()[i] for i in xrange(entries)]
+        # self.print_banner(abs((time[-1] - time[0]) / 1000 - self.duration.seconds))
+        if abs((time[-1] - time[0]) / 1000 - self.duration.seconds) > 60:
+            time = self.__correct_time(entries)
+        return time
+
+    def __correct_time(self, entries):
+        self.log_warning('Need to correct timing vector\n')
         time = []
+        t = self.tree.GetV2()[0]
+        new_t = 0
         for i in xrange(entries):
-            time.append(self.tree.GetV2()[i])
+            diff = self.tree.GetV2()[i] - t
+            if diff < 0:
+                new_t = -diff
+            time.append(self.tree.GetV2()[i] + new_t + .5 / 1000)
+            t = self.tree.GetV2()[i]
         return time
 
     def get_time_at_event(self, event):
