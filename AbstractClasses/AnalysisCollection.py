@@ -51,6 +51,7 @@ class AnalysisCollection(Elementary):
         self.signalValues = None
 
         # important information
+        self.NRuns = len(self.collection)
         self.diamond_name = self.get_first_analysis().diamond_name
         self.bias = self.get_first_analysis().bias
 
