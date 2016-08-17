@@ -2057,7 +2057,7 @@ if __name__ == "__main__":
     parser.add_argument('run', nargs='?', default=392, type=int)
     parser.add_argument('ch', nargs='?', default=0, type=int)
     parser.add_argument('-tc', '--testcampaign', nargs='?', default='')
-    parser.add_argument('-v', '--verbose', nargs='?', default=False, type=bool)
+    parser.add_argument('-v', '--verbose', nargs='?', default=True, type=bool)
     parser.add_argument('-t', '--tree', default=True, action='store_false')
     args = parser.parse_args()
     tc = args.testcampaign if args.testcampaign.startswith('201') else None
