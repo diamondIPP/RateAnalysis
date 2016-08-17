@@ -9,6 +9,7 @@ from json import loads
 from Utils import *
 from screeninfo import get_monitors
 from numpy import array
+from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 
 from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend, TColor, TArrow, TPad, TCutG, TLine
 
@@ -38,6 +39,10 @@ class Elementary(object):
 
         self.Felix = self.MainConfigParser.getboolean('SAVE', 'felix')
         self.set_root_titles()
+
+        # progress bar
+        self.Widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
+        self.ProgressBar = ProgressBar(widgets=self.Widgets, maxval=0)
 
         # screen resolution
         self.Res = self.load_resolution(resolution)
@@ -138,6 +143,10 @@ class Elementary(object):
 
     # endregion
 
+    def start_pbar(self, n):
+        self.ProgressBar.maxval = n
+        self.ProgressBar.start()
+
     @staticmethod
     def create_colorlist():
         col_names = [TColor.kGreen, TColor.kOrange, TColor.kViolet, TColor.kYellow, TColor.kRed, TColor.kBlue, TColor.kMagenta, TColor.kAzure, TColor.kCyan, TColor.kTeal]
@@ -225,7 +234,7 @@ class Elementary(object):
             out_file = out_file.format(typ=f)
             canvas.SaveAs(out_file)
         if print_names:
-            log_message(out)
+            self.log_info(out)
         self.set_root_output(True)
 
     def save_plots(self, savename, sub_dir=None, canvas=None, ind=0, ch='dia', x=1, y=1, prnt=True, save=True, show=True):
