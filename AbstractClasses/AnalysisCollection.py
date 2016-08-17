@@ -392,39 +392,51 @@ class AnalysisCollection(Elementary):
         mg2 = func() if save_plots else None
         return self.do_pickle(pickle_path, func, mg2)
 
-    def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False, show=True, cut=None, beam_on=True):
-        legend = TLegend(0.7, 0.3, 0.98, .7)
-        legend.SetName('l1')
+    def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False, show=True, cut=None, beam_on=True, save=False):
+
+        pickle_path = self.FirstAnalysis.PickleDir + 'Pedestal/AllPedestals_{tc}_{rp}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, rp=self.run_plan, dia=self.diamond_name)
         mode = 'Flux' if flux else 'Run'
-        y_val = 'Sigma' if sigma else 'Mean'
-        gr1 = self.make_tgrapherrors('pedestal', 'Pedestal {y} in {reg}'.format(y=y_val, reg=region + peak_int))
-        regions = self.get_first_analysis().run.pedestal_regions
-        graphs = [self.make_tgrapherrors('pedestal', 'Pedestal {y} in {reg}'.format(y=y_val, reg=reg + peak_int), color=self.get_color()) for reg in regions]
-        i = 0
-        par = 2 if sigma else 1
-        cut_string = None
-        for key, ana in self.collection.iteritems():
-            cut_string = ana.Cut.generate_pulser_cut(beam_on=beam_on) if cut == 'pulser' else cut
-            fit_par = ana.show_pedestal_histo(region, peak_int, cut=cut_string, save=False, show=False)
-            x = ana.run.flux if flux else key
-            gr1.SetPoint(i, x, fit_par.Parameter(par))
-            gr1.SetPointError(i, 0, fit_par.ParError(par))
+        log_message('Getting pedestals')
+        self.start_pbar(self.NRuns)
+
+        def func():
+
+            legend = TLegend(0.7, 0.3, 0.98, .7)
+            legend.SetName('l1')
+            y_val = 'Sigma' if sigma else 'Mean'
+            gr1 = self.make_tgrapherrors('pedestal', 'Pedestal {y} in {reg}'.format(y=y_val, reg=region + peak_int))
+            regions = self.get_first_analysis().run.pedestal_regions
+            graphs = [self.make_tgrapherrors('pedestal', 'Pedestal {y} in {reg}'.format(y=y_val, reg=reg + peak_int), color=self.get_color()) for reg in regions]
+            i = 0
+            par = 2 if sigma else 1
+            cut_string = None
+            for key, ana in self.collection.iteritems():
+                cut_string = ana.Cut.generate_pulser_cut(beam_on=beam_on) if cut == 'pulser' else cut
+                fit_par = ana.show_pedestal_histo(region, peak_int, cut=cut_string, save=save, show=False)
+                x = ana.run.flux if flux else key
+                gr1.SetPoint(i, x, fit_par.Parameter(par))
+                gr1.SetPointError(i, 0, fit_par.ParError(par))
+                if all_regions:
+                    for reg, gr in zip(regions, graphs):
+                        fit_par = ana.show_pedestal_histo(reg, peak_int, save=False)
+                        gr.SetPoint(i, x, fit_par.Parameter(par))
+                        gr.SetPointError(i, 0, fit_par.ParError(par))
+                self.ProgressBar.update(i + 1)
+                i += 1
+            self.format_histo(gr1, color=None, x_tit=self.make_x_tit(mode, flux), y_tit='Mean Pedestal [au]', y_off=1.45)
             if all_regions:
-                for reg, gr in zip(regions, graphs):
-                    fit_par = ana.show_pedestal_histo(reg, peak_int, save=False)
-                    gr.SetPoint(i, x, fit_par.Parameter(par))
-                    gr.SetPointError(i, 0, fit_par.ParError(par))
-            i += 1
-        self.format_histo(gr1, color=None, x_tit=self.make_x_tit(mode, flux), y_tit='Mean Pedestal [au]', y_off=1.45)
-        if all_regions:
-            for i, gr in enumerate(graphs):
-                legend.AddEntry(gr, str(regions.values()[i]), 'p')
-                gr.Draw('alp') if not i else gr.Draw('lp')
-        self.Pedestal = gr1
-        save_name = 'Pedestal_{mod}{cut}'.format(mod=mode, cut='' if cut is None else cut_string.GetName())
-        self.save_histo(gr1, save_name=save_name, show=show, logx=True if flux else False, l=legend if all_regions else None, lm=.12)
-        self.reset_colors()
-        return gr1
+                for i, gr in enumerate(graphs):
+                    legend.AddEntry(gr, str(regions.values()[i]), 'p')
+                    gr.Draw('alp') if not i else gr.Draw('lp')
+            self.Pedestal = gr1
+            save_name = 'Pedestal_{mod}{cut}'.format(mod=mode, cut='' if cut is None else cut_string.GetName())
+            self.save_histo(gr1, save_name=save_name, show=show, logx=True if flux else False, l=legend if all_regions else None, lm=.12)
+            self.reset_colors()
+            return gr1
+
+        self.ProgressBar.finish()
+        graph = func() if show else None
+        return self.do_pickle(pickle_path, func, graph)
 
     def draw_signal_distributions(self, show=True, off=3):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
