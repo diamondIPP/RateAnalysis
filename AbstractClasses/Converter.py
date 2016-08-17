@@ -233,6 +233,7 @@ class Converter:
         parser.read(conf_file)
         converter_section = 'Converter.{0}'.format(self.ConverterTree)
         parser.set(converter_section, 'polarities', self.load_polarities(run_infos))
+        parser.set(converter_section, 'pulser_polarities', self.load_polarities(run_infos))
 
         # remove unset ranges and regions
         new_options = self.parser.options('ROOTFILE_GENERATION')
