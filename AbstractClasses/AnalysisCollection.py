@@ -1280,6 +1280,12 @@ class AnalysisCollection(Elementary):
     def print_loaded(self):
         print '\033[1A\rRuns {0}-{1} were successfully loaded!{2}\n'.format(self.runs[0], self.runs[-1], 20 * ' ')
 
+    def set_verbose(self, status):
+        self.verbose = status
+        for ana in self.collection.itervalues():
+            ana.verbose = status
+            ana.Pulser.verbose = status
+
     @staticmethod
     def make_x_tit(mode, flux):
         return '{mod}{unit}'.format(mod=mode, unit=' [kHz/cm^{2}]' if flux else '')
