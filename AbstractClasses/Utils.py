@@ -18,9 +18,9 @@ def log_warning(msg):
     print '{head} {t} --> {msg}'.format(t=t, msg=msg, head=colored('WARNING:', 'red'))
 
 
-def log_message(msg):
+def log_message(msg, overlay=False):
     t = datetime.now().strftime('%H:%M:%S')
-    print '{t} --> {msg}'.format(t=t, msg=msg, head=colored('WARNING:', 'red'))
+    print '{ov}{t} --> {msg}{end}'.format(t=t, msg=msg, head=colored('WARNING:', 'red'), ov='\033[1A\r' if overlay else '', end=' ' * 20 if overlay else '')
 
 
 def scale_margins(gr1, gr2):
