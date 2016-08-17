@@ -86,14 +86,21 @@ class Run(Elementary):
         self.runinfofile = self.run_config_parser.get('BASIC', 'runinfofile')
         self.maskfilepath = self.run_config_parser.get('BASIC', 'maskfilepath')
         self.createNewROOTFiles = self.run_config_parser.getboolean('BASIC', 'createNewROOTFiles')
-        
+
         # run info
         self.RunInfo = None
         self.RootFile = None
         self.tree = None
+        self.load_run_info()
 
+        # times
+        self.log_start = None
+        self.log_stop = None
+        self.duration = None
+        self.__load_timing()
+
+        self.converter = Converter(self.TESTCAMPAIGN, self.run_config_parser, self.run_number)
         if run_number is not None and load_tree:
-            self.converter = Converter(self.TESTCAMPAIGN, self.run_config_parser, self.run_number)
             assert (run_number > 0), 'incorrect run_number'
             self.set_run(run_number)
 
@@ -106,7 +113,7 @@ class Run(Elementary):
             self.totalTime = self.endTime - self.startTime
             self.totalMinutes = (self.endTime - self.startTime) / 60000
             self.n_entries = int(self.endEvent + 1)
-            
+
             # region info
             if self.DUTType == 'pad':
                 self.region_information = self.load_regions()
@@ -119,6 +126,10 @@ class Run(Elementary):
             self.FoundForRate = False
             self.flux = self.calculate_flux()
 
+        elif run_number is not None:
+            self.load_run_info()
+            self.converter.convert_run(self.RunInfo, run_number)
+
         else:
             self.load_run_info()
 
@@ -128,11 +139,6 @@ class Run(Elementary):
         self.bias = self.load_bias()
         self.IsMonteCarlo = False
 
-        # times
-        self.log_start = None
-        self.log_stop = None
-        self.duration = None
-        self.__load_timing()
         # root objects
         self.RunInfoLegends = None
 
