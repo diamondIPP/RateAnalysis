@@ -299,8 +299,10 @@ class AnalysisCollection(Elementary):
             not_found_for = False in [coll.run.FoundForRate for coll in self.collection.itervalues()]
 
             flux_errors = self.draw_ph_distributions_below_flux(flux=80, show=False, save_plot=False)
+            log_message('Getting pulse heights{0}'.format(' vs time' if vs_time else ''))
             rel_sys_error = flux_errors[1] / flux_errors[0]
             i, j = 0, 0
+            self.start_pbar(self.NRuns)
             for key, ana in self.collection.iteritems():
                 fit1 = ana.draw_pulse_height(binning, evnt_corr=True, save=False)
                 if all_corr:
@@ -336,7 +338,9 @@ class AnalysisCollection(Elementary):
                     if j == len(self.collection) - 1:
                         gr_last.SetPoint(0, x, fit1.Parameter(0))
                     i += 1
+                self.ProgressBar.update(j + 1)
                 j += 1
+            self.ProgressBar.finish()
             graphs = [gr_errors, gr1]
             gr_line = gr1.Clone()
             self.format_histo(gr_line, name='gLine', color=920)
@@ -513,6 +517,7 @@ class AnalysisCollection(Elementary):
                                                                                                                     flux=flux)
 
         def func():
+            log_message('Getting representative errors')
             runs = self.get_runs_below_flux(flux)
             return self.draw_combined_ph_distributions(runs, binning, show)
 
@@ -522,7 +527,8 @@ class AnalysisCollection(Elementary):
     def draw_combined_ph_distributions(self, runs, binning=5000, show=True):
         stack = THStack('s_phd', 'Pulse Height Distributions')
         self.reset_colors()
-        for run in runs:
+        self.start_pbar(len(runs))
+        for i, run in enumerate(runs, 1):
             ana = self.collection[run]
             self.set_root_output(False)
             h = ana.draw_ph_distribution(show=False, binning=binning, fit=False, save=False)
@@ -531,6 +537,8 @@ class AnalysisCollection(Elementary):
             h.SetStats(False)
             h.SetLineColor(self.get_color())
             stack.Add(h)
+            self.ProgressBar.update(i)
+        self.ProgressBar.finish()
         self.draw_histo(stack, '', show, draw_opt='')
         summed_stack = stack.GetStack().Last().Clone()
         summed_stack.SetFillStyle(0)
@@ -590,8 +598,10 @@ class AnalysisCollection(Elementary):
         pickle_path = self.FirstAnalysis.PickleDir + 'Pulser/PulseHeights_{tc}_{rp}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, rp=self.run_plan, dia=self.diamond_name)
         flux = False if vs_time else flux
         mode = self.get_mode(flux, vs_time)
+        log_message('Getting pulser info{0}'.format(' vs time' if vs_time else ''))
 
         def func():
+            self.start_pbar(len(self.collection))
             gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
             gr = self.make_tgrapherrors('data', 'pulser data', color=602)
             gr1 = self.make_tgrapherrors('gFirst', 'first run', marker=22, color=2, marker_size=2)
@@ -619,7 +629,8 @@ class AnalysisCollection(Elementary):
                     gr1.SetPoint(0, x, y)
                 if i == len(self.collection) - 1:
                     gr2.SetPoint(0, x, y)
-                i += 1
+                self.ProgressBar.update(i + 1)
+            self.ProgressBar.finish()
             if vs_time:
                 gr.GetXaxis().SetTimeDisplay(1)
                 gr.GetXaxis().SetTimeFormat('%H:%M%F2000-02-28 23:00:00')
