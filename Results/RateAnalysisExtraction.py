@@ -3,6 +3,7 @@ from optparse import OptionParser
 from ConfigParser import ConfigParser
 from array import array
 from numpy import mean
+from math import sqrt
 import os
 import json
 from glob import glob
@@ -56,6 +57,9 @@ class RateAnalysisExtraction:
         self.systematics = 0
         self.systematics_cuts = 0
         self.get_systematics()
+        for run in self.runs:
+            self.sigmas[run] = sqrt(self.sigmas[run]**2 + self.systematics**2)
+            self.sigmas_cuts[run] = sqrt(self.sigmas_cuts[run]**2 + self.systematics_cuts**2)
 
     def get_list_dirs(self):
         return glob('{c}*'.format(c=self.campaign))
