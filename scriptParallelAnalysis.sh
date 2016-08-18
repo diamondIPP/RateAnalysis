@@ -143,17 +143,17 @@ echo "Starting files analysis..."
 ##parallel --timeout 200% --bar -I %% "sequ2 ${ANAPATH} %%" ::: $RUNNUMS
 ##parallel --timeout 200% --bar --dry-run -v -I %% --use-cpus-instead-of-cores "sequ2 ${ANAPATH} %%" ::: $RUNNUMS
 
-parallel --timeout 3600 --bar -I %% --use-cpus-instead-of-cores "sequ2 ${ANAPIXPATH} %%" ::: $RUNNUMS
+parallel --timeout 7200 --bar -I %% --use-cpus-instead-of-cores "sequ2 ${ANAPIXPATH} %%" ::: $RUNNUMS
 wait
-parallel --timeout 3600 --bar -I %% --use-cpus-instead-of-cores "sequ2 ${ANAPIXPATH} %%" ::: $RUNNUMS
+parallel --timeout 7200 --bar -I %% --use-cpus-instead-of-cores "sequ2 ${ANAPIXPATH} %%" ::: $RUNNUMS
 wait
-parallel --timeout 3600 --bar -I %% --use-cpus-instead-of-cores "sequ2 ${ANAPIXPATH} %%" ::: $RUNNUMS
+parallel --timeout 7200 --bar -I %% --use-cpus-instead-of-cores "sequ2 ${ANAPIXPATH} %%" ::: $RUNNUMS
 wait
-parallel --timeout 3600 --bar -I %% --use-cpus-instead-of-cores "sequ2 ${ANAPIXPATH} %%" ::: $RUNNUMS
+parallel --timeout 7200 --bar -I %% --use-cpus-instead-of-cores "sequ2 ${ANAPIXPATH} %%" ::: $RUNNUMS
 wait
-parallel --timeout 3600 --bar -I %% --use-cpus-instead-of-cores "sequ2 ${ANAPIXPATH} %%" ::: $RUNNUMS
+parallel --timeout 7200 --bar -I %% --use-cpus-instead-of-cores "sequ2 ${ANAPIXPATH} %%" ::: $RUNNUMS
 wait
-parallel --timeout 3600 --bar -I %% --use-cpus-instead-of-cores "sequ2 ${ANAPIXPATH} %%" ::: $RUNNUMS
+parallel --timeout 7200 --bar -I %% --use-cpus-instead-of-cores "sequ2 ${ANAPIXPATH} %%" ::: $RUNNUMS
 wait
 
 echo "Finished with parallel analysis"

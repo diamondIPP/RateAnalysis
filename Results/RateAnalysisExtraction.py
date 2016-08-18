@@ -47,12 +47,15 @@ class RateAnalysisExtraction:
         # self.projs_cuts = {run: self.do_projection(run, True) for run in self.runs}
         self.means = {run: self.projs[run].GetMean() for run in self.runs}
         self.means_cuts = {run: self.projs_cuts[run].GetMean() for run in self.runs}
-        self.sigmas = {run: self.projs[run].GetMeanError() for run in self.runs}
-        self.sigmas_cuts = {run: self.projs_cuts[run].GetMeanError() for run in self.runs}
+        self.sigmas = {run: self.projs[run].GetMeanError() for run in self.runs}  # Micha said GetMeanError(). Trying GetStdDev()
+        self.sigmas_cuts = {run: self.projs_cuts[run].GetMeanError() for run in self.runs}  # Micha said GetMeanError(). Trying GetStdDev()
         self.mpvs = {run: self.projs[run].GetBinCenter(self.projs[run].GetMaximumBin()) for run in self.runs}
         self.mpvs_cuts = {run: self.projs_cuts[run].GetBinCenter(self.projs_cuts[run].GetMaximumBin()) for run in self.runs}
         self.runinfo = self.get_runinfo()
         self.fluxes = {run: self.calc_flux(run) for run in self.runs}
+        self.systematics = 0
+        self.systematics_cuts = 0
+        self.get_systematics()
 
     def get_list_dirs(self):
         return glob('{c}*'.format(c=self.campaign))
@@ -64,7 +67,7 @@ class RateAnalysisExtraction:
         return {run: '{camp}_{r}'.format(camp=self.campaign, r=run) for run in self.runs}
 
     def get_histo(self, run, name):
-        histo = (TFile('{c}_{r}/{name}.root'.format(c= self.campaign, r=run, name=name), 'READ').Get(name)).GetPrimitive(name.replace('c_', ''))
+        histo = (TFile('{c}_{r}/Root/{name}.root'.format(c= self.campaign, r=run, name=name), 'READ').Get(name)).GetPrimitive(name.replace('c_', ''))
         name_old = histo.GetName()
         histo.SetName('{name}_{r}'.format(name=name_old, r=run))
         return histo
@@ -75,6 +78,22 @@ class RateAnalysisExtraction:
             return self.histos_cuts[run].ProjectionY('p_{n}'.format(n=name))
         else:
             return self.histos[run].ProjectionY('p_{n}'.format(n=name))
+
+    def get_systematics(self, flux_cut=80):
+        temp_run = []
+        for run in self.runs:
+            if self.fluxes[run] < flux_cut:
+                temp_run.append(run)
+        proj = self.projs[temp_run[0]].Clone()
+        proj_cut = self.projs_cuts[temp_run[0]].Clone()
+        proj.SetName('tempProj')
+        proj_cut.SetName('tempProj_cut')
+        for run in temp_run:
+            if run != temp_run[0]:
+                proj.Add(self.projs[run])
+                proj_cut.Add(self.projs_cuts[run])
+        self.systematics = proj.GetStdDev()
+        self.systematics_cuts = proj_cut.GetStdDev()
 
     def plot_rate_results(self):
         self.graph = TGraphErrors(len(self.means))

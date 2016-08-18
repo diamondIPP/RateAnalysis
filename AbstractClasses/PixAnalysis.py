@@ -93,7 +93,7 @@ class SignalPixAnalysis(Analysis):
         gROOT.SetBatch(True)
         gROOT.ProcessLine("gErrorIgnoreLevel = 1000")
         gROOT.SetBatch(False)
-        TFormula.SetMaxima(100000,1000,1000000)  # (1000,1000,1000)
+        TFormula.SetMaxima(1000000,10000,10000000)  # (1000,1000,1000)
         self.print_banner('Creating histograms...', '%')
         self.plots.create_histograms(do_tlscp)
         self.print_banner('Histograms cration -> Done', '%')
