@@ -116,9 +116,10 @@ class RunSelection(Elementary):
         self.make_log_entry('All runs selected')
         self.verbose_print('All runs selected')
 
-    def unselect_all_runs(self):
+    def unselect_all_runs(self, info=True):
         self.reset_selection()
-        self.verbose_print('All runs unselected')
+        if info:
+            self.log_info('unselect all runs')
 
     def set_channels(self, dia1=True, dia2=True):
         """
