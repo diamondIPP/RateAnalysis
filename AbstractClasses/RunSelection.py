@@ -347,6 +347,26 @@ class RunSelection(Elementary):
         f.truncate()
         f.close()
 
+    def add_runplan_descriptions(self):
+        for rp in sorted(self.run_plan.iterkeys()):
+            self.add_runplan_description(rp, ask=False)
+
+    def add_runplan_description(self, rp=None, name=None, ask=True):
+        rp = raw_input('Enter run plan number: ') if ask else rp
+        rp_str = self.make_runplan_string(rp)
+        runs = self.run_plan[rp_str]
+        if ask:
+            name = raw_input('Enter description: ')
+        else:
+            if 'type' in self.run_infos[runs[0]]:
+                name = self.run_infos[runs[0]]['type'].replace('_', ' ')
+            name = 'rate scan' if name is None else name
+        if type(runs) is dict:
+            runs = runs['runs']
+        self.log_info('Adding new description for run plan {rp}: {name}'.format(rp=rp_str, name=name))
+        self.run_plan[rp_str] = {'type': name, 'runs': runs}
+        self.save_runplan()
+
     def rename_runplan_numbers(self):
         for type_, plan in self.run_plan.iteritems():
             for nr in plan:
