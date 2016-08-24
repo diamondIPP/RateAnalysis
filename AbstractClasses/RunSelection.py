@@ -11,7 +11,7 @@ from Utils import *
 
 
 class RunSelection(Elementary):
-    def __init__(self, testcampaign=None, verbose=False):
+    def __init__(self, testcampaign=None, verbose=True):
         Elementary.__init__(self, verbose=verbose, testcampaign=testcampaign)
         self.run = Run(run_number=None, verbose=verbose)
 
