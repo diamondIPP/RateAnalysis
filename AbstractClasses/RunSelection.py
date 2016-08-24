@@ -341,7 +341,7 @@ class RunSelection(Elementary):
         f = open(self.runplan_path, 'r+')
         runplans = json.load(f)
         runplans[self.TESTCAMPAIGN] = self.run_plan if runplan is None else runplan
-        self.rename_runplan_numbers() if runplan else self.do_nothing()
+        self.rename_runplan_numbers() if runplan is not None else self.do_nothing()
         f.seek(0)
         json.dump(runplans, f, indent=2, sort_keys=True)
         f.truncate()
@@ -373,46 +373,41 @@ class RunSelection(Elementary):
                 self.run_plan[type_][nr.zfill(2)] = self.run_plan[type_].pop(nr)
 
     def show_run_plans(self, detailed=False, show_allcomments=False):
-        """
-        Print a list of all run plans from the current test campaign to the console.
-        :param detailed:
-        :param show_allcomments:
-        :return:
-        """
+        """ Print a list of all run plans from the current test campaign to the console. """
         old_selection = deepcopy(self.selection)
         old_channels = deepcopy(self.channels)
         old_logs = deepcopy(self.logs)
         print 'RUN PLAN FOR TESTCAMPAIGN: {tc}'.format(tc=self.TESTCAMPAIGN)
-        for run_type, plan in self.run_plan.iteritems():
-            print '{type}:'.format(type=run_type)
+        if not detailed:
+            print '  Nr.   {typ}{range}{excl} {dia} Voltages'.format(range='Range'.ljust(17), excl='Excluded'.ljust(15), dia='Diamonds'.ljust(20), typ='Run Type'.ljust(13))
+        for plan, info in sorted(self.run_plan.iteritems()):
+            self.unselect_all_runs(info=False)
+            self.select_runs_from_runplan(plan)
+            runs = info['runs']
             if not detailed:
-                print '  Nr.  {range} {excl} {dia} Voltages'.format(range='Range'.ljust(17), excl='Excluded'.ljust(15), dia='Diamonds'.ljust(20))
-            for nr, runs in sorted(plan.iteritems()):
-                self.unselect_all_runs()
-                self.select_runs_from_runplan(nr, run_type)
-                if not detailed:
-                    all_runs = [run for run in self.run_numbers if runs[-1] >= run >= runs[0]]
-                    missing_runs = [run for run in all_runs if run not in runs]
-                    missing_runs = missing_runs if len(missing_runs) <= 3 else '{0}, ...]'.format(str(missing_runs[:2]).strip(']'))
-                    dias = [str(dia) for dia in self.get_diamond_names(True)]
-                    run_string = '[{min}, ... , {max}]'.format(min=str(runs[0]).zfill(3), max=str(runs[-1]).zfill(3))
-                    not_string = str(missing_runs) if missing_runs else ''
-                    voltages = self.get_hv_values(sel=True)
-                    voltages = voltages if len(voltages) <= 4 else '{0}, ...]'.format(str(voltages[:3]).strip(']'))
-                    nr += ':'
-                    print '  {nr}{runs}, {miss} {dias} {hv}'.format(nr=nr.ljust(5), runs=run_string, miss=not_string[:15].ljust(15), dias=str(dias).ljust(20), hv=voltages)
-                else:
-                    print '{delim}\n RUN PLAN {nr} ({type})\n{delim}'.format(delim=50 * '-', nr=nr, type=run_type)
-                    self.show_selected_runs(show_allcomments=show_allcomments)
-                    print '\n'
+                all_runs = [run for run in self.run_numbers if runs[-1] >= run >= runs[0]]
+                missing_runs = [run for run in all_runs if run not in runs]
+                missing_runs = missing_runs if len(missing_runs) <= 3 else '{0}, ...]'.format(str(missing_runs[:2]).strip(']'))
+                dias = [str(dia) for dia in self.get_diamond_names(True)]
+                run_string = '[{min}, ... , {max}]'.format(min=str(runs[0]).zfill(3), max=str(runs[-1]).zfill(3))
+                not_string = str(missing_runs) if missing_runs else ''
+                voltages = self.get_hv_values(sel=True)
+                voltages = voltages if len(voltages) <= 4 else '{0}, ...]'.format(str(voltages[:3]).strip(']'))
+                plan += ':'
+                print '  {nr} {typ}{runs} {miss} {dias} {hv}'.format(nr=plan.ljust(5), runs=run_string, miss=not_string[:15].ljust(15), dias=str(dias).ljust(20), hv=voltages, typ=info['type'].ljust(
+                    13))
+            else:
+                print '{delim}\n RUN PLAN {nr} ({type})\n{delim}'.format(delim=50 * '-', nr=plan, type=info['type'])
+                self.show_selected_runs(show_allcomments=show_allcomments)
+                print '\n'
 
         self.channels = old_channels
         self.logs = old_logs
         self.selection = old_selection
 
-    def select_runs_from_runplan(self, plan_nr, type_='rate_scan', ch=1):
+    def select_runs_from_runplan(self, plan_nr, ch=1):
         plan = self.make_runplan_string(plan_nr)
-        runs = self.run_plan[type_][plan]
+        runs = self.run_plan[plan]['runs']
         self.SelectedRunplan = plan
 
         self.select_runs(runs)
