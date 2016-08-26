@@ -891,10 +891,11 @@ class PadAnalysis(Analysis):
         self.save_plots('PHEvolutionOverview{0}'.format(self.BinSize), sub_dir=self.save_dir)
         self.histos.append([h2, c])
 
-    def show_signal_histo(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None, binning=350, events=None, start=None, x_range=None):
+    def show_signal_histo(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None, binning=350, events=None, start=None, x_range=None, save=True):
         x_range = [-50, 300] if x_range is None else x_range
         self.log_info('drawing signal distribution for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name))
         suffix = 'with Pedestal Correction' if evnt_corr else ''
+        self.set_root_output(False)
         h = TH1F('signal b2', 'Pulse Height ' + suffix, binning, *x_range)
         cut = self.Cut.all_cut if cut is None else cut
         sig_name = self.SignalName if sig is None else sig
@@ -903,7 +904,7 @@ class PadAnalysis(Analysis):
         n_events = self.find_n_events(n=events, cut=str(cut), start=start_event) if events is not None else self.run.n_entries
         self.tree.Draw('{name}>>signal b2'.format(name=sig_name), str(cut), 'goff', n_events, start_event)
         self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.8, stats=0)
-        self.save_histo(h, 'SignalDistribution', lm=.13, show=show)
+        self.save_histo(h, 'SignalDistribution', lm=.14, show=show, save=save)
         return h
 
     def draw_signal_vs_peakpos(self, show=True, corr=False):
