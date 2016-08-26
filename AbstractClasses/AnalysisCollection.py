@@ -57,6 +57,7 @@ class AnalysisCollection(Elementary):
 
         # root stuff
         self.run_plan = list_of_runs.SelectedRunplan if isinstance(list_of_runs, RunSelection) else '-'
+        self.Type = list_of_runs.SelectedType if isinstance(list_of_runs, RunSelection) else '-'
         self.save_dir = '{dia}/runplan{plan}'.format(tc=self.TESTCAMPAIGN[2:], plan=self.run_plan, dia=self.diamond_name)
         self.RootObjects = []
         # important plots
