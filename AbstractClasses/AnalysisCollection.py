@@ -453,12 +453,20 @@ class AnalysisCollection(Elementary):
         graph = func() if show else None
         return self.do_pickle(pickle_path, func, graph)
 
+    def draw_pulser_pedestals(self, show=True):
+        self.draw_pedestals(cut=self.FirstAnalysis.Pulser.PulserCut, show=show)
+
     def draw_signal_distributions(self, show=True, off=3):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         self.reset_colors()
         stack = THStack('hsd', 'Pulse Height Distributions')
-        legend = self.make_legend(.69, .95, nentries=self.get_number_of_analyses())
-        histos = [ana.show_signal_histo(show=False) for ana in self.collection.itervalues()]
+        legend = self.make_legend(.67, .88, nentries=self.get_number_of_analyses())
+        log_message('Generating signal distributions!')
+        histos = []
+        self.start_pbar(self.NRuns)
+        for i, ana in enumerate(self.collection.itervalues(), 1):
+            histos.append(ana.show_signal_histo(show=False))
+            self.ProgressBar.update(i)
         for i, h in enumerate(histos):
             self.format_histo(h, lw=2, color=self.get_color())
             h.Scale(1 / h.GetMaximum())
@@ -476,6 +484,7 @@ class AnalysisCollection(Elementary):
         legends = [legend, legend.Clone()]
         for i, s in enumerate([stack, log_stack], 1):
             pad = c.cd(i)
+            pad.SetLeftMargin(.14)
             pad.SetLogy() if i == 2 else self.do_nothing()
             s.Draw('nostack')
             legends[i - 1].Draw()
