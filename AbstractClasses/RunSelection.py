@@ -26,6 +26,7 @@ class RunSelection(Elementary):
         
         # selection
         self.SelectedRunplan = None
+        self.SelectedType = None
         self.SelectedBias = None
         self.Diamond = None
 
@@ -418,6 +419,7 @@ class RunSelection(Elementary):
         plan = self.make_runplan_string(plan_nr)
         runs = self.run_plan[plan]['runs']
         self.SelectedRunplan = plan
+        self.SelectedType = str(self.run_plan[plan]['type'])
 
         self.select_runs(runs)
         self.SelectedBias = self.run_infos[self.get_selected_runs()[0]]['dia{0}hv'.format(ch)]
@@ -425,30 +427,23 @@ class RunSelection(Elementary):
         parser.read('Configuration/DiamondAliases.cfg')
         self.Diamond = parser.get('ALIASES', self.run_infos[self.get_selected_runs()[0]]['dia{0}'.format(ch)])
 
-    def add_selection_to_runplan(self, plan_nr, run_type='rate_scan'):
+    def add_selection_to_runplan(self, plan_nr, run_type='rate scan'):
         """
         Saves all selected runs as a run plan with name 'plan_nr'.
         :param plan_nr:
         :param run_type:
         """
         plan_nr = self.make_runplan_string(plan_nr)
-        types = ['rate_scan', 'voltage_scan', 'test']
-        assert run_type in types, 'This run type does not exist! Types are: {types}'.format(types=types)
+        # types = ['rate scan', 'voltage scan', 'test']
+        # assert run_type in types, 'This run type does not exist! Types are: {types}'.format(types=types)
         assert self.selection, 'The run selection is completely empty!'
 
-        if run_type in self.run_plan:
-            self.run_plan[run_type][plan_nr] = self.get_selected_runs()
-        else:
-            self.run_plan[run_type] = {}
-            self.run_plan[run_type][plan_nr] = self.get_selected_runs()
+        self.run_plan[plan_nr] = {'runs': self.get_selected_runs(), 'type': run_type}
         self.save_runplan()
 
-    def delete_runplan(self, plan_nr, run_type='rate_scan'):
-        plan = str(plan_nr).zfill(2) if type(plan_nr) is int else plan_nr.zfill(2)
-        types = ['rate_scan', 'voltage_scan', 'test']
-        assert run_type in types, 'This run type does not exist! Types are: {types}'.format(types=types)
-
-        self.run_plan[run_type].pop(plan)
+    def delete_runplan(self, plan_nr):
+        plan = self.make_runplan_string(plan_nr)
+        self.run_plan.pop(plan)
         self.save_runplan()
 
     # endregion
