@@ -664,14 +664,14 @@ class AnalysisCollection(Elementary):
             graphs = [gr]
             if not vs_time:
                 graphs += [gr1, gr2]
-            l = self.make_legend(.65, .35, nentries=3)
+            l = self.make_legend(.17, .35, nentries=3, x2=.4)
             mg.Add(gr_line, 'l')
             for graph in graphs:
                 l.AddEntry(graph, graph.GetTitle(), 'p')
                 mg.Add(graph, 'p')
 
             gROOT.SetBatch(1)
-            self.format_histo(mg, x_tit=self.make_x_tit(mode, flux), y_tit='{mean} [au]'.format(mean='Pulse Height' if mean_ else 'Sigma'), draw_first=True)
+            self.format_histo(mg, x_tit=self.make_x_tit(mode, flux), y_tit='{mean} [au]'.format(mean='Pulser Pulse Height' if mean_ else 'Sigma'), draw_first=True)
             y = mg.GetYaxis().GetXmin(), mg.GetYaxis().GetXmax()
             mg_y = y[0] * 1.3 - y[1] * .3
             self.format_histo(mg, y_range=[mg_y, y[1] + (y[1] - y[0]) * .3], y_off=1.75, x_off=1.3)
@@ -695,13 +695,15 @@ class AnalysisCollection(Elementary):
             typ = self.FirstAnalysis.RunInfo['pulser']
             pol = 'positive' if self.FirstAnalysis.PulserPolarity > 0 else 'negative'
             sig = 'positive' if self.FirstAnalysis.Polarity > 0 else 'negative'
-            l1 = self.make_legend(.7, .95, nentries=3, margin=.05)
-            l1.AddEntry(0, 'Type:', '')
-            l1.AddEntry(0, typ, '').SetTextAlign(32)
+            l1 = self.make_legend(.17, .88, nentries=3, margin=.05, felix=True, x2=.5)
+            l1.AddEntry(0, 'Pulser Type:', '')
+            l1.AddEntry(0, typ, '').SetTextAlign(12)
             l1.AddEntry(0, 'Pulser Polarity:', '')
-            l1.AddEntry(0, pol, '').SetTextAlign(32)
+            l1.AddEntry(0, pol, '').SetTextAlign(12)
             l1.AddEntry(0, 'Signal Polarity:', '')
-            l1.AddEntry(0, sig, '').SetTextAlign(32)
+            l1.AddEntry(0, sig, '').SetTextAlign(12)
+            l1.AddEntry(0, 'Pulser Ped. Substr.:', '')
+            l1.AddEntry(0, 'yes', '').SetTextAlign(12)
             l1.SetNColumns(2)
             l1.Draw()
             self.ROOTObjects.append(l1)
