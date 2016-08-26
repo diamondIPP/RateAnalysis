@@ -365,7 +365,7 @@ class AnalysisCollection(Elementary):
             # gr1.SetName('data') if len(graphs) < 5 else self.do_nothing()
 
             mg = TMultiGraph('mg_ph', prefix + self.diamond_name)
-            mg.Add(gr_line, 'l')
+            mg.Add(gr_line, 'l') if not self.Type == 'random scan' else do_nothing()
             for gr in graphs:
                 if gr.GetName().startswith('gFull'):
                     legend.AddEntry(gr, gr.GetTitle(), 'l')
@@ -374,10 +374,9 @@ class AnalysisCollection(Elementary):
                 mg.Add(gr, 'p')
 
             # small range
-            self.format_histo(mg, color=None, x_tit=mode + ' [kHz/cm^{2}]' if flux else '', y_tit='Pulse Height [au]', y_off=1.75, x_off=1.3, draw_first=True)
+            self.format_histo(mg, color=None, x_tit=mode + ' [kHz/cm^{2}]' if flux else '', y_tit='Signal Pulse Height [au]', y_off=1.75, x_off=1.3, draw_first=True)
             ymin, ymax = mg.GetYaxis().GetXmin(), mg.GetYaxis().GetXmax()
-            mg_y = ymin - (ymax - ymin) * .3
-            mg.GetYaxis().SetRangeUser(mg_y, ymax)
+            mg.GetYaxis().SetRangeUser(*increased_range([ymin, ymax], .3, .15))
             if vs_time:
                 mg.Add(gr5, '[]')
                 mg.Add(gr5, 'p')
@@ -401,7 +400,7 @@ class AnalysisCollection(Elementary):
             self.PulseHeight = gr1
             if save_comb:
                 run_info = self.collection.values()[0].run.get_runinfo(self.channel)
-                self.save_combined_pulse_heights(mg, mg1, legend, mg_y, show=show, run_info=run_info)
+                self.save_combined_pulse_heights(mg, mg1, legend, increased_range([ymin, ymax], .3)[0], show=show, run_info=run_info, pulser_leg=self.__draw_signal_legend)
             return mg
 
         mg2 = func() if save_plots else None
@@ -699,6 +698,17 @@ class AnalysisCollection(Elementary):
             self.ROOTObjects.append(l1)
         except KeyError:
             pass
+
+    def __draw_signal_legend(self):
+        sig = 'positive' if self.FirstAnalysis.Polarity > 0 else 'negative'
+        l1 = self.make_legend(.17, .88, nentries=2, margin=.05, felix=True, x2=.5)
+        l1.AddEntry(0, 'Signal Polarity:', '')
+        l1.AddEntry(0, sig, '').SetTextAlign(12)
+        l1.AddEntry(0, 'Pedestal Substraction:', '')
+        l1.AddEntry(0, 'yes', '').SetTextAlign(12)
+        l1.SetNColumns(2)
+        l1.Draw()
+        self.ROOTObjects.append(l1)
 
     def draw_pulser_histos(self, show=True, corr=True):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
