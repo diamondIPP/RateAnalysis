@@ -119,7 +119,9 @@ class PulserAnalysis(Elementary):
         self.Ana.draw_peak_timing('', 'pulser', ucut=self.PulserCut, show=show, draw_cut=False, corr=corr)
 
     def draw_pedestal(self, show=True, fit=True, x_range=None):
-        return self.Ana.show_pedestal_histo(cut=self.PulserCut, show=show, fit=fit, x_range=x_range)
+        # region = 'ac' if 'ac' in self.Ana.run.pedestal_regions else None
+        region = None
+        return self.Ana.show_pedestal_histo(cut=self.PulserCut, show=show, fit=fit, x_range=x_range, region=region)
 
     def compare_pedestal(self, show=True):
         self.Ana.show_pedestal_histo(show=False, fit=False, x_range=[-20, 20])
