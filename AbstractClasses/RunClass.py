@@ -389,10 +389,23 @@ class Run(Elementary):
         self.tree.SetEstimate(-1)
         entries = self.tree.Draw('Entry$:time', '', 'goff')
         time = [self.tree.GetV2()[i] for i in xrange(entries)]
-        # self.print_banner(abs((time[-1] - time[0]) / 1000 - self.duration.seconds))
+        self.fill_empty_time_entries(time)
         if abs((time[-1] - time[0]) / 1000 - self.duration.seconds) > 60:
+            print time[:4], time[-1]
+            print (time[-1] - time[0]) / 1000, self.duration.seconds
             time = self.__correct_time(entries)
         return time
+
+    @staticmethod
+    def fill_empty_time_entries(times):
+        first_valid = 0
+        ind = 0
+        for i, t in enumerate(times):
+            if t != -1:
+                first_valid = t
+                ind = i
+                break
+        times[:ind] = [first_valid] * ind
 
     def __correct_time(self, entries):
         self.log_warning('Need to correct timing vector\n')
@@ -402,9 +415,10 @@ class Run(Elementary):
         for i in xrange(entries):
             diff = self.tree.GetV2()[i] - t
             if diff < 0:
-                new_t = -diff
-            time.append(self.tree.GetV2()[i] + new_t + .5 / 1000)
+                new_t = -diff + .5 / 1000
+            time.append(self.tree.GetV2()[i] + new_t)
             t = self.tree.GetV2()[i]
+        self.fill_empty_time_entries(time)
         return time
 
     def get_time_at_event(self, event):
