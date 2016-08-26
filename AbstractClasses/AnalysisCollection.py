@@ -173,6 +173,7 @@ class AnalysisCollection(Elementary):
         self.draw_pulse_heights(show=False)
         self.draw_pulser_info(do_fit=False, show=False)
         self.draw_pedestals(show=False, save=True)
+        self.draw_signal_distributions(show=False)
         self.set_verbose(old_verbose)
         self.print_all_off_results()
 
