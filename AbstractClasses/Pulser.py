@@ -81,7 +81,7 @@ class PulserAnalysis(Elementary):
     def draw_distribution(self, show=True, corr=True, beam_on=True, binning=700, events=None, start=None, stats=False):
         """ Shows the distribution of the pulser integrals. """
         cut = self.Cut.generate_pulser_cut(beam_on=beam_on)
-        h = self.Ana.show_signal_histo(cut=cut, sig=self.Ana.PulserName, show=False, off_corr=corr, evnt_corr=False, binning=binning, events=events, start=start)
+        h = self.Ana.show_signal_histo(cut=cut, sig=self.Ana.PulserName, show=False, off_corr=corr, evnt_corr=False, binning=binning, events=events, start=start, save=False)
         self.format_histo(h, name='p_hd', stats=stats, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.3)
         self.save_histo(h, 'PulserDistribution', show, logy=True, lm=.12)
         return h
