@@ -367,6 +367,15 @@ class RunSelection(Elementary):
         self.run_plan[rp_str] = {'type': name, 'runs': runs}
         self.save_runplan()
 
+    def add_attenuators(self, rp=None, attenuator=None, ask=True):
+        rp = self.make_runplan_string(raw_input('Enter run plan number: ') if ask else rp)
+        info = self.run_infos[self.run_plan[rp]['runs'][0]]
+        at_d1 = raw_input('Enter attenuator for {dia1}: '.format(dia1=info['dia1'])) if attenuator is None else attenuator[0]
+        at_d2 = raw_input('Enter attenuator for {dia2}: '.format(dia2=info['dia2'])) if attenuator is None else attenuator[1]
+        at_pul = raw_input('Enter attenuator for the pulser: ') if attenuator is None else attenuator[2]
+        self.run_plan[rp]['attenuators'] = {'dia1': at_d1, 'dia2': at_d2, 'pulser': at_pul}
+        self.save_runplan()
+
     def rename_runplan_numbers(self):
         for type_, plan in self.run_plan.iteritems():
             for nr in plan:
