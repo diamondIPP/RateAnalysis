@@ -519,12 +519,13 @@ class Currents(Elementary):
         fr.SetLineColor(0)
         fr.GetXaxis().SetTimeDisplay(1)
 
-    def draw_frame(self, pad, ymin, ymax, tit):
+    def draw_frame(self, pad, ymin, ymax, tit, div=None):
         pad.cd()
         x = self.Margins['x']
         fr = pad.DrawFrame(x[0], ymin, x[1], ymax)
         pad.Modified()
         fr.GetYaxis().SetTitle(tit)
+        fr.GetYaxis().SetNdivisions(div) if div is not None else do_nothing()
         self.format_frame(fr)
 
     def draw_time_axis(self, y, opt=''):
