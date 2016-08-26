@@ -419,9 +419,10 @@ class AnalysisCollection(Elementary):
             legend = TLegend(0.7, 0.3, 0.98, .7)
             legend.SetName('l1')
             y_val = 'Sigma' if sigma else 'Mean'
-            gr1 = self.make_tgrapherrors('pedestal', 'Pedestal {y} in {reg}'.format(y=y_val, reg=region + peak_int))
+            prefix = 'Pulser ' if cut is not None and cut.GetName().startswith('Pulser') else ''
+            gr1 = self.make_tgrapherrors('pedestal', '{pre}Pedestal {y} in {reg}'.format(y=y_val, reg=region + peak_int, pre=prefix))
             regions = self.get_first_analysis().run.pedestal_regions
-            graphs = [self.make_tgrapherrors('pedestal', 'Pedestal {y} in {reg}'.format(y=y_val, reg=reg + peak_int), color=self.get_color()) for reg in regions]
+            graphs = [self.make_tgrapherrors('pedestal', '{pre}Pedestal {y} in {reg}'.format(y=y_val, reg=reg + peak_int, pre=prefix), color=self.get_color()) for reg in regions]
             i = 0
             par = 2 if sigma else 1
             cut_string = None
