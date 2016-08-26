@@ -185,23 +185,26 @@ class AnalysisCollection(Elementary):
         return increased_range(y, 0.3)
 
     def draw_ph_with_currents(self, show=True):
-        ph = self.draw_pulse_heights(show=False, vs_time=True, fl=False, save_comb=False)
+        ph = self.draw_pulse_heights(show=False, vs_time=True, fl=False, save_comb=False, binning=10000)
         self.Currents.set_graphs()
         cur = self.Currents.CurrentGraph.Clone()
         cur_range = self.scale_current_gr(cur)
         scale = ph.GetListOfGraphs()[0].GetY()[0]
+        pul_orginal = self.draw_pulser_info(show=False, do_fit=False, vs_time=True, save_comb=False)
+        fac = scale / pul_orginal.GetY()[0]
         pul = self.draw_pulser_info(show=False, do_fit=False, vs_time=True, scale=scale, save_comb=False)
         pul.SetLineColor(859)
         pul.SetMarkerColor(859)
 
-        entries = [1, 3, 1]
-        positions = [[.84, .7], [.84, .7], [.84, .2]]
-        legends = [self.make_legend(*positions[i], nentries=entries[i], scale=1.7) for i in xrange(3)]
-        legends[1].AddEntry(ph.GetListOfGraphs()[0], 'data', 'p')
+        entries = [2, 3, 1]
+        positions = [[.8, .25], [.8, .3], [.8, .2]]
+        legends = [self.make_legend(*positions[i], nentries=entries[i], scale=1.7, x2=0.94) for i in xrange(3)]
+        legends[1].AddEntry(ph.GetListOfGraphs()[2], '{sgn}(signal - ped.) data'.format(sgn='-1 * ' if self.bias < 0 else ''), 'p')
         dummy_gr = self.make_tgrapherrors('g', 'g', width=2)
         legends[1].AddEntry(0, 'flux in kHz/cm^{2}', 'p')
         legends[1].AddEntry(dummy_gr, 'duration', 'l')
-        legends[0].AddEntry(pul, 'pulser', 'p')
+        legends[0].AddEntry(pul, 'scaled pulser data', 'p')
+        legends[0].AddEntry(0, 'factor {sgn}{fac:4.2f}'.format(fac=fac, sgn='-' if self.FirstAnalysis.PulserPolarity < 0 else ''), '')
         legends[2].AddEntry(cur, 'current', 'l')
 
         gROOT.SetBatch(1) if not show else do_nothing()
@@ -211,19 +214,19 @@ class AnalysisCollection(Elementary):
         for pad in pads:
             pad.Draw()
         draw_opts = ['pl', '', 'l']
-        y_tits = ['pulse height [au] ', 'pulse height [au] ', 'current [nA] ']
+        y_tits = ['Pulser Pulse Height [au] ', 'Signal Pulse Height [au] ', 'Current [nA] ']
+        y_ranges = [increased_range(scale_margins(pul, ph), .3), increased_range(scale_margins(ph, pul), .3), cur_range]
+        divs = [204, 204, None]
 
         pad = None
         for i, gr in enumerate([pul, ph, cur], 1):
             pad = pads[3 - i]
             pad.cd()
             pad.SetMargin(*margins[i - 1])
-            ymin, ymax = gr.GetYaxis().GetXmin(), gr.GetYaxis().GetXmax()
-            if i == 1:
-                ymin, ymax = scale_margins(pul, ph)
-            if i == 2:
-                ymin, ymax = scale_margins(ph, pul)
-            self.Currents.draw_frame(pad, ymin, ymax, y_tits[i - 1])
+            if i != 3:
+                pad.SetGridy()
+            ymin, ymax = y_ranges[i - 1]
+            self.Currents.draw_frame(pad, ymin, ymax, y_tits[i - 1], div=divs[i - 1])
             if i == 2:
                 self.Currents.draw_time_axis(ymin, opt='t')
             if i == 3:
