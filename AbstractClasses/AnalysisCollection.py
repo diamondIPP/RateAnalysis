@@ -176,13 +176,19 @@ class AnalysisCollection(Elementary):
         self.draw_signal_distributions(show=False)
         self.set_verbose(old_verbose)
         self.print_all_off_results()
+    
+    def scale_current_gr(self, gr):
+        vals = [gr.GetY()[i] for i in xrange(gr.GetN())]
+        mi, ma, mn = min(vals), max(vals), mean(vals)
+        y = [mi, mn + 3 * (mn - mi) if ma - mn > 50 else ma]
+        self.format_histo(gr, name='cur', color=899)
+        return increased_range(y, 0.3)
 
     def draw_ph_with_currents(self, show=True):
         ph = self.draw_pulse_heights(show=False, vs_time=True, fl=False, save_comb=False)
         self.Currents.set_graphs()
         cur = self.Currents.CurrentGraph.Clone()
-        y = [cur.GetYaxis().GetXmin(), cur.GetYaxis().GetXmin()]
-        self.format_histo(cur, color=899, y_range=increased_range(y, 0.3))
+        cur_range = self.scale_current_gr(cur)
         scale = ph.GetListOfGraphs()[0].GetY()[0]
         pul = self.draw_pulser_info(show=False, do_fit=False, vs_time=True, scale=scale, save_comb=False)
         pul.SetLineColor(859)
