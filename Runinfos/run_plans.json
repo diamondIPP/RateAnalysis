@@ -16,6 +16,16 @@
       ], 
       "type": "rate scan"
     }, 
+    "00.1": {
+      "runs": [
+        183, 
+        197, 
+        199, 
+        201, 
+        203
+      ], 
+      "type": "down scan"
+    }, 
     "01": {
       "runs": [
         205, 
@@ -1104,6 +1114,11 @@
       "type": "voltage scan"
     }, 
     "08": {
+      "attenuators": {
+        "dia1": "10DB_1", 
+        "dia2": "6DB_2", 
+        "pulser": "6DB_1"
+      }, 
       "runs": [
         498, 
         499, 
@@ -1120,6 +1135,11 @@
       "type": "rate scan"
     }, 
     "09": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser": "6DB_1 + 6DB_2"
+      }, 
       "runs": [
         525, 
         526, 
@@ -1166,7 +1186,28 @@
       ], 
       "type": "rate scan"
     }, 
+    "09.1": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser": "6DB_1 + 6DB_2"
+      }, 
+      "runs": [
+        555, 
+        556, 
+        557, 
+        558, 
+        559, 
+        560
+      ], 
+      "type": "up scan"
+    }, 
     "10": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser": "6DB_1 + 6DB_2"
+      }, 
       "runs": [
         577, 
         578, 
@@ -1184,6 +1225,11 @@
       "type": "random scan"
     }, 
     "11": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser": "6DB_1 + 6DB_2"
+      }, 
       "runs": [
         596, 
         598, 
@@ -1230,6 +1276,11 @@
       "type": "rate scan"
     }, 
     "12": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser": "6DB_1 + 6DB_2"
+      }, 
       "runs": [
         640, 
         643, 
@@ -1247,6 +1298,11 @@
       "type": "random scan"
     }, 
     "13": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser": "6DB_1 + 6DB_2"
+      }, 
       "runs": [
         661, 
         662, 
@@ -1258,6 +1314,11 @@
       "type": "V scint up"
     }, 
     "14": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser": "6DB_1 + 6DB_2"
+      }, 
       "runs": [
         686, 
         687, 
@@ -1304,6 +1365,11 @@
       "type": "rate scan"
     }, 
     "15": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser": "6DB_1 + 6DB_2"
+      }, 
       "runs": [
         729, 
         730, 
@@ -1321,6 +1387,11 @@
       "type": "random scan"
     }, 
     "16": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser": "6DB_1 + 6DB_2"
+      }, 
       "runs": [
         745, 
         746, 
@@ -1368,6 +1439,11 @@
       "type": "rate scan"
     }, 
     "17": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser": "6DB_1 + 6DB_2"
+      }, 
       "runs": [
         788, 
         789, 
@@ -1385,6 +1461,11 @@
       "type": "random scan"
     }, 
     "18": {
+      "attenuators": {
+        "dia1": "10DB_1", 
+        "dia2": "6DB_2", 
+        "pulser": "6DB_1"
+      }, 
       "runs": [
         807, 
         808, 
@@ -1401,6 +1482,11 @@
       "type": "rate scan"
     }, 
     "19": {
+      "attenuators": {
+        "dia1": "10DB_1", 
+        "dia2": "6DB_2", 
+        "pulser": "6DB_1"
+      }, 
       "runs": [
         819, 
         820, 
@@ -1422,6 +1508,11 @@
       "type": "voltage scan"
     }, 
     "20": {
+      "attenuators": {
+        "dia1": "10DB_1", 
+        "dia2": "6DB_2", 
+        "pulser": "20DB"
+      }, 
       "runs": [
         856, 
         857, 
@@ -1443,6 +1534,11 @@
       "type": "voltage scan"
     }, 
     "21": {
+      "attenuators": {
+        "dia1": "10DB_1", 
+        "dia2": "6DB_2", 
+        "pulser": "20DB"
+      }, 
       "runs": [
         875, 
         876, 
