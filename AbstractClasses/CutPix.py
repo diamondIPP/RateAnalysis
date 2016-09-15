@@ -28,6 +28,11 @@ class CutPix(Elementary):
             # self.exclude_before_jump = self.ana_config_parser.getint('CUT', 'excludeBeforeJump')
             # self.exclude_after_jump = self.ana_config_parser.getint('CUT', 'excludeAfterJump')
             self.CutConfig = {}
+            self.cuts_hitmap_roc = {iROC: {} for iROC in xrange(4, 7)}  # each cut separately
+            self.cuts_pixelated_roc = {iROC: {} for iROC in xrange(4, 7)}  # each cut separately
+            self.cuts_hitmap_roc_incr = {iROC: {} for iROC in xrange(4, 7)}  # each cut incremental. last position used for all cuts
+            self.cuts_pixelated_roc_incr = {iROC: {} for iROC in xrange(4, 7)}  # each cut incremental. last position used for all cuts
+            self.num_cuts = 0
 
             # define cut strings
             # self.EasyCutStrings = self.init_easy_cutstrings()
@@ -50,7 +55,8 @@ class CutPix(Elementary):
             self.generate_ini_fin_cuts()
             self.generate_beam_interruption_cut()
             self.generate_rhit_cuts()
-            self.add_cuts()
+            self.gen_incr_vect_cuts()
+            # self.add_cuts()
 
             # self.generate_cut_string()  # DA TODO
             # self.all_cut = self.generate_all_cut()  # DA TODO
@@ -169,16 +175,14 @@ class CutPix(Elementary):
         self.CutConfig['FidRegionDUT3'] = self.ana_config_parser.get('CUT', 'FidRegionDUT3') if self.ana_config_parser.\
             has_option('CUT', 'FidRegionDUT3') else ''
 
-    def add_cuts(self):
-        self.cuts_hitmap_roc = {}
-        self.cuts_pixelated_roc = {}
-        for iROC in xrange(4, 7):
-            self.cuts_hitmap_roc[iROC] = self.mask_hitmap_roc[iROC] + self.chi2x_cut + self.chi2y_cut \
-                                         + self.cut_tracks + self.angle_x_cut + self.angle_y_cut + self.ini_fin_cut \
-                                         + self.beam_interr_cut
-            self.cuts_pixelated_roc[iROC] = self.mask_pixelated_roc[iROC] + self.chi2x_cut + self.chi2y_cut \
-                                            + self.cut_tracks + self.angle_x_cut + self.angle_y_cut + self.ini_fin_cut \
-                                            + self.beam_interr_cut + self.rhit_cut[iROC]
+    # def add_cuts(self):
+    #     for iROC in xrange(4, 7):
+    #         self.cuts_hitmap_roc[iROC] = self.mask_hitmap_roc[iROC] + self.chi2x_cut + self.chi2y_cut \
+    #                                      + self.cut_tracks + self.angle_x_cut + self.angle_y_cut + self.ini_fin_cut \
+    #                                      + self.beam_interr_cut
+    #         self.cuts_pixelated_roc[iROC] = self.mask_pixelated_roc[iROC] + self.chi2x_cut + self.chi2y_cut \
+    #                                         + self.cut_tracks + self.angle_x_cut + self.angle_y_cut + self.ini_fin_cut \
+    #                                         + self.beam_interr_cut + self.rhit_cut[iROC]
 
     def generate_ini_fin_cuts(self):
         nentries = self.analysis.tree.GetEntries()
@@ -187,14 +191,20 @@ class CutPix(Elementary):
         self.analysis.tree.GetEntry(nentries-1)
         last_t = self.analysis.tree.time
         self.ini_fin_cut = TCut('initial_final_cuts', 'time>{ini}&&time<{fin}'.format(ini=first_t + abs(self.CutConfig['ExcludeFirst'])*1000, fin=last_t - abs(self.CutConfig['ExcludeFirst'])*1000))
+        for iroc in xrange(4,7):
+            self.gen_vect_cuts(self.ini_fin_cut, self.ini_fin_cut, iroc)
+        self.num_cuts += 1
 
     def generate_beam_interruption_cut(self):
+        # time is in ms. good results found with bin size of 5 seconds
         nentries = self.analysis.tree.GetEntries()
         self.analysis.tree.GetEntry(0)
         first_t = self.analysis.tree.time
         self.analysis.tree.GetEntry(nentries-1)
         last_t = self.analysis.tree.time
         bins = int((last_t-first_t)/float(5000))
+        vector_interr = {}
+        max_interr = 0
         gROOT.SetBatch(True)
         h = TH1F('h', 'h', bins+1, first_t-(last_t-first_t)/float(2*bins), last_t+(last_t-first_t)/float(2*bins))
         self.analysis.tree.Draw('time>>h','','goff')
@@ -202,14 +212,27 @@ class CutPix(Elementary):
         self.beam_interr_cut = TCut('beam_interruptions_cut', '')
         for t in xrange(1, h.GetNbinsX()+1):
             if h.GetBinContent(t) < mean*0.9:
-                self.beam_interr_cut=self.beam_interr_cut+TCut('bi{i}'.format(i=t), 'time<{low}||time>{high}'.format(low=h.GetBinLowEdge(t)-abs(self.CutConfig['ExcludeBeforeJump'])*1000, high=h.GetBinLowEdge(t)+h.GetBinWidth(t)+abs(self.CutConfig['ExcludeAfterJump'])*1000))
+                if t != 1:
+                    if h.GetBinLowEdge(t) - abs(self.CutConfig['ExcludeBeforeJump'])*1000 < vector_interr[max_interr-1]['f']:
+                        vector_interr[max_interr-1]['f'] = h.GetBinLowEdge(t)+h.GetBinWidth(t)+abs(self.CutConfig['ExcludeAfterJump'])*1000
+                    else:
+                        vector_interr[max_interr] = {'i': h.GetBinLowEdge(t)-abs(self.CutConfig['ExcludeBeforeJump'])*1000, 'f': h.GetBinLowEdge(t)+h.GetBinWidth(t)+abs(self.CutConfig['ExcludeAfterJump'])*1000}
+                        max_interr += 1
+                else:
+                    vector_interr[max_interr] = {'i': h.GetBinLowEdge(t)-abs(self.CutConfig['ExcludeBeforeJump'])*1000, 'f': h.GetBinLowEdge(t)+h.GetBinWidth(t)+abs(self.CutConfig['ExcludeAfterJump'])*1000}
+                    max_interr += 1
+        for interr in xrange(max_interr):
+            self.beam_interr_cut=self.beam_interr_cut+TCut('bi{i}'.format(i=interr), 'time<{low}||time>{high}'.format(low=vector_interr[interr]['i'], high=vector_interr[interr]['f']))
         gROOT.SetBatch(False)
+        for iroc in xrange(4,7):
+            self.gen_vect_cuts(self.beam_interr_cut, self.beam_interr_cut, iroc)
 
     def generate_rhit_cuts(self):
         self.rhit_cut = {}
-        self.generate_rhit_cuts_DUT(4)
-        self.generate_rhit_cuts_DUT(5)
-        self.generate_rhit_cuts_DUT(6)
+        for iroc in xrange(4,7):
+            self.generate_rhit_cuts_DUT(iroc)
+            self.gen_vect_cuts(self.rhit_cut[iroc], self.rhit_cut[iroc], iroc)
+        self.num_cuts += 1
 
     def generate_rhit_cuts_DUT(self, dut):
         # gROOT.SetBatch(1)
@@ -226,10 +249,17 @@ class CutPix(Elementary):
 
     def generate_tracks_cut(self):
         self.cut_tracks = TCut('cut_tracks', 'n_tracks')
+        self.num_cuts += 1
 
     def generate_chi2_cuts(self):
         self.generate_chi2('x')
         self.generate_chi2('y')
+        for iroc in xrange(4,7):
+            self.gen_vect_cuts(self.chi2x_cut, self.chi2x_cut, iroc)
+        self.num_cuts += 1
+        for iroc in xrange(4,7):
+            self.gen_vect_cuts(self.chi2y_cut, self.chi2y_cut, iroc)
+        self.num_cuts += 1
 
     def generate_chi2(self, mode='x'):
         gROOT.SetBatch(1)
@@ -302,12 +332,29 @@ class CutPix(Elementary):
         cut.SetLineWidth(3*3)
         return cut
 
+    def gen_vect_cuts(self, cut_hitmap, cut_pixelated, roc=4):
+        for i in xrange(self.num_cuts):
+            self.cuts_hitmap_roc[roc][i] = cut_hitmap
+            self.cuts_pixelated_roc[roc][i] = cut_pixelated
+
+    def gen_incr_vect_cuts(self):
+        for roc in xrange(4,7):
+            for i in xrange(self.num_cuts):
+                self.cuts_hitmap_roc_incr[roc][i] = TCut('cut_hit_incr_roc_{r}_pos_{ii}'.format(r=roc, ii=i), '')
+                self.cuts_pixelated_roc_incr[roc][i] = TCut('cut_pix_incr_roc_{r}_pos_{ii}'.format(r=roc, ii=i), '')
+                for j in xrange(i+1):
+                    self.cuts_hitmap_roc_incr[roc][i] = self.cuts_hitmap_roc_incr[roc][i] + self.cuts_hitmap_roc[roc][i]
+                    self.cuts_pixelated_roc_incr[roc][i] = self.cuts_pixelated_roc_incr[roc][i] + self.cuts_pixelated_roc[roc][i]
+
     def generate_masks(self):
         self.mask_hitmap_roc = {}
         self.mask_pixelated_roc = {}
         self.generate_col_masks()
         self.generate_row_masks()
         self.generate_pixel_masks()
+        for roc in xrange(4,7):
+            self.gen_vect_cuts(self.mask_hitmap_roc[roc], self.mask_pixelated_roc[roc], roc)
+        self.num_cuts += 1
 
     def generate_col_masks(self):
         self.col_mask_hitmap_roc = {}
@@ -410,6 +457,12 @@ class CutPix(Elementary):
     def generate_slope_cuts(self):
         self.generate_slope('x')
         self.generate_slope('y')
+        for iroc in xrange(4,7):
+            self.gen_vect_cuts(self.angle_x_cut, self.angle_x_cut, iroc)
+        self.num_cuts += 1
+        for iroc in xrange(4,7):
+            self.gen_vect_cuts(self.angle_y_cut, self.angle_y_cut, iroc)
+        self.num_cuts += 1
 
     def generate_slope(self, mode='x'):
         # picklepath = 'Configuration/Individual_Configs/Slope/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.lowest_rate_run)
