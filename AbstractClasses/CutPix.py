@@ -226,6 +226,7 @@ class CutPix(Elementary):
         gROOT.SetBatch(False)
         for iroc in xrange(4,7):
             self.gen_vect_cuts(self.beam_interr_cut, self.beam_interr_cut, iroc)
+        self.num_cuts += 1
 
     def generate_rhit_cuts(self):
         self.rhit_cut = {}
@@ -244,11 +245,14 @@ class CutPix(Elementary):
         # h.GetQuantiles(nq, rhits, xq)
         # gROOT.SetBatch(0)
         value = self.CutConfig['rhit']
-        string = 'sqrt((10*(track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_X))**2+(10*(track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_Y))**2)<{val}&&sqrt((10*(track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_X))**2+(10*(track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_Y))**2)>0'.format(n=dut, val=value)
+        string=''
+        # string = 'sqrt((10*(track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_X))**2+(10*(track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_Y))**2)<{val}&&sqrt((10*(track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_X))**2+(10*(track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_Y))**2)>0'.format(n=dut, val=value)
         self.rhit_cut[dut] = TCut("rhit_ROC{dut}_cut".format(dut=dut), string)
 
     def generate_tracks_cut(self):
         self.cut_tracks = TCut('cut_tracks', 'n_tracks')
+        for iroc in xrange(4,7):
+            self.gen_vect_cuts(self.cut_tracks, self.cut_tracks, iroc)
         self.num_cuts += 1
 
     def generate_chi2_cuts(self):
@@ -333,18 +337,19 @@ class CutPix(Elementary):
         return cut
 
     def gen_vect_cuts(self, cut_hitmap, cut_pixelated, roc=4):
-        for i in xrange(self.num_cuts):
-            self.cuts_hitmap_roc[roc][i] = cut_hitmap
-            self.cuts_pixelated_roc[roc][i] = cut_pixelated
+        # if cut_hitmap != 0:
+        self.cuts_hitmap_roc[roc][self.num_cuts] = cut_hitmap
+        self.cuts_pixelated_roc[roc][self.num_cuts] = cut_pixelated
 
     def gen_incr_vect_cuts(self):
-        for roc in xrange(4,7):
-            for i in xrange(self.num_cuts):
+        for roc in range(4,7):
+            for i in range(self.num_cuts):
                 self.cuts_hitmap_roc_incr[roc][i] = TCut('cut_hit_incr_roc_{r}_pos_{ii}'.format(r=roc, ii=i), '')
                 self.cuts_pixelated_roc_incr[roc][i] = TCut('cut_pix_incr_roc_{r}_pos_{ii}'.format(r=roc, ii=i), '')
-                for j in xrange(i+1):
-                    self.cuts_hitmap_roc_incr[roc][i] = self.cuts_hitmap_roc_incr[roc][i] + self.cuts_hitmap_roc[roc][i]
-                    self.cuts_pixelated_roc_incr[roc][i] = self.cuts_pixelated_roc_incr[roc][i] + self.cuts_pixelated_roc[roc][i]
+                for j in range(i+1):
+                    # if i != self.num_cuts - 1:
+                    self.cuts_hitmap_roc_incr[roc][i] = self.cuts_hitmap_roc_incr[roc][i] + self.cuts_hitmap_roc[roc][j]
+                    self.cuts_pixelated_roc_incr[roc][i] = self.cuts_pixelated_roc_incr[roc][i] + self.cuts_pixelated_roc[roc][j]
 
     def generate_masks(self):
         self.mask_hitmap_roc = {}
