@@ -89,8 +89,7 @@ class AnalysisCollection(Elementary):
     def add_analyses(self, load_tree):
         """ Creates and adds Analysis objects with run numbers in runs. """
         for run, dia in sorted(zip(self.runs, self.diamonds)):
-            ch = 0 if dia == 1 or dia == 3 else 3
-            analysis = PadAnalysis(run, ch, self.min_max_rate_runs, load_tree=load_tree, verbose=self.verbose)
+            analysis = PadAnalysis(run, dia, self.min_max_rate_runs, load_tree=load_tree, verbose=self.verbose)
             self.collection[analysis.run.run_number] = analysis
             self.current_run_number = analysis.run.run_number
 
@@ -173,6 +172,7 @@ class AnalysisCollection(Elementary):
         self.draw_pulse_heights(show=False)
         self.draw_pulser_info(do_fit=False, show=False)
         self.draw_pedestals(show=False, save=True)
+        self.draw_pulser_pedestals(show=False, save=True)
         self.draw_signal_distributions(show=False)
         self.set_verbose(old_verbose)
         self.print_all_off_results()
@@ -253,8 +253,9 @@ class AnalysisCollection(Elementary):
         gr_last = self.make_tgrapherrors('gLast', 'last run', marker=23, color=2, marker_size=2)
         gr_errors = self.make_tgrapherrors('gFullError', 'stat. + repr. error', marker=0, color=602, marker_size=0)
 
-        flux_errors = self.draw_ph_distributions_below_flux(flux=80, show=False, save_plot=False)
-        rel_sys_error = flux_errors[1] / flux_errors[0]
+        # flux_errors = self.draw_ph_distributions_below_flux(flux=80, show=False, save_plot=False)
+        # rel_sys_error = flux_errors[1] / flux_errors[0]
+        rel_sys_error = 0
         i, j = 0, 0
         for key, ana in self.collection.iteritems():
             fit1 = ana.draw_pulse_height(binning, evnt_corr=True, save=False)
@@ -427,7 +428,7 @@ class AnalysisCollection(Elementary):
             cut_string = None
             for key, ana in self.collection.iteritems():
                 cut_string = ana.Cut.generate_pulser_cut(beam_on=beam_on) if cut == 'pulser' else cut
-                fit_par = ana.show_pedestal_histo(region, peak_int, cut=cut_string, save=save, show=False)
+                fit_par = ana.show_pedestal_histo(region, peak_int, cut=cut_string, save=False, show=False)
                 x = ana.run.flux if flux else key
                 gr1.SetPoint(i, x, fit_par.Parameter(par))
                 gr1.SetPointError(i, 0, fit_par.ParError(par))
@@ -450,11 +451,11 @@ class AnalysisCollection(Elementary):
             return gr1
 
         self.ProgressBar.finish()
-        graph = func() if show else None
+        graph = func() if save else None
         return self.do_pickle(pickle_path, func, graph)
 
-    def draw_pulser_pedestals(self, show=True):
-        self.draw_pedestals(cut=self.FirstAnalysis.Pulser.PulserCut, show=show)
+    def draw_pulser_pedestals(self, show=True, save=False):
+        self.draw_pedestals(cut=self.FirstAnalysis.Pulser.PulserCut, show=show, save=save)
 
     def draw_signal_distributions(self, show=True, off=3):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
