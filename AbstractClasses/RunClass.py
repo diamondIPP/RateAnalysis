@@ -12,6 +12,7 @@ from numpy import mean
 from collections import OrderedDict
 from subprocess import check_output
 import sys
+from Utils import isfloat
 
 default_info = {
     'persons on shift': '-',
@@ -117,10 +118,12 @@ class Run(Elementary):
             # region info
             if self.DUTType == 'pad':
                 self.region_information = self.load_regions()
+                self.NChannels = self.load_n_channels()
+                self.channels = self.load_channels()
                 self.pedestal_regions = self.get_regions('pedestal')
                 self.signal_regions = self.get_regions('signal')
                 self.peak_integrals = self.get_peak_integrals()
-                self.DRS4Channels = self.load_drs4_channels()
+                self.DigitizerChannels = self.load_digitizer_channels()
                 self.TCal = self.load_tcal()
 
             self.FoundForRate = False
@@ -147,8 +150,18 @@ class Run(Elementary):
     def load_run_config(self):
         return self.load_run_configs(self.run_number)
 
+    def load_n_channels(self):
+        for i, line in enumerate(self.region_information):
+            if 'Sensor Names' in line:
+                data = self.region_information[i + 1].strip(' ').split(',')
+                return len(data)
+
     def load_channels(self):
         binary = self.run_config_parser.getint('ROOTFILE_GENERATION', 'active_regions')
+        if hasattr(self, 'region_information'):
+            for i, line in enumerate(self.region_information):
+                if 'active_regions:' in line:
+                    binary = int(line.strip('active_regions:'))
         return [i for i in xrange(self.NChannels) if self.has_bit(binary, i)]
 
     def load_bias(self):
@@ -338,7 +351,7 @@ class Run(Elementary):
                     ranges[data[0]] = [int(data[i]) for i in [1, 2]]
         return ranges
 
-    def load_drs4_channels(self):
+    def load_digitizer_channels(self):
         for i, line in enumerate(self.region_information):
             if 'Sensor Names' in line:
                 data = self.region_information[i + 1].strip(' ').split(',')
@@ -347,7 +360,7 @@ class Run(Elementary):
     def load_tcal(self):
         for i, line in enumerate(self.region_information):
             if 'tcal' in line:
-                data = [float(i) for i in line.strip('tcal []').split(',') if self.isfloat(i)]
+                data = [float(i) for i in line.strip('tcal []').split(',') if isfloat(i)]
                 return data
 
     def get_peak_integrals(self):
