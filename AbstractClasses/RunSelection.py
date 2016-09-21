@@ -427,18 +427,20 @@ class RunSelection(Elementary):
         parser.read('Configuration/DiamondAliases.cfg')
         self.Diamond = parser.get('ALIASES', self.run_infos[self.get_selected_runs()[0]]['dia{0}'.format(ch)])
 
-    def add_selection_to_runplan(self, plan_nr, run_type='rate scan'):
+    def add_selection_to_runplan(self, plan_nr, run_type='rate scan', parent=None):
         """
         Saves all selected runs as a run plan with name 'plan_nr'.
         :param plan_nr:
         :param run_type:
         """
         plan_nr = self.make_runplan_string(plan_nr)
-        # types = ['rate scan', 'voltage scan', 'test']
-        # assert run_type in types, 'This run type does not exist! Types are: {types}'.format(types=types)
+        parent_string = self.make_runplan_string(str(int(float(plan_nr)))) if not isint(plan_nr) and isfloat(plan_nr) else parent
+        parent_string = self.make_runplan_string(parent) if parent is not None else parent_string
         assert self.selection, 'The run selection is completely empty!'
 
         self.run_plan[plan_nr] = {'runs': self.get_selected_runs(), 'type': run_type}
+        if parent_string is not None:
+            self.run_plan[plan_nr]['attenuators'] = self.run_plan[parent_string]['attenuators']
         self.save_runplan()
 
     def delete_runplan(self, plan_nr):
