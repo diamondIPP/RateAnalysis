@@ -2240,7 +2240,7 @@ if __name__ == "__main__":
     parser.add_option('-c', '--doCutAna', action='store_true', dest='doCutAna', default=False, help='set with -c or with --doCutAna to do Cuts analysis on selected devices (DUTs and/or telescope)')
     parser.add_option('-o', '--doOccupancy', action='store_true', dest='doOccupancy', default=False, help='set with -o or with --doOccupancy to do occupancies (hit maps) on selected devices (DUTs and/or telescope)')
     parser.add_option('-x', '--doCorrel', action='store_true', dest='doCorrel', default=False, help='set with -x or with --doCorrel to do correlations between important planes')
-    parser.add_option('-g', '--doCharge', action='sotre_true', dest='doCharge', default=False, help='set with -g or with --doCharge to do pulse height analysis on selected devices (DUTs and/or telescope)')
+    parser.add_option('-g', '--doCharge', action='store_true', dest='doCharge', default=False, help='set with -g or with --doCharge to do pulse height analysis on selected devices (DUTs and/or telescope)')
     parser.add_option('-p', '--progBar', action='store_true', dest='progBar', default=False, help='show progress bar')
     parser.add_option('-v', '--verb', action='store_true', dest='verb', default=False, help='show verbose')
     parser.add_option('-a', '--analyse', action='store_true', dest='doAna', default=False, help='run the analysis with the options given')
