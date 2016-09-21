@@ -2257,7 +2257,7 @@ if __name__ == "__main__":
     verb = bool(options.verb)
     doAna = bool(options.doAna)
 
-    command = '\nAnalysing run ' + run + 'with:'
+    command = '\nAnalysing run ' + str(run) + 'with:'
     command = command + ' telescope,' if doTelscp else command + ' no telescope,'
     command = command + ' DUTs,' if doDUTs else command + ' no DUTs,'
     command = command + ' cuts analysis,' if doCutAna else command + ' no cuts analysis,'
@@ -2269,7 +2269,7 @@ if __name__ == "__main__":
 
     print command
 
-    z = SignalPixAnalysis(run, args.ch)
+    z = SignalPixAnalysis(run)
     z.print_elapsed_time(st, 'Instantiation')
 
     if doAna:
