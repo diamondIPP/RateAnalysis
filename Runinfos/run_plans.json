@@ -618,6 +618,11 @@
       "type": "signal"
     }, 
     "03": {
+      "attenuators": {
+        "dia1": "6DB_2", 
+        "dia2": "Unknown", 
+        "pulser": "Unknown"
+      }, 
       "runs": [
         171, 
         172, 
@@ -704,6 +709,11 @@
       "type": "signal"
     }, 
     "05": {
+      "attenuators": {
+        "dia1": "6DB_2", 
+        "dia2": "Unknown", 
+        "pulser": "Unknown"
+      }, 
       "runs": [
         216, 
         217, 
@@ -1134,6 +1144,22 @@
       ], 
       "type": "rate scan"
     }, 
+    "08.1": {
+      "attenuators": {
+        "dia1": "10DB_1", 
+        "dia2": "6DB_2", 
+        "pulser": "6DB_1"
+      }, 
+      "runs": [
+        498, 
+        499, 
+        500, 
+        501, 
+        502, 
+        504
+      ], 
+      "type": "up_scan"
+    }, 
     "09": {
       "attenuators": {
         "dia1": "None", 
@@ -1480,6 +1506,22 @@
         818
       ], 
       "type": "rate scan"
+    }, 
+    "18.1": {
+      "attenuators": {
+        "dia1": "10DB_1", 
+        "dia2": "6DB_2", 
+        "pulser": "6DB_1"
+      }, 
+      "runs": [
+        807, 
+        808, 
+        809, 
+        811, 
+        812, 
+        813
+      ], 
+      "type": "up scan"
     }, 
     "19": {
       "attenuators": {
