@@ -11,7 +11,8 @@ from screeninfo import get_monitors
 from numpy import array
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 
-from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend, TColor, TArrow, TPad, TCutG, TLine
+from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, kGreen, kOrange, kViolet, kYellow, kRed, kBlue, \
+    kMagenta, kAzure, kCyan, kTeal
 
 # global test campaign and resolution
 tc = None
@@ -149,7 +150,7 @@ class Elementary(object):
 
     @staticmethod
     def create_colorlist():
-        col_names = [TColor.kGreen, TColor.kOrange, TColor.kViolet, TColor.kYellow, TColor.kRed, TColor.kBlue, TColor.kMagenta, TColor.kAzure, TColor.kCyan, TColor.kTeal]
+        col_names = [kGreen, kOrange, kViolet, kYellow, kRed, kBlue, kMagenta, kAzure, kCyan, kTeal]
         colors = []
         for color in col_names:
             colors.append(color + (1 if color != 632 else -7))
@@ -603,14 +604,6 @@ class Elementary(object):
         instance_factory = type('instance_factory', (instance.__class__, ), {})
         instance_factory.__init__ = lambda self, *args, **kwargs: self.__dict__.update(copy)
         return instance_factory
-
-    @staticmethod
-    def isfloat(string):
-        try:
-            float(string)
-            return True
-        except ValueError:
-            return False
 
     @staticmethod
     def find_graph_margins(graphs):
