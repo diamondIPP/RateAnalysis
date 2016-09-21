@@ -9,6 +9,7 @@ from Plots import Plots
 from numpy import array
 from math import sqrt, ceil, log
 from argparse import ArgumentParser
+from optparse import OptionParser
 from ChannelCut import ChannelCut
 from time import time, sleep
 from collections import OrderedDict
@@ -24,13 +25,12 @@ __author__ = 'DA'
 # MAIN CLASS
 # ==============================================
 class SignalPixAnalysis(Analysis):
-    def __init__(self, run, channel, high_low_rate_run=None, binning=20000):
+    def __init__(self, run):
 
-        self.channel = channel
-        Analysis.__init__(self, run, high_low_rate=high_low_rate_run)
+        Analysis.__init__(self, run)
         # main
-        self.diamond_name = self.run.diamond_names[channel]
-        self.bias = self.run.bias[channel]
+        # self.diamond_name = self.run.diamond_names[channel]
+        # self.bias = self.run.bias[channel]
         self.save_dir = 'Results/{tc}_{run}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number)  # '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number, dia=self.diamond_name)
         if not os.path.isdir(self.save_dir):
             os.makedirs(self.save_dir)
@@ -47,7 +47,9 @@ class SignalPixAnalysis(Analysis):
         self.plots.roc_d2 = self.roc_diam2
         self.plots.roc_si = self.roc_si
         self.plots.save_dir = self.save_dir
-
+        self.devices = {'tel': [], 'dut': []}
+        self.dut_names = {self.roc_diam1: self.run.diamond_names[0], self.roc_diam2: self.run.diamond_names[3], self.roc_si: 'Si'}
+        self.set_cuts_rocs()
 
         # stuff
         #self.BinSize = binning
@@ -89,7 +91,29 @@ class SignalPixAnalysis(Analysis):
             for obj in lst:
                 self.del_rootobj(obj)
 
-    def do_analysis(self, do_occupancy=True, do_pulse_height=True, do_correlations=True, do_tlscp=False, show_progressBar=False, verbosity=False):
+    def change_roc_ids(self, tel0, tel1, tel2, tel3, dia1, dia2, si):
+        self.roc_tel = [tel0, tel1, tel2, tel3]
+        self.roc_diam1 = dia1
+        self.roc_diam2 = dia2
+        self.roc_si = si
+        self.dut_names = {self.roc_diam1: self.run.diamond_names[0], self.roc_diam2: self.run.diamond_names[3], self.roc_si: 'Si'}
+        self.set_cuts_rocs()
+
+    def set_cuts_rocs(self):
+        self.Cut.roc_tel = self.roc_tel
+        self.Cut.roc_diam1 = self.roc_diam1
+        self.Cut.roc_diam2 = self.roc_diam2
+        self.Cut.roc_si = self.roc_si
+        self.Cut.dut_names = self.dut_names
+        self.Cut.reset_cuts_dicts()
+
+    def add_telescope_device(self):
+        self.devices['tel'] = self.roc_tel
+
+    def add_duts_device(self):
+        self.devices['dut'] = [self.roc_diam1, self.roc_diam2, self.roc_si]
+
+    def do_analysis(self, do_tlscp=False, do_duts=True, do_cut_ana=True, do_occupancy=True, do_correlations=True, do_pulse_height=True, show_progressBar=False, verbosity=False):
         gROOT.SetBatch(True)
         gROOT.ProcessLine("gErrorIgnoreLevel = 1000")
         gROOT.SetBatch(False)
@@ -100,6 +124,15 @@ class SignalPixAnalysis(Analysis):
         self.kmax = int(self.plots.plot_settings['num_diff_cluster_sizes'] + 1)
         self.deltaX = self.plots.plot_settings['deltaX']
         self.deltaY = self.plots.plot_settings['deltaY']
+
+        self.Cut.do_cuts()
+
+        if do_tlscp:
+            self.add_telescope_device()
+        if do_duts:
+            self.add_duts_device()
+        if do_cut_ana:
+            self.Cut.cuts_analysis()
 
 
         # if do_pulse_height: self.valueAverage = {iroc: {k: 0 for k in xrange(self.kmax)} for iroc in xrange(self.num_devices)}
@@ -155,10 +188,10 @@ class SignalPixAnalysis(Analysis):
                 exec("self.plots.save_cuts_distributions(self.plots.chi2_{mode}, self.plots.chi2_{mode}_cut, 'chi2_{mode}_cut_overlay', 'Chi2 {mode} Cut Overlay', '', 1000000011, self.save_dir, False)".format(mode=mod))
         if verbosity: self.print_banner('Analysing angle...')
         for mod in ['x', 'y']:
-            if not self.plots.check_plot_existence(self.save_dir, 'c_slope_{mode}_cut_overlay'.format(mode=mod)):
-                self.tree.Draw('slope_{mode}>>slope_{mode}'.format(mode=mod), '', 'goff')
-                exec("self.tree.Draw('slope_{mode}>>slope_{mode}_cut',self.Cut.angle_{mode}_cut,'goff')".format(mode=mod))
-                exec("self.plots.save_cuts_distributions(self.plots.slope_{mode}, self.plots.slope_{mode}_cut, 'slope_{mode}_cut_overlay', 'Slope {mode} Cut Overlay', '', 1000000011, self.save_dir, False)".format(mode=mod))
+            if not self.plots.check_plot_existence(self.save_dir, 'c_angle_{mode}_cut_overlay'.format(mode=mod)):
+                self.tree.Draw('angle_{mode}>>angle_{mode}'.format(mode=mod), '', 'goff')
+                exec("self.tree.Draw('angle_{mode}>>angle_{mode}_cut',self.Cut.angle_{mode}_cut,'goff')".format(mode=mod))
+                exec("self.plots.save_cuts_distributions(self.plots.angle_{mode}, self.plots.angle_{mode}_cut, 'angle_{mode}_cut_overlay', 'angle {mode} Cut Overlay', '', 1000000011, self.save_dir, False)".format(mode=mod))
         if verbosity: self.print_banner('Analysing cluster - tracking positions')
         for i in xrange(min([self.roc_diam1, self.roc_diam2, self.roc_si]), max([self.roc_diam1, self.roc_diam2, self.roc_si]) + 1):
             if not self.plots.check_plot_existence(self.save_dir, 'c_rhit_ROC{n}'.format(n=i)):
@@ -722,7 +755,7 @@ class SignalPixAnalysis(Analysis):
             gROOT.SetBatch(True)
             exec("self.fit_{x}_rocs_{rx}_{ry} = self.plots.correl_{x}[rocx][rocy].Fit('pol1', 'qsfm')".format(x=var, rx=rocx, ry=rocy))
             gROOT.SetBatch(False)
-            exec("self.fit_{x}_rocs_{rx}_{ry}_slope = self.fit_{x}_rocs_{rx}_{ry}.Parameter(1)".format(x=var, rx=rocx, ry=rocy))
+            exec("self.fit_{x}_rocs_{rx}_{ry}_angle = self.fit_{x}_rocs_{rx}_{ry}.Parameter(1)".format(x=var, rx=rocx, ry=rocy))
             exec("self.corrf_{x}_rocs_{rx}_{ry} = self.plots.correl_{x}[rocx][rocy].GetCorrelationFactor()".format(x=var, rx=rocx, ry=rocy))
             exec("self.plots.save_individual_plots(self.plots.correl_{v}[rocx][rocy], self.plots.correl_{v}[rocx][rocy].GetName(), self.plots.correl_{v}[rocx][rocy].GetTitle(), None, 'colz', 1000000011, self.save_dir, verbosity, 1001, self.corrf_{v}_rocs_{rx}_{ry})".format(v=var, rx=rocx, ry=rocy))
             return True
@@ -2200,20 +2233,44 @@ class SignalPixAnalysis(Analysis):
 
 if __name__ == "__main__":
     st = time()
-    parser = ArgumentParser()
-    parser.add_argument('run', nargs='?', default=312, type=int)
-    # parser.add_argument('act', nargs='?', default=1, type=int)
-    parser.add_argument('doTelscp', nargs='?', default=0, type=int)
-    parser.add_argument('pbar', nargs='?', default=0, type=int)
-    parser.add_argument('verb', nargs='?', default=0, type=int)
-    parser.add_argument('ch', nargs='?', default=0, type=int)
-    args = parser.parse_args()
-    test_run = int(args.run)
-    # act = int(args.act)
-    doTelscp = int(args.doTelscp)
-    pbar = int(args.pbar)
-    verb = int(args.verb)
-    print '\nAnalysing run', test_run, '\n'
-    z = SignalPixAnalysis(test_run, args.ch)
+    parser = OptionParser()
+    parser.add_option('-r', '--run', dest='run', default=341, type='int', help='Run to be analysed {e.g.334}')
+    parser.add_option('-t', '--doTelescope', action='store_true', dest='doTelscp', default=False, help='set with -t or with --doTelescope to do telescope analysis')
+    parser.add_option('-d', '--doDUTs', action='store_true', dest='doDUTs', default=False, help='set with -d or with --doDUTs to do DUTs analysis')
+    parser.add_option('-c', '--doCutAna', action='store_true', dest='doCutAna', default=False, help='set with -c or with --doCutAna to do Cuts analysis on selected devices (DUTs and/or telescope)')
+    parser.add_option('-o', '--doOccupancy', action='store_true', dest='doOccupancy', default=False, help='set with -o or with --doOccupancy to do occupancies (hit maps) on selected devices (DUTs and/or telescope)')
+    parser.add_option('-x', '--doCorrel', action='store_true', dest='doCorrel', default=False, help='set with -x or with --doCorrel to do correlations between important planes')
+    parser.add_option('-g', '--doCharge', action='sotre_true', dest='doCharge', default=False, help='set with -g or with --doCharge to do pulse height analysis on selected devices (DUTs and/or telescope)')
+    parser.add_option('-p', '--progBar', action='store_true', dest='progBar', default=False, help='show progress bar')
+    parser.add_option('-v', '--verb', action='store_true', dest='verb', default=False, help='show verbose')
+    parser.add_option('-a', '--analyse', action='store_true', dest='doAna', default=False, help='run the analysis with the options given')
+
+    (options, args) = parser.parse_args()
+    run = int(options.run)
+    doTelscp = bool(options.doTelscp)
+    doDUTs = bool(options.doDUTs)
+    doCutAna = bool(options.doCutAna)
+    doHitMap = bool(options.doOccupancy)
+    doCorrel = bool(options.doCorrel)
+    doPH = bool(options.doCharge)
+    pbar = bool(options.progBar)
+    verb = bool(options.verb)
+    doAna = bool(options.doAna)
+
+    command = '\nAnalysing run ' + run + 'with:'
+    command = command + ' telescope,' if doTelscp else command + ' no telescope,'
+    command = command + ' DUTs,' if doDUTs else command + ' no DUTs,'
+    command = command + ' cuts analysis,' if doCutAna else command + ' no cuts analysis,'
+    command = command + ' hitmaps,' if doHitMap else command + ' no hitmpas,'
+    command = command + ' correlations,' if doCorrel else command + ' no correlations,'
+    command = command + ' pulse heights,' if doPH else command + ' no heights,'
+    command = command + ' progress bar,' if pbar else command + ' no progress bar,'
+    command = command + ' verbose' if pbar else command + ' no verbose\n'
+
+    print command
+
+    z = SignalPixAnalysis(run, args.ch)
     z.print_elapsed_time(st, 'Instantiation')
-    z.do_analysis(True, True, True, doTelscp, pbar, verb)
+
+    if doAna:
+        z.do_analysis(doTelscp, doDUTs, doCutAna, doHitMap, doCorrel, doPH, pbar, verb)

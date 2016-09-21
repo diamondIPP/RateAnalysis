@@ -61,12 +61,12 @@ class Plots(Elementary):
             'minRow': 0,
             'maxRow': 79,
             'num_diff_cluster_sizes': 4,
-            'chi2_1Dbins': 200,
+            'chi2_1Dbins': 60,
             'chi2_1Dmin': 0,
-            'chi2_1Dmax': 100,
-            'slope_1Dbins': 60,
-            'slope_1Dmin': -3,
-            'slope_1Dmax': 3,
+            'chi2_1Dmax': 30,
+            'angle_1Dbins': 60,
+            'angle_1Dmin': -3,
+            'angle_1Dmax': 3,
             'rhit_1Dbins': 100,
             'rhit_1Dmin': 0,
             'rhit_1Dmax': 10
@@ -96,10 +96,10 @@ class Plots(Elementary):
             ph1Dbins = self.plot_settings['chi2_1Dbins']
             ph1Dmin = self.plot_settings['chi2_1Dmin']
             ph1Dmax = self.plot_settings['chi2_1Dmax']
-        elif type is 'slope':
-            ph1Dbins = self.plot_settings['slope_1Dbins']
-            ph1Dmin = self.plot_settings['slope_1Dmin']
-            ph1Dmax = self.plot_settings['slope_1Dmax']
+        elif type is 'angle':
+            ph1Dbins = self.plot_settings['angle_1Dbins']
+            ph1Dmin = self.plot_settings['angle_1Dmin']
+            ph1Dmax = self.plot_settings['angle_1Dmax']
         elif type is 'rhit':
             ph1Dbins = self.plot_settings['rhit_1Dbins']
             ph1Dmin = self.plot_settings['rhit_1Dmin']
@@ -221,10 +221,10 @@ class Plots(Elementary):
         self.chi2_x_cut = self.create_1D_histogram('chi2', 'chi2_x_cut', 'Chi2 in X after cut', 'chi2_x', 'Num Entries', kRed)
         self.chi2_y = self.create_1D_histogram('chi2', 'chi2_y', 'Chi2 in Y', 'chi2_y', 'Num Entries', kBlue)
         self.chi2_y_cut = self.create_1D_histogram('chi2', 'chi2_y_cut', 'Chi2 in Y after cut', 'chi2_y', 'Num Entries', kRed)
-        self.slope_x = self.create_1D_histogram('slope', 'slope_x', 'Slope in X', 'slope_x', 'Num Entries', kBlue)
-        self.slope_x_cut = self.create_1D_histogram('slope', 'slope_x_cut', 'Slope in X after cut', 'slope_x', 'Num Entries', kRed)
-        self.slope_y = self.create_1D_histogram('slope', 'slope_y', 'Slope in Y', 'slope_y', 'Num Entries', kBlue)
-        self.slope_y_cut = self.create_1D_histogram('slope', 'slope_y_cut', 'Slope in Y after cut', 'slope_y', 'Num Entries', kRed)
+        self.angle_x = self.create_1D_histogram('angle', 'angle_x', 'angle in X', 'angle_x', 'Num Entries', kBlue)
+        self.angle_x_cut = self.create_1D_histogram('angle', 'angle_x_cut', 'angle in X after cut', 'angle_x', 'Num Entries', kRed)
+        self.angle_y = self.create_1D_histogram('angle', 'angle_y', 'angle in Y', 'angle_y', 'Num Entries', kBlue)
+        self.angle_y_cut = self.create_1D_histogram('angle', 'angle_y_cut', 'angle in Y after cut', 'angle_y', 'Num Entries', kRed)
         self.rhit = {i: self.create_1D_histogram('rhit', 'rhit_ROC{n}'.format(n=i), 'Cluster - track positions distance ROC {n}'.format(n=i),
                                                  'R Hit (mm)', 'Num Events', kBlue, roc=i) for i in xrange(devini, self.num_devices)}
 

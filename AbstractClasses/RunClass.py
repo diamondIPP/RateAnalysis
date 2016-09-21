@@ -75,9 +75,9 @@ class Run(Elementary):
         self.run_number = None
 
         # configuration
-        self.channels = [0, 3]
         self.trigger_planes = [1, 2]
         self.DUTType = self.load_dut_type()
+        self.channels = [0, 3]
         self.filename = self.run_config_parser.get('BASIC', 'filename')
         self.treename = self.run_config_parser.get('BASIC', 'treename')
         self.run_pathruninfofile = self.run_config_parser.get('BASIC', 'runpath')

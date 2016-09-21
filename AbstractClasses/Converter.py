@@ -171,7 +171,7 @@ class Converter:
         root_file_path = self.get_root_file_path(run_number)
         curr_dir = os.getcwd()
         os.chdir(self.tracking_dir)
-        tracking_cmd = "{dir}/TrackingTelescope {root} 0 {nr}".format(dir=self.tracking_dir, root=root_file_path, nr=self.telescope_id)
+        tracking_cmd = "{dir}/TrackingTelescope {root} 0 {nr}".format(dir=self.tracking_dir, root=root_file_path, nr=self.telescope_id) if self.Type =='pad' else "{dir}/TrackingTelescope {root} 0 {nr} 1".format(dir=self.tracking_dir, root=root_file_path, nr=self.telescope_id)
         print '\nSTART TRACKING FOR RUN', run_number, '\n'
         print tracking_cmd
         os.system(tracking_cmd)
