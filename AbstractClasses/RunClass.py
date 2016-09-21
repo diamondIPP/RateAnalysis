@@ -390,9 +390,10 @@ class Run(Elementary):
         entries = self.tree.Draw('Entry$:time', '', 'goff')
         time = [self.tree.GetV2()[i] for i in xrange(entries)]
         self.fill_empty_time_entries(time)
-        if abs((time[-1] - time[0]) / 1000 - self.duration.seconds) > 60:
-            print time[:4], time[-1]
-            print (time[-1] - time[0]) / 1000, self.duration.seconds
+        if abs((time[-1] - time[0]) / 1000 - self.duration.seconds) > 120:
+            self.log_warning('Need to correct timing vector\n')
+            print [i / 1000 for i in time[:4]], time[-1] / 1000
+            print (time[-1] - time[0]) / 1000, self.duration.seconds, abs((time[-1] - time[0]) / 1000 - self.duration.seconds)
             time = self.__correct_time(entries)
         return time
 
@@ -408,7 +409,6 @@ class Run(Elementary):
         times[:ind] = [first_valid] * ind
 
     def __correct_time(self, entries):
-        self.log_warning('Need to correct timing vector\n')
         time = []
         t = self.tree.GetV2()[0]
         new_t = 0
