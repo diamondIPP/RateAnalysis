@@ -229,30 +229,30 @@ class CutPix(Elementary):
             has_option('CUT', 'rhit') else ''
         self.CutConfig['track_angle'] = self.ana_config_parser.getfloat('CUT', 'track_angle') if self.ana_config_parser. \
             has_option('CUT', 'track_angle') else ''
-        self.CutConfig['MaskRowsDUT1'] = self.ana_config_parser.get('CUT', 'MaskRowsDUT1') if self.ana_config_parser. \
-            has_option('CUT', 'MaskRowsDUT1') else ''
-        self.CutConfig['MaskRowsDUT2'] = self.ana_config_parser.get('CUT', 'MaskRowsDUT2') if self.ana_config_parser. \
-            has_option('CUT', 'MaskRowsDUT2') else ''
-        self.CutConfig['MaskRowsDUT3'] = self.ana_config_parser.get('CUT', 'MaskRowsDUT3') if self.ana_config_parser. \
-            has_option('CUT', 'MaskRowsDUT3') else ''
-        self.CutConfig['MaskColsDUT1'] = self.ana_config_parser.get('CUT', 'MaskColsDUT1') if self.ana_config_parser. \
-            has_option('CUT', 'MaskColsDUT1') else ''
-        self.CutConfig['MaskColsDUT2'] = self.ana_config_parser.get('CUT', 'MaskColsDUT2') if self.ana_config_parser. \
-            has_option('CUT', 'MaskColsDUT2') else ''
-        self.CutConfig['MaskColsDUT3'] = self.ana_config_parser.get('CUT', 'MaskColsDUT3') if self.ana_config_parser. \
-            has_option('CUT', 'MaskColsDUT3') else ''
-        self.CutConfig['MaskPixelsDUT1'] = self.ana_config_parser.get('CUT', 'MaskPixelsDUT1') if self.ana_config_parser. \
-            has_option('CUT', 'MaskPixelsDUT1') else ''
-        self.CutConfig['MaskPixelsDUT2'] = self.ana_config_parser.get('CUT', 'MaskPixelsDUT2') if self.ana_config_parser. \
-            has_option('CUT', 'MaskPixelsDUT2') else ''
-        self.CutConfig['MaskPixelsDUT3'] = self.ana_config_parser.get('CUT', 'MaskPixelsDUT3') if self.ana_config_parser. \
-            has_option('CUT', 'MaskPixelsDUT3') else ''
-        self.CutConfig['FidRegionDUT1'] = self.ana_config_parser.get('CUT', 'FidRegionDUT1') if self.ana_config_parser. \
-            has_option('CUT', 'FidRegionDUT1') else ''
-        self.CutConfig['FidRegionDUT2'] = self.ana_config_parser.get('CUT', 'FidRegionDUT2') if self.ana_config_parser. \
-            has_option('CUT', 'FidRegionDUT2') else ''
-        self.CutConfig['FidRegionDUT3'] = self.ana_config_parser.get('CUT', 'FidRegionDUT3') if self.ana_config_parser. \
-            has_option('CUT', 'FidRegionDUT3') else ''
+        self.CutConfig['MaskRowsROC4'] = self.ana_config_parser.get('CUT', 'MaskRowsROC4') if self.ana_config_parser. \
+            has_option('CUT', 'MaskRowsROC4') else ''
+        self.CutConfig['MaskRowsROC5'] = self.ana_config_parser.get('CUT', 'MaskRowsROC5') if self.ana_config_parser. \
+            has_option('CUT', 'MaskRowsROC5') else ''
+        self.CutConfig['MaskRowsROC6'] = self.ana_config_parser.get('CUT', 'MaskRowsROC6') if self.ana_config_parser. \
+            has_option('CUT', 'MaskRowsROC6') else ''
+        self.CutConfig['MaskColsROC4'] = self.ana_config_parser.get('CUT', 'MaskColsROC4') if self.ana_config_parser. \
+            has_option('CUT', 'MaskColsROC4') else ''
+        self.CutConfig['MaskColsROC5'] = self.ana_config_parser.get('CUT', 'MaskColsROC5') if self.ana_config_parser. \
+            has_option('CUT', 'MaskColsROC5') else ''
+        self.CutConfig['MaskColsROC6'] = self.ana_config_parser.get('CUT', 'MaskColsROC6') if self.ana_config_parser. \
+            has_option('CUT', 'MaskColsROC6') else ''
+        self.CutConfig['MaskPixelsROC4'] = self.ana_config_parser.get('CUT', 'MaskPixelsROC4') if self.ana_config_parser. \
+            has_option('CUT', 'MaskPixelsROC4') else ''
+        self.CutConfig['MaskPixelsROC5'] = self.ana_config_parser.get('CUT', 'MaskPixelsROC5') if self.ana_config_parser. \
+            has_option('CUT', 'MaskPixelsROC5') else ''
+        self.CutConfig['MaskPixelsROC6'] = self.ana_config_parser.get('CUT', 'MaskPixelsROC6') if self.ana_config_parser. \
+            has_option('CUT', 'MaskPixelsROC6') else ''
+        self.CutConfig['FidRegionROC4'] = self.ana_config_parser.get('CUT', 'FidRegionROC4') if self.ana_config_parser. \
+            has_option('CUT', 'FidRegionROC4') else ''
+        self.CutConfig['FidRegionROC5'] = self.ana_config_parser.get('CUT', 'FidRegionROC5') if self.ana_config_parser. \
+            has_option('CUT', 'FidRegionROC5') else ''
+        self.CutConfig['FidRegionROC6'] = self.ana_config_parser.get('CUT', 'FidRegionROC6') if self.ana_config_parser. \
+            has_option('CUT', 'FidRegionROC6') else ''
 
     # def add_cuts(self):
     #     for iROC in xrange(4, 7):
@@ -537,7 +537,7 @@ class CutPix(Elementary):
             self.generate_row_masks_DUT(iroc)
 
     def generate_row_masks_DUT(self, roc):
-        maskrowstring = self.CutConfig['MaskRowsDUT{d}'.format(d=roc)]
+        maskrowstring = self.CutConfig['MaskRowsROC{d}'.format(d=roc)]
         title = ''
         name = 'mask_row_hitmap_roc{r}'.format(r=roc)
         mask_row_hitmap_temp = TCut('temp0', title)
@@ -567,7 +567,7 @@ class CutPix(Elementary):
             self.generate_pixel_masks_DUT(iroc)
 
     def generate_pixel_masks_DUT(self, roc):
-        maskpixelstring = self.CutConfig['MaskPixelsDUT{d}'.format(d=roc)]
+        maskpixelstring = self.CutConfig['MaskPixelsROC{d}'.format(d=roc)]
         title = ''
         name = 'mask_pixel_hitmap_roc{r}'.format(r=roc)
         mask_pixel_hitmap_temp = TCut('temp0', title)
