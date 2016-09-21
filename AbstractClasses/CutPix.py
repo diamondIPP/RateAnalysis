@@ -141,8 +141,8 @@ class CutPix(Elementary):
                 self.plots.save_individual_plots(self.h_hitmaps_cuts[iroc][cut], 'hitmap_roc{r}_{c}'.format(r=iroc,c=cut), 'hitmap_roc{r}_{c}'.format(r=iroc,c=cut), None, 'colz', 1, self.plots.save_dir)
                 self.plots.save_individual_plots(self.h_ph1_evt_cuts[iroc][cut], 'ph1_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'ph1_evt_roc{r}_{c}'.format(r=iroc,c=cut), None, 'colz', 1, self.plots.save_dir)
                 self.plots.save_individual_plots(self.h_ph2_evt_cuts[iroc][cut], 'ph2_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'ph2_evt_roc{r}_{c}'.format(r=iroc,c=cut), None, 'colz', 1, self.plots.save_dir)
-                # self.plots.save_individual_plots(self.h_ph1_cuts[iroc][cut], 'ph1_roc{r}_{c}'.format(r=iroc,c=cut), 'ph1_roc{r}_{c}'.format(r=iroc,c=cut), None, '', 1, self.plots.save_dir)
-                # self.plots.save_individual_plots(self.h_ph2_cuts[iroc][cut], 'ph2_roc{r}_{c}'.format(r=iroc,c=cut), 'ph2_roc{r}_{c}'.format(r=iroc,c=cut), None, '', 1, self.plots.save_dir)
+                self.plots.save_individual_plots(self.h_ph1_cuts[iroc][cut], 'ph1_roc{r}_{c}'.format(r=iroc,c=cut), 'ph1_roc{r}_{c}'.format(r=iroc,c=cut), None, '', 1, self.plots.save_dir)
+                self.plots.save_individual_plots(self.h_ph2_cuts[iroc][cut], 'ph2_roc{r}_{c}'.format(r=iroc,c=cut), 'ph2_roc{r}_{c}'.format(r=iroc,c=cut), None, '', 1, self.plots.save_dir)
 
     def generate_all_cut(self):
         cut = TCut('all_cuts', '')
@@ -346,7 +346,7 @@ class CutPix(Elementary):
         # h.GetQuantiles(nq, rhits, xq)
         value = self.CutConfig['rhit']
         # string=''
-        string = '(10000*sqrt((track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_X)**2+(track_y_ROC{n}-cluster_pos_ROC{n}_Telescope_Y)**2))<{val}&&(sqrt((track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_X)**2+(track_y_ROC{n}-cluster_pos_ROC{n}_Telescope_Y)**2))>0'.format(n=dut, val=value)
+        string = '((10000*sqrt((track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_X)**2+(track_y_ROC{n}-cluster_pos_ROC{n}_Telescope_Y)**2))<{val}&&(sqrt((track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_X)**2+(track_y_ROC{n}-cluster_pos_ROC{n}_Telescope_Y)**2))>0)'.format(n=dut, val=value)
         self.rhit_cut[dut] = string
         gROOT.SetBatch(0)
 
@@ -629,8 +629,8 @@ class CutPix(Elementary):
         gROOT.SetBatch(1)
         h = TH1F('h', 'h', 61, -3.05, 3.05)
         self.analysis.tree.Draw('angle_{x}>>h'.format(x=mode), self.cuts_pixelated_roc_incr[self.duts_list[0]][prev_num_cut], 'goff')
-        self.h_angle[iroc][mode] = TH1F('h_angle_roc{r}_{m}'.format(r=iroc,m=mode), 'h_angle_roc{r}_{m}'.format(r=iroc,m=mode), 51, h.GetXaxis().GetBinCenter(h.GetMaximumBin()) - h.GetRMS() - h.GetRMS()/50, h.GetXaxis().GetBinCenter(h.GetMaximumBin()) + h.GetRMS() + h.GetRMS()/50)
-        self.h_angle_cut[iroc][mode] = TH1F('h_angle_roc{r}_{m}_cut'.format(r=iroc,m=mode), 'h_angle_roc{r}_{m}_cut'.format(r=iroc,m=mode), 51, h.GetXaxis().GetBinCenter(h.GetMaximumBin()) - h.GetRMS() - h.GetRMS()/50, h.GetXaxis().GetBinCenter(h.GetMaximumBin()) + h.GetRMS() + h.GetRMS()/50)
+        self.h_angle[iroc][mode] = TH1F('h_angle_roc{r}_{m}'.format(r=iroc,m=mode), 'h_angle_roc{r}_{m}'.format(r=iroc,m=mode), 51, h.GetXaxis().GetBinCenter(h.GetMaximumBin()) - 2*h.GetRMS() - 2*h.GetRMS()/50, h.GetXaxis().GetBinCenter(h.GetMaximumBin()) + 2*h.GetRMS() + 2*h.GetRMS()/50)
+        self.h_angle_cut[iroc][mode] = TH1F('h_angle_roc{r}_{m}_cut'.format(r=iroc,m=mode), 'h_angle_roc{r}_{m}_cut'.format(r=iroc,m=mode), 51, h.GetXaxis().GetBinCenter(h.GetMaximumBin()) - 2*h.GetRMS() - 2*h.GetRMS()/50, h.GetXaxis().GetBinCenter(h.GetMaximumBin()) + 2*h.GetRMS() + 2*h.GetRMS()/50)
         self.analysis.tree.Draw('angle_{m}>>h_angle_roc{r}_{m}'.format(r=iroc,m=mode), self.cuts_pixelated_roc_incr[iroc][prev_num_cut], 'goff')
         fit_result = self.h_angle[iroc][mode].Fit('gaus', 'qs', '')
         # fit_result = h.Fit('gaus', 'qs')# , '', xmin, xmax)
