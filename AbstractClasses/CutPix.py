@@ -116,29 +116,33 @@ class CutPix(Elementary):
         for iroc in self.duts_list:
             self.h_hitmaps_cuts[iroc] = {}
             self.h_ph1_evt_cuts[iroc] = {}
+            self.h_ph1_cuts[iroc] = {}
+            self.h_ph2_evt_cuts[iroc] = {}
+            self.h_ph2_cuts[iroc] = {}
+
             for cut in self.cut_names:
                 gROOT.SetBatch(1)
-                self.h_hitmaps_cuts[iroc][cut] = TH2F('hitmap_roc{r}_{c}'.format(r=iroc,c=cut),'hitmap_roc{r}_{c}'.format(r=iroc,c=cut),52,-0.5,51.5,80,-0.5,79.5)
+                self.h_hitmaps_cuts[iroc][cut] = TH2D('hitmap_roc{r}_{c}'.format(r=iroc,c=cut),'hitmap_roc{r}_{c}'.format(r=iroc,c=cut),52,-0.5,51.5,80,-0.5,79.5)
                 self.plots.set_2D_options(self.h_hitmaps_cuts[iroc][cut], 'col', 'row', 'entries')
                 self.h_ph1_evt_cuts[iroc][cut] = TH2D('ph1_evt_roc{r}_{c}'.format(r=iroc,c=cut),'ph1_evt_roc{r}_{c}'.format(r=iroc,c=cut),self.plot_settings['event_bins'],0,self.plot_settings['event_max'],121,-125,30125) if iroc != self.roc_si else TH2D('ph1_evt_roc{r}_{c}'.format(r=iroc,c=cut),'ph1_evt_roc{r}_{c}'.format(r=iroc,c=cut),self.plot_settings['event_bins'],0,self.plot_settings['event_max'],241,-125,60125)
                 self.plots.set_2D_options(self.h_ph1_evt_cuts[iroc][cut], 'event', 'ph(e)', 'entries')
-                self.h_ph1_cuts[iroc][cut] = TH1F('ph1_roc{r}_{c}'.format(r=iroc,c=cut),'ph1_roc{r}_{c}'.format(r=iroc,c=cut),121,-125,30125) if iroc != self.roc_si else TH1F('ph1_roc{r}_{c}'.format(r=iroc,c=cut),'ph1_roc{r}_{c}'.format(r=iroc,c=cut),241,-125,60125)
+                self.h_ph1_cuts[iroc][cut] = TH1D('ph1_roc{r}_{c}'.format(r=iroc,c=cut),'ph1_roc{r}_{c}'.format(r=iroc,c=cut),121,-125,30125) if iroc != self.roc_si else TH1D('ph1_roc{r}_{c}'.format(r=iroc,c=cut),'ph1_roc{r}_{c}'.format(r=iroc,c=cut),241,-125,60125)
                 self.plots.set_1D_options('ph',self.h_ph1_cuts[iroc][cut],'ph 1 pix cl (e)', 'entries')
                 self.h_ph2_evt_cuts[iroc][cut] = TH2D('ph2_evt_roc{r}_{c}'.format(r=iroc,c=cut),'ph2_evt_roc{r}_{c}'.format(r=iroc,c=cut),self.plot_settings['event_bins'],0,self.plot_settings['event_max'],121,-125,30125) if iroc != self.roc_si else TH2D('ph2_evt_roc{r}_{c}'.format(r=iroc,c=cut),'ph2_evt_roc{r}_{c}'.format(r=iroc,c=cut),self.plot_settings['event_bins'],0,self.plot_settings['event_max'],241,-125,60125)
                 self.plots.set_2D_options(self.h_ph2_evt_cuts[iroc][cut], 'event', 'ph(e)', 'entries')
-                self.h_ph2_cuts[iroc][cut] = TH1F('ph2_roc{r}_{c}'.format(r=iroc,c=cut),'ph2_roc{r}_{c}'.format(r=iroc,c=cut),121,-125,30125) if iroc != self.roc_si else TH1F('ph2_roc{r}_{c}'.format(r=iroc,c=cut),'ph2_roc{r}_{c}'.format(r=iroc,c=cut),241,-125,60125)
+                self.h_ph2_cuts[iroc][cut] = TH1D('ph2_roc{r}_{c}'.format(r=iroc,c=cut),'ph2_roc{r}_{c}'.format(r=iroc,c=cut),121,-125,30125) if iroc != self.roc_si else TH1D('ph2_roc{r}_{c}'.format(r=iroc,c=cut),'ph2_roc{r}_{c}'.format(r=iroc,c=cut),241,-125,60125)
                 self.plots.set_1D_options('ph',self.h_ph2_cuts[iroc][cut],'ph 2 pix cl (e)', 'entries')
-                self.analysis.tree.Draw('row:col >> hitmap_roc{r}_{c}'.format(r=iroc,c=cut), 'plane={r}&&{cu}'.format(r=iroc,cu=self.cuts_hitmap_roc_incr[iroc][self.dict_cuts[cut]]), 'goff')
-                self.analysis.tree.Draw('charge_all_ROC{r}:event_number >> ph1_roc{r}_{c}'.format(r=iroc,c=cut), 'cluster_size_ROC{r}==1&&{cu}'.format(r=iroc,cu=self.cuts_hitmap_roc_incr[iroc][self.dict_cuts[cut]]), 'goff')
-                self.analysis.tree.Draw('charge_all_ROC{r}:event_number >> ph2_roc{r}_{c}'.format(r=iroc,c=cut), 'cluster_size_ROC{r}==2&&{cu}'.format(r=iroc,cu=self.cuts_hitmap_roc_incr[iroc][self.dict_cuts[cut]]), 'goff')
+                self.analysis.tree.Draw('row:col >> hitmap_roc{r}_{c}'.format(r=iroc,c=cut), 'plane=={r}&&{cu}'.format(r=iroc,cu=self.cuts_hitmap_roc_incr[iroc][self.dict_cuts[cut]]), 'goff')
+                self.analysis.tree.Draw('charge_all_ROC{r}:event_number >> ph1_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'cluster_size_ROC{r}==1&&{cu}'.format(r=iroc,cu=self.cuts_hitmap_roc_incr[iroc][self.dict_cuts[cut]]), 'goff')
+                self.analysis.tree.Draw('charge_all_ROC{r}:event_number >> ph2_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'cluster_size_ROC{r}==2&&{cu}'.format(r=iroc,cu=self.cuts_hitmap_roc_incr[iroc][self.dict_cuts[cut]]), 'goff')
                 self.h_ph1_evt_cuts[iroc][cut].ProjectionY('ph1_roc{r}_{c}'.format(r=iroc,c=cut),0,-1,'e')
                 self.h_ph2_evt_cuts[iroc][cut].ProjectionY('ph2_roc{r}_{c}'.format(r=iroc,c=cut),0,-1,'e')
                 gROOT.SetBatch(0)
                 self.plots.save_individual_plots(self.h_hitmaps_cuts[iroc][cut], 'hitmap_roc{r}_{c}'.format(r=iroc,c=cut), 'hitmap_roc{r}_{c}'.format(r=iroc,c=cut), None, 'colz', 1, self.plots.save_dir)
                 self.plots.save_individual_plots(self.h_ph1_evt_cuts[iroc][cut], 'ph1_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'ph1_evt_roc{r}_{c}'.format(r=iroc,c=cut), None, 'colz', 1, self.plots.save_dir)
                 self.plots.save_individual_plots(self.h_ph2_evt_cuts[iroc][cut], 'ph2_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'ph2_evt_roc{r}_{c}'.format(r=iroc,c=cut), None, 'colz', 1, self.plots.save_dir)
-                self.plots.save_individual_plots(self.h_ph1_cuts[iroc][cut], 'ph1_roc{r}_{c}'.format(r=iroc,c=cut), 'ph1_roc{r}_{c}'.format(r=iroc,c=cut), None, '', 1, self.plots.save_dir)
-                self.plots.save_individual_plots(self.h_ph2_cuts[iroc][cut], 'ph2_roc{r}_{c}'.format(r=iroc,c=cut), 'ph2_roc{r}_{c}'.format(r=iroc,c=cut), None, '', 1, self.plots.save_dir)
+                # self.plots.save_individual_plots(self.h_ph1_cuts[iroc][cut], 'ph1_roc{r}_{c}'.format(r=iroc,c=cut), 'ph1_roc{r}_{c}'.format(r=iroc,c=cut), None, '', 1, self.plots.save_dir)
+                # self.plots.save_individual_plots(self.h_ph2_cuts[iroc][cut], 'ph2_roc{r}_{c}'.format(r=iroc,c=cut), 'ph2_roc{r}_{c}'.format(r=iroc,c=cut), None, '', 1, self.plots.save_dir)
 
     def generate_all_cut(self):
         cut = TCut('all_cuts', '')
@@ -379,8 +383,8 @@ class CutPix(Elementary):
 
     def generate_chi2(self, mode='x', num_prev_cut=4, iroc=4):
         gROOT.SetBatch(1)
-        self.h_chi2[iroc][mode] = TH1F('h_chi2_roc{r}_{m}'.format(r=iroc,m=mode), 'h_chi2_roc{r}_{m}'.format(r=iroc,m=mode), 2001, -0.01, 40.01)
-        self.h_chi2_cut[iroc][mode] = TH1F('h_chi2_roc{r}_{m}_cut'.format(r=iroc,m=mode), 'h_chi2_roc{r}_{m}_cut'.format(r=iroc,m=mode), 2001, -0.01, 40.01)
+        self.h_chi2[iroc][mode] = TH1F('h_chi2_roc{r}_{m}'.format(r=iroc,m=mode), 'h_chi2_roc{r}_{m}'.format(r=iroc,m=mode), 201, -0.1, 40.1)
+        self.h_chi2_cut[iroc][mode] = TH1F('h_chi2_roc{r}_{m}_cut'.format(r=iroc,m=mode), 'h_chi2_roc{r}_{m}_cut'.format(r=iroc,m=mode), 201, -0.1, 40.1)
         nq = 100
         chi2s = zeros(nq)
         xq = array([(i + 1) / float(nq) for i in xrange(nq)])
