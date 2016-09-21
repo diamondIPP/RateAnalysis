@@ -2060,7 +2060,7 @@ if __name__ == "__main__":
     st = time()
     parser = ArgumentParser()
     parser.add_argument('run', nargs='?', default=392, type=int)
-    parser.add_argument('ch', nargs='?', default=0, type=int)
+    parser.add_argument('dia', nargs='?', default=1, type=int)
     parser.add_argument('-tc', '--testcampaign', nargs='?', default='')
     parser.add_argument('-v', '--verbose', nargs='?', default=True, type=bool)
     parser.add_argument('-t', '--tree', default=True, action='store_false')
@@ -2071,5 +2071,5 @@ if __name__ == "__main__":
     a.print_testcampaign()
     a.print_banner('STARTING PAD-ANALYSIS OF RUN {0}'.format(test_run))
     print
-    z = PadAnalysis(test_run, args.ch, verbose=args.verbose, load_tree=args.tree)
+    z = PadAnalysis(test_run, args.dia, verbose=args.verbose, load_tree=args.tree)
     z.print_elapsed_time(st, 'Instantiation')
