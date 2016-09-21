@@ -3,7 +3,7 @@ import pickle
 import json
 from numpy import array, zeros, arange, delete
 from Elementary import Elementary
-from ROOT import TCut, gROOT, TH1F, kRed, TCutG, gDirectory, kBlue, kRed, TH2D, TH2F, TH1D
+from ROOT import TCut, gROOT, TH1F, kRed, TCutG, gDirectory, kBlue, TH2D, TH2F, TH1D
 from collections import OrderedDict
 
 
@@ -323,9 +323,7 @@ class CutPix(Elementary):
         self.num_cuts += 1
         for iroc in self.duts_list:
             gROOT.SetBatch(1)
-            self.analysis.tree.Draw('(10000*sqrt((track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_X)**2+(track_y_ROC{n}-cluster_pos_ROC{n}_Telescope_Y)**2))>>h_rhit_ROC{d}_cut'.format(n=dut, d=dut), self.cuts_pixelated_roc_incr[dut][self.num_cuts - 1], 'goff')
-            self.plots.set_1D_options('rhit', self.h_rhit[iroc], 'R_hit(um)', 'entries', kBlue)
-            self.plots.set_1D_options('rhit', self.h_rhit_cut[iroc], 'R_hit(um)', 'entries', kRed)
+            self.analysis.tree.Draw('(10000*sqrt((track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_X)**2+(track_y_ROC{n}-cluster_pos_ROC{n}_Telescope_Y)**2))>>h_rhit_ROC{d}_cut'.format(n=iroc, d=iroc), self.cuts_pixelated_roc_incr[iroc][self.num_cuts - 1], 'goff')
             gROOT.SetBatch(0)
             self.plots.save_cuts_distributions(self.h_rhit[iroc], self.h_rhit_cut[iroc], 'rhit_ROC{r}cut_overlay'.format(r=iroc), 'R_Hit ROC{r} cuts Overlay'.format(r=iroc), '', 1000000011, self.plots.save_dir, False)
 
@@ -333,7 +331,9 @@ class CutPix(Elementary):
     def generate_rhit_cuts_DUT(self, dut):
         gROOT.SetBatch(1)
         self.h_rhit[dut] = TH1F('h_rhit_ROC{d}'.format(d=dut), 'h_rhit_ROC{d}'.format(d=dut), 201, -5, 2005)
-        self.h_rhit[dut] = TH1F('h_rhit_ROC{d}_cut'.format(d=dut), 'h_rhit_ROC{d}_cut'.format(d=dut), 201, -5, 2005)
+        self.h_rhit_cut[dut] = TH1F('h_rhit_ROC{d}_cut'.format(d=dut), 'h_rhit_ROC{d}_cut'.format(d=dut), 201, -5, 2005)
+        self.plots.set_1D_options('rhit', self.h_rhit[dut], 'R_hit(um)', 'entries', kBlue)
+        self.plots.set_1D_options('rhit', self.h_rhit_cut[dut], 'R_hit(um)', 'entries', kRed)
         self.analysis.tree.Draw('(10000*sqrt((track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_X)**2+(track_y_ROC{n}-cluster_pos_ROC{n}_Telescope_Y)**2))>>h_rhit_ROC{d}'.format(n=dut, d=dut), self.cuts_pixelated_roc_incr[dut][self.num_cuts - 1], 'goff')
         # nq = 100
         # rhits = zeros(nq)
@@ -641,7 +641,7 @@ class CutPix(Elementary):
         # angle = self.do_pickle(picklepath, func)
         # create the cut string
         string = 'angle_{x}>={minx}&&angle_{x}<={maxx}'.format(x=mode, minx=angles[0], maxx=angles[1])
-        self.angle_cut[mode] = string if angle > 0 else ''
+        self.angle_cut[iroc][mode] = string if angle > 0 else ''
 
     def load_event_range(self, event_range=None):
         """
