@@ -857,7 +857,7 @@ class PadAnalysis(Analysis):
             fit_par = gr.Fit('pol0', 'qs', '', 0, max_fit_pos)
             self.save_plots('PulseHeight{0}'.format(self.BinSize), show=show)
             self.PulseHeight = gr
-            return fit_par
+            return FitRes(fit_par)
 
         fit = func() if save else None
         return self.do_pickle(picklepath, func, fit)
@@ -1032,7 +1032,7 @@ class PadAnalysis(Analysis):
                 h.GetListOfFunctions().Add(f)
             self.save_histo(h, 'Pedestal_{reg}{cut}'.format(reg=region, cut=cut.GetName()), show, save=save, logy=logy, lm=.13)
             self.PedestalHisto = h
-            return fit_pars
+            return FitRes(fit_pars)
 
         fit_par = func() if save else None
         return self.do_pickle(picklepath, func, fit_par)
