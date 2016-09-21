@@ -298,5 +298,17 @@ def set_drawing_range(h, legend=True, lfac=None, rfac=None):
     h.GetXaxis().SetRangeUser(*increased_range(range_, lfac, rfac))
 
 
+class FitRes:
+    def __init__(self, fit_obj):
+        self.Pars = list(fit_obj.Parameters())
+        self.Errors = list(fit_obj.Errors())
+
+    def Parameter(self, arg):
+        return self.Pars[arg]
+
+    def ParError(self, arg):
+        return self.Errors[arg]
+
+
 def do_nothing():
     pass
