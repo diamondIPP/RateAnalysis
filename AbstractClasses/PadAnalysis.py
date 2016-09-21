@@ -28,15 +28,15 @@ __author__ = 'micha'
 # MAIN CLASS
 # ==============================================
 class PadAnalysis(Analysis):
-    def __init__(self, run, channel, high_low_rate_run=None, binning=20000, load_tree=True, verbose=False):
+    def __init__(self, run, dia, high_low_rate_run=None, binning=20000, load_tree=True, verbose=False):
 
-        self.channel = channel
         self.RunNumber = run
         Analysis.__init__(self, run, high_low_rate=high_low_rate_run, verbose=verbose, load_tree=load_tree)
+        self.channel = self.load_channel(dia)
 
         # main
-        self.diamond_name = self.run.diamond_names[channel]
-        self.bias = self.run.bias[channel]
+        self.diamond_name = self.run.diamond_names[self.channel]
+        self.bias = self.run.bias[self.channel]
         self.save_dir = '{dia}/{run}/'.format(run=str(self.run_number).zfill(3), dia=self.diamond_name)
 
         # stuff
@@ -64,7 +64,7 @@ class PadAnalysis(Analysis):
             self.PulserName = self.get_pulser_name()
 
         # cuts
-            self.Cut = ChannelCut(self, channel)
+            self.Cut = ChannelCut(self, self.channel)
             self.AllCuts = self.Cut.all_cut
 
         # subclasses
@@ -104,6 +104,10 @@ class PadAnalysis(Analysis):
     # overriding elementary method to choose config by run number
     def load_run_config(self):
         return self.load_run_configs(self.RunNumber)
+
+    def load_channel(self, dia):
+        assert dia in [1, 2], 'You have to choose either diamond 1 or 2'
+        return self.run.channels[dia - 1]
 
     def get_integral_names(self):
         names = OrderedDict()
