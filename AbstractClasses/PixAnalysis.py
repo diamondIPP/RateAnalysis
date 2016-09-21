@@ -172,10 +172,10 @@ class SignalPixAnalysis(Analysis):
         #         if do_occupancy: self.fill_occupancy()
         #         if do_pulse_height: self.do_pulse_height_analysis(event)
         #     bar.update(event + 1)
-        self.do_cuts_study(verbosity)
-        if do_occupancy: self.fill_occupancy(show_progressBar, do_tlscp, verbosity)
-        if do_pulse_height: self.do_pulse_height_analysis(show_progressBar, do_tlscp, verbosity)
-        if do_correlations: self.do_correlations(self.roc_tel[1], self.roc_tel[2], self.roc_diam1, self.roc_si, show_progressBar, verbosity)
+        # self.do_cuts_study(verbosity)
+        # if do_occupancy: self.fill_occupancy(show_progressBar, do_tlscp, verbosity)
+        # if do_pulse_height: self.do_pulse_height_analysis(show_progressBar, do_tlscp, verbosity)
+        # if do_correlations: self.do_correlations(self.roc_tel[1], self.roc_tel[2], self.roc_diam1, self.roc_si, show_progressBar, verbosity)
         # self.print_banner('Looping over Tree -> Done', '%')
 
     def do_cuts_study(self, verbosity):
