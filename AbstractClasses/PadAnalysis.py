@@ -1598,7 +1598,8 @@ class PadAnalysis(Analysis):
             return
         cut = self.Cut.all_cut if cut_string is None else TCut(cut_string)
         n_events = self.find_n_events(n, cut, start)
-        h = TH2F('wf', 'Waveform', 1024, 0, 511, 4000, -512, 512)
+        title = '{n} Waveform{s}'.format(n=n, s='s' if n > 1 else '')
+        h = TH2F('wf', title, 1024, 0, 511, 4000, -512, 512)
         gStyle.SetPalette(55)
         self.tree.Draw('wf{ch}:Iteration$/2>>wf'.format(ch=channel), cut, 'goff', n_events, start)
         t = self.tree.GetV2() if not t_corr else self.corrected_time(start + n_events - 1)
@@ -1616,19 +1617,20 @@ class PadAnalysis(Analysis):
         elif fixed_range:
             assert type(fixed_range) is list, 'Range has to be a list!'
             h.GetYaxis().SetRangeUser(fixed_range[0], fixed_range[1])
-        self.format_histo(h, title='Waveform', name='wf', x_tit='Time [ns]', y_tit='Signal [mV]', markersize=.4, y_off=.4, stats=0, tit_size=.05)
+        self.format_histo(h, title=title, name='wf', x_tit='Time [ns]', y_tit='Signal [mV]', markersize=.4, y_off=.5, stats=0, tit_size=.07, lab_size=.06, x_range=[0, 511])
         save_name = '{1}Waveforms{0}'.format(n, 'Pulser' if cut.GetName().startswith('Pulser') else 'Signal')
-        if save:
-            self.RootObjects.append(self.save_histo(h, save_name, show, self.save_dir, lm=.06, rm=.045, draw_opt='apl' if n == 1 else 'col', x_fac=1.5, y_fac=.5))
+        self.draw_histo(h, save_name, show, self.save_dir, lm=.073, rm=.045, bm=.18, draw_opt='apl' if n == 1 else 'col', x=1.5, y=.5)
         if add_buckets:
             sleep(.2)
-            h.GetXaxis().SetNdivisions(26)
-            c = gROOT.GetListOfCanvases[-1]
+            h.GetXaxis().SetNdivisions(520)
+            c = gROOT.GetListOfCanvases()[-1]
             c.SetGrid()
-            c.SetBottomMargin(.186)
+            c.SetBottomMargin(.25)
             y = h.GetYaxis().GetXmin(), h.GetYaxis().GetXmax()
             x = h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax()
-            self._add_buckets(y[0], y[1], x[0], x[1])
+            self._add_buckets(y[0], y[1], x[0], x[1], size=.045, avr_pos=-4)
+        if save:
+            self.save_canvas(gROOT.GetListOfCanvases()[-1], name=save_name)
         self.count += n_events
         return h, n_events
 
