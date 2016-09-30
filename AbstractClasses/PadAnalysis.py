@@ -28,7 +28,7 @@ __author__ = 'micha'
 # MAIN CLASS
 # ==============================================
 class PadAnalysis(Analysis):
-    def __init__(self, run, dia, high_low_rate_run=None, binning=20000, load_tree=True, verbose=False):
+    def __init__(self, run, dia, high_low_rate_run=None, binning=10000, load_tree=True, verbose=False):
 
         self.RunNumber = run
         Analysis.__init__(self, run, high_low_rate=high_low_rate_run, verbose=verbose, load_tree=load_tree)
