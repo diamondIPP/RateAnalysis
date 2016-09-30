@@ -486,7 +486,7 @@ class PadAnalysis(Analysis):
         x = self.run.signal_regions[region] if type_ == 'signal' else self.run.get_regions('pulser')['pulser']
         n_bins = (x[1] - x[0]) * 4 if corr else (x[1] - x[0])
         h = TH1F('hpv', title, n_bins, x[0] / 2., x[1] / 2.)
-        l = self.make_legend(.7, .7, nentries=3)
+        l = self.make_legend(.66, .7, nentries=3, name='l1')
         self.format_histo(h, x_tit='Signal Peak Timing [ns]', y_tit='Number of Entries', y_off=1.3, stats=0)
         cut = self.Cut.generate_special_cut(excluded_cuts=['timing']) if type_ == 'signal' else '!({0})'.format(self.Cut.CutStrings['pulser'])
         cut = cut if ucut is None else ucut
@@ -497,7 +497,7 @@ class PadAnalysis(Analysis):
         self.tree.Draw(draw_string, cut, 'goff')
         self.draw_histo(h, show=show, sub_dir=self.save_dir, lm=.12, logy=True)
         f, fit, fit1 = self.fit_peak_timing(h)
-        l2 = self.make_legend(.66, .96, nentries=3, name='fr', margin=.05, felix=False)
+        l2 = self.make_legend(.66, nentries=3, name='fr', margin=.05, felix=False)
         l2.SetHeader('Fit Results')
         l2.AddEntry(0, 'Mean:', '')
         l2.AddEntry(0, '{0:5.2f} #pm {1:5.2f} ns'.format(f.Parameter(1), f.ParError(1)), '').SetTextAlign(32)
@@ -513,7 +513,7 @@ class PadAnalysis(Analysis):
         l2.Draw()
         l2.GetListOfPrimitives().First().SetTextAlign(22)
         h.Draw('same')
-        h.GetXaxis().SetRangeUser(f.Parameter(1) - 10 * f.Parameter(2), h.GetXaxis().GetXmax())
+        h.GetXaxis().SetRangeUser(f.Parameter(1) - 5 * f.Parameter(2), f.Parameter(1) + 10 * f.Parameter(2))
         self.save_plots('{typ}PeakPositions'.format(typ=type_.title()))
         self.PeakValues = h
         self.RootObjects.append([l, l2])
