@@ -289,7 +289,8 @@ class AnalysisCollection(Elementary):
             else:
                 legend.AddEntry(gr, gr.GetTitle(), 'p')
             mg.Add(gr, 'p')
-        self.draw_histo(mg, draw_opt='a')
+        self.format_histo(mg, x_tit='Voltage [V]', y_tit='Pulse Height [au]', y_off=1.3, draw_first=True)
+        self.save_histo(mg, '{s}VoltageScan'.format(s='Signal' if not pulser else 'Pulser'), draw_opt='a', lm=.12)
 
     def draw_pulse_heights(self, binning=20000, flux=True, raw=False, all_corr=False, show=True, save_plots=True, vs_time=False, fl=True, save_comb=True):
 
