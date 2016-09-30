@@ -1116,7 +1116,7 @@ class PadAnalysis(Analysis):
 
     # ==========================================================================
     # region CUTS
-    def show_cut_contributions(self, show=True, flat=False):
+    def show_cut_contributions(self, show=True, flat=False, short=False):
         if not show:
             gROOT.SetBatch(1)
         main_cut = [self.Cut.CutStrings['event_range'], self.Cut.CutStrings['beam_interruptions']]
@@ -1128,6 +1128,10 @@ class PadAnalysis(Analysis):
         for cut in main_cut + self.Cut.CutStrings.values():
             name = cut.GetName()
             if not name.startswith('old') and name != 'all_cuts' and name not in contributions and str(cut):
+                if short:
+                    # self.log_info('adding cut {0}'.format(name))
+                    if name not in ['raw', 'saturated', 'timing', 'pulser', 'tracks', 'fiducial']:
+                        continue
                 cuts += cut
                 events = int(self.tree.Draw('1', '!({0})'.format(cuts), 'goff'))
                 output[name] = (1. - float(events) / total_events) * 100.
@@ -1137,7 +1141,7 @@ class PadAnalysis(Analysis):
                 cutted_events += events
 
         # sort contributions by size
-        names = ['event', 'track_', 'pul', 'bucket', 'beam', 'sat', 'tracks', 'tim', 'chi2Y', 'ped', 'chi2X']
+        names = ['event', 'track_', 'pul', 'bucket', 'beam', 'fiducial', 'sat', 'tracks', 'tim', 'chi2Y', 'ped', 'chi2X']
         sorted_contr = OrderedDict()
         for name in names:
             for key, value in contributions.iteritems():
@@ -1149,7 +1153,9 @@ class PadAnalysis(Analysis):
 
         # contributions = self.sort_contributions(contributions)
         contributions = sorted_contr
-        values = contributions.values() + [self.run.n_entries - cutted_events]
+        good_events = self.tree.GetEntries(z.AllCuts.GetTitle())
+        values = contributions.values() + [good_events]
+        values += [self.run.n_entries - good_events - cutted_events] if short else []
         i = 0
         self.reset_colors()
         colors = [self.get_color() for i in xrange(1, len(values) + 1)]
@@ -1159,13 +1165,16 @@ class PadAnalysis(Analysis):
             pie.SetEntryLabel(i, label.title())
         pie.SetEntryRadiusOffset(i + 1, .05)
         pie.SetEntryLabel(i + 1, 'Good Events')
+        if short:
+            pie.SetEntryRadiusOffset(i + 2, .05)
+            pie.SetEntryLabel(i + 2, 'Other')
         pie.SetHeight(.04)
         pie.SetRadius(.2)
         pie.SetTextSize(.025)
         pie.SetAngle3D(70)
         pie.SetLabelFormat('%txt (%perc)')
         # pie.SetLabelFormat('#splitline{%txt}{%percent}')
-        pie.SetAngularOffset(280)
+        pie.SetAngularOffset(250)
         c = TCanvas('c', 'Cut Pie', 1000, 1000)
         pie.Draw('{0}rsc'.format('3d' if not flat else ''))
         self.save_plots('CutContributions', sub_dir=self.save_dir)
@@ -1434,7 +1443,7 @@ class PadAnalysis(Analysis):
         for key, value in self.Cut.ConsecutiveCuts.iteritems():
             if short:
                 self.log_info('adding cut {0}'.format(key))
-                if key not in ['raw', 'saturated', 'timing', 'pulser', 'bucket']:
+                if key not in ['raw', 'saturated', 'timing', 'pulser', 'tracks', 'fiducial']:
                     continue
             key = 'beam_stops' if key.startswith('beam') else key
             cut += value
@@ -1458,10 +1467,10 @@ class PadAnalysis(Analysis):
         self.RootObjects.append(self.save_histo(stack, save_name, show, self.save_dir, l=legend, draw_opt='nostack', lm=0.14))
         stack.SetName(stack.GetName() + 'logy')
         # stack.SetMaximum(stack.GetMaximum() * 1.2)
-        self.RootObjects.append(self.save_histo(stack, '{name}LogY'.format(name=save_name), show, self.save_dir, logy=True, draw_opt='nostack', lm=0.14))
+        self.RootObjects.append(self.save_histo(stack, '{name}LogY'.format(name=save_name), show, self.save_dir, logy=True, draw_opt='nostack', lm=0.14, l=legend))
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
 
-    def draw_cut_means(self, show=True):
+    def draw_cut_means(self, show=True, short=False):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         gr = self.make_tgrapherrors('gr_cm', 'Mean of Pulse Height for Consecutive Cuts')
         cut = TCut('consecutive', '')
@@ -1470,6 +1479,10 @@ class PadAnalysis(Analysis):
         gr.SetPoint(0, 0, 0)
         for key, value in self.Cut.CutStrings.iteritems():
             if (str(value) or key == 'raw') and key not in ['all_cuts', 'old_bucket']:
+                if short:
+                    self.log_info('adding cut {0}'.format(key))
+                    if key not in ['raw', 'saturated', 'timing', 'pulser', 'tracks', 'fiducial']:
+                        continue
                 key = 'beam_stops' if key.startswith('beam') else key
                 cut += value
                 h = self.show_signal_histo(cut=cut, show=False)
