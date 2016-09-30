@@ -1491,15 +1491,14 @@ class PadAnalysis(Analysis):
                 gr.SetPointError(i, 0, h.GetMeanError())
                 names.append(key)
                 i += 1
-        self.format_histo(gr, markersize=.2, fill_color=821, y_tit='Mean Pulse Height [au]', y_off=1.4)
+        self.format_histo(gr, markersize=.2, fill_color=17, y_tit='Mean Pulse Height [au]', y_off=1.4)
         y = [gr.GetY()[i] for i in xrange(1, gr.GetN())]
-        gr.SetFillColor(821)
         gr.GetYaxis().SetRangeUser(min(y) - 1, max(y) + 1)
         gr.GetXaxis().SetLabelSize(.05)
         for i in xrange(1, gr.GetN()):
             bin_x = gr.GetXaxis().FindBin(i)
             gr.GetXaxis().SetBinLabel(bin_x, names[i - 1])
-        self.RootObjects.append(self.save_histo(gr, 'CutMeans', show, self.save_dir, bm=.30, draw_opt='bap', lm=.12))
+        self.RootObjects.append(self.save_histo(gr, 'CutMeans{s}'.format(s='Short' if short else ''), show, self.save_dir, bm=.30, draw_opt='bap', lm=.12))
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
 
     # endregion
