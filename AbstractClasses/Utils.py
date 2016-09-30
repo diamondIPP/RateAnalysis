@@ -299,9 +299,9 @@ def set_drawing_range(h, legend=True, lfac=None, rfac=None):
 
 
 class FitRes:
-    def __init__(self, fit_obj):
-        self.Pars = list(fit_obj.Parameters())
-        self.Errors = list(fit_obj.Errors())
+    def __init__(self, fit_obj=None):
+        self.Pars = list(fit_obj.Parameters()) if fit_obj is not None else [0]
+        self.Errors = list(fit_obj.Errors()) if fit_obj is not None else [0]
 
     def Parameter(self, arg):
         return self.Pars[arg]
