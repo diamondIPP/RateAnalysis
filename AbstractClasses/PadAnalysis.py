@@ -18,6 +18,7 @@ from CurrentInfo import Currents
 from Elementary import Elementary
 from Extrema import Extrema2D
 from TelescopeAnalysis import Analysis
+from Langaus import Langau
 from Pulser import PulserAnalysis
 from Utils import *
 
@@ -1518,6 +1519,30 @@ class PadAnalysis(Analysis):
             self.Cut.update_all_cut()
         self.draw_histo(gr, show)
 
+    def test_landau_stats(self):
+        from ROOT import gRandom
+        gr = self.make_tgrapherrors('gr_ls', 'Landau Statistics')
+        self.set_root_output(False)
+        self.start_pbar(sum(int(pow(2, i / 2.)) for i in xrange(1, 40)))
+        k = 0
+        for j, i in enumerate(xrange(1, 40)):
+            h = TH1F('h', 'h', 500, 0, 1000)
+            for _ in xrange(int(pow(2, i / 2.))):
+                k += 1
+                h.Fill(gRandom.Landau(80, 5))
+            self.ProgressBar.update(k)
+            gr.SetPoint(j, pow(2, i), h.GetMean())
+            gr.SetPointError(j, 0, h.GetMeanError())
+        self.ProgressBar.finish()
+        self.draw_histo(gr, draw_opt='alp', logx=True)
+
+    def fit_langau(self):
+        h = self.show_signal_histo()
+        fit = Langau(h)
+        fit.langaufit()
+        fit.Fit.Draw('lsame')
+        self.RootObjects.append(fit)
+        return fit
     # endregion
 
     # ==========================================================================
