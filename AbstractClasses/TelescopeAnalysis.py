@@ -254,6 +254,14 @@ class Analysis(Elementary):
         self.save_histo(h, 'TrackAngle{mod}'.format(mod=mode.upper()), show, lm=.13, prnt=print_msg)
         return h
 
+    def draw_distance_distribution(self, show=True, save=True):
+        h = TH1F('hdd', 'Track Distance in Diamond', 100, 500, 501)
+        self.tree.Draw('500*TMath::Sqrt(TMath::Power(TMath::Sin(TMath::DegToRad()*slope_x), 2) + TMath::Power(TMath::Sin(TMath::DegToRad()*slope_y), 2) + 1)>>hdd', 'slope_x > -20', 'goff')
+        self.format_histo(h, x_tit='Distance [#mum]', y_tit='Entries', y_off=1.8, lw=2, stats=0)
+        h.GetXaxis().SetNdivisions(405)
+        self.save_histo(h, 'DistanceInDia', show, lm=.13, save=save)
+        return h
+
     def calc_angle_fit(self, mode='x', show=True):
         pickle_path = self.PickleDir + 'Tracks/AngleFit_{tc}_{run}_{mod}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, mod=mode)
 
@@ -261,7 +269,7 @@ class Analysis(Elementary):
             h = self.draw_angle_distribution(mode, show=show)
             return self.fit_fwhm(h, draw=show)
 
-        fit = func() if show else 0
+        fit = func() if show else None
         return self.do_pickle(pickle_path, func, fit)
 
     def show_both_angles(self):
