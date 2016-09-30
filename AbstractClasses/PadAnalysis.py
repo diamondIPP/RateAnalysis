@@ -828,7 +828,8 @@ class PadAnalysis(Analysis):
             means = self.draw_pedestal(bin_size, show=False) if bin_corr else None
             gROOT.SetBatch(1)
             if sig_time.GetEntries() == 0:
-                raise Exception('Empty histogram')
+                log_warning('Empty histogram')
+                return FitRes()
             for i in xrange(self.n_bins - 1):
                 h_proj = sig_time.ProjectionY(str(i), i + 1, i + 1)
                 if h_proj.GetEntries() > 10:
@@ -841,7 +842,10 @@ class PadAnalysis(Analysis):
                 else:
                     empty_bins += 1
             if empty_bins:
-                self.log_info('Empty proj. bins:\t{0}'.format(str(empty_bins) + '/' + str(self.n_bins)))
+                self.log_info('Empty proj. bins:\t{0}/{1}'.format(empty_bins, self.n_bins))
+                if not self.n_bins - empty_bins > 1:
+                    log_warning('graph containts not more than one point!')
+                    return FitRes()
             set_statbox(entries=4, only_fit=True)
             self.format_histo(gr, x_tit='time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6)
             # excludes points that are too low for the fit
