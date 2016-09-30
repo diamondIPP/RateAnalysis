@@ -423,7 +423,7 @@ class Elementary(object):
         return l
 
     def format_histo(self, histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=20, color=1, markersize=1, x_off=None, y_off=None, z_off=None, lw=1, fill_color=0,
-                     stats=True, tit_size=.04, draw_first=False, x_range=None, y_range=None, z_range=None, do_marker=True, style=None):
+                     stats=True, tit_size=.04, lab_size=.04, draw_first=False, x_range=None, y_range=None, z_range=None, do_marker=True, style=None):
         h = histo
         if draw_first:
             self.set_root_output(False)
@@ -461,18 +461,21 @@ class Elementary(object):
                 x_axis.SetTitle(x_tit) if x_tit else h.GetXaxis().GetTitle()
                 x_axis.SetTitleOffset(x_off) if x_off is not None else do_nothing()
                 x_axis.SetTitleSize(tit_size)
+                x_axis.SetLabelSize(lab_size)
                 x_axis.SetRangeUser(x_range[0], x_range[1]) if x_range is not None else do_nothing()
             y_axis = h.GetYaxis()
             if y_axis:
                 y_axis.SetTitle(y_tit) if y_tit else y_axis.GetTitle()
                 y_axis.SetTitleOffset(y_off) if y_off is not None else do_nothing()
                 y_axis.SetTitleSize(tit_size)
+                y_axis.SetLabelSize(lab_size)
                 y_axis.SetRangeUser(y_range[0], y_range[1]) if y_range is not None else do_nothing()
             z_axis = h.GetZaxis()
             if z_axis:
                 z_axis.SetTitle(z_tit) if z_tit else h.GetZaxis().GetTitle()
                 z_axis.SetTitleOffset(z_off) if z_off is not None else do_nothing()
                 z_axis.SetTitleSize(tit_size)
+                z_axis.SetLabelSize(lab_size)
                 z_axis.SetRangeUser(z_range[0], z_range[1]) if z_range is not None else do_nothing()
         except AttributeError or ReferenceError:
             pass
