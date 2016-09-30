@@ -243,13 +243,14 @@ class Analysis(Elementary):
         self.RootObjects.append([legend, histos, c])
         self.save_plots('Chi2', canvas=c, sub_dir=self.ana_save_dir, ch=None)
 
-    def draw_angle_distribution(self, mode='x', show=True, print_msg=True):
+    def draw_angle_distribution(self, mode='x', show=True, print_msg=True, cut=None):
         """ Displays the angle distribution of the tracks. """
         assert mode in ['x', 'y']
+        cut = cut if cut is not None else TCut('')
         self.set_root_output(False)
         h = TH1F('had', 'Track Angle Distribution in ' + mode, 320, -4, 4)
-        self.tree.Draw('slope_{mod}>>had'.format(mod=mode), '', 'goff')
-        self.format_histo(h, x_tit='Track Angle [deg]', y_tit='Entries', y_off=1.8, lw=2)
+        self.tree.Draw('slope_{mod}>>had'.format(mod=mode), cut, 'goff')
+        self.format_histo(h, x_tit='Track Angle [deg]', y_tit='Entries', y_off=1.8, lw=2, stats=0)
         self.save_histo(h, 'TrackAngle{mod}'.format(mod=mode.upper()), show, lm=.13, prnt=print_msg)
         return h
 
