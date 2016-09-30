@@ -169,7 +169,7 @@ class AnalysisCollection(Elementary):
         old_verbose = self.FirstAnalysis.verbose
         self.set_verbose(False)
         self.draw_ph_with_currents(show=False)
-        self.draw_pulse_heights(show=False)
+        self.draw_pulse_heights(binning=10000, show=False)
         self.draw_pulser_info(do_fit=False, show=False)
         self.draw_pedestals(show=False, save=True)
         self.draw_pulser_pedestals(show=False, save=True)
@@ -246,7 +246,7 @@ class AnalysisCollection(Elementary):
         self.RootObjects.append([ph, cur, pul, c, legends, pads])
         self.FirstAnalysis.run.reset_info_legend()
 
-    def draw_ph_vs_voltage(self, binning=20000):
+    def draw_ph_vs_voltage(self, binning=20000, pulser=False):
         gr1 = self.make_tgrapherrors('gStatError', 'stat. error', self.get_color())
         gStyle.SetEndErrorSize(4)
         gr_first = self.make_tgrapherrors('gFirst', 'first run', marker=22, color=2, marker_size=2)
@@ -258,19 +258,20 @@ class AnalysisCollection(Elementary):
         rel_sys_error = 0
         i, j = 0, 0
         for key, ana in self.collection.iteritems():
-            fit1 = ana.draw_pulse_height(binning, evnt_corr=True, save=False)
+            fit1 = ana.draw_pulse_height(binning, evnt_corr=True, save=False) if not pulser else ana.Pulser.draw_distribution_fit(show=False, save=False)
             x = ana.run.RunInfo['dia1hv']
             print x, '\t',
-            gr1.SetPoint(i, x, fit1.Parameter(0))
-            print fit1.Parameter(0)
-            gr1.SetPointError(i, 0, fit1.ParError(0))
-            gr_errors.SetPoint(i, x, fit1.Parameter(0))
-            gr_errors.SetPointError(i, 0, fit1.ParError(0) + rel_sys_error * fit1.Parameter(0))
+            s, e = (fit1.Parameter(0), fit1.ParError(0)) if not pulser else (fit1.Parameter(1), fit1.ParError(1))
+            gr1.SetPoint(i, x, s)
+            print s, e
+            gr1.SetPointError(i, 0, e)
+            gr_errors.SetPoint(i, x, s)
+            gr_errors.SetPointError(i, 0, e + rel_sys_error * s)
             # set special markers for the first and last run
             if i == 0:
-                gr_first.SetPoint(0, x, fit1.Parameter(0))
+                gr_first.SetPoint(0, x, s)
             if j == len(self.collection) - 1:
-                gr_last.SetPoint(0, x, fit1.Parameter(0))
+                gr_last.SetPoint(0, x, s)
             i += 1
             j += 1
         graphs = [gr_errors, gr1]
