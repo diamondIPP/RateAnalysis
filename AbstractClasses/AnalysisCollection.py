@@ -8,6 +8,7 @@ from collections import OrderedDict
 from numpy import log, array, zeros
 from time import time
 from screeninfo import get_monitors
+from functools import partial
 
 from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1
 
@@ -292,12 +293,12 @@ class AnalysisCollection(Elementary):
         self.format_histo(mg, x_tit='Voltage [V]', y_tit='Pulse Height [au]', y_off=1.3, draw_first=True)
         self.save_histo(mg, '{s}VoltageScan'.format(s='Signal' if not pulser else 'Pulser'), draw_opt='a', lm=.12)
 
-    def draw_pulse_heights(self, binning=20000, flux=True, raw=False, all_corr=False, show=True, save_plots=True, vs_time=False, fl=True, save_comb=True):
+    def draw_pulse_heights(self, binning=10000, flux=True, raw=False, all_corr=False, show=True, save_plots=True, vs_time=False, fl=True, save_comb=True, y_range=None):
 
         pickle_path = self.FirstAnalysis.PickleDir + 'Ph_fit/PulseHeights_{tc}_{rp}_{dia}_{bin}.pickle'.format(tc=self.TESTCAMPAIGN, rp=self.run_plan, dia=self.diamond_name, bin=binning)
         flux = False if vs_time else flux
 
-        def func():
+        def func(y_ran):
 
             mode = self.get_mode(flux, vs_time)
             prefix = 'Pulse Height vs {mod} - '.format(mod=mode)
@@ -379,7 +380,8 @@ class AnalysisCollection(Elementary):
             # small range
             self.format_histo(mg, color=None, x_tit=mode + ' [kHz/cm^{2}]' if flux else '', y_tit='Signal Pulse Height [au]', y_off=1.75, x_off=1.3, draw_first=True)
             ymin, ymax = mg.GetYaxis().GetXmin(), mg.GetYaxis().GetXmax()
-            mg.GetYaxis().SetRangeUser(*increased_range([ymin, ymax], .3, .15))
+            yrange = increased_range([ymin, ymax], .3, .15) if y_ran is None else y_ran
+            mg.GetYaxis().SetRangeUser(*yrange)
             if vs_time:
                 mg.Add(gr5, '[]')
                 mg.Add(gr5, 'p')
@@ -403,11 +405,13 @@ class AnalysisCollection(Elementary):
             self.PulseHeight = gr1
             if save_comb:
                 run_info = self.collection.values()[0].run.get_runinfo(self.channel)
-                self.save_combined_pulse_heights(mg, mg1, legend, increased_range([ymin, ymax], .3)[0], show=show, run_info=run_info, pulser_leg=self.__draw_signal_legend)
+                y_min = increased_range([ymin, ymax], .3)[0] if y_ran is None else y_ran[0]
+                self.save_combined_pulse_heights(mg, mg1, legend, y_min, show=show, run_info=run_info, pulser_leg=self.__draw_signal_legend)
             return mg
 
-        mg2 = func() if save_plots else None
-        return self.do_pickle(pickle_path, func, mg2)
+        f = partial(func, y_range)
+        mg2 = func(y_range) if save_plots else None
+        return self.do_pickle(pickle_path, f, mg2)
 
     def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False, show=True, cut=None, beam_on=True, save=False):
 
