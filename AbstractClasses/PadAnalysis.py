@@ -1501,6 +1501,23 @@ class PadAnalysis(Analysis):
         self.RootObjects.append(self.save_histo(gr, 'CutMeans{s}'.format(s='Short' if short else ''), show, self.save_dir, bm=.30, draw_opt='bap', lm=.12))
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
 
+    def draw_distance_vs_ph(self, show=True, steps=10):
+        h = self.draw_distance_distribution(show=False, save=False)
+        xmin, xmax = [h.GetBinCenter(i) for i in [h.FindFirstBinAbove(5), h.FindLastBinAbove(5)]]
+        xvals = [xmin + i * (xmax - xmin) / steps for i in xrange(steps + 1)]
+        gr = self.make_tgrapherrors('gr_aph', 'Pulse Height Vs Distance in Diamond')
+        j = 0
+        for i in xrange(len(xvals) - 1):
+            cut = self.Cut.generate_distance(xvals[i], xvals[i + 1])
+            self.Cut.all_cut += cut
+            fit = self.draw_pulse_height(show=False, save=True)
+            if fit.Parameter(0):
+                gr.SetPoint(j, xvals[i], fit.Parameter(0))
+                gr.SetPointError(j, 0, fit.ParError(0))
+                j += 1
+            self.Cut.update_all_cut()
+        self.draw_histo(gr, show)
+
     # endregion
 
     # ==========================================================================
