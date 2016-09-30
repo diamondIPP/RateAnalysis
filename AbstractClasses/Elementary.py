@@ -406,7 +406,7 @@ class Elementary(object):
     def draw_horizontal_line(self, y, xmin, xmax, color=1, w=1, style=1, name='li', tline=False):
         return self.draw_line(xmin, xmax, y, y, color, w, style, name) if not tline else self.draw_tline(xmin, xmax, y, y, color, w, style)
 
-    def make_legend(self, x1=.65, y2=.95, nentries=2, scale=1, name='l', y1=None, felix=False, margin=.25, x2=None):
+    def make_legend(self, x1=.65, y2=.88, nentries=2, scale=1, name='l', y1=None, felix=False, margin=.25, x2=None):
         x2 = .95 if x2 is None else x2
         y1 = y2 - nentries * .05 * scale if y1 is None else y1
         l = TLegend(x1, y1, x2, y2)
