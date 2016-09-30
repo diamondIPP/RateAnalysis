@@ -109,7 +109,6 @@ class Cut(Elementary):
     def define_cutstrings():
         dic = OrderedDict()
         dic['raw'] = TCut('raw', '')
-        dic['fiducial'] = TCut('fiducial', '')
         dic['saturated'] = TCut('saturated', '')
         dic['pulser'] = TCut('pulser', '')
         dic['event_range'] = TCut('event_range', '')
@@ -127,6 +126,7 @@ class Cut(Elementary):
         dic['bucket'] = TCut('bucket', '')
         # tracks
         dic['tracks'] = TCut('tracks', '')
+        dic['fiducial'] = TCut('fiducial', '')
         dic['chi2X'] = TCut('chi2X', '')
         dic['chi2Y'] = TCut('chi2Y', '')
         dic['track_angle'] = TCut('track_angle', '')
