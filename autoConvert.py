@@ -56,7 +56,8 @@ def make_final_run_str(run):
 def convert_run(run):
     global run_infos, next_run
     run_infos = load_runinfos()
-    if str(run) not in run_infos or run_infos[str(run)]['runtype'] in ['test', 'crap', 'schrott']:
+    run_infos = {int(key): value for key, value in run_infos.iteritems()}
+    if run not in run_infos or run_infos[run]['runtype'] in ['test', 'crap', 'schrott']:
         if int(sorted(run_infos.keys())[-1]) in xrange(next_run, 1000):
             next_run += 1
             return False
@@ -71,7 +72,6 @@ def convert_run(run):
                 cmd = 'AbstractClasses/PadAnalysis.py {0} -t'.format(run)
                 print cmd
                 system(cmd)
-                next_run += 1
             else:
                 return 3
     save_last_converted(run)
