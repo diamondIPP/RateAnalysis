@@ -247,7 +247,7 @@ class AnalysisCollection(Elementary):
         self.RootObjects.append([ph, cur, pul, c, legends, pads])
         self.FirstAnalysis.run.reset_info_legend()
 
-    def draw_ph_vs_voltage(self, binning=20000, pulser=False):
+    def draw_ph_vs_voltage(self, binning=10000, pulser=False):
         gr1 = self.make_tgrapherrors('gStatError', 'stat. error', self.get_color())
         gStyle.SetEndErrorSize(4)
         gr_first = self.make_tgrapherrors('gFirst', 'first run', marker=22, color=2, marker_size=2)
@@ -260,7 +260,7 @@ class AnalysisCollection(Elementary):
         i, j = 0, 0
         for key, ana in self.collection.iteritems():
             fit1 = ana.draw_pulse_height(binning, evnt_corr=True, save=False) if not pulser else ana.Pulser.draw_distribution_fit(show=False, save=False)
-            x = ana.run.RunInfo['dia1hv']
+            x = ana.run.RunInfo['dia{nr}hv'.format(nr=self.diamonds[0])]
             print x, '\t',
             s, e = (fit1.Parameter(0), fit1.ParError(0)) if not pulser else (fit1.Parameter(1), fit1.ParError(1))
             gr1.SetPoint(i, x, s)
