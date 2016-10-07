@@ -281,10 +281,10 @@ class PadAnalysis(Analysis):
 
     # ==========================================================================
     # region 2D SIGNAL DISTRIBUTION
-    def draw_signal_map(self, draw_option='surf3z', show=True, factor=1.5, cut=None):
+    def draw_signal_map(self, draw_option='surf3z', show=True, factor=1.5, cut=None, marg=True):
         margins = self.find_diamond_margins(show_plot=False)
-        x = [margins['x'][0], margins['x'][1]]
-        y = [margins['y'][0], margins['y'][1]]
+        x = [margins['x'][0], margins['x'][1]] if marg else [-.3, .3]
+        y = [margins['y'][0], margins['y'][1]] if marg else [-.3, .3]
         nr = 1 if not self.channel else 2
         # get bin size via digital resolution of the telescope pixels
         x_bins = int(ceil(((x[1] - x[0]) / 0.015 * sqrt(12) / factor)))
