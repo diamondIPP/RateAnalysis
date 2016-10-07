@@ -9,6 +9,7 @@ from AbstractClasses.Utils import file_exists, print_banner, log_message
 from os import stat, chdir, system
 from json import load
 from multiprocessing import cpu_count, Pool
+from argparse import ArgumentParser
 
 tc = '201610'
 data_dir = '/data/psi_{0}_{1}'.format(tc[:4], tc[-2:])
@@ -113,5 +114,11 @@ def multi():
     for res in results:
         print res.get(timeout=5000)
 
-# auto_convert()
-multi()
+parser = ArgumentParser()
+parser.add_argument('-m', action='store_true')
+arg = parser.parse_args()
+
+if arg.m:
+    multi()
+else:
+    auto_convert()
