@@ -17,3 +17,5 @@ test*
 *.tar
 *.gz
 bak/
+last_converted.txt
+
