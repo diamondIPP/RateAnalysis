@@ -257,6 +257,29 @@ class Run(Elementary):
         self.analyse_ch = analyse_ch
         return analyse_ch
 
+    def load_mask(self):
+        mask_file_path = '{path}/{mask}'.format(path=self.maskfilepath, mask=self.RunInfo['maskfile'])
+        dic = {}
+        try:
+            f = open(mask_file_path, 'r')
+            for line in f:
+                if len(line) > 3:
+                    line = line.split()
+                    if not line[1] in dic:
+                        dic[line[1]] = {}
+                        dic[line[1]]['row'] = [0, 0]
+                        dic[line[1]]['col'] = [0, 0]
+                    if line[0] == 'cornBot':
+                        dic[line[1]]['row'][0] = line[3]
+                        dic[line[1]]['col'][0] = line[2]
+                    elif line[0] == 'cornTop':
+                        dic[line[1]]['row'][1] = line[3]
+                        dic[line[1]]['col'][1] = line[2]
+            f.close()
+        except IOError as err:
+            self.log_warning(err)
+        print dic
+
     def calculate_flux(self):
         self.verbose_print('Calculate rate from mask file:\n\t' + self.RunInfo['maskfile'])
         mask_file_path = self.maskfilepath + '/' + self.RunInfo['maskfile']
