@@ -21,6 +21,7 @@ class ChannelCut(Cut):
         Cut.__init__(self, analysis, skip=True)
         self.__dict__.update(analysis.Cut.__dict__)
         self.channel = channel
+        self.run_number = self.analysis.run_number
 
         self.load_channel_config()
 
@@ -30,7 +31,6 @@ class ChannelCut(Cut):
         self.generate_channel_cutstrings()
         self.all_cut = self.generate_all_cut()
         self.CutStrings['all_cuts'] = self.all_cut
-        self.run_number = self.analysis.run_number
 
         self.ConsecutiveCuts = self.load_consecutive_cuts()
 
@@ -39,8 +39,17 @@ class ChannelCut(Cut):
     def load_channel_config(self):
         self.CutConfig['absMedian_high'] = self.load_config_data('absMedian_high')
         self.CutConfig['pedestalsigma'] = self.load_config_data('pedestalsigma')
-        self.CutConfig['fiducial'] = self.load_dia_config('fid_cuts')
+        self.CutConfig['fiducial'] = self.load_fiducial()
         self.CutConfig['threshold'] = self.load_dia_config('threshold', store_true=True)
+
+    def load_fiducial(self):
+        if self.MainConfigParser.has_option(self.TESTCAMPAIGN, 'fid_split_runs'):
+            split_runs = [0] + loads(self.MainConfigParser.get(self.TESTCAMPAIGN, 'fid_split_runs')) + [int(1e10)]
+            for i in xrange(0, len(split_runs) - 1):
+                if split_runs[i] <= self.run_number < split_runs[i + 1]:
+                    return self.load_dia_config('fid_cuts{n}'.format(n=i if i else ''))
+        else:
+            return self.load_dia_config('fid_cuts')
 
     def load_config_data(self, name):
         value = self.ana_config_parser.getint('CUT', name)
