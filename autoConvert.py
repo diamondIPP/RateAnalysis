@@ -10,9 +10,9 @@ from os import stat, chdir, system
 from json import load
 from multiprocessing import cpu_count, Pool
 
-tc = '201608'
+tc = '201610'
 data_dir = '/data/psi_{0}_{1}'.format(tc[:4], tc[-2:])
-raw_dir = '{0}/setup'.format(data_dir)
+raw_dir = '{0}/raw'.format(data_dir)
 final_dir = '{0}/root/pads'.format(data_dir)
 f_lc = open('/home/testbeam/testing/micha/myPadAnalysis/last_converted.txt', 'r+')
 next_run = int(f_lc.read()) + 1
