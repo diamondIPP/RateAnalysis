@@ -242,8 +242,6 @@ class Elementary(object):
         """
         Saves the canvas at the desired location. If no canvas is passed as argument, the active canvas will be saved. However for applications without graphical interface,
         such as in SSl terminals, it is recommended to pass the canvas to the method.
-        :param savename:
-        :param sub_dir:
         :param ind: index of the collection
         :param ch: if None print both dias (dirty fix)
         """

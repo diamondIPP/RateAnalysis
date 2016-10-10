@@ -414,7 +414,7 @@ class ChannelCut(Cut):
 
             gROOT.SetBatch(1) if not show else self.do_nothing()
             num = self.analysis.SignalNumber
-            cut = self.generate_special_cut(excluded_cuts=['bucket', 'timing'])
+            cut = self.generate_special_cut(excluded=['bucket', 'timing'])
 
             # estimate timing
             draw_string = 'IntegralPeakTime[{num}]'.format(num=num)
@@ -508,7 +508,7 @@ class ChannelCut(Cut):
         # if not bPlot:
         #     return TCut('')
         print 'generate_timing_cut with %s sigma' % sigma
-        cut = self.generate_special_cut(excluded_cuts=['timing','bucket'])
+        cut = self.generate_special_cut(excluded=['timing', 'bucket'])
         # Estimate Timing
         print ' * Estimate Timing',
         # hTiming = TH1F('hTiming','hTiming',4096,0,512)

@@ -170,7 +170,6 @@ class Converter:
             os.system(converter_cmd)
             self.align_run()
             os.chdir(curr_dir)
-
         self.__add_tracking(run_number)
         self.__rename_tracking_file(run_number)
         os.remove(self.get_root_file_path())
@@ -196,6 +195,15 @@ class Converter:
 
     def __rename_rootfile(self, run_number):
         os.rename(self.get_root_file_path(), self.get_final_file_path(run_number))
+
+    @staticmethod
+    def remove_pickle_files(run_number):
+        program_dir = ''
+        for i in __file__.split('/')[:-2]:
+            program_dir += i + '/'
+        files = glob('{prog}Configuration/Individual_Configs/*/*{run}*'.format(prog=program_dir, run=run_number))
+        for _file in files:
+            remove(_file)
 
     def __rename_tracking_file(self, run_number):
         os.rename(self.get_tracking_file_path(run_number), self.get_final_file_path(run_number))

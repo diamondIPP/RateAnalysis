@@ -1,21 +1,9 @@
 *.pyc
-*.pdf
-*.root
-# ignore pictures
-*.png
-*.jpg
-*.eps
-*.out
-Results*/
+Results*
 Plots*/
 *.json
 *.pickle
 *~
 .idea/workspace.xml
-*.bak
 test*
-*.tar
-*.gz
-bak/
 last_converted.txt
-

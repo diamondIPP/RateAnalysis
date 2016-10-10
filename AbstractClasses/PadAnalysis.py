@@ -398,7 +398,7 @@ class PadAnalysis(Analysis):
 
         def func():
             print 'getting margins for {dia} of run {run}...'.format(dia=self.diamond_name, run=self.run_number)
-            cut_string = self.Cut.generate_special_cut(excluded_cuts=['fiducial']) if cut is None else cut
+            cut_string = self.Cut.generate_special_cut(excluded=['fiducial']) if cut is None else cut
             if not show_plot:
                 gROOT.SetBatch(1)
             h = TH2F('h', 'Diamond Margins', 52, -.4, .4, 80, -.4, .4)
@@ -489,7 +489,7 @@ class PadAnalysis(Analysis):
         h = TH1F('hpv', title, n_bins, x[0] / 2., x[1] / 2.)
         l = self.make_legend(.66, .7, nentries=3, name='l1')
         self.format_histo(h, x_tit='Signal Peak Timing [ns]', y_tit='Number of Entries', y_off=1.3, stats=0)
-        cut = self.Cut.generate_special_cut(excluded_cuts=['timing']) if type_ == 'signal' else '!({0})'.format(self.Cut.CutStrings['pulser'])
+        cut = self.Cut.generate_special_cut(excluded=['timing']) if type_ == 'signal' else '!({0})'.format(self.Cut.CutStrings['pulser'])
         cut = cut if ucut is None else ucut
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         dic = self.Cut.calc_timing_range(show=False)
@@ -620,7 +620,7 @@ class PadAnalysis(Analysis):
             h = TProfile2D('tcpp', 'Trigger Cell vs. Signal Peak Position', 1024, 0, 1024, x[1] - x[0], x[0] / 2., x[1] / 2.)
         h1 = TProfile('hpr', 'hpr', 100, 0, 1024)
 
-        cut = self.Cut.generate_special_cut(excluded_cuts=['timing']) if cut is None else cut
+        cut = self.Cut.generate_special_cut(excluded=['timing']) if cut is None else cut
         # cut = self.Cut.all_cut if cut is None else cut
         prof = '' if not tprofile else ':'
         sig = '' if not tprofile else '{sig}-{ped}'.format(sig=self.SignalName, ped=self.PedestalName)
@@ -949,7 +949,7 @@ class PadAnalysis(Analysis):
         t_correction = '({p1}* trigger_cell + {p2} * trigger_cell*trigger_cell)'.format(p1=dic['t_corr'].GetParameter(1), p2=dic['t_corr'].GetParameter(2))
         draw_string = '{sig}:IntegralPeakTime[{num}]-{tc}>>hspt'.format(sig=self.SignalName, num=self.SignalNumber, tc=t_correction)
         exluded_cuts = ['timing', 'bucket', 'tracks', 'chi2X', 'chi2Y', 'track_angle']
-        cut = self.Cut.generate_special_cut(excluded_cuts=exluded_cuts)
+        cut = self.Cut.generate_special_cut(excluded=exluded_cuts)
         self.tree.Draw(draw_string, cut, 'goff')
         self.format_histo(h, fill_color=1)
         self.RootObjects.append(self.draw_histo(h, show=show, draw_opt='colz'))
@@ -1043,7 +1043,7 @@ class PadAnalysis(Analysis):
         return self.do_pickle(picklepath, func, fit_par)
     
     def draw_ped_sigma_selection(self, show=True):
-        f = self.show_pedestal_histo(cut=self.Cut.generate_special_cut(excluded_cuts=['ped_sigma']), nbins=512, x_range=[-50, 200], logy=True, show=False)
+        f = self.show_pedestal_histo(cut=self.Cut.generate_special_cut(excluded=['ped_sigma']), nbins=512, x_range=[-50, 200], logy=True, show=False)
         l = self.make_legend(.66, .96, nentries=3, name='fr', margin=.05, felix=False)
         l.SetHeader('Fit Results')
         l.AddEntry(0, 'Mean:', '')
@@ -1271,7 +1271,7 @@ class PadAnalysis(Analysis):
 
     def draw_bucket_pedestal(self, show=True, corr=True, additional_cut='', draw_option='colz'):
         gStyle.SetPalette(55)
-        cut_string = self.Cut.generate_special_cut(included_cuts=['tracks', 'pulser', 'saturated', 'timing'])
+        cut_string = self.Cut.generate_special_cut(included=['tracks', 'pulser', 'saturated', 'timing'])
         cut_string += additional_cut
         h = self.draw_signal_vs_peak_position('e', '2', show, corr, cut_string, draw_option, 1, save=False)
         self.format_histo(h, x_range=[self.run.signal_regions[self.SignalRegion][0] / 2, self.run.signal_regions['e'][1] / 2], stats=0)
@@ -1279,9 +1279,9 @@ class PadAnalysis(Analysis):
 
     def draw_bucket_waveforms(self, show=True, t_corr=True, start=100000):
         good = self.draw_waveforms(1, show=False, start_event=None, t_corr=t_corr, save=False)[0]
-        cut = self.Cut.generate_special_cut(excluded_cuts=['bucket', 'timing']) + TCut('!({0})'.format(self.Cut.CutStrings['bucket']))
+        cut = self.Cut.generate_special_cut(excluded=['bucket', 'timing']) + TCut('!({0})'.format(self.Cut.CutStrings['bucket']))
         bucket = self.draw_waveforms(1, cut_string=cut, show=False, start_event=start, t_corr=t_corr, save=False)[0]
-        cut = self.Cut.generate_special_cut(excluded_cuts=['bucket', 'timing']) + TCut('{buc}&&!({old})'.format(buc=self.Cut.CutStrings['bucket'], old=self.Cut.CutStrings['old_bucket']))
+        cut = self.Cut.generate_special_cut(excluded=['bucket', 'timing']) + TCut('{buc}&&!({old})'.format(buc=self.Cut.CutStrings['bucket'], old=self.Cut.CutStrings['old_bucket']))
         bad_bucket = self.draw_waveforms(1, cut_string=cut, show=False, t_corr=t_corr, start_event=None, save=False)[0]
         self.reset_colors()
         mg = TMultiGraph('mg_bw', 'Bucket Waveforms')
@@ -1550,7 +1550,7 @@ class PadAnalysis(Analysis):
     def draw_signal_vs_peak_position(self, region=None, peak_int=None, show=True, corr=True, cut=None, draw_opt='colz', nbins=4, save=True):
         region = self.SignalRegion if region is None else region
         peak_int = self.PeakIntegral if peak_int is None else peak_int
-        cut = self.Cut.generate_special_cut(excluded_cuts=[self.Cut.CutStrings['timing']]) if cut is None else cut
+        cut = self.Cut.generate_special_cut(excluded=[self.Cut.CutStrings['timing']]) if cut is None else cut
         num = self.get_signal_number(region, peak_int)
         reg_margins = self.run.signal_regions[region]
         x_bins = (reg_margins[1] - reg_margins[0]) * nbins
@@ -1564,7 +1564,7 @@ class PadAnalysis(Analysis):
 
     def draw_signal_vs_signale(self, show=True):
         gStyle.SetPalette(53)
-        cut = self.Cut.generate_special_cut(excluded_cuts=['bucket'])
+        cut = self.Cut.generate_special_cut(excluded=['bucket'])
         num = self.get_signal_number(region='e')
         cut += TCut('IntegralPeakTime[{0}]<94&&IntegralPeakTime[{0}]>84'.format(num))
         h = TH2F('hsse', 'Signal b vs Signal e', 62, -50, 200, 50, 0, 200)

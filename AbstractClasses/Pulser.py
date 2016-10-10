@@ -41,7 +41,7 @@ class PulserAnalysis(Elementary):
 
     def calc_fraction(self, show=False):
         """ :returns the fitted value of the fraction of pulser events with event range and beam interruptions cuts and its fit error. """
-        cut = self.Cut.generate_special_cut(included_cuts=['beam_interruptions', 'event_range'])
+        cut = self.Cut.generate_special_cut(included=['beam_interruptions', 'event_range'])
         h = self.draw_rate(show=show, cut=cut)
         fit = h.Fit('pol0', 'qs0')
         self.log_info('The fraction of pulser events is: {0:5.2f} +- {1:4.2f}%'.format(fit.Parameter(0), fit.ParError(0)))
