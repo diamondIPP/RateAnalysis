@@ -30,15 +30,16 @@ class AnalysisCollection(Elementary):
     """
     current_run_number = -1
 
-    def __init__(self, list_of_runs, diamonds=None, load_tree=True, verbose=False):
+    def __init__(self, run_selection, load_tree=True, verbose=False):
         Elementary.__init__(self, verbose=verbose)
 
         # dict where all analysis objects are saved
         self.collection = OrderedDict()
-        self.selection = list_of_runs if isinstance(list_of_runs, RunSelection) else self.make_runselection(list_of_runs)
+        self.selection = run_selection
 
-        self.runs = self.load_runs(list_of_runs)
-        self.diamonds = self.load_diamonds(diamonds, list_of_runs)
+        self.runs = run_selection.get_selected_runs()
+        self.channel = self.load_channel()
+        # self.diamonds = self.load_diamonds(diamonds, list_of_runs)
         self.min_max_rate_runs = self.get_high_low_rate_runs()
 
         if load_tree:
@@ -56,8 +57,8 @@ class AnalysisCollection(Elementary):
         self.bias = self.get_first_analysis().bias
 
         # root stuff
-        self.run_plan = list_of_runs.SelectedRunplan if isinstance(list_of_runs, RunSelection) else '-'
-        self.Type = list_of_runs.SelectedType if isinstance(list_of_runs, RunSelection) else '-'
+        self.run_plan = run_selection.SelectedRunplan
+        self.Type = run_selection.SelectedType
         self.save_dir = '{dia}/runplan{plan}'.format(tc=self.TESTCAMPAIGN[2:], plan=self.run_plan, dia=self.diamond_name)
         self.RootObjects = []
         # important plots
@@ -68,7 +69,6 @@ class AnalysisCollection(Elementary):
 
         # current information
         self.StartTime = float(self.get_first_analysis().run.log_start.strftime('%s'))
-        self.channel = self.get_first_analysis().channel
         self.Currents = Currents(self)
 
     def __del__(self):
@@ -94,24 +94,10 @@ class AnalysisCollection(Elementary):
             self.collection[analysis.run.run_number] = analysis
             self.current_run_number = analysis.run.run_number
 
-    @staticmethod
-    def load_runs(run_list):
-        if type(run_list) is list:
-            return run_list
-        elif isinstance(run_list, RunSelection):
-            return run_list.get_selected_runs()
-        else:
-            raise ValueError('listOfRuns has to be of type list or instance of RunSelection')
-
-    def load_diamonds(self, diamonds, run_list):
-        dias = diamonds
-        assert type(dias) is list or dias in [1, 2, 3], '"diamonds" has to be 1, 2, 3, or None (0x1: diamond1, 0x2: diamond2)'
-        if dias is not None:
-            if type(dias) is not list:
-                dias = [dias] * len(self.runs)
-        else:
-            dias = [3] * len(run_list) if type(run_list) is list else run_list.get_selected_diamonds()
-        return dias
+    def load_channel(self):
+        binary = self.run_config_parser.getint('ROOTFILE_GENERATION', 'active_regions')
+        dia_nr = self.selection.SelectedDiamond
+        return [i for i in xrange(16) if self.has_bit(binary, i)][dia_nr - 1]
 
     def get_high_low_rate_runs(self):
         keydict = ConfigParser()
@@ -123,7 +109,7 @@ class AnalysisCollection(Elementary):
         if self.verbose:
             print 'RUN FLUX [kHz/cm2]'
             for run in self.runs:
-                print '{run:3d} {flux:9.2f}'.format(run=run, flux=calc_flux(run_log[str(run)], self.TESTCAMPAIGN))
+                print '{run:3d} {flux:14.2f}'.format(run=run, flux=calc_flux(run_log[str(run)], self.TESTCAMPAIGN))
         print '\n'
         return {'min': fluxes[min(fluxes)], 'max': fluxes[max(fluxes)]}
 
@@ -139,12 +125,6 @@ class AnalysisCollection(Elementary):
             return
         Analysis(self.min_max_rate_runs['max'])
 
-    @staticmethod
-    def make_runselection(run_list):
-        assert type(run_list) is list, 'run list argument has to be a list!'
-        selection = RunSelection()
-        selection.select_runs(run_list, do_assert=True)
-        return selection
     # endregion
 
     def create_all_single_run_plots(self):
@@ -1339,10 +1319,10 @@ if __name__ == "__main__":
     resolution = round_down_to(m[0].height, 500)
     a = Elementary(tc, True, resolution)
     sel = RunSelection(testcampaign=tc)
-    sel.select_runs_from_runplan(run_plan)
+    sel.select_runs_from_runplan(run_plan, ch=diamond)
     a.print_banner('STARTING PAD-ANALYSIS COLLECTION OF RUNPLAN {0}'.format(run_plan))
     a.print_testcampaign()
 
-    z = AnalysisCollection(sel, diamond, load_tree=args.tree, verbose=True)
+    z = AnalysisCollection(sel, load_tree=args.tree, verbose=True)
     z.print_loaded()
     z.print_elapsed_time(st, 'Instantiation')
