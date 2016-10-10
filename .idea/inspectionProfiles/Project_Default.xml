@@ -1,68 +1,57 @@
 <component name="InspectionProjectProfileManager">
   <profile version="1.0">
     <option name="myName" value="Project Default" />
-    <inspection_tool class="ProblematicWhitespace" enabled="true" level="WARNING" enabled_by_default="true" />
     <inspection_tool class="PyIncorrectDocstringInspection" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
-    <inspection_tool class="PyPep8Inspection" enabled="true" level="WEAK WARNING" enabled_by_default="true">
+    <inspection_tool class="PyPep8NamingInspection" enabled="true" level="WEAK WARNING" enabled_by_default="true">
       <option name="ignoredErrors">
         <list>
-          <option value="" />
+          <option value="N802" />
         </list>
       </option>
     </inspection_tool>
     <inspection_tool class="PyUnresolvedReferencesInspection" enabled="true" level="WARNING" enabled_by_default="true">
       <option name="ignoredIdentifiers">
         <list>
+          <option value="TProfile" />
           <option value="TFile" />
           <option value="TCanvas" />
-          <option value="gROOT" />
-          <option value="TLegend" />
-          <option value="TGraphErrors" />
-          <option value="kBlue" />
-          <option value="kFALSE" />
-          <option value="gStyle" />
-          <option value="TH2D" />
-          <option value="TF1" />
-          <option value="TH1F" />
-          <option value="TCut" />
-          <option value="TGraph" />
           <option value="TH2F" />
-          <option value="TLine" />
-          <option value="TGaxis" />
-          <option value="kTeal" />
-          <option value="kCyan" />
-          <option value="kYellow" />
-          <option value="kOrange" />
-          <option value="kAzure" />
-          <option value="kViolet" />
+          <option value="gROOT" />
+          <option value="TH1F" />
+          <option value="TLegend" />
+          <option value="gStyle" />
           <option value="kGreen" />
-          <option value="kRed" />
-          <option value="kMagenta" />
-          <option value="TProfile2D" />
-          <option value="TProfile" />
-          <option value="TCutG" />
-          <option value="TExec" />
+          <option value="kCyan" />
+          <option value="TText" />
+          <option value="TCut" />
+          <option value="TF1" />
+          <option value="TGraph" />
+          <option value="TGraphErrors" />
+          <option value="TGaxis" />
           <option value="TLatex" />
           <option value="TGraphAsymmErrors" />
           <option value="TSpectrum" />
-          <option value="TText" />
-          <option value="TArrow" />
-          <option value="int.Parameter" />
-          <option value="TPie" />
-          <option value="TBox" />
-          <option value="TPaveText" />
-          <option value="TPaveLabel" />
-          <option value="kCanDelete" />
-          <option value="TPad" />
           <option value="TMath" />
-          <option value="AbstractClasses.AnalysisCollection.ROOT" />
-          <option value="AbstractClasses.PadAnalysis.ROOT" />
-          <option value="AbstractClasses.TelescopeAnalysis.ROOT" />
-          <option value="ROOT" />
+          <option value="TArrow" />
+          <option value="TPad" />
+          <option value="TCutG" />
+          <option value="TLine" />
+          <option value="kOrange" />
+          <option value="kViolet" />
+          <option value="kYellow" />
+          <option value="kRed" />
+          <option value="kBlue" />
+          <option value="kMagenta" />
+          <option value="kAzure" />
+          <option value="kTeal" />
           <option value="THStack" />
-          <option value="TMultiGraph" />
+          <option value="TH2D" />
+          <option value="TProfile2D" />
+          <option value="TPie" />
           <option value="gRandom" />
-          <option value="TColor" />
+          <option value="TMultiGraph" />
+          <option value="Long" />
+          <option value="TExec" />
         </list>
       </option>
     </inspection_tool>

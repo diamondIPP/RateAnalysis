@@ -1,7 +1,6 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-import os
 import json
 
 from ConfigParser import ConfigParser
@@ -15,7 +14,7 @@ from Utils import *
 from ROOT import TProfile, TFile
 do_gui = False
 if do_gui:
-    from tkinter import *
+    from Tkinter import *
 
 
 __author__ = 'micha'
@@ -36,6 +35,10 @@ class Converter:
         self.parser = parser
         self.Run = run_number
         self.Type = self.parser.get('BASIC', 'type')
+
+        # digitizer
+        self.ConverterTree = '{0}tree'.format(self.parser.get('BASIC', 'digitizer').lower() if self.Type == 'pad' else 'telescope')
+        self.NChannels = 9 if self.ConverterTree.startswith('caen') else 4
 
         # tracking
         self.telescope_id = self.parser.getint('BASIC', 'telescopeID')
@@ -100,7 +103,7 @@ class Converter:
 
     def find_raw_file(self, run_number):
         file_path = self.raw_file_dir + '/{pref}{run}.raw'.format(pref=self.raw_prefix, run=str(run_number).zfill(4))
-        if os.path.exists(file_path):
+        if file_exists(file_path):
             return file_path
         else:
             print file_path, 'does not exist!'
@@ -127,10 +130,10 @@ class Converter:
         elif os.path.exists(old_track_file):
             return 'found_old'
         elif os.path.exists(final_file):
-            print 'did not find tracking file --> need conversion'
+            log_message('did not find tracking file --> need conversion')
             return 'found_untracked'
         else:
-            print 'did not find any matching root file --> need conversion'
+            log_message('did not find any matching root file --> need conversion')
             return False
 
     def convert_run(self, run_infos, run_number):
@@ -158,7 +161,7 @@ class Converter:
             os.chdir(self.root_file_dir)
             # prepare converter command
             conf_string = '-c {eudaq}/conf/{file}'.format(eudaq=self.eudaq_dir, file=self.converter_config_path)
-            tree_string = '-t {tree}'.format(tree='drs4tree' if self.Type == 'pad' else 'telescopetree')
+            tree_string = '-t {tree}'.format(tree=self.ConverterTree)
             converter_cmd = '{eudaq}/bin/Converter.exe {tree} {conf} {raw}'.format(eudaq=self.eudaq_dir, raw=raw_file_path, tree=tree_string, conf=conf_string)
             if self.Type == 'pad':
                 self.__set_converter_configfile(run_infos)
@@ -167,7 +170,6 @@ class Converter:
             os.system(converter_cmd)
             self.align_run()
             os.chdir(curr_dir)
-
         self.__add_tracking(run_number)
         self.__rename_tracking_file(run_number)
         os.remove(self.get_root_file_path())
@@ -182,18 +184,26 @@ class Converter:
             align_cmd = '{align}/bin/EventAlignment.exe {rootfile}'.format(align=self.AlignDir, rootfile=self.get_root_file_path())
             os.system(align_cmd)
 
+    def remove_pickle_files(self, run_number):
+        log_message('Removing all pickle files for run {}'.format(run_number))
+        program_dir = ''
+        for i in __file__.split('/')[:-2]:
+            program_dir += i + '/'
+        files = glob('{prog}Configuration/Individual_Configs/*/*{tc}*_{run}_*'.format(prog=program_dir, run=run_number, tc=self.test_campaign))
+        for _file in files:
+            remove(_file)
+
+    def __rename_rootfile(self, run_number):
+        os.rename(self.get_root_file_path(), self.get_final_file_path(run_number))
+
     @staticmethod
     def remove_pickle_files(run_number):
-        log_message('Removing all pickle files for run {}'.format(run_number))
         program_dir = ''
         for i in __file__.split('/')[:-2]:
             program_dir += i + '/'
         files = glob('{prog}Configuration/Individual_Configs/*/*{run}*'.format(prog=program_dir, run=run_number))
         for _file in files:
             remove(_file)
-
-    def __rename_rootfile(self, run_number):
-        os.rename(self.get_root_file_path(), self.get_final_file_path(run_number))
 
     def __rename_tracking_file(self, run_number):
         os.rename(self.get_tracking_file_path(run_number), self.get_final_file_path(run_number))
@@ -212,23 +222,34 @@ class Converter:
         path = self.tracking_dir + file_name
         move(path, self.root_file_dir)
 
-    def __set_converter_configfile(self, run_infos):
-        pol_dia1 = int(copysign(1, run_infos['hv dia1']))
-        pol_dia2 = int(copysign(1, run_infos['hv dia2']))
+    def load_polarities(self, info):
+        active_regions = self.parser.getint('ROOTFILE_GENERATION', 'active_regions')
+        pols = []
+        i = 1
+        for j in xrange(self.NChannels):
+            if has_bit(active_regions, j):
+                pols.append(int(copysign(1, info['dia{0}hv'.format(i)])))
+                i += 1
+            else:
+                pols.append(0)
+        return str(pols)
 
+    def __set_converter_configfile(self, run_infos):
         parser = ConfigParser()
         conf_file = '{eudaq}/conf/{file}'.format(eudaq=self.eudaq_dir, file=self.converter_config_path)
         parser.read(conf_file)
-        parser.set('Converter.drs4tree', 'polarities', '[{pol1},0,0,{pol2}]'.format(pol1=pol_dia1, pol2=pol_dia2))
+        converter_section = 'Converter.{0}'.format(self.ConverterTree)
+        parser.set(converter_section, 'polarities', self.load_polarities(run_infos))
+        parser.set(converter_section, 'pulser_polarities', self.load_polarities(run_infos))
 
         # remove unset ranges and regions
         new_options = self.parser.options('ROOTFILE_GENERATION')
-        for opt in parser.options('Converter.drs4tree'):
+        for opt in parser.options(converter_section):
             if (opt.endswith('_range') or opt.endswith('_region')) and opt not in new_options:
-                parser.remove_option('Converter.drs4tree', opt)
+                parser.remove_option(converter_section, opt)
         # set the new settings
         for key, value in self.config.iteritems():
-            parser.set('Converter.drs4tree', key, value)
+            parser.set(converter_section, key, value)
 
         # write changes
         f = open(conf_file, 'w')

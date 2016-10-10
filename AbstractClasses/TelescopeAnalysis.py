@@ -2,22 +2,22 @@ from argparse import ArgumentParser
 from copy import deepcopy
 from time import sleep
 
-from ROOT import TCanvas, TH2F, gROOT, TProfile, TH1F, TLegend, gStyle, kGreen, kCyan, TText, TCut
+from ROOT import TCanvas, TH2F, gROOT, TProfile, TH1F, TLegend, gStyle, kGreen, kCyan, TText, TCut, TF1, TGraph
 from numpy import array, zeros
 
 from Elementary import Elementary
 from RunClass import Run
 from Cut import Cut
+from Utils import *
 
 
 class Analysis(Elementary):
     """ Class for the analysis of the non-channel specific stuff of a single run. """
 
-    def __init__(self, run, diamonds=3, verbose=False, high_low_rate=None):
+    def __init__(self, run, verbose=False, high_low_rate=None, load_tree=True):
         """
         Parent class for all analyses, which contains all the basic stuff about the Telescope.
         :param run:             run object of type "Run" or integer run number
-        :param diamonds:        an integer number defining the diamonds activated for analysis: 0x1=ch0 (diamond 1) 0x2=ch3 (diamond 2)
         :param verbose:         if True, verbose printing is activated
         :param high_low_rate:   list of highest and lowest rate runs for an analysis collection
         """
@@ -26,17 +26,17 @@ class Analysis(Elementary):
         self.RootObjects = []
 
         # basics
-        self.diamonds = diamonds
-        self.run = self.init_run(run)
+        self.run = self.init_run(run, load_tree)
         self.run.analysis = self
         self.run_number = self.run.run_number
         self.RunInfo = deepcopy(self.run.RunInfo)
         self.lowest_rate_run = high_low_rate['min'] if high_low_rate is not None else self.run.run_number
         self.highest_rate_run = high_low_rate['max'] if high_low_rate is not None else self.run.run_number
         self.PickleDir = self.get_program_dir() + self.ana_config_parser.get('SAVE', 'pickle_dir')
+        if self.ana_config_parser.has_option('SAVE', 'ActivateTitle'):
+            gStyle.SetOptTitle(self.ana_config_parser.getboolean('SAVE', 'ActivateTitle'))
         # self.saveMCData = self.ana_config_parser.getboolean("SAVE", "SaveMCData")
         self.ana_save_dir = '{run}'.format(run=self.run.run_number)
-        self.set_root_titles()
 
         # DUT
         self.DUTType = self.run.DUTType
@@ -48,46 +48,45 @@ class Analysis(Elementary):
         self.channel = self.channel if hasattr(self, 'channel') else None
 
         # general for pads and pixels
-        self.Cut = Cut(self)
-        self.StartEvent = self.Cut.CutConfig['EventRange'][0]
-        self.EndEvent = self.Cut.CutConfig['EventRange'][1]
+        self.Cut = Cut(self, skip=not load_tree)
+        if load_tree:
+            self.StartEvent = self.Cut.CutConfig['EventRange'][0]
+            self.EndEvent = self.Cut.CutConfig['EventRange'][1]
+
+        # alignment
+            self.IsAligned = self.check_alignment(draw=False, save_plot=False)
 
         # save histograms // canvases
         self.signal_canvas = None
 
-        # alignment
-        self.IsAligned = self.check_alignment(draw=False, save_plot=False)
-
     # ============================================================================================
     # region INIT
 
-    def init_run(self, run):
+    @staticmethod
+    def init_run(run, load_tree):
+        """ create a run instance with either a given run integer or an already give run instance where a the run object is not None """
         if not isinstance(run, Run):
             assert type(run) is int, 'run has to be either a Run instance or an integer run number'
-            return Run(run, self.diamonds)
+            return Run(run, 3, load_tree)
         else:
             assert run.run_number is not None, 'No run selected, choose run.SetRun(run_nr) before you pass the run object'
             return run
-
-    def set_root_titles(self):
-        if self.MainConfigParser.has_option('SAVE', 'activate_title'):
-            gStyle.SetOptTitle(self.MainConfigParser.getboolean('SAVE', 'activate_title'))
     # endregion
 
     # ============================================================================================
     # region REGIONS AND PEAK INTEGRAL
 
-    def __draw_single_wf(self, event=None, show=True):
+    def __draw_single_wf(self, event=None, show=True, tcorr=False):
         start = self.StartEvent if event is None else event
         if hasattr(self, 'draw_waveforms') and self.run.wf_exists(self.channel):
-            return self.draw_waveforms(n=1, show=show, start_event=start)[0]
+            return self.draw_waveforms(n=1, show=show, start_event=start, t_corr=tcorr)
         else:
             h = TH2F('regions', '', 1024, 0, 511, 1000, -200, 50)
             if self.run.wf_exists(0):
                 self.tree.Draw('wf0:Iteration$/2>>regions', self.Cut.all_cut, 'goff', 1, start)
-        h.GetXaxis().SetNdivisions(26)
+        h.GetXaxis().SetNdivisions(520)
         self.format_histo(h, markersize=0.3, x_tit='Time [ns]', y_tit='Signal [au]', stats=0)
-        self.RootObjects.append(self.save_histo(h, 'Regions', show, self.ana_save_dir, lm=.075, rm=.045, x_fac=2000, y_fac=1000))
+        self.save_histo(h, 'Regions', show, self.ana_save_dir, lm=.075, rm=.045, x_fac=1.5, y_fac=.5)
         return h
 
     def draw_regions(self, ped=True, event=None, show=True):
@@ -125,36 +124,40 @@ class Analysis(Elementary):
         self.save_plots(save_name, ch=None)
         self.histos.append([h, gr])
 
-    def _add_buckets(self, ymin, ymax, xmin=0, xmax=512, avr_pos=-2, full_line=False):
-        start = self.run.signal_regions['b'][0] % 40
+    def _add_buckets(self, ymin, ymax, xmin=0, xmax=512, avr_pos=-2, full_line=False, size=.03):
+        start = self.run.signal_regions['b'][0] % 40 / 2
         stop = int(.8 * xmax) if xmax > 500 else int(xmax)
         bucket0 = self.run.signal_regions['b'][0] / 40
         x_range = xmax - xmin
         y_range = ymax - ymin
-        self.draw_tlatex(xmin - .015 * x_range, ymin - 0.1 * y_range, 'Bucket:', align=30, color=418, size=0.03)
+        self.draw_tlatex(xmin - .015 * x_range, ymin - 0.18 * y_range, 'Bucket:', align=30, color=418, size=size)
         peak_fit = self.run.signal_regions['a'][0] / 2.
         for i, x in enumerate(xrange(start, stop, 20), -bucket0):
-            y2 = ymax if full_line else ymin - 0.05 * y_range
-            self.draw_vertical_line(x, ymin - 0.12 * y_range, y2, 418, style=3 if full_line else 1)
+            y2 = ymax if full_line else ymin - 0.1 * y_range
+            self.draw_vertical_line(x, ymin - 0.22 * y_range, y2, 418, style=3 if full_line else 1, tline=True)
             if x <= stop - 20:
-                self.draw_tlatex(x + 10, ymin - 0.1 * y_range, str(i), align=20, color=418, size=0.03)
+                self.draw_tlatex(x + 10, ymin - 0.18 * y_range, str(i), align=20, color=418, size=size)
                 if peak_fit:
                     pos = peak_fit % 20
+                    p_pos = round_down_to(x, 20) + pos
+                    p_pos += 20 if p_pos < x else 0
                     if i == avr_pos:
-                        self.draw_tlatex(x + pos, ymin + 0.05 * y_range, 'Average Peak Position', color=807, size=0.03)
-                    self.draw_arrow(x + pos, x + pos, ymin + 1, ymin + 0.04 * y_range, col=807, width=2)
+                        self.draw_tlatex(p_pos, ymin + 0.05 * y_range, 'Average Peak Position', color=807, size=size)
+                    self.draw_arrow(p_pos, p_pos, ymin + 1, ymin + 0.04 * y_range, col=807, width=2)
 
     def draw_peak_integrals(self, event=None, add_buckets=True, show=True):
-        h = self.__draw_single_wf(event=event, show=False)
-        self.format_histo(h, title='Waveform', name='wf', x_tit='Time [ns]', y_tit='Signal [mV]', markersize=.8, y_off=.7, stats=0, tit_size=.05)
+        old_count = self.count
+        h, n = self.__draw_single_wf(event=event, show=False, tcorr=True)
+        self.format_histo(h, title='Peak Integrals', name='wf', x_tit='Time [ns]', y_tit='Signal [mV]', markersize=.8, y_off=.5, stats=0, tit_size=.07, lab_size=.06)
         xmin, xmax = self.run.signal_regions['e'][0] / 2 - 20, self.run.signal_regions['e'][1] / 2
         h.GetXaxis().SetRangeUser(xmin, xmax)
-        self.draw_histo(h, show=show, lm=.07, rm=.045, bm=.2, x=1.5, y=.75, gridy=True, gridx=True)
+        self.draw_histo(h, show=show, lm=.07, rm=.045, bm=.24, x=1.5, y=.5, gridy=True, gridx=True)
         gROOT.SetBatch(1) if not show else self.do_nothing()
         sleep(.5)
         # draw line at found peak and pedestal region
         ymin, ymax = h.GetYaxis().GetXmin(), h.GetYaxis().GetXmax()
-        peak_pos, ped_pos = self.__draw_peak_pos(event, ymin, ymax)
+        print event, n
+        peak_pos, ped_pos = self.__draw_peak_pos(event + n - 1, ymin, ymax)
         # draw error bars
         gr1 = self.make_tgrapherrors('gr1', '', color=kGreen + 2, marker_size=0, asym_err=True, width=2)
         gr2 = self.make_tgrapherrors('gr2', '', color=kCyan - 3, marker_size=0, asym_err=True, width=2)
@@ -173,20 +176,21 @@ class Analysis(Elementary):
         for gr in [gr1, gr2]:
             gr.Draw('[]')
             gr.Draw('p')
-        self._add_buckets(ymin, ymax, xmin, xmax) if add_buckets else self.do_nothing()
+        self._add_buckets(ymin, ymax, xmin, xmax, full_line=True, size=.05) if add_buckets else self.do_nothing()
         self.save_plots('IntegralPeaks',  ch=None)
         gROOT.SetBatch(0)
+        self.count = old_count
         self.histos.append([gr1, gr2])
 
     def __draw_peak_pos(self, event, ymin, ymax):
-        peak_pos = self.get_peak_position(event) / 2. if hasattr(self, 'get_peak_position') else self.run.signal_regions['a'][0] / 2.
+        peak_pos = self.get_peak_position(event, tcorr=True) if hasattr(self, 'get_peak_position') else self.run.signal_regions['a'][0] / 2.
         ped_region = self.PedestalRegion if hasattr(self, 'PedestalRegion') else 'ab'
         ped_pos = self.run.pedestal_regions[ped_region][1] / 2.
         y = ymax - ymin
-        self.draw_vertical_line(peak_pos, ymin, ymax - y / 3., color=4, w=2)
-        self.draw_vertical_line(ped_pos, ymin, ymax - y / 3, color=883, w=2)
+        self.draw_vertical_line(peak_pos, ymin, ymax - y / 3., color=4, w=2, name='peak')
+        self.draw_vertical_line(ped_pos, ymin, ymax - y / 3, color=883, w=2, name='ped')
         t1 = self.draw_tlatex(peak_pos, ymax - y / 3.1, 'found peak', color=4)
-        t2 = self.draw_tlatex(ped_pos, ymax - y / 3.1, 'ab', color=883)
+        t2 = self.draw_tlatex(ped_pos, ymax - y / 3.1, 'pedestal', color=883)
         t1.Draw()
         t2.Draw()
         self.RootObjects.append([t1, t2])
@@ -196,24 +200,24 @@ class Analysis(Elementary):
 
     # ============================================================================================
     # region TRACKS
-    def show_chi2(self, mode=None, show=True):
-        gROOT.SetBatch(1)
+    def show_chi2(self, mode=None, show=True, save=True, fit=False, prnt=True):
         assert mode in ['x', 'y', None], 'mode has to be in {lst}!'.format(lst=['x', 'y', None])
-        n_bins = 500 if mode is None else 1000
+        n_bins = 500 if mode is None else 250
         mode = 'tracks' if mode is None else mode
-        h = TH1F('h', '#chi^{2} in ' + mode, n_bins, 0, 100)
+        self.set_root_output(False)
+        h = TH1F('h', '#chi^{2} in ' + mode, n_bins, 0, 100 if mode == 'tracks' else 50)
         self.tree.Draw('chi2_{mod}>>h'.format(mod=mode), '', 'goff')
         if show:
-            gROOT.SetBatch(0)
-        c = TCanvas('c', 'Chi2 in ' + mode, 1000, 1000)
-        c.SetLeftMargin(.13)
-        if show or mode == 'tracks':
             yq = zeros(1)
-            h.GetQuantiles(1, yq, array([.9]))
-        self.format_histo(h, x_tit='#chi^{2}', y_tit='Entries', y_off=1.8)
-        h.Draw()
-        self.histos.append([h, c])
-        gROOT.SetBatch(0)
+            h.GetQuantiles(1, yq, array([.99]))
+            h.GetXaxis().SetRangeUser(0, yq[0])
+        if fit:
+            f = TF1('f', '[0]*TMath::GammaDist(x, {ndf}/2, 0, 2)'.format(ndf=4 if mode == 'tracks' else 2))
+            h.Fit(f, 'q')
+            h.SetStats(1)
+            set_statbox(only_fit=True)
+        self.format_histo(h, x_tit='#chi^{2}', y_tit='Number of Entries', y_off=1.8, stats=0)
+        self.save_histo(h, 'Chi2{0}'.format(mode.title() if mode is not 'tracks' else 'All'), show, save=save, lm=.13, prnt=prnt)
         return h
 
     def show_all_chi2(self):
@@ -237,14 +241,23 @@ class Analysis(Elementary):
         self.RootObjects.append([legend, histos, c])
         self.save_plots('Chi2', canvas=c, sub_dir=self.ana_save_dir, ch=None)
 
-    def draw_angle_distribution(self, mode='x', show=True, print_msg=True):
+    def draw_angle_distribution(self, mode='x', show=True, print_msg=True, cut=None):
         """ Displays the angle distribution of the tracks. """
         assert mode in ['x', 'y']
+        cut = cut if cut is not None else TCut('')
         self.set_root_output(False)
         h = TH1F('had', 'Track Angle Distribution in ' + mode, 320, -4, 4)
-        self.tree.Draw('slope_{mod}>>had'.format(mod=mode), '', 'goff')
-        self.format_histo(h, x_tit='Track Angle [deg]', y_tit='Entries', y_off=1.8, lw=2)
+        self.tree.Draw('slope_{mod}>>had'.format(mod=mode), cut, 'goff')
+        self.format_histo(h, x_tit='Track Angle [deg]', y_tit='Entries', y_off=1.8, lw=2, stats=0)
         self.save_histo(h, 'TrackAngle{mod}'.format(mod=mode.upper()), show, lm=.13, prnt=print_msg)
+        return h
+
+    def draw_distance_distribution(self, show=True, save=True):
+        h = TH1F('hdd', 'Track Distance in Diamond', 100, 500, 501)
+        self.tree.Draw('500*TMath::Sqrt(TMath::Power(TMath::Sin(TMath::DegToRad()*slope_x), 2) + TMath::Power(TMath::Sin(TMath::DegToRad()*slope_y), 2) + 1)>>hdd', 'slope_x > -20', 'goff')
+        self.format_histo(h, x_tit='Distance [#mum]', y_tit='Entries', y_off=1.8, lw=2, stats=0)
+        h.GetXaxis().SetNdivisions(405)
+        self.save_histo(h, 'DistanceInDia', show, lm=.13, save=save)
         return h
 
     def calc_angle_fit(self, mode='x', show=True):
@@ -254,7 +267,7 @@ class Analysis(Elementary):
             h = self.draw_angle_distribution(mode, show=show)
             return self.fit_fwhm(h, draw=show)
 
-        fit = func() if show else 0
+        fit = func() if show else None
         return self.do_pickle(pickle_path, func, fit)
 
     def show_both_angles(self):
@@ -377,6 +390,15 @@ class Analysis(Elementary):
 
     # ==============================================
     # region RUN FUNCTIONS
+
+    def draw_time(self, show=True):
+        entries = self.tree.Draw('Entry$:time', '', 'goff')
+        time = [self.tree.GetV2()[i] for i in xrange(entries)]
+        t = [(i - time[0]) / 1000 for i in time]
+        gr = TGraph(len(t), array(xrange(len(t)), 'd'), array(t, 'd'))
+        gr.SetNameTitle('g_t', 'Time vs Events')
+        self.format_histo(gr, x_tit='Entry Number', y_tit='Time [s]', y_off=1.5)
+        self.draw_histo(gr, show=show, draw_opt='al', lm=.13, rm=.08)
 
     def get_event_at_time(self, time_sec):
         return self.run.get_event_at_time(time_sec)

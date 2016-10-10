@@ -4,7 +4,7 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-R', '--RunPlan', help='Displays the deltailed overview about one Runplan', type=int, default=-1)
-parser.add_argument('-tc', '--testcampaign', type=str, default='201510', help='TestCampaign: default=201510')
+parser.add_argument('-tc', '--testcampaign', type=str, default='201608', help='TestCampaign: default=201608')
 args = parser.parse_args()
 
 testcampaign = str(args.testcampaign)

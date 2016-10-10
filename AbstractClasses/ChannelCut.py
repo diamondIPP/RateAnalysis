@@ -1,10 +1,12 @@
 from Cut import Cut
 from Extrema import Extrema2D
 from copy import deepcopy
-from ROOT import TCut, TH1F, TH2F, TF1, TCanvas, TLegend, gROOT, TProfile, THStack
-from time import sleep
-from numpy import sqrt
+from ROOT import TCut, TH1F, TH2F, TF1, TCanvas, TLegend, gROOT, TProfile, THStack, TCutG, TSpectrum
 from collections import OrderedDict
+from Utils import *
+from json import loads
+from numpy import array
+from ConfigParser import NoOptionError
 
 __author__ = 'micha'
 
@@ -13,12 +15,13 @@ __author__ = 'micha'
 # MAIN CLASS
 # ==============================================
 class ChannelCut(Cut):
-    """ The ChannelCut contains all cut settings which corresponds to a single diamond in a single run. """
+    """The ChannelCut contains all cut settings which corresponds to a single diamond in a single run. """
 
     def __init__(self, analysis, channel=0):
         Cut.__init__(self, analysis, skip=True)
         self.__dict__.update(analysis.Cut.__dict__)
         self.channel = channel
+        self.run_number = self.analysis.run_number
 
         self.load_channel_config()
 
@@ -36,10 +39,31 @@ class ChannelCut(Cut):
     def load_channel_config(self):
         self.CutConfig['absMedian_high'] = self.load_config_data('absMedian_high')
         self.CutConfig['pedestalsigma'] = self.load_config_data('pedestalsigma')
+        self.CutConfig['fiducial'] = self.load_fiducial()
+        self.CutConfig['threshold'] = self.load_dia_config('threshold', store_true=True)
+
+    def load_fiducial(self):
+        if self.MainConfigParser.has_option(self.TESTCAMPAIGN, 'fid_split_runs'):
+            split_runs = [0] + loads(self.MainConfigParser.get(self.TESTCAMPAIGN, 'fid_split_runs')) + [int(1e10)]
+            for i in xrange(0, len(split_runs) - 1):
+                if split_runs[i] <= self.run_number < split_runs[i + 1]:
+                    return self.load_dia_config('fid_cuts{n}'.format(n=i if i else ''))
+        else:
+            return self.load_dia_config('fid_cuts')
 
     def load_config_data(self, name):
         value = self.ana_config_parser.getint('CUT', name)
         return value if value > 0 else None
+
+    def load_dia_config(self, name, store_true=False):
+        try:
+            conf = loads(self.ana_config_parser.get('CUT', name))
+            if not store_true:
+                return conf[self.analysis.diamond_name] if self.analysis.diamond_name in conf else None
+            else:
+                return True if self.analysis.diamond_name in conf else False
+        except NoOptionError:
+            log_warning('No option {0} in the analysis config for {1}!'.format(name, make_tc_str(self.TESTCAMPAIGN)))
 
     # endregion
 
@@ -161,7 +185,7 @@ class ChannelCut(Cut):
 
     def generate_trigger_cell(self, min_max):
         assert 0 <= min_max[0] <= 1024, 'min trigger cell has to be in [0, 1024], not "{min}"'.format(min=min_max[0])
-        assert 0 <= min_max[1] <= 1024, 'max trigger cell has to be in [0, 1024], not "{max}"'.format(min=min_max[1])
+        assert 0 <= min_max[1] <= 1024, 'max trigger cell has to be in [0, 1024], not "{max}"'.format(max=min_max[1])
         self.EasyCutStrings['TriggerCell'] = 'Trigger Cell in {0}'.format(min_max)
         return TCut('trigger_cell < {max} && trigger_cell >= {min}'.format(min=min_max[0], max=min_max[1]))
 
@@ -194,6 +218,20 @@ class ChannelCut(Cut):
             raise Exception()
         return TCut(string), corrected_time, t_correction
 
+    def generate_threshold(self):
+        return TCut('{sig}>{thresh}'.format(sig=self.analysis.SignalName, thresh=self.calc_threshold(show=False))) if self.CutConfig['threshold'] else TCut('')
+
+    def generate_fiducial(self):
+        xy = self.CutConfig['fiducial']
+        cut = None
+        if xy is not None:
+            cut = TCutG('fid', 5, array([xy[0], xy[0], xy[1], xy[1], xy[0]], 'd'), array([xy[2], xy[3], xy[3], xy[2], xy[2]], 'd'))
+            nr = self.analysis.run.channels.index(self.analysis.channel) + 1
+            cut.SetVarX('diam{0}_track_x'.format(nr))
+            cut.SetVarY('diam{0}_track_y'.format(nr))
+            self.ROOTObjects.append(cut)
+        return TCut(cut.GetName() if cut is not None else '')
+
     # special cut for analysis
     def generate_pulser_cut(self, beam_on=True):
         cut = self.CutStrings['ped_sigma'] + self.CutStrings['event_range'] + self.CutStrings['saturated']
@@ -203,6 +241,12 @@ class ChannelCut(Cut):
         return cut
 
     def generate_channel_cutstrings(self):
+
+        # --THRESHOLD --
+        self.CutStrings['threshold'] += self.generate_threshold()
+
+        # -- FIDUCIAL --
+        self.CutStrings['fiducial'] += self.generate_fiducial()
 
         # -- PULSER CUT --
         self.CutStrings['pulser'] += '!pulser'
@@ -231,8 +275,9 @@ class ChannelCut(Cut):
     # ==============================================
     # HELPER FUNCTIONS
 
-    def calc_signal_threshold(self, bg=False, show=True):
+    def calc_signal_threshold(self, bg=False, show=True, show_all=False):
         pickle_path = self.analysis.PickleDir + 'Cuts/SignalThreshold_{tc}_{run}_{ch}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.highest_rate_run, ch=self.channel)
+        show = False if show_all else show
 
         def func():
             print 'calculating signal threshold for bucket cut of run {run} and ch{ch}...'.format(run=self.analysis.run_number, ch=self.channel)
@@ -241,16 +286,18 @@ class ChannelCut(Cut):
             cut_string = '!({buc})&&{pul}'.format(buc=self.CutStrings['old_bucket'], pul=self.CutStrings['pulser'])
             self.analysis.tree.Draw(draw_string, cut_string, 'goff')
             entries = h.GetEntries()
-            if entries < 1000:
+            if entries < 2000:
                 return 30
             h.Rebin(2) if entries < 5000 else self.do_nothing()
             # extract fit functions
+            self.set_root_output(False)
             fit = self.triple_gauss_fit(h)
             sig_fit = TF1('f1', 'gaus', -50, 300)
             sig_fit.SetParameters(fit.GetParameters())
             ped_fit = TF1('f2', 'gaus(0) + gaus(3)', -50, 300)
             pars = [fit.GetParameter(i) for i in xrange(3, 9)]
             ped_fit.SetParameters(*pars)
+            self.set_root_output(True)
 
             # real data distribution without pedestal fit
             signal = deepcopy(h)
@@ -276,62 +323,88 @@ class ChannelCut(Cut):
                 print ValueError('errors has a length of 0')
                 return -30
             max_err = errors[max(errors.keys())]
-            if show:
-                c1 = TCanvas('c1', 'c', 1000, 1000)
-                c1.SetLeftMargin(.127)
-                self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.8)
-                h.Draw()
-                sleep(.1)
-                self.draw_y_axis(max_err, c1.GetUymin(), c1.GetUymax(), 'threshold  ', off=.3, line=True)
-                # add subfunction to the plot
-                ped_fit.SetLineStyle(2)
-                ped_fit.Draw('same')
-                sig_fit.SetLineColor(4)
-                sig_fit.SetLineStyle(3)
-                sig_fit.Draw('same')
-                c1.Update()
-                self.save_plots('BucketCut', sub_dir=self.analysis.save_dir)
-                c2 = TCanvas('c2', 'c', 1000, 1000)
-                self.format_histo(gr1, title='Efficiencies', x_tit='Threshold', y_tit='Efficiency', markersize=.2)
-                gr1.Draw('apl')
-                gr2.Draw('pl')
-                leg = TLegend(.75, .8, .9, .9)
-                gr5 = deepcopy(gr1)
-                gr5.SetTitle('#varepsilon_{bg}')
-                [leg.AddEntry(gr, gr.GetTitle(), 'l') for gr in [gr5, gr2]]
-                leg.Draw()
-                self.save_plots('Efficiencies', sub_dir=self.analysis.save_dir)
 
-                c3 = TCanvas('c3', 'c', 1000, 1000)
-                c3.SetGrid()
-                self.format_histo(gr3, y_tit='background fraction', x_tit='excluded signal fraction', markersize=0.2, y_off=1.2)
-                gr3.Draw('apl')
-                gr = self.make_tgrapherrors('gr', 'working point', color=2)
-                gr.SetPoint(0, 1 - sig_fit.Integral(-50, max_err) / signal.Integral(), ped_fit.Integral(-50, max_err) / ped_fit.Integral(-50, 300))
-                l = self.draw_tlatex(gr.GetX()[0], gr.GetY()[0] + .01, 'Working Point', color=2, size=.04)
-                gr.GetListOfFunctions().Add(l)
-                gr.Draw('p')
-                self.save_plots('ROC_Curve', sub_dir=self.analysis.save_dir)
+            c = None
+            if show_all:
+                self.set_root_output(True)
+                c = TCanvas('c_all', 'Signal Threshold Overview', self.Res, self.Res)
+                c.Divide(2, 2)
 
-                c4 = TCanvas('c4', 'c', 1000, 1000)
-                c4.SetGridx()
-                self.format_histo(gr4, x_tit='Threshold', y_tit='1 / error', y_off=1.4)
-                gr4.Draw('al')
-                self.save_plots('ErrorFunction', sub_dir=self.analysis.save_dir)
+            # Bucket cut plot
+            self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.8, stats=0)
+            self.draw_histo(h, '', show, lm=.135, canvas=c.cd(1) if show_all else None)
+            self.draw_y_axis(max_err, h.GetYaxis().GetXmin(), h.GetMaximum(), 'threshold  ', off=.3, line=True)
+            ped_fit.SetLineStyle(2)
+            ped_fit.Draw('same')
+            sig_fit.SetLineColor(4)
+            sig_fit.SetLineStyle(3)
+            sig_fit.Draw('same')
+            self.save_plots('BucketCut', sub_dir=self.analysis.save_dir)
 
-                self.RootObjects.append([h, gr1, gr2, c1, gr3, c2, c3, c4, gr4, leg, gr])
+            # Efficiency plot
+            self.format_histo(gr1, title='Efficiencies', x_tit='Threshold', y_tit='Efficiency', markersize=.2)
+            l2 = self.make_legend(.78, .3)
+            tits = ['#varepsilon_{bg}', gr2.GetTitle()]
+            [l2.AddEntry(p, tits[i], 'l') for i, p in enumerate([gr1, gr2])]
+            self.draw_histo(gr1, '', False, draw_opt='apl', l=l2, canvas=c.cd(2) if show_all else None)
+            gr2.Draw('pl')
+            self.save_plots('Efficiencies')
+
+            # ROC Curve
+            self.format_histo(gr3, y_tit='background fraction', x_tit='excluded signal fraction', markersize=0.2, y_off=1.2)
+            self.draw_histo(gr3, '', False, gridx=True, gridy=True, draw_opt='apl', canvas=c.cd(3) if show_all else None)
+            p = self.make_tgrapherrors('gr', 'working point', color=2)
+            p.SetPoint(0, 1 - sig_fit.Integral(-50, max_err) / signal.Integral(), ped_fit.Integral(-50, max_err) / ped_fit.Integral(-50, 300))
+            l = self.draw_tlatex(p.GetX()[0], p.GetY()[0] + .01, 'Working Point', color=2, size=.04)
+            p.GetListOfFunctions().Add(l)
+            p.Draw('p')
+            self.save_plots('ROC_Curve', sub_dir=self.analysis.save_dir)
+
+            # Error Function plot
+            self.format_histo(gr4, x_tit='Threshold', y_tit='1 / error', y_off=1.4)
+            self.save_histo(gr4, 'ErrorFunction', False, gridx=True, draw_opt='al', canvas=c.cd(4) if show_all else None)
+
+            self.RootObjects.append([sig_fit, ped_fit, gr2, c])
+
             return max_err
 
-        threshold = func() if show else None
+        threshold = func() if show or show_all else None
         threshold = self.do_pickle(pickle_path, func, threshold)
         return threshold
 
+    def find_ped_range(self):
+        self.analysis.tree.Draw(self.analysis.PedestalName, '', 'goff', 1000)
+        return calc_mean([self.analysis.tree.GetV1()[i] for i in xrange(1000)])
+
     def __calc_pedestal_range(self, sigma_range):
-        fit = self.analysis.show_pedestal_histo(region=self.analysis.PedestalRegion, peak_int=self.analysis.PeakIntegral, draw=False, cut='')
+        ped_range = self.find_ped_range()
+        x_range = [ped_range[0] - 5 * ped_range[1], ped_range[0] + 10 * ped_range[1]]
+        fit = self.analysis.show_pedestal_histo(region=self.analysis.PedestalRegion, peak_int=self.analysis.PeakIntegral, save=False, cut='', show=False, x_range=x_range)
         sigma = fit.Parameter(2)
-        mean = fit.Parameter(1)
+        mean_ = fit.Parameter(1)
         self.PedestalFit = fit
-        return [mean - sigma_range * sigma, mean + sigma_range * sigma]
+        return [mean_ - sigma_range * sigma, mean_ + sigma_range * sigma]
+
+    def calc_threshold(self, show=True):
+        pickle_path = self.analysis.PickleDir + 'Cuts/Threshold_{tc}_{run}_{ch}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run_number, ch=self.channel)
+
+        def func():
+            self.analysis.tree.Draw(self.analysis.SignalName, '', 'goff', 5000)
+            xvals = sorted([self.analysis.tree.GetV1()[i] for i in xrange(5000)])
+            x_range = [xvals[0] - 5, xvals[-5]]
+            h = self.analysis.show_signal_histo(show=show, cut=self.generate_fiducial(), x_range=x_range, binning=int(x_range[1] - x_range[0]))
+            s = TSpectrum(3)
+            s.Search(h)
+            peaks = [s.GetPositionX()[i] for i in xrange(s.GetNPeaks())]
+            h.GetXaxis().SetRangeUser(peaks[0], peaks[-1])
+            x_start = h.GetBinCenter(h.GetMinimumBin())
+            h.GetXaxis().UnZoom()
+            fit = TF1('fit', 'landau', x_start, h.GetXaxis().GetXmax())
+            h.Fit(fit, 'q{0}'.format(0 if not show else ''), '', x_start, h.GetXaxis().GetXmax())
+            return fit.GetX(.1, 0, peaks[-1])
+
+        threshold = func() if show else None
+        return self.do_pickle(pickle_path, func, threshold)
 
     def calc_timing_range(self, show=True, n_sigma=4):
         pickle_path = self.analysis.PickleDir + 'Cuts/TimingRange_{tc}_{run}_{ch}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run_number, ch=self.channel)
@@ -341,7 +414,7 @@ class ChannelCut(Cut):
 
             gROOT.SetBatch(1) if not show else self.do_nothing()
             num = self.analysis.SignalNumber
-            cut = self.generate_special_cut(excluded_cuts=['bucket', 'timing'])
+            cut = self.generate_special_cut(excluded=['bucket', 'timing'])
 
             # estimate timing
             draw_string = 'IntegralPeakTime[{num}]'.format(num=num)
@@ -435,7 +508,7 @@ class ChannelCut(Cut):
         # if not bPlot:
         #     return TCut('')
         print 'generate_timing_cut with %s sigma' % sigma
-        cut = self.generate_special_cut(excluded_cuts=['timing','bucket'])
+        cut = self.generate_special_cut(excluded=['timing', 'bucket'])
         # Estimate Timing
         print ' * Estimate Timing',
         # hTiming = TH1F('hTiming','hTiming',4096,0,512)

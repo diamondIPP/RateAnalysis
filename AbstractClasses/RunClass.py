@@ -11,6 +11,8 @@ from ConfigParser import ConfigParser, NoOptionError
 from numpy import mean
 from collections import OrderedDict
 from subprocess import check_output
+import sys
+from Utils import isfloat
 
 default_info = {
     'persons on shift': '-',
@@ -19,10 +21,10 @@ default_info = {
     'configuration': 'signal',
     'mask': '-',
     'masked pixels': [0] * 4,
-    'diamond 1': 'CH_0',
-    'diamond 2': 'CH_3',
-    'hv dia1': 0,
-    'hv dia2': 0,
+    'dia1': 'CH_0',
+    'dia2': 'CH_3',
+    'dia1hv': 0,
+    'dia2hv': 0,
     'for1': 0,
     'for2': 0,
     'fs11': 0,
@@ -33,11 +35,11 @@ default_info = {
     'begin date': '2999-03-14T15:26:53Z',
     'trim time': '-:-:-',
     'config time': '-:-:-',
-    'start time': '2999-03-14T15:26:53Z',
+    'starttime0': '2999-03-14T15:26:53Z',
     'trig accept time': '-:-:-',
     'opening time': '-:-:-',
     'open time': '-:-:-',
-    'stop time': '2999-03-14T16:26:53Z',
+    'endtime': '2999-03-14T16:26:53Z',
     'raw rate': 0,
     'prescaled rate': 0,
     'to TLU rate': 0,
@@ -46,9 +48,9 @@ default_info = {
     'drs4 events': 0,
     'datacollector events': 0,
     'aimed flux': 0,
-    'measured flux': 0,
+    'measuredflux': 0,
     'mean flux': None,
-    'user comments': '-',
+    'comments': '-',
     'is good run': True
 }
 
@@ -64,7 +66,7 @@ class Run(Elementary):
     operationmode = ''
     TrackingPadAnalysis = {}
 
-    def __init__(self, run_number=None, diamonds=3, verbose=False):
+    def __init__(self, run_number=None, diamonds=3, load_tree=True, verbose=False):
         """
         :param run_number: number of the run
         :param diamonds: 0x1=ch0; 0x2=ch3
@@ -75,7 +77,8 @@ class Run(Elementary):
         Elementary.__init__(self, verbose=verbose)
 
         # configuration
-        self.channels = [0, 3]
+        self.NChannels = 9 if self.run_config_parser.get('BASIC', 'digitizer').lower() == 'caen' else 4
+        self.channels = self.load_channels()
         self.trigger_planes = [1, 2]
         self.DUTType = self.load_dut_type()
         self.filename = self.run_config_parser.get('BASIC', 'filename')
@@ -84,14 +87,21 @@ class Run(Elementary):
         self.runinfofile = self.run_config_parser.get('BASIC', 'runinfofile')
         self.maskfilepath = self.run_config_parser.get('BASIC', 'maskfilepath')
         self.createNewROOTFiles = self.run_config_parser.getboolean('BASIC', 'createNewROOTFiles')
-        
+
         # run info
         self.RunInfo = None
         self.RootFile = None
         self.tree = None
+        self.load_run_info()
 
-        if run_number is not None:
-            self.converter = Converter(self.TESTCAMPAIGN, self.run_config_parser, self.run_number)
+        # times
+        self.log_start = None
+        self.log_stop = None
+        self.duration = None
+        self.__load_timing()
+
+        self.converter = Converter(self.TESTCAMPAIGN, self.run_config_parser, self.run_number)
+        if run_number is not None and load_tree:
             assert (run_number > 0), 'incorrect run_number'
             self.set_run(run_number)
 
@@ -104,18 +114,24 @@ class Run(Elementary):
             self.totalTime = self.endTime - self.startTime
             self.totalMinutes = (self.endTime - self.startTime) / 60000
             self.n_entries = int(self.endEvent + 1)
-            
+
             # region info
             if self.DUTType == 'pad':
                 self.region_information = self.load_regions()
+                self.NChannels = self.load_n_channels()
+                self.channels = self.load_channels()
                 self.pedestal_regions = self.get_regions('pedestal')
                 self.signal_regions = self.get_regions('signal')
                 self.peak_integrals = self.get_peak_integrals()
-                self.DRS4Channels = self.load_drs4_channels()
+                self.DigitizerChannels = self.load_digitizer_channels()
                 self.TCal = self.load_tcal()
 
             self.FoundForRate = False
             self.flux = self.calculate_flux()
+
+        elif run_number is not None:
+            self.load_run_info()
+            self.converter.convert_run(self.RunInfo, run_number)
 
         else:
             self.load_run_info()
@@ -126,11 +142,6 @@ class Run(Elementary):
         self.bias = self.load_bias()
         self.IsMonteCarlo = False
 
-        # times
-        self.log_start = None
-        self.log_stop = None
-        self.duration = None
-        self.__load_timing()
         # root objects
         self.RunInfoLegends = None
 
@@ -139,10 +150,24 @@ class Run(Elementary):
     def load_run_config(self):
         return self.load_run_configs(self.run_number)
 
+    def load_n_channels(self):
+        for i, line in enumerate(self.region_information):
+            if 'Sensor Names' in line:
+                data = self.region_information[i + 1].strip(' ').split(',')
+                return len(data)
+
+    def load_channels(self):
+        binary = self.run_config_parser.getint('ROOTFILE_GENERATION', 'active_regions')
+        if hasattr(self, 'region_information'):
+            for i, line in enumerate(self.region_information):
+                if 'active_regions:' in line:
+                    binary = int(line.strip('active_regions:'))
+        return [i for i in xrange(self.NChannels) if self.has_bit(binary, i)]
+
     def load_bias(self):
         bias = {}
         for i, ch in enumerate(self.channels, 1):
-            bias[ch] = self.RunInfo['hv dia{num}'.format(num=i)]
+            bias[ch] = self.RunInfo['dia{num}hv'.format(num=i)]
         return bias
     
     def load_dut_type(self):
@@ -161,7 +186,7 @@ class Run(Elementary):
             data = json.load(f)
             f.close()
         except IOError as err:
-            self.log_warning('{err}\nCould not load default RunInfo! --> Using default'.format(err))
+            self.log_warning('{err}\nCould not load default RunInfo! --> Using default'.format(err=err))
             self.RunInfo = default_info
             return -1
 
@@ -171,8 +196,8 @@ class Run(Elementary):
                 # try with run_log key prefix
                 self.RunInfo = data.get('{tc}{run}'.format(tc=self.TESTCAMPAIGN[2:], run=str(self.run_number).zfill(5)))
             if self.RunInfo is None:
-                self.log_warning('Run not found in json run log file! --> Using default')
-                self.RunInfo = default_info
+                self.log_warning('Run not found in json run log file!')
+                sys.exit(5)
             self.rename_runinfo_keys()
         else:
             self.RunInfo = default_info
@@ -183,7 +208,7 @@ class Run(Elementary):
         parser.read('Configuration/DiamondAliases.cfg')
         diamondname = {}
         for i, ch in enumerate(self.channels, 1):
-            diamondname[ch] = self.RunInfo['diamond {num}'.format(num=i)]
+            diamondname[ch] = self.RunInfo['dia{num}'.format(num=i)]
             if diamondname[ch].lower().startswith('ch'):
                 continue
             try:
@@ -194,12 +219,12 @@ class Run(Elementary):
 
     def __load_timing(self):
         try:
-            self.log_start = datetime.strptime(self.RunInfo['start time'], "%Y-%m-%dT%H:%M:%SZ")
-            self.log_stop = datetime.strptime(self.RunInfo['stop time'], "%Y-%m-%dT%H:%M:%SZ")
+            self.log_start = datetime.strptime(self.RunInfo['starttime0'], "%Y-%m-%dT%H:%M:%SZ")
+            self.log_stop = datetime.strptime(self.RunInfo['endtime'], "%Y-%m-%dT%H:%M:%SZ")
         except ValueError:
             try:
-                self.log_start = datetime.strptime(self.RunInfo['start time'], "%H:%M:%S")
-                self.log_stop = datetime.strptime(self.RunInfo['stop time'], "%H:%M:%S")
+                self.log_start = datetime.strptime(self.RunInfo['starttime0'], "%H:%M:%S")
+                self.log_stop = datetime.strptime(self.RunInfo['endtime'], "%H:%M:%S")
             except ValueError as err:
                 print err
                 return
@@ -232,9 +257,32 @@ class Run(Elementary):
         self.analyse_ch = analyse_ch
         return analyse_ch
 
+    def load_mask(self):
+        mask_file_path = '{path}/{mask}'.format(path=self.maskfilepath, mask=self.RunInfo['maskfile'])
+        dic = {}
+        try:
+            f = open(mask_file_path, 'r')
+            for line in f:
+                if len(line) > 3:
+                    line = line.split()
+                    if not line[1] in dic:
+                        dic[line[1]] = {}
+                        dic[line[1]]['row'] = [0, 0]
+                        dic[line[1]]['col'] = [0, 0]
+                    if line[0] == 'cornBot':
+                        dic[line[1]]['row'][0] = line[3]
+                        dic[line[1]]['col'][0] = line[2]
+                    elif line[0] == 'cornTop':
+                        dic[line[1]]['row'][1] = line[3]
+                        dic[line[1]]['col'][1] = line[2]
+            f.close()
+        except IOError as err:
+            self.log_warning(err)
+        print dic
+
     def calculate_flux(self):
-        self.verbose_print('Calculate rate from mask file:\n\t' + self.RunInfo['mask'])
-        mask_file_path = self.maskfilepath + '/' + self.RunInfo['mask']
+        self.verbose_print('Calculate rate from mask file:\n\t' + self.RunInfo['maskfile'])
+        mask_file_path = self.maskfilepath + '/' + self.RunInfo['maskfile']
         maskdata = {}
         for plane in self.trigger_planes:
             maskdata[plane] = {}
@@ -274,14 +322,14 @@ class Run(Elementary):
                 area = pixel_size * unmasked_pixels[plane]
                 flux.append(self.RunInfo['for{num}'.format(num=i)] / area / 1000)  # in kHz/cm^2
         else:
-            flux.append(self.RunInfo['measured flux'])
+            flux.append(self.RunInfo['measuredflux'])
         self.RunInfo['mean flux'] = mean(flux)
         return mean(flux)
 
     def find_for_in_comment(self):
         for name in ['for1', 'for2']:
             if not self.RunInfo[name]:
-                for cmt in self.RunInfo['user comments'].split('\r\n'):
+                for cmt in self.RunInfo['comments'].split('\r\n'):
                     cmt = cmt.replace(':', '')
                     cmt = cmt.split(' ')
                     if str(cmt[0].lower()) == name:
@@ -326,7 +374,7 @@ class Run(Elementary):
                     ranges[data[0]] = [int(data[i]) for i in [1, 2]]
         return ranges
 
-    def load_drs4_channels(self):
+    def load_digitizer_channels(self):
         for i, line in enumerate(self.region_information):
             if 'Sensor Names' in line:
                 data = self.region_information[i + 1].strip(' ').split(',')
@@ -335,7 +383,7 @@ class Run(Elementary):
     def load_tcal(self):
         for i, line in enumerate(self.region_information):
             if 'tcal' in line:
-                data = [float(i) for i in line.strip('tcal []').split(',') if self.isfloat(i)]
+                data = [float(i) for i in line.strip('tcal []').split(',') if isfloat(i)]
                 return data
 
     def get_peak_integrals(self):
@@ -376,9 +424,37 @@ class Run(Elementary):
     def __get_time_vec(self):
         self.tree.SetEstimate(-1)
         entries = self.tree.Draw('Entry$:time', '', 'goff')
+        time = [self.tree.GetV2()[i] for i in xrange(entries)]
+        self.fill_empty_time_entries(time)
+        if abs((time[-1] - time[0]) / 1000 - self.duration.seconds) > 120:
+            self.log_warning('Need to correct timing vector\n')
+            print [i / 1000 for i in time[:4]], time[-1] / 1000
+            print (time[-1] - time[0]) / 1000, self.duration.seconds, abs((time[-1] - time[0]) / 1000 - self.duration.seconds)
+            time = self.__correct_time(entries)
+        return time
+
+    @staticmethod
+    def fill_empty_time_entries(times):
+        first_valid = 0
+        ind = 0
+        for i, t in enumerate(times):
+            if t != -1:
+                first_valid = t
+                ind = i
+                break
+        times[:ind] = [first_valid] * ind
+
+    def __correct_time(self, entries):
         time = []
+        t = self.tree.GetV2()[0]
+        new_t = 0
         for i in xrange(entries):
-            time.append(self.tree.GetV2()[i])
+            diff = self.tree.GetV2()[i] - t
+            if diff < 0:
+                new_t = -diff + .5 / 1000
+            time.append(self.tree.GetV2()[i] + new_t)
+            t = self.tree.GetV2()[i]
+        self.fill_empty_time_entries(time)
         return time
 
     def get_time_at_event(self, event):
@@ -393,7 +469,12 @@ class Run(Elementary):
             event = 0
         elif event >= self.endEvent:
             event = self.endEvent
-        return self.time[event]
+        t = []
+        for i in xrange(event, self.endEvent + 1):
+            t.append(self.time[i])
+            if t[-1] != -1:
+                break
+        return t[-1]
 
     def get_event_at_time(self, time_sec):
         """
@@ -444,14 +525,15 @@ class Run(Elementary):
         :return:
         """
         assert channel is None or channel in self.channels, 'wrong channel id "{ch}"'.format(ch=channel)
-        if canvas is not None:
-            pad = canvas.cd()
-        else:
-            print 'Draw run info in current pad'
-            pad = gROOT.GetSelectedPad()
-            if not pad:
-                print 'ERROR: Cannot access active Pad'
-                return
+        if show:
+            if canvas is not None:
+                canvas.cd()
+            else:
+                print 'Draw run info in current pad'
+                pad = gROOT.GetSelectedPad()
+                if not pad:
+                    print 'ERROR: Cannot access active Pad'
+                    return
 
         lines = 2
         if diamondinfo:
@@ -463,7 +545,7 @@ class Run(Elementary):
         # height = (lines - 1) * 0.03
 
         tc = datetime.strptime(self.TESTCAMPAIGN, '%Y%m')
-        dur = '{0:02d}:{1:02.0f}'.format(int(self.totalMinutes), (self.totalMinutes - int(self.totalMinutes)) * 60)
+        dur = '{0:02d}:{1:02.0f}'.format(int(self.totalMinutes), (self.totalMinutes - int(self.totalMinutes)) * 60) if runs is None else ''
 
         if show:
             if not canvas.GetBottomMargin() > .105:
@@ -478,7 +560,7 @@ class Run(Elementary):
             else:
                 run_string = 'Runs {start}-{stop} ({flux1} - {flux2})'.format(start=runs[0], stop=runs[1], flux1=runs[2].strip(' '), flux2=runs[3].strip(' '))
             width = len(run_string) * .01 if x == y else len(run_string) * 0.015 * y / x
-            legend = self.make_legend(.005, .1, y1=.003, w=width, nentries=3, felix=False, scale=.75)
+            legend = self.make_legend(.005, .1, y1=.003, x2=width, nentries=3, felix=False, scale=.75)
             legend.SetMargin(0.05)
             legend.AddEntry(0, 'Test Campaign: {tc}'.format(tc=tc.strftime('%b %Y')), '')
             legend.AddEntry(0, run_string, '')
@@ -499,14 +581,16 @@ class Run(Elementary):
         if show:
             pads = [i for i in canvas.GetListOfPrimitives() if i.IsA().GetName() == 'TPad']
             if not pads:
-                git_text.Draw()
+                if self.MainConfigParser.getboolean('SAVE', 'git_hash'):
+                    git_text.Draw()
                 legend.Draw()
             else:
                 for pad in pads:
                     pad.cd()
-                    git_text.Draw()
+                    if self.MainConfigParser.getboolean('SAVE', 'git_hash'):
+                        git_text.Draw()
                     legend.Draw()
-            pad.Modified()
+                    pad.Modified()
             canvas.Update()
         else:
             return legend, git_text
@@ -526,8 +610,8 @@ class Run(Elementary):
         l.SetX2NDC(.435)
         l.SetTextSize(.0195)
 
-    def get_runinfo(self, ch, pad=None):
-        runs = []
+    def get_runinfo(self, ch, pad=None, runs=None):
+        runs = runs if runs is not None else []
         if hasattr(self, 'collection'):
             runs = [self.collection.keys()[0], self.collection.keys()[-1], self.collection.values()[0].run.get_rate_string(), self.collection.values()[-1].run.get_rate_string()]
         return self.draw_run_info(show=False, runs=runs, channel=ch, canvas=pad)

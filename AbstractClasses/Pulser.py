@@ -13,7 +13,6 @@ class PulserAnalysis(Elementary):
 
     def __init__(self, pad_analysis):
         self.Ana = pad_analysis
-        # self.Ana = PadAnalysis(5, 5)
         Elementary.__init__(self, verbose=self.Ana.verbose)
         self.Run = self.Ana.run
         self.Channel = self.Ana.channel
@@ -22,8 +21,12 @@ class PulserAnalysis(Elementary):
         self.save_dir = self.Ana.save_dir
         self.PulserCut = self.Cut.generate_pulser_cut()
         self.Polarity = self.Ana.PulserPolarity
+        self.Type = self.load_type()
 
         self.ROOTObjects = []
+
+    def load_type(self):
+        return str(self.Ana.RunInfo['pulser']) if 'pulser' in self.Ana.RunInfo else None
 
     def draw_rate(self, evts_per_bin=1000, cut=None, show=True):
         """ Shows the fraction of pulser events as a function of the event number. Peaks appearing in this graph are most likely beam interruptions. """
@@ -36,57 +39,64 @@ class PulserAnalysis(Elementary):
         self.save_histo(h, 'PulserRate', show, lm=.13, draw_opt='hist')
         return h
 
-    def calc_fraction(self):
+    def calc_fraction(self, show=False):
         """ :returns the fitted value of the fraction of pulser events with event range and beam interruptions cuts and its fit error. """
-        cut = self.Cut.generate_special_cut(included_cuts=['beam_interruptions', 'event_range'])
-        h = self.draw_rate(show=False, cut=cut)
+        cut = self.Cut.generate_special_cut(included=['beam_interruptions', 'event_range'])
+        h = self.draw_rate(show=show, cut=cut)
         fit = h.Fit('pol0', 'qs0')
-        print 'The fraction of pulser events is: {0:5.2f} +- {1:4.2f}%'.format(fit.Parameter(0), fit.ParError(0))
+        self.log_info('The fraction of pulser events is: {0:5.2f} +- {1:4.2f}%'.format(fit.Parameter(0), fit.ParError(0)))
         return fit.Parameter(0), fit.ParError(0)
 
-    def draw_pulseheight(self, binning=20000, draw_opt='histe', show=True):
-        """ Shows the average pulse height of the pulser as a function of event numbers. """
+    def calc_real_fraction(self):
+        in_rate = 40 if self.Ana.run.flux < 10 else 100
+        diamond_size = .4 * .4
+        particle_rate = self.Ana.run.flux * diamond_size
+        return in_rate / particle_rate
+
+    def draw_pulseheight(self, binning=10000, draw_opt='histe', show=True):
+        """ Shows the average pulse height of the pulser as a function of event number """
         entries = self.Run.n_entries
         nbins = entries / binning
         h = TProfile('hpph', 'Pulser Pulse Height', nbins, 0, entries)
         signal = self.Ana.generate_signal_name(self.Ana.PulserName, evnt_corr=False, off_corr=True, cut=self.PulserCut)
         self.Tree.Draw('{sig}:Entry$>>hpph'.format(sig=signal), self.PulserCut, 'goff')
         values = [h.GetBinContent(i) for i in xrange(h.GetNbinsX()) if h.GetBinContent(i)]
-        diff = max(values) - min(values)
-        self.format_histo(h, x_tit='Event Number', y_tit='Pulse Height [au]', y_off=1.7, stats=0, y_range=[min(values) - diff, max(values) + diff * 2], fill_color=self.FillColor)
-        self.draw_histo(h, '', show, gridy=True, draw_opt=draw_opt, lm=.15)
+        y_range = increased_range([min(values), max(values)], .7, .7)
+        self.format_histo(h, x_tit='Event Number', y_tit='Pulse Height [au]', y_off=1.7, stats=0, fill_color=self.FillColor, y_range=y_range)
+        set_statbox(x=.91, entries=2, only_fit=True)
+        self.draw_histo(h, '', show, gridy=True, draw_opt=draw_opt, lm=.14, rm=.07)
         h.Draw('same')
         self.save_plots('PulserPulserHeight', self.save_dir)
         return h
 
-    def draw_pulseheight_fit(self, show=True):
+    def draw_pulseheight_fit(self, show=True, draw_opt='histe'):
         """ Shows the pulse height fit for the pulser. """
-        set_statbox(.88, .88, only_fit=True)
-        h = self.draw_pulseheight(show=show)
+        h = self.draw_pulseheight(show=show, draw_opt=draw_opt)
         h.SetName('Fit Result')
         h.SetStats(1)
         fit = h.Fit('pol0', 'qs')
         self.save_plots('PulserPulserHeightFit')
         return fit.Parameter(0), fit.ParError(0)
 
-    def draw_distribution(self, show=True, corr=True, beam_on=True, binning=700, events=None, start=None):
+    def draw_distribution(self, show=True, corr=True, beam_on=True, binning=700, events=None, start=None, stats=False):
         """ Shows the distribution of the pulser integrals. """
         cut = self.Cut.generate_pulser_cut(beam_on=beam_on)
-        h = self.Ana.show_signal_histo(cut=cut, sig=self.Ana.PulserName, show=False, off_corr=corr, evnt_corr=False, binning=binning, events=events, start=start)
-        self.format_histo(h, stats=0, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.3)
+        h = self.Ana.show_signal_histo(cut=cut, sig=self.Ana.PulserName, show=False, off_corr=corr, evnt_corr=False, binning=binning, events=events, start=start, save=False)
+        self.format_histo(h, name='p_hd', stats=stats, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.3)
         self.save_histo(h, 'PulserDistribution', show, logy=True, lm=.12)
         return h
 
-    def draw_distribution_fit(self, show=True, corr=True, beam_on=True, events=None, start=None, binning=350):
+    def draw_distribution_fit(self, show=True, save=True, corr=True, beam_on=True, events=None, start=None, binning=350):
+        show = False if not save else show
         start_string = '_{0}'.format(start) if start is not None else ''
         events_string = '_{0}'.format(events) if events is not None else ''
         suffix = '{corr}_{beam}{st}{ev}'.format(corr='_ped_corr' if corr else '', beam='BeamOff' if not beam_on else 'BeamOn', st=start_string, ev=events_string)
         pickle_path = self.Ana.PickleDir + 'Pulser/HistoFit_{tc}_{run}_{dia}{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.Ana.run_number, dia=self.Ana.diamond_name, suf=suffix)
 
         def func():
-            set_statbox(.88, .88, only_fit=True)
-            h = self.draw_distribution(show=show, corr=corr, beam_on=beam_on, binning=binning, events=events, start=start)
-            h.SetStats(1)
+            set_statbox(only_fit=True, w=.25)
+            h = self.draw_distribution(show=show, corr=corr, beam_on=beam_on, binning=binning, events=events, start=start, stats=True)
+            h.SetName('Fit Result')
             same_pols = self.Polarity == self.Ana.Polarity
             h.GetXaxis().SetRangeUser(20, h.GetXaxis().GetXmax())
             x_min = 10 if same_pols else h.GetBinCenter(h.GetMaximumBin() - 2)
@@ -96,20 +106,22 @@ class PulserAnalysis(Elementary):
             f = deepcopy(gROOT.GetFunction('gaus'))
             f.SetLineStyle(7)
             f.SetRange(0, 500)
-            f.Draw('same')
-            h.SetName('Fit Results')
+            h.GetListOfFunctions().Add(f)
+            set_drawing_range(h)
             self.Ana.RootObjects.append(f)
-            self.save_plots('PulserDistributionFit')
-            return fit_func
+            self.save_plots('PulserDistributionFit', show=show)
+            return FitRes(fit_func)
 
-        fit = func() if show else None
+        fit = func() if save else None
         return self.do_pickle(pickle_path, func, fit)
 
-    def draw_peak_timing(self, show=True):
-        self.Ana.draw_peak_timing('', 'pulser', ucut=self.PulserCut, show=show, draw_cut=False)
+    def draw_peak_timing(self, show=True, corr=False):
+        self.Ana.draw_peak_timing('', 'pulser', ucut=self.PulserCut, show=show, draw_cut=False, corr=corr)
 
     def draw_pedestal(self, show=True, fit=True, x_range=None):
-        return self.Ana.show_pedestal_histo(cut=self.PulserCut, show=show, fit=fit, x_range=x_range)
+        # region = 'ac' if 'ac' in self.Ana.run.pedestal_regions else None
+        region = None
+        return self.Ana.show_pedestal_histo(cut=self.PulserCut, show=show, fit=fit, x_range=x_range, region=region)
 
     def compare_pedestal(self, show=True):
         self.Ana.show_pedestal_histo(show=False, fit=False, x_range=[-20, 20])
@@ -131,11 +143,12 @@ class PulserAnalysis(Elementary):
         self.save_histo(stack, 'PulserPedestalComparison', show, lm=.12, l=legend, draw_opt='nostack')
         self.reset_colors()
 
-    def draw_waveform(self, n=1, start_event=None, add_buckets=False, y_range=None, show=True):
+    def draw_waveforms(self, n=1, start_event=None, add_buckets=False, y_range=None, show=True):
         fit = self.draw_distribution_fit(show=False)
+        y_opp = 150 if self.Type == 'intern' else 50
         if y_range is None:
-            y_min = fit.Parameter(1) / 50 * 50 + 50 if self.Polarity < 0 else -150
-            y_max = +150 if self.Polarity < 0 else fit.Parameter(1) * 50 / 50 + 50
+            y_min = -(round_up_to(fit.Parameter(1), 50) + 50) if self.Polarity < 0 else -y_opp
+            y_max = y_opp if self.Polarity < 0 else round_up_to(fit.Parameter(1), 50) + 50
             print y_min, y_max
         else:
             y_min, y_max = y_range[0], y_range[1]
@@ -147,24 +160,21 @@ class PulserAnalysis(Elementary):
         start_events = [self.Ana.StartEvent + events_spacing * i for i in xrange(n_pics)]
         for i, start in enumerate(start_events):
             self.count = 0
-            self.draw_waveform(n=1000, start_event=start, y_range=frange, show=show)
+            self.draw_waveforms(n=1000, start_event=start, y_range=frange, show=show)
             self.save_plots('WaveForms{0}'.format(i), sub_dir='{0}/WaveForms'.format(self.save_dir))
 
     def draw_pulser_vs_time(self, n_points=5, _mean=True, show=True, corr=True, events=5000):
-        events_spacing = (self.EndEvent - self.StartEvent) / n_points
-        start_events = [self.StartEvent + events_spacing * i for i in xrange(n_points)]
+        events_spacing = (self.Ana.EndEvent - self.Ana.StartEvent) / n_points
+        start_events = [self.Ana.StartEvent + events_spacing * i for i in xrange(n_points)]
         mode = 'Mean' if _mean else 'Sigma'
         gr = self.make_tgrapherrors('gr', '{0} of Pulser vs Time'.format(mode))
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         for i, start in enumerate(start_events):
-            fit = self.calc_pulser_fit(show=False, start=start, events=events, binning=200, corr=corr)
+            fit = self.draw_distribution_fit(show=False, start=start, events=events, binning=200, corr=corr)
             par = 1 if _mean else 2
-            gr.SetPoint(i, (self.run.get_time_at_event(start) - self.run.startTime) / 60e3, fit.Parameter(par))
+            gr.SetPoint(i, (self.Ana.run.get_time_at_event(start) - self.Ana.run.startTime) / 60e3, fit.Parameter(par))
             gr.SetPointError(i, 0, fit.ParError(par))
-        gROOT.SetBatch(0) if show else gROOT.SetBatch(1)
-        c = TCanvas('c', '{0} of Pulser vs Time'.format(mode), 1000, 1000)
-        gr.Draw('alp')
-        self.save_plots('Pulser{0}VsTime'.format(mode), sub_dir=self.save_dir)
-        gROOT.SetBatch(0)
-        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.histos.append([gr, c])
+        self.save_histo(gr, 'Pulser{0}VsTime'.format(mode), show, draw_opt='alp')
+
+    def save_felix(self):
+        self.save_dir = self.Ana.save_dir
+        self.set_save_directory('PlotsFelix')

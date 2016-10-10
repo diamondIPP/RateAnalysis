@@ -8,6 +8,7 @@ from screeninfo import get_monitors
 from glob import glob
 from os import remove
 from argparse import ArgumentParser
+from collections import OrderedDict
 
 
 parser = ArgumentParser()
@@ -35,18 +36,18 @@ def load_collection(plan, channel):
 def del_redundant_plots(res_dir, save_dir):
     for f in glob('{0}{1}/*/*'.format(res_dir, save_dir)):
         name = f.split('/')[-1]
-        for start in ['PulseHeightTime', 'PulseHeightZeroTime']:
+        for start in ['PulseHeightTime', 'PulseHeightZeroTime', 'PulserMean', 'PulseHeightFlu', 'PulseHeightZeroFlu']:
             if name.startswith(start):
                 remove(f)
 
 
 if args.tc == '10':
-    runplans = {3: [1], 5: [1], 8.1: [1, 2], 10.1: [1, 2]}
-    upscans = {3: [1], 5: [1], 8.2: [1, 2], 10.2: [1, 2]}
+    runplans = OrderedDict(sorted({3: [1], 5: [1], 8.1: [1, 2], 10.1: [1, 2]}.iteritems()))
+    upscans = OrderedDict(sorted({3: [1], 5: [1], 8.2: [1, 2], 10.2: [1, 2]}.iteritems()))
 
 else:
-    runplans = {2: [2], 5.3: [1], 13: [2]}
-    upscans = {2.2: [2], 5.2: [1], 13.1: [2]}
+    runplans = OrderedDict(sorted({2: [2], 5.3: [1], 13: [2]}.iteritems()))
+    upscans = OrderedDict(sorted({2.1: [2], 5.2: [1], 13.1: [2]}.iteritems()))
 
 
 for rp, chs in runplans.iteritems():
@@ -56,8 +57,9 @@ for rp, chs in runplans.iteritems():
         z = load_collection(rp, ch)
         z.print_loaded()
         z.draw_ph_with_currents(show=False)
-        z.draw_pulse_heights(show=False)
+        z.draw_pulse_heights(show=False, save_plots=True)
         z.draw_pulser_info(show=False, do_fit=False)
+        z.draw_ph_distributions_below_flux(flux=80, show=False, save_plot=True)
         del_redundant_plots(z.results_directory, z.save_dir)
         z.close_files()
         z.__del__()
@@ -65,11 +67,11 @@ for rp, chs in runplans.iteritems():
 for rp, chs in upscans.iteritems():
 
     for ch in chs:
+        a.print_banner('Starting AnalysisCollection for rp {0} and ch {1}'.format(rp, ch), '-')
         z = load_collection(rp, ch)
         z.draw_signal_distributions(show=False, off=200)
-        if rp == 8.2:
+        if rp == 3 or rp == 8:
             z.draw_all_chi2s(show=False)
             z.draw_both_angles(show=False)
-        if rp != upscans.keys()[-1]:
-            z.close_files()
-            z.__del__()
+        z.close_files()
+        z.__del__()

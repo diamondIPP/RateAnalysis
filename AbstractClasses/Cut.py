@@ -1,10 +1,10 @@
-import os
 import pickle
 import json
 from numpy import array, zeros, arange, delete
 from Elementary import Elementary
 from ROOT import TCut, gROOT, TH1F
 from collections import OrderedDict
+from Utils import *
 
 
 class Cut(Elementary):
@@ -48,19 +48,18 @@ class Cut(Elementary):
     def load_run_config(self):
         return self.load_run_configs(self.analysis.run_number)
 
-    def generate_special_cut(self, excluded_cuts=None, included_cuts=None, name='special_cut'):
+    def generate_special_cut(self, excluded=None, included=None, name='special_cut'):
         cut = TCut(name, '')
         n_cuts = 0
         for key, value in self.CutStrings.iteritems():
-            if excluded_cuts and key in excluded_cuts:
+            if excluded and key in excluded:
                 continue
-            if included_cuts and key not in included_cuts:
+            if included and key not in included:
                 continue
             if key.startswith('old') or key.startswith('all_cut'):
                 continue
             if value.GetTitle() == '':
                 continue
-            self.log_info('add {key} {tit}'.format(key=key, tit=value.GetTitle()))
             cut += value
             n_cuts += 1
         self.log_info('generated {name} cut with {num} cuts'.format(name=name, num=n_cuts))
@@ -116,6 +115,7 @@ class Cut(Elementary):
         dic['beam_interruptions'] = TCut('beam_interruptions', '')
         dic['ped_sigma'] = TCut('ped_sigma', '')
         dic['median'] = TCut('median', '')
+        dic['threshold'] = TCut('threshold', '')
         # waveform
         dic['signal_peak_pos'] = TCut('signal_peak_pos', '')
         dic['signal_peak_time'] = TCut('signal_peak_time', '')
@@ -125,6 +125,7 @@ class Cut(Elementary):
         dic['bucket'] = TCut('bucket', '')
         # tracks
         dic['tracks'] = TCut('tracks', '')
+        dic['fiducial'] = TCut('fiducial', '')
         dic['chi2X'] = TCut('chi2X', '')
         dic['chi2Y'] = TCut('chi2Y', '')
         dic['track_angle'] = TCut('track_angle', '')
@@ -262,9 +263,13 @@ class Cut(Elementary):
             gROOT.SetBatch(1)
             h_x = TH1F('hx', '', 70, -4, 4)
             h_y = TH1F('hy', '', 70, -4, 4)
-            self.analysis.tree.Draw('slope_x>>hx', '', 'goff')
-            self.analysis.tree.Draw('slope_y>>hy', '', 'goff')
-            fit_result = h_x.Fit('gaus', 'qs')
+            self.analysis.tree.Draw('slope_x>>hx', 'slope_x > -100', 'goff')
+            self.analysis.tree.Draw('slope_y>>hy', 'slope_y > -100', 'goff')
+            if h_x.GetEntries() > 500 and h_y.GetEntries() > 500:
+                fit_result = h_x.Fit('gaus', 'qs')
+            else:
+                log_warning('Empty slope histogram! Using default values!')
+                return {'x': [-4., 4.], 'y': [-4., 4.]}
             slopes = {'x': [], 'y': []}
             x_mean = fit_result.Parameters()[1]
             slopes['x'] = [x_mean - angle, x_mean + angle]
@@ -279,7 +284,12 @@ class Cut(Elementary):
         # create the cut string
         string = 'slope_x>{minx}&&slope_x<{maxx}&&slope_y>{miny}&&slope_y<{maxy}'.format(minx=slope['x'][0], maxx=slope['x'][1], miny=slope['y'][0], maxy=slope['y'][1])
         return string if angle > 0 else ''
-    
+
+    @staticmethod
+    def generate_distance(dmin, dmax, thickness=500):
+        d_string = '{t}*TMath::Sqrt(TMath::Power(TMath::Sin(TMath::DegToRad()*slope_x), 2) + TMath::Power(TMath::Sin(TMath::DegToRad()*slope_y), 2) + 1)'.format(t=thickness)
+        return TCut('distance', '{d}>{min}&&{d}<={max}'.format(d=d_string, min=dmin, max=dmax))
+
     def generate_cut_string(self):
         """ Creates the cut string. """
         gROOT.SetBatch(1)
@@ -357,11 +367,11 @@ class Cut(Elementary):
         interrupts = []
         last_rate = 0
         tup = [0, 0]
-        cut = 30  # if rate goes higher than n %
+        cut = 40  # if rate goes higher than n %
         for i, value in enumerate(rate):
             if value > cut > last_rate:
                 tup[0] = i * binning
-            elif value < cut < last_rate:
+            elif value < cut <= last_rate:
                 tup[1] = i * binning
                 interrupts.append(tup)
                 tup = [0, 0]

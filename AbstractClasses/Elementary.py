@@ -1,4 +1,3 @@
-import os
 import pickle
 import re
 from copy import deepcopy
@@ -9,12 +8,16 @@ from ConfigParser import ConfigParser
 from json import loads
 from Utils import *
 from screeninfo import get_monitors
+from numpy import array
+from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 
-from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend, TLine, TColor, TArrow
+from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, kGreen, kOrange, kViolet, kYellow, kRed, kBlue, \
+    kMagenta, kAzure, kCyan, kTeal
+
 # global test campaign and resolution
 tc = None
 res = None
-default_tc = '201510'
+default_tc = '201610'
 
 
 class Elementary(object):
@@ -35,9 +38,12 @@ class Elementary(object):
         self.run_config_parser = self.load_run_config()
         self.ana_config_parser = self.load_ana_config()
 
-        self.Felix = self.MainConfigParser.get('SAVE', 'felix')
+        self.Felix = self.MainConfigParser.getboolean('SAVE', 'felix')
+        self.set_root_titles()
 
-        self.Stuff = []
+        # progress bar
+        self.Widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
+        self.ProgressBar = ProgressBar(widgets=self.Widgets, maxval=0)
 
         # screen resolution
         self.Res = self.load_resolution(resolution)
@@ -53,6 +59,10 @@ class Elementary(object):
 
     # ============================================
     # region CONFIG
+    def set_root_titles(self):
+        if self.MainConfigParser.has_option('SAVE', 'activate_title'):
+            gStyle.SetOptTitle(self.MainConfigParser.getboolean('SAVE', 'activate_title'))
+
     def load_main_config(self):
         parser = ConfigParser()
         parser.read('{dir}/Configuration/main.cfg'.format(dir=self.get_program_dir()))
@@ -118,10 +128,9 @@ class Elementary(object):
         self.TESTCAMPAIGN = str(campaign)
 
     def print_testcampaign(self, pr=True):
-        out = datetime.strptime(self.TESTCAMPAIGN, '%Y%m')
-        out = 'TESTCAMPAIGN: {0}'.format(out.strftime('%b %Y'))
+        out = datetime.strptime(self.TESTCAMPAIGN, '%Y%m').strftime('%b %Y')
         if pr:
-            print out
+            print 'TESTCAMPAIGN: {0}'.format(out)
         return out
 
     @classmethod
@@ -135,14 +144,18 @@ class Elementary(object):
 
     # endregion
 
+    def start_pbar(self, n):
+        self.ProgressBar.maxval = n
+        self.ProgressBar.start()
+
     @staticmethod
     def create_colorlist():
-        col_names = [TColor.kGreen, TColor.kOrange, TColor.kViolet, TColor.kYellow, TColor.kRed, TColor.kBlue, TColor.kMagenta, TColor.kAzure, TColor.kCyan, TColor.kTeal]
+        col_names = [kGreen, kOrange, kViolet, kYellow, kRed, kBlue, kMagenta, kAzure, kCyan, kTeal]
         colors = []
         for color in col_names:
-            colors.append(color + 1)
+            colors.append(color + (1 if color != 632 else -7))
         for color in col_names:
-            colors.append(color + 3)
+            colors.append(color + (3 if color != 800 else 9))
         return colors
 
     @staticmethod
@@ -186,13 +199,11 @@ class Elementary(object):
         assert (num >= 0 and type(num) is int), 'num has to be non negative int'
         return bool(num & 1 << bit)
 
-    def make_bias_string(self):
-        if hasattr(self, 'bias'):
-            bias = self.bias
-            pol = 'm' if bias < 0 else 'p'
-            return '_{pol}{bias:04d}'.format(pol=pol, bias=int(abs(bias)))
-        else:
-            return ''
+    def make_bias_string(self, bias=None):
+        if bias is None:
+            return self.make_bias_string(self.bias) if hasattr(self, 'bias') else ''
+        pol = 'm' if bias < 0 else 'p'
+        return '_{pol}{bias:04d}'.format(pol=pol, bias=int(abs(bias)))
 
     def make_info_string(self):
         info = ''
@@ -203,7 +214,7 @@ class Elementary(object):
             info = info.replace('-', '')
         return info
 
-    def save_canvas(self, canvas, sub_dir=None, name=None, print_names=True):
+    def save_canvas(self, canvas, sub_dir=None, name=None, print_names=True, show=True):
         sub_dir = self.save_dir if hasattr(self, 'save_dir') and sub_dir is None else '{subdir}/'.format(subdir=sub_dir)
         canvas.Update()
         file_name = canvas.GetName() if name is None else name
@@ -212,42 +223,34 @@ class Elementary(object):
         out = 'Saving plots: {nam}'.format(nam=name)
         run_number = self.run_number if hasattr(self, 'run_number') else None
         run_number = 'rp{nr}'.format(nr=self.run_plan) if hasattr(self, 'run_plan') else run_number
-        file_path += self.make_info_string()
+        self.set_root_output(show)
         gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
+        info = self.make_info_string()
         for f in ftypes:
             ext = '.{typ}'.format(typ=f)
             if not f == 'png' and run_number is not None:
-                ext = '_{run}.{typ}'.format(run=run_number, typ=f)
+                ext = '{str}_{run}.{typ}'.format(str=info, run=run_number, typ=f)
             self.ensure_dir(file_path.format(typ=f))
             out_file = '{fname}{ext}'.format(fname=file_path, ext=ext)
             out_file = out_file.format(typ=f)
             canvas.SaveAs(out_file)
         if print_names:
-            log_message(out)
-        gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
+            self.log_info(out)
+        self.set_root_output(True)
 
-    def save_plots(self, savename, sub_dir=None, canvas=None, ind=0, ch='dia', x=1, y=1, prnt=True):
+    def save_plots(self, savename, sub_dir=None, canvas=None, ind=0, ch='dia', x=1, y=1, prnt=True, save=True, show=True):
         """
         Saves the canvas at the desired location. If no canvas is passed as argument, the active canvas will be saved. However for applications without graphical interface,
         such as in SSl terminals, it is recommended to pass the canvas to the method.
-        :param savename:
-        # :param file_type:
-        # :param save_dir:
-        :param sub_dir:
-        :param canvas:
         :param ind: index of the collection
         :param ch: if None print both dias (dirty fix)
         """
-        # save_dir = self.save_directory if save_dir is None else save_dir
-        # file_type = '.png' if file_type is None else '.{end}'.format(end=file_type)
 
         if canvas is None:
             try:
-                c = gROOT.GetListOfCanvases()
-                # pad = gROOT.GetSelectedPad()
-                canvas = c[-1]
+                canvas = gROOT.GetListOfCanvases()[-1]
             except Exception as inst:
-                print '\n\n{delim}\nERROR in get canvas!\n{msg}\n{delim}\n\n'.format(delim=len(str(inst)) * '-', msg=inst)
+                print log_warning('Error in save canvas: {err}'.format(err=inst))
                 return
         channel = self.channel if hasattr(self, 'channel') else None
         if hasattr(self, 'run'):
@@ -265,12 +268,13 @@ class Elementary(object):
                 self.collection.values()[ind].run.draw_run_info(channel=ch if ch is None else self.collection.values()[ind].channel, canvas=canvas, runs=runs, x=x, y=y)
             else:
                 self.collection.values()[ind].run.draw_run_info(channel=ch if ch is None else self.collection.values()[ind].channel, canvas=canvas, x=x, y=y)
+        canvas.Modified()
         canvas.Update()
-
-        try:
-            self.save_canvas(canvas, sub_dir=sub_dir, name=savename, print_names=prnt)
-        except Exception as inst:
-            print self.print_banner('ERROR in save plots!\n{0}'.format(inst), '-')
+        if save:
+            try:
+                self.save_canvas(canvas, sub_dir=sub_dir, name=savename, print_names=prnt, show=show)
+            except Exception as inst:
+                print log_warning('Error in save_canvas:\n{0}'.format(inst))
 
     def create_new_testcampaign(self):
         year = raw_input('Enter the year of the test campgaign (YYYY): ')
@@ -376,28 +380,39 @@ class Elementary(object):
     def draw_x_axis(self, y, xmin, xmax, tit, col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035, tick_size=0.03, l_off=.01, line=False):
         return self.draw_axis(xmin, xmax, y, y, tit, col=col, off=off, opt=opt, width=w, tit_size=tit_size, lab_size=lab_size, tick_size=tick_size, l_off=l_off, line=line)
 
-    def draw_line(self, x1, x2, y1, y2, color=1, width=1, style=1):
+    def draw_line(self, x1, x2, y1, y2, color=1, width=1, style=1, name='li'):
+        l = TCutG(name, 2, array([x1, x2], 'd'), array([y1, y2], 'd'))
+        l.SetLineColor(color)
+        l.SetLineWidth(width)
+        l.SetLineStyle(style)
+        l.Draw('same')
+        self.ROOTObjects.append(l)
+        return l
+
+    def draw_tline(self, x1, x2, y1, y2, color=1, width=1, style=1):
         l = TLine(x1, y1, x2, y2)
         l.SetLineColor(color)
         l.SetLineWidth(width)
         l.SetLineStyle(style)
         l.Draw()
         self.ROOTObjects.append(l)
+        return l
 
-    def draw_vertical_line(self, x, ymin, ymax, color=1, w=1, style=1):
-        self.draw_line(x, x, ymin, ymax, color=color, width=w, style=style)
+    def draw_vertical_line(self, x, ymin, ymax, color=1, w=1, style=1, name='li', tline=False):
+        return self.draw_line(x, x, ymin, ymax, color, w, style, name) if not tline else self.draw_tline(x, x, ymin, ymax, color, w, style)
 
-    def draw_horizontal_line(self, y, xmin, xmax, color=1, w=1, style=1):
-        self.draw_line(xmin, xmax, y, y, color=color, width=w, style=style)
+    def draw_horizontal_line(self, y, xmin, xmax, color=1, w=1, style=1, name='li', tline=False):
+        return self.draw_line(xmin, xmax, y, y, color, w, style, name) if not tline else self.draw_tline(xmin, xmax, y, y, color, w, style)
 
-    def make_legend(self, x1=.58, y2=.88, nentries=2, w=.3, scale=1, name='l', y1=None, felix=True):
-        x2 = x1 + w
+    def make_legend(self, x1=.65, y2=.88, nentries=2, scale=1, name='l', y1=None, felix=False, margin=.25, x2=None):
+        x2 = .95 if x2 is None else x2
         y1 = y2 - nentries * .05 * scale if y1 is None else y1
         l = TLegend(x1, y1, x2, y2)
         l.SetName(name)
         l.SetTextFont(42)
         l.SetTextSize(0.03 * scale)
-        if self.Felix and felix:
+        l.SetMargin(margin)
+        if self.Felix or felix:
             l.SetLineWidth(2)
             l.SetBorderSize(0)
             l.SetFillColor(0)
@@ -405,8 +420,8 @@ class Elementary(object):
             l.SetTextAlign(12)
         return l
 
-    def format_histo(self, histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=20, color=1, markersize=1, x_off=1, y_off=1, z_off=1, lw=1, fill_color=0, stats=True,
-                     tit_size=.04, draw_first=False, x_range=None, y_range=None):
+    def format_histo(self, histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=20, color=1, markersize=1, x_off=None, y_off=None, z_off=None, lw=1, fill_color=0,
+                     stats=True, tit_size=.04, lab_size=.04, draw_first=False, x_range=None, y_range=None, z_range=None, do_marker=True, style=None):
         h = histo
         if draw_first:
             self.set_root_output(False)
@@ -420,9 +435,10 @@ class Elementary(object):
             pass
         # markers
         try:
-            h.SetMarkerStyle(marker)
-            h.SetMarkerColor(color) if color is not None else h.SetMarkerColor(h.GetMarkerColor())
-            h.SetMarkerSize(markersize)
+            if do_marker:
+                h.SetMarkerStyle(marker) if marker is not None else do_nothing()
+                h.SetMarkerColor(color) if color is not None else do_nothing()
+                h.SetMarkerSize(markersize) if markersize is not None else do_nothing()
         except AttributeError or ReferenceError:
             pass
         # lines/fill
@@ -430,6 +446,7 @@ class Elementary(object):
             h.SetLineColor(color) if color is not None else h.SetLineColor(h.GetLineColor())
             h.SetFillColor(fill_color)
             h.SetLineWidth(lw)
+            h.SetFillStyle(style) if style is not None else do_nothing()
         except AttributeError or ReferenceError:
             pass
         # axis titles
@@ -437,53 +454,58 @@ class Elementary(object):
             x_tit = untitle(x_tit) if self.Felix else x_tit
             y_tit = untitle(y_tit) if self.Felix else y_tit
             z_tit = untitle(z_tit) if self.Felix else z_tit
-            # x-axis
             x_axis = h.GetXaxis()
-            x_axis.SetTitle(x_tit) if x_tit else h.GetXaxis().GetTitle()
-            x_axis.SetTitleOffset(x_off)
-            x_axis.SetTitleSize(tit_size)
-            x_axis.SetRangeUser(x_range[0], x_range[1]) if x_range is not None else do_nothing()
-            # y-axis
+            if x_axis:
+                x_axis.SetTitle(x_tit) if x_tit else h.GetXaxis().GetTitle()
+                x_axis.SetTitleOffset(x_off) if x_off is not None else do_nothing()
+                x_axis.SetTitleSize(tit_size)
+                x_axis.SetLabelSize(lab_size)
+                x_axis.SetRangeUser(x_range[0], x_range[1]) if x_range is not None else do_nothing()
             y_axis = h.GetYaxis()
-            y_axis.SetTitle(y_tit) if y_tit else y_axis.GetTitle()
-            y_axis.SetTitleOffset(y_off)
-            y_axis.SetTitleSize(tit_size)
-            y_axis.SetRangeUser(y_range[0], y_range[1]) if y_range is not None else do_nothing()
-            # z-axis
-            h.GetZaxis().SetTitle(z_tit) if z_tit else h.GetZaxis().GetTitle()
-            h.GetZaxis().SetTitleOffset(z_off)
-            h.GetZaxis().SetTitleSize(tit_size)
+            if y_axis:
+                y_axis.SetTitle(y_tit) if y_tit else y_axis.GetTitle()
+                y_axis.SetTitleOffset(y_off) if y_off is not None else do_nothing()
+                y_axis.SetTitleSize(tit_size)
+                y_axis.SetLabelSize(lab_size)
+                y_axis.SetRangeUser(y_range[0], y_range[1]) if y_range is not None else do_nothing()
+            z_axis = h.GetZaxis()
+            if z_axis:
+                z_axis.SetTitle(z_tit) if z_tit else h.GetZaxis().GetTitle()
+                z_axis.SetTitleOffset(z_off) if z_off is not None else do_nothing()
+                z_axis.SetTitleSize(tit_size)
+                z_axis.SetLabelSize(lab_size)
+                z_axis.SetRangeUser(z_range[0], z_range[1]) if z_range is not None else do_nothing()
         except AttributeError or ReferenceError:
             pass
 
-    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=0.1, bm=.15, tm=.1, draw_opt='', x_fac=None, y_fac=None,
-                   l=None, logy=False, logx=False, logz=False, canvas=None, gridx=False, gridy=False, save=True, ch='dia', prnt=True):
-        x_fac = self.Res if x_fac is None else int(x_fac * self.Res)
-        y_fac = self.Res if y_fac is None else int(y_fac * self.Res)
+    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=.1, draw_opt='', x_fac=None, y_fac=None,
+                   l=None, logy=False, logx=False, logz=False, canvas=None, gridx=False, gridy=False, save=True, ch='dia', prnt=True, phi=None, theta=None):
+        x = self.Res if x_fac is None else int(x_fac * self.Res)
+        y = self.Res if y_fac is None else int(y_fac * self.Res)
         h = histo
-        if not show:
-            gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
-            gROOT.SetBatch(1)
-        c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x_fac, y_fac) if canvas is None else canvas
+        self.set_root_output(show)
+        c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x, y) if canvas is None else canvas
         c.SetMargin(lm, rm, bm, tm)
         c.SetLogx() if logx else self.do_nothing()
         c.SetLogy() if logy else self.do_nothing()
         c.SetLogz() if logz else self.do_nothing()
         c.SetGridx() if gridx else self.do_nothing()
         c.SetGridy() if gridy else self.do_nothing()
+        c.SetPhi(phi) if phi is not None else do_nothing()
+        c.SetTheta(theta) if theta is not None else do_nothing()
         h.Draw(draw_opt)
-        l.Draw() if l is not None else self.do_nothing()
-        if save:
-            self.save_plots(save_name, sub_dir=sub_dir, x=x_fac, y=y_fac, ch=ch, prnt=prnt)
-        gROOT.SetBatch(0)
-        gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
+        if l is not None:
+            l = [l] if type(l) is not list else l
+            for i in l:
+                i.Draw()
+        self.save_plots(save_name, sub_dir=sub_dir, x=x_fac, y=y_fac, ch=ch, prnt=prnt, save=save, show=show)
+        self.set_root_output(True)
         lst = [c, h, l] if l is not None else [c, h]
         self.ROOTObjects.append(lst)
-        return lst
 
-    def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=0.1, bm=.15, tm=.1, draw_opt='', x=None, y=None,
-                   l=None, logy=False, logx=False, logz=False, canvas=None, gridy=False, gridx=False, ch='dia', prnt=True):
-        return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, l, logy, logx, logz, canvas, gridx, gridy, False, ch, prnt)
+    def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=.1, draw_opt='', x=None, y=None,
+                   l=None, logy=False, logx=False, logz=False, canvas=None, gridy=False, gridx=False, ch='dia', prnt=True, phi=None, theta=None):
+        return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, l, logy, logx, logz, canvas, gridx, gridy, False, ch, prnt, phi, theta)
 
     def draw_tlatex(self, x, y, text, align=20, color=1, size=.05):
         l = TLatex(x, y, text)
@@ -543,8 +565,11 @@ class Elementary(object):
     def del_rootobj(obj):
         if obj is None:
             return
-        if obj.IsA().GetName() != 'TCanvas':
-            obj.Delete()
+        try:
+            if obj.IsA().GetName() != 'TCanvas':
+                obj.Delete()
+        except AttributeError:
+            pass
 
     @staticmethod
     def normalise_histo(histo, to100=False):
@@ -562,24 +587,16 @@ class Elementary(object):
         gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
         h = histo
         fit = TF1('fit', 'gaus(0) + gaus(3) + gaus(6)', h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax())
-        s = TSpectrum(2)
-        s.Search(h)
-        y = s.GetPositionY()[0], s.GetPositionY()[1]
-        x = s.GetPositionX()[0], s.GetPositionX()[1]
+        s = TSpectrum(3)
+        n = s.Search(h, 5)
+        y = s.GetPositionY()[0], s.GetPositionY()[1] if n == 2 else s.GetPositionY()[2]
+        x = s.GetPositionX()[0], s.GetPositionX()[1] if n == 2 else s.GetPositionX()[2]
         for i, par in enumerate([y[1], x[1], 10, y[0], x[0], 5, 10, x[0] + 10, 5]):
             fit.SetParameter(i, par)
-        # fit.SetParLimits(0, .5 * y[1], 1.5 * y[1])
-        # fit.SetParLimits(1, x[1] - 25, x[1] + 10)
-        # fit.SetParLimits(2, 5, 50)
-        # fit.SetParLimits(3, .5 * y[0], 1.5 * y[0])
-        # fit.SetParLimits(4, x[0] - 5, x[0] + 5)
-        # fit.SetParLimits(5, 1, 10)
-        # fit.SetParLimits(6, 1, s.GetPositionY()[1])
-        # fit.SetParLimits(7, x[0] + 5, x[1] - 20)
-        # fit.SetParLimits(8, 1, 10)
+        fit.SetParLimits(7, x[0] + 5, x[1] - 20)
         for i in xrange(1):
-            h.Fit(fit, 'qs{0}'.format('' if show else '0'), '', -50, s.GetPositionX()[1])
-        gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
+            h.Fit(fit, 'qs{0}'.format('' if show else '0'), '', -50, x[1])
+        gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         return fit
 
     @staticmethod
@@ -590,14 +607,6 @@ class Elementary(object):
         return instance_factory
 
     @staticmethod
-    def isfloat(string):
-        try:
-            float(string)
-            return True
-        except ValueError:
-            return False
-
-    @staticmethod
     def find_graph_margins(graphs):
         extrema = [max([TMath.MaxElement(gr.GetN(), gr.GetY()) for gr in graphs]), min([TMath.MinElement(gr.GetN(), gr.GetY()) for gr in graphs])]
         return [extrema[1] - (extrema[0] - extrema[1]) * .1, extrema[0] + (extrema[0] - extrema[1]) * .1]
@@ -605,6 +614,84 @@ class Elementary(object):
     @staticmethod
     def print_banner(msg, symbol='='):
         print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * symbol, msg=msg)
+
+    def save_combined_pulse_heights(self, mg, mg1, l, mg_y, show=True, name=None, pulser_leg=None,
+                                    x_range=None, y_range=None, rel_y_range=None, run_info=None, draw_objects=None):
+        self.set_root_output(show)
+        c = TCanvas('c', 'c', int(self.Res * 10 / 11.), self.Res)
+        make_transparent(c)
+        bm = .11
+        pm = bm + (1 - bm - .1) / 5.
+        p0 = self.draw_tpad('p0', 'p0', pos=[0, 0, 1, pm], margins=[.14, .03, bm / pm, 0], transparent=True, logx=True, gridy=True)
+        p1 = self.draw_tpad('p1', 'p1', pos=[0, pm, 1, 1], margins=[.14, .03, 0, .1], transparent=True, logx=True)
+        p0.Draw()
+        p1.Draw()
+
+        # bottom pad with 20%
+        pad = p0.cd()
+        make_transparent(p0)
+        scale_multigraph(mg1)
+        rel_y_range = [.7, 1.3] if rel_y_range is None else rel_y_range
+        self.format_histo(mg1, title='', y_range=rel_y_range, y_tit='Rel. ph [au]', y_off=.66, tit_size=.1, x_off=99)
+        mg1.GetYaxis().SetLabelSize(.1)
+        mg1.GetYaxis().SetNdivisions(3)
+        hide_axis(mg1.GetXaxis())
+        mg1.Draw('alp')
+        x_range = [mg1.GetXaxis().GetXmin(), mg1.GetXaxis().GetXmax()] if x_range is None else x_range
+        self.draw_x_axis(1.3, x_range[0], x_range[1], mg1.GetXaxis().GetTitle() + ' ', opt='SG+-=', tit_size=.1, lab_size=.1, off=99, tick_size=.1)
+
+        # top pad with zero suppression
+        p1.cd()
+        mg.Draw('alp')
+        hide_axis(mg.GetXaxis())
+        if pulser_leg:
+            pulser_leg()
+        if y_range:
+            mg.SetMinimum(y_range[0])
+            mg.SetMaximum(y_range[1])
+        self.draw_x_axis(mg_y, x_range[0], x_range[1], mg1.GetXaxis().GetTitle() + ' ', opt='SG=', tit_size=.035, lab_size=0, off=1, l_off=99)
+        move_legend(l, .17, .03)
+        l.Draw()
+        if draw_objects is not None:
+            for obj, opt in draw_objects:
+                obj.Draw(opt)
+
+        if hasattr(self, 'FirstAnalysis'):
+            self.FirstAnalysis.run.scale_runinfo_legend(txt_size=.075, w=.435, h=0.1 / pm)
+            if run_info is None and hasattr(self, 'channel'):
+                run_info = self.FirstAnalysis.run.get_runinfo(self.channel)
+        if run_info:
+            p0.cd()
+            run_info[0].Draw()
+            run_info[1].Draw() if self.MainConfigParser.getboolean('SAVE', 'git_hash') else do_nothing()
+
+        pad.Modified()
+        pad.Update()
+        for obj in pad.GetListOfPrimitives():
+            if obj.GetName() == 'title':
+                obj.SetTextColor(0)
+        self.save_canvas(c, name='CombinedPulseHeights' if name is None else name, show=show)
+
+        self.ROOTObjects.append([p0, p1, c, draw_objects])
+        self.set_root_output(True)
+        if hasattr(self, 'FirstAnalysis'):
+            self.FirstAnalysis.run.reset_info_legend()
+
+    def draw_tpad(self, name, tit='', pos=None, fill_col=0, gridx=False, gridy=False, margins=None, transparent=False, logy=False, logx=False):
+        margins = [.1, .1, .1, .1] if margins is None else margins
+        pos = [0, 0, 1, 1] if pos is None else pos
+        p = TPad(name, tit, *pos)
+        p.SetFillColor(fill_col)
+        p.SetMargin(*margins)
+        p.SetLogy() if logy else do_nothing()
+        p.SetLogx() if logx else do_nothing()
+        p.SetGridx() if gridx else do_nothing()
+        p.SetGridy() if gridy else do_nothing()
+        make_transparent(p) if transparent else do_nothing()
+        p.Draw()
+        self.ROOTObjects.append(p)
+        return p
+
 
 if __name__ == "__main__":
     z = Elementary()
