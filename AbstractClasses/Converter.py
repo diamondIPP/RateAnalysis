@@ -14,7 +14,7 @@ from Utils import *
 from ROOT import TProfile, TFile
 do_gui = False
 if do_gui:
-    from tkinter import *
+    from Tkinter import *
 
 
 __author__ = 'micha'
