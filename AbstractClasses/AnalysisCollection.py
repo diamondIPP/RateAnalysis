@@ -9,6 +9,7 @@ from numpy import log, array, zeros
 from time import time
 from screeninfo import get_monitors
 from dispy import JobCluster
+from functools import partial
 
 from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1
 
@@ -164,9 +165,10 @@ class AnalysisCollection(Elementary):
         old_verbose = self.FirstAnalysis.verbose
         self.set_verbose(False)
         self.draw_ph_with_currents(show=False)
-        self.draw_pulse_heights(show=False)
+        self.draw_pulse_heights(binning=10000, show=False)
         self.draw_pulser_info(do_fit=False, show=False)
         self.draw_pedestals(show=False, save=True)
+        self.draw_pulser_pedestals(show=False, save=True)
         self.draw_signal_distributions(show=False)
         self.set_verbose(old_verbose)
         self.print_all_off_results()
@@ -240,30 +242,32 @@ class AnalysisCollection(Elementary):
         self.RootObjects.append([ph, cur, pul, c, legends, pads])
         self.FirstAnalysis.run.reset_info_legend()
 
-    def draw_ph_vs_voltage(self, binning=20000):
+    def draw_ph_vs_voltage(self, binning=10000, pulser=False):
         gr1 = self.make_tgrapherrors('gStatError', 'stat. error', self.get_color())
         gStyle.SetEndErrorSize(4)
         gr_first = self.make_tgrapherrors('gFirst', 'first run', marker=22, color=2, marker_size=2)
         gr_last = self.make_tgrapherrors('gLast', 'last run', marker=23, color=2, marker_size=2)
         gr_errors = self.make_tgrapherrors('gFullError', 'stat. + repr. error', marker=0, color=602, marker_size=0)
 
-        flux_errors = self.draw_ph_distributions_below_flux(flux=80, show=False, save_plot=False)
-        rel_sys_error = flux_errors[1] / flux_errors[0]
+        # flux_errors = self.draw_ph_distributions_below_flux(flux=80, show=False, save_plot=False)
+        # rel_sys_error = flux_errors[1] / flux_errors[0]
+        rel_sys_error = 0
         i, j = 0, 0
         for key, ana in self.collection.iteritems():
-            fit1 = ana.draw_pulse_height(binning, evnt_corr=True, save=False)
-            x = ana.run.RunInfo['dia1hv']
+            fit1 = ana.draw_pulse_height(binning, evnt_corr=True, save=False) if not pulser else ana.Pulser.draw_distribution_fit(show=False, save=False)
+            x = ana.run.RunInfo['dia{nr}hv'.format(nr=self.diamonds[0])]
             print x, '\t',
-            gr1.SetPoint(i, x, fit1.Parameter(0))
-            print fit1.Parameter(0)
-            gr1.SetPointError(i, 0, fit1.ParError(0))
-            gr_errors.SetPoint(i, x, fit1.Parameter(0))
-            gr_errors.SetPointError(i, 0, fit1.ParError(0) + rel_sys_error * fit1.Parameter(0))
+            s, e = (fit1.Parameter(0), fit1.ParError(0)) if not pulser else (fit1.Parameter(1), fit1.ParError(1))
+            gr1.SetPoint(i, x, s)
+            print s, e
+            gr1.SetPointError(i, 0, e)
+            gr_errors.SetPoint(i, x, s)
+            gr_errors.SetPointError(i, 0, e + rel_sys_error * s)
             # set special markers for the first and last run
             if i == 0:
-                gr_first.SetPoint(0, x, fit1.Parameter(0))
+                gr_first.SetPoint(0, x, s)
             if j == len(self.collection) - 1:
-                gr_last.SetPoint(0, x, fit1.Parameter(0))
+                gr_last.SetPoint(0, x, s)
             i += 1
             j += 1
         graphs = [gr_errors, gr1]
@@ -281,14 +285,15 @@ class AnalysisCollection(Elementary):
             else:
                 legend.AddEntry(gr, gr.GetTitle(), 'p')
             mg.Add(gr, 'p')
-        self.draw_histo(mg, draw_opt='a')
+        self.format_histo(mg, x_tit='Voltage [V]', y_tit='Pulse Height [au]', y_off=1.3, draw_first=True)
+        self.save_histo(mg, '{s}VoltageScan'.format(s='Signal' if not pulser else 'Pulser'), draw_opt='a', lm=.12)
 
-    def draw_pulse_heights(self, binning=20000, flux=True, raw=False, all_corr=False, show=True, save_plots=True, vs_time=False, fl=True, save_comb=True):
+    def draw_pulse_heights(self, binning=10000, flux=True, raw=False, all_corr=False, show=True, save_plots=True, vs_time=False, fl=True, save_comb=True, y_range=None):
 
         pickle_path = self.FirstAnalysis.PickleDir + 'Ph_fit/PulseHeights_{tc}_{rp}_{dia}_{bin}.pickle'.format(tc=self.TESTCAMPAIGN, rp=self.run_plan, dia=self.diamond_name, bin=binning)
         flux = False if vs_time else flux
 
-        def func():
+        def func(y_ran):
 
             mode = self.get_mode(flux, vs_time)
             prefix = 'Pulse Height vs {mod} - '.format(mod=mode)
@@ -370,7 +375,8 @@ class AnalysisCollection(Elementary):
             # small range
             self.format_histo(mg, color=None, x_tit=mode + ' [kHz/cm^{2}]' if flux else '', y_tit='Signal Pulse Height [au]', y_off=1.75, x_off=1.3, draw_first=True)
             ymin, ymax = mg.GetYaxis().GetXmin(), mg.GetYaxis().GetXmax()
-            mg.GetYaxis().SetRangeUser(*increased_range([ymin, ymax], .3, .15))
+            yrange = increased_range([ymin, ymax], .3, .15) if y_ran is None else y_ran
+            mg.GetYaxis().SetRangeUser(*yrange)
             if vs_time:
                 mg.Add(gr5, '[]')
                 mg.Add(gr5, 'p')
@@ -394,11 +400,13 @@ class AnalysisCollection(Elementary):
             self.PulseHeight = gr1
             if save_comb:
                 run_info = self.collection.values()[0].run.get_runinfo(self.channel)
-                self.save_combined_pulse_heights(mg, mg1, legend, increased_range([ymin, ymax], .3)[0], show=show, run_info=run_info, pulser_leg=self.__draw_signal_legend)
+                y_min = increased_range([ymin, ymax], .3)[0] if y_ran is None else y_ran[0]
+                self.save_combined_pulse_heights(mg, mg1, legend, y_min, show=show, run_info=run_info, pulser_leg=self.__draw_signal_legend)
             return mg
 
-        mg2 = func() if save_plots else None
-        return self.do_pickle(pickle_path, func, mg2)
+        f = partial(func, y_range)
+        mg2 = func(y_range) if save_plots else None
+        return self.do_pickle(pickle_path, f, mg2)
 
     def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False, show=True, cut=None, beam_on=True, save=False):
 
@@ -421,7 +429,7 @@ class AnalysisCollection(Elementary):
             cut_string = None
             for key, ana in self.collection.iteritems():
                 cut_string = ana.Cut.generate_pulser_cut(beam_on=beam_on) if cut == 'pulser' else cut
-                fit_par = ana.show_pedestal_histo(region, peak_int, cut=cut_string, save=save, show=False)
+                fit_par = ana.show_pedestal_histo(region, peak_int, cut=cut_string, save=False, show=False)
                 x = ana.run.flux if flux else key
                 gr1.SetPoint(i, x, fit_par.Parameter(par))
                 gr1.SetPointError(i, 0, fit_par.ParError(par))
@@ -444,11 +452,11 @@ class AnalysisCollection(Elementary):
             return gr1
 
         self.ProgressBar.finish()
-        graph = func() if show else None
+        graph = func() if save else None
         return self.do_pickle(pickle_path, func, graph)
 
-    def draw_pulser_pedestals(self, show=True):
-        self.draw_pedestals(cut=self.FirstAnalysis.Pulser.PulserCut, show=show)
+    def draw_pulser_pedestals(self, show=True, save=False):
+        self.draw_pedestals(cut=self.FirstAnalysis.Pulser.PulserCut, show=show, save=save)
 
     def draw_signal_distributions(self, show=True, off=3):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')

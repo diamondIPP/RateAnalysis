@@ -109,7 +109,6 @@ class Cut(Elementary):
     def define_cutstrings():
         dic = OrderedDict()
         dic['raw'] = TCut('raw', '')
-        dic['fiducial'] = TCut('fiducial', '')
         dic['saturated'] = TCut('saturated', '')
         dic['pulser'] = TCut('pulser', '')
         dic['event_range'] = TCut('event_range', '')
@@ -127,6 +126,7 @@ class Cut(Elementary):
         dic['bucket'] = TCut('bucket', '')
         # tracks
         dic['tracks'] = TCut('tracks', '')
+        dic['fiducial'] = TCut('fiducial', '')
         dic['chi2X'] = TCut('chi2X', '')
         dic['chi2Y'] = TCut('chi2Y', '')
         dic['track_angle'] = TCut('track_angle', '')
@@ -285,7 +285,12 @@ class Cut(Elementary):
         # create the cut string
         string = 'slope_x>{minx}&&slope_x<{maxx}&&slope_y>{miny}&&slope_y<{maxy}'.format(minx=slope['x'][0], maxx=slope['x'][1], miny=slope['y'][0], maxy=slope['y'][1])
         return string if angle > 0 else ''
-    
+
+    @staticmethod
+    def generate_distance(dmin, dmax, thickness=500):
+        d_string = '{t}*TMath::Sqrt(TMath::Power(TMath::Sin(TMath::DegToRad()*slope_x), 2) + TMath::Power(TMath::Sin(TMath::DegToRad()*slope_y), 2) + 1)'.format(t=thickness)
+        return TCut('distance', '{d}>{min}&&{d}<={max}'.format(d=d_string, min=dmin, max=dmax))
+
     def generate_cut_string(self):
         """ Creates the cut string. """
         gROOT.SetBatch(1)

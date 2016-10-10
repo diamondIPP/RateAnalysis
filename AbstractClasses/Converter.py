@@ -185,13 +185,12 @@ class Converter:
             align_cmd = '{align}/bin/EventAlignment.exe {rootfile}'.format(align=self.AlignDir, rootfile=self.get_root_file_path())
             os.system(align_cmd)
 
-    @staticmethod
-    def remove_pickle_files(run_number):
+    def remove_pickle_files(self, run_number):
         log_message('Removing all pickle files for run {}'.format(run_number))
         program_dir = ''
         for i in __file__.split('/')[:-2]:
             program_dir += i + '/'
-        files = glob('{prog}Configuration/Individual_Configs/*/*{run}*'.format(prog=program_dir, run=run_number))
+        files = glob('{prog}Configuration/Individual_Configs/*/*{tc}*_{run}_*'.format(prog=program_dir, run=run_number, tc=self.test_campaign))
         for _file in files:
             remove(_file)
 

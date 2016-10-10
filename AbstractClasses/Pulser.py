@@ -110,7 +110,7 @@ class PulserAnalysis(Elementary):
             set_drawing_range(h)
             self.Ana.RootObjects.append(f)
             self.save_plots('PulserDistributionFit', show=show)
-            return fit_func
+            return FitRes(fit_func)
 
         fit = func() if save else None
         return self.do_pickle(pickle_path, func, fit)

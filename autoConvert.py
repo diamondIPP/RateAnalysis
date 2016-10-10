@@ -8,11 +8,12 @@ from time import sleep
 from AbstractClasses.Utils import file_exists, print_banner, log_message
 from os import stat, chdir, system
 from json import load
-from multiprocessing import current_process, cpu_count, Pool
+from multiprocessing import cpu_count, Pool
+from argparse import ArgumentParser
 
-tc = '201608'
+tc = '201610'
 data_dir = '/data/psi_{0}_{1}'.format(tc[:4], tc[-2:])
-raw_dir = '{0}/setup'.format(data_dir)
+raw_dir = '{0}/raw'.format(data_dir)
 final_dir = '{0}/root/pads'.format(data_dir)
 f_lc = open('/home/testbeam/testing/micha/myPadAnalysis/last_converted.txt', 'r+')
 next_run = int(f_lc.read()) + 1
@@ -55,7 +56,8 @@ def make_final_run_str(run):
 def convert_run(run):
     global run_infos, next_run
     run_infos = load_runinfos()
-    if str(run) not in run_infos or run_infos[str(run)]['runtype'] in ['test', 'crap', 'schrott']:
+    run_infos = {int(key): value for key, value in run_infos.iteritems()}
+    if run not in run_infos or run_infos[run]['runtype'] in ['test', 'crap', 'schrott']:
         if int(sorted(run_infos.keys())[-1]) in xrange(next_run, 1000):
             next_run += 1
             return False
@@ -70,7 +72,6 @@ def convert_run(run):
                 cmd = 'AbstractClasses/PadAnalysis.py {0} -t'.format(run)
                 print cmd
                 system(cmd)
-                next_run += 1
             else:
                 return 3
     save_last_converted(run)
@@ -113,4 +114,11 @@ def multi():
     for res in results:
         print res.get(timeout=5000)
 
-auto_convert()
+parser = ArgumentParser()
+parser.add_argument('-m', action='store_true')
+arg = parser.parse_args()
+
+if arg.m:
+    multi()
+else:
+    auto_convert()

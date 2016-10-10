@@ -12,6 +12,7 @@ from numpy import mean
 from collections import OrderedDict
 from subprocess import check_output
 import sys
+from Utils import isfloat
 
 default_info = {
     'persons on shift': '-',
@@ -117,10 +118,12 @@ class Run(Elementary):
             # region info
             if self.DUTType == 'pad':
                 self.region_information = self.load_regions()
+                self.NChannels = self.load_n_channels()
+                self.channels = self.load_channels()
                 self.pedestal_regions = self.get_regions('pedestal')
                 self.signal_regions = self.get_regions('signal')
                 self.peak_integrals = self.get_peak_integrals()
-                self.DRS4Channels = self.load_drs4_channels()
+                self.DigitizerChannels = self.load_digitizer_channels()
                 self.TCal = self.load_tcal()
 
             self.FoundForRate = False
@@ -147,8 +150,18 @@ class Run(Elementary):
     def load_run_config(self):
         return self.load_run_configs(self.run_number)
 
+    def load_n_channels(self):
+        for i, line in enumerate(self.region_information):
+            if 'Sensor Names' in line:
+                data = self.region_information[i + 1].strip(' ').split(',')
+                return len(data)
+
     def load_channels(self):
         binary = self.run_config_parser.getint('ROOTFILE_GENERATION', 'active_regions')
+        if hasattr(self, 'region_information'):
+            for i, line in enumerate(self.region_information):
+                if 'active_regions:' in line:
+                    binary = int(line.strip('active_regions:'))
         return [i for i in xrange(self.NChannels) if self.has_bit(binary, i)]
 
     def load_bias(self):
@@ -244,6 +257,29 @@ class Run(Elementary):
         self.analyse_ch = analyse_ch
         return analyse_ch
 
+    def load_mask(self):
+        mask_file_path = '{path}/{mask}'.format(path=self.maskfilepath, mask=self.RunInfo['maskfile'])
+        dic = {}
+        try:
+            f = open(mask_file_path, 'r')
+            for line in f:
+                if len(line) > 3:
+                    line = line.split()
+                    if not line[1] in dic:
+                        dic[line[1]] = {}
+                        dic[line[1]]['row'] = [0, 0]
+                        dic[line[1]]['col'] = [0, 0]
+                    if line[0] == 'cornBot':
+                        dic[line[1]]['row'][0] = line[3]
+                        dic[line[1]]['col'][0] = line[2]
+                    elif line[0] == 'cornTop':
+                        dic[line[1]]['row'][1] = line[3]
+                        dic[line[1]]['col'][1] = line[2]
+            f.close()
+        except IOError as err:
+            self.log_warning(err)
+        print dic
+
     def calculate_flux(self):
         self.verbose_print('Calculate rate from mask file:\n\t' + self.RunInfo['maskfile'])
         mask_file_path = self.maskfilepath + '/' + self.RunInfo['maskfile']
@@ -338,7 +374,7 @@ class Run(Elementary):
                     ranges[data[0]] = [int(data[i]) for i in [1, 2]]
         return ranges
 
-    def load_drs4_channels(self):
+    def load_digitizer_channels(self):
         for i, line in enumerate(self.region_information):
             if 'Sensor Names' in line:
                 data = self.region_information[i + 1].strip(' ').split(',')
@@ -347,7 +383,7 @@ class Run(Elementary):
     def load_tcal(self):
         for i, line in enumerate(self.region_information):
             if 'tcal' in line:
-                data = [float(i) for i in line.strip('tcal []').split(',') if self.isfloat(i)]
+                data = [float(i) for i in line.strip('tcal []').split(',') if isfloat(i)]
                 return data
 
     def get_peak_integrals(self):
@@ -390,9 +426,10 @@ class Run(Elementary):
         entries = self.tree.Draw('Entry$:time', '', 'goff')
         time = [self.tree.GetV2()[i] for i in xrange(entries)]
         self.fill_empty_time_entries(time)
-        if abs((time[-1] - time[0]) / 1000 - self.duration.seconds) > 60:
-            print time[:4], time[-1]
-            print (time[-1] - time[0]) / 1000, self.duration.seconds
+        if abs((time[-1] - time[0]) / 1000 - self.duration.seconds) > 120:
+            self.log_warning('Need to correct timing vector\n')
+            print [i / 1000 for i in time[:4]], time[-1] / 1000
+            print (time[-1] - time[0]) / 1000, self.duration.seconds, abs((time[-1] - time[0]) / 1000 - self.duration.seconds)
             time = self.__correct_time(entries)
         return time
 
@@ -408,7 +445,6 @@ class Run(Elementary):
         times[:ind] = [first_valid] * ind
 
     def __correct_time(self, entries):
-        self.log_warning('Need to correct timing vector\n')
         time = []
         t = self.tree.GetV2()[0]
         new_t = 0

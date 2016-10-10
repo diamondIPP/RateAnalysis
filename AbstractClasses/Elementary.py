@@ -11,12 +11,13 @@ from screeninfo import get_monitors
 from numpy import array
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 
-from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend, TColor, TArrow, TPad, TCutG, TLine
+from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, kGreen, kOrange, kViolet, kYellow, kRed, kBlue, \
+    kMagenta, kAzure, kCyan, kTeal
 
 # global test campaign and resolution
 tc = None
 res = None
-default_tc = '201608'
+default_tc = '201610'
 
 
 class Elementary(object):
@@ -149,7 +150,7 @@ class Elementary(object):
 
     @staticmethod
     def create_colorlist():
-        col_names = [TColor.kGreen, TColor.kOrange, TColor.kViolet, TColor.kYellow, TColor.kRed, TColor.kBlue, TColor.kMagenta, TColor.kAzure, TColor.kCyan, TColor.kTeal]
+        col_names = [kGreen, kOrange, kViolet, kYellow, kRed, kBlue, kMagenta, kAzure, kCyan, kTeal]
         colors = []
         for color in col_names:
             colors.append(color + (1 if color != 632 else -7))
@@ -405,7 +406,7 @@ class Elementary(object):
     def draw_horizontal_line(self, y, xmin, xmax, color=1, w=1, style=1, name='li', tline=False):
         return self.draw_line(xmin, xmax, y, y, color, w, style, name) if not tline else self.draw_tline(xmin, xmax, y, y, color, w, style)
 
-    def make_legend(self, x1=.65, y2=.95, nentries=2, scale=1, name='l', y1=None, felix=False, margin=.25, x2=None):
+    def make_legend(self, x1=.65, y2=.88, nentries=2, scale=1, name='l', y1=None, felix=False, margin=.25, x2=None):
         x2 = .95 if x2 is None else x2
         y1 = y2 - nentries * .05 * scale if y1 is None else y1
         l = TLegend(x1, y1, x2, y2)
@@ -422,7 +423,7 @@ class Elementary(object):
         return l
 
     def format_histo(self, histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=20, color=1, markersize=1, x_off=None, y_off=None, z_off=None, lw=1, fill_color=0,
-                     stats=True, tit_size=.04, draw_first=False, x_range=None, y_range=None, z_range=None, do_marker=True, style=None):
+                     stats=True, tit_size=.04, lab_size=.04, draw_first=False, x_range=None, y_range=None, z_range=None, do_marker=True, style=None):
         h = histo
         if draw_first:
             self.set_root_output(False)
@@ -460,18 +461,21 @@ class Elementary(object):
                 x_axis.SetTitle(x_tit) if x_tit else h.GetXaxis().GetTitle()
                 x_axis.SetTitleOffset(x_off) if x_off is not None else do_nothing()
                 x_axis.SetTitleSize(tit_size)
+                x_axis.SetLabelSize(lab_size)
                 x_axis.SetRangeUser(x_range[0], x_range[1]) if x_range is not None else do_nothing()
             y_axis = h.GetYaxis()
             if y_axis:
                 y_axis.SetTitle(y_tit) if y_tit else y_axis.GetTitle()
                 y_axis.SetTitleOffset(y_off) if y_off is not None else do_nothing()
                 y_axis.SetTitleSize(tit_size)
+                y_axis.SetLabelSize(lab_size)
                 y_axis.SetRangeUser(y_range[0], y_range[1]) if y_range is not None else do_nothing()
             z_axis = h.GetZaxis()
             if z_axis:
                 z_axis.SetTitle(z_tit) if z_tit else h.GetZaxis().GetTitle()
                 z_axis.SetTitleOffset(z_off) if z_off is not None else do_nothing()
                 z_axis.SetTitleSize(tit_size)
+                z_axis.SetLabelSize(lab_size)
                 z_axis.SetRangeUser(z_range[0], z_range[1]) if z_range is not None else do_nothing()
         except AttributeError or ReferenceError:
             pass
@@ -603,14 +607,6 @@ class Elementary(object):
         instance_factory = type('instance_factory', (instance.__class__, ), {})
         instance_factory.__init__ = lambda self, *args, **kwargs: self.__dict__.update(copy)
         return instance_factory
-
-    @staticmethod
-    def isfloat(string):
-        try:
-            float(string)
-            return True
-        except ValueError:
-            return False
 
     @staticmethod
     def find_graph_margins(graphs):

@@ -274,11 +274,40 @@ def make_tc_str(tc, txt=True):
         return datetime.strptime(tc, '%b%y').strftime('%Y%m' if txt else '%B %Y')
 
 
+def isfloat(string):
+    try:
+        float(string)
+        return True
+    except ValueError:
+        return False
+
+
+def isint(x):
+    try:
+        a = float(x)
+        b = int(a)
+        return a == b
+    except ValueError:
+        return False
+
+
 def set_drawing_range(h, legend=True, lfac=None, rfac=None):
     range_ = [h.GetBinCenter(i) for i in [h.FindFirstBinAbove(10), h.FindLastBinAbove(10)]]
     lfac = lfac if lfac is not None else .2
     rfac = rfac if rfac is not None else .55 if legend else .1
     h.GetXaxis().SetRangeUser(*increased_range(range_, lfac, rfac))
+
+
+class FitRes:
+    def __init__(self, fit_obj=None):
+        self.Pars = list(fit_obj.Parameters()) if fit_obj is not None else [0]
+        self.Errors = list(fit_obj.Errors()) if fit_obj is not None else [0]
+
+    def Parameter(self, arg):
+        return self.Pars[arg]
+
+    def ParError(self, arg):
+        return self.Errors[arg]
 
 
 def do_nothing():

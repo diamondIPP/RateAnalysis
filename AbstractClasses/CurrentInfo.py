@@ -255,7 +255,7 @@ class Currents(Elementary):
                 # if index < 20:
                 #     print line
                 info = line.split()
-                if self.isfloat(info[1]) and len(info) > 2:
+                if isfloat(info[1]) and len(info) > 2:
                     now = datetime.strptime(log_date.strftime('%Y%m%d') + info[0], '%Y%m%d%H:%M:%S')
                     if self.StartTime < now < self.StopTime and float(info[2]) < 1e30:
                         self.save_data(now, info, index)
@@ -321,7 +321,7 @@ class Currents(Elementary):
                 info = data.readline().split()
                 if not info:
                     break
-                if self.isfloat(info[1]):
+                if isfloat(info[1]):
                     now = datetime.strptime(log_date.strftime('%Y%m%d') + info[0], '%Y%m%d%H:%M:%S')
                     if now < self.StartTime:
                         was_lines += lines
