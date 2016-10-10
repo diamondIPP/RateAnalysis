@@ -8,6 +8,7 @@ from collections import OrderedDict
 from numpy import log, array, zeros
 from time import time
 from screeninfo import get_monitors
+from dispy import JobCluster
 
 from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1
 
@@ -86,11 +87,24 @@ class AnalysisCollection(Elementary):
     def load_run_config(self):
         return self.load_run_configs(0)
 
+    def create_analysis(self, run, load_tree):
+        self.collection[run] = PadAnalysis(run, self.channel, self.min_max_rate_runs, load_tree=load_tree, verbose=self.verbose)
+
+    def add_analyses_fast(self, load_tree):
+        cluster = JobCluster(self.create_analysis)
+        jobs = []
+        for i, run in enumerate(self.runs):
+            job = cluster.submit((run, load_tree,))
+            job.id = i
+            jobs.append(job)
+        for job in jobs:
+            job()
+            print job.id, job.start_time, job.end_time
+
     def add_analyses(self, load_tree):
         """ Creates and adds Analysis objects with run numbers in runs. """
-        for run, dia in sorted(zip(self.runs, self.diamonds)):
-            ch = 0 if dia == 1 or dia == 3 else 3
-            analysis = PadAnalysis(run, ch, self.min_max_rate_runs, load_tree=load_tree, verbose=self.verbose)
+        for run in self.runs:
+            analysis = PadAnalysis(run, self.channel, self.min_max_rate_runs, load_tree=load_tree, verbose=self.verbose)
             self.collection[analysis.run.run_number] = analysis
             self.current_run_number = analysis.run.run_number
 
