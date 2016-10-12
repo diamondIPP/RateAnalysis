@@ -28,7 +28,8 @@ class RunSelection(Elementary):
         self.SelectedRunplan = None
         self.SelectedType = None
         self.SelectedBias = None
-        self.Diamond = None
+        self.SelectedDiamond = None
+        self.SelectedDiamondNr = None
 
         self.init_selection()
 
@@ -55,7 +56,7 @@ class RunSelection(Elementary):
 
     def get_runinfo(self, ch):
         runs = [self.get_selected_runs()[0], self.get_selected_runs()[-1], '', '']
-        self.run.diamond_names[ch] = self.Diamond
+        self.run.diamond_names[ch] = self.SelectedDiamond
         self.run.bias[ch] = self.SelectedBias
         return self.run.get_runinfo(ch, runs=runs)
 
@@ -425,7 +426,8 @@ class RunSelection(Elementary):
         self.SelectedBias = self.run_infos[self.get_selected_runs()[0]]['dia{0}hv'.format(ch)]
         parser = ConfigParser()
         parser.read('Configuration/DiamondAliases.cfg')
-        self.Diamond = parser.get('ALIASES', self.run_infos[self.get_selected_runs()[0]]['dia{0}'.format(ch)])
+        self.SelectedDiamond = parser.get('ALIASES', self.run_infos[self.get_selected_runs()[0]]['dia{0}'.format(ch)])
+        self.SelectedDiamondNr = ch
 
     def add_selection_to_runplan(self, plan_nr, run_type='rate scan', parent=None):
         """

@@ -105,13 +105,13 @@ class AnalysisCollection(Elementary):
     def add_analyses(self, load_tree):
         """ Creates and adds Analysis objects with run numbers in runs. """
         for run in self.runs:
-            analysis = PadAnalysis(run, self.channel, self.min_max_rate_runs, load_tree=load_tree, verbose=self.verbose)
+            analysis = PadAnalysis(run, self.selection.DiamondNr, self.min_max_rate_runs, load_tree=load_tree, verbose=self.verbose)
             self.collection[analysis.run.run_number] = analysis
             self.current_run_number = analysis.run.run_number
 
     def load_channel(self):
         binary = self.run_config_parser.getint('ROOTFILE_GENERATION', 'active_regions')
-        dia_nr = self.selection.SelectedDiamond
+        dia_nr = self.selection.DiamondNr
         return [i for i in xrange(16) if self.has_bit(binary, i)][dia_nr - 1]
 
     def get_high_low_rate_runs(self):
