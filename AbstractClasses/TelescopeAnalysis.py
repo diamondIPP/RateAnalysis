@@ -32,7 +32,6 @@ class Analysis(Elementary):
         self.RunInfo = deepcopy(self.run.RunInfo)
         self.lowest_rate_run = high_low_rate['min'] if high_low_rate is not None else self.run.run_number
         self.highest_rate_run = high_low_rate['max'] if high_low_rate is not None else self.run.run_number
-        self.PickleDir = self.get_program_dir() + self.ana_config_parser.get('SAVE', 'pickle_dir')
         if self.ana_config_parser.has_option('SAVE', 'ActivateTitle'):
             gStyle.SetOptTitle(self.ana_config_parser.getboolean('SAVE', 'ActivateTitle'))
         # self.saveMCData = self.ana_config_parser.getboolean("SAVE", "SaveMCData")
