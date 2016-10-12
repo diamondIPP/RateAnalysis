@@ -1574,7 +1574,6 @@ class PadAnalysis(Analysis):
         while fit.Chi2 / fit.NDF > 5:
             fit = self.fit_langau(h, nconv + i)
             i += 5
-        # print 'Chi2:', fit.Chi2 / fit.NDF
         self.RootObjects.append(fit)
         return fit
 
