@@ -1565,13 +1565,27 @@ class PadAnalysis(Analysis):
         self.ProgressBar.finish()
         self.draw_histo(gr, draw_opt='alp', logx=True)
 
-    def fit_langau(self):
-        h = self.show_signal_histo()
-        fit = Langau(h)
+    def fit_langau(self, h=None, nconv=100, show=True):
+        h = self.show_signal_histo(show=show) if h is None else h
+        fit = Langau(h, nconv)
         fit.langaufit()
         fit.Fit.Draw('lsame')
+        i = 5
+        while fit.Chi2 / fit.NDF > 5:
+            fit = self.fit_langau(h, nconv + i)
+            i += 5
+        # print 'Chi2:', fit.Chi2 / fit.NDF
         self.RootObjects.append(fit)
         return fit
+
+    def find_conv(self):
+        gr = self.make_tgrapherrors('gr_c', 'chi2 vs nconv')
+        for i, j in enumerate(xrange(10, 70, 5)):
+            print j
+            f = self.fit_langau(j, False)
+            gr.SetPoint(i, j, f.Chi2 / f.NDF)
+        self.draw_histo(gr)
+
     # endregion
 
     # ==========================================================================
