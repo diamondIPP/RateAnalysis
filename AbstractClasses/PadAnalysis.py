@@ -799,7 +799,37 @@ class PadAnalysis(Analysis):
         all_means = func() if show else None
         return self.do_pickle(picklepath, func, all_means)
 
-    def draw_pulse_height(self, binning=None, show=True, save=True, evnt_corr=True, bin_corr=False, off_corr=False, sig=None):
+    def draw_ph(self, show=True, binning=10000, save=True, corr=True, sig=None):
+        show = False if not save else show
+
+        sig = self.SignalName if sig is None else sig
+        bin_size = binning if binning is not None else self.BinSize
+        correction = '' if not corr else '_pedcorr'
+        suffix = '{bins}{cor}_{reg}'.format(bins=bin_size, cor=correction, reg=self.get_all_signal_names()[sig])
+        picklepath = self.make_pickle_path('Ph_fit', None, self.run_number, self.channel, suf=suffix)
+
+        def func():
+
+            signal = z.generate_signal_name(z.SignalName if sig is None else sig, corr)
+            if binning is not None:
+                self.__set_bin_size(binning)
+            gr = self.make_tgrapherrors('gr_ph', 'Pulse Height Evolution')
+            for i in xrange(self.n_bins - 1):
+                n = self.tree.Draw(signal, self.Cut.all_cut, 'goff', self.binning[i + 1] - self.binning[i], self.binning[i])
+                m, s = calc_mean([self.tree.GetV1()[j] for j in xrange(n)])
+                gr.SetPoint(i, (self.time_binning[i] - self.run.startTime) / 60e3, m)
+                gr.SetPointError(i, 0, s / sqrt(n))
+            set_statbox(entries=4, only_fit=True)
+            self.format_histo(gr, x_tit='Time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6)
+            self.draw_histo(gr, show=show, lm=.14, draw_opt='apl')
+            fit_par = gr.Fit('pol0', 'qs', '', 0, self.__get_max_fit_pos(gr))
+            self.save_plots('PulseHeightNew{0}'.format(self.BinSize), show=show)
+            self.PulseHeight = gr
+            return FitRes(fit_par)
+
+        fit = func() if save else None
+        return self.do_pickle(picklepath, func, fit)
+
         show = False if not save else show
         signal = self.SignalName if sig is None else sig
         bin_size = binning if binning is not None else self.BinSize
