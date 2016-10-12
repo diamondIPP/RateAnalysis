@@ -830,6 +830,17 @@ class PadAnalysis(Analysis):
         fit = func() if save else None
         return self.do_pickle(picklepath, func, fit)
 
+    @staticmethod
+    def __get_max_fit_pos(gr):
+        """ look for huge fluctiations in ph graph and return last stable point"""
+        sum_ph = gr.GetY()[0]
+        for i in xrange(1, gr.GetN()):
+            sum_ph += gr.GetY()[i]
+            if gr.GetY()[i] < .7 * sum_ph / (i + 1):
+                log_warning('Found huge ph fluctiation! Stopping Fit! y value = {y}, mean_y = {m}'.format(y=gr.GetY()[i], m=sum_ph / (i + 1)))
+                return gr.GetX()[i - 1]
+        return gr.GetX()[gr.GetN() - 1] + 10
+
         show = False if not save else show
         signal = self.SignalName if sig is None else sig
         bin_size = binning if binning is not None else self.BinSize
