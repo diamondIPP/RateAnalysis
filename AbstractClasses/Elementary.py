@@ -43,7 +43,7 @@ class Elementary(object):
 
         # progress bar
         self.Widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
-        self.ProgressBar = ProgressBar(widgets=self.Widgets, maxval=0)
+        self.ProgressBar = None
 
         # screen resolution
         self.Res = self.load_resolution(resolution)
@@ -145,7 +145,7 @@ class Elementary(object):
     # endregion
 
     def start_pbar(self, n):
-        self.ProgressBar.maxval = n
+        self.ProgressBar = ProgressBar(widgets=self.Widgets, maxval=n)
         self.ProgressBar.start()
 
     @staticmethod
