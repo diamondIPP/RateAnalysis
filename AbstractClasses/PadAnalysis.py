@@ -841,16 +841,11 @@ class PadAnalysis(Analysis):
                 return gr.GetX()[i - 1]
         return gr.GetX()[gr.GetN() - 1] + 10
 
+    def draw_pulse_height(self, binning=None, show=True, save=True, evnt_corr=True, sig=None, langau=False):
         show = False if not save else show
         signal = self.SignalName if sig is None else sig
         bin_size = binning if binning is not None else self.BinSize
-        correction = ''
-        if bin_corr:
-            correction = 'binwise'
-        elif off_corr:
-            correction = 'constant'
-        elif evnt_corr:
-            correction = 'eventwise'
+        correction = '' if not evnt_corr else 'eventwise'
         peak_int = self.get_all_signal_names()[sig][1:] if sig is not None else self.PeakIntegral
         suffix = '{bins}_{cor}_{reg}{int}'.format(bins=bin_size, cor=correction, reg=self.SignalRegion, int=peak_int)
         picklepath = 'Configuration/Individual_Configs/Ph_fit/{tc}_{run}_{ch}_{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel, suf=suffix)
@@ -861,26 +856,26 @@ class PadAnalysis(Analysis):
             self.log_info('drawing pulse height fit for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name))
             if binning is not None:
                 self.__set_bin_size(binning)
-            tit_suffix = 'with {cor} Pedestal Correction'.format(cor=correction.title()) if bin_corr or evnt_corr or off_corr else ''
+            tit_suffix = 'with eventwise Pedestal Correction' if evnt_corr else ''
             gr = self.make_tgrapherrors('signal', 'Pulse Height Evolution Bin{0} '.format(self.BinSize) + tit_suffix)
-            sig_time = self.make_signal_time_histos(evnt_corr=evnt_corr, signal=signal, show=False, off_corr=off_corr, bin_corr=bin_corr)
-            mode = 'mean'
+            sig_time = self.make_signal_time_histos(evnt_corr=evnt_corr, signal=signal, show=False)
             empty_bins = 0
             count = 0
-            means = self.draw_pedestal(bin_size, show=False) if bin_corr else None
-            gROOT.SetBatch(1)
+            self.set_root_output(False)
             if sig_time.GetEntries() == 0:
                 log_warning('Empty histogram')
                 return FitRes()
+            # self.start_pbar(self.n_bins)
             for i in xrange(self.n_bins - 1):
                 h_proj = sig_time.ProjectionY(str(i), i + 1, i + 1)
+                # self.ProgressBar.update(i)
                 if h_proj.GetEntries() > 10:
-                    if mode in ["mean", "Mean"]:
-                        i_mean = h_proj.GetMean()
-                        i_mean -= means[count] if bin_corr else 0
-                        gr.SetPoint(count, (self.time_binning[i] - self.run.startTime) / 60e3, i_mean)
-                        gr.SetPointError(count, 0, h_proj.GetRMS() / sqrt(h_proj.GetEntries()))
-                        count += 1
+                    langau_fit = self.fit_langau(h_proj, 100) if langau else None
+                    i_mean = h_proj.GetMean() if not langau else langau_fit.Mean(0, 3000)
+                    i_mean_err = h_proj.GetRMS() / sqrt(h_proj.GetEntries())
+                    gr.SetPoint(count, (self.time_binning[i] - self.run.startTime) / 60e3, i_mean)
+                    gr.SetPointError(count, 0, i_mean_err)
+                    count += 1
                 else:
                     empty_bins += 1
             if empty_bins:
@@ -889,16 +884,9 @@ class PadAnalysis(Analysis):
                     log_warning('graph containts not more than one point!')
                     return FitRes()
             set_statbox(entries=4, only_fit=True)
-            self.format_histo(gr, x_tit='time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6)
+            self.format_histo(gr, x_tit='Time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6)
             # excludes points that are too low for the fit
-            max_fit_pos = gr.GetX()[gr.GetN() - 1] + 10
-            sum_ph = gr.GetY()[0]
-            for i in xrange(1, gr.GetN()):
-                sum_ph += gr.GetY()[i]
-                if gr.GetY()[i] < .7 * sum_ph / (i + 1):
-                    print 'Found huge ph fluctiation! Stopping Fit', gr.GetY()[i], sum_ph / (i + 1)
-                    max_fit_pos = gr.GetX()[i - 1]
-                    break
+            max_fit_pos = self.__get_max_fit_pos(gr)
             self.draw_histo(gr, '', show, lm=.14, draw_opt='apl')
             fit_par = gr.Fit('pol0', 'qs', '', 0, max_fit_pos)
             self.save_plots('PulseHeight{0}'.format(self.BinSize), show=show)
