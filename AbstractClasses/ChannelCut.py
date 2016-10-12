@@ -276,7 +276,7 @@ class ChannelCut(Cut):
     # HELPER FUNCTIONS
 
     def calc_signal_threshold(self, bg=False, show=True, show_all=False):
-        pickle_path = self.analysis.PickleDir + 'Cuts/SignalThreshold_{tc}_{run}_{ch}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.highest_rate_run, ch=self.channel)
+        pickle_path = self.make_pickle_path('Cuts', 'SignalThreshold', self.analysis.highest_rate_run, self.channel)
         show = False if show_all else show
 
         def func():
@@ -386,7 +386,7 @@ class ChannelCut(Cut):
         return [mean_ - sigma_range * sigma, mean_ + sigma_range * sigma]
 
     def calc_threshold(self, show=True):
-        pickle_path = self.analysis.PickleDir + 'Cuts/Threshold_{tc}_{run}_{ch}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run_number, ch=self.channel)
+        pickle_path = self.make_pickle_path('Cuts', 'Threshold', self.analysis.run_number, self.channel)
 
         def func():
             self.analysis.tree.Draw(self.analysis.SignalName, '', 'goff', 5000)
@@ -407,7 +407,7 @@ class ChannelCut(Cut):
         return self.do_pickle(pickle_path, func, threshold)
 
     def calc_timing_range(self, show=True, n_sigma=4):
-        pickle_path = self.analysis.PickleDir + 'Cuts/TimingRange_{tc}_{run}_{ch}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run_number, ch=self.channel)
+        pickle_path = self.make_pickle_path('Cuts', 'TimingRange', self.analysis.run_number, self.channel)
 
         def func():
             print 'generating timing cut for {dia} of run {run}...'.format(run=self.analysis.run_number, dia=self.analysis.diamond_name)
