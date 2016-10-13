@@ -10,12 +10,16 @@ from os import stat, chdir, system
 from json import load
 from multiprocessing import cpu_count, Pool
 from argparse import ArgumentParser
+from os.path import realpath, dirname
 
-tc = '201610'
+
+tc = '201510'
+prog_dir = dirname(realpath(__file__))
 data_dir = '/data/psi_{0}_{1}'.format(tc[:4], tc[-2:])
 raw_dir = '{0}/raw'.format(data_dir)
 final_dir = '{0}/root/pads'.format(data_dir)
-f_lc = open('/home/testbeam/testing/micha/myPadAnalysis/last_converted.txt', 'r+')
+lc = '{dir}/last_converted.txt'.format(dir=prog_dir)
+f_lc = open(lc, 'r+')
 next_run = int(f_lc.read()) + 1
 f_lc.close()
 print_banner('Starting Pad Autoconversion at run {0}!'.format(next_run))
@@ -32,7 +36,7 @@ run_infos = load_runinfos()
 
 
 def save_last_converted(run, reset=False):
-    f = open('/home/testbeam/testing/micha/myPadAnalysis/last_converted.txt', 'w')
+    f = open(lc, 'w')
     f.seek(0)
     f.write(str(run) if not reset else 0)
     f.close()
@@ -68,7 +72,7 @@ def convert_run(run):
     if not file_exists(final):
         if file_exists(raw):
             if not file_is_beeing_written(raw):
-                chdir('/home/testbeam/testing/micha/myPadAnalysis/')
+                chdir(prog_dir)
                 cmd = 'AbstractClasses/PadAnalysis.py {0} -t'.format(run)
                 print cmd
                 system(cmd)
