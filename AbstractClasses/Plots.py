@@ -472,7 +472,7 @@ class Plots(Elementary):
         if verbosity: self.print_banner('{n} save -> Done'.format(n=name))
         del c0
 
-    def save_cuts_distributions(self, histo1, histo2, name, title, draw_opt='', opt_stats=0, path='./', verbosity=False):
+    def save_cuts_distributions(self, histo1, histo2, name, title, draw_opt='', opt_stats=0, path='./', verbosity=False, histo3=''):
         if verbosity: self.print_banner('Saving {n}'.format(n=name))
         gROOT.SetBatch(True)
         blabla = gROOT.ProcessLine("gErrorIgnoreLevel = {f};".format(f=kError))
@@ -489,6 +489,7 @@ class Plots(Elementary):
         c0.cd()
         histo1.Draw(draw_opt)
         histo2.Draw(draw_opt+'SAME')
+        if histo3 != '': histo3.Draw(draw_opt+'SAME')
         c0.Update()
         c0.BuildLegend(0.65, 0.7, 0.9, 0.9)
         if not os.path.isdir('{dir}/Plots'.format(dir=path)):
