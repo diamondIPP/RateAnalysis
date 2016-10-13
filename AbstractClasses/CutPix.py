@@ -426,7 +426,7 @@ class CutPix(Elementary):
             # gROOT.SetBatch(0)
             value = self.CutConfig['rhit']
             # string=''
-            string = '((10000*sqrt((track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_X)**2+(track_y_ROC{n}-cluster_pos_ROC{n}_Telescope_Y)**2))<{val}&&(sqrt((track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_X)**2+(track_y_ROC{n}-cluster_pos_ROC{n}_Telescope_Y)**2))>0)'.format(n=dut, val=value)
+            string = '((10000*sqrt((track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_X)**2+(track_y_ROC{n}-cluster_pos_ROC{n}_Telescope_Y)**2))<{val}&&(sqrt((track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_X)**2+(track_y_ROC{n}-cluster_pos_ROC{n}_Telescope_Y)**2))>=0)'.format(n=dut, val=value)
             return string
         self.rhit_cut[dut] = self.do_pickle(picklepath, func0)
 
