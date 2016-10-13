@@ -394,7 +394,7 @@ class PadAnalysis(Analysis):
         self.find_diamond_margins(show_frame=show_frame, cut=cut)
 
     def find_diamond_margins(self, show_plot=True, show_frame=False, cut=None, make_histo=False):
-        pickle_path = self.PickleDir + 'Margins/{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
+        pickle_path = self.make_pickle_path('Margins', run=self.run_number, ch=self.channel)
 
         def func():
             print 'getting margins for {dia} of run {run}...'.format(dia=self.diamond_name, run=self.run_number)
