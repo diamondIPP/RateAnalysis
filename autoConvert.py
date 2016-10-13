@@ -49,8 +49,9 @@ def file_is_beeing_written(path):
     return size1 != size2
 
 
-def make_raw_run_str(run):
-    return '{1}/run{0}.raw'.format(str(run).zfill(6), raw_dir)
+def make_raw_run_str(run, old=False):
+    return '{1}/run{1}{0}.raw'.format(str(run).zfill(5 if old else 6), raw_dir, tc[2:] if old else '')
+
 
 
 def make_final_run_str(run):
@@ -68,9 +69,11 @@ def convert_run(run):
         else:
             return 3
     raw = make_raw_run_str(run)
+    old_raw = make_raw_run_str(run, True)
     final = make_final_run_str(run)
     if not file_exists(final):
-        if file_exists(raw):
+
+        if file_exists(raw) or file_exists(old_raw):
             if not file_is_beeing_written(raw):
                 chdir(prog_dir)
                 cmd = 'AbstractClasses/PadAnalysis.py {0} -t'.format(run)
