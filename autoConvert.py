@@ -50,7 +50,7 @@ def file_is_beeing_written(path):
 
 
 def make_raw_run_str(run, old=False):
-    return '{1}/run{1}{0}.raw'.format(str(run).zfill(5 if old else 6), raw_dir, tc[2:] if old else '')
+    return '{1}/run{2}{0}.raw'.format(str(run).zfill(5 if old else 6), raw_dir, tc[2:] if old else '')
 
 
 
@@ -74,9 +74,10 @@ def convert_run(run):
     if not file_exists(final):
 
         if file_exists(raw) or file_exists(old_raw):
+            raw = raw if file_exists(raw) else old_raw
             if not file_is_beeing_written(raw):
                 chdir(prog_dir)
-                cmd = 'AbstractClasses/PadAnalysis.py {0} -t'.format(run)
+                cmd = 'AbstractClasses/PadAnalysis.py {0} -t -tc {1}'.format(run, tc)
                 print cmd
                 system(cmd)
             else:
