@@ -2010,7 +2010,7 @@ class PadAnalysis(Analysis):
                 continue
             # if there is a jump from the start
             if start < bins[-1] < stop:
-                bins.append(stop)
+                bins[-1] = stop
                 ind += 1
                 continue
             # add bins until hit interrupt
