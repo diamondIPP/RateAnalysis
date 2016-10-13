@@ -107,8 +107,14 @@ class CutPix(Elementary):
         self.events_after_cuts_incr = {}
         self.events_after_cuts_roc_incr = {iROC: {} for iROC in self.duts_list}
 
-    def cuts_analysis(self):
+    def do_cuts_distributions(self):
+        print 'a'
+
+    def do_cuts_analysis(self):
         self.print_banner('Starting Cuts Analysis...')
+        self.print_banner('Creating cut distributions...')
+        self.do_cuts_distributions()
+        self.print_banner('Creating events with cuts histograms...')
         self.h_hitmaps_cuts = {}
         self.h_ph1_evt_cuts = {}
         self.h_ph1_cuts = {}
@@ -122,6 +128,7 @@ class CutPix(Elementary):
             self.h_ph2_cuts[iroc] = {}
 
             for cut in self.cut_names:
+                self.print_banner('Analysing ROC {r} with cummulative cut {c}...'.format(r=iroc, c=cut))
                 gROOT.SetBatch(1)
                 self.h_hitmaps_cuts[iroc][cut] = TH2D('hitmap_roc{r}_{c}'.format(r=iroc,c=cut),'hitmap_roc{r}_{c}'.format(r=iroc,c=cut),52,-0.5,51.5,80,-0.5,79.5)
                 self.plots.set_2D_options(self.h_hitmaps_cuts[iroc][cut], 'col', 'row', 'entries')
@@ -144,6 +151,8 @@ class CutPix(Elementary):
                 self.plots.save_individual_plots(self.h_ph2_evt_cuts[iroc][cut], 'ph2_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'ph2_evt_roc{r}_{c}'.format(r=iroc,c=cut), None, 'colz', 1, self.plots.save_dir)
                 self.plots.save_individual_plots(self.h_ph1_cuts[iroc][cut], 'ph1_roc{r}_{c}'.format(r=iroc,c=cut), 'ph1_roc{r}_{c}'.format(r=iroc,c=cut), None, '', 1, self.plots.save_dir)
                 self.plots.save_individual_plots(self.h_ph2_cuts[iroc][cut], 'ph2_roc{r}_{c}'.format(r=iroc,c=cut), 'ph2_roc{r}_{c}'.format(r=iroc,c=cut), None, '', 1, self.plots.save_dir)
+                self.print_banner('Finished with ROC {r} with cummulative cut {c}...'.format(r=iroc, c=cut))
+        self.print_banner('Finished Cut Analysis', ':)')
 
     def generate_all_cut(self):
         cut = TCut('all_cuts', '')

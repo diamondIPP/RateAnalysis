@@ -132,7 +132,7 @@ class SignalPixAnalysis(Analysis):
         if do_duts:
             self.add_duts_device()
         if do_cut_ana:
-            self.Cut.cuts_analysis()
+            self.Cut.do_cuts_analysis()
 
 
         # if do_pulse_height: self.valueAverage = {iroc: {k: 0 for k in xrange(self.kmax)} for iroc in xrange(self.num_devices)}
