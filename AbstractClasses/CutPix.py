@@ -122,7 +122,7 @@ class CutPix(Elementary):
         self.h_beam_mean_cut = TH1F('h_beam_mean_cut', 'h_beam_mean_cut', bins+1, first_t-(last_t-first_t)/float(2*bins), last_t+(last_t-first_t)/float(2*bins))
         self.analysis.tree.Draw('time>>h_beam_time', self.cuts_pixelated_roc_incr[self.duts_list[0]][self.dict_cuts['beam']-1],'goff')
         self.analysis.tree.Draw('time>>h_beam_time_cut', self.cuts_pixelated_roc_incr[self.duts_list[0]][self.dict_cuts['beam']],'goff')
-        for bin in bins+1:
+        for bin in xrange(1,bins+2):
             self.h_beam_mean_cut.SetBinContent(bin, mean)
         gROOT.SetBatch(False)
         self.plots.set_1D_options('time', self.h_beam_time, 'time(ms)', 'entries')
