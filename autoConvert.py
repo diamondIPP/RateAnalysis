@@ -53,7 +53,6 @@ def make_raw_run_str(run, old=False):
     return '{1}/run{2}{0}.raw'.format(str(run).zfill(5 if old else 6), raw_dir, tc[2:] if old else '')
 
 
-
 def make_final_run_str(run):
     return '{1}/TrackedRun{0}.root'.format(run, final_dir)
 
