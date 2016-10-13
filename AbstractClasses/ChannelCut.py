@@ -276,7 +276,7 @@ class ChannelCut(Cut):
     # HELPER FUNCTIONS
 
     def calc_signal_threshold(self, bg=False, show=True, show_all=False):
-        pickle_path = self.analysis.PickleDir + 'Cuts/SignalThreshold_{tc}_{run}_{ch}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.highest_rate_run, ch=self.channel)
+        pickle_path = self.make_pickle_path('Cuts', 'SignalThreshold', self.analysis.highest_rate_run, self.channel)
         show = False if show_all else show
 
         def func():
@@ -386,7 +386,7 @@ class ChannelCut(Cut):
         return [mean_ - sigma_range * sigma, mean_ + sigma_range * sigma]
 
     def calc_threshold(self, show=True):
-        pickle_path = self.analysis.PickleDir + 'Cuts/Threshold_{tc}_{run}_{ch}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run_number, ch=self.channel)
+        pickle_path = self.make_pickle_path('Cuts', 'Threshold', self.analysis.run_number, self.channel)
 
         def func():
             self.analysis.tree.Draw(self.analysis.SignalName, '', 'goff', 5000)
@@ -407,14 +407,14 @@ class ChannelCut(Cut):
         return self.do_pickle(pickle_path, func, threshold)
 
     def calc_timing_range(self, show=True, n_sigma=4):
-        pickle_path = self.analysis.PickleDir + 'Cuts/TimingRange_{tc}_{run}_{ch}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run_number, ch=self.channel)
+        pickle_path = self.make_pickle_path('Cuts', 'TimingRange', self.analysis.run_number, self.channel)
 
         def func():
             print 'generating timing cut for {dia} of run {run}...'.format(run=self.analysis.run_number, dia=self.analysis.diamond_name)
 
             gROOT.SetBatch(1) if not show else self.do_nothing()
             num = self.analysis.SignalNumber
-            cut = self.generate_special_cut(excluded_cuts=['bucket', 'timing'])
+            cut = self.generate_special_cut(excluded=['bucket', 'timing'])
 
             # estimate timing
             draw_string = 'IntegralPeakTime[{num}]'.format(num=num)
@@ -508,7 +508,7 @@ class ChannelCut(Cut):
         # if not bPlot:
         #     return TCut('')
         print 'generate_timing_cut with %s sigma' % sigma
-        cut = self.generate_special_cut(excluded_cuts=['timing','bucket'])
+        cut = self.generate_special_cut(excluded=['timing', 'bucket'])
         # Estimate Timing
         print ' * Estimate Timing',
         # hTiming = TH1F('hTiming','hTiming',4096,0,512)

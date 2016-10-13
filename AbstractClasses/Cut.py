@@ -48,22 +48,21 @@ class Cut(Elementary):
     def load_run_config(self):
         return self.load_run_configs(self.analysis.run_number)
 
-    def generate_special_cut(self, excluded_cuts=None, included_cuts=None, name='special_cut'):
+    def generate_special_cut(self, excluded=None, included=None, name='special_cut'):
         cut = TCut(name, '')
         n_cuts = 0
         for key, value in self.CutStrings.iteritems():
-            if excluded_cuts and key in excluded_cuts:
+            if excluded and key in excluded:
                 continue
-            if included_cuts and key not in included_cuts:
+            if included and key not in included:
                 continue
             if key.startswith('old') or key.startswith('all_cut'):
                 continue
             if value.GetTitle() == '':
                 continue
-            # self.log_info('add {key} {tit}'.format(key=key, tit=value.GetTitle()))
             cut += value
             n_cuts += 1
-        # self.log_info('generated {name} cut with {num} cuts'.format(name=name, num=n_cuts))
+        self.log_info('generated {name} cut with {num} cuts'.format(name=name, num=n_cuts))
         return cut
 
     def generate_all_cut(self):

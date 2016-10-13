@@ -17,10 +17,10 @@ from numpy import array, zeros
 
 
 class Langau:
-    def __init__(self, histo):
+    def __init__(self, histo, nconv=100):
         self.Histo = histo
         self.Max = histo.GetMaximum()
-        self.NConvolutions = 100
+        self.NConvolutions = nconv
         self.NSigma = 5.
         self.FitRange = [k * histo.GetMean() for k in [.3, 3]]
         self.ParLimits = self.init_par_limits()
@@ -49,6 +49,9 @@ class Langau:
         values[2] = 50000.
         values[3] = 10.
         return values
+
+    def Mean(self, xmin, xmax):
+        return self.Fit.Mean(xmax, xmin)
 
     def langau(self, x, par):
 
@@ -92,25 +95,8 @@ class Langau:
         return par[2] * step * sum_int / sqrt(2 * pi) / par[3]
 
     def langaufit(self):
-        # Once again, here are the Landau * Gaussian parameters:
-        #   par[0]=Width (scale) parameter of Landau density
-        #   par[1]=Most Probable (MP, location) parameter of Landau density
-        #   par[2]=Total area (integral -inf to inf, normalization constant)
-        #   par[3]=Width (sigma) of convoluted Gaussian function
-        #
-        # Variables for langaufit call:
-        #   his             histogram to fit
-        #   fitrange[2]     lo and hi boundaries of fit range
-        #   startvalues[4]  reasonable start values for the fit
-        #   parlimitslo[4]  lower parameter limits
-        #   parlimitshi[4]  upper parameter limits
-        #   fitparams[4]    returns the final fit parameters
-        #   fiterrors[4]    returns the final fit errors
-        #   ChiSqr          returns the chi square
-        #   NDF             returns ndf
 
         his = self.Histo
-
         name = 'Fitfcn_{n}'.format(n=his.GetName())
 
         ffitold = gROOT.GetListOfFunctions().FindObject(name)
@@ -124,7 +110,7 @@ class Langau:
         for i in xrange(4):
             ffit.SetParLimits(i, *self.ParLimits[i])
 
-        his.Fit(name, 'RB0')  # fit within specified range, use ParLimits, do not plot
+        his.Fit(name, 'QRB0')  # fit within specified range, use ParLimits, do not plot
 
         ffit.GetParameters(self.Parameters)  # obtain fit parameters
         self.ParErrors = [ffit.GetParError(i) for i in xrange(4)]

@@ -14,11 +14,10 @@ from Utils import *
 class Analysis(Elementary):
     """ Class for the analysis of the non-channel specific stuff of a single run. """
 
-    def __init__(self, run, diamonds=3, verbose=False, high_low_rate=None, load_tree=True):
+    def __init__(self, run, verbose=False, high_low_rate=None, load_tree=True):
         """
         Parent class for all analyses, which contains all the basic stuff about the Telescope.
         :param run:             run object of type "Run" or integer run number
-        :param diamonds:        an integer number defining the diamonds activated for analysis: 0x1=ch0 (diamond 1) 0x2=ch3 (diamond 2)
         :param verbose:         if True, verbose printing is activated
         :param high_low_rate:   list of highest and lowest rate runs for an analysis collection
         """
@@ -27,14 +26,14 @@ class Analysis(Elementary):
         self.RootObjects = []
 
         # basics
-        self.diamonds = diamonds
         self.run = self.init_run(run, load_tree)
         self.run.analysis = self
         self.run_number = self.run.run_number
         self.RunInfo = deepcopy(self.run.RunInfo)
         self.lowest_rate_run = high_low_rate['min'] if high_low_rate is not None else self.run.run_number
         self.highest_rate_run = high_low_rate['max'] if high_low_rate is not None else self.run.run_number
-        self.PickleDir = self.get_program_dir() + self.ana_config_parser.get('SAVE', 'pickle_dir')
+        if self.ana_config_parser.has_option('SAVE', 'ActivateTitle'):
+            gStyle.SetOptTitle(self.ana_config_parser.getboolean('SAVE', 'ActivateTitle'))
         # self.saveMCData = self.ana_config_parser.getboolean("SAVE", "SaveMCData")
         self.ana_save_dir = '{run}'.format(run=self.run.run_number)
 
@@ -62,14 +61,12 @@ class Analysis(Elementary):
     # ============================================================================================
     # region INIT
 
-    def init_run(self, run, load_tree):
-        """
-
-        :type run: object
-        """
+    @staticmethod
+    def init_run(run, load_tree):
+        """ create a run instance with either a given run integer or an already give run instance where a the run object is not None """
         if not isinstance(run, Run):
             assert type(run) is int, 'run has to be either a Run instance or an integer run number'
-            return Run(run, self.diamonds, load_tree)
+            return Run(run, 3, load_tree)
         else:
             assert run.run_number is not None, 'No run selected, choose run.SetRun(run_nr) before you pass the run object'
             return run

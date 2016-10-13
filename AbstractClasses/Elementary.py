@@ -38,12 +38,13 @@ class Elementary(object):
         self.run_config_parser = self.load_run_config()
         self.ana_config_parser = self.load_ana_config()
 
+        self.PickleDir = '{prog}{dir}'.format(prog=self.get_program_dir(), dir=self.ana_config_parser.get('SAVE', 'pickle_dir'))
         self.Felix = self.MainConfigParser.getboolean('SAVE', 'felix')
         self.set_root_titles()
 
         # progress bar
         self.Widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
-        self.ProgressBar = ProgressBar(widgets=self.Widgets, maxval=0)
+        self.ProgressBar = None
 
         # screen resolution
         self.Res = self.load_resolution(resolution)
@@ -145,7 +146,7 @@ class Elementary(object):
     # endregion
 
     def start_pbar(self, n):
-        self.ProgressBar.maxval = n
+        self.ProgressBar = ProgressBar(widgets=self.Widgets, maxval=n)
         self.ProgressBar.start()
 
     @staticmethod
@@ -214,6 +215,13 @@ class Elementary(object):
             info = info.replace('-', '')
         return info
 
+    def make_pickle_path(self, sub_dir, name=None, run=None, ch=None, suf=None):
+        run = '_{r}'.format(r=run) if run is not None else ''
+        ch = '_{c}'.format(c=ch) if ch is not None else ''
+        suf = '_{s}'.format(s=suf) if suf is not None else ''
+        name = '{n}_'.format(n=name) if name is not None else ''
+        return '{dir}/{sdir}/{name}{tc}{run}{ch}{suf}.pickle'.format(dir=self.PickleDir, sdir=sub_dir, name=name, tc=self.TESTCAMPAIGN, run=run, ch=ch, suf=suf)
+
     def save_canvas(self, canvas, sub_dir=None, name=None, print_names=True, show=True):
         sub_dir = self.save_dir if hasattr(self, 'save_dir') and sub_dir is None else '{subdir}/'.format(subdir=sub_dir)
         canvas.Update()
@@ -242,8 +250,6 @@ class Elementary(object):
         """
         Saves the canvas at the desired location. If no canvas is passed as argument, the active canvas will be saved. However for applications without graphical interface,
         such as in SSl terminals, it is recommended to pass the canvas to the method.
-        :param savename:
-        :param sub_dir:
         :param ind: index of the collection
         :param ch: if None print both dias (dirty fix)
         """

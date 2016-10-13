@@ -658,7 +658,7 @@ class DiaScans(Elementary):
                 for ch in chs:
                     sel = RunSelection(tc)
                     sel.select_runs_from_runplan(rp, ch=ch)
-                    self.log_info('Loaded runplan {rp} of testcampaign {tc} and ch {ch} ({dia})'.format(rp=rp.rjust(4), tc=datetime.strptime(tc, '%Y%m').strftime('%b %Y'), ch=ch, dia=sel.Diamond))
+                    self.log_info('Loaded runplan {rp} of testcampaign {tc} and ch {ch} ({dia})'.format(rp=rp.rjust(4), tc=datetime.strptime(tc, '%Y%m').strftime('%b %Y'), ch=ch, dia=sel.DiamondName))
                     run_selections[sel] = ch
         sorted_sel = OrderedDict()
         for i, sel in enumerate(run_selections.iterkeys()):

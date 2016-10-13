@@ -398,7 +398,7 @@ class PadAnalysis(Analysis):
 
         def func():
             print 'getting margins for {dia} of run {run}...'.format(dia=self.diamond_name, run=self.run_number)
-            cut_string = self.Cut.generate_special_cut(excluded_cuts=['fiducial']) if cut is None else cut
+            cut_string = self.Cut.generate_special_cut(excluded=['fiducial']) if cut is None else cut
             if not show_plot:
                 gROOT.SetBatch(1)
             h = TH2F('h', 'Diamond Margins', 52, -.4, .4, 80, -.4, .4)
@@ -489,7 +489,7 @@ class PadAnalysis(Analysis):
         h = TH1F('hpv', title, n_bins, x[0] / 2., x[1] / 2.)
         l = self.make_legend(.66, .7, nentries=3, name='l1')
         self.format_histo(h, x_tit='Signal Peak Timing [ns]', y_tit='Number of Entries', y_off=1.3, stats=0)
-        cut = self.Cut.generate_special_cut(excluded_cuts=['timing']) if type_ == 'signal' else '!({0})'.format(self.Cut.CutStrings['pulser'])
+        cut = self.Cut.generate_special_cut(excluded=['timing']) if type_ == 'signal' else '!({0})'.format(self.Cut.CutStrings['pulser'])
         cut = cut if ucut is None else ucut
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         dic = self.Cut.calc_timing_range(show=False)
@@ -620,7 +620,7 @@ class PadAnalysis(Analysis):
             h = TProfile2D('tcpp', 'Trigger Cell vs. Signal Peak Position', 1024, 0, 1024, x[1] - x[0], x[0] / 2., x[1] / 2.)
         h1 = TProfile('hpr', 'hpr', 100, 0, 1024)
 
-        cut = self.Cut.generate_special_cut(excluded_cuts=['timing']) if cut is None else cut
+        cut = self.Cut.generate_special_cut(excluded=['timing']) if cut is None else cut
         # cut = self.Cut.all_cut if cut is None else cut
         prof = '' if not tprofile else ':'
         sig = '' if not tprofile else '{sig}-{ped}'.format(sig=self.SignalName, ped=self.PedestalName)
@@ -739,7 +739,7 @@ class PadAnalysis(Analysis):
         xbins = array(self.time_binning)
         x_min = -50 if not ped else -20
         x_max = 500 if not ped else 20
-        bins = 1100 if not ped else 80
+        bins = int(sqrt(self.BinSize)) if not ped else 80
         h = TH2D(name, "signaltime", len(xbins) - 1, xbins, bins, x_min, x_max)
         self.tree.Draw("{name}:time>>{histo}".format(histo=name, name=signal), self.Cut.all_cut, 'goff')
         if show:
@@ -799,17 +799,53 @@ class PadAnalysis(Analysis):
         all_means = func() if show else None
         return self.do_pickle(picklepath, func, all_means)
 
-    def draw_pulse_height(self, binning=None, show=True, save=True, evnt_corr=True, bin_corr=False, off_corr=False, sig=None):
+    def draw_ph(self, show=True, binning=10000, save=True, corr=True, sig=None):
+        show = False if not save else show
+
+        sig = self.SignalName if sig is None else sig
+        bin_size = binning if binning is not None else self.BinSize
+        correction = '' if not corr else '_pedcorr'
+        suffix = '{bins}{cor}_{reg}'.format(bins=bin_size, cor=correction, reg=self.get_all_signal_names()[sig])
+        picklepath = self.make_pickle_path('Ph_fit', None, self.run_number, self.channel, suf=suffix)
+
+        def func():
+
+            signal = z.generate_signal_name(z.SignalName if sig is None else sig, corr)
+            if binning is not None:
+                self.__set_bin_size(binning)
+            gr = self.make_tgrapherrors('gr_ph', 'Pulse Height Evolution')
+            for i in xrange(self.n_bins - 1):
+                n = self.tree.Draw(signal, self.Cut.all_cut, 'goff', self.binning[i + 1] - self.binning[i], self.binning[i])
+                m, s = calc_mean([self.tree.GetV1()[j] for j in xrange(n)])
+                gr.SetPoint(i, (self.time_binning[i] - self.run.startTime) / 60e3, m)
+                gr.SetPointError(i, 0, s / sqrt(n))
+            set_statbox(entries=4, only_fit=True)
+            self.format_histo(gr, x_tit='Time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6)
+            self.draw_histo(gr, show=show, lm=.14, draw_opt='apl')
+            fit_par = gr.Fit('pol0', 'qs', '', 0, self.__get_max_fit_pos(gr))
+            self.save_plots('PulseHeightNew{0}'.format(self.BinSize), show=show)
+            self.PulseHeight = gr
+            return FitRes(fit_par)
+
+        fit = func() if save else None
+        return self.do_pickle(picklepath, func, fit)
+
+    @staticmethod
+    def __get_max_fit_pos(gr):
+        """ look for huge fluctiations in ph graph and return last stable point"""
+        sum_ph = gr.GetY()[0]
+        for i in xrange(1, gr.GetN()):
+            sum_ph += gr.GetY()[i]
+            if gr.GetY()[i] < .7 * sum_ph / (i + 1):
+                log_warning('Found huge ph fluctiation! Stopping Fit! y value = {y}, mean_y = {m}'.format(y=gr.GetY()[i], m=sum_ph / (i + 1)))
+                return gr.GetX()[i - 1]
+        return gr.GetX()[gr.GetN() - 1] + 10
+
+    def draw_pulse_height(self, binning=None, show=True, save=True, evnt_corr=True, sig=None, langau=False):
         show = False if not save else show
         signal = self.SignalName if sig is None else sig
         bin_size = binning if binning is not None else self.BinSize
-        correction = ''
-        if bin_corr:
-            correction = 'binwise'
-        elif off_corr:
-            correction = 'constant'
-        elif evnt_corr:
-            correction = 'eventwise'
+        correction = '' if not evnt_corr else 'eventwise'
         peak_int = self.get_all_signal_names()[sig][1:] if sig is not None else self.PeakIntegral
         suffix = '{bins}_{cor}_{reg}{int}'.format(bins=bin_size, cor=correction, reg=self.SignalRegion, int=peak_int)
         picklepath = 'Configuration/Individual_Configs/Ph_fit/{tc}_{run}_{ch}_{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel, suf=suffix)
@@ -820,26 +856,26 @@ class PadAnalysis(Analysis):
             self.log_info('drawing pulse height fit for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name))
             if binning is not None:
                 self.__set_bin_size(binning)
-            tit_suffix = 'with {cor} Pedestal Correction'.format(cor=correction.title()) if bin_corr or evnt_corr or off_corr else ''
+            tit_suffix = 'with eventwise Pedestal Correction' if evnt_corr else ''
             gr = self.make_tgrapherrors('signal', 'Pulse Height Evolution Bin{0} '.format(self.BinSize) + tit_suffix)
-            sig_time = self.make_signal_time_histos(evnt_corr=evnt_corr, signal=signal, show=False, off_corr=off_corr, bin_corr=bin_corr)
-            mode = 'mean'
+            sig_time = self.make_signal_time_histos(evnt_corr=evnt_corr, signal=signal, show=False)
             empty_bins = 0
             count = 0
-            means = self.draw_pedestal(bin_size, show=False) if bin_corr else None
-            gROOT.SetBatch(1)
+            self.set_root_output(False)
             if sig_time.GetEntries() == 0:
                 log_warning('Empty histogram')
                 return FitRes()
+            # self.start_pbar(self.n_bins)
             for i in xrange(self.n_bins - 1):
                 h_proj = sig_time.ProjectionY(str(i), i + 1, i + 1)
+                # self.ProgressBar.update(i)
                 if h_proj.GetEntries() > 10:
-                    if mode in ["mean", "Mean"]:
-                        i_mean = h_proj.GetMean()
-                        i_mean -= means[count] if bin_corr else 0
-                        gr.SetPoint(count, (self.time_binning[i] - self.run.startTime) / 60e3, i_mean)
-                        gr.SetPointError(count, 0, h_proj.GetRMS() / sqrt(h_proj.GetEntries()))
-                        count += 1
+                    langau_fit = self.fit_langau(h_proj, 100) if langau else None
+                    i_mean = h_proj.GetMean() if not langau else langau_fit.Mean(0, 3000)
+                    i_mean_err = h_proj.GetRMS() / sqrt(h_proj.GetEntries())
+                    gr.SetPoint(count, (self.time_binning[i] - self.run.startTime) / 60e3, i_mean)
+                    gr.SetPointError(count, 0, i_mean_err)
+                    count += 1
                 else:
                     empty_bins += 1
             if empty_bins:
@@ -848,16 +884,9 @@ class PadAnalysis(Analysis):
                     log_warning('graph containts not more than one point!')
                     return FitRes()
             set_statbox(entries=4, only_fit=True)
-            self.format_histo(gr, x_tit='time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6)
+            self.format_histo(gr, x_tit='Time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6)
             # excludes points that are too low for the fit
-            max_fit_pos = gr.GetX()[gr.GetN() - 1] + 10
-            sum_ph = gr.GetY()[0]
-            for i in xrange(1, gr.GetN()):
-                sum_ph += gr.GetY()[i]
-                if gr.GetY()[i] < .7 * sum_ph / (i + 1):
-                    print 'Found huge ph fluctiation! Stopping Fit', gr.GetY()[i], sum_ph / (i + 1)
-                    max_fit_pos = gr.GetX()[i - 1]
-                    break
+            max_fit_pos = self.__get_max_fit_pos(gr)
             self.draw_histo(gr, '', show, lm=.14, draw_opt='apl')
             fit_par = gr.Fit('pol0', 'qs', '', 0, max_fit_pos)
             self.save_plots('PulseHeight{0}'.format(self.BinSize), show=show)
@@ -949,7 +978,7 @@ class PadAnalysis(Analysis):
         t_correction = '({p1}* trigger_cell + {p2} * trigger_cell*trigger_cell)'.format(p1=dic['t_corr'].GetParameter(1), p2=dic['t_corr'].GetParameter(2))
         draw_string = '{sig}:IntegralPeakTime[{num}]-{tc}>>hspt'.format(sig=self.SignalName, num=self.SignalNumber, tc=t_correction)
         exluded_cuts = ['timing', 'bucket', 'tracks', 'chi2X', 'chi2Y', 'track_angle']
-        cut = self.Cut.generate_special_cut(excluded_cuts=exluded_cuts)
+        cut = self.Cut.generate_special_cut(excluded=exluded_cuts)
         self.tree.Draw(draw_string, cut, 'goff')
         self.format_histo(h, fill_color=1)
         self.RootObjects.append(self.draw_histo(h, show=show, draw_opt='colz'))
@@ -1043,7 +1072,7 @@ class PadAnalysis(Analysis):
         return self.do_pickle(picklepath, func, fit_par)
     
     def draw_ped_sigma_selection(self, show=True):
-        f = self.show_pedestal_histo(cut=self.Cut.generate_special_cut(excluded_cuts=['ped_sigma']), nbins=512, x_range=[-50, 200], logy=True, show=False)
+        f = self.show_pedestal_histo(cut=self.Cut.generate_special_cut(excluded=['ped_sigma']), nbins=512, x_range=[-50, 200], logy=True, show=False)
         l = self.make_legend(.66, .96, nentries=3, name='fr', margin=.05, felix=False)
         l.SetHeader('Fit Results')
         l.AddEntry(0, 'Mean:', '')
@@ -1271,7 +1300,7 @@ class PadAnalysis(Analysis):
 
     def draw_bucket_pedestal(self, show=True, corr=True, additional_cut='', draw_option='colz'):
         gStyle.SetPalette(55)
-        cut_string = self.Cut.generate_special_cut(included_cuts=['tracks', 'pulser', 'saturated', 'timing'])
+        cut_string = self.Cut.generate_special_cut(included=['tracks', 'pulser', 'saturated', 'timing'])
         cut_string += additional_cut
         h = self.draw_signal_vs_peak_position('e', '2', show, corr, cut_string, draw_option, 1, save=False)
         self.format_histo(h, x_range=[self.run.signal_regions[self.SignalRegion][0] / 2, self.run.signal_regions['e'][1] / 2], stats=0)
@@ -1279,9 +1308,9 @@ class PadAnalysis(Analysis):
 
     def draw_bucket_waveforms(self, show=True, t_corr=True, start=100000):
         good = self.draw_waveforms(1, show=False, start_event=None, t_corr=t_corr, save=False)[0]
-        cut = self.Cut.generate_special_cut(excluded_cuts=['bucket', 'timing']) + TCut('!({0})'.format(self.Cut.CutStrings['bucket']))
+        cut = self.Cut.generate_special_cut(excluded=['bucket', 'timing']) + TCut('!({0})'.format(self.Cut.CutStrings['bucket']))
         bucket = self.draw_waveforms(1, cut_string=cut, show=False, start_event=start, t_corr=t_corr, save=False)[0]
-        cut = self.Cut.generate_special_cut(excluded_cuts=['bucket', 'timing']) + TCut('{buc}&&!({old})'.format(buc=self.Cut.CutStrings['bucket'], old=self.Cut.CutStrings['old_bucket']))
+        cut = self.Cut.generate_special_cut(excluded=['bucket', 'timing']) + TCut('{buc}&&!({old})'.format(buc=self.Cut.CutStrings['bucket'], old=self.Cut.CutStrings['old_bucket']))
         bad_bucket = self.draw_waveforms(1, cut_string=cut, show=False, t_corr=t_corr, start_event=None, save=False)[0]
         self.reset_colors()
         mg = TMultiGraph('mg_bw', 'Bucket Waveforms')
@@ -1536,13 +1565,26 @@ class PadAnalysis(Analysis):
         self.ProgressBar.finish()
         self.draw_histo(gr, draw_opt='alp', logx=True)
 
-    def fit_langau(self):
-        h = self.show_signal_histo()
-        fit = Langau(h)
+    def fit_langau(self, h=None, nconv=100, show=True):
+        h = self.show_signal_histo(show=show) if h is None else h
+        fit = Langau(h, nconv)
         fit.langaufit()
         fit.Fit.Draw('lsame')
+        i = 5
+        while fit.Chi2 / fit.NDF > 5:
+            fit = self.fit_langau(h, nconv + i)
+            i += 5
         self.RootObjects.append(fit)
         return fit
+
+    def find_conv(self):
+        gr = self.make_tgrapherrors('gr_c', 'chi2 vs nconv')
+        for i, j in enumerate(xrange(10, 70, 5)):
+            print j
+            f = self.fit_langau(j, False)
+            gr.SetPoint(i, j, f.Chi2 / f.NDF)
+        self.draw_histo(gr)
+
     # endregion
 
     # ==========================================================================
@@ -1550,7 +1592,7 @@ class PadAnalysis(Analysis):
     def draw_signal_vs_peak_position(self, region=None, peak_int=None, show=True, corr=True, cut=None, draw_opt='colz', nbins=4, save=True):
         region = self.SignalRegion if region is None else region
         peak_int = self.PeakIntegral if peak_int is None else peak_int
-        cut = self.Cut.generate_special_cut(excluded_cuts=[self.Cut.CutStrings['timing']]) if cut is None else cut
+        cut = self.Cut.generate_special_cut(excluded=[self.Cut.CutStrings['timing']]) if cut is None else cut
         num = self.get_signal_number(region, peak_int)
         reg_margins = self.run.signal_regions[region]
         x_bins = (reg_margins[1] - reg_margins[0]) * nbins
@@ -1564,7 +1606,7 @@ class PadAnalysis(Analysis):
 
     def draw_signal_vs_signale(self, show=True):
         gStyle.SetPalette(53)
-        cut = self.Cut.generate_special_cut(excluded_cuts=['bucket'])
+        cut = self.Cut.generate_special_cut(excluded=['bucket'])
         num = self.get_signal_number(region='e')
         cut += TCut('IntegralPeakTime[{0}]<94&&IntegralPeakTime[{0}]>84'.format(num))
         h = TH2F('hsse', 'Signal b vs Signal e', 62, -50, 200, 50, 0, 200)
