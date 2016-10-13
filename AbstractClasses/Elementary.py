@@ -193,7 +193,7 @@ class Elementary(object):
         return string
 
     @staticmethod
-    def do_pickle(path, function, value=0):
+    def do_pickle(path, function, value=0, params=0):
         if value:
             f = open(path, 'w')
             pickle.dump(value, f)
@@ -204,7 +204,7 @@ class Elementary(object):
             ret_val = pickle.load(f)
             f.close()
         except IOError:
-            ret_val = function()
+            ret_val = function() if params == 0 else function(params)
             f = open(path, 'w')
             pickle.dump(ret_val, f)
             f.close()
