@@ -810,7 +810,7 @@ class PadAnalysis(Analysis):
 
         def func():
 
-            signal = z.generate_signal_name(z.SignalName if sig is None else sig, corr)
+            signal = self.generate_signal_name(self.SignalName if sig is None else sig, corr)
             if binning is not None:
                 self.__set_bin_size(binning)
             gr = self.make_tgrapherrors('gr_ph', 'Pulse Height Evolution')
@@ -1183,7 +1183,7 @@ class PadAnalysis(Analysis):
 
         # contributions = self.sort_contributions(contributions)
         contributions = sorted_contr
-        good_events = self.tree.GetEntries(z.AllCuts.GetTitle())
+        good_events = self.tree.GetEntries(self.AllCuts.GetTitle())
         values = contributions.values() + [good_events]
         values += [self.run.n_entries - good_events - cutted_events] if short else []
         i = 0
