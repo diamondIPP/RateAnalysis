@@ -91,7 +91,7 @@ class PulserAnalysis(Elementary):
         start_string = '_{0}'.format(start) if start is not None else ''
         events_string = '_{0}'.format(events) if events is not None else ''
         suffix = '{corr}_{beam}{st}{ev}'.format(corr='_ped_corr' if corr else '', beam='BeamOff' if not beam_on else 'BeamOn', st=start_string, ev=events_string)
-        pickle_path = self.Ana.PickleDir + 'Pulser/HistoFit_{tc}_{run}_{dia}{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.Ana.run_number, dia=self.Ana.diamond_name, suf=suffix)
+        pickle_path = self.make_pickle_path('Pulser', 'HistoFit', self.Ana.run_number, self.Channel, suf=suffix)
 
         def func():
             set_statbox(only_fit=True, w=.25)
