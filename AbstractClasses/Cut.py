@@ -369,7 +369,7 @@ class Cut(Elementary):
         tup = [0, 0]
         cut = 40  # if rate goes higher than n %
         for i, value in enumerate(rate):
-            if value > cut > last_rate:
+            if value >= cut > last_rate:
                 tup[0] = i * binning
             elif value < cut <= last_rate:
                 tup[1] = i * binning
