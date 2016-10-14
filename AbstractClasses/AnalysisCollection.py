@@ -11,7 +11,7 @@ from screeninfo import get_monitors
 from dispy import JobCluster
 from functools import partial
 
-from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1
+from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1, TH1F
 
 from CurrentInfo import Currents
 from Elementary import Elementary
@@ -287,6 +287,26 @@ class AnalysisCollection(Elementary):
             mg.Add(gr, 'p')
         self.format_histo(mg, x_tit='Voltage [V]', y_tit='Pulse Height [au]', y_off=1.3, draw_first=True)
         self.save_histo(mg, '{s}VoltageScan'.format(s='Signal' if not pulser else 'Pulser'), draw_opt='a', lm=.12)
+
+    def draw_slope_vs_voltage(self, show=True, gr=False):
+        h = TH1F('hSV', 'PH Slope Distribution', 10, -1, 1) if not gr else self.make_tgrapherrors('gSV', 'PH Slope vs. Voltage')
+
+        self.start_pbar(self.NRuns)
+        for i, (key, ana) in enumerate(self.collection.iteritems()):
+            ana.draw_ph(corr=True, show=False)
+            fit = ana.PulseHeight.Fit('pol1', 'qs')
+            x = ana.run.RunInfo['dia{nr}hv'.format(nr=self.FirstAnalysis.run.channels.index(self.channel) + 1)]
+            s, e = fit.Parameter(1), fit.ParError(1)
+            if gr:
+                h.SetPoint(i, x, s)
+                h.SetPointError(i, 0, e)
+            else:
+                set_statbox(entries=4, only_fit=True)
+                h.Fill(s)
+                h.Fit('gaus', 'q')
+            self.ProgressBar.update(i + 1)
+        self.format_histo(h, x_tit='Slope [mV/min]', y_tit='Number of Entries', y_off=1.3)
+        self.draw_histo(h, show=show, draw_opt='alp' if gr else '')
 
     def draw_pulse_heights(self, binning=10000, flux=True, raw=False, all_corr=False, show=True, save_plots=True, vs_time=False, fl=True, save_comb=True, y_range=None):
 
