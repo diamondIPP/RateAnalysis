@@ -26,7 +26,8 @@ __author__ = 'DA'
 class Plots(Elementary):
     def __init__(self, num_entries, run=None, num_devices=7, binning=-1, roc_tel=[0,1,2,3], roc_d1=4, roc_d2=5, roc_si=6):
         Elementary.__init__(self)
-        gStyle.SetPalette(53)
+        # gStyle.SetPalette(53)  # kDarkBodyRadiator
+        gStyle.SetPalette(55)  # kRainBow
         gStyle.SetNumberContours(999)
         self.run = run
         self.runinfo = self.run.RunInfo
@@ -34,17 +35,17 @@ class Plots(Elementary):
         self.num_devices = num_devices
         self.num_entries = num_entries
         self.plot_settings = {
-            'ph1DbinsD4': 60,
+            'ph1DbinsD4': 80,
             'ph1DminD4': 0,
             'ph1DmaxD4': 30000,
-            'ph1DbinsD5': 120,
+            'ph1DbinsD5': 80,
             'ph1DminD5': 0,
             'ph1DmaxD5': 60000,
-            'ph1DbinsSi': 180,
+            'ph1DbinsSi': 160,
             'ph1DminSi': 0,
             'ph1DmaxSi': 90000,
             'nEventsAv': 20000,
-            'event_bins': int(ceil(float(self.num_entries)/10)),
+            'event_bins': max(int(ceil(float(self.num_entries)/10)), 200),
             'event_min': 0,
             'event_max': self.num_entries,
             'maxphplots': int(ceil(8*self.num_entries/100)),  ## for landau histograms histograms
@@ -71,7 +72,7 @@ class Plots(Elementary):
             'rhit_1Dmin': 0,
             'rhit_1Dmax': 10
         }
-        self.plot_settings['event_bins'] = int(ceil(float(self.num_entries)/10)) if self.num_entries <= 100000 else \
+        self.plot_settings['event_bins'] = int(ceil(float(self.num_entries)/5000)) if self.num_entries <= 100000 else \
             int(ceil(float(self.num_entries)/100)) if self.num_entries <= 500000 else int(ceil(float(self.num_entries)/self.plot_settings['nEventsAv']))
         self.plot_settings['deltaX'] = float(self.plot_settings['xmax']-self.plot_settings['xmin'])/self.plot_settings['nBinsX']
         self.plot_settings['deltaY'] = float(self.plot_settings['ymax']-self.plot_settings['ymin'])/self.plot_settings['nBinsY']
@@ -426,7 +427,7 @@ class Plots(Elementary):
                 
         self.print_banner('1D profiles creation -> Done')
 
-    def save_individual_plots(self, histo, name, title, tcutg=None, draw_opt='', opt_stats=0, path='./', verbosity=False, opt_fit=0, addElem='', clone=False):
+    def save_individual_plots(self, histo, name, title, tcutg=None, draw_opt='', opt_stats=0, path='./', verbosity=False, opt_fit=0, addElem='', clone=False, doLogZ=False):
         if verbosity: self.print_banner('Saving {n}...'.format(n=name))
         gROOT.SetBatch(True)
         blabla = gROOT.ProcessLine("gErrorIgnoreLevel = {f};".format(f=kError))
@@ -465,6 +466,7 @@ class Plots(Elementary):
             os.makedirs('{dir}/Plots'.format(dir=path))
         if not os.path.isdir('{dir}/Root'.format(dir=path)):
             os.makedirs('{dir}/Root'.format(dir=path))
+        if doLogZ: c0.SetLogz()
         c0.SaveAs('{dir}/Root/c_{n}.root'.format(dir=path, n=name))
         c0.SaveAs('{dir}/Plots/c_{n}.png'.format(dir=path, n=name))
         c0.Close()
@@ -489,7 +491,8 @@ class Plots(Elementary):
         c0.cd()
         histo1.Draw(draw_opt)
         histo2.Draw(draw_opt+'SAME')
-        if histo3 != '': histo3.Draw(draw_opt+'SAME')
+        if histo3 != '':
+            histo3.Draw(draw_opt+'SAME')
         c0.Update()
         c0.BuildLegend(0.65, 0.7, 0.9, 0.9)
         if not os.path.isdir('{dir}/Plots'.format(dir=path)):

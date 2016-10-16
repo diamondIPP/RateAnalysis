@@ -36,8 +36,12 @@ class SignalPixAnalysis(Analysis):
             os.makedirs(self.save_dir)
         if not os.path.isdir('{dir}/Plots'.format(dir=self.save_dir)):
             os.makedirs('{dir}/Plots'.format(dir=self.save_dir))
+        if not os.path.isdir('{dir}/Plots/cuts'.format(dir=self.save_dir)):
+            os.makedirs('{dir}/Plots/cuts'.format(dir=self.save_dir))
         if not os.path.isdir('{dir}/Root'.format(dir=self.save_dir)):
             os.makedirs('{dir}/Root'.format(dir=self.save_dir))
+        if not os.path.isdir('{dir}/Root/cuts'.format(dir=self.save_dir)):
+            os.makedirs('{dir}/Root/cuts'.format(dir=self.save_dir))
         self.roc_diam1 = 4
         self.roc_diam2 = 5
         self.roc_si = 6
