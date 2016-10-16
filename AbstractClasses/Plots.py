@@ -467,6 +467,8 @@ class Plots(Elementary):
         if not os.path.isdir('{dir}/Root'.format(dir=path)):
             os.makedirs('{dir}/Root'.format(dir=path))
         if doLogZ: c0.SetLogz()
+        c0.Update()
+        c0.Modified()
         c0.SaveAs('{dir}/Root/c_{n}.root'.format(dir=path, n=name))
         c0.SaveAs('{dir}/Plots/c_{n}.png'.format(dir=path, n=name))
         c0.Close()
