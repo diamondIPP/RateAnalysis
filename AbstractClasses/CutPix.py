@@ -1,6 +1,8 @@
 import os
 import pickle
 import json
+
+import sys
 from numpy import array, zeros, arange, delete
 from Elementary import Elementary
 from ROOT import TCut, gROOT, TH1F, kRed, TCutG, gDirectory, kBlue, TH2D, TH2F, TH1D, kGreen, kMagenta
@@ -112,7 +114,8 @@ class CutPix(Elementary):
 
     def do_cuts_distributions(self):
         self.print_banner('Doing cuts distributions...')
-        if self.verbose: print 'Beam interruption...',
+        if self.verbose:
+            print 'Beam interruption...', ; sys.stdout.flush()
         nentries = self.analysis.tree.GetEntries()
         self.analysis.tree.GetEntry(0)
         first_t = self.analysis.tree.time
@@ -136,7 +139,7 @@ class CutPix(Elementary):
         self.plots.set_1D_options('time', self.h_beam_mean_cut, 'time(ms)', 'entries', color=kGreen)
         self.plots.save_cuts_distributions(self.h_beam_time, self.h_beam_time_cut, 'beam_time_cut_overlay', 'Beam cut overlay', '', 1000000011, self.plots.save_dir+'/cuts', False, self.h_beam_mean_cut)
         if self.verbose: print 'Done'
-        if self.verbose: print 'Chi2...',
+        if self.verbose: print 'Chi2...', ; sys.stdout.flush()
         self.h_chi2x_dist = {}
         self.h_chi2y_dist = {}
         self.h_chi2x_cut_dist = {}
@@ -159,7 +162,7 @@ class CutPix(Elementary):
             self.plots.save_cuts_distributions(self.h_chi2x_dist[iroc], self.h_chi2x_cut_dist[iroc], 'chi2_roc{r}_x_cut_overlay'.format(r=iroc), 'Chi2 roc{r} x Cut Overlay'.format(r=iroc), '', 1000000011, self.plots.save_dir+'/cuts', False)
             self.plots.save_cuts_distributions(self.h_chi2y_dist[iroc], self.h_chi2y_cut_dist[iroc], 'chi2_roc{r}_y_cut_overlay'.format(r=iroc), 'Chi2 roc{r} Y Cut Overlay'.format(r=iroc), '', 1000000011, self.plots.save_dir+'/cuts', False)
         if self.verbose: print 'Done'
-        if self.verbose: print 'Angle...',
+        if self.verbose: print 'Angle...', ; sys.stdout.flush()
         self.h_anglex_dist = {}
         self.h_angley_dist = {}
         self.h_anglex_cut_dist = {}
@@ -182,7 +185,7 @@ class CutPix(Elementary):
             self.plots.save_cuts_distributions(self.h_anglex_dist[iroc], self.h_anglex_cut_dist[iroc], 'angle_roc{r}_x_cut_overlay'.format(r=iroc), 'Angle roc{r} X Cut Overlay'.format(r=iroc), '', 1000000011, self.plots.save_dir+'/cuts', False)
             self.plots.save_cuts_distributions(self.h_angley_dist[iroc], self.h_angley_cut_dist[iroc], 'angle_roc{r}_y_cut_overlay'.format(r=iroc), 'Angle roc{r} Y Cut Overlay'.format(r=iroc), '', 1000000011, self.plots.save_dir+'/cuts', False)
         if self.verbose: print 'Done'
-        if self.verbose: print 'R_hit...',
+        if self.verbose: print 'R_hit...', ; sys.stdout.flush()
         self.h_rhit_dist = {}
         self.h_rhit_cut_dist = {}
         for iroc in self.duts_list:
@@ -222,7 +225,7 @@ class CutPix(Elementary):
             phmax = {self.roc_diam1: self.plot_settings['ph1DmaxD4'], self.roc_diam2: self.plot_settings['ph1DmaxD5'], self.roc_si: self.plot_settings['ph1DmaxSi']}
             phdelta = {self.roc_diam1: phmax[self.roc_diam1] - phmin[self.roc_diam1], self.roc_diam2: phmax[self.roc_diam2] - phmin[self.roc_diam2], self.roc_si: phmax[self.roc_si] - phmin[self.roc_si]}
             for cut in self.cut_names:
-                if self.verbose: print 'Analysing ROC {r} with cummulative cut {c}...'.format(r=iroc, c=cut),
+                if self.verbose: print 'Analysing ROC {r} with cummulative cut {c}...'.format(r=iroc, c=cut), ; sys.stdout.flush()
                 gROOT.SetBatch(1)
                 self.h_hitmaps_cuts[iroc][cut] = TH2D('hitmap_roc{r}_{c}'.format(r=iroc,c=cut), 'hitmap_roc{r}_{c}'.format(r=iroc,c=cut), self.plot_settings['nBinCol']+1, self.plot_settings['minCol']-(self.plot_settings['maxCol']-self.plot_settings['minCol'])/(2*float(self.plot_settings['nBinCol'])), self.plot_settings['maxCol']+(self.plot_settings['maxCol']-self.plot_settings['minCol'])/(2*float(self.plot_settings['nBinCol'])), self.plot_settings['nBinRow']+1, self.plot_settings['minRow']-(self.plot_settings['maxRow']-self.plot_settings['minRow'])/(2*float(self.plot_settings['nBinRow'])), self.plot_settings['maxRow']+(self.plot_settings['maxRow']-self.plot_settings['minRow'])/(2*float(self.plot_settings['nBinRow'])))
                 self.h_ph1_evt_cuts[iroc][cut] = TH2D('ph1_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'ph1_evt_roc{r}_{c}'.format(r=iroc,c=cut), self.plot_settings['event_bins']+1, self.plot_settings['event_min']-(self.plot_settings['event_max']-self.plot_settings['event_min'])/(2*float(self.plot_settings['event_bins'])), self.plot_settings['event_max']+(self.plot_settings['event_max']-self.plot_settings['event_min'])/(2*float(self.plot_settings['event_bins'])), phbins[iroc]+1, phmin[iroc]-phdelta[iroc]/(2*float(phbins[iroc])), phmax[iroc]+phdelta[iroc]/float(2*phbins[iroc]))
@@ -241,7 +244,7 @@ class CutPix(Elementary):
                 if self.verbose: print 'Done'
         for iroc in self.duts_list:
             for cut in self.cut_names:
-                if self.verbose: print 'Saving for ROC {r} with cummulative cut {c}...'.format(r=iroc, c=cut),
+                if self.verbose: print 'Saving for ROC {r} with cummulative cut {c}...'.format(r=iroc, c=cut), ; sys.stdout.flush()
                 self.plots.set_2D_options(self.h_hitmaps_cuts[iroc][cut], 'col', 'row', 'entries', max_val=maxz_hitmap)
                 self.plots.set_2D_options(self.h_ph1_evt_cuts[iroc][cut], 'event', 'ph(e)', 'entries', max_val=maxz_ph1)
                 self.plots.set_1D_options('ph',self.h_ph1_cuts[iroc][cut],'ph 1 pix cl (e)', 'entries')
