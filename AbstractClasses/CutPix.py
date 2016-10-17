@@ -382,7 +382,7 @@ class CutPix(Elementary):
     #                                         + beam_interr_cut + self.rhit_cut[iROC]
 
     def generate_ini_fin_cuts(self):
-        if self.verbose: print 'Creating cut for initial and final', self.CutConfig['ExcludeFirst'], 'seconds...',
+        if self.verbose: print 'Creating cut for initial and final', abs(self.CutConfig['ExcludeFirst']), 'seconds...', ; sys.stdout.flush()
         picklepath = 'Configuration/Individual_Configs/IniFin/{tc}_{r}.pickle'.format(tc=self.TESTCAMPAIGN, r=self.run_number)
         def func0():
             nentries = self.analysis.tree.GetEntries()
@@ -406,7 +406,7 @@ class CutPix(Elementary):
     def generate_beam_interruption_cut(self):
         # time is in ms. good results found with bin size of 5 seconds
         picklepath = 'Configuration/Individual_Configs/Beam/{tc}_{r}.pickle'.format(tc=self.TESTCAMPAIGN, r=self.run_number)
-        print 'Generating beam interruption and overshoots cut for run', self.run_number, '...',
+        print 'Generating beam interruption and overshoots cut for run', self.run_number, '...', ; sys.stdout.flush()
 
         def func0():
             nentries = self.analysis.tree.GetEntries()
@@ -454,7 +454,7 @@ class CutPix(Elementary):
 
 
     def generate_rhit_cuts(self):
-        if self.verbose: print 'Generatin R-hit cut for distances greater than', self.CutConfig['rhit'], 'um between predicted position from the track and the seed cluster position...',
+        if self.verbose: print 'Generatin R-hit cut for distances greater than', self.CutConfig['rhit'], 'um between predicted position from the track and the seed cluster position...', ; sys.stdout.flush()
         self.rhit_cut = {}
         # self.h_rhit = {}
         # self.h_rhit_cut = {}
@@ -497,7 +497,7 @@ class CutPix(Elementary):
         if self.verbose: print 'Done'
 
     def generate_chi2_cuts(self):
-        if self.verbose: print 'Generating cut for a chi2 with a percentile of', self.CutConfig['chi2X'], 'in X and', self.CutConfig['chi2Y'], 'in Y...',
+        if self.verbose: print 'Generating cut for a chi2 with a percentile of', self.CutConfig['chi2X'], 'in X and', self.CutConfig['chi2Y'], 'in Y...', ; sys.stdout.flush()
         self.chi2_cut = {i:{} for i in self.duts_list}
         self.h_chi2 = {i:{} for i in self.duts_list}
         self.h_chi2_cut = {i:{} for i in self.duts_list}
@@ -543,7 +543,7 @@ class CutPix(Elementary):
         self.chi2_cut[iroc][mode] = cut
 
     def generate_fid_cuts(self):
-        if self.verbose: print 'Generating fiducial cuts...',
+        if self.verbose: print 'Generating fiducial cuts...', ; sys.stdout.flush()
         self.fid_cut_hitmap_roc = {}
         self.fid_cut_pixelated_roc = {}
         # self.fid_cut_local_roc = {}
@@ -639,7 +639,7 @@ class CutPix(Elementary):
     #                 self.cuts_pixelated_roc_incr[roc][i] = self.cuts_pixelated_roc_incr[roc][i].GetTitle()
 
     def generate_masks(self):
-        if self.verbose: print 'generating masks cuts...',
+        if self.verbose: print 'generating masks cuts...', ; sys.stdout.flush()
         self.mask_hitmap_roc = {}
         self.mask_pixelated_roc = {}
         self.generate_col_masks()
@@ -743,7 +743,7 @@ class CutPix(Elementary):
         self.mask_pixelated_roc[roc] = self.mask_pixelated_roc[roc] + self.pixel_mask_pixelated_roc[roc]
 
     def generate_angle_cuts(self):
-        if self.verbose: print 'Generating angle cuts of', self.CutConfig['track_angle'], 'deg in X and Y'
+        if self.verbose: print 'Generating angle cuts of', self.CutConfig['track_angle'], 'deg in X and Y...', ; sys.stdout.flush()
         self.angle_cut = {i: {} for i in self.duts_list}
         self.h_angle = {i: {} for i in self.duts_list}
         self.h_angle_cut = {i: {} for i in self.duts_list}
