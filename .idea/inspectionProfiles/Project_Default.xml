@@ -52,6 +52,7 @@
           <option value="TMultiGraph" />
           <option value="Long" />
           <option value="TExec" />
+          <option value="ROOT" />
         </list>
       </option>
     </inspection_tool>
