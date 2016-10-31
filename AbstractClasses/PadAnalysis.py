@@ -281,7 +281,7 @@ class PadAnalysis(Analysis):
 
     # ==========================================================================
     # region 2D SIGNAL DISTRIBUTION
-    def draw_signal_map(self, draw_option='surf3z', show=True, factor=1.5, cut=None, marg=True):
+    def draw_signal_map(self, draw_option='surf3z', show=True, factor=1.5, cut=None, marg=True, fid=True):
         margins = self.find_diamond_margins(show_plot=False)
         x = [margins['x'][0], margins['x'][1]] if marg else [-.3, .3]
         y = [margins['y'][0], margins['y'][1]] if marg else [-.3, .3]
@@ -293,6 +293,7 @@ class PadAnalysis(Analysis):
         signal = '{sig}-{pol}*{ped}'.format(sig=self.SignalName, ped=self.PedestalName, pol=self.Polarity)
         print 'drawing signal map of {dia} for Run {run}...'.format(dia=self.diamond_name, run=self.run_number)
         cut = self.Cut.all_cut if cut is None else cut
+        cut = self.Cut.generate_special_cut(excluded=['fiducial']) if not fid else cut
         self.tree.Draw('{z}:diam{nr}_track_y:diam{nr}_track_x>>signal_map'.format(z=signal, nr=nr), cut, 'goff')
         gStyle.SetPalette(53)
         is_surf = draw_option.lower().startswith('surf')
@@ -723,7 +724,7 @@ class PadAnalysis(Analysis):
         if bin_corr:
             return sig_name
         elif off_corr:
-            ped_fit = self.show_pedestal_histo(cut=cut, show=False)
+            ped_fit = self.show_pedestal_histo(cut=cut, save=False)
             sig_name += '-{pol}*{ped}'.format(ped=ped_fit.Parameter(1), pol=ped_pol)
         elif evnt_corr:
             sig_name += '-{pol}*{ped}'.format(ped=self.PedestalName, pol=ped_pol)
