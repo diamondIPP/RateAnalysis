@@ -13,7 +13,7 @@ from argparse import ArgumentParser
 from os.path import realpath, dirname
 
 
-tc = '201510'
+tc = '201610'
 prog_dir = dirname(realpath(__file__))
 data_dir = '/data/psi_{0}_{1}'.format(tc[:4], tc[-2:])
 raw_dir = '{0}/raw'.format(data_dir)
