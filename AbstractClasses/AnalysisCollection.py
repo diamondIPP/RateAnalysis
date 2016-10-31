@@ -310,7 +310,7 @@ class AnalysisCollection(Elementary):
 
     def draw_pulse_heights(self, binning=10000, flux=True, raw=False, all_corr=False, show=True, save_plots=True, vs_time=False, fl=True, save_comb=True, y_range=None):
 
-        pickle_path = self.FirstAnalysis.PickleDir + 'Ph_fit/PulseHeights_{tc}_{rp}_{dia}_{bin}.pickle'.format(tc=self.TESTCAMPAIGN, rp=self.run_plan, dia=self.diamond_name, bin=binning)
+        pickle_path = self.make_pickle_path('Ph_fit', 'PulseHeights', self.run_plan, ch=self.diamond_name, suf=binning)
         flux = False if vs_time else flux
 
         def func(y_ran):
@@ -430,7 +430,7 @@ class AnalysisCollection(Elementary):
 
     def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False, show=True, cut=None, beam_on=True, save=False):
 
-        pickle_path = self.FirstAnalysis.PickleDir + 'Pedestal/AllPedestals_{tc}_{rp}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, rp=self.run_plan, dia=self.diamond_name)
+        pickle_path = self.make_pickle_path('Pedestal', 'AllPedestals', self.run_plan, self.diamond_name)
         mode = 'Flux' if flux else 'Run'
         log_message('Getting pedestals')
         self.start_pbar(self.NRuns)
@@ -449,7 +449,7 @@ class AnalysisCollection(Elementary):
             cut_string = None
             for key, ana in self.collection.iteritems():
                 cut_string = ana.Cut.generate_pulser_cut(beam_on=beam_on) if cut == 'pulser' else cut
-                fit_par = ana.show_pedestal_histo(region, peak_int, cut=cut_string, save=False, show=False)
+                fit_par = ana.show_pedestal_histo(region, peak_int, cut=cut_string, save=save, show=False)
                 x = ana.run.flux if flux else key
                 gr1.SetPoint(i, x, fit_par.Parameter(par))
                 gr1.SetPointError(i, 0, fit_par.ParError(par))
@@ -555,8 +555,7 @@ class AnalysisCollection(Elementary):
         return self.draw_combined_ph_distributions(runs, binning, show)
 
     def draw_ph_distributions_below_flux(self, binning=5000, flux=150, show=True, save_plot=True):
-        pickle_path = self.FirstAnalysis.PickleDir + 'Ph_fit/PhDistoBel_{tc}_{rp}_{dia}_{bin}_{flux}.pickle'.format(tc=self.TESTCAMPAIGN, rp=self.run_plan, dia=self.diamond_name, bin=binning,
-                                                                                                                    flux=flux)
+        pickle_path = self.make_pickle_path('Ph_fit', 'PhDistoBel', self.run_plan, self.diamond_name, suf='{bin}_{flux}'.format(bin=binning, flux=flux))
 
         def func():
             log_message('Getting representative errors')
@@ -637,7 +636,7 @@ class AnalysisCollection(Elementary):
     # region PULSER
     def draw_pulser_info(self, flux=True, show=True, mean_=True, corr=True, beam_on=True, vs_time=False, do_fit=True, scale=1, save_comb=True, save=True, ret_mg=False):
 
-        pickle_path = self.FirstAnalysis.PickleDir + 'Pulser/PulseHeights_{tc}_{rp}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, rp=self.run_plan, dia=self.diamond_name)
+        pickle_path = self.make_pickle_path('Pulser', 'PulseHeights', self.run_plan, self.diamond_name)
         flux = False if vs_time else flux
         mode = self.get_mode(flux, vs_time)
         log_message('Getting pulser info{0}'.format(' vs time' if vs_time else ''))
