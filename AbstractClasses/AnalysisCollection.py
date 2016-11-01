@@ -556,7 +556,7 @@ class AnalysisCollection(Elementary):
         runs = self.get_runs_by_collimator(fsh13=fsh13, fs11=fs11)
         return self.draw_combined_ph_distributions(runs, binning, show)
 
-    def draw_ph_distributions_below_flux(self, binning=5000, flux=150, show=True, save_plot=True):
+    def draw_ph_distributions_below_flux(self, binning=200, flux=150, show=True, save_plot=True):
         pickle_path = self.make_pickle_path('Ph_fit', 'PhDistoBel', self.run_plan, self.diamond_name, suf='{bin}_{flux}'.format(bin=binning, flux=flux))
 
         def func():
@@ -567,7 +567,7 @@ class AnalysisCollection(Elementary):
         err = func() if save_plot else None
         return self.do_pickle(pickle_path, func, err)
 
-    def draw_combined_ph_distributions(self, runs, binning=5000, show=True):
+    def draw_combined_ph_distributions(self, runs, binning=200, show=True):
         stack = THStack('s_phd', 'Pulse Height Distributions')
         self.reset_colors()
         self.start_pbar(len(runs))
