@@ -11,7 +11,7 @@ from sys import stdout
 from time import time, sleep
 
 from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie,\
-    THStack, TArrow, kOrange, TSpectrum, gRandom, TMultiGraph, Long
+    THStack, TArrow, kOrange, TSpectrum, gRandom, TMultiGraph, Long, TH2I
 
 from ChannelCut import ChannelCut
 from CurrentInfo import Currents
@@ -281,7 +281,7 @@ class PadAnalysis(Analysis):
 
     # ==========================================================================
     # region 2D SIGNAL DISTRIBUTION
-    def draw_signal_map(self, draw_option='surf3z', show=True, factor=1.5, cut=None, marg=True, fid=True):
+    def draw_signal_map(self, draw_option='colz', show=True, factor=1.5, cut=None, marg=True, fid=True, hitmap=False, save=True):
         margins = self.find_diamond_margins(show_plot=False)
         x = [margins['x'][0], margins['x'][1]] if marg else [-.3, .3]
         y = [margins['y'][0], margins['y'][1]] if marg else [-.3, .3]
@@ -289,22 +289,31 @@ class PadAnalysis(Analysis):
         # get bin size via digital resolution of the telescope pixels
         x_bins = int(ceil(((x[1] - x[0]) / 0.015 * sqrt(12) / factor)))
         y_bins = int(ceil((y[1] - y[0]) / 0.01 * sqrt(12) / factor))
-        h = TProfile2D('signal_map', 'Signal Map', x_bins, x[0], x[1], y_bins, y[0], y[1])
+        self.set_root_output(0)
+        if hitmap:
+            h = TH2I('h_hm', 'Diamond Hit Map', x_bins, x[0], x[1], y_bins, y[0], y[1])
+        else:
+            h = TProfile2D('signal_map', 'Signal Map', x_bins, x[0], x[1], y_bins, y[0], y[1])
+        self.set_root_output(1)
         signal = '{sig}-{pol}*{ped}'.format(sig=self.SignalName, ped=self.PedestalName, pol=self.Polarity)
-        print 'drawing signal map of {dia} for Run {run}...'.format(dia=self.diamond_name, run=self.run_number)
+        self.log_info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.diamond_name, run=self.run_number, mode='hit' if hitmap else 'signal '))
         cut = self.Cut.all_cut if cut is None else cut
         cut = self.Cut.generate_special_cut(excluded=['fiducial']) if not fid else cut
-        self.tree.Draw('{z}:diam{nr}_track_y:diam{nr}_track_x>>signal_map'.format(z=signal, nr=nr), cut, 'goff')
-        gStyle.SetPalette(53)
+        self.tree.Draw('{z}diam{nr}_track_y:diam{nr}_track_x>>{h}'.format(z=signal + ':' if not hitmap else '', nr=nr, h='h_hm' if hitmap else 'signal_map'), cut, 'goff')
+        gStyle.SetPalette(1 if hitmap else 53)
         is_surf = draw_option.lower().startswith('surf')
         self.format_histo(h, x_tit='track_x [cm]', y_tit='track_y [cm]', y_off=1.4, z_off=1.3, stats=0, z_tit='Pulse Height [au]')
         if is_surf:
             self.format_histo(h, x_off=2, y_off=2.4, x_tit='track_x [cm]', y_tit='track_y [cm]', stats=0)
         h.GetXaxis().SetNdivisions(5)
         h.SetContour(50)
-        self.RootObjects.append(self.save_histo(h, 'SignalMap2D{0}'.format(draw_option.title()), show, lm=.12, rm=.16 if not is_surf else .12, draw_opt=draw_option))
+        save_name = 'SignalMap2D{0}'.format(draw_option.title()) if not hitmap else 'HitMap'
+        self.save_histo(h, save_name, show, lm=.12, rm=.16 if not is_surf else .12, draw_opt=draw_option, save=save)
         self.SignalMapHisto = h
         return h
+
+    def draw_dia_hitmap(self, show=True, factor=1.5, cut=None, marg=True, fid=True):
+        return self.draw_signal_map(show=show, factor=factor, cut=cut, marg=marg, fid=fid, hitmap=True)
 
     def make_region_cut(self):
         self.draw_mean_signal_distribution(show=False)
@@ -390,9 +399,6 @@ class PadAnalysis(Analysis):
         fit = self.fit_mean_signal_distribution()
         conversion_factor = 2 * sqrt(2 * log(2))  # sigma to FWHM
         return fit.Parameter(2) * conversion_factor
-
-    def draw_diamond_hitmap(self, cut=None, show_frame=True):
-        self.find_diamond_margins(show_frame=show_frame, cut=cut)
 
     def find_diamond_margins(self, show_plot=True, show_frame=False, cut=None, make_histo=False):
         pickle_path = self.make_pickle_path('Margins', run=self.run_number, ch=self.channel)
