@@ -53,6 +53,7 @@
           <option value="Long" />
           <option value="TExec" />
           <option value="ROOT" />
+          <option value="TH2I" />
         </list>
       </option>
     </inspection_tool>
