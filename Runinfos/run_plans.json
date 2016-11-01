@@ -1920,6 +1920,22 @@
       ], 
       "type": "rate scan"
     }, 
+    "08.1": {
+      "attenuators": {
+        "dia1": "10dB_1", 
+        "dia2": "6dB_2", 
+        "pulser": "6dB_3//6dB_1"
+      }, 
+      "runs": [
+        211, 
+        212, 
+        213, 
+        214, 
+        215, 
+        216
+      ], 
+      "type": "up scan"
+    }, 
     "09": {
       "attenuators": {
         "dia1": "10dB_1", 
