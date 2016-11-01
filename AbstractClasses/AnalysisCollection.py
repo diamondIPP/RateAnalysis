@@ -11,7 +11,7 @@ from screeninfo import get_monitors
 from dispy import JobCluster
 from functools import partial
 
-from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1, TH1F
+from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1, TH1F, TH2F
 
 from CurrentInfo import Currents
 from Elementary import Elementary
@@ -1062,6 +1062,44 @@ class AnalysisCollection(Elementary):
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         gROOT.SetBatch(0)
         self.RootObjects.append([c, ex])
+
+    def draw_signal_map(self, show=True, low=1e20, fid=True, factor=1):
+        suffix = '{fid}{fac}'.format(fid='Fid' if fid else '', fac=factor)
+        pickle_path = self.make_pickle_path('SignalMaps', 'SigMaps', self.run_plan, self.channel, suffix)
+
+        def func():
+            histos = [ana.draw_signal_map(show=False, marg=False, fid=fid, factor=factor) for ana in self.collection.itervalues() if ana.run.flux < low]
+            h = histos[0]
+            sig_map = TH2F('h_sms', 'Combined Signal Maps', h.GetNbinsX(), h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax(), h.GetNbinsY(), h.GetYaxis().GetXmin(), h.GetYaxis().GetXmax())
+            for h in histos:
+                sig_map.Add(h)
+            sig_map.Scale(1. / len(histos))
+            self.format_histo(sig_map, x_tit='track_x [cm]', y_tit='track_y [cm]', y_off=1.4, z_off=1.3, stats=0, z_tit='Pulse Height [au]')
+            self.__adjust_sig_map(sig_map)
+            self.save_histo(sig_map, 'CombinedSignalMaps', show, lm=.12, rm=.16, draw_opt='colz')
+            return sig_map
+
+        hist = self.do_pickle(pickle_path, func)
+        if not gROOT.FindObject('h_sms'):
+            gStyle.SetPalette(53)
+            self.__adjust_sig_map(hist)
+            self.draw_histo(hist, '',  show, lm=.12, rm=.16, draw_opt='colz')
+        return hist
+
+    def __adjust_sig_map(self, h):
+        h.GetZaxis().SetRangeUser(0, 500)
+        h.GetXaxis().SetRangeUser(h.GetXaxis().GetBinCenter(h.FindFirstBinAbove(0)), h.GetXaxis().GetBinCenter(h.FindLastBinAbove(0)))
+        h.GetYaxis().SetRangeUser(h.GetYaxis().GetBinCenter(h.FindFirstBinAbove(0, 2)), h.GetYaxis().GetBinCenter(h.FindLastBinAbove(0, 2)))
+        h1 = TH1F('h_av', 'hav', 100, 1, h.GetBinContent(h.GetMaximumBin()))
+        for i in xrange(1, h.GetNbinsX() * h.GetNbinsY() + 1):
+            h1.Fill(h.GetBinContent(i))
+        hmax = h1.GetMaximum()
+        ph_min, ph_max = h1.GetBinCenter(h1.FindFirstBinAbove(hmax * .08)), h1.GetBinCenter(h1.FindLastBinAbove(hmax * .02))
+        h.GetZaxis().SetRangeUser(ph_min, ph_max)
+        self.draw_histo(h1)
+
+    def draw_hit_map(self, show=True):
+        pass
 
     # endregion
 
