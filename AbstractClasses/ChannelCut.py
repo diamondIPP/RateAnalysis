@@ -283,7 +283,8 @@ class ChannelCut(Cut):
             print 'calculating signal threshold for bucket cut of run {run} and ch{ch}...'.format(run=self.analysis.run_number, ch=self.channel)
             h = TH1F('h', 'Bucket Cut', 100, -50, 150)
             draw_string = '{name}>>h'.format(name=self.analysis.SignalName)
-            cut_string = '!({buc})&&{pul}'.format(buc=self.CutStrings['old_bucket'], pul=self.CutStrings['pulser'])
+            fid = self.CutStrings['fiducial']
+            cut_string = '!({buc})&&{pul}{fid}'.format(buc=self.CutStrings['old_bucket'], pul=self.CutStrings['pulser'], fid='&&fid' if fid.GetTitle() else '')
             self.analysis.tree.Draw(draw_string, cut_string, 'goff')
             entries = h.GetEntries()
             if entries < 2000:
@@ -370,7 +371,7 @@ class ChannelCut(Cut):
 
         threshold = func() if show or show_all else None
         threshold = self.do_pickle(pickle_path, func, threshold)
-        return threshold
+        return threshold if threshold > 0 else 30
 
     def find_ped_range(self):
         self.analysis.tree.Draw(self.analysis.PedestalName, '', 'goff', 1000)
