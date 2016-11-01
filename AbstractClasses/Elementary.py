@@ -638,6 +638,7 @@ class Elementary(object):
         c = TCanvas('c', 'c', int(self.Res * 10 / 11.), self.Res)
         make_transparent(c)
         bm = .11
+        scale = 1.5
         pm = bm + (1 - bm - .1) / 5.
         p0 = self.draw_tpad('p0', 'p0', pos=[0, 0, 1, pm], margins=[.14, .03, bm / pm, 0], transparent=True, logx=True, gridy=True)
         p1 = self.draw_tpad('p1', 'p1', pos=[0, pm, 1, 1], margins=[.14, .03, 0, .1], transparent=True, logx=True)
@@ -649,13 +650,12 @@ class Elementary(object):
         make_transparent(p0)
         scale_multigraph(mg1)
         rel_y_range = [.7, 1.3] if rel_y_range is None else rel_y_range
-        self.format_histo(mg1, title='', y_range=rel_y_range, y_tit='Rel. ph [au]', y_off=.66, tit_size=.1, x_off=99)
-        mg1.GetYaxis().SetLabelSize(.1)
+        self.format_histo(mg1, title='', y_range=rel_y_range, y_tit='Rel. ph [au]' if not scale > 1 else ' ', y_off=.66, tit_size=.1 * scale, x_off=99, lab_size=.1 * scale)
         mg1.GetYaxis().SetNdivisions(3)
         hide_axis(mg1.GetXaxis())
         mg1.Draw('alp')
         x_range = [mg1.GetXaxis().GetXmin(), mg1.GetXaxis().GetXmax()] if x_range is None else x_range
-        self.draw_x_axis(1.3, x_range[0], x_range[1], mg1.GetXaxis().GetTitle() + ' ', opt='SG+-=', tit_size=.1, lab_size=.1, off=99, tick_size=.1)
+        self.draw_x_axis(1.3, x_range[0], x_range[1], mg1.GetXaxis().GetTitle() + ' ', opt='SG+-=', tit_size=.1, lab_size=.1 * scale, off=99, tick_size=.1, l_off=0)
 
         # top pad with zero suppression
         p1.cd()
@@ -666,7 +666,8 @@ class Elementary(object):
         if y_range:
             mg.SetMinimum(y_range[0])
             mg.SetMaximum(y_range[1])
-        self.draw_x_axis(mg_y, x_range[0], x_range[1], mg1.GetXaxis().GetTitle() + ' ', opt='SG=', tit_size=.035, lab_size=0, off=1, l_off=99)
+        self.format_histo(mg, tit_size=.04 * scale, y_off=1.75 / scale, lab_size=.04 * scale)
+        self.draw_x_axis(mg_y, x_range[0], x_range[1], mg1.GetXaxis().GetTitle() + ' ', opt='SG=', tit_size=.035 * scale, lab_size=0, off=1, l_off=99)
         move_legend(l, .17, .03)
         l.Draw()
         if draw_objects is not None:
