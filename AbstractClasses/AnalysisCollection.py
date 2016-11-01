@@ -308,7 +308,7 @@ class AnalysisCollection(Elementary):
         self.format_histo(h, x_tit='Slope [mV/min]', y_tit='Number of Entries', y_off=1.3)
         self.draw_histo(h, show=show, draw_opt='alp' if gr else '')
 
-    def draw_pulse_heights(self, binning=10000, flux=True, raw=False, all_corr=False, show=True, save_plots=True, vs_time=False, fl=True, save_comb=True, y_range=None):
+    def draw_pulse_heights(self, binning=10000, flux=True, raw=False, all_corr=False, show=True, save_plots=True, vs_time=False, fl=True, save_comb=True, y_range=None, redo=False):
 
         pickle_path = self.make_pickle_path('Ph_fit', 'PulseHeights', self.run_plan, ch=self.diamond_name, suf=binning)
         flux = False if vs_time else flux
@@ -317,14 +317,16 @@ class AnalysisCollection(Elementary):
 
             mode = self.get_mode(flux, vs_time)
             prefix = 'Pulse Height vs {mod} - '.format(mod=mode)
-            gr1 = self.make_tgrapherrors('gStatError', 'stat. error', self.get_color())
-            gr2 = self.make_tgrapherrors('gBinWise', prefix + 'binwise correction', self.get_color())
-            gr3 = self.make_tgrapherrors('gMeanPed', prefix + 'mean correction', self.get_color())
-            gr4 = self.make_tgrapherrors('gRaw', prefix + 'raw', self.get_color())
+            marker_size = 2
+
+            gr1 = self.make_tgrapherrors('gStatError', 'stat. error', self.get_color(), marker_size=marker_size)
+            gr2 = self.make_tgrapherrors('gBinWise', prefix + 'binwise correction', self.get_color(), marker_size=marker_size)
+            gr3 = self.make_tgrapherrors('gMeanPed', prefix + 'mean correction', self.get_color(), marker_size=marker_size)
+            gr4 = self.make_tgrapherrors('gRaw', prefix + 'raw', self.get_color(), marker_size=marker_size)
             gr5 = self.make_tgrapherrors('gFlux', 'bla', 1, width=1, marker_size=0)
             gStyle.SetEndErrorSize(4)
-            gr_first = self.make_tgrapherrors('gFirst', 'first run', marker=22, color=2, marker_size=2)
-            gr_last = self.make_tgrapherrors('gLast', 'last run', marker=23, color=2, marker_size=2)
+            gr_first = self.make_tgrapherrors('gFirst', 'first run', marker=22, color=2, marker_size=marker_size * 2)
+            gr_last = self.make_tgrapherrors('gLast', 'last run', marker=23, color=2, marker_size=marker_size * 2)
             gr_errors = self.make_tgrapherrors('gFullError', 'stat. + repr. error', marker=0, color=602, marker_size=0)
             not_found_for = False in [coll.run.FoundForRate for coll in self.collection.itervalues()]
 
@@ -425,7 +427,7 @@ class AnalysisCollection(Elementary):
             return mg
 
         f = partial(func, y_range)
-        mg2 = func(y_range) if save_plots else None
+        mg2 = func(y_range) if save_plots or redo else None
         return self.do_pickle(pickle_path, f, mg2)
 
     def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False, show=True, cut=None, beam_on=True, save=False):
