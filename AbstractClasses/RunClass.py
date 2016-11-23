@@ -583,13 +583,15 @@ class Run(Elementary):
             if not pads:
                 if self.MainConfigParser.getboolean('SAVE', 'git_hash'):
                     git_text.Draw()
-                legend.Draw()
+                if self.MainConfigParser.getboolean('SAVE', 'info_legend'):
+                    legend.Draw()
             else:
                 for pad in pads:
                     pad.cd()
                     if self.MainConfigParser.getboolean('SAVE', 'git_hash'):
                         git_text.Draw()
-                    legend.Draw()
+                    if self.MainConfigParser.getboolean('SAVE', 'info_legend'):
+                        legend.Draw()
                     pad.Modified()
             canvas.Update()
         else:
