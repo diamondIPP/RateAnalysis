@@ -200,10 +200,10 @@ class CutPix(Elementary):
         self.h_rhit_cut_dist = {}
         for iroc in self.duts_list:
             gROOT.SetBatch(True)
-            self.h_rhit_dist[iroc] = TH1F('h_rhit_roc{r}'.format(r=iroc), 'h_rhit_roc{r}'.format(r=iroc), 201, -5, 2005)
-            self.h_rhit_cut_dist[iroc] = TH1F('h_rhit_cut_roc{r}'.format(r=iroc), 'h_rhit_cut_roc{r}'.format(r=iroc), 201, -5, 2005)
-            self.analysis.tree.Draw('(10000*sqrt((track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_X)**2+(track_y_ROC{n}-cluster_pos_ROC{n}_Telescope_Y)**2))>>h_rhit_roc{d}'.format(n=iroc, d=iroc), self.cuts_pixelated_roc_incr[iroc][self.dict_cuts['rhit'] - 1], 'goff')
-            self.analysis.tree.Draw('(10000*sqrt((track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_X)**2+(track_y_ROC{n}-cluster_pos_ROC{n}_Telescope_Y)**2))>>h_rhit_cut_roc{d}'.format(n=iroc, d=iroc), self.cuts_pixelated_roc_incr[iroc][self.dict_cuts['rhit']], 'goff')
+            self.h_rhit_dist[iroc] = TH1F('h_rhit_roc{r}'.format(r=iroc), 'h_rhit_roc{r}'.format(r=iroc), 101, -0.25, 50.25)
+            self.h_rhit_cut_dist[iroc] = TH1F('h_rhit_cut_roc{r}'.format(r=iroc), 'h_rhit_cut_roc{r}'.format(r=iroc), 101, -0.25, 50.25)
+            self.analysis.tree.Draw('(10000*sqrt((residual_ROC{n}_Local_X)**2+(residual_ROC{n}_Local_Y)**2))>>h_rhit_roc{d}'.format(n=iroc, d=iroc), self.cuts_pixelated_roc_incr[iroc][self.dict_cuts['rhit'] - 1], 'goff')
+            self.analysis.tree.Draw('(10000*sqrt((residual_ROC{n}_Local_X)**2+(residual_ROC{n}_Local_Y)**2))>>h_rhit_cut_roc{d}'.format(n=iroc, d=iroc), self.cuts_pixelated_roc_incr[iroc][self.dict_cuts['rhit']], 'goff')
             self.plots.set_1D_options('rhit', self.h_rhit_dist[iroc], 'R_Hit(um)', 'entries', kBlue)
             self.plots.set_1D_options('rhit', self.h_rhit_cut_dist[iroc], 'R_Hit(um)', 'entries', kRed)
             gROOT.SetBatch(False)
@@ -225,8 +225,8 @@ class CutPix(Elementary):
         if self.verbose: print 'Rhit Vs Res_X...', ; sys.stdout.flush()
         for iroc in self.duts_list:
             gROOT.SetBatch(True)
-            self.h_rhit_resx[iroc] = TH2D('h_rhit_resx_roc{r}'.format(r=iroc), 'h_rhit_resx_roc{r}'.format(r=iroc), 41, -1537.5, 1537.5, 201, -5, 2005)
-            self.analysis.tree.Draw('(10000*sqrt((track_x_ROC{r}-cluster_pos_ROC{r}_Telescope_X)**2+(track_y_ROC{r}-cluster_pos_ROC{r}_Telescope_Y)**2)):10000*residual_ROC{r}_Local_X>>h_rhit_resx_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.num_cuts-1], 'goff')
+            self.h_rhit_resx[iroc] = TH2D('h_rhit_resx_roc{r}'.format(r=iroc), 'h_rhit_resx_roc{r}'.format(r=iroc), 41, -1537.5, 1537.5, 101, -0.25, 50.25)
+            self.analysis.tree.Draw('(10000*sqrt((residual_ROC{r}_Local_X)**2+(residual_ROC{r}_Local_Y)**2)):10000*residual_ROC{r}_Local_X>>h_rhit_resx_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.num_cuts-1], 'goff')
             self.plots.set_2D_options(self.h_rhit_resx[iroc], 'Res_X(um)', 'R_Hit(um)', '# entries', 0, -1)
             gROOT.SetBatch(False)
             self.plots.save_individual_plots(self.h_rhit_resx[iroc], 'h_rhit_resx_roc{r}'.format(r=iroc), 'R_Hit Vs. Res_X roc{r}'.format(r=iroc), None, 'colz', 0, self.plots.save_dir+'/cuts', False, 0, doLogZ=True)
@@ -235,8 +235,8 @@ class CutPix(Elementary):
         if self.verbose: print 'Rhit Vs Res_Y...', ; sys.stdout.flush()
         for iroc in self.duts_list:
             gROOT.SetBatch(True)
-            self.h_rhit_resy[iroc] = TH2D('h_rhit_resy_roc{r}'.format(r=iroc), 'h_rhit_resy_roc{r}'.format(r=iroc), 41, -1025, 1025, 201, -5, 2005)
-            self.analysis.tree.Draw('(10000*sqrt((track_x_ROC{r}-cluster_pos_ROC{r}_Telescope_X)**2+(track_y_ROC{r}-cluster_pos_ROC{r}_Telescope_Y)**2)):10000*residual_ROC{r}_Local_Y>>h_rhit_resy_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.num_cuts-1], 'goff')
+            self.h_rhit_resy[iroc] = TH2D('h_rhit_resy_roc{r}'.format(r=iroc), 'h_rhit_resy_roc{r}'.format(r=iroc), 41, -1025, 1025, 101, -0.25, 50.25)
+            self.analysis.tree.Draw('(10000*sqrt((residual_ROC{r}_Local_X)**2+(residual_ROC{r}_Local_Y)**2)):10000*residual_ROC{r}_Local_Y>>h_rhit_resy_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.num_cuts-1], 'goff')
             self.plots.set_2D_options(self.h_rhit_resy[iroc], 'Res_Y(um)', 'R_Hit(um)', '# entries', 0, -1)
             gROOT.SetBatch(False)
             self.plots.save_individual_plots(self.h_rhit_resy[iroc], 'h_rhit_resy_roc{r}'.format(r=iroc), 'R_Hit Vs. Res_Y roc{r}'.format(r=iroc), None, 'colz', 0, self.plots.save_dir+'/cuts', False, 0, doLogZ=True)
@@ -588,7 +588,7 @@ class CutPix(Elementary):
             # gROOT.SetBatch(0)
             value = self.CutConfig['rhit']
             # string=''
-            string = '((10000*sqrt((track_x_ROC{n}-cluster_pos_ROC{n}_Local_X)**2+(track_y_ROC{n}-cluster_pos_ROC{n}_Local_Y)**2))<{val}&&(sqrt((track_x_ROC{n}-cluster_pos_ROC{n}_Local_X)**2+(track_y_ROC{n}-cluster_pos_ROC{n}_Local_Y)**2))>=0)'.format(n=dut, val=value)
+            string = '((10000*sqrt((residual_ROC{n}_Local_X)**2+(residual_ROC{n}_Local_Y)**2))<{val}&&(sqrt((residual_ROC{n}_Local_X)**2+(residual_ROC{n}_Local_Y)**2))>=0)'.format(n=dut, val=value)
             return string
         self.rhit_cut[dut] = self.do_pickle(picklepath, func0)
 
