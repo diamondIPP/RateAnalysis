@@ -27,12 +27,12 @@ class CutPix(Elementary):
             self.picklepath = 'Configuration/Individual_Configs/cuts/{tc}_{r}.pickle'.format(tc=self.TESTCAMPAIGN, r=self.run_number)
             self.histos = {}
             self.roc_diam1 = 4
-            self.roc_diam2 = 5
-            self.roc_si = 6
+            self.roc_diam2 = 5 if self.TESTCAMPAIGN != '201610' else -1
+            self.roc_si = 6 if self.TESTCAMPAIGN != '201610' else 5
             self.duts_list = []
             self.list_duts()
             self.roc_tel = [0, 1, 2, 3]
-            self.dut_names = {self.roc_diam1: 'ROC4', self.roc_diam2: 'ROC5', self.roc_si: 'ROC6'}
+            self.dut_names = {self.roc_diam1: 'ROC4', self.roc_diam2: 'ROC5', self.roc_si: 'ROC6'} if self.TESTCAMPAIGN != '201610' else {self.roc_diam1: 'ROC4', self.roc_si: 'ROC5'}
             # config
             self.DUTType = self.load_dut_type()
             # self.beaminterruptions_folder = self.ana_config_parser.get('CUT', 'beaminterruptions_folder')
@@ -98,7 +98,7 @@ class CutPix(Elementary):
         # self.generate_cut_string()  # DA TODO
         # self.all_cut = self.generate_all_cut()  # DA TODO
     def list_duts(self):
-        self.duts_list = [self.roc_diam1, self.roc_diam2, self.roc_si]
+        self.duts_list = [self.roc_diam1, self.roc_diam2, self.roc_si] if self.TESTCAMPAIGN != '201610' else [self.roc_diam1, self.roc_si]
 
     def reset_cuts_dicts(self):
         self.list_duts()
@@ -139,11 +139,21 @@ class CutPix(Elementary):
         self.plots.set_1D_options('time', self.h_beam_mean_cut, 'time(ms)', 'entries', color=kGreen)
         self.plots.save_cuts_distributions(self.h_beam_time, self.h_beam_time_cut, 'beam_time_cut_overlay', 'Beam cut overlay', '', 1000000011, self.plots.save_dir+'/cuts', False, self.h_beam_mean_cut)
         if self.verbose: print 'Done'
-        if self.verbose: print 'Chi2...', ; sys.stdout.flush()
         self.h_chi2x_dist = {}
         self.h_chi2y_dist = {}
         self.h_chi2x_cut_dist = {}
         self.h_chi2y_cut_dist = {}
+        self.h_resy_resx = {}
+        self.h_rhit_resx = {}
+        self.h_rhit_resy = {}
+        self.h_chi2_resx = {}
+        self.h_chi2_resy = {}
+        self.h_chi2x_resx = {}
+        self.h_chi2y_resx = {}
+        self.h_resx_hitposy = {}
+        self.h_resy_hitposx = {}
+
+        if self.verbose: print 'Chi2...', ; sys.stdout.flush()
         for iroc in self.duts_list:
             gROOT.SetBatch(True)
             self.h_chi2x_dist[iroc] = TH1F('h_chi2x_roc{r}'.format(r=iroc), 'h_chi2x_roc{r}'.format(r=iroc), 51, -0.1, 10.1)
@@ -201,6 +211,30 @@ class CutPix(Elementary):
         if self.verbose: print 'Done'
         self.print_banner('Finished with distribution cuts')
 
+        self.print_banner('Doing resolution plots')
+        if self.verbose: print 'Res_Y Vs Res_X...', ; sys.stdout.flush()
+        for iroc in self.duts_list:
+            gROOT.SetBatch(True)
+            self.h_resy_resx[iroc] = TH2D('h_resy_resx_roc{r}'.format(r=iroc), 'h_resy_resx_roc{r}'.format(r=iroc), 251, -0.2501, 0.2501, 251, -0.3715, 0.3715)
+            self.analysis.tree.Draw('residual_ROC{r}_Local_Y:residual_ROC{r}_Local_X>>h_resy_resx_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.num_cuts-1], 'goff')
+            self.plots.set_2D_options(self.h_resy_resx[iroc], 'Res_X', 'Res_y', '# entries', 0, -1)
+            gROOT.SetBatch(False)
+            self.plots.save_individual_plots(self.h_resy_resx[iroc], 'h_resy_resx_roc{r}'.format(r=iroc), 'Res_Y Vs. Res_X roc{r}'.format(r=iroc), None, 'colz', 0, self.plots.save_dir+'/cuts', False, 0, doLogZ=True)
+        if self.verbose: print 'Done'
+
+        if self.verbose: print 'Rhit Vs Res_X...', ; sys.stdout.flush()
+        for iroc in self.duts_list:
+            gROOT.SetBatch(True)
+            self.h_rhit_resx = TH2D('h_rhit_resx_roc{r}'.format(r=iroc), 'h_rhit_resx_roc{r}'.format(r=iroc), 51, 0, 100, 100, 0, 100)
+        self.h_rhit_resy = {iroc: TH2D('h_rhit_resy_roc{r}'.format(r=iroc), 'h_rhit_resy_roc{r}'.format(r=iroc), 100, 0, 100, 100, 0, 100) for iroc in self.duts_list}
+        self.h_chi2_resx = {iroc: TH2D('h_chi2_resx_roc{r}'.format(r=iroc), 'h_chi2_resx_roc{r}'.format(r=iroc), 100, 0, 100, 100, 0, 100) for iroc in self.duts_list}
+        self.h_chi2_resy = {iroc: TH2D('h_chi2_resy_roc{r}'.format(r=iroc), 'h_chi2_resy_roc{r}'.format(r=iroc), 100, 0, 100, 100, 0, 100) for iroc in self.duts_list}
+        self.h_chi2x_resx = {iroc: TH2D('h_chi2x_resx_roc{r}'.format(r=iroc), 'h_chi2x_resx_roc{r}'.format(r=iroc), 100, 0, 100, 100, 0, 100) for iroc in self.duts_list}
+        self.h_chi2y_resx = {iroc: TH2D('h_chi2y_resx_roc{r}'.format(r=iroc), 'h_chi2y_resx_roc{r}'.format(r=iroc), 100, 0, 100, 100, 0, 100) for iroc in self.duts_list}
+        self.h_resx_hitposy = {iroc: TH2D('h_resx_hitposy_roc{r}'.format(r=iroc), 'h_resx_hitposy_roc{r}'.format(r=iroc), 100, 0, 100, 100, 0, 100) for iroc in self.duts_list}
+        self.h_resy_hitposx = {iroc: TH2D('h_resy_hitposx_roc{r}'.format(r=iroc), 'h_resy_hitposx_roc{r}'.format(r=iroc), 100, 0, 100, 100, 0, 100) for iroc in self.duts_list}
+        self.print_banner('Finished with resolution plots')
+
     def do_cuts_analysis(self):
         self.print_banner('Starting Cuts Analysis...')
         self.do_cuts_distributions()
@@ -209,6 +243,7 @@ class CutPix(Elementary):
         self.h_ph1_evt_cuts = {}
         self.h_ph1_cuts = {}
         self.h_ph2_evt_cuts = {}
+        self.h_ph2_cuts = {}
         self.h_ph2_cuts = {}
         maxz_hitmap = 0
         maxz_ph1 = 0
@@ -443,7 +478,7 @@ class CutPix(Elementary):
         self.beam_interr_cut = self.do_pickle(picklepath, func0)
         for iroc in self.duts_list:
             self.gen_vect_cuts(self.beam_interr_cut, self.beam_interr_cut, iroc)
-        self.num_cuts += 1
+        self.num_cuts += 1; nentries = self.analysis.tree.GetEntries(); self.analysis.tree.GetEntry(0); first_t = self.analysis.tree.time; self.analysis.tree.GetEntry(nentries-1); last_t = self.analysis.tree.time
         if self.verbose: print 'Done'
         # self.h_beam_time_cut = TH1F('h_beam_time_cut', 'h_beam_time_cut', self.h_beam_time.GetXaxis().GetNbins(), self.h_beam_time.GetXaxis().GetXmin(), self.h_beam_time.GetXaxis().GetXmax())
         # self.analysis.tree.Draw('time>>h_beam_time_cut', self.cuts_pixelated_roc_incr[self.duts_list[0]][self.num_cuts-1],'goff')

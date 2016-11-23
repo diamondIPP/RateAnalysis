@@ -43,8 +43,8 @@ class SignalPixAnalysis(Analysis):
         if not os.path.isdir('{dir}/Root/cuts'.format(dir=self.save_dir)):
             os.makedirs('{dir}/Root/cuts'.format(dir=self.save_dir))
         self.roc_diam1 = 4
-        self.roc_diam2 = 5
-        self.roc_si = 6
+        self.roc_diam2 = 5 if self.TESTCAMPAIGN != '201610' else -1
+        self.roc_si = 6 if self.TESTCAMPAIGN != '201610' else 5
         self.roc_tel = [0, 1, 2, 3]
         self.plots.roc_tel = self.roc_tel
         self.plots.roc_d1 = self.roc_diam1
@@ -52,7 +52,7 @@ class SignalPixAnalysis(Analysis):
         self.plots.roc_si = self.roc_si
         self.plots.save_dir = self.save_dir
         self.devices = {'tel': [], 'dut': []}
-        self.dut_names = {self.roc_diam1: self.run.diamond_names[0], self.roc_diam2: self.run.diamond_names[3], self.roc_si: 'Si'}
+        self.dut_names = {self.roc_diam1: self.run.diamond_names[0], self.roc_diam2: self.run.diamond_names[3], self.roc_si: 'Si'} if self.TESTCAMPAIGN != '201610' else {self.roc_diam1: self.run.diamond_names[0], self.roc_si: 'Si'}
         self.set_cuts_rocs()
 
         # stuff
@@ -115,7 +115,7 @@ class SignalPixAnalysis(Analysis):
         self.devices['tel'] = self.roc_tel
 
     def add_duts_device(self):
-        self.devices['dut'] = [self.roc_diam1, self.roc_diam2, self.roc_si]
+        self.devices['dut'] = [self.roc_diam1, self.roc_diam2, self.roc_si] if self.TESTCAMPAIGN != '201610' else [self.roc_diam1, self.roc_si]
 
     def do_analysis(self, do_tlscp=False, do_duts=True, do_cut_ana=True, do_occupancy=True, do_correlations=True, do_pulse_height=True, show_progressBar=False, verbosity=False):
         gROOT.SetBatch(True)

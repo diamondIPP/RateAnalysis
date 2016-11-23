@@ -19,7 +19,7 @@ class Elementary(object):
     It provides, among other things, a verbose printing method or a save plot method containing a global save directory handling.
     """
 
-    default_testcampaign = '201510'
+    default_testcampaign = '201610'# '201510'
     TESTCAMPAIGN = None
 
     def __init__(self, verbose=False):
