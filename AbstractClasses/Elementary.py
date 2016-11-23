@@ -350,7 +350,7 @@ class Elementary(object):
             gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
 
     @staticmethod
-    def make_tgrapherrors(name, title, color=1, marker=20, marker_size=1, width=1, asym_err=False):
+    def make_tgrapherrors(name, title, color=1, marker=20, marker_size=1, width=1, asym_err=False, style=1):
         gr = TGraphErrors() if not asym_err else TGraphAsymmErrors()
         gr.SetTitle(title)
         gr.SetName(name)
@@ -359,6 +359,7 @@ class Elementary(object):
         gr.SetLineColor(color)
         gr.SetMarkerSize(marker_size)
         gr.SetLineWidth(width)
+        gr.SetLineStyle(style)
         return gr
 
     def draw_axis(self, x1, x2, y1, y2, title, col=1, width=1, off=.15, tit_size=.035, lab_size=0.035, line=False, opt='+SU', tick_size=0.03, l_off=.01):
