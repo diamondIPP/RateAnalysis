@@ -144,9 +144,11 @@ class Analysis(Elementary):
                         self.draw_tlatex(p_pos, ymin + 0.05 * y_range, 'Average Peak Position', color=807, size=size)
                     self.draw_arrow(p_pos, p_pos, ymin + 1, ymin + 0.04 * y_range, col=807, width=2)
 
-    def draw_peak_integrals(self, event=None, add_buckets=True, show=True):
+    def draw_peak_integrals(self, event=None, buckets=True, show=True, main=False):
         old_count = self.count
+        event = self.StartEvent if event is None else event
         h, n = self.__draw_single_wf(event=event, show=False, tcorr=True)
+        h.GetYaxis().SetNdivisions(305)
         self.format_histo(h, title='Peak Integrals', name='wf', x_tit='Time [ns]', y_tit='Signal [mV]', markersize=.8, y_off=.5, stats=0, tit_size=.07, lab_size=.06)
         xmin, xmax = self.run.signal_regions['e'][0] / 2 - 20, self.run.signal_regions['e'][1] / 2
         h.GetXaxis().SetRangeUser(xmin, xmax)
@@ -155,27 +157,31 @@ class Analysis(Elementary):
         sleep(.5)
         # draw line at found peak and pedestal region
         ymin, ymax = h.GetYaxis().GetXmin(), h.GetYaxis().GetXmax()
-        print event, n
         peak_pos, ped_pos = self.__draw_peak_pos(event + n - 1, ymin, ymax)
         # draw error bars
-        gr1 = self.make_tgrapherrors('gr1', '', color=kGreen + 2, marker_size=0, asym_err=True, width=2)
-        gr2 = self.make_tgrapherrors('gr2', '', color=kCyan - 3, marker_size=0, asym_err=True, width=2)
+        gr1 = self.make_tgrapherrors('gr1', '', color=418, marker_size=0, asym_err=True, width=2)
+        gr2 = self.make_tgrapherrors('gr2', '', color=429 - 3, marker_size=0, asym_err=True, width=2, style=2)
         gStyle.SetEndErrorSize(5)
         i = 0
         y = ymax - ymin
+        spacing = 7.
         for int_, lst in self.run.peak_integrals.iteritems():
+            if main:
+                if hasattr(self, 'PeakIntegral') and int_ != self.PeakIntegral:
+                    continue
             if len(int_) < 3:
-                gr1.SetPoint(i, peak_pos, ymax - y * ((i + 1) / 6. + 1 / 3.))
-                gr2.SetPoint(i, ped_pos, ymax - y * ((i + 1) / 6. + 1 / 3.))
+                gr1.SetPoint(i, peak_pos, ymax - y * ((i + 1) / spacing + 1 / 3.))
+                gr2.SetPoint(i, ped_pos, ymax - y * ((i + 1) / spacing + 1 / 3.))
                 gr1.SetPointError(i, lst[0] / 2., lst[1] / 2., 0, 0) if lst[1] - lst[0] > 1 else gr1.SetPointError(i, .5, .5, 0, 0)
                 gr2.SetPointError(i, lst[0] / 2., lst[1] / 2., 0, 0) if lst[1] - lst[0] > 1 else gr2.SetPointError(i, .5, .5, 0, 0)
-                l1 = self.draw_tlatex(gr1.GetX()[i], gr1.GetY()[i] + 5, ' ' + int_, color=kGreen + 2, align=10)
-                gr1.GetListOfFunctions().Add(l1)
+                if not main:
+                    l1 = self.draw_tlatex(gr1.GetX()[i], gr1.GetY()[i] + 5, ' ' + int_, color=kGreen + 2, align=10)
+                    gr1.GetListOfFunctions().Add(l1)
                 i += 1
         for gr in [gr1, gr2]:
             gr.Draw('[]')
             gr.Draw('p')
-        self._add_buckets(ymin, ymax, xmin, xmax, full_line=True, size=.05) if add_buckets else self.do_nothing()
+        self._add_buckets(ymin, ymax, xmin, xmax, full_line=True, size=.05) if buckets else self.do_nothing()
         self.save_plots('IntegralPeaks',  ch=None)
         gROOT.SetBatch(0)
         self.count = old_count
@@ -186,10 +192,10 @@ class Analysis(Elementary):
         ped_region = self.PedestalRegion if hasattr(self, 'PedestalRegion') else 'ab'
         ped_pos = self.run.pedestal_regions[ped_region][1] / 2.
         y = ymax - ymin
-        self.draw_vertical_line(peak_pos, ymin, ymax - y / 3., color=4, w=2, name='peak')
-        self.draw_vertical_line(ped_pos, ymin, ymax - y / 3, color=883, w=2, name='ped')
-        t1 = self.draw_tlatex(peak_pos, ymax - y / 3.1, 'found peak', color=4)
-        t2 = self.draw_tlatex(ped_pos, ymax - y / 3.1, 'pedestal', color=883)
+        self.draw_vertical_line(peak_pos, ymin, ymax - y / 3., color=418, w=2, name='peak')
+        self.draw_vertical_line(ped_pos, ymin, ymax - y / 3, color=429, w=2, name='ped')
+        t1 = self.draw_tlatex(peak_pos, ymax - y / 3.1, 'peak', color=418, size=.07)
+        t2 = self.draw_tlatex(ped_pos, ymax - y / 3.1, 'pedestal', color=429, size=.07)
         t1.Draw()
         t2.Draw()
         self.RootObjects.append([t1, t2])
