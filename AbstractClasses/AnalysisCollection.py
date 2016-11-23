@@ -1257,6 +1257,9 @@ class AnalysisCollection(Elementary):
 
     # endregion
 
+    def draw_currents(self, v_range=None, rel_time=False):
+        self.Currents.draw_indep_graphs(rel_time=rel_time, v_range=v_range)
+
     def make_flux_table(self):
         # for ana in self.collection.itervalues():
         #     print ana.run.RunInfo
