@@ -35,26 +35,26 @@ class Plots(Elementary):
         self.num_devices = num_devices
         self.num_entries = num_entries
         self.plot_settings = {
-            'ph1DbinsD4': 80,
-            'ph1DminD4': 0,
+            'ph1DbinsD4': 160,
+            'ph1DminD4': -30000,
             'ph1DmaxD4': 30000,
-            'ph1DbinsD5': 80,
-            'ph1DminD5': 0,
+            'ph1DbinsD5': 160,
+            'ph1DminD5': -60000,
             'ph1DmaxD5': 60000,
-            'ph1DbinsSi': 160,
-            'ph1DminSi': 0,
+            'ph1DbinsSi': 320,
+            'ph1DminSi': -90000,
             'ph1DmaxSi': 90000,
             'nEventsAv': 20000,
             'event_bins': max(int(ceil(float(self.num_entries)/10)), 200),
             'event_min': 0,
             'event_max': self.num_entries,
             'maxphplots': int(ceil(8*self.num_entries/100)),  ## for landau histograms histograms
-            'nBinsX': 240,  #80 # 277 #240
-            'xmin': -6,
-            'xmax': 6,
-            'nBinsY': 360,  #120 # 415 #360
-            'ymin': -6,
-            'ymax': 6,
+            'nBinsX': 52,  #80 # 277 #240
+            'xmin': -3900,
+            'xmax': 3900,
+            'nBinsY': 80,  #120 # 415 #360
+            'ymin': -4000,
+            'ymax': 4000,
             'nBinCol': 51,
             'minCol': 0,
             'maxCol': 51,
@@ -210,7 +210,7 @@ class Plots(Elementary):
         histo.GetYaxis().SetTitleOffset(1.3)
         histo.GetZaxis().SetTitleOffset(1.4)
         histo.GetZaxis().CenterTitle(True)
-        histo.SetMinimum(min_val)
+        if min_val is not 'auto': histo.SetMinimum(min_val)
         if max_val is not -1: histo.SetMaximum(max_val)
 
     def create_histograms(self, doTlscp=False):
