@@ -83,7 +83,8 @@ class Elementary(object):
             split_runs = [0] + loads(self.MainConfigParser.get(self.TESTCAMPAIGN, 'split_runs')) + [int(1e10)]
             for i in xrange(1, n_splits + 1):
                 if split_runs[i - 1] <= run_number < split_runs[i]:
-                    run_parser.read('{dir}/Configuration/RunConfig_{tc}_pad{i}.cfg'.format(dir=self.get_program_dir(), tc=self.TESTCAMPAIGN, i=i))
+                    config = '{dir}/Configuration/RunConfig_{tc}_pad{i}.cfg'.format(dir=self.get_program_dir(), tc=self.TESTCAMPAIGN, i=i)
+                    run_parser.read(config)
                     break
         else:
             run_parser.read('Configuration/RunConfig_{tc}.cfg'.format(tc=self.TESTCAMPAIGN))
@@ -215,12 +216,13 @@ class Elementary(object):
             info = info.replace('-', '')
         return info
 
-    def make_pickle_path(self, sub_dir, name=None, run=None, ch=None, suf=None):
+    def make_pickle_path(self, sub_dir, name=None, run=None, ch=None, suf=None, tc=None):
+        tc = self.TESTCAMPAIGN if tc is None else tc
         run = '_{r}'.format(r=run) if run is not None else ''
         ch = '_{c}'.format(c=ch) if ch is not None else ''
         suf = '_{s}'.format(s=suf) if suf is not None else ''
         name = '{n}_'.format(n=name) if name is not None else ''
-        return '{dir}/{sdir}/{name}{tc}{run}{ch}{suf}.pickle'.format(dir=self.PickleDir, sdir=sub_dir, name=name, tc=self.TESTCAMPAIGN, run=run, ch=ch, suf=suf)
+        return '{dir}/{sdir}/{name}{tc}{run}{ch}{suf}.pickle'.format(dir=self.PickleDir, sdir=sub_dir, name=name, tc=tc, run=run, ch=ch, suf=suf)
 
     def save_canvas(self, canvas, sub_dir=None, name=None, print_names=True, show=True):
         sub_dir = self.save_dir if hasattr(self, 'save_dir') and sub_dir is None else '{subdir}/'.format(subdir=sub_dir)
