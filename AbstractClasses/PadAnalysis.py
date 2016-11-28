@@ -1473,15 +1473,17 @@ class PadAnalysis(Analysis):
         x_range = [-50, 500] if x_range is None else x_range
         self.reset_colors()
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        legend = self.make_legend(.75 if short else .71, .88, nentries=len(self.Cut.ConsecutiveCuts) + 2 if not short else 5)
+        short_cuts = ['raw', 'saturated', 'timing', 'pulser', 'tracks', 'bucket', 'fiducial']
+        legend = self.make_legend(.75 if short else .71, .88, nentries=len(self.Cut.ConsecutiveCuts) + 1 if not short else len(short_cuts) + 1)
         cut = TCut('consecutive', '')
         stack = THStack('scc', 'Signal Distribution with Consecutive Cuts')
         i = 0
+        leg_style = 'l' if scale else 'f'
         for key, value in self.Cut.ConsecutiveCuts.iteritems():
             if short:
-                self.log_info('adding cut {0}'.format(key))
-                if key not in ['raw', 'saturated', 'timing', 'pulser', 'tracks', 'fiducial']:
+                if key not in short_cuts:
                     continue
+            self.log_info('adding cut {0}'.format(key))
             key = 'beam_stops' if key.startswith('beam') else key
             cut += value
             save_name = 'signal_distribution_{n}cuts'.format(n=i)
@@ -1496,15 +1498,21 @@ class PadAnalysis(Analysis):
                 h.SetFillColor(color)
             stack.Add(h)
             leg_entry = '+ {0}'.format(key) if i else key
-            leg_style = 'l' if scale else 'f'
             legend.AddEntry(h, leg_entry, leg_style)
             i += 1
+        if short:
+            h = self.show_signal_histo(show=False, binning=550, x_range=x_range)
+            color = self.get_color()
+            self.format_histo(h, color=color, stats=0)
+            h.SetFillColor(color) if not scale else do_nothing()
+            stack.Add(h)
+            legend.AddEntry(h, '+ other', leg_style)
         self.format_histo(stack, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.9, draw_first=True)
         save_name = 'Consecutive{1}{0}'.format('Scaled' if scale else '', 'Short' if short else '')
-        self.RootObjects.append(self.save_histo(stack, save_name, show, self.save_dir, l=legend, draw_opt='nostack', lm=0.14))
+        self.save_histo(stack, save_name, show, self.save_dir, l=legend, draw_opt='nostack', lm=0.14)
         stack.SetName(stack.GetName() + 'logy')
         # stack.SetMaximum(stack.GetMaximum() * 1.2)
-        self.RootObjects.append(self.save_histo(stack, '{name}LogY'.format(name=save_name), show, self.save_dir, logy=True, draw_opt='nostack', lm=0.14, l=legend))
+        self.save_histo(stack, '{name}LogY'.format(name=save_name), show, self.save_dir, logy=True, draw_opt='nostack', lm=0.14)
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
 
     def draw_cut_means(self, show=True, short=False):
