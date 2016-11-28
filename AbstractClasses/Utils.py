@@ -222,20 +222,24 @@ def calc_flux(info, tc):
     if 'for1' not in info or info['for1'] == 0:
         if 'measuredflux' in info:
             return float(info['measuredflux'])
-    path = '/data/psi_{0}_{1}/masks/{mask}'.format(tc[:4], tc[-2:], mask=info['maskfile'])
-    if file_exists(path):
-        f = open(path, 'r')
-    else:
-        log_warning('Could not read maskfile!')
-        return
-    data = []
-    for line in f:
-        if len(line) > 3:
-            line = line.split()
-            data.append([int(line[2])] + [int(line[3])])
-    f.close()
+    mask = info['maskfile']
     pixel_size = 0.01 * 0.015
-    area = [(data[1][0] - data[0][0]) * (data[1][1] - data[0][1]) * pixel_size, (data[3][0] - data[2][0]) * (data[3][1] - data[2][1]) * pixel_size]
+    if not mask or 'no mask' in mask.lower():
+        area = [52 * 80 * pixel_size] * 2
+    else:
+        path = '/data/psi_{0}_{1}/masks/{mask}'.format(tc[:4], tc[-2:], mask=mask)
+        if file_exists(path):
+            f = open(path, 'r')
+        else:
+            log_warning('Could not read maskfile!')
+            return
+        data = []
+        for line in f:
+            if len(line) > 3:
+                line = line.split()
+                data.append([int(line[2])] + [int(line[3])])
+        f.close()
+        area = [(data[1][0] - data[0][0]) * (data[1][1] - data[0][1]) * pixel_size, (data[3][0] - data[2][0]) * (data[3][1] - data[2][1]) * pixel_size]
     # print area
     flux = [info['for{0}'.format(i + 1)] / area[i] / 1000. for i in xrange(2)]
     return mean(flux)
