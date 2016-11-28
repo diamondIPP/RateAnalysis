@@ -9,6 +9,7 @@ from collections import OrderedDict
 from re import sub
 from shutil import move
 from os import remove
+from os.path import dirname, realpath
 from glob import glob
 from Utils import *
 from ROOT import TProfile, TFile
@@ -31,8 +32,9 @@ class Converter:
     def __init__(self, test_campaign, parser, run_number):
 
         # main
-        self.test_campaign = test_campaign
+        self.TestCampaign = test_campaign
         self.parser = parser
+        self.SoftConfig = self.load_soft_config()
         self.Run = run_number
         self.Type = self.parser.get('BASIC', 'type')
 
@@ -40,21 +42,23 @@ class Converter:
         self.ConverterTree = '{0}tree'.format(self.parser.get('BASIC', 'digitizer').lower() if self.Type == 'pad' else 'telescope')
         self.NChannels = 9 if self.ConverterTree.startswith('caen') else 4
 
-        # tracking
-        self.telescope_id = self.parser.getint('BASIC', 'telescopeID')
-        self.tracking_dir = self.parser.get('ConverterFolders', 'trackingfolder')
-
         # directories
-        self.raw_file_dir = self.parser.get('ConverterFolders', 'rawfolder')
+        self.RawFileDir = self.load_raw_file()
         self.root_file_dir = self.parser.get('BASIC', 'runpath')
-        self.eudaq_dir = self.parser.get('ConverterFolders', 'eudaqfolder')
-        self.AlignDir = self.parser.get('ConverterFolders', 'alignfolder')
+        self.SoftwareDir = self.load_soft_dir()
+        self.EudaqDir = '{soft}/{d}'.format(soft=self.SoftwareDir, d=self.SoftConfig.get('Converter', 'eudaqfolder'))
+        self.AlignDir = '{soft}/{d}'.format(soft=self.SoftwareDir, d=self.SoftConfig.get('Converter', 'alignfolder'))
+
+        # tracking
+        self.TelescopeID = self.parser.getint('BASIC', 'telescopeID')
+        self.TrackingDir = '{soft}/{d}'.format(soft=self.SoftwareDir, d=self.SoftConfig.get('Converter', 'trackingfolder'))
+
         # files paths
-        self.converter_config_path = self.parser.get('ConverterFolders', 'converterFile')
+        self.converter_config_path = self.SoftConfig.get('Converter', 'converterFile')
         self.run_info_path = self.parser.get('BASIC', 'runinfofile')
         # prefixes
-        self.root_prefix = self.parser.get('ConverterFolders', "converterPrefix")
-        self.raw_prefix = self.parser.get('ConverterFolders', "rawprefix")
+        self.raw_prefix = self.load_prefix()
+        self.root_prefix = self.raw_prefix.replace('run', 'test')
 
         # configuration for pad
         self.config = self.get_config() if self.Type == 'pad' else None
@@ -73,6 +77,35 @@ class Converter:
 
             self.set_start_values()
             self.make_gui()
+
+    def load_soft_dir(self):
+        file_dir = self.SoftConfig.get('Converter', 'softwaredir')
+        if not dir_exists(file_dir):
+            log_critical('Could not find the software directory: {d}\nPlease set it correctly in Configuration/soft.conf'.format(d=file_dir))
+        return file_dir
+
+    def load_prefix(self):
+        pref = self.parser.get('ConverterFolders', "rawprefix")
+        if pref == 'long':
+            return 'run{y}{m}0'.format(y=self.TestCampaign[2:4], m=self.TestCampaign[-2:])
+        elif pref == 'short':
+            return 'run00'
+        else:
+            return pref
+
+    def load_raw_file(self):
+        conf = self.parser.get('ConverterFolders', 'rawfolder')
+        file_dir = '/data/psi_{y}_{m}/raw'.format(y=self.TestCampaign[:4], m=self.TestCampaign[-2:]) if conf == 'None' else conf
+        if not dir_exists(file_dir):
+            log_critical('Could not find the raw file directory: {d}'.format(d=file_dir))
+        return file_dir
+
+    @staticmethod
+    def load_soft_config():
+        conf = ConfigParser()
+        main_dir = '/'.join(dirname(realpath(__file__)).split('/')[:-1])
+        conf.read('{d}/Configuration/soft.conf'.format(d=main_dir))
+        return conf
 
     def get_config(self):
         config = OrderedDict()
@@ -102,7 +135,7 @@ class Converter:
         return run_infos
 
     def find_raw_file(self, run_number):
-        file_path = self.raw_file_dir + '/{pref}{run}.raw'.format(pref=self.raw_prefix, run=str(run_number).zfill(4))
+        file_path = self.RawFileDir + '/{pref}{run}.raw'.format(pref=self.raw_prefix, run=str(run_number).zfill(4))
         if file_exists(file_path):
             return file_path
         else:
@@ -160,9 +193,9 @@ class Converter:
             # go to root directory
             os.chdir(self.root_file_dir)
             # prepare converter command
-            conf_string = '-c {eudaq}/conf/{file}'.format(eudaq=self.eudaq_dir, file=self.converter_config_path)
+            conf_string = '-c {eudaq}/conf/{file}'.format(eudaq=self.EudaqDir, file=self.converter_config_path)
             tree_string = '-t {tree}'.format(tree=self.ConverterTree)
-            converter_cmd = '{eudaq}/bin/Converter.exe {tree} {conf} {raw}'.format(eudaq=self.eudaq_dir, raw=raw_file_path, tree=tree_string, conf=conf_string)
+            converter_cmd = '{eudaq}/bin/Converter.exe {tree} {conf} {raw}'.format(eudaq=self.EudaqDir, raw=raw_file_path, tree=tree_string, conf=conf_string)
             if self.Type == 'pad':
                 self.__set_converter_configfile(run_infos)
             print_banner('START CONVERTING RAW FILE FOR RUN {0}'.format(run_number))
@@ -189,7 +222,7 @@ class Converter:
         program_dir = ''
         for i in __file__.split('/')[:-2]:
             program_dir += i + '/'
-        files = glob('{prog}Configuration/Individual_Configs/*/*{tc}*_{run}_*'.format(prog=program_dir, run=run_number, tc=self.test_campaign))
+        files = glob('{prog}Configuration/Individual_Configs/*/*{tc}*_{run}_*'.format(prog=program_dir, run=run_number, tc=self.TestCampaign))
         for _file in files:
             remove(_file)
 
@@ -211,15 +244,15 @@ class Converter:
     def __add_tracking(self, run_number):
         root_file_path = self.get_root_file_path()
         curr_dir = os.getcwd()
-        os.chdir(self.tracking_dir)
-        tracking_cmd = "{dir}/TrackingTelescope {root} 0 {nr}".format(dir=self.tracking_dir, root=root_file_path, nr=self.telescope_id)
+        os.chdir(self.TrackingDir)
+        tracking_cmd = "{dir}/TrackingTelescope {root} 0 {nr}".format(dir=self.TrackingDir, root=root_file_path, nr=self.TelescopeID)
         print '\nSTART TRACKING FOR RUN', run_number, '\n'
         print tracking_cmd
         os.system(tracking_cmd)
         os.chdir(curr_dir)
         # move file to data folder
         file_name = '/{prefix}{run}_withTracks.root'.format(prefix=self.root_prefix, run=str(run_number).zfill(4))
-        path = self.tracking_dir + file_name
+        path = self.TrackingDir + file_name
         move(path, self.root_file_dir)
 
     def load_polarities(self, info):
@@ -236,7 +269,8 @@ class Converter:
 
     def __set_converter_configfile(self, run_infos):
         parser = ConfigParser()
-        conf_file = '{eudaq}/conf/{file}'.format(eudaq=self.eudaq_dir, file=self.converter_config_path)
+        conf_file = '{eudaq}/conf/{file}'.format(eudaq=self.EudaqDir, file=self.converter_config_path)
+        print conf_file
         parser.read(conf_file)
         converter_section = 'Converter.{0}'.format(self.ConverterTree)
         parser.set(converter_section, 'polarities', self.load_polarities(run_infos))
@@ -329,7 +363,7 @@ class Converter:
                 self.config[key] = lst
 
         parser = ConfigParser()
-        conf_file = 'Configuration/RunConfig_' + self.test_campaign + '.cfg'
+        conf_file = 'Configuration/RunConfig_' + self.TestCampaign + '.cfg'
         parser.read(conf_file)
         for key, value in self.config.iteritems():
             value = value[0] if type(value) is tuple else value
