@@ -19,8 +19,9 @@ from Utils import *
 # ====================================
 # CONSTANTS
 # ====================================
-axis_title_size = 0.04
-label_size = .03
+axis_title_size = 0.06
+label_size = .04
+title_offset = 0.8
 col_vol = 602  # 807
 col_cur = 899  # 418
 
@@ -353,7 +354,7 @@ class Currents(Elementary):
         self.make_graphs()
         self.set_margins()
 
-    def draw_indep_graphs(self, rel_time=False, ignore_jumps=True):
+    def draw_indep_graphs(self, rel_time=False, ignore_jumps=True, v_range=None):
         self.IgnoreJumps = ignore_jumps
         if not self.Currents:
             self.set_graphs(rel_time)
@@ -361,7 +362,7 @@ class Currents(Elementary):
         pads = self.make_pads()
         self.draw_pads(pads)
 
-        self.draw_voltage_pad(pads[0])
+        self.draw_voltage_pad(pads[0], v_range)
         self.draw_title_pad(pads[1])
         self.draw_current_pad(pads[2])
 
@@ -374,24 +375,27 @@ class Currents(Elementary):
         self.draw_current_frame(pad)
         self.CurrentGraph.Draw('pl')
 
-    def draw_voltage_pad(self, pad):
+    def draw_voltage_pad(self, pad, vrange):
         pad.cd()
-        self.draw_voltage_frame(pad)
+        self.draw_voltage_frame(pad, vrange)
         self.VoltageGraph.Draw('p')
-        self.draw_voltage_axis()
+        self.draw_voltage_axis(vrange)
 
     def draw_title_pad(self, pad):
         pad.cd()
-        text = 'Currents of {dia} at {bias} V'.format(dia=self.DiamondName, bias=self.Bias)
-        t1 = TText(0.08, 0.88, text)
+        bias_str = 'at {b} V'.format(b=self.Bias) if self.Bias else ''
+        run_str = '{n}'.format(n=self.analysis.run_number) if hasattr(self.analysis, 'run') else 'Plan {rp}'.format(rp=self.analysis.run_plan)
+        text = 'Currents of {dia} {b} - Run {r}'.format(dia=self.DiamondName, b=bias_str, r=run_str)
+        t1 = TText(0.1, 0.88, text)
         t1.SetTextSize(0.05)
         t1.Draw()
         self.Stuff.append(t1)
 
     def make_pads(self):
-        p1 = self.draw_tpad('p1', gridy=True, margins=[.08, .07, .15, .15])
+        margins = [.1, .09, .15, .15]
+        p1 = self.draw_tpad('p1', gridy=True, margins=margins)
         p2 = self.draw_tpad('p2', transparent=True)
-        p3 = self.draw_tpad('p3', gridx=True, margins=[.08, .07, .15, .15], transparent=True)
+        p3 = self.draw_tpad('p3', gridx=True, margins=margins, transparent=True)
         return [p1, p2, p3]
 
     @staticmethod
@@ -423,8 +427,10 @@ class Currents(Elementary):
         self.CurrentGraph = g1
         self.VoltageGraph = g2
 
-    def draw_voltage_axis(self):
-        a1 = self.draw_y_axis(self.Margins['x'][1], -1100, 1100, '#font[22]{Voltage [V]}', col=col_vol, off=.6, tit_size=.05, opt='+L', w=2, lab_size=label_size, l_off=.01)
+    def draw_voltage_axis(self, vrange):
+        vrange = [-1100, 1100] if vrange is None else vrange
+        a1 = self.draw_y_axis(self.Margins['x'][1], vrange[0], vrange[1], '#font[22]{Voltage [V]}', col=col_vol, off=title_offset,
+                              tit_size=axis_title_size, opt='+L', w=2, lab_size=label_size, l_off=.01)
         a1.CenterTitle()
 
     def draw_current_axis(self):
@@ -441,7 +447,7 @@ class Currents(Elementary):
         m = self.Margins
         h2 = pad.DrawFrame(m['x'][0], m['y'][0], m['x'][1], m['y'][1])
         # X-axis
-        h2.GetXaxis().SetTitle("#font[22]{time [hh:mm]}")
+        h2.GetXaxis().SetTitle("#font[22]{Time [hh:mm]}")
         h2.GetXaxis().SetTimeFormat("%H:%M")
         h2.GetXaxis().SetTimeOffset(-3600)
         h2.GetXaxis().SetTimeDisplay(1)
@@ -450,7 +456,7 @@ class Currents(Elementary):
         h2.GetXaxis().SetTitleOffset(1.05)
         h2.GetXaxis().SetTitleSize(0.05)
         # Y-axis
-        h2.GetYaxis().SetTitleOffset(0.6)
+        h2.GetYaxis().SetTitleOffset(title_offset)
         h2.GetYaxis().SetTitleSize(0.05)
         h2.GetYaxis().SetTitle("#font[22]{Current [nA]}")
         h2.GetYaxis().SetTitleColor(col_cur)
@@ -459,7 +465,6 @@ class Currents(Elementary):
         h2.GetYaxis().CenterTitle()
         h2.GetYaxis().SetLabelSize(label_size)
         h2.GetYaxis().SetTitleSize(axis_title_size)
-        h2.GetYaxis().SetTitleOffset(.6)
         # self.Stuff.append(h2)
 
     def draw_ph_frame(self, pad, margins):
@@ -482,9 +487,10 @@ class Currents(Elementary):
         h2.GetYaxis().SetTitleSize(0.04)
         h2.GetYaxis().SetTitleOffset(0.75)
 
-    def draw_voltage_frame(self, pad):
+    def draw_voltage_frame(self, pad, vrange):
+        vrange = [-1100, 1100] if vrange is None else vrange
         m = self.Margins
-        h1 = pad.DrawFrame(m['x'][0], -1100, m['x'][1], 1100)
+        h1 = pad.DrawFrame(m['x'][0], vrange[0], m['x'][1], vrange[1])
         h1.SetTitleSize(axis_title_size)
         h1.GetXaxis().SetTickLength(0)
         h1.GetYaxis().SetTickLength(0)
