@@ -18,6 +18,12 @@ def log_warning(msg):
     print '{head} {t} --> {msg}'.format(t=t, msg=msg, head=colored('WARNING:', 'red'))
 
 
+def log_critical(msg):
+    t = datetime.now().strftime('%H:%M:%S')
+    print '{head} {t} --> {msg}'.format(t=t, msg=msg, head=colored('CRITICAL:', 'red'))
+    exit(-2)
+
+
 def log_message(msg, overlay=False):
     t = datetime.now().strftime('%H:%M:%S')
     print '{ov}{t} --> {msg}{end}'.format(t=t, msg=msg, head=colored('WARNING:', 'red'), ov='\033[1A\r' if overlay else '', end=' ' * 20 if overlay else '')
@@ -252,6 +258,10 @@ def make_dia_str(dia):
 
 def file_exists(path):
     return os.path.isfile(path)
+
+
+def dir_exists(path):
+    return os.path.isdir(path)
 
 
 def make_col_str(col):
