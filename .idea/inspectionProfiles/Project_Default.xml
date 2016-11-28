@@ -54,6 +54,8 @@
           <option value="TExec" />
           <option value="ROOT" />
           <option value="TH2I" />
+          <option value="kPink" />
+          <option value="TGraph2DErrors" />
         </list>
       </option>
     </inspection_tool>
