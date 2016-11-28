@@ -129,9 +129,9 @@ class Run(Elementary):
             self.FoundForRate = False
             self.flux = self.calculate_flux()
 
-        elif run_number is not None:
-            self.load_run_info()
-            self.converter.convert_run(self.RunInfo, run_number)
+        # elif run_number is not None:
+        #     self.load_run_info()
+        #     self.converter.convert_run(self.RunInfo, run_number)
 
         else:
             self.load_run_info()
