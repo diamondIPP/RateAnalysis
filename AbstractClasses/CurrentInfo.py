@@ -55,7 +55,7 @@ class Currents(Elementary):
         if 'dia1supply' not in self.RunInfo:
             return
         self.DiamondName = self.load_dia_name()
-        self.Bias = self.load_dia_name()
+        self.Bias = self.load_bias()
         self.StartRun = start_run
         self.StartTime = self.load_start_time()
         self.StopTime = self.load_stop_time()
@@ -96,7 +96,12 @@ class Currents(Elementary):
         return self.analysis.diamond_name if self.analysis is not None else None
 
     def load_bias(self):
-        return self.analysis.run.bias if self.analysis is not None else None
+        if hasattr(self.analysis, 'Type') and 'voltage' in self.analysis.Type:
+            return ''
+        elif hasattr(self.analysis, 'run'):
+            return self.analysis.run.bias if self.analysis is not None else None
+        else:
+            return self.analysis.bias
 
     def load_run_number(self):
         nr = None
