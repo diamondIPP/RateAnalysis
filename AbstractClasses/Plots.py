@@ -35,14 +35,14 @@ class Plots(Elementary):
         self.num_devices = num_devices
         self.num_entries = num_entries
         self.plot_settings = {
-            'ph1DbinsD4': 160,
-            'ph1DminD4': -30000,
+            'ph1DbinsD4': 80,
+            'ph1DminD4': 0,
             'ph1DmaxD4': 30000,
-            'ph1DbinsD5': 160,
-            'ph1DminD5': -60000,
+            'ph1DbinsD5': 80,
+            'ph1DminD5': 0,
             'ph1DmaxD5': 60000,
-            'ph1DbinsSi': 320,
-            'ph1DminSi': -90000,
+            'ph1DbinsSi': 160,
+            'ph1DminSi': 0,
             'ph1DmaxSi': 90000,
             'nEventsAv': 20000,
             'event_bins': max(int(ceil(float(self.num_entries)/10)), 200),
@@ -476,7 +476,7 @@ class Plots(Elementary):
         if verbosity: self.print_banner('{n} save -> Done'.format(n=name))
         del c0
 
-    def save_cuts_distributions(self, histo1, histo2, name, title, draw_opt='', opt_stats=0, path='./', verbosity=False, histo3=''):
+    def save_cuts_distributions(self, histo1, histo2, name, title, draw_opt='', opt_stats=0, path='./', verbosity=False, histo3='', doLogY=False):
         if verbosity: self.print_banner('Saving {n}'.format(n=name))
         gROOT.SetBatch(True)
         blabla = gROOT.ProcessLine("gErrorIgnoreLevel = {f};".format(f=kError))
@@ -501,6 +501,9 @@ class Plots(Elementary):
             os.makedirs('{dir}/Plots'.format(dir=path))
         if not os.path.isdir('{dir}/Root'.format(dir=path)):
             os.makedirs('{dir}/Root'.format(dir=path))
+        if doLogY: c0.SetLogy()
+        c0.Update()
+        c0.Modified()
         c0.SaveAs('{dir}/Root/c_{n}.root'.format(dir=path, n=name))
         c0.SaveAs('{dir}/Plots/c_{n}.png'.format(dir=path, n=name))
         c0.Close()
