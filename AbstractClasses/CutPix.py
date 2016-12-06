@@ -50,11 +50,12 @@ class CutPix(Elementary):
             self.events_after_cuts_incr = {}
             self.events_after_cuts_roc_incr = {iROC: {} for iROC in self.duts_list}
 
-            self.cut_names = ['ini_fin', 'beam', 'tracks', 'masks', 'fiducial', 'chi2x', 'chi2y', 'anglex', 'angley', 'rhit']
-            self.dict_cuts = {'ini_fin': 0, 'beam': 1, 'tracks': 2, 'masks': 3, 'fiducial': 4, 'chi2x': 5, 'chi2y': 6, 'anglex': 7, 'angley':8, 'rhit': 9}
 
             self.load_config()
             self.cuts_done = False
+
+            self.cut_names = self.generate_cut_names_vector()
+            self.dict_cuts = {self.cut_names[i]: i for i in xrange(len(self.cut_names))}
 
             self.plots = self.analysis.plots
 
@@ -68,6 +69,22 @@ class CutPix(Elementary):
             # beam interrupts
             # self.jumps = None
             # self.jump_ranges = None
+    def generate_cut_names_vector(self):
+        temp = []
+        if self.CutConfig['IniFin']: temp.append('ini_fin')
+        if self.CutConfig['Beam']: temp.append('beam')
+        if self.CutConfig['Tracks']: temp.append('tracks')
+        if self.CutConfig['Hit']: temp.append('hit')
+        if self.CutConfig['Mask']: temp.append('masks')
+        if self.CutConfig['Fiducial']: temp.append('fiducial')
+        if self.CutConfig['Chi2']:
+            temp.append('chi2x')
+            temp.append('chi2y')
+        if self.CutConfig['Angle']:
+            temp.append('anglex')
+            temp.append('angley')
+        if self.CutConfig['RHit']: temp.append('rhit')
+        return temp
 
     def calculate_initial_events(self):
         gROOT.SetBatch(1)
@@ -306,7 +323,6 @@ class CutPix(Elementary):
 
     def do_cuts_analysis(self):
         self.print_banner('Starting Cuts Analysis...')
-        self.do_cuts_distributions()
         self.print_banner('Creating histograms with cuts...')
         self.h_hitmaps_cuts = {}
         self.h_adc_evt_cuts = {}
@@ -364,18 +380,18 @@ class CutPix(Elementary):
                 self.analysis.tree.Draw('adc:row:col >> adc_map_roc{r}_{c}'.format(r=iroc,c=cut), 'plane=={r}&&{cu}'.format(r=iroc,cu=self.cuts_pixelated_roc_incr[iroc][2]), 'goff prof')
                 self.analysis.tree.Draw('charge_all_ROC{r}:event_number >> ph1_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'cluster_size_ROC{r}==1&&{cu}'.format(r=iroc,cu=self.cuts_pixelated_roc_incr[iroc][self.dict_cuts[cut]]), 'goff')
                 if maxz_ph1 < self.h_ph1_evt_cuts[iroc][cut].GetBinContent(self.h_ph1_evt_cuts[iroc][cut].GetMaximumBin()): maxz_ph1 = self.h_ph1_evt_cuts[iroc][cut].GetBinContent(self.h_ph1_evt_cuts[iroc][cut].GetMaximumBin())
-                if (self.dict_cuts[cut] >= self.dict_cuts['fiducial']) and (minz_ph1 > self.h_ph1_evt_cuts[iroc][cut].GetBinContent(self.h_ph1_evt_cuts[iroc][cut].GetMinimumBin())): minz_ph1 = self.h_ph1_evt_cuts[iroc][cut].GetBinContent(self.h_ph1_evt_cuts[iroc][cut].GetMinimumBin())
+                if (self.dict_cuts[cut] >= self.dict_cuts[self.cut_near_fiducial()]) and (minz_ph1 > self.h_ph1_evt_cuts[iroc][cut].GetBinContent(self.h_ph1_evt_cuts[iroc][cut].GetMinimumBin())): minz_ph1 = self.h_ph1_evt_cuts[iroc][cut].GetBinContent(self.h_ph1_evt_cuts[iroc][cut].GetMinimumBin())
                 self.analysis.tree.Draw('charge_all_ROC{r}:event_number >> ph2_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'cluster_size_ROC{r}==2&&{cu}'.format(r=iroc,cu=self.cuts_pixelated_roc_incr[iroc][self.dict_cuts[cut]]), 'goff')
                 if maxz_ph2 < self.h_ph2_evt_cuts[iroc][cut].GetBinContent(self.h_ph2_evt_cuts[iroc][cut].GetMaximumBin()): maxz_ph2 = self.h_ph2_evt_cuts[iroc][cut].GetBinContent(self.h_ph2_evt_cuts[iroc][cut].GetMaximumBin())
-                if (self.dict_cuts[cut] >= self.dict_cuts['fiducial']) and (minz_ph2 > self.h_ph2_evt_cuts[iroc][cut].GetBinContent(self.h_ph2_evt_cuts[iroc][cut].GetMinimumBin())): minz_ph2 = self.h_ph2_evt_cuts[iroc][cut].GetBinContent(self.h_ph2_evt_cuts[iroc][cut].GetMinimumBin())
+                if (self.dict_cuts[cut] >= self.dict_cuts[self.cut_near_fiducial()]) and (minz_ph2 > self.h_ph2_evt_cuts[iroc][cut].GetBinContent(self.h_ph2_evt_cuts[iroc][cut].GetMinimumBin())): minz_ph2 = self.h_ph2_evt_cuts[iroc][cut].GetBinContent(self.h_ph2_evt_cuts[iroc][cut].GetMinimumBin())
                 self.h_ph1_evt_cuts[iroc][cut].ProjectionY('ph1_roc{r}_{c}'.format(r=iroc,c=cut),0,-1,'e')
                 self.h_ph2_evt_cuts[iroc][cut].ProjectionY('ph2_roc{r}_{c}'.format(r=iroc,c=cut),0,-1,'e')
                 self.analysis.tree.Draw('charge_all_ROC{r}:10000*(residual_ROC{r}_Local_Y+cluster_pos_ROC{r}_Local_Y):10000*(residual_ROC{r}_Local_X+cluster_pos_ROC{r}_Local_X)>>ph1_map_roc{r}_{c}'.format(r=iroc,c=cut), 'cluster_size_ROC{r}==1&&{cu}'.format(r=iroc,cu=self.cuts_pixelated_roc_incr[iroc][self.dict_cuts[cut]]), 'goff prof')
                 if max_ph1_map[iroc] < self.h_ph1_map_cuts[iroc][cut].GetBinContent(self.h_ph1_map_cuts[iroc][cut].GetMaximumBin()) and self.dict_cuts[cut] > 3: max_ph1_map[iroc] = self.h_ph1_map_cuts[iroc][cut].GetBinContent(self.h_ph1_map_cuts[iroc][cut].GetMaximumBin())
-                if (self.dict_cuts[cut] >= self.dict_cuts['fiducial']) and (min_ph1_map[iroc] > self.h_ph1_map_cuts[iroc][cut].GetBinContent(self.h_ph1_map_cuts[iroc][cut].GetMinimumBin())) and self.dict_cuts[cut] > 3: min_ph1_map[iroc] = self.h_ph1_map_cuts[iroc][cut].GetBinContent(self.h_ph1_map_cuts[iroc][cut].GetMinimumBin())
+                if (self.dict_cuts[cut] >= self.dict_cuts[self.cut_near_fiducial()]) and (min_ph1_map[iroc] > self.h_ph1_map_cuts[iroc][cut].GetBinContent(self.h_ph1_map_cuts[iroc][cut].GetMinimumBin())) and self.dict_cuts[cut] > 3: min_ph1_map[iroc] = self.h_ph1_map_cuts[iroc][cut].GetBinContent(self.h_ph1_map_cuts[iroc][cut].GetMinimumBin())
                 self.analysis.tree.Draw('charge_all_ROC{r}:10000*(residual_ROC{r}_Local_Y+cluster_pos_ROC{r}_Local_Y):10000*(residual_ROC{r}_Local_X+cluster_pos_ROC{r}_Local_X)>>ph2_map_roc{r}_{c}'.format(r=iroc,c=cut), 'cluster_size_ROC{r}==2&&{cu}'.format(r=iroc,cu=self.cuts_pixelated_roc_incr[iroc][self.dict_cuts[cut]]), 'goff prof')
                 if max_ph2_map[iroc] < self.h_ph2_map_cuts[iroc][cut].GetBinContent(self.h_ph2_map_cuts[iroc][cut].GetMaximumBin()) and self.dict_cuts[cut] > 3: max_ph2_map[iroc] = self.h_ph2_map_cuts[iroc][cut].GetBinContent(self.h_ph2_map_cuts[iroc][cut].GetMaximumBin())
-                if (self.dict_cuts[cut] >= self.dict_cuts['fiducial']) and (min_ph2_map[iroc] > self.h_ph2_map_cuts[iroc][cut].GetBinContent(self.h_ph2_map_cuts[iroc][cut].GetMinimumBin())) and self.dict_cuts[cut] > 3: min_ph2_map[iroc] = self.h_ph2_map_cuts[iroc][cut].GetBinContent(self.h_ph2_map_cuts[iroc][cut].GetMinimumBin())
+                if (self.dict_cuts[cut] >= self.dict_cuts[self.cut_near_fiducial()]) and (min_ph2_map[iroc] > self.h_ph2_map_cuts[iroc][cut].GetBinContent(self.h_ph2_map_cuts[iroc][cut].GetMinimumBin())) and self.dict_cuts[cut] > 3: min_ph2_map[iroc] = self.h_ph2_map_cuts[iroc][cut].GetBinContent(self.h_ph2_map_cuts[iroc][cut].GetMinimumBin())
                 gROOT.SetBatch(0)
                 if self.verbose: print 'Done'
         min_ph1_map[iroc] = min(min_ph1_map[iroc], 0); print 'min ph1 map:', min_ph1_map[iroc]
@@ -407,6 +423,12 @@ class CutPix(Elementary):
                 self.plots.save_individual_plots(self.h_ph2_map_cuts[iroc][cut], 'ph2_map_roc{r}_{c}'.format(r=iroc,c=cut), 'ph2_map_roc{r}_{c}'.format(r=iroc,c=cut), None, 'colz', 1, self.plots.save_dir+'/cuts')
                 if self.verbose: print 'Done'
         self.print_banner('Finished Cut Analysis', ':)')
+
+    def cut_near_fiducial(self):
+        for cut in ['fiducial', 'chi2x', 'anglex', 'rhit', 'masks', 'hit', 'tracks', 'beam']:
+            if cut in self.cut_names:
+                return cut
+        return 'ini_fin'
 
     def generate_all_cut(self):
         cut = TCut('all_cuts', '')
@@ -521,6 +543,15 @@ class CutPix(Elementary):
             has_option('CUT', 'FidRegionROC5') else ''
         self.CutConfig['FidRegionROC6'] = self.ana_config_parser.get('CUT', 'FidRegionROC6') if self.ana_config_parser. \
             has_option('CUT', 'FidRegionROC6') else ''
+        self.CutConfig['IniFin'] = self.ana_config_parser.getboolean('CUT', 'IniFin') if self.ana_config_parser.has_option('CUT', 'IniFin') else False
+        self.CutConfig['Beam'] = self.ana_config_parser.getboolean('CUT', 'Beam') if self.ana_config_parser.has_option('CUT', 'Beam') else False
+        self.CutConfig['Tracks'] = self.ana_config_parser.getboolean('CUT', 'Tracks') if self.ana_config_parser.has_option('CUT', 'Tracks') else False
+        self.CutConfig['Hit'] = self.ana_config_parser.getboolean('CUT', 'Hit') if self.ana_config_parser.has_option('CUT', 'Hit') else False
+        self.CutConfig['Mask'] = self.ana_config_parser.getboolean('CUT', 'Mask') if self.ana_config_parser.has_option('CUT', 'Mask') else False
+        self.CutConfig['Fiducial'] = self.ana_config_parser.getboolean('CUT', 'Fiducial') if self.ana_config_parser.has_option('CUT', 'Fiducial') else False
+        self.CutConfig['Chi2'] = self.ana_config_parser.getboolean('CUT', 'Chi2') if self.ana_config_parser.has_option('CUT', 'Chi2') else False
+        self.CutConfig['Angle'] = self.ana_config_parser.getboolean('CUT', 'Angle') if self.ana_config_parser.has_option('CUT', 'Angle') else False
+        self.CutConfig['RHit'] = self.ana_config_parser.getboolean('CUT', 'RHit') if self.ana_config_parser.has_option('CUT', 'RHit') else False
 
     # def add_cuts(self):
     #     for iROC in xrange(4, 7):

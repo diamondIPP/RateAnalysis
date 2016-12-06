@@ -117,7 +117,7 @@ class SignalPixAnalysis(Analysis):
     def add_duts_device(self):
         self.devices['dut'] = [self.roc_diam1, self.roc_diam2, self.roc_si] if self.TESTCAMPAIGN != '201610' else [self.roc_diam1, self.roc_si]
 
-    def do_analysis(self, do_tlscp=False, do_duts=True, do_cut_ana=True, do_occupancy=True, do_correlations=True, do_pulse_height=True, show_progressBar=False, verbosity=False):
+    def do_analysis(self, do_tlscp=False, do_duts=True, do_cut_dist=False, do_cut_ana=False, do_occupancy=True, do_correlations=False, do_pulse_height=True, show_progressBar=False, verbosity=False):
         gROOT.SetBatch(True)
         gROOT.ProcessLine("gErrorIgnoreLevel = 1000")
         gROOT.SetBatch(False)
@@ -135,6 +135,8 @@ class SignalPixAnalysis(Analysis):
             self.add_telescope_device()
         if do_duts:
             self.add_duts_device()
+        if do_cut_dist:
+            self.Cut.do_cuts_distributions()
         if do_cut_ana:
             self.Cut.do_cuts_analysis()
 
@@ -2114,18 +2116,20 @@ if __name__ == "__main__":
     parser.add_option('-r', '--run', dest='run', default=341, type='int', help='Run to be analysed {e.g.334}')
     parser.add_option('-t', '--doTelescope', action='store_true', dest='doTelscp', default=False, help='set with -t or with --doTelescope to do telescope analysis')
     parser.add_option('-d', '--doDUTs', action='store_true', dest='doDUTs', default=False, help='set with -d or with --doDUTs to do DUTs analysis')
+    parser.add_option('-u', '--doCutDist', action='store_true', dest='doCutDist', default=False, help='set with -u or with --doCutDist to do Cuts distributions on selected devices (DUTs and/or telescope)')
     parser.add_option('-c', '--doCutAna', action='store_true', dest='doCutAna', default=False, help='set with -c or with --doCutAna to do Cuts analysis on selected devices (DUTs and/or telescope)')
     parser.add_option('-o', '--doOccupancy', action='store_true', dest='doOccupancy', default=False, help='set with -o or with --doOccupancy to do occupancies (hit maps) on selected devices (DUTs and/or telescope)')
     parser.add_option('-x', '--doCorrel', action='store_true', dest='doCorrel', default=False, help='set with -x or with --doCorrel to do correlations between important planes')
     parser.add_option('-g', '--doCharge', action='store_true', dest='doCharge', default=False, help='set with -g or with --doCharge to do pulse height analysis on selected devices (DUTs and/or telescope)')
     parser.add_option('-p', '--progBar', action='store_true', dest='progBar', default=False, help='show progress bar')
     parser.add_option('-v', '--verb', action='store_true', dest='verb', default=False, help='show verbose')
-    parser.add_option('-a', '--analyse', action='store_true', dest='doAna', default=False, help='run the analysis with the options given')
+    parser.add_option('-a', '--analyse', action='store_true', dest='doAna', default=False, help='run the whole analysis with the options entered')
 
     (options, args) = parser.parse_args()
     run = int(options.run)
     doTelscp = bool(options.doTelscp)
     doDUTs = bool(options.doDUTs)
+    doCutDist = bool(options.doCutDist)
     doCutAna = bool(options.doCutAna)
     doHitMap = bool(options.doOccupancy)
     doCorrel = bool(options.doCorrel)
@@ -2137,6 +2141,7 @@ if __name__ == "__main__":
     command = '\nAnalysing run ' + str(run) + 'with:'
     command = command + ' telescope,' if doTelscp else command + ' no telescope,'
     command = command + ' DUTs,' if doDUTs else command + ' no DUTs,'
+    command = command + ' cuts distributions,' if doCutDist else command + ' no cuts distributions,'
     command = command + ' cuts analysis,' if doCutAna else command + ' no cuts analysis,'
     command = command + ' hitmaps,' if doHitMap else command + ' no hitmpas,'
     command = command + ' correlations,' if doCorrel else command + ' no correlations,'
@@ -2150,4 +2155,4 @@ if __name__ == "__main__":
     z.print_elapsed_time(st, 'Instantiation')
 
     if doAna:
-        z.do_analysis(doTelscp, doDUTs, doCutAna, doHitMap, doCorrel, doPH, pbar, verb)
+        z.do_analysis(doTelscp, doDUTs, doCutDist, doCutAna, doHitMap, doCorrel, doPH, pbar, verb)
