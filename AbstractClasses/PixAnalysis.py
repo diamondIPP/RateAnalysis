@@ -117,7 +117,7 @@ class SignalPixAnalysis(Analysis):
     def add_duts_device(self):
         self.devices['dut'] = [self.roc_diam1, self.roc_diam2, self.roc_si] if self.TESTCAMPAIGN != '201610' else [self.roc_diam1, self.roc_si]
 
-    def do_analysis(self, do_tlscp=False, do_duts=True, do_cut_dist=False, do_cut_ana=False, do_occupancy=True, do_correlations=False, do_pulse_height=True, show_progressBar=False, verbosity=False):
+    def do_analysis(self, do_tlscp=False, do_duts=True, do_cut_dist=False, do_res_ana=False, do_cut_ana=False, do_occupancy=True, do_correlations=False, do_pulse_height=True, show_progressBar=False, verbosity=False):
         gROOT.SetBatch(True)
         gROOT.ProcessLine("gErrorIgnoreLevel = 1000")
         gROOT.SetBatch(False)
@@ -137,8 +137,10 @@ class SignalPixAnalysis(Analysis):
             self.add_duts_device()
         if do_cut_dist:
             self.Cut.do_cuts_distributions()
+        if do_res_ana:
+            self.Cut.do_res_analysis()
         if do_cut_ana:
-            self.Cut.do_cuts_analysis()
+            self.do_cuts_analysis(do_occupancy, do_pulse_height)
 
 
         # if do_pulse_height: self.valueAverage = {iroc: {k: 0 for k in xrange(self.kmax)} for iroc in xrange(self.num_devices)}
@@ -184,8 +186,12 @@ class SignalPixAnalysis(Analysis):
         # if do_correlations: self.do_correlations(self.roc_tel[1], self.roc_tel[2], self.roc_diam1, self.roc_si, show_progressBar, verbosity)
         # self.print_banner('Looping over Tree -> Done', '%')
 
-    def do_cuts_analysis(self):
-        self.Cut.do_cuts_analysis()
+    def do_cuts_analysis(self, do_occupancy, do_pulse_height):
+        self.Cut.do_cuts_analysis(do_occupancy, do_pulse_height)
+
+    def do_occupancy_roc(self, roc, cut=''):
+        #TODO
+
 
     def fill_occupancy(self, show_progressBar=False, do_tlscp=False, verbosity=False):
         # for i in xrange(len(self.plane)):
@@ -2113,10 +2119,11 @@ class SignalPixAnalysis(Analysis):
 if __name__ == "__main__":
     st = time()
     parser = OptionParser()
-    parser.add_option('-r', '--run', dest='run', default=341, type='int', help='Run to be analysed {e.g.334}')
+    parser.add_option('-r', '--run', dest='run', default=489, type='int', help='Run to be analysed {e.g.334}')
     parser.add_option('-t', '--doTelescope', action='store_true', dest='doTelscp', default=False, help='set with -t or with --doTelescope to do telescope analysis')
     parser.add_option('-d', '--doDUTs', action='store_true', dest='doDUTs', default=False, help='set with -d or with --doDUTs to do DUTs analysis')
     parser.add_option('-u', '--doCutDist', action='store_true', dest='doCutDist', default=False, help='set with -u or with --doCutDist to do Cuts distributions on selected devices (DUTs and/or telescope)')
+    parser.add_option('-e', '--doResolution', action='store_true', dest='doResolution', default=False, help='set with -e or with --doResolution to do resolution analysis on selected devices (DUTs and/or telescope)')
     parser.add_option('-c', '--doCutAna', action='store_true', dest='doCutAna', default=False, help='set with -c or with --doCutAna to do Cuts analysis on selected devices (DUTs and/or telescope)')
     parser.add_option('-o', '--doOccupancy', action='store_true', dest='doOccupancy', default=False, help='set with -o or with --doOccupancy to do occupancies (hit maps) on selected devices (DUTs and/or telescope)')
     parser.add_option('-x', '--doCorrel', action='store_true', dest='doCorrel', default=False, help='set with -x or with --doCorrel to do correlations between important planes')
@@ -2130,6 +2137,7 @@ if __name__ == "__main__":
     doTelscp = bool(options.doTelscp)
     doDUTs = bool(options.doDUTs)
     doCutDist = bool(options.doCutDist)
+    doResolution = bool(options.doResolution)
     doCutAna = bool(options.doCutAna)
     doHitMap = bool(options.doOccupancy)
     doCorrel = bool(options.doCorrel)
@@ -2138,16 +2146,19 @@ if __name__ == "__main__":
     verb = bool(options.verb)
     doAna = bool(options.doAna)
 
-    command = '\nAnalysing run ' + str(run) + 'with:'
+    command = '\nAnalysing run ' + str(run) + ' with:'
     command = command + ' telescope,' if doTelscp else command + ' no telescope,'
     command = command + ' DUTs,' if doDUTs else command + ' no DUTs,'
     command = command + ' cuts distributions,' if doCutDist else command + ' no cuts distributions,'
+    command = command + ' resolution analysis,' if doResolution else command + ' no resolution analysis,'
     command = command + ' cuts analysis,' if doCutAna else command + ' no cuts analysis,'
     command = command + ' hitmaps,' if doHitMap else command + ' no hitmpas,'
     command = command + ' correlations,' if doCorrel else command + ' no correlations,'
     command = command + ' pulse heights,' if doPH else command + ' no heights,'
     command = command + ' progress bar,' if pbar else command + ' no progress bar,'
-    command = command + ' verbose' if pbar else command + ' no verbose\n'
+    command = command + ' verbose' if pbar else command + ' no verbose,'
+    command = command + ' with automatic analysis' if doAna else command + '. Start the Analysis by typing "z.do_analysis(doTelscp, doDUTs, doCutDist, doCutAna, doHitMap, doCorrel, doPH, pbar, verb)" when ready'
+    command = command + '\n'
 
     print command
 
@@ -2155,4 +2166,5 @@ if __name__ == "__main__":
     z.print_elapsed_time(st, 'Instantiation')
 
     if doAna:
-        z.do_analysis(doTelscp, doDUTs, doCutDist, doCutAna, doHitMap, doCorrel, doPH, pbar, verb)
+        print 'Starting automatic analysis...'
+        z.do_analysis(doTelscp, doDUTs, doCutDist, doResolution, doCutAna, doHitMap, doCorrel, doPH, pbar, verb)

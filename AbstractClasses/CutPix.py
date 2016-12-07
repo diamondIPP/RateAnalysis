@@ -5,7 +5,7 @@ import json
 import sys
 from numpy import array, zeros, arange, delete
 from Elementary import Elementary
-from ROOT import TCut, gROOT, TH1F, kRed, TCutG, gDirectory, kBlue, TH2D, TH2F, TH1D, kGreen, kMagenta
+from ROOT import TCut, gROOT, TH1F, kRed, TCutG, gDirectory, kBlue, TH2D, TH2F, TH1D, kGreen, kMagenta, gErrorIgnoreLevel, kWarning, RooMsgService, RooFit, gPrintViaErrorHandler
 from collections import OrderedDict
 from copy import deepcopy
 from math import ceil
@@ -17,6 +17,7 @@ class CutPix(Elementary):
     by the Analysis method SetIndividualCuts().
     """
     def __init__(self, parent_analysis, verbose=True, skip=False):
+        gPrintViaErrorHandler = True
 
         if not skip:
             Elementary.__init__(self, verbose=verbose)
@@ -56,6 +57,7 @@ class CutPix(Elementary):
 
             self.cut_names = self.generate_cut_names_vector()
             self.dict_cuts = {self.cut_names[i]: i for i in xrange(len(self.cut_names))}
+            print self.dict_cuts
 
             self.plots = self.analysis.plots
 
@@ -99,14 +101,25 @@ class CutPix(Elementary):
     def do_cuts(self):
         # generate cut strings
         self.print_banner('Generating Cut strings...')
-        self.generate_ini_fin_cuts()
-        self.generate_beam_interruption_cut()
-        self.generate_tracks_cut()
-        self.generate_masks()
-        self.generate_fid_cuts()
-        self.generate_chi2_cuts()
-        self.generate_angle_cuts()
-        self.generate_rhit_cuts()
+        print 'The following cuts will be implemented:', self.cut_names
+        if 'ini_fin' in self.cut_names:
+            self.generate_ini_fin_cuts()
+        if 'beam' in self.cut_names:
+            self.generate_beam_interruption_cut()
+        if 'tracks' in self.cut_names:
+            self.generate_tracks_cut()
+        if 'hit' in self.cut_names:
+            self.generate_hit_cut()
+        if 'masks' in self.cut_names:
+            self.generate_masks()
+        if 'fiducial' in self.cut_names:
+            self.generate_fid_cuts()
+        if 'chi2x' in self.cut_names or 'chi2y' in self.cut_names:
+            self.generate_chi2_cuts()
+        if 'anglex' in self.cut_names or 'angley' in self.cut_names:
+            self.generate_angle_cuts()
+        if 'rhit' in self.cut_names:
+            self.generate_rhit_cuts()
         # self.gen_incr_vect_cuts()
         self.cuts_done = True
         self.print_banner('Finished generating Cut stringss')
@@ -131,35 +144,13 @@ class CutPix(Elementary):
 
     def do_cuts_distributions(self):
         self.print_banner('Doing cuts distributions...')
-        if self.verbose:
-            print 'Beam interruption...', ; sys.stdout.flush()
-        nentries = self.analysis.tree.GetEntries()
-        self.analysis.tree.GetEntry(0)
-        first_t = self.analysis.tree.time
-        self.analysis.tree.GetEntry(nentries-1)
-        last_t = self.analysis.tree.time
-        bins = int((last_t-first_t)/float(5000))
-        gROOT.SetBatch(True)
-        self.h_beam_time = TH1F('h_beam_time', 'h_beam_time', bins+1, first_t-(last_t-first_t)/float(2*bins), last_t+(last_t-first_t)/float(2*bins))
-        self.h_beam_time_cut = TH1F('h_beam_time_cut', 'h_beam_time_cut', bins+1, first_t-(last_t-first_t)/float(2*bins), last_t+(last_t-first_t)/float(2*bins))
-        self.h_beam_mean_cut = TH1F('h_beam_mean_cut', 'h_beam_mean_cut', bins+1, first_t-(last_t-first_t)/float(2*bins), last_t+(last_t-first_t)/float(2*bins))
-        self.analysis.tree.Draw('time>>h_beam_time', self.cuts_pixelated_roc_incr[self.duts_list[0]][self.dict_cuts['beam']-1],'goff')
-        self.analysis.tree.Draw('time>>h_beam_time_cut', self.cuts_pixelated_roc_incr[self.duts_list[0]][self.dict_cuts['beam']],'goff')
-        self.mean_events_5sec = self.h_beam_time.Integral()/float(self.h_beam_time.GetNbinsX())
-        binsEvents = int(ceil(nentries/float(self.mean_events_5sec)))
-        self.plot_settings['event_bins'] = binsEvents
-        for bin in xrange(1, bins+2):
-            self.h_beam_mean_cut.SetBinContent(bin, self.mean_events_5sec)
-        gROOT.SetBatch(False)
-        self.plots.set_1D_options('time', self.h_beam_time, 'time(ms)', 'entries', kBlue)
-        self.plots.set_1D_options('time', self.h_beam_time_cut, 'time(ms)', 'entries', kRed)
-        self.plots.set_1D_options('time', self.h_beam_mean_cut, 'time(ms)', 'entries', color=kGreen)
-        self.plots.save_cuts_distributions(self.h_beam_time, self.h_beam_time_cut, 'beam_time_cut_overlay', 'Beam cut overlay', '', 1000000011, self.plots.save_dir+'/cuts', False, self.h_beam_mean_cut)
-        if self.verbose: print 'Done'
-        self.h_chi2x_dist = {}
-        self.h_chi2y_dist = {}
-        self.h_chi2x_cut_dist = {}
-        self.h_chi2y_cut_dist = {}
+        self.do_beam_distribution()
+        self.do_chi2_distributions()
+        self.do_angle_distributions()
+        self.do_rhit_distribution()
+        self.print_banner('Finished with distribution cuts')
+
+    def do_res_analysis(self):
         self.h_resy_resx = {}
         self.h_rhit_resx = {}
         self.h_rhit_resy = {}
@@ -169,71 +160,12 @@ class CutPix(Elementary):
         self.h_chi2y_resx = {}
         self.h_resx_hitposy = {}
         self.h_resy_hitposx = {}
-
-        if self.verbose: print 'Chi2...', ; sys.stdout.flush()
-        for iroc in self.duts_list:
-            gROOT.SetBatch(True)
-            self.h_chi2x_dist[iroc] = TH1F('h_chi2x_roc{r}'.format(r=iroc), 'h_chi2x_roc{r}'.format(r=iroc), 51, -0.1, 10.1)
-            self.h_chi2y_dist[iroc] = TH1F('h_chi2y_roc{r}'.format(r=iroc), 'h_chi2y_roc{r}'.format(r=iroc), 51, -0.1, 10.1)
-            self.h_chi2x_cut_dist[iroc] = TH1F('h_chi2x_cut_roc{r}'.format(r=iroc), 'h_chi2x_cut_roc{r}'.format(r=iroc), 51, -0.1, 10.1)
-            self.h_chi2y_cut_dist[iroc] = TH1F('h_chi2y_cut_roc{r}'.format(r=iroc), 'h_chi2y_cut_roc{r}'.format(r=iroc), 51, -0.1, 10.1)
-            self.analysis.tree.Draw('chi2_x>>h_chi2x_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.dict_cuts['chi2x'] - 1], 'goff')
-            self.analysis.tree.Draw('chi2_y>>h_chi2y_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.dict_cuts['chi2x'] - 1], 'goff')
-            self.analysis.tree.Draw('chi2_x>>h_chi2x_cut_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.dict_cuts['chi2y']], 'goff')
-            self.analysis.tree.Draw('chi2_y>>h_chi2y_cut_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.dict_cuts['chi2y']], 'goff')
-            self.plots.set_1D_options('chi2', self.h_chi2x_dist[iroc], 'chi2X', 'entries', kBlue)
-            self.plots.set_1D_options('chi2', self.h_chi2y_dist[iroc], 'chi2Y', 'entries', kBlue)
-            self.plots.set_1D_options('chi2', self.h_chi2x_cut_dist[iroc], 'chi2X', 'entries', kRed)
-            self.plots.set_1D_options('chi2', self.h_chi2y_cut_dist[iroc], 'chi2Y', 'entries', kRed)
-            gROOT.SetBatch(False)
-            self.plots.save_cuts_distributions(self.h_chi2x_dist[iroc], self.h_chi2x_cut_dist[iroc], 'chi2_roc{r}_x_cut_overlay'.format(r=iroc), 'Chi2 roc{r} x Cut Overlay'.format(r=iroc), '', 1000000011, self.plots.save_dir+'/cuts', False)
-            self.plots.save_cuts_distributions(self.h_chi2y_dist[iroc], self.h_chi2y_cut_dist[iroc], 'chi2_roc{r}_y_cut_overlay'.format(r=iroc), 'Chi2 roc{r} Y Cut Overlay'.format(r=iroc), '', 1000000011, self.plots.save_dir+'/cuts', False)
-        if self.verbose: print 'Done'
-        if self.verbose: print 'Angle...', ; sys.stdout.flush()
-        self.h_anglex_dist = {}
-        self.h_angley_dist = {}
-        self.h_anglex_cut_dist = {}
-        self.h_angley_cut_dist = {}
-        for iroc in self.duts_list:
-            gROOT.SetBatch(True)
-            self.h_anglex_dist[iroc] = TH1F('h_anglex_roc{r}'.format(r=iroc), 'h_anglex_roc{r}'.format(r=iroc), 121, -3.025, 3.025)
-            self.h_angley_dist[iroc] = TH1F('h_angley_roc{r}'.format(r=iroc), 'h_angley_roc{r}'.format(r=iroc), 121, -3.025, 3.025)
-            self.h_anglex_cut_dist[iroc] = TH1F('h_anglex_cut_roc{r}'.format(r=iroc), 'h_anglex_cut_roc{r}'.format(r=iroc), 121, -3.025, 3.025)
-            self.h_angley_cut_dist[iroc] = TH1F('h_angley_cut_roc{r}'.format(r=iroc), 'h_angley_cut_roc{r}'.format(r=iroc), 121, -3.025, 3.025)
-            self.analysis.tree.Draw('angle_x>>h_anglex_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.dict_cuts['anglex']-1], 'goff')
-            self.analysis.tree.Draw('angle_y>>h_angley_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.dict_cuts['anglex']-1], 'goff')
-            self.analysis.tree.Draw('angle_x>>h_anglex_cut_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.dict_cuts['angley']], 'goff')
-            self.analysis.tree.Draw('angle_y>>h_angley_cut_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.dict_cuts['angley']], 'goff')
-            self.plots.set_1D_options('angle', self.h_anglex_dist[iroc], 'angleX(deg)', 'entries', kBlue)
-            self.plots.set_1D_options('angle', self.h_angley_dist[iroc], 'angleY(deg)', 'entries', kBlue)
-            self.plots.set_1D_options('angle', self.h_anglex_cut_dist[iroc], 'angleX(deg)', 'entries', kRed)
-            self.plots.set_1D_options('angle', self.h_angley_cut_dist[iroc], 'angleY(deg)', 'entries', kRed)
-            gROOT.SetBatch(False)
-            self.plots.save_cuts_distributions(self.h_anglex_dist[iroc], self.h_anglex_cut_dist[iroc], 'angle_roc{r}_x_cut_overlay'.format(r=iroc), 'Angle roc{r} X Cut Overlay'.format(r=iroc), '', 1000000011, self.plots.save_dir+'/cuts', False)
-            self.plots.save_cuts_distributions(self.h_angley_dist[iroc], self.h_angley_cut_dist[iroc], 'angle_roc{r}_y_cut_overlay'.format(r=iroc), 'Angle roc{r} Y Cut Overlay'.format(r=iroc), '', 1000000011, self.plots.save_dir+'/cuts', False)
-        if self.verbose: print 'Done'
-        if self.verbose: print 'R_hit...', ; sys.stdout.flush()
-        self.h_rhit_dist = {}
-        self.h_rhit_cut_dist = {}
-        for iroc in self.duts_list:
-            gROOT.SetBatch(True)
-            self.h_rhit_dist[iroc] = TH1F('h_rhit_roc{r}'.format(r=iroc), 'h_rhit_roc{r}'.format(r=iroc), 101, -0.5, 100.5)
-            self.h_rhit_cut_dist[iroc] = TH1F('h_rhit_cut_roc{r}'.format(r=iroc), 'h_rhit_cut_roc{r}'.format(r=iroc), 101, -0.5, 100.5)
-            self.analysis.tree.Draw('(10000*sqrt((residual_ROC{n}_Local_X)**2+(residual_ROC{n}_Local_Y)**2))>>h_rhit_roc{d}'.format(n=iroc, d=iroc), self.cuts_pixelated_roc_incr[iroc][self.dict_cuts['rhit'] - 1], 'goff')
-            self.analysis.tree.Draw('(10000*sqrt((residual_ROC{n}_Local_X)**2+(residual_ROC{n}_Local_Y)**2))>>h_rhit_cut_roc{d}'.format(n=iroc, d=iroc), self.cuts_pixelated_roc_incr[iroc][self.dict_cuts['rhit']], 'goff')
-            self.plots.set_1D_options('rhit', self.h_rhit_dist[iroc], 'R_Hit(um)', 'entries', kBlue, 0.1)
-            self.plots.set_1D_options('rhit', self.h_rhit_cut_dist[iroc], 'R_Hit(um)', 'entries', kRed, 0.1)
-            gROOT.SetBatch(False)
-            self.plots.save_cuts_distributions(self.h_rhit_dist[iroc], self.h_rhit_cut_dist[iroc], 'rhit_roc{r}_x_cut_overlay'.format(r=iroc), 'Rhit roc{r} x Cut Overlay'.format(r=iroc), '', 1000000011, self.plots.save_dir+'/cuts', False, '', True)
-        if self.verbose: print 'Done'
-        self.print_banner('Finished with distribution cuts')
-
         self.print_banner('Doing resolution plots...')
         if self.verbose: print 'Res_Y Vs Res_X...', ; sys.stdout.flush()
         for iroc in self.duts_list:
             gROOT.SetBatch(True)
             self.h_resy_resx[iroc] = TH2D('h_resy_resx_roc{r}'.format(r=iroc), 'h_resy_resx_roc{r}'.format(r=iroc), 21, -1575, 1575, 21, -1050, 1050)
-            self.analysis.tree.Draw('10000*residual_ROC{r}_Local_Y:10000*residual_ROC{r}_Local_X>>h_resy_resx_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.num_cuts-1], 'goff')
+            self.analysis.tree.Draw('10000*residual_ROC{r}_Local_Y:10000*residual_ROC{r}_Local_X>>h_resy_resx_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.num_cuts-1], 'goff') if self.num_cuts != 0 else self.analysis.tree.Draw('10000*residual_ROC{r}_Local_Y:10000*residual_ROC{r}_Local_X>>h_resy_resx_roc{r}'.format(r=iroc), '', 'goff')
             self.plots.set_2D_options(self.h_resy_resx[iroc], 'Res_X(um)', 'Res_y(um)', '# entries', 0, -1)
             gROOT.SetBatch(False)
             self.plots.save_individual_plots(self.h_resy_resx[iroc], 'h_resy_resx_roc{r}'.format(r=iroc), 'Res_Y Vs. Res_X roc{r}'.format(r=iroc), None, 'colz', 0, self.plots.save_dir+'/cuts', False, 0, doLogZ=True)
@@ -243,7 +175,7 @@ class CutPix(Elementary):
         for iroc in self.duts_list:
             gROOT.SetBatch(True)
             self.h_rhit_resx[iroc] = TH2D('h_rhit_resx_roc{r}'.format(r=iroc), 'h_rhit_resx_roc{r}'.format(r=iroc), 21, -1575, 1575, 101, -0.5, 100.5)
-            self.analysis.tree.Draw('(10000*sqrt((residual_ROC{r}_Local_X)**2+(residual_ROC{r}_Local_Y)**2)):10000*residual_ROC{r}_Local_X>>h_rhit_resx_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.num_cuts-1], 'goff')
+            self.analysis.tree.Draw('(10000*sqrt((residual_ROC{r}_Local_X)**2+(residual_ROC{r}_Local_Y)**2)):10000*residual_ROC{r}_Local_X>>h_rhit_resx_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.num_cuts-1], 'goff') if self.num_cuts != 0 else self.analysis.tree.Draw('(10000*sqrt((residual_ROC{r}_Local_X)**2+(residual_ROC{r}_Local_Y)**2)):10000*residual_ROC{r}_Local_X>>h_rhit_resx_roc{r}'.format(r=iroc), '', 'goff')
             self.plots.set_2D_options(self.h_rhit_resx[iroc], 'Res_X(um)', 'R_Hit(um)', '# entries', 0, -1)
             gROOT.SetBatch(False)
             self.plots.save_individual_plots(self.h_rhit_resx[iroc], 'h_rhit_resx_roc{r}'.format(r=iroc), 'R_Hit Vs. Res_X roc{r}'.format(r=iroc), None, 'colz', 0, self.plots.save_dir+'/cuts', False, 0, doLogZ=True)
@@ -253,7 +185,7 @@ class CutPix(Elementary):
         for iroc in self.duts_list:
             gROOT.SetBatch(True)
             self.h_rhit_resy[iroc] = TH2D('h_rhit_resy_roc{r}'.format(r=iroc), 'h_rhit_resy_roc{r}'.format(r=iroc), 21, -1050, 1050, 101, -0.5, 100.5)
-            self.analysis.tree.Draw('(10000*sqrt((residual_ROC{r}_Local_X)**2+(residual_ROC{r}_Local_Y)**2)):10000*residual_ROC{r}_Local_Y>>h_rhit_resy_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.num_cuts-1], 'goff')
+            self.analysis.tree.Draw('(10000*sqrt((residual_ROC{r}_Local_X)**2+(residual_ROC{r}_Local_Y)**2)):10000*residual_ROC{r}_Local_Y>>h_rhit_resy_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.num_cuts-1], 'goff') if self.num_cuts != 0 else self.analysis.tree.Draw('(10000*sqrt((residual_ROC{r}_Local_X)**2+(residual_ROC{r}_Local_Y)**2)):10000*residual_ROC{r}_Local_Y>>h_rhit_resy_roc{r}'.format(r=iroc), '', 'goff')
             self.plots.set_2D_options(self.h_rhit_resy[iroc], 'Res_Y(um)', 'R_Hit(um)', '# entries', 0, -1)
             gROOT.SetBatch(False)
             self.plots.save_individual_plots(self.h_rhit_resy[iroc], 'h_rhit_resy_roc{r}'.format(r=iroc), 'R_Hit Vs. Res_Y roc{r}'.format(r=iroc), None, 'colz', 0, self.plots.save_dir+'/cuts', False, 0, doLogZ=True)
@@ -263,7 +195,7 @@ class CutPix(Elementary):
         for iroc in self.duts_list:
             gROOT.SetBatch(True)
             self.h_chi2_resx[iroc] = TH2D('h_chi2_resx_roc{r}'.format(r=iroc), 'h_chi2_resx_roc{r}'.format(r=iroc), 21, -1575, 1575, 51, -0.1, 10.1)
-            self.analysis.tree.Draw('chi2_tracks:10000*residual_ROC{r}_Local_X>>h_chi2_resx_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.num_cuts-1], 'goff')
+            self.analysis.tree.Draw('chi2_tracks:10000*residual_ROC{r}_Local_X>>h_chi2_resx_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.num_cuts-1], 'goff') if self.num_cuts != 0 else self.analysis.tree.Draw('chi2_tracks:10000*residual_ROC{r}_Local_X>>h_chi2_resx_roc{r}'.format(r=iroc), '', 'goff')
             self.plots.set_2D_options(self.h_chi2_resx[iroc], 'Res_X(um)', 'Chi2', '# entries', 0, -1)
             gROOT.SetBatch(False)
             self.plots.save_individual_plots(self.h_chi2_resx[iroc], 'h_chi2_resx_roc{r}'.format(r=iroc), 'Chi2 Vs. Res_X roc{r}'.format(r=iroc), None, 'colz', 0, self.plots.save_dir+'/cuts', False, 0, doLogZ=True)
@@ -273,7 +205,7 @@ class CutPix(Elementary):
         for iroc in self.duts_list:
             gROOT.SetBatch(True)
             self.h_chi2_resy[iroc] = TH2D('h_chi2_resy_roc{r}'.format(r=iroc), 'h_chi2_resy_roc{r}'.format(r=iroc), 21, -1050, 1050, 51, -0.1, 10.1)
-            self.analysis.tree.Draw('chi2_tracks:10000*residual_ROC{r}_Local_Y>>h_chi2_resy_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.num_cuts-1], 'goff')
+            self.analysis.tree.Draw('chi2_tracks:10000*residual_ROC{r}_Local_Y>>h_chi2_resy_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.num_cuts-1], 'goff') if self.num_cuts != 0 else self.analysis.tree.Draw('chi2_tracks:10000*residual_ROC{r}_Local_Y>>h_chi2_resy_roc{r}'.format(r=iroc), '', 'goff')
             self.plots.set_2D_options(self.h_chi2_resy[iroc], 'Res_Y(um)', 'Chi2', '# entries', 0, -1)
             gROOT.SetBatch(False)
             self.plots.save_individual_plots(self.h_chi2_resy[iroc], 'h_chi2_resy_roc{r}'.format(r=iroc), 'Chi2 Vs. Res_Y roc{r}'.format(r=iroc), None, 'colz', 0, self.plots.save_dir+'/cuts', False, 0, doLogZ=True)
@@ -283,7 +215,7 @@ class CutPix(Elementary):
         for iroc in self.duts_list:
             gROOT.SetBatch(True)
             self.h_chi2x_resx[iroc] = TH2D('h_chi2x_resx_roc{r}'.format(r=iroc), 'h_chi2x_resx_roc{r}'.format(r=iroc), 21, -1575, 1575, 51, -0.1, 10.1)
-            self.analysis.tree.Draw('chi2_x:10000*residual_ROC{r}_Local_X>>h_chi2x_resx_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.num_cuts-1], 'goff')
+            self.analysis.tree.Draw('chi2_x:10000*residual_ROC{r}_Local_X>>h_chi2x_resx_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.num_cuts-1], 'goff') if self.num_cuts != 0 else self.analysis.tree.Draw('chi2_x:10000*residual_ROC{r}_Local_X>>h_chi2x_resx_roc{r}'.format(r=iroc), '', 'goff')
             self.plots.set_2D_options(self.h_chi2x_resx[iroc], 'Res_X(um)', 'Chi2_X', '# entries', 0, -1)
             gROOT.SetBatch(False)
             self.plots.save_individual_plots(self.h_chi2x_resx[iroc], 'h_chi2x_resx_roc{r}'.format(r=iroc), 'Chi2_X Vs. Res_X roc{r}'.format(r=iroc), None, 'colz', 0, self.plots.save_dir+'/cuts', False, 0, doLogZ=True)
@@ -293,7 +225,7 @@ class CutPix(Elementary):
         for iroc in self.duts_list:
             gROOT.SetBatch(True)
             self.h_chi2y_resx[iroc] = TH2D('h_chi2y_resx_roc{r}'.format(r=iroc), 'h_chi2y_resx_roc{r}'.format(r=iroc), 21, -1575, 1575, 51, -0.1, 10.1)
-            self.analysis.tree.Draw('chi2_y:10000*residual_ROC{r}_Local_X>>h_chi2y_resx_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.num_cuts-1], 'goff')
+            self.analysis.tree.Draw('chi2_y:10000*residual_ROC{r}_Local_X>>h_chi2y_resx_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.num_cuts-1], 'goff') if self.num_cuts != 0 else self.analysis.tree.Draw('chi2_y:10000*residual_ROC{r}_Local_X>>h_chi2y_resx_roc{r}'.format(r=iroc), '', 'goff')
             self.plots.set_2D_options(self.h_chi2y_resx[iroc], 'Res_X(um)', 'Chi2_Y', '# entries', 0, -1)
             gROOT.SetBatch(False)
             self.plots.save_individual_plots(self.h_chi2y_resx[iroc], 'h_chi2y_resx_roc{r}'.format(r=iroc), 'Chi2_Y Vs. Res_X roc{r}'.format(r=iroc), None, 'colz', 0, self.plots.save_dir+'/cuts', False, 0, doLogZ=True)
@@ -303,7 +235,7 @@ class CutPix(Elementary):
         for iroc in self.duts_list:
             gROOT.SetBatch(True)
             self.h_resx_hitposy[iroc] = TH2D('h_resx_hitposy_roc{r}'.format(r=iroc), 'h_resx_hitposy_roc{r}'.format(r=iroc), 161, -4025, 4025, 21, -1575, 1575)
-            self.analysis.tree.Draw('10000*residual_ROC{r}_Local_X:10000*(residual_ROC{r}_Local_Y+cluster_pos_ROC{r}_Local_Y)>>h_resx_hitposy_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.num_cuts-1], 'goff')
+            self.analysis.tree.Draw('10000*residual_ROC{r}_Local_X:10000*(residual_ROC{r}_Local_Y+cluster_pos_ROC{r}_Local_Y)>>h_resx_hitposy_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.num_cuts-1], 'goff') if self.num_cuts != 0 else self.analysis.tree.Draw('10000*residual_ROC{r}_Local_X:10000*(residual_ROC{r}_Local_Y+cluster_pos_ROC{r}_Local_Y)>>h_resx_hitposy_roc{r}'.format(r=iroc), '', 'goff')
             self.plots.set_2D_options(self.h_resx_hitposy[iroc], 'Hit_Y(um)', 'Res_X(um)', '# entries', 0, -1)
             gROOT.SetBatch(False)
             self.plots.save_individual_plots(self.h_resx_hitposy[iroc], 'h_resx_hitposy_roc{r}'.format(r=iroc), 'Hit_Y Vs. Res_X roc{r}'.format(r=iroc), None, 'colz', 0, self.plots.save_dir+'/cuts', False, 0, doLogZ=True)
@@ -313,7 +245,7 @@ class CutPix(Elementary):
         for iroc in self.duts_list:
             gROOT.SetBatch(True)
             self.h_resy_hitposx[iroc] = TH2D('h_resy_hitposx_roc{r}'.format(r=iroc), 'h_resy_hitposx_roc{r}'.format(r=iroc), 105, -3937.5, 3937.5, 21, -1050, 1050)
-            self.analysis.tree.Draw('10000*residual_ROC{r}_Local_Y:10000*(residual_ROC{r}_Local_X+cluster_pos_ROC{r}_Local_X)>>h_resy_hitposx_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.num_cuts-1], 'goff')
+            self.analysis.tree.Draw('10000*residual_ROC{r}_Local_Y:10000*(residual_ROC{r}_Local_X+cluster_pos_ROC{r}_Local_X)>>h_resy_hitposx_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.num_cuts-1], 'goff') if self.num_cuts != 0 else self.analysis.tree.Draw('10000*residual_ROC{r}_Local_Y:10000*(residual_ROC{r}_Local_X+cluster_pos_ROC{r}_Local_X)>>h_resy_hitposx_roc{r}'.format(r=iroc), '', 'goff')
             self.plots.set_2D_options(self.h_resy_hitposx[iroc], 'Hit_X(um)', 'Res_Y(um)', '# entries', 0, -1)
             gROOT.SetBatch(False)
             self.plots.save_individual_plots(self.h_resy_hitposx[iroc], 'h_resy_hitposx_roc{r}'.format(r=iroc), 'Hit_X Vs. Res_Y roc{r}'.format(r=iroc), None, 'colz', 0, self.plots.save_dir+'/cuts', False, 0, doLogZ=True)
@@ -321,7 +253,7 @@ class CutPix(Elementary):
 
         self.print_banner('Finished with resolution plots')
 
-    def do_cuts_analysis(self):
+    def do_cuts_analysis(self, do_occupancy=True, do_pulse_height=False):
         self.print_banner('Starting Cuts Analysis...')
         self.print_banner('Creating histograms with cuts...')
         self.h_hitmaps_cuts = {}
@@ -515,8 +447,8 @@ class CutPix(Elementary):
             has_option('CUT', 'chi2X') else ''
         self.CutConfig['chi2Y'] = self.ana_config_parser.getint('CUT', 'chi2Y') if self.ana_config_parser. \
             has_option('CUT', 'chi2Y') else ''
-        self.CutConfig['rhit'] = self.ana_config_parser.getint('CUT', 'rhit') if self.ana_config_parser. \
-            has_option('CUT', 'rhit') else ''
+        self.CutConfig['rhit'] = self.ana_config_parser.getint('CUT', 'r_hit') if self.ana_config_parser. \
+            has_option('CUT', 'r_hit') else ''
         self.CutConfig['track_angle'] = self.ana_config_parser.getfloat('CUT', 'track_angle') if self.ana_config_parser. \
             has_option('CUT', 'track_angle') else ''
         self.CutConfig['MaskRowsROC4'] = self.ana_config_parser.get('CUT', 'MaskRowsROC4') if self.ana_config_parser. \
@@ -561,6 +493,8 @@ class CutPix(Elementary):
     #         self.cuts_pixelated_roc[iROC] = self.mask_pixelated_roc[iROC] + self.chi2x_cut + self.chi2y_cut \
     #                                         + self.cut_tracks + self.angle_x_cut + self.angle_y_cut + self.ini_fin_cut \
     #                                         + beam_interr_cut + self.rhit_cut[iROC]
+    def is_first_cut(self):
+        return self.num_cuts == 0
 
     def generate_ini_fin_cuts(self):
         if self.verbose: print 'Creating cut for initial and final', abs(self.CutConfig['ExcludeFirst']), 'seconds...', ; sys.stdout.flush()
@@ -585,6 +519,13 @@ class CutPix(Elementary):
         self.num_cuts += 1
         if self.verbose: print 'Done'
 
+    def generate_hit_cut(self):
+        if self.verbose: print 'Creating cut to require atleast one hit for each DUT plane...', ; sys.stdout.flush()
+        for iroc in self.duts_list:
+            self.gen_vect_cuts('1==1', '1==1', iroc)
+        self.num_cuts += 1
+        if self.verbose: print 'Bla'
+
     def generate_beam_interruption_cut(self):
         # time is in ms. good results found with bin size of 5 seconds
         picklepath = 'Configuration/Individual_Configs/Beam/{tc}_{r}.pickle'.format(tc=self.TESTCAMPAIGN, r=self.run_number)
@@ -602,7 +543,7 @@ class CutPix(Elementary):
             max_interr = 0
             gROOT.SetBatch(True)
             h1 = TH1F('h_beam_time_', 'h_beam_time_', bins+1, first_t-(last_t-first_t)/float(2*bins), last_t+(last_t-first_t)/float(2*bins))
-            self.analysis.tree.Draw('time>>h_beam_time_', self.cuts_pixelated_roc_incr[self.duts_list[0]][self.num_cuts-1],'goff')
+            self.analysis.tree.Draw('time>>h_beam_time_', self.cuts_pixelated_roc_incr[self.duts_list[0]][self.num_cuts-1], 'goff') if not self.is_first_cut() else self.analysis.tree.Draw('time>>h_beam_time_', '', 'goff')
             gROOT.SetBatch(False)
             mean = h1.Integral()/float(h1.GetNbinsX())
             beam_interr_cut = TCut('beam_interruptions_cut', '')
@@ -610,7 +551,7 @@ class CutPix(Elementary):
             max_interr = 0
             for t in xrange(1, h1.GetNbinsX()+1):
                 if h1.GetBinContent(t) < mean*0.9 or h1.GetBinContent(t) > mean*1.2:
-                    if t != 1:
+                    if max_interr != 0:
                         if h1.GetBinLowEdge(t) - abs(self.CutConfig['ExcludeBeforeJump'])*1000 < vector_interr[max_interr-1]['f']:
                             vector_interr[max_interr-1]['f'] = h1.GetBinLowEdge(t)+h1.GetBinWidth(t)+abs(self.CutConfig['ExcludeAfterJump'])*1000
                         else:
@@ -673,7 +614,7 @@ class CutPix(Elementary):
         self.rhit_cut[dut] = self.do_pickle(picklepath, func0)
 
     def generate_tracks_cut(self):
-        if self.verbose: print 'Creating tracks cut...',
+        if self.verbose: print 'Generating tracks cut...',
         self.cut_tracks = TCut('cut_tracks', 'n_tracks==1')
         for iroc in self.duts_list:
             self.gen_vect_cuts(self.cut_tracks.GetTitle(), self.cut_tracks.GetTitle(), iroc)
@@ -717,7 +658,7 @@ class CutPix(Elementary):
             nq = 100
             chi2s = zeros(nq)
             xq = array([(i + 1) / float(nq) for i in xrange(nq)])
-            self.analysis.tree.Draw('chi2_{mod}>>h_chi2_roc{r}_{mod}_'.format(r=iroc,mod=mode), self.cuts_pixelated_roc_incr[iroc][num_prev_cut], 'goff')
+            self.analysis.tree.Draw('chi2_{mod}>>h_chi2_roc{r}_{mod}_'.format(r=iroc,mod=mode), self.cuts_pixelated_roc_incr[iroc][num_prev_cut], 'goff') if not self.is_first_cut() else self.analysis.tree.Draw('chi2_{mod}>>h_chi2_roc{r}_{mod}_'.format(r=iroc,mod=mode), '', 'goff')
             h_chi2.GetQuantiles(nq, chi2s, xq)
             gROOT.SetBatch(0)
             quantile = self.CutConfig['chi2{mod}'.format(mod=mode.title())]
@@ -824,7 +765,7 @@ class CutPix(Elementary):
     #                 self.cuts_pixelated_roc_incr[roc][i] = self.cuts_pixelated_roc_incr[roc][i].GetTitle()
 
     def generate_masks(self):
-        if self.verbose: print 'generating masks cuts...', ; sys.stdout.flush()
+        if self.verbose: print 'Generating masks cuts...', ; sys.stdout.flush()
         self.mask_hitmap_roc = {}
         self.mask_pixelated_roc = {}
         self.generate_col_masks()
@@ -967,25 +908,154 @@ class CutPix(Elementary):
         # gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         def func0():
             gROOT.SetBatch(1)
+            gROOT.ProcessLine('gErrorIgnoreLevel = 6000;')
             h = TH1F('h_angle_', 'h_angle_', 61, -3.05, 3.05)
-            self.analysis.tree.Draw('angle_{x}>>h_angle_'.format(x=mode), self.cuts_pixelated_roc_incr[iroc][prev_num_cut], 'goff')
+            self.analysis.tree.Draw('angle_{x}>>h_angle_'.format(x=mode), self.cuts_pixelated_roc_incr[iroc][prev_num_cut], 'goff') if not self.is_first_cut() else self.analysis.tree.Draw('angle_{x}>>h_angle_'.format(x=mode), '', 'goff')
             h_angle = TH1F('h_angle_roc_', 'h_angle_roc_', 51, h.GetXaxis().GetBinCenter(h.GetMaximumBin()) - 3*h.GetRMS() - 3*h.GetRMS()/50, h.GetXaxis().GetBinCenter(h.GetMaximumBin()) + 3*h.GetRMS() + 3*h.GetRMS()/50)
             # self.h_angle_cut[iroc][mode] = TH1F('h_angle_roc{r}_{m}_cut'.format(r=iroc,m=mode), 'h_angle_roc{r}_{m}_cut'.format(r=iroc,m=mode), 51, h.GetXaxis().GetBinCenter(h.GetMaximumBin()) - 2*h.GetRMS() - 2*h.GetRMS()/50, h.GetXaxis().GetBinCenter(h.GetMaximumBin()) + 2*h.GetRMS() + 2*h.GetRMS()/50)
-            self.analysis.tree.Draw('angle_{m}>>h_angle_roc_'.format(m=mode), self.cuts_pixelated_roc_incr[iroc][prev_num_cut], 'goff')
-            fit_result = h_angle.Fit('gaus', 'qs', '')
+            self.analysis.tree.Draw('angle_{m}>>h_angle_roc_'.format(m=mode), self.cuts_pixelated_roc_incr[iroc][prev_num_cut], 'goff') if not self.is_first_cut() else self.analysis.tree.Draw('angle_{m}>>h_angle_roc_'.format(m=mode), '', 'goff')
+            fit_result = h_angle.Fit('gaus', 'qs')
             # fit_result = h.Fit('gaus', 'qs')# , '', xmin, xmax)
             x_mean = fit_result.Parameter(1)
             angles = [x_mean - angle, x_mean + angle]
             # c = gROOT.FindObject('c1')
             # c.Close()
+            gROOT.ProcessLine('gErrorIgnoreLevel = -1;')
             gROOT.SetBatch(0)
-            # gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
             return angles
 
         angles = self.do_pickle(picklepath, func0)
         # create the cut string
         string = 'angle_{x}>={minx}&&angle_{x}<={maxx}'.format(x=mode, minx=angles[0], maxx=angles[1])
         self.angle_cut[iroc][mode] = string if angle > 0 else ''
+
+    def get_nearest_prev_existing_cut_key(self, cutname):
+        allcuts = {0: 'ini_fin', 1: 'beam', 2: 'tracks', 3: 'hit', 4: 'masks', 5: 'fiducial', 6: 'chi2x', 7: 'chi2y', 8: 'anglex', 9: 'angley', 10: 'rhit'}
+        for key in allcuts.keys():
+            if cutname == allcuts[key]:
+                cutkey = key
+                break
+        for key in xrange(cutkey-1, allcuts.keys()[0], -1):
+            if allcuts[key] in self.cut_names:
+                return key
+        return allcuts.keys()[0]
+
+    def do_beam_distribution(self):
+        if self.verbose:
+            print 'Beam interruption...', ; sys.stdout.flush()
+        nentries = self.analysis.tree.GetEntries()
+        self.analysis.tree.GetEntry(0)
+        first_t = self.analysis.tree.time
+        self.analysis.tree.GetEntry(nentries-1)
+        last_t = self.analysis.tree.time
+        bins = int((last_t-first_t)/float(5000))
+        gROOT.SetBatch(True)
+        self.h_beam_time = TH1F('h_beam_time', 'h_beam_time', bins+1, first_t-(last_t-first_t)/float(2*bins), last_t+(last_t-first_t)/float(2*bins))
+        self.h_beam_time_cut = TH1F('h_beam_time_cut', 'h_beam_time_cut', bins+1, first_t-(last_t-first_t)/float(2*bins), last_t+(last_t-first_t)/float(2*bins))
+        self.h_beam_mean_cut = TH1F('h_beam_mean_cut', 'h_beam_mean_cut', bins+1, first_t-(last_t-first_t)/float(2*bins), last_t+(last_t-first_t)/float(2*bins))
+        if 'beam' in self.cut_names:
+            self.analysis.tree.Draw('time>>h_beam_time', self.cuts_pixelated_roc_incr[self.duts_list[0]][self.dict_cuts['beam']-1],'goff') if self.dict_cuts['beam'] != 0 else self.analysis.tree.Draw('time>>h_beam_time', '','goff')
+            self.analysis.tree.Draw('time>>h_beam_time_cut', self.cuts_pixelated_roc_incr[self.duts_list[0]][self.dict_cuts['beam']],'goff')
+        else:
+            key = self.get_nearest_prev_existing_cut_key('beam')
+            self.analysis.tree.Draw('time>>h_beam_time', self.cuts_pixelated_roc_incr[self.duts_list[0]][key],'goff') if key != -1 else self.analysis.tree.Draw('time>>h_beam_time', '','goff')
+            self.analysis.tree.Draw('time>>h_beam_time_cut', self.cuts_pixelated_roc_incr[self.duts_list[0]][key],'goff') if key != -1 else self.analysis.tree.Draw('time>>h_beam_time_cut', '','goff')
+        self.mean_events_5sec = self.h_beam_time.Integral()/float(self.h_beam_time.GetNbinsX())
+        binsEvents = int(ceil(nentries/float(self.mean_events_5sec)))
+        self.plot_settings['event_bins'] = binsEvents
+        for bin in xrange(1, bins+2):
+            self.h_beam_mean_cut.SetBinContent(bin, self.mean_events_5sec)
+        gROOT.SetBatch(False)
+        self.plots.set_1D_options('time', self.h_beam_time, 'time(ms)', 'entries', kBlue)
+        self.plots.set_1D_options('time', self.h_beam_time_cut, 'time(ms)', 'entries', kRed)
+        self.plots.set_1D_options('time', self.h_beam_mean_cut, 'time(ms)', 'entries', color=kGreen)
+        self.plots.save_cuts_distributions(self.h_beam_time, self.h_beam_time_cut, 'beam_time_cut_overlay', 'Beam cut overlay', '', 1000000011, self.plots.save_dir+'/cuts', False, self.h_beam_mean_cut)
+        if self.verbose: print 'Done'
+
+    def do_chi2_distributions(self):
+        self.h_chi2x_dist = {}
+        self.h_chi2y_dist = {}
+        self.h_chi2x_cut_dist = {}
+        self.h_chi2y_cut_dist = {}
+        if self.verbose: print 'Chi2...', ; sys.stdout.flush()
+        for iroc in self.duts_list:
+            gROOT.SetBatch(True)
+            self.h_chi2x_dist[iroc] = TH1F('h_chi2x_roc{r}'.format(r=iroc), 'h_chi2x_roc{r}'.format(r=iroc), 51, -0.1, 10.1)
+            self.h_chi2y_dist[iroc] = TH1F('h_chi2y_roc{r}'.format(r=iroc), 'h_chi2y_roc{r}'.format(r=iroc), 51, -0.1, 10.1)
+            self.h_chi2x_cut_dist[iroc] = TH1F('h_chi2x_cut_roc{r}'.format(r=iroc), 'h_chi2x_cut_roc{r}'.format(r=iroc), 51, -0.1, 10.1)
+            self.h_chi2y_cut_dist[iroc] = TH1F('h_chi2y_cut_roc{r}'.format(r=iroc), 'h_chi2y_cut_roc{r}'.format(r=iroc), 51, -0.1, 10.1)
+            if 'chi2x' in self.cut_names and 'chi2y' in self.cut_names:
+                self.analysis.tree.Draw('chi2_x>>h_chi2x_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.dict_cuts['chi2x'] - 1], 'goff') if self.dict_cuts['chi2x'] != 0 else self.analysis.tree.Draw('chi2_x>>h_chi2x_roc{r}'.format(r=iroc), '', 'goff')
+                self.analysis.tree.Draw('chi2_y>>h_chi2y_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.dict_cuts['chi2x'] - 1], 'goff') if self.dict_cuts['chi2x'] != 0 else self.analysis.tree.Draw('chi2_y>>h_chi2y_roc{r}'.format(r=iroc), '', 'goff')
+                self.analysis.tree.Draw('chi2_x>>h_chi2x_cut_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.dict_cuts['chi2y']], 'goff')
+                self.analysis.tree.Draw('chi2_y>>h_chi2y_cut_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.dict_cuts['chi2y']], 'goff')
+            else:
+                key = self.get_nearest_prev_existing_cut_key('chi2x')
+                self.analysis.tree.Draw('chi2_x>>h_chi2x_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][key], 'goff') if key != -1 else self.analysis.tree.Draw('chi2_x>>h_chi2x_roc{r}'.format(r=iroc), '', 'goff')
+                self.analysis.tree.Draw('chi2_y>>h_chi2y_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][key], 'goff') if key != -1 else self.analysis.tree.Draw('chi2_y>>h_chi2y_roc{r}'.format(r=iroc), '', 'goff')
+                self.analysis.tree.Draw('chi2_x>>h_chi2x_cut_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][key], 'goff') if key != -1 else self.analysis.tree.Draw('chi2_x>>h_chi2x_cut_roc{r}'.format(r=iroc), '', 'goff')
+                self.analysis.tree.Draw('chi2_y>>h_chi2y_cut_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][key], 'goff') if key != -1 else self.analysis.tree.Draw('chi2_y>>h_chi2y_cut_roc{r}'.format(r=iroc), '', 'goff')
+            self.plots.set_1D_options('chi2', self.h_chi2x_dist[iroc], 'chi2X', 'entries', kBlue)
+            self.plots.set_1D_options('chi2', self.h_chi2y_dist[iroc], 'chi2Y', 'entries', kBlue)
+            self.plots.set_1D_options('chi2', self.h_chi2x_cut_dist[iroc], 'chi2X', 'entries', kRed)
+            self.plots.set_1D_options('chi2', self.h_chi2y_cut_dist[iroc], 'chi2Y', 'entries', kRed)
+            gROOT.SetBatch(False)
+            self.plots.save_cuts_distributions(self.h_chi2x_dist[iroc], self.h_chi2x_cut_dist[iroc], 'chi2_roc{r}_x_cut_overlay'.format(r=iroc), 'Chi2 roc{r} x Cut Overlay'.format(r=iroc), '', 1000000011, self.plots.save_dir+'/cuts', False)
+            self.plots.save_cuts_distributions(self.h_chi2y_dist[iroc], self.h_chi2y_cut_dist[iroc], 'chi2_roc{r}_y_cut_overlay'.format(r=iroc), 'Chi2 roc{r} Y Cut Overlay'.format(r=iroc), '', 1000000011, self.plots.save_dir+'/cuts', False)
+        if self.verbose: print 'Done'
+
+    def do_angle_distributions(self):
+        if self.verbose: print 'Angle...', ; sys.stdout.flush()
+        self.h_anglex_dist = {}
+        self.h_angley_dist = {}
+        self.h_anglex_cut_dist = {}
+        self.h_angley_cut_dist = {}
+        for iroc in self.duts_list:
+            gROOT.SetBatch(True)
+            self.h_anglex_dist[iroc] = TH1F('h_anglex_roc{r}'.format(r=iroc), 'h_anglex_roc{r}'.format(r=iroc), 121, -3.025, 3.025)
+            self.h_angley_dist[iroc] = TH1F('h_angley_roc{r}'.format(r=iroc), 'h_angley_roc{r}'.format(r=iroc), 121, -3.025, 3.025)
+            self.h_anglex_cut_dist[iroc] = TH1F('h_anglex_cut_roc{r}'.format(r=iroc), 'h_anglex_cut_roc{r}'.format(r=iroc), 121, -3.025, 3.025)
+            self.h_angley_cut_dist[iroc] = TH1F('h_angley_cut_roc{r}'.format(r=iroc), 'h_angley_cut_roc{r}'.format(r=iroc), 121, -3.025, 3.025)
+            if 'anglex' in self.cut_names and 'angley' in self.cut_names:
+                self.analysis.tree.Draw('angle_x>>h_anglex_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.dict_cuts['anglex']-1], 'goff') if self.dict_cuts['anglex'] != 0 else self.analysis.tree.Draw('angle_x>>h_anglex_roc{r}'.format(r=iroc), '', 'goff')
+                self.analysis.tree.Draw('angle_y>>h_angley_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.dict_cuts['anglex']-1], 'goff') if self.dict_cuts['anglex'] != 0 else self.analysis.tree.Draw('angle_y>>h_angley_roc{r}'.format(r=iroc), '', 'goff')
+                self.analysis.tree.Draw('angle_x>>h_anglex_cut_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.dict_cuts['angley']], 'goff')
+                self.analysis.tree.Draw('angle_y>>h_angley_cut_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.dict_cuts['angley']], 'goff')
+            else:
+                key = self.get_nearest_prev_existing_cut_key('anglex')
+                self.analysis.tree.Draw('angle_x>>h_anglex_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][key], 'goff') if key != -1 else self.analysis.tree.Draw('angle_x>>h_anglex_roc{r}'.format(r=iroc), '', 'goff')
+                self.analysis.tree.Draw('angle_y>>h_angley_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][key], 'goff') if key != -1 else self.analysis.tree.Draw('angle_y>>h_angley_roc{r}'.format(r=iroc), '', 'goff')
+                self.analysis.tree.Draw('angle_x>>h_anglex_cut_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][key], 'goff') if key != -1 else self.analysis.tree.Draw('angle_x>>h_anglex_cut_roc{r}'.format(r=iroc), '', 'goff')
+                self.analysis.tree.Draw('angle_y>>h_angley_cut_roc{r}'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][key], 'goff') if key != -1 else self.analysis.tree.Draw('angle_y>>h_angley_cut_roc{r}'.format(r=iroc), '', 'goff')
+            self.plots.set_1D_options('angle', self.h_anglex_dist[iroc], 'angleX(deg)', 'entries', kBlue)
+            self.plots.set_1D_options('angle', self.h_angley_dist[iroc], 'angleY(deg)', 'entries', kBlue)
+            self.plots.set_1D_options('angle', self.h_anglex_cut_dist[iroc], 'angleX(deg)', 'entries', kRed)
+            self.plots.set_1D_options('angle', self.h_angley_cut_dist[iroc], 'angleY(deg)', 'entries', kRed)
+            gROOT.SetBatch(False)
+            self.plots.save_cuts_distributions(self.h_anglex_dist[iroc], self.h_anglex_cut_dist[iroc], 'angle_roc{r}_x_cut_overlay'.format(r=iroc), 'Angle roc{r} X Cut Overlay'.format(r=iroc), '', 1000000011, self.plots.save_dir+'/cuts', False)
+            self.plots.save_cuts_distributions(self.h_angley_dist[iroc], self.h_angley_cut_dist[iroc], 'angle_roc{r}_y_cut_overlay'.format(r=iroc), 'Angle roc{r} Y Cut Overlay'.format(r=iroc), '', 1000000011, self.plots.save_dir+'/cuts', False)
+        if self.verbose: print 'Done'
+
+    def do_rhit_distribution(self):
+        if self.verbose: print 'R_hit...', ; sys.stdout.flush()
+        self.h_rhit_dist = {}
+        self.h_rhit_cut_dist = {}
+        for iroc in self.duts_list:
+            gROOT.SetBatch(True)
+            self.h_rhit_dist[iroc] = TH1F('h_rhit_roc{r}'.format(r=iroc), 'h_rhit_roc{r}'.format(r=iroc), 101, -0.5, 100.5)
+            self.h_rhit_cut_dist[iroc] = TH1F('h_rhit_cut_roc{r}'.format(r=iroc), 'h_rhit_cut_roc{r}'.format(r=iroc), 101, -0.5, 100.5)
+            if 'rhit' in self.cut_names:
+                self.analysis.tree.Draw('(10000*sqrt((residual_ROC{n}_Local_X)**2+(residual_ROC{n}_Local_Y)**2))>>h_rhit_roc{d}'.format(n=iroc, d=iroc), self.cuts_pixelated_roc_incr[iroc][self.dict_cuts['rhit'] - 1], 'goff') if self.dict_cuts['rhit'] != 0 else self.analysis.tree.Draw('(10000*sqrt((residual_ROC{n}_Local_X)**2+(residual_ROC{n}_Local_Y)**2))>>h_rhit_roc{d}'.format(n=iroc, d=iroc), '', 'goff')
+                self.analysis.tree.Draw('(10000*sqrt((residual_ROC{n}_Local_X)**2+(residual_ROC{n}_Local_Y)**2))>>h_rhit_cut_roc{d}'.format(n=iroc, d=iroc), self.cuts_pixelated_roc_incr[iroc][self.dict_cuts['rhit']], 'goff')
+            else:
+                key = self.get_nearest_prev_existing_cut_key('rhit')
+                self.analysis.tree.Draw('(10000*sqrt((residual_ROC{n}_Local_X)**2+(residual_ROC{n}_Local_Y)**2))>>h_rhit_roc{d}'.format(n=iroc, d=iroc), self.cuts_pixelated_roc_incr[iroc][key], 'goff') if key != -1 else self.analysis.tree.Draw('(10000*sqrt((residual_ROC{n}_Local_X)**2+(residual_ROC{n}_Local_Y)**2))>>h_rhit_roc{d}'.format(n=iroc, d=iroc), '', 'goff')
+                self.analysis.tree.Draw('(10000*sqrt((residual_ROC{n}_Local_X)**2+(residual_ROC{n}_Local_Y)**2))>>h_rhit_cut_roc{d}'.format(n=iroc, d=iroc), self.cuts_pixelated_roc_incr[iroc][key], 'goff') if key != -1 else self.analysis.tree.Draw('(10000*sqrt((residual_ROC{n}_Local_X)**2+(residual_ROC{n}_Local_Y)**2))>>h_rhit_roc{d}'.format(n=iroc, d=iroc), '', 'goff')
+            self.plots.set_1D_options('rhit', self.h_rhit_dist[iroc], 'R_Hit(um)', 'entries', kBlue, 0.1)
+            self.plots.set_1D_options('rhit', self.h_rhit_cut_dist[iroc], 'R_Hit(um)', 'entries', kRed, 0.1)
+            gROOT.SetBatch(False)
+            self.plots.save_cuts_distributions(self.h_rhit_dist[iroc], self.h_rhit_cut_dist[iroc], 'rhit_roc{r}_x_cut_overlay'.format(r=iroc), 'Rhit roc{r} x Cut Overlay'.format(r=iroc), '', 1000000011, self.plots.save_dir+'/cuts', False, '', True)
+        if self.verbose: print 'Done'
 
     def load_event_range(self, event_range=None):
         """
