@@ -54,7 +54,8 @@ class SignalPixAnalysis(Analysis):
         self.devices = {'tel': [], 'dut': []}
         self.dut_names = {self.roc_diam1: self.run.diamond_names[0], self.roc_diam2: self.run.diamond_names[3], self.roc_si: 'Si'} if self.TESTCAMPAIGN != '201610' else {self.roc_diam1: self.run.diamond_names[0], self.roc_si: 'Si'}
         self.set_cuts_rocs()
-
+        self.Cut.do_cuts()
+        self.plot_settings = self.plots.plot_settings
         # stuff
         #self.BinSize = binning
         #self.binning = self.__get_binning()
@@ -119,7 +120,7 @@ class SignalPixAnalysis(Analysis):
 
     def do_analysis(self, do_tlscp=False, do_duts=True, do_cut_dist=False, do_res_ana=False, do_cut_ana=False, do_occupancy=True, do_correlations=False, do_pulse_height=True, show_progressBar=False, verbosity=False):
         gROOT.SetBatch(True)
-        gROOT.ProcessLine("gErrorIgnoreLevel = 1000")
+        gROOT.ProcessLine("gErrorIgnoreLevel = 1001")
         gROOT.SetBatch(False)
         TFormula.SetMaxima(1000000,10000,10000000)  # (1000,1000,1000)
         self.print_banner('Creating histograms...', '%')
@@ -128,8 +129,6 @@ class SignalPixAnalysis(Analysis):
         self.kmax = int(self.plots.plot_settings['num_diff_cluster_sizes'] + 1)
         self.deltaX = self.plots.plot_settings['deltaX']
         self.deltaY = self.plots.plot_settings['deltaY']
-
-        self.Cut.do_cuts()
 
         if do_tlscp:
             self.add_telescope_device()
@@ -189,9 +188,65 @@ class SignalPixAnalysis(Analysis):
     def do_cuts_analysis(self, do_occupancy, do_pulse_height):
         self.Cut.do_cuts_analysis(do_occupancy, do_pulse_height)
 
-    def do_occupancy_roc(self, roc, cut=''):
-        #TODO
+    def do_occupancy_roc(self, roc=4, cut='', cummulative=True, histo=None):
+        if histo == None:
+            histo = TH2D('hitmap_roc_{r}'.format(r=roc), 'hitmap_roc_{r}'.format(r=roc), self.plot_settings['nBinCol']+1,
+                         self.plot_settings['minCol']-(self.plot_settings['maxCol']-self.plot_settings['minCol'])/(
+                             2*float(self.plot_settings['nBinCol'])), self.plot_settings['maxCol']+(
+                             self.plot_settings['maxCol']-self.plot_settings['minCol'])/(
+                             2*float(self.plot_settings['nBinCol'])), self.plot_settings['nBinRow']+1,
+                         self.plot_settings['minRow']-(self.plot_settings['maxRow']-self.plot_settings['minRow'])/(
+                             2*float(self.plot_settings['nBinRow'])), self.plot_settings['maxRow']+(
+                             self.plot_settings['maxRow']-self.plot_settings['minRow'])/(
+                             2*float(self.plot_settings['nBinRow'])))
+        if self.verbose and cut != '':
+            print 'Doing occupancy for ROC', roc, 'upto', cut, 'cut'
+        elif self.verbose and cut == '':
+            print 'Doing occupancy for ROC', roc, 'without cuts'
+        name = histo.GetName()
+        gROOT.SetBatch(1)
+        if cut != '' and cummulative:
+            self.tree.Draw('row:col >> {n}'.format(n=name), 'plane=={r}&&{c}'.format(r=roc, c=self.Cut.cuts_hitmap_roc_incr[roc][self.Cut.dict_cuts[cut]]), 'goff')
+        elif cut!='':
+            self.tree.Draw('row:col >> {n}'.format(n=name), 'plane=={r}&&{c}'.format(r=roc, c=self.Cut.cuts_hitmap_roc[roc][self.Cut.dict_cuts[cut]]), 'goff')
+        else:
+            self.tree.Draw('row:col >> {n}'.format(n=name), 'plane=={r}'.format(r=roc), 'goff')
+        gROOT.SetBatch(0)
+        return deepcopy(histo)
 
+    def do_pulse_height_event_roc(self, roc=4, num_clust=1, cut='', cummulative=True, histo=None):
+        phbins = {self.roc_diam1: self.plot_settings['ph1DbinsD4'], self.roc_diam2: self.plot_settings['ph1DbinsD5'], self.roc_si: self.plot_settings['ph1DbinsSi']}
+        phmin = {self.roc_diam1: self.plot_settings['ph1DminD4'], self.roc_diam2: self.plot_settings['ph1DminD5'], self.roc_si: self.plot_settings['ph1DminSi']}
+        phmax = {self.roc_diam1: self.plot_settings['ph1DmaxD4'], self.roc_diam2: self.plot_settings['ph1DmaxD5'], self.roc_si: self.plot_settings['ph1DmaxSi']}
+        phdelta = {self.roc_diam1: phmax[self.roc_diam1] - phmin[self.roc_diam1], self.roc_diam2: phmax[self.roc_diam2] - phmin[self.roc_diam2],
+                   self.roc_si: phmax[self.roc_si] - phmin[self.roc_si]}
+        if histo == None:
+            if num_clust != 0:
+                histo = TH2D('ph{n}_roc{r}'.format(n=num_clust, r=roc), 'ph{n}_roc{r}'.format(n=num_clust, r=roc),
+                             self.plot_settings['event_bins']+1, self.plot_settings['event_min']-(
+                                 self.plot_settings['event_max']-self.plot_settings['event_min'])/(
+                                 2*float(self.plot_settings['event_bins'])), self.plot_settings['event_max']+(
+                                 self.plot_settings['event_max']-self.plot_settings['event_min'])/(
+                                 2*float(self.plot_settings['event_bins'])), phbins[roc]+1, phmin[roc]-phdelta[roc]/(
+                                 2*float(phbins[roc])), phmax[roc]+phdelta[roc]/float(2*phbins[roc]))
+            else:
+                histo = TH2D('ph_roc{r}'.format(r=roc), 'ph_roc{r}'.format(r=roc),
+                             self.plot_settings['event_bins']+1, self.plot_settings['event_min']-(
+                                 self.plot_settings['event_max']-self.plot_settings['event_min'])/(
+                                 2*float(self.plot_settings['event_bins'])), self.plot_settings['event_max']+(
+                                 self.plot_settings['event_max']-self.plot_settings['event_min'])/(
+                                 2*float(self.plot_settings['event_bins'])), phbins[roc]+1, phmin[roc]-phdelta[roc]/(
+                                 2*float(phbins[roc])), phmax[roc]+phdelta[roc]/float(2*phbins[roc]))
+        if self.verbose and cut != '' and num_clust != 0:
+            print 'Doing pulse height', num_clust, 'pix cluster Vs. event for ROC', roc, 'upto', cut, 'cut'
+        elif self.verbose and cut != '':
+            print 'Doing pulse height Vs. event for ROC', roc, 'upto', cut, 'cut'
+        elif self.verbose and num_clust != 0:
+            print 'Doing pulse height', num_clust, 'pix cluster Vs. event for ROC', roc, 'without cuts'
+        elif self.verbose:
+            print 'Doing pulse height Vs. event for ROC', roc, 'without cuts'
+        name = histo.GetName()
+        cut_name = ''
 
     def fill_occupancy(self, show_progressBar=False, do_tlscp=False, verbosity=False):
         # for i in xrange(len(self.plane)):
@@ -286,21 +341,21 @@ class SignalPixAnalysis(Analysis):
     def SmallesChargeExtraction(self, roc=4, verbosity=False):
         if roc not in self.roc_tel:
             if not self.plots.check_plot_existence(self.save_dir, 'c_small_charge_ROC{n}_all'.format(n=roc)):
-                self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_all'.format(n=roc), 
+                self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_all'.format(n=roc),
                                '{mask}'.format(mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
             if not self.plots.check_plot_existence(self.save_dir, 'c_small_charge_ROC{n}_1cl'.format(n=roc)):
-                self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_1cl'.format(n=roc), 
+                self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_1cl'.format(n=roc),
                                'cluster_size_ROC{n}==1&&{mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
             if not self.plots.check_plot_existence(self.save_dir, 'c_small_charge_ROC{n}_2cl'.format(n=roc)):
-                self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_2cl'.format(n=roc), 
+                self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_2cl'.format(n=roc),
                                'cluster_size_ROC{n}==2&&{mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
             if not self.plots.check_plot_existence(self.save_dir, 'c_small_charge_ROC{n}_3cl'.format(n=roc)):
-                self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_3cl'.format(n=roc), 
+                self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_3cl'.format(n=roc),
                                'cluster_size_ROC{n}==3&&{mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
             if not self.plots.check_plot_existence(self.save_dir, 'c_small_charge_ROC{n}_M4cl'.format(n=roc)):
-                self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_M4cl'.format(n=roc), 
+                self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_M4cl'.format(n=roc),
                                'cluster_size_ROC{n}>=4&&{mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
-            
+
             if not self.plots.check_plot_existence(self.save_dir, 'c_small_charge_ROC{n}_all'.format(n=roc)):
                 self.plots.save_individual_plots(self.plots.smallChROC_all[roc], self.plots.smallChROC_all[roc].GetName(), self.plots.smallChROC_all[roc].GetTitle(), None, '', 1, self.save_dir, verbosity)
             if not self.plots.check_plot_existence(self.save_dir, 'c_small_charge_ROC{n}_1cl'.format(n=roc)):
@@ -311,23 +366,23 @@ class SignalPixAnalysis(Analysis):
                 self.plots.save_individual_plots(self.plots.smallChROC_3cl[roc], self.plots.smallChROC_3cl[roc].GetName(), self.plots.smallChROC_3cl[roc].GetTitle(), None, '', 1, self.save_dir, verbosity)
             if not self.plots.check_plot_existence(self.save_dir, 'c_small_charge_ROC{n}_M4cl'.format(n=roc)):
                 self.plots.save_individual_plots(self.plots.smallChROC_M4cl[roc], self.plots.smallChROC_M4cl[roc].GetName(), self.plots.smallChROC_M4cl[roc].GetTitle(), None, '', 1, self.save_dir, verbosity)
-            
+
             if not self.plots.check_plot_existence(self.save_dir, 'c_small_charge_ROC{n}_all_cuts'.format(n=roc)):
-                self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_all_cuts'.format(n=roc), 
+                self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_all_cuts'.format(n=roc),
                                '{mask}'.format(mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
             if not self.plots.check_plot_existence(self.save_dir, 'c_small_charge_ROC{n}_1cl_cuts'.format(n=roc)):
-                self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_1cl_cuts'.format(n=roc), 
+                self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_1cl_cuts'.format(n=roc),
                                'cluster_size_ROC{n}==1&&{mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
             if not self.plots.check_plot_existence(self.save_dir, 'c_small_charge_ROC{n}_2cl_cuts'.format(n=roc)):
-                self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_2cl_cuts'.format(n=roc), 
+                self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_2cl_cuts'.format(n=roc),
                                'cluster_size_ROC{n}==2&&{mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
             if not self.plots.check_plot_existence(self.save_dir, 'c_small_charge_ROC{n}_3cl_cuts'.format(n=roc)):
-                self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_3cl_cuts'.format(n=roc), 
+                self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_3cl_cuts'.format(n=roc),
                                'cluster_size_ROC{n}==3&&{mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
             if not self.plots.check_plot_existence(self.save_dir, 'c_small_charge_ROC{n}_M4cl_cuts'.format(n=roc)):
-                self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_M4cl_cuts'.format(n=roc), 
+                self.tree.Draw('smallest_clust_hit_charge_ROC{n} >> small_charge_ROC{n}_M4cl_cuts'.format(n=roc),
                                'cluster_size_ROC{n}>=4&&{mask}'.format(n=roc, mask=self.Cut.mask_pixelated_roc[roc].GetTitle()), 'goff')
-            
+
             if not self.plots.check_plot_existence(self.save_dir, 'c_small_charge_ROC{n}_all_cuts'.format(n=roc)):
                 self.plots.save_individual_plots(self.plots.smallChROC_all_cuts[roc], self.plots.smallChROC_all_cuts[roc].GetName(), self.plots.smallChROC_all_cuts[roc].GetTitle(), None, '', 1, self.save_dir, verbosity)
             if not self.plots.check_plot_existence(self.save_dir, 'c_small_charge_ROC{n}_1cl_cuts'.format(n=roc)):

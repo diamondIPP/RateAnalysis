@@ -61,6 +61,8 @@ class CutPix(Elementary):
 
             self.plots = self.analysis.plots
 
+            self.analysis.Cut = self
+
             # define cut strings
             # self.EasyCutStrings = self.init_easy_cutstrings()
             # self.CutStrings = self.define_cutstrings()
@@ -104,22 +106,31 @@ class CutPix(Elementary):
         print 'The following cuts will be implemented:', self.cut_names
         if 'ini_fin' in self.cut_names:
             self.generate_ini_fin_cuts()
+            print self.num_cuts
         if 'beam' in self.cut_names:
             self.generate_beam_interruption_cut()
+            print self.num_cuts
         if 'tracks' in self.cut_names:
             self.generate_tracks_cut()
+            print self.num_cuts
         if 'hit' in self.cut_names:
             self.generate_hit_cut()
+            print self.num_cuts
         if 'masks' in self.cut_names:
             self.generate_masks()
+            print self.num_cuts
         if 'fiducial' in self.cut_names:
             self.generate_fid_cuts()
+            print self.num_cuts
         if 'chi2x' in self.cut_names or 'chi2y' in self.cut_names:
             self.generate_chi2_cuts()
+            print self.num_cuts
         if 'anglex' in self.cut_names or 'angley' in self.cut_names:
             self.generate_angle_cuts()
+            print self.num_cuts
         if 'rhit' in self.cut_names:
             self.generate_rhit_cuts()
+            print self.num_cuts
         # self.gen_incr_vect_cuts()
         self.cuts_done = True
         self.print_banner('Finished generating Cut stringss')
@@ -253,107 +264,140 @@ class CutPix(Elementary):
 
         self.print_banner('Finished with resolution plots')
 
+    def do_occupancy_analysis(self):
+        self.print_banner('Starting occupancy cut analysis...')
+        self.h_hitmaps_cuts = {}
+        maxz_hitmap = {iroc: -10000000 for iroc in self.duts_list}
+        for iroc in self.duts_list:
+            self.h_hitmaps_cuts[iroc] = {}
+            for cut in self.cut_names:
+                if self.verbose: print 'Analysing ROC {r} with cummulative cut {c}...'.format(r=iroc, c=cut),; sys.stdout.flush()
+                self.h_hitmaps_cuts[iroc][cut] = TH2D('hitmap_roc{r}_{c}'.format(r=iroc,c=cut), 'hitmap_roc{r}_{c}'.
+                                                      format(r=iroc,c=cut), self.plot_settings['nBinCol']+1,
+                                                      self.plot_settings['minCol']-(
+                                                          self.plot_settings['maxCol']-self.plot_settings['minCol'])/(
+                                                          2*float(self.plot_settings['nBinCol'])),
+                                                      self.plot_settings['maxCol']+(
+                                                          self.plot_settings['maxCol']-self.plot_settings['minCol'])/(
+                                                          2*float(self.plot_settings['nBinCol'])),
+                                                      self.plot_settings['nBinRow']+1, self.plot_settings['minRow']-(
+                                                          self.plot_settings['maxRow']-self.plot_settings['minRow'])/(
+                                                          2*float(self.plot_settings['nBinRow'])),
+                                                      self.plot_settings['maxRow']+(
+                                                          self.plot_settings['maxRow']-self.plot_settings['minRow'])/(
+                                                          2*float(self.plot_settings['nBinRow'])))
+                self.h_hitmaps_cuts[iroc][cut] = self.analysis.do_occupancy_roc(iroc, cut, True, self.h_hitmaps_cuts[iroc][cut])
+                if maxz_hitmap[iroc] < self.h_hitmaps_cuts[iroc][cut].GetBinContent(self.h_hitmaps_cuts[iroc][cut].GetMaximumBin()):
+                    maxz_hitmap[iroc] = self.h_hitmaps_cuts[iroc][cut].GetBinContent(self.h_hitmaps_cuts[iroc][cut].GetMaximumBin())
+                if self.verbose: print 'Done'
+                if self.verbose: print 'Saving for ROC {r} with cummulative cut {c}...'.format(r=iroc, c=cut), ; sys.stdout.flush()
+                self.plots.set_2D_options(self.h_hitmaps_cuts[iroc][cut], 'col', 'row', 'entries', max_val=maxz_hitmap[iroc])
+                self.plots.save_individual_plots(self.h_hitmaps_cuts[iroc][cut], 'hitmap_roc{r}_{c}'.format(r=iroc,c=cut),
+                                                 'hitmap_roc{r}_{c}'.format(r=iroc,c=cut), self.fid_cut_hitmap_roc[iroc],
+                                                 'colz', 1, self.plots.save_dir+'/cuts', doLogZ=True)
+                if self.verbose: print 'Done'
+        self.print_banner('Finished occupancy cut analysis')
+
     def do_cuts_analysis(self, do_occupancy=True, do_pulse_height=False):
         self.print_banner('Starting Cuts Analysis...')
         self.print_banner('Creating histograms with cuts...')
-        self.h_hitmaps_cuts = {}
-        self.h_adc_evt_cuts = {}
-        self.h_adc_cuts = {}
-        self.h_adc_map_cuts = {}
-        self.h_ph1_evt_cuts = {}
-        self.h_ph1_cuts = {}
-        self.h_ph2_evt_cuts = {}
-        self.h_ph2_cuts = {}
-        self.h_ph2_cuts = {}
-        self.h_ph1_map_cuts = {}
-        self.h_ph2_map_cuts = {}
-        maxz_hitmap = -10000000
-        maxz_ph1 = -10000000
-        maxz_ph2 = -10000000
-        minz_ph1 = 10000000
-        minz_ph2 = 10000000
-        max_ph1_map = {iroc: -10000000 for iroc in self.duts_list}
-        max_ph2_map = {iroc: -10000000 for iroc in self.duts_list}
-        min_ph1_map = {iroc: 10000000 for iroc in self.duts_list}
-        min_ph2_map = {iroc: 10000000 for iroc in self.duts_list}
+        if do_occupancy: self.do_occupancy_analysis()
+        if do_pulse_height:
+            self.h_adc_evt_cuts = {}
+            self.h_adc_cuts = {}
+            self.h_adc_map_cuts = {}
+            self.h_ph1_evt_cuts = {}
+            self.h_ph1_cuts = {}
+            self.h_ph2_evt_cuts = {}
+            self.h_ph2_cuts = {}
+            self.h_ph2_cuts = {}
+            self.h_ph1_map_cuts = {}
+            self.h_ph2_map_cuts = {}
 
-        for iroc in self.duts_list:
-            self.h_hitmaps_cuts[iroc] = {}
-            self.h_adc_evt_cuts[iroc] = {}
-            self.h_adc_cuts[iroc] = {}
-            self.h_adc_map_cuts[iroc] = {}
-            self.h_ph1_evt_cuts[iroc] = {}
-            self.h_ph1_cuts[iroc] = {}
-            self.h_ph2_evt_cuts[iroc] = {}
-            self.h_ph2_cuts[iroc] = {}
-            self.h_ph1_map_cuts[iroc] = {}
-            self.h_ph2_map_cuts[iroc] = {}
-            phbins = {self.roc_diam1: self.plot_settings['ph1DbinsD4'], self.roc_diam2: self.plot_settings['ph1DbinsD5'], self.roc_si: self.plot_settings['ph1DbinsSi']}
-            phmin = {self.roc_diam1: self.plot_settings['ph1DminD4'], self.roc_diam2: self.plot_settings['ph1DminD5'], self.roc_si: self.plot_settings['ph1DminSi']}
-            phmax = {self.roc_diam1: self.plot_settings['ph1DmaxD4'], self.roc_diam2: self.plot_settings['ph1DmaxD5'], self.roc_si: self.plot_settings['ph1DmaxSi']}
-            phdelta = {self.roc_diam1: phmax[self.roc_diam1] - phmin[self.roc_diam1], self.roc_diam2: phmax[self.roc_diam2] - phmin[self.roc_diam2], self.roc_si: phmax[self.roc_si] - phmin[self.roc_si]}
-            for cut in self.cut_names:
-                if self.verbose: print 'Analysing ROC {r} with cummulative cut {c}...'.format(r=iroc, c=cut), ; sys.stdout.flush()
-                gROOT.SetBatch(1)
-                self.h_hitmaps_cuts[iroc][cut] = TH2D('hitmap_roc{r}_{c}'.format(r=iroc,c=cut), 'hitmap_roc{r}_{c}'.format(r=iroc,c=cut), self.plot_settings['nBinCol']+1, self.plot_settings['minCol']-(self.plot_settings['maxCol']-self.plot_settings['minCol'])/(2*float(self.plot_settings['nBinCol'])), self.plot_settings['maxCol']+(self.plot_settings['maxCol']-self.plot_settings['minCol'])/(2*float(self.plot_settings['nBinCol'])), self.plot_settings['nBinRow']+1, self.plot_settings['minRow']-(self.plot_settings['maxRow']-self.plot_settings['minRow'])/(2*float(self.plot_settings['nBinRow'])), self.plot_settings['maxRow']+(self.plot_settings['maxRow']-self.plot_settings['minRow'])/(2*float(self.plot_settings['nBinRow'])))
-                self.h_adc_evt_cuts[iroc][cut] = TH2D('adc_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'adc_evt_roc{r}_{c}'.format(r=iroc,c=cut), self.plot_settings['event_bins']+1, self.plot_settings['event_min']-(self.plot_settings['event_max']-self.plot_settings['event_min'])/(2*float(self.plot_settings['event_bins'])), self.plot_settings['event_max']+(self.plot_settings['event_max']-self.plot_settings['event_min'])/(2*float(self.plot_settings['event_bins'])), 52, -2.5, 257.5)
-                self.h_adc_cuts[iroc][cut] = TH1D('adc_roc{r}_{c}'.format(r=iroc,c=cut), 'adc_roc{r}_{c}'.format(r=iroc,c=cut), 52, -2.5, 257.5)
-                self.h_adc_map_cuts[iroc][cut] = self.plots.create_2D_profile('pix', 'adc_map_roc{r}_{c}'.format(r=iroc,c=cut), 'adc_map_roc{r}_{c}'.format(r=iroc,c=cut), 'col', 'row', 'ADC', 'auto', -1)
-                self.h_ph1_evt_cuts[iroc][cut] = TH2D('ph1_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'ph1_evt_roc{r}_{c}'.format(r=iroc,c=cut), self.plot_settings['event_bins']+1, self.plot_settings['event_min']-(self.plot_settings['event_max']-self.plot_settings['event_min'])/(2*float(self.plot_settings['event_bins'])), self.plot_settings['event_max']+(self.plot_settings['event_max']-self.plot_settings['event_min'])/(2*float(self.plot_settings['event_bins'])), phbins[iroc]+1, phmin[iroc]-phdelta[iroc]/(2*float(phbins[iroc])), phmax[iroc]+phdelta[iroc]/float(2*phbins[iroc]))
-                self.h_ph1_cuts[iroc][cut] = TH1D('ph1_roc{r}_{c}'.format(r=iroc,c=cut), 'ph1_roc{r}_{c}'.format(r=iroc,c=cut), phbins[iroc]+1, phmin[iroc]-phdelta[iroc]/(2*float(phbins[iroc])), phmax[iroc]+phdelta[iroc]/float(2*phbins[iroc]))
-                self.h_ph2_evt_cuts[iroc][cut] = TH2D('ph2_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'ph2_evt_roc{r}_{c}'.format(r=iroc,c=cut), self.plot_settings['event_bins']+1, self.plot_settings['event_min']-(self.plot_settings['event_max']-self.plot_settings['event_min'])/(2*float(self.plot_settings['event_bins'])), self.plot_settings['event_max']+(self.plot_settings['event_max']-self.plot_settings['event_min'])/(2*float(self.plot_settings['event_bins'])), phbins[iroc]+1, phmin[iroc]-phdelta[iroc]/(2*float(phbins[iroc])), phmax[iroc]+phdelta[iroc]/float(2*phbins[iroc]))
-                self.h_ph2_cuts[iroc][cut] = TH1D('ph2_roc{r}_{c}'.format(r=iroc,c=cut), 'ph2_roc{r}_{c}'.format(r=iroc,c=cut), phbins[iroc]+1, phmin[iroc]-phdelta[iroc]/(2*float(phbins[iroc])), phmax[iroc]+phdelta[iroc]/float(2*phbins[iroc]))
-                self.h_ph1_map_cuts[iroc][cut] = self.plots.create_2D_profile('spatial', 'ph1_map_roc{r}_{c}'.format(r=iroc,c=cut), 'ph1_map_roc{r}_{c}'.format(r=iroc,c=cut), 'x(um)', 'y(um)', 'ph 1 pix cluster(e)', 'auto', -1)
-                self.h_ph2_map_cuts[iroc][cut] = self.plots.create_2D_profile('spatial', 'ph2_map_roc{r}_{c}'.format(r=iroc,c=cut), 'ph2_map_roc{r}_{c}'.format(r=iroc,c=cut), 'x(um)', 'y(um)', 'ph 2 pix cluster(e)', 'auto', -1)
-                self.analysis.tree.Draw('row:col >> hitmap_roc{r}_{c}'.format(r=iroc,c=cut), 'plane=={r}&&{cu}'.format(r=iroc,cu=self.cuts_hitmap_roc_incr[iroc][self.dict_cuts[cut]]), 'goff')
-                if maxz_hitmap < self.h_hitmaps_cuts[iroc][cut].GetBinContent(self.h_hitmaps_cuts[iroc][cut].GetMaximumBin()): maxz_hitmap = self.h_hitmaps_cuts[iroc][cut].GetBinContent(self.h_hitmaps_cuts[iroc][cut].GetMaximumBin())
-                self.analysis.tree.Draw('adc:event_number >> adc_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'plane=={r}&&{cu}'.format(r=iroc,cu=self.cuts_pixelated_roc_incr[iroc][2]), 'goff')
-                self.h_adc_evt_cuts[iroc][cut].ProjectionY('adc_roc{r}_{c}'.format(r=iroc,c=cut),0,-1,'e')
-                self.analysis.tree.Draw('adc:row:col >> adc_map_roc{r}_{c}'.format(r=iroc,c=cut), 'plane=={r}&&{cu}'.format(r=iroc,cu=self.cuts_pixelated_roc_incr[iroc][2]), 'goff prof')
-                self.analysis.tree.Draw('charge_all_ROC{r}:event_number >> ph1_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'cluster_size_ROC{r}==1&&{cu}'.format(r=iroc,cu=self.cuts_pixelated_roc_incr[iroc][self.dict_cuts[cut]]), 'goff')
-                if maxz_ph1 < self.h_ph1_evt_cuts[iroc][cut].GetBinContent(self.h_ph1_evt_cuts[iroc][cut].GetMaximumBin()): maxz_ph1 = self.h_ph1_evt_cuts[iroc][cut].GetBinContent(self.h_ph1_evt_cuts[iroc][cut].GetMaximumBin())
-                if (self.dict_cuts[cut] >= self.dict_cuts[self.cut_near_fiducial()]) and (minz_ph1 > self.h_ph1_evt_cuts[iroc][cut].GetBinContent(self.h_ph1_evt_cuts[iroc][cut].GetMinimumBin())): minz_ph1 = self.h_ph1_evt_cuts[iroc][cut].GetBinContent(self.h_ph1_evt_cuts[iroc][cut].GetMinimumBin())
-                self.analysis.tree.Draw('charge_all_ROC{r}:event_number >> ph2_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'cluster_size_ROC{r}==2&&{cu}'.format(r=iroc,cu=self.cuts_pixelated_roc_incr[iroc][self.dict_cuts[cut]]), 'goff')
-                if maxz_ph2 < self.h_ph2_evt_cuts[iroc][cut].GetBinContent(self.h_ph2_evt_cuts[iroc][cut].GetMaximumBin()): maxz_ph2 = self.h_ph2_evt_cuts[iroc][cut].GetBinContent(self.h_ph2_evt_cuts[iroc][cut].GetMaximumBin())
-                if (self.dict_cuts[cut] >= self.dict_cuts[self.cut_near_fiducial()]) and (minz_ph2 > self.h_ph2_evt_cuts[iroc][cut].GetBinContent(self.h_ph2_evt_cuts[iroc][cut].GetMinimumBin())): minz_ph2 = self.h_ph2_evt_cuts[iroc][cut].GetBinContent(self.h_ph2_evt_cuts[iroc][cut].GetMinimumBin())
-                self.h_ph1_evt_cuts[iroc][cut].ProjectionY('ph1_roc{r}_{c}'.format(r=iroc,c=cut),0,-1,'e')
-                self.h_ph2_evt_cuts[iroc][cut].ProjectionY('ph2_roc{r}_{c}'.format(r=iroc,c=cut),0,-1,'e')
-                self.analysis.tree.Draw('charge_all_ROC{r}:10000*(residual_ROC{r}_Local_Y+cluster_pos_ROC{r}_Local_Y):10000*(residual_ROC{r}_Local_X+cluster_pos_ROC{r}_Local_X)>>ph1_map_roc{r}_{c}'.format(r=iroc,c=cut), 'cluster_size_ROC{r}==1&&{cu}'.format(r=iroc,cu=self.cuts_pixelated_roc_incr[iroc][self.dict_cuts[cut]]), 'goff prof')
-                if max_ph1_map[iroc] < self.h_ph1_map_cuts[iroc][cut].GetBinContent(self.h_ph1_map_cuts[iroc][cut].GetMaximumBin()) and self.dict_cuts[cut] > 3: max_ph1_map[iroc] = self.h_ph1_map_cuts[iroc][cut].GetBinContent(self.h_ph1_map_cuts[iroc][cut].GetMaximumBin())
-                if (self.dict_cuts[cut] >= self.dict_cuts[self.cut_near_fiducial()]) and (min_ph1_map[iroc] > self.h_ph1_map_cuts[iroc][cut].GetBinContent(self.h_ph1_map_cuts[iroc][cut].GetMinimumBin())) and self.dict_cuts[cut] > 3: min_ph1_map[iroc] = self.h_ph1_map_cuts[iroc][cut].GetBinContent(self.h_ph1_map_cuts[iroc][cut].GetMinimumBin())
-                self.analysis.tree.Draw('charge_all_ROC{r}:10000*(residual_ROC{r}_Local_Y+cluster_pos_ROC{r}_Local_Y):10000*(residual_ROC{r}_Local_X+cluster_pos_ROC{r}_Local_X)>>ph2_map_roc{r}_{c}'.format(r=iroc,c=cut), 'cluster_size_ROC{r}==2&&{cu}'.format(r=iroc,cu=self.cuts_pixelated_roc_incr[iroc][self.dict_cuts[cut]]), 'goff prof')
-                if max_ph2_map[iroc] < self.h_ph2_map_cuts[iroc][cut].GetBinContent(self.h_ph2_map_cuts[iroc][cut].GetMaximumBin()) and self.dict_cuts[cut] > 3: max_ph2_map[iroc] = self.h_ph2_map_cuts[iroc][cut].GetBinContent(self.h_ph2_map_cuts[iroc][cut].GetMaximumBin())
-                if (self.dict_cuts[cut] >= self.dict_cuts[self.cut_near_fiducial()]) and (min_ph2_map[iroc] > self.h_ph2_map_cuts[iroc][cut].GetBinContent(self.h_ph2_map_cuts[iroc][cut].GetMinimumBin())) and self.dict_cuts[cut] > 3: min_ph2_map[iroc] = self.h_ph2_map_cuts[iroc][cut].GetBinContent(self.h_ph2_map_cuts[iroc][cut].GetMinimumBin())
-                gROOT.SetBatch(0)
-                if self.verbose: print 'Done'
-        min_ph1_map[iroc] = min(min_ph1_map[iroc], 0); print 'min ph1 map:', min_ph1_map[iroc]
-        min_ph2_map[iroc] = min(min_ph2_map[iroc], 0); print 'min ph2 map:', min_ph2_map[iroc]
-        minz_ph1 = min(minz_ph1, 0)
-        minz_ph2 = min(minz_ph2, 0)
-        for iroc in self.duts_list:
-            for cut in self.cut_names:
-                if self.verbose: print 'Saving for ROC {r} with cummulative cut {c}...'.format(r=iroc, c=cut), ; sys.stdout.flush()
-                self.plots.set_2D_options(self.h_hitmaps_cuts[iroc][cut], 'col', 'row', 'entries', max_val=maxz_hitmap)
-                self.plots.set_2D_options(self.h_adc_evt_cuts[iroc][cut], 'event', 'ADC', 'entries')
-                self.plots.set_1D_options('adc',self.h_adc_cuts[iroc][cut], 'ADC', 'entries')
-                self.plots.set_2D_options(self.h_adc_map_cuts[iroc][cut], 'col', 'row', 'ADC')
-                self.plots.set_2D_options(self.h_ph1_evt_cuts[iroc][cut], 'event', 'ph(e)', 'entries', min_val=minz_ph1, max_val=maxz_ph1)
-                self.plots.set_1D_options('ph',self.h_ph1_cuts[iroc][cut],'ph 1 pix cl (e)', 'entries')
-                self.plots.set_2D_options(self.h_ph2_evt_cuts[iroc][cut], 'event', 'ph(e)', 'entries', min_val=minz_ph2, max_val=maxz_ph2)
-                self.plots.set_1D_options('ph',self.h_ph2_cuts[iroc][cut],'ph 2 pix cl (e)', 'entries')
-                self.plots.set_2D_options(self.h_ph1_map_cuts[iroc][cut], 'x(um)', 'y(um)', 'ph 1 pix cluster(e)', min_val=min_ph1_map[iroc], max_val=max_ph1_map[iroc])
-                self.plots.set_2D_options(self.h_ph2_map_cuts[iroc][cut], 'x(um)', 'y(um)', 'ph 2 pix cluster(e)', min_val=min_ph2_map[iroc], max_val=max_ph2_map[iroc])
-                self.plots.save_individual_plots(self.h_hitmaps_cuts[iroc][cut], 'hitmap_roc{r}_{c}'.format(r=iroc,c=cut), 'hitmap_roc{r}_{c}'.format(r=iroc,c=cut), self.fid_cut_hitmap_roc[iroc], 'colz', 1, self.plots.save_dir+'/cuts', doLogZ=True)
-                self.plots.save_individual_plots(self.h_adc_evt_cuts[iroc][cut], 'adc_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'adc_evt_roc{r}_{c}'.format(r=iroc,c=cut), None, 'colz', 1, self.plots.save_dir+'/cuts')
-                self.plots.save_individual_plots(self.h_adc_cuts[iroc][cut], 'adc_roc{r}_{c}'.format(r=iroc,c=cut), 'adc_roc{r}_{c}'.format(r=iroc,c=cut), None, '', 1, self.plots.save_dir+'/cuts')
-                self.plots.save_individual_plots(self.h_adc_map_cuts[iroc][cut], 'adc_map_roc{r}_{c}'.format(r=iroc,c=cut), 'adc_map_roc{r}_{c}'.format(r=iroc,c=cut), self.fid_cut_hitmap_roc[iroc], 'colz', 1, self.plots.save_dir+'/cuts')
-                self.plots.save_individual_plots(self.h_ph1_evt_cuts[iroc][cut], 'ph1_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'ph1_evt_roc{r}_{c}'.format(r=iroc,c=cut), None, 'colz', 1, self.plots.save_dir+'/cuts')
-                self.plots.save_individual_plots(self.h_ph2_evt_cuts[iroc][cut], 'ph2_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'ph2_evt_roc{r}_{c}'.format(r=iroc,c=cut), None, 'colz', 1, self.plots.save_dir+'/cuts')
-                self.plots.save_individual_plots(self.h_ph1_cuts[iroc][cut], 'ph1_roc{r}_{c}'.format(r=iroc,c=cut), 'ph1_roc{r}_{c}'.format(r=iroc,c=cut), None, '', 1, self.plots.save_dir+'/cuts')
-                self.plots.save_individual_plots(self.h_ph2_cuts[iroc][cut], 'ph2_roc{r}_{c}'.format(r=iroc,c=cut), 'ph2_roc{r}_{c}'.format(r=iroc,c=cut), None, '', 1, self.plots.save_dir+'/cuts')
-                self.plots.save_individual_plots(self.h_ph1_map_cuts[iroc][cut], 'ph1_map_roc{r}_{c}'.format(r=iroc,c=cut), 'ph1_map_roc{r}_{c}'.format(r=iroc,c=cut), None, 'colz', 1, self.plots.save_dir+'/cuts')
-                self.plots.save_individual_plots(self.h_ph2_map_cuts[iroc][cut], 'ph2_map_roc{r}_{c}'.format(r=iroc,c=cut), 'ph2_map_roc{r}_{c}'.format(r=iroc,c=cut), None, 'colz', 1, self.plots.save_dir+'/cuts')
-                if self.verbose: print 'Done'
+            maxz_ph1 = -10000000
+            maxz_ph2 = -10000000
+            minz_ph1 = 10000000
+            minz_ph2 = 10000000
+            max_ph1_map = {iroc: -10000000 for iroc in self.duts_list}
+            max_ph2_map = {iroc: -10000000 for iroc in self.duts_list}
+            min_ph1_map = {iroc: 10000000 for iroc in self.duts_list}
+            min_ph2_map = {iroc: 10000000 for iroc in self.duts_list}
+
+            for iroc in self.duts_list:
+                self.h_hitmaps_cuts[iroc] = {}
+                self.h_adc_evt_cuts[iroc] = {}
+                self.h_adc_cuts[iroc] = {}
+                self.h_adc_map_cuts[iroc] = {}
+                self.h_ph1_evt_cuts[iroc] = {}
+                self.h_ph1_cuts[iroc] = {}
+                self.h_ph2_evt_cuts[iroc] = {}
+                self.h_ph2_cuts[iroc] = {}
+                self.h_ph1_map_cuts[iroc] = {}
+                self.h_ph2_map_cuts[iroc] = {}
+                phbins = {self.roc_diam1: self.plot_settings['ph1DbinsD4'], self.roc_diam2: self.plot_settings['ph1DbinsD5'], self.roc_si: self.plot_settings['ph1DbinsSi']}
+                phmin = {self.roc_diam1: self.plot_settings['ph1DminD4'], self.roc_diam2: self.plot_settings['ph1DminD5'], self.roc_si: self.plot_settings['ph1DminSi']}
+                phmax = {self.roc_diam1: self.plot_settings['ph1DmaxD4'], self.roc_diam2: self.plot_settings['ph1DmaxD5'], self.roc_si: self.plot_settings['ph1DmaxSi']}
+                phdelta = {self.roc_diam1: phmax[self.roc_diam1] - phmin[self.roc_diam1], self.roc_diam2: phmax[self.roc_diam2] - phmin[self.roc_diam2], self.roc_si: phmax[self.roc_si] - phmin[self.roc_si]}
+                for cut in self.cut_names:
+                    if self.verbose: print 'Analysing ROC {r} with cummulative cut {c}...'.format(r=iroc, c=cut), ; sys.stdout.flush()
+                    gROOT.SetBatch(1)
+                    self.h_adc_evt_cuts[iroc][cut] = TH2D('adc_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'adc_evt_roc{r}_{c}'.format(r=iroc,c=cut), self.plot_settings['event_bins']+1, self.plot_settings['event_min']-(self.plot_settings['event_max']-self.plot_settings['event_min'])/(2*float(self.plot_settings['event_bins'])), self.plot_settings['event_max']+(self.plot_settings['event_max']-self.plot_settings['event_min'])/(2*float(self.plot_settings['event_bins'])), 52, -2.5, 257.5)
+                    self.h_adc_cuts[iroc][cut] = TH1D('adc_roc{r}_{c}'.format(r=iroc,c=cut), 'adc_roc{r}_{c}'.format(r=iroc,c=cut), 52, -2.5, 257.5)
+                    self.h_adc_map_cuts[iroc][cut] = self.plots.create_2D_profile('pix', 'adc_map_roc{r}_{c}'.format(r=iroc,c=cut), 'adc_map_roc{r}_{c}'.format(r=iroc,c=cut), 'col', 'row', 'ADC', 'auto', -1)
+                    self.h_ph1_evt_cuts[iroc][cut] = TH2D('ph1_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'ph1_evt_roc{r}_{c}'.format(r=iroc,c=cut), self.plot_settings['event_bins']+1, self.plot_settings['event_min']-(self.plot_settings['event_max']-self.plot_settings['event_min'])/(2*float(self.plot_settings['event_bins'])), self.plot_settings['event_max']+(self.plot_settings['event_max']-self.plot_settings['event_min'])/(2*float(self.plot_settings['event_bins'])), phbins[iroc]+1, phmin[iroc]-phdelta[iroc]/(2*float(phbins[iroc])), phmax[iroc]+phdelta[iroc]/float(2*phbins[iroc]))
+                    self.h_ph1_cuts[iroc][cut] = TH1D('ph1_roc{r}_{c}'.format(r=iroc,c=cut), 'ph1_roc{r}_{c}'.format(r=iroc,c=cut), phbins[iroc]+1, phmin[iroc]-phdelta[iroc]/(2*float(phbins[iroc])), phmax[iroc]+phdelta[iroc]/float(2*phbins[iroc]))
+                    self.h_ph2_evt_cuts[iroc][cut] = TH2D('ph2_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'ph2_evt_roc{r}_{c}'.format(r=iroc,c=cut), self.plot_settings['event_bins']+1, self.plot_settings['event_min']-(self.plot_settings['event_max']-self.plot_settings['event_min'])/(2*float(self.plot_settings['event_bins'])), self.plot_settings['event_max']+(self.plot_settings['event_max']-self.plot_settings['event_min'])/(2*float(self.plot_settings['event_bins'])), phbins[iroc]+1, phmin[iroc]-phdelta[iroc]/(2*float(phbins[iroc])), phmax[iroc]+phdelta[iroc]/float(2*phbins[iroc]))
+                    self.h_ph2_cuts[iroc][cut] = TH1D('ph2_roc{r}_{c}'.format(r=iroc,c=cut), 'ph2_roc{r}_{c}'.format(r=iroc,c=cut), phbins[iroc]+1, phmin[iroc]-phdelta[iroc]/(2*float(phbins[iroc])), phmax[iroc]+phdelta[iroc]/float(2*phbins[iroc]))
+                    self.h_ph1_map_cuts[iroc][cut] = self.plots.create_2D_profile('spatial', 'ph1_map_roc{r}_{c}'.format(r=iroc,c=cut), 'ph1_map_roc{r}_{c}'.format(r=iroc,c=cut), 'x(um)', 'y(um)', 'ph 1 pix cluster(e)', 'auto', -1)
+                    self.h_ph2_map_cuts[iroc][cut] = self.plots.create_2D_profile('spatial', 'ph2_map_roc{r}_{c}'.format(r=iroc,c=cut), 'ph2_map_roc{r}_{c}'.format(r=iroc,c=cut), 'x(um)', 'y(um)', 'ph 2 pix cluster(e)', 'auto', -1)
+                    self.analysis.tree.Draw('row:col >> hitmap_roc{r}_{c}'.format(r=iroc,c=cut), 'plane=={r}&&{cu}'.format(r=iroc,cu=self.cuts_hitmap_roc_incr[iroc][self.dict_cuts[cut]]), 'goff')
+                    self.analysis.tree.Draw('adc:event_number >> adc_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'plane=={r}&&{cu}'.format(r=iroc,cu=self.cuts_pixelated_roc_incr[iroc][2]), 'goff')
+                    self.h_adc_evt_cuts[iroc][cut].ProjectionY('adc_roc{r}_{c}'.format(r=iroc,c=cut),0,-1,'e')
+                    self.analysis.tree.Draw('adc:row:col >> adc_map_roc{r}_{c}'.format(r=iroc,c=cut), 'plane=={r}&&{cu}'.format(r=iroc,cu=self.cuts_pixelated_roc_incr[iroc][2]), 'goff prof')
+                    self.analysis.tree.Draw('charge_all_ROC{r}:event_number >> ph1_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'cluster_size_ROC{r}==1&&{cu}'.format(r=iroc,cu=self.cuts_pixelated_roc_incr[iroc][self.dict_cuts[cut]]), 'goff')
+                    if maxz_ph1 < self.h_ph1_evt_cuts[iroc][cut].GetBinContent(self.h_ph1_evt_cuts[iroc][cut].GetMaximumBin()): maxz_ph1 = self.h_ph1_evt_cuts[iroc][cut].GetBinContent(self.h_ph1_evt_cuts[iroc][cut].GetMaximumBin())
+                    if (self.dict_cuts[cut] >= self.dict_cuts[self.cut_near_fiducial()]) and (minz_ph1 > self.h_ph1_evt_cuts[iroc][cut].GetBinContent(self.h_ph1_evt_cuts[iroc][cut].GetMinimumBin())): minz_ph1 = self.h_ph1_evt_cuts[iroc][cut].GetBinContent(self.h_ph1_evt_cuts[iroc][cut].GetMinimumBin())
+                    self.analysis.tree.Draw('charge_all_ROC{r}:event_number >> ph2_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'cluster_size_ROC{r}==2&&{cu}'.format(r=iroc,cu=self.cuts_pixelated_roc_incr[iroc][self.dict_cuts[cut]]), 'goff')
+                    if maxz_ph2 < self.h_ph2_evt_cuts[iroc][cut].GetBinContent(self.h_ph2_evt_cuts[iroc][cut].GetMaximumBin()): maxz_ph2 = self.h_ph2_evt_cuts[iroc][cut].GetBinContent(self.h_ph2_evt_cuts[iroc][cut].GetMaximumBin())
+                    if (self.dict_cuts[cut] >= self.dict_cuts[self.cut_near_fiducial()]) and (minz_ph2 > self.h_ph2_evt_cuts[iroc][cut].GetBinContent(self.h_ph2_evt_cuts[iroc][cut].GetMinimumBin())): minz_ph2 = self.h_ph2_evt_cuts[iroc][cut].GetBinContent(self.h_ph2_evt_cuts[iroc][cut].GetMinimumBin())
+                    self.h_ph1_evt_cuts[iroc][cut].ProjectionY('ph1_roc{r}_{c}'.format(r=iroc,c=cut),0,-1,'e')
+                    self.h_ph2_evt_cuts[iroc][cut].ProjectionY('ph2_roc{r}_{c}'.format(r=iroc,c=cut),0,-1,'e')
+                    self.analysis.tree.Draw('charge_all_ROC{r}:10000*(residual_ROC{r}_Local_Y+cluster_pos_ROC{r}_Local_Y):10000*(residual_ROC{r}_Local_X+cluster_pos_ROC{r}_Local_X)>>ph1_map_roc{r}_{c}'.format(r=iroc,c=cut), 'cluster_size_ROC{r}==1&&{cu}'.format(r=iroc,cu=self.cuts_pixelated_roc_incr[iroc][self.dict_cuts[cut]]), 'goff prof')
+                    if max_ph1_map[iroc] < self.h_ph1_map_cuts[iroc][cut].GetBinContent(self.h_ph1_map_cuts[iroc][cut].GetMaximumBin()) and self.dict_cuts[cut] > 3: max_ph1_map[iroc] = self.h_ph1_map_cuts[iroc][cut].GetBinContent(self.h_ph1_map_cuts[iroc][cut].GetMaximumBin())
+                    if (self.dict_cuts[cut] >= self.dict_cuts[self.cut_near_fiducial()]) and (min_ph1_map[iroc] > self.h_ph1_map_cuts[iroc][cut].GetBinContent(self.h_ph1_map_cuts[iroc][cut].GetMinimumBin())) and self.dict_cuts[cut] > 3: min_ph1_map[iroc] = self.h_ph1_map_cuts[iroc][cut].GetBinContent(self.h_ph1_map_cuts[iroc][cut].GetMinimumBin())
+                    self.analysis.tree.Draw('charge_all_ROC{r}:10000*(residual_ROC{r}_Local_Y+cluster_pos_ROC{r}_Local_Y):10000*(residual_ROC{r}_Local_X+cluster_pos_ROC{r}_Local_X)>>ph2_map_roc{r}_{c}'.format(r=iroc,c=cut), 'cluster_size_ROC{r}==2&&{cu}'.format(r=iroc,cu=self.cuts_pixelated_roc_incr[iroc][self.dict_cuts[cut]]), 'goff prof')
+                    if max_ph2_map[iroc] < self.h_ph2_map_cuts[iroc][cut].GetBinContent(self.h_ph2_map_cuts[iroc][cut].GetMaximumBin()) and self.dict_cuts[cut] > 3: max_ph2_map[iroc] = self.h_ph2_map_cuts[iroc][cut].GetBinContent(self.h_ph2_map_cuts[iroc][cut].GetMaximumBin())
+                    if (self.dict_cuts[cut] >= self.dict_cuts[self.cut_near_fiducial()]) and (min_ph2_map[iroc] > self.h_ph2_map_cuts[iroc][cut].GetBinContent(self.h_ph2_map_cuts[iroc][cut].GetMinimumBin())) and self.dict_cuts[cut] > 3: min_ph2_map[iroc] = self.h_ph2_map_cuts[iroc][cut].GetBinContent(self.h_ph2_map_cuts[iroc][cut].GetMinimumBin())
+                    gROOT.SetBatch(0)
+                    if self.verbose: print 'Done'
+            min_ph1_map[iroc] = min(min_ph1_map[iroc], 0); print 'min ph1 map:', min_ph1_map[iroc]
+            min_ph2_map[iroc] = min(min_ph2_map[iroc], 0); print 'min ph2 map:', min_ph2_map[iroc]
+            minz_ph1 = min(minz_ph1, 0)
+            minz_ph2 = min(minz_ph2, 0)
+            for iroc in self.duts_list:
+                for cut in self.cut_names:
+                    if self.verbose: print 'Saving for ROC {r} with cummulative cut {c}...'.format(r=iroc, c=cut), ; sys.stdout.flush()
+
+                    self.plots.set_2D_options(self.h_adc_evt_cuts[iroc][cut], 'event', 'ADC', 'entries')
+                    self.plots.set_1D_options('adc',self.h_adc_cuts[iroc][cut], 'ADC', 'entries')
+                    self.plots.set_2D_options(self.h_adc_map_cuts[iroc][cut], 'col', 'row', 'ADC')
+                    self.plots.set_2D_options(self.h_ph1_evt_cuts[iroc][cut], 'event', 'ph(e)', 'entries', min_val=minz_ph1, max_val=maxz_ph1)
+                    self.plots.set_1D_options('ph',self.h_ph1_cuts[iroc][cut],'ph 1 pix cl (e)', 'entries')
+                    self.plots.set_2D_options(self.h_ph2_evt_cuts[iroc][cut], 'event', 'ph(e)', 'entries', min_val=minz_ph2, max_val=maxz_ph2)
+                    self.plots.set_1D_options('ph',self.h_ph2_cuts[iroc][cut],'ph 2 pix cl (e)', 'entries')
+                    self.plots.set_2D_options(self.h_ph1_map_cuts[iroc][cut], 'x(um)', 'y(um)', 'ph 1 pix cluster(e)', min_val=min_ph1_map[iroc], max_val=max_ph1_map[iroc])
+                    self.plots.set_2D_options(self.h_ph2_map_cuts[iroc][cut], 'x(um)', 'y(um)', 'ph 2 pix cluster(e)', min_val=min_ph2_map[iroc], max_val=max_ph2_map[iroc])
+
+                    self.plots.save_individual_plots(self.h_adc_evt_cuts[iroc][cut], 'adc_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'adc_evt_roc{r}_{c}'.format(r=iroc,c=cut), None, 'colz', 1, self.plots.save_dir+'/cuts')
+                    self.plots.save_individual_plots(self.h_adc_cuts[iroc][cut], 'adc_roc{r}_{c}'.format(r=iroc,c=cut), 'adc_roc{r}_{c}'.format(r=iroc,c=cut), None, '', 1, self.plots.save_dir+'/cuts')
+                    self.plots.save_individual_plots(self.h_adc_map_cuts[iroc][cut], 'adc_map_roc{r}_{c}'.format(r=iroc,c=cut), 'adc_map_roc{r}_{c}'.format(r=iroc,c=cut), self.fid_cut_hitmap_roc[iroc], 'colz', 1, self.plots.save_dir+'/cuts')
+                    self.plots.save_individual_plots(self.h_ph1_evt_cuts[iroc][cut], 'ph1_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'ph1_evt_roc{r}_{c}'.format(r=iroc,c=cut), None, 'colz', 1, self.plots.save_dir+'/cuts')
+                    self.plots.save_individual_plots(self.h_ph2_evt_cuts[iroc][cut], 'ph2_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'ph2_evt_roc{r}_{c}'.format(r=iroc,c=cut), None, 'colz', 1, self.plots.save_dir+'/cuts')
+                    self.plots.save_individual_plots(self.h_ph1_cuts[iroc][cut], 'ph1_roc{r}_{c}'.format(r=iroc,c=cut), 'ph1_roc{r}_{c}'.format(r=iroc,c=cut), None, '', 1, self.plots.save_dir+'/cuts')
+                    self.plots.save_individual_plots(self.h_ph2_cuts[iroc][cut], 'ph2_roc{r}_{c}'.format(r=iroc,c=cut), 'ph2_roc{r}_{c}'.format(r=iroc,c=cut), None, '', 1, self.plots.save_dir+'/cuts')
+                    self.plots.save_individual_plots(self.h_ph1_map_cuts[iroc][cut], 'ph1_map_roc{r}_{c}'.format(r=iroc,c=cut), 'ph1_map_roc{r}_{c}'.format(r=iroc,c=cut), None, 'colz', 1, self.plots.save_dir+'/cuts')
+                    self.plots.save_individual_plots(self.h_ph2_map_cuts[iroc][cut], 'ph2_map_roc{r}_{c}'.format(r=iroc,c=cut), 'ph2_map_roc{r}_{c}'.format(r=iroc,c=cut), None, 'colz', 1, self.plots.save_dir+'/cuts')
+                    if self.verbose: print 'Done'
         self.print_banner('Finished Cut Analysis', ':)')
 
     def cut_near_fiducial(self):
