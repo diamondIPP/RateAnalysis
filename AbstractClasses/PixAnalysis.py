@@ -139,7 +139,7 @@ class SignalPixAnalysis(Analysis):
         if do_res_ana:
             self.Cut.do_res_analysis()
         if do_cut_ana:
-            self.do_cuts_analysis(do_occupancy, do_pulse_height)
+            self.do_cuts_analysis(do_occupancy, do_pulse_height, False) # DA: TODO change to True
 
 
         # if do_pulse_height: self.valueAverage = {iroc: {k: 0 for k in xrange(self.kmax)} for iroc in xrange(self.num_devices)}
@@ -185,12 +185,20 @@ class SignalPixAnalysis(Analysis):
         # if do_correlations: self.do_correlations(self.roc_tel[1], self.roc_tel[2], self.roc_diam1, self.roc_si, show_progressBar, verbosity)
         # self.print_banner('Looping over Tree -> Done', '%')
 
-    def do_cuts_analysis(self, do_occupancy, do_pulse_height):
-        self.Cut.do_cuts_analysis(do_occupancy, do_pulse_height)
+    def do_cuts_analysis(self, do_occupancy, do_pulse_height, normalize_ph_plots=False):
+        self.Cut.do_cuts_analysis(do_occupancy, do_pulse_height, normalize_ph_plots)
 
-    def do_occupancy_roc(self, roc=4, cut='', cummulative=True, histo=None):
-        if histo == None:
-            histo = TH2D('hitmap_roc_{r}'.format(r=roc), 'hitmap_roc_{r}'.format(r=roc), self.plot_settings['nBinCol']+1,
+    def do_occupancy_roc(self, roc=4, cut='', histo=None):
+        if cut != '':
+            if histo is None: name = 'hitmap_roc_{r}_{c}'.format(r=roc, c=cut)
+            cut_string = 'plane=={r}&&{c}'.format(r=roc, c=self.Cut.cuts_hitmap_roc_incr[roc][self.Cut.dict_cuts[cut]])
+            if self.verbose: print 'Doing occupancy for ROC', roc, 'upto', cut, 'cut'
+        else:
+            if histo is None: name = 'hitmap_roc_{r}'.format(r=roc)
+            cut_string = 'plane=={r}'.format(r=roc)
+            if self.verbose: print 'Doing occupancy for ROC', roc, 'without cuts'
+        if histo is None:
+            histo = TH2D(name, name, self.plot_settings['nBinCol']+1,
                          self.plot_settings['minCol']-(self.plot_settings['maxCol']-self.plot_settings['minCol'])/(
                              2*float(self.plot_settings['nBinCol'])), self.plot_settings['maxCol']+(
                              self.plot_settings['maxCol']-self.plot_settings['minCol'])/(
@@ -199,54 +207,107 @@ class SignalPixAnalysis(Analysis):
                              2*float(self.plot_settings['nBinRow'])), self.plot_settings['maxRow']+(
                              self.plot_settings['maxRow']-self.plot_settings['minRow'])/(
                              2*float(self.plot_settings['nBinRow'])))
-        if self.verbose and cut != '':
-            print 'Doing occupancy for ROC', roc, 'upto', cut, 'cut'
-        elif self.verbose and cut == '':
-            print 'Doing occupancy for ROC', roc, 'without cuts'
+        gROOT.SetBatch(True)
         name = histo.GetName()
-        gROOT.SetBatch(1)
-        if cut != '' and cummulative:
-            self.tree.Draw('row:col >> {n}'.format(n=name), 'plane=={r}&&{c}'.format(r=roc, c=self.Cut.cuts_hitmap_roc_incr[roc][self.Cut.dict_cuts[cut]]), 'goff')
-        elif cut!='':
-            self.tree.Draw('row:col >> {n}'.format(n=name), 'plane=={r}&&{c}'.format(r=roc, c=self.Cut.cuts_hitmap_roc[roc][self.Cut.dict_cuts[cut]]), 'goff')
-        else:
-            self.tree.Draw('row:col >> {n}'.format(n=name), 'plane=={r}'.format(r=roc), 'goff')
-        gROOT.SetBatch(0)
+        self.tree.Draw('row:col >> {n}'.format(n=name), cut_string, 'goff')
+        gROOT.SetBatch(False)
         return deepcopy(histo)
 
-    def do_pulse_height_event_roc(self, roc=4, num_clust=1, cut='', cummulative=True, histo=None):
+    def do_pulse_height_event_roc(self, roc=4, num_clust=1, cut='', histo=None):
         phbins = {self.roc_diam1: self.plot_settings['ph1DbinsD4'], self.roc_diam2: self.plot_settings['ph1DbinsD5'], self.roc_si: self.plot_settings['ph1DbinsSi']}
         phmin = {self.roc_diam1: self.plot_settings['ph1DminD4'], self.roc_diam2: self.plot_settings['ph1DminD5'], self.roc_si: self.plot_settings['ph1DminSi']}
         phmax = {self.roc_diam1: self.plot_settings['ph1DmaxD4'], self.roc_diam2: self.plot_settings['ph1DmaxD5'], self.roc_si: self.plot_settings['ph1DmaxSi']}
         phdelta = {self.roc_diam1: phmax[self.roc_diam1] - phmin[self.roc_diam1], self.roc_diam2: phmax[self.roc_diam2] - phmin[self.roc_diam2],
                    self.roc_si: phmax[self.roc_si] - phmin[self.roc_si]}
-        if histo == None:
-            if num_clust != 0:
-                histo = TH2D('ph{n}_roc{r}'.format(n=num_clust, r=roc), 'ph{n}_roc{r}'.format(n=num_clust, r=roc),
-                             self.plot_settings['event_bins']+1, self.plot_settings['event_min']-(
-                                 self.plot_settings['event_max']-self.plot_settings['event_min'])/(
-                                 2*float(self.plot_settings['event_bins'])), self.plot_settings['event_max']+(
-                                 self.plot_settings['event_max']-self.plot_settings['event_min'])/(
-                                 2*float(self.plot_settings['event_bins'])), phbins[roc]+1, phmin[roc]-phdelta[roc]/(
-                                 2*float(phbins[roc])), phmax[roc]+phdelta[roc]/float(2*phbins[roc]))
-            else:
-                histo = TH2D('ph_roc{r}'.format(r=roc), 'ph_roc{r}'.format(r=roc),
-                             self.plot_settings['event_bins']+1, self.plot_settings['event_min']-(
-                                 self.plot_settings['event_max']-self.plot_settings['event_min'])/(
-                                 2*float(self.plot_settings['event_bins'])), self.plot_settings['event_max']+(
-                                 self.plot_settings['event_max']-self.plot_settings['event_min'])/(
-                                 2*float(self.plot_settings['event_bins'])), phbins[roc]+1, phmin[roc]-phdelta[roc]/(
-                                 2*float(phbins[roc])), phmax[roc]+phdelta[roc]/float(2*phbins[roc]))
-        if self.verbose and cut != '' and num_clust != 0:
-            print 'Doing pulse height', num_clust, 'pix cluster Vs. event for ROC', roc, 'upto', cut, 'cut'
-        elif self.verbose and cut != '':
-            print 'Doing pulse height Vs. event for ROC', roc, 'upto', cut, 'cut'
-        elif self.verbose and num_clust != 0:
-            print 'Doing pulse height', num_clust, 'pix cluster Vs. event for ROC', roc, 'without cuts'
-        elif self.verbose:
-            print 'Doing pulse height Vs. event for ROC', roc, 'without cuts'
+        if cut != '' and num_clust != 0:
+            if histo is None: name = 'ph{n}_evt_roc{r}_{c}'.format(n=num_clust, r=roc, c=cut)
+            cut_string = 'cluster_size_ROC{r}=={n}&&{cu}'.format(r=roc,n=num_clust,cu=self.Cut.cuts_pixelated_roc_incr[roc][self.Cut.dict_cuts[cut]])
+            if self.verbose: print 'Doing pulse height', num_clust, 'pix cluster Vs. event for ROC', roc, 'upto', cut, 'cut'
+        elif cut != '':
+            if histo is None: name = 'ph_evt_roc{r}_{c}'.format(r=roc, c=cut)
+            cut_string = '{cu}'.format(cu=self.Cut.cuts_pixelated_roc_incr[roc][self.Cut.dict_cuts[cut]])
+            if self.verbose: print 'Doing pulse height Vs. event for ROC', roc, 'upto', cut, 'cut'
+        elif num_clust != 0:
+            if histo is None: name = 'ph{n}_evt_roc{r}'.format(n=num_clust, r=roc)
+            cut_string = 'cluster_size_ROC{r}=={n}'.format(r=roc,n=num_clust)
+            if self.verbose: print 'Doing pulse height', num_clust, 'pix cluster Vs. event for ROC', roc, 'without cuts'
+        else:
+            if histo is None: name = 'ph_evt_roc{r}'.format(r=roc)
+            cut_string = ''
+            if self.verbose: print 'Doing pulse height Vs. event for ROC', roc, 'without cuts'
+        if histo is None:
+            histo = TH2D(name, name, self.plot_settings['event_bins']+1, self.plot_settings['event_min']-(
+                             self.plot_settings['event_max']-self.plot_settings['event_min'])/(
+                             2*float(self.plot_settings['event_bins'])), self.plot_settings['event_max']+(
+                             self.plot_settings['event_max']-self.plot_settings['event_min'])/(
+                             2*float(self.plot_settings['event_bins'])), phbins[roc]+1, phmin[roc]-phdelta[roc]/(
+                             2*float(phbins[roc])), phmax[roc]+phdelta[roc]/float(2*phbins[roc]))
+        gROOT.SetBatch(True)
         name = histo.GetName()
-        cut_name = ''
+        self.tree.Draw('charge_all_ROC{r}:event_number >> {n}'.format(r=roc, n=name), cut_string, 'goff')
+        gROOT.SetBatch(False)
+        return deepcopy(histo)
+
+    def do_pulse_height_roc(self, roc=4, num_clust=1, cut='', histoevent=None, histo=None):
+        phbins = {self.roc_diam1: self.plot_settings['ph1DbinsD4'], self.roc_diam2: self.plot_settings['ph1DbinsD5'], self.roc_si: self.plot_settings['ph1DbinsSi']}
+        phmin = {self.roc_diam1: self.plot_settings['ph1DminD4'], self.roc_diam2: self.plot_settings['ph1DminD5'], self.roc_si: self.plot_settings['ph1DminSi']}
+        phmax = {self.roc_diam1: self.plot_settings['ph1DmaxD4'], self.roc_diam2: self.plot_settings['ph1DmaxD5'], self.roc_si: self.plot_settings['ph1DmaxSi']}
+        phdelta = {self.roc_diam1: phmax[self.roc_diam1] - phmin[self.roc_diam1], self.roc_diam2: phmax[self.roc_diam2] - phmin[self.roc_diam2],
+                   self.roc_si: phmax[self.roc_si] - phmin[self.roc_si]}
+        event_histo = self.do_pulse_height_event_roc(roc, num_clust, cut, histoevent)
+        if cut != '' and num_clust != 0:
+            if histo is None: name = 'ph{n}_roc{r}_{c}'.format(n=num_clust, r=roc, c=cut)
+            if self.verbose: print 'Doing pulse height', num_clust, 'pix cluster histogram for ROC', roc, 'upto', cut, 'cut'
+        elif cut != '':
+            if histo is None: name = 'ph_roc{r}_{c}'.format(r=roc, c=cut)
+            if self.verbose: print 'Doing pulse height histogram for ROC', roc, 'upto', cut, 'cut'
+        elif num_clust != 0:
+            if histo is None: name = 'ph{n}_roc{r}'.format(n=num_clust, r=roc)
+            if self.verbose: print 'Doing pulse height', num_clust,'pix cluster histogram for ROC', roc, 'without cuts'
+        else:
+            if histo is None: name = 'ph_roc{r}'.format(r=roc)
+            if self.verbose: print 'Doing pulse height histogram for ROC', roc, 'without cuts'
+        if histo is None:
+            histo = TH1D(name, name, phbins[roc]+1, phmin[roc]-phdelta[roc]/(2*float(phbins[roc])), phmax[roc]+phdelta[roc]/float(2*phbins[roc]))
+        gROOT.SetBatch(True)
+        name = histo.GetName()
+        histoevent.ProjectionY(name, 0, -1, 'e')
+        gROOT.SetBatch(False)
+        return {'event_histo': deepcopy(histoevent), 'histo': deepcopy(histo)}
+
+    def do_pulse_height_roc_map(self, roc=4, num_clust=1, cut='', histo=None):
+        if cut != '' and num_clust != 0:
+            if histo is None:
+                name = 'ph{n}_map_roc{r}_{c}'.format(n=num_clust, r=roc, c=cut)
+                ZTitle = 'ph {n} pix clusters(e)'.format(n=num_clust)
+            cut_string = 'cluster_size_ROC{r}=={n}&&{c}'.format(r=roc, n=num_clust, c=self.Cut.cuts_pixelated_roc_incr[roc][self.Cut.dict_cuts[cut]])
+            if self.verbose: print 'Doing pulse height', num_clust, 'pix cluster map for ROC', roc, 'upto', cut, 'cut'
+        elif cut != '':
+            if histo is None:
+                name = 'ph_map_roc{r}_{c}'.format(r=roc, c=cut)
+                ZTitle = 'ph all pix clusters(e)'
+            cut_string = '{c}'.format(c=self.Cut.cuts_pixelated_roc_incr[roc][self.Cut.dict_cuts[cut]])
+            if self.verbose: print 'Doing pulse height map for ROC', roc, 'upto', cut, 'cut'
+        elif num_clust != 0:
+            if histo is None:
+                name = 'ph{n}_map_roc{r}'.format(n=num_clust, r=roc)
+                ZTitle = 'ph {n} pix clusters(e)'.format(n=num_clust)
+            cut_string = 'cluster_size_ROC{r}=={n}'.format(r=roc, n=num_clust)
+            if self.verbose: print 'Doing pulse height', num_clust,'pix cluster map for ROC', roc, 'without cuts'
+        else:
+            if histo is None:
+                name = 'ph_map_roc{r}'.format(r=roc)
+                ZTitle = 'ph all pix clusters(e)'
+            cut_string = ''
+            if self.verbose: print 'Doing pulse height map for ROC', roc, 'without cuts'
+        if histo is None:
+            histo = self.plots.create_2D_profile('spatial', name, name, 'x(um)', 'y(um)', ZTitle, 'auto', -1)
+        gROOT.SetBatch(True)
+        name = histo.GetName()
+        self.tree.Draw('charge_all_ROC{r}:10000*(residual_ROC{r}_Local_Y+cluster_pos_ROC{r}_Local_Y):10000*(residual_ROC{r}_Local_X+cluster_pos_ROC{r}_Local_X)>>{n}'.format(r=roc,n=name),
+                       cut_string, 'goff prof')
+        gROOT.SetBatch(False)
+        return deepcopy(histo)
 
     def fill_occupancy(self, show_progressBar=False, do_tlscp=False, verbosity=False):
         # for i in xrange(len(self.plane)):
