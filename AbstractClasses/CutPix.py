@@ -74,6 +74,10 @@ class CutPix(Elementary):
             # self.jumps = None
             # self.jump_ranges = None
     def generate_cut_names_vector(self):
+        """
+        generates the vector with the names of the cuts. The order will affect, how the cuts are applied
+        :return: returns the filled vector
+        """
         temp = []
         if self.CutConfig['IniFin']: temp.append('ini_fin')
         if self.CutConfig['Beam']: temp.append('beam')
@@ -101,47 +105,48 @@ class CutPix(Elementary):
         self.analysis.tree.Draw('time>>temp0', 'plane[{')
 
     def do_cuts(self):
+        """
+        Calculates or gets the cut strings to apply in the analysis for each of the cuts. Each of these cuts generation,
+        fills the self.cuts_hitmap_roc, self.cuts_hitmap_roc_incr, self.cuts_pixelated_roc, self.cuts_pixelated_roc_incr
+        :return:
+        """
         # generate cut strings
         self.print_banner('Generating Cut strings...')
         print 'The following cuts will be implemented:', self.cut_names
         if 'ini_fin' in self.cut_names:
             self.generate_ini_fin_cuts()
-            print self.num_cuts
         if 'beam' in self.cut_names:
             self.generate_beam_interruption_cut()
-            print self.num_cuts
         if 'tracks' in self.cut_names:
             self.generate_tracks_cut()
-            print self.num_cuts
         if 'hit' in self.cut_names:
             self.generate_hit_cut()
-            print self.num_cuts
         if 'masks' in self.cut_names:
             self.generate_masks()
-            print self.num_cuts
         if 'fiducial' in self.cut_names:
             self.generate_fid_cuts()
-            print self.num_cuts
         if 'chi2x' in self.cut_names or 'chi2y' in self.cut_names:
             self.generate_chi2_cuts()
-            print self.num_cuts
         if 'anglex' in self.cut_names or 'angley' in self.cut_names:
             self.generate_angle_cuts()
-            print self.num_cuts
         if 'rhit' in self.cut_names:
             self.generate_rhit_cuts()
-            print self.num_cuts
         # self.gen_incr_vect_cuts()
         self.cuts_done = True
         self.print_banner('Finished generating Cut stringss')
-        # self.add_cuts()
 
-        # self.generate_cut_string()  # DA TODO
-        # self.all_cut = self.generate_all_cut()  # DA TODO
     def list_duts(self):
+        """
+        creates a list with the roc numbers of the DUTs
+        :return:
+        """
         self.duts_list = [self.roc_diam1, self.roc_diam2, self.roc_si] if self.TESTCAMPAIGN != '201610' else [self.roc_diam1, self.roc_si]
 
     def reset_cuts_dicts(self):
+        """
+        Resets the lists, dictionaries and the numbering of the DUTs when they are changed in analysis. This method should be called by PixAnalysis
+        :return:
+        """
         self.list_duts()
         self.cuts_hitmap_roc = {iROC: {} for iROC in self.duts_list}  # each cut separately
         self.cuts_pixelated_roc = {iROC: {} for iROC in self.duts_list}  # each cut separately
@@ -154,6 +159,10 @@ class CutPix(Elementary):
         self.events_after_cuts_roc_incr = {iROC: {} for iROC in self.duts_list}
 
     def do_cuts_distributions(self):
+        """
+        Does the cuts distribution for beam interruption, chi2x, chi2y, anglex, angley and rhit for each of the ROCs to be analysed
+        :return:
+        """
         self.print_banner('Doing cuts distributions...')
         self.do_beam_distribution()
         self.do_chi2_distributions()
@@ -162,6 +171,11 @@ class CutPix(Elementary):
         self.print_banner('Finished with distribution cuts')
 
     def do_res_analysis(self):
+        """
+        Calculates and saves the plots of res Y vs res X, rhit vs res x, rhit vs res y, chi2 vs resx, chi2 vs resy,
+        chi2x vs resx, chi2y vs resx, resx vs Y predicted hit position, resy vs X predicted hit position
+        :return:
+        """
         self.h_resy_resx = {}
         self.h_rhit_resx = {}
         self.h_rhit_resy = {}
@@ -265,6 +279,11 @@ class CutPix(Elementary):
         self.print_banner('Finished with resolution plots')
 
     def do_occupancy_analysis(self):
+        """
+        Does the occupancy analysis for each roc applying each of the cummulative cuts and saving them on the corresponding
+        dictionaries
+        :return:
+        """
         self.print_banner('Starting occupancy cut analysis...')
         self.h_hitmaps_cuts = {}
         maxz_hitmap = {iroc: -10000000 for iroc in self.duts_list}
@@ -299,6 +318,12 @@ class CutPix(Elementary):
         self.print_banner('Finished occupancy cut analysis')
 
     def do_pulse_height_analysis(self, normalize_ph_plots=True):
+        """
+        does the pulse height analysis to all the DUTs for each cummulative cut. The histograms ph vs event, ph 2D average map,
+        and ph 1D are saved on the respective dictionaries
+        :param normalize_ph_plots: if true, the pulse height maps have the same limits in Z to compare them between each other
+        :return:
+        """
         self.print_banner('Starting pulse height cut analysis...')
         self.h_ph1_evt_cuts = {}
         self.h_ph1_cuts = {}
@@ -424,8 +449,8 @@ class CutPix(Elementary):
                     if self.verbose: print 'Done'
 
         if normalize_ph_plots:
-            min_ph1_map[iroc] = min(min_ph1_map[iroc], 0); print 'min ph1 map:', min_ph1_map[iroc]
-            min_ph2_map[iroc] = min(min_ph2_map[iroc], 0); print 'min ph2 map:', min_ph2_map[iroc]
+            min_ph1_map[iroc] = min(min_ph1_map[iroc], 0)
+            min_ph2_map[iroc] = min(min_ph2_map[iroc], 0)
             minz_ph1 = min(minz_ph1, 0)
             minz_ph2 = min(minz_ph2, 0)
             for iroc in self.duts_list:
@@ -448,6 +473,13 @@ class CutPix(Elementary):
 
 
     def do_cuts_analysis(self, do_occupancy=True, do_pulse_height=False, normalize_ph_plots=True):
+        """
+        calls the occupancy analysis and the ph analysis
+        :param do_occupancy: if true, the method will call the occupancy analysis
+        :param do_pulse_height: if true, the method will call the ph analysis
+        :param normalize_ph_plots: If true, the ph analysis plots will have the same limits in Z
+        :return:
+        """
         self.print_banner('Starting Cuts Analysis...')
         self.print_banner('Creating histograms with cuts...')
         if do_occupancy: self.do_occupancy_analysis()
@@ -455,84 +487,32 @@ class CutPix(Elementary):
         self.print_banner('Finished Cut Analysis', ':)')
 
     def cut_near_fiducial(self):
+        """
+        finds and returns the nearest cut that is enabled near the fiducial cut ('fiducial')
+        :return: the nearest cut to 'fiducial'
+        """
         for cut in ['fiducial', 'chi2x', 'anglex', 'rhit', 'masks', 'hit', 'tracks', 'beam']:
             if cut in self.cut_names:
                 return cut
         return 'ini_fin'
 
-    def generate_all_cut(self):
-        cut = TCut('all_cuts', '')
-        for key, value in self.CutStrings.iteritems():
-            if not key.startswith('old') and not key.startswith('all_cut'):
-                cut += value
-        return cut
-
-    def get_included_events(self, maxevent=None):
-        """
-        :param maxevent:
-        :return: list of included event numbers not excluded by: excludeFirst, EventRange or BeamInterruptions
-        """
-        minevent = self.get_min_event()
-        maxevent = self.get_max_event() if maxevent is None else maxevent
-
-        excluded = [i for i in arange(0, minevent)]  # first events
-        for start, stop in zip(self.jump_ranges['start'], self.jump_ranges['stop']):
-            excluded += [i for i in xrange(start, stop + 1)]  # events around jumps
-        excluded.sort()
-        all_events = arange(0, maxevent)
-        included = delete(all_events, excluded)
-        return included
-
-    @staticmethod
-    def init_easy_cutstrings():
-        dic = OrderedDict()
-        dic['IndividualChCut'] = ''
-        dic['EventRange'] = ''
-        dic['noPulser'] = ''
-        dic['ExcludeFirst'] = ''
-        dic['notSaturated'] = ''
-        dic['noBeamInter'] = ''
-        dic['Tracks'] = ''
-        dic['peakPos_high'] = ''
-        dic['spread_low'] = ''
-        dic['absMedian_high'] = ''
-        dic['pedestalsigma'] = ''
-        return dic
-
-    @staticmethod
-    def define_cutstrings():
-        dic = OrderedDict()
-        dic['raw'] = TCut('raw', '')
-        dic['pulser'] = TCut('pulser', '')
-        dic['event_range'] = TCut('event_range', '')
-        # waveform
-        dic['beam_interruptions'] = TCut('beam_interruptions', '')
-        dic['ped_sigma'] = TCut('ped_sigma', '')
-        dic['spread_low'] = TCut('spread_low', '')
-        dic['median'] = TCut('median', '')
-        # tracks
-        dic['tracks'] = TCut('tracks', '')
-        dic['chi2X'] = TCut('chi2X', '')
-        dic['chi2Y'] = TCut('chi2Y', '')
-        dic['track_angle'] = TCut('track_angle', '')
-        # waveform
-        dic['saturated'] = TCut('saturated', '')
-        dic['signal_peak_pos'] = TCut('signal_peak_pos', '')
-        dic['trigger_cell'] = TCut('trigger_cell', '')
-        dic['old_bucket'] = TCut('old_bucket', '')
-        dic['bucket'] = TCut('bucket', '')
-        dic['all_cuts'] = TCut('all_cuts', '')
-        return dic
-
     # ==============================================
     # region GET CONFIG
 
     def load_dut_type(self):
+        """
+        loads wether it is a Pad analysis or a Pixel analysis
+        :return: dut type
+        """
         dut_type = self.run_config_parser.get("BASIC", "type")
         assert dut_type.lower() in ["pixel", "pad"], "The DUT type {0} should be 'pixel' or 'pad'".format(dut_type)
         return dut_type
 
     def load_config(self):
+        """
+        Loads the configuration parameters from the config file
+        :return:
+        """
         # self.CutConfig['IndividualChCut'] = ''
         self.CutConfig['ExcludeFirst'] = self.ana_config_parser.getint('CUT', 'excludefirst') if self.ana_config_parser. \
             has_option('CUT', 'excludefirst') else 0
@@ -583,18 +563,18 @@ class CutPix(Elementary):
         self.CutConfig['Angle'] = self.ana_config_parser.getboolean('CUT', 'Angle') if self.ana_config_parser.has_option('CUT', 'Angle') else False
         self.CutConfig['RHit'] = self.ana_config_parser.getboolean('CUT', 'RHit') if self.ana_config_parser.has_option('CUT', 'RHit') else False
 
-    # def add_cuts(self):
-    #     for iROC in xrange(4, 7):
-    #         self.cuts_hitmap_roc[iROC] = self.mask_hitmap_roc[iROC] + self.chi2x_cut + self.chi2y_cut \
-    #                                      + self.cut_tracks + self.angle_x_cut + self.angle_y_cut + self.ini_fin_cut \
-    #                                      + beam_interr_cut
-    #         self.cuts_pixelated_roc[iROC] = self.mask_pixelated_roc[iROC] + self.chi2x_cut + self.chi2y_cut \
-    #                                         + self.cut_tracks + self.angle_x_cut + self.angle_y_cut + self.ini_fin_cut \
-    #                                         + beam_interr_cut + self.rhit_cut[iROC]
     def is_first_cut(self):
+        """
+        tells if it is the first cut to be applied
+        :return: returns True, if it is the first cut to be applied
+        """
         return self.num_cuts == 0
 
     def generate_ini_fin_cuts(self):
+        """
+        generates the ini_fin cut and accumulates its result on the accumulated dictionaries cut_{pixelated/hitmap}_roc(_incr).
+        :return:
+        """
         if self.verbose: print 'Creating cut for initial and final', abs(self.CutConfig['ExcludeFirst']), 'seconds...', ; sys.stdout.flush()
         picklepath = 'Configuration/Individual_Configs/IniFin/{tc}_{r}.pickle'.format(tc=self.TESTCAMPAIGN, r=self.run_number)
         if not os.path.isdir('Configuration/Individual_Configs/IniFin'): os.makedirs('Configuration/Individual_Configs/IniFin')
@@ -617,14 +597,24 @@ class CutPix(Elementary):
         self.num_cuts += 1
         if self.verbose: print 'Done'
 
-    def generate_hit_cut(self):
-        if self.verbose: print 'Creating cut to require atleast one hit for each DUT plane...', ; sys.stdout.flush()
+    def generate_hit_cut(self): # TODO implement cut! must change tree structure from tracking telescope
+        """
+        Needs to be implemented. Have to change trackingTelescope for this
+        :return:
+        """
+        if self.verbose: print 'Creating cut to require at least one hit for each DUT plane...', ; sys.stdout.flush()
         for iroc in self.duts_list:
             self.gen_vect_cuts('1==1', '1==1', iroc)
         self.num_cuts += 1
         if self.verbose: print 'Bla'
 
     def generate_beam_interruption_cut(self):
+        """
+        locates the beam interruptions and cuts some seconds before and some seconds after which are specified in the config file.
+        overlapping segments are fused to one to reduce the size of the string. An average of the number of event per time bin is calculated
+        and every bin below 90% or above 20% is excluded
+        :return:
+        """
         # time is in ms. good results found with bin size of 5 seconds
         picklepath = 'Configuration/Individual_Configs/Beam/{tc}_{r}.pickle'.format(tc=self.TESTCAMPAIGN, r=self.run_number)
         if not os.path.isdir('Configuration/Individual_Configs/Beam'): os.makedirs('Configuration/Individual_Configs/Beam')
@@ -667,46 +657,21 @@ class CutPix(Elementary):
             self.gen_vect_cuts(self.beam_interr_cut, self.beam_interr_cut, iroc)
         self.num_cuts += 1; nentries = self.analysis.tree.GetEntries(); self.analysis.tree.GetEntry(0); first_t = self.analysis.tree.time; self.analysis.tree.GetEntry(nentries-1); last_t = self.analysis.tree.time
         if self.verbose: print 'Done'
-        # self.h_beam_time_cut = TH1F('h_beam_time_cut', 'h_beam_time_cut', self.h_beam_time.GetXaxis().GetNbins(), self.h_beam_time.GetXaxis().GetXmin(), self.h_beam_time.GetXaxis().GetXmax())
-        # self.analysis.tree.Draw('time>>h_beam_time_cut', self.cuts_pixelated_roc_incr[self.duts_list[0]][self.num_cuts-1],'goff')
-        # self.plots.set_1D_options('time', self.h_beam_time, 'time (ms)', 'events', kBlue)
-        # self.plots.set_1D_options('time', self.h_beam_time_cut, 'time (ms)', 'events', kRed)
-        # gROOT.SetBatch(False)
-        # self.plots.save_cuts_distributions(self.h_beam_time, self.h_beam_time_cut, 'Beam_Interruptions_cut', 'Beam_Interruptions_cut', '', 1000000011, self.plots.save_dir+'/cuts', False)
-
 
     def generate_rhit_cuts(self):
         if self.verbose: print 'Generatin R-hit cut for distances greater than', self.CutConfig['rhit'], 'um between predicted position from the track and the seed cluster position...', ; sys.stdout.flush()
         self.rhit_cut = {}
-        # self.h_rhit = {}
-        # self.h_rhit_cut = {}
         for iroc in self.duts_list:
             self.generate_rhit_cuts_DUT(iroc)
             self.gen_vect_cuts(self.rhit_cut[iroc], self.rhit_cut[iroc], iroc)
         self.num_cuts += 1
         if self.verbose: print 'Done'
-        # for iroc in self.duts_list:
-        #     gROOT.SetBatch(1)
-        #     self.analysis.tree.Draw('(10000*sqrt((track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_X)**2+(track_y_ROC{n}-cluster_pos_ROC{n}_Telescope_Y)**2))>>h_rhit_ROC{d}_cut'.format(n=iroc, d=iroc), self.cuts_pixelated_roc_incr[iroc][self.num_cuts - 1], 'goff')
-        #     gROOT.SetBatch(0)
-        #     self.plots.save_cuts_distributions(self.h_rhit[iroc], self.h_rhit_cut[iroc], 'rhit_ROC{r}cut_overlay'.format(r=iroc), 'R_Hit ROC{r} cuts Overlay'.format(r=iroc), '', 1000000011, self.plots.save_dir+'/cuts', False)
-
 
     def generate_rhit_cuts_DUT(self, dut):
         picklepath = 'Configuration/Individual_Configs/RHitRoc{ir}/{tc}_{r}.pickle'.format(ir=dut, tc=self.TESTCAMPAIGN, r=self.run_number)
         if not os.path.isdir('Configuration/Individual_Configs/RHitRoc{ir}'.format(ir=dut)): os.makedirs('Configuration/Individual_Configs/RHitRoc{ir}'.format(ir=dut))
         def func0():
-            # gROOT.SetBatch(1)
-            # h_rhit = TH1F('h_rhit_', 'h_rhit_', 201, -5, 2005)
-            # self.h_rhit_cut[dut] = TH1F('h_rhit_ROC{d}_cut'.format(d=dut), 'h_rhit_ROC{d}_cut'.format(d=dut), 201, -5, 2005)
-            # self.plots.set_1D_options('rhit', self.h_rhit[dut], 'R_hit(um)', 'entries', kBlue)
-            # self.plots.set_1D_options('rhit', self.h_rhit_cut[dut], 'R_hit(um)', 'entries', kRed)
-            # self.analysis.tree.Draw('(10000*sqrt((track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_X)**2+(track_y_ROC{n}-cluster_pos_ROC{n}_Telescope_Y)**2))>>h_rhit_ROC{d}'.format(n=dut, d=dut), self.cuts_pixelated_roc_incr[dut][self.num_cuts - 1], 'goff')
-            # self.analysis.tree.Draw('sqrt((10*(track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_X))**2+(10*(track_x_ROC{n}-cluster_pos_ROC{n}_Telescope_Y))**2)>>h'.format(n=dut),'','goff')
-            # h.GetQuantiles(nq, rhits, xq)
-            # gROOT.SetBatch(0)
             value = self.CutConfig['rhit']
-            # string=''
             string = '((10000*sqrt((residual_ROC{n}_Local_X)**2+(residual_ROC{n}_Local_Y)**2))<{val}&&(sqrt((residual_ROC{n}_Local_X)**2+(residual_ROC{n}_Local_Y)**2))>=0)'.format(n=dut, val=value)
             return string
         self.rhit_cut[dut] = self.do_pickle(picklepath, func0)
@@ -734,17 +699,6 @@ class CutPix(Elementary):
             self.gen_vect_cuts(self.chi2_cut[iroc]['y'], self.chi2_cut[iroc]['y'], iroc)
         self.num_cuts += 1
         if self.verbose: print 'Done'
-        # for iroc in self.duts_list:
-        #     gROOT.SetBatch(1)
-        #     self.analysis.tree.Draw('chi2_x>>h_chi2_roc{r}_x_cut'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.num_cuts - 1], 'goff')
-        #     self.analysis.tree.Draw('chi2_y>>h_chi2_roc{r}_y_cut'.format(r=iroc), self.cuts_pixelated_roc_incr[iroc][self.num_cuts - 1], 'goff')
-        #     self.plots.set_1D_options('chi2', self.h_chi2[iroc]['x'], 'chi2X', 'entries', kBlue)
-        #     self.plots.set_1D_options('chi2', self.h_chi2[iroc]['y'], 'chi2Y', 'entries', kBlue)
-        #     self.plots.set_1D_options('chi2', self.h_chi2_cut[iroc]['x'], 'chi2X', 'entries', kRed)
-        #     self.plots.set_1D_options('chi2', self.h_chi2_cut[iroc]['y'], 'chi2Y', 'entries', kRed)
-        #     gROOT.SetBatch(0)
-        #     self.plots.save_cuts_distributions(self.h_chi2[iroc]['x'], self.h_chi2_cut[iroc]['x'], 'chi2_roc{r}_x_cut_overlay'.format(r=iroc), 'Chi2 roc{r} x Cut Overlay'.format(r=iroc), '', 1000000011, self.plots.save_dir+'/cuts', False)
-        #     self.plots.save_cuts_distributions(self.h_chi2[iroc]['y'], self.h_chi2_cut[iroc]['y'], 'chi2_roc{r}_y_cut_overlay'.format(r=iroc), 'Chi2 roc{r} y Cut Overlay'.format(r=iroc), '', 1000000011, self.plots.save_dir+'/cuts', False)
 
     def generate_chi2(self, mode='x', num_prev_cut=4, iroc=4):
         picklepath = 'Configuration/Individual_Configs/Chi2Roc{ir}{m}/{tc}_{r}.pickle'.format(ir=iroc, m=mode, tc=self.TESTCAMPAIGN, r=self.run_number)
@@ -752,7 +706,6 @@ class CutPix(Elementary):
         def func0():
             gROOT.SetBatch(1)
             h_chi2 = TH1F('h_chi2_roc{r}_{m}_'.format(r=iroc,m=mode), 'h_chi2_roc{r}_{m}_'.format(r=iroc,m=mode), 201, -0.1, 40.1)
-            # h_chi2_cut[iroc][mode] = TH1F('h_chi2_roc{r}_{m}_cut'.format(r=iroc,m=mode), 'h_chi2_roc{r}_{m}_cut'.format(r=iroc,m=mode), 201, -0.1, 40.1)
             nq = 100
             chi2s = zeros(nq)
             xq = array([(i + 1) / float(nq) for i in xrange(nq)])
@@ -822,7 +775,6 @@ class CutPix(Elementary):
         return cut
 
     def gen_vect_cuts(self, cut_hitmap, cut_pixelated, roc=4):
-        # if cut_hitmap != 0:
         self.cuts_hitmap_roc[roc][self.num_cuts] = cut_hitmap
         self.cuts_pixelated_roc[roc][self.num_cuts] = cut_pixelated
         self.accum_incr_vect_cuts(roc)
@@ -830,37 +782,6 @@ class CutPix(Elementary):
     def accum_incr_vect_cuts(self, roc=4):
         self.cuts_hitmap_roc_incr[roc][self.num_cuts] = self.cuts_hitmap_roc_incr[roc][self.num_cuts-1] + '&&(' + self.cuts_hitmap_roc[roc][self.num_cuts] + ')' if self.num_cuts != 0 else '(' + self.cuts_hitmap_roc[roc][self.num_cuts] + ')'
         self.cuts_pixelated_roc_incr[roc][self.num_cuts] = self.cuts_pixelated_roc_incr[roc][self.num_cuts-1] + '&&(' + self.cuts_pixelated_roc[roc][self.num_cuts] + ')' if self.num_cuts != 0 else '(' + self.cuts_pixelated_roc[roc][self.num_cuts] + ')'
-
-    # def gen_incr_vect_cuts(self):  # creates incremental cuts in a vector including the fiducial cut. For this reason it is given as a string and not as a TCut
-    #     ifiducial = self.num_cuts
-    #     for roc in self.duts_list:
-    #         for i in range(self.num_cuts):
-    #             if self.dict_cuts['fiducial'] != i:
-    #                 self.cuts_hitmap_roc_incr[roc][i] = TCut('cut_hit_incr_roc_{r}_pos_{ii}'.format(r=roc, ii=i), '')
-    #                 self.cuts_pixelated_roc_incr[roc][i] = TCut('cut_pix_incr_roc_{r}_pos_{ii}'.format(r=roc, ii=i), '')
-    #                 for j in range(i+1):
-    #                     # if i != self.num_cuts - 1:
-    #                     if self.dict_cuts['fiducial'] != j:
-    #                         self.cuts_hitmap_roc_incr[roc][i] = self.cuts_hitmap_roc_incr[roc][i] + self.cuts_hitmap_roc[roc][j]
-    #                         self.cuts_pixelated_roc_incr[roc][i] = self.cuts_pixelated_roc_incr[roc][i] + self.cuts_pixelated_roc[roc][j]
-    #             else:
-    #                 ifiducial = i
-    #     for roc in self.duts_list:
-    #         if ifiducial != self.num_cuts:
-    #             for i in range(ifiducial):
-    #                 self.cuts_hitmap_roc_incr[roc][i] = self.cuts_hitmap_roc_incr[roc][i].GetTitle()
-    #                 self.cuts_pixelated_roc_incr[roc][i] = self.cuts_pixelated_roc_incr[roc][i].GetTitle()
-    #             self.cuts_hitmap_roc_incr[roc][ifiducial] = self.cuts_hitmap_roc_incr[roc][ifiducial - 1].GetTitle()
-    #             self.cuts_hitmap_roc_incr[roc][ifiducial] = self.cuts_hitmap_roc_incr[roc][ifiducial] + '&&(fidcut_hitmap_roc{n})'.format(n=roc)
-    #             self.cuts_pixelated_roc_incr[roc][ifiducial] = self.cuts_pixelated_roc_incr[roc][ifiducial - 1].GetTitle()
-    #             self.cuts_pixelated_roc_incr[roc][ifiducial] = self.cuts_pixelated_roc_incr[roc][ifiducial] + '&&(fidcut_pixelated_roc{n})'.format(n=roc)
-    #             for i in range(ifiducial + 1, self.num_cuts):
-    #                 self.cuts_hitmap_roc_incr[roc][i] = self.cuts_hitmap_roc_incr[roc][i].GetTitle() + '&&(fidcut_hitmap_roc{n})'.format(n=roc)
-    #                 self.cuts_pixelated_roc_incr[roc][i] = self.cuts_pixelated_roc_incr[roc][i].GetTitle() + '&&(fidcut_pixelated_roc{n})'.format(n=roc)
-    #         else:
-    #             for i in range(self.num_cuts):
-    #                 self.cuts_hitmap_roc_incr[roc][i] = self.cuts_hitmap_roc_incr[roc][i].GetTitle()
-    #                 self.cuts_pixelated_roc_incr[roc][i] = self.cuts_pixelated_roc_incr[roc][i].GetTitle()
 
     def generate_masks(self):
         if self.verbose: print 'Generating masks cuts...', ; sys.stdout.flush()
@@ -1154,301 +1075,3 @@ class CutPix(Elementary):
             gROOT.SetBatch(False)
             self.plots.save_cuts_distributions(self.h_rhit_dist[iroc], self.h_rhit_cut_dist[iroc], 'rhit_roc{r}_x_cut_overlay'.format(r=iroc), 'Rhit roc{r} x Cut Overlay'.format(r=iroc), '', 1000000011, self.plots.save_dir+'/cuts', False, '', True)
         if self.verbose: print 'Done'
-
-    def load_event_range(self, event_range=None):
-        """
-        Gets the event range cut. If the arguments are negative, they are interpreted as time in minutes. Therefore, e.g.
-        load_event_range(-10, 700000) means that only events are considered, which fulfill: >10 minutes after run start event number < 700000
-        :param event_range:
-        :return: event range
-        """
-        if event_range is None:
-            event_range = [0, 0]
-        for i, value in enumerate(event_range):
-            if value < 0:
-                event_range[i] = self.analysis.get_event_at_time(time_sec=-1 * value * 60)
-        if not event_range[1]:
-            event_range[1] = self.analysis.get_event_at_time(-1)
-        if not event_range[0]:
-            event_range[0] = self.CutConfig['ExcludeFirst']
-        return event_range
-
-    def set_event_range(self, event_range):
-        self.CutConfig['EventRange'] = self.load_event_range(event_range)
-
-    def load_exclude_first(self, value):
-        """
-        Sets how many events at the very beginning of the run should be excluded. if the argument is negative, it will be interpreted as time in minutes. For a positive argument it is interpreted as
-        maximum event number.
-        :param value: events or time in minutes
-        :return:
-        """
-        if value > 0:
-            self.EasyCutStrings['ExcludeFirst'] = str(int(value) / 1000) + 'k+'
-            return value
-        elif value == 0:
-            self.EasyCutStrings['ExcludeFirst'] = ''
-            return 0
-        else:
-            self.EasyCutStrings['ExcludeFirst'] = str(-1 * value) + 'min+'
-            seconds = -1 * value * 60
-            event = self.analysis.get_event_at_time(seconds)
-            return event
-
-    def set_exclude_first(self, value):
-        self.CutConfig['ExcludeFirst'] = self.load_exclude_first(value)
-
-    def load_peakpos_high(self, high):
-        if high > 0:
-            self.EasyCutStrings['peakPos_high'] = 'peakPos<{high}'.format(high=high)
-            return high
-        else:
-            return -1
-
-    def set_peakpos_high(self, value):
-        self.CutConfig['peakPos_high'] = self.load_peakpos_high(value)
-
-    def load_spread_low(self, value):
-        if value > 0:
-            self.EasyCutStrings['spread_low'] = 'spread>{low}'.format(low=value)
-            return value
-        else:
-            return -1
-
-    # endregion
-
-    def get_event_range(self):
-        """
-        Returns a the lowest and highest event numbers to consider in the analysis.
-        :return: cut eventrange as list, empty if no cut applied
-        """
-        return self.CutConfig["EventRange"]
-
-    def get_min_event(self):
-        """ :return: the smallest event number satisfying the cut conditions. """
-        return self.CutConfig["EventRange"][0]
-
-    def get_n_events(self):
-        """ :return: number of events in EventRange """
-        total_events = self.analysis.get_event_at_time(-1)
-        return total_events if not self.CutConfig["EventRange"] else self.CutConfig["EventRange"][1] - self.CutConfig["EventRange"][0]
-
-    def get_max_event(self):
-        """ :return: maximum event number """
-        return self.CutConfig["EventRange"][1]
-
-    # ==============================================
-    # region GENERATE CUT STRINGS
-    def generate_event_range(self):
-        if self.CutConfig['EventRange']:
-            self.CutStrings['event_range'] += '(event_number<={max}&&event_number>={min})'.format(min=self.CutConfig['EventRange'][0], max=self.CutConfig['EventRange'][1])
-        elif self.CutConfig['ExcludeFirst']:
-            self.CutStrings['event_range'] += 'event_number>={min}'.format(min=self.CutConfig['ExcludeFirst'])
-
-    # def generate_chi2(self, mode='x'):
-    #     picklepath = 'Configuration/Individual_Configs/Chi2/{tc}_{run}_{mod}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run.run_number, mod=mode.title())
-    #
-    #     def func():
-    #         print 'generating chi2 cut in {mod} for run {run}...'.format(run=self.analysis.run_number, mod=mode)
-    #         gROOT.SetBatch(1)
-    #         h = TH1F('h', '', 200, 0, 100)
-    #         nq = 100
-    #         chi2s = zeros(nq)
-    #         xq = array([(i + 1) / float(nq) for i in range(nq)])
-    #         self.analysis.tree.Draw('chi2_{mod}>>h'.format(mod=mode), '', 'goff')
-    #         h.GetQuantiles(nq, chi2s, xq)
-    #         gROOT.SetBatch(0)
-    #         return chi2s
-    #
-    #     chi2 = self.do_pickle(picklepath, func)
-    #     quantile = self.CutConfig['chi2{mod}'.format(mod=mode.title())]
-    #     assert type(quantile) is int and 0 < quantile <= 100, 'chi2 quantile has to be and integer between 0 and 100'
-    #     string = 'chi2_{mod}<{val}&&chi2_{mod}>=0'.format(val=chi2[quantile], mod=mode)
-    #     return string if quantile > 0 else ''
-
-
-
-    def generate_cut_string(self):
-        """ Creates the cut string. """
-        gROOT.SetBatch(1)
-
-        # --TRACKS --
-        # self.CutStrings['chi2X'] += self.generate_chi2('x')
-        # self.CutStrings['chi2Y'] += self.generate_chi2('y')
-        # self.CutStrings['track_angle'] += self.generate_slope()
-        # self.CutStrings['tracks'] += 'n_tracks'
-
-        # -- EVENT RANGE CUT --
-        # self.generate_event_range()
-        # if self.CutConfig['EventRange']:
-        #     self.EasyCutStrings['EventRange'] = 'Evts.{min}k-{max}k'.format(min=int(self.CutConfig['EventRange'][0]) / 1000, max=int(self.CutConfig['EventRange'][1]) / 1000)
-        #     self.EasyCutStrings['ExcludeFirst'] = 'Evts.{min}k+'.format(min=int(self.CutConfig['ExcludeFirst']) / 1000) if self.CutConfig['ExcludeFirst'] > 0 else ''
-
-        # -- PULSER CUT --
-        # self.CutStrings['pulser'] += '!pulser'
-
-        # -- BEAM INTERRUPTION CUT --
-        # self.__generate_beam_interruptions()
-        # self.EasyCutStrings['noBeamInter'] = 'BeamOn'
-        # self.generate_jump_cut()
-
-        # -- MASK PIXELS --
-
-
-        # -- FIDUCIAL REGION --
-
-        gROOT.SetBatch(0)
-
-    def __generate_beam_interruptions(self):
-        """
-        This adds the restrictions to the cut string such that beam interruptions are excluded each time the cut is applied.
-        """
-        self.get_beam_interruptions()
-
-        njumps = len(self.jump_ranges["start"])
-        cut_string = ''
-        start_event = self.CutConfig['EventRange'][0]
-        for i in xrange(njumps):
-            upper = self.jump_ranges["stop"][i]
-            lower = self.jump_ranges["start"][i]
-            if upper > start_event:
-                lower = start_event if lower < start_event else lower
-                string = "!(event_number<={up}&&event_number>={low})".format(up=upper, low=lower)
-                # new separate strings
-                if cut_string != '':
-                    cut_string += '&&'
-                cut_string += string
-        self.CutStrings['beam_interruptions'] += cut_string
-    # endregion
-
-    # ==============================================
-    # region BEAM INTERRUPTS
-    def generate_jump_cut(self):
-        cut_string = ''
-        start_event = self.CutConfig['EventRange'][0]
-        for tup in self.jumps:
-            if tup[1] > start_event:
-                low = start_event if tup[0] < start_event else tup[0]
-                cut_string += '&&' if cut_string else ''
-                cut_string += '!(event_number<={up}&&event_number>={low})'.format(up=tup[1], low=low)
-        self.JumpCut += cut_string
-
-    def find_beam_interruptions(self):
-        return self.find_pad_beam_interruptions() if self.DUTType == 'pad' else self.find_pixel_beam_interruptions()
-
-    def find_pad_beam_interruptions(self):
-        """
-        Looking for the beam interruptions by investigating the pulser rate.
-        :return: interrupt list
-        """
-        print 'Searching for beam interruptions...'
-        binning = 200
-        nbins = int(self.analysis.run.tree.GetEntries()) / binning
-        rate = []
-        for i in xrange(nbins):
-            pulserevents = self.analysis.run.tree.Draw('1', 'pulser', 'goff', binning, i * binning)
-            rate.append(100 * pulserevents / binning)
-        interrupts = []
-        last_rate = 0
-        tup = [0, 0]
-        cut = 30  # if rate goes higher than n %
-        for i, value in enumerate(rate):
-            if value > cut > last_rate:
-                tup[0] = i * binning
-            elif value < cut < last_rate:
-                tup[1] = i * binning
-                interrupts.append(tup)
-                tup = [0, 0]
-            last_rate = value
-        return interrupts
-
-    def find_pixel_beam_interruptions(self):
-        # todo DA, just return the same format as find_pad_beam_interruptions does
-        pass
-
-    def __save_beaminterrupts(self):
-        # check if directories exist
-        if not os.path.exists(self.beaminterruptions_folder):
-            os.mkdir(self.beaminterruptions_folder)
-        if not os.path.exists(self.beaminterruptions_folder + '/data'):
-            os.mkdir(self.beaminterruptions_folder + '/data')
-
-        # save jump list to file
-        jumpfile = open(self.beaminterruptions_folder + '/data/{testcampaign}Run_{run}.pickle'.format(testcampaign=self.TESTCAMPAIGN, run=self.analysis.run.run_number), 'wb')
-        pickle.dump(self.jumps, jumpfile)
-        jumpfile.close()
-
-    def __create_jump_ranges(self):
-        if self.jump_ranges is None and len(self.jumps) > 0:
-            print 'generating jump ranges...'
-            start = []
-            stop = []
-            time_offset = self.analysis.run.get_time_at_event(0)
-            t_max = (self.analysis.run.get_time_at_event(-1) - time_offset) / 1000.
-            last_stop = 0
-            for tup in self.jumps:
-                t_start = (self.analysis.run.get_time_at_event(tup[0]) - time_offset) / 1000.
-                t_stop = (self.analysis.run.get_time_at_event(tup[1]) - time_offset) / 1000.
-                # add offsets from config file
-                t_start -= -1 * self.exclude_before_jump if t_start >= -1 * self.exclude_before_jump else 0
-                t_stop = t_stop + -1 * self.exclude_after_jump if t_stop + -1 * self.exclude_after_jump <= t_max else t_max
-                if t_start < last_stop:
-                    stop[-1] = self.analysis.get_event_at_time(t_stop)
-                    last_stop = t_stop
-                    continue
-                start.append(self.analysis.get_event_at_time(t_start))
-                stop.append(self.analysis.get_event_at_time(t_stop))
-                last_stop = t_stop
-
-            self.jump_ranges = {"start": start,
-                                "stop": stop}
-
-        return [self.exclude_before_jump, self.exclude_after_jump, self.jump_ranges]
-
-    def get_beam_interruptions(self):
-        """
-        If beam interruption data exist in beaminterruptions/data/, it will load it in order to account for beam interruptions. The data is stored as a list of jumps, dumped into a pickle file.
-        If no pickle file exists, it will perform a beam interruption analysis in order to identify the beam interruptions. The found interruptions are stored in a list at .jumps and dumped into
-        a pickle file.
-        :return: list of events where beam interruptions occures
-        """
-        if self.jump_ranges is None:
-            jumps_pickle = self.beaminterruptions_folder + "/data/{testcampaign}Run_{run}.pickle".format(testcampaign=self.TESTCAMPAIGN, run=self.analysis.run.run_number)
-            range_pickle = self.beaminterruptions_folder + "/data/{testcampaign}_{run}_Jump_Ranges.pickle".format(testcampaign=self.TESTCAMPAIGN, run=self.analysis.run.run_number)
-            self.jumps = self.do_pickle(jumps_pickle, self.find_beam_interruptions)
-            ranges = self.do_pickle(range_pickle, self.__create_jump_ranges)
-            # redo range pickle if config parameters have changed
-            if ranges[0] != self.exclude_before_jump or ranges[1] != self.exclude_after_jump:
-                os.remove(range_pickle)
-                ranges = self.do_pickle(range_pickle, self.__create_jump_ranges)
-            self.jump_ranges = ranges[2]
-        return self.jumps
-    # endregion
-
-    def get_easy_cutstring(self):
-        """
-        Returns a short, more user-friendly cut string, which can be used to display the cut configuration as terminal prompt or inside a canvas.
-        :return:
-        """
-        string_ = ""
-        for type_ in self.EasyCutStrings.keys():
-            if self.EasyCutStrings[type_] != "":
-                string_ += self.EasyCutStrings[type_] + ", "
-        if string_ != "":
-            string_ = string_[:-2]
-        return string_
-
-    def reset_cut(self, name):
-        if name in self.CutStrings:
-            self.CutStrings[name].SetTitle('')
-        else:
-            print 'There is no cut with the name "{name}"!'.format(name=name)
-        self.all_cut = self.generate_all_cut()
-
-    def show_cuts(self, easy=True):
-        cuts = self.EasyCutStrings if easy else self.CutStrings
-        max_len = max(len(key) for key, value in cuts.iteritems() if str(value))
-        for key, value in cuts.iteritems():
-            if not key == 'all_cuts' and str(value):
-                print '{key}:'.format(key=key.rjust(max_len)), value
-        return
