@@ -1526,7 +1526,7 @@ class PadAnalysis(Analysis):
             if (str(value) or key == 'raw') and key not in ['all_cuts', 'old_bucket']:
                 if short:
                     self.log_info('adding cut {0}'.format(key))
-                    if key not in ['raw', 'saturated', 'timing', 'pulser', 'tracks', 'fiducial']:
+                    if key not in ['raw', 'saturated', 'timing', 'bucket', 'pulser', 'tracks', 'fiducial']:
                         continue
                 key = 'beam_stops' if key.startswith('beam') else key
                 cut += value
@@ -1536,6 +1536,11 @@ class PadAnalysis(Analysis):
                 gr.SetPointError(i, 0, h.GetMeanError())
                 names.append(key)
                 i += 1
+        if short:
+            h = self.show_signal_histo(show=False)
+            gr.SetPoint(i, i, h.GetMean())
+            gr.SetPointError(i, 0, h.GetMeanError())
+            names.append('other')
         self.format_histo(gr, markersize=.2, fill_color=17, y_tit='Mean Pulse Height [au]', y_off=1.4)
         y = [gr.GetY()[i] for i in xrange(1, gr.GetN())]
         gr.GetYaxis().SetRangeUser(min(y) - 1, max(y) + 1)
@@ -1543,7 +1548,7 @@ class PadAnalysis(Analysis):
         for i in xrange(1, gr.GetN()):
             bin_x = gr.GetXaxis().FindBin(i)
             gr.GetXaxis().SetBinLabel(bin_x, names[i - 1])
-        self.RootObjects.append(self.save_histo(gr, 'CutMeans{s}'.format(s='Short' if short else ''), show, self.save_dir, bm=.30, draw_opt='bap', lm=.12))
+        self.RootObjects.append(self.save_histo(gr, 'CutMeans{s}'.format(s='Short' if short else ''), show, self.save_dir, bm=.20, draw_opt='bap', lm=.12, x_fac=1.5))
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
 
     def draw_distance_vs_ph(self, show=True, steps=10):
