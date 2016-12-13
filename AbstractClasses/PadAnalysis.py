@@ -1307,7 +1307,7 @@ class PadAnalysis(Analysis):
 
     def draw_bucket_pedestal(self, show=True, corr=True, additional_cut='', draw_option='colz'):
         gStyle.SetPalette(55)
-        cut_string = self.Cut.generate_special_cut(included=['tracks', 'pulser', 'saturated', 'timing'])
+        cut_string = self.Cut.generate_special_cut(included=['tracks', 'pulser', 'saturated'])
         cut_string += additional_cut
         h = self.draw_signal_vs_peak_position('e', '2', show, corr, cut_string, draw_option, 1, save=False)
         self.format_histo(h, x_range=[self.run.signal_regions[self.SignalRegion][0] / 2, self.run.signal_regions['e'][1] / 2], stats=0)
