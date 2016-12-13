@@ -498,8 +498,10 @@ class Elementary(object):
         except AttributeError or ReferenceError:
             pass
 
-    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=.1, draw_opt='', x_fac=None, y_fac=None,
+    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=None, draw_opt='', x_fac=None, y_fac=None,
                    l=None, logy=False, logx=False, logz=False, canvas=None, gridx=False, gridy=False, save=True, ch='dia', prnt=True, phi=None, theta=None):
+        if tm is None:
+            tm = .1 if self.MainConfigParser.getboolean('SAVE', 'activate_title') else .03
         x = self.Res if x_fac is None else int(x_fac * self.Res)
         y = self.Res if y_fac is None else int(y_fac * self.Res)
         h = histo
