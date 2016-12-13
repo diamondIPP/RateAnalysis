@@ -330,7 +330,8 @@ class AnalysisCollection(Elementary):
             gr_errors = self.make_tgrapherrors('gFullError', 'stat. + repr. error', marker=0, color=602, marker_size=0)
             not_found_for = False in [coll.run.FoundForRate for coll in self.collection.itervalues()]
 
-            flux_errors = self.draw_ph_distributions_below_flux(flux=80, show=False, save_plot=False)
+            # FIXME put meaningful reproducable errors!
+            flux_errors = self.draw_ph_distributions_below_flux(int(self.FirstAnalysis.run.n_entries * .3 / 60), flux=80, show=False, save_plot=redo)
             log_message('Getting pulse heights{0}'.format(' vs time' if vs_time else ''))
             rel_sys_error = flux_errors[1] / flux_errors[0]
             i, j = 0, 0
