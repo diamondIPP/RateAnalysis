@@ -139,7 +139,7 @@ class SignalPixAnalysis(Analysis):
         if do_res_ana:
             self.Cut.do_res_analysis()
         if do_cut_ana:
-            self.do_cuts_analysis(do_occupancy, do_pulse_height, False) # DA: TODO change to True
+            self.do_cuts_analysis(do_occupancy, do_pulse_height, True) # DA: TODO change to True
 
 
         # if do_pulse_height: self.valueAverage = {iroc: {k: 0 for k in xrange(self.kmax)} for iroc in xrange(self.num_devices)}

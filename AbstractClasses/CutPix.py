@@ -406,9 +406,7 @@ class CutPix(Elementary):
                             self.h_ph2_map_cuts[iroc][cut].GetMinimumBin())) and self.dict_cuts[cut] > 3:
                     min_ph2_map[iroc] = self.h_ph2_map_cuts[iroc][cut].GetBinContent(self.h_ph2_map_cuts[iroc][cut].GetMinimumBin())
                 if self.verbose: print 'Done'
-                if normalize_ph_plots:
-                    break
-                else:
+                if not normalize_ph_plots:
                     if self.verbose: print 'Saving for ROC {r} with cummulative cut {c}...'.format(r=iroc, c=cut), ; sys.stdout.flush()
                     self.plots.set_2D_options(self.h_ph1_evt_cuts[iroc][cut], 'event', 'ph(e)', 'entries')
                     self.plots.set_1D_options('ph',self.h_ph1_cuts[iroc][cut],'ph 1 pix cl (e)', 'entries')
@@ -433,9 +431,6 @@ class CutPix(Elementary):
             for iroc in self.duts_list:
                 for cut in self.cut_names:
                     if self.verbose: print 'Saving for ROC {r} with cummulative cut {c}...'.format(r=iroc, c=cut), ; sys.stdout.flush()
-                    self.plots.set_2D_options(self.h_adc_evt_cuts[iroc][cut], 'event', 'ADC', 'entries')
-                    self.plots.set_1D_options('adc',self.h_adc_cuts[iroc][cut], 'ADC', 'entries')
-                    self.plots.set_2D_options(self.h_adc_map_cuts[iroc][cut], 'col', 'row', 'ADC')
                     self.plots.set_2D_options(self.h_ph1_evt_cuts[iroc][cut], 'event', 'ph(e)', 'entries', min_val=minz_ph1, max_val=maxz_ph1)
                     self.plots.set_1D_options('ph',self.h_ph1_cuts[iroc][cut],'ph 1 pix cl (e)', 'entries')
                     self.plots.set_2D_options(self.h_ph2_evt_cuts[iroc][cut], 'event', 'ph(e)', 'entries', min_val=minz_ph2, max_val=maxz_ph2)
@@ -443,9 +438,6 @@ class CutPix(Elementary):
                     self.plots.set_2D_options(self.h_ph1_map_cuts[iroc][cut], 'x(um)', 'y(um)', 'ph 1 pix cluster(e)', min_val=min_ph1_map[iroc], max_val=max_ph1_map[iroc])
                     self.plots.set_2D_options(self.h_ph2_map_cuts[iroc][cut], 'x(um)', 'y(um)', 'ph 2 pix cluster(e)', min_val=min_ph2_map[iroc], max_val=max_ph2_map[iroc])
 
-                    self.plots.save_individual_plots(self.h_adc_evt_cuts[iroc][cut], 'adc_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'adc_evt_roc{r}_{c}'.format(r=iroc,c=cut), None, 'colz', 1, self.plots.save_dir+'/cuts')
-                    self.plots.save_individual_plots(self.h_adc_cuts[iroc][cut], 'adc_roc{r}_{c}'.format(r=iroc,c=cut), 'adc_roc{r}_{c}'.format(r=iroc,c=cut), None, '', 1, self.plots.save_dir+'/cuts')
-                    self.plots.save_individual_plots(self.h_adc_map_cuts[iroc][cut], 'adc_map_roc{r}_{c}'.format(r=iroc,c=cut), 'adc_map_roc{r}_{c}'.format(r=iroc,c=cut), self.fid_cut_hitmap_roc[iroc], 'colz', 1, self.plots.save_dir+'/cuts')
                     self.plots.save_individual_plots(self.h_ph1_evt_cuts[iroc][cut], 'ph1_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'ph1_evt_roc{r}_{c}'.format(r=iroc,c=cut), None, 'colz', 1, self.plots.save_dir+'/cuts')
                     self.plots.save_individual_plots(self.h_ph2_evt_cuts[iroc][cut], 'ph2_evt_roc{r}_{c}'.format(r=iroc,c=cut), 'ph2_evt_roc{r}_{c}'.format(r=iroc,c=cut), None, 'colz', 1, self.plots.save_dir+'/cuts')
                     self.plots.save_individual_plots(self.h_ph1_cuts[iroc][cut], 'ph1_roc{r}_{c}'.format(r=iroc,c=cut), 'ph1_roc{r}_{c}'.format(r=iroc,c=cut), None, '', 1, self.plots.save_dir+'/cuts')
