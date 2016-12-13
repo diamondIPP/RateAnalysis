@@ -655,7 +655,7 @@ class Elementary(object):
         make_transparent(p0)
         scale_multigraph(mg1)
         rel_y_range = [.7, 1.3] if rel_y_range is None else rel_y_range
-        self.format_histo(mg1, title='', y_range=rel_y_range, y_tit='Rel. ph [au]' if not scale > 1 else ' ', y_off=.66, tit_size=.1 * scale, x_off=99, lab_size=.1 * scale)
+        self.format_histo(mg1, title='', y_range=rel_y_range, y_tit='Rel. ph [au]' if not scale > 1 else ' ', y_off=66, tit_size=.1 * scale, x_off=99, lab_size=.1 * scale)
         mg1.GetYaxis().SetNdivisions(3)
         hide_axis(mg1.GetXaxis())
         mg1.Draw('alp')
