@@ -264,6 +264,12 @@ def dir_exists(path):
     return os.path.isdir(path)
 
 
+def ensure_dir(path):
+    if not os.path.exists(path):
+        log_message('Creating directory: {d}'.format(d=path))
+        os.makedirs(path)
+
+
 def make_col_str(col):
     return '{0:2d}'.format(int(col)) if int(col) > 1 else '{0:3.1f}'.format(col)
 

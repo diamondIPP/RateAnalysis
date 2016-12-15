@@ -56,6 +56,11 @@
           <option value="TH2I" />
           <option value="kPink" />
           <option value="TGraph2DErrors" />
+          <option value="TH1D" />
+          <option value="kFALSE" />
+          <option value="kTRUE" />
+          <option value="kBlack" />
+          <option value="TFormula" />
         </list>
       </option>
     </inspection_tool>

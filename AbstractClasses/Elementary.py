@@ -79,11 +79,10 @@ class Elementary(object):
         # set run_number to zero if none is given to prevent crash
         run_number = 0 if run_number is None else run_number
         if self.MainConfigParser.has_section(self.TESTCAMPAIGN):
-            n_splits = self.MainConfigParser.getint(self.TESTCAMPAIGN, 'n_splits')
             split_runs = [0] + loads(self.MainConfigParser.get(self.TESTCAMPAIGN, 'split_runs')) + [int(1e10)]
-            for i in xrange(1, n_splits + 1):
+            for i in xrange(1, len(split_runs)):
                 if split_runs[i - 1] <= run_number < split_runs[i]:
-                    config = '{dir}/Configuration/RunConfig_{tc}_pad{i}.cfg'.format(dir=self.get_program_dir(), tc=self.TESTCAMPAIGN, i=i)
+                    config = '{dir}/Configuration/RunConfig_{tc}_{i}.cfg'.format(dir=self.get_program_dir(), tc=self.TESTCAMPAIGN, i=i)
                     run_parser.read(config)
                     break
         else:
@@ -325,7 +324,7 @@ class Elementary(object):
         return string
 
     @staticmethod
-    def do_pickle(path, function, value=None):
+    def do_pickle(path, function, value=None, params=None):
         if value is not None:
             f = open(path, 'w')
             pickle.dump(value, f)
@@ -336,7 +335,7 @@ class Elementary(object):
             ret_val = pickle.load(f)
             f.close()
         except IOError:
-            ret_val = function()
+            ret_val = function() if params is None else function(params)
             f = open(path, 'w')
             pickle.dump(ret_val, f)
             f.close()

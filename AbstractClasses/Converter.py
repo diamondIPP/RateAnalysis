@@ -10,6 +10,7 @@ from re import sub
 from shutil import move
 from os import remove
 from os.path import dirname, realpath
+from os.path import join as join_path
 from glob import glob
 from Utils import *
 from ROOT import TProfile, TFile
@@ -43,8 +44,10 @@ class Converter:
         self.NChannels = 9 if self.ConverterTree.startswith('caen') else 4
 
         # directories
+        self.DataDir = self.parser.get('BASIC', 'datapath')
+        self.TcDir = 'psi_{y}_{m}'.format(y=self.TestCampaign[:4], m=self.TestCampaign[-2:])
         self.RawFileDir = self.load_raw_file()
-        self.root_file_dir = self.parser.get('BASIC', 'runpath')
+        self.RootFileDir = self.load_root_file_dir()
         self.SoftwareDir = self.load_soft_dir()
         self.EudaqDir = '{soft}/{d}'.format(soft=self.SoftwareDir, d=self.SoftConfig.get('Converter', 'eudaqfolder'))
         self.AlignDir = '{soft}/{d}'.format(soft=self.SoftwareDir, d=self.SoftConfig.get('Converter', 'alignfolder'))
@@ -84,6 +87,14 @@ class Converter:
             log_critical('Could not find the software directory: {d}\nPlease set it correctly in Configuration/soft.conf'.format(d=file_dir))
         return file_dir
 
+    def load_root_file_dir(self):
+        if self.parser.has_option('BASIC', 'runpath'):
+            path = self.parser.get('BASIC', 'runpath')
+        else:
+            path = join_path(self.DataDir, self.TcDir, '{dut}'.format(dut='pad' if self.Type == 'pad' else 'pixel'))
+        ensure_dir(path)
+        return path
+
     def load_prefix(self):
         pref = self.parser.get('ConverterFolders', "rawprefix")
         if pref == 'long':
@@ -95,7 +106,7 @@ class Converter:
 
     def load_raw_file(self):
         conf = self.parser.get('ConverterFolders', 'rawfolder')
-        file_dir = '/data/psi_{y}_{m}/raw'.format(y=self.TestCampaign[:4], m=self.TestCampaign[-2:]) if conf == 'None' else conf
+        file_dir = join_path(self.DataDir, self.TcDir, 'raw') if conf == 'None' else conf
         if not dir_exists(file_dir):
             log_critical('Could not find the raw file directory: {d}'.format(d=file_dir))
         return file_dir
@@ -144,14 +155,14 @@ class Converter:
 
     def get_root_file_path(self):
         file_name = '{prefix}{run}.root'.format(prefix=self.root_prefix, run=str(self.Run).zfill(4))
-        return self.root_file_dir + '/' + file_name
+        return self.RootFileDir + '/' + file_name
 
     def get_tracking_file_path(self, run_number):
         file_name = '{prefix}{run}_withTracks.root'.format(prefix=self.root_prefix, run=str(run_number).zfill(4))
-        return self.root_file_dir + '/' + file_name
+        return self.RootFileDir + '/' + file_name
 
     def get_final_file_path(self, run_number):
-        return '{dir}/TrackedRun{run:03d}.root'.format(run=run_number, dir=self.root_file_dir)
+        return '{dir}/TrackedRun{run:03d}.root'.format(run=run_number, dir=self.RootFileDir)
 
     def find_root_file(self, run_number):
         old_track_file = self.get_tracking_file_path(run_number)
@@ -191,7 +202,7 @@ class Converter:
             raw_file_path = self.find_raw_file(run_number)
             assert raw_file_path
             # go to root directory
-            os.chdir(self.root_file_dir)
+            os.chdir(self.RootFileDir)
             # prepare converter command
             conf_string = '-c {eudaq}/conf/{file}'.format(eudaq=self.EudaqDir, file=self.converter_config_path)
             tree_string = '-t {tree}'.format(tree=self.ConverterTree)
@@ -245,7 +256,7 @@ class Converter:
         root_file_path = self.get_root_file_path()
         curr_dir = os.getcwd()
         os.chdir(self.TrackingDir)
-        tracking_cmd = "{dir}/TrackingTelescope {root} 0 {nr}".format(dir=self.TrackingDir, root=root_file_path, nr=self.TelescopeID)
+        tracking_cmd = '{dir}/TrackingTelescope {root} 0 {nr}{tr}'.format(dir=self.TrackingDir, root=root_file_path, nr=self.TelescopeID, tr='' if self.Type == 'pad' else ' 1')
         print '\nSTART TRACKING FOR RUN', run_number, '\n'
         print tracking_cmd
         os.system(tracking_cmd)
@@ -253,7 +264,7 @@ class Converter:
         # move file to data folder
         file_name = '/{prefix}{run}_withTracks.root'.format(prefix=self.root_prefix, run=str(run_number).zfill(4))
         path = self.TrackingDir + file_name
-        move(path, self.root_file_dir)
+        move(path, self.RootFileDir)
 
     def load_polarities(self, info):
         active_regions = self.parser.getint('ROOTFILE_GENERATION', 'active_regions')

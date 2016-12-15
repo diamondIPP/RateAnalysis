@@ -77,13 +77,14 @@ class Run(Elementary):
         Elementary.__init__(self, verbose=verbose)
 
         # configuration
-        self.NChannels = 9 if self.run_config_parser.get('BASIC', 'digitizer').lower() == 'caen' else 4
+        self.DUTType = self.load_dut_type()
+        self.NChannels = self.load_pre_n_channels()
         self.channels = self.load_channels()
         self.trigger_planes = [1, 2]
-        self.DUTType = self.load_dut_type()
+        self.channels = [0, 3]
         self.filename = self.run_config_parser.get('BASIC', 'filename')
         self.treename = self.run_config_parser.get('BASIC', 'treename')
-        self.run_path = self.run_config_parser.get('BASIC', 'runpath')
+        self.run_pathruninfofile = self.run_config_parser.get('BASIC', 'runpath')
         self.runinfofile = self.run_config_parser.get('BASIC', 'runinfofile')
         self.maskfilepath = self.run_config_parser.get('BASIC', 'maskfilepath')
         self.createNewROOTFiles = self.run_config_parser.getboolean('BASIC', 'createNewROOTFiles')
@@ -156,13 +157,22 @@ class Run(Elementary):
                 data = self.region_information[i + 1].strip(' ').split(',')
                 return len(data)
 
+    def load_pre_n_channels(self):
+        if self.DUTType == 'pad':
+            return 9 if self.run_config_parser.get('BASIC', 'digitizer').lower() == 'caen' else 4
+        else:
+            return None
+
     def load_channels(self):
-        binary = self.run_config_parser.getint('ROOTFILE_GENERATION', 'active_regions')
-        if hasattr(self, 'region_information'):
-            for i, line in enumerate(self.region_information):
-                if 'active_regions:' in line:
-                    binary = int(line.strip('active_regions:'))
-        return [i for i in xrange(self.NChannels) if self.has_bit(binary, i)]
+        if self.DUTType == 'pad':
+            binary = self.run_config_parser.getint('ROOTFILE_GENERATION', 'active_regions')
+            if hasattr(self, 'region_information'):
+                for i, line in enumerate(self.region_information):
+                    if 'active_regions:' in line:
+                        binary = int(line.strip('active_regions:'))
+            return [i for i in xrange(self.NChannels) if self.has_bit(binary, i)]
+        else:
+            return None
 
     def load_bias(self):
         bias = {}

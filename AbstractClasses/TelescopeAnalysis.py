@@ -9,6 +9,8 @@ from Elementary import Elementary
 from RunClass import Run
 from Cut import Cut
 from Utils import *
+from CutPix import CutPix
+from Plots import Plots
 
 
 class Analysis(Elementary):
@@ -47,13 +49,22 @@ class Analysis(Elementary):
         self.channel = self.channel if hasattr(self, 'channel') else None
 
         # general for pads and pixels
-        self.Cut = Cut(self, skip=not load_tree)
-        if load_tree:
-            self.StartEvent = self.Cut.CutConfig['EventRange'][0]
-            self.EndEvent = self.Cut.CutConfig['EventRange'][1]
+        # FIXME: use parent Cut class here!
+        if self.DUTType == 'pad':
+            self.Cut = Cut(self, skip=not load_tree)
+            if load_tree:
+                self.StartEvent = self.Cut.CutConfig['EventRange'][0]
+                self.EndEvent = self.Cut.CutConfig['EventRange'][1]
 
         # alignment
-            self.IsAligned = self.check_alignment(draw=False, save_plot=False)
+                self.IsAligned = self.check_alignment(draw=False, save_plot=False)
+
+        # pixel TODO: uniform
+        if self.DUTType == 'pixel':
+            self.num_devices = 7
+            self.plots = Plots(self.run.n_entries, self.run, self.num_devices, -1, [0, 1, 2, 3], 4, 5, 6)
+            self.Cut = CutPix(self)
+            self.StartEvent = 1  # DA: for now... TODO pixel cuts!
 
         # save histograms // canvases
         self.signal_canvas = None
@@ -337,8 +348,7 @@ class Analysis(Elementary):
                 align = self.__check_alignment_histo(h)
                 return align
             else:
-                # todo put some function for the pixel here!
-                pass
+                return True  # DA: pixel doesn't have pulser, todo make correlations between planes to test misalignment
 
         aligned = func() if draw else None
         aligned = self.do_pickle(pickle_path, func, aligned)

@@ -4,8 +4,6 @@ pedestal_region = ab
 peak_integral = 2
 
 [CUT]
-fid_cuts = {"poly-B2": [-0.08, 0.16, -0.10, 0.14], "S129": [-0.11, 0.15, -0.11, 0.14]}
-threshold = []
 EventRange = [0, 0]
 # neg in seconds // pos in events
 excludeBeforeJump = -4
@@ -18,28 +16,24 @@ pedestalsigma = 3
 # quantile
 chi2X = 90
 chi2Y = 90
-# um
-rhit = 500
 # degrees
 track_angle = 2
 Mask rows # [roc; list (: means a range) (; is used to separate)]
-MaskRowsROC4 = [4;0:40;79]
-MaskRowsROC5 = [5;0:40]
-MaskRowsROC6 = [6;0:18;79]
+MaskRowsDUT1 = [4;0:40;79]
+MaskRowsDUT2 = [5;0:40]
+MaskRowsDUT3 = [6;0:18;79]
 # Mask columns # [roc; list (: means a range) (; is used to separate)]
-MaskColsROC4 = [4;0:12;39:51]
-MaskColsROC5 = [5;0:12;39:51]
-MaskColsROC6 = [6;0:14;51]
+MaskColsDUT1 = [4;0:12;39:51]
+MaskColsDUT2 = [5;0:12;39:51]
+MaskColsDUT3 = [6;0:14;51]
 # Mask pixels
-MaskPixelsROC4 = [4;]
-MaskPixelsROC5 = [5;32,61;31,61;37,77]
-MaskPixelsROC6 = [6;]
+MaskPixelsDUT1 = [4;]
+MaskPixelsDUT2 = [5;32,61;31,61;37,77]
+MaskPixelsDUT3 = [6;]
 # Fiducial Regions # [roc; xmin, xmax; ymin, ymax] inclusive
-# FidRegionROC4 = [4;19,27;41,78]
-FidRegionROC4 = [4;26,33;57,68]
-FidRegionROC5 = [5;24,31;64,75]
-# FidRegionROC6 = [6;16,45;24,73]
-FidRegionROC6 = [6;28,35;48,59]
+FidRegionDUT1 = [4;19,27;41,78]
+FidRegionDUT2 = [5;25,31;65,75]
+FidRegionDUT3 = [6;16,45;24,73]
 beaminterruptions_folder = beaminterruptions
 
 [SAVE]

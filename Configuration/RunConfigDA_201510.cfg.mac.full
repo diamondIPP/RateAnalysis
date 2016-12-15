@@ -22,7 +22,7 @@ pulser_drs4_threshold = 80
 eudaqfolder = /Users/diegoalejandro/Documents/eudaq/eudaq-drs4
 converterFile = converter_telescope.conf
 trackingfolder = /Users/diegoalejandro/Documents/TrackingTelescope/TrackingTelescope
-rawfolder = /Users/diegoalejandro/DataSmall/psi_2015_10/raw
+rawfolder = /Users/diegoalejandro/Data/psi_2015_10/raw
 rawprefix = run15100
 converterprefix = test15100
 
