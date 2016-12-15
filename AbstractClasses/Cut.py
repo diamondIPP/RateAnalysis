@@ -25,8 +25,6 @@ class Cut(Elementary):
             # config
             self.DUTType = self.load_dut_type()
             self.beaminterruptions_folder = self.ana_config_parser.get('CUT', 'beaminterruptions_folder')
-            self.exclude_before_jump = self.ana_config_parser.getint('CUT', 'excludeBeforeJump')
-            self.exclude_after_jump = self.ana_config_parser.getint('CUT', 'excludeAfterJump')
             self.CutConfig = {}
 
             # define cut strings
@@ -142,6 +140,7 @@ class Cut(Elementary):
 
     def load_config(self):
         self.CutConfig['IndividualChCut'] = ''
+        self.CutConfig['JumpExcludeRange'] = {'before': self.ana_config_parser.getint('CUT', 'excludeBeforeJump'), 'after': self.ana_config_parser.getint('CUT', 'excludeAfterJump')}
         self.CutConfig['ExcludeFirst'] = self.load_exclude_first(self.ana_config_parser.getint('CUT', 'excludefirst'))
         self.CutConfig['EventRange'] = self.load_event_range(json.loads(self.ana_config_parser.get('CUT', 'EventRange')))
         self.CutConfig['chi2X'] = self.ana_config_parser.getint('CUT', 'chi2X')
@@ -395,6 +394,7 @@ class Cut(Elementary):
         jumpfile.close()
 
     def __create_jump_ranges(self):
+        ex_range = self.CutConfig['JumpExcludeRange']
         if self.jump_ranges is None and len(self.jumps) > 0:
             print 'generating jump ranges...'
             start = []
@@ -405,9 +405,9 @@ class Cut(Elementary):
             for tup in self.jumps:
                 t_start = (self.analysis.run.get_time_at_event(tup[0]) - time_offset) / 1000.
                 t_stop = (self.analysis.run.get_time_at_event(tup[1]) - time_offset) / 1000.
-                # add offsets from config file
-                t_start -= -1 * self.exclude_before_jump if t_start >= -1 * self.exclude_before_jump else 0
-                t_stop = t_stop + -1 * self.exclude_after_jump if t_stop + -1 * self.exclude_after_jump <= t_max else t_max
+                # add additional time around jumps to be safe
+                t_start -= ex_range['before'] if t_start >= ex_range['before'] else 0
+                t_stop = t_stop + ex_range['after'] if t_stop + ex_range['after'] <= t_max else t_max
                 if t_start < last_stop:
                     stop[-1] = self.analysis.get_event_at_time(t_stop)
                     last_stop = t_stop
@@ -419,7 +419,7 @@ class Cut(Elementary):
             self.jump_ranges = {"start": start,
                                 "stop": stop}
 
-        return [self.exclude_before_jump, self.exclude_after_jump, self.jump_ranges]
+        return [ex_range['before'], ex_range['after'], self.jump_ranges]
 
     def get_beam_interruptions(self):
         """
@@ -434,7 +434,8 @@ class Cut(Elementary):
             self.jumps = self.do_pickle(jumps_pickle, self.find_beam_interruptions)
             ranges = self.do_pickle(range_pickle, self.__create_jump_ranges)
             # redo range pickle if config parameters have changed
-            if ranges[0] != self.exclude_before_jump or ranges[1] != self.exclude_after_jump:
+            ex_range = self.CutConfig['JumpExcludeRange']
+            if ranges[0] != ex_range['before'] or ranges[1] != ex_range['after']:
                 os.remove(range_pickle)
                 ranges = self.do_pickle(range_pickle, self.__create_jump_ranges)
             self.jump_ranges = ranges[2]
