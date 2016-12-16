@@ -2015,14 +2015,13 @@ class PadAnalysis(Analysis):
         return names
 
     def __get_binning(self):
-        jumps = self.Cut.jump_ranges
-        if jumps is None:
-            jumps = {'start': [self.EndEvent], 'stop': [self.EndEvent]}
-
-        n_jumps = len(jumps['start'])
+        jumps = self.Cut.Interruptions
+        n_jumps = len(jumps)
         bins = [self.Cut.get_min_event()]
         ind = 0
-        for start, stop in zip(jumps['start'], jumps['stop']):
+        for dic in jumps:
+            start = dic['i']
+            stop = dic['f']
             gap = stop - start
             # continue if first start and stop outside min event
             if stop < bins[-1]:
@@ -2038,8 +2037,8 @@ class PadAnalysis(Analysis):
                 bins.append(bins[-1] + self.BinSize)
             # two jumps shortly after one another
             if ind < n_jumps - 2:
-                next_start = jumps['start'][ind + 1]
-                next_stop = jumps['stop'][ind + 1]
+                next_start = jumps[ind + 1]['i']
+                next_stop = jumps[ind + 1]['f']
                 if bins[-1] + self.BinSize + gap > next_start:
                     gap2 = next_stop - next_start
                     bins.append(bins[-1] + self.BinSize + gap + gap2)
@@ -2049,7 +2048,7 @@ class PadAnalysis(Analysis):
                 bins.append(bins[-1] + self.BinSize + gap)
             ind += 1
         # fill up the end
-        if ind == n_jumps - 1 and bins[-1] >= jumps['stop'][-1] or ind == n_jumps:
+        if ind == n_jumps - 1 and bins[-1] >= jumps[-1]['f'] or ind == n_jumps:
             while bins[-1] + self.BinSize < self.run.n_entries:
                 bins.append(bins[-1] + self.BinSize)
         return bins

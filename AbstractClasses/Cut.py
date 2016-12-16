@@ -1,6 +1,5 @@
-import pickle
 import json
-from numpy import array, zeros, arange, delete
+from numpy import array, zeros
 from Elementary import Elementary
 from ROOT import TCut, gROOT, TH1F
 from collections import OrderedDict
@@ -18,6 +17,7 @@ class Cut(Elementary):
         if not skip:
             self.analysis = parent_analysis
             Elementary.__init__(self, verbose=self.analysis.verbose)
+            self.RunNumber = self.analysis.run_number
 
             # saving stuff
             self.RootObjects = []
@@ -35,8 +35,8 @@ class Cut(Elementary):
             self.JumpCut = TCut('JumpCut', '')
 
             # beam interrupts
-            self.jumps = None
-            self.jump_ranges = None
+            self.Jumps = None
+            self.Interruptions = None
 
             self.load_config()
             # generate cut strings
@@ -70,22 +70,6 @@ class Cut(Elementary):
                 cut += value
         return cut
 
-    def get_included_events(self, maxevent=None):
-        """
-        :param maxevent:
-        :return: list of included event numbers not excluded by: excludeFirst, EventRange or BeamInterruptions
-        """
-        minevent = self.get_min_event()
-        maxevent = self.get_max_event() if maxevent is None else maxevent
-
-        excluded = [i for i in arange(0, minevent)]  # first events
-        for start, stop in zip(self.jump_ranges['start'], self.jump_ranges['stop']):
-            excluded += [i for i in xrange(start, stop + 1)]  # events around jumps
-        excluded.sort()
-        all_events = arange(0, maxevent)
-        included = delete(all_events, excluded)
-        return included
-    
     @staticmethod
     def init_easy_cutstrings():
         dic = OrderedDict()
@@ -312,33 +296,18 @@ class Cut(Elementary):
         gROOT.SetBatch(0)
 
     def generate_beam_interruptions(self):
-        """
-        This adds the restrictions to the cut string such that beam interruptions are excluded each time the cut is applied.
-        """
-        self.get_beam_interruptions()
-        if self.jump_ranges is None:
-            return TCut('')
-
-        cut_string = ''
-        njumps = len(self.jump_ranges['start'])
-        start_event = self.CutConfig['EventRange'][0]
-        for i in xrange(njumps):
-            upper = self.jump_ranges['stop'][i]
-            lower = self.jump_ranges['start'][i]
-            if upper > start_event:
-                lower = start_event if lower < start_event else lower
-                string = '!(event_number<={up}&&event_number>={low})'.format(up=upper, low=lower)
-                # new separate strings
-                if cut_string != '':
-                    cut_string += '&&'
-                cut_string += string
+        """ This adds the restrictions to the cut string such that beam interruptions are excluded each time the cut is applied. """
+        interruptions = self.get_beam_interruptions()
+        cut_string = TCut('')
+        for interr in interruptions:
+            cut_string += TCut('event_number<{low}||event_number>{high}'.format(low=interr['i'], high=interr['f']))
         self.EasyCutStrings['noBeamInter'] = 'BeamOn'
         return TCut(cut_string)
 
     def generate_jump_cut(self):
         cut_string = ''
         start_event = self.CutConfig['EventRange'][0]
-        for tup in self.jumps:
+        for tup in self.Jumps:
             if tup[1] > start_event:
                 low = start_event if tup[0] < start_event else tup[0]
                 cut_string += '&&' if cut_string else ''
@@ -349,7 +318,41 @@ class Cut(Elementary):
     # ==============================================
     # region BEAM INTERRUPTS
     def find_beam_interruptions(self):
-        return self.find_pad_beam_interruptions() if self.DUTType == 'pad' else self.find_pixel_beam_interruptions()
+        dic = self.CutConfig['JumpExcludeRange']
+        interruptions = self.find_pad_beam_interruptions() if self.DUTType == 'pad' else self.find_pixel_beam_interruptions()
+        dic['interruptions'] = interruptions[0]
+        dic['jumps'] = interruptions[1]
+        return dic
+
+    def find_pixel_beam_interruptions(self, show=False):
+        """ Locates the beam interruptions and cuts some seconds before and some seconds after which are specified in the config file. overlapping segments are fused to one to reduce the size
+            of the string. An average of the number of event per time bin is calculated and every bin below 90% or above 120% is excluded """
+        # time is in minutes. good results found with bin size of 10 seconds
+        bin_size = 10  # seconds
+        bins = int(self.analysis.run.totalMinutes * 60 / bin_size)
+        self.set_root_output(0)
+        h1 = TH1F('h_beam_time_', 'h_beam_time_', bins, 0, self.analysis.run.totalMinutes)
+        self.analysis.tree.Draw('(time - {off}) / 60000.>>h_beam_time_'.format(off=self.analysis.run.startTime), '', 'goff')
+        self.draw_histo(h1)
+        mean = h1.Integral() / float(h1.GetNbinsX())
+        interruptions = []
+        jumps = []
+        n_interr = 0
+        ex_range = {key: value / 60. for key, value in self.CutConfig['JumpExcludeRange'].iteritems()}
+        for t in xrange(1, h1.GetNbinsX() + 1):
+            if h1.GetBinContent(t) < mean * .6 or h1.GetBinContent(t) > mean * 1.3:
+                low_edge = h1.GetBinLowEdge(t)
+                bin_width = h1.GetBinWidth(t)
+                if not n_interr or (not low_edge - ex_range['before'] < interruptions[n_interr - 1]['f'] and n_interr) :
+                    interruptions.append({'i': low_edge - ex_range['before'], 'f': low_edge + bin_width + ex_range['after']})
+                    jumps.append([low_edge, low_edge + bin_width])
+                    n_interr += 1
+                else:
+                    interruptions[n_interr - 1]['f'] = low_edge + bin_width + ex_range['after']
+                    jumps[n_interr - 1][1] = low_edge + bin_width
+        interruptions = [{key: self.analysis.get_event_at_time(value * 60) for key, value in dic.iteritems()} for dic in interruptions]
+        jumps = [[self.analysis.get_event_at_time(t * 60) for t in jump] for jump in jumps]
+        return interruptions, jumps
 
     def find_pad_beam_interruptions(self):
         """ Looking for the beam interruptions by investigating the pulser rate. """
@@ -360,7 +363,7 @@ class Cut(Elementary):
         for i in xrange(nbins):
             pulserevents = self.analysis.run.tree.Draw('1', 'pulser', 'goff', binning, i * binning)
             rate.append(100 * pulserevents / binning)
-        interrupts = []
+        jumps = []
         last_rate = 0
         tup = [0, 0]
         cut = 40  # if rate goes higher than n %
@@ -369,72 +372,55 @@ class Cut(Elementary):
                 tup[0] = i * binning
             elif value < cut <= last_rate:
                 tup[1] = i * binning
-                interrupts.append(tup)
+                jumps.append(tup)
                 tup = [0, 0]
             last_rate = value
-        return interrupts
+        interruptions = self.__create_jump_ranges(jumps)
+        return interruptions, jumps
 
-    def find_pixel_beam_interruptions(self):
-        # todo DA, just return the same format as find_pad_beam_interruptions does
-        pass
-
-    def __save_beaminterrupts(self):
-        # check if directories exist
-        ensure_dir(self.BeaminterruptionsDir)
-        ensure_dir(joinpath(self.BeaminterruptionsDir, 'data'))
-
-        # save jump list to file
-        jumpfile = open(self.BeaminterruptionsDir + '/data/{testcampaign}Run_{run}.pickle'.format(testcampaign=self.TESTCAMPAIGN, run=self.analysis.run.run_number), 'wb')
-        pickle.dump(self.jumps, jumpfile)
-        jumpfile.close()
-
-    def __create_jump_ranges(self):
+    def __create_jump_ranges(self, jumps):
         ex_range = self.CutConfig['JumpExcludeRange']
-        if self.jump_ranges is None and len(self.jumps) > 0:
-            print 'generating jump ranges...'
-            start = []
-            stop = []
-            time_offset = self.analysis.run.get_time_at_event(0)
-            t_max = (self.analysis.run.get_time_at_event(-1) - time_offset) / 1000.
-            last_stop = 0
-            for tup in self.jumps:
-                t_start = (self.analysis.run.get_time_at_event(tup[0]) - time_offset) / 1000.
-                t_stop = (self.analysis.run.get_time_at_event(tup[1]) - time_offset) / 1000.
-                # add additional time around jumps to be safe
-                t_start -= ex_range['before'] if t_start >= ex_range['before'] else 0
-                t_stop = t_stop + ex_range['after'] if t_stop + ex_range['after'] <= t_max else t_max
-                if t_start < last_stop:
-                    stop[-1] = self.analysis.get_event_at_time(t_stop)
-                    last_stop = t_stop
-                    continue
-                start.append(self.analysis.get_event_at_time(t_start))
-                stop.append(self.analysis.get_event_at_time(t_stop))
+        interruptions = []
+        print 'generating jump ranges...'
+        time_offset = self.analysis.run.startTime
+        t_max = (self.analysis.run.get_time_at_event(-1) - time_offset) / 1000.
+        last_stop = 0
+        n_interr = 0
+        for tup in jumps:
+            t_start = (self.analysis.run.get_time_at_event(tup[0]) - time_offset) / 1000.
+            t_stop = (self.analysis.run.get_time_at_event(tup[1]) - time_offset) / 1000.
+            # add additional time around jumps to be safe
+            t_start -= ex_range['before'] if t_start >= ex_range['before'] else 0
+            t_stop = t_stop + ex_range['after'] if t_stop + ex_range['after'] <= t_max else t_max
+            if t_start < last_stop:
+                interruptions[n_interr - 1]['f'] = self.analysis.get_event_at_time(t_stop)
                 last_stop = t_stop
-
-            self.jump_ranges = {"start": start,
-                                "stop": stop}
-
-        return [ex_range['before'], ex_range['after'], self.jump_ranges]
+                continue
+            interruptions.append({'i': self.analysis.get_event_at_time(t_start), 'f': self.analysis.get_event_at_time(t_stop)})
+            last_stop = t_stop
+            n_interr += 1
+        return interruptions
 
     def get_beam_interruptions(self):
         """
         If beam interruption data exist in beaminterruptions/data/, it will load it in order to account for beam interruptions. The data is stored as a list of jumps, dumped into a pickle file.
         If no pickle file exists, it will perform a beam interruption analysis in order to identify the beam interruptions. The found interruptions are stored in a list at .jumps and dumped into
         a pickle file.
-        :return: list of events where beam interruptions occures
         """
-        if self.jump_ranges is None:
-            jumps_pickle = self.BeaminterruptionsDir + '/data/{testcampaign}Run_{run}.pickle'.format(testcampaign=self.TESTCAMPAIGN, run=self.analysis.run.run_number)
-            range_pickle = self.BeaminterruptionsDir + '/data/{testcampaign}_{run}_Jump_Ranges.pickle'.format(testcampaign=self.TESTCAMPAIGN, run=self.analysis.run.run_number)
-            self.jumps = self.do_pickle(jumps_pickle, self.find_beam_interruptions)
-            ranges = self.do_pickle(range_pickle, self.__create_jump_ranges)
-            # redo range pickle if config parameters have changed
-            ex_range = self.CutConfig['JumpExcludeRange']
-            if ranges[0] != ex_range['before'] or ranges[1] != ex_range['after']:
-                os.remove(range_pickle)
-                ranges = self.do_pickle(range_pickle, self.__create_jump_ranges)
-            self.jump_ranges = ranges[2]
-        return self.jumps
+        # check if directories exist
+        ensure_dir(self.BeaminterruptionsDir)
+        ensure_dir(joinpath(self.BeaminterruptionsDir, 'data'))
+        pickle_path = self.make_pickle_path('BeamInterruptions', run=self.RunNumber)
+        interruptions = self.do_pickle(pickle_path, self.find_beam_interruptions)
+
+        # redo range pickle if config parameters have changed
+        ex_range = self.CutConfig['JumpExcludeRange']
+        if interruptions['before'] != ex_range['before'] or interruptions['after'] != ex_range['after']:
+            os.remove(pickle_path)
+            interruptions = self.do_pickle(pickle_path, self.find_beam_interruptions())
+        self.Jumps = interruptions['jumps']
+        self.Interruptions = interruptions['interruptions']
+        return interruptions['interruptions']
     # endregion
 
     def get_easy_cutstring(self):
