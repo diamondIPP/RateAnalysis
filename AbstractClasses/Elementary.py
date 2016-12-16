@@ -216,6 +216,7 @@ class Elementary(object):
         return info
 
     def make_pickle_path(self, sub_dir, name=None, run=None, ch=None, suf=None, camp=None):
+        ensure_dir(joinpath(self.PickleDir, sub_dir))
         campaign = self.TESTCAMPAIGN if camp is None else camp
         run = '_{r}'.format(r=run) if run is not None else ''
         ch = '_{c}'.format(c=ch) if ch is not None else ''
