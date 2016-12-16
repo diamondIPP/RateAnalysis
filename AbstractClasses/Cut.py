@@ -24,7 +24,7 @@ class Cut(Elementary):
 
             # config
             self.DUTType = self.load_dut_type()
-            self.beaminterruptions_folder = self.ana_config_parser.get('CUT', 'beaminterruptions_folder')
+            self.BeaminterruptionsDir = self.ana_config_parser.get('CUT', 'beaminterruptions_folder')
             self.CutConfig = {}
 
             # define cut strings
@@ -352,10 +352,7 @@ class Cut(Elementary):
         return self.find_pad_beam_interruptions() if self.DUTType == 'pad' else self.find_pixel_beam_interruptions()
 
     def find_pad_beam_interruptions(self):
-        """
-        Looking for the beam interruptions by investigating the pulser rate.
-        :return: interrupt list
-        """
+        """ Looking for the beam interruptions by investigating the pulser rate. """
         print 'Searching for beam interruptions...'
         binning = 200
         nbins = int(self.analysis.run.tree.GetEntries()) / binning
@@ -383,13 +380,11 @@ class Cut(Elementary):
 
     def __save_beaminterrupts(self):
         # check if directories exist
-        if not os.path.exists(self.beaminterruptions_folder):
-            os.mkdir(self.beaminterruptions_folder)
-        if not os.path.exists(self.beaminterruptions_folder + '/data'):
-            os.mkdir(self.beaminterruptions_folder + '/data')
+        ensure_dir(self.BeaminterruptionsDir)
+        ensure_dir(joinpath(self.BeaminterruptionsDir, 'data'))
 
         # save jump list to file
-        jumpfile = open(self.beaminterruptions_folder + '/data/{testcampaign}Run_{run}.pickle'.format(testcampaign=self.TESTCAMPAIGN, run=self.analysis.run.run_number), 'wb')
+        jumpfile = open(self.BeaminterruptionsDir + '/data/{testcampaign}Run_{run}.pickle'.format(testcampaign=self.TESTCAMPAIGN, run=self.analysis.run.run_number), 'wb')
         pickle.dump(self.jumps, jumpfile)
         jumpfile.close()
 
@@ -429,8 +424,8 @@ class Cut(Elementary):
         :return: list of events where beam interruptions occures
         """
         if self.jump_ranges is None:
-            jumps_pickle = self.beaminterruptions_folder + "/data/{testcampaign}Run_{run}.pickle".format(testcampaign=self.TESTCAMPAIGN, run=self.analysis.run.run_number)
-            range_pickle = self.beaminterruptions_folder + "/data/{testcampaign}_{run}_Jump_Ranges.pickle".format(testcampaign=self.TESTCAMPAIGN, run=self.analysis.run.run_number)
+            jumps_pickle = self.BeaminterruptionsDir + '/data/{testcampaign}Run_{run}.pickle'.format(testcampaign=self.TESTCAMPAIGN, run=self.analysis.run.run_number)
+            range_pickle = self.BeaminterruptionsDir + '/data/{testcampaign}_{run}_Jump_Ranges.pickle'.format(testcampaign=self.TESTCAMPAIGN, run=self.analysis.run.run_number)
             self.jumps = self.do_pickle(jumps_pickle, self.find_beam_interruptions)
             ranges = self.do_pickle(range_pickle, self.__create_jump_ranges)
             # redo range pickle if config parameters have changed
