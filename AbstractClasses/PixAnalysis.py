@@ -75,18 +75,6 @@ class SignalPixAnalysis(Analysis):
         self.dut_names = {self.roc_diam1: self.run.diamond_names[0], self.roc_diam2: self.run.diamond_names[3], self.roc_si: 'Si'}
         self.set_cuts_rocs()
 
-    def set_cuts_rocs(self):
-        """
-        Changes the roc id's in the Cut instance of CutPix
-        :return:
-        """
-        self.Cut.roc_tel = self.roc_tel
-        self.Cut.roc_diam1 = self.roc_diam1
-        self.Cut.roc_diam2 = self.roc_diam2
-        self.Cut.roc_si = self.roc_si
-        self.Cut.dut_names = self.dut_names
-        self.Cut.reset_cuts_dicts()
-
     def add_telescope_device(self):
         self.devices['tel'] = self.roc_tel
 
