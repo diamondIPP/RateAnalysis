@@ -88,17 +88,19 @@ class Cut(Elementary):
     
     @staticmethod
     def define_cutstrings():
+        """ Defines the ordered dictionary that contains all the final cuts and the order they are going to be applied."""
         dic = OrderedDict()
         dic['raw'] = TCut('raw', '')
+        # waveform
         dic['saturated'] = TCut('saturated', '')
         dic['pulser'] = TCut('pulser', '')
+        # general
         dic['event_range'] = TCut('event_range', '')
-        # waveform
         dic['beam_interruptions'] = TCut('beam_interruptions', '')
+        # waveform
         dic['ped_sigma'] = TCut('ped_sigma', '')
         dic['median'] = TCut('median', '')
         dic['threshold'] = TCut('threshold', '')
-        # waveform
         dic['signal_peak_pos'] = TCut('signal_peak_pos', '')
         dic['signal_peak_time'] = TCut('signal_peak_time', '')
         dic['trigger_cell'] = TCut('trigger_cell', '')
@@ -107,10 +109,14 @@ class Cut(Elementary):
         dic['bucket'] = TCut('bucket', '')
         # tracks
         dic['tracks'] = TCut('tracks', '')
+        dic['hit'] = TCut('hit', '')
+        dic['masks'] = TCut('masks', '')
         dic['fiducial'] = TCut('fiducial', '')
         dic['chi2X'] = TCut('chi2X', '')
         dic['chi2Y'] = TCut('chi2Y', '')
-        dic['track_angle'] = TCut('track_angle', '')
+        dic['track_angle_x'] = TCut('track_angle_x', '')
+        dic['track_angle_y'] = TCut('track_angle_y', '')
+        dic['rhit'] = TCut('rhit', '')
         dic['all_cuts'] = TCut('all_cuts', '')
         return dic
 
