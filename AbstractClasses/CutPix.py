@@ -19,20 +19,17 @@ class CutPix(Cut):
         self.Dut = dut + 3
 
         self.plot_settings = self.analysis.plots.plot_settings
-
-        self.cuts_hitmap_roc = {}  # each cut separately
-        self.cuts_pixelated_roc = {}  # each cut separately
-        self.cuts_hitmap_roc_incr = {}  # each cut incremental. last position used for all cuts
-        self.cuts_pixelated_roc_incr = {}  # each cut incremental. last position used for all cuts
-
-        self.events_after_cuts = {}
-        self.events_after_cuts_roc = {}
-        self.events_after_cuts_incr = {}
-        self.events_after_cuts_roc_incr = {}
+        self.plots = self.analysis.plots
 
         self.load_pixel_config()
 
-        self.plots = self.analysis.plots
+        self.generate_pixel_cutstrings()
+        self.all_cut = self.generate_all_cut()
+        self.CutStrings['all_cuts'] = self.all_cut
+        self.HitMapCut = self.generate_hitmap_cutstrings()
+
+        self.ConsecutiveCuts = self.generate_consecutive_cuts()
+        self.ConsecutiveHitMapCuts = self.generate_consecutive_cuts(cluster=False)
 
     def load_run_config(self):
         return self.load_run_configs(self.RunNumber)
