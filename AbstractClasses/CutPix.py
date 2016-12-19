@@ -525,16 +525,17 @@ class CutPix(Cut):
         self.cuts_pixelated_roc_incr[roc][self.num_cuts] = self.cuts_pixelated_roc_incr[roc][self.num_cuts-1] + '&&(' + self.cuts_pixelated_roc[roc][self.num_cuts] + ')' if self.num_cuts != 0 else '(' + self.cuts_pixelated_roc[roc][self.num_cuts] + ')'
 
     def generate_masks(self, cluster=True):
-        t = self.log_info('Generating mask cuts ...', False)
+        # t = self.log_info('Generating mask cuts ...', False)
         cut_string = TCut('')
         cut_string += self.generate_line_mask('col', cluster)
         cut_string += self.generate_line_mask('row', cluster)
-        self.add_info('Done', t)
+        cut_string += self.generate_pixel_mask(cluster)
+        # self.add_info('Done', t)
         return cut_string.GetTitle()
 
     def generate_line_mask(self, line, cluster=True):
         cut_string = TCut('')
-        cut_var = 'cluster_{l}_ROC{n}'.format(n=self.Dut, l=line)
+        cut_var = 'cluster_{l}_ROC{n}'.format(n=self.Dut, l=line) if cluster else line
         for tup in self.CutConfig['Mask{l}s'.format(l=line.title())]:
             if len(tup) == 2:
                 cut_string += '{v}<{i}||{v}>{f}'.format(i=tup[0], f=tup[1], v=cut_var)
@@ -542,64 +543,13 @@ class CutPix(Cut):
                 cut_string += '({v}!={i})'.format(i=tup[0], v=cut_var)
         return cut_string.GetTitle()
 
-    def generate_row_masks(self):
-        self.row_mask_hitmap_roc = {}
-        self.row_mask_pixelated_roc = {}
-        for iroc in self.duts_list:
-            self.generate_row_masks_DUT(iroc)
-
-    def generate_row_masks_DUT(self, roc):
-        maskrowstring = self.CutConfig['MaskRowsROC{d}'.format(d=roc)]
-        title = ''
-        name = 'mask_row_hitmap_roc{r}'.format(r=roc)
-        mask_row_hitmap_temp = TCut('temp0', title)
-        if maskrowstring is not '':
-            maskrowstring = maskrowstring.replace('[', '').replace(']', '')
-            if maskrowstring is not '':
-                maskrowstring = maskrowstring.split(';')
-                roc = int(maskrowstring[0])
-                for i in xrange(1,len(maskrowstring)):
-                    if ':' in maskrowstring[i]:
-                        tempstring = maskrowstring[i].split(':')
-                        tempmask = TCut('temp', '(row<{inf}||row>{sup})'.format(inf=tempstring[0], sup=tempstring[1]))
-                    else:
-                        tempmask = TCut('temp', '(row!={val})'.format(val=maskrowstring[i]))
-                    mask_row_hitmap_temp = mask_row_hitmap_temp + tempmask
-        self.row_mask_hitmap_roc[roc] = TCut(name, '')
-        self.row_mask_hitmap_roc[roc] = self.row_mask_hitmap_roc[roc] + mask_row_hitmap_temp
-        name2 = 'mask_row_pixelated_roc{r}'.format(r=roc)
-        self.row_mask_pixelated_roc[roc] = TCut(name2, self.row_mask_hitmap_roc[roc].GetTitle().replace('row', 'cluster_row_ROC{n}'.format(n=roc)))
-        self.mask_hitmap_roc[roc] = self.mask_hitmap_roc[roc] + self.row_mask_hitmap_roc[roc]
-        self.mask_pixelated_roc[roc] = self.mask_pixelated_roc[roc] + self.row_mask_pixelated_roc[roc]
-
-    def generate_pixel_masks(self):
-        self.pixel_mask_hitmap_roc = {}
-        self.pixel_mask_pixelated_roc = {}
-        for iroc in self.duts_list:
-            self.generate_pixel_masks_DUT(iroc)
-
-    def generate_pixel_masks_DUT(self, roc):
-        maskpixelstring = self.CutConfig['MaskPixelsROC{d}'.format(d=roc)]
-        title = ''
-        name = 'mask_pixel_hitmap_roc{r}'.format(r=roc)
-        mask_pixel_hitmap_temp = TCut('temp0', title)
-        if maskpixelstring is not '':
-            maskpixelstring = maskpixelstring.replace('[', '').replace(']', '')
-            if maskpixelstring is not '':
-                maskpixelstring = maskpixelstring.split(';')
-                roc = int(maskpixelstring[0])
-                for i in xrange(1, len(maskpixelstring)):
-                    if ',' in maskpixelstring[i]:
-                        tempstring = maskpixelstring[i].split(',')
-                        tempmask = TCut('temp', '(col!={x}||row!={y})'.format(x=tempstring[0], y=tempstring[1]))
-                        mask_pixel_hitmap_temp = mask_pixel_hitmap_temp + tempmask
-        self.pixel_mask_hitmap_roc[roc] = TCut(name, '')
-        self.pixel_mask_hitmap_roc[roc] = self.pixel_mask_hitmap_roc[roc] + mask_pixel_hitmap_temp
-        name2 = 'mask_pixel_pixelated_roc{r}'.format(r=roc)
-        self.pixel_mask_pixelated_roc[roc] = TCut(name2, self.pixel_mask_hitmap_roc[roc].GetTitle().replace('row', 'cluster_row_ROC{n}'.format(n=roc)).replace('col', 'cluster_col_ROC{n}'.format(n=roc)))
-        self.mask_hitmap_roc[roc] = self.mask_hitmap_roc[roc] + self.pixel_mask_hitmap_roc[roc]
-        self.mask_pixelated_roc[roc] = self.mask_pixelated_roc[roc] + self.pixel_mask_pixelated_roc[roc]
-
+    def generate_pixel_mask(self, cluster=True):
+        cut_string = TCut('')
+        cut_var1 = 'cluster_col_ROC{n}'.format(n=self.Dut) if cluster else 'col'
+        cut_var2 = 'cluster_row_ROC{n}'.format(n=self.Dut) if cluster else 'row'
+        for tup in self.CutConfig['MaskPixels']:
+            cut_string += '{v1}!={x}||{v2}!={y}'.format(x=tup[0], y=tup[1], v1=cut_var1, v2=cut_var2)
+        return cut_string.GetTitle()
 
     def get_nearest_prev_existing_cut_key(self, cutname):
         allcuts = {0: 'ini_fin', 1: 'beam', 2: 'tracks', 3: 'hit', 4: 'masks', 5: 'fiducial', 6: 'chi2x', 7: 'chi2y', 8: 'anglex', 9: 'angley', 10: 'rhit'}
