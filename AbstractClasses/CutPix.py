@@ -496,7 +496,7 @@ class CutPix(Cut):
     def generate_rhit(self):
         t = self.log_info('Generating RHit cut ...', False)
         value = self.CutConfig['rhit']
-        string = '((10000*sqrt((residual_ROC{n}_Local_X)**2+(residual_ROC{n}_Local_Y)**2))<{val}&&(sqrt((residual_ROC{n}_Local_X)**2+(residual_ROC{n}_Local_Y)**2))>=0)'.format(n=self.Dut, val=value)
+        string = '(10000*sqrt((residuals_x[{n}])**2+(residuals_y[{n}])**2))<{val}'.format(n=self.Dut, val=value)
         self.add_info('Done', t)
         return string
 
