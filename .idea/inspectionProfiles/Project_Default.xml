@@ -61,6 +61,13 @@
           <option value="kTRUE" />
           <option value="kBlack" />
           <option value="TFormula" />
+          <option value="gDirectory" />
+          <option value="TH1D" />
+          <option value="gErrorIgnoreLevel" />
+          <option value="kWarning" />
+          <option value="RooMsgService" />
+          <option value="RooFit" />
+          <option value="gPrintViaErrorHandler" />
         </list>
       </option>
     </inspection_tool>
