@@ -1,11 +1,10 @@
-import os
-
 import sys
 from numpy import array
 from ROOT import TCut, gROOT, TH1F, kRed, TCutG, gDirectory, kBlue, TH2D, TH1D, kGreen
 from math import ceil
 from Cut import Cut
 from json import loads
+
 
 class CutPix(Cut):
     """
