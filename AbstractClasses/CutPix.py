@@ -464,6 +464,28 @@ class CutPix(Cut):
         """
         return self.num_cuts == 0
 
+    def generate_special_cut(self, excluded=None, included=None, name='special_cut', cluster=True):
+        cut = TCut(name, '')
+        self.NCuts = 0
+        excluded = [excluded] if type(excluded) is not list else excluded
+        self.set_cut('masks', self.generate_masks(cluster=cluster))
+        self.set_cut('fiducial', self.generate_masks(cluster=cluster))
+        for key, value in self.CutStrings.iteritems():
+            if excluded and key in excluded:
+                continue
+            if included and key not in included:
+                continue
+            if key.startswith('old') or key.startswith('all_cut'):
+                continue
+            if value.GetTitle() == '':
+                continue
+            cut += value
+            self.NCuts += 1
+        self.log_info('generated {name} cut with {num} cuts'.format(name=name, num=self.NCuts))
+        self.set_cut('masks', self.generate_masks())
+        self.set_cut('fiducial', self.generate_masks())
+        return cut
+
     def generate_hit(self):  # TODO implement cut! must change tree structure from tracking telescope
         """ Needs to be implemented. Have to change trackingTelescope for this """
         t = self.log_info('Generating hit cut ...', False)
