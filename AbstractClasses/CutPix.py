@@ -1,14 +1,11 @@
 import os
-import pickle
-import json
 
 import sys
-from numpy import array, zeros, arange, delete
-from Elementary import Elementary
-from ROOT import TCut, gROOT, TH1F, kRed, TCutG, gDirectory, kBlue, TH2D, TH2F, TH1D, kGreen, kMagenta, gErrorIgnoreLevel, kWarning, RooMsgService, RooFit, gPrintViaErrorHandler
-from collections import OrderedDict
-from copy import deepcopy
+from numpy import array
+from ROOT import TCut, gROOT, TH1F, kRed, TCutG, gDirectory, kBlue, TH2D, TH1D, kGreen
 from math import ceil
+from Cut import Cut
+from json import loads
 
 class CutPix(Elementary):
     """
