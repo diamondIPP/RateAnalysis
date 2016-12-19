@@ -38,42 +38,12 @@ class SignalPixAnalysis(Analysis):
         self.plots.roc_si = self.roc_si
         self.plots.save_dir = self.save_dir
         self.devices = {'tel': [], 'dut': []}
-        self.dut_names = {self.roc_diam1: self.run.diamond_names[0], self.roc_diam2: self.run.diamond_names[3], self.roc_si: 'Si'} if self.TESTCAMPAIGN != '201610' else {self.roc_diam1: self.run.diamond_names[0], self.roc_si: 'Si'}
-        self.set_cuts_rocs()
+        self.Cut.reset_cut_dicts()
         self.Cut.do_cuts()
         self.plot_settings = self.plots.plot_settings
-        # stuff
-        #self.BinSize = binning
-        #self.binning = self.__get_binning()
-        #self.time_binning = self.get_time_binning()
-        #self.n_bins = len(self.binning)
-        #self.Polarity = self.get_polarity()
-
-        # names
-        #self.SignalName = self.get_signal_name(region=self.SignalRegion, peak_integral=self.PeakIntegral)
-        #self.PulserName = self.get_pulser_name()
-        #self.PedestalName = self.get_pedestal_name(region=self.PedestalRegion, peak_int=self.PeakIntegral)
-
-        # cuts
-        #self.Cut = ChannelCut(self, channel)
-
-        # currents
-        #self.Currents = Currents(self)
-
-        # graphs
-        #self.PulseHeight = None
-        #self.Pedestal = None
-        # histograms
-        #self.SignalTime = None
-        #self.SignalMapHisto = None
-        #self.MeanSignalHisto = None
-        #self.PeakValues = None
         self.stuff = []
 
     def __del__(self):
-        for obj in [self.PulseHeight, self.Pedestal, self.SignalMapHisto, self.SignalTime, self.PeakValues,
-                    self.MeanSignalHisto]:
-            self.del_rootobj(obj)
         for c in gROOT.GetListOfCanvases():
             c.Close()
         for lst in self.histos.itervalues():
