@@ -62,6 +62,18 @@ class CutPix(Cut):
         self.set_cut('masks', self.generate_masks(cluster=not on))
         self.set_cut('fiducial', self.generate_masks(cluster=not on))
 
+    def generate_consecutive_cuts(self, cluster=True):
+        self.set_hitmap_cuts(not cluster)
+        cuts = [TCut('0', '')]
+        n = 1
+        for key, value in self.CutStrings.iteritems():
+            if str(value) and key != 'all_cuts' and not key.startswith('old'):
+                new_cut = cuts[n - 1] + value
+                cuts.append(TCut('{n}'.format(n=n), new_cut.GetTitle()))
+                n += 1
+        self.set_hitmap_cuts(False)
+        return cuts
+
     def reset_cut_dicts(self):
         """ Resets the lists, dictionaries and the numbering of the DUTs when they are changed in analysis. This method should be called by PixAnalysis """
         self.cuts_hitmap_roc = {}  # each cut separately
