@@ -235,7 +235,7 @@ class CutPix(Cut):
                                                       self.plot_settings['maxRow']+(
                                                           self.plot_settings['maxRow']-self.plot_settings['minRow'])/(
                                                           2*float(self.plot_settings['nBinRow'])))
-                self.h_hitmaps_cuts[iroc][cut] = self.analysis.do_occupancy_roc(iroc, cut, self.h_hitmaps_cuts[iroc][cut])
+                self.h_hitmaps_cuts[iroc][cut] = self.analysis.draw_occupancy(iroc, cut, self.h_hitmaps_cuts[iroc][cut])
                 if maxz_hitmap[iroc] < self.h_hitmaps_cuts[iroc][cut].GetBinContent(self.h_hitmaps_cuts[iroc][cut].GetMaximumBin()):
                     maxz_hitmap[iroc] = self.h_hitmaps_cuts[iroc][cut].GetBinContent(self.h_hitmaps_cuts[iroc][cut].GetMaximumBin())
                 if self.verbose: print 'Done'
@@ -431,7 +431,7 @@ class CutPix(Cut):
 
     def load_pixel_config(self):
         """ Loads the pixel configuration parameters from the config file. """
-        self.CutConfig['rhit'] = self.get_config('rhit')
+        self.CutConfig['rhit'] = self.get_config('r_hit')
         self.CutConfig['MaskRows'] = self.load_mask('MaskRows')
         self.CutConfig['MaskCols'] = self.load_mask('MaskCols')
         self.CutConfig['MaskPixels'] = self.load_mask('MaskPixels')
