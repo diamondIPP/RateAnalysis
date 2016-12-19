@@ -19,14 +19,15 @@ __author__ = 'DA'
 # MAIN CLASS
 # ==============================================
 class SignalPixAnalysis(Analysis):
-    def __init__(self, run, dut=1, verbose=False):
+    def __init__(self, run, dut=1, verbose=False, binning=10000):
 
-        Analysis.__init__(self, run, verbose=verbose)
+        Analysis.__init__(self, run, verbose=verbose, binning=binning)
 
         # main
         self.RunNumber = run
         self.DiamondName = self.load_diamond_name(dut)
         self.Bias = self.run.bias[dut - 1]
+        self.Dut = dut + 3
         self.save_dir = '{dia}/{run}/'.format(run=str(self.run_number).zfill(3), dia=self.DiamondName)
 
         # stuff
