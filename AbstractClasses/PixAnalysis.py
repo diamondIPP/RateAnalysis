@@ -17,23 +17,17 @@ __author__ = 'DA'
 # MAIN CLASS
 # ==============================================
 class SignalPixAnalysis(Analysis):
-    def __init__(self, run):
+    def __init__(self, run, dut=1, verbose=False):
 
-        Analysis.__init__(self, run)
+        Analysis.__init__(self, run, verbose=verbose)
+
         # main
-        # self.diamond_name = self.run.diamond_names[channel]
-        # self.bias = self.run.bias[channel]
-        self.save_dir = 'Results/{tc}_{run}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number)  # '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number, dia=self.diamond_name)
-        if not os.path.isdir(self.save_dir):
-            os.makedirs(self.save_dir)
-        if not os.path.isdir('{dir}/Plots'.format(dir=self.save_dir)):
-            os.makedirs('{dir}/Plots'.format(dir=self.save_dir))
-        if not os.path.isdir('{dir}/Plots/cuts'.format(dir=self.save_dir)):
-            os.makedirs('{dir}/Plots/cuts'.format(dir=self.save_dir))
-        if not os.path.isdir('{dir}/Root'.format(dir=self.save_dir)):
-            os.makedirs('{dir}/Root'.format(dir=self.save_dir))
-        if not os.path.isdir('{dir}/Root/cuts'.format(dir=self.save_dir)):
-            os.makedirs('{dir}/Root/cuts'.format(dir=self.save_dir))
+        self.RunNumber = run
+        self.DiamondName = self.load_diamond_name(dut)
+        self.Bias = self.run.bias[dut - 1]
+        self.save_dir = '{dia}/{run}/'.format(run=str(self.run_number).zfill(3), dia=self.DiamondName)
+
+        # stuff
         self.roc_diam1 = 4
         self.roc_diam2 = 5 if self.TESTCAMPAIGN != '201610' else -1
         self.roc_si = 6 if self.TESTCAMPAIGN != '201610' else 5
