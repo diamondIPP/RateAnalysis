@@ -377,10 +377,11 @@ class SignalPixAnalysis(Analysis):
     def __placeholder(self):
         pass
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     st = time()
     parser = ArgumentParser()
-    parser.add_argument('run', nargs='?', default=392, type=int, help='Run to be analysed {e.g.334}')
+    parser.add_argument('run', nargs='?', default=489, type=int, help='Run to be analysed {e.g.334}')
+    parser.add_argument('dut', nargs='?', default=1, type=int, help='Number of the DUT to analyse (either 1, 2 or 3)')
     parser.add_argument('-t', '--doTelescope', action='store_true', dest='doTelscp', default=False, help='set with -t or with --doTelescope to do telescope analysis')
     parser.add_argument('-d', '--doDUTs', action='store_true', dest='doDUTs', default=False, help='set with -d or with --doDUTs to do DUTs analysis')
     parser.add_argument('-u', '--doCutDist', action='store_true', dest='doCutDist', default=False, help='set with -u or with --doCutDist to do Cuts distributions on selected devices (DUTs and/or telescope)')
@@ -390,11 +391,11 @@ if __name__ == "__main__":
     parser.add_argument('-x', '--doCorrel', action='store_true', dest='doCorrel', default=False, help='set with -x or with --doCorrel to do correlations between important planes')
     parser.add_argument('-g', '--doCharge', action='store_true', dest='doCharge', default=False, help='set with -g or with --doCharge to do pulse height analysis on selected devices (DUTs and/or telescope)')
     parser.add_argument('-p', '--progBar', action='store_true', dest='progBar', default=False, help='show progress bar')
-    parser.add_argument('-v', '--verb', action='store_true', dest='verb', default=False, help='show verbose')
+    parser.add_argument('-v', '--verb', action='store_true', dest='verb', default=True, help='show verbose')
     parser.add_argument('-a', '--analyse', action='store_true', dest='doAna', default=False, help='run the whole analysis with the options entered')
 
     args = parser.parse_args()
-    run = int(args.run)
+
     doTelscp = bool(args.doTelscp)
     doDUTs = bool(args.doDUTs)
     doCutDist = bool(args.doCutDist)
@@ -407,7 +408,7 @@ if __name__ == "__main__":
     verb = bool(args.verb)
     doAna = bool(args.doAna)
 
-    command = '\nAnalysing run ' + str(run) + ' with:'
+    command = '\nAnalysing run ' + str(args.run) + ' with:'
     command = command + ' telescope,' if doTelscp else command + ' no telescope,'
     command = command + ' DUTs,' if doDUTs else command + ' no DUTs,'
     command = command + ' cuts distributions,' if doCutDist else command + ' no cuts distributions,'
@@ -423,7 +424,7 @@ if __name__ == "__main__":
 
     print command
 
-    z = SignalPixAnalysis(run)
+    z = SignalPixAnalysis(args.run, args.dut, args.verb)
     z.print_elapsed_time(st, 'Instantiation')
 
     if doAna:
