@@ -27,6 +27,7 @@ class Cut(Elementary):
             self.DUTType = self.load_dut_type()
             self.BeaminterruptionsDir = self.ana_config_parser.get('CUT', 'beaminterruptions_folder')
             self.CutConfig = {}
+            self.NCuts = 0
 
             # define cut strings
             self.EasyCutStrings = self.init_easy_cutstrings()
@@ -49,7 +50,7 @@ class Cut(Elementary):
 
     def generate_special_cut(self, excluded=None, included=None, name='special_cut'):
         cut = TCut(name, '')
-        n_cuts = 0
+        self.NCuts = 0
         for key, value in self.CutStrings.iteritems():
             if excluded and key in excluded:
                 continue
@@ -60,15 +61,17 @@ class Cut(Elementary):
             if value.GetTitle() == '':
                 continue
             cut += value
-            n_cuts += 1
-        self.log_info('generated {name} cut with {num} cuts'.format(name=name, num=n_cuts))
+            self.NCuts += 1
+        self.log_info('generated {name} cut with {num} cuts'.format(name=name, num=self.NCuts))
         return cut
 
     def generate_all_cut(self):
         cut = TCut('all_cuts', '')
+        self.NCuts = 0
         for key, value in self.CutStrings.iteritems():
             if not key.startswith('old') and not key.startswith('all_cut'):
                 cut += value
+                self.NCuts += 1
         return cut
 
     @staticmethod
