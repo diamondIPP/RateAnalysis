@@ -11,6 +11,7 @@ from screeninfo import get_monitors
 from numpy import array
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 from sys import stdout
+from os.path import join as joinpath
 
 from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, kGreen, kOrange, kViolet, kYellow, kRed, kBlue, \
     kMagenta, kAzure, kCyan, kTeal
@@ -273,6 +274,7 @@ class Elementary(object):
                 print log_warning('Error in save canvas: {err}'.format(err=inst))
                 return
         channel = self.channel if hasattr(self, 'channel') else None
+        channel = self.Dut - 3 if hasattr(self, 'Dut') else channel
         if hasattr(self, 'run'):
             self.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas, x=x, y=y)
         if hasattr(self, 'Run'):
