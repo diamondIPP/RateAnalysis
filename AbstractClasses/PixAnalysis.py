@@ -131,82 +131,35 @@ class SignalPixAnalysis(Analysis):
         """
         self.Cut.do_cuts_analysis(do_occupancy, do_pulse_height, normalize_ph_plots)
 
-    def do_occupancy_roc(self, roc=4, cut='', histo=None):
-        """
-        Does the occupancy of a roc with the specified cut and it is saved on the given histogram. If none is given, it will
-        create a histogram and return a deepcopy of it
-        :param roc: roc number of the device (e.g. 4, 5)
-        :param cut: name of the cut up to which the cuts should be applied (e.g. 'fiducial' would apply all the cuts up to fiducial cut)
-        :param histo: histogram to save the occupancy map. If None, it will create its own
-        :return: returns a deepcopy of the filled histogram after applying the specified cuts
-        """
-        if cut != '':
-            if histo is None: name = 'hitmap_roc_{r}_{c}'.format(r=roc, c=cut)
-            cut_string = 'plane=={r}&&{c}'.format(r=roc, c=self.Cut.cuts_hitmap_roc_incr[roc][self.Cut.dict_cuts[cut]])
-            if self.verbose: print 'Doing occupancy for ROC', roc, 'upto', cut, 'cut'
-        else:
-            if histo is None: name = 'hitmap_roc_{r}'.format(r=roc)
-            cut_string = 'plane=={r}'.format(r=roc)
-            if self.verbose: print 'Doing occupancy for ROC', roc, 'without cuts'
-        if histo is None:
-            histo = TH2D(name, name, self.plot_settings['nBinCol']+1,
-                         self.plot_settings['minCol']-(self.plot_settings['maxCol']-self.plot_settings['minCol'])/(
-                             2*float(self.plot_settings['nBinCol'])), self.plot_settings['maxCol']+(
-                             self.plot_settings['maxCol']-self.plot_settings['minCol'])/(
-                             2*float(self.plot_settings['nBinCol'])), self.plot_settings['nBinRow']+1,
-                         self.plot_settings['minRow']-(self.plot_settings['maxRow']-self.plot_settings['minRow'])/(
-                             2*float(self.plot_settings['nBinRow'])), self.plot_settings['maxRow']+(
-                             self.plot_settings['maxRow']-self.plot_settings['minRow'])/(
-                             2*float(self.plot_settings['nBinRow'])))
-        gROOT.SetBatch(True)
-        name = histo.GetName()
-        self.tree.Draw('row:col >> {n}'.format(n=name), cut_string, 'goff')
-        gROOT.SetBatch(False)
-        return deepcopy(histo)
+    def draw_occupancy(self, cut=None, show=True):
+        """ Does the occupancy of a roc with the specified cut and it is saved on the given histogram. If none is given, it will create a histogram and return a deepcopy of it """
+        cut_string = self.Cut.HitMapCut if cut is None else TCut(cut)
+        cut_string += 'plane=={d}'.format(d=self.Dut)
+        h = TH2D('h_oc', 'Occupancy {d}'.format(d=self.DiamondName), self.Settings['nCols'], - .5, self.Settings['nCols'] - .5, self.Settings['nRows'], - .5, self.Settings['nRows'] - .5)
+        self.tree.Draw('row:col >> {n}'.format(n='h_oc'), cut_string, 'goff')
+        save_name = 'Occupancy{n}_{c}Cuts'.format(n=self.Dut, c=self.Cut.NCuts)
+        self.format_histo(h, x_tit='col', y_tit='row', z_tit='Number of Entries', y_off=1.3, z_off=1.5, stats=0)
+        self.save_histo(h, save_name, show, rm=.17, lm=.13, draw_opt='colz')
+        return h
 
-    def do_pulse_height_event_roc(self, roc=4, num_clust=1, cut='', histo=None):
-        """
-        Does the pulse height analysis vs event for the specified roc for a specified number of cluster with a specified cut,
-        on the given histogram. If none is given, it will create one. A deepcopy of the histogram is returned
-        :param roc: roc number of the device (e.g. 4, 5)
-        :param num_clust: number of pixels in the cluster to take into adcount
-        :param cut: name of the cut up to which the cuts should be applied (e.g. 'fiducial' would apply all the cuts up to fiducial cut)
-        :param histo: histogram to save the pulse height vs event. If None, it will create its own
-        :return: a deepcopy of the filled histogram after applying the specified cuts
-        """
-        phbins = {self.roc_diam1: self.plot_settings['ph1DbinsD4'], self.roc_diam2: self.plot_settings['ph1DbinsD5'], self.roc_si: self.plot_settings['ph1DbinsSi']}
-        phmin = {self.roc_diam1: self.plot_settings['ph1DminD4'], self.roc_diam2: self.plot_settings['ph1DminD5'], self.roc_si: self.plot_settings['ph1DminSi']}
-        phmax = {self.roc_diam1: self.plot_settings['ph1DmaxD4'], self.roc_diam2: self.plot_settings['ph1DmaxD5'], self.roc_si: self.plot_settings['ph1DmaxSi']}
-        phdelta = {self.roc_diam1: phmax[self.roc_diam1] - phmin[self.roc_diam1], self.roc_diam2: phmax[self.roc_diam2] - phmin[self.roc_diam2],
-                   self.roc_si: phmax[self.roc_si] - phmin[self.roc_si]}
-        if cut != '' and num_clust != 0:
-            if histo is None: name = 'ph{n}_evt_roc{r}_{c}'.format(n=num_clust, r=roc, c=cut)
-            cut_string = 'cluster_size_ROC{r}=={n}&&{cu}'.format(r=roc,n=num_clust,cu=self.Cut.cuts_pixelated_roc_incr[roc][self.Cut.dict_cuts[cut]])
-            if self.verbose: print 'Doing pulse height', num_clust, 'pix cluster Vs. event for ROC', roc, 'upto', cut, 'cut'
-        elif cut != '':
-            if histo is None: name = 'ph_evt_roc{r}_{c}'.format(r=roc, c=cut)
-            cut_string = '{cu}'.format(cu=self.Cut.cuts_pixelated_roc_incr[roc][self.Cut.dict_cuts[cut]])
-            if self.verbose: print 'Doing pulse height Vs. event for ROC', roc, 'upto', cut, 'cut'
-        elif num_clust != 0:
-            if histo is None: name = 'ph{n}_evt_roc{r}'.format(n=num_clust, r=roc)
-            cut_string = 'cluster_size_ROC{r}=={n}'.format(r=roc,n=num_clust)
-            if self.verbose: print 'Doing pulse height', num_clust, 'pix cluster Vs. event for ROC', roc, 'without cuts'
+    def draw_pulse_height_vs_event(self, cut=None, show=True, adc=False):
+        """ Pulse height analysis vs event for a given cut. If no cut is provided it will take all. """
+        if cut is None:
+            cut_string = self.Cut.all_cut if not adc else self.Cut.HitMapCut
         else:
-            if histo is None: name = 'ph_evt_roc{r}'.format(r=roc)
-            cut_string = ''
-            if self.verbose: print 'Doing pulse height Vs. event for ROC', roc, 'without cuts'
-        if histo is None:
-            histo = TH2D(name, name, self.plot_settings['event_bins']+1, self.plot_settings['event_min']-(
-                             self.plot_settings['event_max']-self.plot_settings['event_min'])/(
-                             2*float(self.plot_settings['event_bins'])), self.plot_settings['event_max']+(
-                             self.plot_settings['event_max']-self.plot_settings['event_min'])/(
-                             2*float(self.plot_settings['event_bins'])), phbins[roc]+1, phmin[roc]-phdelta[roc]/(
-                             2*float(phbins[roc])), phmax[roc]+phdelta[roc]/float(2*phbins[roc]))
-        gROOT.SetBatch(True)
-        name = histo.GetName()
-        self.tree.Draw('charge_all_ROC{r}:event_number >> {n}'.format(r=roc, n=name), cut_string, 'goff')
-        gROOT.SetBatch(False)
-        return deepcopy(histo)
+            cut_string = TCut(cut)
+        cut_string += 'charge_all_ROC{d} > 0'.format(d=self.Dut) if not adc else 'plane == {n}'.format(n=self.Dut)
+        ybins = [self.Settings['ph1DbinsD{n}'.format(n=self.Dut)], self.Settings['ph1DminD{n}'.format(n=self.Dut)], self.Settings['ph1DmaxD{n}'.format(n=self.Dut)]]
+        ybins = [255, 0, 255] if adc else ybins
+        self.set_root_output(False)
+        h = TH2D('h_ph', 'Pulse Height {d}'.format(d=self.DiamondName), self.n_bins - 1, array([t / 1000 for t in self.time_binning]), *ybins)
+        cut_var = 'charge_all_ROC{d}'.format(d=self.Dut) if not adc else 'adc'
+        self.tree.Draw('{v}:time / 1000. >> h_ph'.format(v=cut_var), cut_string, 'goff')
+        self.format_histo(h, x_tit='Time [hh:mm]', y_tit='Cluster Charge [e]' if not adc else 'adc', z_tit='Number of Entries', y_off=2.05, z_off=1.3, stats=0)
+        set_time_axis(h, off=self.run.startTime / 1000 + 3600)
+        h.SetNdivisions(520)
+        self.save_histo(h, 'PulseHeightVsEvent', show, rm=.15, lm=.16, draw_opt='colz', save=show)
+        return h
 
     def do_pulse_height_roc(self, roc=4, num_clust=1, cut='', histoevent=None, histo=None):
         """
