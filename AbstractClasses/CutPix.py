@@ -7,93 +7,36 @@ from math import ceil
 from Cut import Cut
 from json import loads
 
-class CutPix(Elementary):
+class CutPix(Cut):
     """
     A cut contains all cut settings which corresponds to a single diamond in a single run. Thus, an Analysis object holds two Cut instances, one for each diamond. The default configuration
     is loaded from the Analysis config file, whereas the individual cut settings are loaded from a JSON file located at Configuration/Individual_Configs. The JSON files are generated
     by the Analysis method SetIndividualCuts().
     """
-    def __init__(self, parent_analysis, verbose=True, skip=False):
-        gPrintViaErrorHandler = True
+    def __init__(self, analysis, dut=0):
+        Cut.__init__(self, analysis, skip=True)
+        self.__dict__.update(analysis.Cut.__dict__)
 
-        if not skip:
-            self.analysis = parent_analysis
-            Elementary.__init__(self, verbose=self.analysis.verbose)
-            self.run_number = self.analysis.run_number
-            self.plot_settings = self.analysis.plots.plot_settings
-            # saving stuff
-            self.picklepath = 'Configuration/Individual_Configs/cuts/{tc}_{r}.pickle'.format(tc=self.TESTCAMPAIGN, r=self.run_number)
-            self.histos = {}
-            self.roc_diam1 = 4
-            self.roc_diam2 = 5 if self.TESTCAMPAIGN != '201610' else -1
-            self.roc_si = 6 if self.TESTCAMPAIGN != '201610' else 5
-            self.duts_list = []
-            self.list_duts()
-            self.roc_tel = [0, 1, 2, 3]
-            self.dut_names = {self.roc_diam1: 'ROC4', self.roc_diam2: 'ROC5', self.roc_si: 'ROC6'} if self.TESTCAMPAIGN != '201610' else {self.roc_diam1: 'ROC4', self.roc_si: 'ROC5'}
-            # config
-            self.DUTType = self.load_dut_type()
-            # self.beaminterruptions_folder = self.ana_config_parser.get('CUT', 'beaminterruptions_folder')
-            # self.exclude_before_jump = self.ana_config_parser.getint('CUT', 'excludeBeforeJump')
-            # self.exclude_after_jump = self.ana_config_parser.getint('CUT', 'excludeAfterJump')
-            self.CutConfig = {}
-            self.cuts_hitmap_roc = {iROC: {} for iROC in self.duts_list}  # each cut separately
-            self.cuts_pixelated_roc = {iROC: {} for iROC in self.duts_list}  # each cut separately
-            self.cuts_hitmap_roc_incr = {iROC: {} for iROC in self.duts_list}  # each cut incremental. last position used for all cuts
-            self.cuts_pixelated_roc_incr = {iROC: {} for iROC in self.duts_list}  # each cut incremental. last position used for all cuts
-            self.num_cuts = 0
+        self.Dut = dut + 4
 
-            self.events_after_cuts = {}
-            self.events_after_cuts_roc = {iROC: {} for iROC in self.duts_list}
-            self.events_after_cuts_incr = {}
-            self.events_after_cuts_roc_incr = {iROC: {} for iROC in self.duts_list}
+        self.plot_settings = self.analysis.plots.plot_settings
 
+        self.cuts_hitmap_roc = {}  # each cut separately
+        self.cuts_pixelated_roc = {}  # each cut separately
+        self.cuts_hitmap_roc_incr = {}  # each cut incremental. last position used for all cuts
+        self.cuts_pixelated_roc_incr = {}  # each cut incremental. last position used for all cuts
 
-            self.load_config()
-            self.cuts_done = False
+        self.events_after_cuts = {}
+        self.events_after_cuts_roc = {}
+        self.events_after_cuts_incr = {}
+        self.events_after_cuts_roc_incr = {}
 
-            self.cut_names = self.generate_cut_names_vector()
-            self.dict_cuts = {self.cut_names[i]: i for i in xrange(len(self.cut_names))}
-            print self.dict_cuts
+        self.load_pixel_config()
 
-            self.plots = self.analysis.plots
-
-            self.analysis.Cut = self
-
-            # define cut strings
-            # self.EasyCutStrings = self.init_easy_cutstrings()
-            # self.CutStrings = self.define_cutstrings()
-
-            # self.region_cut = TCut('region_cut', '')
-            # self.JumpCut = TCut('JumpCut', '')
-
-            # beam interrupts
-            # self.jumps = None
-            # self.jump_ranges = None
+        self.plots = self.analysis.plots
 
     def load_run_config(self):
-        return self.load_run_configs(self.analysis.run_number)
-
-    def generate_cut_names_vector(self):
-        """
-        generates the vector with the names of the cuts. The order will affect, how the cuts are applied
-        :return: returns the filled vector
-        """
-        temp = []
-        if self.CutConfig['IniFin']: temp.append('ini_fin')
-        if self.CutConfig['Beam']: temp.append('beam')
-        if self.CutConfig['Tracks']: temp.append('tracks')
-        if self.CutConfig['Hit']: temp.append('hit')
-        if self.CutConfig['Mask']: temp.append('masks')
-        if self.CutConfig['Fiducial']: temp.append('fiducial')
-        if self.CutConfig['Chi2']:
-            temp.append('chi2x')
-            temp.append('chi2y')
-        if self.CutConfig['Angle']:
-            temp.append('anglex')
-            temp.append('angley')
-        if self.CutConfig['RHit']: temp.append('rhit')
-        return temp
+        return self.load_run_configs(self.RunNumber)
 
     def calculate_initial_events(self):
         gROOT.SetBatch(1)
