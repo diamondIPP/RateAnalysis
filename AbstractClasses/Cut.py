@@ -235,38 +235,28 @@ class Cut(Elementary):
         string = 'chi2_{mod}<{val}&&chi2_{mod}>=0'.format(val=chi2[quantile], mod=mode)
         return string if quantile > 0 else ''
 
-    def generate_slope(self):
-        picklepath = 'Configuration/Individual_Configs/Slope/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.lowest_rate_run)
-        angle = self.CutConfig['track_angle']
+    def generate_track_angle(self, mode='x'):
+        cut_variable = '{t}_{m}'.format(t='slope' if self.DUTType == 'pad' else 'angle', m=mode)
+        angles = self.calc_angle(mode)
+        string = '{v}>{min}&&{v}<{max}'.format(v=cut_variable, min=angles[mode][0], max=angles[mode][1])
+        return string if self.CutConfig['track_angle'] > 0 else ''
+
+    def calc_angle(self, mode='x'):
+        picklepath = self.make_pickle_path('TrackAngle', mode, run=self.analysis.lowest_rate_run)
 
         def func():
-            print 'generating slope cut for run {run}...'.format(run=self.analysis.run_number)
-            # fit the slope to get the mean
-            gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-            gROOT.SetBatch(1)
-            h_x = TH1F('hx', '', 70, -4, 4)
-            h_y = TH1F('hy', '', 70, -4, 4)
-            self.analysis.tree.Draw('slope_x>>hx', 'slope_x > -100', 'goff')
-            self.analysis.tree.Draw('slope_y>>hy', 'slope_y > -100', 'goff')
-            if h_x.GetEntries() > 500 and h_y.GetEntries() > 500:
-                fit_result = h_x.Fit('gaus', 'qs')
-            else:
-                log_warning('Empty slope histogram! Using default values!')
-                return {'x': [-4., 4.], 'y': [-4., 4.]}
-            slopes = {'x': [], 'y': []}
-            x_mean = fit_result.Parameters()[1]
-            slopes['x'] = [x_mean - angle, x_mean + angle]
-            fit_result = h_y.Fit('gaus', 'qs')
-            y_mean = fit_result.Parameters()[1]
-            slopes['y'] = [y_mean - angle, y_mean + angle]
-            gROOT.SetBatch(0)
-            gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-            return slopes
+            angle = self.CutConfig['track_angle']
+            t = self.log_info('Generating angle cut in {m} for run {run} ...'.format(run=self.analysis.run_number, m=mode), False)
+            self.set_root_output(False)
+            # TODO: unify strings
+            draw_str = '{t}_{m}'.format(t='slope' if self.DUTType == 'pad' else 'angle', m=mode)
+            n = self.analysis.tree.Draw(draw_str, '{s}>-100'.format(s=draw_str), 'goff')
+            mean_ = mean([self.analysis.tree.GetV1()[i] for i in xrange(n)])
+            cut_vals = {mode: [mean_ - angle, mean_ + angle]}
+            self.add_info('Done', t)
+            return cut_vals
 
-        slope = self.do_pickle(picklepath, func)
-        # create the cut string
-        string = 'slope_x>{minx}&&slope_x<{maxx}&&slope_y>{miny}&&slope_y<{maxy}'.format(minx=slope['x'][0], maxx=slope['x'][1], miny=slope['y'][0], maxy=slope['y'][1])
-        return string if angle > 0 else ''
+        return self.do_pickle(picklepath, func)
 
     @staticmethod
     def generate_distance(dmin, dmax, thickness=500):
