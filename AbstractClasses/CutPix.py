@@ -12,11 +12,11 @@ class CutPix(Cut):
     is loaded from the Analysis config file, whereas the individual cut settings are loaded from a JSON file located at Configuration/Individual_Configs. The JSON files are generated
     by the Analysis method SetIndividualCuts().
     """
-    def __init__(self, analysis, dut=0):
+    def __init__(self, analysis, dut=1):
         Cut.__init__(self, analysis, skip=True)
         self.__dict__.update(analysis.Cut.__dict__)
 
-        self.Dut = dut + 4
+        self.Dut = dut + 3
 
         self.plot_settings = self.analysis.plots.plot_settings
 
