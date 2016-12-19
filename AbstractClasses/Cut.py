@@ -138,12 +138,8 @@ class Cut(Elementary):
         self.CutConfig['track_angle'] = self.ana_config_parser.getint('CUT', 'track_angle')
 
     def load_event_range(self, event_range=None):
-        """
-        Gets the event range cut. If the arguments are negative, they are interpreted as time in minutes. Therefore, e.g.
-        load_event_range(-10, 700000) means that only events are considered, which fulfill: >10 minutes after run start event number < 700000
-        :param event_range:
-        :return: event range
-        """
+        """ Gets the event range cut. If the arguments are negative, they are interpreted as time in minutes. Therefore, e.g. load_event_range(-10, 700000) means that only events are considered
+        which fulfill: >10 minutes after run start event number < 700000 """
         if event_range is None:
             event_range = [0, 0]
         for i, value in enumerate(event_range):
@@ -159,12 +155,8 @@ class Cut(Elementary):
         self.CutConfig['EventRange'] = self.load_event_range(event_range)
 
     def load_exclude_first(self, value):
-        """
-        Sets how many events at the very beginning of the run should be excluded. if the argument is negative, it will be interpreted as time in minutes. For a positive argument it is interpreted as
-        maximum event number.
-        :param value: events or time in minutes
-        :return:
-        """
+        """ Sets how many events at the very beginning of the run should be excluded. if the argument is negative, it will be interpreted as time in minutes. For a positive argument it is interpreted
+         as maximum event number. """
         if value > 0:
             self.EasyCutStrings['ExcludeFirst'] = str(int(value) / 1000) + 'k+'
             return value
