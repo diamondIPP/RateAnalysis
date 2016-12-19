@@ -10,6 +10,7 @@ from Utils import *
 from screeninfo import get_monitors
 from numpy import array
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
+from sys import stdout
 
 from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, kGreen, kOrange, kViolet, kYellow, kRed, kBlue, \
     kMagenta, kAzure, kCyan, kTeal
@@ -185,10 +186,19 @@ class Elementary(object):
                 print arg,
             print
 
-    def log_info(self, msg):
+    def log_info(self, msg, next_line=True):
         if self.verbose:
+            t1 = time()
             t = datetime.now().strftime('%H:%M:%S')
-            print 'INFO: {t} --> {msg}'.format(t=t, msg=msg)
+            print 'INFO: {t} --> {msg}'.format(t=t, msg=msg),
+            stdout.flush()
+            if next_line:
+                print
+            return t1
+
+    def add_info(self, msg, t=None):
+        if self.verbose:
+            print '{m} ({t:2.2f} s)'.format(m=msg, t=time() - t)
 
     @staticmethod
     def log_warning(msg):
