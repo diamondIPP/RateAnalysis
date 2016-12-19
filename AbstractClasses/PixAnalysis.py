@@ -1,14 +1,16 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from ROOT import TH2D, TH1D, gROOT, TFormula
+from ROOT import TH2D, TH1D, gROOT, TFormula, TCut, TH1I
 from TelescopeAnalysis import Analysis
 # from CurrentInfo import Currents
 from argparse import ArgumentParser
 from time import time
 from copy import deepcopy
 import progressbar
-# from CutPix import CutPix
+from CutPix import CutPix
+from numpy import array
+from Utils import *
 
 __author__ = 'DA'
 
@@ -38,9 +40,12 @@ class SignalPixAnalysis(Analysis):
         self.plots.roc_si = self.roc_si
         self.plots.save_dir = self.save_dir
         self.devices = {'tel': [], 'dut': []}
+
+        # cuts
+        self.Cut = CutPix(self, dut)
         self.Cut.reset_cut_dicts()
-        self.Cut.do_cuts()
-        self.plot_settings = self.plots.plot_settings
+        self.Settings = self.plots.plot_settings
+
         self.stuff = []
 
     def __del__(self):

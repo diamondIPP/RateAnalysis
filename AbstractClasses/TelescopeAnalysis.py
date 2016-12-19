@@ -9,7 +9,6 @@ from Elementary import Elementary
 from RunClass import Run
 from Cut import Cut
 from Utils import *
-from CutPix import CutPix
 from Plots import Plots
 
 
@@ -70,7 +69,6 @@ class Analysis(Elementary):
         if self.DUTType == 'pixel':
             self.num_devices = 7
             self.plots = Plots(self.run.n_entries, self.run, self.num_devices, -1, [0, 1, 2, 3], 4, 5, 6)
-            self.Cut = CutPix(self)
             self.StartEvent = 1  # DA: for now... TODO pixel cuts!
 
         # save histograms // canvases
