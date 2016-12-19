@@ -44,13 +44,12 @@ class CutPix(Cut):
 
         self.analysis.tree.Draw('time>>temp0', 'plane[{')
 
-    def do_cuts(self):
-        """ Generates the cut strings to apply in the analysis for each of the cuts. Each of these cuts generation, fills the self.cuts_hitmap_roc, self.cuts_hitmap_roc_incr,
-        self.cuts_pixelated_roc, self.cuts_pixelated_roc_incr """
-        self.CutStrings['hit'] = self.generate_hit()
-        self.CutStrings['masks'] = self.generate_masks()
-        self.CutStrings['fiducial'] = self.generate_fiducial(cluster=True)
-        self.CutStrings['rhit'] = self.generate_rhit()
+    def generate_pixel_cutstrings(self):
+        """ Generates the cut strings to apply in the analysis for each of the cuts. """
+        self.CutStrings['hit'] += self.generate_hit()
+        self.CutStrings['masks'] += self.generate_masks()
+        self.CutStrings['fiducial'] += self.generate_fiducial()
+        self.CutStrings['rhit'] += self.generate_rhit()
         self.cuts_done = True
 
     def reset_cut_dicts(self):
