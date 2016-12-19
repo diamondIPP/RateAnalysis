@@ -41,7 +41,7 @@ class Analysis(Elementary):
 
         # DUT
         self.DUTType = self.run.DUTType
-        
+
         # tree
         self.tree = self.run.tree
 
@@ -49,14 +49,14 @@ class Analysis(Elementary):
         self.channel = self.channel if hasattr(self, 'channel') else None
 
         # general for pads and pixels
-        # FIXME: use parent Cut class here!
+        self.Cut = Cut(self, skip=not load_tree)
+
         if self.DUTType == 'pad':
-            self.Cut = Cut(self, skip=not load_tree)
             if load_tree:
                 self.StartEvent = self.Cut.CutConfig['EventRange'][0]
                 self.EndEvent = self.Cut.CutConfig['EventRange'][1]
 
-        # alignment
+                # alignment
                 self.IsAligned = self.check_alignment(draw=False, save_plot=False)
 
         # pixel TODO: uniform
