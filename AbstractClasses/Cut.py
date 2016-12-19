@@ -207,10 +207,12 @@ class Cut(Elementary):
     # ==============================================
     # region GENERATE CUT STRINGS
     def generate_event_range(self):
+        cut_string = ''
         if self.CutConfig['EventRange']:
-            self.CutStrings['event_range'] += '(event_number<={max}&&event_number>={min})'.format(min=self.CutConfig['EventRange'][0], max=self.CutConfig['EventRange'][1])
+            cut_string = '(event_number<={max}&&event_number>={min})'.format(min=self.CutConfig['EventRange'][0], max=self.CutConfig['EventRange'][1])
         elif self.CutConfig['ExcludeFirst']:
-            self.CutStrings['event_range'] += 'event_number>={min}'.format(min=self.CutConfig['ExcludeFirst'])
+            cut_string = 'event_number>={min}'.format(min=self.CutConfig['ExcludeFirst'])
+        return cut_string
 
     def generate_chi2(self, mode='x'):
         picklepath = 'Configuration/Individual_Configs/Chi2/{tc}_{run}_{mod}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run.run_number, mod=mode.title())
