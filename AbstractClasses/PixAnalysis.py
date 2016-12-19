@@ -52,6 +52,10 @@ class SignalPixAnalysis(Analysis):
             for obj in lst:
                 self.del_rootobj(obj)
 
+    def load_diamond_name(self, dut):
+        assert dut in [1, 2, 3], 'You have to choose either dut 1, 2 or 3'
+        return self.run.diamond_names[dut - 1]
+
     def change_roc_ids(self, tel0, tel1, tel2, tel3, dia1, dia2, si):
         """
         Changes the id of the ROCs. By default telescope are [0, 1, 2, 3], dia1 = 4, dia2 = 5, si = 6
