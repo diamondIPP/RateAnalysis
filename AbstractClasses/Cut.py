@@ -437,6 +437,13 @@ class Cut(Elementary):
             print 'There is no cut with the name "{name}"!'.format(name=name)
         self.update_all_cut()
 
+    def set_cut(self, name, value):
+        if name in self.CutStrings:
+            self.CutStrings[name].SetTitle('')
+            self.CutStrings[name] += value
+        else:
+            print 'There is no cut with the name "{name}"!'.format(name=name)
+
     def update_all_cut(self):
         self.all_cut = self.generate_all_cut()
 
