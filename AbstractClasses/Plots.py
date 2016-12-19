@@ -56,6 +56,8 @@ class Plots(Elementary):
             'ymin': -4000,
             'ymax': 4000,
             'nBinCol': 51,
+            'nCols': 52,
+            'nRows': 80,
             'minCol': 0,
             'maxCol': 51,
             'nBinRow': 79,
