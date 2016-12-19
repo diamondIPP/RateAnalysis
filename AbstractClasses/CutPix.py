@@ -52,6 +52,11 @@ class CutPix(Cut):
         self.CutStrings['rhit'] += self.generate_rhit()
         self.cuts_done = True
 
+    def generate_hitmap_cutstrings(self):
+        self.set_hitmap_cuts()
+        cut = self.generate_all_cut()
+        self.set_hitmap_cuts(False)
+        return cut
     def reset_cut_dicts(self):
         """ Resets the lists, dictionaries and the numbering of the DUTs when they are changed in analysis. This method should be called by PixAnalysis """
         self.cuts_hitmap_roc = {}  # each cut separately
