@@ -81,7 +81,6 @@ class Run(Elementary):
         self.NChannels = self.load_pre_n_channels()
         self.channels = self.load_channels()
         self.trigger_planes = [1, 2]
-        self.channels = [0, 3]
         self.filename = self.run_config_parser.get('BASIC', 'filename')
         self.treename = self.run_config_parser.get('BASIC', 'treename')
         self.run_pathruninfofile = self.run_config_parser.get('BASIC', 'runpath')
@@ -171,13 +170,18 @@ class Run(Elementary):
                     if 'active_regions:' in line:
                         binary = int(line.strip('active_regions:'))
             return [i for i in xrange(self.NChannels) if self.has_bit(binary, i)]
+        elif self.DUTType == 'pixel':
+            return [0, 1, 2]
         else:
             return None
 
     def load_bias(self):
         bias = {}
         for i, ch in enumerate(self.channels, 1):
-            bias[ch] = self.RunInfo['dia{num}hv'.format(num=i)]
+            try:
+                bias[ch] = self.RunInfo['dia{num}hv'.format(num=i)]
+            except KeyError:
+                pass
         return bias
     
     def load_dut_type(self):
@@ -218,13 +222,16 @@ class Run(Elementary):
         parser.read('Configuration/DiamondAliases.cfg')
         diamondname = {}
         for i, ch in enumerate(self.channels, 1):
-            diamondname[ch] = self.RunInfo['dia{num}'.format(num=i)]
-            if diamondname[ch].lower().startswith('ch'):
-                continue
             try:
-                diamondname[ch] = parser.get('ALIASES', diamondname[ch])
-            except NoOptionError as err:
-                print err
+                diamondname[ch] = self.RunInfo['dia{num}'.format(num=i)]
+                if diamondname[ch].lower().startswith('ch'):
+                    continue
+                try:
+                    diamondname[ch] = parser.get('ALIASES', diamondname[ch])
+                except NoOptionError as err:
+                    print err
+            except KeyError:
+                pass
         return diamondname
 
     def __load_timing(self):
