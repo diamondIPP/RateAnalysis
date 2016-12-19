@@ -1,23 +1,14 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, TH1D, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie, kFALSE, kTRUE, kBlack,\
-    kRed, kBlue, kMagenta, TFormula
+from ROOT import TH2D, TH1D, gROOT, TFormula
 from TelescopeAnalysis import Analysis
-from CurrentInfo import Currents
-from Extrema import Extrema2D
-from Plots import Plots
-from numpy import array
-from math import sqrt, ceil, log
+# from CurrentInfo import Currents
 from argparse import ArgumentParser
-from optparse import OptionParser
-from ChannelCut import ChannelCut
-from time import time, sleep
-from collections import OrderedDict
-from sys import stdout
+from time import time
 from copy import deepcopy
 import progressbar
-import os
+# from CutPix import CutPix
 
 __author__ = 'DA'
 
