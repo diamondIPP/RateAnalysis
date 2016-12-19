@@ -318,6 +318,12 @@ def set_drawing_range(h, legend=True, lfac=None, rfac=None):
     h.GetXaxis().SetRangeUser(*increased_range(range_, lfac, rfac))
 
 
+def set_time_axis(histo, form='%H:%M', off=3600):
+    histo.GetXaxis().SetTimeFormat(form)
+    histo.GetXaxis().SetTimeOffset(-off)
+    histo.GetXaxis().SetTimeDisplay(1)
+
+
 class FitRes:
     def __init__(self, fit_obj=None):
         self.Pars = list(fit_obj.Parameters()) if fit_obj is not None else [None]
