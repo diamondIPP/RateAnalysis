@@ -270,11 +270,12 @@ class Cut(Elementary):
         # --TRACKS --
         self.CutStrings['chi2X'] += self.generate_chi2('x')
         self.CutStrings['chi2Y'] += self.generate_chi2('y')
-        self.CutStrings['track_angle'] += self.generate_slope()
-        self.CutStrings['tracks'] += 'n_tracks'
+        self.CutStrings['track_angle_x'] += self.generate_track_angle('x')
+        self.CutStrings['track_angle_y'] += self.generate_track_angle('y')
+        self.CutStrings['tracks'] += 'n_tracks==1'
 
         # -- EVENT RANGE CUT --
-        self.generate_event_range()
+        self.CutStrings['event_range'] += self.generate_event_range()
         if self.CutConfig['EventRange']:
             self.EasyCutStrings['EventRange'] = 'Evts.{min}k-{max}k'.format(min=int(self.CutConfig['EventRange'][0]) / 1000, max=int(self.CutConfig['EventRange'][1]) / 1000)
             self.EasyCutStrings['ExcludeFirst'] = 'Evts.{min}k+'.format(min=int(self.CutConfig['ExcludeFirst']) / 1000) if self.CutConfig['ExcludeFirst'] > 0 else ''
@@ -314,7 +315,7 @@ class Cut(Elementary):
         dic['jumps'] = interruptions[1]
         return dic
 
-    def find_pixel_beam_interruptions(self, show=False):
+    def find_pixel_beam_interruptions(self):
         """ Locates the beam interruptions and cuts some seconds before and some seconds after which are specified in the config file. overlapping segments are fused to one to reduce the size
             of the string. An average of the number of event per time bin is calculated and every bin below 90% or above 120% is excluded """
         # time is in minutes. good results found with bin size of 10 seconds
@@ -323,17 +324,16 @@ class Cut(Elementary):
         self.set_root_output(0)
         h1 = TH1F('h_beam_time_', 'h_beam_time_', bins, 0, self.analysis.run.totalMinutes)
         self.analysis.tree.Draw('(time - {off}) / 60000.>>h_beam_time_'.format(off=self.analysis.run.startTime), '', 'goff')
-        self.draw_histo(h1)
-        mean = h1.Integral() / float(h1.GetNbinsX())
+        mean_ = h1.Integral() / float(h1.GetNbinsX())
         interruptions = []
         jumps = []
         n_interr = 0
         ex_range = {key: value / 60. for key, value in self.CutConfig['JumpExcludeRange'].iteritems()}
         for t in xrange(1, h1.GetNbinsX() + 1):
-            if h1.GetBinContent(t) < mean * .6 or h1.GetBinContent(t) > mean * 1.3:
+            if h1.GetBinContent(t) < mean_ * .6 or h1.GetBinContent(t) > mean_ * 1.3:
                 low_edge = h1.GetBinLowEdge(t)
                 bin_width = h1.GetBinWidth(t)
-                if not n_interr or (not low_edge - ex_range['before'] < interruptions[n_interr - 1]['f'] and n_interr) :
+                if not n_interr or (not low_edge - ex_range['before'] < interruptions[n_interr - 1]['f'] and n_interr):
                     interruptions.append({'i': low_edge - ex_range['before'], 'f': low_edge + bin_width + ex_range['after']})
                     jumps.append([low_edge, low_edge + bin_width])
                     n_interr += 1
