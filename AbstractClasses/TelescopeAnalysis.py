@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 from copy import deepcopy
 from time import sleep
 
-from ROOT import TCanvas, TH2F, gROOT, TProfile, TH1F, TLegend, gStyle, kGreen, kCyan, TText, TCut, TF1, TGraph
+from ROOT import TCanvas, TH2F, gROOT, TProfile, TH1F, TLegend, gStyle, kGreen, TText, TCut, TF1, TGraph
 from numpy import array, zeros
 
 from Elementary import Elementary
@@ -16,7 +16,7 @@ from Plots import Plots
 class Analysis(Elementary):
     """ Class for the analysis of the non-channel specific stuff of a single run. """
 
-    def __init__(self, run, verbose=False, high_low_rate=None, load_tree=True):
+    def __init__(self, run, verbose=False, high_low_rate=None, load_tree=True, binning=10000):
         """
         Parent class for all analyses, which contains all the basic stuff about the Telescope.
         :param run:             run object of type "Run" or integer run number
@@ -50,6 +50,13 @@ class Analysis(Elementary):
 
         # general for pads and pixels
         self.Cut = Cut(self, skip=not load_tree)
+
+        if load_tree:
+            # binning
+            self.BinSize = binning
+            self.binning = self.__get_binning()
+            self.time_binning = self.get_time_binning()
+            self.n_bins = len(self.binning)
 
         if self.DUTType == 'pad':
             if load_tree:
@@ -405,6 +412,51 @@ class Analysis(Elementary):
 
     # ==============================================
     # region RUN FUNCTIONS
+
+    def __get_binning(self):
+        jumps = self.Cut.Interruptions
+        n_jumps = len(jumps)
+        bins = [self.Cut.get_min_event()]
+        ind = 0
+        for dic in jumps:
+            start = dic['i']
+            stop = dic['f']
+            gap = stop - start
+            # continue if first start and stop outside min event
+            if stop < bins[-1]:
+                ind += 1
+                continue
+            # if there is a jump from the start
+            if start < bins[-1] < stop:
+                bins[-1] = stop
+                ind += 1
+                continue
+            # add bins until hit interrupt
+            while bins[-1] + self.BinSize < start:
+                bins.append(bins[-1] + self.BinSize)
+            # two jumps shortly after one another
+            if ind < n_jumps - 2:
+                next_start = jumps[ind + 1]['i']
+                next_stop = jumps[ind + 1]['f']
+                if bins[-1] + self.BinSize + gap > next_start:
+                    gap2 = next_stop - next_start
+                    bins.append(bins[-1] + self.BinSize + gap + gap2)
+                else:
+                    bins.append(bins[-1] + self.BinSize + gap)
+            else:
+                bins.append(bins[-1] + self.BinSize + gap)
+            ind += 1
+        # fill up the end
+        if ind == n_jumps - 1 and bins[-1] >= jumps[-1]['f'] or ind == n_jumps:
+            while bins[-1] + self.BinSize < self.run.n_entries:
+                bins.append(bins[-1] + self.BinSize)
+        return bins
+
+    def get_time_binning(self):
+        time_bins = []
+        for event in self.binning:
+            time_bins.append(self.run.get_time_at_event(event))
+        return time_bins
 
     def draw_time(self, show=True):
         entries = self.tree.Draw('Entry$:time', '', 'goff')

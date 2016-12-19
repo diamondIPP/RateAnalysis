@@ -32,7 +32,7 @@ class PadAnalysis(Analysis):
     def __init__(self, run, dia, high_low_rate_run=None, binning=10000, load_tree=True, verbose=False):
 
         self.RunNumber = run
-        Analysis.__init__(self, run, high_low_rate=high_low_rate_run, verbose=verbose, load_tree=load_tree)
+        Analysis.__init__(self, run, high_low_rate=high_low_rate_run, verbose=verbose, load_tree=load_tree, binning=binning)
         self.channel = self.load_channel(dia)
 
         # main
@@ -42,33 +42,28 @@ class PadAnalysis(Analysis):
 
         # stuff
         if load_tree:
-            self.BinSize = binning
-            self.binning = self.__get_binning()
-            self.time_binning = self.get_time_binning()
-            self.n_bins = len(self.binning)
-
-        # polarities
+            # polarities
             self.Polarity = self.get_polarity()
             self.PulserPolarity = self.get_pulser_polarity()
 
-        # regions // ranges
+            # regions // ranges
             self.IntegralNames = self.get_integral_names()
             self.SignalRegion = self.__load_signal_region()
             self.PedestalRegion = self.__load_pedestal_region()
             self.PeakIntegral = self.__load_peak_integral()
 
-        # names
+            # names
             self.SignalDefinition = '({pol}*TimeIntegralValues[{num}])'
             self.SignalNumber = self.get_signal_number()
             self.SignalName = self.get_signal_name()
             self.PedestalName = self.get_pedestal_name()
             self.PulserName = self.get_pulser_name()
 
-        # cuts
+            # cuts
             self.Cut = ChannelCut(self, self.channel)
             self.AllCuts = self.Cut.all_cut
 
-        # subclasses
+            # subclasses
             self.Pulser = PulserAnalysis(self)
 
         # currents
@@ -2013,51 +2008,6 @@ class PadAnalysis(Analysis):
                 reg = region + integral
                 names['({pol}*TimeIntegralValues[{num}])'.format(pol=self.Polarity, num=num)] = reg
         return names
-
-    def __get_binning(self):
-        jumps = self.Cut.Interruptions
-        n_jumps = len(jumps)
-        bins = [self.Cut.get_min_event()]
-        ind = 0
-        for dic in jumps:
-            start = dic['i']
-            stop = dic['f']
-            gap = stop - start
-            # continue if first start and stop outside min event
-            if stop < bins[-1]:
-                ind += 1
-                continue
-            # if there is a jump from the start
-            if start < bins[-1] < stop:
-                bins[-1] = stop
-                ind += 1
-                continue
-            # add bins until hit interrupt
-            while bins[-1] + self.BinSize < start:
-                bins.append(bins[-1] + self.BinSize)
-            # two jumps shortly after one another
-            if ind < n_jumps - 2:
-                next_start = jumps[ind + 1]['i']
-                next_stop = jumps[ind + 1]['f']
-                if bins[-1] + self.BinSize + gap > next_start:
-                    gap2 = next_stop - next_start
-                    bins.append(bins[-1] + self.BinSize + gap + gap2)
-                else:
-                    bins.append(bins[-1] + self.BinSize + gap)
-            else:
-                bins.append(bins[-1] + self.BinSize + gap)
-            ind += 1
-        # fill up the end
-        if ind == n_jumps - 1 and bins[-1] >= jumps[-1]['f'] or ind == n_jumps:
-            while bins[-1] + self.BinSize < self.run.n_entries:
-                bins.append(bins[-1] + self.BinSize)
-        return bins
-
-    def get_time_binning(self):
-        time_bins = []
-        for event in self.binning:
-            time_bins.append(self.run.get_time_at_event(event))
-        return time_bins
 
     def print_info_header(self):
         header = ['Run', 'Type', 'Diamond', 'HV [V]', 'Region']
