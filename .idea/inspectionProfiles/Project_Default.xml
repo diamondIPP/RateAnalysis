@@ -68,6 +68,7 @@
           <option value="RooMsgService" />
           <option value="RooFit" />
           <option value="gPrintViaErrorHandler" />
+          <option value="TH1I" />
         </list>
       </option>
     </inspection_tool>
