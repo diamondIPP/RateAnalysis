@@ -8,7 +8,6 @@ from termcolor import colored
 from ROOT import gStyle
 from numpy import sqrt, mean
 import os
-from os.path import join as joinpath
 
 
 # ==============================================
