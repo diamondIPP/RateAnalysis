@@ -1,6 +1,6 @@
 import sys
 from numpy import array
-from ROOT import TCut, gROOT, TH1F, kRed, TCutG, gDirectory, kBlue, TH2D, TH1D, kGreen
+from ROOT import TCut, gROOT, TH1F, kRed, TCutG, kBlue, TH2D, TH1D, kGreen
 from math import ceil
 from Cut import Cut
 from json import loads
@@ -34,23 +34,12 @@ class CutPix(Cut):
     def load_run_config(self):
         return self.load_run_configs(self.RunNumber)
 
-    def calculate_initial_events(self):
-        gROOT.SetBatch(1)
-        self.events_after_cuts['None'] = self.analysis.tree.GetEntries()
-        for iROC in self.duts_list:
-            self.analysis.tree.Draw('time>>temp0', 'plane[{r}]'.format(r=iROC), 'goff')
-            bla = gDirectory.Get('temp0')
-            self.events_after_cuts_roc['None'] = bla.GetEntries()
-
-        self.analysis.tree.Draw('time>>temp0', 'plane[{')
-
     def generate_pixel_cutstrings(self):
         """ Generates the cut strings to apply in the analysis for each of the cuts. """
         self.CutStrings['hit'] += self.generate_hit()
         self.CutStrings['masks'] += self.generate_masks()
         self.CutStrings['fiducial'] += self.generate_fiducial()
         self.CutStrings['rhit'] += self.generate_rhit()
-        self.cuts_done = True
 
     def generate_hitmap_cutstrings(self):
         self.set_hitmap_cuts()
@@ -76,15 +65,7 @@ class CutPix(Cut):
 
     def reset_cut_dicts(self):
         """ Resets the lists, dictionaries and the numbering of the DUTs when they are changed in analysis. This method should be called by PixAnalysis """
-        self.cuts_hitmap_roc = {}  # each cut separately
-        self.cuts_pixelated_roc = {}  # each cut separately
-        self.cuts_hitmap_roc_incr = {}  # each cut incremental. last position used for all cuts
-        self.cuts_pixelated_roc_incr = {}  # each cut incremental. last position used for all cuts
-        self.num_cuts = 0
-        self.events_after_cuts = {}
-        self.events_after_cuts_roc = {}
-        self.events_after_cuts_incr = {}
-        self.events_after_cuts_roc_incr = {}
+        pass
 
     def do_cuts_distributions(self):
         """
@@ -514,15 +495,6 @@ class CutPix(Cut):
             cut.SetLineColor(kRed)
             cut.SetLineWidth(3*3)
         return TCut(cut.GetName() if cut is not None else '')
-
-    def gen_vect_cuts(self, cut_hitmap, cut_pixelated, roc=4):
-        self.cuts_hitmap_roc[roc][self.num_cuts] = cut_hitmap
-        self.cuts_pixelated_roc[roc][self.num_cuts] = cut_pixelated
-        self.accum_incr_vect_cuts(roc)
-
-    def accum_incr_vect_cuts(self, roc=4):
-        self.cuts_hitmap_roc_incr[roc][self.num_cuts] = self.cuts_hitmap_roc_incr[roc][self.num_cuts-1] + '&&(' + self.cuts_hitmap_roc[roc][self.num_cuts] + ')' if self.num_cuts != 0 else '(' + self.cuts_hitmap_roc[roc][self.num_cuts] + ')'
-        self.cuts_pixelated_roc_incr[roc][self.num_cuts] = self.cuts_pixelated_roc_incr[roc][self.num_cuts-1] + '&&(' + self.cuts_pixelated_roc[roc][self.num_cuts] + ')' if self.num_cuts != 0 else '(' + self.cuts_pixelated_roc[roc][self.num_cuts] + ')'
 
     def generate_masks(self, cluster=True):
         # t = self.log_info('Generating mask cuts ...', False)
