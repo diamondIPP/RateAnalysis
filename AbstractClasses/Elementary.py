@@ -274,7 +274,7 @@ class Elementary(object):
                 print log_warning('Error in save canvas: {err}'.format(err=inst))
                 return
         channel = self.channel if hasattr(self, 'channel') else None
-        channel = self.Dut - 3 if hasattr(self, 'Dut') else channel
+        channel = self.Dut - 4 if hasattr(self, 'Dut') else channel
         if hasattr(self, 'run'):
             self.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas, x=x, y=y)
         if hasattr(self, 'Run'):
