@@ -1,7 +1,7 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from ROOT import TH2D, TH1D, gROOT, TFormula, TCut, TH1I
+from ROOT import TH2D, TH1D, gROOT, TFormula, TCut, TH1I, TProfile
 from TelescopeAnalysis import Analysis
 # from CurrentInfo import Currents
 from argparse import ArgumentParser
@@ -186,6 +186,33 @@ class SignalPixAnalysis(Analysis):
         self.format_histo(h, x_tit='Pulse Height [e]', y_tit='Number of Entries', y_off=1.4, stats=0)
         self.save_histo(h, 'PulseHeightDisto{c}'.format(c=make_cut_string(cut, self.Cut.NCuts)), show, lm=.13, prnt=prnt)
         return h
+
+    def draw_hit_efficiency(self, roc, show=True, save=True, cut=''):
+        self.set_root_output(False)
+        h = TProfile('h_he', 'Hit Efficieny ROC {n}'.format(n=roc), int(self.run.n_entries / 5000), z.run.startTime / 1000, self.run.endTime / 1000.)
+        draw_string = '(clusters_per_plane[{r}]>0)*100:time / 1000 >> h_he'.format(r=roc)
+        print draw_string
+        self.tree.Draw(draw_string, TCut(cut), 'goff')
+        set_time_axis(h, off=self.run.startTime / 1000 + 3600)
+        self.format_histo(h, x_tit='Time [hh:mm]', y_tit='Efficiency [%]', y_off=1.4, ndiv=520, y_range=[-5, 105], stats=0)
+        self.save_histo(h, 'HitEfficiencyROC{n}'.format(n=roc), show, lm=.13, save=save, gridy=True)
+        return h
+
+    def fit_hit_efficiency(self, roc, show=True, save=True, cut=''):
+        pickle_path = self.make_pickle_path('Efficiency', run=self.RunNumber, suf=roc)
+
+        def func():
+            set_statbox(y=.37, only_fit=True)
+            h = self.draw_hit_efficiency(roc, show=False, save=False, cut=cut)
+            self.format_histo(h, stats=1, name='Fit Results')
+            fit = h.Fit('pol0', 'qs')
+            self.save_histo(h, 'HitEfficiencyROC{n}Fit'.format(n=roc), show, lm=.13, save=save, gridy=True)
+            return fit
+
+        fit = func() if show else None
+        print fit.Parameter(0)
+        return self.do_pickle(pickle_path, func, fit)
+
 
     def do_pulse_height_roc(self, roc=4, num_clust=1, cut='', histoevent=None, histo=None):
         """
