@@ -92,6 +92,8 @@ class CutPix(Cut):
 
     def load_mask(self, name):
         string = self.get_config('{n}ROC{d}'.format(n=name, d=self.Dut))
+        if string == '[]' or string == 'None':
+            return []
         lst = []
         if string is not None:
             string = string.replace('[', '').replace(']', '')
