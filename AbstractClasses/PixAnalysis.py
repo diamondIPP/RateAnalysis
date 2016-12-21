@@ -177,6 +177,16 @@ class SignalPixAnalysis(Analysis):
         self.save_histo(h, 'ADCDisto', show, lm=0.13, logy=True)
         return h
 
+    def draw_pulse_height_disto(self, cut=None, show=True, prnt=True, sup_zero=True):
+        cut_string = self.Cut.all_cut if cut is None else TCut(cut)
+        cut_string += 'charge_all_ROC{d}!=0'.format(d=self.Dut) if sup_zero else ''
+        self.set_root_output(False)
+        h = TH1D('h_phd', 'Pulse Height Distribution', *self.Settings['phBinsD{n}'.format(n=self.Dut)])
+        self.tree.Draw('charge_all_ROC{d}>>h_phd'.format(d=self.Dut), cut_string, 'goff')
+        self.format_histo(h, x_tit='Pulse Height [e]', y_tit='Number of Entries', y_off=1.4, stats=0)
+        self.save_histo(h, 'PulseHeightDisto{c}'.format(c=make_cut_string(cut, self.Cut.NCuts)), show, lm=.13, prnt=prnt)
+        return h
+
     def do_pulse_height_roc(self, roc=4, num_clust=1, cut='', histoevent=None, histo=None):
         """
         Does the pulse height extraction for the specified roc with the specified cluster size and applying the given
