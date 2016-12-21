@@ -120,8 +120,7 @@ class CutPix(Cut):
         cut = TCut(name, '')
         self.NCuts = 0
         excluded = [excluded] if type(excluded) is not list else excluded
-        self.set_cut('masks', self.generate_masks(cluster=cluster))
-        self.set_cut('fiducial', self.generate_masks(cluster=cluster))
+        self.set_hitmap_cuts()
         for key, value in self.CutStrings.iteritems():
             if excluded and key in excluded:
                 continue
@@ -134,8 +133,7 @@ class CutPix(Cut):
             cut += value
             self.NCuts += 1
         self.log_info('generated {name} cut with {num} cuts'.format(name=name, num=self.NCuts))
-        self.set_cut('masks', self.generate_masks())
-        self.set_cut('fiducial', self.generate_masks())
+        self.set_hitmap_cuts(False)
         return cut
 
     def generate_hit(self):  # TODO implement cut! must change tree structure from tracking telescope
