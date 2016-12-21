@@ -324,6 +324,10 @@ def set_time_axis(histo, form='%H:%M', off=3600):
     histo.GetXaxis().SetTimeDisplay(1)
 
 
+def make_cut_string(cut, n):
+    return '{n}Cuts'.format(n=str(n).zfill(2)) if cut is not None else ''
+
+
 class FitRes:
     def __init__(self, fit_obj=None):
         self.Pars = list(fit_obj.Parameters()) if fit_obj is not None else [None]
