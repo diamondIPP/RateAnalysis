@@ -36,10 +36,10 @@ class Plots(Elementary):
         self.num_entries = num_entries
         self.plot_settings = {
             'ph1DbinsD4': 80,
-            'ph1DminD4': 0,
+            'ph1DminD4': -2500,
             'ph1DmaxD4': 30000,
             'ph1DbinsD5': 80,
-            'ph1DminD5': 0,
+            'ph1DminD5': -5000,
             'ph1DmaxD5': 60000,
             'ph1DbinsSi': 160,
             'ph1DminSi': 0,
@@ -74,6 +74,8 @@ class Plots(Elementary):
             'rhit_1Dmin': 0,
             'rhit_1Dmax': 10
         }
+        self.plot_settings['phBinsD4'] = [self.plot_settings['ph1DbinsD4'], self.plot_settings['ph1DminD4'], self.plot_settings['ph1DmaxD4']]
+        self.plot_settings['phBinsD5'] = [self.plot_settings['ph1DbinsD5'], self.plot_settings['ph1DminD5'], self.plot_settings['ph1DmaxD5']]
         self.plot_settings['event_bins'] = int(ceil(float(self.num_entries)/5000)) if self.num_entries <= 100000 else \
             int(ceil(float(self.num_entries)/100)) if self.num_entries <= 500000 else int(ceil(float(self.num_entries)/self.plot_settings['nEventsAv']))
         self.plot_settings['deltaX'] = float(self.plot_settings['xmax']-self.plot_settings['xmin'])/self.plot_settings['nBinsX']
