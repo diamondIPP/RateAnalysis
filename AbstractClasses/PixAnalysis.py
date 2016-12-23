@@ -1,7 +1,7 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from ROOT import TH2D, TH1D, gROOT, TFormula, TCut, TH1I, TProfile
+from ROOT import TH2D, TH1D, gROOT, TFormula, TCut, TH1I, TProfile, THStack
 from TelescopeAnalysis import Analysis
 # from CurrentInfo import Currents
 from argparse import ArgumentParser
@@ -210,6 +210,22 @@ class SignalPixAnalysis(Analysis):
         fit_res = func() if show else None
         return self.do_pickle(pickle_path, func, fit_res)
 
+    def draw_all_efficiencies(self, show=True):
+        stack = THStack('s_he', 'Raw Hit Efficiencies')
+        l = self.make_legend(y2=.5, nentries=5, x1=.59)
+        for roc in xrange(self.NRocs):
+            h = self.draw_hit_efficiency(roc, show=False)
+            fit = self.fit_hit_efficiency(roc, show=False)
+            self.format_histo(h, color=self.get_color())
+            stack.Add(h, 'ROC{n}'.format(n=roc))
+            leg_string = 'ROC{n}'.format(n=roc) if roc < 4 else self.load_diamond_name(roc - 3)
+            leg_string += ' ({v:5.2f}%)'.format(v=fit.Parameter(0))
+            l.AddEntry(h, leg_string, 'pl')
+        self.format_histo(stack, x_tit='Time [hh:mm]', y_tit='Efficiency [%]', y_off=1.4, ndiv=505, y_range=[-5, 105], stats=0, draw_first=True)
+        set_time_axis(stack, off=self.run.startTime / 1000 + 3600)
+        self.save_histo(stack, 'HitEfficiencies', show, lm=.13, l=l, draw_opt='nostack', gridy=True)
+        self.reset_colors()
+        return stack
 
     def do_pulse_height_roc(self, roc=4, num_clust=1, cut='', histoevent=None, histo=None):
         """
