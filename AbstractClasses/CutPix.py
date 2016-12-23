@@ -66,10 +66,6 @@ class CutPix(Cut):
         self.set_hitmap_cuts(False)
         return cuts
 
-    def reset_cut_dicts(self):
-        """ Resets the lists, dictionaries and the numbering of the DUTs when they are changed in analysis. This method should be called by PixAnalysis """
-        pass
-
     def do_cuts_distributions(self):
         """
         Does the cuts distribution for beam interruption, chi2x, chi2y, anglex, angley and rhit for each of the ROCs to be analysed
