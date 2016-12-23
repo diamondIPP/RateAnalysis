@@ -4,6 +4,7 @@ from ROOT import TCut, gROOT, TH1F, kRed, TCutG, kBlue, TH2D, TH1D, kGreen
 from math import ceil
 from Cut import Cut
 from json import loads
+from collections import OrderedDict
 
 
 class CutPix(Cut):
@@ -53,12 +54,14 @@ class CutPix(Cut):
 
     def generate_consecutive_cuts(self, cluster=True):
         self.set_hitmap_cuts(not cluster)
-        cuts = [TCut('0', '')]
+        cuts = OrderedDict({'raw': TCut('0', '')})
         n = 1
         for key, value in self.CutStrings.iteritems():
             if str(value) and key != 'all_cuts' and not key.startswith('old'):
-                new_cut = cuts[n - 1] + value
-                cuts.append(TCut('{n}'.format(n=n), new_cut.GetTitle()))
+                new_cut = cuts.values()[n - 1] + value
+                key = 'beam stop' if key.startswith('beam') else key
+                key = key.replace('track_', '')
+                cuts['+ {n}'.format(n=key)] = TCut('{n}'.format(n=n), new_cut.GetTitle())
                 n += 1
         self.set_hitmap_cuts(False)
         return cuts
