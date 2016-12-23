@@ -59,46 +59,8 @@ class SignalPixAnalysis(Analysis):
         else:
             return 7
 
-    def change_roc_ids(self, tel0, tel1, tel2, tel3, dia1, dia2, si):
-        """
-        Changes the id of the ROCs. By default telescope are [0, 1, 2, 3], dia1 = 4, dia2 = 5, si = 6
-        :param tel0:
-        :param tel1:
-        :param tel2:
-        :param tel3:
-        :param dia1:
-        :param dia2:
-        :param si:
-        :return: No return
-        """
-        self.roc_tel = [tel0, tel1, tel2, tel3]
-        self.roc_diam1 = dia1
-        self.roc_diam2 = dia2
-        self.roc_si = si
-        self.dut_names = {self.roc_diam1: self.run.diamond_names[0], self.roc_diam2: self.run.diamond_names[3], self.roc_si: 'Si'}
-        self.set_cuts_rocs()
-
-    def add_telescope_device(self):
-        self.devices['tel'] = self.roc_tel
-
-    def add_duts_device(self):
-        self.devices['dut'] = [self.roc_diam1, self.roc_diam2, self.roc_si] if self.TESTCAMPAIGN != '201610' else [self.roc_diam1, self.roc_si]
-
-    def do_analysis(self, do_tlscp=False, do_duts=True, do_cut_dist=False, do_res_ana=False, do_cut_ana=False, do_occupancy=True, do_correlations=False, do_pulse_height=True, show_progressBar=False, verbosity=False):
-        """
-        Does automatic analysis with the selected options
-        :param do_tlscp: if true, analyses the telescope planes too (not implemented yet)
-        :param do_duts: if true, analyses the DUTs
-        :param do_cut_dist: if true, calculates and saves the plot and root file of the cut distributions (done in the CutPix method)
-        :param do_res_ana: if true, calculates and saves the plots and root files of the resolution analysis
-        :param do_cut_ana: if true, does the cut analysis on the selected devices (currently only on DUTs)
-        :param do_occupancy: if true, does occupancy analysis on selected devices
-        :param do_correlations: if true, does correlation analysis
-        :param do_pulse_height: if true, does pulse height analysis
-        :param show_progressBar: if true, shows progress bar (not implmented)
-        :param verbosity: if true, prints extra verbosity
-        :return: smiley face when finished
-        """
+    def do_analysis(self, do_cut_dist=False, do_res_ana=False, do_cut_ana=False, do_occupancy=True, do_pulse_height=True):
+        """ Does automatic analysis with the selected options """
         gROOT.SetBatch(True)
         gROOT.ProcessLine("gErrorIgnoreLevel = 1001;")
         gROOT.SetBatch(False)
@@ -107,10 +69,6 @@ class SignalPixAnalysis(Analysis):
         self.deltaX = self.plots.plot_settings['deltaX']
         self.deltaY = self.plots.plot_settings['deltaY']
 
-        if do_tlscp:
-            self.add_telescope_device()
-        if do_duts:
-            self.add_duts_device()
         if do_cut_dist:
             self.Cut.do_cuts_distributions()
         if do_res_ana:
@@ -119,13 +77,7 @@ class SignalPixAnalysis(Analysis):
             self.do_cuts_analysis(do_occupancy, do_pulse_height, True)
 
     def do_cuts_analysis(self, do_occupancy, do_pulse_height, normalize_ph_plots=False):
-        """
-        Calls do_cut_analysis in the Cut method
-        :param do_occupancy:
-        :param do_pulse_height:
-        :param normalize_ph_plots:
-        :return:
-        """
+        """ Calls do_cut_analysis in the Cut method """
         self.Cut.do_cuts_analysis(do_occupancy, do_pulse_height, normalize_ph_plots)
 
     def draw_occupancy(self, cut=None, show=True, fid=False, prnt=True):
