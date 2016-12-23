@@ -161,11 +161,12 @@ class SignalPixAnalysis(Analysis):
 
     def draw_adc_vs_event(self, cut=None, show=True):
         h = self.draw_pulse_height_vs_event(cut, show=False, adc=True)
+        self.format_histo(h, title='ADC vs Time - {d}'.format(d=self.DiamondName))
         self.save_histo(h, 'ADCvsEvent', show, rm=.15, lm=.16, draw_opt='colz', logz=True)
         return h
 
     def draw_adc_disto(self, cut=None, show=True):
-        h = TH1I('h_adc', 'adc Distribution', 255, 0, 255)
+        h = TH1I('h_adc', 'ADC Distribution {d}'.format(d=self.DiamondName), 255, 0, 255)
         cut_string = self.Cut.HitMapCut if cut is None else TCut(cut)
         cut_string += 'plane == {n}'.format(n=self.Dut)
         self.set_root_output(False)
@@ -178,25 +179,25 @@ class SignalPixAnalysis(Analysis):
         cut_string = self.Cut.all_cut if cut is None else TCut(cut)
         cut_string += 'charge_all_ROC{d}!=0'.format(d=self.Dut) if sup_zero else ''
         self.set_root_output(False)
-        h = TH1D('h_phd', 'Pulse Height Distribution', *self.Settings['phBinsD{n}'.format(n=self.Dut)])
+        h = TH1D('h_phd', 'Pulse Height Distribution - {d}'.format(d=self.DiamondName), *self.Settings['phBinsD{n}'.format(n=self.Dut)])
         self.tree.Draw('charge_all_ROC{d}>>h_phd'.format(d=self.Dut), cut_string, 'goff')
-        self.format_histo(h, x_tit='Pulse Height [e]', y_tit='Number of Entries', y_off=1.4, stats=0)
+        self.format_histo(h, x_tit='Pulse Height [e]', y_tit='Number of Entries', y_off=1.4, stats=0, fill_color=self.FillColor)
         self.save_histo(h, 'PulseHeightDisto{c}'.format(c=make_cut_string(cut, self.Cut.NCuts)), show, lm=.13, prnt=prnt)
         return h
 
     def draw_hit_efficiency(self, roc, show=True, save=True, cut=''):
         self.set_root_output(False)
-        h = TProfile('h_he', 'Hit Efficieny ROC {n}'.format(n=roc), int(self.run.n_entries / 5000), z.run.startTime / 1000, self.run.endTime / 1000.)
-        draw_string = '(clusters_per_plane[{r}]>0)*100:time / 1000 >> h_he'.format(r=roc)
-        print draw_string
-        self.tree.Draw(draw_string, TCut(cut), 'goff')
+        suffix = 'ROC {n}'.format(n=roc) if roc < 4 else self.load_diamond_name(roc - 3)
+        h = TProfile('h_he', 'Hit Efficiency {s}'.format(s=suffix), int(self.run.n_entries / 5000), z.run.startTime / 1000, self.run.endTime / 1000.)
+        cut_string = self.Cut.generate_special_cut(excluded=['fiducial', 'masks', 'rhit']) if cut == 'all' else TCut(cut)
+        self.tree.Draw('(clusters_per_plane[{r}]>0)*100:time / 1000 >> h_he'.format(r=roc), cut_string, 'goff')
         set_time_axis(h, off=self.run.startTime / 1000 + 3600)
-        self.format_histo(h, x_tit='Time [hh:mm]', y_tit='Efficiency [%]', y_off=1.4, ndiv=520, y_range=[-5, 105], stats=0)
+        self.format_histo(h, x_tit='Time [hh:mm]', y_tit='Efficiency [%]', y_off=1.4, ndiv=505, y_range=[-5, 105], stats=0)
         self.save_histo(h, 'HitEfficiencyROC{n}'.format(n=roc), show, lm=.13, save=save, gridy=True)
         return h
 
     def fit_hit_efficiency(self, roc, show=True, save=True, cut=''):
-        pickle_path = self.make_pickle_path('Efficiency', run=self.RunNumber, suf=roc)
+        pickle_path = self.make_pickle_path('Efficiency', run=self.RunNumber, suf='{r}{c}'.format(r=roc, c='_Cuts' if cut else ''))
 
         def func():
             set_statbox(y=.37, only_fit=True)
@@ -206,9 +207,8 @@ class SignalPixAnalysis(Analysis):
             self.save_histo(h, 'HitEfficiencyROC{n}Fit'.format(n=roc), show, lm=.13, save=save, gridy=True)
             return fit
 
-        fit = func() if show else None
-        print fit.Parameter(0)
-        return self.do_pickle(pickle_path, func, fit)
+        fit_res = func() if show else None
+        return self.do_pickle(pickle_path, func, fit_res)
 
 
     def do_pulse_height_roc(self, roc=4, num_clust=1, cut='', histoevent=None, histo=None):
