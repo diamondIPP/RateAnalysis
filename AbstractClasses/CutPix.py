@@ -1,6 +1,6 @@
 import sys
 from numpy import array
-from ROOT import TCut, gROOT, TH1F, kRed, TCutG, kBlue, TH2D, TH1D, kGreen
+from ROOT import TCut, gROOT, TH1F, kRed, TCutG, kBlue, TH2D, TH1D, kGreen, THStack
 from math import ceil
 from Cut import Cut
 from json import loads
@@ -461,13 +461,22 @@ class CutPix(Cut):
             self.analysis.draw_occupancy(cut, show=False, fid=True, prnt=False)
             self.ProgressBar.update(i + 1)
 
-    def do_pulse_height_analysis(self):
+    def do_pulse_height_analysis(self, show=True):
         self.print_banner('Starting pulse height cut analysis...')
         self.start_pbar(len(self.ConsecutiveHitMapCuts))
-        for i, cut in enumerate(self.ConsecutiveHitMapCuts):
+        stack = THStack('s_ph', 'Pulse Height Distribution with Consecutive Cuts')
+        legend = self.make_legend(.71, .88, nentries=len(self.ConsecutiveCuts))
+        for i, (name, cut) in enumerate(self.ConsecutiveCuts.iteritems()):
             self.NCuts = i
-            self.analysis.draw_pulse_height_disto(cut, show=False, prnt=False)
+            h = self.analysis.draw_pulse_height_disto(cut, show=False, prnt=False)
+            color = self.get_color()
+            self.format_histo(h, color=color, fill_color=color)
+            stack.Add(h)
+            legend.AddEntry(h, name, 'f')
             self.ProgressBar.update(i + 1)
+        self.reset_colors()
+        self.format_histo(stack, draw_first=True, x_tit='Pulse Height [e]', y_tit='Number of Entries', y_off=1.5, stats=0)
+        self.save_histo(stack, 'ConsecutivePulseHeights', show, draw_opt='nostack', l=legend, lm=.14)
 
     def do_pulse_heights_analysis(self, normalize_ph_plots=True):
         """
