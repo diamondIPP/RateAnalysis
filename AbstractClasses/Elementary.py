@@ -479,7 +479,6 @@ class Elementary(object):
             h.SetFillColor(fill_color)
             h.SetLineWidth(lw)
             h.SetFillStyle(style) if style is not None else do_nothing()
-            h.SetNdivisions(ndiv) if ndiv is not None else do_nothing()
         except AttributeError or ReferenceError:
             pass
         # axis titles
@@ -494,6 +493,7 @@ class Elementary(object):
                 x_axis.SetTitleSize(tit_size)
                 x_axis.SetLabelSize(lab_size)
                 x_axis.SetRangeUser(x_range[0], x_range[1]) if x_range is not None else do_nothing()
+                x_axis.SetNdivisions(ndiv) if ndiv is not None else do_nothing()
             y_axis = h.GetYaxis()
             if y_axis:
                 y_axis.SetTitle(y_tit) if y_tit else y_axis.GetTitle()
