@@ -29,22 +29,13 @@ class SignalPixAnalysis(Analysis):
         self.Bias = self.run.bias[dut - 1]
         self.Dut = dut + 3
         self.save_dir = '{dia}/{run}/'.format(run=str(self.run_number).zfill(3), dia=self.DiamondName)
+        self.NRocs = self.load_n_rocs()
 
         # stuff
-        self.roc_diam1 = 4
-        self.roc_diam2 = 5 if self.TESTCAMPAIGN != '201610' else -1
-        self.roc_si = 6 if self.TESTCAMPAIGN != '201610' else 5
-        self.roc_tel = [0, 1, 2, 3]
-        self.plots.roc_tel = self.roc_tel
-        self.plots.roc_d1 = self.roc_diam1
-        self.plots.roc_d2 = self.roc_diam2
-        self.plots.roc_si = self.roc_si
         self.plots.save_dir = self.save_dir
-        self.devices = {'tel': [], 'dut': []}
 
         # cuts
         self.Cut = CutPix(self, dut)
-        self.Cut.reset_cut_dicts()
         self.Settings = self.plots.plot_settings
 
         self.stuff = []
@@ -61,6 +52,12 @@ class SignalPixAnalysis(Analysis):
     def load_diamond_name(self, dut):
         assert dut in [1, 2, 3], 'You have to choose either dut 1, 2 or 3'
         return self.run.diamond_names[dut - 1]
+
+    def load_n_rocs(self):
+        if self.ana_config_parser.has_option('BASIC', 'n_rocs'):
+            return self.ana_config_parser.getint('BASIC', 'n_rocs')
+        else:
+            return 7
 
     def change_roc_ids(self, tel0, tel1, tel2, tel3, dia1, dia2, si):
         """
