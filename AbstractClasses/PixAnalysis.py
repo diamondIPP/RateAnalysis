@@ -61,13 +61,7 @@ class SignalPixAnalysis(Analysis):
 
     def do_analysis(self, do_cut_dist=False, do_res_ana=False, do_cut_ana=False, do_occupancy=True, do_pulse_height=True):
         """ Does automatic analysis with the selected options """
-        gROOT.SetBatch(True)
-        gROOT.ProcessLine("gErrorIgnoreLevel = 1001;")
-        gROOT.SetBatch(False)
-        TFormula.SetMaxima(1000000,10000,10000000)  # (1000,1000,1000)
-        self.kmax = int(self.plots.plot_settings['num_diff_cluster_sizes'] + 1)
-        self.deltaX = self.plots.plot_settings['deltaX']
-        self.deltaY = self.plots.plot_settings['deltaY']
+        TFormula.SetMaxima(1000000, 10000, 10000000)  # (1000,1000,1000)
 
         if do_cut_dist:
             self.Cut.do_cuts_distributions()
@@ -206,12 +200,12 @@ class SignalPixAnalysis(Analysis):
             if self.verbose: print 'Doing pulse height histogram for ROC', roc, 'upto', cut, 'cut'
         elif num_clust != 0:
             if histo is None: name = 'ph{n}_roc{r}'.format(n=num_clust, r=roc)
-            if self.verbose: print 'Doing pulse height', num_clust,'pix cluster histogram for ROC', roc, 'without cuts'
+            if self.verbose: print 'Doing pulse height', num_clust, 'pix cluster histogram for ROC', roc, 'without cuts'
         else:
             if histo is None: name = 'ph_roc{r}'.format(r=roc)
             if self.verbose: print 'Doing pulse height histogram for ROC', roc, 'without cuts'
         if histo is None:
-            histo = TH1D(name, name, phbins[roc]+1, phmin[roc]-phdelta[roc]/(2*float(phbins[roc])), phmax[roc]+phdelta[roc]/float(2*phbins[roc]))
+            histo = TH1D(name, name, phbins[roc] + 1, phmin[roc] - phdelta[roc] / (2 * float(phbins[roc])), phmax[roc] + phdelta[roc] / float(2 * phbins[roc]))
         gROOT.SetBatch(True)
         name = histo.GetName()
         histoevent.ProjectionY(name, 0, -1, 'e')
@@ -245,7 +239,7 @@ class SignalPixAnalysis(Analysis):
                 name = 'ph{n}_map_roc{r}'.format(n=num_clust, r=roc)
                 ZTitle = 'ph {n} pix clusters(e)'.format(n=num_clust)
             cut_string = 'cluster_size_ROC{r}=={n}'.format(r=roc, n=num_clust)
-            if self.verbose: print 'Doing pulse height', num_clust,'pix cluster map for ROC', roc, 'without cuts'
+            if self.verbose: print 'Doing pulse height', num_clust, 'pix cluster map for ROC', roc, 'without cuts'
         else:
             if histo is None:
                 name = 'ph_map_roc{r}'.format(r=roc)
@@ -256,7 +250,7 @@ class SignalPixAnalysis(Analysis):
             histo = self.plots.create_2D_profile('spatial', name, name, 'x(um)', 'y(um)', ZTitle, 'auto', -1)
         gROOT.SetBatch(True)
         name = histo.GetName()
-        self.tree.Draw('charge_all_ROC{r}:10000*(residual_ROC{r}_Local_Y+cluster_pos_ROC{r}_Local_Y):10000*(residual_ROC{r}_Local_X+cluster_pos_ROC{r}_Local_X)>>{n}'.format(r=roc,n=name),
+        self.tree.Draw('charge_all_ROC{r}:10000*(residual_ROC{r}_Local_Y+cluster_pos_ROC{r}_Local_Y):10000*(residual_ROC{r}_Local_X+cluster_pos_ROC{r}_Local_X)>>{n}'.format(r=roc, n=name),
                        cut_string, 'goff prof')
         gROOT.SetBatch(False)
         return deepcopy(histo)
@@ -271,11 +265,11 @@ class SignalPixAnalysis(Analysis):
                 progressbar.Percentage(),
                 ' ', progressbar.Bar(marker='>'),
                 ' ', progressbar.Timer(),
-                ' ', progressbar.ETA()  #, DA: this two work great!
+                ' ', progressbar.ETA()  # , DA: this two work great!
                 # ' ', progressbar.AdaptiveETA(),
                 # ' ', progressbar.AdaptiveTransferSpeed(),
-                ]
-            bar = progressbar.ProgressBar(widgets=widgets, max_value=self.num_devices) if do_tlscp else progressbar.ProgressBar(widgets=widgets, max_value=self.num_devices-len(self.roc_tel))
+            ]
+            bar = progressbar.ProgressBar(widgets=widgets, max_value=self.num_devices) if do_tlscp else progressbar.ProgressBar(widgets=widgets, max_value=self.num_devices - len(self.roc_tel))
             bar.start()
         devini = 0 if do_tlscp else self.num_devices - len(self.roc_tel) + 1
         for iROC in xrange(devini, self.num_devices):
@@ -284,11 +278,14 @@ class SignalPixAnalysis(Analysis):
                 if not self.plots.check_plot_existence(self.save_dir, 'c_hitMapROC{n}'.format(n=iROC)):
                     self.tree.Draw('row:col >> hitMapROC{n}'.format(n=iROC), 'plane == {n} && {mask}'.format(n=iROC, mask=self.Cut.mask_hitmap_roc[iROC].GetTitle()), 'goff')
                 if not self.plots.check_plot_existence(self.save_dir, 'c_hitMapROC{n}_cuts'.format(n=iROC)):
-                    self.tree.Draw('row:col >> hitMapROC{n}_cuts'.format(n=iROC), 'plane == {n} && {mask} && fidcut_hitmap_roc{n}'.format(n=iROC, mask=self.Cut.cuts_hitmap_roc_incr[iROC][self.Cut.num_cuts-1].GetTitle()), 'goff')
+                    self.tree.Draw('row:col >> hitMapROC{n}_cuts'.format(n=iROC),
+                                   'plane == {n} && {mask} && fidcut_hitmap_roc{n}'.format(n=iROC, mask=self.Cut.cuts_hitmap_roc_incr[iROC][self.Cut.num_cuts - 1].GetTitle()), 'goff')
                 if not self.plots.check_plot_existence(self.save_dir, 'c_hitMapROC{n}'.format(n=iROC)):
-                    self.plots.save_individual_plots(self.plots.hitMap[iROC], self.plots.hitMap[iROC].GetName(), self.plots.hitMap[iROC].GetTitle(), self.Cut.fid_cut_hitmap_roc[iROC], 'colz', 0, self.save_dir, verbosity)
+                    self.plots.save_individual_plots(self.plots.hitMap[iROC], self.plots.hitMap[iROC].GetName(), self.plots.hitMap[iROC].GetTitle(), self.Cut.fid_cut_hitmap_roc[iROC], 'colz', 0,
+                                                     self.save_dir, verbosity)
                 if not self.plots.check_plot_existence(self.save_dir, 'c_hitMapROC{n}_cuts'.format(n=iROC)):
-                    self.plots.save_individual_plots(self.plots.hitMap_cuts[iROC], self.plots.hitMap_cuts[iROC].GetName(), self.plots.hitMap_cuts[iROC].GetTitle(), self.Cut.fid_cut_hitmap_roc[iROC], 'colz', 0, self.save_dir, verbosity)
+                    self.plots.save_individual_plots(self.plots.hitMap_cuts[iROC], self.plots.hitMap_cuts[iROC].GetName(), self.plots.hitMap_cuts[iROC].GetTitle(), self.Cut.fid_cut_hitmap_roc[iROC],
+                                                     'colz', 0, self.save_dir, verbosity)
             elif do_tlscp:
                 self.tree.Draw('row:col >> hitMapROC{n}'.format(n=iROC), 'plane == {n}'.format(n=iROC), 'goff')
                 # self.tree.Draw('row:col >> hitMapROC{n}_cuts'.format(n=iROC), 'plane == {n}'.format(n=iROC), 'goff')
@@ -304,10 +301,10 @@ class SignalPixAnalysis(Analysis):
                 progressbar.Percentage(),
                 ' ', progressbar.Bar(marker='>'),
                 ' ', progressbar.Timer(),
-                ' ', progressbar.ETA()  #, DA: this two work great!
+                ' ', progressbar.ETA()  # , DA: this two work great!
                 # ' ', progressbar.AdaptiveETA(),
                 # ' ', progressbar.AdaptiveTransferSpeed(),
-                ]
+            ]
             bar = progressbar.ProgressBar(widgets=widgets, max_value=4)
             bar.start()
         created_Tel1Dut1_col = self.correlate_planes(planeTel1, DUT1, 'col', verbosity)
@@ -325,26 +322,34 @@ class SignalPixAnalysis(Analysis):
         if pbar: bar.finish()
         self.print_banner('Creating transposed correlations ...')
         if created_Tel1Dut1_col and created_Tel1Dut1_row and created_Tel1Dut1_x and created_Tel1Dut1_y:
-            exec("self.plots.clone_correlation_histograms(planeTel1, DUT1, verbosity, 1001, self.corrf_col_rocs_{rx}_{ry}, self.corrf_row_rocs_{rx}_{ry}, self.corrf_x_rocs_{rx}_{ry}, self.corrf_y_rocs_{rx}_{ry})".format(rx=planeTel1, ry=DUT1))
+            exec (
+            "self.plots.clone_correlation_histograms(planeTel1, DUT1, verbosity, 1001, self.corrf_col_rocs_{rx}_{ry}, self.corrf_row_rocs_{rx}_{ry}, self.corrf_x_rocs_{rx}_{ry}, self.corrf_y_rocs_{rx}_{ry})".format(
+                rx=planeTel1, ry=DUT1))
         if created_Tel2Dut2_col and created_Tel2Dut2_row and created_Tel2Dut2_x and created_Tel2Dut2_y:
-            exec("self.plots.clone_correlation_histograms(planeTel2, DUT2, verbosity, 1001, self.corrf_col_rocs_{rx}_{ry}, self.corrf_row_rocs_{rx}_{ry}, self.corrf_x_rocs_{rx}_{ry}, self.corrf_y_rocs_{rx}_{ry})".format(rx=planeTel2, ry=DUT2))
+            exec (
+            "self.plots.clone_correlation_histograms(planeTel2, DUT2, verbosity, 1001, self.corrf_col_rocs_{rx}_{ry}, self.corrf_row_rocs_{rx}_{ry}, self.corrf_x_rocs_{rx}_{ry}, self.corrf_y_rocs_{rx}_{ry})".format(
+                rx=planeTel2, ry=DUT2))
         self.print_banner('Transposed correlation creation -> Done')
         self.print_banner('Main correlations creation -> Done', '%')
 
     def correlate_planes(self, rocx=1, rocy=4, var='col', verbosity=False):
         if not self.plots.check_plot_existence(self.save_dir, 'c_corr_{rx}_{ry}_{v}'.format(v=var, rx=rocx, ry=rocy)):
             if var is 'col' or var is 'row':
-                self.tree.Draw('cluster_{v}_ROC{rx}:cluster_{v}_ROC{ry} >> corr_{rx}_{ry}_{v}'.format(v=var, rx=rocx, ry=rocy), self.Cut.cuts_pixelated_roc_incr[rocy][self.Cut.num_cuts-1], 'goff')
+                self.tree.Draw('cluster_{v}_ROC{rx}:cluster_{v}_ROC{ry} >> corr_{rx}_{ry}_{v}'.format(v=var, rx=rocx, ry=rocy), self.Cut.cuts_pixelated_roc_incr[rocy][self.Cut.num_cuts - 1], 'goff')
             elif var is 'x' or var is 'y':
-                self.tree.Draw('cluster_pos_ROC{rx}_Telescope_{vv}*10:cluster_pos_ROC{ry}_Telescope_{vv}*10 >> corr_{rx}_{ry}_{v}'.format(v=var, rx=rocx, ry=rocy, vv=var.title()), self.Cut.cuts_pixelated_roc_incr[rocy][self.Cut.num_cuts-1], 'goff')
+                self.tree.Draw('cluster_pos_ROC{rx}_Telescope_{vv}*10:cluster_pos_ROC{ry}_Telescope_{vv}*10 >> corr_{rx}_{ry}_{v}'.format(v=var, rx=rocx, ry=rocy, vv=var.title()),
+                               self.Cut.cuts_pixelated_roc_incr[rocy][self.Cut.num_cuts - 1], 'goff')
             gROOT.SetBatch(True)
-            exec("self.fit_{x}_rocs_{rx}_{ry} = self.plots.correl_{x}[rocx][rocy].Fit('pol1', 'qsfm')".format(x=var, rx=rocx, ry=rocy))
+            exec ("self.fit_{x}_rocs_{rx}_{ry} = self.plots.correl_{x}[rocx][rocy].Fit('pol1', 'qsfm')".format(x=var, rx=rocx, ry=rocy))
             gROOT.SetBatch(False)
-            exec("self.fit_{x}_rocs_{rx}_{ry}_angle = self.fit_{x}_rocs_{rx}_{ry}.Parameter(1)".format(x=var, rx=rocx, ry=rocy))
-            exec("self.corrf_{x}_rocs_{rx}_{ry} = self.plots.correl_{x}[rocx][rocy].GetCorrelationFactor()".format(x=var, rx=rocx, ry=rocy))
-            exec("self.plots.save_individual_plots(self.plots.correl_{v}[rocx][rocy], self.plots.correl_{v}[rocx][rocy].GetName(), self.plots.correl_{v}[rocx][rocy].GetTitle(), None, 'colz', 1000000011, self.save_dir, verbosity, 1001, self.corrf_{v}_rocs_{rx}_{ry})".format(v=var, rx=rocx, ry=rocy))
+            exec ("self.fit_{x}_rocs_{rx}_{ry}_angle = self.fit_{x}_rocs_{rx}_{ry}.Parameter(1)".format(x=var, rx=rocx, ry=rocy))
+            exec ("self.corrf_{x}_rocs_{rx}_{ry} = self.plots.correl_{x}[rocx][rocy].GetCorrelationFactor()".format(x=var, rx=rocx, ry=rocy))
+            exec (
+            "self.plots.save_individual_plots(self.plots.correl_{v}[rocx][rocy], self.plots.correl_{v}[rocx][rocy].GetName(), self.plots.correl_{v}[rocx][rocy].GetTitle(), None, 'colz', 1000000011, self.save_dir, verbosity, 1001, self.corrf_{v}_rocs_{rx}_{ry})".format(
+                v=var, rx=rocx, ry=rocy))
             return True
-        else: return False
+        else:
+            return False
 
     def show_current(self, relative_time=True):
         self.Currents.draw_graphs(relative_time=relative_time)
@@ -354,6 +359,7 @@ class SignalPixAnalysis(Analysis):
     def __placeholder(self):
         pass
 
+
 if __name__ == '__main__':
     st = time()
     parser = ArgumentParser()
@@ -361,12 +367,16 @@ if __name__ == '__main__':
     parser.add_argument('dut', nargs='?', default=1, type=int, help='Number of the DUT to analyse (either 1, 2 or 3)')
     parser.add_argument('-t', '--doTelescope', action='store_true', dest='doTelscp', default=False, help='set with -t or with --doTelescope to do telescope analysis')
     parser.add_argument('-d', '--doDUTs', action='store_true', dest='doDUTs', default=False, help='set with -d or with --doDUTs to do DUTs analysis')
-    parser.add_argument('-u', '--doCutDist', action='store_true', dest='doCutDist', default=False, help='set with -u or with --doCutDist to do Cuts distributions on selected devices (DUTs and/or telescope)')
-    parser.add_argument('-e', '--doResolution', action='store_true', dest='doResolution', default=False, help='set with -e or with --doResolution to do resolution analysis on selected devices (DUTs and/or telescope)')
+    parser.add_argument('-u', '--doCutDist', action='store_true', dest='doCutDist', default=False,
+                        help='set with -u or with --doCutDist to do Cuts distributions on selected devices (DUTs and/or telescope)')
+    parser.add_argument('-e', '--doResolution', action='store_true', dest='doResolution', default=False,
+                        help='set with -e or with --doResolution to do resolution analysis on selected devices (DUTs and/or telescope)')
     parser.add_argument('-c', '--doCutAna', action='store_true', dest='doCutAna', default=False, help='set with -c or with --doCutAna to do Cuts analysis on selected devices (DUTs and/or telescope)')
-    parser.add_argument('-o', '--doOccupancy', action='store_true', dest='doOccupancy', default=False, help='set with -o or with --doOccupancy to do occupancies (hit maps) on selected devices (DUTs and/or telescope)')
+    parser.add_argument('-o', '--doOccupancy', action='store_true', dest='doOccupancy', default=False,
+                        help='set with -o or with --doOccupancy to do occupancies (hit maps) on selected devices (DUTs and/or telescope)')
     parser.add_argument('-x', '--doCorrel', action='store_true', dest='doCorrel', default=False, help='set with -x or with --doCorrel to do correlations between important planes')
-    parser.add_argument('-g', '--doCharge', action='store_true', dest='doCharge', default=False, help='set with -g or with --doCharge to do pulse height analysis on selected devices (DUTs and/or telescope)')
+    parser.add_argument('-g', '--doCharge', action='store_true', dest='doCharge', default=False,
+                        help='set with -g or with --doCharge to do pulse height analysis on selected devices (DUTs and/or telescope)')
     parser.add_argument('-p', '--progBar', action='store_true', dest='progBar', default=False, help='show progress bar')
     parser.add_argument('-v', '--verb', action='store_true', dest='verb', default=True, help='show verbose')
     parser.add_argument('-a', '--analyse', action='store_true', dest='doAna', default=False, help='run the whole analysis with the options entered')
