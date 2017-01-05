@@ -80,15 +80,17 @@ class SignalPixAnalysis(Analysis):
         """ Calls do_cut_analysis in the Cut method """
         self.Cut.do_cuts_analysis(do_occupancy, do_pulse_height, normalize_ph_plots)
 
-    def draw_occupancy(self, cut=None, show=True, fid=False, prnt=True):
+    def draw_occupancy(self, cut=None, show=True, fid=False, prnt=True, adc=None):
         """ Does the occupancy of a roc with the specified cut and it is saved on the given histogram. If none is given, it will create a histogram and return a deepcopy of it """
         cut_string = self.Cut.generate_special_cut(excluded='fiducial' if not fid else [], cluster=False) if cut is None else TCut(cut)
         cut_string += 'plane=={d}'.format(d=self.Dut)
+        cut_string += self.Cut.add_adc_cut(adc)
         self.set_root_output(False)
-        h = TH2D('h_oc', 'Occupancy {d}'.format(d=self.DiamondName), self.Settings['nCols'], - .5, self.Settings['nCols'] - .5, self.Settings['nRows'], - .5, self.Settings['nRows'] - .5)
+        h = TH2D('h_oc', 'Occupancy {d}'.format(d=self.DiamondName), *self.Settings['2DBins'])
         self.tree.Draw('row:col >> {n}'.format(n='h_oc'), cut_string, 'goff')
         save_name = 'Occupancy{c}'.format(c=make_cut_string(cut, self.Cut.NCuts))
-        self.format_histo(h, x_tit='col', y_tit='row', z_tit='Number of Entries', y_off=1.3, z_off=1.5, stats=0)
+        set_statbox(x=.81, entries=8, opt=1000000010)
+        self.format_histo(h, x_tit='col', y_tit='row', z_tit='Number of Entries', y_off=1.3, z_off=1.5)
         self.save_histo(h, save_name, show, rm=.17, lm=.13, draw_opt='colz', prnt=prnt)
         return h
 
