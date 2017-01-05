@@ -1,7 +1,7 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from ROOT import TH2D, TH1D, gROOT, TFormula, TCut, TH1I, TProfile, THStack
+from ROOT import TH2D, TH1D, gROOT, TFormula, TCut, TH1I, TProfile, THStack, TProfile2D, TF1
 from TelescopeAnalysis import Analysis
 # from CurrentInfo import Currents
 from argparse import ArgumentParser
@@ -11,6 +11,7 @@ import progressbar
 from CutPix import CutPix
 from numpy import array
 from Utils import *
+from os.path import join as joinpath
 
 __author__ = 'DA'
 
@@ -141,6 +142,13 @@ class SignalPixAnalysis(Analysis):
         if self.Fit is None:
             self.Fit = fit
             self.Parameters = params
+
+    def draw_calibration_fit(self, col, row, show=True, roc=None):
+        roc = self.Dut if roc is None else roc
+        self.Fit.SetParameters(*self.Parameters[roc][col][row])
+        self.format_histo(self.Fit, title='Calibration Fitf for Pix {c} {r}'.format(c=col, r=row), x_tit='vcal', y_tit='adc', y_off=1.4, color=632, lw=2)
+        self.save_histo(self.Fit, 'CalFit{c}{r}'.format(c=col, r=row), show, lm=0.12)
+
         self.set_root_output(False)
         self.tree.Draw('adc>>h_adc', cut_string, 'goff')
         self.format_histo(h, x_tit='adc', y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor, stats=0)
