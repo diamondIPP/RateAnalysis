@@ -76,6 +76,7 @@ class Plots(Elementary):
         }
         self.plot_settings['phBinsD4'] = [self.plot_settings['ph1DbinsD4'], self.plot_settings['ph1DminD4'], self.plot_settings['ph1DmaxD4']]
         self.plot_settings['phBinsD5'] = [self.plot_settings['ph1DbinsD5'], self.plot_settings['ph1DminD5'], self.plot_settings['ph1DmaxD5']]
+        self.plot_settings['2DBins'] = [self.plot_settings['nCols'], - .5, self.plot_settings['nCols'] - .5, self.plot_settings['nRows'], - .5, self.plot_settings['nRows'] - .5]
         self.plot_settings['event_bins'] = int(ceil(float(self.num_entries)/5000)) if self.num_entries <= 100000 else \
             int(ceil(float(self.num_entries)/100)) if self.num_entries <= 500000 else int(ceil(float(self.num_entries)/self.plot_settings['nEventsAv']))
         self.plot_settings['deltaX'] = float(self.plot_settings['xmax']-self.plot_settings['xmin'])/self.plot_settings['nBinsX']
