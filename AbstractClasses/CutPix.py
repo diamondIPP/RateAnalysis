@@ -191,16 +191,6 @@ class CutPix(Cut):
             cut_string += '{v1}!={x}||{v2}!={y}'.format(x=tup[0], y=tup[1], v1=cut_var1, v2=cut_var2)
         return cut_string.GetTitle()
 
-    def get_nearest_prev_existing_cut_key(self, cutname):
-        allcuts = {0: 'ini_fin', 1: 'beam', 2: 'tracks', 3: 'hit', 4: 'masks', 5: 'fiducial', 6: 'chi2x', 7: 'chi2y', 8: 'anglex', 9: 'angley', 10: 'rhit'}
-        for key in allcuts.keys():
-            if cutname == allcuts[key]:
-                cutkey = key
-                break
-        for key in xrange(cutkey-1, allcuts.keys()[0], -1):
-            if allcuts[key] in self.cut_names:
-                return key
-        return allcuts.keys()[0]
 
     def do_beam_distribution(self):
         if self.verbose:
