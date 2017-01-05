@@ -192,9 +192,11 @@ class CutPix(Cut):
         return cut_string.GetTitle()
 
     @staticmethod
-    def add_adc_cut(adc, string):
+    def add_adc_cut(adc):
         if adc is not None:
-            string += 'adc>0' if adc is True else 'adc==0'
+            return 'adc>0' if adc else 'adc==0'
+        else:
+            return ''
 
     def do_beam_distribution(self):
         if self.verbose:
