@@ -38,6 +38,11 @@ class SignalPixAnalysis(Analysis):
         self.Cut = CutPix(self, dut)
         self.Settings = self.plots.plot_settings
 
+        # pulse height calibrations
+        self.Fit = None
+        self.Parameters = None
+        self.get_calibration_data()
+
         self.stuff = []
 
     def __del__(self):
@@ -115,6 +120,27 @@ class SignalPixAnalysis(Analysis):
         h = TH1I('h_adc', 'ADC Distribution {d}'.format(d=self.DiamondName), 255, 0, 255)
         cut_string = self.Cut.HitMapCut if cut is None else TCut(cut)
         cut_string += 'plane == {n}'.format(n=self.Dut)
+
+    def get_calibration_data(self):
+        f = open(joinpath(self.run.converter.TrackingDir, 'calibration_lists', 'GKCalibrationList_Telescope{n}.txt'.format(n=self.run.converter.TelescopeID)))
+        lines = f.readlines()
+        f.close()
+        file_names = [joinpath(self.run.converter.TrackingDir, lines[0].strip('./\n'), line.strip('\n')) for i, line in enumerate(lines) if i]
+        fit = None
+        params = [[[0 for _ in xrange(self.Settings['nRows'])] for _ in xrange(self.Settings['nRows'])] for _ in xrange(self.NRocs)]
+        for roc, file_name in enumerate(file_names):
+            f = open(file_name)
+            f.readline()
+            fit_string = f.readline().replace('par', '').strip('\n')
+            fit = TF1('ErFit', fit_string, 0, 255 * 7)
+            f.readline()
+            for line in f.readlines():
+                line = line.split()
+                params[roc][int(line[-2])][int(line[-1])] = [float(line[i]) for i in xrange(4)]
+            f.close()
+        if self.Fit is None:
+            self.Fit = fit
+            self.Parameters = params
         self.set_root_output(False)
         self.tree.Draw('adc>>h_adc', cut_string, 'goff')
         self.format_histo(h, x_tit='adc', y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor, stats=0)
