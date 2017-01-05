@@ -191,6 +191,10 @@ class CutPix(Cut):
             cut_string += '{v1}!={x}||{v2}!={y}'.format(x=tup[0], y=tup[1], v1=cut_var1, v2=cut_var2)
         return cut_string.GetTitle()
 
+    @staticmethod
+    def add_adc_cut(adc, string):
+        if adc is not None:
+            string += 'adc>0' if adc is True else 'adc==0'
 
     def do_beam_distribution(self):
         if self.verbose:
