@@ -42,6 +42,8 @@ class SignalPixAnalysis(Analysis):
         # pulse height calibrations
         self.Fit = None
         self.Parameters = None
+        self.Vcals = None
+        self.Points = None
         self.get_calibration_data()
 
         self.stuff = []
@@ -141,15 +143,67 @@ class SignalPixAnalysis(Analysis):
                 line = line.split()
                 params[roc][int(line[-2])][int(line[-1])] = [float(line[i]) for i in xrange(4)]
             f.close()
+        # calibration points
+        calib_files = [joinpath(self.run.converter.TrackingDir, lines[0].strip('./\n'), 'phCalibration_{e}'.format(e=line.strip('\n')[-6:])) for line in lines[5:]]
+        vcals = None
+        points = [[[0 for _ in xrange(self.Settings['nRows'])] for _ in xrange(self.Settings['nRows'])] for _ in xrange(self.NRocs)]
+        for roc, file_name in enumerate(calib_files, 4):
+            print roc, file_name
+            try:
+                f = open(file_name)
+                f.readline()
+                vcals = [int(i) for i in f.readline().split()[2:]] + [int(i) * 7 for i in f.readline().split()[2:]]
+                f.readline()
+                for line in f.readlines():
+                    line = line.split()
+                    points[roc][int(line[-2])][int(line[-1])] = [int(line[i]) for i in xrange(len(vcals))]
+            except IOError as e:
+                log_warning(e)
+
         if self.Fit is None:
             self.Fit = fit
             self.Parameters = params
+            self.Vcals = vcals
+            self.Points = points
 
     def draw_calibration_fit(self, col, row, show=True, roc=None):
         roc = self.Dut if roc is None else roc
         self.Fit.SetParameters(*self.Parameters[roc][col][row])
-        self.format_histo(self.Fit, title='Calibration Fitf for Pix {c} {r}'.format(c=col, r=row), x_tit='vcal', y_tit='adc', y_off=1.4, color=632, lw=2)
-        self.save_histo(self.Fit, 'CalFit{c}{r}'.format(c=col, r=row), show, lm=0.12)
+        self.format_histo(self.Fit, title='Calibration Fit for Pix {c} {r}'.format(c=col, r=row), x_tit='vcal', y_tit='adc', y_off=1.4, color=632, lw=2)
+        gr = TGraph(len(self.Vcals), array(self.Vcals, 'd'), array(self.Points[roc][col][row], 'd'))
+        self.format_histo(gr, marker=20, name='gr_fp', title='Calibration Fit for Pix {c} {r}'.format(c=col, r=row), x_tit='vcal', y_tit='adc', y_off=1.4)
+        self.draw_histo(gr, lm=.12, draw_opt='ap')
+        self.Fit.Draw('same')
+        self.save_plots('CalFit{c}{r}'.format(c=col, r=row), show=show)
+
+    def draw_threshold_map(self, show=True, roc=None):
+        roc = self.Dut if roc is None else roc
+        h = TProfile2D('p_tm', 'Artificial Threshold Map', *self.Settings['2DBins'])
+        cols, rows = self.Cut.CutConfig['MaskCols'], self.Cut.CutConfig['MaskRows']
+        for col in xrange(cols[0][1] + 1, cols[1][0]):
+            for row in xrange(rows[0][1], self.Settings['nRows']):
+                fit = self.fit_erf(col, row, roc, show=False)
+                if fit is not None:
+                    print col, row, fit.GetX(0), fit.GetChisquare()
+                    h.Fill(col, row, fit.GetX(0))
+        self.format_histo(h, x_tit='col', y_tit='row', z_tit='Artificial Treshold [vcal]', y_off=1.3, z_off=1.5, stats=0)
+        self.save_histo(h, 'ThresholdMap', show, rm=.17, lm=.13, draw_opt='colz')
+
+    def fit_erf(self, col, row, roc=None, show=True):
+        roc = self.Dut if roc is None else roc
+        # fit.SetParameters(*self.Parameters[roc][col][row])
+        points = OrderedDict(sorted({vcal: value for vcal, value in zip(self.Vcals, self.Points[roc][col][row]) if value}.iteritems()))
+        if len(points) > 3:
+            fit = deepcopy(self.Fit)
+            fit.SetParameters(309.2062, 112.8961, 1.022439, 35.89524)
+        else:
+            fit = TF1('fit', 'pol1', 0, 3000)
+        if len(points) > 1:
+            gr = TGraph(len(points), array(points.keys(), 'd'), array(points.values(), 'd'))
+            gr.Fit(fit, 'q', '', 0, 3000 if len(points) > 3 else 1000)
+            self.format_histo(gr, marker=20)
+            self.draw_histo(gr, draw_opt='ap', show=show)
+            return fit
 
         self.set_root_output(False)
         self.tree.Draw('adc>>h_adc', cut_string, 'goff')
