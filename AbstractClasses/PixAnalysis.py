@@ -237,6 +237,17 @@ class SignalPixAnalysis(Analysis):
             self.draw_histo(gr, draw_opt='ap', show=show)
             return fit
 
+    def draw_pulse_heiht_map(self, show=True, vcal=200, roc=None):
+        roc = self.Dut if roc is None else roc
+        h = TProfile2D('p_pm', 'Pulse Height Map for Vcal {v}'.format(v=vcal), *self.Settings['2DBins'])
+        cols, rows = self.Cut.CutConfig['MaskCols'], self.Cut.CutConfig['MaskRows']
+        for col in xrange(cols[0][1] + 1, cols[1][0]):
+            for row in xrange(rows[0][1], self.Settings['nRows']):
+                self.Fit.SetParameters(*self.Parameters[roc][col][row])
+                h.Fill(col, row, self.Fit(vcal))
+        self.format_histo(h, x_tit='col', y_tit='row', z_tit='Pulse Height [adc]', y_off=1.3, z_off=1.5, stats=0)
+        self.save_histo(h, 'PulseHeightMap{v}'.format(v=vcal), show, rm=.17, lm=.13, draw_opt='colz')
+
     def draw_adc_disto(self, cut=None, show=True, col=None, pix=None):
         h = TH1I('h_adc', 'ADC Distribution {d}'.format(d=self.DiamondName), 255, 0, 255)
         cut_string = deepcopy(self.Cut.HitMapCut) if cut is None else TCut(cut)
