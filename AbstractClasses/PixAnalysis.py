@@ -263,6 +263,14 @@ class SignalPixAnalysis(Analysis):
 
     def draw_pulse_height_disto(self, cut=None, show=True, prnt=True, sup_zero=True):
         cut_string = self.Cut.all_cut if cut is None else TCut(cut)
+    def check_adc(self):
+        for i in xrange(10000, 12000):
+            self.tree.GetEntry(i)
+            if 4 in self.tree.plane:
+                ind = list(self.tree.plane).index(4)
+                if self.tree.adc[ind]:
+                    print i, self.tree.adc[ind], list(self.tree.charge_all_ROC4)
+
         cut_string += 'charge_all_ROC{d}!=0'.format(d=self.Dut) if sup_zero else ''
         self.set_root_output(False)
         h = TH1D('h_phd', 'Pulse Height Distribution - {d}'.format(d=self.DiamondName), *self.Settings['phBinsD{n}'.format(n=self.Dut)])
