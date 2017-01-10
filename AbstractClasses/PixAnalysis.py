@@ -135,8 +135,6 @@ class SignalPixAnalysis(Analysis):
         self.save_histo(h, 'ADCvsEvent', show, rm=.15, lm=.16, draw_opt='colz', logz=True)
         return h
 
-    def draw_adc_disto(self, cut=None, show=True):
-        h = TH1I('h_adc', 'ADC Distribution {d}'.format(d=self.DiamondName), 255, 0, 255)
     def draw_adc_map(self, show=True, cut=None, adc=None):
         cut_string = self.Cut.HitMapCut if cut is None else TCut(cut)
         cut_string += 'plane == {n}'.format(n=self.Dut)
@@ -239,9 +237,16 @@ class SignalPixAnalysis(Analysis):
             self.draw_histo(gr, draw_opt='ap', show=show)
             return fit
 
+    def draw_adc_disto(self, cut=None, show=True, col=None, pix=None):
+        h = TH1I('h_adc', 'ADC Distribution {d}'.format(d=self.DiamondName), 255, 0, 255)
+        cut_string = deepcopy(self.Cut.HitMapCut) if cut is None else TCut(cut)
+        cut_string += 'plane == {n}'.format(n=self.Dut)
+        cut_string += 'col=={c}'.format(c=col) if col is not None else ''
+        cut_string += 'col=={c}&&row=={r}'.format(c=pix[0], r=pix[1]) if pix is not None else ''
         self.set_root_output(False)
         self.tree.Draw('adc>>h_adc', cut_string, 'goff')
-        self.format_histo(h, x_tit='adc', y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor, stats=0)
+        set_statbox(entries=8, opt=1000000010)
+        self.format_histo(h, x_tit='adc', y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor)
         self.save_histo(h, 'ADCDisto', show, lm=0.13, logy=True)
         return h
 
