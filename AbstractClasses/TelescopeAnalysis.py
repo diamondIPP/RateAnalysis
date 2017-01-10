@@ -10,6 +10,7 @@ from RunClass import Run
 from Cut import Cut
 from Utils import *
 from Plots import Plots
+from Langaus import Langau
 
 
 class Analysis(Elementary):
@@ -470,6 +471,18 @@ class Analysis(Elementary):
 
     def get_flux(self):
         return self.run.get_flux()
+
+    def fit_langau(self, h=None, nconv=100, show=True):
+        h = self.show_signal_histo(show=show) if h is None and hasattr(self, 'show_signal_histo') else h
+        fit = Langau(h, nconv)
+        fit.langaufit()
+        fit.Fit.Draw('lsame')
+        i = 5
+        while fit.Chi2 / fit.NDF > 5:
+            fit = self.fit_langau(h, nconv + i)
+            i += 5
+        self.RootObjects.append(fit)
+        return fit
 
     # endregion
 

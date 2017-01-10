@@ -18,7 +18,6 @@ from CurrentInfo import Currents
 from Elementary import Elementary
 from Extrema import Extrema2D
 from TelescopeAnalysis import Analysis
-from Langaus import Langau
 from Pulser import PulserAnalysis
 from Utils import *
 
@@ -1579,18 +1578,6 @@ class PadAnalysis(Analysis):
             gr.SetPointError(j, 0, h.GetMeanError())
         self.ProgressBar.finish()
         self.draw_histo(gr, draw_opt='alp', logx=True)
-
-    def fit_langau(self, h=None, nconv=100, show=True):
-        h = self.show_signal_histo(show=show) if h is None else h
-        fit = Langau(h, nconv)
-        fit.langaufit()
-        fit.Fit.Draw('lsame')
-        i = 5
-        while fit.Chi2 / fit.NDF > 5:
-            fit = self.fit_langau(h, nconv + i)
-            i += 5
-        self.RootObjects.append(fit)
-        return fit
 
     def find_conv(self):
         gr = self.make_tgrapherrors('gr_c', 'chi2 vs nconv')
