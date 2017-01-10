@@ -137,13 +137,33 @@ class SignalPixAnalysis(Analysis):
 
     def draw_adc_disto(self, cut=None, show=True):
         h = TH1I('h_adc', 'ADC Distribution {d}'.format(d=self.DiamondName), 255, 0, 255)
+    def draw_adc_map(self, show=True, cut=None, adc=None):
         cut_string = self.Cut.HitMapCut if cut is None else TCut(cut)
         cut_string += 'plane == {n}'.format(n=self.Dut)
+        cut_string += '' if adc is None else 'adc>0'
+        self.set_root_output(False)
+        h = TProfile2D('p_am', 'ADC Map', *self.Settings['2DBins'])
+        self.tree.Draw('adc:row:col >> p_am', cut_string, 'goff')
+        set_statbox(x=.81, entries=8, opt=1000000010)
+        self.format_histo(h, x_tit='col', y_tit='row', z_tit='ADC', y_off=1.3, z_off=1.5)
+        self.save_histo(h, 'ADCMap', show, rm=.17, lm=.13, draw_opt='colz')
+
+    def draw_zero_contribution(self, show=True, cut=None, entries=False, one_hit=False):
+        cut_string = self.Cut.HitMapCut if cut is None else TCut(cut)
+        cut_string += 'plane == {n}'.format(n=self.Dut)
+        cut_string += 'adc>0' if entries else ''
+        cut_string += 'n_hits[4]==1' if one_hit else ''
+        h = TProfile2D('p_zc', 'Good Events', *self.Settings['2DBins']) if not entries else TH2D('h_zc', 'Good Events', *self.Settings['2DBins'])
+        self.tree.Draw('((adc>0)*100):row:col >> p_zc' if not entries else 'row:col >> h_zc', cut_string, 'goff')
+        set_statbox(x=.81, entries=8, opt=1000000010)
+        self.format_histo(h, x_tit='col', y_tit='row', z_tit='Good Events{p}'.format(p='' if entries else ' [%]'), y_off=1.3, z_off=1.5)
+        self.save_histo(h, 'ZeroContribution{e}'.format(e='Entries' if entries else ''), show, rm=.17, lm=.13, draw_opt='colz')
 
     def get_calibration_data(self):
         f = open(joinpath(self.run.converter.TrackingDir, 'calibration_lists', 'GKCalibrationList_Telescope{n}.txt'.format(n=self.run.converter.TelescopeID)))
         lines = f.readlines()
         f.close()
+        # calibration fit
         file_names = [joinpath(self.run.converter.TrackingDir, lines[0].strip('./\n'), line.strip('\n')) for i, line in enumerate(lines) if i]
         fit = None
         params = [[[0 for _ in xrange(self.Settings['nRows'])] for _ in xrange(self.Settings['nRows'])] for _ in xrange(self.NRocs)]
