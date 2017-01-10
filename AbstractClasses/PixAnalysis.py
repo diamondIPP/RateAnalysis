@@ -1,7 +1,7 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from ROOT import TH2D, TH1D, gROOT, TFormula, TCut, TH1I, TProfile, THStack, TProfile2D, TF1
+from ROOT import TH2D, TH1D, gROOT, TFormula, TCut, TH1I, TProfile, THStack, TProfile2D, TF1, TGraph
 from TelescopeAnalysis import Analysis
 # from CurrentInfo import Currents
 from argparse import ArgumentParser
@@ -12,6 +12,7 @@ from CutPix import CutPix
 from numpy import array
 from Utils import *
 from os.path import join as joinpath
+from collections import OrderedDict
 
 __author__ = 'DA'
 
