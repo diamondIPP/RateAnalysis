@@ -80,12 +80,6 @@ class SignalPixAnalysis(Analysis):
         for n in xrange(i, j):
             self.print_info(n)
 
-    def check_cuts(self):
-        for i in xrange(len(self.Cut.ConsecutiveCuts)):
-            print z.Cut.ConsecutiveCuts.keys()[i],
-            print self.tree.Draw('charge_all_ROC4[0]', z.Cut.ConsecutiveCuts.values()[i] + TCut('n_hits[4]==1&&adc>0'), 'goff'),
-            print self.tree.Draw('charge_all_ROC4[0]', z.Cut.ConsecutiveHitMapCuts.values()[i] + TCut('n_hits[4]==1&&adc>0'), 'goff')
-
     def do_analysis(self, do_cut_dist=False, do_res_ana=False, do_cut_ana=False, do_occupancy=True, do_pulse_height=True):
         """ Does automatic analysis with the selected options """
         TFormula.SetMaxima(1000000, 10000, 10000000)  # (1000,1000,1000)
