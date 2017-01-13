@@ -277,14 +277,16 @@ class SignalPixAnalysis(Analysis):
                 if self.tree.adc[ind]:
                     print i, self.tree.adc[ind], list(self.tree.charge_all_ROC4)
 
-    def draw_pulse_height_disto(self, cut=None, show=True, prnt=True, sup_zero=True, col=None, pix=None):
+    def draw_pulse_height_disto(self, cut=None, show=True, prnt=True, sup_zero=True, col=None, pix=None, roc=None):
+        roc = self.Dut if roc is None else roc
         cut_string = deepcopy(self.Cut.all_cut) if cut is None else TCut(cut)
-        cut_string += 'charge_all_ROC{d}!=0'.format(d=self.Dut) if sup_zero else ''
-        cut_string += 'cluster_col_ROC{d}[0]=={c}'.format(c=col, d=self.Dut) if col is not None else ''
-        cut_string += 'cluster_col_ROC{d}[0]=={c}&&cluster_row_ROC{d}[0]=={r}'.format(c=pix[0], r=pix[1], d=self.Dut) if pix is not None else ''
+        cut_string += 'cluster_charge>0'.format(d=self.Dut) if sup_zero else ''
+        cut_string += 'cluster_col=={c}'.format(c=col, d=self.Dut) if col is not None else ''
+        cut_string += 'cluster_col=={c}&&cluster_row=={r}'.format(c=pix[0], r=pix[1], d=self.Dut) if pix is not None else ''
+        cut_string += 'cluster_plane=={r}'.format(r=roc)
         self.set_root_output(False)
         h = TH1D('h_phd', 'Pulse Height Distribution - {d}'.format(d=self.DiamondName), *self.Settings['phBinsD{n}'.format(n=self.Dut)])
-        self.tree.Draw('charge_all_ROC{d}[0]>>h_phd'.format(d=self.Dut), cut_string, 'goff')
+        self.tree.Draw('cluster_charge>>h_phd'.format(d=self.Dut), cut_string, 'goff')
         set_statbox(entries=8, opt=1000000010)
         self.format_histo(h, x_tit='Pulse Height [e]', y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor)
         self.save_histo(h, 'PulseHeightDisto{c}'.format(c=make_cut_string(cut, self.Cut.NCuts)), show, lm=.13, prnt=prnt)
