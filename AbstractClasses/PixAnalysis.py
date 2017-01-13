@@ -211,10 +211,12 @@ class SignalPixAnalysis(Analysis):
     def draw_threshold_map(self, show=True, roc=None):
         roc = self.Dut if roc is None else roc
         h = TProfile2D('p_tm', 'Artificial Threshold Map', *self.Settings['2DBins'])
-        cols, rows = self.Cut.CutConfig['MaskCols'], self.Cut.CutConfig['MaskRows']
-        for col in xrange(cols[0][1] + 1, cols[1][0]):
-            for row in xrange(rows[0][1], self.Settings['nRows']):
-                fit = self.fit_erf(col, row, roc, show=False)
+        cols, rows = self.Cut.CutConfig['FidRegion'][:2], self.Cut.CutConfig['FidRegion'][2:]
+        for col in xrange(cols[0], cols[1] + 1):
+            for row in xrange(rows[0], rows[1] + 1):
+                # fit = self.fit_erf(col, row, roc, show=False)
+                fit = self.Fit
+                self.Fit.SetParameters(*self.Parameters[roc][col][row])
                 if fit is not None:
                     print col, row, fit.GetX(0), fit.GetChisquare()
                     h.Fill(col, row, fit.GetX(0))
