@@ -71,9 +71,14 @@ class SignalPixAnalysis(Analysis):
     def print_info(self, event):
         # self.log_info('Event {e}:'.format(e=event))
         self.tree.GetEntry(event)
-        for i, pl in enumerate(self.tree.plane):
-            if pl == 4 and self.tree.n_hits[4] == 1:
-                print self.tree.col[i], self.tree.row[i], self.tree.adc[i], self.tree.charge_all_ROC4[0]
+        adc = [self.tree.adc[i] for i, j in enumerate(self.tree.plane) if (j == 4 and ord(self.tree.n_tracks) == 1)]
+        cluster_charge = [self.tree.cluster_charge[i] for i, j in enumerate(self.tree.cluster_plane) if (j == 4 and ord(self.tree.n_tracks) == 1)]
+        if adc:
+            print event, adc, cluster_charge
+
+    def print_infos(self, i, j):
+        for n in xrange(i, j):
+            self.print_info(n)
 
     def check_cuts(self):
         for i in xrange(len(self.Cut.ConsecutiveCuts)):
