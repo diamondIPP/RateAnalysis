@@ -292,6 +292,18 @@ class SignalPixAnalysis(Analysis):
         self.save_histo(h, 'PulseHeightDisto{c}'.format(c=make_cut_string(cut, self.Cut.NCuts)), show, lm=.13, prnt=prnt)
         return h
 
+    def draw_pulse_height_map(self, show=True, cut=None, roc=None, sup_zero=True):
+        roc = self.Dut if roc is None else roc
+        cut_string = self.Cut.all_cut if cut is None else TCut(cut)
+        cut_string += 'cluster_plane=={r}'.format(r=roc)
+        cut_string += 'cluster_charge>0'.format(d=self.Dut) if sup_zero else ''
+        self.set_root_output(False)
+        h = TProfile2D('p_phm', 'Pulse Height Map', *self.Settings['2DBins'])
+        self.tree.Draw('cluster_charge:cluster_row:cluster_col>>p_phm'.format(d=self.Dut), cut_string, 'goff')
+        set_statbox(entries=8, opt=1000000010)
+        self.format_histo(h, x_tit='col', y_tit='row', z_tit='Pulse Height [e]', z_off=1.5, y_off=1.4)
+        self.save_histo(h, 'PulseHeightMap', show, lm=.13, rm=.15, draw_opt='colz')
+
     def draw_hit_efficiency(self, roc, show=True, save=True, cut=''):
         self.set_root_output(False)
         suffix = 'ROC {n}'.format(n=roc) if roc < 4 else self.load_diamond_name(roc - 3)
