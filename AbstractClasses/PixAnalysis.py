@@ -95,10 +95,11 @@ class SignalPixAnalysis(Analysis):
         """ Calls do_cut_analysis in the Cut method """
         self.Cut.do_cuts_analysis(do_occupancy, do_pulse_height, normalize_ph_plots)
 
-    def draw_occupancy(self, cut=None, show=True, fid=False, prnt=True, adc=None):
+    def draw_occupancy(self, cut=None, show=True, fid=False, prnt=True, adc=None, roc=None):
         """ Does the occupancy of a roc with the specified cut and it is saved on the given histogram. If none is given, it will create a histogram and return a deepcopy of it """
+        roc = self.Dut if roc is None else roc
         cut_string = self.Cut.generate_special_cut(excluded='fiducial' if not fid else [], cluster=False) if cut is None else TCut(cut)
-        cut_string += 'plane=={d}'.format(d=self.Dut)
+        cut_string += 'plane=={d}'.format(d=roc)
         cut_string += self.Cut.add_adc_cut(adc)
         self.set_root_output(False)
         h = TH2D('h_oc', 'Occupancy {d}'.format(d=self.DiamondName), *self.Settings['2DBins'])
