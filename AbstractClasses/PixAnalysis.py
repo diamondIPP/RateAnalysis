@@ -136,7 +136,7 @@ class SignalPixAnalysis(Analysis):
         return h
 
     def draw_adc_map(self, show=True, cut=None, adc=None):
-        cut_string = self.Cut.HitMapCut if cut is None else TCut(cut)
+        cut_string = deepcopy(self.Cut.HitMapCut) if cut is None else TCut(cut)
         cut_string += 'plane == {n}'.format(n=self.Dut)
         cut_string += '' if adc is None else 'adc>0'
         self.set_root_output(False)
@@ -147,7 +147,7 @@ class SignalPixAnalysis(Analysis):
         self.save_histo(h, 'ADCMap', show, rm=.17, lm=.13, draw_opt='colz')
 
     def draw_zero_contribution(self, show=True, cut=None, entries=False, one_hit=False):
-        cut_string = self.Cut.HitMapCut if cut is None else TCut(cut)
+        cut_string = deepcopy(self.Cut.HitMapCut) if cut is None else TCut(cut)
         cut_string += 'plane == {n}'.format(n=self.Dut)
         cut_string += 'adc>0' if entries else ''
         cut_string += 'n_hits[4]==1' if one_hit else ''
