@@ -157,12 +157,13 @@ class CutPix(Cut):
             x = array([xy[0] - d, xy[0] - d, xy[1] + d, xy[1] + d, xy[0] - d], 'd')
             y = array([xy[2] - d, xy[3] + d, xy[3] + d, xy[2] - d, xy[2] - d], 'd')
             cut = TCutG(name, 5, x, y)
-            cut.SetVarX('cluster_col_ROC{n}'.format(n=self.Dut) if cluster else 'col')
-            cut.SetVarY('cluster_row_ROC{n}'.format(n=self.Dut) if cluster else 'row')
+            cut.SetVarX('cluster_col'.format(n=self.Dut) if cluster else 'col')
+            cut.SetVarY('cluster_row'.format(n=self.Dut) if cluster else 'row')
             self.ROOTObjects.append(cut)
             cut.SetLineColor(kRed)
             cut.SetLineWidth(3*3)
-        return TCut(cut.GetName() if cut is not None else '')
+        cut_string = '!(!{n}&&{p}==4)'.format(n=cut.GetName(), p='plane' if not cluster else 'cluster_plane')
+        return TCut(cut_string if cut is not None else '')
 
     def generate_masks(self, cluster=True):
         # t = self.log_info('Generating mask cuts ...', False)
@@ -174,22 +175,32 @@ class CutPix(Cut):
         return cut_string.GetTitle()
 
     def generate_line_mask(self, line, cluster=True):
-        cut_string = TCut('')
-        cut_var = 'cluster_{l}_ROC{n}'.format(n=self.Dut, l=line) if cluster else line
+        cut_string = ''
+        cut_var = 'cluster_{l}'.format(n=self.Dut, l=line) if cluster else line
         for tup in self.CutConfig['Mask{l}s'.format(l=line.title())]:
+            cut_string += '||' if cut_string else ''
             if len(tup) == 2:
-                cut_string += '{v}<{i}||{v}>{f}'.format(i=tup[0], f=tup[1], v=cut_var)
+                cut_string += '{v}>={i}&&{v}<={f}'.format(i=tup[0], f=tup[1], v=cut_var)
             elif len(tup) == 1:
-                cut_string += '({v}!={i})'.format(i=tup[0], v=cut_var)
-        return cut_string.GetTitle()
+                cut_string += '{v}=={i}'.format(i=tup[0], v=cut_var)
+        if not cut_string:
+            return ''
+        plane_var = 'plane' if not cluster else 'cluster_plane'
+        cut_string = TCut(cut_string) + TCut('{p}=={r}'.format(r=self.Dut, p=plane_var))
+        return '!({c})'.format(c=cut_string.GetTitle())
 
     def generate_pixel_mask(self, cluster=True):
-        cut_string = TCut('')
-        cut_var1 = 'cluster_col_ROC{n}'.format(n=self.Dut) if cluster else 'col'
-        cut_var2 = 'cluster_row_ROC{n}'.format(n=self.Dut) if cluster else 'row'
+        cut_string = ''
+        cut_var1 = 'cluster_col'.format(n=self.Dut) if cluster else 'col'
+        cut_var2 = 'cluster_row'.format(n=self.Dut) if cluster else 'row'
         for tup in self.CutConfig['MaskPixels']:
-            cut_string += '{v1}!={x}||{v2}!={y}'.format(x=tup[0], y=tup[1], v1=cut_var1, v2=cut_var2)
-        return cut_string.GetTitle()
+            cut_string += '||' if cut_string else ''
+            cut_string += '{v1}=={x}&&{v2}=={y}'.format(x=tup[0], y=tup[1], v1=cut_var1, v2=cut_var2)
+        if not cut_string:
+            return ''
+        plane_var = 'plane' if not cluster else 'cluster_plane'
+        cut_string = TCut(cut_string) + TCut('{p}=={r}'.format(r=self.Dut, p=plane_var))
+        return '!({c})'.format(c=cut_string.GetTitle())
 
     @staticmethod
     def add_adc_cut(adc):
