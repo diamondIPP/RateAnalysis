@@ -245,7 +245,7 @@ class SignalPixAnalysis(Analysis):
             self.draw_histo(gr, draw_opt='ap', show=show, lm=.12)
             return fit
 
-    def draw_pulse_heiht_map(self, show=True, vcal=200, roc=None):
+    def draw_adc_fixed_vcal_map(self, show=True, vcal=200, roc=None):
         roc = self.Dut if roc is None else roc
         h = TProfile2D('p_pm', 'Pulse Height Map for Vcal {v}'.format(v=vcal), *self.Settings['2DBins'])
         cols, rows = self.Cut.CutConfig['MaskCols'], self.Cut.CutConfig['MaskRows']
