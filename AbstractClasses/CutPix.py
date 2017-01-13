@@ -108,13 +108,6 @@ class CutPix(Cut):
             if dut in dic:
                 return dic[dut]
 
-    def is_first_cut(self):
-        """
-        tells if it is the first cut to be applied
-        :return: returns True, if it is the first cut to be applied
-        """
-        return self.num_cuts == 0
-
     def generate_special_cut(self, excluded=None, included=None, name='special_cut', cluster=True):
         cut = TCut(name, '')
         self.NCuts = 0
