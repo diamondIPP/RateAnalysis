@@ -37,7 +37,7 @@ class Plots(Elementary):
         self.plot_settings = {
             'ph1DbinsD4': 80,
             'ph1DminD4': -2500,
-            'ph1DmaxD4': 30000,
+            'ph1DmaxD4': 60000,
             'ph1DbinsD5': 80,
             'ph1DminD5': -5000,
             'ph1DmaxD5': 60000,
