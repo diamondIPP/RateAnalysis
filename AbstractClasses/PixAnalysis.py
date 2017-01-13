@@ -226,17 +226,23 @@ class SignalPixAnalysis(Analysis):
     def fit_erf(self, col, row, roc=None, show=True):
         roc = self.Dut if roc is None else roc
         # fit.SetParameters(*self.Parameters[roc][col][row])
-        points = OrderedDict(sorted({vcal: value for vcal, value in zip(self.Vcals, self.Points[roc][col][row]) if value}.iteritems()))
-        if len(points) > 3:
+        points = OrderedDict(sorted({vcal: value for vcal, value in zip(self.Vcals, self.Points[roc][col][row])}.iteritems()))
+        good_points = OrderedDict(sorted({vcal: value for vcal, value in zip(self.Vcals, self.Points[roc][col][row]) if value}.iteritems()))
+        start = 0
+        for vcal, value in points.iteritems():
+            if value:
+                start = vcal
+                break
+        if len(good_points) > 3:
             fit = deepcopy(self.Fit)
             fit.SetParameters(309.2062, 112.8961, 1.022439, 35.89524)
         else:
             fit = TF1('fit', 'pol1', 0, 3000)
-        if len(points) > 1:
+        if len(good_points) > 1:
             gr = TGraph(len(points), array(points.keys(), 'd'), array(points.values(), 'd'))
-            gr.Fit(fit, 'q', '', 0, 3000 if len(points) > 3 else 1000)
-            self.format_histo(gr, marker=20)
-            self.draw_histo(gr, draw_opt='ap', show=show)
+            gr.Fit(fit, 'q', '', start, 3000 if len(good_points) > 3 else 1000)
+            self.format_histo(gr, marker=20, x_tit='vcal', y_tit='adc', y_off=1.3, title='Calibration Fit for Pix {c} {r}'.format(c=col, r=row))
+            self.draw_histo(gr, draw_opt='ap', show=show, lm=.12)
             return fit
 
     def draw_pulse_heiht_map(self, show=True, vcal=200, roc=None):
