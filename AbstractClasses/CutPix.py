@@ -50,7 +50,7 @@ class CutPix(Cut):
 
     def set_hitmap_cuts(self, on=True):
         self.set_cut('masks', self.generate_masks(cluster=not on))
-        self.set_cut('fiducial', self.generate_fiducial(name='fid{n}'.format(n='' if on else 'hit'), cluster=not on))
+        self.set_cut('fiducial', self.generate_fiducial(name='fid{n}'.format(n='' if not on else 'hit'), cluster=not on))
 
     def generate_consecutive_cuts(self, cluster=True):
         self.set_hitmap_cuts(not cluster)
