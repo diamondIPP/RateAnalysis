@@ -5,7 +5,7 @@ import json
 from ConfigParser import ConfigParser
 from argparse import ArgumentParser
 from collections import OrderedDict
-from numpy import log, array, zeros
+from numpy import log, array, zeros, std
 from time import time
 from screeninfo import get_monitors
 from dispy import JobCluster
@@ -330,8 +330,7 @@ class AnalysisCollection(Elementary):
             gr_errors = self.make_tgrapherrors('gFullError', 'stat. + repr. error', marker=0, color=602, marker_size=0)
             not_found_for = False in [coll.run.FoundForRate for coll in self.collection.itervalues()]
 
-            # FIXME put meaningful reproducable errors!
-            flux_errors = self.draw_ph_distributions_below_flux(int(self.FirstAnalysis.run.n_entries * .3 / 60), flux=80, show=False, save_plot=redo)
+            flux_errors = self.get_repr_errors(80, False)
             log_message('Getting pulse heights{0}'.format(' vs time' if vs_time else ''))
             rel_sys_error = flux_errors[1] / flux_errors[0]
             i, j = 0, 0
@@ -552,6 +551,21 @@ class AnalysisCollection(Elementary):
 
         res = func() if show else None
         return self.do_pickle(pickle_path, func, res)
+
+    def get_repr_errors(self, flux, show=True):
+        runs = self.get_runs_below_flux(flux)
+        vals = [self.collection[run].draw_pulse_height(save=False).Parameter(0) for run in runs]
+        gr = self.make_tgrapherrors('gr_re', 'Pulse Heights Below {f} kHz/cm^{{2}}'.format(f=flux))
+        for i, run in enumerate(runs):
+            ana = self.collection[run]
+            fit = ana.draw_pulse_height(save=False)
+            gr.SetPoint(i, ana.run.flux, fit.Parameter(0))
+            gr.SetPointError(i, 0, fit.ParError(0))
+        set_statbox(entries=2, only_fit=True)
+        gr.Fit('pol0', 'qs{s}'.format(s='' if show else '0'))
+        self.format_histo(gr, x_tit='Flux [kHz/cm^{2}]', y_tit='Mean Pulse Height [au]', y_off=1.7)
+        self.save_histo(gr, 'ReprErrors', show, draw_opt='ap', lm=.115, prnt=show)
+        return mean(vals), std(vals)
 
     def draw_ph_distributions(self, binning=5000, fsh13=.5, fs11=65, show=True):
         runs = self.get_runs_by_collimator(fsh13=fsh13, fs11=fs11)
