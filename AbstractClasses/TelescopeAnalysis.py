@@ -412,6 +412,13 @@ class Analysis(Elementary):
     # ==============================================
     # region RUN FUNCTIONS
 
+    def set_bin_size(self, value):
+        self.BinSize = value
+        self.binning = self.__get_binning()
+        self.time_binning = self.get_time_binning()
+        self.n_bins = len(self.binning)
+        return value
+
     def __get_binning(self):
         jumps = self.Cut.Interruptions
         n_jumps = len(jumps)

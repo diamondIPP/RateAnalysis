@@ -177,13 +177,6 @@ class PadAnalysis(Analysis):
         self.SignalName = self.get_signal_name()
         self.PedestalName = self.get_pedestal_name()
 
-    def __set_bin_size(self, value):
-        self.BinSize = value
-        self.binning = self.__get_binning()
-        self.time_binning = self.get_time_binning()
-        self.n_bins = len(self.binning)
-        return value
-
     # ==========================================================================
     # region BEAM PROFILE
 
@@ -763,7 +756,7 @@ class PadAnalysis(Analysis):
         def func():
             print 'calculating pedestal of ch', self.channel
             if binning is not None:
-                self.__set_bin_size(binning)
+                self.set_bin_size(binning)
             ped_time = self.make_signal_time_histos(ped=True, show=False)
             gROOT.SetBatch(1)
             means = []
@@ -813,7 +806,7 @@ class PadAnalysis(Analysis):
 
             signal = self.generate_signal_name(self.SignalName if sig is None else sig, corr)
             if binning is not None:
-                self.__set_bin_size(binning)
+                self.set_bin_size(binning)
             gr = self.make_tgrapherrors('gr_ph', 'Pulse Height Evolution')
             for i in xrange(self.n_bins - 1):
                 n = self.tree.Draw(signal, self.Cut.all_cut, 'goff', self.binning[i + 1] - self.binning[i], self.binning[i])
@@ -856,7 +849,7 @@ class PadAnalysis(Analysis):
         def func():
             self.log_info('drawing pulse height fit for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name))
             if binning is not None:
-                self.__set_bin_size(binning)
+                self.set_bin_size(binning)
             tit_suffix = 'with eventwise Pedestal Correction' if evnt_corr else ''
             gr = self.make_tgrapherrors('signal', 'Pulse Height Evolution Bin{0} '.format(self.BinSize) + tit_suffix)
             sig_time = self.make_signal_time_histos(evnt_corr=evnt_corr, signal=signal, show=False)
@@ -899,7 +892,7 @@ class PadAnalysis(Analysis):
 
     def draw_ph_distribution(self, binning=None, show=True, fit=True, xmin=0, xmax=270., bin_size=.5, save=True):
         if binning is not None:
-            self.__set_bin_size(binning)
+            self.set_bin_size(binning)
         sig_time = self.make_signal_time_histos(evnt_corr=True, show=False)
         if not show:
             gROOT.SetBatch(1)
