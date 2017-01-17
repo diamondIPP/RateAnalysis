@@ -571,7 +571,8 @@ class AnalysisCollection(Elementary):
         runs = self.get_runs_by_collimator(fsh13=fsh13, fs11=fs11)
         return self.draw_combined_ph_distributions(runs, binning, show)
 
-    def draw_ph_distributions_below_flux(self, binning=200, flux=150, show=True, save_plot=True):
+    def draw_ph_distributions_below_flux(self, binning=None, flux=150, show=True, save_plot=True):
+        binning = int(self.FirstAnalysis.run.n_entries * .3 / 60 if binning is None else binning)
         pickle_path = self.make_pickle_path('Ph_fit', 'PhDistoBel', self.run_plan, self.diamond_name, suf='{bin}_{flux}'.format(bin=binning, flux=flux))
 
         def func():
