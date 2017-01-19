@@ -88,10 +88,10 @@ class Converter:
         return file_dir
 
     def load_root_file_dir(self):
-        if self.parser.has_option('BASIC', 'runpath'):
-            path = self.parser.get('BASIC', 'runpath')
+        if self.RunParser.has_option('BASIC', 'runpath'):
+            path = self.RunParser.get('BASIC', 'runpath')
         else:
-            path = join_path(self.DataDir, self.TcDir, '{dut}'.format(dut='pad' if self.Type == 'pad' else 'pixel'))
+            path = joinpath(self.DataDir, self.TcDir, 'root', '{dut}'.format(dut='pads' if self.Type == 'pad' else 'pixel'))
         ensure_dir(path)
         return path
 
