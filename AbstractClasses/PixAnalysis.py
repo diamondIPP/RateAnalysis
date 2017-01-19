@@ -346,6 +346,14 @@ class SignalPixAnalysis(Analysis):
         self.reset_colors()
         return stack
 
+    def draw_hits_dut(self, cut=None, show=True):
+        cut_string = z.Cut.all_cut if cut is None else TCut(cut)
+        h = TH2D('h_hd', 'Hits in Dia vs Hits in Silicon', 40, 0, 40, 40, 0, 40)
+        self.tree.Draw('n_hits[5]:n_hits[4]>>h_hd', cut_string, 'goff')
+        set_statbox(entries=4, opt=1000000010, x=.81)
+        self.format_histo(h, x_tit='Hits in Diamond', y_tit='Hits in Silicon', y_off=1.3, z_tit='Number of Entries', z_off=1.4)
+        self.save_histo(h, 'HitsDiaSil', show, draw_opt='colz', rm=0.17, lm=.13, logz=True)
+
     def do_pulse_height_roc(self, roc=4, num_clust=1, cut='', histoevent=None, histo=None):
         """
         Does the pulse height extraction for the specified roc with the specified cluster size and applying the given
