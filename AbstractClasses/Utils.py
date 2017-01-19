@@ -293,8 +293,10 @@ def has_bit(num, bit):
     return bool(num & 1 << bit)
 
 
-def make_tc_str(tc, txt=True):
-    if tc[0].isdigit():
+def make_tc_str(tc, txt=True, data=False):
+    if data:
+        return datetime.strptime(tc, '%Y%m').strftime('psi_%Y_%m')
+    elif tc[0].isdigit():
         return datetime.strptime(tc, '%Y%m').strftime('%B %Y' if txt else '%b%y')
     else:
         return datetime.strptime(tc, '%b%y').strftime('%Y%m' if txt else '%B %Y')
