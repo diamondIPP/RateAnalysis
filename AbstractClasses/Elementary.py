@@ -112,6 +112,24 @@ class Elementary(object):
                 log_warning(err)
                 return 1000
 
+    def load_mask_file_dir(self):
+        if self.run_config_parser.has_option('BASIC', 'maskfilepath'):
+            file_path = self.run_config_parser.get('BASIC', 'maskfilepath')
+        else:
+            file_path = joinpath(self.DataDir, make_tc_str(self.TESTCAMPAIGN, data=True), 'masks')
+        if not dir_exists(file_path):
+            log_warning('Did not file mask file directory!')
+        return file_path
+
+    def load_run_info_path(self):
+        if self.run_config_parser.has_option('BASIC', 'runinfofile'):
+            file_path = self.run_config_parser.get('BASIC', 'runinfofile')
+        else:
+            file_path = joinpath(self.DataDir, make_tc_str(self.TESTCAMPAIGN, data=1), 'run_log.json')
+        if not file_exists(file_path):
+            log_critical('Run File does not exist!')
+        return file_path
+
     def set_save_directory(self, name):
         self.results_directory = '{dir}/{nam}/'.format(dir=self.get_program_dir(), nam=name)
 
