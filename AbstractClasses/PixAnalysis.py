@@ -303,7 +303,8 @@ class SignalPixAnalysis(Analysis):
         self.format_histo(h, x_tit='col', y_tit='row', z_tit='Pulse Height [e]', z_off=1.5, y_off=1.4)
         self.save_histo(h, 'PulseHeightMap', show, lm=.13, rm=.15, draw_opt='colz')
 
-    def draw_hit_efficiency(self, roc, show=True, save=True, cut=''):
+    def draw_hit_efficiency(self, roc=None, show=True, save=True, cut=''):
+        roc = self.Dut if roc is None else roc
         self.set_root_output(False)
         suffix = 'ROC {n}'.format(n=roc) if roc < 4 else self.load_diamond_name(roc - 3)
         h = TProfile('h_he', 'Hit Efficiency {s}'.format(s=suffix), int(self.run.n_entries / 5000), z.run.startTime / 1000, self.run.endTime / 1000.)
@@ -314,7 +315,7 @@ class SignalPixAnalysis(Analysis):
         self.save_histo(h, 'HitEfficiencyROC{n}'.format(n=roc), show, lm=.13, save=save, gridy=True)
         return h
 
-    def fit_hit_efficiency(self, roc, show=True, save=True, cut=''):
+    def fit_hit_efficiency(self, roc=None, show=True, save=True, cut=''):
         pickle_path = self.make_pickle_path('Efficiency', run=self.RunNumber, suf='{r}{c}'.format(r=roc, c='_Cuts' if cut else ''))
 
         def func():
