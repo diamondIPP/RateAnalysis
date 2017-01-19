@@ -140,20 +140,21 @@ class CutPix(Cut):
         return string
 
     def generate_fiducial(self, name='fid', cluster=True):
-        xy = self.CutConfig['FidRegion']
-        cut = None
-        if xy is not None:
-            d = .5
-            x = array([xy[0] - d, xy[0] - d, xy[1] + d, xy[1] + d, xy[0] - d], 'd')
-            y = array([xy[2] - d, xy[3] + d, xy[3] + d, xy[2] - d, xy[2] - d], 'd')
-            cut = TCutG(name, 5, x, y)
-            cut.SetVarX('cluster_col'.format(n=self.Dut) if cluster else 'col')
-            cut.SetVarY('cluster_row'.format(n=self.Dut) if cluster else 'row')
-            self.ROOTObjects.append(cut)
-            cut.SetLineColor(kRed)
-            cut.SetLineWidth(3*3)
-        cut_string = '!(!{n}&&{p}==4)'.format(n=cut.GetName(), p='plane' if not cluster else 'cluster_plane')
-        return TCut(cut_string if cut is not None else '')
+        # xy = self.CutConfig['FidRegion']
+        # cut = None
+        # if xy is not None:
+        #     d = .5
+        #     x = array([xy[0] - d, xy[0] - d, xy[1] + d, xy[1] + d, xy[0] - d], 'd')
+        #     y = array([xy[2] - d, xy[3] + d, xy[3] + d, xy[2] - d, xy[2] - d], 'd')
+        #     cut = TCutG(name, 5, x, y)
+        #     cut.SetVarX('cluster_col'.format(n=self.Dut) if cluster else 'col')
+        #     cut.SetVarY('cluster_row'.format(n=self.Dut) if cluster else 'row')
+        #     self.ROOTObjects.append(cut)
+        #     cut.SetLineColor(kRed)
+        #     cut.SetLineWidth(3*3)
+        # cut_string = '!(!{n}&&{p}==4)'.format(n=cut.GetName(), p='plane' if not cluster else 'cluster_plane')
+        # return TCut(cut_string if cut is not None else '')
+        return TCut('')
 
     def generate_masks(self, cluster=True):
         # t = self.log_info('Generating mask cuts ...', False)
