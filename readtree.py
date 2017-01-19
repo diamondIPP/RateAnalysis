@@ -3,7 +3,7 @@ from ROOT import TFile, gROOT, TGraph, TH2F, gStyle, TCanvas, TCut, TH1F
 from sys import argv
 from AbstractClasses.Utils import *
 from json import load
-from AbstractClasses.Elementary import Elementary
+from AbstractClasses.RunClass import Run
 from datetime import datetime
 from ConfigParser import ConfigParser, NoSectionError
 from numpy import mean
@@ -15,7 +15,7 @@ widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', Fi
 def load_runinfo():
     info = {}
     try:
-        fi = open(el.run_config_parser.get('BASIC', 'runinfofile'), 'r')
+        fi = open(run.runinfofile, 'r')
         data = load(fi)
         fi.close()
     except NoSectionError as err:
@@ -34,8 +34,8 @@ def draw_hitmap(show=True, cut=None, plane=None):
     for plane in planes:
         cut_string = cut + TCut('plane == {0}'.format(plane))
         t.Draw('row:col>>h_hm{0}'.format(plane), cut_string, 'goff')
-        el.format_histo(histos[plane], x_tit='col', y_tit='row')
-    el.set_root_output(show)
+        run.format_histo(histos[plane], x_tit='col', y_tit='row')
+    run.set_root_output(show)
     c = TCanvas('c_hm', 'Hitmaps', 2000, 2000)
     c.Divide(2, 2)
     for i, h in enumerate(histos, 1):
@@ -44,7 +44,7 @@ def draw_hitmap(show=True, cut=None, plane=None):
         pad.SetBottomMargin(.15)
         h.Draw('colz')
     stuff.append([histos, c])
-    el.set_root_output(True)
+    run.set_root_output(True)
 
 
 def trig_edges(nwf=None):
@@ -59,8 +59,8 @@ def trig_edges(nwf=None):
             # print i * 1204 + j, int(buf[i * 1204 + j])
             if abs(buf[i * 1024 + k] - buf[i * 1024 + k + 1]) > 50:
                 h.Fill(k)
-    el.format_histo(h, x_tit='Bin Number', y_tit='Number of Entries', y_off=1.4, stats=0, fill_color=407)
-    el.draw_histo(h, lm=.12)
+    run.format_histo(h, x_tit='Bin Number', y_tit='Number of Entries', y_off=1.4, stats=0, fill_color=407)
+    run.draw_histo(h, lm=.12)
 
 
 def draw_waveforms(n=1000, start_event=0, cut_string='', show=True, fixed_range=None, ch=0):
@@ -86,8 +86,8 @@ def draw_waveforms(n=1000, start_event=0, cut_string='', show=True, fixed_range=
         h.GetYaxis().SetRangeUser(fixed_range[0], fixed_range[1])
     if show:
         gROOT.SetBatch(0)
-    el.format_histo(h, title='Waveform', name='wf', x_tit='Time [ns]', y_tit='Signal [mV]', markersize=.4, y_off=.4, stats=0, tit_size=.05)
-    el.draw_histo(h, '', show, lm=.06, rm=.045, draw_opt='scat' if n == 1 else 'col', x=1.5, y=.5)
+    run.format_histo(h, title='Waveform', name='wf', x_tit='Time [ns]', y_tit='Signal [mV]', markersize=.4, y_off=.4, stats=0, tit_size=.05)
+    run.draw_histo(h, '', show, lm=.06, rm=.045, draw_opt='scat' if n == 1 else 'col', x=1.5, y=.5)
     count += n_events
     return h, n_events
 
@@ -150,8 +150,7 @@ def load_diamond_name(ch):
 
 
 def calc_flux():
-    el.run_config_parser.get('BASIC', 'maskfilepath')
-    f = open(el.run_config_parser.get('BASIC', 'maskfilepath') + '/' + runinfo['maskfile'], 'r')
+    f = open(joinpath(run.load_mask_file_dir(), runinfo['maskfile']), 'r')
     data = []
     for line in f:
         if len(line) > 3:
@@ -170,9 +169,9 @@ def get_bias(ch):
 
 def draw_runinfo_legend(ch):
     testcamp = datetime.strptime(tc, '%Y%m')
-    l = el.make_legend(.005, .156, y1=.003, x2=.39, nentries=2, felix=False, scale=1, margin=.05)
+    l = run.make_legend(.005, .156, y1=.003, x2=.39, nentries=2, felix=False, scale=1, margin=.05)
     l.SetTextSize(.05)
-    l.AddEntry(0, 'Test Campaign: {tc}, Run {run} @ {rate:2.1f} kHz/cm^{{2}}'.format(tc=testcamp.strftime('%b %Y'), run=run, rate=calc_flux(runinfo, testcamp)), '')
+    l.AddEntry(0, 'Test Campaign: {tc}, Run {run} @ {rate:2.1f} kHz/cm^{{2}}'.format(tc=testcamp.strftime('%b %Y'), run=run, rate=run.calc_flux()), '')
     l.AddEntry(0, 'Diamond: {diamond} @ {bias:+}V'.format(diamond=load_diamond_name(ch), bias=get_bias(ch)), '')
     l.Draw()
     stuff.append(l)
@@ -181,8 +180,8 @@ def draw_runinfo_legend(ch):
 def draw_peak_timings(xmin=0, xmax=100, ch=0):
     h = TH1F('h_pt', 'PeakTimings', 100, xmin, xmax)
     t.Draw('peak_positions{0}>>h_pt'.format(ch), '', 'goff')
-    el.format_histo(h, x_tit='Digitiser Bin', y_tit='Number of Entries')
-    el.draw_histo(h)
+    run.format_histo(h, x_tit='Digitiser Bin', y_tit='Number of Entries')
+    run.draw_histo(h)
 
 
 def draw_both_wf(ch, show=True):
@@ -193,12 +192,12 @@ def draw_both_wf(ch, show=True):
     s_proj = signal.ProjectionY()
     s = [s_proj.GetBinCenter(p_proj.FindFirstBinAbove(0)), s_proj.GetBinCenter(p_proj.FindLastBinAbove(0))]
     y = [min(p + s) - 10, max(p + s) + 10]
-    el.format_histo(pulser, y_range=y, stats=0, markersize=.4, y_off=.5, tit_size=.05)
-    el.draw_histo(pulser, '', show, lm=.06, rm=.045, bm=.2, draw_opt='col', x=1.5, y=.5)
+    run.format_histo(pulser, y_range=y, stats=0, markersize=.4, y_off=.5, tit_size=.05)
+    run.draw_histo(pulser, '', show, lm=.06, rm=.045, bm=.2, draw_opt='col', x=1.5, y=.5)
     signal.Draw('samecol')
     leg_ch = 1 if not ch else 2
     draw_runinfo_legend(leg_ch)
-    el.save_plots('WaveForm_{run}_{ch}'.format(run=run, ch=ch, tc=tc), save_dir)
+    run.save_plots('WaveForm_{run}_{ch}'.format(run=run, ch=ch, tc=tc), save_dir)
 
 
 def read_macro(f):
@@ -220,7 +219,7 @@ if __name__ == '__main__':
     rootfile = TFile(argv[1])
     tc = '20' + argv[1].split('/')[-1].strip('test').split('00')[0]
     tc += '0' if len(tc) < 6 else ''
-    tc = '201608'
+    tc = '201610'
 
     try:
         run = int(argv[1].split('/')[-1].strip('.root').split('00')[-1])
@@ -229,11 +228,8 @@ if __name__ == '__main__':
             run = int(argv[1].split('/')[-1].strip('_withTracks.roottest'))
         else:
             run = int(argv[1].split('/')[-1].strip('.root').strip('TrackedRun'))
-    print run
 
-    el = Elementary(tc)
-    el.run_config_parser = el.load_run_configs(run)
-    el.set_save_directory('PlotsFelix/')
+    run = Run(run, test_campaign=tc, load_tree=False)
 
     channels = read_macro(rootfile)
     t = rootfile.Get('tree')
