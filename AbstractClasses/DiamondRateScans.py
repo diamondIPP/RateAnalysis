@@ -10,6 +10,7 @@ from ConfigParser import ConfigParser, NoOptionError
 from Utils import *
 from argparse import ArgumentParser
 from RunSelection import RunSelection
+from RunClass import Run
 from json import load, dump
 from collections import OrderedDict, Counter
 from ROOT import TMultiGraph, TGraphErrors, kRed, kOrange, kBlue, kGreen, kCyan, kViolet, kPink, kYellow, gStyle, TF1, TH2F, TH1F, TGraph2DErrors
@@ -746,6 +747,7 @@ class DiaScans(Elementary):
         values = []
         for tc in self.TestCampaigns if tc is None else [tc]:
             for run, data in sorted(self.RunInfos[tc].iteritems()):
+                info_run = Run(run_number=run, test_campaign=tc, load_tree=False)
                 if run_thr is not None:
                     if run_thr > 0 and int(run) < run_thr:
                         continue
@@ -753,7 +755,7 @@ class DiaScans(Elementary):
                         continue
                 try:
                     if data['fs11'] == fs11 and data['fs13'] == fsh13:
-                        flux = calc_flux(data, tc)
+                        flux = info_run.calc_flux()
                         # print tc, run, flux
                         values.append(flux) if flux > 1 else do_nothing()
                 except KeyError:
