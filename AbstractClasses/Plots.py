@@ -1,20 +1,11 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from ROOT import TGraphErrors, TCanvas, TH1D, TH2D, gStyle, TH1F, gROOT, gErrorIgnoreLevel, kError,TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kRed, kBlack, kPink, kBlue, kViolet ,kMagenta, kTeal, kGreen, kOrange, TF1, TPie, gPad, TLatex, THStack
-# from TelescopeAnalysis import Analysis
-# from CurrentInfo import Currents
-# from numpy import array
-from math import sqrt, ceil, log
-from Elementary import Elementary
 import os
-# from argparse import ArgumentParser
-# from Extrema import Extrema2D
-# from ChannelCut import ChannelCut
-# from time import time, sleep
-# from collections import OrderedDict
-# from sys import stdout
-from copy import deepcopy
+from ROOT import TGraphErrors, TCanvas, TH1D, TH2D, gStyle, gROOT, kError, TProfile2D, TProfile, kBlack, TLatex, THStack
+from math import ceil
+
+from Elementary import Elementary
 
 __author__ = 'DA'
 
