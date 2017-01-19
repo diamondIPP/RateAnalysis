@@ -155,7 +155,7 @@ class MCRun(Run):
         MPV = self.MCAttributes['Landau_MPV_bkg'] # background for Landau MPV distribution
         sigma = self.MCAttributes['Landau_Sigma'] # Landau scaling sigma
         NPeaks = self.MCAttributes['NPeaks']
-        MCRunPath = self.MCAttributes['MCRunPath'].format(self.run_number)
+        MCRunPath = self.MCAttributes['MCRunPath'].format(self.RunNumber)
         xmin = self.diamond.Position['xmin'] + 0.01
         xmax = self.diamond.Position['xmax'] - 0.01
         ymin = self.diamond.Position['ymin'] + 0.01
