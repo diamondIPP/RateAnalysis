@@ -1,11 +1,9 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-import json
-from ConfigParser import ConfigParser
 from argparse import ArgumentParser
 from collections import OrderedDict
-from numpy import log, array, zeros, std
+from numpy import log, array, zeros, std, mean
 from time import time
 from screeninfo import get_monitors
 from dispy import JobCluster
@@ -115,28 +113,23 @@ class AnalysisCollection(Elementary):
         return [i for i in xrange(16) if self.has_bit(binary, i)][dia_nr - 1]
 
     def get_high_low_rate_runs(self):
-        keydict = ConfigParser()
-        keydict.read('Configuration/KeyDict_{tc}.cfg'.format(tc=self.TESTCAMPAIGN))
-        path = self.run_config_parser.get('BASIC', 'runinfofile')
-        f = open(path, 'r')
-        run_log = json.load(f)
-        fluxes = {calc_flux(run_log[str(run)], self.TESTCAMPAIGN): run for run in self.runs}
+        fluxes = {ana.run.calc_flux(): run for run, ana in self.collection.iteritems()}
         if self.verbose:
             print 'RUN FLUX [kHz/cm2]'
-            for run in self.runs:
-                print '{run:3d} {flux:14.2f}'.format(run=run, flux=calc_flux(run_log[str(run)], self.TESTCAMPAIGN))
+            for run, ana in self.collection.itervalues():
+                print '{run:3d} {flux:14.2f}'.format(run=run, flux=ana.run.calc_flux())
         print '\n'
         return {'min': fluxes[min(fluxes)], 'max': fluxes[max(fluxes)]}
 
     def generate_slope_pickle(self):
         picklepath = 'Configuration/Individual_Configs/Slope/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.min_max_rate_runs['min'])
-        if os.path.exists(picklepath):
+        if file_exists(picklepath):
             return
         Analysis(self.min_max_rate_runs['min'])
 
     def generate_threshold_pickle(self):
         picklepath = 'Configuration/Individual_Configs/Cuts/SignalThreshold_{tc}_{run}_{ch}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.min_max_rate_runs['max'], ch=0)
-        if os.path.exists(picklepath):
+        if file_exists(picklepath):
             return
         Analysis(self.min_max_rate_runs['max'])
 
@@ -1281,7 +1274,7 @@ class AnalysisCollection(Elementary):
         #     print ana.run.RunInfo
         fluxes = OrderedDict(sorted({cs: [] for cs in set([(ana.run.RunInfo['fs11'], ana.run.RunInfo['fs13']) for ana in self.collection.itervalues()])}.iteritems()))
         for ana in self.collection.itervalues():
-            fluxes[(ana.run.RunInfo['fs11'], ana.run.RunInfo['fs13'])].append('{0:3.1f}'.format(calc_flux(ana.run.RunInfo, self.TESTCAMPAIGN)))
+            fluxes[(ana.run.RunInfo['fs11'], ana.run.RunInfo['fs13'])].append('{0:3.1f}'.format(ana.run.calc_flux()))
         first_col = [[''] * max([len(col) for col in fluxes.itervalues()])]
         header = ['FS11/FSH13'] + ['{0}/{1}'.format(make_col_str(head[0]), make_col_str(head[1])) for head in fluxes.iterkeys()]
         print make_latex_table(header=header, cols=first_col + fluxes.values(), endline=True),
