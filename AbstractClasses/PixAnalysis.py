@@ -1,7 +1,7 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from ROOT import TH2D, TH1D, gROOT, TFormula, TCut, TH1I, TProfile, THStack, TProfile2D, TF1, TGraph
+from ROOT import TH2D, TH1D, gROOT, TFormula, TCut, TH1I, TProfile, THStack, TProfile2D, TF1, TGraph, TPie
 from TelescopeAnalysis import Analysis
 # from CurrentInfo import Currents
 from argparse import ArgumentParser
@@ -353,6 +353,26 @@ class SignalPixAnalysis(Analysis):
         set_statbox(entries=4, opt=1000000010, x=.81)
         self.format_histo(h, x_tit='Hits in Diamond', y_tit='Hits in Silicon', y_off=1.3, z_tit='Number of Entries', z_off=1.4)
         self.save_histo(h, 'HitsDiaSil', show, draw_opt='colz', rm=0.17, lm=.13, logz=True)
+
+    def draw_hit_pie(self):
+        zero = z.tree.GetEntries('n_hits[4]==0&&n_hits[5]==0')
+        dia = z.tree.GetEntries('n_hits[4]>0&&n_hits[5]==0')
+        sil = z.tree.GetEntries('n_hits[4]==0&&n_hits[5]>0')
+        both = z.tree.GetEntries('n_hits[4]>0&&n_hits[5]>0')
+        names = ['No Hits', 'Diamond Hit', 'Silicon Hit', 'Both Hits']
+        values = [zero, dia, sil, both]
+        colors = [self.get_color() for _ in xrange(1, len(values) + 1)]
+        self.reset_colors()
+        pie = TPie('pie', 'Hit Contributions', len(values), array(values, 'f'), array(colors, 'i'))
+        for i, label in enumerate(names):
+            pie.SetEntryRadiusOffset(i, .05)
+            pie.SetEntryLabel(i, label.title())
+        pie.SetHeight(.04)
+        pie.SetRadius(.2)
+        pie.SetTextSize(.025)
+        pie.SetAngle3D(70)
+        pie.SetAngularOffset(250)
+        self.draw_histo(pie, draw_opt='3drsc')
 
     def do_pulse_height_roc(self, roc=4, num_clust=1, cut='', histoevent=None, histo=None):
         """
