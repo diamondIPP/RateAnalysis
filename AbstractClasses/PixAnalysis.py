@@ -9,6 +9,7 @@ from time import time
 from copy import deepcopy
 import progressbar
 from CutPix import CutPix
+from Elementary import Elementary
 from numpy import array
 from Utils import *
 from os.path import join as joinpath
@@ -581,6 +582,7 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--progBar', action='store_true', dest='progBar', default=False, help='show progress bar')
     parser.add_argument('-v', '--verb', action='store_true', dest='verb', default=True, help='show verbose')
     parser.add_argument('-a', '--analyse', action='store_true', dest='doAna', default=False, help='run the whole analysis with the options entered')
+    parser.add_argument('-tc', '--testcampaign', nargs='?', default='')
 
     args = parser.parse_args()
 
@@ -596,26 +598,30 @@ if __name__ == '__main__':
     verb = bool(args.verb)
     doAna = bool(args.doAna)
 
-    command = '\nAnalysing run ' + str(args.run) + ' with:'
-    command = command + ' telescope,' if doTelscp else command + ' no telescope,'
-    command = command + ' DUTs,' if doDUTs else command + ' no DUTs,'
-    command = command + ' cuts distributions,' if doCutDist else command + ' no cuts distributions,'
-    command = command + ' resolution analysis,' if doResolution else command + ' no resolution analysis,'
-    command = command + ' cuts analysis,' if doCutAna else command + ' no cuts analysis,'
-    command = command + ' hitmaps,' if doHitMap else command + ' no hitmpas,'
-    command = command + ' correlations,' if doCorrel else command + ' no correlations,'
-    command = command + ' pulse heights,' if doPH else command + ' no heights,'
-    command = command + ' progress bar,' if pbar else command + ' no progress bar,'
-    command = command + ' verbose' if pbar else command + ' no verbose,'
-    command = command + ' with automatic analysis' if doAna else command + '. Start the Analysis by typing "z.do_analysis(doTelscp, doDUTs, doCutDist, doCutAna, doHitMap, doCorrel, doPH, pbar, verb)" when ready'
-    command = command + '\n'
+    command = 'Analysing run ' + str(args.run) + ' with:'
+    command += ' telescope,' if doTelscp else ' no telescope,'
+    command += ' DUTs,' if doDUTs else ' no DUTs,'
+    command += ' cuts distributions,' if doCutDist else ' no cuts distributions,'
+    command += ' resolution analysis,' if doResolution else ' no resolution analysis,'
+    command += ' cuts analysis,' if doCutAna else ' no cuts analysis,'
+    command += ' hitmaps,' if doHitMap else ' no hitmpas,'
+    command += ' correlations,' if doCorrel else ' no correlations,'
+    command += ' pulse heights,' if doPH else ' no heights,'
+    command += ' progress bar,' if pbar else ' no progress bar,'
+    command += ' verbose' if pbar else ' no verbose,'
+    command += ' with automatic analysis' if doAna else '. Start the Analysis by typing "z.do_analysis(doTelscp, doDUTs, doCutDist, doCutAna, doHitMap, doCorrel, doPH, pbar, verb)" when ready'
+    command += '\n'
 
-    print command
-
+    tc = args.testcampaign if args.testcampaign.startswith('201') else None
+    el = Elementary(tc)
+    el.print_testcampaign()
+    el.print_banner('STARTING PIXEL-ANALYSIS OF RUN {0}'.format(args.run))
+    # print command
+    print
     z = SignalPixAnalysis(args.run, args.dut, args.verb)
     z.print_elapsed_time(st, 'Instantiation')
 
     if doAna:
         print 'Starting automatic analysis...'
-        z.do_analysis(doTelscp, doDUTs, doCutDist, doResolution, doCutAna, doHitMap, doCorrel, doPH, pbar, verb)
+        z.do_analysis(doCutDist, doResolution, doCutAna, doHitMap, doPH)
         print 'Finished automatic analysis :)'
