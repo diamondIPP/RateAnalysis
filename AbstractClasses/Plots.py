@@ -26,12 +26,9 @@ class Plots(Elementary):
         self.num_devices = num_devices
         self.num_entries = num_entries
         self.plot_settings = {
-            'ph1DbinsD4': 80,
-            'ph1DminD4': -2500,
-            'ph1DmaxD4': 60000,
-            'ph1DbinsD5': 80,
-            'ph1DminD5': -5000,
-            'ph1DmaxD5': 60000,
+            'ph1Dmin': -5000,
+            'ph1Dmax': 60000,
+            'ph1Dbins': 65000 / 500,
             'ph1DbinsSi': 160,
             'ph1DminSi': 0,
             'ph1DmaxSi': 90000,
