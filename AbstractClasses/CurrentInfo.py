@@ -130,6 +130,10 @@ class Currents(Elementary):
     def load_parser(self):
         parser = ConfigParser()
         if not self.run_config_parser.has_option('BASIC', 'hvconfigfile'):
+            file_path = self.run_config_parser.get('BASIC', 'hvconfigfile')
+        else:
+            file_path = joinpath(self.DataDir, make_tc_str(self.TESTCAMPAIGN, data=True), 'HV.cfg')
+        if not file_exists(file_path):
             self.log_warning('Missing hv info in RunConfig file')
             return None
         parser.read(self.run_config_parser.get('BASIC', 'hvconfigfile'))
@@ -154,7 +158,12 @@ class Currents(Elementary):
         return full_str.split('-')[1] if len(full_str) > 1 else '0'
 
     def find_data_path(self, old=False):
-        hv_datapath = self.run_config_parser.get('BASIC', 'hvdatapath')
+        if self.run_config_parser.has_option('BASIC', 'hvdatapath'):
+            hv_datapath = self.run_config_parser.get('BASIC', 'hvdatapath')
+        else:
+            hv_datapath = joinpath(self.DataDir, make_tc_str(self.TESTCAMPAIGN, data=True), 'HVClient')
+        if not dir_exists(hv_datapath):
+            log_warning('HV data path "{p}" does not exist!'.format(p=hv_datapath))
         string = '{data}{dev}_CH{ch}/' if not old else '{data}{dev}/'
         return string.format(data=hv_datapath, dev=self.ConfigParser.get('HV' + self.Number, 'name'), ch=self.Channel)
 
