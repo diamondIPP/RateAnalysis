@@ -19,7 +19,7 @@ class CutPix(Cut):
 
         self.Dut = dut + 3
 
-        self.plot_settings = self.analysis.plots.plot_settings
+        self.Settings = self.analysis.Settings
         self.plots = self.analysis.plots
 
         self.load_pixel_config()
@@ -222,7 +222,7 @@ class CutPix(Cut):
             self.analysis.tree.Draw('time>>h_beam_time_cut', self.cuts_pixelated_roc_incr[self.duts_list[0]][key],'goff') if key != -1 else self.analysis.tree.Draw('time>>h_beam_time_cut', '','goff')
         self.mean_events_5sec = self.h_beam_time.Integral()/float(self.h_beam_time.GetNbinsX())
         binsEvents = int(ceil(nentries/float(self.mean_events_5sec)))
-        self.plot_settings['event_bins'] = binsEvents
+        self.Settings['event_bins'] = binsEvents
         for bin in xrange(1, bins+2):
             self.h_beam_mean_cut.SetBinContent(bin, self.mean_events_5sec)
         gROOT.SetBatch(False)
@@ -499,12 +499,12 @@ class CutPix(Cut):
         max_ph2_map = {iroc: -10000000 for iroc in self.duts_list}
         min_ph1_map = {iroc: 10000000 for iroc in self.duts_list}
         min_ph2_map = {iroc: 10000000 for iroc in self.duts_list}
-        phbins = {self.roc_diam1: self.plot_settings['ph1DbinsD4'], self.roc_diam2: self.plot_settings['ph1DbinsD5'],
-                  self.roc_si: self.plot_settings['ph1DbinsSi']}
-        phmin = {self.roc_diam1: self.plot_settings['ph1DminD4'], self.roc_diam2: self.plot_settings['ph1DminD5'],
-                 self.roc_si: self.plot_settings['ph1DminSi']}
-        phmax = {self.roc_diam1: self.plot_settings['ph1DmaxD4'], self.roc_diam2: self.plot_settings['ph1DmaxD5'],
-                 self.roc_si: self.plot_settings['ph1DmaxSi']}
+        phbins = {self.roc_diam1: self.Settings['ph1DbinsD4'], self.roc_diam2: self.Settings['ph1DbinsD5'],
+                  self.roc_si: self.Settings['ph1DbinsSi']}
+        phmin = {self.roc_diam1: self.Settings['ph1DminD4'], self.roc_diam2: self.Settings['ph1DminD5'],
+                 self.roc_si: self.Settings['ph1DminSi']}
+        phmax = {self.roc_diam1: self.Settings['ph1DmaxD4'], self.roc_diam2: self.Settings['ph1DmaxD5'],
+                 self.roc_si: self.Settings['ph1DmaxSi']}
         phdelta = {self.roc_diam1: phmax[self.roc_diam1] - phmin[self.roc_diam1],
                    self.roc_diam2: phmax[self.roc_diam2] - phmin[self.roc_diam2],
                    self.roc_si: phmax[self.roc_si] - phmin[self.roc_si]}
@@ -528,13 +528,13 @@ class CutPix(Cut):
                                                                               'x(um)', 'y(um)', 'ph 2 pix cluster(e)',
                                                                               'auto', -1)
                 self.h_ph1_evt_cuts[iroc][cut] = TH2D('ph1_evt_roc{r}_{c}'.format(r=iroc, c=cut),
-                                                      'ph1_evt_roc{r}_{c}'.format(r=iroc, c=cut), self.plot_settings[
-                                                          'event_bins'] + 1, self.plot_settings['event_min'] - (
-                                                          self.plot_settings['event_max'] - self.plot_settings[
-                                                              'event_min']) / (2 * float(self.plot_settings['event_bins'])),
-                                                      self.plot_settings['event_max'] + (
-                                                          self.plot_settings['event_max'] - self.plot_settings[
-                                                              'event_min']) / (2 * float(self.plot_settings['event_bins'])),
+                                                      'ph1_evt_roc{r}_{c}'.format(r=iroc, c=cut), self.Settings[
+                                                          'event_bins'] + 1, self.Settings['event_min'] - (
+                                                          self.Settings['event_max'] - self.Settings[
+                                                              'event_min']) / (2 * float(self.Settings['event_bins'])),
+                                                      self.Settings['event_max'] + (
+                                                          self.Settings['event_max'] - self.Settings[
+                                                              'event_min']) / (2 * float(self.Settings['event_bins'])),
                                                       phbins[iroc] + 1, phmin[iroc] - phdelta[iroc] / (2 * float(phbins[iroc])),
                                                       phmax[iroc] + phdelta[iroc] / float(2 * phbins[iroc]))
                 self.h_ph1_cuts[iroc][cut] = TH1D('ph1_roc{r}_{c}'.format(r=iroc, c=cut),
@@ -542,13 +542,13 @@ class CutPix(Cut):
                                                   phmin[iroc] - phdelta[iroc] / (2 * float(phbins[iroc])),
                                                   phmax[iroc] + phdelta[iroc] / float(2 * phbins[iroc]))
                 self.h_ph2_evt_cuts[iroc][cut] = TH2D('ph2_evt_roc{r}_{c}'.format(r=iroc, c=cut),
-                                                      'ph2_evt_roc{r}_{c}'.format(r=iroc, c=cut), self.plot_settings[
-                                                          'event_bins'] + 1, self.plot_settings['event_min'] - (
-                                                          self.plot_settings['event_max'] - self.plot_settings[
-                                                              'event_min']) / (2 * float(self.plot_settings['event_bins'])),
-                                                      self.plot_settings['event_max'] + (
-                                                          self.plot_settings['event_max'] - self.plot_settings[
-                                                              'event_min']) / (2 * float(self.plot_settings['event_bins'])),
+                                                      'ph2_evt_roc{r}_{c}'.format(r=iroc, c=cut), self.Settings[
+                                                          'event_bins'] + 1, self.Settings['event_min'] - (
+                                                          self.Settings['event_max'] - self.Settings[
+                                                              'event_min']) / (2 * float(self.Settings['event_bins'])),
+                                                      self.Settings['event_max'] + (
+                                                          self.Settings['event_max'] - self.Settings[
+                                                              'event_min']) / (2 * float(self.Settings['event_bins'])),
                                                       phbins[iroc] + 1, phmin[iroc] - phdelta[iroc] / (2 * float(phbins[iroc])),
                                                       phmax[iroc] + phdelta[iroc] / float(2 * phbins[iroc]))
                 self.h_ph2_cuts[iroc][cut] = TH1D('ph2_roc{r}_{c}'.format(r=iroc, c=cut),
