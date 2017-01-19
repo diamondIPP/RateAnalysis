@@ -276,7 +276,7 @@ class SignalPixAnalysis(Analysis):
                 if self.tree.adc[ind]:
                     print i, self.tree.adc[ind], list(self.tree.charge_all_ROC4)
 
-    def draw_pulse_height_disto(self, cut=None, show=True, prnt=True, sup_zero=True, col=None, pix=None, roc=None):
+    def draw_pulse_height_disto(self, cut=None, show=True, prnt=True, sup_zero=True, col=None, pix=None, roc=None, vcal=False):
         roc = self.Dut if roc is None else roc
         cut_string = deepcopy(self.Cut.all_cut) if cut is None else TCut(cut)
         cut_string += 'cluster_charge>0'.format(d=self.Dut) if sup_zero else ''
@@ -284,11 +284,11 @@ class SignalPixAnalysis(Analysis):
         cut_string += 'cluster_col=={c}&&cluster_row=={r}'.format(c=pix[0], r=pix[1], d=self.Dut) if pix is not None else ''
         cut_string += 'cluster_plane=={r}'.format(r=roc)
         self.set_root_output(False)
-        h = TH1D('h_phd', 'Pulse Height Distribution - {d}'.format(d=self.DiamondName), *self.Settings['phBinsD{n}'.format(n=self.Dut)])
-        self.tree.Draw('cluster_charge>>h_phd'.format(d=self.Dut), cut_string, 'goff')
-        set_statbox(entries=8, opt=1000000010)
-        self.format_histo(h, x_tit='Pulse Height [e]', y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor)
-        self.save_histo(h, 'PulseHeightDisto{c}'.format(c=make_cut_string(cut, self.Cut.NCuts)), show, lm=.13, prnt=prnt)
+        h = TH1D('h_phd', 'Pulse Height Distribution - {d}'.format(d=self.DiamondName), *self.Settings['phBins' if not vcal else 'vcalBins'])
+        self.tree.Draw('cluster_charge{v}>>h_phd'.format(d=self.Dut, v='/47.5 + 427.4/47.5' if vcal else ''), cut_string, 'goff')
+        set_statbox(entries=8, opt=1000000010, x=.92)
+        self.format_histo(h, x_tit='Pulse Height [{u}]'.format(u='vcal' if vcal else 'e'), y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor)
+        self.save_histo(h, 'PulseHeightDisto{c}'.format(c=make_cut_string(cut, self.Cut.NCuts)), show, lm=.13, prnt=prnt, rm=.06)
         return h
 
     def draw_pulse_height_map(self, show=True, cut=None, roc=None, sup_zero=True):
