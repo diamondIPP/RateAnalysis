@@ -635,6 +635,33 @@ class Run(Elementary):
             runs = [self.collection.keys()[0], self.collection.keys()[-1], self.collection.values()[0].run.get_rate_string(), self.collection.values()[-1].run.get_rate_string()]
         return self.draw_run_info(show=False, runs=runs, channel=ch, canvas=pad)
 
+    def calc_flux(self):
+        info = self.RunInfo
+        if 'for1' not in info or info['for1'] == 0:
+            if 'measuredflux' in info:
+                return float(info['measuredflux'])
+        mask = info['maskfile']
+        pixel_size = 0.01 * 0.015
+        if not mask or 'no mask' in mask.lower():
+            area = [52 * 80 * pixel_size] * 2
+        else:
+            path = joinpath(self.maskfilepath, mask)
+            if file_exists(path):
+                f = open(path, 'r')
+            else:
+                log_warning('Could not read maskfile!')
+                return
+            data = []
+            for line in f:
+                if len(line) > 3:
+                    line = line.split()
+                    data.append([int(line[2])] + [int(line[3])])
+            f.close()
+            area = [(data[1][0] - data[0][0]) * (data[1][1] - data[0][1]) * pixel_size, (data[3][0] - data[2][0]) * (data[3][1] - data[2][1]) * pixel_size]
+        # print area
+        flux = [info['for{0}'.format(i + 1)] / area[i] / 1000. for i in xrange(2)]
+        return mean(flux)
+
     # endregion
 
     def __load_rootfile(self):
