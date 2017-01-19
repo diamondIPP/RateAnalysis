@@ -62,13 +62,13 @@ class Plots(Elementary):
             'rhit_1Dmin': 0,
             'rhit_1Dmax': 10
         }
-        self.plot_settings['phBinsD4'] = [self.plot_settings['ph1DbinsD4'], self.plot_settings['ph1DminD4'], self.plot_settings['ph1DmaxD4']]
-        self.plot_settings['phBinsD5'] = [self.plot_settings['ph1DbinsD5'], self.plot_settings['ph1DminD5'], self.plot_settings['ph1DmaxD5']]
         self.plot_settings['2DBins'] = [self.plot_settings['nCols'], - .5, self.plot_settings['nCols'] - .5, self.plot_settings['nRows'], - .5, self.plot_settings['nRows'] - .5]
         self.plot_settings['event_bins'] = int(ceil(float(self.num_entries)/5000)) if self.num_entries <= 100000 else \
             int(ceil(float(self.num_entries)/100)) if self.num_entries <= 500000 else int(ceil(float(self.num_entries)/self.plot_settings['nEventsAv']))
         self.plot_settings['deltaX'] = float(self.plot_settings['xmax']-self.plot_settings['xmin'])/self.plot_settings['nBinsX']
         self.plot_settings['deltaY'] = float(self.plot_settings['ymax']-self.plot_settings['ymin'])/self.plot_settings['nBinsY']
+        self.Settings['vcalBins'] = [int((1350 * 47.5 - 427.4) / 500), -100, 1250]
+        self.Settings['phBins'] = [self.Settings['ph1Dbins'], self.Settings['ph1Dmin'], self.Settings['ph1Dmax']]
         self.roc_tel, self.roc_d1, self.roc_d2, self.roc_si = roc_tel, roc_d1, roc_d2, roc_si
         self.save_dir = './'
 
