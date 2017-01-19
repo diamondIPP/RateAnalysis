@@ -30,14 +30,14 @@ class Analysis(Elementary):
         # basics
         self.run = self.init_run(run, load_tree)
         self.run.analysis = self
-        self.run_number = self.run.run_number
+        self.RunNumber = self.run.RunNumber
         self.RunInfo = deepcopy(self.run.RunInfo)
-        self.lowest_rate_run = high_low_rate['min'] if high_low_rate is not None else self.run.run_number
-        self.highest_rate_run = high_low_rate['max'] if high_low_rate is not None else self.run.run_number
+        self.lowest_rate_run = high_low_rate['min'] if high_low_rate is not None else self.run.RunNumber
+        self.highest_rate_run = high_low_rate['max'] if high_low_rate is not None else self.run.RunNumber
         if self.ana_config_parser.has_option('SAVE', 'ActivateTitle'):
             gStyle.SetOptTitle(self.ana_config_parser.getboolean('SAVE', 'ActivateTitle'))
         # self.saveMCData = self.ana_config_parser.getboolean("SAVE", "SaveMCData")
-        self.ana_save_dir = '{run}'.format(run=self.run.run_number)
+        self.ana_save_dir = '{run}'.format(run=self.run.RunNumber)
 
         # DUT
         self.DUTType = self.run.DUTType
@@ -85,7 +85,7 @@ class Analysis(Elementary):
             assert type(run) is int, 'run has to be either a Run instance or an integer run number'
             return Run(run, 3, load_tree)
         else:
-            assert run.run_number is not None, 'No run selected, choose run.SetRun(run_nr) before you pass the run object'
+            assert run.RunNumber is not None, 'No run selected, choose run.SetRun(run_nr) before you pass the run object'
             return run
     # endregion
 
@@ -283,7 +283,7 @@ class Analysis(Elementary):
         return h
 
     def calc_angle_fit(self, mode='x', show=True):
-        pickle_path = self.PickleDir + 'Tracks/AngleFit_{tc}_{run}_{mod}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, mod=mode)
+        pickle_path = self.PickleDir + 'Tracks/AngleFit_{tc}_{run}_{mod}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.RunNumber, mod=mode)
 
         def func():
             h = self.draw_angle_distribution(mode, show=show)
@@ -340,7 +340,7 @@ class Analysis(Elementary):
     # ==============================================
     # region ALIGNMENT
     def check_alignment(self, binning=5000, draw=True, save_plot=True):
-        pickle_path = 'Configuration/Individual_Configs/Alignment/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run.run_number)
+        pickle_path = 'Configuration/Individual_Configs/Alignment/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run.RunNumber)
 
         def func():
             if self.DUTType == 'pad':
@@ -359,7 +359,7 @@ class Analysis(Elementary):
         aligned = func() if draw else None
         aligned = self.do_pickle(pickle_path, func, aligned)
         if not aligned:
-            msg = 'The events of RUN {run} are not aligned!'.format(run=self.run_number)
+            msg = 'The events of RUN {run} are not aligned!'.format(run=self.RunNumber)
             print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * '!', msg=msg)
         return aligned
 
