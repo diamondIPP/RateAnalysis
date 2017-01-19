@@ -105,10 +105,12 @@ class Converter:
             return pref
 
     def load_raw_file(self):
-        conf = self.parser.get('ConverterFolders', 'rawfolder')
-        file_dir = join_path(self.DataDir, self.TcDir, 'raw') if conf == 'None' else conf
+        if self.RunParser.has_option('ConverterFolders', 'rawfolder'):
+            file_dir = self.RunParser.get('ConverterFolders', 'rawfolder')
+        else:
+            file_dir = joinpath(self.DataDir, self.TcDir, 'raw')
         if not dir_exists(file_dir):
-            log_critical('Could not find the raw file directory: {d}'.format(d=file_dir))
+            log_warning('Could not find the raw file directory: {d}'.format(d=file_dir))
         return file_dir
 
     @staticmethod
