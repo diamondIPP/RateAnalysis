@@ -259,17 +259,21 @@ def make_dia_str(dia):
 
 
 def file_exists(path):
-    return os.path.isfile(path)
+    return pth.isfile(path)
 
 
 def dir_exists(path):
-    return os.path.isdir(path)
+    return pth.isdir(path)
 
 
 def ensure_dir(path):
-    if not os.path.exists(path):
+    if not pth.exists(path):
         log_message('Creating directory: {d}'.format(d=path))
-        os.makedirs(path)
+        makedirs(path)
+
+
+def joinpath(*args):
+    return pth.join(*args)
 
 
 def make_col_str(col):
