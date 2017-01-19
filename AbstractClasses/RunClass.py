@@ -66,7 +66,7 @@ class Run(Elementary):
     operationmode = ''
     TrackingPadAnalysis = {}
 
-    def __init__(self, run_number=None, diamonds=3, load_tree=True, verbose=False):
+    def __init__(self, run_number=None, diamonds=3, test_campaign=None, load_tree=True, verbose=False):
         """
         :param run_number: number of the run
         :param diamonds: 0x1=ch0; 0x2=ch3
@@ -74,7 +74,7 @@ class Run(Elementary):
         :return:
         """
         self.run_number = run_number if not isinstance(run_number, Run) else run_number.run_number
-        Elementary.__init__(self, verbose=verbose)
+        Elementary.__init__(self, testcampaign=test_campaign, verbose=verbose)
 
         # configuration
         self.DUTType = self.load_dut_type()
