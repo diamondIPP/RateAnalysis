@@ -30,15 +30,15 @@ class SignalPixAnalysis(Analysis):
         self.DiamondName = self.load_diamond_name(dut)
         self.Bias = self.run.bias[dut - 1]
         self.Dut = dut + 3
-        self.save_dir = '{dia}/{run}/'.format(run=str(self.run_number).zfill(3), dia=self.DiamondName)
+        self.save_dir = '{dia}/{run}/'.format(run=str(self.RunNumber).zfill(3), dia=self.DiamondName)
         self.NRocs = self.load_n_rocs()
 
         # stuff
         self.plots.save_dir = self.save_dir
 
         # cuts
+        self.Settings = self.plots.Settings
         self.Cut = CutPix(self, dut)
-        self.Settings = self.plots.plot_settings
 
         # pulse height calibrations
         self.Fit = None
@@ -180,7 +180,6 @@ class SignalPixAnalysis(Analysis):
         vcals = None
         points = [[[0 for _ in xrange(self.Settings['nRows'])] for _ in xrange(self.Settings['nRows'])] for _ in xrange(self.NRocs)]
         for roc, file_name in enumerate(calib_files, 4):
-            print roc, file_name
             try:
                 f = open(file_name)
                 f.readline()
