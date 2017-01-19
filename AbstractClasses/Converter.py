@@ -29,21 +29,22 @@ def print_banner(message):
 # CLASS DEFINITION
 # ==============================================
 class Converter:
-    def __init__(self, test_campaign, parser, run_number):
+    def __init__(self, run):
 
         # main
-        self.TestCampaign = test_campaign
-        self.parser = parser
+        self.Run = run
+        self.TestCampaign = run.TESTCAMPAIGN
+        self.RunParser = run.run_config_parser
         self.SoftConfig = self.load_soft_config()
-        self.Run = run_number
-        self.Type = self.parser.get('BASIC', 'type')
+        self.RunNumber = run.RunNumber
+        self.Type = self.RunParser.get('BASIC', 'type')
 
         # digitizer
-        self.ConverterTree = '{0}tree'.format(self.parser.get('BASIC', 'digitizer').lower() if self.Type == 'pad' else 'telescope')
+        self.ConverterTree = '{0}tree'.format(self.RunParser.get('BASIC', 'digitizer').lower() if self.Type == 'pad' else 'telescope')
         self.NChannels = 9 if self.ConverterTree.startswith('caen') else 4
 
         # directories
-        self.DataDir = self.parser.get('BASIC', 'datapath')
+        self.DataDir = run.DataDir
         self.TcDir = 'psi_{y}_{m}'.format(y=self.TestCampaign[:4], m=self.TestCampaign[-2:])
         self.RawFileDir = self.load_raw_file()
         self.RootFileDir = self.load_root_file_dir()
@@ -52,12 +53,12 @@ class Converter:
         self.AlignDir = '{soft}/{d}'.format(soft=self.SoftwareDir, d=self.SoftConfig.get('Converter', 'alignfolder'))
 
         # tracking
-        self.TelescopeID = self.parser.getint('BASIC', 'telescopeID')
+        self.TelescopeID = self.RunParser.getint('BASIC', 'telescopeID')
         self.TrackingDir = '{soft}/{d}'.format(soft=self.SoftwareDir, d=self.SoftConfig.get('Converter', 'trackingfolder'))
 
         # files paths
         self.converter_config_path = self.SoftConfig.get('Converter', 'converterFile')
-        self.run_info_path = self.parser.get('BASIC', 'runinfofile')
+        self.run_info_path = run.load_run_info_path()
         # prefixes
         self.raw_prefix = self.load_prefix()
         self.root_prefix = self.raw_prefix.replace('run', 'test')
