@@ -73,7 +73,7 @@ class Run(Elementary):
         :param verbose:
         :return:
         """
-        self.run_number = run_number if not isinstance(run_number, Run) else run_number.run_number
+        self.RunNumber = run_number
         Elementary.__init__(self, testcampaign=test_campaign, verbose=verbose)
 
         # configuration
@@ -146,7 +146,7 @@ class Run(Elementary):
     # ==============================================
     # region LOAD FUNCTIONS
     def load_run_config(self):
-        return self.load_run_configs(self.run_number)
+        return self.load_run_configs(self.RunNumber)
 
     def load_n_channels(self):
         for i, line in enumerate(self.region_information):
@@ -202,11 +202,11 @@ class Run(Elementary):
             self.RunInfo = default_info
             return -1
 
-        if self.run_number >= 0:
-            self.RunInfo = data.get(str(self.run_number))
+        if self.RunNumber >= 0:
+            self.RunInfo = data.get(str(self.RunNumber))
             if self.RunInfo is None:
                 # try with run_log key prefix
-                self.RunInfo = data.get('{tc}{run}'.format(tc=self.TESTCAMPAIGN[2:], run=str(self.run_number).zfill(5)))
+                self.RunInfo = data.get('{tc}{run}'.format(tc=self.TESTCAMPAIGN[2:], run=str(self.RunNumber).zfill(5)))
             if self.RunInfo is None:
                 self.log_warning('Run not found in json run log file!')
                 sys.exit(5)
@@ -250,7 +250,7 @@ class Run(Elementary):
 
         assert type(run_number) is int, "incorrect run_number"
 
-        self.run_number = run_number
+        self.RunNumber = run_number
         self.load_run_info()
 
         # check for conversion
@@ -521,7 +521,7 @@ class Run(Elementary):
         Prints the most importnant run infos to the console. The infos printed are: Run number, Rate, Diamond names, Bias Voltages
         """
         print 'RUN INFO:'
-        print '\tRun Number: \t', self.run_number, ' (', self.RunInfo['type'], ')'
+        print '\tRun Number: \t', self.RunNumber, ' (', self.RunInfo['type'], ')'
         print '\tRate: \t', self.get_flux(), ' kHz'
         print '\tDiamond1:   \t', self.diamond_names[0], ' (', self.bias[0], ') | is selected: ', self.analyse_ch[0]
         print '\tDiamond2:   \t', self.diamond_names[3], ' (', self.bias[3], ') | is selected: ', self.analyse_ch[3]
@@ -571,7 +571,7 @@ class Run(Elementary):
             git_text.AddEntry(0, 'git hash: {ver}'.format(ver=check_output(['git', 'describe', '--always'])), '')
             git_text.SetLineColor(0)
             if runs is None:
-                run_string = 'Run {run}: {rate}, {dur} Min ({evts} evts)'.format(run=self.run_number, rate=self.get_rate_string(), dur=dur, evts=self.n_entries)
+                run_string = 'Run {run}: {rate}, {dur} Min ({evts} evts)'.format(run=self.RunNumber, rate=self.get_rate_string(), dur=dur, evts=self.n_entries)
             else:
                 run_string = 'Runs {start}-{stop} ({flux1} - {flux2})'.format(start=runs[0], stop=runs[1], flux1=runs[2].strip(' '), flux2=runs[3].strip(' '))
             width = len(run_string) * .01 if x == y else len(run_string) * 0.015 * y / x
@@ -663,7 +663,7 @@ class Run(Elementary):
     # endregion
 
     def __load_rootfile(self):
-        file_path = self.converter.get_final_file_path(self.run_number)
+        file_path = self.converter.get_final_file_path(self.RunNumber)
         print '\033[1A\rLoading information for rootfile: {file}'.format(file=file_path.split('/')[-1])
         self.RootFile = TFile(file_path)
         self.tree = self.RootFile.Get(self.treename)
