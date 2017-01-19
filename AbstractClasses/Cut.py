@@ -1,10 +1,10 @@
 import json
-from numpy import array, zeros
+from numpy import array, zeros, mean
 from Elementary import Elementary
 from ROOT import TCut, gROOT, TH1F
 from collections import OrderedDict
 from Utils import *
-from os.path import join as joinpath
+from os import remove
 
 
 class Cut(Elementary):
@@ -18,7 +18,7 @@ class Cut(Elementary):
         if not skip:
             self.analysis = parent_analysis
             Elementary.__init__(self, verbose=self.analysis.verbose)
-            self.RunNumber = self.analysis.run_number
+            self.RunNumber = self.analysis.RunNumber
 
             # saving stuff
             self.RootObjects = []
@@ -46,7 +46,7 @@ class Cut(Elementary):
             self.all_cut = self.generate_all_cut()
 
     def load_run_config(self):
-        return self.load_run_configs(self.analysis.run_number)
+        return self.load_run_configs(self.analysis.RunNumber)
 
     def generate_special_cut(self, excluded=None, included=None, name='special_cut'):
         cut = TCut(name, '')
@@ -219,10 +219,10 @@ class Cut(Elementary):
         return cut_string
 
     def generate_chi2(self, mode='x'):
-        picklepath = 'Configuration/Individual_Configs/Chi2/{tc}_{run}_{mod}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run.run_number, mod=mode.title())
+        picklepath = self.make_pickle_path('Chi2', run=self.analysis.RunNumber, suf=mode.title())
 
         def func():
-            print 'generating chi2 cut in {mod} for run {run}...'.format(run=self.analysis.run_number, mod=mode)
+            print 'generating chi2 cut in {mod} for run {run}...'.format(run=self.analysis.RunNumber, mod=mode)
             gROOT.SetBatch(1)
             h = TH1F('h', '', 200, 0, 100)
             nq = 100
@@ -250,7 +250,7 @@ class Cut(Elementary):
 
         def func():
             angle = self.CutConfig['track_angle']
-            t = self.log_info('Generating angle cut in {m} for run {run} ...'.format(run=self.analysis.run_number, m=mode), False)
+            t = self.log_info('Generating angle cut in {m} for run {run} ...'.format(run=self.analysis.RunNumber, m=mode), False)
             self.set_root_output(False)
             # TODO: unify strings
             draw_str = '{t}_{m}'.format(t='slope' if self.DUTType == 'pad' else 'angle', m=mode)
@@ -410,7 +410,7 @@ class Cut(Elementary):
         # redo range pickle if config parameters have changed
         ex_range = self.CutConfig['JumpExcludeRange']
         if interruptions['before'] != ex_range['before'] or interruptions['after'] != ex_range['after']:
-            os.remove(pickle_path)
+            remove(pickle_path)
             interruptions = self.do_pickle(pickle_path, self.find_beam_interruptions())
         self.Jumps = interruptions['jumps']
         self.Interruptions = interruptions['interruptions']
