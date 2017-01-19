@@ -37,7 +37,7 @@ class PadAnalysis(Analysis):
         # main
         self.diamond_name = self.run.diamond_names[self.channel]
         self.bias = self.run.bias[self.channel]
-        self.save_dir = '{dia}/{run}/'.format(run=str(self.run_number).zfill(3), dia=self.diamond_name)
+        self.save_dir = '{dia}/{run}/'.format(run=str(self.RunNumber).zfill(3), dia=self.diamond_name)
 
         # stuff
         if load_tree:
@@ -172,7 +172,7 @@ class PadAnalysis(Analysis):
         self.diamond_name = self.run.diamondname[ch]
         self.bias = self.run.bias[ch]
         self.Cut = ChannelCut(self, ch)
-        self.save_dir = '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number, dia=self.run.diamondname[ch])
+        self.save_dir = '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.RunNumber, dia=self.run.diamondname[ch])
         self.Polarity = self.get_polarity()
         self.SignalName = self.get_signal_name()
         self.PedestalName = self.get_pedestal_name()
@@ -227,7 +227,7 @@ class PadAnalysis(Analysis):
         return fit
 
     def fit_beam_profile(self, mode='x', show=True, fit_margin=.6):
-        pickle_path = self.PickleDir + 'BeamProfile/Fit{mod}_{tc}_{run}_{dia}_{mar}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name, mod=mode.title(), mar=fit_margin)
+        pickle_path = self.PickleDir + 'BeamProfile/Fit{mod}_{tc}_{run}_{dia}_{mar}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.RunNumber, dia=self.diamond_name, mod=mode.title(), mar=fit_margin)
 
         def func():
             return self.draw_beam_profile(mode=mode, show=show, fit_margin=fit_margin)
@@ -283,7 +283,7 @@ class PadAnalysis(Analysis):
             h = TProfile2D('signal_map', 'Signal Map', x_bins, x[0], x[1], y_bins, y[0], y[1])
         self.set_root_output(1)
         signal = '{sig}-{pol}*{ped}'.format(sig=self.SignalName, ped=self.PedestalName, pol=self.Polarity)
-        self.log_info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.diamond_name, run=self.run_number, mode='hit' if hitmap else 'signal '))
+        self.log_info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.diamond_name, run=self.RunNumber, mode='hit' if hitmap else 'signal '))
         cut = self.Cut.all_cut if cut is None else cut
         cut = self.Cut.generate_special_cut(excluded=['fiducial']) if not fid else cut
         self.tree.Draw('{z}diam{nr}_track_y:diam{nr}_track_x>>{h}'.format(z=signal + ':' if not hitmap else '', nr=nr, h='h_hm' if hitmap else 'signal_map'), cut, 'goff')
@@ -373,7 +373,7 @@ class PadAnalysis(Analysis):
         return h
 
     def fit_mean_signal_distribution(self):
-        pickle_path = self.PickleDir + 'MeanSignalFit/{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
+        pickle_path = self.PickleDir + 'MeanSignalFit/{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.RunNumber, dia=self.diamond_name)
 
         def func():
             self.draw_mean_signal_distribution(show=False)
@@ -388,10 +388,10 @@ class PadAnalysis(Analysis):
         return fit.Parameter(2) * conversion_factor
 
     def find_diamond_margins(self, show_plot=True, show_frame=False, cut=None, make_histo=False):
-        pickle_path = self.make_pickle_path('Margins', run=self.run_number, ch=self.channel)
+        pickle_path = self.make_pickle_path('Margins', run=self.RunNumber, ch=self.channel)
 
         def func():
-            print 'getting margins for {dia} of run {run}...'.format(dia=self.diamond_name, run=self.run_number)
+            print 'getting margins for {dia} of run {run}...'.format(dia=self.diamond_name, run=self.RunNumber)
             cut_string = self.Cut.generate_special_cut(excluded=['fiducial']) if cut is None else cut
             if not show_plot:
                 gROOT.SetBatch(1)
@@ -570,10 +570,10 @@ class PadAnalysis(Analysis):
         self.histos.append(h1)
 
     def calc_peak_value_fwhm(self):
-        pickle_path = self.PickleDir + 'PeakValues/FWHM_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
+        pickle_path = self.PickleDir + 'PeakValues/FWHM_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.RunNumber, dia=self.diamond_name)
 
         def func():
-            print 'Getting peak value FWHM for {dia} of run {run}...'.format(run=self.run_number, dia=self.diamond_name)
+            print 'Getting peak value FWHM for {dia} of run {run}...'.format(run=self.RunNumber, dia=self.diamond_name)
             if self.PeakValues is None:
                 self.draw_peak_timing(show=False)
             return self.calc_fwhm(self.PeakValues)
@@ -729,7 +729,7 @@ class PadAnalysis(Analysis):
         signal = signal if not ped else self.PedestalName
         signal = self.generate_signal_name(signal, evnt_corr, off_corr, bin_corr)
         # 2D Histogram
-        name = "signaltime_" + str(self.run_number)
+        name = "signaltime_" + str(self.RunNumber)
         xbins = array(self.time_binning)
         x_min = -50 if not ped else -20
         x_max = 500 if not ped else 20
@@ -750,7 +750,7 @@ class PadAnalysis(Analysis):
 
     def draw_pedestal(self, binning=None, show=True):
         bin_size = binning if binning is not None else self.BinSize
-        picklepath = 'Configuration/Individual_Configs/Pedestal/{tc}_{run}_{ch}_{bins}_Ped_Means.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel, bins=bin_size)
+        picklepath = 'Configuration/Individual_Configs/Pedestal/{tc}_{run}_{ch}_{bins}_Ped_Means.pickle'.format(tc=self.TESTCAMPAIGN, run=self.RunNumber, ch=self.channel, bins=bin_size)
         gr = self.make_tgrapherrors('pedestal', 'Pedestal')
 
         def func():
@@ -800,7 +800,7 @@ class PadAnalysis(Analysis):
         bin_size = binning if binning is not None else self.BinSize
         correction = '' if not corr else '_pedcorr'
         suffix = '{bins}{cor}_{reg}'.format(bins=bin_size, cor=correction, reg=self.get_all_signal_names()[sig])
-        picklepath = self.make_pickle_path('Ph_fit', None, self.run_number, self.channel, suf=suffix)
+        picklepath = self.make_pickle_path('Ph_fit', None, self.RunNumber, self.channel, suf=suffix)
 
         def func():
 
@@ -842,12 +842,12 @@ class PadAnalysis(Analysis):
         correction = '' if not evnt_corr else 'eventwise'
         peak_int = self.get_all_signal_names()[sig][1:] if sig is not None else self.PeakIntegral
         suffix = '{bins}_{cor}_{reg}{int}'.format(bins=bin_size, cor=correction, reg=self.SignalRegion, int=peak_int)
-        picklepath = 'Configuration/Individual_Configs/Ph_fit/{tc}_{run}_{ch}_{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel, suf=suffix)
+        picklepath = 'Configuration/Individual_Configs/Ph_fit/{tc}_{run}_{ch}_{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.RunNumber, ch=self.channel, suf=suffix)
 
         self.SignalTime = None
 
         def func():
-            self.log_info('drawing pulse height fit for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name))
+            self.log_info('drawing pulse height fit for run {run} and {dia}...'.format(run=self.RunNumber, dia=self.diamond_name))
             if binning is not None:
                 self.set_bin_size(binning)
             tit_suffix = 'with eventwise Pedestal Correction' if evnt_corr else ''
@@ -925,7 +925,7 @@ class PadAnalysis(Analysis):
 
     def show_signal_histo(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None, binning=350, events=None, start=None, x_range=None, save=True):
         x_range = [-50, 300] if x_range is None else x_range
-        self.log_info('drawing signal distribution for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name))
+        self.log_info('drawing signal distribution for run {run} and {dia}...'.format(run=self.RunNumber, dia=self.diamond_name))
         suffix = 'with Pedestal Correction' if evnt_corr else ''
         self.set_root_output(False)
         h = TH1F('signal b2', 'Pulse Height ' + suffix, binning, *x_range)
@@ -1033,7 +1033,7 @@ class PadAnalysis(Analysis):
         cut = TCut('', cut) if type(cut) is str else cut
         fw = 'fwhm' if fwhm else 'full'
         suffix = '{reg}_{fwhm}_{cut}'.format(reg=region + str(peak_int), cut=cut.GetName(), fwhm=fw)
-        picklepath = 'Configuration/Individual_Configs/Pedestal/{tc}_{run}_{ch}_{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel, suf=suffix)
+        picklepath = 'Configuration/Individual_Configs/Pedestal/{tc}_{run}_{ch}_{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.RunNumber, ch=self.channel, suf=suffix)
 
         def func(x=x_range):
             self.set_root_output(show)
@@ -1252,10 +1252,10 @@ class PadAnalysis(Analysis):
         self.histos.append([h, h_sig, h_ped1, h_ped2, c])
 
     def show_bucket_numbers(self, show=True):
-        pickle_path = self.PickleDir + 'Cuts/BucketEvents_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
+        pickle_path = self.PickleDir + 'Cuts/BucketEvents_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.RunNumber, dia=self.diamond_name)
 
         def func():
-            print 'getting number of bucket events for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name)
+            print 'getting number of bucket events for run {run} and {dia}...'.format(run=self.RunNumber, dia=self.diamond_name)
             n_new = self.tree.Draw('1', '!({buc})&&{pul}'.format(buc=self.Cut.CutStrings['bucket'], pul=self.Cut.CutStrings['pulser']), 'goff')
             n_old = self.tree.Draw('1', '!({buc})&&{pul}'.format(buc=self.Cut.CutStrings['old_bucket'], pul=self.Cut.CutStrings['pulser']), 'goff')
             if show:
@@ -1324,7 +1324,7 @@ class PadAnalysis(Analysis):
         self.reset_colors()
 
     def show_bucket_means(self, show=True, plot_histos=True):
-        pickle_path = self.PickleDir + 'Cuts/BucketMeans_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
+        pickle_path = self.PickleDir + 'Cuts/BucketMeans_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.RunNumber, dia=self.diamond_name)
 
         def func():
             gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
@@ -1998,7 +1998,7 @@ class PadAnalysis(Analysis):
     def print_information(self, header=True):
         if header:
             self.print_info_header()
-        infos = [self.run_number, self.run.RunInfo['type'], self.diamond_name.ljust(4), self.bias, self.SignalRegion + self.PeakIntegral + '   ']
+        infos = [self.RunNumber, self.run.RunInfo['type'], self.diamond_name.ljust(4), self.bias, self.SignalRegion + self.PeakIntegral + '   ']
         for info in infos:
             print self.adj_length(info),
         print
@@ -2098,8 +2098,8 @@ class PadAnalysis(Analysis):
         self.histos.append(self.save_histo(h, 'DRSBinSizeDisto', show, self.save_dir))
 
     def save_felix(self):
-        self.save_dir = '{info}_{rp}'.format(info=self.make_info_string().strip('_'), rp=self.run_number)
-        self.ana_save_dir = '{info}_{rp}'.format(info=self.make_info_string().strip('_'), rp=self.run_number)
+        self.save_dir = '{info}_{rp}'.format(info=self.make_info_string().strip('_'), rp=self.RunNumber)
+        self.ana_save_dir = '{info}_{rp}'.format(info=self.make_info_string().strip('_'), rp=self.RunNumber)
         self.set_save_directory('PlotsFelix')
         self.Pulser.save_felix()
 
