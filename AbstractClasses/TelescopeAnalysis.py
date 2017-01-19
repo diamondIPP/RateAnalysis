@@ -83,7 +83,7 @@ class Analysis(Elementary):
         """ create a run instance with either a given run integer or an already give run instance where a the run object is not None """
         if not isinstance(run, Run):
             assert type(run) is int, 'run has to be either a Run instance or an integer run number'
-            return Run(run, 3, load_tree)
+            return Run(run, 3, load_tree=load_tree)
         else:
             assert run.RunNumber is not None, 'No run selected, choose run.SetRun(run_nr) before you pass the run object'
             return run
