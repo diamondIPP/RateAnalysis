@@ -40,7 +40,8 @@ class Elementary(object):
         self.run_config_parser = self.load_run_config()
         self.ana_config_parser = self.load_ana_config()
 
-        self.PickleDir = '{prog}{dir}'.format(prog=self.get_program_dir(), dir=self.ana_config_parser.get('SAVE', 'pickle_dir'))
+        self.PickleDir = joinpath(self.get_program_dir(), self.MainConfigParser.get('SAVE', 'pickle_dir'))
+        self.DataDir = self.MainConfigParser.get('MAIN', 'data_dir')
         self.Felix = self.MainConfigParser.getboolean('SAVE', 'felix')
         self.set_root_titles()
 
