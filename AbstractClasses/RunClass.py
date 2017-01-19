@@ -670,4 +670,4 @@ class Run(Elementary):
 
 
 if __name__ == "__main__":
-    z = Run()
+    z = Run(489, load_tree=False, test_campaign='201610')
