@@ -96,7 +96,7 @@ class Converter:
         return path
 
     def load_prefix(self):
-        pref = self.parser.get('ConverterFolders', "rawprefix")
+        pref = self.RunParser.get('ConverterFolders', 'rawprefix')
         if pref == 'long':
             return 'run{y}{m}0'.format(y=self.TestCampaign[2:4], m=self.TestCampaign[-2:])
         elif pref == 'short':
@@ -122,13 +122,13 @@ class Converter:
 
     def get_config(self):
         config = OrderedDict()
-        options = self.parser.options('ROOTFILE_GENERATION')
+        options = self.RunParser.options('ROOTFILE_GENERATION')
         for opt in options:
             if opt.endswith('_range') or opt.endswith('_region'):
-                config[opt] = json.loads(self.parser.get('ROOTFILE_GENERATION', opt))
+                config[opt] = json.loads(self.RunParser.get('ROOTFILE_GENERATION', opt))
             elif opt not in ['pulser_range_drs4', 'excluded_runs']:
-                config[opt] = self.parser.getint('ROOTFILE_GENERATION', opt)
-        config['pulser_range_drs4'] = json.loads(self.parser.get('ROOTFILE_GENERATION', 'pulser_range_drs4'))
+                config[opt] = self.RunParser.getint('ROOTFILE_GENERATION', opt)
+        config['pulser_range_drs4'] = json.loads(self.RunParser.get('ROOTFILE_GENERATION', 'pulser_range_drs4'))
         return config
 
     def get_run_info(self, run_number):
@@ -156,7 +156,7 @@ class Converter:
             return False
 
     def get_root_file_path(self):
-        file_name = '{prefix}{run}.root'.format(prefix=self.root_prefix, run=str(self.Run).zfill(4))
+        file_name = '{prefix}{run}.root'.format(prefix=self.root_prefix, run=str(self.RunNumber).zfill(4))
         return self.RootFileDir + '/' + file_name
 
     def get_tracking_file_path(self, run_number):
@@ -171,11 +171,11 @@ class Converter:
         track_file = self.get_final_file_path(run_number)
         final_file = self.get_root_file_path()
         # print 'looking for:\n ', track_file, '\n ', final_file
-        if os.path.exists(track_file):
+        if file_exists(track_file):
             return 'found_file'
-        elif os.path.exists(old_track_file):
+        elif file_exists(old_track_file):
             return 'found_old'
-        elif os.path.exists(final_file):
+        elif file_exists(final_file):
             log_message('did not find tracking file --> need conversion')
             return 'found_untracked'
         else:
@@ -199,12 +199,12 @@ class Converter:
         if not found_root_file:
             # remove all old pickle files for a new conversion
             self.remove_pickle_files(run_number)
-            curr_dir = os.getcwd()
+            curr_dir = getcwd()
             # check if raw file exists
             raw_file_path = self.find_raw_file(run_number)
             assert raw_file_path
             # go to root directory
-            os.chdir(self.RootFileDir)
+            chdir(self.RootFileDir)
             # prepare converter command
             conf_string = '-c {eudaq}/conf/{file}'.format(eudaq=self.EudaqDir, file=self.converter_config_path)
             tree_string = '-t {tree}'.format(tree=self.ConverterTree)
@@ -213,22 +213,22 @@ class Converter:
                 self.__set_converter_configfile(run_infos)
             print_banner('START CONVERTING RAW FILE FOR RUN {0}'.format(run_number))
             print converter_cmd
-            os.system(converter_cmd)
+            system(converter_cmd)
             self.align_run()
-            os.chdir(curr_dir)
+            chdir(curr_dir)
         self.__add_tracking(run_number)
         self.__rename_tracking_file(run_number)
-        os.remove(self.get_root_file_path())
+        remove(self.get_root_file_path())
 
     def align_run(self):
 
         f = TFile(self.get_root_file_path())
-        tree = f.Get(self.parser.get('BASIC', 'treename'))
+        tree = f.Get(self.RunParser.get('BASIC', 'treename'))
         is_aligned = self.check_alignment(tree)
         f.Close()
         if not is_aligned:
             align_cmd = '{align}/bin/EventAlignment.exe {rootfile}'.format(align=self.AlignDir, rootfile=self.get_root_file_path())
-            os.system(align_cmd)
+            system(align_cmd)
 
     def remove_pickle_files(self, run_number):
         log_message('Removing all pickle files for run {}'.format(run_number))
@@ -240,7 +240,7 @@ class Converter:
             remove(_file)
 
     def __rename_rootfile(self, run_number):
-        os.rename(self.get_root_file_path(), self.get_final_file_path(run_number))
+        rename(self.get_root_file_path(), self.get_final_file_path(run_number))
 
     @staticmethod
     def remove_pickle_files(run_number):
@@ -252,24 +252,24 @@ class Converter:
             remove(_file)
 
     def __rename_tracking_file(self, run_number):
-        os.rename(self.get_tracking_file_path(run_number), self.get_final_file_path(run_number))
+        rename(self.get_tracking_file_path(run_number), self.get_final_file_path(run_number))
 
     def __add_tracking(self, run_number):
         root_file_path = self.get_root_file_path()
-        curr_dir = os.getcwd()
-        os.chdir(self.TrackingDir)
+        curr_dir = getcwd()
+        chdir(self.TrackingDir)
         tracking_cmd = '{dir}/TrackingTelescope {root} 0 {nr}{tr}'.format(dir=self.TrackingDir, root=root_file_path, nr=self.TelescopeID, tr='' if self.Type == 'pad' else ' 1')
         print '\nSTART TRACKING FOR RUN', run_number, '\n'
         print tracking_cmd
-        os.system(tracking_cmd)
-        os.chdir(curr_dir)
+        system(tracking_cmd)
+        chdir(curr_dir)
         # move file to data folder
         file_name = '/{prefix}{run}_withTracks.root'.format(prefix=self.root_prefix, run=str(run_number).zfill(4))
         path = self.TrackingDir + file_name
         move(path, self.RootFileDir)
 
     def load_polarities(self, info):
-        active_regions = self.parser.getint('ROOTFILE_GENERATION', 'active_regions')
+        active_regions = self.RunParser.getint('ROOTFILE_GENERATION', 'active_regions')
         pols = []
         i = 1
         for j in xrange(self.NChannels):
@@ -290,7 +290,7 @@ class Converter:
         parser.set(converter_section, 'pulser_polarities', self.load_polarities(run_infos))
 
         # remove unset ranges and regions
-        new_options = self.parser.options('ROOTFILE_GENERATION')
+        new_options = self.RunParser.options('ROOTFILE_GENERATION')
         for opt in parser.options(converter_section):
             if (opt.endswith('_range') or opt.endswith('_region')) and opt not in new_options:
                 parser.remove_option(converter_section, opt)
@@ -424,7 +424,7 @@ class Converter:
             pass
 
         if not is_aligned:
-            log_warning('The events of RUN {run} are not aligned!'.format(run=self.Run))
+            log_warning('The events of RUN {run} are not aligned!'.format(run=self.RunNumber))
         return is_aligned
 
     @staticmethod
