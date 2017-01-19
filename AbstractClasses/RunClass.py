@@ -98,7 +98,7 @@ class Run(Elementary):
         self.duration = None
         self.__load_timing()
 
-        self.converter = Converter(self.TESTCAMPAIGN, self.run_config_parser, self.run_number)
+        self.converter = Converter(self)
         if run_number is not None and load_tree:
             assert (run_number > 0), 'incorrect run_number'
             self.set_run(run_number)
