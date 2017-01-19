@@ -152,7 +152,7 @@ class Elementary(object):
     def print_testcampaign(self, pr=True):
         out = datetime.strptime(self.TESTCAMPAIGN, '%Y%m').strftime('%b %Y')
         if pr:
-            print 'TESTCAMPAIGN: {0}'.format(out)
+            print '\nTESTCAMPAIGN: {0}'.format(out)
         return out
 
     @classmethod
@@ -182,9 +182,9 @@ class Elementary(object):
 
     @staticmethod
     def ensure_dir(f):
-        d = os.path.dirname(f)
-        if not os.path.exists(d):
-            os.makedirs(d)
+        d = pth.dirname(f)
+        if not pth.exists(d):
+            makedirs(d)
 
     def get_color(self):
         self.count %= 20
