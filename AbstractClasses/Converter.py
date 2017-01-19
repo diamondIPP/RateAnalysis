@@ -436,9 +436,11 @@ class Converter:
         return True
 
 
-if __name__ == "__main__":
-    z = Converter('201510', None, 398)
-    run_info = z.get_run_info(run_number=393)
+if __name__ == '__main__':
+    from RunClass import Run
+    zrun = Run(398, test_campaign='201510', load_tree=False)
+    z = Converter(zrun)
+    # run_info = z.get_run_info(run_number=393)
     # z.convert_run(run_info)
-    z.root.deiconify()
-    z.root.mainloop()
+    # z.root.deiconify()
+    # z.root.mainloop()
