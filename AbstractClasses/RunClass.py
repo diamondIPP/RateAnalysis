@@ -81,11 +81,9 @@ class Run(Elementary):
         self.NChannels = self.load_pre_n_channels()
         self.channels = self.load_channels()
         self.trigger_planes = [1, 2]
-        self.filename = self.run_config_parser.get('BASIC', 'filename')
         self.treename = self.run_config_parser.get('BASIC', 'treename')
-        self.run_pathruninfofile = self.run_config_parser.get('BASIC', 'runpath')
-        self.runinfofile = self.run_config_parser.get('BASIC', 'runinfofile')
-        self.maskfilepath = self.run_config_parser.get('BASIC', 'maskfilepath')
+        self.runinfofile = self.load_run_info_path()
+        self.maskfilepath = self.load_mask_file_dir()
         self.createNewROOTFiles = self.run_config_parser.getboolean('BASIC', 'createNewROOTFiles')
 
         # run info
