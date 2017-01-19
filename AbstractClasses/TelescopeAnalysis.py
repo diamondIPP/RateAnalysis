@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 from copy import deepcopy
 from time import sleep
 
-from ROOT import TCanvas, TH2F, gROOT, TProfile, TH1F, TLegend, gStyle, kGreen, TText, TCut, TF1, TGraph
+from ROOT import TCanvas, TH2F, gROOT, TProfile, TH1F, TLegend, gStyle, kGreen, TText, TCut, TF1, TGraph, TH1I
 from numpy import array, zeros
 
 from Elementary import Elementary
@@ -373,6 +373,16 @@ class Analysis(Elementary):
 
     # ==============================================
     # region SHOW & PRINT
+
+    def draw_trigger_phase(self, dut=True, show=True, cut=None):
+        cut_string = deepcopy(self.Cut.all_cut) if cut is None else TCut(cut)
+        device = 1 if dut else 0
+        cut_string += 'trigger_phase[{r}]>=0'.format(r=device)
+        h = TH1I('h_tp', 'Trigger Phase', 10, 0, 10)
+        self.tree.Draw('trigger_phase[{r}]>>h_tp'.format(r=device), cut_string, 'goff')
+        set_statbox(entries=4, opt=1000000010, y=0.96)
+        self.format_histo(h, x_tit='Trigger Phase', y_tit='Number of Entries', y_off=1.5, fill_color=self.FillColor)
+        self.save_histo(h, 'TriggerPhase', show, lm=.13)
 
     def draw_pix_map(self, n=1, start=None, plane=1):
         start_event = self.StartEvent if start is None else start
