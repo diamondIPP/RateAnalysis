@@ -25,7 +25,7 @@ class Plots(Elementary):
         self.binning = binning
         self.num_devices = num_devices
         self.num_entries = num_entries
-        self.plot_settings = {
+        self.Settings = {
             'ph1Dmin': -5000,
             'ph1Dmax': 60000,
             'ph1Dbins': 65000 / 500,
@@ -36,11 +36,11 @@ class Plots(Elementary):
             'event_bins': max(int(ceil(float(self.num_entries)/10)), 200),
             'event_min': 0,
             'event_max': self.num_entries,
-            'maxphplots': int(ceil(8*self.num_entries/100)),  ## for landau histograms histograms
-            'nBinsX': 52,  #80 # 277 #240
+            'maxphplots': int(ceil(8*self.num_entries/100)),  # for landau histograms histograms
+            'nBinsX': 52,  # 80 # 277 #240
             'xmin': -3900,
             'xmax': 3900,
-            'nBinsY': 80,  #120 # 415 #360
+            'nBinsY': 80,  # 120 # 415 #360
             'ymin': -4000,
             'ymax': 4000,
             'nBinCol': 51,
@@ -62,13 +62,13 @@ class Plots(Elementary):
             'rhit_1Dmin': 0,
             'rhit_1Dmax': 10
         }
-        self.plot_settings['2DBins'] = [self.plot_settings['nCols'], - .5, self.plot_settings['nCols'] - .5, self.plot_settings['nRows'], - .5, self.plot_settings['nRows'] - .5]
-        self.plot_settings['event_bins'] = int(ceil(float(self.num_entries)/5000)) if self.num_entries <= 100000 else \
-            int(ceil(float(self.num_entries)/100)) if self.num_entries <= 500000 else int(ceil(float(self.num_entries)/self.plot_settings['nEventsAv']))
-        self.plot_settings['deltaX'] = float(self.plot_settings['xmax']-self.plot_settings['xmin'])/self.plot_settings['nBinsX']
-        self.plot_settings['deltaY'] = float(self.plot_settings['ymax']-self.plot_settings['ymin'])/self.plot_settings['nBinsY']
         self.Settings['vcalBins'] = [int((1350 * 47.5 - 427.4) / 500), -100, 1250]
         self.Settings['phBins'] = [self.Settings['ph1Dbins'], self.Settings['ph1Dmin'], self.Settings['ph1Dmax']]
+        self.Settings['2DBins'] = [self.Settings['nCols'], - .5, self.Settings['nCols'] - .5, self.Settings['nRows'], - .5, self.Settings['nRows'] - .5]
+        self.Settings['event_bins'] = int(ceil(float(self.num_entries) / 5000)) if self.num_entries <= 100000 else \
+            int(ceil(float(self.num_entries)/100)) if self.num_entries <= 500000 else int(ceil(float(self.num_entries) / self.Settings['nEventsAv']))
+        self.Settings['deltaX'] = float(self.Settings['xmax'] - self.Settings['xmin']) / self.Settings['nBinsX']
+        self.Settings['deltaY'] = float(self.Settings['ymax'] - self.Settings['ymin']) / self.Settings['nBinsY']
         self.roc_tel, self.roc_d1, self.roc_d2, self.roc_si = roc_tel, roc_d1, roc_d2, roc_si
         self.save_dir = './'
 
@@ -83,30 +83,30 @@ class Plots(Elementary):
 
     def create_1D_histogram(self, type='landau', name='histo', title='histo', xTitle='X', yTitle='Y', color=kBlack, min_val=0, roc=4):
         if type is 'landau' or type is 'landaus':
-            ph1Dbins = self.plot_settings['ph1DbinsD4'] if roc is self.roc_d1 else self.plot_settings['ph1DbinsD5'] if roc is self.roc_d2 else self.plot_settings['ph1DbinsSi']
-            ph1Dmin = self.plot_settings['ph1DminD4'] if roc is self.roc_d1 else self.plot_settings['ph1DminD5'] if roc is self.roc_d2 else self.plot_settings['ph1DminSi']
-            ph1Dmax = self.plot_settings['ph1DmaxD4'] if roc is self.roc_d1 else self.plot_settings['ph1DmaxD5'] if roc is self.roc_d2 else self.plot_settings['ph1DmaxSi']
+            ph1Dbins = self.Settings['ph1DbinsD4'] if roc is self.roc_d1 else self.Settings['ph1DbinsD5'] if roc is self.roc_d2 else self.Settings['ph1DbinsSi']
+            ph1Dmin = self.Settings['ph1DminD4'] if roc is self.roc_d1 else self.Settings['ph1DminD5'] if roc is self.roc_d2 else self.Settings['ph1DminSi']
+            ph1Dmax = self.Settings['ph1DmaxD4'] if roc is self.roc_d1 else self.Settings['ph1DmaxD5'] if roc is self.roc_d2 else self.Settings['ph1DmaxSi']
         elif type is 'chi2':
-            ph1Dbins = self.plot_settings['chi2_1Dbins']
-            ph1Dmin = self.plot_settings['chi2_1Dmin']
-            ph1Dmax = self.plot_settings['chi2_1Dmax']
+            ph1Dbins = self.Settings['chi2_1Dbins']
+            ph1Dmin = self.Settings['chi2_1Dmin']
+            ph1Dmax = self.Settings['chi2_1Dmax']
         elif type is 'angle':
-            ph1Dbins = self.plot_settings['angle_1Dbins']
-            ph1Dmin = self.plot_settings['angle_1Dmin']
-            ph1Dmax = self.plot_settings['angle_1Dmax']
+            ph1Dbins = self.Settings['angle_1Dbins']
+            ph1Dmin = self.Settings['angle_1Dmin']
+            ph1Dmax = self.Settings['angle_1Dmax']
         elif type is 'rhit':
-            ph1Dbins = self.plot_settings['rhit_1Dbins']
-            ph1Dmin = self.plot_settings['rhit_1Dmin']
-            ph1Dmax = self.plot_settings['rhit_1Dmax']
+            ph1Dbins = self.Settings['rhit_1Dbins']
+            ph1Dmin = self.Settings['rhit_1Dmin']
+            ph1Dmax = self.Settings['rhit_1Dmax']
         histo1D = TH1D(name, title, int(ph1Dbins + 1), ph1Dmin - float(ph1Dmax - ph1Dmin)/(2*ph1Dbins),
                        ph1Dmax + float(ph1Dmax - ph1Dmin)/(2*ph1Dbins))
         self.set_1D_options(type, histo1D, xTitle, yTitle, color, min_val)
         return (histo1D)
 
     def create_1D_profile(self, type='event', name='histo', title='histo', xTitle='X', yTitle='Y', color=kBlack, min_val=0, roc=4):
-        nbins = int(ceil(float(self.plot_settings['event_max'] - self.plot_settings['event_min'])/self.plot_settings['nEventsAv']))
-        xmin = self.plot_settings['event_min']
-        xmax = self.plot_settings['event_max']
+        nbins = int(ceil(float(self.Settings['event_max'] - self.Settings['event_min']) / self.Settings['nEventsAv']))
+        xmin = self.Settings['event_min']
+        xmax = self.Settings['event_max']
         histo1D = TProfile(name, title, int(nbins + 1), xmin - float(xmax - xmin)/(2*nbins), xmax + float(xmax - xmin)/(2*nbins))
         self.set_1D_options(type, histo1D, xTitle, yTitle, color, min_val, roc)
         return (histo1D)
@@ -117,11 +117,11 @@ class Plots(Elementary):
         histo.GetYaxis().SetTitleOffset(1.3)
         if type is 'event':
             if roc is self.roc_d1:
-                histo.SetMaximum(self.plot_settings['ph1DmaxD4'])
+                histo.SetMaximum(self.Settings['ph1DmaxD4'])
             elif roc is self.roc_d2:
-                histo.SetMaximum(self.plot_settings['ph1DmaxD5'])
+                histo.SetMaximum(self.Settings['ph1DmaxD5'])
             else:
-                histo.SetMaximum(self.plot_settings['ph1DmaxSi'])
+                histo.SetMaximum(self.Settings['ph1DmaxSi'])
         histo.SetMinimum(min_val)
         histo.SetLineColor(color)
         histo.SetLineWidth(3*gStyle.GetLineWidth())
@@ -129,12 +129,12 @@ class Plots(Elementary):
             histo.SetFillColor(color)
 
     def create_2D_profile(self, type='spatial', name='histo', title='histo', xTitle='X', yTitle='Y', zTitle='Z', min_val=0, max_val=-1):
-        xbins = self.plot_settings['nBinsX'] if type is 'spatial' else self.plot_settings['nBinCol']
-        xmin = self.plot_settings['xmin'] if type is 'spatial' else self.plot_settings['minCol']
-        xmax = self.plot_settings['xmax'] if type is 'spatial' else self.plot_settings['maxCol']
-        ybins = self.plot_settings['nBinsY'] if type is 'spatial' else self.plot_settings['nBinRow']
-        ymin = self.plot_settings['ymin'] if type is 'spatial' else self.plot_settings['minRow']
-        ymax = self.plot_settings['ymax'] if type is 'spatial' else self.plot_settings['maxRow']
+        xbins = self.Settings['nBinsX'] if type is 'spatial' else self.Settings['nBinCol']
+        xmin = self.Settings['xmin'] if type is 'spatial' else self.Settings['minCol']
+        xmax = self.Settings['xmax'] if type is 'spatial' else self.Settings['maxCol']
+        ybins = self.Settings['nBinsY'] if type is 'spatial' else self.Settings['nBinRow']
+        ymin = self.Settings['ymin'] if type is 'spatial' else self.Settings['minRow']
+        ymax = self.Settings['ymax'] if type is 'spatial' else self.Settings['maxRow']
         histo2D = TProfile2D(name, title, int(xbins + 1), xmin - float(xmax-xmin)/(2*xbins),
                              xmax + float(xmax-xmin)/(2*xbins), int(ybins + 1), ymin - float(ymax-ymin)/(2*ybins),
                              ymax + float(ymax-ymin)/(2*ybins))
@@ -143,54 +143,54 @@ class Plots(Elementary):
 
     def create_2D_histogram(self, type='spatial', name='histo', title='histo', xTitle='X', yTitle='Y', zTitle='Z', min_val=0, max_val=-1, roc=4):
         if type is 'spatial':
-            xbins = self.plot_settings['nBinsX']
-            xmin = self.plot_settings['xmin']
-            xmax = self.plot_settings['xmax']
-            ybins = self.plot_settings['nBinsY']
-            ymin = self.plot_settings['ymin']
-            ymax = self.plot_settings['ymax']
+            xbins = self.Settings['nBinsX']
+            xmin = self.Settings['xmin']
+            xmax = self.Settings['xmax']
+            ybins = self.Settings['nBinsY']
+            ymin = self.Settings['ymin']
+            ymax = self.Settings['ymax']
         elif type is 'pixel':
-            xbins = self.plot_settings['nBinCol']
-            xmin = self.plot_settings['minCol']
-            xmax = self.plot_settings['maxCol']
-            ybins = self.plot_settings['nBinRow']
-            ymin = self.plot_settings['minRow']
-            ymax = self.plot_settings['maxRow']
+            xbins = self.Settings['nBinCol']
+            xmin = self.Settings['minCol']
+            xmax = self.Settings['maxCol']
+            ybins = self.Settings['nBinRow']
+            ymin = self.Settings['minRow']
+            ymax = self.Settings['maxRow']
         elif type is 'correlpixcol':
-            xbins = self.plot_settings['nBinCol']
-            xmin = self.plot_settings['minCol']
-            xmax = self.plot_settings['maxCol']
-            ybins = self.plot_settings['nBinCol']
-            ymin = self.plot_settings['minCol']
-            ymax = self.plot_settings['maxCol']
+            xbins = self.Settings['nBinCol']
+            xmin = self.Settings['minCol']
+            xmax = self.Settings['maxCol']
+            ybins = self.Settings['nBinCol']
+            ymin = self.Settings['minCol']
+            ymax = self.Settings['maxCol']
         elif type is 'correlpixx':
-            xbins = self.plot_settings['nBinsX']
-            xmin = self.plot_settings['xmin']
-            xmax = self.plot_settings['xmax']
-            ybins = self.plot_settings['nBinsX']
-            ymin = self.plot_settings['xmin']
-            ymax = self.plot_settings['xmax']
+            xbins = self.Settings['nBinsX']
+            xmin = self.Settings['xmin']
+            xmax = self.Settings['xmax']
+            ybins = self.Settings['nBinsX']
+            ymin = self.Settings['xmin']
+            ymax = self.Settings['xmax']
         elif type is 'correlpixrow':
-            xbins = self.plot_settings['nBinRow']
-            xmin = self.plot_settings['minRow']
-            xmax = self.plot_settings['maxRow']
-            ybins = self.plot_settings['nBinRow']
-            ymin = self.plot_settings['minRow']
-            ymax = self.plot_settings['maxRow']
+            xbins = self.Settings['nBinRow']
+            xmin = self.Settings['minRow']
+            xmax = self.Settings['maxRow']
+            ybins = self.Settings['nBinRow']
+            ymin = self.Settings['minRow']
+            ymax = self.Settings['maxRow']
         elif type is 'correlpixy':
-            xbins = self.plot_settings['nBinsY']
-            xmin = self.plot_settings['ymin']
-            xmax = self.plot_settings['ymax']
-            ybins = self.plot_settings['nBinsY']
-            ymin = self.plot_settings['ymin']
-            ymax = self.plot_settings['ymax']
+            xbins = self.Settings['nBinsY']
+            xmin = self.Settings['ymin']
+            xmax = self.Settings['ymax']
+            ybins = self.Settings['nBinsY']
+            ymin = self.Settings['ymin']
+            ymax = self.Settings['ymax']
         else:
-            xbins = self.plot_settings['event_bins']
-            xmin = self.plot_settings['event_min']
-            xmax = self.plot_settings['event_max']
-            ybins = self.plot_settings['ph1DbinsD4'] if roc is self.roc_d1 else self.plot_settings['ph1DbinsD5'] if roc is self.roc_d2 else self.plot_settings['ph1DbinsSi']
-            ymin = self.plot_settings['ph1DminD4'] if roc is self.roc_d1 else self.plot_settings['ph1DminD5'] if roc is self.roc_d2 else self.plot_settings['ph1DminSi']
-            ymax = self.plot_settings['ph1DmaxD4'] if roc is self.roc_d1 else self.plot_settings['ph1DmaxD5'] if roc is self.roc_d2 else self.plot_settings['ph1DmaxSi']
+            xbins = self.Settings['event_bins']
+            xmin = self.Settings['event_min']
+            xmax = self.Settings['event_max']
+            ybins = self.Settings['ph1DbinsD4'] if roc is self.roc_d1 else self.Settings['ph1DbinsD5'] if roc is self.roc_d2 else self.Settings['ph1DbinsSi']
+            ymin = self.Settings['ph1DminD4'] if roc is self.roc_d1 else self.Settings['ph1DminD5'] if roc is self.roc_d2 else self.Settings['ph1DminSi']
+            ymax = self.Settings['ph1DmaxD4'] if roc is self.roc_d1 else self.Settings['ph1DmaxD5'] if roc is self.roc_d2 else self.Settings['ph1DmaxSi']
         histo2D = TH2D(name, title, int(xbins + 1), xmin - float(xmax-xmin)/(2*xbins), xmax + float(xmax-xmin)/(2*xbins),
                        int(ybins + 1), ymin - float(ymax-ymin)/(2*ybins), ymax + float(ymax-ymin)/(2*ybins))
         self.set_2D_options(histo2D, xTitle, yTitle, zTitle, min_val, max_val)
