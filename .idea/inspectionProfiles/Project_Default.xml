@@ -69,6 +69,8 @@
           <option value="RooFit" />
           <option value="gPrintViaErrorHandler" />
           <option value="TH1I" />
+          <option value="gPad" />
+          <option value="kError" />
         </list>
       </option>
     </inspection_tool>
