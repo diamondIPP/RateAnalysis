@@ -128,18 +128,15 @@ class CutPix(Cut):
         self.set_hitmap_cuts(False)
         return cut
 
-    def generate_hit(self):  # TODO implement cut! must change tree structure from tracking telescope
+    @staticmethod
+    def generate_hit():  # TODO implement cut! must change tree structure from tracking telescope
         """ Needs to be implemented. Have to change trackingTelescope for this """
-        t = self.log_info('Generating hit cut ...', False)
         cut_string = ''
-        self.add_info('Done', t)
         return cut_string
 
     def generate_rhit(self):
-        t = self.log_info('Generating RHit cut ...', False)
         value = self.CutConfig['rhit']
         string = '(10000*sqrt((residuals_x[{n}])**2+(residuals_y[{n}])**2))<{val}'.format(n=self.Dut, val=value)
-        self.add_info('Done', t)
         return string
 
     def generate_fiducial(self, name='fid', cluster=True):
