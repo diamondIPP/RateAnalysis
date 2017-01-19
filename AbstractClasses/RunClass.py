@@ -312,8 +312,8 @@ class Run(Elementary):
                     plane = self.trigger_planes[len(i2cs) - 1]
                     maskdata[plane][line[0]] = [int(line[2]), int(line[3])]
             f.close()
-        except IOError as err:
-            self.log_warning(err)
+        except IOError:
+            pass
 
         unmasked_pixels = {}
         # check for corner method
