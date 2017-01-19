@@ -6,8 +6,9 @@
 from datetime import datetime
 from termcolor import colored
 from ROOT import gStyle
-from numpy import sqrt, mean
-import os
+from numpy import sqrt
+from os import makedirs
+from os import path as pth
 
 
 # ==============================================
