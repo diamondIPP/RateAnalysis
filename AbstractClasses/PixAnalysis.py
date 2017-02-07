@@ -7,7 +7,6 @@ from TelescopeAnalysis import Analysis
 from argparse import ArgumentParser
 from time import time
 from copy import deepcopy
-import progressbar
 from CutPix import CutPix
 from Elementary import Elementary
 from numpy import array
@@ -289,7 +288,7 @@ class PixAnalysis(Analysis):
 
     def draw_pulse_height_disto(self, cut=None, show=True, prnt=True, sup_zero=True, col=None, pix=None, roc=None, vcal=False):
         roc = self.Dut if roc is None else roc
-        cut_string = deepcopy(self.Cut.all_cut) if cut is None else TCut(cut)
+        cut_string = deepcopy(self.Cut.generate_special_cut(excluded=['fiducial', 'trigger_phase'])) if cut is None else TCut(cut)
         cut_string += 'cluster_charge>0'.format(d=self.Dut) if sup_zero else ''
         cut_string += 'cluster_col=={c}'.format(c=col, d=self.Dut) if col is not None else ''
         cut_string += 'cluster_col=={c}&&cluster_row=={r}'.format(c=pix[0], r=pix[1], d=self.Dut) if pix is not None else ''
@@ -319,8 +318,8 @@ class PixAnalysis(Analysis):
         self.set_root_output(False)
         suffix = 'ROC {n}'.format(n=roc) if roc < 4 else self.load_diamond_name(roc - 3)
         h = TProfile('h_he', 'Hit Efficiency {s}'.format(s=suffix), int(self.run.n_entries / 5000), z.run.startTime / 1000, self.run.endTime / 1000.)
-        cut_string = self.Cut.generate_special_cut(excluded=['fiducial', 'masks', 'rhit']) if cut == 'all' else TCut(cut)
-        self.tree.Draw('(clusters_per_plane[{r}]>0)*100:time / 1000 >> h_he'.format(r=roc), cut_string, 'goff')
+        cut_string = self.Cut.generate_special_cut(excluded=['masks', 'rhit']) if cut == 'all' else TCut(cut)
+        self.tree.Draw('(n_hits[{r}]>0)*100:time / 1000 >> h_he'.format(r=roc), cut_string, 'goff')
         set_time_axis(h, off=self.run.startTime / 1000 + 3600)
         self.format_histo(h, x_tit='Time [hh:mm]', y_tit='Efficiency [%]', y_off=1.4, ndiv=505, y_range=[-5, 105], stats=0)
         self.save_histo(h, 'HitEfficiencyROC{n}'.format(n=roc), show, lm=.13, save=save, gridy=True)
