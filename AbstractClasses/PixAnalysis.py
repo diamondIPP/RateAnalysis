@@ -3,7 +3,7 @@
 # ==============================================
 from ROOT import TH2D, TH1D, gROOT, TFormula, TCut, TH1I, TProfile, THStack, TProfile2D, TF1, TGraph, TPie, gRandom, TH3D
 from TelescopeAnalysis import Analysis
-# from CurrentInfo import Currents
+from CurrentInfo import Currents
 from argparse import ArgumentParser
 from time import time
 from copy import deepcopy
@@ -50,6 +50,9 @@ class PixAnalysis(Analysis):
         self.Vcals = None
         self.Points = None
         self.get_calibration_data()
+
+        # currents
+        self.Currents = Currents(self)
 
         self.stuff = []
 
@@ -539,14 +542,15 @@ class PixAnalysis(Analysis):
         self.save_histo(gr, 'PixelAligment', show, draw_opt='alp', lm=.13, prnt=show)
         values = [gr.GetY()[i_ev] for i_ev in xrange(gr.GetN())]
         mean_, sigma = calc_mean(values)
-        if sigma > .05:
-            log_warning('Large fluctuations in correlation!')
         if mean_ < .4:
             log_warning('Planes are not correlated!')
+        elif sigma > .05:
+            log_warning('Large fluctuations in correlation!')
+
         return mean_ > .3
 
-    def show_current(self, relative_time=True):
-        self.Currents.draw_graphs(relative_time=relative_time)
+    def draw_current(self, relative_time=True):
+        self.Currents.draw_indep_graphs(rel_time=relative_time)
 
     # ==========================================================================
 
