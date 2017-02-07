@@ -16,7 +16,7 @@ from Langaus import Langau
 class Analysis(Elementary):
     """ Class for the analysis of the non-channel specific stuff of a single run. """
 
-    def __init__(self, run, verbose=False, high_low_rate=None, load_tree=True, binning=10000):
+    def __init__(self, run, verbose=False, high_low_rate=None, load_tree=True, binning=5000):
         """
         Parent class for all analyses, which contains all the basic stuff about the Telescope.
         :param run:             run object of type "Run" or integer run number
@@ -341,7 +341,6 @@ class Analysis(Elementary):
     def draw_trigger_phase(self, dut=True, show=True, cut=None):
         cut_string = deepcopy(self.Cut.all_cut) if cut is None else TCut(cut)
         device = 1 if dut else 0
-        cut_string += 'trigger_phase[{r}]>=0'.format(r=device)
         h = TH1I('h_tp', 'Trigger Phase', 10, 0, 10)
         self.tree.Draw('trigger_phase[{r}]>>h_tp'.format(r=device), cut_string, 'goff')
         set_statbox(entries=4, opt=1000000010, y=0.96)
