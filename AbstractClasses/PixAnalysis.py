@@ -329,14 +329,16 @@ class PixAnalysis(Analysis):
         pickle_path = self.make_pickle_path('Efficiency', run=self.RunNumber, suf='{r}{c}'.format(r=roc, c='_Cuts' if cut else ''))
 
         def func():
-            set_statbox(y=.37, only_fit=True)
+            set_statbox(y=.37, only_fit=True, entries=1.5)
             h = self.draw_hit_efficiency(roc, show=False, save=False, cut=cut)
-            self.format_histo(h, stats=1, name='Fit Results')
+            if h.GetEntries() < 100:
+                return FitRes()
+            self.format_histo(h, stats=1, name='Fit Result')
             fit = h.Fit('pol0', 'qs')
-            self.save_histo(h, 'HitEfficiencyROC{n}Fit'.format(n=roc), show, lm=.13, save=save, gridy=True)
-            return fit
+            self.save_histo(h, 'HitEfficiencyROC{n}Fit'.format(n=roc), show, lm=.13, save=save, gridy=True, prnt=show)
+            return FitRes(fit)
 
-        fit_res = func() if show else None
+        fit_res = func() if show or save else None
         return self.do_pickle(pickle_path, func, fit_res)
 
     def draw_all_efficiencies(self, show=True):
