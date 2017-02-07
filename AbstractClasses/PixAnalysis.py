@@ -400,6 +400,22 @@ class PixAnalysis(Analysis):
         self.format_histo(p, x_tit='Track x [cm]', y_tit='Track y [cm]', z_tit='Efficiency [%]', y_off=1.4, z_off=1.5)
         self.save_histo(p, 'Efficiency Map', show, lm=.13, rm=.17, draw_opt='colz')
 
+    def draw_track_occupancy(self, cut='', show=True, res=2):
+        cut_string = self.Cut.all_cut if cut is None else TCut(cut) + self.Cut.CutStrings['tracks']
+        h = TH2D('h_to', 'Track Occupancy {d}'.format(d=self.DiamondName), *self.plots.get_global_bins(res=res))
+        self.tree.Draw('diam{nr}_track_y:diam{nr}_track_x>>h_to'.format(nr=self.Dut - 3), cut_string, 'goff')
+        set_statbox(entries=4, opt=1000000010, x=.81)
+        self.format_histo(h, x_tit='Track x [cm]', y_tit='Track y [cm]', z_tit='Number of Entries', y_off=1.4, z_off=1.5)
+        self.save_histo(h, 'TrackOccupancy', show, lm=.12, rm=.17, draw_opt='colz')
+
+    def draw_trigphase_offset(self, cut=None, show=True):
+        cut_string = deepcopy(self.Cut.all_cut) if cut is None else TCut(cut)
+        h = TH1I('h_tp', 'Trigger Phase Offset', 19, -9, 10)
+        self.tree.Draw('trigger_phase[1] - trigger_phase[0]>>h_tp', cut_string, 'goff')
+        set_statbox(entries=4, opt=1000000010, y=0.88)
+        self.format_histo(h, x_tit='Trigger Phase', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor, ndiv=20)
+        self.save_histo(h, 'TriggerPhase', show, lm=.16)
+
 
     def draw_correlation(self, plane1=1, plane2=None, mode='y', chi2=1, show=True):
         plane2 = self.Dut if plane2 is None else plane2
