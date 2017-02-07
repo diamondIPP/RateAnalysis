@@ -213,20 +213,25 @@ class PixAnalysis(Analysis):
         self.Fit.Draw('same')
         self.save_plots('CalFit{c}{r}'.format(c=col, r=row), show=show)
 
-    def draw_threshold_map(self, show=True, roc=None):
-        roc = self.Dut if roc is None else roc
+    def draw_threshold_map(self, show=True, vcal=True):
         h = TProfile2D('p_tm', 'Artificial Threshold Map', *self.Settings['2DBins'])
-        cols, rows = self.Cut.CutConfig['FidRegion'][:2], self.Cut.CutConfig['FidRegion'][2:]
-        for col in xrange(cols[0], cols[1] + 1):
-            for row in xrange(rows[0], rows[1] + 1):
-                # fit = self.fit_erf(col, row, roc, show=False)
-                fit = self.Fit
-                self.Fit.SetParameters(*self.Parameters[roc][col][row])
-                if fit is not None:
-                    print col, row, fit.GetX(0), fit.GetChisquare()
-                    h.Fill(col, row, fit.GetX(0))
+        for (col, row), thresh in self.get_thresholds(vcal=vcal).iteritems():
+            h.Fill(col, row, thresh)
         self.format_histo(h, x_tit='col', y_tit='row', z_tit='Artificial Treshold [vcal]', y_off=1.3, z_off=1.5, stats=0)
         self.save_histo(h, 'ThresholdMap', show, rm=.17, lm=.13, draw_opt='colz')
+        return h
+
+    def get_thresholds(self, cols=None, pix=None, vcal=True):
+        columns, rows = self.Cut.CutConfig['FidRegionLocal'][:2], self.Cut.CutConfig['FidRegionLocal'][2:]
+        columns = cols if cols is not None else columns
+        columns = [columns, columns] if type(columns) == int else columns
+        columns, rows = ([pix[0]] * 2, [pix[1]] * 2) if pix is not None else (columns, rows)
+        dic = {}
+        for col in xrange(columns[0], columns[1] + 1):
+            for row in xrange(rows[0], rows[1] + 1):
+                self.Fit.SetParameters(*self.Parameters[self.Dut][col][row])
+                dic[(col, row)] = self.Fit.GetX(0) * (47 if not vcal else 1)
+        return dic
 
     def fit_erf(self, col, row, roc=None, show=True):
         roc = self.Dut if roc is None else roc
