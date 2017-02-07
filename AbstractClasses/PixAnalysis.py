@@ -28,6 +28,7 @@ class PixAnalysis(Analysis):
         # main
         self.RunNumber = run
         self.DiamondName = self.load_diamond_name(dut)
+        self.DiamondNumber = dut
         self.Bias = self.run.bias[dut - 1]
         self.Dut = dut + 3
         self.save_dir = '{dia}/{run}/'.format(run=str(self.RunNumber).zfill(3), dia=self.DiamondName)
