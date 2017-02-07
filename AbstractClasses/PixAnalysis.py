@@ -1,7 +1,7 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from ROOT import TH2D, TH1D, gROOT, TFormula, TCut, TH1I, TProfile, THStack, TProfile2D, TF1, TGraph, TPie
+from ROOT import TH2D, TH1D, gROOT, TFormula, TCut, TH1I, TProfile, THStack, TProfile2D, TF1, TGraph, TPie, gRandom, TH3D
 from TelescopeAnalysis import Analysis
 # from CurrentInfo import Currents
 from argparse import ArgumentParser
@@ -377,6 +377,22 @@ class SignalPixAnalysis(Analysis):
         pie.SetAngle3D(70)
         pie.SetAngularOffset(250)
         self.draw_histo(pie, draw_opt='3drsc')
+
+
+    def draw_correlation(self, plane1=1, plane2=None, mode='y', chi2=1, show=True):
+        plane2 = self.Dut if plane2 is None else plane2
+        h = TH2D('h_pc', 'Plane Correlation', *self.plots.get_global_bins(mode=mode, res=sqrt(12)))
+        draw_var = 'cluster_{m}pos_tel'.format(m=mode)
+        cut_string = 'clusters_per_plane[{p1}]==1&&clusters_per_plane[{p2}]==1&&cluster_plane=={{p}}'.format(p1=plane1, p2=plane2)
+        n = self.tree.Draw(draw_var, TCut(cut_string.format(p=plane1)) + TCut(self.Cut.generate_chi2(mode, chi2)), 'goff')
+        x1 = [self.tree.GetV1()[i] for i in xrange(n)]
+        n = self.tree.Draw(draw_var, TCut(cut_string.format(p=plane2)) + TCut(self.Cut.generate_chi2(mode, chi2)), 'goff')
+        x2 = [self.tree.GetV1()[i] for i in xrange(n)]
+        for i, j in zip(x1, x2):
+            h.Fill(i, j)
+        self.log_info('Correlation Factor: {f:4.3f}'.format(f=h.GetCorrelationFactor()))
+        self.format_histo(h, x_tit='{m} Plane {p}'.format(p=plane1, m=mode), y_tit='{m} Plane {p}'.format(p=plane2, m=mode), y_off=1.5, stats=0, z_tit='Number of Entries', z_off=1.5)
+        self.save_histo(h, 'PlaneCorrelation{m}{p1}{p2}'.format(m=mode.title(), p1=plane1, p2=plane2), show,  lm=.13, draw_opt='colz', rm=.17)
 
     def do_pulse_height_roc(self, roc=4, num_clust=1, cut='', histoevent=None, histo=None):
         """
