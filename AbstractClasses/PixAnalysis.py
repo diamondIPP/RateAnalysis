@@ -9,7 +9,7 @@ from time import time
 from copy import deepcopy
 from CutPix import CutPix
 from Elementary import Elementary
-from numpy import array
+from numpy import array, mean
 from Utils import *
 from os.path import join as joinpath
 from collections import OrderedDict
@@ -427,6 +427,70 @@ class PixAnalysis(Analysis):
         self.format_histo(gr, fill_color=self.FillColor, x_tit='Trigger Phase', y_tit='Efficiency [%]', y_off=1.4)
         self.save_histo(gr, 'EffVsTrigPhase', show, draw_opt='ba', lm=.13)
 
+    def find_landau(self, aver=100):
+        seed = self.draw_pulse_height_disto(show=False, sup_zero=False, col=18)
+        # seed = self.draw_pulse_height_disto(show=False, sup_zero=False, pix=[18,68])
+        h = deepcopy(seed)
+        m_range = range(3000, 5001, 100)
+        s_range = range(1100, 1801, 20)
+        p = TProfile2D('g_fl', 'Find Landau', len(m_range) - 1, m_range[0], m_range[-1], len(s_range) - 1, s_range[0], s_range[-1])
+        self.start_pbar(len(m_range) * len(s_range) * aver)
+        i = 0
+        for _ in xrange(aver):
+            for m in m_range:
+                for s in s_range:
+                    i += 1
+                    self.ProgressBar.update(i)
+                    diff = self.model_landau(seed, h, m, s, show=False, thresh=True)
+                    p.Fill(m, s, diff)
+        self.format_histo(p, x_tit='MPV [e]', y_tit='Sigma [e]', z_tit='#chi^{2} to Seed Function', y_off=1.7, z_off=1.3)
+        self.draw_histo(p, draw_opt='colz', lm=.13, rm=0.16)
+
+    def model_landau(self, seed=None, h=None, m=10000, s=1000, show=True, thresh=False, col=18):
+        seed = self.draw_pulse_height_disto(show=False, sup_zero=False, col=col) if seed is None else seed
+        # seed = self.draw_pulse_height_disto(show=False, sup_zero=False, pix=[18,68]) if seed is None else seed
+        h = deepcopy(seed) if h is None else h
+        n = seed.GetEntries()
+        h.Reset()
+        thresholds = self.get_thresholds(cols=col, vcal=False)
+        for _ in xrange(int(n)):
+            v = gRandom.Landau(m, s)
+            threshold = thresholds[int(gRandom.Rndm() * len(thresholds))]
+            h.Fill(v if v > threshold else 0 if thresh else v)
+            # h.Fill(v if v > 11421 else 0 if thresh else v)
+        diff = mean([(h.GetBinContent(i) - seed.GetBinContent(i)) ** 2 for i in xrange(h.GetNbinsX()) if i is not h.FindBin(0)])
+        seed.SetFillColor(2)
+        h.SetFillColor(self.FillColor)
+        seed.SetFillStyle(4050)
+        h.SetFillStyle(4050)
+        # h.SetFillColorAlpha(self.FillColor, .35)
+        # seed.SetFillColorAlpha(2, .35)
+        # h.SetLineColor(2)
+        self.draw_histo(h, show=show)
+        seed.Draw('same')
+        return diff
+
+    def landau_vid(self, save=False, mpv=5000, sigma=820, col=18):
+        h = self.draw_pulse_height_disto(sup_zero=False, col=col)
+        h.GetYaxis().SetRangeUser(0, 2500)
+        zero_bin = h.FindBin(0)
+        zeros = int(h.GetBinContent(zero_bin))
+        entries = int(h.GetEntries())
+        print entries
+        c = gROOT.GetListOfCanvases()[-1]
+        thresholds = self.get_thresholds(cols=col, vcal=False)
+        for i in xrange(entries):
+            h.SetBinContent(zero_bin, zeros)
+            v = gRandom.Landau(mpv, sigma)
+            threshold = thresholds[int(gRandom.Rndm() * len(thresholds))]
+            if v < threshold:
+                h.Fill(v)
+                zeros -= 1
+            if i % 100 == 0:
+                c.Update()
+                c.Modified()
+            if i % 100 == 0 and save:
+                self.save_canvas(c, name='l{i:04d}'.format(i=i), show=False, print_names=False)
 
     def draw_correlation(self, plane1=1, plane2=None, mode='y', chi2=1, show=True):
         plane2 = self.Dut if plane2 is None else plane2
