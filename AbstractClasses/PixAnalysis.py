@@ -386,6 +386,20 @@ class PixAnalysis(Analysis):
         pie.SetAngularOffset(250)
         self.draw_histo(pie, draw_opt='3drsc')
 
+    @staticmethod
+    def draw_fid_cut():
+        cut = gROOT.FindObject('fid')
+        cut.Draw()
+
+    def draw_efficiency_map(self, res=5, cut='', show=True):
+        cut_string = TCut(cut) + self.Cut.CutStrings['tracks']
+        cut_string = self.Cut.generate_special_cut(excluded=['masks', 'fiducial', 'rhit']) if cut == 'all' else cut_string
+        p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DiamondName), *self.plots.get_global_bins(res=res))
+        self.tree.Draw('(n_hits[{r}]>0)*100:diam{r1}_track_y:diam{r1}_track_x>>p_em'.format(r=self.Dut, r1=self.Dut - 3), cut_string, 'goff')
+        set_statbox(entries=4, opt=1000000010, x=.81)
+        self.format_histo(p, x_tit='Track x [cm]', y_tit='Track y [cm]', z_tit='Efficiency [%]', y_off=1.4, z_off=1.5)
+        self.save_histo(p, 'Efficiency Map', show, lm=.13, rm=.17, draw_opt='colz')
+
 
     def draw_correlation(self, plane1=1, plane2=None, mode='y', chi2=1, show=True):
         plane2 = self.Dut if plane2 is None else plane2
