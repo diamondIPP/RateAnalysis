@@ -41,6 +41,9 @@ class SignalPixAnalysis(Analysis):
         self.Settings = self.plots.Settings
         self.Cut = CutPix(self, dut)
 
+        # alignment
+        self.IsAligned = self.check_alignment(show=False)
+
         # pulse height calibrations
         self.Fit = None
         self.Parameters = None

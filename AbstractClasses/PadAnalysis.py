@@ -62,6 +62,9 @@ class PadAnalysis(Analysis):
             self.Cut = ChannelCut(self, self.channel)
             self.AllCuts = self.Cut.all_cut
 
+            # alignment
+            self.IsAligned = self.check_alignment(show=False)
+
             # subclasses
             self.Pulser = PulserAnalysis(self)
 
@@ -1718,6 +1721,28 @@ class PadAnalysis(Analysis):
         total_events = self.tree.Draw('event_number', cut, 'goff', self.run.n_entries, start)
         evt_numbers = [self.tree.GetV1()[i] for i in xrange(total_events)]
         return int(evt_numbers[:n][-1] + 1 - start)
+
+    def check_alignment(self, binning=5000, show=True, save_plot=True):
+        pickle_path = 'Configuration/Individual_Configs/Alignment/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run.RunNumber)
+
+        def func():
+            nbins = self.run.n_entries / binning
+            h = TProfile('h', 'Pulser Rate', nbins, 0, self.run.n_entries)
+            self.tree.Draw('(@col.size()>1)*100:Entry$>>h', 'pulser', 'goff')
+            self.format_histo(h, name='align', title='Event Alignment', x_tit='Event Number', y_tit='Hits per Event @ Pulser Events [%]', y_off=1.3, stats=0, fill_color=821)
+            h.GetYaxis().SetRangeUser(0, 105)
+            self.save_histo(h, 'EventAlignment', show, self.ana_save_dir, draw_opt='hist', prnt=show)
+            for bin_ in xrange(h.FindBin(self.StartEvent), h.GetNbinsX()):
+                if h.GetBinContent(bin_) > 40:
+                    return False
+            return True
+
+        aligned = func() if show else None
+        aligned = self.do_pickle(pickle_path, func, aligned)
+        if not aligned:
+            msg = 'The events of RUN {run} are not aligned!'.format(run=self.RunNumber)
+            print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * '!', msg=msg)
+        return aligned
 
     @staticmethod
     def normalise_histo(histo, to100=False):

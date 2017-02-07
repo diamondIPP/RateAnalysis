@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 from copy import deepcopy
 from time import sleep
 
-from ROOT import TCanvas, TH2F, gROOT, TProfile, TH1F, TLegend, gStyle, kGreen, TText, TCut, TF1, TGraph, TH1I
+from ROOT import TCanvas, TH2F, gROOT, TH1F, TLegend, gStyle, kGreen, TText, TCut, TF1, TGraph, TH1I
 from numpy import array, zeros
 
 from Elementary import Elementary
@@ -62,9 +62,6 @@ class Analysis(Elementary):
             if load_tree:
                 self.StartEvent = self.Cut.CutConfig['EventRange'][0]
                 self.EndEvent = self.Cut.CutConfig['EventRange'][1]
-
-                # alignment
-                self.IsAligned = self.check_alignment(draw=False, save_plot=False)
 
         # pixel TODO: uniform
         if self.DUTType == 'pixel':
@@ -336,39 +333,6 @@ class Analysis(Elementary):
         self.save_plots('HitMap', sub_dir=self.ana_save_dir, ch=None)
         gROOT.SetBatch(1)
 
-    # endregion
-    # ==============================================
-    # region ALIGNMENT
-    def check_alignment(self, binning=5000, draw=True, save_plot=True):
-        pickle_path = 'Configuration/Individual_Configs/Alignment/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run.RunNumber)
-
-        def func():
-            if self.DUTType == 'pad':
-                nbins = self.run.n_entries / binning
-                h = TProfile('h', 'Pulser Rate', nbins, 0, self.run.n_entries)
-                self.tree.Draw('(@col.size()>1)*100:Entry$>>h', 'pulser', 'goff')
-                self.format_histo(h, name='align', title='Event Alignment', x_tit='Event Number', y_tit='Hits per Event @ Pulser Events [%]', y_off=1.3, stats=0, fill_color=821)
-                h.GetYaxis().SetRangeUser(0, 105)
-                if save_plot:
-                    self.RootObjects.append(self.save_histo(h, 'EventAlignment', draw, self.ana_save_dir, draw_opt='hist'))
-                align = self.__check_alignment_histo(h)
-                return align
-            else:
-                return True  # DA: pixel doesn't have pulser, todo make correlations between planes to test misalignment
-
-        aligned = func() if draw else None
-        aligned = self.do_pickle(pickle_path, func, aligned)
-        if not aligned:
-            msg = 'The events of RUN {run} are not aligned!'.format(run=self.RunNumber)
-            print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * '!', msg=msg)
-        return aligned
-
-    def __check_alignment_histo(self, histo):
-        h = histo
-        for bin_ in xrange(h.FindBin(self.StartEvent), h.GetNbinsX()):
-            if h.GetBinContent(bin_) > 40:
-                return False
-        return True
     # endregion
 
     # ==============================================
