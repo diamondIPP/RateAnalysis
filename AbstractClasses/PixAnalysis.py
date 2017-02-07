@@ -21,7 +21,7 @@ __author__ = 'DA'
 # ==============================================
 # MAIN CLASS
 # ==============================================
-class SignalPixAnalysis(Analysis):
+class PixAnalysis(Analysis):
     def __init__(self, run, dut=1, verbose=False, binning=10000):
 
         Analysis.__init__(self, run, verbose=verbose, binning=binning)
@@ -675,7 +675,7 @@ if __name__ == '__main__':
     el.print_banner('STARTING PIXEL-ANALYSIS OF RUN {0}'.format(args.run))
     # print command
     print
-    z = SignalPixAnalysis(args.run, args.dut, args.verb)
+    z = PixAnalysis(args.run, args.dut, args.verb)
     z.print_elapsed_time(st, 'Instantiation')
 
     if doAna:
