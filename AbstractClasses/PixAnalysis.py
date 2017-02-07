@@ -99,18 +99,20 @@ class PixAnalysis(Analysis):
         """ Calls do_cut_analysis in the Cut method """
         self.Cut.do_cuts_analysis(do_occupancy, do_pulse_height, normalize_ph_plots)
 
-    def draw_occupancy(self, cut=None, show=True, fid=False, prnt=True, adc=None, roc=None):
+    def draw_occupancy(self, cut=None, show=True, fid=False, prnt=True, adc=None, roc=None, tel_coods=False):
         """ Does the occupancy of a roc with the specified cut and it is saved on the given histogram. If none is given, it will create a histogram and return a deepcopy of it """
         roc = self.Dut if roc is None else roc
         cut_string = self.Cut.generate_special_cut(excluded='fiducial' if not fid else [], cluster=False) if cut is None else TCut(cut)
-        cut_string += 'plane=={d}'.format(d=roc)
+        cut_string += '{p}=={d}'.format(d=roc, p='cluster_plane' if tel_coods else 'plane')
         cut_string += self.Cut.add_adc_cut(adc)
         self.set_root_output(False)
-        h = TH2D('h_oc', 'Occupancy {d}'.format(d=self.DiamondName), *self.Settings['2DBins'])
-        self.tree.Draw('row:col >> {n}'.format(n='h_oc'), cut_string, 'goff')
+        h = TH2D('h_oc', 'Occupancy {d}'.format(d=self.DiamondName), *(self.Settings['2DBins'] if not tel_coods else self.plots.get_global_bins(sqrt(12))))
+        draw_var = 'row:col' if not tel_coods else 'cluster_ypos_tel:cluster_xpos_tel'
+        self.tree.Draw('{d} >> {n}'.format(n='h_oc', d=draw_var), cut_string, 'goff')
         save_name = 'Occupancy{c}'.format(c=make_cut_string(cut, self.Cut.NCuts))
         set_statbox(x=.81, entries=8, opt=1000000010)
-        self.format_histo(h, x_tit='col', y_tit='row', z_tit='Number of Entries', y_off=1.3, z_off=1.5)
+        xtit, ytit = ('col', 'row') if not tel_coods else ('x [cm]', 'y [cm]')
+        self.format_histo(h, x_tit=xtit, y_tit=ytit, z_tit='Number of Entries', y_off=1.3, z_off=1.5)
         self.save_histo(h, save_name, show, rm=.17, lm=.13, draw_opt='colz', prnt=prnt)
         return h
 
