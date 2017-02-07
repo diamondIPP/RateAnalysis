@@ -71,6 +71,7 @@
           <option value="TH1I" />
           <option value="gPad" />
           <option value="kError" />
+          <option value="TH3D" />
         </list>
       </option>
     </inspection_tool>
