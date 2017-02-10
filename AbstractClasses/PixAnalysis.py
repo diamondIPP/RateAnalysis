@@ -5,7 +5,7 @@ from ROOT import TH2D, TH1D, gROOT, TFormula, TCut, TH1I, TProfile, THStack, TPr
 from TelescopeAnalysis import Analysis
 from CurrentInfo import Currents
 from argparse import ArgumentParser
-from time import time
+from time import time, sleep
 from copy import deepcopy
 from CutPix import CutPix
 from Elementary import Elementary
@@ -111,6 +111,40 @@ class PixAnalysis(Analysis):
         xtit, ytit = ('col', 'row') if not tel_coods else ('x [cm]', 'y [cm]')
         self.format_histo(h, x_tit=xtit, y_tit=ytit, z_tit='Number of Entries', y_off=1.3, z_off=1.5)
         self.save_histo(h, save_name, show, rm=.17, lm=.13, draw_opt='colz', prnt=prnt)
+        return h
+
+    def draw_time_occupancy(self, cut=None, roc=None, fid=False, binning=10000):
+        self.set_bin_size(binning)
+        roc = self.Dut if roc is None else roc
+        cut_string = self.Cut.generate_special_cut(excluded='fiducial' if not fid else [], cluster=False) if cut is None else TCut(cut)
+        cut_string += 'plane=={r}'.format(r=roc)
+        h = TH3D('h_to', 'to', len(self.time_binning) - 1, array([t / 1000. for t in self.time_binning], 'd'), *self.plots.get_arrays(self.Settings['2DBins']))
+        self.tree.Draw('row:col:time/1000.>>h_to', cut_string, 'goff')
+        self.format_histo(h, y_tit='col', z_tit='row')
+        gStyle.SetNumberContours(20)
+        titles = ['Mean X', 'Sigma X', 'Mean Y', 'Sigma Y']
+        graphs = [self.make_tgrapherrors('g_to{i}'.format(i=i), titles[i]) for i in xrange(4)]
+        for ibin in xrange(h.GetNbinsX() - 1):
+            h.GetXaxis().SetRange(ibin, ibin + 1)
+            p = h.Project3D('zy')
+            self.draw_histo(p, draw_opt='colz') if not ibin else p.Draw('samecolz')
+            c = gROOT.GetListOfCanvases()[-1]
+            c.Update()
+            c.Modified()
+            sleep(.5)
+        for ibin in xrange(h.GetNbinsX() - 1):
+            t = h.GetXaxis().GetBinCenter(ibin)
+            h.GetXaxis().SetRange(ibin, ibin + 1)
+            p = h.Project3D('zy')
+            px = p.ProjectionX()
+            py = p.ProjectionY()
+            fits = [px.Fit('gaus', 'qs', '', .5, 25), py.Fit('gaus', 'qs', '', 15, 60)]
+            for i in xrange(4):
+                graphs[i].SetPoint(ibin, t, fits[i % 2].Parameter(1 + i % 2))
+                graphs[i].SetPointError(ibin, 0, fits[i % 2].ParError(1 + i % 2))
+        for i in xrange(4):
+            set_time_axis(graphs[i], off=self.run.startTime / 1000 + 3600)
+            self.draw_histo(graphs[i], draw_opt='alp')
         return h
 
     def draw_pulse_height_vs_event(self, cut=None, show=True, adc=False):
