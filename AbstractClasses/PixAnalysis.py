@@ -65,6 +65,9 @@ class PixAnalysis(Analysis):
             for obj in lst:
                 self.del_rootobj(obj)
 
+    def draw_current(self, relative_time=True):
+        self.Currents.draw_indep_graphs(rel_time=relative_time)
+
     def load_diamond_name(self, dut):
         assert dut in [1, 2, 3], 'You have to choose either dut 1, 2 or 3'
         return self.run.diamond_names[dut - 1]
@@ -548,9 +551,6 @@ class PixAnalysis(Analysis):
             log_warning('Large fluctuations in correlation!')
 
         return mean_ > .3
-
-    def draw_current(self, relative_time=True):
-        self.Currents.draw_indep_graphs(rel_time=relative_time)
 
     # ==========================================================================
 
