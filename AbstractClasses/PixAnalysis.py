@@ -68,6 +68,8 @@ class PixAnalysis(Analysis):
     def draw_current(self, relative_time=True):
         self.Currents.draw_indep_graphs(rel_time=relative_time)
 
+    # ==========================================================================
+    # region INIT
     def load_diamond_name(self, dut):
         assert dut in [1, 2, 3], 'You have to choose either dut 1, 2 or 3'
         return self.run.diamond_names[dut - 1]
@@ -77,18 +79,7 @@ class PixAnalysis(Analysis):
             return self.ana_config_parser.getint('BASIC', 'n_rocs')
         else:
             return 7
-
-    def print_info(self, event):
-        # self.log_info('Event {e}:'.format(e=event))
-        self.tree.GetEntry(event)
-        adc = [self.tree.adc[i] for i, j in enumerate(self.tree.plane) if (j == 4 and ord(self.tree.n_tracks) == 1)]
-        cluster_charge = [self.tree.cluster_charge[i] for i, j in enumerate(self.tree.cluster_plane) if (j == 4 and ord(self.tree.n_tracks) == 1)]
-        if adc:
-            print event, adc, cluster_charge
-
-    def print_infos(self, i, j):
-        for n in xrange(i, j):
-            self.print_info(n)
+    # endregion
 
     def do_analysis(self, do_cut_dist=False, do_res_ana=False, do_cut_ana=False, do_occupancy=True, do_pulse_height=True):
         """ Does automatic analysis with the selected options """
