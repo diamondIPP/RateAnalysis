@@ -484,7 +484,7 @@ class PixAnalysis(Analysis):
         h = deepcopy(seed) if h is None else h
         n = seed.GetEntries()
         h.Reset()
-        thresholds = self.get_thresholds(cols=col, vcal=False)
+        thresholds = self.get_thresholds(cols=col, vcal=False).values()
         for _ in xrange(int(n)):
             v = gRandom.Landau(m, s)
             threshold = thresholds[int(gRandom.Rndm() * len(thresholds))]
@@ -524,14 +524,14 @@ class PixAnalysis(Analysis):
             if i % 100 == 0 and save:
                 self.save_canvas(c, name='l{i:04d}'.format(i=i), show=False, print_names=False)
 
-    def draw_correlation(self, plane1=1, plane2=None, mode='y', chi2=1, show=True):
+    def draw_correlation(self, plane1=1, plane2=None, mode='y', chi2=1, show=True, start=0, evts=1000000000):
         plane2 = self.Dut if plane2 is None else plane2
         h = TH2D('h_pc', 'Plane Correlation', *self.plots.get_global_bins(mode=mode, res=sqrt(12)))
         draw_var = 'cluster_{m}pos_tel'.format(m=mode)
         cut_string = 'clusters_per_plane[{p1}]==1&&clusters_per_plane[{p2}]==1&&cluster_plane=={{p}}'.format(p1=plane1, p2=plane2)
-        n = self.tree.Draw(draw_var, TCut(cut_string.format(p=plane1)) + TCut(self.Cut.generate_chi2(mode, chi2)), 'goff')
+        n = self.tree.Draw(draw_var, TCut(cut_string.format(p=plane1)) + TCut(self.Cut.generate_chi2(mode, chi2)), 'goff', evts, start)
         x1 = [self.tree.GetV1()[i] for i in xrange(n)]
-        n = self.tree.Draw(draw_var, TCut(cut_string.format(p=plane2)) + TCut(self.Cut.generate_chi2(mode, chi2)), 'goff')
+        n = self.tree.Draw(draw_var, TCut(cut_string.format(p=plane2)) + TCut(self.Cut.generate_chi2(mode, chi2)), 'goff', evts, start)
         x2 = [self.tree.GetV1()[i] for i in xrange(n)]
         for i, j in zip(x1, x2):
             h.Fill(i, j)
