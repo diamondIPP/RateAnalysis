@@ -226,8 +226,10 @@ if __name__ == '__main__':
     except (IndexError, ValueError):
         if argv[1].endswith('Tracks.root'):
             run = int(argv[1].split('/')[-1].strip('_withTracks.roottest'))
-        else:
+        elif 'Tracked' in argv[1]:
             run = int(argv[1].split('/')[-1].strip('.root').strip('TrackedRun'))
+        else:
+            run = None
 
     run = Run(run, test_campaign=tc, load_tree=False)
 
