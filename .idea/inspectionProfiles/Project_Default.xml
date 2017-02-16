@@ -72,6 +72,8 @@
           <option value="gPad" />
           <option value="kError" />
           <option value="TH3D" />
+          <option value="TTree" />
+          <option value="vector" />
         </list>
       </option>
     </inspection_tool>
