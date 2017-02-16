@@ -14,6 +14,7 @@ from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 class PixAlignment:
     def __init__(self, converter):
         # main
+        self.StartTime = time()
         self.Converter = converter
         self.Run = converter.Run
         self.NDutPlanes = 4
@@ -37,6 +38,7 @@ class PixAlignment:
 
     def __del__(self):
         self.InFile.Close()
+        print_elapsed_time(self.StartTime, 'Pixel Alignment')
 
     @staticmethod
     def init_branches():
