@@ -328,8 +328,8 @@ def make_cut_string(cut, n):
 
 class FitRes:
     def __init__(self, fit_obj=None):
-        self.Pars = list(fit_obj.Parameters()) if fit_obj is not None else [None]
-        self.Errors = list(fit_obj.Errors()) if fit_obj is not None else [None]
+        self.Pars = list(fit_obj.Parameters()) if (fit_obj is not None and len(fit_obj.Parameters()) > 0) else [None]
+        self.Errors = list(fit_obj.Errors()) if (fit_obj is not None and len(fit_obj.Parameters()) > 0) else [None]
 
     def Parameter(self, arg):
         return self.Pars[arg]
