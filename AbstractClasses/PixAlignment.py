@@ -48,6 +48,7 @@ class PixAlignment:
         dic['row'] = vector('unsigned short')()
         dic['adc'] = vector('short')()
         dic['charge'] = vector('unsigned int')()
+        dic['trigger_phase'] = vector('unsigned short')()
         return dic
 
     def load_rows(self):
