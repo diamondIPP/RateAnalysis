@@ -104,6 +104,78 @@ class PixAlignment:
             self.Run.log_info('Everything is nicely aligned =)')
         return misalignments < .05
 
+    def find_offsets(self):
+        t = self.Run.log_info('Scanning for precise offsets ... ', next_line=False)
+        offsets = OrderedDict()
+        n = 50
+        thresh = .5
+        # create n lists for events with -1, 0 and +1 offset
+        n_offs = 2
+        offs = [0] + [v for v in xrange(-n_offs, n_offs + 1) if v]
+        xts = {off: OrderedDict() for off in offs}
+        yts = {off: [] for off in offs}
+        offset = 0
+        checked = 3 * n
+        for ev, row in self.Row1.iteritems():
+            ev += offset
+            for off in offs:
+                this_ev = ev + off
+                if this_ev in self.Row2:
+                    xts[off][ev] = row
+                    yts[off].append(self.Row2[this_ev])
+            # check correlation of zero offset
+            if len(yts[0]) % n == 0 and len(yts[0]) > checked:
+                corr = corrcoef(xts[0].values()[(-2 * n):-n], yts[0][(-2 * n):-n])[0][1]
+                # print len(yts[0]), xts[0].keys()[-2 * n], xts[0].keys()[-n], corr
+                checked = len(yts[0])
+                found_offset = False
+                if corr < thresh:
+                    # find exact event -> shift through three n buckets and take the last event if the correlation starts dropping
+                    correlations = {xts[0].keys()[-n * 3 + k]: corrcoef(xts[0].values()[(-n * 4 + k):(-n * 3 + k)], yts[0][(-n * 4 + k):(-n * 3 + k)])[0][1] for k in xrange(2 * n)}
+                    correlations = OrderedDict(sorted(correlations.iteritems()))
+                    mean_ = mean(correlations.values()[:n])
+                    mean_ = mean(correlations.values()[n:(3 * n / 2)]) if mean_ < thresh else mean_
+                    off_event = correlations.keys()[correlations.values().index(filter(lambda x: x < mean_ - .1, correlations.itervalues())[0]) - 1]
+                    # print off_event
+                    # find offset
+                    corrs = {corrcoef(xts[off].values()[(-3 * n / 2):], yts[off][(-3 * n / 2):])[0][1]: off for off in offs if off}
+                    off, corr = corrs[max(corrs)], max(corrs)
+                    if corr > thresh - .1:
+                        offset += off
+                        offsets[off_event] = off
+                        # log_message('Found an offset of {v} at event {e}'.format(v=offsets[off_event], e=off_event))
+                        found_offset = True
+                        checked += n
+                    if not found_offset:
+                        off = self.find_detailed_offset(xts, yts, n, thresh)
+                        if off is None:
+                            log_critical('Something went wrong during finding the alignment offsets...')
+                        else:
+                            offset += off
+                            checked += n
+                            found_offset = True
+                # reset old lists for speed improvements
+                if len(yts[0]) >= 20 * n and not found_offset:
+                    xts = {off: OrderedDict(sorted({ev: val for ev, val in xts[off].items()[(-3 * n):]}.iteritems())) for off in offs}
+                    yts = {off: yts[off][(-3 * n):] for off in offs}
+                    checked = 1
+        self.Run.add_info(t)
+        log_message('Found {n} offsets'.format(n=len(offsets)))
+        return offsets
+
+    @staticmethod
+    def find_detailed_offset(x, y, n, thresh):
+        # todo improve this... and maybe use it in general
+        x_off = {off: lst.values()[(-3 * n / 2):] for off, lst in x.iteritems()}
+        y_off = {off: lst[(-3 * n / 2):] for off, lst in y.iteritems()}
+        corrs = {off: [corrcoef(x_off[off][i:(i + n / 5)], y_off[off][i:(i + n / 5)])[0][1] for i in xrange(0, n, n / 5)] for off in x_off.iterkeys()}
+        offs = {lst.index(corr): off for off, lst in corrs.iteritems() for corr in lst if corr > thresh}
+        if not len(offs):
+            for off, corr in corrs.iteritems():
+                print off, corr
+            return
+        return offs[max(offs)]
+
     def get_next_event(self):
         if self.AtEntry == self.NEntries:
             return False
