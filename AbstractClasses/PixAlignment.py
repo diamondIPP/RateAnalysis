@@ -17,6 +17,9 @@ class PixAlignment:
         self.Converter = converter
         self.Run = converter.Run
         self.NDutPlanes = 4
+        # progress bar
+        self.Widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
+        self.ProgressBar = None
         # files/trees
         self.InFile = TFile(converter.get_root_file_path())
         self.InTree = self.InFile.Get(self.Run.treename)
@@ -31,16 +34,9 @@ class PixAlignment:
         self.AtEntry = 0
         # branches
         self.Branches = self.init_branches()
-        # progress bar
-        self.Widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
-        self.ProgressBar = None
 
     def __del__(self):
         self.InFile.Close()
-
-    def start_pbar(self, n):
-        self.ProgressBar = ProgressBar(widgets=self.Widgets, maxval=n)
-        self.ProgressBar.start()
 
     @staticmethod
     def init_branches():
@@ -137,3 +133,6 @@ class PixAlignment:
                 self.Branches['charge'].push_back(i)
             self.NewTree.Fill()
         self.save_tree()
+    def start_pbar(self, n):
+        self.ProgressBar = ProgressBar(widgets=self.Widgets, maxval=n)
+        self.ProgressBar.start()
