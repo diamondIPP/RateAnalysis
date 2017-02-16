@@ -52,6 +52,7 @@ class PixAlignment:
         return dic
 
     def load_rows(self):
+        t = self.Run.log_info('Loading information from tree ... ', next_line=False)
         self.InTree.SetEstimate(self.InTree.Draw('plane', '', 'goff'))
         x, y = OrderedDict(), OrderedDict()
         p1, p2 = 2, 4
@@ -68,33 +69,39 @@ class PixAlignment:
             if plane.count(p2) == 1:
                 y[ev] = row[plane.index(p2)]
             n_ev += size
+        self.Run.add_info(t)
         self.Row1 = x
         self.Row2 = y
 
     def check_alignment(self):
+        t = self.Run.log_info('Checking aligment ... ', next_line=False)
         xt, yt = [], []
+        n = 20
         for ev, row in self.Row1.iteritems():
             if ev in self.Row2:
                 xt.append(row)
                 yt.append(self.Row2[ev])
-        correlations = [corrcoef(xt[i:100 + i], yt[i:100 + i])[0][1] for i in xrange(int(ceil(len(xt) / 100.)))]
-        h = TH1F('h_ee', 'Event Alignment', len(correlations) / 2, 0, 1)
+        correlations = [corrcoef(xt[j:(j + n)], yt[j:(j + n)])[0][1] for j in xrange(0, len(xt), n)]
+        h = TH1F('h_ee', 'Event Alignment', int(sqrt(len(correlations))), 0, 1)
         for cor in correlations:
             h.Fill(cor)
         set_root_output(0)
         fit = h.Fit('gaus', 'qs', '', .6, 1)
         self.Run.format_histo(h, x_tit='Correlation Factor', y_tit='Number of Entries', y_off=1.4, stats=0)
-        self.Run.save_histo(h, 'EventAlignmentControl', show=True, lm=.13)
-        mean, sigma = fit.Parameter(1), fit.Parameter(2)
-        low_events = [cor for cor in correlations if cor < mean - 5 * sigma]
+        self.Run.save_histo(h, 'EventAlignmentControl', show=False, lm=.13, prnt=False)
+        mean_, sigma = fit.Parameter(1), fit.Parameter(2)
+        low_events = [cor for cor in correlations if cor < mean_ - 5 * sigma]
         misalignments = len(low_events) / float(len(correlations))
+        self.Run.add_info(t)
         if misalignments > .02:
-            log_message('found {v:5.2f}% misalignet events'.format(v=misalignments * 100))
+            log_message('found {v:5.2f} % misalignet events'.format(v=misalignments * 100))
             return False
         low_events = [cor for cor in correlations if cor < .3]
         misalignments = len(low_events) / float(len(correlations))
         if misalignments > .05:
-            log_message('found {v:5.2f}% misalignet events'.format(v=misalignments * 100))
+            log_message('found {v:5.2f} % misalignet events'.format(v=misalignments * 100))
+        else:
+            self.Run.log_info('Everything is nicely aligned =)')
         return misalignments < .05
 
     def get_next_event(self):
