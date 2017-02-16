@@ -5,7 +5,7 @@
 
 from datetime import datetime
 from termcolor import colored
-from ROOT import gStyle
+from ROOT import gStyle, gROOT
 from numpy import sqrt
 from os import makedirs
 from os import path as pth
@@ -28,6 +28,15 @@ def log_critical(msg):
 def log_message(msg, overlay=False):
     t = datetime.now().strftime('%H:%M:%S')
     print '{ov}{t} --> {msg}{end}'.format(t=t, msg=msg, head=colored('WARNING:', 'red'), ov='\033[1A\r' if overlay else '', end=' ' * 20 if overlay else '')
+
+
+def set_root_output(status=True):
+    if status:
+        gROOT.SetBatch(0)
+        gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
+    else:
+        gROOT.SetBatch(1)
+        gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
 
 
 def scale_margins(gr1, gr2):
