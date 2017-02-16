@@ -3,12 +3,13 @@
 # created on May 19th 2016 by M. Reichmann
 # --------------------------------------------------------
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from termcolor import colored
 from ROOT import gStyle, gROOT
 from numpy import sqrt
 from os import makedirs
 from os import path as pth
+from time import time
 
 
 # ==============================================
@@ -268,6 +269,13 @@ def print_banner(msg, symbol='='):
 
 def print_small_banner(msg, symbol='-'):
     print '\n{delim}\n{msg}\n'.format(delim=len(str(msg)) * symbol, msg=msg)
+
+
+def print_elapsed_time(start, what='This', show=True):
+    t = '{d}'.format(d=timedelta(seconds=time() - start)).split('.')
+    string = 'Elapsed time for {w}: {d1}.{m:2d}'.format(d1=t[0], m=int(round(int(t[1][:3])) / 10.), w=what)
+    print_banner(string) if show else do_nothing()
+    return string
 
 
 def has_bit(num, bit):
