@@ -6,8 +6,8 @@
 
 from ROOT import TFile, TH1F, vector
 from collections import OrderedDict, Counter
-from numpy import corrcoef, ceil
-from Utils import set_root_output, log_message, print_banner
+from numpy import corrcoef, mean, sqrt
+from Utils import set_root_output, log_message, log_critical, time, print_elapsed_time
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 
 
