@@ -244,7 +244,7 @@ class Cut(Elementary):
         return string if quantile > 0 else ''
 
     def generate_track_angle(self, mode='x'):
-        cut_variable = '{t}_{m}'.format(t='slope' if self.DUTType == 'pad' else 'angle', m=mode)
+        cut_variable = '{t}_{m}'.format(t='slope' if self.analysis.run.has_branch('slope') else 'angle', m=mode)
         angles = self.calc_angle(mode)
         string = '{v}>{min}&&{v}<{max}'.format(v=cut_variable, min=angles[mode][0], max=angles[mode][1])
         return string if self.CutConfig['track_angle'] > 0 else ''
