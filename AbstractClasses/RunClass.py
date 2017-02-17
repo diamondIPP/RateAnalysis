@@ -296,7 +296,6 @@ class Run(Elementary):
         print dic
 
     def calculate_flux(self):
-        self.verbose_print('Calculate rate from mask file:\n\t' + self.RunInfo['maskfile'])
         mask_file_path = self.maskfilepath + '/' + self.RunInfo['maskfile']
         maskdata = {}
         for plane in self.trigger_planes:
@@ -441,11 +440,13 @@ class Run(Elementary):
         entries = self.tree.Draw('Entry$:time', '', 'goff')
         time = [self.tree.GetV2()[i] for i in xrange(entries)]
         self.fill_empty_time_entries(time)
-        if abs((time[-1] - time[0]) / 1000 - self.duration.seconds) > 120:
+        t = self.log_info('Checking for time jumps ... ', next_line=False)
+        if any(time[i + 100] < time[i] for i in xrange(0, len(time) - 100, 100)):
             self.log_warning('Need to correct timing vector\n')
             print [i / 1000 for i in time[:4]], time[-1] / 1000
             print (time[-1] - time[0]) / 1000, self.duration.seconds, abs((time[-1] - time[0]) / 1000 - self.duration.seconds)
             time = self.__correct_time(entries)
+        self.add_info(t)
         return time
 
     @staticmethod
