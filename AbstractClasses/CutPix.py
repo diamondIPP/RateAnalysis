@@ -41,6 +41,7 @@ class CutPix(Cut):
         self.CutStrings['fiducial'] += self.generate_fiducial()
         self.CutStrings['rhit'] += self.generate_rhit()
         self.CutStrings['trigger_phase'] += self.generate_trigger_phase()
+        # self.CutStrings['alignment'] += self.generate_alignment()
 
     def generate_hitmap_cutstrings(self):
         self.set_hitmap_cuts()
@@ -167,6 +168,36 @@ class CutPix(Cut):
         self.EasyCutStrings['alignment'] = 'AlignOn'
         return cut_string.GetTitle()
 
+    def find_misaligments(self):
+        picklepath = self.make_pickle_path('Cuts', 'Alignment', run=self.RunNumber, suf=self.analysis.Dut)
+
+        def func():
+            n = 1000
+            start = self.log_info('Generating aligment cut ... ', next_line=False)
+            g = self.analysis.draw_alignment(show=False, binning=n, vs_time=False)
+            h = TH1F('h_p', 'Pull', g.GetN() / 3, 0, 1)
+            for i in xrange(g.GetN()):
+                h.Fill(g.GetY()[i])
+            max_x = h.GetBinCenter(h.GetMaximumBin())
+            fit = h.Fit('gaus', 'qs', '', max_x - .2, max_x + .2)
+            mean_, sigma = fit.Parameter(1), fit.Parameter(2)
+            mis_events = {'begin': [], 'end': []}
+            cut = mean_ - 5 * sigma
+            min_events = OrderedDict(sorted({i: int(g.GetX()[i]) for i in xrange(g.GetN()) if g.GetY()[i] < cut}.iteritems()))
+            mis_events['begin'].append(min_events.values()[0] - n)
+            n *= 2
+            for i in xrange(len(min_events) - 1):
+                if not min_events.keys()[i] == min_events.keys()[i + 1] - 1:
+                    mis_events['end'].append(min_events.values()[i] + n)
+                    mis_events['begin'].append(min_events.values()[i + 1] - n)
+            mis_events['end'].append(min_events.values()[-1] + n)
+            print mis_events
+            self.draw_histo(h)
+            self.add_info(start)
+            return mis_events
+
+        events = self.do_pickle(picklepath, func)
+        return events
 
     def generate_masks(self, cluster=True):
         # t = self.log_info('Generating mask cuts ...', False)
