@@ -32,7 +32,7 @@ class PixAlignment:
         # info
         self.Row1 = None
         self.Row2 = None
-        self.load_rows()
+        self.load_variables()
         # alignment
         self.NEntries = int(self.InTree.GetEntries())
         self.AtEntry = 0
@@ -52,24 +52,42 @@ class PixAlignment:
         dic['trigger_phase'] = vector('unsigned short')()
         return dic
 
-    def load_rows(self):
+    def load_variables(self):
         t = self.Run.log_info('Loading information from tree ... ', next_line=False)
         self.InTree.SetEstimate(self.InTree.Draw('plane', '', 'goff'))
         x, y = OrderedDict(), OrderedDict()
         p1, p2 = 2, 4
-        n = self.InTree.Draw('plane:row:event_number', '', 'goff')
-        planes = [int(self.InTree.GetV1()[i]) for i in xrange(n)]
-        rows = [int(self.InTree.GetV2()[i]) for i in xrange(n)]
-        nrs = Counter([int(self.InTree.GetV3()[i]) for i in xrange(n)])
+        dic = {name: None for name in self.BranchLists if name != 'trigger_phase'}
+        n = self.InTree.Draw('plane:row:col:event_number', '', 'goff')
+        dic['plane'] = [int(self.InTree.GetV1()[i]) for i in xrange(n)]
+        dic['row'] = [int(self.InTree.GetV2()[i]) for i in xrange(n)]
+        dic['col'] = [int(self.InTree.GetV3()[i]) for i in xrange(n)]
+        nrs = Counter([int(self.InTree.GetV4()[i]) for i in xrange(n)])
+        n = self.InTree.Draw('adc:charge', '', 'goff')
+        dic['adc'] = [int(self.InTree.GetV1()[i]) for i in xrange(n)]
+        dic['charge'] = [int(self.InTree.GetV2()[i]) for i in xrange(n)]
+        n = self.InTree.Draw('trigger_phase', '', 'goff')
+        trigger_phase = [int(self.InTree.GetV1()[i]) for i in xrange(n)]
         n_ev = 0
+        at_event = 0
         for ev, size in sorted(nrs.iteritems()):
-            plane = planes[n_ev:size + n_ev]
-            row = rows[n_ev:size + n_ev]
+            # account for events that have no pixel information
+            while at_event != ev:
+                for name in dic.iterkeys():
+                    self.BranchLists[name].append([])
+                self.BranchLists['trigger_phase'].append(trigger_phase[(2 * at_event):(2 * at_event + 2)])
+                at_event += 1
+            for name, lst in dic.iteritems():
+                self.BranchLists[name].append(lst[n_ev:size + n_ev])
+            self.BranchLists['trigger_phase'].append(trigger_phase[(2 * ev):(2 * ev + 2)])
+            plane = dic['plane'][n_ev:size + n_ev]
+            row = dic['row'][n_ev:size + n_ev]
             if plane.count(p1) == 1:
                 x[ev] = row[plane.index(p1)]
             if plane.count(p2) == 1:
                 y[ev] = row[plane.index(p2)]
             n_ev += size
+            at_event += 1
         self.Run.add_info(t)
         self.Row1 = x
         self.Row2 = y
