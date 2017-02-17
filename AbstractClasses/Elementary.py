@@ -3,7 +3,6 @@ import re
 from copy import deepcopy
 from glob import glob
 from shutil import copyfile
-from time import time
 from ConfigParser import ConfigParser
 from json import loads
 from Utils import *
@@ -216,7 +215,7 @@ class Elementary(object):
                 print
             return t1
 
-    def add_info(self, msg, t=None):
+    def add_info(self, t, msg='Done'):
         if self.verbose:
             print '{m} ({t:2.2f} s)'.format(m=msg, t=time() - t)
 
