@@ -63,8 +63,11 @@ class Plots(Elementary):
             'rhit_1Dmax': 10
         }
         self.Settings['vcalBins'] = [int((1350 * 47.5 - 427.4) / 500), -100, 1250]
+        self.Settings['globalCoods'] = [-.5, .52, -.5, .52]
         self.Settings['phBins'] = [self.Settings['ph1Dbins'], self.Settings['ph1Dmin'], self.Settings['ph1Dmax']]
         self.Settings['2DBins'] = [self.Settings['nCols'], - .5, self.Settings['nCols'] - .5, self.Settings['nRows'], - .5, self.Settings['nRows'] - .5]
+        self.Settings['2DBinsX'] = [self.Settings['nCols'], - .5, self.Settings['nCols'] - .5] * 2
+        self.Settings['2DBinsY'] = [self.Settings['nRows'], - .5, self.Settings['nRows'] - .5] * 2
         self.Settings['event_bins'] = int(ceil(float(self.num_entries) / 5000)) if self.num_entries <= 100000 else \
             int(ceil(float(self.num_entries)/100)) if self.num_entries <= 500000 else int(ceil(float(self.num_entries) / self.Settings['nEventsAv']))
         self.Settings['deltaX'] = float(self.Settings['xmax'] - self.Settings['xmin']) / self.Settings['nBinsX']
