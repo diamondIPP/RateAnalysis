@@ -1,20 +1,25 @@
-# ==============================================
-# IMPORTS
-# ==============================================
-from ROOT import TH2D, TH1D, gROOT, TFormula, TCut, TH1I, TProfile, THStack, TProfile2D, TF1, TGraph, TPie, gRandom, TH3D
-from TelescopeAnalysis import Analysis
-from CurrentInfo import Currents
+#!/usr/bin/env python
+# --------------------------------------------------------
+#       Main class for Rate Pixel Analysis
+# created some time in 2016 by D. Sanz (sandiego@phys.ethz.ch), maintained by M. Reichmann (remichae@phys.ethz.ch)
+# --------------------------------------------------------
+
+from ROOT import TH2D, TH1D, gROOT, TFormula, TCut, TH1I, TProfile, THStack, TProfile2D, TF1, TGraph, TPie, gRandom, TH3D, TMultiGraph
 from argparse import ArgumentParser
-from time import time, sleep
+from collections import OrderedDict, Counter
 from copy import deepcopy
+from math import ceil
+from numpy import array, mean, corrcoef
+from os.path import join as joinpath
+from time import sleep
+
+from CurrentInfo import Currents
 from CutPix import CutPix
 from Elementary import Elementary
-from numpy import array, mean
+from TelescopeAnalysis import Analysis
 from Utils import *
-from os.path import join as joinpath
-from collections import OrderedDict
 
-__author__ = 'DA'
+__author__ = 'DA & Micha'
 
 
 # ==============================================
