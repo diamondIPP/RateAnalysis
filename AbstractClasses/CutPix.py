@@ -40,6 +40,7 @@ class CutPix(Cut):
         self.CutStrings['masks'] += self.generate_masks()
         self.CutStrings['fiducial'] += self.generate_fiducial()
         self.CutStrings['rhit'] += self.generate_rhit()
+        self.CutStrings['trigger_phase'] += self.generate_trigger_phase()
 
     def generate_hitmap_cutstrings(self):
         self.set_hitmap_cuts()
@@ -80,6 +81,7 @@ class CutPix(Cut):
     def load_pixel_config(self):
         """ Loads the pixel configuration parameters from the config file. """
         self.CutConfig['rhit'] = self.get_config('r_hit')
+        self.CutConfig['trigPhase'] = loads(self.get_config('trigger_phase'))[str(self.Dut)]
         self.CutConfig['MaskRows'] = self.load_mask('MaskRows')
         self.CutConfig['MaskCols'] = self.load_mask('MaskCols')
         self.CutConfig['MaskPixels'] = self.load_mask('MaskPixels')
@@ -138,22 +140,33 @@ class CutPix(Cut):
         string = '(10000*sqrt((residuals_x[{n}])**2+(residuals_y[{n}])**2))<{val}'.format(n=self.Dut, val=value)
         return string
 
-    def generate_fiducial(self, name='fid', cluster=True):
-        # xy = self.CutConfig['FidRegion']
-        # cut = None
-        # if xy is not None:
-        #     d = .5
-        #     x = array([xy[0] - d, xy[0] - d, xy[1] + d, xy[1] + d, xy[0] - d], 'd')
-        #     y = array([xy[2] - d, xy[3] + d, xy[3] + d, xy[2] - d, xy[2] - d], 'd')
-        #     cut = TCutG(name, 5, x, y)
-        #     cut.SetVarX('cluster_col'.format(n=self.Dut) if cluster else 'col')
-        #     cut.SetVarY('cluster_row'.format(n=self.Dut) if cluster else 'row')
-        #     self.ROOTObjects.append(cut)
-        #     cut.SetLineColor(kRed)
-        #     cut.SetLineWidth(3*3)
-        # cut_string = '!(!{n}&&{p}==4)'.format(n=cut.GetName(), p='plane' if not cluster else 'cluster_plane')
-        # return TCut(cut_string if cut is not None else '')
-        return TCut('')
+    def generate_trigger_phase(self):
+        mi, ma = self.CutConfig['trigPhase']
+        return 'trigger_phase[1]>={min}&&trigger_phase[1]<={max}'.format(min=mi, max=ma)
+
+    def generate_fiducial(self, name='fid'):
+        xy = self.CutConfig['FidRegion']
+        if xy is not None:
+            d = 0
+            x = array([xy[0] - d, xy[0] - d, xy[1] + d, xy[1] + d, xy[0] - d], 'd')
+            y = array([xy[2] - d, xy[3] + d, xy[3] + d, xy[2] - d, xy[2] - d], 'd')
+            cut = TCutG(name, 5, x, y)
+            cut.SetVarX('diam{n}_track_x'.format(n=self.Dut - 3))
+            cut.SetVarY('diam{n}_track_y'.format(n=self.Dut - 3))
+            self.ROOTObjects.append(cut)
+            cut.SetLineColor(kRed)
+            cut.SetLineWidth(3)
+        return name
+
+    def generate_alignment(self):
+        """ This adds the restrictions to the cut string such that misalignments are excluded each time the cut is applied. """
+        interruptions = self.find_misaligments()
+        cut_string = TCut('')
+        for beg, end in zip(interruptions['begin'], interruptions['end']):
+            cut_string += TCut('event_number<{low}||event_number>{high}'.format(low=beg, high=end))
+        self.EasyCutStrings['alignment'] = 'AlignOn'
+        return cut_string.GetTitle()
+
 
     def generate_masks(self, cluster=True):
         # t = self.log_info('Generating mask cuts ...', False)
