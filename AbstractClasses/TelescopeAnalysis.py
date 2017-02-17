@@ -28,7 +28,7 @@ class Analysis(Elementary):
         self.RootObjects = []
 
         # basics
-        self.run = self.init_run(run, load_tree)
+        self.run = self.init_run(run, load_tree, verbose)
         self.run.analysis = self
         self.RunNumber = self.run.RunNumber
         self.RunInfo = deepcopy(self.run.RunInfo)
@@ -76,11 +76,11 @@ class Analysis(Elementary):
     # region INIT
 
     @staticmethod
-    def init_run(run, load_tree):
+    def init_run(run, load_tree, verbose):
         """ create a run instance with either a given run integer or an already give run instance where a the run object is not None """
         if not isinstance(run, Run):
             assert type(run) is int, 'run has to be either a Run instance or an integer run number'
-            return Run(run, 3, load_tree=load_tree)
+            return Run(run, 3, load_tree=load_tree, verbose=verbose)
         else:
             assert run.RunNumber is not None, 'No run selected, choose run.SetRun(run_nr) before you pass the run object'
             return run
