@@ -195,6 +195,8 @@ class PixAlignment:
             return
         return offs[max(offs)]
 
+    # =======================================================
+    # region WRITE TREE
     def get_next_event(self):
         if self.AtEntry == self.NEntries:
             return False
@@ -234,6 +236,8 @@ class PixAlignment:
                 self.Branches['charge'].push_back(i)
             self.NewTree.Fill()
         self.save_tree()
+    # endregion
+
     def start_pbar(self, n):
         self.ProgressBar = ProgressBar(widgets=self.Widgets, maxval=n)
         self.ProgressBar.start()
