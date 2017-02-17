@@ -63,8 +63,8 @@ class Converter:
         self.raw_prefix = self.load_prefix()
         self.root_prefix = self.raw_prefix.replace('run', 'test')
 
-        # configuration for pad
-        self.config = self.get_config() if self.Type == 'pad' else None
+        # configuration
+        self.config = self.get_config()
 
         # gui
         if do_gui:
@@ -124,11 +124,10 @@ class Converter:
         config = OrderedDict()
         options = self.RunParser.options('ROOTFILE_GENERATION')
         for opt in options:
-            if opt.endswith('_range') or opt.endswith('_region'):
+            if any(opt.endswith(ending) for ending in ['_range', '_region', '_range_drs4']):
                 config[opt] = json.loads(self.RunParser.get('ROOTFILE_GENERATION', opt))
-            elif opt not in ['pulser_range_drs4', 'excluded_runs']:
+            elif opt not in ['excluded_runs']:
                 config[opt] = self.RunParser.getint('ROOTFILE_GENERATION', opt)
-        config['pulser_range_drs4'] = json.loads(self.RunParser.get('ROOTFILE_GENERATION', 'pulser_range_drs4'))
         return config
 
     def get_run_info(self, run_number):
@@ -209,8 +208,7 @@ class Converter:
             conf_string = '-c {eudaq}/conf/{file}'.format(eudaq=self.EudaqDir, file=self.converter_config_path)
             tree_string = '-t {tree}'.format(tree=self.ConverterTree)
             converter_cmd = '{eudaq}/bin/Converter.exe {tree} {conf} {raw}'.format(eudaq=self.EudaqDir, raw=raw_file_path, tree=tree_string, conf=conf_string)
-            if self.Type == 'pad':
-                self.__set_converter_configfile(run_infos)
+            self.__set_converter_configfile(run_infos)
             print_banner('START CONVERTING RAW FILE FOR RUN {0}'.format(run_number))
             print converter_cmd
             system(converter_cmd)
@@ -286,8 +284,9 @@ class Converter:
         print conf_file
         parser.read(conf_file)
         converter_section = 'Converter.{0}'.format(self.ConverterTree)
-        parser.set(converter_section, 'polarities', self.load_polarities(run_infos))
-        parser.set(converter_section, 'pulser_polarities', self.load_polarities(run_infos))
+        if self.Type == 'pad':
+            parser.set(converter_section, 'polarities', self.load_polarities(run_infos))
+            parser.set(converter_section, 'pulser_polarities', self.load_polarities(run_infos))
 
         # remove unset ranges and regions
         new_options = self.RunParser.options('ROOTFILE_GENERATION')
