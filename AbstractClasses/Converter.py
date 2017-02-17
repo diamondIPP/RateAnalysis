@@ -421,16 +421,10 @@ class Converter:
     def check_alignment(self, tree, binning=5000):
 
         n_entries = tree.GetEntries()
-        is_aligned = False
-        if self.Type == 'pad':
-            nbins = n_entries / binning
-            h = TProfile('h', 'Pulser Rate', nbins, 0, n_entries)
-            tree.Draw('(@col.size()>1)*100:Entry$>>h', 'pulser', 'goff')
-            is_aligned = self.__check_alignment_histo(h)
-        else:
-            # todo put some function for the pixel here!
-            pass
-
+        nbins = n_entries / binning
+        h = TProfile('h', 'Pulser Rate', nbins, 0, n_entries)
+        tree.Draw('(@col.size()>1)*100:Entry$>>h', 'pulser', 'goff')
+        is_aligned = self.__check_alignment_histo(h)
         if not is_aligned:
             log_warning('The events of RUN {run} are not aligned!'.format(run=self.RunNumber))
         return is_aligned
