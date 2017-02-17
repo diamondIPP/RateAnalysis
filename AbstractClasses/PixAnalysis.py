@@ -545,42 +545,48 @@ class PixAnalysis(Analysis):
         self.format_histo(h, x_tit='{m} Plane {p}'.format(p=plane1, m=mode), y_tit='{m} Plane {p}'.format(p=plane2, m=mode), y_off=1.5, stats=0, z_tit='Number of Entries', z_off=1.5)
         self.save_histo(h, 'PlaneCorrelation{m}{p1}{p2}'.format(m=mode.title(), p1=plane1, p2=plane2), show,  lm=.13, draw_opt='colz', rm=.17)
 
-    def check_alignment(self, plane1=1, plane2=None, mode='y', binning=5000, chi2=1, show=True):
+    def draw_alignment(self, plane1=2, plane2=None, mode='y', binning=5000, chi2=1, show=True, vs_time=True):
         plane2 = self.Dut if plane2 is None else plane2
-        picklepath = self.make_pickle_path('Alignment', run=self.RunNumber, suf='{m}_{p1}{p2}_{b}'.format(m=mode, p1=plane1, p2=plane2, b=binning))
+        picklepath = self.make_pickle_path('Alignment', run=self.RunNumber, suf='{m}_{p1}{p2}_{b}_{t}'.format(m=mode, p1=plane1, p2=plane2, b=binning, t='Time' if vs_time else 'EvtNr'))
 
         def func():
             start = self.log_info('Checking for alignment between plane {p1} and {p2} ... '.format(p1=plane1, p2=plane2), next_line=False)
             self.set_bin_size(binning)
             h = TH3D('h_pa', 'pa', len(self.time_binning) - 1, array([t / 1000. for t in self.time_binning], 'd'), *self.plots.get_global_bins(res=sqrt(12), mode=mode, arrays=True))
+            if not vs_time:
+                h = TH3D('h_pae', 'pa', len(self.binning) - 1, array(self.binning, 'd'), *self.plots.get_global_bins(res=sqrt(12), mode=mode, arrays=True))
             draw_var = 'cluster_{m}pos_tel'.format(m=mode)
             cut_string = 'clusters_per_plane[{p1}]==1&&clusters_per_plane[{p2}]==1&&cluster_plane=={{p}}'.format(p1=plane1, p2=plane2)
             n = self.tree.Draw(draw_var, TCut(cut_string.format(p=plane1)) + TCut(self.Cut.generate_chi2(mode, chi2)), 'goff')
-            x1 = [self.tree.GetV1()[i] for i in xrange(n)]
-            n = self.tree.Draw('{v}:time'.format(v=draw_var), TCut(cut_string.format(p=plane2)) + TCut(self.Cut.generate_chi2(mode, chi2)), 'goff')
-            x2 = [self.tree.GetV1()[i] for i in xrange(n)]
-            t = [self.tree.GetV2()[i] / 1000. for i in xrange(n)]
-            for i, j, k in zip(x1, x2, t):
-                h.Fill(k, i, j)
+            y = [self.tree.GetV1()[i] for i in xrange(n)]
+            n = self.tree.Draw('{v}:{t}'.format(v=draw_var, t='time' if vs_time else 'event_number'), TCut(cut_string.format(p=plane2)) + TCut(self.Cut.generate_chi2(mode, chi2)), 'goff')
+            t = [self.tree.GetV1()[i] for i in xrange(n)]
+            x = [self.tree.GetV2()[i] / 1000. if vs_time else self.tree.GetV2()[i] for i in xrange(n)]
+            for i, j, k in zip(x, y, t):
+                h.Fill(i, j, k)
             g = self.make_tgrapherrors('g_pa', 'Plane Correlation {p1} {p2}'.format(p1=plane1, p2=plane2), marker_size=.5)
             for ibin in xrange(h.GetNbinsX() - 1):
                 h.GetXaxis().SetRange(ibin, ibin + 1)
                 p = h.Project3D('yz')
                 g.SetPoint(ibin, h.GetXaxis().GetBinCenter(ibin), p.GetCorrelationFactor())
-            set_time_axis(g, off=self.run.startTime / 1000 + 3600)
-            self.format_histo(g, x_tit='Time [hh::mm]', y_tit='Correlation Factor', y_off=1.5, y_range=[0, 1])
-            self.add_info('Done', start)
+            if vs_time:
+                set_time_axis(g, off=self.run.startTime / 1000 + 3600)
+            self.format_histo(g, x_tit='Time [hh::mm]' if vs_time else 'Event Number', y_tit='Correlation Factor', y_off=1.5, y_range=[0, 1])
+            self.add_info(start)
             return g
 
         gr = self.do_pickle(picklepath, func)
         self.save_histo(gr, 'PixelAligment', show, draw_opt='alp', lm=.13, prnt=show)
+        return gr
+
+    def check_alignment(self):
+        gr = self.draw_alignment(show=False)
         values = [gr.GetY()[i_ev] for i_ev in xrange(gr.GetN())]
         mean_, sigma = calc_mean(values)
         if mean_ < .4:
             log_warning('Planes are not correlated!')
         elif sigma > .05:
             log_warning('Large fluctuations in correlation!')
-
         return mean_ > .3
 
     # ==========================================================================
