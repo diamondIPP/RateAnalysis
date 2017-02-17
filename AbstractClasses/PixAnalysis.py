@@ -47,7 +47,7 @@ class PixAnalysis(Analysis):
         self.Cut = CutPix(self, dut)
 
         # alignment
-        self.IsAligned = self.check_alignment(show=False)
+        self.IsAligned = self.check_alignment()
 
         # pulse height calibrations
         self.Fit = None
