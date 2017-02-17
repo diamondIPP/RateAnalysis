@@ -218,23 +218,42 @@ class PixAlignment:
             vec.clear()
 
     def write_aligned_tree(self):
-        print_banner('ALIGNING SHIT')
-        # self.NewFile = TFile(self.Converter.get_root_file_path(), 'RECREATE')
-        self.NewFile = TFile('test.root', 'RECREATE')
+        offsets = self.find_offsets()
+        self.NewFile = TFile(self.Converter.get_root_file_path(), 'RECREATE')
         self.NewTree = self.InTree.CloneTree(0)
-        # self.NewTree = TTree(self.InTree.GetName, self.InTree.GetTitle())
         self.set_branch_addresses()
         self.start_pbar(self.NEntries)
+        offset = 0
+        short_names = [name for name in self.Branches if name != 'trigger_phase']
         while self.get_next_event():
+            entry = self.AtEntry - 1
             self.ProgressBar.update(self.AtEntry)
             self.clear_vectors()
-            for i in xrange(len(self.InTree.plane)):
-                self.Branches['plane'].push_back(i)
-                self.Branches['col'].push_back(i)
-                self.Branches['row'].push_back(i)
-                self.Branches['adc'].push_back(i)
-                self.Branches['charge'].push_back(i)
+            if entry in offsets:
+                offset += offsets[entry]
+            if not offset:
+                for name, lst in self.BranchLists.iteritems():
+                    for value in lst[entry]:
+                        self.Branches[name].push_back(value)
+            else:
+                ref = abs(offset) if offset < 0 else 0
+                dut = offset if offset > 0 else 0
+                # if we get out of range stop the loop
+                try:
+                    self.Branches['trigger_phase'].push_back(self.BranchLists['trigger_phase'][entry + ref][0])
+                    self.Branches['trigger_phase'].push_back(self.BranchLists['trigger_phase'][entry + dut][1])
+                except IndexError:
+                    break
+                ref_plane = filter(lambda x: x < self.NDutPlanes, self.BranchLists['plane'][entry + ref])
+                dut_plane = filter(lambda x: x >= self.NDutPlanes, self.BranchLists['plane'][entry + dut])
+                for i in xrange(len(ref_plane)):
+                    for name in short_names:
+                        self.Branches[name].push_back(self.BranchLists[name][entry + ref][i])
+                for i in xrange(len(dut_plane)):
+                    for name in short_names:
+                        self.Branches[name].push_back(self.BranchLists[name][entry + dut][-len(dut_plane) + i])
             self.NewTree.Fill()
+        self.ProgressBar.finish()
         self.save_tree()
     # endregion
 
