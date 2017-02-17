@@ -530,7 +530,7 @@ class PixAnalysis(Analysis):
             if i % 100 == 0 and save:
                 self.save_canvas(c, name='l{i:04d}'.format(i=i), show=False, print_names=False)
 
-    def draw_correlation(self, plane1=1, plane2=None, mode='y', chi2=1, show=True, start=0, evts=1000000000):
+    def draw_correlation(self, plane1=2, plane2=None, mode='y', chi2=1, show=True, start=0, evts=1000000000):
         plane2 = self.Dut if plane2 is None else plane2
         h = TH2D('h_pc', 'Plane Correlation', *self.plots.get_global_bins(mode=mode, res=sqrt(12)))
         draw_var = 'cluster_{m}pos_tel'.format(m=mode)
