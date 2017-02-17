@@ -41,7 +41,7 @@ class CutPix(Cut):
         self.CutStrings['fiducial'] += self.generate_fiducial()
         self.CutStrings['rhit'] += self.generate_rhit()
         self.CutStrings['trigger_phase'] += self.generate_trigger_phase()
-        # self.CutStrings['alignment'] += self.generate_alignment()
+        self.CutStrings['alignment'] += self.generate_alignment()
 
     def generate_hitmap_cutstrings(self):
         self.set_hitmap_cuts()
@@ -178,6 +178,8 @@ class CutPix(Cut):
             mis_events = {'begin': [], 'end': []}
             cut = mean_ - 5 * sigma
             min_events = OrderedDict(sorted({i: int(g.GetX()[i]) for i in xrange(g.GetN()) if g.GetY()[i] < cut}.iteritems()))
+            if not min_events:
+                return mis_events
             mis_events['begin'].append(min_events.values()[0] - n)
             n *= 2
             for i in xrange(len(min_events) - 1):
