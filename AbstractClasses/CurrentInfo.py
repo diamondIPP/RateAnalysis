@@ -98,10 +98,8 @@ class Currents(Elementary):
     def load_bias(self):
         if hasattr(self.Analysis, 'Type') and 'voltage' in self.Analysis.Type:
             return ''
-        elif hasattr(self.analysis, 'run'):
-            return self.analysis.run.bias if self.analysis is not None else None
-        else:
-            return self.analysis.bias
+        elif self.Analysis is not None:
+            return self.Analysis.Bias
 
     def load_run_number(self):
         nr = None
