@@ -266,7 +266,7 @@ class Analysis(Elementary):
         cut = cut if cut is not None else TCut('')
         self.set_root_output(False)
         h = TH1F('had', 'Track Angle Distribution in ' + mode, 320, -4, 4)
-        self.tree.Draw('slope_{mod}>>had'.format(mod=mode), cut, 'goff')
+        self.tree.Draw('{v}_{mod}>>had'.format(v='slope' if self.run.has_branch('slope') else 'angle', mod=mode), cut, 'goff')
         self.format_histo(h, x_tit='Track Angle [deg]', y_tit='Entries', y_off=1.8, lw=2, stats=0)
         self.save_histo(h, 'TrackAngle{mod}'.format(mod=mode.upper()), show, lm=.13, prnt=print_msg)
         return h
@@ -313,7 +313,7 @@ class Analysis(Elementary):
 
     # ============================================================================================
     # region PIXEL
-    def draw_hitmap(self, show=True, cut=None, plane=None):
+    def draw_hitmap(self, plane=None, cut=None, show=True):
         planes = [0, 1, 2, 3] if plane is None else [int(plane)]
         cut = self.Cut.all_cut if cut is None else cut
         histos = [TH2F('h_hm{0}'.format(i_pl), 'Hitmap Plane {0}'.format(i_pl), 52, 0, 52, 80, 0, 80) for i_pl in planes]
