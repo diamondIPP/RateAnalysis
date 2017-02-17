@@ -87,6 +87,14 @@ class Plots(Elementary):
             ret_val.append(arr)
         return ret_val
 
+    def get_global_bins(self, res, mode=None, arrays=False):
+        x, y = self.Settings['globalCoods'][:2], self.Settings['globalCoods'][2:]
+        size_x = .015 if mode != 'y' else .01
+        size_y = .01 if mode != 'x' else .015
+        bins = [int(ceil((x[1] - x[0]) / size_x * sqrt(12) / res)), x[0], x[1], int(ceil((y[1] - y[0]) / size_y * sqrt(12) / res)), y[0], y[1]]
+        x_arr, y_arr = arange(x[0], x[1], size_x, 'd'), arange(y[0], y[1], size_y, 'd')
+        return bins if not arrays else [len(x_arr) - 1, x_arr, len(y_arr) - 1, y_arr]
+
     def create_TGraphErrors(self, title='tgraph', xTitle='X', yTitle='Y', linecolor=kBlack, markercolor=kBlack):
         graph = TGraphErrors()
         graph.SetNameTitle(title,title)
