@@ -448,6 +448,14 @@ class Analysis(Elementary):
         self.format_histo(gr, x_tit='Entry Number', y_tit='Time [s]', y_off=1.5)
         self.draw_histo(gr, show=show, draw_opt='al', lm=.13, rm=.08)
 
+    def get_time_bins(self, binning):
+        self.set_bin_size(binning)
+        return [len(self.time_binning) - 1, array([t / 1000. for t in self.time_binning], 'd')]
+
+    def get_bins(self, binning):
+        self.set_bin_size(binning)
+        return [len(self.binning) - 1, array(self.binning, 'd')]
+
     def get_event_at_time(self, time_sec):
         return self.run.get_event_at_time(time_sec)
 
