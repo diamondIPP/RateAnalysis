@@ -49,7 +49,6 @@ class PixAlignment:
         dic['row'] = vector('unsigned short')()
         dic['adc'] = vector('short')()
         dic['charge'] = vector('unsigned int')()
-        dic['trigger_phase'] = vector('unsigned short')()
         return dic
 
     def load_variables(self):
@@ -57,7 +56,7 @@ class PixAlignment:
         self.InTree.SetEstimate(self.InTree.Draw('plane', '', 'goff'))
         x, y = OrderedDict(), OrderedDict()
         p1, p2 = 2, 4
-        dic = {name: None for name in self.BranchLists if name != 'trigger_phase'}
+        dic = {name: None for name in self.BranchLists}
         n = self.InTree.Draw('plane:row:col:event_number', '', 'goff')
         dic['plane'] = [int(self.InTree.GetV1()[i]) for i in xrange(n)]
         dic['row'] = [int(self.InTree.GetV2()[i]) for i in xrange(n)]
@@ -66,8 +65,6 @@ class PixAlignment:
         n = self.InTree.Draw('adc:charge', '', 'goff')
         dic['adc'] = [int(self.InTree.GetV1()[i]) for i in xrange(n)]
         dic['charge'] = [int(self.InTree.GetV2()[i]) for i in xrange(n)]
-        n = self.InTree.Draw('trigger_phase', '', 'goff')
-        trigger_phase = [int(self.InTree.GetV1()[i]) for i in xrange(n)]
         n_ev = 0
         at_event = 0
         for ev, size in sorted(nrs.iteritems()):
@@ -75,11 +72,9 @@ class PixAlignment:
             while at_event != ev:
                 for name in dic.iterkeys():
                     self.BranchLists[name].append([])
-                self.BranchLists['trigger_phase'].append(trigger_phase[(2 * at_event):(2 * at_event + 2)])
                 at_event += 1
             for name, lst in dic.iteritems():
                 self.BranchLists[name].append(lst[n_ev:size + n_ev])
-            self.BranchLists['trigger_phase'].append(trigger_phase[(2 * ev):(2 * ev + 2)])
             plane = dic['plane'][n_ev:size + n_ev]
             row = dic['row'][n_ev:size + n_ev]
             if plane.count(p1) == 1:
@@ -224,7 +219,6 @@ class PixAlignment:
         self.set_branch_addresses()
         self.start_pbar(self.NEntries)
         offset = 0
-        short_names = [name for name in self.Branches if name != 'trigger_phase']
         while self.get_next_event():
             entry = self.AtEntry - 1
             self.ProgressBar.update(self.AtEntry)
@@ -240,17 +234,15 @@ class PixAlignment:
                 dut = offset if offset > 0 else 0
                 # if we get out of range stop the loop
                 try:
-                    self.Branches['trigger_phase'].push_back(self.BranchLists['trigger_phase'][entry + ref][0])
-                    self.Branches['trigger_phase'].push_back(self.BranchLists['trigger_phase'][entry + dut][1])
+                    ref_plane = filter(lambda x: x < self.NDutPlanes, self.BranchLists['plane'][entry + ref])
+                    dut_plane = filter(lambda x: x >= self.NDutPlanes, self.BranchLists['plane'][entry + dut])
                 except IndexError:
                     break
-                ref_plane = filter(lambda x: x < self.NDutPlanes, self.BranchLists['plane'][entry + ref])
-                dut_plane = filter(lambda x: x >= self.NDutPlanes, self.BranchLists['plane'][entry + dut])
                 for i in xrange(len(ref_plane)):
-                    for name in short_names:
+                    for name in self.Branches.iterkeys():
                         self.Branches[name].push_back(self.BranchLists[name][entry + ref][i])
                 for i in xrange(len(dut_plane)):
-                    for name in short_names:
+                    for name in self.Branches.iterkeys():
                         self.Branches[name].push_back(self.BranchLists[name][entry + dut][-len(dut_plane) + i])
             self.NewTree.Fill()
         self.ProgressBar.finish()
