@@ -126,14 +126,14 @@ class Currents(Elementary):
 
     def load_parser(self):
         parser = ConfigParser()
-        if not self.run_config_parser.has_option('BASIC', 'hvconfigfile'):
+        if self.run_config_parser.has_option('BASIC', 'hvconfigfile'):
             file_path = self.run_config_parser.get('BASIC', 'hvconfigfile')
         else:
             file_path = joinpath(self.DataDir, make_tc_str(self.TESTCAMPAIGN, data=True), 'HV.cfg')
         if not file_exists(file_path):
             self.log_warning('Missing hv info in RunConfig file')
             return None
-        parser.read(self.run_config_parser.get('BASIC', 'hvconfigfile'))
+        parser.read(file_path)
         self.log_info('HV Devices: {0}'.format([name for name in parser.sections() if name.startswith('HV')]))
         return parser
 
@@ -144,14 +144,14 @@ class Currents(Elementary):
                 return str(full_str.split('-')[0])
             except KeyError:
                 return dia
-        full_str = self.RunInfo['dia{dia}supply'.format(dia=1 if not self.Channel else 2)]
+        full_str = self.RunInfo['dia{dia}supply'.format(dia=self.Analysis.DiamondNumber)]
         return str(full_str.split('-')[0])
 
     def get_device_channel(self, dia):
         if self.Analysis is None:
             full_str = self.RunLogs[self.StartRun]['dia{dia}supply'.format(dia=dia)]
             return full_str.split('-')[1] if len(full_str) > 1 else '0'
-        full_str = self.RunInfo['dia{dia}supply'.format(dia=1 if not self.Channel else 2)]
+        full_str = self.RunInfo['dia{dia}supply'.format(dia=self.Analysis.DiamondNumber)]
         return full_str.split('-')[1] if len(full_str) > 1 else '0'
 
     def find_data_path(self, old=False):
@@ -161,8 +161,8 @@ class Currents(Elementary):
             hv_datapath = joinpath(self.DataDir, make_tc_str(self.TESTCAMPAIGN, data=True), 'HVClient')
         if not dir_exists(hv_datapath):
             log_warning('HV data path "{p}" does not exist!'.format(p=hv_datapath))
-        string = '{data}{dev}_CH{ch}/' if not old else '{data}{dev}/'
-        return string.format(data=hv_datapath, dev=self.ConfigParser.get('HV' + self.Number, 'name'), ch=self.Channel)
+        hv_datapath = joinpath(hv_datapath, '{dev}_CH{ch}' if not old else '{dev}')
+        return hv_datapath.format(dev=self.ConfigParser.get('HV' + self.Number, 'name'), ch=self.Channel)
 
     def load_start_time(self):
         if self.Analysis is not None:
@@ -221,7 +221,7 @@ class Currents(Elementary):
     # ==========================================================================
     # region ACQUIRE DATA
     def get_logs_from_start(self):
-        log_names = sorted([name for name in glob(self.DataPath + '*')] + [name for name in glob(self.OldDataPath + '*')])
+        log_names = sorted([name for name in glob(joinpath(self.DataPath, '*'))] + [name for name in glob(joinpath(self.OldDataPath, '*'))])
         start_log = None
         for i, name in enumerate(log_names):
             log_date = self.get_log_date(name)
