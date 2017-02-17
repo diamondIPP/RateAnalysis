@@ -261,7 +261,7 @@ class Cut(Elementary):
             n = self.analysis.tree.Draw(draw_str, '{s}>-100'.format(s=draw_str), 'goff')
             mean_ = mean([self.analysis.tree.GetV1()[i] for i in xrange(n)])
             cut_vals = {mode: [mean_ - angle, mean_ + angle]}
-            self.add_info('Done', t)
+            self.add_info(t)
             return cut_vals
 
         return self.do_pickle(picklepath, func)
@@ -318,29 +318,29 @@ class Cut(Elementary):
     # region BEAM INTERRUPTS
     def find_beam_interruptions(self):
         dic = self.CutConfig['JumpExcludeRange']
-        interruptions = self.find_pad_beam_interruptions() if self.DUTType == 'pad' else self.find_pixel_beam_interruptions()
+        interruptions = self.find_pad_beam_interruptions() if self.DUTType == 'pad' else self.find_pixel_beam_interruptions(show=False)
         dic['interruptions'] = interruptions[0]
         dic['jumps'] = interruptions[1]
         return dic
 
-    def find_pixel_beam_interruptions(self):
+    def find_pixel_beam_interruptions(self, show=True):
         """ Locates the beam interruptions and cuts some seconds before and some seconds after which are specified in the config file. overlapping segments are fused to one to reduce the size
             of the string. An average of the number of event per time bin is calculated and every bin below 90% or above 120% is excluded """
         # time is in minutes. good results found with bin size of 10 seconds
         bin_size = 10  # seconds
         bins = int(self.analysis.run.totalMinutes * 60 / bin_size)
         self.set_root_output(0)
-        h1 = TH1F('h_beam_time_', 'h_beam_time_', bins, 0, self.analysis.run.totalMinutes)
+        h = TH1F('h_beam_time_', 'Beam Interruptions', bins, 0, self.analysis.run.totalMinutes)
         self.analysis.tree.Draw('(time - {off}) / 60000.>>h_beam_time_'.format(off=self.analysis.run.startTime), '', 'goff')
-        mean_ = h1.Integral() / float(h1.GetNbinsX())
+        mean_ = h.Integral() / float(h.GetNbinsX())
         interruptions = []
         jumps = []
         n_interr = 0
         ex_range = {key: value / 60. for key, value in self.CutConfig['JumpExcludeRange'].iteritems()}
-        for t in xrange(1, h1.GetNbinsX() + 1):
-            if h1.GetBinContent(t) < mean_ * .6 or h1.GetBinContent(t) > mean_ * 1.3:
-                low_edge = h1.GetBinLowEdge(t)
-                bin_width = h1.GetBinWidth(t)
+        for t in xrange(1, h.GetNbinsX() + 1):
+            if h.GetBinContent(t) < mean_ * .6 or h.GetBinContent(t) > mean_ * 1.3:
+                low_edge = h.GetBinLowEdge(t)
+                bin_width = h.GetBinWidth(t)
                 if not n_interr or (not low_edge - ex_range['before'] < interruptions[n_interr - 1]['f'] and n_interr):
                     interruptions.append({'i': low_edge - ex_range['before'], 'f': low_edge + bin_width + ex_range['after']})
                     jumps.append([low_edge, low_edge + bin_width])
@@ -350,6 +350,9 @@ class Cut(Elementary):
                     jumps[n_interr - 1][1] = low_edge + bin_width
         interruptions = [{key: self.analysis.get_event_at_time(value * 60) for key, value in dic.iteritems()} for dic in interruptions]
         jumps = [[self.analysis.get_event_at_time(t * 60) for t in jump] for jump in jumps]
+        self.format_histo(h, x_tit='Time [min]', y_tit='Number of Events', y_off=1.7, stats=0, fill_color=self.FillColor)
+        if show:
+            self.save_histo(h, 'BeamInterruptions', show, lm=.125)
         return interruptions, jumps
 
     def find_pad_beam_interruptions(self):
