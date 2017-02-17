@@ -12,6 +12,7 @@ from os import remove, getcwd, chdir, system, rename
 from os.path import dirname, realpath
 from glob import glob
 from Utils import *
+from PixAlignment import PixAlignment
 from ROOT import TProfile, TFile
 do_gui = False
 if do_gui:
@@ -212,21 +213,29 @@ class Converter:
             print_banner('START CONVERTING RAW FILE FOR RUN {0}'.format(run_number))
             print converter_cmd
             system(converter_cmd)
-            self.align_run()
             chdir(curr_dir)
+        self.align_run()
         self.__add_tracking(run_number)
         self.__rename_tracking_file(run_number)
         remove(self.get_root_file_path())
 
     def align_run(self):
 
-        f = TFile(self.get_root_file_path())
-        tree = f.Get(self.RunParser.get('BASIC', 'treename'))
-        is_aligned = self.check_alignment(tree)
-        f.Close()
-        if not is_aligned:
-            align_cmd = '{align}/bin/EventAlignment.exe {rootfile}'.format(align=self.AlignDir, rootfile=self.get_root_file_path())
-            system(align_cmd)
+        if self.Type == 'pad':
+            f = TFile(self.get_root_file_path())
+            tree = f.Get(self.Run.treename)
+            is_aligned = self.check_alignment(tree)
+            f.Close()
+            if not is_aligned:
+                align_cmd = '{align}/bin/EventAlignment.exe {rootfile}'.format(align=self.AlignDir, rootfile=self.get_root_file_path())
+                system(align_cmd)
+        elif self.Type == 'pixel':
+            print_banner('CHECKING FOR EVENT ALIGNMENT')
+            pix_align = PixAlignment(self)
+            if not pix_align.check_alignment():
+                print_banner('STARTING PIXEL EVENT ALIGNMENT')
+                pix_align.write_aligned_tree()
+#     pix_align.write_aligned_tree()
 
     def remove_pickle_files(self, run_number):
         log_message('Removing all pickle files for run {}'.format(run_number))
