@@ -3,7 +3,8 @@
 # ==============================================
 import os
 from ROOT import TGraphErrors, TCanvas, TH1D, TH2D, gStyle, gROOT, kError, TProfile2D, TProfile, kBlack, TLatex, THStack
-from math import ceil
+from math import ceil, sqrt
+from numpy import arange
 
 from Elementary import Elementary
 
@@ -74,6 +75,17 @@ class Plots(Elementary):
         self.Settings['deltaY'] = float(self.Settings['ymax'] - self.Settings['ymin']) / self.Settings['nBinsY']
         self.roc_tel, self.roc_d1, self.roc_d2, self.roc_si = roc_tel, roc_d1, roc_d2, roc_si
         self.save_dir = './'
+
+    def get_arrays(self, lst):
+        arrays = []
+        for i in xrange(len(lst) / 3):
+            step = (lst[3 * i + 2] - lst[3 * i + 1]) / float(lst[3 * i])
+            arrays.append(arange(lst[3 * i + 1], lst[3 * i + 2] + step, step, 'd'))
+        ret_val = []
+        for arr in arrays:
+            ret_val.append(len(arr) - 1)
+            ret_val.append(arr)
+        return ret_val
 
     def create_TGraphErrors(self, title='tgraph', xTitle='X', yTitle='Y', linecolor=kBlack, markercolor=kBlack):
         graph = TGraphErrors()
