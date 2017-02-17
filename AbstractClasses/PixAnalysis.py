@@ -589,6 +589,47 @@ class PixAnalysis(Analysis):
             log_warning('Large fluctuations in correlation!')
         return mean_ > .3
 
+    def draw_event_offsets(self, evnts=1000, start=0, pnts=None, rnge=1, show=True):
+        pnts = int(ceil(self.run.n_entries / evnts)) if pnts is None else pnts
+        n_graphs = 2 * rnge + 1
+        graphs = [self.make_tgrapherrors('g_to{i}'.format(i=i), '', color=self.get_color(), marker_size=.5) for i in xrange(n_graphs)]
+        l = self.make_legend(x1=.8, y2=.5, nentries=n_graphs - 1)
+        self.start_pbar(pnts * evnts - start)
+        p1 = self.Dut
+        p2 = 2
+        for k in xrange(pnts):
+            x, y = OrderedDict(), OrderedDict()
+            n = self.tree.Draw('plane:row:event_number', 'n_hits[2]==1 || n_hits[{p1}]==1'.format(p1=p1), 'goff', evnts, start + k * evnts)
+            planes = [int(self.tree.GetV1()[i]) for i in xrange(n)]
+            rows = [int(self.tree.GetV2()[i]) for i in xrange(n)]
+            nrs = Counter([int(self.tree.GetV3()[i]) for i in xrange(n)])
+            for ev, size in sorted(nrs.iteritems()):
+                self.ProgressBar.update(ev + 1 - start)
+                plane = [planes.pop(0) for _ in xrange(size)]
+                row = [rows.pop(0) for _ in xrange(size)]
+                if plane.count(p1) == 1:
+                    x[ev] = row[plane.index(p1)]
+                if plane.count(p2) == 1:
+                    y[ev] = row[plane.index(p2)]
+            xts = [[] for _ in xrange(n_graphs)]
+            yts = [[] for _ in xrange(n_graphs)]
+            for i in xrange(-rnge, rnge + 1):
+                j = i + rnge
+                for ev, row in x.iteritems():
+                    if ev + i in y:
+                        xts[j].append(row)
+                        yts[j].append(y[ev + i])
+                corr = corrcoef(xts[j], yts[j])[0][1]
+                graphs[j].SetPoint(k, k * evnts + start, corr)
+        self.ProgressBar.finish()
+        mg = TMultiGraph('m_eo', 'Correlations')
+        for i, gr in enumerate(graphs):
+            l.AddEntry(gr, 'offset: {i}'.format(i=i - rnge), 'pl')
+            mg.Add(gr, 'pl')
+        self.format_histo(mg, x_tit='Event Number', y_tit='Correlation Factor', y_off=1.5, y_range=[-.2, 1], draw_first=True)
+        self.save_histo(mg, 'EventOffsets', show, draw_opt='ap', l=l, lm=.13)
+        self.reset_colors()
+
     # ==========================================================================
 
     def __placeholder(self):
