@@ -661,6 +661,9 @@ class Run(Elementary):
         flux = [info['for{0}'.format(i + 1)] / area[i] / 1000. for i in xrange(2)]
         return mean(flux)
 
+    def has_branch(self, name):
+        return bool(self.tree.GetBranch(name))
+
     # endregion
 
     def __load_rootfile(self):
