@@ -88,6 +88,7 @@ class Cut(Elementary):
         dic['spread_low'] = ''
         dic['absMedian_high'] = ''
         dic['pedestalsigma'] = ''
+        dic['alignment'] = ''
         return dic
     
     @staticmethod
@@ -101,6 +102,8 @@ class Cut(Elementary):
         # general
         dic['event_range'] = TCut('event_range', '')
         dic['beam_interruptions'] = TCut('beam_interruptions', '')
+        dic['alignment'] = TCut('alignment', '')
+        dic['trigger_phase'] = TCut('trigger_phase', '')
         # waveform
         dic['ped_sigma'] = TCut('ped_sigma', '')
         dic['median'] = TCut('median', '')
