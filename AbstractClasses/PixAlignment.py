@@ -26,6 +26,9 @@ class PixAlignment:
         self.InTree = self.InFile.Get(self.Run.treename)
         self.NewFile = None
         self.NewTree = None
+        # branches
+        self.Branches = self.init_branches()
+        self.BranchLists = {name: [] for name in self.Branches}
         # info
         self.Row1 = None
         self.Row2 = None
@@ -33,8 +36,6 @@ class PixAlignment:
         # alignment
         self.NEntries = int(self.InTree.GetEntries())
         self.AtEntry = 0
-        # branches
-        self.Branches = self.init_branches()
 
     def __del__(self):
         self.InFile.Close()
