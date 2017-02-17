@@ -51,7 +51,6 @@ class CutPix(Cut):
 
     def set_hitmap_cuts(self, on=True):
         self.set_cut('masks', self.generate_masks(cluster=not on))
-        self.set_cut('fiducial', self.generate_fiducial(name='fid{n}'.format(n='' if not on else 'hit'), cluster=not on))
 
     def generate_consecutive_cuts(self, cluster=True):
         self.set_hitmap_cuts(not cluster)
@@ -87,6 +86,7 @@ class CutPix(Cut):
         self.CutConfig['MaskCols'] = self.load_mask('MaskCols')
         self.CutConfig['MaskPixels'] = self.load_mask('MaskPixels')
         self.CutConfig['FidRegion'] = self.load_fiducial()
+        self.CutConfig['FidRegionLocal'] = self.load_fiducial('FidPixLocal')
 
     def get_config(self, option):
         return self.ana_config_parser.get('CUT', option) if self.ana_config_parser.has_option('CUT', option) else None
@@ -103,9 +103,9 @@ class CutPix(Cut):
                 lst.append([int(i) for i in tup.split('{s}'.format(s=',' if 'Pix' in name else ':'))])
         return lst if lst else None
 
-    def load_fiducial(self):
-        if self.ana_config_parser.has_option('CUT', 'FidPix'):
-            dic = loads(self.ana_config_parser.get('CUT', 'FidPix'))
+    def load_fiducial(self, name='FidPix'):
+        if self.ana_config_parser.has_option('CUT', name):
+            dic = loads(self.ana_config_parser.get('CUT', name))
             dut = str(self.Dut)
             if dut in dic:
                 return dic[dut]
