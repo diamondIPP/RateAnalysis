@@ -438,11 +438,13 @@ class Analysis(Elementary):
         return time_bins
 
     def draw_time(self, show=True):
-        entries = self.tree.Draw('Entry$:time', '', 'goff')
-        time = [self.tree.GetV2()[i] for i in xrange(entries)]
-        t = [(i - time[0]) / 1000 for i in time]
+        entries = self.tree.Draw('time', '', 'goff')
+        t = [self.tree.GetV1()[i] for i in xrange(entries)]
+        t = [(i - t[0]) / 1000 for i in t]
         gr = TGraph(len(t), array(xrange(len(t)), 'd'), array(t, 'd'))
         gr.SetNameTitle('g_t', 'Time vs Events')
+        fit = gr.Fit('pol1', 'qs0')
+        self.log_info('Average data taking rate: {r:5.1f} Hz'.format(r=1 / fit.Parameter(1)))
         self.format_histo(gr, x_tit='Entry Number', y_tit='Time [s]', y_off=1.5)
         self.draw_histo(gr, show=show, draw_opt='al', lm=.13, rm=.08)
 
