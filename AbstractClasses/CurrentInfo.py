@@ -1,7 +1,6 @@
 # ====================================
 # IMPORTS
 # ====================================
-from datetime import timedelta
 from glob import glob
 from time import sleep
 from json import load
@@ -11,7 +10,7 @@ from Elementary import Elementary
 from RunSelection import RunSelection
 from ROOT import TCanvas, TText, TGraph
 from ConfigParser import ConfigParser
-from numpy import array
+from numpy import array, mean
 from argparse import ArgumentParser
 
 from Utils import *
@@ -33,7 +32,7 @@ class Currents(Elementary):
     """reads in information from the keithley log file"""
 
     def __init__(self, analysis, averaging=False, points=10, dia=None, start_run=None, verbose=False):
-        self.analysis = analysis
+        self.Analysis = analysis
         self.IsCollection = hasattr(analysis, 'runs')
         Elementary.__init__(self, verbose=verbose)
 
@@ -94,10 +93,10 @@ class Currents(Elementary):
     # ==========================================================================
     # region INIT
     def load_dia_name(self):
-        return self.analysis.diamond_name if self.analysis is not None else None
+        return self.Analysis.DiamondName if self.Analysis is not None else None
 
     def load_bias(self):
-        if hasattr(self.analysis, 'Type') and 'voltage' in self.analysis.Type:
+        if hasattr(self.Analysis, 'Type') and 'voltage' in self.Analysis.Type:
             return ''
         elif hasattr(self.analysis, 'run'):
             return self.analysis.run.bias if self.analysis is not None else None
@@ -106,13 +105,13 @@ class Currents(Elementary):
 
     def load_run_number(self):
         nr = None
-        if self.analysis is not None:
-            nr = self.analysis.run_number if not self.IsCollection else self.analysis.run_plan
+        if self.Analysis is not None:
+            nr = self.Analysis.RunNumber if not self.IsCollection else self.Analysis.run_plan
         return nr
 
     def load_runlogs(self):
         try:
-            f = open(self.run_config_parser.get('BASIC', 'runinfofile'))
+            f = open(self.Analysis.run.runinfofile)
             data = load(f)
             f.close()
         except IOError as err:
@@ -123,8 +122,8 @@ class Currents(Elementary):
 
     def load_run_config(self):
         nr = None
-        if self.analysis is not None:
-            nr = self.analysis.run_number if not self.IsCollection else self.analysis.get_first_analysis().run_number
+        if self.Analysis is not None:
+            nr = self.Analysis.RunNumber if not self.IsCollection else self.Analysis.get_first_analysis().RunNumber
         return self.load_run_configs(nr)
 
     def load_parser(self):
@@ -141,7 +140,7 @@ class Currents(Elementary):
         return parser
 
     def get_device_nr(self, dia):
-        if self.analysis is None:
+        if self.Analysis is None:
             try:
                 full_str = self.RunLogs[self.StartRun]['dia{0}supply'.format(dia)]
                 return str(full_str.split('-')[0])
@@ -151,7 +150,7 @@ class Currents(Elementary):
         return str(full_str.split('-')[0])
 
     def get_device_channel(self, dia):
-        if self.analysis is None:
+        if self.Analysis is None:
             full_str = self.RunLogs[self.StartRun]['dia{dia}supply'.format(dia=dia)]
             return full_str.split('-')[1] if len(full_str) > 1 else '0'
         full_str = self.RunInfo['dia{dia}supply'.format(dia=1 if not self.Channel else 2)]
@@ -168,14 +167,14 @@ class Currents(Elementary):
         return string.format(data=hv_datapath, dev=self.ConfigParser.get('HV' + self.Number, 'name'), ch=self.Channel)
 
     def load_start_time(self):
-        if self.analysis is not None:
-            return self.analysis.get_first_analysis().run.log_start + timedelta(hours=self.TimeOffset) if self.IsCollection else self.analysis.run.log_start + timedelta(hours=self.TimeOffset)
+        if self.Analysis is not None:
+            return self.Analysis.get_first_analysis().run.log_start + timedelta(hours=self.TimeOffset) if self.IsCollection else self.Analysis.run.log_start + timedelta(hours=self.TimeOffset)
         else:
             return None
 
     def load_stop_time(self):
-        if self.analysis is not None:
-            return self.analysis.get_last_analysis().run.log_stop + timedelta(hours=self.TimeOffset) if self.IsCollection else self.analysis.run.log_stop + timedelta(hours=self.TimeOffset)
+        if self.Analysis is not None:
+            return self.Analysis.get_last_analysis().run.log_stop + timedelta(hours=self.TimeOffset) if self.IsCollection else self.Analysis.run.log_stop + timedelta(hours=self.TimeOffset)
         else:
             return None
 
@@ -392,8 +391,8 @@ class Currents(Elementary):
 
     def draw_title_pad(self, pad):
         pad.cd()
-        bias_str = 'at {b} V'.format(b=self.Bias) if self.Bias else ''
-        run_str = '{n}'.format(n=self.analysis.run_number) if hasattr(self.analysis, 'run') else 'Plan {rp}'.format(rp=self.analysis.run_plan)
+        bias_str = 'at {b} V'.format(b=self.Bias) if self.Bias else '??'
+        run_str = '{n}'.format(n=self.Analysis.RunNumber) if hasattr(self.Analysis, 'run') else 'Plan {rp}'.format(rp=self.Analysis.run_plan)
         text = 'Currents of {dia} {b} - Run {r}'.format(dia=self.DiamondName, b=bias_str, r=run_str)
         t1 = TText(0.1, 0.88, text)
         t1.SetTextSize(0.05)
