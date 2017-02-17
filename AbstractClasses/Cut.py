@@ -221,7 +221,7 @@ class Cut(Elementary):
             cut_string = 'event_number>={min}'.format(min=self.CutConfig['ExcludeFirst'])
         return cut_string
 
-    def generate_chi2(self, mode='x'):
+    def generate_chi2(self, mode='x', value=None):
         picklepath = self.make_pickle_path('Chi2', run=self.analysis.RunNumber, suf=mode.title())
 
         def func():
@@ -239,7 +239,8 @@ class Cut(Elementary):
         chi2 = self.do_pickle(picklepath, func)
         quantile = self.CutConfig['chi2{mod}'.format(mod=mode.title())]
         assert type(quantile) is int and 0 < quantile <= 100, 'chi2 quantile has to be and integer between 0 and 100'
-        string = 'chi2_{mod}<{val}&&chi2_{mod}>=0'.format(val=chi2[quantile], mod=mode)
+        cut_value = chi2[quantile] if value is None else value
+        string = 'chi2_{mod}<{val}&&chi2_{mod}>=0'.format(val=cut_value, mod=mode)
         return string if quantile > 0 else ''
 
     def generate_track_angle(self, mode='x'):
