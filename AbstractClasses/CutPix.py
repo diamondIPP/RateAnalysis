@@ -67,15 +67,9 @@ class CutPix(Cut):
         return cuts
 
     def do_cuts_distributions(self):
-        """
-        Does the cuts distribution for beam interruption, chi2x, chi2y, anglex, angley and rhit for each of the ROCs to be analysed
-        :return:
-        """
+        """ Does the cuts distribution for all other cuts """
+        # todo implement this...
         self.print_banner('Doing cuts distributions...')
-        self.do_beam_distribution()
-        self.do_chi2_distributions()
-        self.do_angle_distributions()
-        self.do_rhit_distribution()
         self.print_banner('Finished with distribution cuts')
 
     def load_pixel_config(self):
