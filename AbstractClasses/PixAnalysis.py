@@ -4,12 +4,12 @@
 # created some time in 2016 by D. Sanz (sandiego@phys.ethz.ch), maintained by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from ROOT import TH2D, TH1D, gROOT, TFormula, TCut, TH1I, TProfile, THStack, TProfile2D, TF1, TGraph, TPie, gRandom, TH3D, TMultiGraph
+from ROOT import TH2D, TH1D, gROOT, TFormula, TCut, TH1I, TProfile, THStack, TProfile2D, TF1, TGraph, TPie, gRandom, TH3D, TMultiGraph, TCutG
 from argparse import ArgumentParser
 from collections import OrderedDict, Counter
 from copy import deepcopy
 from math import ceil
-from numpy import array, mean, corrcoef
+from numpy import array, mean, corrcoef, arange
 from os.path import join as joinpath
 from time import sleep
 
@@ -477,30 +477,62 @@ class PixAnalysis(Analysis):
     def induce_threshold(self):
         # todo
         pass
-        # seed = self.draw_pulse_height_disto(show=False, sup_zero=False, pix=[18,68])
+
+    def find_landau(self, aver=10, m1=2500, m2=5000, s1=500, s2=1600, pix=([18, 51], [18, 53])):
+        seed = self.draw_pulse_height_disto(show=False, sup_zero=False, pix=pix)
         h = deepcopy(seed)
-        m_range = range(3000, 5001, 100)
-        s_range = range(1100, 1801, 20)
+        m_range = range(m1, m2 + 1, 100)
+        s_range = range(s1, s2 + 1, 50)
         p = TProfile2D('g_fl', 'Find Landau', len(m_range) - 1, m_range[0], m_range[-1], len(s_range) - 1, s_range[0], s_range[-1])
         self.start_pbar(len(m_range) * len(s_range) * aver)
         i = 0
+        r_min, r_max = .5, 1.5
         for _ in xrange(aver):
+
             for m in m_range:
                 for s in s_range:
                     i += 1
                     self.ProgressBar.update(i)
-                    diff = self.model_landau(seed, h, m, s, show=False, thresh=True)
-                    p.Fill(m, s, diff)
+                    if r_min < m / 4. / s < r_max:
+                        diff = self.model_landau(seed, h, m, s, show=False, thresh=True)
+                        p.Fill(m, s, diff)
+        self.ProgressBar.finish()
+        set_statbox(entries=8, opt=1000000010, x=.82)
         self.format_histo(p, x_tit='MPV [e]', y_tit='Sigma [e]', z_tit='#chi^{2} to Seed Function', y_off=1.7, z_off=1.3)
         self.draw_histo(p, draw_opt='colz', lm=.13, rm=0.16)
+        self.draw_ms_ratios(r_min, r_max, m1, m2, s1, s2)
+        self.save_plots('FindLandau')
+        self.find_working_point(p)
 
-    def model_landau(self, seed=None, h=None, m=10000, s=1000, show=True, thresh=False, col=18):
-        seed = self.draw_pulse_height_disto(show=False, sup_zero=False, col=col) if seed is None else seed
-        # seed = self.draw_pulse_height_disto(show=False, sup_zero=False, pix=[18,68]) if seed is None else seed
+    def draw_ms_ratios(self, r_min, r_max, m1, m2, s1, s2, step=.1):
+        ratios = arange(r_min, r_max + step, step)
+        off = .01
+        for i, ratio in enumerate(ratios):
+            cut = TCutG('ms{n}'.format(n=i), 2, array([0, 20000], 'd'), array([0, 20000 / ratio / 4]))
+            x_pos = m1 if m1 / ratio / 4 > s1 else 4 * ratio * s1
+            y_pos = m1 / ratio / 4 if m1 / ratio / 4 > s1 else s1
+            self.draw_tlatex(x_pos + off * (m2 - m1), y_pos + off * (s2 - s1), text='{0:3.1f}'.format(ratio), size=.02, align=11)
+            cut.Draw('same')
+            self.RootObjects.append(cut)
+
+    @staticmethod
+    def find_working_point(h):
+        ps = [h.ProfileY(), h.ProfileX()]
+        fits = [TF1('f{n}'.format(n=i), 'pol2', 0, 10000) for i in xrange(2)]
+        for fit, p in zip(fits, ps):
+            p.Fit(fit, 'qs0')
+        mins = [fit.GetMinimumX() for fit in fits]
+        print mins, mins[1] / mins[0] / 4
+
+    def model_landau(self, seed=None, h=None, m=10000, s=1000, show=True, thresh=False, pix=([18, 51], [18, 53])):
+        # seed = self.draw_pulse_height_disto(show=False, sup_zero=False, col=col) if seed is None else seed
+        seed = self.draw_pulse_height_disto(show=False, sup_zero=False,  pix=pix) if seed is None else seed
         h = deepcopy(seed) if h is None else h
+        h.SetName('h_ml')
         n = seed.GetEntries()
         h.Reset()
-        thresholds = self.get_thresholds(cols=col, vcal=False).values()
+        # thresholds = self.get_thresholds(cols=col, vcal=False).values()
+        thresholds = [47 * i for i in [150, 160, 170]]
         for _ in xrange(int(n)):
             v = gRandom.Landau(m, s)
             threshold = thresholds[int(gRandom.Rndm() * len(thresholds))]
@@ -509,24 +541,25 @@ class PixAnalysis(Analysis):
         diff = mean([(h.GetBinContent(i) - seed.GetBinContent(i)) ** 2 for i in xrange(h.GetNbinsX()) if i is not h.FindBin(0)])
         seed.SetFillColor(2)
         h.SetFillColor(self.FillColor)
-        seed.SetFillStyle(4050)
-        h.SetFillStyle(4050)
-        # h.SetFillColorAlpha(self.FillColor, .35)
-        # seed.SetFillColorAlpha(2, .35)
-        # h.SetLineColor(2)
-        self.draw_histo(h, show=show)
+        seed.SetFillStyle(3017)
+        h.SetFillStyle(3018)
+        l = self.make_legend(y2=.76)
+        l.AddEntry(h, 'Simulation', 'f')
+        l.AddEntry(seed, 'Original', 'f')
+        self.draw_histo(h, show=show, l=l)
+        self.draw_histo(seed, show=show, draw_opt='same', canvas=gROOT.GetListOfCanvases()[-1])
         seed.Draw('same')
         return diff
 
-    def landau_vid(self, save=False, mpv=5000, sigma=820, col=18):
-        h = self.draw_pulse_height_disto(sup_zero=False, col=col)
+    def landau_vid(self, save=False, mpv=5000, sigma=820):
+        h = self.draw_pulse_height_disto(sup_zero=False)
         h.GetYaxis().SetRangeUser(0, 2500)
         zero_bin = h.FindBin(0)
         zeros = int(h.GetBinContent(zero_bin))
         entries = int(h.GetEntries())
         print entries
         c = gROOT.GetListOfCanvases()[-1]
-        thresholds = self.get_thresholds(cols=col, vcal=False)
+        thresholds = self.get_thresholds(vcal=False)
         for i in xrange(entries):
             h.SetBinContent(zero_bin, zeros)
             v = gRandom.Landau(mpv, sigma)
