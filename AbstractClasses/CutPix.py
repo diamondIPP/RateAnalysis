@@ -49,6 +49,11 @@ class CutPix(Cut):
         self.set_hitmap_cuts(False)
         return cut
 
+    def reload_cuts(self):
+        self.ana_config_parser = self.load_ana_config()
+        self.load_pixel_config()
+        self.generate_pixel_cutstrings()
+
     def set_hitmap_cuts(self, on=True):
         self.set_cut('masks', self.generate_masks(cluster=not on))
 
@@ -187,7 +192,6 @@ class CutPix(Cut):
                     mis_events['end'].append(min_events.values()[i] + n)
                     mis_events['begin'].append(min_events.values()[i + 1] - n)
             mis_events['end'].append(min_events.values()[-1] + n)
-            print mis_events
             self.draw_histo(h)
             self.add_info(start)
             return mis_events
