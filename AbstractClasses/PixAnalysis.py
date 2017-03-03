@@ -474,8 +474,9 @@ class PixAnalysis(Analysis):
         self.format_histo(gr, fill_color=self.FillColor, x_tit='Trigger Phase', y_tit='Efficiency [%]', y_off=1.4)
         self.save_histo(gr, 'EffVsTrigPhase', show, draw_opt='ba', lm=.13)
 
-    def find_landau(self, aver=100):
-        seed = self.draw_pulse_height_disto(show=False, sup_zero=False, col=18)
+    def induce_threshold(self):
+        # todo
+        pass
         # seed = self.draw_pulse_height_disto(show=False, sup_zero=False, pix=[18,68])
         h = deepcopy(seed)
         m_range = range(3000, 5001, 100)
