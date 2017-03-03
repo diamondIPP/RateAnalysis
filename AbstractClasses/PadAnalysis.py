@@ -2129,6 +2129,10 @@ class PadAnalysis(Analysis):
         self.set_save_directory('PlotsFelix')
         self.Pulser.save_felix()
 
+    def get_mpv_fwhm(self, show=True):
+        h = self.show_signal_histo(show=show)
+        return find_mpv_fwhm(h)
+
     def __placeholder(self):
         pass
 
