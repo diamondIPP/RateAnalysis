@@ -8,7 +8,7 @@ from copy import deepcopy
 from math import ceil, log
 from numpy import array
 from sys import stdout
-from time import time, sleep
+from time import sleep
 
 from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie,\
     THStack, TArrow, kOrange, TSpectrum, gRandom, TMultiGraph, Long, TH2I
@@ -36,7 +36,7 @@ class PadAnalysis(Analysis):
 
         # main
         self.DiamondName = self.run.diamond_names[self.channel]
-        self.DiamonNumber = dia
+        self.DiamondNumber = dia
         self.Bias = self.run.bias[self.channel]
         self.save_dir = '{dia}/{run}/'.format(run=str(self.RunNumber).zfill(3), dia=self.DiamondName)
 
@@ -1723,7 +1723,7 @@ class PadAnalysis(Analysis):
         evt_numbers = [self.tree.GetV1()[i] for i in xrange(total_events)]
         return int(evt_numbers[:n][-1] + 1 - start)
 
-    def check_alignment(self, binning=5000, show=True, save_plot=True):
+    def check_alignment(self, binning=5000, show=True):
         pickle_path = 'Configuration/Individual_Configs/Alignment/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run.RunNumber)
 
         def func():
