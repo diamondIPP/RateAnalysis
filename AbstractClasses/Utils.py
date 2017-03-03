@@ -3,11 +3,13 @@
 # created on May 19th 2016 by M. Reichmann
 # --------------------------------------------------------
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from termcolor import colored
-from ROOT import gStyle
-from numpy import sqrt, mean
-import os
+from ROOT import gStyle, gROOT, TF1
+from numpy import sqrt
+from os import makedirs
+from os import path as pth
+from time import time
 
 
 # ==============================================
@@ -18,9 +20,24 @@ def log_warning(msg):
     print '{head} {t} --> {msg}'.format(t=t, msg=msg, head=colored('WARNING:', 'red'))
 
 
+def log_critical(msg):
+    t = datetime.now().strftime('%H:%M:%S')
+    print '{head} {t} --> {msg}'.format(t=t, msg=msg, head=colored('CRITICAL:', 'red'))
+    quit()
+
+
 def log_message(msg, overlay=False):
     t = datetime.now().strftime('%H:%M:%S')
     print '{ov}{t} --> {msg}{end}'.format(t=t, msg=msg, head=colored('WARNING:', 'red'), ov='\033[1A\r' if overlay else '', end=' ' * 20 if overlay else '')
+
+
+def set_root_output(status=True):
+    if status:
+        gROOT.SetBatch(0)
+        gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
+    else:
+        gROOT.SetBatch(1)
+        gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
 
 
 def scale_margins(gr1, gr2):
@@ -39,14 +56,16 @@ def untitle(string):
     return s.strip(' ')
 
 
-def set_statbox(x=.95, y=.88, w=.16, entries=3, only_fit=False):
+def set_statbox(x=.95, y=.88, w=.16, entries=3, only_fit=False, opt=None, form=None):
     if only_fit:
         gStyle.SetOptStat(0011)
         gStyle.SetOptFit(1)
+    gStyle.SetOptStat(opt) if opt is not None else do_nothing()
+    gStyle.SetFitFormat(form) if form is not None else do_nothing()
     gStyle.SetStatX(x)
     gStyle.SetStatY(y)
     gStyle.SetStatW(w)
-    gStyle.SetStatH(.02 * entries)
+    gStyle.SetStatH(.04 * entries)
 
 
 def draw_frame(pad, x, y, base=False, x_tit='', y_tit='', y_off=1, x_off=1):
@@ -218,36 +237,27 @@ def make_latex_table(header, cols, endline=False):
     return out
 
 
-def calc_flux(info, tc):
-    if 'for1' not in info or info['for1'] == 0:
-        if 'measuredflux' in info:
-            return float(info['measuredflux'])
-    path = '/data/psi_{0}_{1}/masks/{mask}'.format(tc[:4], tc[-2:], mask=info['maskfile'])
-    if file_exists(path):
-        f = open(path, 'r')
-    else:
-        log_warning('Could not read maskfile!')
-        return
-    data = []
-    for line in f:
-        if len(line) > 3:
-            line = line.split()
-            data.append([int(line[2])] + [int(line[3])])
-    f.close()
-    pixel_size = 0.01 * 0.015
-    area = [(data[1][0] - data[0][0]) * (data[1][1] - data[0][1]) * pixel_size, (data[3][0] - data[2][0]) * (data[3][1] - data[2][1]) * pixel_size]
-    # print area
-    flux = [info['for{0}'.format(i + 1)] / area[i] / 1000. for i in xrange(2)]
-    return mean(flux)
-
-
 def make_dia_str(dia):
     dia = dia.replace('-', '')
     return '{0}{1}'.format(dia[0].title(), dia[1:])
 
 
 def file_exists(path):
-    return os.path.isfile(path)
+    return pth.isfile(path)
+
+
+def dir_exists(path):
+    return pth.isdir(path)
+
+
+def ensure_dir(path):
+    if not pth.exists(path):
+        log_message('Creating directory: {d}'.format(d=path))
+        makedirs(path)
+
+
+def joinpath(*args):
+    return pth.join(*args)
 
 
 def make_col_str(col):
@@ -262,13 +272,22 @@ def print_small_banner(msg, symbol='-'):
     print '\n{delim}\n{msg}\n'.format(delim=len(str(msg)) * symbol, msg=msg)
 
 
+def print_elapsed_time(start, what='This', show=True):
+    t = '{d}'.format(d=timedelta(seconds=time() - start)).split('.')
+    string = 'Elapsed time for {w}: {d1}.{m:2d}'.format(d1=t[0], m=int(round(int(t[1][:3])) / 10.), w=what)
+    print_banner(string) if show else do_nothing()
+    return string
+
+
 def has_bit(num, bit):
     assert (num >= 0 and type(num) is int), 'num has to be non negative int'
     return bool(num & 1 << bit)
 
 
-def make_tc_str(tc, txt=True):
-    if tc[0].isdigit():
+def make_tc_str(tc, txt=True, data=False):
+    if data:
+        return datetime.strptime(tc, '%Y%m').strftime('psi_%Y_%m')
+    elif tc[0].isdigit():
         return datetime.strptime(tc, '%Y%m').strftime('%B %Y' if txt else '%b%y')
     else:
         return datetime.strptime(tc, '%b%y').strftime('%Y%m' if txt else '%B %Y')
@@ -298,10 +317,29 @@ def set_drawing_range(h, legend=True, lfac=None, rfac=None):
     h.GetXaxis().SetRangeUser(*increased_range(range_, lfac, rfac))
 
 
+def set_time_axis(histo, form='%H:%M', off=3600):
+    histo.GetXaxis().SetTimeFormat(form)
+    histo.GetXaxis().SetTimeOffset(-off)
+    histo.GetXaxis().SetTimeDisplay(1)
+
+
+def find_mpv_fwhm(histo, bins=15):
+    max_bin = histo.GetMaximumBin()
+    fit = TF1('fit', 'gaus', 0, 500)
+    histo.Fit('fit', 'qs', '', histo.GetBinCenter(max_bin - bins), histo.GetBinCenter(max_bin + bins))
+    mpv = fit.GetParameter(1)
+    fwhm = histo.FindLastBinAbove(fit(mpv) / 2) - histo.FindFirstBinAbove(fit(mpv) / 2)
+    return mpv, fwhm, mpv / fwhm
+
+
+def make_cut_string(cut, n):
+    return '{n}Cuts'.format(n=str(n).zfill(2)) if cut is not None else ''
+
+
 class FitRes:
     def __init__(self, fit_obj=None):
-        self.Pars = list(fit_obj.Parameters()) if fit_obj is not None else [0]
-        self.Errors = list(fit_obj.Errors()) if fit_obj is not None else [0]
+        self.Pars = list(fit_obj.Parameters()) if (fit_obj is not None and len(fit_obj.Parameters()) > 0) else [None]
+        self.Errors = list(fit_obj.Errors()) if (fit_obj is not None and len(fit_obj.Parameters()) > 0) else [None]
 
     def Parameter(self, arg):
         return self.Pars[arg]

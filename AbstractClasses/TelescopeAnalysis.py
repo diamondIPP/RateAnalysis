@@ -2,19 +2,21 @@ from argparse import ArgumentParser
 from copy import deepcopy
 from time import sleep
 
-from ROOT import TCanvas, TH2F, gROOT, TProfile, TH1F, TLegend, gStyle, kGreen, kCyan, TText, TCut, TF1, TGraph
+from ROOT import TCanvas, TH2F, gROOT, TH1F, TLegend, gStyle, kGreen, TText, TCut, TF1, TGraph, TH1I
 from numpy import array, zeros
 
 from Elementary import Elementary
 from RunClass import Run
 from Cut import Cut
 from Utils import *
+from Plots import Plots
+from Langaus import Langau
 
 
 class Analysis(Elementary):
     """ Class for the analysis of the non-channel specific stuff of a single run. """
 
-    def __init__(self, run, verbose=False, high_low_rate=None, load_tree=True):
+    def __init__(self, run, verbose=False, high_low_rate=None, load_tree=True, binning=5000):
         """
         Parent class for all analyses, which contains all the basic stuff about the Telescope.
         :param run:             run object of type "Run" or integer run number
@@ -26,21 +28,20 @@ class Analysis(Elementary):
         self.RootObjects = []
 
         # basics
-        self.run = self.init_run(run, load_tree)
+        self.run = self.init_run(run, load_tree, verbose)
         self.run.analysis = self
-        self.run_number = self.run.run_number
+        self.RunNumber = self.run.RunNumber
         self.RunInfo = deepcopy(self.run.RunInfo)
-        self.lowest_rate_run = high_low_rate['min'] if high_low_rate is not None else self.run.run_number
-        self.highest_rate_run = high_low_rate['max'] if high_low_rate is not None else self.run.run_number
-        self.PickleDir = self.get_program_dir() + self.ana_config_parser.get('SAVE', 'pickle_dir')
+        self.lowest_rate_run = high_low_rate['min'] if high_low_rate is not None else self.run.RunNumber
+        self.highest_rate_run = high_low_rate['max'] if high_low_rate is not None else self.run.RunNumber
         if self.ana_config_parser.has_option('SAVE', 'ActivateTitle'):
             gStyle.SetOptTitle(self.ana_config_parser.getboolean('SAVE', 'ActivateTitle'))
         # self.saveMCData = self.ana_config_parser.getboolean("SAVE", "SaveMCData")
-        self.ana_save_dir = '{run}'.format(run=self.run.run_number)
+        self.ana_save_dir = '{run}'.format(run=self.run.RunNumber)
 
         # DUT
         self.DUTType = self.run.DUTType
-        
+
         # tree
         self.tree = self.run.tree
 
@@ -49,12 +50,24 @@ class Analysis(Elementary):
 
         # general for pads and pixels
         self.Cut = Cut(self, skip=not load_tree)
-        if load_tree:
-            self.StartEvent = self.Cut.CutConfig['EventRange'][0]
-            self.EndEvent = self.Cut.CutConfig['EventRange'][1]
 
-        # alignment
-            self.IsAligned = self.check_alignment(draw=False, save_plot=False)
+        if load_tree:
+            # binning
+            self.BinSize = binning
+            self.binning = self.__get_binning()
+            self.time_binning = self.get_time_binning()
+            self.n_bins = len(self.binning)
+
+        if self.DUTType == 'pad':
+            if load_tree:
+                self.StartEvent = self.Cut.CutConfig['EventRange'][0]
+                self.EndEvent = self.Cut.CutConfig['EventRange'][1]
+
+        # pixel TODO: uniform
+        if self.DUTType == 'pixel':
+            self.num_devices = 7
+            self.plots = Plots(self.run.n_entries, self.run, self.num_devices, -1, [0, 1, 2, 3], 4, 5, 6)
+            self.StartEvent = 1  # DA: for now... TODO pixel cuts!
 
         # save histograms // canvases
         self.signal_canvas = None
@@ -63,13 +76,13 @@ class Analysis(Elementary):
     # region INIT
 
     @staticmethod
-    def init_run(run, load_tree):
+    def init_run(run, load_tree, verbose):
         """ create a run instance with either a given run integer or an already give run instance where a the run object is not None """
         if not isinstance(run, Run):
             assert type(run) is int, 'run has to be either a Run instance or an integer run number'
-            return Run(run, 3, load_tree)
+            return Run(run, 3, load_tree=load_tree, verbose=verbose)
         else:
-            assert run.run_number is not None, 'No run selected, choose run.SetRun(run_nr) before you pass the run object'
+            assert run.RunNumber is not None, 'No run selected, choose run.SetRun(run_nr) before you pass the run object'
             return run
     # endregion
 
@@ -145,9 +158,11 @@ class Analysis(Elementary):
                         self.draw_tlatex(p_pos, ymin + 0.05 * y_range, 'Average Peak Position', color=807, size=size)
                     self.draw_arrow(p_pos, p_pos, ymin + 1, ymin + 0.04 * y_range, col=807, width=2)
 
-    def draw_peak_integrals(self, event=None, add_buckets=True, show=True):
+    def draw_peak_integrals(self, event=None, buckets=True, show=True, main=False):
         old_count = self.count
+        event = self.StartEvent if event is None else event
         h, n = self.__draw_single_wf(event=event, show=False, tcorr=True)
+        h.GetYaxis().SetNdivisions(305)
         self.format_histo(h, title='Peak Integrals', name='wf', x_tit='Time [ns]', y_tit='Signal [mV]', markersize=.8, y_off=.5, stats=0, tit_size=.07, lab_size=.06)
         xmin, xmax = self.run.signal_regions['e'][0] / 2 - 20, self.run.signal_regions['e'][1] / 2
         h.GetXaxis().SetRangeUser(xmin, xmax)
@@ -156,27 +171,31 @@ class Analysis(Elementary):
         sleep(.5)
         # draw line at found peak and pedestal region
         ymin, ymax = h.GetYaxis().GetXmin(), h.GetYaxis().GetXmax()
-        print event, n
         peak_pos, ped_pos = self.__draw_peak_pos(event + n - 1, ymin, ymax)
         # draw error bars
-        gr1 = self.make_tgrapherrors('gr1', '', color=kGreen + 2, marker_size=0, asym_err=True, width=2)
-        gr2 = self.make_tgrapherrors('gr2', '', color=kCyan - 3, marker_size=0, asym_err=True, width=2)
+        gr1 = self.make_tgrapherrors('gr1', '', color=418, marker_size=0, asym_err=True, width=2)
+        gr2 = self.make_tgrapherrors('gr2', '', color=429 - 3, marker_size=0, asym_err=True, width=2, style=2)
         gStyle.SetEndErrorSize(5)
         i = 0
         y = ymax - ymin
+        spacing = 7.
         for int_, lst in self.run.peak_integrals.iteritems():
+            if main:
+                if hasattr(self, 'PeakIntegral') and int_ != self.PeakIntegral:
+                    continue
             if len(int_) < 3:
-                gr1.SetPoint(i, peak_pos, ymax - y * ((i + 1) / 6. + 1 / 3.))
-                gr2.SetPoint(i, ped_pos, ymax - y * ((i + 1) / 6. + 1 / 3.))
+                gr1.SetPoint(i, peak_pos, ymax - y * ((i + 1) / spacing + 1 / 3.))
+                gr2.SetPoint(i, ped_pos, ymax - y * ((i + 1) / spacing + 1 / 3.))
                 gr1.SetPointError(i, lst[0] / 2., lst[1] / 2., 0, 0) if lst[1] - lst[0] > 1 else gr1.SetPointError(i, .5, .5, 0, 0)
                 gr2.SetPointError(i, lst[0] / 2., lst[1] / 2., 0, 0) if lst[1] - lst[0] > 1 else gr2.SetPointError(i, .5, .5, 0, 0)
-                l1 = self.draw_tlatex(gr1.GetX()[i], gr1.GetY()[i] + 5, ' ' + int_, color=kGreen + 2, align=10)
-                gr1.GetListOfFunctions().Add(l1)
+                if not main:
+                    l1 = self.draw_tlatex(gr1.GetX()[i], gr1.GetY()[i] + 5, ' ' + int_, color=kGreen + 2, align=10)
+                    gr1.GetListOfFunctions().Add(l1)
                 i += 1
         for gr in [gr1, gr2]:
             gr.Draw('[]')
             gr.Draw('p')
-        self._add_buckets(ymin, ymax, xmin, xmax, full_line=True, size=.05) if add_buckets else self.do_nothing()
+        self._add_buckets(ymin, ymax, xmin, xmax, full_line=True, size=.05) if buckets else self.do_nothing()
         self.save_plots('IntegralPeaks',  ch=None)
         gROOT.SetBatch(0)
         self.count = old_count
@@ -187,10 +206,10 @@ class Analysis(Elementary):
         ped_region = self.PedestalRegion if hasattr(self, 'PedestalRegion') else 'ab'
         ped_pos = self.run.pedestal_regions[ped_region][1] / 2.
         y = ymax - ymin
-        self.draw_vertical_line(peak_pos, ymin, ymax - y / 3., color=4, w=2, name='peak')
-        self.draw_vertical_line(ped_pos, ymin, ymax - y / 3, color=883, w=2, name='ped')
-        t1 = self.draw_tlatex(peak_pos, ymax - y / 3.1, 'found peak', color=4)
-        t2 = self.draw_tlatex(ped_pos, ymax - y / 3.1, 'pedestal', color=883)
+        self.draw_vertical_line(peak_pos, ymin, ymax - y / 3., color=418, w=2, name='peak')
+        self.draw_vertical_line(ped_pos, ymin, ymax - y / 3, color=429, w=2, name='ped')
+        t1 = self.draw_tlatex(peak_pos, ymax - y / 3.1, 'peak', color=418, size=.07)
+        t2 = self.draw_tlatex(ped_pos, ymax - y / 3.1, 'pedestal', color=429, size=.07)
         t1.Draw()
         t2.Draw()
         self.RootObjects.append([t1, t2])
@@ -247,7 +266,7 @@ class Analysis(Elementary):
         cut = cut if cut is not None else TCut('')
         self.set_root_output(False)
         h = TH1F('had', 'Track Angle Distribution in ' + mode, 320, -4, 4)
-        self.tree.Draw('slope_{mod}>>had'.format(mod=mode), cut, 'goff')
+        self.tree.Draw('{v}_{mod}>>had'.format(v='slope' if self.run.has_branch('slope') else 'angle', mod=mode), cut, 'goff')
         self.format_histo(h, x_tit='Track Angle [deg]', y_tit='Entries', y_off=1.8, lw=2, stats=0)
         self.save_histo(h, 'TrackAngle{mod}'.format(mod=mode.upper()), show, lm=.13, prnt=print_msg)
         return h
@@ -261,7 +280,7 @@ class Analysis(Elementary):
         return h
 
     def calc_angle_fit(self, mode='x', show=True):
-        pickle_path = self.PickleDir + 'Tracks/AngleFit_{tc}_{run}_{mod}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, mod=mode)
+        pickle_path = self.PickleDir + 'Tracks/AngleFit_{tc}_{run}_{mod}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.RunNumber, mod=mode)
 
         def func():
             h = self.draw_angle_distribution(mode, show=show)
@@ -294,7 +313,7 @@ class Analysis(Elementary):
 
     # ============================================================================================
     # region PIXEL
-    def draw_hitmap(self, show=True, cut=None, plane=None):
+    def draw_hitmap(self, plane=None, cut=None, show=True):
         planes = [0, 1, 2, 3] if plane is None else [int(plane)]
         cut = self.Cut.all_cut if cut is None else cut
         histos = [TH2F('h_hm{0}'.format(i_pl), 'Hitmap Plane {0}'.format(i_pl), 52, 0, 52, 80, 0, 80) for i_pl in planes]
@@ -315,43 +334,18 @@ class Analysis(Elementary):
         gROOT.SetBatch(1)
 
     # endregion
-    # ==============================================
-    # region ALIGNMENT
-    def check_alignment(self, binning=5000, draw=True, save_plot=True):
-        pickle_path = 'Configuration/Individual_Configs/Alignment/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run.run_number)
-
-        def func():
-            if self.DUTType == 'pad':
-                nbins = self.run.n_entries / binning
-                h = TProfile('h', 'Pulser Rate', nbins, 0, self.run.n_entries)
-                self.tree.Draw('(@col.size()>1)*100:Entry$>>h', 'pulser', 'goff')
-                self.format_histo(h, name='align', title='Event Alignment', x_tit='Event Number', y_tit='Hits per Event @ Pulser Events [%]', y_off=1.3, stats=0, fill_color=821)
-                h.GetYaxis().SetRangeUser(0, 105)
-                if save_plot:
-                    self.RootObjects.append(self.save_histo(h, 'EventAlignment', draw, self.ana_save_dir, draw_opt='hist'))
-                align = self.__check_alignment_histo(h)
-                return align
-            else:
-                # todo put some function for the pixel here!
-                pass
-
-        aligned = func() if draw else None
-        aligned = self.do_pickle(pickle_path, func, aligned)
-        if not aligned:
-            msg = 'The events of RUN {run} are not aligned!'.format(run=self.run_number)
-            print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * '!', msg=msg)
-        return aligned
-
-    def __check_alignment_histo(self, histo):
-        h = histo
-        for bin_ in xrange(h.FindBin(self.StartEvent), h.GetNbinsX()):
-            if h.GetBinContent(bin_) > 40:
-                return False
-        return True
-    # endregion
 
     # ==============================================
     # region SHOW & PRINT
+
+    def draw_trigger_phase(self, dut=True, show=True, cut=None):
+        cut_string = deepcopy(self.Cut.all_cut) if cut is None else TCut(cut)
+        device = 1 if dut else 0
+        h = TH1I('h_tp', 'Trigger Phase', 10, 0, 10)
+        self.tree.Draw('trigger_phase[{r}]>>h_tp'.format(r=device), cut_string, 'goff')
+        set_statbox(entries=4, opt=1000000010, y=0.96)
+        self.format_histo(h, x_tit='Trigger Phase', y_tit='Number of Entries', y_off=1.5, fill_color=self.FillColor)
+        self.save_histo(h, 'TriggerPhase', show, lm=.13)
 
     def draw_pix_map(self, n=1, start=None, plane=1):
         start_event = self.StartEvent if start is None else start
@@ -391,20 +385,94 @@ class Analysis(Elementary):
     # ==============================================
     # region RUN FUNCTIONS
 
+    def set_bin_size(self, value):
+        self.BinSize = value
+        self.binning = self.__get_binning()
+        self.time_binning = self.get_time_binning()
+        self.n_bins = len(self.binning)
+        return value
+
+    def __get_binning(self):
+        jumps = self.Cut.Interruptions
+        n_jumps = len(jumps)
+        bins = [self.Cut.get_min_event()]
+        ind = 0
+        for dic in jumps:
+            start = dic['i']
+            stop = dic['f']
+            gap = stop - start
+            # continue if first start and stop outside min event
+            if stop < bins[-1]:
+                ind += 1
+                continue
+            # if there is a jump from the start
+            if start < bins[-1] < stop:
+                bins[-1] = stop
+                ind += 1
+                continue
+            # add bins until hit interrupt
+            while bins[-1] + self.BinSize < start:
+                bins.append(bins[-1] + self.BinSize)
+            # two jumps shortly after one another
+            if ind < n_jumps - 2:
+                next_start = jumps[ind + 1]['i']
+                next_stop = jumps[ind + 1]['f']
+                if bins[-1] + self.BinSize + gap > next_start:
+                    gap2 = next_stop - next_start
+                    bins.append(bins[-1] + self.BinSize + gap + gap2)
+                else:
+                    bins.append(bins[-1] + self.BinSize + gap)
+            else:
+                bins.append(bins[-1] + self.BinSize + gap)
+            ind += 1
+        # fill up the end
+        if ind == n_jumps - 1 and bins[-1] >= jumps[-1]['f'] or ind == n_jumps:
+            while bins[-1] + self.BinSize < self.run.n_entries:
+                bins.append(bins[-1] + self.BinSize)
+        return bins
+
+    def get_time_binning(self):
+        time_bins = []
+        for event in self.binning:
+            time_bins.append(self.run.get_time_at_event(event))
+        return time_bins
+
     def draw_time(self, show=True):
-        entries = self.tree.Draw('Entry$:time', '', 'goff')
-        time = [self.tree.GetV2()[i] for i in xrange(entries)]
-        t = [(i - time[0]) / 1000 for i in time]
+        entries = self.tree.Draw('time', '', 'goff')
+        t = [self.tree.GetV1()[i] for i in xrange(entries)]
+        t = [(i - t[0]) / 1000 for i in t]
         gr = TGraph(len(t), array(xrange(len(t)), 'd'), array(t, 'd'))
         gr.SetNameTitle('g_t', 'Time vs Events')
+        fit = gr.Fit('pol1', 'qs0')
+        self.log_info('Average data taking rate: {r:5.1f} Hz'.format(r=1 / fit.Parameter(1)))
         self.format_histo(gr, x_tit='Entry Number', y_tit='Time [s]', y_off=1.5)
         self.draw_histo(gr, show=show, draw_opt='al', lm=.13, rm=.08)
+
+    def get_time_bins(self, binning):
+        self.set_bin_size(binning)
+        return [len(self.time_binning) - 1, array([t / 1000. for t in self.time_binning], 'd')]
+
+    def get_bins(self, binning):
+        self.set_bin_size(binning)
+        return [len(self.binning) - 1, array(self.binning, 'd')]
 
     def get_event_at_time(self, time_sec):
         return self.run.get_event_at_time(time_sec)
 
     def get_flux(self):
         return self.run.get_flux()
+
+    def fit_langau(self, h=None, nconv=100, show=True):
+        h = self.show_signal_histo(show=show) if h is None and hasattr(self, 'show_signal_histo') else h
+        fit = Langau(h, nconv)
+        fit.langaufit()
+        fit.Fit.Draw('lsame')
+        i = 5
+        while fit.Chi2 / fit.NDF > 5:
+            fit = self.fit_langau(h, nconv + i)
+            i += 5
+        self.RootObjects.append(fit)
+        return fit
 
     # endregion
 

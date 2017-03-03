@@ -1,0 +1,28 @@
+[BASIC]
+type = pixel
+filename = test161000
+runpath = /home/diegoalejandro/Data/psi_2016_10/root/pixel
+runinfofile = /home/diegoalejandro/Data/psi_2016_10/run_log.json
+runplaninfofile = Runinfos/run_plans.json
+runlog_key_prefix = 
+treename = tree
+maskfilepath = /home/diegoalejandro/Data/psi_2016_10/masks
+hvdatapath = /home/diegoalejandro/Data/psi_2016_10/HVClient/
+hvconfigfile = /home/diegoalejandro/Data/psi_2016_10/HV.cfg
+createnewrootfiles = True
+signalregion_low = 210
+signalregion_high = 360
+telescopeid = 22
+
+[ROOTFILE_GENERATION]
+save_waveforms = 0
+pulser_channel = 2
+trigger_channel = 1
+pulser_drs4_threshold = 80
+eudaqfolder = /usr/local/eudaq-drs4
+converterFile = 201610/converter_telescope.conf
+trackingfolder = /usr/local/TrackingTelescope
+rawfolder = /home/diegoalejandro/Data/psi_2016_10/raw
+rawprefix = run00
+converterprefix = test00
+

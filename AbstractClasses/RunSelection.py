@@ -15,7 +15,7 @@ class RunSelection(Elementary):
         Elementary.__init__(self, verbose=verbose, testcampaign=testcampaign)
         self.run = Run(run_number=None, verbose=verbose)
 
-        self.runplan_path = self.get_program_dir() + self.run_config_parser.get('BASIC', 'runplaninfofile')
+        self.runplan_path = joinpath(self.get_program_dir(), self.MainConfigParser.get('MAIN', 'run_plan_path'))
         self.ExcludedRuns = json.loads(self.run_config_parser.get('BASIC', 'excluded_runs'))
         self.run_plan = self.load_runplan()
         self.run_numbers = self.load_run_numbers()
@@ -28,7 +28,8 @@ class RunSelection(Elementary):
         self.SelectedRunplan = None
         self.SelectedType = None
         self.SelectedBias = None
-        self.Diamond = None
+        self.SelectedDiamond = None
+        self.SelectedDiamondNr = None
 
         self.init_selection()
 
@@ -55,7 +56,7 @@ class RunSelection(Elementary):
 
     def get_runinfo(self, ch):
         runs = [self.get_selected_runs()[0], self.get_selected_runs()[-1], '', '']
-        self.run.diamond_names[ch] = self.Diamond
+        self.run.diamond_names[ch] = self.SelectedDiamond
         self.run.bias[ch] = self.SelectedBias
         return self.run.get_runinfo(ch, runs=runs)
 
@@ -315,7 +316,7 @@ class RunSelection(Elementary):
                 string += '*' if self.channels[run][ch] else ''
                 string += self.run_infos[run]['dia{n}'.format(n=i)].ljust(7)
                 string += str(int(self.run_infos[run]['dia{n}hv'.format(n=i)])).ljust(6)
-            string += '{flux:3.2f}'.format(flux=calc_flux(self.run_infos[run], self.TESTCAMPAIGN)).ljust(15)
+            string += '{flux:3.2f}'.format(flux=self.selection[run].calc_flux()).ljust(15)
             if not show_allcomments:
                 comments = self.run_infos[run]['comments']
                 show_comment = comments[:20].replace('\r\n', ' ')
@@ -425,7 +426,8 @@ class RunSelection(Elementary):
         self.SelectedBias = self.run_infos[self.get_selected_runs()[0]]['dia{0}hv'.format(ch)]
         parser = ConfigParser()
         parser.read('Configuration/DiamondAliases.cfg')
-        self.Diamond = parser.get('ALIASES', self.run_infos[self.get_selected_runs()[0]]['dia{0}'.format(ch)])
+        self.SelectedDiamond = parser.get('ALIASES', self.run_infos[self.get_selected_runs()[0]]['dia{0}'.format(ch)])
+        self.SelectedDiamondNr = ch
 
     def add_selection_to_runplan(self, plan_nr, run_type='rate scan', parent=None):
         """

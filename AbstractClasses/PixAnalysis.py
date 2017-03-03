@@ -1,65 +1,67 @@
-# ==============================================
-# IMPORTS
-# ==============================================
-from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie
-from TelescopeAnalysis import Analysis
-from CurrentInfo import Currents
-from numpy import array
-from math import sqrt, ceil, log
-from argparse import ArgumentParser
-from Extrema import Extrema2D
-from ChannelCut import ChannelCut
-from time import time, sleep
-from collections import OrderedDict
-from sys import stdout
-from copy import deepcopy
+#!/usr/bin/env python
+# --------------------------------------------------------
+#       Main class for Rate Pixel Analysis
+# created some time in 2016 by D. Sanz (sandiego@phys.ethz.ch), maintained by M. Reichmann (remichae@phys.ethz.ch)
+# --------------------------------------------------------
 
-__author__ = 'DA'
+from ROOT import TH2D, TH1D, gROOT, TFormula, TCut, TH1I, TProfile, THStack, TProfile2D, TF1, TGraph, TPie, gRandom, TH3D, TMultiGraph, TCutG
+from argparse import ArgumentParser
+from collections import OrderedDict, Counter
+from copy import deepcopy
+from math import ceil
+from numpy import array, mean, corrcoef, arange
+from os.path import join as joinpath
+from time import sleep
+
+from CurrentInfo import Currents
+from CutPix import CutPix
+from Elementary import Elementary
+from TelescopeAnalysis import Analysis
+from Utils import *
+
+__author__ = 'DA & Micha'
 
 
 # ==============================================
 # MAIN CLASS
 # ==============================================
-class SignalPixAnalysis(Analysis):
-    def __init__(self, run, channel, high_low_rate_run=None, binning=20000):
+class PixAnalysis(Analysis):
+    def __init__(self, run, dut=1, verbose=False, binning=10000):
 
-        self.channel = channel
-        Analysis.__init__(self, run, high_low_rate=high_low_rate_run)
+        Analysis.__init__(self, run, verbose=verbose, binning=binning)
+
         # main
-        self.diamond_name = self.run.diamond_names[channel]
-        self.bias = self.run.bias[channel]
-        self.save_dir = '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number, dia=self.diamond_name)
+        self.RunNumber = run
+        self.DiamondName = self.load_diamond_name(dut)
+        self.DiamondNumber = dut
+        self.Bias = self.run.bias[dut - 1]
+        self.Dut = dut + 3
+        self.save_dir = '{dia}/{run}/'.format(run=str(self.RunNumber).zfill(3), dia=self.DiamondName)
+        self.NRocs = self.load_n_rocs()
 
         # stuff
-        #self.BinSize = binning
-        #self.binning = self.__get_binning()
-        #self.time_binning = self.get_time_binning()
-        #self.n_bins = len(self.binning)
-        #self.Polarity = self.get_polarity()
-
-        # names
-        #self.SignalName = self.get_signal_name(region=self.SignalRegion, peak_integral=self.PeakIntegral)
-        #self.PulserName = self.get_pulser_name()
-        #self.PedestalName = self.get_pedestal_name(region=self.PedestalRegion, peak_int=self.PeakIntegral)
+        self.plots.save_dir = self.save_dir
 
         # cuts
-        #self.Cut = ChannelCut(self, channel)
+        self.Settings = self.plots.Settings
+        self.Cut = CutPix(self, dut)
+
+        # alignment
+        self.IsAligned = self.check_alignment()
+
+        # pulse height calibrations
+        self.Fit = None
+        self.Parameters = None
+        self.Vcals = None
+        self.Points = None
+        self.get_calibration_data()
 
         # currents
-        #self.Currents = Currents(self)
+        self.Currents = Currents(self)
 
-        # graphs
-        #self.PulseHeight = None
-        #self.Pedestal = None
-        # histograms
-        #self.SignalTime = None
-        #self.SignalMapHisto = None
-        #self.MeanSignalHisto = None
-        #self.PeakValues = None
+        self.stuff = []
 
     def __del__(self):
-        for obj in [self.PulseHeight, self.Pedestal, self.SignalMapHisto, self.SignalTime, self.PeakValues, self.MeanSignalHisto]:
-            self.del_rootobj(obj)
         for c in gROOT.GetListOfCanvases():
             c.Close()
         for lst in self.histos.itervalues():
@@ -68,1484 +70,675 @@ class SignalPixAnalysis(Analysis):
             for obj in lst:
                 self.del_rootobj(obj)
 
-    def show_current(self, relative_time=True):
-        self.Currents.draw_graphs(relative_time=relative_time)
+    def draw_current(self, relative_time=True):
+        self.Currents.draw_indep_graphs(rel_time=relative_time)
 
     # ==========================================================================
     # region INIT
-    def get_polarity(self):
-        self.tree.GetEntry(0)
-        return self.tree.polarities[self.channel]
+    def load_diamond_name(self, dut):
+        assert dut in [1, 2, 3], 'You have to choose either dut 1, 2 or 3'
+        return self.run.diamond_names[dut - 1]
 
-    def get_signal_number(self, region='b', peak_integral='2', sig_type='signal'):
-        print self.print_integral_names()
-        assert sig_type in ['signal', 'pedestal', 'pulser'], 'Invalid type of signal'
-        if sig_type == 'signal':
-            assert region in self.run.signal_regions, 'Invalid signal region {reg}!'.format(reg=region)
-        elif sig_type == 'pedestal':
-            assert region in self.run.pedestal_regions, 'Invalid pedestal region {reg}!'.format(reg=region)
-        assert str(peak_integral) in self.run.peak_integrals, 'Invalid peak integral {reg}!'.format(reg=peak_integral)
-        int_name = 'ch{ch}_{type}{reg}_PeakIntegral{int}'.format(ch=self.channel, reg='_' + region if region else '', int=peak_integral, type=sig_type)
-        return self.IntegralNames[int_name]
-
-    def get_signal_name(self, region='b', peak_integral='2', sig_type='signal'):
-        num = self.get_signal_number(region, peak_integral, sig_type)
-        return '{pol}*IntegralValues[{num}]'.format(pol=self.Polarity, num=num)
-
-    def get_pedestal_name(self, region='ab', peak_int='2'):
-        return self.get_signal_name(region=region, peak_integral=peak_int, sig_type='pedestal')
-
-    def get_pulser_name(self):
-        return self.get_signal_name(region='', sig_type='pulser')
+    def load_n_rocs(self):
+        if self.ana_config_parser.has_option('BASIC', 'n_rocs'):
+            return self.ana_config_parser.getint('BASIC', 'n_rocs')
+        else:
+            return 7
     # endregion
 
-    def set_channel(self, ch):
-        self.channel = ch
-        self.diamond_name = self.run.diamondname[ch]
-        self.bias = self.run.bias[ch]
-        self.Cut = ChannelCut(self, ch)
-        self.save_dir = '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.run_number, dia=self.run.diamondname[ch])
-        self.Polarity = self.get_polarity()
-        self.SignalName = self.get_signal_name()
-        self.PedestalName = self.get_pedestal_name()
+    def do_analysis(self, do_cut_dist=False, do_res_ana=False, do_cut_ana=False, do_occupancy=True, do_pulse_height=True):
+        """ Does automatic analysis with the selected options """
+        TFormula.SetMaxima(1000000, 10000, 10000000)  # (1000,1000,1000)
 
-    def __set_bin_size(self, value):
-        self.BinSize = value
-        self.binning = self.__get_binning()
-        self.time_binning = self.get_time_binning()
-        self.n_bins = len(self.binning)
-        return value
+        if do_cut_dist:
+            self.Cut.do_cuts_distributions()
+        if do_res_ana:
+            self.Cut.do_res_analysis()
+        if do_cut_ana:
+            self.do_cuts_analysis(do_occupancy, do_pulse_height, True)
 
-    # ==========================================================================
-    # region BEAM PROFILE
+    def do_cuts_analysis(self, do_occupancy, do_pulse_height, normalize_ph_plots=False):
+        """ Calls do_cut_analysis in the Cut method """
+        self.Cut.do_cuts_analysis(do_occupancy, do_pulse_height, normalize_ph_plots)
 
-    def draw_beam_profile(self, mode='x', show=True, fit=True, fit_margin=.6):
-        assert mode.lower() in ['x', 'y'], 'Mode has to be either "x" or "y"!'
-        margins = self.find_diamond_margins(show_plot=False, make_histo=True)
-        h = deepcopy(self.histos[0])
-        if not show:
-            gROOT.SetBatch(1)
-        prof = h.ProjectionX() if mode.lower() == 'x' else h.ProjectionY()
-        margins[mode] = [prof.GetBinLowEdge(prof.FindBin(margins[mode][0])), prof.GetBinLowEdge(prof.FindBin(margins[mode][1]) + 1)]
-        center = (margins[mode][1] + margins[mode][0]) / 2.
-        width = (prof.FindBin(margins[mode][1]) - prof.FindBin(margins[mode][0])) / 2. * fit_margin * prof.GetBinWidth(1)
-        fit_range = [center - width, center + width]
-        c = TCanvas('c', 'Beam Profile', 1000, 1000)
-        c.SetLeftMargin(.145)
-        self.format_histo(prof, 'prof', 'Profile ' + mode.title(), y_tit='Entries', y_off=2, x_tit='Track Position {mod} [cm]'.format(mod=mode.title()))
-        prof.GetXaxis().SetRangeUser(prof.GetBinCenter(prof.FindFirstBinAbove(0) - 1), prof.GetBinCenter(prof.FindLastBinAbove(0) + 1))
-        prof.Draw()
-        sleep(.1)
-        lines = [self.draw_axis(x, c.GetUymin(), c.GetUymax(), '', 2, 2) for x in margins[mode]]
-        fit_result = self.__fit_beam_profile(prof, fit_range, show) if fit else 0
-        fits = None
-        if fit:
-            f1 = gROOT.GetFunction('gaus')
-            f2 = deepcopy(f1)
-            f2.SetLineColor(2)
-            f2.SetLineStyle(1)
-            f1.SetLineColor(kGreen + 1)
-            f2.SetRange(fit_range[0], fit_range[1])
-            f1.SetLineStyle(7)
-            f1.Draw('same')
-            f2.Draw('same')
-            prof.GetXaxis().UnZoom()
-            fits = [f1, f2]
-        for line in lines:
-            line.Draw()
-        c.RedrawAxis()
-        gROOT.SetBatch(0)
-        self.save_plots('BeamProfile{mod}{fit}'.format(mod=mode.title(), fit='Fit' if fit else ''), sub_dir=self.save_dir)
-        self.histos[1] = [prof, c, lines, fits]
-        return fit_result if fit else prof
-
-    @staticmethod
-    def __fit_beam_profile(histo, fit_range, show=True):
-        h = histo
-        fit = h.Fit('gaus', 'qs{0}'.format('' if show else '0'), '', fit_range[0], fit_range[1])
-        return fit
-
-    def fit_beam_profile(self, mode='x', show=True, fit_margin=.6):
-        pickle_path = self.PickleDir + 'BeamProfile/Fit{mod}_{tc}_{run}_{dia}_{mar}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name, mod=mode.title(), mar=fit_margin)
-
-        def func():
-            return self.draw_beam_profile(mode=mode, show=show, fit_margin=fit_margin)
-
-        return self.do_pickle(pickle_path, func)
-
-    def draw_beam_fit_properties(self, show=True, mode='x', sigma=True):
-        if not show:
-            gROOT.SetBatch(1)
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        gr = self.make_tgrapherrors('gr', 'Beam Profile {0} {mod}'.format(mode.title(), mod='Fit #chi^{2}s / NDF' if not sigma else 'Sigma'))
-        max_range = 11 if sigma else 10
-        index = 0
-        for i in xrange(1, max_range):
-            perc = i / 10.
-            fit = self.fit_beam_profile(mode=mode, show=False, fit_margin=perc)
-            if fit.Ndf():
-                y = fit.Parameter(2) if sigma else fit.Chi2() / fit.Ndf()
-                gr.SetPoint(index, perc * 100, y)
-                t = self.draw_tlatex(perc * 100 - 2, y, str(fit.Ndf()), color=807, size=.04, align=32)
-                gr.GetListOfFunctions().Add(t)
-                index += 1
-        c = TCanvas('c', 'Beam Chi2', 1000, 1000)
-        self.format_histo(gr, x_tit='Range [%]', y_tit='#chi^{2} / NDF' if not sigma else 'Sigma', y_off=1.4)
-        one = TF1('one', '1', 0, 100)
-        t1 = self.draw_tlatex(15, .95 * gr.GetYaxis().GetXmax(), 'NDF:', color=807, size=0.04, align=12)
-        gr.GetListOfFunctions().Add(t1)
-        gr.GetXaxis().SetRangeUser(-5, 105)
-        gr.Draw('alp')
-        one.Draw('same')
-
-        self.histos[1] = [gr, c, t1]
-        gROOT.SetBatch(0)
-        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.save_plots('BeamProf{mod}{dir}'.format(mod='Sigmas' if sigma else 'Chi2s', dir=mode.title()), sub_dir=self.save_dir)
-
-    # endregion
-
-    # ==========================================================================
-    # region 2D SIGNAL DISTRIBUTION
-    def draw_signal_map(self, draw_option='surf3z', show=True, factor=4):
-        margins = self.find_diamond_margins(show_plot=False)
-        x = [margins['x'][0], margins['x'][1]]
-        y = [margins['y'][0], margins['y'][1]]
-        nr = 1 if not self.channel else 2
-        # get bin size via digital resolution of the telescope pixels
-        x_bins = int(ceil(((x[1] - x[0]) / 0.015 * sqrt(12) / factor)))
-        y_bins = int(ceil((y[1] - y[0]) / 0.01 * sqrt(12) / factor))
-        h = TProfile2D('signal_map', 'Signal Map', x_bins, x[0], x[1], y_bins, y[0], y[1])
-        if not show:
-            gROOT.SetBatch(1)
-        signal = '{sig}-{pol}*{ped}'.format(sig=self.SignalName, ped=self.PedestalName, pol=self.Polarity)
-        print 'drawing signal map of {dia} for Run {run}...'.format(dia=self.diamond_name, run=self.run_number)
-        self.tree.Draw('{z}:diam{nr}_track_x:diam{nr}_track_y>>signal_map'.format(z=signal, nr=nr), self.Cut.all_cut, 'goff')
-        c = TCanvas('c', 'Signal Map', 1000, 1000)
-        c.SetLeftMargin(0.12)
-        c.SetRightMargin(0.12)
-        gStyle.SetPalette(53)
-        self.format_histo(h, x_tit='track_x [cm]', y_tit='track_y [cm]', y_off=1.6)
-        if draw_option.lower().startswith('surf'):
-            self.format_histo(h, x_off=2, y_off=2.4, x_tit='track_x [cm]', y_tit='track_y [cm]')
-        h.SetStats(0)
-        h.SetContour(50)
-        h.Draw(draw_option)
-        self.save_plots('SignalMap2D_' + draw_option, sub_dir=self.save_dir)
-        gROOT.SetBatch(0)
-        self.SignalMapHisto = h
-        self.canvases[0] = c
+    def draw_occupancy(self, cut=None, show=True, fid=False, prnt=True, adc=None, roc=None, tel_coods=False):
+        """ Does the occupancy of a roc with the specified cut and it is saved on the given histogram. If none is given, it will create a histogram and return a deepcopy of it """
+        roc = self.Dut if roc is None else roc
+        cut_string = self.Cut.generate_special_cut(excluded='fiducial' if not fid else [], cluster=False) if cut is None else TCut(cut)
+        cut_string += '{p}=={d}'.format(d=roc, p='cluster_plane' if tel_coods else 'plane')
+        cut_string += self.Cut.add_adc_cut(adc)
+        self.set_root_output(False)
+        h = TH2D('h_oc', 'Occupancy {d}'.format(d=self.DiamondName), *(self.Settings['2DBins'] if not tel_coods else self.plots.get_global_bins(sqrt(12))))
+        draw_var = 'row:col' if not tel_coods else 'cluster_ypos_tel:cluster_xpos_tel'
+        self.tree.Draw('{d} >> {n}'.format(n='h_oc', d=draw_var), cut_string, 'goff')
+        save_name = 'Occupancy{c}'.format(c=make_cut_string(cut, self.Cut.NCuts))
+        set_statbox(x=.81, entries=8, opt=1000000010)
+        xtit, ytit = ('col', 'row') if not tel_coods else ('x [cm]', 'y [cm]')
+        self.format_histo(h, x_tit=xtit, y_tit=ytit, z_tit='Number of Entries', y_off=1.3, z_off=1.5)
+        self.save_histo(h, save_name, show, rm=.17, lm=.13, draw_opt='colz', prnt=prnt)
         return h
 
-    def make_region_cut(self):
-        self.draw_mean_signal_distribution(show=False)
-        return self.Cut.generate_region(self.SignalMapHisto, self.MeanSignalHisto)
-
-    def find_2d_regions(self):
-        self.draw_mean_signal_distribution(show=False)
-        extrema = Extrema2D(self.SignalMapHisto, self.MeanSignalHisto)
-        extrema.clear_voting_histos()
-        extrema.region_scan()
-        extrema.show_voting_histos()
-        self.save_plots('Regions2D', sub_dir=self.save_dir)
-        return extrema
-
-    def find_2d_extrema(self, size=1, histo=None, show=True):
-        self.draw_mean_signal_distribution(show=False)
-        extrema = Extrema2D(self.SignalMapHisto, self.MeanSignalHisto)
-        extrema.clear_voting_histos()
-        extrema.square_scan(size, histo)
-        if show:
-            extrema.show_voting_histos()
-        self.save_plots('Extrema2D', sub_dir=self.save_dir)
-        return extrema
-
-    def draw_mean_signal_distribution(self, show=True):
-        """
-        Draws the distribution of the mean pulse height values of the bins from the signal map
-        :param show: shows a plot of the canvas if True
-        """
-        sig_map = self.SignalMapHisto if self.SignalMapHisto is not None else self.draw_signal_map(show=False)
-        x = [int(sig_map.GetMinimum()) / 10 * 10, int(sig_map.GetMaximum() + 10) / 10 * 10]
-        h = TH1F('h', 'Mean Signal Distribution', 50, x[0], x[1])
-        for bin_ in xrange((sig_map.GetNbinsX() + 2) * (sig_map.GetNbinsY() + 2)):
-            h.Fill(sig_map.GetBinContent(bin_))
-        gStyle.SetEndErrorSize(4)
-        gr1 = self.make_tgrapherrors('gr', 'errors', width=3, marker_size=0, color=kGreen + 2)
-        gr2 = self.make_tgrapherrors('gr', 'errors', width=3, marker_size=0, color=2)
-        gr1.SetPoint(0, h.GetXaxis().GetXmin() + 5, h.GetMaximum() - 2)
-        gr2.SetPoint(0, h.GetXaxis().GetXmin() + 5, h.GetMaximum() - 2)
-        errors = self.SignalMapHisto.ProjectionXY('', 'c=e')
-        gr1.SetPointError(0, errors.GetMinimum(), 0)
-        gr2.SetPointError(0, errors.GetMaximum(), 0)
-        l = self.draw_tlatex(gr1.GetX()[0], gr1.GetY()[0] + 0.5, 'Errors', align=20, size=0.03)
-        gr1.GetListOfFunctions().Add(l)
-        if show:
-            self.canvases[0] = TCanvas('c', 'Mean Signal Distribution', 1000, 1000)
-            self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.2)
-            h.Draw()
-            gr2.Draw('[]')
-            gr1.Draw('[]')
-            gr2.Draw('p')
-            gr1.Draw('p')
-            self.save_plots('MeanSignalHisto', sub_dir=self.save_dir)
-        self.MeanSignalHisto = h
-        self.histos[0] = [gr1, gr2]
-
-    def draw_error_signal_map(self, show=False):
-        self.draw_mean_signal_distribution(show=False)
-        h = self.SignalMapHisto.ProjectionXY('', 'c=e')
-        if show:
-            c = TCanvas('c', 'Signal Map Errors', 1000, 1000)
-            c.SetLeftMargin(0.12)
-            c.SetRightMargin(0.11)
-            self.format_histo(h, name='sig_map_errors', title='Signal Map Errors', x_tit='track_x [cm]', y_tit='track_y [cm]', y_off=1.6)
-            h.SetStats(0)
-            h.Draw('colz')
-            self.save_plots('SignalMapErrors', sub_dir=self.save_dir, canvas=c)
-            self.canvases[0] = c
-            self.histos[0] = h
+    def draw_time_occupancy(self, cut=None, roc=None, fid=False, binning=10000):
+        self.set_bin_size(binning)
+        roc = self.Dut if roc is None else roc
+        cut_string = self.Cut.generate_special_cut(excluded='fiducial' if not fid else [], cluster=False) if cut is None else TCut(cut)
+        cut_string += 'plane=={r}'.format(r=roc)
+        h = TH3D('h_to', 'to', len(self.time_binning) - 1, array([t / 1000. for t in self.time_binning], 'd'), *self.plots.get_arrays(self.Settings['2DBins']))
+        self.tree.Draw('row:col:time/1000.>>h_to', cut_string, 'goff')
+        self.format_histo(h, y_tit='col', z_tit='row')
+        gStyle.SetNumberContours(20)
+        titles = ['Mean X', 'Sigma X', 'Mean Y', 'Sigma Y']
+        graphs = [self.make_tgrapherrors('g_to{i}'.format(i=i), titles[i]) for i in xrange(4)]
+        for ibin in xrange(h.GetNbinsX() - 1):
+            h.GetXaxis().SetRange(ibin, ibin + 1)
+            p = h.Project3D('zy')
+            self.draw_histo(p, draw_opt='colz') if not ibin else p.Draw('samecolz')
+            c = gROOT.GetListOfCanvases()[-1]
+            c.Update()
+            c.Modified()
+            sleep(.5)
+        for ibin in xrange(h.GetNbinsX() - 1):
+            t = h.GetXaxis().GetBinCenter(ibin)
+            h.GetXaxis().SetRange(ibin, ibin + 1)
+            p = h.Project3D('zy')
+            px = p.ProjectionX()
+            py = p.ProjectionY()
+            fits = [px.Fit('gaus', 'qs', '', .5, 25), py.Fit('gaus', 'qs', '', 15, 60)]
+            for i in xrange(4):
+                graphs[i].SetPoint(ibin, t, fits[i % 2].Parameter(1 + i % 2))
+                graphs[i].SetPointError(ibin, 0, fits[i % 2].ParError(1 + i % 2))
+        for i in xrange(4):
+            set_time_axis(graphs[i], off=self.run.startTime / 1000 + 3600)
+            self.draw_histo(graphs[i], draw_opt='alp')
         return h
 
-    def fit_mean_signal_distribution(self):
-        pickle_path = self.PickleDir + 'MeanSignalFit/{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
-
-        def func():
-            self.draw_mean_signal_distribution(show=False)
-            return self.MeanSignalHisto.Fit('gaus', 'qs')
-
-        fit = self.do_pickle(pickle_path, func)
-        return fit
-
-    def get_mean_fwhm(self):
-        fit = self.fit_mean_signal_distribution()
-        conversion_factor = 2 * sqrt(2 * log(2))  # sigma to FWHM
-        return fit.Parameter(2) * conversion_factor
-
-    def draw_diamond_hitmap(self, cut=None, show_frame=True):
-        self.find_diamond_margins(show_frame=show_frame, cut=cut)
-
-    def find_diamond_margins(self, show_plot=True, show_frame=False, cut=None, make_histo=False):
-        pickle_path = self.PickleDir + 'Margins/{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
-
-        def func():
-            print 'getting margins for {dia} of run {run}...'.format(dia=self.diamond_name, run=self.run_number)
-            cut_string = self.Cut.all_cut if cut is None else cut
-            if not show_plot:
-                gROOT.SetBatch(1)
-            h = TH2F('h', 'Diamond Margins', 52, -.3, .3, 80, -.3, .3)
-            nr = 1 if not self.channel else 2
-            self.tree.Draw('diam{nr}_track_x:diam{nr}_track_y>>h'.format(nr=nr), cut_string, 'goff')
-            projections = [h.ProjectionX(), h.ProjectionY()]
-            efficient_bins = [[], []]
-            zero_bins = [[], []]
-            bin_low = [[], []]
-            bin_high = [[], []]
-            for i, proj in enumerate(projections):
-                last_bin = None
-                for bin_ in xrange(proj.GetNbinsX()):
-                    efficiency = proj.GetBinContent(bin_) / float(proj.GetMaximum())
-                    if efficiency > .3:
-                        efficient_bins[i].append(proj.GetBinCenter(bin_))
-                        bin_low[i].append(proj.GetBinLowEdge(bin_))
-                        bin_high[i].append(proj.GetBinLowEdge(bin_ + 1))
-                    if bin_ > 1:
-                        if efficiency and not last_bin:
-                            zero_bins[i].append(proj.GetBinCenter(bin_ - 1))
-                        elif not efficiency and last_bin:
-                            zero_bins[i].append((proj.GetBinCenter(bin_)))
-                    last_bin = proj.GetBinContent(bin_)
-            if show_plot:
-                c = TCanvas('c', 'Diamond Hit Map', 1000, 1000)
-                c.SetRightMargin(.14)
-                c.SetBottomMargin(.15)
-                h.GetXaxis().SetRangeUser(zero_bins[0][0], zero_bins[0][1])
-                h.GetYaxis().SetRangeUser(zero_bins[1][0], zero_bins[1][1])
-                h.SetStats(0)
-                h.Draw('colz')
-                if show_frame:
-                    self.__show_frame(bin_low, bin_high)
-                self.save_plots('DiamondHitmap', sub_dir=self.save_dir)
-            self.histos[0] = h
-            gROOT.SetBatch(0)
-            return {name: [efficient_bins[i][0], efficient_bins[i][-1]] for i, name in enumerate(['x', 'y'])}
-
-        margins = func() if show_plot or make_histo else None
-        return self.do_pickle(pickle_path, func, margins)
-
-    def __show_frame(self, bin_low, bin_high):
-        frame = TCutG('frame', 4)
-        frame.SetLineColor(2)
-        frame.SetLineWidth(4)
-        frame.SetVarX('x')
-        frame.SetVarY('y')
-        frame.SetPoint(0, bin_low[0][0], bin_low[1][0])
-        frame.SetPoint(1, bin_high[0][-1], bin_low[1][0])
-        frame.SetPoint(2, bin_high[0][-1], bin_high[1][-1])
-        frame.SetPoint(3, bin_low[0][0], bin_high[1][-1])
-        frame.SetPoint(4, bin_low[0][0], bin_low[1][0])
-        frame.Draw('same')
-        self.histos[1] = frame
-
-    def calc_signal_spread(self, min_percent=5, max_percent=99):
-        """
-        Calculates the relative spread of mean signal response from the 2D signal response map.
-        :param min_percent: min quantile
-        :param max_percent: max quantile
-        :return: relative spread [%]
-        """
-        if self.MeanSignalHisto is None:
-            self.draw_mean_signal_distribution(show=False)
-        q = array([min_percent / 100., max_percent / 100.])
-        y = array([0., 0.])
-        self.MeanSignalHisto.GetQuantiles(2, y, q)
-        max_min_ratio = (y[1] / y[0] - 1) * 100
-        delta_y = self.draw_error_signal_map(show=False).GetMinimum()
-        # error propagation
-        err = 100 * delta_y / y[0] * (1 + y[1] / y[0])
-        print 'Relative Signal Spread is: {spr} +- {err}'.format(spr=max_min_ratio, err=err)
-        return [max_min_ratio, err]
-
-    # endregion
-
-    # ==========================================================================
-    # region PEAK VALUES
-    def draw_peak_values(self, region=None, type_='signal', draw=True, ucut=None):
-        num = self.get_signal_number('b', '2') if region is None else self.get_signal_number(region=region, sig_type=type_)
-        region = 'b' if region is None else region
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        peak_val = 'IntegralPeaks[{num}]'.format(num=num)
-        title = 'Peak Values {reg}'.format(reg=region)
-        x = self.run.signal_regions[region] if type_ == 'signal' else self.run.get_regions('pulser')['pulser']
-        h = TH1F('peakvalues', title, x[1] - x[0], x[0] / 2., x[1] / 2.)
-        self.format_histo(h, x_tit='time [ns]', y_tit='Entries', y_off=2)
-        cut = self.Cut.all_cut if type_ == 'signal' else '!({0})'.format(self.Cut.CutStrings['pulser'])
-        cut = cut if ucut is None else ucut
-        self.tree.Draw(peak_val + '/2.>>peakvalues', cut, 'goff')
-        if draw:
-            c = TCanvas('c', 'Signal Peak Distribution', 1000, 1000)
-            c.SetLeftMargin(0.14)
-            h.Draw()
-            self.save_plots('peak_values_{reg}{int}'.format(reg=region, int=self.PeakIntegral), 'png', canvas=c, sub_dir=self.save_dir)
-            self.histos[0] = c
-        self.PeakValues = h
-        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-
-    def fit_peak_values(self, draw=True, pulser=False):
-        pickle_path = self.PickleDir + 'PeakValues/Fit_{tc}_{run}_{dia}{pul}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name, pul='_pulser' if pulser else '')
-
-        def func():
-            print 'Getting peak value fit for {dia} of run {run}...'.format(run=self.run_number, dia=self.diamond_name)
-            self.draw_peak_values(draw=draw) if not pulser else self.draw_pulser_peakvalues(draw=draw)
-            h = self.PeakValues
-            max_bin = h.GetMaximumBin()
-            x = [h.GetBinCenter(max_bin + i) for i in [-7, 1]] if not pulser else [h.GetXaxis().GetXmin() + 1, h.GetXaxis().GetXmax() - 1]
-            return h.Fit('gaus', 'qs{0}'.format('' if draw else '0'), '', x[0], x[1])
-
-        mean = func() if draw else None
-        return self.do_pickle(pickle_path, func, mean)
-
-    def calc_peak_value_fwhm(self):
-        pickle_path = self.PickleDir + 'PeakValues/FWHM_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
-
-        def func():
-            print 'Getting peak value FWHM for {dia} of run {run}...'.format(run=self.run_number, dia=self.diamond_name)
-            if self.PeakValues is None:
-                self.draw_peak_values(draw=False)
-            return self.calc_fwhm(self.PeakValues)
-
-        fwhm = self.do_pickle(pickle_path, func)
-        return fwhm
-
-    # endregion
-
-    # ==========================================================================
-    # region SIGNAL/PEDESTAL
-    def __generate_signal_name(self, signal, evnt_corr, off_corr, bin_corr, cut=None):
-        sig_name = signal
-        if bin_corr:
-            return sig_name
-        elif off_corr:
-            ped_fit = self.show_pedestal_histo(cut=cut, draw=False)
-            sig_name += '-{0}'.format(ped_fit.Parameter(1))
-        elif evnt_corr:
-            sig_name += '-{ped}'.format(sig=sig_name, ped=self.PedestalName, pol=self.Polarity)
-        return sig_name
-
-    def make_signal_time_histos(self, ped=False, signal=None, evnt_corr=False, off_corr=False, show=True, bin_corr=False):
-        gROOT.SetBatch(1)
-        signal = self.SignalName if signal is None else signal
-        signal = signal if not ped else self.PedestalName
-        signal = self.__generate_signal_name(signal, evnt_corr, off_corr, bin_corr)
-        # 2D Histogram
-        name = "signaltime_" + str(self.run_number)
-        xbins = array(self.time_binning)
-        x_min = -50 if not ped else -20
-        x_max = 300 if not ped else 20
-        bins = 1000 if not ped else 80
-        h = TH2D(name, "signaltime", len(xbins) - 1, xbins, bins, x_min, x_max)
-        self.tree.Draw("{name}:time>>{histo}".format(histo=name, name=signal), self.Cut.all_cut, 'goff')
-        if show:
-            gROOT.SetBatch(0)
-            c = TCanvas('c', 'Pulse Height vs Time', 1000, 1000)
-            c.SetLeftMargin(.12)
-            self.format_histo(h, x_tit='time [ms]', y_tit='Pulse Height [au]', y_off=1.4)
-            h.Draw('colz')
-            self.save_plots('SignalTime', sub_dir=self.save_dir)
-            self.SignalTime = h
-            self.canvases[0] = c
-        gROOT.SetBatch(0)
+    def draw_pulse_height_vs_event(self, cut=None, show=True, adc=False):
+        """ Pulse height analysis vs event for a given cut. If no cut is provided it will take all. """
+        if cut is None:
+            cut_string = self.Cut.all_cut if not adc else self.Cut.HitMapCut
+        else:
+            cut_string = TCut(cut)
+        cut_string += 'charge_all_ROC{d} > 0'.format(d=self.Dut) if not adc else 'plane == {n}'.format(n=self.Dut)
+        ybins = [self.Settings['ph1DbinsD{n}'.format(n=self.Dut)], self.Settings['ph1DminD{n}'.format(n=self.Dut)], self.Settings['ph1DmaxD{n}'.format(n=self.Dut)]]
+        ybins = [255, 0, 255] if adc else ybins
+        self.set_root_output(False)
+        h = TH2D('h_ph', 'Pulse Height {d}'.format(d=self.DiamondName), self.n_bins - 1, array([t / 1000 for t in self.time_binning]), *ybins)
+        cut_var = 'charge_all_ROC{d}'.format(d=self.Dut) if not adc else 'adc'
+        self.tree.Draw('{v}:time / 1000. >> h_ph'.format(v=cut_var), cut_string, 'goff')
+        self.format_histo(h, x_tit='Time [hh:mm]', y_tit='Cluster Charge [e]' if not adc else 'adc', z_tit='Number of Entries', y_off=2.05, z_off=1.3, stats=0)
+        set_time_axis(h, off=self.run.startTime / 1000 + 3600)
+        h.SetNdivisions(520)
+        self.save_histo(h, 'PulseHeightVsEvent', show, rm=.15, lm=.16, draw_opt='colz', save=show)
         return h
 
-    def draw_pedestal(self, binning=None, draw=True):
-        bin_size = binning if binning is not None else self.BinSize
-        picklepath = 'Configuration/Individual_Configs/Pedestal/{tc}_{run}_{ch}_{bins}_Ped_Means.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel, bins=bin_size)
-        gr = self.make_tgrapherrors('pedestal', 'Pedestal')
-
-        def func():
-            print 'calculating pedestal of ch', self.channel
-            if binning is not None:
-                self.__set_bin_size(binning)
-            ped_time = self.make_signal_time_histos(ped=True, show=False)
-            gROOT.SetBatch(1)
-            means = []
-            empty_bins = 0
-            count = 0
-            for i in xrange(self.n_bins):
-                h_proj = ped_time.ProjectionY(str(i), i + 1, i + 1)
-                if h_proj.GetEntries() > 0:
-                    fit = self.fit_fwhm(h_proj)
-                    gr.SetPoint(count, (self.time_binning[i] - self.run.startTime) / 60e3, fit.Parameter(1))
-                    gr.SetPointError(count, 0, fit.ParError(1))
-                    count += 1
-                    means.append(fit.Parameter(1))
-                else:
-                    empty_bins += 1
-            if draw:
-                gROOT.SetBatch(0)
-            print 'Empty proj. bins:\t', str(empty_bins) + '/' + str(self.n_bins)
-            fit_pars = gr.Fit('pol0', 'qs')
-            print 'mean:', fit_pars.Parameter(0), '+-', fit_pars.ParError(0)
-            c = TCanvas('bla', 'blub', 1000, 1000)
-            c.SetLeftMargin(.14)
-            gStyle.SetOptFit(1)
-            self.format_histo(gr, x_tit='time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6)
-            gr.Draw('alp')
-            gr.Draw()
-            self.save_plots('Pedestal', sub_dir=self.save_dir)
-            self.Pedestal = gr
-            self.canvases[0] = c
-            gROOT.SetBatch(0)
-            return means
-
-        all_means = self.do_pickle(picklepath, func)
-        if draw and not gROOT.FindObject('pedestal'):
-            func()
-        return all_means
-
-    def draw_pulse_height(self, binning=None, show=True, save_graph=False, evnt_corr=True, bin_corr=False, off_corr=False, sig=None):
-        signal = self.SignalName if sig is None else sig
-        bin_size = binning if binning is not None else self.BinSize
-        correction = ''
-        if bin_corr:
-            correction = 'binwise'
-        elif off_corr:
-            correction = 'constant'
-        elif evnt_corr:
-            correction = 'eventwise'
-        suffix = '{bins}_{cor}_{sig}'.format(bins=bin_size, cor=correction, sig=self.get_all_signal_names()[signal])
-        picklepath = 'Configuration/Individual_Configs/Ph_fit/{tc}_{run}_{ch}_{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel, suf=suffix)
-
-        self.SignalTime = None
-
-        def func():
-            print 'drawing pulse height fit for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name)
-            if binning is not None:
-                self.__set_bin_size(binning)
-            tit_suffix = 'with {cor} Pedestal Correction'.format(cor=correction.title()) if bin_corr or evnt_corr or off_corr else ''
-            gr = self.make_tgrapherrors('signal', 'Pulse Height Evolution Bin{0} '.format(self.BinSize) + tit_suffix)
-            sig_time = self.make_signal_time_histos(evnt_corr=evnt_corr, signal=signal, show=False, off_corr=off_corr, bin_corr=bin_corr)
-            mode = 'mean'
-            empty_bins = 0
-            count = 0
-            means = self.draw_pedestal(bin_size, draw=False) if bin_corr else None
-            gROOT.SetBatch(1)
-            for i in xrange(self.n_bins - 1):
-                h_proj = sig_time.ProjectionY(str(i), i + 1, i + 1)
-                if h_proj.GetEntries() > 10:
-                    if mode in ["mean", "Mean"]:
-                        i_mean = h_proj.GetMean()
-                        i_mean -= means[count] if bin_corr else 0
-                        gr.SetPoint(count, (self.time_binning[i] - self.run.startTime) / 60e3, i_mean)
-                        gr.SetPointError(count, 0, h_proj.GetRMS() / sqrt(h_proj.GetEntries()))
-                    elif mode in ["fit", "Fit"]:
-                        h_proj.GetMaximum()
-                        maxposition = h_proj.GetBinCenter(h_proj.GetMaximumBin())
-                        h_proj.Fit("landau", "Q", "", maxposition - 50, maxposition + 50)
-                        fitfun = h_proj.GetFunction("landau")
-                        mpv = fitfun.GetParameter(1)
-                        mpverr = fitfun.GetParError(1)
-                        gr.SetPoint(count, (i + 0.5) * self.run.totalMinutes / self.n_bins, mpv)
-                        gr.SetPointError(count, 0, mpverr)
-                    count += 1
-                else:
-                    empty_bins += 1
-            print 'Empty proj. bins:\t', str(empty_bins) + '/' + str(self.n_bins)
-            if show:
-                gROOT.SetBatch(0)
-            c = TCanvas('bla', 'blub', 1000, 1000)
-            c.SetLeftMargin(.14)
-            gStyle.SetOptFit(1)
-            self.format_histo(gr, x_tit='time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6)
-            fit_par = gr.Fit('pol0', 'qs')
-            gr.Draw('apl')
-            self.save_plots('PulseHeight{0}'.format(self.BinSize), sub_dir=self.save_dir)
-            self.PulseHeight = gr
-            self.canvas = c
-            gROOT.SetBatch(0)
-            return fit_par
-
-        fit = func() if show or save_graph else None
-        return self.do_pickle(picklepath, func, fit)
-
-    def draw_ph_distribution(self, binning=None, show=True, fit=True):
-        if binning is not None:
-            self.__set_bin_size(binning)
-        sig_time = self.make_signal_time_histos(evnt_corr=True, show=False)
-        if not show:
-            gROOT.SetBatch(1)
-        means = [h_proj.GetMean() for h_proj in [sig_time.ProjectionY(str(i), i + 1, i + 1) for i in xrange(self.n_bins - 1)] if h_proj.GetEntries() > 10]
-        extrema = [int(min(means)), int(max(means))]
-        h = TH1F('h', 'Signal Bin{0} Distribution'.format(self.BinSize), int(log(len(means), 2) * 2), extrema[0], extrema[1] + 2)
-        for mean_ in means:
-            h.Fill(mean_)
-        c = TCanvas('c', 'Pulse Height Distribution', 1000, 1000)
-        c.SetLeftMargin(.12)
-        self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.5)
-        if fit:
-            h.Fit('gaus', 'q')
-        h.SetFillColor(kGreen - 9)
-        h.Draw()
-        gROOT.SetBatch(0)
-        self.save_plots('SignalBin{0}Disto'.format(self.BinSize), sub_dir=self.save_dir)
-        self.histos[0] = [h, c]
+    def draw_adc_vs_event(self, cut=None, show=True):
+        h = self.draw_pulse_height_vs_event(cut, show=False, adc=True)
+        self.format_histo(h, title='ADC vs Time - {d}'.format(d=self.DiamondName))
+        self.save_histo(h, 'ADCvsEvent', show, rm=.15, lm=.16, draw_opt='colz', logz=True)
         return h
 
-    def show_ph_overview(self, binning=None):
-        self.draw_pulse_height(binning=binning, show=False, save_graph=True)
-        h1 = self.PulseHeight
-        self.format_histo(h1, y_off=1.4)
-        h2 = self.draw_ph_distribution(binning=binning, show=False)
-        print h1, h2
-        c = TCanvas('c', 'Pulse Height Distribution', 1500, 750)
-        c.Divide(2, 1)
-        for i, h in enumerate([h1, h2], 1):
-            pad = c.cd(i)
-            pad.SetBottomMargin(.15)
-            h.Draw()
-        self.save_plots('PHEvolutionOverview{0}'.format(self.BinSize), sub_dir=self.save_dir)
-        self.histos[1] = [c]
+    def draw_adc_map(self, show=True, cut=None, adc=None):
+        cut_string = deepcopy(self.Cut.HitMapCut) if cut is None else TCut(cut)
+        cut_string += 'plane == {n}'.format(n=self.Dut)
+        cut_string += '' if adc is None else 'adc>0'
+        self.set_root_output(False)
+        h = TProfile2D('p_am', 'ADC Map', *self.Settings['2DBins'])
+        self.tree.Draw('adc:row:col >> p_am', cut_string, 'goff')
+        set_statbox(x=.81, entries=8, opt=1000000010)
+        self.format_histo(h, x_tit='col', y_tit='row', z_tit='ADC', y_off=1.3, z_off=1.5)
+        self.save_histo(h, 'ADCMap', show, rm=.17, lm=.13, draw_opt='colz')
 
-    def show_signal_histo(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None, binning=350):
-        gROOT.SetBatch(1)
-        print 'drawing signal distribution for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name)
-        suffix = 'with Pedestal Correction' if evnt_corr else ''
-        h = TH1F('signal b2', 'Pulse Height ' + suffix, binning, -50, 300)
-        cut = self.Cut.all_cut if cut is None else cut
-        sig_name = self.SignalName if sig is None else sig
-        sig_name = self.__generate_signal_name(sig_name, evnt_corr, off_corr, False, cut)
-        print sig_name
-        self.tree.Draw('{name}>>signal b2'.format(name=sig_name), cut, 'goff')
-        if show:
-            gROOT.SetBatch(0)
-        c = TCanvas('c', 'Signal Distribution', 1000, 1000)
-        c.SetLeftMargin(.13)
-        self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.8)
-        h.Draw()
-        self.save_plots('SignalDistribution', sub_dir=self.save_dir)
-        self.histos[0] = [c, h]
-        gROOT.SetBatch(0)
+    def draw_zero_contribution(self, show=True, cut=None, entries=False, one_hit=False):
+        cut_string = deepcopy(self.Cut.HitMapCut) if cut is None else TCut(cut)
+        cut_string += 'plane == {n}'.format(n=self.Dut)
+        cut_string += 'adc>0' if entries else ''
+        cut_string += 'n_hits[4]==1' if one_hit else ''
+        h = TProfile2D('p_zc', 'Good Events', *self.Settings['2DBins']) if not entries else TH2D('h_zc', 'Good Events', *self.Settings['2DBins'])
+        self.tree.Draw('((adc>0)*100):row:col >> p_zc' if not entries else 'row:col >> h_zc', cut_string, 'goff')
+        set_statbox(x=.81, entries=8, opt=1000000010)
+        self.format_histo(h, x_tit='col', y_tit='row', z_tit='Good Events{p}'.format(p='' if entries else ' [%]'), y_off=1.3, z_off=1.5)
+        self.save_histo(h, 'ZeroContribution{e}'.format(e='Entries' if entries else ''), show, rm=.17, lm=.13, draw_opt='colz')
+
+    def get_calibration_data(self):
+        f = open(joinpath(self.run.converter.TrackingDir, 'calibration_lists', 'GKCalibrationList_Telescope{n}.txt'.format(n=self.run.converter.TelescopeID)))
+        lines = f.readlines()
+        f.close()
+        # calibration fit
+        file_names = [joinpath(self.run.converter.TrackingDir, lines[0].strip('./\n'), line.strip('\n')) for i, line in enumerate(lines) if i]
+        fit = None
+        params = [[[0 for _ in xrange(self.Settings['nRows'])] for _ in xrange(self.Settings['nRows'])] for _ in xrange(self.NRocs)]
+        for roc, file_name in enumerate(file_names):
+            f = open(file_name)
+            f.readline()
+            fit_string = f.readline().replace('par', '').strip('\n')
+            fit = TF1('ErFit', fit_string, 0, 255 * 7)
+            f.readline()
+            for line in f.readlines():
+                line = line.split()
+                params[roc][int(line[-2])][int(line[-1])] = [float(line[i]) for i in xrange(4)]
+            f.close()
+        # calibration points
+        calib_files = [joinpath(self.run.converter.TrackingDir, lines[0].strip('./\n'), 'phCalibration_{e}'.format(e=line.strip('\n')[-6:])) for line in lines[5:]]
+        vcals = None
+        points = [[[0 for _ in xrange(self.Settings['nRows'])] for _ in xrange(self.Settings['nRows'])] for _ in xrange(self.NRocs)]
+        for roc, file_name in enumerate(calib_files, 4):
+            try:
+                f = open(file_name)
+                f.readline()
+                vcals = [int(i) for i in f.readline().split()[2:]] + [int(i) * 7 for i in f.readline().split()[2:]]
+                f.readline()
+                for line in f.readlines():
+                    line = line.split()
+                    points[roc][int(line[-2])][int(line[-1])] = [int(line[i]) for i in xrange(len(vcals))]
+            except IOError as e:
+                log_warning(e)
+
+        if self.Fit is None:
+            self.Fit = fit
+            self.Parameters = params
+            self.Vcals = vcals
+            self.Points = points
+
+    def draw_calibration_fit(self, col, row, show=True, roc=None):
+        roc = self.Dut if roc is None else roc
+        self.Fit.SetParameters(*self.Parameters[roc][col][row])
+        self.format_histo(self.Fit, title='Calibration Fit for Pix {c} {r}'.format(c=col, r=row), x_tit='vcal', y_tit='adc', y_off=1.4, color=632, lw=2)
+        gr = TGraph(len(self.Vcals), array(self.Vcals, 'd'), array(self.Points[roc][col][row], 'd'))
+        self.format_histo(gr, marker=20, name='gr_fp', title='Calibration Fit for Pix {c} {r}'.format(c=col, r=row), x_tit='vcal', y_tit='adc', y_off=1.4)
+        self.draw_histo(gr, lm=.12, draw_opt='ap')
+        self.Fit.Draw('same')
+        self.save_plots('CalFit{c}{r}'.format(c=col, r=row), show=show)
+
+    def draw_threshold_map(self, show=True, vcal=True):
+        h = TProfile2D('p_tm', 'Artificial Threshold Map', *self.Settings['2DBins'])
+        for (col, row), thresh in self.get_thresholds(vcal=vcal).iteritems():
+            h.Fill(col, row, thresh)
+        self.format_histo(h, x_tit='col', y_tit='row', z_tit='Artificial Treshold [vcal]', y_off=1.3, z_off=1.5, stats=0)
+        self.save_histo(h, 'ThresholdMap', show, rm=.17, lm=.13, draw_opt='colz')
         return h
 
-    def show_pedestal_histo(self, region='ab', peak_int='2', cut=None, fwhm=True, draw=True):
-        cut = self.Cut.all_cut if cut is None else cut
-        cut = TCut('', cut) if type(cut) is str else cut
-        fw = 'fwhm' if fwhm else 'full'
-        suffix = '{reg}_{fwhm}_{cut}'.format(reg=region + str(peak_int), cut=cut.GetName(), fwhm=fw)
-        picklepath = 'Configuration/Individual_Configs/Pedestal/{tc}_{run}_{ch}_{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, ch=self.channel, suf=suffix)
+    def get_thresholds(self, cols=None, pix=None, vcal=True):
+        columns, rows = self.Cut.CutConfig['FidRegionLocal'][:2], self.Cut.CutConfig['FidRegionLocal'][2:]
+        columns = cols if cols is not None else columns
+        columns = [columns, columns] if type(columns) == int else columns
+        columns, rows = ([pix[0]] * 2, [pix[1]] * 2) if pix is not None else (columns, rows)
+        dic = {}
+        for col in xrange(columns[0], columns[1] + 1):
+            for row in xrange(rows[0], rows[1] + 1):
+                self.Fit.SetParameters(*self.Parameters[self.Dut][col][row])
+                dic[(col, row)] = self.Fit.GetX(0) * (47 if not vcal else 1)
+        return dic
+
+    def fit_erf(self, col, row, roc=None, show=True):
+        roc = self.Dut if roc is None else roc
+        # fit.SetParameters(*self.Parameters[roc][col][row])
+        points = OrderedDict(sorted({vcal: value for vcal, value in zip(self.Vcals, self.Points[roc][col][row])}.iteritems()))
+        good_points = OrderedDict(sorted({vcal: value for vcal, value in zip(self.Vcals, self.Points[roc][col][row]) if value}.iteritems()))
+        start = 0
+        for vcal, value in points.iteritems():
+            if value:
+                start = vcal
+                break
+        if len(good_points) > 3:
+            fit = deepcopy(self.Fit)
+            fit.SetParameters(309.2062, 112.8961, 1.022439, 35.89524)
+        else:
+            fit = TF1('fit', 'pol1', 0, 3000)
+        if len(good_points) > 1:
+            gr = TGraph(len(points), array(points.keys(), 'd'), array(points.values(), 'd'))
+            gr.Fit(fit, 'q', '', start, 3000 if len(good_points) > 3 else 1000)
+            self.format_histo(gr, marker=20, x_tit='vcal', y_tit='adc', y_off=1.3, title='Calibration Fit for Pix {c} {r}'.format(c=col, r=row))
+            self.draw_histo(gr, draw_opt='ap', show=show, lm=.12)
+            return fit
+
+    def draw_adc_fixed_vcal_map(self, show=True, vcal=200, roc=None):
+        roc = self.Dut if roc is None else roc
+        h = TProfile2D('p_pm', 'Pulse Height Map for Vcal {v}'.format(v=vcal), *self.Settings['2DBins'])
+        cols, rows = self.Cut.CutConfig['MaskCols'], self.Cut.CutConfig['MaskRows']
+        for col in xrange(cols[0][1] + 1, cols[1][0]):
+            for row in xrange(rows[0][1], self.Settings['nRows']):
+                self.Fit.SetParameters(*self.Parameters[roc][col][row])
+                h.Fill(col, row, self.Fit(vcal))
+        self.format_histo(h, x_tit='col', y_tit='row', z_tit='Pulse Height [adc]', y_off=1.3, z_off=1.5, stats=0)
+        self.save_histo(h, 'PulseHeightMap{v}'.format(v=vcal), show, rm=.17, lm=.13, draw_opt='colz')
+
+    def draw_adc_disto(self, cut=None, show=True, col=None, pix=None):
+        h = TH1I('h_adc', 'ADC Distribution {d}'.format(d=self.DiamondName), 255, 0, 255)
+        cut_string = deepcopy(self.Cut.HitMapCut) if cut is None else TCut(cut)
+        cut_string += 'plane == {n}'.format(n=self.Dut)
+        cut_string += 'col=={c}'.format(c=col) if col is not None else ''
+        cut_string += 'col=={c}&&row=={r}'.format(c=pix[0], r=pix[1]) if pix is not None else ''
+        self.set_root_output(False)
+        self.tree.Draw('adc>>h_adc', cut_string, 'goff')
+        set_statbox(entries=8, opt=1000000010)
+        self.format_histo(h, x_tit='adc', y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor)
+        self.save_histo(h, 'ADCDisto', show, lm=0.13, logy=True)
+        return h
+
+    def check_adc(self):
+        for i in xrange(10000, 12000):
+            self.tree.GetEntry(i)
+            if 4 in self.tree.plane:
+                ind = list(self.tree.plane).index(4)
+                if self.tree.adc[ind]:
+                    print i, self.tree.adc[ind], list(self.tree.charge_all_ROC4)
+
+    def draw_pulse_height_disto(self, cut=None, show=True, prnt=True, sup_zero=True, pix=None, roc=None, vcal=False):
+        area_string = '_'.join(str(pi) for pi in pix) if pix is not None else 'all'
+        pickle_path = self.make_pickle_path('PulseHeight', run=self.RunNumber, suf='{r}_{a}{z}'.format(r=roc, a=area_string, z='_0' if sup_zero else ''))
+        roc = self.Dut if roc is None else roc
+        cut_string = deepcopy(self.Cut.generate_special_cut(excluded=['fiducial', 'trigger_phase'])) if cut is None else TCut(cut)
+        cut_string += 'cluster_charge>0'.format(d=self.Dut) if sup_zero else ''
+        if pix is not None:
+            pix = [pix, pix] if not type(pix[0]) == list else pix
+            cut_string += 'cluster_col>={c1}&&cluster_col<={c2}&&cluster_row>={r1}&&cluster_row<={r2}'.format(c1=pix[0][0], c2=pix[1][0], r1=pix[0][1], r2=pix[1][1], d=self.Dut)
+        cut_string += 'cluster_plane=={r}'.format(r=roc)
 
         def func():
-            gROOT.SetBatch(1)
-            print 'making pedestal histo for region {reg}{int}...'.format(reg=region, int=peak_int)
-            h = TH1F('ped1', 'Pedestal Distribution', 100, -20, 20)
-            name = self.get_pedestal_name(region, peak_int)
-            self.tree.Draw('{name}>>ped1'.format(name=name), cut, 'goff')
-            fit_pars = self.fit_fwhm(h, do_fwhm=fwhm, draw=draw)
-            gStyle.SetOptFit(1)
-            if draw:
-                gROOT.SetBatch(0)
-            c = TCanvas('c', 'Pedestal Distribution', 1000, 1000)
-            c.SetLeftMargin(.13)
-            self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.8)
-            h.Draw()
-            save_name = 'Pedestal_{reg}{cut}'.format(reg=region, cut=cut.GetName())
-            self.save_plots(save_name, 'png', canvas=c, sub_dir=self.save_dir)
-            self.histos[0] = [h, c]
-            gROOT.SetBatch(0)
-            return fit_pars
+            self.set_root_output(False)
+            h1 = TH1D('h_phd', 'Pulse Height Distribution - {d}'.format(d=self.DiamondName), *self.Settings['phBins' if not vcal else 'vcalBins'])
+            self.tree.Draw('cluster_charge{v}>>h_phd'.format(d=self.Dut, v='/47.5 + 427.4/47.5' if vcal else ''), cut_string, 'goff')
+            set_statbox(entries=8, opt=1000000010, x=.92)
+            self.format_histo(h1, x_tit='Pulse Height [{u}]'.format(u='vcal' if vcal else 'e'), y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor)
+            self.save_histo(h1, 'PulseHeightDisto{c}'.format(c=make_cut_string(cut, self.Cut.NCuts)), show, lm=.13, prnt=prnt, rm=.06)
+            return h1
 
-        fit_par = func() if draw else None
-        return self.do_pickle(picklepath, func, fit_par)
+        h = self.do_pickle(pickle_path, func)
+        self.draw_histo(h, show=show, lm=.13, prnt=prnt, rm=.06)
+        return h
 
-    def compare_pedestals(self):
-        legend = TLegend(0.7, 0.7, 0.98, .9)
-        gr1 = TGraph()
-        gr1.SetTitle('pedestal comparison')
-        gr1.SetMarkerStyle(20)
-        gr2 = TGraph()
-        gr2.SetTitle('pedestal comparison with cuts')
-        gr2.SetMarkerStyle(20)
-        gr2.SetMarkerColor(2)
-        gr2.SetLineColor(2)
-        gr3 = TGraph()
-        gr3.SetTitle('pedestal comparison with cuts full fit')
-        gr3.SetMarkerStyle(20)
-        gr3.SetMarkerColor(3)
-        gr3.SetLineColor(3)
-        gROOT.SetBatch(1)
-        gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
-        for i, reg in enumerate(self.run.pedestal_regions):
-            print 'calculation region', reg
-            mean1 = self.show_pedestal_histo(reg).keys()[1]
-            mean2 = self.show_pedestal_histo(reg, 'median').keys()[1]
-            mean3 = self.show_pedestal_histo(reg, 'all').keys()[1]
-            gr1.SetPoint(i, i, mean1)
-            gr2.SetPoint(i, i, mean2)
-            gr3.SetPoint(i, i, mean3)
-        gROOT.SetBatch(0)
-        gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
-        for i, reg in enumerate(self.run.pedestal_regions):
-            bin_x = gr1.GetXaxis().FindBin(i)
-            gr1.GetXaxis().SetBinLabel(bin_x, reg)
-        c = TCanvas('bla', 'blub', 1000, 1000)
-        gr1.Draw('alp')
-        gr2.Draw('lp')
-        gr3.Draw('lp')
-        legend.AddEntry(gr1, 'mean fit fwhm w/ cuts 2', 'lp')
-        legend.AddEntry(gr2, 'mean fit fwhm w/ cuts median', 'lp')
-        legend.AddEntry(gr3, 'mean fit fwhm w/ cuts all', 'lp')
-        legend.Draw()
-        self.histos[0] = [gr1, gr2, gr3, c, legend]
+    def draw_pulse_height_map(self, show=True, cut=None, roc=None, sup_zero=True):
+        roc = self.Dut if roc is None else roc
+        cut_string = self.Cut.all_cut if cut is None else TCut(cut)
+        cut_string += 'cluster_plane=={r}'.format(r=roc)
+        cut_string += 'cluster_charge>0'.format(d=self.Dut) if sup_zero else ''
+        self.set_root_output(False)
+        h = TProfile2D('p_phm', 'Pulse Height Map', *self.Settings['2DBins'])
+        self.tree.Draw('cluster_charge:cluster_row:cluster_col>>p_phm'.format(d=self.Dut), cut_string, 'goff')
+        set_statbox(entries=8, opt=1000000010)
+        self.format_histo(h, x_tit='col', y_tit='row', z_tit='Pulse Height [e]', z_off=1.5, y_off=1.4)
+        self.save_histo(h, 'PulseHeightMap', show, lm=.13, rm=.15, draw_opt='colz')
 
-    # endregion
+    def draw_hit_efficiency(self, roc=None, save=True, cut='all', vs_time=True, binning=5000, n=1e9, start=0, show=True):
+        roc = self.Dut if roc is None else roc
+        self.set_root_output(False)
+        suffix = 'ROC {n}'.format(n=roc) if roc < 4 else self.load_diamond_name(roc - 3)
+        h = TProfile('h_he', 'Hit Efficiency {s}'.format(s=suffix), *(self.get_time_bins(binning) if vs_time else self.get_bins(binning)))
+        cut_string = self.Cut.generate_special_cut(excluded=['masks', 'rhit']) if cut == 'all' else TCut(cut)
+        x_var = 'time / 1000' if vs_time else 'event_number'
+        self.tree.Draw('(n_hits[{r}]>0)*100:{x} >> h_he'.format(r=roc, x=x_var), cut_string, 'goff', int(n), start)
+        set_time_axis(h, off=self.run.startTime / 1000 + 3600) if vs_time else do_nothing()
+        self.format_histo(h, x_tit='Time [hh:mm]' if vs_time else 'Event Number', y_tit='Efficiency [%]', y_off=1.4, ndiv=505, y_range=[-5, 105], stats=0)
+        self.save_histo(h, 'HitEfficiencyROC{n}'.format(n=roc), show, lm=.13, save=save, gridy=True)
+        return h
 
-    # ==========================================================================
-    # region CUTS
-    def show_cut_contributions(self):
-        main_cut = [self.Cut.CutStrings['event_range'], self.Cut.CutStrings['beam_interruptions']]
-        contributions = {}
-        cutted_events = 0
-        cuts = TCut('consecutive', '')
-        for cut in main_cut + self.Cut.CutStrings.values():
-            name = cut.GetName()
-            if not name.startswith('old') and name != 'all_cuts' and name not in contributions and str(cut):
-                cuts += cut
-                events = int(z.tree.Draw('1', '!({0})'.format(cuts), 'goff'))
-                events -= cutted_events
-                print name, events
-                contributions[cut.GetName()] = events
-                cutted_events += events
-        sorted_contr = OrderedDict()
-        while contributions:
-            for key, value in contributions.iteritems():
-                if value == max(contributions.values()):
-                    sorted_contr[key] = value
-                    contributions.pop(key)
-                    break
-            for key, value in contributions.iteritems():
-                if value == min(contributions.values()):
-                    sorted_contr[key] = value
-                    contributions.pop(key)
-                    break
-        contributions = sorted_contr
-        values = contributions.values() + [self.run.n_entries - cutted_events]
-        i = 0
-        colors = [self.get_color() for i in xrange(1, len(values) + 1)]
-        print values, i
-        pie = TPie('pie', 'Cut Contributions', len(values), array(values, 'f'), array(colors, 'i'))
-        for i, label in enumerate(contributions.iterkeys()):
-            # if pie.GetEntryVal(i) < 2000:
+    def fit_hit_efficiency(self, roc=None, show=True, save=True, cut='all', vs_time=True, n=1e9, start=0, binning=5000):
+        pickle_path = self.make_pickle_path('Efficiency', run=self.RunNumber, suf='{r}{c}_{t}'.format(r=roc, c='_Cuts' if cut else '', t='Time' if vs_time else 'EvntNr'))
+
+        def func():
+            set_statbox(y=.37, only_fit=True, entries=1.5, form='4.1f')
+            h = self.draw_hit_efficiency(roc, show=False, save=False, cut=cut, vs_time=vs_time, n=n, start=start, binning=binning)
+            if h.GetEntries() < 100:
+                return FitRes()
+            self.format_histo(h, stats=1, name='Fit Result')
+            fit = h.Fit('pol0', 'qs')
+            self.save_histo(h, 'HitEfficiencyROC{n}Fit'.format(n=roc), show, lm=.13, save=save, gridy=True, prnt=show)
+            return FitRes(fit)
+
+        fit_res = func() if show or save else None
+        return self.do_pickle(pickle_path, func, fit_res)
+
+    def draw_all_efficiencies(self, show=True):
+        stack = THStack('s_he', 'Raw Hit Efficiencies')
+        l = self.make_legend(y2=.5, nentries=5, x1=.59)
+        for roc in xrange(self.NRocs):
+            h = self.draw_hit_efficiency(roc, show=False)
+            fit = self.fit_hit_efficiency(roc, show=False)
+            self.format_histo(h, color=self.get_color())
+            stack.Add(h, 'ROC{n}'.format(n=roc))
+            leg_string = 'ROC{n}'.format(n=roc) if roc < 4 else self.load_diamond_name(roc - 3)
+            leg_string += ' ({v:5.2f}%)'.format(v=fit.Parameter(0))
+            l.AddEntry(h, leg_string, 'pl')
+        self.format_histo(stack, x_tit='Time [hh:mm]', y_tit='Efficiency [%]', y_off=1.4, ndiv=505, y_range=[-5, 105], stats=0, draw_first=True)
+        set_time_axis(stack, off=self.run.startTime / 1000 + 3600)
+        self.save_histo(stack, 'HitEfficiencies', show, lm=.13, l=l, draw_opt='nostack', gridy=True)
+        self.reset_colors()
+        return stack
+
+    def draw_hits_dut(self, cut=None, show=True):
+        cut_string = z.Cut.all_cut if cut is None else TCut(cut)
+        h = TH2D('h_hd', 'Hits in Dia vs Hits in Silicon', 40, 0, 40, 40, 0, 40)
+        self.tree.Draw('n_hits[5]:n_hits[4]>>h_hd', cut_string, 'goff')
+        set_statbox(entries=4, opt=1000000010, x=.81)
+        self.format_histo(h, x_tit='Hits in Diamond', y_tit='Hits in Silicon', y_off=1.3, z_tit='Number of Entries', z_off=1.4)
+        self.save_histo(h, 'HitsDiaSil', show, draw_opt='colz', rm=0.17, lm=.13, logz=True)
+
+    def draw_hit_pie(self):
+        zero = z.tree.GetEntries('n_hits[4]==0&&n_hits[5]==0')
+        dia = z.tree.GetEntries('n_hits[4]>0&&n_hits[5]==0')
+        sil = z.tree.GetEntries('n_hits[4]==0&&n_hits[5]>0')
+        both = z.tree.GetEntries('n_hits[4]>0&&n_hits[5]>0')
+        names = ['No Hits', 'Diamond Hit', 'Silicon Hit', 'Both Hits']
+        values = [zero, dia, sil, both]
+        colors = [self.get_color() for _ in xrange(1, len(values) + 1)]
+        self.reset_colors()
+        pie = TPie('pie', 'Hit Contributions', len(values), array(values, 'f'), array(colors, 'i'))
+        for i, label in enumerate(names):
             pie.SetEntryRadiusOffset(i, .05)
             pie.SetEntryLabel(i, label.title())
-        pie.SetEntryRadiusOffset(i + 1, .05)
-        pie.SetEntryLabel(i + 1, 'Good Events')
         pie.SetHeight(.04)
         pie.SetRadius(.2)
         pie.SetTextSize(.025)
         pie.SetAngle3D(70)
-        pie.SetLabelFormat('#splitline{%txt}{%perc}')
-        pie.SetAngularOffset(240)
-        c = TCanvas('c', 'Cut Pie', 1000, 1000)
-        pie.Draw('3drsc')
-        self.save_plots('CutContributions', sub_dir=self.save_dir)
-        self.histos[0] = [pie, c]
-        return contributions
+        pie.SetAngularOffset(250)
+        self.draw_histo(pie, draw_opt='3drsc')
 
-    def show_bucket_histos(self):
-        h = TH1F('h', 'Bucket Cut Histograms', 250, -50, 300)
-        self.tree.Draw('{name}>>h'.format(name=self.SignalName), '!({buc})&&{pul}'.format(buc=self.Cut.CutStrings['old_bucket'], pul=self.Cut.CutStrings['pulser']), 'goff')
-        h1 = deepcopy(h)
-        fit = self.Cut.triple_gauss_fit(h1, show=False)
-        sig_fit = TF1('f1', 'gaus', -50, 300)
-        sig_fit.SetParameters(fit.GetParameters())
-        ped1_fit = TF1('f2', 'gaus', -50, 300)
-        ped2_fit = TF1('f2', 'gaus', -50, 300)
-        ped1_fit.SetParameters(*[fit.GetParameter(i) for i in xrange(3, 6)])
-        ped2_fit.SetParameters(*[fit.GetParameter(i) for i in xrange(6, 9)])
-        h_sig = deepcopy(h)
-        h_ped1 = deepcopy(h)
-        h_ped2 = deepcopy(h)
-        h_sig.Add(ped1_fit, -1)
-        h_sig.Add(ped2_fit, -1)
-        h_ped1.Add(ped2_fit, -1)
-        h_ped2.Add(ped1_fit, -1)
-        h_ped1.Add(h_sig, -1)
-        h_ped2.Add(h_sig, -1)
-        c = TCanvas('c', 'Bucket Histos', 1000, 1000)
-        for i, h in enumerate([h_ped1, h_ped2, h_sig]):
-            h.SetStats(0)
-            h.SetLineColor(self.get_color())
-            h.SetLineWidth(2)
-            h.Draw('same') if i else h.Draw()
-        self.save_plots('BucketHistos', sub_dir=self.save_dir)
-        self.histos[0] = [h, h_sig, h_ped1, h_ped2, c]
+    @staticmethod
+    def draw_fid_cut():
+        cut = gROOT.FindObject('fid')
+        cut.Draw()
 
-    def show_bucket_numbers(self, show=True):
-        pickle_path = self.PickleDir + 'Cuts/BucketEvents_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
+    def draw_efficiency_map(self, res=5, cut='', show=True):
+        cut_string = TCut(cut) + self.Cut.CutStrings['tracks']
+        cut_string = self.Cut.generate_special_cut(excluded=['masks', 'fiducial', 'rhit']) if cut == 'all' else cut_string
+        p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DiamondName), *self.plots.get_global_bins(res=res))
+        self.tree.Draw('(n_hits[{r}]>0)*100:diam{r1}_track_y:diam{r1}_track_x>>p_em'.format(r=self.Dut, r1=self.Dut - 3), cut_string, 'goff')
+        set_statbox(entries=4, opt=1000000010, x=.81)
+        self.format_histo(p, x_tit='Track x [cm]', y_tit='Track y [cm]', z_tit='Efficiency [%]', y_off=1.4, z_off=1.5)
+        self.save_histo(p, 'Efficiency Map', show, lm=.13, rm=.17, draw_opt='colz')
 
-        def func():
-            print 'getting number of bucket events for run {run} and {dia}...'.format(run=self.run_number, dia=self.diamond_name)
-            n_new = self.tree.Draw('1', '!({buc})&&{pul}'.format(buc=self.Cut.CutStrings['bucket'], pul=self.Cut.CutStrings['pulser']), 'goff')
-            n_old = self.tree.Draw('1', '!({buc})&&{pul}'.format(buc=self.Cut.CutStrings['old_bucket'], pul=self.Cut.CutStrings['pulser']), 'goff')
-            if show:
-                print 'New Bucket: {0} / {1} = {2:4.2f}%'.format(n_new, self.run.n_entries, n_new / float(self.run.n_entries) * 100)
-                print 'Old Bucket: {0} / {1} = {2:4.2f}%'.format(n_old, self.run.n_entries, n_old / float(self.run.n_entries) * 100)
-            return {'old': n_old, 'new': n_new, 'all': float(self.run.n_entries)}
+    def draw_track_occupancy(self, cut='', show=True, res=2):
+        cut_string = self.Cut.all_cut if cut is None else TCut(cut) + self.Cut.CutStrings['tracks']
+        h = TH2D('h_to', 'Track Occupancy {d}'.format(d=self.DiamondName), *self.plots.get_global_bins(res=res))
+        self.tree.Draw('diam{nr}_track_y:diam{nr}_track_x>>h_to'.format(nr=self.Dut - 3), cut_string, 'goff')
+        set_statbox(entries=4, opt=1000000010, x=.81)
+        self.format_histo(h, x_tit='Track x [cm]', y_tit='Track y [cm]', z_tit='Number of Entries', y_off=1.4, z_off=1.5)
+        self.save_histo(h, 'TrackOccupancy', show, lm=.12, rm=.17, draw_opt='colz')
 
-        return self.do_pickle(pickle_path, func)
+    def draw_trigphase_offset(self, cut=None, show=True):
+        cut_string = deepcopy(self.Cut.all_cut) if cut is None else TCut(cut)
+        h = TH1I('h_tp', 'Trigger Phase Offset', 19, -9, 10)
+        self.tree.Draw('trigger_phase[1] - trigger_phase[0]>>h_tp', cut_string, 'goff')
+        set_statbox(entries=4, opt=1000000010, y=0.88)
+        self.format_histo(h, x_tit='Trigger Phase', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor, ndiv=20)
+        self.save_histo(h, 'TriggerPhase', show, lm=.16)
 
-    def show_bucket_hits(self, show=True):
-        # hit position
-        h = TH2F('h', 'Diamond Margins', 80, -.3, .3, 52, -.3, .3)
-        nr = 1 if not self.channel else 2
-        cut = '!({buc})&&{pul}'.format(buc=self.Cut.CutStrings['old_bucket'], pul=self.Cut.CutStrings['pulser'])
-        self.tree.Draw('diam{nr}_track_x:diam{nr}_track_y>>h'.format(nr=nr), cut, 'goff')
-        projections = [h.ProjectionX(), h.ProjectionY()]
-        zero_bins = [[], []]
-        for i, proj in enumerate(projections):
-            last_bin = None
-            for bin_ in xrange(proj.GetNbinsX()):
-                efficiency = proj.GetBinContent(bin_) / float(proj.GetMaximum())
-                if bin_ > 1:
-                    if efficiency > .05 and last_bin < 5:
-                        zero_bins[i].append(proj.GetBinCenter(bin_ - 1))
-                    elif efficiency < .05 and last_bin > 5:
-                        zero_bins[i].append((proj.GetBinCenter(bin_)))
-                last_bin = proj.GetBinContent(bin_)
-        if show:
-            print zero_bins
-            c = TCanvas('c', 'Diamond Hit Map', 1000, 1000)
-            h.GetXaxis().SetRangeUser(zero_bins[0][0], zero_bins[0][-1])
-            h.GetYaxis().SetRangeUser(zero_bins[1][0], zero_bins[1][-1])
-            h.Draw('colz')
-            self.histos[0] = [c, h]
-        return h
+    def draw_hit_eff_vs_trigphase(self, roc=None, show=True, n=1e9, start=0):
+        roc = self.Dut if roc is None else roc
+        x = range(10)
+        cut_string = self.Cut.generate_special_cut(excluded=['masks', 'rhit', 'trigger_phase'])
+        y = [self.fit_hit_efficiency(roc=roc, show=False, cut=cut_string + TCut('trigger_phase[1]=={v}'.format(v=i)), n=n, start=start).Parameter(0) for i in xrange(10)]
+        y = [0 if i is None else i for i in y]
+        gr = self.make_tgrapherrors('gr_etp', 'Efficiency per Trigger Phase', x=x, y=y)
+        gr.GetXaxis().SetLimits(-1, 10)
+        self.format_histo(gr, fill_color=self.FillColor, x_tit='Trigger Phase', y_tit='Efficiency [%]', y_off=1.4)
+        self.save_histo(gr, 'EffVsTrigPhase', show, draw_opt='ba', lm=.13)
 
-    def show_bucket_means(self, show=True, plot_histos=True):
-        pickle_path = self.PickleDir + 'Cuts/BucketMeans_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name)
+    def induce_threshold(self):
+        # todo
+        pass
 
-        def func():
-            gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-            cuts_nobucket = TCut('no_bucket', '')
-            cuts_oldbucket = TCut('old_bucket', '')
-            for key, value in self.Cut.CutStrings.iteritems():
-                if not key.startswith('old') and key not in ['all_cuts', 'bucket']:
-                    cuts_nobucket += value
-                if key not in ['all_cuts', 'bucket']:
-                    cuts_oldbucket += value
-            h1 = self.show_signal_histo(show=False, evnt_corr=True)
-            h2 = self.show_signal_histo(show=False, evnt_corr=True, cut=cuts_nobucket)
-            h3 = self.show_signal_histo(show=False, evnt_corr=True, cut=cuts_oldbucket)
-            if plot_histos:
-                c = TCanvas('c', 'Bucket Histos', 1000, 1000)
-                self.format_histo(h1, color=self.get_color(), lw=1, x_tit='Pulse Height [au]', y_tit='Entries')
-                h1.Draw()
-                self.format_histo(h2, color=self.get_color(), lw=1)
-                h2.Draw('same')
-                self.format_histo(h3, color=self.get_color(), lw=1)
-                h3.Draw('same')
-                self.histos[0] = [h1, h2, h3, c]
-            result = {name: [h.GetMean(), h.GetMeanError()] for name, h in zip(['new', 'no', 'old'], [h1, h2, h3])}
-            gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-            if show:
-                print result
-            return result
+    def find_landau(self, aver=10, m1=2500, m2=5000, s1=500, s2=1600, pix=([18, 51], [18, 53])):
+        seed = self.draw_pulse_height_disto(show=False, sup_zero=False, pix=pix)
+        h = deepcopy(seed)
+        m_range = range(m1, m2 + 1, 100)
+        s_range = range(s1, s2 + 1, 50)
+        p = TProfile2D('g_fl', 'Find Landau', len(m_range) - 1, m_range[0], m_range[-1], len(s_range) - 1, s_range[0], s_range[-1])
+        self.start_pbar(len(m_range) * len(s_range) * aver)
+        i = 0
+        r_min, r_max = .5, 1.5
+        for _ in xrange(aver):
 
-        res = func() if plot_histos else None
-        return self.do_pickle(pickle_path, func, res)
+            for m in m_range:
+                for s in s_range:
+                    i += 1
+                    self.ProgressBar.update(i)
+                    if r_min < m / 4. / s < r_max:
+                        diff = self.model_landau(seed, h, m, s, show=False, thresh=True)
+                        p.Fill(m, s, diff)
+        self.ProgressBar.finish()
+        set_statbox(entries=8, opt=1000000010, x=.82)
+        self.format_histo(p, x_tit='MPV [e]', y_tit='Sigma [e]', z_tit='#chi^{2} to Seed Function', y_off=1.7, z_off=1.3)
+        self.draw_histo(p, draw_opt='colz', lm=.13, rm=0.16)
+        self.draw_ms_ratios(r_min, r_max, m1, m2, s1, s2)
+        self.save_plots('FindLandau')
+        self.find_working_point(p)
 
-    def compare_single_cuts(self):
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        gROOT.SetBatch(1)
-        c1 = TCanvas('single', '', 1000, 1000)
-        c2 = TCanvas('all', '', 1000, 1000)
-        c2.SetLeftMargin(0.15)
-        legend = TLegend(0.7, 0.3, 0.98, .7)
-        histos = []
-        drawn_first = False
-        for key, value in self.Cut.CutStrings.iteritems():
-            if str(value) or key == 'raw':
-                print 'saving plot', key
-                save_name = 'signal_distribution_{cut}'.format(cut=key)
-                histo_name = 'signal {range}{peakint}'.format(range=self.SignalRegion, peakint=self.PeakIntegral)
-                histo_title = 'signal with cut ' + key
-                histo = TH1F(histo_name, histo_title, 350, -50, 300)
-                # safe single plots
-                c1.cd()
-                self.tree.Draw("{name}>>{histo}".format(name=self.SignalName, histo=histo_name), value)
-                self.save_plots(save_name, 'png', canvas=c1, sub_dir=self.save_dir)
-                # draw all single plots into c2
-                c2.cd()
-                histo.SetLineColor(self.get_color())
-                if not drawn_first:
-                    self.format_histo(histo, title='Signal Distribution of Different Single Cuts', x_tit='Pulse Height [au]', y_tit='Entries', y_off=2)
-                    histo.SetStats(0)
-                    histo.Draw()
-                    drawn_first = True
-                else:
-                    if key == 'all_cuts':
-                        histo.SetLineWidth(2)
-                    histo.Draw('same')
-                histos.append(histo)
-                legend.AddEntry(histo, key, 'l')
-        # save c2
-        legend.Draw()
-        self.save_plots('all', 'png', canvas=c2, sub_dir=self.save_dir)
-        self.save_plots('all', 'root', canvas=c2, sub_dir=self.save_dir)
-        gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
-        gROOT.SetBatch(0)
+    def draw_ms_ratios(self, r_min, r_max, m1, m2, s1, s2, step=.1):
+        ratios = arange(r_min, r_max + step, step)
+        off = .01
+        for i, ratio in enumerate(ratios):
+            cut = TCutG('ms{n}'.format(n=i), 2, array([0, 20000], 'd'), array([0, 20000 / ratio / 4]))
+            x_pos = m1 if m1 / ratio / 4 > s1 else 4 * ratio * s1
+            y_pos = m1 / ratio / 4 if m1 / ratio / 4 > s1 else s1
+            self.draw_tlatex(x_pos + off * (m2 - m1), y_pos + off * (s2 - s1), text='{0:3.1f}'.format(ratio), size=.02, align=11)
+            cut.Draw('same')
+            self.RootObjects.append(cut)
 
-    def compare_normalised_cuts(self):
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        gROOT.SetBatch(1)
-        c1 = TCanvas('single', '', 1000, 1000)
-        c2 = TCanvas('normalised', '', 1000, 1000)
-        c2.SetLeftMargin(0.15)
-        legend = TLegend(0.7, 0.3, 0.98, .7)
-        histos = []
-        drawn_first = False
-        for key, value in self.Cut.CutStrings.iteritems():
-            if str(value) or key == 'raw':
-                print 'saving plot', key
-                save_name = 'signal_distribution_normalised_{cut}'.format(cut=key)
-                histo_name = 'signal {range}{peakint}'.format(range=self.SignalRegion, peakint=self.PeakIntegral)
-                histo_title = 'normalised signal with cut ' + key
-                histo = TH1F(histo_name, histo_title, 350, -50, 300)
-                # safe single plots
-                c1.cd()
-                self.tree.Draw("{name}>>{histo}".format(name=self.SignalName, histo=histo_name), value)
-                histo = self.normalise_histo(histo)
-                histo.Draw()
-                self.save_plots(save_name, 'png', canvas=c1, sub_dir=self.save_dir)
-                # draw all single plots into c2
-                c2.cd()
-                histo.SetLineColor(self.get_color())
-                if not drawn_first:
-                    self.format_histo(histo, title='Normalised Signal Distribution with Single Cuts', x_tit='Pulse Height [au]', y_tit='Normalised Integral', y_off=2)
-                    histo.SetStats(0)
-                    histo.Draw()
-                    drawn_first = True
-                else:
-                    if key == 'all_cuts':
-                        histo.SetLineWidth(2)
-                    histo.Draw('same')
-                histos.append(histo)
-                legend.AddEntry(histo, key, 'l')
-        # save c2
-        legend.Draw()
-        self.save_plots('normalised', 'png', canvas=c2, sub_dir=self.save_dir)
-        self.save_plots('normalised', 'root', canvas=c2, sub_dir=self.save_dir)
-        gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
-        gROOT.SetBatch(0)
+    @staticmethod
+    def find_working_point(h):
+        ps = [h.ProfileY(), h.ProfileX()]
+        fits = [TF1('f{n}'.format(n=i), 'pol2', 0, 10000) for i in xrange(2)]
+        for fit, p in zip(fits, ps):
+            p.Fit(fit, 'qs0')
+        mins = [fit.GetMinimumX() for fit in fits]
+        print mins, mins[1] / mins[0] / 4
 
-    def compare_consecutive_cuts(self):
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        gROOT.SetBatch(1)
-        c1 = TCanvas('consecutive', '', 1000, 1000)
-        c2 = TCanvas('all', '', 1000, 1000)
-        c2.SetLeftMargin(0.15)
-        legend = TLegend(0.7, 0.3, 0.98, .7)
-        histos = []
-        drawn_first = False
-        ind = 0
-        cut = TCut('consecutive', '')
-        for key, value in self.Cut.CutStrings.iteritems():
-            if (str(value) or key == 'raw') and key != 'all_cuts':
-                cut += value
-                print 'saving plot with {n} cuts'.format(n=ind)
-                save_name = 'signal_distribution_{n}cuts'.format(n=ind)
-                histo_name = 'signal {range}{peakint}'.format(range=self.SignalRegion, peakint=self.PeakIntegral)
-                histo_title = 'signal with {n} cuts'.format(n=ind)
-                histo = TH1F(histo_name, histo_title, 550, -50, 500)
-                # safe single plots
-                c1.cd()
-                self.tree.Draw("{name}>>{histo}".format(name=self.SignalName, histo=histo_name), cut)
-                self.save_plots(save_name, 'png', canvas=c1, sub_dir=self.save_dir)
-                # draw all single plots into c2
-                c2.cd()
-                color = self.get_color()
-                histo.SetLineColor(color)
-                histo.SetFillColor(color)
-                if not drawn_first:
-                    self.format_histo(histo, title='Signal Distribution with Consecutive Cuts', x_tit='Pulse Height [au]', y_tit='Entries', y_off=2)
-                    histo.SetStats(0)
-                    histo.Draw()
-                    drawn_first = True
-                    legend.AddEntry(histo, key, 'f')
-                else:
-                    histo.Draw('same')
-                    legend.AddEntry(histo, '+ ' + key, 'f')
-                histos.append(histo)
-                ind += 1
-        # save c2
-        legend.Draw()
-        self.save_plots('consecutive', 'png', canvas=c2, sub_dir=self.save_dir)
-        self.save_plots('consecutive', 'root', canvas=c2, sub_dir=self.save_dir)
-        gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
-        gROOT.SetBatch(0)
+    def model_landau(self, seed=None, h=None, m=10000, s=1000, show=True, thresh=False, pix=([18, 51], [18, 53])):
+        # seed = self.draw_pulse_height_disto(show=False, sup_zero=False, col=col) if seed is None else seed
+        seed = self.draw_pulse_height_disto(show=False, sup_zero=False,  pix=pix) if seed is None else seed
+        h = deepcopy(seed) if h is None else h
+        h.SetName('h_ml')
+        n = seed.GetEntries()
+        h.Reset()
+        # thresholds = self.get_thresholds(cols=col, vcal=False).values()
+        thresholds = [47 * i for i in [150, 160, 170]]
+        for _ in xrange(int(n)):
+            v = gRandom.Landau(m, s)
+            threshold = thresholds[int(gRandom.Rndm() * len(thresholds))]
+            h.Fill(v if v > threshold else 0 if thresh else v)
+            # h.Fill(v if v > 11421 else 0 if thresh else v)
+        diff = mean([(h.GetBinContent(i) - seed.GetBinContent(i)) ** 2 for i in xrange(h.GetNbinsX()) if i is not h.FindBin(0)])
+        seed.SetFillColor(2)
+        h.SetFillColor(self.FillColor)
+        seed.SetFillStyle(3017)
+        h.SetFillStyle(3018)
+        l = self.make_legend(y2=.76)
+        l.AddEntry(h, 'Simulation', 'f')
+        l.AddEntry(seed, 'Original', 'f')
+        self.draw_histo(h, show=show, l=l)
+        self.draw_histo(seed, show=show, draw_opt='same', canvas=gROOT.GetListOfCanvases()[-1])
+        seed.Draw('same')
+        return diff
 
-    # endregion
-
-    # ==========================================================================
-    # region PULSER
-    def draw_pulser_rate(self, binning=200, cut=None, show=True):
-        """
-        Shows the fraction of accepted pulser events as a function of event numbers. Peaks appearing in this graph are most likely beam interruptions.
-        :param binning:
-        """
-        gROOT.SetBatch(1)
-        cut = '' if cut is None else cut
-        nbins = self.run.n_entries / binning
-        h = TProfile('h', 'Pulser Rate', nbins, 0, self.run.n_entries)
-        self.tree.Draw('(pulser!=0)*100:Entry$>>h', cut, 'goff')
-        gROOT.SetBatch(0) if show else self.do_nothing()
-        c = TCanvas('c', 'Pulser Rate Canvas', 1000, 1000)
-        self.format_histo(h, name='pulser_rate', title='Pulser Rate', x_tit='Event Number', y_tit='Pulser Fraction [%]', y_off=1.3)
-        h.Draw('hist')
-        self.save_plots('pulser_rate', canvas=c, sub_dir=self.save_dir)
-        self.canvases[0] = c
-        self.histos[0] = h
-        gROOT.SetBatch(0)
-        return h
-
-    def fit_pulser_rate(self, binning=2000, show=True):
-        cut = self.Cut.CutStrings['event_range'] + self.Cut.CutStrings['beam_interruptions']
-        h = self.draw_pulser_rate(show=show, cut=cut, binning=binning)
-        gStyle.SetOptFit(1)
-        fit = h.Fit('pol0', 'qs{0}'.format('' if show else 0))
-        print 'Pulser Rate: {0} +- {1}'.format(fit.Parameter(0), fit.ParError(0))
-        return fit
-
-    def draw_pulser_pulseheight(self, binning=20000, draw_opt='hist'):
-        """
-        Shows the average pulse height as a function of event numbers.
-        :param binning:
-        """
-        nbins = self.run.n_entries / binning
-        h = TProfile('h', 'Pulser Pulse Height', nbins, 0, self.run.n_entries)
-        cut = self.Cut.generate_pulser_cut()
-        signal = self.__generate_signal_name(self.PulserName, False, True, False, cut)
-        print signal
-        self.tree.Draw('{0}:Entry$>>h'.format(signal), cut, 'goff')
-        c = TCanvas('c', 'Pulser Rate Canvas', 1000, 1000)
-        c.SetGridy()
-        self.format_histo(h, name='h', title='Pulser Pulse Height', x_tit='Event Number', y_tit='Pulse Height [au]', y_off=1.3)
-        gStyle.SetStatY(.65)
-        gStyle.SetStatX(.65)
-        h.Draw(draw_opt)
-        self.run.draw_run_info(canvas=c, channel=self.channel)
-        self.save_plots('PulserPulseHeight', sub_dir=self.save_dir)
-        self.canvases[0] = c
-        self.histos[0] = h
-        return h
-
-    def fit_pulser_pulseheight(self):
-        h = self.draw_pulser_pulseheight(draw_opt='')
-        gStyle.SetOptFit()
-        fit = h.Fit('pol0', 'qs')
-        return fit
-
-    def show_pulser_histo(self, show=True, corr=True, beam_on=True, binning=700):
-        cut = self.Cut.generate_pulser_cut(beam_on)
-        h = self.show_signal_histo(cut=cut, sig=self.PulserName, show=show, off_corr=corr, evnt_corr=False, binning=binning)
+    def landau_vid(self, save=False, mpv=5000, sigma=820):
+        h = self.draw_pulse_height_disto(sup_zero=False)
+        h.GetYaxis().SetRangeUser(0, 2500)
+        zero_bin = h.FindBin(0)
+        zeros = int(h.GetBinContent(zero_bin))
+        entries = int(h.GetEntries())
+        print entries
         c = gROOT.GetListOfCanvases()[-1]
-        c.SetLogy()
-        return h
+        thresholds = self.get_thresholds(vcal=False)
+        for i in xrange(entries):
+            h.SetBinContent(zero_bin, zeros)
+            v = gRandom.Landau(mpv, sigma)
+            threshold = thresholds[int(gRandom.Rndm() * len(thresholds))]
+            if v < threshold:
+                h.Fill(v)
+                zeros -= 1
+            if i % 100 == 0:
+                c.Update()
+                c.Modified()
+            if i % 100 == 0 and save:
+                self.save_canvas(c, name='l{i:04d}'.format(i=i), show=False, print_names=False)
 
-    def calc_pulser_fit(self, show=True, corr=True, beam_on=True):
-        suffix = '{corr}_{beam}'.format(corr='_ped_corr' if corr else '', beam='BeamOff' if not beam_on else 'BeamOn')
-        pickle_path = self.PickleDir + 'Pulser/HistoFit_{tc}_{run}_{dia}{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run_number, dia=self.diamond_name, suf=suffix)
+    def draw_correlation(self, plane1=2, plane2=None, mode='y', chi2=1, show=True, start=0, evts=1000000000):
+        plane2 = self.Dut if plane2 is None else plane2
+        h = TH2D('h_pc', 'Plane Correlation', *self.plots.get_global_bins(mode=mode, res=sqrt(12)))
+        draw_var = 'cluster_{m}pos_tel'.format(m=mode)
+        cut_string = 'clusters_per_plane[{p1}]==1&&clusters_per_plane[{p2}]==1&&cluster_plane=={{p}}'.format(p1=plane1, p2=plane2)
+        n = self.tree.Draw(draw_var, TCut(cut_string.format(p=plane1)) + TCut(self.Cut.generate_chi2(mode, chi2)), 'goff', evts, start)
+        x1 = [self.tree.GetV1()[i] for i in xrange(n)]
+        n = self.tree.Draw(draw_var, TCut(cut_string.format(p=plane2)) + TCut(self.Cut.generate_chi2(mode, chi2)), 'goff', evts, start)
+        x2 = [self.tree.GetV1()[i] for i in xrange(n)]
+        for i, j in zip(x1, x2):
+            h.Fill(i, j)
+        self.log_info('Correlation Factor: {f:4.3f}'.format(f=h.GetCorrelationFactor()))
+        self.format_histo(h, x_tit='{m} Plane {p}'.format(p=plane1, m=mode), y_tit='{m} Plane {p}'.format(p=plane2, m=mode), y_off=1.5, stats=0, z_tit='Number of Entries', z_off=1.5)
+        self.save_histo(h, 'PlaneCorrelation{m}{p1}{p2}'.format(m=mode.title(), p1=plane1, p2=plane2), show,  lm=.13, draw_opt='colz', rm=.17)
+
+    def draw_alignment(self, plane1=2, plane2=None, mode='y', binning=5000, chi2=1, show=True, vs_time=True):
+        plane2 = self.Dut if plane2 is None else plane2
+        picklepath = self.make_pickle_path('Alignment', run=self.RunNumber, suf='{m}_{p1}{p2}_{b}_{t}'.format(m=mode, p1=plane1, p2=plane2, b=binning, t='Time' if vs_time else 'EvtNr'))
 
         def func():
-            gStyle.SetOptFit(1)
-            h = self.show_pulser_histo(show=show, corr=corr, beam_on=beam_on, binning=350)
-            fit_func = h.Fit('gaus', 'qs{0}'.format('' if show else '0'), '', 0, h.GetBinCenter(h.GetMaximumBin() + 2))
-            f = gROOT.GetFunction('gaus')
-            f.SetLineStyle(7)
-            f.SetRange(0, 500)
-            f.Draw('same')
-            self.histos[1] = [f]
-            self.save_plots('PulserHisto', sub_dir=self.save_dir)
-            return fit_func
+            start = self.log_info('Checking for alignment between plane {p1} and {p2} ... '.format(p1=plane1, p2=plane2), next_line=False)
+            self.set_bin_size(binning)
+            h = TH3D('h_pa', 'pa', len(self.time_binning) - 1, array([t / 1000. for t in self.time_binning], 'd'), *self.plots.get_global_bins(res=sqrt(12), mode=mode, arrays=True))
+            if not vs_time:
+                h = TH3D('h_pae', 'pa', len(self.binning) - 1, array(self.binning, 'd'), *self.plots.get_global_bins(res=sqrt(12), mode=mode, arrays=True))
+            draw_var = 'cluster_{m}pos_tel'.format(m=mode)
+            cut_string = 'clusters_per_plane[{p1}]==1&&clusters_per_plane[{p2}]==1&&cluster_plane=={{p}}'.format(p1=plane1, p2=plane2)
+            n = self.tree.Draw(draw_var, TCut(cut_string.format(p=plane1)) + TCut(self.Cut.generate_chi2(mode, chi2)), 'goff')
+            y = [self.tree.GetV1()[i] for i in xrange(n)]
+            n = self.tree.Draw('{v}:{t}'.format(v=draw_var, t='time' if vs_time else 'event_number'), TCut(cut_string.format(p=plane2)) + TCut(self.Cut.generate_chi2(mode, chi2)), 'goff')
+            t = [self.tree.GetV1()[i] for i in xrange(n)]
+            x = [self.tree.GetV2()[i] / 1000. if vs_time else self.tree.GetV2()[i] for i in xrange(n)]
+            for i, j, k in zip(x, y, t):
+                h.Fill(i, j, k)
+            g = self.make_tgrapherrors('g_pa', 'Plane Correlation {p1} {p2}'.format(p1=plane1, p2=plane2), marker_size=.5)
+            for ibin in xrange(h.GetNbinsX() - 1):
+                h.GetXaxis().SetRange(ibin, ibin + 1)
+                p = h.Project3D('yz')
+                g.SetPoint(ibin, h.GetXaxis().GetBinCenter(ibin), p.GetCorrelationFactor())
+            if vs_time:
+                set_time_axis(g, off=self.run.startTime / 1000 + 3600)
+            self.format_histo(g, x_tit='Time [hh::mm]' if vs_time else 'Event Number', y_tit='Correlation Factor', y_off=1.5, y_range=[0, 1])
+            self.add_info(start)
+            return g
 
-        fit = func() if show else None
-        return self.do_pickle(pickle_path, func, fit)
+        gr = self.do_pickle(picklepath, func)
+        self.save_histo(gr, 'PixelAligment', show, draw_opt='alp', lm=.13, prnt=show)
+        return gr
 
-    def draw_pulser_peakvalues(self, draw=True):
-        self.draw_peak_values('', 'pulser', ucut=self.Cut.generate_pulser_cut(), draw=draw)
+    def check_alignment(self):
+        gr = self.draw_alignment(show=False)
+        values = [gr.GetY()[i_ev] for i_ev in xrange(gr.GetN())]
+        mean_, sigma = calc_mean(values)
+        if mean_ < .4:
+            log_warning('Planes are not correlated!')
+        elif sigma > .05:
+            log_warning('Large fluctuations in correlation!')
+        return mean_ > .3
 
-    def show_pulser_pedestal(self, show=True):
-        return z.show_pedestal_histo(cut=self.Cut.generate_pulser_cut(), draw=show)
-
-    def compare_pulser_pedestal(self, show=True):
-        self.show_pedestal_histo()
-        h1 = deepcopy(self.histos[0][0])
-        self.show_pulser_pedestal()
-        h2 = self.histos[0][0]
-        print h1, h2
-        gROOT.SetBatch(0) if show else gROOT.SetBatch(1)
-        c = TCanvas('c', 'Pulser Pedestal Comparison', 1000, 1000)
-        legend = TLegend(.7, .78, .88, .88)
-        names = ['Signal', 'Pulser']
-        for i, h in enumerate([h1, h2]):
-            self.format_histo(h, color=self.get_color(), lw=2)
-            h.SetStats(0)
-            h.Scale(1 / h.GetMaximum())
-            h.GetYaxis().SetRangeUser(0, 1.1)
-            h.Draw() if not i else h.Draw('same')
-            legend.AddEntry(h, names[i])
-        legend.Draw()
-        gROOT.SetBatch(0)
-        self.save_plots('PulserPedestalComparison', sub_dir=self.save_dir)
-        self.histos[1] = [c, h1, h2, legend]
-
-    def draw_pulser_waveform(self, n=1, start_event=None, add_buckets=False, cut=None):
-        # cut = '!({0})'.format(self.Cut.CutStrings['pulser']) if cut is None else cut
-        cut = self.Cut.generate_pulser_cut() if cut is None else cut
-        start = self.StartEvent + self.count if start_event is None else start_event + self.count
-        print 'Event number:', start
-        cnt = self.draw_waveforms(n=n, start_event=start, add_buckets=add_buckets, cut_string=cut, ret_event=True)
-        if cnt is None:
-            return
-        self.count += cnt
-
-    # endregion
+    def draw_event_offsets(self, evnts=1000, start=0, pnts=None, rnge=1, show=True):
+        pnts = int(ceil(self.run.n_entries / evnts)) if pnts is None else pnts
+        n_graphs = 2 * rnge + 1
+        graphs = [self.make_tgrapherrors('g_to{i}'.format(i=i), '', color=self.get_color(), marker_size=.5) for i in xrange(n_graphs)]
+        l = self.make_legend(x1=.8, y2=.5, nentries=n_graphs - 1)
+        self.start_pbar(pnts * evnts - start)
+        p1 = self.Dut
+        p2 = 2
+        for k in xrange(pnts):
+            x, y = OrderedDict(), OrderedDict()
+            n = self.tree.Draw('plane:row:event_number', 'n_hits[2]==1 || n_hits[{p1}]==1'.format(p1=p1), 'goff', evnts, start + k * evnts)
+            planes = [int(self.tree.GetV1()[i]) for i in xrange(n)]
+            rows = [int(self.tree.GetV2()[i]) for i in xrange(n)]
+            nrs = Counter([int(self.tree.GetV3()[i]) for i in xrange(n)])
+            for ev, size in sorted(nrs.iteritems()):
+                self.ProgressBar.update(ev + 1 - start)
+                plane = [planes.pop(0) for _ in xrange(size)]
+                row = [rows.pop(0) for _ in xrange(size)]
+                if plane.count(p1) == 1:
+                    x[ev] = row[plane.index(p1)]
+                if plane.count(p2) == 1:
+                    y[ev] = row[plane.index(p2)]
+            xts = [[] for _ in xrange(n_graphs)]
+            yts = [[] for _ in xrange(n_graphs)]
+            for i in xrange(-rnge, rnge + 1):
+                j = i + rnge
+                for ev, row in x.iteritems():
+                    if ev + i in y:
+                        xts[j].append(row)
+                        yts[j].append(y[ev + i])
+                corr = corrcoef(xts[j], yts[j])[0][1]
+                graphs[j].SetPoint(k, k * evnts + start, corr)
+        self.ProgressBar.finish()
+        mg = TMultiGraph('m_eo', 'Correlations')
+        for i, gr in enumerate(graphs):
+            l.AddEntry(gr, 'offset: {i}'.format(i=i - rnge), 'pl')
+            mg.Add(gr, 'pl')
+        self.format_histo(mg, x_tit='Event Number', y_tit='Correlation Factor', y_off=1.5, y_range=[-.2, 1], draw_first=True)
+        self.save_histo(mg, 'EventOffsets', show, draw_opt='ap', l=l, lm=.13)
+        self.reset_colors()
 
     # ==========================================================================
-    # region SHOW
-    def draw_bucket_pedestal(self, show=True):
-        gROOT.SetBatch(1)
-        reg_name = 'e2'
-        three_bucket_num = self.get_signal_number(reg_name[0], reg_name[1])
-        reg_margins = self.run.signal_regions[reg_name[0]]
-        x_bins = (reg_margins[1] - reg_margins[0])
-        h = TH2F('h', 'Bucket Pedestal', x_bins, reg_margins[0] / 2., reg_margins[1] / 2., 550, -50, 500)
-        self.tree.Draw('{sig}:IntegralPeaks[{num}]/2>>h'.format(sig=self.SignalName, num=three_bucket_num), self.Cut.CutStrings['tracks'] + self.Cut.CutStrings['pulser'], 'goff')
-        if show:
-            gROOT.SetBatch(0)
-        c = TCanvas('c', 'Bucket Pedestal', 1000, 1000)
-        c.SetLogz()
-        self.format_histo(h, x_tit='Highest Peak Timing [ns]', y_tit='Pulse Height [au]', y_off=1.25)
-        h.SetStats(0)
-        h.Draw('colz')
-        self.save_plots('BucketPedestal', sub_dir=self.save_dir)
-        gROOT.SetBatch(0)
-        self.histos[0] = [c, h]
-
-    def draw_single_wf(self, event=None):
-        cut = '!({0})&&!pulser'.format(self.Cut.CutStrings['old_bucket'])
-        return self.draw_waveforms(n=1, cut_string=cut, add_buckets=True, ret_event=True, start_event=event)
-
-    def draw_waveforms(self, n=1000, start_event=None, cut_string=None, show=True, ret_event=False, add_buckets=False):
-        """
-        Draws stacked waveforms.
-        :param n: number of waveforms
-        :param cut_string:
-        :param start_event: event to start
-        :param show:
-        :param ret_event: return number of valid events if True
-        :param add_buckets: draw buckets and most probable peak values if True
-        :return: histo with waveform
-        """
-        gROOT.SetBatch(1)
-        t = time()
-        start = self.StartEvent if start_event is None else start_event
-        assert self.run.n_entries >= start >= 0, 'The start event is not within the range of tree events!'
-        if not self.run.wf_exists(self.channel):
-            return
-        cut = self.Cut.all_cut if cut_string is None else cut_string
-        n_events = self.find_n_events(n, cut, start)
-        h = TH2F('wf', 'Waveform', 1024, 0, 511, 1000, -500, 500)
-        h.SetStats(0)
-        gStyle.SetPalette(55)
-        self.tree.Draw('wf0:Iteration$/2>>wf', cut, 'goff', n_events, start)
-        h.GetYaxis().SetRangeUser(-500 + h.FindFirstBinAbove(0, 2) / 50 * 50, -450 + h.FindLastBinAbove(0, 2) / 50 * 50)
-        self.print_elapsed_time(t)
-        if show:
-            gROOT.SetBatch(0)
-        c = TCanvas('c', 'WaveForm', 1000, 500)
-        c.SetRightMargin(.045)
-        self.format_histo(h, x_tit='Time [ns]', y_tit='Signal [au]', markersize=.4)
-        draw_option = 'scat' if n == 1 else 'col'
-        h.Draw(draw_option)
-        if add_buckets:
-            sleep(.2)
-            h.GetXaxis().SetNdivisions(26)
-            c.SetGrid()
-            c.SetBottomMargin(.186)
-            self._add_buckets(c)
-        gROOT.SetBatch(0)
-        if n > 1:
-            self.save_plots('WaveForms{n}'.format(n=n), sub_dir=self.save_dir)
-        else:
-            self.save_plots('SingleWaveForm', sub_dir=self.save_dir)
-        self.histos[0] = [c, h]
-        return h if not ret_event else n_events
-
-    def show_single_waveforms(self, n=1, cut=None):
-        ev = self.StartEvent
-        for i in xrange(n):
-            ev += self.draw_waveforms(n=1, cut_string=cut, ret_event=True, start_event=ev)
-            sleep(1)
-
-    # endregion
-
-    def find_n_events(self, n_events, cut, start):
-        """
-        Finds the amount of events from the startevent that are not subject to the cut.
-        :param n_events: number of wanted events
-        :param cut:
-        :param start:
-        :return: actual number of events s.t. n_events are drawn
-        """
-        print 'Finding the correct number of events',
-        n = self.tree.Draw('1', cut, 'goff', n_events, start)
-        new_events = n_events
-        while n != n_events:
-            diff = n_events - n
-            new_events += diff * 2 if abs(diff) > 1 else diff
-            print '\b.',
-            stdout.flush()
-            n = self.tree.Draw('1', cut, 'goff', new_events, start)
-        print
-        return new_events
-
-    @staticmethod
-    def normalise_histo(histo):
-        h = histo
-        h.GetXaxis().SetRangeUser(0, 30)
-        min_bin = h.GetMinimumBin()
-        h.GetXaxis().UnZoom()
-        max_bin = h.GetNbinsX() - 1
-        h.Scale(1 / h.Integral(min_bin, max_bin))
-        return h
-
-    def analyse_signal_histograms(self):
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        # gROOT.SetBatch(1)
-        legend = TLegend(0.7, 0.3, 0.98, .7)
-        gr1 = TGraphErrors()
-        gr1.SetTitle('mean values')
-        gr1.SetMarkerStyle(20)
-        gr2 = TGraph()
-        gr2.SetTitle('median values')
-        gr2.SetMarkerStyle(21)
-        gr2.SetMarkerColor(2)
-        gr3 = TGraph()
-        gr3.SetMarkerStyle(22)
-        gr3.SetMarkerColor(3)
-        histos = []
-        i = 0
-        for key, value in self.Cut.CutStrings.iteritems():
-            if str(value) or key == 'raw':
-                print 'process cut ' + key
-                # h = TH1F('h', '', 600, -100, 500)
-                # self.tree.Draw("{name}>>h".format(name=self.signal_name), value)
-                h = self.show_signal_histo(evnt_corr=True, cut=value, show=False)
-                i_mean = self.__get_mean(h)
-                median = self.__get_median(h)
-                mpv = self.__get_mpv(h)
-                # print mean, median, mpv
-                gr1.SetPoint(i, i, i_mean[0])
-                gr1.SetPointError(i, 0, i_mean[1])
-                gr2.SetPoint(i, i, median)
-                gr3.SetPoint(i, i, mpv)
-                histos.append(h)
-                i += 1
-        # rename bins
-        legend.AddEntry(gr1, 'mean', 'lp')
-        legend.AddEntry(gr2, 'median', 'lp')
-        legend.AddEntry(gr3, 'mpv', 'lp')
-        xaxis = gr1.GetXaxis()
-        i = 0
-        for key, value in self.Cut.CutStrings.iteritems():
-            if str(value) or key == 'raw':
-                bin_x = xaxis.FindBin(i)
-                gr1.GetXaxis().SetBinLabel(bin_x, key[:7])
-                i += 1
-        gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
-        # gROOT.SetBatch(0)
-        c1 = TCanvas('c1', '', 1000, 1000)
-        c1.cd()
-        gr1.GetXaxis().SetRangeUser(-1, len(histos) + 1)
-        gr1.Draw('alp')
-        gr2.Draw('lp')
-        gr3.Draw('lp')
-        legend.Draw()
-        self.histos['legend'] = legend
-        return [gr1, gr2, gr3]
-
-    @staticmethod
-    def __get_histo_without_pedestal(histo):
-        h = histo
-        h.GetXaxis().SetRangeUser(0, 30)
-        min_bin = h.GetMinimumBin()
-        min_x = h.GetBinCenter(min_bin)
-        h.GetXaxis().SetRangeUser(min_x, 500)
-        return h
-
-    def __get_mean(self, histo):
-        h = self.__get_histo_without_pedestal(histo)
-        h.GetXaxis().SetRangeUser(0, 30)
-        min_bin = h.GetMinimumBin()
-        min_x = h.GetBinCenter(min_bin)
-        h.GetXaxis().SetRangeUser(min_x, 500)
-        return [h.GetMean(), h.GetMeanError()]
-
-    def __get_median(self, histo):
-        h = self.__get_histo_without_pedestal(histo)
-        integral = h.GetIntegral()
-        median_i = 0
-        for j in range(h.GetNbinsX() - 1):
-            if integral[j] < 0.5:
-                median_i = j
-            else:
-                break
-        weight = (0.5 - integral[median_i]) / (integral[median_i + 1] - integral[median_i])
-        median_x = h.GetBinCenter(median_i) + (h.GetBinCenter(median_i + 1) - h.GetBinCenter(median_i)) * weight
-        return median_x
-
-    def __get_mpv(self, histo):
-        h = self.__get_histo_without_pedestal(histo)
-        max_bin = h.GetMaximumBin()
-        return h.GetBinCenter(max_bin)
-
-    def draw_snrs(self):
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        gr = self.make_tgrapherrors('gr', 'Signal to Noise Ratios')
-        l1 = TLegend(.7, .68, .9, .9)
-        l1.SetHeader('Regions')
-        l2 = TLegend(.7, .47, .9, .67)
-        l2.SetHeader('PeakIntegrals')
-        for i, name in enumerate(self.get_all_signal_names().iterkeys()):
-            snr = self.calc_snr(name)
-            gr.SetPoint(i, i + 1, snr[0])
-            gr.SetPointError(i, 0, snr[1])
-        # rename bins
-        for i, region in enumerate(self.get_all_signal_names().itervalues(), 1):
-            bin_x = gr.GetXaxis().FindBin(i)
-            gr.GetXaxis().SetBinLabel(bin_x, region)
-        c = TCanvas('c', 'SNR', 1000, 1000)
-        [l1.AddEntry(0, '{reg}:  {val}'.format(reg=reg, val=value), '') for reg, value in self.run.signal_regions.iteritems() if len(reg) < 2]
-        [l2.AddEntry(0, '{reg}:  {val}'.format(reg=integ, val=value), '') for integ, value in self.run.peak_integrals.iteritems() if len(integ) < 2]
-        self.format_histo(gr, y_tit='SNR', y_off=1.2, color=self.get_color())
-        gr.SetLineColor(2)
-        gr.Draw('bap')
-        l1.Draw()
-        l2.Draw()
-        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.save_plots('SNR', sub_dir=self.save_dir)
-        self.canvases[0] = c
-        self.histos[0] = gr
-        self.histos['legend'] = [l1, l2]
-
-    def calc_snr(self, sig=None):
-        signal = self.SignalName if sig is None else sig
-        peak_int = self.get_all_signal_names()[signal][-2:] if self.get_all_signal_names()[signal][-2].isdigit() else self.get_all_signal_names()[signal][-1]
-        ped_fit = self.show_pedestal_histo(draw=False, peak_int=peak_int)
-        sig_fit = self.draw_pulse_height(evnt_corr=True, show=False, sig=signal)
-        sig_mean = sig_fit.Parameter(0)
-        ped_sigma = ped_fit.Parameter(2)
-
-        snr = sig_mean / ped_sigma
-        snr_err = snr * (sig_fit.ParError(0) / sig_mean + ped_fit.ParError(2) / ped_sigma)
-        print 'SNR is: {snr} +- {err}'.format(snr=snr, err=snr_err)
-        return [snr, snr_err]
-
-    # ============================================
-    # region PEAK INTEGRAL
-
-    def find_best_snr(self, show=True, same_width=False):
-        gROOT.SetBatch(1)
-        gr = self.make_tgrapherrors('gr', 'Signal to Noise Ratios')
-        peak_integrals = OrderedDict(sorted({key: value for key, value in self.run.peak_integrals.iteritems() if len(key) < 3}.items()))
-        i = 0
-        for name, value in peak_integrals.iteritems():
-            signal = self.get_signal_name('b', name)
-            snr = self.calc_snr(signal)
-            print value
-            x = (value[1] + value[0]) / 2. if not same_width else value[0] / 2.
-            gr.SetPoint(i, x, snr[0])
-            gr.SetPointError(i, 0, snr[1])
-            i += 1
-        if show:
-            gROOT.SetBatch(0)
-        c = TCanvas('c', 'SNR', 1000, 1000)
-        self.format_histo(gr, x_tit='Integralwidth [ns]', y_tit='SNR')
-        gr.Draw('ap')
-        gROOT.SetBatch(0)
-        self.save_plots('BestSNR', sub_dir=self.save_dir)
-        self.save_plots('BestSNR', file_type='root', sub_dir=self.save_dir)
-        self.histos[0] = [gr, c]
-
-    def signal_vs_peakintegral(self, show=True, ped=False):
-        gROOT.SetBatch(1)
-        gr = self.make_tgrapherrors('gr', '{sig} vs Peak Integral'.format(sig='Signal' if not ped else 'Pedestal'))
-        peak_integrals = OrderedDict(sorted({key: value for key, value in self.run.peak_integrals.iteritems() if len(key) < 3}.items()))
-        i = 0
-        ratio = '{0}{1}'.format(self.run.peak_integrals.values()[0][0], self.run.peak_integrals.values()[0][1])
-        for name, value in peak_integrals.iteritems():
-            sig_name = self.get_signal_name(region='b', peak_integral=name)
-            signal = self.draw_pulse_height(evnt_corr=True, show=False, sig=sig_name) if not ped else self.show_pedestal_histo(draw=False, peak_int=name)
-            par = 2 if ped else 0
-            gr.SetPoint(i, (value[1] + value[0]) / 2., signal.Parameter(par))
-            gr.SetPointError(i, 0, signal.ParError(par))
-            i += 1
-        if show:
-            gROOT.SetBatch(0)
-        c = TCanvas('c', 'Signal vs Peak Integral', 1000, 1000)
-        self.format_histo(gr, x_tit='Integralwidth [ns]', y_tit='Signal [au]', y_off=1.3)
-        gr.Draw('ap')
-        gROOT.SetBatch(0)
-        self.save_plots('{sig}PeakInt_{rat}'.format(rat=ratio, sig='Ped' if ped else 'Sig'), sub_dir=self.save_dir)
-        self.save_plots('{sig}PeakInt_{rat}'.format(rat=ratio, sig='Ped' if ped else 'Sig'), sub_dir=self.save_dir, file_type='root')
-        self.histos[0] = [gr, c]
-
-    # endregion
-
-    # ============================================
-    # region MISCELLANEOUS
-
-    def get_cut(self):
-        """ :return: full cut_string """
-        return self.Cut.all_cut
-
-    def get_peak_position(self, event=None, region='b', peak_int='2'):
-        num = self.get_signal_number(region, peak_int)
-        ev = self.StartEvent if event is None else event
-        self.tree.GetEntry(ev)
-        return self.tree.IntegralPeaks[num]
-
-    def get_all_signal_names(self):
-        names = OrderedDict()
-        regions = [reg for reg in self.run.signal_regions if len(reg) < 3]
-        integrals = [integral for integral in self.run.peak_integrals if len(integral) < 3]
-        for region in regions:
-            for integral in integrals:
-                if len(integral) > 2:
-                    integral = '_' + integral
-                name = 'ch{ch}_signal_{reg}_PeakIntegral{int}'.format(ch=self.channel, reg=region, int=integral)
-                num = self.IntegralNames[name]
-                reg = region + integral
-                names['{pol}*IntegralValues[{num}]'.format(pol=self.Polarity, num=num)] = reg
-        return names
-
-    def __get_binning(self):
-        jumps = self.Cut.jump_ranges
-        n_jumps = len(jumps['start'])
-        bins = [self.Cut.get_min_event()]
-        ind = 0
-        for start, stop in zip(jumps['start'], jumps['stop']):
-            gap = stop - start
-            # continue if first start and stop outside min event
-            if stop < bins[-1]:
-                ind += 1
-                continue
-            # if there is a jump from the start
-            if start < bins[-1] < stop:
-                bins.append(stop)
-                ind += 1
-                continue
-            # add bins until hit interrupt
-            while bins[-1] + self.BinSize < start:
-                bins.append(bins[-1] + self.BinSize)
-            # two jumps shortly after one another
-            if ind < n_jumps - 2:
-                next_start = jumps['start'][ind + 1]
-                next_stop = jumps['stop'][ind + 1]
-                if bins[-1] + self.BinSize + gap > next_start:
-                    gap2 = next_stop - next_start
-                    bins.append(bins[-1] + self.BinSize + gap + gap2)
-                else:
-                    bins.append(bins[-1] + self.BinSize + gap)
-            else:
-                bins.append(bins[-1] + self.BinSize + gap)
-            # fill up the end
-            if ind == n_jumps - 1 and bins[-1] >= stop:
-                while bins[-1] + self.BinSize < self.run.n_entries:
-                    bins.append(bins[-1] + self.BinSize)
-            ind += 1
-        return bins
-
-    def get_time_binning(self):
-        time_bins = []
-        for event in self.binning:
-            time_bins.append(self.run.get_time_at_event(event))
-        return time_bins
-
-    def print_info_header(self):
-        header = ['Run', 'Type', 'Diamond', 'HV [V]', 'Region']
-        for info in header:
-            print self.adj_length(info),
-        print
-
-    def print_information(self, header=True):
-        if header:
-            self.print_info_header()
-        infos = [self.run_number, self.run.RunInfo['type'], self.diamond_name.ljust(4), self.bias, self.SignalRegion + self.PeakIntegral + '   ']
-        for info in infos:
-            print self.adj_length(info),
-        print
-
-    def print_integral_names(self):
-        for key, value in self.IntegralNames.iteritems():
-            if key.startswith('ch{ch}'.format(ch=self.channel)):
-                print str(value).zfill(3), key
-        return
-
-    # endregion
 
     def __placeholder(self):
         pass
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     st = time()
     parser = ArgumentParser()
-    parser.add_argument('run', nargs='?', default=312, type=int)
-    parser.add_argument('ch', nargs='?', default=0, type=int)
+    parser.add_argument('run', nargs='?', default=489, type=int, help='Run to be analysed {e.g.334}')
+    parser.add_argument('dut', nargs='?', default=1, type=int, help='Number of the DUT to analyse (either 1, 2 or 3)')
+    parser.add_argument('-t', '--doTelescope', action='store_true', dest='doTelscp', default=False, help='set with -t or with --doTelescope to do telescope analysis')
+    parser.add_argument('-d', '--doDUTs', action='store_true', dest='doDUTs', default=False, help='set with -d or with --doDUTs to do DUTs analysis')
+    parser.add_argument('-u', '--doCutDist', action='store_true', dest='doCutDist', default=False,
+                        help='set with -u or with --doCutDist to do Cuts distributions on selected devices (DUTs and/or telescope)')
+    parser.add_argument('-e', '--doResolution', action='store_true', dest='doResolution', default=False,
+                        help='set with -e or with --doResolution to do resolution analysis on selected devices (DUTs and/or telescope)')
+    parser.add_argument('-c', '--doCutAna', action='store_true', dest='doCutAna', default=False, help='set with -c or with --doCutAna to do Cuts analysis on selected devices (DUTs and/or telescope)')
+    parser.add_argument('-o', '--doOccupancy', action='store_true', dest='doOccupancy', default=False,
+                        help='set with -o or with --doOccupancy to do occupancies (hit maps) on selected devices (DUTs and/or telescope)')
+    parser.add_argument('-x', '--doCorrel', action='store_true', dest='doCorrel', default=False, help='set with -x or with --doCorrel to do correlations between important planes')
+    parser.add_argument('-g', '--doCharge', action='store_true', dest='doCharge', default=False,
+                        help='set with -g or with --doCharge to do pulse height analysis on selected devices (DUTs and/or telescope)')
+    parser.add_argument('-p', '--progBar', action='store_true', dest='progBar', default=False, help='show progress bar')
+    parser.add_argument('-v', '--verb', action='store_true', dest='verb', default=True, help='show verbose')
+    parser.add_argument('-a', '--analyse', action='store_true', dest='doAna', default=False, help='run the whole analysis with the options entered')
+    parser.add_argument('-tc', '--testcampaign', nargs='?', default='')
+
     args = parser.parse_args()
-    test_run = args.run
-    print '\nAnalysing run', test_run, '\n'
-    z = SignalPixAnalysis(test_run, args.ch)
+
+    doTelscp = bool(args.doTelscp)
+    doDUTs = bool(args.doDUTs)
+    doCutDist = bool(args.doCutDist)
+    doResolution = bool(args.doResolution)
+    doCutAna = bool(args.doCutAna)
+    doHitMap = bool(args.doOccupancy)
+    doCorrel = bool(args.doCorrel)
+    doPH = bool(args.doCharge)
+    pbar = bool(args.progBar)
+    verb = bool(args.verb)
+    doAna = bool(args.doAna)
+
+    command = 'Analysing run ' + str(args.run) + ' with:'
+    command += ' telescope,' if doTelscp else ' no telescope,'
+    command += ' DUTs,' if doDUTs else ' no DUTs,'
+    command += ' cuts distributions,' if doCutDist else ' no cuts distributions,'
+    command += ' resolution analysis,' if doResolution else ' no resolution analysis,'
+    command += ' cuts analysis,' if doCutAna else ' no cuts analysis,'
+    command += ' hitmaps,' if doHitMap else ' no hitmpas,'
+    command += ' correlations,' if doCorrel else ' no correlations,'
+    command += ' pulse heights,' if doPH else ' no heights,'
+    command += ' progress bar,' if pbar else ' no progress bar,'
+    command += ' verbose' if pbar else ' no verbose,'
+    command += ' with automatic analysis' if doAna else '. Start the Analysis by typing "z.do_analysis(doTelscp, doDUTs, doCutDist, doCutAna, doHitMap, doCorrel, doPH, pbar, verb)" when ready'
+    command += '\n'
+
+    tc = args.testcampaign if args.testcampaign.startswith('201') else None
+    el = Elementary(tc)
+    el.print_testcampaign()
+    el.print_banner('STARTING PIXEL-ANALYSIS OF RUN {0}'.format(args.run))
+    # print command
+    print
+    z = PixAnalysis(args.run, args.dut, args.verb)
     z.print_elapsed_time(st, 'Instantiation')
+
+    if doAna:
+        print 'Starting automatic analysis...'
+        z.do_analysis(doCutDist, doResolution, doCutAna, doHitMap, doPH)
+        print 'Finished automatic analysis :)'

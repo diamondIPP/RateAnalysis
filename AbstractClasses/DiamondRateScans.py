@@ -10,6 +10,7 @@ from ConfigParser import ConfigParser, NoOptionError
 from Utils import *
 from argparse import ArgumentParser
 from RunSelection import RunSelection
+from RunClass import Run
 from json import load, dump
 from collections import OrderedDict, Counter
 from ROOT import TMultiGraph, TGraphErrors, kRed, kOrange, kBlue, kGreen, kCyan, kViolet, kPink, kYellow, gStyle, TF1, TH2F, TH1F, TGraph2DErrors
@@ -126,7 +127,8 @@ class DiaScans(Elementary):
         runplans = {}
         for tc in self.TestCampaigns:
             runplans[tc] = {}
-            for rp, runs in self.AllRunPlans[tc]['rate_scan'].iteritems():
+            for rp, dic in self.AllRunPlans[tc].iteritems():
+                runs = dic['runs']
                 for ch in [1, 2]:
                     if all(self.DiamondName == self.load_diamond(self.RunInfos[tc][str(run)]['dia{0}'.format(ch)]) for run in runs):
                         bias = self.RunInfos[tc][str(runs[0])]['dia{0}hv'.format(ch)]
@@ -658,7 +660,8 @@ class DiaScans(Elementary):
                 for ch in chs:
                     sel = RunSelection(tc)
                     sel.select_runs_from_runplan(rp, ch=ch)
-                    self.log_info('Loaded runplan {rp} of testcampaign {tc} and ch {ch} ({dia})'.format(rp=rp.rjust(4), tc=datetime.strptime(tc, '%Y%m').strftime('%b %Y'), ch=ch, dia=sel.DiamondName))
+                    self.log_info('Loaded runplan {rp} of testcampaign {tc} and ch {ch} ({dia})'.format(rp=rp.rjust(4),
+                                                                                                        tc=datetime.strptime(tc, '%Y%m').strftime('%b %Y'), ch=ch, dia=sel.SelectedDiamond))
                     run_selections[sel] = ch
         sorted_sel = OrderedDict()
         for i, sel in enumerate(run_selections.iterkeys()):
@@ -744,6 +747,7 @@ class DiaScans(Elementary):
         values = []
         for tc in self.TestCampaigns if tc is None else [tc]:
             for run, data in sorted(self.RunInfos[tc].iteritems()):
+                info_run = Run(run_number=run, test_campaign=tc, load_tree=False)
                 if run_thr is not None:
                     if run_thr > 0 and int(run) < run_thr:
                         continue
@@ -751,7 +755,7 @@ class DiaScans(Elementary):
                         continue
                 try:
                     if data['fs11'] == fs11 and data['fs13'] == fsh13:
-                        flux = calc_flux(data, tc)
+                        flux = info_run.calc_flux()
                         # print tc, run, flux
                         values.append(flux) if flux > 1 else do_nothing()
                 except KeyError:
@@ -782,12 +786,13 @@ class DiaScans(Elementary):
         colors = [4, 419, 2, 800]
         tits = ['unirradiated', 'unirradiated', '5e14 n/cm^{2}', '5e14 n/cm^{2}']
         for i, (sel, ch) in enumerate(run_selections.iteritems()):
+            path = self.make_pickle_path('Ph_fit', 'PulseHeights', sel.SelectedRunplan, self.DiamondName, 10000, sel.TESTCAMPAIGN)
             try:
-                path = self.PickleDir + 'Ph_fit/PulseHeights_{tc}_{rp}_{dia}_{bin}.pickle'.format(tc=sel.TESTCAMPAIGN, rp=sel.SelectedRunplan, dia=self.DiamondName, bin=20000)
                 f = open(path, 'r')
                 mg_ph_ana = pickle.load(f)
                 f.close()
             except IOError:
+                print 'Did not find', path
                 Elementary(sel.TESTCAMPAIGN)
                 ana = AnalysisCollection(sel, ch, self.verbose)
                 mg_ph_ana = ana.draw_pulse_heights(show=False)

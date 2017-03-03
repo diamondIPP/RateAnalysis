@@ -52,6 +52,28 @@
           <option value="TMultiGraph" />
           <option value="Long" />
           <option value="TExec" />
+          <option value="ROOT" />
+          <option value="TH2I" />
+          <option value="kPink" />
+          <option value="TGraph2DErrors" />
+          <option value="TH1D" />
+          <option value="kFALSE" />
+          <option value="kTRUE" />
+          <option value="kBlack" />
+          <option value="TFormula" />
+          <option value="gDirectory" />
+          <option value="TH1D" />
+          <option value="gErrorIgnoreLevel" />
+          <option value="kWarning" />
+          <option value="RooMsgService" />
+          <option value="RooFit" />
+          <option value="gPrintViaErrorHandler" />
+          <option value="TH1I" />
+          <option value="gPad" />
+          <option value="kError" />
+          <option value="TH3D" />
+          <option value="TTree" />
+          <option value="vector" />
         </list>
       </option>
     </inspection_tool>

@@ -3,13 +3,14 @@ import re
 from copy import deepcopy
 from glob import glob
 from shutil import copyfile
-from time import time
 from ConfigParser import ConfigParser
 from json import loads
 from Utils import *
 from screeninfo import get_monitors
 from numpy import array
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
+from sys import stdout
+from os.path import join as joinpath
 
 from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, kGreen, kOrange, kViolet, kYellow, kRed, kBlue, \
     kMagenta, kAzure, kCyan, kTeal
@@ -38,12 +39,14 @@ class Elementary(object):
         self.run_config_parser = self.load_run_config()
         self.ana_config_parser = self.load_ana_config()
 
+        self.PickleDir = joinpath(self.get_program_dir(), self.MainConfigParser.get('SAVE', 'pickle_dir'))
+        self.DataDir = self.MainConfigParser.get('MAIN', 'data_dir')
         self.Felix = self.MainConfigParser.getboolean('SAVE', 'felix')
         self.set_root_titles()
 
         # progress bar
         self.Widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
-        self.ProgressBar = ProgressBar(widgets=self.Widgets, maxval=0)
+        self.ProgressBar = None
 
         # screen resolution
         self.Res = self.load_resolution(resolution)
@@ -78,11 +81,11 @@ class Elementary(object):
         # set run_number to zero if none is given to prevent crash
         run_number = 0 if run_number is None else run_number
         if self.MainConfigParser.has_section(self.TESTCAMPAIGN):
-            n_splits = self.MainConfigParser.getint(self.TESTCAMPAIGN, 'n_splits')
             split_runs = [0] + loads(self.MainConfigParser.get(self.TESTCAMPAIGN, 'split_runs')) + [int(1e10)]
-            for i in xrange(1, n_splits + 1):
+            for i in xrange(1, len(split_runs)):
                 if split_runs[i - 1] <= run_number < split_runs[i]:
-                    run_parser.read('{dir}/Configuration/RunConfig_{tc}_pad{i}.cfg'.format(dir=self.get_program_dir(), tc=self.TESTCAMPAIGN, i=i))
+                    config = '{dir}/Configuration/RunConfig_{tc}_{i}.cfg'.format(dir=self.get_program_dir(), tc=self.TESTCAMPAIGN, i=i)
+                    run_parser.read(config)
                     break
         else:
             run_parser.read('Configuration/RunConfig_{tc}.cfg'.format(tc=self.TESTCAMPAIGN))
@@ -108,6 +111,24 @@ class Elementary(object):
                 log_warning(err)
                 return 1000
 
+    def load_mask_file_dir(self):
+        if self.run_config_parser.has_option('BASIC', 'maskfilepath'):
+            file_path = self.run_config_parser.get('BASIC', 'maskfilepath')
+        else:
+            file_path = joinpath(self.DataDir, make_tc_str(self.TESTCAMPAIGN, data=True), 'masks')
+        if not dir_exists(file_path):
+            log_warning('Did not file mask file directory!')
+        return file_path
+
+    def load_run_info_path(self):
+        if self.run_config_parser.has_option('BASIC', 'runinfofile'):
+            file_path = self.run_config_parser.get('BASIC', 'runinfofile')
+        else:
+            file_path = joinpath(self.DataDir, make_tc_str(self.TESTCAMPAIGN, data=1), 'run_log.json')
+        if not file_exists(file_path):
+            log_critical('Run File does not exist!')
+        return file_path
+
     def set_save_directory(self, name):
         self.results_directory = '{dir}/{nam}/'.format(dir=self.get_program_dir(), nam=name)
 
@@ -130,7 +151,7 @@ class Elementary(object):
     def print_testcampaign(self, pr=True):
         out = datetime.strptime(self.TESTCAMPAIGN, '%Y%m').strftime('%b %Y')
         if pr:
-            print 'TESTCAMPAIGN: {0}'.format(out)
+            print '\nTESTCAMPAIGN: {0}'.format(out)
         return out
 
     @classmethod
@@ -145,7 +166,7 @@ class Elementary(object):
     # endregion
 
     def start_pbar(self, n):
-        self.ProgressBar.maxval = n
+        self.ProgressBar = ProgressBar(widgets=self.Widgets, maxval=n)
         self.ProgressBar.start()
 
     @staticmethod
@@ -160,9 +181,9 @@ class Elementary(object):
 
     @staticmethod
     def ensure_dir(f):
-        d = os.path.dirname(f)
-        if not os.path.exists(d):
-            os.makedirs(d)
+        d = pth.dirname(f)
+        if not pth.exists(d):
+            makedirs(d)
 
     def get_color(self):
         self.count %= 20
@@ -184,10 +205,19 @@ class Elementary(object):
                 print arg,
             print
 
-    def log_info(self, msg):
+    def log_info(self, msg, next_line=True):
         if self.verbose:
+            t1 = time()
             t = datetime.now().strftime('%H:%M:%S')
-            print 'INFO: {t} --> {msg}'.format(t=t, msg=msg)
+            print 'INFO: {t} --> {msg}'.format(t=t, msg=msg),
+            stdout.flush()
+            if next_line:
+                print
+            return t1
+
+    def add_info(self, t, msg='Done'):
+        if self.verbose:
+            print '{m} ({t:2.2f} s)'.format(m=msg, t=time() - t)
 
     @staticmethod
     def log_warning(msg):
@@ -213,6 +243,15 @@ class Elementary(object):
             info += '_{tc}'.format(tc=self.TESTCAMPAIGN)
             info = info.replace('-', '')
         return info
+
+    def make_pickle_path(self, sub_dir, name=None, run=None, ch=None, suf=None, camp=None):
+        ensure_dir(joinpath(self.PickleDir, sub_dir))
+        campaign = self.TESTCAMPAIGN if camp is None else camp
+        run = '_{r}'.format(r=run) if run is not None else ''
+        ch = '_{c}'.format(c=ch) if ch is not None else ''
+        suf = '_{s}'.format(s=suf) if suf is not None else ''
+        name = '{n}_'.format(n=name) if name is not None else ''
+        return '{dir}/{sdir}/{name}{tc}{run}{ch}{suf}.pickle'.format(dir=self.PickleDir, sdir=sub_dir, name=name, tc=campaign, run=run, ch=ch, suf=suf)
 
     def save_canvas(self, canvas, sub_dir=None, name=None, print_names=True, show=True):
         sub_dir = self.save_dir if hasattr(self, 'save_dir') and sub_dir is None else '{subdir}/'.format(subdir=sub_dir)
@@ -253,6 +292,7 @@ class Elementary(object):
                 print log_warning('Error in save canvas: {err}'.format(err=inst))
                 return
         channel = self.channel if hasattr(self, 'channel') else None
+        channel = self.Dut - 4 if hasattr(self, 'Dut') else channel
         if hasattr(self, 'run'):
             self.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas, x=x, y=y)
         if hasattr(self, 'Run'):
@@ -315,7 +355,7 @@ class Elementary(object):
         return string
 
     @staticmethod
-    def do_pickle(path, function, value=None):
+    def do_pickle(path, function, value=None, params=None):
         if value is not None:
             f = open(path, 'w')
             pickle.dump(value, f)
@@ -326,7 +366,7 @@ class Elementary(object):
             ret_val = pickle.load(f)
             f.close()
         except IOError:
-            ret_val = function()
+            ret_val = function() if params is None else function(params)
             f = open(path, 'w')
             pickle.dump(ret_val, f)
             f.close()
@@ -342,8 +382,11 @@ class Elementary(object):
             gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
 
     @staticmethod
-    def make_tgrapherrors(name, title, color=1, marker=20, marker_size=1, width=1, asym_err=False):
-        gr = TGraphErrors() if not asym_err else TGraphAsymmErrors()
+    def make_tgrapherrors(name, title, color=1, marker=20, marker_size=1, width=1, asym_err=False, style=1, x=None, y=None):
+        if (x and y) is None:
+            gr = TGraphErrors() if not asym_err else TGraphAsymmErrors()
+        else:
+            gr = TGraphErrors(len(x), array(x, 'd'), array(y, 'd')) if not asym_err else TGraphAsymmErrors(len(x), array(x, 'd'), array(y), 'd')
         gr.SetTitle(title)
         gr.SetName(name)
         gr.SetMarkerStyle(marker)
@@ -351,6 +394,7 @@ class Elementary(object):
         gr.SetLineColor(color)
         gr.SetMarkerSize(marker_size)
         gr.SetLineWidth(width)
+        gr.SetLineStyle(style)
         return gr
 
     def draw_axis(self, x1, x2, y1, y2, title, col=1, width=1, off=.15, tit_size=.035, lab_size=0.035, line=False, opt='+SU', tick_size=0.03, l_off=.01):
@@ -398,6 +442,15 @@ class Elementary(object):
         self.ROOTObjects.append(l)
         return l
 
+    def draw_box(self, x1, y1, x2, y2, color=1, width=1, style=1, name='box'):
+        l = TCutG(name, 5, array([x1, x1, x2, x2, x1], 'd'), array([y1, y2, y2, y1, y1], 'd'))
+        l.SetLineColor(color)
+        l.SetLineWidth(width)
+        l.SetLineStyle(style)
+        l.Draw('same')
+        self.ROOTObjects.append(l)
+        return l
+
     def draw_vertical_line(self, x, ymin, ymax, color=1, w=1, style=1, name='li', tline=False):
         return self.draw_line(x, x, ymin, ymax, color, w, style, name) if not tline else self.draw_tline(x, x, ymin, ymax, color, w, style)
 
@@ -421,7 +474,7 @@ class Elementary(object):
         return l
 
     def format_histo(self, histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=20, color=1, markersize=1, x_off=None, y_off=None, z_off=None, lw=1, fill_color=0,
-                     stats=True, tit_size=.04, lab_size=.04, draw_first=False, x_range=None, y_range=None, z_range=None, do_marker=True, style=None):
+                     stats=True, tit_size=.04, lab_size=.04, draw_first=False, x_range=None, y_range=None, z_range=None, do_marker=True, style=None, ndiv=None):
         h = histo
         if draw_first:
             self.set_root_output(False)
@@ -461,6 +514,7 @@ class Elementary(object):
                 x_axis.SetTitleSize(tit_size)
                 x_axis.SetLabelSize(lab_size)
                 x_axis.SetRangeUser(x_range[0], x_range[1]) if x_range is not None else do_nothing()
+                x_axis.SetNdivisions(ndiv) if ndiv is not None else do_nothing()
             y_axis = h.GetYaxis()
             if y_axis:
                 y_axis.SetTitle(y_tit) if y_tit else y_axis.GetTitle()
@@ -478,8 +532,10 @@ class Elementary(object):
         except AttributeError or ReferenceError:
             pass
 
-    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=.1, draw_opt='', x_fac=None, y_fac=None,
+    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=None, draw_opt='', x_fac=None, y_fac=None,
                    l=None, logy=False, logx=False, logz=False, canvas=None, gridx=False, gridy=False, save=True, ch='dia', prnt=True, phi=None, theta=None):
+        if tm is None:
+            tm = .1 if self.MainConfigParser.getboolean('SAVE', 'activate_title') else .03
         x = self.Res if x_fac is None else int(x_fac * self.Res)
         y = self.Res if y_fac is None else int(y_fac * self.Res)
         h = histo
@@ -621,6 +677,7 @@ class Elementary(object):
         c = TCanvas('c', 'c', int(self.Res * 10 / 11.), self.Res)
         make_transparent(c)
         bm = .11
+        scale = 1.5
         pm = bm + (1 - bm - .1) / 5.
         p0 = self.draw_tpad('p0', 'p0', pos=[0, 0, 1, pm], margins=[.14, .03, bm / pm, 0], transparent=True, logx=True, gridy=True)
         p1 = self.draw_tpad('p1', 'p1', pos=[0, pm, 1, 1], margins=[.14, .03, 0, .1], transparent=True, logx=True)
@@ -632,13 +689,12 @@ class Elementary(object):
         make_transparent(p0)
         scale_multigraph(mg1)
         rel_y_range = [.7, 1.3] if rel_y_range is None else rel_y_range
-        self.format_histo(mg1, title='', y_range=rel_y_range, y_tit='Rel. ph [au]', y_off=.66, tit_size=.1, x_off=99)
-        mg1.GetYaxis().SetLabelSize(.1)
+        self.format_histo(mg1, title='', y_range=rel_y_range, y_tit='Rel. ph [au]' if not scale > 1 else ' ', y_off=66, tit_size=.1 * scale, x_off=99, lab_size=.1 * scale)
         mg1.GetYaxis().SetNdivisions(3)
         hide_axis(mg1.GetXaxis())
         mg1.Draw('alp')
         x_range = [mg1.GetXaxis().GetXmin(), mg1.GetXaxis().GetXmax()] if x_range is None else x_range
-        self.draw_x_axis(1.3, x_range[0], x_range[1], mg1.GetXaxis().GetTitle() + ' ', opt='SG+-=', tit_size=.1, lab_size=.1, off=99, tick_size=.1)
+        self.draw_x_axis(1.3, x_range[0], x_range[1], mg1.GetXaxis().GetTitle() + ' ', opt='SG+-=', tit_size=.1, lab_size=.1 * scale, off=99, tick_size=.1, l_off=0)
 
         # top pad with zero suppression
         p1.cd()
@@ -649,7 +705,8 @@ class Elementary(object):
         if y_range:
             mg.SetMinimum(y_range[0])
             mg.SetMaximum(y_range[1])
-        self.draw_x_axis(mg_y, x_range[0], x_range[1], mg1.GetXaxis().GetTitle() + ' ', opt='SG=', tit_size=.035, lab_size=0, off=1, l_off=99)
+        self.format_histo(mg, tit_size=.04 * scale, y_off=1.75 / scale, lab_size=.04 * scale)
+        self.draw_x_axis(mg_y, x_range[0], x_range[1], mg1.GetXaxis().GetTitle() + ' ', opt='SG=', tit_size=.035 * scale, lab_size=0, off=1, l_off=99)
         move_legend(l, .17, .03)
         l.Draw()
         if draw_objects is not None:

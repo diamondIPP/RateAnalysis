@@ -3,8 +3,8 @@ from RunSelection import RunSelection
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-R', '--RunPlan', help='Displays the deltailed overview about one Runplan', type=int, default=-1)
-parser.add_argument('-tc', '--testcampaign', type=str, default='201608', help='TestCampaign: default=201608')
+parser.add_argument('RunPlan', nargs='?', help='Displays the deltailed overview about one Runplan', type=float, default=-1)
+parser.add_argument('-tc', '--testcampaign', type=str, default='201610', help='TestCampaign')
 args = parser.parse_args()
 
 testcampaign = str(args.testcampaign)

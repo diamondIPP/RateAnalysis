@@ -21,7 +21,7 @@ class ChannelCut(Cut):
         Cut.__init__(self, analysis, skip=True)
         self.__dict__.update(analysis.Cut.__dict__)
         self.channel = channel
-        self.run_number = self.analysis.run_number
+        self.RunNumber = self.analysis.RunNumber
 
         self.load_channel_config()
 
@@ -46,7 +46,7 @@ class ChannelCut(Cut):
         if self.MainConfigParser.has_option(self.TESTCAMPAIGN, 'fid_split_runs'):
             split_runs = [0] + loads(self.MainConfigParser.get(self.TESTCAMPAIGN, 'fid_split_runs')) + [int(1e10)]
             for i in xrange(0, len(split_runs) - 1):
-                if split_runs[i] <= self.run_number < split_runs[i + 1]:
+                if split_runs[i] <= self.RunNumber < split_runs[i + 1]:
                     return self.load_dia_config('fid_cuts{n}'.format(n=i if i else ''))
         else:
             return self.load_dia_config('fid_cuts')
@@ -59,9 +59,9 @@ class ChannelCut(Cut):
         try:
             conf = loads(self.ana_config_parser.get('CUT', name))
             if not store_true:
-                return conf[self.analysis.diamond_name] if self.analysis.diamond_name in conf else None
+                return conf[self.analysis.DiamondName] if self.analysis.DiamondName in conf else None
             else:
-                return True if self.analysis.diamond_name in conf else False
+                return True if self.analysis.DiamondName in conf else False
         except NoOptionError:
             log_warning('No option {0} in the analysis config for {1}!'.format(name, make_tc_str(self.TESTCAMPAIGN)))
 
@@ -276,14 +276,15 @@ class ChannelCut(Cut):
     # HELPER FUNCTIONS
 
     def calc_signal_threshold(self, bg=False, show=True, show_all=False):
-        pickle_path = self.analysis.PickleDir + 'Cuts/SignalThreshold_{tc}_{run}_{ch}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.highest_rate_run, ch=self.channel)
+        pickle_path = self.make_pickle_path('Cuts', 'SignalThreshold', self.analysis.highest_rate_run, self.channel)
         show = False if show_all else show
 
         def func():
-            print 'calculating signal threshold for bucket cut of run {run} and ch{ch}...'.format(run=self.analysis.run_number, ch=self.channel)
+            print 'calculating signal threshold for bucket cut of run {run} and ch{ch}...'.format(run=self.analysis.RunNumber, ch=self.channel)
             h = TH1F('h', 'Bucket Cut', 100, -50, 150)
             draw_string = '{name}>>h'.format(name=self.analysis.SignalName)
-            cut_string = '!({buc})&&{pul}'.format(buc=self.CutStrings['old_bucket'], pul=self.CutStrings['pulser'])
+            fid = self.CutStrings['fiducial']
+            cut_string = '!({buc})&&{pul}{fid}'.format(buc=self.CutStrings['old_bucket'], pul=self.CutStrings['pulser'], fid='&&fid' if fid.GetTitle() else '')
             self.analysis.tree.Draw(draw_string, cut_string, 'goff')
             entries = h.GetEntries()
             if entries < 2000:
@@ -370,7 +371,7 @@ class ChannelCut(Cut):
 
         threshold = func() if show or show_all else None
         threshold = self.do_pickle(pickle_path, func, threshold)
-        return threshold
+        return threshold if threshold > 0 else 30
 
     def find_ped_range(self):
         self.analysis.tree.Draw(self.analysis.PedestalName, '', 'goff', 1000)
@@ -386,7 +387,7 @@ class ChannelCut(Cut):
         return [mean_ - sigma_range * sigma, mean_ + sigma_range * sigma]
 
     def calc_threshold(self, show=True):
-        pickle_path = self.analysis.PickleDir + 'Cuts/Threshold_{tc}_{run}_{ch}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run_number, ch=self.channel)
+        pickle_path = self.make_pickle_path('Cuts', 'Threshold', self.analysis.RunNumber, self.channel)
 
         def func():
             self.analysis.tree.Draw(self.analysis.SignalName, '', 'goff', 5000)
@@ -407,10 +408,10 @@ class ChannelCut(Cut):
         return self.do_pickle(pickle_path, func, threshold)
 
     def calc_timing_range(self, show=True, n_sigma=4):
-        pickle_path = self.analysis.PickleDir + 'Cuts/TimingRange_{tc}_{run}_{ch}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run_number, ch=self.channel)
+        pickle_path = self.make_pickle_path('Cuts', 'TimingRange', self.RunNumber, self.channel)
 
         def func():
-            print 'generating timing cut for {dia} of run {run}...'.format(run=self.analysis.run_number, dia=self.analysis.diamond_name)
+            print 'generating timing cut for {dia} of run {run}...'.format(run=self.analysis.RunNumber, dia=self.analysis.DiamondName)
 
             gROOT.SetBatch(1) if not show else self.do_nothing()
             num = self.analysis.SignalNumber
@@ -504,7 +505,7 @@ class ChannelCut(Cut):
         return fits
 
     def generate_timing_cut(self, sigma=4, show=False):
-        # picklepath = 'Configuration/Individual_Configs/TimingCut/{tc}_{run}_{mod}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run.run_number, mod=mode.title())
+        # picklepath = 'Configuration/Individual_Configs/TimingCut/{tc}_{run}_{mod}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run.RunNumber, mod=mode.title())
         # if not bPlot:
         #     return TCut('')
         print 'generate_timing_cut with %s sigma' % sigma

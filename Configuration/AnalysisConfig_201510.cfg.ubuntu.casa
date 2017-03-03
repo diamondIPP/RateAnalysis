@@ -1,0 +1,42 @@
+[BASIC]
+signal_region = b
+pedestal_region = ab
+peak_integral = 2
+
+[CUT]
+EventRange = [0, 0]
+# neg in seconds // pos in events
+excludeBeforeJump = -4
+excludeAfterJump = -15
+# neg in minutes // pos in events
+excludefirst = -5
+spread_low = -1
+absMedian_high = -1
+pedestalsigma = 3
+# quantile
+chi2X = 90
+chi2Y = 90
+# degrees
+track_angle = 2
+Mask rows # [roc; list (: means a range) (; is used to separate)]
+MaskRowsDUT1 = [4;0:40;79]
+MaskRowsDUT2 = [5;0:40]
+MaskRowsDUT3 = [6;0:18;79]
+# Mask columns # [roc; list (: means a range) (; is used to separate)]
+MaskColsDUT1 = [4;0:12;39:51]
+MaskColsDUT2 = [5;0:12;39:51]
+MaskColsDUT3 = [6;0:14;51]
+# Mask pixels
+MaskPixelsDUT1 = [4;]
+MaskPixelsDUT2 = [5;32,61;31,61;37,77]
+MaskPixelsDUT3 = [6;]
+# Fiducial Regions # [roc; xmin, xmax; ymin, ymax] inclusive
+FidRegionDUT1 = [4;19,27;41,78]
+FidRegionDUT2 = [5;25,31;65,75]
+FidRegionDUT3 = [6;16,45;24,73]
+beaminterruptions_folder = beaminterruptions
+
+[SAVE]
+pickle_dir = Configuration/Individual_Configs/
+SaveMCData = False
+

@@ -12,7 +12,7 @@ from numpy import mean
 from collections import OrderedDict
 from subprocess import check_output
 import sys
-from Utils import isfloat
+from Utils import isfloat, joinpath, file_exists, log_warning
 
 default_info = {
     'persons on shift': '-',
@@ -66,26 +66,24 @@ class Run(Elementary):
     operationmode = ''
     TrackingPadAnalysis = {}
 
-    def __init__(self, run_number=None, diamonds=3, load_tree=True, verbose=False):
+    def __init__(self, run_number=None, diamonds=3, test_campaign=None, load_tree=True, verbose=False):
         """
         :param run_number: number of the run
         :param diamonds: 0x1=ch0; 0x2=ch3
         :param verbose:
         :return:
         """
-        self.run_number = run_number if not isinstance(run_number, Run) else run_number.run_number
-        Elementary.__init__(self, verbose=verbose)
+        self.RunNumber = run_number
+        Elementary.__init__(self, testcampaign=test_campaign, verbose=verbose)
 
         # configuration
-        self.NChannels = 9 if self.run_config_parser.get('BASIC', 'digitizer').lower() == 'caen' else 4
+        self.DUTType = self.load_dut_type()
+        self.NChannels = self.load_pre_n_channels()
         self.channels = self.load_channels()
         self.trigger_planes = [1, 2]
-        self.DUTType = self.load_dut_type()
-        self.filename = self.run_config_parser.get('BASIC', 'filename')
         self.treename = self.run_config_parser.get('BASIC', 'treename')
-        self.run_path = self.run_config_parser.get('BASIC', 'runpath')
-        self.runinfofile = self.run_config_parser.get('BASIC', 'runinfofile')
-        self.maskfilepath = self.run_config_parser.get('BASIC', 'maskfilepath')
+        self.runinfofile = self.load_run_info_path()
+        self.maskfilepath = self.load_mask_file_dir()
         self.createNewROOTFiles = self.run_config_parser.getboolean('BASIC', 'createNewROOTFiles')
 
         # run info
@@ -100,7 +98,7 @@ class Run(Elementary):
         self.duration = None
         self.__load_timing()
 
-        self.converter = Converter(self.TESTCAMPAIGN, self.run_config_parser, self.run_number)
+        self.converter = Converter(self)
         if run_number is not None and load_tree:
             assert (run_number > 0), 'incorrect run_number'
             self.set_run(run_number)
@@ -129,9 +127,9 @@ class Run(Elementary):
             self.FoundForRate = False
             self.flux = self.calculate_flux()
 
-        elif run_number is not None:
-            self.load_run_info()
-            self.converter.convert_run(self.RunInfo, run_number)
+        # elif run_number is not None:
+        #     self.load_run_info()
+        #     self.converter.convert_run(self.RunInfo, run_number)
 
         else:
             self.load_run_info()
@@ -148,7 +146,7 @@ class Run(Elementary):
     # ==============================================
     # region LOAD FUNCTIONS
     def load_run_config(self):
-        return self.load_run_configs(self.run_number)
+        return self.load_run_configs(self.RunNumber)
 
     def load_n_channels(self):
         for i, line in enumerate(self.region_information):
@@ -156,18 +154,32 @@ class Run(Elementary):
                 data = self.region_information[i + 1].strip(' ').split(',')
                 return len(data)
 
+    def load_pre_n_channels(self):
+        if self.DUTType == 'pad':
+            return 9 if self.run_config_parser.get('BASIC', 'digitizer').lower() == 'caen' else 4
+        else:
+            return None
+
     def load_channels(self):
-        binary = self.run_config_parser.getint('ROOTFILE_GENERATION', 'active_regions')
-        if hasattr(self, 'region_information'):
-            for i, line in enumerate(self.region_information):
-                if 'active_regions:' in line:
-                    binary = int(line.strip('active_regions:'))
-        return [i for i in xrange(self.NChannels) if self.has_bit(binary, i)]
+        if self.DUTType == 'pad':
+            binary = self.run_config_parser.getint('ROOTFILE_GENERATION', 'active_regions')
+            if hasattr(self, 'region_information'):
+                for i, line in enumerate(self.region_information):
+                    if 'active_regions:' in line:
+                        binary = int(line.strip('active_regions:'))
+            return [i for i in xrange(self.NChannels) if self.has_bit(binary, i)]
+        elif self.DUTType == 'pixel':
+            return [0, 1, 2]
+        else:
+            return None
 
     def load_bias(self):
         bias = {}
         for i, ch in enumerate(self.channels, 1):
-            bias[ch] = self.RunInfo['dia{num}hv'.format(num=i)]
+            try:
+                bias[ch] = self.RunInfo['dia{num}hv'.format(num=i)]
+            except KeyError:
+                pass
         return bias
     
     def load_dut_type(self):
@@ -190,11 +202,11 @@ class Run(Elementary):
             self.RunInfo = default_info
             return -1
 
-        if self.run_number >= 0:
-            self.RunInfo = data.get(str(self.run_number))
+        if self.RunNumber >= 0:
+            self.RunInfo = data.get(str(self.RunNumber))
             if self.RunInfo is None:
                 # try with run_log key prefix
-                self.RunInfo = data.get('{tc}{run}'.format(tc=self.TESTCAMPAIGN[2:], run=str(self.run_number).zfill(5)))
+                self.RunInfo = data.get('{tc}{run}'.format(tc=self.TESTCAMPAIGN[2:], run=str(self.RunNumber).zfill(5)))
             if self.RunInfo is None:
                 self.log_warning('Run not found in json run log file!')
                 sys.exit(5)
@@ -208,13 +220,16 @@ class Run(Elementary):
         parser.read('Configuration/DiamondAliases.cfg')
         diamondname = {}
         for i, ch in enumerate(self.channels, 1):
-            diamondname[ch] = self.RunInfo['dia{num}'.format(num=i)]
-            if diamondname[ch].lower().startswith('ch'):
-                continue
             try:
-                diamondname[ch] = parser.get('ALIASES', diamondname[ch])
-            except NoOptionError as err:
-                print err
+                diamondname[ch] = self.RunInfo['dia{num}'.format(num=i)]
+                if diamondname[ch].lower().startswith('ch'):
+                    continue
+                try:
+                    diamondname[ch] = parser.get('ALIASES', diamondname[ch])
+                except NoOptionError as err:
+                    print err
+            except KeyError:
+                pass
         return diamondname
 
     def __load_timing(self):
@@ -235,7 +250,7 @@ class Run(Elementary):
 
         assert type(run_number) is int, "incorrect run_number"
 
-        self.run_number = run_number
+        self.RunNumber = run_number
         self.load_run_info()
 
         # check for conversion
@@ -281,7 +296,6 @@ class Run(Elementary):
         print dic
 
     def calculate_flux(self):
-        self.verbose_print('Calculate rate from mask file:\n\t' + self.RunInfo['maskfile'])
         mask_file_path = self.maskfilepath + '/' + self.RunInfo['maskfile']
         maskdata = {}
         for plane in self.trigger_planes:
@@ -297,8 +311,8 @@ class Run(Elementary):
                     plane = self.trigger_planes[len(i2cs) - 1]
                     maskdata[plane][line[0]] = [int(line[2]), int(line[3])]
             f.close()
-        except IOError as err:
-            self.log_warning(err)
+        except IOError:
+            pass
 
         unmasked_pixels = {}
         # check for corner method
@@ -426,11 +440,13 @@ class Run(Elementary):
         entries = self.tree.Draw('Entry$:time', '', 'goff')
         time = [self.tree.GetV2()[i] for i in xrange(entries)]
         self.fill_empty_time_entries(time)
-        if abs((time[-1] - time[0]) / 1000 - self.duration.seconds) > 120:
+        t = self.log_info('Checking for time jumps ... ', next_line=False)
+        if any(time[i + 100] < time[i] for i in xrange(0, len(time) - 100, 100)):
             self.log_warning('Need to correct timing vector\n')
             print [i / 1000 for i in time[:4]], time[-1] / 1000
             print (time[-1] - time[0]) / 1000, self.duration.seconds, abs((time[-1] - time[0]) / 1000 - self.duration.seconds)
             time = self.__correct_time(entries)
+        self.add_info(t)
         return time
 
     @staticmethod
@@ -506,7 +522,7 @@ class Run(Elementary):
         Prints the most importnant run infos to the console. The infos printed are: Run number, Rate, Diamond names, Bias Voltages
         """
         print 'RUN INFO:'
-        print '\tRun Number: \t', self.run_number, ' (', self.RunInfo['type'], ')'
+        print '\tRun Number: \t', self.RunNumber, ' (', self.RunInfo['type'], ')'
         print '\tRate: \t', self.get_flux(), ' kHz'
         print '\tDiamond1:   \t', self.diamond_names[0], ' (', self.bias[0], ') | is selected: ', self.analyse_ch[0]
         print '\tDiamond2:   \t', self.diamond_names[3], ' (', self.bias[3], ') | is selected: ', self.analyse_ch[3]
@@ -556,7 +572,7 @@ class Run(Elementary):
             git_text.AddEntry(0, 'git hash: {ver}'.format(ver=check_output(['git', 'describe', '--always'])), '')
             git_text.SetLineColor(0)
             if runs is None:
-                run_string = 'Run {run}: {rate}, {dur} Min ({evts} evts)'.format(run=self.run_number, rate=self.get_rate_string(), dur=dur, evts=self.n_entries)
+                run_string = 'Run {run}: {rate}, {dur} Min ({evts} evts)'.format(run=self.RunNumber, rate=self.get_rate_string(), dur=dur, evts=self.n_entries)
             else:
                 run_string = 'Runs {start}-{stop} ({flux1} - {flux2})'.format(start=runs[0], stop=runs[1], flux1=runs[2].strip(' '), flux2=runs[3].strip(' '))
             width = len(run_string) * .01 if x == y else len(run_string) * 0.015 * y / x
@@ -583,13 +599,15 @@ class Run(Elementary):
             if not pads:
                 if self.MainConfigParser.getboolean('SAVE', 'git_hash'):
                     git_text.Draw()
-                legend.Draw()
+                if self.MainConfigParser.getboolean('SAVE', 'info_legend'):
+                    legend.Draw()
             else:
                 for pad in pads:
                     pad.cd()
                     if self.MainConfigParser.getboolean('SAVE', 'git_hash'):
                         git_text.Draw()
-                    legend.Draw()
+                    if self.MainConfigParser.getboolean('SAVE', 'info_legend'):
+                        legend.Draw()
                     pad.Modified()
             canvas.Update()
         else:
@@ -616,14 +634,44 @@ class Run(Elementary):
             runs = [self.collection.keys()[0], self.collection.keys()[-1], self.collection.values()[0].run.get_rate_string(), self.collection.values()[-1].run.get_rate_string()]
         return self.draw_run_info(show=False, runs=runs, channel=ch, canvas=pad)
 
+    def calc_flux(self):
+        info = self.RunInfo
+        if 'for1' not in info or info['for1'] == 0:
+            if 'measuredflux' in info:
+                return float(info['measuredflux'])
+        mask = info['maskfile']
+        pixel_size = 0.01 * 0.015
+        if not mask or 'no mask' in mask.lower():
+            area = [52 * 80 * pixel_size] * 2
+        else:
+            path = joinpath(self.maskfilepath, mask)
+            if file_exists(path):
+                f = open(path, 'r')
+            else:
+                log_warning('Could not read maskfile!')
+                return
+            data = []
+            for line in f:
+                if len(line) > 3:
+                    line = line.split()
+                    data.append([int(line[2])] + [int(line[3])])
+            f.close()
+            area = [(data[1][0] - data[0][0]) * (data[1][1] - data[0][1]) * pixel_size, (data[3][0] - data[2][0]) * (data[3][1] - data[2][1]) * pixel_size]
+        # print area
+        flux = [info['for{0}'.format(i + 1)] / area[i] / 1000. for i in xrange(2)]
+        return mean(flux)
+
+    def has_branch(self, name):
+        return bool(self.tree.GetBranch(name))
+
     # endregion
 
     def __load_rootfile(self):
-        file_path = self.converter.get_final_file_path(self.run_number)
+        file_path = self.converter.get_final_file_path(self.RunNumber)
         print '\033[1A\rLoading information for rootfile: {file}'.format(file=file_path.split('/')[-1])
         self.RootFile = TFile(file_path)
         self.tree = self.RootFile.Get(self.treename)
 
 
 if __name__ == "__main__":
-    z = Run()
+    z = Run(489, load_tree=False, test_campaign='201610')

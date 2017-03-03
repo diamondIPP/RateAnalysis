@@ -1,17 +1,15 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-import json
-from ConfigParser import ConfigParser
 from argparse import ArgumentParser
 from collections import OrderedDict
-from numpy import log, array, zeros
+from numpy import log, array, zeros, std, mean
 from time import time
 from screeninfo import get_monitors
 from dispy import JobCluster
 from functools import partial
 
-from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1
+from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1, TH1F, TH2F
 
 from CurrentInfo import Currents
 from Elementary import Elementary
@@ -105,38 +103,33 @@ class AnalysisCollection(Elementary):
     def add_analyses(self, load_tree):
         """ Creates and adds Analysis objects with run numbers in runs. """
         for run in self.runs:
-            analysis = PadAnalysis(run, self.channel, self.min_max_rate_runs, load_tree=load_tree, verbose=self.verbose)
+            analysis = PadAnalysis(run, self.selection.SelectedDiamondNr, self.min_max_rate_runs, load_tree=load_tree, verbose=self.verbose)
             self.collection[analysis.run.run_number] = analysis
             self.current_run_number = analysis.run.run_number
 
     def load_channel(self):
         binary = self.run_config_parser.getint('ROOTFILE_GENERATION', 'active_regions')
-        dia_nr = self.selection.SelectedDiamond
+        dia_nr = self.selection.SelectedDiamondNr
         return [i for i in xrange(16) if self.has_bit(binary, i)][dia_nr - 1]
 
     def get_high_low_rate_runs(self):
-        keydict = ConfigParser()
-        keydict.read('Configuration/KeyDict_{tc}.cfg'.format(tc=self.TESTCAMPAIGN))
-        path = self.run_config_parser.get('BASIC', 'runinfofile')
-        f = open(path, 'r')
-        run_log = json.load(f)
-        fluxes = {calc_flux(run_log[str(run)], self.TESTCAMPAIGN): run for run in self.runs}
+        fluxes = {ana.run.calc_flux(): run for run, ana in self.collection.iteritems()}
         if self.verbose:
             print 'RUN FLUX [kHz/cm2]'
-            for run in self.runs:
-                print '{run:3d} {flux:14.2f}'.format(run=run, flux=calc_flux(run_log[str(run)], self.TESTCAMPAIGN))
+            for run, ana in self.collection.itervalues():
+                print '{run:3d} {flux:14.2f}'.format(run=run, flux=ana.run.calc_flux())
         print '\n'
         return {'min': fluxes[min(fluxes)], 'max': fluxes[max(fluxes)]}
 
     def generate_slope_pickle(self):
         picklepath = 'Configuration/Individual_Configs/Slope/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.min_max_rate_runs['min'])
-        if os.path.exists(picklepath):
+        if file_exists(picklepath):
             return
         Analysis(self.min_max_rate_runs['min'])
 
     def generate_threshold_pickle(self):
         picklepath = 'Configuration/Individual_Configs/Cuts/SignalThreshold_{tc}_{run}_{ch}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.min_max_rate_runs['max'], ch=0)
-        if os.path.exists(picklepath):
+        if file_exists(picklepath):
             return
         Analysis(self.min_max_rate_runs['max'])
 
@@ -242,7 +235,7 @@ class AnalysisCollection(Elementary):
         self.RootObjects.append([ph, cur, pul, c, legends, pads])
         self.FirstAnalysis.run.reset_info_legend()
 
-    def draw_ph_vs_voltage(self, binning=10000, pulser=False):
+    def draw_ph_vs_voltage(self, binning=10000, pulser=False, redo=False):
         gr1 = self.make_tgrapherrors('gStatError', 'stat. error', self.get_color())
         gStyle.SetEndErrorSize(4)
         gr_first = self.make_tgrapherrors('gFirst', 'first run', marker=22, color=2, marker_size=2)
@@ -254,7 +247,7 @@ class AnalysisCollection(Elementary):
         rel_sys_error = 0
         i, j = 0, 0
         for key, ana in self.collection.iteritems():
-            fit1 = ana.draw_pulse_height(binning, evnt_corr=True, save=False) if not pulser else ana.Pulser.draw_distribution_fit(show=False, save=False)
+            fit1 = ana.draw_pulse_height(binning, evnt_corr=True, save=redo, show=False) if not pulser else ana.Pulser.draw_distribution_fit(show=False, save=False)
             x = ana.run.RunInfo['dia{nr}hv'.format(nr=self.FirstAnalysis.run.channels.index(self.channel) + 1)]
             print x, '\t',
             s, e = (fit1.Parameter(0), fit1.ParError(0)) if not pulser else (fit1.Parameter(1), fit1.ParError(1))
@@ -288,27 +281,49 @@ class AnalysisCollection(Elementary):
         self.format_histo(mg, x_tit='Voltage [V]', y_tit='Pulse Height [au]', y_off=1.3, draw_first=True)
         self.save_histo(mg, '{s}VoltageScan'.format(s='Signal' if not pulser else 'Pulser'), draw_opt='a', lm=.12)
 
-    def draw_pulse_heights(self, binning=10000, flux=True, raw=False, all_corr=False, show=True, save_plots=True, vs_time=False, fl=True, save_comb=True, y_range=None):
+    def draw_slope_vs_voltage(self, show=True, gr=False):
+        h = TH1F('hSV', 'PH Slope Distribution', 10, -1, 1) if not gr else self.make_tgrapherrors('gSV', 'PH Slope vs. Voltage')
 
-        pickle_path = self.FirstAnalysis.PickleDir + 'Ph_fit/PulseHeights_{tc}_{rp}_{dia}_{bin}.pickle'.format(tc=self.TESTCAMPAIGN, rp=self.run_plan, dia=self.diamond_name, bin=binning)
+        self.start_pbar(self.NRuns)
+        for i, (key, ana) in enumerate(self.collection.iteritems()):
+            ana.draw_ph(corr=True, show=False)
+            fit = ana.PulseHeight.Fit('pol1', 'qs')
+            x = ana.run.RunInfo['dia{nr}hv'.format(nr=self.FirstAnalysis.run.channels.index(self.channel) + 1)]
+            s, e = fit.Parameter(1), fit.ParError(1)
+            if gr:
+                h.SetPoint(i, x, s)
+                h.SetPointError(i, 0, e)
+            else:
+                set_statbox(entries=4, only_fit=True)
+                h.Fill(s)
+                h.Fit('gaus', 'q')
+            self.ProgressBar.update(i + 1)
+        self.format_histo(h, x_tit='Slope [mV/min]', y_tit='Number of Entries', y_off=1.3)
+        self.draw_histo(h, show=show, draw_opt='alp' if gr else '')
+
+    def draw_pulse_heights(self, binning=10000, flux=True, raw=False, all_corr=False, show=True, save_plots=True, vs_time=False, fl=True, save_comb=True, y_range=None, redo=False):
+
+        pickle_path = self.make_pickle_path('Ph_fit', 'PulseHeights', self.run_plan, ch=self.diamond_name, suf=binning)
         flux = False if vs_time else flux
 
         def func(y_ran):
 
             mode = self.get_mode(flux, vs_time)
             prefix = 'Pulse Height vs {mod} - '.format(mod=mode)
-            gr1 = self.make_tgrapherrors('gStatError', 'stat. error', self.get_color())
-            gr2 = self.make_tgrapherrors('gBinWise', prefix + 'binwise correction', self.get_color())
-            gr3 = self.make_tgrapherrors('gMeanPed', prefix + 'mean correction', self.get_color())
-            gr4 = self.make_tgrapherrors('gRaw', prefix + 'raw', self.get_color())
+            marker_size = 2
+
+            gr1 = self.make_tgrapherrors('gStatError', 'stat. error', self.get_color(), marker_size=marker_size)
+            gr2 = self.make_tgrapherrors('gBinWise', prefix + 'binwise correction', self.get_color(), marker_size=marker_size)
+            gr3 = self.make_tgrapherrors('gMeanPed', prefix + 'mean correction', self.get_color(), marker_size=marker_size)
+            gr4 = self.make_tgrapherrors('gRaw', prefix + 'raw', self.get_color(), marker_size=marker_size)
             gr5 = self.make_tgrapherrors('gFlux', 'bla', 1, width=1, marker_size=0)
             gStyle.SetEndErrorSize(4)
-            gr_first = self.make_tgrapherrors('gFirst', 'first run', marker=22, color=2, marker_size=2)
-            gr_last = self.make_tgrapherrors('gLast', 'last run', marker=23, color=2, marker_size=2)
+            gr_first = self.make_tgrapherrors('gFirst', 'first run', marker=22, color=2, marker_size=marker_size * 2)
+            gr_last = self.make_tgrapherrors('gLast', 'last run', marker=23, color=2, marker_size=marker_size * 2)
             gr_errors = self.make_tgrapherrors('gFullError', 'stat. + repr. error', marker=0, color=602, marker_size=0)
             not_found_for = False in [coll.run.FoundForRate for coll in self.collection.itervalues()]
 
-            flux_errors = self.draw_ph_distributions_below_flux(flux=80, show=False, save_plot=False)
+            flux_errors = self.get_repr_errors(80, False)
             log_message('Getting pulse heights{0}'.format(' vs time' if vs_time else ''))
             rel_sys_error = flux_errors[1] / flux_errors[0]
             i, j = 0, 0
@@ -405,12 +420,12 @@ class AnalysisCollection(Elementary):
             return mg
 
         f = partial(func, y_range)
-        mg2 = func(y_range) if save_plots else None
+        mg2 = func(y_range) if save_plots or redo else None
         return self.do_pickle(pickle_path, f, mg2)
 
     def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False, show=True, cut=None, beam_on=True, save=False):
 
-        pickle_path = self.FirstAnalysis.PickleDir + 'Pedestal/AllPedestals_{tc}_{rp}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, rp=self.run_plan, dia=self.diamond_name)
+        pickle_path = self.make_pickle_path('Pedestal', 'AllPedestals', self.run_plan, self.diamond_name)
         mode = 'Flux' if flux else 'Run'
         log_message('Getting pedestals')
         self.start_pbar(self.NRuns)
@@ -429,7 +444,7 @@ class AnalysisCollection(Elementary):
             cut_string = None
             for key, ana in self.collection.iteritems():
                 cut_string = ana.Cut.generate_pulser_cut(beam_on=beam_on) if cut == 'pulser' else cut
-                fit_par = ana.show_pedestal_histo(region, peak_int, cut=cut_string, save=False, show=False)
+                fit_par = ana.show_pedestal_histo(region, peak_int, cut=cut_string, save=save, show=False)
                 x = ana.run.flux if flux else key
                 gr1.SetPoint(i, x, fit_par.Parameter(par))
                 gr1.SetPointError(i, 0, fit_par.ParError(par))
@@ -530,13 +545,28 @@ class AnalysisCollection(Elementary):
         res = func() if show else None
         return self.do_pickle(pickle_path, func, res)
 
+    def get_repr_errors(self, flux, show=True):
+        runs = self.get_runs_below_flux(flux)
+        vals = [self.collection[run].draw_pulse_height(save=False).Parameter(0) for run in runs]
+        gr = self.make_tgrapherrors('gr_re', 'Pulse Heights Below {f} kHz/cm^{{2}}'.format(f=flux))
+        for i, run in enumerate(runs):
+            ana = self.collection[run]
+            fit = ana.draw_pulse_height(save=False)
+            gr.SetPoint(i, ana.run.flux, fit.Parameter(0))
+            gr.SetPointError(i, 0, fit.ParError(0))
+        set_statbox(entries=2, only_fit=True)
+        gr.Fit('pol0', 'qs{s}'.format(s='' if show else '0'))
+        self.format_histo(gr, x_tit='Flux [kHz/cm^{2}]', y_tit='Mean Pulse Height [au]', y_off=1.7)
+        self.save_histo(gr, 'ReprErrors', show, draw_opt='ap', lm=.115, prnt=show)
+        return mean(vals), std(vals)
+
     def draw_ph_distributions(self, binning=5000, fsh13=.5, fs11=65, show=True):
         runs = self.get_runs_by_collimator(fsh13=fsh13, fs11=fs11)
         return self.draw_combined_ph_distributions(runs, binning, show)
 
-    def draw_ph_distributions_below_flux(self, binning=5000, flux=150, show=True, save_plot=True):
-        pickle_path = self.FirstAnalysis.PickleDir + 'Ph_fit/PhDistoBel_{tc}_{rp}_{dia}_{bin}_{flux}.pickle'.format(tc=self.TESTCAMPAIGN, rp=self.run_plan, dia=self.diamond_name, bin=binning,
-                                                                                                                    flux=flux)
+    def draw_ph_distributions_below_flux(self, binning=None, flux=150, show=True, save_plot=True):
+        binning = int(self.FirstAnalysis.run.n_entries * .3 / 60 if binning is None else binning)
+        pickle_path = self.make_pickle_path('Ph_fit', 'PhDistoBel', self.run_plan, self.diamond_name, suf='{bin}_{flux}'.format(bin=binning, flux=flux))
 
         def func():
             log_message('Getting representative errors')
@@ -546,7 +576,7 @@ class AnalysisCollection(Elementary):
         err = func() if save_plot else None
         return self.do_pickle(pickle_path, func, err)
 
-    def draw_combined_ph_distributions(self, runs, binning=5000, show=True):
+    def draw_combined_ph_distributions(self, runs, binning=200, show=True):
         stack = THStack('s_phd', 'Pulse Height Distributions')
         self.reset_colors()
         self.start_pbar(len(runs))
@@ -617,7 +647,7 @@ class AnalysisCollection(Elementary):
     # region PULSER
     def draw_pulser_info(self, flux=True, show=True, mean_=True, corr=True, beam_on=True, vs_time=False, do_fit=True, scale=1, save_comb=True, save=True, ret_mg=False):
 
-        pickle_path = self.FirstAnalysis.PickleDir + 'Pulser/PulseHeights_{tc}_{rp}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, rp=self.run_plan, dia=self.diamond_name)
+        pickle_path = self.make_pickle_path('Pulser', 'PulseHeights', self.run_plan, self.diamond_name)
         flux = False if vs_time else flux
         mode = self.get_mode(flux, vs_time)
         log_message('Getting pulser info{0}'.format(' vs time' if vs_time else ''))
@@ -1042,6 +1072,44 @@ class AnalysisCollection(Elementary):
         gROOT.SetBatch(0)
         self.RootObjects.append([c, ex])
 
+    def draw_signal_map(self, show=True, low=1e20, fid=True, factor=1):
+        suffix = '{fid}{fac}'.format(fid='Fid' if fid else '', fac=factor)
+        pickle_path = self.make_pickle_path('SignalMaps', 'SigMaps', self.run_plan, self.channel, suffix)
+
+        def func():
+            histos = [ana.draw_signal_map(show=False, marg=False, fid=fid, factor=factor) for ana in self.collection.itervalues() if ana.run.flux < low]
+            h = histos[0]
+            sig_map = TH2F('h_sms', 'Combined Signal Maps', h.GetNbinsX(), h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax(), h.GetNbinsY(), h.GetYaxis().GetXmin(), h.GetYaxis().GetXmax())
+            for h in histos:
+                sig_map.Add(h)
+            sig_map.Scale(1. / len(histos))
+            self.format_histo(sig_map, x_tit='track_x [cm]', y_tit='track_y [cm]', y_off=1.4, z_off=1.3, stats=0, z_tit='Pulse Height [au]')
+            self.__adjust_sig_map(sig_map)
+            self.save_histo(sig_map, 'CombinedSignalMaps', show, lm=.12, rm=.16, draw_opt='colz')
+            return sig_map
+
+        hist = self.do_pickle(pickle_path, func)
+        if not gROOT.FindObject('h_sms'):
+            gStyle.SetPalette(53)
+            self.__adjust_sig_map(hist)
+            self.draw_histo(hist, '',  show, lm=.12, rm=.16, draw_opt='colz')
+        return hist
+
+    def __adjust_sig_map(self, h):
+        h.GetZaxis().SetRangeUser(0, 500)
+        h.GetXaxis().SetRangeUser(h.GetXaxis().GetBinCenter(h.FindFirstBinAbove(0)), h.GetXaxis().GetBinCenter(h.FindLastBinAbove(0)))
+        h.GetYaxis().SetRangeUser(h.GetYaxis().GetBinCenter(h.FindFirstBinAbove(0, 2)), h.GetYaxis().GetBinCenter(h.FindLastBinAbove(0, 2)))
+        h1 = TH1F('h_av', 'hav', 100, 1, h.GetBinContent(h.GetMaximumBin()))
+        for i in xrange(1, h.GetNbinsX() * h.GetNbinsY() + 1):
+            h1.Fill(h.GetBinContent(i))
+        hmax = h1.GetMaximum()
+        ph_min, ph_max = h1.GetBinCenter(h1.FindFirstBinAbove(hmax * .08)), h1.GetBinCenter(h1.FindLastBinAbove(hmax * .02))
+        h.GetZaxis().SetRangeUser(ph_min, ph_max)
+        self.draw_histo(h1)
+
+    def draw_hit_map(self, show=True):
+        pass
+
     # endregion
 
     # ====================================================================================
@@ -1198,12 +1266,15 @@ class AnalysisCollection(Elementary):
 
     # endregion
 
+    def draw_currents(self, v_range=None, rel_time=False):
+        self.Currents.draw_indep_graphs(rel_time=rel_time, v_range=v_range)
+
     def make_flux_table(self):
         # for ana in self.collection.itervalues():
         #     print ana.run.RunInfo
         fluxes = OrderedDict(sorted({cs: [] for cs in set([(ana.run.RunInfo['fs11'], ana.run.RunInfo['fs13']) for ana in self.collection.itervalues()])}.iteritems()))
         for ana in self.collection.itervalues():
-            fluxes[(ana.run.RunInfo['fs11'], ana.run.RunInfo['fs13'])].append('{0:3.1f}'.format(calc_flux(ana.run.RunInfo, self.TESTCAMPAIGN)))
+            fluxes[(ana.run.RunInfo['fs11'], ana.run.RunInfo['fs13'])].append('{0:3.1f}'.format(ana.run.calc_flux()))
         first_col = [[''] * max([len(col) for col in fluxes.itervalues()])]
         header = ['FS11/FSH13'] + ['{0}/{1}'.format(make_col_str(head[0]), make_col_str(head[1])) for head in fluxes.iterkeys()]
         print make_latex_table(header=header, cols=first_col + fluxes.values(), endline=True),

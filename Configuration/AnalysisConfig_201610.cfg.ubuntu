@@ -1,0 +1,53 @@
+[BASIC]
+signal_region = b
+pedestal_region = ab
+peak_integral = 2
+
+[CUT]
+IniFin = False
+Beam = True
+Tracks = True
+Hit = True
+Mask = True
+Fiducial = True
+Chi2 = True
+Angle = True
+RHit = True
+EventRange = [0, 0]
+# neg in seconds // pos in events
+excludeBeforeJump = -4
+excludeAfterJump = -15
+# neg in minutes // pos in events
+excludefirst = -5
+spread_low = -1
+absMedian_high = -1
+pedestalsigma = 3
+# quantile
+chi2X = 80
+chi2Y = 80
+# um
+rhit = 100
+# degrees
+track_angle = 1
+Mask rows # [roc; list (: means a range) (; is used to separate)]
+MaskRowsROC4 = [4;0:50;77:79]
+MaskRowsROC5 = [5;0:29;76:79]
+## MaskRowsROC6 = [6;0:18;79]
+# Mask columns # [roc; list (: means a range) (; is used to separate)]
+MaskColsROC4 = [4;0:17;34:51]
+MaskColsROC5 = [5;0:11;37:51]
+## MaskColsROC6 = [6;0:14;51]
+# Mask pixels
+MaskPixelsROC4 = [4;16,69;26,65;30,72;35,76;27,49;28,64;35,63;28,75;32,57;33,73;35,75;32,59;32,58;21,68]
+MaskPixelsROC5 = [5;15,47;28,46;31,47;31,53;31,55;33,55;33,56;35,60;35,66;23,41;30,43;33,51;34,52;10,57;16,59]
+## MaskPixelsROC6 = [6;]
+# Fiducial Regions # [roc; xmin, xmax; ymin, ymax] inclusive
+FidRegionROC4 = [4;20,29;52,61]
+FidRegionROC5 = [5;18,27;52,61]
+## FidRegionROC6 = [6;28,35;48,59]
+beaminterruptions_folder = beaminterruptions
+
+[SAVE]
+pickle_dir = Configuration/Individual_Configs/
+SaveMCData = False
+
