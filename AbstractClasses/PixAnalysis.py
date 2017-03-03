@@ -372,12 +372,12 @@ class PixAnalysis(Analysis):
         self.save_histo(h, 'HitEfficiencyROC{n}'.format(n=roc), show, lm=.13, save=save, gridy=True)
         return h
 
-    def fit_hit_efficiency(self, roc=None, show=True, save=True, cut='all', vs_time=True, n=1e9, start=0):
+    def fit_hit_efficiency(self, roc=None, show=True, save=True, cut='all', vs_time=True, n=1e9, start=0, binning=5000):
         pickle_path = self.make_pickle_path('Efficiency', run=self.RunNumber, suf='{r}{c}_{t}'.format(r=roc, c='_Cuts' if cut else '', t='Time' if vs_time else 'EvntNr'))
 
         def func():
-            set_statbox(y=.37, only_fit=True, entries=1.5)
-            h = self.draw_hit_efficiency(roc, show=False, save=False, cut=cut, vs_time=vs_time, n=n, start=start)
+            set_statbox(y=.37, only_fit=True, entries=1.5, form='4.1f')
+            h = self.draw_hit_efficiency(roc, show=False, save=False, cut=cut, vs_time=vs_time, n=n, start=start, binning=binning)
             if h.GetEntries() < 100:
                 return FitRes()
             self.format_histo(h, stats=1, name='Fit Result')
