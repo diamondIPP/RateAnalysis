@@ -5,7 +5,7 @@
 
 from datetime import datetime, timedelta
 from termcolor import colored
-from ROOT import gStyle, gROOT
+from ROOT import gStyle, gROOT, TF1
 from numpy import sqrt
 from os import makedirs
 from os import path as pth
@@ -320,6 +320,15 @@ def set_time_axis(histo, form='%H:%M', off=3600):
     histo.GetXaxis().SetTimeFormat(form)
     histo.GetXaxis().SetTimeOffset(-off)
     histo.GetXaxis().SetTimeDisplay(1)
+
+
+def find_mpv_fwhm(histo, bins=15):
+    max_bin = histo.GetMaximumBin()
+    fit = TF1('fit', 'gaus', 0, 500)
+    histo.Fit('fit', 'qs', '', histo.GetBinCenter(max_bin - bins), histo.GetBinCenter(max_bin + bins))
+    mpv = fit.GetParameter(1)
+    fwhm = histo.FindLastBinAbove(fit(mpv) / 2) - histo.FindFirstBinAbove(fit(mpv) / 2)
+    return mpv, fwhm, mpv / fwhm
 
 
 def make_cut_string(cut, n):
