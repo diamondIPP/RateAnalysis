@@ -20,7 +20,7 @@ class Plots(Elementary):
         Elementary.__init__(self)
         # gStyle.SetPalette(53)  # kDarkBodyRadiator
         gStyle.SetPalette(55)  # kRainBow
-        gStyle.SetNumberContours(999)
+        gStyle.SetNumberContours(255)
         self.run = run
         self.runinfo = self.run.RunInfo
         self.binning = binning
