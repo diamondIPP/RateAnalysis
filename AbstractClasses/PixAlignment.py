@@ -31,8 +31,8 @@ class PixAlignment:
         self.Branches = self.init_branches()
         self.BranchLists = {name: [] for name in self.Branches}
         # info
-        self.Row1 = None
-        self.Row2 = None
+        self.TelRow = None
+        self.DiaRow = None
         self.load_variables()
         # alignment
         self.NEntries = int(self.InTree.GetEntries())
@@ -85,8 +85,8 @@ class PixAlignment:
             n_ev += size
             at_event += 1
         self.Run.add_info(t)
-        self.Row1 = x
-        self.Row2 = y
+        self.TelRow = x
+        self.DiaRow = y
 
     def check_alignment(self):
         t = self.Run.log_info('Checking aligment ... ', next_line=False)
