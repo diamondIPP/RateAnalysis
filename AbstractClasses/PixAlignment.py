@@ -18,6 +18,7 @@ class PixAlignment:
         self.Converter = converter
         self.Run = converter.Run
         self.NDutPlanes = 4
+        self.Threshold = .4
         # progress bar
         self.Widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
         self.ProgressBar = None
