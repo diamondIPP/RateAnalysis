@@ -116,13 +116,10 @@ class PixAlignment:
 
     def check_alignment(self):
         t = self.Run.log_info('Checking aligment ... ', next_line=False)
-        xt, yt = [], []
-        n = 20
-        for ev, row in self.Row1.iteritems():
-            if ev in self.Row2:
-                xt.append(row)
-                yt.append(self.Row2[ev])
-        correlations = [corrcoef(xt[j:(j + n)], yt[j:(j + n)])[0][1] for j in xrange(0, len(xt), n)]
+        correlation = Correlation(self)
+        for ev, row in self.TelRow.iteritems():
+            correlation.fill(ev)
+        correlations = correlation.get_all_zero()
         h = TH1F('h_ee', 'Event Alignment', int(sqrt(len(correlations))), 0, 1)
         for cor in correlations:
             h.Fill(cor)
@@ -131,6 +128,10 @@ class PixAlignment:
         self.Run.format_histo(h, x_tit='Correlation Factor', y_tit='Number of Entries', y_off=1.4, stats=0)
         self.Run.save_histo(h, 'EventAlignmentControl', show=False, lm=.13, prnt=False)
         mean_, sigma = fit.Parameter(1), fit.Parameter(2)
+        if mean_ - 5 * sigma < .2:
+            self.Run.add_info(t)
+            log_message('run is very badly misaligned...')
+            return False
         low_events = [cor for cor in correlations if cor < mean_ - 5 * sigma]
         misalignments = len(low_events) / float(len(correlations))
         self.Run.add_info(t)
