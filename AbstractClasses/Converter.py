@@ -232,10 +232,9 @@ class Converter:
         elif self.Type == 'pixel':
             print_banner('CHECKING FOR EVENT ALIGNMENT')
             pix_align = PixAlignment(self)
-            if not pix_align.check_alignment():
+            if not pix_align.IsAligned and not pix_align.check_alignment():
                 print_banner('STARTING PIXEL EVENT ALIGNMENT')
                 pix_align.write_aligned_tree()
-#     pix_align.write_aligned_tree()
 
     def remove_pickle_files(self, run_number):
         log_message('Removing all pickle files for run {}'.format(run_number))
