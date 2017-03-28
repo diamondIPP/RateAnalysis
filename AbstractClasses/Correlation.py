@@ -13,7 +13,7 @@ class Correlation(object):
     def __init__(self, alignment, bucket_size=None, n_offsets=0):
 
         self.Alignment = alignment
-        self.BucketSize = bucket_size
+        self.BucketSize = bucket_size if bucket_size is not None else self.Alignment.BucketSize
         self.AtBucket = 4  # we need at least four buckets to start
 
         self.Offsets = [0] + [v for v in xrange(-n_offsets, n_offsets + 1) if v]
