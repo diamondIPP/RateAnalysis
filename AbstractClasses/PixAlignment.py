@@ -6,8 +6,8 @@
 
 from ROOT import TFile, TH1F, vector
 from collections import OrderedDict, Counter
-from numpy import corrcoef, mean, sqrt
-from Utils import set_root_output, log_message, log_critical, time, print_elapsed_time
+from numpy import mean, sqrt
+from Utils import set_root_output, log_message, log_critical, time, print_elapsed_time, calc_mean, round_up_to
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 from Correlation import Correlation
 
@@ -209,6 +209,34 @@ class PixAlignment:
                 print off, corr
             return
         return offs[max(offs)]
+
+    def find_bucket_size(self, show=True):
+        """ take first 10000 events and find a suitable bucket size to build the correlation """
+        correlation = Correlation(self, bucket_size=10)
+        max_ev = 10000
+        for ev in self.TelRow.iterkeys():
+            if ev > max_ev:
+                break
+            correlation.fill(ev)
+        sigmas = OrderedDict()
+        size = 50
+        while True:
+            if correlation.get_events() < 700:
+                break
+            try:
+                for i, n in enumerate(xrange(10, 100)):
+                    correlation.set_bucket_size(n)
+                    corrs = correlation.get_all_zero()
+                    mean_, sigma = calc_mean(corrs)
+                    sigmas[sigma] = n
+                if show:
+                    g = self.Run.make_tgrapherrors('g_bs', 'Sigma of the Bucket Sizes', x=sigmas.values(), y=sigmas.keys())
+                    self.Run.draw_histo(g, draw_opt='alp')
+                size = next(n for sig, n in sigmas.iteritems() if sig < .09)
+                break
+            except StopIteration:
+                correlation.delete_events(len(correlation.TelRow[0]) / 2, max_ev)
+        return round_up_to(size, 5)
 
     # =======================================================
     # region WRITE TREE
