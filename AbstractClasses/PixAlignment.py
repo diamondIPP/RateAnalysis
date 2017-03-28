@@ -9,6 +9,7 @@ from collections import OrderedDict, Counter
 from numpy import corrcoef, mean, sqrt
 from Utils import set_root_output, log_message, log_critical, time, print_elapsed_time
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
+from Correlation import Correlation
 
 
 class PixAlignment:
@@ -27,16 +28,19 @@ class PixAlignment:
         self.InTree = self.InFile.Get(self.Run.treename)
         self.NewFile = None
         self.NewTree = None
-        # branches
-        self.Branches = self.init_branches()
-        self.BranchLists = {name: [] for name in self.Branches}
-        # info
-        self.TelRow = None
-        self.DiaRow = None
-        self.load_variables()
         # alignment
         self.NEntries = int(self.InTree.GetEntries())
         self.AtEntry = 0
+        self.IsAligned = self.check_alignment_fast()
+        if not self.IsAligned:
+            # branches
+            self.Branches = self.init_branches()
+            self.BranchLists = {name: [] for name in self.Branches}
+            # info
+            self.TelRow = {}
+            self.DiaRow = {}
+            self.load_variables()
+            self.BucketSize = self.find_bucket_size()
 
     def __del__(self):
         self.InFile.Close()
@@ -87,6 +91,28 @@ class PixAlignment:
         self.Run.add_info(t)
         self.TelRow = x
         self.DiaRow = y
+
+    def check_alignment_fast(self):
+        """ only check alignment of the first, last and middle 10k events """
+        corrs = []
+        for start_event in [0, self.NEntries / 2, self.NEntries - 10000]:
+            correlation = Correlation(self, bucket_size=10000)
+            n = self.InTree.Draw('plane:row:event_number', '', 'goff', 10000, start_event)
+            planes = [int(self.InTree.GetV1()[i]) for i in xrange(n)]
+            rows = [int(self.InTree.GetV2()[i]) for i in xrange(n)]
+            nrs = Counter([int(self.InTree.GetV3()[i]) for i in xrange(n)])
+            n_ev = 0
+            for ev, size in sorted(nrs.iteritems()):
+                plane = planes[n_ev:size + n_ev]
+                row = rows[n_ev:size + n_ev]
+                if plane.count(2) == 1 and plane.count(4) == 1:
+                    correlation.fill(ev, tel_row=row[plane.index(2)], dia_row=row[plane.index(4)])
+                n_ev += size
+            corrs.append(correlation.get(debug=False))
+        is_aligned = all(corr > self.Threshold for corr in corrs)
+        if not is_aligned:
+            self.Run.log_info('Fast check found misalignment :-(')
+        return is_aligned
 
     def check_alignment(self):
         t = self.Run.log_info('Checking aligment ... ', next_line=False)
