@@ -55,6 +55,7 @@ class Currents(Elementary):
         if 'dia1supply' not in self.RunInfo:
             return
         self.DiamondName = self.load_dia_name()
+        self.DiamondNumber = self.load_dia_number()
         self.Bias = self.load_bias()
         self.StartRun = start_run
         self.StartTime = self.load_start_time()
@@ -95,6 +96,10 @@ class Currents(Elementary):
     def load_dia_name(self):
         return self.Analysis.DiamondName if self.Analysis is not None else None
 
+    def load_dia_number(self):
+        if self.Analysis is not None:
+            return self.Analysis.DiamondNumber if not self.IsCollection else self.Analysis.FirstAnalysis.DiamondNumber
+
     def load_bias(self):
         if hasattr(self.Analysis, 'Type') and 'voltage' in self.Analysis.Type:
             return ''
@@ -108,8 +113,9 @@ class Currents(Elementary):
         return nr
 
     def load_runlogs(self):
+        filename = self.Analysis.run.runinfofile if not self.IsCollection else self.Analysis.FirstAnalysis.run.runinfofile
         try:
-            f = open(self.Analysis.run.runinfofile)
+            f = open(filename)
             data = load(f)
             f.close()
         except IOError as err:
@@ -144,14 +150,14 @@ class Currents(Elementary):
                 return str(full_str.split('-')[0])
             except KeyError:
                 return dia
-        full_str = self.RunInfo['dia{dia}supply'.format(dia=self.Analysis.DiamondNumber)]
+        full_str = self.RunInfo['dia{dia}supply'.format(dia=self.DiamondNumber)]
         return str(full_str.split('-')[0])
 
     def get_device_channel(self, dia):
         if self.Analysis is None:
             full_str = self.RunLogs[self.StartRun]['dia{dia}supply'.format(dia=dia)]
             return full_str.split('-')[1] if len(full_str) > 1 else '0'
-        full_str = self.RunInfo['dia{dia}supply'.format(dia=self.Analysis.DiamondNumber)]
+        full_str = self.RunInfo['dia{dia}supply'.format(dia=self.DiamondNumber)]
         return full_str.split('-')[1] if len(full_str) > 1 else '0'
 
     def find_data_path(self, old=False):
