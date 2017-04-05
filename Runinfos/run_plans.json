@@ -2136,6 +2136,11 @@
       "type": "rate scan"
     }, 
     "16": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser": "None"
+      }, 
       "runs": [
         431, 
         432, 
@@ -2152,6 +2157,27 @@
         446, 
         449, 
         455
+      ], 
+      "type": "voltage scan"
+    }, 
+    "16.1": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser": "None"
+      }, 
+      "runs": [
+        431, 
+        432, 
+        433, 
+        434, 
+        435, 
+        436, 
+        437, 
+        438, 
+        439, 
+        440, 
+        441
       ], 
       "type": "voltage scan"
     }, 
