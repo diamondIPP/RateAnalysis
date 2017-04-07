@@ -297,7 +297,9 @@ class Run(Elementary):
         print dic
 
     def calculate_flux(self):
-        mask_file_path = self.maskfilepath + '/' + self.RunInfo['maskfile']
+        if self.RunNumber is None:
+            return
+        mask_file_path = joinpath(self.maskfilepath, self.RunInfo['maskfile'])
         maskdata = {}
         for plane in self.trigger_planes:
             maskdata[plane] = {}
@@ -316,11 +318,15 @@ class Run(Elementary):
             pass
 
         unmasked_pixels = {}
+        # default
+        for plane in self.trigger_planes:
+            unmasked_pixels[plane] = 4160
+        # pass for empty file
+        if not maskdata[self.trigger_planes[0]]:
+            pass
         # check for corner method
-        if not maskdata[self.trigger_planes[0]] or not maskdata.values()[0].keys()[0].startswith('corn'):
+        elif not maskdata.values()[0].keys()[0].startswith('corn'):
             self.log_warning('Invalid mask file. Not taking any mask!')
-            for plane in self.trigger_planes:
-                unmasked_pixels[plane] = 4160
         else:
             for plane in self.trigger_planes:
                 row = [maskdata[plane]['cornBot'][0], maskdata[plane]['cornTop'][0]]
