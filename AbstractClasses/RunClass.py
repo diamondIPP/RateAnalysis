@@ -92,6 +92,10 @@ class Run(Elementary):
         self.tree = None
         self.load_run_info()
 
+        # general information
+        self.FoundForRate = False
+        self.flux = self.calculate_flux()
+
         # times
         self.log_start = None
         self.log_stop = None
@@ -123,9 +127,6 @@ class Run(Elementary):
                 self.peak_integrals = self.get_peak_integrals()
                 self.DigitizerChannels = self.load_digitizer_channels()
                 self.TCal = self.load_tcal()
-
-            self.FoundForRate = False
-            self.flux = self.calculate_flux()
 
         # elif run_number is not None:
         #     self.load_run_info()
