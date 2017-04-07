@@ -76,11 +76,14 @@ class RunSelection(Elementary):
 
     def load_run_infos(self):
         """ loads all the run infos in a dict with the run numbers as keys """
-        run_infos = {}
-        for runnumber in self.run_numbers:
-            self.run.set_run(runnumber, load_root_file=False)
-            run_infos[runnumber] = self.run.RunInfo
-        return run_infos
+        try:
+            f = open(self.load_run_info_path(), 'r')
+            data = json.load(f)
+            data = {int(run): dic for run, dic in data.iteritems()}
+            f.close()
+            return data
+        except IOError as err:
+            log_critical('{err}\nCould not load RunInfo!'.format(err=err))
 
     def init_selection(self):
         self.reset_selection()
