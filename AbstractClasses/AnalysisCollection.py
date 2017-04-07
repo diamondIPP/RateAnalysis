@@ -17,6 +17,7 @@ from Extrema import Extrema2D
 from PadAnalysis import PadAnalysis
 from RunSelection import RunSelection
 from TelescopeAnalysis import Analysis
+from RunClass import Run
 from Utils import *
 
 
@@ -113,11 +114,13 @@ class AnalysisCollection(Elementary):
         return [i for i in xrange(16) if self.has_bit(binary, i)][dia_nr - 1]
 
     def get_high_low_rate_runs(self):
-        fluxes = {ana.run.calc_flux(): run for run, ana in self.collection.iteritems()}
+        runs = [Run(run_number=run, load_tree=False, test_campaign=self.TESTCAMPAIGN) for run in self.runs]
+        fluxes = OrderedDict()
         if self.verbose:
             print 'RUN FLUX [kHz/cm2]'
-            for run, ana in self.collection.itervalues():
-                print '{run:3d} {flux:14.2f}'.format(run=run, flux=ana.run.calc_flux())
+            for run in runs:
+                fluxes[run.flux] = run.RunNumber
+                print '{run:3d} {flux:14.2f}'.format(run=run.RunNumber, flux=run.flux)
         print '\n'
         return {'min': fluxes[min(fluxes)], 'max': fluxes[max(fluxes)]}
 
