@@ -230,10 +230,9 @@ class Converter:
                 align_cmd = '{align}/bin/EventAlignment.exe {rootfile}'.format(align=self.AlignDir, rootfile=self.get_root_file_path())
                 system(align_cmd)
         elif self.Type == 'pixel':
-            print_banner('CHECKING FOR EVENT ALIGNMENT')
+            print_banner('STARTING PIXEL EVENT ALIGNMENT')
             pix_align = PixAlignment(self)
             if not pix_align.IsAligned and not pix_align.check_alignment():
-                print_banner('STARTING PIXEL EVENT ALIGNMENT')
                 pix_align.write_aligned_tree()
 
     def remove_pickle_files(self, run_number):
