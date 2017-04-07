@@ -256,8 +256,7 @@ class Cut(Elementary):
             angle = self.CutConfig['track_angle']
             t = self.log_info('Generating angle cut in {m} for run {run} ...'.format(run=self.analysis.RunNumber, m=mode), False)
             self.set_root_output(False)
-            # TODO: unify strings
-            draw_str = '{t}_{m}'.format(t='slope' if self.DUTType == 'pad' else 'angle', m=mode)
+            draw_str = '{t}_{m}'.format(t='slope' if self.analysis.run.has_branch('slope_x') else 'angle', m=mode)
             n = self.analysis.tree.Draw(draw_str, '{s}>-100'.format(s=draw_str), 'goff')
             mean_ = mean([self.analysis.tree.GetV1()[i] for i in xrange(n)])
             cut_vals = {mode: [mean_ - angle, mean_ + angle]}
