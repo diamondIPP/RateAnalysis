@@ -336,6 +336,16 @@ def make_cut_string(cut, n):
     return '{n}Cuts'.format(n=str(n).zfill(2)) if cut is not None else ''
 
 
+def get_resolution():
+    try:
+        from screeninfo import get_monitors
+        m = get_monitors()
+        return round_down_to(m[0].height, 500)
+    except Exception as exc:
+        log_warning('Could not get resolution! Using default ...\n\t{e}'.format(e=exc))
+        return 1000
+
+
 class FitRes:
     def __init__(self, fit_obj=None):
         self.Pars = list(fit_obj.Parameters()) if (fit_obj is not None and len(fit_obj.Parameters()) > 0) else [None]
