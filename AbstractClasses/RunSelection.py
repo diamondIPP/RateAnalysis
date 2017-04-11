@@ -81,7 +81,7 @@ class RunSelection(Elementary):
         try:
             f = open(self.load_run_info_path(), 'r')
             data = json.load(f)
-            data = {int(run): dic for run, dic in data.iteritems()}
+            data = {int(run): dic for run, dic in data.iteritems() if int(run) not in self.ExcludedRuns}
             f.close()
             return data
         except IOError as err:
