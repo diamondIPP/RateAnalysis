@@ -15,13 +15,15 @@ class RunSelection(Elementary):
         Elementary.__init__(self, verbose=verbose, testcampaign=testcampaign)
         self.run = Run(run_number=None, verbose=verbose)
 
-        self.runplan_path = joinpath(self.get_program_dir(), self.MainConfigParser.get('MAIN', 'run_plan_path'))
+        self.Selection = {}
+
+        # info
+        self.RunPlanPath = join(self.get_program_dir(), self.MainConfigParser.get('MAIN', 'run_plan_path'))
         self.ExcludedRuns = json.loads(self.run_config_parser.get('BASIC', 'excluded_runs'))
-        self.run_plan = self.load_runplan()
-        self.run_numbers = self.load_run_numbers()
-        self.run_infos = self.load_run_infos()
+        self.RunPlan = self.load_runplan()
+        self.RunNumbers = self.load_run_numbers()
+        self.RunInfors = self.load_run_infos()
         self.logs = {}
-        self.selection = {}
         self.channels = {}
         
         # selection
@@ -34,7 +36,7 @@ class RunSelection(Elementary):
         self.init_selection()
 
     def __str__(self):
-        nr = len(self.run_numbers)
+        nr = len(self.RunNumbers)
         selected_runs = self.get_selected_runs()
         return 'RunSelection Object\n' + str(len(selected_runs)) + ' Out of ' + str(nr) + ' runs selected. Selections made:' + self.get_log_string()
 
@@ -89,7 +91,7 @@ class RunSelection(Elementary):
         self.reset_selection()
 
     def load_runplan(self):
-        f = open(self.runplan_path, 'r')
+        f = open(self.RunPlanPath, 'r')
         runplans = json.load(f)
         f.close()
         try:
@@ -107,15 +109,15 @@ class RunSelection(Elementary):
     def reset_selection(self):
         """ Creates a dict of bools to store the selection, which is filled with False (no run selected). Resets the logs. """
         self.logs = {}
-        for run in self.run_numbers:
-            self.selection[run] = False
+        for run in self.RunNumbers:
+            self.Selection[run] = False
             self.channels[run] = {}
             for ch in self.run.channels:
                 self.channels[run][ch] = False
 
     def select_all_runs(self, dia1=True, dia2=True):
-        for run in self.run_numbers:
-            self.selection[run] = True
+        for run in self.RunNumbers:
+            self.Selection[run] = True
             self.channels[run][self.run.channels[0]] = dia1
             self.channels[run][self.run.channels[1]] = dia2
         self.make_log_entry('All runs selected')
@@ -151,10 +153,10 @@ class RunSelection(Elementary):
         """
         types = self.get_runinfo_values('type')
         assert run_type in types, 'wrong data type.\n\t-->Select type of these: {types}'.format(types=types)
-        runs = self.get_selected_runs() if only_selected else self.run_numbers
+        runs = self.get_selected_runs() if only_selected else self.RunNumbers
         selected_runs = 0
         for run in runs:
-            if self.run_infos[run]['type'] == run_type:
+            if self.RunInfors[run]['type'] == run_type:
                 self.select_run(run, False) if not unselect else self.unselect_run(run, False)
                 selected_runs += 1
             else:
@@ -175,19 +177,19 @@ class RunSelection(Elementary):
         """
         diamondnames = self.get_diamond_names()
         assert diamondname in diamondnames, 'wrong diamond name.\n\t-->Select diamond of these:'.format(dias=diamondnames)
-        runs = self.get_selected_runs() if only_selected_runs else self.run_numbers
+        runs = self.get_selected_runs() if only_selected_runs else self.RunNumbers
         selected_runs = 0
         unselected_runs = 0
         dia_keys = ['dia1', 'dia2']
         for run in runs:
             found_dia = False
             for i, ch in enumerate(self.run.channels):
-                if self.run_infos[run][dia_keys[i]] == diamondname:
+                if self.RunInfors[run][dia_keys[i]] == diamondname:
                     self.select_run(run, False)
                     self.channels[run][ch] = True
                     found_dia = True
                     selected_runs += 1
-            if not found_dia and self.selection[run]:
+            if not found_dia and self.Selection[run]:
                 self.unselect_run(run, False)
                 unselected_runs += 1
         log = 'Runs and Channels containing {dia} selected ( {nr1} runs selected, {nr2} unselected)'.format(dia=diamondname, nr1=selected_runs, nr2=unselected_runs)
@@ -204,12 +206,12 @@ class RunSelection(Elementary):
         for run in self.get_selected_runs():
             unselect = True
             for i, ch in enumerate(self.run.channels, 1):
-                if not self.run_infos[run]['dia{nr}hv'.format(nr=i)] == bias:
+                if not self.RunInfors[run]['dia{nr}hv'.format(nr=i)] == bias:
                     self.channels[run][ch] = False
                 else:
                     unselect = False
             if unselect:
-                self.selection[run] = False
+                self.Selection[run] = False
                 unselected_runs += 1
         log = 'Unselected all runs and channels if bias is not {bias}V (unselected {nr} runs).'.format(bias=bias, nr=unselected_runs)
         self.make_log_entry(log)
@@ -217,11 +219,11 @@ class RunSelection(Elementary):
 
     def select_run(self, run_number, do_assert=True, unselect=False):
         if do_assert:
-            if run_number not in self.run_numbers:
+            if run_number not in self.RunNumbers:
                 self.log_warning('run {run} not found in list of run numbers. Check run_log json file!'.format(run=run_number))
                 return
 
-        self.selection[run_number] = True if not unselect else False
+        self.Selection[run_number] = True if not unselect else False
         if unselect:
             self.reset_channels(run_number)
 
@@ -241,7 +243,7 @@ class RunSelection(Elementary):
         self.make_log_entry('Unselected {n} runs'.format(n=unselected_runs))
 
     def select_runs_in_range(self, minrun, maxrun):
-        for run in self.run_numbers:
+        for run in self.RunNumbers:
             if maxrun >= run >= minrun:
                 self.select_run(run, do_assert=False)
 
@@ -280,8 +282,8 @@ class RunSelection(Elementary):
     def get_selected_runs(self):
         """ :return: list of selected run numbers. """
         selected = []
-        for run in self.run_numbers:
-            if self.selection[run]:
+        for run in self.RunNumbers:
+            if self.Selection[run]:
                 selected.append(run)
         if not selected:
             print 'No runs selected!'
@@ -334,7 +336,7 @@ class RunSelection(Elementary):
         print make_info_string(selected_runs[0], True)
         for run_nr in selected_runs:
             print make_info_string(run_nr)
-            comment = self.run_infos[run_nr]['comments']
+            comment = self.RunInfors[run_nr]['comments']
             if show_allcomments and len(comment) > 0:
                 print 'COMMENT:\n{comment}\n{delimitor}'.format(comment=fill(comment, 51), delimitor=49 * '-')
 
@@ -343,9 +345,9 @@ class RunSelection(Elementary):
     # ============================================
     # region RUN PLAN
     def save_runplan(self, runplan=None):
-        f = open(self.runplan_path, 'r+')
+        f = open(self.RunPlanPath, 'r+')
         runplans = json.load(f)
-        runplans[self.TESTCAMPAIGN] = self.run_plan if runplan is None else runplan
+        runplans[self.TESTCAMPAIGN] = self.RunPlan if runplan is None else runplan
         self.rename_runplan_numbers() if runplan is not None and runplan else self.do_nothing()
         f.seek(0)
         json.dump(runplans, f, indent=2, sort_keys=True)
@@ -353,53 +355,53 @@ class RunSelection(Elementary):
         f.close()
 
     def add_runplan_descriptions(self):
-        for rp in sorted(self.run_plan.iterkeys()):
+        for rp in sorted(self.RunPlan.iterkeys()):
             self.add_runplan_description(rp, ask=False)
 
     def add_runplan_description(self, rp=None, name=None, ask=True):
         rp = raw_input('Enter run plan number: ') if ask else rp
         rp_str = self.make_runplan_string(rp)
-        runs = self.run_plan[rp_str]
+        runs = self.RunPlan[rp_str]
         if ask:
             name = raw_input('Enter description: ')
         else:
-            if 'type' in self.run_infos[runs[0]]:
-                name = self.run_infos[runs[0]]['type'].replace('_', ' ')
+            if 'type' in self.RunInfors[runs[0]]:
+                name = self.RunInfors[runs[0]]['type'].replace('_', ' ')
             name = 'rate scan' if name is None else name
         if type(runs) is dict:
             runs = runs['runs']
         self.log_info('Adding new description for run plan {rp}: {name}'.format(rp=rp_str, name=name))
-        self.run_plan[rp_str] = {'type': name, 'runs': runs}
+        self.RunPlan[rp_str] = {'type': name, 'runs': runs}
         self.save_runplan()
 
     def add_attenuators(self, rp=None, attenuator=None, ask=True):
         rp = self.make_runplan_string(raw_input('Enter run plan number: ') if ask else rp)
-        info = self.run_infos[self.run_plan[rp]['runs'][0]]
+        info = self.RunInfors[self.RunPlan[rp]['runs'][0]]
         at_d1 = raw_input('Enter attenuator for {dia1}: '.format(dia1=info['dia1'])) if attenuator is None else attenuator[0]
         at_d2 = raw_input('Enter attenuator for {dia2}: '.format(dia2=info['dia2'])) if attenuator is None else attenuator[1]
         at_pul = raw_input('Enter attenuator for the pulser: ') if attenuator is None else attenuator[2]
-        self.run_plan[rp]['attenuators'] = {'dia1': at_d1, 'dia2': at_d2, 'pulser': at_pul}
+        self.RunPlan[rp]['attenuators'] = {'dia1': at_d1, 'dia2': at_d2, 'pulser': at_pul}
         self.save_runplan()
 
     def rename_runplan_numbers(self):
-        for type_, plan in self.run_plan.iteritems():
+        for type_, plan in self.RunPlan.iteritems():
             for nr in plan:
-                self.run_plan[type_][nr.zfill(2)] = self.run_plan[type_].pop(nr)
+                self.RunPlan[type_][nr.zfill(2)] = self.RunPlan[type_].pop(nr)
 
     def show_run_plans(self, detailed=False, show_allcomments=False):
         """ Print a list of all run plans from the current test campaign to the console. """
-        old_selection = deepcopy(self.selection)
+        old_selection = deepcopy(self.Selection)
         old_channels = deepcopy(self.channels)
         old_logs = deepcopy(self.logs)
         print 'RUN PLAN FOR TESTCAMPAIGN: {tc}'.format(tc=self.TESTCAMPAIGN)
         if not detailed:
             print '  Nr.   {typ}{range}{excl} {dia} Voltages'.format(range='Range'.ljust(17), excl='Excluded'.ljust(15), dia='Diamonds'.ljust(20), typ='Run Type'.ljust(13))
-        for plan, info in sorted(self.run_plan.iteritems()):
+        for plan, info in sorted(self.RunPlan.iteritems()):
             self.unselect_all_runs(info=False)
             self.select_runs_from_runplan(plan)
             runs = info['runs']
             if not detailed:
-                all_runs = [run for run in self.run_numbers if runs[-1] >= run >= runs[0]]
+                all_runs = [run for run in self.RunNumbers if runs[-1] >= run >= runs[0]]
                 missing_runs = [run for run in all_runs if run not in runs]
                 missing_runs = missing_runs if len(missing_runs) <= 3 else '{0}, ...]'.format(str(missing_runs[:2]).strip(']'))
                 dias = [str(dia) for dia in self.get_diamond_names(True)]
@@ -417,19 +419,19 @@ class RunSelection(Elementary):
 
         self.channels = old_channels
         self.logs = old_logs
-        self.selection = old_selection
+        self.Selection = old_selection
 
     def select_runs_from_runplan(self, plan_nr, ch=1):
         plan = self.make_runplan_string(plan_nr)
-        runs = self.run_plan[plan]['runs']
+        runs = self.RunPlan[plan]['runs']
         self.SelectedRunplan = plan
-        self.SelectedType = str(self.run_plan[plan]['type'])
+        self.SelectedType = str(self.RunPlan[plan]['type'])
 
         self.select_runs(runs)
-        self.SelectedBias = self.run_infos[self.get_selected_runs()[0]]['dia{0}hv'.format(ch)]
+        self.SelectedBias = self.RunInfors[self.get_selected_runs()[0]]['dia{0}hv'.format(ch)]
         parser = ConfigParser()
         parser.read('Configuration/DiamondAliases.cfg')
-        self.SelectedDiamond = parser.get('ALIASES', self.run_infos[self.get_selected_runs()[0]]['dia{0}'.format(ch)])
+        self.SelectedDiamond = parser.get('ALIASES', self.RunInfors[self.get_selected_runs()[0]]['dia{0}'.format(ch)])
         self.SelectedDiamondNr = ch
 
     def add_selection_to_runplan(self, plan_nr, run_type='rate scan', parent=None):
@@ -441,16 +443,16 @@ class RunSelection(Elementary):
         plan_nr = self.make_runplan_string(plan_nr)
         parent_string = self.make_runplan_string(str(int(float(plan_nr)))) if not isint(plan_nr) and isfloat(plan_nr) else parent
         parent_string = self.make_runplan_string(parent) if parent is not None else parent_string
-        assert self.selection, 'The run selection is completely empty!'
+        assert self.Selection, 'The run selection is completely empty!'
 
-        self.run_plan[plan_nr] = {'runs': self.get_selected_runs(), 'type': run_type}
+        self.RunPlan[plan_nr] = {'runs': self.get_selected_runs(), 'type': run_type}
         if parent_string is not None:
-            self.run_plan[plan_nr]['attenuators'] = self.run_plan[parent_string]['attenuators']
+            self.RunPlan[plan_nr]['attenuators'] = self.RunPlan[parent_string]['attenuators']
         self.save_runplan()
 
     def delete_runplan(self, plan_nr):
         plan = self.make_runplan_string(plan_nr)
-        self.run_plan.pop(plan)
+        self.RunPlan.pop(plan)
         self.save_runplan()
 
     # endregion
@@ -498,7 +500,7 @@ class RunSelection(Elementary):
         :return: all different values of the run info dict
         """
         values = []
-        run_infos = self.run_infos if not sel else self.get_selection_runinfo()
+        run_infos = self.RunInfors if not sel else self.get_selection_runinfo()
         for run, info in run_infos.iteritems():
             value = info[key]
             if value not in values:
@@ -507,8 +509,8 @@ class RunSelection(Elementary):
 
     def get_selection_runinfo(self):
         dic = {}
-        for run, info in self.run_infos.iteritems():
-            if self.selection[run]:
+        for run, info in self.RunInfors.iteritems():
+            if self.Selection[run]:
                 dic[run] = info
         return dic
 
