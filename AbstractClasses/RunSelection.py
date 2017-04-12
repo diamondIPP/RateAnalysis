@@ -22,7 +22,7 @@ class RunSelection(Elementary):
         self.ExcludedRuns = json.loads(self.run_config_parser.get('BASIC', 'excluded_runs'))
         self.RunPlan = self.load_runplan()
         self.RunNumbers = self.load_run_numbers()
-        self.RunInfors = self.load_run_infos()
+        self.RunInfos = self.load_run_infos()
         self.logs = {}
         self.channels = {}
         
@@ -156,7 +156,7 @@ class RunSelection(Elementary):
         runs = self.get_selected_runs() if only_selected else self.RunNumbers
         selected_runs = 0
         for run in runs:
-            if self.RunInfors[run]['type'] == run_type:
+            if self.RunInfos[run]['type'] == run_type:
                 self.select_run(run, False) if not unselect else self.unselect_run(run, False)
                 selected_runs += 1
             else:
@@ -184,7 +184,7 @@ class RunSelection(Elementary):
         for run in runs:
             found_dia = False
             for i, ch in enumerate(self.run.channels):
-                if self.RunInfors[run][dia_keys[i]] == diamondname:
+                if self.RunInfos[run][dia_keys[i]] == diamondname:
                     self.select_run(run, False)
                     self.channels[run][ch] = True
                     found_dia = True
@@ -206,7 +206,7 @@ class RunSelection(Elementary):
         for run in self.get_selected_runs():
             unselect = True
             for i, ch in enumerate(self.run.channels, 1):
-                if not self.RunInfors[run]['dia{nr}hv'.format(nr=i)] == bias:
+                if not self.RunInfos[run]['dia{nr}hv'.format(nr=i)] == bias:
                     self.channels[run][ch] = False
                 else:
                     unselect = False
@@ -350,8 +350,8 @@ class RunSelection(Elementary):
         if ask:
             name = raw_input('Enter description: ')
         else:
-            if 'type' in self.RunInfors[runs[0]]:
-                name = self.RunInfors[runs[0]]['type'].replace('_', ' ')
+            if 'type' in self.RunInfos[runs[0]]:
+                name = self.RunInfos[runs[0]]['type'].replace('_', ' ')
             name = 'rate scan' if name is None else name
         if type(runs) is dict:
             runs = runs['runs']
@@ -361,7 +361,7 @@ class RunSelection(Elementary):
 
     def add_attenuators(self, rp=None, attenuator=None, ask=True):
         rp = self.make_runplan_string(raw_input('Enter run plan number: ') if ask else rp)
-        info = self.RunInfors[self.RunPlan[rp]['runs'][0]]
+        info = self.RunInfos[self.RunPlan[rp]['runs'][0]]
         at_d1 = raw_input('Enter attenuator for {dia1}: '.format(dia1=info['dia1'])) if attenuator is None else attenuator[0]
         at_d2 = raw_input('Enter attenuator for {dia2}: '.format(dia2=info['dia2'])) if attenuator is None else attenuator[1]
         at_pul = raw_input('Enter attenuator for the pulser: ') if attenuator is None else attenuator[2]
@@ -422,10 +422,10 @@ class RunSelection(Elementary):
         self.SelectedType = str(self.RunPlan[plan]['type'])
 
         self.select_runs(runs)
-        self.SelectedBias = self.RunInfors[self.get_selected_runs()[0]]['dia{0}hv'.format(ch)]
+        self.SelectedBias = self.RunInfos[self.get_selected_runs()[0]]['dia{0}hv'.format(ch)]
         parser = ConfigParser()
         parser.read('Configuration/DiamondAliases.cfg')
-        self.SelectedDiamond = parser.get('ALIASES', self.RunInfors[self.get_selected_runs()[0]]['dia{0}'.format(ch)])
+        self.SelectedDiamond = parser.get('ALIASES', self.RunInfos[self.get_selected_runs()[0]]['dia{0}'.format(ch)])
         self.SelectedDiamondNr = ch
 
     def add_selection_to_runplan(self, plan_nr, run_type='rate scan', parent=None):
@@ -494,7 +494,7 @@ class RunSelection(Elementary):
         :return: all different values of the run info dict
         """
         values = []
-        run_infos = self.RunInfors if not sel else self.get_selection_runinfo()
+        run_infos = self.RunInfos if not sel else self.get_selection_runinfo()
         for run, info in run_infos.iteritems():
             value = info[key]
             if value not in values:
@@ -503,7 +503,7 @@ class RunSelection(Elementary):
 
     def get_selection_runinfo(self):
         dic = {}
-        for run, info in self.RunInfors.iteritems():
+        for run, info in self.RunInfos.iteritems():
             if self.Selection[run]:
                 dic[run] = info
         return dic
