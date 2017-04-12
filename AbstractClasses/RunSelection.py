@@ -373,7 +373,7 @@ class RunSelection(Elementary):
             for nr in plan:
                 self.RunPlan[type_][nr.zfill(2)] = self.RunPlan[type_].pop(nr)
 
-    def show_run_plans(self):
+    def show_run_plans(self, dia=None):
         """ Print a list of all run plans from the current test campaign to the console. """
         old_selection = deepcopy(self.Selection)
         old_channels = deepcopy(self.channels)
@@ -388,6 +388,8 @@ class RunSelection(Elementary):
             d1, d2 = self.get_rp_diamond_names()
             run_string = '{min} - {max}'.format(min=str(runs[0]).zfill(3), max=str(runs[-1]).zfill(3))
             v1, v2 = self.get_rp_voltages()
+            if dia is not None and all(d.strip(' ') != dia for d in [d1, d2]):
+                continue
             plan += ':'
             print '  {nr} {typ}  {runs}  {miss}  {d1} {v1}  {d2} {v2}'.format(nr=plan.ljust(5), runs=run_string, miss=missing_runs.ljust(15), d1=d1, d2=d2, v1=v1, v2=v2, typ=info['type'].ljust(13))
 
