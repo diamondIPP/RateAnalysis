@@ -41,7 +41,6 @@ class Run(Elementary):
         # configuration
         self.DUTType = self.load_dut_type()
         self.NChannels = self.load_pre_n_channels()
-        self.channels = self.load_channels()
         self.trigger_planes = [1, 2]
         self.treename = self.run_config_parser.get('BASIC', 'treename')
         self.runinfofile = self.load_run_info_path()
@@ -56,7 +55,8 @@ class Run(Elementary):
 
         # general information
         self.FoundForRate = False
-        self.flux = self.calculate_flux()
+        self.Channels = self.load_channels()
+        self.Flux = self.calculate_flux()
 
         # times
         self.log_start = None
@@ -83,7 +83,7 @@ class Run(Elementary):
             if self.DUTType == 'pad':
                 self.region_information = self.load_regions()
                 self.NChannels = self.load_n_channels()
-                self.channels = self.load_channels()
+                self.Channels = self.load_channels()
                 self.pedestal_regions = self.get_regions('pedestal')
                 self.signal_regions = self.get_regions('signal')
                 self.peak_integrals = self.get_peak_integrals()
@@ -92,8 +92,8 @@ class Run(Elementary):
 
         # extract run info
         self.analyse_ch = self.set_channels(diamonds)
-        self.diamond_names = self.__load_diamond_name()
-        self.bias = self.load_bias()
+        self.DiamondNames = self.load_diamond_names()
+        self.Bias = self.load_bias()
         self.IsMonteCarlo = False
 
         # root objects
@@ -216,7 +216,7 @@ class Run(Elementary):
         assert type(run_number) is int, "incorrect run_number"
 
         self.RunNumber = run_number
-        self.flux = self.calc_flux()
+        self.Flux = self.calc_flux()
         self.load_run_info()
 
         # check for conversion
@@ -233,7 +233,7 @@ class Run(Elementary):
         """
         assert 1 <= diamonds <= 3, 'invalid diamonds number: 0x1=ch0; 0x2=ch3'
         analyse_ch = {}
-        for i, ch in enumerate(self.channels):
+        for i, ch in enumerate(self.Channels):
             analyse_ch[ch] = self.has_bit(diamonds, i)
         self.analyse_ch = analyse_ch
         return analyse_ch
@@ -330,7 +330,7 @@ class Run(Elementary):
     # ==============================================
     # region GET FUNCTIONS
     def get_flux(self):
-        return self.flux if self.flux else self.RunInfo['aimed flux']
+        return self.Flux if self.Flux else self.RunInfo['aimed flux']
 
     def get_regions(self, string):
         ranges = OrderedDict()
@@ -380,14 +380,14 @@ class Run(Elementary):
         return [ch for ch in self.analyse_ch if self.analyse_ch[ch]]
 
     def get_diamond_name(self, channel):
-        return self.diamond_names[channel]
+        return self.DiamondNames[channel]
 
     def get_channel_name(self, channel):
         self.tree.GetEntry()
         return self.tree.sensor_name[channel]
 
     def get_rate_string(self):
-        rate = self.flux
+        rate = self.Flux
         unit = 'MHz/cm^{2}' if rate > 1000 else 'kHz/cm^{2}'
         rate = round(rate / 1000., 1) if rate > 1000 else int(round(rate, 0))
         return '{rate:>3} {unit}'.format(rate=rate, unit=unit)
@@ -479,8 +479,8 @@ class Run(Elementary):
         print 'RUN INFO:'
         print '\tRun Number: \t', self.RunNumber, ' (', self.RunInfo['type'], ')'
         print '\tRate: \t', self.get_flux(), ' kHz'
-        print '\tDiamond1:   \t', self.diamond_names[0], ' (', self.bias[0], ') | is selected: ', self.analyse_ch[0]
-        print '\tDiamond2:   \t', self.diamond_names[3], ' (', self.bias[3], ') | is selected: ', self.analyse_ch[3]
+        print '\tDiamond1:   \t', self.DiamondNames[0], ' (', self.Bias[0], ') | is selected: ', self.analyse_ch[0]
+        print '\tDiamond2:   \t', self.DiamondNames[3], ' (', self.Bias[3], ') | is selected: ', self.analyse_ch[3]
 
     def draw_run_info(self, channel=None, canvas=None, diamondinfo=True, cut=None, comment=None, runs=None, show=True, x=1, y=1):
         """
@@ -495,7 +495,7 @@ class Run(Elementary):
         :param show:
         :return:
         """
-        assert channel is None or channel in self.channels, 'wrong channel id "{ch}"'.format(ch=channel)
+        assert channel is None or channel in self.Channels, 'wrong channel id "{ch}"'.format(ch=channel)
         if show:
             if canvas is not None:
                 canvas.cd()
@@ -536,11 +536,11 @@ class Run(Elementary):
             legend.AddEntry(0, 'Test Campaign: {tc}'.format(tc=tc.strftime('%b %Y')), '')
             legend.AddEntry(0, run_string, '')
             if channel is None:
-                dias = ['{dia} @ {bias:+2.0f}V'.format(dia=self.diamond_names[ch], bias=self.bias[ch]) for ch in self.channels]
+                dias = ['{dia} @ {bias:+2.0f}V'.format(dia=self.DiamondNames[ch], bias=self.Bias[ch]) for ch in self.Channels]
                 dias = str(dias).strip('[]').replace('\'', '')
                 legend.AddEntry(0, 'Diamonds: {dias}'.format(dias=dias), '')
             else:
-                legend.AddEntry(0, 'Diamond: {diamond} @ {bias:+}V'.format(diamond=self.diamond_names[channel], bias=self.bias[channel]), '')
+                legend.AddEntry(0, 'Diamond: {diamond} @ {bias:+}V'.format(diamond=self.DiamondNames[channel], bias=self.Bias[channel]), '')
             if cut and hasattr(self, 'analysis'):
                 legend.AddEntry(0, 'Cut: {cut}'.format(cut=self.analysis.get_easy_cutstring()), '')
             if comment is not None:
