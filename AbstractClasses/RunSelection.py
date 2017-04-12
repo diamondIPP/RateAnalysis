@@ -1,4 +1,4 @@
-from RunClass import Run
+from Run import Run
 from Elementary import Elementary
 import json
 from copy import deepcopy
@@ -313,14 +313,15 @@ class RunSelection(Elementary):
         print header
 
         def make_info_string(run):
-            r = Run(run, load_tree=False, test_campaign=self.TESTCAMPAIGN)
+            self.run.set_run(run, load_root_file=False)
+            r = self.run
             d1, d2 = (str(value).ljust(8) for value in r.diamond_names.itervalues())
             v1, v2 = ('{v:+7.0f}'.format(v=value) for value in r.bias.itervalues())
             if not full_comments:
                 comments = '{c}{s}'.format(c=r.RunInfo['comments'][:20].replace('\r\n', ' '), s='*' if len(r.RunInfo['comments']) > 20 else '')
             else:
                 comments = '\nComments: {c}\n{d}'.format(c=fill(r.RunInfo['comments'], len(header)), d=len(header) * '-') if r.RunInfo['comments'] else ''
-            return '{r}  {t}  {d1} {v1}  {d2} {v2}  {f:14.2f}  {c} '.format(r=str(run).ljust(3), t=r.RunInfo['type'].ljust(10), d1=d1, d2=d2, v1=v1, v2=v2, f=r.flux, c=comments)
+            return '{r}  {t}  {d1} {v1}  {d2} {v2}  {f:14.2f}  {c} '.format(r=str(run).ljust(3), t=r.RunInfo['runtype'].ljust(10), d1=d1, d2=d2, v1=v1, v2=v2, f=r.flux, c=comments)
 
         for run_nr in selected_runs:
             print make_info_string(run_nr)
