@@ -90,13 +90,6 @@ class Run(Elementary):
                 self.DigitizerChannels = self.load_digitizer_channels()
                 self.TCal = self.load_tcal()
 
-        # elif run_number is not None:
-        #     self.load_run_info()
-        #     self.converter.convert_run(self.RunInfo, run_number)
-
-        else:
-            self.load_run_info()
-
         # extract run info
         self.analyse_ch = self.set_channels(diamonds)
         self.diamond_names = self.__load_diamond_name()
@@ -217,6 +210,11 @@ class Run(Elementary):
                 return
         self.duration = self.log_stop - self.log_start
     # endregion
+
+    def print_run_info(self):
+        print 'Run information for run', self.RunNumber
+        for key, value in sorted(self.RunInfo.iteritems()):
+            print '{k}: {v}'.format(k=key.ljust(13), v=value)
 
     def set_run(self, run_number, load_root_file=True):
 
@@ -652,5 +650,10 @@ class Run(Elementary):
         self.tree = self.RootFile.Get(self.treename)
 
 
-if __name__ == "__main__":
-    z = Run(489, load_tree=False, test_campaign='201610')
+if __name__ == '__main__':
+    p = ArgumentParser()
+    p.add_argument('run', nargs='?', default=392, type=int)
+    p.add_argument('-tc', '--testcampaign', nargs='?', default=None)
+    p.add_argument('-t', '--tree', action='store_true')
+    args = p.parse_args()
+    z = Run(args.run, load_tree=args.tree, test_campaign=args.testcampaign)
