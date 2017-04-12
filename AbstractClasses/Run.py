@@ -130,13 +130,7 @@ class Run(Elementary):
             return None
 
     def load_bias(self):
-        bias = {}
-        for i, ch in enumerate(self.channels, 1):
-            try:
-                bias[ch] = self.RunInfo['dia{num}hv'.format(num=i)]
-            except KeyError:
-                pass
-        return bias
+        return [self.RunInfo['dia{num}hv'.format(num=i)] for i in xrange(1, len(self.Channels) + 1)]
     
     def load_dut_type(self):
         _type = self.run_config_parser.get('BASIC', 'type')
@@ -195,22 +189,8 @@ class Run(Elementary):
             # the run log file is required to get any meaningful information
             log_critical('{err}\nCould not load default RunInfo! --> Using default'.format(err=err))
 
-    def __load_diamond_name(self):
-        parser = ConfigParser()
-        parser.read('Configuration/DiamondAliases.cfg')
-        diamondname = {}
-        for i, ch in enumerate(self.channels, 1):
-            try:
-                diamondname[ch] = self.RunInfo['dia{num}'.format(num=i)]
-                if diamondname[ch].lower().startswith('ch'):
-                    continue
-                try:
-                    diamondname[ch] = parser.get('ALIASES', diamondname[ch])
-                except NoOptionError as err:
-                    print err
-            except KeyError:
-                pass
-        return diamondname
+    def load_diamond_names(self):
+        return [self.RunInfo['dia{num}'.format(num=i)] for i in xrange(1, len(self.Channels) + 1)]
 
     def __load_timing(self):
         try:
