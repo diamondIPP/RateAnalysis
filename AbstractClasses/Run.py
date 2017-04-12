@@ -236,6 +236,7 @@ class Run(Elementary):
         assert type(run_number) is int, "incorrect run_number"
 
         self.RunNumber = run_number
+        self.flux = self.calc_flux()
         self.load_run_info()
 
         # check for conversion
