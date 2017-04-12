@@ -58,8 +58,8 @@ class RunSelection(Elementary):
 
     def get_runinfo(self, ch):
         runs = [self.get_selected_runs()[0], self.get_selected_runs()[-1], '', '']
-        self.run.diamond_names[ch] = self.SelectedDiamond
-        self.run.bias[ch] = self.SelectedBias
+        self.run.DiamondNames[ch] = self.SelectedDiamond
+        self.run.Bias[ch] = self.SelectedBias
         return self.run.get_runinfo(ch, runs=runs)
 
     # endregion
@@ -112,14 +112,14 @@ class RunSelection(Elementary):
         for run in self.RunNumbers:
             self.Selection[run] = False
             self.channels[run] = {}
-            for ch in self.run.channels:
+            for ch in self.run.Channels:
                 self.channels[run][ch] = False
 
     def select_all_runs(self, dia1=True, dia2=True):
         for run in self.RunNumbers:
             self.Selection[run] = True
-            self.channels[run][self.run.channels[0]] = dia1
-            self.channels[run][self.run.channels[1]] = dia2
+            self.channels[run][self.run.Channels[0]] = dia1
+            self.channels[run][self.run.Channels[1]] = dia2
         self.make_log_entry('All runs selected')
         self.verbose_print('All runs selected')
 
@@ -136,12 +136,12 @@ class RunSelection(Elementary):
         """
         dias = [dia1, dia2]
         for run_number in self.get_selected_runs():
-            for i, ch in enumerate(self.run.channels):
+            for i, ch in enumerate(self.run.Channels):
                 self.channels[run_number][ch] = dias[i]
         self.make_log_entry('Channels of selected runs set: diamond1 to {dia1}, diamond2 to {dia2}'.format(dia1=dia1, dia2=dia2))
 
     def reset_channels(self, run):
-        for ch in self.run.channels:
+        for ch in self.run.Channels:
             self.channels[run][ch] = False
 
     def select_runs_of_type(self, run_type, unselect=False, only_selected=False):
@@ -183,7 +183,7 @@ class RunSelection(Elementary):
         dia_keys = ['dia1', 'dia2']
         for run in runs:
             found_dia = False
-            for i, ch in enumerate(self.run.channels):
+            for i, ch in enumerate(self.run.Channels):
                 if self.RunInfos[run][dia_keys[i]] == diamondname:
                     self.select_run(run, False)
                     self.channels[run][ch] = True
@@ -205,7 +205,7 @@ class RunSelection(Elementary):
         unselected_runs = 0
         for run in self.get_selected_runs():
             unselect = True
-            for i, ch in enumerate(self.run.channels, 1):
+            for i, ch in enumerate(self.run.Channels, 1):
                 if not self.RunInfos[run]['dia{nr}hv'.format(nr=i)] == bias:
                     self.channels[run][ch] = False
                 else:
@@ -297,7 +297,7 @@ class RunSelection(Elementary):
         """
         selected = []
         for run in self.get_selected_runs():
-            dias = [self.channels[run][ch] for ch in self.run.channels]
+            dias = [self.channels[run][ch] for ch in self.run.Channels]
             diamonds = int(dias[0]) * (1 << 0) + int(dias[1]) * (1 << 1)
             diamonds = 3 if not diamonds else diamonds
             selected.append(diamonds)
@@ -315,13 +315,13 @@ class RunSelection(Elementary):
         def make_info_string(run):
             self.run.set_run(run, load_root_file=False)
             r = self.run
-            d1, d2 = (str(value).ljust(8) for value in r.diamond_names.itervalues())
-            v1, v2 = ('{v:+7.0f}'.format(v=value) for value in r.bias.itervalues())
+            d1, d2 = (str(value).ljust(8) for value in r.load_diamond_names())
+            v1, v2 = ('{v:+7.0f}'.format(v=value) for value in r.load_bias())
             if not full_comments:
                 comments = '{c}{s}'.format(c=r.RunInfo['comments'][:20].replace('\r\n', ' '), s='*' if len(r.RunInfo['comments']) > 20 else '')
             else:
                 comments = '\nComments: {c}\n{d}'.format(c=fill(r.RunInfo['comments'], len(header)), d=len(header) * '-') if r.RunInfo['comments'] else ''
-            return '{r}  {t}  {d1} {v1}  {d2} {v2}  {f:14.2f}  {c} '.format(r=str(run).ljust(3), t=r.RunInfo['runtype'].ljust(10), d1=d1, d2=d2, v1=v1, v2=v2, f=r.flux, c=comments)
+            return '{r}  {t}  {d1} {v1}  {d2} {v2}  {f:14.2f}  {c} '.format(r=str(run).ljust(3), t=r.RunInfo['runtype'].ljust(10), d1=d1, d2=d2, v1=v1, v2=v2, f=r.Flux, c=comments)
 
         for run_nr in selected_runs:
             print make_info_string(run_nr)
