@@ -409,7 +409,7 @@ class Cut(Elementary):
         """
         # check if directories exist
         ensure_dir(self.BeaminterruptionsDir)
-        ensure_dir(joinpath(self.BeaminterruptionsDir, 'data'))
+        ensure_dir(join(self.BeaminterruptionsDir, 'data'))
         pickle_path = self.make_pickle_path('BeamInterruptions', run=self.RunNumber)
         interruptions = self.do_pickle(pickle_path, self.find_beam_interruptions)
 
