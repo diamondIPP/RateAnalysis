@@ -373,38 +373,45 @@ class RunSelection(Elementary):
             for nr in plan:
                 self.RunPlan[type_][nr.zfill(2)] = self.RunPlan[type_].pop(nr)
 
-    def show_run_plans(self, detailed=False, show_allcomments=False):
+    def show_run_plans(self):
         """ Print a list of all run plans from the current test campaign to the console. """
         old_selection = deepcopy(self.Selection)
         old_channels = deepcopy(self.channels)
         old_logs = deepcopy(self.logs)
         print 'RUN PLAN FOR TESTCAMPAIGN: {tc}'.format(tc=self.TESTCAMPAIGN)
-        if not detailed:
-            print '  Nr.   {typ}{range}{excl} {dia} Voltages'.format(range='Range'.ljust(17), excl='Excluded'.ljust(15), dia='Diamonds'.ljust(20), typ='Run Type'.ljust(13))
+        print '  Nr.   {t}  {r}  {e}  Diamond1 {v1}  Diamond2 {v2}'.format(r='Range'.ljust(9), e='Excluded'.ljust(15), t='Run Type'.ljust(13), v1='HV1 [V]'.rjust(13), v2='HV2 [V]'.rjust(13))
         for plan, info in sorted(self.RunPlan.iteritems()):
             self.unselect_all_runs(info=False)
             self.select_runs_from_runplan(plan)
             runs = info['runs']
-            if not detailed:
-                all_runs = [run for run in self.RunNumbers if runs[-1] >= run >= runs[0]]
-                missing_runs = [run for run in all_runs if run not in runs]
-                missing_runs = missing_runs if len(missing_runs) <= 3 else '{0}, ...]'.format(str(missing_runs[:2]).strip(']'))
-                dias = [str(dia) for dia in self.get_diamond_names(True)]
-                run_string = '[{min}, ... , {max}]'.format(min=str(runs[0]).zfill(3), max=str(runs[-1]).zfill(3))
-                not_string = str(missing_runs) if missing_runs else ''
-                voltages = self.get_hv_values(sel=True)
-                voltages = voltages if len(voltages) <= 4 else '{0}, ...]'.format(str(voltages[:3]).strip(']'))
-                plan += ':'
-                print '  {nr} {typ}{runs} {miss} {dias} {hv}'.format(nr=plan.ljust(5), runs=run_string, miss=not_string[:15].ljust(15), dias=str(dias).ljust(20), hv=voltages, typ=info['type'].ljust(
-                    13))
-            else:
-                print '{delim}\n RUN PLAN {nr} ({type})\n{delim}'.format(delim=50 * '-', nr=plan, type=info['type'])
-                self.show_selected_runs(full_comments=show_allcomments)
-                print '\n'
+            missing_runs = self.get_missing_runs(runs)
+            d1, d2 = self.get_rp_diamond_names()
+            run_string = '{min} - {max}'.format(min=str(runs[0]).zfill(3), max=str(runs[-1]).zfill(3))
+            v1, v2 = self.get_rp_voltages()
+            plan += ':'
+            print '  {nr} {typ}  {runs}  {miss}  {d1} {v1}  {d2} {v2}'.format(nr=plan.ljust(5), runs=run_string, miss=missing_runs.ljust(15), d1=d1, d2=d2, v1=v1, v2=v2, typ=info['type'].ljust(13))
 
         self.channels = old_channels
         self.logs = old_logs
         self.Selection = old_selection
+
+    def get_rp_diamond_names(self):
+        dias = [self.get_runinfo_values('dia{0}'.format(i), sel=True) for i in xrange(1, 3)]
+        if any(len(dia) > 1 for dia in dias):
+            log_warning('RunPlan {rp} has more than one diamond'.format(rp=self.SelectedRunplan))
+        return (str(dia[0]).ljust(8) for dia in dias)
+
+    def get_rp_voltages(self):
+        hvs = [self.get_runinfo_values('dia{0}hv'.format(i), sel=True) for i in xrange(1, 3)]
+        if any(len(hv) > 1 for hv in hvs):
+            abs_hvs = [[abs(v) for v in hv] for hv in hvs]
+            return ('{min:+4.0f} ... {max:+4.0f}'.format(min=hv[ahv.index(min(ahv))], max=hv[ahv.index(max(ahv))]) for ahv, hv in zip(abs_hvs, hvs))
+        return ('{v:+13.0f}'.format(v=hv[0]) for hv in hvs)
+
+    def get_missing_runs(self, runs):
+        all_runs = [run for run in self.RunNumbers if runs[-1] >= run >= runs[0]]
+        missing_runs = [run for run in all_runs if run not in runs]
+        return str(missing_runs if len(missing_runs) <= 3 else '{0}, ...]'.format(str(missing_runs[:2]).strip(']'))) if missing_runs else ''
 
     def select_runs_from_runplan(self, plan_nr, ch=1):
         plan = self.make_runplan_string(plan_nr)
