@@ -325,21 +325,6 @@ class Run(Elementary):
                     if str(cmt[0].lower()) == name:
                         self.RunInfo[name] = int(cmt[1])
 
-    def rename_runinfo_keys(self):
-
-        # return, if all keys from default info are in RunInfo too
-        if all([key in self.RunInfo for key in default_info]):
-            return
-
-        parser = ConfigParser()
-        parser.read('Configuration/KeyDict_{campaign}.cfg'.format(campaign=self.TESTCAMPAIGN))
-        for new_key, old_key in parser.items('KEYNAMES'):
-            if old_key in self.RunInfo:
-                self.RunInfo[new_key] = self.RunInfo.pop(old_key)
-            else:
-                self.RunInfo[new_key] = default_info[new_key]
-        return
-
     def add_default_entries(self, run_info):
         run_info['masked pixels'] = [0] * 4
 
