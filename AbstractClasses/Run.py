@@ -49,11 +49,10 @@ class Run(Elementary):
         self.createNewROOTFiles = self.run_config_parser.getboolean('BASIC', 'createNewROOTFiles')
 
         # run info
-        self.RunInfo = None
         self.DefaultInfo = self.load_default_info()
+        self.RunInfo = self.load_run_info()
         self.RootFile = None
         self.tree = None
-        self.load_run_info()
 
         # general information
         self.FoundForRate = False
@@ -162,28 +161,31 @@ class Run(Elementary):
         return data
 
     def load_run_info(self):
-        self.RunInfo = {}
-        try:
-            f = open(self.runinfofile, 'r')
-            data = json.load(f)
-            f.close()
-        except IOError as err:
-            self.log_warning('{err}\nCould not load default RunInfo! --> Using default'.format(err=err))
-            self.RunInfo = default_info
-            return -1
+        run_info = {}
+        data = self.load_run_info_file()
 
         if self.RunNumber >= 0:
-            self.RunInfo = data.get(str(self.RunNumber))
-            if self.RunInfo is None:
-                # try with run_log key prefix
-                self.RunInfo = data.get('{tc}{run}'.format(tc=self.TESTCAMPAIGN[2:], run=str(self.RunNumber).zfill(5)))
-            if self.RunInfo is None:
-                self.log_warning('Run not found in json run log file!')
-                sys.exit(5)
-            self.rename_runinfo_keys()
-        else:
-            self.RunInfo = default_info
-            return 0
+            run_info = data.get(str(self.RunNumber))
+            # try with run_log key prefix if the number was not found
+            if run_info is None:
+                run_info = data.get('{tc}{run}'.format(tc=self.TESTCAMPAIGN[2:], run=str(self.RunNumber).zfill(5)))
+            # abort if the run is still not found
+            if run_info is None:
+                log_critical('Run not found in json run log file!')
+            self.add_default_entries(run_info)
+            # self.rename_runinfo_keys()
+        self.RunInfo = run_info
+        return run_info
+
+    def load_run_info_file(self):
+        try:
+            f = open(self.runinfofile, 'r')
+            data = load(f)
+            f.close()
+            return data
+        except IOError as err:
+            # the run log file is required to get any meaningful information
+            log_critical('{err}\nCould not load default RunInfo! --> Using default'.format(err=err))
 
     def __load_diamond_name(self):
         parser = ConfigParser()
@@ -339,6 +341,9 @@ class Run(Elementary):
             else:
                 self.RunInfo[new_key] = default_info[new_key]
         return
+
+    def add_default_entries(self, run_info):
+        run_info['masked pixels'] = [0] * 4
 
     def wf_exists(self, channel):
         wf_exist = True if self.tree.FindBranch('wf{ch}'.format(ch=channel)) else False
