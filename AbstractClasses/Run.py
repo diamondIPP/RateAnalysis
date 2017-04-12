@@ -165,7 +165,6 @@ class Run(Elementary):
             # abort if the run is still not found
             if run_info is None:
                 log_critical('Run not found in json run log file!')
-            # self.rename_runinfo_keys()
         self.RunInfo = run_info
         self.add_default_entries()
         return run_info
