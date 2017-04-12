@@ -165,10 +165,13 @@ class Run(Elementary):
             # abort if the run is still not found
             if run_info is None:
                 log_critical('Run not found in json run log file!')
-            self.add_default_entries(run_info)
             # self.rename_runinfo_keys()
         self.RunInfo = run_info
+        self.add_default_entries()
         return run_info
+
+    def add_default_entries(self):
+        self.RunInfo['masked pixels'] = [0] * 4
 
     def load_run_info_file(self):
         try:
@@ -324,9 +327,6 @@ class Run(Elementary):
                     cmt = cmt.split(' ')
                     if str(cmt[0].lower()) == name:
                         self.RunInfo[name] = int(cmt[1])
-
-    def add_default_entries(self, run_info):
-        run_info['masked pixels'] = [0] * 4
 
     def wf_exists(self, channel):
         wf_exist = True if self.tree.FindBranch('wf{ch}'.format(ch=channel)) else False
