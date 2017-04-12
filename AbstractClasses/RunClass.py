@@ -12,7 +12,7 @@ from numpy import mean
 from collections import OrderedDict
 from subprocess import check_output
 import sys
-from Utils import isfloat, joinpath, file_exists, log_warning
+from Utils import isfloat, join, file_exists, log_warning
 
 default_info = {
     'persons on shift': '-',
@@ -299,7 +299,7 @@ class Run(Elementary):
     def calculate_flux(self):
         if self.RunNumber is None:
             return
-        mask_file_path = joinpath(self.maskfilepath, self.RunInfo['maskfile'])
+        mask_file_path = join(self.maskfilepath, self.RunInfo['maskfile'])
         maskdata = {}
         for plane in self.trigger_planes:
             maskdata[plane] = {}
@@ -649,7 +649,7 @@ class Run(Elementary):
         if not mask or 'no mask' in mask.lower():
             area = [52 * 80 * pixel_size] * 2
         else:
-            path = joinpath(self.maskfilepath, mask)
+            path = join(self.maskfilepath, mask)
             if file_exists(path):
                 f = open(path, 'r')
             else:
