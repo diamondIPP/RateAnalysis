@@ -85,7 +85,7 @@ class Converter:
     def load_soft_dir(self):
         file_dir = self.SoftConfig.get('Converter', 'softwaredir')
         if not dir_exists(file_dir):
-            log_critical('Could not find the software directory: {d}\nPlease set it correctly in Configuration/soft.conf'.format(d=file_dir))
+            log_warning('Could not find the software directory: {d}\nPlease set it correctly in Configuration/soft.conf'.format(d=file_dir))
         return file_dir
 
     def load_root_file_dir(self):
