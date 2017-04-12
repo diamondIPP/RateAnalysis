@@ -125,7 +125,7 @@ class Run(Elementary):
                         binary = int(line.strip('active_regions:'))
             return [i for i in xrange(self.NChannels) if self.has_bit(binary, i)]
         elif self.DUTType == 'pixel':
-            return [0, 1, 2]
+            return [i for i in xrange(len([key for key in self.RunInfo.iterkeys() if key.startswith('dia') and key[-1].isdigit()]))]
         else:
             return None
 
