@@ -50,6 +50,7 @@ class Run(Elementary):
 
         # run info
         self.RunInfo = None
+        self.DefaultInfo = self.load_default_info()
         self.RootFile = None
         self.tree = None
         self.load_run_info()
@@ -153,6 +154,12 @@ class Run(Elementary):
     def load_regions(self):
         macro = self.RootFile.Get('region_information')
         return [str(line) for line in macro.GetListOfLines()]
+
+    def load_default_info(self):
+        f = open(join(self.Dir, 'Runinfos', 'defaultInfo.json'), 'r')
+        data = load(f)
+        f.close()
+        return data
 
     def load_run_info(self):
         self.RunInfo = {}
