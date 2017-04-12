@@ -1080,7 +1080,7 @@ class PadAnalysis(Analysis):
             h = TH1F('ped1', 'Pedestal Distribution', nbins, x[0], x[1])
             name = self.get_pedestal_name(region, peak_int)
             self.tree.Draw('{name}>>ped1'.format(name=name), cut, 'goff')
-            self.format_histo(h, name='Fit Result', x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.8)
+            self.format_histo(h, name='Fit Result', x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)
             self.draw_histo(h, '', show)
             # generate large sigma if histogram is empty
             if not h.GetEffectiveEntries():

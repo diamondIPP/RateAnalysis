@@ -65,7 +65,7 @@ def set_statbox(x=.95, y=.88, w=.16, entries=3, only_fit=False, opt=None, form=N
     gStyle.SetStatX(x)
     gStyle.SetStatY(y)
     gStyle.SetStatW(w)
-    gStyle.SetStatH(.04 * entries)
+    gStyle.SetStatH(.02 * entries)
 
 
 def draw_frame(pad, x, y, base=False, x_tit='', y_tit='', y_off=1, x_off=1):
