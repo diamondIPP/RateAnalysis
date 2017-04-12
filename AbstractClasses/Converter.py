@@ -92,7 +92,7 @@ class Converter:
         if self.RunParser.has_option('BASIC', 'runpath'):
             path = self.RunParser.get('BASIC', 'runpath')
         else:
-            path = joinpath(self.DataDir, self.TcDir, 'root', '{dut}'.format(dut='pads' if self.Type == 'pad' else 'pixel'))
+            path = join(self.DataDir, self.TcDir, 'root', '{dut}'.format(dut='pads' if self.Type == 'pad' else 'pixel'))
         ensure_dir(path)
         return path
 
@@ -109,7 +109,7 @@ class Converter:
         if self.RunParser.has_option('ConverterFolders', 'rawfolder'):
             file_dir = self.RunParser.get('ConverterFolders', 'rawfolder')
         else:
-            file_dir = joinpath(self.DataDir, self.TcDir, 'raw')
+            file_dir = join(self.DataDir, self.TcDir, 'raw')
         if not dir_exists(file_dir):
             log_warning('Could not find the raw file directory: {d}'.format(d=file_dir))
         return file_dir
