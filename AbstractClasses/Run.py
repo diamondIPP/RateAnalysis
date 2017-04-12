@@ -154,7 +154,6 @@ class Run(Elementary):
         return data
 
     def load_run_info(self):
-        run_info = {}
         data = self.load_run_info_file()
 
         if self.RunNumber >= 0:
@@ -165,9 +164,13 @@ class Run(Elementary):
             # abort if the run is still not found
             if run_info is None:
                 log_critical('Run not found in json run log file!')
-        self.RunInfo = run_info
-        self.add_default_entries()
-        return run_info
+            self.RunInfo = run_info
+            self.add_default_entries()
+            self.translate_diamond_names()
+            return run_info
+        else:
+            self.RunInfo = self.DefaultInfo
+            return self.DefaultInfo
 
     def add_default_entries(self):
         self.RunInfo['masked pixels'] = [0] * 4
