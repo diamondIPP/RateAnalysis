@@ -10,7 +10,6 @@ from screeninfo import get_monitors
 from numpy import array
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 from sys import stdout
-from os.path import join as joinpath
 
 from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, kGreen, kOrange, kViolet, kYellow, kRed, kBlue, \
     kMagenta, kAzure, kCyan, kTeal
@@ -32,6 +31,7 @@ class Elementary(object):
 
         self.TESTCAMPAIGN = None
         self.set_global_testcampaign(testcampaign)
+        self.Dir = self.get_program_dir()
         self.results_directory = '{dir}/Results{tc}/'.format(dir=self.get_program_dir(), tc=self.TESTCAMPAIGN)
 
         # read configuration files
@@ -39,7 +39,7 @@ class Elementary(object):
         self.run_config_parser = self.load_run_config()
         self.ana_config_parser = self.load_ana_config()
 
-        self.PickleDir = joinpath(self.get_program_dir(), self.MainConfigParser.get('SAVE', 'pickle_dir'))
+        self.PickleDir = join(self.get_program_dir(), self.MainConfigParser.get('SAVE', 'pickle_dir'))
         self.DataDir = self.MainConfigParser.get('MAIN', 'data_dir')
         self.Felix = self.MainConfigParser.getboolean('SAVE', 'felix')
         self.set_root_titles()
@@ -115,7 +115,7 @@ class Elementary(object):
         if self.run_config_parser.has_option('BASIC', 'maskfilepath'):
             file_path = self.run_config_parser.get('BASIC', 'maskfilepath')
         else:
-            file_path = joinpath(self.DataDir, make_tc_str(self.TESTCAMPAIGN, data=True), 'masks')
+            file_path = join(self.DataDir, make_tc_str(self.TESTCAMPAIGN, data=True), 'masks')
         if not dir_exists(file_path):
             log_warning('Did not file mask file directory!')
         return file_path
@@ -124,7 +124,7 @@ class Elementary(object):
         if self.run_config_parser.has_option('BASIC', 'runinfofile'):
             file_path = self.run_config_parser.get('BASIC', 'runinfofile')
         else:
-            file_path = joinpath(self.DataDir, make_tc_str(self.TESTCAMPAIGN, data=1), 'run_log.json')
+            file_path = join(self.DataDir, make_tc_str(self.TESTCAMPAIGN, data=1), 'run_log.json')
         if not file_exists(file_path):
             log_critical('Run File does not exist!')
         return file_path
@@ -245,7 +245,7 @@ class Elementary(object):
         return info
 
     def make_pickle_path(self, sub_dir, name=None, run=None, ch=None, suf=None, camp=None):
-        ensure_dir(joinpath(self.PickleDir, sub_dir))
+        ensure_dir(join(self.PickleDir, sub_dir))
         campaign = self.TESTCAMPAIGN if camp is None else camp
         run = '_{r}'.format(r=run) if run is not None else ''
         ch = '_{c}'.format(c=ch) if ch is not None else ''
