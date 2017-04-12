@@ -1,58 +1,20 @@
+#!/usr/bin/env python
 # ==============================================
 # IMPORTS
 # ==============================================
-import json
+from json import load
 import re
-from Elementary import Elementary
-from Converter import Converter
-from datetime import datetime
-from ROOT import TFile, gROOT, TLegend
 from ConfigParser import ConfigParser, NoOptionError
-from numpy import mean
+from ROOT import TFile, gROOT, TLegend
+from argparse import ArgumentParser
 from collections import OrderedDict
+from datetime import datetime
+from numpy import mean
 from subprocess import check_output
-import sys
-from Utils import isfloat, join, file_exists, log_warning
 
-default_info = {
-    'persons on shift': '-',
-    'run info': '-',
-    'type': 'signal',
-    'configuration': 'signal',
-    'mask': '-',
-    'masked pixels': [0] * 4,
-    'dia1': 'CH_0',
-    'dia2': 'CH_3',
-    'dia1hv': 0,
-    'dia2hv': 0,
-    'for1': 0,
-    'for2': 0,
-    'fs11': 0,
-    'fsh13': 0,
-    'quadrupole': '-',
-    'analogue current': 0,
-    'digital current': 0,
-    'begin date': '2999-03-14T15:26:53Z',
-    'trim time': '-:-:-',
-    'config time': '-:-:-',
-    'starttime0': '2999-03-14T15:26:53Z',
-    'trig accept time': '-:-:-',
-    'opening time': '-:-:-',
-    'open time': '-:-:-',
-    'endtime': '2999-03-14T16:26:53Z',
-    'raw rate': 0,
-    'prescaled rate': 0,
-    'to TLU rate': 0,
-    'pulser accept rate': 0,
-    'cmspixel events': 0,
-    'drs4 events': 0,
-    'datacollector events': 0,
-    'aimed flux': 0,
-    'measuredflux': 0,
-    'mean flux': None,
-    'comments': '-',
-    'is good run': True
-}
+from Converter import Converter
+from Elementary import Elementary
+from Utils import isfloat, join, file_exists, log_warning, log_critical
 
 
 # ==============================================
