@@ -256,7 +256,7 @@ def ensure_dir(path):
         makedirs(path)
 
 
-def joinpath(*args):
+def join(*args):
     return pth.join(*args)
 
 
