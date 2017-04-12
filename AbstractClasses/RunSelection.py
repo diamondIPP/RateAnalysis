@@ -270,7 +270,7 @@ class RunSelection(Elementary):
             if verify('Do you wish to unselect a run type'):
                 run_type = raw_input('Which type to you want to unselect? ')
                 self.unselect_runs_of_type(run_type)
-        self.show_selected_runs(show_allcomments=True)
+        self.show_selected_runs(full_comments=True)
         while verify('Do you wish to unselect a run'):
             run = raw_input('Which run do you want to unselect? ')
             self.unselect_run(int(run))
@@ -305,40 +305,25 @@ class RunSelection(Elementary):
             print 'No runs selected!'
         return selected
 
-    def show_selected_runs(self, show_allcomments=False):
-        """
-        Prints and overview of all selected runs.
-        :param show_allcomments:
-        :return:
-        """
+    def show_selected_runs(self, full_comments=False):
+        """ Prints an overview of all selected runs. """
         selected_runs = self.get_selected_runs()
         print 'The selections contains {n} runs\n'.format(n=len(selected_runs))
+        header = 'Nr.  {t}  Diamond1 HV1 [V]  Diamond2 HV2 [V]  Flux [kHz/cm2]  {c}'.format(t='Type'.ljust(10), c='Comments' if not full_comments else '')
+        print header
 
-        def make_info_string(run, header=False):
-            string = str(run).ljust(4)
-            string += self.run_infos[run]['type'].ljust(11)
-            for i, ch in enumerate(self.run.channels, 1):
-                string += '*' if self.channels[run][ch] else ''
-                string += self.run_infos[run]['dia{n}'.format(n=i)].ljust(7)
-                string += str(int(self.run_infos[run]['dia{n}hv'.format(n=i)])).ljust(6)
-            string += '{flux:3.2f}'.format(flux=self.selection[run].calc_flux()).ljust(15)
-            if not show_allcomments:
-                comments = self.run_infos[run]['comments']
-                show_comment = comments[:20].replace('\r\n', ' ')
-                string += show_comment
-                string += '*' if len(comments) >= 20 else ''
-            if header:
-                spaces = [int(self.channels[run][ch]) * ' ' for ch in self.run.channels]
-                string = 'Nr. ' + 'Type'.ljust(11) + 'Dia 1'.ljust(7) + spaces[0] + 'HV 1'.ljust(6) + 'Dia 2'.ljust(7) + spaces[1] + 'HV 2'.ljust(6) + 'Flux [kHz/cm2]'.ljust(15)
-                string += 'Comment' if not show_allcomments else ''
-            return string
+        def make_info_string(run):
+            r = Run(run, load_tree=False, test_campaign=self.TESTCAMPAIGN)
+            d1, d2 = (str(value).ljust(8) for value in r.diamond_names.itervalues())
+            v1, v2 = ('{v:+7.0f}'.format(v=value) for value in r.bias.itervalues())
+            if not full_comments:
+                comments = '{c}{s}'.format(c=r.RunInfo['comments'][:20].replace('\r\n', ' '), s='*' if len(r.RunInfo['comments']) > 20 else '')
+            else:
+                comments = '\nComments: {c}\n{d}'.format(c=fill(r.RunInfo['comments'], len(header)), d=len(header) * '-') if r.RunInfo['comments'] else ''
+            return '{r}  {t}  {d1} {v1}  {d2} {v2}  {f:14.2f}  {c} '.format(r=str(run).ljust(3), t=r.RunInfo['type'].ljust(10), d1=d1, d2=d2, v1=v1, v2=v2, f=r.flux, c=comments)
 
-        print make_info_string(selected_runs[0], True)
         for run_nr in selected_runs:
             print make_info_string(run_nr)
-            comment = self.RunInfors[run_nr]['comments']
-            if show_allcomments and len(comment) > 0:
-                print 'COMMENT:\n{comment}\n{delimitor}'.format(comment=fill(comment, 51), delimitor=49 * '-')
 
     # endregion
 
@@ -414,7 +399,7 @@ class RunSelection(Elementary):
                     13))
             else:
                 print '{delim}\n RUN PLAN {nr} ({type})\n{delim}'.format(delim=50 * '-', nr=plan, type=info['type'])
-                self.show_selected_runs(show_allcomments=show_allcomments)
+                self.show_selected_runs(full_comments=show_allcomments)
                 print '\n'
 
         self.channels = old_channels
