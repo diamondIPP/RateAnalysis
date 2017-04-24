@@ -351,7 +351,7 @@ def print_table(rows, header=None):
         print '| {r} |'.format(r=' | '.join(header))
     print closing_row
     for row in rows:
-        print '| {r} |'.format(r=' | '.join(row))
+        print '| {r} |'.format(r=(' | '.join(row) if len(row) > 1 else row[0]).ljust(len(closing_row) - 4))
     print closing_row
 
 
