@@ -9,6 +9,7 @@ from ROOT import gStyle, gROOT, TF1
 from numpy import sqrt
 from os import makedirs
 from os import path as pth
+from os.path import basename, join, split
 from time import time
 
 
@@ -254,10 +255,6 @@ def ensure_dir(path):
     if not pth.exists(path):
         log_message('Creating directory: {d}'.format(d=path))
         makedirs(path)
-
-
-def join(*args):
-    return pth.join(*args)
 
 
 def make_col_str(col):
