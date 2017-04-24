@@ -343,6 +343,17 @@ def get_resolution():
         return 1000
 
 
+def print_table(rows, header=None):
+    closing_row = '~' * len('| {r} |'.format(r=' | '.join(rows[-1])))
+    if header is not None:
+        print closing_row
+        print '| {r} |'.format(r=' | '.join(header))
+    print closing_row
+    for row in rows:
+        print '| {r} |'.format(r=' | '.join(row))
+    print closing_row
+
+
 class FitRes:
     def __init__(self, fit_obj=None):
         self.Pars = list(fit_obj.Parameters()) if (fit_obj is not None and len(fit_obj.Parameters()) > 0) else [None]
