@@ -379,20 +379,20 @@ class RunSelection(Elementary):
         old_selection = deepcopy(self.Selection)
         old_channels = deepcopy(self.channels)
         old_logs = deepcopy(self.logs)
-        print 'RUN PLAN FOR TESTCAMPAIGN: {tc}'.format(tc=self.TESTCAMPAIGN)
-        print '  Nr.   {t}  {r}  {e}  Diamond1 {v1}  Diamond2 {v2}'.format(r='Range'.ljust(9), e='Excluded'.ljust(15), t='Run Type'.ljust(13), v1='HV1 [V]'.rjust(13), v2='HV2 [V]'.rjust(13))
+        print 'RUN PLAN FOR TESTCAMPAIGN: {tc}\n'.format(tc=self.TESTCAMPAIGN)
+        header = ['Nr.  ', 'Run Type'.ljust(13), 'Range'.ljust(9), 'Excluded'.ljust(15), 'Diamond1', 'HV1 [V]'.rjust(13), 'Diamond2', 'HV2 [V]'.rjust(13)]
+        rows = []
         for plan, info in sorted(self.RunPlan.iteritems()):
             self.unselect_all_runs(info=False)
             self.select_runs_from_runplan(plan)
             runs = info['runs']
-            missing_runs = self.get_missing_runs(runs)
             d1, d2 = self.get_rp_diamond_names()
             run_string = '{min} - {max}'.format(min=str(runs[0]).zfill(3), max=str(runs[-1]).zfill(3))
             v1, v2 = self.get_rp_voltages()
             if dia is not None and all(d.strip(' ') != dia for d in [d1, d2]):
                 continue
-            plan += ':'
-            print '  {nr} {typ}  {runs}  {miss}  {d1} {v1}  {d2} {v2}'.format(nr=plan.ljust(5), runs=run_string, miss=missing_runs.ljust(15), d1=d1, d2=d2, v1=v1, v2=v2, typ=info['type'].ljust(13))
+            rows.append([plan.ljust(5), info['type'].ljust(13), run_string, self.get_missing_runs(runs).ljust(15), d1, v1, d2, v2])
+        print_table(rows, header)
 
         self.channels = old_channels
         self.logs = old_logs
