@@ -355,6 +355,8 @@ def print_table(rows, header=None):
     print closing_row
 
 
+def kinder_is_mounted():
+    return dir_exists('/home/micha/mounts/psi')
 
 
 def do_pickle(path, function, value=None, params=None):
@@ -373,6 +375,14 @@ def do_pickle(path, function, value=None, params=None):
         pickle.dump(ret_val, f)
         f.close()
     return ret_val
+
+
+def kinder_pickle(old_path, value):
+    if kinder_is_mounted():
+        picklepath = join('/home/micha/mounts/psi/Pickles', basename(split(old_path)[0]), basename(old_path))
+        do_pickle(picklepath, do_nothing, value)
+
+
 class FitRes:
     def __init__(self, fit_obj=None):
         self.Pars = list(fit_obj.Parameters()) if (fit_obj is not None and len(fit_obj.Parameters()) > 0) else [None]
