@@ -11,6 +11,7 @@ from os import makedirs
 from os import path as pth
 from os.path import basename, join, split
 from time import time
+import pickle
 
 
 # ==============================================
@@ -354,6 +355,24 @@ def print_table(rows, header=None):
     print closing_row
 
 
+
+
+def do_pickle(path, function, value=None, params=None):
+    if value is not None:
+        f = open(path, 'w')
+        pickle.dump(value, f)
+        f.close()
+        return value
+    try:
+        f = open(path, 'r')
+        ret_val = pickle.load(f)
+        f.close()
+    except IOError:
+        ret_val = function() if params is None else function(params)
+        f = open(path, 'w')
+        pickle.dump(ret_val, f)
+        f.close()
+    return ret_val
 class FitRes:
     def __init__(self, fit_obj=None):
         self.Pars = list(fit_obj.Parameters()) if (fit_obj is not None and len(fit_obj.Parameters()) > 0) else [None]
