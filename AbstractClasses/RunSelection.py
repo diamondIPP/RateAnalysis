@@ -309,22 +309,23 @@ class RunSelection(Elementary):
         """ Prints an overview of all selected runs. """
         selected_runs = self.get_selected_runs()
         print 'The selections contains {n} runs\n'.format(n=len(selected_runs))
-        header = 'Nr.  {t}  Diamond1 HV1 [V]  Diamond2 HV2 [V]  Flux [kHz/cm2]  {c}'.format(t='Type'.ljust(10), c='Comments' if not full_comments else '')
-        print header
-
-        def make_info_string(run):
-            self.run.set_run(run, load_root_file=False)
+        header = ['Nr.', 'Type'.ljust(10), 'Diamond1', 'HV1 [V]', 'Diamond2', 'HV2 [V]', 'Flux [kHz/cm2]'] + (['Comments'.ljust(21)] if not full_comments else [])
+        rows = []
+        for run in selected_runs:
             r = self.run
+            r.set_run(run, load_root_file=False)
             d1, d2 = (str(value).ljust(8) for value in r.load_diamond_names())
             v1, v2 = ('{v:+7.0f}'.format(v=value) for value in r.load_bias())
+            row = [str(run).rjust(3), r.RunInfo['runtype'].ljust(10), d1, v1, d2, v2, '{:14.2f}'.format(r.Flux)]
             if not full_comments:
-                comments = '{c}{s}'.format(c=r.RunInfo['comments'][:20].replace('\r\n', ' '), s='*' if len(r.RunInfo['comments']) > 20 else '')
+                row += ['{c}{s}'.format(c=r.RunInfo['comments'][:20].replace('\r\n', ' '), s='*' if len(r.RunInfo['comments']) > 20 else ' ' * 21)]
+                rows.append(row)
             else:
-                comments = '\nComments: {c}\n{d}'.format(c=fill(r.RunInfo['comments'], len(header)), d=len(header) * '-') if r.RunInfo['comments'] else ''
-            return '{r}  {t}  {d1} {v1}  {d2} {v2}  {f:14.2f}  {c} '.format(r=str(run).ljust(3), t=r.RunInfo['runtype'].ljust(10), d1=d1, d2=d2, v1=v1, v2=v2, f=r.Flux, c=comments)
-
-        for run_nr in selected_runs:
-            print make_info_string(run_nr)
+                rows.append(row)
+                if r.RunInfo['comments']:
+                    rows.append(['Comments: {c}'.format(c=fill(r.RunInfo['comments'], len('   '.join(header))))])
+                    rows.append(['~' * len('   '.join(rows[0]))])
+        print_table(rows, header)
 
     # endregion
 
