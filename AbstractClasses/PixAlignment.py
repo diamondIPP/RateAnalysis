@@ -207,6 +207,33 @@ class PixAlignment:
             print offset
         return l_off_event, o_off_event, offset
 
+    @staticmethod
+    def find_min_index(values, start_index=0):
+        return values.index(min(values[start_index:]))
+
+    @staticmethod
+    def get_max_index(values, end_index=None):
+        e = end_index if end_index is not None else len(values)
+        return values.index(max(values[:e]))
+
+    @staticmethod
+    def get_mean(ind, values, window=5):
+        s = ind - window if ind >= window else 0
+        e = ind + window
+        return mean(values[s:e])
+
+    @staticmethod
+    def find_falling_event(correlations, ind, mean_):
+        try:
+            return correlations.keys()[correlations.values().index(next(m for m in correlations.values()[ind:] if m < mean_ - .1)) - 1]
+        # if the maximum is at the end we won't see the falloff
+        except StopIteration:
+            return
+
+    def find_rising_event(self, correlations, ind):
+        return correlations.keys()[correlations.values().index(next(c for c in correlations.values()[ind:] if c > self.Threshold)) - 3]
+
+    def find_offsets(self, debug=True):
         t = self.Run.log_info('Scanning for precise offsets ... ', next_line=False)
 
         n = self.BucketSize
