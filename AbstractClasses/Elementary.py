@@ -273,9 +273,22 @@ class Elementary(object):
             out_file = '{fname}{ext}'.format(fname=file_path, ext=ext)
             out_file = out_file.format(typ=f)
             canvas.SaveAs(out_file)
+        self.save_on_kinder(canvas, file_name)
         if print_names:
             self.log_info(out)
         self.set_root_output(True)
+
+    def save_on_kinder(self, canvas, file_name):
+        if kinder_is_mounted():
+            if hasattr(self, 'DiamondName'):
+                if hasattr(self, 'RunNumber'):
+                    run_string = str(self.RunNumber)
+                elif hasattr(self, 'RunPlan'):
+                    run_string = 'RunPlan{r}'.format(r=self.RunPlan.strip('0'))
+                else:
+                    return
+                path = join('/home/micha/mounts/psi', 'Diamonds', self.DiamondName, 'BeamTests', make_tc_str(self.TESTCAMPAIGN, txt=False), run_string, file_name)
+                canvas.SaveAs('{p}.png'.format(p=path))
 
     def save_plots(self, savename, sub_dir=None, canvas=None, ind=0, ch='dia', x=1, y=1, prnt=True, save=True, show=True):
         """
