@@ -7,7 +7,7 @@
 from ROOT import TFile, TH1F, vector
 from collections import OrderedDict, Counter
 from numpy import mean, sqrt
-from Utils import set_root_output, log_message, log_critical, time, print_elapsed_time, calc_mean, round_up_to
+from Utils import set_root_output, log_message, time, print_elapsed_time, calc_mean, round_up_to
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 from Correlation import Correlation
 
@@ -94,8 +94,9 @@ class PixAlignment:
 
     def check_alignment_fast(self):
         """ only check alignment of the first, last and middle 10k events """
+        t = self.Run.log_info('Fast check for event alignment ... ', next_line=False)
         corrs = []
-        for start_event in [0, self.NEntries / 2, self.NEntries - 10000]:
+        for start_event in [self.NEntries / 10 * i for i in xrange(9)] + [self.NEntries - 10000]:
             correlation = Correlation(self, bucket_size=10000)
             n = self.InTree.Draw('plane:row:event_number', '', 'goff', 10000, start_event)
             planes = [int(self.InTree.GetV1()[i]) for i in xrange(n)]
@@ -110,6 +111,7 @@ class PixAlignment:
                 n_ev += size
             corrs.append(correlation.get(debug=False))
         is_aligned = all(corr > self.Threshold for corr in corrs)
+        self.Run.add_info(t)
         if not is_aligned:
             self.Run.log_info('Fast check found misalignment :-(')
         return is_aligned
