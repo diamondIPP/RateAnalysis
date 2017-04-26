@@ -216,8 +216,8 @@ class Run(Elementary):
         assert type(run_number) is int, "incorrect run_number"
 
         self.RunNumber = run_number
-        self.Flux = self.calc_flux()
         self.load_run_info()
+        self.Flux = self.calc_flux()
 
         # check for conversion
         if load_root_file:
