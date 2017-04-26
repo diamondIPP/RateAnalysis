@@ -15,7 +15,7 @@ from Extrema import Extrema2D
 from PadAnalysis import PadAnalysis
 from RunSelection import RunSelection
 from TelescopeAnalysis import Analysis
-from RunClass import Run
+from Run import Run
 from Utils import *
 
 
@@ -53,12 +53,13 @@ class AnalysisCollection(Elementary):
         # important information
         self.NRuns = len(self.collection)
         self.DiamondName = self.FirstAnalysis.DiamondName
+        self.DiamondNumber = self.FirstAnalysis.DiamondNumber
         self.Bias = self.FirstAnalysis.Bias
 
         # root stuff
-        self.run_plan = run_selection.SelectedRunplan
+        self.RunPlan = run_selection.SelectedRunplan
         self.Type = run_selection.SelectedType
-        self.save_dir = '{dia}/runplan{plan}'.format(tc=self.TESTCAMPAIGN[2:], plan=self.run_plan, dia=self.DiamondName)
+        self.save_dir = '{dia}/runplan{plan}'.format(tc=self.TESTCAMPAIGN[2:], plan=self.RunPlan, dia=self.DiamondName)
         self.RootObjects = []
         # important plots
         self.FWHM = None
@@ -117,8 +118,8 @@ class AnalysisCollection(Elementary):
         if self.verbose:
             print 'RUN FLUX [kHz/cm2]'
             for run in runs:
-                fluxes[run.flux] = run.RunNumber
-                print '{run:3d} {flux:14.2f}'.format(run=run.RunNumber, flux=run.flux)
+                fluxes[run.Flux] = run.RunNumber
+                print '{run:3d} {flux:14.2f}'.format(run=run.RunNumber, flux=run.Flux)
         print '\n'
         return {'min': fluxes[min(fluxes)], 'max': fluxes[max(fluxes)]}
 
@@ -172,7 +173,8 @@ class AnalysisCollection(Elementary):
         mi, ma, mn = min(vals), max(vals), mean(vals)
         y = [mi, mn + 3 * (mn - mi) if ma - mn > 50 else ma]
         self.format_histo(gr, name='cur', color=899)
-        return increased_range(y, 0.3)
+        print y
+        return increased_range(y, .3, .2)
 
     def draw_ph_with_currents(self, show=True):
         ph = self.draw_pulse_heights(show=False, vs_time=True, fl=False, save_comb=False, binning=10000)
@@ -224,7 +226,7 @@ class AnalysisCollection(Elementary):
             gr.Draw(draw_opts[i - 1])
             legends[i - 1].Draw()
 
-        run_info = self.FirstAnalysis.run.get_runinfo(self.channel, pad=pad)
+        run_info = self.FirstAnalysis.run.get_runinfo(self.FirstAnalysis.DiamondNumber, pad=pad)
         width = len(run_info[0].GetListOfPrimitives()[1].GetLabel()) * 0.0064
         self.FirstAnalysis.run.scale_runinfo_legend(w=width)
         c.cd()
@@ -304,7 +306,7 @@ class AnalysisCollection(Elementary):
 
     def draw_pulse_heights(self, binning=10000, flux=True, raw=False, all_corr=False, show=True, save_plots=True, vs_time=False, fl=True, save_comb=True, y_range=None, redo=False):
 
-        pickle_path = self.make_pickle_path('Ph_fit', 'PulseHeights', self.run_plan, ch=self.DiamondName, suf=binning)
+        pickle_path = self.make_pickle_path('Ph_fit', 'PulseHeights', self.RunPlan, ch=self.DiamondName, suf=binning)
         flux = False if vs_time else flux
 
         def func(y_ran):
@@ -337,14 +339,14 @@ class AnalysisCollection(Elementary):
                     fit4 = ana.draw_pulse_height(binning, evnt_corr=False, save=False)
                 x = key
                 if flux:
-                    x = ana.run.RunInfo['measured flux'] if not_found_for else ana.run.flux
+                    x = ana.run.RunInfo['measured flux'] if not_found_for else ana.run.Flux
                 if vs_time:
                     self.set_root_output(False)
                     x_err = ana.run.duration.seconds / 2.
                     x = int(ana.run.log_start.strftime('%s')) + x_err - self.StartTime
                     gr5.SetPoint(i, x, fit1.Parameter(0))
                     gr5.SetPointError(i, x_err, 0)
-                    l1 = self.draw_tlatex(gr5.GetX()[i] - x_err, gr5.GetY()[i] + .03, '{0:5.0f}'.format(ana.run.flux), color=1, align=10, size=.04)
+                    l1 = self.draw_tlatex(gr5.GetX()[i] - x_err, gr5.GetY()[i] + .03, '{0:5.0f}'.format(ana.run.Flux), color=1, align=10, size=.04)
                     gr1.GetListOfFunctions().Add(l1)
                 if fit1.Parameter(0) > 10:
                     gr1.SetPoint(i, x, fit1.Parameter(0))
@@ -426,7 +428,7 @@ class AnalysisCollection(Elementary):
 
     def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False, show=True, cut=None, beam_on=True, save=False):
 
-        pickle_path = self.make_pickle_path('Pedestal', 'AllPedestals', self.run_plan, self.DiamondName)
+        pickle_path = self.make_pickle_path('Pedestal', 'AllPedestals', self.RunPlan, self.DiamondName)
         mode = 'Flux' if flux else 'Run'
         log_message('Getting pedestals')
         self.start_pbar(self.NRuns)
@@ -446,7 +448,7 @@ class AnalysisCollection(Elementary):
             for key, ana in self.collection.iteritems():
                 cut_string = ana.Cut.generate_pulser_cut(beam_on=beam_on) if cut == 'pulser' else cut
                 fit_par = ana.show_pedestal_histo(region, peak_int, cut=cut_string, save=save, show=False)
-                x = ana.run.flux if flux else key
+                x = ana.run.Flux if flux else key
                 gr1.SetPoint(i, x, fit_par.Parameter(par))
                 gr1.SetPointError(i, 0, fit_par.ParError(par))
                 if all_regions:
@@ -516,7 +518,7 @@ class AnalysisCollection(Elementary):
         i = 0
         for key, ana in self.collection.iteritems():
             snr = ana.calc_snr()
-            x = ana.run.flux if flux else key
+            x = ana.run.Flux if flux else key
             gr.SetPoint(i, x, snr[0])
             gr.SetPointError(i, 0, snr[1])
             i += 1
@@ -532,7 +534,7 @@ class AnalysisCollection(Elementary):
 
     def draw_all_ph_distributions(self, binning=5000, show=False):
 
-        pickle_path = self.FirstAnalysis.PickleDir + 'Ph_fit/Ph_distos_fits_{tc}_{rp}_{dia}_{bin}.pickle'.format(tc=self.TESTCAMPAIGN, rp=self.run_plan, dia=self.DiamondName, bin=binning)
+        pickle_path = self.FirstAnalysis.PickleDir + 'Ph_fit/Ph_distos_fits_{tc}_{rp}_{dia}_{bin}.pickle'.format(tc=self.TESTCAMPAIGN, rp=self.RunPlan, dia=self.DiamondName, bin=binning)
 
         def func():
             collimator_settings = [(ana.run.RunInfo['fs11'], ana.run.RunInfo['fsh13']) for key, ana in self.collection.iteritems()]
@@ -553,7 +555,7 @@ class AnalysisCollection(Elementary):
         for i, run in enumerate(runs):
             ana = self.collection[run]
             fit = ana.draw_pulse_height(save=False)
-            gr.SetPoint(i, ana.run.flux, fit.Parameter(0))
+            gr.SetPoint(i, ana.run.Flux, fit.Parameter(0))
             gr.SetPointError(i, 0, fit.ParError(0))
         set_statbox(entries=2, only_fit=True)
         gr.Fit('pol0', 'qs{s}'.format(s='' if show else '0'))
@@ -567,7 +569,7 @@ class AnalysisCollection(Elementary):
 
     def draw_ph_distributions_below_flux(self, binning=None, flux=150, show=True, save_plot=True):
         binning = int(self.FirstAnalysis.run.n_entries * .3 / 60 if binning is None else binning)
-        pickle_path = self.make_pickle_path('Ph_fit', 'PhDistoBel', self.run_plan, self.DiamondName, suf='{bin}_{flux}'.format(bin=binning, flux=flux))
+        pickle_path = self.make_pickle_path('Ph_fit', 'PhDistoBel', self.RunPlan, self.DiamondName, suf='{bin}_{flux}'.format(bin=binning, flux=flux))
 
         def func():
             log_message('Getting representative errors')
@@ -621,7 +623,7 @@ class AnalysisCollection(Elementary):
 
     def calc_all_pedestal_spreads(self, recalc=False):
 
-        pickle_path = self.FirstAnalysis.PickleDir + 'Pedestal/PedSpread_{tc}_{rp}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, rp=self.run_plan, dia=self.DiamondName)
+        pickle_path = self.FirstAnalysis.PickleDir + 'Pedestal/PedSpread_{tc}_{rp}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, rp=self.RunPlan, dia=self.DiamondName)
 
         def func():
             collimator_settings = [(ana.run.RunInfo['fs11'], ana.run.RunInfo['fsh13']) for key, ana in self.collection.iteritems()]
@@ -648,7 +650,7 @@ class AnalysisCollection(Elementary):
     # region PULSER
     def draw_pulser_info(self, flux=True, show=True, mean_=True, corr=True, beam_on=True, vs_time=False, do_fit=True, scale=1, save_comb=True, save=True, ret_mg=False):
 
-        pickle_path = self.make_pickle_path('Pulser', 'PulseHeights', self.run_plan, self.DiamondName)
+        pickle_path = self.make_pickle_path('Pulser', 'PulseHeights', self.RunPlan, self.DiamondName)
         flux = False if vs_time else flux
         mode = self.get_mode(flux, vs_time)
         log_message('Getting pulser info{0}'.format(' vs time' if vs_time else ''))
@@ -661,7 +663,7 @@ class AnalysisCollection(Elementary):
             gr2 = self.make_tgrapherrors('gLast', 'last run', marker=23, color=2, marker_size=2)
             y0 = None
             for i, (key, ana) in enumerate(self.collection.iteritems()):
-                x = ana.run.flux if flux else key
+                x = ana.run.Flux if flux else key
                 fit = ana.Pulser.draw_distribution_fit(save=False, corr=corr, beam_on=beam_on)
                 par = 1 if mean_ else 2
                 cut = ana.Cut.generate_pulser_cut(beam_on)
@@ -818,7 +820,7 @@ class AnalysisCollection(Elementary):
         mode = self.get_mode(flux)
         gr = self.make_tgrapherrors('gr', 'Pulser Rate vs {mod} '.format(mod=mode))
         for i, (key, ana) in enumerate(self.collection.iteritems()):
-            x = ana.run.flux if flux else key
+            x = ana.run.Flux if flux else key
             fit = ana.Pulser.calc_fraction() if not real else ana.Pulser.calc_real_fraction(), 0
             gr.SetPoint(i, x, fit[0])
             gr.SetPointError(i, 0, fit[1])
@@ -840,7 +842,7 @@ class AnalysisCollection(Elementary):
         return means_ if means_[1] > w_means[1] else w_means
 
     def calc_all_pulser_errors(self, recalc=False):
-        pickle_path = self.FirstAnalysis.PickleDir + 'Ph_fit/PulserErrros_{tc}_{rp}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, rp=self.run_plan, dia=self.DiamondName)
+        pickle_path = self.FirstAnalysis.PickleDir + 'Ph_fit/PulserErrros_{tc}_{rp}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, rp=self.RunPlan, dia=self.DiamondName)
 
         def func():
             collimator_settings = set([(ana.run.RunInfo['fs11'], ana.run.RunInfo['fsh13']) for key, ana in self.collection.iteritems()])
@@ -869,7 +871,7 @@ class AnalysisCollection(Elementary):
         gr3 = self.make_tgrapherrors('gr3', '', color=self.get_color())
         i = 0
         for key, ana in self.collection.iteritems():
-            x = ana.run.flux if flux else key
+            x = ana.run.Flux if flux else key
             if not mean_:
                 n = ana.show_bucket_numbers(show=False)
                 gr1.SetPoint(i, x, n['new'] / n['all'] * 100)
@@ -921,7 +923,7 @@ class AnalysisCollection(Elementary):
         i = 0
         for key, ana in self.collection.iteritems():
             fit = ana.fit_peak_values(draw=False, pulser=pulser)
-            x = ana.run.flux if flux else key
+            x = ana.run.Flux if flux else key
             gr.SetPoint(i, x, fit.Parameter(1))
             gr.SetPointError(i, 0, fit.ParError(1))
             i += 1
@@ -945,7 +947,7 @@ class AnalysisCollection(Elementary):
         i = 0
         for key, ana in self.collection.iteritems():
             fwhm = ana.calc_peak_value_fwhm()
-            x = ana.run.flux if flux else key
+            x = ana.run.Flux if flux else key
             gr.SetPoint(i, x, fwhm)
             i += 1
         self.format_histo(gr, x_tit='{mod}{unit}'.format(mod=mode, unit=' [kHz/cm2]' if flux else ''))
@@ -976,7 +978,7 @@ class AnalysisCollection(Elementary):
         i = 0
         for key, ana in self.collection.iteritems():
             fit = ana.fit_mean_signal_distribution()
-            x = ana.run.flux if flux else key
+            x = ana.run.Flux if flux else key
             gr.SetPoint(i, x, fit.Parameter(2) * conversion_factor)
             gr.SetPointError(i, 0, fit.ParError(2) * conversion_factor)
             i += 1
@@ -1024,7 +1026,7 @@ class AnalysisCollection(Elementary):
         i = 0
         for key, ana in self.collection.iteritems():
             rel_spread = ana.calc_signal_spread()
-            x = ana.run.flux if flux else key
+            x = ana.run.Flux if flux else key
             gr.SetPoint(i, x, rel_spread[0])
             gr.SetPointError(i, 0, rel_spread[1])
             i += 1
@@ -1075,10 +1077,10 @@ class AnalysisCollection(Elementary):
 
     def draw_signal_map(self, show=True, low=1e20, fid=True, factor=1):
         suffix = '{fid}{fac}'.format(fid='Fid' if fid else '', fac=factor)
-        pickle_path = self.make_pickle_path('SignalMaps', 'SigMaps', self.run_plan, self.channel, suffix)
+        pickle_path = self.make_pickle_path('SignalMaps', 'SigMaps', self.RunPlan, self.channel, suffix)
 
         def func():
-            histos = [ana.draw_signal_map(show=False, marg=False, fid=fid, factor=factor) for ana in self.collection.itervalues() if ana.run.flux < low]
+            histos = [ana.draw_signal_map(show=False, marg=False, fid=fid, factor=factor) for ana in self.collection.itervalues() if ana.run.Flux < low]
             h = histos[0]
             sig_map = TH2F('h_sms', 'Combined Signal Maps', h.GetNbinsX(), h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax(), h.GetNbinsY(), h.GetYaxis().GetXmin(), h.GetYaxis().GetXmax())
             for h in histos:
@@ -1124,7 +1126,7 @@ class AnalysisCollection(Elementary):
         gr = self.make_tgrapherrors('gr', '{tit} of the Beam Profile in {dir}'.format(tit=title, dir=direction.title()))
         i = 0
         for key, ana in self.collection.iteritems():
-            x = ana.run.flux if flux else key
+            x = ana.run.Flux if flux else key
             fit = ana.fit_beam_profile(direction, show=False, fit_margin=fit_margin)
             par = 1 if mean_ else 2
             gr.SetPoint(i, x, fit.Parameter(par))
@@ -1250,7 +1252,7 @@ class AnalysisCollection(Elementary):
         i = 0
         for key, ana in self.collection.iteritems():
             fit = ana.calc_angle_fit(mode, show=False)
-            x = ana.run.flux if flux else key
+            x = ana.run.Flux if flux else key
             par = 2 if sigma else 1
             gr.SetPoint(i, x, fit.Parameter(par))
             gr.SetPointError(i, 0, fit.ParError(par))
@@ -1306,7 +1308,7 @@ class AnalysisCollection(Elementary):
         print '\nThe preanalysis for this selection took', self.print_elapsed_time(start_time)
 
     def get_systematic_error_table(self, latex=False):
-        f = open('PlotsFelix/table_{tc}_{rp}_{dia}.txt'.format(tc=self.TESTCAMPAIGN, rp=self.run_plan, dia=self.DiamondName), 'w')
+        f = open('PlotsFelix/table_{tc}_{rp}_{dia}.txt'.format(tc=self.TESTCAMPAIGN, rp=self.RunPlan, dia=self.DiamondName), 'w')
         l = '&\t' if latex else ''
         print 'Pulser', 'SignalFlux', 'Signal < 150', 'Signal < 80', 'Full Pulser Spread', 'Single Pulser Spreads'
         pulser_err = self.calc_all_pulser_errors().values()
@@ -1332,7 +1334,7 @@ class AnalysisCollection(Elementary):
         return [key for key, ana in self.collection.iteritems() if ana.run.RunInfo['fs11'] == fs11 and ana.run.RunInfo['fsh13'] == fsh13]
 
     def get_runs_below_flux(self, flux):
-        return [key for key, ana in self.collection.iteritems() if ana.run.flux < flux]
+        return [key for key, ana in self.collection.iteritems() if ana.run.Flux < flux]
 
     def select_runs_in_range(self, start, stop):
         new_collection = OrderedDict()
