@@ -173,6 +173,14 @@ class PixAlignment:
             print 'anti correlation:', min_anti_corr
         return inter_correlations[min_anti_corr] if min_anti_corr < -self.Threshold else None
 
+    def draw_sliding(self, correlation):
+        correlations = correlation.get_all_sliding()
+        for off, corrs in correlations.iteritems():
+            self.Run.set_root_output(False)
+            g = self.Run.make_tgrapherrors('g{o}'.format(o=off), 'Sliding correlation for offset {o}'.format(o=off), x=corrs.keys(), y=corrs.values())
+            self.Run.draw_histo(g, draw_opt='alp')
+        raw_input('Press any key to continue!')
+
         t = self.Run.log_info('Scanning for precise offsets ... ', next_line=False)
 
         n = self.BucketSize
