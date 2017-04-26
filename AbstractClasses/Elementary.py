@@ -656,7 +656,7 @@ class Elementary(object):
         h = histo
         fit = TF1('fit', 'gaus(0) + gaus(3) + gaus(6)', h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax())
         s = TSpectrum(3)
-        n = s.Search(h, 5)
+        n = s.Search(h, 2)
         y = s.GetPositionY()[0], s.GetPositionY()[1] if n == 2 else s.GetPositionY()[2]
         x = s.GetPositionX()[0], s.GetPositionX()[1] if n == 2 else s.GetPositionX()[2]
         for i, par in enumerate([y[1], x[1], 10, y[0], x[0], 5, 10, x[0] + 10, 5]):
