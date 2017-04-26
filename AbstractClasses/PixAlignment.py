@@ -149,6 +149,22 @@ class PixAlignment:
         return misalignments < .05
 
     def find_offsets(self, debug=False):
+    def find_lose_corr_event(self, correlation, last_off_event, debug=False):
+        # if all correlations are below threshold return the very first event
+        if all(corr < self.Threshold for corr in correlation.get_all_zero()):
+            return correlation.Events[0][0]
+        correlations = correlation.get_sliding()
+        if debug:
+            self.draw_sliding(correlation)
+        # find maximum and take mean around it
+        start_index = next(correlations.keys().index(ev) + 20 for ev in correlations.keys() if ev > last_off_event) if last_off_event + 1000 > correlations.keys()[0] else 0
+        max_index = correlations.values().index(max(correlations.values()[start_index:]))
+        mean_ = self.get_mean(max_index, correlations.values())
+        off_event = correlations.keys()[correlations.values().index(next(m for m in correlations.values()[max_index:] if m < mean_ - .1)) - 1]
+        if debug:
+            print mean_, off_event, next(m for m in correlations.values()[max_index:] if m < mean_ - .1)
+        return off_event
+
         t = self.Run.log_info('Scanning for precise offsets ... ', next_line=False)
 
         n = self.BucketSize
