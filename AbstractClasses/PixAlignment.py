@@ -181,6 +181,32 @@ class PixAlignment:
             self.Run.draw_histo(g, draw_opt='alp')
         raw_input('Press any key to continue!')
 
+    def find_jump(self, correlation, debug=False):
+        correlations = correlation.get_sliding()
+        if debug:
+            self.draw_sliding(correlation)
+        # first find the minimum: it has to be in the central region since it has a maximum to each of his sides
+        min_index = self.find_min_index(correlations.values(), start_index=len(correlations) / 3)
+        # look left for a maximum
+        l_max_index = self.get_max_index(correlations.values(), min_index)
+        l_mean = self.get_mean(l_max_index, correlations.values())
+        l_off_event = self.find_falling_event(correlations, l_max_index, l_mean)
+        # now find the offset by checking the inter correlations and look when that correlation falls off again
+        offset = self.find_offset(correlation, debug=debug)
+        if offset is None:
+            return None, None, None
+        correlations = correlation.get_sliding(offset=offset)
+        o_max_ind = self.get_max_index(correlations.values())
+        o_mean = self.get_mean(o_max_ind, correlations.values())
+        o_off_event = self.find_falling_event(correlations, o_max_ind, o_mean)
+        if o_off_event is None:
+            return None, None, None
+        if debug:
+            print l_mean, l_off_event
+            print o_off_event
+            print offset
+        return l_off_event, o_off_event, offset
+
         t = self.Run.log_info('Scanning for precise offsets ... ', next_line=False)
 
         n = self.BucketSize
