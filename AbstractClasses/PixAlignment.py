@@ -148,7 +148,6 @@ class PixAlignment:
             self.Run.log_info('Everything is nicely aligned =)')
         return misalignments < .05
 
-    def find_offsets(self, debug=False):
     def find_lose_corr_event(self, correlation, last_off_event, debug=False):
         # if all correlations are below threshold return the very first event
         if all(corr < self.Threshold for corr in correlation.get_all_zero()):
@@ -164,6 +163,15 @@ class PixAlignment:
         if debug:
             print mean_, off_event, next(m for m in correlations.values()[max_index:] if m < mean_ - .1)
         return off_event
+
+    def find_offset(self, correlation, debug=False):
+        inter_correlations = correlation.get_inter_sliding()
+        if inter_correlations is None:
+            return None
+        min_anti_corr = min(inter_correlations.keys())
+        if debug:
+            print 'anti correlation:', min_anti_corr
+        return inter_correlations[min_anti_corr] if min_anti_corr < -self.Threshold else None
 
         t = self.Run.log_info('Scanning for precise offsets ... ', next_line=False)
 
