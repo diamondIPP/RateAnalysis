@@ -28,7 +28,7 @@ def load_collection(plan, channel):
     sel.select_runs_from_runplan(plan)
     a.print_testcampaign()
     ana = AnalysisCollection(sel, channel)
-    ana.save_dir = '{info}_rp{rp}'.format(info=ana.make_info_string().strip('_'), rp=float(ana.run_plan))
+    ana.save_dir = '{info}_rp{rp}'.format(info=ana.make_info_string().strip('_'), rp=float(ana.RunPlan))
     ana.set_save_directory('PlotsFelix')
     return ana
 
