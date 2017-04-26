@@ -93,7 +93,7 @@ class PulserAnalysis(Elementary):
         cut = self.Cut.generate_pulser_cut(beam_on=beam_on)
         x = self.find_range(corr)
         h = self.Ana.show_signal_histo(cut=cut, sig=self.Ana.PulserName, show=False, off_corr=corr, evnt_corr=False, binning=binning, events=events, start=start, save=False, x_range=x)
-        self.format_histo(h, name='p_hd', stats=stats, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.3)
+        self.format_histo(h, name='p_hd', stats=stats, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
         self.save_histo(h, 'PulserDistribution', show, logy=True, lm=.12)
         return h
 
@@ -102,10 +102,10 @@ class PulserAnalysis(Elementary):
         start_string = '_{0}'.format(start) if start is not None else ''
         events_string = '_{0}'.format(events) if events is not None else ''
         suffix = '{corr}_{beam}{st}{ev}'.format(corr='ped_corr' if corr else '', beam='BeamOff' if not beam_on else 'BeamOn', st=start_string, ev=events_string)
-        pickle_path = self.make_pickle_path('Pulser', 'HistoFit', self.Ana.run_number, self.Channel, suf=suffix)
+        pickle_path = self.make_pickle_path('Pulser', 'HistoFit', self.RunNumber, self.Channel, suf=suffix)
 
         def func():
-            set_statbox(only_fit=True, w=.25)
+            set_statbox(.95, .88, entries=4, only_fit=True, w=.3)
             h = self.draw_distribution(show=show, corr=corr, beam_on=beam_on, binning=binning, events=events, start=start, stats=True)
             h.SetName('Fit Result')
             same_pols = self.Polarity == self.Ana.Polarity
@@ -124,7 +124,9 @@ class PulserAnalysis(Elementary):
             return FitRes(fit_func)
 
         fit = func() if save else None
-        return self.do_pickle(pickle_path, func, fit)
+        fit = self.do_pickle(pickle_path, func, fit)
+        kinder_pickle(pickle_path, fit)
+        return fit
 
     def draw_peak_timing(self, show=True, corr=False):
         self.Ana.draw_peak_timing('', 'pulser', ucut=self.PulserCut, show=show, draw_cut=False, corr=corr)
