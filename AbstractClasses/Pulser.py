@@ -7,6 +7,7 @@ from Elementary import Elementary
 from ROOT import TProfile, gROOT, THStack
 from Utils import *
 from copy import deepcopy
+from numpy import mean
 
 
 class PulserAnalysis(Elementary):
@@ -22,6 +23,9 @@ class PulserAnalysis(Elementary):
         self.PulserCut = self.Cut.generate_pulser_cut()
         self.Polarity = self.Ana.PulserPolarity
         self.Type = self.load_type()
+
+        self.DiamondName = self.Ana.DiamondName
+        self.RunNumber = self.Ana.RunNumber
 
         self.ROOTObjects = []
 
