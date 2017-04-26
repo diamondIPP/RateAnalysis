@@ -109,7 +109,7 @@ class Currents(Elementary):
     def load_run_number(self):
         nr = None
         if self.Analysis is not None:
-            nr = self.Analysis.RunNumber if not self.IsCollection else self.Analysis.run_plan
+            nr = self.Analysis.RunNumber if not self.IsCollection else self.Analysis.RunPlan
         return nr
 
     def load_runlogs(self):
@@ -135,7 +135,7 @@ class Currents(Elementary):
         if self.run_config_parser.has_option('BASIC', 'hvconfigfile'):
             file_path = self.run_config_parser.get('BASIC', 'hvconfigfile')
         else:
-            file_path = joinpath(self.DataDir, make_tc_str(self.TESTCAMPAIGN, data=True), 'HV.cfg')
+            file_path = join(self.DataDir, make_tc_str(self.TESTCAMPAIGN, data=True), 'HV.cfg')
         if not file_exists(file_path):
             self.log_warning('Missing hv info in RunConfig file')
             return None
@@ -164,10 +164,10 @@ class Currents(Elementary):
         if self.run_config_parser.has_option('BASIC', 'hvdatapath'):
             hv_datapath = self.run_config_parser.get('BASIC', 'hvdatapath')
         else:
-            hv_datapath = joinpath(self.DataDir, make_tc_str(self.TESTCAMPAIGN, data=True), 'HVClient')
+            hv_datapath = join(self.DataDir, make_tc_str(self.TESTCAMPAIGN, data=True), 'HVClient')
         if not dir_exists(hv_datapath):
             log_warning('HV data path "{p}" does not exist!'.format(p=hv_datapath))
-        hv_datapath = joinpath(hv_datapath, '{dev}_CH{ch}' if not old else '{dev}')
+        hv_datapath = join(hv_datapath, '{dev}_CH{ch}' if not old else '{dev}')
         return hv_datapath.format(dev=self.ConfigParser.get('HV' + self.Number, 'name'), ch=self.Channel)
 
     def load_start_time(self):
@@ -227,7 +227,7 @@ class Currents(Elementary):
     # ==========================================================================
     # region ACQUIRE DATA
     def get_logs_from_start(self):
-        log_names = sorted([name for name in glob(joinpath(self.DataPath, '*'))] + [name for name in glob(joinpath(self.OldDataPath, '*'))])
+        log_names = sorted([name for name in glob(join(self.DataPath, '*'))] + [name for name in glob(join(self.OldDataPath, '*'))])
         start_log = None
         for i, name in enumerate(log_names):
             log_date = self.get_log_date(name)
@@ -396,7 +396,7 @@ class Currents(Elementary):
     def draw_title_pad(self, pad):
         pad.cd()
         bias_str = 'at {b} V'.format(b=self.Bias) if self.Bias else '??'
-        run_str = '{n}'.format(n=self.Analysis.RunNumber) if hasattr(self.Analysis, 'run') else 'Plan {rp}'.format(rp=self.Analysis.run_plan)
+        run_str = '{n}'.format(n=self.Analysis.RunNumber) if hasattr(self.Analysis, 'run') else 'Plan {rp}'.format(rp=self.Analysis.RunPlan)
         text = 'Currents of {dia} {b} - Run {r}'.format(dia=self.DiamondName, b=bias_str, r=run_str)
         t1 = TText(0.1, 0.88, text)
         t1.SetTextSize(0.05)
