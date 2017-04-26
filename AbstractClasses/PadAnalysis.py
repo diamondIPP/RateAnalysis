@@ -35,9 +35,9 @@ class PadAnalysis(Analysis):
         self.channel = self.load_channel(dia)
 
         # main
-        self.DiamondName = self.run.diamond_names[self.channel]
+        self.DiamondName = self.run.DiamondNames[dia - 1]
         self.DiamondNumber = dia
-        self.Bias = self.run.bias[self.channel]
+        self.Bias = self.run.Bias[dia - 1]
         self.save_dir = '{dia}/{run}/'.format(run=str(self.RunNumber).zfill(3), dia=self.DiamondName)
 
         # stuff
@@ -106,7 +106,7 @@ class PadAnalysis(Analysis):
 
     def load_channel(self, dia):
         assert dia in [1, 2], 'You have to choose either diamond 1 or 2'
-        return self.run.channels[dia - 1]
+        return self.run.Channels[dia - 1]
 
     def get_integral_names(self):
         names = OrderedDict()
