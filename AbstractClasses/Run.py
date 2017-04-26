@@ -495,7 +495,7 @@ class Run(Elementary):
         :param show:
         :return:
         """
-        assert channel is None or channel in self.Channels, 'wrong channel id "{ch}"'.format(ch=channel)
+        # assert channel is None or channel in self.Channels, 'wrong channel id "{ch}"'.format(ch=channel)
         if show:
             if canvas is not None:
                 canvas.cd()
@@ -536,7 +536,7 @@ class Run(Elementary):
             legend.AddEntry(0, 'Test Campaign: {tc}'.format(tc=tc.strftime('%b %Y')), '')
             legend.AddEntry(0, run_string, '')
             if channel is None:
-                dias = ['{dia} @ {bias:+2.0f}V'.format(dia=self.DiamondNames[ch], bias=self.Bias[ch]) for ch in self.Channels]
+                dias = ['{dia} @ {bias:+2.0f}V'.format(dia=dia, bias=bias) for dia, bias in zip(self.DiamondNames, self.Bias)]
                 dias = str(dias).strip('[]').replace('\'', '')
                 legend.AddEntry(0, 'Diamonds: {dias}'.format(dias=dias), '')
             else:
