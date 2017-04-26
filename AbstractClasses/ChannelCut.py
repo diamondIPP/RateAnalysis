@@ -22,6 +22,7 @@ class ChannelCut(Cut):
         self.__dict__.update(analysis.Cut.__dict__)
         self.channel = channel
         self.RunNumber = self.analysis.RunNumber
+        self.DiamondName = analysis.DiamondName
 
         self.load_channel_config()
 
@@ -226,7 +227,7 @@ class ChannelCut(Cut):
         cut = None
         if xy is not None:
             cut = TCutG('fid', 5, array([xy[0], xy[0], xy[1], xy[1], xy[0]], 'd'), array([xy[2], xy[3], xy[3], xy[2], xy[2]], 'd'))
-            nr = self.analysis.run.channels.index(self.analysis.channel) + 1
+            nr = self.analysis.DiamondNumber
             cut.SetVarX('diam{0}_track_x'.format(nr))
             cut.SetVarY('diam{0}_track_y'.format(nr))
             self.ROOTObjects.append(cut)
