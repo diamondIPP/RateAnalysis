@@ -1,4 +1,3 @@
-import pickle
 import re
 from copy import deepcopy
 from glob import glob
@@ -304,7 +303,7 @@ class Elementary(object):
             except Exception as inst:
                 print log_warning('Error in save canvas: {err}'.format(err=inst))
                 return
-        channel = self.channel if hasattr(self, 'channel') else None
+        channel = self.DiamondNumber - 1 if hasattr(self, 'DiamondNumber') else None
         channel = self.Dut - 4 if hasattr(self, 'Dut') else channel
         if hasattr(self, 'run'):
             self.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas, x=x, y=y)
@@ -318,9 +317,9 @@ class Elementary(object):
         elif hasattr(self, 'collection'):
             runs = [self.collection.keys()[0], self.collection.keys()[-1], self.collection.values()[0].run.get_rate_string(), self.collection.values()[-1].run.get_rate_string()]
             if not ind:
-                self.collection.values()[ind].run.draw_run_info(channel=ch if ch is None else self.collection.values()[ind].channel, canvas=canvas, runs=runs, x=x, y=y)
+                self.collection.values()[ind].run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas, runs=runs, x=x, y=y)
             else:
-                self.collection.values()[ind].run.draw_run_info(channel=ch if ch is None else self.collection.values()[ind].channel, canvas=canvas, x=x, y=y)
+                self.collection.values()[ind].run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas, x=x, y=y)
         canvas.Modified()
         canvas.Update()
         if save:
