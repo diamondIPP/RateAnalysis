@@ -3,7 +3,7 @@ from ROOT import TFile, gROOT, TGraph, TH2F, gStyle, TCanvas, TCut, TH1F
 from sys import argv
 from AbstractClasses.Utils import *
 from json import load
-from AbstractClasses.RunClass import Run
+from AbstractClasses.Run import Run
 from datetime import datetime
 from ConfigParser import ConfigParser, NoSectionError
 from numpy import mean
@@ -150,7 +150,7 @@ def load_diamond_name(ch):
 
 
 def calc_flux():
-    f = open(joinpath(run.load_mask_file_dir(), runinfo['maskfile']), 'r')
+    f = open(join(run.load_mask_file_dir(), runinfo['maskfile']), 'r')
     data = []
     for line in f:
         if len(line) > 3:
