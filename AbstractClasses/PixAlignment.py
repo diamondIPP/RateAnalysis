@@ -246,43 +246,34 @@ class PixAlignment:
             correlation.fill(ev, offset)
             if correlation.start():
                 # check zero offset correlation
-                found_offset = False
                 if correlation.get_zero(start_bucket=-2, debug=debug) < self.Threshold:
-                    # correct only if two consecutive buckets are below the threshold
-                    if correlation.get_zero(start_bucket=-1, debug=debug) < self.Threshold:
-                        # find exact event -> shift through three n buckets and take the last event if the correlation starts dropping
-                        correlations = correlation.get_shifted()
-                        mean_ = mean(correlations.values()[:n])
-                        mean_ = mean(correlations.values()[n:(3 * n / 2)]) if mean_ < self.Threshold else mean_
-                        # print correlations, mean_
-                        print correlations
-                        print mean_
-                        off_event = correlations.keys()[correlations.values().index(next(m for m in correlations.itervalues() if m < mean_ - .1)) - 1]
-                        # find offset
-                        corrs = correlation.get_off_all()
-                        off, corr = corrs[max(corrs)], max(corrs)
-                        if corr > self.Threshold - .1:
-                            found_offset = True
-                        if not found_offset:
-                            corrs = correlation.get_detailed(division=5)
-                            print corrs
-                            off = self.find_detailed_offset(corrs)
-                            if off is None:
-                                log_critical('Something went wrong during finding the alignment offsets...')
-                            elif not off:
-                                pass
-                            else:
-                                found_offset = True
-                        if found_offset:
+                    # there is a jump if the last bucket is already aligned again
+                    if correlation.get_zero(start_bucket=-1, debug=debug) > self.Threshold:
+                        # get the events when it starts losing correlation and when the offset correlation falls back into zero offset
+                        l_off_event, o_off_event, off = self.find_jump(correlation, debug=True)
+                        if off is not None and o_off_event > l_off_event:
+                            offsets[l_off_event] = off
+                            offsets[o_off_event] = -off
+                            if debug:
+                                log_message('Found a jump of {v} between events {e1} and {e2}'.format(v=off, e1=l_off_event, e2=o_off_event))
+                            # only keep the last two buckets since at least the last is correlated
+                            correlation.reset_except_last(2)
+                    # now we have lost correlation for at least three buckets
+                    else:
+                        last_off_event = offsets.keys()[-1] if offsets else 0
+                        off_event = self.find_lose_corr_event(correlation, last_off_event, debug=True)
+                        off = self.find_offset(correlation)
+                        if off is not None:
                             offset += off
                             offsets[off_event] = off
                             if debug:
                                 log_message('Found an offset of {v} at event {e}'.format(v=off, e=off_event))
-                            # we know that the next bucket is aligned, so skip it
-                            correlation.increment_bucket()
-
+                            # delete the first two buckets and use the offset values for zero correlation
+                            correlation.reshuffle(off)
+                    if off is None and debug:
+                        log_message('Could not find any offset!')
                 # reset old lists for speed improvements
-                correlation.reset(found_offset)
+                correlation.reset()
         self.Run.add_info(t)
         log_message('Found {n} offsets'.format(n=len(offsets)))
         return offsets
