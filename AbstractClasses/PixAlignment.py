@@ -40,7 +40,7 @@ class PixAlignment:
             self.TelRow = {}
             self.DiaRow = {}
             self.load_variables()
-            self.BucketSize = self.find_bucket_size()
+            self.BucketSize = self.find_bucket_size(show=False)
 
     def __del__(self):
         self.InFile.Close()
