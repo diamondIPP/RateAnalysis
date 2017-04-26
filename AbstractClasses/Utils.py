@@ -356,7 +356,7 @@ def print_table(rows, header=None):
 
 
 def kinder_is_mounted():
-    return dir_exists('/home/micha/mounts/psi')
+    return dir_exists('/home/micha/mounts/psi/Diamonds')
 
 
 def do_pickle(path, function, value=None, params=None):
