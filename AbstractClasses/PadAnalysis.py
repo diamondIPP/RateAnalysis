@@ -924,7 +924,9 @@ class PadAnalysis(Analysis):
             return FitRes(fit_par)
 
         fit = func() if save else None
-        return self.do_pickle(picklepath, func, fit)
+        fit = self.do_pickle(picklepath, func, fit)
+        kinder_pickle(picklepath, fit)
+        return fit
 
     def draw_ph_distribution(self, binning=None, show=True, fit=True, xmin=0, xmax=270., bin_size=.5, save=True):
         if binning is not None:
@@ -1099,7 +1101,9 @@ class PadAnalysis(Analysis):
             return FitRes(fit_pars)
 
         fit_par = func() if save else None
-        return self.do_pickle(picklepath, func, fit_par)
+        fit_par = self.do_pickle(picklepath, func, fit_par)
+        kinder_pickle(picklepath, fit_par)
+        return fit_par
     
     def draw_ped_sigma_selection(self, show=True):
         f = self.show_pedestal_histo(cut=self.Cut.generate_special_cut(excluded=['ped_sigma']), nbins=512, x_range=[-50, 200], logy=True, show=False)
