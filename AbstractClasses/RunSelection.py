@@ -366,8 +366,11 @@ class RunSelection(Elementary):
         info = self.RunInfos[self.RunPlan[rp]['runs'][0]]
         at_d1 = raw_input('Enter attenuator for {dia1}: '.format(dia1=info['dia1'])) if attenuator is None else attenuator[0]
         at_d2 = raw_input('Enter attenuator for {dia2}: '.format(dia2=info['dia2'])) if attenuator is None else attenuator[1]
-        at_pul = raw_input('Enter attenuator for the pulser: ') if attenuator is None else attenuator[2]
-        self.RunPlan[rp]['attenuators'] = {'dia1': at_d1, 'dia2': at_d2, 'pulser': at_pul}
+        at_pul1 = raw_input('Enter attenuator for the pulser1: ') if attenuator is None else attenuator[2]
+        at_pul2 = raw_input('Enter attenuator for the pulser2: ') if attenuator is None else attenuator[3]
+        self.RunPlan[rp]['attenuators'] = {'dia1': at_d1, 'dia2': at_d2, 'pulser1': at_pul1}
+        if at_pul2:
+            self.RunPlan[rp]['attenuators']['pulser2'] = at_pul2
         self.save_runplan()
 
     def rename_runplan_numbers(self):
