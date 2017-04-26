@@ -1337,6 +1337,22 @@
       ], 
       "type": "rate scan"
     }, 
+    "11.1": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser": "6DB_1 + 6DB_2"
+      }, 
+      "runs": [
+        608, 
+        609, 
+        610, 
+        611, 
+        612, 
+        613
+      ], 
+      "type": "up scan"
+    }, 
     "12": {
       "attenuators": {
         "dia1": "None", 
@@ -1516,6 +1532,22 @@
       ], 
       "type": "rate scan"
     }, 
+    "16.1": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser": "6DB_1 + 6DB_2"
+      }, 
+      "runs": [
+        756, 
+        757, 
+        758, 
+        759, 
+        760, 
+        761
+      ], 
+      "type": "up scan"
+    }, 
     "17": {
       "attenuators": {
         "dia1": "None", 
@@ -1668,6 +1700,22 @@
         106
       ], 
       "type": "rate scan"
+    }, 
+    "01.1": {
+      "attenuators": {
+        "dia1": "10dB_1", 
+        "dia2": "6dB_2", 
+        "pulser": "6dB_1"
+      }, 
+      "runs": [
+        2, 
+        4, 
+        5, 
+        6, 
+        7, 
+        8
+      ], 
+      "type": "up scan"
     }, 
     "02": {
       "attenuators": {
@@ -1899,11 +1947,28 @@
       ], 
       "type": "rate scan"
     }, 
+    "07.1": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser": "6dB_3"
+      }, 
+      "runs": [
+        179, 
+        180, 
+        181, 
+        182, 
+        183, 
+        184
+      ], 
+      "type": "up scan"
+    }, 
     "08": {
       "attenuators": {
         "dia1": "10dB_1", 
         "dia2": "6dB_2", 
-        "pulser": "6dB_3//6dB_1"
+        "pulser1": "6dB_3", 
+        "pulser2": "6dB_1"
       }, 
       "runs": [
         211, 
@@ -1924,7 +1989,8 @@
       "attenuators": {
         "dia1": "10dB_1", 
         "dia2": "6dB_2", 
-        "pulser": "6dB_3//6dB_1"
+        "pulser1": "6dB_3", 
+        "pulser2": "6dB_1"
       }, 
       "runs": [
         211, 
@@ -1940,7 +2006,7 @@
       "attenuators": {
         "dia1": "10dB_1", 
         "dia2": "6dB_2", 
-        "pulser": "6dB_3//6dB_1"
+        "pulser": "6dB_3 + 6dB_1"
       }, 
       "runs": [
         222, 
