@@ -1415,10 +1415,13 @@ if __name__ == "__main__":
     diamond = args.dia
     a = Elementary(tc, True, get_resolution())
     sel = RunSelection(testcampaign=tc)
-    sel.select_runs_from_runplan(run_plan, ch=diamond) if not args.runs else sel.select_runs([int(args.runplan), int(args.dia)], args.dia2)
+    sel.select_runs_from_runplan(run_plan, ch=diamond) if not args.runs else sel.select_runs([int(args.runplan), int(args.dia if args.dia else args.runplan)], args.dia2 if args.dia2 else 1)
     a.print_banner('STARTING PAD-ANALYSIS COLLECTION OF RUNPLAN {0}'.format(run_plan))
     a.print_testcampaign()
 
     z = AnalysisCollection(sel, load_tree=args.tree, verbose=True)
     z.print_loaded()
     z.print_elapsed_time(st, 'Instantiation')
+    if args.runs:
+        z.Currents.draw_indep_graphs()
+        raw_input('Press any button to exit')
