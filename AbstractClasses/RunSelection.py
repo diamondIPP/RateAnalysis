@@ -247,10 +247,15 @@ class RunSelection(Elementary):
             if maxrun >= run >= minrun:
                 self.select_run(run, do_assert=False)
 
-    def select_runs(self, run_list, do_assert=False):
-        assert type(run_list) is list, 'The run_list has to be a list of integers'
+    def select_runs(self, run_list, dia=1):
         for run in run_list:
-            self.select_run(run, do_assert=do_assert)
+            self.select_run(run)
+        parser = ConfigParser()
+        parser.read('Configuration/DiamondAliases.cfg')
+        self.SelectedType = 'CurrentInfo'
+        self.SelectedDiamondNr = dia
+        self.SelectedDiamond = parser.get('ALIASES', self.RunInfos[self.get_selected_runs()[0]]['dia{0}'.format(dia)])
+        self.SelectedBias = self.RunInfos[self.get_selected_runs()[0]]['dia{0}hv'.format(dia)]
 
     def unselect_unless_in_range(self, minrun, maxrun):
         for run in self.get_selected_runs():
@@ -427,10 +432,10 @@ class RunSelection(Elementary):
         self.SelectedType = str(self.RunPlan[plan]['type'])
 
         self.select_runs(runs)
-        self.SelectedBias = self.RunInfos[self.get_selected_runs()[0]]['dia{0}hv'.format(ch)]
         parser = ConfigParser()
         parser.read('Configuration/DiamondAliases.cfg')
         self.SelectedDiamond = parser.get('ALIASES', self.RunInfos[self.get_selected_runs()[0]]['dia{0}'.format(ch)])
+        self.SelectedBias = self.RunInfos[self.get_selected_runs()[0]]['dia{0}hv'.format(ch)]
         self.SelectedDiamondNr = ch
 
     def add_selection_to_runplan(self, plan_nr, run_type='rate scan', parent=None):

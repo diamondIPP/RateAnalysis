@@ -1405,15 +1405,17 @@ if __name__ == "__main__":
     main_parser = ArgumentParser()
     main_parser.add_argument('runplan', nargs='?', default=3)
     main_parser.add_argument('dia', nargs='?', default=1, type=int)
+    main_parser.add_argument('dia2', nargs='?', default=1, type=int)
     main_parser.add_argument('-tc', '--testcampaign', nargs='?', default='')
     main_parser.add_argument('-t', '--tree', default=True, action='store_false')
+    main_parser.add_argument('-r', '--runs', action='store_true')
     args = main_parser.parse_args()
     tc = args.testcampaign if args.testcampaign.startswith('201') else None
     run_plan = args.runplan
     diamond = args.dia
     a = Elementary(tc, True, get_resolution())
     sel = RunSelection(testcampaign=tc)
-    sel.select_runs_from_runplan(run_plan, ch=diamond)
+    sel.select_runs_from_runplan(run_plan, ch=diamond) if not args.runs else sel.select_runs([int(args.runplan), int(args.dia)], args.dia2)
     a.print_banner('STARTING PAD-ANALYSIS COLLECTION OF RUNPLAN {0}'.format(run_plan))
     a.print_testcampaign()
 
