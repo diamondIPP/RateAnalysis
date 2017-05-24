@@ -25,7 +25,7 @@ def log_warning(msg):
 def log_critical(msg):
     t = datetime.now().strftime('%H:%M:%S')
     print '{head} {t} --> {msg}'.format(t=t, msg=msg, head=colored('CRITICAL:', 'red'))
-    quit()
+    raise ValueError
 
 
 def log_message(msg, overlay=False):
