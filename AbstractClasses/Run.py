@@ -46,7 +46,7 @@ class Run(Elementary):
         self.runinfofile = self.load_run_info_path()
         self.maskfilepath = self.load_mask_file_dir()
         self.createNewROOTFiles = self.run_config_parser.getboolean('BASIC', 'createNewROOTFiles')
-        self.Digitizer = self.run_config_parser.get('BASIC', 'digitizer')
+        self.Digitiser = self.run_config_parser.get('BASIC', 'digitizer') if self.DUTType == 'pad' else None
 
         # run info
         self.DefaultInfo = self.load_default_info()
