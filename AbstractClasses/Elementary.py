@@ -369,22 +369,21 @@ class Elementary(object):
         return string
 
     @staticmethod
-    def do_pickle(path, function, value=None, params=None):
+    def do_pickle(path, function, value=None, params=None, redo=False):
         if value is not None:
             f = open(path, 'w')
             pickle.dump(value, f)
             f.close()
             return value
-        try:
+        if file_exists(path) and not redo:
             f = open(path, 'r')
-            ret_val = pickle.load(f)
-            f.close()
-        except IOError:
+            return pickle.load(f)
+        else:
             ret_val = function() if params is None else function(params)
             f = open(path, 'w')
             pickle.dump(ret_val, f)
             f.close()
-        return ret_val
+            return ret_val
 
     @staticmethod
     def set_root_output(status=True):
