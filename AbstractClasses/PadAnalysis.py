@@ -151,17 +151,16 @@ class PadAnalysis(Analysis):
         num = self.get_signal_number(region, peak_integral, sig_type)
         return self.SignalDefinition.format(pol=self.Polarity, num=num)
 
-    def set_signal_definitions(self, use_time=True, sig_region=None, ped_region=None, peak_int=None):
+    def set_signal_definitions(self, use_time=True, sig_region=None, peak_int=None):
         signal = 'TimeIntegralValues' if use_time else 'IntegralValues'
         signal = '({{pol}}*{sig}[{{num}}])'.format(sig=signal)
         print 'changed SignalDefinition to:', signal
         self.SignalDefinition = signal
-        self.update_signal_definitions(sig_region, ped_region, peak_int)
+        self.update_signal_definitions(sig_region, peak_int)
 
-    def update_signal_definitions(self, sig_region=None, ped_region=None, peak_int=None):
+    def update_signal_definitions(self, sig_region=None, peak_int=None):
         self.SignalNumber = self.get_signal_number(sig_region, peak_int)
         self.SignalName = self.get_signal_name(sig_region, peak_int)
-        self.PedestalName = self.get_pedestal_name(ped_region, peak_int)
 
     def get_pedestal_name(self, region=None, peak_int=None):
         return self.get_signal_name(region=region, peak_integral=peak_int, sig_type='pedestal')
@@ -175,7 +174,6 @@ class PadAnalysis(Analysis):
         self.save_dir = '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.RunNumber, dia=self.run.diamondname[ch])
         self.Polarity = self.get_polarity()
         self.SignalName = self.get_signal_name()
-        self.PedestalName = self.get_pedestal_name()
 
     # ==========================================================================
     # region BEAM PROFILE
@@ -282,7 +280,7 @@ class PadAnalysis(Analysis):
         else:
             h = TProfile2D('signal_map', 'Signal Map', x_bins, x[0], x[1], y_bins, y[0], y[1])
         self.set_root_output(1)
-        signal = '{sig}-{pol}*{ped}'.format(sig=self.SignalName, ped=self.PedestalName, pol=self.Polarity)
+        signal = '{sig}-{pol}*{ped}'.format(sig=self.SignalName, ped=self.Pedestal.SignalName, pol=self.Polarity)
         self.log_info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.DiamondName, run=self.RunNumber, mode='hit' if hitmap else 'signal '))
         cut = self.Cut.all_cut if cut is None else cut
         cut = self.Cut.generate_special_cut(excluded=['fiducial']) if not fid else cut
@@ -649,7 +647,7 @@ class PadAnalysis(Analysis):
         cut = self.Cut.generate_special_cut(excluded=['timing']) if cut is None else cut
         # cut = self.Cut.all_cut if cut is None else cut
         prof = '' if not tprofile else ':'
-        sig = '' if not tprofile else '{sig}-{ped}'.format(sig=self.SignalName, ped=self.PedestalName)
+        sig = '' if not tprofile else '{sig}-{ped}'.format(sig=self.SignalName, ped=self.Pedestal.SignalName)
         gStyle.SetPalette(55)
         peaks = 'IntegralPeaks[{num}]/2.' if not corr else 'IntegralPeakTime[{num}]'
         peaks = peaks.format(num=self.SignalNumber)
@@ -752,7 +750,7 @@ class PadAnalysis(Analysis):
             ped_fit = self.Pedestal.draw_disto_fit(cut=cut, save=False)
             sig_name += '-{pol}*{ped}'.format(ped=ped_fit.Parameter(1), pol=ped_pol)
         elif evnt_corr:
-            sig_name += '-{pol}*{ped}'.format(ped=self.PedestalName, pol=ped_pol)
+            sig_name += '-{pol}*{ped}'.format(ped=self.Pedestal.SignalName, pol=ped_pol)
         return sig_name
 
     def make_signal_time_histos(self, signal_name=None, evnt_corr=False, off_corr=False, bin_corr=False, show=True):
