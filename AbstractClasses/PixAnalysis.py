@@ -4,7 +4,7 @@
 # created some time in 2016 by D. Sanz (sandiego@phys.ethz.ch), maintained by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from ROOT import TH2D, TH1D, gROOT, TFormula, TCut, TH1I, TProfile, THStack, TProfile2D, TF1, TGraph, TPie, gRandom, TH3D, TMultiGraph, TCutG
+from ROOT import TH2D, TH1D, gROOT, TFormula, TCut, TH1I, TProfile, THStack, TProfile2D, TF1, TGraph, TPie, gRandom, TH3D, TMultiGraph, TCutG, TH1F
 from argparse import ArgumentParser
 from collections import OrderedDict, Counter
 from copy import deepcopy
@@ -26,35 +26,36 @@ __author__ = 'DA & Micha'
 # MAIN CLASS
 # ==============================================
 class PixAnalysis(Analysis):
-    def __init__(self, run, dut=1, verbose=False, binning=10000):
+    def __init__(self, run, dut=1, load_tree=True, verbose=False, binning=10000):
 
-        Analysis.__init__(self, run, verbose=verbose, binning=binning)
+        Analysis.__init__(self, run, verbose=verbose, binning=binning, load_tree=load_tree)
 
         # main
         self.RunNumber = run
         self.DiamondName = self.load_diamond_name(dut)
         self.DiamondNumber = dut
-        self.Bias = self.run.bias[dut - 1]
+        self.Bias = self.run.Bias[dut - 1]
         self.Dut = dut + 3
         self.save_dir = '{dia}/{run}/'.format(run=str(self.RunNumber).zfill(3), dia=self.DiamondName)
         self.NRocs = self.load_n_rocs()
 
-        # stuff
-        self.plots.save_dir = self.save_dir
+        if load_tree:
+            # stuff
+            self.plots.save_dir = self.save_dir
 
-        # cuts
-        self.Settings = self.plots.Settings
-        self.Cut = CutPix(self, dut)
+            # cuts
+            self.Settings = self.plots.Settings
+            self.Cut = CutPix(self, dut)
 
-        # alignment
-        self.IsAligned = self.check_alignment()
+            # alignment
+            # self.IsAligned = self.check_alignment()
 
-        # pulse height calibrations
-        self.Fit = None
-        self.Parameters = None
-        self.Vcals = None
-        self.Points = None
-        self.get_calibration_data()
+            # pulse height calibrations
+            self.Fit = None
+            self.Parameters = None
+            self.Vcals = None
+            self.Points = None
+            self.get_calibration_data()
 
         # currents
         self.Currents = Currents(self)
