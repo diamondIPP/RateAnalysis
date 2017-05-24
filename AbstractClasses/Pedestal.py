@@ -50,12 +50,13 @@ class PedestalAnalysis(Elementary):
     def draw_disto(self, name=None, cut=None, logy=False, show=True, save=True, redo=False):
         show = False if not save else show
         cut = self.Cut.all_cut if cut is None else TCut(cut)
-        picklepath = self.make_pickle_path('Pedestal', 'Disto', run=self.RunNumber, ch=self.DiamondNumber, suf=cut.GetName())
+        signal_name = self.SignalName if name is None else name
+        picklepath = self.make_pickle_path('Pedestal', 'Disto', run=self.RunNumber, ch=self.DiamondNumber, suf='{c}_{r}'.format(c=cut.GetName(), r=self.get_all_signal_names()[signal_name]))
 
         def func():
             self.log_info('Drawing pedestal distribution for {d} of run {r}'.format(d=self.DiamondName, r=self.RunNumber))
             h1 = TH1F('h_pd', 'Pedestal Distribution', 600, -150, 150)
-            self.Tree.Draw('{name}>>h_pd'.format(name=self.SignalName if name is None else name), cut, 'goff')
+            self.Tree.Draw('{name}>>h_pd'.format(name=signal_name), cut, 'goff')
             self.format_histo(h1, x_tit='Pedestal [au]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)
             return h1
 
@@ -140,3 +141,15 @@ class PedestalAnalysis(Elementary):
 
     def draw_sigma(self, signal_name=None):
         return self.draw_pulse_height(signal_name, sigma=True)
+
+    def compare(self):
+        g = self.make_tgrapherrors('g_cp', 'Pedestal Comparison')
+        for i, reg in enumerate(self.Run.pedestal_regions):
+            name = self.get_signal_name(region=reg)
+            fit = self.draw_disto_fit(name, show=False)
+            g.SetPoint(i, i, fit.Parameter(1))
+            g.SetPointError(i, 0, fit.ParError(1))
+        for i, reg in enumerate(self.Run.pedestal_regions):
+            g.GetXaxis().SetBinLabel(g.GetXaxis().FindBin(i), reg)
+        self.format_histo(g, x_tit='Region Integral', y_tit='Mean Pedestal',  y_off=1.4)
+        self.save_histo(g, 'PedestalComparison', lm=.12)
