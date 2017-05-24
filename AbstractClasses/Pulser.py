@@ -49,7 +49,7 @@ class PulserAnalysis(Elementary):
         nbins = entries / evts_per_bin
         h = TProfile('hpr', 'Pulser Rate', nbins, 0, entries)
         self.Tree.Draw('pulser*100:Entry$>>hpr', cut, 'goff')
-        self.format_histo(h, x_tit='Event Number', y_tit='Pulser Fraction [%]', y_off=1.3, fill_color=self.FillColor, stats=0)
+        self.format_histo(h, x_tit='Event Number', y_tit='Pulser Fraction [%]', y_off=1.3, fill_color=self.FillColor, stats=0, y_range=[0, 100])
         self.save_histo(h, 'PulserRate', show, lm=.13, draw_opt='hist')
         return h
 
@@ -62,9 +62,9 @@ class PulserAnalysis(Elementary):
         return fit.Parameter(0), fit.ParError(0)
 
     def calc_real_fraction(self):
-        in_rate = 40 if self.Ana.run.flux < 10 else 100
+        in_rate = 40 if self.Ana.run.Flux < 10 else 100
         diamond_size = .4 * .4
-        particle_rate = self.Ana.run.flux * diamond_size
+        particle_rate = self.Ana.run.Flux * diamond_size
         return in_rate / particle_rate
 
     def draw_pulseheight(self, binning=10000, draw_opt='histe', show=True):
@@ -72,7 +72,7 @@ class PulserAnalysis(Elementary):
         entries = self.Run.n_entries
         nbins = entries / binning
         h = TProfile('hpph', 'Pulser Pulse Height', nbins, 0, entries)
-        signal = self.Ana.generate_signal_name(self.Ana.PulserName, evnt_corr=False, off_corr=True, cut=self.PulserCut)
+        signal = self.Ana.generate_signal_name(self.SignalName, evnt_corr=False, off_corr=True, cut=self.PulserCut)
         self.Tree.Draw('{sig}:Entry$>>hpph'.format(sig=signal), self.PulserCut, 'goff')
         values = [h.GetBinContent(i) for i in xrange(h.GetNbinsX()) if h.GetBinContent(i)]
         y_range = increased_range([min(values), max(values)], .7, .7)
@@ -93,7 +93,10 @@ class PulserAnalysis(Elementary):
         return fit.Parameter(0), fit.ParError(0)
 
     def find_range(self, corr):
-        n = self.Ana.tree.Draw(self.Ana.generate_signal_name(self.Ana.PulserName, off_corr=corr, evnt_corr=False, cut=self.PulserCut), self.PulserCut, 'goff', 10000, self.Ana.StartEvent)
+        n, i = 0, 0
+        while not n:
+            n = self.Ana.tree.Draw(self.Ana.generate_signal_name(self.SignalName, off_corr=corr, evnt_corr=False, cut=self.PulserCut), self.PulserCut, 'goff', 10000, self.Ana.StartEvent + i)
+            i += 10000
         values = sorted([self.Ana.tree.GetV1()[i] for i in xrange(n)])
         ran = mean(values[:5]), mean(values[-5:])
         return increased_range(ran, .1, .3)
@@ -102,7 +105,7 @@ class PulserAnalysis(Elementary):
         """ Shows the distribution of the pulser integrals. """
         cut = self.Cut.generate_pulser_cut(beam_on=beam_on)
         x = self.find_range(corr)
-        h = self.Ana.show_signal_histo(cut=cut, sig=self.Ana.PulserName, show=False, off_corr=corr, evnt_corr=False, binning=binning, events=events, start=start, save=False, x_range=x)
+        h = self.Ana.show_signal_histo(cut=cut, sig=self.SignalName, show=False, off_corr=corr, evnt_corr=False, binning=binning, events=events, start=start, redo=False, x_range=x)
         self.format_histo(h, name='p_hd', stats=stats, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
         self.save_histo(h, 'PulserDistribution', show, logy=True, lm=.12)
         return h
@@ -141,15 +144,14 @@ class PulserAnalysis(Elementary):
     def draw_peak_timing(self, show=True, corr=False):
         self.Ana.draw_peak_timing('', 'pulser', ucut=self.PulserCut, show=show, draw_cut=False, corr=corr)
 
-    def draw_pedestal(self, show=True, fit=True, x_range=None):
+    def draw_pedestal(self, show=True):
         # region = 'ac' if 'ac' in self.Ana.run.pedestal_regions else None
-        region = None
-        return self.Ana.show_pedestal_histo(cut=self.PulserCut, show=show, fit=fit, x_range=x_range, region=region)
+        return self.Ana.draw_pedestal_disto_fit(name=self.PedestalName, cut=self.PulserCut, show=show)
 
     def compare_pedestal(self, show=True):
-        self.Ana.show_pedestal_histo(show=False, fit=False, x_range=[-20, 20])
+        self.Ana.draw_pedestal_disto_fit(show=False)
         h1 = deepcopy(self.Ana.PedestalHisto)
-        self.draw_pedestal(show=False, fit=False, x_range=[-20, 20])
+        self.draw_pedestal(show=False)
         h2 = self.Ana.PedestalHisto
         legend = self.make_legend(.7)
         names = ['Signal', 'Pulser']
