@@ -283,10 +283,12 @@ class Elementary(object):
                 if hasattr(self, 'RunNumber'):
                     run_string = str(self.RunNumber)
                 elif hasattr(self, 'RunPlan'):
-                    run_string = 'RunPlan{r}'.format(r=self.RunPlan.strip('0'))
+                    rp = self.RunPlan
+                    run_string = 'RunPlan{r}'.format(r=rp[1:] if rp[0] == '0' else rp)
                 else:
                     return
                 path = join('/home/micha/mounts/psi', 'Diamonds', self.DiamondName, 'BeamTests', make_tc_str(self.TESTCAMPAIGN, txt=False), run_string, file_name)
+                canvas.SaveAs('{p}.pdf'.format(p=path))
                 canvas.SaveAs('{p}.png'.format(p=path))
 
     def save_plots(self, savename, sub_dir=None, canvas=None, ind=0, ch='dia', x=1, y=1, prnt=True, save=True, show=True):
