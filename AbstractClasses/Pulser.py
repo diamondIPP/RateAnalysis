@@ -22,12 +22,22 @@ class PulserAnalysis(Elementary):
         self.save_dir = self.Ana.save_dir
         self.PulserCut = self.Cut.generate_pulser_cut()
         self.Polarity = self.Ana.PulserPolarity
+        self.SignalName = self.get_signal_name()
+        self.PedestalName = self.get_pedestal_name()
         self.Type = self.load_type()
 
         self.DiamondName = self.Ana.DiamondName
         self.RunNumber = self.Ana.RunNumber
 
         self.ROOTObjects = []
+
+    def get_signal_name(self, peak_int=None):
+        num = self.Ana.get_signal_number('', peak_int, 'pulser')
+        return self.Ana.SignalDefinition.format(pol=self.Polarity, num=num)
+
+    def get_pedestal_name(self, peak_int=None):
+        region = self.ana_config_parser.get('BASIC', 'pulser_pedestal') if self.ana_config_parser.has_option('BASIC', 'pulser_pedestal') else 'ac'
+        return self.Ana.get_pedestal_name(region, self.Ana.PeakIntegral if None else peak_int)
 
     def load_type(self):
         return str(self.Ana.RunInfo['pulser']) if 'pulser' in self.Ana.RunInfo else None
