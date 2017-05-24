@@ -470,8 +470,9 @@ class AnalysisCollection(Elementary):
             return gr1
 
         self.ProgressBar.finish()
-        graph = func() if save else None
-        return self.do_pickle(pickle_path, func, graph)
+
+    def draw_noise(self, flux=True, show=True, save=False):
+        return self.draw_pedestals(flux=flux, show=show, save=save, sigma=True)
 
     def draw_pulser_pedestals(self, show=True, save=False):
         self.draw_pedestals(cut=self.FirstAnalysis.Pulser.PulserCut, show=show, save=save)
