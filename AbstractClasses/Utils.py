@@ -58,10 +58,13 @@ def untitle(string):
     return s.strip(' ')
 
 
-def set_statbox(x=.95, y=.88, w=.16, entries=3, only_fit=False, opt=None, form=None):
+def set_statbox(x=.95, y=.88, w=.16, entries=3, only_fit=False, only_entries=False, opt=None, form=None):
     if only_fit:
         gStyle.SetOptStat(0011)
         gStyle.SetOptFit(1)
+    if only_entries:
+        gStyle.SetOptStat(1000000010)
+        entries = 6
     gStyle.SetOptStat(opt) if opt is not None else do_nothing()
     gStyle.SetFitFormat(form) if form is not None else do_nothing()
     gStyle.SetStatX(x)
