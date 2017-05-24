@@ -438,6 +438,9 @@ class Analysis(Elementary):
             time_bins.append(self.run.get_time_at_event(event))
         return time_bins
 
+    def get_minute_time_binning(self):
+        return [(t - self.run.startTime) / 60e3 for t in self.time_binning]
+
     def draw_time(self, show=True):
         entries = self.tree.Draw('time', '', 'goff')
         t = [self.tree.GetV1()[i] for i in xrange(entries)]
