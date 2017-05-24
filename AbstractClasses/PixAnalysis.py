@@ -316,6 +316,26 @@ class PixAnalysis(Analysis):
         self.save_histo(h, 'ADCDisto', show, lm=0.13, logy=True)
         return h
 
+    def draw_vcal_disto(self, cut=None, show=True, col=None, pix=None, electrons=False):
+        h = TH1F('h_vcal', 'vcal Distribution {d}'.format(d=self.DiamondName), 500, 0, 1000 * (47 if electrons else 1))
+        cut_string = deepcopy(self.Cut.HitMapCut) if cut is None else TCut(cut)
+        cut_string += 'plane == {n}'.format(n=self.Dut)
+        cut_string += 'n_hits[{n}] == 1'.format(n=self.Dut)
+        cut_string += 'col=={c}'.format(c=col) if col is not None else ''
+        cut_string += 'col=={c}&&row=={r}'.format(c=pix[0], r=pix[1]) if pix is not None else ''
+        self.set_root_output(False)
+        n = self.tree.Draw('adc:col:row', cut_string, 'goff')
+        for i in xrange(n):
+            row = int(self.tree.GetV3()[i])
+            col = int(self.tree.GetV2()[i])
+            adc = self.tree.GetV1()[i]
+            self.Fit.SetParameters(*self.Parameters[self.Dut - 4][col][row])
+            h.Fill(self.Fit.GetX(adc) * (47 if electrons else 1))
+        set_statbox(entries=8, opt=1000000010)
+        self.format_histo(h, x_tit='vcal', y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor)
+        self.save_histo(h, 'VcalDisto', show, lm=0.13)
+        return h
+
     def check_adc(self):
         for i in xrange(10000, 12000):
             self.tree.GetEntry(i)
