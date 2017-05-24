@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from Elementary import Elementary
-from ROOT import TH2F, gStyle, TH1F
+from ROOT import TH2F, gStyle, TH1F, TCut, gROOT
 from Utils import set_statbox, set_drawing_range, FitRes
 from copy import deepcopy
 from numpy import array, mean
@@ -27,6 +27,8 @@ class PedestalAnalysis(Elementary):
         self.DiamondName = self.Ana.DiamondName
         self.DiamondNumber = self.Ana.DiamondNumber
         self.RunNumber = self.Ana.RunNumber
+
+        self.Histogram = None
 
         self.ROOTObjects = []
 
@@ -52,15 +54,17 @@ class PedestalAnalysis(Elementary):
 
         def func():
             self.log_info('Drawing pedestal distribution for {d} of run {r}'.format(d=self.DiamondName, r=self.RunNumber))
-            h1 = TH1F('h_pd', 'Pedestal Distribution', 400, -100, 100)
+            h1 = TH1F('h_pd', 'Pedestal Distribution', 600, -150, 150)
             self.Tree.Draw('{name}>>h_pd'.format(name=self.SignalName if name is None else name), cut, 'goff')
-            self.format_histo(h1, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)
+            self.format_histo(h1, x_tit='Pedestal [au]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)
             return h1
+
         if show or save:
             set_statbox(entries=8, opt=1000000010)
         h = self.do_pickle(picklepath, func, redo=redo)
         set_drawing_range(h, rfac=.2)
         self.save_histo(h, 'PedestalDistribution', show, save=save, logy=logy, lm=.13)
+        self.Histogram = h
         return h
 
     def draw_disto_fit(self, name=None, cut=None, logy=False, show=True, save=True, redo=False):
@@ -76,7 +80,24 @@ class PedestalAnalysis(Elementary):
         f.SetLineStyle(2)
         h.GetListOfFunctions().Add(f)
         self.save_histo(h, 'PedestalDistributionFit', show, save=save, logy=logy, lm=.13)
+        self.Histogram = h
         return FitRes(fit_pars)
+
+    def draw_sigma_selection(self, show=True, redo=False):
+        self.draw_disto_fit(cut=self.Cut.generate_special_cut(excluded=['ped_sigma']), logy=True, show=show, redo=redo)
+        h = self.Histogram
+        x = self.Cut.ped_range
+        g = self.draw_box(x[0], -1e9, x[1], 1e9, color=self.FillColor, width=2, fillstyle=3001, show=False)
+        l1 = self.make_legend(.7, .63, nentries=3)
+        l1.AddEntry(g, 'Pedestal Cut', 'fl')
+        l1.AddEntry(h.GetListOfFunctions()[1], 'Fitting Range', 'l')
+        l1.AddEntry(h.GetListOfFunctions()[2], 'Fit Function', 'l')
+        self.format_histo(h)
+        set_drawing_range(h, rfac=1)
+        g.Draw('f')
+        g.Draw('l')
+        self.save_histo(h, 'PedSigmaSelection', show=show, logy=True, l=l1, canvas=gROOT.GetListOfCanvases()[-1], draw_opt='same')
+        # self.save_plots('PedSigmaSelection', show=show)
 
     def draw_signal_time(self, signal_name=None, show=True):
         signal_name = self.Ana.generate_signal_name(self.SignalName if signal_name is None else signal_name, evnt_corr=False)
