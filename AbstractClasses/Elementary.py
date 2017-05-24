@@ -455,12 +455,15 @@ class Elementary(object):
         self.ROOTObjects.append(l)
         return l
 
-    def draw_box(self, x1, y1, x2, y2, color=1, width=1, style=1, name='box'):
+    def draw_box(self, x1, y1, x2, y2, color=1, width=1, style=1, fillstyle=None, name='box', show=True):
         l = TCutG(name, 5, array([x1, x1, x2, x2, x1], 'd'), array([y1, y2, y2, y1, y1], 'd'))
         l.SetLineColor(color)
+        l.SetFillColor(color)
         l.SetLineWidth(width)
         l.SetLineStyle(style)
-        l.Draw('same')
+        l.SetFillStyle(fillstyle) if fillstyle is not None else do_nothing()
+        if show:
+            l.Draw('same')
         self.ROOTObjects.append(l)
         return l
 
