@@ -16,7 +16,7 @@ from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectr
 # global test campaign and resolution
 tc = None
 res = None
-default_tc = '201610'
+default_tc = '201705'
 
 
 class Elementary(object):
@@ -283,10 +283,12 @@ class Elementary(object):
                 if hasattr(self, 'RunNumber'):
                     run_string = str(self.RunNumber)
                 elif hasattr(self, 'RunPlan'):
-                    run_string = 'RunPlan{r}'.format(r=self.RunPlan.strip('0'))
+                    rp = self.RunPlan
+                    run_string = 'RunPlan{r}'.format(r=rp[1:] if rp[0] == '0' else rp)
                 else:
                     return
                 path = join('/home/micha/mounts/psi', 'Diamonds', self.DiamondName, 'BeamTests', make_tc_str(self.TESTCAMPAIGN, txt=False), run_string, file_name)
+                canvas.SaveAs('{p}.pdf'.format(p=path))
                 canvas.SaveAs('{p}.png'.format(p=path))
 
     def save_plots(self, savename, sub_dir=None, canvas=None, ind=0, ch='dia', x=1, y=1, prnt=True, save=True, show=True):
@@ -367,22 +369,21 @@ class Elementary(object):
         return string
 
     @staticmethod
-    def do_pickle(path, function, value=None, params=None):
+    def do_pickle(path, function, value=None, params=None, redo=False):
         if value is not None:
             f = open(path, 'w')
             pickle.dump(value, f)
             f.close()
             return value
-        try:
+        if file_exists(path) and not redo:
             f = open(path, 'r')
-            ret_val = pickle.load(f)
-            f.close()
-        except IOError:
+            return pickle.load(f)
+        else:
             ret_val = function() if params is None else function(params)
             f = open(path, 'w')
             pickle.dump(ret_val, f)
             f.close()
-        return ret_val
+            return ret_val
 
     @staticmethod
     def set_root_output(status=True):
@@ -454,12 +455,15 @@ class Elementary(object):
         self.ROOTObjects.append(l)
         return l
 
-    def draw_box(self, x1, y1, x2, y2, color=1, width=1, style=1, name='box'):
+    def draw_box(self, x1, y1, x2, y2, color=1, width=1, style=1, fillstyle=None, name='box', show=True):
         l = TCutG(name, 5, array([x1, x1, x2, x2, x1], 'd'), array([y1, y2, y2, y1, y1], 'd'))
         l.SetLineColor(color)
+        l.SetFillColor(color)
         l.SetLineWidth(width)
         l.SetLineStyle(style)
-        l.Draw('same')
+        l.SetFillStyle(fillstyle) if fillstyle is not None else do_nothing()
+        if show:
+            l.Draw('same')
         self.ROOTObjects.append(l)
         return l
 
@@ -619,7 +623,7 @@ class Elementary(object):
     def fit_fwhm(histo, fitfunc='gaus', do_fwhm=True, draw=False):
         h = histo
         if do_fwhm:
-            peak_pos = h.GetBinCenter(h.GetMaximumBin())
+            peak_pos = h.GetMean()
             bin1 = h.FindFirstBinAbove(h.GetMaximum() / 2)
             bin2 = h.FindLastBinAbove(h.GetMaximum() / 2)
             fwhm = h.GetBinLowEdge(bin2 + 2) - h.GetBinLowEdge(bin1 - 1)

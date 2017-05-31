@@ -19,6 +19,7 @@ from Elementary import Elementary
 from Extrema import Extrema2D
 from TelescopeAnalysis import Analysis
 from Pulser import PulserAnalysis
+from Pedestal import PedestalAnalysis
 from Utils import *
 
 __author__ = 'micha'
@@ -57,7 +58,6 @@ class PadAnalysis(Analysis):
             self.SignalNumber = self.get_signal_number()
             self.SignalName = self.get_signal_name()
             self.PedestalName = self.get_pedestal_name()
-            self.PulserName = self.get_pulser_name()
 
             # cuts
             self.Cut = ChannelCut(self, self.channel)
@@ -68,13 +68,14 @@ class PadAnalysis(Analysis):
 
             # subclasses
             self.Pulser = PulserAnalysis(self)
+            self.Pedestal = PedestalAnalysis(self)
 
         # currents
         self.Currents = Currents(self)
 
         # graphs
         self.PulseHeight = None
-        self.Pedestal = None
+        # self.Pedestal = None
         # histograms
         self.PedestalHisto = None
         self.SignalTime = None
@@ -150,25 +151,19 @@ class PadAnalysis(Analysis):
         num = self.get_signal_number(region, peak_integral, sig_type)
         return self.SignalDefinition.format(pol=self.Polarity, num=num)
 
-    def set_signal_definitions(self, use_time=True, sig_region=None, ped_region=None, peak_int=None):
+    def set_signal_definitions(self, use_time=True, sig_region=None, peak_int=None):
         signal = 'TimeIntegralValues' if use_time else 'IntegralValues'
         signal = '({{pol}}*{sig}[{{num}}])'.format(sig=signal)
         print 'changed SignalDefinition to:', signal
         self.SignalDefinition = signal
-        self.update_signal_definitions(sig_region, ped_region, peak_int)
+        self.update_signal_definitions(sig_region, peak_int)
 
-    def update_signal_definitions(self, sig_region=None, ped_region=None, peak_int=None):
+    def update_signal_definitions(self, sig_region=None, peak_int=None):
         self.SignalNumber = self.get_signal_number(sig_region, peak_int)
         self.SignalName = self.get_signal_name(sig_region, peak_int)
-        self.PedestalName = self.get_pedestal_name(ped_region, peak_int)
-        self.PulserName = self.get_pulser_name()
 
     def get_pedestal_name(self, region=None, peak_int=None):
         return self.get_signal_name(region=region, peak_integral=peak_int, sig_type='pedestal')
-
-    def get_pulser_name(self, peak_int=None):
-        num = self.get_signal_number('', peak_int, 'pulser')
-        return self.SignalDefinition.format(pol=self.PulserPolarity, num=num)
     # endregion
 
     def set_channel(self, ch):
@@ -179,7 +174,6 @@ class PadAnalysis(Analysis):
         self.save_dir = '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.RunNumber, dia=self.run.diamondname[ch])
         self.Polarity = self.get_polarity()
         self.SignalName = self.get_signal_name()
-        self.PedestalName = self.get_pedestal_name()
 
     # ==========================================================================
     # region BEAM PROFILE
@@ -286,7 +280,7 @@ class PadAnalysis(Analysis):
         else:
             h = TProfile2D('signal_map', 'Signal Map', x_bins, x[0], x[1], y_bins, y[0], y[1])
         self.set_root_output(1)
-        signal = '{sig}-{pol}*{ped}'.format(sig=self.SignalName, ped=self.PedestalName, pol=self.Polarity)
+        signal = '{sig}-{pol}*{ped}'.format(sig=self.SignalName, ped=self.Pedestal.SignalName, pol=self.Polarity)
         self.log_info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.DiamondName, run=self.RunNumber, mode='hit' if hitmap else 'signal '))
         cut = self.Cut.all_cut if cut is None else cut
         cut = self.Cut.generate_special_cut(excluded=['fiducial']) if not fid else cut
@@ -653,7 +647,7 @@ class PadAnalysis(Analysis):
         cut = self.Cut.generate_special_cut(excluded=['timing']) if cut is None else cut
         # cut = self.Cut.all_cut if cut is None else cut
         prof = '' if not tprofile else ':'
-        sig = '' if not tprofile else '{sig}-{ped}'.format(sig=self.SignalName, ped=self.PedestalName)
+        sig = '' if not tprofile else '{sig}-{ped}'.format(sig=self.SignalName, ped=self.Pedestal.SignalName)
         gStyle.SetPalette(55)
         peaks = 'IntegralPeaks[{num}]/2.' if not corr else 'IntegralPeakTime[{num}]'
         peaks = peaks.format(num=self.SignalNumber)
@@ -735,7 +729,7 @@ class PadAnalysis(Analysis):
     # ==========================================================================
     # region SIGNAL/PEDESTAL
     def print_off_results(self, prnt=True):
-        ph, ped, pul = self.draw_pulse_height(save=False), self.show_pedestal_histo(save=False), self.Pulser.draw_distribution_fit(save=False)
+        ph, ped, pul = self.draw_pulse_height(save=False), self.Pedestal.draw_disto_fit(save=False), self.Pulser.draw_distribution_fit(save=False)
         string = '{0:3.2f}\t{1:3.2f}\t{2:3.2f}'.format(ph.Parameter(0), ped.Parameter(1), pul.Parameter(1))
         if prnt:
             print 'Signal\tPedest.\tPulser'
@@ -748,86 +742,26 @@ class PadAnalysis(Analysis):
         # pedestal polarity is always the same as signal polarity
         ped_pol = '1'
         # change polarity if pulser has opposite polarity to signal
-        if signal == self.PulserName:
+        if signal == self.Pulser.SignalName:
             ped_pol = '-1' if self.PulserPolarity != self.Polarity else ped_pol
         if bin_corr:
             return sig_name
         elif off_corr:
-            ped_fit = self.show_pedestal_histo(cut=cut, save=False)
+            ped_fit = self.Pedestal.draw_disto_fit(cut=cut, save=False)
             sig_name += '-{pol}*{ped}'.format(ped=ped_fit.Parameter(1), pol=ped_pol)
         elif evnt_corr:
-            sig_name += '-{pol}*{ped}'.format(ped=self.PedestalName, pol=ped_pol)
+            sig_name += '-{pol}*{ped}'.format(ped=self.Pedestal.SignalName, pol=ped_pol)
         return sig_name
 
-    def make_signal_time_histos(self, ped=False, signal=None, evnt_corr=False, off_corr=False, show=True, bin_corr=False):
-        gROOT.SetBatch(1)
-        signal = self.SignalName if signal is None else signal
-        signal = signal if not ped else self.PedestalName
-        signal = self.generate_signal_name(signal, evnt_corr, off_corr, bin_corr)
-        # 2D Histogram
-        name = "signaltime_" + str(self.RunNumber)
-        xbins = array(self.time_binning)
-        x_min = -50 if not ped else -20
-        x_max = 500 if not ped else 20
-        bins = int(sqrt(self.BinSize)) if not ped else 80
-        h = TH2D(name, "signaltime", len(xbins) - 1, xbins, bins, x_min, x_max)
-        self.tree.Draw("{name}:time>>{histo}".format(histo=name, name=signal), self.Cut.all_cut, 'goff')
-        if show:
-            gROOT.SetBatch(0)
-            c = TCanvas('c', 'Pulse Height vs Time', 1000, 1000)
-            c.SetLeftMargin(.12)
-            self.format_histo(h, x_tit='time [ms]', y_tit='Pulse Height [au]', y_off=1.4)
-            h.Draw('colz')
-            self.save_plots('SignalTime', sub_dir=self.save_dir)
-            self.SignalTime = h
-            self.RootObjects.append(c)
-        gROOT.SetBatch(0)
+    def make_signal_time_histos(self, signal_name=None, evnt_corr=False, off_corr=False, bin_corr=False, show=True):
+        signal_name = self.generate_signal_name(self.SignalName if signal_name is None else signal_name, evnt_corr, off_corr, bin_corr)
+        h = TH2D('h_st', 'Signal vs. Time', len(self.time_binning) - 1, array(self.get_minute_time_binning()), 225, -50, 500)
+        set_statbox(only_entries=True, x=.83)
+        gStyle.SetPalette(53)
+        self.tree.Draw('{name}:(time - {s}) / 60000>>h_st'.format(name=signal_name, s=self.run.startTime), self.Cut.all_cut, 'goff')
+        self.format_histo(h, x_tit='Time [min]', y_tit='Pulse Height [au]', y_off=1.4)
+        self.save_histo(h, 'SignalTime', show, lm=.12, draw_opt='colz', rm=.15)
         return h
-
-    def draw_pedestal(self, binning=None, show=True):
-        bin_size = binning if binning is not None else self.BinSize
-        picklepath = 'Configuration/Individual_Configs/Pedestal/{tc}_{run}_{ch}_{bins}_Ped_Means.pickle'.format(tc=self.TESTCAMPAIGN, run=self.RunNumber, ch=self.channel, bins=bin_size)
-        gr = self.make_tgrapherrors('pedestal', 'Pedestal')
-
-        def func():
-            print 'calculating pedestal of ch', self.channel
-            if binning is not None:
-                self.set_bin_size(binning)
-            ped_time = self.make_signal_time_histos(ped=True, show=False)
-            gROOT.SetBatch(1)
-            means = []
-            empty_bins = 0
-            count = 0
-            for i in xrange(self.n_bins):
-                h_proj = ped_time.ProjectionY(str(i), i + 1, i + 1)
-                if h_proj.GetEntries() > 0:
-                    fit = self.fit_fwhm(h_proj)
-                    gr.SetPoint(count, (self.time_binning[i] - self.run.startTime) / 60e3, fit.Parameter(1))
-                    gr.SetPointError(count, 0, fit.ParError(1))
-                    count += 1
-                    means.append(fit.Parameter(1))
-                else:
-                    empty_bins += 1
-            if show:
-                gROOT.SetBatch(0)
-            if empty_bins:
-                self.log_info('Empty proj. bins:\t{0}'.format(str(empty_bins) + '/' + str(self.n_bins)))
-            fit_pars = gr.Fit('pol0', 'qs')
-            print 'mean:', fit_pars.Parameter(0), '+-', fit_pars.ParError(0)
-            c = TCanvas('bla', 'blub', 1000, 1000)
-            c.SetLeftMargin(.14)
-            gStyle.SetOptFit(1)
-            self.format_histo(gr, x_tit='time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6)
-            gr.Draw('alp')
-            gr.Draw()
-            self.save_plots('Pedestal', sub_dir=self.save_dir)
-            self.Pedestal = gr
-            self.RootObjects.append(c)
-            gROOT.SetBatch(0)
-            return means
-
-        all_means = func() if show else None
-        return self.do_pickle(picklepath, func, all_means)
 
     def draw_ph(self, show=True, binning=10000, save=True, corr=True, sig=None):
         show = False if not save else show
@@ -888,7 +822,7 @@ class PadAnalysis(Analysis):
                 self.set_bin_size(binning)
             tit_suffix = 'with eventwise Pedestal Correction' if evnt_corr else ''
             gr = self.make_tgrapherrors('signal', 'Pulse Height Evolution Bin{0} '.format(self.BinSize) + tit_suffix)
-            sig_time = self.make_signal_time_histos(evnt_corr=evnt_corr, signal=signal, show=False)
+            sig_time = self.make_signal_time_histos(evnt_corr=evnt_corr, signal_name=signal, show=False)
             empty_bins = 0
             count = 0
             self.set_root_output(False)
@@ -961,20 +895,28 @@ class PadAnalysis(Analysis):
         self.save_plots('PHEvolutionOverview{0}'.format(self.BinSize), sub_dir=self.save_dir)
         self.histos.append([h2, c])
 
-    def show_signal_histo(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None, binning=350, events=None, start=None, x_range=None, save=True):
+    def show_signal_histo(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None, binning=350, events=None, start=None, x_range=None, redo=False):
+        pickle_path = self.make_pickle_path('PulseHeight', 'Histo', suf='{b}_{c}'.format(b=binning, c=int(evnt_corr)), run=self.RunNumber, ch=self.DiamondNumber)
         x_range = [-50, 300] if x_range is None else x_range
-        self.log_info('drawing signal distribution for run {run} and {dia}...'.format(run=self.RunNumber, dia=self.DiamondName))
-        suffix = 'with Pedestal Correction' if evnt_corr else ''
-        self.set_root_output(False)
-        h = TH1F('signal b2', 'Pulse Height ' + suffix, binning, *x_range)
-        cut = self.Cut.all_cut if cut is None else cut
-        sig_name = self.SignalName if sig is None else sig
-        sig_name = self.generate_signal_name(sig_name, evnt_corr, off_corr, False, cut)
-        start_event = int(float(start)) if start is not None else 0
-        n_events = self.find_n_events(n=events, cut=str(cut), start=start_event) if events is not None else self.run.n_entries
-        self.tree.Draw('{name}>>signal b2'.format(name=sig_name), str(cut), 'goff', n_events, start_event)
-        self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=2, stats=0, fill_color=17)
-        self.save_histo(h, 'SignalDistribution', lm=.15, show=show, save=save)
+        cut = self.AllCuts if cut is None else cut
+
+        def func():
+            self.log_info('drawing signal distribution for run {run} and {dia}...'.format(run=self.RunNumber, dia=self.DiamondName))
+            suffix = 'with Pedestal Correction' if evnt_corr else ''
+            self.set_root_output(False)
+            h1 = TH1F('h_sd', 'Pulse Height ' + suffix, binning, *x_range)
+            sig_name = self.SignalName if sig is None else sig
+            sig_name = self.generate_signal_name(sig_name, evnt_corr, off_corr, False, cut)
+            start_event = int(float(start)) if start is not None else 0
+            n_events = self.find_n_events(n=events, cut=str(cut), start=start_event) if events is not None else self.run.n_entries
+            self.tree.Draw('{name}>>h_sd'.format(name=sig_name), str(cut), 'goff', n_events, start_event)
+            self.format_histo(h1, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=2, stats=0, fill_color=self.FillColor)
+            self.save_histo(h1, 'SignalDistribution', lm=.15, show=show, save=redo)
+            return h1
+
+        h = func() if redo else None
+        h = do_pickle(pickle_path, func, h)
+        self.draw_histo(h, lm=.15, show=show)
         return h
 
     def draw_signal_vs_peakpos(self, show=True, corr=False):
@@ -1061,120 +1003,6 @@ class PadAnalysis(Analysis):
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.format_histo(gr, x_tit='trigger cell', y_tit='pulse height [au]', y_off=1.2)
         self.histos.append(self.save_histo(gr, 'SignalVsTriggerCell', show, self.save_dir, lm=.11, draw_opt='alp'))
-
-    def show_pedestal_histo(self, region=None, peak_int=None, cut=None, fwhm=True, show=True, save=True, x_range=None, nbins=100, logy=False, fit=True):
-        show = False if not save else show
-        x_range = [-20, 30] if x_range is None else x_range
-        region = self.PedestalRegion if region is None else region
-        peak_int = self.PeakIntegral if peak_int is None else peak_int
-        cut = self.Cut.all_cut if cut is None else cut
-        cut = TCut('', cut) if type(cut) is str else cut
-        fw = 'fwhm' if fwhm else 'full'
-        suffix = '{reg}_{fwhm}_{cut}'.format(reg=region + str(peak_int), cut=cut.GetName(), fwhm=fw)
-        picklepath = 'Configuration/Individual_Configs/Pedestal/{tc}_{run}_{ch}_{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.RunNumber, ch=self.channel, suf=suffix)
-
-        def func(x=x_range):
-            self.set_root_output(show)
-            self.log_info('Making pedestal histo for region {reg}{int}...'.format(reg=region, int=peak_int))
-            if x[0] >= x[1]:
-                x = sorted(x)
-            set_statbox(.95, .88, entries=4, only_fit=True, w=.3)
-            h = TH1F('ped1', 'Pedestal Distribution', nbins, x[0], x[1])
-            name = self.get_pedestal_name(region, peak_int)
-            self.tree.Draw('{name}>>ped1'.format(name=name), cut, 'goff')
-            self.format_histo(h, name='Fit Result', x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)
-            self.draw_histo(h, '', show)
-            # generate large sigma if histogram is empty
-            if not h.GetEffectiveEntries():
-                for val in [-10, 0, 0, 10]:
-                    h.Fill(val)
-                return h.Fit('gaus', 'qs')
-            fit_pars = self.fit_fwhm(h, do_fwhm=fwhm, draw=fit)
-            if fit:
-                f = deepcopy(h.GetFunction('gaus'))
-                f.SetNpx(1000)
-                f.SetRange(x[0], x[1])
-                f.SetLineStyle(2)
-                h.GetListOfFunctions().Add(f)
-            self.save_histo(h, 'Pedestal_{reg}{cut}'.format(reg=region, cut=cut.GetName()), show, save=save, logy=logy, lm=.13)
-            self.PedestalHisto = h
-            return FitRes(fit_pars)
-
-        fit_par = func() if save else None
-        fit_par = self.do_pickle(picklepath, func, fit_par)
-        kinder_pickle(picklepath, fit_par)
-        return fit_par
-    
-    def draw_ped_sigma_selection(self, show=True):
-        f = self.show_pedestal_histo(cut=self.Cut.generate_special_cut(excluded=['ped_sigma']), nbins=512, x_range=[-50, 200], logy=True, show=False)
-        l = self.make_legend(.66, .96, nentries=3, name='fr', margin=.05, felix=False)
-        l.SetHeader('Fit Results')
-        l.AddEntry(0, 'Mean:', '')
-        l.AddEntry(0, '{0:5.2f} #pm {1:5.2f} ns'.format(f.Parameter(1), f.ParError(1)), '').SetTextAlign(32)
-        l.AddEntry(0, 'Sigma:', '')
-        l.AddEntry(0, '{0:5.2f} #pm {1:5.2f} ns'.format(f.Parameter(2), f.ParError(2)), '').SetTextAlign(32)
-        l.SetNColumns(2)
-        l.GetListOfPrimitives().First().SetTextAlign(22)
-        h = self.PedestalHisto
-        g = TCutG('cut_ped_sigma', 5)
-        x = self.Cut.ped_range
-        for i, (x, y) in enumerate([(x[0], -1e9), (x[0], +1e9), (x[1], +1e9), (x[1], -1e9), (x[0], -1e9)]):
-            g.SetPoint(i, x, y)
-        g.SetLineColor(827)
-        g.SetLineWidth(2)
-        g.SetFillColor(827)
-        g.SetFillStyle(3001)
-        self.format_histo(h, name='ped1', x_tit='Pulser Range Integral [au]', y_tit='Number of Entries', y_off=1.2, stats=0)
-        l1 = self.make_legend(.7, .7, nentries=3)
-        l1.AddEntry(g, 'Pedestal Cut', 'fl')
-        l1.AddEntry(h.GetListOfFunctions()[0], 'Fitting Range', 'l')
-        l1.AddEntry(h.GetListOfFunctions()[1], 'Fit Function', 'l')
-        self.draw_histo(h, '', show, logy=True, l=[l, l1])
-        g.Draw('f')
-        g.Draw('l')
-        h.Draw('same')
-        self.save_plots('PedSigmaSelection', self.save_dir)
-        self.RootObjects.append(g)
-
-    def compare_pedestals(self):
-        legend = TLegend(0.7, 0.7, 0.98, .9)
-        gr1 = TGraph()
-        gr1.SetTitle('pedestal comparison')
-        gr1.SetMarkerStyle(20)
-        gr2 = TGraph()
-        gr2.SetTitle('pedestal comparison with cuts')
-        gr2.SetMarkerStyle(20)
-        gr2.SetMarkerColor(2)
-        gr2.SetLineColor(2)
-        gr3 = TGraph()
-        gr3.SetTitle('pedestal comparison with cuts full fit')
-        gr3.SetMarkerStyle(20)
-        gr3.SetMarkerColor(3)
-        gr3.SetLineColor(3)
-        gROOT.SetBatch(1)
-        gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
-        for i, reg in enumerate(self.run.pedestal_regions):
-            print 'calculation region', reg
-            mean1 = self.show_pedestal_histo(reg).keys()[1]
-            mean2 = self.show_pedestal_histo(reg, 'median').keys()[1]
-            mean3 = self.show_pedestal_histo(reg, 'all').keys()[1]
-            gr1.SetPoint(i, i, mean1)
-            gr2.SetPoint(i, i, mean2)
-            gr3.SetPoint(i, i, mean3)
-        gROOT.SetBatch(0)
-        gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
-        for i, reg in enumerate(self.run.pedestal_regions):
-            bin_x = gr1.GetXaxis().FindBin(i)
-            gr1.GetXaxis().SetBinLabel(bin_x, reg)
-        c = TCanvas('bla', 'blub', 1000, 1000)
-        gr1.Draw('alp')
-        gr2.Draw('lp')
-        gr3.Draw('lp')
-        legend.AddEntry(gr1, 'mean fit fwhm w/ cuts 2', 'lp')
-        legend.AddEntry(gr2, 'mean fit fwhm w/ cuts median', 'lp')
-        legend.AddEntry(gr3, 'mean fit fwhm w/ cuts all', 'lp')
-        legend.Draw()
-        self.histos.append([gr1, gr2, gr3, c, legend])
 
     # endregion
 
@@ -1678,7 +1506,7 @@ class PadAnalysis(Analysis):
         title = '{n} Waveform{s}'.format(n=n, s='s' if n > 1 else '')
         h = TH2F('wf', title, 1024, 0, 511, 4000, -512, 512)
         gStyle.SetPalette(55)
-        self.tree.Draw('wf{ch}:Iteration$/2>>wf'.format(ch=channel), cut, 'goff', n_events, start)
+        self.tree.Draw('wf{ch}:Iteration$ * {t}>>wf'.format(ch=channel, t=.4 if self.run.Digitiser == 'caen' else .5), cut, 'goff', n_events, start)
         t = self.tree.GetV2() if not t_corr else self.corrected_time(start + n_events - 1)
         h = TGraph(self.tree.GetSelectedRows(), t, self.tree.GetV1()) if n == 1 else h
         if fixed_range is None and n > 1:
@@ -1965,7 +1793,7 @@ class PadAnalysis(Analysis):
     def calc_snr(self, sig=None, name=''):
         signal = self.SignalName if sig is None else sig
         peak_int = self.get_all_signal_names()[signal][-2:] if self.get_all_signal_names()[signal][-2].isdigit() else self.get_all_signal_names()[signal][-1]
-        ped_fit = self.show_pedestal_histo(save=False, peak_int=peak_int, show=False)
+        ped_fit = self.Pedestal.draw_disto_fit(save=False, name=self.Pedestal.get_signal_name(peak_int=peak_int), show=False)
         sig_fit = self.draw_pulse_height(evnt_corr=True, save=False, sig=signal)
         sig_mean = sig_fit.Parameter(0)
         ped_sigma = ped_fit.Parameter(2)
@@ -2008,7 +1836,7 @@ class PadAnalysis(Analysis):
         ratio = '{0}{1}'.format(self.run.peak_integrals.values()[0][0], self.run.peak_integrals.values()[0][1])
         for name, value in peak_integrals.iteritems():
             sig_name = self.get_signal_name(region='b', peak_integral=name)
-            signal = self.draw_pulse_height(evnt_corr=True, show=False, sig=sig_name) if not ped else self.show_pedestal_histo(save=False, peak_int=name)
+            signal = self.draw_pulse_height(evnt_corr=True, show=False, sig=sig_name) if not ped else self.Pedestal.draw_disto(save=False, name=self.Pedestal.get_signal_name(peak_int=name))
             par = 2 if ped else 0
             gr.SetPoint(i, (value[1] + value[0]) / 2., signal.Parameter(par))
             gr.SetPointError(i, 0, signal.ParError(par))
@@ -2037,18 +1865,16 @@ class PadAnalysis(Analysis):
         self.tree.GetEntry(ev)
         return self.calc_corr_time(ev, self.tree.IntegralPeaks[num]) if tcorr else self.tree.IntegralPeaks[num]
 
-    def get_all_signal_names(self):
+    def get_all_signal_names(self, ped=False):
         names = OrderedDict()
-        regions = [reg for reg in self.run.signal_regions if len(reg) < 3]
+        regions = [reg for reg in (self.run.signal_regions if not ped else self.run.pedestal_regions) if len(reg) < 3]
         integrals = [integral for integral in self.run.peak_integrals if len(integral) < 3]
         for region in regions:
             for integral in integrals:
-                if len(integral) > 2:
-                    integral = '_' + integral
-                name = 'ch{ch}_signal_{reg}_PeakIntegral{int}'.format(ch=self.channel, reg=region, int=integral)
+                name = 'ch{ch}_{s}_{reg}_PeakIntegral{int}'.format(ch=self.channel, reg=region, int=integral, s='pedestal' if ped else 'signal')
                 num = self.IntegralNames[name]
                 reg = region + integral
-                names['({pol}*TimeIntegralValues[{num}])'.format(pol=self.Polarity, num=num)] = reg
+                names[self.SignalDefinition.format(pol=self.Polarity, num=num)] = reg
         return names
 
     def print_info_header(self):

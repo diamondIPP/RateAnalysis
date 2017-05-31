@@ -25,7 +25,7 @@ def log_warning(msg):
 def log_critical(msg):
     t = datetime.now().strftime('%H:%M:%S')
     print '{head} {t} --> {msg}'.format(t=t, msg=msg, head=colored('CRITICAL:', 'red'))
-    quit()
+    raise ValueError
 
 
 def log_message(msg, overlay=False):
@@ -58,10 +58,13 @@ def untitle(string):
     return s.strip(' ')
 
 
-def set_statbox(x=.95, y=.88, w=.16, entries=3, only_fit=False, opt=None, form=None):
+def set_statbox(x=.95, y=.88, w=.16, entries=3, only_fit=False, only_entries=False, opt=None, form=None):
     if only_fit:
         gStyle.SetOptStat(0011)
         gStyle.SetOptFit(1)
+    if only_entries:
+        gStyle.SetOptStat(1000000010)
+        entries = 6
     gStyle.SetOptStat(opt) if opt is not None else do_nothing()
     gStyle.SetFitFormat(form) if form is not None else do_nothing()
     gStyle.SetStatX(x)
@@ -308,8 +311,8 @@ def isint(x):
         return False
 
 
-def set_drawing_range(h, legend=True, lfac=None, rfac=None):
-    range_ = [h.GetBinCenter(i) for i in [h.FindFirstBinAbove(10), h.FindLastBinAbove(10)]]
+def set_drawing_range(h, legend=True, lfac=None, rfac=None, thresh=10):
+    range_ = [h.GetBinCenter(i) for i in [h.FindFirstBinAbove(thresh), h.FindLastBinAbove(thresh)]]
     lfac = lfac if lfac is not None else .2
     rfac = rfac if rfac is not None else .55 if legend else .1
     h.GetXaxis().SetRangeUser(*increased_range(range_, lfac, rfac))

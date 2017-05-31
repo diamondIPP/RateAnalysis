@@ -4,7 +4,7 @@
 # created some time in 2016 by D. Sanz (sandiego@phys.ethz.ch), maintained by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from ROOT import TH2D, TH1D, gROOT, TFormula, TCut, TH1I, TProfile, THStack, TProfile2D, TF1, TGraph, TPie, gRandom, TH3D, TMultiGraph, TCutG
+from ROOT import TH2D, TH1D, gROOT, TFormula, TCut, TH1I, TProfile, THStack, TProfile2D, TF1, TGraph, TPie, gRandom, TH3D, TMultiGraph, TCutG, TH1F
 from argparse import ArgumentParser
 from collections import OrderedDict, Counter
 from copy import deepcopy
@@ -26,35 +26,36 @@ __author__ = 'DA & Micha'
 # MAIN CLASS
 # ==============================================
 class PixAnalysis(Analysis):
-    def __init__(self, run, dut=1, verbose=False, binning=10000):
+    def __init__(self, run, dut=1, load_tree=True, verbose=False, binning=10000):
 
-        Analysis.__init__(self, run, verbose=verbose, binning=binning)
+        Analysis.__init__(self, run, verbose=verbose, binning=binning, load_tree=load_tree)
 
         # main
         self.RunNumber = run
         self.DiamondName = self.load_diamond_name(dut)
         self.DiamondNumber = dut
-        self.Bias = self.run.bias[dut - 1]
+        self.Bias = self.run.Bias[dut - 1]
         self.Dut = dut + 3
         self.save_dir = '{dia}/{run}/'.format(run=str(self.RunNumber).zfill(3), dia=self.DiamondName)
         self.NRocs = self.load_n_rocs()
 
-        # stuff
-        self.plots.save_dir = self.save_dir
+        if load_tree:
+            # stuff
+            self.plots.save_dir = self.save_dir
 
-        # cuts
-        self.Settings = self.plots.Settings
-        self.Cut = CutPix(self, dut)
+            # cuts
+            self.Settings = self.plots.Settings
+            self.Cut = CutPix(self, dut)
 
-        # alignment
-        self.IsAligned = self.check_alignment()
+            # alignment
+            # self.IsAligned = self.check_alignment()
 
-        # pulse height calibrations
-        self.Fit = None
-        self.Parameters = None
-        self.Vcals = None
-        self.Points = None
-        self.get_calibration_data()
+            # pulse height calibrations
+            self.Fit = None
+            self.Parameters = None
+            self.Vcals = None
+            self.Points = None
+            self.get_calibration_data()
 
         # currents
         self.Currents = Currents(self)
@@ -77,7 +78,7 @@ class PixAnalysis(Analysis):
     # region INIT
     def load_diamond_name(self, dut):
         assert dut in [1, 2, 3], 'You have to choose either dut 1, 2 or 3'
-        return self.run.diamond_names[dut - 1]
+        return self.run.DiamondNames[dut - 1]
 
     def load_n_rocs(self):
         if self.ana_config_parser.has_option('BASIC', 'n_rocs'):
@@ -206,7 +207,7 @@ class PixAnalysis(Analysis):
         # calibration fit
         file_names = [joinpath(self.run.converter.TrackingDir, lines[0].strip('./\n'), line.strip('\n')) for i, line in enumerate(lines) if i]
         fit = None
-        params = [[[0 for _ in xrange(self.Settings['nRows'])] for _ in xrange(self.Settings['nRows'])] for _ in xrange(self.NRocs)]
+        params = [[[0 for _ in xrange(self.Settings['nRows'])] for _ in xrange(self.Settings['nCols'])] for _ in xrange(self.NRocs)]
         for roc, file_name in enumerate(file_names):
             f = open(file_name)
             f.readline()
@@ -220,7 +221,7 @@ class PixAnalysis(Analysis):
         # calibration points
         calib_files = [joinpath(self.run.converter.TrackingDir, lines[0].strip('./\n'), 'phCalibration_{e}'.format(e=line.strip('\n')[-6:])) for line in lines[5:]]
         vcals = None
-        points = [[[0 for _ in xrange(self.Settings['nRows'])] for _ in xrange(self.Settings['nRows'])] for _ in xrange(self.NRocs)]
+        points = [[[0 for _ in xrange(self.Settings['nRows'])] for _ in xrange(self.Settings['nCols'])] for _ in xrange(self.NRocs)]
         for roc, file_name in enumerate(calib_files, 4):
             try:
                 f = open(file_name)
@@ -252,8 +253,8 @@ class PixAnalysis(Analysis):
     def draw_threshold_map(self, show=True, vcal=True):
         h = TProfile2D('p_tm', 'Artificial Threshold Map', *self.Settings['2DBins'])
         for (col, row), thresh in self.get_thresholds(vcal=vcal).iteritems():
-            h.Fill(col, row, thresh)
-        self.format_histo(h, x_tit='col', y_tit='row', z_tit='Artificial Treshold [vcal]', y_off=1.3, z_off=1.5, stats=0)
+            h.Fill(col, row, thresh if vcal else thresh / 1000.)
+        self.format_histo(h, x_tit='col', y_tit='row', z_tit='Artificial Treshold [{u}]'.format(u='vcal' if vcal else 'ke'), y_off=1.3, z_off=1.5, stats=0)
         self.save_histo(h, 'ThresholdMap', show, rm=.17, lm=.13, draw_opt='colz')
         return h
 
@@ -315,6 +316,26 @@ class PixAnalysis(Analysis):
         self.save_histo(h, 'ADCDisto', show, lm=0.13, logy=True)
         return h
 
+    def draw_vcal_disto(self, cut=None, show=True, col=None, pix=None, electrons=False):
+        h = TH1F('h_vcal', 'vcal Distribution {d}'.format(d=self.DiamondName), 500, 0, 1000 * (47 if electrons else 1))
+        cut_string = deepcopy(self.Cut.HitMapCut) if cut is None else TCut(cut)
+        cut_string += 'plane == {n}'.format(n=self.Dut)
+        cut_string += 'n_hits[{n}] == 1'.format(n=self.Dut)
+        cut_string += 'col=={c}'.format(c=col) if col is not None else ''
+        cut_string += 'col=={c}&&row=={r}'.format(c=pix[0], r=pix[1]) if pix is not None else ''
+        self.set_root_output(False)
+        n = self.tree.Draw('adc:col:row', cut_string, 'goff')
+        for i in xrange(n):
+            row = int(self.tree.GetV3()[i])
+            col = int(self.tree.GetV2()[i])
+            adc = self.tree.GetV1()[i]
+            self.Fit.SetParameters(*self.Parameters[self.Dut - 4][col][row])
+            h.Fill(self.Fit.GetX(adc) * (47 if electrons else 1))
+        set_statbox(entries=8, opt=1000000010)
+        self.format_histo(h, x_tit='vcal', y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor)
+        self.save_histo(h, 'VcalDisto', show, lm=0.13)
+        return h
+
     def check_adc(self):
         for i in xrange(10000, 12000):
             self.tree.GetEntry(i)
@@ -323,10 +344,10 @@ class PixAnalysis(Analysis):
                 if self.tree.adc[ind]:
                     print i, self.tree.adc[ind], list(self.tree.charge_all_ROC4)
 
-    def draw_pulse_height_disto(self, cut=None, show=True, prnt=True, sup_zero=True, pix=None, roc=None, vcal=False):
+    def draw_pulse_height_disto(self, cut=None, show=True, prnt=True, sup_zero=True, pix=None, roc=None, vcal=False, redo=False):
         area_string = '_'.join(str(pi) for pi in pix) if pix is not None else 'all'
-        pickle_path = self.make_pickle_path('PulseHeight', run=self.RunNumber, suf='{r}_{a}{z}'.format(r=roc, a=area_string, z='_0' if sup_zero else ''))
         roc = self.Dut if roc is None else roc
+        pickle_path = self.make_pickle_path('PulseHeight', run=self.RunNumber, suf='{r}_{a}{z}'.format(r=roc, a=area_string, z='_0' if sup_zero else ''))
         cut_string = deepcopy(self.Cut.generate_special_cut(excluded=['fiducial', 'trigger_phase'])) if cut is None else TCut(cut)
         cut_string += 'cluster_charge>0'.format(d=self.Dut) if sup_zero else ''
         if pix is not None:
@@ -343,7 +364,8 @@ class PixAnalysis(Analysis):
             self.save_histo(h1, 'PulseHeightDisto{c}'.format(c=make_cut_string(cut, self.Cut.NCuts)), show, lm=.13, prnt=prnt, rm=.06)
             return h1
 
-        h = self.do_pickle(pickle_path, func)
+        h = func() if redo else None
+        h = self.do_pickle(pickle_path, func, h)
         self.draw_histo(h, show=show, lm=.13, prnt=prnt, rm=.06)
         return h
 
@@ -684,7 +706,7 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('run', nargs='?', default=489, type=int, help='Run to be analysed {e.g.334}')
     parser.add_argument('dut', nargs='?', default=1, type=int, help='Number of the DUT to analyse (either 1, 2 or 3)')
-    parser.add_argument('-t', '--doTelescope', action='store_true', dest='doTelscp', default=False, help='set with -t or with --doTelescope to do telescope analysis')
+    # parser.add_argument('-t', '--doTelescope', action='store_true', dest='doTelscp', default=False, help='set with -t or with --doTelescope to do telescope analysis')
     parser.add_argument('-d', '--doDUTs', action='store_true', dest='doDUTs', default=False, help='set with -d or with --doDUTs to do DUTs analysis')
     parser.add_argument('-u', '--doCutDist', action='store_true', dest='doCutDist', default=False,
                         help='set with -u or with --doCutDist to do Cuts distributions on selected devices (DUTs and/or telescope)')
@@ -700,10 +722,11 @@ if __name__ == '__main__':
     parser.add_argument('-v', '--verb', action='store_true', dest='verb', default=True, help='show verbose')
     parser.add_argument('-a', '--analyse', action='store_true', dest='doAna', default=False, help='run the whole analysis with the options entered')
     parser.add_argument('-tc', '--testcampaign', nargs='?', default='')
+    parser.add_argument('-t', '--tree', default=True, action='store_false')
 
     args = parser.parse_args()
 
-    doTelscp = bool(args.doTelscp)
+    # doTelscp = bool(args.doTelscp)
     doDUTs = bool(args.doDUTs)
     doCutDist = bool(args.doCutDist)
     doResolution = bool(args.doResolution)
@@ -716,7 +739,7 @@ if __name__ == '__main__':
     doAna = bool(args.doAna)
 
     command = 'Analysing run ' + str(args.run) + ' with:'
-    command += ' telescope,' if doTelscp else ' no telescope,'
+    # command += ' telescope,' if doTelscp else ' no telescope,'
     command += ' DUTs,' if doDUTs else ' no DUTs,'
     command += ' cuts distributions,' if doCutDist else ' no cuts distributions,'
     command += ' resolution analysis,' if doResolution else ' no resolution analysis,'
@@ -735,7 +758,7 @@ if __name__ == '__main__':
     el.print_banner('STARTING PIXEL-ANALYSIS OF RUN {0}'.format(args.run))
     # print command
     print
-    z = PixAnalysis(args.run, args.dut, args.verb)
+    z = PixAnalysis(args.run, args.dut, args.tree, args.verb)
     z.print_elapsed_time(st, 'Instantiation')
 
     if doAna:

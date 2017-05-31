@@ -31,7 +31,6 @@ class AnalysisCollection(Elementary):
 
     def __init__(self, run_selection, load_tree=True, verbose=False):
         Elementary.__init__(self, verbose=verbose)
-
         # dict where all analysis objects are saved
         self.collection = OrderedDict()
         self.selection = run_selection
@@ -156,14 +155,15 @@ class AnalysisCollection(Elementary):
             string += '{0}\n'.format(ana.print_off_results(prnt=False))
         print string
 
-    def draw_all(self):
+    def draw_all(self, save=True):
         old_verbose = self.FirstAnalysis.verbose
         self.set_verbose(False)
         self.draw_ph_with_currents(show=False)
         self.draw_pulse_heights(binning=10000, show=False)
         self.draw_pulser_info(do_fit=False, show=False)
-        self.draw_pedestals(show=False, save=True)
-        self.draw_pulser_pedestals(show=False, save=True)
+        self.draw_pedestals(show=False, save=save)
+        self.draw_noise(show=False)
+        self.draw_pulser_pedestals(show=False, save=save)
         self.draw_signal_distributions(show=False)
         self.set_verbose(old_verbose)
         self.print_all_off_results()
@@ -428,15 +428,15 @@ class AnalysisCollection(Elementary):
 
     def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False, show=True, cut=None, beam_on=True, save=False):
 
-        pickle_path = self.make_pickle_path('Pedestal', 'AllPedestals', self.RunPlan, self.DiamondName)
+        pickle_path = self.make_pickle_path('Pedestal', 'AllPedestals', self.RunPlan, self.DiamondName, suf='Sigma' if sigma else 'Mean')
         mode = 'Flux' if flux else 'Run'
         log_message('Getting pedestals')
         self.start_pbar(self.NRuns)
+        legend = TLegend(0.7, 0.3, 0.98, .7)
+        legend.SetName('l1')
+        cut_string = self.get_first_analysis().Cut.generate_pulser_cut(beam_on=beam_on) if cut == 'pulser' else cut
 
         def func():
-
-            legend = TLegend(0.7, 0.3, 0.98, .7)
-            legend.SetName('l1')
             y_val = 'Sigma' if sigma else 'Mean'
             prefix = 'Pulser ' if cut is not None and cut.GetName().startswith('Pulser') else ''
             gr1 = self.make_tgrapherrors('pedestal', '{pre}Pedestal {y} in {reg}'.format(y=y_val, reg=region + peak_int, pre=prefix))
@@ -444,9 +444,7 @@ class AnalysisCollection(Elementary):
             graphs = [self.make_tgrapherrors('pedestal', '{pre}Pedestal {y} in {reg}'.format(y=y_val, reg=reg + peak_int, pre=prefix), color=self.get_color()) for reg in regions]
             i = 0
             par = 2 if sigma else 1
-            cut_string = None
             for key, ana in self.collection.iteritems():
-                cut_string = ana.Cut.generate_pulser_cut(beam_on=beam_on) if cut == 'pulser' else cut
                 fit_par = ana.show_pedestal_histo(region, peak_int, cut=cut_string, save=save, show=False)
                 x = ana.run.Flux if flux else key
                 gr1.SetPoint(i, x, fit_par.Parameter(par))
@@ -464,28 +462,32 @@ class AnalysisCollection(Elementary):
                     legend.AddEntry(gr, str(regions.values()[i]), 'p')
                     gr.Draw('alp') if not i else gr.Draw('lp')
             self.Pedestal = gr1
-            save_name = 'Pedestal_{mod}{cut}'.format(mod=mode, cut='' if cut is None else cut_string.GetName())
-            self.save_histo(gr1, save_name=save_name, show=show, logx=True if flux else False, l=legend if all_regions else None, lm=.12)
             self.reset_colors()
             return gr1
 
         self.ProgressBar.finish()
-        graph = func() if save else None
-        return self.do_pickle(pickle_path, func, graph)
+        graph = func() if show or save else None
+        graph = self.do_pickle(pickle_path, func, graph)
+        save_name = 'Pedestal{s}{mod}{cut}'.format(mod=mode, cut='' if cut is None else cut_string.GetName(), s='Sigma' if sigma else 'Mean')
+        print save_name
+        self.save_histo(graph, save_name=save_name, show=show, logx=True if flux else False, l=legend if all_regions else None, lm=.12)
+        return
+
+    def draw_noise(self, flux=True, show=True, save=False):
+        return self.draw_pedestals(flux=flux, show=show, save=save, sigma=True)
 
     def draw_pulser_pedestals(self, show=True, save=False):
         self.draw_pedestals(cut=self.FirstAnalysis.Pulser.PulserCut, show=show, save=save)
 
-    def draw_signal_distributions(self, show=True, off=3):
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        self.reset_colors()
+    def draw_signal_distributions(self, show=True, off=3, redo=False):
+
         stack = THStack('hsd', 'Pulse Height Distributions')
         legend = self.make_legend(.67, .88, nentries=self.get_number_of_analyses())
         log_message('Generating signal distributions!')
         histos = []
         self.start_pbar(self.NRuns)
         for i, ana in enumerate(self.collection.itervalues(), 1):
-            histos.append(ana.show_signal_histo(show=False))
+            histos.append(ana.show_signal_histo(show=False, redo=redo))
             self.ProgressBar.update(i)
         for i, h in enumerate(histos):
             self.format_histo(h, lw=2, color=self.get_color())
@@ -493,23 +495,23 @@ class AnalysisCollection(Elementary):
             stack.Add(h)
             legend.AddEntry(h, '{0:06.1f} kHz/cm^{{2}}'.format(self.collection.values()[i].get_flux()), 'l')
         self.format_histo(stack, y_off=1.55, draw_first=True, x_tit='Pulse Height [au]', y_tit='Number of Entries')
-        self.RootObjects.append(self.save_histo(stack, 'SignalDistributions', False, self.save_dir, lm=.13, draw_opt='nostack', l=legend))
         log_stack = stack.Clone()
         log_stack.SetMaximum(off)
         log_stack.SetNameTitle('hsdl', 'Signal Distribution LogY')
-        self.RootObjects.append(self.save_histo(log_stack, 'SignalDistributionsLogY', False, self.save_dir, lm=.13, draw_opt='nostack', logy=True, l=legend))
-        gROOT.SetBatch(1) if not show else self.do_nothing()
-        c = TCanvas('c_sd1', 'Signal Distributions', 1500, 750)
-        c.Divide(2)
-        legends = [legend, legend.Clone()]
-        for i, s in enumerate([stack, log_stack], 1):
-            pad = c.cd(i)
-            pad.SetLeftMargin(.14)
-            pad.SetLogy() if i == 2 else self.do_nothing()
-            s.Draw('nostack')
-            legends[i - 1].Draw()
-        self.RootObjects.append([c, legends])
-        gROOT.SetBatch(0)
+        self.save_histo(stack, 'SignalDistributions', False, self.save_dir, lm=.13, draw_opt='nostack', l=legend)
+        self.save_histo(log_stack, 'SignalDistributionsLogY', False, self.save_dir, lm=.13, draw_opt='nostack', logy=True, l=legend)
+        if show:
+            c = TCanvas('c_sd1', 'Signal Distributions', 1500, 750)
+            c.Divide(2)
+            legends = [legend, legend.Clone()]
+            for i, s in enumerate([stack, log_stack], 1):
+                pad = c.cd(i)
+                pad.SetLeftMargin(.14)
+                pad.SetLogy() if i == 2 else self.do_nothing()
+                s.Draw('nostack')
+                legends[i - 1].Draw()
+            self.RootObjects.append([c, legends])
+        self.reset_colors()
 
     def draw_snrs(self, flux=True, draw=True):
         gROOT.SetBatch(1)
