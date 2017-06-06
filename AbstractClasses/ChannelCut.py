@@ -233,6 +233,11 @@ class ChannelCut(Cut):
             self.ROOTObjects.append(cut)
         return TCut(cut.GetName() if cut is not None else '')
 
+    @staticmethod
+    def draw_fid_cut():
+        cut = gROOT.FindObject('fid')
+        cut.Draw()
+
     # special cut for analysis
     def generate_pulser_cut(self, beam_on=True):
         cut = self.CutStrings['ped_sigma'] + self.CutStrings['event_range'] + self.CutStrings['saturated']
