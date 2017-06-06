@@ -512,6 +512,15 @@ class PadAnalysis(Analysis):
         self.RootObjects.append([l, l2])
         return f
 
+    def draw_peak_positions(self, cut=None, tcorr=False, show=True):
+        h = TH1F('h_pp', 'Peak Positions', 2048 if tcorr else 1024, 0, 512 if tcorr else 1024)
+        cut = self.AllCuts if cut is None else TCut(cut)
+        self.tree.Draw('max_peak_{p}[{ch}]>>h_pp'.format(ch=self.channel, p='time' if tcorr else 'position'), cut, 'goff')
+        set_drawing_range(h, thresh=100)
+        set_statbox(only_entries=True)
+        self.format_histo(h, x_tit='Digitiser Bin' if not tcorr else 'Time [ns]', y_tit='Number of Entries', y_off=1.6)
+        self.draw_histo(h, show=show, lm=.12)
+
     def __draw_timing_cut(self):
         timing_fit = self.Cut.calc_timing_range(show=False)['timing_corr']
         xmin, xmax = timing_fit.GetParameter(1) - 3 * timing_fit.GetParameter(2), timing_fit.GetParameter(1) + 3 * timing_fit.GetParameter(2)
