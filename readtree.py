@@ -181,9 +181,9 @@ def draw_runinfo_legend(ch):
     stuff.append(l)
 
 
-def draw_peak_timings(xmin=0, xmax=100, ch=0):
-    h = TH1F('h_pt', 'PeakTimings', 100, xmin, xmax)
-    t.Draw('peak_positions{0}>>h_pt'.format(ch), '', 'goff')
+def draw_peak_timings(xmin=100, xmax=400, ch=0, corr=False):
+    h = TH1F('h_pt', 'PeakTimings', xmax - xmin, xmin, xmax)
+    t.Draw('max_peak_{p}[{c}]>>h_pt'.format(c=ch, p='position' if not corr else 'time'), '', 'goff')
     run.format_histo(h, x_tit='Digitiser Bin', y_tit='Number of Entries')
     run.draw_histo(h)
 
