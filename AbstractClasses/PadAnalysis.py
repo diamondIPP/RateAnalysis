@@ -1178,11 +1178,11 @@ class PadAnalysis(Analysis):
         self.save_plots('BucketPedestal')
 
     def draw_bucket_waveforms(self, show=True, t_corr=True, start=100000):
-        good = self.draw_waveforms(1, show=False, start_event=None, t_corr=t_corr, save=False)[0]
+        good = self.draw_waveforms(1, show=False, start_event=None, t_corr=t_corr)[0]
         cut = self.Cut.generate_special_cut(excluded=['bucket', 'timing']) + TCut('!({0})'.format(self.Cut.CutStrings['bucket']))
-        bucket = self.draw_waveforms(1, cut_string=cut, show=False, start_event=start, t_corr=t_corr, save=False)[0]
+        bucket = self.draw_waveforms(1, cut=cut, show=False, start_event=start, t_corr=t_corr)[0]
         cut = self.Cut.generate_special_cut(excluded=['bucket', 'timing']) + TCut('{buc}&&!({old})'.format(buc=self.Cut.CutStrings['bucket'], old=self.Cut.CutStrings['old_bucket']))
-        bad_bucket = self.draw_waveforms(1, cut_string=cut, show=False, t_corr=t_corr, start_event=None, save=False)[0]
+        bad_bucket = self.draw_waveforms(1, cut=cut, show=False, t_corr=t_corr, start_event=None)[0]
         self.reset_colors()
         mg = TMultiGraph('mg_bw', 'Bucket Waveforms')
         l = self.make_legend(.85, .4, nentries=3)
@@ -1487,92 +1487,48 @@ class PadAnalysis(Analysis):
         self.RootObjects.append(self.save_histo(h, 'SignalEvsSignalB', show, rm=.15, lm=.13, draw_opt='colz'))
         gStyle.SetPalette(1)
 
-    def draw_single_wf(self, event=None):
-        cut = '!({0})&&!pulser'.format(self.Cut.CutStrings['old_bucket'])
-        return self.draw_waveforms(n=1, cut_string=cut, add_buckets=True, start_event=event)
-
-    def draw_waveforms(self, n=1000, start_event=None, cut_string=None, show=True, add_buckets=False, fixed_range=None, ch=None, t_corr=False, save=True):
-        """
-        Draws stacked waveforms.
-        :param n: number of waveforms
-        :param cut_string:
-        :param start_event: event to start
-        :param show:
-        :param add_buckets: draw buckets and most probable peak values if True
-        :param fixed_range: fixes x-range to given value if set
-        :param ch: channel of the DRS4
-        :return: histo with waveform
-        """
-        start = self.StartEvent if start_event is None else start_event
-        start += self.count
-        print 'Drawing waveform, start event:', start
-        assert self.run.n_entries >= start >= 0, 'The start event is not within the range of tree events!'
-        channel = self.channel if ch is None else ch
-        if not self.run.wf_exists(channel):
+    def draw_waveforms(self, n=1, cut=None, start_event=None, t_corr=True, channel=None, show=True):
+        """ Draws a stack of n waveforms. """
+        channel = self.channel if channel is None else channel
+        if not self.run.wf_exists(self.channel):
             return
-        cut = self.Cut.all_cut if cut_string is None else TCut(cut_string)
-        n_events = self.find_n_events(n, cut, start)
-        title = '{n} Waveform{s}'.format(n=n, s='s' if n > 1 else '')
-        h = TH2F('wf', title, 1024, 0, 511, 4000, -512, 512)
-        gStyle.SetPalette(55)
-        self.tree.Draw('wf{ch}:Iteration$ * {t}>>wf'.format(ch=channel, t=.4 if self.run.Digitiser == 'caen' else .5), cut, 'goff', n_events, start)
-        t = self.tree.GetV2() if not t_corr else self.corrected_time(start + n_events - 1)
-        h = TGraph(self.tree.GetSelectedRows(), t, self.tree.GetV1()) if n == 1 else h
-        if fixed_range is None and n > 1:
-            # fit = self.draw_pulse_height(show=False)
-            # pol = self.Polarity
-            # ymin = fit.Parameter(0) * 3 / 50 * 50 * pol if pol < 0 else -100
-            # ymax = fit.Parameter(0) * 3 / 50 * 50 * pol if pol > 0 else 100
-            # h.GetYaxis().SetRangeUser(ymin, ymax)
-            # FIXME: temp fix
-            ymin, ymax = h.GetYaxis().GetBinCenter(h.FindFirstBinAbove(0, 2)), h.GetYaxis().GetBinCenter(h.FindLastBinAbove(0, 2))
-            diff = ymax - ymin
-            h.GetYaxis().SetRangeUser(ymin - diff * .1, ymax + diff * .1)
-        elif fixed_range:
-            assert type(fixed_range) is list, 'Range has to be a list!'
-            h.GetYaxis().SetRangeUser(fixed_range[0], fixed_range[1])
-        self.format_histo(h, title=title, name='wf', x_tit='Time [ns]', y_tit='Signal [mV]', markersize=.4, y_off=.5, stats=0, tit_size=.07, lab_size=.06, x_range=[0, 511])
-        save_name = '{1}Waveforms{0}'.format(n, 'Pulser' if cut.GetName().startswith('Pulser') else 'Signal')
-        self.draw_histo(h, save_name, show, self.save_dir, lm=.073, rm=.045, bm=.18, draw_opt='apl' if n == 1 else 'col', x=1.5, y=.5)
-        if add_buckets:
-            sleep(.2)
-            h.GetXaxis().SetNdivisions(520)
-            c = gROOT.GetListOfCanvases()[-1]
-            c.SetGrid()
-            c.SetBottomMargin(.25)
-            y = h.GetYaxis().GetXmin(), h.GetYaxis().GetXmax()
-            x = h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax()
-            self._add_buckets(y[0], y[1], x[0], x[1], size=.045, avr_pos=-4)
-        if save:
-            self.save_canvas(gROOT.GetListOfCanvases()[-1], name=save_name)
+        start_event = self.count + self.StartEvent if start_event is None else start_event
+        self.log_info('Drawing {n} waveform, startint at event: {s}'.format(n=n, s=start_event))
+        cut = self.Cut.all_cut if cut is None else TCut(cut)
+        n_events = self.find_n_events(n, cut, start_event)
+        n_entries = self.tree.Draw('wf{ch}:trigger_cell'.format(ch=channel), cut, 'goff', n_events, start_event)
+        title = '{n}{tc} Waveform{p}'.format(n=n, tc=' Time Corrected' if t_corr else '', p='s' if n > 1 else '')
+        h = TH2F('h_wf', title, 1024, 0, 512, 2048, -512, 512)
+        values = [self.tree.GetV1()[i] for i in xrange(n_entries)]
+        times = [self.run.get_calibrated_times(self.tree.GetV2()[1024 * i]) for i in xrange(n_entries / 1024)]
+        times = [v for lst in times for v in lst]
+        times = [.4 if self.run.Digitiser == 'caen' else .5 * i for i in xrange(1024) for _ in xrange(n_entries / 1024)] if not t_corr else times
+        for v, t in zip(values, times):
+            h.Fill(t, v)
+        y_range = increased_range([min(values), max(values)], .1, .2)
+        h = self.make_tgrapherrors('g_cw', title, x=times, y=values) if n == 1 else h
+        self.format_histo(h, x_tit='Time [ns]', y_tit='Signal [mV]', y_off=.5, stats=0, tit_size=.07, lab_size=.06, y_range=y_range, markersize=.5)
+        self.draw_histo(h, show=show, draw_opt='col' if n > 1 else 'apl', lm=.073, rm=.045, bm=.18, x=1.5, y=.5)
         self.count += n_events
         return h, n_events
 
-    def calc_corr_time(self, evt, bin_nr):
-        self.tree.GetEntry(evt)
-        tcell = None
-        exec 'tcell = self.tree.trigger_cell'
-        t = 0
-        for i in xrange(bin_nr + 1):
-            t += self.run.TCal[(tcell + i) % 1024]
-        return t
-
-    def corrected_time(self, evt):
-        self.tree.GetEntry(evt)
-        tcell = None
-        exec 'tcell = self.tree.trigger_cell'
-        t = [self.run.TCal[tcell]]
-        n_samples = 1024
-        for i in xrange(1, n_samples):
-            t.append(self.run.TCal[(tcell + i) % n_samples] + t[-1])
-        return array(t, 'd')
+    def draw_single_waveform(self, cut='', event=None):
+        h, n = self.draw_waveforms(n=1, start_event=event, cut=cut, t_corr=True)
+        print n
+        self.tree.GetEntry(n - 1 + self.count + self.StartEvent if event is None else event)
+        var1 = 'peaks{ch}_x_time' if self.run.has_branch('peaks{ch}_x'.format(ch=self.channel)) else 'peak_timings{ch}'
+        var2 = 'peaks{ch}_x' if self.run.has_branch('peaks{ch}_x'.format(ch=self.channel)) else 'peak_timings{ch}'
+        var1 = var1.format(ch=self.channel)
+        var2 = var2.format(ch=self.channel)
+        exec 'print list(self.tree.{v})'.format(v=var1)
+        exec 'print list(self.tree.{v})'.format(v=var2)
 
     def show_single_waveforms(self, n=1, cut='', start_event=None):
         start = self.StartEvent + self.count if start_event is None else start_event + self.count
         activated_wfs = [wf for wf in xrange(4) if self.run.wf_exists(wf)]
         print 'activated wafeforms:', activated_wfs
         print 'Start at event number:', start
-        wfs = [self.draw_waveforms(n=n, start_event=start, cut_string=cut, show=False, ch=wf) for wf in activated_wfs]
+        wfs = [self.draw_waveforms(n=n, start_event=start, cut=cut, show=False, channel=wf) for wf in activated_wfs]
         n_wfs = len(activated_wfs)
         if not gROOT.GetListOfCanvases()[-1].GetName() == 'c_wfs':
             c = TCanvas('c_wfs', 'Waveforms', 2000, n_wfs * 500)
@@ -1867,12 +1823,6 @@ class PadAnalysis(Analysis):
     def get_cut(self):
         """ :return: full cut_string """
         return self.Cut.all_cut
-
-    def get_peak_position(self, event=None, region='b', peak_int='2', tcorr=False):
-        num = self.get_signal_number(region, peak_int)
-        ev = self.StartEvent if event is None else event
-        self.tree.GetEntry(ev)
-        return self.calc_corr_time(ev, self.tree.IntegralPeaks[num]) if tcorr else self.tree.IntegralPeaks[num]
 
     def get_all_signal_names(self, ped=False):
         names = OrderedDict()
