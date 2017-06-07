@@ -355,7 +355,7 @@ class Run(Elementary):
     def load_tcal(self):
         for i, line in enumerate(self.region_information):
             if 'tcal' in line:
-                data = [float(i) for i in line.strip('tcal []').split(',') if isfloat(i)]
+                data = [float(i) for i in line.strip('tcal []').split(',') if isfloat(i)][:1024]
                 return data
 
     def get_peak_integrals(self):
