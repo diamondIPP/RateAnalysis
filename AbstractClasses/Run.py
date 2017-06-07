@@ -358,6 +358,13 @@ class Run(Elementary):
                 data = [float(i) for i in line.strip('tcal []').split(',') if isfloat(i)][:1024]
                 return data
 
+    def get_calibrated_times(self, trigger_cell):
+        t = [self.TCal[int(trigger_cell)]]
+        n_samples = len(self.TCal)
+        for i in xrange(1, n_samples):
+            t.append(self.TCal[(int(trigger_cell) + i) % n_samples] + t[-1])
+        return t
+
     def get_peak_integrals(self):
         integrals = OrderedDict()
         for line in self.region_information:
