@@ -312,6 +312,8 @@ def isint(x):
 
 
 def set_drawing_range(h, legend=True, lfac=None, rfac=None, thresh=10):
+    for i in xrange(1, 4):
+        h.SetBinContent(i, 0)
     range_ = [h.GetBinCenter(i) for i in [h.FindFirstBinAbove(thresh), h.FindLastBinAbove(thresh)]]
     lfac = lfac if lfac is not None else .2
     rfac = rfac if rfac is not None else .55 if legend else .1
