@@ -1496,15 +1496,19 @@ class PadAnalysis(Analysis):
         self.log_info('Drawing {n} waveform, startint at event: {s}'.format(n=n, s=start_event))
         cut = self.Cut.all_cut if cut is None else TCut(cut)
         n_events = self.find_n_events(n, cut, start_event)
+        self.tree.SetEstimate(n * 1024)
         n_entries = self.tree.Draw('wf{ch}:trigger_cell'.format(ch=channel), cut, 'goff', n_events, start_event)
         title = '{n}{tc} Waveform{p}'.format(n=n, tc=' Time Corrected' if t_corr else '', p='s' if n > 1 else '')
         h = TH2F('h_wf', title, 1024, 0, 512, 2048, -512, 512)
         values = [self.tree.GetV1()[i] for i in xrange(n_entries)]
-        times = [self.run.get_calibrated_times(self.tree.GetV2()[1024 * i]) for i in xrange(n_entries / 1024)]
-        times = [v for lst in times for v in lst]
-        times = [.4 if self.run.Digitiser == 'caen' else .5 * i for i in xrange(1024) for _ in xrange(n_entries / 1024)] if not t_corr else times
+        if t_corr:
+            times = [self.run.get_calibrated_times(self.tree.GetV2()[1024 * i]) for i in xrange(n_entries / 1024)]
+            times = [v for lst in times for v in lst]
+        else:
+            times = [.4 if self.run.Digitiser == 'caen' else .5 * i for i in xrange(1024)] * n
         for v, t in zip(values, times):
             h.Fill(t, v)
+        self.tree.SetEstimate()
         y_range = increased_range([min(values), max(values)], .1, .2)
         h = self.make_tgrapherrors('g_cw', title, x=times, y=values) if n == 1 else h
         self.format_histo(h, x_tit='Time [ns]', y_tit='Signal [mV]', y_off=.5, stats=0, tit_size=.07, lab_size=.06, y_range=y_range, markersize=.5)
