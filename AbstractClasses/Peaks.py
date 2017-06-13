@@ -30,3 +30,11 @@ class PeakAnalysis(Elementary):
         self.save_histo(h, 'PeakNumbers', show, logy=True, lm=.11)
         return h
 
+    def draw_n_peaks_fit(self, show=True, spec=False):
+        h = self.draw_n_peaks(spec, show=False, fit=True)
+        fit = fit_poissoni(h, show=show)
+        self.format_histo(h, 'Fit Result')
+        self.save_histo(h, 'PeakNumbersFit', show, logy=True, lm=.11)
+        self.get_flux(fit=fit)
+        return fit
+
