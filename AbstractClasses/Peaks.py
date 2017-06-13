@@ -65,3 +65,22 @@ class PeakAnalysis(Elementary):
         else:
             return 0
 
+    def draw_positions(self, cut='', corr=False, show=True):
+        h = TH1F('h_pt', 'Peak {m}'.format(m='Timings' if corr else 'Positions'), 1024, 0, 512 if corr else 1024)
+        self.Tree.Draw('peak_{p}[{c}]>>h_pt'.format(c=self.Channel, p='positions' if not corr else 'times'), TCut(cut) + TCut('!pulser'), 'goff')
+        self.format_histo(h, x_tit='Time [ns]' if corr else 'Digitiser Bin', y_tit='Number of Entries', y_off=.4, fill_color=self.FillColor, lw=1, tit_size=.05, stats=0)
+        self.save_histo(h, 'PeakTimings', show, self.save_dir, logy=True, lm=.045, rm=.045, x_fac=4, y_fac=.5)
+        return h
+
+    def draw_timings(self, cut='', show=True):
+        self.draw_positions(cut, corr=True, show=show)
+
+    def draw_max_position(self, cut='', corr=False, show=True):
+        h = TH1F('h_pt', 'Max Peak {m}'.format(m='Timings' if corr else 'Positions'), 1024, 0, 512 if corr else 1024)
+        self.Tree.Draw('max_peak_{p}[{c}]>>h_pt'.format(c=self.Channel, p='position' if not corr else 'time'), TCut(cut) + TCut('!pulser'), 'goff')
+        self.format_histo(h, x_tit='Time [ns]' if corr else 'Digitiser Bin', y_tit='Number of Entries', y_off=.4, fill_color=self.FillColor, lw=1, tit_size=.05, stats=0)
+        self.save_histo(h, 'MaxPeak{m}'.format(m='Timings' if corr else 'Positions'), show)
+
+    def draw_max_timing(self, cut='', show=True):
+        self.draw_max_position(cut, corr=True, show=show)
+
