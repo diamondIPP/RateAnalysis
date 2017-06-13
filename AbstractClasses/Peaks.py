@@ -5,7 +5,9 @@
 # --------------------------------------------------------
 
 from Elementary import Elementary
-from ROOT import TH1F
+from ROOT import TH1F, TCut
+from Utils import set_statbox, fit_poissoni
+from math import pi
 
 
 class PeakAnalysis(Elementary):
@@ -19,18 +21,12 @@ class PeakAnalysis(Elementary):
         self.AllCut = self.Ana.AllCuts
         self.save_dir = self.Ana.save_dir
 
-    def draw_n_peaks(self, show=True, p1=0.7, p2=1):
-        h = TH1F('h_pn', 'Number of Peaks', 21, -.5, 20.5)
-        h1 = TH1F('h_pn1', 'Number of Peaks', 21, -.5, 20.5)
-        self.Tree.Draw('@peaks{ch}_x.size()>>h_pn'.format(ch=self.Channel), self.AllCut, 'goff')
-        self.format_histo(h, x_tit='number of peaks', y_tit='number of entries', y_off=1.5, fill_color=836, lw=2, fill_style=3004)
-        self.save_histo(h, 'PeakNumbers', show, logy=True)
-        # while h1.GetBinContent(2) != h.GetBinContent(2):
-        #     # h1.Fill(gRandom.Poisson(24 * self.get_flux() / 5e4 * .5 * .5 * p2) + gRandom.Binomial(1, p1))
-        #     # h1.Fill(gRandom.Poisson(24 * self.get_flux() / 5e4 * .5 * .5 * p2) + 1)
-        #     h1.Fill(gRandom.Poisson(24 * f / 5e4 * .5 * .5 * p2) + 1)
-        # self.format_histo(h1, x_tit='number of peaks', y_tit='Number of Entries', y_off=1.5, fill_color=896, lw=2)
-        # h1.SetFillStyle(3005)
-        # h1.Draw('same')
-        # self.histos.append(h1)
+    def draw_n_peaks(self, spec=False, show=True, fit=False):
+        h = TH1F('h_pn', 'Number of Peaks', 10, 0, 10)
+        draw_var = '@peaks{ch}_x.size()>>h_pn' if spec and self.Run.has_branch('peaks{ch}_x'.format(ch=self.Channel)) else 'n_peaks[{ch}] - 1>>h_pn'
+        self.Tree.Draw(draw_var.format(ch=self.Channel), self.AllCut, 'goff')
+        set_statbox(only_fit=True, entries=4, w=.3) if fit else set_statbox(only_entries=True)
+        self.format_histo(h, x_tit='Number of Peaks', y_tit='Number of Entries', y_off=1.4, fill_color=836, lw=2, fill_style=3004)
+        self.save_histo(h, 'PeakNumbers', show, logy=True, lm=.11)
+        return h
 
