@@ -84,3 +84,11 @@ class PeakAnalysis(Elementary):
     def draw_max_timing(self, cut='', show=True):
         self.draw_max_position(cut, corr=True, show=show)
 
+    def check_peaks(self):
+        h, n = self.Ana.draw_waveforms(t_corr=False)
+        self.Tree.GetEntry(self.Ana.StartEvent + self.count - 1)
+        print n, self.Ana.StartEvent, self.Ana.count
+        a = self.Tree.Draw('peak_positions[{ch}]:n_peaks[{ch}]'.format(ch=self.Channel), '', 'goff', 1, self.Ana.StartEvent + self.Ana.count - 1)
+        print [self.Tree.GetV1()[j] / 2 for j in xrange(a)], [self.Tree.GetV2()[j] for j in xrange(a)][0]
+        a = self.Tree.Draw('peaks3_x', '', 'goff', 1, self.Ana.StartEvent + self.Ana.count - 1)
+        print [i / 2. for i in [self.Tree.GetV1()[j] for j in xrange(a)]]
