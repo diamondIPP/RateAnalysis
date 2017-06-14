@@ -17,6 +17,7 @@ class PeakAnalysis(Elementary):
         Elementary.__init__(self, verbose=self.Ana.verbose)
         self.Run = self.Ana.run
         self.Channel = self.Ana.channel
+        self.DiamondNumber = self.Ana.DiamondNumber
         self.Tree = self.Ana.tree
         self.AllCut = self.Ana.AllCuts
         self.save_dir = self.Ana.save_dir
