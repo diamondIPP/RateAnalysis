@@ -71,8 +71,8 @@ class PixAnalysis(Analysis):
             for obj in lst:
                 self.del_rootobj(obj)
 
-    def draw_current(self, relative_time=True):
-        self.Currents.draw_indep_graphs(rel_time=relative_time)
+    def draw_current(self, relative_time=True, volt_range=None):
+        self.Currents.draw_indep_graphs(rel_time=relative_time, v_range=volt_range)
 
     # ==========================================================================
     # region INIT
