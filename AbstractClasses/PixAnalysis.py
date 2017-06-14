@@ -370,6 +370,24 @@ class PixAnalysis(Analysis):
         self.draw_histo(h, show=show, lm=.13, prnt=prnt, rm=.06)
         return h
 
+    def draw_cluster_disto(self, n=1, cut=None):
+        cut_string = deepcopy(self.Cut.all_cut) if cut is None else TCut(cut) + TCut('clusters_per_plane[{r}] == {n}'.format(r=self.Dut, n=n))
+        self.draw_pulse_height_disto(cut=cut_string + TCut('clusters_per_plane[{r}] == {n}'.format(r=self.Dut, n=n)), redo=True)
+
+    def draw_cluster_ph_distos(self, cut=None, show=True):
+        cut_string = deepcopy(self.Cut.all_cut) if cut is None else TCut(cut)
+        hs = OrderedDict([(str(n), self.draw_pulse_height_disto(cut=cut_string + TCut('clusters_per_plane[{r}] == {n}'.format(r=self.Dut, n=n)), show=False, redo=True)) for n in xrange(1, 4)])
+        hs['>3'] = self.draw_pulse_height_disto(cut=cut_string + TCut('clusters_per_plane[{r}] > 3'.format(r=self.Dut)), show=False, redo=True)
+        stack = THStack('h_cph', 'Pulser Height per Cluster Size')
+        l = self.make_legend(y2=.5, nentries=5, x1=.59)
+        for name, h in hs.iteritems():
+            self.format_histo(h, color=self.get_color())
+            stack.Add(h, name)
+            l.AddEntry(h, name, 'h')
+        self.format_histo(stack, x_tit='Pulse Height [e]', y_tit='Number of Entries', y_off=1.4, draw_first=True)
+        self.save_histo(stack, 'ClusterPulseHeight', show, lm=.13, l=l, draw_opt='nostack', gridy=True)
+        self.reset_colors()
+
     def draw_pulse_height_map(self, show=True, cut=None, roc=None, sup_zero=True):
         roc = self.Dut if roc is None else roc
         cut_string = self.Cut.all_cut if cut is None else TCut(cut)
