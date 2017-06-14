@@ -531,33 +531,30 @@ class Run(Elementary):
             if not canvas.GetBottomMargin() > .105:
                 canvas.SetBottomMargin(0.15)
 
-        if self.RunInfoLegends is None:
-            git_text = TLegend(.85, 0, 1, .025)
-            git_text.AddEntry(0, 'git hash: {ver}'.format(ver=check_output(['git', 'describe', '--always'])), '')
-            git_text.SetLineColor(0)
-            if runs is None:
-                run_string = 'Run {run}: {rate}, {dur} Min ({evts} evts)'.format(run=self.RunNumber, rate=self.get_rate_string(), dur=dur, evts=self.n_entries)
-            else:
-                run_string = 'Runs {start}-{stop} ({flux1} - {flux2})'.format(start=runs[0], stop=runs[1], flux1=runs[2].strip(' '), flux2=runs[3].strip(' '))
-            width = len(run_string) * .01 if x == y else len(run_string) * 0.015 * y / x
-            legend = self.make_legend(.005, .1, y1=.003, x2=width, nentries=3, felix=False, scale=.75)
-            legend.SetMargin(0.05)
-            legend.AddEntry(0, 'Test Campaign: {tc}'.format(tc=tc.strftime('%b %Y')), '')
-            legend.AddEntry(0, run_string, '')
-            if channel is None:
-                dias = ['{dia} @ {bias:+2.0f}V'.format(dia=dia, bias=bias) for dia, bias in zip(self.DiamondNames, self.Bias)]
-                dias = str(dias).strip('[]').replace('\'', '')
-                legend.AddEntry(0, 'Diamonds: {dias}'.format(dias=dias), '')
-            else:
-                legend.AddEntry(0, 'Diamond: {diamond} @ {bias:+}V'.format(diamond=self.DiamondNames[channel], bias=self.Bias[channel]), '')
-            if cut and hasattr(self, 'analysis'):
-                legend.AddEntry(0, 'Cut: {cut}'.format(cut=self.analysis.get_easy_cutstring()), '')
-            if comment is not None:
-                legend.AddEntry(0, comment, '')
-            self.RunInfoLegends = [legend, git_text]
+        git_text = TLegend(.85, 0, 1, .025)
+        git_text.AddEntry(0, 'git hash: {ver}'.format(ver=check_output(['git', 'describe', '--always'])), '')
+        git_text.SetLineColor(0)
+        if runs is None:
+            run_string = 'Run {run}: {rate}, {dur} Min ({evts} evts)'.format(run=self.RunNumber, rate=self.get_rate_string(), dur=dur, evts=self.n_entries)
         else:
-            git_text = self.RunInfoLegends[1]
-            legend = self.RunInfoLegends[0]
+            print runs
+            run_string = 'Runs {start}-{stop} ({flux1} - {flux2})'.format(start=runs[0], stop=runs[1], flux1=runs[2].strip(' '), flux2=runs[3].strip(' '))
+        width = len(run_string) * .01 if x == y else len(run_string) * 0.015 * y / x
+        legend = self.make_legend(.005, .1, y1=.003, x2=width, nentries=3, felix=False, scale=.75)
+        legend.SetMargin(0.05)
+        legend.AddEntry(0, 'Test Campaign: {tc}'.format(tc=tc.strftime('%b %Y')), '')
+        legend.AddEntry(0, run_string, '')
+        if channel is None:
+            dias = ['{dia} @ {bias:+2.0f}V'.format(dia=dia, bias=bias) for dia, bias in zip(self.DiamondNames, self.Bias)]
+            dias = str(dias).strip('[]').replace('\'', '')
+            legend.AddEntry(0, 'Diamonds: {dias}'.format(dias=dias), '')
+        else:
+            legend.AddEntry(0, 'Diamond: {diamond} @ {bias:+}V'.format(diamond=self.DiamondNames[channel], bias=self.Bias[channel]), '')
+        if cut and hasattr(self, 'analysis'):
+            legend.AddEntry(0, 'Cut: {cut}'.format(cut=self.analysis.get_easy_cutstring()), '')
+        if comment is not None:
+            legend.AddEntry(0, comment, '')
+        self.RunInfoLegends = [legend, git_text]
         if show:
             pads = [i for i in canvas.GetListOfPrimitives() if i.IsA().GetName() == 'TPad']
             if not pads:
