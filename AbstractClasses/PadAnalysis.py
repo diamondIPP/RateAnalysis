@@ -11,7 +11,7 @@ from sys import stdout
 from time import sleep
 
 from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie,\
-    THStack, TArrow, kOrange, TSpectrum, gRandom, TMultiGraph, Long, TH2I
+    THStack, TArrow, kOrange, TSpectrum, TMultiGraph, Long, TH2I
 
 from ChannelCut import ChannelCut
 from CurrentInfo import Currents
@@ -20,6 +20,7 @@ from Extrema import Extrema2D
 from TelescopeAnalysis import Analysis
 from Pulser import PulserAnalysis
 from Pedestal import PedestalAnalysis
+from Peaks import PeakAnalysis
 from Utils import *
 
 __author__ = 'micha'
@@ -69,6 +70,7 @@ class PadAnalysis(Analysis):
             # subclasses
             self.Pulser = PulserAnalysis(self)
             self.Pedestal = PedestalAnalysis(self)
+            self.Peaks = PeakAnalysis(self)
 
         # currents
         self.Currents = Currents(self)
@@ -557,58 +559,6 @@ class PadAnalysis(Analysis):
         fit2.Draw('same')
         self.RootObjects.append([fit2, fit3])
         return fit, fit2, fit3
-
-    def draw_peak_timings(self, found_peak=True, show=True):
-        h = TH1F('h_pt', 'Peak Timings', 1024, 0, 512)
-        draw_var = 'peaks{ch}_x_time>>h_pt' if found_peak and self.run.has_branch('peaks{ch}_x'.format(ch=self.channel)) else 'peak_timings{ch}'
-        self.tree.Draw(draw_var.format(ch=self.channel), self.AllCuts, 'goff')
-        self.format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=.4, fill_color=self.FillColor, lw=1, tit_size=.05, stats=0)
-        self.histos.append(self.save_histo(h, 'PeakTimings', show, self.save_dir, logy=True, lm=.045, rm=.045, x_fac=4, y_fac=.5))
-        return h
-
-    def fit_peak_timings(self, show=True):
-        # there fit 25 buckets into the 500 ns and one extra for the trigger positron peak
-        spec = TSpectrum(26)
-        h = self.draw_peak_timings(show=show)
-        # threshold needs to be low
-        n_peaks = spec.Search(h, 2, '', .005)
-        # exclude trigger, pre and post trigger peaks
-        t_trigger_peak = self.run.signal_regions['a'][0] / 2.
-        t_peaks = [spec.GetPositionX()[i_peak] for i_peak in xrange(n_peaks) if not t_trigger_peak - 50 < spec.GetPositionX()[i_peak] < t_trigger_peak + 30]
-        fits = []
-        g1 = self.make_tgrapherrors('g_spt', 'Peak Sigma vs Bucket Nr.')
-        g2 = self.make_tgrapherrors('g_ipt', 'Peak Integral vs Bucket Nr.')
-        for i, t_peak in enumerate(sorted(t_peaks)):
-            fit = TF1('f{i}'.format(i=i), 'gaus', t_peak - 10, t_peak + 10)
-            # fit 2ns around peak
-            h.Fit(fit, 'qs', '', t_peak - 2, t_peak + 2)
-            bucket_nr = int(round((t_peak - t_trigger_peak) / 20.))
-            print bucket_nr, fit.GetParameter(2), fit.Integral(t_peak - 10, t_peak + 10)
-            g1.SetPoint(i, bucket_nr, fit.GetParameter(2))
-            g1.SetPointError(i, 0, fit.GetParError(2))
-            g2.SetPoint(i, bucket_nr, fit.Integral(t_peak - 10, t_peak + 10))
-            g2.SetPointError(i, 0, sqrt(fit.Integral(t_peak - 10, t_peak + 10)))
-            fits.append(fit)
-            fit.Draw('same')
-        self.format_histo(g1, x_tit='Bucket Number', y_tit='Sigma [ns]', y_off=1.4)
-        self.format_histo(g2, x_tit='Bucket Number', y_tit='Integral', y_off=1.6)
-        self.draw_histo(g1, lm=.12, draw_opt='ap')
-        self.draw_histo(g2, lm=.13, draw_opt='ap')
-        self.RootObjects.append(fits)
-
-    def draw_n_peaks(self, show=True, p1=0.7, p2=1):
-        h = TH1F('h_pn', 'Number of Peaks', 12, -.5, 11.5)
-        h1 = TH1F('h_pn1', 'Number of Peaks', 12, -.5, 11.5)
-        self.tree.Draw('@peaks{ch}_x.size()>>h_pn'.format(ch=self.channel), self.AllCuts, 'goff')
-        self.format_histo(h, x_tit='number of peaks', y_tit='number of entries', y_off=1.5, fill_color=836, lw=2)
-        h.SetFillStyle(3004)
-        self.histos.append(self.save_histo(h, 'PeakNumbers', show, self.save_dir, logy=True))
-        while h1.GetBinContent(2) != h.GetBinContent(2):
-            h1.Fill(gRandom.Poisson(24 * self.get_flux() / 5e4 * .5 * .5 * p2) + gRandom.Binomial(1, p1))
-        self.format_histo(h1, x_tit='number of peaks', y_tit='Number of Entries', y_off=1.5, fill_color=896, lw=2)
-        h1.SetFillStyle(3005)
-        h1.Draw('same')
-        self.histos.append(h1)
 
     def calc_peak_value_fwhm(self):
         pickle_path = self.PickleDir + 'PeakValues/FWHM_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.RunNumber, dia=self.DiamondName)
