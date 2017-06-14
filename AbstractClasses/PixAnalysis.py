@@ -719,7 +719,7 @@ class PixAnalysis(Analysis):
         self.tree.Draw('clusters_per_plane[{d}]>>h_cs'.format(d=self.Dut), TCut(cut), 'goff')
         set_statbox(only_entries=True)
         self.format_histo(h, x_tit='Cluster Size', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
-        self.save_histo(h, 'ClusterSize', logy=True)
+        self.save_histo(h, 'ClusterSize', show, logy=True)
 
     # ==========================================================================
 
