@@ -450,7 +450,7 @@ class RunSelection(Elementary):
         assert self.Selection, 'The run selection is completely empty!'
 
         self.RunPlan[plan_nr] = {'runs': self.get_selected_runs(), 'type': run_type}
-        if parent_string is not None:
+        if parent_string is not None and 'attenuators' in self.RunPlan[parent_string]:
             self.RunPlan[plan_nr]['attenuators'] = self.RunPlan[parent_string]['attenuators']
         self.save_runplan()
 
