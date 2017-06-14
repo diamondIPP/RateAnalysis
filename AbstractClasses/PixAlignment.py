@@ -179,7 +179,6 @@ class PixAlignment:
             self.Run.set_root_output(False)
             g = self.Run.make_tgrapherrors('g{o}'.format(o=off), 'Sliding correlation for offset {o}'.format(o=off), x=corrs.keys(), y=corrs.values())
             self.Run.draw_histo(g, draw_opt='alp')
-        raw_input('Press any key to continue!')
 
     def find_jump(self, correlation, debug=False):
         correlations = correlation.get_sliding()
@@ -233,7 +232,7 @@ class PixAlignment:
     def find_rising_event(self, correlations, ind):
         return correlations.keys()[correlations.values().index(next(c for c in correlations.values()[ind:] if c > self.Threshold)) - 3]
 
-    def find_offsets(self, debug=True):
+    def find_offsets(self, debug=False):
         t = self.Run.log_info('Scanning for precise offsets ... ', next_line=False)
 
         n = self.BucketSize
@@ -277,16 +276,6 @@ class PixAlignment:
         self.Run.add_info(t)
         log_message('Found {n} offsets'.format(n=len(offsets)))
         return offsets
-
-    def find_detailed_offset(self, corrs):
-        # todo improve this... and maybe use it in general
-        offs = {lst.index(corr): off for off, lst in corrs.iteritems() for corr in lst if corr > self.Threshold}
-        print offs
-        if not len(offs):
-            for off, corr in corrs.iteritems():
-                print off, corr
-            return
-        return offs[max(offs)]
 
     def find_bucket_size(self, show=True):
         """ take first 10000 events and find a suitable bucket size to build the correlation """
