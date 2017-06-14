@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from Elementary import Elementary
-from ROOT import TH1F, TCut
+from ROOT import TH1F, TCut, gROOT
 from Utils import set_statbox, fit_poissoni
 from math import pi
 
@@ -27,15 +27,16 @@ class PeakAnalysis(Elementary):
         draw_var = '@peaks{ch}_x.size()>>h_pn' if spec and self.Run.has_branch('peaks{ch}_x'.format(ch=self.Channel)) else 'n_peaks[{ch}] - 1>>h_pn'
         self.Tree.Draw(draw_var.format(ch=self.Channel), self.AllCut, 'goff')
         set_statbox(only_fit=True, entries=4, w=.3) if fit else set_statbox(only_entries=True)
-        self.format_histo(h, x_tit='Number of Peaks', y_tit='Number of Entries', y_off=1.4, fill_color=836, lw=2, fill_style=3004)
+        self.format_histo(h, x_tit='Number of Peaks', y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor, lw=2)
         self.save_histo(h, 'PeakNumbers', show, logy=True, lm=.11)
         return h
 
     def draw_n_peaks_fit(self, show=True, spec=False):
         h = self.draw_n_peaks(spec, show=False, fit=True)
-        fit = fit_poissoni(h, show=show)
         self.format_histo(h, 'Fit Result')
-        self.save_histo(h, 'PeakNumbersFit', show, logy=True, lm=.11)
+        self.draw_histo(h, '', show, logy=True, lm=.11)
+        fit = fit_poissoni(h, show=show)
+        self.save_histo(h, 'PeakNumbersFit', show, logy=True, lm=.11, draw_opt='e1same', canvas=gROOT.GetListOfCanvases()[-1])
         self.get_flux(fit=fit)
         return fit
 
