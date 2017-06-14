@@ -231,7 +231,12 @@ class ChannelCut(Cut):
             cut.SetVarX('diam{0}_track_x'.format(nr))
             cut.SetVarY('diam{0}_track_y'.format(nr))
             self.ROOTObjects.append(cut)
+            cut.SetLineWidth(3)
         return TCut(cut.GetName() if cut is not None else '')
+
+    def get_fid_area(self):
+        conf = self.CutConfig['fiducial']
+        return (conf[1] - conf[0]) * (conf[3] - conf[2])
 
     @staticmethod
     def draw_fid_cut():
