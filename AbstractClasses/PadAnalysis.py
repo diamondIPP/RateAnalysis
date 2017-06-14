@@ -266,7 +266,7 @@ class PadAnalysis(Analysis):
 
     # ==========================================================================
     # region 2D SIGNAL DISTRIBUTION
-    def draw_signal_map(self, draw_option='colz', show=True, factor=1.5, cut=None, marg=True, fid=True, hitmap=False, save=True):
+    def draw_signal_map(self, draw_option='colz', show=True, factor=1.5, cut=None, marg=False, fid=False, hitmap=False, save=True):
         margins = self.find_diamond_margins(show_plot=False)
         x = [margins['x'][0], margins['x'][1]] if marg else [-.3, .3]
         y = [margins['y'][0], margins['y'][1]] if marg else [-.3, .3]
@@ -282,8 +282,8 @@ class PadAnalysis(Analysis):
         self.set_root_output(1)
         signal = '{sig}-{pol}*{ped}'.format(sig=self.SignalName, ped=self.Pedestal.SignalName, pol=self.Polarity)
         self.log_info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.DiamondName, run=self.RunNumber, mode='hit' if hitmap else 'signal '))
+        cut = self.Cut.generate_special_cut(excluded=['fiducial']) if not fid and cut is None else cut
         cut = self.Cut.all_cut if cut is None else cut
-        cut = self.Cut.generate_special_cut(excluded=['fiducial']) if not fid else cut
         self.tree.Draw('{z}diam{nr}_track_y:diam{nr}_track_x>>{h}'.format(z=signal + ':' if not hitmap else '', nr=nr, h='h_hm' if hitmap else 'signal_map'), cut, 'goff')
         gStyle.SetPalette(1 if hitmap else 53)
         is_surf = draw_option.lower().startswith('surf')
@@ -294,10 +294,12 @@ class PadAnalysis(Analysis):
         h.SetContour(50)
         save_name = 'SignalMap2D{0}'.format(draw_option.title()) if not hitmap else 'HitMap'
         self.save_histo(h, save_name, show, lm=.12, rm=.16 if not is_surf else .12, draw_opt=draw_option, save=save)
+        self.Cut.generate_channel_cutstrings()
+        self.draw_fiducial_cut() if not fid else do_nothing()
         self.SignalMapHisto = h
         return h
 
-    def draw_dia_hitmap(self, show=True, factor=1.5, cut=None, marg=True, fid=True):
+    def draw_dia_hitmap(self, show=True, factor=1.5, cut=None, marg=False, fid=False):
         return self.draw_signal_map(show=show, factor=factor, cut=cut, marg=marg, fid=fid, hitmap=True)
 
     def make_region_cut(self):
