@@ -996,12 +996,34 @@ class AnalysisCollection(Elementary):
         self.RootObjects.append([gr, c])
         self.FWHM = gr
 
-    def save_signal_maps(self):
+    def draw_fluxes(self):
+        g1 = self.make_tgrapherrors('g_fp', 'Number of Peaks', color=self.get_color())
+        pixel_fluxes = [ana.run.Flux / 1000. for ana in self.collection.values()]
+        g2 = self.make_tgrapherrors('g_ff', 'Pixel Fast-OR', x=self.runs, y=pixel_fluxes, color=self.get_color())
+        for i, (run, ana) in enumerate(self.collection.iteritems()):
+            flux, err = ana.Peaks.get_flux()
+            g1.SetPoint(i, run, flux / 1000.)
+            g1.SetPointError(i, 0, err / 1000.)
+        mg = TMultiGraph('mg_ff', 'Flux Comparison')
+        mg.Add(g1, 'pl')
+        mg.Add(g2, 'pl')
+        l = self.make_legend(nentries=3, x2=.4)
+        l.AddEntry(g1, g1.GetTitle(), 'pl')
+        l.AddEntry(g2, g2.GetTitle(), 'pl')
+        names = ['1x1', '2x1', '2x2', '4x2', '4x4']
+        self.format_histo(mg, x_tit='Pattern', y_tit='Flux [MHz/cm^{2}]', y_off=1.4, draw_first=True)
+        for i, run in enumerate(self.runs):
+            bin_x = mg.GetXaxis().FindBin(run)
+            mg.GetXaxis().SetBinLabel(bin_x, names[i])
+        self.save_histo(mg, 'FluxComparison', draw_opt='a', lm=.12, bm=.2, l=l)
+
+    def save_signal_maps(self, hitmap=False):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         gROOT.SetBatch(1)
         graphs = []
         for i, ana in enumerate(self.collection.values()):
-            h = ana.draw_signal_map(show=False)
+            h = ana.draw_signal_map(show=False, hitmap=hitmap, cut='' if hitmap else None)
+            # self.format_histo(h, z_range=[0, 140], stats=0) if not hitmap else do_nothing()
             h.SetContour(50)
             graphs.append(h)
         # find min/max
