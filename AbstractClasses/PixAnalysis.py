@@ -714,6 +714,13 @@ class PixAnalysis(Analysis):
         self.save_histo(mg, 'EventOffsets', show, draw_opt='ap', l=l, lm=.13)
         self.reset_colors()
 
+    def draw_cluster_size(self, show=True, cut=''):
+        h = TH1I('h_cs', 'Cluster Size {d}'.format(d=self.DiamondName), 10, 0, 10)
+        self.tree.Draw('clusters_per_plane[{d}]>>h_cs'.format(d=self.Dut), TCut(cut), 'goff')
+        set_statbox(only_entries=True)
+        self.format_histo(h, x_tit='Cluster Size', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
+        self.save_histo(h, 'ClusterSize', logy=True)
+
     # ==========================================================================
 
     def __placeholder(self):
