@@ -219,10 +219,10 @@ class PixAnalysis(Analysis):
                 params[roc][int(line[-2])][int(line[-1])] = [float(line[i]) for i in xrange(4)]
             f.close()
         # calibration points
-        calib_files = [joinpath(self.run.converter.TrackingDir, lines[0].strip('./\n'), 'phCalibration_{e}'.format(e=line.strip('\n')[-6:])) for line in lines[5:]]
+        calib_files = [joinpath(self.run.converter.TrackingDir, lines[0].strip('./\n'), 'phCalibration_C{n}.dat'.format(n=n)) for n in xrange(self.NRocs)]
         vcals = None
         points = [[[0 for _ in xrange(self.Settings['nRows'])] for _ in xrange(self.Settings['nCols'])] for _ in xrange(self.NRocs)]
-        for roc, file_name in enumerate(calib_files, 4):
+        for roc, file_name in enumerate(calib_files, 0):
             try:
                 f = open(file_name)
                 f.readline()
@@ -316,24 +316,25 @@ class PixAnalysis(Analysis):
         self.save_histo(h, 'ADCDisto', show, lm=0.13, logy=True)
         return h
 
-    def draw_vcal_disto(self, cut=None, show=True, col=None, pix=None, electrons=False):
-        h = TH1F('h_vcal', 'vcal Distribution {d}'.format(d=self.DiamondName), 500, 0, 1000 * (47 if electrons else 1))
+    def draw_vcal_disto(self, cut=None, show=True, col=None, pix=None, rnge=None, electrons=False):
+        h = TH1F('h_vcal', 'vcal Distribution {d}'.format(d=self.DiamondName), 200, 0, 1000 if not electrons else 100000)
         cut_string = deepcopy(self.Cut.HitMapCut) if cut is None else TCut(cut)
         cut_string += 'plane == {n}'.format(n=self.Dut)
         cut_string += 'n_hits[{n}] == 1'.format(n=self.Dut)
         cut_string += 'col=={c}'.format(c=col) if col is not None else ''
         cut_string += 'col=={c}&&row=={r}'.format(c=pix[0], r=pix[1]) if pix is not None else ''
+        cut_string += 'col>={c1}&&col<={c2}&&row>={r1}&&row<={r2}'.format(c1=rnge[0], c2=rnge[1], r1=rnge[2], r2=rnge[3]) if rnge is not None else ''
         self.set_root_output(False)
         n = self.tree.Draw('adc:col:row', cut_string, 'goff')
         for i in xrange(n):
             row = int(self.tree.GetV3()[i])
             col = int(self.tree.GetV2()[i])
             adc = self.tree.GetV1()[i]
-            self.Fit.SetParameters(*self.Parameters[self.Dut - 4][col][row])
+            self.Fit.SetParameters(*self.Parameters[self.Dut][col][row])
             h.Fill(self.Fit.GetX(adc) * (47 if electrons else 1))
         set_statbox(entries=8, opt=1000000010)
-        self.format_histo(h, x_tit='vcal', y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor)
-        self.save_histo(h, 'VcalDisto', show, lm=0.13)
+        self.format_histo(h, x_tit='Pulse Height [{u}]'.format(u='vcal' if not electrons else 'e'), y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor)
+        self.save_histo(h, '{p}Disto'.format(p='Ph' if electrons else 'Vcal'), show, lm=0.13)
         return h
 
     def check_adc(self):
@@ -344,16 +345,16 @@ class PixAnalysis(Analysis):
                 if self.tree.adc[ind]:
                     print i, self.tree.adc[ind], list(self.tree.charge_all_ROC4)
 
-    def draw_pulse_height_disto(self, cut=None, show=True, prnt=True, sup_zero=True, pix=None, roc=None, vcal=False, redo=False):
+    def draw_pulse_height_disto(self, cut=None, show=True, prnt=True, sup_zero=False, pix=None, roc=None, vcal=False, redo=False):
         area_string = '_'.join(str(pi) for pi in pix) if pix is not None else 'all'
         roc = self.Dut if roc is None else roc
         pickle_path = self.make_pickle_path('PulseHeight', run=self.RunNumber, suf='{r}_{a}{z}'.format(r=roc, a=area_string, z='_0' if sup_zero else ''))
-        cut_string = deepcopy(self.Cut.generate_special_cut(excluded=['fiducial', 'trigger_phase'])) if cut is None else TCut(cut)
+        cut_string = deepcopy(self.Cut.all_cut) if cut is None else TCut(cut)
         cut_string += 'cluster_charge>0'.format(d=self.Dut) if sup_zero else ''
+        cut_string += 'cluster_plane=={r}'.format(r=roc)
         if pix is not None:
             pix = [pix, pix] if not type(pix[0]) == list else pix
             cut_string += 'cluster_col>={c1}&&cluster_col<={c2}&&cluster_row>={r1}&&cluster_row<={r2}'.format(c1=pix[0][0], c2=pix[1][0], r1=pix[0][1], r2=pix[1][1], d=self.Dut)
-        cut_string += 'cluster_plane=={r}'.format(r=roc)
 
         def func():
             self.set_root_output(False)
