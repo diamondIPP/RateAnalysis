@@ -43,11 +43,13 @@ class PeakAnalysis(Elementary):
     def get_flux(self, fit=None):
         fit = self.draw_n_peaks_fit(show=False) if fit is None else fit
         lambda_ = fit.GetParameter(1)
+        err = fit.GetParError(1)
         n_bunches = 25
         proc_frequency = 50.6e6
         flux = lambda_ * proc_frequency / (n_bunches * self.get_area()) / 1000.
+        err *= proc_frequency / (n_bunches * self.get_area()) / 1000.
         print 'Estimated Flux by number of peaks: {f:0.4f} kHz/cm2'.format(f=flux)
-        return flux
+        return flux, err
 
     def get_area(self):
         """ return the total area of the BCM' pad sizes """
