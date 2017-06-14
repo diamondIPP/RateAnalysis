@@ -5,7 +5,7 @@
 
 from datetime import datetime, timedelta
 from termcolor import colored
-from ROOT import gStyle, gROOT, TF1
+from ROOT import gStyle, gROOT, TF1, TMath
 from numpy import sqrt
 from os import makedirs
 from os import path as pth
@@ -386,6 +386,15 @@ def kinder_pickle(old_path, value):
     if kinder_is_mounted():
         picklepath = join('/home/micha/mounts/psi/Pickles', basename(split(old_path)[0]), basename(old_path))
         do_pickle(picklepath, do_nothing, value)
+
+
+def fit_poissoni(h, p0=5000, p1=1, name='f_poiss', show=True):
+    fit = TF1(name, '[0] * TMath::PoissonI(x, [1])', 0, 30)
+    fit.SetParNames('Constant', 'Lambda')
+    fit.SetParameters(p0, p1)
+    h.Fit(fit, 'q{0}'.format('' if show else 0))
+    fit.Draw('same')
+    return fit
 
 
 class FitRes:
