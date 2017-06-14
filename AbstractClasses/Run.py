@@ -14,7 +14,7 @@ from subprocess import check_output
 
 from Converter import Converter
 from Elementary import Elementary
-from Utils import isfloat, join, file_exists, log_warning, log_critical
+from Utils import isfloat, join, log_warning, log_critical
 
 
 # ==============================================
@@ -280,12 +280,10 @@ class Run(Elementary):
     def get_masked_area(self):
         if self.RunNumber is None:
             return
-        mask_file_path = join(self.maskfilepath, self.RunInfo['maskfile'])
-        maskdata = {}
-        for plane in self.trigger_planes:
-            maskdata[plane] = {}
+        mask_file = join(self.maskfilepath, self.RunInfo['maskfile'])
+        maskdata = {plane: {} for plane in self.trigger_planes}
         try:
-            f = open(mask_file_path, 'r')
+            f = open(mask_file, 'r')
             i2cs = []
             for line in f:
                 if len(line) > 3:
@@ -298,10 +296,8 @@ class Run(Elementary):
         except IOError:
             pass
 
-        unmasked_pixels = {}
-        # default
-        for plane in self.trigger_planes:
-            unmasked_pixels[plane] = 4160
+        # default pixels
+        unmasked_pixels = {plane: 52 * 80 for plane in self.trigger_planes}
         # pass for empty file
         if not maskdata[self.trigger_planes[0]]:
             pass
