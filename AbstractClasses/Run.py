@@ -263,6 +263,21 @@ class Run(Elementary):
         print dic
 
     def calculate_flux(self):
+
+        unmasked_area = self.get_masked_area()
+        flux = []
+        self.find_for_in_comment()
+        if self.RunInfo['for1'] and self.RunInfo['for2']:
+            self.FoundForRate = True
+            for i, plane in enumerate(self.trigger_planes, 1):
+                area = unmasked_area[plane]
+                flux.append(self.RunInfo['for{num}'.format(num=i)] / area / 1000)  # in kHz/cm^2
+        else:
+            flux.append(self.RunInfo['measuredflux'])
+        self.RunInfo['mean flux'] = mean(flux)
+        return mean(flux)
+
+    def get_masked_area(self):
         if self.RunNumber is None:
             return
         mask_file_path = join(self.maskfilepath, self.RunInfo['maskfile'])
@@ -301,17 +316,7 @@ class Run(Elementary):
                 self.RunInfo['masked pixels'][plane] = unmasked_pixels[plane]
 
         pixel_size = 0.01 * 0.015  # cm^2
-        flux = []
-        self.find_for_in_comment()
-        if self.RunInfo['for1'] and self.RunInfo['for2']:
-            self.FoundForRate = True
-            for i, plane in enumerate(self.trigger_planes, 1):
-                area = pixel_size * unmasked_pixels[plane]
-                flux.append(self.RunInfo['for{num}'.format(num=i)] / area / 1000)  # in kHz/cm^2
-        else:
-            flux.append(self.RunInfo['measuredflux'])
-        self.RunInfo['mean flux'] = mean(flux)
-        return mean(flux)
+        return {key: pixels * pixel_size for key, pixels in unmasked_pixels.iteritems()}
 
     def find_for_in_comment(self):
         for name in ['for1', 'for2']:
