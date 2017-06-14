@@ -1331,6 +1331,9 @@ class PadAnalysis(Analysis):
         self.save_histo(stack, '{name}LogY'.format(name=save_name), show, self.save_dir, logy=True, draw_opt='nostack', lm=0.14)
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
 
+    def draw_fiducial_cut(self):
+        self.Cut.draw_fid_cut()
+
     def draw_cut_means(self, show=True, short=False):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         gr = self.make_tgrapherrors('gr_cm', 'Mean of Pulse Height for Consecutive Cuts')
