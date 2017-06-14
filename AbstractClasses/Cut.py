@@ -104,6 +104,7 @@ class Cut(Elementary):
         dic['beam_interruptions'] = TCut('beam_interruptions', '')
         dic['alignment'] = TCut('alignment', '')
         dic['trigger_phase'] = TCut('trigger_phase', '')
+        dic['fiducial'] = TCut('fiducial', '')
         # waveform
         dic['ped_sigma'] = TCut('ped_sigma', '')
         dic['median'] = TCut('median', '')
@@ -118,7 +119,6 @@ class Cut(Elementary):
         dic['tracks'] = TCut('tracks', '')
         dic['hit'] = TCut('hit', '')
         dic['masks'] = TCut('masks', '')
-        dic['fiducial'] = TCut('fiducial', '')
         dic['chi2X'] = TCut('chi2X', '')
         dic['chi2Y'] = TCut('chi2Y', '')
         dic['track_angle_x'] = TCut('track_angle_x', '')
