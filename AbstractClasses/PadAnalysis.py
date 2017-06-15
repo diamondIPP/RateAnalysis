@@ -478,26 +478,39 @@ class PadAnalysis(Analysis):
 
     # ==========================================================================
     # region SIGNAL PEAK POSITION
-    def draw_peak_timing(self, region=None, type_='signal', show=True, ucut=None, corr=True, draw_cut=True):
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        num = self.SignalNumber if region is None else self.get_signal_number(region=region, sig_type=type_)
-        region = self.SignalRegion if region is None else region
-        peak_val = 'IntegralPeaks[{num}]'.format(num=num) if not corr else 'IntegralPeakTime[{num}]'.format(num=num)
-        title = '{typ} Peak Positions'.format(typ=type_.title())
-        x = self.run.signal_regions[region] if type_ == 'signal' else self.run.get_regions('pulser')['pulser']
-        n_bins = (x[1] - x[0]) * 4 if corr else (x[1] - x[0])
-        h = TH1F('hpv', title, n_bins, x[0] / 2., x[1] / 2.)
-        l = self.make_legend(.66, .7, nentries=3, name='l1')
+    def draw_peak_timing(self, region=None, type_='signal', show=True, cut=None, corr=True, draw_cut=True):
+        xmin, xmax = self.run.signal_regions[self.SignalRegion if region is None else region] if type_ == 'signal' else self.run.PulserRegion
+        # increase range for timing correction and convert to ns
+        xmin = xmin / 2. - (10 if corr else 0)
+        xmax = xmax / 2. + (10 if corr else 0)
+        print int((xmax - xmin) * (4 if corr else 1)), xmin, xmax
+        h = TH1F('h_pv', '{typ} Peak Positions'.format(typ=type_.title()), int((xmax - xmin) * (4 if corr else 1)), xmin, xmax)
         self.format_histo(h, x_tit='Signal Peak Timing [ns]', y_tit='Number of Entries', y_off=1.3, stats=0)
-        cut = self.Cut.generate_special_cut(excluded=['timing']) if type_ == 'signal' else '!({0})'.format(self.Cut.CutStrings['pulser'])
-        cut = cut if ucut is None else ucut
-        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
+        cut = self.Cut.generate_special_cut(excluded=['timing']) if cut is None else TCut(cut)
         dic = self.Cut.calc_timing_range(show=False)
         t_correction = '({p1}* trigger_cell + {p2} * trigger_cell*trigger_cell)'.format(p1=dic['t_corr'].GetParameter(1), p2=dic['t_corr'].GetParameter(2))
-        draw_string = '{peaks}{op}>>hpv'.format(peaks=peak_val, op='/2.' if not corr else '-' + t_correction)
+        draw_string = '{peaks}{op}>>h_pv'.format(peaks=self.get_peak_name(region, type_, corr), op='/2.' if not corr else '-' + t_correction)
+        print draw_string
         self.tree.Draw(draw_string, cut, 'goff')
         self.draw_histo(h, show=show, sub_dir=self.save_dir, lm=.12, logy=True)
+        raw_input()
         f, fit, fit1 = self.fit_peak_timing(h)
+        self.__draw_timing_legends(draw_cut, f, fit, fit1)
+        h.Draw('same')
+        h.GetXaxis().SetRangeUser(f.Parameter(1) - 5 * f.Parameter(2), f.Parameter(1) + 10 * f.Parameter(2))
+        self.save_plots('{typ}PeakPositions'.format(typ=type_.title()))
+        self.PeakValues = h
+        return f
+
+    def __draw_timing_legends(self, draw_cut, f, fit, fit1):
+        l1 = None
+        if draw_cut:
+            l1 = self.make_legend(.66, .7, nentries=3, name='l1')
+            g = self.__draw_timing_cut()
+            l1.AddEntry(g, 'Timing Cut', 'fl')
+            l1.AddEntry(fit1, 'Fitting Range', 'l')
+            l1.AddEntry(fit, 'Fit Function', 'l')
+            l1.Draw()
         l2 = self.make_legend(.66, nentries=3, name='fr', margin=.05, felix=False)
         l2.SetHeader('Fit Results')
         l2.AddEntry(0, 'Mean:', '')
@@ -505,29 +518,9 @@ class PadAnalysis(Analysis):
         l2.AddEntry(0, 'Sigma:', '')
         l2.AddEntry(0, '{0:5.2f} #pm {1:5.2f} ns'.format(f.Parameter(2), f.ParError(2)), '').SetTextAlign(32)
         l2.SetNColumns(2)
-        if draw_cut:
-            g = self.__draw_timing_cut()
-            l.AddEntry(g, 'Timing Cut', 'fl')
-        l.AddEntry(fit1, 'Fitting Range', 'l')
-        l.AddEntry(fit, 'Fit Function', 'l')
-        l.Draw()
         l2.Draw()
         l2.GetListOfPrimitives().First().SetTextAlign(22)
-        h.Draw('same')
-        h.GetXaxis().SetRangeUser(f.Parameter(1) - 5 * f.Parameter(2), f.Parameter(1) + 10 * f.Parameter(2))
-        self.save_plots('{typ}PeakPositions'.format(typ=type_.title()))
-        self.PeakValues = h
-        self.RootObjects.append([l, l2])
-        return f
-
-    def draw_peak_positions(self, cut=None, tcorr=False, show=True):
-        h = TH1F('h_pp', 'Peak Positions', 2048 if tcorr else 1024, 0, 512 if tcorr else 1024)
-        cut = self.AllCuts if cut is None else TCut(cut)
-        self.tree.Draw('max_peak_{p}[{ch}]>>h_pp'.format(ch=self.channel, p='time' if tcorr else 'position'), cut, 'goff')
-        set_drawing_range(h, thresh=100)
-        set_statbox(only_entries=True)
-        self.format_histo(h, x_tit='Digitiser Bin' if not tcorr else 'Time [ns]', y_tit='Number of Entries', y_off=1.6)
-        self.draw_histo(h, show=show, lm=.12)
+        self.RootObjects.append([l1, l2])
 
     def __draw_timing_cut(self):
         timing_fit = self.Cut.calc_timing_range(show=False)['timing_corr']
