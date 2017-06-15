@@ -166,6 +166,10 @@ class PadAnalysis(Analysis):
 
     def get_pedestal_name(self, region=None, peak_int=None):
         return self.get_signal_name(region=region, peak_integral=peak_int, sig_type='pedestal')
+
+    def get_peak_name(self, region=None, type_='signal', t_corr=True):
+        peak_name = 'IntegralPeakTime' if t_corr else 'IntegralPeaks'
+        return '{name}[{num}]'.format(name=peak_name, num=self.get_signal_number(region, None, type_))
     # endregion
 
     def set_channel(self, ch):
