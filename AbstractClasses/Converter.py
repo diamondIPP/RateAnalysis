@@ -13,7 +13,8 @@ from os.path import dirname, realpath
 from glob import glob
 from Utils import *
 from PixAlignment import PixAlignment
-from ROOT import TProfile, TFile
+from PadAlignment import PadAlignment
+from ROOT import TProfile
 do_gui = False
 if do_gui:
     from Tkinter import *
@@ -222,13 +223,10 @@ class Converter:
     def align_run(self):
 
         if self.Type == 'pad':
-            f = TFile(self.get_root_file_path())
-            tree = f.Get(self.Run.treename)
-            is_aligned = self.check_alignment(tree)
-            f.Close()
-            if not is_aligned:
-                align_cmd = '{align}/bin/EventAlignment.exe {rootfile}'.format(align=self.AlignDir, rootfile=self.get_root_file_path())
-                system(align_cmd)
+            print_banner('STARTING PAD EVENT ALIGNMENT')
+            pad_align = PadAlignment(self)
+            if not pad_align.IsAligned:
+                pad_align.write_aligned_tree()
         elif self.Type == 'pixel':
             print_banner('STARTING PIXEL EVENT ALIGNMENT')
             pix_align = PixAlignment(self)
