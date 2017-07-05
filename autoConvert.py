@@ -13,7 +13,7 @@ from argparse import ArgumentParser
 from os.path import realpath, dirname
 
 
-tc = '201610'
+tc = '201707'
 prog_dir = dirname(realpath(__file__))
 data_dir = '/data/psi_{0}_{1}'.format(tc[:4], tc[-2:])
 raw_dir = '{0}/raw'.format(data_dir)
@@ -76,7 +76,7 @@ def convert_run(run):
             raw = raw if file_exists(raw) else old_raw
             if not file_is_beeing_written(raw):
                 chdir(prog_dir)
-                cmd = 'AbstractClasses/PadAnalysis.py {0} -t -tc {1}'.format(run, tc)
+                cmd = 'python AbstractClasses/Run.py {0} -t -tc {1}'.format(run, tc)
                 print cmd
                 system(cmd)
             else:
