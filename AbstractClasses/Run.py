@@ -87,6 +87,7 @@ class Run(Elementary):
                 self.Channels = self.load_channels()
                 self.pedestal_regions = self.get_regions('pedestal')
                 self.signal_regions = self.get_regions('signal')
+                self.PulserRegion = self.get_regions('pulser')['pulser']
                 self.peak_integrals = self.get_peak_integrals()
                 self.DigitizerChannels = self.load_digitizer_channels()
                 self.TCal = self.load_tcal()
