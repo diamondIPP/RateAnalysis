@@ -251,7 +251,7 @@ class AnalysisCollection(Elementary):
         i, j = 0, 0
         for key, ana in self.collection.iteritems():
             fit1 = ana.draw_pulse_height(binning, evnt_corr=True, save=redo, show=False) if not pulser else ana.Pulser.draw_distribution_fit(show=False, save=False)
-            x = ana.run.RunInfo['dia{nr}hv'.format(nr=self.FirstAnalysis.run.channels.index(self.channel) + 1)]
+            x = ana.run.RunInfo['dia{nr}hv'.format(nr=self.DiamondNumber)]
             print x, '\t',
             s, e = (fit1.Parameter(0), fit1.ParError(0)) if not pulser else (fit1.Parameter(1), fit1.ParError(1))
             gr1.SetPoint(i, x, s)
