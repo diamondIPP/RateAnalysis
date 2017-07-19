@@ -142,7 +142,7 @@ class PulserAnalysis(Elementary):
         return fit
 
     def draw_peak_timing(self, show=True, corr=False):
-        self.Ana.draw_peak_timing('', 'pulser', ucut=self.PulserCut, show=show, draw_cut=False, corr=corr)
+        self.Ana.draw_peak_timing('', 'pulser', cut=self.PulserCut, show=show, draw_cut=False, corr=corr)
 
     def draw_pedestal(self, show=True):
         # region = 'ac' if 'ac' in self.Ana.run.pedestal_regions else None
@@ -168,24 +168,15 @@ class PulserAnalysis(Elementary):
         self.save_histo(stack, 'PulserPedestalComparison', show, lm=.12, l=legend, draw_opt='nostack')
         self.reset_colors()
 
-    def draw_waveforms(self, n=1, start_event=None, add_buckets=False, y_range=None, show=True):
-        fit = self.draw_distribution_fit(show=False)
-        y_opp = 150 if self.Type == 'intern' else 50
-        if y_range is None:
-            y_min = -(round_up_to(fit.Parameter(1), 50) + 50) if self.Polarity < 0 else -y_opp
-            y_max = y_opp if self.Polarity < 0 else round_up_to(fit.Parameter(1), 50) + 50
-            print y_min, y_max
-        else:
-            y_min, y_max = y_range[0], y_range[1]
-        self.Ana.draw_waveforms(n=n, start_event=start_event, add_buckets=add_buckets, cut_string=self.PulserCut, fixed_range=[y_min, y_max], show=show)
+    def draw_waveforms(self, n=1, start_event=None, show=True, t_corr=False):
+        self.Ana.draw_waveforms(n=n, start_event=start_event, cut=self.PulserCut, show=show, t_corr=t_corr)
 
-    def save_pulser_shapes(self, n_pics=5, fixed_range=None, show=True):
-        frange = [-100, 50] if fixed_range is None else fixed_range
+    def save_pulser_shapes(self, n_pics=5, show=True):
         events_spacing = (self.Ana.EndEvent - self.Ana.StartEvent) / n_pics
         start_events = [self.Ana.StartEvent + events_spacing * i for i in xrange(n_pics)]
         for i, start in enumerate(start_events):
             self.count = 0
-            self.draw_waveforms(n=1000, start_event=start, y_range=frange, show=show)
+            self.draw_waveforms(n=1000, start_event=start, show=show)
             self.save_plots('WaveForms{0}'.format(i), sub_dir='{0}/WaveForms'.format(self.save_dir))
 
     def draw_pulser_vs_time(self, n_points=5, _mean=True, show=True, corr=True, events=5000):
