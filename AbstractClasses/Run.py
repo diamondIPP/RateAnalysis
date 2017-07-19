@@ -538,7 +538,6 @@ class Run(Elementary):
         if runs is None:
             run_string = 'Run {run}: {rate}, {dur} Min ({evts} evts)'.format(run=self.RunNumber, rate=self.get_rate_string(), dur=dur, evts=self.n_entries)
         else:
-            print runs
             run_string = 'Runs {start}-{stop} ({flux1} - {flux2})'.format(start=runs[0], stop=runs[1], flux1=runs[2].strip(' '), flux2=runs[3].strip(' '))
         width = len(run_string) * .01 if x == y else len(run_string) * 0.015 * y / x
         legend = self.make_legend(.005, .1, y1=.003, x2=width, nentries=3, felix=False, scale=.75)
@@ -590,11 +589,11 @@ class Run(Elementary):
         l.SetX2NDC(.435)
         l.SetTextSize(.0195)
 
-    def get_runinfo(self, ch, pad=None, runs=None):
-        runs = runs if runs is not None else []
-        if hasattr(self, 'collection'):
-            runs = [self.collection.keys()[0], self.collection.keys()[-1], self.collection.values()[0].run.get_rate_string(), self.collection.values()[-1].run.get_rate_string()]
-        return self.draw_run_info(show=False, runs=runs, channel=ch, canvas=pad)
+    def get_runinfo(self, ana, pad=None):
+        runs = []
+        if hasattr(ana, 'collection'):
+            runs = [ana.collection.keys()[0], ana.collection.keys()[-1], ana.collection.values()[0].run.get_rate_string(), ana.collection.values()[-1].run.get_rate_string()]
+        return self.draw_run_info(show=False, runs=runs, channel=ana.DiamondNumber - 1, canvas=pad)
 
     def has_branch(self, name):
         return bool(self.tree.GetBranch(name))
