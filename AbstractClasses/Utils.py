@@ -5,12 +5,12 @@
 
 from datetime import datetime, timedelta
 from termcolor import colored
-from ROOT import gStyle, gROOT, TF1, TMath
+from ROOT import gStyle, gROOT, TF1
 from numpy import sqrt
 from os import makedirs
 from os import path as pth
 from os.path import basename, join, split
-from time import time
+from time import time, sleep
 import pickle
 
 
@@ -200,6 +200,19 @@ def move_legend(l, x1, y1):
     l.SetX2NDC(x1 + xdiff)
     l.SetY1NDC(y1)
     l.SetY2NDC(y1 + ydiff)
+    
+    
+def scale_legend(l, txt_size=None, width=None, height=None):
+    sleep(.05)
+    l.SetY2NDC(height) if height is not None else do_nothing()
+    l.SetX2NDC(width) if width is not None else do_nothing()
+    l.SetTextSize(txt_size) if txt_size is not None else do_nothing()
+
+
+def make_irr_string(val, power):
+    if not val:
+        return 'unirradiated'
+    return '{v:1.1f}#upoint10^{p} n/cm^{{2}}'.format(v=val, p='{' + str(power) + '}')
 
 
 def increased_range(ran, fac_bot=0., fac_top=0.):
