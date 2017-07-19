@@ -730,14 +730,13 @@ class Elementary(object):
             for obj, opt in draw_objects:
                 obj.Draw(opt)
 
-        if hasattr(self, 'FirstAnalysis'):
-            self.FirstAnalysis.run.scale_runinfo_legend(txt_size=.075, w=.435, h=0.1 / pm)
-            if run_info is None and hasattr(self, 'channel'):
-                run_info = self.FirstAnalysis.run.get_runinfo(self.channel)
-        if run_info:
+        if hasattr(self, 'FirstAnalysis') and run_info is None:
+            run_info = self.FirstAnalysis.run.get_runinfo(self.channel) if hasattr(self, 'channel') else None
+        if run_info is not None:
             p0.cd()
             run_info[0].Draw()
             run_info[1].Draw() if self.MainConfigParser.getboolean('SAVE', 'git_hash') else do_nothing()
+            scale_legend(run_info[0], txt_size=.09, width=.5, height=0.1 / pm)
 
         pad.Modified()
         pad.Update()
@@ -748,8 +747,6 @@ class Elementary(object):
 
         self.ROOTObjects.append([p0, p1, c, draw_objects])
         self.set_root_output(True)
-        if hasattr(self, 'FirstAnalysis'):
-            self.FirstAnalysis.run.reset_info_legend()
 
     def draw_tpad(self, name, tit='', pos=None, fill_col=0, gridx=False, gridy=False, margins=None, transparent=False, logy=False, logx=False):
         margins = [.1, .1, .1, .1] if margins is None else margins
