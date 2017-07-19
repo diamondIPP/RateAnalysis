@@ -10,7 +10,7 @@ from ConfigParser import ConfigParser, NoOptionError
 from Utils import *
 from argparse import ArgumentParser
 from RunSelection import RunSelection
-from RunClass import Run
+from Run import Run
 from json import load, dump
 from collections import OrderedDict, Counter
 from ROOT import TMultiGraph, TGraphErrors, kRed, kOrange, kBlue, kGreen, kCyan, kViolet, kPink, kYellow, gStyle, TF1, TH2F, TH1F, TGraph2DErrors
@@ -45,7 +45,6 @@ class DiaScans(Elementary):
 
         # Save
         self.ROOTObjects = []
-        self.PickleDir = self.get_program_dir() + self.ana_config_parser.get('SAVE', 'pickle_dir')
 
     @staticmethod
     def init_colors():
@@ -116,8 +115,7 @@ class DiaScans(Elementary):
         run_infos = {}
         for tc in self.TestCampaigns:
             self.TESTCAMPAIGN = tc
-            parser = self.load_run_configs(None)
-            file_path = parser.get('BASIC', 'runinfofile')
+            file_path = self.load_run_info_path()
             f = open(file_path)
             run_infos[tc] = load(f)
             f.close()
