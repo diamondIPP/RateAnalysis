@@ -778,11 +778,13 @@ class DiaScans(Elementary):
 
     def draw_dia_rate_scans(self):
         run_selections = self.load_run_selections()
-        mg = TMultiGraph('mg_ph', '{dia} Rate Scans at {bias} V;Flux [kHz/cm^{{2}}]; pulse height [au]'.format(dia=self.DiamondName, bias=500))
-        legend = self.make_legend(.66, .4, nentries=4)
-        legend.SetNColumns(2)
+        biases = self.get_bias_voltages()
+        bias_str = ' at {bias} V'.format(bias=biases[0]) if len(biases) == 1 else ''
+        mg = TMultiGraph('mg_ph', '{dia} Rate Scans{b};Flux [kHz/cm^{{2}}]; pulse height [au]'.format(dia=self.DiamondName, b=bias_str))
+        legend = self.make_legend(.8, .4, nentries=4, felix=True)
+        legend.SetNColumns(2) if len(biases) > 1 else do_nothing()
         colors = [4, 419, 2, 800]
-        tits = ['unirradiated', 'unirradiated', '5e14 n/cm^{2}', '5e14 n/cm^{2}']
+        tits = [make_irr_string(v, p) for v, p in [(0, 0), (5, 14), (1.5, 15)]]
         for i, (sel, ch) in enumerate(run_selections.iteritems()):
             path = self.make_pickle_path('Ph_fit', 'PulseHeights', sel.SelectedRunplan, self.DiamondName, 10000, sel.TESTCAMPAIGN)
             try:
@@ -796,36 +798,31 @@ class DiaScans(Elementary):
                 mg_ph_ana = ana.draw_pulse_heights(show=False)
                 ana.close_files()
             for g in mg_ph_ana.GetListOfGraphs():
-                g.SetMarkerSize(.5)
-                self.format_histo(g, color=colors[i])
-                if g.GetName() == 'gFirst':
-                    self.format_histo(g, color=1, marker=26, markersize=1.2)
-                elif g.GetName() == 'gLast':
-                    self.format_histo(g, color=1, marker=23, markersize=1.2)
-                # elif g.GetName() == 'gStatError':
-                #     l.AddEntry(g, g.GetTitle(), 'l')
-                # elif not g.GetName() == 'gLine':
-                #     l.AddEntry(g, g.GetTitle(), 'p')
+                self.format_histo(g, color=colors[i], markersize=2, lw=2)
+                # if g.GetName() == 'gFirst':
+                #     self.format_histo(g, color=1, marker=26, markersize=2)
+                # elif g.GetName() == 'gLast':
+                #     self.format_histo(g, color=1, marker=23, markersize=2)
             legend.AddEntry(mg_ph_ana.GetListOfGraphs()[0], tits[i], 'lp')
-            legend.AddEntry(0, get_bias_root_string(sel.SelectedBias), '')
+            legend.AddEntry(0, get_bias_root_string(sel.SelectedBias), '') if len(biases) > 1 else do_nothing()
             mg.Add(mg_ph_ana)
         x_vals = sorted([gr.GetX()[i] for gr in mg.GetListOfGraphs() for i in xrange(gr.GetN())])
         y_vals = sorted([gr.GetY()[i] for gr in mg.GetListOfGraphs() for i in xrange(gr.GetN())])
-        self.format_histo(mg, draw_first=True, y_tit='Pulse Height [au]')
-        mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 1.2)
-        mg.GetYaxis().SetRangeUser(0, y_vals[-1] * 1.1)
-        self.save_histo(mg, 'DiaScans{dia}'.format(dia=make_dia_str(self.DiamondName)), draw_opt='a', logx=True, l=legend, x_fac=1.5, lm=.092, bm=.11)
+        self.format_histo(mg, draw_first=True, y_tit='Pulse Height [au]', y_range=[0, y_vals[-1] * 1.1], tit_size=.05, lab_size=.05, y_off=.91, x_off=1.2)
+        mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 3)
+        self.save_histo(mg, 'DiaScans{dia}'.format(dia=make_dia_str(self.DiamondName)), draw_opt='a', logx=True, l=legend, x_fac=1.6, lm=.092, bm=.12, gridy=True)
 
 
 if __name__ == '__main__':
     main_parser = ArgumentParser()
-    main_parser.add_argument('dia', nargs='?', default='b2')
+    main_parser.add_argument('dia', nargs='?', default='II6-97')
     main_parser.add_argument('-tcs', nargs='?', default=None)
     args = main_parser.parse_args()
     print args
     print_banner('STARTING DIAMOND RATE SCAN COLLECTION OF DIAMOND {0}'.format(args.dia))
 
     z = DiaScans(args.dia, args.tcs, verbose=True)
+    z.set_selection('II6-97-neg')
     if False:
         for key_, s in z.Selections.items():
             print_banner('STARTING SELECTION {0}'.format(key_))
