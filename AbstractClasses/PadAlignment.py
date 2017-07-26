@@ -109,6 +109,7 @@ class PadAlignment:
             if i + n + offset > len(self.PulserEvents):
                 break
             mean_sizes.append(self.calc_mean_size(i, offset))
+            # print i, mean_sizes[-1]
             if mean_sizes[-1] > self.Threshold:
                 # the aligned mean is two bunches before
                 al_mean = mean_sizes[-3]
@@ -118,10 +119,42 @@ class PadAlignment:
                     if sliding_mean > al_mean + .1:
                         off_event = self.PulserEvents[i + j - 1]
                         this_offset = self.find_offset(i + j - 1, offset)
+                        # print 'Found offset:', off_event, this_offset
                         offsets[off_event] = this_offset
-                        # print off_event, offset
                         offset += this_offset
                         break
+
+        self.Run.add_info(t)
+        log_message('Found {n} offsets'.format(n=len(offsets)))
+        return offsets
+
+    def find_shifting_offsets(self):
+        t = self.Run.log_info('Scanning for precise offsets ... ', next_line=False)
+        n = self.BucketSize
+        offsets = OrderedDict()
+        offset = self.find_offset(0, 0)
+        rates = [self.calc_mean_size(0)]
+        i = 1
+        while i < len(self.PulserEvents) - abs(offset):
+            rate = self.calc_mean_size(i, offset)
+            # print i, '{0:1.2f}'.format(rate)
+            if rate > self.Threshold:
+                # assume that the rate was good n/2 events before
+                good_rate = rates[-n / 2]
+                for j, r in enumerate(rates[-n / 2:]):
+                    if r > good_rate + .1:
+                        off_event = self.PulserEvents[i + j - 1 + n / 2]
+                        this_offset = self.find_offset(i + j - 1 + n / 2, offset)
+                        if this_offset:
+                            i += j - 1 + n / 2
+                            # print 'Found offset:', off_event, this_offset
+                            offsets[off_event] = this_offset
+                            offset += this_offset
+                            break
+            rates.append(rate)
+            i += 1
+            if len(rates) > n:
+                del rates[0]
 
         self.Run.add_info(t)
         log_message('Found {n} offsets'.format(n=len(offsets)))
@@ -153,7 +186,7 @@ class PadAlignment:
             vec.clear()
 
     def write_aligned_tree(self):
-        offsets = self.find_offsets()
+        offsets = self.find_shifting_offsets()
         self.NewFile = TFile(self.Converter.get_root_file_path(), 'RECREATE')
         self.NewTree = self.InTree.CloneTree(0)
         self.set_branch_addresses()
