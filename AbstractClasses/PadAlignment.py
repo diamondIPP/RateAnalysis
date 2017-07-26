@@ -39,7 +39,7 @@ class PadAlignment:
             self.ColSize = []
             self.PulserEvents = []
             self.load_variables()
-            self.BucketSize = 50
+            self.BucketSize = 30
 
     def __del__(self):
         self.InFile.Close()
