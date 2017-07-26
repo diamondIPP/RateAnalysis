@@ -226,7 +226,7 @@ class AnalysisCollection(Elementary):
             gr.Draw(draw_opts[i - 1])
             legends[i - 1].Draw()
 
-        run_info = self.FirstAnalysis.run.get_runinfo(self.FirstAnalysis.DiamondNumber, pad=pad)
+        run_info = self.FirstAnalysis.run.get_runinfo(self, pad=pad)
         width = len(run_info[0].GetListOfPrimitives()[1].GetLabel()) * 0.0064
         self.FirstAnalysis.run.scale_runinfo_legend(w=width)
         c.cd()
@@ -324,7 +324,6 @@ class AnalysisCollection(Elementary):
             gr_first = self.make_tgrapherrors('gFirst', 'first run', marker=22, color=2, marker_size=marker_size * 2)
             gr_last = self.make_tgrapherrors('gLast', 'last run', marker=23, color=2, marker_size=marker_size * 2)
             gr_errors = self.make_tgrapherrors('gFullError', 'stat. + repr. error', marker=0, color=602, marker_size=0)
-            not_found_for = False in [coll.run.FoundForRate for coll in self.collection.itervalues()]
 
             flux_errors = self.get_repr_errors(80, False)
             log_message('Getting pulse heights{0}'.format(' vs time' if vs_time else ''))
@@ -337,9 +336,7 @@ class AnalysisCollection(Elementary):
                     fit2 = ana.draw_pulse_height(binning, bin_corr=True, save=False)
                     fit3 = ana.draw_pulse_height(binning, off_corr=True, save=False, evnt_corr=False)
                     fit4 = ana.draw_pulse_height(binning, evnt_corr=False, save=False)
-                x = key
-                if flux:
-                    x = ana.run.RunInfo['measured flux'] if not_found_for else ana.run.Flux
+                x = ana.run.Flux if flux else key
                 if vs_time:
                     self.set_root_output(False)
                     x_err = ana.run.duration.seconds / 2.
@@ -445,7 +442,7 @@ class AnalysisCollection(Elementary):
             i = 0
             par = 2 if sigma else 1
             for key, ana in self.collection.iteritems():
-                fit_par = ana.show_pedestal_histo(region, peak_int, cut=cut_string, save=save, show=False)
+                fit_par = ana.Pedestal.draw_disto_fit(cut=cut_string, save=save, show=False)
                 x = ana.run.Flux if flux else key
                 gr1.SetPoint(i, x, fit_par.Parameter(par))
                 gr1.SetPointError(i, 0, fit_par.ParError(par))
@@ -471,7 +468,7 @@ class AnalysisCollection(Elementary):
         save_name = 'Pedestal{s}{mod}{cut}'.format(mod=mode, cut='' if cut is None else cut_string.GetName(), s='Sigma' if sigma else 'Mean')
         print save_name
         self.save_histo(graph, save_name=save_name, show=show, logx=True if flux else False, l=legend if all_regions else None, lm=.12)
-        return
+        return graph
 
     def draw_noise(self, flux=True, show=True, save=False):
         return self.draw_pedestals(flux=flux, show=show, save=save, sigma=True)
@@ -669,7 +666,7 @@ class AnalysisCollection(Elementary):
                 fit = ana.Pulser.draw_distribution_fit(save=False, corr=corr, beam_on=beam_on)
                 par = 1 if mean_ else 2
                 cut = ana.Cut.generate_pulser_cut(beam_on)
-                ped_fit = ana.show_pedestal_histo(cut=cut, save=False)
+                ped_fit = ana.Pedestal.draw_disto_fit(cut=cut, save=False)
                 ped_err = ped_fit.ParError(par)
                 if vs_time:
                     xerr = ana.run.duration.seconds / 2.
@@ -719,7 +716,8 @@ class AnalysisCollection(Elementary):
             mg1.GetListOfGraphs()[0].SetLineColor(602)
             self.__draw_pulser_legend()
             if save_comb:
-                self.save_combined_pulse_heights(mg, mg1, l, mg_y, show, name='CombinedPulserPulseHeights', pulser_leg=self.__draw_pulser_legend)
+                run_info = self.FirstAnalysis.run.get_runinfo(self)
+                self.save_combined_pulse_heights(mg, mg1, l, mg_y, show, name='CombinedPulserPulseHeights', pulser_leg=self.__draw_pulser_legend, run_info=run_info)
                 self.ROOTObjects.append(mg1)
             return mg
 
