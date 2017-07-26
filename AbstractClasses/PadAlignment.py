@@ -89,8 +89,11 @@ class PadAlignment:
         return aligned
 
     def find_offset(self, start, offset):
-        means = {self.calc_mean_size(start, 1 + offset): 1, self.calc_mean_size(start, -1 + offset): -1}
-        return next(means[key] for key in means.iterkeys() if key < self.Threshold)
+        means = OrderedDict((self.calc_mean_size(start, i + offset), i) for i in [-1, 1, -2, 2])
+        try:
+            return next(means[key] for key in means.iterkeys() if key < self.Threshold)
+        except StopIteration:
+            return 0
 
     def calc_mean_size(self, start, off=0):
         return mean([self.ColSize[ev + off] > 1 for ev in self.PulserEvents[start:start + self.BucketSize]])
