@@ -8,7 +8,6 @@ from copy import deepcopy
 from math import ceil, log
 from numpy import array
 from sys import stdout
-from time import sleep
 
 from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie,\
     THStack, TArrow, kOrange, TSpectrum, TMultiGraph, Long, TH2I
@@ -874,7 +873,7 @@ class PadAnalysis(Analysis):
 
         h = func() if redo else None
         h = do_pickle(pickle_path, func, h)
-        self.draw_histo(h, lm=.15, show=show)
+        self.save_histo(h, 'SignalDistribution', lm=.15, show=show)
         return h
 
     def draw_signal_vs_peakpos(self, show=True, corr=False):
@@ -1468,16 +1467,9 @@ class PadAnalysis(Analysis):
         self.count += n_events
         return h, n_events
 
-    def draw_single_waveform(self, cut='', event=None):
-        h, n = self.draw_waveforms(n=1, start_event=event, cut=cut, t_corr=True)
-        print n
-        self.tree.GetEntry(n - 1 + self.count + self.StartEvent if event is None else event)
-        var1 = 'peaks{ch}_x_time' if self.run.has_branch('peaks{ch}_x'.format(ch=self.channel)) else 'peak_timings{ch}'
-        var2 = 'peaks{ch}_x' if self.run.has_branch('peaks{ch}_x'.format(ch=self.channel)) else 'peak_timings{ch}'
-        var1 = var1.format(ch=self.channel)
-        var2 = var2.format(ch=self.channel)
-        exec 'print list(self.tree.{v})'.format(v=var1)
-        exec 'print list(self.tree.{v})'.format(v=var2)
+    def draw_single_waveform(self, cut='', event=None, show=True):
+        h, n = self.draw_waveforms(n=1, start_event=event, cut=cut, t_corr=True, show=False)
+        self.draw_histo(h, show=show, gridy=1, gridx=1, lm=.073, rm=.045, bm=.18, x=1.5, y=.5)
 
     def show_single_waveforms(self, n=1, cut='', start_event=None):
         start = self.StartEvent + self.count if start_event is None else start_event + self.count
@@ -1513,15 +1505,26 @@ class PadAnalysis(Analysis):
 
         def func():
             nbins = self.run.n_entries / binning
-            h = TProfile('h', 'Pulser Rate', nbins, 0, self.run.n_entries)
-            self.tree.Draw('(@col.size()>1)*100:Entry$>>h', 'pulser', 'goff')
-            self.format_histo(h, name='align', title='Event Alignment', x_tit='Event Number', y_tit='Hits per Event @ Pulser Events [%]', y_off=1.3, stats=0, fill_color=821)
-            h.GetYaxis().SetRangeUser(0, 105)
-            self.save_histo(h, 'EventAlignment', show, self.ana_save_dir, draw_opt='hist', prnt=show)
-            for bin_ in xrange(h.FindBin(self.StartEvent), h.GetNbinsX()):
-                if h.GetBinContent(bin_) > 40:
-                    return False
-            return True
+            histos = [TProfile('h{i}'.format(i=i), 'Pulser Rate', nbins, 0, self.run.n_entries) for i in xrange(5)]
+            self.tree.Draw('(@col.size()>1)*100', '', 'goff')
+            cols = [self.tree.GetV1()[i] for i in xrange(self.run.n_entries)]
+            n = self.tree.Draw('Entry$', 'pulser', 'goff')
+            pulser_events = [int(self.tree.GetV1()[i]) for i in xrange(n)]
+            for ev in pulser_events[:-1]:
+                histos[0].Fill(ev, cols[ev])
+                # histos[1].Fill(ev, cols[ev - 1])
+                # histos[2].Fill(ev, cols[ev + 1])
+                # histos[3].Fill(ev, cols[ev - 2])
+                # histos[4].Fill(ev, cols[ev + 2])
+            for h in histos:
+                self.format_histo(h, title='Event Alignment', x_tit='Event Number', y_tit='Hits per Event @ Pulser Events [%]', y_off=1.3, stats=0, color=self.get_color(),
+                                  y_range=[0, 105], fill_color=self.FillColor)
+            self.save_histo(histos[0], 'EventAlignment', show, self.ana_save_dir, draw_opt='hist', prnt=show)
+            # for h in histos[1:]:
+            #     h.Draw('same')
+            self.RootObjects.append([histos])
+            self.reset_colors()
+            return all(histos[0].GetBinContent(bin_) < 40 for bin_ in xrange(histos[0].GetNbinsX()))
 
         aligned = func() if show else None
         aligned = self.do_pickle(pickle_path, func, aligned)
