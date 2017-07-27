@@ -754,7 +754,9 @@ class PadAnalysis(Analysis):
             return FitRes(fit_par)
 
         fit = func() if save else None
-        return self.do_pickle(picklepath, func, fit)
+        fit = self.do_pickle(picklepath, func, fit)
+        kinder_pickle(picklepath, fit)
+        return fit
 
     @staticmethod
     def __get_max_fit_pos(gr):

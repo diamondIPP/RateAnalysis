@@ -331,7 +331,7 @@ class AnalysisCollection(Elementary):
             i, j = 0, 0
             self.start_pbar(self.NRuns)
             for key, ana in self.collection.iteritems():
-                fit1 = ana.draw_pulse_height(binning, corr=True, save=False)
+                fit1 = ana.draw_pulse_height(binning, corr=True, save=redo)
                 if all_corr:
                     fit2 = ana.draw_pulse_height(binning, bin_corr=True, save=False)
                     fit3 = ana.draw_pulse_height(binning, off_corr=True, save=False, corr=False)
