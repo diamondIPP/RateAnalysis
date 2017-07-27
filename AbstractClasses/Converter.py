@@ -223,12 +223,12 @@ class Converter:
     def align_run(self):
 
         if self.Type == 'pad':
-            print_banner('STARTING PAD EVENT ALIGNMENT')
+            print_banner('STARTING PAD EVENT ALIGNMENT OF RUN {r}'.format(r=self.RunNumber))
             pad_align = PadAlignment(self)
             if not pad_align.IsAligned:
                 pad_align.write_aligned_tree()
         elif self.Type == 'pixel':
-            print_banner('STARTING PIXEL EVENT ALIGNMENT')
+            print_banner('STARTING PIXEL EVENT ALIGNMENT OF RUN {r}'.format(r=self.RunNumber))
             pix_align = PixAlignment(self)
             if not pix_align.IsAligned and not pix_align.check_alignment():
                 pix_align.write_aligned_tree()
