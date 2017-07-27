@@ -712,7 +712,8 @@ class PadAnalysis(Analysis):
 
     def make_signal_time_histos(self, signal_name=None, evnt_corr=False, off_corr=False, bin_corr=False, show=True):
         signal_name = self.generate_signal_name(self.SignalName if signal_name is None else signal_name, evnt_corr, off_corr, bin_corr)
-        h = TH2D('h_st', 'Signal vs. Time', len(self.time_binning) - 1, array(self.get_minute_time_binning()), 225, -50, 500)
+        time_binning = array(self.get_minute_time_binning())
+        h = TH2D('h_st', 'Signal vs. Time', len(time_binning) - 1, time_binning, 225, -50, 500)
         set_statbox(only_entries=True, x=.83)
         gStyle.SetPalette(53)
         self.tree.Draw('{name}:(time - {s}) / 60000>>h_st'.format(name=signal_name, s=self.run.startTime), self.Cut.all_cut, 'goff')
@@ -720,7 +721,7 @@ class PadAnalysis(Analysis):
         self.save_histo(h, 'SignalTime', show, lm=.12, draw_opt='colz', rm=.15)
         return h
 
-    def draw_ph(self, show=True, binning=10000, save=True, corr=True, sig=None):
+    def draw_pulse_height(self, show=True, binning=10000, save=True, corr=True, sig=None):
         show = False if not save else show
 
         sig = self.SignalName if sig is None else sig
@@ -735,12 +736,15 @@ class PadAnalysis(Analysis):
             if binning is not None:
                 self.set_bin_size(binning)
             gr = self.make_tgrapherrors('gr_ph', 'Pulse Height Evolution')
-            for i in xrange(self.n_bins - 1):
-                n = self.tree.Draw(signal, self.Cut.all_cut, 'goff', self.binning[i + 1] - self.binning[i], self.binning[i])
+            event_bins = self.binning + ([self.run.endEvent] if self.n_bins == 1 else [])
+            time_bins = self.get_minute_time_binning()[1:]
+            for i in xrange(len(event_bins) - 1):
+                n = self.tree.Draw(signal, self.Cut.all_cut, 'goff', event_bins[i + 1] - event_bins[i], event_bins[i])
                 m, s = calc_mean([self.tree.GetV1()[j] for j in xrange(n)])
-                gr.SetPoint(i, (self.time_binning[i] - self.run.startTime) / 60e3, m)
+                gr.SetPoint(i, (time_bins[i + 1] + time_bins[i]) / 2., m)
                 gr.SetPointError(i, 0, s / sqrt(n))
             set_statbox(entries=4, only_fit=True)
+            gr.GetXaxis().SetLimits(0, time_bins[-1])
             self.format_histo(gr, x_tit='Time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6)
             self.draw_histo(gr, show=show, lm=.14, draw_opt='apl')
             fit_par = gr.Fit('pol0', 'qs', '', 0, self.__get_max_fit_pos(gr))
@@ -762,7 +766,7 @@ class PadAnalysis(Analysis):
                 return gr.GetX()[i - 1]
         return gr.GetX()[gr.GetN() - 1] + 10
 
-    def draw_pulse_height(self, binning=None, show=True, save=True, evnt_corr=True, sig=None, langau=False):
+    def draw_pulse_height_old(self, binning=None, show=True, save=True, evnt_corr=True, sig=None, langau=False):
         show = False if not save else show
         signal = self.SignalName if sig is None else sig
         bin_size = binning if binning is not None else self.BinSize
@@ -1718,7 +1722,7 @@ class PadAnalysis(Analysis):
         signal = self.SignalName if sig is None else sig
         peak_int = self.get_all_signal_names()[signal][-2:] if self.get_all_signal_names()[signal][-2].isdigit() else self.get_all_signal_names()[signal][-1]
         ped_fit = self.Pedestal.draw_disto_fit(save=False, name=self.Pedestal.get_signal_name(peak_int=peak_int), show=False)
-        sig_fit = self.draw_pulse_height(evnt_corr=True, save=False, sig=signal)
+        sig_fit = self.draw_pulse_height(corr=True, save=False, sig=signal)
         sig_mean = sig_fit.Parameter(0)
         ped_sigma = ped_fit.Parameter(2)
 
@@ -1760,7 +1764,7 @@ class PadAnalysis(Analysis):
         ratio = '{0}{1}'.format(self.run.peak_integrals.values()[0][0], self.run.peak_integrals.values()[0][1])
         for name, value in peak_integrals.iteritems():
             sig_name = self.get_signal_name(region='b', peak_integral=name)
-            signal = self.draw_pulse_height(evnt_corr=True, show=False, sig=sig_name) if not ped else self.Pedestal.draw_disto(save=False, name=self.Pedestal.get_signal_name(peak_int=name))
+            signal = self.draw_pulse_height(corr=True, show=False, sig=sig_name) if not ped else self.Pedestal.draw_disto(save=False, name=self.Pedestal.get_signal_name(peak_int=name))
             par = 2 if ped else 0
             gr.SetPoint(i, (value[1] + value[0]) / 2., signal.Parameter(par))
             gr.SetPointError(i, 0, signal.ParError(par))
