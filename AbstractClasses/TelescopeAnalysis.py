@@ -1,6 +1,5 @@
 from argparse import ArgumentParser
 from copy import deepcopy
-from time import sleep
 
 from ROOT import TCanvas, TH2F, gROOT, TH1F, TLegend, gStyle, kGreen, TText, TCut, TF1, TGraph, TH1I
 from numpy import array, zeros
@@ -439,7 +438,7 @@ class Analysis(Elementary):
         return time_bins
 
     def get_minute_time_binning(self):
-        return [(t - self.run.startTime) / 60e3 for t in self.time_binning]
+        return [0.] + [(t - self.run.startTime) / 60e3 for t in self.time_binning] + [self.run.totalMinutes]
 
     def draw_time(self, show=True):
         entries = self.tree.Draw('time', '', 'goff')
