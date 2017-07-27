@@ -871,10 +871,11 @@ class PadAnalysis(Analysis):
             start_event = int(float(start)) if start is not None else 0
             n_events = self.find_n_events(n=events, cut=str(cut), start=start_event) if events is not None else self.run.n_entries
             self.tree.Draw('{name}>>h_sd'.format(name=sig_name), str(cut), 'goff', n_events, start_event)
-            self.format_histo(h1, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=2, stats=0, fill_color=self.FillColor)
+            self.format_histo(h1, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=2, fill_color=self.FillColor)
             self.save_histo(h1, 'SignalDistribution', lm=.15, show=show, save=redo)
             return h1
 
+        set_statbox(only_entries=True)
         h = func() if redo else None
         h = do_pickle(pickle_path, func, h)
         self.save_histo(h, 'SignalDistribution', lm=.15, show=show)
