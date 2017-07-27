@@ -89,14 +89,15 @@ class PadAlignment:
         return aligned
 
     def find_offset(self, start, offset):
-        means = OrderedDict((self.calc_mean_size(start, i + offset), i) for i in [-1, 1, -2, 2])
+        means = OrderedDict((self.calc_mean_size(start, i + offset, self.BucketSize / 2), i) for i in [-1, 1, -2, 2])
         try:
             return next(means[key] for key in means.iterkeys() if key < self.Threshold)
         except StopIteration:
             return 0
 
-    def calc_mean_size(self, start, off=0):
-        return mean([self.ColSize[ev + off] > 1 for ev in self.PulserEvents[start:start + self.BucketSize]])
+    def calc_mean_size(self, start, off=0, n=None):
+        n = n if n is not None else self.BucketSize
+        return mean([self.ColSize[ev + off] > 1 for ev in self.PulserEvents[start:start + n]])
 
     def find_offsets(self):
         t = self.Run.log_info('Scanning for precise offsets ... ', next_line=False)
@@ -135,15 +136,17 @@ class PadAlignment:
         # add first offset
         offsets = OrderedDict([(0, offset)] if offset else [])
         rates = [self.calc_mean_size(0)]
+        # print offsets
         i = 1
         while i < len(self.PulserEvents) - abs(offset) - n:
             rate = self.calc_mean_size(i, offset)
             # print i, '{0:1.2f}'.format(rate)
             if rate > self.Threshold:
                 # assume that the rate was good n/2 events before
-                good_rate = rates[-n / 2]
+                good_rate = rates[-n / 2] if len(rates) > n / 2 else .1
                 for j, r in enumerate(rates[-n / 2:]):
                     if r > good_rate + .1:
+                        # i + j - n/2 + n is the first misaligned event
                         off_event = self.PulserEvents[i + j - 1 + n / 2]
                         this_offset = self.find_offset(i + j - 1 + n / 2, offset)
                         if this_offset:
