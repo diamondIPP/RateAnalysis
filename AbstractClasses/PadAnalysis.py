@@ -749,7 +749,7 @@ class PadAnalysis(Analysis):
             self.format_histo(gr, x_tit='Time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6)
             self.draw_histo(gr, show=show, lm=.14, draw_opt='apl')
             fit_par = gr.Fit('pol0', 'qs', '', 0, self.__get_max_fit_pos(gr))
-            self.save_plots('PulseHeightNew{0}'.format(self.BinSize), show=show)
+            self.save_plots('PulseHeight{0}'.format(self.BinSize), show=show)
             self.PulseHeight = gr
             return FitRes(fit_par)
 
