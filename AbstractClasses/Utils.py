@@ -374,7 +374,8 @@ def print_table(rows, header=None):
 
 
 def kinder_is_mounted():
-    return dir_exists('/home/micha/mounts/psi/Diamonds')
+    base = join('/', *__file__.split('/')[1:3])
+    return dir_exists(join(base, 'mounts/psi/Diamonds'))
 
 
 def do_pickle(path, function, value=None, params=None):
