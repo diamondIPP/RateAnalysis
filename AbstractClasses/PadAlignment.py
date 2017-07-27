@@ -131,11 +131,12 @@ class PadAlignment:
     def find_shifting_offsets(self):
         t = self.Run.log_info('Scanning for precise offsets ... ', next_line=False)
         n = self.BucketSize
-        offsets = OrderedDict()
         offset = self.find_offset(0, 0)
+        # add first offset
+        offsets = OrderedDict([(0, offset)] if offset else [])
         rates = [self.calc_mean_size(0)]
         i = 1
-        while i < len(self.PulserEvents) - abs(offset):
+        while i < len(self.PulserEvents) - abs(offset) - n:
             rate = self.calc_mean_size(i, offset)
             # print i, '{0:1.2f}'.format(rate)
             if rate > self.Threshold:
