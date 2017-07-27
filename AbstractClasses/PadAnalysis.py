@@ -740,9 +740,10 @@ class PadAnalysis(Analysis):
             time_bins = self.get_minute_time_binning()[1:]
             for i in xrange(len(event_bins) - 1):
                 n = self.tree.Draw(signal, self.Cut.all_cut, 'goff', event_bins[i + 1] - event_bins[i], event_bins[i])
-                m, s = calc_mean([self.tree.GetV1()[j] for j in xrange(n)])
-                gr.SetPoint(i, (time_bins[i + 1] + time_bins[i]) / 2., m)
-                gr.SetPointError(i, 0, s / sqrt(n))
+                if n:
+                    m, s = calc_mean([self.tree.GetV1()[j] for j in xrange(n)])
+                    gr.SetPoint(i, (time_bins[i + 1] + time_bins[i]) / 2., m)
+                    gr.SetPointError(i, 0, s / sqrt(n))
             set_statbox(entries=4, only_fit=True)
             gr.GetXaxis().SetLimits(0, time_bins[-1])
             self.format_histo(gr, x_tit='Time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6)
