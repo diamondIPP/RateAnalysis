@@ -287,7 +287,7 @@ class Elementary(object):
                     run_string = 'RunPlan{r}'.format(r=rp[1:] if rp[0] == '0' else rp)
                 else:
                     return
-                path = join('/home/micha/mounts/psi', 'Diamonds', self.DiamondName, 'BeamTests', make_tc_str(self.TESTCAMPAIGN, txt=False), run_string, file_name)
+                path = join(get_base_dir(), 'mounts/psi/Diamonds', self.DiamondName, 'BeamTests', make_tc_str(self.TESTCAMPAIGN, txt=False), run_string, file_name)
                 canvas.SaveAs('{p}.pdf'.format(p=path))
                 canvas.SaveAs('{p}.png'.format(p=path))
 

@@ -373,9 +373,12 @@ def print_table(rows, header=None):
     print closing_row
 
 
+def get_base_dir():
+    return join('/', *__file__.split('/')[1:3])
+
+
 def kinder_is_mounted():
-    base = join('/', *__file__.split('/')[1:3])
-    return dir_exists(join(base, 'mounts/psi/Diamonds'))
+    return dir_exists(join(get_base_dir(), 'mounts/psi/Diamonds'))
 
 
 def do_pickle(path, function, value=None, params=None):
@@ -398,7 +401,7 @@ def do_pickle(path, function, value=None, params=None):
 
 def kinder_pickle(old_path, value):
     if kinder_is_mounted():
-        picklepath = join('/home/micha/mounts/psi/Pickles', basename(split(old_path)[0]), basename(old_path))
+        picklepath = join(get_base_dir(), 'mounts/psi/Pickles', basename(split(old_path)[0]), basename(old_path))
         do_pickle(picklepath, do_nothing, value)
 
 
