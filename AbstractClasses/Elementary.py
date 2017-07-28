@@ -29,6 +29,7 @@ class Elementary(object):
         self.verbose = verbose
 
         self.TESTCAMPAIGN = None
+        self.SubSet = None
         self.set_global_testcampaign(testcampaign)
         self.Dir = self.get_program_dir()
         self.results_directory = '{dir}/Results{tc}/'.format(dir=self.get_program_dir(), tc=self.TESTCAMPAIGN)
@@ -40,6 +41,7 @@ class Elementary(object):
 
         self.PickleDir = join(self.get_program_dir(), self.MainConfigParser.get('SAVE', 'pickle_dir'))
         self.DataDir = self.MainConfigParser.get('MAIN', 'data_dir')
+        self.TCDir = self.generate_tc_directory()
         self.Felix = self.MainConfigParser.getboolean('SAVE', 'felix')
         self.set_root_titles()
 
@@ -114,7 +116,7 @@ class Elementary(object):
         if self.run_config_parser.has_option('BASIC', 'maskfilepath'):
             file_path = self.run_config_parser.get('BASIC', 'maskfilepath')
         else:
-            file_path = join(self.DataDir, make_tc_str(self.TESTCAMPAIGN, data=True), 'masks')
+            file_path = join(self.DataDir, self.TCDir, 'masks')
         if not dir_exists(file_path):
             log_warning('Did not file mask file directory!')
         return file_path
@@ -123,10 +125,14 @@ class Elementary(object):
         if self.run_config_parser.has_option('BASIC', 'runinfofile'):
             file_path = self.run_config_parser.get('BASIC', 'runinfofile')
         else:
-            file_path = join(self.DataDir, make_tc_str(self.TESTCAMPAIGN, data=1), 'run_log.json')
+            file_path = join(self.DataDir, self.TCDir, 'run_log.json')
         if not file_exists(file_path):
             log_critical('Run File does not exist!')
         return file_path
+
+    def generate_tc_directory(self):
+        sub_set_str = '-{0}'.format(self.SubSet) if self.SubSet is not None else ''
+        return 'psi_{y}_{m}{s}'.format(y=self.TESTCAMPAIGN[:4], m=self.TESTCAMPAIGN[-2:], s=sub_set_str)
 
     def set_save_directory(self, name):
         self.results_directory = '{dir}/{nam}/'.format(dir=self.get_program_dir(), nam=name)
@@ -135,22 +141,20 @@ class Elementary(object):
         if testcampaign is not None:
             global tc
             tc = testcampaign
-        if tc is not None:
-            self.set_test_campaign(tc)
-        else:
-            self.TESTCAMPAIGN = default_tc
+        self.set_test_campaign(tc)
 
-    def set_test_campaign(self, campaign='201508'):
-        campaigns = self.find_test_campaigns()
-        if not str(campaign) in campaigns:
-            print 'This Testcampaign does not exist yet! Use create_new_testcampaign!\nExisting campaigns: {camp}'.format(camp=campaigns)
-            return
-        self.TESTCAMPAIGN = str(campaign)
+    def set_test_campaign(self, campaign):
+        campaign = default_tc if campaign is None else campaign
+        if campaign not in self.find_test_campaigns():
+            log_critical('This Testcampaign does not exist yet! Use create_new_testcampaign!')
+        tc_data = str(campaign).split('-')
+        self.TESTCAMPAIGN = tc_data[0]
+        self.SubSet = tc_data[-1] if len(tc_data) > 1 else None
 
     def print_testcampaign(self, pr=True):
         out = datetime.strptime(self.TESTCAMPAIGN, '%Y%m').strftime('%b %Y')
         if pr:
-            print '\nTESTCAMPAIGN: {0}'.format(out)
+            print '\nTESTCAMPAIGN: {0}{p}'.format(out, p=' Part {0}'.format(int_to_roman(int(self.SubSet))) if self.SubSet is not None else '')
         return out
 
     @classmethod
