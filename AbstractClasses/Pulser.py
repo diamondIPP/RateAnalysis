@@ -144,8 +144,8 @@ class PulserAnalysis(Elementary):
     def draw_peak_timing(self, show=True, corr=False):
         self.Ana.draw_peak_timing('', 'pulser', cut=self.PulserCut, show=show, draw_cut=False, corr=corr)
 
-    def draw_pedestal(self, show=True):
-        return self.Ana.Pedestal.draw_disto_fit(name=self.PedestalName, cut=self.PulserCut, show=show)
+    def draw_pedestal(self, show=True, save=True):
+        return self.Ana.Pedestal.draw_disto_fit(name=self.PedestalName, cut=self.PulserCut, show=show, save=save)
 
     def compare_pedestal(self, show=True):
         self.Ana.draw_pedestal_disto_fit(show=False)

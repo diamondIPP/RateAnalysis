@@ -423,7 +423,8 @@ class AnalysisCollection(Elementary):
         mg2 = func(y_range) if save_plots or redo else None
         return self.do_pickle(pickle_path, f, mg2)
 
-    def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False, show=True, cut=None, beam_on=True, save=False):
+    def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False, show=True, cut=None, beam_on=True,
+                       save=False, pulser=False):
 
         pickle_path = self.make_pickle_path('Pedestal', 'AllPedestals', self.RunPlan, self.DiamondName, suf='Sigma' if sigma else 'Mean')
         mode = 'Flux' if flux else 'Run'
@@ -442,7 +443,7 @@ class AnalysisCollection(Elementary):
             i = 0
             par = 2 if sigma else 1
             for key, ana in self.collection.iteritems():
-                fit_par = ana.Pedestal.draw_disto_fit(cut=cut_string, save=save, show=False)
+                fit_par = ana.Pedestal.draw_disto_fit(cut=cut_string, save=save, show=False) if not pulser else ana.Pulser.draw_pedestal(show, save)
                 x = ana.run.Flux if flux else key
                 gr1.SetPoint(i, x, fit_par.Parameter(par))
                 gr1.SetPointError(i, 0, fit_par.ParError(par))
