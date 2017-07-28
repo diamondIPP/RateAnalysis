@@ -145,8 +145,7 @@ class PulserAnalysis(Elementary):
         self.Ana.draw_peak_timing('', 'pulser', cut=self.PulserCut, show=show, draw_cut=False, corr=corr)
 
     def draw_pedestal(self, show=True):
-        # region = 'ac' if 'ac' in self.Ana.run.pedestal_regions else None
-        return self.Ana.draw_pedestal_disto_fit(name=self.PedestalName, cut=self.PulserCut, show=show)
+        return self.Ana.Pedestal.draw_disto_fit(name=self.PedestalName, cut=self.PulserCut, show=show)
 
     def compare_pedestal(self, show=True):
         self.Ana.draw_pedestal_disto_fit(show=False)

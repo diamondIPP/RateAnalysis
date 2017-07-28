@@ -86,6 +86,7 @@ class PedestalAnalysis(Elementary):
         self.save_histo(h, 'PedestalDistributionFit', show, save=save, logy=logy, lm=.13)
         self.Histogram = h
         kinder_pickle(picklepath, FitRes(fit_pars))
+        print picklepath
         return FitRes(fit_pars)
 
     def draw_sigma_selection(self, show=True, redo=False):
