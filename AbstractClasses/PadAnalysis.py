@@ -726,7 +726,7 @@ class PadAnalysis(Analysis):
 
         sig = self.SignalName if sig is None else sig
         bin_size = binning if binning is not None else self.BinSize
-        correction = '' if not corr else '_pedcorr'
+        correction = '' if not corr else '_eventwise'
         suffix = '{bins}{cor}_{reg}'.format(bins=bin_size, cor=correction, reg=self.get_all_signal_names()[sig])
         picklepath = self.make_pickle_path('Ph_fit', None, self.RunNumber, self.channel, suf=suffix)
 
