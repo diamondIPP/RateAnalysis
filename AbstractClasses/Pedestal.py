@@ -6,7 +6,7 @@
 
 from Elementary import Elementary
 from ROOT import TH2F, gStyle, TH1F, TCut, gROOT
-from Utils import set_statbox, set_drawing_range, FitRes
+from Utils import set_statbox, set_drawing_range, FitRes, kinder_pickle
 from copy import deepcopy
 from numpy import array, mean
 from collections import OrderedDict
@@ -69,6 +69,9 @@ class PedestalAnalysis(Elementary):
         return h
 
     def draw_disto_fit(self, name=None, cut=None, logy=False, show=True, save=True, redo=False):
+        cut = self.Cut.all_cut if cut is None else TCut(cut)
+        suffix = '{r}_fwhm_{c}'.format(c=cut.GetName(), r=self.get_all_signal_names()[self.SignalName if name is None else name])
+        picklepath = self.make_pickle_path('Pedestal', 'Disto', run=self.RunNumber, ch=self.Channel, suf=suffix)
         show = False if not save else show
         set_statbox(only_fit=True, entries=4, w=.3)
         h = self.draw_disto(name, cut, logy, show=False, save=False, redo=redo)
@@ -82,6 +85,7 @@ class PedestalAnalysis(Elementary):
         h.GetListOfFunctions().Add(f)
         self.save_histo(h, 'PedestalDistributionFit', show, save=save, logy=logy, lm=.13)
         self.Histogram = h
+        kinder_pickle(picklepath, FitRes(fit_pars))
         return FitRes(fit_pars)
 
     def draw_sigma_selection(self, show=True, redo=False):
