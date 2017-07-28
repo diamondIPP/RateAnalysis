@@ -71,7 +71,7 @@ class PedestalAnalysis(Elementary):
     def draw_disto_fit(self, name=None, cut=None, logy=False, show=True, save=True, redo=False):
         cut = self.Cut.all_cut if cut is None else TCut(cut)
         suffix = '{r}_fwhm_{c}'.format(c=cut.GetName(), r=self.get_all_signal_names()[self.SignalName if name is None else name])
-        picklepath = self.make_pickle_path('Pedestal', 'Disto', run=self.RunNumber, ch=self.Channel, suf=suffix)
+        picklepath = self.make_pickle_path('Pedestal', run=self.RunNumber, ch=self.Channel, suf=suffix)
         show = False if not save else show
         set_statbox(only_fit=True, entries=4, w=.3)
         h = self.draw_disto(name, cut, logy, show=False, save=False, redo=redo)
