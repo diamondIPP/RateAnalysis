@@ -475,7 +475,7 @@ class AnalysisCollection(Elementary):
         return self.draw_pedestals(flux=flux, show=show, save=save, sigma=True)
 
     def draw_pulser_pedestals(self, show=True, save=False):
-        self.draw_pedestals(cut=self.FirstAnalysis.Pulser.PulserCut, show=show, save=save)
+        self.draw_pedestals(pulser=True, show=show, save=save)
 
     def draw_signal_distributions(self, show=True, off=3, redo=False):
 
