@@ -13,14 +13,14 @@ from argparse import ArgumentParser
 from os.path import realpath, dirname
 
 
-tc = '201707'
+tc = '201707-2'
 prog_dir = dirname(realpath(__file__))
 data_dir = '/data/psi_{0}_{1}'.format(tc[:4], tc[-2:])
 raw_dir = '{0}/raw'.format(data_dir)
 final_dir = '{0}/root/pads'.format(data_dir)
 lc = '{dir}/last_converted.txt'.format(dir=prog_dir)
-f_lc = open(lc, 'r+')
-next_run = int(f_lc.read()) + 1
+f_lc = open(lc, 'r+') if file_exists(lc) else open(lc, 'w')
+next_run = int(f_lc.read()) + 1 if file_exists(lc) else 1
 f_lc.close()
 print_banner('Starting Pad Autoconversion at run {0}!'.format(next_run))
 
