@@ -5,7 +5,6 @@ import json
 
 from ConfigParser import ConfigParser
 from math import copysign
-from collections import OrderedDict
 from re import sub
 from shutil import move
 from os import remove, getcwd, chdir, system, rename
@@ -47,7 +46,7 @@ class Converter:
 
         # directories
         self.DataDir = run.DataDir
-        self.TcDir = 'psi_{y}_{m}'.format(y=self.TestCampaign[:4], m=self.TestCampaign[-2:])
+        self.TcDir = run.TCDir
         self.RawFileDir = self.load_raw_file()
         self.RootFileDir = self.load_root_file_dir()
         self.SoftwareDir = self.load_soft_dir()
