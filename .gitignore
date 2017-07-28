@@ -4,6 +4,8 @@ Plots*/
 *.json
 *.pickle
 *~
+*.png
+*.pdf
 .idea/workspace.xml
 test*
 last_converted.txt
