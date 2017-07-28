@@ -11,6 +11,7 @@ from os import makedirs
 from os import path as pth
 from os.path import basename, join, split
 from time import time, sleep
+from collections import OrderedDict
 import pickle
 
 
@@ -200,8 +201,8 @@ def move_legend(l, x1, y1):
     l.SetX2NDC(x1 + xdiff)
     l.SetY1NDC(y1)
     l.SetY2NDC(y1 + ydiff)
-    
-    
+
+
 def scale_legend(l, txt_size=None, width=None, height=None):
     sleep(.05)
     l.SetY2NDC(height) if height is not None else do_nothing()
@@ -412,6 +413,22 @@ def fit_poissoni(h, p0=5000, p1=1, name='f_poiss', show=True):
     h.Fit(fit, 'q{0}'.format('' if show else 0))
     fit.Draw('same')
     return fit
+
+
+def int_to_roman(integer):
+    """ Convert an integer to Roman numerals. """
+    if type(integer) != int:
+        raise (TypeError, 'expected integer, got {t}'.format(t=type(integer)))
+    if not 0 < integer < 4000:
+        raise (ValueError, 'Argument must be between 1 and 3999')
+    dic = OrderedDict([(1000, 'M'), (900, 'CM'), (500, 'D'), (400, 'CD'), (100, 'C'), (90, 'XC'), (50, 'L'), (40, 'XL'),
+                       (10, 'X'), (9, 'IX'), (5, 'V'), (4, 'IV'), (1, 'I')])
+    result = ''
+    for i, num in dic.iteritems():
+        count = int(integer / i)
+        result += num * count
+        integer -= i * count
+    return result
 
 
 class FitRes:
