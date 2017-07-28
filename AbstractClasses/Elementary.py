@@ -16,7 +16,7 @@ from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectr
 # global test campaign and resolution
 tc = None
 res = None
-default_tc = '201707'
+default_tc = '201707-2'
 
 
 class Elementary(object):
@@ -32,7 +32,7 @@ class Elementary(object):
         self.SubSet = None
         self.set_global_testcampaign(testcampaign)
         self.Dir = self.get_program_dir()
-        self.results_directory = '{dir}/Results{tc}/'.format(dir=self.get_program_dir(), tc=self.TESTCAMPAIGN)
+        self.ResultsDir = self.generate_results_directory()
 
         # read configuration files
         self.MainConfigParser = self.load_main_config()
@@ -130,12 +130,20 @@ class Elementary(object):
             log_critical('Run File does not exist!')
         return file_path
 
+    def generate_sub_set_str(self):
+        return '-{0}'.format(self.SubSet) if self.SubSet is not None else ''
+
+    def generate_tc_str(self):
+        return '{tc}{s}'.format(tc=self.TESTCAMPAIGN, s=self.generate_sub_set_str())
+
     def generate_tc_directory(self):
-        sub_set_str = '-{0}'.format(self.SubSet) if self.SubSet is not None else ''
-        return 'psi_{y}_{m}{s}'.format(y=self.TESTCAMPAIGN[:4], m=self.TESTCAMPAIGN[-2:], s=sub_set_str)
+        return 'psi_{y}_{m}{s}'.format(y=self.TESTCAMPAIGN[:4], m=self.TESTCAMPAIGN[-2:], s=self.generate_sub_set_str())
+
+    def generate_results_directory(self):
+        return join(self.Dir, 'Results{tc}{s}'.format(tc=self.TESTCAMPAIGN, s=self.generate_sub_set_str()))
 
     def set_save_directory(self, name):
-        self.results_directory = '{dir}/{nam}/'.format(dir=self.get_program_dir(), nam=name)
+        self.ResultsDir = '{dir}/{nam}/'.format(dir=self.get_program_dir(), nam=name)
 
     def set_global_testcampaign(self, testcampaign):
         if testcampaign is not None:
@@ -249,7 +257,7 @@ class Elementary(object):
 
     def make_pickle_path(self, sub_dir, name=None, run=None, ch=None, suf=None, camp=None):
         ensure_dir(join(self.PickleDir, sub_dir))
-        campaign = self.TESTCAMPAIGN if camp is None else camp
+        campaign = '{tc}{s}'.format(tc=self.TESTCAMPAIGN, s=self.generate_sub_set_str()) if camp is None else camp
         run = '_{r}'.format(r=run) if run is not None else ''
         ch = '_{c}'.format(c=ch) if ch is not None else ''
         suf = '_{s}'.format(s=suf) if suf is not None else ''
@@ -260,7 +268,7 @@ class Elementary(object):
         sub_dir = self.save_dir if hasattr(self, 'save_dir') and sub_dir is None else '{subdir}/'.format(subdir=sub_dir)
         canvas.Update()
         file_name = canvas.GetName() if name is None else name
-        file_path = '{save_dir}{res}/{{typ}}/{file}'.format(res=sub_dir, file=file_name, save_dir=self.results_directory)
+        file_path = join(self.ResultsDir, sub_dir, '{typ}', file_name)
         ftypes = ['root', 'png', 'pdf', 'eps']
         out = 'Saving plots: {nam}'.format(nam=name)
         run_number = self.run_number if hasattr(self, 'run_number') else None
@@ -291,7 +299,7 @@ class Elementary(object):
                     run_string = 'RunPlan{r}'.format(r=rp[1:] if rp[0] == '0' else rp)
                 else:
                     return
-                path = join(get_base_dir(), 'mounts/psi/Diamonds', self.DiamondName, 'BeamTests', make_tc_str(self.TESTCAMPAIGN, txt=False), run_string, file_name)
+                path = join(get_base_dir(), 'mounts/psi/Diamonds', self.DiamondName, 'BeamTests', make_tc_str(self.generate_tc_str(), long_=False), run_string, file_name)
                 canvas.SaveAs('{p}.pdf'.format(p=path))
                 canvas.SaveAs('{p}.png'.format(p=path))
 

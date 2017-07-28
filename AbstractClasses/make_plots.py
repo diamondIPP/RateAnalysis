@@ -60,7 +60,7 @@ for rp, chs in runplans.iteritems():
         z.draw_pulse_heights(show=False, save_plots=True)
         z.draw_pulser_info(show=False, do_fit=False)
         z.draw_ph_distributions_below_flux(flux=80, show=False, save_plot=True)
-        del_redundant_plots(z.results_directory, z.save_dir)
+        del_redundant_plots(z.ResultsDir, z.save_dir)
         z.close_files()
         z.__del__()
 

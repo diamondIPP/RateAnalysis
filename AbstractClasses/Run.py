@@ -265,7 +265,7 @@ class Run(Elementary):
 
     def calculate_flux(self):
 
-        unmasked_area = self.get_masked_area()
+        unmasked_area = self.get_unmasked_area()
         flux = []
         self.find_for_in_comment()
         if self.RunInfo['for1'] and self.RunInfo['for2']:
@@ -278,7 +278,7 @@ class Run(Elementary):
         self.RunInfo['mean flux'] = mean(flux)
         return mean(flux)
 
-    def get_masked_area(self):
+    def get_unmasked_area(self):
         if self.RunNumber is None:
             return
         mask_file = join(self.maskfilepath, self.RunInfo['maskfile'])
@@ -295,7 +295,7 @@ class Run(Elementary):
                     maskdata[plane][line[0]] = [int(line[2]), int(line[3])]
             f.close()
         except IOError:
-            pass
+            log_warning('Could not find mask file {f}! Not taking any mask!'.format(f=mask_file))
 
         # default pixels
         unmasked_pixels = {plane: 52 * 80 for plane in self.trigger_planes}

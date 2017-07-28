@@ -5,7 +5,6 @@ from copy import deepcopy
 from datetime import datetime as dt
 from textwrap import fill
 from sys import argv
-from collections import OrderedDict
 from ConfigParser import ConfigParser
 from Utils import *
 
@@ -18,6 +17,7 @@ class RunSelection(Elementary):
         self.Selection = {}
 
         # info
+        self.TCString = '{tc}{s}'.format(tc=self.TESTCAMPAIGN, s=self.generate_sub_set_str())
         self.RunPlanPath = join(self.get_program_dir(), self.MainConfigParser.get('MAIN', 'run_plan_path'))
         self.ExcludedRuns = json.loads(self.run_config_parser.get('BASIC', 'excluded_runs'))
         self.RunPlan = self.load_runplan()
@@ -25,7 +25,7 @@ class RunSelection(Elementary):
         self.RunInfos = self.load_run_infos()
         self.logs = {}
         self.channels = {}
-        
+
         # selection
         self.SelectedRunplan = None
         self.SelectedType = None
@@ -55,12 +55,6 @@ class RunSelection(Elementary):
     def print_logs(self):
         for key, log in self.logs.iteritems():
             print '{key}.)\t{time}\t{log}'.format(key=key, time=log[1], log=log[0])
-
-    def get_runinfo(self, ch):
-        runs = [self.get_selected_runs()[0], self.get_selected_runs()[-1], '', '']
-        self.run.DiamondNames[ch] = self.SelectedDiamond
-        self.run.Bias[ch] = self.SelectedBias
-        return self.run.get_runinfo(ch, runs=runs)
 
     # endregion
 
@@ -95,9 +89,9 @@ class RunSelection(Elementary):
         runplans = json.load(f)
         f.close()
         try:
-            runplan = runplans[self.TESTCAMPAIGN]
+            runplan = runplans[self.TCString]
         except KeyError:
-            print 'No runplan for {tc} available yet, creating an empty one!'.format(tc=self.TESTCAMPAIGN)
+            print 'No runplan for {tc} available yet, creating an empty one!'.format(tc=self.TCString)
             runplan = {}
             self.save_runplan(runplan)
         return runplan
@@ -339,7 +333,7 @@ class RunSelection(Elementary):
     def save_runplan(self, runplan=None):
         f = open(self.RunPlanPath, 'r+')
         runplans = json.load(f)
-        runplans[self.TESTCAMPAIGN] = self.RunPlan if runplan is None else runplan
+        runplans[self.TCString] = self.RunPlan if runplan is None else runplan
         self.rename_runplan_numbers() if runplan is not None and runplan else self.do_nothing()
         f.seek(0)
         json.dump(runplans, f, indent=2, sort_keys=True)
@@ -388,7 +382,7 @@ class RunSelection(Elementary):
         old_selection = deepcopy(self.Selection)
         old_channels = deepcopy(self.channels)
         old_logs = deepcopy(self.logs)
-        print 'RUN PLAN FOR TESTCAMPAIGN: {tc}\n'.format(tc=self.TESTCAMPAIGN)
+        print 'RUN PLAN FOR TESTCAMPAIGN: {tc}\n'.format(tc=self.TCString)
         header = ['Nr.  ', 'Run Type'.ljust(13), 'Range'.ljust(9), 'Excluded'.ljust(15), 'Diamond1', 'HV1 [V]'.rjust(13), 'Diamond2', 'HV2 [V]'.rjust(13)]
         rows = []
         for plan, info in sorted(self.RunPlan.iteritems()):
@@ -578,5 +572,5 @@ def verify(msg):
     raise ValueError('Are you too stupid to say yes or no??')
 
 if __name__ == '__main__':
-    tc = None if not str(argv[-1]).isdigit() else argv[-1]
+    tc = None if not str(argv[-1]).startswith('201') else argv[-1]
     z = RunSelection(tc)
