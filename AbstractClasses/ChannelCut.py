@@ -2,7 +2,6 @@ from Cut import Cut
 from Extrema import Extrema2D
 from copy import deepcopy
 from ROOT import TCut, TH1F, TH2F, TF1, TCanvas, TLegend, gROOT, TProfile, THStack, TCutG, TSpectrum
-from collections import OrderedDict
 from Utils import *
 from json import loads
 from numpy import array
@@ -23,6 +22,7 @@ class ChannelCut(Cut):
         self.channel = channel
         self.RunNumber = self.analysis.RunNumber
         self.DiamondName = analysis.DiamondName
+        self.DiamondNumber = analysis.DiamondNumber
 
         self.load_channel_config()
 
@@ -287,7 +287,7 @@ class ChannelCut(Cut):
     # HELPER FUNCTIONS
 
     def calc_signal_threshold(self, bg=False, show=True, show_all=False):
-        pickle_path = self.make_pickle_path('Cuts', 'SignalThreshold', self.analysis.highest_rate_run, self.channel)
+        pickle_path = self.make_pickle_path('Cuts', 'SignalThreshold', self.analysis.highest_rate_run, self.DiamondNumber)
         show = False if show_all else show
 
         def func():
