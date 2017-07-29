@@ -81,7 +81,8 @@ class PeakAnalysis(Elementary):
 
     def draw_max_position(self, cut='', corr=False, show=True):
         h = TH1F('h_pt', 'Max Peak {m}'.format(m='Timings' if corr else 'Positions'), 1024, 0, 512 if corr else 1024)
-        self.Tree.Draw('max_peak_{p}[{c}]>>h_pt'.format(c=self.Channel, p='position' if not corr else 'time'), TCut(cut) + TCut('!pulser'), 'goff')
+        cut = TCut(cut) + TCut('!pulser') if 'pulser' not in cut else TCut(cut)
+        self.Tree.Draw('max_peak_{p}[{c}]>>h_pt'.format(c=self.Channel, p='position' if not corr else 'time'), cut, 'goff')
         self.format_histo(h, x_tit='Time [ns]' if corr else 'Digitiser Bin', y_tit='Number of Entries', y_off=.4, fill_color=self.FillColor, lw=1, tit_size=.05, stats=0)
         self.save_histo(h, 'MaxPeak{m}'.format(m='Timings' if corr else 'Positions'), show)
 

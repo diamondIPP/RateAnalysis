@@ -1414,6 +1414,7 @@ class AnalysisCollection(Elementary):
         for ana in self.collection.itervalues():
             ana.verbose = status
             ana.Pulser.verbose = status
+            ana.Pedestal.verbose = status
 
     @staticmethod
     def make_x_tit(mode, flux):
