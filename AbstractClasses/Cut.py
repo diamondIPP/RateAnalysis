@@ -2,7 +2,6 @@ import json
 from numpy import array, zeros, mean
 from Elementary import Elementary
 from ROOT import TCut, gROOT, TH1F
-from collections import OrderedDict
 from Utils import *
 from os import remove
 

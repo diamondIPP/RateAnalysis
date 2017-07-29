@@ -2,7 +2,6 @@
 # IMPORTS
 # ==============================================
 from argparse import ArgumentParser
-from collections import OrderedDict
 from numpy import log, array, zeros, std, mean
 from dispy import JobCluster
 from functools import partial
@@ -110,7 +109,7 @@ class AnalysisCollection(Elementary):
         return [i for i in xrange(16) if self.has_bit(binary, i)][dia_nr - 1]
 
     def get_high_low_rate_runs(self):
-        runs = [Run(run_number=run, load_tree=False, test_campaign=self.TESTCAMPAIGN) for run in self.runs]
+        runs = [Run(run_number=run, load_tree=False) for run in self.runs]
         fluxes = OrderedDict()
         if self.verbose:
             print 'RUN FLUX [kHz/cm2]'

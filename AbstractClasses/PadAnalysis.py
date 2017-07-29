@@ -3,7 +3,6 @@
 # IMPORTS
 # ==============================================
 from argparse import ArgumentParser
-from collections import OrderedDict
 from copy import deepcopy
 from math import ceil, log
 from numpy import array
