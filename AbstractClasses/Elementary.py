@@ -31,6 +31,7 @@ class Elementary(object):
         self.TESTCAMPAIGN = None
         self.SubSet = None
         self.set_global_testcampaign(testcampaign)
+        self.TCString = self.generate_tc_str()
         self.Dir = self.get_program_dir()
         self.ResultsDir = self.generate_results_directory()
 
@@ -74,27 +75,28 @@ class Elementary(object):
 
     def load_run_config(self):
         run_parser = ConfigParser({'excluded_runs': '[]'})
-        run_parser.read('Configuration/RunConfig_{tc}.cfg'.format(tc=self.TESTCAMPAIGN))
+        run_parser.read('Configuration/RunConfig_{tc}.cfg'.format(tc=self.TCString))
         return run_parser
 
     def load_run_configs(self, run_number):
         run_parser = ConfigParser({'excluded_runs': '[]'})
         # set run_number to zero if none is given to prevent crash
         run_number = 0 if run_number is None else run_number
-        if self.MainConfigParser.has_section(self.TESTCAMPAIGN):
-            split_runs = [0] + loads(self.MainConfigParser.get(self.TESTCAMPAIGN, 'split_runs')) + [int(1e10)]
+        print self.MainConfigParser.has_section(self.TCString)
+        if self.MainConfigParser.has_section(self.TCString):
+            split_runs = [0] + loads(self.MainConfigParser.get(self.TCString, 'split_runs')) + [int(1e10)]
             for i in xrange(1, len(split_runs)):
                 if split_runs[i - 1] <= run_number < split_runs[i]:
-                    config = '{dir}/Configuration/RunConfig_{tc}_{i}.cfg'.format(dir=self.get_program_dir(), tc=self.TESTCAMPAIGN, i=i)
+                    config = '{dir}/Configuration/RunConfig_{tc}_{i}.cfg'.format(dir=self.get_program_dir(), tc=self.TCString, i=i)
                     run_parser.read(config)
                     break
         else:
-            run_parser.read('Configuration/RunConfig_{tc}.cfg'.format(tc=self.TESTCAMPAIGN))
+            run_parser.read(join(self.Dir, 'Configuration', 'RunConfig_{tc}.cfg'.format(tc=self.TCString)))
         return run_parser
 
     def load_ana_config(self):
         ana_parser = ConfigParser()
-        ana_parser.read('Configuration/AnalysisConfig_{tc}.cfg'.format(tc=self.TESTCAMPAIGN))
+        ana_parser.read('Configuration/AnalysisConfig_{tc}.cfg'.format(tc=self.TCString))
         return ana_parser
 
     @staticmethod
