@@ -37,13 +37,12 @@ class AnalysisCollection(Elementary):
 
         self.runs = run_selection.get_selected_runs()
         self.channel = self.load_channel()
+        self.Type = run_selection.SelectedType
         # self.diamonds = self.load_diamonds(diamonds, list_of_runs)
         self.min_max_rate_runs = self.get_high_low_rate_runs()
-
         if load_tree:
             self.generate_slope_pickle()
             self.generate_threshold_pickle()
-
         self.add_analyses(load_tree)
         self.FirstAnalysis = self.get_first_analysis()
 
@@ -57,7 +56,6 @@ class AnalysisCollection(Elementary):
 
         # root stuff
         self.RunPlan = run_selection.SelectedRunplan
-        self.Type = run_selection.SelectedType
         self.save_dir = '{dia}/runplan{plan}'.format(tc=self.TESTCAMPAIGN[2:], plan=self.RunPlan, dia=self.DiamondName)
         self.RootObjects = []
         # important plots
@@ -123,16 +121,16 @@ class AnalysisCollection(Elementary):
         return {'min': fluxes[min(fluxes)], 'max': fluxes[max(fluxes)]}
 
     def generate_slope_pickle(self):
-        picklepath = 'Configuration/Individual_Configs/Slope/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.min_max_rate_runs['min'])
+        picklepath = self.make_pickle_path('TrackAngle', 'x', run=self.min_max_rate_runs['min'])
         if file_exists(picklepath):
             return
         Analysis(self.min_max_rate_runs['min'])
 
     def generate_threshold_pickle(self):
-        picklepath = 'Configuration/Individual_Configs/Cuts/SignalThreshold_{tc}_{run}_{ch}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.min_max_rate_runs['max'], ch=0)
-        if file_exists(picklepath):
+        picklepath = self.make_pickle_path('Cuts', 'SignalThreshold', run=self.min_max_rate_runs['max'], ch=self.selection.SelectedDiamondNr)
+        if file_exists(picklepath) or self.Type != 'pad':
             return
-        Analysis(self.min_max_rate_runs['max'])
+        PadAnalysis(self.min_max_rate_runs['max'], dia=self.selection.SelectedDiamondNr)
 
     # endregion
 
