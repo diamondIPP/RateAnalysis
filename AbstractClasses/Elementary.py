@@ -82,7 +82,6 @@ class Elementary(object):
         run_parser = ConfigParser({'excluded_runs': '[]'})
         # set run_number to zero if none is given to prevent crash
         run_number = 0 if run_number is None else run_number
-        print self.MainConfigParser.has_section(self.TCString)
         if self.MainConfigParser.has_section(self.TCString):
             split_runs = [0] + loads(self.MainConfigParser.get(self.TCString, 'split_runs')) + [int(1e10)]
             for i in xrange(1, len(split_runs)):
