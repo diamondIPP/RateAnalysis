@@ -155,13 +155,13 @@ class AnalysisCollection(Elementary):
     def draw_all(self, save=True):
         old_verbose = self.FirstAnalysis.verbose
         self.set_verbose(False)
-        self.draw_ph_with_currents(show=False)
         self.draw_pulse_heights(binning=10000, show=False)
         self.draw_pulser_info(do_fit=False, show=False)
         self.draw_pedestals(show=False, save=save)
         self.draw_noise(show=False)
         self.draw_pulser_pedestals(show=False, save=save)
         self.draw_signal_distributions(show=False)
+        self.draw_ph_with_currents(show=False)
         self.set_verbose(old_verbose)
         self.print_all_off_results()
     
@@ -233,7 +233,7 @@ class AnalysisCollection(Elementary):
         gROOT.SetBatch(0)
         self.save_canvas(c, self.save_dir, 'PhPulserCurrent', show=show)
         self.RootObjects.append([ph, cur, pul, c, legends, pads])
-        self.FirstAnalysis.run.reset_info_legend()
+        # self.FirstAnalysis.run.reset_info_legend()
 
     def draw_ph_vs_voltage(self, binning=10000, pulser=False, redo=False):
         gr1 = self.make_tgrapherrors('gStatError', 'stat. error', self.get_color())
