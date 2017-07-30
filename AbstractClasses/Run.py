@@ -287,6 +287,8 @@ class Run(Elementary):
             f = open(mask_file, 'r')
             i2cs = []
             for line in f:
+                if line.startswith('#'):
+                    continue
                 if len(line) > 3:
                     line = line.split()
                     if not i2cs or i2cs[-1] != line[1]:
