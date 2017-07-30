@@ -135,7 +135,7 @@ class Currents(Elementary):
         if self.run_config_parser.has_option('BASIC', 'hvconfigfile'):
             file_path = self.run_config_parser.get('BASIC', 'hvconfigfile')
         else:
-            file_path = join(self.DataDir, make_tc_str(self.TESTCAMPAIGN, data=True), 'HV.cfg')
+            file_path = join(self.DataDir, self.generate_tc_directory(), 'HV.cfg')
         if not file_exists(file_path):
             self.log_warning('Missing hv info in RunConfig file')
             return None
@@ -164,7 +164,7 @@ class Currents(Elementary):
         if self.run_config_parser.has_option('BASIC', 'hvdatapath'):
             hv_datapath = self.run_config_parser.get('BASIC', 'hvdatapath')
         else:
-            hv_datapath = join(self.DataDir, make_tc_str(self.TESTCAMPAIGN, data=True), 'HVClient')
+            hv_datapath = join(self.DataDir, self.generate_tc_directory(), 'HVClient')
         if not dir_exists(hv_datapath):
             log_warning('HV data path "{p}" does not exist!'.format(p=hv_datapath))
         hv_datapath = join(hv_datapath, '{dev}_CH{ch}' if not old else '{dev}')
