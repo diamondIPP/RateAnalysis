@@ -22,7 +22,7 @@ class Langau:
         self.Max = histo.GetMaximum()
         self.NConvolutions = nconv
         self.NSigma = 5.
-        self.FitRange = [k * histo.GetMean() for k in [.3, 3]]
+        self.FitRange = [k * histo.GetMean() for k in [.1, 2]]
         self.ParLimits = self.init_par_limits()
         self.StartValues = self.init_start_values()
 
@@ -46,7 +46,7 @@ class Langau:
         values = zeros(4)
         values[0] = h.GetBinCenter(h.FindLastBinAbove(.5 * self.Max)) - h.GetBinCenter(h.FindFirstBinAbove(.5 * self.Max))
         values[1] = h.GetBinCenter(h.GetMaximumBin())
-        values[2] = 50000.
+        values[2] = h.Integral()
         values[3] = 10.
         return values
 
