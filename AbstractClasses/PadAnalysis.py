@@ -290,10 +290,11 @@ class PadAnalysis(Analysis):
         cut = self.Cut.all_cut if cut is None else cut
         self.tree.Draw('{z}diam{nr}_track_y:diam{nr}_track_x>>{h}'.format(z=signal + ':' if not hitmap else '', nr=nr, h='h_hm' if hitmap else 'signal_map'), cut, 'goff')
         gStyle.SetPalette(1 if hitmap else 53)
+        set_statbox(only_entries=True, x=0.82)
         is_surf = draw_option.lower().startswith('surf')
-        self.format_histo(h, x_tit='track_x [cm]', y_tit='track_y [cm]', y_off=1.4, z_off=1.3, stats=0, z_tit='Pulse Height [au]')
+        self.format_histo(h, x_tit='track_x [cm]', y_tit='track_y [cm]', y_off=1.4, z_off=1.3, z_tit='Pulse Height [au]')
         if is_surf:
-            self.format_histo(h, x_off=2, y_off=2.4, x_tit='track_x [cm]', y_tit='track_y [cm]', stats=0)
+            self.format_histo(h, x_off=2, y_off=2.4, x_tit='track_x [cm]', y_tit='track_y [cm]')
         h.GetXaxis().SetNdivisions(5)
         h.SetContour(50)
         save_name = 'SignalMap2D{0}'.format(draw_option.title()) if not hitmap else 'HitMap'
