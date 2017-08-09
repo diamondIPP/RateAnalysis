@@ -1016,7 +1016,13 @@ class AnalysisCollection(Elementary):
         self.save_histo(mg, 'FluxComparison', draw_opt='a', lm=.12, bm=.2, l=l)
 
     def save_signal_maps(self, hitmap=False):
-        histos = [ana.draw_signal_map(show=False, hitmap=hitmap, cut='' if hitmap else None) for ana in self.collection.values()]
+
+        log_message('Generating {s} maps!'.format(s='signal' if not hitmap else 'hit'))
+        self.start_pbar(self.NRuns)
+        histos = []
+        for i, ana in enumerate(self.collection.values(), 1):
+            histos.append(ana.draw_signal_map(show=False, hitmap=hitmap, cut='' if hitmap else None))
+            self.ProgressBar.update(i)
 
         # find min/max
         glob_min = int(min([gr.GetMinimum() for gr in histos])) / 5 * 5
@@ -1407,6 +1413,7 @@ class AnalysisCollection(Elementary):
             ana.verbose = status
             ana.Pulser.verbose = status
             ana.Pedestal.verbose = status
+            ana.Cut.verbose = status
 
     @staticmethod
     def make_x_tit(mode, flux):
