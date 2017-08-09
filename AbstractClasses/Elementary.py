@@ -714,6 +714,10 @@ class Elementary(object):
         p0.Draw()
         p1.Draw()
 
+        # set unified x-range:
+        mg1.GetXaxis().SetLimits(5, 3e4) if x_range is None else do_nothing()
+        mg.GetXaxis().SetLimits(5, 3e4) if x_range is None else do_nothing()
+
         # bottom pad with 20%
         pad = p0.cd()
         make_transparent(p0)
@@ -749,13 +753,14 @@ class Elementary(object):
             p0.cd()
             run_info[0].Draw()
             run_info[1].Draw() if self.MainConfigParser.getboolean('SAVE', 'git_hash') else do_nothing()
-            scale_legend(run_info[0], txt_size=.09, width=.5, height=0.1 / pm)
 
         pad.Modified()
         pad.Update()
         for obj in pad.GetListOfPrimitives():
             if obj.GetName() == 'title':
                 obj.SetTextColor(0)
+        width = len(run_info[0].GetListOfPrimitives()[1].GetLabel()) * .012
+        scale_legend(run_info[0], txt_size=.09, width=width, height=0.098 / pm)
         self.save_canvas(c, name='CombinedPulseHeights' if name is None else name, show=show)
 
         self.ROOTObjects.append([p0, p1, c, draw_objects])
