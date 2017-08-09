@@ -486,7 +486,7 @@ class AnalysisCollection(Elementary):
         self.start_pbar(self.NRuns)
         for i, ana in enumerate(self.collection.itervalues(), 1):
             h = ana.draw_signal_distribution(show=False, redo=redo)
-            self.format_histo(h, fill_color=19)
+            self.format_histo(h, fill_color=0, fill_style=4000)
             histos.append(h)
             self.ProgressBar.update(i)
         for i, h in enumerate(histos):
@@ -1020,7 +1020,8 @@ class AnalysisCollection(Elementary):
 
     def save_signal_maps(self, hitmap=False):
 
-        log_message('Generating {s} maps!'.format(s='signal' if not hitmap else 'hit'))
+        name = 'signal' if not hitmap else 'hit'
+        log_message('Generating {s} maps!'.format(s=name))
         self.start_pbar(self.NRuns)
         histos = []
         for i, ana in enumerate(self.collection.values(), 1):
@@ -1030,14 +1031,10 @@ class AnalysisCollection(Elementary):
         # find min/max
         glob_min = int(min([gr.GetMinimum() for gr in histos])) / 5 * 5
         glob_max = (int(max([gr.GetMaximum() for gr in histos])) + 5) / 5 * 5
-
-        c = TCanvas('sig_map', 'Signal Maps', 1000, 1000)
-        c.SetTheta(55)
-        c.SetPhi(20)
-        for i, gr in enumerate(histos):
-            gr.GetZaxis().SetRangeUser(glob_min, glob_max)
-            gr.Draw('surf2')
-            self.save_plots('map{}'.format(i), canvas=c, sub_dir=self.save_dir, ind=i, show=False)
+        print glob_min, glob_max
+        for i, h in enumerate(histos):
+            self.format_histo(h, z_range=[glob_min, glob_max])
+            self.save_histo(h, '{n}map{nr}'.format(nr=i, n=name), show=False, ind=i)  # theta 55, phi 20
 
     def draw_signal_spreads(self, flux=True, draw=True):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
