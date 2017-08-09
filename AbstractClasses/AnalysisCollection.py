@@ -1016,29 +1016,19 @@ class AnalysisCollection(Elementary):
         self.save_histo(mg, 'FluxComparison', draw_opt='a', lm=.12, bm=.2, l=l)
 
     def save_signal_maps(self, hitmap=False):
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        gROOT.SetBatch(1)
-        graphs = []
-        for i, ana in enumerate(self.collection.values()):
-            h = ana.draw_signal_map(show=False, hitmap=hitmap, cut='' if hitmap else None)
-            # self.format_histo(h, z_range=[0, 140], stats=0) if not hitmap else do_nothing()
-            h.SetContour(50)
-            graphs.append(h)
+        histos = [ana.draw_signal_map(show=False, hitmap=hitmap, cut='' if hitmap else None) for ana in self.collection.values()]
+
         # find min/max
-        glob_min = int(min([gr.GetMinimum() for gr in graphs])) / 5 * 5
-        glob_max = (int(max([gr.GetMaximum() for gr in graphs])) + 5) / 5 * 5
-        print glob_min, glob_max
+        glob_min = int(min([gr.GetMinimum() for gr in histos])) / 5 * 5
+        glob_max = (int(max([gr.GetMaximum() for gr in histos])) + 5) / 5 * 5
 
         c = TCanvas('sig_map', 'Signal Maps', 1000, 1000)
         c.SetTheta(55)
         c.SetPhi(20)
-        for i, gr in enumerate(graphs):
+        for i, gr in enumerate(histos):
             gr.GetZaxis().SetRangeUser(glob_min, glob_max)
             gr.Draw('surf2')
-            self.save_plots('map{}'.format(i), canvas=c, sub_dir=self.save_dir, ind=i)
-        gROOT.SetBatch(0)
-        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        # return graphs
+            self.save_plots('map{}'.format(i), canvas=c, sub_dir=self.save_dir, ind=i, show=False)
 
     def draw_signal_spreads(self, flux=True, draw=True):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
