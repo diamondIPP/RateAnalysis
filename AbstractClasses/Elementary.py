@@ -564,7 +564,7 @@ class Elementary(object):
         except AttributeError or ReferenceError:
             pass
 
-    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=None, draw_opt='', x_fac=None, y_fac=None,
+    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=None, draw_opt='', x_fac=None, y_fac=None, ind=0,
                    l=None, logy=False, logx=False, logz=False, canvas=None, gridx=False, gridy=False, save=True, ch='dia', prnt=True, phi=None, theta=None):
         if tm is None:
             tm = .1 if self.MainConfigParser.getboolean('SAVE', 'activate_title') else .03
@@ -586,14 +586,14 @@ class Elementary(object):
             l = [l] if type(l) is not list else l
             for i in l:
                 i.Draw()
-        self.save_plots(save_name, sub_dir=sub_dir, x=x_fac, y=y_fac, ch=ch, prnt=prnt, save=save, show=show)
+        self.save_plots(save_name, sub_dir=sub_dir, x=x_fac, y=y_fac, ch=ch, prnt=prnt, save=save, show=show, ind=ind)
         self.set_root_output(True)
         lst = [c, h, l] if l is not None else [c, h]
         self.ROOTObjects.append(lst)
 
-    def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=.1, draw_opt='', x=None, y=None,
+    def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=.1, draw_opt='', x=None, y=None, ind=0,
                    l=None, logy=False, logx=False, logz=False, canvas=None, gridy=False, gridx=False, ch='dia', prnt=True, phi=None, theta=None):
-        return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, l, logy, logx, logz, canvas, gridx, gridy, False, ch, prnt, phi, theta)
+        return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, ind, l, logy, logx, logz, canvas, gridx, gridy, False, ch, prnt, phi, theta)
 
     def draw_tlatex(self, x, y, text, align=20, color=1, size=.05):
         l = TLatex(x, y, text)
