@@ -99,7 +99,7 @@ class Run(Elementary):
         self.IsMonteCarlo = False
 
         # root objects
-        self.RunInfoLegends = None
+        self.RunInfoLegends = []
 
     # ==============================================
     # region LOAD FUNCTIONS
@@ -556,6 +556,7 @@ class Run(Elementary):
             legend.AddEntry(0, 'Cut: {cut}'.format(cut=self.analysis.get_easy_cutstring()), '')
         if comment is not None:
             legend.AddEntry(0, comment, '')
+        self.RunInfoLegends.append([legend, git_text])
         if show:
             pads = [i for i in canvas.GetListOfPrimitives() if i.IsA().GetName() == 'TPad']
             if not pads:
