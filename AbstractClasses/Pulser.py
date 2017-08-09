@@ -105,7 +105,7 @@ class PulserAnalysis(Elementary):
         """ Shows the distribution of the pulser integrals. """
         cut = self.Cut.generate_pulser_cut(beam_on=beam_on)
         x = self.find_range(corr)
-        h = self.Ana.show_signal_histo(cut=cut, sig=self.SignalName, show=False, off_corr=corr, evnt_corr=False, binning=binning, events=events, start=start, redo=False, x_range=x)
+        h = self.Ana.draw_signal_distribution(cut=cut, sig=self.SignalName, show=False, off_corr=corr, evnt_corr=False, binning=binning, events=events, start=start, redo=False, x_range=x)
         self.format_histo(h, name='p_hd', stats=stats, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
         self.save_histo(h, 'PulserDistribution', show, logy=True, lm=.12)
         return h

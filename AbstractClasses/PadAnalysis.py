@@ -694,8 +694,8 @@ class PadAnalysis(Analysis):
         else:
             return string
 
-    def generate_signal_name(self, signal, evnt_corr=True, off_corr=False, bin_corr=False, cut=None):
-        sig_name = signal
+    def generate_signal_name(self, signal=None, evnt_corr=True, off_corr=False, bin_corr=False, cut=None):
+        sig_name = signal if signal is not None else self.SignalName
         # pedestal polarity is always the same as signal polarity
         ped_pol = '1'
         # change polarity if pulser has opposite polarity to signal
@@ -859,18 +859,18 @@ class PadAnalysis(Analysis):
         self.save_plots('PHEvolutionOverview{0}'.format(self.BinSize), sub_dir=self.save_dir)
         self.histos.append([h2, c])
 
-    def show_signal_histo(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None, binning=350, events=None, start=None, x_range=None, redo=False):
-        pickle_path = self.make_pickle_path('PulseHeight', 'Histo', suf='{b}_{c}'.format(b=binning, c=int(evnt_corr)), run=self.RunNumber, ch=self.DiamondNumber)
+    def draw_signal_distribution(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None, binning=350, events=None,
+                                 start=None, x_range=None, redo=False):
+        cut = self.AllCuts if cut is None else TCut(cut)
+        suffix = '{b}_{c}_{cut}'.format(b=binning, c=int(evnt_corr), cut=cut.GetName())
+        pickle_path = self.make_pickle_path('PulseHeight', 'Histo', run=self.RunNumber, ch=self.DiamondNumber, suf=suffix)
         x_range = [-50, 300] if x_range is None else x_range
-        cut = self.AllCuts if cut is None else cut
 
         def func():
-            self.log_info('drawing signal distribution for run {run} and {dia}...'.format(run=self.RunNumber, dia=self.DiamondName))
-            suffix = 'with Pedestal Correction' if evnt_corr else ''
+            self.log_info('Drawing signal distribution for run {run} and {dia}...'.format(run=self.RunNumber, dia=self.DiamondName))
             self.set_root_output(False)
-            h1 = TH1F('h_sd', 'Pulse Height ' + suffix, binning, *x_range)
-            sig_name = self.SignalName if sig is None else sig
-            sig_name = self.generate_signal_name(sig_name, evnt_corr, off_corr, False, cut)
+            h1 = TH1F('h_sd', 'Pulse Height {s}'.format(s='with Pedestal Correction' if evnt_corr else ''), binning, *x_range)
+            sig_name = self.generate_signal_name(sig, evnt_corr, off_corr, False, cut)
             start_event = int(float(start)) if start is not None else 0
             n_events = self.find_n_events(n=events, cut=str(cut), start=start_event) if events is not None else self.run.n_entries
             self.tree.Draw('{name}>>h_sd'.format(name=sig_name), str(cut), 'goff', n_events, start_event)
@@ -940,7 +940,7 @@ class PadAnalysis(Analysis):
             print '({0:05d})'.format(events),
             stdout.flush()
             if events > 10000:
-                h = self.show_signal_histo(show=False, binning=100)
+                h = self.draw_signal_distribution(show=False, binning=100)
                 h.SetLineColor(self.get_color())
                 h.Scale(1 / h.GetMaximum())
                 l.AddEntry(h, '[{0},{1}] ns'.format(int(peak_pos / 2.), int(peak_pos / 2. + bins / 2.)), 'l')
@@ -1168,9 +1168,9 @@ class PadAnalysis(Analysis):
                     cuts_nobucket += value
                 if key not in ['all_cuts', 'bucket']:
                     cuts_oldbucket += value
-            h1 = self.show_signal_histo(show=False, evnt_corr=True)
-            h2 = self.show_signal_histo(show=False, evnt_corr=True, cut=cuts_nobucket)
-            h3 = self.show_signal_histo(show=False, evnt_corr=True, cut=cuts_oldbucket)
+            h1 = self.draw_signal_distribution(show=False, evnt_corr=True)
+            h2 = self.draw_signal_distribution(show=False, evnt_corr=True, cut=cuts_nobucket)
+            h3 = self.draw_signal_distribution(show=False, evnt_corr=True, cut=cuts_oldbucket)
             if plot_histos:
                 c = TCanvas('c', 'Bucket Histos', 1000, 1000)
                 self.format_histo(h1, color=self.get_color(), lw=1, x_tit='Pulse Height [au]', y_tit='Entries')
@@ -1321,7 +1321,7 @@ class PadAnalysis(Analysis):
             legend.AddEntry(h, leg_entry, leg_style)
             i += 1
         if short:
-            h = self.show_signal_histo(show=False, binning=550, x_range=x_range)
+            h = self.draw_signal_distribution(show=False, binning=550, x_range=x_range)
             color = self.get_color()
             self.format_histo(h, color=color, stats=0)
             h.SetFillColor(color) if not scale else do_nothing()
@@ -1353,14 +1353,14 @@ class PadAnalysis(Analysis):
                         continue
                 key = 'beam_stops' if key.startswith('beam') else key
                 cut += value
-                h = self.show_signal_histo(cut=cut, show=False)
+                h = self.draw_signal_distribution(cut=cut, show=False)
                 self.log_info('{0}, {1}, {2}'.format(key, h.GetMean(), h.GetMeanError()))
                 gr.SetPoint(i, i, h.GetMean())
                 gr.SetPointError(i, 0, h.GetMeanError())
                 names.append(key)
                 i += 1
         if short:
-            h = self.show_signal_histo(show=False)
+            h = self.draw_signal_distribution(show=False)
             gr.SetPoint(i, i, h.GetMean())
             gr.SetPointError(i, 0, h.GetMeanError())
             names.append('other')
@@ -1585,7 +1585,7 @@ class PadAnalysis(Analysis):
                 print 'process cut ' + key
                 # h = TH1F('h', '', 600, -100, 500)
                 # self.tree.Draw("{name}>>h".format(name=self.signal_name), value)
-                h = self.show_signal_histo(evnt_corr=True, cut=value, show=False)
+                h = self.draw_signal_distribution(evnt_corr=True, cut=value, show=False)
                 i_mean = self.__get_mean(h)
                 median = self.__get_median(h)
                 mpv = self.__get_mpv(h)
@@ -1918,7 +1918,7 @@ class PadAnalysis(Analysis):
         self.Pulser.save_felix()
 
     def get_mpv_fwhm(self, show=True):
-        h = self.show_signal_histo(show=show)
+        h = self.draw_signal_distribution(show=show)
         return find_mpv_fwhm(h)
 
     def __placeholder(self):

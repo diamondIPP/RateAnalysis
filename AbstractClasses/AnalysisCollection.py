@@ -482,7 +482,7 @@ class AnalysisCollection(Elementary):
         histos = []
         self.start_pbar(self.NRuns)
         for i, ana in enumerate(self.collection.itervalues(), 1):
-            histos.append(ana.show_signal_histo(show=False, redo=redo))
+            histos.append(ana.draw_signal_distribution(show=False, redo=redo))
             self.ProgressBar.update(i)
         for i, h in enumerate(histos):
             self.format_histo(h, lw=2, color=self.get_color())
