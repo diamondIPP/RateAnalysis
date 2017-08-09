@@ -241,7 +241,7 @@ class ChannelCut(Cut):
     @staticmethod
     def draw_fid_cut():
         cut = gROOT.FindObject('fid')
-        cut.Draw()
+        cut.Draw() if cut else do_nothing()
 
     # special cut for analysis
     def generate_pulser_cut(self, beam_on=True):
