@@ -184,14 +184,13 @@ class PadAnalysis(Analysis):
 
     def draw_beam_profile(self, mode='x', show=True, fit=True, fit_margin=.6):
         assert mode.lower() in ['x', 'y'], 'Mode has to be either "x" or "y"!'
-        margins = self.find_diamond_margins(show_plot=False, make_histo=True)
         h = deepcopy(self.histos[-1])
         if not show:
             gROOT.SetBatch(1)
         prof = h.ProjectionX() if mode.lower() == 'x' else h.ProjectionY()
-        margins[mode] = [prof.GetBinLowEdge(prof.FindBin(margins[mode][0])), prof.GetBinLowEdge(prof.FindBin(margins[mode][1]) + 1)]
-        center = (margins[mode][1] + margins[mode][0]) / 2.
-        width = (prof.FindBin(margins[mode][1]) - prof.FindBin(margins[mode][0])) / 2. * fit_margin * prof.GetBinWidth(1)
+        margins = [prof.GetBinLowEdge(prof.FindBin(-.4)), prof.GetBinLowEdge(prof.FindBin(.4) + 1)]
+        center = (margins[1] + margins[0]) / 2.
+        width = (prof.FindBin(margins[1]) - prof.FindBin(margins[0])) / 2. * fit_margin * prof.GetBinWidth(1)
         fit_range = [center - width, center + width]
         c = TCanvas('c', 'Beam Profile', 1000, 1000)
         c.SetLeftMargin(.145)
@@ -199,7 +198,7 @@ class PadAnalysis(Analysis):
         prof.GetXaxis().SetRangeUser(prof.GetBinCenter(prof.FindFirstBinAbove(0) - 1), prof.GetBinCenter(prof.FindLastBinAbove(0) + 1))
         prof.Draw()
         sleep(.1)
-        lines = [self.draw_axis(x, c.GetUymin(), c.GetUymax(), '', 2, 2) for x in margins[mode]]
+        lines = [self.draw_axis(x, c.GetUymin(), c.GetUymax(), '', 2, 2) for x in margins]
         fit_result = self.__fit_beam_profile(prof, fit_range, show) if fit else 0
         fits = None
         if fit:
@@ -270,42 +269,35 @@ class PadAnalysis(Analysis):
 
     # ==========================================================================
     # region 2D SIGNAL DISTRIBUTION
-    def draw_signal_map(self, draw_option='colz', show=True, factor=1.5, cut=None, marg=False, fid=False, hitmap=False, save=True):
-        margins = self.find_diamond_margins(show_plot=False)
-        x = [margins['x'][0], margins['x'][1]] if marg else [-.3, .3]
-        y = [margins['y'][0], margins['y'][1]] if marg else [-.3, .3]
-        nr = 1 if not self.channel else 2
+    def draw_signal_map(self, show=True, factor=1.5, cut=None, fid=False, hitmap=False, save=True):
+        rmin, rmax = -.4, .4
         # get bin size via digital resolution of the telescope pixels
-        x_bins = int(ceil(((x[1] - x[0]) / 0.015 * sqrt(12) / factor)))
-        y_bins = int(ceil((y[1] - y[0]) / 0.01 * sqrt(12) / factor))
+        x_bins, y_bins = [int(ceil(((rmax - rmin) / size * sqrt(12) / factor))) for size in [.015, .01]]
+        bins = [x_bins, rmin, rmax, y_bins, rmin, rmax]
         self.set_root_output(0)
-        if hitmap:
-            h = TH2I('h_hm', 'Diamond Hit Map', x_bins, x[0], x[1], y_bins, y[0], y[1])
-        else:
-            h = TProfile2D('signal_map', 'Signal Map', x_bins, x[0], x[1], y_bins, y[0], y[1])
-        self.set_root_output(1)
-        signal = '{sig}-{pol}*{ped}'.format(sig=self.SignalName, ped=self.Pedestal.SignalName, pol=self.Polarity)
+        name = 'h_hm' if hitmap else 'h_sm'
+        h = TH2I(name, 'Diamond Hit Map', *bins) if hitmap else TProfile2D(name, 'Signal Map', *bins)
         self.log_info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.DiamondName, run=self.RunNumber, mode='hit' if hitmap else 'signal '))
         cut = self.Cut.generate_special_cut(excluded=['fiducial']) if not fid and cut is None else cut
         cut = self.Cut.all_cut if cut is None else cut
-        self.tree.Draw('{z}diam{nr}_track_y:diam{nr}_track_x>>{h}'.format(z=signal + ':' if not hitmap else '', nr=nr, h='h_hm' if hitmap else 'signal_map'), cut, 'goff')
+        sig = self.generate_signal_name()
+        self.tree.Draw('{z}diam{nr}_track_y:diam{nr}_track_x>>{h}'.format(z=sig + ':' if not hitmap else '', nr=self.DiamondNumber, h=name), cut, 'goff')
+        self.set_dia_margins(h)
         gStyle.SetPalette(1 if hitmap else 53)
         set_statbox(only_entries=True, x=0.82)
-        is_surf = draw_option.lower().startswith('surf')
-        self.format_histo(h, x_tit='track_x [cm]', y_tit='track_y [cm]', y_off=1.4, z_off=1.3, z_tit='Pulse Height [au]')
-        if is_surf:
-            self.format_histo(h, x_off=2, y_off=2.4, x_tit='track_x [cm]', y_tit='track_y [cm]')
-        h.GetXaxis().SetNdivisions(5)
-        h.SetContour(50)
-        save_name = 'SignalMap2D{0}'.format(draw_option.title()) if not hitmap else 'HitMap'
-        self.save_histo(h, save_name, show, lm=.12, rm=.16 if not is_surf else .12, draw_opt=draw_option, save=save)
-        self.Cut.generate_channel_cutstrings()
-        self.draw_fiducial_cut() if not fid else do_nothing()
+        self.format_histo(h, x_tit='track_x [cm]', y_tit='track_y [cm]', y_off=1.4, z_off=1.3, z_tit='Pulse Height [au]', ncont=50, ndiv=5)
+        self.save_histo(h, 'SignalMap2D' if hitmap else 'HitMap', show, lm=.12, rm=.16, draw_opt='colz', save=save)
+        self.draw_fiducial_cut()
         self.SignalMapHisto = h
         return h
 
-    def draw_dia_hitmap(self, show=True, factor=1.5, cut=None, marg=False, fid=False):
-        return self.draw_signal_map(show=show, factor=factor, cut=cut, marg=marg, fid=fid, hitmap=True)
+    def draw_dia_hitmap(self, show=True, factor=1.5, cut=None, fid=False):
+        return self.draw_signal_map(show=show, factor=factor, cut=cut, fid=fid, hitmap=True)
+
+    def set_dia_margins(self, h, size=.3):
+        # find centers in x and y
+        xmid, ymid = [(p.GetBinCenter(p.FindFirstBinAbove(0)) + p.GetBinCenter(p.FindLastBinAbove(0))) / 2 for p in [h.ProjectionX(), h.ProjectionY()]]
+        self.format_histo(h, x_range=[xmid - size, xmid + size], y_range=[ymid - size, ymid + size])
 
     def make_region_cut(self):
         self.draw_mean_signal_distribution(show=False)
@@ -391,54 +383,6 @@ class PadAnalysis(Analysis):
         fit = self.fit_mean_signal_distribution()
         conversion_factor = 2 * sqrt(2 * log(2))  # sigma to FWHM
         return fit.Parameter(2) * conversion_factor
-
-    def find_diamond_margins(self, show_plot=True, show_frame=False, cut=None, make_histo=False):
-        pickle_path = self.make_pickle_path('Margins', run=self.RunNumber, ch=self.channel)
-
-        def func():
-            print 'getting margins for {dia} of run {run}...'.format(dia=self.DiamondName, run=self.RunNumber)
-            cut_string = self.Cut.generate_special_cut(excluded=['fiducial']) if cut is None else cut
-            if not show_plot:
-                gROOT.SetBatch(1)
-            h = TH2F('h', 'Diamond Margins', 52, -.4, .4, 80, -.4, .4)
-            nr = 1 if not self.channel else 2
-            self.tree.Draw('diam{nr}_track_y:diam{nr}_track_x>>h'.format(nr=nr), cut_string, 'goff')
-            projections = [h.ProjectionX(), h.ProjectionY()]
-            efficient_bins = [[], []]
-            zero_bins = [[], []]
-            bin_low = [[], []]
-            bin_high = [[], []]
-            for i, proj in enumerate(projections):
-                last_bin = None
-                for bin_ in xrange(proj.GetNbinsX()):
-                    efficiency = proj.GetBinContent(bin_) / float(proj.GetMaximum())
-                    if efficiency > .3:
-                        efficient_bins[i].append(proj.GetBinCenter(bin_))
-                        bin_low[i].append(proj.GetBinLowEdge(bin_))
-                        bin_high[i].append(proj.GetBinLowEdge(bin_ + 1))
-                    if bin_ > 1:
-                        if efficiency and not last_bin:
-                            zero_bins[i].append(proj.GetBinCenter(bin_ - 1))
-                        elif not efficiency and last_bin:
-                            zero_bins[i].append((proj.GetBinCenter(bin_)))
-                    last_bin = proj.GetBinContent(bin_)
-            if show_plot:
-                c = TCanvas('c', 'Diamond Hit Map', 1000, 1000)
-                c.SetRightMargin(.14)
-                c.SetBottomMargin(.15)
-                h.GetXaxis().SetRangeUser(zero_bins[0][0], zero_bins[0][1])
-                h.GetYaxis().SetRangeUser(zero_bins[1][0], zero_bins[1][1])
-                h.SetStats(0)
-                h.Draw('colz')
-                if show_frame:
-                    self.__show_frame(bin_low, bin_high)
-                self.save_plots('DiamondHitmap', sub_dir=self.save_dir)
-            self.histos.append(h)
-            gROOT.SetBatch(0)
-            return {name: [efficient_bins[i][0], efficient_bins[i][-1]] for i, name in enumerate(['x', 'y'])}
-
-        margins = func() if show_plot or make_histo else None
-        return self.do_pickle(pickle_path, func, margins)
 
     def __show_frame(self, bin_low, bin_high):
         frame = TCutG('frame', 4)
