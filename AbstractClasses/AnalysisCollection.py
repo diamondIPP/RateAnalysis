@@ -225,14 +225,14 @@ class AnalysisCollection(Elementary):
 
         run_info = self.FirstAnalysis.run.get_runinfo(self, pad=pad)
         width = len(run_info[0].GetListOfPrimitives()[1].GetLabel()) * 0.0064
-        self.FirstAnalysis.run.scale_runinfo_legend(w=width)
+        scale_legend(run_info[0], width=width)
         c.cd()
         run_info[0].Draw()
         run_info[1].Draw()
         c.Update()
         gROOT.SetBatch(0)
         self.save_canvas(c, self.save_dir, 'PhPulserCurrent', show=show)
-        self.RootObjects.append([ph, cur, pul, c, legends, pads])
+        self.RootObjects.append([ph, cur, pul, c, legends, pads, run_info])
         # self.FirstAnalysis.run.reset_info_legend()
 
     def draw_ph_vs_voltage(self, binning=10000, pulser=False, redo=False):

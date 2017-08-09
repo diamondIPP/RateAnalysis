@@ -763,7 +763,7 @@ class Elementary(object):
         scale_legend(run_info[0], txt_size=.09, width=width, height=0.098 / pm)
         self.save_canvas(c, name='CombinedPulseHeights' if name is None else name, show=show)
 
-        self.ROOTObjects.append([p0, p1, c, draw_objects])
+        self.ROOTObjects.append([p0, p1, c, draw_objects, run_info])
         self.set_root_output(True)
 
     def draw_tpad(self, name, tit='', pos=None, fill_col=0, gridx=False, gridy=False, margins=None, transparent=False, logy=False, logx=False):
