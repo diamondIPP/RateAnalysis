@@ -502,8 +502,9 @@ class Elementary(object):
             l.SetTextAlign(12)
         return l
 
-    def format_histo(self, histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=20, color=1, markersize=1, x_off=None, y_off=None, z_off=None, lw=1, fill_color=None,
-                     fill_style=None, stats=True, tit_size=.04, lab_size=.04, draw_first=False, x_range=None, y_range=None, z_range=None, do_marker=True, style=None, ndiv=None):
+    def format_histo(self, histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=20, color=1, markersize=1, x_off=None, y_off=None, z_off=None, lw=1,
+                     fill_color=None, fill_style=None, stats=True, tit_size=.04, lab_size=.04, draw_first=False, x_range=None, y_range=None, z_range=None,
+                     do_marker=True, style=None, ndiv=None, ncont=None):
         h = histo
         if draw_first:
             self.set_root_output(False)
@@ -530,6 +531,7 @@ class Elementary(object):
             h.SetFillStyle(fill_style) if fill_style is not None else do_nothing()
             h.SetLineWidth(lw)
             h.SetFillStyle(style) if style is not None else do_nothing()
+            h.SetContour(ncont) if ncont is not None else do_nothing()
         except AttributeError or ReferenceError:
             pass
         # axis titles
