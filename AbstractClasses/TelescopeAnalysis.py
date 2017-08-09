@@ -466,12 +466,14 @@ class Analysis(Elementary):
         return self.run.get_flux()
 
     def fit_langau(self, h=None, nconv=100, show=True):
-        h = self.show_signal_histo(show=show) if h is None and hasattr(self, 'show_signal_histo') else h
+        h = self.draw_signal_distribution(show=show) if h is None and hasattr(self, 'draw_signal_distribution') else h
         fit = Langau(h, nconv)
         fit.langaufit()
         fit.Fit.Draw('lsame')
         i = 5
-        while fit.Chi2 / fit.NDF > 5:
+        while fit.Chi2 / fit.NDF > 8:
+            if i > 5:
+                self.log_info('Chi2 too large ({c:2.2f}) -> increasing number of convolutions by 5'.format(c=fit.Chi2 / fit.NDF))
             fit = self.fit_langau(h, nconv + i)
             i += 5
         self.RootObjects.append(fit)

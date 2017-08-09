@@ -35,7 +35,7 @@ class Langau:
     @staticmethod
     def init_par_limits():
         limits = [(0, 0)] * 4
-        limits[0] = (.5, 40.)  # par[0]=Width (scale) parameter of Landau density
+        limits[0] = (.5, 150.)  # par[0]=Width (scale) parameter of Landau density
         limits[1] = (5., 150.)   # par[1]=Most Probable (MP, location) parameter of Landau density
         limits[2] = (1., 1e6)  # par[2]=Total area (integral -inf to inf, normalization constant)
         limits[3] = (.4, 50.)  # par[3]=Width (sigma) of convoluted Gaussian function
