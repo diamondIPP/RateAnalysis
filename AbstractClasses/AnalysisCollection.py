@@ -162,7 +162,10 @@ class AnalysisCollection(Elementary):
         self.draw_pulser_pedestals(show=False, save=save)
         self.draw_signal_distributions(show=False)
         self.draw_ph_with_currents(show=False)
+        self.save_signal_maps()
+        self.save_signal_maps(hitmap=True)
         self.set_verbose(old_verbose)
+        print
         self.print_all_off_results()
     
     def scale_current_gr(self, gr):
