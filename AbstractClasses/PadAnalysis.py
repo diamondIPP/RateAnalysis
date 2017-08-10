@@ -270,8 +270,8 @@ class PadAnalysis(Analysis):
     # ==========================================================================
     # region 2D SIGNAL DISTRIBUTION
     def draw_signal_map(self, show=True, factor=1.5, cut=None, fid=False, hitmap=False, redo=False):
-        cut = self.Cut.generate_special_cut(excluded=['fiducial']) if not fid and cut is None else cut
-        cut = self.Cut.all_cut if cut is None else cut
+        cut = self.Cut.generate_special_cut(excluded=['fiducial']) if not fid and cut is None else TCut(cut)
+        cut = self.Cut.all_cut if cut is None else TCut(cut)
         pickle_path = self.make_pickle_path('SignalMaps', run=self.RunNumber, ch=self.DiamondNumber, suf=cut.GetName())
 
         def func():
