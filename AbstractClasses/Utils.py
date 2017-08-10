@@ -433,6 +433,10 @@ def int_to_roman(integer):
     return result
 
 
+def get_last_canvas():
+    return gROOT.GetListOfCanvases()[-1]
+
+
 class FitRes:
     def __init__(self, fit_obj=None):
         self.Pars = list(fit_obj.Parameters()) if (fit_obj is not None and len(fit_obj.Parameters()) > 0) else [None]
