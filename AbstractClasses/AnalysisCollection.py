@@ -467,7 +467,6 @@ class AnalysisCollection(Elementary):
         graph = func() if show or save else None
         graph = self.do_pickle(pickle_path, func, graph)
         save_name = 'Pedestal{s}{mod}{cut}'.format(mod=mode, cut='' if cut is None else cut_string.GetName(), s='Sigma' if sigma else 'Mean')
-        print save_name
         self.save_histo(graph, save_name=save_name, show=show, logx=True if flux else False, l=legend if all_regions else None, lm=.12)
         return graph
 
@@ -1029,11 +1028,11 @@ class AnalysisCollection(Elementary):
             self.ProgressBar.update(i)
         self.ProgressBar.finish()
 
+        # find min/max
+        glob_max = (int(max([h.GetMaximum() for h in histos])) + 5) / 5 * 5
+        glob_min = int(min([h.GetMinimum() for h in histos])) / 5 * 5
         for i, h in enumerate(histos):
             if not hitmap:
-                # find min/max
-                glob_max = (int(max([gr.GetMaximum() for gr in histos])) + 5) / 5 * 5
-                glob_min = int(min([gr.GetMinimum() for gr in histos])) / 5 * 5
                 self.format_histo(h, z_range=[glob_min, glob_max])
             self.save_histo(h, '{n}Map{nr}'.format(nr=i, n=name.title()), show=False, ind=i, draw_opt='colz', rm=.16, lm=.12)  # theta 55, phi 20
 
