@@ -1035,8 +1035,7 @@ class AnalysisCollection(Elementary):
                 glob_max = (int(max([gr.GetMaximum() for gr in histos])) + 5) / 5 * 5
                 glob_min = int(min([gr.GetMinimum() for gr in histos])) / 5 * 5
                 self.format_histo(h, z_range=[glob_min, glob_max])
-            # h.Draw('colz')
-            self.save_histo(h, '{n}Map{nr}'.format(nr=i, n=name.title()), show=False, ind=i, draw_opt='colz')  # theta 55, phi 20
+            self.save_histo(h, '{n}Map{nr}'.format(nr=i, n=name.title()), show=False, ind=i, draw_opt='colz', rm=.16, lm=.12)  # theta 55, phi 20
 
     def draw_signal_spreads(self, flux=True, draw=True):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')

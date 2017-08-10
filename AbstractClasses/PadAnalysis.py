@@ -286,7 +286,7 @@ class PadAnalysis(Analysis):
         gStyle.SetPalette(1 if hitmap else 53)
         set_statbox(only_entries=True, x=0.82)
         self.format_histo(h, x_tit='track_x [cm]', y_tit='track_y [cm]', y_off=1.4, z_off=1.3, z_tit='Pulse Height [au]', ncont=50, ndiv=5)
-        self.save_histo(h, 'SignalMap2D' if hitmap else 'HitMap', show, lm=.12, rm=.16, draw_opt='colz', save=save)
+        self.save_histo(h, 'HitMap' if hitmap else 'SignalMap2D', show, lm=.12, rm=.16, draw_opt='colz', save=save)
         self.draw_fiducial_cut()
         self.SignalMapHisto = h
         return h
