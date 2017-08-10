@@ -286,6 +286,7 @@ class PadAnalysis(Analysis):
             sig = self.generate_signal_name()
             self.tree.Draw('{z}diam{nr}_track_y:diam{nr}_track_x>>{h}'.format(z=sig + ':' if not hitmap else '', nr=self.DiamondNumber, h=name), cut, 'goff')
             self.set_dia_margins(h1)
+            self.set_ph_range(h1)
             self.format_histo(h1, x_tit='track_x [cm]', y_tit='track_y [cm]', y_off=1.4, z_off=1.3, z_tit='Pulse Height [au]', ncont=50, ndiv=5)
             self.SignalMapHisto = h1
             return h1
@@ -306,6 +307,11 @@ class PadAnalysis(Analysis):
         # find centers in x and y
         xmid, ymid = [(p.GetBinCenter(p.FindFirstBinAbove(0)) + p.GetBinCenter(p.FindLastBinAbove(0))) / 2 for p in [h.ProjectionX(), h.ProjectionY()]]
         self.format_histo(h, x_range=[xmid - size, xmid + size], y_range=[ymid - size, ymid + size])
+
+    def set_ph_range(self, h):
+        mean, sigma = calc_mean([h.GetBinContent(bin_) for bin_ in xrange(h.GetNbinsX() * h.GetNbinsY()) if h.GetBinContent(bin_)])
+        n_sig = 3
+        self.format_histo(h, z_range=[mean - n_sig * sigma, mean + n_sig * sigma])
 
     def make_region_cut(self):
         self.draw_mean_signal_distribution(show=False)
