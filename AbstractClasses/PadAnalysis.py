@@ -297,6 +297,7 @@ class PadAnalysis(Analysis):
         self.draw_histo(h, '', show, lm=.12, rm=.16, draw_opt='colzsame')
         self.draw_fiducial_cut()
         self.save_canvas(canvas=get_last_canvas(), name='HitMap' if hitmap else 'SignalMap2D')
+        return h
 
     def draw_dia_hitmap(self, show=True, factor=1.5, cut=None, fid=False):
         return self.draw_signal_map(show=show, factor=factor, cut=cut, fid=fid, hitmap=True)
