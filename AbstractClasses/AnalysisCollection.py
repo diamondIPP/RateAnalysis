@@ -1017,14 +1017,14 @@ class AnalysisCollection(Elementary):
             mg.GetXaxis().SetBinLabel(bin_x, names[i])
         self.save_histo(mg, 'FluxComparison', draw_opt='a', lm=.12, bm=.2, l=l)
 
-    def save_signal_maps(self, hitmap=False):
+    def save_signal_maps(self, hitmap=False, redo=False):
 
         name = 'signal' if not hitmap else 'hit'
         log_message('Generating {s} maps!'.format(s=name))
         self.start_pbar(self.NRuns)
         histos = []
         for i, ana in enumerate(self.collection.values(), 1):
-            histos.append(ana.draw_signal_map(show=False, hitmap=hitmap, cut='' if hitmap else None))
+            histos.append(ana.draw_signal_map(show=False, hitmap=hitmap, cut='' if hitmap else None, redo=redo))
             self.ProgressBar.update(i)
         self.ProgressBar.finish()
 
