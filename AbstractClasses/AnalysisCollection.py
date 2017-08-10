@@ -1027,14 +1027,16 @@ class AnalysisCollection(Elementary):
         for i, ana in enumerate(self.collection.values(), 1):
             histos.append(ana.draw_signal_map(show=False, hitmap=hitmap, cut='' if hitmap else None))
             self.ProgressBar.update(i)
+        self.ProgressBar.finish()
 
-        # find min/max
-        glob_min = int(min([gr.GetMinimum() for gr in histos])) / 5 * 5
-        glob_max = (int(max([gr.GetMaximum() for gr in histos])) + 5) / 5 * 5
-        print glob_min, glob_max
         for i, h in enumerate(histos):
-            self.format_histo(h, z_range=[glob_min, glob_max])
-            self.save_histo(h, '{n}map{nr}'.format(nr=i, n=name), show=False, ind=i)  # theta 55, phi 20
+            if not hitmap:
+                # find min/max
+                glob_max = (int(max([gr.GetMaximum() for gr in histos])) + 5) / 5 * 5
+                glob_min = int(min([gr.GetMinimum() for gr in histos])) / 5 * 5
+                self.format_histo(h, z_range=[glob_min, glob_max])
+            # h.Draw('colz')
+            self.save_histo(h, '{n}Map{nr}'.format(nr=i, n=name.title()), show=False, ind=i, draw_opt='colz')  # theta 55, phi 20
 
     def draw_signal_spreads(self, flux=True, draw=True):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
