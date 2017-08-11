@@ -476,6 +476,7 @@ class Analysis(Elementary):
                 self.log_info('Chi2 too large ({c:2.2f}) -> increasing number of convolutions by 5'.format(c=fit.Chi2 / fit.NDF))
             fit = self.fit_langau(h, nconv + i)
             i += 5
+        print 'MPV:', fit.Parameters[1]
         self.RootObjects.append(fit)
         return fit
 
