@@ -105,7 +105,8 @@ class PulserAnalysis(Elementary):
         """ Shows the distribution of the pulser integrals. """
         cut = self.Cut.generate_pulser_cut(beam_on=beam_on)
         x = self.find_range(corr)
-        h = self.Ana.draw_signal_distribution(cut=cut, sig=self.SignalName, show=False, off_corr=corr, evnt_corr=False, binning=binning, events=events, start=start, redo=False, x_range=x)
+        h = self.Ana.draw_signal_distribution(cut=cut, sig=self.SignalName, show=False, off_corr=corr, evnt_corr=False, binning=binning, events=events,
+                                              start=start, redo=False, x_range=x, stats=not stats)
         self.format_histo(h, name='p_hd', stats=stats, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
         self.save_histo(h, 'PulserDistribution', show, logy=True, lm=.12)
         return h
@@ -118,14 +119,14 @@ class PulserAnalysis(Elementary):
         pickle_path = self.make_pickle_path('Pulser', 'HistoFit', self.RunNumber, self.Channel, suf=suffix)
 
         def func():
-            set_statbox(.95, .88, entries=4, only_fit=True, w=.3)
+            set_statbox(.95, .88, entries=4, only_fit=True, w=.5)
             h = self.draw_distribution(show=show, corr=corr, beam_on=beam_on, binning=binning, events=events, start=start, stats=True)
             h.SetName('Fit Result')
             same_pols = self.Polarity == self.Ana.Polarity
             h.GetXaxis().SetRangeUser(20, h.GetXaxis().GetXmax())
-            x_min = h.GetBinCenter(h.GetMaximumBin() - int(.3 * binning)) if same_pols else h.GetBinCenter(h.GetMaximumBin() - int(.1 * binning))
+            x_min = h.GetBinCenter(h.GetMaximumBin() - int(3 * binning)) if same_pols else h.GetBinCenter(h.GetMaximumBin() - int(1 * binning))
             h.GetXaxis().UnZoom()
-            x_max = h.GetBinCenter(h.GetMaximumBin() + int(.1 * binning)) if same_pols else h.GetBinCenter(h.GetMaximumBin() + int(.3 * binning))
+            x_max = h.GetBinCenter(h.GetMaximumBin() + int(binning)) if same_pols else h.GetBinCenter(h.GetMaximumBin() + int(3 * binning))
             fit_func = h.Fit('gaus', 'qs{0}'.format('' if show else '0'), '', x_min, x_max)
             f = deepcopy(gROOT.GetFunction('gaus'))
             f.SetLineStyle(7)

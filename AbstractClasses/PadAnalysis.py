@@ -832,7 +832,7 @@ class PadAnalysis(Analysis):
         self.histos.append([h2, c])
 
     def draw_signal_distribution(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None, binning=1, events=None,
-                                 start=None, x_range=None, redo=False):
+                                 start=None, x_range=None, redo=False, stats=True):
         cut = self.AllCuts if cut is None else TCut(cut)
         suffix = '{b}_{c}_{cut}'.format(b=binning, c=int(evnt_corr), cut=cut.GetName())
         pickle_path = self.make_pickle_path('PulseHeight', 'Histo', run=self.RunNumber, ch=self.DiamondNumber, suf=suffix)
@@ -849,7 +849,7 @@ class PadAnalysis(Analysis):
             self.format_histo(h1, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=2, fill_color=self.FillColor)
             return h1
 
-        set_statbox(only_entries=True)
+        set_statbox(only_entries=True) if stats else do_nothing()
         h = func() if redo else None
         h = do_pickle(pickle_path, func, h)
         self.save_histo(h, 'SignalDistribution', lm=.15, show=show)
@@ -1442,7 +1442,7 @@ class PadAnalysis(Analysis):
         y_range = increased_range([min(values), max(values)], .1, .2)
         h = self.make_tgrapherrors('g_cw', title, x=times, y=values) if n == 1 else h
         self.format_histo(h, x_tit='Time [ns]', y_tit='Signal [mV]', y_off=.5, stats=0, tit_size=.07, lab_size=.06, y_range=y_range, markersize=.5)
-        self.save_histo(h,'WaveForms{n}'.format(n=n), show=show, draw_opt='col' if n > 1 else 'apl', lm=.073, rm=.045, bm=.18, x_fac=1.5, y_fac=.5)
+        self.save_histo(h, 'WaveForms{n}'.format(n=n), show=show, draw_opt='col' if n > 1 else 'apl', lm=.073, rm=.045, bm=.18, x_fac=1.5, y_fac=.5)
         self.count += n_events
         return h, n_events
 
