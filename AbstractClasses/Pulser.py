@@ -101,7 +101,7 @@ class PulserAnalysis(Elementary):
         ran = mean(values[:5]), mean(values[-5:])
         return increased_range(ran, .1, .3)
 
-    def draw_distribution(self, show=True, corr=True, beam_on=True, binning=100, events=None, start=None, stats=False):
+    def draw_distribution(self, show=True, corr=True, beam_on=True, binning=10, events=None, start=None, stats=False):
         """ Shows the distribution of the pulser integrals. """
         cut = self.Cut.generate_pulser_cut(beam_on=beam_on)
         x = self.find_range(corr)
@@ -110,7 +110,7 @@ class PulserAnalysis(Elementary):
         self.save_histo(h, 'PulserDistribution', show, logy=True, lm=.12)
         return h
 
-    def draw_distribution_fit(self, show=True, save=True, corr=True, beam_on=True, events=None, start=None, binning=100):
+    def draw_distribution_fit(self, show=True, save=True, corr=True, beam_on=True, events=None, start=None, binning=10):
         show = False if not save else show
         start_string = '_{0}'.format(start) if start is not None else ''
         events_string = '_{0}'.format(events) if events is not None else ''

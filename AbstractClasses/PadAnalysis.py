@@ -841,7 +841,7 @@ class PadAnalysis(Analysis):
         def func():
             self.log_info('Drawing signal distribution for run {run} and {dia}...'.format(run=self.RunNumber, dia=self.DiamondName))
             self.set_root_output(False)
-            h1 = TH1F('h_sd', 'Pulse Height {s}'.format(s='with Pedestal Correction' if evnt_corr else ''), (x_range[1] - x_range[2]) * binning, *x_range)
+            h1 = TH1F('h_sd', 'Pulse Height {s}'.format(s='with Pedestal Correction' if evnt_corr else ''), int((x_range[1] - x_range[0]) * binning), *x_range)
             sig_name = self.generate_signal_name(sig, evnt_corr, off_corr, False, cut)
             start_event = int(float(start)) if start is not None else 0
             n_events = self.find_n_events(n=events, cut=str(cut), start=start_event) if events is not None else self.run.n_entries
