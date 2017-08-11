@@ -49,16 +49,18 @@ class PulserAnalysis(Elementary):
         nbins = entries / evts_per_bin
         h = TProfile('hpr', 'Pulser Rate', nbins, 0, entries)
         self.Tree.Draw('pulser*100:Entry$>>hpr', cut, 'goff')
-        self.format_histo(h, x_tit='Event Number', y_tit='Pulser Fraction [%]', y_off=1.3, fill_color=self.FillColor, stats=0, y_range=[0, 100])
-        self.save_histo(h, 'PulserRate', show, lm=.13, draw_opt='hist')
+        self.format_histo(h, x_tit='Event Number', y_tit='Pulser Fraction [%]', y_off=1.3, fill_color=self.FillColor, y_range=[0, 100], markersize=.7)
+        self.save_histo(h, 'PulserRate', show, lm=.13, draw_opt='bare', rm=.08)
         return h
 
     def calc_fraction(self, show=False):
         """ :returns the fitted value of the fraction of pulser events with event range and beam interruptions cuts and its fit error. """
-        cut = self.Cut.generate_special_cut(included=['beam_interruptions', 'event_range'])
+        cut = self.Cut.generate_special_cut(included=['beam_interruptions'])
+        set_statbox(only_fit=True, entries=2, x=.9, w=.2)
         h = self.draw_rate(show=show, cut=cut)
-        fit = h.Fit('pol0', 'qs0')
-        self.log_info('The fraction of pulser events is: {0:5.2f} +- {1:4.2f}%'.format(fit.Parameter(0), fit.ParError(0)))
+        self.format_histo(h, 'Fit Result', markersize=None)
+        fit = h.Fit('pol0', 'qs')
+        self.log_info('The fraction of pulser events is: {0:5.2f} +- {1:4.2f} %'.format(fit.Parameter(0), fit.ParError(0)))
         return fit.Parameter(0), fit.ParError(0)
 
     def calc_real_fraction(self):
