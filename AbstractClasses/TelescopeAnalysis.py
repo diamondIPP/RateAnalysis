@@ -465,18 +465,18 @@ class Analysis(Elementary):
     def get_flux(self):
         return self.run.get_flux()
 
-    def fit_langau(self, h=None, nconv=100, show=True):
+    def fit_langau(self, h=None, nconv=30, show=True):
         h = self.draw_signal_distribution(show=show) if h is None and hasattr(self, 'draw_signal_distribution') else h
         fit = Langau(h, nconv)
         fit.langaufit()
         fit.Fit.Draw('lsame')
-        i = 5
         while fit.Chi2 / fit.NDF > 8:
-            if i > 5:
+            self.count += 5
+            if self.count > 5:
                 self.log_info('Chi2 too large ({c:2.2f}) -> increasing number of convolutions by 5'.format(c=fit.Chi2 / fit.NDF))
-            fit = self.fit_langau(h, nconv + i)
-            i += 5
+            fit = self.fit_langau(h, nconv + self.count)
         print 'MPV:', fit.Parameters[1]
+        self.count = 0
         self.RootObjects.append(fit)
         return fit
 
