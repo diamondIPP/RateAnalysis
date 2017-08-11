@@ -269,6 +269,20 @@ class PadAnalysis(Analysis):
 
     # ==========================================================================
     # region 2D SIGNAL DISTRIBUTION
+
+    def draw_efficiency_map(self, res=1.5, cut='all', show=True):
+        rmin, rmax = -.4, .4
+        # get bin size via digital resolution of the telescope pixels
+        x_bins, y_bins = [int(ceil(((rmax - rmin) / size * sqrt(12) / res))) for size in [.015, .01]]
+        bins = [x_bins, rmin, rmax, y_bins, rmin, rmax]
+        cut_string = TCut(cut) + self.Cut.CutStrings['tracks']
+        cut_string = self.Cut.generate_special_cut(excluded=['fiducial']) if cut == 'all' else cut_string
+        p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DiamondName), *bins)
+        self.tree.Draw('({s}>10)*100:diam{r1}_track_y:diam{r1}_track_x>>p_em'.format(s=self.generate_signal_name(), r1=self.DiamondNumber), cut_string, 'goff')
+        set_statbox(entries=4, opt=1000000010, x=.81)
+        self.format_histo(p, x_tit='Track x [cm]', y_tit='Track y [cm]', z_tit='Efficiency [%]', y_off=1.4, z_off=1.5, ncont=100)
+        self.save_histo(p, 'Efficiency Map', show, lm=.13, rm=.17, draw_opt='colz')
+
     def draw_signal_map(self, show=True, factor=1.5, cut=None, fid=False, hitmap=False, redo=False):
         cut = self.Cut.generate_special_cut(excluded=['fiducial']) if not fid and cut is None else TCut(cut)
         cut = self.Cut.all_cut if cut is None else TCut(cut)
