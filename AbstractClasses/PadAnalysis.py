@@ -1429,7 +1429,7 @@ class PadAnalysis(Analysis):
         y_range = increased_range([min(values), max(values)], .1, .2)
         h = self.make_tgrapherrors('g_cw', title, x=times, y=values) if n == 1 else h
         self.format_histo(h, x_tit='Time [ns]', y_tit='Signal [mV]', y_off=.5, stats=0, tit_size=.07, lab_size=.06, y_range=y_range, markersize=.5)
-        self.draw_histo(h, show=show, draw_opt='col' if n > 1 else 'apl', lm=.073, rm=.045, bm=.18, x=1.5, y=.5)
+        self.save_histo(h,'WaveForms{n}'.format(n=n), show=show, draw_opt='col' if n > 1 else 'apl', lm=.073, rm=.045, bm=.18, x_fac=1.5, y_fac=.5)
         self.count += n_events
         return h, n_events
 
