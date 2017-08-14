@@ -466,7 +466,7 @@ class AnalysisCollection(Elementary):
         self.ProgressBar.finish()
         graph = func() if show or save else None
         graph = self.do_pickle(pickle_path, func, graph)
-        save_name = 'Pedestal{s}{mod}{cut}'.format(mod=mode, cut='' if cut is None else cut_string.GetName(), s='Sigma' if sigma else 'Mean')
+        save_name = '{p}Pedestal{s}{mod}{cut}'.format(mod=mode, cut=cut_string.GetName(), s='Sigma' if sigma else 'Mean', p='Pulser' if pulser else '')
         self.save_histo(graph, save_name=save_name, show=show, logx=True if flux else False, l=legend if all_regions else None, lm=.12)
         return graph
 
