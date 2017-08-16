@@ -113,7 +113,7 @@ class PulserAnalysis(Elementary):
         self.save_histo(h, 'PulserDistribution', show, logy=True, lm=.12)
         return h
 
-    def draw_distribution_fit(self, show=True, save=True, corr=True, beam_on=True, events=None, start=None, binning=10):
+    def draw_distribution_fit(self, show=True, save=True, corr=True, beam_on=True, events=None, start=None, binning=3):
         show = False if not save else show
         start_string = '_{0}'.format(start) if start is not None else ''
         events_string = '_{0}'.format(events) if events is not None else ''
@@ -125,11 +125,10 @@ class PulserAnalysis(Elementary):
             h = self.draw_distribution(show=show, corr=corr, beam_on=beam_on, binning=binning, events=events, start=start, stats=True)
             h.SetName('Fit Result')
             same_pols = self.Polarity == self.Ana.Polarity
-            h.GetXaxis().SetRangeUser(20, h.GetXaxis().GetXmax())
-            x_min = h.GetBinCenter(h.GetMaximumBin() - int(3 * binning)) if same_pols else h.GetBinCenter(h.GetMaximumBin() - int(1 * binning))
-            h.GetXaxis().UnZoom()
-            x_max = h.GetBinCenter(h.GetMaximumBin() + int(binning)) if same_pols else h.GetBinCenter(h.GetMaximumBin() + int(3 * binning))
-            fit_func = h.Fit('gaus', 'qs{0}'.format('' if show else '0'), '', x_min, x_max)
+            full_fit = h.Fit('gaus', 'qs0')
+            xmin, xmax = [full_fit.Parameter(1) + i * full_fit.Parameter(2) for i in ([-2, .5] if same_pols else [-.5, 2])]
+            fit_func = h.Fit('gaus', 'qs{0}'.format('' if show else '0'), '', xmin, xmax)
+            print xmin, xmax
             f = deepcopy(gROOT.GetFunction('gaus'))
             f.SetLineStyle(7)
             f.SetRange(0, 500)
