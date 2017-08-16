@@ -432,18 +432,17 @@ class AnalysisCollection(Elementary):
         self.start_pbar(self.NRuns)
         legend = TLegend(0.7, 0.3, 0.98, .7)
         legend.SetName('l1')
-        cut_string = self.get_first_analysis().Cut.generate_pulser_cut(beam_on=beam_on) if cut == 'pulser' else cut
 
         def func():
             y_val = 'Sigma' if sigma else 'Mean'
-            prefix = 'Pulser ' if cut is not None and cut.GetName().startswith('Pulser') else ''
+            prefix = 'Pulser ' if pulser else ''
             gr1 = self.make_tgrapherrors('pedestal', '{pre}Pedestal {y} in {reg}'.format(y=y_val, reg=region + peak_int, pre=prefix))
             regions = self.get_first_analysis().run.pedestal_regions
             graphs = [self.make_tgrapherrors('pedestal', '{pre}Pedestal {y} in {reg}'.format(y=y_val, reg=reg + peak_int, pre=prefix), color=self.get_color()) for reg in regions]
             i = 0
             par = 2 if sigma else 1
             for key, ana in self.collection.iteritems():
-                fit_par = ana.Pedestal.draw_disto_fit(cut=cut_string, save=save, show=False) if not pulser else ana.Pulser.draw_pedestal(show, save)
+                fit_par = ana.Pedestal.draw_disto_fit(cut=cut, save=save, show=False) if not pulser else ana.Pulser.draw_pedestal(show, save)
                 x = ana.run.Flux if flux else key
                 gr1.SetPoint(i, x, fit_par.Parameter(par))
                 gr1.SetPointError(i, 0, fit_par.ParError(par))
@@ -466,7 +465,8 @@ class AnalysisCollection(Elementary):
         self.ProgressBar.finish()
         graph = func() if show or save else None
         graph = self.do_pickle(pickle_path, func, graph)
-        save_name = '{p}Pedestal{s}{mod}{cut}'.format(mod=mode, cut=cut_string.GetName(), s='Sigma' if sigma else 'Mean', p='Pulser' if pulser else '')
+        cut_name = '' if cut is None else TCut(cut).GetName()
+        save_name = '{p}Pedestal{s}{mod}{cut}'.format(mod=mode, cut=cut_name, s='Sigma' if sigma else 'Mean', p='Pulser' if pulser else '')
         self.save_histo(graph, save_name=save_name, show=show, logx=True if flux else False, l=legend if all_regions else None, lm=.12)
         return graph
 
