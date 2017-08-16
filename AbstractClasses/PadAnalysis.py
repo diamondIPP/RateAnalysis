@@ -334,6 +334,24 @@ class PadAnalysis(Analysis):
         self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=2, fill_color=self.FillColor)
         self.save_histo(h, 'SignalMapDistribution', lm=.15, show=show)
 
+    def draw_sig_map_profiles(self, mode='x', factor=1.5, cut=None, fid=False, hitmap=False, redo=False, show=True):
+        s = self.draw_signal_map(factor, cut, fid, hitmap=hitmap, redo=redo, show=False)
+        g = self.make_tgrapherrors('g_smp', 'Signal Map Profile')
+        values = [[] for _ in xrange(s.GetNbinsX() if mode == 'x' else s.GetNbinsY())]
+        for xbin in xrange(s.GetNbinsX()):
+            for ybin in xrange(s.GetNbinsY()):
+                value = s.GetBinContent(xbin, ybin)
+                if value:
+                    values[(xbin if mode == 'x' else ybin)].append(value)
+        for i, lst in enumerate(values):
+            m, sigma = calc_mean(lst) if lst else (0., 0.)
+            xval = s.GetXaxis().GetBinCenter(i) if mode == 'x' else s.GetYaxis().GetBinCenter(i)
+            g.SetPoint(i, xval, m)
+            g.SetPointError(i, 0, sigma)
+
+        self.format_histo(g, x_tit='Track in {m} [cm]'.format(m=mode), y_tit='Pulse Height [au]', y_off=1.5, ndiv=550)
+        self.save_histo(g, 'SignalMapProfile', draw_opt='ap', lm=.14, show=show, gridx=True)
+
     def make_region_cut(self):
         self.draw_mean_signal_distribution(show=False)
         return self.Cut.generate_region(self.SignalMapHisto, self.MeanSignalHisto)
