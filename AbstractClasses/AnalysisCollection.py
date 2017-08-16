@@ -14,6 +14,7 @@ from Extrema import Extrema2D
 from PadAnalysis import PadAnalysis
 from RunSelection import RunSelection
 from TelescopeAnalysis import Analysis
+from VoltageScan import VoltageScan
 from Run import Run
 from Utils import *
 
@@ -62,6 +63,9 @@ class AnalysisCollection(Elementary):
         self.PulseHeight = None
         self.Pedestal = None
         self.PeakDistribution = None
+
+        # sub classes
+        self.VoltageScan = VoltageScan(self)
 
         # current information
         self.StartTime = float(self.FirstAnalysis.run.log_start.strftime('%s'))
