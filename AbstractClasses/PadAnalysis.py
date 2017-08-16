@@ -283,8 +283,8 @@ class PadAnalysis(Analysis):
         self.format_histo(p, x_tit='Track x [cm]', y_tit='Track y [cm]', z_tit='Efficiency [%]', y_off=1.4, z_off=1.5, ncont=100)
         self.save_histo(p, 'Efficiency Map', show, lm=.13, rm=.17, draw_opt='colz')
 
-    def draw_signal_map(self, show=True, factor=1.5, cut=None, fid=False, hitmap=False, redo=False):
-        cut = self.Cut.generate_special_cut(excluded=['fiducial']) if not fid and cut is None else TCut(cut)
+    def draw_signal_map(self, factor=1.5, cut=None, fid=False, hitmap=False, redo=False, show=True):
+        cut = self.Cut.generate_special_cut(excluded=['fiducial']) if not fid and cut is None else None
         cut = self.Cut.all_cut if cut is None else TCut(cut)
         pickle_path = self.make_pickle_path('SignalMaps', run=self.RunNumber, ch=self.DiamondNumber, suf=cut.GetName())
 
@@ -326,6 +326,13 @@ class PadAnalysis(Analysis):
         mean, sigma = calc_mean([h.GetBinContent(bin_) for bin_ in xrange(h.GetNbinsX() * h.GetNbinsY()) if h.GetBinContent(bin_)])
         n_sig = 3
         self.format_histo(h, z_range=[mean - n_sig * sigma, mean + n_sig * sigma])
+
+    def draw_sig_map_disto(self, show=True, factor=1.5, cut=None, fid=True, redo=False):
+        source = self.draw_signal_map(factor, cut, fid, hitmap=False, redo=redo, show=False)
+        h = TH1F('h_smd', 'Signal Map Distribution', 100, -50, 350)
+        [h.SetBinContent(source.GetBinContent(ibin)) for ibin in xrange(source.GetNbinsX() * source.GetNbinsY()) if source.GetBinContent(ibin)]
+        self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=2, fill_color=self.FillColor)
+        self.save_histo(h, 'SignalMapDistribution', lm=.15, show=show)
 
     def make_region_cut(self):
         self.draw_mean_signal_distribution(show=False)
