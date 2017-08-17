@@ -2322,7 +2322,7 @@
         "dia1": "None", 
         "dia2": "6dB_2", 
         "pulser1": "6dB_3", 
-        "pulser2": "6dB_2"
+        "pulser2": "6dB_1"
       }, 
       "runs": [
         4, 
@@ -2343,6 +2343,12 @@
       "type": "rate scan"
     }, 
     "02": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "6dB_2", 
+        "pulser1": "6dB_3", 
+        "pulser2": "6dB_1"
+      }, 
       "runs": [
         18, 
         19, 
@@ -2850,9 +2856,9 @@
       "runs": [
         234, 
         236, 
-        238, 
+        239, 
         240, 
-        243, 
+        244, 
         250, 
         251, 
         252, 
@@ -3082,6 +3088,94 @@
         23, 
         25, 
         26
+      ], 
+      "type": "rate scan"
+    }, 
+    "03": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser1": "None", 
+        "pulser2": "None"
+      }, 
+      "runs": [
+        49, 
+        51, 
+        52, 
+        53, 
+        54, 
+        55, 
+        56, 
+        57, 
+        58, 
+        59, 
+        60
+      ], 
+      "type": "rate scan"
+    }, 
+    "04": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser1": "None", 
+        "pulser2": "None"
+      }, 
+      "runs": [
+        62, 
+        63, 
+        64, 
+        65, 
+        66, 
+        67, 
+        68, 
+        69, 
+        71, 
+        72, 
+        74
+      ], 
+      "type": "rate scan"
+    }, 
+    "05": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser1": "None", 
+        "pulser2": "None"
+      }, 
+      "runs": [
+        81, 
+        82, 
+        83, 
+        84, 
+        85, 
+        86, 
+        87, 
+        88, 
+        89, 
+        90, 
+        91
+      ], 
+      "type": "rate scan"
+    }, 
+    "06": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser1": "None", 
+        "pulser2": "None"
+      }, 
+      "runs": [
+        93, 
+        94, 
+        95, 
+        96, 
+        97, 
+        98, 
+        99, 
+        100, 
+        101, 
+        102, 
+        103
       ], 
       "type": "rate scan"
     }
