@@ -100,7 +100,7 @@ class CutPix(Cut):
             tuples = string.split(';')
             for tup in tuples:
                 lst.append([int(i) for i in tup.split('{s}'.format(s=',' if 'Pix' in name else ':'))])
-        return lst if lst else None
+        return lst if lst else []
 
     def load_fiducial(self, name='FidPix'):
         if self.ana_config_parser.has_option('CUT', name):
@@ -146,7 +146,7 @@ class CutPix(Cut):
 
     def generate_fiducial(self, name='fid'):
         xy = self.CutConfig['FidRegion']
-        if xy is not None:
+        if xy is not None and xy:
             d = 0
             x = array([xy[0] - d, xy[0] - d, xy[1] + d, xy[1] + d, xy[0] - d], 'd')
             y = array([xy[2] - d, xy[3] + d, xy[3] + d, xy[2] - d, xy[2] - d], 'd')
@@ -156,6 +156,8 @@ class CutPix(Cut):
             self.ROOTObjects.append(cut)
             cut.SetLineColor(kRed)
             cut.SetLineWidth(3)
+        else:
+            return ''
         return name
 
     def generate_alignment(self):
@@ -211,13 +213,16 @@ class CutPix(Cut):
     def generate_line_mask(self, line, cluster=True):
         cut_string = ''
         cut_var = 'cluster_{l}'.format(n=self.Dut, l=line) if cluster else line
-        for tup in self.CutConfig['Mask{l}s'.format(l=line.title())]:
-            cut_string += '||' if cut_string else ''
-            if len(tup) == 2:
-                cut_string += '{v}>={i}&&{v}<={f}'.format(i=tup[0], f=tup[1], v=cut_var)
-            elif len(tup) == 1:
-                cut_string += '{v}=={i}'.format(i=tup[0], v=cut_var)
-        if not cut_string:
+        try:
+            for tup in self.CutConfig['Mask{l}s'.format(l=line.title())]:
+                cut_string += '||' if cut_string else ''
+                if len(tup) == 2:
+                    cut_string += '{v}>={i}&&{v}<={f}'.format(i=tup[0], f=tup[1], v=cut_var)
+                elif len(tup) == 1:
+                    cut_string += '{v}=={i}'.format(i=tup[0], v=cut_var)
+            if not cut_string:
+                return ''
+        except TypeError:
             return ''
         plane_var = 'plane' if not cluster else 'cluster_plane'
         cut_string = TCut(cut_string) + TCut('{p}=={r}'.format(r=self.Dut, p=plane_var))

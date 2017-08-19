@@ -639,7 +639,7 @@ class Elementary(object):
     def fit_fwhm(histo, fitfunc='gaus', do_fwhm=True, draw=False):
         h = histo
         if do_fwhm:
-            peak_pos = h.GetMean()
+            peak_pos = h.GetBinCenter(h.GetMaximumBin())
             bin1 = h.FindFirstBinAbove(h.GetMaximum() / 2)
             bin2 = h.FindLastBinAbove(h.GetMaximum() / 2)
             fwhm = h.GetBinLowEdge(bin2 + 2) - h.GetBinLowEdge(bin1 - 1)
