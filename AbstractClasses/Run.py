@@ -267,7 +267,7 @@ class Run(Elementary):
 
         flux = []
         self.find_for_in_comment()
-        if self.RunInfo['for1'] and self.RunInfo['for2']:
+        if self.RunInfo['for1'] or self.RunInfo['for2']:
             self.FoundForRate = True
             for i, area in enumerate(self.get_unmasked_area().itervalues(), 1):
                 flux.append(self.RunInfo['for{num}'.format(num=i)] / area / 1000)  # in kHz/cm^2
