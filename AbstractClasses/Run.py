@@ -265,13 +265,11 @@ class Run(Elementary):
 
     def calculate_flux(self):
 
-        unmasked_area = self.get_unmasked_area()
         flux = []
         self.find_for_in_comment()
         if self.RunInfo['for1'] and self.RunInfo['for2']:
             self.FoundForRate = True
-            for i, plane in enumerate(self.trigger_planes, 1):
-                area = unmasked_area[plane]
+            for i, area in enumerate(self.get_unmasked_area().itervalues(), 1):
                 flux.append(self.RunInfo['for{num}'.format(num=i)] / area / 1000)  # in kHz/cm^2
         else:
             flux.append(self.RunInfo['measuredflux'])
@@ -282,35 +280,33 @@ class Run(Elementary):
         if self.RunNumber is None:
             return
         mask_file = join(self.maskfilepath, self.RunInfo['maskfile'])
-        maskdata = {plane: {} for plane in self.trigger_planes}
+        maskdata = {}
         try:
             f = open(mask_file, 'r')
-            i2cs = []
             for line in f:
                 if line.startswith('#'):
                     continue
                 if len(line) > 3:
                     line = line.split()
-                    if not i2cs or i2cs[-1] != line[1]:
-                        i2cs.append(line[1])
-                    plane = self.trigger_planes[len(i2cs) - 1]
-                    maskdata[plane][line[0]] = [int(line[2]), int(line[3])]
+                    roc = int(line[1])
+                    if roc not in maskdata:
+                        maskdata[roc] = {}
+                    maskdata[roc][line[0]] = (int(line[2]), int(line[3]))
             f.close()
         except IOError:
             log_warning('Could not find mask file {f}! Not taking any mask!'.format(f=mask_file))
-
         # default pixels
-        unmasked_pixels = {plane: 52 * 80 for plane in self.trigger_planes}
+        unmasked_pixels = {plane: 52 * 80 for plane in maskdata}
         # pass for empty file
-        if not maskdata[self.trigger_planes[0]]:
+        if not maskdata:
             pass
         # check for corner method
         elif not maskdata.values()[0].keys()[0].startswith('corn'):
             self.log_warning('Invalid mask file. Not taking any mask!')
         else:
-            for plane in self.trigger_planes:
-                row = [maskdata[plane]['cornBot'][0], maskdata[plane]['cornTop'][0]]
-                col = [maskdata[plane]['cornBot'][1], maskdata[plane]['cornTop'][1]]
+            for plane, dic in maskdata.iteritems():
+                row = dic['cornBot'][0], dic['cornTop'][0]
+                col = dic['cornBot'][1], dic['cornTop'][1]
                 unmasked_pixels[plane] = abs((row[1] - row[0] + 1) * (col[1] - col[0] + 1))
                 self.RunInfo['masked pixels'][plane] = unmasked_pixels[plane]
 
