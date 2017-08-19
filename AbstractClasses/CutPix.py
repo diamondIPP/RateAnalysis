@@ -39,9 +39,9 @@ class CutPix(Cut):
         self.CutStrings['hit'] += self.generate_hit()
         self.CutStrings['masks'] += self.generate_masks()
         self.CutStrings['fiducial'] += self.generate_fiducial()
-        self.CutStrings['rhit'] += self.generate_rhit()
+        # self.CutStrings['rhit'] += self.generate_rhit()
         self.CutStrings['trigger_phase'] += self.generate_trigger_phase()
-        self.CutStrings['alignment'] += self.generate_alignment()
+        # self.CutStrings['alignment'] += self.generate_alignment()
 
     def generate_hitmap_cutstrings(self):
         self.set_hitmap_cuts()
