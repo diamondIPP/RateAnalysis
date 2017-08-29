@@ -465,12 +465,16 @@ class Analysis(Elementary):
     def get_flux(self):
         return self.run.get_flux()
 
-    def fit_langau(self, h=None, nconv=30, show=True):
+    def fit_langau(self, h=None, nconv=30, show=True, chi_thresh=8):
         h = self.draw_signal_distribution(show=show) if h is None and hasattr(self, 'draw_signal_distribution') else h
+        h = self.draw_pulse_height_disto(show=show) if h is None and hasattr(self, 'draw_pulse_height_disto') else h
         fit = Langau(h, nconv)
         fit.langaufit()
         fit.Fit.Draw('lsame')
-        while fit.Chi2 / fit.NDF > 8:
+        c = get_last_canvas()
+        c.Modified()
+        c.Update()
+        while fit.Chi2 / fit.NDF > chi_thresh:
             self.count += 5
             if self.count > 5:
                 self.log_info('Chi2 too large ({c:2.2f}) -> increasing number of convolutions by 5'.format(c=fit.Chi2 / fit.NDF))
