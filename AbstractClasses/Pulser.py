@@ -128,7 +128,6 @@ class PulserAnalysis(Elementary):
             full_fit = h.Fit('gaus', 'qs0')
             xmin, xmax = [full_fit.Parameter(1) + i * full_fit.Parameter(2) for i in ([-2, .5] if same_pols else [-.5, 2])]
             fit_func = h.Fit('gaus', 'qs{0}'.format('' if show else '0'), '', xmin, xmax)
-            print xmin, xmax
             f = deepcopy(gROOT.GetFunction('gaus'))
             f.SetLineStyle(7)
             f.SetRange(0, 500)

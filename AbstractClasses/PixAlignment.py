@@ -260,7 +260,7 @@ class PixAlignment:
                     # now we have lost correlation for at least three buckets
                     else:
                         last_off_event = offsets.keys()[-1] if offsets else 0
-                        off_event = self.find_lose_corr_event(correlation, last_off_event, debug=True)
+                        off_event = self.find_lose_corr_event(correlation, last_off_event, debug=debug)
                         off = self.find_offset(correlation)
                         if off is not None:
                             offset += off

@@ -422,12 +422,12 @@ class RunSelection(Elementary):
     def select_runs_from_runplan(self, plan_nr, ch=1):
         plan = self.make_runplan_string(plan_nr)
         runs = self.RunPlan[plan]['runs']
-        self.SelectedRunplan = plan
-        self.SelectedType = str(self.RunPlan[plan]['type'])
 
         self.select_runs(runs)
         parser = ConfigParser()
         parser.read('Configuration/DiamondAliases.cfg')
+        self.SelectedRunplan = plan
+        self.SelectedType = str(self.RunPlan[plan]['type'])
         self.SelectedDiamond = parser.get('ALIASES', self.RunInfos[self.get_selected_runs()[0]]['dia{0}'.format(ch)])
         self.SelectedBias = self.RunInfos[self.get_selected_runs()[0]]['dia{0}hv'.format(ch)]
         self.SelectedDiamondNr = ch

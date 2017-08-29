@@ -284,7 +284,7 @@ class PadAnalysis(Analysis):
         self.save_histo(p, 'Efficiency Map', show, lm=.13, rm=.17, draw_opt='colz')
 
     def draw_signal_map(self, factor=1.5, cut=None, fid=False, hitmap=False, redo=False, show=True):
-        cut = self.Cut.generate_special_cut(excluded=['fiducial']) if not fid and cut is None else None
+        cut = self.Cut.generate_special_cut(excluded=['fiducial']) if not fid and cut is None else cut
         cut = self.Cut.all_cut if cut is None else TCut(cut)
         pickle_path = self.make_pickle_path('SignalMaps', run=self.RunNumber, ch=self.DiamondNumber, suf=cut.GetName())
 
@@ -349,7 +349,7 @@ class PadAnalysis(Analysis):
             g.SetPoint(i, xval, m)
             g.SetPointError(i, 0, sigma)
 
-        self.format_histo(g, x_tit='Track in {m} [cm]'.format(m=mode), y_tit='Pulse Height [au]', y_off=1.5, ndiv=550)
+        self.format_histo(g, x_tit='Track in {m} [cm]'.format(m=mode), y_tit='Pulse Height [au]', y_off=1.5, ndiv=515)
         self.save_histo(g, 'SignalMapProfile', draw_opt='ap', lm=.14, show=show, gridx=True)
 
     def make_region_cut(self):
