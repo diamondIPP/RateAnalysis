@@ -296,7 +296,7 @@ class Run(Elementary):
         except IOError:
             log_warning('Could not find mask file {f}! Not taking any mask!'.format(f=mask_file))
         # default pixels
-        unmasked_pixels = {plane: 52 * 80 for plane in maskdata}
+        unmasked_pixels = {plane: 52 * 80 for plane in maskdata} if maskdata else {0: 52 * 80, 1: 52 * 80}
         # pass for empty file
         if not maskdata:
             pass
