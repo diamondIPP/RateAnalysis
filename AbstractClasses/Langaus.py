@@ -22,7 +22,7 @@ class Langau:
         self.Max = histo.GetMaximum()
         self.NConvolutions = nconv
         self.NSigma = 5.
-        self.FitRange = [k * histo.GetMean() for k in [.1, 2]]
+        self.FitRange = [k * histo.GetMean() for k in [.7, 3]]
         self.ParLimits = self.init_par_limits()
         self.StartValues = self.init_start_values()
 
@@ -34,11 +34,12 @@ class Langau:
 
     @staticmethod
     def init_par_limits():
+        # todo: set limits based on histogram
         limits = [(0, 0)] * 4
-        limits[0] = (.5, 150.)  # par[0]=Width (scale) parameter of Landau density
-        limits[1] = (5., 150.)   # par[1]=Most Probable (MP, location) parameter of Landau density
-        limits[2] = (1., 1e6)  # par[2]=Total area (integral -inf to inf, normalization constant)
-        limits[3] = (.4, 50.)  # par[3]=Width (sigma) of convoluted Gaussian function
+        limits[0] = (.5, 150.)      # par[0]=Width (scale) parameter of Landau density
+        limits[1] = (5., 150.)      # par[1]=Most Probable (MP, location) parameter of Landau density
+        limits[2] = (1., 1e6)       # par[2]=Total area (integral -inf to inf, normalization constant)
+        limits[3] = (.4, 50.)       # par[3]=Width (sigma) of convoluted Gaussian function
         return limits
 
     def init_start_values(self):
