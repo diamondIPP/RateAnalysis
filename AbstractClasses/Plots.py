@@ -29,7 +29,7 @@ class Plots(Elementary):
         self.Settings = {
             'ph1Dmin': -5000,
             'ph1Dmax': 60000,
-            'ph1Dbins': 65000 / 1000,
+            'ph1Dbins': 65000 / 500,
             'ph1DbinsSi': 160,
             'ph1DminSi': 0,
             'ph1DmaxSi': 90000,
