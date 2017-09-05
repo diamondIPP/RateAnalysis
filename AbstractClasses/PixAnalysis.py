@@ -317,7 +317,7 @@ class PixAnalysis(Analysis):
         return h
 
     def draw_vcal_disto(self, cut=None, show=True, col=None, pix=None, rnge=None, electrons=False):
-        h = TH1F('h_vcal', 'vcal Distribution {d}'.format(d=self.DiamondName), 200, 0, 1000 if not electrons else 100000)
+        h = TH1F('h_vcal', 'vcal Distribution {d}'.format(d=self.DiamondName), 220, -100, 1000 if not electrons else 100000)
         cut_string = deepcopy(self.Cut.HitMapCut) if cut is None else TCut(cut)
         cut_string += 'plane == {n}'.format(n=self.Dut)
         cut_string += 'n_hits[{n}] == 1'.format(n=self.Dut)
@@ -388,17 +388,17 @@ class PixAnalysis(Analysis):
         self.save_histo(stack, 'ClusterPulseHeight', show, lm=.13, l=l, draw_opt='nostack', gridy=True)
         self.reset_colors()
 
-    def draw_pulse_height_map(self, show=True, cut=None, roc=None, sup_zero=True):
+    def draw_pulse_height_map(self, show=True, cut=None, roc=None, sup_zero=False, fid=False):
         roc = self.Dut if roc is None else roc
-        cut_string = self.Cut.all_cut if cut is None else TCut(cut)
+        cut_string = (self.Cut.generate_special_cut(['fiducial']) if not fid else deepcopy(z.Cut.all_cut)) if cut is None else TCut(cut)
         cut_string += 'cluster_plane=={r}'.format(r=roc)
         cut_string += 'cluster_charge>0'.format(d=self.Dut) if sup_zero else ''
         self.set_root_output(False)
         h = TProfile2D('p_phm', 'Pulse Height Map', *self.Settings['2DBins'])
         self.tree.Draw('cluster_charge:cluster_row:cluster_col>>p_phm'.format(d=self.Dut), cut_string, 'goff')
-        set_statbox(entries=8, opt=1000000010)
-        self.format_histo(h, x_tit='col', y_tit='row', z_tit='Pulse Height [e]', z_off=1.5, y_off=1.4)
-        self.save_histo(h, 'PulseHeightMap', show, lm=.13, rm=.15, draw_opt='colz')
+        set_statbox(only_entries=True, x=0.81)
+        self.format_histo(h, x_tit='col', y_tit='row', z_tit='Pulse Height [e]', z_off=1.7, y_off=1.4)
+        self.save_histo(h, 'PulseHeightMap', show, lm=.13, rm=.17, draw_opt='colz')
 
     def draw_hit_efficiency(self, roc=None, save=True, cut='all', vs_time=True, binning=5000, n=1e9, start=0, show=True):
         roc = self.Dut if roc is None else roc
