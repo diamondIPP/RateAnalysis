@@ -336,6 +336,13 @@ class Analysis(Elementary):
         self.save_plots('{m}ResidualsRoc{n}'.format(m=mode.title(), n=roc))
         return h
 
+    def _draw_cluster_size(self, roc=None, name=None, cut='', show=True):
+        h = TH1I('h_cs', 'Cluster Size {d}'.format(d='ROC {n}'.format(n=roc) if name is None else name), 10, 0, 10)
+        self.tree.Draw('clusters_per_plane[{d}]>>h_cs'.format(d=roc), TCut(cut), 'goff')
+        set_statbox(only_entries=True)
+        self.format_histo(h, x_tit='Cluster Size', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
+        self.save_histo(h, 'ClusterSize', show, logy=True)
+        return h
     # endregion
 
     # ============================================================================================
