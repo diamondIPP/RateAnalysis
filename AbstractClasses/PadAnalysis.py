@@ -1371,7 +1371,7 @@ class PadAnalysis(Analysis):
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
 
     def draw_distance_vs_ph(self, show=True, steps=10):
-        h = self.draw_distance_distribution(show=False, save=False)
+        h = self.draw_track_length(show=False, save=False)
         xmin, xmax = [h.GetBinCenter(i) for i in [h.FindFirstBinAbove(5), h.FindLastBinAbove(5)]]
         xvals = [xmin + i * (xmax - xmin) / steps for i in xrange(steps + 1)]
         gr = self.make_tgrapherrors('gr_aph', 'Pulse Height Vs Distance in Diamond')
