@@ -273,7 +273,7 @@ class Analysis(Elementary):
 
     def draw_track_length(self, show=True, save=True, t_dia=500):
         h = TH1F('htd', 'Track Distance in Diamond', 200, t_dia, t_dia + 1)
-        draw_var ='slope' if self.run.has_branch('slope_x') else 'angle'
+        draw_var = 'slope' if self.run.has_branch('slope_x') else 'angle'
         length = '{t}*TMath::Sqrt(TMath::Power(TMath::Tan(TMath::DegToRad()*{v}_x), 2) + TMath::Power(TMath::Tan(TMath::DegToRad()*{v}_y), 2) + 1)'.format(t=t_dia, v=draw_var)
         self.tree.Draw('l>>hdd'.format(l=length), 'n_tracks', 'goff')
         self.format_histo(h, x_tit='Distance [#mum]', y_tit='Entries', y_off=2, lw=2, stats=0, fill_color=self.FillColor)
