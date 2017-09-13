@@ -172,6 +172,21 @@ class PixAnalysis(Analysis):
         self.save_histo(h, 'PulseHeightVsEvent', show, rm=.15, lm=.16, draw_opt='colz', save=show)
         return h
 
+    def draw_pulse_height(self, cut=None, bin_size=30000, show=True):
+        bin_size = self.BinSize if bin_size is None else bin_size
+        if bin_size != self.BinSize:
+            self.set_bin_size(bin_size)
+        cut_string = self.Cut.all_cut if cut is None else TCut(cut)
+        h = TProfile('h_pht', 'Pulse Height {d}'.format(d=self.DiamondName), self.n_bins - 1, array([t / 1000 for t in self.time_binning]))
+        set_statbox(only_fit=True, w=.3)
+        self.tree.Draw('charge_all_ROC{n}:time / 1000. >> h_pht'.format(n=self.Dut), cut_string, 'goff')
+        self.draw_histo(h, show=show)
+        fit_par = h.Fit('pol0', 'qs')
+        self.format_histo(h, name='Fit Result', y_off=1.9, y_tit='Pulse Height [e]', x_tit='Time [hh:mm]', markersize=.6)
+        set_time_axis(h, off=self.run.startTime / 1000 + 3600)
+        self.save_histo(h, 'PulseHeight', show, lm=.16, draw_opt='e1', save=show, canvas=get_last_canvas())
+        return FitRes(fit_par)
+
     def draw_adc_vs_event(self, cut=None, show=True):
         h = self.draw_pulse_height_vs_event(cut, show=False, adc=True)
         self.format_histo(h, title='ADC vs Time - {d}'.format(d=self.DiamondName))
