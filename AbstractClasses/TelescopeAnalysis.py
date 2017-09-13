@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 from copy import deepcopy
 
 from ROOT import TCanvas, TH2F, gROOT, TH1F, TLegend, gStyle, kGreen, TText, TCut, TF1, TGraph, TH1I
-from numpy import array, zeros
+from numpy import array, zeros, log
 
 from Elementary import Elementary
 from Run import Run
@@ -311,6 +311,31 @@ class Analysis(Elementary):
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.RootObjects.append([legend, c, histos])
         self.save_plots('TrackAngles', sub_dir=self.ana_save_dir, ch=None)
+
+    def _draw_residuals(self, roc, mode=None, cut=None, x_range=None, fit=False, show=True):
+        mode = '' if mode is None else mode.lower()
+        cut = TCut(cut) if cut is not None else TCut('')
+        set_statbox(only_entries=True, only_fit=True, w=0.3, entries=14) if fit else set_statbox(only_entries=True)
+        h = TH1F('htr', '{m} Residuals for Plane {n}'.format(n=roc, m=mode.title()), 800, -.4, .4)
+        self.tree.Draw('residuals{m}[{r}]>>htr'.format(m='_{m}'.format(m=mode) if mode else '', r=roc), cut, 'goff')
+        self.format_histo(h, name='Fit Result', y_off=2.0, y_tit='Number of Entries', x_tit='Distance [cm]', fill_color=self.FillColor, x_range=x_range)
+        self.draw_histo(h, '', show, lm=.16)
+        if fit:
+            fit = TF1('f', 'gaus(0) + gaus(3)', -.4, .4)
+            sigma = get_fwhm(h) / (2 * sqrt(2 * log(2)))
+            fit.SetParameters(h.GetMaximum() / 10, 0, sigma * 5, h.GetMaximum(), 0, sigma)
+            fit.SetParName(2, '#sigma1')
+            fit.SetParName(5, '#sigma2')
+            fit.SetNpx(500)
+            h.Fit(fit, 'q')
+            f2 = TF1('f2', 'gaus', -1, 1)
+            f2.SetParameters(fit.GetParameters())
+            f2.SetLineStyle(2)
+            f2.Draw('same')
+            self.RootObjects.append(f2)
+        self.save_plots('{m}ResidualsRoc{n}'.format(m=mode.title(), n=roc))
+        return h
+
     # endregion
 
     # ============================================================================================
