@@ -3340,6 +3340,40 @@
         164
       ], 
       "type": "rate scan"
+    }, 
+    "08": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser1": "None", 
+        "pulser2": "None"
+      }, 
+      "runs": [
+        265, 
+        267, 
+        268, 
+        269, 
+        270, 
+        271
+      ], 
+      "type": "rate scan"
+    }, 
+    "09": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser1": "None", 
+        "pulser2": "None"
+      }, 
+      "runs": [
+        274, 
+        275, 
+        277, 
+        278, 
+        279, 
+        280
+      ], 
+      "type": "rate scan"
     }
   }
 }
