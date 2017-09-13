@@ -271,12 +271,14 @@ class Analysis(Elementary):
         self.save_histo(h, 'TrackAngle{mod}'.format(mod=mode.upper()), show, lm=.13, prnt=print_msg)
         return h
 
-    def draw_distance_distribution(self, show=True, save=True):
-        h = TH1F('hdd', 'Track Distance in Diamond', 100, 500, 501)
-        self.tree.Draw('500*TMath::Sqrt(TMath::Power(TMath::Sin(TMath::DegToRad()*slope_x), 2) + TMath::Power(TMath::Sin(TMath::DegToRad()*slope_y), 2) + 1)>>hdd', 'slope_x > -20', 'goff')
-        self.format_histo(h, x_tit='Distance [#mum]', y_tit='Entries', y_off=1.8, lw=2, stats=0)
+    def draw_track_length(self, show=True, save=True, t_dia=500):
+        h = TH1F('htd', 'Track Distance in Diamond', 200, t_dia, t_dia + 1)
+        draw_var ='slope' if self.run.has_branch('slope_x') else 'angle'
+        length = '{t}*TMath::Sqrt(TMath::Power(TMath::Tan(TMath::DegToRad()*{v}_x), 2) + TMath::Power(TMath::Tan(TMath::DegToRad()*{v}_y), 2) + 1)'.format(t=t_dia, v=draw_var)
+        self.tree.Draw('l>>hdd'.format(l=length), 'n_tracks', 'goff')
+        self.format_histo(h, x_tit='Distance [#mum]', y_tit='Entries', y_off=2, lw=2, stats=0, fill_color=self.FillColor)
         h.GetXaxis().SetNdivisions(405)
-        self.save_histo(h, 'DistanceInDia', show, lm=.13, save=save)
+        self.save_histo(h, 'DistanceInDia', show, lm=.16, save=save)
         return h
 
     def calc_angle_fit(self, mode='x', show=True):
