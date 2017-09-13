@@ -42,6 +42,13 @@ class Langau:
         limits[3] = (.4, 50.)       # par[3]=Width (sigma) of convoluted Gaussian function
         return limits
 
+    def estimate_sigma(self):
+        fit = self.Histo.Fit('gaus', 'qs0', '', *[self.get_x_max() * k for k in [.7, 1.3]])
+        return fit.Parameter(2)
+
+    def get_x_max(self):
+        return self.Histo.GetBinCenter(self.Histo.GetMaximumBin())
+
     def init_start_values(self):
         h = self.Histo
         values = zeros(4)
