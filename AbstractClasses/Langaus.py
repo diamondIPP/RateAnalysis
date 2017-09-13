@@ -32,23 +32,30 @@ class Langau:
         self.Chi2 = None
         self.NDF = None
 
-    @staticmethod
-    def init_par_limits():
+    def init_par_limits(self):
         # todo: set limits based on histogram
+        h = self.Histo
         limits = [(0, 0)] * 4
-        limits[0] = (.5, 150.)      # par[0]=Width (scale) parameter of Landau density
-        limits[1] = (5., 150.)      # par[1]=Most Probable (MP, location) parameter of Landau density
-        limits[2] = (1., 1e6)       # par[2]=Total area (integral -inf to inf, normalization constant)
-        limits[3] = (.4, 50.)       # par[3]=Width (sigma) of convoluted Gaussian function
+        limits[0] = (self.estimate_sigma() / 5 * k for k in [.5, 3])    # par[0]=Width (scale) parameter of Landau density
+        limits[1] = (self.get_x_max() * k for k in [0.5, 1.5])          # par[1]=Most Probable (MP, location) parameter of Landau density
+        limits[2] = (h.Integral() * 500 * k for k in [.1, 10])          # par[2]=Total area (integral -inf to inf, normalization constant)
+        limits[3] = (self.estimate_sigma() * k for k in [.5, 3])        # par[3]=Width (sigma) of convoluted Gaussian function
         return limits
+
+    def estimate_sigma(self):
+        fit = self.Histo.Fit('gaus', 'qs0', '', *[self.get_x_max() * k for k in [.7, 1.3]])
+        return fit.Parameter(2)
+
+    def get_x_max(self):
+        return self.Histo.GetBinCenter(self.Histo.GetMaximumBin())
 
     def init_start_values(self):
         h = self.Histo
         values = zeros(4)
-        values[0] = h.GetBinCenter(h.FindLastBinAbove(.5 * self.Max)) - h.GetBinCenter(h.FindFirstBinAbove(.5 * self.Max))
-        values[1] = h.GetBinCenter(h.GetMaximumBin())
-        values[2] = h.Integral()
-        values[3] = 10.
+        values[0] = self.estimate_sigma() / 5
+        values[1] = self.get_x_max()
+        values[2] = h.Integral() * 500
+        values[3] = self.estimate_sigma()
         return values
 
     def Mean(self, xmin, xmax):
@@ -104,14 +111,14 @@ class Langau:
         if ffitold:
             ffitold.Delete()
 
-        ffit = TF1(name, self.langau, self.FitRange[0], self.FitRange[1], 4)
+        ffit = TF1(name, self.langau, 0, his.GetXaxis().GetXmax(), 4)
         ffit.SetParameters(self.StartValues)
         ffit.SetParNames('Width', 'MP', 'Area', 'GSigma')
 
         for i in xrange(4):
             ffit.SetParLimits(i, *self.ParLimits[i])
 
-        his.Fit(name, 'QRB0')  # fit within specified range, use ParLimits, do not plot
+        his.Fit(name, 'QRB0', '', *self.FitRange)  # fit within specified range, use ParLimits, do not plot
 
         ffit.GetParameters(self.Parameters)  # obtain fit parameters
         self.ParErrors = [ffit.GetParError(i) for i in xrange(4)]

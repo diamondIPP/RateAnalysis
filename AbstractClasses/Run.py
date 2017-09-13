@@ -132,7 +132,7 @@ class Run(Elementary):
             return None
 
     def load_bias(self):
-        return [self.RunInfo['dia{num}hv'.format(num=i)] for i in xrange(1, len(self.Channels) + 1)]
+        return [int(self.RunInfo['dia{num}hv'.format(num=i)]) for i in xrange(1, len(self.Channels) + 1)]
     
     def load_dut_type(self):
         _type = self.run_config_parser.get('BASIC', 'type')

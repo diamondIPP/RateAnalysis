@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 from copy import deepcopy
 
 from ROOT import TCanvas, TH2F, gROOT, TH1F, TLegend, gStyle, kGreen, TText, TCut, TF1, TGraph, TH1I
-from numpy import array, zeros
+from numpy import array, zeros, log
 
 from Elementary import Elementary
 from Run import Run
@@ -271,12 +271,14 @@ class Analysis(Elementary):
         self.save_histo(h, 'TrackAngle{mod}'.format(mod=mode.upper()), show, lm=.13, prnt=print_msg)
         return h
 
-    def draw_distance_distribution(self, show=True, save=True):
-        h = TH1F('hdd', 'Track Distance in Diamond', 100, 500, 501)
-        self.tree.Draw('500*TMath::Sqrt(TMath::Power(TMath::Sin(TMath::DegToRad()*slope_x), 2) + TMath::Power(TMath::Sin(TMath::DegToRad()*slope_y), 2) + 1)>>hdd', 'slope_x > -20', 'goff')
-        self.format_histo(h, x_tit='Distance [#mum]', y_tit='Entries', y_off=1.8, lw=2, stats=0)
+    def draw_track_length(self, show=True, save=True, t_dia=500):
+        h = TH1F('htd', 'Track Distance in Diamond', 200, t_dia, t_dia + 1)
+        draw_var = 'slope' if self.run.has_branch('slope_x') else 'angle'
+        length = '{t}*TMath::Sqrt(TMath::Power(TMath::Tan(TMath::DegToRad()*{v}_x), 2) + TMath::Power(TMath::Tan(TMath::DegToRad()*{v}_y), 2) + 1)'.format(t=t_dia, v=draw_var)
+        self.tree.Draw('l>>hdd'.format(l=length), 'n_tracks', 'goff')
+        self.format_histo(h, x_tit='Distance [#mum]', y_tit='Entries', y_off=2, lw=2, stats=0, fill_color=self.FillColor)
         h.GetXaxis().SetNdivisions(405)
-        self.save_histo(h, 'DistanceInDia', show, lm=.13, save=save)
+        self.save_histo(h, 'DistanceInDia', show, lm=.16, save=save)
         return h
 
     def calc_angle_fit(self, mode='x', show=True):
@@ -309,6 +311,38 @@ class Analysis(Elementary):
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.RootObjects.append([legend, c, histos])
         self.save_plots('TrackAngles', sub_dir=self.ana_save_dir, ch=None)
+
+    def _draw_residuals(self, roc, mode=None, cut=None, x_range=None, fit=False, show=True):
+        mode = '' if mode is None else mode.lower()
+        cut = TCut(cut) if cut is not None else TCut('')
+        set_statbox(only_entries=True, only_fit=True, w=0.3, entries=14) if fit else set_statbox(only_entries=True)
+        h = TH1F('htr', '{m} Residuals for Plane {n}'.format(n=roc, m=mode.title()), 800, -.4, .4)
+        self.tree.Draw('residuals{m}[{r}]>>htr'.format(m='_{m}'.format(m=mode) if mode else '', r=roc), cut, 'goff')
+        self.format_histo(h, name='Fit Result', y_off=2.0, y_tit='Number of Entries', x_tit='Distance [cm]', fill_color=self.FillColor, x_range=x_range)
+        self.draw_histo(h, '', show, lm=.16)
+        if fit:
+            fit = TF1('f', 'gaus(0) + gaus(3)', -.4, .4)
+            sigma = get_fwhm(h) / (2 * sqrt(2 * log(2)))
+            fit.SetParameters(h.GetMaximum() / 10, 0, sigma * 5, h.GetMaximum(), 0, sigma)
+            fit.SetParName(2, '#sigma1')
+            fit.SetParName(5, '#sigma2')
+            fit.SetNpx(500)
+            h.Fit(fit, 'q')
+            f2 = TF1('f2', 'gaus', -1, 1)
+            f2.SetParameters(fit.GetParameters())
+            f2.SetLineStyle(2)
+            f2.Draw('same')
+            self.RootObjects.append(f2)
+        self.save_plots('{m}ResidualsRoc{n}'.format(m=mode.title(), n=roc))
+        return h
+
+    def _draw_cluster_size(self, roc=None, name=None, cut='', show=True):
+        h = TH1I('h_cs', 'Cluster Size {d}'.format(d='ROC {n}'.format(n=roc) if name is None else name), 10, 0, 10)
+        self.tree.Draw('clusters_per_plane[{d}]>>h_cs'.format(d=roc), TCut(cut), 'goff')
+        set_statbox(only_entries=True)
+        self.format_histo(h, x_tit='Cluster Size', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
+        self.save_histo(h, 'ClusterSize', show, logy=True)
+        return h
     # endregion
 
     # ============================================================================================

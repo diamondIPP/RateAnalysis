@@ -64,8 +64,8 @@ def set_statbox(x=.95, y=.88, w=.16, entries=3, only_fit=False, only_entries=Fal
         gStyle.SetOptStat(0011)
         gStyle.SetOptFit(1)
     if only_entries:
-        gStyle.SetOptStat(1000000010)
-        entries = 6
+        gStyle.SetOptStat(1000000010 if not only_fit else 1000000011)
+        entries = 6 if entries == 3 else entries
     gStyle.SetOptStat(opt) if opt is not None else do_nothing()
     gStyle.SetFitFormat(form) if form is not None else do_nothing()
     gStyle.SetStatX(x)
@@ -349,6 +349,11 @@ def find_mpv_fwhm(histo, bins=15):
     mpv = fit.GetParameter(1)
     fwhm = histo.FindLastBinAbove(fit(mpv) / 2) - histo.FindFirstBinAbove(fit(mpv) / 2)
     return mpv, fwhm, mpv / fwhm
+
+
+def get_fwhm(h):
+    max_v = h.GetMaximum()
+    return h.GetBinCenter(h.FindLastBinAbove(max_v / 2)) - h.GetBinCenter(h.FindFirstBinAbove(max_v / 2))
 
 
 def make_cut_string(cut, n):
