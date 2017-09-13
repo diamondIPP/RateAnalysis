@@ -6,12 +6,11 @@
 
 from ROOT import TH2D, TH1D, gROOT, TFormula, TCut, TH1I, TProfile, THStack, TProfile2D, TF1, TGraph, TPie, gRandom, TH3D, TMultiGraph, TCutG, TH1F
 from argparse import ArgumentParser
-from collections import OrderedDict, Counter
+from collections import Counter
 from copy import deepcopy
 from math import ceil
 from numpy import array, mean, corrcoef, arange
 from os.path import join as joinpath
-from time import sleep
 
 from CurrentInfo import Currents
 from CutPix import CutPix
@@ -45,7 +44,7 @@ class PixAnalysis(Analysis):
 
             # cuts
             self.Settings = self.plots.Settings
-            self.Cut = CutPix(self, dut)
+            self.Cut = CutPix(self)
 
             # alignment
             # self.IsAligned = self.check_alignment()
@@ -102,6 +101,8 @@ class PixAnalysis(Analysis):
         """ Calls do_cut_analysis in the Cut method """
         self.Cut.do_cuts_analysis(do_occupancy, do_pulse_height, normalize_ph_plots)
 
+    # ==========================================================================
+    # region OCCUPANCY
     def draw_occupancy(self, cut=None, show=True, fid=False, prnt=True, adc=None, roc=None, tel_coods=False, res=sqrt(12)):
         """ Does the occupancy of a roc with the specified cut and it is saved on the given histogram. If none is given, it will create a histogram and return a deepcopy of it """
         roc = self.Dut if roc is None else roc
@@ -152,6 +153,71 @@ class PixAnalysis(Analysis):
             set_time_axis(graphs[i], off=self.run.startTime / 1000 + 3600)
             self.draw_histo(graphs[i], draw_opt='alp')
         return h
+    # endregion OCCUPANCY
+    # ==========================================================================
+
+    # ==========================================================================
+    # region DISTRIBUTIONS
+    def draw_adc_distribution(self, cut=None, show=True, col=None, pix=None):
+        h = TH1I('h_adc', 'ADC Distribution {d}'.format(d=self.DiamondName), 255, 0, 255)
+        cut_string = deepcopy(self.Cut.HitMapCut) if cut is None else TCut(cut)
+        cut_string += 'plane == {n}'.format(n=self.Dut)
+        cut_string += 'col=={c}'.format(c=col) if col is not None else ''
+        cut_string += 'col=={c}&&row=={r}'.format(c=pix[0], r=pix[1]) if pix is not None else ''
+        set_statbox(only_entries=True)
+        self.tree.Draw('adc>>h_adc', cut_string, 'goff')
+        self.format_histo(h, x_tit='adc', y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor)
+        self.save_histo(h, 'ADCDisto', show, lm=.13, logy=True)
+        return h
+
+    def draw_vcal_distribution(self, cut=None, col=None, pix=None, rnge=None, electrons=False, show=True):
+        h = TH1F('h_vcal', 'vcal Distribution {d}'.format(d=self.DiamondName), *self.Settings['phBins' if electrons else 'vcalBins'])
+        cut_string = deepcopy(self.Cut.HitMapCut) if cut is None else TCut(cut)
+        cut_string += 'plane == {n}'.format(n=self.Dut)
+        cut_string += 'n_hits[{n}] == 1'.format(n=self.Dut)
+        cut_string += 'col=={c}'.format(c=col) if col is not None else ''
+        cut_string += 'col=={c}&&row=={r}'.format(c=pix[0], r=pix[1]) if pix is not None else ''
+        cut_string += 'col>={c1}&&col<={c2}&&row>={r1}&&row<={r2}'.format(c1=rnge[0], c2=rnge[1], r1=rnge[2], r2=rnge[3]) if rnge is not None else ''
+        self.set_root_output(False)
+        n = self.tree.Draw('adc:col:row', cut_string, 'goff')
+        for i in xrange(n):
+            row = int(self.tree.GetV3()[i])
+            col = int(self.tree.GetV2()[i])
+            adc = self.tree.GetV1()[i]
+            self.Fit.SetParameters(*self.Parameters[self.Dut][col][row])
+            h.Fill(self.Fit.GetX(adc) * (47 if electrons else 1))
+        set_statbox(entries=8, opt=1000000010)
+        self.format_histo(h, x_tit='Pulse Height [{u}]'.format(u='vcal' if not electrons else 'e'), y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor)
+        self.save_histo(h, '{p}Disto'.format(p='Ph' if electrons else 'Vcal'), show, lm=0.13)
+        return h
+
+    def draw_signal_distribution(self, cut=None, show=True, prnt=True, sup_zero=False, pix=None, roc=None, vcal=False, redo=False):
+        area_string = '_'.join(str(pi) for pi in pix) if pix is not None else 'all'
+        roc = self.Dut if roc is None else roc
+        pickle_path = self.make_pickle_path('PulseHeight', run=self.RunNumber, suf='{r}_{a}{z}'.format(r=roc, a=area_string, z='_0' if sup_zero else ''))
+        cut_string = deepcopy(self.Cut.all_cut) if cut is None else TCut(cut)
+        cut_string += 'cluster_charge>0'.format(d=self.Dut) if sup_zero else ''
+        cut_string += 'cluster_plane=={r}'.format(r=roc)
+        if pix is not None:
+            pix = [pix, pix] if not type(pix[0]) == list else pix
+            cut_string += 'cluster_col>={c1}&&cluster_col<={c2}&&cluster_row>={r1}&&cluster_row<={r2}'.format(c1=pix[0][0], c2=pix[1][0], r1=pix[0][1], r2=pix[1][1], d=self.Dut)
+
+        def func():
+            self.set_root_output(False)
+            h1 = TH1D('h_phd', 'Pulse Height Distribution - {d}'.format(d=self.DiamondName), *self.Settings['phBins' if not vcal else 'vcalBins'])
+            self.tree.Draw('cluster_charge{v}>>h_phd'.format(d=self.Dut, v='/47.5 + 427.4/47.5' if vcal else ''), cut_string, 'goff')
+            set_statbox(entries=8, opt=1000000010, x=.92)
+            self.format_histo(h1, x_tit='Pulse Height [{u}]'.format(u='vcal' if vcal else 'e'), y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor)
+            self.save_histo(h1, 'PulseHeightDisto{c}'.format(c=make_cut_string(cut, self.Cut.NCuts)), show, lm=.13, prnt=prnt, rm=.06)
+            return h1
+
+        h = func() if redo else None
+        h = self.do_pickle(pickle_path, func, h)
+        self.draw_histo(h, show=show, lm=.13, prnt=prnt, rm=.06)
+        return h
+    
+    # endregion DISTRIBUTIONS
+    # ==========================================================================
 
     def draw_pulse_height_vs_event(self, cut=None, show=True, adc=False):
         """ Pulse height analysis vs event for a given cut. If no cut is provided it will take all. """
@@ -160,7 +226,7 @@ class PixAnalysis(Analysis):
         else:
             cut_string = TCut(cut)
         cut_string += 'charge_all_ROC{d} > 0'.format(d=self.Dut) if not adc else 'plane == {n}'.format(n=self.Dut)
-        ybins = [self.Settings['ph1DbinsD{n}'.format(n=self.Dut)], self.Settings['ph1DminD{n}'.format(n=self.Dut)], self.Settings['ph1DmaxD{n}'.format(n=self.Dut)]]
+        ybins = [self.Settings['ph1Dbins'], self.Settings['ph1Dmin'], self.Settings['ph1Dmax']]
         ybins = [255, 0, 255] if adc else ybins
         self.set_root_output(False)
         h = TH2D('h_ph', 'Pulse Height {d}'.format(d=self.DiamondName), self.n_bins - 1, array([t / 1000 for t in self.time_binning]), *ybins)
@@ -168,7 +234,7 @@ class PixAnalysis(Analysis):
         self.tree.Draw('{v}:time / 1000. >> h_ph'.format(v=cut_var), cut_string, 'goff')
         self.format_histo(h, x_tit='Time [hh:mm]', y_tit='Cluster Charge [e]' if not adc else 'adc', z_tit='Number of Entries', y_off=2.05, z_off=1.3, stats=0)
         set_time_axis(h, off=self.run.startTime / 1000 + 3600)
-        h.SetNdivisions(520)
+        h.SetNdivisions(510)
         self.save_histo(h, 'PulseHeightVsEvent', show, rm=.15, lm=.16, draw_opt='colz', save=show)
         return h
 
@@ -227,7 +293,7 @@ class PixAnalysis(Analysis):
             f = open(file_name)
             f.readline()
             fit_string = f.readline().replace('par', '').strip('\n')
-            fit = TF1('ErFit', fit_string, 0, 255 * 7)
+            fit = TF1('ErFit', fit_string, -500, 255 * 7)
             f.readline()
             for line in f.readlines():
                 line = line.split()
@@ -318,40 +384,6 @@ class PixAnalysis(Analysis):
         self.format_histo(h, x_tit='col', y_tit='row', z_tit='Pulse Height [adc]', y_off=1.3, z_off=1.5, stats=0)
         self.save_histo(h, 'PulseHeightMap{v}'.format(v=vcal), show, rm=.17, lm=.13, draw_opt='colz')
 
-    def draw_adc_disto(self, cut=None, show=True, col=None, pix=None):
-        h = TH1I('h_adc', 'ADC Distribution {d}'.format(d=self.DiamondName), 255, 0, 255)
-        cut_string = deepcopy(self.Cut.HitMapCut) if cut is None else TCut(cut)
-        cut_string += 'plane == {n}'.format(n=self.Dut)
-        cut_string += 'col=={c}'.format(c=col) if col is not None else ''
-        cut_string += 'col=={c}&&row=={r}'.format(c=pix[0], r=pix[1]) if pix is not None else ''
-        self.set_root_output(False)
-        self.tree.Draw('adc>>h_adc', cut_string, 'goff')
-        set_statbox(entries=8, opt=1000000010)
-        self.format_histo(h, x_tit='adc', y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor)
-        self.save_histo(h, 'ADCDisto', show, lm=0.13, logy=True)
-        return h
-
-    def draw_vcal_disto(self, cut=None, show=True, col=None, pix=None, rnge=None, electrons=False):
-        h = TH1F('h_vcal', 'vcal Distribution {d}'.format(d=self.DiamondName), 220, -100, 1000 if not electrons else 100000)
-        cut_string = deepcopy(self.Cut.HitMapCut) if cut is None else TCut(cut)
-        cut_string += 'plane == {n}'.format(n=self.Dut)
-        cut_string += 'n_hits[{n}] == 1'.format(n=self.Dut)
-        cut_string += 'col=={c}'.format(c=col) if col is not None else ''
-        cut_string += 'col=={c}&&row=={r}'.format(c=pix[0], r=pix[1]) if pix is not None else ''
-        cut_string += 'col>={c1}&&col<={c2}&&row>={r1}&&row<={r2}'.format(c1=rnge[0], c2=rnge[1], r1=rnge[2], r2=rnge[3]) if rnge is not None else ''
-        self.set_root_output(False)
-        n = self.tree.Draw('adc:col:row', cut_string, 'goff')
-        for i in xrange(n):
-            row = int(self.tree.GetV3()[i])
-            col = int(self.tree.GetV2()[i])
-            adc = self.tree.GetV1()[i]
-            self.Fit.SetParameters(*self.Parameters[self.Dut][col][row])
-            h.Fill(self.Fit.GetX(adc) * (47 if electrons else 1))
-        set_statbox(entries=8, opt=1000000010)
-        self.format_histo(h, x_tit='Pulse Height [{u}]'.format(u='vcal' if not electrons else 'e'), y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor)
-        self.save_histo(h, '{p}Disto'.format(p='Ph' if electrons else 'Vcal'), show, lm=0.13)
-        return h
-
     def check_adc(self):
         for i in xrange(10000, 12000):
             self.tree.GetEntry(i)
@@ -360,39 +392,14 @@ class PixAnalysis(Analysis):
                 if self.tree.adc[ind]:
                     print i, self.tree.adc[ind], list(self.tree.charge_all_ROC4)
 
-    def draw_pulse_height_disto(self, cut=None, show=True, prnt=True, sup_zero=False, pix=None, roc=None, vcal=False, redo=False):
-        area_string = '_'.join(str(pi) for pi in pix) if pix is not None else 'all'
-        roc = self.Dut if roc is None else roc
-        pickle_path = self.make_pickle_path('PulseHeight', run=self.RunNumber, suf='{r}_{a}{z}'.format(r=roc, a=area_string, z='_0' if sup_zero else ''))
-        cut_string = deepcopy(self.Cut.all_cut) if cut is None else TCut(cut)
-        cut_string += 'cluster_charge>0'.format(d=self.Dut) if sup_zero else ''
-        cut_string += 'cluster_plane=={r}'.format(r=roc)
-        if pix is not None:
-            pix = [pix, pix] if not type(pix[0]) == list else pix
-            cut_string += 'cluster_col>={c1}&&cluster_col<={c2}&&cluster_row>={r1}&&cluster_row<={r2}'.format(c1=pix[0][0], c2=pix[1][0], r1=pix[0][1], r2=pix[1][1], d=self.Dut)
-
-        def func():
-            self.set_root_output(False)
-            h1 = TH1D('h_phd', 'Pulse Height Distribution - {d}'.format(d=self.DiamondName), *self.Settings['phBins' if not vcal else 'vcalBins'])
-            self.tree.Draw('cluster_charge{v}>>h_phd'.format(d=self.Dut, v='/47.5 + 427.4/47.5' if vcal else ''), cut_string, 'goff')
-            set_statbox(entries=8, opt=1000000010, x=.92)
-            self.format_histo(h1, x_tit='Pulse Height [{u}]'.format(u='vcal' if vcal else 'e'), y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor)
-            self.save_histo(h1, 'PulseHeightDisto{c}'.format(c=make_cut_string(cut, self.Cut.NCuts)), show, lm=.13, prnt=prnt, rm=.06)
-            return h1
-
-        h = func() if redo else None
-        h = self.do_pickle(pickle_path, func, h)
-        self.draw_histo(h, show=show, lm=.13, prnt=prnt, rm=.06)
-        return h
-
     def draw_cluster_disto(self, n=1, cut=None):
         cut_string = deepcopy(self.Cut.all_cut) if cut is None else TCut(cut) + TCut('clusters_per_plane[{r}] == {n}'.format(r=self.Dut, n=n))
-        self.draw_pulse_height_disto(cut=cut_string + TCut('clusters_per_plane[{r}] == {n}'.format(r=self.Dut, n=n)), redo=True)
+        self.draw_signal_distribution(cut=cut_string + TCut('clusters_per_plane[{r}] == {n}'.format(r=self.Dut, n=n)), redo=True)
 
     def draw_cluster_ph_distos(self, cut=None, show=True):
         cut_string = deepcopy(self.Cut.all_cut) if cut is None else TCut(cut)
-        hs = OrderedDict([(str(n), self.draw_pulse_height_disto(cut=cut_string + TCut('clusters_per_plane[{r}] == {n}'.format(r=self.Dut, n=n)), show=False, redo=True)) for n in xrange(1, 4)])
-        hs['>3'] = self.draw_pulse_height_disto(cut=cut_string + TCut('clusters_per_plane[{r}] > 3'.format(r=self.Dut)), show=False, redo=True)
+        hs = OrderedDict([(str(n), self.draw_signal_distribution(cut=cut_string + TCut('clusters_per_plane[{r}] == {n}'.format(r=self.Dut, n=n)), show=False, redo=True)) for n in xrange(1, 4)])
+        hs['>3'] = self.draw_signal_distribution(cut=cut_string + TCut('clusters_per_plane[{r}] > 3'.format(r=self.Dut)), show=False, redo=True)
         stack = THStack('h_cph', 'Pulser Height per Cluster Size')
         l = self.make_legend(y2=.5, nentries=5, x1=.59)
         for name, h in hs.iteritems():
@@ -448,8 +455,8 @@ class PixAnalysis(Analysis):
         stack = THStack('s_he', 'Raw Hit Efficiencies')
         l = self.make_legend(y2=.5, nentries=5, x1=.59)
         for roc in xrange(self.NRocs):
-            h = self.draw_hit_efficiency(roc, show=False)
-            fit = self.fit_hit_efficiency(roc, show=False)
+            h = self.draw_hit_efficiency(roc, show=False, cut='')
+            fit = self.fit_hit_efficiency(roc, show=False, cut='')
             self.format_histo(h, color=self.get_color())
             stack.Add(h, 'ROC{n}'.format(n=roc))
             leg_string = 'ROC{n}'.format(n=roc) if roc < 4 else self.load_diamond_name(roc - 3)
@@ -498,7 +505,7 @@ class PixAnalysis(Analysis):
         cut_string = TCut(cut) + self.Cut.CutStrings['tracks']
         cut_string = self.Cut.generate_special_cut(excluded=['masks', 'fiducial', 'rhit']) if cut == 'all' else cut_string
         p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DiamondName), *self.plots.get_global_bins(res=res))
-        self.tree.Draw('(n_hits[{r}]>0)*100:diam{r1}_track_y:diam{r1}_track_x>>p_em'.format(r=self.Dut, r1=self.Dut - 3), cut_string, 'goff')
+        self.tree.Draw('(n_hits[{r}]>0)*100:dia_track_y[{r1}]:dia_track_x[{r1}]>>p_em'.format(r=self.Dut, r1=self.Dut - 4), cut_string, 'goff')
         set_statbox(entries=4, opt=1000000010, x=.81)
         self.format_histo(p, x_tit='Track x [cm]', y_tit='Track y [cm]', z_tit='Efficiency [%]', y_off=1.4, z_off=1.5)
         self.save_histo(p, 'Efficiency Map', show, lm=.13, rm=.17, draw_opt='colz')
@@ -535,7 +542,7 @@ class PixAnalysis(Analysis):
         pass
 
     def find_landau(self, aver=10, m1=2500, m2=5000, s1=500, s2=1600, pix=([18, 51], [18, 53])):
-        seed = self.draw_pulse_height_disto(show=False, sup_zero=False, pix=pix)
+        seed = self.draw_signal_distribution(show=False, sup_zero=False, pix=pix)
         h = deepcopy(seed)
         m_range = range(m1, m2 + 1, 100)
         s_range = range(s1, s2 + 1, 50)
@@ -582,7 +589,7 @@ class PixAnalysis(Analysis):
 
     def model_landau(self, seed=None, h=None, m=10000, s=1000, show=True, thresh=False, pix=([18, 51], [18, 53])):
         # seed = self.draw_pulse_height_disto(show=False, sup_zero=False, col=col) if seed is None else seed
-        seed = self.draw_pulse_height_disto(show=False, sup_zero=False,  pix=pix) if seed is None else seed
+        seed = self.draw_signal_distribution(show=False, sup_zero=False, pix=pix) if seed is None else seed
         h = deepcopy(seed) if h is None else h
         h.SetName('h_ml')
         n = seed.GetEntries()
@@ -608,7 +615,7 @@ class PixAnalysis(Analysis):
         return diff
 
     def landau_vid(self, save=False, mpv=5000, sigma=820):
-        h = self.draw_pulse_height_disto(sup_zero=False)
+        h = self.draw_signal_distribution(sup_zero=False)
         h.GetYaxis().SetRangeUser(0, 2500)
         zero_bin = h.FindBin(0)
         zeros = int(h.GetBinContent(zero_bin))
