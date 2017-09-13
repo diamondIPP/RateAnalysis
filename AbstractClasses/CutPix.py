@@ -1,5 +1,5 @@
 import sys
-from numpy import array
+from numpy import array, zeros
 from ROOT import TCut, gROOT, TH1F, kRed, TCutG, TH2D, TH1D, THStack
 from Cut import Cut
 from json import loads
@@ -41,7 +41,7 @@ class CutPix(Cut):
         self.CutStrings['hit'] += self.generate_hit()
         self.CutStrings['masks'] += self.generate_masks()
         self.CutStrings['fiducial'] += self.generate_fiducial()
-        # self.CutStrings['rhit'] += self.generate_rhit()
+        self.CutStrings['rhit'] += self.generate_rhit()
         self.CutStrings['trigger_phase'] += self.generate_trigger_phase()
         # self.CutStrings['alignment'] += self.generate_alignment()
 
@@ -81,7 +81,7 @@ class CutPix(Cut):
 
     def load_pixel_config(self):
         """ Loads the pixel configuration parameters from the config file. """
-        self.CutConfig['rhit'] = self.get_config('r_hit')
+        self.CutConfig['rhit'] = int(self.get_config('r_hit'))
         self.CutConfig['trigPhase'] = loads(self.get_config('trigger_phase'))[str(self.Dut)]
         self.CutConfig['MaskRows'] = self.load_mask('MaskRows')
         self.CutConfig['MaskCols'] = self.load_mask('MaskCols')
@@ -137,10 +137,29 @@ class CutPix(Cut):
         cut_string = ''
         return cut_string
 
-    def generate_rhit(self):
-        value = self.CutConfig['rhit']
-        string = '(10000*sqrt((residuals_x[{n}])**2+(residuals_y[{n}])**2))<{val}'.format(n=self.Dut, val=value)
+    def generate_rhit(self, quantile=None):
+        cut_value = self.compute_rhit(quantile)
+        string = 's_residuals[{d}]<{val}'.format(d=self.Dut, val=cut_value)
+        print string
         return string
+
+    def compute_rhit(self, value=None):
+        pickle_path = self.make_pickle_path('Cuts', 'SignalThreshold', run=self.analysis.RunNumber, ch=self.DiamondNumber)
+
+        def func():
+            t = self.log_info('generating rhit cut in for run {run}...'.format(run=self.analysis.RunNumber), next_line=False)
+            h = self.analysis.draw_residuals(show=False)
+            n_points = 100
+            rhits_ = zeros(n_points)
+            xq = array([(i + 1) / float(n_points) for i in range(n_points)])
+            h.GetQuantiles(n_points, rhits_, xq)
+            self.add_info(t)
+            return rhits_
+
+        rhits = self.do_pickle(pickle_path, func)
+        quantile = self.CutConfig['rhit']
+        cut_value = rhits[quantile] if value is None else value
+        return cut_value
 
     def generate_trigger_phase(self):
         mi, ma = self.CutConfig['trigPhase']
@@ -399,7 +418,7 @@ class CutPix(Cut):
         legend = self.make_legend(.71, .88, nentries=len(self.ConsecutiveCuts))
         for i, (name, cut) in enumerate(self.ConsecutiveCuts.iteritems()):
             self.NCuts = i
-            h = self.analysis.draw_pulse_height_disto(cut, show=False, prnt=False)
+            h = self.analysis.draw_signal_distribution(cut, show=False, prnt=False, redo=1)
             color = self.get_color()
             self.format_histo(h, color=color, fill_color=color)
             stack.Add(h)
@@ -599,5 +618,8 @@ class CutPix(Cut):
                 return cut
         return 'ini_fin'
 
-        # ==============================================
-        # endregion
+    # ==============================================
+    # endregion
+
+    def __end(self):
+        pass
