@@ -63,7 +63,7 @@ class Plots(Elementary):
             'rhit_1Dmin': 0,
             'rhit_1Dmax': 10
         }
-        self.Settings['vcalBins'] = [int((1350 * 47.5 - 427.4) / 500), -100, 1250]
+        self.Settings['vcalBins'] = [int((1350 * 47) / 500), -100, 1250]
         self.Settings['globalCoods'] = [-.5, .52, -.5, .52]
         self.Settings['phBins'] = [self.Settings['ph1Dbins'], self.Settings['ph1Dmin'], self.Settings['ph1Dmax']]
         self.Settings['2DBins'] = [self.Settings['nCols'], - .5, self.Settings['nCols'] - .5, self.Settings['nRows'], - .5, self.Settings['nRows'] - .5]
