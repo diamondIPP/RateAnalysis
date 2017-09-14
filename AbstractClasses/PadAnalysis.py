@@ -278,7 +278,7 @@ class PadAnalysis(Analysis):
         cut_string = TCut(cut) + self.Cut.CutStrings['tracks']
         cut_string = self.Cut.generate_special_cut(excluded=['fiducial']) if cut == 'all' else cut_string
         p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DiamondName), *bins)
-        self.tree.Draw('({s}>10)*100:diam{r1}_track_y:diam{r1}_track_x>>p_em'.format(s=self.generate_signal_name(), r1=self.DiamondNumber), cut_string, 'goff')
+        self.tree.Draw('({s}>10)*100:dia_track_y[{r1}]:dia_track_x[{r1}]>>p_em'.format(s=self.generate_signal_name(), r1=self.DiamondNumber - 1), cut_string, 'goff')
         set_statbox(entries=4, opt=1000000010, x=.81)
         self.format_histo(p, x_tit='Track x [cm]', y_tit='Track y [cm]', z_tit='Efficiency [%]', y_off=1.4, z_off=1.5, ncont=100)
         self.save_histo(p, 'Efficiency Map', show, lm=.13, rm=.17, draw_opt='colz')
@@ -298,7 +298,7 @@ class PadAnalysis(Analysis):
             h1 = TH2I(name, 'Diamond Hit Map', *bins) if hitmap else TProfile2D(name, 'Signal Map', *bins)
             self.log_info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.DiamondName, run=self.RunNumber, mode='hit' if hitmap else 'signal '))
             sig = self.generate_signal_name()
-            self.tree.Draw('{z}diam{nr}_track_y:diam{nr}_track_x>>{h}'.format(z=sig + ':' if not hitmap else '', nr=self.DiamondNumber, h=name), cut, 'goff')
+            self.tree.Draw('{z}dia_track_y[{nr}]:dia_track_x[{nr}]>>{h}'.format(z=sig + ':' if not hitmap else '', nr=self.DiamondNumber - 1, h=name), cut, 'goff')
             self.set_dia_margins(h1)
             self.set_ph_range(h1)
             self.format_histo(h1, x_tit='track_x [cm]', y_tit='track_y [cm]', y_off=1.4, z_off=1.3, z_tit='Pulse Height [au]', ncont=50, ndiv=5)
@@ -1099,7 +1099,7 @@ class PadAnalysis(Analysis):
         h = TH2F('h', 'Diamond Margins', 80, -.3, .3, 52, -.3, .3)
         nr = 1 if not self.channel else 2
         cut = '!({buc})&&{pul}'.format(buc=self.Cut.CutStrings['old_bucket'], pul=self.Cut.CutStrings['pulser'])
-        self.tree.Draw('diam{nr}_track_x:diam{nr}_track_y>>h'.format(nr=nr), cut, 'goff')
+        self.tree.Draw('dia_track_x[{nr}]:dia_track_y[{nr}]>>h'.format(nr=nr), cut, 'goff')
         projections = [h.ProjectionX(), h.ProjectionY()]
         zero_bins = [[], []]
         for i, proj in enumerate(projections):

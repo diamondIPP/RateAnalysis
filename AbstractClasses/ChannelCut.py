@@ -142,7 +142,7 @@ class ChannelCut(Cut):
         extrema.region_scan()
         extrema.show_voting_histos()
         all_string = ''
-        nr = 2 if self.channel else 1
+        nr = self.DiamondNumber - 1
         for col in xrange(extrema.cols):
             all_val = [bool(extrema.VotingHistos['max'].GetBinContent(col, row)) for row in xrange(extrema.rows)]
             # print col, all_val
@@ -151,7 +151,7 @@ class ChannelCut(Cut):
             all_string += '||' if all_string else ''
             xmin = extrema.VotingHistos['max'].GetXaxis().GetBinLowEdge(col)
             xmax = extrema.VotingHistos['max'].GetXaxis().GetBinUpEdge(col)
-            all_string += '(diam{nr}_track_x>{xmin}&&diam{nr}_track_x<{xmax})&&'.format(nr=nr, xmin=xmin, xmax=xmax)
+            all_string += '(dia_track_x[{nr}]>{xmin}&&dia_track_x[{nr}]<{xmax})&&'.format(nr=nr, xmin=xmin, xmax=xmax)
             y_string = ''
             cont = True
             for row in xrange(extrema.rows + 1):
@@ -164,9 +164,9 @@ class ChannelCut(Cut):
                         continue
                     cont = True
                     y_string += '||' if y_string else '('
-                    y_string += 'diam{nr}_track_y>{y}&&'.format(nr=nr, y=y)
+                    y_string += 'dia_track_y[{nr}]>{y}&&'.format(nr=nr, y=y)
                 elif not val and last_val and cont:
-                    y_string += 'diam{nr}_track_y<{y}'.format(nr=nr, y=extrema.VotingHistos['max'].GetYaxis().GetBinUpEdge(row))
+                    y_string += 'dia_track_y[{nr}]<{y}'.format(nr=nr, y=extrema.VotingHistos['max'].GetYaxis().GetBinUpEdge(row))
             y_string += ')'
             all_string += y_string
         self.region_cut += all_string
@@ -227,9 +227,9 @@ class ChannelCut(Cut):
         cut = None
         if xy is not None:
             cut = TCutG('fid', 5, array([xy[0], xy[0], xy[1], xy[1], xy[0]], 'd'), array([xy[2], xy[3], xy[3], xy[2], xy[2]], 'd'))
-            nr = self.analysis.DiamondNumber
-            cut.SetVarX('diam{0}_track_x'.format(nr))
-            cut.SetVarY('diam{0}_track_y'.format(nr))
+            nr = self.analysis.DiamondNumber - 1
+            cut.SetVarX('dia_track_x[{0}]'.format(nr))
+            cut.SetVarY('dia_track_y[{0}]'.format(nr))
             self.ROOTObjects.append(cut)
             cut.SetLineWidth(3)
         return TCut(cut.GetName() if cut is not None else '')
