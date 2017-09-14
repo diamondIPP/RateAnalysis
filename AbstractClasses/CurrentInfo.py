@@ -2,9 +2,7 @@
 # IMPORTS
 # ====================================
 from glob import glob
-from time import sleep
 from json import load
-from collections import OrderedDict
 
 from Elementary import Elementary
 from RunSelection import RunSelection
@@ -137,7 +135,7 @@ class Currents(Elementary):
         else:
             file_path = join(self.DataDir, self.generate_tc_directory(), 'HV.cfg')
         if not file_exists(file_path):
-            self.log_warning('Missing hv info in RunConfig file')
+            self.log_warning('HV info file "{f}" does not exist'.format(f=file_path))
             return None
         parser.read(file_path)
         self.log_info('HV Devices: {0}'.format([name for name in parser.sections() if name.startswith('HV')]))
