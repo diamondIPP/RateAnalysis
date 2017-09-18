@@ -16,7 +16,7 @@ __author__ = 'DA'
 # ==============================================
 
 class Plots(Elementary):
-    def __init__(self, num_entries, run=None, num_devices=7, binning=-1, roc_tel=[0,1,2,3], roc_d1=4, roc_d2=5, roc_si=6):
+    def __init__(self, run=None, binning=-1, roc_tel=None):
         Elementary.__init__(self)
         # gStyle.SetPalette(53)  # kDarkBodyRadiator
         gStyle.SetPalette(55)  # kRainBow
@@ -24,47 +24,15 @@ class Plots(Elementary):
         self.run = run
         self.runinfo = self.run.RunInfo
         self.binning = binning
-        self.num_devices = num_devices
-        self.num_entries = num_entries
-        self.Settings = {
-            'ph1Dmin': -5000,
-            'ph1Dmax': 60000,
-            'ph1Dbins': 65000 / 500,
-            'ph1DbinsSi': 160,
-            'ph1DminSi': 0,
-            'ph1DmaxSi': 90000,
-            'nEventsAv': 20000,
-            'event_bins': max(int(ceil(float(self.num_entries)/10)), 200),
-            'event_min': 0,
-            'event_max': self.num_entries,
-            'maxphplots': int(ceil(8*self.num_entries/100)),  # for landau histograms histograms
-            'nBinsX': 52,  # 80 # 277 #240
-            'xmin': -3900,
-            'xmax': 3900,
-            'nBinsY': 80,  # 120 # 415 #360
-            'ymin': -4000,
-            'ymax': 4000,
-            'nBinCol': 51,
-            'nCols': 52,
-            'nRows': 80,
-            'minCol': 0,
-            'maxCol': 51,
-            'nBinRow': 79,
-            'minRow': 0,
-            'maxRow': 79,
-            'num_diff_cluster_sizes': 4,
-            'chi2_1Dbins': 60,
-            'chi2_1Dmin': 0,
-            'chi2_1Dmax': 30,
-            'angle_1Dbins': 60,
-            'angle_1Dmin': -3,
-            'angle_1Dmax': 3,
-            'rhit_1Dbins': 100,
-            'rhit_1Dmin': 0,
-            'rhit_1Dmax': 10
-        }
-        self.Settings['vcalBins'] = [int((1350 * 47) / 500), -100, 1250]
-        self.Settings['globalCoods'] = [-.5, .52, -.5, .52]
+        self.num_devices = run.NPlanes
+        self.num_entries = run.n_entries
+        self.Settings = {'ph1Dmin': -5000, 'ph1Dmax': 60000, 'ph1Dbins': 65000 / 500, 'ph1DbinsSi': 160, 'ph1DminSi': 0, 'ph1DmaxSi': 90000,
+                         'nEventsAv': 20000, 'event_bins': max(int(ceil(float(self.num_entries) / 10)), 200), 'event_min': 0, 'event_max': self.num_entries,
+                         'maxphplots': int(ceil(8 * self.num_entries / 100)),
+                         'nBinsX': 52, 'nBinsY': 80, 'xmin': -3900, 'xmax': 3900, 'ymin': -4000, 'ymax': 4000, 'nBinCol': 51,
+                         'nCols': 52, 'nRows': 80, 'minCol': 0, 'maxCol': 51, 'nBinRow': 79, 'minRow': 0, 'maxRow': 79,
+                         'num_diff_cluster_sizes': 4, 'chi2_1Dbins': 60, 'chi2_1Dmin': 0, 'chi2_1Dmax': 30, 'angle_1Dbins': 60, 'angle_1Dmin': -3, 'angle_1Dmax': 3,
+                         'rhit_1Dbins': 100, 'rhit_1Dmin': 0, 'rhit_1Dmax': 10, 'vcalBins': [int((1350 * 47) / 500), -100, 1250], 'globalCoods': [-.5, .52, -.5, .52]}
         self.Settings['phBins'] = [self.Settings['ph1Dbins'], self.Settings['ph1Dmin'], self.Settings['ph1Dmax']]
         self.Settings['2DBins'] = [self.Settings['nCols'], - .5, self.Settings['nCols'] - .5, self.Settings['nRows'], - .5, self.Settings['nRows'] - .5]
         self.Settings['2DBinsX'] = [self.Settings['nCols'], - .5, self.Settings['nCols'] - .5] * 2
@@ -73,10 +41,11 @@ class Plots(Elementary):
             int(ceil(float(self.num_entries)/100)) if self.num_entries <= 500000 else int(ceil(float(self.num_entries) / self.Settings['nEventsAv']))
         self.Settings['deltaX'] = float(self.Settings['xmax'] - self.Settings['xmin']) / self.Settings['nBinsX']
         self.Settings['deltaY'] = float(self.Settings['ymax'] - self.Settings['ymin']) / self.Settings['nBinsY']
-        self.roc_tel, self.roc_d1, self.roc_d2, self.roc_si = roc_tel, roc_d1, roc_d2, roc_si
+        self.RocTel = range(4) if roc_tel is None else roc_tel
         self.save_dir = './'
 
-    def get_arrays(self, lst):
+    @staticmethod
+    def get_arrays(lst):
         arrays = []
         for i in xrange(len(lst) / 3):
             step = (lst[3 * i + 2] - lst[3 * i + 1]) / float(lst[3 * i])
