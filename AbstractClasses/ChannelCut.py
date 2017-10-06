@@ -228,8 +228,8 @@ class ChannelCut(Cut):
         if xy is not None:
             cut = TCutG('fid', 5, array([xy[0], xy[0], xy[1], xy[1], xy[0]], 'd'), array([xy[2], xy[3], xy[3], xy[2], xy[2]], 'd'))
             nr = self.analysis.DiamondNumber - 1
-            cut.SetVarX('dia_track_x[{0}]'.format(nr))
-            cut.SetVarY('dia_track_y[{0}]'.format(nr))
+            cut.SetVarX(self.get_track_var(nr, 'x'))
+            cut.SetVarY(self.get_track_var(nr, 'y'))
             self.ROOTObjects.append(cut)
             cut.SetLineWidth(3)
         return TCut(cut.GetName() if cut is not None else '')

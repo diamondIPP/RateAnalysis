@@ -459,3 +459,9 @@ class Cut(Elementary):
             if not key == 'all_cuts' and str(value):
                 print '{key}:'.format(key=key.rjust(max_len)), value
         return
+
+    def get_track_var(self, num, mode):
+        if self.analysis.run.has_branch('dia_track_x'):
+            return 'dia_track_{m}[{n}]'.format(m=mode, n=num)
+        else :
+            return 'diam{n}_track_{m}'.format(m=mode, n=num + 1)

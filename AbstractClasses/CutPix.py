@@ -21,7 +21,7 @@ class CutPix(Cut):
         self.DiamondNumber = analysis.Dut
 
         self.Settings = self.analysis.Settings
-        self.plots = self.analysis.plots
+        self.Plots = self.analysis.Plots
 
         self.load_pixel_config()
 
@@ -140,7 +140,6 @@ class CutPix(Cut):
     def generate_rhit(self, quantile=None):
         cut_value = self.compute_rhit(quantile)
         string = 's_residuals[{d}]<{val}'.format(d=self.Dut, val=cut_value)
-        print string
         return string
 
     def compute_rhit(self, value=None):
@@ -172,8 +171,8 @@ class CutPix(Cut):
             x = array([xy[0] - d, xy[0] - d, xy[1] + d, xy[1] + d, xy[0] - d], 'd')
             y = array([xy[2] - d, xy[3] + d, xy[3] + d, xy[2] - d, xy[2] - d], 'd')
             cut = TCutG(name, 5, x, y)
-            cut.SetVarX('dia_track_x[{n}]'.format(n=self.Dut - 4))
-            cut.SetVarY('dia_track_y[{n}]'.format(n=self.Dut - 4))
+            cut.SetVarX(self.get_track_var(self.Dut - 4, 'x'))
+            cut.SetVarY(self.get_track_var(self.Dut - 4, 'y'))
             self.ROOTObjects.append(cut)
             cut.SetLineColor(kRed)
             cut.SetLineWidth(3)
