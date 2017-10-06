@@ -13,7 +13,6 @@ from collections import OrderedDict
 
 
 class PedestalAnalysis(Elementary):
-
     def __init__(self, pad_analysis):
         self.Ana = pad_analysis
         Elementary.__init__(self, verbose=self.Ana.verbose)
@@ -57,11 +56,11 @@ class PedestalAnalysis(Elementary):
             self.log_info('Drawing pedestal distribution for {d} of run {r}'.format(d=self.DiamondName, r=self.RunNumber))
             h1 = TH1F('h_pd', 'Pedestal Distribution', 600, -150, 150)
             self.Tree.Draw('{name}>>h_pd'.format(name=signal_name), cut, 'goff')
-            self.format_histo(h1, x_tit='Pedestal [au]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)
+            self.format_histo(h1, 'Pedestal', x_tit='Pedestal [au]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)
             return h1
 
         if show or save:
-            set_statbox(entries=8, opt=1000000010)
+            set_statbox(opt='neMR', entries=6, w=.3)
         h = self.do_pickle(picklepath, func, redo=redo)
         set_drawing_range(h, rfac=.2)
         self.save_histo(h, 'PedestalDistribution', show, save=save, logy=logy, lm=.13)
@@ -73,10 +72,9 @@ class PedestalAnalysis(Elementary):
         suffix = '{r}_fwhm_{c}'.format(c=cut.GetName(), r=self.get_all_signal_names()[self.SignalName if name is None else name])
         picklepath = self.make_pickle_path('Pedestal', run=self.RunNumber, ch=self.Channel, suf=suffix)
         show = False if not save else show
-        set_statbox(only_fit=True, entries=4, w=.3)
+        set_statbox(only_fit=True, entries=8, w=.3, opt='neMR')
         h = self.draw_disto(name, cut, logy, show=False, save=False, redo=redo)
         set_drawing_range(h)
-        h.SetName('Fit Results')
         fit_pars = self.fit_fwhm(h, do_fwhm=True, draw=show)
         f = deepcopy(h.GetFunction('gaus'))
         f.SetNpx(1000)
@@ -119,7 +117,6 @@ class PedestalAnalysis(Elementary):
         picklepath = self.make_pickle_path('Pedestal', 'Evolution', run=self.RunNumber, ch=self.DiamondNumber, suf=self.get_all_signal_names()[signal_name])
 
         def func():
-
             h = self.draw_signal_time(signal_name, False)
             g1 = self.make_tgrapherrors('g_pph', 'Pedestal{s} Pulse Height Evolution'.format(s=' Sigma' if sigma else ''))
 
@@ -155,5 +152,5 @@ class PedestalAnalysis(Elementary):
             g.SetPointError(i, 0, fit.ParError(1))
         for i, reg in enumerate(self.Run.pedestal_regions):
             g.GetXaxis().SetBinLabel(g.GetXaxis().FindBin(i), reg)
-        self.format_histo(g, x_tit='Region Integral', y_tit='Mean Pedestal',  y_off=1.4)
+        self.format_histo(g, x_tit='Region Integral', y_tit='Mean Pedestal', y_off=1.4)
         self.save_histo(g, 'PedestalComparison', lm=.12)
