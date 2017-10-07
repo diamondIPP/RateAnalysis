@@ -115,6 +115,7 @@ class DiaScans(Elementary):
         run_infos = {}
         for tc in self.TestCampaigns:
             self.TESTCAMPAIGN = tc
+            self.TCDir = self.generate_tc_directory()
             file_path = self.load_run_info_path()
             f = open(file_path)
             run_infos[tc] = load(f)
@@ -822,7 +823,7 @@ if __name__ == '__main__':
     print_banner('STARTING DIAMOND RATE SCAN COLLECTION OF DIAMOND {0}'.format(args.dia))
 
     z = DiaScans(args.dia, args.tcs, verbose=True)
-    z.set_selection('II6-97-neg')
+    z.set_selection('poly-B2')
     if False:
         for key_, s in z.Selections.items():
             print_banner('STARTING SELECTION {0}'.format(key_))
