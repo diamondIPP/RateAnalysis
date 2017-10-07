@@ -29,7 +29,7 @@ class DiaScans(Elementary):
 
         # information
         self.DiamondName = self.load_diamond(diamond)
-        self.TestCampaigns = self.load_tcs(testcampaigns)
+        self.TestCampaigns = self.load_testcampaigns(testcampaigns)
         self.RunInfos = self.load_runinfos()
         self.AllRunPlans = self.load_all_runplans()
         self.RunPlans = self.find_diamond_runplans()
@@ -93,7 +93,7 @@ class DiaScans(Elementary):
             log_warning('{0} is not a known diamond name! Please choose one from \n{1}'.format(dia, self.Parser.options('ALIASES')))
             exit()
 
-    def load_tcs(self, tcs):
+    def load_testcampaigns(self, tcs):
         if tcs is None:
             return ['201505', '201508', '201510']
         valid_tcs = self.find_test_campaigns()
@@ -155,7 +155,7 @@ class DiaScans(Elementary):
         if key is None:
             key = self.DiamondName
         if key not in self.Selections.keys():
-            log_warning('"{selection} does not exist in {Selections}'.format(selection=key, Selections=self.Selections))
+            log_warning('"{selection} does not exist in {Selections}'.format(selection=key, Selections=self.Selections.keys()))
             return
         self.log_info('Set Selection {0}'.format(key))
         self.Selection = self.Selections[key]
