@@ -79,6 +79,7 @@ class Run(Elementary):
             self.totalTime = self.endTime - self.startTime
             self.totalMinutes = (self.endTime - self.startTime) / 60000
             self.n_entries = int(self.endEvent + 1)
+            self.NPlanes = self.load_n_planes()
 
             # region info
             if self.DUTType == 'pad':
@@ -206,7 +207,14 @@ class Run(Elementary):
                 print err
                 return
         self.duration = self.log_stop - self.log_start
-    # endregion
+
+    def load_n_planes(self):
+        if self.has_branch('cluster_col'):
+            self.tree.Draw('@cluster_col.size()', '', 'goff', 1)
+            return int(self.tree.GetV1()[0])
+        else:
+            return 4
+    # endregion INIT
 
     def print_run_info(self):
         print 'Run information for run', self.RunNumber
@@ -546,8 +554,9 @@ class Run(Elementary):
             dias = ['{dia} @ {bias:+2.0f}V'.format(dia=dia, bias=bias) for dia, bias in zip(self.DiamondNames, self.Bias)]
             dias = str(dias).strip('[]').replace('\'', '')
             legend.AddEntry(0, 'Diamonds: {dias}'.format(dias=dias), '')
-        else:
-            legend.AddEntry(0, 'Diamond: {diamond} @ {bias:+}V'.format(diamond=self.DiamondNames[channel], bias=self.Bias[channel]), '')
+        elif hasattr(self, 'analysis'):
+            att = ', Attenuator: {a}'.format(a=self.RunInfo['att_dia{n}'.format(n=self.analysis.DiamondNumber)]) if 'att_dia1' in self.RunInfo else ''
+            legend.AddEntry(0, 'Diamond: {diamond} @ {bias:+}V{a}'.format(diamond=self.DiamondNames[channel], bias=self.Bias[channel], a=att), '')
         if cut and hasattr(self, 'analysis'):
             legend.AddEntry(0, 'Cut: {cut}'.format(cut=self.analysis.get_easy_cutstring()), '')
         if comment is not None:
