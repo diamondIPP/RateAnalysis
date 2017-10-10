@@ -16,7 +16,6 @@ from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectr
 # global test campaign and resolution
 tc = None
 res = None
-default_tc = '201708'
 
 
 class Elementary(object):
@@ -28,15 +27,17 @@ class Elementary(object):
     def __init__(self, testcampaign=None, verbose=False, resolution=None):
         self.verbose = verbose
 
+        self.Dir = self.get_program_dir()
+        self.MainConfigParser = self.load_main_config()
+
+        # test campaign
         self.TESTCAMPAIGN = None
         self.SubSet = None
         self.set_global_testcampaign(testcampaign)
         self.TCString = self.generate_tc_str()
-        self.Dir = self.get_program_dir()
         self.ResultsDir = self.generate_results_directory()
 
         # read configuration files
-        self.MainConfigParser = self.load_main_config()
         self.run_config_parser = self.load_run_config()
         self.ana_config_parser = self.load_ana_config()
 
@@ -70,7 +71,7 @@ class Elementary(object):
 
     def load_main_config(self):
         parser = ConfigParser()
-        parser.read('{dir}/Configuration/main.cfg'.format(dir=self.get_program_dir()))
+        parser.read(join(self.Dir, 'Configuration', 'main.cfg'))
         return parser
 
     def load_run_config(self):
@@ -157,7 +158,7 @@ class Elementary(object):
         self.set_test_campaign(tc)
 
     def set_test_campaign(self, campaign):
-        campaign = default_tc if campaign is None else campaign
+        campaign = self.MainConfigParser.get('MAIN', 'default_test_campaign') if campaign is None else campaign
         if campaign not in self.find_test_campaigns():
             log_critical('This Testcampaign does not exist yet! Use create_new_testcampaign!')
         tc_data = str(campaign).split('-')
