@@ -338,9 +338,9 @@ class Analysis(Elementary):
 
     # ============================================================================================
     # region PIXEL
-    def _draw_occupancy(self, plane, name=None, cluster=True, tel_coods=False, cut='', res=sqrt(12), show=True):
+    def _draw_occupancy(self, plane, name=None, cluster=True, tel_coods=False, cut='', show=True):
         name = 'ROC {i}'.format(i=plane) if name is None else name
-        bins = self.Plots.get_global_bins(res) if tel_coods else self.Plots.Settings['2DBins']
+        bins = self.Plots.get_global_bins(sqrt(12)) if tel_coods else self.Plots.Settings['2DBins']
         h = TH2F('h_hm{i}'.format(i=plane), '{h} Occupancy {n}'.format(n=name, h='Hit' if not cluster else 'Cluster'), *bins)
         cut_string = self.Cut.all_cut if cut is None else TCut(cut)
         cut_string += 'plane == {0}'.format(plane) if not cluster else ''
@@ -350,6 +350,7 @@ class Analysis(Elementary):
         self.tree.Draw('{ds}>>h_hm{i}'.format(ds=draw_string.format(i=plane), i=plane), cut_string, 'goff')
         self.format_histo(h, x_tit='col', y_tit='row', y_off=1.2)
         self.save_histo(h, 'HitMap{0}'.format(plane), show, draw_opt='colz', rm=.15)
+        return h
 
         c = TCanvas('c_hm', 'Hitmaps', 2000, 2000)
         c.Divide(2, 2)
