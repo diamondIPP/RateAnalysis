@@ -33,6 +33,7 @@ class Analysis(Elementary):
         self.RunInfo = deepcopy(self.run.RunInfo)
         self.lowest_rate_run = high_low_rate['min'] if high_low_rate is not None else self.run.RunNumber
         self.highest_rate_run = high_low_rate['max'] if high_low_rate is not None else self.run.RunNumber
+        self.TelSaveDir = '{run}'.format(run=self.run.RunNumber)
         self.set_titles()
 
         # DUT
@@ -89,7 +90,7 @@ class Analysis(Elementary):
                 self.tree.Draw('wf0:Iteration$/2>>regions', self.Cut.all_cut, 'goff', 1, start)
         h.GetXaxis().SetNdivisions(520)
         self.format_histo(h, markersize=0.3, x_tit='Time [ns]', y_tit='Signal [au]', stats=0)
-        self.save_histo(h, 'Regions', show, self.ana_save_dir, lm=.075, rm=.045, x_fac=1.5, y_fac=.5)
+        self.save_histo(h, 'Regions', show, self.TelSaveDir, lm=.075, rm=.045, x_fac=1.5, y_fac=.5)
         return h
 
     def draw_regions(self, ped=True, event=None, show=True):
@@ -248,7 +249,7 @@ class Analysis(Elementary):
         legend.Draw()
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.RootObjects.append([legend, histos, c])
-        self.save_plots('Chi2', canvas=c, sub_dir=self.ana_save_dir, ch=None)
+        self.save_plots('Chi2', canvas=c, sub_dir=self.TelSaveDir, ch=None)
 
     def draw_angle_distribution(self, mode='x', show=True, print_msg=True, cut=None):
         """ Displays the angle distribution of the tracks. """
@@ -300,7 +301,7 @@ class Analysis(Elementary):
         legend.Draw()
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.RootObjects.append([legend, c, histos])
-        self.save_plots('TrackAngles', sub_dir=self.ana_save_dir, ch=None)
+        self.save_plots('TrackAngles', sub_dir=self.TelSaveDir, ch=None)
 
     def _draw_residuals(self, roc, mode=None, cut=None, x_range=None, fit=False, show=True):
         mode = '' if mode is None else mode.lower()
@@ -352,6 +353,9 @@ class Analysis(Elementary):
         self.save_histo(h, 'HitMap{0}'.format(plane), show, draw_opt='colz', rm=.15)
         return h
 
+    def _draw_occupancies(self, planes=None, cut='', cluster=True, show=True):
+        planes = range(4) if planes is None else list(planes)
+        histos = [self._draw_occupancy(plane, cluster=cluster, cut=cut, show=False) for plane in planes]
         c = TCanvas('c_hm', 'Hitmaps', 2000, 2000)
         c.Divide(2, 2)
         for i, h in enumerate(histos, 1):
@@ -359,8 +363,7 @@ class Analysis(Elementary):
             pad = c.cd(i)
             pad.SetBottomMargin(.15)
             h.Draw('colz')
-        self.save_plots('HitMap', sub_dir=self.ana_save_dir, ch=None)
-        gROOT.SetBatch(1)
+        self.save_plots('HitMap', sub_dir=self.TelSaveDir, ch=None, show=show)
 
     # endregion
 
@@ -392,7 +395,7 @@ class Analysis(Elementary):
         self.format_histo(h, x_tit='col', y_tit='row')
         h.Draw('colz')
         self.histos[0] = [c, h]
-        self.save_plots('PixMapPlane{pln}{evts}'.format(pln=plane, evts=n), sub_dir=self.ana_save_dir, ch=None)
+        self.save_plots('PixMapPlane{pln}{evts}'.format(pln=plane, evts=n), sub_dir=self.TelSaveDir, ch=None)
 
     def draw_preliminary(self):
         c = gROOT.GetListOfCanvases()[-1]
@@ -503,11 +506,10 @@ class Analysis(Elementary):
         c = get_last_canvas()
         c.Modified()
         c.Update()
-        while fit.Chi2 / fit.NDF > chi_thresh:
+        if fit.Chi2 / fit.NDF > chi_thresh:
             self.count += 5
-            if self.count > 5:
-                self.log_info('Chi2 too large ({c:2.2f}) -> increasing number of convolutions by 5'.format(c=fit.Chi2 / fit.NDF))
-            fit = self.fit_langau(h, nconv + self.count)
+            self.log_info('Chi2 too large ({c:2.2f}) -> increasing number of convolutions by 5'.format(c=fit.Chi2 / fit.NDF))
+            fit = self.fit_langau(h, nconv + self.count, chi_thresh=chi_thresh)
         print 'MPV:', fit.Parameters[1]
         self.count = 0
         self.RootObjects.append(fit)
