@@ -51,23 +51,16 @@ class Analysis(Elementary):
         self.Cut = Cut(self, skip=not load_tree)
 
         if load_tree:
-            # binning
+            self.NRocs = self.run.NPlanes
+            self.StartEvent = self.Cut.CutConfig['EventRange'][0]
+            self.EndEvent = self.Cut.CutConfig['EventRange'][1]
+            self.Plots = Plots(self.run)
+
+            # binning TODO: move to plots class
             self.BinSize = binning
             self.binning = self.__get_binning()
             self.time_binning = self.get_time_binning()
             self.n_bins = len(self.binning)
-
-        if self.DUTType == 'pad':
-            if load_tree:
-                self.StartEvent = self.Cut.CutConfig['EventRange'][0]
-                self.EndEvent = self.Cut.CutConfig['EventRange'][1]
-
-        # pixel TODO: uniform
-        if self.DUTType == 'pixel':
-            self.num_devices = 7
-            if load_tree:
-                self.plots = Plots(self.run.n_entries, self.run, self.num_devices, -1, [0, 1, 2, 3], 4, 5, 6)
-                self.StartEvent = 1  # DA: for now... TODO pixel cuts!
 
         # save histograms // canvases
         self.signal_canvas = None
