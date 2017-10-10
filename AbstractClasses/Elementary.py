@@ -98,6 +98,10 @@ class Elementary(object):
         ana_parser.read('Configuration/AnalysisConfig_{tc}.cfg'.format(tc=self.TCString))
         return ana_parser
 
+    def set_titles(self):
+        if self.ana_config_parser.has_option('SAVE', 'ActivateTitle'):
+            gStyle.SetOptTitle(self.ana_config_parser.getboolean('SAVE', 'ActivateTitle'))
+
     @staticmethod
     def load_resolution(resolution):
         if resolution is not None:
