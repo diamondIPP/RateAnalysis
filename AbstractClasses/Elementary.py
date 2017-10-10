@@ -344,6 +344,7 @@ class Elementary(object):
         if save:
             try:
                 self.save_canvas(canvas, sub_dir=sub_dir, name=savename, print_names=prnt, show=show)
+                self.ROOTObjects.append(canvas)
             except Exception as inst:
                 print log_warning('Error in save_canvas:\n{0}'.format(inst))
 
