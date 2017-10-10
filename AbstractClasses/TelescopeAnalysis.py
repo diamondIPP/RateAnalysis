@@ -189,7 +189,7 @@ class Analysis(Elementary):
             gr.Draw('[]')
             gr.Draw('p')
         self._add_buckets(ymin, ymax, xmin, xmax, full_line=True, size=.05) if buckets else self.do_nothing()
-        self.save_plots('IntegralPeaks',  ch=None)
+        self.save_plots('IntegralPeaks', ch=None)
         gROOT.SetBatch(0)
         self.count = old_count
         self.histos.append([gr1, gr2])
@@ -336,20 +336,24 @@ class Analysis(Elementary):
         self.format_histo(h, x_tit='Cluster Size', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
         self.save_histo(h, 'ClusterSize', show, logy=True)
         return h
+
     # endregion
 
     # ============================================================================================
     # region PIXEL
-    def draw_hitmap(self, plane=None, cut=None, show=True):
-        planes = [0, 1, 2, 3] if plane is None else [int(plane)]
-        cut = self.Cut.all_cut if cut is None else cut
-        histos = [TH2F('h_hm{0}'.format(i_pl), 'Hitmap Plane {0}'.format(i_pl), 52, 0, 52, 80, 0, 80) for i_pl in planes]
-        for plane in planes:
-            cut_string = cut + TCut('plane == {0}'.format(plane))
-            self.tree.Draw('row:col>>h_hm{0}'.format(plane), cut_string, 'goff')
-            self.format_histo(histos[plane], x_tit='col', y_tit='row')
-            self.RootObjects.append(self.save_histo(histos[plane], 'HitMap{0}'.format(plane), False, self.ana_save_dir, draw_opt='colz'))
-        gROOT.SetBatch(1) if not show else self.do_nothing()
+    def _draw_occupancy(self, plane, name=None, cluster=True, tel_coods=False, cut='', res=sqrt(12), show=True):
+        name = 'ROC {i}'.format(i=plane) if name is None else name
+        bins = self.Plots.get_global_bins(res) if tel_coods else self.Plots.Settings['2DBins']
+        h = TH2F('h_hm{i}'.format(i=plane), '{h} Occupancy {n}'.format(n=name, h='Hit' if not cluster else 'Cluster'), *bins)
+        cut_string = self.Cut.all_cut if cut is None else TCut(cut)
+        cut_string += 'plane == {0}'.format(plane) if not cluster else ''
+        draw_string = 'cluster_row[{i}]:cluster_col[{i}]' if cluster else 'row:col'
+        draw_string = 'cluster_ypos_tel[{i}]:cluster_xpos_tel[{i}]' if tel_coods else draw_string
+        set_statbox(only_entries=True, x=.83)
+        self.tree.Draw('{ds}>>h_hm{i}'.format(ds=draw_string.format(i=plane), i=plane), cut_string, 'goff')
+        self.format_histo(h, x_tit='col', y_tit='row', y_off=1.2)
+        self.save_histo(h, 'HitMap{0}'.format(plane), show, draw_opt='colz', rm=.15)
+
         c = TCanvas('c_hm', 'Hitmaps', 2000, 2000)
         c.Divide(2, 2)
         for i, h in enumerate(histos, 1):
