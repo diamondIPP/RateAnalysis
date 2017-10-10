@@ -36,10 +36,11 @@ class Langau:
         # todo: set limits based on histogram
         h = self.Histo
         limits = [(0, 0)] * 4
-        limits[0] = (self.estimate_sigma() / 5 * k for k in [.5, 3])    # par[0]=Width (scale) parameter of Landau density
-        limits[1] = (self.get_x_max() * k for k in [0.5, 1.5])          # par[1]=Most Probable (MP, location) parameter of Landau density
-        limits[2] = (h.Integral() * 500 * k for k in [.1, 10])          # par[2]=Total area (integral -inf to inf, normalization constant)
-        limits[3] = (self.estimate_sigma() * k for k in [.5, 3])        # par[3]=Width (sigma) of convoluted Gaussian function
+        limits[0] = [self.estimate_sigma() / 5 * k for k in [0, 3]]    # par[0]=Width (scale) parameter of Landau density
+        limits[1] = [self.get_x_max() * k for k in [0.5, 1.5]]          # par[1]=Most Probable (MP, location) parameter of Landau density
+        limits[2] = [h.Integral() * 500 * k for k in [.001, 10]]          # par[2]=Total area (integral -inf to inf, normalization constant)
+        limits[3] = [self.estimate_sigma() * k for k in [.5, 3]]        # par[3]=Width (sigma) of convoluted Gaussian function
+        # print limits
         return limits
 
     def estimate_sigma(self):
