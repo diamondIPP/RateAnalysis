@@ -1524,7 +1524,7 @@ class PadAnalysis(Analysis):
             for h in histos:
                 self.format_histo(h, title='Event Alignment', x_tit='Event Number', y_tit='Hits per Event @ Pulser Events [%]', y_off=1.3, stats=0, color=self.get_color(),
                                   y_range=[0, 105], fill_color=self.FillColor)
-            self.save_histo(histos[0], 'EventAlignment', show, self.ana_save_dir, draw_opt='hist', prnt=show)
+            self.save_histo(histos[0], 'EventAlignment', show, self.TelSaveDir, draw_opt='hist', prnt=show)
             # for h in histos[1:]:
             #     h.Draw('same')
             self.RootObjects.append([histos])
@@ -1910,7 +1910,7 @@ class PadAnalysis(Analysis):
 
     def save_felix(self):
         self.save_dir = '{info}_{rp}'.format(info=self.make_info_string().strip('_'), rp=self.RunNumber)
-        self.ana_save_dir = '{info}_{rp}'.format(info=self.make_info_string().strip('_'), rp=self.RunNumber)
+        self.TelSaveDir = '{info}_{rp}'.format(info=self.make_info_string().strip('_'), rp=self.RunNumber)
         self.set_save_directory('PlotsFelix')
         self.Pulser.save_felix()
 
