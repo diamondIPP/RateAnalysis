@@ -697,7 +697,7 @@ class PadAnalysis(Analysis):
         # pedestal polarity is always the same as signal polarity
         ped_pol = '1'
         # change polarity if pulser has opposite polarity to signal
-        if signal == self.Pulser.SignalName:
+        if hasattr(self, 'Pulser') and signal == self.Pulser.SignalName:
             ped_pol = '-1' if self.PulserPolarity != self.Polarity else ped_pol
         if bin_corr:
             return sig_name
@@ -705,7 +705,7 @@ class PadAnalysis(Analysis):
             ped_fit = self.Pedestal.draw_disto_fit(cut=cut, save=False)
             sig_name += '-{pol}*{ped}'.format(ped=ped_fit.Parameter(1), pol=ped_pol)
         elif evnt_corr:
-            sig_name += '-{pol}*{ped}'.format(ped=self.Pedestal.SignalName, pol=ped_pol)
+            sig_name += '-{pol}*{ped}'.format(ped=self.PedestalName, pol=ped_pol)
         return sig_name
 
     def make_signal_time_histos(self, signal_name=None, evnt_corr=False, off_corr=False, bin_corr=False, show=True):
