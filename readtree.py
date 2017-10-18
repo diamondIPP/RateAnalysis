@@ -221,7 +221,7 @@ def read_macro(f):
 
 def draw_peak_values(ch=0, show=True):
     h = TH1F('h_pv', 'PH', 100, -450, -350)
-    t.Draw('peak_values[{c}]>>h_pv'.format(c=ch), '', 'goff')
+    t.Draw('max_peak_position[{c}]>>h_pv'.format(c=ch), '', 'goff')
     run.format_histo(h, x_tit='Peak Value [mV]', y_tit='Number of Entries', y_off=1.4)
     run.draw_histo(h, show=show)
     return h
