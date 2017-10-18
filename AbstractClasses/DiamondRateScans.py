@@ -660,11 +660,11 @@ class DiaScans(Elementary):
                     sel = RunSelection(tc)
                     sel.select_runs_from_runplan(rp, ch=ch)
                     self.log_info('Loaded runplan {rp} of testcampaign {tc} and ch {ch} ({dia})'.format(rp=rp.rjust(4),
-                                                                                                        tc=datetime.strptime(tc, '%Y%m').strftime('%b %Y'), ch=ch, dia=sel.SelectedDiamond))
+                                                                                                        tc=make_tc_str(tc), ch=ch, dia=sel.SelectedDiamond))
                     run_selections[sel] = ch
         sorted_sel = OrderedDict()
         for i, sel in enumerate(run_selections.iterkeys()):
-            vals[sel.TESTCAMPAIGN][sel.SelectedBias] = i
+            vals[sel.generate_tc_str()][sel.SelectedBias] = i
         order = [i for val in vals.itervalues() for bias, i in sorted(val.iteritems(), reverse=True)]
         for i in order:
             sorted_sel[run_selections.keys()[i]] = run_selections.values()[i]
@@ -782,10 +782,11 @@ class DiaScans(Elementary):
         biases = self.get_bias_voltages()
         bias_str = ' at {bias} V'.format(bias=biases[0]) if len(biases) == 1 else ''
         mg = TMultiGraph('mg_ph', '{dia} Rate Scans{b};Flux [kHz/cm^{{2}}]; pulse height [au]'.format(dia=self.DiamondName, b=bias_str))
-        legend = self.make_legend(.8, .4, nentries=4, felix=True)
+        legend = self.make_legend(.75, .4, nentries=4, felix=True)
         legend.SetNColumns(2) if len(biases) > 1 else do_nothing()
-        colors = [4, 419, 2, 800]
-        tits = [make_irr_string(v, p) for v, p in [(0, 0), (5, 14), (1.5, 15)]]
+        colors = [4, 419, 2, 800, 3]
+        # tits = [make_irr_string(v, p) for v, p in [(0, 0), (5, 14), (1.5, 15)]]
+        tits = [make_irr_string(v, p) for v, p in [(0, 0), (5, 14), (1, 15), (2, 15), (4, 15)]]
         for i, (sel, ch) in enumerate(run_selections.iteritems()):
             path = self.make_pickle_path('Ph_fit', 'PulseHeights', sel.SelectedRunplan, self.DiamondName, 10000, sel.TESTCAMPAIGN)
             try:
@@ -794,12 +795,12 @@ class DiaScans(Elementary):
                 f.close()
             except IOError:
                 print 'Did not find', path
-                Elementary(sel.TESTCAMPAIGN)
+                Elementary(sel.generate_tc_str())
                 ana = AnalysisCollection(sel, ch, self.verbose)
                 mg_ph_ana = ana.draw_pulse_heights(show=False)
                 ana.close_files()
             for g in mg_ph_ana.GetListOfGraphs():
-                self.format_histo(g, color=colors[i], markersize=2, lw=2)
+                self.format_histo(g, color=colors[i], markersize=1.5, lw=2)
                 # if g.GetName() == 'gFirst':
                 #     self.format_histo(g, color=1, marker=26, markersize=2)
                 # elif g.GetName() == 'gLast':
@@ -816,14 +817,14 @@ class DiaScans(Elementary):
 
 if __name__ == '__main__':
     main_parser = ArgumentParser()
-    main_parser.add_argument('dia', nargs='?', default='II6-97')
+    main_parser.add_argument('dia', nargs='?', default='II6-B2')
     main_parser.add_argument('-tcs', nargs='?', default=None)
     args = main_parser.parse_args()
     print args
     print_banner('STARTING DIAMOND RATE SCAN COLLECTION OF DIAMOND {0}'.format(args.dia))
 
     z = DiaScans(args.dia, args.tcs, verbose=True)
-    z.set_selection('poly-B2')
+    z.set_selection('poly-B2-neg')
     if False:
         for key_, s in z.Selections.items():
             print_banner('STARTING SELECTION {0}'.format(key_))

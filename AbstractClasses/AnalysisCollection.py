@@ -36,7 +36,6 @@ class AnalysisCollection(Elementary):
         self.selection = run_selection
 
         self.runs = run_selection.get_selected_runs()
-        self.channel = self.load_channel()
         self.Type = run_selection.SelectedType
         # self.diamonds = self.load_diamonds(diamonds, list_of_runs)
         self.min_max_rate_runs = self.get_high_low_rate_runs()
@@ -45,6 +44,7 @@ class AnalysisCollection(Elementary):
             self.generate_threshold_pickle()
         self.add_analyses(load_tree)
         self.FirstAnalysis = self.get_first_analysis()
+        self.channel = self.load_channel()
 
         self.signalValues = None
 
@@ -108,7 +108,7 @@ class AnalysisCollection(Elementary):
             self.current_run_number = analysis.run.RunNumber
 
     def load_channel(self):
-        binary = self.run_config_parser.getint('ROOTFILE_GENERATION', 'active_regions')
+        binary = self.FirstAnalysis.run_config_parser.getint('ROOTFILE_GENERATION', 'active_regions')
         dia_nr = self.selection.SelectedDiamondNr
         return [i for i in xrange(16) if self.has_bit(binary, i)][dia_nr - 1]
 
@@ -355,7 +355,7 @@ class AnalysisCollection(Elementary):
                     gr5.SetPointError(i, x_err, 0)
                     l1 = self.draw_tlatex(gr5.GetX()[i] - x_err, gr5.GetY()[i] + .03, '{0:5.0f}'.format(ana.run.Flux), color=1, align=10, size=.04)
                     gr1.GetListOfFunctions().Add(l1)
-                if fit1.Parameter(0) > 10:
+                if fit1.Parameter(0) > 0:
                     gr1.SetPoint(i, x, fit1.Parameter(0))
                     gr1.SetPointError(i, .1 * x if flux else 0, fit1.ParError(0))
                     gr_errors.SetPoint(i, x, fit1.Parameter(0))
