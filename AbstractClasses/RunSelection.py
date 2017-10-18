@@ -539,6 +539,15 @@ class RunSelection(Elementary):
         for run in runs:
             runinfo[str(run)][new_key] = new_value
         self.save_runinfo(f, runinfo)
+    
+    def add_runinfo_attenuators(self):
+        runs = self.get_selected_runs()
+        f, runinfo = self.get_sorted_runinfo()
+        for key in ['att_dia1', 'att_dia2', 'att_pul1', 'att_pul2']:
+            value = raw_input('Enter the value for {k}: '.format(k=key))
+            for run in runs:
+                runinfo[str(run)][key] = value
+        self.save_runinfo(f, runinfo)
 
     def remove_runinfo_key(self):
         runs = self.get_selected_runs()
