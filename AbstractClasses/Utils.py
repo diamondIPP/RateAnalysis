@@ -438,6 +438,12 @@ def int_to_roman(integer):
     return result
 
 
+def set_z_range(zmin, zmax):
+    c = get_last_canvas()
+    h = c.GetListOfPrimitives()[1]
+    h.GetZaxis().SetRangeUser(zmin, zmax)
+
+
 def get_last_canvas():
     return gROOT.GetListOfCanvases()[-1]
 
