@@ -249,7 +249,7 @@ class AnalysisCollection(Elementary):
         self.RootObjects.append([ph, cur, pul, c, legends, pads, run_info])
         # self.FirstAnalysis.run.reset_info_legend()
 
-    def draw_ph_vs_voltage(self, binning=10000, pulser=False, redo=False, show=False):
+    def draw_ph_vs_voltage(self, binning=10000, pulser=False, redo=False, show=True):
         gr1 = self.make_tgrapherrors('gStatError', 'stat. error', self.get_color())
         gStyle.SetEndErrorSize(4)
         gr_first = self.make_tgrapherrors('gFirst', 'first run', marker=22, color=2, marker_size=2)
@@ -433,8 +433,7 @@ class AnalysisCollection(Elementary):
         mg2 = func(y_range) if save_plots or redo else None
         return self.do_pickle(pickle_path, f, mg2)
 
-    def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False, show=True, cut=None, beam_on=True,
-                       save=False, pulser=False):
+    def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False, show=True, cut=None, save=False, pulser=False):
 
         pickle_path = self.make_pickle_path('Pedestal', 'AllPedestals', self.RunPlan, self.DiamondName, suf='Sigma' if sigma else 'Mean')
         mode = 'Flux' if flux else 'Run'
@@ -792,7 +791,7 @@ class AnalysisCollection(Elementary):
         z.reset_colors()
 
     def draw_all_pulser_info(self, mean_=True):
-        graphs = [self.draw_pulser_info(show=False, mean_=mean_, corr=x, beam_on=y) for x, y in zip([1, 1, 0, 0], [1, 0, 1, 0])]
+        graphs = [self.draw_pulser_info(show=False, mean_=mean_, corr=bool(x), beam_on=bool(y)) for x, y in zip([1, 1, 0, 0], [1, 0, 1, 0])]
         margins = self.find_graph_margins(graphs)
         c = TCanvas('c', 'Pulser Info', 1500, 1500)
         c.Divide(2, 2)
@@ -810,8 +809,7 @@ class AnalysisCollection(Elementary):
     def compare_pedestals(self, show=True):
         gr1 = self.draw_pedestals(show=False)
         gr2 = self.draw_pedestals(cut='pulser', show=False)
-        gr3 = self.draw_pedestals(cut='pulser', show=False, beam_on=False)
-        graphs = [gr1, gr2, gr3]
+        graphs = [gr1, gr2]
         margins = self.find_graph_margins(graphs)
         gROOT.SetBatch(0) if show else gROOT.SetBatch(1)
         c = TCanvas('c', 'Pulser Pedestal Comparison', 1000, 1000)
