@@ -1,6 +1,7 @@
 from Cut import Cut
 from Extrema import Extrema2D
 from copy import deepcopy
+from functools import partial
 from ROOT import TCut, TH1F, TH2F, TF1, TCanvas, TLegend, gROOT, TProfile, THStack, TCutG, TSpectrum
 from Utils import *
 from json import loads
@@ -70,7 +71,7 @@ class ChannelCut(Cut):
 
     # ==============================================
     # region SET CUTS
-    def set_cut(self, name, value):
+    def set_cut(self, name, value=None):
         if name not in self.CutStrings:
             log_warning('There is no cut with the name "{name}"!'.format(name=name))
             return
@@ -107,18 +108,15 @@ class ChannelCut(Cut):
     # ==============================================
     # region GENERATE CUT STRINGS
     def generate_cut(self, name, value):
-        if name == 'median':
-            return self.generate_median(value)
-        if name == 'pedestalsigma':
-            return self.generate_pedestalsigma(value)
-        if name == 'signal_peak_pos':
-            return self.generate_signal_peak_pos(value)
-        if name == 'signal_peak_time':
-            return self.generate_signal_peak_time(value)
-        if name == 'trigger_cell':
-            return self.generate_trigger_cell(value)
-        if name == 'bucket':
-            return self.generate_bucket(value)
+        dic = {'median': self.generate_median,
+               'pedestalsigma': self.generate_pedestalsigma,
+               'signal_peak_pos': self.generate_signal_peak_pos,
+               'signal_peak_time': self.generate_signal_peak_time,
+               'trigger_cell': self.generate_trigger_cell,
+               'bucket': self.generate_bucket,
+               'chi2X': partial(self.generate_chi2, 'x'),
+               'chi2Y': partial(self.generate_chi2, 'y')}
+        return dic[name](value)
 
     def generate_median(self, high=None):
         value = self.CutConfig['absMedian_high'] if high is None else high

@@ -224,7 +224,7 @@ class Cut(Elementary):
         picklepath = self.make_pickle_path('Chi2', run=self.analysis.RunNumber, suf=mode.title())
 
         def func():
-            print 'generating chi2 cut in {mod} for run {run}...'.format(run=self.analysis.RunNumber, mod=mode)
+            t = self.log_info('generating chi2 cut in {mod} for run {run}...'.format(run=self.analysis.RunNumber, mod=mode), next_line=False)
             gROOT.SetBatch(1)
             h = TH1F('h', '', 200, 0, 100)
             nq = 100
@@ -233,6 +233,7 @@ class Cut(Elementary):
             self.analysis.tree.Draw('chi2_{mod}>>h'.format(mod=mode), '', 'goff')
             h.GetQuantiles(nq, chi2s, xq)
             gROOT.SetBatch(0)
+            self.add_info(t)
             return chi2s
 
         chi2 = self.do_pickle(picklepath, func)
@@ -442,7 +443,7 @@ class Cut(Elementary):
             print 'There is no cut with the name "{name}"!'.format(name=name)
         self.update_all_cut()
 
-    def set_cut(self, name, value):
+    def set_cut(self, name, value=None):
         if name in self.CutStrings:
             self.CutStrings[name].SetTitle('')
             self.CutStrings[name] += value
@@ -450,11 +451,14 @@ class Cut(Elementary):
             print 'There is no cut with the name "{name}"!'.format(name=name)
 
     def set_chi2(self, value):
-        self.set_cut('chi2X', value)
-        self.set_cut('chi2Y', value)
+        self.CutConfig['chi2X'] = value
+        self.CutConfig['chi2Y'] = value
+        self.set_cut('chi2X')
+        self.set_cut('chi2Y')
 
     def update_all_cut(self):
         self.all_cut = self.generate_all_cut()
+        self.analysis.AllCuts = self.all_cut
 
     def show_cuts(self, easy=True):
         cuts = self.EasyCutStrings if easy else self.CutStrings
