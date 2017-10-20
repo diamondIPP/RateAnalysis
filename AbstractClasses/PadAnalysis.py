@@ -324,9 +324,13 @@ class PadAnalysis(Analysis):
         self.format_histo(h, x_range=[xmid - size, xmid + size], y_range=[ymid - size, ymid + size])
 
     def set_ph_range(self, h):
-        mean, sigma = calc_mean([h.GetBinContent(bin_) for bin_ in xrange(h.GetNbinsX() * h.GetNbinsY()) if h.GetBinContent(bin_)])
+        values = [h.GetBinContent(bin_) for bin_ in xrange(h.GetNbinsX() * h.GetNbinsY()) if h.GetBinContent(bin_)]
+        mean, sigma = calc_mean(values)
         n_sig = 3
-        self.format_histo(h, z_range=[mean - n_sig * sigma, mean + n_sig * sigma])
+        if 2 * sigma > mean:
+            self.format_histo(h, z_range=[min(values), 0.8 * max(values)])
+        else:
+            self.format_histo(h, z_range=[mean - n_sig * sigma, mean + n_sig * sigma])
 
     def draw_sig_map_disto(self, show=True, factor=1.5, cut=None, fid=True, redo=False):
         source = self.draw_signal_map(factor, cut, fid, hitmap=False, redo=redo, show=False)
