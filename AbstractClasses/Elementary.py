@@ -133,7 +133,7 @@ class Elementary(object):
         else:
             file_path = join(self.DataDir, self.TCDir, 'run_log.json')
         if not file_exists(file_path):
-            log_critical('Run File does not exist!')
+            log_critical('Run Log File: "{f}" does not exist!'.format(f=file_path))
         return file_path
 
     def generate_sub_set_str(self):
@@ -176,7 +176,7 @@ class Elementary(object):
         conf_dir = cls.get_program_dir() + 'Configuration/'
         f_location = conf_dir + 'RunConfig_*'
         names = glob(f_location)
-        campaigns = [re.split('_|\.', name)[1] for name in names]
+        campaigns = [re.split('[_.]', name)[1] for name in names]
         campaigns = [camp for i, camp in enumerate(campaigns) if camp not in campaigns[i + 1:]]
         return sorted(campaigns)
 
@@ -388,7 +388,7 @@ class Elementary(object):
         return string
 
     @staticmethod
-    def do_pickle(path, function, value=None, params=None, redo=False):
+    def do_pickle(path, func, value=None, params=None, redo=False):
         if value is not None:
             f = open(path, 'w')
             pickle.dump(value, f)
@@ -398,7 +398,7 @@ class Elementary(object):
             f = open(path, 'r')
             return pickle.load(f)
         else:
-            ret_val = function() if params is None else function(params)
+            ret_val = func() if params is None else func(params)
             f = open(path, 'w')
             pickle.dump(ret_val, f)
             f.close()
