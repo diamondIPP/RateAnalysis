@@ -449,6 +449,10 @@ class Cut(Elementary):
         else:
             print 'There is no cut with the name "{name}"!'.format(name=name)
 
+    def set_chi2(self, value):
+        self.set_cut('chi2X', value)
+        self.set_cut('chi2Y', value)
+
     def update_all_cut(self):
         self.all_cut = self.generate_all_cut()
 
@@ -463,5 +467,5 @@ class Cut(Elementary):
     def get_track_var(self, num, mode):
         if self.analysis.run.has_branch('dia_track_x'):
             return 'dia_track_{m}[{n}]'.format(m=mode, n=num)
-        else :
+        else:
             return 'diam{n}_track_{m}'.format(m=mode, n=num + 1)

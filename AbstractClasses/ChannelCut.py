@@ -71,6 +71,9 @@ class ChannelCut(Cut):
     # ==============================================
     # region SET CUTS
     def set_cut(self, name, value):
+        if name not in self.CutStrings:
+            log_warning('There is no cut with the name "{name}"!'.format(name=name))
+            return
         self.reset_cut(name)
         self.CutStrings[name] += self.generate_cut(name, value)
         self.update_all_cut()
