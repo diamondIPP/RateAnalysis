@@ -40,6 +40,7 @@ class VoltageScan(Elementary):
 
         self.format_histo(gr, x_tit='Voltage [V]', y_tit='Pulse Height [au]', y_off=1.4)
         self.save_histo(gr, '{s}Pedestal{m}Voltage'.format(s='Pulser' if pulser else '', m=mode), show, lm=.13)
+        self.reset_colors()
 
     def draw_pulse_height(self, binning=10000, pulser=False, redo=False, show=True):
         gr1 = self.make_tgrapherrors('gStatError', 'stat. error', self.get_color())
@@ -85,3 +86,4 @@ class VoltageScan(Elementary):
             mg.Add(gr, 'p')
         self.format_histo(mg, x_tit='Voltage [V]', y_tit='Pulse Height [au]', y_off=1.3, draw_first=True)
         self.save_histo(mg, '{s}VoltageScan'.format(s='Signal' if not pulser else 'Pulser'), draw_opt='a', lm=.12, show=show)
+        self.reset_colors()
