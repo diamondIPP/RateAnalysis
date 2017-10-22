@@ -26,13 +26,36 @@ class Plots(Elementary):
         self.binning = binning
         self.num_devices = run.NPlanes
         self.num_entries = run.n_entries
-        self.Settings = {'ph1Dmin': -5000, 'ph1Dmax': 60000, 'ph1Dbins': 65000 / 500, 'ph1DbinsSi': 160, 'ph1DminSi': 0, 'ph1DmaxSi': 90000,
-                         'nEventsAv': 20000, 'event_bins': max(int(ceil(float(self.num_entries) / 10)), 200), 'event_min': 0, 'event_max': self.num_entries,
+        self.Settings = {'ph1Dmin': -5000,
+                         'ph1Dmax': 60000,
+                         'ph1Dbins': 65000 / 500,
+                         'ph1DbinsSi': 160,
+                         'ph1DminSi': 0,
+                         'ph1DmaxSi': 90000,
+                         'nEventsAv': 20000,
+                         'event_bins': max(int(ceil(float(self.num_entries) / 10)), 200),
+                         'event_min': 0,
+                         'event_max': self.num_entries,
                          'maxphplots': int(ceil(8 * self.num_entries / 100)),
-                         'nBinsX': 52, 'nBinsY': 80, 'xmin': -3900, 'xmax': 3900, 'ymin': -4000, 'ymax': 4000, 'nBinCol': 51,
-                         'nCols': 52, 'nRows': 80, 'minCol': 0, 'maxCol': 51, 'nBinRow': 79, 'minRow': 0, 'maxRow': 79,
-                         'num_diff_cluster_sizes': 4, 'chi2_1Dbins': 60, 'chi2_1Dmin': 0, 'chi2_1Dmax': 30, 'angle_1Dbins': 60, 'angle_1Dmin': -3, 'angle_1Dmax': 3,
-                         'rhit_1Dbins': 100, 'rhit_1Dmin': 0, 'rhit_1Dmax': 10, 'vcalBins': [int((1350 * 47) / 500), -100, 1250], 'globalCoods': [-.5, .52, -.5, .52]}
+                         'nBinsX': 52,
+                         'nBinsY': 80,
+                         'xmin': -3900,
+                         'xmax': 3900,
+                         'ymin': -4000,
+                         'ymax': 4000,
+                         'nBinCol': 51,
+                         'nCols': 52,
+                         'nRows': 80,
+                         'minCol': 0,
+                         'maxCol': 51,
+                         'nBinRow': 79,
+                         'minRow': 0,
+                         'maxRow': 79,
+                         'num_diff_cluster_sizes': 4,
+                         'vcalBins': [int((1350 * 47) / 500), -100, 1250],
+                         'globalCoods': [-.5, .52, -.5, .52],
+                         'xpix': .015,
+                         'ypix': .01}
         self.Settings['phBins'] = [self.Settings['ph1Dbins'], self.Settings['ph1Dmin'], self.Settings['ph1Dmax']]
         self.Settings['2DBins'] = [self.Settings['nCols'], - .5, self.Settings['nCols'] - .5, self.Settings['nRows'], - .5, self.Settings['nRows'] - .5]
         self.Settings['2DBinsX'] = [self.Settings['nCols'], - .5, self.Settings['nCols'] - .5] * 2
@@ -58,8 +81,8 @@ class Plots(Elementary):
 
     def get_global_bins(self, res, mode=None, arrays=False):
         x, y = self.Settings['globalCoods'][:2], self.Settings['globalCoods'][2:]
-        size_x = .015 if mode != 'y' else .01
-        size_y = .01 if mode != 'x' else .015
+        size_x = self.Settings['xpix'] if mode == 'x' else self.Settings['ypix']
+        size_y = self.Settings['ypix'] if mode == 'y' else self.Settings['xpix']
         bins = [int(ceil((x[1] - x[0]) / size_x * sqrt(12) / res)), x[0], x[1], int(ceil((y[1] - y[0]) / size_y * sqrt(12) / res)), y[0], y[1]]
         x_arr, y_arr = arange(x[0], x[1], size_x, 'd'), arange(y[0], y[1], size_y, 'd')
         return bins if not arrays else [len(x_arr) - 1, x_arr, len(y_arr) - 1, y_arr]

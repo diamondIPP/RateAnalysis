@@ -271,38 +271,31 @@ class PadAnalysis(Analysis):
     # region 2D SIGNAL DISTRIBUTION
 
     def draw_efficiency_map(self, res=1.5, cut='all', show=True):
-        rmin, rmax = -.4, .4
-        # get bin size via digital resolution of the telescope pixels
-        x_bins, y_bins = [int(ceil(((rmax - rmin) / size * sqrt(12) / res))) for size in [.015, .01]]
-        bins = [x_bins, rmin, rmax, y_bins, rmin, rmax]
         cut_string = TCut(cut) + self.Cut.CutStrings['tracks']
         cut_string = self.Cut.generate_special_cut(excluded=['fiducial']) if cut == 'all' else cut_string
-        p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DiamondName), *bins)
+        p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DiamondName), *self.Plots.get_global_bins(res))
         self.tree.Draw('({s}>10)*100:dia_track_y[{r1}]:dia_track_x[{r1}]>>p_em'.format(s=self.generate_signal_name(), r1=self.DiamondNumber - 1), cut_string, 'goff')
         set_statbox(entries=4, opt=1000000010, x=.81)
         self.format_histo(p, x_tit='Track x [cm]', y_tit='Track y [cm]', z_tit='Efficiency [%]', y_off=1.4, z_off=1.5, ncont=100)
         self.save_histo(p, 'Efficiency Map', show, lm=.13, rm=.17, draw_opt='colz')
 
-    def draw_signal_map(self, factor=1.5, cut=None, fid=False, hitmap=False, redo=False, show=True):
+    def draw_signal_map(self, res=1.5, cut=None, fid=False, hitmap=False, redo=False, show=True):
         cut = self.Cut.generate_special_cut(excluded=['fiducial']) if not fid and cut is None else cut
         cut = self.Cut.all_cut if cut is None else TCut(cut)
         pickle_path = self.make_pickle_path('SignalMaps', run=self.RunNumber, ch=self.DiamondNumber, suf=cut.GetName())
 
         def func():
-            rmin, rmax = -.4, .4
-            # get bin size via digital resolution of the telescope pixels
-            x_bins, y_bins = [int(ceil(((rmax - rmin) / size * sqrt(12) / factor))) for size in [.015, .01]]
-            bins = [x_bins, rmin, rmax, y_bins, rmin, rmax]
             self.set_root_output(0)
             name = 'h_hm' if hitmap else 'h_sm'
-            h1 = TH2I(name, 'Diamond Hit Map', *bins) if hitmap else TProfile2D(name, 'Signal Map', *bins)
+            h1 = TH2I(name, 'Diamond Hit Map', *self.Plots.get_global_bins(res)) if hitmap else TProfile2D(name, 'Signal Map', *self.Plots.get_global_bins(res))
             self.log_info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.DiamondName, run=self.RunNumber, mode='hit' if hitmap else 'signal '))
             sig = self.generate_signal_name()
             x_var, y_var = (self.Cut.get_track_var(self.DiamondNumber - 1, v) for v in ['x', 'y'])
             self.tree.Draw('{z}{y}:{x}>>{h}'.format(z=sig + ':' if not hitmap else '', x=x_var, y=y_var, h=name), cut, 'goff')
             self.set_dia_margins(h1)
             self.set_ph_range(h1)
-            self.format_histo(h1, x_tit='track_x [cm]', y_tit='track_y [cm]', y_off=1.4, z_off=1.3, z_tit='Pulse Height [au]', ncont=50, ndiv=5)
+            z_tit = 'Number of Entries' if hitmap else 'Pulse Height [au]'
+            self.format_histo(h1, x_tit='track_x [cm]', y_tit='track_y [cm]', y_off=1.4, z_off=1.3, z_tit=z_tit, ncont=50, ndiv=510)
             self.SignalMapHisto = h1
             return h1
 
@@ -316,7 +309,7 @@ class PadAnalysis(Analysis):
         return h
 
     def draw_dia_hitmap(self, show=True, factor=1.5, cut=None, fid=False):
-        return self.draw_signal_map(show=show, factor=factor, cut=cut, fid=fid, hitmap=True)
+        return self.draw_signal_map(show=show, res=factor, cut=cut, fid=fid, hitmap=True)
 
     def set_dia_margins(self, h, size=.3):
         # find centers in x and y
