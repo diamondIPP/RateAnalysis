@@ -292,7 +292,7 @@ class ChannelCut(Cut):
         show = False if show_all else show
 
         def func():
-            print 'calculating signal threshold for bucket cut of run {run} and ch{ch}...'.format(run=self.analysis.RunNumber, ch=self.channel)
+            t = self.log_info('Calculating signal threshold for bucket cut of run {run} and {d} ...'.format(run=self.analysis.RunNumber, d=self.DiamondName), next_line=False)
             h = TH1F('h', 'Bucket Cut', 100, -50, 150)
             draw_string = '{name}>>h'.format(name=self.analysis.SignalName)
             fid = self.CutStrings['fiducial']
@@ -379,6 +379,7 @@ class ChannelCut(Cut):
 
             self.RootObjects.append([sig_fit, ped_fit, gr2, c])
 
+            self.add_info(t)
             return max_err
 
         threshold = func() if show or show_all else None
@@ -389,10 +390,11 @@ class ChannelCut(Cut):
         picklepath = self.make_pickle_path('Pedestal', 'Cut', self.RunNumber, self.channel)
 
         def func():
-            print 'generating pedestal cut for {dia} of run {run}...'.format(run=self.analysis.RunNumber, dia=self.analysis.DiamondName)
+            t = self.log_info('generating pedestal cut for {dia} of run {run} ...'.format(run=self.analysis.RunNumber, dia=self.analysis.DiamondName), next_line=False)
             h1 = TH1F('h_pdc', 'Pedestal Distribution', 600, -150, 150)
             self.analysis.tree.Draw('{name}>>h_pdc'.format(name=self.analysis.PedestalName), '', 'goff')
             fit_pars = self.fit_fwhm(h1, do_fwhm=True, draw=False)
+            self.add_info(t)
             return FitRes(fit_pars)
 
         fit = self.do_pickle(picklepath, func)
@@ -426,11 +428,10 @@ class ChannelCut(Cut):
         pickle_path = self.make_pickle_path('Cuts', 'TimingRange', self.RunNumber, self.channel)
 
         def func():
-            print 'generating timing cut for {dia} of run {run}...'.format(run=self.analysis.RunNumber, dia=self.analysis.DiamondName)
-
+            t = self.log_info('Generating timing cut for {dia} of run {run} ...'.format(run=self.analysis.RunNumber, dia=self.analysis.DiamondName), next_line=False)
             gROOT.SetBatch(1) if not show else self.do_nothing()
             num = self.analysis.SignalNumber
-            cut = self.generate_special_cut(excluded=['bucket', 'timing'])
+            cut = self.generate_special_cut(excluded=['bucket', 'timing'], prnt=False)
 
             # estimate timing
             draw_string = 'IntegralPeakTime[{num}]'.format(num=num)
@@ -442,7 +443,6 @@ class ChannelCut(Cut):
             h1.Fit(fit1, 'q0')
             h1.GetListOfFunctions().Add(fit1)
             original_mpv = fit1.GetParameter(1)
-            print 'mean: {0}, sigma: {1}'.format(original_mpv, fit1.GetParameter(2))
 
             # extract timing correction
             h2 = TProfile('tcorr', 'Original Peak Position vs Trigger Cell', 1024, 0, 1024)
@@ -451,7 +451,7 @@ class ChannelCut(Cut):
             h2.Fit(fit2, 'q0',)
             h2.GetListOfFunctions().Add(fit2)
             self.format_histo(h2, x_tit='trigger cell', y_tit='signal peak time', y_off=1.5)
-            self.RootObjects.append(self.save_histo(h2, 'OriPeakPosVsTriggerCell', False, self.analysis.save_dir, lm=.12))
+            self.save_histo(h2, 'OriPeakPosVsTriggerCell', False, self.analysis.save_dir, lm=.12, prnt=show)
             t_correction = '({p1}* trigger_cell + {p2} * trigger_cell*trigger_cell)'.format(p1=fit2.GetParameter(1), p2=fit2.GetParameter(2))
 
             # get time corrected sigma
@@ -461,7 +461,7 @@ class ChannelCut(Cut):
             h3.Fit(fit3, 'q0')
             h3.GetListOfFunctions().Add(fit3)
             self.format_histo(h3, x_tit='time [ns]', y_tit='entries', y_off=2.1)
-            self.RootObjects.append(self.save_histo(h3, 'TimingCorrection', False, self.analysis.save_dir, lm=.15))
+            self.save_histo(h3, 'TimingCorrection', False, self.analysis.save_dir, lm=.15, prnt=show)
             gROOT.SetBatch(0)
 
             if show:
@@ -514,6 +514,8 @@ class ChannelCut(Cut):
 
                 self.RootObjects.append([c, h4, h5, h6, h1, stack, l])
 
+            self.add_info(t)
+            self.log_info('Peak Timing: Mean: {0}, sigma: {1}'.format(original_mpv, fit1.GetParameter(2)))
             return {'t_corr': fit2, 'timing_corr': fit3}
         fits = func() if show else None
         fits = self.do_pickle(pickle_path, func, fits)

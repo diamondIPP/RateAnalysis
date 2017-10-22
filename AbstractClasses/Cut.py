@@ -47,7 +47,7 @@ class Cut(Elementary):
     def load_run_config(self):
         return self.load_run_configs(self.analysis.RunNumber)
 
-    def generate_special_cut(self, excluded=None, included=None, name='special_cut'):
+    def generate_special_cut(self, excluded=None, included=None, name='special_cut', prnt=True):
         cut = TCut(name, '')
         self.NCuts = 0
         for key, value in self.CutStrings.iteritems():
@@ -61,7 +61,7 @@ class Cut(Elementary):
                 continue
             cut += value
             self.NCuts += 1
-        self.log_info('generated {name} cut with {num} cuts'.format(name=name, num=self.NCuts))
+        self.log_info('generated {name} cut with {num} cuts'.format(name=name, num=self.NCuts)) if prnt else do_nothing()
         return cut
 
     def generate_all_cut(self):
@@ -356,7 +356,7 @@ class Cut(Elementary):
 
     def find_pad_beam_interruptions(self):
         """ Looking for the beam interruptions by investigating the pulser rate. """
-        print 'Searching for beam interruptions...'
+        t = self.log_info('Searching for beam interruptions of run {r} ...'.format(r=self.RunNumber), next_line=False)
         binning = 200
         nbins = int(self.analysis.run.tree.GetEntries()) / binning
         rate = []
@@ -376,12 +376,12 @@ class Cut(Elementary):
                 tup = [0, 0]
             last_rate = value
         interruptions = self.__create_jump_ranges(jumps)
+        self.add_info(t)
         return interruptions, jumps
 
     def __create_jump_ranges(self, jumps):
         ex_range = self.CutConfig['JumpExcludeRange']
         interruptions = []
-        print 'generating jump ranges...'
         time_offset = self.analysis.run.startTime
         t_max = (self.analysis.run.get_time_at_event(-1) - time_offset) / 1000.
         last_stop = 0
