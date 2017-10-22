@@ -160,11 +160,7 @@ class AnalysisCollection(Elementary):
         old_verbose = self.FirstAnalysis.verbose
         self.set_verbose(False)
         if self.Type == 'voltage scan':
-            self.draw_ph_vs_voltage(show=False)
-            self.draw_ph_vs_voltage(show=False, pulser=True)
-            self.VoltageScan.draw_pedestals(show=False)
-            self.VoltageScan.draw_pedestals(show=False, sigma=True)
-            self.VoltageScan.draw_pedestals(show=False, pulser=True)
+            self.VoltageScan.draw_all()
         else:
             self.draw_pulse_heights(binning=10000, show=False)
             self.draw_pulser_info(do_fit=False, show=False)
@@ -248,51 +244,6 @@ class AnalysisCollection(Elementary):
         self.save_canvas(c, self.save_dir, 'PhPulserCurrent', show=show)
         self.RootObjects.append([ph, cur, pul, c, legends, pads, run_info])
         # self.FirstAnalysis.run.reset_info_legend()
-
-    def draw_ph_vs_voltage(self, binning=10000, pulser=False, redo=False, show=True):
-        gr1 = self.make_tgrapherrors('gStatError', 'stat. error', self.get_color())
-        gStyle.SetEndErrorSize(4)
-        gr_first = self.make_tgrapherrors('gFirst', 'first run', marker=22, color=2, marker_size=2)
-        gr_last = self.make_tgrapherrors('gLast', 'last run', marker=23, color=2, marker_size=2)
-        gr_errors = self.make_tgrapherrors('gFullError', 'stat. + repr. error', marker=0, color=602, marker_size=0)
-
-        # flux_errors = self.draw_ph_distributions_below_flux(flux=80, show=False, save_plot=False)
-        # rel_sys_error = flux_errors[1] / flux_errors[0]
-        rel_sys_error = 0
-        i, j = 0, 0
-        for key, ana in self.collection.iteritems():
-            fit1 = ana.draw_pulse_height(binning=binning, corr=True, save=redo, show=False) if not pulser else ana.Pulser.draw_distribution_fit(show=False, save=False)
-            x = ana.run.RunInfo['dia{nr}hv'.format(nr=self.DiamondNumber)]
-            s, e = (fit1.Parameter(0), fit1.ParError(0)) if not pulser else (fit1.Parameter(1), fit1.ParError(1))
-            gr1.SetPoint(i, x, s)
-            self.log_info('{x}\t{s:5.2f} {e:3.2f}'.format(x=x, s=s, e=e))
-            gr1.SetPointError(i, 0, e)
-            gr_errors.SetPoint(i, x, s)
-            gr_errors.SetPointError(i, 0, e + rel_sys_error * s)
-            # set special markers for the first and last run
-            if i == 0:
-                gr_first.SetPoint(0, x, s)
-            if j == len(self.collection) - 1:
-                gr_last.SetPoint(0, x, s)
-            i += 1
-            j += 1
-        graphs = [gr_errors, gr1]
-        gr_line = gr1.Clone()
-        self.format_histo(gr_line, name='gLine', color=920)
-        graphs += [gr_first, gr_last]
-        legend = self.make_legend(.65, .35, nentries=len(graphs))
-        # gr1.SetName('data') if len(graphs) < 5 else self.do_nothing()
-
-        mg = TMultiGraph('mg_ph', '' + self.DiamondName)
-        mg.Add(gr_line, 'l')
-        for gr in graphs:
-            if gr.GetName().startswith('gFull'):
-                legend.AddEntry(gr, gr.GetTitle(), 'l')
-            else:
-                legend.AddEntry(gr, gr.GetTitle(), 'p')
-            mg.Add(gr, 'p')
-        self.format_histo(mg, x_tit='Voltage [V]', y_tit='Pulse Height [au]', y_off=1.3, draw_first=True)
-        self.save_histo(mg, '{s}VoltageScan'.format(s='Signal' if not pulser else 'Pulser'), draw_opt='a', lm=.12, show=show)
 
     def draw_slope_vs_voltage(self, show=True, gr=False):
         h = TH1F('hSV', 'PH Slope Distribution', 10, -1, 1) if not gr else self.make_tgrapherrors('gSV', 'PH Slope vs. Voltage')
