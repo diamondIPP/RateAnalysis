@@ -39,7 +39,7 @@ class VoltageScan(Elementary):
             gr.SetPointError(i, 0, fit_par.ParError(par))
 
         self.format_histo(gr, x_tit='Voltage [V]', y_tit='Pulse Height [au]', y_off=1.4)
-        self.save_histo(gr, '{s}Pedestal{m}Voltage'.format(s='Pulser' if pulser else '', m=mode), show, lm=.13)
+        self.save_histo(gr, '{s}Pedestal{m}Voltage'.format(s='Pulser' if pulser else '', m=mode), show, lm=.13, draw_opt='ap')
         self.reset_colors()
 
     def draw_pulse_height(self, binning=10000, pulser=False, redo=False, show=True):
@@ -77,7 +77,7 @@ class VoltageScan(Elementary):
         # gr1.SetName('data') if len(graphs) < 5 else self.do_nothing()
 
         mg = TMultiGraph('mg_ph', '' + self.DiamondName)
-        mg.Add(gr_line, 'l')
+        # mg.Add(gr_line, 'l')
         for gr in graphs:
             if gr.GetName().startswith('gFull'):
                 legend.AddEntry(gr, gr.GetTitle(), 'l')
