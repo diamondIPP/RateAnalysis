@@ -47,7 +47,7 @@ class Currents(Elementary):
         self.RunNumber = self.load_run_number()
         self.RunLogs = self.load_runlogs()
         if analysis is not None:
-            self.RunInfo = analysis.run.RunInfo if not self.IsCollection else analysis.get_first_analysis().RunInfo
+            self.RunInfo = analysis.run.RunInfo if not self.IsCollection else analysis.FirstAnalysis.RunInfo
             self.Channel = analysis.channel
         # todo: add a method to extract the currents for may
         if 'dia1supply' not in self.RunInfo:
