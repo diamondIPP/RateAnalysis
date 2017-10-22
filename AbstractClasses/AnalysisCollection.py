@@ -284,7 +284,7 @@ class AnalysisCollection(Elementary):
         # gr1.SetName('data') if len(graphs) < 5 else self.do_nothing()
 
         mg = TMultiGraph('mg_ph', '' + self.DiamondName)
-        mg.Add(gr_line, 'l')
+        # mg.Add(gr_line, 'l')
         for gr in graphs:
             if gr.GetName().startswith('gFull'):
                 legend.AddEntry(gr, gr.GetTitle(), 'l')
@@ -477,7 +477,7 @@ class AnalysisCollection(Elementary):
         graph = self.do_pickle(pickle_path, func, graph)
         cut_name = '' if cut is None else TCut(cut).GetName()
         save_name = '{p}Pedestal{s}{mod}{cut}'.format(mod=mode, cut=cut_name, s='Sigma' if sigma else 'Mean', p='Pulser' if pulser else '')
-        self.save_histo(graph, save_name=save_name, show=show, logx=True if flux else False, l=legend if all_regions else None, lm=.12)
+        self.save_histo(graph, save_name=save_name, show=show, logx=True if flux else False, l=legend if all_regions else None, lm=.12, draw_opt='ap')
         return graph
 
     def draw_noise(self, flux=True, show=True, save=False):
