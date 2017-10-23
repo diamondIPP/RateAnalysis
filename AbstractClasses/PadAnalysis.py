@@ -4,7 +4,7 @@
 # ==============================================
 from argparse import ArgumentParser
 from copy import deepcopy
-from math import ceil, log
+from math import log
 from numpy import array
 from sys import stdout
 
@@ -279,10 +279,11 @@ class PadAnalysis(Analysis):
         self.format_histo(p, x_tit='Track x [cm]', y_tit='Track y [cm]', z_tit='Efficiency [%]', y_off=1.4, z_off=1.5, ncont=100)
         self.save_histo(p, 'Efficiency Map', show, lm=.13, rm=.17, draw_opt='colz')
 
-    def draw_signal_map(self, res=1.5, cut=None, fid=False, hitmap=False, redo=False, show=True):
-        cut = self.Cut.generate_special_cut(excluded=['fiducial']) if not fid and cut is None else cut
+    def draw_signal_map(self, res=1.5, cut=None, fid=False, hitmap=False, redo=False, show=True, prnt=True):
+        cut = self.Cut.generate_special_cut(excluded=['fiducial'], prnt=prnt) if not fid and cut is None else cut
         cut = self.Cut.all_cut if cut is None else TCut(cut)
-        pickle_path = self.make_pickle_path('SignalMaps', run=self.RunNumber, ch=self.DiamondNumber, suf=cut.GetName())
+        suf = '{c}_{ch}'.format(c=cut.GetName(), ch=self.Cut.CutConfig['chi2X'])
+        pickle_path = self.make_pickle_path('SignalMaps', 'Hit' if hitmap else 'Signal', run=self.RunNumber, ch=self.DiamondNumber, suf=suf)
 
         def func():
             self.set_root_output(0)
@@ -305,11 +306,11 @@ class PadAnalysis(Analysis):
         h = do_pickle(pickle_path, func, h)
         self.draw_histo(h, '', show, lm=.12, rm=.16, draw_opt='colzsame')
         self.draw_fiducial_cut()
-        self.save_canvas(canvas=get_last_canvas(), name='HitMap' if hitmap else 'SignalMap2D')
+        self.save_canvas(canvas=get_last_canvas(), name='HitMap' if hitmap else 'SignalMap2D', print_names=prnt)
         return h
 
-    def draw_dia_hitmap(self, show=True, factor=1.5, cut=None, fid=False):
-        return self.draw_signal_map(show=show, res=factor, cut=cut, fid=fid, hitmap=True)
+    def draw_dia_hitmap(self, show=True, res=1.5, cut=None, fid=False, redo=False, prnt=True):
+        return self.draw_signal_map(show=show, res=res, cut=cut, fid=fid, hitmap=True, redo=redo, prnt=prnt)
 
     def set_dia_margins(self, h, size=.3):
         # find centers in x and y

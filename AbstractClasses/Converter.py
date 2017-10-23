@@ -237,6 +237,7 @@ class Converter:
         program_dir = ''
         for i in __file__.split('/')[:-2]:
             program_dir += i + '/'
+        # todo get correct tc string
         files = glob('{prog}Configuration/Individual_Configs/*/*{tc}*_{run}_*'.format(prog=program_dir, run=run_number, tc=self.TestCampaign))
         for _file in files:
             remove(_file)
