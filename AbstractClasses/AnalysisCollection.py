@@ -6,7 +6,7 @@ from numpy import log, array, zeros, std, mean
 from dispy import JobCluster
 from functools import partial
 
-from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1, TH1F, TH2F
+from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1, TH1F, TH2F, TH2I, TProfile2D
 
 from CurrentInfo import Currents
 from Elementary import Elementary
@@ -44,6 +44,7 @@ class AnalysisCollection(Elementary):
             self.generate_threshold_pickle()
         self.add_analyses(load_tree)
         self.FirstAnalysis = self.get_first_analysis()
+        self.Plots = self.FirstAnalysis.Plots
         self.channel = self.load_channel()
 
         self.signalValues = None
@@ -995,6 +996,28 @@ class AnalysisCollection(Elementary):
                 self.format_histo(h, z_range=[glob_min, glob_max])
             self.save_histo(h, '{n}Map{nr}'.format(nr=str(i).zfill(2), n=name.title()), show=False, ind=i, draw_opt='colz', rm=.16, lm=.12)  # theta 55, phi 20
 
+    def draw_cumulative_map(self, chi2=None, res=1.5, hitmap=False, redo=False, cut=None, show=True):
+
+        self.start_pbar(self.NRuns)
+        hitmaps, histos = [], []
+        for i, ana in enumerate(self.collection.values(), 1):
+            ana.Cut.set_chi2(chi2) if chi2 else do_nothing()
+            hitmaps.append(ana.draw_dia_hitmap(show=False, cut='' if cut is None and hitmap else cut, redo=redo, prnt=False, res=res))
+            histos.append(ana.draw_signal_map(show=False, redo=redo, prnt=False, res=res, cut=cut)) if not hitmap else do_nothing()
+            self.ProgressBar.update(i)
+        self.ProgressBar.finish()
+        h_all = TH2I('hchm', 'Cumulative Diamond Hit Map', *self.Plots.get_global_bins(res)) if hitmap else TProfile2D('hcsm', 'Cumulative Signal Map', *self.Plots.get_global_bins(res))
+        if hitmap:
+            for h in hitmaps:
+                h_all.Add(h)
+        else:
+            for i, h in enumerate(histos):
+                for xbin in xrange(h.GetNbinsX()):
+                    for ybin in xrange(h.GetNbinsY()):
+                        # weight by number of hits
+                        h_all.Fill(h.GetXaxis().GetBinCenter(xbin), h.GetYaxis().GetBinCenter(ybin), h.GetBinContent(xbin, ybin), hitmaps[i].GetBinContent(xbin, ybin))
+        self.save_histo(h_all, 'Cumulative{s}Map'.format(s='Hit' if hitmap else 'Signal'), show, lm=.12, rm=.16, draw_opt='colz')
+
     def draw_signal_spreads(self, flux=True, draw=True):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         gROOT.SetBatch(1)
@@ -1057,7 +1080,7 @@ class AnalysisCollection(Elementary):
         pickle_path = self.make_pickle_path('SignalMaps', 'SigMaps', self.RunPlan, self.channel, suffix)
 
         def func():
-            histos = [ana.draw_signal_map(show=False, marg=False, fid=fid, factor=factor) for ana in self.collection.itervalues() if ana.run.Flux < low]
+            histos = [ana.draw_signal_map(show=False, marg=False, fid=fid, res=factor) for ana in self.collection.itervalues() if ana.run.Flux < low]
             h = histos[0]
             sig_map = TH2F('h_sms', 'Combined Signal Maps', h.GetNbinsX(), h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax(), h.GetNbinsY(), h.GetYaxis().GetXmin(), h.GetYaxis().GetXmax())
             for h in histos:
@@ -1368,6 +1391,7 @@ class AnalysisCollection(Elementary):
 
     def set_verbose(self, status):
         self.verbose = status
+        self.VoltageScan.verbose = status
         for ana in self.collection.itervalues():
             ana.verbose = status
             ana.Pulser.verbose = status
