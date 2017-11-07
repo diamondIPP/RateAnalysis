@@ -624,7 +624,7 @@ class PixAnalysis(Analysis):
         self.format_histo(h, x_tit='{m} Plane {p}'.format(p=plane1, m=mode), y_tit='{m} Plane {p}'.format(p=plane2, m=mode), y_off=1.5, stats=0, z_tit='Number of Entries', z_off=1.5)
         self.save_histo(h, 'PlaneCorrelation{m}{p1}{p2}'.format(m=mode.title(), p1=plane1, p2=plane2), show,  lm=.13, draw_opt='colz', rm=.17)
 
-    def draw_alignment(self, plane1=2, plane2=None, mode='y', binning=5000, chi2=1, show=True, vs_time=True):
+    def draw_alignment(self, plane1=2, plane2=None, mode='y', binning=5000, chi2=1, show=True, vs_time=True, redo=False):
         plane2 = self.Dut if plane2 is None else plane2
         picklepath = self.make_pickle_path('Alignment', run=self.RunNumber, suf='{m}_{p1}{p2}_{b}_{t}'.format(m=mode, p1=plane1, p2=plane2, b=binning, t='Time' if vs_time else 'EvtNr'))
 
@@ -634,11 +634,11 @@ class PixAnalysis(Analysis):
             h = TH3D('h_pa', 'pa', len(self.time_binning) - 1, array([t / 1000. for t in self.time_binning], 'd'), *self.Plots.get_global_bins(res=sqrt(12), mode=mode, arrays=True))
             if not vs_time:
                 h = TH3D('h_pae', 'pa', len(self.binning) - 1, array(self.binning, 'd'), *self.Plots.get_global_bins(res=sqrt(12), mode=mode, arrays=True))
-            draw_var = 'cluster_{m}pos_tel'.format(m=mode)
-            cut_string = 'clusters_per_plane[{p1}]==1&&clusters_per_plane[{p2}]==1&&cluster_plane=={{p}}'.format(p1=plane1, p2=plane2)
-            n = self.tree.Draw(draw_var, TCut(cut_string.format(p=plane1)) + TCut(self.Cut.generate_chi2(mode, chi2)), 'goff')
+            draw_var = 'cluster_{m}pos_tel[{{r}}]'.format(m=mode)
+            cut_string = TCut('n_clusters[{p1}]==1&&n_clusters[{p2}]==1'.format(p1=plane1, p2=plane2)) + TCut(self.Cut.generate_chi2(mode, chi2))
+            n = self.tree.Draw(draw_var.format(r=plane1), cut_string, 'goff')
             y = [self.tree.GetV1()[i] for i in xrange(n)]
-            n = self.tree.Draw('{v}:{t}'.format(v=draw_var, t='time' if vs_time else 'event_number'), TCut(cut_string.format(p=plane2)) + TCut(self.Cut.generate_chi2(mode, chi2)), 'goff')
+            n = self.tree.Draw('{v}:{t}'.format(v=draw_var.format(r=plane2), t='time' if vs_time else 'event_number'), cut_string, 'goff')
             t = [self.tree.GetV1()[i] for i in xrange(n)]
             x = [self.tree.GetV2()[i] / 1000. if vs_time else self.tree.GetV2()[i] for i in xrange(n)]
             for i, j, k in zip(x, y, t):
@@ -654,7 +654,8 @@ class PixAnalysis(Analysis):
             self.add_info(start)
             return g
 
-        gr = self.do_pickle(picklepath, func)
+        gr = func() if redo else None
+        gr = self.do_pickle(picklepath, func, gr)
         self.save_histo(gr, 'PixelAligment', show, draw_opt='alp', lm=.13, prnt=show)
         return gr
 
