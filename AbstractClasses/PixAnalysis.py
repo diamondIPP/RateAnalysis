@@ -172,21 +172,15 @@ class PixAnalysis(Analysis):
         self.save_histo(h, '{p}Disto'.format(p='Ph' if electrons else 'Vcal'), show, lm=0.13)
         return h
 
-    def draw_signal_distribution(self, cut=None, show=True, prnt=True, sup_zero=False, pix=None, roc=None, vcal=False, redo=False):
-        area_string = '_'.join(str(pi) for pi in pix) if pix is not None else 'all'
+    def draw_signal_distribution(self, cut=None, show=True, prnt=True, roc=None, vcal=False, redo=False):
         roc = self.Dut if roc is None else roc
-        pickle_path = self.make_pickle_path('PulseHeight', run=self.RunNumber, suf='{r}_{a}{z}'.format(r=roc, a=area_string, z='_0' if sup_zero else ''))
-        cut_string = deepcopy(self.Cut.all_cut) if cut is None else TCut(cut)
-        cut_string += 'cluster_charge>0'.format(d=self.Dut) if sup_zero else ''
-        cut_string += 'cluster_plane=={r}'.format(r=roc)
-        if pix is not None:
-            pix = [pix, pix] if not type(pix[0]) == list else pix
-            cut_string += 'cluster_col>={c1}&&cluster_col<={c2}&&cluster_row>={r1}&&cluster_row<={r2}'.format(c1=pix[0][0], c2=pix[1][0], r1=pix[0][1], r2=pix[1][1], d=self.Dut)
+        pickle_path = self.make_pickle_path('PulseHeight', run=self.RunNumber, suf=roc)
+        cut_string = self.Cut.generate_special_cut(excluded='masks') if cut is None else TCut(cut)
 
         def func():
             self.set_root_output(False)
             h1 = TH1D('h_phd', 'Pulse Height Distribution - {d}'.format(d=self.DiamondName), *self.Settings['phBins' if not vcal else 'vcalBins'])
-            self.tree.Draw('cluster_charge{v}>>h_phd'.format(d=self.Dut, v='/47.5 + 427.4/47.5' if vcal else ''), cut_string, 'goff')
+            self.tree.Draw('cluster_charge[{d}]{v}>>h_phd'.format(d=self.Dut, v='/47.5 + 427.4/47.5' if vcal else ''), cut_string, 'goff')
             set_statbox(entries=8, opt=1000000010, x=.92)
             self.format_histo(h1, x_tit='Pulse Height [{u}]'.format(u='vcal' if vcal else 'e'), y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor)
             self.save_histo(h1, 'PulseHeightDisto{c}'.format(c=make_cut_string(cut, self.Cut.NCuts)), show, lm=.13, prnt=prnt, rm=.06)
