@@ -376,23 +376,21 @@ class PixAnalysis(Analysis):
         hs = OrderedDict([(str(n), self.draw_signal_distribution(cut=cut_string + TCut('clusters_per_plane[{r}] == {n}'.format(r=self.Dut, n=n)), show=False, redo=True)) for n in xrange(1, 4)])
         hs['>3'] = self.draw_signal_distribution(cut=cut_string + TCut('clusters_per_plane[{r}] > 3'.format(r=self.Dut)), show=False, redo=True)
         stack = THStack('h_cph', 'Pulser Height per Cluster Size')
-        l = self.make_legend(y2=.5, nentries=5, x1=.59)
+        l1 = self.make_legend(y2=.5, nentries=5, x1=.59)
         for name, h in hs.iteritems():
             self.format_histo(h, color=self.get_color())
             stack.Add(h, name)
-            l.AddEntry(h, name, 'h')
+            l1.AddEntry(h, name, 'h')
         self.format_histo(stack, x_tit='Pulse Height [e]', y_tit='Number of Entries', y_off=1.4, draw_first=True)
-        self.save_histo(stack, 'ClusterPulseHeight', show, lm=.13, l=l, draw_opt='nostack', gridy=True)
+        self.save_histo(stack, 'ClusterPulseHeight', show, lm=.13, l=l1, draw_opt='nostack', gridy=True)
         self.reset_colors()
 
-    def draw_pulse_height_map(self, show=True, cut=None, roc=None, sup_zero=False, fid=False):
+    def draw_pulse_height_map(self, show=True, cut=None, roc=None, fid=False):
         roc = self.Dut if roc is None else roc
         cut_string = (self.Cut.generate_special_cut(['fiducial']) if not fid else deepcopy(z.Cut.all_cut)) if cut is None else TCut(cut)
-        cut_string += 'cluster_plane=={r}'.format(r=roc)
-        cut_string += 'cluster_charge>0'.format(d=self.Dut) if sup_zero else ''
         self.set_root_output(False)
-        h = TProfile2D('p_phm', 'Pulse Height Map', *self.Settings['2DBins'])
-        self.tree.Draw('cluster_charge:cluster_row:cluster_col>>p_phm'.format(d=self.Dut), cut_string, 'goff')
+        h = TProfile2D('p_phm', 'Pulse Height Map', *self.Plots.get_global_bins(sqrt(12)))
+        self.tree.Draw('cluster_charge[{n}]:cluster_ypos_tel[{n}]:cluster_xpos_tel[{n}]>>p_phm'.format(n=roc), cut_string, 'goff')
         set_statbox(only_entries=True, x=0.81)
         self.format_histo(h, x_tit='col', y_tit='row', z_tit='Pulse Height [e]', z_off=1.7, y_off=1.4)
         self.save_histo(h, 'PulseHeightMap', show, lm=.13, rm=.17, draw_opt='colz')
@@ -428,7 +426,7 @@ class PixAnalysis(Analysis):
 
     def draw_all_efficiencies(self, show=True):
         stack = THStack('s_he', 'Raw Hit Efficiencies')
-        l = self.make_legend(y2=.5, nentries=5, x1=.59)
+        l1 = self.make_legend(y2=.5, nentries=5, x1=.59)
         for roc in xrange(self.NRocs):
             h = self.draw_hit_efficiency(roc, show=False, cut='')
             fit = self.fit_hit_efficiency(roc, show=False, cut='')
@@ -436,10 +434,10 @@ class PixAnalysis(Analysis):
             stack.Add(h, 'ROC{n}'.format(n=roc))
             leg_string = 'ROC{n}'.format(n=roc) if roc < 4 else self.load_diamond_name(roc - 3)
             leg_string += ' ({v:5.2f}%)'.format(v=fit.Parameter(0))
-            l.AddEntry(h, leg_string, 'pl')
+            l1.AddEntry(h, leg_string, 'pl')
         self.format_histo(stack, x_tit='Time [hh:mm]', y_tit='Efficiency [%]', y_off=1.4, ndiv=505, y_range=[-5, 105], stats=0, draw_first=True)
         set_time_axis(stack, off=self.run.startTime / 1000 + 3600)
-        self.save_histo(stack, 'HitEfficiencies', show, lm=.13, l=l, draw_opt='nostack', gridy=True)
+        self.save_histo(stack, 'HitEfficiencies', show, lm=.13, l=l1, draw_opt='nostack', gridy=True)
         self.reset_colors()
         return stack
 
@@ -479,7 +477,7 @@ class PixAnalysis(Analysis):
     def draw_efficiency_map(self, res=5, cut='', show=True):
         cut_string = TCut(cut) + self.Cut.CutStrings['tracks']
         cut_string = self.Cut.generate_special_cut(excluded=['masks', 'fiducial', 'rhit']) if cut == 'all' else cut_string
-        p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DiamondName), *self.plots.get_global_bins(res=res))
+        p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DiamondName), *self.Plots.get_global_bins(res=res))
         self.tree.Draw('(n_hits[{r}]>0)*100:dia_track_y[{r1}]:dia_track_x[{r1}]>>p_em'.format(r=self.Dut, r1=self.Dut - 4), cut_string, 'goff')
         set_statbox(entries=4, opt=1000000010, x=.81)
         self.format_histo(p, x_tit='Track x [cm]', y_tit='Track y [cm]', z_tit='Efficiency [%]', y_off=1.4, z_off=1.5)
@@ -487,7 +485,7 @@ class PixAnalysis(Analysis):
 
     def draw_track_occupancy(self, cut='', show=True, res=2):
         cut_string = self.Cut.all_cut if cut is None else TCut(cut) + self.Cut.CutStrings['tracks']
-        h = TH2D('h_to', 'Track Occupancy {d}'.format(d=self.DiamondName), *self.plots.get_global_bins(res=res))
+        h = TH2D('h_to', 'Track Occupancy {d}'.format(d=self.DiamondName), *self.Plots.get_global_bins(res=res))
         self.tree.Draw('diam{nr}_track_y:diam{nr}_track_x>>h_to'.format(nr=self.Dut - 3), cut_string, 'goff')
         set_statbox(entries=4, opt=1000000010, x=.81)
         self.format_histo(h, x_tit='Track x [cm]', y_tit='Track y [cm]', z_tit='Number of Entries', y_off=1.4, z_off=1.5)
@@ -516,8 +514,8 @@ class PixAnalysis(Analysis):
         # todo
         pass
 
-    def find_landau(self, aver=10, m1=2500, m2=5000, s1=500, s2=1600, pix=([18, 51], [18, 53])):
-        seed = self.draw_signal_distribution(show=False, sup_zero=False, pix=pix)
+    def find_landau(self, aver=10, m1=2500, m2=5000, s1=500, s2=1600):
+        seed = self.draw_signal_distribution(show=False)
         h = deepcopy(seed)
         m_range = range(m1, m2 + 1, 100)
         s_range = range(s1, s2 + 1, 50)
@@ -562,9 +560,9 @@ class PixAnalysis(Analysis):
         mins = [fit.GetMinimumX() for fit in fits]
         print mins, mins[1] / mins[0] / 4
 
-    def model_landau(self, seed=None, h=None, m=10000, s=1000, show=True, thresh=False, pix=([18, 51], [18, 53])):
+    def model_landau(self, seed=None, h=None, m=10000, s=1000, show=True, thresh=False):
         # seed = self.draw_pulse_height_disto(show=False, sup_zero=False, col=col) if seed is None else seed
-        seed = self.draw_signal_distribution(show=False, sup_zero=False, pix=pix) if seed is None else seed
+        seed = self.draw_signal_distribution(show=False) if seed is None else seed
         h = deepcopy(seed) if h is None else h
         h.SetName('h_ml')
         n = seed.GetEntries()
@@ -581,16 +579,16 @@ class PixAnalysis(Analysis):
         h.SetFillColor(self.FillColor)
         seed.SetFillStyle(3017)
         h.SetFillStyle(3018)
-        l = self.make_legend(y2=.76)
-        l.AddEntry(h, 'Simulation', 'f')
-        l.AddEntry(seed, 'Original', 'f')
-        self.draw_histo(h, show=show, l=l)
+        l1 = self.make_legend(y2=.76)
+        l1.AddEntry(h, 'Simulation', 'f')
+        l1.AddEntry(seed, 'Original', 'f')
+        self.draw_histo(h, show=show, l=l1)
         self.draw_histo(seed, show=show, draw_opt='same', canvas=gROOT.GetListOfCanvases()[-1])
         seed.Draw('same')
         return diff
 
     def landau_vid(self, save=False, mpv=5000, sigma=820):
-        h = self.draw_signal_distribution(sup_zero=False)
+        h = self.draw_signal_distribution()
         h.GetYaxis().SetRangeUser(0, 2500)
         zero_bin = h.FindBin(0)
         zeros = int(h.GetBinContent(zero_bin))
@@ -613,7 +611,7 @@ class PixAnalysis(Analysis):
 
     def draw_correlation(self, plane1=2, plane2=None, mode='y', chi2=1, show=True, start=0, evts=1000000000):
         plane2 = self.Dut if plane2 is None else plane2
-        h = TH2D('h_pc', 'Plane Correlation', *self.plots.get_global_bins(mode=mode, res=sqrt(12)))
+        h = TH2D('h_pc', 'Plane Correlation', *self.Plots.get_global_bins(mode=mode, res=sqrt(12)))
         draw_var = 'cluster_{m}pos_tel'.format(m=mode)
         cut_string = 'clusters_per_plane[{p1}]==1&&clusters_per_plane[{p2}]==1&&cluster_plane=={{p}}'.format(p1=plane1, p2=plane2)
         n = self.tree.Draw(draw_var, TCut(cut_string.format(p=plane1)) + TCut(self.Cut.generate_chi2(mode, chi2)), 'goff', evts, start)
@@ -633,9 +631,9 @@ class PixAnalysis(Analysis):
         def func():
             start = self.log_info('Checking for alignment between plane {p1} and {p2} ... '.format(p1=plane1, p2=plane2), next_line=False)
             self.set_bin_size(binning)
-            h = TH3D('h_pa', 'pa', len(self.time_binning) - 1, array([t / 1000. for t in self.time_binning], 'd'), *self.plots.get_global_bins(res=sqrt(12), mode=mode, arrays=True))
+            h = TH3D('h_pa', 'pa', len(self.time_binning) - 1, array([t / 1000. for t in self.time_binning], 'd'), *self.Plots.get_global_bins(res=sqrt(12), mode=mode, arrays=True))
             if not vs_time:
-                h = TH3D('h_pae', 'pa', len(self.binning) - 1, array(self.binning, 'd'), *self.plots.get_global_bins(res=sqrt(12), mode=mode, arrays=True))
+                h = TH3D('h_pae', 'pa', len(self.binning) - 1, array(self.binning, 'd'), *self.Plots.get_global_bins(res=sqrt(12), mode=mode, arrays=True))
             draw_var = 'cluster_{m}pos_tel'.format(m=mode)
             cut_string = 'clusters_per_plane[{p1}]==1&&clusters_per_plane[{p2}]==1&&cluster_plane=={{p}}'.format(p1=plane1, p2=plane2)
             n = self.tree.Draw(draw_var, TCut(cut_string.format(p=plane1)) + TCut(self.Cut.generate_chi2(mode, chi2)), 'goff')
@@ -674,7 +672,7 @@ class PixAnalysis(Analysis):
         pnts = int(ceil(self.run.n_entries / evnts)) if pnts is None else pnts
         n_graphs = 2 * rnge + 1
         graphs = [self.make_tgrapherrors('g_to{i}'.format(i=i), '', color=self.get_color(), marker_size=.5) for i in xrange(n_graphs)]
-        l = self.make_legend(x1=.8, y2=.5, nentries=n_graphs - 1)
+        l1 = self.make_legend(x1=.8, y2=.5, nentries=n_graphs - 1)
         self.start_pbar(pnts * evnts - start)
         p1 = self.Dut
         p2 = 2
@@ -705,10 +703,10 @@ class PixAnalysis(Analysis):
         self.ProgressBar.finish()
         mg = TMultiGraph('m_eo', 'Correlations')
         for i, gr in enumerate(graphs):
-            l.AddEntry(gr, 'offset: {i}'.format(i=i - rnge), 'pl')
+            l1.AddEntry(gr, 'offset: {i}'.format(i=i - rnge), 'pl')
             mg.Add(gr, 'pl')
         self.format_histo(mg, x_tit='Event Number', y_tit='Correlation Factor', y_off=1.5, y_range=[-.2, 1], draw_first=True)
-        self.save_histo(mg, 'EventOffsets', show, draw_opt='ap', l=l, lm=.13)
+        self.save_histo(mg, 'EventOffsets', show, draw_opt='ap', l=l1, lm=.13)
         self.reset_colors()
 
     def draw_cluster_size(self, cut='', show=True):
