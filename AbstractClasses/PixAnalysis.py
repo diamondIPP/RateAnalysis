@@ -36,18 +36,17 @@ class PixAnalysis(Analysis):
         self.Bias = self.run.Bias[dut - 1]
         self.Dut = dut + 3
         self.save_dir = '{dia}/{run}/'.format(run=str(self.RunNumber).zfill(3), dia=self.DiamondName)
-        self.NRocs = self.load_n_rocs()
 
         if load_tree:
             # stuff
-            self.plots.save_dir = self.save_dir
+            self.Plots.save_dir = self.save_dir
+            self.Settings = self.Plots.Settings
 
             # cuts
-            self.Settings = self.plots.Settings
             self.Cut = CutPix(self)
 
             # alignment
-            # self.IsAligned = self.check_alignment()
+            self.IsAligned = self.check_alignment()
 
             # pulse height calibrations
             self.Fit = None
@@ -78,12 +77,6 @@ class PixAnalysis(Analysis):
     def load_diamond_name(self, dut):
         assert dut in [1, 2, 3], 'You have to choose either dut 1, 2 or 3'
         return self.run.DiamondNames[dut - 1]
-
-    def load_n_rocs(self):
-        if self.ana_config_parser.has_option('BASIC', 'n_rocs'):
-            return self.ana_config_parser.getint('BASIC', 'n_rocs')
-        else:
-            return 7
     # endregion
 
     def do_analysis(self, do_cut_dist=False, do_res_ana=False, do_cut_ana=False, do_occupancy=True, do_pulse_height=True):
