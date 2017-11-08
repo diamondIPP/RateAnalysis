@@ -97,8 +97,8 @@ class PixAnalysis(Analysis):
     # ==========================================================================
     # region OCCUPANCY
     def draw_occupancy(self, roc=None, name=None, cluster=True, tel_coods=False, cut='', show=True):
-        roc = self.Dut if roc is None else roc
         name = self.DiamondName if roc is None else name
+        roc = self.Dut if roc is None else roc
         return self._draw_occupancy(roc, name, cluster, tel_coods, cut, show)
 
     def draw_time_occupancy(self, cut=None, roc=None, fid=False, binning=10000):
