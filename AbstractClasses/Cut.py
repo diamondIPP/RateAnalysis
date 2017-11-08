@@ -473,3 +473,20 @@ class Cut(Elementary):
             return 'dia_track_{m}[{n}]'.format(m=mode, n=num)
         else:
             return 'diam{n}_track_{m}'.format(m=mode, n=num + 1)
+
+    def show_cut_contributions(self):
+        contributions = {}
+        cut_events = 0
+        cuts = TCut('consecutive', '')
+        total_events = self.analysis.run.n_entries
+        output = OrderedDict()
+        for cut in self.CutStrings.values():
+            name = cut.GetName()
+            if not name.startswith('old') and name != 'all_cuts' and name not in contributions and str(cut):
+                cuts += cut
+                events = self.analysis.tree.GetEntries('!({0})'.format(str(cuts)))
+                output[name] = (1. - float(events) / total_events) * 100.
+                events -= cut_events
+                print name.rjust(18), '{0:5d} {1:04.1f}%'.format(events, output[name])
+                contributions[cut.GetName()] = events
+                cut_events += events
