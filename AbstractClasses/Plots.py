@@ -81,8 +81,8 @@ class Plots(Elementary):
 
     def get_global_bins(self, res, mode=None, arrays=False):
         x, y = self.Settings['globalCoods'][:2], self.Settings['globalCoods'][2:]
-        size_x = self.Settings['xpix'] if mode == 'x' else self.Settings['ypix']
-        size_y = self.Settings['ypix'] if mode == 'y' else self.Settings['xpix']
+        size_x = self.Settings['xpix'] if mode in ['x', None] else self.Settings['ypix']
+        size_y = self.Settings['ypix'] if mode in ['y', None] else self.Settings['xpix']
         bins = [int(ceil((x[1] - x[0]) / size_x * sqrt(12) / res)), x[0], x[1], int(ceil((y[1] - y[0]) / size_y * sqrt(12) / res)), y[0], y[1]]
         x_arr, y_arr = arange(x[0], x[1], size_x, 'd'), arange(y[0], y[1], size_y, 'd')
         return bins if not arrays else [len(x_arr) - 1, x_arr, len(y_arr) - 1, y_arr]
