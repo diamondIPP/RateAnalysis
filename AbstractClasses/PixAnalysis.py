@@ -74,6 +74,10 @@ class PixAnalysis(Analysis):
 
     # ==========================================================================
     # region INIT
+
+    def load_run_config(self):
+        return self.load_run_configs(0)
+
     def load_diamond_name(self, dut):
         assert dut in [1, 2, 3], 'You have to choose either dut 1, 2 or 3'
         return self.run.DiamondNames[dut - 1]
