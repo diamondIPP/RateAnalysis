@@ -261,6 +261,9 @@ class CutPix(Cut):
         cut_string = TCut(cut_string) + TCut('{p}=={r}'.format(r=self.Dut, p=plane_var))
         return '!({c})'.format(c=cut_string.GetTitle())
 
+    def generate_pix_cut(self, col, row):
+        return TCut('cluster_col[{r}]=={x} && cluster_row[{r}]=={y}'.format(r=self.Dut, x=col, y=row))
+
     @staticmethod
     def add_adc_cut(adc):
         if adc is not None:
