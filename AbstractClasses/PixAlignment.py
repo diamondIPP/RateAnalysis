@@ -249,7 +249,7 @@ class PixAlignment:
                     # there is a jump if the last bucket is already aligned again
                     if correlation.get_zero(start_bucket=-1, debug=debug) > self.Threshold:
                         # get the events when it starts losing correlation and when the offset correlation falls back into zero offset
-                        l_off_event, o_off_event, off = self.find_jump(correlation, debug=True)
+                        l_off_event, o_off_event, off = self.find_jump(correlation, debug=debug)
                         if off is not None and o_off_event > l_off_event:
                             offsets[l_off_event] = off
                             offsets[o_off_event] = -off
