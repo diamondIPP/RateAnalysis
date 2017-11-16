@@ -10,6 +10,7 @@ from numpy import mean, sqrt
 from Utils import set_root_output, log_message, time, print_elapsed_time, calc_mean, round_up_to
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 from Correlation import Correlation
+from os import remove
 
 
 class PixAlignment:
@@ -29,7 +30,10 @@ class PixAlignment:
         self.NewFile = None
         self.NewTree = None
         # alignment
-        self.NEntries = int(self.InTree.GetEntries())
+        try:
+            self.NEntries = int(self.InTree.GetEntries())
+        except AttributeError:
+            remove(self.Converter.get_root_file_path())
         self.AtEntry = 0
         self.IsAligned = self.check_alignment_fast()
         if not self.IsAligned:
