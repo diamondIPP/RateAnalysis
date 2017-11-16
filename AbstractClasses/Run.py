@@ -289,20 +289,23 @@ class Run(Elementary):
             return
         mask_file = join(self.maskfilepath, self.RunInfo['maskfile'])
         maskdata = {}
-        try:
-            f = open(mask_file, 'r')
-            for line in f:
-                if line.startswith('#'):
-                    continue
-                if len(line) > 3:
-                    line = line.split()
-                    roc = int(line[1])
-                    if roc not in maskdata:
-                        maskdata[roc] = {}
-                    maskdata[roc][line[0]] = (int(line[2]), int(line[3]))
-            f.close()
-        except IOError:
-            log_warning('Could not find mask file {f}! Not taking any mask!'.format(f=mask_file))
+        if self.RunInfo['maskfile'].lower() in ['no mask', 'None']:
+            pass
+        else:
+            try:
+                f = open(mask_file, 'r')
+                for line in f:
+                    if line.startswith('#'):
+                        continue
+                    if len(line) > 3:
+                        line = line.split()
+                        roc = int(line[1])
+                        if roc not in maskdata:
+                            maskdata[roc] = {}
+                        maskdata[roc][line[0]] = (int(line[2]), int(line[3]))
+                f.close()
+            except IOError:
+                log_warning('Could not find mask file {f}! Not taking any mask!'.format(f=mask_file))
         # default pixels
         unmasked_pixels = {plane: 52 * 80 for plane in maskdata} if maskdata else {0: 52 * 80, 1: 52 * 80}
         # pass for empty file
