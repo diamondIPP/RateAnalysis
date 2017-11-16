@@ -44,7 +44,8 @@ class AnalysisCollection(Elementary):
             self.generate_threshold_pickle()
         self.add_analyses(load_tree)
         self.FirstAnalysis = self.get_first_analysis()
-        self.Plots = self.FirstAnalysis.Plots
+        if load_tree:
+            self.Plots = self.FirstAnalysis.Plots
         self.channel = self.load_channel()
 
         self.signalValues = None
