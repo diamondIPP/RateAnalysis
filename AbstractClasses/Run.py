@@ -14,7 +14,7 @@ from subprocess import check_output
 
 from Converter import Converter
 from Elementary import Elementary
-from Utils import isfloat, join, log_warning, log_critical
+from Utils import isfloat, join, log_warning, log_critical, remove_letters
 
 
 # ==============================================
@@ -382,16 +382,10 @@ class Run(Elementary):
             line = str(line)
             if str(line).lower().startswith('* peakintegral'):
                 data = re.split('[_:-]', line)
-                data[0] = data[0].replace('* PeakIntegral', '')
-                print data[0]
                 if data[0][-1].isdigit():
-                    integrals[data[0].replace('* PeakIntegral', '')] = [int(float(data[i])) for i in [1, 2]]
-                #     if data[0][-2].isdigit():
-                #         integrals[data[0][-2:]] = [int(float(data[i])) for i in [1, 2]]
-                #     else:
-                #         integrals[data[0][-1]] = [int(float(data[i])) for i in [1, 2]]
-                # else:
-                #     integrals[data[1]] = [int(float(data[i])) for i in [2, 3]]
+                    integrals[remove_letters(data[0])] = [int(float(data[i])) for i in [1, 2]]
+                else:
+                    integrals[data[1]] = [int(float(data[i])) for i in [2, 3]]
         return integrals
 
     def get_active_channels(self):
