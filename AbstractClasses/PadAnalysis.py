@@ -1789,7 +1789,7 @@ class PadAnalysis(Analysis):
     def get_all_signal_names(self, ped=False):
         names = OrderedDict()
         regions = [reg for reg in (self.run.signal_regions if not ped else self.run.pedestal_regions) if len(reg) < 3]
-        integrals = [integral for integral in self.run.peak_integrals if len(integral) < 3]
+        integrals = [integral for integral in self.run.peak_integrals if integral.isdigit()]
         for region in regions:
             for integral in integrals:
                 name = 'ch{ch}_{s}_{reg}_PeakIntegral{int}'.format(ch=self.channel, reg=region, int=integral, s='pedestal' if ped else 'signal')
