@@ -444,6 +444,13 @@ def set_z_range(zmin, zmax):
     h.GetZaxis().SetRangeUser(zmin, zmax)
 
 
+def scale_axis(xmin, xmax, ymin, ymax):
+    c = get_last_canvas()
+    h = c.GetListOfPrimitives()[1]
+    h.GetXaxis().SetRangeUser(xmin, xmax)
+    h.GetYaxis().SetRangeUser(ymin, ymax)
+
+
 def get_last_canvas():
     return gROOT.GetListOfCanvases()[-1]
 
