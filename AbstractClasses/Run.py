@@ -349,7 +349,7 @@ class Run(Elementary):
         for line in self.region_information:
             line = str(line)
             if line.startswith(string):
-                data = re.split('_|:|-', line)
+                data = re.split('[_:-]', line)
                 data = [data[i].strip(' ') for i in range(len(data))]
                 try:
                     ranges[data[1]] = [int(data[2]), int(data[3])]
@@ -381,14 +381,17 @@ class Run(Elementary):
         for line in self.region_information:
             line = str(line)
             if str(line).lower().startswith('* peakintegral'):
-                data = re.split('_|:|-', line)
+                data = re.split('[_:-]', line)
+                data[0] = data[0].replace('* PeakIntegral', '')
+                print data[0]
                 if data[0][-1].isdigit():
-                    if data[0][-2].isdigit():
-                        integrals[data[0][-2:]] = [int(float(data[i])) for i in [1, 2]]
-                    else:
-                        integrals[data[0][-1]] = [int(float(data[i])) for i in [1, 2]]
-                else:
-                    integrals[data[1]] = [int(float(data[i])) for i in [2, 3]]
+                    integrals[data[0].replace('* PeakIntegral', '')] = [int(float(data[i])) for i in [1, 2]]
+                #     if data[0][-2].isdigit():
+                #         integrals[data[0][-2:]] = [int(float(data[i])) for i in [1, 2]]
+                #     else:
+                #         integrals[data[0][-1]] = [int(float(data[i])) for i in [1, 2]]
+                # else:
+                #     integrals[data[1]] = [int(float(data[i])) for i in [2, 3]]
         return integrals
 
     def get_active_channels(self):
@@ -408,7 +411,7 @@ class Run(Elementary):
     def get_rate_string(self):
         rate = self.Flux
         unit = 'MHz/cm^{2}' if rate > 1000 else 'kHz/cm^{2}'
-        rate = round(rate / 1000., 1) if rate > 1000 else int(round(rate, 0))
+        rate = round(float(rate / 1000.), 1) if rate > 1000 else int(round(float(rate), 0))
         return '{rate:>3} {unit}'.format(rate=rate, unit=unit)
 
     def __get_time_vec(self):
