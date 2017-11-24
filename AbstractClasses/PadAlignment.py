@@ -5,26 +5,34 @@
 # --------------------------------------------------------
 
 from ROOT import TFile, vector, TProfile
-from collections import OrderedDict
 from numpy import mean
-from Utils import log_message, time, print_elapsed_time
+from Utils import log_message, time, print_elapsed_time, OrderedDict
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
+from sys import argv
+from datetime import datetime
+from sys import stdout
 
 
 class PadAlignment:
-    def __init__(self, converter):
+    def __init__(self, converter, filename=None):
         # main
         self.StartTime = time()
-        self.Converter = converter
-        self.Run = converter.Run
         self.NDutPlanes = 4
         self.Threshold = .4
         # progress bar
         self.Widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
         self.ProgressBar = None
-        # files/trees
-        self.InFile = TFile(converter.get_root_file_path())
-        self.InTree = self.InFile.Get(self.Run.treename)
+        if filename is None:
+            self.Converter = converter
+            self.Run = converter.Run
+            # files/trees
+            self.InFile = TFile(converter.get_root_file_path())
+            self.InTree = self.InFile.Get(self.Run.treename)
+        else:
+            self.Run = self.Run()
+            self.InFile = TFile(filename)
+            self.InTree = self.InFile.Get('tree')
+
         self.NewFile = None
         self.NewTree = None
         # alignment
@@ -140,7 +148,7 @@ class PadAlignment:
         i = 1
         while i < len(self.PulserEvents) - abs(offset) - n:
             rate = self.calc_mean_size(i, offset)
-            # print i, '{0:1.2f}'.format(rate)
+            print i, '{0:1.2f}'.format(rate)
             if rate > self.Threshold:
                 # assume that the rate was good n/2 events before
                 good_rate = rates[-n / 2] if len(rates) > n / 2 else .1
@@ -151,7 +159,7 @@ class PadAlignment:
                         this_offset = self.find_offset(i + j - 1 + n / 2, offset)
                         if this_offset:
                             i += j - 1 + n / 2
-                            # print 'Found offset:', off_event, this_offset
+                            print 'Found offset:', off_event, this_offset
                             offsets[off_event] = this_offset
                             offset += this_offset
                             break
@@ -191,6 +199,7 @@ class PadAlignment:
 
     def write_aligned_tree(self):
         offsets = self.find_shifting_offsets()
+        raise ValueError
         self.NewFile = TFile(self.Converter.get_root_file_path(), 'RECREATE')
         self.NewTree = self.InTree.CloneTree(0)
         self.set_branch_addresses()
@@ -212,6 +221,30 @@ class PadAlignment:
         self.save_tree()
     # endregion
 
+    class Run:
+        def __init__(self):
+            pass
+
+        @staticmethod
+        def log_info(msg, next_line=True):
+            t1 = time()
+            t = datetime.now().strftime('%H:%M:%S')
+            print 'INFO: {t} --> {msg}'.format(t=t, msg=msg),
+            stdout.flush()
+            if next_line:
+                print
+            return t1
+
+        @staticmethod
+        def add_info(t, msg='Done'):
+            print '{m} ({t:2.2f} s)'.format(m=msg, t=time() - t)
+
     def start_pbar(self, n):
         self.ProgressBar = ProgressBar(widgets=self.Widgets, maxval=n)
         self.ProgressBar.start()
+
+if __name__ == '__main__':
+    print argv[1]
+    z = PadAlignment(None, argv[1])
+    if not z.IsAligned:
+        z.write_aligned_tree()
