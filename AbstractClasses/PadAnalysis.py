@@ -1719,7 +1719,7 @@ class PadAnalysis(Analysis):
 
     def calc_snr(self, sig=None, name=''):
         signal = self.SignalName if sig is None else sig
-        peak_int = self.get_all_signal_names()[signal][-2:] if self.get_all_signal_names()[signal][-2].isdigit() else self.get_all_signal_names()[signal][-1]
+        peak_int = remove_letters(self.get_all_signal_names()[signal])
         ped_fit = self.Pedestal.draw_disto_fit(save=False, name=self.Pedestal.get_signal_name(peak_int=peak_int), show=False)
         sig_fit = self.draw_pulse_height(corr=True, save=False, sig=signal)
         sig_mean = sig_fit.Parameter(0)
