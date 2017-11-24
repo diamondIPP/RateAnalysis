@@ -451,6 +451,14 @@ def scale_axis(xmin, xmax, ymin, ymax):
     h.GetYaxis().SetRangeUser(ymin, ymax)
 
 
+def remove_letters(str):
+    new_str = ''
+    for l in str:
+        if l.isdigit():
+            new_str += l
+    return new_str
+
+
 def get_last_canvas():
     return gROOT.GetListOfCanvases()[-1]
 
