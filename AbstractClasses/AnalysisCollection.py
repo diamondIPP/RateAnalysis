@@ -267,6 +267,12 @@ class AnalysisCollection(Elementary):
         self.format_histo(h, x_tit='Slope [mV/min]', y_tit='Number of Entries', y_off=1.3)
         self.draw_histo(h, show=show, draw_opt='alp' if gr else '')
 
+    def get_pulse_heights(self, binning=10000, redo=False):
+        phs = OrderedDict()
+        for key, ana in self.collection.iteritems():
+            phs[key] = {'flux': ana.run.Flux, 'ph': ana.draw_pulse_height(binning, corr=True, save=redo)}
+        return phs
+
     def draw_pulse_heights(self, binning=10000, flux=True, raw=False, all_corr=False, show=True, save_plots=True, vs_time=False, fl=True, save_comb=True, y_range=None, redo=False):
 
         pickle_path = self.make_pickle_path('Ph_fit', 'PulseHeights', self.RunPlan, ch=self.DiamondName, suf=binning)
