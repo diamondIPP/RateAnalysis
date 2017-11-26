@@ -822,7 +822,15 @@ class DiaScans(Elementary):
         for i, (sel, ch) in enumerate(run_selections.iteritems()):
             Elementary(sel.generate_tc_str())
             ana = AnalysisCollection(sel, ch, self.verbose)
-            print ana.get_pulse_heights()
+            phs = ana.get_pulse_heights()
+
+
+    def scale_to(self, dic, value=1):
+        scale = value / dic.keys()[0]['ph'].Paremeter(0)
+        err_scale = 1 / dic.keys()[0]['ph'].Paremeter(0)
+        values = [d['ph'].Parameter(0) * scale for d in dic.itervalues()]
+        errors = [d['ph'].ParError(0) * err_scale for d in dic.itervalues()]
+        return values, errors
 
 
 
