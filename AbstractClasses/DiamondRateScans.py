@@ -70,7 +70,7 @@ class DiaScans(Elementary):
     # region INIT
 
     def load_selections(self):
-        file_path = self.get_program_dir() + self.MainConfigParser.get('MISC', 'runplan_selection_file')
+        file_path = join(self.Dir, self.MainConfigParser.get('MISC', 'runplan_selection_file'))
         f = open(file_path)
         selections = load(f)
         f.close()
@@ -95,7 +95,7 @@ class DiaScans(Elementary):
 
     def load_testcampaigns(self, tcs):
         if tcs is None:
-            return ['201505', '201508', '201510']
+            return ['201508', '201510']
         valid_tcs = self.find_test_campaigns()
         tcs = [tcs] if type(tcs) is not list else tcs
         if not all(tc in valid_tcs for tc in tcs):
@@ -114,7 +114,7 @@ class DiaScans(Elementary):
     def load_runinfos(self):
         run_infos = {}
         for tc in self.TestCampaigns:
-            self.TESTCAMPAIGN = tc
+            self.set_test_campaign(tc)
             self.TCDir = self.generate_tc_directory()
             file_path = self.load_run_info_path()
             f = open(file_path)
@@ -146,10 +146,7 @@ class DiaScans(Elementary):
         return list(set(names))
 
     def get_bias_voltages(self):
-        voltages = []
-        for sel, ch in self.RunSelections.iteritems():
-            voltages.append(sel.SelectedBias)
-        return list(set(voltages))
+        return list(set([sel.SelectedBias for sel in self.RunSelections.iterkeys()]))
 
     def set_selection(self, key=None):
         if key is None:
@@ -814,17 +811,30 @@ class DiaScans(Elementary):
         mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 3)
         self.save_histo(mg, 'DiaScans{dia}'.format(dia=make_dia_str(self.DiamondName)), draw_opt='a', logx=True, l=legend, x_fac=1.6, lm=.092, bm=.12, gridy=True)
 
+    def draw_scaled_rate_scans(self):
+        run_selections = self.load_run_selections()
+        biases = self.get_bias_voltages()
+        bias_str = ' at {bias} V'.format(bias=biases[0]) if len(biases) == 1 else ''
+        mg = TMultiGraph('mg_ph', '{dia} Rate Scans{b};Flux [kHz/cm^{{2}}]; pulse height [au]'.format(dia=self.DiamondName, b=bias_str))
+        legend = self.make_legend(.75, .4, nentries=4, felix=True)
+        legend.SetNColumns(2) if len(biases) > 1 else do_nothing()
+        colors = [4, 419, 2, 800, 3]
+        for i, (sel, ch) in enumerate(run_selections.iteritems()):
+            Elementary(sel.generate_tc_str())
+            ana = AnalysisCollection(sel, ch, self.verbose)
+            print ana.get_pulse_heights()
+
+
 
 if __name__ == '__main__':
     main_parser = ArgumentParser()
-    main_parser.add_argument('dia', nargs='?', default='II6-B2')
+    main_parser.add_argument('dia', nargs='?', default='S129')
     main_parser.add_argument('-tcs', nargs='?', default=None)
     args = main_parser.parse_args()
-    print args
     print_banner('STARTING DIAMOND RATE SCAN COLLECTION OF DIAMOND {0}'.format(args.dia))
 
     z = DiaScans(args.dia, args.tcs, verbose=True)
-    z.set_selection('poly-B2-neg')
+    z.set_selection('S129_n500')
     if False:
         for key_, s in z.Selections.items():
             print_banner('STARTING SELECTION {0}'.format(key_))
