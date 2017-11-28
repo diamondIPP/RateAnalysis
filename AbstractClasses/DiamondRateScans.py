@@ -823,15 +823,27 @@ class DiaScans(Elementary):
             Elementary(sel.generate_tc_str())
             ana = AnalysisCollection(sel, ch, self.verbose)
             phs = ana.get_pulse_heights()
+            values, errors = self.scale_to(phs, 1 - .2 * i)
+            fluxes = [ph['flux'] for ph in phs.itervalues()]
+            g = self.make_tgrapherrors('g{n}'.format(n=i), 'Rate Scans for {n}'.format(n=self.DiamondName))
+            for j, (x, val, err) in enumerate((fluxes, values, errors)):
+                g.SetPoint(j, x, val)
+                g.SetPointError(j, .1 * x, err)
+            self.format_histo(g, color=colors[i])
+            mg.Add(g, 'pl')
+        x_vals = sorted([gr.GetX()[i] for gr in mg.GetListOfGraphs() for i in xrange(gr.GetN())])
+        y_vals = sorted([gr.GetY()[i] for gr in mg.GetListOfGraphs() for i in xrange(gr.GetN())])
+        self.format_histo(mg, draw_first=True, y_tit='Pulse Height [au]', y_range=[0, y_vals[-1] * 1.1], tit_size=.05, lab_size=.05, y_off=.91, x_off=1.2)
+        mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 3)
+        self.save_histo(mg, 'ScaledDiaScans{dia}'.format(dia=make_dia_str(self.DiamondName)), draw_opt='a', logx=True, l=legend, x_fac=1.6, lm=.092, bm=.12, gridy=True)
 
-
-    def scale_to(self, dic, value=1):
-        scale = value / dic.keys()[0]['ph'].Paremeter(0)
+    @staticmethod
+    def scale_to(dic, offset=0.):
+        scale = 1 / dic.keys()[0]['ph'].Paremeter(0)
         err_scale = 1 / dic.keys()[0]['ph'].Paremeter(0)
-        values = [d['ph'].Parameter(0) * scale for d in dic.itervalues()]
+        values = [d['ph'].Parameter(0) * scale - offset for d in dic.itervalues()]
         errors = [d['ph'].ParError(0) * err_scale for d in dic.itervalues()]
         return values, errors
-
 
 
 if __name__ == '__main__':
