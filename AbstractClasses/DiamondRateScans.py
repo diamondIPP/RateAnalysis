@@ -830,14 +830,13 @@ class DiaScans(Elementary):
                 Elementary(sel.generate_tc_str())
                 ana = AnalysisCollection(sel, ch, self.verbose)
                 phs = ana.get_pulse_heights()
-            values, errors = self.scale_to(phs, 1 - i / 5.)
-            print values
+            values, errors = self.scale_to(phs, i / 5.)
             fluxes = [ph['flux'] for ph in phs.itervalues()]
             g = self.make_tgrapherrors('g{n}'.format(n=i), 'Rate Scans for {n}'.format(n=self.DiamondName))
             for j, (x, val, err) in enumerate(zip(fluxes, values, errors)):
                 g.SetPoint(j, x, val)
                 g.SetPointError(j, .1 * x, err)
-            self.format_histo(g, color=colors[i])
+            self.format_histo(g, color=colors[i], lw=2, markersize=1.5)
             mg.Add(g, 'pl')
             legend.AddEntry(g, make_tc_str(sel.TESTCAMPAIGN), 'lp')
         x_vals = sorted([gr.GetX()[i] for gr in mg.GetListOfGraphs() for i in xrange(gr.GetN())])
