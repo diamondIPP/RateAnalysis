@@ -820,9 +820,16 @@ class DiaScans(Elementary):
         legend.SetNColumns(2) if len(biases) > 1 else do_nothing()
         colors = [4, 419, 2, 800, 3]
         for i, (sel, ch) in enumerate(run_selections.iteritems()):
-            Elementary(sel.generate_tc_str())
-            ana = AnalysisCollection(sel, ch, self.verbose)
-            phs = ana.get_pulse_heights()
+            path = self.make_pickle_path('Ph_fit', 'PhVals', sel.SelectedRunplan, self.DiamondName, 10000, sel.TESTCAMPAIGN)
+            try:
+                f = open(path, 'r')
+                phs = pickle.load(f)
+                f.close()
+            except IOError:
+                print 'Did not find', path
+                Elementary(sel.generate_tc_str())
+                ana = AnalysisCollection(sel, ch, self.verbose)
+                phs = ana.get_pulse_heights()
             values, errors = self.scale_to(phs, 1 - i / 5.)
             print values
             fluxes = [ph['flux'] for ph in phs.itervalues()]

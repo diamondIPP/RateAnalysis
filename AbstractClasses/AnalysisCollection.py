@@ -270,7 +270,7 @@ class AnalysisCollection(Elementary):
     def get_pulse_heights(self, binning=10000, redo=False):
         pickle_path = self.make_pickle_path('Ph_fit', 'PhVals', self.RunPlan, ch=self.DiamondName, suf=binning)
 
-        def func()
+        def func():
             phs = OrderedDict()
             for key, ana in self.collection.iteritems():
                 phs[key] = {'flux': ana.run.Flux, 'ph': ana.draw_pulse_height(binning, corr=True, save=redo)}
