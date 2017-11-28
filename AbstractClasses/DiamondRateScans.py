@@ -839,6 +839,7 @@ class DiaScans(Elementary):
                 g.SetPointError(j, .1 * x, err)
             self.format_histo(g, color=colors[i])
             mg.Add(g, 'pl')
+            legend.AddEntry(g, make_tc_str(sel.TESTCAMPAIGN), 'lp')
         x_vals = sorted([gr.GetX()[i] for gr in mg.GetListOfGraphs() for i in xrange(gr.GetN())])
         y_vals = sorted([gr.GetY()[i] for gr in mg.GetListOfGraphs() for i in xrange(gr.GetN())])
         self.format_histo(mg, draw_first=True, y_tit='Pulse Height [au]', y_range=[0, y_vals[-1] * 1.1], tit_size=.05, lab_size=.05, y_off=.91, x_off=1.2)
