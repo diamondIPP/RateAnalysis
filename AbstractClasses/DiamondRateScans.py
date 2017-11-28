@@ -824,9 +824,10 @@ class DiaScans(Elementary):
             ana = AnalysisCollection(sel, ch, self.verbose)
             phs = ana.get_pulse_heights()
             values, errors = self.scale_to(phs, 1 - i / 5.)
+            print values
             fluxes = [ph['flux'] for ph in phs.itervalues()]
             g = self.make_tgrapherrors('g{n}'.format(n=i), 'Rate Scans for {n}'.format(n=self.DiamondName))
-            for j, (x, val, err) in enumerate((fluxes, values, errors)):
+            for j, (x, val, err) in enumerate(zip(fluxes, values, errors)):
                 g.SetPoint(j, x, val)
                 g.SetPointError(j, .1 * x, err)
             self.format_histo(g, color=colors[i])
@@ -839,8 +840,8 @@ class DiaScans(Elementary):
 
     @staticmethod
     def scale_to(dic, offset=0.):
-        scale = 1 / dic.keys()[0]['ph'].Parameter(0)
-        err_scale = 1 / dic.keys()[0]['ph'].Parameter(0)
+        scale = 1 / dic.values()[0]['ph'].Parameter(0)
+        err_scale = 1 / dic.values()[0]['ph'].Parameter(0)
         values = [d['ph'].Parameter(0) * scale - offset for d in dic.itervalues()]
         errors = [d['ph'].ParError(0) * err_scale for d in dic.itervalues()]
         return values, errors
