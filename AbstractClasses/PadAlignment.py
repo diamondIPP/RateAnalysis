@@ -199,7 +199,6 @@ class PadAlignment:
 
     def write_aligned_tree(self):
         offsets = self.find_shifting_offsets()
-        raise ValueError
         self.NewFile = TFile(self.Converter.get_root_file_path(), 'RECREATE')
         self.NewTree = self.InTree.CloneTree(0)
         self.set_branch_addresses()
