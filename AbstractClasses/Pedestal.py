@@ -37,7 +37,7 @@ class PedestalAnalysis(Elementary):
     def get_all_signal_names(self):
         names = OrderedDict()
         regions = [reg for reg in self.Run.pedestal_regions if len(reg) < 3]
-        integrals = [integral for integral in self.Run.peak_integrals if len(integral) < 3]
+        integrals = [integral for integral in self.Run.peak_integrals if integral.isdigit()]
         for region in regions:
             for integral in integrals:
                 name = 'ch{ch}_pedestal_{reg}_PeakIntegral{int}'.format(ch=self.Channel, reg=region, int=integral)
