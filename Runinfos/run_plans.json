@@ -1656,6 +1656,22 @@
         881
       ], 
       "type": "rate scan"
+    }, 
+    "21.1": {
+      "attenuators": {
+        "dia1": "10DB_1", 
+        "dia2": "6DB_2", 
+        "pulser": "20DB"
+      }, 
+      "runs": [
+        875, 
+        876, 
+        877, 
+        878, 
+        879, 
+        880
+      ], 
+      "type": "up scan"
     }
   }, 
   "201610": {
@@ -2932,6 +2948,23 @@
         31
       ], 
       "type": "rate scan"
+    }, 
+    "02.1": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "6dB_2", 
+        "pulser1": "6dB_3", 
+        "pulser2": "6dB_1"
+      }, 
+      "runs": [
+        21, 
+        22, 
+        23, 
+        24, 
+        25, 
+        26
+      ], 
+      "type": "up scan"
     }, 
     "03": {
       "attenuators": {
