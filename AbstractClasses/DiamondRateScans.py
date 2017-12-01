@@ -146,7 +146,7 @@ class DiaScans(Elementary):
         return list(set(names))
 
     def get_bias_voltages(self):
-        return list(set([sel.SelectedBias for sel in self.RunSelections.iterkeys()]))
+        return list(set([sel.SelectedBias for sel in self.RunSelections]))
 
     def set_selection(self, key=None):
         if key is None:
@@ -646,27 +646,15 @@ class DiaScans(Elementary):
     def load_run_selections(self, redo=False):
         if self.RunSelections is not None and not redo:
             return self.RunSelections
-        run_selections = OrderedDict()
-        vals = OrderedDict()
+        run_selections = []
         for tc, rps in sorted(self.Selection.iteritems()):
-            vals[tc] = {}
-            for rp, chs in sorted(rps.iteritems()):
-                if type(chs) is not list:
-                    chs = [chs]
-                for ch in chs:
-                    sel = RunSelection(tc)
-                    sel.select_runs_from_runplan(rp, ch=ch)
-                    self.log_info('Loaded runplan {rp} of testcampaign {tc} and ch {ch} ({dia})'.format(rp=rp.rjust(4),
-                                                                                                        tc=make_tc_str(tc), ch=ch, dia=sel.SelectedDiamond))
-                    run_selections[sel] = ch
-        sorted_sel = OrderedDict()
-        for i, sel in enumerate(run_selections.iterkeys()):
-            vals[sel.generate_tc_str()][sel.SelectedBias] = i
-        order = [i for val in vals.itervalues() for bias, i in sorted(val.iteritems(), reverse=True)]
-        for i in order:
-            sorted_sel[run_selections.keys()[i]] = run_selections.values()[i]
-        self.RunSelections = sorted_sel
-        return sorted_sel
+            for rp, ch in sorted(rps.iteritems()):
+                sel = RunSelection(tc)
+                sel.select_runs_from_runplan(rp, ch=ch)
+                self.log_info('Loaded runplan {rp} of testcampaign {tc} and ch {ch} ({dia})'.format(rp=rp.rjust(4), tc=make_tc_str(tc), ch=ch, dia=sel.SelectedDiamond))
+                run_selections.append(sel)
+        self.RunSelections = run_selections
+        return run_selections
 
     def create_combined_plots(self, flux_up_down=False, scaled=True):
         mg = self.draw_rate_scans(include_zero=False, do_scale=scaled, pulser=False, draw_single_plots=True)
@@ -751,7 +739,7 @@ class DiaScans(Elementary):
                         continue
                 try:
                     if data['fs11'] == fs11 and data['fs13'] == fsh13:
-                        flux = info_run.calc_flux()
+                        flux = info_run.Flux
                         # print tc, run, flux
                         values.append(flux) if flux > 1 else do_nothing()
                 except KeyError:
@@ -784,7 +772,7 @@ class DiaScans(Elementary):
         colors = [4, 419, 2, 800, 3]
         # tits = [make_irr_string(v, p) for v, p in [(0, 0), (5, 14), (1.5, 15)]]
         tits = [make_irr_string(v, p) for v, p in [(0, 0), (5, 14), (1, 15), (2, 15), (4, 15)]]
-        for i, (sel, ch) in enumerate(run_selections.iteritems()):
+        for i, (sel, ch) in enumerate(run_selections):
             path = self.make_pickle_path('Ph_fit', 'PulseHeights', sel.SelectedRunplan, self.DiamondName, 10000, sel.TESTCAMPAIGN)
             try:
                 f = open(path, 'r')
@@ -887,6 +875,7 @@ if __name__ == '__main__':
     Elementary(None, True, get_resolution())
     z = DiaScans(args.dia, args.tcs, verbose=True)
     z.set_selection('poly-B2-neg')
+    # z.set_selection('S129-pos')
     if False:
         for key_, s in z.Selections.items():
             print_banner('STARTING SELECTION {0}'.format(key_))
@@ -894,27 +883,3 @@ if __name__ == '__main__':
             z.create_combined_plots()
             if key_ in ['poly-D', 'poly-B2_irradiated']:
                 z.create_combined_plots(flux_up_down=True)
-    # z.set_selection('poly-B2')
-    # if raw_input('press y for creating all plots').lower() == 'y':
-    #     for key in ['poly-B2_irradiated',  # ,'poly-B2_unirradiated',
-    #                 'poly-D'
-    #                 ]:
-    #         z.set_selection(key)
-    #         mg = z.draw_rate_scans(include_zero=False, do_scale=True, pulser=False, draw_single_plots=True)
-    #         mg, scan = z.create_up_down_scans(mg)
-    #         # z.create_combined_plots(flux_up_down=True)
-    #         # z.create_combined_plots(scaled=False)
-    # z.set_selection('ext_neg_pulser_neg_pol')
-    # z.create_combined_plots()
-    # for key in [#'S129','S129_201510',
-    #        'S129_n500','poly-B2']:
-    #    z.set_selection(key)
-    #    z.create_combined_plots()
-    #    z.create_combined_plots(scaled=False)
-    #    z.draw_rate_scans(include_zero=True,do_scale=False)
-    # z.set_selection(u'ext_neg_pulser_neg_pol')
-    # z.draw_rate_scans(pulser=True,do_scale=True,include_zero=False,reset_colors=False)
-    # z.set_selection('ext_pul_pos_pol')
-    #         # z.used_colors=[kGreen, kCyan, kViolet]
-    #         # scale = raw_input('scale to:')
-    #         # z.draw_rate_scans(pulser=True,do_scale=True,include_zero=False,reset_colors=False,scale_to=scale)
