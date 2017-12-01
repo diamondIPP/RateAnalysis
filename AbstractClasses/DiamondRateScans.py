@@ -39,6 +39,7 @@ class DiaScans(Elementary):
         self.UsedColors = self.init_colors()
 
         # run plan selection
+        self.Path = join(self.Dir, self.MainConfigParser.get('MISC', 'runplan_selection_file'))
         self.Selections = self.load_selections()
         self.Selection = self.load_selection()
         self.RunSelections = None
@@ -70,8 +71,7 @@ class DiaScans(Elementary):
     # region INIT
 
     def load_selections(self):
-        file_path = join(self.Dir, self.MainConfigParser.get('MISC', 'runplan_selection_file'))
-        f = open(file_path)
+        f = open(self.Path)
         selections = load(f)
         f.close()
         return selections
@@ -817,12 +817,11 @@ class DiaScans(Elementary):
         bias_str = ' at {bias} V'.format(bias=biases[0]) if len(biases) == 1 else ''
         mg = TMultiGraph('mg_ph', '{dia} Rate Scans{b};Flux [kHz/cm^{{2}}]; pulse height [au]'.format(dia=self.DiamondName, b=bias_str))
         legend = self.make_legend(.75, .4, nentries=4, felix=True)
-        #legend.SetNColumns(1)
         colors = [4, 419, 2, 800, 3, 1]
-        tits = [make_irr_string(v, p) for v, p in [(0, 0), (5, 14), (1, 15), (2, 15), (4, 15)]]
+        # tits = [make_irr_string(v, p) for v, p in [(0, 0), (5, 14), (1, 15), (2, 15), (4, 15)]]
 
         for i, (sel, ch) in enumerate(run_selections.iteritems()):
-            path = self.make_pickle_path('Ph_fit', 'PhVals', sel.SelectedRunplan, self.DiamondName, 10000, sel.TESTCAMPAIGN)
+            path = self.make_pickle_path('Ph_fit', 'PhVals', sel.SelectedRunplan, sel.SelectedDiamond, 10000, sel.TESTCAMPAIGN)
             try:
                 f = open(path, 'r')
                 phs = pickle.load(f)
@@ -841,7 +840,7 @@ class DiaScans(Elementary):
             self.format_histo(g, color=colors[i], lw=2, markersize=1.5)
             mg.Add(g, 'pl')
             legend.AddEntry(g, make_tc_str(sel.TESTCAMPAIGN), 'lp')
-            #legend.AddEntry(g, tits[i], 'lp')
+            # legend.AddEntry(g, tits[i], 'lp')
         x_vals = sorted([gr.GetX()[i] for gr in mg.GetListOfGraphs() for i in xrange(gr.GetN())])
         y_vals = sorted([gr.GetY()[i] for gr in mg.GetListOfGraphs() for i in xrange(gr.GetN())])
         self.format_histo(mg, draw_first=True, y_tit='Scaled Pulse Height', y_range=[0, y_vals[-1] * 1.1], tit_size=.05, lab_size=.05, y_off=.91, x_off=1.2)
@@ -856,6 +855,27 @@ class DiaScans(Elementary):
         errors = [d['ph'].ParError(0) * err_scale for d in dic.itervalues()]
         return values, errors
 
+    def add_selection(self):
+        name = raw_input('Enter the name of the selection: ')
+        self.Selections[name] = {} if name not in self.Selections else self.Selections[name]
+        run_plan = raw_input('Enter test campaign, run plan number, channel: ')
+        while run_plan:
+            tc, rp, ch = [string.strip(' ') for string in run_plan.split(',')]
+            rp = RunSelection.make_runplan_string(rp)
+            if tc not in self.Selections[name]:
+                self.Selections[name][tc] = {rp: int(ch)}
+            else:
+                self.Selections[name][tc][rp] = int(ch)
+            run_plan = raw_input('Enter test campaign, run plan number, channel: ')
+        self.save_selections()
+
+    def save_selections(self):
+        f = open(self.Path, 'r+')
+        f.seek(0)
+        dump(self.Selections, f, indent=2, sort_keys=True)
+        f.truncate()
+        f.close()
+
 
 if __name__ == '__main__':
     main_parser = ArgumentParser()
@@ -864,6 +884,7 @@ if __name__ == '__main__':
     args = main_parser.parse_args()
     print_banner('STARTING DIAMOND RATE SCAN COLLECTION OF DIAMOND {0}'.format(args.dia))
 
+    Elementary(None, True, get_resolution())
     z = DiaScans(args.dia, args.tcs, verbose=True)
     z.set_selection('poly-B2-neg')
     if False:
