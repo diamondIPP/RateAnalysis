@@ -5,8 +5,8 @@
 
 from datetime import datetime, timedelta
 from termcolor import colored
-from ROOT import gStyle, gROOT, TF1
-from numpy import sqrt
+from ROOT import gStyle, gROOT, TF1, TColor
+from numpy import sqrt, array
 from os import makedirs
 from os import path as pth
 from os.path import basename, join, split
@@ -389,7 +389,7 @@ def kinder_is_mounted():
     return dir_exists(join(get_base_dir(), 'mounts/psi/Diamonds'))
 
 
-def do_pickle(path, function, value=None, params=None):
+def do_pickle(path, func, value=None, params=None):
     if value is not None:
         f = open(path, 'w')
         pickle.dump(value, f)
@@ -400,7 +400,7 @@ def do_pickle(path, function, value=None, params=None):
         ret_val = pickle.load(f)
         f.close()
     except IOError:
-        ret_val = function() if params is None else function(params)
+        ret_val = func() if params is None else func(params)
         f = open(path, 'w')
         pickle.dump(ret_val, f)
         f.close()
@@ -451,9 +451,9 @@ def scale_axis(xmin, xmax, ymin, ymax):
     h.GetYaxis().SetRangeUser(ymin, ymax)
 
 
-def remove_letters(str):
+def remove_letters(string):
     new_str = ''
-    for l in str:
+    for l in string:
         if l.isdigit():
             new_str += l
     return new_str
@@ -461,6 +461,21 @@ def remove_letters(str):
 
 def get_last_canvas():
     return gROOT.GetListOfCanvases()[-1]
+
+
+def get_color_gradient(n):
+    stops = array([0., .5, 1], 'd')
+    green = array([0. / 255., 200. / 255., 80. / 255.], 'd')
+    blue = array([0. / 255., 0. / 255., 0. / 255.], 'd')
+    red = array([180. / 255., 200. / 255., 0. / 255.], 'd')
+    # gStyle.SetNumberContours(20)
+    bla = TColor.CreateGradientColorTable(len(stops), stops, red, green, blue, 255)
+    color_table = [bla + ij for ij in xrange(255)]
+    return color_table[0::(len(color_table) + 1) / n]
+
+
+def do(f, par):
+    f(par) if par is not None else do_nothing()
 
 
 class FitRes:
