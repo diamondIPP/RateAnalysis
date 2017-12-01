@@ -113,6 +113,7 @@ class Langau:
             ffitold.Delete()
 
         ffit = TF1(name, self.langau, 0, his.GetXaxis().GetXmax(), 4)
+        ffit.SetNpx(1000)
         ffit.SetParameters(self.StartValues)
         ffit.SetParNames('Width', 'MP', 'Area', 'GSigma')
 
