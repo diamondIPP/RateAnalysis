@@ -15,7 +15,7 @@ from json import load, dump
 from collections import OrderedDict, Counter
 from ROOT import TMultiGraph, TGraphErrors, kRed, kOrange, kBlue, kGreen, kCyan, kViolet, kPink, kYellow, gStyle, TF1, TH2F, TH1F, TGraph2DErrors
 import pickle
-from numpy import sqrt
+from numpy import sqrt, log10
 
 
 class DiaScans(Elementary):
@@ -805,11 +805,12 @@ class DiaScans(Elementary):
         bias_str = ' at {bias} V'.format(bias=biases[0]) if len(biases) == 1 else ''
         mg = TMultiGraph('mg_ph', '{dia} Rate Scans{b};Flux [kHz/cm^{{2}}]; pulse height [au]'.format(dia=self.DiamondName, b=bias_str))
         legend = self.make_legend(.75, .4, nentries=4, felix=True)
-        colors = [4, 419, 2, 800, 3, 1]
-        # tits = [make_irr_string(v, p) for v, p in [(0, 0), (5, 14), (1, 15), (2, 15), (4, 15)]]
+        colors = get_color_gradient(len(run_selections))
+        tits = [make_irr_string(v, p) for v, p in [(0, 0), (5, 14), (1, 15), (2, 15), (4, 15)]]
 
-        for i, (sel, ch) in enumerate(run_selections.iteritems()):
-            path = self.make_pickle_path('Ph_fit', 'PhVals', sel.SelectedRunplan, sel.SelectedDiamond, 10000, sel.TESTCAMPAIGN)
+        splits = 5.
+        for i, sel in enumerate(run_selections):
+            path = self.make_pickle_path('Ph_fit', 'PhVals', sel.SelectedRunplan, sel.SelectedDiamond, 10000, sel.TCString)
             try:
                 f = open(path, 'r')
                 phs = pickle.load(f)
@@ -817,9 +818,9 @@ class DiaScans(Elementary):
             except IOError:
                 print 'Did not find', path
                 Elementary(sel.generate_tc_str())
-                ana = AnalysisCollection(sel, ch, self.verbose)
+                ana = AnalysisCollection(sel, sel.SelectedDiamondNr, self.verbose)
                 phs = ana.get_pulse_heights()
-            values, errors = self.scale_to(phs, i / 5.)
+            values, errors = self.scale_to(phs, i / splits)
             fluxes = [ph['flux'] for ph in phs.itervalues()]
             g = self.make_tgrapherrors('g{n}'.format(n=i), 'Rate Scans for {n}'.format(n=self.DiamondName))
             for j, (x, val, err) in enumerate(zip(fluxes, values, errors)):
@@ -827,13 +828,17 @@ class DiaScans(Elementary):
                 g.SetPointError(j, .1 * x, err)
             self.format_histo(g, color=colors[i], lw=2, markersize=1.5)
             mg.Add(g, 'pl')
-            legend.AddEntry(g, make_tc_str(sel.TESTCAMPAIGN), 'lp')
-            # legend.AddEntry(g, tits[i], 'lp')
+            # legend.AddEntry(g, make_tc_str(sel.TCString), 'lp')
+            legend.AddEntry(g, tits[i], 'lp')
         x_vals = sorted([gr.GetX()[i] for gr in mg.GetListOfGraphs() for i in xrange(gr.GetN())])
         y_vals = sorted([gr.GetY()[i] for gr in mg.GetListOfGraphs() for i in xrange(gr.GetN())])
-        self.format_histo(mg, draw_first=True, y_tit='Scaled Pulse Height', y_range=[0, y_vals[-1] * 1.1], tit_size=.05, lab_size=.05, y_off=.91, x_off=1.2)
+        self.format_histo(mg, draw_first=True, y_tit='Scaled Pulse Height', y_range=[0, y_vals[-1] * 1.1], tit_size=.05, l_off_y=.99, y_off=.91, x_off=1.2, ndivy=110)
         mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 3)
-        self.save_histo(mg, 'ScaledDiaScans{dia}'.format(dia=make_dia_str(self.DiamondName)), draw_opt='a', logx=True, l=legend, x_fac=1.6, lm=.092, bm=.12, gridy=True)
+        self.draw_histo(mg, 'ScaledDiaScans{dia}'.format(dia=make_dia_str(self.DiamondName)), draw_opt='a', logx=True, l=legend, x=1.6, lm=.092, bm=.12, gridy=True)
+        for i in xrange(len(run_selections)):
+            self.draw_tlatex(mg.GetXaxis().GetXmin() - log10((mg.GetXaxis().GetXmax() - mg.GetXaxis().GetXmin()) * 0.001), 1 - i / splits, '1', align=12, color=colors[i])
+            self.draw_y_axis(mg.GetXaxis().GetXmin(), - i / splits, 1 - i / splits, '', col=colors[i], opt='S-', l_off=.99, tick_size=.04)  # * (1 + i / splits * 2))
+        self.save_plots('ScaledDiaScans{dia}'.format(dia=make_dia_str(self.DiamondName)))
 
     @staticmethod
     def scale_to(dic, offset=0.):
