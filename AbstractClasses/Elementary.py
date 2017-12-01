@@ -429,10 +429,10 @@ class Elementary(object):
         gr.SetLineStyle(style)
         return gr
 
-    def draw_axis(self, x1, x2, y1, y2, title, col=1, width=1, off=.15, tit_size=.035, lab_size=0.035, line=False, opt='+SU', tick_size=0.03, l_off=.01):
+    def draw_axis(self, x1, x2, y1, y2, title, name='ax', col=1, width=1, off=.15, tit_size=.035, lab_size=0.035, line=False, opt='+SU', tick_size=0.03, l_off=.01):
         range_ = [y1, y2] if x1 == x2 else [x1, x2]
         a = TGaxis(x1, y1, x2, y2, range_[0], range_[1], 510, opt)
-        a.SetName('ax')
+        a.SetName(name)
         a.SetLineColor(col)
         a.SetLineWidth(width)
         a.SetLabelSize(lab_size if not line else 0)
@@ -444,14 +444,15 @@ class Elementary(object):
         a.SetLabelFont(42)
         a.SetTitleFont(42)
         a.SetTickSize(tick_size if not line else 0)
+        a.SetTickLength(tick_size if not line else 0)
         a.SetNdivisions(0) if line else self.do_nothing()
         a.SetLabelOffset(l_off)
         a.Draw()
         self.ROOTObjects.append(a)
         return a
 
-    def draw_y_axis(self, x, ymin, ymax, tit, col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035, tick_size=0.03, l_off=.01, line=False):
-        return self.draw_axis(x, x, ymin, ymax, tit, col=col, off=off, opt=opt, width=w, tit_size=tit_size, lab_size=lab_size, tick_size=tick_size, l_off=l_off, line=line)
+    def draw_y_axis(self, x, ymin, ymax, tit, name='ax', col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035, tick_size=0.03, l_off=.01, line=False):
+        return self.draw_axis(x, x, ymin, ymax, tit, name=name, col=col, off=off, opt=opt, width=w, tit_size=tit_size, lab_size=lab_size, tick_size=tick_size, l_off=l_off, line=line)
 
     def draw_x_axis(self, y, xmin, xmax, tit, col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035, tick_size=0.03, l_off=.01, line=False):
         return self.draw_axis(xmin, xmax, y, y, tit, col=col, off=off, opt=opt, width=w, tit_size=tit_size, lab_size=lab_size, tick_size=tick_size, l_off=l_off, line=line)
@@ -509,8 +510,8 @@ class Elementary(object):
         return l
 
     def format_histo(self, histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=20, color=1, markersize=1, x_off=None, y_off=None, z_off=None, lw=1,
-                     fill_color=None, fill_style=None, stats=True, tit_size=.04, lab_size=.04, draw_first=False, x_range=None, y_range=None, z_range=None,
-                     do_marker=True, style=None, ndiv=None, ncont=None):
+                     fill_color=None, fill_style=None, stats=True, tit_size=.04, lab_size=.04, l_off_y=None, draw_first=False, x_range=None, y_range=None, z_range=None,
+                     do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None):
         h = histo
         if draw_first:
             self.set_root_output(False)
@@ -552,14 +553,16 @@ class Elementary(object):
                 x_axis.SetTitleSize(tit_size)
                 x_axis.SetLabelSize(lab_size)
                 x_axis.SetRangeUser(x_range[0], x_range[1]) if x_range is not None else do_nothing()
-                x_axis.SetNdivisions(ndiv) if ndiv is not None else do_nothing()
+                x_axis.SetNdivisions(ndivx) if ndivx is not None else do_nothing()
             y_axis = h.GetYaxis()
             if y_axis:
                 y_axis.SetTitle(y_tit) if y_tit else y_axis.GetTitle()
                 y_axis.SetTitleOffset(y_off) if y_off is not None else do_nothing()
                 y_axis.SetTitleSize(tit_size)
                 y_axis.SetLabelSize(lab_size)
+                do(y_axis.SetLabelOffset, l_off_y)
                 y_axis.SetRangeUser(y_range[0], y_range[1]) if y_range is not None else do_nothing()
+                do(y_axis.SetNdivisions, ndivy)
             z_axis = h.GetZaxis()
             if z_axis:
                 z_axis.SetTitle(z_tit) if z_tit else h.GetZaxis().GetTitle()
