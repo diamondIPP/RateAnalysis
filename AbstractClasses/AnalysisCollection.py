@@ -2,7 +2,7 @@
 # IMPORTS
 # ==============================================
 from argparse import ArgumentParser
-from numpy import log, array, zeros, std, mean
+from numpy import log, zeros, std, mean
 from dispy import JobCluster
 from functools import partial
 
@@ -272,12 +272,15 @@ class AnalysisCollection(Elementary):
 
         def func():
             phs = OrderedDict()
-            for key, ana in self.collection.iteritems():
-                phs[key] = {'flux': ana.run.Flux, 'ph': ana.draw_pulse_height(binning, corr=True, save=redo)}
+            sys_errors = self.get_repr_errors(80, show=False)
+            for i, (key, ana) in enumerate(self.collection.iteritems()):
+                ph = ana.draw_pulse_height(binning=binning, corr=True, show=False, save=redo)
+                ph.Errors[0] += sys_errors[1] / sys_errors[0] * ph.Parameter(0)
+                phs[key] = {'flux': ana.run.Flux, 'ph': ph}
             return phs
 
-        phs = func() if redo else None
-        return self.do_pickle(pickle_path, func, phs)
+        pulse_heights = func() if redo else None
+        return self.do_pickle(pickle_path, func, pulse_heights)
 
     def draw_pulse_heights(self, binning=10000, flux=True, raw=False, all_corr=False, show=True, save_plots=True, vs_time=False, fl=True, save_comb=True, y_range=None, redo=False):
 
