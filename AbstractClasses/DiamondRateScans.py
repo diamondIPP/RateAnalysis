@@ -15,11 +15,12 @@ from json import load, dump
 from collections import OrderedDict, Counter
 from ROOT import TMultiGraph, TGraphErrors, kRed, kOrange, kBlue, kGreen, kCyan, kViolet, kPink, kYellow, gStyle, TF1, TH2F, TH1F, TGraph2DErrors
 import pickle
-from numpy import sqrt, log10
+from numpy import sqrt
+from re import split
 
 
 class DiaScans(Elementary):
-    def __init__(self, diamond=None, testcampaigns=None, verbose=False):
+    def __init__(self, selection, verbose=False):
         Elementary.__init__(self, verbose=verbose)
         self.Selection = []
         self.Name = None
@@ -28,8 +29,8 @@ class DiaScans(Elementary):
         self.Parser = self.load_diamond_parser()
 
         # information
-        self.DiamondName = self.load_diamond(diamond)
-        self.TestCampaigns = self.load_testcampaigns(testcampaigns)
+        self.DiamondName = None
+        self.TestCampaigns = self.load_testcampaigns(None)
         self.RunInfos = self.load_runinfos()
         self.AllRunPlans = self.load_all_runplans()
         self.RunPlans = self.find_diamond_runplans()
@@ -46,6 +47,8 @@ class DiaScans(Elementary):
 
         # Save
         self.ROOTObjects = []
+
+        self.set_selection(selection)
 
     @staticmethod
     def init_colors():
@@ -152,10 +155,14 @@ class DiaScans(Elementary):
         if key is None:
             key = self.DiamondName
         if key not in self.Selections.keys():
-            log_warning('"{selection} does not exist in {Selections}'.format(selection=key, Selections=self.Selections.keys()))
+            log_warning('"{selection} does not exist in:')
+            for key in sorted(self.Selections.keys()):
+                print key
             return
         self.log_info('Set Selection {0}'.format(key))
+        self.DiamondName = self.load_diamond(split('[-_]', key)[0 if not key.startswith('poly') else 1])
         self.Selection = self.Selections[key]
+        self.TestCampaigns = list(set(self.Selection.keys()))
         self.Name = key
 
     # ==========================================================================
@@ -872,19 +879,10 @@ class DiaScans(Elementary):
 
 if __name__ == '__main__':
     main_parser = ArgumentParser()
-    main_parser.add_argument('dia', nargs='?', default='II6-B2')
-    main_parser.add_argument('-tcs', nargs='?', default=None)
+    main_parser.add_argument('sel', nargs='?', default='S129-neg')
+    main_parser.add_argument('-v', action='store_true')
     args = main_parser.parse_args()
-    print_banner('STARTING DIAMOND RATE SCAN COLLECTION OF DIAMOND {0}'.format(args.dia))
+    print_banner('STARTING DIAMOND RATE SCAN COLLECTION OF SELECTION {0}'.format(args.sel))
 
     Elementary(None, True, get_resolution())
-    z = DiaScans(args.dia, args.tcs, verbose=True)
-    z.set_selection('poly-B2-neg')
-    # z.set_selection('S129-pos')
-    if False:
-        for key_, s in z.Selections.items():
-            print_banner('STARTING SELECTION {0}'.format(key_))
-            z.set_selection(key_)
-            z.create_combined_plots()
-            if key_ in ['poly-D', 'poly-B2_irradiated']:
-                z.create_combined_plots(flux_up_down=True)
+    z = DiaScans(args.sel, verbose=args.v)
