@@ -511,7 +511,7 @@ class Elementary(object):
 
     def format_histo(self, histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=20, color=1, markersize=1, x_off=None, y_off=None, z_off=None, lw=1,
                      fill_color=None, fill_style=None, stats=True, tit_size=.04, lab_size=.04, l_off_y=None, draw_first=False, x_range=None, y_range=None, z_range=None,
-                     do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None):
+                     do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None, tick_size=None):
         h = histo
         if draw_first:
             self.set_root_output(False)
@@ -554,6 +554,7 @@ class Elementary(object):
                 x_axis.SetLabelSize(lab_size)
                 x_axis.SetRangeUser(x_range[0], x_range[1]) if x_range is not None else do_nothing()
                 x_axis.SetNdivisions(ndivx) if ndivx is not None else do_nothing()
+                do(x_axis.SetTickSize, tick_size)
             y_axis = h.GetYaxis()
             if y_axis:
                 y_axis.SetTitle(y_tit) if y_tit else y_axis.GetTitle()
