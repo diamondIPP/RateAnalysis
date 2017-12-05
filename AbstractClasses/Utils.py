@@ -474,8 +474,15 @@ def get_color_gradient(n):
     return color_table[0::(len(color_table) + 1) / n]
 
 
-def do(f, par):
-    f(par) if par is not None else do_nothing()
+def do(fs, pars, exe=-1):
+    fs, pars = ([fs], [pars]) if type(fs) is not list else (fs, pars)
+    exe = pars if exe == -1 else [exe]
+    for f, p, e in zip(fs, pars, exe):
+        f(p) if e is not None else do_nothing()
+
+
+def markers(i):
+    return (range(20, 24) + [29, 33, 34])[i]
 
 
 class FitRes:
