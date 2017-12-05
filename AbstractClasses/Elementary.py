@@ -779,18 +779,17 @@ class Elementary(object):
         self.ROOTObjects.append([p0, p1, c, draw_objects, run_info])
         self.set_root_output(True)
 
-    def draw_tpad(self, name, tit='', pos=None, fill_col=0, gridx=False, gridy=False, margins=None, transparent=False, logy=False, logx=False):
+    def draw_tpad(self, name, tit='', pos=None, fill_col=0, gridx=None, gridy=None, margins=None, transparent=False, logy=None, logx=None, logz=None):
         margins = [.1, .1, .1, .1] if margins is None else margins
         pos = [0, 0, 1, 1] if pos is None else pos
         p = TPad(name, tit, *pos)
         p.SetFillColor(fill_col)
         p.SetMargin(*margins)
-        p.SetLogy() if logy else do_nothing()
-        p.SetLogx() if logx else do_nothing()
-        p.SetGridx() if gridx else do_nothing()
-        p.SetGridy() if gridy else do_nothing()
+        do([p.SetLogx, p.SetLogy, p.SetLogz], [logx, logy, logz])
+        do([p.SetGridx, p.SetGridy], [gridx, gridy])
         make_transparent(p) if transparent else do_nothing()
         p.Draw()
+        p.cd()
         self.ROOTObjects.append(p)
         return p
 
