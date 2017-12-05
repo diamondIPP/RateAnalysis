@@ -793,6 +793,15 @@ class Elementary(object):
         self.ROOTObjects.append(p)
         return p
 
+    def make_canvas(self, name='c', title='c', x=1., y=1., show=True, logx=None, logy=None, logz=None, gridx=None, gridy=None, transp=None):
+        self.set_root_output(show)
+        c = TCanvas(name, title, int(x * self.Res), int(y * self.Res))
+        do([c.SetLogx, c.SetLogy, c.SetLogz], [logx, logy, logz])
+        do([c.SetGridx, c.SetGridy], [gridx, gridy])
+        do(make_transparent, c, transp)
+        self.ROOTObjects.append(c)
+        return c
+
 
 if __name__ == "__main__":
     z = Elementary()
