@@ -481,6 +481,10 @@ def do(fs, pars, exe=-1):
         f(p) if e is not None else do_nothing()
 
 
+def make_bias_str(bias):
+    return ' at {s}{bias}V'.format(bias=int(bias), s='+' if bias > 0 else '')
+
+
 def markers(i):
     return (range(20, 24) + [29, 33, 34])[i]
 
