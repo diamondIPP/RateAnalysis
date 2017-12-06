@@ -546,8 +546,10 @@ class DiaScans(Elementary):
 
     @staticmethod
     def scale_to(dic, scale=1):
-        err_scale = scale / dic.values()[0]['ph'].Parameter(0)
-        scale = scale / dic.values()[0]['ph'].Parameter(0) if scale is not None else 1
+        fluxes = [d['flux'] for d in dic.itervalues()]
+        min_ind = fluxes.index(min(fluxes))
+        err_scale = scale / dic.values()[min_ind]['ph'].Parameter(0)
+        scale = scale / dic.values()[min_ind]['ph'].Parameter(0) if scale is not None else 1
         values = [d['ph'].Parameter(0) * scale for d in dic.itervalues()]
         errors = [d['ph'].ParError(0) * err_scale for d in dic.itervalues()]
         return values, errors
