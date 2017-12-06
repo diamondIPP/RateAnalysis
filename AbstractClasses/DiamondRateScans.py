@@ -75,7 +75,7 @@ class DiaScans(Elementary):
 
     def load_selections(self):
         f = open(self.Path)
-        selections = load(f)
+        selections = load(f, object_hook=OrderedDict)
         f.close()
         return selections
 
@@ -335,7 +335,7 @@ class DiaScans(Elementary):
             return self.RunSelections
         run_selections = []
         for tc, rps in sorted(self.Selection.iteritems()):
-            for rp, ch in sorted(rps.iteritems()):
+            for rp, ch in rps.iteritems():
                 sel = RunSelection(tc)
                 sel.select_runs_from_runplan(rp, ch=ch)
                 self.log_info('Loaded runplan {rp} of testcampaign {tc} and ch {ch} ({dia})'.format(rp=rp.rjust(4), tc=make_tc_str(tc), ch=ch, dia=sel.SelectedDiamond))
