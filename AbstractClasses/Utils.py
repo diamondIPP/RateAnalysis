@@ -482,7 +482,7 @@ def do(fs, pars, exe=-1):
 
 
 def make_bias_str(bias):
-    return ' at {s}{bias}V'.format(bias=int(bias), s='+' if bias > 0 else '')
+    return '{s}{bias}V'.format(bias=int(bias), s='+' if bias > 0 else '')
 
 
 def markers(i):
