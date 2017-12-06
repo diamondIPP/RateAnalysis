@@ -160,7 +160,7 @@ class DiaScans(Elementary):
                 print sel
             return
         self.log_info('Set Selection {0}'.format(key))
-        self.DiamondName = self.load_diamond(split('[-_]', key)[0 if not key.startswith('poly') else 1])
+        self.DiamondName = self.load_diamond('-'.join(split('[-_]', key)[:2]) if any(w in key.lower() for w in ['poly', 'ii6']) else split('[-_]', key)[0])
         self.Selection = self.Selections[key]
         self.TestCampaigns = list(set(self.Selection.keys()))
         self.load_run_selections(redo=True)
@@ -180,12 +180,12 @@ class DiaScans(Elementary):
 
     def show_selection(self):
         if self.Selection:
-            header = ['Campaign', 'RunPlan', 'Diamond', 'Runs'.ljust(7), 'Voltage', 'Type'.ljust(9)]
+            header = ['Campaign', 'RunPlan', 'Diamond', 'Runs'.ljust(7), 'Voltage', 'Type'.ljust(11)]
             rows = []
             for sel in self.RunSelections:
                 runs = sel.get_selected_runs()
                 rows.append([sel.TCString.ljust(8), sel.SelectedRunplan.rjust(7), sel.SelectedDiamond.rjust(7), '{0}-{1}'.format(str(runs[0]).zfill(3), str(runs[-1]).zfill(3)),
-                             '{0:+4.0f}V'.format(sel.SelectedBias).rjust(7), sel.SelectedType.ljust(9)])
+                             '{0:+4.0f}V'.format(sel.SelectedBias).rjust(7), sel.SelectedType.ljust(11)])
             print_table(rows, header)
         else:
             log_warning('Selection is empty!')
