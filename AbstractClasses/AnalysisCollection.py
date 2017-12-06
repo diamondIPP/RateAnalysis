@@ -116,12 +116,12 @@ class AnalysisCollection(Elementary):
 
     def get_high_low_rate_runs(self):
         runs = [Run(run_number=run, load_tree=False) for run in self.runs]
+        print runs
         fluxes = OrderedDict()
-        if self.verbose:
-            print 'RUN FLUX [kHz/cm2]'
-            for run in runs:
-                fluxes[run.Flux] = run.RunNumber
-                print '{run:3d} {flux:14.2f}'.format(run=run.RunNumber, flux=run.Flux)
+        self.log_info('RUN FLUX [kHz/cm2]')
+        for run in runs:
+            fluxes[run.Flux] = run.RunNumber
+            self.log_info('{run:3d} {flux:14.2f}'.format(run=run.RunNumber, flux=run.Flux))
         print '\n'
         return {'min': fluxes[min(fluxes)], 'max': fluxes[max(fluxes)]}
 
