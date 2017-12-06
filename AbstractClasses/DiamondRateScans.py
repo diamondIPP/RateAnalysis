@@ -460,10 +460,10 @@ class DiaScans(Elementary):
                 ana.close_files()
             for g in mg_ph_ana.GetListOfGraphs():
                 self.format_histo(g, color=colors[i], markersize=1.5, lw=2)
-                # if g.GetName() == 'gFirst':
-                #     self.format_histo(g, color=1, marker=26, markersize=2)
-                # elif g.GetName() == 'gLast':
-                #     self.format_histo(g, color=1, marker=23, markersize=2)
+                if g.GetName() == 'gFirst':
+                    self.format_histo(g, color=1, marker=26, markersize=2)
+                elif g.GetName() == 'gLast':
+                    self.format_histo(g, color=1, marker=23, markersize=2)
             legend.AddEntry(mg_ph_ana.GetListOfGraphs()[0], tits[i], 'lp')
             legend.AddEntry(0, get_bias_root_string(sel.SelectedBias), '') if len(biases) > 1 else do_nothing()
             mg.Add(mg_ph_ana)
