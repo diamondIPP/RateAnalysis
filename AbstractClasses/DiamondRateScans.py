@@ -155,14 +155,15 @@ class DiaScans(Elementary):
         if key is None:
             key = self.DiamondName
         if key not in self.Selections.keys():
-            log_warning('"{selection} does not exist in:')
-            for key in sorted(self.Selections.keys()):
-                print key
+            log_warning('"{sel} does not exist in:'.format(sel=key))
+            for sel in sorted(self.Selections.keys()):
+                print sel
             return
         self.log_info('Set Selection {0}'.format(key))
         self.DiamondName = self.load_diamond(split('[-_]', key)[0 if not key.startswith('poly') else 1])
         self.Selection = self.Selections[key]
         self.TestCampaigns = list(set(self.Selection.keys()))
+        self.load_run_selections(redo=True)
         self.Name = key
 
     # ==========================================================================
