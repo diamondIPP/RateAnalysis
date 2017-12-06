@@ -806,14 +806,47 @@ class DiaScans(Elementary):
         mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 3)
         self.save_histo(mg, 'DiaScans{dia}'.format(dia=make_dia_str(self.DiamondName)), draw_opt='a', logx=True, l=legend, x_fac=1.6, lm=.092, bm=.12, gridy=True)
 
-    def draw_scaled_rate_scans(self):
+    def draw_scaled_rate_scans(self, irr=False):
         run_selections = self.load_run_selections()
         biases = self.get_bias_voltages()
-        bias_str = ' at {bias} V'.format(bias=biases[0]) if len(biases) == 1 else ''
-        mg = TMultiGraph('mg_ph', '{dia} Rate Scans{b};Flux [kHz/cm^{{2}}]; pulse height [au]'.format(dia=self.DiamondName, b=bias_str))
-        legend = self.make_legend(.75, .4, nentries=4, felix=True)
+        bias_str = ' at {s}{bias}V'.format(bias=int(biases[0]), s='+' if biases[0] > 0 else '') if len(biases) == 1 else ''
         colors = get_color_gradient(len(run_selections))
         tits = [make_irr_string(v, p) for v, p in [(0, 0), (5, 14), (1, 15), (2, 15), (4, 15)]]
+        graphs = self.get_pulse_height_graphs()
+        x_vals = sorted([g.GetX()[i] for g in graphs for i in xrange(g.GetN())])
+
+        c = self.make_canvas(x=1.6, y=.2 * (len(graphs) + 1), transp=True, logx=True, gridy=True)
+        lm, rm = .03, .02
+        lp = .04
+        pad_height = .1 / (.2 * (len(graphs) + 1))
+        self.draw_tpad('p0', 'p0', pos=[lp, 1 - pad_height, 1, 1], margins=[lm, rm, 0, .5], transparent=True)                              # title pad
+        self.draw_tlatex(lm, .5, '{dia} Rate Scans{b}'.format(dia=self.DiamondName, b=bias_str), size=.5, align=12)     # title
+        c.cd()
+        self.draw_tpad('p1', 'p1', pos=[0, 0, lp, 1], margins=[0, 0, 0, 0], transparent=True)                                   # info pad
+        self.draw_tlatex(.5, .5, '#font[42]{Scaled Pulse Height}', size=.7, align=22, angle=90)    # title
+        c.cd()
+
+        for i, g in enumerate(graphs):
+            last = i >= len(graphs) - 1
+            y0 = 0 if last else 1 - (pad_height * (2 * i + 3))
+            y1 = 1 - (pad_height * (2 * i + 1))
+            self.draw_tpad('p{i}'.format(i=i + 2), 'p{i}'.format(i=i + 2), pos=[lp, y0, 1, y1], margins=[lm, rm, .33 if last else 0, 0], logx=True, gridy=True, gridx=True)
+            if last:
+                self.format_histo(g, title=' ', color=colors[i], x_range=[x_vals[0] * 0.8, x_vals[-1] * 3], y_range=[.85, 1.15], marker=markers(i), lab_size=.15 * 2 / 3, ndivy=505,
+                                  markersize=1.5 * 1.5, x_tit='Flux [kHz/cm^{2}]', tit_size=.15 * 2 / 3, tick_size=.15 * 2 / 3)
+            else:
+                self.format_histo(g, title=' ', color=colors[i], x_range=[x_vals[0] * 0.8, x_vals[-1] * 3], y_range=[.85, 1.15], marker=markers(i), lab_size=.15, ndivy=505,
+                                  markersize=1.5, tick_size=.15)
+            g.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 3)
+            g.Draw('ap')
+            legend = self.make_legend(0.8, 1, x2=1 - rm, nentries=1, scale=5 * (2 / 3. if last else 1))
+            legend.AddEntry(g, tits[i] if irr else make_tc_str(self.RunSelections[i].TCString), 'pe')
+            legend.Draw()
+            self.ROOTObjects.append(legend)
+            c.cd()
+
+        self.ROOTObjects.append(graphs)
+        self.save_plots('ScaledDiaScans{dia}'.format(dia=make_dia_str(self.DiamondName)))
 
         splits = 5.
         for i, sel in enumerate(run_selections):
