@@ -506,11 +506,11 @@ class DiaScans(Elementary):
                                   markersize=1.5, tick_size=.15)
             g.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 3)
             g.Draw('ap')
-            legend = self.make_legend(0.8, 1, x2=1 - rm, nentries=1, scale=5 * (2 / 3. if last else 1))
+            legend = self.make_legend(0.8 if len(biases) < 2 else .75, 1, x2=1 - rm, nentries=1, scale=5 * (2 / 3. if last else 1))
             legend.AddEntry(g, tits[i] if irr else make_tc_str(self.RunSelections[i].TCString), 'pe')
             if len(biases) > 1:
                 legend.SetNColumns(2)
-                legend.AddEntry('', make_bias_str(biases[i]))
+                legend.AddEntry('', make_bias_str(biases[i]), '')
             legend.Draw()
             self.ROOTObjects.append(legend)
             c.cd()
