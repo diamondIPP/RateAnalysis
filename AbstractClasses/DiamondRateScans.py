@@ -529,7 +529,8 @@ class DiaScans(Elementary):
             except IOError:
                 print 'Did not find', path
                 Elementary(sel.generate_tc_str())
-                ana = AnalysisCollection(sel, sel.SelectedDiamondNr, self.verbose)
+                print
+                ana = AnalysisCollection(sel, self.verbose)
                 phs = ana.get_pulse_heights(redo=redo)
             values, errors = self.scale_to(phs, scale)
             fluxes = [ph['flux'] for ph in phs.itervalues()]
