@@ -149,7 +149,7 @@ class DiaScans(Elementary):
         return list(set(names))
 
     def get_bias_voltages(self):
-        return list(set([sel.SelectedBias for sel in self.RunSelections]))
+        return [sel.SelectedBias for sel in self.RunSelections]
 
     def set_selection(self, key=None):
         if key is None:
