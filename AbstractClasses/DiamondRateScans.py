@@ -476,7 +476,7 @@ class DiaScans(Elementary):
     def draw_scaled_rate_scans(self, irr=False):
         run_selections = self.load_run_selections()
         biases = self.get_bias_voltages()
-        bias_str = ' at {s}{bias}V'.format(bias=int(biases[0]), s='+' if biases[0] > 0 else '') if len(biases) == 1 else ''
+        bias_str = make_bias_str(biases[0]) if len(set(biases)) == 1 else ''
         colors = get_color_gradient(len(run_selections))
         tits = [make_irr_string(v, p) for v, p in [(0, 0), (5, 14), (1, 15), (2, 15), (4, 15)]]
         graphs = self.get_pulse_height_graphs()
@@ -500,7 +500,7 @@ class DiaScans(Elementary):
             self.draw_tpad('p{i}'.format(i=i + 2), 'p{i}'.format(i=i + 2), pos=[lp, y0, 1, y1], margins=[lm, rm, .33 if last else 0, 0], logx=True, gridy=True, gridx=True)
             if last:
                 self.format_histo(g, title=' ', color=colors[i], x_range=[x_vals[0] * 0.8, x_vals[-1] * 3], y_range=[.85, 1.15], marker=markers(i), lab_size=.15 * 2 / 3, ndivy=505,
-                                  markersize=1.5 * 1.5, x_tit='Flux [kHz/cm^{2}]', tit_size=.15 * 2 / 3, tick_size=.15 * 2 / 3)
+                                  markersize=1.5, x_tit='Flux [kHz/cm^{2}]', tit_size=.15 * 2 / 3, tick_size=.15 * 2 / 3)
             else:
                 self.format_histo(g, title=' ', color=colors[i], x_range=[x_vals[0] * 0.8, x_vals[-1] * 3], y_range=[.85, 1.15], marker=markers(i), lab_size=.15, ndivy=505,
                                   markersize=1.5, tick_size=.15)
@@ -508,6 +508,9 @@ class DiaScans(Elementary):
             g.Draw('ap')
             legend = self.make_legend(0.8, 1, x2=1 - rm, nentries=1, scale=5 * (2 / 3. if last else 1))
             legend.AddEntry(g, tits[i] if irr else make_tc_str(self.RunSelections[i].TCString), 'pe')
+            if len(biases) > 1:
+                legend.SetNColumns(2)
+                legend.AddEntry('', make_bias_str(biases[i]))
             legend.Draw()
             self.ROOTObjects.append(legend)
             c.cd()
