@@ -848,10 +848,14 @@ class DiaScans(Elementary):
         self.ROOTObjects.append(graphs)
         self.save_plots('ScaledDiaScans{dia}'.format(dia=make_dia_str(self.DiamondName)))
 
-        splits = 5.
+    def get_pulse_height_graphs(self, scale=1, redo=False):
+        run_selections = self.load_run_selections()
+        graphs = []
         for i, sel in enumerate(run_selections):
             path = self.make_pickle_path('Ph_fit', 'PhVals', sel.SelectedRunplan, sel.SelectedDiamond, 10000, sel.TCString)
             try:
+                if redo:
+                    raise IOError
                 f = open(path, 'r')
                 phs = pickle.load(f)
                 f.close()
@@ -859,32 +863,21 @@ class DiaScans(Elementary):
                 print 'Did not find', path
                 Elementary(sel.generate_tc_str())
                 ana = AnalysisCollection(sel, sel.SelectedDiamondNr, self.verbose)
-                phs = ana.get_pulse_heights()
-            values, errors = self.scale_to(phs, i / splits)
+                phs = ana.get_pulse_heights(redo=redo)
+            values, errors = self.scale_to(phs, scale)
             fluxes = [ph['flux'] for ph in phs.itervalues()]
             g = self.make_tgrapherrors('g{n}'.format(n=i), 'Rate Scans for {n}'.format(n=self.DiamondName))
             for j, (x, val, err) in enumerate(zip(fluxes, values, errors)):
                 g.SetPoint(j, x, val)
                 g.SetPointError(j, .1 * x, err)
-            self.format_histo(g, color=colors[i], lw=2, markersize=1.5)
-            mg.Add(g, 'pl')
-            # legend.AddEntry(g, make_tc_str(sel.TCString), 'lp')
-            legend.AddEntry(g, tits[i], 'lp')
-        x_vals = sorted([gr.GetX()[i] for gr in mg.GetListOfGraphs() for i in xrange(gr.GetN())])
-        y_vals = sorted([gr.GetY()[i] for gr in mg.GetListOfGraphs() for i in xrange(gr.GetN())])
-        self.format_histo(mg, draw_first=True, y_tit='Scaled Pulse Height', y_range=[0, y_vals[-1] * 1.1], tit_size=.05, l_off_y=.99, y_off=.91, x_off=1.2, ndivy=110)
-        mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 3)
-        self.draw_histo(mg, 'ScaledDiaScans{dia}'.format(dia=make_dia_str(self.DiamondName)), draw_opt='a', logx=True, l=legend, x=1.6, lm=.092, bm=.12, gridy=True)
-        for i in xrange(len(run_selections)):
-            self.draw_tlatex(mg.GetXaxis().GetXmin() - log10((mg.GetXaxis().GetXmax() - mg.GetXaxis().GetXmin()) * 0.001), 1 - i / splits, '1', align=12, color=colors[i])
-            self.draw_y_axis(mg.GetXaxis().GetXmin(), - i / splits, 1 - i / splits, '', col=colors[i], opt='S-', l_off=.99, tick_size=.04)  # * (1 + i / splits * 2))
-        self.save_plots('ScaledDiaScans{dia}'.format(dia=make_dia_str(self.DiamondName)))
+            graphs.append(g)
+        return graphs
 
     @staticmethod
-    def scale_to(dic, offset=0.):
-        scale = 1 / dic.values()[0]['ph'].Parameter(0)
-        err_scale = 1 / dic.values()[0]['ph'].Parameter(0)
-        values = [d['ph'].Parameter(0) * scale - offset for d in dic.itervalues()]
+    def scale_to(dic, scale=1):
+        err_scale = scale / dic.values()[0]['ph'].Parameter(0)
+        scale = scale / dic.values()[0]['ph'].Parameter(0) if scale is not None else 1
+        values = [d['ph'].Parameter(0) * scale for d in dic.itervalues()]
         errors = [d['ph'].ParError(0) * err_scale for d in dic.itervalues()]
         return values, errors
 
