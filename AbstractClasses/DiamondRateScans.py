@@ -477,7 +477,7 @@ class DiaScans(Elementary):
         mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 3)
         self.save_histo(mg, 'DiaScans{dia}'.format(dia=make_dia_str(self.DiamondName)), draw_opt='a', logx=True, l=legend, x_fac=1.6, lm=.092, bm=.12, gridy=True)
 
-    def draw_scaled_rate_scans(self, irr=False, y_range=.15):
+    def draw_scaled_rate_scans(self, irr=False, y_range=.15, rdm=False):
         run_selections = self.load_run_selections()
         biases = self.get_bias_voltages()
         bias_str = ' at {b}'.format(b=make_bias_str(biases[0])) if len(set(biases)) == 1 else ''
@@ -511,8 +511,9 @@ class DiaScans(Elementary):
                                   markersize=1.5, tick_size=.15)
             g.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 3)
             g.Draw('ap')
-            legend = self.make_legend(0.8 if len(set(biases)) < 2 else .75, 1, x2=1 - rm, nentries=1, scale=5 * (2 / 3. if last else 1))
-            legend.AddEntry(g, tits[i] if irr else make_tc_str(self.RunSelections[i].TCString), 'pe')
+            x1 = .8 if len(set(biases)) < 2 else .75
+            legend = self.make_legend(x1 - .05 if rdm else 0, 1, x2=1 - rm, nentries=1, scale=5 * (2 / 3. if last else 1))
+            legend.AddEntry(g, (tits[i] if irr else make_tc_str(self.RunSelections[i].TCString)) + (' (random)' if i in [1, 3] and rdm else '') , 'pe')
             if len(set(biases)) > 1:
                 legend.SetNColumns(2)
                 legend.AddEntry('', make_bias_str(biases[i]), '')
