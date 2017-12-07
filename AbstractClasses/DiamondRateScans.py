@@ -477,7 +477,7 @@ class DiaScans(Elementary):
         mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 3)
         self.save_histo(mg, 'DiaScans{dia}'.format(dia=make_dia_str(self.DiamondName)), draw_opt='a', logx=True, l=legend, x_fac=1.6, lm=.092, bm=.12, gridy=True)
 
-    def draw_scaled_rate_scans(self, irr=False):
+    def draw_scaled_rate_scans(self, irr=False, y_range=.15):
         run_selections = self.load_run_selections()
         biases = self.get_bias_voltages()
         bias_str = ' at {b}'.format(b=make_bias_str(biases[0])) if len(set(biases)) == 1 else ''
@@ -485,6 +485,7 @@ class DiaScans(Elementary):
         tits = [make_irr_string(v, p) for v, p in [(0, 0), (5, 14), (1, 15), (2, 15), (4, 15)]]
         graphs = self.get_pulse_height_graphs()
         x_vals = sorted([g.GetX()[i] for g in graphs for i in xrange(g.GetN())])
+        y_range = [1 - y_range, 1 + y_range]
 
         c = self.make_canvas(x=1.6, y=.2 * (len(graphs) + 1), transp=True, logx=True, gridy=True)
         lm, rm = .03, .02
@@ -503,10 +504,10 @@ class DiaScans(Elementary):
             y1 = 1 - (pad_height * (2 * i + 1))
             self.draw_tpad('p{i}'.format(i=i + 2), 'p{i}'.format(i=i + 2), pos=[lp, y0, 1, y1], margins=[lm, rm, .33 if last else 0, 0], logx=True, gridy=True, gridx=True)
             if last:
-                self.format_histo(g, title=' ', color=colors[i], x_range=[x_vals[0] * 0.8, x_vals[-1] * 3], y_range=[.85, 1.15], marker=markers(i), lab_size=.15 * 2 / 3, ndivy=505,
+                self.format_histo(g, title=' ', color=colors[i], x_range=[x_vals[0] * 0.8, x_vals[-1] * 3], y_range=y_range, marker=markers(i), lab_size=.15 * 2 / 3, ndivy=505,
                                   markersize=1.5, x_tit='Flux [kHz/cm^{2}]', tit_size=.15 * 2 / 3, tick_size=.15 * 2 / 3)
             else:
-                self.format_histo(g, title=' ', color=colors[i], x_range=[x_vals[0] * 0.8, x_vals[-1] * 3], y_range=[.85, 1.15], marker=markers(i), lab_size=.15, ndivy=505,
+                self.format_histo(g, title=' ', color=colors[i], x_range=[x_vals[0] * 0.8, x_vals[-1] * 3], y_range=y_range, marker=markers(i), lab_size=.15, ndivy=505,
                                   markersize=1.5, tick_size=.15)
             g.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 3)
             g.Draw('ap')
