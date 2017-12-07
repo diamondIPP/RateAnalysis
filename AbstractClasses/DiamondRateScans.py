@@ -87,14 +87,18 @@ class DiaScans(Elementary):
         parser.read('{0}/Configuration/DiamondAliases.cfg'.format(self.get_program_dir()))
         return parser
 
-    def load_diamond(self, dia):
+    def load_diamond(self, key):
+        dia = '-'.join(split('[-_]', key)[:2]) if any(w in key.lower() for w in ['poly', 'ii6']) else split('[-_]', key)[0]
         try:
             return self.Parser.get('ALIASES', dia)
         except NoOptionError:
             if dia in [self.Parser.get('ALIASES', a) for a in self.Parser.options('ALIASES')]:
                 return dia
-            log_warning('{0} is not a known diamond name! Please choose one from \n{1}'.format(dia, self.Parser.options('ALIASES')))
-            exit()
+            try:
+                dia = split('[-_]', dia)[-1]
+                return self.Parser.get('ALIASES', dia)
+            except NoOptionError:
+                log_warning('{0} is not a known diamond name! Please choose one from \n{1}'.format(dia, self.Parser.options('ALIASES')))
 
     def load_testcampaigns(self, tcs):
         if tcs is None:
@@ -160,7 +164,7 @@ class DiaScans(Elementary):
                 print sel
             return
         self.log_info('Set Selection {0}'.format(key))
-        self.DiamondName = self.load_diamond('-'.join(split('[-_]', key)[:2]) if any(w in key.lower() for w in ['poly', 'ii6']) else split('[-_]', key)[0])
+        self.DiamondName = self.load_diamond(key)
         self.Selection = self.Selections[key]
         self.TestCampaigns = list(set(self.Selection.keys()))
         self.load_run_selections(redo=True)
