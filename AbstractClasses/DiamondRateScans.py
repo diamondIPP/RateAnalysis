@@ -87,18 +87,18 @@ class DiaScans(Elementary):
         parser.read('{0}/Configuration/DiamondAliases.cfg'.format(self.get_program_dir()))
         return parser
 
-    def load_diamond(self, key):
-        dia = '-'.join(split('[-_]', key)[:2]) if any(w in key.lower() for w in ['poly', 'ii6']) else split('[-_]', key)[0]
+    def load_diamond(self, name):
+        dia = name
+        if name.lower() not in self.Parser.options('ALIASES'):
+            dia = split('[-_]', name)[-1]
+        if dia.lower() not in self.Parser.options('ALIASES'):
+            dia = '-'.join(split('[-_]', name)[:-1])
+        if dia.lower() not in self.Parser.options('ALIASES'):
+            dia = dia.split('-')[-1]
         try:
             return self.Parser.get('ALIASES', dia)
         except NoOptionError:
-            if dia in [self.Parser.get('ALIASES', a) for a in self.Parser.options('ALIASES')]:
-                return dia
-            try:
-                dia = split('[-_]', dia)[-1]
-                return self.Parser.get('ALIASES', dia)
-            except NoOptionError:
-                log_warning('{0} is not a known diamond name! Please choose one from \n{1}'.format(dia, self.Parser.options('ALIASES')))
+            log_warning('{0} is not a known diamond name! Please choose one from \n{1}'.format(dia, self.Parser.options('ALIASES')))
 
     def load_testcampaigns(self, tcs):
         if tcs is None:
