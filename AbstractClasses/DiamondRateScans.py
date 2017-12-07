@@ -75,7 +75,7 @@ class DiaScans(Elementary):
 
     def load_selections(self):
         f = open(self.Path)
-        selections = load(f, object_hook=OrderedDict)
+        selections = load(f, object_pairs_hook=OrderedDict)
         f.close()
         return selections
 
