@@ -8,7 +8,7 @@ from math import copysign
 from re import sub
 from shutil import move
 from os import remove, getcwd, chdir, system, rename
-from os.path import dirname, realpath
+from os.path import dirname, realpath, getsize
 from glob import glob
 from Utils import *
 from PixAlignment import PixAlignment
@@ -213,6 +213,9 @@ class Converter:
             print_banner('START CONVERTING RAW FILE FOR RUN {0}'.format(run_number))
             print converter_cmd
             system(converter_cmd)
+            while getsize(self.get_root_file_path()) < 500:
+                remove(self.get_root_file_path())
+                system(converter_cmd)
             chdir(curr_dir)
         self.align_run()
         self.__add_tracking(run_number)
