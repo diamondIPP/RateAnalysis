@@ -409,7 +409,7 @@ class DiaScans(Elementary):
         values = []
         for tc in self.TestCampaigns if tc is None else [tc]:
             for run, data in sorted(self.RunInfos[tc].iteritems()):
-                info_run = Run(run_number=run, test_campaign=tc, load_tree=False)
+                info_run = Run(run_number=run, test_campaign=tc, tree=False)
                 if run_thr is not None:
                     if run_thr > 0 and int(run) < run_thr:
                         continue
