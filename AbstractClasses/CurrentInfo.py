@@ -8,7 +8,7 @@ from Elementary import Elementary
 from RunSelection import RunSelection
 from ROOT import TCanvas, TText, TGraph
 from ConfigParser import ConfigParser
-from numpy import array, mean
+from numpy import mean
 from argparse import ArgumentParser
 
 from Utils import *
@@ -364,35 +364,32 @@ class Currents(Elementary):
         self.make_graphs()
         self.set_margins()
 
-    def draw_indep_graphs(self, rel_time=False, ignore_jumps=True, v_range=None):
+    def draw_indep_graphs(self, rel_time=False, ignore_jumps=True, v_range=None, show=True):
         self.IgnoreJumps = ignore_jumps
         if not self.Currents:
             self.set_graphs(rel_time)
+        self.set_root_output(show)
         c = TCanvas('c', 'Keithley Currents for Run {0}'.format(self.RunNumber), int(self.Res * 1.5), int(self.Res * .75))
-        pads = self.make_pads()
-        self.draw_pads(pads)
+        self.draw_voltage_pad(v_range)
+        self.draw_title_pad()
+        self.draw_current_pad()
 
-        self.draw_voltage_pad(pads[0], v_range)
-        self.draw_title_pad(pads[1])
-        self.draw_current_pad(pads[2])
+        self.Stuff.append(c)
+        self.save_plots('{dia}_{bias}'.format(dia=self.DiamondName, bias=self.Bias), sub_dir='Currents', show=show)
 
-        self.Stuff.append([c] + pads)
-
-        self.save_plots('{dia}_{bias}'.format(dia=self.DiamondName, bias=self.Bias), sub_dir='Currents')
-
-    def draw_current_pad(self, pad):
-        pad.cd()
+    def draw_current_pad(self):
+        pad = self.draw_tpad('p3', gridx=True, margins=[.1, .09, .15, .15], transparent=True)
         self.draw_current_frame(pad)
         self.CurrentGraph.Draw('pl')
 
-    def draw_voltage_pad(self, pad, vrange):
-        pad.cd()
+    def draw_voltage_pad(self, vrange):
+        pad = self.draw_tpad('p1', gridy=True, margins=[.1, .09, .15, .15])
         self.draw_voltage_frame(pad, vrange)
         self.VoltageGraph.Draw('p')
         self.draw_voltage_axis(vrange)
 
-    def draw_title_pad(self, pad):
-        pad.cd()
+    def draw_title_pad(self):
+        self.draw_tpad('p2', transparent=True)
         bias_str = 'at {b} V'.format(b=self.Bias) if self.Bias else '??'
         run_str = '{n}'.format(n=self.Analysis.RunNumber) if hasattr(self.Analysis, 'run') else 'Plan {rp}'.format(rp=self.Analysis.RunPlan)
         text = 'Currents of {dia} {b} - Run {r}'.format(dia=self.DiamondName, b=bias_str, r=run_str)
@@ -400,13 +397,6 @@ class Currents(Elementary):
         t1.SetTextSize(0.05)
         t1.Draw()
         self.Stuff.append(t1)
-
-    def make_pads(self):
-        margins = [.1, .09, .15, .15]
-        p1 = self.draw_tpad('p1', gridy=True, margins=margins)
-        p2 = self.draw_tpad('p2', transparent=True)
-        p3 = self.draw_tpad('p3', gridx=True, margins=margins, transparent=True)
-        return [p1, p2, p3]
 
     @staticmethod
     def draw_pads(pads):
