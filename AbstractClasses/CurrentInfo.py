@@ -44,6 +44,8 @@ class Currents(Elementary):
 
         # analysis/run info
         self.TimeOffset = self.run_config_parser.getint('BASIC', 'hvtimeoffset')
+        if self.IsCollection:
+            self.RunPlan = analysis.RunPlan
         self.RunNumber = self.load_run_number()
         self.RunLogs = self.load_runlogs()
         if analysis is not None:
@@ -390,7 +392,7 @@ class Currents(Elementary):
 
     def draw_title_pad(self):
         self.draw_tpad('p2', transparent=True)
-        bias_str = 'at {b} V'.format(b=self.Bias) if self.Bias else '??'
+        bias_str = 'at {b} V'.format(b=self.Bias) if self.Bias else ''
         run_str = '{n}'.format(n=self.Analysis.RunNumber) if hasattr(self.Analysis, 'run') else 'Plan {rp}'.format(rp=self.Analysis.RunPlan)
         text = 'Currents of {dia} {b} - Run {r}'.format(dia=self.DiamondName, b=bias_str, r=run_str)
         t1 = TText(0.1, 0.88, text)

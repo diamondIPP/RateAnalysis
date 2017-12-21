@@ -298,11 +298,11 @@ class Elementary(object):
     def save_on_kinder(self, canvas, file_name):
         if kinder_is_mounted():
             if hasattr(self, 'DiamondName'):
-                if hasattr(self, 'RunNumber'):
-                    run_string = str(self.RunNumber)
-                elif hasattr(self, 'RunPlan'):
+                if hasattr(self, 'RunPlan'):
                     rp = self.RunPlan
                     run_string = 'RunPlan{r}'.format(r=rp[1:] if rp[0] == '0' else rp)
+                elif hasattr(self, 'RunNumber'):
+                    run_string = str(self.RunNumber)
                 else:
                     return
                 path = join(get_base_dir(), 'mounts/psi/Diamonds', self.DiamondName, 'BeamTests', make_tc_str(self.generate_tc_str(), long_=False), run_string, file_name)
