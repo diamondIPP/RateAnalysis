@@ -2,15 +2,13 @@
 # IMPORTS
 # ====================================
 from glob import glob
-from time import sleep
 from json import load
-from collections import OrderedDict
 
 from Elementary import Elementary
 from RunSelection import RunSelection
 from ROOT import TCanvas, TText, TGraph
 from ConfigParser import ConfigParser
-from numpy import array, mean
+from numpy import mean
 from argparse import ArgumentParser
 
 from Utils import *
@@ -46,15 +44,18 @@ class Currents(Elementary):
 
         # analysis/run info
         self.TimeOffset = self.run_config_parser.getint('BASIC', 'hvtimeoffset')
+        if self.IsCollection:
+            self.RunPlan = analysis.RunPlan
         self.RunNumber = self.load_run_number()
         self.RunLogs = self.load_runlogs()
         if analysis is not None:
-            self.RunInfo = analysis.run.RunInfo if not self.IsCollection else analysis.get_first_analysis().RunInfo
+            self.RunInfo = analysis.run.RunInfo if not self.IsCollection else analysis.FirstAnalysis.RunInfo
             self.Channel = analysis.channel
         # todo: add a method to extract the currents for may
         if 'dia1supply' not in self.RunInfo:
             return
         self.DiamondName = self.load_dia_name()
+        self.DiamondNumber = self.load_dia_number()
         self.Bias = self.load_bias()
         self.StartRun = start_run
         self.StartTime = self.load_start_time()
@@ -95,6 +96,10 @@ class Currents(Elementary):
     def load_dia_name(self):
         return self.Analysis.DiamondName if self.Analysis is not None else None
 
+    def load_dia_number(self):
+        if self.Analysis is not None:
+            return self.Analysis.DiamondNumber if not self.IsCollection else self.Analysis.FirstAnalysis.DiamondNumber
+
     def load_bias(self):
         if hasattr(self.Analysis, 'Type') and 'voltage' in self.Analysis.Type:
             return ''
@@ -104,12 +109,13 @@ class Currents(Elementary):
     def load_run_number(self):
         nr = None
         if self.Analysis is not None:
-            nr = self.Analysis.RunNumber if not self.IsCollection else self.Analysis.run_plan
+            nr = self.Analysis.RunNumber if not self.IsCollection else self.Analysis.RunPlan
         return nr
 
     def load_runlogs(self):
+        filename = self.Analysis.run.runinfofile if not self.IsCollection else self.Analysis.FirstAnalysis.run.runinfofile
         try:
-            f = open(self.Analysis.run.runinfofile)
+            f = open(filename)
             data = load(f)
             f.close()
         except IOError as err:
@@ -129,9 +135,9 @@ class Currents(Elementary):
         if self.run_config_parser.has_option('BASIC', 'hvconfigfile'):
             file_path = self.run_config_parser.get('BASIC', 'hvconfigfile')
         else:
-            file_path = joinpath(self.DataDir, make_tc_str(self.TESTCAMPAIGN, data=True), 'HV.cfg')
+            file_path = join(self.DataDir, self.generate_tc_directory(), 'HV.cfg')
         if not file_exists(file_path):
-            self.log_warning('Missing hv info in RunConfig file')
+            self.log_warning('HV info file "{f}" does not exist'.format(f=file_path))
             return None
         parser.read(file_path)
         self.log_info('HV Devices: {0}'.format([name for name in parser.sections() if name.startswith('HV')]))
@@ -144,24 +150,24 @@ class Currents(Elementary):
                 return str(full_str.split('-')[0])
             except KeyError:
                 return dia
-        full_str = self.RunInfo['dia{dia}supply'.format(dia=self.Analysis.DiamondNumber)]
+        full_str = self.RunInfo['dia{dia}supply'.format(dia=self.DiamondNumber)]
         return str(full_str.split('-')[0])
 
     def get_device_channel(self, dia):
         if self.Analysis is None:
             full_str = self.RunLogs[self.StartRun]['dia{dia}supply'.format(dia=dia)]
             return full_str.split('-')[1] if len(full_str) > 1 else '0'
-        full_str = self.RunInfo['dia{dia}supply'.format(dia=self.Analysis.DiamondNumber)]
+        full_str = self.RunInfo['dia{dia}supply'.format(dia=self.DiamondNumber)]
         return full_str.split('-')[1] if len(full_str) > 1 else '0'
 
     def find_data_path(self, old=False):
         if self.run_config_parser.has_option('BASIC', 'hvdatapath'):
             hv_datapath = self.run_config_parser.get('BASIC', 'hvdatapath')
         else:
-            hv_datapath = joinpath(self.DataDir, make_tc_str(self.TESTCAMPAIGN, data=True), 'HVClient')
+            hv_datapath = join(self.DataDir, self.generate_tc_directory(), 'HVClient')
         if not dir_exists(hv_datapath):
             log_warning('HV data path "{p}" does not exist!'.format(p=hv_datapath))
-        hv_datapath = joinpath(hv_datapath, '{dev}_CH{ch}' if not old else '{dev}')
+        hv_datapath = join(hv_datapath, '{dev}_CH{ch}' if not old else '{dev}')
         return hv_datapath.format(dev=self.ConfigParser.get('HV' + self.Number, 'name'), ch=self.Channel)
 
     def load_start_time(self):
@@ -221,7 +227,7 @@ class Currents(Elementary):
     # ==========================================================================
     # region ACQUIRE DATA
     def get_logs_from_start(self):
-        log_names = sorted([name for name in glob(joinpath(self.DataPath, '*'))] + [name for name in glob(joinpath(self.OldDataPath, '*'))])
+        log_names = sorted([name for name in glob(join(self.DataPath, '*'))] + [name for name in glob(join(self.OldDataPath, '*'))])
         start_log = None
         for i, name in enumerate(log_names):
             log_date = self.get_log_date(name)
@@ -360,49 +366,39 @@ class Currents(Elementary):
         self.make_graphs()
         self.set_margins()
 
-    def draw_indep_graphs(self, rel_time=False, ignore_jumps=True, v_range=None):
+    def draw_indep_graphs(self, rel_time=False, ignore_jumps=True, v_range=None, show=True):
         self.IgnoreJumps = ignore_jumps
         if not self.Currents:
             self.set_graphs(rel_time)
+        self.set_root_output(show)
         c = TCanvas('c', 'Keithley Currents for Run {0}'.format(self.RunNumber), int(self.Res * 1.5), int(self.Res * .75))
-        pads = self.make_pads()
-        self.draw_pads(pads)
+        self.draw_voltage_pad(v_range)
+        self.draw_title_pad()
+        self.draw_current_pad()
 
-        self.draw_voltage_pad(pads[0], v_range)
-        self.draw_title_pad(pads[1])
-        self.draw_current_pad(pads[2])
+        self.Stuff.append(c)
+        self.save_plots('{dia}_{bias}'.format(dia=self.DiamondName, bias=self.Bias), sub_dir='Currents', show=show)
 
-        self.Stuff.append([c] + pads)
-
-        self.save_plots('{dia}_{bias}'.format(dia=self.DiamondName, bias=self.Bias), sub_dir='Currents')
-
-    def draw_current_pad(self, pad):
-        pad.cd()
+    def draw_current_pad(self):
+        pad = self.draw_tpad('p3', gridx=True, margins=[.1, .09, .15, .15], transparent=True)
         self.draw_current_frame(pad)
         self.CurrentGraph.Draw('pl')
 
-    def draw_voltage_pad(self, pad, vrange):
-        pad.cd()
+    def draw_voltage_pad(self, vrange):
+        pad = self.draw_tpad('p1', gridy=True, margins=[.1, .09, .15, .15])
         self.draw_voltage_frame(pad, vrange)
         self.VoltageGraph.Draw('p')
         self.draw_voltage_axis(vrange)
 
-    def draw_title_pad(self, pad):
-        pad.cd()
-        bias_str = 'at {b} V'.format(b=self.Bias) if self.Bias else '??'
-        run_str = '{n}'.format(n=self.Analysis.RunNumber) if hasattr(self.Analysis, 'run') else 'Plan {rp}'.format(rp=self.Analysis.run_plan)
+    def draw_title_pad(self):
+        self.draw_tpad('p2', transparent=True)
+        bias_str = 'at {b} V'.format(b=self.Bias) if self.Bias else ''
+        run_str = '{n}'.format(n=self.Analysis.RunNumber) if hasattr(self.Analysis, 'run') else 'Plan {rp}'.format(rp=self.Analysis.RunPlan)
         text = 'Currents of {dia} {b} - Run {r}'.format(dia=self.DiamondName, b=bias_str, r=run_str)
         t1 = TText(0.1, 0.88, text)
         t1.SetTextSize(0.05)
         t1.Draw()
         self.Stuff.append(t1)
-
-    def make_pads(self):
-        margins = [.1, .09, .15, .15]
-        p1 = self.draw_tpad('p1', gridy=True, margins=margins)
-        p2 = self.draw_tpad('p2', transparent=True)
-        p3 = self.draw_tpad('p3', gridx=True, margins=margins, transparent=True)
-        return [p1, p2, p3]
 
     @staticmethod
     def draw_pads(pads):

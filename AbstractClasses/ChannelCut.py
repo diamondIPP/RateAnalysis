@@ -1,8 +1,8 @@
 from Cut import Cut
 from Extrema import Extrema2D
 from copy import deepcopy
+from functools import partial
 from ROOT import TCut, TH1F, TH2F, TF1, TCanvas, TLegend, gROOT, TProfile, THStack, TCutG, TSpectrum
-from collections import OrderedDict
 from Utils import *
 from json import loads
 from numpy import array
@@ -22,6 +22,8 @@ class ChannelCut(Cut):
         self.__dict__.update(analysis.Cut.__dict__)
         self.channel = channel
         self.RunNumber = self.analysis.RunNumber
+        self.DiamondName = analysis.DiamondName
+        self.DiamondNumber = analysis.DiamondNumber
 
         self.load_channel_config()
 
@@ -69,7 +71,10 @@ class ChannelCut(Cut):
 
     # ==============================================
     # region SET CUTS
-    def set_cut(self, name, value):
+    def set_cut(self, name, value=None):
+        if name not in self.CutStrings:
+            log_warning('There is no cut with the name "{name}"!'.format(name=name))
+            return
         self.reset_cut(name)
         self.CutStrings[name] += self.generate_cut(name, value)
         self.update_all_cut()
@@ -103,18 +108,15 @@ class ChannelCut(Cut):
     # ==============================================
     # region GENERATE CUT STRINGS
     def generate_cut(self, name, value):
-        if name == 'median':
-            return self.generate_median(value)
-        if name == 'pedestalsigma':
-            return self.generate_pedestalsigma(value)
-        if name == 'signal_peak_pos':
-            return self.generate_signal_peak_pos(value)
-        if name == 'signal_peak_time':
-            return self.generate_signal_peak_time(value)
-        if name == 'trigger_cell':
-            return self.generate_trigger_cell(value)
-        if name == 'bucket':
-            return self.generate_bucket(value)
+        dic = {'median': self.generate_median,
+               'pedestalsigma': self.generate_pedestalsigma,
+               'signal_peak_pos': self.generate_signal_peak_pos,
+               'signal_peak_time': self.generate_signal_peak_time,
+               'trigger_cell': self.generate_trigger_cell,
+               'bucket': self.generate_bucket,
+               'chi2X': partial(self.generate_chi2, 'x'),
+               'chi2Y': partial(self.generate_chi2, 'y')}
+        return dic[name](value)
 
     def generate_median(self, high=None):
         value = self.CutConfig['absMedian_high'] if high is None else high
@@ -141,7 +143,7 @@ class ChannelCut(Cut):
         extrema.region_scan()
         extrema.show_voting_histos()
         all_string = ''
-        nr = 2 if self.channel else 1
+        nr = self.DiamondNumber - 1
         for col in xrange(extrema.cols):
             all_val = [bool(extrema.VotingHistos['max'].GetBinContent(col, row)) for row in xrange(extrema.rows)]
             # print col, all_val
@@ -150,7 +152,7 @@ class ChannelCut(Cut):
             all_string += '||' if all_string else ''
             xmin = extrema.VotingHistos['max'].GetXaxis().GetBinLowEdge(col)
             xmax = extrema.VotingHistos['max'].GetXaxis().GetBinUpEdge(col)
-            all_string += '(diam{nr}_track_x>{xmin}&&diam{nr}_track_x<{xmax})&&'.format(nr=nr, xmin=xmin, xmax=xmax)
+            all_string += '(dia_track_x[{nr}]>{xmin}&&dia_track_x[{nr}]<{xmax})&&'.format(nr=nr, xmin=xmin, xmax=xmax)
             y_string = ''
             cont = True
             for row in xrange(extrema.rows + 1):
@@ -163,9 +165,9 @@ class ChannelCut(Cut):
                         continue
                     cont = True
                     y_string += '||' if y_string else '('
-                    y_string += 'diam{nr}_track_y>{y}&&'.format(nr=nr, y=y)
+                    y_string += 'dia_track_y[{nr}]>{y}&&'.format(nr=nr, y=y)
                 elif not val and last_val and cont:
-                    y_string += 'diam{nr}_track_y<{y}'.format(nr=nr, y=extrema.VotingHistos['max'].GetYaxis().GetBinUpEdge(row))
+                    y_string += 'dia_track_y[{nr}]<{y}'.format(nr=nr, y=extrema.VotingHistos['max'].GetYaxis().GetBinUpEdge(row))
             y_string += ')'
             all_string += y_string
         self.region_cut += all_string
@@ -226,15 +228,25 @@ class ChannelCut(Cut):
         cut = None
         if xy is not None:
             cut = TCutG('fid', 5, array([xy[0], xy[0], xy[1], xy[1], xy[0]], 'd'), array([xy[2], xy[3], xy[3], xy[2], xy[2]], 'd'))
-            nr = self.analysis.run.channels.index(self.analysis.channel) + 1
-            cut.SetVarX('diam{0}_track_x'.format(nr))
-            cut.SetVarY('diam{0}_track_y'.format(nr))
+            nr = self.analysis.DiamondNumber - 1
+            cut.SetVarX(self.get_track_var(nr, 'x'))
+            cut.SetVarY(self.get_track_var(nr, 'y'))
             self.ROOTObjects.append(cut)
+            cut.SetLineWidth(3)
         return TCut(cut.GetName() if cut is not None else '')
+
+    def get_fid_area(self):
+        conf = self.CutConfig['fiducial']
+        return (conf[1] - conf[0]) * (conf[3] - conf[2])
+
+    @staticmethod
+    def draw_fid_cut():
+        cut = gROOT.FindObject('fid')
+        cut.Draw() if cut else do_nothing()
 
     # special cut for analysis
     def generate_pulser_cut(self, beam_on=True):
-        cut = self.CutStrings['ped_sigma'] + self.CutStrings['event_range'] + self.CutStrings['saturated']
+        cut = self.CutStrings['ped_sigma'] + self.CutStrings['event_range']
         cut.SetName('Pulser{0}'.format('BeamOn' if beam_on else 'BeamOff'))
         cut += self.CutStrings['beam_interruptions'] if beam_on else '!({0})'.format(self.JumpCut)
         cut += '!({0})'.format(self.CutStrings['pulser'])
@@ -276,11 +288,11 @@ class ChannelCut(Cut):
     # HELPER FUNCTIONS
 
     def calc_signal_threshold(self, bg=False, show=True, show_all=False):
-        pickle_path = self.make_pickle_path('Cuts', 'SignalThreshold', self.analysis.highest_rate_run, self.channel)
+        pickle_path = self.make_pickle_path('Cuts', 'SignalThreshold', self.analysis.highest_rate_run, self.DiamondNumber)
         show = False if show_all else show
 
         def func():
-            print 'calculating signal threshold for bucket cut of run {run} and ch{ch}...'.format(run=self.analysis.RunNumber, ch=self.channel)
+            t = self.log_info('Calculating signal threshold for bucket cut of run {run} and {d} ...'.format(run=self.analysis.RunNumber, d=self.DiamondName), next_line=False)
             h = TH1F('h', 'Bucket Cut', 100, -50, 150)
             draw_string = '{name}>>h'.format(name=self.analysis.SignalName)
             fid = self.CutStrings['fiducial']
@@ -367,20 +379,25 @@ class ChannelCut(Cut):
 
             self.RootObjects.append([sig_fit, ped_fit, gr2, c])
 
+            self.add_info(t)
             return max_err
 
         threshold = func() if show or show_all else None
         threshold = self.do_pickle(pickle_path, func, threshold)
         return threshold if threshold > 0 else 30
 
-    def find_ped_range(self):
-        self.analysis.tree.Draw(self.analysis.PedestalName, '', 'goff', 1000)
-        return calc_mean([self.analysis.tree.GetV1()[i] for i in xrange(1000)])
-
     def __calc_pedestal_range(self, sigma_range):
-        ped_range = self.find_ped_range()
-        x_range = [ped_range[0] - 5 * ped_range[1], ped_range[0] + 10 * ped_range[1]]
-        fit = self.analysis.show_pedestal_histo(region=self.analysis.PedestalRegion, peak_int=self.analysis.PeakIntegral, save=False, cut='', show=False, x_range=x_range)
+        picklepath = self.make_pickle_path('Pedestal', 'Cut', self.RunNumber, self.channel)
+
+        def func():
+            t = self.log_info('generating pedestal cut for {dia} of run {run} ...'.format(run=self.analysis.RunNumber, dia=self.analysis.DiamondName), next_line=False)
+            h1 = TH1F('h_pdc', 'Pedestal Distribution', 600, -150, 150)
+            self.analysis.tree.Draw('{name}>>h_pdc'.format(name=self.analysis.PedestalName), '', 'goff')
+            fit_pars = self.fit_fwhm(h1, do_fwhm=True, draw=False)
+            self.add_info(t)
+            return FitRes(fit_pars)
+
+        fit = self.do_pickle(picklepath, func)
         sigma = fit.Parameter(2)
         mean_ = fit.Parameter(1)
         self.PedestalFit = fit
@@ -393,7 +410,7 @@ class ChannelCut(Cut):
             self.analysis.tree.Draw(self.analysis.SignalName, '', 'goff', 5000)
             xvals = sorted([self.analysis.tree.GetV1()[i] for i in xrange(5000)])
             x_range = [xvals[0] - 5, xvals[-5]]
-            h = self.analysis.show_signal_histo(show=show, cut=self.generate_fiducial(), x_range=x_range, binning=int(x_range[1] - x_range[0]))
+            h = self.analysis.draw_signal_distribution(show=show, cut=self.generate_fiducial(), x_range=x_range, binning=1)
             s = TSpectrum(3)
             s.Search(h)
             peaks = [s.GetPositionX()[i] for i in xrange(s.GetNPeaks())]
@@ -411,11 +428,10 @@ class ChannelCut(Cut):
         pickle_path = self.make_pickle_path('Cuts', 'TimingRange', self.RunNumber, self.channel)
 
         def func():
-            print 'generating timing cut for {dia} of run {run}...'.format(run=self.analysis.RunNumber, dia=self.analysis.DiamondName)
-
+            t = self.log_info('Generating timing cut for {dia} of run {run} ...'.format(run=self.analysis.RunNumber, dia=self.analysis.DiamondName), next_line=False)
             gROOT.SetBatch(1) if not show else self.do_nothing()
             num = self.analysis.SignalNumber
-            cut = self.generate_special_cut(excluded=['bucket', 'timing'])
+            cut = self.generate_special_cut(excluded=['bucket', 'timing'], prnt=False)
 
             # estimate timing
             draw_string = 'IntegralPeakTime[{num}]'.format(num=num)
@@ -427,7 +443,6 @@ class ChannelCut(Cut):
             h1.Fit(fit1, 'q0')
             h1.GetListOfFunctions().Add(fit1)
             original_mpv = fit1.GetParameter(1)
-            print 'mean: {0}, sigma: {1}'.format(original_mpv, fit1.GetParameter(2))
 
             # extract timing correction
             h2 = TProfile('tcorr', 'Original Peak Position vs Trigger Cell', 1024, 0, 1024)
@@ -436,7 +451,7 @@ class ChannelCut(Cut):
             h2.Fit(fit2, 'q0',)
             h2.GetListOfFunctions().Add(fit2)
             self.format_histo(h2, x_tit='trigger cell', y_tit='signal peak time', y_off=1.5)
-            self.RootObjects.append(self.save_histo(h2, 'OriPeakPosVsTriggerCell', False, self.analysis.save_dir, lm=.12))
+            self.save_histo(h2, 'OriPeakPosVsTriggerCell', False, self.analysis.save_dir, lm=.12, prnt=show)
             t_correction = '({p1}* trigger_cell + {p2} * trigger_cell*trigger_cell)'.format(p1=fit2.GetParameter(1), p2=fit2.GetParameter(2))
 
             # get time corrected sigma
@@ -446,7 +461,7 @@ class ChannelCut(Cut):
             h3.Fit(fit3, 'q0')
             h3.GetListOfFunctions().Add(fit3)
             self.format_histo(h3, x_tit='time [ns]', y_tit='entries', y_off=2.1)
-            self.RootObjects.append(self.save_histo(h3, 'TimingCorrection', False, self.analysis.save_dir, lm=.15))
+            self.save_histo(h3, 'TimingCorrection', False, self.analysis.save_dir, lm=.15, prnt=show)
             gROOT.SetBatch(0)
 
             if show:
@@ -499,6 +514,8 @@ class ChannelCut(Cut):
 
                 self.RootObjects.append([c, h4, h5, h6, h1, stack, l])
 
+            self.add_info(t)
+            self.log_info('Peak Timing: Mean: {0}, sigma: {1}'.format(original_mpv, fit1.GetParameter(2)))
             return {'t_corr': fit2, 'timing_corr': fit3}
         fits = func() if show else None
         fits = self.do_pickle(pickle_path, func, fits)

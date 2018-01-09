@@ -5,11 +5,15 @@
 
 from datetime import datetime, timedelta
 from termcolor import colored
-from ROOT import gStyle, gROOT, TF1
-from numpy import sqrt
+from ROOT import gStyle, gROOT, TF1, TColor, TFile
+from numpy import sqrt, array
 from os import makedirs
 from os import path as pth
-from time import time
+from os.path import basename, join, split
+from time import time, sleep
+from collections import OrderedDict
+import pickle
+from threading import Thread
 
 
 # ==============================================
@@ -23,7 +27,7 @@ def log_warning(msg):
 def log_critical(msg):
     t = datetime.now().strftime('%H:%M:%S')
     print '{head} {t} --> {msg}'.format(t=t, msg=msg, head=colored('CRITICAL:', 'red'))
-    quit()
+    raise ValueError
 
 
 def log_message(msg, overlay=False):
@@ -56,16 +60,19 @@ def untitle(string):
     return s.strip(' ')
 
 
-def set_statbox(x=.95, y=.88, w=.16, entries=3, only_fit=False, opt=None, form=None):
+def set_statbox(x=.95, y=.88, w=.16, entries=3, only_fit=False, only_entries=False, opt=None, form=None):
     if only_fit:
         gStyle.SetOptStat(0011)
         gStyle.SetOptFit(1)
+    if only_entries:
+        gStyle.SetOptStat(1000000010 if not only_fit else 1000000011)
+        entries = 6 if entries == 3 else entries
     gStyle.SetOptStat(opt) if opt is not None else do_nothing()
     gStyle.SetFitFormat(form) if form is not None else do_nothing()
     gStyle.SetStatX(x)
     gStyle.SetStatY(y)
     gStyle.SetStatW(w)
-    gStyle.SetStatH(.04 * entries)
+    gStyle.SetStatH(.02 * entries)
 
 
 def draw_frame(pad, x, y, base=False, x_tit='', y_tit='', y_off=1, x_off=1):
@@ -197,6 +204,19 @@ def move_legend(l, x1, y1):
     l.SetY2NDC(y1 + ydiff)
 
 
+def scale_legend(l, txt_size=None, width=None, height=None):
+    sleep(.05)
+    l.SetY2NDC(height) if height is not None else do_nothing()
+    l.SetX2NDC(width) if width is not None else do_nothing()
+    l.SetTextSize(txt_size) if txt_size is not None else do_nothing()
+
+
+def make_irr_string(val, power):
+    if not val:
+        return 'unirradiated'
+    return '{v:1.1f}#upoint10^{p} n/cm^{{2}}'.format(v=val, p='{' + str(power) + '}')
+
+
 def increased_range(ran, fac_bot=0., fac_top=0.):
     return [(1 + fac_bot) * ran[0] - fac_bot * ran[1], (1 + fac_top) * ran[1] - fac_top * ran[0]]
 
@@ -256,16 +276,12 @@ def ensure_dir(path):
         makedirs(path)
 
 
-def joinpath(*args):
-    return pth.join(*args)
-
-
 def make_col_str(col):
     return '{0:2d}'.format(int(col)) if int(col) > 1 else '{0:3.1f}'.format(col)
 
 
-def print_banner(msg, symbol='='):
-    print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * symbol, msg=msg)
+def print_banner(msg, symbol='=', new_lines=True):
+    print '{n}{delim}\n{msg}\n{delim}{n}'.format(delim=len(str(msg)) * symbol, msg=msg, n='\n' if new_lines else '')
 
 
 def print_small_banner(msg, symbol='-'):
@@ -284,13 +300,15 @@ def has_bit(num, bit):
     return bool(num & 1 << bit)
 
 
-def make_tc_str(tc, txt=True, data=False):
+def make_tc_str(tc, long_=True, data=False):
+    tc_data = str(tc).split('-')
+    sub_string = '-{0}'.format(tc_data[-1]) if len(tc_data) > 1 else ''
     if data:
-        return datetime.strptime(tc, '%Y%m').strftime('psi_%Y_%m')
-    elif tc[0].isdigit():
-        return datetime.strptime(tc, '%Y%m').strftime('%B %Y' if txt else '%b%y')
+        return datetime.strptime(tc_data[0], '%Y%m').strftime('psi_%Y_%m')
+    elif tc_data[0][0].isdigit():
+        return '{tc}{s}'.format(tc=datetime.strptime(tc_data[0], '%Y%m').strftime('%B %Y' if long_ else '%b%y'), s=sub_string)
     else:
-        return datetime.strptime(tc, '%b%y').strftime('%Y%m' if txt else '%B %Y')
+        return '{tc}{s}'.format(tc=datetime.strptime(tc_data[0], '%b%y').strftime('%Y%m' if long_ else '%B %Y'), s=sub_string)
 
 
 def isfloat(string):
@@ -310,8 +328,10 @@ def isint(x):
         return False
 
 
-def set_drawing_range(h, legend=True, lfac=None, rfac=None):
-    range_ = [h.GetBinCenter(i) for i in [h.FindFirstBinAbove(10), h.FindLastBinAbove(10)]]
+def set_drawing_range(h, legend=True, lfac=None, rfac=None, thresh=10):
+    for i in xrange(1, 4):
+        h.SetBinContent(i, 0)
+    range_ = [h.GetBinCenter(i) for i in [h.FindFirstBinAbove(thresh), h.FindLastBinAbove(thresh)]]
     lfac = lfac if lfac is not None else .2
     rfac = rfac if rfac is not None else .55 if legend else .1
     h.GetXaxis().SetRangeUser(*increased_range(range_, lfac, rfac))
@@ -332,8 +352,182 @@ def find_mpv_fwhm(histo, bins=15):
     return mpv, fwhm, mpv / fwhm
 
 
+def get_fwhm(h):
+    max_v = h.GetMaximum()
+    return h.GetBinCenter(h.FindLastBinAbove(max_v / 2)) - h.GetBinCenter(h.FindFirstBinAbove(max_v / 2))
+
+
 def make_cut_string(cut, n):
     return '{n}Cuts'.format(n=str(n).zfill(2)) if cut is not None else ''
+
+
+def get_resolution():
+    try:
+        from screeninfo import get_monitors
+        m = get_monitors()
+        return round_down_to(m[0].height, 500)
+    except Exception as exc:
+        log_warning('Could not get resolution! Using default ...\n\t{e}'.format(e=exc))
+        return 1000
+
+
+def print_table(rows, header=None):
+    closing_row = '~' * len('| {r} |'.format(r=' | '.join(rows[-1])))
+    if header is not None:
+        print closing_row
+        print '| {r} |'.format(r=' | '.join(header))
+    print closing_row
+    for row in rows:
+        print '| {r} |'.format(r=(' | '.join(row) if len(row) > 1 else row[0]).ljust(len(closing_row) - 4))
+    print closing_row
+
+
+def get_base_dir():
+    return join('/', *__file__.split('/')[1:3])
+
+
+def kinder_is_mounted():
+    return dir_exists(join(get_base_dir(), 'mounts/psi/Diamonds'))
+
+
+def do_pickle(path, func, value=None, params=None):
+    if value is not None:
+        f = open(path, 'w')
+        pickle.dump(value, f)
+        f.close()
+        return value
+    try:
+        f = open(path, 'r')
+        ret_val = pickle.load(f)
+        f.close()
+    except IOError:
+        ret_val = func() if params is None else func(params)
+        f = open(path, 'w')
+        pickle.dump(ret_val, f)
+        f.close()
+    return ret_val
+
+
+def kinder_pickle(old_path, value):
+    if kinder_is_mounted():
+        picklepath = join(get_base_dir(), 'mounts/psi/Pickles', basename(split(old_path)[0]), basename(old_path))
+        do_pickle(picklepath, do_nothing, value)
+
+
+def fit_poissoni(h, p0=5000, p1=1, name='f_poiss', show=True):
+    fit = TF1(name, '[0] * TMath::PoissonI(x, [1])', 0, 30)
+    fit.SetParNames('Constant', 'Lambda')
+    fit.SetParameters(p0, p1)
+    h.Fit(fit, 'q{0}'.format('' if show else 0))
+    fit.Draw('same')
+    return fit
+
+
+def int_to_roman(integer):
+    """ Convert an integer to Roman numerals. """
+    if type(integer) != int:
+        raise (TypeError, 'expected integer, got {t}'.format(t=type(integer)))
+    if not 0 < integer < 4000:
+        raise (ValueError, 'Argument must be between 1 and 3999')
+    dic = OrderedDict([(1000, 'M'), (900, 'CM'), (500, 'D'), (400, 'CD'), (100, 'C'), (90, 'XC'), (50, 'L'), (40, 'XL'),
+                       (10, 'X'), (9, 'IX'), (5, 'V'), (4, 'IV'), (1, 'I')])
+    result = ''
+    for i, num in dic.iteritems():
+        count = int(integer / i)
+        result += num * count
+        integer -= i * count
+    return result
+
+
+def set_z_range(zmin, zmax):
+    c = get_last_canvas()
+    h = c.GetListOfPrimitives()[1]
+    h.GetZaxis().SetRangeUser(zmin, zmax)
+
+
+def scale_axis(xmin, xmax, ymin, ymax):
+    c = get_last_canvas()
+    h = c.GetListOfPrimitives()[1]
+    h.GetXaxis().SetRangeUser(xmin, xmax)
+    h.GetYaxis().SetRangeUser(ymin, ymax)
+
+
+def remove_letters(string):
+    new_str = ''
+    for l in string:
+        if l.isdigit():
+            new_str += l
+    return new_str
+
+
+def get_last_canvas():
+    return gROOT.GetListOfCanvases()[-1]
+
+
+def get_color_gradient(n):
+    stops = array([0., .5, 1], 'd')
+    green = array([0. / 255., 200. / 255., 80. / 255.], 'd')
+    blue = array([0. / 255., 0. / 255., 0. / 255.], 'd')
+    red = array([180. / 255., 200. / 255., 0. / 255.], 'd')
+    # gStyle.SetNumberContours(20)
+    bla = TColor.CreateGradientColorTable(len(stops), stops, red, green, blue, 255)
+    color_table = [bla + ij for ij in xrange(255)]
+    return color_table[0::(len(color_table) + 1) / n]
+
+
+def do(fs, pars, exe=-1):
+    fs, pars = ([fs], [pars]) if type(fs) is not list else (fs, pars)
+    exe = pars if exe == -1 else [exe]
+    for f, p, e in zip(fs, pars, exe):
+        f(p) if e is not None else do_nothing()
+
+
+def make_bias_str(bias):
+    return '{s}{bias}V'.format(bias=int(bias), s='+' if bias > 0 else '')
+
+
+def markers(i):
+    return (range(20, 24) + [29, 33, 34])[i]
+
+# TODO: extract time in threading!
+
+def load_root_files(sel, load=True):
+
+    runs = sel.get_selected_runs()
+    threads = {}
+    for run in runs:
+        thread = MyThread(sel, run)
+        if load:
+            thread.start()
+        else:
+            thread.Tuple = False
+        threads[run] = thread
+    while any(thread.isAlive() for thread in threads.itervalues()) and load:
+        sleep(.1)
+    return threads
+
+
+class MyThread (Thread):
+    def __init__(self, sel, run):
+        Thread.__init__(self)
+        self.Run = run
+        self.Selection = sel
+        self.File = None
+        self.Tree = None
+        self.Tuple = None
+
+    def run(self):
+        self.load_tree()
+
+    def load_tree(self):
+        log_message('Loading run {r}'.format(r=self.Run), overlay=True)
+        file_path = self.Selection.run.converter.get_final_file_path(self.Run)
+        if file_exists(file_path):
+            self.File = TFile(file_path)
+            self.Tree = self.File.Get('tree')
+            self.Tuple = (self.File, self.Tree)
+            while not self.Tree:
+                sleep(.1)
 
 
 class FitRes:

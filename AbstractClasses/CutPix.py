@@ -1,5 +1,5 @@
 import sys
-from numpy import array
+from numpy import array, zeros
 from ROOT import TCut, gROOT, TH1F, kRed, TCutG, TH2D, TH1D, THStack
 from Cut import Cut
 from json import loads
@@ -12,14 +12,16 @@ class CutPix(Cut):
     is loaded from the Analysis config file, whereas the individual cut settings are loaded from a JSON file located at Configuration/Individual_Configs. The JSON files are generated
     by the Analysis method SetIndividualCuts().
     """
-    def __init__(self, analysis, dut=1):
+    def __init__(self, analysis):
         Cut.__init__(self, analysis, skip=True)
         self.__dict__.update(analysis.Cut.__dict__)
 
-        self.Dut = dut + 3
+        self.Dut = analysis.Dut
+        self.DiamondName = analysis.DiamondName
+        self.DiamondNumber = analysis.Dut
 
         self.Settings = self.analysis.Settings
-        self.plots = self.analysis.plots
+        self.Plots = self.analysis.Plots
 
         self.load_pixel_config()
 
@@ -41,7 +43,7 @@ class CutPix(Cut):
         self.CutStrings['fiducial'] += self.generate_fiducial()
         self.CutStrings['rhit'] += self.generate_rhit()
         self.CutStrings['trigger_phase'] += self.generate_trigger_phase()
-        self.CutStrings['alignment'] += self.generate_alignment()
+        # self.CutStrings['alignment'] += self.generate_alignment()
 
     def generate_hitmap_cutstrings(self):
         self.set_hitmap_cuts()
@@ -79,7 +81,7 @@ class CutPix(Cut):
 
     def load_pixel_config(self):
         """ Loads the pixel configuration parameters from the config file. """
-        self.CutConfig['rhit'] = self.get_config('r_hit')
+        self.CutConfig['rhit'] = int(self.get_config('r_hit'))
         self.CutConfig['trigPhase'] = loads(self.get_config('trigger_phase'))[str(self.Dut)]
         self.CutConfig['MaskRows'] = self.load_mask('MaskRows')
         self.CutConfig['MaskCols'] = self.load_mask('MaskCols')
@@ -100,7 +102,7 @@ class CutPix(Cut):
             tuples = string.split(';')
             for tup in tuples:
                 lst.append([int(i) for i in tup.split('{s}'.format(s=',' if 'Pix' in name else ':'))])
-        return lst if lst else None
+        return lst if lst else []
 
     def load_fiducial(self, name='FidPix'):
         if self.ana_config_parser.has_option('CUT', name):
@@ -135,10 +137,28 @@ class CutPix(Cut):
         cut_string = ''
         return cut_string
 
-    def generate_rhit(self):
-        value = self.CutConfig['rhit']
-        string = '(10000*sqrt((residuals_x[{n}])**2+(residuals_y[{n}])**2))<{val}'.format(n=self.Dut, val=value)
+    def generate_rhit(self, quantile=None):
+        cut_value = self.compute_rhit(quantile)
+        string = 's_residuals[{d}]<{val}'.format(d=self.Dut, val=cut_value)
         return string
+
+    def compute_rhit(self, value=None):
+        pickle_path = self.make_pickle_path('Cuts', 'SignalThreshold', run=self.analysis.RunNumber, ch=self.DiamondNumber)
+
+        def func():
+            t = self.log_info('generating rhit cut in for run {run}...'.format(run=self.analysis.RunNumber), next_line=False)
+            h = self.analysis.draw_residuals(show=False)
+            n_points = 100
+            rhits_ = zeros(n_points)
+            xq = array([(i + 1) / float(n_points) for i in range(n_points)])
+            h.GetQuantiles(n_points, rhits_, xq)
+            self.add_info(t)
+            return rhits_
+
+        rhits = self.do_pickle(pickle_path, func)
+        quantile = self.CutConfig['rhit']
+        cut_value = rhits[quantile] if value is None else value
+        return cut_value
 
     def generate_trigger_phase(self):
         mi, ma = self.CutConfig['trigPhase']
@@ -146,16 +166,18 @@ class CutPix(Cut):
 
     def generate_fiducial(self, name='fid'):
         xy = self.CutConfig['FidRegion']
-        if xy is not None:
+        if xy is not None and xy:
             d = 0
             x = array([xy[0] - d, xy[0] - d, xy[1] + d, xy[1] + d, xy[0] - d], 'd')
             y = array([xy[2] - d, xy[3] + d, xy[3] + d, xy[2] - d, xy[2] - d], 'd')
             cut = TCutG(name, 5, x, y)
-            cut.SetVarX('diam{n}_track_x'.format(n=self.Dut - 3))
-            cut.SetVarY('diam{n}_track_y'.format(n=self.Dut - 3))
+            cut.SetVarX(self.get_track_var(self.Dut - 4, 'x'))
+            cut.SetVarY(self.get_track_var(self.Dut - 4, 'y'))
             self.ROOTObjects.append(cut)
             cut.SetLineColor(kRed)
             cut.SetLineWidth(3)
+        else:
+            return ''
         return name
 
     def generate_alignment(self):
@@ -211,13 +233,16 @@ class CutPix(Cut):
     def generate_line_mask(self, line, cluster=True):
         cut_string = ''
         cut_var = 'cluster_{l}'.format(n=self.Dut, l=line) if cluster else line
-        for tup in self.CutConfig['Mask{l}s'.format(l=line.title())]:
-            cut_string += '||' if cut_string else ''
-            if len(tup) == 2:
-                cut_string += '{v}>={i}&&{v}<={f}'.format(i=tup[0], f=tup[1], v=cut_var)
-            elif len(tup) == 1:
-                cut_string += '{v}=={i}'.format(i=tup[0], v=cut_var)
-        if not cut_string:
+        try:
+            for tup in self.CutConfig['Mask{l}s'.format(l=line.title())]:
+                cut_string += '||' if cut_string else ''
+                if len(tup) == 2:
+                    cut_string += '{v}>={i}&&{v}<={f}'.format(i=tup[0], f=tup[1], v=cut_var)
+                elif len(tup) == 1:
+                    cut_string += '{v}=={i}'.format(i=tup[0], v=cut_var)
+            if not cut_string:
+                return ''
+        except TypeError:
             return ''
         plane_var = 'plane' if not cluster else 'cluster_plane'
         cut_string = TCut(cut_string) + TCut('{p}=={r}'.format(r=self.Dut, p=plane_var))
@@ -235,6 +260,9 @@ class CutPix(Cut):
         plane_var = 'plane' if not cluster else 'cluster_plane'
         cut_string = TCut(cut_string) + TCut('{p}=={r}'.format(r=self.Dut, p=plane_var))
         return '!({c})'.format(c=cut_string.GetTitle())
+
+    def generate_pix_cut(self, col, row):
+        return TCut('cluster_col[{r}]=={x} && cluster_row[{r}]=={y}'.format(r=self.Dut, x=col, y=row))
 
     @staticmethod
     def add_adc_cut(adc):
@@ -392,7 +420,7 @@ class CutPix(Cut):
         legend = self.make_legend(.71, .88, nentries=len(self.ConsecutiveCuts))
         for i, (name, cut) in enumerate(self.ConsecutiveCuts.iteritems()):
             self.NCuts = i
-            h = self.analysis.draw_pulse_height_disto(cut, show=False, prnt=False)
+            h = self.analysis.draw_signal_distribution(cut, show=False, prnt=False, redo=1)
             color = self.get_color()
             self.format_histo(h, color=color, fill_color=color)
             stack.Add(h)
@@ -592,5 +620,8 @@ class CutPix(Cut):
                 return cut
         return 'ini_fin'
 
-        # ==============================================
-        # endregion
+    # ==============================================
+    # endregion
+
+    def __end(self):
+        pass

@@ -28,7 +28,7 @@ def load_collection(plan, channel):
     sel.select_runs_from_runplan(plan)
     a.print_testcampaign()
     ana = AnalysisCollection(sel, channel)
-    ana.save_dir = '{info}_rp{rp}'.format(info=ana.make_info_string().strip('_'), rp=float(ana.run_plan))
+    ana.save_dir = '{info}_rp{rp}'.format(info=ana.make_info_string().strip('_'), rp=float(ana.RunPlan))
     ana.set_save_directory('PlotsFelix')
     return ana
 
@@ -60,7 +60,7 @@ for rp, chs in runplans.iteritems():
         z.draw_pulse_heights(show=False, save_plots=True)
         z.draw_pulser_info(show=False, do_fit=False)
         z.draw_ph_distributions_below_flux(flux=80, show=False, save_plot=True)
-        del_redundant_plots(z.results_directory, z.save_dir)
+        del_redundant_plots(z.ResultsDir, z.save_dir)
         z.close_files()
         z.__del__()
 

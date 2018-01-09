@@ -2,7 +2,6 @@ import json
 from numpy import array, zeros, mean
 from Elementary import Elementary
 from ROOT import TCut, gROOT, TH1F
-from collections import OrderedDict
 from Utils import *
 from os import remove
 
@@ -48,7 +47,7 @@ class Cut(Elementary):
     def load_run_config(self):
         return self.load_run_configs(self.analysis.RunNumber)
 
-    def generate_special_cut(self, excluded=None, included=None, name='special_cut'):
+    def generate_special_cut(self, excluded=None, included=None, name='special_cut', prnt=True):
         cut = TCut(name, '')
         self.NCuts = 0
         for key, value in self.CutStrings.iteritems():
@@ -62,7 +61,7 @@ class Cut(Elementary):
                 continue
             cut += value
             self.NCuts += 1
-        self.log_info('generated {name} cut with {num} cuts'.format(name=name, num=self.NCuts))
+        self.log_info('generated {name} cut with {num} cuts'.format(name=name, num=self.NCuts)) if prnt else do_nothing()
         return cut
 
     def generate_all_cut(self):
@@ -104,6 +103,7 @@ class Cut(Elementary):
         dic['beam_interruptions'] = TCut('beam_interruptions', '')
         dic['alignment'] = TCut('alignment', '')
         dic['trigger_phase'] = TCut('trigger_phase', '')
+        dic['fiducial'] = TCut('fiducial', '')
         # waveform
         dic['ped_sigma'] = TCut('ped_sigma', '')
         dic['median'] = TCut('median', '')
@@ -118,7 +118,6 @@ class Cut(Elementary):
         dic['tracks'] = TCut('tracks', '')
         dic['hit'] = TCut('hit', '')
         dic['masks'] = TCut('masks', '')
-        dic['fiducial'] = TCut('fiducial', '')
         dic['chi2X'] = TCut('chi2X', '')
         dic['chi2Y'] = TCut('chi2Y', '')
         dic['track_angle_x'] = TCut('track_angle_x', '')
@@ -225,7 +224,7 @@ class Cut(Elementary):
         picklepath = self.make_pickle_path('Chi2', run=self.analysis.RunNumber, suf=mode.title())
 
         def func():
-            print 'generating chi2 cut in {mod} for run {run}...'.format(run=self.analysis.RunNumber, mod=mode)
+            t = self.log_info('generating chi2 cut in {mod} for run {run}...'.format(run=self.analysis.RunNumber, mod=mode), next_line=False)
             gROOT.SetBatch(1)
             h = TH1F('h', '', 200, 0, 100)
             nq = 100
@@ -234,6 +233,7 @@ class Cut(Elementary):
             self.analysis.tree.Draw('chi2_{mod}>>h'.format(mod=mode), '', 'goff')
             h.GetQuantiles(nq, chi2s, xq)
             gROOT.SetBatch(0)
+            self.add_info(t)
             return chi2s
 
         chi2 = self.do_pickle(picklepath, func)
@@ -256,8 +256,7 @@ class Cut(Elementary):
             angle = self.CutConfig['track_angle']
             t = self.log_info('Generating angle cut in {m} for run {run} ...'.format(run=self.analysis.RunNumber, m=mode), False)
             self.set_root_output(False)
-            # TODO: unify strings
-            draw_str = '{t}_{m}'.format(t='slope' if self.DUTType == 'pad' else 'angle', m=mode)
+            draw_str = '{t}_{m}'.format(t='slope' if self.analysis.run.has_branch('slope_x') else 'angle', m=mode)
             n = self.analysis.tree.Draw(draw_str, '{s}>-100'.format(s=draw_str), 'goff')
             mean_ = mean([self.analysis.tree.GetV1()[i] for i in xrange(n)])
             cut_vals = {mode: [mean_ - angle, mean_ + angle]}
@@ -357,7 +356,7 @@ class Cut(Elementary):
 
     def find_pad_beam_interruptions(self):
         """ Looking for the beam interruptions by investigating the pulser rate. """
-        print 'Searching for beam interruptions...'
+        t = self.log_info('Searching for beam interruptions of run {r} ...'.format(r=self.RunNumber), next_line=False)
         binning = 200
         nbins = int(self.analysis.run.tree.GetEntries()) / binning
         rate = []
@@ -377,12 +376,12 @@ class Cut(Elementary):
                 tup = [0, 0]
             last_rate = value
         interruptions = self.__create_jump_ranges(jumps)
+        self.add_info(t)
         return interruptions, jumps
 
     def __create_jump_ranges(self, jumps):
         ex_range = self.CutConfig['JumpExcludeRange']
         interruptions = []
-        print 'generating jump ranges...'
         time_offset = self.analysis.run.startTime
         t_max = (self.analysis.run.get_time_at_event(-1) - time_offset) / 1000.
         last_stop = 0
@@ -410,7 +409,7 @@ class Cut(Elementary):
         """
         # check if directories exist
         ensure_dir(self.BeaminterruptionsDir)
-        ensure_dir(joinpath(self.BeaminterruptionsDir, 'data'))
+        ensure_dir(join(self.BeaminterruptionsDir, 'data'))
         pickle_path = self.make_pickle_path('BeamInterruptions', run=self.RunNumber)
         interruptions = self.do_pickle(pickle_path, self.find_beam_interruptions)
 
@@ -444,15 +443,22 @@ class Cut(Elementary):
             print 'There is no cut with the name "{name}"!'.format(name=name)
         self.update_all_cut()
 
-    def set_cut(self, name, value):
+    def set_cut(self, name, value=None):
         if name in self.CutStrings:
             self.CutStrings[name].SetTitle('')
             self.CutStrings[name] += value
         else:
             print 'There is no cut with the name "{name}"!'.format(name=name)
 
+    def set_chi2(self, value):
+        self.CutConfig['chi2X'] = value
+        self.CutConfig['chi2Y'] = value
+        self.set_cut('chi2X')
+        self.set_cut('chi2Y')
+
     def update_all_cut(self):
         self.all_cut = self.generate_all_cut()
+        self.analysis.AllCuts = self.all_cut
 
     def show_cuts(self, easy=True):
         cuts = self.EasyCutStrings if easy else self.CutStrings
@@ -461,3 +467,26 @@ class Cut(Elementary):
             if not key == 'all_cuts' and str(value):
                 print '{key}:'.format(key=key.rjust(max_len)), value
         return
+
+    def get_track_var(self, num, mode):
+        if self.analysis.run.has_branch('dia_track_x'):
+            return 'dia_track_{m}[{n}]'.format(m=mode, n=num)
+        else:
+            return 'diam{n}_track_{m}'.format(m=mode, n=num + 1)
+
+    def show_cut_contributions(self):
+        contributions = {}
+        cut_events = 0
+        cuts = TCut('consecutive', '')
+        total_events = self.analysis.run.n_entries
+        output = OrderedDict()
+        for cut in self.CutStrings.values():
+            name = cut.GetName()
+            if not name.startswith('old') and name != 'all_cuts' and name not in contributions and str(cut):
+                cuts += cut
+                events = self.analysis.tree.GetEntries('!({0})'.format(str(cuts)))
+                output[name] = (1. - float(events) / total_events) * 100.
+                events -= cut_events
+                print name.rjust(18), '{0:5d} {1:04.1f}%'.format(events, output[name])
+                contributions[cut.GetName()] = events
+                cut_events += events

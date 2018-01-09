@@ -1,12 +1,11 @@
 from argparse import ArgumentParser
 from copy import deepcopy
-from time import sleep
 
 from ROOT import TCanvas, TH2F, gROOT, TH1F, TLegend, gStyle, kGreen, TText, TCut, TF1, TGraph, TH1I
-from numpy import array, zeros
+from numpy import zeros, log
 
 from Elementary import Elementary
-from RunClass import Run
+from Run import Run
 from Cut import Cut
 from Utils import *
 from Plots import Plots
@@ -16,28 +15,25 @@ from Langaus import Langau
 class Analysis(Elementary):
     """ Class for the analysis of the non-channel specific stuff of a single run. """
 
-    def __init__(self, run, verbose=False, high_low_rate=None, load_tree=True, binning=5000):
+    def __init__(self, run, high_low_rate=None, binning=5000):
         """
         Parent class for all analyses, which contains all the basic stuff about the Telescope.
         :param run:             run object of type "Run" or integer run number
-        :param verbose:         if True, verbose printing is activated
         :param high_low_rate:   list of highest and lowest rate runs for an analysis collection
         """
-        Elementary.__init__(self, verbose=verbose)
+        self.run = self.init_run(run)
+        Elementary.__init__(self, verbose=run.verbose)
         self.histos = []
         self.RootObjects = []
 
         # basics
-        self.run = self.init_run(run, load_tree, verbose)
         self.run.analysis = self
         self.RunNumber = self.run.RunNumber
         self.RunInfo = deepcopy(self.run.RunInfo)
         self.lowest_rate_run = high_low_rate['min'] if high_low_rate is not None else self.run.RunNumber
         self.highest_rate_run = high_low_rate['max'] if high_low_rate is not None else self.run.RunNumber
-        if self.ana_config_parser.has_option('SAVE', 'ActivateTitle'):
-            gStyle.SetOptTitle(self.ana_config_parser.getboolean('SAVE', 'ActivateTitle'))
-        # self.saveMCData = self.ana_config_parser.getboolean("SAVE", "SaveMCData")
-        self.ana_save_dir = '{run}'.format(run=self.run.RunNumber)
+        self.TelSaveDir = '{run}'.format(run=self.run.RunNumber)
+        self.set_titles()
 
         # DUT
         self.DUTType = self.run.DUTType
@@ -49,25 +45,19 @@ class Analysis(Elementary):
         self.channel = self.channel if hasattr(self, 'channel') else None
 
         # general for pads and pixels
-        self.Cut = Cut(self, skip=not load_tree)
+        self.Cut = Cut(self, skip=run.tree is None)
 
-        if load_tree:
-            # binning
+        if run.tree:
+            self.NRocs = self.run.NPlanes
+            self.StartEvent = self.Cut.CutConfig['EventRange'][0]
+            self.EndEvent = self.Cut.CutConfig['EventRange'][1]
+            self.Plots = Plots(self.run)
+
+            # binning TODO: move to plots class
             self.BinSize = binning
             self.binning = self.__get_binning()
             self.time_binning = self.get_time_binning()
             self.n_bins = len(self.binning)
-
-        if self.DUTType == 'pad':
-            if load_tree:
-                self.StartEvent = self.Cut.CutConfig['EventRange'][0]
-                self.EndEvent = self.Cut.CutConfig['EventRange'][1]
-
-        # pixel TODO: uniform
-        if self.DUTType == 'pixel':
-            self.num_devices = 7
-            self.plots = Plots(self.run.n_entries, self.run, self.num_devices, -1, [0, 1, 2, 3], 4, 5, 6)
-            self.StartEvent = 1  # DA: for now... TODO pixel cuts!
 
         # save histograms // canvases
         self.signal_canvas = None
@@ -76,14 +66,14 @@ class Analysis(Elementary):
     # region INIT
 
     @staticmethod
-    def init_run(run, load_tree, verbose):
-        """ create a run instance with either a given run integer or an already give run instance where a the run object is not None """
+    def init_run(run):
+        """ Make some assertions if the correct run instance was provided """
         if not isinstance(run, Run):
-            assert type(run) is int, 'run has to be either a Run instance or an integer run number'
-            return Run(run, 3, load_tree=load_tree, verbose=verbose)
-        else:
-            assert run.RunNumber is not None, 'No run selected, choose run.SetRun(run_nr) before you pass the run object'
-            return run
+            raise TypeError('You have to pass a Run instance!')
+            # return Run(run, 3, load_tree=load_tree, verbose=verbose)
+        if run.RunNumber is None:
+            raise ValueError('No run selected, choose run.SetRun(run_nr) before you pass the run object')
+        return run
     # endregion
 
     # ============================================================================================
@@ -99,7 +89,7 @@ class Analysis(Elementary):
                 self.tree.Draw('wf0:Iteration$/2>>regions', self.Cut.all_cut, 'goff', 1, start)
         h.GetXaxis().SetNdivisions(520)
         self.format_histo(h, markersize=0.3, x_tit='Time [ns]', y_tit='Signal [au]', stats=0)
-        self.save_histo(h, 'Regions', show, self.ana_save_dir, lm=.075, rm=.045, x_fac=1.5, y_fac=.5)
+        self.save_histo(h, 'Regions', show, self.TelSaveDir, lm=.075, rm=.045, x_fac=1.5, y_fac=.5)
         return h
 
     def draw_regions(self, ped=True, event=None, show=True):
@@ -196,7 +186,7 @@ class Analysis(Elementary):
             gr.Draw('[]')
             gr.Draw('p')
         self._add_buckets(ymin, ymax, xmin, xmax, full_line=True, size=.05) if buckets else self.do_nothing()
-        self.save_plots('IntegralPeaks',  ch=None)
+        self.save_plots('IntegralPeaks', ch=None)
         gROOT.SetBatch(0)
         self.count = old_count
         self.histos.append([gr1, gr2])
@@ -258,7 +248,7 @@ class Analysis(Elementary):
         legend.Draw()
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.RootObjects.append([legend, histos, c])
-        self.save_plots('Chi2', canvas=c, sub_dir=self.ana_save_dir, ch=None)
+        self.save_plots('Chi2', canvas=c, sub_dir=self.TelSaveDir, ch=None)
 
     def draw_angle_distribution(self, mode='x', show=True, print_msg=True, cut=None):
         """ Displays the angle distribution of the tracks. """
@@ -271,12 +261,14 @@ class Analysis(Elementary):
         self.save_histo(h, 'TrackAngle{mod}'.format(mod=mode.upper()), show, lm=.13, prnt=print_msg)
         return h
 
-    def draw_distance_distribution(self, show=True, save=True):
-        h = TH1F('hdd', 'Track Distance in Diamond', 100, 500, 501)
-        self.tree.Draw('500*TMath::Sqrt(TMath::Power(TMath::Sin(TMath::DegToRad()*slope_x), 2) + TMath::Power(TMath::Sin(TMath::DegToRad()*slope_y), 2) + 1)>>hdd', 'slope_x > -20', 'goff')
-        self.format_histo(h, x_tit='Distance [#mum]', y_tit='Entries', y_off=1.8, lw=2, stats=0)
+    def draw_track_length(self, show=True, save=True, t_dia=500):
+        h = TH1F('htd', 'Track Distance in Diamond', 200, t_dia, t_dia + 1)
+        draw_var = 'slope' if self.run.has_branch('slope_x') else 'angle'
+        length = '{t}*TMath::Sqrt(TMath::Power(TMath::Tan(TMath::DegToRad()*{v}_x), 2) + TMath::Power(TMath::Tan(TMath::DegToRad()*{v}_y), 2) + 1)'.format(t=t_dia, v=draw_var)
+        self.tree.Draw('l>>hdd'.format(l=length), 'n_tracks', 'goff')
+        self.format_histo(h, x_tit='Distance [#mum]', y_tit='Entries', y_off=2, lw=2, stats=0, fill_color=self.FillColor)
         h.GetXaxis().SetNdivisions(405)
-        self.save_histo(h, 'DistanceInDia', show, lm=.13, save=save)
+        self.save_histo(h, 'DistanceInDia', show, lm=.16, save=save)
         return h
 
     def calc_angle_fit(self, mode='x', show=True):
@@ -308,21 +300,61 @@ class Analysis(Elementary):
         legend.Draw()
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.RootObjects.append([legend, c, histos])
-        self.save_plots('TrackAngles', sub_dir=self.ana_save_dir, ch=None)
+        self.save_plots('TrackAngles', sub_dir=self.TelSaveDir, ch=None)
+
+    def _draw_residuals(self, roc, mode=None, cut=None, x_range=None, fit=False, show=True):
+        mode = '' if mode is None else mode.lower()
+        cut = TCut(cut) if cut is not None else TCut('')
+        set_statbox(only_entries=True, only_fit=True, w=0.3, entries=14) if fit else set_statbox(only_entries=True)
+        h = TH1F('htr', '{m} Residuals for Plane {n}'.format(n=roc, m=mode.title()), 800, -.4, .4)
+        self.tree.Draw('residuals{m}[{r}]>>htr'.format(m='_{m}'.format(m=mode) if mode else '', r=roc), cut, 'goff')
+        self.format_histo(h, name='Fit Result', y_off=2.0, y_tit='Number of Entries', x_tit='Distance [cm]', fill_color=self.FillColor, x_range=x_range)
+        self.draw_histo(h, '', show, lm=.16)
+        if fit:
+            fit = TF1('f', 'gaus(0) + gaus(3)', -.4, .4)
+            sigma = get_fwhm(h) / (2 * sqrt(2 * log(2)))
+            fit.SetParameters(h.GetMaximum() / 10, 0, sigma * 5, h.GetMaximum(), 0, sigma)
+            fit.SetParName(2, '#sigma1')
+            fit.SetParName(5, '#sigma2')
+            fit.SetNpx(500)
+            h.Fit(fit, 'q')
+            f2 = TF1('f2', 'gaus', -1, 1)
+            f2.SetParameters(fit.GetParameters())
+            f2.SetLineStyle(2)
+            f2.Draw('same')
+            self.RootObjects.append(f2)
+        self.save_plots('{m}ResidualsRoc{n}'.format(m=mode.title(), n=roc))
+        return h
+
+    def _draw_cluster_size(self, roc=None, name=None, cut='', show=True):
+        h = TH1I('h_cs', 'Cluster Size {d}'.format(d='ROC {n}'.format(n=roc) if name is None else name), 10, 0, 10)
+        self.tree.Draw('clusters_per_plane[{d}]>>h_cs'.format(d=roc), TCut(cut), 'goff')
+        set_statbox(only_entries=True)
+        self.format_histo(h, x_tit='Cluster Size', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
+        self.save_histo(h, 'ClusterSize', show, logy=True)
+        return h
+
     # endregion
 
     # ============================================================================================
     # region PIXEL
-    def draw_hitmap(self, plane=None, cut=None, show=True):
-        planes = [0, 1, 2, 3] if plane is None else [int(plane)]
-        cut = self.Cut.all_cut if cut is None else cut
-        histos = [TH2F('h_hm{0}'.format(i_pl), 'Hitmap Plane {0}'.format(i_pl), 52, 0, 52, 80, 0, 80) for i_pl in planes]
-        for plane in planes:
-            cut_string = cut + TCut('plane == {0}'.format(plane))
-            self.tree.Draw('row:col>>h_hm{0}'.format(plane), cut_string, 'goff')
-            self.format_histo(histos[plane], x_tit='col', y_tit='row')
-            self.RootObjects.append(self.save_histo(histos[plane], 'HitMap{0}'.format(plane), False, self.ana_save_dir, draw_opt='colz'))
-        gROOT.SetBatch(1) if not show else self.do_nothing()
+    def _draw_occupancy(self, plane, name=None, cluster=True, tel_coods=False, cut='', show=True):
+        name = 'ROC {i}'.format(i=plane) if name is None else name
+        bins = self.Plots.get_global_bins(sqrt(12)) if tel_coods else self.Plots.Settings['2DBins']
+        h = TH2F('h_hm{i}'.format(i=plane), '{h} Occupancy {n}'.format(n=name, h='Hit' if not cluster else 'Cluster'), *bins)
+        cut_string = self.Cut.all_cut if cut is None else TCut(cut)
+        cut_string += 'plane == {0}'.format(plane) if not cluster else ''
+        draw_string = 'cluster_row[{i}]:cluster_col[{i}]' if cluster else 'row:col'
+        draw_string = 'cluster_ypos_tel[{i}]:cluster_xpos_tel[{i}]' if tel_coods else draw_string
+        set_statbox(only_entries=True, x=.83)
+        self.tree.Draw('{ds}>>h_hm{i}'.format(ds=draw_string.format(i=plane), i=plane), cut_string, 'goff')
+        self.format_histo(h, x_tit='col', y_tit='row', y_off=1.2)
+        self.save_histo(h, 'HitMap{0}'.format(plane), show, draw_opt='colz', rm=.15)
+        return h
+
+    def _draw_occupancies(self, planes=None, cut='', cluster=True, show=True):
+        planes = range(4) if planes is None else list(planes)
+        histos = [self._draw_occupancy(plane, cluster=cluster, cut=cut, show=False) for plane in planes]
         c = TCanvas('c_hm', 'Hitmaps', 2000, 2000)
         c.Divide(2, 2)
         for i, h in enumerate(histos, 1):
@@ -330,8 +362,7 @@ class Analysis(Elementary):
             pad = c.cd(i)
             pad.SetBottomMargin(.15)
             h.Draw('colz')
-        self.save_plots('HitMap', sub_dir=self.ana_save_dir, ch=None)
-        gROOT.SetBatch(1)
+        self.save_plots('HitMap', sub_dir=self.TelSaveDir, ch=None, show=show)
 
     # endregion
 
@@ -363,7 +394,7 @@ class Analysis(Elementary):
         self.format_histo(h, x_tit='col', y_tit='row')
         h.Draw('colz')
         self.histos[0] = [c, h]
-        self.save_plots('PixMapPlane{pln}{evts}'.format(pln=plane, evts=n), sub_dir=self.ana_save_dir, ch=None)
+        self.save_plots('PixMapPlane{pln}{evts}'.format(pln=plane, evts=n), sub_dir=self.TelSaveDir, ch=None)
 
     def draw_preliminary(self):
         c = gROOT.GetListOfCanvases()[-1]
@@ -437,6 +468,9 @@ class Analysis(Elementary):
             time_bins.append(self.run.get_time_at_event(event))
         return time_bins
 
+    def get_minute_time_binning(self):
+        return [0.] + [(t - self.run.startTime) / 60e3 for t in self.time_binning] + [self.run.totalMinutes]
+
     def draw_time(self, show=True):
         entries = self.tree.Draw('time', '', 'goff')
         t = [self.tree.GetV1()[i] for i in xrange(entries)]
@@ -462,15 +496,21 @@ class Analysis(Elementary):
     def get_flux(self):
         return self.run.get_flux()
 
-    def fit_langau(self, h=None, nconv=100, show=True):
-        h = self.show_signal_histo(show=show) if h is None and hasattr(self, 'show_signal_histo') else h
+    def fit_langau(self, h=None, nconv=30, show=True, chi_thresh=8):
+        h = self.draw_signal_distribution(show=show) if h is None and hasattr(self, 'draw_signal_distribution') else h
+        h = self.draw_pulse_height_disto(show=show) if h is None and hasattr(self, 'draw_pulse_height_disto') else h
         fit = Langau(h, nconv)
         fit.langaufit()
         fit.Fit.Draw('lsame')
-        i = 5
-        while fit.Chi2 / fit.NDF > 5:
-            fit = self.fit_langau(h, nconv + i)
-            i += 5
+        c = get_last_canvas()
+        c.Modified()
+        c.Update()
+        if fit.Chi2 / fit.NDF > chi_thresh:
+            self.count += 5
+            self.log_info('Chi2 too large ({c:2.2f}) -> increasing number of convolutions by 5'.format(c=fit.Chi2 / fit.NDF))
+            fit = self.fit_langau(h, nconv + self.count, chi_thresh=chi_thresh)
+        print 'MPV:', fit.Parameters[1]
+        self.count = 0
         self.RootObjects.append(fit)
         return fit
 

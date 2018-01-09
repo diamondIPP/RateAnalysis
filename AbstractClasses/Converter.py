@@ -5,15 +5,15 @@ import json
 
 from ConfigParser import ConfigParser
 from math import copysign
-from collections import OrderedDict
 from re import sub
 from shutil import move
 from os import remove, getcwd, chdir, system, rename
-from os.path import dirname, realpath
+from os.path import dirname, realpath, getsize
 from glob import glob
 from Utils import *
 from PixAlignment import PixAlignment
-from ROOT import TProfile, TFile
+from PadAlignment import PadAlignment
+from ROOT import TProfile
 do_gui = False
 if do_gui:
     from Tkinter import *
@@ -46,7 +46,7 @@ class Converter:
 
         # directories
         self.DataDir = run.DataDir
-        self.TcDir = 'psi_{y}_{m}'.format(y=self.TestCampaign[:4], m=self.TestCampaign[-2:])
+        self.TcDir = run.TCDir
         self.RawFileDir = self.load_raw_file()
         self.RootFileDir = self.load_root_file_dir()
         self.SoftwareDir = self.load_soft_dir()
@@ -85,14 +85,14 @@ class Converter:
     def load_soft_dir(self):
         file_dir = self.SoftConfig.get('Converter', 'softwaredir')
         if not dir_exists(file_dir):
-            log_critical('Could not find the software directory: {d}\nPlease set it correctly in Configuration/soft.conf'.format(d=file_dir))
+            log_warning('Could not find the software directory: {d}\nPlease set it correctly in Configuration/soft.conf'.format(d=file_dir))
         return file_dir
 
     def load_root_file_dir(self):
         if self.RunParser.has_option('BASIC', 'runpath'):
             path = self.RunParser.get('BASIC', 'runpath')
         else:
-            path = joinpath(self.DataDir, self.TcDir, 'root', '{dut}'.format(dut='pads' if self.Type == 'pad' else 'pixel'))
+            path = join(self.DataDir, self.TcDir, 'root', '{dut}'.format(dut='pads' if self.Type == 'pad' else 'pixel'))
         ensure_dir(path)
         return path
 
@@ -109,7 +109,7 @@ class Converter:
         if self.RunParser.has_option('ConverterFolders', 'rawfolder'):
             file_dir = self.RunParser.get('ConverterFolders', 'rawfolder')
         else:
-            file_dir = joinpath(self.DataDir, self.TcDir, 'raw')
+            file_dir = join(self.DataDir, self.TcDir, 'raw')
         if not dir_exists(file_dir):
             log_warning('Could not find the raw file directory: {d}'.format(d=file_dir))
         return file_dir
@@ -213,6 +213,9 @@ class Converter:
             print_banner('START CONVERTING RAW FILE FOR RUN {0}'.format(run_number))
             print converter_cmd
             system(converter_cmd)
+            while getsize(self.get_root_file_path()) < 500:
+                remove(self.get_root_file_path())
+                system(converter_cmd)
             chdir(curr_dir)
         self.align_run()
         self.__add_tracking(run_number)
@@ -222,26 +225,22 @@ class Converter:
     def align_run(self):
 
         if self.Type == 'pad':
-            f = TFile(self.get_root_file_path())
-            tree = f.Get(self.Run.treename)
-            is_aligned = self.check_alignment(tree)
-            f.Close()
-            if not is_aligned:
-                align_cmd = '{align}/bin/EventAlignment.exe {rootfile}'.format(align=self.AlignDir, rootfile=self.get_root_file_path())
-                system(align_cmd)
+            print_banner('STARTING PAD EVENT ALIGNMENT OF RUN {r}'.format(r=self.RunNumber))
+            pad_align = PadAlignment(self)
+            if not pad_align.IsAligned:
+                pad_align.write_aligned_tree()
         elif self.Type == 'pixel':
-            print_banner('CHECKING FOR EVENT ALIGNMENT')
+            print_banner('STARTING PIXEL EVENT ALIGNMENT OF RUN {r}'.format(r=self.RunNumber))
             pix_align = PixAlignment(self)
-            if not pix_align.check_alignment():
-                print_banner('STARTING PIXEL EVENT ALIGNMENT')
+            if not pix_align.IsAligned and not pix_align.check_alignment():
                 pix_align.write_aligned_tree()
-#     pix_align.write_aligned_tree()
 
     def remove_pickle_files(self, run_number):
         log_message('Removing all pickle files for run {}'.format(run_number))
         program_dir = ''
         for i in __file__.split('/')[:-2]:
             program_dir += i + '/'
+        # todo get correct tc string
         files = glob('{prog}Configuration/Individual_Configs/*/*{tc}*_{run}_*'.format(prog=program_dir, run=run_number, tc=self.TestCampaign))
         for _file in files:
             remove(_file)
@@ -439,8 +438,8 @@ class Converter:
 
 
 if __name__ == '__main__':
-    from RunClass import Run
-    zrun = Run(398, test_campaign='201510', load_tree=False)
+    from Run import Run
+    zrun = Run(398, test_campaign='201510', tree=False)
     z = Converter(zrun)
     # run_info = z.get_run_info(run_number=393)
     # z.convert_run(run_info)

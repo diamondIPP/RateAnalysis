@@ -6,9 +6,11 @@
 
 from ROOT import TFile, TH1F, vector
 from collections import OrderedDict, Counter
-from numpy import corrcoef, mean, sqrt
-from Utils import set_root_output, log_message, log_critical, time, print_elapsed_time
+from numpy import mean, sqrt
+from Utils import set_root_output, log_message, time, print_elapsed_time, calc_mean, round_up_to
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
+from Correlation import Correlation
+from os import remove
 
 
 class PixAlignment:
@@ -18,6 +20,7 @@ class PixAlignment:
         self.Converter = converter
         self.Run = converter.Run
         self.NDutPlanes = 4
+        self.Threshold = .4
         # progress bar
         self.Widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
         self.ProgressBar = None
@@ -26,16 +29,22 @@ class PixAlignment:
         self.InTree = self.InFile.Get(self.Run.treename)
         self.NewFile = None
         self.NewTree = None
-        # branches
-        self.Branches = self.init_branches()
-        self.BranchLists = {name: [] for name in self.Branches}
-        # info
-        self.Row1 = None
-        self.Row2 = None
-        self.load_variables()
         # alignment
-        self.NEntries = int(self.InTree.GetEntries())
+        try:
+            self.NEntries = int(self.InTree.GetEntries())
+        except AttributeError:
+            remove(self.Converter.get_root_file_path())
         self.AtEntry = 0
+        self.IsAligned = self.check_alignment_fast()
+        if not self.IsAligned:
+            # branches
+            self.Branches = self.init_branches()
+            self.BranchLists = {name: [] for name in self.Branches}
+            # info
+            self.TelRow = {}
+            self.DiaRow = {}
+            self.load_variables()
+            self.BucketSize = self.find_bucket_size(show=False)
 
     def __del__(self):
         self.InFile.Close()
@@ -84,18 +93,39 @@ class PixAlignment:
             n_ev += size
             at_event += 1
         self.Run.add_info(t)
-        self.Row1 = x
-        self.Row2 = y
+        self.TelRow = x
+        self.DiaRow = y
+
+    def check_alignment_fast(self):
+        """ only check alignment of the first, last and middle 10k events """
+        t = self.Run.log_info('Fast check for event alignment ... ', next_line=False)
+        corrs = []
+        for start_event in [self.NEntries / 10 * i for i in xrange(9)] + [self.NEntries - 10000]:
+            correlation = Correlation(self, bucket_size=10000)
+            n = self.InTree.Draw('plane:row:event_number', '', 'goff', 10000, start_event)
+            planes = [int(self.InTree.GetV1()[i]) for i in xrange(n)]
+            rows = [int(self.InTree.GetV2()[i]) for i in xrange(n)]
+            nrs = Counter([int(self.InTree.GetV3()[i]) for i in xrange(n)])
+            n_ev = 0
+            for ev, size in sorted(nrs.iteritems()):
+                plane = planes[n_ev:size + n_ev]
+                row = rows[n_ev:size + n_ev]
+                if plane.count(2) == 1 and plane.count(4) == 1:
+                    correlation.fill(ev, tel_row=row[plane.index(2)], dia_row=row[plane.index(4)])
+                n_ev += size
+            corrs.append(correlation.get(debug=False))
+        is_aligned = all(corr > self.Threshold for corr in corrs)
+        self.Run.add_info(t)
+        if not is_aligned:
+            self.Run.log_info('Fast check found misalignment :-(')
+        return is_aligned
 
     def check_alignment(self):
         t = self.Run.log_info('Checking aligment ... ', next_line=False)
-        xt, yt = [], []
-        n = 20
-        for ev, row in self.Row1.iteritems():
-            if ev in self.Row2:
-                xt.append(row)
-                yt.append(self.Row2[ev])
-        correlations = [corrcoef(xt[j:(j + n)], yt[j:(j + n)])[0][1] for j in xrange(0, len(xt), n)]
+        correlation = Correlation(self)
+        for ev, row in self.TelRow.iteritems():
+            correlation.fill(ev)
+        correlations = correlation.get_all_zero()
         h = TH1F('h_ee', 'Event Alignment', int(sqrt(len(correlations))), 0, 1)
         for cor in correlations:
             h.Fill(cor)
@@ -104,6 +134,10 @@ class PixAlignment:
         self.Run.format_histo(h, x_tit='Correlation Factor', y_tit='Number of Entries', y_off=1.4, stats=0)
         self.Run.save_histo(h, 'EventAlignmentControl', show=False, lm=.13, prnt=False)
         mean_, sigma = fit.Parameter(1), fit.Parameter(2)
+        if mean_ - 5 * sigma < .2:
+            self.Run.add_info(t)
+            log_message('run is very badly misaligned...')
+            return False
         low_events = [cor for cor in correlations if cor < mean_ - 5 * sigma]
         misalignments = len(low_events) / float(len(correlations))
         self.Run.add_info(t)
@@ -118,77 +152,162 @@ class PixAlignment:
             self.Run.log_info('Everything is nicely aligned =)')
         return misalignments < .05
 
-    def find_offsets(self):
+    def find_lose_corr_event(self, correlation, last_off_event, debug=False):
+        # if all correlations are below threshold return the very first event
+        if all(corr < self.Threshold for corr in correlation.get_all_zero()):
+            return correlation.Events[0][0]
+        correlations = correlation.get_sliding()
+        if debug:
+            self.draw_sliding(correlation)
+        # find maximum and take mean around it
+        start_index = next(correlations.keys().index(ev) + 20 for ev in correlations.keys() if ev > last_off_event) if last_off_event + 1000 > correlations.keys()[0] else 0
+        max_index = correlations.values().index(max(correlations.values()[start_index:]))
+        mean_ = self.get_mean(max_index, correlations.values())
+        off_event = correlations.keys()[correlations.values().index(next(m for m in correlations.values()[max_index:] if m < mean_ - .1)) - 1]
+        if debug:
+            print mean_, off_event, next(m for m in correlations.values()[max_index:] if m < mean_ - .1)
+        return off_event
+
+    def find_offset(self, correlation, debug=False):
+        inter_correlations = correlation.get_inter_sliding()
+        if inter_correlations is None:
+            return None
+        min_anti_corr = min(inter_correlations.keys())
+        if debug:
+            print 'anti correlation:', min_anti_corr
+        return inter_correlations[min_anti_corr] if min_anti_corr < -self.Threshold else None
+
+    def draw_sliding(self, correlation):
+        correlations = correlation.get_all_sliding()
+        for off, corrs in correlations.iteritems():
+            self.Run.set_root_output(False)
+            g = self.Run.make_tgrapherrors('g{o}'.format(o=off), 'Sliding correlation for offset {o}'.format(o=off), x=corrs.keys(), y=corrs.values())
+            self.Run.draw_histo(g, draw_opt='alp')
+
+    def find_jump(self, correlation, debug=False):
+        correlations = correlation.get_sliding()
+        if debug:
+            self.draw_sliding(correlation)
+        # first find the minimum: it has to be in the central region since it has a maximum to each of his sides
+        min_index = self.find_min_index(correlations.values(), start_index=len(correlations) / 3)
+        # look left for a maximum
+        l_max_index = self.get_max_index(correlations.values(), min_index)
+        l_mean = self.get_mean(l_max_index, correlations.values())
+        l_off_event = self.find_falling_event(correlations, l_max_index, l_mean)
+        # now find the offset by checking the inter correlations and look when that correlation falls off again
+        offset = self.find_offset(correlation, debug=debug)
+        if offset is None:
+            return None, None, None
+        correlations = correlation.get_sliding(offset=offset)
+        o_max_ind = self.get_max_index(correlations.values())
+        o_mean = self.get_mean(o_max_ind, correlations.values())
+        o_off_event = self.find_falling_event(correlations, o_max_ind, o_mean)
+        if o_off_event is None:
+            return None, None, None
+        if debug:
+            print l_mean, l_off_event
+            print o_off_event
+            print offset
+        return l_off_event, o_off_event, offset
+
+    @staticmethod
+    def find_min_index(values, start_index=0):
+        return values.index(min(values[start_index:]))
+
+    @staticmethod
+    def get_max_index(values, end_index=None):
+        e = end_index if end_index is not None else len(values)
+        return values.index(max(values[:e]))
+
+    @staticmethod
+    def get_mean(ind, values, window=5):
+        s = ind - window if ind >= window else 0
+        e = ind + window
+        return mean(values[s:e])
+
+    @staticmethod
+    def find_falling_event(correlations, ind, mean_):
+        try:
+            return correlations.keys()[correlations.values().index(next(m for m in correlations.values()[ind:] if m < mean_ - .1)) - 1]
+        # if the maximum is at the end we won't see the falloff
+        except StopIteration:
+            return
+
+    def find_rising_event(self, correlations, ind):
+        return correlations.keys()[correlations.values().index(next(c for c in correlations.values()[ind:] if c > self.Threshold)) - 3]
+
+    def find_offsets(self, debug=False):
         t = self.Run.log_info('Scanning for precise offsets ... ', next_line=False)
+
+        n = self.BucketSize
+        correlation = Correlation(self, n_offsets=2, bucket_size=n)
+
         offsets = OrderedDict()
-        n = 50
-        thresh = .5
-        # create n lists for events with -1, 0 and +1 offset
-        n_offs = 2
-        offs = [0] + [v for v in xrange(-n_offs, n_offs + 1) if v]
-        xts = {off: OrderedDict() for off in offs}
-        yts = {off: [] for off in offs}
         offset = 0
-        checked = 3 * n
-        for ev, row in self.Row1.iteritems():
-            ev += offset
-            for off in offs:
-                this_ev = ev + off
-                if this_ev in self.Row2:
-                    xts[off][ev] = row
-                    yts[off].append(self.Row2[this_ev])
-            # check correlation of zero offset
-            if len(yts[0]) % n == 0 and len(yts[0]) > checked:
-                corr = corrcoef(xts[0].values()[(-2 * n):-n], yts[0][(-2 * n):-n])[0][1]
-                # print len(yts[0]), xts[0].keys()[-2 * n], xts[0].keys()[-n], corr
-                checked = len(yts[0])
-                found_offset = False
-                if corr < thresh:
-                    # find exact event -> shift through three n buckets and take the last event if the correlation starts dropping
-                    correlations = {xts[0].keys()[-n * 3 + k]: corrcoef(xts[0].values()[(-n * 4 + k):(-n * 3 + k)], yts[0][(-n * 4 + k):(-n * 3 + k)])[0][1] for k in xrange(2 * n)}
-                    correlations = OrderedDict(sorted(correlations.iteritems()))
-                    mean_ = mean(correlations.values()[:n])
-                    mean_ = mean(correlations.values()[n:(3 * n / 2)]) if mean_ < thresh else mean_
-                    off_event = correlations.keys()[correlations.values().index(filter(lambda x: x < mean_ - .1, correlations.itervalues())[0]) - 1]
-                    # print off_event
-                    # find offset
-                    corrs = {corrcoef(xts[off].values()[(-3 * n / 2):], yts[off][(-3 * n / 2):])[0][1]: off for off in offs if off}
-                    off, corr = corrs[max(corrs)], max(corrs)
-                    if corr > thresh - .1:
-                        offset += off
-                        offsets[off_event] = off
-                        # log_message('Found an offset of {v} at event {e}'.format(v=offsets[off_event], e=off_event))
-                        found_offset = True
-                        checked += n
-                    if not found_offset:
-                        off = self.find_detailed_offset(xts, yts, n, thresh)
-                        if off is None:
-                            log_critical('Something went wrong during finding the alignment offsets...')
-                        else:
+        for ev in self.TelRow.iterkeys():
+            # fill the correlation vectors
+            correlation.fill(ev, offset)
+            if correlation.start():
+                # check zero offset correlation
+                if correlation.get_zero(start_bucket=-2, debug=debug) < self.Threshold:
+                    # there is a jump if the last bucket is already aligned again
+                    if correlation.get_zero(start_bucket=-1, debug=debug) > self.Threshold:
+                        # get the events when it starts losing correlation and when the offset correlation falls back into zero offset
+                        l_off_event, o_off_event, off = self.find_jump(correlation, debug=debug)
+                        if off is not None and o_off_event > l_off_event:
+                            offsets[l_off_event] = off
+                            offsets[o_off_event] = -off
+                            if debug:
+                                log_message('Found a jump of {v} between events {e1} and {e2}'.format(v=off, e1=l_off_event, e2=o_off_event))
+                            # only keep the last two buckets since at least the last is correlated
+                            correlation.reset_except_last(2)
+                    # now we have lost correlation for at least three buckets
+                    else:
+                        last_off_event = offsets.keys()[-1] if offsets else 0
+                        off_event = self.find_lose_corr_event(correlation, last_off_event, debug=debug)
+                        off = self.find_offset(correlation)
+                        if off is not None:
                             offset += off
-                            checked += n
-                            found_offset = True
+                            offsets[off_event] = off
+                            if debug:
+                                log_message('Found an offset of {v} at event {e}'.format(v=off, e=off_event))
+                            # delete the first two buckets and use the offset values for zero correlation
+                            correlation.reshuffle(off)
+                    if off is None and debug:
+                        log_message('Could not find any offset!')
                 # reset old lists for speed improvements
-                if len(yts[0]) >= 20 * n and not found_offset:
-                    xts = {off: OrderedDict(sorted({ev: val for ev, val in xts[off].items()[(-3 * n):]}.iteritems())) for off in offs}
-                    yts = {off: yts[off][(-3 * n):] for off in offs}
-                    checked = 1
+                correlation.reset()
         self.Run.add_info(t)
         log_message('Found {n} offsets'.format(n=len(offsets)))
         return offsets
 
-    @staticmethod
-    def find_detailed_offset(x, y, n, thresh):
-        # todo improve this... and maybe use it in general
-        x_off = {off: lst.values()[(-3 * n / 2):] for off, lst in x.iteritems()}
-        y_off = {off: lst[(-3 * n / 2):] for off, lst in y.iteritems()}
-        corrs = {off: [corrcoef(x_off[off][i:(i + n / 5)], y_off[off][i:(i + n / 5)])[0][1] for i in xrange(0, n, n / 5)] for off in x_off.iterkeys()}
-        offs = {lst.index(corr): off for off, lst in corrs.iteritems() for corr in lst if corr > thresh}
-        if not len(offs):
-            for off, corr in corrs.iteritems():
-                print off, corr
-            return
-        return offs[max(offs)]
+    def find_bucket_size(self, show=True):
+        """ take first 10000 events and find a suitable bucket size to build the correlation """
+        correlation = Correlation(self, bucket_size=10)
+        max_ev = 10000
+        for ev in self.TelRow.iterkeys():
+            if ev > max_ev:
+                break
+            correlation.fill(ev)
+        sigmas = OrderedDict()
+        size = 50
+        while True:
+            if correlation.get_events() < 700:
+                break
+            try:
+                for i, n in enumerate(xrange(10, 100)):
+                    correlation.set_bucket_size(n)
+                    corrs = correlation.get_all_zero()
+                    mean_, sigma = calc_mean(corrs)
+                    sigmas[sigma] = n
+                if show:
+                    g = self.Run.make_tgrapherrors('g_bs', 'Sigma of the Bucket Sizes', x=sigmas.values(), y=sigmas.keys())
+                    self.Run.draw_histo(g, draw_opt='alp')
+                size = next(n for sig, n in sigmas.iteritems() if sig < .09)
+                break
+            except StopIteration:
+                correlation.delete_events(len(correlation.TelRow[0]) / 2, max_ev)
+        return round_up_to(size, 5)
 
     # =======================================================
     # region WRITE TREE

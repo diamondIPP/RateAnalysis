@@ -10,16 +10,17 @@ from ConfigParser import ConfigParser, NoOptionError
 from Utils import *
 from argparse import ArgumentParser
 from RunSelection import RunSelection
-from RunClass import Run
+from Run import Run
 from json import load, dump
 from collections import OrderedDict, Counter
 from ROOT import TMultiGraph, TGraphErrors, kRed, kOrange, kBlue, kGreen, kCyan, kViolet, kPink, kYellow, gStyle, TF1, TH2F, TH1F, TGraph2DErrors
 import pickle
 from numpy import sqrt
+from re import split
 
 
 class DiaScans(Elementary):
-    def __init__(self, diamond=None, testcampaigns=None, verbose=False):
+    def __init__(self, selection, verbose=False):
         Elementary.__init__(self, verbose=verbose)
         self.Selection = []
         self.Name = None
@@ -28,8 +29,8 @@ class DiaScans(Elementary):
         self.Parser = self.load_diamond_parser()
 
         # information
-        self.DiamondName = self.load_diamond(diamond)
-        self.TestCampaigns = self.load_tcs(testcampaigns)
+        self.DiamondName = None
+        self.TestCampaigns = self.load_testcampaigns(None)
         self.RunInfos = self.load_runinfos()
         self.AllRunPlans = self.load_all_runplans()
         self.RunPlans = self.find_diamond_runplans()
@@ -39,13 +40,15 @@ class DiaScans(Elementary):
         self.UsedColors = self.init_colors()
 
         # run plan selection
+        self.Path = join(self.Dir, self.MainConfigParser.get('MISC', 'runplan_selection_file'))
         self.Selections = self.load_selections()
         self.Selection = self.load_selection()
         self.RunSelections = None
 
         # Save
         self.ROOTObjects = []
-        self.PickleDir = self.get_program_dir() + self.ana_config_parser.get('SAVE', 'pickle_dir')
+
+        self.set_selection(selection)
 
     @staticmethod
     def init_colors():
@@ -71,9 +74,8 @@ class DiaScans(Elementary):
     # region INIT
 
     def load_selections(self):
-        file_path = self.get_program_dir() + self.MainConfigParser.get('MISC', 'runplan_selection_file')
-        f = open(file_path)
-        selections = load(f)
+        f = open(self.Path)
+        selections = load(f, object_pairs_hook=OrderedDict)
         f.close()
         return selections
 
@@ -85,18 +87,22 @@ class DiaScans(Elementary):
         parser.read('{0}/Configuration/DiamondAliases.cfg'.format(self.get_program_dir()))
         return parser
 
-    def load_diamond(self, dia):
+    def load_diamond(self, name):
+        dia = name
+        if name.lower() not in self.Parser.options('ALIASES'):
+            dia = split('[-_]', name)[-1]
+        if dia.lower() not in self.Parser.options('ALIASES'):
+            dia = '-'.join(split('[-_]', name)[:-1])
+        if dia.lower() not in self.Parser.options('ALIASES'):
+            dia = dia.split('-')[-1]
         try:
             return self.Parser.get('ALIASES', dia)
         except NoOptionError:
-            if dia in [self.Parser.get('ALIASES', a) for a in self.Parser.options('ALIASES')]:
-                return dia
             log_warning('{0} is not a known diamond name! Please choose one from \n{1}'.format(dia, self.Parser.options('ALIASES')))
-            exit()
 
-    def load_tcs(self, tcs):
+    def load_testcampaigns(self, tcs):
         if tcs is None:
-            return ['201505', '201508', '201510']
+            return ['201508', '201510']
         valid_tcs = self.find_test_campaigns()
         tcs = [tcs] if type(tcs) is not list else tcs
         if not all(tc in valid_tcs for tc in tcs):
@@ -115,9 +121,9 @@ class DiaScans(Elementary):
     def load_runinfos(self):
         run_infos = {}
         for tc in self.TestCampaigns:
-            self.TESTCAMPAIGN = tc
-            parser = self.load_run_configs(None)
-            file_path = parser.get('BASIC', 'runinfofile')
+            self.set_test_campaign(tc)
+            self.TCDir = self.generate_tc_directory()
+            file_path = self.load_run_info_path()
             f = open(file_path)
             run_infos[tc] = load(f)
             f.close()
@@ -147,19 +153,21 @@ class DiaScans(Elementary):
         return list(set(names))
 
     def get_bias_voltages(self):
-        voltages = []
-        for sel, ch in self.RunSelections.iteritems():
-            voltages.append(sel.SelectedBias)
-        return list(set(voltages))
+        return [sel.SelectedBias for sel in self.RunSelections]
 
     def set_selection(self, key=None):
         if key is None:
             key = self.DiamondName
         if key not in self.Selections.keys():
-            log_warning('"{selection} does not exist in {Selections}'.format(selection=key, Selections=self.Selections))
+            log_warning('"{sel} does not exist in:'.format(sel=key))
+            for sel in sorted(self.Selections.keys()):
+                print sel
             return
         self.log_info('Set Selection {0}'.format(key))
+        self.DiamondName = self.load_diamond(key)
         self.Selection = self.Selections[key]
+        self.TestCampaigns = list(set(self.Selection.keys()))
+        self.load_run_selections(redo=True)
         self.Name = key
 
     # ==========================================================================
@@ -176,16 +184,18 @@ class DiaScans(Elementary):
 
     def show_selection(self):
         if self.Selection:
-            for tc, rps in sorted(self.Selection.iteritems()):
-                print_small_banner((tc + ':').ljust(15))
-                for rp, ch in sorted(rps.iteritems()):
-                    runs = self.get_runs(rp, tc)
-                    print rp.ljust(5), '{0}-{1}'.format(str(runs[0]).zfill(3), str(runs[-1]).zfill(3))
+            header = ['Campaign', 'RunPlan', 'Diamond', 'Runs'.ljust(7), 'Voltage', 'Type'.ljust(11)]
+            rows = []
+            for sel in self.RunSelections:
+                runs = sel.get_selected_runs()
+                rows.append([sel.TCString.ljust(8), sel.SelectedRunplan.rjust(7), sel.SelectedDiamond.rjust(7), '{0}-{1}'.format(str(runs[0]).zfill(3), str(runs[-1]).zfill(3)),
+                             '{0:+4.0f}V'.format(sel.SelectedBias).rjust(7), sel.SelectedType.ljust(11)])
+            print_table(rows, header)
         else:
             log_warning('Selection is empty!')
 
     def get_runs(self, rp, tc):
-        return self.AllRunPlans[tc]['rate_scan'][rp]
+        return self.AllRunPlans[tc][rp]['runs']
 
     def show_all_runplans(self):
         for tc in self.TestCampaigns:
@@ -267,234 +277,6 @@ class DiaScans(Elementary):
             ymax = max(map(lambda val, err: val + err, y, ey))
             return mean + (ymin, ymax)
 
-    @staticmethod
-    def scale_graph(mg, scale):
-        try:
-            mg.GetListOfGraphs()
-            ymins, ymaxs = [], []
-            for g in mg.GetListOfGraphs():
-                g, ymin, ymax = DiaScans.scale_graph(g, scale)
-                ymins.append(ymin)
-                ymaxs.append(ymax)
-            return mg, min(ymins), max(ymaxs)
-        except AttributeError:
-            g = mg
-        n, x, y, ex, ey = get_graph_data(g)
-        ey = [0] * n if g.GetName() in ['gLine', 'gFirst', 'gLast'] else ey
-        y = map(lambda v: v * scale, y)
-        ey = map(lambda v: v * scale, ey)
-        for i in xrange(n):
-            g.SetPoint(i, x[i], y[i])
-            g.SetPointError(i, ex[i], ey[i])
-        ymin = min(map(lambda val, err: val - err, y, ey))
-        ymax = max(map(lambda val, err: val + err, y, ey))
-        g.SetTitle('original' if scale == 1 else 'scaled by {0:3.2f}'.format(scale))
-        return g, ymin, ymax
-
-    def draw_rate_scans(self, show=False, pulser=False, include_zero=True, gridy=False, do_scale=True, draw_single_plots=False, scale_to=None, range_y=None):
-        if not self.Selection:
-            log_warning('Selection is empty!')
-            return
-        run_selections = self.load_run_selections()
-
-        def scale_graphs(graphs, scale_to=None):
-            print 'There are: {n} runs in the sample:'.format(n=len(graphs))
-            i = 0
-            biases = []
-            for (sel, ch), (mg, mean_ph) in graphs.items():
-                print ' ', i, sel.TESTCAMPAIGN, sel.SelectedBias, mean_ph
-                biases.append(sel.SelectedBias)
-                i += 1
-            try:
-                scale = float(scale_to)
-                print 'scale', scale
-                scale = scale, 1
-            except:
-                if len(graphs) == 1:
-                    retval = 0
-                if len(biases) == 2:
-                    # print biases, biases[0], biases[1]
-                    if biases[0] < 0 < biases[1]:
-                        retval = 0
-                    elif biases[0] > 0 > biases[1]:
-                        retval = 1
-                    else:
-                        retval = -1
-                while True:
-                    try:
-                        if retval < 0:
-                            raise Exception()
-                        i = int(retval)
-                        scale = graphs.items()[i][1][1]
-                        break
-                    except:
-                        retval = raw_input('Enter to which run the data should be scaled [0-{n}]: '.format(n=len(graphs) - 1))
-                print 'data is scaled to run ', i, 'with ph', scale
-                move_element(graphs, graphs.keys()[i], 0)
-            ymins = []
-            ymaxs = []
-            for (sel, ch), (mg, mean_ph) in graphs.items():
-                self.scale_factors[(sel, ch)] = scale[0] / mean_ph[0]
-                mg, ymin, ymax = DiaScans.scale_graph(mg, scale[0] / mean_ph[0])
-                mean_ph = mean_ph[:2] + (ymin, ymax)
-                ymins.append(ymin)
-                ymaxs.append(ymax)
-            ymin = min(ymins)
-            ymax = max(ymaxs)
-            return graphs, ymin, ymax
-
-        mg = TMultiGraph('mg_ph', '{dia} Rate Scans at {bias} V;Flux [kHz/cm^{{2}}]; pulse height [au]'.format(dia=self.DiamondName, bias=500))
-        xndc = .47
-        if do_scale:
-            xndc = .2
-        if not include_zero:
-            nentries = len(run_selections)
-            legend = self.make_legend(xndc, .2 + nentries * .05, nentries=nentries, scale=1., w=.7, x2=.94)
-        else:
-            legend = self.make_legend(xndc, .35, nentries=len(run_selections), scale=1., w=.7, x2=.94)
-        legend.SetNColumns(4)
-        # legend.SetX2NDC(.9)
-        graphs = OrderedDict()
-        legends = {}
-        for sel, ch in run_selections.iteritems():
-            # print 'get', ch, sel.Diamond, sel.TESTCAMPAIGN, sel.SelectedRunplan
-            self.DiamondName = self.load_diamond(sel.Diamond)
-            try:
-                path = self.PickleDir + 'Ph_fit/PulseHeights_{tc}_{rp}_{dia}_{bin}.pickle'.format(tc=sel.TESTCAMPAIGN, rp=sel.SelectedRunplan, dia=self.DiamondName, bin=20000)
-                if pulser:
-                    path = self.PickleDir + 'Pulser/PulseHeights_{tc}_{rp}_{dia}.pickle'.format(tc=sel.TESTCAMPAIGN, rp=sel.SelectedRunplan, dia=self.DiamondName)
-                f = open(path, 'r')
-                mg_ph_ana = pickle.load(f)
-                f.close()
-            except Exception:
-                Elementary(sel.TESTCAMPAIGN)
-                ana = AnalysisCollection(sel, ch, self.verbose)
-                mg_ph_ana = ana.draw_pulser_info(show=False, do_fit=False) if pulser else ana.draw_pulse_heights(show=False)
-                ana.close_files()
-            mean_ph = self.get_ph_below_flux(mg_ph_ana, flux=80)
-            graphs[(sel, ch)] = (mg_ph_ana, mean_ph)
-            l = self.make_legend(.65, .20, nentries=3)
-            try:
-                for g in mg_ph_ana.GetListOfGraphs():
-                    if g.GetName() in ['gFullError', 'data']:
-                        l.AddEntry(g, g.GetTitle(), 'pl')
-                    elif g.GetName() == 'gStatError':
-                        l.AddEntry(g, g.GetTitle(), 'l')
-                    elif not g.GetName() == 'gLine':
-                        l.AddEntry(g, g.GetTitle(), 'p')
-            except:
-                g = mg_ph_ana
-                l.AddEntry(g, g.GetTitle(), 'pl')
-
-            legends[(sel, ch)] = l
-            self.ROOTObjects.append(l)
-
-        if do_scale:
-            graphs, ymin, ymax = scale_graphs(graphs, scale_to=scale_to)
-
-        all_data = []
-        for (sel, ch), (mg_ph_ana, scale) in graphs.iteritems():
-            print_banner('CH: {0}\nScale: {1}'.format(ch, scale))
-            resize_markers(mg_ph_ana, default_size=1, marker_sizes={'gFirst': 1.3, 'gLast': 1.3, 'gStatError': 0})
-            if draw_single_plots and do_scale:
-                y = ymin, ymax
-                mg_y = y[0] * 1.3 - y[1] * .3
-                delta_y = ymax - ymin
-                y_range = increased_range(y, .2, .05)
-                mg_y = y_range[0]
-                self.format_histo(mg_ph_ana, y_range=y_range, y_off=1.75, x_off=1.3, x_tit='Flux [kHz/cm^{2}]', y_tit='pulse height [au]', do_marker=False)
-                mg1 = mg_ph_ana.Clone()
-                mg1.GetListOfGraphs()[0].SetLineColor(602)
-                self.ROOTObjects.append(mg1)
-                scale = self.scale_factors[(sel, ch)]
-                hname = 'Combined{pre}{scale}PulseHeights_{dia}_{bias}_{tc}'.format(pre='Pulser' if pulser else '', dia=self.load_diamond(sel.Diamond), tc=sel.TESTCAMPAIGN,
-                                                                                    scale='Scaled' if do_scale else'', bias=self.make_bias_string(sel.SelectedBias))
-                hname = hname.replace('__', '_')
-                hname = hname.replace('-', '_')
-
-                runinfo = sel.get_runinfo(0 if ch == 1 else 3)
-                if scale != 1:
-                    legScale = self.make_legend(.70, .97, 1, scale=1.2)
-                    legScale.AddEntry(None, 'Scaled by {:.2f}'.format(scale), '')
-                    self.ROOTObjects.append(legScale)
-                    draw_objects = [(legScale, '')]
-                else:
-                    draw_objects = None
-                self.save_combined_pulse_heights(mg_ph_ana, mg1, legends[(sel, ch)], mg_y, show=True, name=hname, pulser_leg=None,
-                                                 x_range=None, y_range=y_range, rel_y_range=None, run_info=runinfo, draw_objects=draw_objects)
-                sel.run.scale_runinfo_legend(txt_size=.075, w=.35, h=0.1 / .268)
-                self.save_plots(hname)
-            bias = sel.SelectedBias
-            color = self.get_next_color(bias, pulser)
-            set_graph_color(mg_ph_ana, color, marker_size=0)
-            resize_markers(mg_ph_ana, default_size=0, marker_sizes={'gFirst': 1.3, 'gLast': 1.3})
-            self.ROOTObjects.append(mg_ph_ana)
-            mg.Add(mg_ph_ana)
-            tc = sel.print_testcampaign(pr=False)
-            title = ''
-            try:
-                if pulser:
-                    g = mg_ph_ana.GetListOfGraphs().FindObject('data')
-                else:
-                    g = mg_ph_ana.GetListOfGraphs().FindObject('gFullError')
-                if g == None:
-                    print [g.GetName() for g in mg_ph_ana.GetListOfGraphs()]
-            except Exception as err:
-                print log_warning(err)
-                g = mg_ph_ana
-
-            all_data.append(get_graph_data(g))
-            # print all_data[-1]
-            if g == None:
-                print g, mg_ph_ana
-                raise Exception
-            if do_scale:
-                title += g.GetTitle() + ', '
-            else:
-                title = ' '
-            title3 = '{dia}'.format(dia=self.load_diamond(sel.Diamond))
-            title4 = 'in {tc}, Bias'.format(tc=tc, )
-            title2 = ' {bias:+5.0f} V'.format(tc=tc, bias=bias)
-            title2 = title2.replace('-', '#minus ')
-            title2 = title2.replace('+', '#plus ')
-            legend.AddEntry(g, title, 'l')
-            legend.AddEntry(None, title3, '')
-            legend.AddEntry(None, title4, '')
-            legend.AddEntry(None, title2, '')
-        self.all_data = all_data
-        tcs = '_'.join(self.Selection.keys())
-        if include_zero:
-            extension = 'Zero'
-        else:
-            extension = ''
-        if do_scale:
-            extension += 'Scaled'
-        prefix = 'Pulser' if pulser else ''
-        pname = 'Combined_{prefix}PH_{key}_RateScans{ext}_{tcs}'.format(tcs=tcs, ext=extension, prefix=prefix, key=self.Name).replace('-', '_')
-        if self.DiamondName.replace('-', '_') not in pname: pname += '_' + self.DiamondName.replace('-', '_')
-        pname = pname.replace('__', '_')
-        self.format_histo(mg, draw_first=True, y_off=1.4, x_tit='Flux [kHz/cm^{2}]', y_tit='{0} Pulse Height [au]'.format('Pulser' if pulser else 'Signal'))
-        mg.GetXaxis().SetLimits(3.5, 20e3)
-        ymax = mg.GetYaxis().GetXmax()
-        ymin = mg.GetYaxis().GetXmin()
-        if range_y is None:
-            if include_zero:
-                range_y = [0, ymax * 1.2]
-            else:
-                range_y = [(ymin - .42 * (ymax - ymin)), (ymax + .00 * (ymax - ymin))]
-        print 'Y Range:', range_y
-
-        mg.SetMinimum(range_y[0])
-        mg.SetMaximum(range_y[1])
-
-        self.MainConfigParser.set('SAVE', 'short_name', 'True')
-        legend.SetX2NDC(.94)
-
-        draw_opt = 'A' if not pulser else 'APL'
-        self.save_histo(mg, pname, lm=.14, draw_opt=draw_opt, l=legend, logx=True, gridy=gridy)
-
-        return mg
-
     def draw_hysteresis_graph(self, scans, limits=None):
         limits = [0, 30, 80, 250, 800, 2000, 4000, 1e10] if limits is None else limits
 
@@ -552,138 +334,18 @@ class DiaScans(Elementary):
         g.Fit(fit, 'QS')
         self.save_plots(pname)
 
-    def create_up_down_scans(self, mg, pulser=False):
-        scans = self.get_up_down_scans(mg)
-        self.draw_hysteresis_graph(scans)
-        graphs = {}
-        mgg = TMultiGraph('mg_up_down', '{dia} Rate Scans at {bias} V;Flux [kHz/cm^{{2}}]; pulse height [au]'.format(dia=self.DiamondName, bias=500))
-        xndc = .4
-
-        legend = self.make_legend(xndc, .35, nentries=3, scale=1., w=.2)
-        dia_names = self.get_diamond_names()
-        biases = self.get_bias_voltages()
-        bias_str = get_bias_root_string(biases)
-        print 'diamond names', dia_names
-        print 'biases', biases, bias_str
-        legend.SetHeader('{names}, scaled, V: {bias}'.format(names=dia_names[0] if len(dia_names) == 1 else dia_names, bias=bias_str))
-        for key, d in scans.iteritems():
-            n = len(d['x'])
-            gr = TGraphErrors(n)
-            for i in range(n):
-                gr.SetPoint(i, d['x'][i], d['y'][i])
-                gr.SetPointError(i, d['ex'][i], d['ey'][i])
-            gr.SetTitle('Flux ' + key)
-            if key == 'up':
-                gr.SetMarkerStyle(22)
-                color = kRed
-            elif key == 'down':
-                gr.SetMarkerStyle(23)
-                color = kBlue
-            else:
-                print 'cannot find', key
-            gr.SetLineColor(color)
-            gr.SetMarkerColor(color)
-            graphs[key] = gr
-            self.format_histo(gr, y_off=1.4, x_tit='Flux [kHz/cm^{2}]', y_tit='{0} Pulse Height [au]'.format('Pulser' if pulser else 'Signal'), color=color)
-            mgg.Add(gr, 'p')
-            legend.AddEntry(gr, gr.GetTitle(), 'lp')
-        self.ROOTObjects.append(graphs)
-        self.MainConfigParser.set('SAVE', 'short_name', 'True')
-        pname = 'Combined_UpDown_PH_RateScans_{key}'.format(key=self.Name).replace('-', '_')
-        dia = '_'.join(dia_names).replace('-', '_')
-        if dia not in pname:
-            pname += '_' + dia
-        pname = pname.replace('__', '_')
-        draw_opt = 'A'
-        if pulser:
-            draw_opt += 'PL'
-        self.format_histo(mgg, y_off=1.4, x_off=1.3, x_tit='Flux [kHz/cm^{2}]', y_tit='{0} Pulse Height [au]'.format('Pulser' if pulser else 'Signal'), draw_first=True)
-        self.draw_histo(mgg, pname, lm=.14, draw_opt=draw_opt, l=legend, logx=True)
-        ymin = mgg.GetYaxis().GetXmin()
-        ymax = mgg.GetYaxis().GetXmax()
-        mgg.SetMinimum(ymin - .3 * (ymax - ymin))
-        legend.SetX2NDC(.94)
-        self.ROOTObjects.append(
-            self.save_plots(pname, self.save_dir)
-        )
-        return mgg, scans
-
-    @staticmethod
-    def get_up_down_scans(mg, keys=None):
-        keys = ['gFullError', 'data'] if keys is None else keys
-        scans = {}
-        for i in ['up', 'down']:
-            scans[i] = {
-                'x': [],
-                'y': [],
-                'ex': [],
-                'ey': []
-            }
-        for g in mg.GetListOfGraphs():
-            if g.GetName() not in keys:
-                continue
-            n, x, y, ex, ey = get_graph_data(g)
-            if n < 2:
-                continue
-            if x[0] < x[1]:
-                key = 'up'
-            else:
-                key = 'down'
-            i = 0
-            while True:
-                scans[key]['x'].append(x[i])
-                scans[key]['y'].append(y[i])
-                scans[key]['ex'].append(ex[i])
-                scans[key]['ey'].append(ey[i])
-                if i == n - 1:
-                    break
-                if x[i] < x[i + 1] and key is not 'up':
-                    key = 'up'
-                    # print 'changed to up', x[i], x[i + 1]
-                elif x[i] > x[i + 1] and key is not 'down':
-                    key = 'down'
-                    # print 'changed to down', x[i], x[i + 1]
-                else:
-                    i += 1
-        return scans
-
     def load_run_selections(self, redo=False):
         if self.RunSelections is not None and not redo:
             return self.RunSelections
-        run_selections = OrderedDict()
-        vals = OrderedDict()
+        run_selections = []
         for tc, rps in sorted(self.Selection.iteritems()):
-            vals[tc] = {}
-            for rp, chs in sorted(rps.iteritems()):
-                if type(chs) is not list:
-                    chs = [chs]
-                for ch in chs:
-                    sel = RunSelection(tc)
-                    sel.select_runs_from_runplan(rp, ch=ch)
-                    self.log_info('Loaded runplan {rp} of testcampaign {tc} and ch {ch} ({dia})'.format(rp=rp.rjust(4),
-                                                                                                        tc=datetime.strptime(tc, '%Y%m').strftime('%b %Y'), ch=ch, dia=sel.SelectedDiamond))
-                    run_selections[sel] = ch
-        sorted_sel = OrderedDict()
-        for i, sel in enumerate(run_selections.iterkeys()):
-            vals[sel.TESTCAMPAIGN][sel.SelectedBias] = i
-        order = [i for val in vals.itervalues() for bias, i in sorted(val.iteritems(), reverse=True)]
-        for i in order:
-            sorted_sel[run_selections.keys()[i]] = run_selections.values()[i]
-        self.RunSelections = sorted_sel
-        return sorted_sel
-
-    def create_combined_plots(self, flux_up_down=False, scaled=True):
-        mg = self.draw_rate_scans(include_zero=False, do_scale=scaled, pulser=False, draw_single_plots=True)
-        if flux_up_down and scaled:
-            mg, scan = self.create_up_down_scans(mg)
-            self.draw_hysteresis_graph(scan)
-        self.draw_rate_scans(include_zero=False, do_scale=scaled, pulser=True, draw_single_plots=True)
-
-    def plots_for_felix(self):
-        pass
-        for key in ['poly-B2_irradiated', 'poly-B2_unirradiated', 'poly-D']:
-            self.set_selection(key)
-            self.draw_rate_scans(include_zero=True, do_scale=False)
+            for rp, ch in rps.iteritems():
+                sel = RunSelection(tc)
+                sel.select_runs_from_runplan(rp, ch=ch)
+                self.log_info('Loaded runplan {rp} of testcampaign {tc} and ch {ch} ({dia})'.format(rp=rp.rjust(4), tc=make_tc_str(tc), ch=ch, dia=sel.SelectedDiamond))
+                run_selections.append(sel)
+        self.RunSelections = run_selections
+        return run_selections
 
     def show_selections(self):
         print 'The following selections exists:'
@@ -747,7 +409,7 @@ class DiaScans(Elementary):
         values = []
         for tc in self.TestCampaigns if tc is None else [tc]:
             for run, data in sorted(self.RunInfos[tc].iteritems()):
-                info_run = Run(run_number=run, test_campaign=tc, load_tree=False)
+                info_run = Run(run_number=run, test_campaign=tc, tree=False)
                 if run_thr is not None:
                     if run_thr > 0 and int(run) < run_thr:
                         continue
@@ -755,7 +417,7 @@ class DiaScans(Elementary):
                         continue
                 try:
                     if data['fs11'] == fs11 and data['fs13'] == fsh13:
-                        flux = info_run.calc_flux()
+                        flux = info_run.Flux
                         # print tc, run, flux
                         values.append(flux) if flux > 1 else do_nothing()
                 except KeyError:
@@ -780,12 +442,15 @@ class DiaScans(Elementary):
 
     def draw_dia_rate_scans(self):
         run_selections = self.load_run_selections()
-        mg = TMultiGraph('mg_ph', '{dia} Rate Scans at {bias} V;Flux [kHz/cm^{{2}}]; pulse height [au]'.format(dia=self.DiamondName, bias=500))
-        legend = self.make_legend(.66, .4, nentries=4)
-        legend.SetNColumns(2)
-        colors = [4, 419, 2, 800]
-        tits = ['unirradiated', 'unirradiated', '5e14 n/cm^{2}', '5e14 n/cm^{2}']
-        for i, (sel, ch) in enumerate(run_selections.iteritems()):
+        biases = self.get_bias_voltages()
+        bias_str = ' at {bias} V'.format(bias=biases[0]) if len(biases) == 1 else ''
+        mg = TMultiGraph('mg_ph', '{dia} Rate Scans{b};Flux [kHz/cm^{{2}}]; pulse height [au]'.format(dia=self.DiamondName, b=bias_str))
+        legend = self.make_legend(.75, .4, nentries=4, felix=True)
+        legend.SetNColumns(2) if len(biases) > 1 else do_nothing()
+        colors = [4, 419, 2, 800, 3]
+        # tits = [make_irr_string(v, p) for v, p in [(0, 0), (5, 14), (1.5, 15)]]
+        tits = [make_irr_string(v, p) for v, p in [(0, 0), (5, 14), (1, 15), (2, 15), (4, 15)]]
+        for i, (sel, ch) in enumerate(run_selections):
             path = self.make_pickle_path('Ph_fit', 'PulseHeights', sel.SelectedRunplan, self.DiamondName, 10000, sel.TESTCAMPAIGN)
             try:
                 f = open(path, 'r')
@@ -793,69 +458,136 @@ class DiaScans(Elementary):
                 f.close()
             except IOError:
                 print 'Did not find', path
-                Elementary(sel.TESTCAMPAIGN)
+                Elementary(sel.generate_tc_str())
                 ana = AnalysisCollection(sel, ch, self.verbose)
                 mg_ph_ana = ana.draw_pulse_heights(show=False)
                 ana.close_files()
             for g in mg_ph_ana.GetListOfGraphs():
-                g.SetMarkerSize(.5)
-                self.format_histo(g, color=colors[i])
+                self.format_histo(g, color=colors[i], markersize=1.5, lw=2)
                 if g.GetName() == 'gFirst':
-                    self.format_histo(g, color=1, marker=26, markersize=1.2)
+                    self.format_histo(g, color=1, marker=26, markersize=2)
                 elif g.GetName() == 'gLast':
-                    self.format_histo(g, color=1, marker=23, markersize=1.2)
-                # elif g.GetName() == 'gStatError':
-                #     l.AddEntry(g, g.GetTitle(), 'l')
-                # elif not g.GetName() == 'gLine':
-                #     l.AddEntry(g, g.GetTitle(), 'p')
+                    self.format_histo(g, color=1, marker=23, markersize=2)
             legend.AddEntry(mg_ph_ana.GetListOfGraphs()[0], tits[i], 'lp')
-            legend.AddEntry(0, get_bias_root_string(sel.SelectedBias), '')
+            legend.AddEntry(0, get_bias_root_string(sel.SelectedBias), '') if len(biases) > 1 else do_nothing()
             mg.Add(mg_ph_ana)
         x_vals = sorted([gr.GetX()[i] for gr in mg.GetListOfGraphs() for i in xrange(gr.GetN())])
         y_vals = sorted([gr.GetY()[i] for gr in mg.GetListOfGraphs() for i in xrange(gr.GetN())])
-        self.format_histo(mg, draw_first=True, y_tit='Pulse Height [au]')
-        mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 1.2)
-        mg.GetYaxis().SetRangeUser(0, y_vals[-1] * 1.1)
-        self.save_histo(mg, 'DiaScans{dia}'.format(dia=make_dia_str(self.DiamondName)), draw_opt='a', logx=True, l=legend, x_fac=1.5, lm=.092, bm=.11)
+        self.format_histo(mg, draw_first=True, y_tit='Pulse Height [au]', y_range=[0, y_vals[-1] * 1.1], tit_size=.05, lab_size=.05, y_off=.91, x_off=1.2)
+        mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 3)
+        self.save_histo(mg, 'DiaScans{dia}'.format(dia=make_dia_str(self.DiamondName)), draw_opt='a', logx=True, l=legend, x_fac=1.6, lm=.092, bm=.12, gridy=True)
+
+    def draw_scaled_rate_scans(self, irr=False, y_range=.15, rdm=False):
+        run_selections = self.load_run_selections()
+        biases = self.get_bias_voltages()
+        bias_str = ' at {b}'.format(b=make_bias_str(biases[0])) if len(set(biases)) == 1 else ''
+        colors = get_color_gradient(len(run_selections))
+        tits = [make_irr_string(v, p) for v, p in [(0, 0), (5, 14), (1, 15), (2, 15), (4, 15)]]
+        graphs = self.get_pulse_height_graphs()
+        x_vals = sorted([g.GetX()[i] for g in graphs for i in xrange(g.GetN())])
+        y_range = [1 - y_range, 1 + y_range]
+
+        c = self.make_canvas(x=1.6, y=.2 * (len(graphs) + 1), transp=True, logx=True, gridy=True)
+        lm, rm = .03, .02
+        lp = .04
+        pad_height = .1 / (.2 * (len(graphs) + 1))
+        self.draw_tpad('p0', 'p0', pos=[lp, 1 - pad_height, 1, 1], margins=[lm, rm, 0, .5], transparent=True)                              # title pad
+        self.draw_tlatex(lm, .5, '{dia} Rate Scans{b}'.format(dia=self.DiamondName, b=bias_str), size=.5, align=12)     # title
+        c.cd()
+        self.draw_tpad('p1', 'p1', pos=[0, 0, lp, 1], margins=[0, 0, 0, 0], transparent=True)                                   # info pad
+        self.draw_tlatex(.5, .5, '#font[42]{Scaled Pulse Height}', size=.7, align=22, angle=90)    # title
+        c.cd()
+
+        for i, g in enumerate(graphs):
+            last = i >= len(graphs) - 1
+            y0 = 0 if last else 1 - (pad_height * (2 * i + 3))
+            y1 = 1 - (pad_height * (2 * i + 1))
+            self.draw_tpad('p{i}'.format(i=i + 2), 'p{i}'.format(i=i + 2), pos=[lp, y0, 1, y1], margins=[lm, rm, .33 if last else 0, 0], logx=True, gridy=True, gridx=True)
+            if last:
+                self.format_histo(g, title=' ', color=colors[i], x_range=[x_vals[0] * 0.8, x_vals[-1] * 3], y_range=y_range, marker=markers(i), lab_size=.15 * 2 / 3, ndivy=505,
+                                  markersize=1.5, x_tit='Flux [kHz/cm^{2}]', tit_size=.15 * 2 / 3, tick_size=.15 * 2 / 3)
+            else:
+                self.format_histo(g, title=' ', color=colors[i], x_range=[x_vals[0] * 0.8, x_vals[-1] * 3], y_range=y_range, marker=markers(i), lab_size=.15, ndivy=505,
+                                  markersize=1.5, tick_size=.15)
+            g.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 3)
+            g.Draw('ap')
+            x1 = .8 if len(set(biases)) < 2 else .75
+            legend = self.make_legend(x1 - .1 if rdm else 0, 1, x2=1 - rm, nentries=1, scale=5 * (2 / 3. if last else 1))
+            legend.AddEntry(g, (tits[i] if irr else make_tc_str(self.RunSelections[i].TCString)) + (' (random)' if i in [1, 3] and rdm else '         ') , 'pe')
+            if len(set(biases)) > 1:
+                legend.SetNColumns(2)
+                legend.AddEntry('', make_bias_str(biases[i]), '')
+            legend.Draw()
+            self.ROOTObjects.append(legend)
+            c.cd()
+
+        self.ROOTObjects.append(graphs)
+        self.save_plots('ScaledDiaScans{dia}'.format(dia=make_dia_str(self.DiamondName)))
+
+    def get_pulse_height_graphs(self, scale=1, redo=False):
+        run_selections = self.load_run_selections()
+        graphs = []
+        for i, sel in enumerate(run_selections):
+            path = self.make_pickle_path('Ph_fit', 'PhVals', sel.SelectedRunplan, sel.SelectedDiamond, 10000, sel.TCString)
+            try:
+                if redo:
+                    raise IOError
+                f = open(path, 'r')
+                phs = pickle.load(f)
+                f.close()
+            except IOError:
+                print 'Did not find', path
+                Elementary(sel.generate_tc_str())
+                print
+                ana = AnalysisCollection(sel, verbose=self.verbose)
+                phs = ana.get_pulse_heights(redo=redo)
+            values, errors = self.scale_to(phs, scale)
+            fluxes = [ph['flux'] for ph in phs.itervalues()]
+            g = self.make_tgrapherrors('g{n}'.format(n=i), 'Rate Scans for {n}'.format(n=self.DiamondName))
+            for j, (x, val, err) in enumerate(zip(fluxes, values, errors)):
+                g.SetPoint(j, x, val)
+                g.SetPointError(j, .1 * x, err)
+            graphs.append(g)
+        return graphs
+
+    @staticmethod
+    def scale_to(dic, scale=1):
+        fluxes = [d['flux'] for d in dic.itervalues()]
+        min_ind = fluxes.index(min(fluxes))
+        err_scale = scale / dic.values()[min_ind]['ph'].Parameter(0)
+        scale = scale / dic.values()[min_ind]['ph'].Parameter(0) if scale is not None else 1
+        values = [d['ph'].Parameter(0) * scale for d in dic.itervalues()]
+        errors = [d['ph'].ParError(0) * err_scale for d in dic.itervalues()]
+        return values, errors
+
+    def add_selection(self):
+        name = raw_input('Enter the name of the selection: ')
+        self.Selections[name] = {} if name not in self.Selections else self.Selections[name]
+        run_plan = raw_input('Enter test campaign, run plan number, channel: ')
+        while run_plan:
+            tc, rp, ch = [string.strip(' ') for string in run_plan.split(',')]
+            rp = RunSelection.make_runplan_string(rp)
+            if tc not in self.Selections[name]:
+                self.Selections[name][tc] = {rp: int(ch)}
+            else:
+                self.Selections[name][tc][rp] = int(ch)
+            run_plan = raw_input('Enter test campaign, run plan number, channel: ')
+        self.save_selections()
+
+    def save_selections(self):
+        f = open(self.Path, 'r+')
+        f.seek(0)
+        dump(self.Selections, f, indent=2, sort_keys=True)
+        f.truncate()
+        f.close()
 
 
 if __name__ == '__main__':
     main_parser = ArgumentParser()
-    main_parser.add_argument('dia', nargs='?', default='b2')
-    main_parser.add_argument('-tcs', nargs='?', default=None)
+    main_parser.add_argument('sel', nargs='?', default='S129-neg')
+    main_parser.add_argument('-v', action='store_true')
     args = main_parser.parse_args()
-    print args
-    print_banner('STARTING DIAMOND RATE SCAN COLLECTION OF DIAMOND {0}'.format(args.dia))
+    print_banner('STARTING DIAMOND RATE SCAN COLLECTION OF SELECTION {0}'.format(args.sel))
 
-    z = DiaScans(args.dia, args.tcs, verbose=True)
-    if False:
-        for key_, s in z.Selections.items():
-            print_banner('STARTING SELECTION {0}'.format(key_))
-            z.set_selection(key_)
-            z.create_combined_plots()
-            if key_ in ['poly-D', 'poly-B2_irradiated']:
-                z.create_combined_plots(flux_up_down=True)
-    # z.set_selection('poly-B2')
-    # if raw_input('press y for creating all plots').lower() == 'y':
-    #     for key in ['poly-B2_irradiated',  # ,'poly-B2_unirradiated',
-    #                 'poly-D'
-    #                 ]:
-    #         z.set_selection(key)
-    #         mg = z.draw_rate_scans(include_zero=False, do_scale=True, pulser=False, draw_single_plots=True)
-    #         mg, scan = z.create_up_down_scans(mg)
-    #         # z.create_combined_plots(flux_up_down=True)
-    #         # z.create_combined_plots(scaled=False)
-    # z.set_selection('ext_neg_pulser_neg_pol')
-    # z.create_combined_plots()
-    # for key in [#'S129','S129_201510',
-    #        'S129_n500','poly-B2']:
-    #    z.set_selection(key)
-    #    z.create_combined_plots()
-    #    z.create_combined_plots(scaled=False)
-    #    z.draw_rate_scans(include_zero=True,do_scale=False)
-    # z.set_selection(u'ext_neg_pulser_neg_pol')
-    # z.draw_rate_scans(pulser=True,do_scale=True,include_zero=False,reset_colors=False)
-    # z.set_selection('ext_pul_pos_pol')
-    #         # z.used_colors=[kGreen, kCyan, kViolet]
-    #         # scale = raw_input('scale to:')
-    #         # z.draw_rate_scans(pulser=True,do_scale=True,include_zero=False,reset_colors=False,scale_to=scale)
+    Elementary(None, True, get_resolution())
+    z = DiaScans(args.sel, verbose=args.v)
