@@ -489,6 +489,22 @@ def make_bias_str(bias):
 def markers(i):
     return (range(20, 24) + [29, 33, 34])[i]
 
+# TODO: extract time in threading!
+
+def load_root_files(sel, load=True):
+
+    runs = sel.get_selected_runs()
+    threads = {}
+    for run in runs:
+        thread = MyThread(sel, run)
+        if load:
+            thread.start()
+        else:
+            thread.Tuple = False
+        threads[run] = thread
+    while any(thread.isAlive() for thread in threads.itervalues()) and load:
+        sleep(.1)
+    return threads
 
 
 class MyThread (Thread):
