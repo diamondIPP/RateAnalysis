@@ -5,7 +5,7 @@
 
 from datetime import datetime, timedelta
 from termcolor import colored
-from ROOT import gStyle, gROOT, TF1, TColor
+from ROOT import gStyle, gROOT, TF1, TColor, TFile
 from numpy import sqrt, array
 from os import makedirs
 from os import path as pth
@@ -13,6 +13,7 @@ from os.path import basename, join, split
 from time import time, sleep
 from collections import OrderedDict
 import pickle
+from threading import Thread
 
 
 # ==============================================
@@ -487,6 +488,30 @@ def make_bias_str(bias):
 
 def markers(i):
     return (range(20, 24) + [29, 33, 34])[i]
+
+
+
+class MyThread (Thread):
+    def __init__(self, sel, run):
+        Thread.__init__(self)
+        self.Run = run
+        self.Selection = sel
+        self.File = None
+        self.Tree = None
+        self.Tuple = None
+
+    def run(self):
+        self.load_tree()
+
+    def load_tree(self):
+        log_message('Loading run {r}'.format(r=self.Run), overlay=True)
+        file_path = self.Selection.run.converter.get_final_file_path(self.Run)
+        if file_exists(file_path):
+            self.File = TFile(file_path)
+            self.Tree = self.File.Get('tree')
+            self.Tuple = (self.File, self.Tree)
+            while not self.Tree:
+                sleep(.1)
 
 
 class FitRes:
