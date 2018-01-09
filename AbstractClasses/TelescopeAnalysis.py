@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 from copy import deepcopy
 
 from ROOT import TCanvas, TH2F, gROOT, TH1F, TLegend, gStyle, kGreen, TText, TCut, TF1, TGraph, TH1I
-from numpy import array, zeros, log
+from numpy import zeros, log
 
 from Elementary import Elementary
 from Run import Run
@@ -15,19 +15,18 @@ from Langaus import Langau
 class Analysis(Elementary):
     """ Class for the analysis of the non-channel specific stuff of a single run. """
 
-    def __init__(self, run, verbose=False, high_low_rate=None, load_tree=True, binning=5000):
+    def __init__(self, run, high_low_rate=None, binning=5000):
         """
         Parent class for all analyses, which contains all the basic stuff about the Telescope.
         :param run:             run object of type "Run" or integer run number
-        :param verbose:         if True, verbose printing is activated
         :param high_low_rate:   list of highest and lowest rate runs for an analysis collection
         """
-        Elementary.__init__(self, verbose=verbose)
+        self.run = self.init_run(run)
+        Elementary.__init__(self, verbose=run.verbose)
         self.histos = []
         self.RootObjects = []
 
         # basics
-        self.run = self.init_run(run, load_tree, verbose)
         self.run.analysis = self
         self.RunNumber = self.run.RunNumber
         self.RunInfo = deepcopy(self.run.RunInfo)
@@ -46,9 +45,9 @@ class Analysis(Elementary):
         self.channel = self.channel if hasattr(self, 'channel') else None
 
         # general for pads and pixels
-        self.Cut = Cut(self, skip=not load_tree)
+        self.Cut = Cut(self, skip=run.tree is None)
 
-        if load_tree:
+        if run.tree:
             self.NRocs = self.run.NPlanes
             self.StartEvent = self.Cut.CutConfig['EventRange'][0]
             self.EndEvent = self.Cut.CutConfig['EventRange'][1]
@@ -67,14 +66,14 @@ class Analysis(Elementary):
     # region INIT
 
     @staticmethod
-    def init_run(run, load_tree, verbose):
-        """ create a run instance with either a given run integer or an already give run instance where a the run object is not None """
+    def init_run(run):
+        """ Make some assertions if the correct run instance was provided """
         if not isinstance(run, Run):
-            assert type(run) is int, 'run has to be either a Run instance or an integer run number'
-            return Run(run, 3, load_tree=load_tree, verbose=verbose)
-        else:
-            assert run.RunNumber is not None, 'No run selected, choose run.SetRun(run_nr) before you pass the run object'
-            return run
+            raise TypeError('You have to pass a Run instance!')
+            # return Run(run, 3, load_tree=load_tree, verbose=verbose)
+        if run.RunNumber is None:
+            raise ValueError('No run selected, choose run.SetRun(run_nr) before you pass the run object')
+        return run
     # endregion
 
     # ============================================================================================

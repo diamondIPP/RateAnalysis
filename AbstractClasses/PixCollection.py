@@ -9,19 +9,21 @@ from Elementary import Elementary
 from RunSelection import RunSelection
 from time import time
 from argparse import ArgumentParser
-from Utils import get_resolution
+from Utils import get_resolution, load_root_files
 from PixAnalysis import PixAnalysis
+from Run import Run
 
 
 class PixCollection(AnalysisCollection):
 
-    def __init__(self, run_selection, load_tree=True, verbose=False):
-        AnalysisCollection.__init__(self, run_selection, load_tree=load_tree, verbose=verbose)
+    def __init__(self, run_selection, threads=None, verbose=False):
+        AnalysisCollection.__init__(self, run_selection, threads=threads, verbose=verbose)
 
-    def add_analyses(self, load_tree):
+    def add_analyses(self):
         """ Creates and adds Analysis objects with run numbers in runs. """
         for run in self.runs:
-            analysis = PixAnalysis(run, self.selection.SelectedDiamondNr, load_tree=load_tree, verbose=self.verbose)
+            run_class = Run(run, tree=self.Threads[run].Tuple, verbose=self.verbose)
+            analysis = PixAnalysis(run_class, self.selection.SelectedDiamondNr)
             self.collection[analysis.run.RunNumber] = analysis
             self.current_run_number = analysis.run.RunNumber
 
@@ -34,13 +36,13 @@ class PixCollection(AnalysisCollection):
 
 if __name__ == "__main__":
     st = time()
-    main_parser = ArgumentParser()
-    main_parser.add_argument('runplan', nargs='?', default=16.1)
-    main_parser.add_argument('dia', nargs='?', default=1, type=int)
-    main_parser.add_argument('-tc', '--testcampaign', nargs='?', default='')
-    main_parser.add_argument('-t', '--tree', default=True, action='store_false')
-    main_parser.add_argument('-v', '--verbose', default=True, action='store_false')
-    args = main_parser.parse_args()
+    p = ArgumentParser()
+    p.add_argument('runplan', nargs='?', default=16.1)
+    p.add_argument('dia', nargs='?', default=1, type=int)
+    p.add_argument('-tc', '--testcampaign', nargs='?', default='')
+    p.add_argument('-t', '--tree', action='store_false')
+    p.add_argument('-v', '--verbose', action='store_false')
+    args = p.parse_args()
     tc = args.testcampaign if args.testcampaign.startswith('201') else None
     a = Elementary(tc, True, get_resolution())
     sel = RunSelection(testcampaign=tc)
@@ -48,6 +50,7 @@ if __name__ == "__main__":
     a.print_banner('STARTING PIX-ANALYSIS COLLECTION FOR RUNPLAN {0}'.format(args.runplan))
     a.print_testcampaign()
 
-    z = PixCollection(sel, load_tree=args.tree, verbose=args.verbose)
+    t = load_root_files(sel, args.tree)
+    z = PixCollection(sel, threads=t, verbose=args.verbose)
     z.print_loaded()
     z.print_elapsed_time(st, 'Instantiation')

@@ -312,7 +312,7 @@ class RunSelection(Elementary):
         rows = []
         for run in selected_runs:
             r = self.run
-            r.set_run(run, load_root_file=False)
+            r.set_run(run, root_tree=False)
             d1, d2 = (str(value).ljust(8) for value in r.load_diamond_names())
             v1, v2 = ('{v:+7.0f}'.format(v=value) for value in r.load_bias())
             row = [str(run).rjust(3), r.RunInfo['runtype'].ljust(10), d1, v1, d2, v2, '{:14.2f}'.format(r.Flux)]

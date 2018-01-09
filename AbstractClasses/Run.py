@@ -28,7 +28,7 @@ class Run(Elementary):
     operationmode = ''
     TrackingPadAnalysis = {}
 
-    def __init__(self, run_number=None, diamonds=3, test_campaign=None, load_tree=True, verbose=False):
+    def __init__(self, run_number=None, diamonds=3, test_campaign=None, tree=None, verbose=False):
         """
         :param run_number: number of the run
         :param diamonds: 0x1=ch0; 0x2=ch3
@@ -66,9 +66,7 @@ class Run(Elementary):
         self.__load_timing()
 
         self.converter = Converter(self)
-        if run_number is not None and load_tree:
-            assert (run_number > 0), 'incorrect run_number'
-            self.set_run(run_number)
+        if self.set_run(run_number, tree):
 
             # tree info
             self.time = self.__get_time_vec()
@@ -221,19 +219,27 @@ class Run(Elementary):
         for key, value in sorted(self.RunInfo.iteritems()):
             print '{k}: {v}'.format(k=key.ljust(13), v=value)
 
-    def set_run(self, run_number, load_root_file=True):
+    def set_run(self, run_number, root_tree):
 
-        assert type(run_number) is int, "incorrect run_number"
+        if run_number is None:
+            return False
+        assert (run_number > 0), 'incorrect run_number'
+        assert type(run_number) is int, 'incorrect run_number'
 
         self.RunNumber = run_number
         self.load_run_info()
         self.Flux = self.calculate_flux()
 
         # check for conversion
-        if load_root_file:
+        if root_tree is None:
             self.converter.convert_run(self.RunInfo, run_number)
             self.__load_rootfile()
-
+        elif root_tree:
+            # TODO: check if the tree is functional and type tree...
+            self.RootFile = root_tree[0]
+            self.tree = root_tree[1]
+        else:
+            return False
         return True
 
     def set_channels(self, diamonds):
@@ -620,4 +626,4 @@ if __name__ == '__main__':
     p.add_argument('-tc', '--testcampaign', nargs='?', default=None)
     p.add_argument('-t', '--tree', action='store_true')
     args = p.parse_args()
-    z = Run(args.run, load_tree=args.tree, test_campaign=args.testcampaign)
+    z = Run(args.run, tree=args.tree, test_campaign=args.testcampaign)

@@ -9,13 +9,14 @@ from argparse import ArgumentParser
 from collections import Counter
 from copy import deepcopy
 from math import ceil
-from numpy import array, mean, corrcoef, arange
+from numpy import mean, corrcoef, arange
 from os.path import join as joinpath
 
 from CurrentInfo import Currents
 from CutPix import CutPix
 from Elementary import Elementary
 from TelescopeAnalysis import Analysis
+from Run import Run
 from Utils import *
 
 __author__ = 'DA & Micha'
@@ -25,9 +26,9 @@ __author__ = 'DA & Micha'
 # MAIN CLASS
 # ==============================================
 class PixAnalysis(Analysis):
-    def __init__(self, run, dut=1, load_tree=True, verbose=False, binning=10000):
+    def __init__(self, run, dut=1, binning=10000):
 
-        Analysis.__init__(self, run, verbose=verbose, binning=binning, load_tree=load_tree)
+        Analysis.__init__(self, run, binning=binning)
 
         # main
         self.RunNumber = run
@@ -37,7 +38,7 @@ class PixAnalysis(Analysis):
         self.Dut = dut + 3
         self.save_dir = '{dia}/{run}/'.format(run=str(self.RunNumber).zfill(3), dia=self.DiamondName)
 
-        if load_tree:
+        if run.tree:
             # stuff
             self.Plots.save_dir = self.save_dir
             self.Settings = self.Plots.Settings
@@ -408,7 +409,7 @@ class PixAnalysis(Analysis):
         x_var = 'time / 1000' if vs_time else 'event_number'
         self.tree.Draw('(n_hits[{r}]>0)*100:{x} >> h_he'.format(r=roc, x=x_var), cut_string, 'goff', int(n), start)
         set_time_axis(h, off=self.run.startTime / 1000 + 3600) if vs_time else do_nothing()
-        self.format_histo(h, x_tit='Time [hh:mm]' if vs_time else 'Event Number', y_tit='Efficiency [%]', y_off=1.4, ndiv=505, y_range=[-5, 105], stats=0)
+        self.format_histo(h, x_tit='Time [hh:mm]' if vs_time else 'Event Number', y_tit='Efficiency [%]', y_off=1.4, ndivx=505, y_range=[-5, 105], stats=0)
         self.save_histo(h, 'HitEfficiencyROC{n}'.format(n=roc), show, lm=.13, save=save, gridy=True)
         return h
 
@@ -439,7 +440,7 @@ class PixAnalysis(Analysis):
             leg_string = 'ROC{n}'.format(n=roc) if roc < 4 else self.load_diamond_name(roc - 3)
             leg_string += ' ({v:5.2f}%)'.format(v=fit.Parameter(0))
             l1.AddEntry(h, leg_string, 'pl')
-        self.format_histo(stack, x_tit='Time [hh:mm]', y_tit='Efficiency [%]', y_off=1.4, ndiv=505, y_range=[-5, 105], stats=0, draw_first=True)
+        self.format_histo(stack, x_tit='Time [hh:mm]', y_tit='Efficiency [%]', y_off=1.4, ndivx=505, y_range=[-5, 105], stats=0, draw_first=True)
         set_time_axis(stack, off=self.run.startTime / 1000 + 3600)
         self.save_histo(stack, 'HitEfficiencies', show, lm=.13, l=l1, draw_opt='nostack', gridy=True)
         self.reset_colors()
@@ -500,7 +501,7 @@ class PixAnalysis(Analysis):
         h = TH1I('h_tp', 'Trigger Phase Offset', 19, -9, 10)
         self.tree.Draw('trigger_phase[1] - trigger_phase[0]>>h_tp', cut_string, 'goff')
         set_statbox(entries=4, opt=1000000010, y=0.88)
-        self.format_histo(h, x_tit='Trigger Phase', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor, ndiv=20)
+        self.format_histo(h, x_tit='Trigger Phase', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor, ndivx=20)
         self.save_histo(h, 'TriggerPhase', show, lm=.16)
 
     def draw_hit_eff_vs_trigphase(self, roc=None, show=True, n=1e9, start=0):
@@ -744,10 +745,10 @@ if __name__ == '__main__':
     parser.add_argument('-g', '--doCharge', action='store_true', dest='doCharge', default=False,
                         help='set with -g or with --doCharge to do pulse height analysis on selected devices (DUTs and/or telescope)')
     parser.add_argument('-p', '--progBar', action='store_true', dest='progBar', default=False, help='show progress bar')
-    parser.add_argument('-v', '--verb', action='store_true', dest='verb', default=True, help='show verbose')
     parser.add_argument('-a', '--analyse', action='store_true', dest='doAna', default=False, help='run the whole analysis with the options entered')
     parser.add_argument('-tc', '--testcampaign', nargs='?', default='')
-    parser.add_argument('-t', '--tree', default=True, action='store_false')
+    parser.add_argument('-v', '--verbose', action='store_true', help='show verbose')
+    parser.add_argument('-t', '--tree', action='store_true')
 
     args = parser.parse_args()
 
@@ -781,9 +782,9 @@ if __name__ == '__main__':
     el = Elementary(tc)
     el.print_testcampaign()
     el.print_banner('STARTING PIXEL-ANALYSIS OF RUN {0}'.format(args.run))
-    # print command
     print
-    z = PixAnalysis(args.run, args.dut, args.tree, args.verb)
+    run_class = Run(args.run, verbose=args.verbose, tree=None if not args.tree else args.tree)
+    z = PixAnalysis(run_class, args.dut)
     z.print_elapsed_time(st, 'Instantiation')
 
     if doAna:

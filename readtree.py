@@ -345,10 +345,10 @@ if __name__ == '__main__':
             run = None
 
     try:
-        run = Run(run, test_campaign=tc, load_tree=False)
+        run = Run(run, test_campaign=tc, tree=False)
         runinfo = load_runinfo()
     except ValueError:
-        run = Run(2, test_campaign='201610', load_tree=False)
+        run = Run(2, test_campaign='201610', tree=False)
 
     channels = read_macro(rootfile)
     t = rootfile.Get('tree')

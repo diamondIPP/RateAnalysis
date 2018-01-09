@@ -3,7 +3,6 @@
 # ==============================================
 from argparse import ArgumentParser
 from numpy import log, zeros, std, mean
-from dispy import JobCluster
 from functools import partial
 
 from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1, TH1F, TH2F, TH2I, TProfile2D
@@ -29,22 +28,24 @@ class AnalysisCollection(Elementary):
     """
     current_run_number = -1
 
-    def __init__(self, run_selection, load_tree=True, verbose=False):
+    def __init__(self, run_selection, verbose=False, threads=None):
         Elementary.__init__(self, verbose=verbose)
         # dict where all analysis objects are saved
         self.collection = OrderedDict()
         self.selection = run_selection
 
         self.runs = run_selection.get_selected_runs()
+        self.Threads = threads
+        self.LoadTrees = threads.values()[0].Tuple
         self.Type = run_selection.SelectedType
         # self.diamonds = self.load_diamonds(diamonds, list_of_runs)
         self.min_max_rate_runs = self.get_high_low_rate_runs()
-        if load_tree:
+        if self.LoadTrees:
             self.generate_slope_pickle()
             self.generate_threshold_pickle()
-        self.add_analyses(load_tree)
+        self.add_analyses()
         self.FirstAnalysis = self.get_first_analysis()
-        if load_tree:
+        if self.LoadTrees:
             self.Plots = self.FirstAnalysis.Plots
         self.channel = self.load_channel()
 
@@ -88,24 +89,11 @@ class AnalysisCollection(Elementary):
     def load_run_config(self):
         return self.load_run_configs(0)
 
-    def create_analysis(self, run, load_tree):
-        self.collection[run] = PadAnalysis(run, self.channel, self.min_max_rate_runs, load_tree=load_tree, verbose=self.verbose)
-
-    def add_analyses_fast(self, load_tree):
-        cluster = JobCluster(self.create_analysis)
-        jobs = []
-        for i, run in enumerate(self.runs):
-            job = cluster.submit((run, load_tree,))
-            job.id = i
-            jobs.append(job)
-        for job in jobs:
-            job()
-            print job.id, job.start_time, job.end_time
-
-    def add_analyses(self, load_tree):
+    def add_analyses(self):
         """ Creates and adds Analysis objects with run numbers in runs. """
         for run in self.runs:
-            analysis = PadAnalysis(run, self.selection.SelectedDiamondNr, self.min_max_rate_runs, load_tree=load_tree, verbose=self.verbose)
+            run_class = Run(run, tree=self.Threads[run].Tuple, verbose=self.verbose)
+            analysis = PadAnalysis(run_class, self.selection.SelectedDiamondNr, self.min_max_rate_runs)
             self.collection[analysis.run.RunNumber] = analysis
             self.current_run_number = analysis.run.RunNumber
 
@@ -115,7 +103,7 @@ class AnalysisCollection(Elementary):
         return [i for i in xrange(16) if self.has_bit(binary, i)][dia_nr - 1]
 
     def get_high_low_rate_runs(self):
-        runs = [Run(run_number=run, load_tree=False) for run in self.runs]
+        runs = [Run(run_number=run, tree=False) for run in self.runs]
         fluxes = OrderedDict()
         self.log_info('RUN FLUX [kHz/cm2]')
         for run in runs:
@@ -755,7 +743,7 @@ class AnalysisCollection(Elementary):
         gROOT.SetBatch(0)
         self.save_plots('AllPulserHistos{0}'.format('Uncorrected' if not corr else ''), sub_dir=self.save_dir)
         self.RootObjects.append([c, legend] + histos.values())
-        z.reset_colors()
+        self.reset_colors()
 
     def draw_all_pulser_info(self, mean_=True):
         graphs = [self.draw_pulser_info(show=False, mean_=mean_, corr=bool(x), beam_on=bool(y)) for x, y in zip([1, 1, 0, 0], [1, 0, 1, 0])]
@@ -1425,7 +1413,7 @@ if __name__ == "__main__":
     main_parser.add_argument('dia', nargs='?', default=1, type=int)
     main_parser.add_argument('dia2', nargs='?', default=1, type=int)
     main_parser.add_argument('-tc', '--testcampaign', nargs='?', default='')
-    main_parser.add_argument('-t', '--tree', default=True, action='store_false')
+    main_parser.add_argument('-t', '--tree', action='store_false')
     main_parser.add_argument('-r', '--runs', action='store_true')
     args = main_parser.parse_args()
     tc = args.testcampaign if args.testcampaign.startswith('201') else None
@@ -1436,8 +1424,8 @@ if __name__ == "__main__":
     sel.select_runs_from_runplan(run_plan, ch=diamond) if not args.runs else sel.select_runs([int(args.runplan), int(args.dia if args.dia else args.runplan)], args.dia2 if args.dia2 else 1)
     a.print_banner('STARTING PAD-ANALYSIS COLLECTION OF RUNPLAN {0}'.format(run_plan))
     a.print_testcampaign()
-
-    z = AnalysisCollection(sel, load_tree=args.tree, verbose=True)
+    t = load_root_files(sel, args.tree)
+    z = AnalysisCollection(sel, verbose=True, threads=t)
     z.print_loaded()
     z.print_elapsed_time(st, 'Instantiation')
     if args.runs:

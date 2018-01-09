@@ -5,7 +5,6 @@
 from argparse import ArgumentParser
 from copy import deepcopy
 from math import log
-from numpy import array
 from sys import stdout
 
 from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie,\
@@ -19,6 +18,7 @@ from TelescopeAnalysis import Analysis
 from Pulser import PulserAnalysis
 from Pedestal import PedestalAnalysis
 from Peaks import PeakAnalysis
+from Run import Run
 from Utils import *
 
 __author__ = 'micha'
@@ -28,10 +28,10 @@ __author__ = 'micha'
 # MAIN CLASS
 # ==============================================
 class PadAnalysis(Analysis):
-    def __init__(self, run, dia, high_low_rate_run=None, binning=10000, load_tree=True, verbose=False):
+    def __init__(self, run, dia, high_low_rate_run=None, binning=10000):
 
-        self.RunNumber = run
-        Analysis.__init__(self, run, high_low_rate=high_low_rate_run, verbose=verbose, load_tree=load_tree, binning=binning)
+        self.RunNumber = run.RunNumber
+        Analysis.__init__(self, run, high_low_rate=high_low_rate_run, binning=binning)
         self.channel = self.load_channel(dia)
 
         # main
@@ -41,7 +41,7 @@ class PadAnalysis(Analysis):
         self.save_dir = '{dia}/{run}/'.format(run=str(self.RunNumber).zfill(3), dia=self.DiamondName)
 
         # stuff
-        if load_tree:
+        if run.tree:
             # polarities
             self.Polarity = self.get_polarity()
             self.PulserPolarity = self.get_pulser_polarity()
@@ -296,7 +296,7 @@ class PadAnalysis(Analysis):
             self.set_dia_margins(h1)
             self.set_ph_range(h1)
             z_tit = 'Number of Entries' if hitmap else 'Pulse Height [au]'
-            self.format_histo(h1, x_tit='track_x [cm]', y_tit='track_y [cm]', y_off=1.4, z_off=1.3, z_tit=z_tit, ncont=50, ndiv=510)
+            self.format_histo(h1, x_tit='track_x [cm]', y_tit='track_y [cm]', y_off=1.4, z_off=1.3, z_tit=z_tit, ncont=50, ndivy=510, ndivx=510)
             self.SignalMapHisto = h1
             return h1
 
@@ -348,7 +348,7 @@ class PadAnalysis(Analysis):
             g.SetPoint(i, xval, m)
             g.SetPointError(i, 0, sigma)
 
-        self.format_histo(g, x_tit='Track in {m} [cm]'.format(m=mode), y_tit='Pulse Height [au]', y_off=1.5, ndiv=515)
+        self.format_histo(g, x_tit='Track in {m} [cm]'.format(m=mode), y_tit='Pulse Height [au]', y_off=1.5, ndivx=515)
         self.save_histo(g, 'SignalMapProfile', draw_opt='ap', lm=.14, show=show, gridx=True)
 
     def make_region_cut(self):
@@ -1926,14 +1926,14 @@ if __name__ == "__main__":
     parser.add_argument('run', nargs='?', default=392, type=int)
     parser.add_argument('dia', nargs='?', default=1, type=int)
     parser.add_argument('-tc', '--testcampaign', nargs='?', default='')
-    parser.add_argument('-v', '--verbose', nargs='?', default=True, type=bool)
-    parser.add_argument('-t', '--tree', default=True, action='store_false')
+    parser.add_argument('-v', '--verbose', action='store_true')
+    parser.add_argument('-t', '--tree', action='store_true')
     args = parser.parse_args()
     tc = args.testcampaign if args.testcampaign.startswith('201') else None
-    test_run = args.run
     a = Elementary(tc)
     a.print_testcampaign()
-    a.print_banner('STARTING PAD-ANALYSIS OF RUN {0}'.format(test_run))
+    a.print_banner('STARTING PAD-ANALYSIS OF RUN {0}'.format(args.run))
     print
-    z = PadAnalysis(test_run, args.dia, verbose=args.verbose, load_tree=args.tree)
+    run_class = Run(args.run, verbose=args.verbose, tree=None if not args.tree else args.tree)
+    z = PadAnalysis(run_class, args.dia)
     z.print_elapsed_time(st, 'Instantiation')
