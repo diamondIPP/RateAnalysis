@@ -761,7 +761,7 @@ if __name__ == '__main__':
     doCorrel = bool(args.doCorrel)
     doPH = bool(args.doCharge)
     pbar = bool(args.progBar)
-    verb = bool(args.verb)
+    verb = bool(args.verbose)
     doAna = bool(args.doAna)
 
     command = 'Analysing run ' + str(args.run) + ' with:'

@@ -43,7 +43,7 @@ class Currents(Elementary):
             return
 
         # analysis/run info
-        self.TimeOffset = self.run_config_parser.getint('BASIC', 'hvtimeoffset')
+        self.TimeOffset = analysis.run_config_parser.getint('BASIC', 'hvtimeoffset')
         if self.IsCollection:
             self.RunPlan = analysis.RunPlan
         self.RunNumber = self.load_run_number()
