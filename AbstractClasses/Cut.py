@@ -453,8 +453,8 @@ class Cut(Elementary):
     def set_chi2(self, value):
         self.CutConfig['chi2X'] = value
         self.CutConfig['chi2Y'] = value
-        self.set_cut('chi2X')
-        self.set_cut('chi2Y')
+        self.set_cut('chi2X', self.generate_chi2('x'))
+        self.set_cut('chi2Y', self.generate_chi2('y'))
 
     def update_all_cut(self):
         self.all_cut = self.generate_all_cut()
