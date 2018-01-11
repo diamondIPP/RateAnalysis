@@ -408,6 +408,7 @@ class PixAnalysis(Analysis):
         cut_string = self.Cut.generate_special_cut(excluded=['masks', 'rhit']) if cut == 'all' else TCut(cut)
         x_var = 'time / 1000' if vs_time else 'event_number'
         self.tree.Draw('(n_hits[{r}]>0)*100:{x} >> h_he'.format(r=roc, x=x_var), cut_string, 'goff', int(n), start)
+        h.BuildOptions(0, 1, 'g')
         avrg, std = weighted_avrg_std([h.GetBinContent(i + 1) for i in xrange(h.GetNbinsX())], [h.GetBinEntries(i + 1) for i in xrange(h.GetNbinsX())])
         l = self.draw_tlatex(.5, .5, 'Efficiency: {v:2.2f} #pm {e:0.2f}'.format(v=avrg, e=std / sqrt(h.GetNbinsX())), ndc=1, align=22)
         set_time_axis(h, off=self.run.startTime / 1000 + 3600) if vs_time else do_nothing()
