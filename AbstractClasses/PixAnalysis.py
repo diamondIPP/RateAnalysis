@@ -31,7 +31,6 @@ class PixAnalysis(Analysis):
         Analysis.__init__(self, run, binning=binning)
 
         # main
-        self.RunNumber = run
         self.DiamondName = self.load_diamond_name(dut)
         self.DiamondNumber = dut
         self.Bias = self.run.Bias[dut - 1]
