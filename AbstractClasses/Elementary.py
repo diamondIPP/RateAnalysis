@@ -605,13 +605,14 @@ class Elementary(object):
                    l=None, logy=False, logx=False, logz=False, canvas=None, gridy=False, gridx=False, ch='dia', prnt=True, phi=None, theta=None):
         return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, ind, l, logy, logx, logz, canvas, gridx, gridy, False, ch, prnt, phi, theta)
 
-    def draw_tlatex(self, x, y, text, align=20, color=1, size=.05, angle=None):
+    def draw_tlatex(self, x, y, text, align=20, color=1, size=.05, angle=None, ndc=False):
         l = TLatex(x, y, text)
         l.SetName(text)
         l.SetTextAlign(align)
         l.SetTextColor(color)
         l.SetTextSize(size)
         do(l.SetTextAngle, angle)
+        l.SetNDC() if ndc else do_nothing()
         l.Draw()
         self.ROOTObjects.append(l)
         return l
