@@ -408,37 +408,23 @@ class PixAnalysis(Analysis):
         cut_string = self.Cut.generate_special_cut(excluded=['masks', 'rhit']) if cut == 'all' else TCut(cut)
         x_var = 'time / 1000' if vs_time else 'event_number'
         self.tree.Draw('(n_hits[{r}]>0)*100:{x} >> h_he'.format(r=roc, x=x_var), cut_string, 'goff', int(n), start)
+        avrg, std = weighted_avrg_std([h.GetBinContent(i + 1) for i in xrange(h.GetNbinsX())], [h.GetBinEntries(i + 1) for i in xrange(h.GetNbinsX())])
+        l = self.draw_tlatex(.5, .5, 'Efficiency: {v:2.2f} #pm {e:0.2f}'.format(v=avrg, e=std / sqrt(h.GetNbinsX())), ndc=1, align=22)
         set_time_axis(h, off=self.run.startTime / 1000 + 3600) if vs_time else do_nothing()
-        self.format_histo(h, x_tit='Time [hh:mm]' if vs_time else 'Event Number', y_tit='Efficiency [%]', y_off=1.4, ndivx=505, y_range=[-5, 105], stats=0)
-        self.save_histo(h, 'HitEfficiencyROC{n}'.format(n=roc), show, lm=.13, save=save, gridy=True)
-        return h
-
-    def fit_hit_efficiency(self, roc=None, show=True, save=True, cut='all', vs_time=True, n=1e9, start=0, binning=5000):
-        pickle_path = self.make_pickle_path('Efficiency', run=self.RunNumber, suf='{r}{c}_{t}'.format(r=roc, c='_Cuts' if cut else '', t='Time' if vs_time else 'EvntNr'))
-
-        def func():
-            set_statbox(y=.37, only_fit=True, entries=1.5, form='4.1f')
-            h = self.draw_hit_efficiency(roc, show=False, save=False, cut=cut, vs_time=vs_time, n=n, start=start, binning=binning)
-            if h.GetEntries() < 100:
-                return FitRes()
-            self.format_histo(h, stats=1, name='Fit Result')
-            fit = h.Fit('pol0', 'qs')
-            self.save_histo(h, 'HitEfficiencyROC{n}Fit'.format(n=roc), show, lm=.13, save=save, gridy=True, prnt=show)
-            return FitRes(fit)
-
-        fit_res = func() if show or save else None
-        return self.do_pickle(pickle_path, func, fit_res)
+        self.format_histo(h, x_tit='Time [hh:mm]' if vs_time else 'Event Number', y_tit='Efficiency [%]', y_off=1.4, y_range=[-5, 105], stats=0)
+        self.save_histo(h, 'HitEfficiencyROC{n}'.format(n=roc), show, lm=.13, save=save, gridy=True, l=l)
+        return avrg
 
     def draw_all_efficiencies(self, show=True):
         stack = THStack('s_he', 'Raw Hit Efficiencies')
         l1 = self.make_legend(y2=.5, nentries=5, x1=.59)
         for roc in xrange(self.NRocs):
             h = self.draw_hit_efficiency(roc, show=False, cut='')
-            fit = self.fit_hit_efficiency(roc, show=False, cut='')
+            eff = self.draw_hit_efficiency(roc, show=False, cut='')
             self.format_histo(h, color=self.get_color())
             stack.Add(h, 'ROC{n}'.format(n=roc))
             leg_string = 'ROC{n}'.format(n=roc) if roc < 4 else self.load_diamond_name(roc - 3)
-            leg_string += ' ({v:5.2f}%)'.format(v=fit.Parameter(0))
+            leg_string += ' ({v:5.2f}%)'.format(v=eff)
             l1.AddEntry(h, leg_string, 'pl')
         self.format_histo(stack, x_tit='Time [hh:mm]', y_tit='Efficiency [%]', y_off=1.4, ndivx=505, y_range=[-5, 105], stats=0, draw_first=True)
         set_time_axis(stack, off=self.run.startTime / 1000 + 3600)
@@ -508,7 +494,7 @@ class PixAnalysis(Analysis):
         roc = self.Dut if roc is None else roc
         x = range(10)
         cut_string = self.Cut.generate_special_cut(excluded=['masks', 'rhit', 'trigger_phase'])
-        y = [self.fit_hit_efficiency(roc=roc, show=False, cut=cut_string + TCut('trigger_phase[1]=={v}'.format(v=i)), n=n, start=start).Parameter(0) for i in xrange(10)]
+        y = [self.draw_hit_efficiency(roc=roc, show=False, cut=cut_string + TCut('trigger_phase[1]=={v}'.format(v=i)), n=n, start=start) for i in xrange(10)]
         y = [0 if i is None else i for i in y]
         gr = self.make_tgrapherrors('gr_etp', 'Efficiency per Trigger Phase', x=x, y=y)
         gr.GetXaxis().SetLimits(-1, 10)
