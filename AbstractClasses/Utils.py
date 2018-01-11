@@ -6,7 +6,7 @@
 from datetime import datetime, timedelta
 from termcolor import colored
 from ROOT import gStyle, gROOT, TF1, TColor, TFile
-from numpy import sqrt, array
+from numpy import sqrt, array, average
 from os import makedirs
 from os import path as pth
 from os.path import basename, join, split
@@ -234,6 +234,13 @@ def calc_weighted_mean(means, sigmas):
     variance = 1 / sum(weights)
     mean_ = sum(map(lambda x, y: x * y, means, weights))
     return mean_ * variance, sqrt(variance)
+
+
+def weighted_avrg_std(values, weights):
+    """ Return the weighted average and standard deviation. values, weights -- Numpy ndarrays with the same shape. """
+    avrg = average(values, weights=weights)
+    variance = average((values - avrg) ** 2, weights=weights)  # Fast and numerically precise
+    return avrg, sqrt(variance)
 
 
 def make_latex_table_row(row, hline=False):
