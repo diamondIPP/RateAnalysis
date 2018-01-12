@@ -1,5 +1,5 @@
 import json
-from numpy import array, zeros, mean
+from numpy import zeros, mean
 from Elementary import Elementary
 from ROOT import TCut, gROOT, TH1F
 from Utils import *
@@ -331,7 +331,7 @@ class Cut(Elementary):
         self.set_root_output(0)
         h = TH1F('h_beam_time_', 'Beam Interruptions', bins, 0, self.analysis.run.totalMinutes)
         self.analysis.tree.Draw('(time - {off}) / 60000.>>h_beam_time_'.format(off=self.analysis.run.startTime), '', 'goff')
-        mean_ = h.Integral() / float(h.GetNbinsX())
+        mean_ = mean(sorted([h.GetBinContent(i) for i in xrange(h.GetNbinsX())])[-10:])  # only take the ten highest values to get an estimate of the plateau
         interruptions = []
         jumps = []
         n_interr = 0
