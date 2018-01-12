@@ -628,11 +628,11 @@ class PixAnalysis(Analysis):
             draw_var = 'cluster_{m}pos_tel[{{r}}]'.format(m=mode)
             cut_string = TCut('n_clusters[{p1}]==1&&n_clusters[{p2}]==1'.format(p1=plane1, p2=plane2)) + TCut(self.Cut.generate_chi2(mode, chi2))
             n = self.tree.Draw(draw_var.format(r=plane1), cut_string, 'goff')
-            y = [self.tree.GetV1()[i] for i in xrange(n)]
+            v1 = [self.tree.GetV1()[i] for i in xrange(n)]
             n = self.tree.Draw('{v}:{t}'.format(v=draw_var.format(r=plane2), t='time' if vs_time else 'event_number'), cut_string, 'goff')
-            t = [self.tree.GetV1()[i] for i in xrange(n)]
-            x = [self.tree.GetV2()[i] / 1000. if vs_time else self.tree.GetV2()[i] for i in xrange(n)]
-            for i, j, k in zip(x, y, t):
+            v2 = [self.tree.GetV1()[i] for i in xrange(n)]
+            t = [self.tree.GetV2()[i] / 1000. if vs_time else self.tree.GetV2()[i] for i in xrange(n)]
+            for i, j, k in zip(t, v1, v2):
                 h.Fill(i, j, k)
             g = self.make_tgrapherrors('g_pa', 'Plane Correlation {p1} {p2}'.format(p1=plane1, p2=plane2), marker_size=.5)
             for ibin in xrange(h.GetNbinsX() - 1):
