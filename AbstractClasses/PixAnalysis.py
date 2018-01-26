@@ -224,7 +224,7 @@ class PixAnalysis(Analysis):
         cut_string = self.Cut.all_cut if cut is None else TCut(cut)
         h = TProfile('h_pht', 'Pulse Height {d}'.format(d=self.DiamondName), self.n_bins - 1, array([t / 1000 for t in self.time_binning]))
         set_statbox(only_fit=True, w=.3)
-        self.tree.Draw('charge_all_ROC{n}:time / 1000. >> h_pht'.format(n=self.Dut), cut_string, 'goff')
+        self.tree.Draw('cluster_charge[{n}]:time / 1000. >> h_pht'.format(n=self.Dut), cut_string, 'goff')
         self.draw_histo(h, show=show)
         fit_par = h.Fit('pol0', 'qs')
         self.format_histo(h, name='Fit Result', y_off=1.9, y_tit='Pulse Height [e]', x_tit='Time [hh:mm]', markersize=.6)
