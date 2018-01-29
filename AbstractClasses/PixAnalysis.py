@@ -224,7 +224,7 @@ class PixAnalysis(Analysis):
         cut_string = self.Cut.all_cut if cut is None else TCut(cut)
         h = TProfile('h_pht', 'Pulse Height {d}'.format(d=self.DiamondName), self.n_bins - 1, array([t / 1000 for t in self.time_binning]))
         set_statbox(only_fit=True, w=.3)
-        self.tree.Draw('charge_all_ROC{n}:time / 1000. >> h_pht'.format(n=self.Dut), cut_string, 'goff')
+        self.tree.Draw('cluster_charge[{n}]:time / 1000. >> h_pht'.format(n=self.Dut), cut_string, 'goff')
         self.draw_histo(h, show=show)
         fit_par = h.Fit('pol0', 'qs')
         self.format_histo(h, name='Fit Result', y_off=1.9, y_tit='Pulse Height [e]', x_tit='Time [hh:mm]', markersize=.6)
@@ -404,7 +404,7 @@ class PixAnalysis(Analysis):
         self.set_root_output(False)
         suffix = 'ROC {n}'.format(n=roc) if roc < 4 else self.load_diamond_name(roc - 3)
         h = TProfile('h_he', 'Hit Efficiency {s}'.format(s=suffix), *(self.get_time_bins(binning) if vs_time else self.get_bins(binning)))
-        cut_string = self.Cut.generate_special_cut(excluded=['masks', 'rhit']) if cut == 'all' else TCut(cut)
+        cut_string = self.Cut.generate_special_cut(excluded=['masks']) if cut == 'all' else TCut(cut)
         x_var = 'time / 1000' if vs_time else 'event_number'
         self.tree.Draw('(n_hits[{r}]>0)*100:{x} >> h_he'.format(r=roc, x=x_var), cut_string, 'goff', int(n), start)
         h.BuildOptions(0, 1, 'g')
@@ -465,9 +465,9 @@ class PixAnalysis(Analysis):
         cut = gROOT.FindObject('fid')
         cut.Draw()
 
-    def draw_efficiency_map(self, res=5, cut='', show=True):
+    def draw_efficiency_map(self, res=5, cut='all', show=True):
         cut_string = TCut(cut) + self.Cut.CutStrings['tracks']
-        cut_string = self.Cut.generate_special_cut(excluded=['masks', 'fiducial', 'rhit']) if cut == 'all' else cut_string
+        cut_string = self.Cut.generate_special_cut(excluded=['masks', 'fiducial']) if cut == 'all' else cut_string
         p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DiamondName), *self.Plots.get_global_bins(res=res))
         self.tree.Draw('(n_hits[{r}]>0)*100:dia_track_y[{r1}]:dia_track_x[{r1}]>>p_em'.format(r=self.Dut, r1=self.Dut - 4), cut_string, 'goff')
         set_statbox(entries=4, opt=1000000010, x=.81)

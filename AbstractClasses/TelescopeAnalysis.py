@@ -326,13 +326,27 @@ class Analysis(Elementary):
         self.save_plots('{m}ResidualsRoc{n}'.format(m=mode.title(), n=roc))
         return h
 
-    def _draw_cluster_size(self, roc=None, name=None, cut='', show=True):
+    def _draw_cluster_size(self, roc, name=None, cut='', show=True):
         h = TH1I('h_cs', 'Cluster Size {d}'.format(d='ROC {n}'.format(n=roc) if name is None else name), 10, 0, 10)
-        self.tree.Draw('clusters_per_plane[{d}]>>h_cs'.format(d=roc), TCut(cut), 'goff')
+        self.tree.Draw('cluster_size[{d}]>>h_cs'.format(d=roc), TCut(cut), 'goff')
         set_statbox(only_entries=True)
         self.format_histo(h, x_tit='Cluster Size', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
         self.save_histo(h, 'ClusterSize', show, logy=True)
         return h
+
+    def draw_event(self, event, plane, show=True):
+        cut = 'plane == {r}'.format(r=plane)
+        h = TH2F('h_ed{i}'.format(i=plane), 'Event Hits for Plane {r}'.format(r=plane), *self.Plots.Settings['2DBins'])
+        self.tree.Draw('row:col>>h_ed{i}'.format(i=plane), cut, 'goff', 1, event)
+        self.format_histo(h, x_tit='col', y_tit='row', y_off=1.3, stats=0)
+        self.save_histo(h, 'EventDisplay{e}_{p}'.format(e=event, p=plane), draw_opt='col', show=show)
+
+    def get_events(self, cut='', prnt=False):
+        n = self.tree.Draw('event_number', TCut(cut), 'goff')
+        events = [self.tree.GetV1()[i] for i in xrange(n)]
+        if prnt:
+            print events[:20]
+        return events
 
     # endregion
 

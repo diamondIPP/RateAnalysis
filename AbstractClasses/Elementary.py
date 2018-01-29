@@ -723,18 +723,13 @@ class Elementary(object):
         bm = .11
         scale = 1.5
         pm = bm + (1 - bm - .1) / 5.
-        p0 = self.draw_tpad('p0', 'p0', pos=[0, 0, 1, pm], margins=[.14, .03, bm / pm, 0], transparent=True, logx=True, gridy=True)
-        p1 = self.draw_tpad('p1', 'p1', pos=[0, pm, 1, 1], margins=[.14, .03, 0, .1], transparent=True, logx=True)
-        p0.Draw()
-        p1.Draw()
 
         # set unified x-range:
         mg1.GetXaxis().SetLimits(5, 3e4) if x_range is None else do_nothing()
         mg.GetXaxis().SetLimits(5, 3e4) if x_range is None else do_nothing()
 
         # bottom pad with 20%
-        pad = p0.cd()
-        make_transparent(p0)
+        p0 = self.draw_tpad('p0', 'p0', pos=[0, 0, 1, pm], margins=[.14, .03, bm / pm, 0], transparent=True, logx=True, gridy=True)
         scale_multigraph(mg1)
         rel_y_range = [.7, 1.3] if rel_y_range is None else rel_y_range
         self.format_histo(mg1, title='', y_range=rel_y_range, y_tit='Rel. ph [au]' if not scale > 1 else ' ', y_off=66, tit_size=.1 * scale, x_off=99, lab_size=.1 * scale)
@@ -743,9 +738,10 @@ class Elementary(object):
         mg1.Draw('alp')
         x_range = [mg1.GetXaxis().GetXmin(), mg1.GetXaxis().GetXmax()] if x_range is None else x_range
         self.draw_x_axis(1.3, x_range[0], x_range[1], mg1.GetXaxis().GetTitle() + ' ', opt='SG+-=', tit_size=.1, lab_size=.1 * scale, off=99, tick_size=.1, l_off=0)
+        c.cd()
 
         # top pad with zero suppression
-        p1.cd()
+        self.draw_tpad('p1', 'p1', pos=[0, pm, 1, 1], margins=[.14, .03, 0, .1], transparent=True, logx=True)
         mg.Draw('alp')
         hide_axis(mg.GetXaxis())
         if pulser_leg:
@@ -768,16 +764,16 @@ class Elementary(object):
             run_info[0].Draw()
             run_info[1].Draw() if self.MainConfigParser.getboolean('SAVE', 'git_hash') else do_nothing()
 
-        pad.Modified()
-        pad.Update()
-        for obj in pad.GetListOfPrimitives():
+        p0.Modified()
+        p0.Update()
+        for obj in p0.GetListOfPrimitives():
             if obj.GetName() == 'title':
                 obj.SetTextColor(0)
         width = len(run_info[0].GetListOfPrimitives()[1].GetLabel()) * .012
         scale_legend(run_info[0], txt_size=.09, width=width, height=0.098 / pm)
         self.save_canvas(c, name='CombinedPulseHeights' if name is None else name, show=show)
 
-        self.ROOTObjects.append([p0, p1, c, draw_objects, run_info])
+        self.ROOTObjects.append([c, draw_objects, run_info])
         self.set_root_output(True)
 
     def draw_tpad(self, name, tit='', pos=None, fill_col=0, gridx=None, gridy=None, margins=None, transparent=False, logy=None, logx=None, logz=None):

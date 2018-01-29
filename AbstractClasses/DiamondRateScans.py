@@ -450,7 +450,7 @@ class DiaScans(Elementary):
         colors = [4, 419, 2, 800, 3]
         # tits = [make_irr_string(v, p) for v, p in [(0, 0), (5, 14), (1.5, 15)]]
         tits = [make_irr_string(v, p) for v, p in [(0, 0), (5, 14), (1, 15), (2, 15), (4, 15)]]
-        for i, (sel, ch) in enumerate(run_selections):
+        for i, sel in enumerate(run_selections):
             path = self.make_pickle_path('Ph_fit', 'PulseHeights', sel.SelectedRunplan, self.DiamondName, 10000, sel.TESTCAMPAIGN)
             try:
                 f = open(path, 'r')
@@ -459,7 +459,8 @@ class DiaScans(Elementary):
             except IOError:
                 print 'Did not find', path
                 Elementary(sel.generate_tc_str())
-                ana = AnalysisCollection(sel, ch, self.verbose)
+                t = load_root_files(sel, load=True)
+                ana = AnalysisCollection(sel, threads=t)
                 mg_ph_ana = ana.draw_pulse_heights(show=False)
                 ana.close_files()
             for g in mg_ph_ana.GetListOfGraphs():
@@ -540,7 +541,7 @@ class DiaScans(Elementary):
                 print 'Did not find', path
                 Elementary(sel.generate_tc_str())
                 print
-                ana = AnalysisCollection(sel, verbose=self.verbose)
+                ana = AnalysisCollection(sel)
                 phs = ana.get_pulse_heights(redo=redo)
             values, errors = self.scale_to(phs, scale)
             fluxes = [ph['flux'] for ph in phs.itervalues()]
