@@ -92,7 +92,8 @@ class AnalysisCollection(Elementary):
     def add_analyses(self):
         """ Creates and adds Analysis objects with run numbers in runs. """
         for run in self.runs:
-            run_class = Run(run, tree=self.Threads[run].Tuple, verbose=self.verbose)
+            thread = self.Threads[run]
+            run_class = Run(run, tree=thread.Tuple, time=thread.Time, verbose=self.verbose)
             analysis = PadAnalysis(run_class, self.selection.SelectedDiamondNr, self.min_max_rate_runs)
             self.collection[analysis.run.RunNumber] = analysis
             self.current_run_number = analysis.run.RunNumber

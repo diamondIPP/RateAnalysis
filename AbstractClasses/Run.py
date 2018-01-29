@@ -14,7 +14,7 @@ from subprocess import check_output
 
 from Converter import Converter
 from Elementary import Elementary
-from Utils import isfloat, join, log_warning, log_critical, remove_letters
+from Utils import isfloat, join, log_warning, log_critical, remove_letters, get_time_vec
 
 
 # ==============================================
@@ -28,7 +28,7 @@ class Run(Elementary):
     operationmode = ''
     TrackingPadAnalysis = {}
 
-    def __init__(self, run_number=None, diamonds=3, test_campaign=None, tree=None, verbose=False):
+    def __init__(self, run_number=None, diamonds=3, test_campaign=None, tree=None, time=None, verbose=False):
         """
         :param run_number: number of the run
         :param diamonds: 0x1=ch0; 0x2=ch3
@@ -69,7 +69,7 @@ class Run(Elementary):
         if self.set_run(run_number, tree):
 
             # tree info
-            self.time = self.__get_time_vec()
+            self.time = get_time_vec(self.tree) if time is None else time
             self.startEvent = 0
             self.endEvent = self.tree.GetEntries() - 1
             self.startTime = self.get_time_at_event(self.startEvent)
@@ -413,42 +413,6 @@ class Run(Elementary):
         unit = 'MHz/cm^{2}' if rate > 1000 else 'kHz/cm^{2}'
         rate = round(float(rate / 1000.), 1) if rate > 1000 else int(round(float(rate), 0))
         return '{rate:>3} {unit}'.format(rate=rate, unit=unit)
-
-    def __get_time_vec(self):
-        self.tree.SetEstimate(-1)
-        entries = self.tree.Draw('Entry$:time', '', 'goff')
-        time = [self.tree.GetV2()[i] for i in xrange(entries)]
-        self.fill_empty_time_entries(time)
-        if any(time[i + 100] < time[i] for i in xrange(0, len(time) - 100, 100)):
-            self.log_warning('Need to correct timing vector\n')
-            print [i / 1000 for i in time[:4]], time[-1] / 1000
-            print (time[-1] - time[0]) / 1000, self.duration.seconds, abs((time[-1] - time[0]) / 1000 - self.duration.seconds)
-            time = self.__correct_time(entries)
-        return time
-
-    @staticmethod
-    def fill_empty_time_entries(times):
-        first_valid = 0
-        ind = 0
-        for i, t in enumerate(times):
-            if t != -1:
-                first_valid = t
-                ind = i
-                break
-        times[:ind] = [first_valid] * ind
-
-    def __correct_time(self, entries):
-        time = []
-        t = self.tree.GetV2()[0]
-        new_t = 0
-        for i in xrange(entries):
-            diff = self.tree.GetV2()[i] - t
-            if diff < 0:
-                new_t = -diff + .5 / 1000
-            time.append(self.tree.GetV2()[i] + new_t)
-            t = self.tree.GetV2()[i]
-        self.fill_empty_time_entries(time)
-        return time
 
     def get_time_at_event(self, event):
         """

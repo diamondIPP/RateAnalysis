@@ -14,6 +14,7 @@ from time import time, sleep
 from collections import OrderedDict
 import pickle
 from threading import Thread
+from multiprocessing import Pool
 
 
 # ==============================================
@@ -496,7 +497,6 @@ def make_bias_str(bias):
 def markers(i):
     return (range(20, 24) + [29, 33, 34])[i]
 
-# TODO: extract time in threading!
 
 def load_root_files(sel, load=True):
 
@@ -504,13 +504,15 @@ def load_root_files(sel, load=True):
     threads = {}
     for run in runs:
         thread = MyThread(sel, run)
-        if load:
-            thread.start()
-        else:
-            thread.Tuple = False
+        thread.start()
         threads[run] = thread
     while any(thread.isAlive() for thread in threads.itervalues()) and load:
         sleep(.1)
+    pool = Pool(len(threads))
+    results = [pool.apply_async(get_time_vec, (thread.Tree,)) for thread in threads.itervalues()]
+    times = [result.get(5) for result in results]
+    for thread, t in zip(threads.itervalues(), times):
+        thread.Time = t
     return threads
 
 
@@ -522,11 +524,14 @@ class MyThread (Thread):
         self.File = None
         self.Tree = None
         self.Tuple = None
+        self.Time = None
 
     def run(self):
-        self.load_tree()
+        self.load_tree(load=True)
 
-    def load_tree(self):
+    def load_tree(self, load=True):
+        if not load:
+            self.Tuple = False
         log_message('Loading run {r}'.format(r=self.Run), overlay=True)
         file_path = self.Selection.run.converter.get_final_file_path(self.Run)
         if file_exists(file_path):
@@ -535,6 +540,47 @@ class MyThread (Thread):
             self.Tuple = (self.File, self.Tree)
             while not self.Tree:
                 sleep(.1)
+            self.Tree.GetEntry()
+
+
+def get_time_vec(tree):
+    if tree is None:
+        return 
+    tree.SetEstimate(-1)
+    entries = tree.Draw('time', '', 'goff')
+    time_vec = [tree.GetV1()[i] for i in xrange(entries)]
+    fill_empty_time_entries(time_vec)
+    if any(time_vec[i + 100] < time_vec[i] for i in xrange(0, len(time_vec) - 100, 100)):
+        log_warning('Need to correct timing vector\n')
+        # print [i / 1000 for i in time[:4]], time[-1] / 1000
+        # print (time[-1] - time[0]) / 1000, self.duration.seconds, abs((time[-1] - time[0]) / 1000 - self.duration.seconds)
+        time_vec = correct_time(tree, entries)
+    return time_vec
+
+
+def fill_empty_time_entries(times):
+    first_valid = 0
+    ind = 0
+    for i, t in enumerate(times):
+        if t != -1:
+            first_valid = t
+            ind = i
+            break
+    times[:ind] = [first_valid] * ind
+
+
+def correct_time(tree, entries):
+    time_vec = []
+    t = tree.GetV1()[0]
+    new_t = 0
+    for i in xrange(entries):
+        diff = tree.GetV1()[i] - t
+        if diff < 0:
+            new_t = -diff + .5 / 1000
+        time_vec.append(tree.GetV2()[i] + new_t)
+        t = tree.GetV1()[i]
+    fill_empty_time_entries(time_vec)
+    return time_vec
 
 
 class FitRes:
