@@ -95,8 +95,7 @@ class PadAnalysis(Analysis):
                 self.del_rootobj(obj)
 
     def show_current(self, relative_time=True):
-        # todo: write a new function for that ;)
-        pass
+        self.Currents.draw_indep_graphs(rel_time=relative_time)
 
     # ==========================================================================
     # region INIT
