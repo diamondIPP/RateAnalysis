@@ -148,9 +148,9 @@ class DiaScans(Elementary):
 
     def get_diamond_names(self):
         names = []
-        for sel, ch in self.RunSelections.iteritems():
-            names.append(self.load_diamond(sel.Diamond))
-        return list(set(names))
+        for sel in self.RunSelections:
+            names.append(sel.SelectedDiamond)
+        return names
 
     def get_bias_voltages(self):
         return [sel.SelectedBias for sel in self.RunSelections]
@@ -338,7 +338,7 @@ class DiaScans(Elementary):
         if self.RunSelections is not None and not redo:
             return self.RunSelections
         run_selections = []
-        for tc, rps in sorted(self.Selection.iteritems()):
+        for tc, rps in self.Selection.iteritems():
             for rp, ch in rps.iteritems():
                 sel = RunSelection(tc)
                 sel.select_runs_from_runplan(rp, ch=ch)
@@ -483,7 +483,8 @@ class DiaScans(Elementary):
         biases = self.get_bias_voltages()
         bias_str = ' at {b}'.format(b=make_bias_str(biases[0])) if len(set(biases)) == 1 else ''
         colors = get_color_gradient(len(run_selections))
-        tits = [make_irr_string(v, p) for v, p in [(0, 0), (5, 14), (1, 15), (2, 15), (4, 15)]]
+        tits = [make_irr_string(v, p) for v, p in [(0, 0), (0, 0), (5, 14), (1.5, 15), (1.5, 15), (3.5, 15)]]
+        # tits = self.get_diamond_names()
         graphs = self.get_pulse_height_graphs()
         x_vals = sorted([g.GetX()[i] for g in graphs for i in xrange(g.GetN())])
         y_range = [1 - y_range, 1 + y_range]
@@ -513,8 +514,8 @@ class DiaScans(Elementary):
             g.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 3)
             g.Draw('ap')
             x1 = .8 if len(set(biases)) < 2 else .75
-            legend = self.make_legend(x1 - .1 if rdm else 0, 1, x2=1 - rm, nentries=1, scale=5 * (2 / 3. if last else 1))
-            legend.AddEntry(g, (tits[i] if irr else make_tc_str(self.RunSelections[i].TCString)) + (' (random)' if i in [1, 3] and rdm else '         '), 'pe')
+            legend = self.make_legend(x1 - (.1 if rdm else 0), 1, x2=1 - rm, nentries=1, scale=5 * (2 / 3. if last else 1))
+            legend.AddEntry(g, (tits[i] if irr else make_tc_str(self.RunSelections[i].TCString)) + (' (random)' if i in [1, 3] and rdm else '         ') , 'pe')
             if len(set(biases)) > 1:
                 legend.SetNColumns(2)
                 legend.AddEntry('', make_bias_str(biases[i]), '')

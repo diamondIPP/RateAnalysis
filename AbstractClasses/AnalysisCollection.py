@@ -117,7 +117,7 @@ class AnalysisCollection(Elementary):
         picklepath = self.make_pickle_path('TrackAngle', 'x', run=self.min_max_rate_runs['min'])
         if file_exists(picklepath):
             return
-        Analysis(self.min_max_rate_runs['min'])
+        Analysis(Run(self.min_max_rate_runs['min'], verbose=self.verbose))
 
     def generate_threshold_pickle(self):
         picklepath = self.make_pickle_path('Cuts', 'SignalThreshold', run=self.min_max_rate_runs['max'], ch=self.selection.SelectedDiamondNr)
