@@ -434,11 +434,7 @@ class Run(Elementary):
         return t[-1]
 
     def get_event_at_time(self, time_sec):
-        """
-        Returns the eventnunmber at time dt from beginning of the run. Accuracy: +- 1 Event
-        :param time_sec: time in seconds from start
-        :return: event_number
-        """
+        """ Returns the event nunmber at time dt from beginning of the run. Accuracy: +- 1 Event """
         # return time of last event if input is too large
         offset = self.time[0] / 1000.
         if time_sec > self.time[-1] / 1000. - offset or time_sec == -1:

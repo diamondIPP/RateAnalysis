@@ -509,7 +509,7 @@ def load_root_files(sel, load=True):
     while any(thread.isAlive() for thread in threads.itervalues()) and load:
         sleep(.1)
     pool = Pool(len(threads))
-    results = [pool.apply_async(get_time_vec, (thread.Tree,)) for thread in threads.itervalues()]
+    results = [pool.apply_async(get_time_vec, (thread.Selection, thread.Run)) for thread in threads.itervalues()]
     times = [result.get(5) for result in results]
     for thread, t in zip(threads.itervalues(), times):
         thread.Time = t
@@ -538,12 +538,15 @@ class MyThread (Thread):
             self.File = TFile(file_path)
             self.Tree = self.File.Get('tree')
             self.Tuple = (self.File, self.Tree)
-            while not self.Tree:
-                sleep(.1)
-            self.Tree.GetEntry()
+        return self.Tree
 
 
-def get_time_vec(tree):
+def get_time_vec(sel, run=None):
+    if run is None:
+        tree = sel
+    else:
+        t = MyThread(sel, run)
+        tree = t.load_tree()
     if tree is None:
         return 
     tree.SetEstimate(-1)
