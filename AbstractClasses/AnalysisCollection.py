@@ -28,8 +28,8 @@ class AnalysisCollection(Elementary):
     """
     current_run_number = -1
 
-    def __init__(self, run_selection, verbose=False, threads=None):
-        Elementary.__init__(self, verbose=verbose)
+    def __init__(self, run_selection, threads=None):
+        Elementary.__init__(self, verbose=run_selection.verbose)
         # dict where all analysis objects are saved
         self.collection = OrderedDict()
         self.selection = run_selection
@@ -1420,12 +1420,12 @@ if __name__ == "__main__":
     run_plan = args.runplan
     diamond = args.dia
     a = Elementary(tc, True, get_resolution())
-    sel = RunSelection(testcampaign=tc)
+    sel = RunSelection(testcampaign=tc, verbose=True)
     sel.select_runs_from_runplan(run_plan, ch=diamond) if not args.runs else sel.select_runs([int(args.runplan), int(args.dia if args.dia else args.runplan)], args.dia2 if args.dia2 else 1)
     a.print_banner('STARTING PAD-ANALYSIS COLLECTION OF RUNPLAN {0}'.format(run_plan))
     a.print_testcampaign()
     t = load_root_files(sel, args.tree)
-    z = AnalysisCollection(sel, verbose=True, threads=t)
+    z = AnalysisCollection(sel, threads=t)
     z.print_loaded()
     z.print_elapsed_time(st, 'Instantiation')
     if args.runs:
