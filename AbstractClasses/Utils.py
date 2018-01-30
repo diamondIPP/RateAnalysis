@@ -510,7 +510,7 @@ def load_root_files(sel, load=True):
         sleep(.1)
     pool = Pool(len(threads))
     results = [pool.apply_async(get_time_vec, (thread.Selection, thread.Run)) for thread in threads.itervalues()]
-    times = [result.get(5) for result in results]
+    times = [result.get(60) for result in results]
     for thread, t in zip(threads.itervalues(), times):
         thread.Time = t
     return threads
