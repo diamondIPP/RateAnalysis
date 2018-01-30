@@ -1503,37 +1503,44 @@ class PadAnalysis(Analysis):
         return int(evt_numbers[:n][-1] + 1 - start)
 
     def check_alignment(self, binning=5000, show=True):
+        """ just check the number of pixel hits at pulser events for no offset """
         pickle_path = 'Configuration/Individual_Configs/Alignment/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run.RunNumber)
 
         def func():
             nbins = self.run.n_entries / binning
-            histos = [TProfile('h{i}'.format(i=i), 'Pulser Rate', nbins, 0, self.run.n_entries) for i in xrange(5)]
-            self.tree.Draw('(@col.size()>1)*100', '', 'goff')
-            cols = [self.tree.GetV1()[i] for i in xrange(self.run.n_entries)]
-            n = self.tree.Draw('Entry$', 'pulser', 'goff')
-            pulser_events = [int(self.tree.GetV1()[i]) for i in xrange(n)]
-            for ev in pulser_events[:-1]:
-                histos[0].Fill(ev, cols[ev])
-                # histos[1].Fill(ev, cols[ev - 1])
-                # histos[2].Fill(ev, cols[ev + 1])
-                # histos[3].Fill(ev, cols[ev - 2])
-                # histos[4].Fill(ev, cols[ev + 2])
-            for h in histos:
-                self.format_histo(h, title='Event Alignment', x_tit='Event Number', y_tit='Hits per Event @ Pulser Events [%]', y_off=1.3, stats=0, color=self.get_color(),
-                                  y_range=[0, 105], fill_color=self.FillColor)
-            self.save_histo(histos[0], 'EventAlignment', show, self.TelSaveDir, draw_opt='hist', prnt=show)
-            # for h in histos[1:]:
-            #     h.Draw('same')
-            self.RootObjects.append([histos])
-            self.reset_colors()
-            return all(histos[0].GetBinContent(bin_) < 40 for bin_ in xrange(histos[0].GetNbinsX()))
+            h = TProfile('h', 'Pulser Rate', nbins, 0, self.run.n_entries)
+            self.tree.Draw('(@col.size()>1)*100:Entry$>>h', 'pulser', 'goff')
+            self.format_histo(h, title='Event Alignment', x_tit='Event Number', y_tit='Hit Efficiency @ Pulser Events [%]', y_off=1.3, stats=0, y_range=[0, 105], fill_color=self.FillColor)
+            self.save_histo(h, 'EventAlignment', show, self.TelSaveDir, draw_opt='hist', prnt=show, rm=.08)
+            return all(h.GetBinContent(bin_) < 40 for bin_ in xrange(h.GetNbinsX()))
 
         aligned = func() if show else None
         aligned = self.do_pickle(pickle_path, func, aligned)
         if not aligned:
-            msg = 'The events of RUN {run} are not aligned!'.format(run=self.RunNumber)
-            print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * '!', msg=msg)
+            self.log_warning('Run {r} is misalignment :-('.format(r=self.RunNumber))
         return aligned
+
+    def find_event_offsets(self, binning=5000, show=True):
+        nbins = self.run.n_entries / binning
+        histos = [TProfile('h{i}'.format(i=i), 'Pulser Rate', nbins, 0, self.run.n_entries) for i in xrange(5)]
+        self.tree.Draw('(@col.size()>1)*100', '', 'goff')
+        cols = [self.tree.GetV1()[i] for i in xrange(self.run.n_entries)]
+        n = self.tree.Draw('Entry$', 'pulser', 'goff')
+        pulser_events = [int(self.tree.GetV1()[i]) for i in xrange(n)]
+        for ev in pulser_events[:-1]:
+            histos[0].Fill(ev, cols[ev])
+            histos[1].Fill(ev, cols[ev - 1])
+            histos[2].Fill(ev, cols[ev + 1])
+            histos[3].Fill(ev, cols[ev - 2])
+            histos[4].Fill(ev, cols[ev + 2])
+        for h in histos:
+            self.format_histo(h, title='Event Alignment', x_tit='Event Number', y_tit='Hits per Event @ Pulser Events [%]', y_off=1.3, stats=0, color=self.get_color(),
+                              y_range=[0, 105], fill_color=self.FillColor)
+        self.save_histo(histos[0], 'EventAlignment', show, self.TelSaveDir, draw_opt='hist', prnt=show, rm=.08)
+        for h in histos[1:]:
+            h.Draw('same')
+        self.RootObjects.append([histos])
+        self.reset_colors()
 
     @staticmethod
     def normalise_histo(histo, to100=False):
