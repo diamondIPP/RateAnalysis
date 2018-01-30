@@ -1517,12 +1517,13 @@ class PadAnalysis(Analysis):
         aligned = func() if show else None
         aligned = self.do_pickle(pickle_path, func, aligned)
         if not aligned:
-            self.log_warning('Run {r} is misalignment :-('.format(r=self.RunNumber))
+            self.log_warning('Run {r} is misaligned :-('.format(r=self.RunNumber))
         return aligned
 
     def find_event_offsets(self, binning=5000, show=True):
         nbins = self.run.n_entries / binning
         histos = [TProfile('h{i}'.format(i=i), 'Pulser Rate', nbins, 0, self.run.n_entries) for i in xrange(5)]
+        self.tree.SetEstimate(self.run.n_entries)
         self.tree.Draw('(@col.size()>1)*100', '', 'goff')
         cols = [self.tree.GetV1()[i] for i in xrange(self.run.n_entries)]
         n = self.tree.Draw('Entry$', 'pulser', 'goff')
