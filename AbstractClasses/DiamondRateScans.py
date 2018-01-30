@@ -515,7 +515,7 @@ class DiaScans(Elementary):
             g.Draw('ap')
             x1 = .8 if len(set(biases)) < 2 else .75
             legend = self.make_legend(x1 - (.1 if rdm else 0), 1, x2=1 - rm, nentries=1, scale=5 * (2 / 3. if last else 1))
-            legend.AddEntry(g, (tits[i] if irr else make_tc_str(self.RunSelections[i].TCString)) + (' (random)' if i in [1, 3] and rdm else '         ') , 'pe')
+            legend.AddEntry(g, (tits[i] if irr else make_tc_str(self.RunSelections[i].TCString)) + (' (random)' if i in [1, 3] and rdm else '         '), 'pe')
             if len(set(biases)) > 1:
                 legend.SetNColumns(2)
                 legend.AddEntry('', make_bias_str(biases[i]), '')
@@ -541,7 +541,8 @@ class DiaScans(Elementary):
                 print 'Did not find', path
                 Elementary(sel.generate_tc_str())
                 print
-                ana = AnalysisCollection(sel)
+                t = load_root_files(sel, load=True)
+                ana = AnalysisCollection(sel, t)
                 phs = ana.get_pulse_heights(redo=redo)
             values, errors = self.scale_to(phs, scale)
             fluxes = [ph['flux'] for ph in phs.itervalues()]
