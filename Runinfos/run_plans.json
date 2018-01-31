@@ -465,6 +465,12 @@
       "type": "rate scan"
     }, 
     "13.1": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser1": "?", 
+        "pulser2": "?"
+      }, 
       "runs": [
         462, 
         464, 
