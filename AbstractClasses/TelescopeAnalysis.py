@@ -10,6 +10,7 @@ from Cut import Cut
 from Utils import *
 from Plots import Plots
 from Langaus import Langau
+from InfoLegend import InfoLegend
 
 
 class Analysis(Elementary):
@@ -58,6 +59,8 @@ class Analysis(Elementary):
             self.binning = self.__get_binning()
             self.time_binning = self.get_time_binning()
             self.n_bins = len(self.binning)
+
+        self.InfoLegend = InfoLegend(self)
 
         # save histograms // canvases
         self.signal_canvas = None
@@ -124,7 +127,7 @@ class Analysis(Elementary):
         gr.Draw('p')
         self._add_buckets(ymin, ymax, avr_pos=6, full_line=True)
         save_name = 'PedestalRegions' if ped else 'SignalRegions'
-        self.save_plots(save_name, ch=None)
+        self.save_plots(save_name, both_dias=True)
         self.histos.append([h, gr])
 
     def _add_buckets(self, ymin, ymax, xmin=0, xmax=512, avr_pos=-2, full_line=False, size=.03):
@@ -186,7 +189,7 @@ class Analysis(Elementary):
             gr.Draw('[]')
             gr.Draw('p')
         self._add_buckets(ymin, ymax, xmin, xmax, full_line=True, size=.05) if buckets else self.do_nothing()
-        self.save_plots('IntegralPeaks', ch=None)
+        self.save_plots('IntegralPeaks', both_dias=True)
         gROOT.SetBatch(0)
         self.count = old_count
         self.histos.append([gr1, gr2])
@@ -248,7 +251,7 @@ class Analysis(Elementary):
         legend.Draw()
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.RootObjects.append([legend, histos, c])
-        self.save_plots('Chi2', canvas=c, sub_dir=self.TelSaveDir, ch=None)
+        self.save_plots('Chi2', canvas=c, sub_dir=self.TelSaveDir, both_dias=True)
 
     def draw_angle_distribution(self, mode='x', show=True, print_msg=True, cut=None):
         """ Displays the angle distribution of the tracks. """
@@ -300,7 +303,7 @@ class Analysis(Elementary):
         legend.Draw()
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.RootObjects.append([legend, c, histos])
-        self.save_plots('TrackAngles', sub_dir=self.TelSaveDir, ch=None)
+        self.save_plots('TrackAngles', sub_dir=self.TelSaveDir, both_dias=True)
 
     def _draw_residuals(self, roc, mode=None, cut=None, x_range=None, fit=False, show=True):
         mode = '' if mode is None else mode.lower()
@@ -376,7 +379,7 @@ class Analysis(Elementary):
             pad = c.cd(i)
             pad.SetBottomMargin(.15)
             h.Draw('colz')
-        self.save_plots('HitMap', sub_dir=self.TelSaveDir, ch=None, show=show)
+        self.save_plots('HitMap', sub_dir=self.TelSaveDir, both_dias=True, show=show)
 
     # endregion
 
@@ -408,7 +411,7 @@ class Analysis(Elementary):
         self.format_histo(h, x_tit='col', y_tit='row')
         h.Draw('colz')
         self.histos[0] = [c, h]
-        self.save_plots('PixMapPlane{pln}{evts}'.format(pln=plane, evts=n), sub_dir=self.TelSaveDir, ch=None)
+        self.save_plots('PixMapPlane{pln}{evts}'.format(pln=plane, evts=n), sub_dir=self.TelSaveDir, both_dias=True)
 
     def draw_preliminary(self):
         c = gROOT.GetListOfCanvases()[-1]

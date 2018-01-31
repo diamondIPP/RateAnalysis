@@ -14,6 +14,7 @@ from PadAnalysis import PadAnalysis
 from RunSelection import RunSelection
 from TelescopeAnalysis import Analysis
 from VoltageScan import VoltageScan
+from InfoLegend import InfoLegend
 from Run import Run
 from Utils import *
 
@@ -68,10 +69,9 @@ class AnalysisCollection(Elementary):
         self.PeakDistribution = None
 
         # sub classes
-        self.VoltageScan = VoltageScan(self)
-
-        # current information
         self.StartTime = float(self.FirstAnalysis.run.log_start.strftime('%s'))
+        self.VoltageScan = VoltageScan(self)
+        self.InfoLegend = InfoLegend(self)
         self.Currents = Currents(self)
 
     def __del__(self):
@@ -289,7 +289,7 @@ class AnalysisCollection(Elementary):
                 x = ana.run.Flux if flux else key
                 if vs_time:
                     self.set_root_output(False)
-                    x_err = ana.run.duration.seconds / 2.
+                    x_err = ana.run.Duration.seconds / 2.
                     x = int(ana.run.log_start.strftime('%s')) + x_err - self.StartTime
                     gr5.SetPoint(i, x, fit1.Parameter(0))
                     gr5.SetPointError(i, x_err, 0)
@@ -364,9 +364,9 @@ class AnalysisCollection(Elementary):
 
             self.PulseHeight = gr1
             if save_comb:
-                run_info = self.FirstAnalysis.run.get_runinfo(self)
+                # run_info = self.FirstAnalysis.run.get_runinfo(self)
                 y_min = increased_range([ymin, ymax], .3)[0] if y_ran is None else y_ran[0]
-                self.save_combined_pulse_heights(mg, mg1, legend, y_min, show=show, run_info=run_info, pulser_leg=self.__draw_signal_legend)
+                self.save_combined_pulse_heights(mg, mg1, legend, y_min, show=show, pulser_leg=self.__draw_signal_legend)
             return mg
 
         f = partial(func, y_range)
@@ -620,7 +620,7 @@ class AnalysisCollection(Elementary):
                 ped_fit = ana.Pedestal.draw_disto_fit(cut=cut, save=False)
                 ped_err = ped_fit.ParError(par)
                 if vs_time:
-                    xerr = ana.run.duration.seconds / 2.
+                    xerr = ana.run.Duration.seconds / 2.
                     x = int(ana.run.log_start.strftime('%s')) + xerr - self.StartTime
                 y = fit.Parameter(par)
                 y0 = y if y0 is None else y0
@@ -667,8 +667,7 @@ class AnalysisCollection(Elementary):
             mg1.GetListOfGraphs()[0].SetLineColor(602)
             self.__draw_pulser_legend()
             if save_comb:
-                run_info = self.FirstAnalysis.run.get_runinfo(self)
-                self.save_combined_pulse_heights(mg, mg1, l, mg_y, show, name='CombinedPulserPulseHeights', pulser_leg=self.__draw_pulser_legend, run_info=run_info)
+                self.save_combined_pulse_heights(mg, mg1, l, mg_y, show, name='CombinedPulserPulseHeights', pulser_leg=self.__draw_pulser_legend)
                 self.ROOTObjects.append(mg1)
             return mg
 

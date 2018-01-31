@@ -10,6 +10,7 @@ from Utils import set_statbox, set_drawing_range, FitRes, kinder_pickle
 from copy import deepcopy
 from numpy import array, mean
 from collections import OrderedDict
+from InfoLegend import InfoLegend
 
 
 class PedestalAnalysis(Elementary):
@@ -26,6 +27,7 @@ class PedestalAnalysis(Elementary):
         self.DiamondName = self.Ana.DiamondName
         self.DiamondNumber = self.Ana.DiamondNumber
         self.RunNumber = self.Ana.RunNumber
+        self.InfoLegend = InfoLegend(pad_analysis)
 
         self.Histogram = None
 
