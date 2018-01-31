@@ -62,7 +62,7 @@ class Run(Elementary):
         # times
         self.log_start = None
         self.log_stop = None
-        self.duration = None
+        self.Duration = None
         self.__load_timing()
 
         self.converter = Converter(self)
@@ -71,12 +71,13 @@ class Run(Elementary):
             # tree info
             self.time = get_time_vec(self.tree) if time is None else time
             self.startEvent = 0
-            self.endEvent = self.tree.GetEntries() - 1
+            self.n_entries = int(self.tree.GetEntries())
+            self.endEvent = self.n_entries - 1
             self.startTime = self.get_time_at_event(self.startEvent)
             self.endTime = self.get_time_at_event(self.endEvent)
             self.totalTime = self.endTime - self.startTime
-            self.totalMinutes = (self.endTime - self.startTime) / 60000
-            self.n_entries = int(self.endEvent + 1)
+            self.totalMinutes = self.totalTime / 60000.
+            self.Duration = timedelta(seconds=round(self.totalTime / 1000))
             self.NPlanes = self.load_n_planes()
 
             # region info
@@ -204,7 +205,7 @@ class Run(Elementary):
             except ValueError as err:
                 print err
                 return
-        self.duration = self.log_stop - self.log_start
+        self.Duration = self.log_stop - self.log_start
 
     def load_n_planes(self):
         if self.has_branch('cluster_col'):
