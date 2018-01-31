@@ -5,16 +5,15 @@
 from json import load
 import re
 from ConfigParser import ConfigParser, NoOptionError
-from ROOT import TFile, gROOT, TLegend
+from ROOT import TFile
 from argparse import ArgumentParser
 from collections import OrderedDict
 from datetime import datetime
 from numpy import mean
-from subprocess import check_output
 
 from Converter import Converter
 from Elementary import Elementary
-from Utils import isfloat, join, log_warning, log_critical, remove_letters, get_time_vec
+from Utils import isfloat, join, log_warning, log_critical, remove_letters, get_time_vec, timedelta
 
 
 # ==============================================
@@ -464,110 +463,6 @@ class Run(Elementary):
         print '\tRate: \t', self.get_flux(), ' kHz'
         print '\tDiamond1:   \t', self.DiamondNames[0], ' (', self.Bias[0], ') | is selected: ', self.analyse_ch[0]
         print '\tDiamond2:   \t', self.DiamondNames[3], ' (', self.Bias[3], ') | is selected: ', self.analyse_ch[3]
-
-    def draw_run_info(self, channel=None, canvas=None, diamondinfo=True, cut=None, comment=None, runs=None, show=True, x=1, y=1):
-        """
-        Draws the run infos inside the canvas. If no canvas is given, it will be drawn into the active Pad. 
-        If the channel number is passed, channel number and diamond name will be drawn.
-        :param channel:
-        :param canvas:
-        :param diamondinfo:
-        :param cut:
-        :param comment:
-        :param runs:
-        :param show:
-        :return:
-        """
-        # assert channel is None or channel in self.Channels, 'wrong channel id "{ch}"'.format(ch=channel)
-        if show:
-            if canvas is not None:
-                canvas.cd()
-            else:
-                print 'Draw run info in current pad'
-                pad = gROOT.GetSelectedPad()
-                if not pad:
-                    print 'ERROR: Cannot access active Pad'
-                    return
-
-        lines = 2
-        if diamondinfo:
-            lines += 1
-        if cut and hasattr(self, 'analysis'):
-            lines += 1
-        if comment is not None:
-            lines += 1
-        # height = (lines - 1) * 0.03
-
-        tc = datetime.strptime(self.TESTCAMPAIGN, '%Y%m')
-        dur = '{0:02d}:{1:02.0f}'.format(int(self.totalMinutes), (self.totalMinutes - int(self.totalMinutes)) * 60) if runs is None else ''
-
-        if show:
-            if not canvas.GetBottomMargin() > .105:
-                canvas.SetBottomMargin(0.15)
-
-        git_text = TLegend(.85, 0, 1, .025)
-        git_text.AddEntry(0, 'git hash: {ver}'.format(ver=check_output(['git', 'describe', '--always'])), '')
-        git_text.SetLineColor(0)
-        if runs is None:
-            run_string = 'Run {run}: {rate}, {dur} Min ({evts} evts)'.format(run=self.RunNumber, rate=self.get_rate_string(), dur=dur, evts=self.n_entries)
-        else:
-            run_string = 'Runs {start}-{stop} ({flux1} - {flux2})'.format(start=runs[0], stop=runs[1], flux1=runs[2].strip(' '), flux2=runs[3].strip(' '))
-        width = len(run_string) * .01 if x == y else len(run_string) * 0.015 * y / x
-        legend = self.make_legend(.005, .1, y1=.003, x2=width, nentries=3, felix=False, scale=.75)
-        legend.SetMargin(0.05)
-        legend.AddEntry(0, 'Test Campaign: {tc}'.format(tc=tc.strftime('%b %Y')), '')
-        legend.AddEntry(0, run_string, '')
-        if channel is None:
-            dias = ['{dia} @ {bias:+2.0f}V'.format(dia=dia, bias=bias) for dia, bias in zip(self.DiamondNames, self.Bias)]
-            dias = str(dias).strip('[]').replace('\'', '')
-            legend.AddEntry(0, 'Diamonds: {dias}'.format(dias=dias), '')
-        elif hasattr(self, 'analysis'):
-            att = ', Attenuator: {a}'.format(a=self.RunInfo['att_dia{n}'.format(n=self.analysis.DiamondNumber)]) if 'att_dia1' in self.RunInfo else ''
-            legend.AddEntry(0, 'Diamond: {diamond} @ {bias:+}V{a}'.format(diamond=self.DiamondNames[channel], bias=self.Bias[channel], a=att), '')
-        if cut and hasattr(self, 'analysis'):
-            legend.AddEntry(0, 'Cut: {cut}'.format(cut=self.analysis.get_easy_cutstring()), '')
-        if comment is not None:
-            legend.AddEntry(0, comment, '')
-        self.RunInfoLegends.append([legend, git_text])
-        if show:
-            pads = [i for i in canvas.GetListOfPrimitives() if i.IsA().GetName() == 'TPad']
-            if not pads:
-                if self.MainConfigParser.getboolean('SAVE', 'git_hash'):
-                    git_text.Draw()
-                if self.MainConfigParser.getboolean('SAVE', 'info_legend'):
-                    legend.Draw()
-            else:
-                for pad in pads:
-                    pad.cd()
-                    if self.MainConfigParser.getboolean('SAVE', 'git_hash'):
-                        git_text.Draw()
-                    if self.MainConfigParser.getboolean('SAVE', 'info_legend'):
-                        legend.Draw()
-                    pad.Modified()
-            canvas.Update()
-        else:
-            return legend, git_text
-
-    def scale_runinfo_legend(self, txt_size=None, w=None, h=None):
-        if self.RunInfoLegends is None:
-            self.log_warning('RunInfo legend was not created yet!')
-            return
-        l = self.RunInfoLegends[0]
-        l.SetY2NDC(h) if h is not None else self.do_nothing()
-        l.SetX2NDC(w) if w is not None else self.do_nothing()
-        l.SetTextSize(txt_size) if txt_size is not None else self.do_nothing()
-
-    def reset_info_legend(self):
-        l = self.RunInfoLegends[0]
-        l.SetY2NDC(.1)
-        l.SetX2NDC(.435)
-        l.SetTextSize(.0195)
-
-    def get_runinfo(self, ana, pad=None):
-        runs = []
-        if hasattr(ana, 'collection'):
-            runs = [ana.collection.keys()[0], ana.collection.keys()[-1], ana.collection.values()[0].run.get_rate_string(), ana.collection.values()[-1].run.get_rate_string()]
-        return self.draw_run_info(show=False, runs=runs, channel=ana.DiamondNumber - 1, canvas=pad)
 
     def has_branch(self, name):
         return bool(self.tree.GetBranch(name))
