@@ -319,6 +319,12 @@ def make_tc_str(tc, long_=True, data=False):
         return '{tc}{s}'.format(tc=datetime.strptime(tc_data[0], '%b%y').strftime('%Y%m' if long_ else '%B %Y'), s=sub_string)
 
 
+def make_rate_str(rate):
+    unit = '{}/cm^{{2}}'.format('MHz' if rate > 1000 else 'kHz')
+    rate = round(rate / 1000., 1) if rate > 1000 else int(round(rate, 0))
+    return '{rate} {unit}'.format(rate=rate, unit=unit)
+
+
 def isfloat(string):
     try:
         float(string)
@@ -469,7 +475,10 @@ def remove_letters(string):
 
 
 def get_last_canvas():
-    return gROOT.GetListOfCanvases()[-1]
+    try:
+        return gROOT.GetListOfCanvases()[-1]
+    except IndexError:
+        log_warning('There is no canvas is in the list...')
 
 
 def get_color_gradient(n):
