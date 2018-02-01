@@ -182,6 +182,15 @@ class DiaScans(Elementary):
                     print ' ', rp.ljust(5), ch
                 print
 
+    def show_selections(self):
+        print 'The following selections exists:'
+        for key, sel in self.Selections.items():
+            print '* "{key}": {sel}'.format(key=key, sel=sel)
+
+    def show_selection_names(self):
+        for key in self.Selections.iterkeys():
+            print key
+
     def show_selection(self):
         if self.Selection:
             header = ['Campaign', 'RunPlan', 'Diamond', 'Runs'.ljust(7), 'Voltage', 'Type'.ljust(11)]
@@ -346,11 +355,6 @@ class DiaScans(Elementary):
                 run_selections.append(sel)
         self.RunSelections = run_selections
         return run_selections
-
-    def show_selections(self):
-        print 'The following selections exists:'
-        for key, sel in self.Selections.items():
-            print '* "{key}": {sel}'.format(key=key, sel=sel)
 
     def draw_collimator_settings(self, show=True):
         h = TH2F('h_cs', 'Collimator Settings', 125, 50, 300, 75, 0, 150)
