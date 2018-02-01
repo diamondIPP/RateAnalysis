@@ -364,7 +364,6 @@ class AnalysisCollection(Elementary):
 
             self.PulseHeight = gr1
             if save_comb:
-                # run_info = self.FirstAnalysis.run.get_runinfo(self)
                 y_min = increased_range([ymin, ymax], .3)[0] if y_ran is None else y_ran[0]
                 self.save_combined_pulse_heights(mg, mg1, legend, y_min, show=show, pulser_leg=self.__draw_signal_legend)
             return mg
