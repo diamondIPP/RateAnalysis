@@ -309,37 +309,16 @@ class Elementary(object):
                 canvas.SaveAs('{p}.pdf'.format(p=path))
                 canvas.SaveAs('{p}.png'.format(p=path))
 
-    def save_plots(self, savename, sub_dir=None, canvas=None, ind=0, ch='dia', x=1, y=1, prnt=True, save=True, show=True):
-        """
-        Saves the canvas at the desired location. If no canvas is passed as argument, the active canvas will be saved. However for applications without graphical interface,
-        such as in SSl terminals, it is recommended to pass the canvas to the method.
-        :param ind: index of the collection
-        :param ch: if None print both dias (dirty fix)
-        """
-
+    def save_plots(self, savename, sub_dir=None, canvas=None, all_pads=True, both_dias=False, ind=None, prnt=True, save=True, show=True):
+        """ Saves the canvas at the desired location. If no canvas is passed as argument, the active canvas will be saved. However for applications without graphical interface,
+         such as in SSl terminals, it is recommended to pass the canvas to the method. """
+        canvas = get_last_canvas() if canvas is None else canvas
         if canvas is None:
-            try:
-                canvas = gROOT.GetListOfCanvases()[-1]
-            except Exception as inst:
-                print log_warning('Error in save canvas: {err}'.format(err=inst))
-                return
-        channel = self.DiamondNumber - 1 if hasattr(self, 'DiamondNumber') else None
-        channel = self.Dut - 4 if hasattr(self, 'Dut') else channel
-        if hasattr(self, 'run'):
-            self.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas, x=x, y=y)
-        if hasattr(self, 'Run'):
-            self.Run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas, x=x, y=y)
-        elif hasattr(self, 'analysis'):
-            try:
-                self.analysis.run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas, x=x, y=y)
-            except AttributeError as err:
-                self.log_warning(err)
-        elif hasattr(self, 'collection'):
-            runs = [self.collection.keys()[0], self.collection.keys()[-1], self.collection.values()[0].run.get_rate_string(), self.collection.values()[-1].run.get_rate_string()]
-            if not ind:
-                self.collection.values()[ind].run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas, runs=runs, x=x, y=y)
-            else:
-                self.collection.values()[ind].run.draw_run_info(channel=ch if ch is None else channel, canvas=canvas, x=x, y=y)
+            return
+        if ind is None:
+            self.InfoLegend.draw(canvas, all_pads, both_dias, show) if hasattr(self, 'InfoLegend') else log_warning('Did not find InfoLegend class...')
+        else:
+            self.collection.values()[ind].InfoLegend.draw(canvas, all_pads, both_dias, show) if hasattr(self, 'collection') else log_critical('sth went wrong...')
         canvas.Modified()
         canvas.Update()
         if save:
@@ -574,8 +553,8 @@ class Elementary(object):
         except AttributeError or ReferenceError:
             pass
 
-    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=None, draw_opt='', x_fac=None, y_fac=None, ind=0,
-                   l=None, logy=False, logx=False, logz=False, canvas=None, gridx=False, gridy=False, save=True, ch='dia', prnt=True, phi=None, theta=None):
+    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=None, draw_opt='', x_fac=None, y_fac=None, all_pads=True,
+                   l=None, logy=False, logx=False, logz=False, canvas=None, gridx=False, gridy=False, save=True, both_dias=False, ind=None, prnt=True, phi=None, theta=None):
         if tm is None:
             tm = .1 if self.MainConfigParser.getboolean('SAVE', 'activate_title') else .03
         x = self.Res if x_fac is None else int(x_fac * self.Res)
@@ -596,14 +575,14 @@ class Elementary(object):
             l = [l] if type(l) is not list else l
             for i in l:
                 i.Draw()
-        self.save_plots(save_name, sub_dir=sub_dir, x=x_fac, y=y_fac, ch=ch, prnt=prnt, save=save, show=show, ind=ind)
+        self.save_plots(save_name, sub_dir=sub_dir, both_dias=both_dias, all_pads=all_pads, ind=ind, prnt=prnt, save=save, show=show)
         self.set_root_output(True)
         lst = [c, h, l] if l is not None else [c, h]
         self.ROOTObjects.append(lst)
 
-    def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=.1, draw_opt='', x=None, y=None, ind=0,
-                   l=None, logy=False, logx=False, logz=False, canvas=None, gridy=False, gridx=False, ch='dia', prnt=True, phi=None, theta=None):
-        return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, ind, l, logy, logx, logz, canvas, gridx, gridy, False, ch, prnt, phi, theta)
+    def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=.1, draw_opt='', x=None, y=None, all_pads=True,
+                   l=None, logy=False, logx=False, logz=False, canvas=None, gridy=False, gridx=False, both_dias=True, prnt=True, phi=None, theta=None, ind=None):
+        return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, all_pads, l, logy, logx, logz, canvas, gridx, gridy, False, both_dias, ind, prnt, phi, theta)
 
     def draw_tlatex(self, x, y, text, align=20, color=1, size=.05, angle=None, ndc=False):
         l = TLatex(x, y, text)
@@ -716,7 +695,7 @@ class Elementary(object):
         print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * symbol, msg=msg)
 
     def save_combined_pulse_heights(self, mg, mg1, l, mg_y, show=True, name=None, pulser_leg=None,
-                                    x_range=None, y_range=None, rel_y_range=None, run_info=None, draw_objects=None):
+                                    x_range=None, y_range=None, rel_y_range=None, draw_objects=None):
         self.set_root_output(show)
         c = TCanvas('c', 'c', int(self.Res * 10 / 11.), self.Res)
         make_transparent(c)
@@ -757,23 +736,17 @@ class Elementary(object):
             for obj, opt in draw_objects:
                 obj.Draw(opt)
 
-        if hasattr(self, 'FirstAnalysis') and run_info is None:
-            run_info = self.FirstAnalysis.run.get_runinfo(self.channel) if hasattr(self, 'channel') else None
-        if run_info is not None:
-            p0.cd()
-            run_info[0].Draw()
-            run_info[1].Draw() if self.MainConfigParser.getboolean('SAVE', 'git_hash') else do_nothing()
+        if hasattr(self, 'InfoLegend'):
+            run_info = self.InfoLegend.draw(p0, all_pads=False, show=show)
+            scale_legend(run_info[0], txt_size=.09, height=0.098 / pm)
+            run_info[1].SetTextSize(.05)
 
-        p0.Modified()
-        p0.Update()
         for obj in p0.GetListOfPrimitives():
             if obj.GetName() == 'title':
                 obj.SetTextColor(0)
-        width = len(run_info[0].GetListOfPrimitives()[1].GetLabel()) * .012
-        scale_legend(run_info[0], txt_size=.09, width=width, height=0.098 / pm)
         self.save_canvas(c, name='CombinedPulseHeights' if name is None else name, show=show)
 
-        self.ROOTObjects.append([c, draw_objects, run_info])
+        self.ROOTObjects.append([c, draw_objects])
         self.set_root_output(True)
 
     def draw_tpad(self, name, tit='', pos=None, fill_col=0, gridx=None, gridy=None, margins=None, transparent=False, logy=None, logx=None, logz=None):

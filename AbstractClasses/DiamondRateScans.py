@@ -495,11 +495,11 @@ class DiaScans(Elementary):
         lm, rm = .03, .02
         lp = .04
         pad_height = .1 / (.2 * (len(graphs) + 1))
-        self.draw_tpad('p0', 'p0', pos=[lp, 1 - pad_height, 1, 1], margins=[lm, rm, 0, .5], transparent=True)                              # title pad
-        self.draw_tlatex(lm, .5, '{dia} Rate Scans{b}'.format(dia=self.DiamondName, b=bias_str), size=.5, align=12)     # title
+        self.draw_tpad('p0', 'p0', pos=[lp, 1 - pad_height, 1, 1], margins=[lm, rm, 0, .5], transparent=True)       # title pad
+        self.draw_tlatex(lm, .5, '{dia} Rate Scans{b}'.format(dia=self.DiamondName, b=bias_str), size=.5, align=12) # title
         c.cd()
-        self.draw_tpad('p1', 'p1', pos=[0, 0, lp, 1], margins=[0, 0, 0, 0], transparent=True)                                   # info pad
-        self.draw_tlatex(.5, .5, '#font[42]{Scaled Pulse Height}', size=.7, align=22, angle=90)    # title
+        self.draw_tpad('p1', 'p1', pos=[0, 0, lp, 1], margins=[0, 0, 0, 0], transparent=True)                       # info pad
+        self.draw_tlatex(.5, .5, '#font[42]{Scaled Pulse Height}', size=.7, align=22, angle=90)                     # title
         c.cd()
 
         for i, g in enumerate(graphs):

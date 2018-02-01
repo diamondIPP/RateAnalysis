@@ -8,6 +8,7 @@ from ROOT import TProfile, gROOT, THStack
 from Utils import *
 from copy import deepcopy
 from numpy import mean
+from InfoLegend import InfoLegend
 
 
 class PulserAnalysis(Elementary):
@@ -28,6 +29,7 @@ class PulserAnalysis(Elementary):
 
         self.DiamondName = self.Ana.DiamondName
         self.RunNumber = self.Ana.RunNumber
+        self.InfoLegend = InfoLegend(pad_analysis)
 
         self.ROOTObjects = []
 

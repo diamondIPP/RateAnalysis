@@ -14,6 +14,7 @@ from PadAnalysis import PadAnalysis
 from RunSelection import RunSelection
 from TelescopeAnalysis import Analysis
 from VoltageScan import VoltageScan
+from InfoLegend import InfoLegend
 from Run import Run
 from Utils import *
 
@@ -68,10 +69,9 @@ class AnalysisCollection(Elementary):
         self.PeakDistribution = None
 
         # sub classes
-        self.VoltageScan = VoltageScan(self)
-
-        # current information
         self.StartTime = float(self.FirstAnalysis.run.log_start.strftime('%s'))
+        self.VoltageScan = VoltageScan(self)
+        self.InfoLegend = InfoLegend(self)
         self.Currents = Currents(self)
 
     def __del__(self):
@@ -196,44 +196,28 @@ class AnalysisCollection(Elementary):
         legends[0].AddEntry(0, 'factor {sgn}{fac:4.2f}'.format(fac=fac, sgn='-' if self.FirstAnalysis.PulserPolarity < 0 else ''), '')
         legends[2].AddEntry(cur, 'current', 'l')
 
-        gROOT.SetBatch(1) if not show else do_nothing()
+        # Drawing
+        self.set_root_output(show)
         c = TCanvas('c', 'c', 1500, 1000)
         margins = [[.075, .05, 0, .1], [.075, .05, 0, 0], [.075, .05, 0.05, 0]]
-        pads = [self.Currents.draw_tpad('p{0}'.format(i + 1), 'p{0}'.format(i + 1), pos=[0, (3 * i + 1) / 10., 1, ((i + 1) * 3 + 1) / 10.], gridx=True, margins=margins[2 - i]) for i in xrange(3)]
-        for pad in pads:
-            pad.Draw()
-        draw_opts = ['pl', '', 'l']
+        draw_opts = ['pl', '', '']
         y_tits = ['Pulser Pulse Height [au] ', 'Signal Pulse Height [au] ', 'Current [nA] ']
         y_ranges = [increased_range(scale_margins(pul, ph), .3), increased_range(scale_margins(ph, pul), .3), cur_range]
         divs = [204, 204, None]
+        draw_t_axis = [do_nothing, partial(self.Currents.draw_time_axis, y_ranges[1][0], 't'), partial(self.Currents.draw_time_axis, y_ranges[2][1], 't')]
 
-        pad = None
-        for i, gr in enumerate([pul, ph, cur], 1):
-            pad = pads[3 - i]
-            pad.cd()
-            pad.SetMargin(*margins[i - 1])
-            if i != 3:
-                pad.SetGridy()
-            ymin, ymax = y_ranges[i - 1]
-            self.Currents.draw_frame(pad, ymin, ymax, y_tits[i - 1], div=divs[i - 1])
-            if i == 2:
-                self.Currents.draw_time_axis(ymin, opt='t')
-            if i == 3:
-                self.Currents.draw_time_axis(ymax, opt='t')
-            gr.Draw(draw_opts[i - 1])
-            legends[i - 1].Draw()
+        for i, gr in enumerate([pul, ph, cur]):
+            pad = self.Currents.draw_tpad('p{}'.format(i), 'p{}'.format(i), pos=[0, (7 - 3 * i) / 10., 1, (10 - 3 * i) / 10.], gridx=True, gridy=True, margins=margins[i])
+            ymin, ymax = y_ranges[i]
+            self.Currents.draw_frame(pad, ymin, ymax, y_tits[i], div=divs[i], y_cent=True)
+            draw_t_axis[i]()
+            gr.Draw(draw_opts[i])
+            legends[i].Draw()
+            c.cd()
 
-        run_info = self.FirstAnalysis.run.get_runinfo(self, pad=pad)
-        width = len(run_info[0].GetListOfPrimitives()[1].GetLabel()) * 0.0064
-        scale_legend(run_info[0], width=width)
-        c.cd()
-        run_info[0].Draw()
-        run_info[1].Draw()
-        c.Update()
-        gROOT.SetBatch(0)
+        self.InfoLegend.draw(canvas=c, all_pads=False, show=show)
         self.save_canvas(c, self.save_dir, 'PhPulserCurrent', show=show)
-        self.RootObjects.append([ph, cur, pul, c, legends, pads, run_info])
-        # self.FirstAnalysis.run.reset_info_legend()
+        self.RootObjects.append([ph, cur, pul, c, legends])
 
     def draw_slope_vs_voltage(self, show=True, gr=False):
         h = TH1F('hSV', 'PH Slope Distribution', 10, -1, 1) if not gr else self.make_tgrapherrors('gSV', 'PH Slope vs. Voltage')
@@ -305,7 +289,7 @@ class AnalysisCollection(Elementary):
                 x = ana.run.Flux if flux else key
                 if vs_time:
                     self.set_root_output(False)
-                    x_err = ana.run.duration.seconds / 2.
+                    x_err = ana.run.Duration.seconds / 2.
                     x = int(ana.run.log_start.strftime('%s')) + x_err - self.StartTime
                     gr5.SetPoint(i, x, fit1.Parameter(0))
                     gr5.SetPointError(i, x_err, 0)
@@ -380,9 +364,8 @@ class AnalysisCollection(Elementary):
 
             self.PulseHeight = gr1
             if save_comb:
-                run_info = self.FirstAnalysis.run.get_runinfo(self)
                 y_min = increased_range([ymin, ymax], .3)[0] if y_ran is None else y_ran[0]
-                self.save_combined_pulse_heights(mg, mg1, legend, y_min, show=show, run_info=run_info, pulser_leg=self.__draw_signal_legend)
+                self.save_combined_pulse_heights(mg, mg1, legend, y_min, show=show, pulser_leg=self.__draw_signal_legend)
             return mg
 
         f = partial(func, y_range)
@@ -636,7 +619,7 @@ class AnalysisCollection(Elementary):
                 ped_fit = ana.Pedestal.draw_disto_fit(cut=cut, save=False)
                 ped_err = ped_fit.ParError(par)
                 if vs_time:
-                    xerr = ana.run.duration.seconds / 2.
+                    xerr = ana.run.Duration.seconds / 2.
                     x = int(ana.run.log_start.strftime('%s')) + xerr - self.StartTime
                 y = fit.Parameter(par)
                 y0 = y if y0 is None else y0
@@ -683,8 +666,7 @@ class AnalysisCollection(Elementary):
             mg1.GetListOfGraphs()[0].SetLineColor(602)
             self.__draw_pulser_legend()
             if save_comb:
-                run_info = self.FirstAnalysis.run.get_runinfo(self)
-                self.save_combined_pulse_heights(mg, mg1, l, mg_y, show, name='CombinedPulserPulseHeights', pulser_leg=self.__draw_pulser_legend, run_info=run_info)
+                self.save_combined_pulse_heights(mg, mg1, l, mg_y, show, name='CombinedPulserPulseHeights', pulser_leg=self.__draw_pulser_legend)
                 self.ROOTObjects.append(mg1)
             return mg
 

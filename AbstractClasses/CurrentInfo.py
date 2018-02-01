@@ -532,12 +532,13 @@ class Currents(Elementary):
         fr.SetLineColor(0)
         fr.GetXaxis().SetTimeDisplay(1)
 
-    def draw_frame(self, pad, ymin, ymax, tit, div=None):
+    def draw_frame(self, pad, ymin, ymax, tit, div=None, y_cent=None):
         pad.cd()
         x = self.Margins['x']
         fr = pad.DrawFrame(x[0], ymin, x[1], ymax)
         pad.Modified()
         fr.GetYaxis().SetTitle(tit)
+        do(fr.GetYaxis().CenterTitle, y_cent)
         fr.GetYaxis().SetNdivisions(div) if div is not None else do_nothing()
         self.format_frame(fr)
 
