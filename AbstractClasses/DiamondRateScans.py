@@ -527,7 +527,7 @@ class DiaScans(Elementary):
             x1 = .8 if len(set(biases)) < 2 else .75
             rdm = 'rand' in self.get_run_types()
             legend = self.make_legend(x1 - (.1 if rdm else 0), 1, x2=1 - rm, nentries=1, scale=5 * (2 / 3. if last else 1))
-            legend.AddEntry(g, self.get_titles(irr), 'pe')
+            legend.AddEntry(g, self.get_titles(irr)[i], 'pe')
             if len(set(biases)) > 1:
                 legend.SetNColumns(2)
                 legend.AddEntry('', make_bias_str(biases[i]), '')
