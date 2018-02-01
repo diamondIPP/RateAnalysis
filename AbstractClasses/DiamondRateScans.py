@@ -147,10 +147,10 @@ class DiaScans(Elementary):
     # endregion
 
     def get_diamond_names(self):
-        names = []
-        for sel in self.RunSelections:
-            names.append(sel.SelectedDiamond)
-        return names
+        return [sel.SelectedDiamond for sel in self.RunSelections]
+
+    def get_run_types(self):
+        return [sel.SelectedType.lower() for sel in self.RunSelections]
 
     def get_bias_voltages(self):
         return [sel.SelectedBias for sel in self.RunSelections]
