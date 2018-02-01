@@ -192,13 +192,20 @@ class DiaScans(Elementary):
             print key
 
     def show_selection(self):
+        """ Gives detailed information about the chosen selection """
         if self.Selection:
-            header = ['Campaign', 'RunPlan', 'Diamond', 'Runs'.ljust(7), 'Voltage', 'Type'.ljust(11)]
+            header = ['Campaign', 'RunPlan', 'Diamond', 'Nr', 'Runs'.ljust(7), 'Voltage', 'Type'.ljust(11)]
             rows = []
             for sel in self.RunSelections:
                 runs = sel.get_selected_runs()
-                rows.append([sel.TCString.ljust(8), sel.SelectedRunplan.rjust(7), sel.SelectedDiamond.rjust(7), '{0}-{1}'.format(str(runs[0]).zfill(3), str(runs[-1]).zfill(3)),
-                             '{0:+4.0f}V'.format(sel.SelectedBias).rjust(7), sel.SelectedType.ljust(11)])
+                row = [sel.TCString.ljust(8)]                                               # Campaign
+                row += [sel.SelectedRunplan.rjust(7)]                                       # Run Plan
+                row += [sel.SelectedDiamond.rjust(7)]                                       # Diamond Name
+                row += [str(sel.SelectedDiamondNr).rjust(2)]                                # Diamond Number
+                row += ['{0}-{1}'.format(str(runs[0]).zfill(3), str(runs[-1]).zfill(3))]    # Selected Runs
+                row += ['{0:+4.0f}V'.format(sel.SelectedBias).rjust(7)]                     # Bias Voltage
+                row += [sel.SelectedType.ljust(11)]                                         # Run Plan Type
+                rows.append(row)
             print_table(rows, header)
         else:
             log_warning('Selection is empty!')
