@@ -512,7 +512,7 @@ class DiaScans(Elementary):
         c.cd()
 
         for i, g in enumerate(graphs):
-            last = g = graphs[-1]
+            last = i == len(self.RunSelections) - 1
             y0 = 0 if last else 1 - (pad_height * (2 * i + 3))
             y1 = 1 - (pad_height * (2 * i + 1))
             self.draw_tpad('p{i}'.format(i=i + 2), 'p{i}'.format(i=i + 2), pos=[lp, y0, 1, y1], margins=[lm, rm, .33 if last else 0, 0], logx=True, gridy=True, gridx=True)
@@ -544,13 +544,14 @@ class DiaScans(Elementary):
 
     def draw_legend(self, ind, gr, irr, rm):
         add_bias = len(set(self.get_bias_voltages())) > 1
-        tit = self.get_titles(irr)[ind]
-        bias = make_bias_str(self.get_bias_voltages()[ind]) if add_bias else '   '
-        legend = self.make_legend(len(tit + bias) * .05, 1, x2=1 - rm, nentries=1, scale=5 * (2 / 3. if ind == len(self.RunSelections) - 1 else 1))
-        legend.AddEntry(gr, tit, 'pe')
+        tits = self.get_titles(irr)
+        biases = [make_bias_str(bias) for bias in self.get_bias_voltages()] if add_bias else [''] * len(tits)
+        x1 = 1 - max([len(tit + bias) for tit, bias in zip(tits, biases)]) * .02
+        legend = self.make_legend(x1, 1, x2=1 - rm, nentries=1, scale=5 * (2 / 3. if ind == len(tits) - 1 else 1))
+        legend.AddEntry(gr, tits[ind], 'pe')
         if add_bias:
             legend.SetNColumns(2)
-            legend.AddEntry('', bias, '')
+            legend.AddEntry('', biases[ind], '')
         legend.Draw()
         self.ROOTObjects.append(legend)
 
