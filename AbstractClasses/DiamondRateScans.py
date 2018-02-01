@@ -89,6 +89,8 @@ class DiaScans(Elementary):
 
     def load_diamond(self, name):
         dia = name
+        if 'all' in dia:
+            return 'All'
         if name.lower() not in self.Parser.options('ALIASES'):
             dia = split('[-_]', name)[-1]
         if dia.lower() not in self.Parser.options('ALIASES'):
