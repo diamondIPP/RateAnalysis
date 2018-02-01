@@ -493,8 +493,8 @@ class DiaScans(Elementary):
 
     def draw_scaled_rate_scans(self, irr=False, y_range=.15):
         run_selections = self.load_run_selections()
-        biases = self.get_bias_voltages()
-        bias_str = ' at {b}'.format(b=make_bias_str(biases[0])) if len(set(biases)) == 1 else ''
+        biases = set(self.get_bias_voltages())
+        bias_str = ' at {b}'.format(b=make_bias_str(biases.pop())) if len(biases) == 1 else ''
         colors = get_color_gradient(len(run_selections))
         graphs = self.get_pulse_height_graphs()
         x_vals = sorted([g.GetX()[i] for g in graphs for i in xrange(g.GetN())])
@@ -512,7 +512,7 @@ class DiaScans(Elementary):
         c.cd()
 
         for i, g in enumerate(graphs):
-            last = i >= len(graphs) - 1
+            last = g = graphs[-1]
             y0 = 0 if last else 1 - (pad_height * (2 * i + 3))
             y1 = 1 - (pad_height * (2 * i + 1))
             self.draw_tpad('p{i}'.format(i=i + 2), 'p{i}'.format(i=i + 2), pos=[lp, y0, 1, y1], margins=[lm, rm, .33 if last else 0, 0], logx=True, gridy=True, gridx=True)
@@ -524,15 +524,7 @@ class DiaScans(Elementary):
                                   markersize=1.5, tick_size=.15)
             g.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 3)
             g.Draw('ap')
-            x1 = .8 if len(set(biases)) < 2 else .75
-            rdm = 'rand' in self.get_run_types()
-            legend = self.make_legend(x1 - (.1 if rdm else 0), 1, x2=1 - rm, nentries=1, scale=5 * (2 / 3. if last else 1))
-            legend.AddEntry(g, self.get_titles(irr)[i], 'pe')
-            if len(set(biases)) > 1:
-                legend.SetNColumns(2)
-                legend.AddEntry('', make_bias_str(biases[i]), '')
-            legend.Draw()
-            self.ROOTObjects.append(legend)
+            self.draw_legend(i, g, irr, rm)
             c.cd()
 
         self.ROOTObjects.append(graphs)
@@ -548,6 +540,19 @@ class DiaScans(Elementary):
         if 'rand' in self.get_run_types():
             for i, sel in enumerate(self.RunSelections):
                 tits[i] += ' (random)' if 'rand' in sel.Type.lower() else '         '
+        return tits
+
+    def draw_legend(self, ind, gr, irr, rm):
+        add_bias = len(set(self.get_bias_voltages())) > 1
+        tit = self.get_titles(irr)[ind]
+        bias = make_bias_str(self.get_bias_voltages()[ind]) if add_bias else '   '
+        legend = self.make_legend(len(tit + bias) * .05, 1, x2=1 - rm, nentries=1, scale=5 * (2 / 3. if ind == len(self.RunSelections) - 1 else 1))
+        legend.AddEntry(gr, tit, 'pe')
+        if add_bias:
+            legend.SetNColumns(2)
+            legend.AddEntry('', bias, '')
+        legend.Draw()
+        self.ROOTObjects.append(legend)
 
     def get_pulse_height_graphs(self, scale=1, redo=False):
         run_selections = self.load_run_selections()
