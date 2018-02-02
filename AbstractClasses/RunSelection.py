@@ -587,6 +587,12 @@ class RunSelection(Elementary):
         f.truncate()
         f.close()
 
+    def get_irradiation(self, dia):
+        f = open(self.run.IrradiationFile, 'r')
+        irr = json.load(f)[self.generate_tc_str()][dia]
+        f.close()
+        return irr
+
 
 def verify(msg):
     for n in xrange(3):
