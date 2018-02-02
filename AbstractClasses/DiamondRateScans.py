@@ -551,7 +551,7 @@ class DiaScans(Elementary):
         add_bias = len(set(self.get_bias_voltages())) > 1
         tits = self.get_titles(irr)
         biases = [make_bias_str(bias) for bias in self.get_bias_voltages()] if add_bias else [''] * len(tits)
-        x1 = 1 - max([len(tit + bias) for tit, bias in zip(tits, biases)]) * .016
+        x1 = 1 - (16 if irr else max([len(tit + bias) for tit, bias in zip(tits, biases)])) * .016
         legend = self.make_legend(x1, 1, x2=1 - rm, nentries=1, scale=5 * (2 / 3. if ind == len(tits) - 1 else 1))
         legend.AddEntry(gr, tits[ind], 'pe')
         if add_bias:
