@@ -1,6 +1,7 @@
 import json
 from numpy import zeros, mean
 from Elementary import Elementary
+from InfoLegend import InfoLegend
 from ROOT import TCut, gROOT, TH1F
 from Utils import *
 from os import remove
@@ -18,6 +19,7 @@ class Cut(Elementary):
             self.analysis = parent_analysis
             Elementary.__init__(self, verbose=self.analysis.verbose)
             self.RunNumber = self.analysis.RunNumber
+            self.InfoLegend = InfoLegend(parent_analysis)
 
             # saving stuff
             self.RootObjects = []
