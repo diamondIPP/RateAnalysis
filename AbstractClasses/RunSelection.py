@@ -587,9 +587,9 @@ class RunSelection(Elementary):
         f.truncate()
         f.close()
 
-    def get_irradiation(self, dia):
+    def get_irradiation(self, dia=None):
         f = open(self.run.IrradiationFile, 'r')
-        irr = json.load(f)[self.generate_tc_str()][dia]
+        irr = json.load(f)[self.generate_tc_str()][self.SelectedDiamond if self.SelectedDiamond is not None and dia is None else dia]
         f.close()
         return irr
 

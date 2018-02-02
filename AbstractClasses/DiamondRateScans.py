@@ -154,6 +154,9 @@ class DiaScans(Elementary):
     def get_run_types(self):
         return [sel.SelectedType.lower() for sel in self.RunSelections]
 
+    def get_irradiations(self):
+        return [make_irr_string(sel.get_irradiation()) for sel in self.RunSelections]
+
     def get_bias_voltages(self):
         return [sel.SelectedBias for sel in self.RunSelections]
 
@@ -462,7 +465,7 @@ class DiaScans(Elementary):
         legend.SetNColumns(2) if len(biases) > 1 else do_nothing()
         colors = [4, 419, 2, 800, 3]
         # tits = [make_irr_string(v, p) for v, p in [(0, 0), (5, 14), (1.5, 15)]]
-        tits = [make_irr_string(v, p) for v, p in [(0, 0), (5, 14), (1, 15), (2, 15), (4, 15)]]
+        tits = self.get_irradiations()
         for i, sel in enumerate(run_selections):
             path = self.make_pickle_path('Ph_fit', 'PulseHeights', sel.SelectedRunplan, self.DiamondName, 10000, sel.TESTCAMPAIGN)
             try:
@@ -534,7 +537,7 @@ class DiaScans(Elementary):
         if len(set(self.get_diamond_names())) > 1:
             return self.get_diamond_names()
         if irr:
-            tits = [make_irr_string(v, p) for v, p in [(0, 0), (0, 0), (5, 14), (1.5, 15), (1.5, 15), (3.5, 15)]]
+            tits = self.get_irradiations()
         else:
             tits = [make_tc_str(self.RunSelections[i].TCString) for i in xrange(len(self.RunSelections))]
         if 'rand' in self.get_run_types():
