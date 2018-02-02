@@ -572,6 +572,21 @@ class RunSelection(Elementary):
         f.truncate()
         f.close()
 
+    def add_irradiation(self):
+        f = open(self.run.IrradiationFile, 'r+')
+        data = json.load(f)
+        tc_str = self.generate_tc_str()
+        if tc_str in data:
+            self.log_info('The information of the testcampaign {tc} was already entered!'.format(tc=tc_str))
+            return
+        data[tc_str] = {}
+        for dia in self.get_diamond_names():
+            data[tc_str][dia] = raw_input('Enter the irradtion for the diamond {d} (e.g. 4e15): '.format(d=dia))
+        f.seek(0)
+        json.dump(data, f, indent=2, sort_keys=True)
+        f.truncate()
+        f.close()
+
 
 def verify(msg):
     for n in xrange(3):
@@ -581,6 +596,7 @@ def verify(msg):
         elif prompt.lower() in ['no', 'n']:
             return False
     raise ValueError('Are you too stupid to say yes or no??')
+
 
 if __name__ == '__main__':
     tc = None if not str(argv[-1]).startswith('201') else argv[-1]

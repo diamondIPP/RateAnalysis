@@ -43,6 +43,7 @@ class Run(Elementary):
         self.trigger_planes = [1, 2]
         self.treename = self.run_config_parser.get('BASIC', 'treename')
         self.runinfofile = self.load_run_info_path()
+        self.IrradiationFile = self.MainConfigParser.get('MISC', 'irradiation_file')
         self.maskfilepath = self.load_mask_file_dir()
         self.createNewROOTFiles = self.run_config_parser.getboolean('BASIC', 'createNewROOTFiles')
         self.Digitiser = self.run_config_parser.get('BASIC', 'digitizer') if self.DUTType == 'pad' else None
