@@ -171,14 +171,17 @@ class Run(Elementary):
         self.RunInfo['masked pixels'] = [0] * 4
 
     def translate_diamond_names(self):
-        parser = ConfigParser()
-        parser.read(join(self.Dir, 'Configuration', 'DiamondAliases.cfg'))
         for i in xrange(1, 3):
             dia = self.RunInfo['dia{0}'.format(i)]
             try:
-                self.RunInfo['dia{0}'.format(i)] = parser.get('ALIASES', dia)
+                self.RunInfo['dia{0}'.format(i)] = self.translate_dia(dia)
             except NoOptionError as err:
                 log_warning(err)
+
+    def translate_dia(self, dia):
+        parser = ConfigParser()
+        parser.read(join(self.Dir, 'Configuration', 'DiamondAliases.cfg'))
+        return parser.get('ALIASES', dia.lower())
 
     def load_run_info_file(self):
         try:
