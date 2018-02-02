@@ -212,10 +212,11 @@ def scale_legend(l, txt_size=None, width=None, height=None):
     l.SetTextSize(txt_size) if txt_size is not None else do_nothing()
 
 
-def make_irr_string(val, power):
-    if not val:
+def make_irr_string(val):
+    if not float(val):
         return 'unirradiated'
-    return '{v:1.1f}#upoint10^{p} n/cm^{{2}}'.format(v=val, p='{' + str(power) + '}')
+    val, power = [float(i) for i in val.split('e')]
+    return '{v:1.1f}#upoint10^{p} n/cm^{{2}}'.format(v=val, p='{{{}}}'.format(int(power)))
 
 
 def increased_range(ran, fac_bot=0., fac_top=0.):
