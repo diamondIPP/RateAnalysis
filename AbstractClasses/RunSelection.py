@@ -461,11 +461,13 @@ class RunSelection(Elementary):
         return nr.zfill(2) if len(nr) <= 2 else nr.zfill(4)
 
     def get_diamond_names(self, sel=False):
-        names = self.get_runinfo_values('dia1', sel)
-        for name in self.get_runinfo_values('dia2', sel):
-            if name not in names:
-                names.append(name)
-        return sorted(names)
+        names = []
+        for i in xrange(1, 3):
+            try:
+                names += [self.run.translate_dia(dia) for dia in self.get_runinfo_values('dia{}'.format(i), sel) if self.run.translate_dia(dia).lower() not in ['unknown', 'none']]
+            except KeyError:
+                pass
+        return sorted(list(set(names)))
 
     def show_diamond_names(self, sel=False):
         print 'Diamondnames:'
