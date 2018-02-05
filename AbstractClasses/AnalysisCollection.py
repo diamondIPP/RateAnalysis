@@ -769,7 +769,7 @@ class AnalysisCollection(Elementary):
         gr = self.make_tgrapherrors('gr', 'Pulser Rate vs {mod} '.format(mod=mode))
         for i, (key, ana) in enumerate(self.collection.iteritems()):
             x = ana.run.Flux if flux else key
-            fit = ana.Pulser.calc_fraction() if not real else ana.Pulser.calc_real_fraction(), 0
+            fit = ana.Pulser.calc_fraction() if not real else (ana.Pulser.calc_real_fraction(), 0)
             gr.SetPoint(i, x, fit[0])
             gr.SetPointError(i, 0, fit[1])
         self.format_histo(gr, x_tit=self.make_x_tit(mode, flux), y_tit='Pulser Rate [Hz]')
