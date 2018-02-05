@@ -4,7 +4,7 @@
 import os
 from ROOT import TGraphErrors, TCanvas, TH1D, TH2D, gStyle, gROOT, kError, TProfile2D, TProfile, kBlack, TLatex, THStack
 from math import ceil, sqrt
-from numpy import arange
+from numpy import arange, array
 
 from Elementary import Elementary
 
@@ -25,7 +25,7 @@ class Plots(Elementary):
         self.runinfo = self.run.RunInfo
         self.binning = binning
         self.num_devices = run.NPlanes
-        self.num_entries = run.n_entries
+        self.NEntries = run.n_entries
         self.Settings = {'ph1Dmin': -5000,
                          'ph1Dmax': 60000,
                          'ph1Dbins': 65000 / 500,
@@ -33,10 +33,10 @@ class Plots(Elementary):
                          'ph1DminSi': 0,
                          'ph1DmaxSi': 90000,
                          'nEventsAv': 20000,
-                         'event_bins': max(int(ceil(float(self.num_entries) / 10)), 200),
+                         'event_bins': max(int(ceil(float(self.NEntries) / 10)), 200),
                          'event_min': 0,
-                         'event_max': self.num_entries,
-                         'maxphplots': int(ceil(8 * self.num_entries / 100)),
+                         'event_max': self.NEntries,
+                         'maxphplots': int(ceil(8 * self.NEntries / 100)),
                          'nBinsX': 52,
                          'nBinsY': 80,
                          'xmin': -3900,
@@ -60,8 +60,8 @@ class Plots(Elementary):
         self.Settings['2DBins'] = [self.Settings['nCols'], - .5, self.Settings['nCols'] - .5, self.Settings['nRows'], - .5, self.Settings['nRows'] - .5]
         self.Settings['2DBinsX'] = [self.Settings['nCols'], - .5, self.Settings['nCols'] - .5] * 2
         self.Settings['2DBinsY'] = [self.Settings['nRows'], - .5, self.Settings['nRows'] - .5] * 2
-        self.Settings['event_bins'] = int(ceil(float(self.num_entries) / 5000)) if self.num_entries <= 100000 else \
-            int(ceil(float(self.num_entries)/100)) if self.num_entries <= 500000 else int(ceil(float(self.num_entries) / self.Settings['nEventsAv']))
+        self.Settings['event_bins'] = int(ceil(float(self.NEntries) / 5000)) if self.NEntries <= 100000 else \
+            int(ceil(float(self.NEntries) / 100)) if self.NEntries <= 500000 else int(ceil(float(self.NEntries) / self.Settings['nEventsAv']))
         self.Settings['deltaX'] = float(self.Settings['xmax'] - self.Settings['xmin']) / self.Settings['nBinsX']
         self.Settings['deltaY'] = float(self.Settings['ymax'] - self.Settings['ymin']) / self.Settings['nBinsY']
         self.RocTel = range(4) if roc_tel is None else roc_tel
@@ -350,3 +350,7 @@ class Plots(Elementary):
             return True
         else:
             return False
+
+    def get_binning(self, evts_per_bin, start_event=0, end_event=None, time_bins=False):
+        binning = arange(start_event, self.NEntries if end_event is None else end_event, self.NEntries / (self.NEntries / evts_per_bin), 'd')
+        return [len(binning) - 1, array([self.run.get_time_at_event(int(ev)) / 1000. for ev in binning], 'd') if time_bins else binning]
