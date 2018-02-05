@@ -413,25 +413,8 @@ class Analysis(Elementary):
         self.histos[0] = [c, h]
         self.save_plots('PixMapPlane{pln}{evts}'.format(pln=plane, evts=n), sub_dir=self.TelSaveDir, both_dias=True)
 
-    def draw_preliminary(self):
-        c = gROOT.GetListOfCanvases()[-1]
-        text = TText((c.GetUxmax() - c.GetUxmin()) / 2., (c.GetUymax() - c.GetUymin()) / 2., "Preliminary")
-        text.SetTextColor(19)
-        text.SetTextSize(.2)
-        text.SetTextAngle(30)
-        text.SetTextAlign(20)
-        h = None
-        for obj in c.GetListOfPrimitives():
-            print obj.IsA().GetName()
-            if obj.IsA().GetName() in ['TH1F', 'TH2F', 'TGraph', 'TGraphErrors']:
-                h = obj
-        text.Draw()
-        h.Draw('same')
-        c.RedrawAxis()
-        self.histos[1] = text
-
     # ==============================================
-    # region RUN FUNCTIONS
+    # region TIME AND BINNING
 
     def set_bin_size(self, value):
         self.BinSize = value
@@ -509,6 +492,8 @@ class Analysis(Elementary):
 
     def get_event_at_time(self, time_sec):
         return self.run.get_event_at_time(time_sec)
+
+    # endregion
 
     def get_flux(self):
         return self.run.get_flux()

@@ -605,6 +605,15 @@ class Elementary(object):
         ar.Draw()
         self.ROOTObjects.append(ar)
 
+    def draw_preliminary(self, canvas=None):
+        c = get_last_canvas() if canvas is None else canvas
+        self.draw_tlatex((1 - c.GetRightMargin() + c.GetLeftMargin()) / 2, .5, 'Preliminary', align=22, color=19, size=.17, angle=30, ndc=True)
+        make_transparent(c)
+        for obj in c.GetListOfPrimitives():
+            if obj.IsA().GetName() in ['TH1F', 'TH2F', 'TGraph', 'TGraphErrors']:
+                obj.Draw('same')
+        c.RedrawAxis()
+
     @staticmethod
     def calc_fwhm(histo):
         h = histo
