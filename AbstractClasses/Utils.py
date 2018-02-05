@@ -513,22 +513,24 @@ def load_root_files(sel, load=True):
     runs = sel.get_selected_runs()
     threads = {}
     for run in runs:
-        thread = MyThread(sel, run)
+        thread = MyThread(sel, run, load)
         thread.start()
         threads[run] = thread
     while any(thread.isAlive() for thread in threads.itervalues()) and load:
         sleep(.1)
-    pool = Pool(len(threads))
-    results = [pool.apply_async(get_time_vec, (thread.Selection, thread.Run)) for thread in threads.itervalues()]
-    times = [result.get(60) for result in results]
-    for thread, t in zip(threads.itervalues(), times):
-        thread.Time = t
+    if load:
+        pool = Pool(len(threads))
+        results = [pool.apply_async(get_time_vec, (thread.Selection, thread.Run)) for thread in threads.itervalues()]
+        times = [result.get(60) for result in results]
+        for thread, t in zip(threads.itervalues(), times):
+            thread.Time = t
     return threads
 
 
 class MyThread (Thread):
-    def __init__(self, sel, run):
+    def __init__(self, sel, run, load=True):
         Thread.__init__(self)
+        self.Load = load
         self.Run = run
         self.Selection = sel
         self.File = None
@@ -537,11 +539,12 @@ class MyThread (Thread):
         self.Time = None
 
     def run(self):
-        self.load_tree(load=True)
+        self.load_tree()
 
-    def load_tree(self, load=True):
-        if not load:
+    def load_tree(self):
+        if not self.Load:
             self.Tuple = False
+            return
         log_message('Loading run {r}'.format(r=self.Run), overlay=True)
         file_path = self.Selection.run.converter.get_final_file_path(self.Run)
         if file_exists(file_path):
