@@ -94,7 +94,7 @@ class PadAnalysis(Analysis):
             for obj in lst:
                 self.del_rootobj(obj)
 
-    def show_current(self, relative_time=True):
+    def draw_current(self, relative_time=True):
         self.Currents.draw_indep_graphs(rel_time=relative_time)
 
     # ==========================================================================
@@ -1934,13 +1934,13 @@ if __name__ == "__main__":
     parser.add_argument('dia', nargs='?', default=1, type=int)
     parser.add_argument('-tc', '--testcampaign', nargs='?', default='')
     parser.add_argument('-v', '--verbose', action='store_true')
-    parser.add_argument('-t', '--tree', action='store_true')
+    parser.add_argument('-t', '--tree', action='store_false')
     args = parser.parse_args()
     tc = args.testcampaign if args.testcampaign.startswith('201') else None
     a = Elementary(tc)
     a.print_testcampaign()
     a.print_banner('STARTING PAD-ANALYSIS OF RUN {0}'.format(args.run))
     print
-    run_class = Run(args.run, verbose=args.verbose, tree=None if not args.tree else args.tree)
+    run_class = Run(args.run, verbose=args.verbose, tree=None if args.tree else args.tree)
     z = PadAnalysis(run_class, args.dia)
     z.print_elapsed_time(st, 'Instantiation')
