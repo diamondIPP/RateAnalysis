@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 from copy import deepcopy
 
-from ROOT import TCanvas, TH2F, gROOT, TH1F, TLegend, gStyle, kGreen, TText, TCut, TF1, TGraph, TH1I
+from ROOT import TCanvas, TH2F, gROOT, TH1F, TLegend, gStyle, kGreen, TCut, TF1, TGraph, TH1I
 from numpy import zeros, log
 
 from Elementary import Elementary
@@ -383,9 +383,6 @@ class Analysis(Elementary):
 
     # endregion
 
-    # ==============================================
-    # region SHOW & PRINT
-
     def draw_trigger_phase(self, dut=True, show=True, cut=None):
         cut_string = deepcopy(self.Cut.all_cut) if cut is None else TCut(cut)
         device = 1 if dut else 0
@@ -495,8 +492,27 @@ class Analysis(Elementary):
 
     # endregion
 
+    # ==============================================
+    # region RUN METHODS
     def get_flux(self):
         return self.run.get_flux()
+
+    def has_branch(self, branch):
+        return self.run.has_branch(branch)
+
+    # endregion
+
+    def draw_beam_current(self):
+        if not self.has_branch('beam_current'):
+            log_warning('Branch "beam_current" does not exist!')
+            return
+        n = self.tree.Draw('beam_current:time/1000.>>test', 'beam_current<10000', 'goff')
+        current = [self.tree.GetV1()[i] for i in xrange(n)]
+        t = [self.tree.GetV2()[i] for i in xrange(n)]
+        g = self.make_tgrapherrors('gbc', 'Beam Current', x=t + [t[-1]], y=current + [0])
+        set_time_axis(g, off=self.run.startTime / 1000)
+        self.format_histo(g, x_tit='Time [hh:mm]', y_tit='Beam Current [mA]', fill_color=self.FillColor, markersize=.4)
+        self.save_histo(g, 'BeamCurrent', draw_opt='afp', lm=.08, x_fac=1.5, y_fac=.75)
 
     def fit_langau(self, h=None, nconv=30, show=True, chi_thresh=8):
         h = self.draw_signal_distribution(show=show) if h is None and hasattr(self, 'draw_signal_distribution') else h
