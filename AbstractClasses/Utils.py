@@ -352,9 +352,9 @@ def set_drawing_range(h, legend=True, lfac=None, rfac=None, thresh=10):
     h.GetXaxis().SetRangeUser(*increased_range(range_, lfac, rfac))
 
 
-def set_time_axis(histo, form='%H:%M', off=3600):
+def set_time_axis(histo, form='%H:%M', off=0):
     histo.GetXaxis().SetTimeFormat(form)
-    histo.GetXaxis().SetTimeOffset(-off)
+    histo.GetXaxis().SetTimeOffset(-off - 3600)
     histo.GetXaxis().SetTimeDisplay(1)
 
 
