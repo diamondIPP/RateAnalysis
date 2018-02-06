@@ -5,7 +5,7 @@ from argparse import ArgumentParser
 from numpy import log, zeros, std, mean, concatenate
 from functools import partial
 
-from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1, TH1F, TH2F, TH2I, TProfile2D
+from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1, TH1F, TH2F, TH2I, TProfile2D, TProfile
 
 from CurrentInfo import Currents
 from Elementary import Elementary
@@ -768,11 +768,22 @@ class AnalysisCollection(Elementary):
         histos = [ana.Pulser.draw_rate(evts_per_bin, show=False, cut=cut, vs_time=True) for ana in self.collection.itervalues()]
         binnings = [ana.Plots.get_binning(evts_per_bin, time_bins=True) for ana in self.collection.itervalues()]
         binning = [sum(ibin[0] for ibin in binnings), concatenate([ibin[1] for ibin in binnings])]
-        p = TProfile('hpra', 'Pulser Rate for Run Plan {n}'.format(n=self.RunPlan), *binning)
+        # p = TProfile('hpra', 'Pulser Rate for Run Plan {n}'.format(n=self.RunPlan), *binning)
+        h1 = TH1F('hpra', 'Pulser Rate for Run Plan {n}'.format(n=self.RunPlan), *binning)
+        g = z.make_tgrapherrors('gpra', 'Pulser Rate for Run Plan {n}'.format(n=self.RunPlan))
+        i_bin = 0
         for h in histos:
             for i in xrange(1, h.GetNbinsX() + 1):
-                p.Fill(h.GetBinCenter(i), h.GetBinContent(i))
-        self.save_histo(p, 'AllPulserRate', show=show)
+                #g.SetPoint(i_bin, h.GetBinCenter(i), h.GetBinContent(i))
+                h1.SetBinContent(i_bin+1, h.GetBinContent(i))
+                #g.SetPointError(i_bin, 0, h.GetBinError(i))
+                h1.SetBinError(i_bin+1, h.GetBinError(i))
+                #p.Fill(h.GetBinCenter(i), h.GetBinContent(i))
+                #p.SetBinError(i_bin, h.GetBinError(i))
+                i_bin += 1
+            i_bin += 1
+        self.format_histo(h1, x_tit='Time [hh:mm]', y_tit='Pulser Rate [%]', fill_color=self.FillColor)
+        self.save_histo(h1, 'AllPulserRate', show=show, draw_opt='histe')
 
     def draw_pulser_rates(self, show=True, flux=True, real=False):
         mode = self.get_mode(flux)
