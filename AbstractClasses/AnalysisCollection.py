@@ -764,26 +764,21 @@ class AnalysisCollection(Elementary):
         self.save_plots('PulserPedestalComparison', sub_dir=self.save_dir)
         self.RootObjects.append([c, graphs, legend])
 
-    def draw_pulser_rate(self, evts_per_bin=500, cut=None, rel_t=True, show=True):
+    def draw_pulser_rate(self, evts_per_bin=1000, cut=None, rel_t=True, show=True):
         histos = [ana.Pulser.draw_rate(evts_per_bin, show=False, cut=cut, vs_time=True) for ana in self.collection.itervalues()]
         binnings = [ana.Plots.get_binning(evts_per_bin, time_bins=True) for ana in self.collection.itervalues()]
         binning = [sum(ibin[0] for ibin in binnings), concatenate([ibin[1] for ibin in binnings])]
-        # p = TProfile('hpra', 'Pulser Rate for Run Plan {n}'.format(n=self.RunPlan), *binning)
         h1 = TH1F('hpra', 'Pulser Rate for Run Plan {n}'.format(n=self.RunPlan), *binning)
-        g = z.make_tgrapherrors('gpra', 'Pulser Rate for Run Plan {n}'.format(n=self.RunPlan))
         i_bin = 0
         for h in histos:
             for i in xrange(1, h.GetNbinsX() + 1):
-                #g.SetPoint(i_bin, h.GetBinCenter(i), h.GetBinContent(i))
-                h1.SetBinContent(i_bin+1, h.GetBinContent(i))
-                #g.SetPointError(i_bin, 0, h.GetBinError(i))
-                h1.SetBinError(i_bin+1, h.GetBinError(i))
-                #p.Fill(h.GetBinCenter(i), h.GetBinContent(i))
-                #p.SetBinError(i_bin, h.GetBinError(i))
+                h1.SetBinContent(i_bin + 1, h.GetBinContent(i))
+                h1.SetBinError(i_bin + 1, h.GetBinError(i))
                 i_bin += 1
             i_bin += 1
         self.format_histo(h1, x_tit='Time [hh:mm]', y_tit='Pulser Rate [%]', fill_color=self.FillColor)
-        self.save_histo(h1, 'AllPulserRate', show=show, draw_opt='histe')
+        set_time_axis(h1, off=self.FirstAnalysis.run.startTime / 1000 if rel_t else 0)
+        self.save_histo(h1, 'AllPulserRate', show=show, draw_opt='hist')
 
     def draw_pulser_rates(self, show=True, flux=True, real=False):
         mode = self.get_mode(flux)
