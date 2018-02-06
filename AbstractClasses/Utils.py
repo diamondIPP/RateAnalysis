@@ -524,6 +524,7 @@ def load_root_files(sel, load=True):
         times = [result.get(60) for result in results]
         for thread, t in zip(threads.itervalues(), times):
             thread.Time = t
+        pool.close()
     return threads
 
 
