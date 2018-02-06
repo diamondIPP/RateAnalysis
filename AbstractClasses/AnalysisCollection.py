@@ -2,7 +2,7 @@
 # IMPORTS
 # ==============================================
 from argparse import ArgumentParser
-from numpy import log, zeros, std, mean
+from numpy import log, zeros, std, mean, concatenate
 from functools import partial
 
 from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1, TH1F, TH2F, TH2I, TProfile2D
@@ -763,6 +763,16 @@ class AnalysisCollection(Elementary):
         gROOT.SetBatch(0)
         self.save_plots('PulserPedestalComparison', sub_dir=self.save_dir)
         self.RootObjects.append([c, graphs, legend])
+
+    def draw_pulser_rate(self, evts_per_bin=500, cut=None, rel_t=True, show=True):
+        histos = [ana.Pulser.draw_rate(evts_per_bin, show=False, cut=cut, vs_time=True) for ana in self.collection.itervalues()]
+        binnings = [ana.Plots.get_binning(evts_per_bin, time_bins=True) for ana in self.collection.itervalues()]
+        binning = [sum(ibin[0] for ibin in binnings), concatenate([ibin[1] for ibin in binnings])]
+        p = TProfile('hpra', 'Pulser Rate for Run Plan {n}'.format(n=self.RunPlan), *binning)
+        for h in histos:
+            for i in xrange(1, h.GetNbinsX() + 1):
+                p.Fill(h.GetBinCenter(i), h.GetBinContent(i))
+        self.save_histo(p, 'AllPulserRate', show=show)
 
     def draw_pulser_rates(self, show=True, flux=True, real=False):
         mode = self.get_mode(flux)
