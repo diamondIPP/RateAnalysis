@@ -766,12 +766,17 @@ class AnalysisCollection(Elementary):
 
     def draw_beam_current(self, rel_t=True, show=True):
         graphs = [ana.draw_beam_current(show=False) for ana in self.collection.itervalues()]
-        yvals = [g.GetY()[i] for g in graphs for i in xrange(g.GetN())]
-        xvals = [g.GetX()[i] for g in graphs for i in xrange(g.GetN())]
-        gr = self.make_tgrapherrors('gbca', 'Beam Current for Run Plan {n}'.format(n=self.RunPlan), x=xvals, y=yvals)
-        self.format_histo(gr, x_tit='Time [hh:mm]', y_tit='Pulser Rate [%]', y_off=.8, fill_color=self.FillColor, stats=0, y_range=[0, 105],
+        xvals = array([g.GetX()[i] for g in graphs for i in xrange(g.GetN())])
+        xvals += (xvals[1] - xvals[0]) / 2
+        h = TH1F('hbca', 'Beam Current for Run Plan {n}'.format(n=self.RunPlan), len(xvals) - 1, xvals)
+        ibin = 1
+        for g in graphs:
+            for i in xrange(g.GetN()):
+                h.SetBinContent(ibin, g.GetY()[i])
+                ibin += 1
+        self.format_histo(h, x_tit='Time [hh:mm]', y_tit='Beam Current [mA]', y_off=.85, fill_color=self.FillColor, stats=0, markersize=.3,
                           t_ax_off=self.FirstAnalysis.run.startTime / 1000 if rel_t else 0)
-        self.save_histo(gr, 'AllBeamRate', show=show, draw_opt='hist', x_fac=1.5, y_fac=.75, lm=.065)
+        self.save_histo(h, 'AllBeamRate', show=show, draw_opt='hist', x_fac=1.5, y_fac=.75, lm=.065)
 
     def draw_pulser_rate(self, evts_per_bin=1000, cut=None, rel_t=True, show=True):
         histos = [ana.Pulser.draw_rate(evts_per_bin, show=False, cut=cut, vs_time=True) for ana in self.collection.itervalues()]
