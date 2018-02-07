@@ -236,26 +236,13 @@ class Converter:
                 pix_align.write_aligned_tree()
 
     def remove_pickle_files(self, run_number):
-        log_message('Removing all pickle files for run {}'.format(run_number))
-        program_dir = ''
-        for i in __file__.split('/')[:-2]:
-            program_dir += i + '/'
-        # todo get correct tc string
-        files = glob('{prog}Configuration/Individual_Configs/*/*{tc}*_{run}_*'.format(prog=program_dir, run=run_number, tc=self.TestCampaign))
-        for _file in files:
-            remove(_file)
+        self.Run.log_info('Removing all pickle files for run {}'.format(run_number))
+        files = glob(join(self.Run.Dir, 'Configuration', 'Individual_Configs', '*', '*{tc}*_{run}_*'.format(run=run_number, tc=self.Run.generate_tc_str())))
+        for f in files:
+            remove(f)
 
     def __rename_rootfile(self, run_number):
         rename(self.get_root_file_path(), self.get_final_file_path(run_number))
-
-    @staticmethod
-    def remove_pickle_files(run_number):
-        program_dir = ''
-        for i in __file__.split('/')[:-2]:
-            program_dir += i + '/'
-        files = glob('{prog}Configuration/Individual_Configs/*/*{run}*'.format(prog=program_dir, run=run_number))
-        for _file in files:
-            remove(_file)
 
     def __rename_tracking_file(self, run_number):
         rename(self.get_tracking_file_path(run_number), self.get_final_file_path(run_number))
