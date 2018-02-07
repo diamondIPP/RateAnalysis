@@ -9,6 +9,7 @@ from screeninfo import get_monitors
 from numpy import array
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 from sys import stdout
+from os.path import dirname
 
 from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, kGreen, kOrange, kViolet, kYellow, kRed, kBlue, \
     kMagenta, kAzure, kCyan, kTeal
@@ -160,7 +161,7 @@ class Elementary(object):
     def set_test_campaign(self, campaign):
         campaign = self.MainConfigParser.get('MAIN', 'default_test_campaign') if campaign is None else campaign
         if campaign not in self.find_test_campaigns():
-            log_critical('This Testcampaign does not exist yet! Use create_new_testcampaign!')
+            log_critical('The Testcampaign {tc} does not exist yet! Use create_new_testcampaign!'.format(tc=campaign))
         tc_data = str(campaign).split('-')
         self.TESTCAMPAIGN = tc_data[0]
         self.SubSet = tc_data[-1] if len(tc_data) > 1 else None
@@ -171,14 +172,9 @@ class Elementary(object):
             print '\nTESTCAMPAIGN: {0}{p}'.format(out, p=' Part {0}'.format(int_to_roman(int(self.SubSet))) if self.SubSet is not None else '')
         return out
 
-    @classmethod
-    def find_test_campaigns(cls):
-        conf_dir = cls.get_program_dir() + 'Configuration/'
-        f_location = conf_dir + 'RunConfig_*'
-        names = glob(f_location)
-        campaigns = [re.split('[_.]', name)[1] for name in names]
-        campaigns = [camp for i, camp in enumerate(campaigns) if camp not in campaigns[i + 1:]]
-        return sorted(campaigns)
+    def find_test_campaigns(self):
+        names = glob(join(self.Dir, 'Configuration', 'RunConfig_*'))
+        return sorted(list(set([re.split('[_.]', name)[1] for name in names])))
 
     # endregion
 
@@ -551,9 +547,9 @@ class Elementary(object):
                 z_axis.SetTitleSize(tit_size)
                 z_axis.SetLabelSize(lab_size)
                 z_axis.SetRangeUser(z_range[0], z_range[1]) if z_range is not None else do_nothing()
-            set_time_axis(h, off=t_ax_off) if t_ax_off is not None else do_nothing()
         except AttributeError or ReferenceError:
             pass
+        set_time_axis(h, off=t_ax_off) if t_ax_off is not None else do_nothing()
 
     def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=None, draw_opt='', x_fac=None, y_fac=None, all_pads=True,
                    l=None, logy=False, logx=False, logz=False, canvas=None, gridx=False, gridy=False, save=True, both_dias=False, ind=None, prnt=True, phi=None, theta=None):
@@ -626,10 +622,7 @@ class Elementary(object):
 
     @staticmethod
     def get_program_dir():
-        ret_val = ''
-        for i in __file__.split('/')[:-2]:
-            ret_val += i + '/'
-        return ret_val
+        return dirname(dirname(__file__))
 
     @staticmethod
     def adj_length(value):
