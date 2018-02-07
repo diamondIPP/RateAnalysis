@@ -5,7 +5,7 @@ from argparse import ArgumentParser
 from numpy import log, zeros, std, mean, concatenate
 from functools import partial
 
-from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1, TH1F, TH2F, TH2I, TProfile2D, TProfile
+from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1, TH1F, TH2F, TH2I, TProfile2D
 
 from CurrentInfo import Currents
 from Elementary import Elementary
@@ -763,6 +763,15 @@ class AnalysisCollection(Elementary):
         gROOT.SetBatch(0)
         self.save_plots('PulserPedestalComparison', sub_dir=self.save_dir)
         self.RootObjects.append([c, graphs, legend])
+
+    def draw_beam_current(self, rel_t=True, show=True):
+        graphs = [ana.draw_beam_current(show=False) for ana in self.collection.itervalues()]
+        yvals = [g.GetY()[i] for g in graphs for i in xrange(g.GetN())]
+        xvals = [g.GetX()[i] for g in graphs for i in xrange(g.GetN())]
+        gr = self.make_tgrapherrors('gbca', 'Beam Current for Run Plan {n}'.format(n=self.RunPlan), x=xvals, y=yvals)
+        self.format_histo(gr, x_tit='Time [hh:mm]', y_tit='Pulser Rate [%]', y_off=.8, fill_color=self.FillColor, stats=0, y_range=[0, 105],
+                          t_ax_off=self.FirstAnalysis.run.startTime / 1000 if rel_t else 0)
+        self.save_histo(gr, 'AllBeamRate', show=show, draw_opt='hist', x_fac=1.5, y_fac=.75, lm=.065)
 
     def draw_pulser_rate(self, evts_per_bin=1000, cut=None, rel_t=True, show=True):
         histos = [ana.Pulser.draw_rate(evts_per_bin, show=False, cut=cut, vs_time=True) for ana in self.collection.itervalues()]
