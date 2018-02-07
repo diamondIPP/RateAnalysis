@@ -486,4 +486,4 @@ if __name__ == '__main__':
     p.add_argument('-tc', '--testcampaign', nargs='?', default=None)
     p.add_argument('-t', '--tree', action='store_true')
     args = p.parse_args()
-    z = Run(args.run, tree=args.tree, test_campaign=args.testcampaign)
+    z = Run(args.run, tree=None if args.tree else False, test_campaign=args.testcampaign)
