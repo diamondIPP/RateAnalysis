@@ -775,9 +775,7 @@ class AnalysisCollection(Elementary):
 
     def draw_pulser_rate(self, evts_per_bin=1000, cut=None, rel_t=True, show=True):
         histos = [ana.Pulser.draw_rate(evts_per_bin, show=False, cut=cut, vs_time=True) for ana in self.collection.itervalues()]
-        binnings = [ana.Plots.get_binning(evts_per_bin, time_bins=True) for ana in self.collection.itervalues()]
-        binning = [sum(ibin[0] for ibin in binnings), concatenate([ibin[1] for ibin in binnings])]
-        h1 = TH1F('hpra', 'Pulser Rate for Run Plan {n}'.format(n=self.RunPlan), *binning)
+        h1 = TH1F('hpra', 'Pulser Rate for Run Plan {n}'.format(n=self.RunPlan), *self.get_binning(evts_per_bin, t_bins=True))
         i_bin = 0
         for h in histos:
             for i in xrange(1, h.GetNbinsX() + 1):
@@ -785,9 +783,9 @@ class AnalysisCollection(Elementary):
                 h1.SetBinError(i_bin + 1, h.GetBinError(i))
                 i_bin += 1
             i_bin += 1
-        self.format_histo(h1, x_tit='Time [hh:mm]', y_tit='Pulser Rate [%]', fill_color=self.FillColor)
+        self.format_histo(h1, x_tit='Time [hh:mm]', y_tit='Pulser Rate [%]', y_off=.8, fill_color=self.FillColor, stats=0, y_range=[0, 105])
         set_time_axis(h1, off=self.FirstAnalysis.run.startTime / 1000 if rel_t else 0)
-        self.save_histo(h1, 'AllPulserRate', show=show, draw_opt='hist')
+        self.save_histo(h1, 'AllPulserRate', show=show, draw_opt='hist', x_fac=1.5, y_fac=.75, lm=.065)
 
     def draw_pulser_rates(self, show=True, flux=True, real=False):
         mode = self.get_mode(flux)
@@ -1356,6 +1354,10 @@ class AnalysisCollection(Elementary):
             print 'You did not select any run! No changes were made!'
         else:
             self.collection = new_collection
+
+    def get_binning(self, evts_per_bin, t_bins=True):
+        binnings = [ana.Plots.get_binning(evts_per_bin, time_bins=t_bins) for ana in self.collection.itervalues()]
+        return [sum(ibin[0] for ibin in binnings), concatenate([ibin[1] for ibin in binnings])]
 
     def set_channel(self, ch):
         """
