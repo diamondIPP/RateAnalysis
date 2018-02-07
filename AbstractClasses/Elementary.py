@@ -491,7 +491,7 @@ class Elementary(object):
 
     def format_histo(self, histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=20, color=1, markersize=1, x_off=None, y_off=None, z_off=None, lw=1,
                      fill_color=None, fill_style=None, stats=True, tit_size=.04, lab_size=.04, l_off_y=None, draw_first=False, x_range=None, y_range=None, z_range=None,
-                     do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None, tick_size=None):
+                     do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None, tick_size=None, t_ax_off=None):
         h = histo
         if draw_first:
             self.set_root_output(False)
@@ -551,6 +551,7 @@ class Elementary(object):
                 z_axis.SetTitleSize(tit_size)
                 z_axis.SetLabelSize(lab_size)
                 z_axis.SetRangeUser(z_range[0], z_range[1]) if z_range is not None else do_nothing()
+            set_time_axis(h, off=t_ax_off) if t_ax_off is not None else do_nothing()
         except AttributeError or ReferenceError:
             pass
 
