@@ -512,6 +512,7 @@ class Analysis(Elementary):
         g = self.make_tgrapherrors('gbc', 'Beam Current', x=t + [t[-1]], y=current + [0])
         self.format_histo(g, x_tit='Time [hh:mm]', y_tit='Beam Current [mA]', fill_color=self.FillColor, markersize=.4, t_ax_off=self.run.startTime / 1000 if rel_t else 0)
         self.save_histo(g, 'BeamCurrent', draw_opt='afp', lm=.08, x_fac=1.5, y_fac=.75, ind=None, show=show)
+        return g
 
     def fit_langau(self, h=None, nconv=30, show=True, chi_thresh=8):
         h = self.draw_signal_distribution(show=show) if h is None and hasattr(self, 'draw_signal_distribution') else h
