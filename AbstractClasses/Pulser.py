@@ -44,15 +44,15 @@ class PulserAnalysis(Elementary):
     def load_type(self):
         return str(self.Ana.RunInfo['pulser']) if 'pulser' in self.Ana.RunInfo else None
 
-    def draw_rate(self, evts_per_bin=1000, cut=None, vs_time=False, rel_t=True, show=True):
+    def draw_rate(self, evts_per_bin=1000, cut=None, vs_time=True, rel_t=True, show=True):
         """ Shows the fraction of pulser events as a function of the event number. Peaks appearing in this graph are most likely beam interruptions. """
         cut = '' if cut is None else TCut(cut)
         self.set_root_output(False)
         h = TProfile('hpr', 'Pulser Rate', *self.Ana.Plots.get_binning(evts_per_bin, time_bins=vs_time))
         self.Tree.Draw('pulser*100:{v}>>hpr'.format(v='time / 1000.' if vs_time else 'Entry$'), cut, 'goff')
         set_time_axis(h, off=self.Ana.run.startTime / 1000 if rel_t else 0) if vs_time else do_nothing()
-        self.format_histo(h, x_tit='Time [hh:mm]' if vs_time else 'Event Number', y_tit='Pulser Fraction [%]', y_off=1.3, fill_color=self.FillColor, y_range=[0, 100], markersize=.7, stats=0)
-        self.save_histo(h, 'PulserRate', show, lm=.13, draw_opt='bare', rm=.08, x_fac=1.5, y_fac=.75)
+        self.format_histo(h, x_tit='Time [hh:mm]' if vs_time else 'Event Number', y_tit='Pulser Fraction [%]', y_off=.8, fill_color=self.FillColor, y_range=[0, 105], markersize=.7, stats=0)
+        self.save_histo(h, 'PulserRate', show, lm=.08, draw_opt='bare', x_fac=1.5, y_fac=.75)
         return h
 
     def calc_fraction(self, show=False):
