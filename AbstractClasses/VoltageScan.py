@@ -6,6 +6,7 @@
 
 from Elementary import Elementary
 from ROOT import gStyle, TMultiGraph
+from InfoLegend import InfoLegend
 
 
 class VoltageScan(Elementary):
@@ -18,6 +19,7 @@ class VoltageScan(Elementary):
         self.RunPlan = self.Ana.RunPlan
         self.DiamondName = self.Ana.DiamondName
         self.DiamondNumber = self.Ana.DiamondNumber
+        self.InfoLegend = InfoLegend(ana_collection)
 
     def draw_all(self):
         self.draw_pulse_height(show=False)
