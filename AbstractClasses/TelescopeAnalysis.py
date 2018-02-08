@@ -414,6 +414,8 @@ class Analysis(Elementary):
     # region TIME AND BINNING
 
     def set_bin_size(self, value):
+        if value is None:
+            return
         self.BinSize = value
         self.binning = self.__get_binning()
         self.time_binning = self.get_time_binning()
@@ -479,8 +481,8 @@ class Analysis(Elementary):
         self.format_histo(gr, x_tit='Entry Number', y_tit='Time [s]', y_off=1.5)
         self.draw_histo(gr, show=show, draw_opt='al', lm=.13, rm=.08)
 
-    def get_time_bins(self, binning):
-        self.set_bin_size(binning)
+    def get_time_bins(self, evts_per_bin=None):
+        self.set_bin_size(evts_per_bin)
         return [len(self.time_binning) - 1, array([t / 1000. for t in self.time_binning], 'd')]
 
     def get_bins(self, binning):
