@@ -224,7 +224,7 @@ class AnalysisCollection(Elementary):
 
         self.start_pbar(self.NRuns)
         for i, (key, ana) in enumerate(self.collection.iteritems()):
-            ana.draw_pulse_height(corr=True, show=False)
+            ana.draw_pulse_height(corr=True, show=False)[1]
             fit = ana.PulseHeight.Fit('pol1', 'qs')
             x = ana.run.RunInfo['dia{nr}hv'.format(nr=self.FirstAnalysis.run.channels.index(self.channel) + 1)]
             s, e = fit.Parameter(1), fit.ParError(1)
@@ -246,13 +246,27 @@ class AnalysisCollection(Elementary):
             phs = OrderedDict()
             sys_errors = self.get_repr_errors(80, show=False)
             for i, (key, ana) in enumerate(self.collection.iteritems()):
-                ph = ana.draw_pulse_height(binning=binning, corr=True, show=False, save=redo)
+                ph = ana.draw_pulse_height(binning=binning, corr=True, show=False, redo=redo)[1]
                 ph.Errors[0] += sys_errors[1] / sys_errors[0] * ph.Parameter(0)
                 phs[key] = {'flux': ana.run.Flux, 'ph': ph}
             return phs
 
         pulse_heights = func() if redo else None
         return self.do_pickle(pickle_path, func, pulse_heights)
+
+    def draw_full_pulse_height(self, evts_per_bin=10000, show=True, rel_t=True, redo=False):
+        histos = [ana.draw_pulse_height(evts_per_bin, corr=True, save=redo) for ana in self.collection.itervalues()]
+        h1 = TH1F('hfph', 'Pulse Height for Run Plan {n}'.format(n=self.RunPlan), *self.get_binning(evts_per_bin, t_bins=True))
+        i_bin = 0
+        for h in histos:
+            for i in xrange(1, h.GetNbinsX() + 1):
+                h1.SetBinContent(i_bin + 1, h.GetBinContent(i))
+                h1.SetBinError(i_bin + 1, h.GetBinError(i))
+                i_bin += 1
+            i_bin += 1
+        self.format_histo(h1, x_tit='Time [hh:mm]', y_tit='Mean Pulse Height [au]', y_off=.8, fill_color=self.FillColor, stats=0, y_range=[0, 105])
+        set_time_axis(h1, off=self.FirstAnalysis.run.startTime / 1000 if rel_t else 0)
+        self.save_histo(h1, 'FullPulseHeight', show=show, draw_opt='hist', x_fac=1.5, y_fac=.75, lm=.065)
 
     def draw_pulse_heights(self, binning=10000, flux=True, raw=False, all_corr=False, show=True, save_plots=True, vs_time=False, fl=True, save_comb=True, y_range=None, redo=False):
 
@@ -281,11 +295,11 @@ class AnalysisCollection(Elementary):
             i, j = 0, 0
             self.start_pbar(self.NRuns)
             for key, ana in self.collection.iteritems():
-                fit1 = ana.draw_pulse_height(binning, corr=True, save=redo)
+                fit1 = ana.draw_pulse_height(binning, corr=True, redo=redo)[1]
                 if all_corr:
-                    fit2 = ana.draw_pulse_height(binning, bin_corr=True, save=False)
-                    fit3 = ana.draw_pulse_height(binning, off_corr=True, save=False, corr=False)
-                    fit4 = ana.draw_pulse_height(binning, corr=False, save=False)
+                    fit2 = ana.draw_pulse_height(binning, bin_corr=True, show=False)[1]
+                    fit3 = ana.draw_pulse_height(binning, off_corr=True, show=False, corr=False)[1]
+                    fit4 = ana.draw_pulse_height(binning, corr=False, show=False)[1]
                 x = ana.run.Flux if flux else key
                 if vs_time:
                     self.set_root_output(False)
