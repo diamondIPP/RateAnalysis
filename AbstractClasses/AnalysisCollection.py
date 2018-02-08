@@ -224,7 +224,7 @@ class AnalysisCollection(Elementary):
 
         self.start_pbar(self.NRuns)
         for i, (key, ana) in enumerate(self.collection.iteritems()):
-            ana.draw_pulse_height(corr=True, show=False)[1]
+            ana.draw_pulse_height(corr=True, show=False)
             fit = ana.PulseHeight.Fit('pol1', 'qs')
             x = ana.run.RunInfo['dia{nr}hv'.format(nr=self.FirstAnalysis.run.channels.index(self.channel) + 1)]
             s, e = fit.Parameter(1), fit.ParError(1)
