@@ -5,4 +5,4 @@
 - numpy
 - screeninfo
 - progressbar
-- dispy
+- uncertainties
