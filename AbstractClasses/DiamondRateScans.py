@@ -11,12 +11,13 @@ from Utils import *
 from argparse import ArgumentParser
 from RunSelection import RunSelection
 from Run import Run
-from json import load, dump
+from json import load, dump, loads
 from collections import OrderedDict, Counter
 from ROOT import TMultiGraph, TGraphErrors, kRed, kOrange, kBlue, kGreen, kCyan, kViolet, kPink, kYellow, gStyle, TF1, TH2F, TH1F, TGraph2DErrors
 import pickle
 from numpy import sqrt
 from re import split
+from uncertainties.unumpy import uarray
 
 
 class DiaScans(Elementary):
@@ -116,7 +117,7 @@ class DiaScans(Elementary):
             return tcs
 
     def load_all_runplans(self):
-        runplan_path = self.get_program_dir() + self.MainConfigParser.get('MISC', 'runplan_file')
+        runplan_path = join(self.Dir, self.MainConfigParser.get('MISC', 'runplan_file'))
         f = open(runplan_path, 'r')
         runplans = load(f)
         f.close()
@@ -597,6 +598,28 @@ class DiaScans(Elementary):
         errors = [d['ph'].ParError(0) * err_scale for d in dic.itervalues()]
         return values, errors
 
+    def draw_beam_induced_currents(self, show=True):
+        parser = ConfigParser()
+        parser.read(join(self.Dir, 'Runinfos', 'beam_induced_currents.ini'))
+        ymin, ymax, rate, tcs, min_err, max_err, phs = [array(loads(parser.get('MAIN', opt))) for opt in ['min', 'max', 'rate', 'tc', 'min_err', 'max_err', 'pulse_height']]
+        ymin, ymax = uarray(ymin, min_err), uarray(ymax, max_err)
+        rate = uarray(rate, rate * .1)
+        phs = uarray(phs, phs * .02)
+        yvals = (ymax - ymin) / rate / phs
+        yvals = yvals / yvals[0].n
+        irrads = {}
+        sel = self.RunSelections[0]
+        for tc in tcs:
+            sel.set_test_campaign(tc)
+            irrads[tc] = float(sel.get_irradiation('II6-B2')) / 1e14
+        xvals = [irrads[tc] for tc in tcs]
+        g = self.make_tgrapherrors('gbic', 'Beam Induced Currents')
+        for i, (x, y) in enumerate(zip(xvals, yvals)):
+            g.SetPoint(i, x, y.n)
+            g.SetPointError(i, x * .1, y.s)
+        self.format_histo(g, y_tit='Beam Induced Current / Pulse Height', x_tit='Irradiation [1e14 n/cm^{2}]')
+        self.save_histo(g, 'BeamInducedErrors', draw_opt='alp', show=show)
+
     def add_selection(self):
         name = raw_input('Enter the name of the selection: ')
         self.Selections[name] = {} if name not in self.Selections else self.Selections[name]
@@ -621,7 +644,7 @@ class DiaScans(Elementary):
 
 if __name__ == '__main__':
     main_parser = ArgumentParser()
-    main_parser.add_argument('sel', nargs='?', default='S129-neg')
+    main_parser.add_argument('sel', nargs='?', default='test')
     main_parser.add_argument('-v', action='store_true')
     args = main_parser.parse_args()
     print_banner('STARTING DIAMOND RATE SCAN COLLECTION OF SELECTION {0}'.format(args.sel))
