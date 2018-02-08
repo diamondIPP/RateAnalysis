@@ -255,7 +255,7 @@ class AnalysisCollection(Elementary):
         return self.do_pickle(pickle_path, func, pulse_heights)
 
     def draw_full_pulse_height(self, evts_per_bin=10000, show=True, rel_t=True, redo=False):
-        histos = [ana.draw_pulse_height(evts_per_bin, corr=True, save=redo) for ana in self.collection.itervalues()]
+        histos = [ana.draw_pulse_height(evts_per_bin, corr=True, redo=redo, show=False)[0] for ana in self.collection.itervalues()]
         h1 = TH1F('hfph', 'Pulse Height for Run Plan {n}'.format(n=self.RunPlan), *self.get_binning(evts_per_bin, t_bins=True))
         i_bin = 0
         for h in histos:
