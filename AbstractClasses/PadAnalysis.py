@@ -681,7 +681,7 @@ class PadAnalysis(Analysis):
     # ==========================================================================
     # region SIGNAL/PEDESTAL
     def print_off_results(self, prnt=True):
-        ph, ped, pul = self.draw_pulse_height(save=False), self.Pedestal.draw_disto_fit(save=False), self.Pulser.draw_distribution_fit(save=False)
+        ph, ped, pul = self.draw_pulse_height(show=False)[1], self.Pedestal.draw_disto_fit(save=False), self.Pulser.draw_distribution_fit(save=False)
         string = '{0:3.2f} {1:3.2f} {2:3.2f}'.format(ph.Parameter(0), ped.Parameter(1), pul.Parameter(1))
         if prnt:
             print 'Signal\tPedest.\tPulser'
@@ -716,8 +716,7 @@ class PadAnalysis(Analysis):
         self.save_histo(h, 'SignalTime', show, lm=.12, draw_opt='colz', rm=.15)
         return h
 
-    def draw_pulse_height(self, show=True, binning=10000, save=True, corr=True, sig=None):
-        show = False if not save else show
+    def draw_pulse_height(self, binning=10000, redo=False, corr=True, sig=None, rel_t=True, show=True):
 
         sig = self.SignalName if sig is None else sig
         bin_size = binning if binning is not None else self.BinSize
@@ -726,100 +725,38 @@ class PadAnalysis(Analysis):
         picklepath = self.make_pickle_path('Ph_fit', None, self.RunNumber, self.channel, suf=suffix)
 
         def func():
-
             signal = self.generate_signal_name(self.SignalName if sig is None else sig, corr)
-            if binning is not None:
-                self.set_bin_size(binning)
-            gr = self.make_tgrapherrors('gr_ph', 'Pulse Height Evolution')
-            event_bins = self.binning + ([self.run.endEvent] if self.n_bins == 1 else [])
-            time_bins = self.get_minute_time_binning()[1:]
-            for i in xrange(len(event_bins) - 1):
-                n = self.tree.Draw(signal, self.Cut.all_cut, 'goff', event_bins[i + 1] - event_bins[i], event_bins[i])
-                if n:
-                    m, s = calc_mean([self.tree.GetV1()[j] for j in xrange(n)])
-                    gr.SetPoint(i, (time_bins[i + 1] + time_bins[i]) / 2., m)
-                    gr.SetPointError(i, 0, s / sqrt(n))
-            set_statbox(entries=4, only_fit=True)
-            gr.GetXaxis().SetLimits(0, time_bins[-1])
-            self.format_histo(gr, x_tit='Time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6)
-            self.draw_histo(gr, show=show, lm=.14, draw_opt='apl')
-            fit_par = gr.Fit('pol0', 'qs', '', 0, self.__get_max_fit_pos(gr))
-            self.save_plots('PulseHeight{0}'.format(self.BinSize), show=show)
-            self.PulseHeight = gr
-            return FitRes(fit_par)
+            prof = TProfile('pph', 'Pulse Height Evolution', *self.get_time_bins(binning))
+            self.tree.Draw('{sig}:time/1000.>>pph'.format(sig=signal), self.Cut.all_cut, 'goff')
+            self.PulseHeight = prof
+            return prof
 
-        fit = func() if save else None
-        fit = self.do_pickle(picklepath, func, fit)
+        p = func() if redo else None
+        p = self.do_pickle(picklepath, func, p)
+        set_statbox(entries=2, only_fit=True, w=.3)
+        y_vals = [p.GetBinContent(i) for i in xrange(1, p.GetNbinsX() + 1)]
+        self.format_histo(p, name='Fit Result', x_tit='Time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6, x_range=[self.run.startTime / 1000, self.get_time_bins()[1][-1]],
+                          t_ax_off=self.run.startTime / 1000 if rel_t else 0, y_range=increased_range([min(y_vals), max(y_vals)], .5, .5), ndivx=505)
+        self.draw_histo(p, show=show, lm=.14)
+        fit = self.fit_pulse_height(p, picklepath)
+        self.save_plots('PulseHeight{0}'.format(self.BinSize), show=show)
+        return p, fit
+
+    def fit_pulse_height(self, p, picklepath):
+        fit = p.Fit('pol0', 'qs', '', 0, self.__get_max_fit_pos(p))
         kinder_pickle(picklepath, fit)
-        return fit
+        return FitRes(fit)
 
     @staticmethod
-    def __get_max_fit_pos(gr):
+    def __get_max_fit_pos(h):
         """ look for huge fluctiations in ph graph and return last stable point"""
-        sum_ph = gr.GetY()[0]
-        for i in xrange(1, gr.GetN()):
-            sum_ph += gr.GetY()[i]
-            if gr.GetY()[i] < .7 * sum_ph / (i + 1):
-                log_warning('Found huge ph fluctiation! Stopping Fit! y value = {y}, mean_y = {m}'.format(y=gr.GetY()[i], m=sum_ph / (i + 1)))
-                return gr.GetX()[i - 1]
-        return gr.GetX()[gr.GetN() - 1] + 10
-
-    def draw_pulse_height_old(self, binning=None, show=True, save=True, evnt_corr=True, sig=None, langau=False):
-        show = False if not save else show
-        signal = self.SignalName if sig is None else sig
-        bin_size = binning if binning is not None else self.BinSize
-        correction = '' if not evnt_corr else 'eventwise'
-        peak_int = self.get_all_signal_names()[sig][1:] if sig is not None else self.PeakIntegral
-        suffix = '{bins}_{cor}_{reg}{int}'.format(bins=bin_size, cor=correction, reg=self.SignalRegion, int=peak_int)
-        picklepath = 'Configuration/Individual_Configs/Ph_fit/{tc}_{run}_{ch}_{suf}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.RunNumber, ch=self.channel, suf=suffix)
-
-        self.SignalTime = None
-
-        def func():
-            self.log_info('drawing pulse height fit for run {run} and {dia}...'.format(run=self.RunNumber, dia=self.DiamondName))
-            if binning is not None:
-                self.set_bin_size(binning)
-            tit_suffix = 'with eventwise Pedestal Correction' if evnt_corr else ''
-            gr = self.make_tgrapherrors('signal', 'Pulse Height Evolution Bin{0} '.format(self.BinSize) + tit_suffix)
-            sig_time = self.make_signal_time_histos(evnt_corr=evnt_corr, signal_name=signal, show=False)
-            empty_bins = 0
-            count = 0
-            self.set_root_output(False)
-            if sig_time.GetEntries() == 0:
-                log_warning('Empty histogram')
-                return FitRes()
-            # self.start_pbar(self.n_bins)
-            for i in xrange(self.n_bins - 1):
-                h_proj = sig_time.ProjectionY(str(i), i + 1, i + 1)
-                # self.ProgressBar.update(i)
-                if h_proj.GetEntries() > 10:
-                    langau_fit = self.fit_langau(h_proj, 100) if langau else None
-                    i_mean = h_proj.GetMean() if not langau else langau_fit.Mean(0, 3000)
-                    i_mean_err = h_proj.GetRMS() / sqrt(h_proj.GetEntries())
-                    gr.SetPoint(count, (self.time_binning[i] - self.run.startTime) / 60e3, i_mean)
-                    gr.SetPointError(count, 0, i_mean_err)
-                    count += 1
-                else:
-                    empty_bins += 1
-            if empty_bins:
-                self.log_info('Empty proj. bins:\t{0}/{1}'.format(empty_bins, self.n_bins))
-                if not self.n_bins - empty_bins > 1:
-                    log_warning('graph containts not more than one point!')
-                    return FitRes()
-            set_statbox(entries=4, only_fit=True)
-            self.format_histo(gr, x_tit='Time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6)
-            # excludes points that are too low for the fit
-            max_fit_pos = self.__get_max_fit_pos(gr)
-            self.draw_histo(gr, '', show, lm=.14, draw_opt='apl')
-            fit_par = gr.Fit('pol0', 'qs', '', 0, max_fit_pos)
-            self.save_plots('PulseHeight{0}'.format(self.BinSize), show=show)
-            self.PulseHeight = gr
-            return FitRes(fit_par)
-
-        fit = func() if save else None
-        fit = self.do_pickle(picklepath, func, fit)
-        kinder_pickle(picklepath, fit)
-        return fit
+        sum_ph = h.GetBinContent(1)
+        for i in xrange(2, h.GetNbinsX() + 1):
+            sum_ph += h.GetBinContent(i)
+            if h.GetBinContent(i) < .7 * sum_ph / (i + 1):
+                log_warning('Found huge ph fluctiation! Stopping Fit! y value = {y}, mean_y = {m}'.format(y=h.GetBinContent(i), m=sum_ph / (i + 1)))
+                return h.GetBinCenter(i - 1)
+        return h.GetBinCenter(h.GetNbinsX()) + 1000
 
     def draw_ph_distribution(self, binning=None, show=True, fit=True, xmin=0, xmax=270., bin_size=.5, save=True):
         if binning is not None:
@@ -840,7 +777,7 @@ class PadAnalysis(Analysis):
         return h
 
     def show_ph_overview(self, binning=None):
-        self.draw_pulse_height(binning=binning, show=False, save=True)
+        self.draw_pulse_height(binning=binning, show=False)
         h1 = self.PulseHeight
         self.format_histo(h1, y_off=1.4)
         h2 = self.draw_ph_distribution(binning=binning, show=False)
@@ -893,7 +830,7 @@ class PadAnalysis(Analysis):
             print '({0:05d})'.format(events),
             stdout.flush()
             if events > 500:
-                ph_fit = self.draw_pulse_height(show=False, save=True)
+                ph_fit = self.draw_pulse_height(show=False)[1]
                 gr.SetPoint(i, peak_pos / 2., ph_fit.Parameter(0))
                 gr.SetPointError(i, 0, ph_fit.ParError(0))
                 i += 1
@@ -954,7 +891,7 @@ class PadAnalysis(Analysis):
             print '\rcalculating pulse height for trigger cell: {0:03d}'.format(tcell),
             self.Cut.set_trigger_cell(tcell, tcell + bins)
             stdout.flush()
-            ph_fit = self.draw_pulse_height(show=False, save=True)
+            ph_fit = self.draw_pulse_height(show=False)[1]
             gr.SetPoint(i, tcell, ph_fit.Parameter(0))
             gr.SetPointError(i, 0, ph_fit.ParError(0))
             i += 1
@@ -1377,7 +1314,7 @@ class PadAnalysis(Analysis):
         for i in xrange(len(xvals) - 1):
             cut = self.Cut.generate_distance(xvals[i], xvals[i + 1])
             self.Cut.all_cut += cut
-            fit = self.draw_pulse_height(show=False, save=True)
+            fit = self.draw_pulse_height(show=False)[1]
             if fit.Parameter(0):
                 gr.SetPoint(j, xvals[i], fit.Parameter(0))
                 gr.SetPointError(j, 0, fit.ParError(0))
@@ -1728,7 +1665,7 @@ class PadAnalysis(Analysis):
         signal = self.SignalName if sig is None else sig
         peak_int = remove_letters(self.get_all_signal_names()[signal])
         ped_fit = self.Pedestal.draw_disto_fit(save=False, name=self.Pedestal.get_signal_name(peak_int=peak_int), show=False)
-        sig_fit = self.draw_pulse_height(corr=True, save=False, sig=signal)
+        sig_fit = self.draw_pulse_height(corr=True, show=False, sig=signal)[1]
         sig_mean = sig_fit.Parameter(0)
         ped_sigma = ped_fit.Parameter(2)
 
