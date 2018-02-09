@@ -716,7 +716,7 @@ class PadAnalysis(Analysis):
         self.save_histo(h, 'SignalTime', show, lm=.12, draw_opt='colz', rm=.15)
         return h
 
-    def draw_pulse_height(self, binning=10000, redo=False, corr=True, sig=None, rel_t=True, show=True):
+    def draw_pulse_height(self, binning=10000, redo=False, corr=True, sig=None, rel_t=True, show=True, save=True):
 
         sig = self.SignalName if sig is None else sig
         bin_size = binning if binning is not None else self.BinSize
@@ -737,9 +737,9 @@ class PadAnalysis(Analysis):
         y_vals = [p.GetBinContent(i) for i in xrange(1, p.GetNbinsX() + 1)]
         self.format_histo(p, name='Fit Result', x_tit='Time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6, x_range=[self.run.startTime / 1000, self.get_time_bins()[1][-1]],
                           t_ax_off=self.run.startTime / 1000 if rel_t else 0, y_range=increased_range([min(y_vals), max(y_vals)], .5, .5), ndivx=505)
-        self.draw_histo(p, show=show, lm=.14)
+        self.draw_histo(p, show=show, lm=.14, prnt=save)
         fit = self.fit_pulse_height(p, picklepath)
-        self.save_plots('PulseHeight{0}'.format(self.BinSize), show=show)
+        self.save_plots('PulseHeight{0}'.format(self.BinSize), show=show, save=save)
         return p, fit
 
     def fit_pulse_height(self, p, picklepath):
