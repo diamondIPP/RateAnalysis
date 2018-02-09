@@ -520,8 +520,8 @@ class AnalysisCollection(Elementary):
         set_statbox(entries=2, only_fit=True)
         gr.Fit('pol0', 'qs{s}'.format(s='' if show else '0'))
         self.format_histo(gr, x_tit='Flux [kHz/cm^{2}]', y_tit='Mean Pulse Height [au]', y_off=1.7)
-        self.save_histo(gr, 'ReprErrors', show, draw_opt='ap', lm=.115, prnt=show)
-        return mean(vals), std(vals)
+        self.save_histo(gr, 'ReprErrors', show, draw_opt='ap', lm=.14, prnt=show)
+        return weighted_avrg_std(vals, val_errors)
 
     def draw_ph_distributions(self, binning=5000, fsh13=.5, fs11=65, show=True):
         runs = self.get_runs_by_collimator(fsh13=fsh13, fs11=fs11)
