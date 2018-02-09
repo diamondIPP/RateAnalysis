@@ -504,6 +504,13 @@ def make_bias_str(bias):
     return '{s}{bias}V'.format(bias=int(bias), s='+' if bias > 0 else '')
 
 
+def make_graph_args(x, y, ex=None, ey=None):
+    if len(x) != len(y):
+        log_warning('Arrays have different size!')
+        return
+    return [len(x), array(x, 'd'), array(y, 'd'), array(ex, 'd') if ex is not None else 0, array(ey, 'd') if ey is not None else 0]
+
+
 def markers(i):
     return (range(20, 24) + [29, 33, 34])[i]
 
