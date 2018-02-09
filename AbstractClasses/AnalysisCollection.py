@@ -513,13 +513,10 @@ class AnalysisCollection(Elementary):
 
     def get_repr_errors(self, flux, show=True):
         runs = self.get_runs_below_flux(flux)
-        vals = [self.collection[run].draw_pulse_height(save=False).Parameter(0) for run in runs]
-        gr = self.make_tgrapherrors('gr_re', 'Pulse Heights Below {f} kHz/cm^{{2}}'.format(f=flux))
-        for i, run in enumerate(runs):
-            ana = self.collection[run]
-            fit = ana.draw_pulse_height(save=False)
-            gr.SetPoint(i, ana.run.Flux, fit.Parameter(0))
-            gr.SetPointError(i, 0, fit.ParError(0))
+        vals = [self.collection[run].draw_pulse_height(show=False)[1].Parameter(0) for run in runs]
+        val_errors = [self.collection[run].draw_pulse_height(show=False)[1].ParError(0) for run in runs]
+        fluxes = array([self.get_fluxes()[run] for run in runs], 'd')
+        gr = self.make_tgrapherrors('gr_re', 'Pulse Heights Below {f} kHz/cm^{{2}}'.format(f=flux), x=fluxes, y=vals, ex=val_errors, ey=fluxes * .1)
         set_statbox(entries=2, only_fit=True)
         gr.Fit('pol0', 'qs{s}'.format(s='' if show else '0'))
         self.format_histo(gr, x_tit='Flux [kHz/cm^{2}]', y_tit='Mean Pulse Height [au]', y_off=1.7)
