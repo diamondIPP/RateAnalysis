@@ -391,7 +391,7 @@ class Elementary(object):
 
     @staticmethod
     def make_tgrapherrors(name, title, color=1, marker=20, marker_size=1, width=1, asym_err=False, style=1, x=None, y=None, ex=None, ey=None):
-        if (x and y) is None:
+        if (list(x) and list(y)) is None:
             gr = TGraphErrors() if not asym_err else TGraphAsymmErrors()
         else:
             gr = TGraphErrors(*make_graph_args(x, y, ex, ey)) if not asym_err else TGraphAsymmErrors(*make_graph_args(x, y, ex, ey))
