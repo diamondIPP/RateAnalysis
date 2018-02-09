@@ -2,7 +2,7 @@
 # IMPORTS
 # ==============================================
 from argparse import ArgumentParser
-from numpy import log, zeros, std, mean, concatenate
+from numpy import log, zeros, mean, concatenate
 from functools import partial
 
 from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1, TH1F, TH2F, TH2I, TProfile2D
@@ -289,13 +289,13 @@ class AnalysisCollection(Elementary):
             gr_last = self.make_tgrapherrors('gLast', 'last run', marker=23, color=2, marker_size=marker_size * 2)
             gr_errors = self.make_tgrapherrors('gFullError', 'stat. + repr. error', marker=0, color=602, marker_size=0)
 
-            flux_errors = self.get_repr_errors(80, False)
+            flux_errors = self.get_repr_errors(105, show=False)
             log_message('Getting pulse heights{0}'.format(' vs time' if vs_time else ''))
             rel_sys_error = flux_errors[1] / flux_errors[0]
             i, j = 0, 0
             self.start_pbar(self.NRuns)
             for key, ana in self.collection.iteritems():
-                fit1 = ana.draw_pulse_height(binning, corr=True, redo=redo)[1]
+                fit1 = ana.draw_pulse_height(binning, corr=True, redo=redo, show=False)[1]
                 if all_corr:
                     fit2 = ana.draw_pulse_height(binning, bin_corr=True, show=False)[1]
                     fit3 = ana.draw_pulse_height(binning, off_corr=True, show=False, corr=False)[1]
@@ -513,8 +513,8 @@ class AnalysisCollection(Elementary):
 
     def get_repr_errors(self, flux, show=True):
         runs = self.get_runs_below_flux(flux)
-        vals = [self.collection[run].draw_pulse_height(show=False)[1].Parameter(0) for run in runs]
-        val_errors = [self.collection[run].draw_pulse_height(show=False)[1].ParError(0) for run in runs]
+        vals = [self.collection[run].draw_pulse_height(show=False, save=False)[1].Parameter(0) for run in runs]
+        val_errors = [self.collection[run].draw_pulse_height(show=False, save=False)[1].ParError(0) for run in runs]
         fluxes = array([self.get_fluxes()[run] for run in runs], 'd')
         gr = self.make_tgrapherrors('gr_re', 'Pulse Heights Below {f} kHz/cm^{{2}}'.format(f=flux), x=fluxes, y=vals, ey=val_errors, ex=fluxes * .1)
         set_statbox(entries=2, only_fit=True)
