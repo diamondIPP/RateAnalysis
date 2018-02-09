@@ -390,11 +390,11 @@ class Elementary(object):
             gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
 
     @staticmethod
-    def make_tgrapherrors(name, title, color=1, marker=20, marker_size=1, width=1, asym_err=False, style=1, x=None, y=None):
+    def make_tgrapherrors(name, title, color=1, marker=20, marker_size=1, width=1, asym_err=False, style=1, x=None, y=None, ex=None, ey=None):
         if (x and y) is None:
             gr = TGraphErrors() if not asym_err else TGraphAsymmErrors()
         else:
-            gr = TGraphErrors(len(x), array(x, 'd'), array(y, 'd')) if not asym_err else TGraphAsymmErrors(len(x), array(x, 'd'), array(y), 'd')
+            gr = TGraphErrors(*make_graph_args(x, y, ex, ey)) if not asym_err else TGraphAsymmErrors(*make_graph_args(x, y, ex, ey))
         gr.SetTitle(title)
         gr.SetName(name)
         gr.SetMarkerStyle(marker)
