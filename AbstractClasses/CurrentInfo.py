@@ -44,7 +44,6 @@ class Currents(Elementary):
             return
 
         # analysis/run info
-        self.TimeOffset = self.run_config_parser.getint('BASIC', 'hvtimeoffset')
         if self.IsCollection:
             self.RunPlan = analysis.RunPlan
         self.RunNumber = self.load_run_number()
@@ -175,15 +174,13 @@ class Currents(Elementary):
         ana = self.Analysis.FirstAnalysis if self.IsCollection else self.Analysis
         if ana is None:
             return
-        t = datetime.fromtimestamp(ana.run.StartTime) if hasattr(ana.run, 'StartTime') else ana.run.log_start + timedelta(hours=self.TimeOffset)
-        return t + timedelta(seconds=mktime(datetime.strptime(ana.run.log_start.strftime('%Y%m%d'), '%Y%m%d').timetuple())) if t.year < 2000 else t
+        return datetime.fromtimestamp(ana.run.StartTime) if hasattr(ana.run, 'StartTime') else ana.run.LogStart
 
     def load_stop_time(self):
         ana = self.Analysis.get_last_analysis() if self.IsCollection else self.Analysis
         if ana is None:
             return
-        t = datetime.fromtimestamp(ana.run.EndTime / 1000) if hasattr(ana.run, 'EndTime') else ana.run.log_stop + timedelta(hours=self.TimeOffset)
-        return t + timedelta(seconds=mktime(datetime.strptime(ana.run.log_stop.strftime('%Y%m%d'), '%Y%m%d').timetuple())) if t.year < 2000 else t
+        return datetime.fromtimestamp(ana.run.EndTime) if hasattr(ana.run, 'EndTime') else ana.run.LogEnd
 
     def set_start_stop(self, sta, sto=None):
         if not sta.isdigit():

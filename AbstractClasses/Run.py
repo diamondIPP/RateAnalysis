@@ -61,10 +61,9 @@ class Run(Elementary):
         self.Flux = self.calculate_flux()
 
         # times
-        self.log_start = None
-        self.log_stop = None
-        self.Duration = None
-        self.__load_timing()
+        self.LogStart = self.load_log_start()
+        self.LogEnd = self.load_log_stop()
+        self.Duration = self.LogEnd - self.LogStart
 
         self.converter = Converter(self)
         if self.set_run(run_number, tree):
@@ -198,26 +197,21 @@ class Run(Elementary):
     def load_diamond_names(self):
         return [self.RunInfo['dia{num}'.format(num=i)] for i in xrange(1, len(self.Channels) + 1)]
 
-    def __load_timing(self):
-        try:
-            self.log_start = datetime.strptime(self.RunInfo['starttime0'], "%Y-%m-%dT%H:%M:%SZ")
-            self.log_stop = datetime.strptime(self.RunInfo['endtime'], "%Y-%m-%dT%H:%M:%SZ")
-        except ValueError:
-            try:
-                self.log_start = datetime.strptime(self.RunInfo['starttime0'], "%H:%M:%S")
-                self.log_stop = datetime.strptime(self.RunInfo['endtime'], "%H:%M:%S")
-            except ValueError as err:
-                print err
-                return
-        self.Duration = self.log_stop - self.log_start
+    def load_log_start(self):
+        t = self.RunInfo['starttime0']
+        return datetime.strptime(t, '%Y-%m-%dT%H:%M:%SZ' if 'Z' in t else '%H:%M:%S') + timedelta(hours=self.run_config_parser.getint('BASIC', 'hvtimeoffset'))
+
+    def load_log_stop(self):
+        t = self.RunInfo['endtime']
+        return datetime.strptime(t, '%Y-%m-%dT%H:%M:%SZ' if 'Z' in t else '%H:%M:%S') + timedelta(hours=self.run_config_parser.getint('BASIC', 'hvtimeoffset'))
 
     def load_start_time(self):
         time_stamp = self.get_time_at_event(self.startEvent) / 1000
-        return time_stamp if datetime.fromtimestamp(time_stamp).year < 2000 else mktime(self.log_start.timetuple())
+        return time_stamp if datetime.fromtimestamp(time_stamp).year > 2000 else mktime(self.LogStart.timetuple())
 
     def load_end_time(self):
         time_stamp = self.get_time_at_event(self.endEvent) / 1000
-        return time_stamp if datetime.fromtimestamp(time_stamp).year < 2000 else mktime(self.log_stop.timetuple())
+        return time_stamp if datetime.fromtimestamp(time_stamp).year > 2000 else mktime(self.LogEnd.timetuple())
 
     def load_n_planes(self):
         if self.has_branch('cluster_col'):

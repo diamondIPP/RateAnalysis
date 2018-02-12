@@ -69,7 +69,7 @@ class AnalysisCollection(Elementary):
         self.PeakDistribution = None
 
         # sub classes
-        self.StartTime = float(self.FirstAnalysis.run.log_start.strftime('%s'))
+        self.StartTime = float(self.FirstAnalysis.run.LogStart.strftime('%s'))
         self.VoltageScan = VoltageScan(self)
         self.InfoLegend = InfoLegend(self)
         self.Currents = Currents(self)
@@ -304,7 +304,7 @@ class AnalysisCollection(Elementary):
                 if vs_time:
                     self.set_root_output(False)
                     x_err = ana.run.Duration.seconds / 2.
-                    x = int(ana.run.log_start.strftime('%s')) + x_err - self.StartTime
+                    x = int(ana.run.LogStart.strftime('%s')) + x_err - self.StartTime
                     gr5.SetPoint(i, x, fit1.Parameter(0))
                     gr5.SetPointError(i, x_err, 0)
                     l1 = self.draw_tlatex(gr5.GetX()[i] - x_err, gr5.GetY()[i] + .03, '{0:5.0f}'.format(ana.run.Flux), color=1, align=10, size=.04)
@@ -631,7 +631,7 @@ class AnalysisCollection(Elementary):
                 ped_err = ped_fit.ParError(par)
                 if vs_time:
                     xerr = ana.run.Duration.seconds / 2.
-                    x = int(ana.run.log_start.strftime('%s')) + xerr - self.StartTime
+                    x = int(ana.run.LogStart.strftime('%s')) + xerr - self.StartTime
                 y = fit.Parameter(par)
                 y0 = y if y0 is None else y0
                 yerr = sqrt(pow(fit.ParError(par), 2) + pow(ped_err, 2))
