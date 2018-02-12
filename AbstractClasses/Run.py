@@ -206,12 +206,10 @@ class Run(Elementary):
         return datetime.strptime(t, '%Y-%m-%dT%H:%M:%SZ' if 'Z' in t else '%H:%M:%S') + timedelta(hours=self.run_config_parser.getint('BASIC', 'hvtimeoffset'))
 
     def load_start_time(self):
-        time_stamp = self.get_time_at_event(self.startEvent) / 1000
-        return time_stamp if datetime.fromtimestamp(time_stamp).year > 2000 else mktime(self.LogStart.timetuple())
+        return self.get_time_at_event(self.startEvent) / 1000
 
     def load_end_time(self):
-        time_stamp = self.get_time_at_event(self.endEvent) / 1000
-        return time_stamp if datetime.fromtimestamp(time_stamp).year > 2000 else mktime(self.LogEnd.timetuple())
+        return self.get_time_at_event(self.endEvent) / 1000
 
     def load_n_planes(self):
         if self.has_branch('cluster_col'):

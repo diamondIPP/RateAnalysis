@@ -174,13 +174,15 @@ class Currents(Elementary):
         ana = self.Analysis.FirstAnalysis if self.IsCollection else self.Analysis
         if ana is None:
             return
-        return datetime.fromtimestamp(ana.run.StartTime) if hasattr(ana.run, 'StartTime') else ana.run.LogStart
+        t = datetime.fromtimestamp(ana.run.StartTime) if hasattr(ana.run, 'StartTime') else ana.run.LogStart
+        return ana.run.LogStart if t.year < 2000 else t
 
     def load_stop_time(self):
         ana = self.Analysis.get_last_analysis() if self.IsCollection else self.Analysis
         if ana is None:
             return
-        return datetime.fromtimestamp(ana.run.EndTime) if hasattr(ana.run, 'EndTime') else ana.run.LogEnd
+        t = datetime.fromtimestamp(ana.run.EndTime) if hasattr(ana.run, 'EndTime') else ana.run.LogEnd
+        return ana.run.LogEnd if t.year < 2000 else t
 
     def set_start_stop(self, sta, sto=None):
         if not sta.isdigit():
