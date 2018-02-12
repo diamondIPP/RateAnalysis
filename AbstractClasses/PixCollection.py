@@ -21,7 +21,7 @@ class PixCollection(AnalysisCollection):
 
     def add_analyses(self):
         """ Creates and adds Analysis objects with run numbers in runs. """
-        for run in self.runs:
+        for run in self.Runs:
             run_class = Run(run, tree=self.Threads[run].Tuple, verbose=self.verbose)
             analysis = PixAnalysis(run_class, self.selection.SelectedDiamondNr)
             self.collection[analysis.run.RunNumber] = analysis
