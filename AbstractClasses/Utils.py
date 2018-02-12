@@ -354,7 +354,7 @@ def set_drawing_range(h, legend=True, lfac=None, rfac=None, thresh=10):
 
 def set_time_axis(histo, form='%H:%M', off=0):
     histo.GetXaxis().SetTimeFormat(form)
-    histo.GetXaxis().SetTimeOffset(-off - 3600)
+    histo.GetXaxis().SetTimeOffset(-off - 3600 if off else 0)
     histo.GetXaxis().SetTimeDisplay(1)
 
 
