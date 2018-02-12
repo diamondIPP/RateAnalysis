@@ -50,7 +50,7 @@ class PulserAnalysis(Elementary):
         self.set_root_output(False)
         h = TProfile('hpr', 'Pulser Rate', *self.Ana.Plots.get_binning(evts_per_bin, time_bins=vs_time))
         self.Tree.Draw('pulser*100:{v}>>hpr'.format(v='time / 1000.' if vs_time else 'Entry$'), cut, 'goff')
-        set_time_axis(h, off=self.Ana.run.startTime / 1000 if rel_t else 0) if vs_time else do_nothing()
+        set_time_axis(h, off=self.Ana.run.StartTime if rel_t else 0) if vs_time else do_nothing()
         self.format_histo(h, x_tit='Time [hh:mm]' if vs_time else 'Event Number', y_tit='Pulser Fraction [%]', y_off=.8, fill_color=self.FillColor, y_range=[0, 105], markersize=.7, stats=0)
         self.save_histo(h, 'PulserRate', show, lm=.08, draw_opt='bare', x_fac=1.5, y_fac=.75)
         return h
@@ -189,7 +189,7 @@ class PulserAnalysis(Elementary):
         for i, start in enumerate(start_events):
             fit = self.draw_distribution_fit(show=False, start=start, events=events, binning=200, corr=corr)
             par = 1 if _mean else 2
-            gr.SetPoint(i, (self.Ana.run.get_time_at_event(start) - self.Ana.run.startTime) / 60e3, fit.Parameter(par))
+            gr.SetPoint(i, (self.Ana.run.get_time_at_event(start) - self.Ana.run.StartTime * 1000) / 60e3, fit.Parameter(par))
             gr.SetPointError(i, 0, fit.ParError(par))
         self.save_histo(gr, 'Pulser{0}VsTime'.format(mode), show, draw_opt='alp')
 

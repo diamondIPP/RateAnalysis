@@ -135,7 +135,7 @@ class PixAnalysis(Analysis):
                 graphs[i].SetPoint(ibin, t, fits[i % 2].Parameter(1 + i % 2))
                 graphs[i].SetPointError(ibin, 0, fits[i % 2].ParError(1 + i % 2))
         for i in xrange(4):
-            set_time_axis(graphs[i], off=self.run.startTime / 1000)
+            set_time_axis(graphs[i], off=self.run.StartTime)
             self.draw_histo(graphs[i], draw_opt='alp')
         return h
     # endregion OCCUPANCY
@@ -212,7 +212,7 @@ class PixAnalysis(Analysis):
         cut_var = 'charge_all_ROC{d}'.format(d=self.Dut) if not adc else 'adc'
         self.tree.Draw('{v}:time / 1000. >> h_ph'.format(v=cut_var), cut_string, 'goff')
         self.format_histo(h, x_tit='Time [hh:mm]', y_tit='Cluster Charge [e]' if not adc else 'adc', z_tit='Number of Entries', y_off=2.05, z_off=1.3, stats=0)
-        set_time_axis(h, off=self.run.startTime / 1000)
+        set_time_axis(h, off=self.run.StartTime)
         h.SetNdivisions(510)
         self.save_histo(h, 'PulseHeightVsEvent', show, rm=.15, lm=.16, draw_opt='colz', save=show)
         return h
@@ -228,7 +228,7 @@ class PixAnalysis(Analysis):
         self.draw_histo(h, show=show)
         fit_par = h.Fit('pol0', 'qs')
         self.format_histo(h, name='Fit Result', y_off=1.9, y_tit='Pulse Height [e]', x_tit='Time [hh:mm]', markersize=.6)
-        set_time_axis(h, off=self.run.startTime / 1000)
+        set_time_axis(h, off=self.run.StartTime)
         self.save_histo(h, 'PulseHeight', show, lm=.16, draw_opt='e1', save=show, canvas=get_last_canvas())
         return FitRes(fit_par)
 
@@ -410,7 +410,7 @@ class PixAnalysis(Analysis):
         h.BuildOptions(0, 1, 'g')
         avrg, std = weighted_avrg_std([h.GetBinContent(i + 1) for i in xrange(h.GetNbinsX())], [h.GetBinEntries(i + 1) for i in xrange(h.GetNbinsX())])
         l = self.draw_tlatex(.5, .5, 'Efficiency: {v:2.2f} #pm {e:0.2f}'.format(v=avrg, e=std / sqrt(h.GetNbinsX())), ndc=1, align=22)
-        set_time_axis(h, off=self.run.startTime / 1000) if vs_time else do_nothing()
+        set_time_axis(h, off=self.run.StartTime if vs_time else 0)
         self.format_histo(h, x_tit='Time [hh:mm]' if vs_time else 'Event Number', y_tit='Efficiency [%]', y_off=1.4, y_range=[-5, 105], stats=0)
         self.save_histo(h, 'HitEfficiencyROC{n}'.format(n=roc), show, lm=.13, save=save, gridy=True, l=l)
         return avrg
@@ -427,7 +427,7 @@ class PixAnalysis(Analysis):
             leg_string += ' ({v:5.2f}%)'.format(v=eff)
             l1.AddEntry(h, leg_string, 'pl')
         self.format_histo(stack, x_tit='Time [hh:mm]', y_tit='Efficiency [%]', y_off=1.4, ndivx=505, y_range=[-5, 105], stats=0, draw_first=True)
-        set_time_axis(stack, off=self.run.startTime / 1000)
+        set_time_axis(stack, off=self.run.StartTime)
         self.save_histo(stack, 'HitEfficiencies', show, lm=.13, l=l1, draw_opt='nostack', gridy=True)
         self.reset_colors()
         return stack
@@ -640,7 +640,7 @@ class PixAnalysis(Analysis):
                 p = h.Project3D('yz')
                 g.SetPoint(ibin, h.GetXaxis().GetBinCenter(ibin), p.GetCorrelationFactor())
             if vs_time:
-                set_time_axis(g, off=self.run.startTime / 1000)
+                set_time_axis(g, off=self.run.StartTime)
             self.format_histo(g, x_tit='Time [hh::mm]' if vs_time else 'Event Number', y_tit='Correlation Factor', y_off=1.5, y_range=[0, 1])
             self.add_info(start)
             return g

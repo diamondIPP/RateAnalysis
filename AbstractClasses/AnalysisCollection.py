@@ -786,7 +786,7 @@ class AnalysisCollection(Elementary):
                 h.SetBinContent(ibin, g.GetY()[i])
                 ibin += 1
         self.format_histo(h, x_tit='Time [hh:mm]', y_tit='Beam Current [mA]', y_off=.85, fill_color=self.FillColor, stats=0, markersize=.3,
-                          t_ax_off=self.FirstAnalysis.run.startTime / 1000 if rel_t else 0)
+                          t_ax_off=self.FirstAnalysis.run.StartTime if rel_t else 0)
         self.save_histo(h, 'AllBeamRate', show=show, draw_opt='hist', x_fac=1.5, y_fac=.75, lm=.065)
 
     def draw_pulser_rate(self, evts_per_bin=1000, cut=None, rel_t=True, show=True):
@@ -800,7 +800,7 @@ class AnalysisCollection(Elementary):
                 i_bin += 1
             i_bin += 1
         self.format_histo(h1, x_tit='Time [hh:mm]', y_tit='Pulser Rate [%]', y_off=.8, fill_color=self.FillColor, stats=0, y_range=[0, 105])
-        set_time_axis(h1, off=self.FirstAnalysis.run.startTime / 1000 if rel_t else 0)
+        set_time_axis(h1, off=self.FirstAnalysis.run.StartTime if rel_t else 0)
         self.save_histo(h1, 'AllPulserRate', show=show, draw_opt='hist', x_fac=1.5, y_fac=.75, lm=.065)
 
     def draw_pulser_rates(self, show=True, flux=True, real=False):

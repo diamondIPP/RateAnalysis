@@ -705,14 +705,13 @@ class PadAnalysis(Analysis):
             sig_name += '-{pol}*{ped}'.format(ped=self.PedestalName, pol=ped_pol)
         return sig_name
 
-    def make_signal_time_histos(self, signal_name=None, evnt_corr=False, off_corr=False, bin_corr=False, show=True):
+    def make_signal_time_histos(self, signal_name=None, evnt_corr=False, off_corr=False, bin_corr=False, rel_t=False, show=True):
         signal_name = self.generate_signal_name(self.SignalName if signal_name is None else signal_name, evnt_corr, off_corr, bin_corr)
-        time_binning = array(self.get_minute_time_binning())
-        h = TH2D('h_st', 'Signal vs. Time', len(time_binning) - 1, time_binning, 225, -50, 500)
+        h = TH2D('h_st', 'Signal vs. Time', *(self.get_time_bins() + [225, -50, 500]))
         set_statbox(only_entries=True, x=.83)
         gStyle.SetPalette(53)
-        self.tree.Draw('{name}:(time - {s}) / 60000>>h_st'.format(name=signal_name, s=self.run.startTime), self.Cut.all_cut, 'goff')
-        self.format_histo(h, x_tit='Time [min]', y_tit='Pulse Height [au]', y_off=1.4)
+        self.tree.Draw('{name}:time/1000>>h_st'.format(name=signal_name), self.Cut.all_cut, 'goff')
+        self.format_histo(h, x_tit='Time [min]', y_tit='Pulse Height [au]', y_off=1.4, t_ax_off=self.run.StartTime if rel_t else 0)
         self.save_histo(h, 'SignalTime', show, lm=.12, draw_opt='colz', rm=.15)
         return h
 
@@ -735,8 +734,8 @@ class PadAnalysis(Analysis):
         p = self.do_pickle(picklepath, func, p)
         set_statbox(entries=2, only_fit=True, w=.3)
         y_vals = [p.GetBinContent(i) for i in xrange(1, p.GetNbinsX() + 1)]
-        self.format_histo(p, name='Fit Result', x_tit='Time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6, x_range=[self.run.startTime / 1000, self.get_time_bins()[1][-1]],
-                          t_ax_off=self.run.startTime / 1000 if rel_t else 0, y_range=increased_range([min(y_vals), max(y_vals)], .5, .5), ndivx=505)
+        self.format_histo(p, name='Fit Result', x_tit='Time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6, x_range=[self.run.StartTime, self.get_time_bins()[1][-1]],
+                          t_ax_off=self.run.StartTime if rel_t else 0, y_range=increased_range([min(y_vals), max(y_vals)], .5, .5), ndivx=505)
         self.draw_histo(p, show=show, lm=.14, prnt=save)
         fit = self.fit_pulse_height(p, picklepath)
         self.save_plots('PulseHeight{0}'.format(self.BinSize), show=show, save=save)

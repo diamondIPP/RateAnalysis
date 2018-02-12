@@ -8,7 +8,7 @@ from Elementary import Elementary
 from ROOT import TH2F, gStyle, TH1F, TCut, gROOT
 from Utils import set_statbox, set_drawing_range, FitRes, kinder_pickle
 from copy import deepcopy
-from numpy import array, mean
+from numpy import mean
 from collections import OrderedDict
 from InfoLegend import InfoLegend
 
@@ -104,13 +104,13 @@ class PedestalAnalysis(Elementary):
         self.save_histo(h, 'PedSigmaSelection', show=show, logy=True, l=l1, canvas=gROOT.GetListOfCanvases()[-1], draw_opt='same')
         # self.save_plots('PedSigmaSelection', show=show)
 
-    def draw_signal_time(self, signal_name=None, show=True):
+    def draw_signal_time(self, signal_name=None, rel_t=False, show=True):
         signal_name = self.Ana.generate_signal_name(self.SignalName if signal_name is None else signal_name, evnt_corr=False)
-        h = TH2F('h_st', 'Pedestal vs. Time', len(self.Ana.time_binning) - 1, array(self.Ana.get_minute_time_binning()), 160, -80, 80)
+        h = TH2F('h_st', 'Pedestal vs. Time', *(self.Ana.get_time_bins() + [160, -80, 80]))
         set_statbox(only_entries=True, x=.83)
         gStyle.SetPalette(53)
-        self.Tree.Draw('{name}:(time - {s}) / 60000>>h_st'.format(name=signal_name, s=self.Ana.run.startTime), self.Cut.all_cut, 'goff')
-        self.format_histo(h, x_tit='Time [min]', y_tit='Pulse Height [au]', y_off=1.4)
+        self.Tree.Draw('{name}:time/1000 >> h_st'.format(name=signal_name), self.Cut.all_cut, 'goff')
+        self.format_histo(h, x_tit='Time [min]', y_tit='Pulse Height [au]', y_off=1.4, t_ax_off=self.Ana.run.StartTime if rel_t else 0)
         self.save_histo(h, 'PedestalTime', show, lm=.12, draw_opt='colz', rm=.15)
         return h
 

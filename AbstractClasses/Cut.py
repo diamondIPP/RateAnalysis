@@ -332,7 +332,7 @@ class Cut(Elementary):
         bins = int(self.analysis.run.totalMinutes * 60 / bin_size)
         self.set_root_output(0)
         h = TH1F('h_beam_time_', 'Beam Interruptions', bins, 0, self.analysis.run.totalMinutes)
-        self.analysis.tree.Draw('(time - {off}) / 60000.>>h_beam_time_'.format(off=self.analysis.run.startTime), '', 'goff')
+        self.analysis.tree.Draw('(time - {off}) / 60000.>>h_beam_time_'.format(off=self.analysis.run.StartTime), '', 'goff')
         mean_ = mean(sorted([h.GetBinContent(i) for i in xrange(h.GetNbinsX())])[-10:])  # only take the ten highest values to get an estimate of the plateau
         interruptions = []
         jumps = []
@@ -384,7 +384,7 @@ class Cut(Elementary):
     def __create_jump_ranges(self, jumps):
         ex_range = self.CutConfig['JumpExcludeRange']
         interruptions = []
-        time_offset = self.analysis.run.startTime
+        time_offset = self.analysis.run.StartTime
         t_max = (self.analysis.run.get_time_at_event(-1) - time_offset) / 1000.
         last_stop = 0
         n_interr = 0
