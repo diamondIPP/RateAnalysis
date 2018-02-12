@@ -30,12 +30,12 @@ class AnalysisCollection(Elementary):
     current_run_number = -1
 
     def __init__(self, run_selection, threads=None):
+        self.Runs = run_selection.get_selected_runs()
         Elementary.__init__(self, verbose=run_selection.verbose)
         # dict where all analysis objects are saved
         self.collection = OrderedDict()
         self.selection = run_selection
 
-        self.runs = run_selection.get_selected_runs()
         self.Threads = threads
         self.LoadTrees = threads.values()[0].Tuple
         self.Type = run_selection.SelectedType
@@ -87,11 +87,11 @@ class AnalysisCollection(Elementary):
     # ============================================
     # region INIT
     def load_run_config(self):
-        return self.load_run_configs(0)
+        return self.load_run_configs(self.Runs[0])
 
     def add_analyses(self):
         """ Creates and adds Analysis objects with run numbers in runs. """
-        for run in self.runs:
+        for run in self.Runs:
             thread = self.Threads[run]
             run_class = Run(run, tree=thread.Tuple, time=thread.Time, verbose=self.verbose)
             analysis = PadAnalysis(run_class, self.selection.SelectedDiamondNr, self.min_max_rate_runs)
@@ -104,7 +104,7 @@ class AnalysisCollection(Elementary):
         return [i for i in xrange(16) if self.has_bit(binary, i)][dia_nr - 1]
 
     def get_high_low_rate_runs(self):
-        runs = [Run(run_number=run, tree=False) for run in self.runs]
+        runs = [Run(run_number=run, tree=False) for run in self.Runs]
         fluxes = OrderedDict()
         self.log_info('RUN FLUX [kHz/cm2]')
         for run in runs:
@@ -984,7 +984,7 @@ class AnalysisCollection(Elementary):
     def draw_fluxes(self):
         g1 = self.make_tgrapherrors('g_fp', 'Number of Peaks', color=self.get_color())
         pixel_fluxes = [ana.run.Flux / 1000. for ana in self.collection.values()]
-        g2 = self.make_tgrapherrors('g_ff', 'Pixel Fast-OR', x=self.runs, y=pixel_fluxes, color=self.get_color())
+        g2 = self.make_tgrapherrors('g_ff', 'Pixel Fast-OR', x=self.Runs, y=pixel_fluxes, color=self.get_color())
         for i, (run, ana) in enumerate(self.collection.iteritems()):
             flux, err = ana.Peaks.get_flux()
             g1.SetPoint(i, run, flux / 1000.)
@@ -997,7 +997,7 @@ class AnalysisCollection(Elementary):
         l.AddEntry(g2, g2.GetTitle(), 'pl')
         names = ['1x1', '2x1', '2x2', '4x2', '4x4']
         self.format_histo(mg, x_tit='Pattern', y_tit='Flux [MHz/cm^{2}]', y_off=1.4, draw_first=True)
-        for i, run in enumerate(self.runs):
+        for i, run in enumerate(self.Runs):
             bin_x = mg.GetXaxis().FindBin(run)
             mg.GetXaxis().SetBinLabel(bin_x, names[i])
         self.save_histo(mg, 'FluxComparison', draw_opt='a', lm=.12, bm=.2, l=l)
@@ -1416,7 +1416,7 @@ class AnalysisCollection(Elementary):
             ana.print_information(header=False)
 
     def print_loaded(self):
-        print '\033[1A\rRuns {0}-{1} were successfully loaded!{2}\n'.format(self.runs[0], self.runs[-1], 20 * ' ')
+        print '\033[1A\rRuns {0}-{1} were successfully loaded!{2}\n'.format(self.Runs[0], self.Runs[-1], 20 * ' ')
 
     def set_verbose(self, status):
         self.verbose = status

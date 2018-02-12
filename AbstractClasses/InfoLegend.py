@@ -83,7 +83,7 @@ class InfoLegend:
         return run_str
 
     def get_runnumber_str(self):
-        return 's {}-{}'.format(self.Analysis.runs[0], self.Analysis.runs[-1]) if self.IsCollection else ' {}'.format(self.Analysis.RunNumber)
+        return 's {}-{}'.format(self.Analysis.Runs[0], self.Analysis.Runs[-1]) if self.IsCollection else ' {}'.format(self.Analysis.RunNumber)
 
     def get_rate_string(self):
         if self.IsCollection:
