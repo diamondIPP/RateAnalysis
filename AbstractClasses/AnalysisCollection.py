@@ -265,7 +265,7 @@ class AnalysisCollection(Elementary):
                 i_bin += 1
             i_bin += 1
         self.format_histo(h1, x_tit='Time [hh:mm]', y_tit='Mean Pulse Height [au]', y_off=.8, fill_color=self.FillColor, stats=0, y_range=[0, 105])
-        set_time_axis(h1, off=self.FirstAnalysis.run.startTime / 1000 if rel_t else 0)
+        set_time_axis(h1, off=self.FirstAnalysis.run.StartTime if rel_t else 0)
         self.save_histo(h1, 'FullPulseHeight', show=show, draw_opt='hist', x_fac=1.5, y_fac=.75, lm=.065)
 
     def draw_pulse_heights(self, binning=10000, flux=True, raw=False, all_corr=False, show=True, save_plots=True, vs_time=False, fl=True, save_comb=True, y_range=None, redo=False):

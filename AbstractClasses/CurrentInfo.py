@@ -44,6 +44,7 @@ class Currents(Elementary):
             return
 
         # analysis/run info
+        self.TimeOffset = self.run_config_parser.getint('BASIC', 'hvtimeoffset')
         if self.IsCollection:
             self.RunPlan = analysis.RunPlan
         self.RunNumber = self.load_run_number()
@@ -172,11 +173,17 @@ class Currents(Elementary):
 
     def load_start_time(self):
         ana = self.Analysis.FirstAnalysis if self.IsCollection else self.Analysis
-        return datetime.fromtimestamp(ana.run.startTime / 1000) if ana is not None else None
+        if ana is None:
+            return
+        t = datetime.fromtimestamp(ana.run.startTime / 1000) if hasattr(ana.run, 'startTime') else ana.run.log_start + timedelta(hours=self.TimeOffset)
+        return t + timedelta(seconds=mktime(datetime.strptime(ana.run.log_start.strftime('%Y%m%d'), '%Y%m%d').timetuple())) if t.year < 2000 else t
 
     def load_stop_time(self):
         ana = self.Analysis.get_last_analysis() if self.IsCollection else self.Analysis
-        return datetime.fromtimestamp(ana.run.endTime / 1000) if ana is not None else None
+        if ana is None:
+            return
+        t = datetime.fromtimestamp(ana.run.endTime / 1000) if hasattr(ana.run, 'endTime') else ana.run.log_stop + timedelta(hours=self.TimeOffset)
+        return t + timedelta(seconds=mktime(datetime.strptime(ana.run.log_stop.strftime('%Y%m%d'), '%Y%m%d').timetuple())) if t.year < 2000 else t
 
     def set_start_stop(self, sta, sto=None):
         if not sta.isdigit():
@@ -230,12 +237,12 @@ class Currents(Elementary):
             if log_date >= self.StartTime:
                 break
             start_log = i
-        self.log_info('Starting with log: {0}'.format(log_names[start_log].split('/')[-1]))
+        self.log_info('Starting with log: {0}'.format(basename(log_names[start_log])))
         return log_names[start_log:]
 
     @staticmethod
     def get_log_date(name):
-        log_date = name.split('/')[-1].split('_')
+        log_date = basename(name).split('_')
         log_date = ''.join(log_date[-6:])
         return datetime.strptime(log_date, '%Y%m%d%H%M%S.log')
 

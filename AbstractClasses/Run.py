@@ -10,6 +10,7 @@ from argparse import ArgumentParser
 from collections import OrderedDict
 from datetime import datetime
 from numpy import mean
+from time import mktime
 
 from Converter import Converter
 from Elementary import Elementary
@@ -73,9 +74,9 @@ class Run(Elementary):
             self.startEvent = 0
             self.n_entries = int(self.tree.GetEntries())
             self.endEvent = self.n_entries - 1
-            self.startTime = self.get_time_at_event(self.startEvent)
-            self.endTime = self.get_time_at_event(self.endEvent)
-            self.totalTime = self.endTime - self.startTime
+            self.StartTime = self.load_start_time()
+            self.EndTime = self.load_end_time()
+            self.totalTime = self.EndTime - self.StartTime
             self.totalMinutes = self.totalTime / 60000.
             self.Duration = timedelta(seconds=round(self.totalTime / 1000))
             self.NPlanes = self.load_n_planes()
@@ -209,6 +210,14 @@ class Run(Elementary):
                 print err
                 return
         self.Duration = self.log_stop - self.log_start
+
+    def load_start_time(self):
+        time_stamp = self.get_time_at_event(self.startEvent) / 1000
+        return time_stamp if datetime.fromtimestamp(time_stamp).year < 2000 else mktime(self.log_start.timetuple())
+
+    def load_end_time(self):
+        time_stamp = self.get_time_at_event(self.endEvent) / 1000
+        return time_stamp if datetime.fromtimestamp(time_stamp).year < 2000 else mktime(self.log_stop.timetuple())
 
     def load_n_planes(self):
         if self.has_branch('cluster_col'):
