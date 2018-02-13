@@ -1387,6 +1387,18 @@ class AnalysisCollection(Elementary):
             if i < self.NRuns - 1 and t_array[-1] > binnings[i + 1][1][0]:
                 off = self.get_break_time(i) + t_array[-1] - binnings[i + 1][1][0]
         return [n_bins, array(t_array)]
+
+    def get_break_time(self, ind):
+        return (self.get_ana(ind + 1).run.LogStart - self.get_ana(ind).run.LogStart - self.get_ana(ind).run.Duration).total_seconds()
+
+    def get_start_end_times(self):
+        ts = [[ana.run.StartTime, ana.run.EndTime] for ana in self.collection.itervalues()]
+        for i in xrange(1, len(ts)):
+            if ts[i][0] < ts[i - 1][1]:
+                ts[i][1] += ts[i - 1][1] + self.get_break_time(i - 1) - ts[i][0]
+                ts[i][0] = ts[i - 1][1] + self.get_break_time(i - 1)
+        return ts
+
     def set_channel(self, ch):
         """
         Sets the channels to be analysed by the SignalAnalysisobjects.
