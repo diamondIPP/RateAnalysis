@@ -1386,7 +1386,7 @@ class AnalysisCollection(Elementary):
                 t_array.append(t_sec + off)
             # correct if last time of the
             if i < self.NRuns - 1 and t_array[-1] > binnings[i + 1][1][0]:
-                off = mktime((self.collection.values()[i + i].run.LogStart - self.collection.values()[i].run.LogEnd).timetuple(0)) + t_array[-1]
+                off = (self.collection.values()[i + 1].run.LogStart - self.collection.values()[i].run.LogEnd).total_seconds() + t_array[-1] - binnings[i + 1][1][0]
         return [n_bins, array(t_array)]
     def set_channel(self, ch):
         """
