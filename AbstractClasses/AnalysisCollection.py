@@ -17,6 +17,7 @@ from VoltageScan import VoltageScan
 from InfoLegend import InfoLegend
 from Run import Run
 from Utils import *
+from time import mktime
 
 
 # ==============================================
@@ -1377,12 +1378,16 @@ class AnalysisCollection(Elementary):
 
     def get_t_binning(self, evts_per_bin):
         binnings = [ana.get_time_bins(evts_per_bin) for ana in self.collection.itervalues()]
-        binnings = [sum(ibin[0] for ibin in binnings), concatenate([ibin[1] for ibin in binnings])]
-        day_seconds = timedelta(days=1).total_seconds()
-        for i in xrange(1, len(binnings[1])):
-            if binnings[1][i - 1] > binnings[1][i]:
-                binnings[1][i] += ((binnings[1][i - 1] - binnings[1][i]) / day_seconds + 1) * day_seconds
-        return binnings  
+        n_bins = sum(ibin[0] for ibin in binnings)
+        t_array = []
+        off = 0
+        for i, tup in enumerate(binnings):
+            for t_sec in tup[1]:
+                t_array.append(t_sec + off)
+            # correct if last time of the
+            if i < self.NRuns - 1 and t_array[-1] > binnings[i + 1][1][0]:
+                off = mktime((self.collection.values()[i + i].run.LogStart - self.collection.values()[i].run.LogEnd).timetuple(0)) + t_array[-1]
+        return [n_bins, array(t_array)]
     def set_channel(self, ch):
         """
         Sets the channels to be analysed by the SignalAnalysisobjects.
