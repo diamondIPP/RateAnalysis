@@ -10,7 +10,6 @@ from argparse import ArgumentParser
 from collections import OrderedDict
 from datetime import datetime
 from numpy import mean
-from time import mktime
 
 from Converter import Converter
 from Elementary import Elementary
@@ -77,7 +76,7 @@ class Run(Elementary):
             self.EndTime = self.load_end_time()
             self.totalTime = self.EndTime - self.StartTime
             self.totalMinutes = self.totalTime / 60000.
-            self.Duration = timedelta(seconds=round(self.totalTime / 1000))
+            self.Duration = timedelta(seconds=self.totalTime)
             self.NPlanes = self.load_n_planes()
 
             # region info
