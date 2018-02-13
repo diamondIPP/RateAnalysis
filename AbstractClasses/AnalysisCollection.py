@@ -1425,6 +1425,9 @@ class AnalysisCollection(Elementary):
     def get_last_analysis(self):
         return self.collection.values()[-1]
 
+    def get_ana(self, ind):
+        return self.collection.values()[ind]
+
     def get_run_numbers(self):
         """ :return: sorted list of run numbers in AnalysisCollection instance """
         return sorted(self.collection.keys())
