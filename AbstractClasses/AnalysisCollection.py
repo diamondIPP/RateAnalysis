@@ -17,7 +17,6 @@ from VoltageScan import VoltageScan
 from InfoLegend import InfoLegend
 from Run import Run
 from Utils import *
-from time import mktime
 
 
 # ==============================================
@@ -258,16 +257,16 @@ class AnalysisCollection(Elementary):
     def draw_full_pulse_height(self, evts_per_bin=10000, show=True, rel_t=True, redo=False):
         histos = [ana.draw_pulse_height(evts_per_bin, corr=True, redo=redo, show=False)[0] for ana in self.collection.itervalues()]
         h1 = TH1F('hfph', 'Pulse Height for Run Plan {n}'.format(n=self.RunPlan), *self.get_t_binning(evts_per_bin))
-        i_bin = 0
+        i_bin = 1  # the first bin is empty
         for h in histos:
             for i in xrange(1, h.GetNbinsX() + 1):
                 h1.SetBinContent(i_bin + 1, h.GetBinContent(i))
                 h1.SetBinError(i_bin + 1, h.GetBinError(i))
                 i_bin += 1
-            i_bin += 1
+            i_bin += 2  # there are two empty bins after each run
         self.format_histo(h1, x_tit='Time [hh:mm]', y_tit='Mean Pulse Height [au]', y_off=.8, fill_color=self.FillColor, stats=0, y_range=[0, 105])
         set_time_axis(h1, off=self.FirstAnalysis.run.StartTime if rel_t else 0)
-        self.save_histo(h1, 'FullPulseHeight', show=show, draw_opt='hist', x_fac=1.5, y_fac=.75, lm=.065)
+        self.save_histo(h1, 'FullPulseHeight', show=show, draw_opt='hist', x_fac=1.5, y_fac=.75, lm=.065, gridy=True)
 
     def draw_pulse_heights(self, binning=10000, flux=True, raw=False, all_corr=False, show=True, save_plots=True, vs_time=False, fl=True, save_comb=True, y_range=None, redo=False):
 
@@ -1386,7 +1385,7 @@ class AnalysisCollection(Elementary):
                 t_array.append(t_sec + off)
             # correct if last time of the
             if i < self.NRuns - 1 and t_array[-1] > binnings[i + 1][1][0]:
-                off = (self.collection.values()[i + 1].run.LogStart - self.collection.values()[i].run.LogEnd).total_seconds() + t_array[-1] - binnings[i + 1][1][0]
+                off = self.get_break_time(i) + t_array[-1] - binnings[i + 1][1][0]
         return [n_bins, array(t_array)]
     def set_channel(self, ch):
         """
