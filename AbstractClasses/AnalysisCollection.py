@@ -1378,9 +1378,10 @@ class AnalysisCollection(Elementary):
     def get_t_binning(self, evts_per_bin):
         binnings = [ana.get_time_bins(evts_per_bin) for ana in self.collection.itervalues()]
         binnings = [sum(ibin[0] for ibin in binnings), concatenate([ibin[1] for ibin in binnings])]
+        day_seconds = timedelta(days=1).total_seconds()
         for i in xrange(1, len(binnings[1])):
-            if binnings[1][i] < binnings[1][i - 1]:
-                binnings[1][i] += timedelta(days=1).total_seconds()
+            if binnings[1][i - 1] > binnings[1][i]:
+                binnings[1][i] += ((binnings[1][i - 1] - binnings[1][i]) / day_seconds + 1) * day_seconds
         return binnings  
     def set_channel(self, ch):
         """
