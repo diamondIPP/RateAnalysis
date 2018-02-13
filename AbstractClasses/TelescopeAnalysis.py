@@ -480,7 +480,7 @@ class Analysis(Elementary):
 
     def get_time_bins(self, evts_per_bin=None):
         self.set_bin_size(evts_per_bin)
-        return [len(self.time_binning) - 1, array([t / 1000. for t in self.time_binning], 'd')]
+        return [len(self.time_binning), array([self.run.StartTime] + [t / 1000. for t in self.time_binning], 'd')]
 
     def get_bins(self, binning):
         self.set_bin_size(binning)
