@@ -270,7 +270,7 @@ class AnalysisCollection(Elementary):
         self.save_histo(h, 'FluxTime', show=show, draw_opt='hist', x_fac=1.5, y_fac=.75, lm=.065, gridy=True, logy=True)
         return h
 
-    def draw_full_pulse_height(self, evts_per_bin=10000, show=True, rel_t=True, redo=False):
+    def draw_full_pulse_height(self, evts_per_bin=10000, show=True, rel_t=True, redo=False, with_flux=True):
         histos = [ana.draw_pulse_height(evts_per_bin, corr=True, redo=redo, show=False)[0] for ana in self.collection.itervalues()]
         h1 = TH1F('hfph', 'Pulse Height for Run Plan {n}'.format(n=self.RunPlan), *self.get_t_binning(evts_per_bin))
         i_bin = 1  # the first bin is empty
@@ -280,9 +280,16 @@ class AnalysisCollection(Elementary):
                 h1.SetBinError(i_bin + 1, h.GetBinError(i))
                 i_bin += 1
             i_bin += 2  # there are two empty bins after each run
-        self.format_histo(h1, x_tit='Time [hh:mm]', y_tit='Mean Pulse Height [au]', y_off=.8, fill_color=self.FillColor, stats=0, y_range=[0, 105])
+        self.format_histo(h1, x_tit='Time [hh:mm]', y_tit='Mean Pulse Height [au]', y_off=.8, fill_color=self.FillColor, stats=0, y_range=[0, h1.GetMaximum() * 1.05])
         set_time_axis(h1, off=self.FirstAnalysis.run.StartTime if rel_t else 0)
-        self.save_histo(h1, 'FullPulseHeight', show=show, draw_opt='hist', x_fac=1.5, y_fac=.75, lm=.065, gridy=True)
+        c = self.draw_histo(h1, show=show, draw_opt='hist', x=1.5, y=.75, lm=.065, gridy=True, rm=.1 if with_flux else None)
+        if with_flux:
+            h = self.draw_flux(evts_per_bin, rel_t, show=False)
+            c.cd()
+            self.draw_tpad('pr', margins=[.065, .1, .15, .1], transparent=True)
+            self.format_histo(h, title=' ', fill_color=4000, fill_style=4000, lw=3, y_range=[1, h.GetMaximum() * 1.2], stats=0, y_off=1.05)
+            h.Draw('histy+')
+        self.save_plots('FullPulseHeight')
 
     def draw_pulse_heights(self, binning=10000, flux=True, raw=False, all_corr=False, show=True, save_plots=True, vs_time=False, fl=True, save_comb=True, y_range=None, redo=False):
 
