@@ -578,9 +578,10 @@ class Elementary(object):
         self.set_root_output(True)
         lst = [c, h, l] if l is not None else [c, h]
         self.ROOTObjects.append(lst)
+        return c
 
     def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=.1, draw_opt='', x=None, y=None, all_pads=True,
-                   l=None, logy=False, logx=False, logz=False, canvas=None, gridy=False, gridx=False, both_dias=True, prnt=True, phi=None, theta=None, ind=None):
+                   l=None, logy=False, logx=False, logz=False, canvas=None, gridy=False, gridx=False, both_dias=False, prnt=True, phi=None, theta=None, ind=None):
         return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, all_pads, l, logy, logx, logz, canvas, gridx, gridy, False, both_dias, ind, prnt, phi, theta)
 
     def draw_tlatex(self, x, y, text, align=20, color=1, size=.05, angle=None, ndc=False):
