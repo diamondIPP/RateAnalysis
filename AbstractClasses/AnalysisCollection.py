@@ -254,16 +254,21 @@ class AnalysisCollection(Elementary):
         pulse_heights = func() if redo else None
         return self.do_pickle(pickle_path, func, pulse_heights)
 
-    def draw_flux(self, rel_t=True, show=True):
+    def draw_flux(self, evts_per_bin=10000, rel_t=True, show=True):
         limits = self.get_start_end_times()
-        binning = [len(limits), array([limits[0][0]] + [l[1] for l in limits])]
-        h = TH1F('hr', 'Flux of Run Plan {r}'.format(r=self.RunPlan), *binning)
-        for i, ana in enumerate(self.collection.itervalues(), 1):
-            h.SetBinContent(i, ana.run.Flux)
-            h.SetBinError(i, ana.run.Flux * .1)
+        edges = [l[1] for l in limits]
+        h = TH1F('hr1', 'Flux of Run Plan {r}'.format(r=self.RunPlan), *self.get_t_binning(evts_per_bin))
+        ibin = 1
+        for i, edge in enumerate(edges):
+            ana = self.collection.values()[i]
+            while h.GetBinCenter(ibin) <= edge:
+                h.SetBinContent(ibin, ana.run.Flux)
+                h.SetBinError(ibin, ana.run.Flux * .1)
+                ibin += 1
         self.format_histo(h, y_tit='Flux [kHz/cm^{2}]', x_tit='Time [hh:mm]', y_off=.8, fill_color=self.FillColor, stats=0)
         set_time_axis(h, off=self.FirstAnalysis.run.StartTime if rel_t else 0)
         self.save_histo(h, 'FluxTime', show=show, draw_opt='hist', x_fac=1.5, y_fac=.75, lm=.065, gridy=True, logy=True)
+        return h
 
     def draw_full_pulse_height(self, evts_per_bin=10000, show=True, rel_t=True, redo=False):
         histos = [ana.draw_pulse_height(evts_per_bin, corr=True, redo=redo, show=False)[0] for ana in self.collection.itervalues()]
