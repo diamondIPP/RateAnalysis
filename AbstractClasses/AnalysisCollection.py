@@ -536,6 +536,8 @@ class AnalysisCollection(Elementary):
 
     def get_repr_errors(self, flux, show=True):
         runs = self.get_runs_below_flux(flux)
+        if not runs:
+            return 0, 0
         vals = [self.collection[run].draw_pulse_height(show=False, save=False)[1].Parameter(0) for run in runs]
         val_errors = [self.collection[run].draw_pulse_height(show=False, save=False)[1].ParError(0) for run in runs]
         fluxes = array([self.get_fluxes()[run] for run in runs], 'd')
