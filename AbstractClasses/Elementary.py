@@ -10,6 +10,7 @@ from numpy import array, ndarray
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 from sys import stdout
 from os.path import dirname
+from Draw import Draw
 
 from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, kGreen, kOrange, kViolet, kYellow, kRed, kBlue, \
     kMagenta, kAzure, kCyan, kTeal
@@ -19,17 +20,19 @@ tc = None
 res = None
 
 
-class Elementary(object):
+class Elementary(Draw):
     """
     The Elementary class provides default behaviour objects in the analysis framework and is the Mother of all myPadAnalysis objects.
     It provides, among other things, a verbose printing method or a save plot method containing a global save directory handling.
     """
 
     def __init__(self, testcampaign=None, verbose=False, resolution=None):
+
         self.verbose = verbose
 
         self.Dir = self.get_program_dir()
         self.MainConfigParser = self.load_main_config()
+        Draw.__init__(self, config=self.MainConfigParser, prog_dir=self.Dir)
 
         # test campaign
         self.TESTCAMPAIGN = None
@@ -42,11 +45,11 @@ class Elementary(object):
         self.run_config_parser = self.load_run_config()
         self.ana_config_parser = self.load_ana_config()
 
-        self.PickleDir = join(self.get_program_dir(), self.MainConfigParser.get('SAVE', 'pickle_dir'))
+        self.PickleDir = join(self.Dir, self.MainConfigParser.get('SAVE', 'pickle_dir'))
         self.DataDir = self.MainConfigParser.get('MAIN', 'data_dir')
         self.TCDir = self.generate_tc_directory()
         self.Felix = self.MainConfigParser.getboolean('SAVE', 'felix')
-        self.set_root_titles()
+        self.set_titles()
 
         # progress bar
         self.Widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
@@ -65,10 +68,6 @@ class Elementary(object):
         gStyle.SetLegendFont(42)
 
     # ============================================
-    # region CONFIG
-    def set_root_titles(self):
-        if self.MainConfigParser.has_option('SAVE', 'activate_title'):
-            gStyle.SetOptTitle(self.MainConfigParser.getboolean('SAVE', 'activate_title'))
 
     def load_main_config(self):
         parser = ConfigParser()
@@ -99,10 +98,6 @@ class Elementary(object):
         ana_parser = ConfigParser()
         ana_parser.read('Configuration/AnalysisConfig_{tc}.cfg'.format(tc=self.TCString))
         return ana_parser
-
-    def set_titles(self):
-        if self.ana_config_parser.has_option('SAVE', 'ActivateTitle'):
-            gStyle.SetOptTitle(self.ana_config_parser.getboolean('SAVE', 'ActivateTitle'))
 
     @staticmethod
     def load_resolution(resolution):
@@ -148,9 +143,6 @@ class Elementary(object):
 
     def generate_results_directory(self):
         return join(self.Dir, 'Results{tc}{s}'.format(tc=self.TESTCAMPAIGN, s=self.generate_sub_set_str()))
-
-    def set_save_directory(self, name):
-        self.ResultsDir = '{dir}/{nam}/'.format(dir=self.get_program_dir(), nam=name)
 
     def set_global_testcampaign(self, testcampaign):
         if testcampaign is not None:
