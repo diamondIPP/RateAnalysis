@@ -596,10 +596,11 @@ def fill_empty_time_entries(times):
 
 def correct_time(times):
     times = times
-    for i in xrange(len(times) - 1):
-        diff = times[i + 1] - times[i]
+    for i in xrange(1, len(times)):
+        diff = times[i] - times[i - 1]
         if diff < 0:
-            times = times[:i] + list(array(times[i:] + diff + 500))  # one TU step should be 500 ms
+            times = times[:i] + list(array(times[i:]) - diff + 500)  # one TU step should be 500 ms
+            print times[-1] - times[0]
     return list(times)
 
 
