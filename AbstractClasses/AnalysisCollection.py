@@ -247,7 +247,7 @@ class AnalysisCollection(Elementary):
             sys_errors = self.get_repr_errors(80, show=False)
             for i, (key, ana) in enumerate(self.collection.iteritems()):
                 ph = ana.draw_pulse_height(binning=binning, corr=True, show=False, redo=redo)[1]
-                ph.Errors[0] += sys_errors[1] / sys_errors[0] * ph.Parameter(0)
+                ph.Errors[0] += sys_errors[1] / sys_errors[0] * ph.Parameter(0) if sys_errors is not None else 0
                 phs[key] = {'flux': ana.run.Flux, 'ph': ph}
             return phs
 
@@ -537,7 +537,7 @@ class AnalysisCollection(Elementary):
     def get_repr_errors(self, flux, show=True):
         runs = self.get_runs_below_flux(flux)
         if not runs:
-            return 0, 0
+            return
         vals = [self.collection[run].draw_pulse_height(show=False, save=False)[1].Parameter(0) for run in runs]
         val_errors = [self.collection[run].draw_pulse_height(show=False, save=False)[1].ParError(0) for run in runs]
         fluxes = array([self.get_fluxes()[run] for run in runs], 'd')
