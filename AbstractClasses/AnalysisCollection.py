@@ -2,7 +2,7 @@
 # IMPORTS
 # ==============================================
 from argparse import ArgumentParser
-from numpy import log, zeros, mean, concatenate
+from numpy import log, mean, concatenate
 from functools import partial
 
 from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1, TH1F, TH2F, TH2I, TProfile2D
@@ -279,7 +279,7 @@ class AnalysisCollection(Elementary):
                 h1.SetBinContent(i_bin + 1, h.GetBinContent(i))
                 h1.SetBinError(i_bin + 1, h.GetBinError(i))
                 i_bin += 1
-            i_bin += 2  # there are two empty bins after each run
+            i_bin += 1  # there is an empty bins after each run
         self.format_histo(h1, x_tit='Time [hh:mm]', y_tit='Mean Pulse Height [au]', y_off=.8, fill_color=self.FillColor, stats=0, y_range=[0, h1.GetMaximum() * 1.05])
         set_time_axis(h1, off=self.FirstAnalysis.run.StartTime if rel_t else 0)
         c = self.draw_histo(h1, show=show, draw_opt='hist', x=1.5, y=.75, lm=.065, gridy=True, rm=.1 if with_flux else None)
