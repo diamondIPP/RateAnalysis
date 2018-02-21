@@ -600,7 +600,6 @@ def correct_time(times):
         diff = times[i] - times[i - 1]
         if diff < 0:
             times = times[:i] + list(array(times[i:]) - diff + 500)  # one TU step should be 500 ms
-            print times[-1] - times[0]
     return list(times)
 
 
