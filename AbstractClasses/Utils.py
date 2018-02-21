@@ -6,7 +6,7 @@
 from datetime import datetime, timedelta
 from termcolor import colored
 from ROOT import gStyle, gROOT, TF1, TColor, TFile
-from numpy import sqrt, array, average
+from numpy import sqrt, array, average, zeros
 from os import makedirs
 from os import path as pth
 from os.path import basename, join, split
@@ -508,7 +508,8 @@ def make_graph_args(x, y, ex=None, ey=None):
     if len(list(x)) != len(list(y)):
         log_warning('Arrays have different size!')
         return
-    return [len(x), array(x, 'd'), array(y, 'd'), array(ex, 'd') if list(ex) is not None else 0, array(ey, 'd') if list(ey) is not None else 0]
+    lx = len(x)
+    return [lx, array(x, 'd'), array(y, 'd'), array(ex, 'd') if ex is not None else zeros(lx), array(ey, 'd') if ey is not None else zeros(lx)]
 
 
 def markers(i):
