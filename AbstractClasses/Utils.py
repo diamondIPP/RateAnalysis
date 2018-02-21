@@ -578,7 +578,7 @@ def get_time_vec(sel, run=None):
         log_warning('Need to correct timing vector\n')
         # print [i / 1000 for i in time[:4]], time[-1] / 1000
         # print (time[-1] - time[0]) / 1000, self.duration.seconds, abs((time[-1] - time[0]) / 1000 - self.duration.seconds)
-        time_vec = correct_time(tree, entries)
+        time_vec = correct_time(time_vec)
     return time_vec
 
 
@@ -593,18 +593,13 @@ def fill_empty_time_entries(times):
     times[:ind] = [first_valid] * ind
 
 
-def correct_time(tree, entries):
-    time_vec = []
-    t = tree.GetV1()[0]
-    new_t = 0
-    for i in xrange(entries):
-        diff = tree.GetV1()[i] - t
+def correct_time(times):
+    times = array(times)
+    for i in xrange(1, len(times)):
+        diff = times[i] - times[i - 1]
         if diff < 0:
-            new_t = -diff + .5 / 1000
-        time_vec.append(tree.GetV2()[i] + new_t)
-        t = tree.GetV1()[i]
-    fill_empty_time_entries(time_vec)
-    return time_vec
+            times = times[i:] + diff + 500  # one TU step should be 500 ms
+    return list(times)
 
 
 class FitRes:
