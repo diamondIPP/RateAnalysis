@@ -12,7 +12,7 @@ from Utils import *
 class RunSelection(Elementary):
     def __init__(self, testcampaign=None, verbose=True):
         Elementary.__init__(self, verbose=verbose, testcampaign=testcampaign)
-        self.run = Run(run_number=None, verbose=verbose)
+        self.run = Run(verbose=verbose)
 
         self.Selection = {}
 
@@ -24,7 +24,6 @@ class RunSelection(Elementary):
         self.RunNumbers = self.load_run_numbers()
         self.RunInfos = self.load_run_infos()
         self.logs = {}
-        self.channels = {}
 
         # selection
         self.SelectedRunplan = None
@@ -105,15 +104,10 @@ class RunSelection(Elementary):
         self.logs = {}
         for run in self.RunNumbers:
             self.Selection[run] = False
-            self.channels[run] = {}
-            for ch in self.run.Channels:
-                self.channels[run][ch] = False
 
-    def select_all_runs(self, dia1=True, dia2=True):
+    def select_all_runs(self):
         for run in self.RunNumbers:
             self.Selection[run] = True
-            self.channels[run][self.run.Channels[0]] = dia1
-            self.channels[run][self.run.Channels[1]] = dia2
         self.make_log_entry('All runs selected')
         self.verbose_print('All runs selected')
 
@@ -121,22 +115,6 @@ class RunSelection(Elementary):
         self.reset_selection()
         if info:
             self.log_info('unselect all runs')
-
-    def set_channels(self, dia1=True, dia2=True):
-        """
-        Sets the channels (diamonds) of the selected runs to active or inactive.
-        :param dia1:
-        :param dia2:
-        """
-        dias = [dia1, dia2]
-        for run_number in self.get_selected_runs():
-            for i, ch in enumerate(self.run.Channels):
-                self.channels[run_number][ch] = dias[i]
-        self.make_log_entry('Channels of selected runs set: diamond1 to {dia1}, diamond2 to {dia2}'.format(dia1=dia1, dia2=dia2))
-
-    def reset_channels(self, run):
-        for ch in self.run.Channels:
-            self.channels[run][ch] = False
 
     def select_runs_of_type(self, run_type, unselect=False, only_selected=False):
         """
@@ -151,11 +129,11 @@ class RunSelection(Elementary):
         selected_runs = 0
         for run in runs:
             if self.RunInfos[run]['type'] == run_type:
-                self.select_run(run, False) if not unselect else self.unselect_run(run, False)
+                self.select_run(run, False) if not unselect else self.unselect_run(run)
                 selected_runs += 1
             else:
                 if not unselect:
-                    self.unselect_run(run, False)
+                    self.unselect_run(run)
         prefix = 'un' if unselect else ''
         self.make_log_entry('Runs of type {type} {pref}selected ({nr} {pref}selections).'.format(type=run_type, pref=prefix, nr=selected_runs))
         self.verbose_print('Runs of type {type} {pref}selected ({nr} {pref}selections).'.format(type=run_type, pref=prefix, nr=selected_runs))
@@ -180,11 +158,10 @@ class RunSelection(Elementary):
             for i, ch in enumerate(self.run.Channels):
                 if self.RunInfos[run][dia_keys[i]] == diamondname:
                     self.select_run(run, False)
-                    self.channels[run][ch] = True
                     found_dia = True
                     selected_runs += 1
             if not found_dia and self.Selection[run]:
-                self.unselect_run(run, False)
+                self.unselect_run(run)
                 unselected_runs += 1
         log = 'Runs and Channels containing {dia} selected ( {nr1} runs selected, {nr2} unselected)'.format(dia=diamondname, nr1=selected_runs, nr2=unselected_runs)
         self.make_log_entry(log)
@@ -198,31 +175,21 @@ class RunSelection(Elementary):
         assert type(bias) is int, 'Bias has to be an integer'
         unselected_runs = 0
         for run in self.get_selected_runs():
-            unselect = True
-            for i, ch in enumerate(self.run.Channels, 1):
-                if not self.RunInfos[run]['dia{nr}hv'.format(nr=i)] == bias:
-                    self.channels[run][ch] = False
-                else:
-                    unselect = False
-            if unselect:
-                self.Selection[run] = False
+            if self.RunInfos[run]['dia{nr}hv'.format(nr=self.SelectedDiamondNr)] != bias:
+                self.unselect_run(run)
                 unselected_runs += 1
         log = 'Unselected all runs and channels if bias is not {bias}V (unselected {nr} runs).'.format(bias=bias, nr=unselected_runs)
         self.make_log_entry(log)
         self.verbose_print(log)
 
-    def select_run(self, run_number, do_assert=True, unselect=False):
-        if do_assert:
-            if run_number not in self.RunNumbers:
-                self.log_warning('run {run} not found in list of run numbers. Check run_log json file!'.format(run=run_number))
-                return
+    def select_run(self, run_number, unselect=False):
+        if run_number not in self.RunNumbers:
+            self.log_warning('Run {run} not found in list of run numbers. Check run_log json file!'.format(run=run_number))
+            return
+        self.Selection[run_number] = not unselect
 
-        self.Selection[run_number] = True if not unselect else False
-        if unselect:
-            self.reset_channels(run_number)
-
-    def unselect_run(self, run_number, do_assert=True):
-        self.select_run(run_number, do_assert, unselect=True)
+    def unselect_run(self, run_number):
+        self.select_run(run_number, unselect=True)
 
     def unselect_list_of_runs(self, run_list):
         assert type(run_list) is list, 'argument has to be a list of integers'
@@ -230,7 +197,7 @@ class RunSelection(Elementary):
         selected_runs = self.get_selected_runs()
         for run in run_list:
             if run in selected_runs:
-                self.unselect_run(run, do_assert=False)
+                self.unselect_run(run)
                 unselected_runs += 1
             else:
                 print '{run} was not selected'.format(run=run)
@@ -239,7 +206,7 @@ class RunSelection(Elementary):
     def select_runs_in_range(self, minrun, maxrun):
         for run in self.RunNumbers:
             if maxrun >= run >= minrun:
-                self.select_run(run, do_assert=False)
+                self.select_run(run)
 
     def select_runs(self, run_list, dia=1):
         for run in run_list:
@@ -254,14 +221,14 @@ class RunSelection(Elementary):
     def unselect_unless_in_range(self, minrun, maxrun):
         for run in self.get_selected_runs():
             if not maxrun >= run >= minrun:
-                self.unselect_run(run, do_assert=False)
+                self.unselect_run(run)
 
     def master_selection(self):
         self.unselect_all_runs()
         self.show_diamond_names()
         dia = raw_input('Which diamond do you want to select? ')
         self.select_diamond_runs(dia)
-        self.show_hv_values(sel=True)
+        # self.show_hv_values(sel=True)
         hv = int(float(raw_input('Which hv do you want to select? ')))
         self.unselect_unless_bias(hv)
         if len(self.get_runinfo_values('type', sel=True)) > 1:
@@ -288,22 +255,6 @@ class RunSelection(Elementary):
             print 'No runs selected!'
         return sorted(selected)
 
-    def get_selected_diamonds(self):
-        """
-        Returns a list, containing for each selected run an integer according to the diamond selection configuration. (i.e. which diamonds are selected for analysis).
-            1 -> Diamond 1, 2 -> Diamond 2, 3 -> Diamond 1 & 2, or no diamond selection (default: both)
-        :return: list of diamonds
-        """
-        selected = []
-        for run in self.get_selected_runs():
-            dias = [self.channels[run][ch] for ch in self.run.Channels]
-            diamonds = int(dias[0]) * (1 << 0) + int(dias[1]) * (1 << 1)
-            diamonds = 3 if not diamonds else diamonds
-            selected.append(diamonds)
-        if not selected:
-            print 'No runs selected!'
-        return selected
-
     def show_selected_runs(self, full_comments=False):
         """ Prints an overview of all selected runs. """
         selected_runs = self.get_selected_runs()
@@ -314,7 +265,7 @@ class RunSelection(Elementary):
             r = self.run
             r.set_run(run, root_tree=False)
             d1, d2 = (str(value).ljust(8) for value in r.load_diamond_names())
-            v1, v2 = ('{v:+7.0f}'.format(v=value) for value in r.load_bias())
+            v1, v2 = ('{v:+7.0f}'.format(v=value) for value in r.load_biases())
             row = [str(run).rjust(3), r.RunInfo['runtype'].ljust(10), d1, v1, d2, v2, '{:14.2f}'.format(r.Flux)]
             if not full_comments:
                 row += ['{c}{s}'.format(c=r.RunInfo['comments'][:20].replace('\r\n', ' '), s='*' if len(r.RunInfo['comments']) > 20 else ' ' * 21)]
@@ -380,7 +331,6 @@ class RunSelection(Elementary):
     def show_run_plans(self, dia=None):
         """ Print a list of all run plans from the current test campaign to the console. """
         old_selection = deepcopy(self.Selection)
-        old_channels = deepcopy(self.channels)
         old_logs = deepcopy(self.logs)
         print 'RUN PLAN FOR TESTCAMPAIGN: {tc}\n'.format(tc=self.TCString)
         header = ['Nr.  ', 'Run Type'.ljust(13), 'Range'.ljust(9), 'Excluded'.ljust(15), 'Diamond1', 'HV1 [V]'.rjust(13), 'Diamond2', 'HV2 [V]'.rjust(13)]
@@ -397,7 +347,6 @@ class RunSelection(Elementary):
             rows.append([plan.ljust(5), info['type'].ljust(13), run_string, self.get_missing_runs(runs).ljust(15), d1, v1, d2, v2])
         print_table(rows, header)
 
-        self.channels = old_channels
         self.logs = old_logs
         self.Selection = old_selection
 
@@ -473,20 +422,6 @@ class RunSelection(Elementary):
         print 'Diamondnames:'
         for name in self.get_diamond_names(sel=sel):
             print '  ' + name
-
-    def get_hv_values(self, sel=False):
-        dias = self.get_selected_diamonds()[0] if sel else 3
-        hvs = self.get_runinfo_values('dia1hv', sel) if self.has_bit(dias, 0) else self.get_runinfo_values('dia2hv', sel)
-        if dias == 3:
-            for hv in self.get_runinfo_values('dia2hv', sel):
-                if hv not in hvs:
-                    hvs.append(hv)
-        return hvs
-
-    def show_hv_values(self, sel=False):
-        print 'HV Values:'
-        for hv in self.get_hv_values(sel=sel):
-            print '  {hv}'.format(hv=hv)
 
     def show_run_types(self, sel=False):
         print 'Types:'
