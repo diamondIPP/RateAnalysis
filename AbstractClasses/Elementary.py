@@ -71,7 +71,7 @@ class Elementary(Draw):
 
     def load_main_config(self):
         parser = ConfigParser()
-        parser.read(join(self.Dir, 'Configuration', 'main.cfg'))
+        parser.read(join(self.Dir, 'Configuration', 'main.ini'))
         return parser
 
     def load_run_config(self):
@@ -164,9 +164,8 @@ class Elementary(Draw):
             print '\nTESTCAMPAIGN: {0}{p}'.format(out, p=' Part {0}'.format(int_to_roman(int(self.SubSet))) if self.SubSet is not None else '')
         return out
 
-    def find_test_campaigns(self):
-        names = glob(join(self.Dir, 'Configuration', 'RunConfig_*'))
-        return sorted(list(set([re.split('[_.]', name)[1] for name in names])))
+    def get_test_campaigns(self):
+        return loads(self.MainConfigParser.get('MAIN', 'test_campaigns'))
 
     # endregion
 
