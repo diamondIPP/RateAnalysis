@@ -64,9 +64,9 @@ class Run(Elementary):
         self.LogEnd = self.load_log_stop()
         self.Duration = self.LogEnd - self.LogStart
 
-        self.converter = Converter(self)
         if self.set_run(run_number, tree):
 
+            self.converter = Converter(self)
             # tree info
             self.time = get_time_vec(self.tree) if time is None else time
             self.startEvent = 0
@@ -222,6 +222,10 @@ class Run(Elementary):
         print 'Run information for run', self.RunNumber
         for key, value in sorted(self.RunInfo.iteritems()):
             print '{k}: {v}'.format(k=key.ljust(13), v=value)
+
+    def reload_run_config(self, run_number):
+        self.RunNumber = run_number
+        self.run_config_parser = self.load_run_config()
 
     def set_run(self, run_number, root_tree):
 
