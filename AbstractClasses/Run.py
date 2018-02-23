@@ -63,9 +63,8 @@ class Run(Elementary):
         self.LogEnd = self.load_log_stop()
         self.Duration = self.LogEnd - self.LogStart
 
+        self.converter = None
         if self.set_run(run_number, tree):
-
-            self.converter = Converter(self)
             # tree info
             self.time = get_time_vec(self.tree) if time is None else time
             self.startEvent = 0
@@ -239,6 +238,7 @@ class Run(Elementary):
 
         # check for conversion
         if root_tree is None:
+            self.converter = Converter(self)
             self.converter.convert_run(self.RunInfo, run_number)
             self.__load_rootfile()
         elif root_tree:
