@@ -128,16 +128,12 @@ class Run(Elementary):
             return [i for i in xrange(self.NChannels) if self.has_bit(binary, i)]
         elif self.DUTType == 'pixel':
             return [i for i in xrange(len([key for key in self.RunInfo.iterkeys() if key.startswith('dia') and key[-1].isdigit()]))]
-        else:
-            return None
 
-    def load_bias(self):
-        return [int(self.RunInfo['dia{num}hv'.format(num=i)]) for i in xrange(1, len(self.Channels) + 1)]
-    
     def load_dut_type(self):
-        _type = self.run_config_parser.get('BASIC', 'type')
-        assert _type.lower() in ["pixel", "pad"], "The DUT type {0} should be 'pixel' or 'pad'".format(_type)
-        return _type
+        dut_type = self.run_config_parser.get('BASIC', 'type') if self.RunNumber is not None else None
+        if dut_type not in ['pixel', 'pad', None]:
+            log_critical("The DUT type {0} has to be either 'pixel' or 'pad'".format(dut_type))
+        return dut_type
 
     def load_regions(self):
         macro = self.RootFile.Get('region_information')
