@@ -164,7 +164,7 @@ class Converter:
         return self.RootFileDir + '/' + file_name
 
     def get_final_file_path(self, run_number):
-        return '{dir}/TrackedRun{run:03d}.root'.format(run=run_number, dir=self.RootFileDir)
+        return join(self.RootFileDir, 'TrackedRun{run:03d}.root'.format(run=run_number))
 
     def find_root_file(self, run_number):
         old_track_file = self.get_tracking_file_path(run_number)
