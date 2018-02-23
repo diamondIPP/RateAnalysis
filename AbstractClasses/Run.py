@@ -90,9 +90,8 @@ class Run(Elementary):
                 self.TCal = self.load_tcal()
 
         # extract run info
-        self.analyse_ch = self.set_channels(diamonds)
         self.DiamondNames = self.load_diamond_names()
-        self.Bias = self.load_bias()
+        self.Bias = self.load_biases()
         self.IsMonteCarlo = False
 
         # root objects
@@ -114,6 +113,10 @@ class Run(Elementary):
             return 9 if self.run_config_parser.get('BASIC', 'digitizer').lower() == 'caen' else 4
         else:
             return None
+
+    def get_n_diamonds(self, run_number=None):
+        run_info = self.load_run_info(run_number)
+        return len([key for key in run_info if key.startswith('dia') and key[-1].isdigit()])
 
     def load_channels(self):
         if self.DUTType == 'pad':
@@ -146,14 +149,15 @@ class Run(Elementary):
         f.close()
         return data
 
-    def load_run_info(self):
+    def load_run_info(self, run_number=None):
         data = self.load_run_info_file()
 
-        if self.RunNumber >= 0:
-            run_info = data.get(str(self.RunNumber))
+        run_number = self.RunNumber if run_number is None else run_number
+        if run_number >= 0:
+            run_info = data.get(str(run_number))
             # try with run_log key prefix if the number was not found
             if run_info is None:
-                run_info = data.get('{tc}{run}'.format(tc=self.TESTCAMPAIGN[2:], run=str(self.RunNumber).zfill(5)))
+                run_info = data.get('{tc}{run}'.format(tc=self.TESTCAMPAIGN[2:], run=str(run_number).zfill(5)))
             # abort if the run is still not found
             if run_info is None:
                 log_critical('Run not found in json run log file!')
@@ -192,7 +196,10 @@ class Run(Elementary):
             log_critical('{err}\nCould not load default RunInfo! --> Using default'.format(err=err))
 
     def load_diamond_names(self):
-        return [self.RunInfo['dia{num}'.format(num=i)] for i in xrange(1, len(self.Channels) + 1)]
+        return [self.RunInfo['dia{nr}'.format(nr=i)] for i in xrange(1, self.get_n_diamonds() + 1)]
+
+    def load_biases(self):
+        return [int(self.RunInfo['dia{nr}hv'.format(nr=i)]) for i in xrange(1, self.get_n_diamonds() + 1)]
 
     def load_log_start(self):
         t = self.RunInfo['starttime0']
