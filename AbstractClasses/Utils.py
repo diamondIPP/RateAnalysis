@@ -555,7 +555,7 @@ class MyThread (Thread):
             self.Tuple = False
             return
         log_message('Loading run {r}'.format(r=self.Run), overlay=True)
-        file_path = self.Selection.run.converter.get_final_file_path(self.Run)
+        file_path = self.Selection.get_final_file_path(self.Run)
         if file_exists(file_path):
             self.File = TFile(file_path)
             self.Tree = self.File.Get('tree')
@@ -577,8 +577,6 @@ def get_time_vec(sel, run=None):
     fill_empty_time_entries(time_vec)
     if any(time_vec[i + 100] < time_vec[i] for i in xrange(0, len(time_vec) - 100, 100)):
         log_warning('Need to correct timing vector\n')
-        # print [i / 1000 for i in time[:4]], time[-1] / 1000
-        # print (time[-1] - time[0]) / 1000, self.duration.seconds, abs((time[-1] - time[0]) / 1000 - self.duration.seconds)
         time_vec = correct_time(time_vec)
     return time_vec
 

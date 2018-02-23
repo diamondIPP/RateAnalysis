@@ -565,6 +565,11 @@ class RunSelection(Elementary):
         sorted_runinfo = OrderedDict(sorted(runinfo.items(), key=lambda t: int(t[0])))
         return f, sorted_runinfo
 
+    def get_final_file_path(self, run_number):
+        self.run.reload_run_config(run_number)
+        root_file_dir = join('root', '{dut}'.format(dut='pads' if self.run.load_dut_type() == 'pad' else 'pixel'))
+        return join(self.DataDir, self.TCDir, root_file_dir, 'TrackedRun{run:03d}.root'.format(run=run_number))
+
     @staticmethod
     def save_runinfo(f, runinfo):
         f.seek(0)
