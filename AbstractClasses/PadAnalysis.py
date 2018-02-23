@@ -100,10 +100,6 @@ class PadAnalysis(Analysis):
     # ==========================================================================
     # region INIT
 
-    # overriding elementary method to choose config by run number
-    def load_run_config(self):
-        return self.load_run_configs(self.RunNumber)
-
     def load_channel(self, dia):
         assert dia in [1, 2], 'You have to choose either diamond 1 or 2'
         return self.run.Channels[dia - 1]

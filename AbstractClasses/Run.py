@@ -99,8 +99,6 @@ class Run(Elementary):
 
     # ==============================================
     # region LOAD FUNCTIONS
-    def load_run_config(self):
-        return self.load_run_configs(self.RunNumber)
 
     def load_n_channels(self):
         for i, line in enumerate(self.region_information):

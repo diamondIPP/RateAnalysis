@@ -1,5 +1,5 @@
 import json
-from numpy import zeros, mean
+from numpy import mean
 from Elementary import Elementary
 from InfoLegend import InfoLegend
 from ROOT import TCut, gROOT, TH1F
@@ -17,8 +17,8 @@ class Cut(Elementary):
 
         if not skip:
             self.analysis = parent_analysis
-            Elementary.__init__(self, verbose=self.analysis.verbose)
             self.RunNumber = self.analysis.RunNumber
+            Elementary.__init__(self, verbose=self.analysis.verbose)
             self.InfoLegend = InfoLegend(parent_analysis)
 
             # saving stuff
@@ -45,9 +45,6 @@ class Cut(Elementary):
             # generate cut strings
             self.generate_cut_string()
             self.all_cut = self.generate_all_cut()
-
-    def load_run_config(self):
-        return self.load_run_configs(self.analysis.RunNumber)
 
     def generate_special_cut(self, excluded=None, included=None, name='special_cut', prnt=True):
         cut = TCut(name, '')

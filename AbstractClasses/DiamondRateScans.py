@@ -108,7 +108,7 @@ class DiaScans(Elementary):
     def load_testcampaigns(self, tcs):
         if tcs is None:
             return ['201508', '201510']
-        valid_tcs = self.find_test_campaigns()
+        valid_tcs = self.get_test_campaigns()
         tcs = [tcs] if type(tcs) is not list else tcs
         if not all(tc in valid_tcs for tc in tcs):
             log_warning('You entered and invalid test campaign! Aborting!')

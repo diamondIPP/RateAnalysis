@@ -74,30 +74,20 @@ class Elementary(Draw):
         parser.read(join(self.Dir, 'Configuration', 'main.ini'))
         return parser
 
-    def load_run_config(self):
-        run_parser = ConfigParser({'excluded_runs': '[]'})
-        run_parser.read('Configuration/RunConfig_{tc}.cfg'.format(tc=self.TCString))
-        return run_parser
-
-    def load_run_configs(self, run_number):
-        run_parser = ConfigParser({'excluded_runs': '[]'})
-        # set run_number to zero if none is given to prevent crash
-        run_number = 0 if run_number is None else run_number
-        if self.MainConfigParser.has_section(self.TCString):
-            split_runs = [0] + loads(self.MainConfigParser.get(self.TCString, 'split_runs')) + [int(1e10)]
-            for i in xrange(1, len(split_runs)):
-                if split_runs[i - 1] <= run_number < split_runs[i]:
-                    config = '{dir}/Configuration/RunConfig_{tc}_{i}.cfg'.format(dir=self.get_program_dir(), tc=self.TCString, i=i)
-                    run_parser.read(config)
-                    break
-        else:
-            run_parser.read(join(self.Dir, 'Configuration', 'RunConfig_{tc}.cfg'.format(tc=self.TCString)))
-        return run_parser
-
     def load_ana_config(self):
         ana_parser = ConfigParser()
-        ana_parser.read('Configuration/AnalysisConfig_{tc}.cfg'.format(tc=self.TCString))
+        ana_parser.read(join(self.Dir, 'Configuration', self.TCString, 'AnalysisConfig.ini'))
         return ana_parser
+
+    def load_run_config(self):
+        run_number = self.RunNumber if hasattr(self, 'RunNumber') else None
+        run_parser = ConfigParser({'excluded_runs': '[]'})  # add non default option
+        run_parser.read(join(self.Dir, 'Configuration', self.TCString, 'RunConfig.ini'))  # first read the main config file with general information for all splits
+        if self.MainConfigParser.has_section(self.TCString) and run_number is not None:  # check for splits in the test campaign
+            split_runs = [0] + loads(self.MainConfigParser.get(self.TCString, 'split_runs')) + [inf]
+            config_nr = next(i for i in xrange(1, len(split_runs)) if split_runs[i - 1] <= run_number < split_runs[i])
+            run_parser.read(join(self.Dir, 'Configuration', self.TCString, 'RunConfig{nr}.ini'.format(nr=config_nr)))  # add the content of the split config
+        return run_parser
 
     @staticmethod
     def load_resolution(resolution):
@@ -152,7 +142,7 @@ class Elementary(Draw):
 
     def set_test_campaign(self, campaign):
         campaign = self.MainConfigParser.get('MAIN', 'default_test_campaign') if campaign is None else campaign
-        if campaign not in self.find_test_campaigns():
+        if campaign not in self.get_test_campaigns():
             log_critical('The Testcampaign {tc} does not exist yet! Use create_new_testcampaign!'.format(tc=campaign))
         tc_data = str(campaign).split('-')
         self.TESTCAMPAIGN = tc_data[0]
@@ -319,7 +309,7 @@ class Elementary(Draw):
     def create_new_testcampaign(self):
         year = raw_input('Enter the year of the test campgaign (YYYY): ')
         month = raw_input('Enter the month of the testcampaign: ').zfill(2)
-        if year + month in self.find_test_campaigns():
+        if year + month in self.get_test_campaigns():
             print 'This test campaign already exists! --> returning'
             return
         new_tc = year + month

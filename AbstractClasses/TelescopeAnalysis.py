@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 from copy import deepcopy
 
 from ROOT import TCanvas, TH2F, gROOT, TH1F, TLegend, gStyle, kGreen, TCut, TF1, TGraph, TH1I
-from numpy import zeros, log
+from numpy import log
 
 from Elementary import Elementary
 from Run import Run
@@ -23,13 +23,13 @@ class Analysis(Elementary):
         :param high_low_rate:   list of highest and lowest rate runs for an analysis collection
         """
         self.run = self.init_run(run)
+        self.RunNumber = self.run.RunNumber
         Elementary.__init__(self, verbose=run.verbose)
         self.histos = []
         self.RootObjects = []
 
         # basics
         self.run.analysis = self
-        self.RunNumber = self.run.RunNumber
         self.RunInfo = deepcopy(self.run.RunInfo)
         self.lowest_rate_run = high_low_rate['min'] if high_low_rate is not None else self.run.RunNumber
         self.highest_rate_run = high_low_rate['max'] if high_low_rate is not None else self.run.RunNumber

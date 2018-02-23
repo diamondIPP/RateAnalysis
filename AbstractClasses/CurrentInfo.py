@@ -124,12 +124,6 @@ class Currents(Elementary):
         run_logs = OrderedDict(sorted(data.iteritems()))
         return run_logs
 
-    def load_run_config(self):
-        nr = None
-        if self.Analysis is not None:
-            nr = self.Analysis.RunNumber if not self.IsCollection else self.Analysis.get_first_analysis().RunNumber
-        return self.load_run_configs(nr)
-
     def load_parser(self):
         parser = ConfigParser()
         if self.run_config_parser.has_option('BASIC', 'hvconfigfile'):
