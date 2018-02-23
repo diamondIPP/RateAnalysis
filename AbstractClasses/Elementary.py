@@ -1,19 +1,19 @@
-import re
-from copy import deepcopy
-from glob import glob
-from shutil import copyfile
 from ConfigParser import ConfigParser
-from json import loads
-from Utils import *
-from screeninfo import get_monitors
-from numpy import array, ndarray
-from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
-from sys import stdout
-from os.path import dirname
-from Draw import Draw
-
 from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TSpectrum, TF1, TMath, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, kGreen, kOrange, kViolet, kYellow, kRed, kBlue, \
     kMagenta, kAzure, kCyan, kTeal
+from copy import deepcopy
+from glob import glob
+from json import loads
+from numpy import ndarray, inf
+from os.path import dirname
+from shutil import copyfile
+from sys import stdout
+
+from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
+from screeninfo import get_monitors
+
+from Draw import Draw
+from Utils import *
 
 # global test campaign and resolution
 tc = None
