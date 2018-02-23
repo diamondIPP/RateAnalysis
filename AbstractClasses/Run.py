@@ -27,10 +27,9 @@ class Run(Elementary):
     operationmode = ''
     TrackingPadAnalysis = {}
 
-    def __init__(self, run_number=None, diamonds=3, test_campaign=None, tree=None, time=None, verbose=False):
+    def __init__(self, run_number=None, test_campaign=None, tree=None, time=None, verbose=False):
         """
         :param run_number: number of the run
-        :param diamonds: 0x1=ch0; 0x2=ch3
         :param verbose:
         :return:
         """
@@ -250,18 +249,6 @@ class Run(Elementary):
             return False
         return True
 
-    def set_channels(self, diamonds):
-        """
-        Set which diamonds (channels) should be activated for the analysis.
-        :param diamonds: bitwise integer (1=dia1, 2=dia2, 3=1&2)
-        """
-        assert 1 <= diamonds <= 3, 'invalid diamonds number: 0x1=ch0; 0x2=ch3'
-        analyse_ch = {}
-        for i, ch in enumerate(self.Channels):
-            analyse_ch[ch] = self.has_bit(diamonds, i)
-        self.analyse_ch = analyse_ch
-        return analyse_ch
-
     def load_mask(self):
         mask_file_path = '{path}/{mask}'.format(path=self.maskfilepath, mask=self.RunInfo['maskfile'])
         dic = {}
@@ -402,13 +389,6 @@ class Run(Elementary):
                     integrals[data[1]] = [int(float(data[i])) for i in [2, 3]]
         return integrals
 
-    def get_active_channels(self):
-        """
-        Returns a list of the channels, which are activated for analysis. e.g. [3] means only the channel 3 is activated for analysis.
-        :return:
-        """
-        return [ch for ch in self.analyse_ch if self.analyse_ch[ch]]
-
     def get_diamond_name(self, channel):
         return self.DiamondNames[channel]
 
@@ -461,16 +441,6 @@ class Run(Elementary):
     def show_regions(self):
         for line in self.region_information:
             print line
-
-    def show_run_info(self):
-        """
-        Prints the most importnant run infos to the console. The infos printed are: Run number, Rate, Diamond names, Bias Voltages
-        """
-        print 'RUN INFO:'
-        print '\tRun Number: \t', self.RunNumber, ' (', self.RunInfo['type'], ')'
-        print '\tRate: \t', self.get_flux(), ' kHz'
-        print '\tDiamond1:   \t', self.DiamondNames[0], ' (', self.Bias[0], ') | is selected: ', self.analyse_ch[0]
-        print '\tDiamond2:   \t', self.DiamondNames[3], ' (', self.Bias[3], ') | is selected: ', self.analyse_ch[3]
 
     def has_branch(self, name):
         return bool(self.tree.GetBranch(name))
