@@ -38,12 +38,8 @@ def log_message(msg, overlay=False):
 
 
 def set_root_output(status=True):
-    if status:
-        gROOT.SetBatch(0)
-        gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
-    else:
-        gROOT.SetBatch(1)
-        gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
+    gROOT.SetBatch(not status)
+    gROOT.ProcessLine('gErrorIgnoreLevel = {e};'.format(e='0' if status else 'kError'))
 
 
 def scale_margins(gr1, gr2):
