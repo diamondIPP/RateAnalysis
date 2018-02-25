@@ -729,7 +729,7 @@ class PadAnalysis(Analysis):
         p = func() if redo else None
         p = self.do_pickle(picklepath, func, p)
         set_statbox(entries=2, only_fit=True, w=.3)
-        y_vals = [p.GetBinContent(i) for i in xrange(1, p.GetNbinsX() + 1)]
+        y_vals = [p.GetBinContent(i) for i in xrange(2, p.GetNbinsX() + 1)]
         self.format_histo(p, name='Fit Result', x_tit='Time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6, x_range=[self.run.StartTime, self.get_time_bins()[1][-1]],
                           t_ax_off=self.run.StartTime if rel_t else 0, y_range=increased_range([min(y_vals), max(y_vals)], .5, .5), ndivx=505)
         self.draw_histo(p, show=show, lm=.14, prnt=save)
