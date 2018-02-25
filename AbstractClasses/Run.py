@@ -13,7 +13,7 @@ from numpy import mean
 
 from Converter import Converter
 from Elementary import Elementary
-from Utils import isfloat, join, log_warning, log_critical, remove_letters, get_time_vec, timedelta
+from Utils import isfloat, join, log_warning, log_critical, remove_letters, get_time_vec, timedelta, has_bit
 
 
 # ==============================================
@@ -123,7 +123,7 @@ class Run(Elementary):
                 for i, line in enumerate(self.region_information):
                     if 'active_regions:' in line:
                         binary = int(line.strip('active_regions:'))
-            return [i for i in xrange(self.NChannels) if self.has_bit(binary, i)]
+            return [i for i in xrange(self.NChannels) if has_bit(binary, i)]
         elif self.DUTType == 'pixel':
             return [i for i in xrange(len([key for key in self.RunInfo.iterkeys() if key.startswith('dia') and key[-1].isdigit()]))]
 

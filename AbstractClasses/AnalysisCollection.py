@@ -99,7 +99,7 @@ class AnalysisCollection(Elementary):
     def load_channel(self):
         binary = self.FirstAnalysis.run_config_parser.getint('ROOTFILE_GENERATION', 'active_regions')
         dia_nr = self.selection.SelectedDiamondNr
-        return [i for i in xrange(16) if self.has_bit(binary, i)][dia_nr - 1]
+        return [i for i in xrange(16) if has_bit(binary, i)][dia_nr - 1]
 
     def get_high_low_rate_runs(self):
         runs = [Run(run_number=run, tree=False) for run in self.Runs]

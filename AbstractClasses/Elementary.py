@@ -218,11 +218,6 @@ class Elementary(Draw):
         t = datetime.now().strftime('%H:%M:%S')
         print '{head} {t} --> {msg}'.format(t=t, msg=msg, head=colored('WARNING:', 'red'))
 
-    @staticmethod
-    def has_bit(num, bit):
-        assert (num >= 0 and type(num) is int), 'num has to be non negative int'
-        return bool(num & 1 << bit)
-
     def make_bias_string(self, bias=None):
         if bias is None:
             return self.make_bias_string(self.bias) if hasattr(self, 'bias') else ''
