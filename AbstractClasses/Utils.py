@@ -20,20 +20,21 @@ from multiprocessing import Pool
 # ==============================================
 # UTILITY FUNCTIONS
 # ==============================================
+def get_t_str():
+    return datetime.now().strftime('%H:%M:%S')
+
+
 def log_warning(msg):
-    t = datetime.now().strftime('%H:%M:%S')
-    print '{head} {t} --> {msg}'.format(t=t, msg=msg, head=colored('WARNING:', 'red'))
+    print '{head} {t} --> {msg}'.format(t=get_t_str(), msg=msg, head=colored('WARNING:', 'red'))
 
 
 def log_critical(msg):
-    t = datetime.now().strftime('%H:%M:%S')
-    print '{head} {t} --> {msg}'.format(t=t, msg=msg, head=colored('CRITICAL:', 'red'))
-    raise ValueError
+    print '{head} {t} --> {msg}'.format(t=get_t_str(), msg=msg, head=colored('CRITICAL:', 'red'))
+    raise Exception
 
 
 def log_message(msg, overlay=False):
-    t = datetime.now().strftime('%H:%M:%S')
-    print '{ov}{t} --> {msg}{end}'.format(t=t, msg=msg, head=colored('WARNING:', 'red'), ov='\033[1A\r' if overlay else '', end=' ' * 20 if overlay else '')
+    print '{ov}{t} --> {msg}{end}'.format(t=get_t_str(), msg=msg, head=colored('WARNING:', 'red'), ov='\033[1A\r' if overlay else '', end=' ' * 20 if overlay else '')
 
 
 def set_root_output(status=True):
