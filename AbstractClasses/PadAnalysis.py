@@ -1390,7 +1390,7 @@ class PadAnalysis(Analysis):
             times = [self.run.get_calibrated_times(self.tree.GetV2()[1024 * i]) for i in xrange(n_entries / 1024)]
             times = [v for lst in times for v in lst]
         else:
-            times = [.4 if self.run.Digitiser == 'caen' else .5 * i for i in xrange(1024)] * n
+            times = [(.4 if self.run.Digitiser == 'caen' else .5) * i for i in xrange(1024)] * n
         for v, t in zip(values, times):
             h.Fill(t, v)
         self.tree.SetEstimate()

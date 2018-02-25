@@ -368,8 +368,7 @@ class Run(Elementary):
     def load_tcal(self):
         for i, line in enumerate(self.region_information):
             if 'tcal' in line:
-                data = [float(i) for i in line.strip('tcal []').split(',') if isfloat(i)][:1024]
-                return data
+                return [float(i) for i in line.strip('tcal []').split(',') if isfloat(i)][:1024]
 
     def get_calibrated_times(self, trigger_cell):
         t = [self.TCal[int(trigger_cell)]]
