@@ -1823,26 +1823,18 @@ class PadAnalysis(Analysis):
         self.histos.append([h, h1, gr1, gr2, gr3, ar, c])
 
     def draw_tcal(self, show=True):
-        f = open('{dir}/Configuration/tcal.txt'.format(dir=self.get_program_dir()))
-        tcal = [float(i) for i in f.readline().split(',')]
-        f.close()
-        tcal = tcal[:1024]
-        gr = self.make_tgrapherrors('gr_tcal', 'DRS4 Bin Sizes', marker_size=.5)
-        for i, j in enumerate(tcal):
-            gr.SetPoint(i, i, j)
-        self.format_histo(gr, x_tit='bin number', y_tit='time [ns]', y_off=1.5)
-        gr.Fit('pol0', 'qs')
-        gStyle.SetOptFit(1)
-        gr.GetYaxis().SetRangeUser(0, 1)
-        c = TCanvas('c_tcal', 'DRS4 Bin Sizes', 2500, 1000)
-        self.histos.append(self.save_histo(gr, 'DRSBinSizes', show, self.save_dir, canvas=c))
+        gr = self.make_tgrapherrors('gr_tcal', 'DRS4 Bin Sizes', marker_size=.5, x=range(len(self.run.TCal)), y=self.run.TCal)
+        gr.Fit('pol0', 'qs') if show else do_nothing()
+        self.format_histo(gr, x_tit='Bin number', y_tit='Length [ns]', y_off=1.5, y_range=[0, 1])
+        set_statbox(only_fit=True)
+        self.save_histo(gr, 'DRSBinSizes', x_fac=1.5, y_fac=.75, show=show)
 
-        h = TH1F('h_tcal', 'Bin Size Distribution', 40, 0, 1)
-        for value in tcal:
+    def draw_tcal_disto(self, show=True):
+        h = TH1F('h_tcal', 'Bin Size Distribution', *self.Plots.get_tcal_bins())
+        for value in self.run.TCal:
             h.Fill(value)
         self.format_histo(h, x_tit='time [ns]', y_tit='number of entries', y_off=1.5)
-        h.Fit('gaus', 'qs')
-        self.histos.append(self.save_histo(h, 'DRSBinSizeDisto', show, self.save_dir))
+        self.save_histo(h, 'DRSBinSizeDisto', show, self.save_dir)
 
     def save_felix(self):
         self.save_dir = '{info}_{rp}'.format(info=self.make_info_string().strip('_'), rp=self.RunNumber)
