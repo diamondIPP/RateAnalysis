@@ -1,5 +1,5 @@
 import json
-from numpy import mean
+from numpy import mean, zeros
 from Elementary import Elementary
 from InfoLegend import InfoLegend
 from ROOT import TCut, gROOT, TH1F
@@ -235,7 +235,7 @@ class Cut(Elementary):
             self.add_info(t)
             return chi2s
 
-        chi2 = self.do_pickle(picklepath, func)
+        chi2 = do_pickle(picklepath, func)
         quantile = self.CutConfig['chi2{mod}'.format(mod=mode.title())]
         assert type(quantile) is int and 0 < quantile <= 100, 'chi2 quantile has to be and integer between 0 and 100'
         cut_value = chi2[quantile] if value is None else value
@@ -254,7 +254,7 @@ class Cut(Elementary):
         def func():
             angle = self.CutConfig['track_angle']
             t = self.log_info('Generating angle cut in {m} for run {run} ...'.format(run=self.analysis.RunNumber, m=mode), False)
-            self.set_root_output(False)
+            set_root_output(False)
             draw_str = '{t}_{m}'.format(t='slope' if self.analysis.run.has_branch('slope_x') else 'angle', m=mode)
             n = self.analysis.tree.Draw(draw_str, '{s}>-100'.format(s=draw_str), 'goff')
             mean_ = mean([self.analysis.tree.GetV1()[i] for i in xrange(n)])
@@ -262,7 +262,7 @@ class Cut(Elementary):
             self.add_info(t)
             return cut_vals
 
-        return self.do_pickle(picklepath, func)
+        return do_pickle(picklepath, func)
 
     @staticmethod
     def generate_distance(dmin, dmax, thickness=500):
@@ -327,7 +327,7 @@ class Cut(Elementary):
         # time is in minutes. good results found with bin size of 10 seconds
         bin_size = 10  # seconds
         bins = int(self.analysis.run.totalMinutes * 60 / bin_size)
-        self.set_root_output(0)
+        set_root_output(0)
         h = TH1F('h_beam_time_', 'Beam Interruptions', bins, 0, self.analysis.run.totalMinutes)
         self.analysis.tree.Draw('(time - {off}) / 60000.>>h_beam_time_'.format(off=self.analysis.run.StartTime), '', 'goff')
         mean_ = mean(sorted([h.GetBinContent(i) for i in xrange(h.GetNbinsX())])[-10:])  # only take the ten highest values to get an estimate of the plateau
@@ -410,13 +410,13 @@ class Cut(Elementary):
         ensure_dir(self.BeaminterruptionsDir)
         ensure_dir(join(self.BeaminterruptionsDir, 'data'))
         pickle_path = self.make_pickle_path('BeamInterruptions', run=self.RunNumber)
-        interruptions = self.do_pickle(pickle_path, self.find_beam_interruptions)
+        interruptions = do_pickle(pickle_path, self.find_beam_interruptions)
 
         # redo range pickle if config parameters have changed
         ex_range = self.CutConfig['JumpExcludeRange']
         if interruptions['before'] != ex_range['before'] or interruptions['after'] != ex_range['after']:
             remove(pickle_path)
-            interruptions = self.do_pickle(pickle_path, self.find_beam_interruptions())
+            interruptions = do_pickle(pickle_path, self.find_beam_interruptions())
         self.Jumps = interruptions['jumps']
         self.Interruptions = interruptions['interruptions']
         return interruptions['interruptions']

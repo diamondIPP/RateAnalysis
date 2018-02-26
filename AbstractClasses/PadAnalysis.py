@@ -10,7 +10,7 @@ from sys import stdout
 from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie,\
     THStack, TArrow, kOrange, TSpectrum, TMultiGraph, Long, TH2I
 
-from ChannelCut import ChannelCut
+from CutPad import CutPad
 from CurrentInfo import Currents
 from Elementary import Elementary
 from Extrema import Extrema2D
@@ -59,7 +59,7 @@ class PadAnalysis(Analysis):
             self.PedestalName = self.get_pedestal_name()
 
             # cuts
-            self.Cut = ChannelCut(self, self.channel)
+            self.Cut = CutPad(self, self.channel)
             self.AllCuts = self.Cut.all_cut
 
             # alignment
@@ -169,7 +169,7 @@ class PadAnalysis(Analysis):
         self.channel = ch
         self.DiamondName = self.run.diamondname[ch]
         self.Bias = self.run.bias[ch]
-        self.Cut = ChannelCut(self, ch)
+        self.Cut = CutPad(self, ch)
         self.save_dir = '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.RunNumber, dia=self.run.diamondname[ch])
         self.Polarity = self.get_polarity()
         self.SignalName = self.get_signal_name()
@@ -228,7 +228,7 @@ class PadAnalysis(Analysis):
         def func():
             return self.draw_beam_profile(mode=mode, show=show, fit_margin=fit_margin)
 
-        return self.do_pickle(pickle_path, func)
+        return do_pickle(pickle_path, func)
 
     def draw_beam_fit_properties(self, show=True, mode='x', sigma=True):
         if not show:
@@ -281,7 +281,7 @@ class PadAnalysis(Analysis):
         pickle_path = self.make_pickle_path('SignalMaps', 'Hit' if hitmap else 'Signal', run=self.RunNumber, ch=self.DiamondNumber, suf=suf)
 
         def func():
-            self.set_root_output(0)
+            set_root_output(0)
             name = 'h_hm' if hitmap else 'h_sm'
             h1 = TH2I(name, 'Diamond Hit Map', *self.Plots.get_global_bins(res)) if hitmap else TProfile2D(name, 'Signal Map', *self.Plots.get_global_bins(res))
             self.log_info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.DiamondName, run=self.RunNumber, mode='hit' if hitmap else 'signal '))
@@ -423,7 +423,7 @@ class PadAnalysis(Analysis):
             self.draw_mean_signal_distribution(show=False)
             return self.MeanSignalHisto.Fit('gaus', 'qs')
 
-        fit = self.do_pickle(pickle_path, func)
+        fit = do_pickle(pickle_path, func)
         return fit
 
     def get_mean_fwhm(self):
@@ -471,19 +471,19 @@ class PadAnalysis(Analysis):
     def draw_peak_timing(self, region=None, type_='signal', show=True, cut=None, corr=True, draw_cut=True):
         xmin, xmax = self.run.signal_regions[self.SignalRegion if region is None else region] if type_ == 'signal' else self.run.PulserRegion
         # increase range for timing correction and convert to ns
-        xmin = xmin / 2. - (10 if corr else 0)
-        xmax = xmax / 2. + (10 if corr else 0)
+        fac = 2. if self.run.Digitiser == 'drs4' else 2.5
+        xmin = xmin / fac - (10 if corr else 10)
+        xmax = xmax / fac + (10 if corr else 10)
         print int((xmax - xmin) * (4 if corr else 1)), xmin, xmax
-        h = TH1F('h_pv', '{typ} Peak Positions'.format(typ=type_.title()), int((xmax - xmin) * (4 if corr else 1)), xmin, xmax)
+        h = TH1F('h_pv', '{typ} Peak Positions'.format(typ=type_.title()), int((xmax - xmin) * (4 if corr else 4)), xmin, xmax)
         self.format_histo(h, x_tit='Signal Peak Timing [ns]', y_tit='Number of Entries', y_off=1.3, stats=0)
         cut = self.Cut.generate_special_cut(excluded=['timing']) if cut is None else TCut(cut)
         dic = self.Cut.calc_timing_range(show=False)
         t_correction = '({p1}* trigger_cell + {p2} * trigger_cell*trigger_cell)'.format(p1=dic['t_corr'].GetParameter(1), p2=dic['t_corr'].GetParameter(2))
-        draw_string = '{peaks}{op}>>h_pv'.format(peaks=self.get_peak_name(region, type_, corr), op='/2.' if not corr else '-' + t_correction)
+        draw_string = '{peaks}{op}>>h_pv'.format(peaks=self.get_peak_name(region, type_, corr), op='/{f}'.format(f=fac) if not corr else '-' + t_correction)
         print draw_string
         self.tree.Draw(draw_string, cut, 'goff')
         self.draw_histo(h, show=show, sub_dir=self.save_dir, lm=.12, logy=True)
-        raw_input()
         f, fit, fit1 = self.fit_peak_timing(h)
         self.__draw_timing_legends(draw_cut, f, fit, fit1)
         h.Draw('same')
@@ -501,7 +501,7 @@ class PadAnalysis(Analysis):
             l1.AddEntry(fit1, 'Fitting Range', 'l')
             l1.AddEntry(fit, 'Fit Function', 'l')
             l1.Draw()
-        l2 = self.make_legend(.66, nentries=3, name='fr', margin=.05, felix=False)
+        l2 = self.make_legend(.66, nentries=3, name='fr', margin=.05, clean=False)
         l2.SetHeader('Fit Results')
         l2.AddEntry(0, 'Mean:', '')
         l2.AddEntry(0, '{0:5.2f} #pm {1:5.2f} ns'.format(f.Parameter(1), f.ParError(1)), '').SetTextAlign(32)
@@ -556,7 +556,7 @@ class PadAnalysis(Analysis):
                 self.draw_peak_timing(show=False)
             return self.calc_fwhm(self.PeakValues)
 
-        fwhm = self.do_pickle(pickle_path, func)
+        fwhm = do_pickle(pickle_path, func)
         return fwhm
 
     def draw_forc_times(self, show=True, corr=False):
@@ -605,7 +605,7 @@ class PadAnalysis(Analysis):
         self.tree.Draw('{peaks}{tc}:trigger_cell>>hpr'.format(peaks=peaks, tc=t_correction), self.AllCuts, 'goff')
         self.format_histo(h, x_tit='trigger cell', y_tit='Signal Peak Timing [ns]', y_off=1.25, z_tit='Pulse Height [au]' if tprofile else 'Number of Entries', z_off=1.2, stats=0)
         self.format_histo(h1, color=1, lw=3)
-        h.GetZaxis().SetRangeUser(60, 120) if tprofile else self.do_nothing()
+        h.GetZaxis().SetRangeUser(60, 120) if tprofile else do_nothing()
         fit = h.ProjectionY().Fit('gaus', 'qs0')
         h.GetYaxis().SetRangeUser(fit.Parameter(1) - 4 * fit.Parameter(2), fit.Parameter(1) + 5 * fit.Parameter(2))
         self.histos.append(self.draw_histo(h, 'TriggerCellVsPeakPos{0}'.format('Signal' if tprofile else ''), show, self.save_dir, lm=.11, draw_opt='colz', rm=.15, logz=True))
@@ -727,7 +727,7 @@ class PadAnalysis(Analysis):
             return prof
 
         p = func() if redo else None
-        p = self.do_pickle(picklepath, func, p)
+        p = do_pickle(picklepath, func, p)
         set_statbox(entries=2, only_fit=True, w=.3)
         y_vals = [p.GetBinContent(i) for i in xrange(2, p.GetNbinsX() + 1)]
         self.format_histo(p, name='Fit Result', x_tit='Time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6, x_range=[self.run.StartTime, self.get_time_bins()[1][-1]],
@@ -760,7 +760,6 @@ class PadAnalysis(Analysis):
         if not show:
             gROOT.SetBatch(1)
         means = [h_proj.GetMean() for h_proj in [sig_time.ProjectionY(str(i), i + 1, i + 1) for i in xrange(self.n_bins - 1)] if h_proj.GetEntries() > 10]
-        # xmin, xmax = increased_range([min(means), max(means)], .3, .3)
         nbins = int((xmax - xmin) / bin_size)
         h = TH1F('h', 'Signal Bin{0} Distribution'.format(self.BinSize), nbins, xmin, xmax)  # int(log(len(means), 2) * 2), extrema[0], extrema[1] + 2)
         for mean_ in means:
@@ -795,7 +794,7 @@ class PadAnalysis(Analysis):
 
         def func():
             self.log_info('Drawing signal distribution for run {run} and {dia}...'.format(run=self.RunNumber, dia=self.DiamondName))
-            self.set_root_output(False)
+            set_root_output(False)
             h1 = TH1F('h_sd', 'Pulse Height {s}'.format(s='with Pedestal Correction' if evnt_corr else ''), int((x_range[1] - x_range[0]) * binning), *x_range)
             sig_name = self.generate_signal_name(sig, evnt_corr, off_corr, False, cut)
             start_event = int(float(start)) if start is not None else 0
@@ -1022,7 +1021,7 @@ class PadAnalysis(Analysis):
                 print 'Old Bucket: {0} / {1} = {2:4.2f}%'.format(n_old, self.run.n_entries, n_old / float(self.run.n_entries) * 100)
             return {'old': n_old, 'new': n_new, 'all': float(self.run.n_entries)}
 
-        return self.do_pickle(pickle_path, func)
+        return do_pickle(pickle_path, func)
 
     def show_bucket_hits(self, show=True):
         # hit position
@@ -1113,7 +1112,7 @@ class PadAnalysis(Analysis):
             return result
 
         res = func() if plot_histos else None
-        return self.do_pickle(pickle_path, func, res)
+        return do_pickle(pickle_path, func, res)
 
     def compare_single_cuts(self):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
@@ -1320,7 +1319,7 @@ class PadAnalysis(Analysis):
     def test_landau_stats(self):
         from ROOT import gRandom
         gr = self.make_tgrapherrors('gr_ls', 'Landau Statistics')
-        self.set_root_output(False)
+        set_root_output(False)
         self.start_pbar(sum(int(pow(2, i / 2.)) for i in xrange(1, 40)))
         k = 0
         for j, i in enumerate(xrange(1, 40)):
@@ -1447,9 +1446,9 @@ class PadAnalysis(Analysis):
             return all(h.GetBinContent(bin_) < 40 for bin_ in xrange(5, h.GetNbinsX()))
 
         aligned = func() if show else None
-        aligned = self.do_pickle(pickle_path, func, aligned)
+        aligned = do_pickle(pickle_path, func, aligned)
         if not aligned:
-            self.log_warning('Run {r} is misaligned :-('.format(r=self.RunNumber))
+            log_warning('Run {r} is misaligned :-('.format(r=self.RunNumber))
         return aligned
 
     def find_event_offsets(self, binning=5000, show=True):
@@ -1865,14 +1864,14 @@ if __name__ == "__main__":
     parser.add_argument('run', nargs='?', default=392, type=int)
     parser.add_argument('dia', nargs='?', default=1, type=int)
     parser.add_argument('-tc', '--testcampaign', nargs='?', default='')
-    parser.add_argument('-v', '--verbose', action='store_true')
+    parser.add_argument('-v', '--verbose', action='store_false')
     parser.add_argument('-t', '--tree', action='store_false')
     args = parser.parse_args()
     tc = args.testcampaign if args.testcampaign.startswith('201') else None
     a = Elementary(tc)
     a.print_testcampaign()
-    a.print_banner('STARTING PAD-ANALYSIS OF RUN {0}'.format(args.run))
+    print_banner('STARTING PAD-ANALYSIS OF RUN {0}'.format(args.run))
     print
     run_class = Run(args.run, verbose=args.verbose, tree=None if args.tree else args.tree)
     z = PadAnalysis(run_class, args.dia)
-    z.print_elapsed_time(st, 'Instantiation')
+    print_elapsed_time(st, 'Instantiation')

@@ -41,7 +41,7 @@ class InfoLegend:
         # width = len(run_str) * min(canvas.GetWw(), canvas.GetWh()) * .01
         # if canvas.GetWw() > canvas.GetWh():
         width = float(max(len(run_str), len(dia_str))) / canvas.GetWw() * 10.5
-        legend = self.Analysis.make_legend(.005, .1, y1=.003, x2=width, nentries=3, felix=False, scale=.75, margin=.05)
+        legend = self.Analysis.make_legend(.005, .1, y1=.003, x2=width, nentries=3, clean=False, scale=.75, margin=.05)
 
         legend.AddEntry(0, 'Test Campaign: {tc}'.format(tc=make_tc_str(self.Analysis.generate_tc_str())), '')   # Test Campaign
         legend.AddEntry(0, run_str, '')                                                                         # Run String

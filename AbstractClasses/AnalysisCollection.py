@@ -2,7 +2,7 @@
 # IMPORTS
 # ==============================================
 from argparse import ArgumentParser
-from numpy import log, mean, concatenate
+from numpy import log, mean, concatenate, zeros
 from functools import partial
 
 from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1, TH1F, TH2F, TH2I, TProfile2D
@@ -195,7 +195,7 @@ class AnalysisCollection(Elementary):
         legends[2].AddEntry(cur, 'current', 'l')
 
         # Drawing
-        self.set_root_output(show)
+        set_root_output(show)
         c = TCanvas('c', 'c', 1500, 1000)
         margins = [[.075, .05, 0, .1], [.075, .05, 0, 0], [.075, .05, 0.05, 0]]
         draw_opts = ['pl', '', '']
@@ -250,7 +250,7 @@ class AnalysisCollection(Elementary):
             return phs
 
         pulse_heights = func() if redo else None
-        return self.do_pickle(pickle_path, func, pulse_heights)
+        return do_pickle(pickle_path, func, pulse_heights)
 
     def draw_flux(self, evts_per_bin=10000, rel_t=True, show=True):
         limits = self.get_start_end_times()
@@ -323,7 +323,7 @@ class AnalysisCollection(Elementary):
                     fit4 = ana.draw_pulse_height(binning, corr=False, show=False)[1]
                 x = ana.run.Flux if flux else key
                 if vs_time:
-                    self.set_root_output(False)
+                    set_root_output(False)
                     x_err = ana.run.Duration.seconds / 2.
                     x = int(ana.run.LogStart.strftime('%s')) + x_err - self.StartTime
                     gr5.SetPoint(i, x, fit1.Parameter(0))
@@ -361,7 +361,7 @@ class AnalysisCollection(Elementary):
             if raw:
                 graphs.append(gr4)
             legend = self.make_legend(.65, .35, nentries=len(graphs))
-            # gr1.SetName('data') if len(graphs) < 5 else self.do_nothing()
+            # gr1.SetName('data') if len(graphs) < 5 else do_nothing()
 
             mg = TMultiGraph('mg_ph', prefix + self.DiamondName)
             mg.Add(gr_line, 'l') if not self.Type == 'random scan' else do_nothing()
@@ -384,7 +384,7 @@ class AnalysisCollection(Elementary):
                 mg.GetXaxis().SetTimeFormat('%H:%M%F2000-02-28 23:00:00')
                 mg.GetXaxis().SetLabelSize(.03)
             x_vals = sorted([gr1.GetX()[i] for i in xrange(gr1.GetN())])
-            mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 1.2) if flux else self.do_nothing()
+            mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 1.2) if flux else do_nothing()
             self.save_histo(mg, 'PulseHeight{mod}'.format(mod=mode.title()), False, self.save_dir, lm=.14, draw_opt='A', l=legend, logx=True if flux else 0, gridy=1 if vs_time else 0,
                             gridx=True if vs_time else 0)
 
@@ -405,7 +405,7 @@ class AnalysisCollection(Elementary):
 
         f = partial(func, y_range)
         mg2 = func(y_range) if save_plots or redo else None
-        return self.do_pickle(pickle_path, f, mg2)
+        return do_pickle(pickle_path, f, mg2)
 
     def draw_pedestals(self, region='ab', peak_int='2', flux=True, all_regions=False, sigma=False, show=True, cut=None, save=False, pulser=False):
 
@@ -447,7 +447,7 @@ class AnalysisCollection(Elementary):
 
         self.ProgressBar.finish()
         graph = func() if show or save else None
-        graph = self.do_pickle(pickle_path, func, graph)
+        graph = do_pickle(pickle_path, func, graph)
         cut_name = '' if cut is None else TCut(cut).GetName()
         save_name = '{p}Pedestal{s}{mod}{cut}'.format(mod=mode, cut=cut_name, s='Sigma' if sigma else 'Mean', p='Pulser' if pulser else '')
         self.save_histo(graph, save_name=save_name, show=show, logx=True if flux else False, l=legend if all_regions else None, lm=.12, draw_opt='ap')
@@ -489,7 +489,7 @@ class AnalysisCollection(Elementary):
             for i, s in enumerate([stack, log_stack], 1):
                 pad = c.cd(i)
                 pad.SetLeftMargin(.14)
-                pad.SetLogy() if i == 2 else self.do_nothing()
+                pad.SetLogy() if i == 2 else do_nothing()
                 s.Draw('nostack')
                 legends[i - 1].Draw()
             self.RootObjects.append([c, legends])
@@ -530,7 +530,7 @@ class AnalysisCollection(Elementary):
             return fits
 
         res = func() if show else None
-        return self.do_pickle(pickle_path, func, res)
+        return do_pickle(pickle_path, func, res)
 
     def get_repr_errors(self, flux, show=True):
         runs = self.get_runs_below_flux(flux)
@@ -560,7 +560,7 @@ class AnalysisCollection(Elementary):
             return self.draw_combined_ph_distributions(runs, binning, show)
 
         err = func() if save_plot else None
-        return self.do_pickle(pickle_path, func, err)
+        return do_pickle(pickle_path, func, err)
 
     def draw_combined_ph_distributions(self, runs, binning=200, show=True):
         stack = THStack('s_phd', 'Pulse Height Distributions')
@@ -568,9 +568,9 @@ class AnalysisCollection(Elementary):
         self.start_pbar(len(runs))
         for i, run in enumerate(runs, 1):
             ana = self.collection[run]
-            self.set_root_output(False)
+            set_root_output(False)
             h = ana.draw_ph_distribution(show=False, binning=binning, fit=False, save=False)
-            self.set_root_output(True)
+            set_root_output(True)
             self.format_histo(h, fill_color=4000)
             h.SetStats(False)
             h.SetLineColor(self.get_color())
@@ -618,7 +618,7 @@ class AnalysisCollection(Elementary):
             return mins
 
         res = func() if recalc else None
-        return self.do_pickle(pickle_path, func, res)
+        return do_pickle(pickle_path, func, res)
 
     def calc_full_pedestal_spread(self):
         values = []
@@ -694,7 +694,7 @@ class AnalysisCollection(Elementary):
             mg_y = y[0] * 1.3 - y[1] * .3
             self.format_histo(mg, y_range=[mg_y, y[1] + (y[1] - y[0]) * .3], y_off=1.75, x_off=1.3)
             x_vals = sorted([gr.GetX()[i] for i in xrange(gr.GetN())])
-            mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 1.2) if flux else self.do_nothing()
+            mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 1.2) if flux else do_nothing()
             self.save_histo(mg, 'Pulser{mean}{a}{b}'.format(mean='Mean' if mean_ else 'Sigma', a=corr, b=beam_on), lm=.14, draw_opt='A', logx=True if flux else 0, l=l, show=False)
             mg1 = mg.Clone()
             mg1.GetListOfGraphs()[0].SetLineColor(602)
@@ -705,7 +705,7 @@ class AnalysisCollection(Elementary):
             return mg
 
         gra = func() if save else None
-        gra = self.do_pickle(pickle_path, func, gra)
+        gra = do_pickle(pickle_path, func, gra)
         return gra if ret_mg else gra.GetListOfGraphs()[1]
 
     def __draw_pulser_legend(self):
@@ -713,7 +713,7 @@ class AnalysisCollection(Elementary):
             typ = self.FirstAnalysis.RunInfo['pulser']
             pol = 'positive' if self.FirstAnalysis.PulserPolarity > 0 else 'negative'
             sig = 'positive' if self.FirstAnalysis.Polarity > 0 else 'negative'
-            l1 = self.make_legend(.17, .88, nentries=3, margin=.05, felix=True, x2=.5)
+            l1 = self.make_legend(.17, .88, nentries=3, margin=.05, clean=True, x2=.5)
             l1.AddEntry(0, 'Pulser Type:', '')
             l1.AddEntry(0, typ, '').SetTextAlign(12)
             l1.AddEntry(0, 'Pulser Polarity:', '')
@@ -730,7 +730,7 @@ class AnalysisCollection(Elementary):
 
     def __draw_signal_legend(self):
         sig = 'positive' if self.FirstAnalysis.Polarity > 0 else 'negative'
-        l1 = self.make_legend(.17, .88, nentries=2, margin=.05, felix=True, x2=.5)
+        l1 = self.make_legend(.17, .88, nentries=2, margin=.05, clean=True, x2=.5)
         l1.AddEntry(0, 'Signal Polarity:', '')
         l1.AddEntry(0, sig, '').SetTextAlign(12)
         l1.AddEntry(0, 'Pedestal Substraction:', '')
@@ -863,7 +863,7 @@ class AnalysisCollection(Elementary):
             return fits
 
         errors = func() if recalc else None
-        return self.do_pickle(pickle_path, func, errors)
+        return do_pickle(pickle_path, func, errors)
 
     # endregion
 
@@ -1139,7 +1139,7 @@ class AnalysisCollection(Elementary):
             self.save_histo(sig_map, 'CombinedSignalMaps', show, lm=.12, rm=.16, draw_opt='colz')
             return sig_map
 
-        hist = self.do_pickle(pickle_path, func)
+        hist = do_pickle(pickle_path, func)
         if not gROOT.FindObject('h_sms'):
             gStyle.SetPalette(53)
             self.__adjust_sig_map(hist)
@@ -1182,7 +1182,7 @@ class AnalysisCollection(Elementary):
             i += 1
         c = TCanvas('c', 'Beam Profile', 1000, 1000)
         c.SetLeftMargin(.125)
-        c.SetLogx() if flux else self.do_nothing()
+        c.SetLogx() if flux else do_nothing()
         self.format_histo(gr, x_tit='{mod}{unit}'.format(mod=mode, unit=' [kHz/cm2]' if flux else ''), y_tit='{tit} [cm]'.format(tit=title), y_off=1.8)
         gr.Draw('alp')
         gROOT.SetBatch(0)
@@ -1203,7 +1203,7 @@ class AnalysisCollection(Elementary):
         for i, gr in enumerate([gr1, gr2, gr3, gr4], 1):
             self.format_histo(gr, y_off=1.3)
             pad = c.cd(i)
-            pad.SetLogx() if flux else self.do_nothing()
+            pad.SetLogx() if flux else do_nothing()
             pad.SetBottomMargin(.15)
             gr.Draw('alp')
         gROOT.SetBatch(0)
@@ -1353,7 +1353,7 @@ class AnalysisCollection(Elementary):
             self.save_plots('Overview Plot', sub_dir=self.save_dir, canvas=c)
         self.RootObjects.append(c)
 
-        print '\nThe preanalysis for this selection took', self.print_elapsed_time(start_time)
+        print '\nThe preanalysis for this selection took', print_elapsed_time(start_time)
 
     def get_systematic_error_table(self, latex=False):
         f = open('PlotsFelix/table_{tc}_{rp}_{dia}.txt'.format(tc=self.TESTCAMPAIGN, rp=self.RunPlan, dia=self.DiamondName), 'w')
@@ -1482,7 +1482,7 @@ class AnalysisCollection(Elementary):
         return '{mod}{unit}'.format(mod=mode, unit=' [kHz/cm^{2}]' if flux else '')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     st = time()
     main_parser = ArgumentParser()
     main_parser.add_argument('runplan', nargs='?', default=3)
@@ -1498,12 +1498,12 @@ if __name__ == "__main__":
     a = Elementary(tc, True, get_resolution())
     sel = RunSelection(testcampaign=tc, verbose=True)
     sel.select_runs_from_runplan(run_plan, ch=diamond) if not args.runs else sel.select_runs([int(args.runplan), int(args.dia if args.dia else args.runplan)], args.dia2 if args.dia2 else 1)
-    a.print_banner('STARTING PAD-ANALYSIS COLLECTION OF RUNPLAN {0}'.format(run_plan))
+    print_banner('STARTING PAD-ANALYSIS COLLECTION OF RUNPLAN {0}'.format(run_plan))
     a.print_testcampaign()
     t = load_root_files(sel, args.tree)
     z = AnalysisCollection(sel, threads=t)
     z.print_loaded()
-    z.print_elapsed_time(st, 'Instantiation')
+    print_elapsed_time(st, 'Instantiation')
     if args.runs:
         z.Currents.draw_indep_graphs()
         raw_input('Press any button to exit')

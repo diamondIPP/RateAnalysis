@@ -14,7 +14,7 @@ __author__ = 'micha'
 # ==============================================
 # MAIN CLASS
 # ==============================================
-class ChannelCut(Cut):
+class CutPad(Cut):
     """The ChannelCut contains all cut settings which corresponds to a single diamond in a single run. """
 
     def __init__(self, analysis, channel=0):
@@ -215,7 +215,7 @@ class ChannelCut(Cut):
         corrected_time = 'IntegralPeakTime[{num}] - {t_corr}'.format(num=num, t_corr=t_correction)
         try:
             string = 'TMath::Abs({cor_t} - {mp}) / {sigma} < {n_sigma}'.format(cor_t=corrected_time, mp=dic['timing_corr'].GetParameter(1), sigma=dic['timing_corr'].GetParameter(2), n_sigma=n_sigma)
-        except: 
+        except:
             print dic['timing_corr']
             raise Exception()
         return TCut(string), corrected_time, t_correction
@@ -301,16 +301,16 @@ class ChannelCut(Cut):
             entries = h.GetEntries()
             if entries < 2000:
                 return 30
-            h.Rebin(2) if entries < 5000 else self.do_nothing()
+            h.Rebin(2) if entries < 5000 else do_nothing()
             # extract fit functions
-            self.set_root_output(False)
+            set_root_output(False)
             fit = self.triple_gauss_fit(h)
             sig_fit = TF1('f1', 'gaus', -50, 300)
             sig_fit.SetParameters(fit.GetParameters())
             ped_fit = TF1('f2', 'gaus(0) + gaus(3)', -50, 300)
             pars = [fit.GetParameter(i) for i in xrange(3, 9)]
             ped_fit.SetParameters(*pars)
-            self.set_root_output(True)
+            set_root_output(True)
 
             # real data distribution without pedestal fit
             signal = deepcopy(h)
@@ -339,7 +339,7 @@ class ChannelCut(Cut):
 
             c = None
             if show_all:
-                self.set_root_output(True)
+                set_root_output(True)
                 c = TCanvas('c_all', 'Signal Threshold Overview', self.Res, self.Res)
                 c.Divide(2, 2)
 
@@ -383,7 +383,7 @@ class ChannelCut(Cut):
             return max_err
 
         threshold = func() if show or show_all else None
-        threshold = self.do_pickle(pickle_path, func, threshold)
+        threshold = do_pickle(pickle_path, func, threshold)
         return threshold if threshold > 0 else 30
 
     def __calc_pedestal_range(self, sigma_range):
@@ -397,7 +397,7 @@ class ChannelCut(Cut):
             self.add_info(t)
             return FitRes(fit_pars)
 
-        fit = self.do_pickle(picklepath, func)
+        fit = do_pickle(picklepath, func)
         sigma = fit.Parameter(2)
         mean_ = fit.Parameter(1)
         self.PedestalFit = fit
@@ -422,14 +422,14 @@ class ChannelCut(Cut):
             return fit.GetX(.1, 0, peaks[-1])
 
         threshold = func() if show else None
-        return self.do_pickle(pickle_path, func, threshold)
+        return do_pickle(pickle_path, func, threshold)
 
     def calc_timing_range(self, show=True, n_sigma=4):
         pickle_path = self.make_pickle_path('Cuts', 'TimingRange', self.RunNumber, self.channel)
 
         def func():
             t = self.log_info('Generating timing cut for {dia} of run {run} ...'.format(run=self.analysis.RunNumber, dia=self.analysis.DiamondName), next_line=False)
-            gROOT.SetBatch(1) if not show else self.do_nothing()
+            gROOT.SetBatch(1) if not show else do_nothing()
             num = self.analysis.SignalNumber
             cut = self.generate_special_cut(excluded=['bucket', 'timing'], prnt=False)
 
@@ -518,7 +518,7 @@ class ChannelCut(Cut):
             self.log_info('Peak Timing: Mean: {0}, sigma: {1}'.format(original_mpv, fit1.GetParameter(2)))
             return {'t_corr': fit2, 'timing_corr': fit3}
         fits = func() if show else None
-        fits = self.do_pickle(pickle_path, func, fits)
+        fits = do_pickle(pickle_path, func, fits)
         return fits
 
     def generate_timing_cut(self, sigma=4, show=False):

@@ -464,7 +464,7 @@ class DiaScans(Elementary):
         biases = self.get_bias_voltages()
         bias_str = ' at {bias} V'.format(bias=biases[0]) if len(biases) == 1 else ''
         mg = TMultiGraph('mg_ph', '{dia} Rate Scans{b};Flux [kHz/cm^{{2}}]; pulse height [au]'.format(dia=self.DiamondName, b=bias_str))
-        legend = self.make_legend(.75, .4, nentries=4, felix=True)
+        legend = self.make_legend(.75, .4, nentries=4, clean=True)
         legend.SetNColumns(2) if len(biases) > 1 else do_nothing()
         colors = [4, 419, 2, 800, 3]
         # tits = [make_irr_string(v, p) for v, p in [(0, 0), (5, 14), (1.5, 15)]]

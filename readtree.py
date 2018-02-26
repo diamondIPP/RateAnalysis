@@ -173,7 +173,7 @@ def get_bias(ch):
 
 def draw_runinfo_legend(ch):
     testcamp = datetime.strptime(tc, '%Y%m')
-    l = run.make_legend(.005, .156, y1=.003, x2=.39, nentries=2, felix=False, scale=1, margin=.05)
+    l = run.make_legend(.005, .156, y1=.003, x2=.39, nentries=2, clean=False, scale=1, margin=.05)
     l.SetTextSize(.05)
     l.AddEntry(0, 'Test Campaign: {tc}, Run {run} @ {rate:2.1f} kHz/cm^{{2}}'.format(tc=testcamp.strftime('%b %Y'), run=run, rate=run.calc_flux()), '')
     l.AddEntry(0, 'Diamond: {diamond} @ {bias:+}V'.format(diamond=load_diamond_name(ch), bias=get_bias(ch)), '')

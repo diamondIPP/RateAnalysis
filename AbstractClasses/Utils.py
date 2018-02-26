@@ -6,7 +6,7 @@
 from datetime import datetime, timedelta
 from termcolor import colored
 from ROOT import gStyle, gROOT, TF1, TColor, TFile
-from numpy import sqrt, array, average, zeros
+from numpy import sqrt, array, average
 from os import makedirs
 from os import path as pth
 from os.path import basename, join, split
@@ -33,8 +33,9 @@ def log_critical(msg):
     raise Exception
 
 
-def log_message(msg, overlay=False):
-    print '{ov}{t} --> {msg}{end}'.format(t=get_t_str(), msg=msg, head=colored('WARNING:', 'red'), ov='\033[1A\r' if overlay else '', end=' ' * 20 if overlay else '')
+def log_message(msg, overlay=False, prnt=True):
+    if prnt:
+        print '{ov}{t} --> {msg}{end}'.format(t=get_t_str(), msg=msg, ov='\033[1A\r' if overlay else '', end=' ' * 20 if overlay else '')
 
 
 def set_root_output(status=True):
@@ -398,7 +399,7 @@ def get_base_dir():
     return join('/', *__file__.split('/')[1:3])
 
 
-def kinder_is_mounted():
+def server_is_mounted():
     return dir_exists(join(get_base_dir(), 'mounts/psi/Diamonds'))
 
 
@@ -421,7 +422,7 @@ def do_pickle(path, func, value=None, params=None):
 
 
 def kinder_pickle(old_path, value):
-    if kinder_is_mounted():
+    if server_is_mounted():
         picklepath = join(get_base_dir(), 'mounts/psi/Pickles', basename(split(old_path)[0]), basename(old_path))
         do_pickle(picklepath, do_nothing, value)
 
@@ -499,14 +500,6 @@ def do(fs, pars, exe=-1):
 
 def make_bias_str(bias):
     return '{s}{bias}V'.format(bias=int(bias), s='+' if bias > 0 else '')
-
-
-def make_graph_args(x, y, ex=None, ey=None):
-    if len(list(x)) != len(list(y)):
-        log_warning('Arrays have different size!')
-        return
-    lx = len(x)
-    return [lx, array(x, 'd'), array(y, 'd'), array(ex, 'd') if ex is not None else zeros(lx), array(ey, 'd') if ey is not None else zeros(lx)]
 
 
 def markers(i):
