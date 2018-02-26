@@ -5,6 +5,7 @@ import os
 from ROOT import TGraphErrors, TCanvas, TH1D, TH2D, gStyle, gROOT, kError, TProfile2D, TProfile, kBlack, TLatex, THStack
 from math import ceil, sqrt
 from numpy import arange, array
+from Utils import increased_range
 
 from Elementary import Elementary
 
@@ -78,6 +79,9 @@ class Plots(Elementary):
             ret_val.append(len(arr) - 1)
             ret_val.append(arr)
         return ret_val
+
+    def get_tcal_bins(self):
+        return [int(round(sqrt(len(self.run.TCal))))] + increased_range([min(self.run.TCal), max(self.run.TCal)], .1, .1)
 
     def get_global_bins(self, res, mode=None, arrays=False):
         x, y = self.Settings['globalCoods'][:2], self.Settings['globalCoods'][2:]
