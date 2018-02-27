@@ -365,6 +365,12 @@ class Run(Elementary):
                 data = self.region_information[i + 1].strip(' ').split(',')
                 return data
 
+    def get_rf_channel(self):
+        try:
+            return self.DigitizerChannels.index(next(ch for ch in self.DigitizerChannels if 'rf' in ch.lower()))
+        except StopIteration:
+            log_warning('There is no Digitiser Channel with rf in it')
+
     def load_tcal(self):
         for i, line in enumerate(self.region_information):
             if 'tcal' in line:
