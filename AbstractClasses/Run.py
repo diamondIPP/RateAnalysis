@@ -270,7 +270,7 @@ class Run(Elementary):
                         dic[line[1]]['col'][1] = line[2]
             f.close()
         except IOError as err:
-            self.log_warning(err)
+            log_warning(err)
         print dic
 
     def calculate_flux(self):
@@ -315,7 +315,7 @@ class Run(Elementary):
             pass
         # check for corner method
         elif not maskdata.values()[0].keys()[0].startswith('corn'):
-            self.log_warning('Invalid mask file. Not taking any mask!')
+            log_warning('Invalid mask file. Not taking any mask!')
         else:
             for plane, dic in maskdata.iteritems():
                 row = dic['cornBot'][0], dic['cornTop'][0]
@@ -338,7 +338,7 @@ class Run(Elementary):
     def wf_exists(self, channel):
         wf_exist = True if self.tree.FindBranch('wf{ch}'.format(ch=channel)) else False
         if not wf_exist:
-            print self.log_warning('The waveform for channel {ch} is not stored in the tree'.format(ch=channel))
+            log_warning('The waveform for channel {ch} is not stored in the tree'.format(ch=channel))
         return wf_exist
 
     # ==============================================
