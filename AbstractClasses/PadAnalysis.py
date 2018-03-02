@@ -18,6 +18,7 @@ from TelescopeAnalysis import Analysis
 from Pulser import PulserAnalysis
 from Pedestal import PedestalAnalysis
 from Peaks import PeakAnalysis
+from Timing import TimingAnalysis
 from Run import Run
 from Utils import *
 
@@ -69,6 +70,7 @@ class PadAnalysis(Analysis):
             self.Pulser = PulserAnalysis(self)
             self.Pedestal = PedestalAnalysis(self)
             self.Peaks = PeakAnalysis(self)
+            self.Timing = TimingAnalysis(self)
 
         # currents
         self.Currents = Currents(self)
@@ -1719,7 +1721,6 @@ class PadAnalysis(Analysis):
 
     # ============================================
     # region MISCELLANEOUS
-
     def get_cut(self):
         """ :return: full cut_string """
         return self.Cut.all_cut
