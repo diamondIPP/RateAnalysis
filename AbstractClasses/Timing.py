@@ -6,7 +6,7 @@
 
 from Elementary import Elementary
 from InfoLegend import InfoLegend
-from Utils import set_statbox, FitRes, get_last_canvas, increased_range
+from Utils import set_statbox, FitRes, get_last_canvas, increased_range, log_warning
 from ROOT import TH1F, TF1, TCut, TH2F
 
 
@@ -98,11 +98,21 @@ class TimingAnalysis(Elementary):
         self.format_histo(h, x_tit='Rise Width [au]', y_tit='Number of Entries', y_off=1.2, fill_color=self.FillColor, x_range=x_range)
         self.draw_histo(h, show=show, lm=.12)
 
-    def draw_threshold(self, corr=False, show=True):
         h = TH1F('hrt', 'Signal over Threshold', 2000 * (2 if corr else 1), 0, 500)
         corr = '+rf_phase' if corr else ''
-        self.Tree.Draw('t_thresh[{ch}]{c}>>hrt'.format(ch=self.Ana.channel, c=corr), self.Cut.all_cut + TCut('t_thresh'), 'goff')
         set_statbox(w=.3, entries=6)
         x_range = increased_range([h.GetBinCenter(ibin) for ibin in [h.FindFirstBinAbove(5), h.FindLastBinAbove(5)]], .1, .3)
         self.format_histo(h, x_tit='Threshold Time [ns]', y_tit='Number of Entries', y_off=1.2, fill_color=self.FillColor, x_range=x_range)
         self.draw_histo(h, show=show, lm=.12)
+
+    def get_channel_nr(self, name):
+        try:
+            return self.Run.DigitizerChannels.index(next(ch for ch in self.Run.DigitizerChannels if name in ch.lower()))
+        except StopIteration:
+            log_warning('There is no Digitiser Channel with {n} in it'.format(n=name))
+
+    def get_rf_channel(self):
+        return self.get_channel_nr('rf')
+
+    def get_scint_channel(self):
+        return self.get_channel_nr('scint')
