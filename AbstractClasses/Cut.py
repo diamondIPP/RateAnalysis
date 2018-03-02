@@ -136,7 +136,7 @@ class Cut(Elementary):
     def load_config(self):
         self.CutConfig['IndividualChCut'] = ''
         self.CutConfig['JumpExcludeRange'] = {'before': self.ana_config_parser.getint('CUT', 'excludeBeforeJump'), 'after': self.ana_config_parser.getint('CUT', 'excludeAfterJump')}
-        self.CutConfig['ExcludeFirst'] = self.load_exclude_first(self.ana_config_parser.getint('CUT', 'excludefirst'))
+        self.CutConfig['ExcludeFirst'] = self.load_exclude_first(self.ana_config_parser.getfloat('CUT', 'excludefirst'))
         self.CutConfig['EventRange'] = self.load_event_range(json.loads(self.ana_config_parser.get('CUT', 'EventRange')))
         self.CutConfig['chi2X'] = self.ana_config_parser.getint('CUT', 'chi2X')
         self.CutConfig['chi2Y'] = self.ana_config_parser.getint('CUT', 'chi2Y')
@@ -162,17 +162,7 @@ class Cut(Elementary):
     def load_exclude_first(self, value):
         """ Sets how many events at the very beginning of the run should be excluded. if the argument is negative, it will be interpreted as time in minutes. For a positive argument it is interpreted
          as maximum event number. """
-        if value > 0:
-            self.EasyCutStrings['ExcludeFirst'] = str(int(value) / 1000) + 'k+'
-            return value
-        elif value == 0:
-            self.EasyCutStrings['ExcludeFirst'] = ''
-            return 0
-        else:
-            self.EasyCutStrings['ExcludeFirst'] = str(-1 * value) + 'min+'
-            seconds = -1 * value * 60
-            event = self.analysis.get_event_at_time(seconds)
-            return event
+        return value if value >= 0 else self.analysis.get_event_at_time(-1 * value * 60)
 
     def set_exclude_first(self, value):
         self.CutConfig['ExcludeFirst'] = self.load_exclude_first(value)
