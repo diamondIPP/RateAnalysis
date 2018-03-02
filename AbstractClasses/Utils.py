@@ -403,22 +403,21 @@ def server_is_mounted():
     return dir_exists(join(get_base_dir(), 'mounts/psi/Diamonds'))
 
 
-def do_pickle(path, func, value=None, params=None):
+def do_pickle(path, func, value=None, params=None, redo=False):
     if value is not None:
         f = open(path, 'w')
         pickle.dump(value, f)
         f.close()
         return value
-    try:
+    if file_exists(path) and not redo:
         f = open(path, 'r')
-        ret_val = pickle.load(f)
-        f.close()
-    except IOError:
+        return pickle.load(f)
+    else:
         ret_val = func() if params is None else func(params)
         f = open(path, 'w')
         pickle.dump(ret_val, f)
         f.close()
-    return ret_val
+        return ret_val
 
 
 def kinder_pickle(old_path, value):

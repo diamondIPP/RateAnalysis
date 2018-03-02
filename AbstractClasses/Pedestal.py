@@ -6,7 +6,7 @@
 
 from Elementary import Elementary
 from ROOT import TH2F, gStyle, TH1F, TCut, gROOT
-from Utils import set_statbox, set_drawing_range, FitRes, kinder_pickle
+from Utils import set_statbox, set_drawing_range, FitRes, kinder_pickle, do_pickle
 from copy import deepcopy
 from numpy import mean
 from collections import OrderedDict
@@ -63,7 +63,7 @@ class PedestalAnalysis(Elementary):
 
         if show or save:
             set_statbox(opt='neMR', entries=6, w=.3)
-        h = self.do_pickle(picklepath, func, redo=redo)
+        h = do_pickle(picklepath, func, redo=redo)
         set_drawing_range(h, rfac=.2)
         self.save_histo(h, 'PedestalDistribution', show, save=save, logy=logy, lm=.13)
         self.Histogram = h
@@ -130,7 +130,7 @@ class PedestalAnalysis(Elementary):
                 g1.SetPointError(ibin - 1, 0, fit.ParError(2 if sigma else 1))
             return g1
 
-        g = self.do_pickle(picklepath, func, redo=redo)
+        g = do_pickle(picklepath, func, redo=redo)
         self.format_histo(g, x_tit='Time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6)
         self.save_histo(g, 'Pedestal{s}PulseHeight'.format(s='Sigma' if sigma else ''), show=show, lm=.14, draw_opt='apl')
         return g
