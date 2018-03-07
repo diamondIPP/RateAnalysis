@@ -28,10 +28,21 @@ class PixCollection(AnalysisCollection):
             self.collection[analysis.run.RunNumber] = analysis
             self.current_run_number = analysis.run.RunNumber
 
+    def draw_hit_efficiencies(self, show=True):
+        fits = [ana.draw_hit_efficiency(show=False) for ana in self.collection.itervalues()]
+        y, ey = [fit.Parameter(0) for fit in fits], [fit.ParError(0) for fit in fits]
+        x, ex = self.get_fluxes().values(), [flux * .1 for flux in self.get_fluxes().itervalues()]
+        g = self.make_tgrapherrors('ghes', 'Hit Efficiencies', y=y, x=x, ex=ex, ey=ey)
+        self.format_histo(g, x_tit='Flux [kHz/cm^{2}]', y_tit='Hit Efficiency [%]', y_off=1.3)
+        self.save_histo(g, 'HitEfficiencies', lm=.12, draw_opt='ap', show=show)
+
     def generate_slope_pickle(self):
         pass
 
     def generate_threshold_pickle(self):
+        pass
+
+    def load_channel(self):
         pass
 
 
