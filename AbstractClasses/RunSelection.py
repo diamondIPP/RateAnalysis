@@ -6,6 +6,7 @@ from datetime import datetime as dt
 from textwrap import fill
 from sys import argv
 from ConfigParser import ConfigParser
+from itertools import chain
 from Utils import *
 
 
@@ -182,7 +183,7 @@ class RunSelection(Elementary):
 
     def select_run(self, run_number, unselect=False):
         if run_number not in self.RunNumbers:
-            self.log_warning('Run {run} not found in list of run numbers. Check run_log json file!'.format(run=run_number))
+            log_warning('Run {run} not found in list of run numbers. Check run_log json file!'.format(run=run_number))
             return
         self.Selection[run_number] = not unselect
 
@@ -257,14 +258,17 @@ class RunSelection(Elementary):
         """ Prints an overview of all selected runs. """
         selected_runs = self.get_selected_runs()
         print 'The selections contains {n} runs\n'.format(n=len(selected_runs))
-        header = ['Nr.', 'Type'.ljust(10), 'Diamond1', 'HV1 [V]', 'Diamond2', 'HV2 [V]', 'Flux [kHz/cm2]'] + (['Comments'.ljust(21)] if not full_comments else [])
+        r = self.run
+        r.set_run(selected_runs[0], root_tree=False)
+        dia_bias = list(chain(*[['Diamond{}'.format(i + 1), 'HV{} [V]'.format(i + 1)] for i in xrange(self.run.get_n_diamonds())]))
+        header = ['Nr.', 'Type'.ljust(10)] + dia_bias + ['Flux [kHz/cm2]'] + (['Comments'.ljust(21)] if not full_comments else [])
         rows = []
         for run in selected_runs:
-            r = self.run
             r.set_run(run, root_tree=False)
-            d1, d2 = (str(value).ljust(8) for value in r.load_diamond_names())
-            v1, v2 = ('{v:+7.0f}'.format(v=value) for value in r.load_biases())
-            row = [str(run).rjust(3), r.RunInfo['runtype'].ljust(10), d1, v1, d2, v2, '{:14.2f}'.format(r.Flux)]
+            d = [str(value).ljust(8) for value in r.load_diamond_names()]
+            b = ['{v:+7.0f}'.format(v=value) for value in r.load_biases()]
+            dia_bias = list(chain(*[[d[i], b[i]] for i in xrange(len(d))]))
+            row = [str(run).rjust(3), r.RunInfo['runtype'].ljust(10)] + dia_bias + ['{:14.2f}'.format(r.Flux)]
             if not full_comments:
                 row += ['{c}{s}'.format(c=r.RunInfo['comments'][:20].replace('\r\n', ' '), s='*' if len(r.RunInfo['comments']) > 20 else ' ' * 21)]
                 rows.append(row)
@@ -283,7 +287,7 @@ class RunSelection(Elementary):
         f = open(self.RunPlanPath, 'r+')
         runplans = json.load(f)
         runplans[self.TCString] = self.RunPlan if runplan is None else runplan
-        self.rename_runplan_numbers() if runplan is not None and runplan else self.do_nothing()
+        self.rename_runplan_numbers() if runplan is not None and runplan else do_nothing()
         f.seek(0)
         json.dump(runplans, f, indent=2, sort_keys=True)
         f.truncate()
