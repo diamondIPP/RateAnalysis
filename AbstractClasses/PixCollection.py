@@ -12,12 +12,13 @@ from argparse import ArgumentParser
 from Utils import get_resolution, load_root_files
 from PixAnalysis import PixAnalysis
 from Run import Run
+from Utils import print_banner, print_elapsed_time
 
 
 class PixCollection(AnalysisCollection):
 
-    def __init__(self, run_selection, threads=None, verbose=False):
-        AnalysisCollection.__init__(self, run_selection, threads=threads, verbose=verbose)
+    def __init__(self, run_selection, threads=None):
+        AnalysisCollection.__init__(self, run_selection, threads=threads)
 
     def add_analyses(self):
         """ Creates and adds Analysis objects with run numbers in runs. """
@@ -45,12 +46,12 @@ if __name__ == "__main__":
     args = p.parse_args()
     tc = args.testcampaign if args.testcampaign.startswith('201') else None
     a = Elementary(tc, True, get_resolution())
-    sel = RunSelection(testcampaign=tc)
+    sel = RunSelection(testcampaign=tc, verbose=args.verbose)
     sel.select_runs_from_runplan(args.runplan, ch=args.dia)
-    a.print_banner('STARTING PIX-ANALYSIS COLLECTION FOR RUNPLAN {0}'.format(args.runplan))
+    print_banner('STARTING PIX-ANALYSIS COLLECTION FOR RUNPLAN {0}'.format(args.runplan))
     a.print_testcampaign()
 
     t = load_root_files(sel, args.tree)
-    z = PixCollection(sel, threads=t, verbose=args.verbose)
+    z = PixCollection(sel, threads=t)
     z.print_loaded()
-    z.print_elapsed_time(st, 'Instantiation')
+    print_elapsed_time(st, 'Instantiation')

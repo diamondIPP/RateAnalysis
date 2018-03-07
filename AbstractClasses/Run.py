@@ -244,6 +244,7 @@ class Run(Elementary):
             self.__load_rootfile()
         elif root_tree:
             # TODO: check if the tree is functional and type tree...
+            self.converter = Converter(self)
             self.RootFile = root_tree[0]
             self.tree = root_tree[1]
         else:
