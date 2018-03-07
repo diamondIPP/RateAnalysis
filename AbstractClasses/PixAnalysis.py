@@ -409,11 +409,11 @@ class PixAnalysis(Analysis):
         h.BuildOptions(0, 1, 'g')
         avrg, std = weighted_avrg_std([h.GetBinContent(i + 1) for i in xrange(h.GetNbinsX())], [h.GetBinEntries(i + 1) for i in xrange(h.GetNbinsX())])
         g = self.make_graph_from_profile(h)
-        self.fix_chi2(g, .001, show)
+        fit = self.fix_chi2(g, .001, show)
         set_statbox(only_fit=1, y=.7)
         self.format_histo(g, x_tit='Time [hh:mm]' if vs_time else 'Event Number', y_tit='Efficiency [%]', y_off=1.4, y_range=[-5, 105], stats=0, t_ax_off=self.run.StartTime if vs_time else 0)
         self.save_histo(g, 'HitEfficiencyROC{n}'.format(n=roc), show, lm=.13, save=save, gridy=True, draw_opt='apz')
-        return avrg, std
+        return fit
 
     def draw_all_efficiencies(self, show=True):
         stack = THStack('s_he', 'Raw Hit Efficiencies')

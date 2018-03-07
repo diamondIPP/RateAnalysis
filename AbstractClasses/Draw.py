@@ -389,6 +389,7 @@ class Draw:
         it = 0
         error = 2
         chi2 = 0
+        fit = None
         while abs(chi2 - 1) > prec and it < 20:
             for i in xrange(g.GetN()):
                 g.SetPointError(i, g.GetErrorX(i), error)
@@ -396,6 +397,7 @@ class Draw:
             chi2 = fit.Chi2() / fit.Ndf()
             error += .5 ** it * sign(chi2 - 1)
             it += 1
+        return fit
 
 
 def create_colorlist():
