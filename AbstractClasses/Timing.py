@@ -115,6 +115,24 @@ class TimingAnalysis(Elementary):
     def draw_scint_threshold(self, corr=False, show=True):
         return self.draw_threshold(corr=corr, channel=self.get_scint_channel(), show=show)
 
+    def draw_inter_dia_corr(self, show=True):
+        h = TH2F('hidc', 'Inflextion Times of Diamond Signals', 4000, 0, 500, 4000, 0, 500)
+        cut = self.Cut.all_cut + TCut('rise_time[{c1}]'.format(c1=self.Run.Channels[0]))
+        self.Tree.Draw('rise_time[{c1}]:rise_time[{c2}]>>hidc'.format(c1=self.Run.Channels[0], c2=self.Run.Channels[1]), cut, 'goff')
+        x_range = increased_range([h.GetXaxis().GetBinCenter(ibin) for ibin in [h.FindFirstBinAbove(1), h.FindLastBinAbove(1)]], .2, .2)
+        y_range = increased_range([h.GetYaxis().GetBinCenter(ibin) for ibin in [h.FindFirstBinAbove(1, 2), h.FindLastBinAbove(1, 2)]], .2, .2)
+        self.format_histo(h, x_tit='Inflexion Time1 [ns]', y_tit='Inflexion Time2 [ns]', z_tit='Number of Entries', z_off=1.2, y_off=1.2, stats=0, x_range=x_range, y_range=y_range)
+        self.save_histo(h, 'InterDiaCorrelation', rm=.18, draw_opt='colz', show=show)
+
+    def draw_inter_dia(self, show=True):
+        h = TH1F('hid', 'Inter Diamond Timing Correction', 200, -10, 10)
+        cut = self.Cut.all_cut + TCut('rise_time[{c1}]'.format(c1=self.Run.Channels[0]))
+        self.Tree.Draw('rise_time[{c1}] - rise_time[{c2}]>>hid'.format(c1=self.Run.Channels[0], c2=self.Run.Channels[1]), cut, 'goff')
+        x_range = increased_range([h.GetBinCenter(ibin) for ibin in [h.FindFirstBinAbove(5), h.FindLastBinAbove(5)]], .1, .3)
+        set_statbox(entries=4)
+        self.format_histo(h, x_tit='Timing Correction [ns]', y_tit='Number of Entries', y_off=1.2, fill_color=self.FillColor, x_range=x_range)
+        self.draw_histo(h, show=show, lm=.12)
+
     def get_channel_nr(self, name):
         try:
             return self.Run.DigitizerChannels.index(next(ch for ch in self.Run.DigitizerChannels if name in ch.lower()))
