@@ -384,13 +384,12 @@ class Analysis(Elementary):
     # endregion
 
     def draw_trigger_phase(self, dut=True, show=True, cut=None):
-        cut_string = deepcopy(self.Cut.all_cut) if cut is None else TCut(cut)
-        device = 1 if dut else 0
+        cut_string = self.Cut.generate_special_cut(excluded=['trigger_phase']) if cut is None else TCut(cut)
         h = TH1I('h_tp', 'Trigger Phase', 10, 0, 10)
-        self.tree.Draw('trigger_phase[{r}]>>h_tp'.format(r=device), cut_string, 'goff')
-        set_statbox(entries=4, opt=1000000010, y=0.96)
-        self.format_histo(h, x_tit='Trigger Phase', y_tit='Number of Entries', y_off=1.5, fill_color=self.FillColor)
-        self.save_histo(h, 'TriggerPhase', show, lm=.13)
+        self.tree.Draw('trigger_phase[{r}]>>h_tp'.format(r=1 if dut else 0), cut_string, 'goff')
+        set_statbox(only_entries=True)
+        self.format_histo(h, x_tit='Trigger Phase', y_tit='Number of Entries', y_off=1.95, fill_color=self.FillColor)
+        self.save_histo(h, '{m}TriggerPhase'.format(m='DUT' if dut else 'Tel'), show, lm=.145)
 
     def draw_pix_map(self, n=1, start=None, plane=1):
         start_event = self.StartEvent if start is None else start
