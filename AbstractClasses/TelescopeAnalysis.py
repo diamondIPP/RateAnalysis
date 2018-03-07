@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 from copy import deepcopy
 
 from ROOT import TCanvas, TH2F, gROOT, TH1F, TLegend, gStyle, kGreen, TCut, TF1, TGraph, TH1I
-from numpy import log
+from numpy import log, zeros
 
 from Elementary import Elementary
 from Run import Run
@@ -122,7 +122,7 @@ class Analysis(Elementary):
                 else:
                     self.draw_vertical_line(lst[0] / 2, ymin, ymax - ydiff * .5, color=4, w=2)
                     self.draw_tlatex(lst[0] / 2, ymax - ydiff * .49, '{sig}{reg}'.format(reg=reg, sig='p' if ped else 's'), size=.04, color=4)
-                self.draw_vertical_line(lst[1] / 2, ymin, ymax - offset, color=2) if lst[1] - lst[0] > 1 else self.do_nothing()
+                self.draw_vertical_line(lst[1] / 2, ymin, ymax - offset, color=2) if lst[1] - lst[0] > 1 else do_nothing()
         gr.Draw('[]')
         gr.Draw('p')
         self._add_buckets(ymin, ymax, avr_pos=6, full_line=True)
@@ -160,7 +160,7 @@ class Analysis(Elementary):
         xmin, xmax = self.run.signal_regions['e'][0] / 2 - 20, self.run.signal_regions['e'][1] / 2
         h.GetXaxis().SetRangeUser(xmin, xmax)
         self.draw_histo(h, show=show, lm=.07, rm=.045, bm=.24, x=1.5, y=.5, gridy=True, gridx=True)
-        gROOT.SetBatch(1) if not show else self.do_nothing()
+        gROOT.SetBatch(1) if not show else do_nothing()
         sleep(.5)
         # draw line at found peak and pedestal region
         ymin, ymax = h.GetYaxis().GetXmin(), h.GetYaxis().GetXmax()
@@ -188,7 +188,7 @@ class Analysis(Elementary):
         for gr in [gr1, gr2]:
             gr.Draw('[]')
             gr.Draw('p')
-        self._add_buckets(ymin, ymax, xmin, xmax, full_line=True, size=.05) if buckets else self.do_nothing()
+        self._add_buckets(ymin, ymax, xmin, xmax, full_line=True, size=.05) if buckets else do_nothing()
         self.save_plots('IntegralPeaks', both_dias=True)
         gROOT.SetBatch(0)
         self.count = old_count
@@ -216,7 +216,7 @@ class Analysis(Elementary):
         assert mode in ['x', 'y', None], 'mode has to be in {lst}!'.format(lst=['x', 'y', None])
         n_bins = 500 if mode is None else 250
         mode = 'tracks' if mode is None else mode
-        self.set_root_output(False)
+        set_root_output(False)
         h = TH1F('h', '#chi^{2} in ' + mode, n_bins, 0, 100 if mode == 'tracks' else 50)
         self.tree.Draw('chi2_{mod}>>h'.format(mod=mode), '', 'goff')
         if show:
@@ -257,7 +257,7 @@ class Analysis(Elementary):
         """ Displays the angle distribution of the tracks. """
         assert mode in ['x', 'y']
         cut = cut if cut is not None else TCut('')
-        self.set_root_output(False)
+        set_root_output(False)
         h = TH1F('had', 'Track Angle Distribution in ' + mode, 320, -4, 4)
         self.tree.Draw('{v}_{mod}>>had'.format(v='slope' if self.run.has_branch('slope') else 'angle', mod=mode), cut, 'goff')
         self.format_histo(h, x_tit='Track Angle [deg]', y_tit='Entries', y_off=1.8, lw=2, stats=0)
@@ -282,7 +282,7 @@ class Analysis(Elementary):
             return self.fit_fwhm(h, draw=show)
 
         fit = func() if show else None
-        return self.do_pickle(pickle_path, func, fit)
+        return do_pickle(pickle_path, func, fit)
 
     def show_both_angles(self):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
