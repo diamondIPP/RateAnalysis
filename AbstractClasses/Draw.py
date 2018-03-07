@@ -8,7 +8,7 @@ from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas
     kCyan, kTeal
 from Utils import *
 from os.path import dirname
-from numpy import ndarray, zeros
+from numpy import ndarray, zeros, sign
 
 
 class Draw:
@@ -377,6 +377,25 @@ class Draw:
         do(make_transparent, c, transp)
         self.Objects.append(c)
         return c
+
+    def make_graph_from_profile(self, p):
+        x_range = [i for i in xrange(p.GetNbinsX()) if p.GetBinContent(i)]
+        x, y = [p.GetBinCenter(i) for i in x_range], [p.GetBinContent(i) for i in x_range]
+        ex, ey = [p.GetBinWidth(i) / 2 for i in x_range], [p.GetBinError(i) for i in x_range]
+        return self.make_tgrapherrors('g{n}'.format(n=p.GetName()[1:]), p.GetTitle(), x=x, y=y, ex=ex, ey=ey)
+
+    @staticmethod
+    def fix_chi2(g, prec=.01, show=True):
+        it = 0
+        error = 2
+        chi2 = 0
+        while abs(chi2 - 1) > prec and it < 20:
+            for i in xrange(g.GetN()):
+                g.SetPointError(i, g.GetErrorX(i), error)
+            fit = g.Fit('pol0', 'qs{}'.format('' if show else 0))
+            chi2 = fit.Chi2() / fit.Ndf()
+            error += .5 ** it * sign(chi2 - 1)
+            it += 1
 
 
 def create_colorlist():
