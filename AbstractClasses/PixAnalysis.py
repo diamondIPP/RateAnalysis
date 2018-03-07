@@ -18,6 +18,7 @@ from Elementary import Elementary
 from TelescopeAnalysis import Analysis
 from Run import Run
 from Utils import *
+from InfoLegend import InfoLegend
 
 __author__ = 'DA & Micha'
 
@@ -57,6 +58,7 @@ class PixAnalysis(Analysis):
 
         # currents
         self.Currents = Currents(self)
+        self.InfoLegend = InfoLegend(self)
 
         self.stuff = []
 
@@ -74,9 +76,6 @@ class PixAnalysis(Analysis):
 
     # ==========================================================================
     # region INIT
-
-    def load_run_config(self):
-        return self.load_run_configs(0)
 
     def load_diamond_name(self, dut):
         assert dut in [1, 2, 3], 'You have to choose either dut 1, 2 or 3'
@@ -163,7 +162,7 @@ class PixAnalysis(Analysis):
         cut_string += 'col=={c}'.format(c=col) if col is not None else ''
         cut_string += 'col=={c}&&row=={r}'.format(c=pix[0], r=pix[1]) if pix is not None else ''
         cut_string += 'col>={c1}&&col<={c2}&&row>={r1}&&row<={r2}'.format(c1=rnge[0], c2=rnge[1], r1=rnge[2], r2=rnge[3]) if rnge is not None else ''
-        self.set_root_output(False)
+        set_root_output(False)
         n = self.tree.Draw('adc:col:row', cut_string, 'goff')
         for i in xrange(n):
             row = int(self.tree.GetV3()[i])
@@ -182,7 +181,7 @@ class PixAnalysis(Analysis):
         cut_string = self.Cut.generate_special_cut(excluded='masks') if cut is None else TCut(cut)
 
         def func():
-            self.set_root_output(False)
+            set_root_output(False)
             h1 = TH1D('h_phd', 'Pulse Height Distribution - {d}'.format(d=self.DiamondName), *self.Settings['phBins' if not vcal else 'vcalBins'])
             self.tree.Draw('cluster_charge[{d}]{v}>>h_phd'.format(d=self.Dut, v='/47.5 + 427.4/47.5' if vcal else ''), cut_string, 'goff')
             set_statbox(entries=8, opt=1000000010, x=.92)
@@ -191,7 +190,7 @@ class PixAnalysis(Analysis):
             return h1
 
         h = func() if redo else None
-        h = self.do_pickle(pickle_path, func, h)
+        h = do_pickle(pickle_path, func, h)
         self.draw_histo(h, show=show, lm=.13, prnt=prnt, rm=.06)
         return h
     
@@ -207,7 +206,7 @@ class PixAnalysis(Analysis):
         cut_string += 'charge_all_ROC{d} > 0'.format(d=self.Dut) if not adc else 'plane == {n}'.format(n=self.Dut)
         ybins = [self.Settings['ph1Dbins'], self.Settings['ph1Dmin'], self.Settings['ph1Dmax']]
         ybins = [255, 0, 255] if adc else ybins
-        self.set_root_output(False)
+        set_root_output(False)
         h = TH2D('h_ph', 'Pulse Height {d}'.format(d=self.DiamondName), self.n_bins - 1, array([t / 1000 for t in self.time_binning]), *ybins)
         cut_var = 'charge_all_ROC{d}'.format(d=self.Dut) if not adc else 'adc'
         self.tree.Draw('{v}:time / 1000. >> h_ph'.format(v=cut_var), cut_string, 'goff')
@@ -242,7 +241,7 @@ class PixAnalysis(Analysis):
         cut_string = deepcopy(self.Cut.HitMapCut) if cut is None else TCut(cut)
         cut_string += 'plane == {n}'.format(n=self.Dut)
         cut_string += '' if adc is None else 'adc>0'
-        self.set_root_output(False)
+        set_root_output(False)
         h = TProfile2D('p_am', 'ADC Map', *self.Settings['2DBins'])
         self.tree.Draw('adc:row:col >> p_am', cut_string, 'goff')
         set_statbox(x=.81, entries=8, opt=1000000010)
@@ -392,7 +391,7 @@ class PixAnalysis(Analysis):
     def draw_pulse_height_map(self, show=True, cut=None, roc=None, fid=False):
         roc = self.Dut if roc is None else roc
         cut_string = (self.Cut.generate_special_cut(['fiducial']) if not fid else deepcopy(z.Cut.all_cut)) if cut is None else TCut(cut)
-        self.set_root_output(False)
+        set_root_output(False)
         h = TProfile2D('p_phm', 'Pulse Height Map', *self.Plots.get_global_bins(sqrt(12)))
         self.tree.Draw('cluster_charge[{n}]:cluster_ypos_tel[{n}]:cluster_xpos_tel[{n}]>>p_phm'.format(n=roc), cut_string, 'goff')
         set_statbox(only_entries=True, x=0.81)
@@ -401,7 +400,7 @@ class PixAnalysis(Analysis):
 
     def draw_hit_efficiency(self, roc=None, save=True, cut='all', vs_time=True, binning=5000, n=1e9, start=0, show=True):
         roc = self.Dut if roc is None else roc
-        self.set_root_output(False)
+        set_root_output(False)
         suffix = 'ROC {n}'.format(n=roc) if roc < 4 else self.load_diamond_name(roc - 3)
         h = TProfile('h_he', 'Hit Efficiency {s}'.format(s=suffix), *(self.get_time_bins(binning) if vs_time else self.get_bins(binning)))
         cut_string = self.Cut.generate_special_cut(excluded=['masks']) if cut == 'all' else TCut(cut)
@@ -646,7 +645,7 @@ class PixAnalysis(Analysis):
             return g
 
         gr = func() if redo else None
-        gr = self.do_pickle(picklepath, func, gr)
+        gr = do_pickle(picklepath, func, gr)
         self.save_histo(gr, 'PixelAligment', show, draw_opt='alp', lm=.13, prnt=show)
         return gr
 
@@ -767,11 +766,11 @@ if __name__ == '__main__':
     tc = args.testcampaign if args.testcampaign.startswith('201') else None
     el = Elementary(tc)
     el.print_testcampaign()
-    el.print_banner('STARTING PIXEL-ANALYSIS OF RUN {0}'.format(args.run))
+    print_banner('STARTING PIXEL-ANALYSIS OF RUN {0}'.format(args.run))
     print
     run_class = Run(args.run, verbose=args.verbose, tree=None if not args.tree else args.tree)
     z = PixAnalysis(run_class, args.dut)
-    z.print_elapsed_time(st, 'Instantiation')
+    print_elapsed_time(st, 'Instantiation')
 
     if doAna:
         print 'Starting automatic analysis...'

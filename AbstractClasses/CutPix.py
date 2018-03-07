@@ -4,6 +4,8 @@ from ROOT import TCut, gROOT, TH1F, kRed, TCutG, TH2D, TH1D, THStack
 from Cut import Cut
 from json import loads
 from collections import OrderedDict
+from InfoLegend import InfoLegend
+from Utils import do_pickle, print_banner
 
 
 class CutPix(Cut):
@@ -22,6 +24,7 @@ class CutPix(Cut):
 
         self.Settings = self.analysis.Settings
         self.Plots = self.analysis.Plots
+        self.InfoLegend = InfoLegend(self)
 
         self.load_pixel_config()
 
@@ -32,9 +35,6 @@ class CutPix(Cut):
 
         self.ConsecutiveCuts = self.generate_consecutive_cuts()
         self.ConsecutiveHitMapCuts = self.generate_consecutive_cuts(cluster=False)
-
-    def load_run_config(self):
-        return self.load_run_configs(self.RunNumber)
 
     def generate_pixel_cutstrings(self):
         """ Generates the cut strings to apply in the analysis for each of the cuts. """
@@ -73,11 +73,12 @@ class CutPix(Cut):
         self.set_hitmap_cuts(False)
         return cuts
 
-    def do_cuts_distributions(self):
+    @staticmethod
+    def do_cuts_distributions():
         """ Does the cuts distribution for all other cuts """
         # todo implement this...
-        self.print_banner('Doing cuts distributions...')
-        self.print_banner('Finished with distribution cuts')
+        print_banner('Doing cuts distributions...')
+        print_banner('Finished with distribution cuts')
 
     def load_pixel_config(self):
         """ Loads the pixel configuration parameters from the config file. """
@@ -155,7 +156,7 @@ class CutPix(Cut):
             self.add_info(t)
             return rhits_
 
-        rhits = self.do_pickle(pickle_path, func)
+        rhits = do_pickle(pickle_path, func)
         quantile = self.CutConfig['rhit']
         cut_value = rhits[quantile] if value is None else value
         return cut_value
@@ -218,7 +219,7 @@ class CutPix(Cut):
             self.add_info(start)
             return mis_events
 
-        events = self.do_pickle(picklepath, func)
+        events = do_pickle(picklepath, func)
         return events
 
     def generate_masks(self, cluster=True):
