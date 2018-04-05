@@ -119,7 +119,7 @@ class Currents(Elementary):
             data = load(f)
             f.close()
         except IOError as err:
-            self.log_warning('{err}\nCould not load default RunInfo!'.format(err=err))
+            log_warning('{err}\nCould not load default RunInfo!'.format(err=err))
             return None
         run_logs = OrderedDict(sorted(data.iteritems()))
         return run_logs
@@ -131,7 +131,7 @@ class Currents(Elementary):
         else:
             file_path = join(self.DataDir, self.generate_tc_directory(), 'HV.cfg')
         if not file_exists(file_path):
-            self.log_warning('HV info file "{f}" does not exist'.format(f=file_path))
+            log_warning('HV info file "{f}" does not exist'.format(f=file_path))
             return None
         parser.read(file_path)
         self.log_info('HV Devices: {0}'.format([name for name in parser.sections() if name.startswith('HV')]))
@@ -369,7 +369,7 @@ class Currents(Elementary):
     def draw_indep_graphs(self, rel_time=False, ignore_jumps=True, v_range=None, show=True):
         self.IgnoreJumps = ignore_jumps
         self.set_graphs()
-        self.set_root_output(show)
+        set_root_output(show)
         c = TCanvas('c', 'Keithley Currents for Run {0}'.format(self.RunNumber), int(self.Res * 1.5), int(self.Res * .75))
         self.draw_voltage_pad(v_range)
         self.draw_title_pad()
@@ -540,7 +540,7 @@ class Currents(Elementary):
         if run in self.RunLogs:
             return True
         else:
-            self.log_warning('Run {run} does not exist in {tc}!'.format(run=run, tc=self.print_testcampaign(pr=False)))
+            log_warning('Run {run} does not exist in {tc}!'.format(run=run, tc=self.print_testcampaign(pr=False)))
             return False
 
     def print_run_times(self, run):
@@ -563,7 +563,7 @@ if __name__ == "__main__":
     args = pars.parse_args()
     tc = args.testcampaign if args.testcampaign.startswith('201') else None
     a = Elementary(tc)
-    a.print_banner('STARTING CURRENT TOOL')
+    print_banner('STARTING CURRENT TOOL')
     a.print_testcampaign()
     start, end = args.start, args.stop
     if args.runplan is not None:
