@@ -37,6 +37,8 @@ class PixAnalysis(Analysis):
         self.Bias = self.run.Bias[dut - 1]
         self.Dut = dut + 3
         self.save_dir = '{dia}/{run}/'.format(run=str(self.RunNumber).zfill(3), dia=self.DiamondName)
+        self.PX = 0.015  # [cm]
+        self.PY = 0.010  # [cm]
 
         if run.tree:
             # stuff
