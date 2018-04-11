@@ -54,7 +54,7 @@ class Plots(Elementary):
                          'maxRow': 79,
                          'num_diff_cluster_sizes': 4,
                          'vcalBins': [int((1350 * 47) / 500), -100, 1250],
-                         'globalCoods': [-.5, .52, -.5, .52],
+                         'globalCoods': [-.5025, .5175, -.505, .515],
                          'xpix': .015,
                          'ypix': .01}
         self.Settings['phBins'] = [self.Settings['ph1Dbins'], self.Settings['ph1Dmin'], self.Settings['ph1Dmax']]
