@@ -531,7 +531,7 @@ class PixAnalysis(Analysis):
     def draw_track_occupancy(self, cut='', show=True, res=2):
         cut_string = self.Cut.all_cut if cut is None else TCut(cut) + self.Cut.CutStrings['tracks']
         h = TH2D('h_to', 'Track Occupancy {d}'.format(d=self.DiamondName), *self.Plots.get_global_bins(res=res))
-        self.tree.Draw('diam{nr}_track_y:diam{nr}_track_x>>h_to'.format(nr=self.Dut - 3), cut_string, 'goff')
+        self.tree.Draw('dia_track_y_local[{d}]:dia_track_x_local[{d}]>>h_to'.format(d=self.Dut - 4), cut_string, 'goff')
         set_statbox(entries=4, opt=1000000010, x=.81)
         self.format_histo(h, x_tit='Track x [cm]', y_tit='Track y [cm]', z_tit='Number of Entries', y_off=1.4, z_off=1.5)
         self.save_histo(h, 'TrackOccupancy', show, lm=.12, rm=.17, draw_opt='colz')
