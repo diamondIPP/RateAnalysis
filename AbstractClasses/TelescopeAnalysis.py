@@ -362,7 +362,7 @@ class Analysis(Elementary):
         cut_string = self.Cut.all_cut if cut is None else TCut(cut)
         cut_string += 'plane == {0}'.format(plane) if not cluster else ''
         draw_string = 'cluster_row[{i}]:cluster_col[{i}]' if cluster else 'row:col'
-        draw_string = 'cluster_ypos_tel[{i}]:cluster_xpos_tel[{i}]' if tel_coods else draw_string
+        draw_string = 'cluster_ypos_local[{i}]:cluster_xpos_local[{i}]' if tel_coods else draw_string
         set_statbox(only_entries=True, x=.83)
         self.tree.Draw('{ds}>>h_hm{i}'.format(ds=draw_string.format(i=plane), i=plane), cut_string, 'goff')
         self.format_histo(h, x_tit='col', y_tit='row', y_off=1.2)
