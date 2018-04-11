@@ -168,12 +168,13 @@ class CutPix(Cut):
         mi, ma = self.CutConfig['trigPhase']
         return 'trigger_phase[1]>={min}&&trigger_phase[1]<={max}'.format(min=mi, max=ma)
 
-    def generate_fiducial(self, name='fid'):
+    def generate_fiducial(self, name='fid', center=False):
         xy = self.CutConfig['FidRegion']
         if xy is not None and xy:
             d = 0
-            x = array([xy[0] - d, xy[0] - d, xy[1] + d, xy[1] + d, xy[0] - d], 'd')
-            y = array([xy[2] - d, xy[3] + d, xy[3] + d, xy[2] - d, xy[2] - d], 'd')
+            dx, dy = .0075, .005
+            x = array([xy[0] - d, xy[0] - d, xy[1] + d, xy[1] + d, xy[0] - d], 'd') + (dx if center else 0)
+            y = array([xy[2] - d, xy[3] + d, xy[3] + d, xy[2] - d, xy[2] - d], 'd') + (dy if center else 0)
             cut = TCutG(name, 5, x, y)
             cut.SetVarX(self.get_track_var(self.Dut - 4, 'x'))
             cut.SetVarY(self.get_track_var(self.Dut - 4, 'y'))
