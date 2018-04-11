@@ -464,6 +464,15 @@ class PixAnalysis(Analysis):
         self.reset_colors()
         return stack
 
+    def draw_efficiency_map(self, res=5, cut='all', show=True):
+        cut_string = TCut(cut) + self.Cut.CutStrings['tracks']
+        cut_string = self.Cut.generate_special_cut(excluded=['masks', 'fiducial']) if cut == 'all' else cut_string
+        p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DiamondName), *self.Plots.get_global_bins(res=res))
+        self.tree.Draw('(n_hits[{r}]>0)*100:dia_track_y_local[{r1}]:dia_track_x_local[{r1}]>>p_em'.format(r=self.Dut, r1=self.Dut - 4), cut_string, 'goff')
+        set_statbox(entries=4, opt=1000000010, x=.81)
+        self.format_histo(p, x_tit='Track x [cm]', y_tit='Track y [cm]', z_tit='Efficiency [%]', y_off=1.4, z_off=1.5)
+        self.save_histo(p, 'Efficiency Map', show, lm=.13, rm=.17, draw_opt='colz')
+
 
     # endregion %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -499,15 +508,6 @@ class PixAnalysis(Analysis):
     def draw_fid_cut():
         cut = gROOT.FindObject('fid')
         cut.Draw()
-
-    def draw_efficiency_map(self, res=5, cut='all', show=True):
-        cut_string = TCut(cut) + self.Cut.CutStrings['tracks']
-        cut_string = self.Cut.generate_special_cut(excluded=['masks', 'fiducial']) if cut == 'all' else cut_string
-        p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DiamondName), *self.Plots.get_global_bins(res=res))
-        self.tree.Draw('(n_hits[{r}]>0)*100:dia_track_y[{r1}]:dia_track_x[{r1}]>>p_em'.format(r=self.Dut, r1=self.Dut - 4), cut_string, 'goff')
-        set_statbox(entries=4, opt=1000000010, x=.81)
-        self.format_histo(p, x_tit='Track x [cm]', y_tit='Track y [cm]', z_tit='Efficiency [%]', y_off=1.4, z_off=1.5)
-        self.save_histo(p, 'Efficiency Map', show, lm=.13, rm=.17, draw_opt='colz')
 
     def draw_track_occupancy(self, cut='', show=True, res=2):
         cut_string = self.Cut.all_cut if cut is None else TCut(cut) + self.Cut.CutStrings['tracks']
