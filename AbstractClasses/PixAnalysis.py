@@ -473,6 +473,25 @@ class PixAnalysis(Analysis):
         self.format_histo(p, x_tit='Track x [cm]', y_tit='Track y [cm]', z_tit='Efficiency [%]', y_off=1.4, z_off=1.5)
         self.save_histo(p, 'Efficiency Map', show, lm=.13, rm=.17, draw_opt='colz')
 
+    def get_fiducial_cell(self, n):
+        x1, x2, y1, y2 = self.Cut.CutConfig['FidRegion']
+        nx = int(round((x2 - x1) / self.PX))
+        # ny = int(round((y2 - y1) / .010))
+        return round(x1 + self.PX * (n % nx), 4), round(y1 + self.PY * (n / nx), 4)
+
+    def draw_cell_efficiency(self, cell=0, res=2, show=True):
+        x, y = self.get_fiducial_cell(cell)
+        cut_string = self.Cut.generate_special_cut(excluded=['masks'])
+        p = TProfile2D('pce', 'Efficiency for Fiducial Cell {}'.format(cell), res, 0, self.PX, res, 0, self.PY)
+        n = self.tree.Draw('(n_hits[{r}]>0)*100:dia_track_y_local[{r1}]:dia_track_x_local[{r1}]>>pce'.format(r=self.Dut, r1=self.Dut - 4), cut_string, 'goff')
+        effs = [self.tree.GetV1()[i] for i in xrange(n)]
+        x_vals = [self.tree.GetV3()[i] for i in xrange(n)]
+        y_vals = [self.tree.GetV2()[i] for i in xrange(n)]
+        for e, x, y in zip(effs, x_vals, y_vals):
+            p.Fill(x % self.PX, y % self.PY, e)
+        set_statbox(only_entries=True, x=.81)
+        self.format_histo(p, x_tit='Track x [cm]', y_tit='Track y [cm]', z_tit='Efficiency [%]', y_off=1.4, z_off=1.5)
+        self.draw_histo(p, show=show, lm=.13, rm=.17, draw_opt='colz')
 
     # endregion %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
