@@ -47,7 +47,7 @@ class PulserAnalysis(Elementary):
     def draw_rate(self, evts_per_bin=1000, cut=None, vs_time=True, rel_t=True, show=True):
         """ Shows the fraction of pulser events as a function of the event number. Peaks appearing in this graph are most likely beam interruptions. """
         cut = '' if cut is None else TCut(cut)
-        self.set_root_output(False)
+        set_root_output(False)
         h = TProfile('hpr', 'Pulser Rate', *self.Ana.Plots.get_binning(evts_per_bin, time_bins=vs_time))
         self.Tree.Draw('pulser*100:{v}>>hpr'.format(v='time / 1000.' if vs_time else 'Entry$'), cut, 'goff')
         set_time_axis(h, off=self.Ana.run.StartTime if rel_t else 0) if vs_time else do_nothing()
@@ -140,7 +140,7 @@ class PulserAnalysis(Elementary):
             return FitRes(fit_func)
 
         fit = func() if save else None
-        fit = self.do_pickle(pickle_path, func, fit)
+        fit = do_pickle(pickle_path, func, fit)
         kinder_pickle(pickle_path, fit)
         return fit
 
