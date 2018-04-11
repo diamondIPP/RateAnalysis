@@ -420,6 +420,16 @@ class PixAnalysis(Analysis):
         values = [self.tree.GetV1()[i] for i in xrange(n)]
         return self.calc_eff(values=values)
 
+    def draw_eff_vs_chi2(self, show=True):
+        g = self.make_tgrapherrors('gec2', 'Efficiency vs Chi2')
+        for i, chi2 in enumerate(xrange(1, 100, 2)):
+            self.Cut.set_chi2(chi2)
+            y, ey = self.get_hit_efficiency()
+            g.SetPoint(i, chi2, y)
+            g.SetPointError(i, 0, ey)
+        self.format_histo(g, x_tit='#chi^{2} [%quantile]', y_tit='Efficiency [%]', y_off=1.3)
+        self.draw_histo(g, draw_opt='ap', lm=.12, show=show)
+
     def draw_hit_efficiency(self, roc=None, save=True, cut='all', vs_time=True, binning=5000, n=1e9, start=0, show=True):
         roc = self.Dut if roc is None else roc
         set_root_output(False)
