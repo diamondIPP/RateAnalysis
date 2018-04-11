@@ -544,11 +544,10 @@ class PixAnalysis(Analysis):
         self.format_histo(h, x_tit='Trigger Phase', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor, ndivx=20)
         self.save_histo(h, 'TriggerPhase', show, lm=.16)
 
-    def draw_hit_eff_vs_trigphase(self, roc=None, show=True, n=1e9, start=0):
+    def draw_hit_eff_vs_trigphase(self, roc=None, show=True):
         roc = self.Dut if roc is None else roc
         x = range(10)
-        cut_string = self.Cut.generate_special_cut(excluded=['masks', 'trigger_phase'])
-        y = [self.draw_hit_efficiency(roc=roc, show=False, cut=cut_string + TCut('trigger_phase[1]=={v}'.format(v=i)), n=n, start=start) for i in xrange(10)]
+        y = [self.get_hit_efficiency(roc=roc, cut=self.get_trigphase_cut(phase=i))[0] for i in xrange(10)]
         y = [0 if i is None else i for i in y]
         gr = self.make_tgrapherrors('gr_etp', 'Efficiency per Trigger Phase', x=x, y=y)
         gr.GetXaxis().SetLimits(-1, 10)
