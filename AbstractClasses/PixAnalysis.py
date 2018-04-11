@@ -400,6 +400,13 @@ class PixAnalysis(Analysis):
         self.format_histo(h, x_tit='col', y_tit='row', z_tit='Pulse Height [e]', z_off=1.7, y_off=1.4)
         self.save_histo(h, 'PulseHeightMap', show, lm=.13, rm=.17, draw_opt='colz')
 
+    # region EFFICIENCY %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    def get_efficiency_cut(self):
+        return self.Cut.generate_special_cut(included=['fiducial', 'rhit', 'tracks', 'trigger_phase', 'chi2X', 'chi2Y', 'aligned'])
+
+    def get_trigphase_cut(self, phase):
+        return self.Cut.generate_special_cut(included=['fiducial', 'rhit', 'tracks', 'chi2X', 'chi2Y', 'aligned']) + TCut('trigger_phase[1]=={}'.format(phase))
+
     def draw_hit_efficiency(self, roc=None, save=True, cut='all', vs_time=True, binning=5000, n=1e9, start=0, show=True):
         roc = self.Dut if roc is None else roc
         set_root_output(False)
@@ -433,6 +440,9 @@ class PixAnalysis(Analysis):
         self.save_histo(stack, 'HitEfficiencies', show, lm=.13, l=l1, draw_opt='nostack', gridy=True)
         self.reset_colors()
         return stack
+
+
+    # endregion %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     def draw_hits_dut(self, cut=None, show=True):
         cut_string = z.Cut.all_cut if cut is None else TCut(cut)
