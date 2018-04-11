@@ -8,9 +8,10 @@ from ROOT import TH2D, TH1D, gROOT, TFormula, TCut, TH1I, TProfile, THStack, TPr
 from argparse import ArgumentParser
 from collections import Counter
 from copy import deepcopy
-from math import ceil
+from math import ceil, factorial
 from numpy import mean, corrcoef, arange
 from os.path import join as joinpath
+from decimal import Decimal
 
 from CurrentInfo import Currents
 from CutPix import CutPix
@@ -741,6 +742,19 @@ class PixAnalysis(Analysis):
 
     def draw_residuals(self, mode=None, cut=None, show=True, x_range=None):
         return self._draw_residuals(self.Dut, mode=mode, cut=cut, show=show, x_range=x_range)
+
+    @staticmethod
+    def eff(x, p):
+        n, k = p[1], p[0]
+        x = x[0]
+        return Decimal(factorial(n + 1)) / (factorial(k) * factorial(n - k)) * Decimal(x ** k) * Decimal((1 - x) ** (n - k))
+
+    def plot_eff(self, k, n):
+        f = TF1('p', self.eff, 0, 1, 2)
+        f.SetParameters(k, n)
+        f.SetNpx(1000)
+        self.draw_histo(f)
+        return f
 
     # ==========================================================================
 
