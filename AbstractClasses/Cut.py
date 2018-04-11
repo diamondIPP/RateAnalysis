@@ -100,7 +100,7 @@ class Cut(Elementary):
         # general
         dic['event_range'] = TCut('event_range', '')
         dic['beam_interruptions'] = TCut('beam_interruptions', '')
-        dic['alignment'] = TCut('alignment', '')
+        dic['aligned'] = TCut('aligned', '')
         dic['trigger_phase'] = TCut('trigger_phase', '')
         dic['fiducial'] = TCut('fiducial', '')
         # waveform
