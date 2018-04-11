@@ -397,7 +397,7 @@ class Draw:
             chi2 = fit.Chi2() / fit.Ndf()
             error += .5 ** it * sign(chi2 - 1)
             it += 1
-        return fit
+        return fit if fit is not None else FitRes()
 
 
 def create_colorlist():
