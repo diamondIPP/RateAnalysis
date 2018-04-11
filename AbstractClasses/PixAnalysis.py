@@ -407,6 +407,19 @@ class PixAnalysis(Analysis):
     def get_trigphase_cut(self, phase):
         return self.Cut.generate_special_cut(included=['fiducial', 'rhit', 'tracks', 'chi2X', 'chi2Y', 'aligned']) + TCut('trigger_phase[1]=={}'.format(phase))
 
+    @staticmethod
+    def calc_eff(k=0, n=0, values=None):
+        k = float(len(filter(lambda x: x > 0, values))) if values is not None else float(k)
+        n = float(len(values)) if values is not None else float(n)
+        return 100 * (k + 1) / (n + 2), 100 * sqrt(((k + 1)/(n + 2) * (k + 2)/(n + 3) - ((k + 1)**2) / ((n + 2)**2)))
+
+    def get_hit_efficiency(self, roc=None, cut=None):
+        cut_string = self.get_efficiency_cut() if cut is None else TCut(cut)
+        roc = self.Dut if roc is None else roc
+        n = self.tree.Draw('(n_hits[{r}]>0) >> h_he'.format(r=roc), cut_string, 'goff')
+        values = [self.tree.GetV1()[i] for i in xrange(n)]
+        return self.calc_eff(values=values)
+
     def draw_hit_efficiency(self, roc=None, save=True, cut='all', vs_time=True, binning=5000, n=1e9, start=0, show=True):
         roc = self.Dut if roc is None else roc
         set_root_output(False)
