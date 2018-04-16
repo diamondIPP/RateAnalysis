@@ -6,9 +6,8 @@ from json import load
 
 from Elementary import Elementary
 from RunSelection import RunSelection
-from ROOT import TCanvas, TText, TGraph
+from ROOT import TCanvas, TText, TGraph, TProfile, TH1F
 from ConfigParser import ConfigParser
-from numpy import mean
 from argparse import ArgumentParser
 from time import mktime
 
@@ -373,9 +372,22 @@ class Currents(Elementary):
         self.set_margins()
 
     def draw_distribution(self, show=True):
-        pass
+        self.find_data()
+        m, s = calc_mean(self.Currents)
+        set_root_output(False)
+        h = TH1F('hcd', 'Current Distribution', 5 * int(sqrt(len(self.Currents))), m - 2 * s, m + 2 * s)
+        for current in self.Currents:
+            h.Fill(current)
+        self.format_histo(h, x_tit='Current [nA]', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
+        self.draw_histo(h, '', show, lm=.13)
+        return h
 
-    def draw_indep_graphs(self, rel_time=False, ignore_jumps=True, v_range=None, show=True):
+    def get_current(self):
+        h = self.draw_distribution(show=False)
+        fit = h.Fit('gaus', 'sq0')
+        # log_message('Current = {0:5.2f} ({1:5.2f}) nA'.format(fit.Parameter(1), fit.ParError(1)))
+        return (fit.Parameter(1), fit.ParError(1)) if fit.Parameter(0) - h.GetMean() < 10 else (h.GetMean(), h.GetMeanError())
+
         self.IgnoreJumps = ignore_jumps
         self.set_graphs()
         set_root_output(show)
