@@ -273,8 +273,8 @@ class Draw:
 
     @staticmethod
     def format_histo(histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=20, color=1, markersize=1, x_off=None, y_off=None, z_off=None, lw=1,
-                     fill_color=None, fill_style=None, stats=True, tit_size=.04, lab_size=.04, l_off_y=None, draw_first=False, x_range=None, y_range=None, z_range=None,
-                     do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None, tick_size=None, t_ax_off=None):
+                     fill_color=None, fill_style=None, stats=True, tit_size=.04, lab_size=.04, l_off_y=None, l_off_x=None,  draw_first=False, x_range=None, y_range=None, z_range=None,
+                     do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None, tick_size=None, t_ax_off=None, center_y=False, center_x=False):
         h = histo
         if draw_first:
             set_root_output(False)
@@ -314,7 +314,9 @@ class Draw:
                 x_axis.SetLabelSize(lab_size)
                 x_axis.SetRangeUser(x_range[0], x_range[1]) if x_range is not None else do_nothing()
                 x_axis.SetNdivisions(ndivx) if ndivx is not None else do_nothing()
+                do(x_axis.SetLabelOffset, l_off_x)
                 do(x_axis.SetTickSize, tick_size)
+                x_axis.CenterTitle(center_x)
             y_axis = h.GetYaxis()
             if y_axis:
                 y_axis.SetTitle(y_tit) if y_tit else y_axis.GetTitle()
@@ -324,6 +326,7 @@ class Draw:
                 do(y_axis.SetLabelOffset, l_off_y)
                 y_axis.SetRangeUser(y_range[0], y_range[1]) if y_range is not None else do_nothing()
                 do(y_axis.SetNdivisions, ndivy)
+                y_axis.CenterTitle(center_y)
             z_axis = h.GetZaxis()
             if z_axis:
                 z_axis.SetTitle(z_tit) if z_tit else h.GetZaxis().GetTitle()
