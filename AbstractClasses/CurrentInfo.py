@@ -386,12 +386,12 @@ class Currents(Elementary):
         # log_message('Current = {0:5.2f} ({1:5.2f}) nA'.format(fit.Parameter(1), fit.ParError(1)))
         return (fit.Parameter(1), fit.ParError(1)) if fit.Parameter(0) - h.GetMean() < 10 else (h.GetMean(), h.GetMeanError())
 
-    def draw_indep_graphs(self, rel_time=False, ignore_jumps=True, v_range=None, averaging=1, show=True):
+    def draw_indep_graphs(self, rel_time=False, ignore_jumps=True, v_range=None, averaging=1, with_flux=False, show=True):
         self.IgnoreJumps = ignore_jumps
         self.set_graphs(averaging)
         set_root_output(show)
         c = TCanvas('c', 'Keithley Currents for Run {0}'.format(self.RunNumber), int(self.Res * 1.5), int(self.Res * .75))
-        self.draw_voltage_pad(v_range)
+        self.draw_flux_pad(c) if with_flux else self.draw_voltage_pad(v_range)
         self.draw_title_pad()
         self.draw_current_pad(rel_t=rel_time)
 
@@ -409,6 +409,13 @@ class Currents(Elementary):
         self.VoltageGraph.Draw('p')
         self.VoltageGraph.GetXaxis().SetRangeUser(self.Time[0], self.Time[-1])
         self.draw_voltage_axis(vrange)
+
+    def draw_flux_pad(self, canvas):
+        h = self.Analysis.draw_flux(10000, rel_t=True, show=False)
+        canvas.cd()
+        self.draw_tpad('pr', margins=[.065, .09, .15, .15], transparent=True, logy=True)
+        self.format_histo(h, title=' ', fill_color=4000, fill_style=4000, lw=3, y_range=[1, h.GetMaximum() * 1.2], stats=0, y_off=1.05, x_off=99, l_off_x=99, tick_size=0, center_y=True)
+        h.Draw('histy+')
 
     def draw_title_pad(self):
         self.draw_tpad('p2', transparent=True)
