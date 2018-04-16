@@ -23,10 +23,12 @@ from Utils import *
 class DiaScans(Elementary):
     def __init__(self, selection, verbose=False):
         Elementary.__init__(self, verbose=verbose)
-        self.Selection = []
-        self.Name = None
-        self.scale_factors = OrderedDict()
 
+        # main
+        self.Selections = self.load_selections()
+        self.Selection = self.load_selection()
+        self.RunSelections = None
+        self.Name = None
         self.Parser = self.load_diamond_parser()
 
         # information
@@ -38,44 +40,17 @@ class DiaScans(Elementary):
         self.Bias = None
         self.set_save_directory('Results/')
         self.save_dir = ''
-        self.UsedColors = self.init_colors()
-
-        # run plan selection
-        self.Path = join(self.Dir, self.MainConfigParser.get('MISC', 'runplan_selection_file'))
-        self.Selections = self.load_selections()
-        self.Selection = self.load_selection()
-        self.RunSelections = None
 
         # Save
         self.ROOTObjects = []
 
         self.set_selection(selection)
 
-    @staticmethod
-    def init_colors():
-        return {'pulser': 0, 'neg': 0, 'pos': 0}
-
-    def get_next_color(self, bias, pulser):
-        colors = {'neg': [1, kBlue, kGreen + 2], 'pos': [kRed, kOrange, kPink], 'pulser': [kGreen, kViolet, kBlue, kYellow + 1, kCyan]}
-        n_col = 3 if not pulser else 5
-
-        def get_col(tag):
-            color = colors[tag][self.UsedColors[tag] % n_col]
-            self.UsedColors[tag] += 1
-            return color
-
-        if pulser:
-            return get_col('pulser')
-        elif bias < 0:
-            return get_col('neg')
-        else:
-            return get_col('pos')
-
     # ==========================================================================
     # region INIT
 
     def load_selections(self):
-        f = open(self.Path)
+        f = open(join(self.Dir, self.MainConfigParser.get('MISC', 'runplan_selection_file')))
         selections = load(f, object_pairs_hook=OrderedDict)
         f.close()
         return selections
@@ -233,7 +208,7 @@ class DiaScans(Elementary):
     # ==========================================================================
     # region SELECTION
     def select_runplan(self, runplan, ch=1, testcampaign=None):
-        rp = self.make_runplan_string(runplan)
+        rp = make_runplan_string(runplan)
         tc = str(testcampaign) if testcampaign is not None else self.TestCampaigns[-1]
         if rp in self.AllRunPlans[tc]['rate_scan']:
             if tc not in self.Selection:
@@ -243,7 +218,7 @@ class DiaScans(Elementary):
             log_warning('The runplan {0} does not exist in {1}!'.format(rp, tc))
 
     def unselect_runplan(self, runplan, testcampaign=None):
-        rp = self.make_runplan_string(runplan)
+        rp = make_runplan_string(runplan)
         tc = str(testcampaign) if testcampaign is not None else self.TestCampaigns[-1]
         try:
             self.Selection[tc].pop(rp)
