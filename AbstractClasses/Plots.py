@@ -5,7 +5,7 @@ import os
 from ROOT import TGraphErrors, TCanvas, TH1D, TH2D, gStyle, gROOT, kError, TProfile2D, TProfile, kBlack, TLatex, THStack
 from math import ceil, sqrt
 from numpy import arange, array
-from Utils import increased_range
+from Utils import increased_range, print_banner
 
 from Elementary import Elementary
 
@@ -346,7 +346,7 @@ class Plots(Elementary):
         c0.SaveAs('{dir}/Plots/c_{n}.png'.format(dir=path, n=name))
         c0.Close()
         gROOT.SetBatch(False)
-        if verbosity: self.print_banner('{n} save -> Done'.format(n=name))
+        if verbosity: print_banner('{n} save -> Done'.format(n=name))
         del c0
 
     def check_plot_existence(self, path, name):
