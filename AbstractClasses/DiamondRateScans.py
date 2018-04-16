@@ -3,21 +3,21 @@
 # created on June 24th 2016 by M. Reichmann
 # --------------------------------------------------------
 
+from ConfigParser import ConfigParser, NoOptionError
+from ROOT import TMultiGraph, TGraphErrors, gStyle, TF1, TH2F, TH1F, TGraph2DErrors
+from argparse import ArgumentParser
+from collections import Counter
+from json import load, dump, loads
+from operator import itemgetter
+from re import split
+
+from uncertainties.unumpy import uarray
+
 from AnalysisCollection import AnalysisCollection
 from Elementary import Elementary
-from operator import itemgetter
-from ConfigParser import ConfigParser, NoOptionError
-from Utils import *
-from argparse import ArgumentParser
-from RunSelection import RunSelection
 from Run import Run
-from json import load, dump, loads
-from collections import OrderedDict, Counter
-from ROOT import TMultiGraph, TGraphErrors, kRed, kOrange, kBlue, kGreen, kCyan, kViolet, kPink, kYellow, gStyle, TF1, TH2F, TH1F, TGraph2DErrors
-import pickle
-from numpy import sqrt
-from re import split
-from uncertainties.unumpy import uarray
+from RunSelection import RunSelection
+from Utils import *
 
 
 class DiaScans(Elementary):
