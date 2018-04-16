@@ -2,7 +2,7 @@
 # IMPORTS
 # ==============================================
 from argparse import ArgumentParser
-from numpy import log, mean, concatenate, zeros
+from numpy import log, concatenate, zeros
 from functools import partial
 
 from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1, TH1F, TH2F, TH2I, TProfile2D
@@ -1317,8 +1317,17 @@ class AnalysisCollection(Elementary):
 
     # endregion
 
-    def draw_currents(self, v_range=None, rel_time=False):
-        self.Currents.draw_indep_graphs(rel_time=rel_time, v_range=v_range)
+    def draw_currents(self, v_range=None, rel_time=False, averaging=1, with_flux=False):
+        self.Currents.draw_indep_graphs(rel_time=rel_time, v_range=v_range, averaging=averaging, with_flux=with_flux)
+
+    def draw_current_vs_rate(self, show=True):
+        g = self.make_tgrapherrors('gcr', 'Current vs Rate')
+        for i, ana in enumerate(self.collection.itervalues()):
+            y, ey = ana.Currents.get_current()
+            g.SetPoint(i, ana.run.Flux, y)
+            g.SetPointError(i, ana.run.Flux * .1, ey)
+        self.format_histo(g, x_tit='Flux [kHz/cm^{2}]', y_tit='Mean Current [nA]', y_off=1.3)
+        self.save_histo(g, 'CurrentRate', show, lm=1.3, logx=True, draw_opt='ap')
 
     def make_flux_table(self):
         # for ana in self.collection.itervalues():
