@@ -6,7 +6,7 @@
 from datetime import datetime, timedelta
 from termcolor import colored
 from ROOT import gStyle, gROOT, TF1, TColor, TFile
-from numpy import sqrt, array, average
+from numpy import sqrt, array, average, mean, arange
 from os import makedirs
 from os import path as pth
 from os.path import basename, join, split
@@ -510,6 +510,10 @@ def make_bias_str(bias):
 
 def markers(i):
     return (range(20, 24) + [29, 33, 34])[i]
+
+
+def average_list(lst, n):
+    return [mean(lst[i:i+n]) for i in arange(0, len(lst), n)] if n > 1 else lst
 
 
 def load_root_files(sel, load=True):
