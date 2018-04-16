@@ -1329,6 +1329,12 @@ class AnalysisCollection(Elementary):
         self.format_histo(g, x_tit='Flux [kHz/cm^{2}]', y_tit='Mean Current [nA]', y_off=1.3)
         self.save_histo(g, 'CurrentRate', show, lm=1.3, logx=True, draw_opt='ap')
 
+    def get_hv_device(self):
+        return self.FirstAnalysis.Currents.Name
+
+    def get_currents(self):
+        return OrderedDict((key, ana.Currents.get_current()) for key, ana in self.collection.iteritems())
+
     def make_flux_table(self):
         # for ana in self.collection.itervalues():
         #     print ana.run.RunInfo
