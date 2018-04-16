@@ -220,7 +220,7 @@ class Currents(Elementary):
     # endregion
 
     # ==========================================================================
-    # region ACQUIRE DATA
+    # region DATA ACQUISITION
     def get_logs_from_start(self):
         log_names = sorted([name for name in glob(join(self.DataPath, '*'))] + [name for name in glob(join(self.OldDataPath, '*'))])
         start_log = None
@@ -354,9 +354,6 @@ class Currents(Elementary):
 
     # ==========================================================================
     # region PLOTTING
-    def set_graphs(self):
-        if self.Currents:
-            return
 
     def draw_hist(self, bin_size=1, show=True):
         self.find_data()
@@ -366,9 +363,10 @@ class Currents(Elementary):
         self.format_histo(p, x_tit='Time [hh:mm]', y_tit='Current [nA]', y_off=.8, fill_color=self.FillColor, markersize=.7, stats=0, t_ax_off=0)
         self.draw_histo(p, '', show, lm=.08, draw_opt='bare', x=1.5, y=.75)
 
+    def set_graphs(self, averaging=1):
         self.find_data()
         sleep(.1)
-        self.make_graphs()
+        self.make_graphs(averaging)
         self.set_margins()
 
     def draw_distribution(self, show=True):
@@ -388,8 +386,9 @@ class Currents(Elementary):
         # log_message('Current = {0:5.2f} ({1:5.2f}) nA'.format(fit.Parameter(1), fit.ParError(1)))
         return (fit.Parameter(1), fit.ParError(1)) if fit.Parameter(0) - h.GetMean() < 10 else (h.GetMean(), h.GetMeanError())
 
+    def draw_indep_graphs(self, rel_time=False, ignore_jumps=True, v_range=None, averaging=1, show=True):
         self.IgnoreJumps = ignore_jumps
-        self.set_graphs()
+        self.set_graphs(averaging)
         set_root_output(show)
         c = TCanvas('c', 'Keithley Currents for Run {0}'.format(self.RunNumber), int(self.Res * 1.5), int(self.Res * .75))
         self.draw_voltage_pad(v_range)
@@ -415,7 +414,7 @@ class Currents(Elementary):
         self.draw_tpad('p2', transparent=True)
         bias_str = 'at {b} V'.format(b=self.Bias) if self.Bias else ''
         run_str = '{n}'.format(n=self.Analysis.RunNumber) if hasattr(self.Analysis, 'run') else 'Plan {rp}'.format(rp=self.Analysis.RunPlan)
-        text = 'Currents of {dia} {b} - Run {r}'.format(dia=self.DiamondName, b=bias_str, r=run_str)
+        text = 'Currents of {dia} {b} - Run {r} - {n}'.format(dia=self.DiamondName, b=bias_str, r=run_str, n=self.Name)
         t1 = TText(0.1, 0.88, text)
         t1.SetTextSize(0.05)
         t1.Draw()
@@ -436,16 +435,17 @@ class Currents(Elementary):
     def set_margins(self):
         self.Margins = self.find_margins()
 
-    def make_graphs(self):
+    def make_graphs(self, averaging=1):
         tit = ' measured by {0}'.format(self.Name)
-        x = array(self.Time)
+        xv = array(self.Time)
+        xc = array(average_list(self.Time, averaging))
         # current
-        y = array(self.Currents)
-        g1 = TGraph(len(x), x, y)
+        y = array(average_list(self.Currents, averaging))
+        g1 = TGraph(len(xc), xc, y)
         self.format_histo(g1, 'Current', 'Current' + tit, color=col_cur, markersize=.5)
         # voltage
         y = array(self.Voltages)
-        g2 = TGraph(len(x), x, y)
+        g2 = TGraph(len(xv), xv, y)
         self.format_histo(g2, 'Voltage', 'Voltage' + tit, color=col_vol, markersize=.5)
         self.CurrentGraph = g1
         self.VoltageGraph = g2
