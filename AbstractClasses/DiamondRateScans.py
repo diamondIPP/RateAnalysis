@@ -253,11 +253,6 @@ class DiaScans(Elementary):
     # endregion
 
     @staticmethod
-    def make_runplan_string(nr):
-        nr = str(nr)
-        return nr.zfill(2) if len(nr) <= 2 else nr.zfill(4)
-
-    @staticmethod
     def get_ph_below_flux(mg, flux=80, keys=None):
         keys = ['gFullError', 'data'] if keys is None else keys
         try:

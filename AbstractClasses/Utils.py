@@ -326,6 +326,11 @@ def make_rate_str(rate):
     return '{rate} {unit}'.format(rate=rate, unit=unit)
 
 
+def make_runplan_string(nr):
+    nr = str(nr)
+    return nr.zfill(2) if len(nr) <= 2 else nr.zfill(4)
+
+
 def isfloat(string):
     try:
         float(string)
