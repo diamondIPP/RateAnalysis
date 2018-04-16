@@ -124,20 +124,6 @@ class DiaScans(Elementary):
                             runplans[tc][bias][rp] = ch
         return runplans
 
-    # endregion
-
-    def get_diamond_names(self):
-        return [sel.SelectedDiamond for sel in self.RunSelections]
-
-    def get_run_types(self):
-        return [sel.SelectedType.lower() for sel in self.RunSelections]
-
-    def get_irradiations(self):
-        return [make_irr_string(sel.get_irradiation()) for sel in self.RunSelections]
-
-    def get_bias_voltages(self):
-        return [sel.SelectedBias for sel in self.RunSelections]
-
     def set_selection(self, key=None):
         if key is None:
             key = self.DiamondName
@@ -152,6 +138,27 @@ class DiaScans(Elementary):
         self.TestCampaigns = list(set(self.Selection.keys()))
         self.load_run_selections(redo=True)
         self.Name = key
+
+    # endregion
+
+    # ==========================================================================
+    # region GET
+    def get_diamond_names(self):
+        return [sel.SelectedDiamond for sel in self.RunSelections]
+
+    def get_run_types(self):
+        return [sel.SelectedType.lower() for sel in self.RunSelections]
+
+    def get_irradiations(self):
+        return [make_irr_string(sel.get_irradiation()) for sel in self.RunSelections]
+
+    def get_bias_voltages(self):
+        return [sel.SelectedBias for sel in self.RunSelections]
+
+    def get_runs(self, rp, tc):
+        return self.AllRunPlans[tc][rp]['runs']
+
+    # endregion
 
     # ==========================================================================
     # region SHOW
@@ -192,9 +199,6 @@ class DiaScans(Elementary):
             print_table(rows, header)
         else:
             log_warning('Selection is empty!')
-
-    def get_runs(self, rp, tc):
-        return self.AllRunPlans[tc][rp]['runs']
 
     def show_all_runplans(self):
         for tc in self.TestCampaigns:
