@@ -9,7 +9,7 @@ from argparse import ArgumentParser
 from collections import Counter
 from json import load, dump, loads
 from operator import itemgetter
-from re import split
+from re import split as splitname
 
 from uncertainties.unumpy import uarray
 
@@ -26,7 +26,7 @@ class DiaScans(Elementary):
 
         # main
         self.Selections = self.load_selections()
-        self.Selection = self.load_selection()
+        self.Selection = {}
         self.RunSelections = None
         self.Name = None
         self.Parser = self.load_diamond_parser()
@@ -55,9 +55,6 @@ class DiaScans(Elementary):
         f.close()
         return selections
 
-    def load_selection(self):
-        return self.Selections[self.DiamondName] if self.DiamondName in self.Selections else {}
-
     def load_diamond_parser(self):
         parser = ConfigParser()
         parser.read('{0}/Configuration/DiamondAliases.cfg'.format(self.get_program_dir()))
@@ -70,9 +67,9 @@ class DiaScans(Elementary):
         if 'test' in dia:
             return 'Test'
         if name.lower() not in self.Parser.options('ALIASES'):
-            dia = split('[-_]', name)[-1]
+            dia = splitname('[-_]', name)[-1]
         if dia.lower() not in self.Parser.options('ALIASES'):
-            dia = '-'.join(split('[-_]', name)[:-1])
+            dia = '-'.join(splitname('[-_]', name)[:-1])
         if dia.lower() not in self.Parser.options('ALIASES'):
             dia = dia.split('-')[-1]
         try:
@@ -124,6 +121,19 @@ class DiaScans(Elementary):
                             runplans[tc][bias][rp] = ch
         return runplans
 
+    def load_run_selections(self, redo=False):
+        if self.RunSelections is not None and not redo:
+            return self.RunSelections
+        run_selections = []
+        for tc, rps in self.Selection.iteritems():
+            for rp, ch in rps.iteritems():
+                sel = RunSelection(tc)
+                sel.select_runs_from_runplan(rp, ch=ch)
+                self.log_info('Loaded runplan {rp} of testcampaign {tc} and ch {ch} ({dia})'.format(rp=rp.rjust(4), tc=make_tc_str(tc), ch=ch, dia=sel.SelectedDiamond))
+                run_selections.append(sel)
+        self.RunSelections = run_selections
+        return run_selections
+
     def set_selection(self, key=None):
         if key is None:
             key = self.DiamondName
@@ -157,6 +167,40 @@ class DiaScans(Elementary):
 
     def get_runs(self, rp, tc):
         return self.AllRunPlans[tc][rp]['runs']
+
+    @staticmethod
+    def get_values(sel, f, picklepath='', kwargs=None, redo=False, load_tree=True):
+        kwargs = {} if kwargs is None else kwargs
+        sel.verbose = False
+        try:
+            if redo:
+                raise IOError
+            f = open(picklepath, 'r')
+            values = pickle.load(f)
+            f.close()
+        except IOError:
+            log_message('Did not find {}'.format(picklepath), prnt=picklepath)
+            Elementary(sel.generate_tc_str())
+            print
+            t = load_root_files(sel, load=load_tree)
+            ana = AnalysisCollection(sel, t)
+            values = f(ana, **kwargs)
+        return values
+
+    def get_pulse_height_graphs(self, scale=1, redo=False):
+        run_selections = self.load_run_selections()
+        graphs = []
+        for i, sel in enumerate(run_selections):
+            path = self.make_pickle_path('Ph_fit', 'PhVals', sel.SelectedRunplan, sel.SelectedDiamond, 10000, sel.TCString)
+            phs = self.get_values(sel, AnalysisCollection.get_pulse_heights, path, {'redo': redo}, redo=redo)
+            values, errors = self.scale_to(phs, scale)
+            fluxes = [ph['flux'] for ph in phs.itervalues()]
+            g = self.make_tgrapherrors('g{n}'.format(n=i), 'Rate Scans for {n}'.format(n=self.DiamondName))
+            for j, (x, val, err) in enumerate(zip(fluxes, values, errors)):
+                g.SetPoint(j, x, val)
+                g.SetPointError(j, .1 * x, err)
+            graphs.append(g)
+        return graphs
 
     # endregion
 
@@ -331,19 +375,6 @@ class DiaScans(Elementary):
         gStyle.SetOptFit(11)
         g.Fit(fit, 'QS')
         self.save_plots(pname)
-
-    def load_run_selections(self, redo=False):
-        if self.RunSelections is not None and not redo:
-            return self.RunSelections
-        run_selections = []
-        for tc, rps in self.Selection.iteritems():
-            for rp, ch in rps.iteritems():
-                sel = RunSelection(tc)
-                sel.select_runs_from_runplan(rp, ch=ch)
-                self.log_info('Loaded runplan {rp} of testcampaign {tc} and ch {ch} ({dia})'.format(rp=rp.rjust(4), tc=make_tc_str(tc), ch=ch, dia=sel.SelectedDiamond))
-                run_selections.append(sel)
-        self.RunSelections = run_selections
-        return run_selections
 
     def draw_collimator_settings(self, show=True):
         h = TH2F('h_cs', 'Collimator Settings', 125, 50, 300, 75, 0, 150)
@@ -534,33 +565,6 @@ class DiaScans(Elementary):
             legend.AddEntry('', biases[ind], '')
         legend.Draw()
         self.ROOTObjects.append(legend)
-
-    def get_pulse_height_graphs(self, scale=1, redo=False):
-        run_selections = self.load_run_selections()
-        graphs = []
-        for i, sel in enumerate(run_selections):
-            path = self.make_pickle_path('Ph_fit', 'PhVals', sel.SelectedRunplan, sel.SelectedDiamond, 10000, sel.TCString)
-            try:
-                if redo:
-                    raise IOError
-                f = open(path, 'r')
-                phs = pickle.load(f)
-                f.close()
-            except IOError:
-                print 'Did not find', path
-                Elementary(sel.generate_tc_str())
-                print
-                t = load_root_files(sel, load=True)
-                ana = AnalysisCollection(sel, t)
-                phs = ana.get_pulse_heights(redo=redo)
-            values, errors = self.scale_to(phs, scale)
-            fluxes = [ph['flux'] for ph in phs.itervalues()]
-            g = self.make_tgrapherrors('g{n}'.format(n=i), 'Rate Scans for {n}'.format(n=self.DiamondName))
-            for j, (x, val, err) in enumerate(zip(fluxes, values, errors)):
-                g.SetPoint(j, x, val)
-                g.SetPointError(j, .1 * x, err)
-            graphs.append(g)
-        return graphs
 
     @staticmethod
     def scale_to(dic, scale=1):
