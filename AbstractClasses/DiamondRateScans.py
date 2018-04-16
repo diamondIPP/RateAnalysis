@@ -266,10 +266,10 @@ class DiaScans(Elementary):
             ey = [0] * n if not hasattr(g, 'GetEY') else ey
             xy = zip(x, y)
             xy_filtered = filter(lambda x1: x1[0] < flux, xy)
-            mean = calc_mean(map(itemgetter(1), xy_filtered))
+            mean_flux = calc_mean(map(itemgetter(1), xy_filtered))
             ymin = min(map(lambda val, err: val - err, y, ey))
             ymax = max(map(lambda val, err: val + err, y, ey))
-            return mean + (ymin, ymax)
+            return mean_flux + (ymin, ymax)
 
     def draw_hysteresis_graph(self, scans, limits=None):
         limits = [0, 30, 80, 250, 800, 2000, 4000, 1e10] if limits is None else limits
@@ -414,7 +414,7 @@ class DiaScans(Elementary):
         if not values:
             return
         spread = max(values) - min(values)
-        self.set_root_output(False)
+        set_root_output(False)
         h = TH1F('h_fd', 'Flux Distribution for {0}/{1}'.format(fs11, fsh13), int(sqrt(len(values))) + 5, min(values) - .2 * spread, max(values) + .2 * spread)
         for val in values:
             h.Fill(val)
@@ -424,7 +424,7 @@ class DiaScans(Elementary):
         fit = None
         if do_fit:
             h.SetName('Fit Results')
-            self.set_root_output(show)
+            set_root_output(show)
             fit = h.Fit('gaus', 'qs')
         self.save_plots('FluxDistribution{0}_{1}'.format(int(fs11), int(fsh13)), show=show)
         return fit
@@ -605,7 +605,7 @@ class DiaScans(Elementary):
         self.save_selections()
 
     def save_selections(self):
-        f = open(self.Path, 'r+')
+        f = open(join(self.Dir, self.MainConfigParser.get('MISC', 'runplan_selection_file')), 'r+')
         f.seek(0)
         dump(self.Selections, f, indent=2, sort_keys=True)
         f.truncate()
