@@ -358,6 +358,15 @@ class Currents(Elementary):
     def set_graphs(self):
         if self.Currents:
             return
+
+    def draw_hist(self, bin_size=1, show=True):
+        self.find_data()
+        p = TProfile('hpr', 'Leakage Current', int((self.Time[-1] - self.Time[0]) / bin_size), self.Time[0], self.Time[-1])
+        for t, c in zip(self.Time, self.Currents):
+            p.Fill(t, c)
+        self.format_histo(p, x_tit='Time [hh:mm]', y_tit='Current [nA]', y_off=.8, fill_color=self.FillColor, markersize=.7, stats=0, t_ax_off=0)
+        self.draw_histo(p, '', show, lm=.08, draw_opt='bare', x=1.5, y=.75)
+
         self.find_data()
         sleep(.1)
         self.make_graphs()
