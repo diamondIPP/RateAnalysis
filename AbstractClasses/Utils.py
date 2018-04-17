@@ -10,7 +10,7 @@ from numpy import sqrt, array, average, mean, arange
 from os import makedirs
 from os import path as pth
 from os.path import basename, join, split
-from time import time, sleep
+from time import time, sleep, mktime
 from collections import OrderedDict
 import pickle
 from threading import Thread
@@ -579,6 +579,10 @@ def get_time_vec(sel, run=None):
         log_warning('Need to correct timing vector\n')
         time_vec = correct_time(time_vec)
     return time_vec
+
+
+def make_tstamp(t):
+    return mktime(t.timetuple())
 
 
 def fill_empty_time_entries(times):
