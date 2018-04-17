@@ -69,7 +69,7 @@ class AnalysisCollection(Elementary):
         self.PeakDistribution = None
 
         # sub classes
-        self.StartTime = float(self.FirstAnalysis.run.LogStart.strftime('%s'))
+        self.StartTime = time_stamp(self.FirstAnalysis.run.LogStart)
         self.VoltageScan = VoltageScan(self)
         self.InfoLegend = InfoLegend(self)
         self.Currents = Currents(self)
