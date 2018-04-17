@@ -457,6 +457,12 @@ class Currents(Elementary):
         self.CurrentGraph = g1
         self.VoltageGraph = g2
 
+    def draw_time_axis(self, y, opt=''):
+        x = self.Margins['x']
+        a1 = self.draw_x_axis(y, x[0], x[1], 'Time [hh:mm]    ', off=1.2, tit_size=.05, opt=opt, lab_size=.05, tick_size=.3, l_off=.01)
+        a1.SetTimeFormat("%H:%M")
+        a1.SetTimeOffset(-3600)
+
     # endregion
 
     def run_exists(self, run):
