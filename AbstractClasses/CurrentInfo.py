@@ -9,7 +9,6 @@ from RunSelection import RunSelection
 from ROOT import TCanvas, TText, TGraph, TProfile, TH1F
 from ConfigParser import ConfigParser
 from argparse import ArgumentParser
-from time import mktime
 
 from Utils import *
 
@@ -168,14 +167,14 @@ class Currents(Elementary):
         if ana is None:
             return
         t = datetime.fromtimestamp(ana.run.StartTime) if hasattr(ana.run, 'StartTime') else ana.run.LogStart
-        return ana.run.LogStart if t.year < 2000 else t
+        return ana.run.LogStart if t.year < 2000 or t.day != ana.run.LogStart.day else t
 
     def load_stop_time(self):
         ana = self.Analysis.get_last_analysis() if self.IsCollection else self.Analysis
         if ana is None:
             return
         t = datetime.fromtimestamp(ana.run.EndTime) if hasattr(ana.run, 'EndTime') else ana.run.LogEnd
-        return ana.run.LogEnd if t.year < 2000 else t
+        return ana.run.LogEnd if t.year < 2000 or t.day != ana.run.LogEnd.day else t
 
     def set_start_stop(self, sta, sto=None):
         if not sta.isdigit():
