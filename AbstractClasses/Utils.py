@@ -581,8 +581,8 @@ def get_time_vec(sel, run=None):
     return time_vec
 
 
-def make_tstamp(t):
-    return mktime(t.timetuple())
+def time_stamp(t):
+    return float(t.strftime('%s'))
 
 
 def fill_empty_time_entries(times):
