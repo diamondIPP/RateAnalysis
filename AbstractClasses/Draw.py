@@ -272,9 +272,9 @@ class Draw:
     # endregion
 
     @staticmethod
-    def format_histo(histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=20, color=1, markersize=1, x_off=None, y_off=None, z_off=None, lw=1,
-                     fill_color=None, fill_style=None, stats=True, tit_size=.04, lab_size=.04, l_off_y=None, l_off_x=None,  draw_first=False, x_range=None, y_range=None, z_range=None,
-                     do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None, tick_size=None, t_ax_off=None, center_y=False, center_x=False):
+    def format_histo(histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=20, color=1, markersize=None, x_off=None, y_off=None, z_off=None, lw=1,
+                     fill_color=None, fill_style=None, stats=True, tit_size=.04, lab_size=.04, l_off_y=None, l_off_x=None, draw_first=False, x_range=None, y_range=None, z_range=None,
+                     do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None, tick_size=None, t_ax_off=None, center_y=False, center_x=False, yax_col=None):
         h = histo
         if draw_first:
             set_root_output(False)
@@ -289,9 +289,9 @@ class Draw:
         # markers
         try:
             if do_marker:
-                h.SetMarkerStyle(marker) if marker is not None else do_nothing()
-                h.SetMarkerColor(color) if color is not None else do_nothing()
-                h.SetMarkerSize(markersize) if markersize is not None else do_nothing()
+                do(h.SetMarkerStyle, marker)
+                do(h.SetMarkerColor, color)
+                do(h.SetMarkerSize, markersize)
         except AttributeError or ReferenceError:
             pass
         # lines/fill
@@ -327,6 +327,9 @@ class Draw:
                 y_axis.SetRangeUser(y_range[0], y_range[1]) if y_range is not None else do_nothing()
                 do(y_axis.SetNdivisions, ndivy)
                 y_axis.CenterTitle(center_y)
+                do(y_axis.SetTitleColor, yax_col)
+                do(y_axis.SetLabelColor, yax_col)
+                do(y_axis.SetLineColor, yax_col)
             z_axis = h.GetZaxis()
             if z_axis:
                 z_axis.SetTitle(z_tit) if z_tit else h.GetZaxis().GetTitle()
@@ -401,6 +404,28 @@ class Draw:
             error += .5 ** it * sign(chi2 - 1)
             it += 1
         return fit if fit is not None else FitRes()
+
+    def draw_frame(self, pad, xmin, xmax, ymin, ymax, tit, div=None, y_cent=None):
+        pad.cd()
+        fr = pad.DrawFrame(xmin, ymin, xmax, ymax)
+        pad.Modified()
+        fr.GetYaxis().SetTitle(tit)
+        do(fr.GetYaxis().CenterTitle, y_cent)
+        fr.GetYaxis().SetNdivisions(div) if div is not None else do_nothing()
+        format_frame(fr)
+        self.Objects.append(fr)
+
+
+def format_frame(frame):
+    fr = frame
+    fr.GetYaxis().SetTitleSize(.06)
+    fr.GetYaxis().SetTitleOffset(.6)
+    fr.GetYaxis().SetLabelSize(.06)
+    fr.SetTitleSize(.05)
+    fr.GetXaxis().SetTickLength(0)
+    fr.GetXaxis().SetLabelOffset(99)
+    fr.SetLineColor(0)
+    fr.GetXaxis().SetTimeDisplay(1)
 
 
 def create_colorlist():
