@@ -422,7 +422,8 @@ class Currents(Elementary):
         h = self.Analysis.draw_flux(10000, rel_t=True, show=False)
         pad.cd()
         f_range = [1, h.GetMaximum() * 1.2] if f_range is None else f_range
-        self.format_histo(h, title=' ', fill_color=4000, fill_style=4000, lw=3, y_range=f_range, stats=0, y_off=1.05, x_off=99, l_off_x=99, tick_size=0, center_y=True)
+        self.format_histo(h, title=' ', x_tit='#font[22]{Flux [kHz/cm^{2}]}', fill_color=4000, fill_style=4000, lw=3, y_range=f_range, stats=0, y_off=1.05, x_off=99, l_off_x=99, tick_size=0,
+                          center_y=True)
         h.Draw('histy+')
 
     def draw_title_pad(self):
