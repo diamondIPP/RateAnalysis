@@ -6,7 +6,7 @@ from json import load
 
 from Elementary import Elementary
 from RunSelection import RunSelection
-from ROOT import TCanvas, TText, TGraph, TProfile, TH1F
+from ROOT import TCanvas, TGraph, TProfile, TH1F
 from ConfigParser import ConfigParser
 from argparse import ArgumentParser
 
@@ -20,6 +20,7 @@ label_size = .04
 title_offset = 0.8
 col_vol = 602  # 807
 col_cur = 899  # 418
+pad_margins = [.065, .09, .15, .1]
 
 
 # ====================================
@@ -385,35 +386,42 @@ class Currents(Elementary):
         # log_message('Current = {0:5.2f} ({1:5.2f}) nA'.format(fit.Parameter(1), fit.ParError(1)))
         return (fit.Parameter(1), fit.ParError(1)) if fit.Parameter(0) - h.GetMean() < 10 else (h.GetMean(), h.GetMeanError())
 
-    def draw_indep_graphs(self, rel_time=False, ignore_jumps=True, v_range=None, averaging=1, with_flux=False, show=True):
+    def draw_indep_graphs(self, rel_time=False, ignore_jumps=True, v_range=None, f_range=None, c_range=None, averaging=1, with_flux=False, show=True):
         self.IgnoreJumps = ignore_jumps
         self.set_graphs(averaging)
         set_root_output(show)
         c = TCanvas('c', 'Keithley Currents for Run {0}'.format(self.RunNumber), int(self.Res * 1.5), int(self.Res * .75))
-        self.draw_flux_pad(c) if with_flux else self.draw_voltage_pad(v_range)
+        self.draw_flux_pad(f_range) if with_flux else self.draw_voltage_pad(v_range)
         self.draw_title_pad()
-        self.draw_current_pad(rel_t=rel_time)
+        self.draw_current_pad(rel_time, c_range)
 
         self.Stuff.append(c)
         self.save_plots('{dia}_{bias}'.format(dia=self.DiamondName, bias=self.Bias), sub_dir='Currents', show=show)
 
-    def draw_current_pad(self, rel_t):
-        pad = self.draw_tpad('p3', gridx=True, margins=[.065, .09, .15, .15], transparent=True)
-        self.draw_current_frame(pad, rel_t)
-        self.CurrentGraph.Draw('pl')
+    def zoom_pads(self, low, high):
+        self.VoltageGraph.GetXaxis().SetRangeUser(low, high)
+        self.CurrentGraph.GetXaxis().SetRangeUser(low, high)
 
-    def draw_voltage_pad(self, vrange):
-        pad = self.draw_tpad('p1', gridy=True, margins=[.065, .09, .15, .15])
-        self.draw_voltage_frame(pad, vrange)
-        self.VoltageGraph.Draw('p')
-        self.VoltageGraph.GetXaxis().SetRangeUser(self.Time[0], self.Time[-1])
-        self.draw_voltage_axis(vrange)
+    def draw_current_pad(self, rel_t, c_range):
+        self.draw_tpad('p3', gridx=True, margins=pad_margins, transparent=True)
+        g = self.CurrentGraph
+        self.format_histo(g, x_tit='#font[22]{Time [hh:mm]}', lab_size=label_size, x_off=1.05, tit_size=axis_title_size, t_ax_off=self.Time[0] if rel_t else 0, y_off=.55, yax_col=col_cur,
+                          y_tit='#font[22]{Current [nA]}', center_y=True, x_range=[self.Time[0], self.Time[-1]], y_range=c_range, color=col_cur)
+        self.CurrentGraph.Draw('apl')
 
-    def draw_flux_pad(self, canvas):
+    def draw_voltage_pad(self, v_range):
+        self.draw_tpad('p1', gridy=True, margins=pad_margins, transparent=True)
+        g = self.VoltageGraph
+        v_range = [-1100, 1100] if v_range is None else v_range
+        self.format_histo(g, y_range=v_range, y_tit='#font[22]{Voltage [V]}', x_range=[self.Time[0], self.Time[-1]], tit_size=axis_title_size, tick_size=0, x_off=99, l_off_x=99, center_y=True,
+                          color=col_vol, y_off=title_offset, markersize=.5, yax_col=col_vol)
+        g.Draw('apy+')
+
+    def draw_flux_pad(self, f_range):
         h = self.Analysis.draw_flux(10000, rel_t=True, show=False)
-        canvas.cd()
-        self.draw_tpad('pr', margins=[.065, .09, .15, .15], transparent=True, logy=True)
-        self.format_histo(h, title=' ', fill_color=4000, fill_style=4000, lw=3, y_range=[1, h.GetMaximum() * 1.2], stats=0, y_off=1.05, x_off=99, l_off_x=99, tick_size=0, center_y=True)
+        self.draw_tpad('pr', margins=pad_margins, transparent=True, logy=True)
+        f_range = [1, h.GetMaximum() * 1.2] if f_range is None else f_range
+        self.format_histo(h, title=' ', fill_color=4000, fill_style=4000, lw=3, y_range=f_range, stats=0, y_off=1.05, x_off=99, l_off_x=99, tick_size=0, center_y=True)
         h.Draw('histy+')
 
     def draw_title_pad(self):
@@ -421,15 +429,7 @@ class Currents(Elementary):
         bias_str = 'at {b} V'.format(b=self.Bias) if self.Bias else ''
         run_str = '{n}'.format(n=self.Analysis.RunNumber) if hasattr(self.Analysis, 'run') else 'Plan {rp}'.format(rp=self.Analysis.RunPlan)
         text = 'Currents of {dia} {b} - Run {r} - {n}'.format(dia=self.DiamondName, b=bias_str, r=run_str, n=self.Name)
-        t1 = TText(0.1, 0.88, text)
-        t1.SetTextSize(0.05)
-        t1.Draw()
-        self.Stuff.append(t1)
-
-    @staticmethod
-    def draw_pads(pads):
-        for p in pads:
-            p.Draw()
+        self.draw_tlatex(pad_margins[0], 1.02 - pad_margins[-1], text, align=11, size=.06)
 
     def find_margins(self):
         x = [min(self.Time), max(self.Time)]
@@ -448,118 +448,14 @@ class Currents(Elementary):
         # current
         y = array(average_list(self.Currents, averaging))
         g1 = TGraph(len(xc), xc, y)
-        self.format_histo(g1, 'Current', 'Current' + tit, color=col_cur, markersize=.5)
+        self.format_histo(g1, 'Current', '', color=col_cur, markersize=.5)
+        g1.SetTitle('')
         # voltage
         y = array(self.Voltages)
         g2 = TGraph(len(xv), xv, y)
         self.format_histo(g2, 'Voltage', 'Voltage' + tit, color=col_vol, markersize=.5)
         self.CurrentGraph = g1
         self.VoltageGraph = g2
-
-    def draw_voltage_axis(self, vrange):
-        vrange = [-1100, 1100] if vrange is None else vrange
-        a1 = self.draw_y_axis(self.Time[-1], vrange[0], vrange[1], '#font[22]{Voltage [V]}', col=col_vol, off=title_offset,
-                              tit_size=axis_title_size, opt='+L', w=2, lab_size=label_size, l_off=.01)
-        a1.CenterTitle()
-
-    def draw_current_axis(self):
-        y = self.Margins['y']
-        yadd = (y[1] - y[0]) * .1
-        diff = (y[1] - y[0])
-        self.draw_y_axis(self.Margins['x'][1], y[0] - yadd, y[1] + yadd + diff, 'Current [nA]', off=.7, tit_size=.04, opt='+L', w=2, l_off=.01, lab_size=label_size)
-
-    def draw_pulser_axis(self, ymin, ymax):
-        x = self.Margins['x'][0] - (self.Margins['x'][1] - self.Margins['x'][0]) * .07
-        self.draw_y_axis(x, ymin, ymax, 'pulse height [au]', off=.8, tit_size=.04, opt='-R', w=2, col=859, lab_size=label_size, l_off=.01)
-
-    def draw_current_frame(self, pad, rel_t):
-        m = self.Margins
-        h2 = pad.DrawFrame(m['x'][0], m['y'][0], m['x'][1], m['y'][1])
-        # X-axis
-        h2.GetXaxis().SetTitle("#font[22]{Time [hh:mm]}")
-        h2.GetXaxis().SetLabelSize(label_size)
-        h2.GetXaxis().SetTitleSize(axis_title_size)
-        h2.GetXaxis().SetTitleOffset(1.05)
-        h2.GetXaxis().SetTitleSize(0.05)
-        set_time_axis(h2, off=self.Time[0] if rel_t else 0)
-        # Y-axis
-        h2.GetYaxis().SetTitleOffset(.55)
-        h2.GetYaxis().SetTitleSize(0.05)
-        h2.GetYaxis().SetTitle("#font[22]{Current [nA]}")
-        h2.GetYaxis().SetTitleColor(col_cur)
-        h2.GetYaxis().SetLabelColor(col_cur)
-        h2.GetYaxis().SetAxisColor(col_cur)
-        h2.GetYaxis().CenterTitle()
-        h2.GetYaxis().SetLabelSize(label_size)
-        h2.GetYaxis().SetTitleSize(axis_title_size)
-        h2.GetXaxis().SetRangeUser(self.Time[0], self.Time[-1])
-        # self.Stuff.append(h2)
-
-    def draw_ph_frame(self, pad, margins):
-        pad.cd()
-        m = self.Margins
-        h2 = pad.DrawFrame(m['x'][0], margins[0], m['x'][1], margins[1])
-        # X-axis
-        h2.GetXaxis().SetTitle("time [hh:mm]")
-        h2.GetXaxis().SetTimeFormat("%H:%M")
-        h2.GetXaxis().SetTimeOffset(-3600)
-        h2.GetXaxis().SetTimeDisplay(1)
-        h2.GetXaxis().SetLabelSize(label_size)
-        h2.GetXaxis().SetTitleSize(axis_title_size)
-        h2.GetXaxis().SetTitleOffset(1.05)
-        h2.GetXaxis().SetTitleSize(0.04)
-        # Y-axis
-        h2.GetYaxis().SetTitleOffset(0.6)
-        h2.GetYaxis().SetTitleSize(0.04)
-        h2.GetYaxis().SetLabelSize(label_size)
-        h2.GetYaxis().SetTitleSize(0.04)
-        h2.GetYaxis().SetTitleOffset(0.75)
-
-    def draw_voltage_frame(self, pad, vrange):
-        vrange = [-1100, 1100] if vrange is None else vrange
-        m = self.Margins
-        h1 = pad.DrawFrame(m['x'][0], vrange[0], m['x'][1], vrange[1])
-        h1.SetTitleSize(axis_title_size)
-        h1.GetXaxis().SetTickLength(0)
-        h1.GetYaxis().SetTickLength(0)
-        h1.GetXaxis().SetLabelOffset(99)
-        h1.GetYaxis().SetLabelOffset(99)
-        h1.SetLineColor(0)
-        h1.GetXaxis().SetRangeUser(self.Time[0], self.Time[-1])
-
-    def draw_pulser_frame(self, pad, ymin, ymax):
-        pad.cd()
-        m = self.Margins
-        h1 = pad.DrawFrame(m['x'][0], ymin, m['x'][1], ymax)
-        self.format_frame(h1)
-
-    @staticmethod
-    def format_frame(frame):
-        fr = frame
-        fr.GetYaxis().SetTitleSize(.06)
-        fr.GetYaxis().SetTitleOffset(.6)
-        fr.GetYaxis().SetLabelSize(.06)
-        fr.SetTitleSize(axis_title_size)
-        fr.GetXaxis().SetTickLength(0)
-        fr.GetXaxis().SetLabelOffset(99)
-        fr.SetLineColor(0)
-        fr.GetXaxis().SetTimeDisplay(1)
-
-    def draw_frame(self, pad, ymin, ymax, tit, div=None, y_cent=None):
-        pad.cd()
-        x = self.Margins['x']
-        fr = pad.DrawFrame(x[0], ymin, x[1], ymax)
-        pad.Modified()
-        fr.GetYaxis().SetTitle(tit)
-        do(fr.GetYaxis().CenterTitle, y_cent)
-        fr.GetYaxis().SetNdivisions(div) if div is not None else do_nothing()
-        self.format_frame(fr)
-
-    def draw_time_axis(self, y, opt=''):
-        x = self.Margins['x']
-        a1 = self.draw_x_axis(y, x[0], x[1], 'Time [hh:mm]    ', off=1.2, tit_size=.05, opt=opt, lab_size=.05, tick_size=.3, l_off=.01)
-        a1.SetTimeFormat("%H:%M")
-        a1.SetTimeOffset(-3600)
 
     # endregion
 
