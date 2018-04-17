@@ -423,7 +423,7 @@ class Currents(Elementary):
         pad.cd()
         f_range = [1, h.GetMaximum() * 1.2] if f_range is None else f_range
         self.format_histo(h, title=' ', y_tit='#font[22]{Flux [kHz/cm^{2}]}', fill_color=4000, fill_style=4000, lw=3, y_range=f_range, stats=0, y_off=1.05, x_off=99, l_off_x=99, tick_size=0,
-                          center_y=True)
+                          center_y=True, tit_size=axis_title_size)
         h.Draw('histy+')
 
     def draw_title_pad(self):
