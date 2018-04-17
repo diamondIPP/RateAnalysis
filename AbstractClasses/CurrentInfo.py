@@ -418,8 +418,9 @@ class Currents(Elementary):
         g.Draw('apy+')
 
     def draw_flux_pad(self, f_range):
+        pad = self.draw_tpad('pr', margins=pad_margins, transparent=True, logy=True)
         h = self.Analysis.draw_flux(10000, rel_t=True, show=False)
-        self.draw_tpad('pr', margins=pad_margins, transparent=True, logy=True)
+        pad.cd()
         f_range = [1, h.GetMaximum() * 1.2] if f_range is None else f_range
         self.format_histo(h, title=' ', fill_color=4000, fill_style=4000, lw=3, y_range=f_range, stats=0, y_off=1.05, x_off=99, l_off_x=99, tick_size=0, center_y=True)
         h.Draw('histy+')
