@@ -6,7 +6,7 @@ from json import load
 
 from Elementary import Elementary
 from RunSelection import RunSelection
-from ROOT import TCanvas, TGraph, TProfile, TH1F
+from ROOT import TCanvas, TGraph, TProfile, TH1F, TH2F
 from ConfigParser import ConfigParser
 from argparse import ArgumentParser
 
@@ -362,8 +362,21 @@ class Currents(Elementary):
         p = TProfile('hpr', 'Leakage Current', int((self.Time[-1] - self.Time[0]) / bin_size), self.Time[0], self.Time[-1])
         for t, c in zip(self.Time, self.Currents):
             p.Fill(t, c)
-        self.format_histo(p, x_tit='Time [hh:mm]', y_tit='Current [nA]', y_off=.8, fill_color=self.FillColor, markersize=.7, stats=0, t_ax_off=0)
-        self.draw_histo(p, '', show, lm=.08, draw_opt='bare', x=1.5, y=.75)
+        self.format_histo(p, x_tit='Time [hh:mm]', y_tit='Current [nA]', y_off=.8, markersize=.7, stats=0, t_ax_off=0)
+        self.draw_histo(p, '', show, lm=.08, draw_opt='p', x=1.5, y=.75)
+        return p
+
+    def draw_flux_correlation(self, show=True):
+        p1 = self.draw_hist(show=False)
+        p2 = self.Analysis.draw_flux_hist(show=False)
+        xbins = [int(sqrt(p1.GetNbinsX())), p1.GetMinimum(), p1.GetMaximum()]
+        ybins = [int(sqrt(p1.GetNbinsX())), 1, p2.GetMaximum()]
+        h = TH2F('gfcc', 'Correlation of Flux and Current', *(xbins + ybins))
+        for i in xrange(p1.GetNbinsX()):
+            if p1.GetBinContent(i) and p2.GetBinContent(i):
+                h.Fill(p1.GetBinContent(i), p2.GetBinContent(i))
+        self.format_histo(h, x_tit='Current [nA]', y_tit='Flux [kHz/cm^{2}')
+        self.save_histo(h, 'FluxCurrent', draw_opt='colz', rm=.18, show=show)
 
     def set_graphs(self, averaging=1):
         self.find_data()
