@@ -493,7 +493,7 @@ class Analysis(Elementary):
     # =================================================================================================================
     # region RUN METHODS
     def get_flux(self):
-        return self.run.get_flux()
+        return self._get_flux(prnt=False) if self.has_branch('rate') else (self.run.get_flux(), self.run.get_flux() * .1)
 
     def has_branch(self, branch):
         return self.run.has_branch(branch)
@@ -562,9 +562,9 @@ class Analysis(Elementary):
         self.format_histo(h, x_tit='Beam Current [mA]', y_tit='Flux [kHz/cm^{2}]', y_off=1.3, stats=0)
         self.save_histo(h, 'BeamCurrentFlux', lm=.13, rm=.18, ind=None, show=show, draw_opt='colz')
 
-    def _get_flux(self, show=False):
+    def _get_flux(self, show=False, prnt=True):
         set_statbox(fit=True, entries=6)
-        h = self.draw_flux(cut=self.Cut.generate_special_cut(included='beam_interruptions'), show=False)
+        h = self.draw_flux(cut=self.Cut.generate_special_cut(included='beam_interruptions', prnt=prnt), show=False)
         values = [h.GetY()[i] for i in xrange(h.GetN())]
         m, s = calc_mean(values)
         h = TH1F('hfl', 'Flux Distribution', int(sqrt(h.GetN()) * 2), m - 3 * s, m + 4 * s)
@@ -572,7 +572,7 @@ class Analysis(Elementary):
             h.Fill(val)
         fit = h.Fit('gaus', 'qs{}'.format('' if show else 0))
         self.format_histo(h, 'Fit Result', y_tit='Number of Entries', x_tit='Flux [kHz/cm^{2}]', fill_color=self.FillColor, y_off=1.3)
-        self.save_histo(h, 'FluxDisto', lm=.13, ind=None, show=show)
+        self.save_histo(h, 'FluxDisto', lm=.13, ind=None, show=show, prnt=prnt)
         return fit.Parameter(1), fit.Parameter(2)
 
     # endregion
