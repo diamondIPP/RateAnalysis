@@ -207,7 +207,7 @@ class AnalysisCollection(Elementary):
         for i, gr in enumerate([pul, ph, cur]):
             pad = self.Currents.draw_tpad('p{}'.format(i), 'p{}'.format(i), pos=[0, (7 - 3 * i) / 10., 1, (10 - 3 * i) / 10.], gridx=True, gridy=True, margins=margins[i])
             ymin, ymax = y_ranges[i]
-            self.Currents.draw_frame(pad, ymin, ymax, y_tits[i], div=divs[i], y_cent=True)
+            self.draw_frame(pad, ymin, ymax, y_tits[i], div=divs[i], y_cent=True)
             draw_t_axis[i]()
             gr.Draw(draw_opts[i])
             legends[i].Draw()
@@ -252,7 +252,7 @@ class AnalysisCollection(Elementary):
         pulse_heights = func() if redo else None
         return do_pickle(pickle_path, func, pulse_heights)
 
-    def draw_flux(self, evts_per_bin=10000, rel_t=True, show=True):
+    def draw_log_flux(self, evts_per_bin=10000, rel_t=True, show=True):
         limits = self.get_start_end_times()
         edges = [l[1] for l in limits]
         h = TH1F('hr1', 'Flux of Run Plan {r}'.format(r=self.RunPlan), *self.get_t_binning(evts_per_bin))
@@ -282,7 +282,7 @@ class AnalysisCollection(Elementary):
         set_time_axis(h1, off=self.FirstAnalysis.run.StartTime if rel_t else 0)
         c = self.draw_histo(h1, show=show, draw_opt='hist', x=1.5, y=.75, lm=.065, gridy=True, rm=.1 if with_flux else None)
         if with_flux:
-            h = self.draw_flux(evts_per_bin, rel_t, show=False)
+            h = self.draw_log_flux(evts_per_bin, rel_t, show=False)
             c.cd()
             self.draw_tpad('pr', margins=[.065, .1, .15, .1], transparent=True)
             self.format_histo(h, title=' ', fill_color=4000, fill_style=4000, lw=3, y_range=[1, h.GetMaximum() * 1.2], stats=0, y_off=1.05)
@@ -1004,7 +1004,7 @@ class AnalysisCollection(Elementary):
         self.RootObjects.append([gr, c])
         self.FWHM = gr
 
-    def draw_fluxes(self):
+    def draw_log_fluxes(self):
         g1 = self.make_tgrapherrors('g_fp', 'Number of Peaks', color=self.get_color())
         pixel_fluxes = [ana.run.Flux / 1000. for ana in self.collection.values()]
         g2 = self.make_tgrapherrors('g_ff', 'Pixel Fast-OR', x=self.Runs, y=pixel_fluxes, color=self.get_color())
@@ -1024,6 +1024,19 @@ class AnalysisCollection(Elementary):
             bin_x = mg.GetXaxis().FindBin(run)
             mg.GetXaxis().SetBinLabel(bin_x, names[i])
         self.save_histo(mg, 'FluxComparison', draw_opt='a', lm=.12, bm=.2, l=l)
+
+    def draw_fluxes(self, rel_time=False, show=True):
+        if not self.FirstAnalysis.has_branch('rate'):
+            self.draw_log_flux()
+        else:
+            graphs = [ana.draw_flux(rel_t=False, show=False) for ana in self.collection.itervalues()]
+            xvals = [g.GetX()[i] for g in graphs for i in xrange(g.GetN())]
+            yvals = [g.GetY()[i] for g in graphs for i in xrange(g.GetN())]
+            g = self.make_tgrapherrors('gfls', 'Flux Evolution', x=xvals, y=yvals)
+            self.format_histo(g, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', draw_first=True, markersize=.4, t_ax_off=self.FirstAnalysis.run.StartTime if rel_time else 0,
+                              fill_color=self.FillColor, y_range=[1, 20000], x_range=[g.GetX()[0], g.GetX()[g.GetN() - 1]])
+            self.save_histo(g, 'FluxEvo', x_fac=1.5, y_fac=.75, show=show, logy=True, draw_opt='alfp')
+            return g
 
     def save_signal_maps(self, hitmap=False, redo=False):
 
