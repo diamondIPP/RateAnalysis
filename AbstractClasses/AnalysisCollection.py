@@ -1050,6 +1050,17 @@ class AnalysisCollection(Elementary):
         self.draw_histo(p, '', show, lm=.08, draw_opt='p', x=1.5, y=.75)
         return p
 
+    def draw_current_flux(self, show=True):
+        fluxes = self.get_fluxes().values()
+        currents = self.get_currents().values()
+        g = self.make_tgrapherrors('gcf', 'Leakage Current vs. Flux')
+        for i, (flux, current) in enumerate(zip(fluxes, currents)):
+            g.SetPoint(i, flux[0], current[0])
+            g.SetPointError(i, flux[1], current[1])
+        self.format_histo(g, x_tit='Flux [kHz/cm^{2}', y_tit='Current [nA]', y_off=1.3)
+        self.save_histo(g, 'FluxCurrent', show, lm=.13, draw_opt='ap')
+
+
     def save_signal_maps(self, hitmap=False, redo=False):
 
         name = 'signal' if not hitmap else 'hit'
@@ -1473,7 +1484,7 @@ class AnalysisCollection(Elementary):
     def get_fluxes(self):
         flux = OrderedDict()
         for key, ana in self.collection.iteritems():
-            flux[key] = ana.run.get_flux()
+            flux[key] = ana.get_flux()
         return flux
 
     @staticmethod
