@@ -490,7 +490,7 @@ class Analysis(Elementary):
 
     # endregion
 
-    # ==============================================
+    # =================================================================================================================
     # region RUN METHODS
     def get_flux(self):
         return self.run.get_flux()
@@ -500,11 +500,14 @@ class Analysis(Elementary):
 
     # endregion
 
-    def draw_beam_current(self, rel_t=True, show=True):
+    # =================================================================================================================
+    # region RATE
+
+    def draw_beam_current(self, cut='', rel_t=True, show=True):
         if not self.has_branch('beam_current'):
             log_warning('Branch "beam_current" does not exist!')
             return
-        n = self.tree.Draw('beam_current:time/1000.>>test', 'beam_current<10000', 'goff')
+        n = self.tree.Draw('beam_current:time/1000.>>test', TCut('beam_current < 10000') + TCut(cut), 'goff')
         current = [self.tree.GetV1()[i] for i in xrange(n)]
         t = [self.tree.GetV2()[i] for i in xrange(n)]
         g = self.make_tgrapherrors('gbc', 'Beam Current', x=t + [t[-1]], y=current + [0])
@@ -512,6 +515,63 @@ class Analysis(Elementary):
                           x_range=[g.GetX()[0], g.GetX()[n]])
         self.save_histo(g, 'BeamCurrent', draw_opt='afp', lm=.08, x_fac=1.5, y_fac=.75, ind=None, show=show)
         return g
+
+    def draw_rate(self, plane=1, rel_t=True, show=True):
+        """ Draws the single plane rates versus time. The first entry of the vector corresponds to the scintillator rate """
+        if not self.has_branch('rate'):
+            log_warning('The "rate" branch does not exist in this tree')
+            return
+        n = self.tree.Draw('rate[{p}]:time / 1000.'.format(p=plane), 'beam_current < 10000', 'goff')
+        rate = [self.tree.GetV1()[i] for i in xrange(n)]
+        t = [self.tree.GetV2()[i] for i in xrange(n)]
+        g = self.make_tgrapherrors('gpr', 'Rate of Plane {n}'.format(n=plane), x=t + [t[-1]], y=rate + [0])
+        self.format_histo(g, x_tit='Time [hh:mm]', y_tit='Rate [Hz]', fill_color=self.FillColor, markersize=.4, t_ax_off=self.run.StartTime if rel_t else 0)
+        self.save_histo(g, 'Plane{n}Rate'.format(n=plane), draw_opt='afp', lm=.08, x_fac=1.5, y_fac=.75, ind=None, show=show)
+
+    def draw_flux(self, cut='', rel_t=True, show=True):
+        """ Draws the flux vs time calculated using the trigger plane rates and their active areas """
+        if not self.has_branch('rate'):
+            log_warning('The "rate" branch does not exist in this tree')
+            return
+        areas = self.run.get_unmasked_area()
+        cut = TCut('beam_current < 10000') + TCut(cut)
+        n = self.tree.Draw('rate[{p1}]:rate[{p2}]:time / 1000.'.format(p1=areas.keys()[0] + 1, p2=areas.keys()[1] + 1), cut, 'goff')
+        rates = [(self.tree.GetV1()[i], self.tree.GetV2()[i]) for i in xrange(n)]
+        t = [self.tree.GetV3()[i] for i in xrange(n)]
+        flux = [mean([r1 / areas.values()[0], r2 / areas.values()[1]]) / 1000 for r1, r2 in rates]
+        g = self.make_tgrapherrors('gfl', 'Flux', x=t + [t[-1]], y=flux + [0.])
+        self.format_histo(g, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', fill_color=self.FillColor, markersize=.4, t_ax_off=self.run.StartTime if rel_t else 0)
+        self.save_histo(g, 'FluxTime', draw_opt='afp', lm=.08, x_fac=1.5, y_fac=.75, ind=None, show=show)
+        return g
+
+    def draw_bc_vs_rate(self, cut='', show=True):
+        g1 = self.draw_flux(cut=cut, show=False)
+        g2 = self.draw_beam_current(cut=cut, show=False)
+        fluxes = [g1.GetY()[i] for i in xrange(g1.GetN())]
+        beam_currents = [g2.GetY()[i] for i in xrange(g2.GetN())]
+        xbins = [int(max(beam_currents) + 10 - sorted(beam_currents)[3]), sorted(beam_currents)[3], max(beam_currents) + 10]
+        ybins = [int(sqrt(g1.GetN()) * 4), sorted(fluxes)[3], max(fluxes)]
+        print xbins + ybins
+        h = TH2F('hbcr', 'Correlation between Beam Current and Flux', *(xbins + ybins))
+        for flux, beam_cur in zip(fluxes, beam_currents):
+            h.Fill(beam_cur, flux)
+        self.format_histo(h, x_tit='Beam Current [mA]', y_tit='Flux [kHz/cm^{2}]', y_off=1.3, stats=0)
+        self.save_histo(h, 'BeamCurrentFlux', lm=.13, rm=.18, ind=None, show=show, draw_opt='colz')
+
+    def _get_flux(self, show=False):
+        set_statbox(fit=True, entries=6)
+        h = self.draw_flux(cut=self.Cut.generate_special_cut(included='beam_interruptions'), show=False)
+        values = [h.GetY()[i] for i in xrange(h.GetN())]
+        m, s = calc_mean(values)
+        h = TH1F('hfl', 'Flux Distribution', int(sqrt(h.GetN()) * 2), m - 3 * s, m + 4 * s)
+        for val in values:
+            h.Fill(val)
+        fit = h.Fit('gaus', 'qs{}'.format('' if show else 0))
+        self.format_histo(h, 'Fit Result', y_tit='Number of Entries', x_tit='Flux [kHz/cm^{2}]', fill_color=self.FillColor, y_off=1.3)
+        self.save_histo(h, 'FluxDisto', lm=.13, ind=None, show=show)
+        return fit.Parameter(1), fit.Parameter(2)
+
+    # endregion
 
     def fit_langau(self, h=None, nconv=30, show=True, chi_thresh=8):
         h = self.draw_signal_distribution(show=show) if h is None and hasattr(self, 'draw_signal_distribution') else h
