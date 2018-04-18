@@ -241,12 +241,12 @@ class Currents(Elementary):
     def set_start(self, zero=False):
         self.Currents.append(self.Currents[-1] if not zero else 0)
         self.Voltages.append(self.Voltages[-1] if not zero else 0)
-        self.Time.append(mktime(self.StartTime.timetuple()))
+        self.Time.append(time_stamp(self.StartTime))
 
     def set_stop(self, zero=False):
         self.Currents.append(self.Currents[-1] if not zero else 0)
         self.Voltages.append(self.Voltages[-1] if not zero else 0)
-        self.Time.append(mktime(self.StopTime.timetuple()))
+        self.Time.append(time_stamp(self.StopTime))
 
     def find_data(self):
         if self.Currents:
@@ -296,7 +296,7 @@ class Currents(Elementary):
                     if index % self.Points == 0:
                         if mean(self.Currents) < 5 * self.MeanCurrent / self.Points:
                             self.Currents.append(self.MeanCurrent / self.Points)
-                            self.Time.append(mktime(now.timetuple()))
+                            self.Time.append(time_stamp(now))
                             self.Voltages.append(self.MeanVoltage / self.Points)
                             self.MeanCurrent = 0
                             self.MeanVoltage = 0
@@ -317,7 +317,7 @@ class Currents(Elementary):
                         if abs(self.Currents[-1]) > 0.01:
                             return
                 self.Currents.append(float(info[2]) * 1e9)
-                self.Time.append(mktime(now.timetuple()))
+                self.Time.append(time_stamp(now))
                 self.Voltages.append(float(info[1]))
 
     def find_start(self, data, log_date):
