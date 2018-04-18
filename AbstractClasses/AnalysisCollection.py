@@ -5,7 +5,7 @@ from argparse import ArgumentParser
 from numpy import log, concatenate, zeros
 from functools import partial
 
-from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1, TH1F, TH2F, TH2I, TProfile2D
+from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1, TH1F, TH2F, TH2I, TProfile2D, TProfile
 
 from CurrentInfo import Currents
 from Elementary import Elementary
@@ -1027,7 +1027,7 @@ class AnalysisCollection(Elementary):
 
     def draw_fluxes(self, rel_time=False, show=True):
         if not self.FirstAnalysis.has_branch('rate'):
-            self.draw_log_flux()
+            self.draw_log_flux(rel_t=rel_time, show=show)
         else:
             graphs = [ana.draw_flux(rel_t=False, show=False) for ana in self.collection.itervalues()]
             xvals = [g.GetX()[i] for g in graphs for i in xrange(g.GetN())]
@@ -1037,6 +1037,18 @@ class AnalysisCollection(Elementary):
                               fill_color=self.FillColor, y_range=[1, 20000], x_range=[g.GetX()[0], g.GetX()[g.GetN() - 1]])
             self.save_histo(g, 'FluxEvo', x_fac=1.5, y_fac=.75, show=show, logy=True, draw_opt='alfp')
             return g
+
+    def draw_flux_hist(self, bin_size=1, show=True):
+        self.Currents.find_data()
+        c_time = self.Currents.Time
+        p = TProfile('hpr', 'Flux Evolution', int((c_time[-1] - c_time[0]) / bin_size), c_time[0], c_time[-1])
+        g = self.draw_fluxes(show=False)
+        for i in xrange(g.GetN()):
+            p.Fill(g.GetX()[i], g.GetY()[i])
+        # self.format_histo(p, x_tit='Time [hh:mm]', y_tit='Current [nA]', y_off=.8, fill_color=self.FillColor, markersize=.7, stats=0, t_ax_off=0)
+        self.format_histo(p, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', y_off=.8, markersize=.7, stats=0, t_ax_off=0)
+        self.draw_histo(p, '', show, lm=.08, draw_opt='p', x=1.5, y=.75)
+        return p
 
     def save_signal_maps(self, hitmap=False, redo=False):
 
