@@ -406,7 +406,7 @@ class Currents(Elementary):
         self.set_graphs(averaging)
         set_root_output(show)
         c = TCanvas('c', 'Keithley Currents for Run {0}'.format(self.RunNumber), int(self.Res * 1.5), int(self.Res * .75))
-        self.draw_flux_pad(f_range) if with_flux else self.draw_voltage_pad(v_range)
+        self.draw_flux_pad(f_range, rel_time) if with_flux else self.draw_voltage_pad(v_range)
         self.draw_title_pad()
         self.draw_current_pad(rel_time, c_range)
 
@@ -432,14 +432,14 @@ class Currents(Elementary):
                           color=col_vol, y_off=title_offset, markersize=.5, yax_col=col_vol)
         g.Draw('apy+')
 
-    def draw_flux_pad(self, f_range):
-        pad = self.draw_tpad('pr', margins=pad_margins, transparent=True, logy=True)
-        h = self.Analysis.draw_flux(10000, rel_t=True, show=False)
+    def draw_flux_pad(self, f_range, rel_t=False):
+        pad = self.draw_tpad('pr', margins=pad_margins, transparent=True, logy=False)
+        h = self.Analysis.draw_fluxes(rel_time=rel_t, show=False)
         pad.cd()
-        f_range = [1, h.GetMaximum() * 1.2] if f_range is None else f_range
+        f_range = [1, 20000] if f_range is None else f_range
         self.format_histo(h, title=' ', y_tit='#font[22]{Flux [kHz/cm^{2}]}', fill_color=4000, fill_style=4000, lw=3, y_range=f_range, stats=0, x_off=99, l_off_x=99, tick_size=0,
                           center_y=True, tit_size=axis_title_size, y_off=.7)
-        h.Draw('histy+')
+        h.Draw('apy+' if 'TGraph' in h.Class_Name() else 'histy+')
 
     def draw_title_pad(self):
         self.draw_tpad('p2', transparent=True)
