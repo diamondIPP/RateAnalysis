@@ -284,6 +284,8 @@ class Currents(Elementary):
         if not self.Currents:
             self.set_start(zero=True)
             self.set_stop(zero=True)
+        if mean(self.Currents) < 0:
+            self.Currents = [cur * -1 for cur in self.Currents]
 
     def save_data(self, now, info, index, shifting=False):
         # total_seconds = (now - datetime(now.year, 1, 1)).total_seconds()
