@@ -10,7 +10,7 @@ from numpy import sqrt, array, average, mean, arange
 from os import makedirs
 from os import path as pth
 from os.path import basename, join, split
-from time import time, sleep, mktime
+from time import time, sleep
 from collections import OrderedDict
 import pickle
 from threading import Thread
@@ -59,9 +59,9 @@ def untitle(string):
     return s.strip(' ')
 
 
-def set_statbox(x=.95, y=.88, w=.16, entries=3, only_fit=False, only_entries=False, opt=None, form=None):
-    if only_fit:
-        gStyle.SetOptStat(0011)
+def set_statbox(x=.95, y=.88, w=.16, entries=3, only_fit=False, fit=False, only_entries=False, opt=None, form=None):
+    if only_fit or fit:
+        gStyle.SetOptStat(1111 if fit else 0011)
         gStyle.SetOptFit(1)
     if only_entries:
         gStyle.SetOptStat(1000000010 if not only_fit else 1000000011)
