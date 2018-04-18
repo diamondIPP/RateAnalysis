@@ -411,7 +411,7 @@ class Currents(Elementary):
         self.draw_current_pad(rel_time, c_range)
 
         self.Stuff.append(c)
-        self.save_plots('{dia}_{bias}'.format(dia=self.DiamondName, bias=self.Bias), sub_dir='Currents', show=show)
+        self.save_canvas(c, name='{dia}_{bias}'.format(dia=self.DiamondName, bias=self.Bias), sub_dir='Currents', show=show)
 
     def zoom_pads(self, low, high):
         self.VoltageGraph.GetXaxis().SetRangeUser(low, high)
