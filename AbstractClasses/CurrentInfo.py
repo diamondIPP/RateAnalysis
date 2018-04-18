@@ -433,7 +433,7 @@ class Currents(Elementary):
         g.Draw('apy+')
 
     def draw_flux_pad(self, f_range, rel_t=False):
-        pad = self.draw_tpad('pr', margins=pad_margins, transparent=True, logy=False)
+        pad = self.draw_tpad('pr', margins=pad_margins, transparent=True, logy=True)
         h = self.Analysis.draw_fluxes(rel_time=rel_t, show=False)
         pad.cd()
         f_range = [1, 20000] if f_range is None else f_range
