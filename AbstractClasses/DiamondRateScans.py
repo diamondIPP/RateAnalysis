@@ -543,6 +543,7 @@ class DiaScans(Elementary):
 
     def make_current_plots(self):
         for sel in self.RunSelections:
+            log_message('Creating Current Plots for {}'.format(sel.TCString))
             self.get_values(sel, AnalysisCollection.draw_currents, kwargs={'show': False, 'with_flux': True})
 
     def draw_currents(self, show=True):
