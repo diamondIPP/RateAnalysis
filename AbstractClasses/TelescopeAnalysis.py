@@ -541,12 +541,13 @@ class Analysis(Elementary):
             rates = [(self.tree.GetV1()[i], self.tree.GetV2()[i]) for i in xrange(n)]
             t = [self.tree.GetV3()[i] for i in xrange(n)]
             flux = [mean([r1 / areas.values()[0], r2 / areas.values()[1]]) / 1000 for r1, r2 in rates]
-            g = self.make_tgrapherrors('gfl', 'Flux', x=t + [t[-1]], y=flux + [0.])
-            self.format_histo(g, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', fill_color=self.FillColor, markersize=.4, t_ax_off=self.run.StartTime if rel_t else 0)
-            self.save_histo(g, 'FluxTime', draw_opt='afp', lm=.08, x_fac=1.5, y_fac=.75, ind=None, show=show)
-            return g
+            g1 = self.make_tgrapherrors('gfl', 'Flux', x=t + [t[-1]], y=flux + [0.])
+            return g1
 
-        return do_pickle(self.make_pickle_path('Rate', 'Flux', run=self.RunNumber, suf='cut' if cut else ''), f)
+        g = do_pickle(self.make_pickle_path('Rate', 'Flux', run=self.RunNumber, suf='cut' if cut else ''), f)
+        self.format_histo(g, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', fill_color=self.FillColor, markersize=.4, t_ax_off=self.run.StartTime if rel_t else 0)
+        self.save_histo(g, 'FluxTime', draw_opt='afp', lm=.08, x_fac=1.5, y_fac=.75, ind=None, show=show)
+        return
 
     def draw_bc_vs_rate(self, cut='', show=True):
         g1 = self.draw_flux(cut=cut, show=False)
