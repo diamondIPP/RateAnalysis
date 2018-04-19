@@ -236,8 +236,9 @@ def calc_weighted_mean(means, sigmas):
     return mean_ * variance, sqrt(variance)
 
 
-def weighted_avrg_std(values, weights):
+def mean_sigma(values, weights=None):
     """ Return the weighted average and standard deviation. values, weights -- Numpy ndarrays with the same shape. """
+    weights = [1] * len(values) if weights is None else weights
     if all(weight == 0 for weight in weights):
         return [0, 0]
     avrg = average(values, weights=weights)
