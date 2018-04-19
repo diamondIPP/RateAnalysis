@@ -299,6 +299,9 @@ class Cut(Elementary):
                 cut_string += '&&' if cut_string else ''
                 cut_string += '!(event_number<={up}&&event_number>={low})'.format(up=tup[1], low=low)
         return TCut(cut_string)
+
+    def generate_flux_cut(self):
+        return self.generate_special_cut(included=['beam_interruptions', 'event_range'], name='flux', prnt=False)
     # endregion
 
     # ==============================================
