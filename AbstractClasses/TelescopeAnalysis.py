@@ -427,8 +427,8 @@ class Analysis(Elementary):
         bins = [self.Cut.get_min_event()]
         ind = 0
         for dic in jumps:
-            start = dic['i']
-            stop = dic['f']
+            start = dic[0]
+            stop = dic[1]
             gap = stop - start
             # continue if first start and stop outside min event
             if stop < bins[-1]:
@@ -444,8 +444,8 @@ class Analysis(Elementary):
                 bins.append(bins[-1] + self.BinSize)
             # two jumps shortly after one another
             if ind < n_jumps - 2:
-                next_start = jumps[ind + 1]['i']
-                next_stop = jumps[ind + 1]['f']
+                next_start = jumps[ind + 1][0]
+                next_stop = jumps[ind + 1][1]
                 if bins[-1] + self.BinSize + gap > next_start:
                     gap2 = next_stop - next_start
                     bins.append(bins[-1] + self.BinSize + gap + gap2)
