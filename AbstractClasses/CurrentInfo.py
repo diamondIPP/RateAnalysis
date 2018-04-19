@@ -370,8 +370,7 @@ class Currents(Elementary):
         p1 = self.draw_hist(show=False)
         p2 = self.Analysis.draw_flux_hist(show=False)
         ybins = log_bins(int(sqrt(p1.GetNbinsX())) * 3, .1, p1.GetMaximum() * 2)
-        # ybins = [int(sqrt(p1.GetNbinsX())), 1, p2.GetMaximum()]
-        xbins = log_bins(int(sqrt(p1.GetNbinsX())) * 3, .1, p2.GetMaximum() * 2)
+        xbins = log_bins(int(sqrt(p1.GetNbinsX())), .1, p2.GetMaximum() * 2)
         h = TH2F('gfcc', 'Correlation of Flux and Current', *(xbins + ybins))
         for i in xrange(p1.GetNbinsX()):
             if p1.GetBinContent(i) and p2.GetBinContent(i):
