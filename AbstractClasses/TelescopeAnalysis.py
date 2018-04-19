@@ -546,8 +546,8 @@ class Analysis(Elementary):
 
         g = do_pickle(self.make_pickle_path('Rate', 'Flux', run=self.RunNumber, suf='cut' if cut else ''), f)
         self.format_histo(g, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', fill_color=self.FillColor, markersize=.4, t_ax_off=self.run.StartTime if rel_t else 0)
-        self.save_histo(g, 'FluxTime', draw_opt='afp', lm=.08, x_fac=1.5, y_fac=.75, ind=None, show=show)
-        return
+        self.save_histo(g, 'FluxTime', draw_opt='afp', lm=.08, x_fac=1.5, y_fac=.75, ind=None, show=show, save=show)
+        return g
 
     def draw_bc_vs_rate(self, cut='', show=True):
         g1 = self.draw_flux(cut=cut, show=False)
