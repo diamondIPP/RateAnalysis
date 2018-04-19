@@ -371,13 +371,12 @@ class Cut(Elementary):
             t_start = self.analysis.run.get_time_at_event(tup[0]) - self.analysis.run.StartTime - self.CutConfig['JumpExcludeRange'][0]
             t_stop = self.analysis.run.get_time_at_event(tup[1]) - self.analysis.run.StartTime + self.CutConfig['JumpExcludeRange'][1]
             # if interruptions overlay just set the last stop to the current stop
-            print t_start
             if i and t_start < (interruptions[i - 1][1]):
                 interruptions[i - 1][1] = self.analysis.get_event_at_time(t_stop)
                 continue
             interruptions.append([t_start, t_stop])
             i += 1
-        return [(self.analysis.run.get_event_at_time(t) for t in tup) for tup in interruptions]
+        return [[self.analysis.run.get_event_at_time(t) for t in tup] for tup in interruptions]
 
     def get_beam_interruptions(self):
         """
