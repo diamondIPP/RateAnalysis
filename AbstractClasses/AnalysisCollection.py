@@ -1027,7 +1027,7 @@ class AnalysisCollection(Elementary):
 
     def draw_fluxes(self, rel_time=False, show=True):
         if not self.FirstAnalysis.has_branch('rate'):
-            self.draw_log_flux(rel_t=rel_time, show=show)
+            return self.draw_log_flux(rel_t=rel_time, show=show)
         else:
             graphs = [ana.draw_flux(rel_t=False, show=False) for ana in self.collection.itervalues()]
             xvals = [g.GetX()[i] for g in graphs for i in xrange(g.GetN())]
