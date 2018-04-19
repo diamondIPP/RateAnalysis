@@ -6,7 +6,7 @@
 from datetime import datetime, timedelta
 from termcolor import colored
 from ROOT import gStyle, gROOT, TF1, TColor, TFile
-from numpy import sqrt, array, average, mean, arange
+from numpy import sqrt, array, average, mean, arange, log10
 from os import makedirs
 from os import path as pth
 from os.path import basename, join, split
@@ -515,6 +515,11 @@ def markers(i):
 
 def average_list(lst, n):
     return [mean(lst[i:i+n]) for i in arange(0, len(lst), n)] if n > 1 else lst
+
+
+def log_bins(n_bins, min_val, max_val):
+    width = (log10(max_val) - log10(min_val)) / float(n_bins)
+    return [n_bins, array([pow(10, log10(min_val) + i * width) for i in xrange(n_bins + 1)])]
 
 
 def load_root_files(sel, load=True):

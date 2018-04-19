@@ -272,7 +272,6 @@ class Cut(Elementary):
         # -- EVENT RANGE CUT --
         self.CutStrings['event_range'] += self.generate_event_range()
         if self.CutConfig['EventRange']:
-            print self.EasyCutStrings['EventRange']
             self.EasyCutStrings['EventRange'] = 'Evts.{min}k-{max}k'.format(min=int(self.CutConfig['EventRange'][0]) / 1000, max=int(self.CutConfig['EventRange'][1]) / 1000)
             self.EasyCutStrings['ExcludeFirst'] = 'Evts.{min}k+'.format(min=int(self.CutConfig['ExcludeFirst']) / 1000) if self.CutConfig['ExcludeFirst'] > 0 else ''
 
