@@ -492,8 +492,8 @@ class Analysis(Elementary):
 
     # =================================================================================================================
     # region RUN METHODS
-    def get_flux(self):
-        return self._get_flux(prnt=False) if self.has_branch('rate') else (self.run.get_flux(), self.run.get_flux() * .1)
+    def get_flux(self, show=False):
+        return self._get_flux(prnt=False, show=show) if self.has_branch('rate') else (self.run.get_flux(), self.run.get_flux() * .1)
 
     def has_branch(self, branch):
         return self.run.has_branch(branch)
@@ -544,7 +544,7 @@ class Analysis(Elementary):
             g1 = self.make_tgrapherrors('gfl', 'Flux', x=t + [t[-1]], y=flux + [0.])
             return g1
 
-        g = do_pickle(self.make_pickle_path('Rate', 'Flux', run=self.RunNumber, suf='cut' if cut else ''), f)
+        g = do_pickle(self.make_pickle_path('Rate', 'Flux', run=self.RunNumber, suf='cut' if len(cut.GetTitle()) > 22 else ''), f)
         self.format_histo(g, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', fill_color=self.FillColor, markersize=.4, t_ax_off=self.run.StartTime if rel_t else 0)
         self.save_histo(g, 'FluxTime', draw_opt='afp', lm=.08, x_fac=1.5, y_fac=.75, ind=None, show=show, save=show)
         return g
@@ -565,9 +565,9 @@ class Analysis(Elementary):
 
     def _get_flux(self, show=False, prnt=True):
         set_statbox(fit=True, entries=6)
-        h = self.draw_flux(cut=self.Cut.generate_special_cut(included='beam_interruptions', prnt=prnt), show=False)
-        values = [h.GetY()[i] for i in xrange(h.GetN())]
-        m, s = calc_mean(values)
+        h = self.draw_flux(cut=self.Cut.generate_special_cut(included=['beam_interruptions', 'event_range'], prnt=prnt), show=False)
+        values = [h.GetY()[i] for i in xrange(h.GetN()) if h.GetY()[i]]
+        m, s = mean_sigma(values)
         h = TH1F('hfl', 'Flux Distribution', int(sqrt(h.GetN()) * 2), m - 3 * s, m + 4 * s)
         for val in values:
             h.Fill(val)

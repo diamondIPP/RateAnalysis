@@ -544,7 +544,7 @@ class AnalysisCollection(Elementary):
         gr.Fit('pol0', 'qs{s}'.format(s='' if show else '0'))
         self.format_histo(gr, x_tit='Flux [kHz/cm^{2}]', y_tit='Mean Pulse Height [au]', y_off=1.7)
         self.save_histo(gr, 'ReprErrors', show, draw_opt='ap', lm=.14, prnt=show)
-        return weighted_avrg_std(vals, val_errors)
+        return mean_sigma(vals, val_errors)
 
     def draw_ph_distributions(self, binning=5000, fsh13=.5, fs11=65, show=True):
         runs = self.get_runs_by_collimator(fsh13=fsh13, fs11=fs11)
@@ -1059,7 +1059,6 @@ class AnalysisCollection(Elementary):
             g.SetPointError(i, flux[1], current[1])
         self.format_histo(g, x_tit='Flux [kHz/cm^{2}', y_tit='Current [nA]', y_off=1.3)
         self.save_histo(g, 'FluxCurrent', show, lm=.13, draw_opt='ap')
-
 
     def save_signal_maps(self, hitmap=False, redo=False):
 
