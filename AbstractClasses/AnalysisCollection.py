@@ -1353,8 +1353,8 @@ class AnalysisCollection(Elementary):
 
     # endregion
 
-    def draw_currents(self, v_range=None, rel_time=False, averaging=1, with_flux=False, c_range=None, f_range=None):
-        self.Currents.draw_indep_graphs(rel_time=rel_time, v_range=v_range, averaging=averaging, with_flux=with_flux, c_range=c_range, f_range=f_range)
+    def draw_currents(self, v_range=None, rel_time=False, averaging=1, with_flux=False, c_range=None, f_range=None, show=True):
+        self.Currents.draw_indep_graphs(rel_time=rel_time, v_range=v_range, averaging=averaging, with_flux=with_flux, c_range=c_range, f_range=f_range, show=show)
 
     def draw_current_vs_rate(self, show=True):
         g = self.make_tgrapherrors('gcr', 'Current vs Rate')
