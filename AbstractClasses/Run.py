@@ -72,9 +72,9 @@ class Run(Elementary):
             self.endEvent = self.n_entries - 1
             self.StartTime = self.load_start_time()
             self.EndTime = self.load_end_time()
-            self.totalTime = self.EndTime - self.StartTime
-            self.totalMinutes = self.totalTime / 60000.
-            self.Duration = timedelta(seconds=self.totalTime)
+            self.TotalTime = self.EndTime - self.StartTime
+            self.totalMinutes = self.TotalTime / 60000.
+            self.Duration = timedelta(seconds=self.TotalTime)
             self.NPlanes = self.load_n_planes()
 
             # region info
@@ -204,10 +204,10 @@ class Run(Elementary):
         return datetime.strptime(t, '%Y-%m-%dT%H:%M:%SZ' if 'Z' in t else '%H:%M:%S') + timedelta(hours=self.run_config_parser.getint('BASIC', 'hvtimeoffset'))
 
     def load_start_time(self):
-        return int(round(self.get_time_at_event(self.startEvent) / 1000))
+        return int(round(self.get_time_at_event(self.startEvent)))
 
     def load_end_time(self):
-        return int(round(self.get_time_at_event(self.endEvent) / 1000))
+        return int(round(self.get_time_at_event(self.endEvent)))
 
     def load_n_planes(self):
         if self.has_branch('cluster_col'):
@@ -423,20 +423,18 @@ class Run(Elementary):
             t.append(self.time[i])
             if t[-1] != -1:
                 break
-        return t[-1]
+        return t[-1] / 1000.
 
-    def get_event_at_time(self, time_sec):
+    def get_event_at_time(self, seconds):
         """ Returns the event nunmber at time dt from beginning of the run. Accuracy: +- 1 Event """
         # return time of last event if input is too large
-        offset = self.time[0] / 1000.
-        if time_sec > self.time[-1] / 1000. - offset or time_sec == -1:
+        if seconds > self.TotalTime or seconds == -1:
             return self.n_entries
         last_time = 0
         for i, time in enumerate(self.time):
-            time /= 1000.
-            if time >= time_sec + offset >= last_time:
+            if time / 1000. >= seconds + self.StartTime >= last_time:
                 return i
-            last_time = time
+            last_time = time / 1000.
 
     # endregion
 
