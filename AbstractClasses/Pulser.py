@@ -50,8 +50,8 @@ class PulserAnalysis(Elementary):
         set_root_output(False)
         h = TProfile('hpr', 'Pulser Rate', *self.Ana.Plots.get_binning(evts_per_bin, time_bins=vs_time))
         self.Tree.Draw('pulser*100:{v}>>hpr'.format(v='time / 1000.' if vs_time else 'Entry$'), cut, 'goff')
-        set_time_axis(h, off=self.Ana.run.StartTime if rel_t else 0) if vs_time else do_nothing()
-        self.format_histo(h, x_tit='Time [hh:mm]' if vs_time else 'Event Number', y_tit='Pulser Fraction [%]', y_off=.8, fill_color=self.FillColor, y_range=[0, 105], markersize=.7, stats=0)
+        self.format_histo(h, x_tit='Time [hh:mm]' if vs_time else 'Event Number', y_tit='Pulser Fraction [%]', y_off=.8, fill_color=self.FillColor, y_range=[0, 105], markersize=.7, stats=0,
+                          t_ax_off=self.Ana.run.StartTime if rel_t else 0)
         self.save_histo(h, 'PulserRate', show, lm=.08, draw_opt='bare', x_fac=1.5, y_fac=.75)
         return h
 
