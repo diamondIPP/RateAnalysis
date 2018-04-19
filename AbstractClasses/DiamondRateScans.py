@@ -541,6 +541,13 @@ class DiaScans(Elementary):
         self.ROOTObjects.append(graphs)
         self.save_plots('ScaledDiaScans{dia}'.format(dia=make_dia_str(self.DiamondName)))
 
+    def make_current_plots(self):
+        for sel in self.RunSelections:
+            self.get_values(sel, AnalysisCollection.draw_currents, kwargs={'show': False, 'with_flux': True})
+
+    def draw_currents(self, show=True):
+        pass
+
     def get_titles(self, irr=False):
         if len(set(self.get_diamond_names())) > 1:
             return self.get_diamond_names()
