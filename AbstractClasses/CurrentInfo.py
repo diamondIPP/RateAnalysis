@@ -369,15 +369,15 @@ class Currents(Elementary):
     def draw_flux_correlation(self, show=True):
         p1 = self.draw_hist(show=False)
         p2 = self.Analysis.draw_flux_hist(show=False)
-        xbins = [int(sqrt(p1.GetNbinsX())) * 3, p1.GetMinimum(), p1.GetMaximum()]
+        ybins = log_bins(int(sqrt(p1.GetNbinsX())) * 3, .1, p1.GetMaximum() * 2)
         # ybins = [int(sqrt(p1.GetNbinsX())), 1, p2.GetMaximum()]
-        ybins = log_bins(int(sqrt(p1.GetNbinsX())) * 3, 1, p2.GetMaximum())
+        xbins = log_bins(int(sqrt(p1.GetNbinsX())) * 3, 1, p2.GetMaximum() * 2)
         h = TH2F('gfcc', 'Correlation of Flux and Current', *(xbins + ybins))
         for i in xrange(p1.GetNbinsX()):
             if p1.GetBinContent(i) and p2.GetBinContent(i):
-                h.Fill(p1.GetBinContent(i), p2.GetBinContent(i))
+                h.Fill(p2.GetBinContent(i), p1.GetBinContent(i))
         self.format_histo(h, x_tit='Current [nA]', y_tit='Flux [kHz/cm^{2}', stats=0, y_off=1.2)
-        self.save_histo(h, 'FluxCurrent', draw_opt='colz', rm=.18, show=show, lm=.12, logy=True)
+        self.save_histo(h, 'FluxCurrent', draw_opt='colz', rm=.18, show=show, lm=.12, logy=True, logx=True)
 
     def set_graphs(self, averaging=1):
         self.find_data()
