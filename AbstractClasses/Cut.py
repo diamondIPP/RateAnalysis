@@ -344,24 +344,20 @@ class Cut(Elementary):
     def find_pad_beam_interruptions(self):
         """ Looking for the beam interruptions by investigating the pulser rate. """
         t = self.log_info('Searching for beam interruptions of run {r} ...'.format(r=self.RunNumber), next_line=False)
-        binning = 200
-        nbins = int(self.analysis.run.tree.GetEntries()) / binning
-        rate = []
-        for i in xrange(nbins):
-            pulserevents = self.analysis.run.tree.Draw('1', 'pulser', 'goff', binning, i * binning)
-            rate.append(100 * pulserevents / binning)
+        bin_width = 200
+        rates = [self.analysis.run.tree.Draw('1', 'pulser', 'goff', bin_width, i * bin_width) / float(bin_width) for i in xrange(self.analysis.run.n_entries / bin_width)]
         jumps = []
-        last_rate = 0
         tup = [0, 0]
-        cut = 40  # if rate goes higher than n %
-        for i, value in enumerate(rate):
-            if value >= cut > last_rate:
-                tup[0] = i * binning
-            elif value < cut <= last_rate:
-                tup[1] = i * binning
+        cut = .4  # if rate goes higher than n %
+        for i, rate in enumerate(rates):
+            if rate >= cut > rates[i - 1]:
+                tup[0] = int((i + .5) * bin_width)
+            elif rate < cut <= rates[i - 1]:
+                tup[1] = int((i + .5) * bin_width)
                 jumps.append(tup)
                 tup = [0, 0]
-            last_rate = value
+        if tup[0] != tup[1]:  # if rate did not went down before the run stopped
+            jumps.append([tup[0], self.analysis.run.n_entries - 1])
         interruptions = self.__create_jump_ranges(jumps)
         self.add_info(t)
         return jumps, interruptions
