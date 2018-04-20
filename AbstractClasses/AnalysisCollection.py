@@ -1056,7 +1056,7 @@ class AnalysisCollection(Elementary):
         g = self.make_tgrapherrors('gcf', 'Leakage Current vs. Flux')
         for i, (flux, current) in enumerate(zip(fluxes, currents)):
             g.SetPoint(i, flux[0], current[0])
-            g.SetPointError(i, flux[1] + flux[0] * .05, current[1])
+            g.SetPointError(i, flux[1] + flux[0] * .05, current[1] + current[0] * .05)
         if fit:
             set_statbox(only_fit=True, y=.33, entries=6, w=.22)
             g.Fit('pol1', 'q{}'.format('' if show else 0))
