@@ -1056,9 +1056,10 @@ class AnalysisCollection(Elementary):
         g = self.make_tgrapherrors('gcf', 'Leakage Current vs. Flux')
         for i, (flux, current) in enumerate(zip(fluxes, currents)):
             g.SetPoint(i, flux[0], current[0])
-            g.SetPointError(i, flux[1], current[1])
-        self.format_histo(g, x_tit='Flux [kHz/cm^{2}', y_tit='Current [nA]', y_off=1.3)
-        self.save_histo(g, 'FluxCurrent', show, lm=.13, draw_opt='ap')
+            g.SetPointError(i, flux[1] + flux[0] * .05, current[1])
+        self.format_histo(g, x_tit='Flux [kHz/cm^{2}', y_tit='Current [nA]', y_off=1.3, y_range=[.1, max([c[0] for c in currents]) * 2], draw_first=True)
+        g.GetXaxis().SetLimits(1, 20000)
+        self.save_histo(g, 'FluxCurrent', show, lm=.13, draw_opt='ap', logx=True, logy=True, bm=.17)
 
     def save_signal_maps(self, hitmap=False, redo=False):
 
