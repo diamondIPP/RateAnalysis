@@ -558,7 +558,7 @@ class DiaScans(Elementary):
             fluxes.append([ufloat(g.GetX()[k], g.GetEX()[k]) for k in xrange(g.GetN())])
             if align:
                 fit = g.Fit('pol1', 'qs0')
-                g = self.make_tgrapherrors('gc{}'.format(i), i, y=currents[i] - fit.Parameter(0) + .1, x=fluxes[i])
+                g = self.make_tgrapherrors('gc{}'.format(i), '', y=array(currents[i]) - fit.Parameter(0) + .1, x=fluxes[i])
             self.format_histo(g, color=self.get_color())
             legend.AddEntry(g, '{tc} - {hv}'.format(tc=sel.TCString, hv=self.get_values(sel, AnalysisCollection.get_hv_name, load_tree=False)), 'pl')
             mg.Add(g, 'p')
