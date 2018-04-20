@@ -386,7 +386,8 @@ class Currents(Elementary):
 
     def draw_distribution(self, show=True):
         self.find_data()
-        m, s = calc_mean(self.Currents)
+        m, s = mean_sigma(self.Currents)
+        s = .1 if not s else s
         set_root_output(False)
         h = TH1F('hcd', 'Current Distribution', 5 * int(sqrt(len(self.Currents))), m - 2 * s, m + 2 * s)
         for current in self.Currents:
