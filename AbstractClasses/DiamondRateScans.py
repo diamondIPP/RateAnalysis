@@ -10,6 +10,7 @@ from collections import Counter
 from json import load, dump, loads
 from operator import itemgetter
 from re import split as splitname
+from uncertainties import ufloat
 
 from uncertainties.unumpy import uarray
 
@@ -547,7 +548,21 @@ class DiaScans(Elementary):
             self.get_values(sel, AnalysisCollection.draw_currents, kwargs={'show': False, 'with_flux': True, 'c_range': c_range})
 
     def draw_currents(self, show=True):
-        pass
+        mg = TMultiGraph('mgc', 'Leakage Current vs. Flux')
+        legend = self.make_legend(nentries=len(self.RunSelections))
+        currents = []
+        fluxes = []
+        for sel in self.RunSelections:
+            g = self.get_values(sel, AnalysisCollection.draw_current_flux, kwargs={'fit': False, 'show': False})
+            for i in xrange(g.GetN()):
+                currents.append(ufloat(g.GetY()[i], g.GetEY()[i]))
+                fluxes.append(ufloat(g.GetX()[i], g.GetEX()[i]))
+            self.format_histo(g, color=self.get_color())
+            legend.AddEntry(g, sel.TCString, 'pl')
+            mg.Add(g)
+        self.format_histo(mg, draw_first=True, x_tit='Current [nA]', y_tit='Flux [kHz/cm^{2}]', y_range=[.1, array(currents).max().n * 2])
+        mg.GetXaxis().SetLimits(1, 20000)
+        self.save_histo(mg, 'CurrentFlux{}'.format(self.Name), draw_opt='a', logx=True, logy=True, l=legend, bm=.17, show=show)
 
     def get_titles(self, irr=False):
         if len(set(self.get_diamond_names())) > 1:
