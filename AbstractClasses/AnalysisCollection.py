@@ -123,6 +123,9 @@ class AnalysisCollection(Elementary):
             return
         PadAnalysis(self.min_max_rate_runs['max'], dia=self.selection.SelectedDiamondNr)
 
+    def get_hv_name(self):
+        return self.Currents.Name
+
     # endregion
 
     def create_all_single_run_plots(self):
