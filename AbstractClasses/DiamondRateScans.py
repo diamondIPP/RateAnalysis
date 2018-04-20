@@ -541,10 +541,10 @@ class DiaScans(Elementary):
         self.ROOTObjects.append(graphs)
         self.save_plots('ScaledDiaScans{dia}'.format(dia=make_dia_str(self.DiamondName)))
 
-    def make_current_plots(self):
+    def make_current_plots(self, c_range=None):
         for sel in self.RunSelections:
             log_message('Creating Current Plots for {}'.format(sel.TCString))
-            self.get_values(sel, AnalysisCollection.draw_currents, kwargs={'show': False, 'with_flux': True})
+            self.get_values(sel, AnalysisCollection.draw_currents, kwargs={'show': False, 'with_flux': True, 'c_range': c_range})
 
     def draw_currents(self, show=True):
         pass
