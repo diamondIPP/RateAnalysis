@@ -547,20 +547,23 @@ class DiaScans(Elementary):
             log_message('Creating Current Plots for {}'.format(sel.TCString))
             self.get_values(sel, AnalysisCollection.draw_currents, kwargs={'show': False, 'with_flux': True, 'c_range': c_range})
 
-    def draw_currents(self, show=True):
+    def draw_currents(self, align=False, show=True):
         mg = TMultiGraph('mgc', 'Leakage Current vs. Flux')
         legend = self.make_legend(nentries=len(self.RunSelections))
         currents = []
         fluxes = []
-        for sel in self.RunSelections:
-            g = self.get_values(sel, AnalysisCollection.draw_current_flux, kwargs={'fit': False, 'show': False})
-            for i in xrange(g.GetN()):
-                currents.append(ufloat(g.GetY()[i], g.GetEY()[i]))
-                fluxes.append(ufloat(g.GetX()[i], g.GetEX()[i]))
+        for i, sel in enumerate(self.RunSelections):
+            g = self.get_values(sel, AnalysisCollection.draw_current_flux, kwargs={'fit': align, 'show': False})
+            currents.append([ufloat(g.GetY()[k], g.GetEY()[k]) for k in xrange(g.GetN())])
+            fluxes.append([ufloat(g.GetX()[k], g.GetEX()[k]) for k in xrange(g.GetN())])
+            if align:
+                fit = g.Fit('pol1', 'qs0')
+                g = self.make_tgrapherrors('gc{}'.format(i), i, y=currents[i] - fit.Parameter(0) + .1, x=fluxes[i])
             self.format_histo(g, color=self.get_color())
             legend.AddEntry(g, '{tc} - {hv}'.format(tc=sel.TCString, hv=self.get_values(sel, AnalysisCollection.get_hv_name, load_tree=False)), 'pl')
             mg.Add(g, 'p')
-        self.format_histo(mg, draw_first=True, x_tit='Current [nA]', y_tit='Flux [kHz/cm^{2}]', y_range=[.1, array(currents).max().n * 2])
+        currents = array([v for l in currents for v in l])
+        self.format_histo(mg, draw_first=True, y_tit='Current [nA]', x_tit='Flux [kHz/cm^{2}]', y_range=[.1, array(currents).max().n * 2])
         mg.GetXaxis().SetLimits(1, 20000)
         self.save_histo(mg, 'CurrentFlux{}'.format(self.Name), draw_opt='a', logx=True, logy=True, l=legend, bm=.17, show=show)
 
