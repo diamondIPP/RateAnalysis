@@ -9,6 +9,7 @@ from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas
 from Utils import *
 from os.path import dirname
 from numpy import ndarray, zeros, sign
+from uncertainties.core import Variable
 
 
 class Draw:
@@ -443,4 +444,6 @@ def make_graph_args(x, y, ex=None, ey=None):
         log_warning('Arrays have different size!')
         return []
     lx = len(x)
+    if type(x[0]) is Variable:
+        return [lx, array([v.n for v in x], 'd'), array([v.n for v in y], 'd'), array([v.s for v in x], 'd'), array([v.s for v in y], 'd')]
     return [lx, array(x, 'd'), array(y, 'd'), array(ex, 'd') if ex is not None else zeros(lx), array(ey, 'd') if ey is not None else zeros(lx)]
