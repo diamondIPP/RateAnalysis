@@ -1050,13 +1050,16 @@ class AnalysisCollection(Elementary):
         self.draw_histo(p, '', show, lm=.08, draw_opt='p', x=1.5, y=.75)
         return p
 
-    def draw_current_flux(self, show=True):
+    def draw_current_flux(self, fit=True, show=True):
         fluxes = self.get_fluxes().values()
         currents = self.get_currents().values()
         g = self.make_tgrapherrors('gcf', 'Leakage Current vs. Flux')
         for i, (flux, current) in enumerate(zip(fluxes, currents)):
             g.SetPoint(i, flux[0], current[0])
             g.SetPointError(i, flux[1] + flux[0] * .05, current[1])
+        if fit:
+            set_statbox(only_fit=True, y=.33, entries=6, w=.22)
+            g.Fit('pol1', 'q{}'.format('' if show else 0))
         self.format_histo(g, x_tit='Flux [kHz/cm^{2}', y_tit='Current [nA]', y_off=1.3, y_range=[.1, max([c[0] for c in currents]) * 2], draw_first=True)
         g.GetXaxis().SetLimits(1, 20000)
         self.save_histo(g, 'FluxCurrent', show, lm=.13, draw_opt='ap', logx=True, logy=True, bm=.17)
@@ -1355,15 +1358,6 @@ class AnalysisCollection(Elementary):
 
     def draw_currents(self, v_range=None, rel_time=False, averaging=1, with_flux=False, c_range=None, f_range=None, show=True):
         self.Currents.draw_indep_graphs(rel_time=rel_time, v_range=v_range, averaging=averaging, with_flux=with_flux, c_range=c_range, f_range=f_range, show=show)
-
-    def draw_current_vs_rate(self, show=True):
-        g = self.make_tgrapherrors('gcr', 'Current vs Rate')
-        for i, ana in enumerate(self.collection.itervalues()):
-            y, ey = ana.Currents.get_current()
-            g.SetPoint(i, ana.run.Flux, y)
-            g.SetPointError(i, ana.run.Flux * .1, ey)
-        self.format_histo(g, x_tit='Flux [kHz/cm^{2}]', y_tit='Mean Current [nA]', y_off=1.3)
-        self.save_histo(g, 'CurrentRate', show, lm=1.3, logx=True, draw_opt='ap')
 
     def get_hv_device(self):
         return self.FirstAnalysis.Currents.Name
