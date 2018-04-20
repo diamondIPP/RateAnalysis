@@ -1050,7 +1050,7 @@ class AnalysisCollection(Elementary):
         self.draw_histo(p, '', show, lm=.08, draw_opt='p', x=1.5, y=.75)
         return p
 
-    def draw_current_flux(self, fit=True, show=True):
+    def draw_current_flux(self, c_range=None, fit=True, show=True):
         fluxes = self.get_fluxes().values()
         currents = self.get_currents().values()
         g = self.make_tgrapherrors('gcf', 'Leakage Current vs. Flux')
@@ -1060,9 +1060,11 @@ class AnalysisCollection(Elementary):
         if fit:
             set_statbox(only_fit=True, y=.33, entries=6, w=.22)
             g.Fit('pol1', 'q{}'.format('' if show else 0))
-        self.format_histo(g, x_tit='Flux [kHz/cm^{2}', y_tit='Current [nA]', y_off=1.3, y_range=[.1, max([c[0] for c in currents]) * 2], draw_first=True)
+        c_range = [.1, max([c[0] for c in currents]) * 2] if c_range is None else c_range
+        self.format_histo(g, x_tit='Flux [kHz/cm^{2}', y_tit='Current [nA]', y_off=1.3, y_range=c_range, draw_first=True)
         g.GetXaxis().SetLimits(1, 20000)
         self.save_histo(g, 'FluxCurrent', show, lm=.13, draw_opt='ap', logx=True, logy=True, bm=.17)
+        return g
 
     def save_signal_maps(self, hitmap=False, redo=False):
 
