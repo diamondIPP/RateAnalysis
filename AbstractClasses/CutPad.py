@@ -521,6 +521,14 @@ class CutPad(Cut):
         fits = do_pickle(pickle_path, func, fits)
         return fits
 
+    def generate_consecutive_cuts(self):
+        cuts = OrderedDict()
+        for i, (key, value) in enumerate([(key, value) for key, value in self.CutStrings.iteritems() if str(value) and key != 'all_cuts' and not key.startswith('old')]):
+            new_cut = (cuts.values()[i - 1] if i else TCut('')) + value
+            key = 'Beam Stops' if 'beam' in key else key
+            cuts[key] = TCut('{n}'.format(n=i), str(new_cut))
+        return cuts
+
     def generate_timing_cut(self, sigma=4, show=False):
         # picklepath = 'Configuration/Individual_Configs/TimingCut/{tc}_{run}_{mod}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run.RunNumber, mod=mode.title())
         # if not bPlot:
