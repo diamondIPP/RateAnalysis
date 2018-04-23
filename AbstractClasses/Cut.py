@@ -93,15 +93,15 @@ class Cut(Elementary):
         """ Defines the ordered dictionary that contains all the final cuts and the order they are going to be applied."""
         dic = OrderedDict()
         dic['raw'] = TCut('raw', '')
-        # waveform
-        dic['saturated'] = TCut('saturated', '')
-        dic['pulser'] = TCut('pulser', '')
         # general
         dic['event_range'] = TCut('event_range', '')
         dic['beam_interruptions'] = TCut('beam_interruptions', '')
         dic['aligned'] = TCut('aligned', '')
         dic['trigger_phase'] = TCut('trigger_phase', '')
         dic['fiducial'] = TCut('fiducial', '')
+        # waveform
+        dic['saturated'] = TCut('saturated', '')
+        dic['pulser'] = TCut('pulser', '')
         # waveform
         dic['ped_sigma'] = TCut('ped_sigma', '')
         dic['median'] = TCut('median', '')
