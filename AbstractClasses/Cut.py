@@ -2,7 +2,7 @@ import json
 from numpy import zeros
 from Elementary import Elementary
 from InfoLegend import InfoLegend
-from ROOT import TCut, gROOT, TH1F
+from ROOT import TCut, gROOT, TH1F, TPie
 from Utils import *
 
 
@@ -444,19 +444,30 @@ class Cut(Elementary):
         else:
             return 'diam{n}_track_{m}'.format(m=mode, n=num + 1)
 
-    def show_cut_contributions(self):
-        contributions = {}
+    def generate_consecutive_cuts(self):
+        pass
+
+    def draw_cut_contributions(self, flat=False, short=False, show=True):
+        set_root_output(show)
+        contr = OrderedDict()
+        n_events = self.analysis.run.n_entries
         cut_events = 0
-        cuts = TCut('consecutive', '')
-        total_events = self.analysis.run.n_entries
-        output = OrderedDict()
-        for cut in self.CutStrings.values():
-            name = cut.GetName()
-            if not name.startswith('old') and name != 'all_cuts' and name not in contributions and str(cut):
-                cuts += cut
-                events = self.analysis.tree.GetEntries('!({0})'.format(str(cuts)))
-                output[name] = (1. - float(events) / total_events) * 100.
-                events -= cut_events
-                print name.rjust(18), '{0:5d} {1:04.1f}%'.format(events, output[name])
-                contributions[cut.GetName()] = events
-                cut_events += events
+        for i, (key, cut) in enumerate(self.generate_consecutive_cuts().iteritems()):
+            events = int(self.analysis.tree.Draw('1', '!({0})'.format(cut), 'goff'))
+            print key.rjust(18), '{0:5d} {1:04.1f}%'.format(events - cut_events, (1. - float(events) / n_events) * 100.)
+            contr[key.title().replace('_', ' ')] = (events - cut_events, self.get_color())
+            cut_events = events
+        contr['Good Events'] = (n_events - cut_events, self.get_color())
+        print contr
+        sorted_contr = OrderedDict(sorted(OrderedDict(item for item in contr.iteritems() if item[1][0] >= (.03 * n_events if short else 0)).iteritems(), key=lambda x: x[1]))  # sort by size
+        sorted_contr.update({'Other': (n_events - sum(v[0] for v in sorted_contr.values()), self.get_color())} if short else {})
+        sorted_contr = OrderedDict(sorted_contr.popitem(0 if i % 2 else -1) for i in xrange(len(sorted_contr)))  # sort by largest->smallest->next largest...
+        print sorted_contr
+        pie = TPie('pie', 'Cut Contributions', len(sorted_contr), array([v[0] for v in sorted_contr.values()], 'f'), array([v[1] for v in sorted_contr.values()], 'i'))
+        for i, label in enumerate(sorted_contr.iterkeys()):
+            pie.SetEntryRadiusOffset(i, .05)
+            pie.SetEntryLabel(i, label)
+        self.format_pie(pie, h=.04, r=.2, text_size=.025, angle3d=70, label_format='%txt (%perc)', angle_off=250)
+        self.save_histo(pie, draw_opt='{0}rsc'.format('3d' if not flat else ''), show=show)
+        self.reset_colors()
+        return sorted_contr

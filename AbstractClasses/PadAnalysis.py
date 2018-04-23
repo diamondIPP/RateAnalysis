@@ -7,7 +7,7 @@ from copy import deepcopy
 from math import log
 from sys import stdout
 
-from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, TPie,\
+from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1,\
     THStack, TArrow, kOrange, TSpectrum, TMultiGraph, Long, TH2I
 
 from CutPad import CutPad
@@ -316,12 +316,12 @@ class PadAnalysis(Analysis):
 
     def set_ph_range(self, h):
         values = [h.GetBinContent(bin_) for bin_ in xrange(h.GetNbinsX() * h.GetNbinsY()) if h.GetBinContent(bin_)]
-        mean, sigma = calc_mean(values)
+        m, s = calc_mean(values)
         n_sig = 3
-        if 2 * sigma > mean:
+        if 2 * s > m:
             self.format_histo(h, z_range=[min(values), 0.8 * max(values)])
         else:
-            self.format_histo(h, z_range=[mean - n_sig * sigma, mean + n_sig * sigma])
+            self.format_histo(h, z_range=[m - n_sig * s, m + n_sig * s])
 
     def draw_sig_map_disto(self, show=True, factor=1.5, cut=None, fid=True, redo=False):
         source = self.draw_signal_map(factor, cut, fid, hitmap=False, redo=redo, show=False)
@@ -900,87 +900,6 @@ class PadAnalysis(Analysis):
 
     # ==========================================================================
     # region CUTS
-    def show_cut_contributions(self, show=True, flat=False, short=False):
-        if not show:
-            gROOT.SetBatch(1)
-        main_cut = [self.Cut.CutStrings['event_range'], self.Cut.CutStrings['beam_interruptions']]
-        contributions = {}
-        cutted_events = 0
-        cuts = TCut('consecutive', '')
-        total_events = self.run.n_entries
-        output = OrderedDict()
-        for cut in main_cut + self.Cut.CutStrings.values():
-            name = cut.GetName()
-            if not name.startswith('old') and name != 'all_cuts' and name not in contributions and str(cut):
-                if short:
-                    # self.log_info('adding cut {0}'.format(name))
-                    if name not in ['raw', 'saturated', 'timing', 'pulser', 'tracks', 'fiducial']:
-                        continue
-                cuts += cut
-                events = int(self.tree.Draw('1', '!({0})'.format(cuts), 'goff'))
-                output[name] = (1. - float(events) / total_events) * 100.
-                events -= cutted_events
-                print name.rjust(18), '{0:5d} {1:04.1f}%'.format(events, output[name])
-                contributions[cut.GetName()] = events
-                cutted_events += events
-
-        # sort contributions by size
-        names = ['event', 'track_', 'pul', 'bucket', 'beam', 'fiducial', 'sat', 'tracks', 'tim', 'chi2Y', 'ped', 'chi2X']
-        sorted_contr = OrderedDict()
-        for name in names:
-            for key, value in contributions.iteritems():
-                if key.startswith(name):
-                    if key.startswith('beam'):
-                        key = 'beam_stops'
-                    sorted_contr[key] = value
-                    break
-
-        # contributions = self.sort_contributions(contributions)
-        contributions = sorted_contr
-        good_events = self.tree.GetEntries(self.AllCuts.GetTitle())
-        values = contributions.values() + [good_events]
-        values += [self.run.n_entries - good_events - cutted_events] if short else []
-        i = 0
-        self.reset_colors()
-        colors = [self.get_color() for i in xrange(1, len(values) + 1)]
-        pie = TPie('pie', 'Cut Contributions', len(values), array(values, 'f'), array(colors, 'i'))
-        for i, label in enumerate(contributions.iterkeys()):
-            pie.SetEntryRadiusOffset(i, .05)
-            pie.SetEntryLabel(i, label.title())
-        pie.SetEntryRadiusOffset(i + 1, .05)
-        pie.SetEntryLabel(i + 1, 'Good Events')
-        if short:
-            pie.SetEntryRadiusOffset(i + 2, .05)
-            pie.SetEntryLabel(i + 2, 'Other')
-        pie.SetHeight(.04)
-        pie.SetRadius(.2)
-        pie.SetTextSize(.025)
-        pie.SetAngle3D(70)
-        pie.SetLabelFormat('%txt (%perc)')
-        # pie.SetLabelFormat('#splitline{%txt}{%percent}')
-        pie.SetAngularOffset(250)
-        c = TCanvas('c', 'Cut Pie', 1000, 1000)
-        pie.Draw('{0}rsc'.format('3d' if not flat else ''))
-        self.save_plots('CutContributions', sub_dir=self.save_dir)
-        self.histos.append([pie, c])
-        gROOT.SetBatch(0)
-        return contributions
-
-    @staticmethod
-    def sort_contributions(contributions):
-        sorted_contr = OrderedDict()
-        while contributions:
-            for key, value in contributions.iteritems():
-                if value == max(contributions.values()):
-                    sorted_contr[key] = value
-                    contributions.pop(key)
-                    break
-            for key, value in contributions.iteritems():
-                if value == min(contributions.values()):
-                    sorted_contr[key] = value
-                    contributions.pop(key)
-                    break
-        return sorted_contr
 
     def show_bucket_histos(self):
         h = TH1F('h', 'Bucket Cut Histograms', 250, -50, 300)
