@@ -118,8 +118,8 @@ class Cut(Elementary):
         dic['masks'] = TCut('masks', '')
         dic['chi2X'] = TCut('chi2X', '')
         dic['chi2Y'] = TCut('chi2Y', '')
-        dic['track_angle_x'] = TCut('track_angle_x', '')
-        dic['track_angle_y'] = TCut('track_angle_y', '')
+        dic['slope_x'] = TCut('slope_x', '')
+        dic['slope_y'] = TCut('slope_y', '')
         dic['rhit'] = TCut('rhit', '')
         dic['all_cuts'] = TCut('all_cuts', '')
         return dic
@@ -139,7 +139,7 @@ class Cut(Elementary):
         self.CutConfig['EventRange'] = self.load_event_range(json.loads(self.ana_config_parser.get('CUT', 'EventRange')))
         self.CutConfig['chi2X'] = self.ana_config_parser.getint('CUT', 'chi2X')
         self.CutConfig['chi2Y'] = self.ana_config_parser.getint('CUT', 'chi2Y')
-        self.CutConfig['track_angle'] = self.ana_config_parser.getint('CUT', 'track_angle')
+        self.CutConfig['slope'] = self.ana_config_parser.getint('CUT', 'slope')
 
     def load_event_range(self, event_range=None):
         """ Gets the event range cut. If the arguments are negative, they are interpreted as time in minutes. Therefore, e.g. load_event_range(-10, 700000) means that only events are considered
@@ -231,17 +231,17 @@ class Cut(Elementary):
         string = 'chi2_{mod}<{val}&&chi2_{mod}>=0'.format(val=cut_value, mod=mode)
         return string if quantile > 0 else ''
 
-    def generate_track_angle(self, mode='x'):
+    def generate_slope(self, mode='x'):
         cut_variable = '{t}_{m}'.format(t='slope' if self.analysis.run.has_branch('slope_x') else 'angle', m=mode)
         angles = self.calc_angle(mode)
         string = '{v}>{min}&&{v}<{max}'.format(v=cut_variable, min=angles[mode][0], max=angles[mode][1])
-        return string if self.CutConfig['track_angle'] > 0 else ''
+        return string if self.CutConfig['slope'] > 0 else ''
 
     def calc_angle(self, mode='x'):
         picklepath = self.make_pickle_path('TrackAngle', mode, run=self.analysis.lowest_rate_run)
 
         def func():
-            angle = self.CutConfig['track_angle']
+            angle = self.CutConfig['slope']
             t = self.log_info('Generating angle cut in {m} for run {run} ...'.format(run=self.analysis.RunNumber, m=mode), False)
             set_root_output(False)
             draw_str = '{t}_{m}'.format(t='slope' if self.analysis.run.has_branch('slope_x') else 'angle', m=mode)
@@ -265,8 +265,8 @@ class Cut(Elementary):
         # --TRACKS --
         self.CutStrings['chi2X'] += self.generate_chi2('x')
         self.CutStrings['chi2Y'] += self.generate_chi2('y')
-        self.CutStrings['track_angle_x'] += self.generate_track_angle('x')
-        self.CutStrings['track_angle_y'] += self.generate_track_angle('y')
+        self.CutStrings['slope_x'] += self.generate_slope('x')
+        self.CutStrings['slope_y'] += self.generate_slope('y')
         self.CutStrings['tracks'] += 'n_tracks==1'
 
         # -- EVENT RANGE CUT --
