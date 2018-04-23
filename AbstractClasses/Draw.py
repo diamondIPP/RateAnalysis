@@ -64,6 +64,9 @@ class Draw:
         self.count += 1
         return color
 
+    def get_colors(self, n):
+        return array([self.get_color() for _ in xrange(n)], 'i')
+
     def reset_colors(self):
         self.count = 0
     
@@ -341,6 +344,14 @@ class Draw:
         except AttributeError or ReferenceError:
             pass
         set_time_axis(h, off=t_ax_off) if t_ax_off is not None else do_nothing()
+
+    @staticmethod
+    def format_pie(pie, h=None, r=None, text_size=None, angle3d=None, angle_off=None, label_format=None):
+        do([pie.SetHeight, pie.SetRadius], [h, r])
+        do(pie.SetTextSize, text_size)
+        do(pie.SetAngle3D, angle3d)
+        do(pie.SetLabelFormat, label_format)
+        do(pie.SetAngularOffset, angle_off)
 
     @staticmethod
     def make_tgrapherrors(name, title, color=1, marker=20, marker_size=1, width=1, asym_err=False, style=1, x=None, y=None, ex=None, ey=None):
