@@ -3492,6 +3492,23 @@
       ], 
       "type": "rate scan"
     }, 
+    "03.1": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser1": "6dB_3", 
+        "pulser2": "6dB_1"
+      }, 
+      "runs": [
+        53, 
+        55, 
+        56, 
+        57, 
+        58, 
+        59
+      ], 
+      "type": "up scan"
+    }, 
     "04": {
       "attenuators": {
         "dia1": "None", 
