@@ -539,15 +539,14 @@ class AnalysisCollection(Elementary):
         runs = self.get_runs_below_flux(flux)
         if not runs:
             return
-        vals = [self.collection[run].draw_pulse_height(show=False, save=False)[1].Parameter(0) for run in runs]
-        val_errors = [self.collection[run].draw_pulse_height(show=False, save=False)[1].ParError(0) for run in runs]
-        fluxes = array([self.get_fluxes()[run] for run in runs], 'd')
-        gr = self.make_tgrapherrors('gr_re', 'Pulse Heights Below {f} kHz/cm^{{2}}'.format(f=flux), x=fluxes, y=vals, ey=val_errors, ex=fluxes * .1)
+        vals = [make_ufloat(self.collection[run].draw_pulse_height(show=False, save=False)[1]) for run in runs]
+        fluxes = [make_ufloat(self.get_fluxes()[run]) for run in runs]
+        gr = self.make_tgrapherrors('gr_re', 'Pulse Heights Below {f} kHz/cm^{{2}}'.format(f=flux), x=fluxes, y=vals)
         set_statbox(entries=2, only_fit=True)
         gr.Fit('pol0', 'qs{s}'.format(s='' if show else '0'))
         self.format_histo(gr, x_tit='Flux [kHz/cm^{2}]', y_tit='Mean Pulse Height [au]', y_off=1.7)
         self.save_histo(gr, 'ReprErrors', show, draw_opt='ap', lm=.14, prnt=show)
-        return mean_sigma(vals, val_errors)
+        return mean_sigma(vals)
 
     def draw_ph_distributions(self, binning=5000, fsh13=.5, fs11=65, show=True):
         runs = self.get_runs_by_collimator(fsh13=fsh13, fs11=fs11)
