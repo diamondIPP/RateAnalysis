@@ -15,6 +15,8 @@ from collections import OrderedDict
 import pickle
 from threading import Thread
 from multiprocessing import Pool
+from uncertainties import ufloat
+from uncertainties.core import Variable
 
 
 # ==============================================
@@ -239,6 +241,9 @@ def calc_weighted_mean(means, sigmas):
 def mean_sigma(values, weights=None):
     """ Return the weighted average and standard deviation. values, weights -- Numpy ndarrays with the same shape. """
     weights = [1] * len(values) if weights is None else weights
+    if type(values[0] is Variable):
+        weights = [1 / v.s for v in values]
+        values = array([v.n for v in values], 'd')
     if all(weight == 0 for weight in weights):
         return [0, 0]
     avrg = average(values, weights=weights)
@@ -520,6 +525,12 @@ def average_list(lst, n):
 def log_bins(n_bins, min_val, max_val):
     width = (log10(max_val) - log10(min_val)) / float(n_bins)
     return [n_bins, array([pow(10, log10(min_val) + i * width) for i in xrange(n_bins + 1)])]
+
+
+def make_ufloat(tup, par=0):
+    if isinstance(tup, FitRes):
+        return ufloat(tup.Parameter(par), tup.ParError(par))
+    return ufloat(tup[0], tup[1])
 
 
 def load_root_files(sel, load=True):
