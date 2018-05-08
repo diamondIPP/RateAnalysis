@@ -10,7 +10,6 @@ from collections import Counter
 from json import load, dump, loads
 from operator import itemgetter
 from re import split as splitname
-from uncertainties import ufloat
 
 from uncertainties.unumpy import uarray
 
@@ -512,16 +511,14 @@ class DiaScans(Elementary):
         x_vals = sorted([g.GetX()[i] for g in graphs for i in xrange(g.GetN())])
         y_range = [1 - y_range, 1 + y_range]
 
-        c = self.make_canvas(x=1.6, y=.2 * (len(graphs) + 1), transp=True, logx=True, gridy=True)
-        lm, rm = .03, .02
+        c = self.make_canvas(x=1, y=.2 * (len(graphs) + 1), transp=True, logx=True, gridy=True)
+        lm, rm = .1, .02
         lp = .04
         pad_height = .1 / (.2 * (len(graphs) + 1))
         self.draw_tpad('p0', 'p0', pos=[lp, 1 - pad_height, 1, 1], margins=[lm, rm, 0, .5], transparent=True)           # title pad
         self.draw_tlatex(lm, .5, '{dia} Rate Scans{b}'.format(dia=self.DiamondName, b=bias_str), size=.5, align=12)     # title
         c.cd()
-        self.draw_tpad('p1', 'p1', pos=[0, 0, lp, 1], margins=[0, 0, 0, 0], transparent=True)                           # info pad
-        self.draw_tlatex(.5, .5, '#font[42]{Scaled Pulse Height}', size=.7, align=22, angle=90)                         # title
-        c.cd()
+        size = .22
 
         for i, g in enumerate(graphs):
             last = i == len(self.RunSelections) - 1
@@ -529,15 +526,19 @@ class DiaScans(Elementary):
             y1 = 1 - (pad_height * (2 * i + 1))
             self.draw_tpad('p{i}'.format(i=i + 2), 'p{i}'.format(i=i + 2), pos=[lp, y0, 1, y1], margins=[lm, rm, .33 if last else 0, 0], logx=True, gridy=True, gridx=True)
             if last:
-                self.format_histo(g, title=' ', color=colors[i], x_range=[x_vals[0] * 0.8, x_vals[-1] * 3], y_range=y_range, marker=markers(i), lab_size=.15 * 2 / 3, ndivy=505,
-                                  markersize=1.5, x_tit='Flux [kHz/cm^{2}]', tit_size=.15 * 2 / 3, tick_size=.15 * 2 / 3)
+                self.format_histo(g, title=' ', color=colors[i], x_range=[x_vals[0] * 0.8, x_vals[-1] * 3], y_range=y_range, marker=markers(i), lab_size=size * 2 / 3, ndivy=505,
+                                  markersize=3, x_tit='Flux [kHz/cm^{2}]', tit_size=size * 2 / 3, tick_size=size * 2 / 3)
             else:
-                self.format_histo(g, title=' ', color=colors[i], x_range=[x_vals[0] * 0.8, x_vals[-1] * 3], y_range=y_range, marker=markers(i), lab_size=.15, ndivy=505,
-                                  markersize=1.5, tick_size=.15)
+                self.format_histo(g, title=' ', color=colors[i], x_range=[x_vals[0] * 0.8, x_vals[-1] * 3], y_range=y_range, marker=markers(i), lab_size=size, ndivy=505,
+                                  markersize=2, tick_size=size)
             g.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 3)
             g.Draw('ap')
             self.draw_legend(i, g, irr, rm)
             c.cd()
+
+        self.draw_tpad('p1', 'p1', pos=[0, 0, lm - .02, 1], margins=[0, 0, 0, 0], transparent=True)                         # info pad
+        self.draw_tlatex(.5, .5, '#font[42]{Scaled Pulse Height}', size=.7, align=22, angle=90)                             # title
+        c.cd()
 
         self.ROOTObjects.append(graphs)
         self.save_plots('ScaledDiaScans{dia}'.format(dia=make_dia_str(self.DiamondName)))
@@ -583,8 +584,8 @@ class DiaScans(Elementary):
         add_bias = len(set(self.get_bias_voltages())) > 1
         tits = self.get_titles(irr)
         biases = [make_bias_str(bias) for bias in self.get_bias_voltages()] if add_bias else [''] * len(tits)
-        x1 = 1 - max([(12 if irr else len(tit)) + len(bias) for tit, bias in zip(tits, biases)]) * .016
-        legend = self.make_legend(x1, 1, x2=1 - rm, nentries=1, scale=5 * (2 / 3. if ind == len(tits) - 1 else 1))
+        x1 = 1 - max([(12 if irr else len(tit)) + len(bias) for tit, bias in zip(tits, biases)]) * .024
+        legend = self.make_legend(x1, 1, x2=1 - rm, nentries=1, scale=6 * (2 / 3. if ind == len(tits) - 1 else 1))
         legend.AddEntry(gr, tits[ind], 'pe')
         if add_bias:
             legend.SetNColumns(2)
