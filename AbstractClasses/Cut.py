@@ -370,7 +370,7 @@ class Cut(Elementary):
             t_stop = self.analysis.run.get_time_at_event(tup[1]) - self.analysis.run.StartTime + self.CutConfig['JumpExcludeRange'][1]
             # if interruptions overlay just set the last stop to the current stop
             if i and t_start < (interruptions[i - 1][1]):
-                interruptions[i - 1][1] = self.analysis.get_event_at_time(t_stop)
+                interruptions[i - 1][1] = t_stop
                 continue
             interruptions.append([t_start, t_stop])
             i += 1
