@@ -4,6 +4,7 @@ from Elementary import Elementary
 from InfoLegend import InfoLegend
 from ROOT import TCut, gROOT, TH1F, TPie
 from Utils import *
+from Plots import Plots
 
 
 class Cut(Elementary):
@@ -19,6 +20,7 @@ class Cut(Elementary):
             self.RunNumber = self.analysis.RunNumber
             Elementary.__init__(self, verbose=self.analysis.verbose)
             self.InfoLegend = InfoLegend(parent_analysis)
+            self.Plots = Plots(self.analysis.run)
 
             # saving stuff
             self.RootObjects = []
@@ -309,37 +311,35 @@ class Cut(Elementary):
     def find_beam_interruptions(self):
         return self.find_pad_beam_interruptions() if self.DUTType == 'pad' else self.find_pixel_beam_interruptions(show=False)
 
-    def find_pixel_beam_interruptions(self, show=True):
+    def find_pixel_beam_interruptions(self, bin_width=10, rel_time=True, show=True):
         """ Locates the beam interruptions and cuts some seconds before and some seconds after which are specified in the config file. overlapping segments are fused to one to reduce the size
             of the string. An average of the number of event per time bin is calculated and every bin below 90% or above 120% is excluded """
         # time is in minutes. good results found with bin size of 10 seconds
-        bin_size = 10  # seconds
-        bins = int(self.analysis.run.totalMinutes * 60 / bin_size)
-        set_root_output(0)
-        h = TH1F('h_beam_time_', 'Beam Interruptions', bins, 0, self.analysis.run.totalMinutes)
-        self.analysis.tree.Draw('(time - {off}) / 60000.>>h_beam_time_'.format(off=self.analysis.run.StartTime), '', 'goff')
-        mean_ = mean(sorted([h.GetBinContent(i) for i in xrange(h.GetNbinsX())])[-10:])  # only take the ten highest values to get an estimate of the plateau
-        interruptions = []
+        set_root_output(False)
+        h = TH1F('h_beam_time_', 'Beam Interruptions', *self.Plots.get_time_binning(bin_width))
+        self.analysis.tree.Draw('time / 1000. >> h_beam_time_'.format(off=self.analysis.run.StartTime), '', 'goff')
+        mean_ = mean(sorted([h.GetBinContent(i) for i in xrange(h.GetNbinsX())])[-20:-10])  # only take the ten highest values to get an estimate of the plateau
         jumps = []
-        n_interr = 0
-        ex_range = {key: value / 60. for key, value in self.CutConfig['JumpExcludeRange'].iteritems()}
-        for t in xrange(1, h.GetNbinsX() + 1):
-            if h.GetBinContent(t) < mean_ * .6 or h.GetBinContent(t) > mean_ * 1.3:
-                low_edge = h.GetBinLowEdge(t)
-                bin_width = h.GetBinWidth(t)
-                if not n_interr or (not low_edge - ex_range['before'] < interruptions[n_interr - 1]['f'] and n_interr):
-                    interruptions.append({'i': low_edge - ex_range['before'], 'f': low_edge + bin_width + ex_range['after']})
-                    jumps.append([low_edge, low_edge + bin_width])
-                    n_interr += 1
-                else:
-                    interruptions[n_interr - 1]['f'] = low_edge + bin_width + ex_range['after']
-                    jumps[n_interr - 1][1] = low_edge + bin_width
-        interruptions = [{key: self.analysis.get_event_at_time(value * 60) for key, value in dic.iteritems()} for dic in interruptions]
-        jumps = [[self.analysis.get_event_at_time(t * 60) for t in jump] for jump in jumps]
-        self.format_histo(h, x_tit='Time [min]', y_tit='Number of Events', y_off=1.7, stats=0, fill_color=self.FillColor)
+        tup = [0, 0]
+        cut = .4
+        last_rate = 0
+        for ibin in xrange(1, h.GetNbinsX() + 1):
+            rate = abs(1 - h.GetBinContent(ibin) / mean_)  # normalised deviation from the mean
+            if rate > cut:
+                tup[0] = h.GetBinLowEdge(ibin)
+            elif rate < cut < last_rate:
+                tup[1] = h.GetBinLowEdge(ibin) + bin_width
+                jumps.append(tup)
+                tup = [0, 0]
+            last_rate = rate
+        if tup[0] != tup[1]:  # if rate did not went down before the run stopped
+            jumps.append([tup[0], self.analysis.run.EndTime])
+        jumps = [[self.analysis.get_event_at_time(t - self.analysis.run.StartTime) for t in jump] for jump in jumps]
+        interruptions = self.__create_jump_ranges(jumps)
+        self.format_histo(h, x_tit='Time [min]', y_tit='Number of Events', y_off=1.7, stats=0, fill_color=self.FillColor, t_ax_off=self.analysis.run.StartTime if rel_time else 0)
         if show:
             self.save_histo(h, 'BeamInterruptions', show, lm=.125)
-        return interruptions, jumps
+        return jumps, interruptions
 
     def find_pad_beam_interruptions(self):
         """ Looking for the beam interruptions by investigating the pulser rate. """
@@ -369,7 +369,7 @@ class Cut(Elementary):
             t_start = self.analysis.run.get_time_at_event(tup[0]) - self.analysis.run.StartTime - self.CutConfig['JumpExcludeRange'][0]
             t_stop = self.analysis.run.get_time_at_event(tup[1]) - self.analysis.run.StartTime + self.CutConfig['JumpExcludeRange'][1]
             # if interruptions overlay just set the last stop to the current stop
-            if i and t_start < (interruptions[i - 1][1]):
+            if i and t_start <= (interruptions[i - 1][1]) + 10:
                 interruptions[i - 1][1] = t_stop
                 continue
             interruptions.append([t_start, t_stop])

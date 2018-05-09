@@ -24,7 +24,7 @@ class CutPix(Cut):
 
         self.Settings = self.analysis.Settings
         self.Plots = self.analysis.Plots
-        self.InfoLegend = InfoLegend(self)
+        self.InfoLegend = InfoLegend(analysis)
 
         self.load_pixel_config()
 
