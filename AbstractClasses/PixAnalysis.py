@@ -9,7 +9,7 @@ from argparse import ArgumentParser
 from collections import Counter
 from copy import deepcopy
 from math import ceil, factorial
-from numpy import mean, corrcoef, arange
+from numpy import corrcoef
 from os.path import join as joinpath
 from decimal import Decimal
 
@@ -30,12 +30,12 @@ __author__ = 'DA & Micha'
 class PixAnalysis(Analysis):
     def __init__(self, run, dut=1, binning=10000):
 
+        self.DiamondName = self.load_diamond_name(dut, run)
+        self.DiamondNumber = dut
+        self.Bias = run.Bias[dut - 1]
         Analysis.__init__(self, run, binning=binning)
 
         # main
-        self.DiamondName = self.load_diamond_name(dut)
-        self.DiamondNumber = dut
-        self.Bias = self.run.Bias[dut - 1]
         self.Dut = dut + 3
         self.save_dir = '{dia}/{run}/'.format(run=str(self.RunNumber).zfill(3), dia=self.DiamondName)
         self.PX = 0.015  # [cm]
@@ -80,9 +80,10 @@ class PixAnalysis(Analysis):
     # ==========================================================================
     # region INIT
 
-    def load_diamond_name(self, dut):
+    def load_diamond_name(self, dut, run=None):
+        run = self.run if run is None else run
         assert dut in [1, 2, 3], 'You have to choose either dut 1, 2 or 3'
-        return self.run.DiamondNames[dut - 1]
+        return run.DiamondNames[dut - 1]
     # endregion
 
     def do_analysis(self, do_cut_dist=False, do_res_ana=False, do_cut_ana=False, do_occupancy=True, do_pulse_height=True):
