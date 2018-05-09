@@ -357,4 +357,4 @@ class Plots(Elementary):
 
     def get_binning(self, evts_per_bin, start_event=0, end_event=None, time_bins=False):
         binning = arange(start_event, self.NEntries if end_event is None else end_event, self.NEntries / (self.NEntries / evts_per_bin), 'd')
-        return [len(binning) - 1, array([self.run.get_time_at_event(int(ev)) / 1000. for ev in binning], 'd') if time_bins else binning]
+        return [len(binning) - 1, array([self.run.get_time_at_event(int(ev)) for ev in binning], 'd') if time_bins else binning]
