@@ -97,9 +97,12 @@ class PadAlignment:
         return aligned
 
     def find_offset(self, start, offset):
-        means = OrderedDict((self.calc_mean_size(start, i + offset, self.BucketSize / 2), i) for i in [-1, 1, -2, 2])
+        means = OrderedDict((i, self.calc_mean_size(start, i + offset, self.BucketSize / 2)) for i in [-1, 1, -2, 2])
+        # if we don't have beam in the beginning we cannot find out the offset
+        if all(value < self.Threshold for value in means.itervalues()):
+            return 0
         try:
-            return next(means[key] for key in means.iterkeys() if key < self.Threshold)
+            return next(key for key, value in means.iteritems() if value < self.Threshold)
         except StopIteration:
             return 0
 
@@ -242,8 +245,7 @@ class PadAlignment:
         self.ProgressBar = ProgressBar(widgets=self.Widgets, maxval=n)
         self.ProgressBar.start()
 
+
 if __name__ == '__main__':
     print argv[1]
     z = PadAlignment(None, argv[1])
-    if not z.IsAligned:
-        z.write_aligned_tree()
