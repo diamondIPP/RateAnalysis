@@ -172,10 +172,17 @@ class Draw:
 
     def draw_preliminary(self, canvas=None):
         c = get_last_canvas() if canvas is None else canvas
+        c.cd()
         self.draw_tlatex((1 - c.GetRightMargin() + c.GetLeftMargin()) / 2, .5, 'Preliminary', align=22, color=19, size=.17, angle=30, ndc=True)
         make_transparent(c)
         for obj in c.GetListOfPrimitives():
-            if obj.IsA().GetName() in ['TH1F', 'TH2F', 'TGraph', 'TGraphErrors']:
+            print obj
+            if obj.IsA().GetName() == 'TPad':
+                obj.cd()
+                for subobj in obj.GetListOfPrimitives():
+                    if subobj.IsA().GetName() in ['TH1F', 'TH2F', 'TGraph', 'TGraphErrors', 'TLegend']:
+                        subobj.Draw('same')
+            elif obj.IsA().GetName() in ['TH1F', 'TH2F', 'TGraph', 'TGraphErrors', 'TLegend']:
                 obj.Draw('same')
         c.RedrawAxis()
 
