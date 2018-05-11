@@ -403,9 +403,10 @@ class Draw:
 
     def make_graph_from_profile(self, p):
         x_range = [i for i in xrange(p.GetNbinsX()) if p.GetBinContent(i)]
-        x, y = [p.GetBinCenter(i) for i in x_range], [p.GetBinContent(i) for i in x_range]
-        ex, ey = [p.GetBinWidth(i) / 2 for i in x_range], [p.GetBinError(i) for i in x_range]
-        return self.make_tgrapherrors('g{n}'.format(n=p.GetName()[1:]), p.GetTitle(), x=x, y=y, ex=ex, ey=ey)
+        x = [make_ufloat([p.GetBinCenter(i), p.GetBinWidth(i) / 2]) for i in x_range]
+        y = [make_ufloat([p.GetBinContent(i), p.GetBinError(i)]) for i in x_range]
+        return self.make_tgrapherrors('g{n}'.format(n=p.GetName()[1:]), p.GetTitle(), x=x, y=y)
+
 
     @staticmethod
     def fix_chi2(g, prec=.01, show=True):
