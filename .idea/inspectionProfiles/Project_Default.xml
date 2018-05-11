@@ -82,6 +82,8 @@
           <option value="TTree" />
           <option value="vector" />
           <option value="TColor" />
+          <option value="TPaveStats" />
+          <option value="TPaveText" />
         </list>
       </option>
     </inspection_tool>

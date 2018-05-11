@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, kGreen, kOrange, kViolet, kYellow, kRed, kBlue, kMagenta, kAzure, \
-    kCyan, kTeal
+    kCyan, kTeal, TPaveText
 from Utils import *
 from os.path import dirname
 from numpy import ndarray, zeros, sign
@@ -173,18 +173,15 @@ class Draw:
     def draw_preliminary(self, canvas=None):
         c = get_last_canvas() if canvas is None else canvas
         c.cd()
-        self.draw_tlatex((1 - c.GetRightMargin() + c.GetLeftMargin()) / 2, .5, 'Preliminary', align=22, color=19, size=.17, angle=30, ndc=True)
-        make_transparent(c)
-        for obj in c.GetListOfPrimitives():
-            print obj
-            if obj.IsA().GetName() == 'TPad':
-                obj.cd()
-                for subobj in obj.GetListOfPrimitives():
-                    if subobj.IsA().GetName() in ['TH1F', 'TH2F', 'TGraph', 'TGraphErrors', 'TLegend']:
-                        subobj.Draw('same')
-            elif obj.IsA().GetName() in ['TH1F', 'TH2F', 'TGraph', 'TGraphErrors', 'TLegend']:
-                obj.Draw('same')
-        c.RedrawAxis()
+        p = TPaveText(c.GetLeftMargin(), .94 - c.GetTopMargin(), .5, 1 - c.GetTopMargin(), 'ndc')
+        p.SetFillColor(0)
+        p.SetFillStyle(0)
+        p.SetBorderSize(0)
+        t = p.AddText('RD42 Preliminary')
+        t.SetTextFont(72)
+        p.Draw()
+        self.Objects.append(p)
+        return p
 
     def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=.1, draw_opt='', x=None, y=None, all_pads=True,
                    l=None, logy=False, logx=False, logz=False, canvas=None, gridy=False, gridx=False, both_dias=False, prnt=True, phi=None, theta=None, ind=None):
