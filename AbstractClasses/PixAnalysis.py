@@ -440,12 +440,13 @@ class PixAnalysis(Analysis):
         cut_string = self.Cut.generate_special_cut(excluded=['masks']) if cut == 'all' else TCut(cut)
         x_var = 'time / 1000' if vs_time else 'event_number'
         self.tree.Draw('(n_hits[{r}]>0)*100:{x} >> h_he'.format(r=roc, x=x_var), cut_string, 'goff', int(n), start)
-        h.BuildOptions(0, 1, 'g')
         g = self.make_graph_from_profile(h)
-        fit = self.fix_chi2(g, .001, show)
-        set_statbox(only_fit=1, y=.7)
-        self.format_histo(g, x_tit='Time [hh:mm]' if vs_time else 'Event Number', y_tit='Efficiency [%]', y_off=1.4, y_range=[-5, 105], stats=0, t_ax_off=self.run.StartTime if vs_time else 0)
-        self.save_histo(g, 'HitEfficiencyROC{n}'.format(n=roc), show, lm=.13, save=save, gridy=True, draw_opt='apz')
+        fit = self.fix_chi2(g, .01, show)
+        self.format_histo(g, x_tit='Time [hh:mm]' if vs_time else 'Event Number', y_tit='Efficiency [%]', y_off=1.4, y_range=[-5, 115], stats=0,
+                          t_ax_off=self.run.StartTime if vs_time else 0, markersize=1.7, draw_first=True)
+        self.draw_histo(g, show=show, lm=.13, gridy=True, draw_opt='apz')
+        self.draw_stats(fit, width=.35, y2=.35, names=['Efficiency'])
+        self.save_plots('HitEfficiencyROC{n}'.format(n=roc), save=save, show=show)
         return fit if fit.Parameter(0) is not None else 0
 
     def draw_all_efficiencies(self, show=True):
