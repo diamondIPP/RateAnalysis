@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, kGreen, kOrange, kViolet, kYellow, kRed, kBlue, kMagenta, kAzure, \
-    kCyan, kTeal, TPaveText
+    kCyan, kTeal, TPaveText, TPaveStats
 from Utils import *
 from os.path import dirname
 from numpy import ndarray, zeros, sign
@@ -184,7 +184,7 @@ class Draw:
         self.Objects.append(p)
         return p
 
-    def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=.1, draw_opt='', x=None, y=None, all_pads=True,
+    def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=None, draw_opt='', x=None, y=None, all_pads=True,
                    l=None, logy=False, logx=False, logz=False, canvas=None, gridy=False, gridx=False, both_dias=False, prnt=True, phi=None, theta=None, ind=None):
         return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, all_pads, l, logy, logx, logz, canvas, gridx, gridy, False, both_dias, ind, prnt, phi, theta)
     
@@ -407,6 +407,24 @@ class Draw:
         y = [make_ufloat([p.GetBinContent(i), p.GetBinError(i)]) for i in x_range]
         return self.make_tgrapherrors('g{n}'.format(n=p.GetName()[1:]), p.GetTitle(), x=x, y=y)
 
+    def draw_stats(self, fit, y2=None, width=.3, prec='5.1f', names=None):
+        names = fit.Names if names is None else names
+        c = get_last_canvas()
+        tm = .98 - .05 - c.GetTopMargin() if y2 is None else y2
+        rm = .98 - c.GetRightMargin()
+        p = TPaveStats(rm - width, tm - .06 * (fit.NPars + 1), rm, tm, 'ndc')
+        p.SetBorderSize(1)
+        p.SetFillColor(0)
+        p.SetFillStyle(0)
+        l = p.AddText('Fit Result')
+        l.SetTextFont(42)
+        ls = p.GetListOfLines()
+        ls.Add(self.draw_tlatex(0, 0, '#chi^{{2}} / ndf  = {chi2:{p}} / {ndf}'.format(ndf=fit.Ndf(), chi2=fit.Chi2(), p=prec), size=0, align=0, font=42))
+        for i in xrange(fit.NPars):
+            ls.Add(self.draw_tlatex(0, 0, '{n}  = {v:{p}} #pm {e:{p}}'.format(n=names[i], v=fit.Parameter(i), e=fit.ParError(i), p=prec), size=0, align=0, font=42))
+        p.Draw()
+        self.Objects.append(p)
+        return p
 
     @staticmethod
     def fix_chi2(g, prec=.01, show=True):
@@ -421,7 +439,7 @@ class Draw:
             chi2 = fit.Chi2() / fit.Ndf()
             error += .5 ** it * sign(chi2 - 1)
             it += 1
-        return fit if fit is not None else FitRes()
+        return FitRes(fit) if fit is not None else FitRes()
 
     def draw_frame(self, pad, xmin, xmax, ymin, ymax, tit, div=None, y_cent=None):
         pad.cd()
