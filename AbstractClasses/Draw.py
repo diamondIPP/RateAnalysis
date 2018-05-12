@@ -72,9 +72,9 @@ class Draw:
     
     # region DRAWING
 
-    def draw_axis(self, x1, x2, y1, y2, title, name='ax', col=1, width=1, off=.15, tit_size=.035, lab_size=0.035, line=False, opt='+SU', tick_size=0.03, l_off=.01):
-        range_ = [y1, y2] if x1 == x2 else [x1, x2]
-        a = TGaxis(x1, y1, x2, y2, range_[0], range_[1], 510, opt)
+    def draw_axis(self, x1, x2, y1, y2, title, limits=None, name='ax', col=1, width=1, off=.15, tit_size=.035, lab_size=0.035, tick_size=0.03, line=False, opt='+SU', l_off=.01, log=False):
+        limits = ([y1, y2] if x1 == x2 else [x1, x2]) if limits is None else limits
+        a = TGaxis(x1, y1, x2, y2, limits[0], limits[1], 510, opt + ('G' if log else ''))
         a.SetName(name)
         a.SetLineColor(col)
         a.SetLineWidth(width)
@@ -94,11 +94,11 @@ class Draw:
         self.Objects.append(a)
         return a
 
-    def draw_y_axis(self, x, ymin, ymax, tit, name='ax', col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035, tick_size=0.03, l_off=.01, line=False):
-        return self.draw_axis(x, x, ymin, ymax, tit, name=name, col=col, off=off, opt=opt, width=w, tit_size=tit_size, lab_size=lab_size, tick_size=tick_size, l_off=l_off, line=line)
+    def draw_y_axis(self, x, ymin, ymax, tit, limits=None, name='ax', col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035, tick_size=0.03, l_off=.01, line=False, log=False):
+        return self.draw_axis(x, x, ymin, ymax, tit, limits, name, col, w, off, tit_size, lab_size, tick_size, line, opt, l_off, log)
 
-    def draw_x_axis(self, y, xmin, xmax, tit, col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035, tick_size=0.03, l_off=.01, line=False):
-        return self.draw_axis(xmin, xmax, y, y, tit, col=col, off=off, opt=opt, width=w, tit_size=tit_size, lab_size=lab_size, tick_size=tick_size, l_off=l_off, line=line)
+    def draw_x_axis(self, y, xmin, xmax, tit, limits=None, name='ax', col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035, tick_size=0.03, l_off=.01, line=False, log=False):
+        return self.draw_axis(xmin, xmax, y, y, tit, limits, name, col, w, off, tit_size, lab_size, tick_size, line, opt, l_off, log)
 
     def draw_line(self, x1, x2, y1, y2, color=1, width=1, style=1, name='li'):
         l = TCutG(name, 2, array([x1, x2], 'd'), array([y1, y2], 'd'))
