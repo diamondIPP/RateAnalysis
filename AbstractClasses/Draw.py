@@ -176,18 +176,22 @@ class Draw:
         self.Objects.append(p)
         return p
 
-    def draw_preliminary(self, canvas=None):
-        c = get_last_canvas() if canvas is None else canvas
-        c.cd()
-        p = TPaveText(c.GetLeftMargin(), .94 - c.GetTopMargin(), .5, 1 - c.GetTopMargin(), 'ndc')
+    def draw_tpavetext(self, text, x1, x2, y1, y2, font=42, align=0, size=0, angle=0, margin=.05, color=1):
+        p = TPaveText(x1, y1, x2, y2, 'ndc')
         p.SetFillColor(0)
         p.SetFillStyle(0)
         p.SetBorderSize(0)
-        t = p.AddText('RD42 Preliminary')
-        t.SetTextFont(72)
+        p.SetMargin(margin)
+        t = p.AddText(text)
+        self.format_text(t, 'pave', align, color, size, angle, ndc=True, font=font)
         p.Draw()
         self.Objects.append(p)
         return p
+
+    def draw_preliminary(self, canvas=None):
+        c = get_last_canvas() if canvas is None else canvas
+        c.cd()
+        return self.draw_tpavetext('RD42 Preliminary', c.GetLeftMargin(), .5, .94 - c.GetTopMargin(), 1 - c.GetTopMargin(), font=72)
 
     def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=None, draw_opt='', x=None, y=None, all_pads=True,
                    l=None, logy=False, logx=False, logz=False, canvas=None, gridy=False, gridx=False, both_dias=False, prnt=True, phi=None, theta=None, ind=None):
