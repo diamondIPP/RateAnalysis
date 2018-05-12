@@ -136,18 +136,23 @@ class Draw:
     def draw_horizontal_line(self, y, xmin, xmax, color=1, w=1, style=1, name='li', tline=False):
         return self.draw_line(xmin, xmax, y, y, color, w, style, name) if not tline else self.draw_tline(xmin, xmax, y, y, color, w, style)
 
-    def draw_tlatex(self, x, y, text, align=20, color=1, size=.05, angle=None, ndc=False, font=None):
+    def draw_tlatex(self, x, y, text, name='text', align=20, color=1, size=.05, angle=None, ndc=None, font=None):
         l = TLatex(x, y, text)
-        l.SetName(text)
-        l.SetTextAlign(align)
-        l.SetTextColor(color)
-        l.SetTextSize(size)
-        do(l.SetTextAngle, angle)
-        do(l.SetTextFont, font)
-        l.SetNDC() if ndc else do_nothing()
+        self.format_text(l, name, align, color, size, angle, ndc, font)
         l.Draw()
         self.Objects.append(l)
         return l
+
+    @staticmethod
+    def format_text(t, name='text', align=20, color=1, size=.05, angle=None, ndc=None, font=None):
+        t.SetName(name)
+        t.SetTextAlign(align)
+        t.SetTextColor(color)
+        t.SetTextSize(size)
+        do(t.SetTextAngle, angle)
+        do(t.SetTextFont, font)
+        do(t.SetNDC, ndc)
+        return t
 
     def draw_arrow(self, x1, x2, y1, y2, col=1, width=1, opt='<|', size=.005):
         ar = TArrow(x1, y1, x2, y2, size, opt)
