@@ -502,43 +502,42 @@ class DiaScans(Elementary):
         mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 3)
         self.save_histo(mg, 'DiaScans{dia}'.format(dia=make_dia_str(self.DiamondName)), draw_opt='a', logx=True, l=legend, x_fac=1.6, lm=.092, bm=.12, gridy=True)
 
-    def draw_scaled_rate_scans(self, irr=False, y_range=.15):
-        run_selections = self.load_run_selections()
+    def draw_scaled_rate_scans(self, irr=False, y_range=.15, x_range=None, pad_height=.18):
         biases = set(self.get_bias_voltages())
         bias_str = ' at {b}'.format(b=make_bias_str(biases.pop())) if len(biases) == 1 else ''
-        colors = get_color_gradient(len(run_selections))
         graphs = self.get_pulse_height_graphs()
+        colors = get_color_gradient(len(self.RunSelections))
         x_vals = sorted([g.GetX()[i] for g in graphs for i in xrange(g.GetN())])
+        limits = [x_vals[0] * 0.8, x_vals[-1] * 3] if x_range is None else x_range
         y_range = [1 - y_range, 1 + y_range]
 
-        c = self.make_canvas(x=1.3, y=.2 * (len(graphs) + 1), transp=True, logx=True, gridy=True)
-        lm, rm = .1, .02
-        lp = .04
-        pad_height = .1 / (.2 * (len(graphs) + 1))
-        self.draw_tpad('p0', 'p0', pos=[lp, 1 - pad_height, 1, 1], margins=[lm, rm, 0, .5], transparent=True)           # title pad
-        # self.draw_tlatex(lm, .5, '{dia} Rate Scans{b}'.format(dia=self.DiamondName, b=bias_str), size=.5, align=12)     # title
-        self.draw_tlatex(lm, .5, 'RD42 Preliminary', size=.5, align=12)     # title
+        has_title = self.Config.getboolean('SAVE', 'activate_title')
+        title_height = pad_height / 2. if has_title else .03  # half of a pad for title
+        c_height = (len(graphs) + .5) * pad_height + title_height  # half of a pad for the x axis
+        c_width = 1.3 * pad_height / .2  # keep aspect ratio for standard pad_height of .2
+        c = self.make_canvas(name='csr', x=c_width, y=c_height, transp=True, logx=True, gridy=True)
+        lm, rm = .05, .02
+        lp = .08
+        if has_title:
+            self.draw_tpad('p0', 'p0', pos=[lp, 1 - title_height / c_height, 1, 1], margins=[0, 0, 0, 0], transparent=True)                         # title pad
+            self.draw_tpavetext('{dia} Rate Scans{b}'.format(dia=self.DiamondName, b=bias_str), lm, 1, 0, 1, font=62, align=13, size=.5, margin=0)  # title
+        c.cd()
+        self.draw_tpad('p1', 'p1', pos=[0, .1 / c_height, lp, 1 - title_height / c_height], margins=[0, 0, 0, 0], transparent=True)                 # info pad
+        self.draw_tpavetext('Scaled Pulse Height', 0, 1, 0, 1, align=22, size=.5, angle=90, margin=0)                                              # y-axis title
         c.cd()
         size = .22
 
         for i, g in enumerate(graphs):
-            last = i == len(self.RunSelections) - 1
-            y0 = 0 if last else 1 - (pad_height * (2 * i + 3))
-            y1 = 1 - (pad_height * (2 * i + 1))
-            self.draw_tpad('p{i}'.format(i=i + 2), 'p{i}'.format(i=i + 2), pos=[lp, y0, 1, y1], margins=[lm, rm, .33 if last else 0, 0], logx=True, gridy=True, gridx=True)
-            if last:
-                self.format_histo(g, title=' ', color=colors[i], x_range=[x_vals[0] * 0.8, x_vals[-1] * 3], y_range=y_range, marker=markers(i), lab_size=size * 2 / 3, ndivy=505,
-                                  markersize=3, x_tit='Flux [kHz/cm^{2}]', tit_size=size * 2 / 3, tick_size=size * 2 / 3)
-            else:
-                self.format_histo(g, title=' ', color=colors[i], x_range=[x_vals[0] * 0.8, x_vals[-1] * 3], y_range=y_range, marker=markers(i), lab_size=size, ndivy=505,
-                                  markersize=2, tick_size=size)
-            g.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 3)
+            y0, y1 = [c_height - title_height - pad_height * (i + j) for j in [1, 0]]
+            self.draw_tpad('p{i}'.format(i=i + 3), '', pos=[lp, y0 / c_height, 1, y1 / c_height], margins=[lm, rm, 0, 0], logx=True, gridy=True, gridx=True)
+            self.format_histo(g, title=' ', color=colors[i], x_range=limits, y_range=y_range, marker=markers(i), lab_size=size, ndivy=505, markersize=2, tick_size=size)
+            g.GetXaxis().SetLimits(*limits)
             g.Draw('ap')
             self.draw_legend(i, g, irr, rm)
             c.cd()
 
-        self.draw_tpad('p1', 'p1', pos=[0, 0, lm, 1], margins=[0, 0, 0, 0], transparent=True)                         # info pad
-        self.draw_tlatex(.5, .5, '#font[42]{Scaled Pulse Height}', size=.4, align=22, angle=90)                             # title
+        self.draw_tpad('p2', pos=[lp, 0, 1, pad_height / 2], margins=[lm, rm, 0, 0], transparent=True)
+        self.draw_x_axis(1, lm, 1 - rm, 'Flux [kHz/cm^{2}]', limits, opt='', log=True, tick_size=0, lab_size=size * 2, tit_size=size * 2, off=1.1)
         c.cd()
 
         self.ROOTObjects.append(graphs)
@@ -585,8 +584,8 @@ class DiaScans(Elementary):
         add_bias = len(set(self.get_bias_voltages())) > 1
         tits = self.get_titles(irr)
         biases = [make_bias_str(bias) for bias in self.get_bias_voltages()] if add_bias else [''] * len(tits)
-        x1 = 1 - max([(12 if irr else len(tit)) + len(bias) for tit, bias in zip(tits, biases)]) * .024
-        legend = self.make_legend(x1, 1, x2=1 - rm, nentries=1, scale=6 * (2 / 3. if ind == len(tits) - 1 else 1))
+        x1 = 1 - max([(12 if irr else len(tit)) + len(bias) for tit, bias in zip(tits, biases)]) * .022
+        legend = self.make_legend(x1, 1, x2=1 - rm, nentries=1, scale=6)
         legend.AddEntry(gr, tits[ind], 'pe')
         if add_bias:
             legend.SetNColumns(2)
