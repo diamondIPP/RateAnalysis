@@ -66,6 +66,7 @@ class Converter:
 
         # configuration
         self.config = self.get_config()
+        self.ErrorEvents = self.load_errors()
 
         # gui
         if do_gui:
@@ -113,6 +114,14 @@ class Converter:
         if not dir_exists(file_dir):
             log_warning('Could not find the raw file directory: {d}'.format(d=file_dir))
         return file_dir
+
+    def load_errors(self):
+        path = join(self.RootFileDir, 'Errors{r}.txt'.format(r=str(self.RunNumber).zfill(3)))
+        if file_exists(path):
+            f = open(path, 'r')
+            return [int(line.strip('\n')) for line in f.readlines()]
+        else:
+            return []
 
     @staticmethod
     def load_soft_config():
@@ -426,7 +435,7 @@ class Converter:
 
 if __name__ == '__main__':
     from Run import Run
-    zrun = Run(398, test_campaign='201510', tree=False)
+    zrun = Run(143, test_campaign='201707-2', tree=False, verbose=True)
     z = Converter(zrun)
     # run_info = z.get_run_info(run_number=393)
     # z.convert_run(run_info)
