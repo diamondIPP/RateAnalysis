@@ -97,7 +97,7 @@ class PadAlignment:
         return aligned
 
     def find_offset(self, start, offset, n_events=None, n_offsets=5):
-        offsets = sorted(range(-n_offsets, n_offsets + 1), key=abs)
+        offsets = sorted(range(-n_offsets, n_offsets + 1), key=lambda x: abs(x))
         offsets.pop(offsets.index(0))
         stop = self.BucketSize / 2 if n_events is None else n_events
         means = OrderedDict((i, self.calc_mean_size(start, i + offset, stop)) for i in offsets)
