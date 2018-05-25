@@ -96,9 +96,13 @@ class PadAlignment:
             self.Run.log_info('Fast check found misalignment :-(')
         return aligned
 
-    def find_offset(self, start, offset):
-        means = OrderedDict((i, self.calc_mean_size(start, i + offset, self.BucketSize / 2)) for i in [-1, 1, -2, 2])
+    def find_offset(self, start, offset, n_events=None, n_offsets=5):
+        offsets = sorted(range(-n_offsets, n_offsets + 1), key=abs)
+        offsets.pop(offsets.index(0))
+        stop = self.BucketSize / 2 if n_events is None else n_events
+        means = OrderedDict((i, self.calc_mean_size(start, i + offset, stop)) for i in offsets)
         # if we don't have beam in the beginning we cannot find out the offset
+        # print ['{0:2.2f}'.format(i) for i in means.values()]
         if all(value < self.Threshold for value in means.itervalues()):
             return 0
         try:
@@ -108,37 +112,13 @@ class PadAlignment:
 
     def calc_mean_size(self, start, off=0, n=None):
         n = n if n is not None else self.BucketSize
-        return mean([self.ColSize[ev + off] > 1 for ev in self.PulserEvents[start:start + n]])
+        return mean([self.ColSize[ev + off] > 3 for ev in self.PulserEvents[start:start + n]])
 
-    def find_offsets(self):
-        t = self.Run.log_info('Scanning for precise offsets ... ', next_line=False)
-        n = self.BucketSize
-        offsets = OrderedDict()
-        offset = 0
-        mean_sizes = []
-        for i in xrange(0, len(self.PulserEvents), n):
-            # check the number events during pulser events
-            if i + n + offset > len(self.PulserEvents):
-                break
-            mean_sizes.append(self.calc_mean_size(i, offset))
-            # print i, mean_sizes[-1]
-            if mean_sizes[-1] > self.Threshold:
-                # the aligned mean is two bunches before
-                al_mean = mean_sizes[-3]
-                # slide through the bucket before until this to find the off event
-                for j in xrange(n):
-                    sliding_mean = self.calc_mean_size((i - n + j), offset)
-                    if sliding_mean > al_mean + .1:
-                        off_event = self.PulserEvents[i + j - 1]
-                        this_offset = self.find_offset(i + j - 1, offset)
-                        # print 'Found offset:', off_event, this_offset
-                        offsets[off_event] = this_offset
-                        offset += this_offset
-                        break
-
-        self.Run.add_info(t)
-        log_message('Found {n} offsets'.format(n=len(offsets)))
-        return offsets
+    def find_error_offset(self, i, offset):
+        for ev in self.Converter.ErrorEvents:
+            if self.PulserEvents[i - self.BucketSize / 2] < ev < self.PulserEvents[i + self.BucketSize / 2]:
+                return ev, self.find_offset(self.PulserEvents.index(next(pev for pev in self.PulserEvents if pev > ev)), offset)
+        return None, None
 
     def find_shifting_offsets(self):
         t = self.Run.log_info('Scanning for precise offsets ... ', next_line=False)
@@ -151,21 +131,25 @@ class PadAlignment:
         i = 1
         while i < len(self.PulserEvents) - abs(offset) - n:
             rate = self.calc_mean_size(i, offset)
-            print i, '{0:1.2f}'.format(rate)
+            # print i, '{0:1.2f}'.format(rate)
             if rate > self.Threshold:
-                # assume that the rate was good n/2 events before
-                good_rate = rates[-n / 2] if len(rates) > n / 2 else .1
-                for j, r in enumerate(rates[-n / 2:]):
-                    if r > good_rate + .1:
-                        # i + j - n/2 + n is the first misaligned event
-                        off_event = self.PulserEvents[i + j - 1 + n / 2]
-                        this_offset = self.find_offset(i + j - 1 + n / 2, offset)
-                        if this_offset:
-                            i += j - 1 + n / 2
-                            print 'Found offset:', off_event, this_offset
-                            offsets[off_event] = this_offset
-                            offset += this_offset
-                            break
+                # first check if the event is in the decoding errors
+                off_event, this_offset = self.find_error_offset(i, offset)
+                if off_event is None:
+                    # assume that the rate was good n/2 events before
+                    good_rate = rates[-n / 2] if len(rates) > n / 2 else .1
+                    for j, r in enumerate(rates[-n / 2:]):
+                        if r > good_rate + .1:
+                            # i + j - n/2 + n is the first misaligned event
+                            off_event = self.PulserEvents[i + j - 1 + n / 2]
+                            this_offset = self.find_offset(i + j - 1 + n / 2, offset)
+                            if this_offset:
+                                i += j - 1 + n / 2
+                                break
+                if this_offset:
+                    print 'Found offset:', off_event, this_offset
+                    offsets[off_event] = this_offset
+                    offset += this_offset
             rates.append(rate)
             i += 1
             if len(rates) > n:
