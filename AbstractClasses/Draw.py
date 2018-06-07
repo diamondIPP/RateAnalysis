@@ -191,7 +191,7 @@ class Draw:
     def draw_preliminary(self, canvas=None, height=.06):
         c = get_last_canvas() if canvas is None else canvas
         c.cd()
-        return self.draw_tpavetext('RD42 Preliminary', c.GetLeftMargin(), .5, 1 - height - c.GetTopMargin(), 1 - c.GetTopMargin(), font=72, align=12, margin=0.04)
+        return self.draw_tpavetext('#font[62]{RD42} Preliminary', c.GetLeftMargin(), .5, 1 - height - c.GetTopMargin(), 1 - c.GetTopMargin(), font=72, align=12, margin=0.04)
 
     def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=None, draw_opt='', x=None, y=None, all_pads=True,
                    l=None, logy=False, logx=False, logz=False, canvas=None, gridy=False, gridx=False, both_dias=False, prnt=True, phi=None, theta=None, ind=None):
