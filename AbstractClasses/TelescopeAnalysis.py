@@ -458,6 +458,8 @@ class Analysis(Elementary):
         if ind == n_jumps - 1 and bins[-1] >= jumps[-1]['f'] or ind == n_jumps:
             while bins[-1] + self.BinSize < self.run.n_entries:
                 bins.append(bins[-1] + self.BinSize)
+        if len(bins) == 1:
+            bins.append(self.run.n_entries - 1)
         return bins
 
     def get_time_binning(self):
