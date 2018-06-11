@@ -14,6 +14,7 @@ from PadAnalysis import PadAnalysis
 from RunSelection import RunSelection
 from TelescopeAnalysis import Analysis
 from VoltageScan import VoltageScan
+from PulserCollection import PulserCollection
 from InfoLegend import InfoLegend
 from Run import Run
 from Utils import *
@@ -62,17 +63,13 @@ class AnalysisCollection(Elementary):
         self.RunPlan = run_selection.SelectedRunplan
         self.save_dir = '{dia}/runplan{plan}'.format(tc=self.TESTCAMPAIGN[2:], plan=self.RunPlan, dia=self.DiamondName)
         self.RootObjects = []
-        # important plots
-        self.FWHM = None
-        self.PulseHeight = None
-        self.Pedestal = None
-        self.PeakDistribution = None
 
         # sub classes
         self.StartTime = time_stamp(self.FirstAnalysis.run.LogStart)
         self.VoltageScan = VoltageScan(self)
         self.InfoLegend = InfoLegend(self)
         self.Currents = Currents(self)
+        self.Pulser = PulserCollection(self)
 
     def __del__(self):
         print '\ndeleting AnalysisCollection...'
