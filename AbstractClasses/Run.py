@@ -219,7 +219,7 @@ class Run(Elementary):
     # endregion INIT
 
     def get_time(self):
-        return self.LogHalfTime, self.Duration.seconds
+        return self.LogHalfTime, self.Duration.seconds / 2
 
     def print_run_info(self):
         print 'Run information for run', self.RunNumber

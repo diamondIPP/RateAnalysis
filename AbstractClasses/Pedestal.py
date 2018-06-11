@@ -55,7 +55,7 @@ class PedestalAnalysis(Elementary):
         picklepath = self.make_pickle_path('Pedestal', 'Disto', run=self.RunNumber, ch=self.DiamondNumber, suf='{c}_{r}'.format(c=cut.GetName(), r=self.get_all_signal_names()[signal_name]))
 
         def func():
-            self.log_info('Drawing pedestal distribution for {d} of run {r}'.format(d=self.DiamondName, r=self.RunNumber))
+            self.log_info('Drawing pedestal distribution for {d} of run {r}'.format(d=self.DiamondName, r=self.RunNumber), prnt=save)
             h1 = TH1F('h_pd', 'Pedestal Distribution', 600, -150, 150)
             self.Tree.Draw('{name}>>h_pd'.format(name=signal_name), cut, 'goff')
             self.format_histo(h1, 'Pedestal', x_tit='Pedestal [au]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)
