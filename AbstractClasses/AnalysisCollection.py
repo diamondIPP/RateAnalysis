@@ -292,7 +292,7 @@ class AnalysisCollection(Elementary):
             h.Draw('histy+')
         self.save_plots('FullPulseHeight')
 
-    def draw_pulse_heights(self, binning=10000, flux=True, raw=False, all_corr=False, show=True, save_plots=True, vs_time=False, fl=True, save_comb=True, y_range=None, redo=False):
+    def get_pulse_height_graph(self, binning=10000, vs_time=False, first_last=True, redo=False, scale=None):
 
         pickle_path = self.make_pickle_path('Ph_fit', 'PulseHeights', self.RunPlan, ch=self.DiamondName, suf=binning)
         flux = False if vs_time else flux
@@ -399,6 +399,39 @@ class AnalysisCollection(Elementary):
             self.save_histo(mg1, 'PulseHeightZero{mod}'.format(mod=mode.title()), False, self.save_dir, lm=.14, draw_opt='A', l=legend, logx=True if flux else 0)
 
             self.reset_colors()
+        self.log_info('Getting pulse heights{0}'.format(' vs time' if vs_time else ''))
+        marker_size = 2
+        gStyle.SetEndErrorSize(4)
+        self.start_pbar(self.NRuns)
+        y_values = []
+        for i, ana in enumerate(self.collection.itervalues()):
+            y_values.append(make_ufloat(ana.draw_pulse_height(binning, corr=True, redo=redo, show=False, prnt=False)[1]))
+            self.ProgressBar.update(i + 1)
+        self.ProgressBar.finish()
+        x_values = [make_ufloat(ana.run.get_time() if vs_time else ana.get_flux()) for ana in self.collection.itervalues()]
+        g = self.make_tgrapherrors('g', 'stat. error', self.get_color(), marker_size=marker_size, x=x_values, y=y_values)
+        rel_sys_error = self.get_repr_error(105, show=False)
+        y_values = [make_ufloat((v.n, v.s + rel_sys_error)) for v in y_values]
+        g_errors = self.make_tgrapherrors('gerr', 'full error', marker=0, color=602, marker_size=0, x=x_values, y=y_values)
+        g_first = self.make_tgrapherrors('g1', 'first run', marker=22, color=2, marker_size=marker_size, x=[x_values[0].n], y=[y_values[0].n])
+        g_last = self.make_tgrapherrors('g2', 'last run', marker=23, color=2, marker_size=marker_size, x=[x_values[-1].n], y=[y_values[-1].n])
+        graphs = [g_errors, g]
+        graphs += [g_first, g_last] if first_last else []
+        legend = self.make_legend(.65, .35, nentries=len(graphs))
+        mg = TMultiGraph('mg_ph', 'Pulse Height vs {mod} - {dia}'.format(mod='Time' if vs_time else 'Flux', dia=self.DiamondName))
+        for gr in graphs:
+            legend.AddEntry(gr, gr.GetTitle(), 'l' if gr.GetName() == 'gerr' else 'p')
+            mg.Add(gr, 'p')
+        mg.GetListOfFunctions().Add(legend)
+        self.reset_colors()
+        scale_multigraph(mg, scale)
+        if vs_time:
+            g = mg.GetListOfGraphs()[1]
+            for i, (ana, x) in enumerate(zip(self.collection.itervalues(), x_values)):
+                y, ey = g.GetY()[i], g.GetErrorY(i)
+                mg.GetListOfGraphs()[0].GetListOfFunctions().Add(self.draw_tlatex(x.n, y + ey * 1.2, '{:1.0f}'.format(ana.get_flux()[0]), color=1, align=21, size=.02))
+        return mg
+
 
             self.PulseHeight = gr1
             if save_comb:
