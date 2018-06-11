@@ -384,11 +384,7 @@ class RunSelection(Elementary):
         self.SelectedDiamondNr = ch
 
     def add_selection_to_runplan(self, plan_nr, run_type='rate scan', parent=None):
-        """
-        Saves all selected runs as a run plan with name 'plan_nr'.
-        :param plan_nr:
-        :param run_type:
-        """
+        """ Saves all selected runs as a run plan with name 'plan_nr'. """
         plan_nr = self.make_runplan_string(plan_nr)
         parent_string = self.make_runplan_string(str(int(float(plan_nr)))) if not isint(plan_nr) and isfloat(plan_nr) else parent
         parent_string = self.make_runplan_string(parent) if parent is not None else parent_string
