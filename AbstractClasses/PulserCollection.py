@@ -7,7 +7,7 @@
 from ROOT import TMultiGraph
 from Elementary import Elementary
 from InfoLegend import InfoLegend
-from Utils import make_ufloat, scale_multigraph, do_pickle, increased_range, do_nothing, set_statbox
+from Utils import *
 from functools import partial
 
 
@@ -23,7 +23,7 @@ class PulserCollection(Elementary):
         self.InfoLegend = InfoLegend(ana_collection)
         self.save_dir = self.Analysis.save_dir
 
-    def get_pulse_height_graph(self, sigma=False, scale=None, vs_time=False, corr=True, beam_on=True, redo=False):
+    def get_pulse_height_graph(self, sigma=False, vs_time=False, corr=True, beam_on=True, redo=False):
 
         self.log_info('Getting pulser pulse heights{}'.format(' vs time' if vs_time else ''))
         marker_size = 2
@@ -50,7 +50,6 @@ class PulserCollection(Elementary):
             mg.Add(gr, 'p')
         mg.GetListOfFunctions().Add(legend)
         self.reset_colors()
-        scale_multigraph(mg, scale)
         if vs_time:
             g = mg.GetListOfGraphs()[1]
             for i, (ana, x) in enumerate(zip(self.Collection.itervalues(), x_values)):
@@ -61,7 +60,7 @@ class PulserCollection(Elementary):
     def draw_pulse_heights(self, sigma=False, corr=True, beam_on=True, vs_time=False, do_fit=False, save_comb=True, show=True, redo=False):
 
         mode = 'Time' if vs_time else 'Flux'
-        pickle_path = self.make_pickle_path('Pulser', 'PulseHeights', self.RunPlan, self.DiamondName, mode)
+        pickle_path = self.make_pickle_path('Pulser', 'PulseHeights', self.RunPlan, self.DiamondName, '{}_{}'.format(mode, sigma))
 
         f = partial(self.get_pulse_height_graph, sigma=sigma, vs_time=vs_time, corr=corr, beam_on=beam_on, redo=redo)
         mg = do_pickle(pickle_path, f, redo=redo)
@@ -81,8 +80,22 @@ class PulserCollection(Elementary):
             ymin = increased_range([min(y_values), max(y_values)], .5)[0]
             self.save_combined_pulse_heights(mg, mg1, ymin, show, name='CombinedPulserPulseHeights', pulser_leg=self.draw_legend)
             self.ROOTObjects.append(mg1)
-
         return mg
+
+    def draw_scaled_pulse_heights(self, sigma=False, vs_time=False, show=True, redo=False, y_range=None):
+
+        mode = 'Time' if vs_time else 'Flux'
+        pickle_path = self.make_pickle_path('Pulser', 'PulseHeights', self.RunPlan, self.DiamondName, '{}_{}'.format(mode, sigma))
+        f = partial(self.get_pulse_height_graph, sigma, vs_time, redo=redo)
+        mg = do_pickle(pickle_path, f, redo=redo)
+        scale_multigraph(mg)
+        xtit = 'Time [hh:mm]' if vs_time else 'Flux [kHz/cm^{2}]'
+        y_range = [.95, 1.05] if y_range is None else y_range
+        self.format_histo(mg, x_tit=xtit, y_tit='Scaled Pulser Pulse Height', y_off=1.75, x_off=1.3, draw_first=True, t_ax_off=0 if vs_time else None, y_range=y_range, ndivx=503, center_y=1)
+        mg.GetXaxis().SetLimits(1, 40000) if not vs_time else do_nothing()
+        move_legend(mg.GetListOfFunctions()[0], .16, .20)
+        self.save_histo(mg, 'ScaledPulseHeights', show, lm=.14, draw_opt='a', logx=not vs_time, grid=vs_time, gridy=True, bm=.18)
+        self.draw_irradiation(make_irr_string(self.Analysis.selection.get_irradiation()))
 
     def draw_legend(self):
         try:
