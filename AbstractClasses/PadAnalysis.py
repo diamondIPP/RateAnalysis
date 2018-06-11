@@ -7,8 +7,8 @@ from copy import deepcopy
 from math import log
 from sys import stdout
 
-from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1,\
-    THStack, TArrow, kOrange, TSpectrum, TMultiGraph, Long, TH2I
+from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, \
+    THStack, TArrow, kOrange, TSpectrum, TMultiGraph, Long, TH2I, gRandom
 
 from CutPad import CutPad
 from CurrentInfo import Currents
@@ -713,7 +713,7 @@ class PadAnalysis(Analysis):
         self.save_histo(h, 'SignalTime', show, lm=.12, draw_opt='colz', rm=.15)
         return h
 
-    def draw_pulse_height(self, binning=10000, redo=False, corr=True, sig=None, rel_t=True, show=True, save=True):
+    def draw_pulse_height(self, binning=10000, redo=False, corr=True, sig=None, rel_t=True, show=True, save=True, prnt=True):
 
         sig = self.SignalName if sig is None else sig
         bin_size = binning if binning is not None else self.BinSize
@@ -736,7 +736,7 @@ class PadAnalysis(Analysis):
                           t_ax_off=self.run.StartTime if rel_t else 0, y_range=increased_range([min(y_vals), max(y_vals)], .5, .5), ndivx=505)
         self.draw_histo(p, show=show, lm=.14, prnt=save)
         fit = self.fit_pulse_height(p, picklepath)
-        self.save_plots('PulseHeight{0}'.format(self.BinSize), show=show, save=save)
+        self.save_plots('PulseHeight{0}'.format(self.BinSize), show=show, save=save, prnt=prnt)
         return p, fit
 
     def fit_pulse_height(self, p, picklepath):
@@ -1238,7 +1238,6 @@ class PadAnalysis(Analysis):
         self.draw_histo(gr, show)
 
     def test_landau_stats(self):
-        from ROOT import gRandom
         gr = self.make_tgrapherrors('gr_ls', 'Landau Statistics')
         set_root_output(False)
         self.start_pbar(sum(int(pow(2, i / 2.)) for i in xrange(1, 40)))
