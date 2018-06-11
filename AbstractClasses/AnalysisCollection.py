@@ -245,10 +245,10 @@ class AnalysisCollection(Elementary):
 
         def func():
             phs = OrderedDict()
-            sys_errors = self.get_repr_errors(80, show=False)
+            rel_sys_error = self.get_repr_error(105, show=False)
             for i, (key, ana) in enumerate(self.collection.iteritems()):
                 ph = ana.draw_pulse_height(binning=binning, corr=True, show=False, redo=redo)[1]
-                ph.Errors[0] += sys_errors[1] / sys_errors[0] * ph.Parameter(0) if sys_errors is not None else 0
+                ph.Errors[0] += rel_sys_error * ph.Parameter(0) if rel_sys_error is not None else 0
                 phs[key] = {'flux': ana.run.Flux, 'ph': ph}
             return phs
 
@@ -535,7 +535,7 @@ class AnalysisCollection(Elementary):
         res = func() if show else None
         return do_pickle(pickle_path, func, res)
 
-    def get_repr_errors(self, flux, show=True):
+    def get_repr_error(self, flux, show=True):
         runs = self.get_runs_below_flux(flux)
         if not runs:
             return
@@ -546,7 +546,8 @@ class AnalysisCollection(Elementary):
         gr.Fit('pol0', 'qs{s}'.format(s='' if show else '0'))
         self.format_histo(gr, x_tit='Flux [kHz/cm^{2}]', y_tit='Mean Pulse Height [au]', y_off=1.7)
         self.save_histo(gr, 'ReprErrors', show, draw_opt='ap', lm=.14, prnt=show)
-        return mean_sigma(vals)
+        m, s = mean_sigma(vals)
+        return s / m
 
     def draw_ph_distributions(self, binning=5000, fsh13=.5, fs11=65, show=True):
         runs = self.get_runs_by_collimator(fsh13=fsh13, fs11=fs11)
