@@ -111,6 +111,8 @@ def round_up_to(num, val):
 
 
 def scale_multigraph(mg, val=1):
+    if val is None:
+        return
     g = mg.GetListOfGraphs()[0]
     points = {g.GetX()[i]: g.GetY()[i] for i in xrange(g.GetN())}
     y = points[min(points)]

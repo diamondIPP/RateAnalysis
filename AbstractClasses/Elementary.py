@@ -299,7 +299,7 @@ class Elementary(Draw):
         extrema = [max([TMath.MaxElement(gr.GetN(), gr.GetY()) for gr in graphs]), min([TMath.MinElement(gr.GetN(), gr.GetY()) for gr in graphs])]
         return [extrema[1] - (extrema[0] - extrema[1]) * .1, extrema[0] + (extrema[0] - extrema[1]) * .1]
 
-    def save_combined_pulse_heights(self, mg, mg1, l, mg_y, show=True, name=None, pulser_leg=None,
+    def save_combined_pulse_heights(self, mg, mg1, mg_y, show=True, name=None, pulser_leg=None,
                                     x_range=None, y_range=None, rel_y_range=None, draw_objects=None):
         set_root_output(show)
         c = TCanvas('c', 'c', int(self.Res * 10 / 11.), self.Res)
@@ -335,6 +335,7 @@ class Elementary(Draw):
             mg.SetMaximum(y_range[1])
         self.format_histo(mg, tit_size=.04 * scale, y_off=1.75 / scale, lab_size=.04 * scale)
         self.draw_x_axis(mg_y, x_range[0], x_range[1], mg1.GetXaxis().GetTitle() + ' ', opt='SG=', tit_size=.035 * scale, lab_size=0, off=1, l_off=99)
+        l = mg.GetListOfFunctions()[0]
         move_legend(l, .17, .03)
         l.Draw()
         if draw_objects is not None:

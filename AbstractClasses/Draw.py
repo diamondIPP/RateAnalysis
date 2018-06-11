@@ -199,8 +199,9 @@ class Draw:
         return self.draw_tpavetext('Irradiation: {}'.format(irr), c.GetLeftMargin(), .5, 1 - height - c.GetTopMargin(), 1 - c.GetTopMargin(), font=42, align=12, margin=0.04)
 
     def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=None, draw_opt='', x=None, y=None, all_pads=True,
-                   l=None, logy=False, logx=False, logz=False, canvas=None, gridy=False, gridx=False, both_dias=False, prnt=True, phi=None, theta=None, ind=None):
-        return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, all_pads, l, logy, logx, logz, canvas, gridx, gridy, False, both_dias, ind, prnt, phi, theta)
+                   l=None, logy=False, logx=False, logz=False, canvas=None, grid=False, gridy=False, gridx=False, both_dias=False, prnt=True, phi=None, theta=None, ind=None):
+        return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, all_pads, l, logy, logx, logz, canvas, grid, gridx, gridy, False, both_dias, ind,
+                               prnt, phi, theta)
     
     # endregion
 
@@ -265,7 +266,7 @@ class Draw:
         set_root_output(True)
 
     def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=None, draw_opt='', x_fac=None, y_fac=None, all_pads=True,
-                   l=None, logy=False, logx=False, logz=False, canvas=None, gridx=False, gridy=False, save=True, both_dias=False, ind=None, prnt=True, phi=None, theta=None):
+                   l=None, logy=False, logx=False, logz=False, canvas=None, grid=False, gridx=False, gridy=False, save=True, both_dias=False, ind=None, prnt=True, phi=None, theta=None):
         if tm is None:
             tm = .1 if self.Config.getboolean('SAVE', 'activate_title') else .03
         x = self.Res if x_fac is None else int(x_fac * self.Res)
@@ -277,8 +278,8 @@ class Draw:
         c.SetLogx() if logx else do_nothing()
         c.SetLogy() if logy else do_nothing()
         c.SetLogz() if logz else do_nothing()
-        c.SetGridx() if gridx else do_nothing()
-        c.SetGridy() if gridy else do_nothing()
+        c.SetGridx() if gridx or grid else do_nothing()
+        c.SetGridy() if gridy or grid else do_nothing()
         c.SetPhi(phi) if phi is not None else do_nothing()
         c.SetTheta(theta) if theta is not None else do_nothing()
         h.Draw(draw_opt)
@@ -295,7 +296,7 @@ class Draw:
     # endregion
 
     @staticmethod
-    def format_histo(histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=20, color=1, markersize=None, x_off=None, y_off=None, z_off=None, lw=1,
+    def format_histo(histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=20, color=None, markersize=None, x_off=None, y_off=None, z_off=None, lw=1,
                      fill_color=None, fill_style=None, stats=True, tit_size=.04, lab_size=.04, l_off_y=None, l_off_x=None, draw_first=False, x_range=None, y_range=None, z_range=None,
                      do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None, tick_size=None, t_ax_off=None, center_y=False, center_x=False, yax_col=None):
         h = histo
