@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from termcolor import colored
 from ROOT import gStyle, gROOT, TF1, TColor, TFile
 from numpy import sqrt, array, average, mean, arange, log10
-from os import makedirs
+from os import makedirs, _exit
 from os import path as pth
 from os.path import basename, join, split
 from time import time, sleep
@@ -31,8 +31,8 @@ def log_warning(msg):
 
 
 def log_critical(msg):
-    print '{head} {t} --> {msg}'.format(t=get_t_str(), msg=msg, head=colored('CRITICAL:', 'red'))
-    raise Exception
+    print '{head} {t} --> {msg}\n'.format(t=get_t_str(), msg=msg, head=colored('CRITICAL:', 'red'))
+    _exit(1)
 
 
 def log_message(msg, overlay=False, prnt=True):
