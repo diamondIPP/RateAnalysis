@@ -13,7 +13,7 @@ from numpy import mean
 
 from Converter import Converter
 from Elementary import Elementary
-from Utils import isfloat, join, log_warning, log_critical, remove_letters, get_time_vec, timedelta, has_bit
+from Utils import isfloat, join, log_warning, log_critical, remove_letters, get_time_vec, timedelta, has_bit, time_stamp
 
 
 # ==============================================
@@ -62,6 +62,7 @@ class Run(Elementary):
         self.LogStart = self.load_log_start()
         self.LogEnd = self.load_log_stop()
         self.Duration = self.LogEnd - self.LogStart
+        self.LogHalfTime = time_stamp(self.LogStart + self.Duration / 2)
 
         self.converter = None
         if self.set_run(run_number, tree):
@@ -216,6 +217,9 @@ class Run(Elementary):
         else:
             return 4
     # endregion INIT
+
+    def get_time(self):
+        return self.LogHalfTime, self.Duration.seconds
 
     def print_run_info(self):
         print 'Run information for run', self.RunNumber
