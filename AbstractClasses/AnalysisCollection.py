@@ -432,6 +432,20 @@ class AnalysisCollection(Elementary):
                 mg.GetListOfGraphs()[0].GetListOfFunctions().Add(self.draw_tlatex(x.n, y + ey * 1.2, '{:1.0f}'.format(ana.get_flux()[0]), color=1, align=21, size=.02))
         return mg
 
+    def draw_scaled_pulse_heights(self, binning=10000, vs_time=False, show=True, y_range=None, redo=False):
+
+        mode = 'Time' if vs_time else 'Flux'
+        pickle_path = self.make_pickle_path('Graph', 'PulseHeights', self.RunPlan, ch=self.DiamondName, suf='{}_{}'.format(binning, mode))
+        f = partial(self.get_pulse_height_graph, binning, vs_time, first_last=not vs_time, redo=False, scale=1)
+        mg = do_pickle(pickle_path, f, redo=redo)
+        xtit = 'Time [hh:mm]' if vs_time else 'Flux [kHz/cm^{2}]'
+        y_range = [.95, 1.05] if y_range is None else y_range
+        self.format_histo(mg, x_tit=xtit, y_tit='Scaled Pulse Height', y_off=1.75, x_off=1.3, draw_first=True, t_ax_off=0 if vs_time else None, y_range=y_range, ndivx=503, center_y=1)
+        mg.GetXaxis().SetLimits(1, 40000) if not vs_time else do_nothing()
+        move_legend(mg.GetListOfFunctions()[0], .16, .20)
+        self.save_histo(mg, 'ScaledPulseHeights', show, lm=.14, draw_opt='a', logx=not vs_time, grid=vs_time, gridy=True, bm=.18)
+        self.draw_irradiation(make_irr_string(self.selection.get_irradiation()))
+
 
             self.PulseHeight = gr1
             if save_comb:
