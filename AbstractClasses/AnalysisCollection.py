@@ -289,7 +289,7 @@ class AnalysisCollection(Elementary):
             h.Draw('histy+')
         self.save_plots('FullPulseHeight')
 
-    def get_pulse_height_graph(self, binning=10000, vs_time=False, first_last=True, redo=False, scale=None):
+    def get_pulse_height_graph(self, binning=10000, vs_time=False, first_last=True, redo=False):
 
         self.log_info('Getting pulse heights{0}'.format(' vs time' if vs_time else ''))
         marker_size = 2
@@ -316,7 +316,6 @@ class AnalysisCollection(Elementary):
             mg.Add(gr, 'p')
         mg.GetListOfFunctions().Add(legend)
         self.reset_colors()
-        scale_multigraph(mg, scale)
         if vs_time:
             g = mg.GetListOfGraphs()[1]
             for i, (ana, x) in enumerate(zip(self.collection.itervalues(), x_values)):
@@ -327,9 +326,10 @@ class AnalysisCollection(Elementary):
     def draw_scaled_pulse_heights(self, binning=10000, vs_time=False, show=True, y_range=None, redo=False):
 
         mode = 'Time' if vs_time else 'Flux'
-        pickle_path = self.make_pickle_path('Graph', 'PulseHeights', self.RunPlan, ch=self.DiamondName, suf='{}_{}'.format(binning, mode))
-        f = partial(self.get_pulse_height_graph, binning, vs_time, first_last=not vs_time, redo=False, scale=1)
+        pickle_path = self.make_pickle_path('ScaledGraph', 'PulseHeights', self.RunPlan, ch=self.DiamondName, suf='{}_{}'.format(binning, mode))
+        f = partial(self.get_pulse_height_graph, binning, vs_time, first_last=not vs_time, redo=redo)
         mg = do_pickle(pickle_path, f, redo=redo)
+        scale_multigraph(mg)
         xtit = 'Time [hh:mm]' if vs_time else 'Flux [kHz/cm^{2}]'
         y_range = [.95, 1.05] if y_range is None else y_range
         self.format_histo(mg, x_tit=xtit, y_tit='Scaled Pulse Height', y_off=1.75, x_off=1.3, draw_first=True, t_ax_off=0 if vs_time else None, y_range=y_range, ndivx=503, center_y=1)
