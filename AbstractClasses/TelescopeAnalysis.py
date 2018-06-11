@@ -566,18 +566,23 @@ class Analysis(Elementary):
         self.save_histo(h, 'BeamCurrentFlux', lm=.13, rm=.18, ind=None, show=show, draw_opt='colz')
 
     def _get_flux(self, show=False, prnt=True):
-        set_statbox(fit=True, entries=6)
-        h = self.draw_flux(cut=self.Cut.generate_special_cut(included=['beam_interruptions', 'event_range'], prnt=prnt), show=False)
-        values = [h.GetY()[i] for i in xrange(h.GetN()) if h.GetY()[i]]
-        m, s = mean_sigma(values)
-        h = TH1F('hfl', 'Flux Distribution', int(sqrt(h.GetN()) * 2), m - 3 * s, m + 4 * s)
-        for val in values:
-            h.Fill(val)
-        fit = h.Fit('gaus', 'qs{}'.format('' if show else 0))
-        self.format_histo(h, 'Fit Result', y_tit='Number of Entries', x_tit='Flux [kHz/cm^{2}]', fill_color=self.FillColor, y_off=1.3)
-        self.save_histo(h, 'FluxDisto', lm=.13, ind=None, show=show, prnt=prnt)
-        return fit.Parameter(1), fit.Parameter(2)
 
+        pickle_path = self.make_pickle_path('Flux', run=self.RunNumber)
+
+        def f():
+            set_statbox(fit=True, entries=6)
+            h = self.draw_flux(cut=self.Cut.generate_special_cut(included=['beam_interruptions', 'event_range'], prnt=prnt), show=False)
+            values = [h.GetY()[i] for i in xrange(h.GetN()) if h.GetY()[i]]
+            m, s = mean_sigma(values)
+            h = TH1F('hfl', 'Flux Distribution', int(sqrt(h.GetN()) * 2), m - 3 * s, m + 4 * s)
+            for val in values:
+                h.Fill(val)
+            fit = h.Fit('gaus', 'qs{}'.format('' if show else 0))
+            self.format_histo(h, 'Fit Result', y_tit='Number of Entries', x_tit='Flux [kHz/cm^{2}]', fill_color=self.FillColor, y_off=1.3)
+            self.save_histo(h, 'FluxDisto', lm=.13, ind=None, show=show, prnt=prnt)
+            return fit.Parameter(1), fit.Parameter(2) + .05 * fit.Parameter(1)
+
+        return do_pickle(pickle_path, f)
     # endregion
 
     def fit_langau(self, h=None, nconv=30, show=True, chi_thresh=8):
