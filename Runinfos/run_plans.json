@@ -3460,6 +3460,33 @@
       ], 
       "type": "up scan"
     }, 
+    "02.2": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser1": "6dB_3", 
+        "pulser2": "6dB_1"
+      }, 
+      "runs": [
+        24, 
+        25, 
+        26, 
+        27, 
+        28, 
+        29, 
+        31, 
+        32, 
+        33, 
+        34, 
+        35, 
+        36, 
+        37, 
+        38, 
+        39, 
+        40
+      ], 
+      "type": "rate scan"
+    }, 
     "03": {
       "attenuators": {
         "dia1": "None", 
@@ -3508,6 +3535,28 @@
         59
       ], 
       "type": "up scan"
+    }, 
+    "03.2": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser1": "6dB_3", 
+        "pulser2": "6dB_1"
+      }, 
+      "runs": [
+        42, 
+        43, 
+        44, 
+        45, 
+        46, 
+        47, 
+        48, 
+        49, 
+        50, 
+        51, 
+        53
+      ], 
+      "type": "rate scan"
     }, 
     "04": {
       "attenuators": {
