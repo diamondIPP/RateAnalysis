@@ -164,8 +164,8 @@ class Elementary(Draw):
                 print arg,
             print
 
-    def log_info(self, msg, next_line=True):
-        if self.verbose:
+    def log_info(self, msg, next_line=True, prnt=True):
+        if prnt and self.verbose:
             t1 = time()
             t = datetime.now().strftime('%H:%M:%S')
             print 'INFO: {t} --> {msg}'.format(t=t, msg=msg),

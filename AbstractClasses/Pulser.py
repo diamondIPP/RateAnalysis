@@ -105,18 +105,17 @@ class PulserAnalysis(Elementary):
         ran = mean(values[:5]), mean(values[-5:])
         return increased_range(ran, .1, .3)
 
-    def draw_distribution(self, show=True, corr=True, beam_on=True, binning=10, events=None, start=None, stats=False, redo=False):
+    def draw_distribution(self, show=True, corr=True, beam_on=True, binning=10, events=None, start=None, stats=False, redo=False, prnt=True):
         """ Shows the distribution of the pulser integrals. """
         cut = self.Cut.generate_pulser_cut(beam_on=beam_on)
         x = self.find_range(corr)
         h = self.Ana.draw_signal_distribution(cut=cut, sig=self.SignalName, show=False, off_corr=corr, evnt_corr=False, binning=binning, events=events,
-                                              start=start, redo=redo, x_range=x, stats=not stats)
+                                              start=start, redo=redo, x_range=x, stats=not stats, prnt=prnt)
         self.format_histo(h, name='p_hd', stats=stats, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
-        self.save_histo(h, 'PulserDistribution', show, logy=True, lm=.12)
+        self.save_histo(h, 'PulserDistribution', show, logy=True, lm=.12, prnt=prnt)
         return h
 
-    def draw_distribution_fit(self, show=True, save=True, corr=True, beam_on=True, events=None, start=None, binning=3):
-        show = False if not save else show
+    def draw_distribution_fit(self, show=True, redo=False, corr=True, beam_on=True, events=None, start=None, binning=3, prnt=True):
         start_string = '_{0}'.format(start) if start is not None else ''
         events_string = '_{0}'.format(events) if events is not None else ''
         suffix = '{corr}_{beam}{st}{ev}'.format(corr='ped_corr' if corr else '', beam='BeamOff' if not beam_on else 'BeamOn', st=start_string, ev=events_string)
@@ -124,7 +123,7 @@ class PulserAnalysis(Elementary):
 
         def func():
             set_statbox(.95, .88, entries=4, only_fit=True, w=.5)
-            h = self.draw_distribution(show=show, corr=corr, beam_on=beam_on, binning=binning, events=events, start=start, stats=True)
+            h = self.draw_distribution(show=show, corr=corr, beam_on=beam_on, binning=binning, events=events, start=start, stats=True, redo=redo, prnt=prnt)
             h.SetName('Fit Result')
             same_pols = self.Polarity == self.Ana.Polarity
             full_fit = h.Fit('gaus', 'qs0')
@@ -136,10 +135,10 @@ class PulserAnalysis(Elementary):
             h.GetListOfFunctions().Add(f)
             set_drawing_range(h)
             self.Ana.RootObjects.append(f)
-            self.save_plots('PulserDistributionFit', show=show)
+            self.save_plots('PulserDistributionFit', show=show, prnt=prnt)
             return FitRes(fit_func)
 
-        fit = func() if save else None
+        fit = func() if redo else None
         fit = do_pickle(pickle_path, func, fit)
         kinder_pickle(pickle_path, fit)
         return fit

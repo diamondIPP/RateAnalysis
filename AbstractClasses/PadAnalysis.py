@@ -75,9 +75,6 @@ class PadAnalysis(Analysis):
         # currents
         self.Currents = Currents(self)
 
-        # graphs
-        self.PulseHeight = None
-        # self.Pedestal = None
         # histograms
         self.PedestalHisto = None
         self.SignalTime = None
@@ -86,7 +83,7 @@ class PadAnalysis(Analysis):
         self.PeakValues = None
 
     def __del__(self):
-        for obj in [self.PulseHeight, self.Pedestal, self.SignalMapHisto, self.SignalTime, self.PeakValues, self.MeanSignalHisto]:
+        for obj in [self.Pedestal, self.SignalMapHisto, self.SignalTime, self.PeakValues, self.MeanSignalHisto]:
             self.del_rootobj(obj)
         for c in gROOT.GetListOfCanvases():
             c.Close()
@@ -679,7 +676,7 @@ class PadAnalysis(Analysis):
     # ==========================================================================
     # region SIGNAL/PEDESTAL
     def print_off_results(self, prnt=True):
-        ph, ped, pul = self.draw_pulse_height(show=False)[1], self.Pedestal.draw_disto_fit(save=False), self.Pulser.draw_distribution_fit(save=False)
+        ph, ped, pul = self.draw_pulse_height(show=False)[1], self.Pedestal.draw_disto_fit(save=False), self.Pulser.draw_distribution_fit(show=False)
         string = '{0:3.2f} {1:3.2f} {2:3.2f}'.format(ph.Parameter(0), ped.Parameter(1), pul.Parameter(1))
         if prnt:
             print 'Signal\tPedest.\tPulser'
@@ -774,7 +771,7 @@ class PadAnalysis(Analysis):
 
     def show_ph_overview(self, binning=None):
         self.draw_pulse_height(binning=binning, show=False)
-        h1 = self.PulseHeight
+        h1 = self.draw_pulse_height(show=False)
         self.format_histo(h1, y_off=1.4)
         h2 = self.draw_ph_distribution(binning=binning, show=False)
         print h1, h2
@@ -788,14 +785,14 @@ class PadAnalysis(Analysis):
         self.histos.append([h2, c])
 
     def draw_signal_distribution(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None, binning=1, events=None,
-                                 start=None, x_range=None, redo=False, stats=True):
+                                 start=None, x_range=None, redo=False, stats=True, prnt=True):
         cut = self.AllCuts if cut is None else TCut(cut)
         suffix = '{b}_{c}_{cut}'.format(b=binning, c=int(evnt_corr), cut=cut.GetName())
         pickle_path = self.make_pickle_path('PulseHeight', 'Histo', run=self.RunNumber, ch=self.DiamondNumber, suf=suffix)
         x_range = [-50, 300] if x_range is None else x_range
 
         def func():
-            self.log_info('Drawing signal distribution for run {run} and {dia}...'.format(run=self.RunNumber, dia=self.DiamondName))
+            self.log_info('Drawing signal distribution for run {run} and {dia}...'.format(run=self.RunNumber, dia=self.DiamondName), prnt=prnt)
             set_root_output(False)
             h1 = TH1F('h_sd', 'Pulse Height {s}'.format(s='with Pedestal Correction' if evnt_corr else ''), int((x_range[1] - x_range[0]) * binning), *x_range)
             sig_name = self.generate_signal_name(sig, evnt_corr, off_corr, False, cut)
@@ -808,7 +805,7 @@ class PadAnalysis(Analysis):
         set_statbox(only_entries=True) if stats else do_nothing()
         h = func() if redo else None
         h = do_pickle(pickle_path, func, h)
-        self.save_histo(h, 'SignalDistribution', lm=.15, show=show)
+        self.save_histo(h, 'SignalDistribution', lm=.15, show=show, prnt=prnt, save=cut)
         return h
 
     def draw_signal_vs_peakpos(self, show=True, corr=False):
