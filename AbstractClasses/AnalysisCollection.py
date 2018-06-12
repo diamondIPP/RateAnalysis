@@ -1185,7 +1185,7 @@ class AnalysisCollection(Elementary):
         f = open('PlotsFelix/table_{tc}_{rp}_{dia}.txt'.format(tc=self.TESTCAMPAIGN, rp=self.RunPlan, dia=self.DiamondName), 'w')
         l = '&\t' if latex else ''
         print 'Pulser', 'SignalFlux', 'Signal < 150', 'Signal < 80', 'Full Pulser Spread', 'Single Pulser Spreads'
-        pulser_err = self.calc_all_pulser_errors().values()
+        pulser_err = self.Pulser.calc_all_errors().values()
         p_mean = calc_mean([x[0] for x in pulser_err])
         out = '{0:2.2f}\t{l}{1:2.2f}\t{l}{2:2.2f}\t{l}'.format(min(x[1] / x[0] for x in pulser_err) * 100, max(x[1] / x[0] for x in pulser_err) * 100, p_mean[1] / p_mean[0] * 100, l=l)
         scan_errors = self.draw_all_ph_distributions(show=False).values()
