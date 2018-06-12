@@ -2,7 +2,7 @@
 # IMPORTS
 # ==============================================
 from argparse import ArgumentParser
-from numpy import log, concatenate, zeros
+from numpy import log, concatenate, zeros, sign
 from functools import partial
 
 from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1, TH1F, TH2F, TH2I, TProfile2D, TProfile
@@ -151,7 +151,7 @@ class AnalysisCollection(Elementary):
             self.VoltageScan.draw_all()
         else:
             self.draw_pulse_heights(binning=10000, show=False)
-            self.draw_pulser_info(do_fit=False, show=False)
+            self.Pulser.draw_pulse_heights(do_fit=False, show=False)
             self.draw_pedestals(show=False, save=save)
             self.draw_noise(show=False)
             self.draw_pulser_pedestals(show=False, save=save)
@@ -168,47 +168,56 @@ class AnalysisCollection(Elementary):
         mi, ma, mn = min(vals), max(vals), mean(vals)
         y = [mi, mn + 3 * (mn - mi) if ma - mn > 50 else ma]
         self.format_histo(gr, name='cur', color=899)
-        print y
         return increased_range(y, .3, .2)
 
-    def draw_ph_with_currents(self, show=True):
-        ph = self.draw_pulse_heights(show=False, vs_time=True, show_first_last=False, save_comb=False, binning=10000)
+    def draw_ph_with_currents(self, show=True, scale=1):
+        ph = self.get_pulse_height_graph(vs_time=True, first_last=False, binning=10000, legend=False)
         self.Currents.set_graphs()
         cur = self.Currents.CurrentGraph.Clone()
         cur_range = self.scale_current_gr(cur)
-        scale = ph.GetListOfGraphs()[0].GetY()[0]
-        pul_orginal = self.draw_pulser_info(show=False, do_fit=False, vs_time=True, save_comb=False)
-        fac = scale / pul_orginal.GetY()[0]
-        pul = self.draw_pulser_info(show=False, do_fit=False, vs_time=True, scale=scale, save_comb=False)
-        pul.SetLineColor(859)
-        pul.SetMarkerColor(859)
+        pul = self.Pulser.get_pulse_height_graph(vs_time=True, legend=False)
+        pul_fac = pul.GetListOfGraphs()[0].GetY()[0] if scale else ph.GetListOfGraphs()[0].GetY()[0] / pul.GetListOfGraphs()[0].GetY()[0]
+        ph_fac = ph.GetListOfGraphs()[0].GetY()[0] if scale else sign(self.Bias)
+        scale_multigraph(pul, ph.GetListOfGraphs()[0].GetY()[0] if scale is None else scale)
+        scale_multigraph(ph, scale)
 
+        # legends
         entries = [2, 3, 1]
-        positions = [[.8, .25], [.8, .3], [.8, .2]]
-        legends = [self.make_legend(*positions[i], nentries=entries[i], scale=1.7, x2=0.94) for i in xrange(3)]
-        legends[1].AddEntry(ph.GetListOfGraphs()[2], '{sgn}(signal - ped.) data'.format(sgn='-1 * ' if self.Bias < 0 else ''), 'p')
+        lm = .09
+        positions = [[lm + .02, .95], [lm + .02, .95], [lm + .02, .95]]
+        legends = [self.make_legend(*positions[i], nentries=entries[i], scale=2.5 * (27 / 36. if i == 2 else 1), x2=lm + .22) for i in xrange(3)]
         dummy_gr = self.make_tgrapherrors('g', 'g', width=2)
+        legends[0].AddEntry(pul.GetListOfGraphs()[0], 'scaled pulser data', 'p')
+        legends[0].AddEntry(0, 'factor {sgn}{fac:4.0f}'.format(fac=pul_fac, sgn='-' if self.FirstAnalysis.PulserPolarity < 0 else ''), '')
+        legends[1].AddEntry(ph.GetListOfGraphs()[1], '{sgn:2.0f} * (signal - ped.) data'.format(sgn=ph_fac), 'p')
         legends[1].AddEntry(0, 'flux in kHz/cm^{2}', 'p')
         legends[1].AddEntry(dummy_gr, 'duration', 'l')
-        legends[0].AddEntry(pul, 'scaled pulser data', 'p')
-        legends[0].AddEntry(0, 'factor {sgn}{fac:4.2f}'.format(fac=fac, sgn='-' if self.FirstAnalysis.PulserPolarity < 0 else ''), '')
         legends[2].AddEntry(cur, 'current', 'l')
 
         # Drawing
         set_root_output(show)
-        c = TCanvas('c', 'c', 1500, 1000)
-        margins = [[.075, .05, 0, .1], [.075, .05, 0, 0], [.075, .05, 0.05, 0]]
-        draw_opts = ['pl', '', '']
-        y_tits = ['Pulser Pulse Height [au] ', 'Signal Pulse Height [au] ', 'Current [nA] ']
+        lab_size = .12
+        for l in ph.GetListOfGraphs()[0].GetListOfFunctions():
+            l.SetTextSize(.09)
+            l.SetY(l.GetY() - .01)
+        self.format_histo(ph, draw_first=True, lab_size=lab_size, tit_size=lab_size, y_off=.33)
+        self.format_histo(cur, x_tit='Time [hh:mm]', lab_size=lab_size * 27 / 36., tit_size=lab_size * 27 / 36., y_off=.33 * 36 / 27.)
+        self.format_histo(pul, color=859, draw_first=True, lab_size=lab_size, tit_size=lab_size, y_off=.33)
+        self.format_histo(pul.GetListOfGraphs()[0], color=859)
+        c = self.make_canvas('c_phc', 'c', 1.5, 1, transp=True)
+        draw_opts = ['a', 'a', '']
+        y_tits = ['Pulser ', 'Signal', 'Current [nA] ']
         y_ranges = [increased_range(scale_margins(pul, ph), .3), increased_range(scale_margins(ph, pul), .3), cur_range]
-        divs = [204, 204, None]
-        draw_t_axis = [do_nothing, partial(self.Currents.draw_time_axis, y_ranges[1][0], 't'), partial(self.Currents.draw_time_axis, y_ranges[2][1], 't')]
+        y_ranges = [[.94, 1.06], [.94, 1.06], cur_range] if scale else y_ranges
+        divs = [504, 504, None]
+        ypos = [[1, .73], [.73, .46], [.46, .1]]
+        margins = [[lm, .05, 0, 0], [lm, .05, 0, 0], [lm, .05, 9 / 36., 0]]
+        x_range = increased_range([cur.GetX()[0], cur.GetX()[cur.GetN() - 1]], .1, .1)
 
         for i, gr in enumerate([pul, ph, cur]):
-            pad = self.Currents.draw_tpad('p{}'.format(i), 'p{}'.format(i), pos=[0, (7 - 3 * i) / 10., 1, (10 - 3 * i) / 10.], gridx=True, gridy=True, margins=margins[i])
-            ymin, ymax = y_ranges[i]
-            self.draw_frame(pad, ymin, ymax, y_tits[i], div=divs[i], y_cent=True)
-            draw_t_axis[i]()
+            self.format_histo(gr, y_range=y_ranges[i], y_tit=y_tits[i], center_y=True, ndivy=divs[i], t_ax_off=self.Currents.Time[0])
+            self.Currents.draw_tpad('p{}'.format(i), 'p{}'.format(i), pos=[0, ypos[i][0], 1, ypos[i][1]], gridx=True, gridy=True, margins=margins[i])
+            gr.GetXaxis().SetLimits(*x_range)
             gr.Draw(draw_opts[i])
             legends[i].Draw()
             c.cd()
