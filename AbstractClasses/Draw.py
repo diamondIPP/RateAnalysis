@@ -297,7 +297,7 @@ class Draw:
 
     @staticmethod
     def format_histo(histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=20, color=None, markersize=None, x_off=None, y_off=None, z_off=None, lw=1,
-                     fill_color=None, fill_style=None, stats=True, tit_size=.04, lab_size=.04, l_off_y=None, l_off_x=None, draw_first=False, x_range=None, y_range=None, z_range=None,
+                     fill_color=None, fill_style=None, stats=True, tit_size=None, lab_size=None, l_off_y=None, l_off_x=None, draw_first=False, x_range=None, y_range=None, z_range=None,
                      do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None, tick_size=None, t_ax_off=None, center_y=False, center_x=False, yax_col=None):
         h = histo
         if draw_first:
@@ -334,8 +334,8 @@ class Draw:
             if x_axis:
                 x_axis.SetTitle(x_tit) if x_tit else h.GetXaxis().GetTitle()
                 x_axis.SetTitleOffset(x_off) if x_off is not None else do_nothing()
-                x_axis.SetTitleSize(tit_size)
-                x_axis.SetLabelSize(lab_size)
+                do(x_axis.SetTitleSize, tit_size)
+                do(x_axis.SetLabelSize, lab_size)
                 x_axis.SetRangeUser(x_range[0], x_range[1]) if x_range is not None else do_nothing()
                 x_axis.SetNdivisions(ndivx) if ndivx is not None else do_nothing()
                 do(x_axis.SetLabelOffset, l_off_x)
@@ -345,8 +345,8 @@ class Draw:
             if y_axis:
                 y_axis.SetTitle(y_tit) if y_tit else y_axis.GetTitle()
                 y_axis.SetTitleOffset(y_off) if y_off is not None else do_nothing()
-                y_axis.SetTitleSize(tit_size)
-                y_axis.SetLabelSize(lab_size)
+                do(y_axis.SetTitleSize, tit_size)
+                do(y_axis.SetLabelSize, lab_size)
                 do(y_axis.SetLabelOffset, l_off_y)
                 y_axis.SetRangeUser(y_range[0], y_range[1]) if y_range is not None else do_nothing()
                 do(y_axis.SetNdivisions, ndivy)
@@ -358,8 +358,8 @@ class Draw:
             if z_axis:
                 z_axis.SetTitle(z_tit) if z_tit else h.GetZaxis().GetTitle()
                 z_axis.SetTitleOffset(z_off) if z_off is not None else do_nothing()
-                z_axis.SetTitleSize(tit_size)
-                z_axis.SetLabelSize(lab_size)
+                do(z_axis.SetTitleSize, tit_size)
+                do(z_axis.SetLabelSize, lab_size)
                 z_axis.SetRangeUser(z_range[0], z_range[1]) if z_range is not None else do_nothing()
         except AttributeError or ReferenceError:
             pass
