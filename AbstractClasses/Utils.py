@@ -123,6 +123,9 @@ def scale_multigraph(mg, val=1):
                 gr.SetPointError(i, gr.GetErrorX(i), gr.GetErrorY(i) / y * val)
             except Exception as err:
                 log_warning('Error in scale multigraph: {err}'.format(err=err))
+    for i, l in enumerate(mg.GetListOfGraphs()[0].GetListOfFunctions()):
+        y, ey = g.GetY()[i], g.GetErrorY(i)
+        l.SetY(y - ey - .003)
 
 
 def move_element(odict, thekey, newpos):
