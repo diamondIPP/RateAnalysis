@@ -390,8 +390,7 @@ class Draw:
         gr.SetLineStyle(style)
         return gr
 
-    @staticmethod
-    def make_legend(x1=.65, y2=.88, nentries=2, scale=1, name='l', y1=None, clean=False, margin=.25, x2=None):
+    def make_legend(self, x1=.65, y2=.88, nentries=2, scale=1, name='l', y1=None, clean=False, margin=.25, x2=None):
         x2 = .95 if x2 is None else x2
         y1 = y2 - nentries * .05 * scale if y1 is None else y1
         l = TLegend(x1, y1, x2, y2)
@@ -405,6 +404,7 @@ class Draw:
             l.SetFillColor(0)
             l.SetFillStyle(0)
             l.SetTextAlign(12)
+        self.Objects.append(l)
         return l
 
     def make_canvas(self, name='c', title='c', x=1., y=1., show=True, logx=None, logy=None, logz=None, gridx=None, gridy=None, transp=None):
