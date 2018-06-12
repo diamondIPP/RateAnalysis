@@ -44,7 +44,7 @@ class PulserAnalysis(Elementary):
     def load_type(self):
         return str(self.Ana.RunInfo['pulser']) if 'pulser' in self.Ana.RunInfo else None
 
-    def draw_rate(self, evts_per_bin=1000, cut=None, vs_time=True, rel_t=True, show=True):
+    def draw_rate(self, evts_per_bin=1000, cut=None, vs_time=True, rel_t=True, show=True, prnt=True):
         """ Shows the fraction of pulser events as a function of the event number. Peaks appearing in this graph are most likely beam interruptions. """
         cut = '' if cut is None else TCut(cut)
         set_root_output(False)
@@ -52,23 +52,23 @@ class PulserAnalysis(Elementary):
         self.Tree.Draw('pulser*100:{v}>>hpr'.format(v='time / 1000.' if vs_time else 'Entry$'), cut, 'goff')
         self.format_histo(h, x_tit='Time [hh:mm]' if vs_time else 'Event Number', y_tit='Pulser Fraction [%]', y_off=.8, fill_color=self.FillColor, y_range=[0, 105], markersize=.7, stats=0,
                           t_ax_off=self.Ana.run.StartTime if rel_t else 0)
-        self.save_histo(h, 'PulserRate', show, lm=.08, draw_opt='bare', x_fac=1.5, y_fac=.75)
+        self.save_histo(h, 'PulserRate', show, lm=.08, draw_opt='bare', x_fac=1.5, y_fac=.75, prnt=prnt)
         return h
 
-    def calc_fraction(self, show=False):
+    def calc_fraction(self, show=False, prnt=True):
         """ :returns the fitted value of the fraction of pulser events with event range and beam interruptions cuts and its fit error. """
-        cut = self.Cut.generate_special_cut(included=['beam_interruptions'])
+        cut = self.Cut.generate_special_cut(included=['beam_interruptions'], prnt=prnt)
         set_statbox(only_fit=True, entries=2, x=.9, w=.2)
-        h = self.draw_rate(show=show, cut=cut)
+        h = self.draw_rate(show=show, cut=cut, prnt=prnt)
         self.format_histo(h, 'Fit Result', markersize=None)
         fit = h.Fit('pol0', 'qs')
-        self.log_info('The fraction of pulser events is: {0:5.2f} +- {1:4.2f} %'.format(fit.Parameter(0), fit.ParError(0)))
-        return fit.Parameter(0), fit.ParError(0)
+        self.log_info('The fraction of pulser events is: {0:5.2f} +- {1:4.2f} %'.format(fit.Parameter(0), fit.ParError(0)), prnt=prnt)
+        return FitRes(fit)
 
     def calc_real_fraction(self):
-        in_rate = 40 if self.Ana.run.Flux < 10 else 100
-        diamond_size = .4 * .4
-        particle_rate = self.Ana.run.Flux * diamond_size
+        in_rate = 40 if self.Ana.get_flux()[0] < 10 else 100
+        diamond_size = make_ufloat((.4, .05)) ** 2
+        particle_rate = make_ufloat(self.Ana.get_flux()) * diamond_size
         return in_rate / particle_rate
 
     def draw_pulseheight(self, binning=10000, draw_opt='histe', show=True):
