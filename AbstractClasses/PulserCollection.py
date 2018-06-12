@@ -23,7 +23,7 @@ class PulserCollection(Elementary):
         self.InfoLegend = InfoLegend(ana_collection)
         self.save_dir = self.Analysis.save_dir
 
-    def get_pulse_height_graph(self, sigma=False, vs_time=False, corr=True, beam_on=True, redo=False):
+    def get_pulse_height_graph(self, sigma=False, vs_time=False, corr=True, beam_on=True, redo=False, legend=True):
 
         self.log_info('Getting pulser pulse heights{}'.format(' vs time' if vs_time else ''))
         marker_size = 2
@@ -42,16 +42,17 @@ class PulserCollection(Elementary):
         g = self.make_tgrapherrors('g_pph', 'data', self.get_color(), marker_size=marker_size, x=x_values, y=y_values)
         g_first = self.make_tgrapherrors('g1', 'first run', marker=22, color=2, marker_size=marker_size, x=[x_values[0].n], y=[y_values[0].n])
         g_last = self.make_tgrapherrors('g2', 'last run', marker=23, color=2, marker_size=marker_size, x=[x_values[-1].n], y=[y_values[-1].n])
-        graphs = [g, g_first, g_last]
-        legend = self.make_legend(.17, .35, nentries=3, x2=.4)
+        graphs = [g] if vs_time else [g, g_first, g_last]
+        l = self.make_legend(.17, .35, nentries=3, x2=.4)
         mg = TMultiGraph('mg_pph', 'Pulser Pulse Height vs {mod} - {dia}'.format(mod='Time' if vs_time else 'Flux', dia=self.DiamondName))
         for gr in graphs:
-            legend.AddEntry(gr, gr.GetTitle(), 'l' if gr.GetName() == 'gerr' else 'p')
+            l.AddEntry(gr, gr.GetTitle(), 'l' if gr.GetName() == 'gerr' else 'p')
             mg.Add(gr, 'p')
-        mg.GetListOfFunctions().Add(legend)
+        if legend:
+            mg.GetListOfFunctions().Add(l)
         self.reset_colors()
         if vs_time:
-            g = mg.GetListOfGraphs()[1]
+            g = mg.GetListOfGraphs()[0]
             for i, (ana, x) in enumerate(zip(self.Collection.itervalues(), x_values)):
                 y, ey = g.GetY()[i], g.GetErrorY(i)
                 mg.GetListOfGraphs()[0].GetListOfFunctions().Add(self.draw_tlatex(x.n, y + ey * 1.2, '{:1.0f}'.format(ana.get_flux()[0]), color=1, align=21, size=.02))
@@ -82,20 +83,21 @@ class PulserCollection(Elementary):
             self.ROOTObjects.append(mg1)
         return mg
 
-    def draw_scaled_pulse_heights(self, sigma=False, vs_time=False, show=True, redo=False, y_range=None):
+    def draw_scaled_pulse_heights(self, sigma=False, vs_time=False, redo=False, y_range=None, scale=1, show=True):
 
         mode = 'Time' if vs_time else 'Flux'
         pickle_path = self.make_pickle_path('Pulser', 'PulseHeights', self.RunPlan, self.DiamondName, '{}_{}'.format(mode, sigma))
         f = partial(self.get_pulse_height_graph, sigma, vs_time, redo=redo)
         mg = do_pickle(pickle_path, f, redo=redo)
-        scale_multigraph(mg)
+        scale_multigraph(mg, scale)
         xtit = 'Time [hh:mm]' if vs_time else 'Flux [kHz/cm^{2}]'
-        y_range = [.95, 1.05] if y_range is None else y_range
+        y_range = [.95, 1.05] if y_range is None and scale == 1 else y_range
         self.format_histo(mg, x_tit=xtit, y_tit='Scaled Pulser Pulse Height', y_off=1.75, x_off=1.3, draw_first=True, t_ax_off=0 if vs_time else None, y_range=y_range, ndivx=503, center_y=1)
         mg.GetXaxis().SetLimits(1, 40000) if not vs_time else do_nothing()
         move_legend(mg.GetListOfFunctions()[0], .16, .20)
         self.save_histo(mg, 'ScaledPulseHeights', show, lm=.14, draw_opt='a', logx=not vs_time, grid=vs_time, gridy=True, bm=.18)
         self.draw_irradiation(make_irr_string(self.Analysis.selection.get_irradiation()))
+        return mg
 
     def draw_legend(self):
         try:
