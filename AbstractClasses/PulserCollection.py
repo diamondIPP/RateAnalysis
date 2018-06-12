@@ -4,7 +4,7 @@
 # created by Michael Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from ROOT import TMultiGraph
+from ROOT import TMultiGraph, TH1F
 from Elementary import Elementary
 from InfoLegend import InfoLegend
 from Utils import *
@@ -61,7 +61,7 @@ class PulserCollection(Elementary):
     def draw_pulse_heights(self, sigma=False, corr=True, beam_on=True, vs_time=False, do_fit=False, save_comb=True, show=True, redo=False):
 
         mode = 'Time' if vs_time else 'Flux'
-        pickle_path = self.make_pickle_path('Pulser', 'PulseHeights', self.RunPlan, self.DiamondName, '{}_{}'.format(mode, sigma))
+        pickle_path = self.make_pickle_path('Pulser', 'PulseHeights', self.RunPlan, self.DiamondName, '{}_{}_{}{}'.format(mode, sigma, corr, beam_on))
 
         f = partial(self.get_pulse_height_graph, sigma=sigma, vs_time=vs_time, corr=corr, beam_on=beam_on, redo=redo)
         mg = do_pickle(pickle_path, f, redo=redo)
@@ -118,3 +118,80 @@ class PulserCollection(Elementary):
             self.ROOTObjects.append(l1)
         except KeyError:
             pass
+
+    def draw_distributions(self, show=True, corr=True):
+
+        set_root_output(show)
+        legend = self.make_legend(nentries=self.Analysis.NRuns)
+        c = self.make_canvas('c_ph', 'Pulser Histos', 1, 1)
+        c.SetRightMargin(.03)
+        for i, ana in enumerate(self.Collection.itervalues()):
+            h = ana.Pulser.draw_distribution(show=False, corr=corr, prnt=False, binning=5)
+            c.cd()
+            h.SetTitle('Pulser Distributions {0}Corrected'.format('Pedestal' if corr else 'Un'))
+            x_range = increased_range([h.GetBinCenter(h.FindFirstBinAbove(2) * 10 / 10 - 20), h.GetBinCenter(h.FindLastBinAbove(2) * 10 / 10 + 10)], 0, .3)
+            self.format_histo(h, fill_color=0, stats=0, x_range=x_range, color=self.get_color(), lw=2)
+            h.Scale(1 / h.GetMaximum())
+            h.SetLineColor(self.get_color())
+            h.SetLineWidth(2)
+            h.Draw() if not i else h.Draw('same')
+            legend.AddEntry(h, '{0:6.2f} kHz/cm^{{2}}'.format(ana.get_flux()[0]), 'l')
+            self.ROOTObjects.append(h)
+        legend.Draw()
+        self.save_plots('AllPulserHistos{0}'.format('Uncorrected' if not corr else ''))
+        self.reset_colors()
+
+    def draw_all_pulse_heights(self, sigma=False):
+        graphs = [self.get_pulse_height_graph(sigma=sigma, corr=bool(x), beam_on=bool(y)) for x, y in zip([1, 1, 0, 0], [1, 0, 1, 0])]
+        y_range = increased_range(find_graph_margins(graphs), .1, .1)
+        c = self.make_canvas('c_apph', 'Pulser Info', 1, 1)
+        c.Divide(2, 2)
+        for i, gr in enumerate(graphs, 1):
+            pad = c.cd(i)
+            self.format_histo(gr, y_off=1.3, draw_first=True, y_range=y_range)
+            gr.GetXaxis().SetLimits(1, 40000)
+            pad.SetLogx()
+            pad.SetBottomMargin(.15)
+            gr.Draw('a')
+        self.ROOTObjects.append([graphs, c])
+        self.save_plots('AllPulserOverview{0}'.format('Sigma' if sigma else 'Mean'))
+
+    def draw_rate(self, evts_per_bin=1000, cut=None, rel_t=True, show=True):
+        histos = [ana.Pulser.draw_rate(evts_per_bin, show=False, cut=cut, vs_time=True) for ana in self.Collection.itervalues()]
+        h1 = TH1F('hpra', 'Pulser Rate for Run Plan {n}'.format(n=self.RunPlan), *self.Analysis.get_binning(evts_per_bin, t_bins=True))
+        i_bin = 0
+        for h in histos:
+            for i in xrange(1, h.GetNbinsX() + 1):
+                h1.SetBinContent(i_bin + 1, h.GetBinContent(i))
+                h1.SetBinError(i_bin + 1, h.GetBinError(i))
+                i_bin += 1
+            i_bin += 1
+        self.format_histo(h1, x_tit='Time [hh:mm]', y_tit='Pulser Rate [%]', y_off=.8, fill_color=self.FillColor, stats=0, y_range=[0, 105])
+        set_time_axis(h1, off=self.Analysis.FirstAnalysis.run.StartTime if rel_t else 0)
+        self.save_histo(h1, 'AllPulserRate', show=show, draw_opt='hist', x_fac=1.5, y_fac=.75, lm=.065)
+
+    def draw_rates(self, show=True, vs_time=False, real=False):
+        mode = self.Analysis.get_mode(vs_time)
+        x_values, y_values = [], []
+        self.start_pbar(self.Analysis.NRuns)
+        for i, ana in enumerate(self.Collection.itervalues(), 1):
+            x_values += [make_ufloat(ana.run.get_time() if vs_time else ana.get_flux())]
+            y_values += [ana.Pulser.calc_real_fraction() if real else make_ufloat(ana.Pulser.calc_fraction(prnt=False))]
+            self.ProgressBar.update(i)
+        g = self.make_tgrapherrors('g_pr', 'Pulser Fraction vs {mod} '.format(mod=mode), x=x_values, y=y_values, color=self.colors[0], marker_size=2)
+        self.format_histo(g, x_tit=self.Analysis.make_x_tit(vs_time), y_tit='Pulser Fraction [%]')
+        self.save_histo(g, 'PulserFraction{0}'.format(mode), show, logx=not vs_time, draw_opt='ap')
+        return g
+
+    def calc_error(self, fs11, fsh13):
+        runs = self.Analysis.get_runs_by_collimator(fs11=fs11, fsh13=fsh13)
+        pulse_heights = [make_ufloat(self.Collection[run].Pulser.draw_distribution_fit(show=False), par=1) for run in runs]
+        return mean_sigma(pulse_heights)
+
+    def calc_all_errors(self):
+        collimator_settings = set([(ana.run.RunInfo['fs11'], ana.run.RunInfo['fs13']) for key, ana in self.Collection.iteritems()])
+        fits = {}
+        for s in collimator_settings:
+            retval = self.calc_error(fs11=s[0], fsh13=s[1])
+            fits[s] = retval
+        return fits
