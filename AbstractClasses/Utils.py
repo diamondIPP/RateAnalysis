@@ -5,7 +5,7 @@
 
 from datetime import datetime, timedelta
 from termcolor import colored
-from ROOT import gStyle, gROOT, TF1, TColor, TFile
+from ROOT import gStyle, gROOT, TF1, TColor, TFile, TMath
 from numpy import sqrt, array, average, mean, arange, log10
 from os import makedirs, _exit
 from os import path as pth
@@ -17,6 +17,7 @@ from threading import Thread
 from multiprocessing import Pool
 from uncertainties import ufloat
 from uncertainties.core import Variable
+from copy import deepcopy
 
 
 # ==============================================
@@ -245,6 +246,8 @@ def calc_weighted_mean(means, sigmas):
 
 def mean_sigma(values, weights=None):
     """ Return the weighted average and standard deviation. values, weights -- Numpy ndarrays with the same shape. """
+    if len(values) == 1:
+        return make_ufloat(values[0])
     weights = [1] * len(values) if weights is None else weights
     if type(values[0]) is Variable:
         weights = [1 / v.s for v in values]
@@ -533,9 +536,19 @@ def log_bins(n_bins, min_val, max_val):
 
 
 def make_ufloat(tup, par=0):
+    if type(tup) is Variable:
+        return tup
     if isinstance(tup, FitRes):
         return ufloat(tup.Parameter(par), tup.ParError(par))
     return ufloat(tup[0], tup[1])
+
+
+def find_graph_margins(graphs):
+    graphs = deepcopy(graphs)
+    for i, g in enumerate(graphs):
+        if g.Class().GetName().startswith('TMulti'):
+            graphs[i] = g.GetListOfGraphs()[0]
+    return min([min(gr.GetY()[i] for i in xrange(gr.GetN()) if gr.GetY()[i] >= 0.01) for gr in graphs]), max([TMath.MaxElement(gr.GetN(), gr.GetY()) for gr in graphs])
 
 
 def load_root_files(sel, load=True):

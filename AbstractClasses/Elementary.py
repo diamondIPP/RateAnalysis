@@ -1,6 +1,5 @@
 from ConfigParser import ConfigParser
-from ROOT import gROOT, TSpectrum, TF1, TMath, TCanvas
-from copy import deepcopy
+from ROOT import gROOT, TSpectrum, TF1, TCanvas
 from glob import glob
 from json import loads
 from numpy import inf
@@ -293,11 +292,6 @@ class Elementary(Draw):
         instance_factory = type('instance_factory', (instance.__class__, ), {})
         instance_factory.__init__ = lambda self, *args, **kwargs: self.__dict__.update(copy)
         return instance_factory
-
-    @staticmethod
-    def find_graph_margins(graphs):
-        extrema = [max([TMath.MaxElement(gr.GetN(), gr.GetY()) for gr in graphs]), min([TMath.MinElement(gr.GetN(), gr.GetY()) for gr in graphs])]
-        return [extrema[1] - (extrema[0] - extrema[1]) * .1, extrema[0] + (extrema[0] - extrema[1]) * .1]
 
     def save_combined_pulse_heights(self, mg, mg1, mg_y, show=True, name=None, pulser_leg=None,
                                     x_range=None, y_range=None, rel_y_range=None, draw_objects=None):
