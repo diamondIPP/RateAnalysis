@@ -298,7 +298,7 @@ class AnalysisCollection(Elementary):
             h.Draw('histy+')
         self.save_plots('FullPulseHeight')
 
-    def get_pulse_height_graph(self, binning=10000, vs_time=False, first_last=True, redo=False):
+    def get_pulse_height_graph(self, binning=10000, vs_time=False, first_last=True, redo=False, legend=True):
 
         self.log_info('Getting pulse heights{0}'.format(' vs time' if vs_time else ''))
         marker_size = 2
@@ -318,12 +318,13 @@ class AnalysisCollection(Elementary):
         g_last = self.make_tgrapherrors('g2', 'last run', marker=23, color=2, marker_size=marker_size, x=[x_values[-1].n], y=[y_values[-1].n])
         graphs = [g_errors, g]
         graphs += [g_first, g_last] if first_last else []
-        legend = self.make_legend(.65, .35, nentries=len(graphs))
+        l = self.make_legend(.65, .35, nentries=len(graphs))
         mg = TMultiGraph('mg_ph', 'Pulse Height vs {mod} - {dia}'.format(mod='Time' if vs_time else 'Flux', dia=self.DiamondName))
         for gr in graphs:
-            legend.AddEntry(gr, gr.GetTitle(), 'l' if gr.GetName() == 'gerr' else 'p')
+            l.AddEntry(gr, gr.GetTitle(), 'l' if gr.GetName() == 'gerr' else 'p')
             mg.Add(gr, 'p')
-        mg.GetListOfFunctions().Add(legend)
+        if legend:
+            mg.GetListOfFunctions().Add(l)
         self.reset_colors()
         if vs_time:
             g = mg.GetListOfGraphs()[1]
