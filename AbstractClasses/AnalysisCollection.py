@@ -175,7 +175,7 @@ class AnalysisCollection(Elementary):
         self.Currents.set_graphs()
         cur = self.Currents.CurrentGraph.Clone()
         cur_range = self.scale_current_gr(cur)
-        pul = self.Pulser.get_pulse_height_graph(vs_time=True, legend=False)
+        pul = self.Pulser.get_pulse_height_graph(vs_time=True, legend=False, show_flux=False)
         pul_fac = pul.GetListOfGraphs()[0].GetY()[0] if scale else ph.GetListOfGraphs()[0].GetY()[0] / pul.GetListOfGraphs()[0].GetY()[0]
         ph_fac = ph.GetListOfGraphs()[0].GetY()[0] if scale else sign(self.Bias)
         scale_multigraph(pul, ph.GetListOfGraphs()[0].GetY()[0] if scale is None else scale)
@@ -215,7 +215,7 @@ class AnalysisCollection(Elementary):
         x_range = increased_range([cur.GetX()[0], cur.GetX()[cur.GetN() - 1]], .1, .1)
 
         for i, gr in enumerate([pul, ph, cur]):
-            self.format_histo(gr, y_range=y_ranges[i], y_tit=y_tits[i], center_y=True, ndivy=divs[i], t_ax_off=self.Currents.Time[0])
+            self.format_histo(gr, title='', y_range=y_ranges[i], y_tit=y_tits[i], center_y=True, ndivy=divs[i], t_ax_off=self.Currents.Time[0])
             self.Currents.draw_tpad('p{}'.format(i), 'p{}'.format(i), pos=[0, ypos[i][0], 1, ypos[i][1]], gridx=True, gridy=True, margins=margins[i])
             gr.GetXaxis().SetLimits(*x_range)
             gr.Draw(draw_opts[i])

@@ -296,7 +296,7 @@ class Draw:
     # endregion
 
     @staticmethod
-    def format_histo(histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=20, color=None, markersize=None, x_off=None, y_off=None, z_off=None, lw=1,
+    def format_histo(histo, name=None, title=None, x_tit='', y_tit='', z_tit='', marker=20, color=None, markersize=None, x_off=None, y_off=None, z_off=None, lw=1,
                      fill_color=None, fill_style=None, stats=True, tit_size=None, lab_size=None, l_off_y=None, l_off_x=None, draw_first=False, x_range=None, y_range=None, z_range=None,
                      do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None, tick_size=None, t_ax_off=None, center_y=False, center_x=False, yax_col=None):
         h = histo
@@ -304,8 +304,8 @@ class Draw:
             set_root_output(False)
             h.Draw('a')
             set_root_output(True)
-        h.SetTitle(title) if title else h.SetTitle(h.GetTitle())
-        h.SetName(name) if name else h.SetName(h.GetName())
+        do(h.SetTitle, title)
+        do(h.SetName, name)
         try:
             h.SetStats(stats)
         except AttributeError or ReferenceError:

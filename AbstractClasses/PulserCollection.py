@@ -23,7 +23,7 @@ class PulserCollection(Elementary):
         self.InfoLegend = InfoLegend(ana_collection)
         self.save_dir = self.Analysis.save_dir
 
-    def get_pulse_height_graph(self, sigma=False, vs_time=False, corr=True, beam_on=True, redo=False, legend=True):
+    def get_pulse_height_graph(self, sigma=False, vs_time=False, corr=True, beam_on=True, redo=False, legend=True, show_flux=True):
 
         self.log_info('Getting pulser pulse heights{}'.format(' vs time' if vs_time else ''))
         marker_size = 2
@@ -51,7 +51,7 @@ class PulserCollection(Elementary):
         if legend:
             mg.GetListOfFunctions().Add(l)
         self.reset_colors()
-        if vs_time:
+        if vs_time and show_flux:
             g = mg.GetListOfGraphs()[0]
             for i, (ana, x) in enumerate(zip(self.Collection.itervalues(), x_values)):
                 y, ey = g.GetY()[i], g.GetErrorY(i)
