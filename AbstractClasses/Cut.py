@@ -453,7 +453,7 @@ class Cut(Elementary):
         n_events = self.analysis.run.n_entries
         cut_events = 0
         for i, (key, cut) in enumerate(self.generate_consecutive_cuts().iteritems()):
-            events = int(self.analysis.tree.Draw('1', '!({0})'.format(cut), 'goff'))
+            events = n_events - int(self.analysis.tree.Draw('1', cut, 'goff'))
             print key.rjust(18), '{0:5d} {1:04.1f}%'.format(events - cut_events, (1. - float(events) / n_events) * 100.)
             contr[key.title().replace('_', ' ')] = (events - cut_events, self.get_color())
             cut_events = events
