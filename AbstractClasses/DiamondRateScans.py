@@ -202,6 +202,10 @@ class DiaScans(Elementary):
             graphs.append(g)
         return graphs
 
+    def get_deviations(self):
+        for g, sel in zip(self.get_pulse_height_graphs(), self.RunSelections):
+            print sel.TCString, sel.SelectedRunplan, mean_sigma([make_ufloat([g.GetY()[i], g.GetErrorY(i)]) for i in xrange(g.GetN())])
+
     # endregion
 
     # ==========================================================================
@@ -585,7 +589,7 @@ class DiaScans(Elementary):
         tits = self.get_titles(irr)
         biases = [make_bias_str(bias) for bias in self.get_bias_voltages()] if add_bias else [''] * len(tits)
         x1 = 1 - max([(12 if irr else len(tit)) + len(bias) for tit, bias in zip(tits, biases)]) * .022
-        legend = self.make_legend(x1, 1, x2=1 - rm, nentries=1, scale=6)
+        legend = self.make_legend(x1, 1, x2=1 - rm, nentries=.8, scale=6)
         legend.AddEntry(gr, tits[ind], 'pe')
         if add_bias:
             legend.SetNColumns(2)
