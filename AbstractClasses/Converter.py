@@ -58,7 +58,7 @@ class Converter:
         self.TrackingDir = '{soft}/{d}'.format(soft=self.SoftwareDir, d=self.SoftConfig.get('Converter', 'trackingfolder'))
 
         # files paths
-        self.converter_config_path = self.SoftConfig.get('Converter', 'converterFile')
+        self.ConverterConfigFile = self.SoftConfig.get('Converter', 'converterFile')
         self.run_info_path = run.load_run_info_path()
         # prefixes
         self.raw_prefix = self.load_prefix()
@@ -131,14 +131,14 @@ class Converter:
         return conf
 
     def get_config(self):
-        config = OrderedDict()
+        config = {}
         options = self.RunParser.options('ROOTFILE_GENERATION')
         for opt in options:
             if any(opt.endswith(ending) for ending in ['_range', '_region', '_range_drs4']):
                 config[opt] = json.loads(self.RunParser.get('ROOTFILE_GENERATION', opt))
             elif opt not in ['excluded_runs']:
                 config[opt] = self.RunParser.getint('ROOTFILE_GENERATION', opt)
-        return config
+        return OrderedDict(sorted(config.iteritems()))
 
     def get_run_info(self, run_number):
         try:
@@ -157,7 +157,7 @@ class Converter:
         return run_infos
 
     def find_raw_file(self, run_number):
-        file_path = self.RawFileDir + '/{pref}{run}.raw'.format(pref=self.raw_prefix, run=str(run_number).zfill(4))
+        file_path = join(self.RawFileDir, '{pref}{run}.raw'.format(pref=self.raw_prefix, run=str(run_number).zfill(4)))
         if file_exists(file_path):
             return file_path
         else:
@@ -215,13 +215,14 @@ class Converter:
             # go to root directory
             chdir(self.RootFileDir)
             # prepare converter command
-            conf_string = '-c {eudaq}/conf/{file}'.format(eudaq=self.EudaqDir, file=self.converter_config_path)
+            conf_string = '-c {eudaq}/conf/{file}'.format(eudaq=self.EudaqDir, file=self.ConverterConfigFile)
             tree_string = '-t {tree}'.format(tree=self.ConverterTree)
             converter_cmd = '{eudaq}/bin/Converter.exe {tree} {conf} {raw}'.format(eudaq=self.EudaqDir, raw=raw_file_path, tree=tree_string, conf=conf_string)
-            self.__set_converter_configfile(run_infos)
+            self.set_converter_configfile(run_infos)
             print_banner('START CONVERTING RAW FILE FOR RUN {0}'.format(run_number))
             print converter_cmd
             system(converter_cmd)
+            sleep(1)
             while getsize(self.get_root_file_path()) < 500:
                 remove(self.get_root_file_path())
                 system(converter_cmd)
@@ -282,32 +283,36 @@ class Converter:
                 pols.append(0)
         return str(pols)
 
-    def __set_converter_configfile(self, run_infos):
+    def set_converter_configfile(self, run_infos):
+
         parser = ConfigParser()
-        conf_file = '{eudaq}/conf/{file}'.format(eudaq=self.EudaqDir, file=self.converter_config_path)
-        print conf_file
-        parser.read(conf_file)
-        converter_section = 'Converter.{0}'.format(self.ConverterTree)
+        config_file = join(self.EudaqDir, 'conf', self.ConverterConfigFile)
+        parser.read(config_file)
+        section = 'Converter.{}'.format(self.ConverterTree)
         if self.Type == 'pad':
-            parser.set(converter_section, 'polarities', self.load_polarities(run_infos))
-            parser.set(converter_section, 'pulser_polarities', self.load_polarities(run_infos))
+            parser.set(section, 'polarities', self.load_polarities(run_infos))
+            parser.set(section, 'pulser_polarities', self.load_polarities(run_infos))
 
         # remove unset ranges and regions
         new_options = self.RunParser.options('ROOTFILE_GENERATION')
-        for opt in parser.options(converter_section):
+        for opt in parser.options(section):
             if (opt.endswith('_range') or opt.endswith('_region')) and opt not in new_options:
-                parser.remove_option(converter_section, opt)
+                parser.remove_option(section, opt)
         # set the new settings
         for key, value in self.config.iteritems():
-            parser.set(converter_section, key, value)
+            parser.set(section, key, value)
 
         # write changes
-        f = open(conf_file, 'w')
+        f = open(config_file, 'w')
         parser.write(f)
         f.close()
 
-        # remove whitespaces and correct for lower mistakes
-        f = open(conf_file, 'r+')
+        self.format_converter_configfile()
+
+    def format_converter_configfile(self):
+        """ remove whitespaces, correct for capitalisation and sort options"""
+
+        f = open(join(self.EudaqDir, 'conf', self.ConverterConfigFile), 'r+')
         content = f.readlines()
         for i, line in enumerate(content):
             line = line.replace('peaki', 'PeakI')
@@ -315,8 +320,16 @@ class Converter:
             if len(line) > 3 and line[-2] == ',':
                 line = line[:-2] + '\n'
             content[i] = line
+
+        section_indices = [i for i, line in enumerate(content) if line.startswith('[')] + [1000]
+        sorted_content = []
+        for i in xrange(len(section_indices) - 1):
+            sorted_content.append(content[section_indices[i]])
+            sorted_content += sorted(content[section_indices[i]+1:section_indices[i+1]])[1:]
+            sorted_content.append('\n')
+
         f.seek(0)
-        f.writelines(content)
+        f.writelines(sorted_content)
         f.truncate()
         f.close()
 

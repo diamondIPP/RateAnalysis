@@ -2,18 +2,15 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from json import load
-import re
+from json import load, loads
 from ConfigParser import ConfigParser, NoOptionError
 from ROOT import TFile
 from argparse import ArgumentParser
-from collections import OrderedDict
-from datetime import datetime
-from numpy import mean
+from StringIO import StringIO
 
 from Converter import Converter
 from Elementary import Elementary
-from Utils import isfloat, join, log_warning, log_critical, remove_letters, get_time_vec, timedelta, has_bit, time_stamp
+from Utils import *
 
 
 # ==============================================
@@ -27,7 +24,7 @@ class Run(Elementary):
     operationmode = ''
     TrackingPadAnalysis = {}
 
-    def __init__(self, run_number=None, test_campaign=None, tree=None, time=None, verbose=False):
+    def __init__(self, run_number=None, test_campaign=None, tree=None, t_vec=None, verbose=False):
         """
         :param run_number: number of the run
         :param verbose:
@@ -64,10 +61,11 @@ class Run(Elementary):
         self.Duration = self.LogEnd - self.LogStart
         self.LogHalfTime = time_stamp(self.LogStart + self.Duration / 2)
 
-        self.converter = None
+        print self.run_config_parser.sections()
+        self.converter = Converter(self)
         if self.set_run(run_number, tree):
             # tree info
-            self.time = get_time_vec(self.tree) if time is None else time
+            self.time = get_time_vec(self.tree) if t_vec is None else t_vec
             self.startEvent = 0
             self.n_entries = int(self.tree.GetEntries())
             self.endEvent = self.n_entries - 1
@@ -80,14 +78,12 @@ class Run(Elementary):
 
             # region info
             if self.DUTType == 'pad':
-                self.region_information = self.load_regions()
-                self.NChannels = self.load_n_channels()
-                self.Channels = self.load_channels()
-                self.pedestal_regions = self.get_regions('pedestal')
-                self.signal_regions = self.get_regions('signal')
-                self.PulserRegion = self.get_regions('pulser')['pulser']
-                self.peak_integrals = self.get_peak_integrals()
+                self.TreeConfig = self.load_tree_config()
                 self.DigitizerChannels = self.load_digitizer_channels()
+                self.NChannels = len(self.DigitizerChannels)
+                self.Channels = self.load_channels()
+                self.IntegralRegions = self.load_regions()
+                self.PeakIntegrals = self.load_peak_integrals()
                 self.TCal = self.load_tcal()
 
         # extract run info
@@ -101,11 +97,8 @@ class Run(Elementary):
     # ==============================================
     # region LOAD FUNCTIONS
 
-    def load_n_channels(self):
-        for i, line in enumerate(self.region_information):
-            if 'Sensor Names' in line:
-                data = self.region_information[i + 1].strip(' ').split(',')
-                return len(data)
+    def load_digitizer_channels(self):
+        return loads(self.TreeConfig.get('Sensor Names', 'Names'))
 
     def load_pre_n_channels(self):
         if self.DUTType == 'pad':
@@ -119,11 +112,10 @@ class Run(Elementary):
 
     def load_channels(self):
         if self.DUTType == 'pad':
+            if hasattr(self, 'TreeConfig'):
+                return [i for i, val in enumerate(self.TreeConfig.get('General', 'active regions').split()) if int(val)]
+            # read it from the current config file if there is no tree loaded
             binary = self.run_config_parser.getint('ROOTFILE_GENERATION', 'active_regions')
-            if hasattr(self, 'region_information'):
-                for i, line in enumerate(self.region_information):
-                    if 'active_regions:' in line:
-                        binary = int(line.strip('active_regions:'))
             return [i for i in xrange(self.NChannels) if has_bit(binary, i)]
         elif self.DUTType == 'pixel':
             return [i for i in xrange(len([key for key in self.RunInfo.iterkeys() if key.startswith('dia') and key[-1].isdigit()]))]
@@ -134,9 +126,54 @@ class Run(Elementary):
             log_critical("The DUT type {0} has to be either 'pixel' or 'pad'".format(dut_type))
         return dut_type
 
-    def load_regions(self):
+    def load_tree_config(self):
         macro = self.RootFile.Get('region_information')
-        return [str(line) for line in macro.GetListOfLines()]
+        info = '\n'.join(str(word) for word in macro.GetListOfLines())
+        config = ConfigParser()
+        if not info.startswith('['):
+            info = []
+            for word in macro.GetListOfLines():
+                word = str(word).strip('\n *:')
+                if word.startswith('active'):
+                    info.append('[General]')
+                    data = word.replace('_', ' ').split(':')
+                    word = '{0} = {1}'.format(data[0], bin(int(data[1])))
+                elif word.startswith('Signal') or word.startswith('Sensor'):
+                    word = '[{}]'.format(word)
+                elif word.startswith('tcal'):
+                    info.append('[Time Calibration]')
+                    word = word.replace('tcal', 'tcal =')
+                elif word and word[-1].isdigit():
+                    data = word.split(':')
+                    word = '{0} = {1}'.format(data[0], str([int(num) for num in data[1].split('-')]))
+                elif 'pulser' in word.lower():
+                    word = 'Names = {}'.format(["{}".format(string) for string in word.split(',')])
+                info.append(word)
+            info = '\n'.join(info)
+        config.readfp(StringIO(info))
+        return config
+
+    def load_ranges(self, section):
+        ranges = []
+        for i, channel in enumerate(self.Channels):
+            ranges.append(OrderedDict())
+            for option in self.TreeConfig.options('{} {}'.format(section, channel)):
+                ranges[i][option.replace('peakin', 'PeakIn')] = loads(self.TreeConfig.get('{} {}'.format(section, channel), option))
+        return ranges
+
+    def load_regions(self):
+        regions = self.load_ranges('Integral Regions')
+        return regions
+
+    def load_peak_integrals(self):
+        integrals = self.load_ranges('Integral Ranges')
+        return integrals
+
+    def load_tcal(self):
+        tcal = loads(self.TreeConfig.get('Time Calibration', 'tcal'))
+        if len(tcal) < 1024:
+            tcal.append(2 * tcal[-1] - tcal[-2])
+        return tcal[:1024]
 
     def load_default_info(self):
         f = open(join(self.Dir, 'Runinfos', 'defaultInfo.json'), 'r')
@@ -351,51 +388,12 @@ class Run(Elementary):
     def get_flux(self):
         return self.Flux if self.Flux else self.RunInfo['aimed flux']
 
-    def get_regions(self, string):
-        ranges = OrderedDict()
-        for line in self.region_information:
-            line = str(line)
-            if line.startswith(string):
-                data = re.split('[_:-]', line)
-                data = [data[i].strip(' ') for i in range(len(data))]
-                try:
-                    ranges[data[1]] = [int(data[2]), int(data[3])]
-                except IndexError:
-                    ranges[data[0]] = [int(data[i]) for i in [1, 2]]
-        return ranges
-
-    def load_digitizer_channels(self):
-        for i, line in enumerate(self.region_information):
-            if 'Sensor Names' in line:
-                data = self.region_information[i + 1].strip(' ').split(',')
-                return data
-
-    def load_tcal(self):
-        for i, line in enumerate(self.region_information):
-            if 'tcal' in line:
-                tcal = [float(i) for i in line.strip('tcal []').split(',') if isfloat(i)][:1024]
-                if len(tcal) < 1024:
-                    tcal.append(2 * tcal[-1] - tcal[-2])
-                return tcal
-
     def get_calibrated_times(self, trigger_cell):
         t = [self.TCal[int(trigger_cell)]]
         n_samples = len(self.TCal)
         for i in xrange(1, n_samples):
             t.append(self.TCal[(int(trigger_cell) + i) % n_samples] + t[-1])
         return t
-
-    def get_peak_integrals(self):
-        integrals = OrderedDict()
-        for line in self.region_information:
-            line = str(line)
-            if str(line).lower().startswith('* peakintegral'):
-                data = re.split('[_:-]', line)
-                if data[0][-1].isdigit():
-                    integrals[remove_letters(data[0])] = [int(float(data[i])) for i in [1, 2]]
-                else:
-                    integrals[data[1]] = [int(float(data[i])) for i in [2, 3]]
-        return integrals
 
     def get_diamond_name(self, channel):
         return self.DiamondNames[channel]
@@ -435,18 +433,21 @@ class Run(Elementary):
         if seconds > self.TotalTime or seconds == -1:
             return self.n_entries
         last_time = 0
-        for i, time in enumerate(self.time):
-            if time / 1000. >= seconds + self.StartTime >= last_time:
+        for i, t in enumerate(self.time):
+            if t / 1000. >= seconds + self.StartTime >= last_time:
                 return i
-            last_time = time / 1000.
+            last_time = t / 1000.
 
     # endregion
 
     # ==============================================
     # region SHOW RUN INFO
-    def show_regions(self):
-        for line in self.region_information:
-            print line
+    def show_tree_config(self):
+        macro = self.RootFile.Get('region_information')
+        for line in macro.GetListOfLines():
+            line = str(line)
+            if not (line.startswith('[Time') or line.startswith('tcal')):
+                print line
 
     def has_branch(self, name):
         return bool(self.tree.GetBranch(name))

@@ -3,9 +3,9 @@
 # IMPORTS
 # ==============================================
 from argparse import ArgumentParser
-from copy import deepcopy
 from math import log
 from sys import stdout
+from json import loads
 
 from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, \
     THStack, TArrow, kOrange, TSpectrum, TMultiGraph, Long, TH2I, gRandom
@@ -49,9 +49,10 @@ class PadAnalysis(Analysis):
 
             # regions // ranges
             self.IntegralNames = self.get_integral_names()
-            self.SignalRegion = self.__load_signal_region()
-            self.PedestalRegion = self.__load_pedestal_region()
-            self.PeakIntegral = self.__load_peak_integral()
+            self.IntegralRegions = self.load_regions()
+            self.SignalRegion = self.IntegralRegions['signal']
+            self.PedestalRegion = self.IntegralRegions['pedestal']
+            self.PeakIntegral = self.load_peak_integral()
 
             # names
             self.SignalDefinition = '({pol}*TimeIntegralValues[{num}])'
@@ -104,11 +105,10 @@ class PadAnalysis(Analysis):
         return self.run.Channels[dia - 1]
 
     def get_integral_names(self):
-        names = OrderedDict()
+        if self.run.TreeConfig.has_section('Integral Names'):
+            return [str(name) for name in loads(self.run.TreeConfig.get('Integral Names', 'Names'))]
         self.tree.GetEntry(0)
-        for i, name in enumerate(self.tree.IntegralNames):
-            names[name] = i
-        return names
+        return [str(name) for name in self.tree.IntegralNames]
 
     def get_polarity(self):
         self.tree.GetEntry(0)
@@ -118,28 +118,24 @@ class PadAnalysis(Analysis):
         self.tree.GetEntry(0)
         return self.tree.pulser_polarities[self.channel]
 
-    def __load_signal_region(self):
-        sig_region = self.ana_config_parser.get('BASIC', 'signal_region')
-        return sig_region if sig_region in self.run.signal_regions else self.run.signal_regions.keys()[0]
+    def load_regions(self):
+        all_regions = {}
+        for name in ['signal', 'pedestal', 'pulser']:
+            option = '{}_region'.format(name)
+            region = '{name}_{region}'.format(name=name, region=self.ana_config_parser.get('BASIC', option)) if option in self.ana_config_parser.options('BASIC') else ''
+            regions = [reg for reg in self.run.IntegralRegions[self.DiamondNumber - 1] if reg.startswith(name)]
+            all_regions[name] = region if region in regions else regions[0]
+        return all_regions
 
-    def __load_pedestal_region(self):
-        ped_region = self.ana_config_parser.get('BASIC', 'pedestal_region')
-        return ped_region if ped_region in self.run.pedestal_regions else self.run.pedestal_regions.keys()[0]
-
-    def __load_peak_integral(self):
-        peak_int = self.ana_config_parser.get('BASIC', 'peak_integral')
-        return peak_int if peak_int in self.run.peak_integrals else self.run.peak_integrals.keys()[0]
+    def load_peak_integral(self):
+        peak_int = 'PeakIntegral{}'.format(self.ana_config_parser.get('BASIC', 'peak_integral'))
+        return peak_int if peak_int in self.run.PeakIntegrals[self.DiamondNumber - 1] else self.run.PeakIntegrals[self.DiamondNumber - 1].keys()[0]
 
     def get_signal_number(self, region=None, peak_integral=None, sig_type='signal'):
-        this_region = self.SignalRegion if sig_type == 'signal' else self.PedestalRegion
-        region = this_region if region is None else region
-        peak_integral = self.PeakIntegral if peak_integral is None else peak_integral
-        assert sig_type in ['signal', 'pedestal', 'pulser'], 'Invalid type of signal'
-        if sig_type != 'pulser':
-            assert region in self.run.signal_regions or region in self.run.pedestal_regions, 'Invalid {typ} region: {reg}!'.format(reg=region, typ=sig_type)
-        assert str(peak_integral) in self.run.peak_integrals, 'Invalid peak integral {reg}!'.format(reg=peak_integral)
-        int_name = 'ch{ch}_{type}{reg}_PeakIntegral{int}'.format(ch=self.channel, reg='_' + region if region else '', int=peak_integral, type=sig_type)
-        return self.IntegralNames[int_name]
+        region = self.IntegralRegions[sig_type] if region is None else self.make_region(sig_type, region)
+        peak_integral = self.PeakIntegral if peak_integral is None else 'PeakIntegral{}'.format(peak_integral)
+        int_name = 'ch{ch}_{reg}_{int}'.format(ch=self.channel, reg=region, int=peak_integral)
+        return self.IntegralNames.index(int_name)
 
     def get_signal_name(self, region=None, peak_integral=None, sig_type='signal'):
         num = self.get_signal_number(region, peak_integral, sig_type)
@@ -467,19 +463,19 @@ class PadAnalysis(Analysis):
 
     # ==========================================================================
     # region SIGNAL PEAK POSITION
-    def draw_peak_timing(self, region=None, type_='signal', show=True, cut=None, corr=True, draw_cut=True):
-        xmin, xmax = self.run.signal_regions[self.SignalRegion if region is None else region] if type_ == 'signal' else self.run.PulserRegion
+    def draw_peak_timing(self, region=None, sig_type='signal', show=True, cut=None, corr=True, draw_cut=True):
+        xmin, xmax = self.run.IntegralRegions[self.DiamondNumber - 1][self.SignalRegion if region is None else self.make_region(sig_type, region)]
         # increase range for timing correction and convert to ns
         fac = 2. if self.run.Digitiser == 'drs4' else 2.5
         xmin = xmin / fac - (10 if corr else 10)
         xmax = xmax / fac + (10 if corr else 10)
         print int((xmax - xmin) * (4 if corr else 1)), xmin, xmax
-        h = TH1F('h_pv', '{typ} Peak Positions'.format(typ=type_.title()), int((xmax - xmin) * (4 if corr else 4)), xmin, xmax)
+        h = TH1F('h_pv', '{typ} Peak Positions'.format(typ=sig_type.title()), int((xmax - xmin) * (4 if corr else 4)), xmin, xmax)
         self.format_histo(h, x_tit='Signal Peak Timing [ns]', y_tit='Number of Entries', y_off=1.3, stats=0)
         cut = self.Cut.generate_special_cut(excluded=['timing']) if cut is None else TCut(cut)
         dic = self.Cut.calc_timing_range(show=False)
         t_correction = '({p1}* trigger_cell + {p2} * trigger_cell*trigger_cell)'.format(p1=dic['t_corr'].GetParameter(1), p2=dic['t_corr'].GetParameter(2))
-        draw_string = '{peaks}{op}>>h_pv'.format(peaks=self.get_peak_name(region, type_, corr), op='/{f}'.format(f=fac) if not corr else '-' + t_correction)
+        draw_string = '{peaks}{op}>>h_pv'.format(peaks=self.get_peak_name(region, sig_type, corr), op='/{f}'.format(f=fac) if not corr else '-' + t_correction)
         print draw_string
         self.tree.Draw(draw_string, cut, 'goff')
         self.draw_histo(h, show=show, sub_dir=self.save_dir, lm=.12, logy=True)
@@ -487,7 +483,7 @@ class PadAnalysis(Analysis):
         self.__draw_timing_legends(draw_cut, f, fit, fit1)
         h.Draw('same')
         h.GetXaxis().SetRangeUser(f.Parameter(1) - 5 * f.Parameter(2), f.Parameter(1) + 10 * f.Parameter(2))
-        self.save_plots('{typ}PeakPositions'.format(typ=type_.title()))
+        self.save_plots('{typ}PeakPositions'.format(typ=sig_type.title()))
         self.PeakValues = h
         return f
 
@@ -1509,24 +1505,18 @@ class PadAnalysis(Analysis):
         gStyle.SetPaintTextFormat('5.4g')
         lego = False if proj else lego
         gr = self.make_tgrapherrors('gr', 'Signal to Noise Ratios')
-        h = TProfile2D('h_snr', 'Signal to Noise Ratios', 12, 1, 7, 12, 3, 9)
-        l1 = TLegend(.7, .68, .9, .9)
-        l1.SetHeader('Regions')
-        l2 = TLegend(.7, .47, .9, .67)
-        l2.SetHeader('PeakIntegrals')
-        for i, name in enumerate(self.get_all_signal_names().iterkeys()):
-            peak_int = self.run.peak_integrals[self.get_all_signal_names()[name][1:]]
-            snr = self.calc_snr(sig=name, name=self.get_all_signal_names()[name])
-            h.Fill(peak_int[0] / 2., peak_int[1] / 2., snr[0])
-            gr.SetPoint(i, i + 1, snr[0])
-            gr.SetPointError(i, 0, snr[1])
-        for i, region in enumerate(self.get_all_signal_names().itervalues(), 1):
-            bin_x = gr.GetXaxis().FindBin(i)
-            gr.GetXaxis().SetBinLabel(bin_x, region)
-        [l1.AddEntry(0, '{reg}:  {val}'.format(reg=reg, val=value), '') for reg, value in self.run.signal_regions.iteritems() if len(reg) <= 2]
-        [l2.AddEntry(0, '{reg}:  {val}'.format(reg=integ, val=value), '') for integ, value in self.run.peak_integrals.iteritems() if len(integ) <= 2]
+        h = TProfile2D('h_snr', 'Signal to Noise Ratios', 70, 0, 70, 70, 0, 140)
+        i = 0
+        for name, region in self.get_all_signal_names().iteritems():
+            if self.SignalRegion.split('_')[-1] in region:
+                peak_integral = self.get_peak_integral(remove_letters(region))
+                snr = self.calc_snr(name=name, reg=self.get_all_signal_names()[name])
+                h.Fill(peak_integral[0] / 2., peak_integral[1] / 2., snr.n)
+                gr.SetPoint(i, i + 1, snr.n)
+                gr.SetPointError(i, 0, snr.s)
+                gr.GetListOfFunctions().Add(self.draw_tlatex(i + 1, snr.n + snr.s * 1.5, str(peak_integral), align=22, size=.02))
+                i += 1
         self.format_histo(gr, y_tit='SNR', y_off=1.2, color=self.get_color(), fill_color=1)
-        gr.SetLineColor(2)
         vals = sorted([h.GetBinContent(i) for i in xrange(h.GetNbinsX() * h.GetNbinsY()) if h.GetBinContent(i)])
         x, y, z1 = Long(0), Long(0), Long(0)
         xmin, ymin = h.GetXaxis().GetXmin(), h.GetYaxis().GetXmin()
@@ -1541,7 +1531,7 @@ class PadAnalysis(Analysis):
         else:
             self.save_histo(h, 'SNRLego', show and lego, draw_opt=draw_opt, bm=.2, rm=.1, lm=.13, phi=-30, theta=40)
         gStyle.SetPalette(1)
-        self.save_histo(gr, 'SNR', not (lego or proj) and show, l=[l1, l2], draw_opt='bap')
+        self.save_histo(gr, 'SNR', not (lego or proj) and show, draw_opt='bap')
 
     def show_best_snr(self, histo, x, y, show):
         h = histo
@@ -1572,18 +1562,14 @@ class PadAnalysis(Analysis):
         stack.SetMaximum(increased_range([min(vals), max(vals)], .5, .5)[1])
         self.save_histo(stack, 'SNRProfiles', show, draw_opt='nostack', l=l, lm=.13)
 
-    def calc_snr(self, sig=None, name=''):
-        signal = self.SignalName if sig is None else sig
-        peak_int = remove_letters(self.get_all_signal_names()[signal])
-        ped_fit = self.Pedestal.draw_disto_fit(save=False, name=self.Pedestal.get_signal_name(peak_int=peak_int), show=False)
-        sig_fit = self.draw_pulse_height(corr=True, show=False, sig=signal)[1]
-        sig_mean = sig_fit.Parameter(0)
-        ped_sigma = ped_fit.Parameter(2)
-
-        snr = sig_mean / ped_sigma
-        snr_err = snr * (sig_fit.ParError(0) / sig_mean + ped_fit.ParError(2) / ped_sigma)
-        print '{name} {0}\t| SNR is: {snr} +- {err}\t {1} {2}'.format(self.run.peak_integrals[peak_int], sig_mean, ped_sigma, name=name, snr=snr, err=snr_err)
-        return [snr, snr_err]
+    def calc_snr(self, name=None, reg=''):
+        signal_name = self.SignalName if name is None else name
+        peak_int = remove_letters(self.get_all_signal_names()[signal_name])
+        ped_sigma = make_ufloat(self.Pedestal.draw_disto_fit(save=False, name=self.Pedestal.get_signal_name(peak_int=peak_int), show=False), par=2)
+        signal = make_ufloat(self.draw_pulse_height(corr=True, show=False, sig=signal_name)[1])
+        snr = signal / ped_sigma
+        print '{name} {0}\t| SNR is: {snr}\t {1} {2}'.format(self.get_peak_integral(peak_int), signal.n, ped_sigma.n, name=reg, snr=snr)
+        return snr
 
     # ============================================
     # region PEAK INTEGRAL
@@ -1640,16 +1626,15 @@ class PadAnalysis(Analysis):
         """ :return: full cut_string """
         return self.Cut.all_cut
 
-    def get_all_signal_names(self, ped=False):
+    def get_all_signal_names(self, sig_type='signal'):
         names = OrderedDict()
-        regions = [reg for reg in (self.run.signal_regions if not ped else self.run.pedestal_regions) if len(reg) < 3]
-        integrals = [integral for integral in self.run.peak_integrals if integral.isdigit()]
-        for region in regions:
-            for integral in integrals:
-                name = 'ch{ch}_{s}_{reg}_PeakIntegral{int}'.format(ch=self.channel, reg=region, int=integral, s='pedestal' if ped else 'signal')
-                num = self.IntegralNames[name]
-                reg = region + integral
-                names[self.SignalDefinition.format(pol=self.Polarity, num=num)] = reg
+        for region in self.run.IntegralRegions[self.DiamondNumber - 1]:
+            if sig_type in region:
+                for integral in self.run.PeakIntegrals[self.DiamondNumber - 1]:
+                    name = 'ch{ch}_{reg}_{int}'.format(ch=self.channel, reg=region, int=integral)
+                    num = self.IntegralNames.index(name)
+                    reg = region.replace(sig_type, '').strip('_') + integral.replace('PeakIntegral', '')
+                    names[self.SignalDefinition.format(pol=self.Polarity, num=num)] = reg
         return names
 
     def print_info_header(self):
@@ -1666,11 +1651,10 @@ class PadAnalysis(Analysis):
             print self.adj_length(info),
         print
 
-    def print_integral_names(self):
-        for key, value in self.IntegralNames.iteritems():
-            if key.startswith('ch{ch}'.format(ch=self.channel)):
-                print str(value).zfill(3), key
-        return
+    def show_integral_names(self):
+        for i, name in enumerate(self.IntegralNames):
+            if name.startswith('ch{}'.format(self.channel)):
+                print str(i).zfill(3), name
 
     # endregion
 
@@ -1761,6 +1745,13 @@ class PadAnalysis(Analysis):
     def get_mpv_fwhm(self, show=True):
         h = self.draw_signal_distribution(show=show)
         return find_mpv_fwhm(h)
+
+    def get_peak_integral(self, name):
+        return  self.run.PeakIntegrals[self.DiamondNumber - 1]['PeakIntegral{}'.format(name) if not 'Peak' in str(name) else name]
+
+    @staticmethod
+    def make_region(signal, region=''):
+        return '{}{}'.format(signal, '_' + region if region else '')
 
     def __placeholder(self):
         pass
