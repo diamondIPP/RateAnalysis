@@ -54,7 +54,7 @@ class Converter:
         self.AlignDir = '{soft}/{d}'.format(soft=self.SoftwareDir, d=self.SoftConfig.get('Converter', 'alignfolder'))
 
         # tracking
-        self.TelescopeID = self.RunParser.getint('BASIC', 'telescopeID')
+        self.TelescopeID = self.RunParser.getint('BASIC', 'telescopeID') if run.RunNumber else None
         self.TrackingDir = '{soft}/{d}'.format(soft=self.SoftwareDir, d=self.SoftConfig.get('Converter', 'trackingfolder'))
 
         # files paths
@@ -132,6 +132,8 @@ class Converter:
 
     def get_config(self):
         config = {}
+        if self.RunNumber is None:
+            return config
         options = self.RunParser.options('ROOTFILE_GENERATION')
         for opt in options:
             if any(opt.endswith(ending) for ending in ['_range', '_region', '_range_drs4']):
