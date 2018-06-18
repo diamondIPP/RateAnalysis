@@ -1,6 +1,5 @@
 from Cut import Cut
 from Extrema import Extrema2D
-from copy import deepcopy
 from functools import partial
 from ROOT import TCut, TH1F, TH2F, TF1, TCanvas, TLegend, gROOT, TProfile, THStack, TCutG, TSpectrum
 from Utils import *
@@ -197,7 +196,7 @@ class CutPad(Cut):
             sig2 = self.analysis.get_signal_name('e', 2)
             string = '{sig2}=={sig1}'.format(sig2=sig2, sig1=self.analysis.SignalName)
             return TCut(string)
-        except AssertionError as err:
+        except ValueError as err:
             print err
             return TCut('')
 
@@ -300,7 +299,8 @@ class CutPad(Cut):
             self.analysis.tree.Draw(draw_string, cut_string, 'goff')
             entries = h.GetEntries()
             if entries < 2000:
-                return 30
+                self.add_info(t)
+                return 1
             h.Rebin(2) if entries < 5000 else do_nothing()
             # extract fit functions
             set_root_output(False)
