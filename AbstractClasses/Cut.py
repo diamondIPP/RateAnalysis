@@ -100,6 +100,7 @@ class Cut(Elementary):
         dic['beam_interruptions'] = TCut('beam_interruptions', '')
         dic['aligned'] = TCut('aligned', '')
         dic['trigger_phase'] = TCut('trigger_phase', '')
+        dic['tracks'] = TCut('tracks', '')
         dic['fiducial'] = TCut('fiducial', '')
         # waveform
         dic['saturated'] = TCut('saturated', '')
@@ -115,7 +116,6 @@ class Cut(Elementary):
         dic['old_bucket'] = TCut('old_bucket', '')
         dic['bucket'] = TCut('bucket', '')
         # tracks
-        dic['tracks'] = TCut('tracks', '')
         dic['hit'] = TCut('hit', '')
         dic['masks'] = TCut('masks', '')
         dic['chi2X'] = TCut('chi2X', '')
