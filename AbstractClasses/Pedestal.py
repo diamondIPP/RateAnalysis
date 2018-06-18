@@ -9,7 +9,6 @@ from ROOT import TH2F, gStyle, TH1F, TCut, gROOT
 from Utils import set_statbox, set_drawing_range, FitRes, kinder_pickle, do_pickle
 from copy import deepcopy
 from numpy import mean
-from collections import OrderedDict
 from InfoLegend import InfoLegend
 
 
@@ -37,16 +36,7 @@ class PedestalAnalysis(Elementary):
         return self.Ana.get_signal_name(region=region, peak_integral=peak_int, sig_type='pedestal')
 
     def get_all_signal_names(self):
-        names = OrderedDict()
-        regions = [reg for reg in self.Run.pedestal_regions if len(reg) < 3]
-        integrals = [integral for integral in self.Run.peak_integrals if integral.isdigit()]
-        for region in regions:
-            for integral in integrals:
-                name = 'ch{ch}_pedestal_{reg}_PeakIntegral{int}'.format(ch=self.Channel, reg=region, int=integral)
-                num = self.Ana.IntegralNames[name]
-                reg = region + integral
-                names[self.Ana.SignalDefinition.format(pol=self.Polarity, num=num)] = reg
-        return names
+        return self.Ana.get_all_signal_names('pedestal')
 
     def draw_disto(self, name=None, cut=None, logy=False, show=True, save=True, redo=False):
         show = False if not save else show
@@ -56,7 +46,7 @@ class PedestalAnalysis(Elementary):
 
         def func():
             self.log_info('Drawing pedestal distribution for {d} of run {r}'.format(d=self.DiamondName, r=self.RunNumber), prnt=save)
-            h1 = TH1F('h_pd', 'Pedestal Distribution', 600, -150, 150)
+            h1 = TH1F('h_pd', 'Pedestal Distribution', 2400, -150, 150)
             self.Tree.Draw('{name}>>h_pd'.format(name=signal_name), cut, 'goff')
             self.format_histo(h1, 'Pedestal', x_tit='Pedestal [au]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)
             return h1
