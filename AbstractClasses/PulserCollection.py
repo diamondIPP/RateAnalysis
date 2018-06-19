@@ -58,6 +58,21 @@ class PulserCollection(Elementary):
                 mg.GetListOfGraphs()[0].GetListOfFunctions().Add(self.draw_tlatex(x.n, y + ey * 1.2, '{:1.0f}'.format(ana.get_flux()[0]), color=1, align=21, size=.02))
         return mg
 
+    def draw_pulse_height(self, evts_per_bin=10000, show=True, rel_t=True):
+        """Draw time evolution of the pulse height"""
+        histos = [ana.Pulser.draw_pulse_height(evts_per_bin, show=False, fit=False) for ana in self.Collection.itervalues()]
+        h1 = TH1F('hpra', 'Pulser Rate for Run Plan {n}'.format(n=self.RunPlan), *self.Analysis.get_binning(evts_per_bin, t_bins=True))
+        i_bin = 0
+        for h in histos:
+            for i in xrange(1, h.GetNbinsX() + 1):
+                h1.SetBinContent(i_bin + 1, h.GetBinContent(i))
+                h1.SetBinError(i_bin + 1, h.GetBinError(i))
+                i_bin += 1
+            i_bin += 1
+        self.format_histo(h1, x_tit='Time [hh:mm]', y_tit='Pulser Pulse Height [au]', y_off=.8, fill_color=self.FillColor, stats=0, y_range=[0, 105])
+        set_time_axis(h1, off=self.Analysis.FirstAnalysis.run.StartTime if rel_t else 0)
+        self.save_histo(h1, 'PulserPulseHeight{}'.format(evts_per_bin), show=show, draw_opt='hist', x_fac=1.5, y_fac=.75, lm=.065)
+
     def draw_pulse_heights(self, sigma=False, corr=True, beam_on=True, vs_time=False, do_fit=False, save_comb=True, show=True, redo=False):
 
         mode = 'Time' if vs_time else 'Flux'
