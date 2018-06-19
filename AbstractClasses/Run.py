@@ -2,7 +2,7 @@
 # ==============================================
 # IMPORTS
 # ==============================================
-from json import load, loads
+from json import load, loads, dumps
 from ConfigParser import ConfigParser, NoOptionError
 from ROOT import TFile
 from argparse import ArgumentParser
@@ -61,7 +61,6 @@ class Run(Elementary):
         self.Duration = self.LogEnd - self.LogStart
         self.LogHalfTime = time_stamp(self.LogStart + self.Duration / 2)
 
-        print self.run_config_parser.sections()
         self.converter = Converter(self)
         if self.set_run(run_number, tree):
             # tree info
@@ -137,17 +136,17 @@ class Run(Elementary):
                 if word.startswith('active'):
                     info.append('[General]')
                     data = word.replace('_', ' ').split(':')
-                    word = '{0} = {1}'.format(data[0], bin(int(data[1])))
+                    word = '{0} = {1}'.format(data[0], bin(int(data[1]))[2:])
                 elif word.startswith('Signal') or word.startswith('Sensor'):
                     word = '[{}]'.format(word)
                 elif word.startswith('tcal'):
                     info.append('[Time Calibration]')
-                    word = word.replace('tcal', 'tcal =')
+                    word = word.replace('tcal', 'tcal =').replace(', \b\b', '')
                 elif word and word[-1].isdigit():
                     data = word.split(':')
                     word = '{0} = {1}'.format(data[0], str([int(num) for num in data[1].split('-')]))
                 elif 'pulser' in word.lower():
-                    word = 'Names = {}'.format(["{}".format(string) for string in word.split(',')])
+                    word = 'Names = {}'.format(dumps(word.split(',')))
                 info.append(word)
             info = '\n'.join(info)
         config.readfp(StringIO(info))
@@ -157,17 +156,18 @@ class Run(Elementary):
         ranges = []
         for i, channel in enumerate(self.Channels):
             ranges.append(OrderedDict())
-            for option in self.TreeConfig.options('{} {}'.format(section, channel)):
-                ranges[i][option.replace('peakin', 'PeakIn')] = loads(self.TreeConfig.get('{} {}'.format(section, channel), option))
+            this_section = '{} {}'.format(section, channel)
+            if any('Signal' in sec for sec in self.TreeConfig.sections()):
+                this_section = 'Signal Windows' if 'Region' in section else 'Signal Definitions'
+            for option in self.TreeConfig.options(this_section):
+                ranges[i][option.replace('peakin', 'PeakIn')] = loads(self.TreeConfig.get(this_section, option))
         return ranges
 
     def load_regions(self):
-        regions = self.load_ranges('Integral Regions')
-        return regions
+        return self.load_ranges('Integral Regions')
 
     def load_peak_integrals(self):
-        integrals = self.load_ranges('Integral Ranges')
-        return integrals
+        return self.load_ranges('Integral Ranges')
 
     def load_tcal(self):
         tcal = loads(self.TreeConfig.get('Time Calibration', 'tcal'))
