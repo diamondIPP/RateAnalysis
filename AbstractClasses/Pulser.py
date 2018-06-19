@@ -58,7 +58,7 @@ class PulserAnalysis(Elementary):
     def calc_fraction(self, show=False, prnt=True):
         """ :returns the fitted value of the fraction of pulser events with event range and beam interruptions cuts and its fit error. """
         cut = self.Cut.generate_special_cut(included=['beam_interruptions'], prnt=prnt)
-        set_statbox(only_fit=True, entries=2, x=.9, w=.2)
+        self.set_statbox(only_fit=True, entries=2, x=.9, w=.2)
         h = self.draw_rate(show=show, cut=cut, prnt=prnt)
         self.format_histo(h, 'Fit Result', markersize=None)
         fit = h.Fit('pol0', 'qs')
@@ -71,30 +71,27 @@ class PulserAnalysis(Elementary):
         particle_rate = make_ufloat(self.Ana.get_flux()) * diamond_size
         return in_rate / particle_rate
 
-    def draw_pulseheight(self, binning=10000, draw_opt='histe', show=True):
-        """ Shows the average pulse height of the pulser as a function of event number """
-        entries = self.Run.n_entries
-        nbins = entries / binning
-        h = TProfile('hpph', 'Pulser Pulse Height', nbins, 0, entries)
-        signal = self.Ana.generate_signal_name(self.SignalName, evnt_corr=False, off_corr=True, cut=self.PulserCut)
-        self.Tree.Draw('{sig}:Entry$>>hpph'.format(sig=signal), self.PulserCut, 'goff')
+    def draw_pulse_height(self, binning=10000, show=True, redo=False, fit=True):
+        """ Shows the average pulse height of the pulser as a function of time """
+        pickle_path = self.make_pickle_path('Pulser', 'PH', self.RunNumber, self.Ana.DiamondNumber, binning)
+
+        def f():
+            h1 = TProfile('hpph', 'Pulser Pulse Height', *self.Ana.get_time_bins(binning))
+            signal = self.Ana.generate_signal_name(self.SignalName, evnt_corr=False, off_corr=True, cut=self.PulserCut)
+            self.Tree.Draw('{sig}:time/1000.>>hpph'.format(sig=signal), self.PulserCut, 'goff')
+            return h1
+
+        h = do_pickle(pickle_path, f, redo=redo)
         values = [h.GetBinContent(i) for i in xrange(h.GetNbinsX()) if h.GetBinContent(i)]
         y_range = increased_range([min(values), max(values)], .7, .7)
-        self.format_histo(h, x_tit='Event Number', y_tit='Pulse Height [au]', y_off=1.7, stats=0, fill_color=self.FillColor, y_range=y_range)
-        set_statbox(x=.91, entries=2, only_fit=True)
-        self.draw_histo(h, '', show, gridy=True, draw_opt=draw_opt, lm=.14, rm=.07)
+        self.format_histo(h, name='Fit Result', x_tit='Time [hh:mm]', y_tit='Pulse Height [au]', y_off=1.7, stats=fit, fill_color=self.FillColor, y_range=y_range,
+                          t_ax_off=self.Ana.run.StartTime)
+        self.set_statbox(w=.3, entries=2, only_fit=True)
+        self.draw_histo(h, '', show, gridy=True, draw_opt='histe', lm=.14)
+        fit_res = h.Fit('pol0', 'qs') if fit else None
         h.Draw('same')
-        self.save_plots('PulserPulserHeight', self.save_dir)
-        return h
-
-    def draw_pulseheight_fit(self, show=True, draw_opt='histe'):
-        """ Shows the pulse height fit for the pulser. """
-        h = self.draw_pulseheight(show=show, draw_opt=draw_opt)
-        h.SetName('Fit Result')
-        h.SetStats(1)
-        fit = h.Fit('pol0', 'qs')
-        self.save_plots('PulserPulserHeightFit')
-        return fit.Parameter(0), fit.ParError(0)
+        self.save_plots('PulserPulserHeight{}'.format(binning))
+        return FitRes(fit_res) if fit else h
 
     def find_range(self, corr):
         n, i = 0, 0
@@ -179,18 +176,6 @@ class PulserAnalysis(Elementary):
             self.count = 0
             self.draw_waveforms(n=1000, start_event=start, show=show)
             self.save_plots('WaveForms{0}'.format(i), sub_dir='{0}/WaveForms'.format(self.save_dir))
-
-    def draw_pulser_vs_time(self, n_points=5, _mean=True, show=True, corr=True, events=5000):
-        events_spacing = (self.Ana.EndEvent - self.Ana.StartEvent) / n_points
-        start_events = [self.Ana.StartEvent + events_spacing * i for i in xrange(n_points)]
-        mode = 'Mean' if _mean else 'Sigma'
-        gr = self.make_tgrapherrors('gr', '{0} of Pulser vs Time'.format(mode))
-        for i, start in enumerate(start_events):
-            fit = self.draw_distribution_fit(show=False, start=start, events=events, binning=200, corr=corr)
-            par = 1 if _mean else 2
-            gr.SetPoint(i, (self.Ana.run.get_time_at_event(start) - self.Ana.run.StartTime * 1000) / 60e3, fit.Parameter(par))
-            gr.SetPointError(i, 0, fit.ParError(par))
-        self.save_histo(gr, 'Pulser{0}VsTime'.format(mode), show, draw_opt='alp')
 
     def save_felix(self):
         self.save_dir = self.Ana.save_dir
