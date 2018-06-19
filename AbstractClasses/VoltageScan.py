@@ -23,7 +23,7 @@ class VoltageScan(Elementary):
 
     def draw_all(self):
         self.draw_pulse_height(show=False)
-        self.draw_pulse_height(show=False, pulser=True)
+        self.draw_pulser_pulse_height(show=False)
         self.draw_pedestals(show=False)
         self.draw_pedestals(show=False, sigma=True)
         self.draw_pedestals(show=False, pulser=True)
@@ -53,7 +53,10 @@ class VoltageScan(Elementary):
             g.SetPoint(i, x, s)
             g.SetPointError(i, 0, e)
         self.format_histo(g, x_tit='Voltage [V]', y_tit='Hit Efficiency [%]', y_off=1.3)
-        self.save_histo(g, 'EfficiencyVoltage')
+        self.save_histo(g, 'EfficiencyVoltage', show=show)
+
+    def draw_pulser_pulse_height(self, binning=10000, redo=False, show=True):
+        return self.draw_pulse_height(binning, pulser=True, redo=redo, show=show)
 
     def draw_pulse_height(self, binning=10000, pulser=False, redo=False, show=True):
         gr1 = self.make_tgrapherrors('gStatError', 'stat. error', self.get_color())
@@ -67,7 +70,7 @@ class VoltageScan(Elementary):
         rel_sys_error = 0
         i, j = 0, 0
         for key, ana in self.collection.iteritems():
-            fit1 = ana.draw_pulse_height(bin_size=binning, corr=True, save=redo, show=False) if not pulser else ana.Pulser.draw_distribution_fit(show=False, save=False)
+            fit1 = ana.draw_pulse_height(binning=binning, corr=True, save=redo, show=False)[1] if not pulser else ana.Pulser.draw_distribution_fit(show=False, prnt=False)
             x = ana.run.RunInfo['dia{nr}hv'.format(nr=self.DiamondNumber)]
             s, e = (fit1.Parameter(0), fit1.ParError(0)) if not pulser else (fit1.Parameter(1), fit1.ParError(1))
             gr1.SetPoint(i, x, s)
