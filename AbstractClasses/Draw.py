@@ -32,10 +32,11 @@ class Draw:
         self.FillColor = 821
         gStyle.SetLegendFont(42)
 
+        self.ActivateTitle = self.Config.getboolean('SAVE', 'activate_title')
         self.set_titles()
 
     def set_titles(self, on=None):
-        gStyle.SetOptTitle(self.Config.getboolean('SAVE', 'activate_title') if on is None else on)
+        gStyle.SetOptTitle(self.ActivateTitle if on is None else on)
 
     def set_save_directory(self, name):
         self.ResultsDir = join(self.Dir, name)
@@ -465,6 +466,21 @@ class Draw:
         fr.GetYaxis().SetNdivisions(div) if div is not None else do_nothing()
         format_frame(fr)
         self.Objects.append(fr)
+
+    def set_statbox(self, x=.95, y=None, w=.16, entries=3, only_fit=False, fit=False, only_entries=False, opt=None, form=None):
+        y = .88 if self.ActivateTitle else .95 if y is None else y
+        if only_fit or fit:
+            gStyle.SetOptStat(1111 if fit else 0011)
+            gStyle.SetOptFit(1)
+        if only_entries:
+            gStyle.SetOptStat(1000000010 if not only_fit else 1000000011)
+            entries = 6 if entries == 3 else entries
+        gStyle.SetOptStat(opt) if opt is not None else do_nothing()
+        gStyle.SetFitFormat(form) if form is not None else do_nothing()
+        gStyle.SetStatX(x)
+        gStyle.SetStatY(y)
+        gStyle.SetStatW(w)
+        gStyle.SetStatH(.02 * entries)
 
 
 def format_frame(frame):
