@@ -3648,5 +3648,50 @@
       ], 
       "type": "rate scan"
     }
+  }, 
+  "201807": {
+    "01": {
+      "attenuators": {
+        "dia1": "6dB_2", 
+        "dia2": "None", 
+        "pulser1": "6dB_3", 
+        "pulser2": "6dB_1"
+      }, 
+      "runs": [
+        2, 
+        3, 
+        4, 
+        5, 
+        6, 
+        7, 
+        8, 
+        9, 
+        10, 
+        12
+      ], 
+      "type": "rate scan"
+    }, 
+    "02": {
+      "attenuators": {
+        "dia1": "6dB_2", 
+        "dia2": "None", 
+        "pulser1": "6dB_3", 
+        "pulser2": "6dB_1"
+      }, 
+      "runs": [
+        14, 
+        15, 
+        16, 
+        17, 
+        18, 
+        22, 
+        23, 
+        24, 
+        25, 
+        26, 
+        27
+      ], 
+      "type": "rate scan"
+    }
   }
 }

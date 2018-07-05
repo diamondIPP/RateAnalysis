@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from AbstractClasses.Run import Run
-from os import stat
+from os import stat, system
 from multiprocessing import cpu_count
 from argparse import ArgumentParser
 from AbstractClasses.Utils import *
@@ -40,13 +40,21 @@ class AutoConvert:
         raw_file = self.Run.converter.find_raw_file(run)
 
         # check if we have to convert the run
-        if run not in run_infos or is_converted or is_crap or not raw_file:
+        next_raw_file = self.Run.converter.find_raw_file(run + 1, prnt=False)
+        if run not in run_infos and next_raw_file and file_exists(next_raw_file):
+            self.NextRun += 1
+            return True
+        if is_converted or is_crap or not raw_file:
             if int(sorted(run_infos.keys())[-1]) in xrange(self.NextRun, self.MaxRun):
                 self.NextRun += 1
                 return True
 
         # convert if the file is written atm
-        if not file_is_beeing_written(raw_file):
+        if raw_file and not file_is_beeing_written(raw_file):
+            run_infos = {int(key): value for key, value in self.Run.load_run_info_file().iteritems()}
+            if run not in run_infos:
+                return False
+            system('cvlc --play-and-exit ~/Downloads/closing_time.mp3 --run-time=60')
             Run(run, self.Run.TCString)
             self.save_last_converted(run)
             self.NextRun += 1
@@ -105,7 +113,7 @@ if __name__ == '__main__':
 
     parser = ArgumentParser()
     parser.add_argument('-m', action='store_true')
-    parser.add_argument('-tc', nargs='?', default='201708-2')
+    parser.add_argument('-tc', nargs='?', default='201807')
     arg = parser.parse_args()
 
     dummy = Run(1, arg.tc, tree=False)
