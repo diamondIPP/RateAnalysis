@@ -86,7 +86,7 @@ class Converter:
     def load_soft_dir(self):
         file_dir = self.SoftConfig.get('Converter', 'softwaredir')
         if not dir_exists(file_dir):
-            log_warning('Could not find the software directory: {d}\nPlease set it correctly in Configuration/soft.conf'.format(d=file_dir))
+            log_warning('Could not find the software directory: {d}\nPlease set it correctly in Configuration/soft.ini'.format(d=file_dir))
         return file_dir
 
     def load_root_file_dir(self):
@@ -127,7 +127,7 @@ class Converter:
     def load_soft_config():
         conf = ConfigParser()
         main_dir = '/'.join(dirname(realpath(__file__)).split('/')[:-1])
-        conf.read('{d}/Configuration/soft.conf'.format(d=main_dir))
+        conf.read('{d}/Configuration/soft.ini'.format(d=main_dir))
         return conf
 
     def get_config(self):
@@ -158,12 +158,13 @@ class Converter:
             pass
         return run_infos
 
-    def find_raw_file(self, run_number):
+    def find_raw_file(self, run_number, prnt=True):
         file_path = join(self.RawFileDir, '{pref}{run}.raw'.format(pref=self.raw_prefix, run=str(run_number).zfill(4)))
         if file_exists(file_path):
             return file_path
         else:
-            print file_path, 'does not exist!'
+            if prnt:
+                print file_path, 'does not exist!'
             return False
 
     def get_root_file_path(self):

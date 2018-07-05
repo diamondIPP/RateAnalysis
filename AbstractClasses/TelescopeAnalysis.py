@@ -1,5 +1,4 @@
 from argparse import ArgumentParser
-from copy import deepcopy
 
 from ROOT import TCanvas, TH2F, gROOT, TH1F, TLegend, gStyle, kGreen, TCut, TF1, TGraph, TH1I
 from numpy import log, zeros
@@ -102,12 +101,13 @@ class Analysis(Elementary):
         ydiff = ymax - ymin
         h.SetTitle('Pedestal Regions' if ped else 'Signal Regions')
         starts = []
-        regions = self.run.pedestal_regions if ped else self.run.signal_regions
         gr = self.make_tgrapherrors('gr', '', color=2, marker_size=0, width=3)
         i = 0
         gStyle.SetEndErrorSize(4)
         sleep(.5)
-        for reg, lst in regions.iteritems():
+        for reg, lst in self.run.IntegralRegions[0].iteritems():
+            if ('pedestal' if ped else 'signal') not in reg:
+                continue
             if len(reg) < 3:
                 offset = ydiff * .4 if not all(i[0] < lst[0] < i[1] for i in starts) or not all(i[0] < lst[1] < i[1] for i in starts) else ydiff * .2
                 if lst[1] - lst[0] > 1:
@@ -131,13 +131,13 @@ class Analysis(Elementary):
         self.histos.append([h, gr])
 
     def _add_buckets(self, ymin, ymax, xmin=0, xmax=512, avr_pos=-2, full_line=False, size=.03):
-        start = self.run.signal_regions['b'][0] % 40 / 2
+        start = self.run.IntegralRegions[0]['signal_b'][0] % 40 / 2
         stop = int(.8 * xmax) if xmax > 500 else int(xmax)
-        bucket0 = self.run.signal_regions['b'][0] / 40
+        bucket0 = self.run.IntegralRegions[0]['signal_b'][0] / 40
         x_range = xmax - xmin
         y_range = ymax - ymin
         self.draw_tlatex(xmin - .015 * x_range, ymin - 0.18 * y_range, 'Bucket:', align=30, color=418, size=size)
-        peak_fit = self.run.signal_regions['a'][0] / 2.
+        peak_fit = self.run.IntegralRegions[0]['signal_a'][0] / 2.
         for i, x in enumerate(xrange(start, stop, 20), -bucket0):
             y2 = ymax if full_line else ymin - 0.1 * y_range
             self.draw_vertical_line(x, ymin - 0.22 * y_range, y2, 418, style=3 if full_line else 1, tline=True)
@@ -157,7 +157,7 @@ class Analysis(Elementary):
         h, n = self.__draw_single_wf(event=event, show=False, tcorr=True)
         h.GetYaxis().SetNdivisions(305)
         self.format_histo(h, title='Peak Integrals', name='wf', x_tit='Time [ns]', y_tit='Signal [mV]', markersize=.8, y_off=.5, stats=0, tit_size=.07, lab_size=.06)
-        xmin, xmax = self.run.signal_regions['e'][0] / 2 - 20, self.run.signal_regions['e'][1] / 2
+        xmin, xmax = self.run.IntegralRegions[0]['signal_e'][0][0] / 2 - 20, self.run.IntegralRegions[0]['signal_e'][0][1] / 2
         h.GetXaxis().SetRangeUser(xmin, xmax)
         self.draw_histo(h, show=show, lm=.07, rm=.045, bm=.24, x=1.5, y=.5, gridy=True, gridx=True)
         gROOT.SetBatch(1) if not show else do_nothing()
@@ -172,7 +172,7 @@ class Analysis(Elementary):
         i = 0
         y = ymax - ymin
         spacing = 7.
-        for int_, lst in self.run.peak_integrals.iteritems():
+        for int_, lst in self.run.PeakIntegrals[0].iteritems():
             if main:
                 if hasattr(self, 'PeakIntegral') and int_ != self.PeakIntegral:
                     continue
@@ -195,9 +195,9 @@ class Analysis(Elementary):
         self.histos.append([gr1, gr2])
 
     def __draw_peak_pos(self, event, ymin, ymax):
-        peak_pos = self.get_peak_position(event, tcorr=True) if hasattr(self, 'get_peak_position') else self.run.signal_regions['a'][0] / 2.
+        peak_pos = self.get_peak_position(event, tcorr=True) if hasattr(self, 'get_peak_position') else self.run.IntegralRegions[0]['signal_a'][0] / 2.
         ped_region = self.PedestalRegion if hasattr(self, 'PedestalRegion') else 'ab'
-        ped_pos = self.run.pedestal_regions[ped_region][1] / 2.
+        ped_pos = self.run.IntegralRegions[0]['pedestal_{}'.format(ped_region)][0][1] / 2.
         y = ymax - ymin
         self.draw_vertical_line(peak_pos, ymin, ymax - y / 3., color=418, w=2, name='peak')
         self.draw_vertical_line(ped_pos, ymin, ymax - y / 3, color=429, w=2, name='ped')
@@ -577,7 +577,8 @@ class Analysis(Elementary):
             h = TH1F('hfl', 'Flux Distribution', int(sqrt(h.GetN()) * 2), m - 3 * s, m + 4 * s)
             for val in values:
                 h.Fill(val)
-            fit = h.Fit('gaus', 'qs{}'.format('' if show else 0))
+            max_val = h.GetBinCenter(h.GetMaximumBin())
+            fit = h.Fit('gaus', 'qs{}'.format('' if show else 0), '', max_val * .9, max_val * 1.1)
             self.format_histo(h, 'Fit Result', y_tit='Number of Entries', x_tit='Flux [kHz/cm^{2}]', fill_color=self.FillColor, y_off=1.3)
             self.save_histo(h, 'FluxDisto', lm=.13, ind=None, show=show, prnt=prnt)
             return fit.Parameter(1), fit.Parameter(2) + .05 * fit.Parameter(1)
