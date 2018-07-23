@@ -136,13 +136,13 @@ class Run(Elementary):
                 if word.startswith('active'):
                     info.append('[General]')
                     data = word.replace('_', ' ').split(':')
-                    word = '{0} = {1}'.format(data[0], bin(int(data[1]))[2:])
+                    word = '{0} = {1}'.format(data[0], ' '.join(bin(int(data[1]))[2:]))
                 elif word.startswith('Signal') or word.startswith('Sensor'):
                     word = '[{}]'.format(word)
                 elif word.startswith('tcal'):
                     info.append('[Time Calibration]')
                     word = word.replace('tcal', 'tcal =').replace(', \b\b', '')
-                elif word and word[-1].isdigit():
+                elif word and word[-1].isdigit() and not ',' in word:
                     data = word.split(':')
                     word = '{0} = {1}'.format(data[0], str([int(num) for num in data[1].split('-')]))
                 elif 'pulser' in word.lower():
