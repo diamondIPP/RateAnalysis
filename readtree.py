@@ -332,7 +332,7 @@ if __name__ == '__main__':
     run = args.run if 'root' in args.run else '/data/pulserTest/test{0}.root'.format(args.run.zfill(6))
     convert(run)
     rootfile = TFile(run)
-    tc = '201707'
+    tc = '201807'
 
     try:
         run = int(argv[1].split('/')[-1].strip('.root').split('00')[-1])
@@ -349,7 +349,7 @@ if __name__ == '__main__':
         run = Run(run, test_campaign=tc, tree=False)
         runinfo = load_runinfo()
     except ValueError:
-        run = Run(2, test_campaign='201610', tree=False)
+        run = Run(2, test_campaign='201807', tree=False)
 
     channels = read_macro(rootfile)
     t = rootfile.Get('tree')

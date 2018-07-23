@@ -142,8 +142,9 @@ class Run(Elementary):
                 elif word.startswith('tcal'):
                     info.append('[Time Calibration]')
                     word = word.replace('tcal', 'tcal =').replace(', \b\b', '')
-                elif word and word[-1].isdigit() and not ',' in word:
+                elif word and word[-1].isdigit() and 'pulser,' not in word.lower():
                     data = word.split(':')
+                    print data
                     word = '{0} = {1}'.format(data[0], str([int(num) for num in data[1].split('-')]))
                 elif 'pulser' in word.lower():
                     word = 'Names = {}'.format(dumps(word.split(',')))
@@ -192,7 +193,7 @@ class Run(Elementary):
                 run_info = data.get('{tc}{run}'.format(tc=self.TESTCAMPAIGN[2:], run=str(run_number).zfill(5)))
             # abort if the run is still not found
             if run_info is None:
-                log_critical('Run not found in json run log file!')
+                log_critical('Run {} not found in json run log file!'.format(run_number))
             self.RunInfo = run_info
             self.add_default_entries()
             self.translate_diamond_names()
@@ -331,9 +332,9 @@ class Run(Elementary):
     def get_unmasked_area(self):
         if self.RunNumber is None:
             return
-        mask_file = join(self.maskfilepath, self.RunInfo['maskfile'])
+        mask_file = join(self.maskfilepath, basename(self.RunInfo['maskfile'])).strip("\"")
         maskdata = {}
-        if self.RunInfo['maskfile'].lower() in ['no mask', 'None']:
+        if basename(self.RunInfo['maskfile']).lower() in ['no mask', 'None']:
             pass
         else:
             try:
