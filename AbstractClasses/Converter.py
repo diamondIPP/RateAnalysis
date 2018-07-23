@@ -38,10 +38,10 @@ class Converter:
         self.RunParser = run.run_config_parser
         self.SoftConfig = self.load_soft_config()
         self.RunNumber = run.RunNumber
-        self.Type = self.RunParser.get('BASIC', 'type')
+        self.Type = self.RunParser.get('BASIC', 'type') if self.RunParser.has_option('BASIC', 'type') else None
 
         # digitizer
-        self.ConverterTree = '{0}tree'.format(self.RunParser.get('BASIC', 'digitizer').lower() if self.Type == 'pad' else 'telescope')
+        self.ConverterTree = '{0}tree'.format(self.RunParser.get('BASIC', 'digitizer').lower() if self.Type == 'pad' and self.RunParser.has_option('BASIC', 'digitizer') else 'telescope')
         self.NChannels = 9 if self.ConverterTree.startswith('caen') else 4
 
         # directories
