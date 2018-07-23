@@ -303,7 +303,7 @@ class Converter:
                 parser.remove_option(section, opt)
         # set the new settings
         for key, value in self.config.iteritems():
-            parser.set(section, key, value)
+            parser.set('Converter.telescopetree' if key.startswith('decoding') else section, key, value)
 
         # write changes
         f = open(config_file, 'w')
