@@ -1,7 +1,6 @@
 from Run import Run
 from Elementary import Elementary
 import json
-from copy import deepcopy
 from datetime import datetime as dt
 from textwrap import fill
 from sys import argv
@@ -383,17 +382,24 @@ class RunSelection(Elementary):
         self.SelectedBias = self.RunInfos[self.get_selected_runs()[0]]['dia{0}hv'.format(ch)]
         self.SelectedDiamondNr = ch
 
-    def add_selection_to_runplan(self, plan_nr, run_type='rate scan', parent=None):
+    def add_selection_to_runplan(self, plan_nr, run_type=None):
         """ Saves all selected runs as a run plan with name 'plan_nr'. """
+        if not self.Selection:
+            log_warning('You did not select any run!')
+            return
         plan_nr = self.make_runplan_string(plan_nr)
-        parent_string = self.make_runplan_string(str(int(float(plan_nr)))) if not isint(plan_nr) and isfloat(plan_nr) else parent
-        parent_string = self.make_runplan_string(parent) if parent is not None else parent_string
-        assert self.Selection, 'The run selection is completely empty!'
-
-        self.RunPlan[plan_nr] = {'runs': self.get_selected_runs(), 'type': run_type}
-        if parent_string is not None and 'attenuators' in self.RunPlan[parent_string]:
-            self.RunPlan[plan_nr]['attenuators'] = self.RunPlan[parent_string]['attenuators']
+        self.RunPlan[plan_nr] = {'runs': self.get_selected_runs(), 'type': self.get_run_type(run_type)}
+        attenuators = self.get_attenuators_from_runcofig()
+        if attenuators:
+            self.RunPlan[plan_nr]['attenuators'] = attenuators
         self.save_runplan()
+
+    def get_attenuators_from_runcofig(self):
+        dic = {}
+        for i in xrange(1, len(filter(lambda key: 'att_dia' in key, self.RunInfos[self.get_selected_runs()[0]].iterkeys())) + 1):
+            dic['dia{}'.format(i)] = self.get_attenuator('att_dia{}'.format(i))
+            dic['pulser{}'.format(i)] = self.get_attenuator('att_pul{}'.format(i))
+        return dic
 
     def delete_runplan(self, plan_nr):
         plan = self.make_runplan_string(plan_nr)
@@ -426,19 +432,18 @@ class RunSelection(Elementary):
         for type_ in self.get_runinfo_values('type', sel=sel):
             print '  ' + type_
 
+    def get_attenuator(self, key):
+        atts = self.get_runinfo_values(key, sel=True)
+        return atts[0] if len(atts) == 1 else None
+
+    def get_run_type(self, run_type=None):
+        types = [t.replace('_', ' ') for t in self.get_runinfo_values('runtype', sel=True)]
+        return run_type if run_type is not None else types[0] if len(types) == 1 else run_type
+
     def get_runinfo_values(self, key, sel=False):
-        """
-        :param key: key of run info
-        :param sel: False for all runs, True for all in selection
-        :return: all different values of the run info dict
-        """
-        values = []
+        """ returns all different runinfos for a specified key of the selection or the full run plan """
         run_infos = self.RunInfos if not sel else self.get_selection_runinfo()
-        for run, info in run_infos.iteritems():
-            value = info[key]
-            if value not in values:
-                values.append(value)
-        return sorted(values)
+        return sorted(list(set(info[key] for info in run_infos.itervalues())))
 
     def get_selection_runinfo(self):
         dic = {}

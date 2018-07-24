@@ -3692,6 +3692,28 @@
         27
       ], 
       "type": "rate scan"
+    }, 
+    "06": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser1": "6dB_1", 
+        "pulser2": "None"
+      }, 
+      "runs": [
+        127, 
+        128, 
+        129, 
+        130, 
+        131, 
+        132, 
+        133, 
+        134, 
+        135, 
+        136, 
+        137
+      ], 
+      "type": "rate scan"
     }
   }
 }
