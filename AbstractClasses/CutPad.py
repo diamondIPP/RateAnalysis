@@ -384,7 +384,7 @@ class CutPad(Cut):
 
         threshold = func() if show or show_all else None
         threshold = do_pickle(pickle_path, func, threshold)
-        return threshold if threshold > 0 else 30
+        return threshold
 
     def __calc_pedestal_range(self, sigma_range):
         picklepath = self.make_pickle_path('Pedestal', 'Cut', self.RunNumber, self.channel)
