@@ -81,68 +81,18 @@ class Analysis(Elementary):
     # ============================================================================================
     # region REGIONS AND PEAK INTEGRAL
 
-    def __draw_single_wf(self, event=None, show=True, tcorr=False):
-        start = self.StartEvent if event is None else event
-        if hasattr(self, 'draw_waveforms') and self.run.wf_exists(self.channel):
-            return self.draw_waveforms(n=1, show=show, start_event=start, t_corr=tcorr)
-        else:
-            h = TH2F('regions', '', 1024, 0, 511, 1000, -200, 50)
-            if self.run.wf_exists(0):
-                self.tree.Draw('wf0:Iteration$/2>>regions', self.Cut.all_cut, 'goff', 1, start)
-        h.GetXaxis().SetNdivisions(520)
-        self.format_histo(h, markersize=0.3, x_tit='Time [ns]', y_tit='Signal [au]', stats=0)
-        self.save_histo(h, 'Regions', show, self.TelSaveDir, lm=.075, rm=.045, x_fac=1.5, y_fac=.5)
-        return h
-
-    def draw_regions(self, ped=True, event=None, show=True):
-        h = self.__draw_single_wf(event=event, show=False)
-        self.draw_histo(h, show=show, lm=.07, rm=.045, bm=.2, x=1.5, y=.75)
-        ymin, ymax = h.GetYaxis().GetXmin(), h.GetYaxis().GetXmax()
-        ydiff = ymax - ymin
-        h.SetTitle('Pedestal Regions' if ped else 'Signal Regions')
-        starts = []
-        gr = self.make_tgrapherrors('gr', '', color=2, marker_size=0, width=3)
-        i = 0
-        gStyle.SetEndErrorSize(4)
-        sleep(.5)
-        for reg, lst in self.run.IntegralRegions[0].iteritems():
-            if ('pedestal' if ped else 'signal') not in reg:
-                continue
-            if len(reg) < 3:
-                offset = ydiff * .4 if not all(i[0] < lst[0] < i[1] for i in starts) or not all(i[0] < lst[1] < i[1] for i in starts) else ydiff * .2
-                if lst[1] - lst[0] > 1:
-                    gr.SetPoint(i, (lst[1] + lst[0]) / 4., ymax - offset)
-                    gr.SetPointError(i, (lst[1] - lst[0]) / 4., 0)
-                    l = self.draw_tlatex(gr.GetX()[i], gr.GetY()[i] + 3, '{sig}{reg}'.format(reg=reg, sig='p' if ped else 's'), color=2, size=.04)
-                    gr.GetListOfFunctions().Add(l)
-                    i += 1
-                if lst[1] - lst[0] > 1:
-                    self.draw_vertical_line(lst[0] / 2, ymin, ymax - offset, color=2)
-                    starts.append(lst)
-                else:
-                    self.draw_vertical_line(lst[0] / 2, ymin, ymax - ydiff * .5, color=4, w=2)
-                    self.draw_tlatex(lst[0] / 2, ymax - ydiff * .49, '{sig}{reg}'.format(reg=reg, sig='p' if ped else 's'), size=.04, color=4)
-                self.draw_vertical_line(lst[1] / 2, ymin, ymax - offset, color=2) if lst[1] - lst[0] > 1 else do_nothing()
-        gr.Draw('[]')
-        gr.Draw('p')
-        self._add_buckets(ymin, ymax, avr_pos=6, full_line=True)
-        save_name = 'PedestalRegions' if ped else 'SignalRegions'
-        self.save_plots(save_name, both_dias=True)
-        self.histos.append([h, gr])
-
-    def _add_buckets(self, ymin, ymax, xmin=0, xmax=512, avr_pos=-2, full_line=False, size=.03):
-        start = self.run.IntegralRegions[0]['signal_b'][0] % 40 / 2
-        stop = int(.8 * xmax) if xmax > 500 else int(xmax)
-        bucket0 = self.run.IntegralRegions[0]['signal_b'][0] / 40
-        x_range = xmax - xmin
+    def _add_buckets(self, y1=None, y2=None, x1=0, x2=512, avr_pos=-2, full_line=False, size=.03, ch=0):
+        ymin, ymax = (get_last_canvas().GetUymin(), get_last_canvas().GetUymax()) if y1 is None else y1, y2
+        start = self.Run.IntegralRegions[ch]['signal_b'][0] % 40 / 2
+        stop = x2
+        bucket0 = self.Run.IntegralRegions[0]['signal_b'][0] / 40
         y_range = ymax - ymin
-        self.draw_tlatex(xmin - .015 * x_range, ymin - 0.18 * y_range, 'Bucket:', align=30, color=418, size=size)
-        peak_fit = self.run.IntegralRegions[0]['signal_a'][0] / 2.
+        self.draw_tlatex(round(stop, -1), ymax - .05 * y_range, 'Buckets', align=10, color=418, size=size)
+        peak_fit = self.Run.IntegralRegions[0]['signal_a'][0] / 2.
         for i, x in enumerate(xrange(start, stop, 20), -bucket0):
-            y2 = ymax if full_line else ymin - 0.1 * y_range
-            self.draw_vertical_line(x, ymin - 0.22 * y_range, y2, 418, style=3 if full_line else 1, tline=True)
+            self.draw_vertical_line(x, ymin, ymax, 418, style=3 if full_line else 1, tline=True)
             if x <= stop - 20:
-                self.draw_tlatex(x + 10, ymin - 0.18 * y_range, str(i), align=20, color=418, size=size)
+                self.draw_tlatex(x + 10, ymax - .05 * y_range, str(i), align=20, color=418, size=size)
                 if peak_fit:
                     pos = peak_fit % 20
                     p_pos = round_down_to(x, 20) + pos

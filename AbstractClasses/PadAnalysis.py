@@ -1339,6 +1339,41 @@ class PadAnalysis(Analysis):
         #     return
         self.count += cnt
 
+    def draw_regions(self, event=None, show=True):
+        h = self.draw_single_waveform(event=event, show=False)
+        h.SetTitle('Peak Finding Regions')
+        self.format_histo(h, tit_size=.05, lab_size=.05, y_off=.85)
+        self.draw_histo(h, show=show, lm=.07, rm=.045, bm=.2, x=1.5, y=.75)
+        ymin, ymax = h.GetYaxis().GetXmin(), h.GetYaxis().GetXmax()
+        ydiff = ymax - ymin
+        gr = self.make_tgrapherrors('gr', '', color=2, marker_size=0, width=3)
+        gStyle.SetEndErrorSize(4)
+        sleep(.1)
+        integral_regions = filter(lambda (region, lt): 'pedestal' in region or 'signal' in region, self.Run.IntegralRegions[self.channel].iteritems())
+        for reg, lst in integral_regions:
+            b, e = lst[0], lst[1]
+            y = ymax - ydiff * .5
+            y1 = ymax - ydiff * .49
+            color = 2 if 'signal' in reg else 4
+            if e != b:
+                y1 += ydiff * .07 * (1 + filter(lambda (r, lt): b + e == lt[1] + lt[0], integral_regions).index((reg, lst)))
+                gr.SetPoint(gr.GetN(), (b + e) / 4., y1)
+                gr.SetPointError(gr.GetN() - 1, (e - b) / 4., 0)
+                l = self.draw_tlatex(gr.GetX()[gr.GetN() - 1], y1 + ydiff * .02, reg.split('_')[-1], color=color, size=.04)
+                gr.GetListOfFunctions().Add(l)
+                self.draw_vertical_line(b / 2, ymin, y1, color=color, name=reg, w=2, style=2)
+                self.draw_vertical_line(e / 2, ymin, y1, color=color, name='{}1'.format(reg), w=2, style=2)
+            else:
+                self.draw_vertical_line(b / 2., ymin, y, color=color, w=2, name=reg)
+                self.draw_tlatex(b / 2, y1, reg.split('_')[-1], size=.04, color=color)
+        l = self.make_legend(x1=.855, x2=.955, y2=.6, nentries=2)
+        l.AddEntry(self.draw_vertical_line(-500, 0, 1, color=4, w=2, name='1'), 'pedestal', 'l')
+        l.AddEntry(self.draw_vertical_line(-500, 0, 1, color=2, w=2, name='2'), 'signal', 'l')
+        gr.Draw('p')
+        self.draw_histo(gr, draw_opt='[]', canvas=get_last_canvas(), l=l)
+        self._add_buckets(avr_pos=6, full_line=True, ch=self.channel)
+        self.save_plots('Regions')
+
     # endregion
 
     def find_n_events(self, n, cut, start):
