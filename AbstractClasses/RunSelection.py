@@ -13,7 +13,7 @@ from Utils import *
 class RunSelection(Elementary):
     def __init__(self, testcampaign=None, verbose=True):
         Elementary.__init__(self, verbose=verbose, testcampaign=testcampaign)
-        self.run = Run(verbose=verbose)
+        self.run = Run(verbose=verbose, tree=False)
 
         self.Selection = {}
 
