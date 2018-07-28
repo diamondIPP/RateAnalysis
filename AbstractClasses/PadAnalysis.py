@@ -29,16 +29,16 @@ __author__ = 'micha'
 # MAIN CLASS
 # ==============================================
 class PadAnalysis(Analysis):
-    def __init__(self, run, dia, high_low_rate_run=None, binning=10000):
+    def __init__(self, run, dia, high_low_rate_run=None):
 
         self.RunNumber = run.RunNumber
-        Analysis.__init__(self, run, high_low_rate=high_low_rate_run, binning=binning)
+        Analysis.__init__(self, run, high_low_rate=high_low_rate_run)
         self.channel = self.load_channel(dia)
 
         # main
-        self.DiamondName = self.run.DiamondNames[dia - 1]
+        self.DiamondName = self.Run.DiamondNames[dia - 1]
         self.DiamondNumber = dia
-        self.Bias = self.run.Bias[dia - 1]
+        self.Bias = self.Run.Bias[dia - 1]
         self.save_dir = '{dia}/{run}/'.format(run=str(self.RunNumber).zfill(3), dia=self.DiamondName)
 
         # stuff
@@ -88,7 +88,7 @@ class PadAnalysis(Analysis):
             self.del_rootobj(obj)
         for c in gROOT.GetListOfCanvases():
             c.Close()
-        for lst in self.histos + self.RootObjects:
+        for lst in self.ROOTObjects + self.ROOTObjects:
             if not type(lst) is list:
                 lst = [lst]
             for obj in lst:
@@ -102,11 +102,11 @@ class PadAnalysis(Analysis):
 
     def load_channel(self, dia):
         assert dia in [1, 2], 'You have to choose either diamond 1 or 2'
-        return self.run.Channels[dia - 1]
+        return self.Run.Channels[dia - 1]
 
     def get_integral_names(self):
-        if self.run.TreeConfig.has_section('Integral Names'):
-            return [str(name) for name in loads(self.run.TreeConfig.get('Integral Names', 'Names'))]
+        if self.Run.TreeConfig.has_section('Integral Names'):
+            return [str(name) for name in loads(self.Run.TreeConfig.get('Integral Names', 'Names'))]
         self.tree.GetEntry(0)
         return [str(name) for name in self.tree.IntegralNames]
 
@@ -123,13 +123,13 @@ class PadAnalysis(Analysis):
         for name in ['signal', 'pedestal', 'pulser']:
             option = '{}_region'.format(name)
             region = '{name}_{region}'.format(name=name, region=self.ana_config_parser.get('BASIC', option)) if option in self.ana_config_parser.options('BASIC') else ''
-            regions = [reg for reg in self.run.IntegralRegions[self.DiamondNumber - 1] if reg.startswith(name)]
+            regions = [reg for reg in self.Run.IntegralRegions[self.DiamondNumber - 1] if reg.startswith(name)]
             all_regions[name] = region if region in regions else regions[0]
         return all_regions
 
     def load_peak_integral(self):
         peak_int = 'PeakIntegral{}'.format(self.ana_config_parser.get('BASIC', 'peak_integral'))
-        return peak_int if peak_int in self.run.PeakIntegrals[self.DiamondNumber - 1] else self.run.PeakIntegrals[self.DiamondNumber - 1].keys()[0]
+        return peak_int if peak_int in self.Run.PeakIntegrals[self.DiamondNumber - 1] else self.Run.PeakIntegrals[self.DiamondNumber - 1].keys()[0]
 
     def get_signal_number(self, region=None, peak_integral=None, sig_type='signal'):
         region = self.IntegralRegions[sig_type] if region is None else self.make_region(sig_type, region)
@@ -162,10 +162,10 @@ class PadAnalysis(Analysis):
 
     def set_channel(self, ch):
         self.channel = ch
-        self.DiamondName = self.run.diamondname[ch]
-        self.Bias = self.run.bias[ch]
+        self.DiamondName = self.Run.diamondname[ch]
+        self.Bias = self.Run.bias[ch]
         self.Cut = CutPad(self, ch)
-        self.save_dir = '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.RunNumber, dia=self.run.diamondname[ch])
+        self.save_dir = '{tc}_{run}_{dia}'.format(tc=self.TESTCAMPAIGN[2:], run=self.RunNumber, dia=self.Run.diamondname[ch])
         self.Polarity = self.get_polarity()
         self.SignalName = self.get_signal_name()
 
@@ -174,7 +174,7 @@ class PadAnalysis(Analysis):
 
     def draw_beam_profile(self, mode='x', show=True, fit=True, fit_margin=.6):
         assert mode.lower() in ['x', 'y'], 'Mode has to be either "x" or "y"!'
-        h = deepcopy(self.histos[-1])
+        h = deepcopy(self.ROOTObjects[-1])
         if not show:
             gROOT.SetBatch(1)
         prof = h.ProjectionX() if mode.lower() == 'x' else h.ProjectionY()
@@ -208,7 +208,7 @@ class PadAnalysis(Analysis):
         c.RedrawAxis()
         gROOT.SetBatch(0)
         self.save_plots('BeamProfile{mod}{fit}'.format(mod=mode.title(), fit='Fit' if fit else ''), sub_dir=self.save_dir)
-        self.histos.append([prof, c, lines, fits])
+        self.ROOTObjects.append([prof, c, lines, fits])
         return fit_result if fit else prof
 
     @staticmethod
@@ -250,7 +250,7 @@ class PadAnalysis(Analysis):
         gr.Draw('alp')
         one.Draw('same')
 
-        self.histos.append([gr, c, t1])
+        self.ROOTObjects.append([gr, c, t1])
         gROOT.SetBatch(0)
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.save_plots('BeamProf{mod}{dir}'.format(mod='Sigmas' if sigma else 'Chi2s', dir=mode.title()), sub_dir=self.save_dir)
@@ -394,7 +394,7 @@ class PadAnalysis(Analysis):
             gr2.Draw('p')
             gr1.Draw('p')
             self.save_plots('MeanSignalHisto', sub_dir=self.save_dir)
-            self.histos.append([gr1, gr2, c])
+            self.ROOTObjects.append([gr1, gr2, c])
         self.MeanSignalHisto = h
 
     def draw_error_signal_map(self, show=False):
@@ -408,7 +408,7 @@ class PadAnalysis(Analysis):
             h.SetStats(0)
             h.Draw('colz')
             self.save_plots('SignalMapErrors', sub_dir=self.save_dir, canvas=c)
-            self.histos.append([h, c])
+            self.ROOTObjects.append([h, c])
         return h
 
     def fit_mean_signal_distribution(self):
@@ -438,7 +438,7 @@ class PadAnalysis(Analysis):
         frame.SetPoint(3, bin_low[0][0], bin_high[1][-1])
         frame.SetPoint(4, bin_low[0][0], bin_low[1][0])
         frame.Draw('same')
-        self.histos.append(frame)
+        self.ROOTObjects.append(frame)
 
     def calc_signal_spread(self, min_percent=5, max_percent=99):
         """
@@ -464,9 +464,9 @@ class PadAnalysis(Analysis):
     # ==========================================================================
     # region SIGNAL PEAK POSITION
     def draw_peak_timing(self, region=None, sig_type='signal', show=True, cut=None, corr=True, draw_cut=True):
-        xmin, xmax = self.run.IntegralRegions[self.DiamondNumber - 1][self.SignalRegion if region is None else self.make_region(sig_type, region)]
+        xmin, xmax = self.Run.IntegralRegions[self.DiamondNumber - 1][self.SignalRegion if region is None else self.make_region(sig_type, region)]
         # increase range for timing correction and convert to ns
-        fac = 2. if self.run.Digitiser == 'drs4' else 2.5
+        fac = 2. if self.Run.Digitiser == 'drs4' else 2.5
         xmin = xmin / fac - (10 if corr else 10)
         xmax = xmax / fac + (10 if corr else 10)
         print int((xmax - xmin) * (4 if corr else 1)), xmin, xmax
@@ -505,7 +505,7 @@ class PadAnalysis(Analysis):
         l2.SetNColumns(2)
         l2.Draw()
         l2.GetListOfPrimitives().First().SetTextAlign(22)
-        self.RootObjects.append([l1, l2])
+        self.ROOTObjects.append([l1, l2])
 
     def __draw_timing_cut(self):
         timing_fit = self.Cut.calc_timing_range(show=False)['timing_corr']
@@ -522,7 +522,7 @@ class PadAnalysis(Analysis):
         g.SetFillStyle(3001)
         g.Draw('f')
         g.Draw('l')
-        self.RootObjects.append(g)
+        self.ROOTObjects.append(g)
         return g
 
     def fit_peak_timing(self, histo):
@@ -539,7 +539,7 @@ class PadAnalysis(Analysis):
         fit3.SetLineColor(2)
         fit2.SetLineStyle(2)
         fit2.Draw('same')
-        self.RootObjects.append([fit2, fit3])
+        self.ROOTObjects.append([fit2, fit3])
         return fit, fit2, fit3
 
     def calc_peak_value_fwhm(self):
@@ -562,7 +562,7 @@ class PadAnalysis(Analysis):
         forc = 'forc_pos/2.' if not corr else 'forc_time'
         self.tree.Draw('{forc}>>ft'.format(forc=forc), self.Cut.all_cut, 'goff')
         self.format_histo(h, x_tit='time [ns]', y_tit='Entries', y_off=2, fill_color=17)
-        self.histos.append(self.save_histo(h, 'FORCTiming', show, sub_dir=self.save_dir, lm=.14))
+        self.ROOTObjects.append(self.save_histo(h, 'FORCTiming', show, sub_dir=self.save_dir, lm=.14))
 
     # endregion
 
@@ -576,10 +576,10 @@ class PadAnalysis(Analysis):
         h.SetStats(0)
         h.GetYaxis().SetRangeUser(0, h.GetMaximum() * 1.05)
         h.Fit('pol0', 'qs')
-        self.histos.append(self.save_histo(h, 'TriggerCell', show, sub_dir=self.save_dir, lm=.11))
+        self.ROOTObjects.append(self.save_histo(h, 'TriggerCell', show, sub_dir=self.save_dir, lm=.11))
 
     def draw_trigger_cell_vs_peakpos(self, show=True, cut=None, tprofile=False, corr=True, t_corr=False):
-        x = self.run.signal_regions[self.SignalRegion]
+        x = self.Run.signal_regions[self.SignalRegion]
         if not tprofile:
             ybins = (x[1] - x[0]) if not corr else 4 * (x[1] - x[0])
             h = TH2D('tcpp', 'Trigger Cell vs. Signal Peak Position', 1024, 0, 1024, ybins, x[0] / 2., x[1] / 2.)
@@ -603,10 +603,10 @@ class PadAnalysis(Analysis):
         h.GetZaxis().SetRangeUser(60, 120) if tprofile else do_nothing()
         fit = h.ProjectionY().Fit('gaus', 'qs0')
         h.GetYaxis().SetRangeUser(fit.Parameter(1) - 4 * fit.Parameter(2), fit.Parameter(1) + 5 * fit.Parameter(2))
-        self.histos.append(self.draw_histo(h, 'TriggerCellVsPeakPos{0}'.format('Signal' if tprofile else ''), show, self.save_dir, lm=.11, draw_opt='colz', rm=.15, logz=True))
+        self.ROOTObjects.append(self.draw_histo(h, 'TriggerCellVsPeakPos{0}'.format('Signal' if tprofile else ''), show, self.save_dir, lm=.11, draw_opt='colz', rm=.15, logz=True))
         h1.Draw('hist same')
         self.save_plots('TriggerCellVsPeakPos{0}{1}{2}'.format('Signal' if tprofile else '', 'BothCorr' if t_corr else '', 'Corr' if corr else ''), self.save_dir)
-        self.RootObjects.append(h1)
+        self.ROOTObjects.append(h1)
 
     def draw_trigger_cell_vs_forc(self, show=True, cut=None, full_range=False, corr=False):
         if not full_range:
@@ -622,17 +622,17 @@ class PadAnalysis(Analysis):
         self.tree.Draw('{forc}:trigger_cell>>tcf'.format(forc=forc), cut, 'goff')
         self.format_histo(h, x_tit='trigger cell', y_tit='forc timing [ns]', y_off=1.4)
         h.SetStats(0)
-        self.histos.append(self.save_histo(h, 'TriggerCellVsFORC{0}'.format('FullRange' if full_range else ''), show, self.save_dir, lm=.11, draw_opt='colz', rm=.15))
+        self.ROOTObjects.append(self.save_histo(h, 'TriggerCellVsFORC{0}'.format('FullRange' if full_range else ''), show, self.save_dir, lm=.11, draw_opt='colz', rm=.15))
 
     def draw_intlength_vs_triggercell(self, show=True, bin_size=2, prof=False):
         if prof:
             h = TProfile('hltc', 'Integral Length vs. Triggercell', 1024 / bin_size, 0, 1024)
         else:
-            y_expect = (self.run.peak_integrals[self.PeakIntegral][0] + self.run.peak_integrals[self.PeakIntegral][1]) * .5
+            y_expect = (self.Run.peak_integrals[self.PeakIntegral][0] + self.Run.peak_integrals[self.PeakIntegral][1]) * .5
             h = TH2F('hltc', 'Integral Length vs. Triggercell', 1024 / bin_size, 0, 1024, 100, y_expect - 2, y_expect + 2)
         self.tree.Draw('IntegralLength[{num}]:trigger_cell>>hltc'.format(num=self.SignalNumber), self.Cut.all_cut, 'goff')
         self.format_histo(h, x_tit='Triggercell', y_tit='Integral Length [ns]', y_off=1.4, z_tit='Number of Entries', z_off=1.2)
-        self.RootObjects.append(self.draw_histo(h, 'IntLengthVsTriggerCell', show, draw_opt='' if prof else 'colz', lm=.12, rm=.16 if not prof else .1))
+        self.ROOTObjects.append(self.draw_histo(h, 'IntLengthVsTriggerCell', show, draw_opt='' if prof else 'colz', lm=.12, rm=.16 if not prof else .1))
         if not prof:
             gStyle.SetOptFit(1)
             gStyle.SetOptStat(0)
@@ -658,12 +658,12 @@ class PadAnalysis(Analysis):
         self.tree.Draw('(TimeIntegralValues[{num}]-IntegralValues[{num}]):trigger_cell>>hdtc_p'.format(num=self.SignalNumber), self.Cut.all_cut, 'goff')
         gStyle.SetPalette(53)
         self.format_histo(h, x_tit='Triggercell', y_tit='Integral2 - Integral1 [au]', z_tit='Number of Entries', stats=0, y_off=1.4, z_off=1.1)
-        self.RootObjects.append(self.draw_histo(h, '', show, draw_opt='colz', lm=.12, rm=.15))
+        self.ROOTObjects.append(self.draw_histo(h, '', show, draw_opt='colz', lm=.12, rm=.15))
         self.format_histo(hprof, lw=3, color=600)
         hprof.Draw('hist same')
         p = h.ProjectionY()
         h.GetYaxis().SetRangeUser(0, p.GetBinCenter(p.FindLastBinAbove(p.GetMaximum() / 15.)))
-        self.RootObjects.append(hprof)
+        self.ROOTObjects.append(hprof)
         self.save_plots('IntDiffVsTriggerCell', self.save_dir)
         gStyle.SetPalette(1)
 
@@ -702,7 +702,7 @@ class PadAnalysis(Analysis):
         set_statbox(only_entries=True, x=.83)
         gStyle.SetPalette(53)
         self.tree.Draw('{name}:time/1000>>h_st'.format(name=signal_name), self.Cut.all_cut, 'goff')
-        self.format_histo(h, x_tit='Time [min]', y_tit='Pulse Height [au]', y_off=1.4, t_ax_off=self.run.StartTime if rel_t else 0)
+        self.format_histo(h, x_tit='Time [min]', y_tit='Pulse Height [au]', y_off=1.4, t_ax_off=self.Run.StartTime if rel_t else 0)
         self.save_histo(h, 'SignalTime', show, lm=.12, draw_opt='colz', rm=.15)
         return h
 
@@ -725,8 +725,8 @@ class PadAnalysis(Analysis):
         p = do_pickle(picklepath, func, p)
         set_statbox(entries=2, only_fit=True, w=.3)
         y_vals = [p.GetBinContent(i) for i in xrange(2, p.GetNbinsX() + 1)]
-        self.format_histo(p, name='Fit Result', x_tit='Time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6, x_range=[self.run.StartTime, self.get_time_bins()[1][-1]],
-                          t_ax_off=self.run.StartTime if rel_t else 0, y_range=increased_range([min(y_vals), max(y_vals)], .5, .5), ndivx=505)
+        self.format_histo(p, name='Fit Result', x_tit='Time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6, x_range=[self.Run.StartTime, self.get_time_bins()[1][-1]],
+                          t_ax_off=self.Run.StartTime if rel_t else 0, y_range=increased_range([min(y_vals), max(y_vals)], .5, .5), ndivx=505)
         self.draw_histo(p, show=show, lm=.14, prnt=save)
         fit = self.fit_pulse_height(p, picklepath)
         self.save_plots('PulseHeight{0}'.format(self.BinSize), show=show, save=save, prnt=prnt)
@@ -778,7 +778,7 @@ class PadAnalysis(Analysis):
             pad.SetBottomMargin(.15)
             h.Draw()
         self.save_plots('PHEvolutionOverview{0}'.format(self.BinSize), sub_dir=self.save_dir)
-        self.histos.append([h2, c])
+        self.ROOTObjects.append([h2, c])
 
     def draw_signal_distribution(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None, binning=1, events=None,
                                  start=None, x_range=None, redo=False, stats=True, prnt=True):
@@ -793,7 +793,7 @@ class PadAnalysis(Analysis):
             h1 = TH1F('h_sd', 'Pulse Height {s}'.format(s='with Pedestal Correction' if evnt_corr else ''), int((x_range[1] - x_range[0]) * binning), *x_range)
             sig_name = self.generate_signal_name(sig, evnt_corr, off_corr, False, cut)
             start_event = int(float(start)) if start is not None else 0
-            n_events = self.find_n_events(n=events, cut=str(cut), start=start_event) if events is not None else self.run.n_entries
+            n_events = self.find_n_events(n=events, cut=str(cut), start=start_event) if events is not None else self.Run.n_entries
             self.tree.Draw('{name}>>h_sd'.format(name=sig_name), str(cut), 'goff', n_events, start_event)
             self.format_histo(h1, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=2, fill_color=self.FillColor)
             return h1
@@ -807,7 +807,7 @@ class PadAnalysis(Analysis):
     def draw_signal_vs_peakpos(self, show=True, corr=False):
         gr = self.make_tgrapherrors('gr', 'Signal vs Peak Position')
         i = 0
-        x = self.run.signal_regions[self.SignalRegion]
+        x = self.Run.signal_regions[self.SignalRegion]
         self.draw_peak_timing(show=False, corr=corr)
         h = self.PeakValues
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
@@ -825,11 +825,11 @@ class PadAnalysis(Analysis):
                 i += 1
         gr.GetXaxis().SetLimits(x[0] / 2., x[1] / 2.)
         self.format_histo(gr, x_tit='Signal Peak Position [ns]', y_tit='Pulse Height [au]', y_off=1.4)
-        self.histos.append(self.save_histo(gr, 'SignalVsPeakPos', show, self.save_dir, lm=.11, draw_opt='alp'))
+        self.ROOTObjects.append(self.save_histo(gr, 'SignalVsPeakPos', show, self.save_dir, lm=.11, draw_opt='alp'))
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
 
     def draw_sig_vs_corr_peaktiming(self, show=True, prof=False):
-        x = self.run.signal_regions[self.SignalRegion]
+        x = self.Run.signal_regions[self.SignalRegion]
         h = TProfile('hspt', 'Signal vs. Corrected Peak Timing', (x[1] - x[0]), x[0] / 2, x[1] / 2)
         if not prof:
             h = TH2F('hspt', 'Signal vs. Corrected Peak Timing', (x[1] - x[0]), x[0] / 2, x[1] / 2, 350, -50, 300)
@@ -840,12 +840,12 @@ class PadAnalysis(Analysis):
         cut = self.Cut.generate_special_cut(excluded=exluded_cuts)
         self.tree.Draw(draw_string, cut, 'goff')
         self.format_histo(h, fill_color=1)
-        self.RootObjects.append(self.draw_histo(h, show=show, draw_opt='colz'))
+        self.ROOTObjects.append(self.draw_histo(h, show=show, draw_opt='colz'))
         self.__draw_timing_cut()
 
     def draw_landau_vs_peakpos(self, show=True, bins=2):
         hs = THStack('lpp', 'Landau vs. Signal Peak Postion;pulse height;entries')
-        x = self.run.signal_regions[self.SignalRegion]
+        x = self.Run.signal_regions[self.SignalRegion]
         self.Cut.reset_cut('signal_peak_pos')
         self.draw_peak_timing(show=False)
         h_pv = self.PeakValues
@@ -868,7 +868,7 @@ class PadAnalysis(Analysis):
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.reset_colors()
         self.format_histo(hs, y_tit='Pulse Height [au]', y_off=1.2)
-        self.histos.append(self.save_histo(hs, 'LandauVsPeakPos', show, self.save_dir, lm=.11, draw_opt='nostack', l=l))
+        self.ROOTObjects.append(self.save_histo(hs, 'LandauVsPeakPos', show, self.save_dir, lm=.11, draw_opt='nostack', l=l))
 
     def draw_signal_vs_triggercell(self, show=True, bins=10):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
@@ -887,7 +887,7 @@ class PadAnalysis(Analysis):
         print
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         self.format_histo(gr, x_tit='trigger cell', y_tit='pulse height [au]', y_off=1.2)
-        self.histos.append(self.save_histo(gr, 'SignalVsTriggerCell', show, self.save_dir, lm=.11, draw_opt='alp'))
+        self.ROOTObjects.append(self.save_histo(gr, 'SignalVsTriggerCell', show, self.save_dir, lm=.11, draw_opt='alp'))
 
     # endregion
 
@@ -921,7 +921,7 @@ class PadAnalysis(Analysis):
             h.SetLineWidth(2)
             h.Draw('same') if i else h.Draw()
         self.save_plots('BucketHistos', sub_dir=self.save_dir)
-        self.histos.append([h, h_sig, h_ped1, h_ped2, c])
+        self.ROOTObjects.append([h, h_sig, h_ped1, h_ped2, c])
 
     def show_bucket_numbers(self, show=True):
         pickle_path = self.PickleDir + 'Cuts/BucketEvents_{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.RunNumber, dia=self.DiamondName)
@@ -931,9 +931,9 @@ class PadAnalysis(Analysis):
             n_new = self.tree.Draw('1', '!({buc})&&{pul}'.format(buc=self.Cut.CutStrings['bucket'], pul=self.Cut.CutStrings['pulser']), 'goff')
             n_old = self.tree.Draw('1', '!({buc})&&{pul}'.format(buc=self.Cut.CutStrings['old_bucket'], pul=self.Cut.CutStrings['pulser']), 'goff')
             if show:
-                print 'New Bucket: {0} / {1} = {2:4.2f}%'.format(n_new, self.run.n_entries, n_new / float(self.run.n_entries) * 100)
-                print 'Old Bucket: {0} / {1} = {2:4.2f}%'.format(n_old, self.run.n_entries, n_old / float(self.run.n_entries) * 100)
-            return {'old': n_old, 'new': n_new, 'all': float(self.run.n_entries)}
+                print 'New Bucket: {0} / {1} = {2:4.2f}%'.format(n_new, self.Run.n_entries, n_new / float(self.Run.n_entries) * 100)
+                print 'Old Bucket: {0} / {1} = {2:4.2f}%'.format(n_old, self.Run.n_entries, n_old / float(self.Run.n_entries) * 100)
+            return {'old': n_old, 'new': n_new, 'all': float(self.Run.n_entries)}
 
         return do_pickle(pickle_path, func)
 
@@ -961,7 +961,7 @@ class PadAnalysis(Analysis):
             h.GetXaxis().SetRangeUser(zero_bins[0][0], zero_bins[0][-1])
             h.GetYaxis().SetRangeUser(zero_bins[1][0], zero_bins[1][-1])
             h.Draw('colz')
-            self.histos.append([h, c])
+            self.ROOTObjects.append([h, c])
         return h
 
     def draw_bucket_pedestal(self, show=True, corr=True, additional_cut='', draw_option='colz'):
@@ -969,7 +969,7 @@ class PadAnalysis(Analysis):
         cut_string = self.Cut.generate_special_cut(included=['tracks', 'pulser', 'saturated'])
         cut_string += additional_cut
         h = self.draw_signal_vs_peak_position('e', '2', show, corr, cut_string, draw_option, 1, save=False)
-        self.format_histo(h, x_range=[self.run.signal_regions[self.SignalRegion][0] / 2, self.run.signal_regions['e'][1] / 2], stats=0)
+        self.format_histo(h, x_range=[self.Run.signal_regions[self.SignalRegion][0] / 2, self.Run.signal_regions['e'][1] / 2], stats=0)
         self.save_plots('BucketPedestal')
 
     def draw_bucket_waveforms(self, show=True, t_corr=True, start=100000):
@@ -987,7 +987,7 @@ class PadAnalysis(Analysis):
             mg.Add(gr, 'lp')
             l.AddEntry(gr, names[i], 'lp')
         self.format_histo(mg, draw_first=True, x_tit='Time [ns]', y_tit='Signal [mV]')
-        x = [self.run.signal_regions['e'][0] / 2, self.run.signal_regions['e'][1] / 2 + 20]
+        x = [self.Run.signal_regions['e'][0] / 2, self.Run.signal_regions['e'][1] / 2 + 20]
         self.format_histo(mg, x_range=x, y_off=.7)
         y = mg.GetYaxis().GetXmin(), mg.GetYaxis().GetXmax()
         self.draw_histo(mg, show=show, draw_opt='A', x=1.5, y=0.75, lm=.07, rm=.045, bm=.2, l=l)
@@ -1018,7 +1018,7 @@ class PadAnalysis(Analysis):
                 h2.Draw('same')
                 self.format_histo(h3, color=self.get_color(), lw=1)
                 h3.Draw('same')
-                self.histos.append([h1, h2, h3, c])
+                self.ROOTObjects.append([h1, h2, h3, c])
             result = {name: [h.GetMean(), h.GetMeanError()] for name, h in zip(['new', 'no', 'old'], [h1, h2, h3])}
             gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
             if show:
@@ -1124,7 +1124,7 @@ class PadAnalysis(Analysis):
             h.SetStats(False)
         name = '{0}Cuts'.format('Normalised' if not scale else 'Scaled')
         self.format_histo(stack, y_off=1.4, x_off=1.1)
-        self.RootObjects.append(self.save_histo(stack, name, show, self.save_dir, lm=.15, l=legend, draw_opt='nostack'))
+        self.ROOTObjects.append(self.save_histo(stack, name, show, self.save_dir, lm=.15, l=legend, draw_opt='nostack'))
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
 
@@ -1210,7 +1210,7 @@ class PadAnalysis(Analysis):
         for i in xrange(1, gr.GetN()):
             bin_x = gr.GetXaxis().FindBin(i)
             gr.GetXaxis().SetBinLabel(bin_x, names[i - 1])
-        self.RootObjects.append(self.save_histo(gr, 'CutMeans{s}'.format(s='Short' if short else ''), show, self.save_dir, bm=.20, draw_opt='bap', lm=.12, x_fac=1.5))
+        self.ROOTObjects.append(self.save_histo(gr, 'CutMeans{s}'.format(s='Short' if short else ''), show, self.save_dir, bm=.20, draw_opt='bap', lm=.12, x_fac=1.5))
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
 
     def draw_distance_vs_ph(self, show=True, steps=10):
@@ -1263,7 +1263,7 @@ class PadAnalysis(Analysis):
         peak_int = self.PeakIntegral if peak_int is None else peak_int
         cut = self.Cut.generate_special_cut(excluded=[self.Cut.CutStrings['timing']]) if cut is None else cut
         num = self.get_signal_number(region, peak_int)
-        reg_margins = self.run.signal_regions[region]
+        reg_margins = self.Run.signal_regions[region]
         x_bins = (reg_margins[1] - reg_margins[0]) * nbins
         h = TH2F('h_spp', 'Signal Vs Peak Positions', x_bins, reg_margins[0] / 2., reg_margins[1] / 2., 550, -50, 500)
         peak_string = 'IntegralPeaks' if not corr else 'IntegralPeakTime'
@@ -1281,13 +1281,13 @@ class PadAnalysis(Analysis):
         h = TH2F('hsse', 'Signal b vs Signal e', 62, -50, 200, 50, 0, 200)
         self.tree.Draw('{sige}:{sigb}>>hsse'.format(sigb=self.SignalName, sige=self.get_signal_name(region='e')), cut, 'goff')
         self.format_histo(h, x_tit='Signal s_b [au]', y_tit='Signal s_e [au]', z_tit='Number of Entries', z_off=1.1, y_off=1.5, stats=0)
-        self.RootObjects.append(self.save_histo(h, 'SignalEvsSignalB', show, rm=.15, lm=.13, draw_opt='colz'))
+        self.ROOTObjects.append(self.save_histo(h, 'SignalEvsSignalB', show, rm=.15, lm=.13, draw_opt='colz'))
         gStyle.SetPalette(1)
 
     def draw_waveforms(self, n=1, cut=None, start_event=None, t_corr=True, channel=None, show=True):
         """ Draws a stack of n waveforms. """
         channel = self.channel if channel is None else channel
-        if not self.run.wf_exists(self.channel):
+        if not self.Run.wf_exists(self.channel):
             return
         start_event = self.count + self.StartEvent if start_event is None else start_event
         self.log_info('Drawing {n} waveform, startint at event: {s}'.format(n=n, s=start_event))
@@ -1299,10 +1299,10 @@ class PadAnalysis(Analysis):
         h = TH2F('h_wf', title, 1024, 0, 512, 2048, -512, 512)
         values = [self.tree.GetV1()[i] for i in xrange(n_entries)]
         if t_corr:
-            times = [self.run.get_calibrated_times(self.tree.GetV2()[1024 * i]) for i in xrange(n_entries / 1024)]
+            times = [self.Run.get_calibrated_times(self.tree.GetV2()[1024 * i]) for i in xrange(n_entries / 1024)]
             times = [v for lst in times for v in lst]
         else:
-            times = [(.4 if self.run.Digitiser == 'caen' else .5) * i for i in xrange(1024)] * n
+            times = [(.4 if self.Run.Digitiser == 'caen' else .5) * i for i in xrange(1024)] * n
         for v, t in zip(values, times):
             h.Fill(t, v)
         self.tree.SetEstimate()
@@ -1316,10 +1316,11 @@ class PadAnalysis(Analysis):
     def draw_single_waveform(self, cut='', event=None, show=True):
         h, n = self.draw_waveforms(n=1, start_event=event, cut=cut, t_corr=True, show=False)
         self.draw_histo(h, show=show, gridy=1, gridx=1, lm=.073, rm=.045, bm=.18, x=1.5, y=.5)
+        return h
 
     def show_single_waveforms(self, n=1, cut='', start_event=None):
         start = self.StartEvent + self.count if start_event is None else start_event + self.count
-        activated_wfs = [wf for wf in xrange(4) if self.run.wf_exists(wf)]
+        activated_wfs = [wf for wf in xrange(4) if self.Run.wf_exists(wf)]
         print 'activated wafeforms:', activated_wfs
         print 'Start at event number:', start
         wfs = [self.draw_waveforms(n=n, start_event=start, cut=cut, show=False, channel=wf) for wf in activated_wfs]
@@ -1330,10 +1331,10 @@ class PadAnalysis(Analysis):
         else:
             c = gROOT.GetListOfCanvases()[-1]
         for i, wf in enumerate(wfs, 1):
-            wf[0].SetTitle('{nam} WaveForm'.format(nam=self.run.DRS4Channels[activated_wfs[i - 1]]))
+            wf[0].SetTitle('{nam} WaveForm'.format(nam=self.Run.DRS4Channels[activated_wfs[i - 1]]))
             c.cd(i)
             wf[0].Draw('aclp')
-        self.RootObjects.append([c, wfs])
+        self.ROOTObjects.append([c, wfs])
         cnt = wfs[0][1]
         # if cnt is None:
         #     return
@@ -1377,17 +1378,17 @@ class PadAnalysis(Analysis):
     # endregion
 
     def find_n_events(self, n, cut, start):
-        total_events = self.tree.Draw('event_number', cut, 'goff', self.run.n_entries, start)
+        total_events = self.tree.Draw('event_number', cut, 'goff', self.Run.n_entries, start)
         evt_numbers = [self.tree.GetV1()[i] for i in xrange(total_events)]
         return int(evt_numbers[:n][-1] + 1 - start)
 
     def check_alignment(self, binning=5000, show=True):
         """ just check the number of pixel hits at pulser events for no offset """
-        pickle_path = 'Configuration/Individual_Configs/Alignment/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.run.RunNumber)
+        pickle_path = 'Configuration/Individual_Configs/Alignment/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.Run.RunNumber)
 
         def func():
-            nbins = self.run.n_entries / binning
-            h = TProfile('h', 'Pulser Rate', nbins, 0, self.run.n_entries)
+            nbins = self.Run.n_entries / binning
+            h = TProfile('h', 'Pulser Rate', nbins, 0, self.Run.n_entries)
             self.tree.Draw('(@col.size()>1)*100:Entry$>>h', 'pulser', 'goff')
             self.format_histo(h, title='Event Alignment', x_tit='Event Number', y_tit='Hit Efficiency @ Pulser Events [%]', y_off=1.3, stats=0, y_range=[0, 105], fill_color=self.FillColor)
             self.save_histo(h, 'EventAlignment', show, self.TelSaveDir, draw_opt='hist', prnt=show, rm=.08)
@@ -1400,11 +1401,11 @@ class PadAnalysis(Analysis):
         return aligned
 
     def find_event_offsets(self, binning=5000, show=True):
-        nbins = self.run.n_entries / binning
-        histos = [TProfile('h{i}'.format(i=i), 'Pulser Rate', nbins, 0, self.run.n_entries) for i in xrange(5)]
-        self.tree.SetEstimate(self.run.n_entries)
+        nbins = self.Run.n_entries / binning
+        histos = [TProfile('h{i}'.format(i=i), 'Pulser Rate', nbins, 0, self.Run.n_entries) for i in xrange(5)]
+        self.tree.SetEstimate(self.Run.n_entries)
         self.tree.Draw('(@col.size()>1)*100', '', 'goff')
-        cols = [self.tree.GetV1()[i] for i in xrange(self.run.n_entries)]
+        cols = [self.tree.GetV1()[i] for i in xrange(self.Run.n_entries)]
         n = self.tree.Draw('Entry$', 'pulser', 'goff')
         pulser_events = [int(self.tree.GetV1()[i]) for i in xrange(n)]
         for ev in pulser_events[:-1]:
@@ -1419,7 +1420,7 @@ class PadAnalysis(Analysis):
         self.save_histo(histos[0], 'EventAlignment', show, self.TelSaveDir, draw_opt='hist', prnt=show, rm=.08)
         for h in histos[1:]:
             h.Draw('same')
-        self.RootObjects.append([histos])
+        self.ROOTObjects.append([histos])
         self.reset_colors()
 
     @staticmethod
@@ -1497,7 +1498,7 @@ class PadAnalysis(Analysis):
         gr2.Draw('lp')
         gr3.Draw('lp')
         legend.Draw()
-        self.histos.append(legend)
+        self.ROOTObjects.append(legend)
         return [gr1, gr2, gr3]
 
     @staticmethod
@@ -1612,7 +1613,7 @@ class PadAnalysis(Analysis):
     def find_best_snr(self, show=True, same_width=False):
         gROOT.SetBatch(1)
         gr = self.make_tgrapherrors('gr', 'Signal to Noise Ratios')
-        peak_integrals = OrderedDict(sorted({key: value for key, value in self.run.peak_integrals.iteritems() if len(key) < 3}.items()))
+        peak_integrals = OrderedDict(sorted({key: value for key, value in self.Run.peak_integrals.iteritems() if len(key) < 3}.items()))
         i = 0
         for name, value in peak_integrals.iteritems():
             signal = self.get_signal_name('b', name)
@@ -1629,14 +1630,14 @@ class PadAnalysis(Analysis):
         gr.Draw('ap')
         gROOT.SetBatch(0)
         self.save_plots('BestSNR', sub_dir=self.save_dir)
-        self.histos.append([gr, c])
+        self.ROOTObjects.append([gr, c])
 
     def signal_vs_peakintegral(self, show=True, ped=False):
         gROOT.SetBatch(1)
         gr = self.make_tgrapherrors('gr', '{sig} vs Peak Integral'.format(sig='Signal' if not ped else 'Pedestal'))
-        peak_integrals = OrderedDict(sorted({key: value for key, value in self.run.peak_integrals.iteritems() if len(key) < 3}.items()))
+        peak_integrals = OrderedDict(sorted({key: value for key, value in self.Run.peak_integrals.iteritems() if len(key) < 3}.items()))
         i = 0
-        ratio = '{0}{1}'.format(self.run.peak_integrals.values()[0][0], self.run.peak_integrals.values()[0][1])
+        ratio = '{0}{1}'.format(self.Run.peak_integrals.values()[0][0], self.Run.peak_integrals.values()[0][1])
         for name, value in peak_integrals.iteritems():
             sig_name = self.get_signal_name(region='b', peak_integral=name)
             signal = self.draw_pulse_height(corr=True, show=False, sig=sig_name) if not ped else self.Pedestal.draw_disto(save=False, name=self.Pedestal.get_signal_name(peak_int=name))
@@ -1651,7 +1652,7 @@ class PadAnalysis(Analysis):
         gr.Draw('ap')
         gROOT.SetBatch(0)
         self.save_plots('{sig}PeakInt_{rat}'.format(rat=ratio, sig='Ped' if ped else 'Sig'), sub_dir=self.save_dir)
-        self.histos.append([gr, c])
+        self.ROOTObjects.append([gr, c])
 
     # endregion
 
@@ -1663,9 +1664,9 @@ class PadAnalysis(Analysis):
 
     def get_all_signal_names(self, sig_type='signal'):
         names = OrderedDict()
-        for region in self.run.IntegralRegions[self.DiamondNumber - 1]:
+        for region in self.Run.IntegralRegions[self.DiamondNumber - 1]:
             if sig_type in region:
-                for integral in self.run.PeakIntegrals[self.DiamondNumber - 1]:
+                for integral in self.Run.PeakIntegrals[self.DiamondNumber - 1]:
                     name = 'ch{ch}_{reg}_{int}'.format(ch=self.channel, reg=region, int=integral)
                     num = self.IntegralNames.index(name)
                     reg = region.replace(sig_type, '').strip('_') + integral.replace('PeakIntegral', '')
@@ -1681,7 +1682,7 @@ class PadAnalysis(Analysis):
     def print_information(self, header=True):
         if header:
             self.print_info_header()
-        infos = [self.RunNumber, self.run.RunInfo['type'], self.DiamondName.ljust(4), self.Bias, self.SignalRegion + self.PeakIntegral + '   ']
+        infos = [self.RunNumber, self.Run.RunInfo['type'], self.DiamondName.ljust(4), self.Bias, self.SignalRegion + self.PeakIntegral + '   ']
         for info in infos:
             print self.adj_length(info),
         print
@@ -1755,10 +1756,10 @@ class PadAnalysis(Analysis):
         gr3.Draw('l')
         print mid - 4, mid + 6
         ar.Draw()
-        self.histos.append([h, h1, gr1, gr2, gr3, ar, c])
+        self.ROOTObjects.append([h, h1, gr1, gr2, gr3, ar, c])
 
     def draw_tcal(self, show=True):
-        gr = self.make_tgrapherrors('gr_tcal', 'DRS4 Bin Sizes', marker_size=.5, x=range(len(self.run.TCal)), y=self.run.TCal)
+        gr = self.make_tgrapherrors('gr_tcal', 'DRS4 Bin Sizes', marker_size=.5, x=range(len(self.Run.TCal)), y=self.Run.TCal)
         gr.Fit('pol0', 'qs') if show else do_nothing()
         self.format_histo(gr, x_tit='Bin number', y_tit='Length [ns]', y_off=1.5, y_range=[0, 1])
         set_statbox(only_fit=True)
@@ -1766,7 +1767,7 @@ class PadAnalysis(Analysis):
 
     def draw_tcal_disto(self, show=True):
         h = TH1F('h_tcal', 'Bin Size Distribution', *self.Plots.get_tcal_bins())
-        for value in self.run.TCal:
+        for value in self.Run.TCal:
             h.Fill(value)
         self.format_histo(h, x_tit='time [ns]', y_tit='number of entries', y_off=1.5)
         self.save_histo(h, 'DRSBinSizeDisto', show, self.save_dir)
@@ -1782,7 +1783,7 @@ class PadAnalysis(Analysis):
         return find_mpv_fwhm(h)
 
     def get_peak_integral(self, name):
-        return  self.run.PeakIntegrals[self.DiamondNumber - 1]['PeakIntegral{}'.format(name) if not 'Peak' in str(name) else name]
+        return self.Run.PeakIntegrals[self.DiamondNumber - 1]['PeakIntegral{}'.format(name) if 'Peak' not in str(name) else name]
 
     @staticmethod
     def make_region(signal, region=''):

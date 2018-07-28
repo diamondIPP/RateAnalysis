@@ -81,7 +81,7 @@ class PixAnalysis(Analysis):
     # region INIT
 
     def load_diamond_name(self, dut, run=None):
-        run = self.run if run is None else run
+        run = self.Run if run is None else run
         assert dut in [1, 2, 3], 'You have to choose either dut 1, 2 or 3'
         return run.DiamondNames[dut - 1]
     # endregion
@@ -138,7 +138,7 @@ class PixAnalysis(Analysis):
                 graphs[i].SetPoint(ibin, t, fits[i % 2].Parameter(1 + i % 2))
                 graphs[i].SetPointError(ibin, 0, fits[i % 2].ParError(1 + i % 2))
         for i in xrange(4):
-            set_time_axis(graphs[i], off=self.run.StartTime)
+            set_time_axis(graphs[i], off=self.Run.StartTime)
             self.draw_histo(graphs[i], draw_opt='alp')
         return h
     # endregion OCCUPANCY
@@ -215,7 +215,7 @@ class PixAnalysis(Analysis):
         cut_var = 'charge_all_ROC{d}'.format(d=self.Dut) if not adc else 'adc'
         self.tree.Draw('{v}:time / 1000. >> h_ph'.format(v=cut_var), cut_string, 'goff')
         self.format_histo(h, x_tit='Time [hh:mm]', y_tit='Cluster Charge [e]' if not adc else 'adc', z_tit='Number of Entries', y_off=2.05, z_off=1.3, stats=0)
-        set_time_axis(h, off=self.run.StartTime)
+        set_time_axis(h, off=self.Run.StartTime)
         h.SetNdivisions(510)
         self.save_histo(h, 'PulseHeightVsEvent', show, rm=.15, lm=.16, draw_opt='colz', save=show)
         return h
@@ -231,7 +231,7 @@ class PixAnalysis(Analysis):
         self.draw_histo(h, show=show)
         fit_par = h.Fit('pol0', 'qs')
         self.format_histo(h, name='Fit Result', y_off=1.9, y_tit='Pulse Height [e]', x_tit='Time [hh:mm]', markersize=.6)
-        set_time_axis(h, off=self.run.StartTime)
+        set_time_axis(h, off=self.Run.StartTime)
         self.save_histo(h, 'PulseHeight', show, lm=.16, draw_opt='e1', save=show, canvas=get_last_canvas())
         return FitRes(fit_par)
 
@@ -264,11 +264,11 @@ class PixAnalysis(Analysis):
         self.save_histo(h, 'ZeroContribution{e}'.format(e='Entries' if entries else ''), show, rm=.17, lm=.13, draw_opt='colz')
 
     def get_calibration_data(self):
-        f = open(joinpath(self.run.converter.TrackingDir, 'calibration_lists', 'GKCalibrationList_Telescope{n}.txt'.format(n=self.run.converter.TelescopeID)))
+        f = open(joinpath(self.Run.converter.TrackingDir, 'calibration_lists', 'GKCalibrationList_Telescope{n}.txt'.format(n=self.Run.converter.TelescopeID)))
         lines = f.readlines()
         f.close()
         # calibration fit
-        file_names = [joinpath(self.run.converter.TrackingDir, lines[0].strip('./\n'), line.strip('\n')) for i, line in enumerate(lines) if i]
+        file_names = [joinpath(self.Run.converter.TrackingDir, lines[0].strip('./\n'), line.strip('\n')) for i, line in enumerate(lines) if i]
         fit = None
         params = [[[0 for _ in xrange(self.Settings['nRows'])] for _ in xrange(self.Settings['nCols'])] for _ in xrange(self.NRocs)]
         for roc, file_name in enumerate(file_names):
@@ -282,7 +282,7 @@ class PixAnalysis(Analysis):
                 params[roc][int(line[-2])][int(line[-1])] = [float(line[i]) for i in xrange(4)]
             f.close()
         # calibration points
-        calib_files = [joinpath(self.run.converter.TrackingDir, lines[0].strip('./\n'), 'phCalibration_C{n}.dat'.format(n=n)) for n in xrange(self.NRocs)]
+        calib_files = [joinpath(self.Run.converter.TrackingDir, lines[0].strip('./\n'), 'phCalibration_C{n}.dat'.format(n=n)) for n in xrange(self.NRocs)]
         vcals = None
         points = [[[0 for _ in xrange(self.Settings['nRows'])] for _ in xrange(self.Settings['nCols'])] for _ in xrange(self.NRocs)]
         for roc, file_name in enumerate(calib_files, 0):
@@ -443,7 +443,7 @@ class PixAnalysis(Analysis):
         g = self.make_graph_from_profile(h)
         fit = self.fix_chi2(g, .01, show)
         self.format_histo(g, x_tit='Time [hh:mm]' if vs_time else 'Event Number', y_tit='Efficiency [%]', y_off=1.4, y_range=[-5, 115], stats=0,
-                          t_ax_off=self.run.StartTime if vs_time else 0, markersize=1.7, draw_first=True)
+                          t_ax_off=self.Run.StartTime if vs_time else 0, markersize=1.7, draw_first=True)
         self.draw_histo(g, show=show, lm=.13, gridy=True, draw_opt='apz')
         self.draw_stats(fit, width=.35, y2=.35, names=['Efficiency'])
         self.save_plots('HitEfficiencyROC{n}'.format(n=roc), save=save, show=show)
@@ -461,7 +461,7 @@ class PixAnalysis(Analysis):
             leg_string += ' ({v:5.2f}%)'.format(v=eff)
             l1.AddEntry(h, leg_string, 'pl')
         self.format_histo(stack, x_tit='Time [hh:mm]', y_tit='Efficiency [%]', y_off=1.4, ndivx=505, y_range=[-5, 105], stats=0, draw_first=True)
-        set_time_axis(stack, off=self.run.StartTime)
+        set_time_axis(stack, off=self.Run.StartTime)
         self.save_histo(stack, 'HitEfficiencies', show, lm=.13, l=l1, draw_opt='nostack', gridy=True)
         self.reset_colors()
         return stack
@@ -691,7 +691,7 @@ class PixAnalysis(Analysis):
                 p = h.Project3D('yz')
                 g.SetPoint(ibin, h.GetXaxis().GetBinCenter(ibin), p.GetCorrelationFactor())
             if vs_time:
-                set_time_axis(g, off=self.run.StartTime)
+                set_time_axis(g, off=self.Run.StartTime)
             self.format_histo(g, x_tit='Time [hh::mm]' if vs_time else 'Event Number', y_tit='Correlation Factor', y_off=1.5, y_range=[0, 1])
             self.add_info(start)
             return g
@@ -712,7 +712,7 @@ class PixAnalysis(Analysis):
         return mean_ > .3
 
     def draw_event_offsets(self, evnts=1000, start=0, pnts=None, rnge=1, show=True):
-        pnts = int(ceil(self.run.n_entries / evnts)) if pnts is None else pnts
+        pnts = int(ceil(self.Run.n_entries / evnts)) if pnts is None else pnts
         n_graphs = 2 * rnge + 1
         graphs = [self.make_tgrapherrors('g_to{i}'.format(i=i), '', color=self.get_color(), marker_size=.5) for i in xrange(n_graphs)]
         l1 = self.make_legend(x1=.8, y2=.5, nentries=n_graphs - 1)

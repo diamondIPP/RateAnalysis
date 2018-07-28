@@ -25,8 +25,8 @@ class PixCollection(AnalysisCollection):
         for run in self.Runs:
             run_class = Run(run, tree=self.Threads[run].Tuple, verbose=self.verbose)
             analysis = PixAnalysis(run_class, self.selection.SelectedDiamondNr)
-            self.collection[analysis.run.RunNumber] = analysis
-            self.current_run_number = analysis.run.RunNumber
+            self.collection[analysis.Run.RunNumber] = analysis
+            self.current_run_number = analysis.Run.RunNumber
 
     def draw_hit_efficiencies(self, show=True):
         fits = [ana.draw_hit_efficiency(show=False) for ana in self.collection.itervalues()]

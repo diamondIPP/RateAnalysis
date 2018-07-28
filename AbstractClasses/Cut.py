@@ -20,7 +20,7 @@ class Cut(Elementary):
             self.RunNumber = self.analysis.RunNumber
             Elementary.__init__(self, verbose=self.analysis.verbose)
             self.InfoLegend = InfoLegend(parent_analysis)
-            self.Plots = Plots(self.analysis.run)
+            self.Plots = Plots(self.analysis.Run)
 
             # saving stuff
             self.RootObjects = []
@@ -234,7 +234,7 @@ class Cut(Elementary):
         return string if quantile > 0 else ''
 
     def generate_slope(self, mode='x'):
-        cut_variable = '{t}_{m}'.format(t='slope' if self.analysis.run.has_branch('slope_x') else 'angle', m=mode)
+        cut_variable = '{t}_{m}'.format(t='slope' if self.analysis.Run.has_branch('slope_x') else 'angle', m=mode)
         angles = self.calc_angle(mode)
         string = '{v}>{min}&&{v}<{max}'.format(v=cut_variable, min=angles[mode][0], max=angles[mode][1])
         return string if self.CutConfig['slope'] > 0 else ''
@@ -246,7 +246,7 @@ class Cut(Elementary):
             angle = self.CutConfig['slope']
             t = self.log_info('Generating angle cut in {m} for run {run} ...'.format(run=self.analysis.RunNumber, m=mode), False)
             set_root_output(False)
-            draw_str = '{t}_{m}'.format(t='slope' if self.analysis.run.has_branch('slope_x') else 'angle', m=mode)
+            draw_str = '{t}_{m}'.format(t='slope' if self.analysis.Run.has_branch('slope_x') else 'angle', m=mode)
             n = self.analysis.tree.Draw(draw_str, '{s}>-100'.format(s=draw_str), 'goff')
             mean_ = mean([self.analysis.tree.GetV1()[i] for i in xrange(n)])
             cut_vals = {mode: [mean_ - angle, mean_ + angle]}
@@ -317,7 +317,7 @@ class Cut(Elementary):
         # time is in minutes. good results found with bin size of 10 seconds
         set_root_output(False)
         h = TH1F('h_beam_time_', 'Beam Interruptions', *self.Plots.get_time_binning(bin_width))
-        self.analysis.tree.Draw('time / 1000. >> h_beam_time_'.format(off=self.analysis.run.StartTime), '', 'goff')
+        self.analysis.tree.Draw('time / 1000. >> h_beam_time_'.format(off=self.analysis.Run.StartTime), '', 'goff')
         mean_ = mean(sorted([h.GetBinContent(i) for i in xrange(h.GetNbinsX())])[-20:-10])  # only take the ten highest values to get an estimate of the plateau
         jumps = []
         tup = [0, 0]
@@ -333,10 +333,10 @@ class Cut(Elementary):
                 tup = [0, 0]
             last_rate = rate
         if tup[0] != tup[1]:  # if rate did not went down before the run stopped
-            jumps.append([tup[0], self.analysis.run.EndTime])
-        jumps = [[self.analysis.get_event_at_time(t - self.analysis.run.StartTime) for t in jump] for jump in jumps]
+            jumps.append([tup[0], self.analysis.Run.EndTime])
+        jumps = [[self.analysis.get_event_at_time(t - self.analysis.Run.StartTime) for t in jump] for jump in jumps]
         interruptions = self.__create_jump_ranges(jumps)
-        self.format_histo(h, x_tit='Time [min]', y_tit='Number of Events', y_off=1.7, stats=0, fill_color=self.FillColor, t_ax_off=self.analysis.run.StartTime if rel_time else 0)
+        self.format_histo(h, x_tit='Time [min]', y_tit='Number of Events', y_off=1.7, stats=0, fill_color=self.FillColor, t_ax_off=self.analysis.Run.StartTime if rel_time else 0)
         if show:
             self.save_histo(h, 'BeamInterruptions', show, lm=.125)
         return jumps, interruptions
@@ -345,7 +345,7 @@ class Cut(Elementary):
         """ Looking for the beam interruptions by investigating the pulser rate. """
         t = self.log_info('Searching for beam interruptions of run {r} ...'.format(r=self.RunNumber), next_line=False)
         bin_width = 200
-        rates = [self.analysis.run.tree.Draw('1', 'pulser', 'goff', bin_width, i * bin_width) / float(bin_width) for i in xrange(self.analysis.run.n_entries / bin_width)]
+        rates = [self.analysis.Run.tree.Draw('1', 'pulser', 'goff', bin_width, i * bin_width) / float(bin_width) for i in xrange(self.analysis.Run.n_entries / bin_width)]
         jumps = []
         tup = [0, 0]
         cut = .4  # if rate goes higher than n %
@@ -357,7 +357,7 @@ class Cut(Elementary):
                 jumps.append(tup)
                 tup = [0, 0]
         if tup[0] != tup[1]:  # if rate did not went down before the run stopped
-            jumps.append([tup[0], self.analysis.run.n_entries - 1])
+            jumps.append([tup[0], self.analysis.Run.n_entries - 1])
         interruptions = self.__create_jump_ranges(jumps)
         self.add_info(t)
         return jumps, interruptions
@@ -366,15 +366,15 @@ class Cut(Elementary):
         interruptions = []
         i = 0
         for tup in jumps:
-            t_start = self.analysis.run.get_time_at_event(tup[0]) - self.analysis.run.StartTime - self.CutConfig['JumpExcludeRange'][0]
-            t_stop = self.analysis.run.get_time_at_event(tup[1]) - self.analysis.run.StartTime + self.CutConfig['JumpExcludeRange'][1]
+            t_start = self.analysis.Run.get_time_at_event(tup[0]) - self.analysis.Run.StartTime - self.CutConfig['JumpExcludeRange'][0]
+            t_stop = self.analysis.Run.get_time_at_event(tup[1]) - self.analysis.Run.StartTime + self.CutConfig['JumpExcludeRange'][1]
             # if interruptions overlay just set the last stop to the current stop
             if i and t_start <= (interruptions[i - 1][1]) + 10:
                 interruptions[i - 1][1] = t_stop
                 continue
             interruptions.append([t_start, t_stop])
             i += 1
-        return [[self.analysis.run.get_event_at_time(t) for t in tup] for tup in interruptions]
+        return [[self.analysis.Run.get_event_at_time(t) for t in tup] for tup in interruptions]
 
     def get_beam_interruptions(self):
         """
@@ -439,7 +439,7 @@ class Cut(Elementary):
         return
 
     def get_track_var(self, num, mode):
-        if self.analysis.run.has_branch('dia_track_x'):
+        if self.analysis.Run.has_branch('dia_track_x'):
             return 'dia_track_{m}_local[{n}]'.format(m=mode, n=num)
         else:
             return 'diam{n}_track_{m}'.format(m=mode, n=num + 1)
@@ -450,7 +450,7 @@ class Cut(Elementary):
     def draw_cut_contributions(self, flat=False, short=False, show=True):
         set_root_output(show)
         contr = OrderedDict()
-        n_events = self.analysis.run.n_entries
+        n_events = self.analysis.Run.n_entries
         cut_events = 0
         for i, (key, cut) in enumerate(self.generate_consecutive_cuts().iteritems()):
             events = n_events - int(self.analysis.tree.Draw('1', cut, 'goff'))

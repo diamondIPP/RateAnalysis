@@ -48,7 +48,7 @@ class Currents(Elementary):
         self.RunNumber = self.load_run_number()
         self.RunLogs = self.load_runlogs()
         if analysis is not None:
-            self.RunInfo = analysis.run.RunInfo if not self.IsCollection else analysis.FirstAnalysis.RunInfo
+            self.RunInfo = analysis.Run.RunInfo if not self.IsCollection else analysis.FirstAnalysis.RunInfo
             self.Channel = analysis.channel
         # todo: add a method to extract the currents for may
         if 'dia1supply' not in self.RunInfo:
@@ -112,7 +112,7 @@ class Currents(Elementary):
         return nr
 
     def load_runlogs(self):
-        filename = self.Analysis.run.runinfofile if not self.IsCollection else self.Analysis.FirstAnalysis.run.runinfofile
+        filename = self.Analysis.Run.runinfofile if not self.IsCollection else self.Analysis.FirstAnalysis.Run.runinfofile
         try:
             f = open(filename)
             data = load(f)
@@ -167,15 +167,15 @@ class Currents(Elementary):
         ana = self.Analysis.FirstAnalysis if self.IsCollection else self.Analysis
         if ana is None:
             return
-        t = datetime.fromtimestamp(ana.run.StartTime) if hasattr(ana.run, 'StartTime') else ana.run.LogStart
-        return ana.run.LogStart if t.year < 2000 or t.day != ana.run.LogStart.day else t
+        t = datetime.fromtimestamp(ana.Run.StartTime) if hasattr(ana.Run, 'StartTime') else ana.Run.LogStart
+        return ana.Run.LogStart if t.year < 2000 or t.day != ana.Run.LogStart.day else t
 
     def load_stop_time(self):
         ana = self.Analysis.get_last_analysis() if self.IsCollection else self.Analysis
         if ana is None:
             return
-        t = datetime.fromtimestamp(ana.run.EndTime) if hasattr(ana.run, 'EndTime') else ana.run.LogEnd
-        return ana.run.LogEnd if t.year < 2000 or t.day != ana.run.LogEnd.day else t
+        t = datetime.fromtimestamp(ana.Run.EndTime) if hasattr(ana.Run, 'EndTime') else ana.Run.LogEnd
+        return ana.Run.LogEnd if t.year < 2000 or t.day != ana.Run.LogEnd.day else t
 
     def set_start_stop(self, sta, sto=None):
         if not sta.isdigit():

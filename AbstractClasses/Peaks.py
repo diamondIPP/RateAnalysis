@@ -15,7 +15,7 @@ class PeakAnalysis(Elementary):
     def __init__(self, pad_analysis):
         self.Ana = pad_analysis
         Elementary.__init__(self, verbose=self.Ana.verbose)
-        self.Run = self.Ana.run
+        self.Run = self.Ana.Run
         self.Channel = self.Ana.channel
         self.DiamondNumber = self.Ana.DiamondNumber
         self.Tree = self.Ana.tree

@@ -75,12 +75,13 @@ class Run(Elementary):
             self.Duration = timedelta(seconds=self.TotalTime)
             self.NPlanes = self.load_n_planes()
 
+            self.Channels = self.load_channels()
+
             # region info
             if self.DUTType == 'pad':
                 self.TreeConfig = self.load_tree_config()
                 self.DigitizerChannels = self.load_digitizer_channels()
                 self.NChannels = len(self.DigitizerChannels)
-                self.Channels = self.load_channels()
                 self.IntegralRegions = self.load_regions()
                 self.PeakIntegrals = self.load_peak_integrals()
                 self.TCal = self.load_tcal()
@@ -136,7 +137,7 @@ class Run(Elementary):
                 if word.startswith('active'):
                     info.append('[General]')
                     data = word.replace('_', ' ').split(':')
-                    word = '{0} = {1}'.format(data[0], bin(int(data[1]))[2:])
+                    word = '{0} = {1}'.format(data[0], ' '.join(bin(int(data[1]))[2:]))
                 elif word.startswith('Signal') or word.startswith('Sensor'):
                     word = '[{}]'.format(word)
                 elif word.startswith('tcal'):
@@ -144,7 +145,6 @@ class Run(Elementary):
                     word = word.replace('tcal', 'tcal =').replace(', \b\b', '')
                 elif word and word[-1].isdigit() and 'pulser,' not in word.lower():
                     data = word.split(':')
-                    print data
                     word = '{0} = {1}'.format(data[0], str([int(num) for num in data[1].split('-')]))
                 elif 'pulser' in word.lower():
                     word = 'Names = {}'.format(dumps(word.split(',')))

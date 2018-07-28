@@ -13,7 +13,6 @@ from uncertainties.core import Variable
 
 
 class Draw:
-
     def __init__(self, elementary):
 
         self.Config = elementary.MainConfigParser
@@ -70,7 +69,7 @@ class Draw:
 
     def reset_colors(self):
         self.count = 0
-    
+
     # region DRAWING
 
     def draw_axis(self, x1, x2, y1, y2, title, limits=None, name='ax', col=1, width=1, off=.15, tit_size=.035, lab_size=0.035, tick_size=0.03, line=False, opt='+SU', l_off=.01, log=False):
@@ -203,7 +202,6 @@ class Draw:
                    l=None, logy=False, logx=False, logz=False, canvas=None, grid=False, gridy=False, gridx=False, both_dias=False, prnt=True, phi=None, theta=None, ind=None):
         return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, all_pads, l, logy, logx, logz, canvas, grid, gridx, gridy, False, both_dias, ind,
                                prnt, phi, theta)
-    
     # endregion
 
     # region SAVE
@@ -293,6 +291,10 @@ class Draw:
         lst = [c, h, l] if l is not None else [c, h]
         self.Objects.append(lst)
         return c
+
+    def save_tel_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=None, draw_opt='', x_fac=None, y_fac=None, all_pads=True,
+                       l=None, logy=False, logx=False, logz=False, canvas=None, grid=False, gridx=False, gridy=False, save=True, ind=None, prnt=True, phi=None, theta=None):
+        return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x_fac, y_fac, all_pads, l, logy, logx, logz, canvas, grid, gridx, gridy, save, True, ind, prnt, phi, theta)
 
     # endregion
 
