@@ -114,6 +114,9 @@ class RunSelection(Elementary):
         if info:
             self.log_info('unselect all runs')
 
+    def clear_selection(self):
+        self.reset_selection()
+
     def select_runs_of_type(self, run_type, unselect=False, only_selected=False):
         """
         Selects the runs according to the type of run, such as rate_scan, test, voltage_scan etc..
