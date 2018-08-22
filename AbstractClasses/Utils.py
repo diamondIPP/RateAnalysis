@@ -9,7 +9,7 @@ from ROOT import gStyle, gROOT, TF1, TColor, TFile, TMath
 from numpy import sqrt, array, average, mean, arange, log10
 from os import makedirs, _exit
 from os import path as pth
-from os.path import basename, join, split
+from os.path import basename, join, split, expanduser
 from time import time, sleep
 from collections import OrderedDict
 import pickle
@@ -421,7 +421,7 @@ def get_base_dir():
 
 
 def server_is_mounted():
-    return dir_exists(join(get_base_dir(), 'mounts/psi/Diamonds'))
+    return dir_exists(expanduser(join('~', 'mounts', 'psi', 'Diamonds')))
 
 
 def do_pickle(path, func, value=None, params=None, redo=False):
