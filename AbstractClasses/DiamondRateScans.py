@@ -148,6 +148,7 @@ class DiaScans(Elementary):
         self.TestCampaigns = list(set(self.Selection.keys()))
         self.load_run_selections(redo=True)
         self.Name = key
+        self.save_dir = key
 
     # endregion
 
@@ -221,9 +222,16 @@ class DiaScans(Elementary):
                 print
 
     def show_selections(self):
-        print 'The following selections exists:'
-        for key, sel in self.Selections.items():
-            print '* "{key}": {sel}'.format(key=key, sel=sel)
+        max_l = max(len(key) for key in self.Selections)
+        header = ['Name'.ljust(max_l), 'Diamond', 'Campaigns']
+        rows = []
+        for key in self.Selections.iterkeys():
+            self.set_selection(key)
+            row = [key.ljust(max_l)]
+            row += [self.DiamondName.ljust(7)]
+            row += [', '.join(str(campaign) for campaign in sorted(self.TestCampaigns))]
+            rows.append(row)
+        print_table(rows, header)
 
     def show_selection_names(self):
         for key in self.Selections.iterkeys():
