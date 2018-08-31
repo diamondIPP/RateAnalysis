@@ -67,11 +67,9 @@ class DiaScans(Elementary):
         if 'test' in dia:
             return 'Test'
         if name.lower() not in self.Parser.options('ALIASES'):
-            dia = splitname('[-_]', name)[-1]
+            dia = splitname('[-_]', name)[0]
         if dia.lower() not in self.Parser.options('ALIASES'):
-            dia = '-'.join(splitname('[-_]', name)[:-1])
-        if dia.lower() not in self.Parser.options('ALIASES'):
-            dia = dia.split('-')[-1]
+            dia = '-'.join(splitname('[-_]', name)[:2])
         try:
             return self.Parser.get('ALIASES', dia)
         except NoOptionError:
