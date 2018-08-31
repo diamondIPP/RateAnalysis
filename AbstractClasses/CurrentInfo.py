@@ -398,9 +398,12 @@ class Currents(Elementary):
 
     def get_current(self):
         h = self.draw_distribution(show=False)
+        if h.GetEntries() < 10:
+            return None
         fit = h.Fit('gaus', 'sq0')
-        # log_message('Current = {0:5.2f} ({1:5.2f}) nA'.format(fit.Parameter(1), fit.ParError(1)))
-        return (fit.Parameter(1), fit.ParError(1)) if fit.Parameter(0) - h.GetMean() < 10 else (h.GetMean(), h.GetMeanError())
+        if fit.Parameter(0) - h.GetMean() < 10:  # only use gauss fit if its not deviating too much from the the mean
+            return ufloat(fit.Parameter(1), fit.ParError(1) + .05 + .05 * fit.Parameter(1))  # add .05 as uncertainty of the device and 5% systematic error
+        return ufloat(h.GetMean(), h.GetMeanError() + .05 + .05 * h.GetMean())
 
     def draw_indep_graphs(self, rel_time=False, ignore_jumps=True, v_range=None, f_range=None, c_range=None, averaging=1, with_flux=False, show=True):
         self.IgnoreJumps = ignore_jumps
