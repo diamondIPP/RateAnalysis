@@ -392,15 +392,19 @@ class PixAnalysis(Analysis):
         self.save_histo(stack, 'ClusterPulseHeight', show, lm=.13, l=l1, draw_opt='nostack', gridy=True)
         self.reset_colors()
 
-    def draw_pulse_height_map(self, show=True, cut=None, roc=None, fid=False):
+    def draw_pulse_height_map(self, show=True, cut=None, roc=None, fid=False, res=sqrt(12), track_coods=False):
         roc = self.Dut if roc is None else roc
         cut_string = (self.Cut.generate_special_cut(['fiducial']) if not fid else deepcopy(z.Cut.all_cut)) if cut is None else TCut(cut)
         set_root_output(False)
-        h = TProfile2D('p_phm', 'Pulse Height Map', *self.Plots.get_global_bins(sqrt(12)))
-        self.tree.Draw('cluster_charge[{n}]:cluster_ypos_tel[{n}]:cluster_xpos_tel[{n}]>>p_phm'.format(n=roc), cut_string, 'goff')
+        h = TProfile2D('p_phm', 'Pulse Height Map', *self.Plots.get_global_bins(res))
+        coods = 'dia_track_y_local[{0}]:dia_track_x_local[{0}]'.format(roc - 4) if track_coods else 'cluster_ypos_tel[{n}]:cluster_xpos_tel[{n}]'.format(n=roc)
+        self.tree.Draw('cluster_charge[{n}]:{c}>>p_phm'.format(n=roc, c=coods), cut_string, 'goff')
         set_statbox(only_entries=True, x=0.81)
         self.format_histo(h, x_tit='col', y_tit='row', z_tit='Pulse Height [e]', z_off=1.7, y_off=1.4)
         self.save_histo(h, 'PulseHeightMap', show, lm=.13, rm=.17, draw_opt='colz')
+
+    def draw_signal_map(self, show=True, cut=None, roc=None, fid=False, res=2):
+        return self.draw_pulse_height_map(show, cut, roc, fid, res, track_coods=True)
 
     # region EFFICIENCY %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     def get_efficiency_cut(self):
@@ -444,8 +448,9 @@ class PixAnalysis(Analysis):
         fit = self.fix_chi2(g, .01, show)
         self.format_histo(g, x_tit='Time [hh:mm]' if vs_time else 'Event Number', y_tit='Efficiency [%]', y_off=1.4, y_range=[-5, 115], stats=0,
                           t_ax_off=self.run.StartTime if vs_time else 0, markersize=1.7, draw_first=True)
-        self.draw_histo(g, show=show, lm=.13, gridy=True, draw_opt='apz')
+        self.draw_histo(g, show=show, lm=.13, gridy=True, draw_opt='apz', bm=.2)
         self.draw_stats(fit, width=.35, y2=.35, names=['Efficiency'])
+        self.draw_preliminary()
         self.save_plots('HitEfficiencyROC{n}'.format(n=roc), save=save, show=show)
         return fit if fit.Parameter(0) is not None else 0
 
@@ -471,9 +476,10 @@ class PixAnalysis(Analysis):
         cut_string = self.Cut.generate_special_cut(excluded=['masks', 'fiducial']) if cut == 'all' else cut_string
         p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DiamondName), *self.Plots.get_global_bins(res=res))
         self.tree.Draw('(n_hits[{r}]>0)*100:dia_track_y_local[{r1}]:dia_track_x_local[{r1}]>>p_em'.format(r=self.Dut, r1=self.Dut - 4), cut_string, 'goff')
-        set_statbox(entries=4, opt=1000000010, x=.81)
+        set_statbox(entries=4, opt=1000000010, x=.81, y=.95)
         self.format_histo(p, x_tit='Track x [cm]', y_tit='Track y [cm]', z_tit='Efficiency [%]', y_off=1.4, z_off=1.5)
-        self.save_histo(p, 'Efficiency Map', show, lm=.13, rm=.17, draw_opt='colz')
+        self.save_histo(p, 'Efficiency Map', show, lm=.13, rm=.17, draw_opt='colz', bm=.2)
+        self.draw_preliminary()
 
     def get_fiducial_cell(self, n):
         x1, x2, y1, y2 = self.Cut.CutConfig['FidRegion']
