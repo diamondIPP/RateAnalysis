@@ -194,10 +194,11 @@ class Draw:
         c.cd()
         return self.draw_tpavetext('#font[62]{RD42} Preliminary', c.GetLeftMargin(), .5, 1 - height - c.GetTopMargin(), 1 - c.GetTopMargin(), font=72, align=12, margin=0.04)
 
-    def draw_irradiation(self, irr, canvas=None, height=.06):
+    def draw_irradiation(self, irr, canvas=None, height=.06, left=True):
         c = get_last_canvas() if canvas is None else canvas
         c.cd()
-        return self.draw_tpavetext('Irradiation: {}'.format(irr), c.GetLeftMargin(), .5, 1 - height - c.GetTopMargin(), 1 - c.GetTopMargin(), font=42, align=12, margin=0.04)
+        x1, x2 = (c.GetLeftMargin(), .5) if left else (.5, 1 - c.GetRightMargin())
+        return self.draw_tpavetext('Irradiation: {}'.format(irr), x1, x2, 1 - height - c.GetTopMargin(), 1 - c.GetTopMargin(), font=42, align=12, margin=0.04)
 
     def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=None, draw_opt='', x=None, y=None, all_pads=True,
                    l=None, logy=False, logx=False, logz=False, canvas=None, grid=False, gridy=False, gridx=False, both_dias=False, prnt=True, phi=None, theta=None, ind=None):
@@ -322,9 +323,9 @@ class Draw:
         # lines/fill
         try:
             h.SetLineColor(color) if color is not None else h.SetLineColor(h.GetLineColor())
+            h.SetLineWidth(lw)
             h.SetFillColor(fill_color) if fill_color is not None else do_nothing()
             h.SetFillStyle(fill_style) if fill_style is not None else do_nothing()
-            h.SetLineWidth(lw)
             h.SetFillStyle(style) if style is not None else do_nothing()
             h.SetContour(ncont) if ncont is not None else do_nothing()
         except AttributeError or ReferenceError:
@@ -354,7 +355,7 @@ class Draw:
                 y_axis.CenterTitle(center_y)
                 do(y_axis.SetTitleColor, yax_col)
                 do(y_axis.SetLabelColor, yax_col)
-                do(y_axis.SetLineColor, yax_col)
+                do(y_axis.SetAxisColor, yax_col)
             z_axis = h.GetZaxis()
             if z_axis:
                 z_axis.SetTitle(z_tit) if z_tit else h.GetZaxis().GetTitle()
