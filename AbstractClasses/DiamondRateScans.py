@@ -4,7 +4,7 @@
 # --------------------------------------------------------
 
 from ConfigParser import ConfigParser, NoOptionError
-from ROOT import TMultiGraph, TGraphErrors, gStyle, TF1, TH2F, TH1F, TGraph2DErrors
+from ROOT import TMultiGraph, TGraphErrors, gStyle, TF1, TH2F, TH1F, TGraph2DErrors, gROOT
 from argparse import ArgumentParser
 from collections import Counter
 from json import load, dump, loads
@@ -555,10 +555,28 @@ class DiaScans(Elementary):
         self.ROOTObjects.append(graphs)
         self.save_plots('ScaledDiaScans{dia}'.format(dia=make_dia_str(self.DiamondName)))
 
+    def make_plots(self, name, f, kwargs):
+        for sel in self.RunSelections:
+            log_message('Creating {} Plots for {}'.format(name, sel.TCString))
+            self.get_values(sel, f, kwargs=kwargs)
+            self.draw_irradiation(make_irr_string(sel.get_irradiation()), gROOT.FindObject('p1'), left=False)
+            self.save_plots('{}{}_{}_{}'.format(name, sel.TCString, sel.SelectedRunplan, sel.SelectedDiamondNr))
+
+    def make_pulse_height_plots(self, y_range=None):
+        self.make_plots('PH', AnalysisCollection.draw_pulse_heights, kwargs={'show': False, 'y_range': y_range})
+
     def make_current_plots(self, c_range=None):
         for sel in self.RunSelections:
             log_message('Creating Current Plots for {}'.format(sel.TCString))
-            self.get_values(sel, AnalysisCollection.draw_currents, kwargs={'show': False, 'with_flux': True, 'c_range': c_range})
+            self.get_values(sel, AnalysisCollection.draw_currents, kwargs={'show': False, 'with_flux': False, 'c_range': c_range, 'draw_opt': 'al'})
+            self.save_canvas(get_last_canvas(), name='Currents{}_{}_{}'.format(sel.TCString, sel.SelectedRunplan, sel.SelectedDiamondNr))
+
+    def make_current_flux_plots(self, c_range=None):
+        for sel in self.RunSelections:
+            log_message('Creating Current Flux Plot for {}'.format(sel.TCString))
+            self.get_values(sel, AnalysisCollection.draw_current_flux, kwargs={'show': False, 'c_range': c_range})
+            self.save_plots('CF{}_{}_{}'.format(sel.TCString, sel.SelectedRunplan, sel.SelectedDiamondNr), show=False)
+
 
     def draw_currents(self, align=False, show=True):
         mg = TMultiGraph('mgc', 'Leakage Current vs. Flux')
