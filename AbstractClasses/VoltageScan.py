@@ -70,7 +70,7 @@ class VoltageScan(Elementary):
         rel_sys_error = 0
         i, j = 0, 0
         for key, ana in self.collection.iteritems():
-            fit1 = ana.draw_pulse_height(binning=binning, corr=True, save=redo, show=False)[1] if not pulser else ana.Pulser.draw_distribution_fit(show=False, prnt=False)
+            fit1 = ana.draw_pulse_height(binning=binning, corr=True, save=redo, show=False, redo=redo)[1] if not pulser else ana.Pulser.draw_distribution_fit(show=False, prnt=False)
             x = ana.run.RunInfo['dia{nr}hv'.format(nr=self.DiamondNumber)]
             s, e = (fit1.Parameter(0), fit1.ParError(0)) if not pulser else (fit1.Parameter(1), fit1.ParError(1))
             gr1.SetPoint(i, x, s)
