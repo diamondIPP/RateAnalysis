@@ -125,10 +125,12 @@ class DiaScans(Elementary):
         run_selections = []
         for tc, rps in self.Selection.iteritems():
             for rp, ch in rps.iteritems():
-                sel = RunSelection(tc)
-                sel.select_runs_from_runplan(rp, ch=ch)
-                self.log_info('Loaded runplan {rp} of testcampaign {tc} and ch {ch} ({dia})'.format(rp=rp.rjust(4), tc=make_tc_str(tc), ch=ch, dia=sel.SelectedDiamond))
-                run_selections.append(sel)
+                channels = ch if type(ch) == list else [ch]
+                for channel in channels:
+                    sel = RunSelection(tc)
+                    sel.select_runs_from_runplan(rp, ch=channel)
+                    self.log_info('Loaded runplan {rp} of testcampaign {tc} and ch {ch} ({dia})'.format(rp=rp.rjust(4), tc=make_tc_str(tc), ch=channel, dia=sel.SelectedDiamond))
+                    run_selections.append(sel)
         self.RunSelections = run_selections
         return run_selections
 
