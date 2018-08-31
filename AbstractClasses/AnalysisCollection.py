@@ -837,15 +837,21 @@ class AnalysisCollection(Elementary):
         currents = self.get_currents().values()
         g = self.make_tgrapherrors('gcf', 'Leakage Current vs. Flux')
         for i, (flux, current) in enumerate(zip(fluxes, currents)):
-            g.SetPoint(i, flux[0], current[0])
-            g.SetPointError(i, flux[1] + flux[0] * .05, current[1] + current[0] * .05)
-        if fit:
-            set_statbox(only_fit=True, y=.33, entries=6, w=.22)
-            g.Fit('pol1', 'q{}'.format('' if show else 0))
-        c_range = [.1, max([c[0] for c in currents]) * 2] if c_range is None else c_range
+            if current is not None:
+                g.SetPoint(i, flux[0], current.n)
+                g.SetPointError(i, flux[1] + flux[0] * .05, current.s)
+        c_range = [.1, max([c.n for c in currents if c is not None]) * 2] if c_range is None else c_range
         self.format_histo(g, x_tit='Flux [kHz/cm^{2}', y_tit='Current [nA]', y_off=1.3, y_range=c_range, draw_first=True)
         g.GetXaxis().SetLimits(1, 20000)
-        self.save_histo(g, 'FluxCurrent', show, lm=.13, draw_opt='ap', logx=True, logy=True, bm=.17)
+        self.draw_histo(g, 'FluxCurrent', show, lm=.13, draw_opt='ap', logx=True, logy=True, bm=.17)
+        if fit:
+            set_statbox(only_fit=True, y=.33, entries=6, w=.22)
+            f = TF1('fcf', 'pol1', .1, 1e5)
+            f.SetParLimits(0, .1, 5)
+            f.SetParLimits(1, 1e-5, 5e-3)
+            g.Fit('fcf', 'q')
+        self.draw_irradiation(make_irr_string(self.selection.get_irradiation()))
+        self.save_plots('FluxCurrent', show=show)
         return g
 
     def save_signal_maps(self, hitmap=False, redo=False):
@@ -1140,8 +1146,8 @@ class AnalysisCollection(Elementary):
 
     # endregion
 
-    def draw_currents(self, v_range=None, rel_time=False, averaging=1, with_flux=False, c_range=None, f_range=None, show=True):
-        self.Currents.draw_indep_graphs(rel_time=rel_time, v_range=v_range, averaging=averaging, with_flux=with_flux, c_range=c_range, f_range=f_range, show=show)
+    def draw_currents(self, v_range=None, rel_time=False, averaging=1, with_flux=False, c_range=None, f_range=None, draw_opt='ap', show=True):
+        self.Currents.draw_indep_graphs(rel_time=rel_time, v_range=v_range, averaging=averaging, with_flux=with_flux, c_range=c_range, f_range=f_range, show=show, draw_opt=draw_opt)
 
     def get_hv_device(self):
         return self.FirstAnalysis.Currents.Name
