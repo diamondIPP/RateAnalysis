@@ -405,45 +405,48 @@ class Currents(Elementary):
             return ufloat(fit.Parameter(1), fit.ParError(1) + .05 + .05 * fit.Parameter(1))  # add .05 as uncertainty of the device and 5% systematic error
         return ufloat(h.GetMean(), h.GetMeanError() + .05 + .05 * h.GetMean())
 
-    def draw_indep_graphs(self, rel_time=False, ignore_jumps=True, v_range=None, f_range=None, c_range=None, averaging=1, with_flux=False, show=True):
+    def draw_indep_graphs(self, rel_time=False, ignore_jumps=True, v_range=None, f_range=None, c_range=None, averaging=1, with_flux=False, draw_opt='ap', show=True):
         self.IgnoreJumps = ignore_jumps
         self.set_graphs(averaging)
         set_root_output(show)
         c = TCanvas('c', 'Keithley Currents for Run {0}'.format(self.RunNumber), int(self.Res * 1.5), int(self.Res * .75))
-        self.draw_flux_pad(f_range, rel_time) if with_flux else self.draw_voltage_pad(v_range)
+        self.draw_flux_pad(f_range, rel_time, draw_opt) if with_flux else self.draw_voltage_pad(v_range, draw_opt)
         self.draw_title_pad()
-        self.draw_current_pad(rel_time, c_range)
-
+        self.draw_current_pad(rel_time, c_range, draw_opt)
+        if self.IsCollection:
+            self.draw_irradiation(make_irr_string(self.Analysis.selection.get_irradiation()))
         self.Stuff.append(c)
-        self.save_canvas(c, name='{dia}_{bias}'.format(dia=self.DiamondName, bias=self.Bias), sub_dir='Currents', show=show)
+        save_name = 'Currents{}_{}_{}'.format(self.Analysis.selection.TCString, self.Analysis.selection.SelectedRunplan, self.Analysis.selection.SelectedDiamondNr)
+        self.set_save_directory('Results/')
+        self.save_canvas(c, name=save_name, sub_dir='Currents', show=show)
 
     def zoom_pads(self, low, high):
         self.VoltageGraph.GetXaxis().SetRangeUser(low, high)
         self.CurrentGraph.GetXaxis().SetRangeUser(low, high)
 
-    def draw_current_pad(self, rel_t, c_range):
+    def draw_current_pad(self, rel_t, c_range, draw_opt):
         self.draw_tpad('p3', gridx=True, margins=pad_margins, transparent=True)
         g = self.CurrentGraph
         self.format_histo(g, x_tit='#font[22]{Time [hh:mm]}', lab_size=label_size, x_off=1.05, tit_size=axis_title_size, t_ax_off=self.Time[0] if rel_t else 0, y_off=.55, yax_col=col_cur,
                           y_tit='#font[22]{Current [nA]}', center_y=True, x_range=[self.Time[0], self.Time[-1]], y_range=c_range, color=col_cur)
-        self.CurrentGraph.Draw('apl')
+        self.CurrentGraph.Draw(draw_opt)
 
-    def draw_voltage_pad(self, v_range):
+    def draw_voltage_pad(self, v_range, draw_opt='ap'):
         self.draw_tpad('p1', gridy=True, margins=pad_margins, transparent=True)
         g = self.VoltageGraph
         v_range = [-1100, 1100] if v_range is None else v_range
         self.format_histo(g, y_range=v_range, y_tit='#font[22]{Voltage [V]}', x_range=[self.Time[0], self.Time[-1]], tit_size=axis_title_size, tick_size=0, x_off=99, l_off_x=99, center_y=True,
-                          color=col_vol, y_off=title_offset, markersize=.5, yax_col=col_vol)
-        g.Draw('apy+')
+                          color=col_vol, y_off=title_offset, markersize=.5, yax_col=col_vol, lw=3)
+        g.Draw('{}y+'.format(draw_opt))
 
-    def draw_flux_pad(self, f_range, rel_t=False):
+    def draw_flux_pad(self, f_range, rel_t=False, draw_opt='ap'):
         pad = self.draw_tpad('pr', margins=pad_margins, transparent=True, logy=True)
         h = self.Analysis.draw_fluxes(rel_time=rel_t, show=False)
         pad.cd()
         f_range = [1, 20000] if f_range is None else f_range
         self.format_histo(h, title=' ', y_tit='#font[22]{Flux [kHz/cm^{2}]}', fill_color=4000, fill_style=4000, lw=3, y_range=f_range, stats=0, x_off=99, l_off_x=99, tick_size=0,
                           center_y=True, tit_size=axis_title_size, y_off=.7)
-        h.Draw('apy+' if 'TGraph' in h.Class_Name() else 'histy+')
+        h.Draw('{}y+'.format(draw_opt) if 'TGraph' in h.Class_Name() else 'histy+')
 
     def draw_title_pad(self):
         self.draw_tpad('p2', transparent=True)
@@ -463,7 +466,6 @@ class Currents(Elementary):
         self.Margins = self.find_margins()
 
     def make_graphs(self, averaging=1):
-        tit = ' measured by {0}'.format(self.Name)
         xv = array(self.Time)
         xc = array(average_list(self.Time, averaging))
         # current
@@ -474,7 +476,7 @@ class Currents(Elementary):
         # voltage
         y = array(self.Voltages)
         g2 = TGraph(len(xv), xv, y)
-        self.format_histo(g2, 'Voltage', 'Voltage' + tit, color=col_vol, markersize=.5)
+        self.format_histo(g2, 'Voltage', '', color=col_vol, markersize=.5)
         self.CurrentGraph = g1
         self.VoltageGraph = g2
 
@@ -508,7 +510,7 @@ if __name__ == "__main__":
     pars.add_argument('stop', nargs='?', default=None)
     pars.add_argument('-d', '--dia', nargs='?', default='1')
     pars.add_argument('-tc', '--testcampaign', nargs='?', default='')
-    pars.add_argument('-v', '--verbose', nargs='?', default=True, type=bool)
+    pars.add_argument('-v', '--verbose', action='store_false')
     pars.add_argument('-rp', '--runplan', nargs='?', default=None)
     args = pars.parse_args()
     tc = args.testcampaign if args.testcampaign.startswith('201') else None
