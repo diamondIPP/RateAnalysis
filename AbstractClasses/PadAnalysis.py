@@ -662,7 +662,7 @@ class PadAnalysis(Analysis):
         self.save_histo(h, 'SignalTime', show, lm=.12, draw_opt='colz', rm=.15)
         return h
 
-    def draw_pulse_height(self, binning=10000, redo=False, corr=True, sig=None, rel_t=True, show=True, save=True, prnt=True):
+    def draw_pulse_height(self, binning=None, redo=False, corr=True, sig=None, rel_t=True, show=True, save=True, prnt=True):
 
         sig = self.SignalName if sig is None else sig
         bin_size = binning if binning is not None else self.BinSize

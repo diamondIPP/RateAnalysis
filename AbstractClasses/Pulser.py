@@ -31,8 +31,6 @@ class PulserAnalysis(Elementary):
         self.RunNumber = self.Ana.RunNumber
         self.InfoLegend = InfoLegend(pad_analysis)
 
-        self.ROOTObjects = []
-
     def get_signal_name(self, peak_int=None):
         num = self.Ana.get_signal_number('', peak_int, 'pulser')
         return self.Ana.SignalDefinition.format(pol=self.Polarity, num=num)
@@ -131,7 +129,7 @@ class PulserAnalysis(Elementary):
             f.SetRange(0, 500)
             h.GetListOfFunctions().Add(f)
             set_drawing_range(h)
-            self.Ana.RootObjects.append(f)
+            self.Objects.append(f)
             self.save_plots('PulserDistributionFit', show=show, prnt=prnt)
             return FitRes(fit_func)
 
