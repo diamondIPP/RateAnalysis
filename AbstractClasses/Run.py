@@ -144,7 +144,6 @@ class Run(Elementary):
                     word = word.replace('tcal', 'tcal =').replace(', \b\b', '')
                 elif word and word[-1].isdigit() and 'pulser,' not in word.lower():
                     data = word.split(':')
-                    print data
                     word = '{0} = {1}'.format(data[0], str([int(num) for num in data[1].split('-')]))
                 elif 'pulser' in word.lower():
                     word = 'Names = {}'.format(dumps(word.split(',')))
@@ -171,7 +170,7 @@ class Run(Elementary):
         return self.load_ranges('Integral Ranges')
 
     def load_tcal(self):
-        tcal = loads(self.TreeConfig.get('Time Calibration', 'tcal'))
+        tcal = loads(self.TreeConfig.get('Time Calibration', 'tcal').replace('nan', '0'))
         if len(tcal) < 1024:
             tcal.append(2 * tcal[-1] - tcal[-2])
         return tcal[:1024]

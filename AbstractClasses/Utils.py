@@ -220,7 +220,7 @@ def scale_legend(l, txt_size=None, width=None, height=None):
 
 def make_irr_string(val):
     if not float(val):
-        return 'unirradiated'
+        return 'nonirradiated'
     val, power = [float(i) for i in val.split('e')]
     return '{v:1.1f}#upoint10^{p} n/cm^{{2}}'.format(v=val, p='{{{}}}'.format(int(power)))
 

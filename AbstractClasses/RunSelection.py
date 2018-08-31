@@ -381,7 +381,7 @@ class RunSelection(Elementary):
         parser.read('Configuration/DiamondAliases.cfg')
         self.SelectedRunplan = plan
         self.SelectedType = str(self.RunPlan[plan]['type'])
-        self.SelectedDiamond = parser.get('ALIASES', self.RunInfos[self.get_selected_runs()[0]]['dia{0}'.format(ch)])
+        self.SelectedDiamond = parser.get('ALIASES', self.RunInfos[runs[0]]['dia{0}'.format(ch)])
         self.SelectedBias = self.RunInfos[self.get_selected_runs()[0]]['dia{0}hv'.format(ch)]
         self.SelectedDiamondNr = ch
 
