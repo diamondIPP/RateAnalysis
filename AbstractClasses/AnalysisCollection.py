@@ -151,7 +151,9 @@ class AnalysisCollection(Elementary):
         if self.Type == 'voltage scan':
             self.VoltageScan.draw_all()
         else:
-            self.draw_pulse_heights(binning=10000, show=False)
+            self.draw_pulse_heights(show=False)
+            self.draw_scaled_pulse_heights(show=False)
+            self.draw_scaled_pulse_heights(show=False, vs_time=True)
             self.Pulser.draw_pulse_heights(do_fit=False, show=False)
             self.draw_pedestals(show=False, save=save)
             self.draw_noise(show=False)
@@ -299,7 +301,7 @@ class AnalysisCollection(Elementary):
             h.Draw('histy+')
         self.save_plots('FullPulseHeight')
 
-    def get_pulse_height_graph(self, binning=10000, vs_time=False, first_last=True, redo=False, legend=True):
+    def get_pulse_height_graph(self, binning=None, vs_time=False, first_last=True, redo=False, legend=True):
 
         self.log_info('Getting pulse heights{0}'.format(' vs time' if vs_time else ''))
         marker_size = 2
@@ -334,7 +336,7 @@ class AnalysisCollection(Elementary):
                 mg.GetListOfGraphs()[0].GetListOfFunctions().Add(self.draw_tlatex(x.n, y + ey * 1.2, '{:1.0f}'.format(ana.get_flux()[0]), color=1, align=21, size=.02))
         return mg
 
-    def draw_scaled_pulse_heights(self, binning=10000, vs_time=False, show=True, y_range=None, redo=False):
+    def draw_scaled_pulse_heights(self, binning=None, vs_time=False, show=True, y_range=None, redo=False):
 
         mode = 'Time' if vs_time else 'Flux'
         pickle_path = self.make_pickle_path('ScaledGraph', 'PulseHeights', self.RunPlan, ch=self.DiamondName, suf='{}_{}'.format(binning, mode))
@@ -349,7 +351,7 @@ class AnalysisCollection(Elementary):
         self.save_histo(mg, 'ScaledPulseHeights', show, lm=.14, draw_opt='a', logx=not vs_time, grid=vs_time, gridy=True, bm=.18)
         self.draw_irradiation(make_irr_string(self.selection.get_irradiation()))
 
-    def draw_pulse_heights(self, binning=10000, vs_time=False, show=True, show_first_last=True, save_comb=True, y_range=None, redo=False):
+    def draw_pulse_heights(self, binning=None, vs_time=False, show=True, show_first_last=True, save_comb=True, y_range=None, redo=False):
 
         mode = 'Time' if vs_time else 'Flux'
         pickle_path = self.make_pickle_path('Graph', 'PulseHeights', self.RunPlan, ch=self.DiamondName, suf='{}_{}'.format(binning, mode))
