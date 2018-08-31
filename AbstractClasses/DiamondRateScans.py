@@ -577,7 +577,6 @@ class DiaScans(Elementary):
             self.get_values(sel, AnalysisCollection.draw_current_flux, kwargs={'show': False, 'c_range': c_range})
             self.save_plots('CF{}_{}_{}'.format(sel.TCString, sel.SelectedRunplan, sel.SelectedDiamondNr), show=False)
 
-
     def draw_currents(self, align=False, show=True):
         mg = TMultiGraph('mgc', 'Leakage Current vs. Flux')
         legend = self.make_legend(nentries=len(self.RunSelections))
