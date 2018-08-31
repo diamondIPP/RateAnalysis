@@ -79,12 +79,10 @@ class PadAnalysis(Analysis):
         # histograms
         self.PedestalHisto = None
         self.SignalTime = None
-        self.SignalMapHisto = None
-        self.MeanSignalHisto = None
         self.PeakValues = None
 
     def __del__(self):
-        for obj in [self.Pedestal, self.SignalMapHisto, self.SignalTime, self.PeakValues, self.MeanSignalHisto]:
+        for obj in [self.Pedestal, self.SignalTime, self.PeakValues]:
             self.del_rootobj(obj)
         for c in gROOT.GetListOfCanvases():
             c.Close()
@@ -287,7 +285,6 @@ class PadAnalysis(Analysis):
             self.set_ph_range(h1)
             z_tit = 'Number of Entries' if hitmap else 'Pulse Height [au]'
             self.format_histo(h1, x_tit='track_x [cm]', y_tit='track_y [cm]', y_off=1.4, z_off=1.3, z_tit=z_tit, ncont=50, ndivy=510, ndivx=510)
-            self.SignalMapHisto = h1
             return h1
 
         set_statbox(only_entries=True, x=0.82)
@@ -318,10 +315,13 @@ class PadAnalysis(Analysis):
 
     def draw_sig_map_disto(self, show=True, factor=1.5, cut=None, fid=True, redo=False):
         source = self.draw_signal_map(factor, cut, fid, hitmap=False, redo=redo, show=False)
-        h = TH1F('h_smd', 'Signal Map Distribution', 100, -50, 350)
-        [h.SetBinContent(source.GetBinContent(ibin)) for ibin in xrange(source.GetNbinsX() * source.GetNbinsY()) if source.GetBinContent(ibin)]
-        self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=2, fill_color=self.FillColor)
+        h = TH1F('h_smd', 'Signal Map Distribution', 400, -50, 350)
+        [h.Fill(source.GetBinContent(ibin)) for ibin in xrange(source.GetNbinsX() * source.GetNbinsY()) if source.GetBinContent(ibin)]
+        x_range = increased_range([h.GetBinCenter(ibin) for ibin in [h.FindFirstBinAbove(5), h.FindLastBinAbove(5)]], .3, .3)
+        self.set_statbox(only_entries=1)
+        self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=2, fill_color=self.FillColor, x_range=x_range)
         self.save_histo(h, 'SignalMapDistribution', lm=.15, show=show)
+        return h
 
     def draw_sig_map_profiles(self, mode='x', factor=1.5, cut=None, fid=False, hitmap=False, redo=False, show=True):
         s = self.draw_signal_map(factor, cut, fid, hitmap=hitmap, redo=redo, show=False)
@@ -342,12 +342,10 @@ class PadAnalysis(Analysis):
         self.save_histo(g, 'SignalMapProfile', draw_opt='ap', lm=.14, show=show, gridx=True)
 
     def make_region_cut(self):
-        self.draw_mean_signal_distribution(show=False)
-        return self.Cut.generate_region(self.SignalMapHisto, self.MeanSignalHisto)
+        return self.Cut.generate_region(self.draw_signal_map(show=False), self.draw_sig_map_disto(show=False))
 
     def find_2d_regions(self):
-        self.draw_mean_signal_distribution(show=False)
-        extrema = Extrema2D(self.SignalMapHisto, self.MeanSignalHisto)
+        extrema = Extrema2D(self.draw_signal_map(show=False), self.draw_sig_map_disto(show=False))
         extrema.clear_voting_histos()
         extrema.region_scan()
         extrema.show_voting_histos()
@@ -355,8 +353,7 @@ class PadAnalysis(Analysis):
         return extrema
 
     def find_2d_extrema(self, size=1, histo=None, show=True):
-        self.draw_mean_signal_distribution(show=False)
-        extrema = Extrema2D(self.SignalMapHisto, self.MeanSignalHisto)
+        extrema = Extrema2D(self.draw_signal_map(show=False), self.draw_sig_map_disto(show=False))
         extrema.clear_voting_histos()
         extrema.square_scan(size, histo)
         if show:
@@ -364,42 +361,8 @@ class PadAnalysis(Analysis):
         self.save_plots('Extrema2D', sub_dir=self.save_dir)
         return extrema
 
-    def draw_mean_signal_distribution(self, show=True):
-        """
-        Draws the distribution of the mean pulse height values of the bins from the signal map
-        :param show: shows a plot of the canvas if True
-        """
-        # todo: save mean
-        sig_map = self.SignalMapHisto if self.SignalMapHisto is not None else self.draw_signal_map(show=False)
-        x = [int(sig_map.GetMinimum()) / 10 * 10, int(sig_map.GetMaximum() + 10) / 10 * 10]
-        h = TH1F('h', 'Mean Signal Distribution', 50, x[0], x[1])
-        for bin_ in xrange((sig_map.GetNbinsX() + 2) * (sig_map.GetNbinsY() + 2)):
-            h.Fill(sig_map.GetBinContent(bin_))
-        gStyle.SetEndErrorSize(4)
-        gr1 = self.make_tgrapherrors('gr', 'errors', width=3, marker_size=0, color=kGreen + 2)
-        gr2 = self.make_tgrapherrors('gr', 'errors', width=3, marker_size=0, color=2)
-        gr1.SetPoint(0, h.GetXaxis().GetXmin() + 5, h.GetMaximum() - 2)
-        gr2.SetPoint(0, h.GetXaxis().GetXmin() + 5, h.GetMaximum() - 2)
-        errors = self.SignalMapHisto.ProjectionXY('', 'c=e')
-        gr1.SetPointError(0, errors.GetMinimum(), 0)
-        gr2.SetPointError(0, errors.GetMaximum(), 0)
-        l = self.draw_tlatex(gr1.GetX()[0], gr1.GetY()[0] + 0.5, 'Errors', align=20, size=0.03)
-        gr1.GetListOfFunctions().Add(l)
-        if show:
-            c = TCanvas('c', 'Mean Signal Distribution', 1000, 1000)
-            self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.2)
-            h.Draw()
-            gr2.Draw('[]')
-            gr1.Draw('[]')
-            gr2.Draw('p')
-            gr1.Draw('p')
-            self.save_plots('MeanSignalHisto', sub_dir=self.save_dir)
-            self.ROOTObjects.append([gr1, gr2, c])
-        self.MeanSignalHisto = h
-
     def draw_error_signal_map(self, show=False):
-        self.draw_mean_signal_distribution(show=False)
-        h = self.SignalMapHisto.ProjectionXY('', 'c=e')
+        h = self.draw_signal_map(show=False, fid=True).ProjectionXY('', 'c=e')
         if show:
             c = TCanvas('c', 'Signal Map Errors', 1000, 1000)
             c.SetLeftMargin(0.12)
@@ -411,18 +374,18 @@ class PadAnalysis(Analysis):
             self.ROOTObjects.append([h, c])
         return h
 
-    def fit_mean_signal_distribution(self):
-        pickle_path = self.PickleDir + 'MeanSignalFit/{tc}_{run}_{dia}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.RunNumber, dia=self.DiamondName)
+    def fit_sig_map_disto(self):
+        pickle_path = self.make_pickle_path('MeanSignalFit', run=self.RunNumber, ch=self.DiamondNumber)
 
         def func():
-            self.draw_mean_signal_distribution(show=False)
-            return self.MeanSignalHisto.Fit('gaus', 'qs')
+            h = self.draw_sig_map_disto(show=False)
+            return FitRes(h.Fit('gaus', 'qs'))
 
         fit = do_pickle(pickle_path, func)
         return fit
 
     def get_mean_fwhm(self):
-        fit = self.fit_mean_signal_distribution()
+        fit = self.fit_sig_map_disto()
         conversion_factor = 2 * sqrt(2 * log(2))  # sigma to FWHM
         return fit.Parameter(2) * conversion_factor
 
@@ -441,23 +404,16 @@ class PadAnalysis(Analysis):
         self.ROOTObjects.append(frame)
 
     def calc_signal_spread(self, min_percent=5, max_percent=99):
-        """
-        Calculates the relative spread of mean signal response from the 2D signal response map.
-        :param min_percent: min quantile
-        :param max_percent: max quantile
-        :return: relative spread [%]
-        """
-        if self.MeanSignalHisto is None:
-            self.draw_mean_signal_distribution(show=False)
+        """ Calculates the relative spread of mean signal response from the 2D signal response map. """
+        h = self.draw_sig_map_disto(show=False)
         q = array([min_percent / 100., max_percent / 100.])
         y = array([0., 0.])
-        self.MeanSignalHisto.GetQuantiles(2, y, q)
-        max_min_ratio = (y[1] / y[0] - 1) * 100
-        delta_y = self.draw_error_signal_map(show=False).GetMinimum()
-        # error propagation
-        err = 100 * delta_y / y[0] * (1 + y[1] / y[0])
-        print 'Relative Signal Spread is: {spr} +- {err}'.format(spr=max_min_ratio, err=err)
-        return [max_min_ratio, err]
+        h_e = self.draw_error_signal_map(show=False)
+        e = mean([h_e.GetBinContent(i) for i in xrange(h_e.GetNbinsX() * h_e.GetNbinsY()) if h_e.GetBinContent(i)])
+        h.GetQuantiles(2, y, q)
+        max_min_ratio = (ufloat(y[1], e) / ufloat(y[0], e) - 1) * 100
+        print 'Relative Signal Spread is: {} %'.format(max_min_ratio)
+        return max_min_ratio
 
     # endregion
 
