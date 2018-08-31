@@ -75,12 +75,13 @@ class Run(Elementary):
             self.Duration = timedelta(seconds=self.TotalTime)
             self.NPlanes = self.load_n_planes()
 
+            self.Channels = self.load_channels()
+
             # region info
             if self.DUTType == 'pad':
                 self.TreeConfig = self.load_tree_config()
                 self.DigitizerChannels = self.load_digitizer_channels()
                 self.NChannels = len(self.DigitizerChannels)
-                self.Channels = self.load_channels()
                 self.IntegralRegions = self.load_regions()
                 self.PeakIntegrals = self.load_peak_integrals()
                 self.TCal = self.load_tcal()

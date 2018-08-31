@@ -90,8 +90,8 @@ class AnalysisCollection(Elementary):
             thread = self.Threads[run]
             run_class = Run(run, tree=thread.Tuple, t_vec=thread.Time, verbose=self.verbose)
             analysis = PadAnalysis(run_class, self.selection.SelectedDiamondNr, self.min_max_rate_runs)
-            self.collection[analysis.run.RunNumber] = analysis
-            self.current_run_number = analysis.run.RunNumber
+            self.collection[analysis.Run.RunNumber] = analysis
+            self.current_run_number = analysis.Run.RunNumber
 
     def load_channel(self):
         binary = self.FirstAnalysis.run_config_parser.getint('ROOTFILE_GENERATION', 'active_regions')

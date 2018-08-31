@@ -75,11 +75,11 @@ class InfoLegend:
         return git_text
 
     def get_duration(self):
-        return str(sum([ana.run.Duration for ana in self.Analysis.collection.itervalues()], timedelta())) if self.IsCollection else self.Analysis.run.Duration
+        return str(sum([ana.Run.Duration for ana in self.Analysis.collection.itervalues()], timedelta())) if self.IsCollection else self.Analysis.Run.Duration
 
     def get_run_string(self):
         run_str = 'Run{run}: {rate}, {dur}'.format(run=self.get_runnumber_str(), rate=self.get_rate_string(), dur=self.get_duration())
-        run_str += '' if self.IsCollection else ' ({} evts)'.format(self.Analysis.run.n_entries)
+        run_str += '' if self.IsCollection else ' ({} evts)'.format(self.Analysis.Run.n_entries)
         return run_str
 
     def get_runnumber_str(self):
@@ -90,11 +90,11 @@ class InfoLegend:
             fluxes = [flux[0] for flux in self.Analysis.get_fluxes().values()]
             return '{} - {}'.format(make_rate_str(min(fluxes)), make_rate_str(max(fluxes)))
         else:
-            return make_rate_str(self.Analysis.run.Flux)
+            return make_rate_str(self.Analysis.Run.Flux)
 
     def get_diamond_str(self, both_dias):
         if both_dias:
-            dias = str(['{dia} @ {bias:+2.0f}V'.format(dia=dia, bias=bias) for dia, bias in zip(self.Analysis.run.DiamondNames, self.Analysis.run.Bias)])
+            dias = str(['{dia} @ {bias:+2.0f}V'.format(dia=dia, bias=bias) for dia, bias in zip(self.Analysis.Run.DiamondNames, self.Analysis.Run.Bias)])
             return 'Diamonds: {dias}'.format(dias=dias.strip('[]').replace('\'', ''))
         else:
             run_info = self.Analysis.FirstAnalysis.RunInfo if self.IsCollection else self.Analysis.RunInfo
