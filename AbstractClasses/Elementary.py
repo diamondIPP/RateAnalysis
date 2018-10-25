@@ -14,7 +14,7 @@ from Draw import Draw
 from Utils import *
 
 # global test campaign and resolution
-tc = None
+g_test_campaign = None
 res = None
 
 
@@ -28,16 +28,18 @@ class Elementary(Draw):
 
         self.verbose = verbose
 
+        # Config
         self.Dir = self.get_program_dir()
         self.MainConfigParser = self.load_main_config()
+        self.PickleDir = join(self.Dir, self.MainConfigParser.get('SAVE', 'pickle_dir'))
+        self.DataDir = self.MainConfigParser.get('MAIN', 'data_dir')
 
         # screen resolution
         self.Res = self.load_resolution(resolution)
 
         # test campaign
-        self.TESTCAMPAIGN = None
+        self.TESTCAMPAIGN = self.load_test_campaign(testcampaign)
         self.SubSet = None
-        self.set_global_testcampaign(testcampaign)
         self.TCString = self.generate_tc_str()
         self.ResultsDir = self.generate_results_directory()
 
@@ -47,9 +49,6 @@ class Elementary(Draw):
         # read configuration files
         self.run_config_parser = self.load_run_config()
         self.ana_config_parser = self.load_ana_config()
-
-        self.PickleDir = join(self.Dir, self.MainConfigParser.get('SAVE', 'pickle_dir'))
-        self.DataDir = self.MainConfigParser.get('MAIN', 'data_dir')
         self.TCDir = self.generate_tc_directory()
 
         # progress bar
@@ -123,19 +122,13 @@ class Elementary(Draw):
     def generate_tc_directory(self):
         return 'psi_{y}_{m}{s}'.format(y=self.TESTCAMPAIGN[:4], m=self.TESTCAMPAIGN[-2:], s=self.generate_sub_set_str())
 
-    def set_global_testcampaign(self, testcampaign):
-        if testcampaign is not None:
-            global tc
-            tc = testcampaign
-        self.set_test_campaign(tc)
-
-    def set_test_campaign(self, campaign):
-        campaign = self.MainConfigParser.get('MAIN', 'default_test_campaign') if campaign is None else campaign
-        if campaign not in self.get_test_campaigns():
-            log_critical('The Testcampaign {tc} does not exist yet! Use create_new_testcampaign!'.format(tc=campaign))
-        tc_data = str(campaign).split('-')
-        self.TESTCAMPAIGN = tc_data[0]
-        self.SubSet = tc_data[-1] if len(tc_data) > 1 else None
+    def load_test_campaign(self, testcampaign):
+        global g_test_campaign
+        if g_test_campaign is None:
+            g_test_campaign = self.MainConfigParser.get('MAIN', 'default test campaign') if testcampaign is None else testcampaign
+        if g_test_campaign not in self.get_test_campaigns():
+            critical('The Testcampaign {} does not exist!'.format(g_test_campaign))
+        return g_test_campaign
 
     def print_testcampaign(self, pr=True):
         out = datetime.strptime(self.TESTCAMPAIGN, '%Y%m').strftime('%b %Y')
@@ -143,8 +136,11 @@ class Elementary(Draw):
             print '\nTESTCAMPAIGN: {0}{p}'.format(out, p=' Part {0}'.format(int_to_roman(int(self.SubSet))) if self.SubSet is not None else '')
         return out
 
+    # def get_test_campaigns(self):
+    #     return loads(self.MainConfigParser.get('MAIN', 'test_campaigns'))
+
     def get_test_campaigns(self):
-        return loads(self.MainConfigParser.get('MAIN', 'test_campaigns'))
+        return [basename(path).replace('_', '').strip('psi') for path in glob(join(self.DataDir, 'psi*'))]
 
     # endregion
 

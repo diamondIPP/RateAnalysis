@@ -36,6 +36,10 @@ def log_critical(msg):
     _exit(1)
 
 
+def critical(msg):
+    log_critical(msg)
+
+
 def log_message(msg, overlay=False, prnt=True):
     if prnt:
         print '{ov}{t} --> {msg}{end}'.format(t=get_t_str(), msg=msg, ov='\033[1A\r' if overlay else '', end=' ' * 20 if overlay else '')

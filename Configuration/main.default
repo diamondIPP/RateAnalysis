@@ -1,8 +1,7 @@
 [MAIN]
 data_dir = /data
 run_plan_path = Runinfos/run_plans.json
-test_campaigns = ["201505", "201508", "201510", "201608", "201610", "201705", "201707", "201707-2", "201708", "201708-2", "201807"]
-default_test_campaign = 201807
+default test campaign = 201810
 
 [SAVE]
 pickle_dir = Configuration/Individual_Configs/
