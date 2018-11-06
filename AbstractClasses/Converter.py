@@ -136,7 +136,7 @@ class Converter:
             return config
         options = self.RunParser.options('ROOTFILE_GENERATION')
         for opt in options:
-            if any(opt.endswith(ending) for ending in ['_range', '_region', '_range_drs4']):
+            if any(opt.endswith(ending) for ending in ['_range', '_region', '_range_drs4']) or opt == 'polarities':
                 config[opt] = json.loads(self.RunParser.get('ROOTFILE_GENERATION', opt))
             elif opt not in ['excluded_runs']:
                 config[opt] = self.RunParser.getint('ROOTFILE_GENERATION', opt)
@@ -275,6 +275,8 @@ class Converter:
         move(path, self.RootFileDir)
 
     def load_polarities(self, info):
+        if self.RunParser.has_option('ROOTFILE_GENERATION', 'polarities'):
+            return self.RunParser.get('ROOTFILE_GENERATION', 'polarities')
         active_regions = self.RunParser.getint('ROOTFILE_GENERATION', 'active_regions')
         pols = []
         i = 1
