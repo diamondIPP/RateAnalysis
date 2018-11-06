@@ -51,11 +51,10 @@ class PixAnalysis(Analysis):
             self.IsAligned = self.check_alignment()
 
             # pulse height calibrations
-            self.Fit = None
-            self.Parameters = None
-            self.Vcals = None
-            self.Points = None
-            self.get_calibration_data()
+            self.Fit = TF1('ErFit', '[3] * (TMath::Erf((x - [0]) / [1]) + [2])', -500, 255 * 7)
+            self.Parameters = self.get_calibration_fitpars()
+            self.Vcals = self.get_vcals()
+            self.Points = self.get_calibration_points()
 
         # currents
         self.Currents = Currents(self)
@@ -66,11 +65,6 @@ class PixAnalysis(Analysis):
     def __del__(self):
         for c in gROOT.GetListOfCanvases():
             c.Close()
-        for lst in self.histos.itervalues():
-            if not type(lst) is list:
-                lst = [lst]
-            for obj in lst:
-                self.del_rootobj(obj)
 
     def draw_current(self, relative_time=True, volt_range=None):
         self.Currents.draw_indep_graphs(rel_time=relative_time, v_range=volt_range)
@@ -261,51 +255,55 @@ class PixAnalysis(Analysis):
         self.format_histo(h, x_tit='col', y_tit='row', z_tit='Good Events{p}'.format(p='' if entries else ' [%]'), y_off=1.3, z_off=1.5)
         self.save_histo(h, 'ZeroContribution{e}'.format(e='Entries' if entries else ''), show, rm=.17, lm=.13, draw_opt='colz')
 
-    def get_calibration_data(self):
-        f = open(joinpath(self.Run.converter.TrackingDir, 'calibration_lists', 'GKCalibrationList_Telescope{n}.txt'.format(n=self.Run.converter.TelescopeID)))
-        lines = f.readlines()
-        f.close()
-        # calibration fit
-        file_names = [joinpath(self.Run.converter.TrackingDir, lines[0].strip('./\n'), line.strip('\n')) for i, line in enumerate(lines) if i]
-        fit = None
-        params = [[[0 for _ in xrange(self.Settings['nRows'])] for _ in xrange(self.Settings['nCols'])] for _ in xrange(self.NRocs)]
-        for roc, file_name in enumerate(file_names):
-            f = open(file_name)
-            f.readline()
-            fit_string = f.readline().replace('par', '').strip('\n')
-            fit = TF1('ErFit', fit_string, -500, 255 * 7)
-            f.readline()
-            for line in f.readlines():
-                line = line.split()
-                params[roc][int(line[-2])][int(line[-1])] = [float(line[i]) for i in xrange(4)]
-            f.close()
-        # calibration points
-        calib_files = [joinpath(self.Run.converter.TrackingDir, lines[0].strip('./\n'), 'phCalibration_C{n}.dat'.format(n=n)) for n in xrange(self.NRocs)]
-        vcals = None
-        points = [[[0 for _ in xrange(self.Settings['nRows'])] for _ in xrange(self.Settings['nCols'])] for _ in xrange(self.NRocs)]
-        for roc, file_name in enumerate(calib_files, 0):
-            try:
-                f = open(file_name)
+    def get_vcals(self):
+        with open(self.get_calibration_dir()) as f:
+            file_dir = f.readline().strip('./\n')
+            filenames = [join(self.Run.converter.TrackingDir, file_dir, 'phCalibration_C{}.dat'.format(i)) for i in xrange(self.NRocs)]
+        vcals = []
+        for filename in filenames:
+            with open(filename) as f:
                 f.readline()
-                vcals = [int(i) for i in f.readline().split()[2:]] + [int(i) * 7 for i in f.readline().split()[2:]]
-                f.readline()
-                for line in f.readlines():
-                    line = line.split()
-                    points[roc][int(line[-2])][int(line[-1])] = [int(line[i]) for i in xrange(len(vcals))]
-            except IOError as e:
-                log_warning(e)
+                vcals.append(array([int(i) for i in f.readline().strip('Low range: ').split()] + [int(i) * 7 for i in f.readline().strip('High range: ').split()], 'i2'))
+        return array(vcals)
 
-        if self.Fit is None:
-            self.Fit = fit
-            self.Parameters = params
-            self.Vcals = vcals
-            self.Points = points
+    def get_calibration_points(self):
+        with open(self.get_calibration_dir()) as f:
+            file_dir = f.readline().strip('./\n')
+            filenames = [join(self.Run.converter.TrackingDir, file_dir, 'phCalibration_C{}.dat'.format(i)) for i in xrange(self.NRocs)]
+        points = [zeros((self.Plots.NCols, self.Plots.NRows, len(self.Vcals[i])), 'i2') for i in xrange(self.NRocs)]
+        for i, filename in enumerate(filenames):
+            with open(filename) as f:
+                for _ in xrange(4):
+                    f.readline()
+                for line in f.readlines():
+                    data = line.split('Pix')
+                    col, row = [int(word) for word in data[-1].split()]
+                    points[i][col][row] = [int(word) for word in data[0].split()]
+        return points
+
+    def get_calibration_dir(self):
+        return join(self.Run.converter.TrackingDir, 'calibration_lists', 'GKCalibrationList_Telescope{n}.txt'.format(n=self.Run.converter.TelescopeID))
+
+    def get_calibration_fitpars(self):
+        with open(self.get_calibration_dir()) as f:
+            file_dir = f.readline().strip('./\n')
+            filenames = [join(self.Run.converter.TrackingDir, file_dir, line.strip('\n')) for line in f.readlines()]
+        parameters = zeros((self.NRocs, self.Plots.NCols, self.Plots.NRows, 4))
+        for i, filename in enumerate(filenames):
+            with open(filename) as f:
+                for _ in xrange(3):
+                    f.readline()
+                for line in f.readlines():
+                    data = line.split('Pix')
+                    col, row = [int(word) for word in data[-1].split()]
+                    parameters[i][col][row] = [float(word) for word in data[0].split()]
+        return parameters
 
     def draw_calibration_fit(self, col, row, show=True, roc=None):
         roc = self.Dut if roc is None else roc
         self.Fit.SetParameters(*self.Parameters[roc][col][row])
         self.format_histo(self.Fit, title='Calibration Fit for Pix {c} {r}'.format(c=col, r=row), x_tit='vcal', y_tit='adc', y_off=1.4, color=632, lw=2)
-        gr = TGraph(len(self.Vcals), array(self.Vcals, 'd'), array(self.Points[roc][col][row], 'd'))
+        gr = TGraph(len(self.Vcals[roc]), array(self.Vcals[roc], 'd'), array(self.Points[roc][col][row], 'd'))
         self.format_histo(gr, marker=20, name='gr_fp', title='Calibration Fit for Pix {c} {r}'.format(c=col, r=row), x_tit='vcal', y_tit='adc', y_off=1.4)
         self.draw_histo(gr, lm=.12, draw_opt='ap')
         self.Fit.Draw('same')
