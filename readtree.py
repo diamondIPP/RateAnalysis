@@ -332,7 +332,7 @@ if __name__ == '__main__':
     run = args.run if 'root' in args.run else '/data/pulserTest/test{0}.root'.format(args.run.zfill(6))
     convert(run)
     rootfile = TFile(run)
-    tc = '201807'
+    tc = '201810'
 
     try:
         run = int(argv[1].split('/')[-1].strip('.root').split('00')[-1])
