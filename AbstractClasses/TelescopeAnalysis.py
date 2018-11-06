@@ -51,7 +51,7 @@ class Analysis(Elementary):
             self.Plots = Plots(self.Run)
 
             # binning TODO: move to plots class
-            self.BinSize = self.MainConfigParser.getint('MISC', 'bin_size')
+            self.BinSize = self.MainConfigParser.getint('MISC', 'bin size')
             self.binning = self.__get_binning()
             self.time_binning = self.get_time_binning()
             self.n_bins = len(self.binning)
