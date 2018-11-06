@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from ROOT import gROOT, TLegend
-from Utils import make_tc_str, timedelta, make_rate_str
+from Utils import make_tc_str, timedelta, make_rate_str, make_irr_string
 from subprocess import check_output
 
 
@@ -37,15 +37,15 @@ class InfoLegend:
                 return
 
         run_str = self.get_run_string()
-        dia_str = self.get_diamond_str(both_dias)
+        info_str = self.get_info_string(both_dias)
         # width = len(run_str) * min(canvas.GetWw(), canvas.GetWh()) * .01
         # if canvas.GetWw() > canvas.GetWh():
-        width = float(max(len(run_str), len(dia_str))) / canvas.GetWw() * 10.5
+        width = float(max(len(run_str), len(info_str))) / canvas.GetWw() * 10.5
         legend = self.Analysis.make_legend(.005, .1, y1=.003, x2=width, nentries=3, clean=False, scale=.75, margin=.05)
 
-        legend.AddEntry(0, 'Test Campaign: {tc}'.format(tc=make_tc_str(self.Analysis.generate_tc_str())), '')   # Test Campaign
-        legend.AddEntry(0, run_str, '')                                                                         # Run String
-        legend.AddEntry(0, dia_str, '')                                                                         # Diamond String
+        legend.AddEntry(0, run_str, '')                         # Run String
+        legend.AddEntry(0, self.get_dia_string(both_dias), '')  # Detector and Test Campaign
+        legend.AddEntry(0, info_str, '')                        # Info String (bias, attenuator, irr)
 
         git_text = self.make_git_text()
 
@@ -85,6 +85,10 @@ class InfoLegend:
     def get_runnumber_str(self):
         return 's {}-{}'.format(self.Analysis.Runs[0], self.Analysis.Runs[-1]) if self.IsCollection else ' {}'.format(self.Analysis.RunNumber)
 
+    def get_dia_string(self, both_dias):
+        dia_str = ', '.join(self.Analysis.Run.DiamondNames) if both_dias else self.Analysis.DiamondName
+        return 'Detector{b}: {d} ({tc})'.format(b='s' if both_dias else '', tc=make_tc_str(self.Analysis.TCString), d=dia_str)
+
     def get_rate_string(self):
         if self.IsCollection:
             fluxes = [flux[0] for flux in self.Analysis.get_fluxes().values()]
@@ -92,11 +96,8 @@ class InfoLegend:
         else:
             return make_rate_str(self.Analysis.Run.Flux)
 
-    def get_diamond_str(self, both_dias):
-        if both_dias:
-            dias = str(['{dia} @ {bias:+2.0f}V'.format(dia=dia, bias=bias) for dia, bias in zip(self.Analysis.Run.DiamondNames, self.Analysis.Run.Bias)])
-            return 'Diamonds: {dias}'.format(dias=dias.strip('[]').replace('\'', ''))
-        else:
-            run_info = self.Analysis.FirstAnalysis.RunInfo if self.IsCollection else self.Analysis.RunInfo
-            att = ', Attenuator: {a}'.format(a=run_info['att_dia{n}'.format(n=self.Analysis.DiamondNumber)]) if 'att_dia1' in run_info else ''
-            return 'Diamond: {dia} @ {bias:+}V{a}'.format(dia=self.Analysis.DiamondName, bias=self.Analysis.Bias, a=att)
+    def get_info_string(self, both_dias):
+        voltage = ', '.join('{0:+4d}V'.format(i) for i in self.Analysis.Run.Bias) if both_dias else '{0:+4d}V'.format(self.Analysis.Bias)
+        irradiation = ', '.join(make_irr_string(irr) for irr in (self.Analysis.Run.get_irradiations() if both_dias else [self.Analysis.get_irradiation()]))
+        attenuator = 'Att: {}'.format(str(self.Analysis.Run.get_attenuators()).strip('[]') if both_dias else self.Analysis.get_attenuator())
+        return 'Info: {v}, {i}, {a}'.format(v=voltage, i=irradiation, a=attenuator)

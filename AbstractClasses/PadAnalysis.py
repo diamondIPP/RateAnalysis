@@ -167,6 +167,13 @@ class PadAnalysis(Analysis):
         self.Polarity = self.get_polarity()
         self.SignalName = self.get_signal_name()
 
+    def get_irradiation(self):
+        return self.Run.get_irradiations()[self.DiamondNumber - 1]
+
+    def get_attenuator(self):
+        attenuators = self.Run.get_attenuators()
+        return attenuators[self.DiamondNumber - 1] if attenuators else ''
+
     # ==========================================================================
     # region BEAM PROFILE
 
