@@ -8,8 +8,7 @@ from ROOT import TH2D, TH1D, gROOT, TFormula, TCut, TH1I, TProfile, THStack, TPr
 from argparse import ArgumentParser
 from collections import Counter
 from math import ceil, factorial
-from numpy import corrcoef
-from os.path import join as joinpath
+from numpy import corrcoef, zeros
 from decimal import Decimal
 
 from CurrentInfo import Currents
@@ -27,12 +26,12 @@ __author__ = 'DA & Micha'
 # MAIN CLASS
 # ==============================================
 class PixAnalysis(Analysis):
-    def __init__(self, run, dut=1, binning=10000):
+    def __init__(self, run, dut=1):
 
         self.DiamondName = self.load_diamond_name(dut, run)
         self.DiamondNumber = dut
         self.Bias = run.Bias[dut - 1]
-        Analysis.__init__(self, run, binning=binning)
+        Analysis.__init__(self, run)
 
         # main
         self.Dut = dut + 3
