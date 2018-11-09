@@ -104,7 +104,6 @@ class Cut(Elementary):
         dic['aligned'] = TCut('aligned', '')
         dic['trigger_phase'] = TCut('trigger_phase', '')
         dic['tracks'] = TCut('tracks', '')
-        dic['fiducial'] = TCut('fiducial', '')
         # waveform
         dic['ped_sigma'] = TCut('ped_sigma', '')
         dic['median'] = TCut('median', '')
@@ -123,6 +122,7 @@ class Cut(Elementary):
         dic['slope_x'] = TCut('slope_x', '')
         dic['slope_y'] = TCut('slope_y', '')
         dic['rhit'] = TCut('rhit', '')
+        dic['fiducial'] = TCut('fiducial', '')
         dic['all_cuts'] = TCut('all_cuts', '')
         return dic
 

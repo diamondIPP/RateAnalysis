@@ -163,7 +163,10 @@ class PixAlignment:
         start_index = next(correlations.keys().index(ev) + 20 for ev in correlations.keys() if ev > last_off_event) if last_off_event + 1000 > correlations.keys()[0] else 0
         max_index = correlations.values().index(max(correlations.values()[start_index:]))
         mean_ = self.get_mean(max_index, correlations.values())
-        off_event = correlations.keys()[correlations.values().index(next(m for m in correlations.values()[max_index:] if m < mean_ - .1)) - 1]
+        try:
+            off_event = correlations.keys()[correlations.values().index(next(m for m in correlations.values()[max_index:] if m < mean_ - .1)) - 1]
+        except StopIteration:
+            off_event = correlations.keys()[max_index]
         if debug:
             print mean_, off_event, next(m for m in correlations.values()[max_index:] if m < mean_ - .1)
         return off_event

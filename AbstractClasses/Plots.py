@@ -30,8 +30,8 @@ class Plots(Elementary):
         self.NCols = 52
         self.NRows = 80
         self.Settings = {'ph1Dmin': -5000,
-                         'ph1Dmax': 60000,
-                         'ph1Dbins': 65000 / 500,
+                         'ph1Dmax': 100000,
+                         'ph1Dbins': 105000 / 500,
                          'ph1DbinsSi': 160,
                          'ph1DminSi': 0,
                          'ph1DmaxSi': 90000,

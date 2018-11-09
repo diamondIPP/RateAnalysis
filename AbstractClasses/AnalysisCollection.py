@@ -435,7 +435,7 @@ class AnalysisCollection(Elementary):
             self.format_histo(h, lw=2, color=self.get_color())
             h.Scale(1 / h.GetMaximum())
             stack.Add(h)
-            legend.AddEntry(h, '{0:06.1f} kHz/cm^{{2}}'.format(self.collection.values()[i].get_flux()), 'l')
+            legend.AddEntry(h, '{0:06.1f} kHz/cm^{{2}}'.format(self.collection.values()[i].get_flux()[0]), 'l')
         self.format_histo(stack, y_off=1.55, draw_first=True, x_tit='Pulse Height [au]', y_tit='Number of Entries')
         log_stack = stack.Clone()
         log_stack.SetMaximum(off)
@@ -1288,6 +1288,12 @@ class AnalysisCollection(Elementary):
             ana.Pulser.verbose = status
             ana.Pedestal.verbose = status
             ana.Cut.verbose = status
+
+    def get_irradiation(self):
+        return self.FirstAnalysis.get_irradiation()
+
+    def get_attenuator(self):
+        return self.FirstAnalysis.get_attenuator()
 
     @staticmethod
     def make_x_tit(vs_time):

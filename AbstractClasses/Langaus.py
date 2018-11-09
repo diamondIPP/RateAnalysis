@@ -22,7 +22,7 @@ class Langau:
         self.Max = histo.GetMaximum()
         self.NConvolutions = nconv
         self.NSigma = 5.
-        self.FitRange = [k * histo.GetMean() for k in [.1, 3]]
+        self.FitRange = [k * histo.GetMean() for k in [.6, 3]]
         self.ParLimits = self.init_par_limits()
         self.StartValues = self.init_start_values()
 

@@ -35,7 +35,7 @@ class VoltageScan(Elementary):
 
         for i, (key, ana) in enumerate(self.collection.iteritems()):
             fit_par = ana.Pedestal.draw_disto_fit(cut=cut, show=False) if not pulser else ana.Pulser.draw_pedestal(show=False)
-            x = ana.run.RunInfo['dia{nr}hv'.format(nr=self.DiamondNumber)]
+            x = ana.Run.RunInfo['dia{nr}hv'.format(nr=self.DiamondNumber)]
             par = 2 if sigma else 1
             gr.SetPoint(i, x, fit_par.Parameter(par))
             gr.SetPointError(i, 0, fit_par.ParError(par))
@@ -48,7 +48,7 @@ class VoltageScan(Elementary):
         g = self.make_tgrapherrors('gev', 'Efficiency vs. Voltage')
         for i, (key, ana) in enumerate(self.collection.iteritems()):
             fit = ana.draw_hit_efficiency(show=False)
-            x = ana.run.RunInfo['dia{nr}hv'.format(nr=self.DiamondNumber)]
+            x = ana.Run.RunInfo['dia{nr}hv'.format(nr=self.DiamondNumber)]
             s, e = (fit.Parameter(0), fit.ParError(0))
             g.SetPoint(i, x, s)
             g.SetPointError(i, 0, e)
@@ -58,7 +58,7 @@ class VoltageScan(Elementary):
     def draw_pulser_pulse_height(self, binning=10000, redo=False, show=True):
         return self.draw_pulse_height(binning, pulser=True, redo=redo, show=show)
 
-    def draw_pulse_height(self, binning=10000, pulser=False, redo=False, show=True):
+    def draw_pulse_height(self, binning=30000, pulser=False, redo=False, show=True, cut=None):
         gr1 = self.make_tgrapherrors('gStatError', 'stat. error', self.get_color())
         gStyle.SetEndErrorSize(4)
         gr_first = self.make_tgrapherrors('gFirst', 'first run', marker=22, color=2, marker_size=2)
@@ -70,8 +70,11 @@ class VoltageScan(Elementary):
         rel_sys_error = 0
         i, j = 0, 0
         for key, ana in self.collection.iteritems():
-            fit1 = ana.draw_pulse_height(binning=binning, corr=True, save=redo, show=False, redo=redo)[1] if not pulser else ana.Pulser.draw_distribution_fit(show=False, prnt=False)
-            x = ana.run.RunInfo['dia{nr}hv'.format(nr=self.DiamondNumber)]
+            try:
+                fit1 = ana.draw_pulse_height(binning=binning, corr=True, save=redo, show=False, redo=redo)[1] if not pulser else ana.Pulser.draw_distribution_fit(show=False, prnt=False)
+            except TypeError:
+                fit1 = ana.draw_pulse_height(bin_size=binning, cut=cut, show=False)
+            x = ana.Run.RunInfo['dia{nr}hv'.format(nr=self.DiamondNumber)]
             s, e = (fit1.Parameter(0), fit1.ParError(0)) if not pulser else (fit1.Parameter(1), fit1.ParError(1))
             gr1.SetPoint(i, x, s)
             self.log_info('{x}\t{s:5.2f} {e:3.2f}'.format(x=x, s=s, e=e))

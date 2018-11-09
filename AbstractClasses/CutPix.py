@@ -115,7 +115,7 @@ class CutPix(Cut):
             if dut in dic:
                 return dic[dut]
 
-    def generate_special_cut(self, excluded=None, included=None, name='special_cut', cluster=True):
+    def generate_special_cut(self, excluded=None, included=None, name='special_cut', cluster=True, prnt=True):
         cut = TCut(name, '')
         self.NCuts = 0
         excluded = [excluded] if type(excluded) is not list else excluded
@@ -131,7 +131,7 @@ class CutPix(Cut):
                 continue
             cut += value
             self.NCuts += 1
-        self.log_info('generated {name} cut with {num} cuts'.format(name=name, num=self.NCuts))
+        self.log_info('generated {name} cut with {num} cuts'.format(name=name, num=self.NCuts), prnt=prnt)
         self.set_hitmap_cuts(False)
         return cut
 

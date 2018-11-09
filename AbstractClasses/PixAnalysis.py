@@ -217,7 +217,7 @@ class PixAnalysis(Analysis):
         if bin_size != self.BinSize:
             self.set_bin_size(bin_size)
         cut_string = self.Cut.all_cut if cut is None else TCut(cut)
-        h = TProfile('h_pht', 'Pulse Height {d}'.format(d=self.DiamondName), self.n_bins - 1, array([t / 1000 for t in self.time_binning]))
+        h = TProfile('h_pht', 'Pulse Height {d}'.format(d=self.DiamondName), self.n_bins - 1, array(self.time_binning))
         set_statbox(only_fit=True, w=.3)
         self.tree.Draw('cluster_charge[{n}]:time / 1000. >> h_pht'.format(n=self.Dut), cut_string, 'goff')
         self.draw_histo(h, show=show)
@@ -657,12 +657,13 @@ class PixAnalysis(Analysis):
             if i % 100 == 0 and save:
                 self.save_canvas(c, name='l{i:04d}'.format(i=i), show=False, print_names=False)
 
-    def draw_correlation(self, plane1=2, plane2=None, mode='y', chi2=90, show=True, start=0, evts=1000000000):
+    def draw_correlation(self, plane1=2, plane2=None, mode='y', chi2=90, show=True, start=0, evts=1000000000, cut=None):
         old_chi2 = self.Cut.CutConfig['chi2X']
         self.Cut.set_chi2(chi2)
         plane2 = self.Dut if plane2 is None else plane2
         h = TH2D('h_pc', 'Plane Correlation', *self.Plots.get_global_bins(mode=mode, res=sqrt(12)))
-        self.tree.Draw('cluster_{m}pos_tel[{p1}]:cluster_{m}pos_tel[{p2}]>>h_pc'.format(m=mode, p1=plane1, p2=plane2), self.Cut.all_cut, 'goff', evts, start)
+        cut = self.Cut.all_cut if cut is None else TCut(cut)
+        self.tree.Draw('cluster_{m}pos_tel[{p1}]:cluster_{m}pos_tel[{p2}]>>h_pc'.format(m=mode, p1=plane1, p2=plane2), cut, 'goff', evts, start)
         self.log_info('Correlation Factor: {f:4.3f}'.format(f=h.GetCorrelationFactor()))
         self.format_histo(h, x_tit='{m} Plane {p}'.format(p=plane1, m=mode), y_tit='{m} Plane {p}'.format(p=plane2, m=mode), y_off=1.5, stats=0, z_tit='Number of Entries', z_off=1.5)
         self.save_histo(h, 'PlaneCorrelation{m}{p1}{p2}'.format(m=mode.title(), p1=plane1, p2=plane2), show,  lm=.13, draw_opt='colz', rm=.17)
