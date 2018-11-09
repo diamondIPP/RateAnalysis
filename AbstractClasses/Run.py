@@ -441,7 +441,7 @@ class Run(Elementary):
     def get_event_at_time(self, seconds):
         """ Returns the event nunmber at time dt from beginning of the run. Accuracy: +- 1 Event """
         # return time of last event if input is too large
-        if seconds > self.TotalTime or seconds == -1:
+        if seconds >= self.TotalTime or seconds == -1:
             return self.n_entries
         last_time = 0
         for i, t in enumerate(self.time):
