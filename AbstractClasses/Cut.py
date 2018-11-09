@@ -322,16 +322,16 @@ class Cut(Elementary):
         jumps = []
         tup = [0, 0]
         cut = .4
-        last_rate = 0
+        last_dev = 0
         for ibin in xrange(1, h.GetNbinsX() + 1):
-            rate = abs(1 - h.GetBinContent(ibin) / mean_)  # normalised deviation from the mean
-            if rate > cut:
+            deviation = abs(1 - h.GetBinContent(ibin) / mean_)  # normalised deviation from the mean
+            if deviation > cut:
                 tup[0] = h.GetBinLowEdge(ibin)
-            elif rate < cut < last_rate:
+            elif deviation < cut < last_dev:
                 tup[1] = h.GetBinLowEdge(ibin) + bin_width
                 jumps.append(tup)
                 tup = [0, 0]
-            last_rate = rate
+            last_dev = deviation
         if tup[0] != tup[1]:  # if rate did not went down before the run stopped
             jumps.append([tup[0], self.analysis.Run.EndTime])
         jumps = [[self.analysis.get_event_at_time(t - self.analysis.Run.StartTime) for t in jump] for jump in jumps]
