@@ -675,7 +675,7 @@ class PixAnalysis(Analysis):
         def func():
             start = self.log_info('Checking for alignment between plane {p1} and {p2} ... '.format(p1=plane1, p2=plane2), next_line=False)
             self.set_bin_size(binning)
-            h = TH3D('h_pa', 'pa', len(self.time_binning) - 1, array([t / 1000. for t in self.time_binning], 'd'), *self.Plots.get_global_bins(res=sqrt(12), mode=mode, arrays=True))
+            h = TH3D('h_pa', 'pa', len(self.time_binning) - 1, array(self.time_binning, 'd'), *self.Plots.get_global_bins(res=sqrt(12), mode=mode, arrays=True))
             if not vs_time:
                 h = TH3D('h_pae', 'pa', len(self.binning) - 1, array(self.binning, 'd'), *self.Plots.get_global_bins(res=sqrt(12), mode=mode, arrays=True))
             draw_var = 'cluster_{m}pos_tel[{{r}}]'.format(m=mode)
@@ -759,6 +759,13 @@ class PixAnalysis(Analysis):
 
     def draw_residuals(self, mode=None, cut=None, show=True, x_range=None):
         return self._draw_residuals(self.Dut, mode=mode, cut=cut, show=show, x_range=x_range)
+
+    def get_irradiation(self):
+        return self.Run.get_irradiations()[self.DiamondNumber - 1]
+
+    def get_attenuator(self):
+        attenuators = self.Run.get_attenuators()
+        return attenuators[self.DiamondNumber - 1] if attenuators else ''
 
     @staticmethod
     def eff(x, p):
