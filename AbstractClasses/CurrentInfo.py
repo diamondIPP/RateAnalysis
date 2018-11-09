@@ -16,11 +16,12 @@ from Utils import *
 # CONSTANTS
 # ====================================
 axis_title_size = 0.06
-label_size = .04
+label_size = .05
 title_offset = 0.8
 col_vol = 602  # 807
 col_cur = 899  # 418
 pad_margins = [.065, .09, .15, .1]
+marker_size = .3
 
 
 # ====================================
@@ -29,9 +30,10 @@ pad_margins = [.065, .09, .15, .1]
 class Currents(Elementary):
     """reads in information from the keithley log file"""
 
-    def __init__(self, analysis, averaging=False, points=10, dia=None, start_run=None, verbose=False):
+    def __init__(self, analysis, averaging=False, points=10, start_run=None, verbose=False):
         self.Analysis = analysis
         self.IsCollection = hasattr(analysis, 'Runs')
+        self.IsSelection = isinstance(analysis, RunSelection)
         Elementary.__init__(self, verbose=verbose)
 
         self.DoAveraging = averaging
@@ -45,14 +47,15 @@ class Currents(Elementary):
         # analysis/run info
         if self.IsCollection:
             self.RunPlan = analysis.RunPlan
-        self.RunNumber = self.load_run_number()
+            self.set_save_directory('Results/')
         self.RunLogs = self.load_runlogs()
-        if analysis is not None:
+        self.RunNumber = self.load_run_number()
+        if not self.IsSelection:
             self.RunInfo = analysis.Run.RunInfo if not self.IsCollection else analysis.FirstAnalysis.RunInfo
             self.Channel = analysis.channel
+            if 'dia1supply' not in self.RunInfo:
+                return
         # todo: add a method to extract the currents for may
-        if 'dia1supply' not in self.RunInfo:
-            return
         self.DiamondName = self.load_dia_name()
         self.DiamondNumber = self.load_dia_number()
         self.Bias = self.load_bias()
@@ -61,8 +64,8 @@ class Currents(Elementary):
         self.StopTime = self.load_stop_time()
 
         # device info
-        self.Number = self.get_device_nr(dia)
-        self.Channel = self.get_device_channel(dia)
+        self.Number = self.get_device_nr()
+        self.Channel = self.get_device_channel()
         self.Brand = self.ConfigParser.get('HV' + self.Number, 'name').split('-')[0].strip('0123456789')
         self.Model = self.ConfigParser.get('HV' + self.Number, 'model')
         self.Name = '{0} {1}'.format(self.Brand, self.Model)
@@ -93,26 +96,25 @@ class Currents(Elementary):
     # ==========================================================================
     # region INIT
     def load_dia_name(self):
-        return self.Analysis.DiamondName if self.Analysis is not None else None
+        return self.Analysis.DiamondName if not self.IsSelection else self.Analysis.SelectedDiamond
 
     def load_dia_number(self):
-        if self.Analysis is not None:
+        if not self.IsSelection:
             return self.Analysis.DiamondNumber if not self.IsCollection else self.Analysis.FirstAnalysis.DiamondNumber
+        return self.Analysis.SelectedDiamondNr
 
     def load_bias(self):
-        if hasattr(self.Analysis, 'Type') and 'voltage' in self.Analysis.Type:
+        if hasattr(self.Analysis, 'Type') and 'voltage' in self.Analysis.Type or self.IsSelection:
             return ''
         elif self.Analysis is not None:
             return self.Analysis.Bias
 
     def load_run_number(self):
-        nr = None
-        if self.Analysis is not None:
-            nr = self.Analysis.RunNumber if not self.IsCollection else self.Analysis.RunPlan
-        return nr
+        if not self.IsSelection:
+            return self.Analysis.RunNumber if not self.IsCollection else self.Analysis.RunPlan
 
     def load_runlogs(self):
-        filename = self.Analysis.Run.runinfofile if not self.IsCollection else self.Analysis.FirstAnalysis.Run.runinfofile
+        filename = self.Analysis.Run.runinfofile if not self.IsCollection or self.IsSelection else self.Analysis.FirstAnalysis.Run.runinfofile
         try:
             f = open(filename)
             data = load(f)
@@ -136,21 +138,16 @@ class Currents(Elementary):
         self.log_info('HV Devices: {0}'.format([name for name in parser.sections() if name.startswith('HV')]))
         return parser
 
-    def get_device_nr(self, dia):
-        if self.Analysis is None:
-            try:
-                full_str = self.RunLogs[self.StartRun]['dia{0}supply'.format(dia)]
-                return str(full_str.split('-')[0])
-            except KeyError:
-                return dia
-        full_str = self.RunInfo['dia{dia}supply'.format(dia=self.DiamondNumber)]
-        return str(full_str.split('-')[0])
+    def get_device_nr(self):
+        if self.IsSelection:
+            return str(self.Analysis.get_selection_runinfo().values()[0]['dia{}supply'.format(self.DiamondNumber)].split('-')[0])
+        return str(self.RunInfo['dia{dia}supply'.format(dia=self.DiamondNumber)].split('-')[0])
 
-    def get_device_channel(self, dia):
-        if self.Analysis is None:
-            full_str = self.RunLogs[self.StartRun]['dia{dia}supply'.format(dia=dia)]
-            return full_str.split('-')[1] if len(full_str) > 1 else '0'
-        full_str = self.RunInfo['dia{dia}supply'.format(dia=self.DiamondNumber)]
+    def get_device_channel(self):
+        if self.IsSelection:
+            full_str = self.Analysis.get_selection_runinfo().values()[0]['dia{}supply'.format(self.DiamondNumber)]
+        else:
+            full_str = self.RunInfo['dia{dia}supply'.format(dia=self.DiamondNumber)]
         return full_str.split('-')[1] if len(full_str) > 1 else '0'
 
     def find_data_path(self, old=False):
@@ -164,16 +161,16 @@ class Currents(Elementary):
         return hv_datapath.format(dev=self.ConfigParser.get('HV' + self.Number, 'name'), ch=self.Channel)
 
     def load_start_time(self):
-        ana = self.Analysis.FirstAnalysis if self.IsCollection else self.Analysis
-        if ana is None:
+        if self.IsSelection:
             return
+        ana = self.Analysis.FirstAnalysis if self.IsCollection else self.Analysis
         t = datetime.fromtimestamp(ana.Run.StartTime) if hasattr(ana.Run, 'StartTime') else ana.Run.LogStart
         return ana.Run.LogStart if t.year < 2000 or t.day != ana.Run.LogStart.day else t
 
     def load_stop_time(self):
-        ana = self.Analysis.get_last_analysis() if self.IsCollection else self.Analysis
-        if ana is None:
+        if self.IsSelection:
             return
+        ana = self.Analysis.get_last_analysis() if self.IsCollection else self.Analysis
         t = datetime.fromtimestamp(ana.Run.EndTime) if hasattr(ana.Run, 'EndTime') else ana.Run.LogEnd
         return ana.Run.LogEnd if t.year < 2000 or t.day != ana.Run.LogEnd.day else t
 
@@ -204,10 +201,10 @@ class Currents(Elementary):
                 self.StartTime = datetime.strptime(log1['starttime0'], '%Y-%m-%dT%H:%M:%SZ') + timedelta(hours=1)
                 self.StopTime = datetime.strptime(log2['endtime'], '%Y-%m-%dT%H:%M:%SZ') + timedelta(hours=1)
 
-    def set_device(self, nr, dia):
+    def set_device(self):
         self.reset_data()
-        self.Number = self.get_device_nr(str(nr))
-        self.Channel = self.get_device_channel(dia)
+        self.Number = self.get_device_nr()
+        self.Channel = self.get_device_channel()
         self.Brand = self.ConfigParser.get('HV' + self.Number, 'name').split('-')[0].strip('0123456789')
         self.Model = self.ConfigParser.get('HV' + self.Number, 'model')
         self.Name = '{0} {1}'.format(self.Brand, self.Model)
@@ -416,8 +413,8 @@ class Currents(Elementary):
         if self.IsCollection:
             self.draw_irradiation(make_irr_string(self.Analysis.selection.get_irradiation()))
         self.Stuff.append(c)
-        save_name = 'Currents{}_{}_{}'.format(self.Analysis.selection.TCString, self.Analysis.selection.SelectedRunplan, self.Analysis.selection.SelectedDiamondNr)
-        self.set_save_directory('Results/')
+        run = self.Analysis.selection.SelectedRunplan if self.IsCollection else self.RunNumber
+        save_name = 'Currents{}_{}_{}'.format(self.Analysis.TCString, run, self.DiamondNumber)
         self.save_canvas(c, name=save_name, sub_dir='Currents', show=show)
 
     def zoom_pads(self, low, high):
@@ -428,7 +425,7 @@ class Currents(Elementary):
         self.draw_tpad('p3', gridx=True, margins=pad_margins, transparent=True)
         g = self.CurrentGraph
         self.format_histo(g, x_tit='#font[22]{Time [hh:mm]}', lab_size=label_size, x_off=1.05, tit_size=axis_title_size, t_ax_off=self.Time[0] if rel_t else 0, y_off=.55, yax_col=col_cur,
-                          y_tit='#font[22]{Current [nA]}', center_y=True, x_range=[self.Time[0], self.Time[-1]], y_range=c_range, color=col_cur)
+                          y_tit='#font[22]{Current [nA]}', center_y=True, x_range=[self.Time[0], self.Time[-1]], y_range=c_range, color=col_cur, markersize=marker_size)
         self.CurrentGraph.Draw(draw_opt)
 
     def draw_voltage_pad(self, v_range, draw_opt='ap'):
@@ -436,7 +433,7 @@ class Currents(Elementary):
         g = self.VoltageGraph
         v_range = [-1100, 1100] if v_range is None else v_range
         self.format_histo(g, y_range=v_range, y_tit='#font[22]{Voltage [V]}', x_range=[self.Time[0], self.Time[-1]], tit_size=axis_title_size, tick_size=0, x_off=99, l_off_x=99, center_y=True,
-                          color=col_vol, y_off=title_offset, markersize=.5, yax_col=col_vol, lw=3)
+                          color=col_vol, y_off=title_offset, markersize=marker_size, yax_col=col_vol, lw=3, lab_size=label_size)
         g.Draw('{}y+'.format(draw_opt))
 
     def draw_flux_pad(self, f_range, rel_t=False, draw_opt='ap'):
@@ -451,7 +448,7 @@ class Currents(Elementary):
     def draw_title_pad(self):
         self.draw_tpad('p2', transparent=True)
         bias_str = 'at {b} V'.format(b=self.Bias) if self.Bias else ''
-        run_str = '{n}'.format(n=self.Analysis.RunNumber) if hasattr(self.Analysis, 'run') else 'Plan {rp}'.format(rp=self.Analysis.RunPlan)
+        run_str = '{n}'.format(n=self.RunNumber) if not self.IsCollection else 'Plan {rp}'.format(rp=self.Analysis.RunPlan)
         text = 'Currents of {dia} {b} - Run {r} - {n}'.format(dia=self.DiamondName, b=bias_str, r=run_str, n=self.Name)
         self.draw_tlatex(pad_margins[0], 1.02 - pad_margins[-1], text, align=11, size=.06)
 
@@ -508,7 +505,7 @@ if __name__ == "__main__":
     pars = ArgumentParser()
     pars.add_argument('start', nargs='?', default='01/01-00:00:00')
     pars.add_argument('stop', nargs='?', default=None)
-    pars.add_argument('-d', '--dia', nargs='?', default='1')
+    pars.add_argument('-d', '--dia', nargs='?', default='bcmprime-c1')
     pars.add_argument('-tc', '--testcampaign', nargs='?', default='')
     pars.add_argument('-v', '--verbose', action='store_false')
     pars.add_argument('-rp', '--runplan', nargs='?', default=None)
@@ -518,16 +515,15 @@ if __name__ == "__main__":
     print_banner('STARTING CURRENT TOOL')
     a.print_testcampaign()
     start, end = args.start, args.stop
+    sel = RunSelection(testcampaign=tc)
     if args.runplan is not None:
-        sel = RunSelection(testcampaign=tc)
         sel.select_runs_from_runplan(args.runplan)
         start = str(sel.get_selected_runs()[0])
         end = str(sel.get_selected_runs()[-1])
-    z = Currents(None, dia=args.dia, start_run=start, verbose=args.verbose)
+    else:
+        sel.select_diamond_runs(args.dia)
+        if args.start.isdigit():
+            sel.unselect_all_runs()
+            sel.select_runs_in_range(int(args.start), int(args.stop))
+    z = Currents(sel, start_run=start, verbose=args.verbose)
     z.set_start_stop(start, end)
-    try:
-        z.DiamondName = z.RunLogs[start]['diamond {0}'.format(int(args.dia))] if start.isdigit() else None
-        z.Bias = z.RunLogs[start]['hv dia{0}'.format(int(args.dia))] if start.isdigit() else None
-    except KeyError:
-        z.DiamondName = z.RunLogs[start]['dia{0}'.format(int(args.dia))] if start.isdigit() else None
-        z.Bias = z.RunLogs[start]['dia{0}hv'.format(int(args.dia))] if start.isdigit() else None
