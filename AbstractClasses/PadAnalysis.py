@@ -1247,7 +1247,7 @@ class PadAnalysis(Analysis):
         self.ROOTObjects.append(self.save_histo(h, 'SignalEvsSignalB', show, rm=.15, lm=.13, draw_opt='colz'))
         gStyle.SetPalette(1)
 
-    def draw_waveforms(self, n=1, cut=None, start_event=None, t_corr=True, channel=None, show=True):
+    def draw_waveforms(self, n=1, cut=None, start_event=None, t_corr=True, channel=None, show=True, x_range=None, y_range=None):
         """ Draws a stack of n waveforms. """
         channel = self.channel if channel is None else channel
         if not self.Run.wf_exists(self.channel):
@@ -1269,9 +1269,9 @@ class PadAnalysis(Analysis):
         for v, t in zip(values, times):
             h.Fill(t, v)
         self.tree.SetEstimate()
-        y_range = increased_range([min(values), max(values)], .1, .2)
+        y_range = increased_range([min(values), max(values)], .1, .2) if y_range is None else y_range
         h = self.make_tgrapherrors('g_cw', title, x=times, y=values) if n == 1 else h
-        self.format_histo(h, x_tit='Time [ns]', y_tit='Signal [mV]', y_off=.5, stats=0, tit_size=.07, lab_size=.06, y_range=y_range, markersize=.5)
+        self.format_histo(h, x_tit='Time [ns]', y_tit='Signal [mV]', y_off=.5, stats=0, tit_size=.07, lab_size=.06, y_range=y_range, markersize=.5, x_range=x_range)
         self.save_histo(h, 'WaveForms{n}'.format(n=n), show=show, draw_opt='col' if n > 1 else 'apl', lm=.073, rm=.045, bm=.18, x_fac=1.5, y_fac=.5)
         self.count += n_events
         return h, n_events
@@ -1504,7 +1504,7 @@ class PadAnalysis(Analysis):
         gStyle.SetPaintTextFormat('5.4g')
         lego = False if proj else lego
         gr = self.make_tgrapherrors('gr', 'Signal to Noise Ratios')
-        h = TProfile2D('h_snr', 'Signal to Noise Ratios', 70, 0, 70, 70, 0, 140)
+        h = TProfile2D('h_snr', 'Signal to Noise Ratios', 10, 0, 5, 10, 0, 5)
         i = 0
         for name, region in self.get_all_signal_names().iteritems():
             if self.SignalRegion.split('_')[-1] in region:
