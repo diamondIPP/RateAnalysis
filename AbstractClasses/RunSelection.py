@@ -12,7 +12,7 @@ from Utils import *
 class RunSelection(Elementary):
     def __init__(self, testcampaign=None, verbose=True):
         Elementary.__init__(self, verbose=verbose, testcampaign=testcampaign)
-        self.run = Run(verbose=verbose, tree=False)
+        self.Run = Run(verbose=verbose, tree=False)
 
         self.Selection = {}
 
@@ -61,7 +61,7 @@ class RunSelection(Elementary):
     # region INIT
 
     def load_run_numbers(self):
-        f = open(self.run.runinfofile, 'r')
+        f = open(self.Run.runinfofile, 'r')
         data = json.load(f)
         f.close()
         run_numbers = [int(key) for key in data if int(key) not in self.ExcludedRuns]
@@ -142,31 +142,30 @@ class RunSelection(Elementary):
     def unselect_runs_of_type(self, run_type):
         self.select_runs_of_type(run_type, unselect=True)
 
-    def select_diamond_runs(self, diamondname, only_selected_runs=False):
-        """
-        Selects all runs, which have the diamond with name 'diamondname' in it. It Furthermore selects also the channels corresponding to this diamondname.
-        :param diamondname:
-        :param only_selected_runs:
-        """
-        diamondnames = self.get_diamond_names()
-        assert diamondname in diamondnames, 'wrong diamond name.\n\t-->Select diamond of these:'.format(dias=diamondnames)
+    def select_diamond_runs(self, name, only_selected_runs=False):
+        """ Selects all runs, which have the diamond with name [name] in it"""
+        dia_names = self.get_diamond_names()
+        name = self.Run.translate_dia(name)
+        if name not in dia_names:
+            warning('"{n}" is not in the list of diamonds: {l}'.format(n=name, l=dia_names))
         runs = self.get_selected_runs() if only_selected_runs else self.RunNumbers
         selected_runs = 0
         unselected_runs = 0
-        dia_keys = ['dia1', 'dia2']
+        selected_run = False
         for run in runs:
-            found_dia = False
-            for i, ch in enumerate(self.run.Channels):
-                if self.RunInfos[run][dia_keys[i]] == diamondname:
-                    self.select_run(run, False)
-                    found_dia = True
+            for dia_nr in xrange(1, 4):
+                info = self.RunInfos[run]
+                if 'dia{}'.format(dia_nr) in info and name == info['dia{}'.format(dia_nr)]:
+                    self.SelectedDiamondNr = dia_nr
+                    self.select_run(run)
                     selected_runs += 1
-            if not found_dia and self.Selection[run]:
-                self.unselect_run(run)
-                unselected_runs += 1
-        log = 'Runs and Channels containing {dia} selected ( {nr1} runs selected, {nr2} unselected)'.format(dia=diamondname, nr1=selected_runs, nr2=unselected_runs)
-        self.make_log_entry(log)
-        self.verbose_print(log)
+                    selected_run = True
+                elif self.Selection[run] and not selected_run:
+                    self.unselect_run(run)
+                    unselected_runs += 1
+            selected_run = False
+        self.SelectedDiamond = name
+        self.log_info('Runs containing {dia} selected ({nr1} runs selected, {nr2} unselected)'.format(dia=name, nr1=selected_runs, nr2=unselected_runs))
 
     def unselect_unless_bias(self, bias):
         """
@@ -260,9 +259,9 @@ class RunSelection(Elementary):
         """ Prints an overview of all selected runs. """
         selected_runs = self.get_selected_runs()
         print 'The selections contains {n} runs\n'.format(n=len(selected_runs))
-        r = self.run
+        r = self.Run
         r.set_run(selected_runs[0], root_tree=False)
-        dia_bias = list(chain(*[['Diamond{}'.format(i + 1), 'HV{} [V]'.format(i + 1)] for i in xrange(self.run.get_n_diamonds())]))
+        dia_bias = list(chain(*[['Diamond{}'.format(i + 1), 'HV{} [V]'.format(i + 1)] for i in xrange(self.Run.get_n_diamonds())]))
         header = ['Nr.', 'Type'.ljust(10)] + dia_bias + ['Flux [kHz/cm2]'] + (['Comments'.ljust(21)] if not full_comments else [])
         rows = []
         for run in selected_runs:
@@ -420,7 +419,7 @@ class RunSelection(Elementary):
         names = []
         for i in xrange(1, 3):
             try:
-                names += [self.run.translate_dia(dia) for dia in self.get_runinfo_values('dia{}'.format(i), sel) if self.run.translate_dia(dia).lower() not in ['unknown', 'none']]
+                names += [self.Run.translate_dia(dia) for dia in self.get_runinfo_values('dia{}'.format(i), sel) if self.Run.translate_dia(dia).lower() not in ['unknown', 'none']]
             except KeyError:
                 pass
         return sorted(list(set(names)))
@@ -456,7 +455,7 @@ class RunSelection(Elementary):
         return dic
 
     def change_runinfo_key(self):
-        f = open(self.run.runinfofile, 'r+')
+        f = open(self.Run.runinfofile, 'r+')
         runs = self.get_selected_runs()
         runinfo = json.load(f)
         keys = [str(key) for key in runinfo.values()[0].iterkeys()]
@@ -501,14 +500,14 @@ class RunSelection(Elementary):
         self.save_runinfo(f, runinfo)
 
     def get_sorted_runinfo(self):
-        f = open(self.run.runinfofile, 'r+')
+        f = open(self.Run.runinfofile, 'r+')
         runinfo = json.load(f)
         sorted_runinfo = OrderedDict(sorted(runinfo.items(), key=lambda t: int(t[0])))
         return f, sorted_runinfo
 
     def get_final_file_path(self, run_number):
-        self.run.reload_run_config(run_number)
-        root_file_dir = join('root', '{dut}'.format(dut='pads' if self.run.load_dut_type() == 'pad' else 'pixel'))
+        self.Run.reload_run_config(run_number)
+        root_file_dir = join('root', '{dut}'.format(dut='pads' if self.Run.load_dut_type() == 'pad' else 'pixel'))
         return join(self.DataDir, self.TCDir, root_file_dir, 'TrackedRun{run:03d}.root'.format(run=run_number))
 
     @staticmethod
@@ -519,7 +518,7 @@ class RunSelection(Elementary):
         f.close()
 
     def add_irradiation(self):
-        f = open(self.run.IrradiationFile, 'r+')
+        f = open(self.Run.IrradiationFile, 'r+')
         data = json.load(f)
         tc_str = self.generate_tc_str()
         if tc_str in data:
@@ -534,7 +533,7 @@ class RunSelection(Elementary):
         f.close()
 
     def get_irradiation(self, dia=None):
-        f = open(self.run.IrradiationFile, 'r')
+        f = open(self.Run.IrradiationFile, 'r')
         irr = json.load(f)[self.generate_tc_str()][self.SelectedDiamond if self.SelectedDiamond is not None and dia is None else dia]
         f.close()
         return irr
