@@ -1272,12 +1272,51 @@ class PadAnalysis(Analysis):
         for v, t in zip(values, times):
             h.Fill(t, v)
         self.tree.SetEstimate()
+        self.count += n_events
         y_range = increased_range([min(values), max(values)], .1, .2) if y_range is None else y_range
         h = self.make_tgrapherrors('g_cw', title, x=times, y=values) if n == 1 else h
         self.format_histo(h, x_tit='Time [ns]', y_tit='Signal [mV]', y_off=.5, stats=0, tit_size=.07, lab_size=.06, y_range=y_range, markersize=.5, x_range=x_range)
-        self.save_histo(h, 'WaveForms{n}'.format(n=n), show=show, draw_opt='col' if n > 1 else 'apl', lm=.073, rm=.045, bm=.18, x_fac=1.5, y_fac=.5)
-        self.count += n_events
+        self.draw_histo(h, 'WaveForms{n}'.format(n=n), show=show, draw_opt='col' if n > 1 else 'apl', lm=.073, rm=.045, bm=.18, x=1.5, y=.5)
         return h, n_events
+
+    def get_wf_values(self, cut=None, start_event=None):
+        start_event = self.count + self.StartEvent if start_event is None else start_event
+        cut = self.Cut.all_cut if cut is None else TCut(cut)
+        n_events = self.find_n_events(1, cut, start_event)
+        n_entries = self.tree.Draw('wf{ch}:trigger_cell'.format(ch=self.channel), cut, 'goff', n_events, start_event)
+        values = [self.tree.GetV1()[i] for i in xrange(n_entries)]
+        times = self.Run.get_calibrated_times(self.tree.GetV2()[0])
+        self.count += n_events
+        return values, times
+
+    def calc_rise_time(self, cut=None, start_event=0):
+        values, times = self.get_wf_values(cut, start_event)
+        pedestal = self.Pedestal.draw_disto_fit(cut=cut, show=False)
+        noise, sigma = (abs(pedestal.Parameter(i)) for i in [1, 2])
+        rise_time = []
+        tmin, tmax = [t * self.DigitiserBinWidth for t in self.SignalRegion]
+        data = OrderedDict([(t, v) for t, v in zip(times, values) if tmin - 5 < t < tmax + 5])
+        for t, y in data.iteritems():
+            if abs(y) == max(abs(v) for v in data.itervalues()):  # stop at the highest point
+                break
+            if abs(y) > noise + 4 * sigma:
+                print t
+                rise_time.append(t)
+        return rise_time[-1] - rise_time[0]
+
+    def draw_rise_time(self, cut=None, show=True):
+        h = TH1F('hrt', 'Signal Rise Time', 100, 0, 10)
+        self.tree.Draw('rise_time[{}]>>hrt'.format(self.channel), self.Cut.all_cut if cut is None else TCut(cut), 'goff')
+        self.format_histo(h, x_tit='Rise Time [ns]', y_tit='Number of Entries', y_off=1.4)
+        self.save_histo(h, 'RiseTime', lm=.12, show=show)
+
+    def draw_fall_time(self, cut=None, show=True):
+        h = TH1F('hft', 'Signal Fall Time', 200, 0, 20)
+        self.tree.Draw('fall_time[{}]>>hft'.format(self.channel), self.Cut.all_cut if cut is None else TCut(cut), 'goff')
+        self.format_histo(h, x_tit='Fall Time [ns]', y_tit='Number of Entries', y_off=1.4)
+        self.save_histo(h, 'FallTime', lm=.12, show=show)
+
+        # TODO rise time map
 
     def draw_single_waveform(self, cut='', event=None, show=True):
         h, n = self.draw_waveforms(n=1, start_event=event, cut=cut, t_corr=True, show=False)
