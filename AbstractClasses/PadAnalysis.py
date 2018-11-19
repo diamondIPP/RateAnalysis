@@ -52,7 +52,8 @@ class PadAnalysis(Analysis):
             # regions // ranges
             self.IntegralNames = self.get_integral_names()
             self.IntegralRegions = self.load_regions()
-            self.SignalRegion = self.IntegralRegions['signal']
+            self.SignalRegionName = self.IntegralRegions['signal']
+            self.SignalRegion = self.Run.IntegralRegions[self.DiamondNumber - 1][self.SignalRegionName]
             self.PedestalRegion = self.IntegralRegions['pedestal']
             self.PeakIntegral = self.load_peak_integral()
 
