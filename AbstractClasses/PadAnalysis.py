@@ -430,7 +430,7 @@ class PadAnalysis(Analysis):
     # ==========================================================================
     # region SIGNAL PEAK POSITION
     def draw_peak_timing(self, region=None, sig_type='signal', show=True, cut=None, corr=True, draw_cut=True):
-        xmin, xmax = self.Run.IntegralRegions[self.DiamondNumber - 1][self.SignalRegion if region is None else self.make_region(sig_type, region)]
+        xmin, xmax = self.Run.IntegralRegions[self.DiamondNumber - 1][self.SignalRegionName if region is None else self.make_region(sig_type, region)]
         # increase range for timing correction and convert to ns
         fac = 2. if self.Run.Digitiser == 'drs4' else 2.5
         xmin = xmin / fac - (10 if corr else 10)
@@ -545,7 +545,7 @@ class PadAnalysis(Analysis):
         self.ROOTObjects.append(self.save_histo(h, 'TriggerCell', show, sub_dir=self.save_dir, lm=.11))
 
     def draw_trigger_cell_vs_peakpos(self, show=True, cut=None, tprofile=False, corr=True, t_corr=False):
-        x = self.Run.signal_regions[self.SignalRegion]
+        x = self.Run.signal_regions[self.SignalRegionName]
         if not tprofile:
             ybins = (x[1] - x[0]) if not corr else 4 * (x[1] - x[0])
             h = TH2D('tcpp', 'Trigger Cell vs. Signal Peak Position', 1024, 0, 1024, ybins, x[0] / 2., x[1] / 2.)
@@ -773,7 +773,7 @@ class PadAnalysis(Analysis):
     def draw_signal_vs_peakpos(self, show=True, corr=False):
         gr = self.make_tgrapherrors('gr', 'Signal vs Peak Position')
         i = 0
-        x = self.Run.signal_regions[self.SignalRegion]
+        x = self.Run.signal_regions[self.SignalRegionName]
         self.draw_peak_timing(show=False, corr=corr)
         h = self.PeakValues
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
@@ -795,7 +795,7 @@ class PadAnalysis(Analysis):
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
 
     def draw_sig_vs_corr_peaktiming(self, show=True, prof=False):
-        x = self.Run.signal_regions[self.SignalRegion]
+        x = self.Run.signal_regions[self.SignalRegionName]
         h = TProfile('hspt', 'Signal vs. Corrected Peak Timing', (x[1] - x[0]), x[0] / 2, x[1] / 2)
         if not prof:
             h = TH2F('hspt', 'Signal vs. Corrected Peak Timing', (x[1] - x[0]), x[0] / 2, x[1] / 2, 350, -50, 300)
@@ -811,7 +811,7 @@ class PadAnalysis(Analysis):
 
     def draw_landau_vs_peakpos(self, show=True, bins=2):
         hs = THStack('lpp', 'Landau vs. Signal Peak Postion;pulse height;entries')
-        x = self.Run.signal_regions[self.SignalRegion]
+        x = self.Run.signal_regions[self.SignalRegionName]
         self.Cut.reset_cut('signal_peak_pos')
         self.draw_peak_timing(show=False)
         h_pv = self.PeakValues
@@ -935,7 +935,7 @@ class PadAnalysis(Analysis):
         cut_string = self.Cut.generate_special_cut(included=['tracks', 'pulser', 'saturated'])
         cut_string += additional_cut
         h = self.draw_signal_vs_peak_position('e', '2', show, corr, cut_string, draw_option, 1, save=False)
-        self.format_histo(h, x_range=[self.Run.signal_regions[self.SignalRegion][0] / 2, self.Run.signal_regions['e'][1] / 2], stats=0)
+        self.format_histo(h, x_range=[self.Run.signal_regions[self.SignalRegionName][0] / 2, self.Run.signal_regions['e'][1] / 2], stats=0)
         self.save_plots('BucketPedestal')
 
     def draw_bucket_waveforms(self, show=True, t_corr=True, start=100000):
@@ -1007,7 +1007,7 @@ class PadAnalysis(Analysis):
             if str(value) or key == 'raw':
                 print 'saving plot', key
                 save_name = 'signal_distribution_{cut}'.format(cut=key)
-                histo_name = 'signal {range}{peakint}'.format(range=self.SignalRegion, peakint=self.PeakIntegral)
+                histo_name = 'signal {range}{peakint}'.format(range=self.SignalRegionName, peakint=self.PeakIntegral)
                 histo_title = 'signal with cut ' + key
                 histo = TH1F(histo_name, histo_title, 350, -50, 300)
                 # safe single plots
@@ -1061,7 +1061,7 @@ class PadAnalysis(Analysis):
         for key, value in self.Cut.CutStrings.iteritems():
             if str(value) or key == 'raw':
                 save_name = 'signal_distribution_normalised_{cut}'.format(cut=key)
-                histo_name = 'signal {range}{peakint}'.format(range=self.SignalRegion, peakint=self.PeakIntegral)
+                histo_name = 'signal {range}{peakint}'.format(range=self.SignalRegionName, peakint=self.PeakIntegral)
                 histo_title = 'normalized' if not scale else 'scaled'
                 histo_title += ' signal with cut ' + key
                 histo = TH1F(histo_name, histo_title, 350, -50, 300)
@@ -1225,7 +1225,7 @@ class PadAnalysis(Analysis):
     # ==========================================================================
     # region SHOW
     def draw_signal_vs_peak_position(self, region=None, peak_int=None, show=True, corr=True, cut=None, draw_opt='colz', nbins=4, save=True):
-        region = self.SignalRegion if region is None else region
+        region = self.SignalRegionName if region is None else region
         peak_int = self.PeakIntegral if peak_int is None else peak_int
         cut = self.Cut.generate_special_cut(excluded=[self.Cut.CutStrings['timing']]) if cut is None else cut
         num = self.get_signal_number(region, peak_int)
@@ -1549,7 +1549,7 @@ class PadAnalysis(Analysis):
         h = TProfile2D('h_snr', 'Signal to Noise Ratios', 10, 0, 5, 10, 0, 5)
         i = 0
         for name, region in self.get_all_signal_names().iteritems():
-            if self.SignalRegion.split('_')[-1] in region:
+            if self.SignalRegionName.split('_')[-1] in region:
                 peak_integral = self.get_peak_integral(remove_letters(region))
                 snr = self.calc_snr(name=name, reg=self.get_all_signal_names()[name])
                 h.Fill(peak_integral[0] / 2., peak_integral[1] / 2., snr.n)
@@ -1687,7 +1687,7 @@ class PadAnalysis(Analysis):
     def print_information(self, header=True):
         if header:
             self.print_info_header()
-        infos = [self.RunNumber, self.Run.RunInfo['type'], self.DiamondName.ljust(4), self.Bias, self.SignalRegion + self.PeakIntegral + '   ']
+        infos = [self.RunNumber, self.Run.RunInfo['type'], self.DiamondName.ljust(4), self.Bias, self.SignalRegionName + self.PeakIntegral + '   ']
         for info in infos:
             print self.adj_length(info),
         print
