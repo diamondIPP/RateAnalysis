@@ -535,7 +535,7 @@ class PixAnalysis(Analysis):
     def draw_track_occupancy(self, cut='', show=True, res=2):
         cut_string = self.Cut.all_cut if cut is None else TCut(cut) + self.Cut.CutStrings['tracks']
         h = TH2D('h_to', 'Track Occupancy {d}'.format(d=self.DiamondName), *self.Plots.get_global_bins(res=res))
-        self.tree.Draw('dia_track_y_local[{d}]:dia_track_x_local[{d}]>>h_to'.format(d=self.Dut - 4), cut_string, 'goff')
+        self.tree.Draw('dia_track_y_local[{d}][0]:dia_track_x_local[{d}][0]>>h_to'.format(d=self.Dut - 4), cut_string, 'goff')
         set_statbox(entries=4, opt=1000000010, x=.81)
         self.format_histo(h, x_tit='Track x [cm]', y_tit='Track y [cm]', z_tit='Number of Entries', y_off=1.4, z_off=1.5)
         self.save_histo(h, 'TrackOccupancy', show, lm=.12, rm=.17, draw_opt='colz')
@@ -597,7 +597,7 @@ class PixAnalysis(Analysis):
             y_pos = m1 / ratio / 4 if m1 / ratio / 4 > s1 else s1
             self.draw_tlatex(x_pos + off * (m2 - m1), y_pos + off * (s2 - s1), text='{0:3.1f}'.format(ratio), size=.02, align=11)
             cut.Draw('same')
-            self.RootObjects.append(cut)
+            self.Objects.append(cut)
 
     @staticmethod
     def find_working_point(h):
@@ -639,18 +639,18 @@ class PixAnalysis(Analysis):
         h = self.draw_signal_distribution()
         h.GetYaxis().SetRangeUser(0, 2500)
         zero_bin = h.FindBin(0)
-        zeros = int(h.GetBinContent(zero_bin))
+        zero_entries = int(h.GetBinContent(zero_bin))
         entries = int(h.GetEntries())
         print entries
         c = gROOT.GetListOfCanvases()[-1]
         thresholds = self.get_thresholds(vcal=False)
         for i in xrange(entries):
-            h.SetBinContent(zero_bin, zeros)
+            h.SetBinContent(zero_bin, zero_entries)
             v = gRandom.Landau(mpv, sigma)
             threshold = thresholds[int(gRandom.Rndm() * len(thresholds))]
             if v < threshold:
                 h.Fill(v)
-                zeros -= 1
+                zero_entries -= 1
             if i % 100 == 0:
                 c.Update()
                 c.Modified()
