@@ -103,6 +103,7 @@ class VoltageScan(Elementary):
             else:
                 legend.AddEntry(gr, gr.GetTitle(), 'p')
             mg.Add(gr, 'p')
-        self.format_histo(mg, x_tit='Voltage [V]', y_tit='Pulse Height [au]', y_off=1.3, draw_first=True)
-        self.save_histo(mg, '{s}VoltageScan'.format(s='Signal' if not pulser else 'Pulser'), draw_opt='a', lm=.12, show=show)
+        max_y = max(graphs[0].GetY()[i] for i in xrange(graphs[0].GetN()))
+        self.format_histo(mg, x_tit='Voltage [V]', y_tit='Pulse Height [au]', y_off=2, draw_first=True, y_range=[0, max_y * 1.2])
+        self.save_histo(mg, '{s}VoltageScan'.format(s='Signal' if not pulser else 'Pulser'), draw_opt='a', lm=.14, show=show)
         self.reset_colors()
