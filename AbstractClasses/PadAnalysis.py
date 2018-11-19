@@ -41,6 +41,8 @@ class PadAnalysis(Analysis):
         self.Bias = self.Run.Bias[dia - 1]
         self.save_dir = '{dia}/{run}/'.format(run=str(self.RunNumber).zfill(3), dia=self.DiamondName)
 
+        self.DigitiserBinWidth = .5 if self.Run.Digitiser == 'drs4' else .4
+
         # stuff
         if run.tree:
             # polarities
