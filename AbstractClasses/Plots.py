@@ -25,13 +25,15 @@ class Plots(Elementary):
         self.run = run
         self.runinfo = self.run.RunInfo
         self.binning = binning
-        self.num_devices = run.NPlanes
+        self.NDevices = run.NPlanes
         self.NEntries = run.n_entries
         self.NCols = 52
         self.NRows = 80
         self.Settings = {'ph1Dmin': -5000,
                          'ph1Dmax': 100000,
                          'ph1Dbins': 100500 / 2000,
+                         'maxPadPh': 500,
+                         'minPadPh': -50,
                          'ph1DbinsSi': 160,
                          'ph1DminSi': 0,
                          'ph1DmaxSi': 90000,
@@ -81,6 +83,9 @@ class Plots(Elementary):
             ret_val.append(len(arr) - 1)
             ret_val.append(arr)
         return ret_val
+
+    def get_ph_bins(self, bin_width=1):
+        return int(ceil((self.Settings['maxPadPh'] - self.Settings['minPadPh']) / float(bin_width))), self.Settings['minPadPh'], self.Settings['maxPadPh']
 
     def get_tcal_bins(self):
         return [int(round(sqrt(len(self.run.TCal))))] + increased_range([min(self.run.TCal), max(self.run.TCal)], .1, .1)
@@ -350,12 +355,6 @@ class Plots(Elementary):
         gROOT.SetBatch(False)
         if verbosity: print_banner('{n} save -> Done'.format(n=name))
         del c0
-
-    def check_plot_existence(self, path, name):
-        if os.path.isfile('{p}/Plots/{n}.png'.format(p=path, n=name)):
-            return True
-        else:
-            return False
 
     def get_binning(self, evts_per_bin, start_event=0, end_event=None, time_bins=False):
         binning = arange(start_event, self.NEntries if end_event is None else end_event, self.NEntries / (self.NEntries / evts_per_bin), 'd')
