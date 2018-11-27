@@ -4,7 +4,7 @@
 # --------------------------------------------------------
 
 from Elementary import Elementary
-from ROOT import TProfile, gROOT, THStack, TCut
+from ROOT import TProfile, gROOT, THStack, TCut, TH2F
 from Utils import *
 from copy import deepcopy
 from numpy import mean
@@ -69,27 +69,34 @@ class PulserAnalysis(Elementary):
         particle_rate = make_ufloat(self.Ana.get_flux()) * diamond_size
         return in_rate / particle_rate
 
-    def draw_pulse_height(self, binning=10000, show=True, redo=False, fit=True):
+    def draw_pulse_height(self, bin_size=10000, y_range=None, show=True, redo=False):
         """ Shows the average pulse height of the pulser as a function of time """
-        pickle_path = self.make_pickle_path('Pulser', 'PH', self.RunNumber, self.Ana.DiamondNumber, binning)
+        pickle_path = self.make_pickle_path('Pulser', 'PH', self.RunNumber, self.Ana.DiamondNumber, bin_size)
+        print self.RunNumber
 
         def f():
-            h1 = TProfile('hpph', 'Pulser Pulse Height', *self.Ana.get_time_bins(binning))
+            gr = self.make_tgrapherrors('gpph', 'Pulser Pulse Height')
+            h = TH2F('temp', '', *[v for info in [self.Ana.get_time_bins(bin_size), self.Ana.Plots.get_ph_bins(bin_width=1)] for v in info])
             signal = self.Ana.generate_signal_name(self.SignalName, evnt_corr=False, off_corr=True, cut=self.PulserCut)
-            self.Tree.Draw('{sig}:time/1000.>>hpph'.format(sig=signal), self.PulserCut, 'goff')
-            return h1
+            self.Tree.Draw('{sig}:time/1000.>>temp'.format(sig=signal), self.PulserCut, 'goff')
+            for xbin in xrange(2, h.GetNbinsX() + 1):  # first bin is always empty
+                py = h.ProjectionY('_py{}'.format(xbin), xbin, xbin)
+                m = py.GetBinCenter(py.GetMaximumBin())
+                f1 = py.Fit('gaus', 'qs0', '', m - 10, m + 10)
+                m, s = (f1.Parameter(j) for j in [1, 2])
+                f2 = py.Fit('gaus', 'qs0', '', m - 4 * s, m + 1.5 * s)
+                gr.SetPoint(xbin - 2, h.GetXaxis().GetBinCenter(xbin), f2.Parameter(1))
+                gr.SetPointError(xbin - 2, h.GetXaxis().GetBinWidth(xbin) / 2., f2.ParError(1))
+            return gr
 
-        h = do_pickle(pickle_path, f, redo=redo)
-        values = [h.GetBinContent(i) for i in xrange(h.GetNbinsX()) if h.GetBinContent(i)]
-        y_range = increased_range([min(values), max(values)], .7, .7)
-        self.format_histo(h, name='Fit Result', x_tit='Time [hh:mm]', y_tit='Pulse Height [au]', y_off=1.7, stats=fit, fill_color=self.FillColor, y_range=y_range,
-                          t_ax_off=self.Ana.run.StartTime)
-        self.set_statbox(w=.3, entries=2, only_fit=True)
-        self.draw_histo(h, '', show, gridy=True, draw_opt='histe', lm=.14)
-        fit_res = h.Fit('pol0', 'qs') if fit else None
-        h.Draw('same')
-        self.save_plots('PulserPulserHeight{}'.format(binning))
-        return FitRes(fit_res) if fit else h
+        g = do_pickle(pickle_path, f, redo=redo)
+        self.set_statbox(n_entries=2, only_fit=True, form='1.2f')
+        fit_res = g.Fit('pol0', 'qs')
+        values = [g.GetY()[i] for i in xrange(g.GetN()) if g.GetY()[i]]
+        y_range = increased_range([min(values), max(values)], .7, .7) if y_range is None else y_range
+        self.format_histo(g, x_tit='Time [hh:mm]', y_tit='Pulse Height [au]', y_off=1.7, fill_color=self.FillColor, y_range=y_range, t_ax_off=self.Ana.Run.StartTime)
+        self.save_histo(g, 'PulserPulserHeight{}'.format(bin_size), show, gridy=True, draw_opt='ap', lm=.14, save=not file_exists(pickle_path))
+        return g, FitRes(fit_res)
 
     def find_range(self, corr):
         n, i = 0, 0
