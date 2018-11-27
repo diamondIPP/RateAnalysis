@@ -299,8 +299,8 @@ class Elementary(Draw):
         pm = bm + (1 - bm - .1) / 5.
 
         # set unified x-range:
-        mg1.GetXaxis().SetLimits(5, 3e4) if x_range is None else do_nothing()
-        mg.GetXaxis().SetLimits(5, 3e4) if x_range is None else do_nothing()
+        mg1.GetXaxis().SetLimits(1, 3e4) if x_range is None else do_nothing()
+        mg.GetXaxis().SetLimits(1, 3e4) if x_range is None else do_nothing()
 
         # bottom pad with 20%
         p0 = self.draw_tpad('p0', 'p0', pos=[0, 0, 1, pm], margins=[.14, .03, bm / pm, 0], transparent=True, logx=True, gridy=True)

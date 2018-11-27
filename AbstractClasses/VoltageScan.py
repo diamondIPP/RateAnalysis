@@ -71,7 +71,7 @@ class VoltageScan(Elementary):
         i, j = 0, 0
         for key, ana in self.collection.iteritems():
             try:
-                fit1 = ana.draw_pulse_height(binning=binning, corr=True, save=redo, show=False, redo=redo)[1] if not pulser else ana.Pulser.draw_distribution_fit(show=False, prnt=False)
+                fit1 = ana.draw_pulse_height(bin_size=binning, corr=True, save=redo, show=False, redo=redo)[1] if not pulser else ana.Pulser.draw_distribution_fit(show=False, prnt=False)
             except TypeError:
                 fit1 = ana.draw_pulse_height(bin_size=binning, cut=cut, show=False)
             x = ana.Run.RunInfo['dia{nr}hv'.format(nr=self.DiamondNumber)]
