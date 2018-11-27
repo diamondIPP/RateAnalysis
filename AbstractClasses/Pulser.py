@@ -49,14 +49,14 @@ class PulserAnalysis(Elementary):
         h = TProfile('hpr', 'Pulser Rate', *self.Ana.Plots.get_binning(evts_per_bin, time_bins=vs_time))
         self.Tree.Draw('pulser*100:{v}>>hpr'.format(v='time / 1000.' if vs_time else 'Entry$'), cut, 'goff')
         self.format_histo(h, x_tit='Time [hh:mm]' if vs_time else 'Event Number', y_tit='Pulser Fraction [%]', y_off=.8, fill_color=self.FillColor, y_range=[0, 105], markersize=.7, stats=0,
-                          t_ax_off=self.Ana.run.StartTime if rel_t else 0)
+                          t_ax_off=self.Ana.Run.StartTime if rel_t else 0)
         self.save_histo(h, 'PulserRate', show, lm=.08, draw_opt='bare', x_fac=1.5, y_fac=.75, prnt=prnt)
         return h
 
     def calc_fraction(self, show=False, prnt=True):
         """ :returns the fitted value of the fraction of pulser events with event range and beam interruptions cuts and its fit error. """
         cut = self.Cut.generate_special_cut(included=['beam_interruptions'], prnt=prnt)
-        self.set_statbox(only_fit=True, entries=2, x=.9, w=.2)
+        self.set_statbox(only_fit=True, n_entries=2, x=.9, w=.2)
         h = self.draw_rate(show=show, cut=cut, prnt=prnt)
         self.format_histo(h, 'Fit Result', markersize=None)
         fit = h.Fit('pol0', 'qs')
@@ -104,10 +104,10 @@ class PulserAnalysis(Elementary):
         """ Shows the distribution of the pulser integrals. """
         cut = self.Cut.generate_pulser_cut(beam_on=beam_on)
         x = self.find_range(corr)
-        h = self.Ana.draw_signal_distribution(cut=cut, sig=self.SignalName, show=False, off_corr=corr, evnt_corr=False, binning=binning, events=events,
-                                              start=start, redo=redo, x_range=x, stats=not stats, prnt=prnt)
+        h = self.Ana.draw_signal_distribution(cut=cut, sig=self.SignalName, show=False, off_corr=corr, evnt_corr=False, bin_width=binning, events=events,
+                                              start=start, redo=redo, x_range=x, prnt=prnt)
         self.format_histo(h, name='p_hd', stats=stats, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
-        self.save_histo(h, 'PulserDistribution', show, logy=True, lm=.12, prnt=prnt)
+        self.save_histo(h, 'PulserDistribution', show, lm=.12, prnt=prnt)
         return h
 
     def draw_distribution_fit(self, show=True, redo=False, corr=True, beam_on=True, events=None, start=None, binning=3, prnt=True):
