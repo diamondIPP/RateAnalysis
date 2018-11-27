@@ -9,7 +9,7 @@ from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas
 from Utils import *
 from os.path import dirname
 from numpy import ndarray, zeros, sign
-from uncertainties.core import Variable
+from uncertainties.core import Variable, AffineScalarFunc
 
 
 class Draw:
@@ -470,20 +470,20 @@ class Draw:
         format_frame(fr)
         self.Objects.append(fr)
 
-    def set_statbox(self, x=.95, y=None, w=.16, entries=3, only_fit=False, fit=False, only_entries=False, opt=None, form=None):
+    def set_statbox(self, x=.95, y=None, w=.2, n_entries=3, only_fit=False, fit=False, entries=False, form=None, m=False, rms=False, all_stat=False):
+        gStyle.SetOptFit(only_fit or fit)
+        opt_stat = '100000{}{}{}0'.format(*[1 if val else 0 for val in [rms, m, entries]] if not all_stat else [1, 1, 1])
+        if only_fit:
+            opt_stat = '0011'
+        if fit:
+            opt_stat = '1111'
         y = .88 if self.ActivateTitle else .95 if y is None else y
-        if only_fit or fit:
-            gStyle.SetOptStat(1111 if fit else 0011)
-            gStyle.SetOptFit(1)
-        if only_entries:
-            gStyle.SetOptStat(1000000010 if not only_fit else 1000000011)
-            entries = 6 if entries == 3 else entries
-        gStyle.SetOptStat(opt) if opt is not None else do_nothing()
+        gStyle.SetOptStat(int(opt_stat))
         gStyle.SetFitFormat(form) if form is not None else do_nothing()
         gStyle.SetStatX(x)
         gStyle.SetStatY(y)
         gStyle.SetStatW(w)
-        gStyle.SetStatH(.02 * entries)
+        gStyle.SetStatH(.04 * n_entries)
 
 
 def format_frame(frame):
@@ -512,7 +512,7 @@ def make_graph_args(x, y, ex=None, ey=None):
     if len(list(x)) != len(list(y)):
         log_warning('Arrays have different size!')
         return []
-    lx = len(x)
-    if type(x[0]) is Variable:
-        return [lx, array([v.n for v in x], 'd'), array([v.n for v in y], 'd'), array([v.s for v in x], 'd'), array([v.s for v in y], 'd')]
-    return [lx, array(x, 'd'), array(y, 'd'), array(ex, 'd') if ex is not None else zeros(lx), array(ey, 'd') if ey is not None else zeros(lx)]
+    l = len(x)
+    x = x if type(x[0]) in [Variable, AffineScalarFunc] else [make_ufloat(tup) for tup in zip(x, zeros(l) if ex is None else ex)]
+    y = y if type(y[0]) in [Variable, AffineScalarFunc] else [make_ufloat(tup) for tup in zip(y, zeros(l) if ey is None else ey)]
+    return [l, array([v.n for v in x], 'd'), array([v.n for v in y], 'd'), array([v.s for v in x], 'd'), array([v.s for v in y], 'd')]
