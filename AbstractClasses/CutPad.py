@@ -410,7 +410,7 @@ class CutPad(Cut):
             self.analysis.tree.Draw(self.analysis.SignalName, '', 'goff', 5000)
             xvals = sorted([self.analysis.tree.GetV1()[i] for i in xrange(5000)])
             x_range = [xvals[0] - 5, xvals[-5]]
-            h = self.analysis.draw_signal_distribution(show=show, cut=self.generate_fiducial(), x_range=x_range, binning=1)
+            h = self.analysis.draw_signal_distribution(show=show, cut=self.generate_fiducial(), x_range=x_range, bin_width=1)
             s = TSpectrum(3)
             s.Search(h)
             peaks = [s.GetPositionX()[i] for i in xrange(s.GetNPeaks())]

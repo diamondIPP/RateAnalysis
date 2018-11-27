@@ -85,7 +85,7 @@ class AutoConvert:
         pool = Pool(n_cpus)
         print
 
-        tasks = [(self, [run]) for run in xrange(self.NextRun, 200)]
+        tasks = [(self, [run]) for run in xrange(self.NextRun, 404)]
 
         results = [pool.apply_async(execute, t) for t in tasks]
         for res in results:
@@ -113,7 +113,7 @@ if __name__ == '__main__':
 
     parser = ArgumentParser()
     parser.add_argument('-m', action='store_true')
-    parser.add_argument('-tc', nargs='?', default='201810')
+    parser.add_argument('-tc', nargs='?', default='201807')
     arg = parser.parse_args()
 
     dummy = Run(1, arg.tc, tree=False)

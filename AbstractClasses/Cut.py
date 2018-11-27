@@ -444,6 +444,9 @@ class Cut(Elementary):
         else:
             return 'diam{n}_track_{m}'.format(m=mode, n=num + 1)
 
+    def get_track_vars(self, num):
+        return (self.get_track_var(num, v) for v in ['y', 'x'])
+
     def generate_consecutive_cuts(self):
         pass
 
