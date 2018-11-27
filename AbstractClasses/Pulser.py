@@ -122,26 +122,20 @@ class PulserAnalysis(Elementary):
         events_string = '_{0}'.format(events) if events is not None else ''
         suffix = '{corr}_{beam}{st}{ev}'.format(corr='ped_corr' if corr else '', beam='BeamOff' if not beam_on else 'BeamOn', st=start_string, ev=events_string)
         pickle_path = self.make_pickle_path('Pulser', 'HistoFit', self.RunNumber, self.Channel, suf=suffix)
-
-        def func():
-            set_statbox(.95, .88, entries=4, only_fit=True, w=.5)
-            h = self.draw_distribution(show=show, corr=corr, beam_on=beam_on, binning=binning, events=events, start=start, stats=True, redo=redo, prnt=prnt)
-            h.SetName('Fit Result')
-            same_pols = self.Polarity == self.Ana.Polarity
-            full_fit = h.Fit('gaus', 'qs0')
-            xmin, xmax = [full_fit.Parameter(1) + i * full_fit.Parameter(2) for i in ([-2, .5] if same_pols else [-.5, 2])]
-            fit_func = h.Fit('gaus', 'qs{0}'.format('' if show else '0'), '', xmin, xmax)
-            f = deepcopy(gROOT.GetFunction('gaus'))
-            f.SetLineStyle(7)
-            f.SetRange(0, 500)
-            h.GetListOfFunctions().Add(f)
-            set_drawing_range(h)
-            self.Objects.append(f)
-            self.save_plots('PulserDistributionFit', show=show, prnt=prnt)
-            return FitRes(fit_func)
-
-        fit = func() if redo else None
-        fit = do_pickle(pickle_path, func, fit)
+        set_statbox(.95, .88, entries=4, only_fit=True, w=.5)
+        h = self.draw_distribution(show=show, corr=corr, beam_on=beam_on, binning=binning, events=events, start=start, stats=True, redo=redo, prnt=prnt)
+        h.SetName('Fit Result')
+        same_pols = self.Polarity == self.Ana.Polarity
+        full_fit = h.Fit('gaus', 'qs0')
+        xmin, xmax = [full_fit.Parameter(1) + i * full_fit.Parameter(2) for i in ([-2, .5] if same_pols else [-.5, 2])]
+        fit_func = h.Fit('gaus', 'qs{0}'.format('' if show else '0'), '', xmin, xmax)
+        f = deepcopy(gROOT.GetFunction('gaus'))
+        f.SetLineStyle(7)
+        f.SetRange(0, 500)
+        h.GetListOfFunctions().Add(f)
+        set_drawing_range(h)
+        self.save_plots('PulserDistributionFit', show=show, prnt=prnt)
+        fit = FitRes(fit_func)
         kinder_pickle(pickle_path, fit)
         return fit
 
