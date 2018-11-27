@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 
-from ROOT import TCanvas, TH2F, gROOT, TH1F, TLegend, gStyle, kGreen, TCut, TF1, TGraph, TH1I
+from ROOT import TCanvas, TH2F, gROOT, TH1F, TLegend, gStyle, kGreen, TCut, TF1, TGraph, TH1I, TProfile
 from numpy import log, zeros
 
 from Elementary import Elementary
@@ -391,7 +391,7 @@ class Analysis(Elementary):
         if ind == n_jumps - 1 and bins[-1] >= jumps[-1]['f'] or ind == n_jumps:
             while bins[-1] + self.BinSize < self.Run.n_entries:
                 bins.append(bins[-1] + self.BinSize)
-        if len(bins) == 1:
+        if len(bins) == 1 or self.Run.n_entries - bins[-1] > self.BinSize / 4.:
             bins.append(self.Run.n_entries - 1)
         return bins
 
@@ -463,26 +463,19 @@ class Analysis(Elementary):
         self.format_histo(g, x_tit='Time [hh:mm]', y_tit='Rate [Hz]', fill_color=self.FillColor, markersize=.4, t_ax_off=self.Run.StartTime if rel_t else 0)
         self.save_tel_histo(g, 'Plane{n}Rate'.format(n=plane), draw_opt='afp', lm=.08, x_fac=1.5, y_fac=.75, ind=None, show=show)
 
-    def draw_flux(self, cut='', rel_t=True, redo=False, show=True):
-        """ Draws the flux vs time calculated using the trigger plane rates and their active areas """
-        if not self.has_branch('rate'):
-            log_warning('The "rate" branch does not exist in this tree')
-            return
+    def draw_flux(self, bin_width=5, cut='', rel_t=True, show=True):
         cut = TCut('beam_current < 10000') + TCut(cut)
-
-        def f():
-            areas = self.Run.get_unmasked_area()
-            n = self.tree.Draw('rate[{p1}]:rate[{p2}]:time / 1000.'.format(p1=areas.keys()[0] + 1, p2=areas.keys()[1] + 1), cut, 'goff')
-            rates = [(self.tree.GetV1()[i], self.tree.GetV2()[i]) for i in xrange(n)]
-            t = [self.tree.GetV3()[i] for i in xrange(n)]
-            flux = [float(mean([r1 / areas.values()[0], r2 / areas.values()[1]]) / 1000) for r1, r2 in rates]
-            g1 = self.make_tgrapherrors('gfl', 'Flux', x=[t[0]] + t + [t[-1]], y=[.0] + flux + [.0])
-            return g1
-
-        g = do_pickle(self.make_pickle_path('Rate', 'Flux', run=self.RunNumber, suf='cut' if len(cut.GetTitle()) > 22 else ''), f, redo=redo)
-        self.format_histo(g, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', fill_color=self.FillColor, markersize=.4, t_ax_off=self.Run.StartTime if rel_t else 0)
-        self.save_tel_histo(g, 'FluxTime', draw_opt='afp', lm=.08, x_fac=1.5, y_fac=.75, ind=None, show=show, save=show)
-        return g
+        set_root_warnings(OFF)
+        p = TProfile('pf', 'Flux Profile', *self.Plots.get_time_binning(bin_width=bin_width))
+        area = self.Run.get_unmasked_area()
+        p1, p2 = area.keys()
+        a1, a2 = area.values()
+        # rate[0] is scintillator
+        self.tree.Draw('(rate[{p1}] / {a1} + rate[{p2}] / {a2}) / 2000 : time / 1000.>>pf'.format(p1=p1 + 1, p2=p2 + 1, a1=a1, a2=a2), cut, 'goff', self.Run.n_entries, 1)
+        y_range = [0, p.GetMaximum() * 1.2]
+        self.format_histo(p, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', fill_color=self.FillColor, markersize=1, t_ax_off=self.Run.StartTime if rel_t else 0, stats=0, y_range=y_range)
+        self.save_tel_histo(p, 'FluxProfile', draw_opt='hist', lm=.08, x_fac=1.5, y_fac=.75, ind=None, show=show)
+        return p
 
     def draw_bc_vs_rate(self, cut='', show=True):
         g1 = self.draw_flux(cut=cut, show=False)
