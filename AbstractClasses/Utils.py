@@ -20,6 +20,10 @@ from uncertainties.core import Variable
 from copy import deepcopy
 
 
+OFF = False
+ON = True
+
+
 # ==============================================
 # UTILITY FUNCTIONS
 # ==============================================
@@ -49,9 +53,13 @@ def log_message(msg, overlay=False, prnt=True):
         print '{ov}{t} --> {msg}{end}'.format(t=get_t_str(), msg=msg, ov='\033[1A\r' if overlay else '', end=' ' * 20 if overlay else '')
 
 
+def set_root_warnings(status):
+    gROOT.ProcessLine('gErrorIgnoreLevel = {e};'.format(e='0' if status else 'kError'))
+
+
 def set_root_output(status=True):
     gROOT.SetBatch(not status)
-    gROOT.ProcessLine('gErrorIgnoreLevel = {e};'.format(e='0' if status else 'kError'))
+    set_root_warnings(status)
 
 
 def scale_margins(gr1, gr2):
