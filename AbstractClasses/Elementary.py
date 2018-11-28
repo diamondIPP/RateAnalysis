@@ -163,7 +163,7 @@ class Elementary(Draw):
         if prnt and self.verbose:
             t1 = time()
             t = datetime.now().strftime('%H:%M:%S')
-            print 'INFO: {t} --> {msg}'.format(t=t, msg=msg),
+            print '{head} {t} --> {msg}'.format(head=colored('INFO:', 'cyan', attrs=['dark']), t=t, msg=msg),
             stdout.flush()
             if next_line:
                 print

@@ -32,7 +32,7 @@ def get_t_str():
 
 
 def log_warning(msg):
-    print '{head} {t} --> {msg}'.format(t=get_t_str(), msg=msg, head=colored('WARNING:', 'red'))
+    print '{head} {t} --> {msg}'.format(t=get_t_str(), msg=msg, head=colored('WARNING:', 'yellow'))
 
 
 def log_critical(msg):
