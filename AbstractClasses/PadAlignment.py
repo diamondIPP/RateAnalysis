@@ -6,52 +6,51 @@
 
 from ROOT import TFile, vector, TProfile
 from numpy import mean
-from Utils import log_message, time, print_elapsed_time, OrderedDict
-from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
-from sys import argv
-from datetime import datetime
-from sys import stdout
+from Utils import log_message, time, print_elapsed_time, OrderedDict, print_banner, file_exists
+from os import remove
 
 
 class PadAlignment:
-    def __init__(self, converter, filename=None):
+    def __init__(self, converter):
+
         # main
         self.StartTime = time()
         self.NDutPlanes = 4
         self.Threshold = .4
-        # progress bar
-        self.Widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
-        self.ProgressBar = None
-        if filename is None:
-            self.Converter = converter
-            self.Run = converter.Run
-            # files/trees
-            self.InFile = TFile(converter.get_root_file_path())
-            self.InTree = self.InFile.Get(self.Run.treename)
-        else:
-            self.Run = self.Run()
-            self.InFile = TFile(filename)
-            self.InTree = self.InFile.Get('tree')
 
+        # converter
+        self.Converter = converter
+        self.Run = converter.Run
+
+        print_banner('STARTING PAD EVENT ALIGNMENT OF RUN {r}'.format(r=self.Run.RunNumber))
+
+        # files/trees
+        self.InFile = TFile(converter.get_root_file_path())
+        self.InTree = self.InFile.Get(self.Run.treename)
         self.NewFile = None
         self.NewTree = None
+
         # alignment
         self.NEntries = int(self.InTree.GetEntries())
         self.AtEntry = 0
-        self.IsAligned = self.check_alignment()
-        if not self.IsAligned:
-            # branches
-            self.Branches = self.init_branches()
-            self.BranchLists = {name: [] for name in self.Branches}
-            # info
-            self.ColSize = []
-            self.PulserEvents = []
-            self.load_variables()
-            self.BucketSize = 30
+        # branches
+        self.Branches = self.init_branches()
+        self.BranchLists = {name: [] for name in self.Branches}
+        # info
+        self.ColSize = []
+        self.PulserEvents = []
+        self.BucketSize = 30
 
     def __del__(self):
         self.InFile.Close()
         print_elapsed_time(self.StartTime, 'Pad Alignment')
+
+    def run(self):
+        if not self.is_aligned():
+            self.load_variables()
+            self.write_aligned_tree()
+            if file_exists(self.Converter.ErrorFile):
+                remove(self.Converter.ErrorFile)  # file is not needed anymore and just gets appended otherwise
 
     @staticmethod
     def init_branches():
@@ -86,14 +85,13 @@ class PadAlignment:
             n_hits += size
         self.Run.add_info(t)
 
-    def check_alignment(self, binning=1000):
+    def is_aligned(self, binning=1000):
         """ just check the zero correlation """
         nbins = self.NEntries / binning
         h = TProfile('h', 'Pulser Rate', nbins, 0, self.NEntries)
         self.InTree.Draw('(@col.size()>1)*100:Entry$>>h', 'pulser', 'goff')
         aligned = all(h.GetBinContent(bin_) < 40 for bin_ in xrange(h.GetNbinsX()))
-        if not aligned:
-            self.Run.log_info('Fast check found misalignment :-(')
+        self.Run.log_info('Fast check found misalignment :-(' if not aligned else 'Run {} is perfectly aligned :-)'.format(self.Run.RunNumber))
         return aligned
 
     def find_offset(self, start, offset, n_events=None, n_offsets=5):
@@ -110,15 +108,35 @@ class PadAlignment:
         except StopIteration:
             return 0
 
+    def find_zero_offset(self):
+        """return the offset at the beginning of the run"""
+        return self.find_offset(0, 0)
+
+    def find_final_offset(self):
+        off = 0
+        while self.calc_mean_size(len(self.PulserEvents) - self.BucketSize - 1 - off, off) > self.Threshold:
+            off += 1
+        return off
+
+    def get_error_offsets(self):
+        self.Run.log_info('Using decoding errors to get the event alignment offsets')
+        zero_offset = [(0, self.find_zero_offset())] if self.find_zero_offset() else []
+        return OrderedDict(zero_offset + [(event_number, 1) for event_number in self.Converter.DecodingErrors])
+
     def calc_mean_size(self, start, off=0, n=None):
         n = n if n is not None else self.BucketSize
         return mean([self.ColSize[ev + off] > 3 for ev in self.PulserEvents[start:start + n]])
 
     def find_error_offset(self, i, offset):
-        for ev in self.Converter.ErrorEvents:
+        for ev in self.Converter.DecodingErrors:
             if self.PulserEvents[i - self.BucketSize / 2] < ev < self.PulserEvents[i + self.BucketSize / 2]:
                 return ev, self.find_offset(self.PulserEvents.index(next(pev for pev in self.PulserEvents if pev > ev)), offset)
         return None, None
+
+    def find_offsets(self):
+        if self.find_final_offset() == len(self.Converter.DecodingErrors) + self.find_zero_offset():
+            return self.get_error_offsets()
+        return self.find_shifting_offsets()
 
     def find_shifting_offsets(self):
         t = self.Run.log_info('Scanning for precise offsets ... ', next_line=False)
@@ -127,7 +145,6 @@ class PadAlignment:
         # add first offset
         offsets = OrderedDict([(0, offset)] if offset else [])
         rates = [self.calc_mean_size(0)]
-        # print offsets
         i = 1
         while i < len(self.PulserEvents) - abs(offset) - n:
             rate = self.calc_mean_size(i, offset)
@@ -147,7 +164,7 @@ class PadAlignment:
                                 i += j - 1 + n / 2
                                 break
                 if this_offset:
-                    print 'Found offset:', off_event, this_offset
+                    # print 'Found offset:', off_event, this_offset
                     offsets[off_event] = this_offset
                     offset += this_offset
             rates.append(rate)
@@ -179,21 +196,22 @@ class PadAlignment:
         if macro:
             macro.Write()
         self.NewFile.Write()
+        self.Run.log_info('successfully aligned the tree and saved it to {}'.format(self.NewFile.GetName()))
 
     def clear_vectors(self):
         for vec in self.Branches.itervalues():
             vec.clear()
 
     def write_aligned_tree(self):
-        offsets = self.find_shifting_offsets()
+        offsets = self.find_offsets()
         self.NewFile = TFile(self.Converter.get_root_file_path(), 'RECREATE')
         self.NewTree = self.InTree.CloneTree(0)
         self.set_branch_addresses()
-        self.start_pbar(self.NEntries)
+        self.Run.start_pbar(self.NEntries)
         offset = 0
         while self.get_next_event():
             entry = self.AtEntry - 1
-            self.ProgressBar.update(self.AtEntry)
+            self.Run.ProgressBar.update(self.AtEntry)
             self.clear_vectors()
             if entry in offsets:
                 offset += offsets[entry]
@@ -203,33 +221,16 @@ class PadAlignment:
                 for value in lst[entry + offset]:
                     self.Branches[name].push_back(value)
             self.NewTree.Fill()
-        self.ProgressBar.finish()
+        self.Run.ProgressBar.finish()
         self.save_tree()
     # endregion
 
-    class Run:
-        def __init__(self):
-            pass
-
-        @staticmethod
-        def log_info(msg, next_line=True):
-            t1 = time()
-            t = datetime.now().strftime('%H:%M:%S')
-            print 'INFO: {t} --> {msg}'.format(t=t, msg=msg),
-            stdout.flush()
-            if next_line:
-                print
-            return t1
-
-        @staticmethod
-        def add_info(t, msg='Done'):
-            print '{m} ({t:2.2f} s)'.format(m=msg, t=time() - t)
-
-    def start_pbar(self, n):
-        self.ProgressBar = ProgressBar(widgets=self.Widgets, maxval=n)
-        self.ProgressBar.start()
-
 
 if __name__ == '__main__':
-    print argv[1]
-    z = PadAlignment(None, argv[1])
+    from Run import Run
+    from Converter import Converter
+    zrun = Run(343, test_campaign=None, tree=False, verbose=True)
+    zconv = Converter(zrun)
+    z = PadAlignment(zconv)
+    if not z.is_aligned():
+        z.load_variables()

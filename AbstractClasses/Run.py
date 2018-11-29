@@ -61,7 +61,7 @@ class Run(Elementary):
         self.Duration = self.LogEnd - self.LogStart
         self.LogHalfTime = time_stamp(self.LogStart + self.Duration / 2)
 
-        self.converter = Converter(self)
+        self.Converter = Converter(self)
         if self.set_run(run_number, tree):
             # tree info
             self.time = get_time_vec(self.tree) if t_vec is None else t_vec
@@ -281,12 +281,10 @@ class Run(Elementary):
 
         # check for conversion
         if root_tree is None:
-            self.converter = Converter(self)
-            self.converter.convert_run(self.RunInfo, run_number)
+            self.Converter.convert_run()
             self.__load_rootfile()
         elif root_tree:
             # TODO: check if the tree is functional and type tree...
-            self.converter = Converter(self)
             self.RootFile = root_tree[0]
             self.tree = root_tree[1]
         else:
@@ -466,7 +464,7 @@ class Run(Elementary):
     # endregion
 
     def __load_rootfile(self):
-        file_path = self.converter.get_final_file_path(self.RunNumber)
+        file_path = self.Converter.get_final_file_path()
         print '\033[1A\rLoading information for rootfile: {file}'.format(file=file_path.split('/')[-1])
         self.RootFile = TFile(file_path)
         self.tree = self.RootFile.Get(self.treename)
