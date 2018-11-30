@@ -5,7 +5,7 @@ from ConfigParser import ConfigParser
 from math import copysign
 from re import sub
 from shutil import move
-from os import remove, getcwd, chdir, rename
+from os import getcwd, chdir, rename
 from os.path import dirname, realpath
 from glob import glob
 from Utils import *
@@ -59,7 +59,7 @@ class Converter:
         self.config = self.get_config()
 
         # alignment
-        self.ErrorFile = join(self.RootFileDir, 'Errors{:03d}.txt'.format(self.RunNumber))
+        self.ErrorFile = join(self.RootFileDir, 'Errors{:03d}.txt'.format(self.RunNumber if self.RunNumber is not None else 0))
         self.DecodingErrors = self.read_errors()
 
     def load_soft_dir(self):
@@ -90,6 +90,11 @@ class Converter:
             return []
         with open(self.ErrorFile) as f:
             return [int(value) for value in f.readlines()]
+
+    def set_run(self, run_number):
+        self.Run.set_run(run_number, root_tree=False)
+        self.RunNumber = run_number
+        self.RunInfo = self.Run.RunInfo
 
     @staticmethod
     def load_soft_config():
