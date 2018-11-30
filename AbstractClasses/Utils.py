@@ -49,8 +49,11 @@ def warning(msg):
 
 
 def log_message(msg, overlay=False, prnt=True):
+    overlay = '\033[1A\r' if overlay else ''
+    info = '{ov}{head} {t} --> {msg}{end}'.format(t=get_t_str(), msg=msg, ov=overlay, end=' ' * 10 if overlay else '', head=colored('INFO:', 'cyan', attrs=['dark']))
     if prnt:
-        print '{ov}{t} --> {msg}{end}'.format(t=get_t_str(), msg=msg, ov='\033[1A\r' if overlay else '', end=' ' * 20 if overlay else '')
+        print info
+    return info
 
 
 def set_root_warnings(status):
