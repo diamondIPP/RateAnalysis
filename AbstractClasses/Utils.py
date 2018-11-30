@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from termcolor import colored
 from ROOT import gStyle, gROOT, TF1, TColor, TFile, TMath
 from numpy import sqrt, array, average, mean, arange, log10
-from os import makedirs, _exit
+from os import makedirs, _exit, remove, devnull
 from os import path as pth
 from os.path import basename, join, split, expanduser
 from time import time, sleep
@@ -18,6 +18,8 @@ from multiprocessing import Pool
 from uncertainties import ufloat
 from uncertainties.core import Variable
 from copy import deepcopy
+from gtts import gTTS
+from subprocess import call
 
 
 OFF = False
@@ -657,6 +659,19 @@ def correct_time(times):
         if diff < 0:
             times = times[:i] + list(array(times[i:]) - diff + 500)  # one TU step should be 500 ms
     return list(times)
+
+
+def say(txt):
+    tts = gTTS(text=txt.decode('utf-8'), lang='en')
+    tts.save('good.mp3')
+    with open(devnull, 'w') as FNULL:
+        call(['mpg321', 'good.mp3'], stdout=FNULL)
+    remove('good.mp3')
+
+
+def get_running_time(t):
+    now = datetime.fromtimestamp(time() - t) - timedelta(hours=1)
+    return now.strftime('%H:%M:%S')
 
 
 class FitRes:
