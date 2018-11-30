@@ -300,6 +300,15 @@ class Converter:
 
 
 if __name__ == '__main__':
+
+    from argparse import ArgumentParser
     from Run import Run
-    zrun = Run(343, test_campaign=None, tree=False, verbose=True)
+
+    p = ArgumentParser()
+
+    p.add_argument('run', nargs='?', default=324, type=int)
+    p.add_argument('-tc', '--testcampaign', nargs='?', default=None)
+    args = p.parse_args()
+
+    zrun = Run(args.run, test_campaign=args.testcampaign, tree=False, verbose=True)
     z = Converter(zrun)
