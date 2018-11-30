@@ -6,8 +6,8 @@ Plots*/
 *~
 *.png
 *.pdf
-.idea/workspace.xml
+.idea/
 test*
-last_converted.txt
+.last_converted.txt
 Configuration/soft.ini
 Configuration/main.ini
