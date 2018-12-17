@@ -331,7 +331,7 @@ class PadAnalysis(Analysis):
         h = TH1F('h_smd', 'Signal Map Distribution', 400, -50, 350)
         [h.Fill(source.GetBinContent(ibin)) for ibin in xrange(source.GetNbinsX() * source.GetNbinsY()) if source.GetBinContent(ibin)]
         x_range = increased_range([h.GetBinCenter(ibin) for ibin in [h.FindFirstBinAbove(5), h.FindLastBinAbove(5)]], .3, .3)
-        self.set_statbox(only_entries=1)
+        self.set_statbox(entries=True)
         self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=2, fill_color=self.FillColor, x_range=x_range)
         self.save_histo(h, 'SignalMapDistribution', lm=.15, show=show)
         return h
@@ -563,7 +563,7 @@ class PadAnalysis(Analysis):
         self.ROOTObjects.append(self.save_histo(h, 'TriggerCell', show, sub_dir=self.save_dir, lm=.11))
 
     def draw_trigger_cell_vs_peakpos(self, show=True, cut=None, tprofile=False, corr=True, t_corr=False):
-        x = self.Run.signal_regions[self.SignalRegionName]
+        x = self.SignalRegion
         if not tprofile:
             ybins = (x[1] - x[0]) if not corr else 4 * (x[1] - x[0])
             h = TH2D('tcpp', 'Trigger Cell vs. Signal Peak Position', 1024, 0, 1024, ybins, x[0] / 2., x[1] / 2.)
@@ -787,8 +787,8 @@ class PadAnalysis(Analysis):
         return h
 
     def show_ph_overview(self, binning=None):
-        self.draw_pulse_height(binning=binning, show=False)
-        h1 = self.draw_pulse_height(show=False)
+        self.draw_pulse_height(bin_size=binning, show=False)
+        h1 = self.draw_pulse_height(show=False)[0]
         self.format_histo(h1, y_off=1.4)
         h2 = self.draw_ph_distribution(binning=binning, show=False)
         print h1, h2
@@ -827,7 +827,7 @@ class PadAnalysis(Analysis):
     def draw_signal_vs_peakpos(self, show=True, corr=False):
         gr = self.make_tgrapherrors('gr', 'Signal vs Peak Position')
         i = 0
-        x = self.Run.signal_regions[self.SignalRegionName]
+        x = self.SignalRegion
         self.draw_peak_timing(show=False, corr=corr)
         h = self.PeakValues
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
@@ -839,7 +839,7 @@ class PadAnalysis(Analysis):
             print '({0:05d})'.format(events),
             stdout.flush()
             if events > 500:
-                ph_fit = self.draw_pulse_height(show=False)[1]
+                ph_fit = self.draw_pulse_height(show=False, redo=1)[1]
                 gr.SetPoint(i, peak_pos / 2., ph_fit.Parameter(0))
                 gr.SetPointError(i, 0, ph_fit.ParError(0))
                 i += 1
@@ -880,7 +880,7 @@ class PadAnalysis(Analysis):
             print '({0:05d})'.format(events),
             stdout.flush()
             if events > 10000:
-                h = self.draw_signal_distribution(show=False, binning=100)
+                h = self.draw_signal_distribution(show=False, bin_width=100)
                 h.SetLineColor(self.get_color())
                 h.Scale(1 / h.GetMaximum())
                 l.AddEntry(h, '[{0},{1}] ns'.format(int(peak_pos / 2.), int(peak_pos / 2. + bins / 2.)), 'l')
@@ -1167,7 +1167,7 @@ class PadAnalysis(Analysis):
             legend.AddEntry(h, leg_entry, leg_style)
             i += 1
         if short:
-            h = self.draw_signal_distribution(show=False, binning=550, x_range=x_range)
+            h = self.draw_signal_distribution(show=False, bin_width=550, x_range=x_range)
             color = self.get_color()
             self.format_histo(h, color=color, stats=0)
             h.SetFillColor(color) if not scale else do_nothing()
@@ -1306,7 +1306,7 @@ class PadAnalysis(Analysis):
         h = TH2F('h_wf', title, 1024, 0, 512, 2048, -512, 512)
         values = [self.tree.GetV1()[i] for i in xrange(n_entries)]
         if t_corr:
-            times = [self.Run.get_calibrated_times(self.tree.GetV2()[1024 * i]) for i in xrange(n_entries / 1024)]
+            times = [self.Run.get_calibrated_times(self.tree.GetV2()[1024 * i]) for i in xrange(n)]
             times = [v for lst in times for v in lst]
         else:
             times = [(.4 if self.Run.Digitiser == 'caen' else .5) * i for i in xrange(1024)] * n
@@ -1367,12 +1367,14 @@ class PadAnalysis(Analysis):
     def draw_rise_time(self, cut=None, show=True):
         h = TH1F('hrt', 'Signal Rise Time', 100, 0, 10)
         self.tree.Draw('rise_time[{}]>>hrt'.format(self.channel), self.Cut.all_cut if cut is None else TCut(cut), 'goff')
+        self.set_statbox(all_stat=True)
         self.format_histo(h, x_tit='Rise Time [ns]', y_tit='Number of Entries', y_off=1.4)
         self.save_histo(h, 'RiseTime', lm=.12, show=show)
 
     def draw_fall_time(self, cut=None, show=True):
         h = TH1F('hft', 'Signal Fall Time', 200, 0, 20)
         self.tree.Draw('fall_time[{}]>>hft'.format(self.channel), self.Cut.all_cut if cut is None else TCut(cut), 'goff')
+        self.set_statbox(all_stat=True)
         self.format_histo(h, x_tit='Fall Time [ns]', y_tit='Number of Entries', y_off=1.4)
         self.save_histo(h, 'FallTime', lm=.12, show=show)
 
