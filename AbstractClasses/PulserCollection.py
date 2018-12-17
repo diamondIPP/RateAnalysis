@@ -157,7 +157,7 @@ class PulserCollection(Elementary):
         self.save_plots('AllPulserHistos{0}'.format('Uncorrected' if not corr else ''))
         self.reset_colors()
 
-    def draw_all_pulse_heights(self, sigma=False):
+    def draw_all_pulse_heights(self, sigma=False, show=True):
         graphs = [self.get_pulse_height_graph(sigma=sigma, corr=bool(x), beam_on=bool(y)) for x, y in zip([1, 1, 0, 0], [1, 0, 1, 0])]
         y_range = increased_range(find_graph_margins(graphs), .1, .1)
         c = self.make_canvas('c_apph', 'Pulser Info', 1, 1)
@@ -170,7 +170,7 @@ class PulserCollection(Elementary):
             pad.SetBottomMargin(.15)
             gr.Draw('a')
         self.ROOTObjects.append([graphs, c])
-        self.save_plots('AllPulserOverview{0}'.format('Sigma' if sigma else 'Mean'))
+        self.save_plots('AllPulserOverview{0}'.format('Sigma' if sigma else 'Mean'), show)
 
     def draw_rate(self, evts_per_bin=1000, cut=None, rel_t=True, show=True):
         histos = [ana.Pulser.draw_rate(evts_per_bin, show=False, cut=cut, vs_time=True) for ana in self.Collection.itervalues()]
