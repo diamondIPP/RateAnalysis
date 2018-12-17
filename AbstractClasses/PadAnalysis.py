@@ -292,7 +292,7 @@ class PadAnalysis(Analysis):
             x_var, y_var = (self.Cut.get_track_var(self.DiamondNumber - 1, v) for v in ['x', 'y'])
             self.tree.Draw('{z}{y}:{x}>>{h}'.format(z=sig + ':' if not hitmap else '', x=x_var, y=y_var, h=name), cut, 'goff')
             self.set_dia_margins(h1)
-            self.set_ph_range(h1)
+            self.set_z_range(h1)
             z_tit = 'Number of Entries' if hitmap else 'Pulse Height [au]'
             self.format_histo(h1, x_tit='track_x [cm]', y_tit='track_y [cm]', y_off=1.4, z_off=1.3, z_tit=z_tit, ncont=50, ndivy=510, ndivx=510)
             return h1
@@ -314,14 +314,17 @@ class PadAnalysis(Analysis):
         xmid, ymid = [(p.GetBinCenter(p.FindFirstBinAbove(0)) + p.GetBinCenter(p.FindLastBinAbove(0))) / 2 for p in [h.ProjectionX(), h.ProjectionY()]]
         self.format_histo(h, x_range=[xmid - size, xmid + size], y_range=[ymid - size, ymid + size])
 
-    def set_ph_range(self, h):
+    def set_z_range(self, h, n_sigma=2):
         values = [h.GetBinContent(bin_) for bin_ in xrange(h.GetNbinsX() * h.GetNbinsY()) if h.GetBinContent(bin_)]
-        m, s = calc_mean(values)
-        n_sig = 3
-        if 2 * s > m:
+        try:
+            weights = [h.GetBinEntries(bin_) for bin_ in xrange(h.GetNbinsX() * h.GetNbinsY()) if h.GetBinContent(bin_)]
+        except AttributeError:
+            weights = [1] * len(values)
+        m, s = mean_sigma(values, weights)
+        if s > m:
             self.format_histo(h, z_range=[min(values), 0.8 * max(values)])
         else:
-            self.format_histo(h, z_range=[m - n_sig * s, m + n_sig * s])
+            self.format_histo(h, z_range=[m - n_sigma * s, m + n_sigma * s])
 
     def draw_sig_map_disto(self, show=True, factor=1.5, cut=None, fid=True, redo=False):
         source = self.draw_signal_map(factor, cut, fid, hitmap=False, redo=redo, show=False)
