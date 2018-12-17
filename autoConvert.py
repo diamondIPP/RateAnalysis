@@ -89,7 +89,7 @@ class AutoConvert:
         tasks = [(self, [run]) for run in [run for run in self.RunInfos if self.FirstRun <= run <= self.EndRun]]
         results = [pool.apply_async(execute, t) for t in tasks]
         for res in results:
-            print res.get(timeout=5000)
+            print res.get(timeout=10000)
 
     def run(self):
         self.multi() if self.Multi else self.auto_convert()
