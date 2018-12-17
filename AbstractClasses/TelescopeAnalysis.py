@@ -214,16 +214,6 @@ class Analysis(Elementary):
         self.save_tel_histo(h, 'DistanceInDia', show, lm=.16, save=save)
         return h
 
-    def calc_angle_fit(self, mode='x', show=True):
-        pickle_path = self.PickleDir + 'Tracks/AngleFit_{tc}_{run}_{mod}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.RunNumber, mod=mode)
-
-        def func():
-            h = self.draw_angle_distribution(mode, show=show)
-            return self.fit_fwhm(h, draw=show)
-
-        fit = func() if show else None
-        return do_pickle(pickle_path, func, fit)
-
     def show_both_angles(self):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         self.get_color()
@@ -505,9 +495,9 @@ class Analysis(Elementary):
         def f():
             set_statbox(fit=True, entries=6)
             h = self.draw_flux(cut=self.Cut.generate_special_cut(included=['beam_interruptions', 'event_range'], prnt=prnt), show=False)
-            values = [h.GetY()[i] for i in xrange(h.GetN()) if h.GetY()[i]]
+            values = [h.GetBinContent(i) for i in xrange(h.GetNbinsX()) if h.GetBinContent(i)]
             m, s = mean_sigma(values)
-            h = TH1F('hfl', 'Flux Distribution', int(sqrt(h.GetN()) * 2), m - 3 * s, m + 4 * s)
+            h = TH1F('hfl', 'Flux Distribution', int(sqrt(h.GetNbinsX()) * 2), m - 3 * s, m + 4 * s)
             for val in values:
                 h.Fill(val)
             max_val = h.GetBinCenter(h.GetMaximumBin())
@@ -524,14 +514,15 @@ class Analysis(Elementary):
         h = self.draw_pulse_height_disto(show=show) if h is None and hasattr(self, 'draw_pulse_height_disto') else h
         fit = Langau(h, nconv)
         fit.langaufit()
-        fit.Fit.Draw('lsame')
-        c = get_last_canvas()
-        c.Modified()
-        c.Update()
-        if fit.Chi2 / fit.NDF > chi_thresh:
+        if show:
+            fit.Fit.Draw('lsame')
+            c = get_last_canvas()
+            c.Modified()
+            c.Update()
+        if fit.Chi2 / fit.NDF > chi_thresh and nconv < 80:
             self.count += 5
             self.log_info('Chi2 too large ({c:2.2f}) -> increasing number of convolutions by 5'.format(c=fit.Chi2 / fit.NDF))
-            fit = self.fit_langau(h, nconv + self.count, chi_thresh=chi_thresh)
+            fit = self.fit_langau(h, nconv + self.count, chi_thresh=chi_thresh, show=show)
         print 'MPV:', fit.Parameters[1]
         self.count = 0
         self.ROOTObjects.append(fit)
