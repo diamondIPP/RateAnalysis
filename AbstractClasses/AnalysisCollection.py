@@ -256,7 +256,7 @@ class AnalysisCollection(Elementary):
             phs = OrderedDict()
             rel_sys_error = self.get_repr_error(105, show=False)
             for i, (key, ana) in enumerate(self.collection.iteritems()):
-                ph = ana.draw_pulse_height(binning=binning, corr=True, show=False, redo=redo)[1]
+                ph = ana.draw_pulse_height(bin_size=binning, corr=True, show=False, redo=redo)[1]
                 ph.Errors[0] += rel_sys_error * ph.Parameter(0) if rel_sys_error is not None else 0
                 phs[key] = {'flux': ana.Run.Flux, 'ph': ph}
             return phs
@@ -265,13 +265,12 @@ class AnalysisCollection(Elementary):
         return do_pickle(pickle_path, func, pulse_heights)
 
     def draw_log_flux(self, evts_per_bin=10000, rel_t=True, show=True):
-        limits = self.get_start_end_times()
-        edges = [l[1] for l in limits]
+        end_times = [t1[1] for t1 in self.get_start_end_times()]
         h = TH1F('hr1', 'Flux of Run Plan {r}'.format(r=self.RunPlan), *self.get_t_binning(evts_per_bin))
         ibin = 1
-        for i, edge in enumerate(edges):
+        for i, end_time in enumerate(end_times):
             ana = self.collection.values()[i]
-            while h.GetBinCenter(ibin) <= edge:
+            while h.GetBinCenter(ibin) <= end_time:
                 h.SetBinContent(ibin, ana.Run.Flux)
                 h.SetBinError(ibin, ana.Run.Flux * .1)
                 ibin += 1
@@ -281,23 +280,31 @@ class AnalysisCollection(Elementary):
         return h
 
     def draw_full_pulse_height(self, evts_per_bin=10000, show=True, rel_t=True, redo=False, with_flux=True):
-        histos = [ana.draw_pulse_height(evts_per_bin, corr=True, redo=redo, show=False)[0] for ana in self.collection.itervalues()]
-        h1 = TH1F('hfph', 'Pulse Height for Run Plan {n}'.format(n=self.RunPlan), *self.get_t_binning(evts_per_bin))
-        i_bin = 0  # the first bin is empty
-        for h in histos:
-            for i in xrange(1, h.GetNbinsX() + 1):
-                h1.SetBinContent(i_bin + 1, h.GetBinContent(i))
-                h1.SetBinError(i_bin + 1, h.GetBinError(i))
-                i_bin += 1
-            i_bin += 1  # there is an empty bins after each run
-        self.format_histo(h1, x_tit='Time [hh:mm]', y_tit='Mean Pulse Height [au]', y_off=.8, fill_color=self.FillColor, stats=0, y_range=[0, h1.GetMaximum() * 1.05])
-        set_time_axis(h1, off=self.FirstAnalysis.Run.StartTime if rel_t else 0)
-        c = self.draw_histo(h1, show=show, draw_opt='hist', x=1.5, y=.75, lm=.065, gridy=True, rm=.1 if with_flux else None)
+
+        pickle_path = self.make_pickle_path('PulseHeight', 'FullPH', self.RunPlan, ch=self.DiamondNumber, suf=evts_per_bin)
+
+        def f():
+            histos = [ana.draw_pulse_height(evts_per_bin, corr=True, redo=redo, show=False)[0] for ana in self.collection.itervalues()]
+            h1 = TH1F('hfph', 'Pulse Height for Run Plan {n}'.format(n=self.RunPlan), *self.get_t_binning(evts_per_bin))
+            i_bin = 0  # the first bin is empty
+            for hist in histos:
+                for i in xrange(1, hist.GetNbinsX() + 1):
+                    h1.SetBinContent(i_bin + 1, hist.GetBinContent(i))
+                    h1.SetBinError(i_bin + 1, hist.GetBinError(i))
+                    i_bin += 1
+                i_bin += 1  # there is an empty bin after each run
+            return h1
+
+        histo = do_pickle(pickle_path, f, redo=redo)
+        self.format_histo(histo, x_tit='Time [hh:mm]', y_tit='Mean Pulse Height [au]', y_off=.8, fill_color=self.FillColor, stats=0, y_range=[0, histo.GetMaximum() * 1.05])
+        set_time_axis(histo, off=self.FirstAnalysis.Run.StartTime if rel_t else 0)
+        c = self.draw_histo(histo, show=show, draw_opt='hist', x=1.5, y=.75, lm=.065, gridy=True, rm=.1 if with_flux else None)
         if with_flux:
-            h = self.draw_log_flux(evts_per_bin, rel_t, show=False)
+            h = self.draw_fluxes(rel_time=rel_t, show=False)
             c.cd()
-            self.draw_tpad('pr', margins=[.065, .1, .15, .1], transparent=True)
-            self.format_histo(h, title=' ', fill_color=4000, fill_style=4000, lw=3, y_range=[1, h.GetMaximum() * 1.2], stats=0, y_off=1.05)
+            self.draw_tpad('pr', margins=[.065, .1, .15, .1], transparent=True, logy=True)
+            x_range = [histo.GetXaxis().GetXmin(), histo.GetXaxis().GetXmax()]
+            self.format_histo(h, title=' ', fill_color=2, fill_style=3002, lw=1, y_range=[1, h.GetMaximum() * 1.2], stats=0, y_off=1.05, x_range=x_range)
             h.Draw('histy+')
         self.save_plots('FullPulseHeight')
 
