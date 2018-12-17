@@ -31,7 +31,7 @@ class Plots(Elementary):
         self.NRows = 80
         self.Settings = {'ph1Dmin': -5000,
                          'ph1Dmax': 100000,
-                         'ph1Dbins': 100500 / 2000,
+                         'ph1Dbins': 105000 / 500,
                          'maxPadPh': 500,
                          'minPadPh': -50,
                          'ph1DbinsSi': 160,

@@ -258,7 +258,7 @@ class PixAnalysis(Analysis):
     def get_vcals(self):
         with open(self.get_calibration_dir()) as f:
             file_dir = f.readline().strip('./\n')
-            filenames = [join(self.Run.converter.TrackingDir, file_dir, 'phCalibration_C{}.dat'.format(i)) for i in xrange(self.NRocs)]
+            filenames = [join(self.Run.Converter.TrackingDir, file_dir, 'phCalibration_C{}.dat'.format(i)) for i in xrange(self.NRocs)]
         vcals = []
         for filename in filenames:
             with open(filename) as f:
@@ -269,7 +269,7 @@ class PixAnalysis(Analysis):
     def get_calibration_points(self):
         with open(self.get_calibration_dir()) as f:
             file_dir = f.readline().strip('./\n')
-            filenames = [join(self.Run.converter.TrackingDir, file_dir, 'phCalibration_C{}.dat'.format(i)) for i in xrange(self.NRocs)]
+            filenames = [join(self.Run.Converter.TrackingDir, file_dir, 'phCalibration_C{}.dat'.format(i)) for i in xrange(self.NRocs)]
         points = [zeros((self.Plots.NCols, self.Plots.NRows, len(self.Vcals[i])), 'i2') for i in xrange(self.NRocs)]
         for i, filename in enumerate(filenames):
             with open(filename) as f:
@@ -282,12 +282,12 @@ class PixAnalysis(Analysis):
         return points
 
     def get_calibration_dir(self):
-        return join(self.Run.converter.TrackingDir, 'calibration_lists', 'GKCalibrationList_Telescope{n}.txt'.format(n=self.Run.converter.TelescopeID))
+        return join(self.Run.Converter.TrackingDir, 'calibration_lists', 'GKCalibrationList_Telescope{n}.txt'.format(n=self.Run.Converter.TelescopeID))
 
     def get_calibration_fitpars(self):
         with open(self.get_calibration_dir()) as f:
             file_dir = f.readline().strip('./\n')
-            filenames = [join(self.Run.converter.TrackingDir, file_dir, line.strip('\n')) for line in f.readlines()]
+            filenames = [join(self.Run.Converter.TrackingDir, file_dir, line.strip('\n')) for line in f.readlines()]
         parameters = zeros((self.NRocs, self.Plots.NCols, self.Plots.NRows, 4))
         for i, filename in enumerate(filenames):
             with open(filename) as f:
