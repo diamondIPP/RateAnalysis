@@ -1390,7 +1390,12 @@ class PadAnalysis(Analysis):
 
     def draw_single_waveform(self, cut='', event=None, show=True):
         h, n = self.draw_waveforms(n=1, start_event=event, cut=cut, t_corr=True, show=False)
-        self.draw_histo(h, show=show, gridy=1, gridx=1, lm=.073, rm=.045, bm=.18, x=1.5, y=.5)
+        mean_noise = self.Pedestal.get_mean()
+        self.draw_histo(h, show=show, gridy=1, gridx=1, lm=.073, rm=.045, bm=.18, x=2, y=.5)
+        l = self.draw_horizontal_line(mean_noise.n, 0, 700, w=2, style=7, color=2)
+        legend = self.make_legend(.8, .4, nentries=1, scale=2)
+        legend.AddEntry(l, 'mean pedestal', 'l')
+        legend.Draw()
         return h
 
     def show_single_waveforms(self, n=1, cut='', start_event=None):
