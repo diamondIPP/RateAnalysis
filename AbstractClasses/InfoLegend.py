@@ -12,10 +12,8 @@ from subprocess import check_output
 class InfoLegend:
     def __init__(self, analysis):
         self.Analysis = analysis
-        self.ShowGit = 1
-        # self.ShowGit = analysis.MainConfigParser.getboolean('SAVE', 'git_hash')
-        # self.ShowInfo = analysis.MainConfigParser.getboolean('SAVE', 'info_legend')
-        self.ShowInfo = 1
+        self.ShowGit = analysis.MainConfigParser.getboolean('SAVE', 'git_hash')
+        self.ShowInfo = analysis.MainConfigParser.getboolean('SAVE', 'info_legend')
         self.IsCollection = hasattr(analysis, 'collection')
 
         self.Objects = []
