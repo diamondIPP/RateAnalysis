@@ -395,7 +395,7 @@ class CutPad(Cut):
             self.analysis.tree.Draw('{name}>>h_pdc'.format(name=self.analysis.PedestalName), '', 'goff')
             fit_pars = self.fit_fwhm(h1, do_fwhm=True, draw=False)
             self.add_info(t)
-            return FitRes(fit_pars)
+            return fit_pars
 
         fit = do_pickle(picklepath, func)
         sigma = fit.Parameter(2)
