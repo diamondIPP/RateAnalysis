@@ -6,7 +6,7 @@
 
 from Elementary import Elementary
 from ROOT import TH2F, gStyle, TH1F, TCut, gROOT
-from Utils import set_statbox, set_drawing_range, FitRes, kinder_pickle, do_pickle
+from Utils import set_statbox, set_drawing_range, FitRes, kinder_pickle, do_pickle, make_ufloat
 from copy import deepcopy
 from numpy import mean
 from InfoLegend import InfoLegend
@@ -37,6 +37,12 @@ class PedestalAnalysis(Elementary):
 
     def get_all_signal_names(self):
         return self.Ana.get_all_signal_names('pedestal')
+
+    def get_mean(self):
+        return make_ufloat(self.draw_disto_fit(show=False), par=1)
+
+    def get_noise(self):
+        return make_ufloat(self.draw_disto_fit(show=False), par=2)
 
     def draw_disto(self, name=None, cut=None, logy=False, show=True, save=True, redo=False):
         show = False if not save else show
