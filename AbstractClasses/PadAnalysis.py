@@ -742,6 +742,33 @@ class PadAnalysis(Analysis):
                 return h.GetBinCenter(i - 1)
         return h.GetBinCenter(h.GetNbinsX()) + 1000
 
+    def draw_ph(self, bin_size=10000, y_range=None, rel_t=False, show=True):
+        """ get pulse height by fitting every time bin disto with a Landau and then extrapolate with a pol0 """
+        gr = self.make_tgrapherrors('hphl', 'Pulser Height Evolution')
+        h = TH2F('tempph', '', *[v for info in [self.get_time_bins(bin_size), self.Plots.get_ph_bins(bin_width=20)] for v in info])
+        self.tree.Draw('{sig}:time/1000.>>tempph'.format(sig=self.SignalName), self.AllCuts, 'goff')
+        i = 0
+        for xbin in xrange(2, h.GetNbinsX() + 1):  # first bin is always empty
+            py = h.ProjectionY('_py{}'.format(xbin), xbin, xbin)
+            self.draw_histo(py)
+            try:
+                fit = self.fit_langau(py, nconv=50, show=True)
+                raw_input()
+                if fit.ParErrors[1] < .5:
+                    continue
+                gr.SetPoint(i, h.GetXaxis().GetBinCenter(xbin), fit.Parameters[1])
+                gr.SetPointError(i, h.GetXaxis().GetBinWidth(xbin) / 2., fit.ParErrors[1])
+                i += 1
+            except ZeroDivisionError:
+                pass
+        self.set_statbox(only_fit=True)
+        y_vals = [gr.GetY()[i] for i in xrange(gr.GetN())]
+        self.format_histo(gr, x_tit='Time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6, x_range=[self.Run.StartTime, self.get_time_bins()[1][-1]],
+                          t_ax_off=self.Run.StartTime if rel_t else 0, y_range=increased_range([min(y_vals), max(y_vals)], .5, .5) if y_range is None else y_range, ndivx=505)
+        fit = gr.Fit('pol0', 'qs')
+        self.draw_histo(gr, draw_opt='ap', show=show)
+        return gr, FitRes(fit)
+
     def draw_ph_distribution(self, binning=None, show=True, fit=True, xmin=0, xmax=270., bin_size=.5, save=True):
         if binning is not None:
             self.set_bin_size(binning)
