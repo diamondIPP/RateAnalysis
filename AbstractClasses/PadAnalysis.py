@@ -1320,13 +1320,32 @@ class PadAnalysis(Analysis):
         self.draw_histo(h, 'WaveForms{n}'.format(n=n), show=show, draw_opt='col' if n > 1 else 'apl', lm=.073, rm=.045, bm=.18, x=1.5, y=.5)
         return h, n_events
 
-    def get_wf_values(self, cut=None, start_event=None):
+    def draw_averaged_wf(self, n=100, cut=None, align_peaks=True, show=True):
+        p = TProfile('pawf', 'Averaged Waveform', 2000, 0, 500)
+        cut = self.Cut.all_cut if cut is None else TCut(cut)
+        values, times = self.get_wf_values(n, cut)
+        if align_peaks:
+            self.tree.Draw(self.get_peak_name(), cut, 'goff')
+            peak_times = [self.tree.GetV1()[i] for i in xrange(n)]
+            for i, t in enumerate(peak_times):
+                for j in xrange(1024):
+                    times[j + i * 1024] = times[j + i * 1024] + peak_times[0] - peak_times[i]
+
+        for t, v in zip(times, values):
+            p.Fill(t, v)
+        self.format_histo(p, x_tit='Time [ns]', y_tit='Pulse Height [mv]', y_off=1.2, stats=0, markersize=.5)
+        self.draw_histo(p, show=show)
+
+    def get_wf_values(self, n=1, cut=None, start_event=None, t_corr=True):
         start_event = self.count + self.StartEvent if start_event is None else start_event
         cut = self.Cut.all_cut if cut is None else TCut(cut)
-        n_events = self.find_n_events(1, cut, start_event)
+        n_events = self.find_n_events(n, cut, start_event)
+        self.tree.SetEstimate(n * 1024)
         n_entries = self.tree.Draw('wf{ch}:trigger_cell'.format(ch=self.channel), cut, 'goff', n_events, start_event)
         values = [self.tree.GetV1()[i] for i in xrange(n_entries)]
-        times = self.Run.get_calibrated_times(self.tree.GetV2()[0])
+        times = [self.DigitiserBinWidth * i for i in xrange(1024)] * n
+        if t_corr:
+            times = [v for lst in [self.Run.get_calibrated_times(self.tree.GetV2()[1024 * i]) for i in xrange(n)] for v in lst]
         self.count += n_events
         return values, times
 
