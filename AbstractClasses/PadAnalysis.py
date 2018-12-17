@@ -494,6 +494,21 @@ class PadAnalysis(Analysis):
         self.ROOTObjects.append(g)
         return g
 
+    def draw_fit_peak_timing(self, show=True):
+        xmin, xmax = [t * self.DigitiserBinWidth for t in self.SignalRegion]
+        h = TH1F('hfpt', 'Fitted Peak Positions', int((xmax - xmin) * 4), xmin, xmax)
+        self.tree.Draw('fit_peak_time[{}]>>hfpt'.format(self.channel), self.Cut.all_cut, 'goff')
+        self.set_statbox(all_stat=True)
+        self.format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=1.3)
+        self.draw_histo(h, show=show, lm=.12)
+
+    def draw_peaking_time(self, show=True):
+        h = TH1F('hpt', 'Peaking Time', 400, 0, 20)
+        self.tree.Draw('peaking_time[{}]>>hpt'.format(self.channel), self.Cut.all_cut, 'goff')
+        self.set_statbox(all_stat=True)
+        self.format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=1.3)
+        self.draw_histo(h, show=show, lm=.12)
+
     def fit_peak_timing(self, histo):
         h = histo
         fit1 = h.Fit('gaus', 'qs0')
