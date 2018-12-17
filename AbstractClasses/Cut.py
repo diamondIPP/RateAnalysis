@@ -246,9 +246,9 @@ class Cut(Elementary):
             angle = self.CutConfig['slope']
             t = self.log_info('Generating angle cut in {m} for run {run} ...'.format(run=self.analysis.RunNumber, m=mode), False)
             set_root_output(False)
-            draw_str = '{t}_{m}'.format(t='slope' if self.analysis.Run.has_branch('slope_x') else 'angle', m=mode)
-            n = self.analysis.tree.Draw(draw_str, '{s}>-100'.format(s=draw_str), 'goff')
-            mean_ = mean([self.analysis.tree.GetV1()[i] for i in xrange(n)])
+            h = self.analysis.draw_angle_distribution(mode=mode, show=False)
+            fit = fit_fwhm(h)
+            mean_ = fit.Parameter(1)
             cut_vals = {mode: [mean_ - angle, mean_ + angle]}
             self.add_info(t)
             return cut_vals
