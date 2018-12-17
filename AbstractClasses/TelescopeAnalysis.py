@@ -186,15 +186,22 @@ class Analysis(Elementary):
         self.ROOTObjects.append([legend, histos, c])
         self.save_plots('Chi2', canvas=c, sub_dir=self.TelSaveDir)
 
-    def draw_angle_distribution(self, mode='x', show=True, print_msg=True, cut=None):
+    def draw_angle_distribution(self, mode='x', show=True, print_msg=True, cut=None, show_cut=False):
         """ Displays the angle distribution of the tracks. """
         assert mode in ['x', 'y']
         cut = cut if cut is not None else TCut('')
         set_root_output(False)
         h = TH1F('had', 'Track Angle Distribution in ' + mode, 320, -4, 4)
-        self.tree.Draw('{v}_{mod}>>had'.format(v='slope' if self.Run.has_branch('slope') else 'angle', mod=mode), cut, 'goff')
-        self.format_histo(h, x_tit='Track Angle [deg]', y_tit='Entries', y_off=1.8, lw=2, stats=0)
-        self.save_tel_histo(h, 'TrackAngle{mod}'.format(mod=mode.upper()), show, lm=.13, prnt=print_msg)
+        self.tree.Draw('{v}_{mod}>>had'.format(v='slope' if self.Run.has_branch('slope_x') else 'angle', mod=mode), cut, 'goff')
+        self.format_histo(h, x_tit='Track Angle {} [deg]'.format(mode.title()), y_tit='Number of Entries', y_off=2, lw=2, stats=0)
+        self.save_tel_histo(h, 'TrackAngle{mod}'.format(mod=mode.upper()), show, lm=.14, prnt=print_msg)
+        if show_cut:
+            xmin, xmax = self.Cut.calc_angle(mode=mode)[mode]
+            l = self.draw_vertical_line(xmin, -100, 1e6, style=7, w=2, color=2, name='l1')
+            self.draw_vertical_line(xmax, -100, 1e6, style=7, w=2, color=2)
+            legend = self.make_legend(.8, nentries=1)
+            legend.AddEntry(l, 'cut', 'l')
+            legend.Draw()
         return h
 
     def draw_track_length(self, show=True, save=True, t_dia=500):
