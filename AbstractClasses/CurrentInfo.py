@@ -379,9 +379,13 @@ class Currents(Elementary):
         h = self.draw_distribution(show=False)
         if h.GetEntries() < 10:
             return None
-        fit = h.Fit('gaus', 'sq0')
-        if fit.Parameter(0) - h.GetMean() < 10:  # only use gauss fit if its not deviating too much from the the mean
-            return ufloat(fit.Parameter(1), fit.ParError(1) + .05 + .05 * fit.Parameter(1))  # add .05 as uncertainty of the device and 5% systematic error
+        values = [h.GetBinCenter(i) for i in xrange(h.GetNbinsX())]
+        weights = [h.GetBinContent(i) for i in xrange(h.GetNbinsX())]
+        m, s = mean_sigma(values, weights)
+        fit = h.Fit('gaus', 'sq0', '', m - s, m + s)
+        fm, fs = fit.Parameter(1), fit.Parameter(2)
+        if .8 * m < fit.Parameter(1) < 1.2 * m and s > 0 and fs < fm and fit.ParError(1) < m:  # only use gauss fit if its not deviating too much from the the mean
+            return ufloat(fm, fs + .05 + .05 * fm)  # add .05 as uncertainty of the device and 5% systematic error
         return ufloat(h.GetMean(), h.GetMeanError() + .05 + .05 * h.GetMean())
 
     def draw_indep_graphs(self, rel_time=False, ignore_jumps=True, v_range=None, f_range=None, c_range=None, averaging=1, with_flux=False, draw_opt='ap', show=True):
