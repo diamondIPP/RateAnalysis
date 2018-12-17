@@ -111,20 +111,27 @@ class Elementary(Draw):
         return '{tc}{s}'.format(tc=self.TESTCAMPAIGN, s=self.generate_sub_set_str())
 
     def generate_tc_directory(self):
-        return 'psi_{y}_{m}{s}'.format(y=self.TESTCAMPAIGN[:4], m=self.TESTCAMPAIGN[-2:], s=self.generate_sub_set_str())
+        return 'psi_{y}_{m}'.format(y=self.TESTCAMPAIGN[:4], m=self.TESTCAMPAIGN[4:])
 
     def load_test_campaign(self, testcampaign):
         global g_test_campaign
-        if g_test_campaign is None:
-            g_test_campaign = self.MainConfigParser.get('MAIN', 'default test campaign') if testcampaign is None else testcampaign
+        if g_test_campaign is None and testcampaign is None:
+            g_test_campaign = self.MainConfigParser.get('MAIN', 'default test campaign')
+        elif testcampaign is not None:
+            g_test_campaign = testcampaign
         if g_test_campaign not in self.get_test_campaigns():
             critical('The Testcampaign {} does not exist!'.format(g_test_campaign))
         return g_test_campaign
 
+    def set_test_campaign(self, testcampaign):
+        self.TESTCAMPAIGN = testcampaign
+
     def print_testcampaign(self, pr=True):
-        out = datetime.strptime(self.TESTCAMPAIGN, '%Y%m').strftime('%b %Y')
+        info = self.TESTCAMPAIGN.split('-')
+        out = datetime.strptime(info[0], '%Y%m').strftime('%b %Y')
+        subset = ' Part {}'.format(info[-1]) if len(info) > 1 else ''
         if pr:
-            print '\nTESTCAMPAIGN: {0}{p}'.format(out, p=' Part {0}'.format(int_to_roman(int(self.SubSet))) if self.SubSet is not None else '')
+            print '\nTESTCAMPAIGN: {}{}'.format(out, subset)
         return out
 
     # def get_test_campaigns(self):
@@ -237,7 +244,7 @@ class Elementary(Draw):
             fit = h.Fit(fitfunc, option, '', peak_pos - fwhm / 2, peak_pos + fwhm / 2)
         else:
             fit = h.Fit(fitfunc, 'qs')
-        return fit
+        return FitRes(fit)
 
     @staticmethod
     def del_rootobj(obj):
