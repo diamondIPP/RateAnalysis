@@ -414,6 +414,20 @@ def get_fwhm(h):
     return h.GetBinCenter(h.FindLastBinAbove(max_v / 2)) - h.GetBinCenter(h.FindFirstBinAbove(max_v / 2))
 
 
+def fit_fwhm(histo, fitfunc='gaus', do_fwhm=True, draw=False):
+    h = histo
+    if do_fwhm:
+        peak_pos = h.GetBinCenter(h.GetMaximumBin())
+        bin1 = h.FindFirstBinAbove(h.GetMaximum() / 2)
+        bin2 = h.FindLastBinAbove(h.GetMaximum() / 2)
+        fwhm = h.GetBinLowEdge(bin2 + 2) - h.GetBinLowEdge(bin1 - 1)
+        option = 'qs' if draw else 'qs0'
+        fit = h.Fit(fitfunc, option, '', peak_pos - fwhm / 2, peak_pos + fwhm / 2)
+    else:
+        fit = h.Fit(fitfunc, 'qs')
+    return FitRes(fit)
+
+
 def make_cut_string(cut, n):
     return '{n}Cuts'.format(n=str(n).zfill(2)) if cut is not None else ''
 
