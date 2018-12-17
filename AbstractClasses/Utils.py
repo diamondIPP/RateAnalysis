@@ -132,17 +132,19 @@ def round_up_to(num, val):
     return int(num) / val * val + val
 
 
-def scale_multigraph(mg, val=1):
+def scale_multigraph(mg, val=1, to_low_flux=False):
     if val is None:
         return
     g = mg.GetListOfGraphs()[0]
     points = {g.GetX()[i]: g.GetY()[i] for i in xrange(g.GetN())}
-    y = points[min(points)]
+    y_vals = [make_ufloat((g.GetY()[i], g.GetEY()[i])) for i in xrange(g.GetN())]
+    m, s = mean_sigma(y_vals)
+    scale = val / (points[min(points)] if to_low_flux else m)
     for gr in mg.GetListOfGraphs():
         for i in xrange(gr.GetN()):
-            gr.SetPoint(i, gr.GetX()[i], gr.GetY()[i] / y * val)
+            gr.SetPoint(i, gr.GetX()[i], gr.GetY()[i] * scale)
             try:
-                gr.SetPointError(i, gr.GetErrorX(i), gr.GetErrorY(i) / y * val)
+                gr.SetPointError(i, gr.GetErrorX(i), gr.GetErrorY(i) * scale)
             except Exception as err:
                 log_warning('Error in scale multigraph: {err}'.format(err=err))
     for i, l in enumerate(mg.GetListOfGraphs()[0].GetListOfFunctions()):
