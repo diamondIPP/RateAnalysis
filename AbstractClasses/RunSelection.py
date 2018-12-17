@@ -261,15 +261,15 @@ class RunSelection(Elementary):
         print 'The selections contains {n} runs\n'.format(n=len(selected_runs))
         r = self.Run
         r.set_run(selected_runs[0], root_tree=False)
-        dia_bias = list(chain(*[['Diamond{}'.format(i + 1), 'HV{} [V]'.format(i + 1)] for i in xrange(self.Run.get_n_diamonds())]))
-        header = ['Nr.', 'Type'.ljust(10)] + dia_bias + ['Flux [kHz/cm2]'] + (['Comments'.ljust(21)] if not full_comments else [])
+        dia_bias = list(chain(*[['Dia {}'.format(i + 1), 'HV {} [V]'.format(i + 1)] for i in xrange(self.Run.get_n_diamonds())]))
+        header = ['Nr.', 'Type'] + dia_bias + ['Flux [kHz/cm2]'] + (['Comments'] if not full_comments else [])
         rows = []
         for run in selected_runs:
             r.set_run(run, root_tree=False)
-            d = [str(value).ljust(8) for value in r.load_diamond_names()]
+            d = [str(value) for value in r.load_diamond_names()]
             b = ['{v:+7.0f}'.format(v=value) for value in r.load_biases()]
             dia_bias = list(chain(*[[d[i], b[i]] for i in xrange(len(d))]))
-            row = [str(run).rjust(3), r.RunInfo['runtype'].ljust(10)] + dia_bias + ['{:14.2f}'.format(r.Flux)]
+            row = ['{:3d}'.format(run), r.RunInfo['runtype']] + dia_bias + ['{:14.2f}'.format(r.Flux)]
             if not full_comments:
                 row += ['{c}{s}'.format(c=r.RunInfo['comments'][:20].replace('\r\n', ' '), s='*' if len(r.RunInfo['comments']) > 20 else ' ' * 21)]
                 rows.append(row)
@@ -336,28 +336,28 @@ class RunSelection(Elementary):
         old_selection = deepcopy(self.Selection)
         old_logs = deepcopy(self.logs)
         print 'RUN PLAN FOR TESTCAMPAIGN: {tc}\n'.format(tc=self.TCString)
-        header = ['Nr.  ', 'Run Type'.ljust(13), 'Range'.ljust(9), 'Excluded'.ljust(15), 'Diamond1', 'HV1 [V]'.rjust(13), 'Diamond2', 'HV2 [V]'.rjust(13)]
+        header = ['Nr.', 'Run Type', 'Range', 'Excluded', 'Dia 1', 'HV1 [V]'.rjust(13), 'Dia 2', 'HV2 [V]'.rjust(13)]
         rows = []
         for plan, info in sorted(self.RunPlan.iteritems()):
             self.unselect_all_runs(info=False)
             self.select_runs_from_runplan(plan)
             runs = info['runs']
             d1, d2 = self.get_rp_diamond_names()
-            run_string = '{min} - {max}'.format(min=str(runs[0]).zfill(3), max=str(runs[-1]).zfill(3))
+            run_string = '{min:3d} - {max:3d}'.format(min=runs[0], max=runs[-1])
             v1, v2 = self.get_rp_voltages()
-            if dia is not None and all(d.strip(' ') != dia for d in [d1, d2]):
+            if dia is not None and dia not in [d1, d2]:
                 continue
-            rows.append([plan.ljust(5), info['type'].ljust(13), run_string, self.get_missing_runs(runs).ljust(15), d1, v1, d2, v2])
+            rows.append([plan, info['type'], run_string, self.get_missing_runs(runs), d1, v1, d2, v2])
         print_table(rows, header)
 
         self.logs = old_logs
         self.Selection = old_selection
 
     def get_rp_diamond_names(self):
-        dias = [self.get_runinfo_values('dia{0}'.format(i), sel=True) for i in xrange(1, 3)]
+        dias = [self.get_runinfo_values('dia{0}'.format(i), sel=True) for i in xrange(1, self.Run.get_n_diamonds(self.get_selected_runs()[0]) + 1)]
         if any(len(dia) > 1 for dia in dias):
             log_warning('RunPlan {rp} has more than one diamond'.format(rp=self.SelectedRunplan))
-        return (str(dia[0]).ljust(8) for dia in dias)
+        return [dia[0] for dia in dias]
 
     def get_rp_voltages(self):
         hvs = [self.get_runinfo_values('dia{0}hv'.format(i), sel=True) for i in xrange(1, 3)]
@@ -445,7 +445,10 @@ class RunSelection(Elementary):
     def get_runinfo_values(self, key, sel=False):
         """ returns all different runinfos for a specified key of the selection or the full run plan """
         run_infos = self.RunInfos if not sel else self.get_selection_runinfo()
-        return sorted(list(set(info[key] for info in run_infos.itervalues())))
+        try:
+            return sorted(list(set(info[key] for info in run_infos.itervalues())))
+        except KeyError:
+            return
 
     def get_selection_runinfo(self):
         dic = {}

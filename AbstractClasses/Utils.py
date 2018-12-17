@@ -427,14 +427,17 @@ def get_resolution():
 
 
 def print_table(rows, header=None):
-    closing_row = '~' * len('| {r} |'.format(r=' | '.join(rows[-1])))
+    col_width = [len(max([header[i]] + [row[i] for row in rows], key=len)) for i in xrange(len(header))]
+    total_width = sum(col_width) + len(col_width) * 3 + 1
+    hline = '~' * total_width
     if header is not None:
-        print closing_row
-        print '| {r} |'.format(r=' | '.join(header))
-    print closing_row
+        print hline
+        print '| {r} |'.format(r=' | '.join(word.ljust(n) for word, n in zip(header, col_width)))
+    print hline
     for row in rows:
-        print '| {r} |'.format(r=(' | '.join(row) if len(row) > 1 else row[0]).ljust(len(closing_row) - 4))
-    print closing_row
+        row = row if len(row) > 1 else [row[0]]
+        print '| {r} |'.format(r=' | '.join(word.ljust(n) for word, n in zip(row, col_width)).ljust(len(hline) - 4))
+    print hline
 
 
 def get_base_dir():
