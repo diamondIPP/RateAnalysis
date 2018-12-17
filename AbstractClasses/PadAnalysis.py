@@ -890,24 +890,11 @@ class PadAnalysis(Analysis):
         self.format_histo(hs, y_tit='Pulse Height [au]', y_off=1.2)
         self.ROOTObjects.append(self.save_histo(hs, 'LandauVsPeakPos', show, self.save_dir, lm=.11, draw_opt='nostack', l=l))
 
-    def draw_signal_vs_triggercell(self, show=True, bins=10):
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        gr = self.make_tgrapherrors('stc', 'Signal vs Trigger Cell')
-        i = 0
-        for tcell in xrange(0, 1024 - bins, bins):
-            if tcell:
-                print '\033[F',
-            print '\rcalculating pulse height for trigger cell: {0:03d}'.format(tcell),
-            self.Cut.set_trigger_cell(tcell, tcell + bins)
-            stdout.flush()
-            ph_fit = self.draw_pulse_height(show=False)[1]
-            gr.SetPoint(i, tcell, ph_fit.Parameter(0))
-            gr.SetPointError(i, 0, ph_fit.ParError(0))
-            i += 1
-        print
-        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.format_histo(gr, x_tit='trigger cell', y_tit='pulse height [au]', y_off=1.2)
-        self.ROOTObjects.append(self.save_histo(gr, 'SignalVsTriggerCell', show, self.save_dir, lm=.11, draw_opt='alp'))
+    def draw_signal_vs_triggercell(self, bin_width=10, cut=None, show=True):
+        p = TProfile('pstc', 'Signal vs. Trigger Cell', self.Run.NSamples / bin_width, 0, self.Run.NSamples)
+        self.tree.Draw('{}:trigger_cell>>pstc'.format(self.SignalName), self.Cut.all_cut if cut is None else TCut(cut), 'goff')
+        self.format_histo(p, x_tit='Trigger Cell', y_tit='Pulse Height [au]', y_off=1.2, stats=0)
+        self.save_histo(p, 'SignalVsTriggerCell', show, lm=.11)
 
     # endregion
 
