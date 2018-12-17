@@ -6,7 +6,7 @@
 
 from Elementary import Elementary
 from ROOT import TH1F, TCut, gROOT
-from Utils import set_statbox, fit_poissoni
+from Utils import set_statbox, fit_poissoni, warning
 from math import pi
 
 
@@ -70,6 +70,9 @@ class PeakAnalysis(Elementary):
             return 0
 
     def draw_positions(self, cut='', corr=False, show=True):
+        if not self.Ana.has_branch('peak_positions'):
+            warning('The peak_positions branch does not exist!')
+            return
         h = TH1F('h_pt', 'Peak {m}'.format(m='Timings' if corr else 'Positions'), 1024, 0, 512 if corr else 1024)
         self.Tree.Draw('peak_{p}[{c}]>>h_pt'.format(c=self.Channel, p='positions' if not corr else 'times'), TCut(cut) + TCut('!pulser'), 'goff')
         self.format_histo(h, x_tit='Time [ns]' if corr else 'Digitiser Bin', y_tit='Number of Entries', y_off=.4, fill_color=self.FillColor, lw=1, tit_size=.05, stats=0)
@@ -83,8 +86,8 @@ class PeakAnalysis(Elementary):
         h = TH1F('h_pt', 'Max Peak {m}'.format(m='Timings' if corr else 'Positions'), 1024, 0, 512 if corr else 1024)
         cut = TCut(cut) + TCut('!pulser') if 'pulser' not in cut else TCut(cut)
         self.Tree.Draw('max_peak_{p}[{c}]>>h_pt'.format(c=self.Channel, p='position' if not corr else 'time'), cut, 'goff')
-        self.format_histo(h, x_tit='Time [ns]' if corr else 'Digitiser Bin', y_tit='Number of Entries', y_off=.4, fill_color=self.FillColor, lw=1, tit_size=.05, stats=0)
-        self.save_histo(h, 'MaxPeak{m}'.format(m='Timings' if corr else 'Positions'), show)
+        self.format_histo(h, x_tit='Time [ns]' if corr else 'Digitiser Bin', y_tit='Number of Entries', y_off=.4, fill_color=self.FillColor, lw=1, tit_size=.07, stats=0, lab_size=.06)
+        self.save_histo(h, 'MaxPeak{m}'.format(m='Timings' if corr else 'Positions'), show, logy=True, lm=.073, rm=.045, x_fac=2, y_fac=.5)
 
     def draw_max_timing(self, cut='', show=True):
         self.draw_max_position(cut, corr=True, show=show)
