@@ -81,6 +81,8 @@ class Currents(Elementary):
         self.Time = []
         self.MeanCurrent = 0
         self.MeanVoltage = 0
+        self.NAveragedEvents = 0
+        self.FoundStop = False
 
         # plotting
         self.CurrentGraph = None
@@ -248,33 +250,15 @@ class Currents(Elementary):
     def find_data(self):
         if self.Currents:
             return
-        stop = False
         self.LogNames = self.get_logs_from_start()
-        for i, name in enumerate(self.LogNames):
-            self.MeanCurrent = 0
-            self.MeanVoltage = 0
-            log_date = self.get_log_date(name)
-            data = open(name, 'r')
-            # jump to the correct line of the first file
-            if not i:
-                self.find_start(data, log_date)
-            index = 0
-            if index == 1:
-                self.set_start()
-            for line in data:
-                # if index < 20:
-                #     print line
-                info = line.split()
-                if isfloat(info[1]) and len(info) > 2:
-                    now = datetime.strptime(log_date.strftime('%Y%m%d') + info[0], '%Y%m%d%H:%M:%S')
-                    if self.StartTime < now < self.StopTime and float(info[2]) < 1e30:
-                        self.save_data(now, info, index)
-                        index += 1
-                    if self.StopTime < now:
-                        stop = True
+        for i, log_file_name in enumerate(self.LogNames):
+            log_date = self.get_log_date(log_file_name)
+            with open(log_file_name) as f:
+                self.goto_start(f) if not i else do_nothing()  # jump to the correct line of the first file
+                for line in f:
+                    if not self.save_data(line, log_date):
                         break
-            data.close()
-            if stop:
+            if self.FoundStop:
                 break
         if self.Currents:
             self.set_stop()
@@ -284,42 +268,40 @@ class Currents(Elementary):
         if mean(self.Currents) < 0:
             self.Currents = [cur * -1 for cur in self.Currents]
 
-    def save_data(self, now, info, index, shifting=False):
-        # total_seconds = (now - datetime(now.year, 1, 1)).total_seconds()
-        if self.StartTime < now < self.StopTime and float(info[2]) < 1e30:
-            index += 1
+    def save_data(self, line, log_date, shifting=False):
+        info = line.split()
+        if not isfloat(info[1]) or len(info) < 3:  # goto next line if there is device info in the line
+            return True
+        t = datetime.strptime('{}{}'.format(log_date.strftime('%Y%m%d'), info[0]), '%Y%m%d%H:%M:%S')
+        current, voltage = float(info[2]) * 1e9, float(info[1])
+        if t >= self.StopTime:
+            self.FoundStop = True
+            return False
+        if self.StartTime < t < self.StopTime and current < 1e30:
             if self.DoAveraging:
                 if not shifting:
-                    self.MeanCurrent += float(info[2]) * 1e9
-                    self.MeanVoltage += float(info[1])
-                    if index % self.Points == 0:
+                    self.MeanCurrent += current
+                    self.MeanVoltage += voltage
+                    self.NAveragedEvents += 1
+                    if self.NAveragedEvents % self.Points == 0:
                         if mean(self.Currents) < 5 * self.MeanCurrent / self.Points:
                             self.Currents.append(self.MeanCurrent / self.Points)
-                            self.Time.append(time_stamp(now))
+                            self.Time.append(time_stamp(t))
                             self.Voltages.append(self.MeanVoltage / self.Points)
                             self.MeanCurrent = 0
                             self.MeanVoltage = 0
-                # else:
-                #     if index <= self.Points:
-                #         self.mean_curr += float(info[2]) * 1e9
-                #         dicts[1][key].append(self.mean_curr / index)
-                #         if index == self.Points:
-                #             self.mean_curr /= self.Points
-                #     else:
-                #         mean_curr = self.mean_curr * weight + (1 - weight) * float(info[2]) * 1e9
-                #         dicts[1][key].append(mean_curr)
-                #     dicts[0][key].append(convert_time(now))
-                #     dicts[2][key].append(float(info[1]))
             else:
                 if self.IgnoreJumps:
-                    if len(self.Currents) > 100 and abs(self.Currents[-1] * 100) < abs(float(info[2]) * 1e9):
+                    if len(self.Currents) > 100 and abs(self.Currents[-1] * 100) < abs(current):
                         if abs(self.Currents[-1]) > 0.01:
-                            return
-                self.Currents.append(float(info[2]) * 1e9)
-                self.Time.append(time_stamp(now))
-                self.Voltages.append(float(info[1]))
+                            return True
+                self.Currents.append(current)
+                self.Time.append(time_stamp(t))
+                self.Voltages.append(voltage)
+        return True
 
-    def find_start(self, data, log_date):
+    def goto_start(self, data):
+        log_date = self.get_log_date(self.LogNames[0])
         lines = len(data.readlines())
         data.seek(0)
         if lines < 10000:
