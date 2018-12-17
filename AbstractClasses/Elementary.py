@@ -8,14 +8,13 @@ from shutil import copyfile
 from sys import stdout
 
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
-from screeninfo import get_monitors
 
 from Draw import Draw
 from Utils import *
 
 # global test campaign and resolution
 g_test_campaign = None
-res = None
+g_resolution = None
 
 
 class Elementary(Draw):
@@ -82,18 +81,10 @@ class Elementary(Draw):
 
     @staticmethod
     def load_resolution(resolution):
-        if resolution is not None:
-            global res
-            res = resolution
-        if res is not None:
-            return round_down_to(res, 500)
-        else:
-            try:
-                m = get_monitors()
-                return round_down_to(m[0].height, 500)
-            except Exception as err:
-                log_warning(err)
-                return 1000
+        global g_resolution
+        if g_resolution is None:
+            g_resolution = get_resolution() if resolution is None else round_down_to(resolution, 500)
+        return g_resolution
 
     def load_mask_file_dir(self):
         if self.run_config_parser.has_option('BASIC', 'maskfilepath'):
