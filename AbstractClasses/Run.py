@@ -85,6 +85,7 @@ class Run(Elementary):
                 self.IntegralRegions = self.load_regions()
                 self.PeakIntegrals = self.load_peak_integrals()
                 self.TCal = self.load_tcal()
+                self.NSamples = len(self.TCal)
 
         # extract run info
         self.DiamondNames = self.load_diamond_names()
@@ -399,10 +400,15 @@ class Run(Elementary):
 
     def get_calibrated_times(self, trigger_cell):
         t = [self.TCal[int(trigger_cell)]]
-        n_samples = len(self.TCal)
-        for i in xrange(1, n_samples):
-            t.append(self.TCal[(int(trigger_cell) + i) % n_samples] + t[-1])
+        for i in xrange(1, self.NSamples):
+            t.append(self.TCal[(int(trigger_cell) + i) % self.NSamples] + t[-1])
         return t
+
+    def get_calibrated_time(self, trigger_cell, ibin):
+        v = self.TCal[int(trigger_cell)]
+        for i in xrange(ibin):
+            v += self.TCal[(int(trigger_cell) + i + 1) % self.NSamples]
+        return v
 
     def get_diamond_name(self, channel):
         return self.DiamondNames[channel]
