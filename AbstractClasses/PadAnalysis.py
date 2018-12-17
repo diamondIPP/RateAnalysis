@@ -1376,7 +1376,17 @@ class PadAnalysis(Analysis):
         self.format_histo(h, x_tit='Fall Time [ns]', y_tit='Number of Entries', y_off=1.4)
         self.save_histo(h, 'FallTime', lm=.12, show=show)
 
-        # TODO rise time map
+    def draw_rise_time_map(self, res=sqrt(12), cut=None, show=True):
+        p = TProfile2D('prtm', 'Rise Time Map', *self.Plots.get_global_bins(res))
+        cut = self.Cut.generate_special_cut(excluded='fiducial') if cut is None else TCut(cut)
+        self.tree.Draw('rise_time[{}]:{}:{}>>prtm'.format(self.channel, *self.Cut.get_track_vars(self.DiamondNumber - 1)), cut, 'goff')
+        self.set_dia_margins(p)
+        self.set_z_range(p, n_sigma=1)
+        self.set_statbox(entries=True, x=.84)
+        self.format_histo(p, x_tit='track x [cm]', y_tit='track y [cm]', y_off=1.4, z_off=1.3, z_tit='Rise Time [ns]', ncont=20, ndivy=510, ndivx=510)
+        self.draw_histo(p, show=show, draw_opt='colz', rm=.14)
+        self.draw_fiducial_cut()
+        self.save_plots('RiseTimeMap')
 
     def draw_single_waveform(self, cut='', event=None, show=True):
         h, n = self.draw_waveforms(n=1, start_event=event, cut=cut, t_corr=True, show=False)
