@@ -504,7 +504,7 @@ class Analysis(Elementary):
             fit = h.Fit('gaus', 'qs{}'.format('' if show else 0), '', max_val * .9, max_val * 1.1)
             self.format_histo(h, 'Fit Result', y_tit='Number of Entries', x_tit='Flux [kHz/cm^{2}]', fill_color=self.FillColor, y_off=1.3)
             self.save_tel_histo(h, 'FluxDisto', lm=.13, ind=None, show=show, prnt=prnt)
-            return fit.Parameter(1), fit.Parameter(2) + .05 * fit.Parameter(1)
+            return make_ufloat((fit.Parameter(1), fit.Parameter(2) + .05 * fit.Parameter(1)))
 
         return do_pickle(pickle_path, f)
     # endregion

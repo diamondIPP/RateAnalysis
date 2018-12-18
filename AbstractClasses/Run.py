@@ -258,7 +258,7 @@ class Run(Elementary):
     # endregion INIT
 
     def get_time(self):
-        return self.LogHalfTime, self.Duration.seconds / 2
+        return make_ufloat((self.LogHalfTime, self.Duration.seconds / 2))
 
     def print_run_info(self):
         print 'Run information for run', self.RunNumber
@@ -317,16 +317,17 @@ class Run(Elementary):
 
     def calculate_flux(self):
 
-        flux = []
+        fluxes = []
         self.find_for_in_comment()
         if self.RunInfo['for1'] or self.RunInfo['for2']:
             self.FoundForRate = True
             for i, area in enumerate(self.get_unmasked_area().itervalues(), 1):
-                flux.append(self.RunInfo['for{num}'.format(num=i)] / area / 1000)  # in kHz/cm^2
+                fluxes.append(self.RunInfo['for{num}'.format(num=i)] / area / 1000)  # in kHz/cm^2
         else:
-            flux.append(self.RunInfo['measuredflux'])
-        self.RunInfo['mean flux'] = mean(flux)
-        return mean(flux)
+            fluxes.append(self.RunInfo['measuredflux'])
+        flux = mean(fluxes)
+        self.RunInfo['mean flux'] = flux
+        return make_ufloat((flux, .1 * flux))
 
     def get_unmasked_area(self):
         if self.RunNumber is None:

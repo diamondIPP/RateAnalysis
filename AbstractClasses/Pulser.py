@@ -64,9 +64,9 @@ class PulserAnalysis(Elementary):
         return FitRes(fit)
 
     def calc_real_fraction(self):
-        in_rate = 40 if self.Ana.get_flux()[0] < 10 else 100
+        in_rate = 40 if self.Ana.get_flux().n < 10 else 100
         diamond_size = make_ufloat((.4, .05)) ** 2
-        particle_rate = make_ufloat(self.Ana.get_flux()) * diamond_size
+        particle_rate = self.Ana.get_flux() * diamond_size
         return in_rate / particle_rate
 
     def draw_pulse_height(self, bin_size=10000, y_range=None, show=True, redo=False):

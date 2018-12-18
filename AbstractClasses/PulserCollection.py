@@ -38,7 +38,7 @@ class PulserCollection(Elementary):
             y_values[i] += make_ufloat((0, pedestal_fit.ParError(par)))
             self.ProgressBar.update(i + 1)
         self.ProgressBar.finish()
-        x_values = [make_ufloat(ana.Run.get_time() if vs_time else ana.get_flux()) for ana in self.Collection.itervalues()]
+        x_values = [ana.Run.get_time() if vs_time else ana.get_flux() for ana in self.Collection.itervalues()]
         g = self.make_tgrapherrors('g_pph', 'data', self.get_color(), marker_size=marker_size, x=x_values, y=y_values)
         g_first = self.make_tgrapherrors('g1', 'first run', marker=22, color=2, marker_size=marker_size, x=[x_values[0].n], y=[y_values[0].n])
         g_last = self.make_tgrapherrors('g2', 'last run', marker=23, color=2, marker_size=marker_size, x=[x_values[-1].n], y=[y_values[-1].n])
@@ -55,7 +55,7 @@ class PulserCollection(Elementary):
             g = mg.GetListOfGraphs()[0]
             for i, (ana, x) in enumerate(zip(self.Collection.itervalues(), x_values)):
                 y, ey = g.GetY()[i], g.GetErrorY(i)
-                mg.GetListOfGraphs()[0].GetListOfFunctions().Add(self.draw_tlatex(x.n, y + ey * 1.2, '{:1.0f}'.format(ana.get_flux()[0]), color=1, align=21, size=.02))
+                mg.GetListOfGraphs()[0].GetListOfFunctions().Add(self.draw_tlatex(x.n, y + ey * 1.2, '{:1.0f}'.format(ana.get_flux().n), color=1, align=21, size=.02))
         return mg
 
     def draw_pulse_height(self, evts_per_bin=10000, redo=False, show=True, rel_t=True):
@@ -151,7 +151,7 @@ class PulserCollection(Elementary):
             h.SetLineColor(self.get_color())
             h.SetLineWidth(2)
             h.Draw() if not i else h.Draw('same')
-            legend.AddEntry(h, '{0:6.2f} kHz/cm^{{2}}'.format(ana.get_flux()[0]), 'l')
+            legend.AddEntry(h, '{0:6.2f} kHz/cm^{{2}}'.format(ana.get_flux().n), 'l')
             self.ROOTObjects.append(h)
         legend.Draw()
         self.save_plots('AllPulserHistos{0}'.format('Uncorrected' if not corr else ''))
@@ -191,7 +191,7 @@ class PulserCollection(Elementary):
         x_values, y_values = [], []
         self.start_pbar(self.Analysis.NRuns)
         for i, ana in enumerate(self.Collection.itervalues(), 1):
-            x_values += [make_ufloat(ana.Run.get_time() if vs_time else ana.get_flux())]
+            x_values += [ana.Run.get_time() if vs_time else ana.get_flux()]
             y_values += [ana.Pulser.calc_real_fraction() if real else make_ufloat(ana.Pulser.calc_fraction(prnt=False))]
             self.ProgressBar.update(i)
         g = self.make_tgrapherrors('g_pr', 'Pulser Fraction vs {mod} '.format(mod=mode), x=x_values, y=y_values, color=self.colors[0], marker_size=2)
