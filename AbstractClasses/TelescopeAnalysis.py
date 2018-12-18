@@ -425,7 +425,7 @@ class Analysis(Elementary):
     # =================================================================================================================
     # region RUN METHODS
     def get_flux(self, show=False):
-        return self._get_flux(prnt=False, show=show) if self.has_branch('rate') else (self.Run.get_flux(), self.Run.get_flux() * .1)
+        return self._get_flux(prnt=False, show=show) if self.has_branch('rate') else self.Run.get_flux()
 
     def has_branch(self, branch):
         return self.Run.has_branch(branch)
@@ -460,7 +460,7 @@ class Analysis(Elementary):
         self.format_histo(g, x_tit='Time [hh:mm]', y_tit='Rate [Hz]', fill_color=self.FillColor, markersize=.4, t_ax_off=self.Run.StartTime if rel_t else 0)
         self.save_tel_histo(g, 'Plane{n}Rate'.format(n=plane), draw_opt='afp', lm=.08, x_fac=1.5, y_fac=.75, ind=None, show=show)
 
-    def draw_flux(self, bin_width=5, cut='', rel_t=True, show=True):
+    def draw_flux(self, bin_width=5, cut='', rel_t=True, show=True, prnt=True):
         cut = TCut('beam_current < 10000') + TCut(cut)
         set_root_warnings(OFF)
         p = TProfile('pf', 'Flux Profile', *self.Plots.get_time_binning(bin_width=bin_width))
@@ -471,7 +471,7 @@ class Analysis(Elementary):
         self.tree.Draw('(rate[{p1}] / {a1} + rate[{p2}] / {a2}) / 2000 : time / 1000.>>pf'.format(p1=p1 + 1, p2=p2 + 1, a1=a1, a2=a2), cut, 'goff', self.Run.n_entries, 1)
         y_range = [0, p.GetMaximum() * 1.2]
         self.format_histo(p, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', fill_color=self.FillColor, markersize=1, t_ax_off=self.Run.StartTime if rel_t else 0, stats=0, y_range=y_range)
-        self.save_tel_histo(p, 'FluxProfile', draw_opt='hist', lm=.08, x_fac=1.5, y_fac=.75, ind=None, show=show)
+        self.save_tel_histo(p, 'FluxProfile', draw_opt='hist', lm=.08, x_fac=1.5, y_fac=.75, ind=None, show=show, prnt=prnt)
         return p
 
     def draw_bc_vs_rate(self, cut='', show=True):
@@ -494,7 +494,7 @@ class Analysis(Elementary):
 
         def f():
             set_statbox(fit=True, entries=6)
-            h = self.draw_flux(cut=self.Cut.generate_special_cut(included=['beam_interruptions', 'event_range'], prnt=prnt), show=False)
+            h = self.draw_flux(cut=self.Cut.generate_special_cut(included=['beam_interruptions', 'event_range'], prnt=prnt), show=False, prnt=prnt)
             values = [h.GetBinContent(i) for i in xrange(h.GetNbinsX()) if h.GetBinContent(i)]
             m, s = mean_sigma(values)
             h = TH1F('hfl', 'Flux Distribution', int(sqrt(h.GetNbinsX()) * 2), m - 3 * s, m + 4 * s)
