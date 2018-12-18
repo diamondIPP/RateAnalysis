@@ -92,7 +92,7 @@ class InfoLegend:
             fluxes = [flux[0] for flux in self.Analysis.get_fluxes().values()]
             return '{} - {}'.format(make_rate_str(min(fluxes)), make_rate_str(max(fluxes)))
         else:
-            return make_rate_str(self.Analysis.Run.Flux)
+            return make_rate_str(self.Analysis.Run.Flux.n)
 
     def get_info_string(self, both_dias):
         voltage = ', '.join('{0:+4d}V'.format(i) for i in self.Analysis.Run.Bias) if both_dias else '{0:+4d}V'.format(self.Analysis.Bias)
