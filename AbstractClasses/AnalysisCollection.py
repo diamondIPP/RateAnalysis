@@ -799,18 +799,28 @@ class AnalysisCollection(Elementary):
             mg.GetXaxis().SetBinLabel(bin_x, names[i])
         self.save_histo(mg, 'FluxComparison', draw_opt='a', lm=.12, bm=.2, l=l)
 
-    def draw_fluxes(self, rel_time=False, show=True):
-        if not self.FirstAnalysis.has_branch('rate'):
-            return self.draw_log_flux(rel_t=rel_time, show=show)
-        else:
-            graphs = [ana.draw_flux(rel_t=False, show=False) for ana in self.collection.itervalues()]
-            xvals = [g.GetX()[i] for g in graphs for i in xrange(g.GetN())]
-            yvals = [g.GetY()[i] for g in graphs for i in xrange(g.GetN())]
-            g = self.make_tgrapherrors('gfls', 'Flux Evolution', x=xvals, y=yvals)
-            self.format_histo(g, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', draw_first=True, markersize=.4, t_ax_off=self.FirstAnalysis.Run.StartTime if rel_time else 0,
-                              fill_color=self.FillColor, y_range=[1, 20000], x_range=[g.GetX()[0], g.GetX()[g.GetN() - 1]])
-            self.save_histo(g, 'FluxEvo', x_fac=1.5, y_fac=.75, show=show, logy=True, draw_opt='alfp')
-            return g
+    def draw_fluxes(self, bin_width=5, rel_time=False, show=True):
+
+        pickle_path = self.make_pickle_path('Flux', 'FullFlux', self.RunPlan, self.channel, bin_width)
+
+        def f():
+            if not self.FirstAnalysis.has_branch('rate'):
+                return self.draw_log_flux(rel_t=rel_time, show=show)
+            else:
+                histos = [ana.draw_flux(bin_width=bin_width, rel_t=False, show=False) for ana in self.collection.itervalues()]
+                h1 = TH1F('hff', 'Flux Profile', *self.get_fixed_time_binning(bin_width))
+                ibin = 1
+                for h in histos:
+                    for jbin in xrange(h.GetNbinsX()):
+                        h1.SetBinContent(ibin, h.GetBinContent(jbin))
+                        ibin += 1
+                    ibin += 1
+                return h1
+
+        hist = do_pickle(pickle_path, f)
+        self.format_histo(hist, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', t_ax_off=self.StartTime if rel_time else 0, fill_color=self.FillColor, y_range=[1, 20000], stats=0)
+        self.save_histo(hist, 'FluxEvo', x_fac=1.5, y_fac=.75, show=show, logy=True)
+        return hist
 
     def draw_flux_hist(self, bin_size=1, show=True):
         self.Currents.find_data()
