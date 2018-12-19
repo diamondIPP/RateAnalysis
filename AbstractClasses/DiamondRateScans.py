@@ -188,24 +188,19 @@ class DiaScans(Elementary):
             values = f(ana, **kwargs)
         return values
 
-    def get_pulse_height_graphs(self, scale=1, redo=False):
+    def get_pulse_heights(self, redo=False):
         run_selections = self.load_run_selections()
-        graphs = []
-        for i, sel in enumerate(run_selections):
-            path = self.make_pickle_path('Ph_fit', 'PhVals', sel.SelectedRunplan, sel.SelectedDiamond, 10000, sel.TCString)
-            phs = self.get_values(sel, AnalysisCollection.get_pulse_heights, path, {'redo': redo}, redo=redo)
-            values, errors = self.scale_to(phs, scale)
-            fluxes = [ph['flux'] for ph in phs.itervalues()]
-            g = self.make_tgrapherrors('g{n}'.format(n=i), 'Rate Scans for {n}'.format(n=self.DiamondName))
-            for j, (x, val, err) in enumerate(zip(fluxes, values, errors)):
-                g.SetPoint(j, x, val)
-                g.SetPointError(j, .1 * x, err)
-            graphs.append(g)
-        return graphs
+        paths = [self.make_pickle_path('Ph_fit', 'PhVals', sel.SelectedRunplan, sel.SelectedDiamond, 10000, sel.TCString) for sel in run_selections]
+        return [self.get_values(sel, AnalysisCollection.get_pulse_heights, paths[i], {'redo': redo}, redo=redo) for i, sel in enumerate(run_selections)]
+
+    def get_rel_errors(self, flux=105, redo=False):
+        run_selections = self.load_run_selections()
+        paths = [self.make_pickle_path('Errors', 'Repr', sel.SelectedRunplan, sel.SelectedDiamond, flux, sel.TCString) for sel in run_selections]
+        return [self.get_values(sel, AnalysisCollection.get_repr_error, paths[i], {'redo': redo, 'show': False, 'flux': flux}, redo=redo) for i, sel in enumerate(run_selections)]
 
     def get_deviations(self):
-        for g, sel in zip(self.get_pulse_height_graphs(), self.RunSelections):
-            print sel.TCString, sel.SelectedRunplan, mean_sigma([make_ufloat([g.GetY()[i], g.GetErrorY(i)]) for i in xrange(g.GetN())])
+        for phs, sel in zip(self.get_pulse_heights(), self.RunSelections):
+            print sel.TCString, sel.SelectedRunplan, mean_sigma([dic['ph'] for dic in phs.itervalues()])
 
     # endregion
 
