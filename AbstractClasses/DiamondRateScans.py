@@ -512,16 +512,16 @@ class DiaScans(Elementary):
     def draw_scaled_rate_scans(self, irr=False, y_range=.15, x_range=None, pad_height=.18):
         biases = set(self.get_bias_voltages())
         bias_str = ' at {b}'.format(b=make_bias_str(biases.pop())) if len(biases) == 1 else ''
-        graphs = self.get_pulse_height_graphs()
+        phs = self.get_pulse_heights()
         colors = get_color_gradient(len(self.RunSelections))
-        x_vals = sorted([g.GetX()[i] for g in graphs for i in xrange(g.GetN())])
-        limits = [x_vals[0] * 0.8, x_vals[-1] * 3] if x_range is None else x_range
+        x_vals = sorted(dic['flux'] for ph in phs for dic in ph.itervalues())
+        limits = [x_vals[0].n * 0.8, x_vals[-1].n * 3] if x_range is None else x_range
         y_range = [1 - y_range, 1 + y_range]
 
         has_title = self.Config.getboolean('SAVE', 'activate_title')
         title_height = pad_height / 2. if has_title else .03  # half of a pad for title
-        c_height = (len(graphs) + .5) * pad_height + title_height  # half of a pad for the x axis
-        c_width = 1.3 * pad_height / .2  # keep aspect ratio for standard pad_height of .2
+        c_height = (len(phs) + .5) * pad_height + title_height  # half of a pad for the x-axis
+        c_width = 1.3 * pad_height / .2  # keep aspect ratio for standard pad_height
         c = self.make_canvas(name='csr', x=c_width, y=c_height, transp=True, logx=True, gridy=True)
         lm, rm = .05, .02
         lp = .08
@@ -529,25 +529,31 @@ class DiaScans(Elementary):
             self.draw_tpad('p0', 'p0', pos=[lp, 1 - title_height / c_height, 1, 1], margins=[0, 0, 0, 0], transparent=True)                         # title pad
             self.draw_tpavetext('{dia} Rate Scans{b}'.format(dia=self.DiamondName, b=bias_str), lm, 1, 0, 1, font=62, align=13, size=.5, margin=0)  # title
         c.cd()
-        self.draw_tpad('p1', 'p1', pos=[0, .1 / c_height, lp, 1 - title_height / c_height], margins=[0, 0, 0, 0], transparent=True)                 # info pad
-        self.draw_tpavetext('Scaled Pulse Height', 0, 1, 0, 1, align=22, size=.5, angle=90, margin=0)                                              # y-axis title
+        self.draw_tpad('p1', 'p1', pos=[0, pad_height / 2 / c_height, lp, 1 - title_height / c_height], margins=[0, 0, 0, 0], transparent=True)     # info pad
+        self.draw_tpavetext('Scaled Pulse Height', 0, 1, 0, 1, align=22, size=.5, angle=90, margin=0)                                               # y-axis title
         c.cd()
         size = .22
 
-        for i, g in enumerate(graphs):
+        rel_errors = self.get_rel_errors()
+        for i, ph in enumerate(phs):
             y0, y1 = [c_height - title_height - pad_height * (i + j) for j in [1, 0]]
             self.draw_tpad('p{i}'.format(i=i + 3), '', pos=[lp, y0 / c_height, 1, y1 / c_height], margins=[lm, rm, 0, 0], logx=True, gridy=True, gridx=True)
+            y_values = [dic['ph'] for dic in ph.itervalues()]
+            y_values = [make_ufloat((v.n, v.s + rel_errors[i] * v.n)) for v in y_values]
+            x_values = [dic['flux'] for dic in ph.itervalues()]
+            g = self.make_tgrapherrors('gsph{}'.format(i), '', x=x_values, y=y_values)
+            scale_graph(g, val=1)
             self.format_histo(g, title=' ', color=colors[i], x_range=limits, y_range=y_range, marker=markers(i), lab_size=size, ndivy=505, markersize=2, tick_size=size)
             g.GetXaxis().SetLimits(*limits)
             g.Draw('ap')
             self.draw_legend(i, g, irr, rm)
             c.cd()
+            self.ROOTObjects.append(g)
 
-        self.draw_tpad('p2', pos=[lp, 0, 1, pad_height / 2], margins=[lm, rm, 0, 0], transparent=True)
+        self.draw_tpad('p2', pos=[lp, 0, 1, pad_height / 2 / c_height], margins=[lm, rm, 0, 0], transparent=True)                                   # x-axis pad
         self.draw_x_axis(1, lm, 1 - rm, 'Flux [kHz/cm^{2}]', limits, opt='', log=True, tick_size=0, lab_size=size * 2, tit_size=size * 2, off=1.1)
         c.cd()
 
-        self.ROOTObjects.append(graphs)
         self.save_plots('ScaledDiaScans{dia}'.format(dia=make_dia_str(self.DiamondName)))
 
     def make_plots(self, name, f, kwargs):
