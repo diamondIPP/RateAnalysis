@@ -141,15 +141,24 @@ def scale_multigraph(mg, val=1, to_low_flux=False):
     m, s = mean_sigma(y_vals)
     scale = val / (points[min(points)] if to_low_flux else m)
     for gr in mg.GetListOfGraphs():
-        for i in xrange(gr.GetN()):
-            gr.SetPoint(i, gr.GetX()[i], gr.GetY()[i] * scale)
-            try:
-                gr.SetPointError(i, gr.GetErrorX(i), gr.GetErrorY(i) * scale)
-            except Exception as err:
-                log_warning('Error in scale multigraph: {err}'.format(err=err))
+        scale_graph(gr, scale)
     for i, l in enumerate(mg.GetListOfGraphs()[0].GetListOfFunctions()):
         y, ey = g.GetY()[i], g.GetErrorY(i)
         l.SetY(y - ey - .003)
+
+
+def scale_graph(gr, scale=None, val=1, to_low_flux=False):
+    if scale is None:
+        points = {gr.GetX()[i]: gr.GetY()[i] for i in xrange(gr.GetN())}
+        y_vals = [make_ufloat((gr.GetY()[i], gr.GetEY()[i])) for i in xrange(gr.GetN())]
+        m, s = mean_sigma(y_vals)
+        scale = val / (points[min(points)] if to_low_flux else m)
+    for i in xrange(gr.GetN()):
+        gr.SetPoint(i, gr.GetX()[i], gr.GetY()[i] * scale)
+        try:
+            gr.SetPointError(i, gr.GetErrorX(i), gr.GetErrorY(i) * scale)
+        except Exception as err:
+            log_warning('Error in scale multigraph: {err}'.format(err=err))
 
 
 def move_element(odict, thekey, newpos):
