@@ -3,7 +3,6 @@
 # ==============================================
 from argparse import ArgumentParser
 from numpy import log, concatenate, zeros, sign
-from functools import partial
 
 from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1, TH1F, TH2F, TH2I, TProfile2D, TProfile
 
@@ -105,7 +104,7 @@ class AnalysisCollection(Elementary):
         self.log_info('RUN FLUX [kHz/cm2]')
         for run in runs:
             fluxes[run.Flux] = run.RunNumber
-            self.log_info('{run:3d} {flux:14.2f}'.format(run=run.RunNumber, flux=run.Flux))
+            self.log_info('{run:3d} {flux:14.2f}'.format(run=run.RunNumber, flux=run.Flux.n))
         print '\n'
         return {'min': fluxes[min(fluxes)], 'max': fluxes[max(fluxes)]}
 
@@ -249,16 +248,18 @@ class AnalysisCollection(Elementary):
         self.format_histo(h, x_tit='Slope [mV/min]', y_tit='Number of Entries', y_off=1.3)
         self.draw_histo(h, show=show, draw_opt='alp' if gr else '')
 
-    def get_pulse_heights(self, binning=10000, redo=False):
-        pickle_path = self.make_pickle_path('Ph_fit', 'PhVals', self.RunPlan, ch=self.DiamondName, suf=binning)
+    def get_pulse_heights(self, binning=None, redo=False):
+        pickle_path = self.make_pickle_path('Ph_fit', 'PhVals', self.RunPlan, ch=self.DiamondName, suf=self.FirstAnalysis.BinSize if binning is None else binning)
 
         def func():
+            self.log_info('Getting pulse heights ... ')
             phs = OrderedDict()
-            rel_sys_error = self.get_repr_error(105, show=False)
+            self.start_pbar(self.NRuns)
             for i, (key, ana) in enumerate(self.collection.iteritems()):
-                ph = ana.draw_pulse_height(bin_size=binning, corr=True, show=False, redo=redo)[1]
-                ph.Errors[0] += rel_sys_error * ph.Parameter(0) if rel_sys_error is not None else 0
-                phs[key] = {'flux': ana.Run.Flux, 'ph': ph}
+                ph = ana.draw_pulse_height(bin_size=binning, corr=True, show=False, redo=redo, prnt=False)[1]
+                phs[key] = {'flux': ana.get_flux(), 'ph': make_ufloat(ph, par=0), 'time': ana.Run.get_time()}
+                self.ProgressBar.update(i + 1)
+            self.ProgressBar.finish()
             return phs
 
         pulse_heights = func() if redo else None
