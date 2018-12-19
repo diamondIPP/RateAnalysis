@@ -492,19 +492,27 @@ class AnalysisCollection(Elementary):
         res = func() if show else None
         return do_pickle(pickle_path, func, res)
 
-    def get_repr_error(self, flux, show=True):
-        runs = self.get_runs_below_flux(flux)
-        if not runs:
-            return
-        vals = [make_ufloat(self.collection[run].draw_pulse_height(show=False, save=False)[1]) for run in runs]
-        fluxes = [make_ufloat(self.get_fluxes()[run]) for run in runs]
-        gr = self.make_tgrapherrors('gr_re', 'Pulse Heights Below {f} kHz/cm^{{2}}'.format(f=flux), x=fluxes, y=vals)
-        set_statbox(entries=2, only_fit=True)
-        gr.Fit('pol0', 'qs{s}'.format(s='' if show else '0'))
-        self.format_histo(gr, x_tit='Flux [kHz/cm^{2}]', y_tit='Mean Pulse Height [au]', y_off=1.7)
-        self.save_histo(gr, 'ReprErrors', show, draw_opt='ap', lm=.14, prnt=show)
-        m, s = mean_sigma(vals)
-        return s / m
+    def get_repr_error(self, flux, show=True, redo=False):
+
+        pickle_path = self.make_pickle_path('Errors', 'Repr', self.RunPlan, self.DiamondName, suf=flux)
+
+        def f():
+            runs = self.get_runs_below_flux(flux)
+            if not runs:
+                return
+            vals = [make_ufloat(self.collection[run].draw_pulse_height(show=False, save=False)[1]) for run in runs]
+            fluxes = [make_ufloat(self.get_fluxes()[run]) for run in runs]
+            gr = self.make_tgrapherrors('gr_re', 'Pulse Heights Below {f} kHz/cm^{{2}}'.format(f=flux), x=fluxes, y=vals)
+            set_statbox(entries=2, only_fit=True)
+            gr.Fit('pol0', 'qs{s}'.format(s='' if show else '0'))
+            self.format_histo(gr, x_tit='Flux [kHz/cm^{2}]', y_tit='Mean Pulse Height [au]', y_off=1.7)
+            self.save_histo(gr, 'ReprErrors', show, draw_opt='ap', lm=.14, prnt=show)
+            if len(vals) == 1:
+                return .01  # take 1% if there is only one measurement below the given flux
+            m, s = mean_sigma(vals)
+            return s / m
+
+        return do_pickle(pickle_path, f, redo=redo)
 
     def draw_ph_distributions(self, binning=5000, fsh13=.5, fs11=65, show=True):
         runs = self.get_runs_by_collimator(fsh13=fsh13, fs11=fs11)
