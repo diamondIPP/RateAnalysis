@@ -1232,7 +1232,6 @@ class AnalysisCollection(Elementary):
 
     def get_t_binning(self, evts_per_bin):
         binnings = [ana.get_time_bins(evts_per_bin) for ana in self.collection.itervalues()]
-        n_bins = sum(ibin[0] for ibin in binnings)
         t_array = []
         off = 0
         for i, tup in enumerate(binnings):
@@ -1241,7 +1240,11 @@ class AnalysisCollection(Elementary):
             # correct if last time of the
             if i < self.NRuns - 1 and t_array[-1] > binnings[i + 1][1][0]:
                 off = self.get_break_time(i) + t_array[-1] - binnings[i + 1][1][0]
-        return [n_bins, array(t_array)]
+        return len(t_array) - 1, array(t_array)
+
+    def get_fixed_time_binning(self, bin_width):
+        times = [t1 for ana in self.collection.itervalues() for t1 in ana.Plots.get_time_binning(bin_width)[1]]
+        return len(times) - 1, array(times)
 
     def get_break_time(self, ind):
         return (self.get_ana(ind + 1).Run.LogStart - self.get_ana(ind).Run.LogStart - self.get_ana(ind).Run.Duration).total_seconds()
