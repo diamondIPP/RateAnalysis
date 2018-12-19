@@ -311,61 +311,52 @@ class AnalysisCollection(Elementary):
 
     def get_pulse_height_graph(self, binning=None, vs_time=False, first_last=True, redo=False, legend=True):
 
-        self.log_info('Getting pulse heights{0}'.format(' vs time' if vs_time else ''))
-        marker_size = 2
+        marker_size = 1
         gStyle.SetEndErrorSize(4)
-        self.start_pbar(self.NRuns)
-        y_values = []
-        for i, ana in enumerate(self.collection.itervalues()):
-            y_values.append(make_ufloat(ana.draw_pulse_height(binning, corr=True, redo=redo, show=False, prnt=False)[1]))
-            self.ProgressBar.update(i + 1)
-        self.ProgressBar.finish()
-        x_values = [make_ufloat(ana.Run.get_time() if vs_time else ana.get_flux()) for ana in self.collection.itervalues()]
+        ph = self.get_pulse_heights(binning, redo)
+        y_values = [dic['ph'] for dic in ph.itervalues()]
+        x_values = [dic['time' if vs_time else 'flux'] for dic in ph.itervalues()]
         g = self.make_tgrapherrors('g', 'stat. error', self.get_color(), marker_size=marker_size, x=x_values, y=y_values)
         rel_sys_error = self.get_repr_error(105, show=False)
-        y_values = [make_ufloat((v.n, v.s + rel_sys_error)) for v in y_values]
+        y_values = [make_ufloat((v.n, v.s + rel_sys_error * v.n)) for v in y_values]
         g_errors = self.make_tgrapherrors('gerr', 'full error', marker=0, color=602, marker_size=0, x=x_values, y=y_values)
         g_first = self.make_tgrapherrors('g1', 'first run', marker=22, color=2, marker_size=marker_size, x=[x_values[0].n], y=[y_values[0].n])
         g_last = self.make_tgrapherrors('g2', 'last run', marker=23, color=2, marker_size=marker_size, x=[x_values[-1].n], y=[y_values[-1].n])
-        graphs = [g_errors, g]
+        graphs = [g, g_errors]
         graphs += [g_first, g_last] if first_last else []
-        l = self.make_legend(.65, .35, nentries=len(graphs))
+        l = self.make_legend(.75, .37, nentries=len(graphs))
         mg = TMultiGraph('mg_ph', 'Pulse Height vs {mod} - {dia}'.format(mod='Time' if vs_time else 'Flux', dia=self.DiamondName))
         for gr in graphs:
             l.AddEntry(gr, gr.GetTitle(), 'l' if gr.GetName() == 'gerr' else 'p')
-            mg.Add(gr, 'p')
+            mg.Add(gr, 'pl')
         if legend:
             mg.GetListOfFunctions().Add(l)
         self.reset_colors()
         if vs_time:
-            g = mg.GetListOfGraphs()[1]
+            g = mg.GetListOfGraphs()[0]
             for i, (ana, x) in enumerate(zip(self.collection.itervalues(), x_values)):
                 y, ey = g.GetY()[i], g.GetErrorY(i)
-                mg.GetListOfGraphs()[0].GetListOfFunctions().Add(self.draw_tlatex(x.n, y + ey * 1.2, '{:1.0f}'.format(ana.get_flux()[0]), color=1, align=21, size=.02))
+                mg.GetListOfGraphs()[0].GetListOfFunctions().Add(self.draw_tlatex(x.n, y + ey * 1.2, '{:1.0f}'.format(ana.get_flux().n), color=1, align=21, size=.02))
         return mg
 
-    def draw_scaled_pulse_heights(self, binning=None, vs_time=False, show=True, y_range=None, redo=False):
+    def draw_scaled_pulse_heights(self, scale=1, binning=None, vs_time=False, show=True, y_range=None, redo=False):
 
-        mode = 'Time' if vs_time else 'Flux'
-        pickle_path = self.make_pickle_path('ScaledGraph', 'PulseHeights', self.RunPlan, ch=self.DiamondName, suf='{}_{}'.format(binning, mode))
-        f = partial(self.get_pulse_height_graph, binning, vs_time, first_last=not vs_time, redo=redo)
-        mg = do_pickle(pickle_path, f, redo=redo)
-        scale_multigraph(mg)
+        mg = self.get_pulse_height_graph(binning, vs_time, first_last=not vs_time, redo=redo)
+        scale_multigraph(mg, scale)
         xtit = 'Time [hh:mm]' if vs_time else 'Flux [kHz/cm^{2}]'
-        y_range = [.95, 1.05] if y_range is None else y_range
-        self.format_histo(mg, x_tit=xtit, y_tit='Scaled Pulse Height', y_off=1.75, x_off=1.3, draw_first=True, t_ax_off=0 if vs_time else None, y_range=y_range, ndivx=503, center_y=1)
+        y_range1 = [.95, 1.05] if y_range is None else y_range
+        self.format_histo(mg, x_tit=xtit, y_tit='Scaled Pulse Height', y_off=1.75, x_off=1.3, draw_first=True, t_ax_off=0 if vs_time else None, y_range=y_range1, ndivx=503, center_y=1)
         mg.GetXaxis().SetLimits(1, 40000) if not vs_time else do_nothing()
-        move_legend(mg.GetListOfFunctions()[0], .16, .20)
-        self.save_histo(mg, 'ScaledPulseHeights', show, lm=.14, draw_opt='a', logx=not vs_time, grid=vs_time, gridy=True, bm=.18)
+        move_legend(mg.GetListOfFunctions()[0], .75, .20)
+        self.draw_histo(mg, '', show, lm=.14, draw_opt='a', logx=not vs_time, grid=vs_time, gridy=True, bm=.18)
         self.draw_irradiation(make_irr_string(self.selection.get_irradiation()))
+        self.save_plots('ScaledPulseHeights')
+        return mg.GetListOfGraphs()[0]
 
     def draw_pulse_heights(self, binning=None, vs_time=False, show=True, show_first_last=True, save_comb=True, y_range=None, redo=False):
 
         mode = 'Time' if vs_time else 'Flux'
-        pickle_path = self.make_pickle_path('Graph', 'PulseHeights', self.RunPlan, ch=self.DiamondName, suf='{}_{}'.format(binning, mode))
-
-        f = partial(self.get_pulse_height_graph, binning, vs_time, show_first_last, redo)
-        mg = do_pickle(pickle_path, f, redo=redo)
+        mg = self.get_pulse_height_graph(binning, vs_time, show_first_last, redo)
 
         # small range
         self.format_histo(mg, color=None, x_tit='Time [hh:mm]' if vs_time else 'Flux [kHz/cm^{2}]', y_tit='Signal Pulse Height [au]', y_off=1.75, x_off=1.3, draw_first=True,
@@ -382,7 +373,7 @@ class AnalysisCollection(Elementary):
         mg1.SetName('mg1_ph')
         mg1.GetListOfGraphs()[0].SetLineColor(self.colors[0])
         mg1.GetYaxis().SetRangeUser(0, ymax * 1.1)
-        self.save_histo(mg1, 'PulseHeightZero{mod}'.format(mod=mode), False, self.save_dir, lm=.14, draw_opt='A', logx=not vs_time)
+        self.save_histo(mg1, 'PulseHeightZero{mod}'.format(mod=mode), not save_comb, self.save_dir, lm=.14, draw_opt='Al', logx=not vs_time)
         self.reset_colors()
 
         if save_comb:
@@ -407,7 +398,7 @@ class AnalysisCollection(Elementary):
             par = 2 if sigma else 1
             for i, (key, ana) in enumerate(self.collection.iteritems()):
                 fit_par = ana.Pedestal.draw_disto_fit(cut=cut, save=save, show=False) if not pulser else ana.Pulser.draw_pedestal(show, save)
-                x = make_ufloat(ana.get_flux()) if flux else ufloat(key, 0)
+                x = ana.get_flux() if flux else ufloat(key, 0)
                 g.SetPoint(i, x.n, fit_par.Parameter(par))
                 g.SetPointError(i, x.s, fit_par.ParError(par))
                 self.ProgressBar.update(i + 1)
@@ -443,7 +434,8 @@ class AnalysisCollection(Elementary):
             self.format_histo(h, lw=2, color=self.get_color())
             h.Scale(1 / h.GetMaximum())
             stack.Add(h)
-            legend.AddEntry(h, '{0:06.1f} kHz/cm^{{2}}'.format(self.collection.values()[i].get_flux()[0]), 'l')
+            legend.AddEntry(h, '{0:06.1f} kHz/cm^{{2}}'.format(self.collection.values()[i].get_flux().n), 'l')
+            # legend.AddEntry(h, '{0:2d} V'.format(self.collection.values()[i].Bias), 'l')
         self.format_histo(stack, y_off=1.55, draw_first=True, x_tit='Pulse Height [au]', y_tit='Number of Entries')
         log_stack = stack.Clone()
         log_stack.SetMaximum(off)
@@ -1053,7 +1045,7 @@ class AnalysisCollection(Elementary):
             h.SetLineColor(self.get_color())
             h.SetLineWidth(2)
             h.Draw() if not i else h.Draw('same')
-            legend.AddEntry(h, '{0:6.2f} kHz/cm'.format(self.collection.values()[i].get_flux()) + '^{2}', 'l')
+            legend.AddEntry(h, '{0:6.2f} kHz/cm'.format(self.collection.values()[i].get_flux().n) + '^{2}', 'l')
         legend.Draw()
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         gROOT.SetBatch(0)
@@ -1083,7 +1075,7 @@ class AnalysisCollection(Elementary):
             self.normalise_histo(h, to100=True)
             stack.Add(h)
             ymax = max(ymax, h.GetBinContent(h.GetMaximumBin()))
-            legend.AddEntry(h, '{0: 6.0f} kHz/cm^{{2}}'.format(self.collection.values()[i].get_flux()), 'l')
+            legend.AddEntry(h, '{0: 6.0f} kHz/cm^{{2}}'.format(self.collection.values()[i].get_flux().n), 'l')
         self.format_histo(stack, x_tit='#chi^{2}', y_tit='Fraction of Events [%]', y_off=1.5, draw_first=True)
         stack.GetXaxis().SetRangeUser(0, xmax)
         mode = '' if mode is None else mode
@@ -1113,7 +1105,7 @@ class AnalysisCollection(Elementary):
             self.format_histo(h, stats=0, color=self.get_color())
             self.normalise_histo(h, to100=True)
             stack.Add(h)
-            legend.AddEntry(h, '{0: 6.0f} kHz/cm^{{2}}'.format(self.collection.values()[i].get_flux()), 'l')
+            legend.AddEntry(h, '{0: 6.0f} kHz/cm^{{2}}'.format(self.collection.values()[i].get_flux().n), 'l')
         self.format_histo(stack, x_tit='Angle [deg]', y_tit='Fraction of Events [%]', y_off=1.5, draw_first=True)
         stack.GetXaxis().SetRangeUser(-3, 4)
         self.RootObjects.append(self.save_histo(stack, 'AllTrackAngles{mod}'.format(mod=mode.title()), show, self.save_dir, lm=.15, draw_opt='nostack', l=legend))
@@ -1333,7 +1325,7 @@ if __name__ == '__main__':
     tc = args.testcampaign if args.testcampaign.startswith('201') else None
     run_plan = args.runplan
     diamond = args.dia
-    a = Elementary(tc, True, get_resolution())
+    a = Elementary(tc, True)
     sel = RunSelection(testcampaign=tc, verbose=True)
     sel.select_runs_from_runplan(run_plan, ch=diamond) if not args.runs else sel.select_runs([int(args.runplan), int(args.dia if args.dia else args.runplan)], args.dia2 if args.dia2 else 1)
     print_banner('STARTING PAD-ANALYSIS COLLECTION OF RUNPLAN {0}'.format(run_plan))
