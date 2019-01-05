@@ -9,7 +9,7 @@ from ROOT import gStyle, gROOT, TF1, TColor, TFile, TMath
 from numpy import sqrt, array, average, mean, arange, log10
 from os import makedirs, _exit, remove, devnull
 from os import path as pth
-from os.path import basename, join, split, expanduser
+from os.path import basename, join, dirname, expanduser
 from time import time, sleep
 from collections import OrderedDict
 import pickle
@@ -490,9 +490,9 @@ def do_pickle(path, func, value=None, params=None, redo=False):
         return ret_val
 
 
-def kinder_pickle(old_path, value):
+def server_pickle(old_path, value):
     if server_is_mounted():
-        picklepath = join(get_base_dir(), 'mounts/psi/Pickles', basename(split(old_path)[0]), basename(old_path))
+        picklepath = join(get_base_dir(), 'mounts', 'psi', 'Pickles', basename(dirname(old_path)), basename(old_path))
         do_pickle(picklepath, do_nothing, value)
 
 
