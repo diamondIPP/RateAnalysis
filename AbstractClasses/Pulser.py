@@ -28,6 +28,7 @@ class PulserAnalysis(Elementary):
         self.Type = self.load_type()
 
         self.DiamondName = self.Ana.DiamondName
+        self.DiamondNumber = self.Ana.DiamondNumber
         self.RunNumber = self.Ana.RunNumber
         self.InfoLegend = InfoLegend(pad_analysis)
 
@@ -107,23 +108,23 @@ class PulserAnalysis(Elementary):
         ran = mean(values[:5]), mean(values[-5:])
         return increased_range(ran, .1, .3)
 
-    def draw_distribution(self, show=True, corr=True, beam_on=True, binning=10, events=None, start=None, stats=False, redo=False, prnt=True):
+    def draw_distribution(self, show=True, corr=True, beam_on=True, bin_width=10., events=None, start=None, stats=False, redo=False, prnt=True):
         """ Shows the distribution of the pulser integrals. """
         cut = self.Cut.generate_pulser_cut(beam_on=beam_on)
         x = self.find_range(corr)
-        h = self.Ana.draw_signal_distribution(cut=cut, sig=self.SignalName, show=False, off_corr=corr, evnt_corr=False, bin_width=binning, events=events,
+        h = self.Ana.draw_signal_distribution(cut=cut, sig=self.SignalName, show=False, off_corr=corr, evnt_corr=False, bin_width=bin_width, events=events,
                                               start=start, redo=redo, x_range=x, prnt=prnt)
         self.format_histo(h, name='p_hd', stats=stats, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
         self.save_histo(h, 'PulserDistribution', show, lm=.12, prnt=prnt)
         return h
 
-    def draw_distribution_fit(self, show=True, redo=False, corr=True, beam_on=True, events=None, start=None, binning=3, prnt=True):
+    def draw_distribution_fit(self, show=True, redo=False, corr=True, beam_on=True, events=None, start=None, bin_width=.5, prnt=True):
         start_string = '_{0}'.format(start) if start is not None else ''
         events_string = '_{0}'.format(events) if events is not None else ''
         suffix = '{corr}_{beam}{st}{ev}'.format(corr='ped_corr' if corr else '', beam='BeamOff' if not beam_on else 'BeamOn', st=start_string, ev=events_string)
-        pickle_path = self.make_pickle_path('Pulser', 'HistoFit', self.RunNumber, self.Channel, suf=suffix)
+        pickle_path = self.make_pickle_path('Pulser', 'HistoFit', self.RunNumber, self.DiamondNumber, suf=suffix)
         set_statbox(.95, .88, entries=4, only_fit=True, w=.5)
-        h = self.draw_distribution(show=show, corr=corr, beam_on=beam_on, binning=binning, events=events, start=start, stats=True, redo=redo, prnt=prnt)
+        h = self.draw_distribution(show=show, corr=corr, beam_on=beam_on, bin_width=bin_width, events=events, start=start, stats=True, redo=redo, prnt=prnt)
         h.SetName('Fit Result')
         same_pols = self.Polarity == self.Ana.Polarity
         full_fit = h.Fit('gaus', 'qs0')
@@ -136,7 +137,7 @@ class PulserAnalysis(Elementary):
         set_drawing_range(h)
         self.save_plots('PulserDistributionFit', show=show, prnt=prnt)
         fit = FitRes(fit_func)
-        kinder_pickle(pickle_path, fit)
+        server_pickle(pickle_path, fit)
         return fit
 
     def draw_peak_timing(self, show=True, corr=False):

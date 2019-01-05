@@ -706,7 +706,7 @@ class PadAnalysis(Analysis):
         bin_size = bin_size if bin_size is not None else self.BinSize
         correction = '' if not corr else '_eventwise'
         suffix = '{bins}{cor}_{reg}'.format(bins=bin_size, cor=correction, reg=self.get_all_signal_names()[sig])
-        picklepath = self.make_pickle_path('Ph_fit', None, self.RunNumber, self.channel, suf=suffix)
+        picklepath = self.make_pickle_path('Ph_fit', None, self.RunNumber, self.DiamondNumber, suf=suffix)
 
         def func():
             signal = self.generate_signal_name(self.SignalName if sig is None else sig, corr)
@@ -728,7 +728,7 @@ class PadAnalysis(Analysis):
 
     def fit_pulse_height(self, p, picklepath):
         fit = p.Fit('pol0', 'qs', '', 0, self.__get_max_fit_pos(p))
-        kinder_pickle(picklepath, fit)
+        server_pickle(picklepath, FitRes(fit))
         return FitRes(fit)
 
     @staticmethod
