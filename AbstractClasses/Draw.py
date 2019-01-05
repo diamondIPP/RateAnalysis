@@ -136,10 +136,10 @@ class Draw:
     def draw_horizontal_line(self, y, xmin, xmax, color=1, w=1, style=1, name='li', tline=False):
         return self.draw_line(xmin, xmax, y, y, color, w, style, name) if not tline else self.draw_tline(xmin, xmax, y, y, color, w, style)
 
-    def draw_tlatex(self, x, y, text, name='text', align=20, color=1, size=.05, angle=None, ndc=None, font=None):
+    def draw_tlatex(self, x, y, text, name='text', align=20, color=1, size=.05, angle=None, ndc=None, font=None, show=True):
         l = TLatex(x, y, text)
         self.format_text(l, name, align, color, size, angle, ndc, font)
-        l.Draw()
+        l.Draw() if show else do_nothing()
         self.Objects.append(l)
         return l
 
