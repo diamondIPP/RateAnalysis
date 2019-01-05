@@ -205,7 +205,6 @@ class AnalysisCollection(Elementary):
         legends[2].AddEntry(cur, 'current', 'l')
 
         # Drawing
-        set_root_output(show)
         lab_size = .12
         for l in ph.GetListOfGraphs()[0].GetListOfFunctions():
             l.SetTextSize(.09)
@@ -214,7 +213,6 @@ class AnalysisCollection(Elementary):
         self.format_histo(cur, x_tit='Time [hh:mm]', lab_size=lab_size * 27 / 36., tit_size=lab_size * 27 / 36., y_off=.33 * 36 / 27.)
         self.format_histo(pul, color=859, draw_first=True, lab_size=lab_size, tit_size=lab_size, y_off=.33)
         self.format_histo(pul.GetListOfGraphs()[0], color=859)
-        c = self.make_canvas('c_phc', 'c', 1.5, 1, transp=True)
         draw_opts = ['a', 'a', '']
         y_tits = ['Pulser ', 'Signal', 'Current [nA] ']
         y_ranges = [increased_range(scale_margins(pul, ph), .3), increased_range(scale_margins(ph, pul), .3), cur_range]
@@ -223,17 +221,19 @@ class AnalysisCollection(Elementary):
         ypos = [[1, .73], [.73, .46], [.46, .1]]
         margins = [[lm, .05, 0, 0], [lm, .05, 0, 0], [lm, .05, 9 / 36., 0]]
         x_range = increased_range([cur.GetX()[0], cur.GetX()[cur.GetN() - 1]], .1, .1)
+        close_last_canvas()
+
+        c = self.make_canvas('c_phc', 'c', 1.5, 1, transp=True, show=show)
 
         for i, gr in enumerate([pul, ph, cur]):
             self.format_histo(gr, title='', y_range=y_ranges[i], y_tit=y_tits[i], center_y=True, ndivy=divs[i], t_ax_off=self.Currents.Time[0])
-            self.Currents.draw_tpad('p{}'.format(i), 'p{}'.format(i), pos=[0, ypos[i][0], 1, ypos[i][1]], gridx=True, gridy=True, margins=margins[i])
+            self.draw_tpad('p{}'.format(i), 'p{}'.format(i), pos=[0, ypos[i][0], 1, ypos[i][1]], gridx=True, gridy=True, margins=margins[i], transparent=True)
             gr.GetXaxis().SetLimits(*x_range)
             gr.Draw(draw_opts[i])
             legends[i].Draw()
             c.cd()
 
-        self.InfoLegend.draw(canvas=c, all_pads=False, show=show)
-        self.save_canvas(c, self.save_dir, 'PhPulserCurrent', show=show)
+        self.save_plots('PhPulserCurrent', all_pads=False)
         self.RootObjects.append([ph, cur, pul, c, legends])
 
     def draw_slope_vs_voltage(self, show=True, gr=False):
