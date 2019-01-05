@@ -475,18 +475,16 @@ def server_is_mounted():
 
 def do_pickle(path, func, value=None, params=None, redo=False):
     if value is not None:
-        f = open(path, 'w')
-        pickle.dump(value, f)
-        f.close()
+        with open(path, 'w') as f:
+            pickle.dump(value, f)
         return value
     if file_exists(path) and not redo:
-        f = open(path, 'r')
-        return pickle.load(f)
+        with open(path, 'r') as f:
+            return pickle.load(f)
     else:
         ret_val = func() if params is None else func(params)
-        f = open(path, 'w')
-        pickle.dump(ret_val, f)
-        f.close()
+        with open(path, 'w') as f:
+            pickle.dump(ret_val, f)
         return ret_val
 
 
