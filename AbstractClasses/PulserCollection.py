@@ -19,37 +19,45 @@ class PulserCollection(Elementary):
 
         self.Collection = self.Analysis.collection
         self.DiamondName = self.Analysis.DiamondName
+        self.DiamondNumber = self.Analysis.DiamondNumber
         self.RunPlan = self.Analysis.RunPlan
         self.InfoLegend = InfoLegend(ana_collection)
         self.save_dir = self.Analysis.save_dir
 
+    def get_pulse_heights(self, corr=True, beam_on=True, redo=False):
+
+        pickle_path = self.make_pickle_path('Pulser', 'PH', run=self.RunPlan, ch=self.DiamondNumber, suf='{}{}'.format(int(corr), int(beam_on)))
+
+        def f():
+            self.log_info('Getting pulser pulse heights ... ')
+            phs = OrderedDict()
+            self.start_pbar(self.Analysis.NRuns)
+            for i, (key, ana) in enumerate(self.Collection.iteritems()):
+                ph = ana.Pulser.draw_distribution_fit(corr=corr, beam_on=beam_on, redo=redo, show=False, prnt=False)
+                phs[key] = {'flux': ana.get_flux(), 'ph': make_ufloat(ph, par=1), 'sigma': make_ufloat(ph, par=2), 'time': ana.Run.get_time()}
+                self.ProgressBar.update(i + 1)
+            self.ProgressBar.finish()
+            return phs
+
+        return do_pickle(pickle_path, f, redo=redo)
+
     def get_pulse_height_graph(self, sigma=False, vs_time=False, corr=True, beam_on=True, redo=False, legend=True, show_flux=True):
 
-        self.log_info('Getting pulser pulse heights{}'.format(' vs time' if vs_time else ''))
         marker_size = 2
-        par = 2 if sigma else 1
-        y_values = []
-        self.start_pbar(self.Analysis.NRuns)
-        for i, ana in enumerate(self.Collection.itervalues()):
-            y_values.append(make_ufloat(ana.Pulser.draw_distribution_fit(corr=corr, beam_on=beam_on, redo=redo, show=False, prnt=False), par))
-            # add pedestal sigma as error
-            cut = ana.Cut.generate_pulser_cut(beam_on)
-            pedestal_fit = ana.Pedestal.draw_disto_fit(cut=cut, save=False)
-            y_values[i] += make_ufloat((0, pedestal_fit.ParError(par)))
-            self.ProgressBar.update(i + 1)
-        self.ProgressBar.finish()
-        x_values = [ana.Run.get_time() if vs_time else ana.get_flux() for ana in self.Collection.itervalues()]
+        ph = self.get_pulse_heights(corr, beam_on, redo)
+        y_values = [dic['sigma' if sigma else 'ph'] for dic in ph.itervalues()]
+        x_values = [dic['time' if vs_time else 'flux'] for dic in ph.itervalues()]
         g = self.make_tgrapherrors('g_pph', 'data', self.get_color(), marker_size=marker_size, x=x_values, y=y_values)
         g_first = self.make_tgrapherrors('g1', 'first run', marker=22, color=2, marker_size=marker_size, x=[x_values[0].n], y=[y_values[0].n])
         g_last = self.make_tgrapherrors('g2', 'last run', marker=23, color=2, marker_size=marker_size, x=[x_values[-1].n], y=[y_values[-1].n])
         graphs = [g] if vs_time else [g, g_first, g_last]
-        l = self.make_legend(.17, .35, nentries=3, x2=.4)
+        leg = self.make_legend(.17, .35, nentries=3, x2=.4)
         mg = TMultiGraph('mg_pph', 'Pulser Pulse Height vs {mod} - {dia}'.format(mod='Time' if vs_time else 'Flux', dia=self.DiamondName))
         for gr in graphs:
-            l.AddEntry(gr, gr.GetTitle(), 'l' if gr.GetName() == 'gerr' else 'p')
+            leg.AddEntry(gr, gr.GetTitle(), 'l' if gr.GetName() == 'gerr' else 'p')
             mg.Add(gr, 'p')
         if legend:
-            mg.GetListOfFunctions().Add(l)
+            mg.GetListOfFunctions().Add(leg)
         self.reset_colors()
         if vs_time and show_flux:
             g = mg.GetListOfGraphs()[0]
@@ -76,11 +84,7 @@ class PulserCollection(Elementary):
 
     def draw_pulse_heights(self, sigma=False, corr=True, beam_on=True, vs_time=False, do_fit=False, save_comb=True, show=True, redo=False):
 
-        mode = 'Time' if vs_time else 'Flux'
-        pickle_path = self.make_pickle_path('Pulser', 'PulseHeights', self.RunPlan, self.DiamondName, '{}_{}_{}{}'.format(mode, sigma, corr, beam_on))
-
-        f = partial(self.get_pulse_height_graph, sigma=sigma, vs_time=vs_time, corr=corr, beam_on=beam_on, redo=redo)
-        mg = do_pickle(pickle_path, f, redo=redo)
+        mg = self.get_pulse_height_graph(sigma=sigma, vs_time=vs_time, corr=corr, beam_on=beam_on, redo=redo)
 
         y_values = [mg.GetListOfGraphs()[0].GetY()[i] for i in xrange(mg.GetListOfGraphs()[0].GetN())]
         y_range = increased_range([min(y_values), max(y_values)], .3, .3)
@@ -142,7 +146,7 @@ class PulserCollection(Elementary):
         c = self.make_canvas('c_ph', 'Pulser Histos', 1, 1)
         c.SetRightMargin(.03)
         for i, ana in enumerate(self.Collection.itervalues()):
-            h = ana.Pulser.draw_distribution(show=False, corr=corr, prnt=False, binning=5)
+            h = ana.Pulser.draw_distribution(show=False, corr=corr, prnt=False, bin_width=5)
             c.cd()
             h.SetTitle('Pulser Distributions {0}Corrected'.format('Pedestal' if corr else 'Un'))
             x_range = increased_range([h.GetBinCenter(h.FindFirstBinAbove(2) * 10 / 10 - 20), h.GetBinCenter(h.FindLastBinAbove(2) * 10 / 10 + 10)], 0, .3)
