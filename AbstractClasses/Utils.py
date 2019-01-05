@@ -710,7 +710,8 @@ class FitRes:
         self.Errors = list(fit_obj.Errors()) if (fit_obj is not None and len(fit_obj.Parameters()) > 0) else [None]
         self.NPars = len(self.Pars)
         self.Names = [fit_obj.ParName(i) for i in xrange(self.NPars)] if fit_obj is not None else [None]
-        self.FitObj = fit_obj
+        self.vChi2 = fit_obj.Chi2() if fit_obj is not None else None
+        self.vNdf = fit_obj.Ndf() if fit_obj is not None else None
 
     def Parameter(self, arg):
         return self.Pars[arg]
@@ -722,10 +723,10 @@ class FitRes:
         return self.Names[arg]
 
     def Chi2(self):
-        return self.FitObj.Chi2() if self.FitObj is not None else None
+        return self.vChi2
 
     def Ndf(self):
-        return self.FitObj.Ndf() if self.FitObj is not None else None
+        return self.vNdf
 
 
 def do_nothing():
