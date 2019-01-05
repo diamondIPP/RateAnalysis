@@ -344,7 +344,7 @@ class AnalysisCollection(Elementary):
             g = mg.GetListOfGraphs()[0]
             for i, (ana, x) in enumerate(zip(self.collection.itervalues(), x_values)):
                 y, ey = g.GetY()[i], g.GetErrorY(i)
-                mg.GetListOfGraphs()[0].GetListOfFunctions().Add(self.draw_tlatex(x.n, y + ey * 1.2, '{:1.0f}'.format(ana.get_flux().n), color=1, align=21, size=.02))
+                mg.GetListOfGraphs()[0].GetListOfFunctions().Add(self.draw_tlatex(x.n, y + ey * 1.2, '{:1.0f}'.format(ana.get_flux().n), color=1, align=21, size=.02, show=0))
         return mg
 
     def draw_scaled_pulse_heights(self, scale=1, binning=None, vs_time=False, show=True, y_range=None, redo=False):
@@ -394,7 +394,8 @@ class AnalysisCollection(Elementary):
     def draw_pedestals(self, region='ab', peak_int='2', flux=True, sigma=False, show=True, cut=None, save=False, pulser=False, redo=False):
 
         # TODO draw vs. time
-        pickle_path = self.make_pickle_path('Pedestal', 'AllPedestals', self.RunPlan, self.DiamondName, suf='Sigma' if sigma else 'Mean')
+        suffix = '{}{}'.format('Sigma' if sigma else 'Mean', 'Pulser' if pulser else '')
+        pickle_path = self.make_pickle_path('Pedestal', 'AllPedestals', self.RunPlan, self.DiamondName, suf=suffix)
         mode = 'Flux' if flux else 'Run'
         log_message('Getting pedestals')
         self.start_pbar(self.NRuns)
