@@ -227,10 +227,10 @@ class Draw:
         if canvas is None:
             return
         if ind is None:
-            self.InfoLegend.draw(canvas, all_pads, both_dias, show) if hasattr(self, 'InfoLegend') else log_warning('Did not find InfoLegend class...') \
+            self.InfoLegend.draw(canvas, all_pads, both_dias) if hasattr(self, 'InfoLegend') else log_warning('Did not find InfoLegend class...') \
                 if not any(hasattr(self, att) for att in ['RunSelections', 'CurrentGraph']) else do_nothing()
         else:
-            self.collection.values()[ind].InfoLegend.draw(canvas, all_pads, both_dias, show) if hasattr(self, 'collection') else log_critical('sth went wrong...')
+            self.collection.values()[ind].InfoLegend.draw(canvas, all_pads, both_dias) if hasattr(self, 'collection') else log_critical('sth went wrong...')
         canvas.Modified()
         canvas.Update()
         if save:
