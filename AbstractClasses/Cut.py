@@ -55,7 +55,7 @@ class Cut(Elementary):
                 continue
             if included and key not in included:
                 continue
-            if key.startswith('old') or key.startswith('all_cut'):
+            if key.startswith('old') or key.startswith('AllCut'):
                 continue
             if value.GetTitle() == '':
                 continue
@@ -65,10 +65,10 @@ class Cut(Elementary):
         return cut
 
     def generate_all_cut(self):
-        cut = TCut('all_cuts', '')
+        cut = TCut('AllCuts', '')
         self.NCuts = 0
         for key, value in self.CutStrings.iteritems():
-            if not key.startswith('old') and not key.startswith('all_cut'):
+            if not key.startswith('old') and not key.startswith('AllCut'):
                 cut += value
                 self.NCuts += 1
         return cut
@@ -123,7 +123,7 @@ class Cut(Elementary):
         dic['slope_y'] = TCut('slope_y', '')
         dic['rhit'] = TCut('rhit', '')
         dic['fiducial'] = TCut('fiducial', '')
-        dic['all_cuts'] = TCut('all_cuts', '')
+        dic['AllCuts'] = TCut('AllCuts', '')
         return dic
 
     # ==============================================
@@ -434,7 +434,7 @@ class Cut(Elementary):
         cuts = self.EasyCutStrings if easy else self.CutStrings
         max_len = max(len(key) for key, value in cuts.iteritems() if str(value))
         for key, value in cuts.iteritems():
-            if not key == 'all_cuts' and str(value):
+            if not key == 'AllCuts' and str(value):
                 print '{key}:'.format(key=key.rjust(max_len)), value
         return
 
