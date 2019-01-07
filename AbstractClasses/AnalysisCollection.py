@@ -165,13 +165,19 @@ class AnalysisCollection(Elementary):
         print
         self.print_all_off_results()
 
-    def draw_little_all(self):
+    def draw_little_all(self, redo=False):
+        t0 = self.log_info('Generate all plots ... ')
         self.set_verbose(False)
-        self.draw_pulse_heights(show=False)
-        self.Pulser.draw_pulse_heights(show=False)
-        self.draw_pedestals(show=False)
-        self.draw_pulser_pedestals(show=False)
+        self.draw_pulse_heights(show=False, redo=redo)
+        self.Pulser.draw_pulse_heights(show=False, redo=redo)
+        self.draw_pedestals(show=False, redo=redo)
+        self.draw_pedestals(show=False, sigma=True, redo=redo)
+        self.draw_pulser_pedestals(show=False, redo=redo)
         self.draw_ph_with_currents(show=False)
+        self.draw_signal_distributions(show=False, redo=redo)
+        self.save_signal_maps(redo=redo)
+        self.save_signal_maps(hitmap=True, redo=redo)
+        print_elapsed_time(t0)
     
     def scale_current_gr(self, gr):
         vals = [gr.GetY()[i] for i in xrange(gr.GetN())]
