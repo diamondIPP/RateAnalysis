@@ -287,7 +287,7 @@ class PadAnalysis(Analysis):
             set_root_output(0)
             name = 'h_hm' if hitmap else 'h_sm'
             h1 = TH2I(name, 'Diamond Hit Map', *self.Plots.get_global_bins(res)) if hitmap else TProfile2D(name, 'Signal Map', *self.Plots.get_global_bins(res))
-            self.log_info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.DiamondName, run=self.RunNumber, mode='hit' if hitmap else 'signal '))
+            self.log_info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.DiamondName, run=self.RunNumber, mode='hit' if hitmap else 'signal '), prnt=prnt)
             sig = self.generate_signal_name()
             x_var, y_var = (self.Cut.get_track_var(self.DiamondNumber - 1, v) for v in ['x', 'y'])
             self.tree.Draw('{z}{y}:{x}>>{h}'.format(z=sig + ':' if not hitmap else '', x=x_var, y=y_var, h=name), cut, 'goff')
@@ -802,7 +802,7 @@ class PadAnalysis(Analysis):
         self.ROOTObjects.append([h2, c])
 
     def draw_signal_distribution(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None, bin_width=2, events=None,
-                                 start=None, x_range=None, redo=False, prnt=True):
+                                 start=None, x_range=None, redo=False, prnt=True, save=True):
         cut = self.AllCuts if cut is None else TCut(cut)
         suffix = '{b}_{c}_{cut}'.format(b=bin_width, c=int(evnt_corr), cut=cut.GetName())
         pickle_path = self.make_pickle_path('PulseHeight', 'Histo', run=self.RunNumber, ch=self.DiamondNumber, suf=suffix)
@@ -821,7 +821,7 @@ class PadAnalysis(Analysis):
         h = do_pickle(pickle_path, func, redo=redo)
         x_range = increased_range([h.GetBinCenter(i) for i in [h.FindFirstBinAbove(0), h.FindLastBinAbove(0)]], .1) if x_range is None else x_range
         self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=2, fill_color=self.FillColor, x_range=x_range)
-        self.save_histo(h, 'SignalDistribution', lm=.15, show=show, prnt=prnt, save=cut)
+        self.save_histo(h, 'SignalDistribution', lm=.15, show=show, prnt=prnt, save=save)
         return h
 
     def draw_signal_vs_peakpos(self, show=True, corr=False):

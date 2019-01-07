@@ -113,7 +113,7 @@ class PulserAnalysis(Elementary):
         cut = self.Cut.generate_pulser_cut(beam_on=beam_on)
         x = self.find_range(corr)
         h = self.Ana.draw_signal_distribution(cut=cut, sig=self.SignalName, show=False, off_corr=corr, evnt_corr=False, bin_width=bin_width, events=events,
-                                              start=start, redo=redo, x_range=x, prnt=prnt)
+                                              start=start, redo=redo, x_range=x, prnt=prnt, save=False)
         self.format_histo(h, name='p_hd', stats=stats, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
         self.save_histo(h, 'PulserDistribution', show, lm=.12, prnt=prnt)
         return h
@@ -143,8 +143,8 @@ class PulserAnalysis(Elementary):
     def draw_peak_timing(self, show=True, corr=False):
         self.Ana.draw_peak_timing('', 'pulser', cut=self.PulserCut, show=show, draw_cut=False, corr=corr)
 
-    def draw_pedestal(self, show=True, save=True):
-        return self.Ana.Pedestal.draw_disto_fit(name=self.PedestalName, cut=self.PulserCut, show=show, save=save)
+    def draw_pedestal(self, show=True, save=True, prnt=True):
+        return self.Ana.Pedestal.draw_disto_fit(name=self.PedestalName, cut=self.PulserCut, show=show, save=save, prnt=prnt)
 
     def compare_pedestal(self, show=True):
         self.Ana.draw_pedestal_disto_fit(show=False)

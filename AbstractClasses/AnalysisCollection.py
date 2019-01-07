@@ -397,7 +397,7 @@ class AnalysisCollection(Elementary):
 
         return mg
 
-    def draw_pedestals(self, region='ab', peak_int='2', flux=True, sigma=False, show=True, cut=None, save=False, pulser=False, redo=False):
+    def draw_pedestals(self, region='ab', peak_int='2', flux=True, sigma=False, show=True, cut=None, save=True, pulser=False, redo=False):
 
         # TODO draw vs. time
         suffix = '{}{}'.format('Sigma' if sigma else 'Mean', 'Pulser' if pulser else '')
@@ -412,7 +412,7 @@ class AnalysisCollection(Elementary):
             g = self.make_tgrapherrors('pedestal', '{pre}Pedestal {y} in {reg}'.format(y=y_val, reg=region + peak_int, pre=prefix))
             par = 2 if sigma else 1
             for i, (key, ana) in enumerate(self.collection.iteritems()):
-                fit_par = ana.Pedestal.draw_disto_fit(cut=cut, save=save, show=False) if not pulser else ana.Pulser.draw_pedestal(show, save)
+                fit_par = ana.Pedestal.draw_disto_fit(cut=cut, save=save, show=False, redo=redo, prnt=False) if not pulser else ana.Pulser.draw_pedestal(show, save, False)
                 x = ana.get_flux() if flux else ufloat(key, 0)
                 g.SetPoint(i, x.n, fit_par.Parameter(par))
                 g.SetPointError(i, x.s, fit_par.ParError(par))
@@ -430,8 +430,8 @@ class AnalysisCollection(Elementary):
     def draw_noise(self, flux=True, show=True, save=False):
         return self.draw_pedestals(flux=flux, show=show, save=save, sigma=True)
 
-    def draw_pulser_pedestals(self, show=True, save=False):
-        self.draw_pedestals(pulser=True, show=show, save=save)
+    def draw_pulser_pedestals(self, show=True, save=False, redo=False):
+        self.draw_pedestals(pulser=True, show=show, save=save, redo=redo)
 
     def draw_signal_distributions(self, show=True, off=3, redo=False):
 
@@ -441,7 +441,7 @@ class AnalysisCollection(Elementary):
         histos = []
         self.start_pbar(self.NRuns)
         for i, ana in enumerate(self.collection.itervalues(), 1):
-            h = ana.draw_signal_distribution(show=False, redo=redo)
+            h = ana.draw_signal_distribution(show=False, redo=redo, prnt=False)
             self.format_histo(h, fill_color=0, fill_style=4000)
             histos.append(h)
             self.ProgressBar.update(i)
@@ -879,7 +879,7 @@ class AnalysisCollection(Elementary):
         self.start_pbar(self.NRuns)
         histos = []
         for i, ana in enumerate(self.collection.values(), 1):
-            histos.append(ana.draw_signal_map(show=False, hitmap=hitmap, cut='' if hitmap else None, redo=redo))
+            histos.append(ana.draw_signal_map(show=False, hitmap=hitmap, redo=redo, prnt=False))
             self.ProgressBar.update(i)
         self.ProgressBar.finish()
 
