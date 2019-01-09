@@ -35,15 +35,9 @@ class VoltageScan(Elementary):
     def draw_pedestals(self, cut=None, pulser=False, sigma=False, show=True, redo=False):
 
         mode = 'Sigma' if sigma else 'Mean'
-        gr = self.make_tgrapherrors('g_vpd', '{p}Pedestal {m} vs. Bias Voltage'.format(p='Pulser' if pulser else '', m=mode), self.get_color())
-
-        for i, (key, ana) in enumerate(self.collection.iteritems()):
-            fit_par = ana.Pedestal.draw_disto_fit(cut=cut, show=False, redo=redo) if not pulser else ana.Pulser.draw_pedestal(show=False, redo=redo)
-            x = ana.Run.RunInfo['dia{nr}hv'.format(nr=self.DiamondNumber)]
-            par = 2 if sigma else 1
-            gr.SetPoint(i, x, fit_par.Parameter(par))
-            gr.SetPointError(i, 0, fit_par.ParError(par))
-
+        pedestals = self.Ana.get_pedestals(cut, pulser, redo)
+        y_values = [dic['sigma' if sigma else 'ph'] for dic in pedestals.itervalues()]
+        gr = self.make_tgrapherrors('g_vpd', '{p}Pedestal {m} vs. Bias Voltage'.format(p='Pulser' if pulser else '', m=mode), x=self.get_voltages(), y=y_values, color=self.get_color())
         self.format_histo(gr, x_tit='Voltage [V]', y_tit='Pulse Height [au]', y_off=1.4)
         self.save_histo(gr, '{s}Pedestal{m}Voltage'.format(s='Pulser' if pulser else '', m=mode), show, lm=.13, draw_opt='ap')
         self.reset_colors()
