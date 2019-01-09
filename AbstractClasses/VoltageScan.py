@@ -21,20 +21,20 @@ class VoltageScan(Elementary):
         self.DiamondNumber = self.Ana.DiamondNumber
         self.InfoLegend = InfoLegend(ana_collection)
 
-    def draw_all(self):
-        self.draw_pulse_height(show=False)
-        self.draw_pulser_pulse_height(show=False)
-        self.draw_pedestals(show=False)
-        self.draw_pedestals(show=False, sigma=True)
-        self.draw_pedestals(show=False, pulser=True)
+    def draw_all(self, redo=False):
+        self.draw_pulse_height(show=False, redo=redo)
+        self.draw_pulser_pulse_height(show=False, redo=redo)
+        self.draw_pedestals(show=False, redo=redo)
+        self.draw_pedestals(show=False, sigma=True, redo=redo)
+        self.draw_pedestals(show=False, pulser=True, redo=redo)
 
-    def draw_pedestals(self, cut=None, pulser=False, sigma=False, show=True):
+    def draw_pedestals(self, cut=None, pulser=False, sigma=False, show=True, redo=False):
 
         mode = 'Sigma' if sigma else 'Mean'
         gr = self.make_tgrapherrors('g_vpd', '{p}Pedestal {m} vs. Bias Voltage'.format(p='Pulser' if pulser else '', m=mode), self.get_color())
 
         for i, (key, ana) in enumerate(self.collection.iteritems()):
-            fit_par = ana.Pedestal.draw_disto_fit(cut=cut, show=False) if not pulser else ana.Pulser.draw_pedestal(show=False)
+            fit_par = ana.Pedestal.draw_disto_fit(cut=cut, show=False, redo=redo) if not pulser else ana.Pulser.draw_pedestal(show=False, redo=redo)
             x = ana.Run.RunInfo['dia{nr}hv'.format(nr=self.DiamondNumber)]
             par = 2 if sigma else 1
             gr.SetPoint(i, x, fit_par.Parameter(par))
