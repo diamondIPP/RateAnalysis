@@ -242,12 +242,13 @@ class Draw:
 
     def save_canvas(self, canvas, sub_dir=None, name=None, print_names=True, show=True):
         sub_dir = self.save_dir if hasattr(self, 'save_dir') and sub_dir is None else sub_dir
+        sub_dir = self.TelSaveDir if hasattr(self, 'TelSaveDir') and sub_dir is None else sub_dir
         canvas.Update()
         file_name = canvas.GetName() if name is None else name
         file_path = join(self.ResultsDir, sub_dir, '{typ}', file_name)
         ftypes = ['root', 'png', 'pdf', 'eps']
         out = 'Saving plots: {nam}'.format(nam=name)
-        run_number = self.run_number if hasattr(self, 'run_number') else None
+        run_number = self.RunNumber if hasattr(self, 'RunNumber') else None
         run_number = 'rp{nr}'.format(nr=self.run_plan) if hasattr(self, 'run_plan') else run_number
         set_root_output(show)
         gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
