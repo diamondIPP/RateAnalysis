@@ -96,10 +96,7 @@ class Elementary(Draw):
         return file_path
 
     def load_run_info_path(self):
-        if self.run_config_parser.has_option('BASIC', 'runinfofile'):
-            file_path = self.run_config_parser.get('BASIC', 'runinfofile')
-        else:
-            file_path = join(self.DataDir, self.TCDir, 'run_log.json')
+        file_path = join(self.DataDir, self.TCDir, 'run_log.json')
         if not file_exists(file_path):
             log_critical('Run Log File: "{f}" does not exist!'.format(f=file_path))
         return file_path
