@@ -172,12 +172,14 @@ class Converter:
         self.set_converter_configfile()
         print_banner('START CONVERTING RAW FILE FOR RUN {0}'.format(self.RunNumber))
         print ' '.join(cmd_list)
-        while True:  # the command crashes randomly...
+        max_tries = 30
+        tries = 0
+        while tries < max_tries:  # the command crashes randomly...
             try:
                 check_call(cmd_list)
                 break
             except CalledProcessError:
-                continue
+                tries += 1
         chdir(curr_dir)
 
     def align_run(self):
