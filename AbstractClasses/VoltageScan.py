@@ -7,6 +7,7 @@
 from Elementary import Elementary
 from ROOT import gStyle, TMultiGraph
 from InfoLegend import InfoLegend
+from Utils import make_ufloat
 
 
 class VoltageScan(Elementary):
@@ -20,6 +21,9 @@ class VoltageScan(Elementary):
         self.DiamondName = self.Ana.DiamondName
         self.DiamondNumber = self.Ana.DiamondNumber
         self.InfoLegend = InfoLegend(ana_collection)
+
+    def get_voltages(self):
+        return [make_ufloat((ana.Bias, ana.Bias * 1e-4)) for ana in self.collection.itervalues()]
 
     def draw_all(self, redo=False):
         self.draw_pulse_height(show=False, redo=redo)
