@@ -4,7 +4,7 @@
 from argparse import ArgumentParser
 from numpy import log, concatenate, zeros, sign
 
-from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1, TH1F, TH2F, TH2I, TProfile2D, TProfile
+from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1, TH1F, TH2F, TH2I, TProfile2D, TProfile, TCut
 
 from CurrentInfo import Currents
 from Elementary import Elementary
@@ -406,41 +406,42 @@ class AnalysisCollection(Elementary):
 
         return mg
 
-    def draw_pedestals(self, region='ab', peak_int='2', flux=True, sigma=False, show=True, cut=None, save=True, pulser=False, redo=False):
+    def get_pedestals(self, cut=None, pulser=False, redo=False):
 
-        # TODO draw vs. time
-        suffix = '{}{}'.format('Sigma' if sigma else 'Mean', 'Pulser' if pulser else '')
-        pickle_path = self.make_pickle_path('Pedestal', 'AllPedestals', self.RunPlan, self.DiamondName, suf=suffix)
-        mode = 'Flux' if flux else 'Run'
-        log_message('Getting pedestals')
-        self.start_pbar(self.NRuns)
+        cut_name = '' if cut is None else TCut(cut).GetName()
+        pickle_path = self.make_pickle_path('Pedestal', 'Values', self.RunPlan, self.DiamondNumber, suf='{}{}'.format('Pulser' if pulser else '', cut_name))
 
-        def func():
-            y_val = 'Sigma' if sigma else 'Mean'
-            prefix = 'Pulser ' if pulser else ''
-            g = self.make_tgrapherrors('pedestal', '{pre}Pedestal {y} in {reg}'.format(y=y_val, reg=region + peak_int, pre=prefix))
-            par = 2 if sigma else 1
+        def f():
+            self.log_info('Getting {}pedestals ... '.format('pulser ' if pulser else ''))
+            pedestals = OrderedDict()
+            self.start_pbar(self.NRuns)
             for i, (key, ana) in enumerate(self.collection.iteritems()):
-                fit_par = ana.Pedestal.draw_disto_fit(cut=cut, save=save, show=False, redo=redo, prnt=False) if not pulser else ana.Pulser.draw_pedestal(show, save, False)
-                x = ana.get_flux() if flux else ufloat(key, 0)
-                g.SetPoint(i, x.n, fit_par.Parameter(par))
-                g.SetPointError(i, x.s, fit_par.ParError(par))
+                ped = ana.Pulser.draw_pedestal(show=False, redo=redo, prnt=False) if pulser else ana.Pedestal.draw_disto_fit(cut=cut, show=False, redo=redo, prnt=False)
+                pedestals[key] = {'flux': ana.get_flux(), 'ph': make_ufloat(ped, par=1), 'sigma': make_ufloat(ped, par=2), 'time': ana.Run.get_time()}
                 self.ProgressBar.update(i + 1)
-            return g
+            self.ProgressBar.finish()
+            return pedestals
 
-        gr = do_pickle(pickle_path, func, redo=redo)
-        self.ProgressBar.finish()
-        self.format_histo(gr, color=810, x_tit=self.make_x_tit(False), y_tit='Mean Pedestal [au]', y_off=1.45)
+        return do_pickle(pickle_path, f, redo=redo)
+
+    def draw_pedestals(self, vs_time=False, sigma=False, cut=None, pulser=False, redo=False, show=True):
+
+        mode = 'Time' if vs_time else 'Flux'
+        pedestals = self.get_pedestals(cut, pulser, redo)
+        y_values = [dic['sigma' if sigma else 'ph'] for dic in pedestals.itervalues()]
+        x_values = [dic['time' if vs_time else 'flux'] for dic in pedestals.itervalues()]
+        g = self.make_tgrapherrors('gps', '{}Pedestals'.format('Pulser ' if pulser else ''), x=x_values, y=y_values)
+        self.format_histo(g, color=810, x_tit=self.make_x_tit(vs_time), y_tit='Mean Pedestal [au]', y_off=1.45, t_ax_off=0 if vs_time else None)
         cut_name = '' if cut is None else TCut(cut).GetName()
         save_name = '{p}Pedestal{s}{mod}{cut}'.format(mod=mode, cut=cut_name, s='Sigma' if sigma else 'Mean', p='Pulser' if pulser else '')
-        self.save_histo(gr, save_name=save_name, show=show, logx=True if flux else False, lm=.12, draw_opt='ap')
-        return gr
+        self.save_histo(g, save_name=save_name, show=show, logx=False if vs_time else True, lm=.12, draw_opt='ap')
+        return g
 
-    def draw_noise(self, flux=True, show=True, save=False):
-        return self.draw_pedestals(flux=flux, show=show, save=save, sigma=True)
+    def draw_noise(self, flux=True, show=True):
+        return self.draw_pedestals(vs_time=flux, show=show, sigma=True)
 
-    def draw_pulser_pedestals(self, show=True, save=False, redo=False):
-        self.draw_pedestals(pulser=True, show=show, save=save, redo=redo)
+    def draw_pulser_pedestals(self, show=True, redo=False):
+        self.draw_pedestals(pulser=True, show=show, redo=redo)
 
     def draw_signal_distributions(self, show=True, off=3, redo=False):
 
