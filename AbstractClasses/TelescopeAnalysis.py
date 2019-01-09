@@ -40,6 +40,7 @@ class Analysis(Elementary):
 
         # miscellaneous
         self.channel = self.channel if hasattr(self, 'channel') else None
+        self.InfoLegend = InfoLegend(self)
 
         # general for pads and pixels
         self.Cut = Cut(self, skip=run.tree is None)
@@ -55,8 +56,6 @@ class Analysis(Elementary):
             self.binning = self.__get_binning()
             self.time_binning = self.get_time_binning()
             self.n_bins = len(self.binning)
-
-        self.InfoLegend = InfoLegend(self)
 
         # save histograms // canvases
         self.signal_canvas = None
