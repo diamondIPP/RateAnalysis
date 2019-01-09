@@ -21,7 +21,7 @@ from Utils import *
 
 
 class DiaScans(Elementary):
-    def __init__(self, selection, verbose=False):
+    def __init__(self, selection, verbose=False, dia=None, tc=None):
         Elementary.__init__(self, verbose=verbose)
 
         # main
@@ -31,18 +31,20 @@ class DiaScans(Elementary):
         self.Name = None
         self.Parser = self.load_diamond_parser()
 
-        # information
-        self.DiamondName = None
-        self.TestCampaigns = self.load_testcampaigns(None)
-        self.RunInfos = self.load_runinfos()
+        # info
         self.AllRunPlans = self.load_all_runplans()
+        self.Diamond = self.load_diamond(dia)
+        self.TestCampaign = tc
+        self.TestCampaigns = self.load_test_campaigns()
+        self.RunInfos = self.load_runinfos()
+
+        # selection info
+        self.DiamondName = None
         self.RunPlans = self.find_diamond_runplans()
         self.Bias = None
+
         self.set_save_directory('Results/')
         self.save_dir = ''
-
-        # Save
-        self.ROOTObjects = []
 
         self.set_selection(selection)
 
@@ -61,6 +63,8 @@ class DiaScans(Elementary):
         return parser
 
     def load_diamond(self, name):
+        if name is None:
+            return
         dia = name
         if 'all' in dia:
             return 'All'
@@ -75,33 +79,27 @@ class DiaScans(Elementary):
         except NoOptionError:
             log_warning('{0} is not a known diamond name! Please choose one from \n{1}'.format(dia, self.Parser.options('ALIASES')))
 
-    def load_testcampaigns(self, tcs):
+    def load_test_campaigns(self, tcs=None):
         if tcs is None:
-            return ['201508', '201510']
+            return sorted(tc for tc in self.get_test_campaigns() if (tc == self.TestCampaign or self.TestCampaign is None) and tc in self.AllRunPlans)
         valid_tcs = self.get_test_campaigns()
         tcs = [tcs] if type(tcs) is not list else tcs
         if not all(tc in valid_tcs for tc in tcs):
             log_warning('You entered and invalid test campaign! Aborting!')
             exit()
-        else:
-            return tcs
+        return sorted(tcs)
 
     def load_all_runplans(self):
-        runplan_path = join(self.Dir, self.MainConfigParser.get('MISC', 'runplan_file'))
-        f = open(runplan_path, 'r')
-        runplans = load(f)
-        f.close()
-        return runplans
+        with open(join(self.Dir, self.MainConfigParser.get('MISC', 'runplan_file'))) as f:
+            return load(f)
 
     def load_runinfos(self):
         run_infos = {}
         for tc in self.TestCampaigns:
             self.set_test_campaign(tc)
             self.TCDir = self.generate_tc_directory()
-            file_path = self.load_run_info_path()
-            f = open(file_path)
-            run_infos[tc] = load(f)
-            f.close()
+            with open(self.load_run_info_path()) as f:
+                run_infos[tc] = load(f)
         return run_infos
 
     def find_diamond_runplans(self):
@@ -118,6 +116,17 @@ class DiaScans(Elementary):
                                 runplans[tc][bias] = {}
                             runplans[tc][bias][rp] = ch
         return runplans
+
+    def get_dia_runselections(self, dia):
+        dia = self.load_diamond(dia)
+        return [RunSelection(tc, rp, self.get_rp_diamonds(tc, rp).index(dia) + 1) for tc in self.TestCampaigns for rp in sorted(self.AllRunPlans[tc]) if dia in self.get_rp_diamonds(tc, rp)]
+
+    def get_rp_diamonds(self, tc, rp):
+        dias = [item for key, item in sorted(self.RunInfos[tc][self.get_first_run(tc, rp)].iteritems()) if key.startswith('dia') and len(key) < 5]
+        return [self.load_diamond(dia) for dia in dias]
+
+    def get_first_run(self, tc, rp):
+        return str(self.AllRunPlans[tc][rp]['runs'][0])
 
     def load_run_selections(self, redo=False):
         if self.RunSelections is not None and not redo:
@@ -145,12 +154,23 @@ class DiaScans(Elementary):
         self.log_info('Set Selection {0}'.format(key))
         self.DiamondName = self.load_diamond(key)
         self.Selection = self.Selections[key]
-        self.TestCampaigns = list(set(self.Selection.keys()))
+        # self.TestCampaigns = list(set(self.Selection.keys()))
         self.load_run_selections(redo=True)
         self.Name = key
         self.save_dir = key
 
     # endregion
+
+    def draw_all(self, dia):
+        run_selections = self.get_dia_runselections(dia)
+        for sel in run_selections:
+            if sel.TESTCAMPAIGN < '201508':
+                continue
+            print_banner('Making plots for {}'.format(sel))
+            Elementary(sel.TCString)
+            threads = load_root_files(sel, load=True)
+            ana = AnalysisCollection(sel, threads)
+            ana.draw_little_all()
 
     # ==========================================================================
     # region GET
@@ -681,8 +701,10 @@ if __name__ == '__main__':
     main_parser = ArgumentParser()
     main_parser.add_argument('sel', nargs='?', default='test')
     main_parser.add_argument('-v', action='store_true')
+    main_parser.add_argument('-d', nargs='?', default='S129')
     args = main_parser.parse_args()
-    print_banner('STARTING DIAMOND RATE SCAN COLLECTION OF SELECTION {0}'.format(args.sel))
 
-    Elementary(None, True, get_resolution())
+    print_banner('STARTING DIAMOND RATE SCAN COLLECTION OF SELECTION {0}'.format(args.sel))
+    t1 = time()
     z = DiaScans(args.sel, verbose=args.v)
+    print_elapsed_time(t1, 'Instantiation')
