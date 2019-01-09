@@ -246,7 +246,7 @@ class Cut(Elementary):
             angle = self.CutConfig['slope']
             t = self.log_info('Generating angle cut in {m} for run {run} ...'.format(run=self.analysis.RunNumber, m=mode), False)
             set_root_output(False)
-            h = self.analysis.draw_angle_distribution(mode=mode, show=False)
+            h = self.analysis.draw_angle_distribution(mode=mode, show=False, print_msg=False)
             fit = fit_fwhm(h)
             mean_ = fit.Parameter(1)
             cut_vals = {mode: [mean_ - angle, mean_ + angle]}

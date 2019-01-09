@@ -1010,9 +1010,9 @@ class PadAnalysis(Analysis):
             cuts_nobucket = TCut('no_bucket', '')
             cuts_oldbucket = TCut('old_bucket', '')
             for key, value in self.Cut.CutStrings.iteritems():
-                if not key.startswith('old') and key not in ['all_cuts', 'bucket']:
+                if not key.startswith('old') and key not in ['AllCuts', 'bucket']:
                     cuts_nobucket += value
-                if key not in ['all_cuts', 'bucket']:
+                if key not in ['AllCuts', 'bucket']:
                     cuts_oldbucket += value
             h1 = self.draw_signal_distribution(show=False, evnt_corr=True)
             h2 = self.draw_signal_distribution(show=False, evnt_corr=True, cut=cuts_nobucket)
@@ -1064,7 +1064,7 @@ class PadAnalysis(Analysis):
                     histo.Draw()
                     drawn_first = True
                 else:
-                    if key == 'all_cuts':
+                    if key == 'AllCuts':
                         histo.SetLineWidth(2)
                     histo.Draw('same')
                 histos.append(histo)
@@ -1119,7 +1119,7 @@ class PadAnalysis(Analysis):
                 # draw all single plots into c2
                 histo.SetLineColor(self.get_color())
 
-                if key == 'all_cuts':
+                if key == 'AllCuts':
                     histo.SetLineWidth(2)
                 stack.Add(histo)
                 histos.append(histo)
@@ -1192,7 +1192,7 @@ class PadAnalysis(Analysis):
         i = 1
         gr.SetPoint(0, 0, 0)
         for key, value in self.Cut.CutStrings.iteritems():
-            if (str(value) or key == 'raw') and key not in ['all_cuts', 'old_bucket']:
+            if (str(value) or key == 'raw') and key not in ['AllCuts', 'old_bucket']:
                 if short:
                     self.log_info('adding cut {0}'.format(key))
                     if key not in ['raw', 'saturated', 'timing', 'bucket', 'pulser', 'tracks', 'fiducial']:

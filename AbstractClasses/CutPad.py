@@ -31,7 +31,7 @@ class CutPad(Cut):
 
         self.generate_channel_cutstrings()
         self.all_cut = self.generate_all_cut()
-        self.CutStrings['all_cuts'] = self.all_cut
+        self.CutStrings['AllCuts'] = self.all_cut
 
         self.ConsecutiveCuts = self.load_consecutive_cuts()
 
@@ -99,7 +99,7 @@ class CutPad(Cut):
     def load_consecutive_cuts(self):
         dic = OrderedDict()
         for key, value in self.CutStrings.iteritems():
-            if (str(value) or key == 'raw') and key != 'all_cuts' and not key.startswith('old'):
+            if (str(value) or key == 'raw') and key != 'AllCuts' and not key.startswith('old'):
                 dic[key] = value
         return dic
     # endregion
@@ -523,7 +523,7 @@ class CutPad(Cut):
 
     def generate_consecutive_cuts(self):
         cuts = OrderedDict()
-        for i, (key, value) in enumerate([(key, value) for key, value in self.CutStrings.iteritems() if str(value) and key != 'all_cuts' and not key.startswith('old')]):
+        for i, (key, value) in enumerate([(key, value) for key, value in self.CutStrings.iteritems() if str(value) and key != 'AllCuts' and not key.startswith('old')]):
             new_cut = (cuts.values()[i - 1] if i else TCut('')) + value
             key = 'Beam Stops' if 'beam' in key else key
             cuts[key] = TCut('{n}'.format(n=i), str(new_cut))
