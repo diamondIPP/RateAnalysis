@@ -144,7 +144,7 @@ class AnalysisCollection(Elementary):
             string += '{0}\n'.format(ana.print_off_results(prnt=False))
         print string
 
-    def draw_all(self, save=True):
+    def draw_all(self):
 
         old_verbose = self.FirstAnalysis.verbose
         self.set_verbose(False)
@@ -155,9 +155,9 @@ class AnalysisCollection(Elementary):
             self.draw_scaled_pulse_heights(show=False)
             self.draw_scaled_pulse_heights(show=False, vs_time=True)
             self.Pulser.draw_pulse_heights(do_fit=False, show=False)
-            self.draw_pedestals(show=False, save=save)
+            self.draw_pedestals(show=False)
             self.draw_noise(show=False)
-            self.draw_pulser_pedestals(show=False, save=save)
+            self.draw_pulser_pedestals(show=False)
         self.draw_ph_with_currents(show=False)
         self.draw_signal_distributions(show=False)
         self.save_signal_maps()
@@ -185,7 +185,6 @@ class AnalysisCollection(Elementary):
         self.save_signal_maps(redo=redo)
         self.save_signal_maps(hitmap=True, redo=redo)
         self.set_verbose(old_verbose)
-        self.print_all_off_results()
         print_elapsed_time(t0)
     
     def scale_current_gr(self, gr):
@@ -373,7 +372,7 @@ class AnalysisCollection(Elementary):
         move_legend(mg.GetListOfFunctions()[0], .75, .20)
         self.draw_histo(mg, '', show, lm=.14, draw_opt='a', logx=not vs_time, grid=vs_time, gridy=True, bm=.18)
         self.draw_irradiation(make_irr_string(self.selection.get_irradiation()))
-        self.save_plots('ScaledPulseHeights')
+        self.save_plots('ScaledPulseHeights{}'.format(xtit[:4]))
         return mg.GetListOfGraphs()[0]
 
     def draw_pulse_heights(self, binning=None, vs_time=False, show=True, show_first_last=True, save_comb=True, y_range=None, redo=False):
@@ -455,6 +454,7 @@ class AnalysisCollection(Elementary):
             self.format_histo(h, fill_color=0, fill_style=4000)
             histos.append(h)
             self.ProgressBar.update(i)
+        self.ProgressBar.finish()
         for i, h in enumerate(histos):
             self.format_histo(h, lw=2, color=self.get_color())
             h.Scale(1 / h.GetMaximum())
@@ -899,7 +899,7 @@ class AnalysisCollection(Elementary):
         for i, h in enumerate(histos):
             if not hitmap:
                 self.format_histo(h, z_range=[glob_min, glob_max])
-            self.save_histo(h, '{n}Map{nr}'.format(nr=str(i).zfill(2), n=name.title()), show=False, ind=i, draw_opt='colz', rm=.16, lm=.12)  # theta 55, phi 20
+            self.save_histo(h, '{n}Map{nr}'.format(nr=str(i).zfill(2), n=name.title()), show=False, ind=i, draw_opt='colz', rm=.16, lm=.12, prnt=False)  # theta 55, phi 20
 
     def draw_cumulative_map(self, chi2=None, res=1.5, hitmap=False, redo=False, cut=None, show=True):
 
