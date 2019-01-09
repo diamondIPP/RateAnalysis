@@ -10,7 +10,7 @@ from Utils import *
 
 
 class RunSelection(Elementary):
-    def __init__(self, testcampaign=None, verbose=True):
+    def __init__(self, testcampaign=None, runplan=None, dia_nr=None, verbose=True):
         Elementary.__init__(self, verbose=verbose, testcampaign=testcampaign)
         self.Run = Run(verbose=verbose, tree=False)
 
@@ -34,10 +34,13 @@ class RunSelection(Elementary):
 
         self.init_selection()
 
+        self.select_runs_from_runplan(runplan, dia_nr)
+
     def __str__(self):
-        nr = len(self.RunNumbers)
-        selected_runs = self.get_selected_runs()
-        return 'RunSelection Object\n' + str(len(selected_runs)) + ' Out of ' + str(nr) + ' runs selected. Selections made:' + self.get_log_string()
+        # nr = len(self.RunNumbers)
+        # selected_runs = self.get_selected_runs()
+        # return 'RunSelection Object\n' + str(len(selected_runs)) + ' Out of ' + str(nr) + ' runs selected. Selections made:' + self.get_log_string()
+        return 'RunSelection with RunPlan {} of {} taken in {}'.format(self.SelectedRunplan, self.SelectedDiamond, tc_to_str(self.TESTCAMPAIGN, short=False))
 
     # ============================================
     # region LOGGING
@@ -372,6 +375,8 @@ class RunSelection(Elementary):
         return str(missing_runs if len(missing_runs) <= 3 else '{0}, ...]'.format(str(missing_runs[:2]).strip(']'))) if missing_runs else ''
 
     def select_runs_from_runplan(self, plan_nr, ch=1):
+        if plan_nr is None:
+            return
         plan = self.make_runplan_string(plan_nr)
         runs = self.RunPlan[plan]['runs']
 
