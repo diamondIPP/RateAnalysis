@@ -23,7 +23,7 @@ class VoltageScan(Elementary):
         self.InfoLegend = InfoLegend(ana_collection)
 
     def get_voltages(self):
-        return [make_ufloat((ana.Bias, ana.Bias * 1e-4)) for ana in self.collection.itervalues()]
+        return [make_ufloat((ana.Bias, abs(ana.Bias * 1e-4))) for ana in self.collection.itervalues()]
 
     def draw_all(self, redo=False):
         self.draw_pulse_height(show=False, redo=redo)
