@@ -84,6 +84,10 @@ class AnalysisCollection(Elementary):
     # ============================================
     # region INIT
 
+    def delete_trees(self):
+        for ana in self.collection.itervalues():
+            ana.tree.Delete()
+
     def add_analyses(self):
         """ Creates and adds Analysis objects with run numbers in runs. """
         for run in self.Runs:
