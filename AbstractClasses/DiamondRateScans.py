@@ -161,16 +161,18 @@ class DiaScans(Elementary):
 
     # endregion
 
-    def draw_all(self, dia):
+    def draw_all(self, dia, redo=False):
         run_selections = self.get_dia_runselections(dia)
         for sel in run_selections:
             if sel.TESTCAMPAIGN < '201508':
                 continue
+            gROOT.Reset()
             print_banner('Making plots for {}'.format(sel))
             Elementary(sel.TCString)
             threads = load_root_files(sel, load=True)
             ana = AnalysisCollection(sel, threads)
-            ana.draw_little_all()
+            ana.draw_little_all(redo=redo)
+            ana.delete_trees()
 
     # ==========================================================================
     # region GET
