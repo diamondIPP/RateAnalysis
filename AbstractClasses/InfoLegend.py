@@ -73,7 +73,8 @@ class InfoLegend:
         return git_text
 
     def get_duration(self):
-        return str(sum([ana.Run.Duration for ana in self.Analysis.collection.itervalues()], timedelta())) if self.IsCollection else self.Analysis.Run.Duration
+        dur = sum([ana.Run.Duration for ana in self.Analysis.collection.itervalues()], timedelta()) if self.IsCollection else self.Analysis.Run.Duration
+        return dur - timedelta(microseconds=dur.microseconds)
 
     def get_run_string(self):
         run_str = 'Run{run}: {rate}, {dur}'.format(run=self.get_runnumber_str(), rate=self.get_rate_string(), dur=self.get_duration())
