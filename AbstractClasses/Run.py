@@ -428,23 +428,10 @@ class Run(Elementary):
         return '{rate:>3} {unit}'.format(rate=rate, unit=unit)
 
     def get_time_at_event(self, event):
-        """
-        For negative event numbers it will return the time stamp at the startevent.
-        :param event: integer event number
-        :return: timestamp for event
-        """
-        if event == -1:
-            event = self.endEvent
-        elif event < 0:
-            event = 0
-        elif event >= self.endEvent:
-            event = self.endEvent
-        t = []
-        for i in xrange(event, self.endEvent + 1):
-            t.append(self.time[i])
-            if t[-1] != -1:
-                break
-        return t[-1] / 1000.
+        """ For negative event numbers it will return the time stamp at the startevent. """
+        event = self.endEvent if event == -1 else event
+        event = sorted((0, event, self.endEvent))[1]  # guarantees that the event is in [0, EndEvent]
+        return self.time[event] / 1000.
 
     def get_event_at_time(self, seconds):
         """ Returns the event nunmber at time dt from beginning of the run. Accuracy: +- 1 Event """
@@ -453,9 +440,10 @@ class Run(Elementary):
             return self.n_entries
         last_time = 0
         for i, t in enumerate(self.time):
-            if t / 1000. >= seconds + self.StartTime >= last_time:
+            if t / 1000. >= seconds + self.time[0] / 1000 >= last_time:
                 return i
             last_time = t / 1000.
+        return self.n_entries  # if loop doesn't find anything it has to be the last bin
 
     # endregion
 
