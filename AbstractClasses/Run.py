@@ -70,7 +70,7 @@ class Run(Elementary):
             self.endEvent = self.n_entries - 1
             self.StartTime = self.load_start_time()
             self.EndTime = self.load_end_time()
-            self.TotalTime = self.EndTime - self.StartTime
+            self.TotalTime = self.load_total_time()
             self.totalMinutes = self.TotalTime / 60000.
             self.Duration = timedelta(seconds=self.TotalTime)
             self.NPlanes = self.load_n_planes()
@@ -248,6 +248,9 @@ class Run(Elementary):
 
     def load_end_time(self):
         return int(round(self.get_time_at_event(self.endEvent)))
+
+    def load_total_time(self):
+        return (self.time[-1] - self.time[0]) / 1000
 
     def load_n_planes(self):
         if self.has_branch('cluster_col'):
