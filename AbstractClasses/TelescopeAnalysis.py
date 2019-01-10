@@ -401,7 +401,7 @@ class Analysis(Elementary):
     def draw_time(self, show=True):
         entries = self.tree.Draw('time', '', 'goff')
         t = [self.tree.GetV1()[i] for i in xrange(entries)]
-        t = [(i - t[0]) / 1000 for i in t]
+        t = [(i - t[0]) / 1000 for i in t if i - t[0]]
         gr = TGraph(len(t), array(xrange(len(t)), 'd'), array(t, 'd'))
         gr.SetNameTitle('g_t', 'Time vs Events')
         fit = gr.Fit('pol1', 'qs0')
