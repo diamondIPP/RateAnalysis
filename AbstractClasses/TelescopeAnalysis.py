@@ -10,6 +10,7 @@ from Utils import *
 from Plots import Plots
 from Langaus import Langau
 from InfoLegend import InfoLegend
+from json import loads
 
 
 class Analysis(Elementary):
@@ -463,15 +464,17 @@ class Analysis(Elementary):
         cut = TCut('beam_current < 10000') + TCut(cut)
         set_root_warnings(OFF)
         p = TProfile('pf', 'Flux Profile', *self.Plots.get_time_binning(bin_width=bin_width))
-        area = self.Run.get_unmasked_area()
-        p1, p2 = area.keys()
-        a1, a2 = area.values()
+        p1, p2 = self.get_trigger_planes()
+        a1, a2 = self.Run.get_unmasked_area().values()
         # rate[0] is scintillator
         self.tree.Draw('(rate[{p1}] / {a1} + rate[{p2}] / {a2}) / 2000 : time / 1000.>>pf'.format(p1=p1 + 1, p2=p2 + 1, a1=a1, a2=a2), cut, 'goff', self.Run.n_entries, 1)
         y_range = [0, p.GetMaximum() * 1.2]
         self.format_histo(p, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', fill_color=self.FillColor, markersize=1, t_ax_off=self.Run.StartTime if rel_t else 0, stats=0, y_range=y_range)
         self.save_tel_histo(p, 'FluxProfile', draw_opt='hist', lm=.08, x_fac=1.5, y_fac=.75, ind=None, show=show, prnt=prnt)
         return p
+
+    def get_trigger_planes(self):
+        return loads(self.ana_config_parser.get('BASIC', 'trigger planes')) if self.ana_config_parser.has_option('BASIC', 'trigger planes') else self.Run.get_unmasked_area().keys()
 
     def draw_bc_vs_rate(self, cut='', show=True):
         g1 = self.draw_flux(cut=cut, show=False)
