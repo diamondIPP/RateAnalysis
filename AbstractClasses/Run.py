@@ -207,10 +207,12 @@ class Run(Elementary):
         self.RunInfo['masked pixels'] = [0] * 4
 
     def translate_diamond_names(self):
-        for i in xrange(1, 3):
-            dia = self.RunInfo['dia{0}'.format(i)]
+        for key in self.RunInfo:
+            if not (key.startswith('dia') and key[-1].isdigit()):
+                continue
+            dia = self.RunInfo[key]
             try:
-                self.RunInfo['dia{0}'.format(i)] = self.translate_dia(dia)
+                self.RunInfo[key] = self.translate_dia(dia)
             except NoOptionError as err:
                 log_warning(err)
 
