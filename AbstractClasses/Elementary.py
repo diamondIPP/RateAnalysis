@@ -158,14 +158,14 @@ class Elementary(Draw):
             print
 
     def log_info(self, msg, next_line=True, prnt=True):
+        t1 = time()
         if prnt and self.verbose:
-            t1 = time()
             t = datetime.now().strftime('%H:%M:%S')
             print '{head} {t} --> {msg}'.format(head=colored('INFO:', 'cyan', attrs=['dark']), t=t, msg=msg),
             stdout.flush()
             if next_line:
                 print
-            return t1
+        return t1
 
     def add_info(self, t, msg='Done'):
         if self.verbose:
