@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 # ==============================================
 # IMPORTS
 # ==============================================
@@ -1361,6 +1362,7 @@ if __name__ == '__main__':
     main_parser.add_argument('-tc', '--testcampaign', nargs='?', default='')
     main_parser.add_argument('-t', '--tree', action='store_false')
     main_parser.add_argument('-r', '--runs', action='store_true')
+    main_parser.add_argument('-d', '--draw', action='store_true')
     args = main_parser.parse_args()
     tc = args.testcampaign if args.testcampaign.startswith('201') else None
     run_plan = args.runplan
@@ -1377,3 +1379,5 @@ if __name__ == '__main__':
     if args.runs:
         z.Currents.draw_indep_graphs()
         raw_input('Press any button to exit')
+    if args.draw:
+        z.draw_little_all()
