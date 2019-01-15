@@ -344,23 +344,30 @@ class RunSelection(Elementary):
             for nr in plan:
                 self.RunPlan[type_][nr.zfill(2)] = self.RunPlan[type_].pop(nr)
 
-    def show_run_plans(self, dia=None):
+    def show_run_plans(self, diamond=None):
         """ Print a list of all run plans from the current test campaign to the console. """
         old_selection = deepcopy(self.Selection)
         old_logs = deepcopy(self.logs)
         print 'RUN PLAN FOR TESTCAMPAIGN: {tc}\n'.format(tc=self.TCString)
-        header = ['Nr.', 'Run Type', 'Range', 'Excluded', 'Dia 1', 'HV1 [V]'.rjust(13), 'Dia 2', 'HV2 [V]'.rjust(13)]
+        header = ['Nr.', 'Run Type', 'Range', 'Excluded']
+        max_dias = self.get_max_dias()
+        for i in xrange(1, max_dias + 1):
+            header += ['Dia{}'.format(i), 'HV{} [V]'.format(i).rjust(13)]
         rows = []
         for plan, info in sorted(self.RunPlan.iteritems()):
             self.unselect_all_runs(info=False)
             self.select_runs_from_runplan(plan)
-            runs = info['runs']
-            d1, d2 = self.get_rp_diamond_names()
-            run_string = '{min:3d} - {max:3d}'.format(min=runs[0], max=runs[-1])
-            v1, v2 = self.get_rp_voltages()
-            if dia is not None and dia not in [d1, d2]:
+            dias = self.get_rp_diamond_names()
+            if diamond is not None and diamond not in dias:
                 continue
-            rows.append([plan, info['type'], run_string, self.get_missing_runs(runs), d1, v1, d2, v2])
+            runs = info['runs']
+            run_string = '{min:3d} - {max:3d}'.format(min=runs[0], max=runs[-1])
+            row = [plan, info['type'], run_string, self.get_missing_runs(runs)]
+            for dia, bias in zip(dias, self.get_rp_voltages()):
+                row += [dia, bias]
+            if len(dias) < max_dias:
+                row += ['', ''] * (max_dias - len(dias))
+            rows.append(row)
         print_table(rows, header)
 
         self.logs = old_logs
