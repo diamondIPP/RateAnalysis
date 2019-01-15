@@ -62,6 +62,7 @@ class PadAnalysis(Analysis):
             self.SignalNumber = self.get_signal_number()
             self.SignalName = self.get_signal_name()
             self.PedestalName = self.get_pedestal_name()
+            self.PeakName = self.get_peak_name()
 
             # cuts
             self.Cut = CutPad(self, self.channel)
