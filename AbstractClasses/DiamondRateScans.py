@@ -109,7 +109,7 @@ class DiaScans(Elementary):
             runplans[tc] = {}
             for rp, dic in self.AllRunPlans[tc].iteritems():
                 runs = dic['runs']
-                for ch in [1, 2]:
+                for ch in xrange(1, len(self.get_rp_diamonds(tc, rp)) + 1):
                     if all(self.DiamondName == self.load_diamond(self.RunInfos[tc][str(run)]['dia{0}'.format(ch)]) for run in runs):
                         bias = self.RunInfos[tc][str(runs[0])]['dia{0}hv'.format(ch)]
                         if all(self.RunInfos[tc][str(run)]['dia{0}hv'.format(ch)] == bias for run in runs):
