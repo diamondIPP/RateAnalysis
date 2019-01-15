@@ -272,7 +272,7 @@ class RunSelection(Elementary):
             d = [str(value) for value in r.load_diamond_names()]
             b = ['{v:+7.0f}'.format(v=value) for value in r.load_biases()]
             dia_bias = list(chain(*[[d[i], b[i]] for i in xrange(len(d))]))
-            row = ['{:3d}'.format(run), r.RunInfo['runtype']] + dia_bias + ['{:14.2f}'.format(r.Flux)]
+            row = ['{:3d}'.format(run), r.RunInfo['runtype']] + dia_bias + ['{:14.2f}'.format(r.Flux.n)]
             if not full_comments:
                 row += ['{c}{s}'.format(c=r.RunInfo['comments'][:20].replace('\r\n', ' '), s='*' if len(r.RunInfo['comments']) > 20 else ' ' * 21)]
                 rows.append(row)
@@ -315,6 +315,16 @@ class RunSelection(Elementary):
             runs = runs['runs']
         self.log_info('Adding new description for run plan {rp}: {name}'.format(rp=rp_str, name=name))
         self.RunPlan[rp_str] = {'type': name, 'runs': runs}
+        self.save_runplan()
+
+    def add_runplan_key(self):
+        rp = self.make_runplan_string(raw_input('Enter run plan number: '))
+        info = self.RunPlan[rp]
+        print 'Current keys: {}'.format(info.keys())
+        new_key = raw_input('Which key do you want to add? ')
+        value = raw_input('Enter the value: ')
+        info[new_key] = value
+        self.RunPlan[rp] = info
         self.save_runplan()
 
     def add_attenuators(self, rp=None, attenuator=None, ask=True):
