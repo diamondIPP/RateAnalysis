@@ -5,8 +5,7 @@
 # --------------------------------------------------------
 
 from ROOT import TFile, vector, TProfile
-from numpy import mean
-from Utils import log_message, time, print_elapsed_time, OrderedDict, print_banner, file_exists
+from Utils import *
 from os import remove
 
 
@@ -40,6 +39,7 @@ class PadAlignment:
         self.ColSize = []
         self.PulserEvents = []
         self.BucketSize = 30
+        self.PulserRate = self.get_pulser_rate()
 
     def __del__(self):
         self.InFile.Close()
@@ -93,6 +93,17 @@ class PadAlignment:
         aligned = all(h.GetBinContent(bin_) < 40 for bin_ in xrange(h.GetNbinsX()))
         self.Run.log_info('Fast check found misalignment :-(' if not aligned else 'Run {} is perfectly aligned :-)'.format(self.Run.RunNumber))
         return aligned
+
+    def get_pulser_rate(self):
+        h = TProfile('hprc', 'Pulser Rate', self.NEntries / 500, 0, self.NEntries)
+        self.InTree.Draw('pulser*100:Entry$>>hprc', '', 'goff')
+        values = []
+        for i in xrange(1, h.GetNbinsX() + 1):
+            value = h.GetBinContent(i)
+            if value and value < 30:
+                values.append(make_ufloat((value, 1 / h.GetBinError(i))))
+        m, s = mean_sigma(values)
+        return m
 
     def find_offset(self, start, offset, n_events=None, n_offsets=5):
         offsets = sorted(range(-n_offsets, n_offsets + 1), key=lambda x: abs(x))
