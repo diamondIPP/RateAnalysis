@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 # --------------------------------------------------------
 #       DIAMOND RATE SCANS
 # created on June 24th 2016 by M. Reichmann
