@@ -373,6 +373,9 @@ class RunSelection(Elementary):
         self.logs = old_logs
         self.Selection = old_selection
 
+    def get_max_dias(self):
+        return max(self.Run.get_n_diamonds(info['runs'][0]) for info in self.RunPlan.itervalues())
+
     def get_rp_diamond_names(self):
         dias = [self.get_runinfo_values('dia{0}'.format(i), sel=True) for i in xrange(1, self.Run.get_n_diamonds(self.get_selected_runs()[0]) + 1)]
         if any(len(dia) > 1 for dia in dias):
