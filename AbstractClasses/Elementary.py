@@ -3,7 +3,6 @@ from ROOT import gROOT, TSpectrum, TF1, TCanvas
 from glob import glob
 from json import loads
 from numpy import inf
-from os.path import dirname
 from shutil import copyfile
 from sys import stdout
 
@@ -46,8 +45,8 @@ class Elementary(Draw):
         Draw.__init__(self, self)
 
         # read configuration files
-        self.run_config_parser = self.load_run_config()
         self.ana_config_parser = self.load_ana_config()
+        self.run_config_parser = self.load_run_config()
         self.TCDir = self.generate_tc_directory()
 
         # progress bar
@@ -73,7 +72,11 @@ class Elementary(Draw):
         run_number = self.RunNumber if hasattr(self, 'RunNumber') else None
         run_parser = ConfigParser({'excluded_runs': '[]'})  # add non default option
         run_parser.read(join(self.Dir, 'Configuration', self.TCString, 'RunConfig.ini'))  # first read the main config file with general information for all splits
-        if self.MainConfigParser.has_section(self.TCString) and run_number is not None:  # check for splits in the test campaign
+        if self.ana_config_parser.has_section('SPLIT') and run_number is not None:
+            split_runs = [0] + loads(self.ana_config_parser.get('SPLIT', 'runs')) + [inf]
+            config_nr = next(i for i in xrange(1, len(split_runs)) if split_runs[i - 1] <= run_number < split_runs[i])
+            run_parser.read(join(self.Dir, 'Configuration', self.TCString, 'RunConfig{nr}.ini'.format(nr=config_nr)))  # add the content of the split config
+        elif self.MainConfigParser.has_section(self.TCString) and run_number is not None:  # check for splits in the test campaign
             split_runs = [0] + loads(self.MainConfigParser.get(self.TCString, 'split_runs')) + [inf]
             config_nr = next(i for i in xrange(1, len(split_runs)) if split_runs[i - 1] <= run_number < split_runs[i])
             run_parser.read(join(self.Dir, 'Configuration', self.TCString, 'RunConfig{nr}.ini'.format(nr=config_nr)))  # add the content of the split config
