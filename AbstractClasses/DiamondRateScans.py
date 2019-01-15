@@ -709,9 +709,10 @@ if __name__ == '__main__':
     main_parser.add_argument('sel', nargs='?', default='test')
     main_parser.add_argument('-v', action='store_true')
     main_parser.add_argument('-d', nargs='?', default='S129')
+    main_parser.add_argument('-tc', nargs='?', default=None)
+    main_parser.add_argument('-p', action='store_true')
     args = main_parser.parse_args()
 
-    print_banner('STARTING DIAMOND RATE SCAN COLLECTION OF SELECTION {0}'.format(args.sel))
-    t1 = time()
     z = DiaScans(args.sel, verbose=args.v)
-    print_elapsed_time(t1, 'Instantiation')
+    if args.p:
+        print z.get_all_ana_strings(args.d, args.tc)
