@@ -15,7 +15,6 @@ class PadAlignment:
         # main
         self.StartTime = time()
         self.NDutPlanes = 4
-        self.Threshold = .4
 
         # converter
         self.Converter = converter
@@ -40,6 +39,7 @@ class PadAlignment:
         self.PulserEvents = []
         self.BucketSize = 30
         self.PulserRate = self.get_pulser_rate()
+        self.Threshold = .4 if self.PulserRate > 5 else .2
 
     def __del__(self):
         self.InFile.Close()
@@ -145,7 +145,7 @@ class PadAlignment:
         return None, None
 
     def find_offsets(self):
-        if self.find_final_offset() == len(self.Converter.DecodingErrors) + self.find_zero_offset():
+        if self.find_final_offset() == len(self.Converter.DecodingErrors) + self.find_zero_offset() and self.Converter.DecodingErrors:
             return self.get_error_offsets()
         return self.find_shifting_offsets()
 
@@ -240,7 +240,7 @@ class PadAlignment:
 if __name__ == '__main__':
     from Run import Run
     from Converter import Converter
-    zrun = Run(343, test_campaign=None, tree=False, verbose=True)
+    zrun = Run(31, test_campaign='201610', tree=False, verbose=True)
     zconv = Converter(zrun)
     z = PadAlignment(zconv)
     if not z.is_aligned():
