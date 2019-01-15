@@ -383,7 +383,7 @@ class RunSelection(Elementary):
         return [dia[0] for dia in dias]
 
     def get_rp_voltages(self):
-        hvs = [self.get_runinfo_values('dia{0}hv'.format(i), sel=True) for i in xrange(1, 3)]
+        hvs = [[float(hv) for hv in self.get_runinfo_values('dia{0}hv'.format(i), sel=True)] for i in xrange(1, self.Run.get_n_diamonds(self.get_selected_runs()[0]) + 1)]
         if any(len(hv) > 1 for hv in hvs):
             abs_hvs = [[abs(v) for v in hv] for hv in hvs]
             return ('{min:+4.0f} ... {max:+4.0f}'.format(min=hv[ahv.index(min(ahv))], max=hv[ahv.index(max(ahv))]) for ahv, hv in zip(abs_hvs, hvs))
@@ -500,6 +500,7 @@ class RunSelection(Elementary):
         json.dump(runinfo, f, indent=2, sort_keys=True)
         f.truncate()
         f.close()
+        self.RunInfos = self.load_run_infos()
 
     def add_runinfo_key(self):
         runs = self.get_selected_runs()
@@ -507,8 +508,9 @@ class RunSelection(Elementary):
         new_key = raw_input('Enter the key you want to add: ')
         new_value = raw_input('Enter the new value: ')
         for run in runs:
-            runinfo[str(run)][new_key] = new_value
+            runinfo[str(run)][new_key] = float(new_value) if isfloat(new_value) else new_value
         self.save_runinfo(f, runinfo)
+        self.RunInfos = self.load_run_infos()
     
     def add_runinfo_attenuators(self):
         runs = self.get_selected_runs()
@@ -518,6 +520,7 @@ class RunSelection(Elementary):
             for run in runs:
                 runinfo[str(run)][key] = value
         self.save_runinfo(f, runinfo)
+        self.RunInfos = self.load_run_infos()
 
     def remove_runinfo_key(self):
         runs = self.get_selected_runs()
