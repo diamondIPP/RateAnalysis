@@ -557,6 +557,10 @@ def close_last_canvas():
     get_last_canvas().Close()
 
 
+def get_object(name):
+    return gROOT.FindObject(name)
+
+
 def get_color_gradient(n):
     stops = array([0., .5, 1], 'd')
     green = array([0. / 255., 200. / 255., 80. / 255.], 'd')
