@@ -176,7 +176,7 @@ class AnalysisCollection(Elementary):
         old_verbose = self.FirstAnalysis.verbose
         self.set_verbose(False)
         if self.Type == 'voltage scan':
-            self.VoltageScan.draw_all()
+            self.VoltageScan.draw_all(redo)
         else:
             self.draw_pulse_heights(show=False, redo=redo)
             self.draw_scaled_pulse_heights(show=False)
