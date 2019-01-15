@@ -439,14 +439,12 @@ class PadAnalysis(Analysis):
         fac = 2. if self.Run.Digitiser == 'drs4' else 2.5
         xmin = xmin / fac - (10 if corr else 10)
         xmax = xmax / fac + (10 if corr else 10)
-        print int((xmax - xmin) * (4 if corr else 1)), xmin, xmax
         h = TH1F('h_pv', '{typ} Peak Positions'.format(typ=sig_type.title()), int((xmax - xmin) * (4 if corr else 4)), xmin, xmax)
         self.format_histo(h, x_tit='Signal Peak Timing [ns]', y_tit='Number of Entries', y_off=1.3, stats=0)
         cut = self.Cut.generate_special_cut(excluded=['timing']) if cut is None else TCut(cut)
         dic = self.Cut.calc_timing_range(show=False)
         t_correction = '({p1}* trigger_cell + {p2} * trigger_cell*trigger_cell)'.format(p1=dic['t_corr'].GetParameter(1), p2=dic['t_corr'].GetParameter(2))
         draw_string = '{peaks}{op}>>h_pv'.format(peaks=self.get_peak_name(region, sig_type, corr), op='/{f}'.format(f=fac) if not corr else '-' + t_correction)
-        print draw_string
         self.tree.Draw(draw_string, cut, 'goff')
         self.draw_histo(h, show=show, sub_dir=self.save_dir, lm=.12, logy=True)
         f, fit, fit1 = self.fit_peak_timing(h)
@@ -512,18 +510,20 @@ class PadAnalysis(Analysis):
 
     def fit_peak_timing(self, histo):
         h = histo
-        fit1 = h.Fit('gaus', 'qs0')
+        max = h.GetBinCenter(h.GetMaximumBin())
+        fit1 = h.Fit('gaus', 'qs0', '', max - 3, max + 3)
         mean_, sigma = fit1.Parameter(1), fit1.Parameter(2)
-        fit = h.Fit('gaus', 'qs', '', mean_ - sigma, mean_ + sigma)
+        fit = TF1('f', 'gaus', mean_ - sigma, mean_ + sigma)
+        h.Fit('f', 'q0')
         fit2 = TF1('f1', 'gaus', mean_ - 5 * sigma, mean_ + 5 * sigma)
         fit3 = TF1('f2', 'gaus', mean_ - sigma, mean_ + sigma)
-        pars = [fit.Parameter(i) for i in xrange(3)]
-        fit2.SetParameters(*pars)
-        fit3.SetParameters(*pars)
+        fit2.SetParameters(fit.GetParameters())
+        fit3.SetParameters(fit.GetParameters())
         fit3.SetLineWidth(2)
         fit3.SetLineColor(2)
         fit2.SetLineStyle(2)
-        fit2.Draw('same')
+        h.GetListOfFunctions().Add(fit)
+        h.GetListOfFunctions().Add(fit2)
         self.ROOTObjects.append([fit2, fit3])
         return fit, fit2, fit3
 
