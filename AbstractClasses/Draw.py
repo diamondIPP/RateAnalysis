@@ -235,6 +235,8 @@ class Draw:
         canvas.Update()
         if save:
             try:
+                if both_dias and sub_dir is None:
+                    sub_dir = self.TelSaveDir if hasattr(self, 'TelSaveDir') else sub_dir
                 self.save_canvas(canvas, sub_dir=sub_dir, name=savename, print_names=prnt, show=show)
                 self.Objects.append(canvas)
             except Exception as inst:
