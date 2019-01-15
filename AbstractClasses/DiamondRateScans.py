@@ -162,10 +162,10 @@ class DiaScans(Elementary):
 
     # endregion
 
-    def draw_all(self, dia, redo=False):
+    def draw_all(self, dia, tc=None, redo=False):
         run_selections = self.get_dia_runselections(dia)
         for sel in run_selections:
-            if sel.TESTCAMPAIGN < '201508':
+            if sel.TESTCAMPAIGN < '201508' or sel.TESTCAMPAIGN != tc and tc is not None:
                 continue
             gROOT.Reset()
             print_banner('Making plots for {}'.format(sel))
@@ -174,6 +174,10 @@ class DiaScans(Elementary):
             ana = AnalysisCollection(sel, threads)
             ana.draw_little_all(redo=redo)
             ana.delete_trees()
+
+    def get_all_ana_strings(self, dia, tc=None):
+        selections = [sel for sel in self.get_dia_runselections(dia) if sel.TESTCAMPAIGN > '201505' and (sel.TESTCAMPAIGN == tc or tc is None)]
+        return '_'.join(['AbstractClasses/AnalysisCollection.py {} {} -tc {} -d'.format(sel.SelectedRunplan, sel.SelectedDiamondNr, sel.TESTCAMPAIGN) for sel in selections])
 
     # ==========================================================================
     # region GET
