@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 from ROOT import TFile, gROOT, TGraph, TH2F, gStyle, TCanvas, TCut, TH1F
-from sys import argv
-from AbstractClasses.Utils import *
+from sys import argv, path
+path.append('AbstractClasses')
+from Utils import *
 from json import load
-from AbstractClasses.Run import Run
+from Run import Run
 from datetime import datetime
 from ConfigParser import ConfigParser, NoSectionError
 from numpy import mean
@@ -332,7 +333,7 @@ if __name__ == '__main__':
     run = args.run if 'root' in args.run else '/data/pulserTest/test{0}.root'.format(args.run.zfill(6))
     convert(run)
     rootfile = TFile(run)
-    tc = '201810'
+    tc = '201807'
 
     try:
         run = int(argv[1].split('/')[-1].strip('.root').split('00')[-1])
@@ -341,10 +342,10 @@ if __name__ == '__main__':
             run = int(argv[1].split('/')[-1].strip('_withTracks.roottest'))
         elif 'Tracked' in argv[1]:
             run = int(argv[1].split('/')[-1].strip('.root').strip('TrackedRun'))
+            tc = remove_letters(args.run.split('/')[3]).replace('_', '')
         else:
             run = None
 
-    print run
     try:
         run = Run(run, test_campaign=tc, tree=False)
         runinfo = load_runinfo()
@@ -362,9 +363,3 @@ if __name__ == '__main__':
 
     if len(argv) > 2:
         draw_both_wf(int(argv[2]), show=False)
-
-    # ph = fit_pulser_ph(0, False)
-    # ped = fit_pedestal(0, 0)
-    # itg = fit_integral(0, False)
-    # print 'Tree has {e} entries'.format(e=entries)
-    # print '{0}\t{1}\t\t{2}\t{3}\t{4}'.format(entries, ph.Parameter(1), itg.Parameter(1), ped.Parameter(1), ped.Parameter(2))
