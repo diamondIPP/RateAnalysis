@@ -1,10 +1,10 @@
 from Cut import Cut
 from Extrema import Extrema2D
 from functools import partial
-from ROOT import TCut, TH1F, TH2F, TF1, TCanvas, TLegend, gROOT, TProfile, THStack, TCutG, TSpectrum
+from ROOT import TCut, TH1F, TH2F, TF1, TCanvas, gROOT, TProfile, THStack, TCutG, TSpectrum
 from Utils import *
 from json import loads
-from numpy import array
+from numpy import array, pi
 from ConfigParser import NoOptionError
 
 __author__ = 'micha'
@@ -426,6 +426,24 @@ class CutPad(Cut):
 
         threshold = func() if show else None
         return do_pickle(pickle_path, func, threshold)
+
+    def get_timing_correction(self, show=False):
+
+        pickle_path = self.make_pickle_path('Cuts', 'TimingCorrection', self.RunNumber, self.DiamondNumber)
+
+        def f():
+            h = TProfile('tcorr', 'Original Peak Position vs Trigger Cell', 256, 0, 1024)
+            self.analysis.tree.Draw('{sig}:trigger_cell>>tcorr'.format(sig=self.analysis.PeakName), self.generate_special_cut(excluded='timing', prnt=False), 'goff')
+            fit = TF1('fcor', '[0]*TMath::Sin([1]*(x - [2])) + [3]', -50, 1024)
+            fit.SetParameters(1, 1 / 1024. * 2 * pi, 100, mean([h.GetBinContent(i) for i in xrange(h.GetNbinsX())]))
+            h.Fit(fit, 'q0')
+            h.GetListOfFunctions().Add(fit)
+            self.format_histo(h, x_tit='trigger cell', y_tit='signal peak time', y_off=1.8)
+            set_statbox(only_fit=True, x=.8)
+            self.save_histo(h, 'OriPeakPosVsTriggerCell', False, lm=.13, prnt=show)
+            return h, '({0} * TMath::Sin({1} * (trigger_cell - {2})))'.format(*[fit.GetParameter(i) for i in xrange(4)])
+
+        return do_pickle(pickle_path, f)
 
     def calc_timing_range(self, show=True, n_sigma=4):
         pickle_path = self.make_pickle_path('Cuts', 'TimingRange', self.RunNumber, self.channel)
