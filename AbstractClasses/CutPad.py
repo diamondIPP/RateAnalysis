@@ -24,6 +24,9 @@ class CutPad(Cut):
         self.DiamondName = analysis.DiamondName
         self.DiamondNumber = analysis.DiamondNumber
 
+        self.save_dir = analysis.save_dir
+        self.TelSaveDir = analysis.TelSaveDir
+
         self.load_channel_config()
 
         self.PedestalFit = None
