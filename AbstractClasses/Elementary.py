@@ -331,7 +331,7 @@ class Elementary(Draw):
                 obj.Draw(opt)
 
         if hasattr(self, 'InfoLegend'):
-            run_info = self.InfoLegend.draw(p0, all_pads=False, show=show)
+            run_info = self.InfoLegend.draw(p0, all_pads=False)
             scale_legend(run_info[0], txt_size=.09, height=0.098 / pm)
             run_info[1].SetTextSize(.05)
 
