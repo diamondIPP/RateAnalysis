@@ -98,5 +98,5 @@ class InfoLegend:
     def get_info_string(self, both_dias):
         voltage = ', '.join('{0:+4d}V'.format(i) for i in self.Analysis.Run.Bias) if both_dias else '{0:+4d}V'.format(self.Analysis.Bias)
         irradiation = ', '.join(make_irr_string(irr) for irr in (self.Analysis.Run.get_irradiations() if both_dias else [self.Analysis.get_irradiation()]))
-        attenuator = 'Att: {}'.format(str(self.Analysis.Run.get_attenuators()).strip('[]') if both_dias else self.Analysis.get_attenuator())
+        attenuator = 'Att: {}'.format(str(self.Analysis.Run.get_attenuators()).strip('[]') if both_dias else str(self.Analysis.get_attenuator()))
         return 'Info: {v}, {i}, {a}'.format(v=voltage, i=irradiation, a=attenuator)
