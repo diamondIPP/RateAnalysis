@@ -122,6 +122,9 @@ class DiaScans(Elementary):
         dia = self.load_diamond(dia)
         return [RunSelection(tc, rp, self.get_rp_diamonds(tc, rp).index(dia) + 1) for tc in self.TestCampaigns for rp in sorted(self.AllRunPlans[tc]) if dia in self.get_rp_diamonds(tc, rp)]
 
+    def get_tc_runselections(self, tc):
+        return [RunSelection(tc, rp, i) for rp in sorted(self.AllRunPlans[tc]) for i in xrange(1, len(self.get_rp_diamonds(tc, rp)) + 1)]
+
     def get_rp_diamonds(self, tc, rp):
         dias = [item for key, item in sorted(self.RunInfos[tc][self.get_first_run(tc, rp)].iteritems()) if key.startswith('dia') and len(key) < 5]
         return [self.load_diamond(dia) for dia in dias]
@@ -175,8 +178,11 @@ class DiaScans(Elementary):
             ana.draw_little_all(redo=redo)
             ana.delete_trees()
 
-    def get_all_ana_strings(self, dia, tc=None):
-        selections = [sel for sel in self.get_dia_runselections(dia) if sel.TESTCAMPAIGN > '201505' and (sel.TESTCAMPAIGN == tc or tc is None)]
+    def get_all_ana_strings(self, dia=None, tc=None):
+        if tc is None:
+            selections = [sel for sel in self.get_dia_runselections(dia) if sel.TESTCAMPAIGN > '201505' and (sel.TESTCAMPAIGN == tc or tc is None)]
+        else:
+            selections = self.get_tc_runselections(tc)
         return '_'.join(['AbstractClasses/AnalysisCollection.py {} {} -tc {} -d'.format(sel.SelectedRunplan, sel.SelectedDiamondNr, sel.TESTCAMPAIGN) for sel in selections])
 
     # ==========================================================================
