@@ -65,6 +65,7 @@ class PadAnalysis(Analysis):
             self.PeakName = self.get_peak_name()
 
             # cuts
+            self.Timing = TimingAnalysis(self)
             self.Cut = CutPad(self, self.channel)
             self.AllCuts = self.Cut.all_cut
 
@@ -75,7 +76,6 @@ class PadAnalysis(Analysis):
             self.Pulser = PulserAnalysis(self)
             self.Pedestal = PedestalAnalysis(self)
             self.Peaks = PeakAnalysis(self)
-            self.Timing = TimingAnalysis(self)
 
         # currents
         self.Currents = Currents(self)

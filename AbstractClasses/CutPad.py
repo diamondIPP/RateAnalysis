@@ -4,7 +4,7 @@ from functools import partial
 from ROOT import TCut, TH1F, TH2F, TF1, TCanvas, gROOT, TProfile, THStack, TCutG, TSpectrum
 from Utils import *
 from json import loads
-from numpy import array, pi
+from numpy import array
 from ConfigParser import NoOptionError
 
 __author__ = 'micha'
@@ -428,52 +428,25 @@ class CutPad(Cut):
         threshold = func() if show else None
         return do_pickle(pickle_path, func, threshold)
 
-    def get_timing_correction(self, show=False):
-
-        pickle_path = self.make_pickle_path('Cuts', 'TimingCorrection', self.RunNumber, self.DiamondNumber)
-
-        def f():
-            h = TProfile('tcorr', 'Original Peak Position vs Trigger Cell', 256, 0, 1024)
-            self.analysis.tree.Draw('{sig}:trigger_cell>>tcorr'.format(sig=self.analysis.PeakName), self.generate_special_cut(excluded='timing', prnt=False), 'goff')
-            fit = TF1('fcor', '[0]*TMath::Sin([1]*(x - [2])) + [3]', -50, 1024)
-            fit.SetParameters(1, 1 / 1024. * 2 * pi, 100, mean([h.GetBinContent(i) for i in xrange(h.GetNbinsX())]))
-            h.Fit(fit, 'q0')
-            h.GetListOfFunctions().Add(fit)
-            self.format_histo(h, x_tit='trigger cell', y_tit='signal peak time', y_off=1.8)
-            set_statbox(only_fit=True, x=.8)
-            self.save_histo(h, 'OriPeakPosVsTriggerCell', False, lm=.13, prnt=show)
-            return h, '({0} * TMath::Sin({1} * (trigger_cell - {2})))'.format(*[fit.GetParameter(i) for i in xrange(4)])
-
-        return do_pickle(pickle_path, f)
-
     def calc_timing_range(self, show=True, n_sigma=4):
         pickle_path = self.make_pickle_path('Cuts', 'TimingRange', self.RunNumber, self.DiamondNumber)
+        print pickle_path
 
         def func():
             t = self.log_info('Generating timing cut for {dia} of run {run} ...'.format(run=self.analysis.RunNumber, dia=self.analysis.DiamondName), next_line=False)
-            cut = self.generate_special_cut(excluded=['timing'], prnt=False)
+            cut = self.generate_special_cut(excluded=['timing'], prnt=False, name='timing_cut')
 
             # estimate timing
-            xmin, xmax = [value * self.analysis.DigitiserBinWidth for value in self.analysis.SignalRegion]
-            h1 = TH1F('htrc', 'Peak Positions', int((xmax - xmin + 20) * 8), xmin - 10, xmax + 10)
-            self.analysis.tree.Draw('{}>>htrc'.format(self.analysis.PeakName), cut, 'goff')
-            f, f1, f2 = self.analysis.fit_peak_timing(h1)
-            set_statbox(fit=True, entries=7)
-            self.format_histo(h1, x_tit='Time [ns]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)
-            self.save_histo(h1, 'RawPeakPosFit', lm=.13, show=False, prnt=show)
-            original_mpv = f.GetParameter(1)
+            h1 = self.analysis.Timing.draw_peaks(show=False, fine_corr=False, prnt=False, cut=cut)
+            fit1 = h1.GetListOfFunctions()[2]
+            h2 = self.analysis.Timing.draw_peaks_tc(show=False, prnt=False, cut=cut)
+            t_correction = self.analysis.Timing.get_fine_correction(cut=cut)
+            h3 = self.analysis.Timing.draw_peaks(show=False, fine_corr=True, prnt=False, cut=cut)
+            fit3 = h3.GetListOfFunctions()[2]
 
-            h2, t_correction = self.get_timing_correction()
+            original_mpv = fit1.GetParameter(1)
 
-            # get time corrected sigma
-            h3 = TH1F('h3', 'Corrected Timing', 160, int(original_mpv - 10), int(original_mpv + 10))
-            self.analysis.tree.Draw('({sig} - {t_corr}) >> h3'.format(sig=self.analysis.PeakName, t_corr=t_correction), cut, 'goff')
-            fit3 = TF1('fit3', 'gaus', -50, 1024)
-            h3.Fit(fit3, 'q0')
-            h3.GetListOfFunctions().Add(fit3)
-            self.format_histo(h3, x_tit='Time [ns]', y_tit='Number of Entries', y_off=2.1, fill_color=self.FillColor)
-            self.save_histo(h3, 'TimingCorrection', False, lm=.15, prnt=show)
-
+            # TODO move to timing class!
             if show:
                 corrected_time = '{sig} - {t_corr}'.format(sig=self.analysis.PeakName, t_corr=t_correction)
                 t_cut = TCut('TMath::Abs({cor_t} - {mp}) / {sigma} < {n_sigma}'.format(cor_t=corrected_time, mp=fit3.GetParameter(1), sigma=fit3.GetParameter(2), n_sigma=n_sigma))
@@ -530,7 +503,7 @@ class CutPad(Cut):
                 self.RootObjects.append([c, h4, h5, h6, stack, l, h7, h2])
 
             self.add_info(t)
-            self.log_info('Peak Timing: Mean: {0}, sigma: {1}'.format(original_mpv, f.GetParameter(2)))
+            self.log_info('Peak Timing: Mean: {0}, sigma: {1}'.format(original_mpv, fit3.GetParameter(2)))
             return {'t_corr': t_correction, 'timing_corr': fit3}
 
         return do_pickle(pickle_path, func, redo=show)

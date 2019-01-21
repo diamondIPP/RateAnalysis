@@ -6,8 +6,9 @@
 
 from Elementary import Elementary
 from InfoLegend import InfoLegend
-from Utils import set_statbox, FitRes, get_last_canvas, increased_range, log_warning
-from ROOT import TH1F, TF1, TCut, TH2F
+from Utils import *
+from ROOT import TH1F, TF1, TCut, TH2F, TProfile, THStack
+from numpy import pi
 
 
 class TimingAnalysis(Elementary):
@@ -24,6 +25,86 @@ class TimingAnalysis(Elementary):
         self.DiamondNumber = self.Ana.DiamondNumber
         self.RunNumber = self.Ana.RunNumber
         self.InfoLegend = InfoLegend(pad_analysis)
+
+    def get_fine_correction(self, cut=None):
+        fit = self.draw_peaks_tc(show=False, prnt=False, cut=cut).GetListOfFunctions()[0]
+        return '({0} * TMath::Sin({1} * (trigger_cell - {2})))'.format(*[fit.GetParameter(i) for i in xrange(3)])
+
+    def get_peak_name(self, corr, fine_corr=False, cut=None):
+        fine_corr = ' - {}'.format(self.get_fine_correction(cut)) if fine_corr else ''
+        return '{}{}{}'.format(self.Ana.get_peak_name(t_corr=corr), '*{}'.format(self.Ana.DigitiserBinWidth) if not corr else '', fine_corr)
+
+    def draw_peaks(self, fit=True, cut=None, corr=True, fine_corr=True, show=True, prnt=True):
+        cut = self.Cut.generate_special_cut(excluded=['timing'], prnt=prnt) if cut is None else TCut(cut)
+        xmin, xmax = [value * self.Ana.DigitiserBinWidth for value in self.Ana.SignalRegion]
+        name = 'htrc{}{}'.format(corr, fine_corr)
+        h = TH1F(name, '{}Peak Positions'.format('Time Corrected ' if corr else ''), int((xmax - xmin + 20) * (8 if corr else 1 / self.Ana.DigitiserBinWidth)), xmin - 10, xmax + 10)
+        self.Ana.tree.Draw('{}>>{}'.format(self.get_peak_name(corr, fine_corr, cut), name), cut, 'goff')
+        set_statbox(fit=True, entries=7)
+        if fit:
+            self.fit_peaks(h)
+        self.format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)
+        set_drawing_range(h, thresh=.05 * h.GetMaximum())
+        prefix = 'Raw' if not corr else 'Fine' if fine_corr else ''
+        self.save_histo(h, '{}PeakPos{}'.format(prefix, 'Fit' if fit else ''), lm=.13, show=show, prnt=prnt)
+        return h
+
+    def compare_correction(self):
+        stack = THStack('stack', 'Time Comparison;Time [ns];Number of Entries')
+        l = self.make_legend(nentries=3, scale=.7, x1=.6)
+        l_names = ['before', 'after', 'after']
+        for i, h in enumerate([self.draw_peaks(show=False, corr=c, fine_corr=fc, fit=f) for c, fc, f in [(0, 0, 0), (1, 0, 1), (1, 1, 1)]]):
+            self.format_histo(h, stats=0, color=self.get_color(), fill_color=0)
+            if list(h.GetListOfFunctions()):
+                fit = h.GetListOfFunctions()[-1]
+                fit.SetLineColor(h.GetLineColor())
+                fit.SetRange(-50, 50)
+                mu = fit.GetParameter(1)
+                sig = fit.GetParameter(2)
+                l.AddEntry(fit, 'sigma {nam} corr.: {sig:1.2} ns'.format(nam=l_names[i], sig=sig), 'l')
+                fit.SetParameter(1, 0)
+            else:
+                mu = h.GetMean()
+            xax = h.GetXaxis()
+            xax.SetLimits(xax.GetXmin() - mu, xax.GetXmax() - mu)
+            stack.Add(h)
+        self.draw_histo(stack, draw_opt='nostack', l=l)
+        self.reset_colors()
+
+    @staticmethod
+    def fit_peaks(h):
+        max_val = h.GetBinCenter(h.GetMaximumBin())
+        fit1 = h.Fit('gaus', 'qs0', '', max_val - 3, max_val + 3)
+        mean_, sigma = fit1.Parameter(1), fit1.Parameter(2)
+        fit = TF1('f', 'gaus', mean_ - sigma, mean_ + sigma)
+        h.Fit('f', 'q0')
+        fit2 = TF1('f1', 'gaus', mean_ - 5 * sigma, mean_ + 5 * sigma)
+        fit2.SetParameters(fit.GetParameters())
+        fit2.SetLineStyle(2)
+        h.GetListOfFunctions().Add(fit)
+        h.GetListOfFunctions().Add(fit2)
+        return fit
+
+    def draw_peaks_tc(self, corr=True, fit=True, cut=None, show=True, prnt=True):
+
+        cut = self.Cut.generate_special_cut(excluded=['timing'], prnt=prnt) if cut is None else TCut(cut)
+        pickle_path = self.make_pickle_path('Timing', 'PeakTC', self.RunNumber, self.DiamondNumber, suf=cut.GetName())
+
+        def f():
+            h = TProfile('tcorr', '{}Peak Position vs Trigger Cell'.format('Corrected ' if corr else ''), 256, 0, 1024)
+            self.Ana.tree.Draw('{}:trigger_cell>>tcorr'.format(self.get_peak_name(corr)), cut, 'goff')
+            if fit:
+                fit_func = TF1('fcor', '[0]*TMath::Sin([1]*(x - [2])) + [3]', -50, 1024)
+                fit_func.SetParameters(1, 1 / 1024. * 2 * pi, 100, mean([h.GetBinContent(i) for i in xrange(h.GetNbinsX())]))
+                h.Fit(fit_func, 'q0')
+                h.GetListOfFunctions().Add(fit_func)
+            return h
+
+        histo = do_pickle(pickle_path, f)
+        self.format_histo(histo, x_tit='Trigger Cell', y_tit='Signal Peak Time [ns]', y_off=1.8, stats=fit)
+        set_statbox(only_fit=fit, x=.7)
+        self.save_histo(histo, 'OriPeakPosVsTriggerCell', show, lm=.13, prnt=show)
+        return histo
 
     def fit_rf(self, evnt=0, t_corr=True, show=True):
         gr, n = self.Ana.draw_waveforms(start_event=evnt, t_corr=t_corr, show=show, channel=self.Run.get_rf_channel(), cut='')
