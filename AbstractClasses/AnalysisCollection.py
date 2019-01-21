@@ -529,7 +529,7 @@ class AnalysisCollection(Elementary):
         def f():
             runs = self.get_runs_below_flux(flux)
             if not runs:
-                return
+                return 0
             vals = [make_ufloat(self.collection[run].draw_pulse_height(show=False, save=False)[1]) for run in runs]
             fluxes = [make_ufloat(self.get_fluxes()[run]) for run in runs]
             gr = self.make_tgrapherrors('gr_re', 'Pulse Heights Below {f} kHz/cm^{{2}}'.format(f=flux), x=fluxes, y=vals)
