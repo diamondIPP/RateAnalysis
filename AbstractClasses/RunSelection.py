@@ -495,11 +495,8 @@ class RunSelection(Elementary):
             print '{run}:  {value}'.format(run=run, value=runinfo[str(run)][change_key])
         change_value = raw_input('Enter the new value: ')
         for run in runs:
-            runinfo[str(run)][change_key] = change_value
-        f.seek(0)
-        json.dump(runinfo, f, indent=2, sort_keys=True)
-        f.truncate()
-        f.close()
+            runinfo[str(run)][change_key] = float(change_value) if isfloat(change_value) else change_value
+        self.save_runinfo(f, runinfo)
         self.RunInfos = self.load_run_infos()
 
     def add_runinfo_key(self):
@@ -519,6 +516,20 @@ class RunSelection(Elementary):
             value = raw_input('Enter the value for {k}: '.format(k=key))
             for run in runs:
                 runinfo[str(run)][key] = value
+        self.save_runinfo(f, runinfo)
+        self.RunInfos = self.load_run_infos()
+
+    def add_n_entries(self):
+        f, runinfo = self.get_sorted_runinfo()
+        self.start_pbar(len(self.RunInfos))
+        for i, run in enumerate(self.RunInfos, 1):
+            self.Run.Converter.set_run(run)
+            file_path = z.Run.Converter.get_final_file_path()
+            if file_exists(file_path):
+                root_file = TFile(z.Run.Converter.get_final_file_path())
+                runinfo[str(run)]['events'] = int(root_file.Get(self.Run.treename).GetEntries())
+            self.ProgressBar.update(i)
+        self.ProgressBar.finish()
         self.save_runinfo(f, runinfo)
         self.RunInfos = self.load_run_infos()
 
