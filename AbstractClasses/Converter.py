@@ -6,7 +6,7 @@ from math import copysign
 from re import sub
 from shutil import move
 from os import getcwd, chdir, rename
-from os.path import dirname, realpath
+from os.path import realpath
 from glob import glob
 from Utils import *
 from PixAlignment import PixAlignment
@@ -32,7 +32,7 @@ class Converter:
         self.SoftConfig = self.load_soft_config()
         self.RunNumber = run.RunNumber
         self.RunInfo = run.RunInfo
-        self.Type = self.RunParser.get('BASIC', 'type') if self.RunParser.has_option('BASIC', 'type') else None
+        self.Type = self.load_type()
 
         # digitizer
         self.ConverterTree = '{0}tree'.format(self.RunParser.get('BASIC', 'digitizer').lower() if self.Type == 'pad' and self.RunParser.has_option('BASIC', 'digitizer') else 'telescope')
@@ -62,6 +62,9 @@ class Converter:
         self.ErrorFile = join(self.RootFileDir, 'Errors{:03d}.txt'.format(self.RunNumber if self.RunNumber is not None else 0))
         self.DecodingErrors = self.read_errors()
 
+    def load_type(self):
+        return self.RunParser.get('BASIC', 'type') if self.RunParser.has_option('BASIC', 'type') else None
+
     def load_soft_dir(self):
         file_dir = self.SoftConfig.get('Converter', 'softwaredir')
         if not dir_exists(file_dir):
@@ -77,10 +80,7 @@ class Converter:
         return path
 
     def load_raw_file(self):
-        if self.RunParser.has_option('ConverterFolders', 'rawfolder'):
-            file_dir = self.RunParser.get('ConverterFolders', 'rawfolder')
-        else:
-            file_dir = join(self.DataDir, self.TcDir, 'raw')
+        file_dir = join(self.DataDir, self.TcDir, 'raw')
         if not dir_exists(file_dir):
             log_warning('Could not find the raw file directory: {d}'.format(d=file_dir))
         return file_dir
@@ -95,6 +95,9 @@ class Converter:
         self.Run.set_run(run_number, root_tree=False)
         self.RunNumber = run_number
         self.RunInfo = self.Run.RunInfo
+        self.RunParser = self.Run.load_run_config()
+        self.Type = self.load_type()
+        self.RootFileDir = self.load_root_file_dir()
 
     @staticmethod
     def load_soft_config():
