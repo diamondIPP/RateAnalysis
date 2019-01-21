@@ -430,7 +430,6 @@ class CutPad(Cut):
 
     def calc_timing_range(self, show=True, n_sigma=4):
         pickle_path = self.make_pickle_path('Cuts', 'TimingRange', self.RunNumber, self.DiamondNumber)
-        print pickle_path
 
         def func():
             t = self.log_info('Generating timing cut for {dia} of run {run} ...'.format(run=self.analysis.RunNumber, dia=self.analysis.DiamondName), next_line=False)
