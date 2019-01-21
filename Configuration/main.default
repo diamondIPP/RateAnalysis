@@ -15,33 +15,3 @@ info_legend = True
 runplan_file = Runinfos/run_plans.json
 runplan_selection_file = Runinfos/selection.json
 irradiation_file = Runinfos/irradiation.json
-
-[201510]
-split_runs = [222, 360]
-
-[201608]
-split_runs = [856]
-
-[201610]
-split_runs = [60, 107, 237, 431]
-fid_split_runs = [210, 295]
-
-[201705]
-split_runs = [33, 296]
-fid_split_runs = [160]
-
-[201707]
-split_runs = [20, 53, 83, 183]
-fid_split_runs = [20, 97]
- 
-[201708]
-split_runs = [104]
-
-[201708-2]
-split_runs = [12, 130, 165, 178]
-
-[201807]
-split_runs = [43, 114, 138, 190, 250]
-
-[201810]
-split_runs = [105, 310, 500]
