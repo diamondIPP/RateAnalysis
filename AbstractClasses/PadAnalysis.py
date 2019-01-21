@@ -176,7 +176,7 @@ class PadAnalysis(Analysis):
 
     def get_attenuator(self):
         attenuators = self.Run.get_attenuators()
-        return attenuators[self.DiamondNumber - 1] if attenuators else ''
+        return attenuators[self.DiamondNumber - 1] if attenuators else None
 
     # ==========================================================================
     # region BEAM PROFILE
@@ -510,8 +510,8 @@ class PadAnalysis(Analysis):
 
     def fit_peak_timing(self, histo):
         h = histo
-        max = h.GetBinCenter(h.GetMaximumBin())
-        fit1 = h.Fit('gaus', 'qs0', '', max - 3, max + 3)
+        max_val = h.GetBinCenter(h.GetMaximumBin())
+        fit1 = h.Fit('gaus', 'qs0', '', max_val - 3, max_val + 3)
         mean_, sigma = fit1.Parameter(1), fit1.Parameter(2)
         fit = TF1('f', 'gaus', mean_ - sigma, mean_ + sigma)
         h.Fit('f', 'q0')
@@ -699,20 +699,21 @@ class PadAnalysis(Analysis):
         self.format_histo(g, x_tit='Number of Events per Bin', y_tit='Pulse Height [au]', y_off=1.2)
         self.draw_histo(g, lm=.12, show=show, gridy=True, logx=True)
 
-    def draw_pulse_height(self, bin_size=None, y_range=None, redo=False, corr=True, sig=None, rel_t=True, show=True, save=True, prnt=True):
+    def draw_pulse_height(self, bin_size=None, cut=None, y_range=None, redo=False, corr=True, sig=None, rel_t=True, show=True, save=True, prnt=True):
 
         # TODO fix errors or extract from mean
 
         sig = self.SignalName if sig is None else sig
         bin_size = bin_size if bin_size is not None else self.BinSize
         correction = '' if not corr else '_eventwise'
-        suffix = '{bins}{cor}_{reg}'.format(bins=bin_size, cor=correction, reg=self.get_all_signal_names()[sig])
+        cut_str = self.Cut.all_cut if cut is None else TCut(cut)
+        suffix = '{bins}{cor}_{reg}{c}'.format(bins=bin_size, cor=correction, reg=self.get_all_signal_names()[sig], c='' if cut is None else cut_str.GetName())
         picklepath = self.make_pickle_path('Ph_fit', None, self.RunNumber, self.DiamondNumber, suf=suffix)
 
         def func():
             signal = self.generate_signal_name(self.SignalName if sig is None else sig, corr)
             prof = TProfile('pph', 'Pulse Height Evolution', *self.get_time_bins(bin_size))
-            self.tree.Draw('{sig}:time/1000.>>pph'.format(sig=signal), self.Cut.all_cut, 'goff')
+            self.tree.Draw('{sig}:time/1000.>>pph'.format(sig=signal), cut_str, 'goff')
             self.PulseHeight = prof
             return prof
 
