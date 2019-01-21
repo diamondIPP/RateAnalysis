@@ -267,6 +267,14 @@ class Analysis(Elementary):
         self.save_tel_histo(h, 'ClusterSize', show, logy=True)
         return h
 
+    def draw_n_clusters(self, roc=0, name=None, cut='', show=True):
+        h = TH1I('h_cs', 'Number of Clusters {d}'.format(d='ROC {n}'.format(n=roc) if name is None else name), 10, 0, 10)
+        self.tree.Draw('n_clusters[{d}]>>h_cs'.format(d=roc), TCut(cut), 'goff')
+        set_statbox(only_entries=True)
+        self.format_histo(h, x_tit='Number of Clusters', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
+        self.save_tel_histo(h, 'NCluster', show, logy=True)
+        return h
+
     def draw_event(self, event, plane, show=True):
         cut = 'plane == {r}'.format(r=plane)
         h = TH2F('h_ed{i}'.format(i=plane), 'Event Hits for Plane {r}'.format(r=plane), *self.Plots.Settings['2DBins'])
