@@ -1476,7 +1476,7 @@ class PadAnalysis(Analysis):
             self.tree.Draw('(@col.size()>1)*100:Entry$>>h', 'pulser', 'goff')
             self.format_histo(h, title='Event Alignment', x_tit='Event Number', y_tit='Hit Efficiency @ Pulser Events [%]', y_off=1.3, stats=0, y_range=[0, 105], fill_color=self.FillColor)
             self.save_histo(h, 'EventAlignment', show, self.TelSaveDir, draw_opt='hist', prnt=show, rm=.08)
-            return all(h.GetBinContent(bin_) < 40 for bin_ in xrange(5, h.GetNbinsX()))
+            return sum(h.GetBinContent(bin_) > 40 for bin_ in xrange(5, h.GetNbinsX())) < h.GetNbinsX() * .02
 
         aligned = func() if show else None
         aligned = do_pickle(pickle_path, func, aligned)
