@@ -555,7 +555,10 @@ class RunSelection(Elementary):
     @staticmethod
     def save_runinfo(f, runinfo):
         f.seek(0)
-        json.dump(runinfo, f, indent=2)
+        dic = OrderedDict(sorted(runinfo.iteritems(), key=lambda (key, v): (int(key), v)))
+        for run, value in dic.iteritems():
+            dic[run] = OrderedDict(sorted(value.iteritems()))
+        json.dump(dic, f, indent=2)
         f.truncate()
         f.close()
 
