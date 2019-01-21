@@ -76,10 +76,6 @@ class Elementary(Draw):
             split_runs = [0] + loads(self.ana_config_parser.get('SPLIT', 'runs')) + [inf]
             config_nr = next(i for i in xrange(1, len(split_runs)) if split_runs[i - 1] <= run_number < split_runs[i])
             run_parser.read(join(self.Dir, 'Configuration', self.TCString, 'RunConfig{nr}.ini'.format(nr=config_nr)))  # add the content of the split config
-        elif self.MainConfigParser.has_section(self.TCString) and run_number is not None:  # check for splits in the test campaign
-            split_runs = [0] + loads(self.MainConfigParser.get(self.TCString, 'split_runs')) + [inf]
-            config_nr = next(i for i in xrange(1, len(split_runs)) if split_runs[i - 1] <= run_number < split_runs[i])
-            run_parser.read(join(self.Dir, 'Configuration', self.TCString, 'RunConfig{nr}.ini'.format(nr=config_nr)))  # add the content of the split config
         return run_parser
 
     @staticmethod
