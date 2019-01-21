@@ -127,7 +127,8 @@ class PulserAnalysis(Elementary):
         h = self.draw_distribution(show=show, corr=corr, beam_on=beam_on, bin_width=bin_width, events=events, start=start, stats=True, redo=redo, prnt=prnt)
         h.SetName('Fit Result')
         same_pols = self.Polarity == self.Ana.Polarity
-        full_fit = h.Fit('gaus', 'qs0')
+        xmax = h.GetBinCenter(h.GetMaximumBin())
+        full_fit = h.Fit('gaus', 'qs0', '', xmax - 5, xmax + 5)
         xmin, xmax = [full_fit.Parameter(1) + i * full_fit.Parameter(2) for i in ([-2, .5] if same_pols else [-.5, 2])]
         fit_func = h.Fit('gaus', 'qs{0}'.format('' if show else '0'), '', xmin, xmax)
         f = deepcopy(gROOT.GetFunction('gaus'))
