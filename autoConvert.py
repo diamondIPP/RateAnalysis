@@ -28,7 +28,7 @@ class AutoConvert:
 
         self.Multi = multi
         self.FirstRun = self.load_last_converted()
-        self.EndRun = max(self.RunInfos) if end_run is None else end_run
+        self.EndRun = max(self.RunInfos) if end_run is None else int(end_run)
         self.Converter.set_run(self.FirstRun)
 
     def load_last_converted(self):
@@ -83,10 +83,11 @@ class AutoConvert:
         n_cpus = cpu_count()
         self.Converter.Run.log_info('We got {0} CPUs\n'.format(n_cpus))
         self.Converter.Run.log_info('Creating pool with {0} processes\n'.format(n_cpus))
+        self.Converter.Run.log_info('End conversion at run {}'.format(self.EndRun))
 
         pool = Pool(n_cpus)
 
-        tasks = [(self, [run]) for run in [run for run in self.RunInfos if self.FirstRun <= run <= self.EndRun]]
+        tasks = [(self, [run]) for run in self.RunInfos if self.FirstRun <= run <= self.EndRun]
         results = [pool.apply_async(execute, t) for t in tasks]
         for res in results:
             print res.get(timeout=10000)
