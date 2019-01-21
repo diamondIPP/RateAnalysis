@@ -322,6 +322,8 @@ class Run(Elementary):
 
     def calculate_flux(self):
 
+        if self.RunNumber is None:
+            return
         fluxes = []
         self.find_for_in_comment()
         if self.RunInfo['for1'] or self.RunInfo['for2']:
@@ -376,7 +378,7 @@ class Run(Elementary):
 
     def find_for_in_comment(self):
         for name in ['for1', 'for2']:
-            if not self.RunInfo[name]:
+            if name not in self.RunInfo:
                 for cmt in self.RunInfo['comments'].split('\r\n'):
                     cmt = cmt.replace(':', '')
                     cmt = cmt.split(' ')
