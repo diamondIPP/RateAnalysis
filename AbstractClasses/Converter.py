@@ -141,7 +141,8 @@ class Converter:
         return file_path
 
     def get_root_file_path(self):
-        return join(self.RootFileDir, 'test{run:06d}.root'.format(run=self.RunNumber))
+        name = glob(join(self.RootFileDir, '*{run:05d}.root'.format(run=self.RunNumber)))
+        return name[0] if name else ''
 
     def get_tracking_file_path(self):
         return self.get_root_file_path().replace('.root', '_withTracks.root')
