@@ -28,7 +28,7 @@ class TimingAnalysis(Elementary):
 
     def draw_raw_peaks(self, xmin=100, xmax=400, ch=None, corr=False):
         h = TH1F('h_pt', 'PeakTimings', xmax - xmin, xmin, xmax)
-        channel = self.DiamondNumber - 1 if ch is None else ch
+        channel = self.Ana.channel if ch is None else ch
         self.Tree.Draw('max_peak_{p}[{c}]>>h_pt'.format(c=channel, p='position' if not corr else 'time'), '', 'goff')
         self.format_histo(h, x_tit='Digitiser Bin', y_tit='Number of Entries')
         self.draw_histo(h)
