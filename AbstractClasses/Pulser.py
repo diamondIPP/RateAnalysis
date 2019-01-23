@@ -167,8 +167,8 @@ class PulserAnalysis(Elementary):
         self.save_histo(stack, 'PulserPedestalComparison', show, lm=.12, l=legend, draw_opt='nostack')
         self.reset_colors()
 
-    def draw_waveforms(self, n=1, start_event=None, show=True, t_corr=False):
-        self.Ana.draw_waveforms(n=n, start_event=start_event, cut=self.PulserCut, show=show, t_corr=t_corr)
+    def draw_waveforms(self, n=1, ch=None, start_event=None, show=True, t_corr=False):
+        self.Ana.draw_waveforms(n=n, start_event=start_event, cut=self.PulserCut, show=show, t_corr=t_corr, channel=ch)
 
     def save_pulser_shapes(self, n_pics=5, show=True):
         events_spacing = (self.Ana.EndEvent - self.Ana.StartEvent) / n_pics

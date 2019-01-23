@@ -485,7 +485,7 @@ class RunSelection(Elementary):
     def change_runinfo_key(self):
         f, runinfo = self.get_sorted_runinfo()
         runs = self.get_selected_runs()
-        keys = [str(key) for key in runinfo[str(runs[0])]]
+        keys = sorted(str(key) for key in runinfo[str(runs[0])])
         print keys
         change_key = raw_input('Enter the key you want to change: ')
         assert change_key in keys, 'The entered key does not exist!'
