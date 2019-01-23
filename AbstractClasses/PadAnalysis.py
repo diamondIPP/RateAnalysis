@@ -113,12 +113,10 @@ class PadAnalysis(Analysis):
         return [str(name) for name in self.tree.IntegralNames]
 
     def get_polarity(self):
-        self.tree.GetEntry(0)
-        return self.tree.polarities[self.channel]
+        return int(self.Run.TreeConfig.get('General', 'polarities').split()[self.channel])
 
     def get_pulser_polarity(self):
-        self.tree.GetEntry(0)
-        return self.tree.pulser_polarities[self.channel]
+        return int(self.Run.TreeConfig.get('General', 'pulser polarities').split()[self.channel])
 
     def load_regions(self):
         all_regions = {}
