@@ -2,7 +2,7 @@
 # IMPORTS
 # ==============================================
 from ConfigParser import ConfigParser
-from math import copysign
+from numpy import sign
 from re import sub
 from shutil import move
 from os import getcwd, chdir, rename
@@ -112,7 +112,7 @@ class Converter:
             return config
         options = self.RunParser.options('ROOTFILE_GENERATION')
         for opt in options:
-            if any(opt.endswith(ending) for ending in ['_range', '_region', '_range_drs4']) or opt == 'polarities':
+            if any(opt.endswith(ending) for ending in ['_range', '_region', '_range_drs4']) or 'polarities' in opt:
                 config[opt] = loads(self.RunParser.get('ROOTFILE_GENERATION', opt))
             elif opt not in ['excluded_runs']:
                 config[opt] = self.RunParser.getint('ROOTFILE_GENERATION', opt)
@@ -221,19 +221,13 @@ class Converter:
         move(join(self.TrackingDir, basename(self.get_tracking_file_path())), self.RootFileDir)
         self.rename_tracking_file()
 
-    def load_polarities(self, info):
-        if self.RunParser.has_option('ROOTFILE_GENERATION', 'polarities'):
-            return self.RunParser.get('ROOTFILE_GENERATION', 'polarities')
+    def load_polarities(self, pulser=False):
+        option = '{}polarities'.format('pulser_' if pulser else '')
+        if self.RunParser.has_option('ROOTFILE_GENERATION', option):
+            return self.RunParser.get('ROOTFILE_GENERATION', option)
         active_regions = self.RunParser.getint('ROOTFILE_GENERATION', 'active_regions')
-        pols = []
-        i = 1
-        for j in xrange(self.NChannels):
-            if has_bit(active_regions, j):
-                pols.append(int(copysign(1, info['dia{0}hv'.format(i)])))
-                i += 1
-            else:
-                pols.append(0)
-        return str(pols)
+        biases = deepcopy(self.Run.Bias)
+        return str([sign(biases.pop(0)) if has_bit(active_regions, i) else 0 for i in xrange(self.NChannels)])
 
     def set_converter_configfile(self):
 
@@ -242,8 +236,8 @@ class Converter:
         parser.read(config_file)
         section = 'Converter.{}'.format(self.ConverterTree)
         if self.Type == 'pad':
-            parser.set(section, 'polarities', self.load_polarities(self.RunInfo))
-            parser.set(section, 'pulser_polarities', self.load_polarities(self.RunInfo))
+            parser.set(section, 'polarities', self.load_polarities())
+            parser.set(section, 'pulser_polarities', self.load_polarities(pulser=True))
 
         # remove unset ranges and regions
         new_options = self.RunParser.options('ROOTFILE_GENERATION')
