@@ -148,6 +148,7 @@
         "pulser2": "?"
       }, 
       "runs": [
+        69, 
         73, 
         74, 
         75, 
@@ -158,6 +159,7 @@
         80, 
         81, 
         82, 
+        83, 
         84, 
         85, 
         86, 
@@ -265,9 +267,26 @@
       ], 
       "type": "rate scan"
     }, 
+    "03": {
+      "attenuators": {
+        "dia1": "6dB_?", 
+        "dia2": "None", 
+        "pulser1": "?", 
+        "pulser2": "?"
+      }, 
+      "runs": [
+        118, 
+        119, 
+        120, 
+        122, 
+        123, 
+        125
+      ], 
+      "type": "up scan"
+    }, 
     "04": {
       "attenuators": {
-        "dia1": "?", 
+        "dia1": "6dB_?", 
         "dia2": "None", 
         "pulser1": "?", 
         "pulser2": "?"
@@ -294,7 +313,7 @@
     }, 
     "04.1": {
       "attenuators": {
-        "dia1": "?", 
+        "dia1": "6dB_?", 
         "dia2": "None", 
         "pulser1": "?", 
         "pulser2": "?"
@@ -311,7 +330,7 @@
     }, 
     "05": {
       "attenuators": {
-        "dia1": "?", 
+        "dia1": "6dB_?", 
         "dia2": "None", 
         "pulser1": "?", 
         "pulser2": "?"
@@ -337,7 +356,7 @@
     }, 
     "05.1": {
       "attenuators": {
-        "dia1": "?", 
+        "dia1": "6dB_?", 
         "dia2": "None", 
         "pulser1": "?", 
         "pulser2": "?"
@@ -352,7 +371,32 @@
       ], 
       "type": "up scan"
     }, 
-    "06": {
+    "07": {
+      "attenuators": {
+        "dia1": "?", 
+        "dia2": "?", 
+        "pulser1": "?", 
+        "pulser2": "?"
+      }, 
+      "runs": [
+        270, 
+        271, 
+        272, 
+        287, 
+        288, 
+        289, 
+        291, 
+        292
+      ], 
+      "type": "voltage scan"
+    }, 
+    "08": {
+      "attenuators": {
+        "dia1": "?", 
+        "dia2": "?", 
+        "pulser1": "?", 
+        "pulser2": "?"
+      }, 
       "runs": [
         293, 
         294, 
@@ -361,10 +405,17 @@
         297, 
         298
       ], 
-      "type": "rate scan"
+      "type": "up scan"
     }, 
-    "07": {
+    "09": {
+      "attenuators": {
+        "dia1": "?", 
+        "dia2": "?", 
+        "pulser1": "?", 
+        "pulser2": "?"
+      }, 
       "runs": [
+        300, 
         304, 
         305, 
         306, 
@@ -382,19 +433,32 @@
         318, 
         319
       ], 
-      "type": "signal"
+      "type": "rate scan"
     }, 
-    "08": {
+    "10": {
+      "attenuators": {
+        "dia1": "?", 
+        "dia2": "?", 
+        "pulser1": "?", 
+        "pulser2": "?"
+      }, 
       "runs": [
+        321, 
         322, 
         323, 
         324, 
         325, 
         327
       ], 
-      "type": "rate scan"
+      "type": "up scan"
     }, 
-    "09": {
+    "11": {
+      "attenuators": {
+        "dia1": "?", 
+        "dia2": "?", 
+        "pulser1": "?", 
+        "pulser2": "?"
+      }, 
       "runs": [
         330, 
         332, 
@@ -415,7 +479,30 @@
       ], 
       "type": "rate scan"
     }, 
-    "10": {
+    "12": {
+      "attenuators": {
+        "dia1": "?", 
+        "dia2": "?", 
+        "pulser1": "?", 
+        "pulser2": "?"
+      }, 
+      "runs": [
+        351, 
+        352, 
+        353, 
+        354, 
+        355, 
+        356
+      ], 
+      "type": "voltage scan"
+    }, 
+    "13": {
+      "attenuators": {
+        "dia1": "?", 
+        "dia2": "?", 
+        "pulser1": "?", 
+        "pulser2": "?"
+      }, 
       "runs": [
         386, 
         387, 
@@ -432,7 +519,13 @@
       ], 
       "type": "rate scan"
     }, 
-    "11": {
+    "14": {
+      "attenuators": {
+        "dia1": "6dB_?", 
+        "dia2": "None", 
+        "pulser1": "?", 
+        "pulser2": "?"
+      }, 
       "runs": [
         431, 
         432, 
@@ -440,9 +533,15 @@
         434, 
         436
       ], 
-      "type": "rate scan"
+      "type": "up scan"
     }, 
-    "12": {
+    "15": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser1": "?", 
+        "pulser2": "?"
+      }, 
       "runs": [
         439, 
         440, 
@@ -462,11 +561,18 @@
         458, 
         459
       ], 
-      "type": "signal"
+      "type": "rate scan"
     }, 
-    "13": {
+    "16": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser1": "?", 
+        "pulser2": "?"
+      }, 
       "runs": [
         462, 
+        463, 
         464, 
         465, 
         466, 
@@ -485,7 +591,7 @@
       ], 
       "type": "rate scan"
     }, 
-    "13.1": {
+    "16.1": {
       "attenuators": {
         "dia1": "None", 
         "dia2": "None", 
@@ -507,7 +613,13 @@
       ], 
       "type": "rate scan"
     }, 
-    "13.2": {
+    "16.2": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser1": "?", 
+        "pulser2": "?"
+      }, 
       "runs": [
         462, 
         464, 
@@ -516,9 +628,15 @@
         467, 
         468
       ], 
-      "type": "rate scan"
+      "type": "up scan"
     }, 
-    "13.3": {
+    "16.3": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser1": "?", 
+        "pulser2": "?"
+      }, 
       "runs": [
         473, 
         474, 
@@ -527,7 +645,7 @@
         477, 
         478
       ], 
-      "type": "rate scan"
+      "type": "up scan"
     }
   }, 
   "201510": {
