@@ -365,7 +365,7 @@ class Run(Elementary):
             pass
         # check for corner method
         elif not maskdata.values()[0].keys()[0].startswith('corn'):
-            log_warning('Invalid mask file. Not taking any mask!')
+            log_warning('Invalid mask file: "{}". Not taking any mask!'.format(mask_file))
         else:
             for plane, dic in maskdata.iteritems():
                 row = dic['cornBot'][0], dic['cornTop'][0]

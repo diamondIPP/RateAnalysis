@@ -165,8 +165,8 @@ class CutPix(Cut):
         return cut_value
 
     def generate_trigger_phase(self):
-        mi, ma = self.CutConfig['trigPhase']
-        return 'trigger_phase[1]>={min}&&trigger_phase[1]<={max}'.format(min=mi, max=ma)
+        cut_range = self.CutConfig['trigPhase']
+        return 'trigger_phase[1]>={min}&&trigger_phase[1]<={max}'.format(min=cut_range[0], max=cut_range[1]) if cut_range else ''
 
     def generate_fiducial(self, name='fid', center=False):
         xy = self.CutConfig['FidRegion']
