@@ -61,6 +61,10 @@ class Run(Elementary):
         self.Duration = self.LogEnd - self.LogStart
         self.LogHalfTime = time_stamp(self.LogStart + self.Duration / 2)
 
+        # extract run info
+        self.DiamondNames = self.load_diamond_names()
+        self.Bias = self.load_biases()
+
         self.Converter = Converter(self)
         if self.set_run(run_number, tree):
             # tree info
@@ -86,14 +90,6 @@ class Run(Elementary):
                 self.PeakIntegrals = self.load_peak_integrals()
                 self.TCal = self.load_tcal()
                 self.NSamples = len(self.TCal)
-
-        # extract run info
-        self.DiamondNames = self.load_diamond_names()
-        self.Bias = self.load_biases()
-        self.IsMonteCarlo = False
-
-        # root objects
-        self.RunInfoLegends = []
 
     # ==============================================
     # region LOAD FUNCTIONS
