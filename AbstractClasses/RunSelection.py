@@ -423,7 +423,7 @@ class RunSelection(Elementary):
 
     def get_attenuators_from_runcofig(self):
         dic = {}
-        for i in xrange(1, len(filter(lambda key: 'att_dia' in key, self.RunInfos[self.get_selected_runs()[0]].iterkeys())) + 1):
+        for i in xrange(1, len(self.get_diamond_names(sel=True)) + 1):
             dic['dia{}'.format(i)] = self.get_attenuator('att_dia{}'.format(i))
             dic['pulser{}'.format(i)] = self.get_attenuator('att_pul{}'.format(i))
         return dic
@@ -461,7 +461,7 @@ class RunSelection(Elementary):
 
     def get_attenuator(self, key):
         atts = self.get_runinfo_values(key, sel=True)
-        return atts[0] if len(atts) == 1 else None
+        return atts[0] if atts is not None and len(atts) == 1 else '?'
 
     def get_run_type(self, run_type=None):
         types = [t.replace('_', ' ') for t in self.get_runinfo_values('runtype', sel=True)]
@@ -483,10 +483,9 @@ class RunSelection(Elementary):
         return dic
 
     def change_runinfo_key(self):
-        f = open(self.Run.runinfofile, 'r+')
+        f, runinfo = self.get_sorted_runinfo()
         runs = self.get_selected_runs()
-        runinfo = json.load(f)
-        keys = [str(key) for key in runinfo.values()[0].iterkeys()]
+        keys = [str(key) for key in runinfo[str(runs[0])]]
         print keys
         change_key = raw_input('Enter the key you want to change: ')
         assert change_key in keys, 'The entered key does not exist!'
@@ -495,7 +494,7 @@ class RunSelection(Elementary):
             print '{run}:  {value}'.format(run=run, value=runinfo[str(run)][change_key])
         change_value = raw_input('Enter the new value: ')
         for run in runs:
-            runinfo[str(run)][change_key] = float(change_value) if isfloat(change_value) else change_value
+            runinfo[str(run)][change_key] = float(change_value) if isfloat(change_value) else change_value.strip('\'\"')
         self.save_runinfo(f, runinfo)
         self.RunInfos = self.load_run_infos()
 
