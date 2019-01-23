@@ -261,24 +261,30 @@ class PixAnalysis(Analysis):
             filenames = [join(self.Run.Converter.TrackingDir, file_dir, 'phCalibration_C{}.dat'.format(i)) for i in xrange(self.NRocs)]
         vcals = []
         for filename in filenames:
-            with open(filename) as f:
-                f.readline()
-                vcals.append(array([int(i) for i in f.readline().strip('Low range: ').split()] + [int(i) * 7 for i in f.readline().strip('High range: ').split()], 'i2'))
+            if file_exists(filename):
+                with open(filename) as f:
+                    f.readline()
+                    vcals.append(array([int(i) for i in f.readline().strip('Low range: ').split()] + [int(i) * 7 for i in f.readline().strip('High range: ').split()], 'i2'))
+            else:
+                log_warning('Calibration file: "{}" does not exist!'.format(basename(filename)))
         return array(vcals)
 
     def get_calibration_points(self):
         with open(self.get_calibration_dir()) as f:
             file_dir = f.readline().strip('./\n')
             filenames = [join(self.Run.Converter.TrackingDir, file_dir, 'phCalibration_C{}.dat'.format(i)) for i in xrange(self.NRocs)]
-        points = [zeros((self.Plots.NCols, self.Plots.NRows, len(self.Vcals[i])), 'i2') for i in xrange(self.NRocs)]
+        points = [zeros((self.Plots.NCols, self.Plots.NRows, len(self.Vcals[i])), 'i2') for i in xrange(self.NRocs) if i < len(self.Vcals)]
         for i, filename in enumerate(filenames):
-            with open(filename) as f:
-                for _ in xrange(4):
-                    f.readline()
-                for line in f.readlines():
-                    data = line.split('Pix')
-                    col, row = [int(word) for word in data[-1].split()]
-                    points[i][col][row] = [int(word) for word in data[0].split()]
+            if file_exists(filename):
+                with open(filename) as f:
+                    for _ in xrange(4):
+                        f.readline()
+                    for line in f.readlines():
+                        data = line.split('Pix')
+                        col, row = [int(word) for word in data[-1].split()]
+                        points[i][col][row] = [int(word) for word in data[0].split()]
+            else:
+                log_warning('Calibration file: "{}" does not exist!'.format(filename))
         return points
 
     def get_calibration_dir(self):
@@ -287,7 +293,7 @@ class PixAnalysis(Analysis):
     def get_calibration_fitpars(self):
         with open(self.get_calibration_dir()) as f:
             file_dir = f.readline().strip('./\n')
-            filenames = [join(self.Run.Converter.TrackingDir, file_dir, line.strip('\n')) for line in f.readlines()]
+            filenames = [join(self.Run.Converter.TrackingDir, file_dir, line.strip('\n ')) for line in f.readlines()]
         parameters = zeros((self.NRocs, self.Plots.NCols, self.Plots.NRows, 4))
         for i, filename in enumerate(filenames):
             with open(filename) as f:
@@ -484,7 +490,7 @@ class PixAnalysis(Analysis):
         return round(x1 + self.PX * (n % nx), 4), round(y1 + self.PY * (n / nx), 4)
 
     def draw_cell_efficiency(self, cell=0, res=2, show=True):
-        x, y = self.get_fiducial_cell(cell)
+        # x, y = self.get_fiducial_cell(cell)
         cut_string = self.Cut.generate_special_cut(excluded=['masks'])
         p = TProfile2D('pce', 'Efficiency for Fiducial Cell {}'.format(cell), res, 0, self.PX, res, 0, self.PY)
         n = self.tree.Draw('(n_hits[{r}]>0)*100:dia_track_y_local[{r1}]:dia_track_x_local[{r1}]>>pce'.format(r=self.Dut, r1=self.Dut - 4), cut_string, 'goff')
