@@ -189,6 +189,7 @@ class AnalysisCollection(Elementary):
         self.draw_signal_distributions(show=False, redo=redo)
         self.save_signal_maps(redo=redo)
         self.save_signal_maps(hitmap=True, redo=redo)
+        self.draw_run_currents()
         self.set_verbose(old_verbose)
         print_elapsed_time(t0)
     
@@ -1180,6 +1181,7 @@ class AnalysisCollection(Elementary):
         self.Currents.draw_indep_graphs(rel_time=rel_time, v_range=v_range, averaging=averaging, with_flux=with_flux, c_range=c_range, f_range=f_range, show=show, draw_opt=draw_opt)
 
     def draw_run_currents(self):
+        log_message('Generating currents ...')
         self.start_pbar(self.NRuns)
         for i, ana in enumerate(self.collection.itervalues(), 1):
             ana.draw_current(relative_time=False, show=False)
