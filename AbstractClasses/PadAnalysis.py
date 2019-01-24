@@ -96,8 +96,8 @@ class PadAnalysis(Analysis):
             for obj in lst:
                 self.del_rootobj(obj)
 
-    def draw_current(self, relative_time=True, averaging=1):
-        self.Currents.draw_indep_graphs(rel_time=relative_time, averaging=averaging)
+    def draw_current(self, relative_time=True, averaging=1, show=True):
+        self.Currents.draw_indep_graphs(rel_time=relative_time, averaging=averaging, show=show)
 
     # ==========================================================================
     # region INIT
