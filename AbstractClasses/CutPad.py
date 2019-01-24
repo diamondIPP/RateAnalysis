@@ -47,13 +47,10 @@ class CutPad(Cut):
         self.CutConfig['threshold'] = self.load_dia_config('threshold', store_true=True)
 
     def load_fiducial(self):
-        if self.MainConfigParser.has_option(self.TESTCAMPAIGN, 'fid_split_runs'):
-            split_runs = [0] + loads(self.MainConfigParser.get(self.TESTCAMPAIGN, 'fid_split_runs')) + [int(1e10)]
-            for i in xrange(0, len(split_runs) - 1):
-                if split_runs[i] <= self.RunNumber < split_runs[i + 1]:
-                    return self.load_dia_config('fid_cuts{n}'.format(n=i if i else ''))
-        else:
-            return self.load_dia_config('fid_cuts')
+        if self.ana_config_parser.has_option('SPLIT', 'fiducial'):
+            split_runs = loads(self.ana_config_parser.get('SPLIT', 'fiducial')) + [int(1e10)]
+            return next(self.load_dia_config('fid_cuts{n}'.format(n=i if i else '')) for i in xrange(len(split_runs)) if self.RunNumber <= split_runs[i])
+        return self.load_dia_config('fid_cuts')
 
     def load_config_data(self, name):
         value = self.ana_config_parser.getint('CUT', name)
