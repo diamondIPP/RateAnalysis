@@ -734,6 +734,8 @@ class PadAnalysis(Analysis):
     @staticmethod
     def __get_max_fit_pos(h):
         """ look for huge fluctiations in ph graph and return last stable point"""
+        if mean([h.GetBinContent(i) for i in xrange(h.GetNbinsX())]) < 10:  # if the pulse height is very low there will be always big fluctuations!
+            return h.GetBinCenter(h.GetNbinsX()) + 1000
         sum_ph = h.GetBinContent(1)
         for i in xrange(2, h.GetNbinsX() + 1):
             sum_ph += h.GetBinContent(i)
