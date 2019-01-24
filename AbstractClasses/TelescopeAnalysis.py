@@ -514,9 +514,11 @@ class Analysis(Elementary):
             fit = h.Fit('gaus', 'qs{}'.format('' if show else 0), '', max_val * .9, max_val * 1.1)
             self.format_histo(h, 'Fit Result', y_tit='Number of Entries', x_tit='Flux [kHz/cm^{2}]', fill_color=self.FillColor, y_off=1.3)
             self.save_tel_histo(h, 'FluxDisto', lm=.13, ind=None, show=show, prnt=prnt)
-            return make_ufloat((fit.Parameter(1), fit.Parameter(2) + .05 * fit.Parameter(1)))
+            m, s = fit.Parameter(1), fit.Parameter(2)
+            m, s = (m, s) if s < m / 2. and fit.Ndf() and fit.Chi2() / fit.Ndf() < 10 else mean_sigma(values)
+            return make_ufloat((m, s + .05 * m))
 
-        return do_pickle(pickle_path, f)
+        return do_pickle(pickle_path, f, redo=show)
     # endregion
 
     def fit_langau(self, h=None, nconv=30, show=True, chi_thresh=8):
