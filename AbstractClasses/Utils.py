@@ -251,6 +251,8 @@ def scale_legend(l, txt_size=None, width=None, height=None):
 
 
 def make_irr_string(val):
+    if '?' in val:
+        return val
     if not float(val):
         return 'nonirradiated'
     val, power = [float(i) for i in val.split('e')]
