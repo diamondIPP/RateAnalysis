@@ -871,8 +871,8 @@ class AnalysisCollection(Elementary):
         g = self.make_tgrapherrors('gcf', 'Leakage Current vs. Flux')
         for i, (flux, current) in enumerate(zip(fluxes, currents)):
             if current is not None:
-                g.SetPoint(i, flux[0], current.n)
-                g.SetPointError(i, flux[1] + flux[0] * .05, current.s)
+                g.SetPoint(i, flux.n, current.n)
+                g.SetPointError(i, flux.s + flux.n * .05, current.s)
         c_range = [.1, max([c.n for c in currents if c is not None]) * 2] if c_range is None else c_range
         self.format_histo(g, x_tit='Flux [kHz/cm^{2}', y_tit='Current [nA]', y_off=1.3, y_range=c_range, draw_first=True)
         g.GetXaxis().SetLimits(1, 20000)
@@ -1178,6 +1178,14 @@ class AnalysisCollection(Elementary):
 
     def draw_currents(self, v_range=None, rel_time=False, averaging=1, with_flux=False, c_range=None, f_range=None, draw_opt='ap', show=True):
         self.Currents.draw_indep_graphs(rel_time=rel_time, v_range=v_range, averaging=averaging, with_flux=with_flux, c_range=c_range, f_range=f_range, show=show, draw_opt=draw_opt)
+
+    def draw_run_currents(self):
+        self.start_pbar(self.NRuns)
+        for i, ana in enumerate(self.collection.itervalues(), 1):
+            ana.draw_current(relative_time=False, show=False)
+            ana.Currents.get_current()
+            self.ProgressBar.update(i)
+        self.ProgressBar.finish()
 
     def get_hv_device(self):
         return self.FirstAnalysis.Currents.Name
