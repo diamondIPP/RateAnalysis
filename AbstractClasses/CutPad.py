@@ -439,8 +439,10 @@ class CutPad(Cut):
             h1 = self.analysis.Timing.draw_peaks(show=False, fine_corr=False, prnt=False, cut=cut)
             fit1 = h1.GetListOfFunctions()[2]
             h2 = self.analysis.Timing.draw_peaks_tc(show=False, prnt=False, cut=cut)
-            t_correction = self.analysis.Timing.get_fine_correction(cut=cut)
-            h3 = self.analysis.Timing.draw_peaks(show=False, fine_corr=True, prnt=False, cut=cut)
+            fit2 = h2.GetListOfFunctions()[0]
+            fine_corr = fit2.GetChisquare() / fit2.GetNDF() < 50
+            t_correction = self.analysis.Timing.get_fine_correction(cut=cut) if fine_corr else '0'
+            h3 = self.analysis.Timing.draw_peaks(show=False, fine_corr=fine_corr, prnt=False, cut=cut)
             fit3 = h3.GetListOfFunctions()[2]
 
             original_mpv = fit1.GetParameter(1)
