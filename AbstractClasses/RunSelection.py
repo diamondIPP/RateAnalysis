@@ -317,14 +317,24 @@ class RunSelection(Elementary):
         self.RunPlan[rp_str] = {'type': name, 'runs': runs}
         self.save_runplan()
 
+    def add_amplifier(self, rp=None):
+        rp = self.make_runplan_string(raw_input('Enter run plan number: ')) if rp is None else rp
+        print 'Common amplifiers: Cx_1 C6_1 C6_2'
+        print 'leave blank for OSU amps'
+        amp1 = raw_input('Enter amplifier for detector 1: ')
+        amp2 = raw_input('Enter amplifier for detector 2: ')
+        if amp1 or amp2:
+            self.add_runplan_info(rp, 'amplifiers', '["{}", "{}"]'.format(amp1, amp2))
+
     def add_runplan_key(self):
         rp = self.make_runplan_string(raw_input('Enter run plan number: '))
-        info = self.RunPlan[rp]
-        print 'Current keys: {}'.format(info.keys())
+        print 'Current keys: {}'.format(self.RunPlan[rp].keys())
         new_key = raw_input('Which key do you want to add? ')
         value = raw_input('Enter the value: ')
-        info[new_key] = value
-        self.RunPlan[rp] = info
+        self.add_runplan_info(rp, new_key, value)
+
+    def add_runplan_info(self, rp, key, value):
+        self.RunPlan[rp][key] = value
         self.save_runplan()
 
     def add_attenuators(self, rp=None, attenuator=None, ask=True):
@@ -420,6 +430,7 @@ class RunSelection(Elementary):
         if attenuators:
             self.RunPlan[plan_nr]['attenuators'] = attenuators
         self.save_runplan()
+        self.add_amplifier(plan_nr)
 
     def get_attenuators_from_runcofig(self):
         dic = {}
