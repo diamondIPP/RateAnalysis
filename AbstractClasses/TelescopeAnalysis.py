@@ -461,7 +461,7 @@ class Analysis(Elementary):
         if not self.has_branch('rate'):
             log_warning('The "rate" branch does not exist in this tree')
             return
-        n = self.tree.Draw('rate[{p}]:time / 1000.'.format(p=plane), 'beam_current < 10000', 'goff')
+        n = self.tree.Draw('rate[{p}]:time / 1000.'.format(p=plane), 'beam_current < 10000 && rate[{}]<1e9'.format(plane), 'goff')
         rate = [self.tree.GetV1()[i] for i in xrange(n)]
         t = [self.tree.GetV2()[i] for i in xrange(n)]
         g = self.make_tgrapherrors('gpr', 'Rate of Plane {n}'.format(n=plane), x=t + [t[-1]], y=rate + [0])
@@ -469,11 +469,11 @@ class Analysis(Elementary):
         self.save_tel_histo(g, 'Plane{n}Rate'.format(n=plane), draw_opt='afp', lm=.08, x_fac=1.5, y_fac=.75, ind=None, show=show)
 
     def draw_flux(self, bin_width=5, cut='', rel_t=True, show=True, prnt=True):
-        cut = TCut('beam_current < 10000') + TCut(cut)
         set_root_warnings(OFF)
         p = TProfile('pf', 'Flux Profile', *self.Plots.get_time_binning(bin_width=bin_width))
         p1, p2 = self.get_trigger_planes()
         a1, a2 = self.Run.get_unmasked_area().values()
+        cut = TCut('beam_current < 10000 && rate[{}] < 1e9 && rate[{}] < 1e9'.format(p1 + 1, p2 + 1)) + TCut(cut)
         # rate[0] is scintillator
         self.tree.Draw('(rate[{p1}] / {a1} + rate[{p2}] / {a2}) / 2000 : time / 1000.>>pf'.format(p1=p1 + 1, p2=p2 + 1, a1=a1, a2=a2), cut, 'goff', self.Run.n_entries, 1)
         y_range = [0, p.GetMaximum() * 1.2]
@@ -505,7 +505,7 @@ class Analysis(Elementary):
         def f():
             set_statbox(fit=True, entries=6)
             h = self.draw_flux(cut=self.Cut.generate_special_cut(included=['beam_interruptions', 'event_range'], prnt=prnt), show=False, prnt=prnt)
-            values = [h.GetBinContent(i) for i in xrange(h.GetNbinsX()) if h.GetBinContent(i)]
+            values = [h.GetBinContent(i) for i in xrange(h.GetNbinsX()) if h.GetBinContent(i) and h.GetBinContent(i) < 1e6]
             m, s = mean_sigma(values)
             h = TH1F('hfl', 'Flux Distribution', int(sqrt(h.GetNbinsX()) * 2), m - 3 * s, m + 4 * s)
             for val in values:
