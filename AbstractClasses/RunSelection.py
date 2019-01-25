@@ -431,6 +431,7 @@ class RunSelection(Elementary):
             self.RunPlan[plan_nr]['attenuators'] = attenuators
         self.save_runplan()
         self.add_amplifier(plan_nr)
+        self.unselect_all_runs()
 
     def get_attenuators_from_runcofig(self):
         dic = {}
