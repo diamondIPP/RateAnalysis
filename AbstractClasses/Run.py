@@ -234,12 +234,10 @@ class Run(Elementary):
         return [int(self.RunInfo['dia{nr}hv'.format(nr=i)]) for i in xrange(1, self.get_n_diamonds() + 1)]
 
     def load_log_start(self):
-        t = self.RunInfo['starttime0']
-        return datetime.strptime(t, '%Y-%m-%dT%H:%M:%SZ' if 'Z' in t else '%H:%M:%S') + timedelta(hours=self.run_config_parser.getint('BASIC', 'hvtimeoffset'))
+        return conv_log_time(self.RunInfo['starttime0'])
 
     def load_log_stop(self):
-        t = self.RunInfo['endtime']
-        return datetime.strptime(t, '%Y-%m-%dT%H:%M:%SZ' if 'Z' in t else '%H:%M:%S') + timedelta(hours=self.run_config_parser.getint('BASIC', 'hvtimeoffset'))
+        return conv_log_time(self.RunInfo['endtime'])
 
     def load_start_time(self):
         return int(round(self.get_time_at_event(self.startEvent)))

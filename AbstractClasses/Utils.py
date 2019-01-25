@@ -20,6 +20,7 @@ from uncertainties.core import Variable
 from copy import deepcopy
 from gtts import gTTS
 from subprocess import call
+from pytz import timezone, utc
 
 
 OFF = False
@@ -350,6 +351,11 @@ def print_elapsed_time(start, what='This', show=True):
     string = 'Elapsed time for {w}: {d1}.{m:2d}'.format(d1=t[0], m=int(round(int(t[1][:3])) / 10.), w=what)
     print_banner(string) if show else do_nothing()
     return string
+
+
+def conv_log_time(time_str, strg=False):
+    t = datetime.strptime(time_str, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=utc).astimezone(timezone('Europe/Zurich'))
+    return t.strftime('%b %d, %H:%M:%S') if strg else t
 
 
 def has_bit(num, bit):

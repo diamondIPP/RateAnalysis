@@ -6,3 +6,4 @@
 - screeninfo
 - progressbar
 - uncertainties
+- pytz
