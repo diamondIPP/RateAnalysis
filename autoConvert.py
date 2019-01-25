@@ -63,6 +63,7 @@ class AutoConvert:
             log_message('waiting until run {} is finished since {}'.format(run, get_running_time(t)), overlay=True)
             sleep(1)
         print
+        sleep(run % cpu_count() / 2.)  # wait a little asynchronously to now overwrite the eudaq config
         Run(run, self.Converter.Run.TCString)
         self.save_last_converted(run)
 
