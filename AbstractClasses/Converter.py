@@ -5,7 +5,7 @@ from ConfigParser import ConfigParser
 from numpy import sign
 from re import sub
 from shutil import move
-from os import getcwd, chdir, rename
+from os import getcwd, chdir, rename, system
 from os.path import realpath
 from glob import glob
 from Utils import *
@@ -233,9 +233,11 @@ class Converter:
         return str([sign(biases.pop(0)) if has_bit(active_regions, i) else 0 for i in xrange(self.NChannels)])
 
     def copy_raw_file(self):
-        main_data_path = join('isg:', 'home', 'ipp', self.TcDir, 'raw', 'run{run:06d}.raw'.format(run=self.RunNumber))
-        print check_output(['rsync', '-aP', main_data_path, self.RawFileDir])
-        
+        main_data_path = join('isg:', 'home', 'ipp', self.TcDir, 'raw', basename(self.make_raw_file_path()))
+        log_message('Trying to copy {}'.format(basename(self.make_raw_file_path())))
+        # out = check_output(['rsync', '-aP', main_data_path, self.RawFileDir]).strip('\n')
+        system('rsync -aPv {} {}'.format(main_data_path, self.RawFileDir))
+
     def remove_raw_file(self):
         file_path = self.make_raw_file_path()
         if file_exists(file_path):
