@@ -12,7 +12,7 @@ from Utils import *
 from PixAlignment import PixAlignment
 from PadAlignment import PadAlignment
 from ROOT import TProfile
-from subprocess import check_call, CalledProcessError
+from subprocess import check_call, CalledProcessError, check_output
 from json import loads, load
 
 
@@ -133,9 +133,12 @@ class Converter:
         except KeyError:
             pass
         return run_infos
+    
+    def make_raw_file_path(self):
+        return join(self.RawFileDir, 'run{run:06d}.raw'.format(run=self.RunNumber))
 
     def get_raw_file_path(self):
-        file_path = join(self.RawFileDir, 'run{run:06d}.raw'.format(run=self.RunNumber))
+        file_path = self.make_raw_file_path()
         if not file_exists(file_path):
             log_critical('The raw file {} does not exist ...'.format(file_path))
         return file_path
@@ -228,6 +231,16 @@ class Converter:
         active_regions = self.RunParser.getint('ROOTFILE_GENERATION', 'active_regions')
         biases = deepcopy(self.Run.Bias)
         return str([sign(biases.pop(0)) if has_bit(active_regions, i) else 0 for i in xrange(self.NChannels)])
+
+    def copy_raw_file(self):
+        main_data_path = join('isg:', 'home', 'ipp', self.TcDir, 'raw', 'run{run:06d}.raw'.format(run=self.RunNumber))
+        print check_output(['rsync', '-aP', main_data_path, self.RawFileDir])
+        
+    def remove_raw_file(self):
+        file_path = self.make_raw_file_path()
+        if file_exists(file_path):
+            log_warning('removing {}'.format(file_path))
+            remove(file_path)
 
     def set_converter_configfile(self):
 
