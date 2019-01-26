@@ -596,7 +596,7 @@ class RunSelection(Elementary):
         return irr
 
     def get_runplan_runs(self):
-        return list(set(sorted(run for dic in self.RunPlan.itervalues() for run in dic['runs'])))
+        return sorted(list(set(run for dic in self.RunPlan.itervalues() for run in dic['runs'])))
 
     def remove_redundant_raw_files(self):
         run_plan_runs = self.get_runplan_runs()
