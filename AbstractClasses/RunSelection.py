@@ -7,6 +7,7 @@ from sys import argv
 from ConfigParser import ConfigParser
 from itertools import chain
 from Utils import *
+from glob import glob
 
 
 class RunSelection(Elementary):
@@ -593,6 +594,22 @@ class RunSelection(Elementary):
         irr = json.load(f)[self.generate_tc_str()][self.SelectedDiamond if self.SelectedDiamond is not None and dia is None else dia]
         f.close()
         return irr
+
+    def get_runplan_runs(self):
+        return list(set(sorted(run for dic in self.RunPlan.itervalues() for run in dic['runs'])))
+
+    def remove_redundant_raw_files(self):
+        run_plan_runs = self.get_runplan_runs()
+        for file_path in sorted(glob(join(self.Run.Converter.RawFileDir, 'run0*'))):
+            run = int(remove_letters(basename(file_path)))
+            if run not in run_plan_runs:
+                log_warning('removing {}'.format(file_path))
+                remove(file_path)
+
+    def copy_raw_files(self):
+        for run in self.get_runplan_runs():
+            self.Run.Converter.set_run(run)
+            self.Run.Converter.copy_raw_file()
 
 
 def verify(msg):
