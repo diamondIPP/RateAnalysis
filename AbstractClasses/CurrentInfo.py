@@ -60,6 +60,7 @@ class Currents(Elementary):
         self.DiamondNumber = self.load_dia_number()
         self.Bias = self.load_bias()
         self.StartRun = start_run
+        self.TimeZone = timezone('Europe/Zurich')
         self.StartTime = self.load_start_time()
         self.StopTime = self.load_stop_time()
 
@@ -231,11 +232,9 @@ class Currents(Elementary):
         self.log_info('Starting with log: {0}'.format(basename(log_names[start_log])))
         return log_names[start_log:]
 
-    @staticmethod
-    def get_log_date(name):
-        log_date = basename(name).split('_')
-        log_date = ''.join(log_date[-6:])
-        return datetime.strptime(log_date, '%Y%m%d%H%M%S.log').replace(tzinfo=timezone('Europe/Zurich'))
+    def get_log_date(self, name):
+        log_date = ''.join(basename(name).split('_')[-6:])
+        return self.TimeZone.localize(datetime.strptime(log_date, '%Y%m%d%H%M%S.log'))
 
     def set_start(self, zero=False):
         self.Currents.append(self.Currents[-1] if not zero else 0)
@@ -272,7 +271,7 @@ class Currents(Elementary):
         info = line.split()
         if not isfloat(info[1]) or len(info) < 3:  # goto next line if there is device info in the line
             return True
-        t = get_time_from_log(log_date, info[0])
+        t = self.get_time_from_log(info[0], log_date)
         current, voltage = float(info[2]) * 1e9, float(info[1])
         if t >= self.StopTime:
             self.FoundStop = True
@@ -316,7 +315,7 @@ class Currents(Elementary):
                 if not info:
                     break
                 if isfloat(info[1]):
-                    now = get_time_from_log(log_date, info[0])
+                    now = self.get_time_from_log(info[0], log_date)
                     if now < self.StartTime:
                         was_lines += lines
                         break
@@ -489,9 +488,8 @@ class Currents(Elementary):
         out = '{date}: {start}-{stop}'.format(date=log['begin date'], start=log['start time'], stop=log['stop time'])
         print out
 
-
-def get_time_from_log(t_str, year_str):
-    return datetime.strptime(t_str.strftime('%Y%m%d') + year_str, '%Y%m%d%H:%M:%S').replace(tzinfo=timezone('Europe/Zurich'))
+    def get_time_from_log(self, t_str, year_str):
+        return self.TimeZone.localize(datetime.strptime(year_str.strftime('%Y%m%d') + t_str, '%Y%m%d%H:%M:%S'))
 
 
 if __name__ == "__main__":
