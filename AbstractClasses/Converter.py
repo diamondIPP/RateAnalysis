@@ -12,7 +12,7 @@ from Utils import *
 from PixAlignment import PixAlignment
 from PadAlignment import PadAlignment
 from ROOT import TProfile
-from subprocess import check_call, CalledProcessError, check_output
+from subprocess import check_call, CalledProcessError
 from json import loads, load
 
 
@@ -134,8 +134,8 @@ class Converter:
             pass
         return run_infos
     
-    def make_raw_file_path(self):
-        return join(self.RawFileDir, 'run{run:06d}.raw'.format(run=self.RunNumber))
+    def make_raw_file_path(self, run=None):
+        return join(self.RawFileDir, 'run{run:06d}.raw'.format(run=self.RunNumber if run is None else run))
 
     def get_raw_file_path(self):
         file_path = self.make_raw_file_path()
