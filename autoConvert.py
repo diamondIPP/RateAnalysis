@@ -44,7 +44,7 @@ class AutoConvert:
             f.write(str(run) if not reset else 0)
 
     def load_run_infos(self):
-        return {int(key): value for key, value in self.Converter.Run.load_run_info_file().iteritems()}
+        return OrderedDict(sorted((int(key), value) for key, value in self.Converter.Run.load_run_info_file().iteritems()))
 
     def convert_run(self, run):
 
@@ -88,7 +88,7 @@ class AutoConvert:
 
         pool = Pool(n_cpus)
 
-        tasks = [(self, [run]) for run in self.RunInfos if self.FirstRun <= run <= self.EndRun]
+        tasks = [(self, [run]) for run in self.RunInfos if self.FirstRun <= run <= self.EndRun and file_exists(self.Converter.make_raw_file_path(run), warn=True)]
         results = [pool.apply_async(execute, t) for t in tasks]
         for res in results:
             print res.get(timeout=2 * 24 * 60 * 60)
