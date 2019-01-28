@@ -1,7 +1,7 @@
 #! /bin/bash
 
 IFS='_'
-cmds=($(AbstractClasses/DiamondRateScans.py -p -tc $1))
+cmds=($(AbstractClasses/DiamondRateScans.py -p $@))
 for cmd in ${cmds[@]}
 do
     eval ${cmd};
