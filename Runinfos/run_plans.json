@@ -4684,6 +4684,7 @@
       "type": "calibration"
     }, 
     "11": {
+      "amplifiers": "[\"C6_1\", \"C6_2\"]", 
       "attenuators": {
         "dia1": "None", 
         "dia2": "None", 
@@ -4708,6 +4709,7 @@
       "type": "rate scan"
     }, 
     "12": {
+      "amplifiers": "[\"C6_1\", \"C6_2\"]", 
       "attenuators": {
         "dia1": "None", 
         "dia2": "None", 
@@ -4732,6 +4734,7 @@
       "type": "rate scan"
     }, 
     "13": {
+      "amplifiers": "[\"C6_1\", \"C6_2\"]", 
       "attenuators": {
         "dia1": "None", 
         "dia2": "None", 
@@ -4749,6 +4752,7 @@
       "type": "voltage scan"
     }, 
     "14": {
+      "amplifiers": "[\"C6_1\", \"C6_2\"]", 
       "attenuators": {
         "dia1": "None", 
         "dia2": "None", 
@@ -4766,6 +4770,7 @@
       "type": "voltage scan"
     }, 
     "15": {
+      "amplifiers": "[\"C6_2\", \"\"]", 
       "attenuators": {
         "dia1": "None", 
         "dia2": "None", 
@@ -4785,6 +4790,7 @@
       "type": "voltage scan"
     }, 
     "16": {
+      "amplifiers": "[\"C6_2\", \"\"]", 
       "attenuators": {
         "dia1": "None", 
         "dia2": "None", 
@@ -4810,6 +4816,7 @@
       "type": "rate scan"
     }, 
     "17": {
+      "amplifiers": "[\"C6_1\", \"C6_2\"]", 
       "attenuators": {
         "dia1": "None", 
         "dia2": "None", 
@@ -4828,6 +4835,7 @@
       "type": "voltage scan"
     }, 
     "18": {
+      "amplifiers": "[\"C6_1\", \"C6_2\"]", 
       "attenuators": {
         "dia1": "None", 
         "dia2": "None", 
@@ -4853,6 +4861,7 @@
       "type": "rate scan"
     }, 
     "19": {
+      "amplifiers": "[\"C6_1\", \"\"]", 
       "attenuators": {
         "dia1": "None", 
         "dia2": "None", 
@@ -4871,6 +4880,7 @@
       "type": "voltage scan"
     }, 
     "20": {
+      "amplifiers": "[\"C6_1\", \"\"]", 
       "attenuators": {
         "dia1": "None", 
         "dia2": "None", 
