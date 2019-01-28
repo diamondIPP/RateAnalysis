@@ -320,8 +320,11 @@ def make_dia_str(dia):
     return '{0}{1}'.format(dia[0].title(), dia[1:])
 
 
-def file_exists(path):
-    return pth.isfile(path)
+def file_exists(path, warn=False):
+    if not pth.isfile(path):
+        warning('File "{}" does not exist!'.format(path)) if warn else do_nothing()
+        return False
+    return True
 
 
 def dir_exists(path):
