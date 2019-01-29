@@ -276,7 +276,7 @@ class Currents(Elementary):
         if t >= self.StopTime:
             self.FoundStop = True
             return False
-        if self.StartTime < t < self.StopTime and current < 1e30:
+        if self.StartTime < t < self.StopTime and current < 1e6:  # filter out unphysical currents
             if self.DoAveraging:
                 if not shifting:
                     self.MeanCurrent += current
