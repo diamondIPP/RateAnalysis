@@ -240,10 +240,11 @@ class Converter:
         system('rsync -aPv {} {}'.format(main_data_path, self.RawFileDir))
 
     def remove_raw_file(self):
-        file_path = self.make_raw_file_path()
-        if file_exists(file_path):
-            log_warning('removing {}'.format(file_path))
-            remove(file_path)
+        remove_file(self.make_raw_file_path())
+
+    def remove_final_file(self):
+        remove_file(self.get_root_file_path())
+        remove_file(self.get_final_file_path())
 
     def set_converter_configfile(self):
 
