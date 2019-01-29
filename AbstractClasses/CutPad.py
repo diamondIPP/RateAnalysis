@@ -239,10 +239,15 @@ class CutPad(Cut):
         conf = self.CutConfig['fiducial']
         return (conf[1] - conf[0]) * (conf[3] - conf[2])
 
-    @staticmethod
-    def draw_fid_cut():
-        cut = gROOT.FindObject('fid')
-        cut.Draw() if cut else do_nothing()
+    def draw_fid_cut(self, scale=1):
+        cut = get_object('fid')
+        if cut:
+            cut = deepcopy(cut)
+            cut.SetName('fid{}'.format(scale))
+            for i in xrange(cut.GetN()):
+                cut.SetPoint(i, scale * cut.GetX()[i], scale * cut.GetY()[i])
+            cut.Draw()
+            self.ROOTObjects.append(cut)
 
     # special cut for analysis
     def generate_pulser_cut(self, beam_on=True):
