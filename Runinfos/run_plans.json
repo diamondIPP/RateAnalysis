@@ -4793,9 +4793,7 @@
       "amplifiers": "[\"C6_2\", \"\"]", 
       "attenuators": {
         "dia1": "None", 
-        "dia2": "None", 
-        "pulser1": "None", 
-        "pulser2": "None"
+        "pulser1": "None"
       }, 
       "runs": [
         458, 
@@ -4806,7 +4804,6 @@
         463, 
         464, 
         465, 
-        466, 
         467, 
         468, 
         469, 
