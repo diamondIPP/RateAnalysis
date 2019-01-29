@@ -720,6 +720,12 @@ def say(txt):
     remove('good.mp3')
 
 
+def remove_file(file_path):
+    if file_exists(file_path):
+        log_warning('removing {}'.format(file_path))
+        remove(file_path)
+
+
 def get_running_time(t):
     now = datetime.fromtimestamp(time() - t) - timedelta(hours=1)
     return now.strftime('%H:%M:%S')
