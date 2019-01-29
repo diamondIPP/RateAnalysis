@@ -400,7 +400,7 @@ class Run(Elementary):
         return irr
 
     def get_attenuators(self):
-        return [self.RunInfo['att_dia{}'.format(i)] for i in xrange(1, self.get_n_diamonds() + 1) if 'att_dia1' in self.RunInfo]
+        return [str(self.RunInfo['att_dia{}'.format(i)]) for i in xrange(1, self.get_n_diamonds() + 1) if 'att_dia1' in self.RunInfo]
 
     def get_calibrated_times(self, trigger_cell):
         t = [self.TCal[int(trigger_cell)]]
