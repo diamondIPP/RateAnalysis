@@ -145,46 +145,35 @@ class Analysis(Elementary):
 
     # ============================================================================================
     # region TRACKS
-    def show_chi2(self, mode=None, show=True, save=True, fit=False, prnt=True):
-        assert mode in ['x', 'y', None], 'mode has to be in {lst}!'.format(lst=['x', 'y', None])
-        n_bins = 500 if mode is None else 250
+    def draw_chi2(self, mode=None, show=True, save=True, fit=False, prnt=True, show_cut=False, x_range=None):
         mode = 'tracks' if mode is None else mode
-        set_root_output(False)
-        h = TH1F('h', '#chi^{2} in ' + mode, n_bins, 0, 100 if mode == 'tracks' else 50)
-        self.tree.Draw('chi2_{mod}>>h'.format(mod=mode), '', 'goff')
-        if show:
-            yq = zeros(1)
-            h.GetQuantiles(1, yq, array([.99]))
-            h.GetXaxis().SetRangeUser(0, yq[0])
-        if fit:
-            f = TF1('f', '[0]*TMath::GammaDist(x, {ndf}/2, 0, 2)'.format(ndf=4 if mode == 'tracks' else 2))
-            h.Fit(f, 'q')
-            h.SetStats(1)
-            set_statbox(only_fit=True)
-        self.format_histo(h, x_tit='#chi^{2}', y_tit='Number of Entries', y_off=1.8, stats=0)
-        self.save_tel_histo(h, 'Chi2{0}'.format(mode.title() if mode is not 'tracks' else 'All'), show, save=save, lm=.13, prnt=prnt)
+        set_root_warnings(False)
+        h = TH1F('hcs{}'.format(mode), '#chi^{2} in ' + mode.title(), 500, 0, 100)
+        self.tree.Draw('chi2_{m}>>hcs{m}'.format(m=mode), 'n_tracks > 0', 'goff')
+        yq = zeros(1)
+        h.GetQuantiles(1, yq, array([.99]))
+        self.format_histo(h, x_tit='#chi^{2}', y_tit='Number of Entries', y_off=2, x_range=[0, yq[0]] if x_range is None else x_range)
+        self.set_statbox(fit=fit, entries=True, n_entries=5, w=.3)
+        self.draw_histo(h, show=show, prnt=prnt, lm=.13)
+        f = TF1('f', '[0]*TMath::GammaDist(x, {ndf}/2, 0, 2)'.format(ndf=4 if mode == 'tracks' else 2))
+        h.Fit(f, 'qs{}'.format('' if fit else 0))
+        if show_cut:
+            self.draw_chi2_cut(mode)
+        self.save_tel_plots('Chi2{0}'.format(mode.title()), show=show, save=save, prnt=prnt)
         return h
 
-    def show_all_chi2(self):
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        histos = [self.show_chi2(mode, show=False) for mode in [None, 'x', 'y']]
-        c = TCanvas('c', 'Chi2', 1000, 1000)
-        c.SetLeftMargin(.13)
-        max_chi2 = int(max([h.GetMaximum() for h in histos])) / 1000 * 1000 + 1000
-        histos[0].GetYaxis().SetRangeUser(0, max_chi2)
-        histos[0].SetTitle('All #chi^{2}')
-        legend = TLegend(.7, .7, .9, .9)
-        leg_names = ['#chi^{2} ' + mode for mode in ['of both', 'in x', 'in y']]
-        for i, h in enumerate(histos):
-            h.SetStats(0)
-            h.SetLineColor(self.get_color())
-            h.SetLineWidth(2)
-            h.Draw() if not i else h.Draw('same')
-            legend.AddEntry(h, leg_names[i], 'l')
+    def draw_chi2_cut(self, mode):
+        chi2 = self.Cut.calc_chi2(mode)
+        l = self.draw_vertical_line(chi2, -100, 1e6, style=7, w=2, color=2, name='l1')
+        legend = self.make_legend(.75, y2=.83, nentries=1, margin=.35)
+        legend.AddEntry(l, 'cut ({}%)'.format(self.Cut.CutConfig['chi2{}'.format(mode.title())]), 'l')
         legend.Draw()
-        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.ROOTObjects.append([legend, histos, c])
-        self.save_plots('Chi2', canvas=c, sub_dir=self.TelSaveDir)
+
+    def draw_all_chi2(self, show=True, prnt=True):
+        self.draw_chi2(fit=True, show=show, prnt=prnt)
+        x_range = [0, get_last_canvas().GetUxmax()]
+        self.draw_chi2('x', show_cut=True, show=show, x_range=x_range, prnt=prnt)
+        self.draw_chi2('y', show_cut=True, show=show, x_range=x_range, prnt=prnt)
 
     def draw_angle_distribution(self, mode='x', show=True, print_msg=True, cut=None, show_cut=False):
         """ Displays the angle distribution of the tracks. """
