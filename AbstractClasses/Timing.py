@@ -48,6 +48,8 @@ class TimingAnalysis(Elementary):
         h = TH1F(name, '{}Peak Positions'.format('Time Corrected ' if corr else ''), int((xmax - xmin + 20) * (8 if corr else 1 / self.Ana.DigitiserBinWidth)), xmin - 10, xmax + 10)
         self.Ana.tree.Draw('{}>>{}'.format(self.get_peak_name(corr, fine_corr, cut), name), cut, 'goff')
         set_statbox(fit=True, entries=7)
+        if not h.GetEntries():
+            return
         if fit:
             self.fit_peaks(h)
         self.format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)

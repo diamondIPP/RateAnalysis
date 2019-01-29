@@ -208,17 +208,18 @@ class CutPad(Cut):
         return cut
 
     def generate_timing(self, n_sigma=3):
-        dic = self.calc_timing_range(show=False)
+        t_correction, fit = self.calc_timing_range(show=False)
+        if fit is None:
+            return TCut('')
         num = self.analysis.SignalNumber
-        t_correction = dic['t_corr']
         corrected_time = 'IntegralPeakTime[{num}] - {t_corr}'.format(num=num, t_corr=t_correction)
         try:
-            string = 'TMath::Abs({cor_t} - {mp}) / {sigma} < {n_sigma}'.format(cor_t=corrected_time, mp=dic['timing_corr'].GetParameter(1), sigma=dic['timing_corr'].GetParameter(2), n_sigma=n_sigma)
+            string = 'TMath::Abs({cor_t} - {mp}) / {sigma} < {n_sigma}'.format(cor_t=corrected_time, mp=fit.GetParameter(1), sigma=fit.GetParameter(2), n_sigma=n_sigma)
         except Exception as err:
-            print dic['timing_corr']
+            print fit
             print err
             raise KeyError
-        return TCut(string), corrected_time, t_correction
+        return TCut(string)
 
     def generate_threshold(self):
         return TCut('{sig}>{thresh}'.format(sig=self.analysis.SignalName, thresh=self.calc_threshold(show=False))) if self.CutConfig['threshold'] else TCut('')
@@ -278,10 +279,7 @@ class CutPad(Cut):
         self.CutStrings['ped_sigma'] += self.generate_pedestalsigma()
 
         # --PEAK POSITION TIMING--
-        cut, corrected_peak_time, time_correction = self.generate_timing()
-        self.analysis.CorrectedTime = corrected_peak_time
-        self.analysis.TimeCorrection = time_correction
-        self.CutStrings['timing'] += cut
+        self.CutStrings['timing'] += self.generate_timing()
 
         # --BUCKET --
         self.CutStrings['old_bucket'] += self.generate_old_bucket()
@@ -439,6 +437,8 @@ class CutPad(Cut):
 
             # estimate timing
             h1 = self.analysis.Timing.draw_peaks(show=False, fine_corr=False, prnt=False, cut=cut)
+            if h1 is None:
+                return None, None
             fit1 = h1.GetListOfFunctions()[2]
             h2 = self.analysis.Timing.draw_peaks_tc(show=False, prnt=False, cut=cut)
             fit2 = h2.GetListOfFunctions()[0]
@@ -507,7 +507,7 @@ class CutPad(Cut):
 
             self.add_info(t)
             self.log_info('Peak Timing: Mean: {0}, sigma: {1}'.format(original_mpv, fit3.GetParameter(2)))
-            return {'t_corr': t_correction, 'timing_corr': fit3}
+            return t_correction, fit3
 
         return do_pickle(pickle_path, func, redo=show)
 
