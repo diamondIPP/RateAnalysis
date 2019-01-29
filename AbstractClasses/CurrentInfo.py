@@ -376,7 +376,7 @@ class Currents(Elementary):
 
     def get_current(self):
         h = self.draw_distribution(show=False)
-        if h.GetEntries() < 10:
+        if h.GetEntries() < 3:
             return None
         values = [h.GetBinCenter(i) for i in xrange(h.GetNbinsX())]
         weights = [h.GetBinContent(i) for i in xrange(h.GetNbinsX())]
