@@ -167,14 +167,14 @@ class Currents(Elementary):
         if self.IsSelection:
             return
         ana = self.Analysis.FirstAnalysis if self.IsCollection else self.Analysis
-        t = datetime.fromtimestamp(ana.Run.StartTime) if hasattr(ana.Run, 'StartTime') else ana.Run.LogStart
+        t = self.TimeZone.localize(datetime.fromtimestamp(ana.Run.StartTime)) if hasattr(ana.Run, 'StartTime') else ana.Run.LogStart
         return ana.Run.LogStart if t.year < 2000 or t.day != ana.Run.LogStart.day else t
 
     def load_stop_time(self):
         if self.IsSelection:
             return
         ana = self.Analysis.get_last_analysis() if self.IsCollection else self.Analysis
-        t = datetime.fromtimestamp(ana.Run.EndTime) if hasattr(ana.Run, 'EndTime') else ana.Run.LogEnd
+        t = self.TimeZone.localize(datetime.fromtimestamp(ana.Run.EndTime)) if hasattr(ana.Run, 'EndTime') else ana.Run.LogEnd
         return ana.Run.LogEnd if t.year < 2000 or t.day != ana.Run.LogEnd.day else t
 
     def set_start_stop(self, sta, sto=None):
