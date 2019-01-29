@@ -1098,7 +1098,7 @@ class AnalysisCollection(Elementary):
     def show_chi2s(self, mode=None, show=True, disto=False):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         self.reset_colors()
-        histos = [ana.show_chi2(mode=mode, show=False, prnt=False) for ana in self.collection.itervalues()]
+        histos = [ana.draw_chi2(mode=mode, show=False, prnt=False) for ana in self.collection.itervalues()]
         yq = zeros(1)
         cuts = []
         for h in histos:
@@ -1186,6 +1186,14 @@ class AnalysisCollection(Elementary):
         for i, ana in enumerate(self.collection.itervalues(), 1):
             ana.draw_current(relative_time=False, show=False)
             ana.Currents.get_current()
+            self.ProgressBar.update(i)
+        self.ProgressBar.finish()
+
+    def draw_chi2s(self):
+        self.start_pbar(self.NRuns)
+        log_message('Generating chi2s ...')
+        for i, ana in enumerate(self.collection.itervalues(), 1):
+            ana.draw_all_chi2(show=False, prnt=False)
             self.ProgressBar.update(i)
         self.ProgressBar.finish()
 
