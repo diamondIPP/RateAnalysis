@@ -288,7 +288,8 @@ class PadAnalysis(Analysis):
         def func():
             set_root_output(0)
             name = 'h_hm' if hitmap else 'h_sm'
-            h1 = TH2I(name, 'Diamond Hit Map', *self.Plots.get_global_bins(res)) if hitmap else TProfile2D(name, 'Signal Map', *self.Plots.get_global_bins(res, mm=True))
+            atts = [name, 'Diamond Hit Map' if hitmap else 'Signal Map'] + self.Plots.get_global_bins(res, mm=1)
+            h1 = TH2I(*atts) if hitmap else TProfile(*atts)
             self.log_info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.DiamondName, run=self.RunNumber, mode='hit' if hitmap else 'signal '), prnt=prnt)
             sig = self.generate_signal_name()
             x_var, y_var = (self.Cut.get_track_var(self.DiamondNumber - 1, v) for v in ['x', 'y'])
