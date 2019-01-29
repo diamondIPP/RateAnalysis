@@ -178,12 +178,13 @@ class DiaScans(Elementary):
             ana.draw_little_all(redo=redo)
             ana.delete_trees()
 
-    def get_all_ana_strings(self, dia=None, tc=None):
+    def get_all_ana_strings(self, dia=None, tc=None, redo=False):
         if tc is None:
             selections = [sel for sel in self.get_dia_runselections(dia) if sel.TESTCAMPAIGN > '201505' and (sel.TESTCAMPAIGN == tc or tc is None)]
         else:
             selections = self.get_tc_runselections(tc)
-        return '_'.join(['AbstractClasses/AnalysisCollection.py {} {} -tc {} -d'.format(sel.SelectedRunplan, sel.SelectedDiamondNr, sel.TESTCAMPAIGN) for sel in selections])
+        redo = ' -rd' if redo else ''
+        return '_'.join(['AbstractClasses/AnalysisCollection.py {} {} -tc {} -d{}'.format(sel.SelectedRunplan, sel.SelectedDiamondNr, sel.TESTCAMPAIGN, redo) for sel in selections])
 
     # ==========================================================================
     # region GET
@@ -717,8 +718,9 @@ if __name__ == '__main__':
     main_parser.add_argument('-d', nargs='?', default='S129')
     main_parser.add_argument('-tc', nargs='?', default=None)
     main_parser.add_argument('-p', action='store_true')
+    main_parser.add_argument('-r', action='store_true')
     args = main_parser.parse_args()
 
     z = DiaScans(args.sel, verbose=args.v)
     if args.p:
-        print z.get_all_ana_strings(args.d, args.tc)
+        print z.get_all_ana_strings(args.d, args.tc, args.r)

@@ -190,6 +190,7 @@ class AnalysisCollection(Elementary):
         self.save_signal_maps(redo=redo)
         self.save_signal_maps(hitmap=True, redo=redo)
         self.draw_run_currents()
+        self.draw_chi2s()
         self.set_verbose(old_verbose)
         print_elapsed_time(t0)
     
@@ -1098,7 +1099,7 @@ class AnalysisCollection(Elementary):
     def show_chi2s(self, mode=None, show=True, disto=False):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         self.reset_colors()
-        histos = [ana.show_chi2(mode=mode, show=False, prnt=False) for ana in self.collection.itervalues()]
+        histos = [ana.draw_chi2(mode=mode, show=False, prnt=False) for ana in self.collection.itervalues()]
         yq = zeros(1)
         cuts = []
         for h in histos:
@@ -1186,6 +1187,14 @@ class AnalysisCollection(Elementary):
         for i, ana in enumerate(self.collection.itervalues(), 1):
             ana.draw_current(relative_time=False, show=False)
             ana.Currents.get_current()
+            self.ProgressBar.update(i)
+        self.ProgressBar.finish()
+
+    def draw_chi2s(self):
+        self.start_pbar(self.NRuns)
+        log_message('Generating chi2s ...')
+        for i, ana in enumerate(self.collection.itervalues(), 1):
+            ana.draw_all_chi2(show=False, prnt=False)
             self.ProgressBar.update(i)
         self.ProgressBar.finish()
 
@@ -1373,6 +1382,7 @@ if __name__ == '__main__':
     main_parser.add_argument('-t', '--tree', action='store_false')
     main_parser.add_argument('-r', '--runs', action='store_true')
     main_parser.add_argument('-d', '--draw', action='store_true')
+    main_parser.add_argument('-rd', '--redo', action='store_true')
     args = main_parser.parse_args()
     tc = args.testcampaign if args.testcampaign.startswith('201') else None
     run_plan = args.runplan
@@ -1390,4 +1400,4 @@ if __name__ == '__main__':
         z.Currents.draw_indep_graphs()
         raw_input('Press any button to exit')
     if args.draw:
-        z.draw_little_all()
+        z.draw_little_all(args.redo)
