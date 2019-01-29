@@ -211,27 +211,26 @@ class Cut(Elementary):
         return cut_string
 
     def generate_chi2(self, mode='x', value=None):
-        picklepath = self.make_pickle_path('Chi2', run=self.analysis.RunNumber, suf=mode.title())
+        chi2 = self.calc_chi2(mode)
+        cut_value = chi2 if value is None else value
+        return 'chi2_{mod}<{val} && chi2_{mod}>=0'.format(val=cut_value, mod=mode)
 
-        def func():
-            t = self.log_info('generating chi2 cut in {mod} for run {run}...'.format(run=self.analysis.RunNumber, mod=mode), next_line=False)
-            gROOT.SetBatch(1)
-            h = TH1F('h', '', 200, 0, 100)
-            nq = 100
-            chi2s = zeros(nq)
-            xq = array([(i + 1) / float(nq) for i in range(nq)])
-            self.analysis.tree.Draw('chi2_{mod}>>h'.format(mod=mode), '', 'goff')
-            h.GetQuantiles(nq, chi2s, xq)
-            gROOT.SetBatch(0)
+    def calc_chi2(self, mode='x'):
+        picklepath = self.make_pickle_path('Chi2', run=self.RunNumber, suf=mode.title())
+
+        def f():
+            t = self.log_info('calculating chi2 cut in {mod} for run {run}...'.format(run=self.analysis.RunNumber, mod=mode), next_line=False)
+            h = TH1F('hc{}'.format(mode), '', 500, 0, 100)
+            self.analysis.tree.Draw('chi2_{m}>>hc{m}'.format(m=mode), 'n_tracks > 0', 'goff')
+            chi2s = zeros(100)
+            h.GetQuantiles(100, chi2s, arange(.01, 1.01, .01))
             self.add_info(t)
             return chi2s
 
-        chi2 = do_pickle(picklepath, func)
+        chi2 = do_pickle(picklepath, f)
         quantile = self.CutConfig['chi2{mod}'.format(mod=mode.title())]
         assert type(quantile) is int and 0 < quantile <= 100, 'chi2 quantile has to be and integer between 0 and 100'
-        cut_value = chi2[quantile] if value is None else value
-        string = 'chi2_{mod}<{val}&&chi2_{mod}>=0'.format(val=cut_value, mod=mode)
-        return string if quantile > 0 else ''
+        return chi2[quantile]
 
     def generate_slope(self, mode='x'):
         cut_variable = '{t}_{m}'.format(t='slope' if self.analysis.Run.has_branch('slope_x') else 'angle', m=mode)
