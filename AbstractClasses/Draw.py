@@ -242,6 +242,9 @@ class Draw:
             except Exception as inst:
                 log_warning('Error in save_canvas:\n{0}'.format(inst))
 
+    def save_tel_plots(self, savename, sub_dir=None, canvas=None, all_pads=True, ind=None, prnt=True, save=True, show=True):
+        self.save_plots(savename, sub_dir, canvas, all_pads, True, ind, prnt, save, show)
+
     def save_canvas(self, canvas, sub_dir=None, name=None, print_names=True, show=True):
         sub_dir = self.save_dir if hasattr(self, 'save_dir') and sub_dir is None else sub_dir
         sub_dir = self.TelSaveDir if hasattr(self, 'TelSaveDir') and sub_dir is None else sub_dir
