@@ -213,6 +213,8 @@ class Run(Elementary):
                 log_warning(err)
 
     def translate_dia(self, dia):
+        if dia is None or dia.lower() in ['unknown', 'none']:
+            return
         parser = ConfigParser()
         parser.read(join(self.Dir, 'Configuration', 'DiamondAliases.cfg'))
         return parser.get('ALIASES', dia.lower())
@@ -320,7 +322,7 @@ class Run(Elementary):
             return
         fluxes = []
         self.find_for_in_comment()
-        if self.RunInfo['for1'] or self.RunInfo['for2']:
+        if 'for1' in self.RunInfo:
             self.FoundForRate = True
             for i, area in enumerate(self.get_unmasked_area().itervalues(), 1):
                 fluxes.append(self.RunInfo['for{num}'.format(num=i)] / area / 1000)  # in kHz/cm^2
@@ -335,7 +337,7 @@ class Run(Elementary):
             return
         mask_file = join(self.maskfilepath, basename(self.RunInfo['maskfile'])).strip("\"")
         maskdata = {}
-        if basename(self.RunInfo['maskfile']).lower() in ['no mask', 'None']:
+        if basename(self.RunInfo['maskfile']).lower() in ['no mask', 'none', 'none!']:
             pass
         else:
             try:
