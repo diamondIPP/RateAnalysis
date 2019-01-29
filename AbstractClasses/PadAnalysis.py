@@ -99,6 +99,9 @@ class PadAnalysis(Analysis):
     def draw_current(self, relative_time=True, averaging=1, show=True):
         self.Currents.draw_indep_graphs(rel_time=relative_time, averaging=averaging, show=show)
 
+    def get_current(self):
+        return self.Currents.get_current()
+
     # ==========================================================================
     # region INIT
 
