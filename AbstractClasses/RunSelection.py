@@ -454,13 +454,9 @@ class RunSelection(Elementary):
         return nr.zfill(2) if len(nr) <= 2 else nr.zfill(4)
 
     def get_diamond_names(self, sel=False):
-        names = []
-        for i in xrange(1, 3):
-            try:
-                names += [self.Run.translate_dia(dia) for dia in self.get_runinfo_values('dia{}'.format(i), sel) if self.Run.translate_dia(dia).lower() not in ['unknown', 'none']]
-            except KeyError:
-                pass
-        return sorted(list(set(names)))
+        keys = ['dia{}'.format(i + 1) for i in xrange(self.get_max_dias())]
+        dias = [self.Run.translate_dia(dia) for key in keys for dia in self.get_runinfo_values(key, sel)]
+        return list(set(dia.lower() for dia in dias if dia is not None))
 
     def show_diamond_names(self, sel=False):
         print 'Diamondnames:'
@@ -486,7 +482,7 @@ class RunSelection(Elementary):
         try:
             return sorted(list(set(info[key] for info in run_infos.itervalues())))
         except KeyError:
-            return
+            return [None]
 
     def get_selection_runinfo(self):
         dic = {}
