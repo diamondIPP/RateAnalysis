@@ -1390,7 +1390,7 @@ if __name__ == '__main__':
     a = Elementary(tc, True)
     sel = RunSelection(testcampaign=tc, verbose=True)
     sel.select_runs_from_runplan(run_plan, ch=diamond) if not args.runs else sel.select_runs([int(args.runplan), int(args.dia if args.dia else args.runplan)], args.dia2 if args.dia2 else 1)
-    print_banner('STARTING PAD-ANALYSIS COLLECTION OF RUNPLAN {0}'.format(run_plan))
+    print_banner('STARTING PAD-ANALYSIS COLLECTION OF RUNPLAN {0} FROM {1}'.format(run_plan, sel.SelectedDiamond))
     a.print_testcampaign()
     t = load_root_files(sel, args.tree)
     z = AnalysisCollection(sel, threads=t)
