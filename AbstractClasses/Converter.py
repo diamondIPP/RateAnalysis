@@ -234,10 +234,10 @@ class Converter:
         return str([(1 if not pol and has_bit(active_regions, i) else pol) for i, pol in enumerate(polarities)])  # pol cannot be 0, just take 1 for 0V
 
     def copy_raw_file(self):
-        main_data_path = join('isg:', 'home', 'ipp', self.TcDir, 'raw', basename(self.make_raw_file_path()))
-        log_message('Trying to copy {}'.format(basename(self.make_raw_file_path())))
-        # out = check_output(['rsync', '-aP', main_data_path, self.RawFileDir]).strip('\n')
-        system('rsync -aPv {} {}'.format(main_data_path, self.RawFileDir))
+        if not file_exists(self.make_raw_file_path()):
+            main_data_path = join('isg:', 'home', 'ipp', self.TcDir, 'raw', basename(self.make_raw_file_path()))
+            log_message('Trying to copy {}'.format(basename(self.make_raw_file_path())))
+            system('rsync -aPv {} {}'.format(main_data_path, self.RawFileDir))
 
     def remove_raw_file(self):
         remove_file(self.make_raw_file_path())
