@@ -33,7 +33,7 @@ class AutoConvert:
 
     def load_last_converted(self):
         if not file_exists(self.LastConvertedFile):
-            return 1
+            return self.RunInfos.keys()[0]
         with open(self.LastConvertedFile) as f:
             last_run = int(f.read())
             return next(run for run in self.RunInfos if run >= last_run)
