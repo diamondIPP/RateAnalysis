@@ -603,7 +603,7 @@ class RunSelection(Elementary):
                 remove(file_path)
 
     def copy_raw_files(self, sel=False):
-        selected_runs = self.get_selected_runs()
+        selected_runs = self.get_selected_runs() if sel else []
         for run in self.get_runplan_runs():
             if sel and run not in selected_runs:
                 continue
