@@ -299,31 +299,24 @@ class Currents(Elementary):
                 self.Voltages.append(voltage)
         return True
 
-    def goto_start(self, data):
+    def goto_start(self, data, iterations=14):
         log_date = self.get_log_date(self.LogNames[0])
-        lines = len(data.readlines())
+        lines = data.readlines()
+        n_lines = len(lines)
         data.seek(0)
-        if lines < 10000:
+        if len(lines) < 1000:
             return
-        was_lines = 0
-        for i in range(6):
-            lines /= 2
-            for j in xrange(lines):
-                data.readline()
+        at_line = n_lines / 2
+        for i in xrange(iterations):
             while True:
-                info = data.readline().split()
-                if not info:
+                info = lines[at_line].split()[0]
+                if info[:2].isdigit():  # check if the time really starts with numbers
+                    now = self.get_time_from_log(info, log_date)
+                    at_line += (1 if now < self.StartTime else -1) * n_lines / 2 ** (i + 2)
                     break
-                if isfloat(info[1]):
-                    now = self.get_time_from_log(info[0], log_date)
-                    if now < self.StartTime:
-                        was_lines += lines
-                        break
-                    else:
-                        data.seek(0)
-                        for k in xrange(was_lines):
-                            data.readline()
-                        break
+                at_line += 1
+        for _ in xrange(at_line - n_lines / 2 ** (iterations - 1)):  # value has to bigger than the width of the previous iteration
+            data.readline()
 
     def convert_to_relative_time(self):
         zero = self.Time[0]
