@@ -814,7 +814,7 @@ if __name__ == '__main__':
     parser.add_argument('-a', '--analyse', action='store_true', dest='doAna', default=False, help='run the whole analysis with the options entered')
     parser.add_argument('-tc', '--testcampaign', nargs='?', default='')
     parser.add_argument('-v', '--verbose', action='store_true', help='show verbose')
-    parser.add_argument('-t', '--tree', action='store_true')
+    parser.add_argument('-t', '--tree', action='store_false')
 
     args = parser.parse_args()
 
@@ -849,7 +849,7 @@ if __name__ == '__main__':
     el.print_testcampaign()
     print_banner('STARTING PIXEL-ANALYSIS OF RUN {0}'.format(args.run))
     print
-    run_class = Run(args.run, verbose=args.verbose, tree=None if not args.tree else args.tree)
+    run_class = Run(args.run, verbose=args.verbose, tree=None if args.tree else args.tree)
     z = PixAnalysis(run_class, args.dut)
     print_elapsed_time(st, 'Instantiation')
 
