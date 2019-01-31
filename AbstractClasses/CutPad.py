@@ -446,6 +446,9 @@ class CutPad(Cut):
             t_correction = self.analysis.Timing.get_fine_correction(cut=cut) if fine_corr else '0'
             h3 = self.analysis.Timing.draw_peaks(show=False, fine_corr=fine_corr, prnt=False, cut=cut)
             fit3 = h3.GetListOfFunctions()[2]
+            if fit3.GetParameter(2) > 15:  # fit failed
+                fit3.SetParameter(1, h3.GetBinCenter(h3.GetMinimumBin()))
+                fit3.SetParameter(2, 15)
 
             original_mpv = fit1.GetParameter(1)
 
