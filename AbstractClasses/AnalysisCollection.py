@@ -347,7 +347,7 @@ class AnalysisCollection(Elementary):
         x_values = [dic['time' if vs_time else 'flux'] for dic in ph.itervalues()]
         g = self.make_tgrapherrors('g', 'stat. error', self.get_color(), marker_size=marker_size, x=x_values, y=y_values)
         rel_sys_error = self.get_repr_error(105, show=False)
-        y_values = [make_ufloat((v.n, v.s + rel_sys_error * v.n)) for v in y_values]
+        y_values = [make_ufloat((v.n, v.s + rel_sys_error * abs(v.n))) for v in y_values]
         g_errors = self.make_tgrapherrors('gerr', 'full error', marker=0, color=602, marker_size=0, x=x_values, y=y_values)
         g_first = self.make_tgrapherrors('g1', 'first run', marker=22, color=2, marker_size=marker_size, x=[x_values[0].n], y=[y_values[0].n])
         g_last = self.make_tgrapherrors('g2', 'last run', marker=23, color=2, marker_size=marker_size, x=[x_values[-1].n], y=[y_values[-1].n])
