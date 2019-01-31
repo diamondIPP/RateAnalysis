@@ -96,11 +96,11 @@ class PadAlignment:
 
     def get_pulser_rate(self):
         h = TProfile('hprc', 'Pulser Rate', self.NEntries / 500, 0, self.NEntries)
-        self.InTree.Draw('pulser*100:Entry$>>hprc', '', 'goff')
+        self.InTree.Draw('pulser:Entry$>>hprc', '', 'goff')
         values = []
         for i in xrange(1, h.GetNbinsX() + 1):
             value = h.GetBinContent(i)
-            if value and value < 30:
+            if value and value < .4:
                 values.append(make_ufloat((value, 1 / h.GetBinError(i))))
         m, s = mean_sigma(values)
         return m
