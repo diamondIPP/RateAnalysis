@@ -4926,6 +4926,142 @@
         620
       ], 
       "type": "rate scan"
+    }, 
+    "21": {
+      "amplifiers": "[\"OSU2\", \"OSU2\"]", 
+      "attenuators": {
+        "dia1": "None", 
+        "pulser1": "None"
+      }, 
+      "runs": [
+        511, 
+        513, 
+        514, 
+        515, 
+        516, 
+        517, 
+        520, 
+        522, 
+        523, 
+        524, 
+        525, 
+        538, 
+        539, 
+        540, 
+        541, 
+        542, 
+        543, 
+        544, 
+        545, 
+        546, 
+        551, 
+        553, 
+        554, 
+        555, 
+        565, 
+        566, 
+        567, 
+        568, 
+        569, 
+        570, 
+        571, 
+        573, 
+        574, 
+        575, 
+        579
+      ], 
+      "type": "bcm prime"
+    }, 
+    "21.0": {
+      "amplifiers": "[\"OSU2-C1\", \"\"]", 
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser1": "None", 
+        "pulser2": "None"
+      }, 
+      "runs": [
+        511, 
+        513, 
+        514, 
+        515, 
+        516, 
+        517, 
+        520, 
+        522, 
+        523, 
+        524, 
+        525
+      ], 
+      "type": "channel 1"
+    }, 
+    "21.1": {
+      "amplifiers": "[\"OSU2-C4\", \"\"]", 
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser1": "None", 
+        "pulser2": "None"
+      }, 
+      "runs": [
+        538, 
+        539, 
+        540, 
+        541, 
+        542, 
+        543, 
+        544, 
+        545, 
+        546
+      ], 
+      "type": "channel 2"
+    }, 
+    "21.2": {
+      "amplifiers": "[\"OSU2-C1\", \"OSU2-C4\"]", 
+      "attenuators": {
+        "dia1": "None", 
+        "pulser1": "None"
+      }, 
+      "runs": [
+        551, 
+        553, 
+        554, 
+        555
+      ], 
+      "type": "channel 1+2"
+    }, 
+    "21.3": {
+      "amplifiers": "[\"OSU2-C1\", \"OSU2-C4\"]", 
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser1": "None", 
+        "pulser2": "None"
+      }, 
+      "runs": [
+        565, 
+        566, 
+        567, 
+        568
+      ], 
+      "type": "box 2 pos"
+    }, 
+    "21.4": {
+      "amplifiers": "[\"OSU2-C1\", \"OSU2-C4\"]", 
+      "attenuators": {
+        "dia1": "None", 
+        "pulser1": "None"
+      }, 
+      "runs": [
+        569, 
+        570, 
+        571, 
+        573, 
+        574, 
+        575, 
+        579
+      ], 
+      "type": "box 2 neg"
     }
   }
 }
