@@ -53,6 +53,7 @@ class Converter:
 
         # files paths
         self.ConverterConfigFile = self.SoftConfig.get('Converter', 'converterFile')
+        self.NewConfigFile = join(self.EudaqDir, 'conf', '{}.ini'.format(self.RunNumber))
         self.run_info_path = run.load_run_info_path()
 
         # configuration
@@ -175,7 +176,7 @@ class Converter:
         curr_dir = getcwd()
         chdir(self.RootFileDir)  # go to root directory
         # prepare converter command
-        cmd_list = [join(self.EudaqDir, 'bin', 'Converter.exe'), '-t', self.ConverterTree, '-c', join(self.EudaqDir, 'conf', self.ConverterConfigFile), raw_file_path]
+        cmd_list = [join(self.EudaqDir, 'bin', 'Converter.exe'), '-t', self.ConverterTree, '-c', join(self.EudaqDir, 'conf', self.NewConfigFile), raw_file_path]
         self.set_converter_configfile()
         print_banner('START CONVERTING RAW FILE FOR RUN {0}'.format(self.RunNumber))
         print ' '.join(cmd_list)
@@ -187,6 +188,7 @@ class Converter:
                 break
             except CalledProcessError:
                 tries += 1
+        self.remove_new_configfile()
         chdir(curr_dir)
 
     def align_run(self):
@@ -247,6 +249,9 @@ class Converter:
         remove_file(self.get_root_file_path())
         remove_file(self.get_final_file_path())
 
+    def remove_new_configfile(self):
+        remove_file(self.NewConfigFile)
+
     def set_converter_configfile(self):
 
         parser = ConfigParser()
@@ -267,7 +272,7 @@ class Converter:
             parser.set('Converter.telescopetree' if key.startswith('decoding') else section, key, value)
 
         # write changes
-        f = open(config_file, 'w')
+        f = open(self.NewConfigFile, 'w')
         parser.write(f)
         f.close()
 
@@ -276,7 +281,7 @@ class Converter:
     def format_converter_configfile(self):
         """ remove whitespaces, correct for capitalisation and sort options"""
 
-        f = open(join(self.EudaqDir, 'conf', self.ConverterConfigFile), 'r+')
+        f = open(self.NewConfigFile, 'r+')
         content = f.readlines()
         for i, line in enumerate(content):
             line = line.replace('peaki', 'PeakI')
