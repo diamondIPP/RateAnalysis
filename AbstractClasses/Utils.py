@@ -162,6 +162,15 @@ def scale_graph(gr, scale=None, val=1, to_low_flux=False):
             log_warning('Error in scale multigraph: {err}'.format(err=err))
 
 
+def interpolate_two_points(x1, y1, x2, y2):
+    # f = p1*x + p0
+    p1 = (y1 - y2) / (x1 - x2)
+    p0 = y1 - x1 * p1
+    f = TF1('fpol1', 'pol1', -1000, 1000)
+    f.SetParameters(p0, p1)
+    return f
+
+
 def move_element(odict, thekey, newpos):
     odict[thekey] = odict.pop(thekey)
     for i, (key, value) in enumerate(odict.items()):
