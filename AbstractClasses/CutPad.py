@@ -59,10 +59,11 @@ class CutPad(Cut):
     def load_dia_config(self, name, store_true=False):
         try:
             conf = loads(self.ana_config_parser.get('CUT', name))
-            if not store_true:
-                return conf[self.analysis.DiamondName] if self.analysis.DiamondName in conf else None
-            else:
-                return True if self.analysis.DiamondName in conf else False
+            dia = self.analysis.DiamondName
+            dia = '{}*{}'.format(dia, self.analysis.DiamondNumber) if '{}*1'.format(dia) in conf else dia
+            if store_true:
+                return dia in conf
+            return conf[dia]
         except NoOptionError:
             log_warning('No option {0} in the analysis config for {1}!'.format(name, make_tc_str(self.TESTCAMPAIGN)))
 
@@ -236,6 +237,20 @@ class CutPad(Cut):
             cut.SetLineWidth(3)
         return TCut(cut.GetName() if cut is not None else '')
 
+    def find_fid_cut(self, thresh=.8):
+        h = self.analysis.draw_signal_map(show=False)
+        px = h.ProjectionX()
+        py = h.ProjectionY()
+        return '"{}": [{}]'.format(self.analysis.DiamondName, ', '.join('{:0.3f}'.format(i) for i in self.find_fid_margins(px, thresh) + self.find_fid_margins(py, thresh)))
+
+    @staticmethod
+    def find_fid_margins(proj, thresh):
+        thresh = proj.GetMaximum() * thresh
+        xbin1, xbin2 = proj.FindFirstBinAbove(thresh), proj.FindLastBinAbove(thresh)
+        f1 = interpolate_two_points(proj.GetBinCenter(xbin1), proj.GetBinContent(xbin1), proj.GetBinCenter(xbin1 - 1), proj.GetBinContent(xbin1 - 1))
+        f2 = interpolate_two_points(proj.GetBinCenter(xbin2), proj.GetBinContent(xbin2), proj.GetBinCenter(xbin2 + 1), proj.GetBinContent(xbin2 + 1))
+        return [f1.GetX(thresh) / 10, f2.GetX(thresh) / 10]
+
     def get_fid_area(self):
         conf = self.CutConfig['fiducial']
         return (conf[1] - conf[0]) * (conf[3] - conf[2])
@@ -263,9 +278,6 @@ class CutPad(Cut):
         # --THRESHOLD --
         self.CutStrings['threshold'] += self.generate_threshold()
 
-        # -- FIDUCIAL --
-        self.CutStrings['fiducial'] += self.generate_fiducial()
-
         # -- PULSER CUT --
         self.CutStrings['pulser'] += '!pulser'
 
@@ -284,6 +296,9 @@ class CutPad(Cut):
         # --BUCKET --
         self.CutStrings['old_bucket'] += self.generate_old_bucket()
         self.CutStrings['bucket'] += self.generate_bucket()
+
+        # -- FIDUCIAL --
+        self.CutStrings['fiducial'] += self.generate_fiducial()
 
     # endregion
 
