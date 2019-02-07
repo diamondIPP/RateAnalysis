@@ -4973,12 +4973,10 @@
       "type": "bcm prime"
     }, 
     "21.0": {
-      "amplifiers": "[\"OSU2-C1\", \"\"]", 
+      "amplifiers": "[\"OSU2-C1-1\", \"\"]", 
       "attenuators": {
         "dia1": "None", 
-        "dia2": "None", 
-        "pulser1": "None", 
-        "pulser2": "None"
+        "pulser1": "None"
       }, 
       "runs": [
         511, 
@@ -4993,15 +4991,13 @@
         524, 
         525
       ], 
-      "type": "channel 1"
+      "type": "chip 1-1"
     }, 
     "21.1": {
-      "amplifiers": "[\"OSU2-C4\", \"\"]", 
+      "amplifiers": "[\"OSU2-C2-1\", \"\"]", 
       "attenuators": {
         "dia1": "None", 
-        "dia2": "None", 
-        "pulser1": "None", 
-        "pulser2": "None"
+        "pulser1": "None"
       }, 
       "runs": [
         538, 
@@ -5014,13 +5010,15 @@
         545, 
         546
       ], 
-      "type": "channel 2"
+      "type": "chip 2-1"
     }, 
     "21.2": {
-      "amplifiers": "[\"OSU2-C1\", \"OSU2-C4\"]", 
+      "amplifiers": "[\"OSU2-C1-1\", \"OSU2-C2-1\"]", 
       "attenuators": {
         "dia1": "None", 
-        "pulser1": "None"
+        "dia2": "None", 
+        "pulser1": "None", 
+        "pulser2": "None"
       }, 
       "runs": [
         551, 
@@ -5031,7 +5029,7 @@
       "type": "channel 1+2"
     }, 
     "21.3": {
-      "amplifiers": "[\"OSU2-C1\", \"OSU2-C4\"]", 
+      "amplifiers": "[\"OSU2-C1-1\", \"OSU2-C2-1\"]", 
       "attenuators": {
         "dia1": "None", 
         "dia2": "None", 
@@ -5047,10 +5045,12 @@
       "type": "box 2 pos"
     }, 
     "21.4": {
-      "amplifiers": "[\"OSU2-C1\", \"OSU2-C4\"]", 
+      "amplifiers": "[\"OSU2-C1-1\", \"OSU2-C2-1\"]", 
       "attenuators": {
         "dia1": "None", 
-        "pulser1": "None"
+        "dia2": "None", 
+        "pulser1": "None", 
+        "pulser2": "None"
       }, 
       "runs": [
         569, 
