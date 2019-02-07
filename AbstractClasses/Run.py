@@ -393,11 +393,12 @@ class Run(Elementary):
         return self.Flux if self.Flux else self.RunInfo['aimed flux']
 
     def get_irradiations(self):
-        f = open(self.IrradiationFile, 'r')
-        data = load(f)
-        irr = [data[self.TCString][dia] for dia in self.DiamondNames if dia not in ['None']]
-        f.close()
-        return irr
+        with open(self.IrradiationFile, 'r') as f:
+            data = load(f)
+        for dia in self.DiamondNames:
+            if dia not in data[self.TCString].keys() + ['None']:
+                log_critical('Please add "{}" to the irradiation file for {}'.format(dia, self.TCString))
+        return [data[self.TCString][dia] for dia in self.DiamondNames if dia not in ['None']]
 
     def get_attenuators(self):
         return [str(self.RunInfo['att_dia{}'.format(i)]) for i in xrange(1, self.get_n_diamonds() + 1) if 'att_dia1' in self.RunInfo]
