@@ -457,7 +457,7 @@ class CutPad(Cut):
             fit1 = h1.GetListOfFunctions()[2]
             h2 = self.analysis.Timing.draw_peaks_tc(show=False, prnt=False, cut=cut)
             fit2 = h2.GetListOfFunctions()[0]
-            fine_corr = fit2.GetChisquare() / fit2.GetNDF() < 30
+            fine_corr = fit2.GetChisquare() / fit2.GetNDF() < 30 and fit2.GetParameter(0) < 10  # require decent chi2 and a meaningful scaling of the sin(x)
             t_correction = self.analysis.Timing.get_fine_correction(cut=cut) if fine_corr else '0'
             h3 = self.analysis.Timing.draw_peaks(show=False, fine_corr=fine_corr, prnt=False, cut=cut)
             fit3 = h3.GetListOfFunctions()[2]
