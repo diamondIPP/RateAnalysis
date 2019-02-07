@@ -5,7 +5,6 @@ from ROOT import TCut, TH1F, TH2F, TF1, TCanvas, gROOT, TProfile, THStack, TCutG
 from Utils import *
 from json import loads
 from numpy import array
-from ConfigParser import NoOptionError
 
 __author__ = 'micha'
 
@@ -290,15 +289,15 @@ class CutPad(Cut):
         # -- PEDESTAL SIGMA CUT --
         self.CutStrings['ped_sigma'] += self.generate_pedestalsigma()
 
+        # -- FIDUCIAL --
+        self.CutStrings['fiducial'] += self.generate_fiducial()
+
         # --PEAK POSITION TIMING--
         self.CutStrings['timing'] += self.generate_timing()
 
         # --BUCKET --
         self.CutStrings['old_bucket'] += self.generate_old_bucket()
         self.CutStrings['bucket'] += self.generate_bucket()
-
-        # -- FIDUCIAL --
-        self.CutStrings['fiducial'] += self.generate_fiducial()
 
     # endregion
 
@@ -314,16 +313,23 @@ class CutPad(Cut):
             h = TH1F('h', 'Bucket Cut', 100, -50, 150)
             draw_string = '{name}>>h'.format(name=self.analysis.SignalName)
             fid = self.CutStrings['fiducial']
-            cut_string = '!({buc})&&{pul}{fid}'.format(buc=self.CutStrings['old_bucket'], pul=self.CutStrings['pulser'], fid='&&fid' if fid.GetTitle() else '')
+            cut_string = '!({buc})&&{pul}{fid}'.format(buc=self.CutStrings['old_bucket'], pul=self.CutStrings['pulser'], fid='&&{}'.format(fid.GetTitle()) if fid.GetTitle() else '')
             self.analysis.tree.Draw(draw_string, cut_string, 'goff')
             entries = h.GetEntries()
             if entries < 2000:
                 self.add_info(t)
-                return 1
+                return -30
             h.Rebin(2) if entries < 5000 else do_nothing()
             # extract fit functions
             set_root_output(False)
             fit = self.triple_gauss_fit(h)
+            if fit is None:
+                self.add_info(t)
+                return -30
+            if fit is None or any(fit.GetParameter(i) < 100 for i in [0, 3]) or fit.GetParameter(1) < fit.GetParameter(4):
+                warning('bucket cut fit failed')
+                self.add_info(t)
+                return -30
             sig_fit = TF1('f1', 'gaus', -50, 300)
             sig_fit.SetParameters(fit.GetParameters())
             ped_fit = TF1('f2', 'gaus(0) + gaus(3)', -50, 300)
@@ -353,6 +359,7 @@ class CutPad(Cut):
                 gr4.SetPoint(i, x, err1 if not bg else err)
             if len(errors) == 0:
                 print ValueError('errors has a length of 0')
+                self.add_info(t)
                 return -30
             max_err = errors[max(errors.keys())]
 
@@ -457,7 +464,7 @@ class CutPad(Cut):
             fit1 = h1.GetListOfFunctions()[2]
             h2 = self.analysis.Timing.draw_peaks_tc(show=False, prnt=False, cut=cut)
             fit2 = h2.GetListOfFunctions()[0]
-            fine_corr = fit2.GetChisquare() / fit2.GetNDF() < 30 and fit2.GetParameter(0) < 10  # require decent chi2 and a meaningful scaling of the sin(x)
+            fine_corr = fit2.GetChisquare() / fit2.GetNDF() < 30 and abs(fit2.GetParameter(0)) < 10  # require decent chi2 and a meaningful scaling of the sin(x)
             t_correction = self.analysis.Timing.get_fine_correction(cut=cut) if fine_corr else '0'
             h3 = self.analysis.Timing.draw_peaks(show=False, fine_corr=fine_corr, prnt=False, cut=cut)
             fit3 = h3.GetListOfFunctions()[2]
