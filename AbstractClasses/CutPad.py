@@ -64,7 +64,7 @@ class CutPad(Cut):
             if store_true:
                 return dia in conf
             return conf[dia]
-        except NoOptionError:
+        except KeyError:
             log_warning('No option {0} in the analysis config for {1}!'.format(name, make_tc_str(self.TESTCAMPAIGN)))
 
     # endregion

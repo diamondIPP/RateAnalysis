@@ -230,7 +230,9 @@ class Converter:
         option = '{}polarities'.format('pulser_' if pulser else '')
         if self.RunParser.has_option('ROOTFILE_GENERATION', option):
             return self.RunParser.get('ROOTFILE_GENERATION', option)
-        fac = -1 if int(self.RunParser.get('ROOTFILE_GENERATION', 'inverted_polarities')) else 1 if self.RunParser.has_option('ROOTFILE_GENERATION', 'inverted_polarities') else 1
+        fac = 1
+        if self.RunParser.has_option('ROOTFILE_GENERATION', 'inverted_polarities'):
+            fac = -1 if int(self.RunParser.get('ROOTFILE_GENERATION', 'inverted_polarities')) else 1
         active_regions = self.RunParser.getint('ROOTFILE_GENERATION', 'active_regions')
         biases = deepcopy(self.Run.Bias)
         polarities = [sign(biases.pop(0)) * fac if has_bit(active_regions, i) else 0 for i in xrange(self.NChannels)]
