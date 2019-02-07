@@ -1210,6 +1210,19 @@ class PadAnalysis(Analysis):
     def draw_fiducial_cut(self, scale=1):
         self.Cut.draw_fid_cut(scale)
 
+    def draw_detector_size(self, scale=1):
+        split_runs = (loads(self.ana_config_parser.get('SPLIT', 'fiducial')) if self.ana_config_parser.has_option('SPLIT', 'fiducial') else []) + [int(1e10)]
+        values = next(self.Cut.load_dia_config('detector size{n}'.format(n=' {}'.format(i) if i else '')) for i in xrange(len(split_runs)) if self.RunNumber <= split_runs[i])
+        if values is None:
+            return
+        x, y, lx, ly = values
+        cut = TCutG('det{}'.format(scale), 5, array([x, x, x + lx, x + lx, x], 'd') * scale, array([y, y + ly, y + ly, y, y], 'd') * scale)
+        cut.SetVarX(self.Cut.get_track_var(self.DiamondNumber - 1, 'x'))
+        cut.SetVarY(self.Cut.get_track_var(self.DiamondNumber - 1, 'y'))
+        self.ROOTObjects.append(cut)
+        cut.SetLineWidth(3)
+        cut.Draw()
+
     def draw_cut_means(self, show=True, short=False):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         gr = self.make_tgrapherrors('gr_cm', 'Mean of Pulse Height for Consecutive Cuts')
