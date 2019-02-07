@@ -602,6 +602,14 @@ class RunSelection(Elementary):
                 log_warning('removing {}'.format(file_path))
                 remove(file_path)
 
+    def remove_tracked_files(self, sel=False):
+        selected_runs = self.get_selected_runs() if sel else []
+        for run in self.get_runplan_runs():
+            if sel and run not in selected_runs:
+                continue
+            self.Run.Converter.set_run(run)
+            self.Run.Converter.remove_final_file()
+
     def copy_raw_files(self, sel=False):
         selected_runs = self.get_selected_runs() if sel else []
         for run in self.get_runplan_runs():
