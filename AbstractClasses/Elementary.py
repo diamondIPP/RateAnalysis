@@ -266,13 +266,19 @@ class Elementary(Draw):
         fit = TF1('fit', 'gaus(0) + gaus(3) + gaus(6)', h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax())
         s = TSpectrum(3)
         n = s.Search(h, 2)
-        y = s.GetPositionY()[0], s.GetPositionY()[1] if n == 2 else s.GetPositionY()[2]
-        x = s.GetPositionX()[0], s.GetPositionX()[1] if n == 2 else s.GetPositionX()[2]
-        for i, par in enumerate([y[1], x[1], 10, y[0], x[0], 5, 10, x[0] + 10, 5]):
+        y2, y1 = s.GetPositionY()[0], s.GetPositionY()[1] if n == 2 else s.GetPositionY()[2]
+        x2, x1 = s.GetPositionX()[0], s.GetPositionX()[1] if n == 2 else s.GetPositionX()[2]
+        if y1 < 20 or y1 > 1e10:
+            return  # didn't find pedestal peak!
+        for i, par in enumerate([y2, x2, 10, y1, x1, 5, 10, x1 + 10, 5]):
             fit.SetParameter(i, par)
-        fit.SetParLimits(7, x[0] + 5, x[1] - 20)
+        fit.SetParLimits(7, x1 + 5, x1 - 20)
+        fit.SetParLimits(1, x2 - 5, x2 + 5)
+        fit.SetParLimits(4, x1 - 10, x1 + 10)
+        fit.SetParLimits(6, 1, y1)
+        fit.SetParLimits(3, 1, y2 * 2)
         for i in xrange(1):
-            h.Fit(fit, 'qs{0}'.format('' if show else '0'), '', -50, x[1])
+            h.Fit(fit, 'qs{0}'.format('' if show else '0'), '', -50, x2 + 5)
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         return fit
 
