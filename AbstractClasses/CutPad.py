@@ -229,7 +229,7 @@ class CutPad(Cut):
         xy = self.CutConfig['fiducial']
         cut = None
         if xy is not None:
-            cut = TCutG('fid', 5, array([xy[0], xy[0], xy[1], xy[1], xy[0]], 'd'), array([xy[2], xy[3], xy[3], xy[2], xy[2]], 'd'))
+            cut = TCutG('fid{}'.format(self.RunNumber), 5, array([xy[0], xy[0], xy[1], xy[1], xy[0]], 'd'), array([xy[2], xy[3], xy[3], xy[2], xy[2]], 'd'))
             nr = self.analysis.DiamondNumber - 1
             cut.SetVarX(self.get_track_var(nr, 'x'))
             cut.SetVarY(self.get_track_var(nr, 'y'))
@@ -256,7 +256,7 @@ class CutPad(Cut):
         return (conf[1] - conf[0]) * (conf[3] - conf[2])
 
     def draw_fid_cut(self, scale=1):
-        cut = get_object('fid')
+        cut = get_object('fid{}'.format(self.RunNumber))
         if cut:
             cut = deepcopy(cut)
             cut.SetName('fid{}'.format(scale))
