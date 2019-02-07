@@ -368,18 +368,22 @@ class Currents(Elementary):
         return h
 
     def get_current(self):
-        h = self.draw_distribution(show=False)
-        if h.GetEntries() < 3:
-            return None
-        values = [h.GetBinCenter(i) for i in xrange(h.GetNbinsX())]
-        weights = [h.GetBinContent(i) for i in xrange(h.GetNbinsX())]
-        m, s = mean_sigma(values, weights)
-        fit = h.Fit('gaus', 'sq0', '', m - s, m + s)
-        fm, fs = fit.Parameter(1), fit.Parameter(2)
-        if .8 * m < fit.Parameter(1) < 1.2 * m and s > 0 and fs < fm and fit.ParError(1) < m:  # only use gauss fit if its not deviating too much from the the mean
-            current = ufloat(fm, fs + .05 + .05 * fm)  # add .05 as uncertainty of the device and 5% systematic error
+        if self.Analysis is not None and not self.Analysis.Bias:
+            warning('Bias of run {} is 0!'.format(self.Analysis.RunNumber))
+            current = make_ufloat((0, 0))
         else:
-            current = ufloat(h.GetMean(), h.GetMeanError() + .05 + .05 * h.GetMean())
+            h = self.draw_distribution(show=False)
+            if h.GetEntries() < 3:
+                return None
+            values = [h.GetBinCenter(i) for i in xrange(h.GetNbinsX())]
+            weights = [h.GetBinContent(i) for i in xrange(h.GetNbinsX())]
+            m, s = mean_sigma(values, weights)
+            fit = h.Fit('gaus', 'sq0', '', m - s, m + s)
+            fm, fs = fit.Parameter(1), fit.Parameter(2)
+            if .8 * m < fit.Parameter(1) < 1.2 * m and s > 0 and fs < fm and fit.ParError(1) < m:  # only use gauss fit if its not deviating too much from the the mean
+                current = ufloat(fm, fs + .05 + .05 * fm)  # add .05 as uncertainty of the device and 5% systematic error
+            else:
+                current = ufloat(h.GetMean(), h.GetMeanError() + .05 + .05 * h.GetMean())
         server_pickle(self.make_pickle_path('Currents', run=self.RunNumber, ch=self.DiamondNumber), current)
         return current
 
