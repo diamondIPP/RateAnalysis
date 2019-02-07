@@ -8,7 +8,7 @@ from sys import stdout
 from json import loads
 
 from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, \
-    THStack, TArrow, kOrange, TSpectrum, TMultiGraph, Long, TH2I, gRandom
+    THStack, TArrow, kOrange, TSpectrum, TMultiGraph, Long, TH2I, gRandom, Double
 
 from CutPad import CutPad
 from CurrentInfo import Currents
@@ -273,11 +273,31 @@ class PadAnalysis(Analysis):
     def draw_efficiency_map(self, res=1.5, cut='all', show=True):
         cut_string = TCut(cut) + self.Cut.CutStrings['tracks']
         cut_string = self.Cut.generate_special_cut(excluded=['fiducial']) if cut == 'all' else cut_string
-        p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DiamondName), *self.Plots.get_global_bins(res))
-        self.tree.Draw('({s}>10)*100:dia_track_y[{r1}]:dia_track_x[{r1}]>>p_em'.format(s=self.generate_signal_name(), r1=self.DiamondNumber - 1), cut_string, 'goff')
+        p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DiamondName), *self.Plots.get_global_bins(res, mm=True))
+        y, x = self.Cut.get_track_vars(self.DiamondNumber - 1, scale=10)
+        thresh = self.Pedestal.draw_disto_fit(show=False).Parameter(2) * 4
+        self.tree.Draw('({s}>{t})*100:{y}:{x}>>p_em'.format(s=self.generate_signal_name(), x=x, y=y, t=thresh), cut_string, 'goff')
         set_statbox(entries=4, opt=1000000010, x=.81)
-        self.format_histo(p, x_tit='Track x [cm]', y_tit='Track y [cm]', z_tit='Efficiency [%]', y_off=1.4, z_off=1.5, ncont=100)
-        self.save_histo(p, 'Efficiency Map', show, lm=.13, rm=.17, draw_opt='colz')
+        self.set_dia_margins(p)
+        self.format_histo(p, x_tit='Track x [cm]', y_tit='Track y [cm]', z_tit='Efficiency [%]', y_off=1.4, z_off=1.5, ncont=100, z_range=[0, 100])
+        self.draw_histo(p, show=show, lm=.13, rm=.17, draw_opt='colz')
+        self.draw_fiducial_cut(scale=10)
+        self.draw_detector_size(scale=10)
+        self.save_plots('EffMap')
+
+    def draw_efficiency(self, use_ped=True, show=True, thresh=10):
+        h = self.draw_signal_distribution(show=False, bin_width=.5)
+        full_int = h.Integral()
+        stop_bin = next(ibin for ibin in xrange(h.GetMaximumBin(), -1, -1) if h.GetBinContent(ibin) < h.GetBinContent(ibin - 1) and h.GetBinContent(ibin) < h.GetMaximum() / 2 or not ibin)
+        # thresh = self.Pedestal.draw_disto_fit(show=False).Parameter(2) * 4
+        stop_bin = h.FindBin(thresh) if use_ped else stop_bin
+        xbins = range(h.FindBin(0), stop_bin if stop_bin else h.FindFirstBinAbove(h.GetMaximum() / 2))
+        print stop_bin, xbins[0], xbins[-1]
+        err = Double()
+        effs = [make_ufloat((h.IntegralAndError(ibin, h.GetNbinsX(), err) / full_int * 100, err / full_int * 100)) for ibin in xbins]
+        g = self.make_tgrapherrors('get', 'Detector Efficiency', x=[h.GetBinCenter(ibin) for ibin in xbins], y=effs)
+        self.format_histo(g, x_tit='Threshold [mV]', y_tit='Efficiency [%]', y_off=1.3)
+        self.save_histo(g, 'EffThresh', draw_opt='ap', lm=.12, show=show)
 
     def draw_signal_map(self, res=1.5, cut=None, fid=False, hitmap=False, redo=False, show=True, prnt=True):
         cut = self.Cut.generate_special_cut(excluded=['fiducial'], prnt=prnt) if not fid and cut is None else cut
@@ -305,6 +325,7 @@ class PadAnalysis(Analysis):
         h = do_pickle(pickle_path, func, redo=redo)
         self.draw_histo(h, '', show, lm=.12, rm=.16, draw_opt='colzsame')
         self.draw_fiducial_cut(scale=10)
+        # self.draw_detector_size(scale=10)
         self.save_canvas(canvas=get_last_canvas(), name='HitMap' if hitmap else 'SignalMap2D', print_names=prnt)
         return h
 
