@@ -437,14 +437,12 @@ class Cut(Elementary):
                 print '{key}:'.format(key=key.rjust(max_len)), value
         return
 
-    def get_track_var(self, num, mode):
-        if self.analysis.Run.has_branch('dia_track_x'):
-            return 'dia_track_{m}_local[{n}]'.format(m=mode, n=num)
-        else:
-            return 'diam{n}_track_{m}'.format(m=mode, n=num + 1)
+    @staticmethod
+    def get_track_var(num, mode, scale=1):
+        return 'dia_track_{m}_local[{n}]*{s}'.format(m=mode, n=num, s=scale)
 
-    def get_track_vars(self, num):
-        return (self.get_track_var(num, v) for v in ['y', 'x'])
+    def get_track_vars(self, num, scale=1):
+        return (self.get_track_var(num, v, scale) for v in ['y', 'x'])
 
     def generate_consecutive_cuts(self):
         pass
