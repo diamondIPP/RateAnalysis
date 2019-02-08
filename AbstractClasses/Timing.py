@@ -26,12 +26,37 @@ class TimingAnalysis(Elementary):
         self.RunNumber = self.Ana.RunNumber
         self.InfoLegend = InfoLegend(pad_analysis)
 
-    def draw_raw_peaks(self, xmin=100, xmax=400, ch=None, corr=False):
+    def draw_raw_peaks(self, xmin=100, xmax=400, ch=None, corr=False, show=True):
         h = TH1F('h_pt', 'PeakTimings', xmax - xmin, xmin, xmax)
         channel = self.Ana.channel if ch is None else ch
         self.Tree.Draw('max_peak_{p}[{c}]>>h_pt'.format(c=channel, p='position' if not corr else 'time'), '', 'goff')
         self.format_histo(h, x_tit='Digitiser Bin', y_tit='Number of Entries')
-        self.draw_histo(h)
+        self.draw_histo(h, show=show)
+        return h
+
+    def create_run_config(self, ch=0):
+        h0 = self.draw_raw_peaks(ch=ch, show=False)
+        h0.SetName('h0')
+        h1 = self.draw_raw_peaks(500, 800, ch=ch, show=False)
+        sig_max_x = h0.GetBinCenter(h0.GetMaximumBin())
+        self.format_histo(h0, x_range=[sig_max_x - 20, sig_max_x + 20])
+        m = h0.GetMean()
+        print 'signal_a_region = [{}, {}]'.format(int(round(m)), int(round(m)))
+        b_start = int(round(m - 20, -1))
+        print 'signal_b_region = [{}, {}]'.format(b_start, b_start + 40)
+        print 'signal_e_region = [{}, {}]'.format(b_start - 40, b_start + 80)
+        self.format_histo(h0, x_range=[b_start - 40, b_start + 80])
+        print 'pedestal_ab_region = [{}, {}]'.format(int(round(m)) - 40, int(round(m)) - 40)
+        pul_max = h1.GetMaximum()
+        x1, x2 = (h1.GetBinCenter(ibin) for ibin in [h1.FindFirstBinAbove(pul_max / 2) - 2, h1.FindLastBinAbove(pul_max / 2) + 2])
+        self.format_histo(h1, x_range=[round_down_to(x1 - 20, 10), round_up_to(x2, 10)])
+        print 'pulser_region = [{}, {}]'.format(round_down_to(x1, 10), round_up_to(x2, 10))
+        print 'pedestal_ac_region = [{}, {}]'.format(round_down_to(x1 - 20, 10), round_down_to(x1 - 20, 10))
+        c = self.make_canvas(x=2, y=.7)
+        c.Divide(2, 1)
+        for i, h in enumerate((h0, h1), 1):
+            c.cd(i)
+            h.Draw()
 
     def get_fine_correction(self, cut=None):
         fit = self.draw_peaks_tc(show=False, prnt=False, cut=cut).GetListOfFunctions()[0]
