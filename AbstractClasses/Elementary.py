@@ -266,8 +266,9 @@ class Elementary(Draw):
         fit = TF1('fit', 'gaus(0) + gaus(3) + gaus(6)', h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax())
         s = TSpectrum(3)
         n = s.Search(h, 2)
-        y2, y1 = s.GetPositionY()[0], s.GetPositionY()[1] if n == 2 else s.GetPositionY()[2]
-        x2, x1 = s.GetPositionX()[0], s.GetPositionX()[1] if n == 2 else s.GetPositionX()[2]
+        points = [(s.GetPositionX()[i], s.GetPositionY()[i]) for i in [0, 1 if n == 2 else 2]]
+        x1, x2 = (p[0] for p in sorted(points))
+        y1, y2 = (p[1] for p in sorted(points))
         if y1 < 20 or y1 > 1e10:
             return  # didn't find pedestal peak!
         for i, par in enumerate([y2, x2, 10, y1, x1, 5, 10, x1 + 10, 5]):
