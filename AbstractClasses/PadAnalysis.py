@@ -20,7 +20,6 @@ from Pedestal import PedestalAnalysis
 from Peaks import PeakAnalysis
 from Timing import TimingAnalysis
 from Run import Run
-from numpy import sign
 from Utils import *
 
 __author__ = 'micha'
@@ -124,8 +123,8 @@ class PadAnalysis(Analysis):
 
     def get_pulser_polarity(self):
         if not self.Run.TreeConfig.has_option('General', 'pulser polarities'):
-            warning('OLD DATA! Take polarities from config...')
-            return loads(self.Run.Converter.load_polarities())[self.channel]
+            warning('OLD DATA! Take pulser polarities from config...')
+            return loads(self.Run.Converter.load_polarities(pulser=True))[self.channel]
         return int(self.Run.TreeConfig.get('General', 'pulser polarities').split()[self.channel])
 
     def load_regions(self):
