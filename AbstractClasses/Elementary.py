@@ -1,5 +1,5 @@
 from ConfigParser import ConfigParser
-from ROOT import gROOT, TSpectrum, TF1, TCanvas
+from ROOT import TCanvas
 from glob import glob
 from json import loads
 from numpy import inf
@@ -258,30 +258,6 @@ class Elementary(Draw):
         fac = 100 if to100 else 1
         h.Scale(fac / h.Integral(1, h.GetNbinsX()))
         return h
-
-    @staticmethod
-    def triple_gauss_fit(histo, show=True):
-        gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
-        h = histo
-        fit = TF1('fit', 'gaus(0) + gaus(3) + gaus(6)', h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax())
-        s = TSpectrum(3)
-        n = s.Search(h, 2)
-        points = [(s.GetPositionX()[i], s.GetPositionY()[i]) for i in [0, 1 if n == 2 else 2]]
-        x1, x2 = (p[0] for p in sorted(points))
-        y1, y2 = (p[1] for p in sorted(points))
-        if y1 < 20 or y1 > 1e10:
-            return  # didn't find pedestal peak!
-        for i, par in enumerate([y2, x2, 10, y1, x1, 5, 10, x1 + 10, 5]):
-            fit.SetParameter(i, par)
-        fit.SetParLimits(7, x1 + 5, x1 - 20)
-        fit.SetParLimits(1, x2 - 5, x2 + 5)
-        fit.SetParLimits(4, x1 - 10, x1 + 10)
-        fit.SetParLimits(6, 1, y1)
-        fit.SetParLimits(3, 1, y2 * 2)
-        for i in xrange(1):
-            h.Fit(fit, 'qs{0}'.format('' if show else '0'), '', -50, x2 + 5)
-        gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
-        return fit
 
     @staticmethod
     def make_class_from_instance(instance):
