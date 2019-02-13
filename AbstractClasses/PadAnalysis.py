@@ -20,6 +20,7 @@ from Pedestal import PedestalAnalysis
 from Peaks import PeakAnalysis
 from Timing import TimingAnalysis
 from Run import Run
+from numpy import sign
 from Utils import *
 
 __author__ = 'micha'
@@ -116,9 +117,15 @@ class PadAnalysis(Analysis):
         return [str(name) for name in self.tree.IntegralNames]
 
     def get_polarity(self):
+        if not self.Run.TreeConfig.has_option('General', 'polarities'):
+            warning('OLD DATA! Take polarities from config...')
+            return loads(self.Run.Converter.load_polarities())[self.channel]
         return int(self.Run.TreeConfig.get('General', 'polarities').split()[self.channel])
 
     def get_pulser_polarity(self):
+        if not self.Run.TreeConfig.has_option('General', 'pulser polarities'):
+            warning('OLD DATA! Take polarities from config...')
+            return loads(self.Run.Converter.load_polarities())[self.channel]
         return int(self.Run.TreeConfig.get('General', 'pulser polarities').split()[self.channel])
 
     def load_regions(self):
@@ -931,7 +938,7 @@ class PadAnalysis(Analysis):
         h = TH1F('h', 'Bucket Cut Histograms', 250, -50, 300)
         self.tree.Draw('{name}>>h'.format(name=self.SignalName), '!({buc})&&{pul}'.format(buc=self.Cut.CutStrings['old_bucket'], pul=self.Cut.CutStrings['pulser']), 'goff')
         h1 = deepcopy(h)
-        fit = self.Cut.triple_gauss_fit(h1, show=False)
+        fit = self.Cut.fit_bucket(h1, show=False)
         sig_fit = TF1('f1', 'gaus', -50, 300)
         sig_fit.SetParameters(fit.GetParameters())
         ped1_fit = TF1('f2', 'gaus', -50, 300)
