@@ -40,6 +40,7 @@ class AnalysisCollection(Elementary):
         self.Threads = threads
         self.LoadTrees = threads.values()[0].Tuple
         self.Type = run_selection.SelectedType
+        self.DUTType = self.load_dut_type()
         # self.diamonds = self.load_diamonds(diamonds, list_of_runs)
         self.min_max_rate_runs = self.get_high_low_rate_runs()
         if self.LoadTrees:
@@ -98,6 +99,10 @@ class AnalysisCollection(Elementary):
             self.collection[analysis.Run.RunNumber] = analysis
             self.current_run_number = analysis.Run.RunNumber
 
+    def load_dut_type(self):
+        self.selection.Run.set_run(self.Runs[0], False)
+        return self.selection.Run.load_dut_type()
+
     def load_channel(self):
         binary = self.FirstAnalysis.run_config_parser.getint('ROOTFILE_GENERATION', 'active_regions')
         dia_nr = self.selection.SelectedDiamondNr
@@ -121,9 +126,9 @@ class AnalysisCollection(Elementary):
 
     def generate_threshold_pickle(self):
         picklepath = self.make_pickle_path('Cuts', 'SignalThreshold', run=self.min_max_rate_runs['max'], ch=self.selection.SelectedDiamondNr)
-        if file_exists(picklepath) or self.Type != 'pad':
+        if file_exists(picklepath) or self.DUTType != 'pad':
             return
-        PadAnalysis(self.min_max_rate_runs['max'], dia=self.selection.SelectedDiamondNr)
+        PadAnalysis(Run(self.min_max_rate_runs['max'], verbose=self.verbose), dia=self.selection.SelectedDiamondNr)
 
     def get_hv_name(self):
         return self.Currents.Name
