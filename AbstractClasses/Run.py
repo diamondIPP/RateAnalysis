@@ -4,7 +4,7 @@
 # ==============================================
 from json import load, loads, dumps
 from ConfigParser import ConfigParser, NoOptionError
-from ROOT import TFile
+from ROOT import TFile, TTree
 from argparse import ArgumentParser
 from StringIO import StringIO
 
@@ -291,7 +291,15 @@ class Run(Elementary):
             self.tree = root_tree[1]
         else:
             return False
+        self.validate_root_files()
         return True
+
+    def validate_root_files(self):
+        if not (self.RootFile.IsA() == TFile().IsA() and self.tree.IsA() == TTree().IsA()):
+            log_critical('either TFile or TTree of wrong type')
+        if self.DUTType == 'pad' and 'region_information' not in [key.GetName() for key in self.RootFile.GetListOfKeys()]:
+            self.Converter.remove_final_file()
+            log_critical('no region information in root tree (file not propely converted)')
 
     def load_mask(self):
         mask_file_path = '{path}/{mask}'.format(path=self.maskfilepath, mask=self.RunInfo['maskfile'])
