@@ -411,12 +411,6 @@ class Run(Elementary):
     def get_attenuators(self):
         return [str(self.RunInfo['att_dia{}'.format(i)]) for i in xrange(1, self.get_n_diamonds() + 1) if 'att_dia1' in self.RunInfo]
 
-    def get_calibrated_times(self, trigger_cell):
-        t = [self.TCal[int(trigger_cell)]]
-        for i in xrange(1, self.NSamples):
-            t.append(self.TCal[(int(trigger_cell) + i) % self.NSamples] + t[-1])
-        return t
-
     def get_calibrated_time(self, trigger_cell, ibin):
         v = self.TCal[int(trigger_cell)]
         for i in xrange(ibin):

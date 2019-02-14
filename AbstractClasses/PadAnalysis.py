@@ -1357,10 +1357,10 @@ class PadAnalysis(Analysis):
         h = TH2F('h_wf', title, 1024, 0, 512, 2048, -512, 512)
         values = [self.tree.GetV1()[i] for i in xrange(n_entries)]
         if t_corr:
-            times = [self.Run.get_calibrated_times(self.tree.GetV2()[1024 * i]) for i in xrange(n)]
+            times = [self.get_calibrated_times(self.tree.GetV2()[1024 * i]) for i in xrange(n)]
             times = [v for lst in times for v in lst]
         else:
-            times = [(.4 if self.Run.Digitiser == 'caen' else .5) * i for i in xrange(1024)] * n
+            times = [self.DigitiserBinWidth * i for i in xrange(1024)] * n
         for v, t in zip(values, times):
             h.Fill(t, v)
         self.tree.SetEstimate()
@@ -1370,6 +1370,14 @@ class PadAnalysis(Analysis):
         self.format_histo(h, x_tit='Time [ns]', y_tit='Signal [mV]', y_off=.5, stats=0, tit_size=.07, lab_size=.06, y_range=y_range, markersize=.5, x_range=x_range)
         self.draw_histo(h, 'WaveForms{n}'.format(n=n), show=show, draw_opt='col' if n > 1 else 'apl', lm=.073, rm=.045, bm=.18, x=1.5, y=.5)
         return h, n_events
+
+    def get_calibrated_times(self, trigger_cell):
+        if all(self.Run.TCal[0] == t for t in self.Run.TCal):
+            return [self.DigitiserBinWidth * i for i in xrange(self.Run.NSamples)]
+        t = [self.Run.TCal[int(trigger_cell)]]
+        for i in xrange(1, self.Run.NSamples):
+            t.append(self.Run.TCal[(int(trigger_cell) + i) % self.Run.NSamples] + t[-1])
+        return t
 
     def draw_averaged_wf(self, n=100, cut=None, align_peaks=True, show=True):
         p = TProfile('pawf', 'Averaged Waveform', 2000, 0, 500)
@@ -1396,7 +1404,7 @@ class PadAnalysis(Analysis):
         values = [self.tree.GetV1()[i] for i in xrange(n_entries)]
         times = [self.DigitiserBinWidth * i for i in xrange(1024)] * n
         if t_corr:
-            times = [v for lst in [self.Run.get_calibrated_times(self.tree.GetV2()[1024 * i]) for i in xrange(n)] for v in lst]
+            times = [v for lst in [self.get_calibrated_times(self.tree.GetV2()[1024 * i]) for i in xrange(n)] for v in lst]
         self.count += n_events
         return values, times
 
