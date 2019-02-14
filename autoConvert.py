@@ -52,10 +52,10 @@ class AutoConvert:
 
         # check if we have to convert the run
         if file_exists(self.Converter.get_final_file_path()) or self.RunInfos[run]['runtype'] in ['test', 'crap', 'schrott']:
+            print '{}: final file exists'.format(run)
             return
-        raw_file = self.Converter.get_raw_file_path()
-        if not file_exists(raw_file):
-            log_warning('The following raw file does not exist: {}'.format(raw_file))
+        raw_file = self.Converter.get_raw_file_path(crit=False)
+        if not file_exists(raw_file, warn=True):
             return
 
         t = time()
@@ -87,7 +87,7 @@ class AutoConvert:
 
         pool = Pool(n_cpus)
 
-        tasks = [(self, [run]) for run in self.RunInfos if self.FirstRun <= run <= self.EndRun and file_exists(self.Converter.make_raw_file_path(run), warn=True)]
+        tasks = [(self, [run]) for run in self.RunInfos if self.FirstRun <= run <= self.EndRun]
         results = [pool.apply_async(execute, t) for t in tasks]
         for res in results:
             print res.get(timeout=2 * 24 * 60 * 60)
