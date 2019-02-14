@@ -185,6 +185,12 @@ class PadAnalysis(Analysis):
         attenuators = self.Run.get_attenuators()
         return attenuators[self.DiamondNumber - 1] if attenuators else None
 
+    def make_all(self, redo=False):
+        self.draw_signal_distribution(redo=redo, show=False)
+        self.draw_pulse_height(redo=redo, show=False)
+        self.draw_signal_map(redo=redo, show=False)
+        self.draw_dia_hitmap(redo=redo, show=False)
+
     # ==========================================================================
     # region BEAM PROFILE
 
