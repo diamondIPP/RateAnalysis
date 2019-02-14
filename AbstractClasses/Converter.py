@@ -138,9 +138,9 @@ class Converter:
     def make_raw_file_path(self, run=None):
         return join(self.RawFileDir, 'run{run:06d}.raw'.format(run=self.RunNumber if run is None else run))
 
-    def get_raw_file_path(self):
+    def get_raw_file_path(self, crit=True):
         file_path = self.make_raw_file_path()
-        if not file_exists(file_path):
+        if not file_exists(file_path) and crit:
             log_critical('The raw file {} does not exist ...'.format(file_path))
         return file_path
 
