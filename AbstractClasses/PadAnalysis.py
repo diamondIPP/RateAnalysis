@@ -839,7 +839,7 @@ class PadAnalysis(Analysis):
         self.save_plots('PHEvolutionOverview{0}'.format(self.BinSize), sub_dir=self.save_dir)
         self.ROOTObjects.append([h2, c])
 
-    def draw_signal_distribution(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None, bin_width=2, events=None,
+    def draw_signal_distribution(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None, bin_width=.5, events=None,
                                  start=None, x_range=None, redo=False, prnt=True, save=True):
         cut = self.AllCuts if cut is None else TCut(cut)
         suffix = '{b}_{c}_{cut}'.format(b=bin_width, c=int(evnt_corr), cut=cut.GetName())
@@ -853,6 +853,7 @@ class PadAnalysis(Analysis):
             start_event = int(float(start)) if start is not None else 0
             n_events = self.find_n_events(n=events, cut=str(cut), start=start_event) if events is not None else self.Run.n_entries
             self.tree.Draw('{name}>>h_sd'.format(name=sig_name), str(cut), 'goff', n_events, start_event)
+            h1.Rebin(max(1, int(h1.GetMean() / 30)))
             return h1
 
         self.set_statbox(all_stat=1)
