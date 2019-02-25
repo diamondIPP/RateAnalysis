@@ -325,7 +325,7 @@ class CutPad(Cut):
             if fit is None:
                 self.add_info(t)
                 return -30
-            if fit is None or any(abs(fit.GetParameter(i)) < 20 for i in [0, 3]) or fit.GetParameter(1) < fit.GetParameter(4):
+            if fit is None or any(abs(fit.GetParameter(i)) < 20 for i in [0, 3]) or fit.GetParameter(1) < fit.GetParameter(4) or fit.GetParameter(1) > 500:
                 warning('bucket cut fit failed')
                 self.draw_histo(h, show=show)
                 self.add_info(t)
