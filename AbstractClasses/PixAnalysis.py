@@ -412,7 +412,7 @@ class PixAnalysis(Analysis):
 
     # region EFFICIENCY %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     def get_efficiency_cut(self):
-        return self.Cut.generate_special_cut(included=['fiducial', 'rhit', 'tracks', 'trigger_phase', 'chi2X', 'chi2Y', 'aligned'])
+        return self.Cut.generate_special_cut(included=['fiducial', 'rhit', 'tracks', 'trigger_phase', 'chi2X', 'chi2Y', 'aligned', 'event_range'])
 
     def get_trigphase_cut(self, phase):
         return self.Cut.generate_special_cut(included=['fiducial', 'rhit', 'tracks', 'chi2X', 'chi2Y', 'aligned']) + TCut('trigger_phase[1]=={}'.format(phase))
@@ -421,7 +421,7 @@ class PixAnalysis(Analysis):
     def calc_eff(k=0, n=0, values=None):
         k = float(len(filter(lambda x: x > 0, values))) if values is not None else float(k)
         n = float(len(values)) if values is not None else float(n)
-        return 100 * (k + 1) / (n + 2), 100 * sqrt(((k + 1)/(n + 2) * (k + 2)/(n + 3) - ((k + 1)**2) / ((n + 2)**2)))
+        return make_ufloat((100 * (k + 1) / (n + 2), 100 * sqrt(((k + 1)/(n + 2) * (k + 2)/(n + 3) - ((k + 1)**2) / ((n + 2)**2)))))
 
     def get_hit_efficiency(self, roc=None, cut=None):
         cut_string = self.get_efficiency_cut() if cut is None else TCut(cut)
@@ -478,12 +478,14 @@ class PixAnalysis(Analysis):
     def draw_efficiency_map(self, res=5, cut='all', show=True):
         cut_string = TCut(cut) + self.Cut.CutStrings['tracks']
         cut_string = self.Cut.generate_special_cut(excluded=['masks', 'fiducial']) if cut == 'all' else cut_string
-        p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DiamondName), *self.Plots.get_global_bins(res=res))
-        self.tree.Draw('(n_hits[{r}]>0)*100:dia_track_y_local[{r1}]:dia_track_x_local[{r1}]>>p_em'.format(r=self.Dut, r1=self.Dut - 4), cut_string, 'goff')
-        set_statbox(entries=4, opt=1000000010, x=.81, y=.95)
-        self.format_histo(p, x_tit='Track x [cm]', y_tit='Track y [cm]', z_tit='Efficiency [%]', y_off=1.4, z_off=1.5)
-        self.save_histo(p, 'Efficiency Map', show, lm=.13, rm=.17, draw_opt='colz', bm=.2)
+        p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DiamondName), *self.Plots.get_global_bins(res=res, mm=True))
+        self.tree.Draw('(n_hits[{r}]>0)*100:{}:{}>>p_em'.format(r=self.Dut, *self.Cut.get_track_vars(self.Dut - 4, scale=10)), cut_string, 'goff')
+        self.set_statbox(entries=True, x=.81, y=.95)
+        self.format_histo(p, x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]', z_tit='Efficiency [%]', y_off=1.4, z_off=1.5)
+        self.draw_histo(p, 'Efficiency Map', show, lm=.13, rm=.17, draw_opt='colz')
+        self.draw_fid_cut(scale=10)
         self.draw_preliminary()
+        self.save_plots('Efficiency Map')
 
     def get_fiducial_cell(self, n):
         x1, x2, y1, y2 = self.Cut.CutConfig['FidRegion']
