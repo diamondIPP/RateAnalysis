@@ -291,7 +291,8 @@ def calc_weighted_mean(means, sigmas):
 def mean_sigma(values, weights=None):
     """ Return the weighted average and standard deviation. values, weights -- Numpy ndarrays with the same shape. """
     if len(values) == 1:
-        return make_ufloat(values[0])
+        value = make_ufloat(values[0])
+        return value.n, value.s
     weights = [1] * len(values) if weights is None else weights
     if type(values[0]) is Variable:
         weights = [1 / v.s for v in values]
