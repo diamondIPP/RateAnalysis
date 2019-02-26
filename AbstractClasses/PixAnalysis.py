@@ -171,23 +171,25 @@ class PixAnalysis(Analysis):
         self.save_histo(h, '{p}Disto'.format(p='Ph' if electrons else 'Vcal'), show, lm=0.13)
         return h
 
-    def draw_signal_distribution(self, cut=None, show=True, prnt=True, roc=None, vcal=False, redo=False):
+    def draw_signal_distribution(self, cut=None, show=True, prnt=True, roc=None, vcal=False, redo=False, draw_thresh=False):
         roc = self.Dut if roc is None else roc
         pickle_path = self.make_pickle_path('PulseHeight', run=self.RunNumber, suf=roc)
         cut_string = self.Cut.generate_special_cut(excluded='masks') if cut is None else TCut(cut)
 
-        def func():
+        def f():
             set_root_output(False)
             h1 = TH1D('h_phd', 'Pulse Height Distribution - {d}'.format(d=self.DiamondName), *self.Settings['phBins' if not vcal else 'vcalBins'])
             self.tree.Draw('cluster_charge[{d}]{v}>>h_phd'.format(d=self.Dut, v='/47.5 + 427.4/47.5' if vcal else ''), cut_string, 'goff')
-            set_statbox(entries=8, opt=1000000010, x=.92)
-            self.format_histo(h1, x_tit='Pulse Height [{u}]'.format(u='vcal' if vcal else 'e'), y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor)
-            self.save_histo(h1, 'PulseHeightDisto{c}'.format(c=make_cut_string(cut, self.Cut.NCuts)), show, lm=.13, prnt=prnt, rm=.06)
             return h1
 
-        h = func() if redo else None
-        h = do_pickle(pickle_path, func, h)
-        self.draw_histo(h, show=show, lm=.13, prnt=prnt, rm=.06)
+        h = do_pickle(pickle_path, f, redo=redo)
+        x_range = [h.GetXaxis().GetXmin(), h.GetBinCenter(h.FindLastBinAbove(2)) * 1.2]
+        self.set_statbox(all_stat=True, x=.92, w=.25, n_entries=4)
+        self.format_histo(h, x_tit='Pulse Height [{u}]'.format(u='vcal' if vcal else 'e'), y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor, x_range=x_range)
+        self.draw_histo(h, show, lm=.13, prnt=prnt, rm=.06)
+        if draw_thresh:
+            self.draw_y_axis(1500, h.GetYaxis().GetXmin(), h.GetMaximum(), 'threshold #approx {}e  '.format(1500), off=.3, line=True, opt='-L')
+        self.save_plots('PulseHeightDisto{c}'.format(c=make_cut_string(cut, self.Cut.NCuts)))
         return h
     
     # endregion DISTRIBUTIONS
