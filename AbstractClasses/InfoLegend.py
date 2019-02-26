@@ -26,7 +26,7 @@ class InfoLegend:
         """
         if canvas is not None:
             canvas.cd()
-            if show and canvas.GetBottomMargin() < .105:
+            if show and canvas.GetBottomMargin() < .105 and self.ShowInfo:
                 canvas.SetBottomMargin(0.15)
         else:
             canvas = gROOT.GetSelectedPad()
