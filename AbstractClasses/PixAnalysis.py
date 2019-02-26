@@ -537,10 +537,8 @@ class PixAnalysis(Analysis):
         pie.SetAngularOffset(250)
         self.draw_histo(pie, draw_opt='3drsc')
 
-    def draw_fid_cut(self):
-        self.Cut.generate_fiducial(name='fiddraw', center=True)
-        cut = gROOT.FindObject('fiddraw')
-        cut.Draw()
+    def draw_fid_cut(self, scale=1):
+        self.Cut.draw_fid_cut(scale)
 
     def draw_track_occupancy(self, cut='', show=True, res=2):
         cut_string = self.Cut.all_cut if cut is None else TCut(cut) + self.Cut.CutStrings['tracks']
