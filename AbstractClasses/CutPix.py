@@ -174,7 +174,7 @@ class CutPix(Cut):
             dx, dy = .0075, .005
             x = array([xy[0] - d, xy[0] - d, xy[1] + d, xy[1] + d, xy[0] - d], 'd') + (dx if center else 0)
             y = array([xy[2] - d, xy[3] + d, xy[3] + d, xy[2] - d, xy[2] - d], 'd') + (dy if center else 0)
-            cut = TCutG(name, 5, x, y)
+            cut = TCutG('{}{}'.format(name, self.RunNumber), 5, x, y)
             cut.SetVarX(self.get_track_var(self.Dut - 4, 'x'))
             cut.SetVarY(self.get_track_var(self.Dut - 4, 'y'))
             self.ROOTObjects.append(cut)
@@ -182,7 +182,17 @@ class CutPix(Cut):
             cut.SetLineWidth(3)
         else:
             return ''
-        return name
+        return '{}{}'.format(name, self.RunNumber)
+
+    def draw_fid_cut(self, scale=1):
+        cut = get_object('fid{}'.format(self.RunNumber))
+        if cut:
+            cut = deepcopy(cut)
+            cut.SetName('fid{}'.format(scale))
+            for i in xrange(cut.GetN()):
+                cut.SetPoint(i, scale * cut.GetX()[i], scale * cut.GetY()[i])
+            cut.Draw()
+            self.ROOTObjects.append(cut)
 
     def generate_alignment(self):
         """ This adds the restrictions to the cut string such that misalignments are excluded each time the cut is applied. """
