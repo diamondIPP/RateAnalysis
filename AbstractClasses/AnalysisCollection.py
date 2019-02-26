@@ -100,7 +100,7 @@ class AnalysisCollection(Elementary):
             self.current_run_number = analysis.Run.RunNumber
 
     def load_dut_type(self):
-        self.selection.Run.set_run(self.Runs[0], False)
+        self.selection.Run.reload_run_config(self.Runs[0])
         return self.selection.Run.load_dut_type()
 
     def load_channel(self):
@@ -290,7 +290,10 @@ class AnalysisCollection(Elementary):
             phs = OrderedDict()
             self.start_pbar(self.NRuns)
             for i, (key, ana) in enumerate(self.collection.iteritems()):
-                ph = ana.draw_pulse_height(bin_size=binning, corr=True, show=False, redo=redo, prnt=False)[1]
+                if self.DUTType == 'pad':
+                    ph = ana.draw_pulse_height(bin_size=binning, corr=True, show=False, redo=redo, prnt=False)[1]
+                else:
+                    ph = ana.draw_pulse_height(bin_size=binning, show=False)
                 phs[key] = {'flux': ana.get_flux(), 'ph': make_ufloat(ph, par=0), 'time': ana.Run.get_time()}
                 self.ProgressBar.update(i + 1)
             self.ProgressBar.finish()
