@@ -396,7 +396,7 @@ class AnalysisCollection(Elementary):
         mg = self.get_pulse_height_graph(binning, vs_time, show_first_last, redo)
 
         # small range
-        self.format_histo(mg, color=None, x_tit='Time [hh:mm]' if vs_time else 'Flux [kHz/cm^{2}]', y_tit='Signal Pulse Height [au]', y_off=1.75, x_off=1.3, draw_first=True,
+        self.format_histo(mg, color=None, x_tit='Time [hh:mm]' if vs_time else 'Flux [kHz/cm^{2}]', y_tit='Signal Pulse Height [mV]', y_off=1.75, x_off=1.3, draw_first=True,
                           t_ax_off=0 if vs_time else None)
         ymin, ymax = mg.GetYaxis().GetXmin(), mg.GetYaxis().GetXmax()
         yrange = increased_range([ymin, ymax], .5, .15) if y_range is None else y_range
@@ -882,11 +882,11 @@ class AnalysisCollection(Elementary):
         for i, (flux, current) in enumerate(zip(fluxes, currents)):
             if current is not None:
                 g.SetPoint(i, flux.n, current.n)
-                g.SetPointError(i, flux.s + flux.n * .05, current.s)
+                g.SetPointError(i, flux.s + flux.n * .01, current.s)
         c_range = [.1, max([c.n for c in currents if c is not None]) * 2] if c_range is None else c_range
-        self.format_histo(g, x_tit='Flux [kHz/cm^{2}', y_tit='Current [nA]', y_off=1.3, y_range=c_range, draw_first=True)
+        self.format_histo(g, x_tit='Flux [kHz/cm^{2}]', y_tit='Current [nA]', y_off=1.3, y_range=c_range, draw_first=True)
         g.GetXaxis().SetLimits(1, 20000)
-        self.draw_histo(g, 'FluxCurrent', show, lm=.13, draw_opt='ap', logx=True, logy=True, bm=.17)
+        self.draw_histo(g, 'FluxCurrent', show, lm=.13, draw_opt='ap', logx=True, logy=True)
         if fit:
             set_statbox(only_fit=True, y=.33, entries=6, w=.22)
             f = TF1('fcf', 'pol1', .1, 1e5)
