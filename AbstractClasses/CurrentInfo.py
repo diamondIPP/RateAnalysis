@@ -233,6 +233,9 @@ class Currents(Elementary):
         self.log_info('Starting with log: {0}'.format(basename(log_names[start_log])))
         return log_names[start_log:]
 
+    def get_first_log(self):
+        return self.get_logs_from_start()[0]
+
     def get_log_date(self, name):
         log_date = ''.join(basename(name).split('_')[-6:])
         return self.TimeZone.localize(datetime.strptime(log_date, '%Y%m%d%H%M%S.log'))
