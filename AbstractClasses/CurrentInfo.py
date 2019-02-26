@@ -70,6 +70,7 @@ class Currents(Elementary):
         self.Brand = self.ConfigParser.get('HV' + self.Number, 'name').split('-')[0].strip('0123456789')
         self.Model = self.ConfigParser.get('HV' + self.Number, 'model')
         self.Name = '{0} {1}'.format(self.Brand, self.Model)
+        self.Precision = .005 if '237' in self.Name else .05
 
         self.DataPath = self.find_data_path()
         self.OldDataPath = self.find_data_path(old=True)
@@ -360,7 +361,9 @@ class Currents(Elementary):
         m, s = mean_sigma(self.Currents)
         s = .1 if not s else s
         set_root_output(False)
-        h = TH1F('hcd', 'Current Distribution', 5 * int(sqrt(len(self.Currents))), m - 2 * s, m + 2 * s)
+        xmin, xmax = m - 3 * s, m + 3 * s
+        max_bins = int((xmax - xmin) * 100 if '237' in self.Name else 10)
+        h = TH1F('hcd', 'Current Distribution', min(5 * int(sqrt(len(self.Currents))), max_bins), xmin, xmax)
         for current in self.Currents:
             h.Fill(current)
         self.format_histo(h, x_tit='Current [nA]', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
@@ -381,7 +384,7 @@ class Currents(Elementary):
             fit = h.Fit('gaus', 'sq0', '', m - s, m + s)
             fm, fs = fit.Parameter(1), fit.Parameter(2)
             if .8 * m < fit.Parameter(1) < 1.2 * m and s > 0 and fs < fm and fit.ParError(1) < m:  # only use gauss fit if its not deviating too much from the the mean
-                current = ufloat(fm, fs + .05 + .05 * fm)  # add .05 as uncertainty of the device and 5% systematic error
+                current = ufloat(fm, fs + self.Precision + .03 * fm)  # add .05 as uncertainty of the device and 5% systematic error
             else:
                 current = ufloat(h.GetMean(), h.GetMeanError() + .05 + .05 * h.GetMean())
         server_pickle(self.make_pickle_path('Currents', run=self.RunNumber, ch=self.DiamondNumber), current)
