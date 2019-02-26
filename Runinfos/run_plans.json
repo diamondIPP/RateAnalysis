@@ -185,6 +185,23 @@
       ], 
       "type": "up scan"
     }, 
+    "01.2": {
+      "attenuators": {
+        "dia1": null, 
+        "dia2": null, 
+        "pulser1": null, 
+        "pulser2": null
+      }, 
+      "runs": [
+        69, 
+        73, 
+        74, 
+        75, 
+        76, 
+        77
+      ], 
+      "type": "up scan"
+    }, 
     "02": {
       "attenuators": {
         "dia1": "None", 
