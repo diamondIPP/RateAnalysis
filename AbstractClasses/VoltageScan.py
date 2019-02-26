@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from Elementary import Elementary
-from ROOT import gStyle, TMultiGraph
+from ROOT import gStyle
 from InfoLegend import InfoLegend
 from Utils import make_ufloat
 
@@ -43,42 +43,31 @@ class VoltageScan(Elementary):
         self.reset_colors()
 
     def draw_efficiency(self, show=True):
-        g = self.make_tgrapherrors('gev', 'Efficiency vs. Voltage')
-        for i, (key, ana) in enumerate(self.collection.iteritems()):
-            fit = ana.draw_hit_efficiency(show=False)
-            x = ana.Run.RunInfo['dia{nr}hv'.format(nr=self.DiamondNumber)]
-            s, e = (fit.Parameter(0), fit.ParError(0))
-            g.SetPoint(i, x, s)
-            g.SetPointError(i, 0, e)
-        self.format_histo(g, x_tit='Voltage [V]', y_tit='Hit Efficiency [%]', y_off=1.3)
-        self.save_histo(g, 'EfficiencyVoltage', show=show)
+        x = self.get_voltages()
+        efficiencies = [ana.get_hit_efficiency() for ana in self.collection.itervalues()]
+        g = self.make_tgrapherrors('gev', 'Efficiency vs. Voltage', x=x, y=efficiencies, color=self.colors[2])
+        self.format_histo(g, x_tit='Voltage [V]', y_tit='Hit Efficiency [%]', y_off=1.3, y_range=[0, 108], x_range=[min(x).n - 10, max(x).n + 10])
+        self.draw_histo(g, show=show, gridy=True)
+        self.draw_preliminary()
+        self.save_plots('EfficiencyVoltage')
 
     def draw_pulser_pulse_height(self, binning=10000, redo=False, show=True):
         return self.draw_pulse_height(binning, pulser=True, redo=redo, show=show)
 
-    def draw_pulse_height(self, binning=None, pulser=False, redo=False, first_last=True, show=True):
+    def draw_pulse_height(self, binning=None, pulser=False, redo=False, show=True):
 
         marker_size = 1
         gStyle.SetEndErrorSize(4)
         ph = self.Ana.Pulser.get_pulse_heights(redo=redo) if pulser else self.Ana.get_pulse_heights(binning, redo)
         y_values = [dic['ph'] for dic in ph.itervalues()]
-        x_values = self.get_voltages()
-        g = self.make_tgrapherrors('gStatError', 'stat. error', self.colors[2], x=self.get_voltages(), y=y_values, marker_size=marker_size)
+        x = self.get_voltages()
         rel_sys_error = 0  # TODO think of something else here...
-        y_values = [make_ufloat((v.n, v.s + rel_sys_error * v.n)) for v in y_values]
-        g_errors = self.make_tgrapherrors('gerr', 'full error', marker=0, color=602, marker_size=0, x=x_values, y=y_values)
-        g_first = self.make_tgrapherrors('g1', 'first run', marker=22, color=2, marker_size=marker_size, x=[x_values[0].n], y=[y_values[0].n])
-        g_last = self.make_tgrapherrors('g2', 'last run', marker=23, color=2, marker_size=marker_size, x=[x_values[-1].n], y=[y_values[-1].n])
-        graphs = [g, g_errors]
-        graphs += [g_first, g_last] if first_last else []
-        l = self.make_legend(.75, .37, nentries=len(graphs))
-        mg = TMultiGraph('mg_ph', 'Pulse Height - {dia}'.format(dia=self.DiamondName))
-        for gr in graphs:
-            l.AddEntry(gr, gr.GetTitle(), 'l' if gr.GetName() == 'gerr' else 'p')
-            mg.Add(gr, 'pl')
-        mg.GetListOfFunctions().Add(l)
-        self.reset_colors()
-        max_y = max(graphs[0].GetY()[i] for i in xrange(graphs[0].GetN()))
-        self.format_histo(mg, x_tit='Voltage [V]', y_tit='Pulse Height [au]', y_off=1.4, draw_first=True, y_range=[0, max_y * 1.2])
-        self.save_histo(mg, '{s}VoltageScan'.format(s='Signal' if not pulser else 'Pulser'), draw_opt='a', lm=.14, show=show)
-        return mg
+        fac = 1 if self.Ana.DUTType == 'pad' else 1e-3
+        y_values = [make_ufloat((v.n, v.s + rel_sys_error * v.n)) * fac for v in y_values]
+        g = self.make_tgrapherrors('gStatError', 'stat. error', self.colors[2], x=x, y=y_values, marker_size=marker_size)
+        ytit = 'Pulse Height [{}]'.format('mV' if self.Ana.DUTType == 'pad' else 'ke')
+        self.format_histo(g, x_tit='Voltage [V]', y_tit=ytit, y_off=1.4, draw_first=True, y_range=[0, max(y_values).n * 1.2], x_range=[min(x).n - 10, max(x).n + 10])
+        self.draw_histo(g, draw_opt='apl', lm=.14, show=show)
+        self.draw_preliminary()
+        self.save_plots('{s}VoltageScan'.format(s='Signal' if not pulser else 'Pulser'))
+        return g
