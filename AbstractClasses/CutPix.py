@@ -1,11 +1,10 @@
 import sys
-from numpy import array, zeros
+from numpy import zeros
 from ROOT import TCut, gROOT, TH1F, kRed, TCutG, TH2D, TH1D, THStack
 from Cut import Cut
 from json import loads
-from collections import OrderedDict
 from InfoLegend import InfoLegend
-from Utils import do_pickle, print_banner
+from Utils import *
 
 
 class CutPix(Cut):
@@ -110,10 +109,10 @@ class CutPix(Cut):
 
     def load_fiducial(self, name='FidPix'):
         if self.ana_config_parser.has_option('CUT', name):
-            dic = loads(self.ana_config_parser.get('CUT', name))
-            dut = str(self.Dut)
-            if dut in dic:
-                return dic[dut]
+            split = self.ana_config_parser.has_option('SPLIT', 'pixel fiducial')
+            split_runs = (loads(self.ana_config_parser.get('SPLIT', 'pixel fiducial')) if split else []) + [int(1e10)]
+            dic = next(loads(self.ana_config_parser.get('CUT', '{o}{n}'.format(o=name, n=i if i else ''))) for i in xrange(len(split_runs)) if self.RunNumber <= split_runs[i])
+            return dic[str(self.Dut)]
 
     def generate_special_cut(self, excluded=None, included=None, name='special_cut', cluster=True, prnt=True):
         cut = TCut(name, '')
