@@ -211,8 +211,7 @@ class CutPad(Cut):
         t_correction, fit = self.calc_timing_range(show=False)
         if fit is None:
             return TCut('')
-        num = self.analysis.SignalNumber
-        corrected_time = 'IntegralPeakTime[{num}] - {t_corr}'.format(num=num, t_corr=t_correction)
+        corrected_time = 'IntegralPeakTime[{num}] - {t_corr}'.format(num=self.analysis.SignalNumber, t_corr=t_correction)
         try:
             string = 'TMath::Abs({cor_t} - {mp}) / {sigma} < {n_sigma}'.format(cor_t=corrected_time, mp=fit.GetParameter(1), sigma=fit.GetParameter(2), n_sigma=n_sigma)
         except Exception as err:

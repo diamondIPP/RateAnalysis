@@ -858,7 +858,7 @@ class PadAnalysis(Analysis):
 
         self.set_statbox(all_stat=1)
         h = do_pickle(pickle_path, func, redo=redo)
-        x_range = increased_range([h.GetBinCenter(i) for i in [h.FindFirstBinAbove(0), h.FindLastBinAbove(0)]], .1) if x_range is None else x_range
+        x_range = increased_range([h.GetBinCenter(i) for i in [h.FindFirstBinAbove(0), h.FindLastBinAbove(3)]], .1) if x_range is None else x_range
         self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=2, fill_color=self.FillColor, x_range=x_range)
         self.save_histo(h, 'SignalDistribution', lm=.15, show=show, prnt=prnt, save=save)
         return h
@@ -1534,7 +1534,7 @@ class PadAnalysis(Analysis):
             self.tree.Draw('(@col.size()>1)*100:Entry$>>h', 'pulser', 'goff')
             self.format_histo(h, title='Event Alignment', x_tit='Event Number', y_tit='Hit Efficiency @ Pulser Events [%]', y_off=1.3, stats=0, y_range=[0, 105], fill_color=self.FillColor)
             self.save_histo(h, 'EventAlignment', show, self.TelSaveDir, draw_opt='hist', prnt=show, rm=.08)
-            return sum(h.GetBinContent(bin_) > 40 for bin_ in xrange(5, h.GetNbinsX())) < h.GetNbinsX() * .02
+            return sum(h.GetBinContent(bin_) > 40 for bin_ in xrange(5, h.GetNbinsX())) < h.GetNbinsX() * .05
 
         aligned = func() if show else None
         aligned = do_pickle(pickle_path, func, aligned)
