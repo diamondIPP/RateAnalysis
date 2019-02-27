@@ -4883,7 +4883,7 @@
       "type": "rate scan"
     }, 
     "13": {
-      "amplifiers": "[\"C6_1\", \"C6_2\"]", 
+      "amplifiers": "[\"C6_1\", \"C2_2\"]", 
       "attenuators": {
         "dia1": "None", 
         "dia2": "None", 
@@ -5052,51 +5052,6 @@
       "type": "rate scan"
     }, 
     "21": {
-      "amplifiers": "[\"OSU2\", \"OSU2\"]", 
-      "attenuators": {
-        "dia1": "None", 
-        "pulser1": "None"
-      }, 
-      "runs": [
-        511, 
-        513, 
-        514, 
-        515, 
-        516, 
-        517, 
-        520, 
-        522, 
-        523, 
-        524, 
-        525, 
-        538, 
-        539, 
-        540, 
-        541, 
-        542, 
-        543, 
-        544, 
-        545, 
-        546, 
-        551, 
-        553, 
-        554, 
-        555, 
-        565, 
-        566, 
-        567, 
-        568, 
-        569, 
-        570, 
-        571, 
-        573, 
-        574, 
-        575, 
-        579
-      ], 
-      "type": "bcm prime"
-    }, 
-    "21.0": {
       "amplifiers": "[\"OSU2-C1-1\", \"\"]", 
       "attenuators": {
         "dia1": "None", 
@@ -5115,9 +5070,9 @@
         524, 
         525
       ], 
-      "type": "chip 1-1"
+      "type": "bcm' box1"
     }, 
-    "21.1": {
+    "22": {
       "amplifiers": "[\"OSU2-C2-1\", \"\"]", 
       "attenuators": {
         "dia1": "None", 
@@ -5134,9 +5089,9 @@
         545, 
         546
       ], 
-      "type": "chip 2-1"
+      "type": "bcm' box1"
     }, 
-    "21.2": {
+    "23": {
       "amplifiers": "[\"OSU2-C1-1\", \"OSU2-C2-1\"]", 
       "attenuators": {
         "dia1": "None", 
@@ -5150,9 +5105,9 @@
         554, 
         555
       ], 
-      "type": "channel 1+2"
+      "type": "bcm' box1"
     }, 
-    "21.3": {
+    "24": {
       "amplifiers": "[\"OSU2-C1-1\", \"OSU2-C2-1\"]", 
       "attenuators": {
         "dia1": "None", 
@@ -5166,9 +5121,9 @@
         567, 
         568
       ], 
-      "type": "box 2 pos"
+      "type": "bcm' box2"
     }, 
-    "21.4": {
+    "25": {
       "amplifiers": "[\"OSU2-C1-1\", \"OSU2-C2-1\"]", 
       "attenuators": {
         "dia1": "None", 
@@ -5185,7 +5140,7 @@
         575, 
         579
       ], 
-      "type": "box 2 neg"
+      "type": "bcm' box2"
     }
   }
 }
