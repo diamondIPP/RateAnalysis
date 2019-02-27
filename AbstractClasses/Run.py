@@ -295,7 +295,8 @@ class Run(Elementary):
         return True
 
     def validate_root_files(self):
-        if not (self.RootFile.IsA() == TFile().IsA() and self.tree.IsA() == TTree().IsA()):
+        if self.RootFile.IsZombie() or not (self.RootFile.IsA() == TFile().IsA() and self.tree.IsA() == TTree().IsA()):
+            self.Converter.remove_final_file()
             log_critical('either TFile or TTree of wrong type')
         if self.DUTType == 'pad' and 'region_information' not in [key.GetName() for key in self.RootFile.GetListOfKeys()]:
             self.Converter.remove_final_file()
