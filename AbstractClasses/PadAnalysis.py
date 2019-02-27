@@ -311,7 +311,7 @@ class PadAnalysis(Analysis):
         self.format_histo(g, x_tit='Threshold [mV]', y_tit='Efficiency [%]', y_off=1.3)
         self.save_histo(g, 'EffThresh', draw_opt='ap', lm=.12, show=show)
 
-    def draw_signal_map(self, res=1.5, cut=None, fid=False, hitmap=False, redo=False, show=True, prnt=True):
+    def draw_signal_map(self, res=1.5, cut=None, fid=False, hitmap=False, redo=False, show=True, prnt=True, z_range=None, save=True):
         cut = self.Cut.generate_special_cut(excluded=['fiducial'], prnt=prnt) if not fid and cut is None else cut
         cut = self.Cut.all_cut if cut is None else TCut(cut)
         suf = '{c}_{ch}'.format(c=cut.GetName(), ch=self.Cut.CutConfig['chi2X'])
@@ -326,23 +326,28 @@ class PadAnalysis(Analysis):
             sig = self.generate_signal_name()
             x_var, y_var = (self.Cut.get_track_var(self.DiamondNumber - 1, v) for v in ['x', 'y'])
             self.tree.Draw('{z}{y}*10:{x}*10>>{h}'.format(z=sig + ':' if not hitmap else '', x=x_var, y=y_var, h=name), cut, 'goff')
-            self.set_dia_margins(h1)
-            self.set_z_range(h1)
-            z_tit = 'Number of Entries' if hitmap else 'Pulse Height [mV]'
-            self.format_histo(h1, x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]', y_off=1.4, z_off=1.5, z_tit=z_tit, ncont=50, ndivy=510, ndivx=510)
             return h1
 
         set_statbox(only_entries=True, x=0.82)
         gStyle.SetPalette(1 if hitmap else 53)
         h = do_pickle(pickle_path, func, redo=redo)
+        self.set_dia_margins(h)
+        self.set_z_range(h)
+        z_tit = 'Number of Entries' if hitmap else 'Pulse Height [mV]'
+        self.format_histo(h, x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]', y_off=1.4, z_off=1.5, z_tit=z_tit, ncont=50, ndivy=510, ndivx=510, z_range=z_range)
         self.draw_histo(h, '', show, lm=.12, rm=.16, draw_opt='colzsame')
         self.draw_fiducial_cut(scale=10)
         # self.draw_detector_size(scale=10)
-        self.save_canvas(canvas=get_last_canvas(), name='HitMap' if hitmap else 'SignalMap2D', print_names=prnt)
+        self.save_plots('HitMap' if hitmap else 'SignalMap2D', prnt=prnt, save=save)
         return h
 
-    def draw_dia_hitmap(self, show=True, res=1.5, cut=None, fid=False, redo=False, prnt=True):
-        return self.draw_signal_map(show=show, res=res, cut=cut, fid=fid, hitmap=True, redo=redo, prnt=prnt)
+    def draw_dia_hitmap(self, show=True, res=1.5, cut=None, fid=False, redo=False, prnt=True, z_range=None):
+        h = self.draw_signal_map(show=False, res=res, cut=cut, fid=fid, hitmap=True, redo=redo, prnt=False, save=False)
+        self.draw_signal_map(show=show, res=res, cut=cut, fid=fid, hitmap=True, prnt=prnt, z_range=[0, h.GetMaximum()] if z_range is None else z_range)
+
+    def draw_pedestal_map(self, high=10, low=None):
+        low = '&&{}>{}'.format(self.generate_signal_name(), low) if low is not None else ''
+        self.draw_dia_hitmap(redo=True, cut=TCut('{}<{}{}'.format(self.generate_signal_name(), high, low)) + self.Cut.generate_special_cut(excluded='fiducial'))
 
     def set_dia_margins(self, h, size=3):
         # find centers in x and y
