@@ -11,7 +11,7 @@ from glob import glob
 from Utils import *
 from PixAlignment import PixAlignment
 from PadAlignment import PadAlignment
-from ROOT import TProfile
+from ROOT import TProfile, TTree
 from subprocess import check_call, CalledProcessError
 from json import loads, load
 
@@ -166,6 +166,8 @@ class Converter:
         else:
             self.Run.log_info('did not find any matching root file --> need conversion')
             self.convert_raw_to_root()
+        if not self.validate_root_file():
+            self.convert_raw_to_root()
         self.align_run()
         self.add_tracking()
         remove(self.get_root_file_path())
@@ -253,6 +255,15 @@ class Converter:
 
     def remove_new_configfile(self):
         remove_file(self.NewConfigFile)
+
+    def validate_root_file(self):
+        f = TFile(self.get_root_file_path())
+        t = f.Get(self.Run.treename)
+        if not t or t.IsA() != TTree().IsA():
+            log_warning('corrupted root file: '.format(self.get_root_file_path()))
+            self.remove_final_file()
+            return False
+        return True
 
     def set_converter_configfile(self):
 
