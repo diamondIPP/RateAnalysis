@@ -4821,6 +4821,7 @@
       "type": "angle scan"
     }, 
     "10": {
+      "amplifiers": "[\"C6_1\", \"C6_2\"]", 
       "attenuators": {
         "dia1": "None", 
         "dia2": "None", 
