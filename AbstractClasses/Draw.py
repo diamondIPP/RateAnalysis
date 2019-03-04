@@ -126,7 +126,8 @@ class Draw:
         l.SetLineStyle(style)
         l.SetFillStyle(fillstyle) if fillstyle is not None else do_nothing()
         if show:
-            l.Draw('same')
+            l.Draw('l')
+            l.Draw('f')
         self.Objects.append(l)
         return l
 
