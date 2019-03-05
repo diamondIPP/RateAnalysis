@@ -69,13 +69,13 @@ class PadAnalysis(Analysis):
             self.Cut = CutPad(self, self.channel)
             self.AllCuts = self.Cut.all_cut
 
-            # alignment
-            self.IsAligned = self.check_alignment(show=False)
-
             # subclasses
             self.Pulser = PulserAnalysis(self)
             self.Pedestal = PedestalAnalysis(self)
             self.Peaks = PeakAnalysis(self)
+
+            # alignment
+            self.IsAligned = self.check_alignment(show=False)
 
         # currents
         self.Currents = Currents(self)
@@ -349,7 +349,7 @@ class PadAnalysis(Analysis):
 
     def draw_dia_hitmap(self, show=True, res=1.5, cut=None, fid=False, redo=False, prnt=True, z_range=None):
         h = self.draw_signal_map(show=False, res=res, cut=cut, fid=fid, hitmap=True, redo=redo, prnt=False, save=False)
-        self.draw_signal_map(show=show, res=res, cut=cut, fid=fid, hitmap=True, prnt=prnt, z_range=[0, h.GetMaximum()] if z_range is None else z_range)
+        return self.draw_signal_map(show=show, res=res, cut=cut, fid=fid, hitmap=True, prnt=prnt, z_range=[0, h.GetMaximum()] if z_range is None else z_range)
 
     def draw_pedestal_map(self, high=10, low=None):
         low = '&&{}>{}'.format(self.generate_signal_name(), low) if low is not None else ''
@@ -1535,22 +1535,26 @@ class PadAnalysis(Analysis):
         evt_numbers = [self.tree.GetV1()[i] for i in xrange(total_events)]
         return int(evt_numbers[:n][-1] + 1 - start)
 
-    def check_alignment(self, binning=5000, show=True):
+    def check_alignment(self, n_pulser=200, thresh=40, show=True):
         """ just check the number of pixel hits at pulser events for no offset """
         pickle_path = 'Configuration/Individual_Configs/Alignment/{tc}_{run}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.Run.RunNumber)
 
-        def func():
-            nbins = self.Run.n_entries / binning
-            h = TProfile('h', 'Pulser Rate', nbins, 0, self.Run.n_entries)
-            self.tree.Draw('(@col.size()>1)*100:Entry$>>h', 'pulser', 'goff')
-            self.format_histo(h, title='Event Alignment', x_tit='Event Number', y_tit='Hit Efficiency @ Pulser Events [%]', y_off=1.3, stats=0, y_range=[0, 105], fill_color=self.FillColor)
-            self.save_histo(h, 'EventAlignment', show, self.TelSaveDir, draw_opt='hist', prnt=show, rm=.08)
-            return sum(h.GetBinContent(bin_) > 40 for bin_ in xrange(5, h.GetNbinsX())) < h.GetNbinsX() * .05
+        def f():
+            xbins = self.Plots.get_pulser_bins(n_pulser)
+            p = self.Pulser.draw_hit_efficiency(xbins, show=False)
+            h = TH2F('ha{}'.format(self.RunNumber), 'Event Alignment', *(xbins + (3, 0, 3)))
+            for ibin in xrange(5, xbins[0]):
+                h.SetBinContent(ibin, 2, int(p.GetBinContent(ibin) <= thresh) + 1)
+            self.format_histo(h, x_tit='Event Number', y_tit='Alignment', stats=False, l_off_y=99, center_y=True)
+            gStyle.SetPalette(3, array([1, 2, 3], 'i'))
+            l = self.make_legend(nentries=2, x2=.9, margin=.2)
+            l.AddEntry(self.draw_box(0, 0, 0, 0, color=3, name='b1'), 'aligned', 'f')
+            l.AddEntry(self.draw_box(0, 0, 0, 0, color=2), 'misaligned', 'f')
+            self.save_histo(h, 'EventAlignment', draw_opt='col', rm=.08, l=l, show=show, prnt=show)
+            return sum(p.GetBinContent(bin_) > thresh for bin_ in xrange(5, p.GetNbinsX())) < p.GetNbinsX() * .05
 
-        aligned = func() if show else None
-        aligned = do_pickle(pickle_path, func, aligned)
-        if not aligned:
-            log_warning('Run {r} is misaligned :-('.format(r=self.RunNumber))
+        aligned = do_pickle(pickle_path, f, redo=show)
+        log_warning('\nRun {r} is misaligned :-('.format(r=self.RunNumber)) if not aligned else do_nothing()
         return aligned
 
     def find_event_offsets(self, binning=5000, show=True):
