@@ -209,7 +209,7 @@ class CutPad(Cut):
         return cut
 
     def generate_timing(self, n_sigma=3):
-        t_correction, fit = self.calc_timing_range(show=False)
+        t_correction, fit = self.calc_timing_range()
         if fit is None:
             return TCut('')
         corrected_time = 'IntegralPeakTime[{num}] - {t_corr}'.format(num=self.analysis.SignalNumber, t_corr=t_correction)
@@ -476,91 +476,23 @@ class CutPad(Cut):
         threshold = func() if show else None
         return do_pickle(pickle_path, func, threshold)
 
-    def calc_timing_range(self, show=True, n_sigma=4):
+    def calc_timing_range(self):
         pickle_path = self.make_pickle_path('Cuts', 'TimingRange', self.RunNumber, self.DiamondNumber)
 
         def func():
             t = self.log_info('Generating timing cut for {dia} of run {run} ...'.format(run=self.analysis.RunNumber, dia=self.analysis.DiamondName), next_line=False)
             cut = self.generate_special_cut(excluded=['timing'], prnt=False, name='timing_cut')
-
-            # estimate timing
-            h1 = self.analysis.Timing.draw_peaks(show=False, fine_corr=False, prnt=False, cut=cut)
-            if h1 is None:
-                return None, None
-            fit1 = h1.GetListOfFunctions()[2]
-            h2 = self.analysis.Timing.draw_peaks_tc(show=False, prnt=False, cut=cut)
-            fit2 = h2.GetListOfFunctions()[0]
-            fine_corr = fit2.GetChisquare() / fit2.GetNDF() < 30 and abs(fit2.GetParameter(0)) < 10  # require decent chi2 and a meaningful scaling of the sin(x)
-            t_correction = self.analysis.Timing.get_fine_correction(cut=cut) if fine_corr else '0'
-            h3 = self.analysis.Timing.draw_peaks(show=False, fine_corr=fine_corr, prnt=False, cut=cut)
-            fit3 = h3.GetListOfFunctions()[2]
-            if fit3.GetParameter(2) > 15:  # fit failed
-                fit3.SetParameter(1, h3.GetBinCenter(h3.GetMinimumBin()))
-                fit3.SetParameter(2, 15)
-
-            original_mpv = fit1.GetParameter(1)
-
-            # TODO move to timing class!
-            if show:
-                corrected_time = '{sig} - {t_corr}'.format(sig=self.analysis.PeakName, t_corr=t_correction)
-                t_cut = TCut('TMath::Abs({cor_t} - {mp}) / {sigma} < {n_sigma}'.format(cor_t=corrected_time, mp=fit3.GetParameter(1), sigma=fit3.GetParameter(2), n_sigma=n_sigma))
-                # print results
-                c = TCanvas('c_timing', 'Timing Cut Results', 1000, 1000)
-                c.Divide(2, 2)
-                # fit for correction
-                c.cd(1)
-                h2.Draw()
-                # corrected timing
-                c.cd(2)
-                h4 = TProfile('h4', 'Corrected Peak Position vs Trigger Cell', 64, 0, 1024)
-                h5 = TProfile('h5', 'Corrected Peak Position vs Trigger Cell with Cut', 64, 0, 1024)
-                self.analysis.tree.Draw('{cor}:trigger_cell>>h4'.format(cor=self.analysis.PeakName), cut, 'goff')
-                self.analysis.tree.Draw('{cor}:trigger_cell>>h5'.format(cor=corrected_time), cut + t_cut, 'goff')
-                y_range = increased_range([min(h4.GetMinimum(), h5.GetMinimum()), max(h4.GetMaximum(), h5.GetMaximum())], .1, .1)
-                self.format_histo(h4, x_tit='trigger cell', y_tit='signal peak times [ns]', y_off=1.6, color=self.get_color(), markersize=.5, y_range=y_range)
-                self.format_histo(h5, color=self.get_color(), markersize=.5)
-                h4.SetLineColor(1)
-                h5.SetLineColor(1)
-                self.reset_colors()
-                h4.SetStats(0)
-                h4.Draw()
-                h5.Draw('same')
-                # compare distributions
-                c.cd(3)
-                h3.Draw()
-                c.cd(4)
-                h6 = TH1F('h6', 'Corrected Timing with Cut', 160, int(original_mpv - 10), int(original_mpv + 10))
-                self.analysis.tree.Draw('({sig} - {t_corr}) >> h6'.format(sig=self.analysis.PeakName, t_corr=t_correction), cut + t_cut, 'goff')
-                stack = THStack('stack', 'Time Comparison;Time [ns];Number of Entries')
-                mu = 0
-                l = self.make_legend(nentries=3, scale=.7, x1=.6)
-                l_names = ['before', 'after', 'after']
-                h7 = deepcopy(h3)
-                for i, h in enumerate([h1, h7, h6]):
-                    self.format_histo(h, stats=0, color=self.get_color(), fill_color=0)
-                    if list(h.GetListOfFunctions()):
-                        fit = h.GetListOfFunctions()[-1]
-                        fit.SetLineColor(h.GetLineColor())
-                        fit.SetRange(-50, 50)
-                        mu = fit.GetParameter(1)
-                        sig = fit.GetParameter(2)
-                        l.AddEntry(fit, 'sigma {nam} corr.: {sig:1.2} ns'.format(nam=l_names[i], sig=sig), 'l')
-                        fit.SetParameter(1, 0)
-                    xax = h.GetXaxis()
-                    xax.SetLimits(xax.GetXmin() - mu, xax.GetXmax() - mu)
-                    stack.Add(h)
-                self.reset_colors()
-                stack.Draw('nostack')
-                stack.GetXaxis().SetRangeUser(-4, 5)
-                l.Draw()
-
-                self.RootObjects.append([c, h4, h5, h6, stack, l, h7, h2])
-
+            t_correction = self.analysis.Timing.calc_fine_correction()
+            h = self.analysis.Timing.draw_peaks(show=False, cut=cut, fine_corr=True, prnt=False)
+            fit = h.GetListOfFunctions()[2]
+            if fit.GetParameter(2) > 15:  # fit failed
+                fit.SetParameter(1, h.GetBinCenter(h.GetMinimumBin()))
+                fit.SetParameter(2, 15)
             self.add_info(t)
-            self.log_info('Peak Timing: Mean: {0}, sigma: {1}'.format(original_mpv, fit3.GetParameter(2)))
-            return t_correction, fit3
+            self.log_info('Peak Timing: Mean: {0}, sigma: {1}'.format(fit.GetParameter(1), fit.GetParameter(2)))
+            return t_correction, fit
 
-        return do_pickle(pickle_path, func, redo=show)
+        return do_pickle(pickle_path, func)
 
     def generate_consecutive_cuts(self):
         cuts = OrderedDict()
