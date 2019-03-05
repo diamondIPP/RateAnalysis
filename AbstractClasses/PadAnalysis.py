@@ -102,6 +102,12 @@ class PadAnalysis(Analysis):
     def get_current(self):
         return self.Currents.get_current()
 
+    def draw_timing(self):
+        self.Timing.draw_all()
+
+    def draw_pulser_rate(self, show=True, prnt=True):
+        self.Pulser.draw_rate(show=show, prnt=prnt)
+
     # ==========================================================================
     # region INIT
 
