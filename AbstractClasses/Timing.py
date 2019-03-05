@@ -27,6 +27,15 @@ class TimingAnalysis(Elementary):
         self.RunNumber = self.Ana.RunNumber
         self.InfoLegend = InfoLegend(pad_analysis)
 
+    def draw_all(self):
+        self.draw_peaks(show=False, prnt=False, show_cut=True)
+        self.draw_peaks_tc(cut=self.get_raw_cut(), show=False, prnt=False)
+        self.draw_comparison(show=False, prnt=False)
+        self.draw_fine_correction(show=False, prnt=False)
+
+# --------------------------
+# region RUN CONFIG
+
     def draw_raw_peaks(self, xmin=100, xmax=400, ch=None, corr=False, show=True):
         h = TH1F('h_pt', 'PeakTimings', xmax - xmin, xmin, xmax)
         channel = self.Ana.channel if ch is None else ch
@@ -34,12 +43,6 @@ class TimingAnalysis(Elementary):
         self.format_histo(h, x_tit='Digitiser Bin', y_tit='Number of Entries')
         self.draw_histo(h, show=show)
         return h
-
-    def draw_all(self):
-        self.draw_peaks(show=False, prnt=False, show_cut=True)
-        self.draw_peaks_tc(cut=self.get_raw_cut(), show=False, prnt=False)
-        self.draw_comparison(show=False, prnt=False)
-        self.draw_fine_correction(show=False, prnt=False)
 
     def create_run_config(self, ch=0, off=0):
         h0 = self.draw_raw_peaks(max(5, 100 - off), 450 - off, ch=ch, show=False)
@@ -65,6 +68,12 @@ class TimingAnalysis(Elementary):
         for i, h in enumerate((h0, h1), 1):
             c.cd(i)
             h.Draw()
+
+# endregion
+# --------------------------
+
+# --------------------------
+# region PEAK TIMING
 
     def get_peak_name(self, corr, fine_corr=False, cut=None):
         fine_corr = ' - {}'.format(self.make_fine_correction_str(cut)) if fine_corr else ''
@@ -207,6 +216,11 @@ class TimingAnalysis(Elementary):
         self.draw_histo(p1, '', show, l=l, canvas=canvas)
         self.draw_histo(p2, '', show, draw_opt='same', canvas=get_last_canvas(), lm=.14)
         self.save_plots('FineCorrection', canvas=get_last_canvas(), prnt=prnt)
+
+# endregion
+# --------------------------
+
+    
 
     def fit_rf(self, evnt=0, t_corr=True, show=True):
         gr, n = self.Ana.draw_waveforms(start_event=evnt, t_corr=t_corr, show=show, channel=self.Run.get_rf_channel(), cut='')
