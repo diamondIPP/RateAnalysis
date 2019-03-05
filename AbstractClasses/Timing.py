@@ -33,8 +33,8 @@ class TimingAnalysis(Elementary):
         self.draw_comparison(show=False, prnt=False)
         self.draw_fine_correction(show=False, prnt=False)
 
-# --------------------------
-# region RUN CONFIG
+    # --------------------------
+    # region RUN CONFIG
 
     def draw_raw_peaks(self, xmin=100, xmax=400, ch=None, corr=False, show=True):
         h = TH1F('h_pt', 'PeakTimings', xmax - xmin, xmin, xmax)
@@ -69,11 +69,11 @@ class TimingAnalysis(Elementary):
             c.cd(i)
             h.Draw()
 
-# endregion
-# --------------------------
+    # endregion
+    # --------------------------
 
-# --------------------------
-# region PEAK TIMING
+    # --------------------------
+    # region PEAK TIMING
 
     def get_peak_name(self, corr, fine_corr=False, cut=None):
         fine_corr = ' - {}'.format(self.make_fine_correction_str(cut)) if fine_corr else ''
@@ -217,10 +217,33 @@ class TimingAnalysis(Elementary):
         self.draw_histo(p2, '', show, draw_opt='same', canvas=get_last_canvas(), lm=.14)
         self.save_plots('FineCorrection', canvas=get_last_canvas(), prnt=prnt)
 
-# endregion
-# --------------------------
+    # endregion
+    # --------------------------
 
-    
+    def draw_fit_peak_timing(self, show=True):
+        xmin, xmax = [t * self.Ana.DigitiserBinWidth for t in self.Ana.SignalRegion]
+        h = TH1F('hfpt', 'Fitted Peak Positions', int((xmax - xmin) * 4), xmin, xmax)
+        self.Ana.tree.Draw('fit_peak_time[{}]>>hfpt'.format(self.Ana.channel), self.Cut.all_cut, 'goff')
+        self.set_statbox(all_stat=True)
+        self.format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=1.3)
+        self.draw_histo(h, show=show, lm=.12)
+
+    def draw_peaking_time(self, show=True):
+        h = TH1F('hpt', 'Peaking Time', 400, 0, 20)
+        self.Ana.tree.Draw('peaking_time[{}]>>hpt'.format(self.Ana.channel), self.Cut.all_cut, 'goff')
+        self.set_statbox(all_stat=True)
+        self.format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=1.3)
+        self.draw_histo(h, show=show, lm=.12)
+
+    def draw_forc_times(self, show=True, corr=False):
+        self.Ana.tree.Draw('forc_pos', 'forc_pos[0]>20', 'goff')
+        htemp = gROOT.FindObject('htemp')
+        x = [int(htemp.GetBinCenter(htemp.FindFirstBinAbove(5000))) - 10, int(htemp.GetBinCenter(htemp.FindLastBinAbove(5000))) + 10]
+        h = TH1F('ft', 'FORC Timing', x[1] - x[0], x[0] / 2., x[1] / 2.)
+        forc = 'forc_pos/2.' if not corr else 'forc_time'
+        self.Ana.tree.Draw('{forc}>>ft'.format(forc=forc), self.Cut.all_cut, 'goff')
+        self.format_histo(h, x_tit='Time [ns]', y_tit='Entries', y_off=2, fill_color=self.FillColor)
+        self.ROOTObjects.append(self.save_histo(h, 'FORCTiming', show, sub_dir=self.save_dir, lm=.14))
 
     def fit_rf(self, evnt=0, t_corr=True, show=True):
         gr, n = self.Ana.draw_waveforms(start_event=evnt, t_corr=t_corr, show=show, channel=self.Run.get_rf_channel(), cut='')
