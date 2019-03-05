@@ -94,10 +94,16 @@ class Plots(Elementary):
         x, y = array(self.Settings['globalCoods'][:2]), array(self.Settings['globalCoods'][2:])
         size_x = self.Settings['xpix'] if mode in ['x', None] else self.Settings['ypix']
         size_y = self.Settings['ypix'] if mode in ['y', None] else self.Settings['xpix']
-        x, y, size_x, size_y = [val * (10 if mm else 1) for val in [ x, y, size_x, size_y]]
+        x, y, size_x, size_y = [val * (10 if mm else 1) for val in [x, y, size_x, size_y]]
         bins = [int(ceil((x[1] - x[0]) / size_x * sqrt(12) / res)), x[0], x[1], int(ceil((y[1] - y[0]) / size_y * sqrt(12) / res)), y[0], y[1]]
         x_arr, y_arr = arange(x[0], x[1], size_x, 'd'), arange(y[0], y[1], size_y, 'd')
         return bins if not arrays else [len(x_arr) - 1, x_arr, len(y_arr) - 1, y_arr]
+
+    def get_pulser_bins(self, n_pulser):
+        n = self.run.tree.Draw('Entry$', 'pulser', 'goff')
+        pulser_events = [self.run.tree.GetV1()[i] for i in xrange(n)]
+        binning = [pulser_events[i * n_pulser] for i in xrange(n / n_pulser)] + ([pulser_events[-1]] if n % n_pulser else [])
+        return len(binning) - 1, array(binning)
 
     def create_TGraphErrors(self, title='tgraph', xTitle='X', yTitle='Y', linecolor=kBlack, markercolor=kBlack):
         graph = TGraphErrors()
