@@ -154,7 +154,7 @@ class Analysis(Elementary):
         h.GetQuantiles(1, yq, array([.99]))
         self.format_histo(h, x_tit='#chi^{2}', y_tit='Number of Entries', y_off=2, x_range=[0, yq[0]] if x_range is None else x_range)
         self.set_statbox(fit=fit, entries=True, n_entries=5, w=.3)
-        self.draw_histo(h, show=show, prnt=prnt, lm=.13)
+        self.draw_histo(h, show=show, prnt=prnt, lm=.13, both_dias=True)
         f = TF1('f', '[0]*TMath::GammaDist(x, {ndf}/2, 0, 2)'.format(ndf=4 if mode == 'tracks' else 2))
         h.Fit(f, 'qs{}'.format('' if fit else 0))
         if show_cut:
@@ -178,21 +178,29 @@ class Analysis(Elementary):
     def draw_angle_distribution(self, mode='x', show=True, print_msg=True, cut=None, show_cut=False):
         """ Displays the angle distribution of the tracks. """
         assert mode in ['x', 'y']
-        cut = cut if cut is not None else TCut('')
+        cut = cut if cut is not None else TCut('angle_x > -900')
         set_root_output(False)
-        h = TH1F('had', 'Track Angle Distribution in ' + mode, 320, -4, 4)
-        self.tree.Draw('{v}_{mod}>>had'.format(v='slope' if self.Run.has_branch('slope_x') else 'angle', mod=mode), cut, 'goff')
-        self.format_histo(h, x_tit='Track Angle {} [deg]'.format(mode.title()), y_tit='Number of Entries', y_off=2, lw=2, stats=0)
+        h = TH1F('had', 'Track Angle Distribution in ' + mode.title(), 320, -4, 4)
+        self.tree.Draw('{v}_{mod}>>had'.format(v='angle', mod=mode), cut, 'goff')
+        self.format_histo(h, x_tit='Track Angle {} [deg]'.format(mode.title()), y_tit='Number of Entries', y_off=2, lw=2)
+        self.set_statbox(all_stat=True, n_entries=5, w=.3)
         self.draw_histo(h, '', show, lm=.14, prnt=print_msg, both_dias=True)
         if show_cut:
-            xmin, xmax = self.Cut.calc_angle(mode=mode)[mode]
-            l = self.draw_vertical_line(xmin, -100, 1e6, style=7, w=2, color=2, name='l1')
-            self.draw_vertical_line(xmax, -100, 1e6, style=7, w=2, color=2)
-            legend = self.make_legend(.8, nentries=1)
-            legend.AddEntry(l, 'cut', 'l')
-            legend.Draw()
+            self.draw_angle_cut(mode)
         self.save_plots('TrackAngle{mod}'.format(mod=mode.upper()), both_dias=True, prnt=print_msg)
         return h
+
+    def draw_angle_cut(self, mode):
+        xmin, xmax = self.Cut.calc_angle(mode=mode)[mode]
+        l = self.draw_vertical_line(xmin, -100, 1e6, style=7, w=2, color=2, name='l1')
+        self.draw_vertical_line(xmax, -100, 1e6, style=7, w=2, color=2)
+        legend = self.make_legend(.65, y2=.73, nentries=1, margin=.35, name='la', scale=1.3)
+        legend.AddEntry(l, 'cut ({} deg)'.format(self.Cut.CutConfig['slope']), 'l')
+        legend.Draw()
+
+    def draw_both_angles(self, show=True, prnt=True):
+        self.draw_angle_distribution('x', show=show, print_msg=prnt, show_cut=True)
+        self.draw_angle_distribution('y', show=show, print_msg=prnt, show_cut=True)
 
     def draw_track_length(self, show=True, save=True, t_dia=500):
         h = TH1F('htd', 'Track Distance in Diamond', 200, t_dia, t_dia + 1)
@@ -283,9 +291,10 @@ class Analysis(Elementary):
 
     # ============================================================================================
     # region PIXEL
-    def _draw_occupancy(self, plane, name=None, cluster=True, tel_coods=False, cut='', show=True):
+    def _draw_occupancy(self, plane, name=None, cluster=True, tel_coods=False, cut='', show=True, prnt=True):
         name = 'ROC {i}'.format(i=plane) if name is None else name
         bins = self.Plots.get_global_bins(sqrt(12)) if tel_coods else self.Plots.Settings['2DBins']
+        set_root_warnings(False)
         h = TH2F('h_hm{i}'.format(i=plane), '{h} Occupancy {n}'.format(n=name, h='Hit' if not cluster else 'Cluster'), *bins)
         cut_string = self.Cut.all_cut if cut is None else TCut(cut)
         cut_string += 'plane == {0}'.format(plane) if not cluster else ''
@@ -294,12 +303,13 @@ class Analysis(Elementary):
         set_statbox(only_entries=True, x=.83)
         self.tree.Draw('{ds}>>h_hm{i}'.format(ds=draw_string.format(i=plane), i=plane), cut_string, 'goff')
         self.format_histo(h, x_tit='col', y_tit='row', y_off=1.2)
-        self.save_tel_histo(h, 'HitMap{0}'.format(plane), show, draw_opt='colz', rm=.15)
+        self.save_tel_histo(h, 'HitMap{0}'.format(plane), show, draw_opt='colz', rm=.15, prnt=prnt)
         return h
 
-    def _draw_occupancies(self, planes=None, cut='', cluster=True, show=True):
+    def _draw_occupancies(self, planes=None, cut='', cluster=True, show=True, prnt=True):
         planes = range(4) if planes is None else list(planes)
-        histos = [self._draw_occupancy(plane, cluster=cluster, cut=cut, show=False) for plane in planes]
+        histos = [self._draw_occupancy(plane, cluster=cluster, cut=cut, show=False, prnt=False) for plane in planes]
+        set_root_output(show)
         c = TCanvas('c_hm', 'Hitmaps', 2000, 2000)
         c.Divide(2, 2)
         for i, h in enumerate(histos, 1):
@@ -307,7 +317,7 @@ class Analysis(Elementary):
             pad = c.cd(i)
             pad.SetBottomMargin(.15)
             h.Draw('colz')
-        self.save_plots('HitMap', sub_dir=self.TelSaveDir, show=show)
+        self.save_plots('HitMaps', sub_dir=self.TelSaveDir, show=show, prnt=prnt)
 
     # endregion
 
