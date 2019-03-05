@@ -4,7 +4,6 @@
 # ==============================================
 from argparse import ArgumentParser
 from math import log
-from sys import stdout
 from json import loads
 
 from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, \
@@ -55,7 +54,8 @@ class PadAnalysis(Analysis):
             self.SignalRegionName = self.IntegralRegions['signal']
             self.SignalRegion = self.Run.IntegralRegions[self.DiamondNumber - 1][self.SignalRegionName]
             self.PedestalRegion = self.IntegralRegions['pedestal']
-            self.PeakIntegral = self.load_peak_integral()
+            self.PeakIntegralName = self.load_peak_integral()
+            self.PeakIntegral = self.Run.PeakIntegrals[self.DiamondNumber - 1][self.PeakIntegralName]
 
             # names
             self.SignalDefinition = '({pol}*TimeIntegralValues[{num}])'
