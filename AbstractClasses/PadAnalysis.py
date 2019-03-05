@@ -148,13 +148,16 @@ class PadAnalysis(Analysis):
 
     def get_signal_number(self, region=None, peak_integral=None, sig_type='signal'):
         region = self.IntegralRegions[sig_type] if region is None else self.make_region(sig_type, region)
-        peak_integral = self.PeakIntegral if peak_integral is None else 'PeakIntegral{}'.format(peak_integral)
+        peak_integral = self.PeakIntegralName if peak_integral is None else 'PeakIntegral{}'.format(peak_integral)
         int_name = 'ch{ch}_{reg}_{int}'.format(ch=self.channel, reg=region, int=peak_integral)
         return self.IntegralNames.index(int_name)
 
     def get_signal_name(self, region=None, peak_integral=None, sig_type='signal'):
         num = self.get_signal_number(region, peak_integral, sig_type)
         return self.SignalDefinition.format(pol=self.Polarity, num=num)
+
+    def get_signal_region(self, name=None):
+        return self.Run.IntegralRegions[self.DiamondNumber - 1][self.SignalRegionName if name is None else 'signal_{}'.format(name)]
 
     def set_signal_definitions(self, use_time=True, sig_region=None, peak_int=None):
         signal = 'TimeIntegralValues' if use_time else 'IntegralValues'
