@@ -486,7 +486,7 @@ class Draw:
             opt_stat = '0011'
         if fit:
             opt_stat = '1111'
-        y = .88 if self.ActivateTitle else .95 if y is None else y
+        y = (.88 if self.ActivateTitle else .95) if y is None else y
         gStyle.SetOptStat(int(opt_stat))
         gStyle.SetFitFormat(form) if form is not None else do_nothing()
         gStyle.SetStatX(x)
