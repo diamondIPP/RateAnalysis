@@ -308,19 +308,17 @@ class AnalysisCollection(Elementary):
         pulse_heights = func() if redo else None
         return do_pickle(pickle_path, func, pulse_heights)
 
-    def draw_log_flux(self, evts_per_bin=10000, rel_t=True, show=True):
-        end_times = [t1[1] for t1 in self.get_start_end_times()]
-        h = TH1F('hr1', 'Flux of Run Plan {r}'.format(r=self.RunPlan), *self.get_t_binning(evts_per_bin))
+    def draw_log_flux(self, bin_size=None, rel_t=False, show=True):
+        bin_size = self.FirstAnalysis.BinSize if bin_size is None else bin_size
+        h = TH1F('hr1', 'Flux of Run Plan {r}'.format(r=self.RunPlan), *self.get_t_binning(bin_size))
         ibin = 1
-        for i, end_time in enumerate(end_times):
-            ana = self.collection.values()[i]
-            while h.GetBinCenter(ibin) <= end_time:
-                h.SetBinContent(ibin, ana.Run.Flux)
-                h.SetBinError(ibin, ana.Run.Flux * .1)
+        for (start, end), ana in zip(self.get_start_end_times(), self.collection.itervalues()):
+            while h.GetBinCenter(ibin) <= end:
+                h.SetBinContent(ibin, ana.Run.Flux.n)
+                h.SetBinError(ibin, ana.Run.Flux.s)
                 ibin += 1
-        self.format_histo(h, y_tit='Flux [kHz/cm^{2}]', x_tit='Time [hh:mm]', y_off=.8, fill_color=self.FillColor, stats=0)
-        set_time_axis(h, off=self.FirstAnalysis.Run.StartTime if rel_t else 0)
-        self.save_histo(h, 'FluxTime', show=show, draw_opt='hist', x_fac=1.5, y_fac=.75, lm=.065, gridy=True, logy=True)
+        self.format_histo(h, y_tit='Flux [kHz/cm^{2}]', x_tit='Time [hh:mm]', y_off=.8, fill_color=self.FillColor, stats=0, t_ax_off=self.StartTime if rel_t else 0)
+        self.save_histo(h, 'FluxTime', show=show, x_fac=1.5, y_fac=.75, lm=.065, gridy=True, logy=True, draw_opt='bar')
         return h
 
     def draw_full_pulse_height(self, evts_per_bin=10000, show=True, rel_t=True, redo=False, with_flux=True):
