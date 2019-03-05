@@ -445,21 +445,22 @@ class AnalysisCollection(Elementary):
     def draw_pedestals(self, vs_time=False, sigma=False, cut=None, pulser=False, redo=False, show=True):
 
         mode = 'Time' if vs_time else 'Flux'
+        y_name = 'Sigma' if sigma else 'Mean'
         pedestals = self.get_pedestals(cut, pulser, redo)
         y_values = [dic['sigma' if sigma else 'ph'] for dic in pedestals.itervalues()]
         x_values = [dic['time' if vs_time else 'flux'] for dic in pedestals.itervalues()]
-        g = self.make_tgrapherrors('gps', '{}Pedestals'.format('Pulser ' if pulser else ''), x=x_values, y=y_values)
-        self.format_histo(g, color=810, x_tit=self.make_x_tit(vs_time), y_tit='Mean Pedestal [au]', y_off=1.45, t_ax_off=0 if vs_time else None)
+        g = self.make_tgrapherrors('gps', '{}Pedestal {}'.format('Pulser ' if pulser else '', y_name), x=x_values, y=y_values)
+        self.format_histo(g, color=810, x_tit=self.make_x_tit(vs_time), y_tit='Pedestal {} [au]'.format(y_name), y_off=1.45, t_ax_off=0 if vs_time else None)
         cut_name = '' if cut is None else TCut(cut).GetName()
-        save_name = '{p}Pedestal{s}{mod}{cut}'.format(mod=mode, cut=cut_name, s='Sigma' if sigma else 'Mean', p='Pulser' if pulser else '')
+        save_name = '{p}Pedestal{s}{mod}{cut}'.format(mod=mode, cut=cut_name, s=y_name, p='Pulser' if pulser else '')
         self.save_histo(g, save_name=save_name, show=show, logx=False if vs_time else True, lm=.12, draw_opt='ap')
         return g
 
     def draw_noise(self, flux=True, show=True):
         return self.draw_pedestals(vs_time=flux, show=show, sigma=True)
 
-    def draw_pulser_pedestals(self, show=True, redo=False):
-        self.draw_pedestals(pulser=True, show=show, redo=redo)
+    def draw_pulser_pedestals(self, show=True, redo=False, sigma=False):
+        self.draw_pedestals(pulser=True, show=show, redo=redo, sigma=sigma)
 
     def draw_signal_distributions(self, show=True, off=3, redo=False):
 
