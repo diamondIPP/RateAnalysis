@@ -85,7 +85,7 @@ class Plots(Elementary):
         return ret_val
 
     def get_ph_bins(self, bin_width=1):
-        return int(ceil((self.Settings['maxPadPh'] - self.Settings['minPadPh']) / float(bin_width))), self.Settings['minPadPh'], self.Settings['maxPadPh']
+        return [int(ceil((self.Settings['maxPadPh'] - self.Settings['minPadPh']) / float(bin_width))), self.Settings['minPadPh'], self.Settings['maxPadPh']]
 
     def get_tcal_bins(self):
         return [int(round(sqrt(len(self.run.TCal))))] + increased_range([min(self.run.TCal), max(self.run.TCal)], .1, .1)

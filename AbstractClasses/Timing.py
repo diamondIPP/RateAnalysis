@@ -220,6 +220,64 @@ class TimingAnalysis(Elementary):
     # endregion
     # --------------------------
 
+    # --------------------------
+    # region TRIGGER CELL
+
+    def draw_trigger_cell(self, show=True, cut=None):
+        h = TH1F('tc', 'Trigger Cell', 1024, 0, 1024)
+        self.Ana.tree.Draw('trigger_cell>>tc', self.Cut.all_cut if cut is None else cut, 'goff')
+        self.set_statbox(fit=True, y=.4)
+        self.format_histo(h, x_tit='trigger cell', y_tit='Entries', y_off=1.7, fill_color=self.FillColor, y_range=[0, h.GetMaximum() * 1.05])
+        self.draw_histo(h, show=show, lm=.11)
+        h.Fit('pol0', 'qs')
+        self.save_plots('TriggerCell')
+
+    def draw_intlength_vs_triggercell(self, show=True, bin_width=4):
+        h = TProfile('hltc', 'Integral Length vs. Triggercell', 1024 / bin_width, 0, 1024)
+        self.Ana.tree.Draw('IntegralLength[{num}]:trigger_cell>>hltc'.format(num=self.Ana.SignalNumber), self.Cut.all_cut, 'goff')
+        self.set_statbox(only_fit=True, n_entries=5, w=.25)
+        self.format_histo(h, x_tit='Triggercell', y_tit='Integral Length [ns]', y_off=1.6, z_tit='Number of Entries')
+        self.draw_histo(h, 'IntLengthVsTriggerCell', show, lm=.12)
+        fit = TF1('f', '[0] * sin([1] * (x - [2])) + [3]')
+        fit.SetParNames('Scale', 'Period', 'Phase', 'Offset')
+        fit.SetParLimits(0, .1, 3)
+        fit.FixParameter(1, 1 / 1024. * 2 * pi)
+        h.Fit(fit, 'q')
+        self.save_plots('IntLengthVsTriggerCell')
+
+    def draw_intdiff_vs_triggercell(self, show=True, prof=False):
+        h = TH2F('hdtc', 'Difference of the Integral Definitions vs Triggercell', 1024 / 2, 0, 1024, 200, 0, 25)
+        hprof = TProfile('hdtc_p', 'Difference of the Integral Definitions vs Triggercell', 1024 / 8, 0, 1024)
+        self.Ana.tree.Draw('(TimeIntegralValues[{num}]-IntegralValues[{num}]):trigger_cell>>hdtc'.format(num=self.Ana.SignalNumber), self.Cut.all_cut, 'goff')
+        self.Ana.tree.Draw('(TimeIntegralValues[{num}]-IntegralValues[{num}]):trigger_cell>>hdtc_p'.format(num=self.Ana.SignalNumber), self.Cut.all_cut, 'goff')
+        gStyle.SetPalette(53)
+        self.format_histo(h, x_tit='Triggercell', y_tit='Integral2 - Integral1 [au]', z_tit='Number of Entries', stats=0, y_off=1.4, z_off=1.1)
+        self.ROOTObjects.append(self.draw_histo(h, '', show, draw_opt='colz', lm=.12, rm=.15))
+        self.format_histo(hprof, lw=3, color=600)
+        hprof.Draw('hist same') if prof else do_nothing()
+        p = h.ProjectionY()
+        h.GetYaxis().SetRangeUser(0, p.GetBinCenter(p.FindLastBinAbove(1)))
+        self.ROOTObjects.append(hprof)
+        self.save_plots('IntDiffVsTriggerCell', self.save_dir)
+        gStyle.SetPalette(1)
+
+    def draw_trigger_cell_vs_forc(self, show=True, cut=None, full_range=False, corr=False):
+        if not full_range:
+            self.Ana.tree.Draw('forc_pos', 'forc_pos[0]>20', 'goff')
+            htemp = gROOT.FindObject('htemp')
+            x = [int(htemp.GetBinCenter(htemp.FindFirstBinAbove(5000))) - 10, int(htemp.GetBinCenter(htemp.FindLastBinAbove(5000))) + 10]
+        else:
+            x = [0, 1024]
+        h = TH2D('tcf', 'Trigger Cell vs. FORC Timing', 1024, 0, 1024, x[1] - x[0], x[0] / 2., x[1] / 2.)
+        gStyle.SetPalette(55)
+        forc = 'forc_pos/2.' if not corr else 'forc_time'
+        self.Ana.tree.Draw('{forc}:trigger_cell>>tcf'.format(forc=forc), self.Cut.all_cut if cut is None else cut, 'goff')
+        self.format_histo(h, x_tit='trigger cell', y_tit='forc timing [ns]', y_off=1.4, stats=0)
+        self.save_histo(h, 'TriggerCellVsFORC{0}'.format('FullRange' if full_range else ''), show, lm=.11, draw_opt='colz', rm=.15)
+
+    # endregion
+    # --------------------------
+
     def draw_fit_peak_timing(self, show=True):
         xmin, xmax = [t * self.Ana.DigitiserBinWidth for t in self.Ana.SignalRegion]
         h = TH1F('hfpt', 'Fitted Peak Positions', int((xmax - xmin) * 4), xmin, xmax)

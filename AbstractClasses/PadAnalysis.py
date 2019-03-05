@@ -480,109 +480,6 @@ class PadAnalysis(Analysis):
     # endregion
 
     # ==========================================================================
-    # region TRIGGER CELL
-    def draw_trigger_cell(self, show=True, cut=None):
-        h = TH1F('tc', 'Trigger Cell', 1024, 0, 1024)
-        cut = self.Cut.all_cut if cut is None else cut
-        self.tree.Draw('trigger_cell>>tc', cut, 'goff')
-        self.format_histo(h, x_tit='trigger cell', y_tit='Entries', y_off=1.7, fill_color=17)
-        h.SetStats(0)
-        h.GetYaxis().SetRangeUser(0, h.GetMaximum() * 1.05)
-        h.Fit('pol0', 'qs')
-        self.ROOTObjects.append(self.save_histo(h, 'TriggerCell', show, sub_dir=self.save_dir, lm=.11))
-
-    def draw_trigger_cell_vs_peakpos(self, show=True, cut=None, tprofile=False, corr=True, t_corr=False):
-        x = self.SignalRegion
-        if not tprofile:
-            ybins = (x[1] - x[0]) if not corr else 4 * (x[1] - x[0])
-            h = TH2D('tcpp', 'Trigger Cell vs. Signal Peak Position', 1024, 0, 1024, ybins, x[0] / 2., x[1] / 2.)
-        else:
-            h = TProfile2D('tcpp', 'Trigger Cell vs. Signal Peak Position', 1024, 0, 1024, x[1] - x[0], x[0] / 2., x[1] / 2.)
-        h1 = TProfile('hpr', 'hpr', 100, 0, 1024)
-
-        cut = self.Cut.generate_special_cut(excluded=['timing']) if cut is None else cut
-        # cut = self.Cut.all_cut if cut is None else cut
-        prof = '' if not tprofile else ':'
-        sig = '' if not tprofile else '{sig}-{ped}'.format(sig=self.SignalName, ped=self.Pedestal.SignalName)
-        gStyle.SetPalette(55)
-        peaks = 'IntegralPeaks[{num}]/2.' if not corr else 'IntegralPeakTime[{num}]'
-        peaks = peaks.format(num=self.SignalNumber)
-        dic = self.Cut.calc_timing_range(show=False)
-        t_correction = '-({p1}* trigger_cell + {p2} * trigger_cell*trigger_cell)'.format(p1=dic['t_corr'].GetParameter(1), p2=dic['t_corr'].GetParameter(2)) if t_corr else ''
-        self.tree.Draw('{z}{prof}{peaks}{tc}:trigger_cell>>tcpp'.format(z=sig, prof=prof, peaks=peaks, tc=t_correction), cut, 'goff')
-        self.tree.Draw('{peaks}{tc}:trigger_cell>>hpr'.format(peaks=peaks, tc=t_correction), self.AllCuts, 'goff')
-        self.format_histo(h, x_tit='trigger cell', y_tit='Signal Peak Timing [ns]', y_off=1.25, z_tit='Pulse Height [au]' if tprofile else 'Number of Entries', z_off=1.2, stats=0)
-        self.format_histo(h1, color=1, lw=3)
-        h.GetZaxis().SetRangeUser(60, 120) if tprofile else do_nothing()
-        fit = h.ProjectionY().Fit('gaus', 'qs0')
-        h.GetYaxis().SetRangeUser(fit.Parameter(1) - 4 * fit.Parameter(2), fit.Parameter(1) + 5 * fit.Parameter(2))
-        self.ROOTObjects.append(self.draw_histo(h, 'TriggerCellVsPeakPos{0}'.format('Signal' if tprofile else ''), show, self.save_dir, lm=.11, draw_opt='colz', rm=.15, logz=True))
-        h1.Draw('hist same')
-        self.save_plots('TriggerCellVsPeakPos{0}{1}{2}'.format('Signal' if tprofile else '', 'BothCorr' if t_corr else '', 'Corr' if corr else ''), self.save_dir)
-        self.ROOTObjects.append(h1)
-
-    def draw_trigger_cell_vs_forc(self, show=True, cut=None, full_range=False, corr=False):
-        if not full_range:
-            self.tree.Draw('forc_pos', 'forc_pos[0]>20', 'goff')
-            htemp = gROOT.FindObject('htemp')
-            x = [int(htemp.GetBinCenter(htemp.FindFirstBinAbove(5000))) - 10, int(htemp.GetBinCenter(htemp.FindLastBinAbove(5000))) + 10]
-        else:
-            x = [0, 1024]
-        h = TH2D('tcf', 'Trigger Cell vs. FORC Timing', 1024, 0, 1024, x[1] - x[0], x[0] / 2., x[1] / 2.)
-        cut = self.AllCuts if cut is None else cut
-        gStyle.SetPalette(55)
-        forc = 'forc_pos/2.' if not corr else 'forc_time'
-        self.tree.Draw('{forc}:trigger_cell>>tcf'.format(forc=forc), cut, 'goff')
-        self.format_histo(h, x_tit='trigger cell', y_tit='forc timing [ns]', y_off=1.4)
-        h.SetStats(0)
-        self.ROOTObjects.append(self.save_histo(h, 'TriggerCellVsFORC{0}'.format('FullRange' if full_range else ''), show, self.save_dir, lm=.11, draw_opt='colz', rm=.15))
-
-    def draw_intlength_vs_triggercell(self, show=True, bin_size=2, prof=False):
-        if prof:
-            h = TProfile('hltc', 'Integral Length vs. Triggercell', 1024 / bin_size, 0, 1024)
-        else:
-            y_expect = (self.Run.peak_integrals[self.PeakIntegral][0] + self.Run.peak_integrals[self.PeakIntegral][1]) * .5
-            h = TH2F('hltc', 'Integral Length vs. Triggercell', 1024 / bin_size, 0, 1024, 100, y_expect - 2, y_expect + 2)
-        self.tree.Draw('IntegralLength[{num}]:trigger_cell>>hltc'.format(num=self.SignalNumber), self.Cut.all_cut, 'goff')
-        self.format_histo(h, x_tit='Triggercell', y_tit='Integral Length [ns]', y_off=1.4, z_tit='Number of Entries', z_off=1.2)
-        self.ROOTObjects.append(self.draw_histo(h, 'IntLengthVsTriggerCell', show, draw_opt='' if prof else 'colz', lm=.12, rm=.16 if not prof else .1))
-        if not prof:
-            gStyle.SetOptFit(1)
-            gStyle.SetOptStat(0)
-            gStyle.SetPalette(53)
-            set_statbox(.82, .88, .15, 5)
-            h_y = h.ProjectionY()
-            fit = h_y.Fit('gaus', 'qs0')
-            h.GetYaxis().SetRangeUser(fit.Parameter(1) - 5 * fit.Parameter(2), fit.Parameter(1) + 5 * fit.Parameter(2))
-            f = TF1('f', '[0]*sin([1]*x - [2]) + [3]')
-            f.SetLineColor(600)
-            for i, name in enumerate(['y_sc', 'x_sc', 'x_off', 'y_off']):
-                f.SetParName(i, name)
-            f.SetParLimits(0, .1, 3)
-            f.SetParLimits(1, 1e-4, 1e-2)
-            h.Fit(f, 'q')
-        self.save_plots('IntLengthVsTriggerCell', self.save_dir)
-        gStyle.SetPalette(1)
-
-    def draw_intdiff_vs_triggercell(self, show=True):
-        h = TH2F('hdtc', 'Difference of the Integral Definitions vs Triggercell', 1024 / 2, 0, 1024, 200, 0, 25)
-        hprof = TProfile('hdtc_p', 'Difference of the Integral Definitions vs Triggercell', 1024 / 8, 0, 1024)
-        self.tree.Draw('(TimeIntegralValues[{num}]-IntegralValues[{num}]):trigger_cell>>hdtc'.format(num=self.SignalNumber), self.Cut.all_cut, 'goff')
-        self.tree.Draw('(TimeIntegralValues[{num}]-IntegralValues[{num}]):trigger_cell>>hdtc_p'.format(num=self.SignalNumber), self.Cut.all_cut, 'goff')
-        gStyle.SetPalette(53)
-        self.format_histo(h, x_tit='Triggercell', y_tit='Integral2 - Integral1 [au]', z_tit='Number of Entries', stats=0, y_off=1.4, z_off=1.1)
-        self.ROOTObjects.append(self.draw_histo(h, '', show, draw_opt='colz', lm=.12, rm=.15))
-        self.format_histo(hprof, lw=3, color=600)
-        hprof.Draw('hist same')
-        p = h.ProjectionY()
-        h.GetYaxis().SetRangeUser(0, p.GetBinCenter(p.FindLastBinAbove(p.GetMaximum() / 15.)))
-        self.ROOTObjects.append(hprof)
-        self.save_plots('IntDiffVsTriggerCell', self.save_dir)
-        gStyle.SetPalette(1)
-
-    # endregion
-
-    # ==========================================================================
     # region SIGNAL/PEDESTAL
     def print_off_results(self, prnt=True):
         ph, ped, pul = self.draw_pulse_height(show=False)[1], self.Pedestal.draw_disto_fit(save=False), self.Pulser.draw_distribution_fit(show=False)
@@ -757,71 +654,16 @@ class PadAnalysis(Analysis):
         self.save_histo(h, 'SignalDistribution', lm=.15, show=show, prnt=prnt, save=save)
         return h
 
-    def draw_signal_vs_peakpos(self, show=True, corr=False):
-        gr = self.make_tgrapherrors('gr', 'Signal vs Peak Position')
-        i = 0
-        x = self.SignalRegion
-        self.draw_peak_timing(show=False, corr=corr)
-        h = self.PeakValues
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        for peak_pos in xrange(x[0] + 2, x[1] - 2):
-            print '\rcalculating peak pos: {0:03d}'.format(peak_pos),
-            self.Cut.set_signal_peak_pos(peak_pos, peak_pos + 1) if not corr else self.Cut.set_signal_peak_time(peak_pos / 2., (peak_pos + 1) / 2.)
-            print peak_pos / 2., (peak_pos + 1) / 2.
-            events = int(h.GetBinContent(h.FindBin(peak_pos / 2.)))
-            print '({0:05d})'.format(events),
-            stdout.flush()
-            if events > 500:
-                ph_fit = self.draw_pulse_height(show=False, redo=1)[1]
-                gr.SetPoint(i, peak_pos / 2., ph_fit.Parameter(0))
-                gr.SetPointError(i, 0, ph_fit.ParError(0))
-                i += 1
-        gr.GetXaxis().SetLimits(x[0] / 2., x[1] / 2.)
-        self.format_histo(gr, x_tit='Signal Peak Position [ns]', y_tit='Pulse Height [au]', y_off=1.4)
-        self.ROOTObjects.append(self.save_histo(gr, 'SignalVsPeakPos', show, self.save_dir, lm=.11, draw_opt='alp'))
-        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-
-    def draw_sig_vs_corr_peaktiming(self, show=True, prof=False):
-        x = self.Run.signal_regions[self.SignalRegionName]
-        h = TProfile('hspt', 'Signal vs. Corrected Peak Timing', (x[1] - x[0]), x[0] / 2, x[1] / 2)
-        if not prof:
-            h = TH2F('hspt', 'Signal vs. Corrected Peak Timing', (x[1] - x[0]), x[0] / 2, x[1] / 2, 350, -50, 300)
-        dic = self.Cut.calc_timing_range(show=False)
-        t_correction = '({p1}* trigger_cell + {p2} * trigger_cell*trigger_cell)'.format(p1=dic['t_corr'].GetParameter(1), p2=dic['t_corr'].GetParameter(2))
-        draw_string = '{sig}:IntegralPeakTime[{num}]-{tc}>>hspt'.format(sig=self.SignalName, num=self.SignalNumber, tc=t_correction)
-        exluded_cuts = ['timing', 'bucket', 'tracks', 'chi2X', 'chi2Y', 'track_angle']
-        cut = self.Cut.generate_special_cut(excluded=exluded_cuts)
-        self.tree.Draw(draw_string, cut, 'goff')
-        self.format_histo(h, fill_color=1)
-        self.ROOTObjects.append(self.draw_histo(h, show=show, draw_opt='colz'))
-        self.__draw_timing_cut()
-
-    def draw_landau_vs_peakpos(self, show=True, bins=2):
-        hs = THStack('lpp', 'Landau vs. Signal Peak Postion;pulse height;entries')
-        x = self.Run.signal_regions[self.SignalRegionName]
-        self.Cut.reset_cut('signal_peak_pos')
-        self.draw_peak_timing(show=False)
-        h_pv = self.PeakValues
-        l = TLegend(.7, .38, .90, .88)
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        for peak_pos in xrange(x[0] + 2, x[1] - 2, bins):
-            print '\rcalculating peak pos: {0:03d}'.format(peak_pos),
-            self.Cut.set_signal_peak_pos(peak_pos, peak_pos + bins)
-            events = 0
-            for pp in xrange(peak_pos, peak_pos + bins):
-                events += int(h_pv.GetBinContent(h_pv.FindBin(peak_pos / 2.)))
-            print '({0:05d})'.format(events),
-            stdout.flush()
-            if events > 10000:
-                h = self.draw_signal_distribution(show=False, bin_width=100)
-                h.SetLineColor(self.get_color())
-                h.Scale(1 / h.GetMaximum())
-                l.AddEntry(h, '[{0},{1}] ns'.format(int(peak_pos / 2.), int(peak_pos / 2. + bins / 2.)), 'l')
-                hs.Add(h)
-        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.reset_colors()
-        self.format_histo(hs, y_tit='Pulse Height [au]', y_off=1.2)
-        self.ROOTObjects.append(self.save_histo(hs, 'LandauVsPeakPos', show, self.save_dir, lm=.11, draw_opt='nostack', l=l))
+    def draw_signal_vs_peaktime(self, region=None, cut=None, show=True, corr=False, fine_corr=False, prof=True):
+        suf = ' with {} Correction'.format('Fine' if fine_corr else 'Time') if corr else ''
+        cut = self.Cut.all_cut if cut is None else cut
+        region = self.get_signal_region(region)
+        xbins = [(region[1] - region[0]) * (2 if corr else 1)] + list(array(region) * self.DigitiserBinWidth)
+        h_args = ['hspt', 'Signal vs Peak Position{}'.format(suf)] + xbins + self.Plots.get_ph_bins()
+        h = TProfile(*h_args[:5]) if prof else TH2F(*h_args)
+        self.tree.Draw('{}:{}>>hspt'.format(self.generate_signal_name(), self.Timing.get_peak_name(corr, fine_corr)), cut, 'goff')
+        self.format_histo(h, x_tit='Signal Peak Position [ns]', y_tit='Pulse Height [mV]', y_off=1.4, stats=0)
+        self.save_histo(h, 'SignalVsPeakPos{}{}'.format(int(corr), int(fine_corr)), show, lm=.11, draw_opt='' if prof else 'colz', rm=.03 if prof else .18)
 
     def draw_signal_vs_triggercell(self, bin_width=10, cut=None, show=True):
         p = TProfile('pstc', 'Signal vs. Trigger Cell', self.Run.NSamples / bin_width, 0, self.Run.NSamples)
@@ -904,12 +746,11 @@ class PadAnalysis(Analysis):
             self.ROOTObjects.append([h, c])
         return h
 
-    def draw_bucket_pedestal(self, show=True, corr=True, additional_cut='', draw_option='colz'):
+    def draw_bucket_pedestal(self, show=True, corr=True, additional_cut=''):
         gStyle.SetPalette(55)
         cut_string = self.Cut.generate_special_cut(included=['tracks', 'pulser', 'saturated'])
         cut_string += additional_cut
-        h = self.draw_signal_vs_peak_position('e', '2', show, corr, cut_string, draw_option, 1, save=False)
-        self.format_histo(h, x_range=[self.Run.signal_regions[self.SignalRegionName][0] / 2, self.Run.signal_regions['e'][1] / 2], stats=0)
+        self.draw_signal_vs_peaktime('e', cut_string, show, corr, fine_corr=corr, )
         self.save_plots('BucketPedestal')
 
     def draw_bucket_waveforms(self, show=True, t_corr=True, start=100000):
@@ -981,7 +822,7 @@ class PadAnalysis(Analysis):
             if str(value) or key == 'raw':
                 print 'saving plot', key
                 save_name = 'signal_distribution_{cut}'.format(cut=key)
-                histo_name = 'signal {range}{peakint}'.format(range=self.SignalRegionName, peakint=self.PeakIntegral)
+                histo_name = 'signal {range}{peakint}'.format(range=self.SignalRegionName, peakint=self.PeakIntegralName)
                 histo_title = 'signal with cut ' + key
                 histo = TH1F(histo_name, histo_title, 350, -50, 300)
                 # safe single plots
@@ -1035,7 +876,7 @@ class PadAnalysis(Analysis):
         for key, value in self.Cut.CutStrings.iteritems():
             if str(value) or key == 'raw':
                 save_name = 'signal_distribution_normalised_{cut}'.format(cut=key)
-                histo_name = 'signal {range}{peakint}'.format(range=self.SignalRegionName, peakint=self.PeakIntegral)
+                histo_name = 'signal {range}{peakint}'.format(range=self.SignalRegionName, peakint=self.PeakIntegralName)
                 histo_title = 'normalized' if not scale else 'scaled'
                 histo_title += ' signal with cut ' + key
                 histo = TH1F(histo_name, histo_title, 350, -50, 300)
@@ -1211,20 +1052,6 @@ class PadAnalysis(Analysis):
 
     # ==========================================================================
     # region SHOW
-    def draw_signal_vs_peak_position(self, region=None, peak_int=None, show=True, corr=True, cut=None, draw_opt='colz', nbins=4, save=True):
-        region = self.SignalRegionName if region is None else region
-        peak_int = self.PeakIntegral if peak_int is None else peak_int
-        cut = self.Cut.generate_special_cut(excluded=[self.Cut.CutStrings['timing']]) if cut is None else cut
-        num = self.get_signal_number(region, peak_int)
-        reg_margins = self.Run.signal_regions[region]
-        x_bins = (reg_margins[1] - reg_margins[0]) * nbins
-        h = TH2F('h_spp', 'Signal Vs Peak Positions', x_bins, reg_margins[0] / 2., reg_margins[1] / 2., 550, -50, 500)
-        peak_string = 'IntegralPeaks' if not corr else 'IntegralPeakTime'
-        draw_string = '{sig}:{peaks}[{num}]{scale}>>h_spp'.format(sig=self.SignalName, num=num, peaks=peak_string, scale='/2.' if not corr else '')
-        self.tree.Draw(draw_string, cut, 'goff')
-        self.format_histo(h, x_tit='Peak Timing [ns]', y_tit='Pulse Height [au]', y_off=1.35, z_off=1.2, stats=0, z_tit='Number of Entries')
-        self.save_histo(h, 'SignalVsPeakPos', show, draw_opt=draw_opt, logz=True, rm=.15, lm=.12, save=save)
-        return h
 
     def draw_signal_vs_signale(self, show=True):
         gStyle.SetPalette(53)
@@ -1722,7 +1549,7 @@ class PadAnalysis(Analysis):
     def print_information(self, header=True):
         if header:
             self.print_info_header()
-        infos = [self.RunNumber, self.Run.RunInfo['type'], self.DiamondName.ljust(4), self.Bias, self.SignalRegionName + self.PeakIntegral + '   ']
+        infos = [self.RunNumber, self.Run.RunInfo['type'], self.DiamondName.ljust(4), self.Bias, self.SignalRegionName + self.PeakIntegralName + '   ']
         for info in infos:
             print self.adj_length(info),
         print
