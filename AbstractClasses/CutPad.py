@@ -5,6 +5,7 @@ from ROOT import TCut, TH1F, TH2F, TF1, TCanvas, gROOT, TProfile, THStack, TCutG
 from Utils import *
 from json import loads
 from numpy import array
+from ConfigParser import NoOptionError
 
 __author__ = 'micha'
 
@@ -63,7 +64,7 @@ class CutPad(Cut):
             if store_true:
                 return dia in conf
             return conf[dia]
-        except KeyError:
+        except (KeyError, NoOptionError):
             log_warning('No option {0} in the analysis config for {1}!'.format(name, make_tc_str(self.TESTCAMPAIGN)))
 
     # endregion
