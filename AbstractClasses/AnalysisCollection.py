@@ -865,7 +865,7 @@ class AnalysisCollection(Elementary):
 
         hist = do_pickle(pickle_path, f)
         self.format_histo(hist, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', t_ax_off=self.StartTime if rel_time else 0, fill_color=self.FillColor, y_range=[1, 20000], stats=0)
-        self.save_histo(hist, 'FluxEvo', x_fac=1.5, y_fac=.75, show=show, logy=True)
+        self.save_histo(hist, 'FluxEvo', x_fac=1.5, y_fac=.75, show=show, logy=True, draw_opt='bar' if not self.FirstAnalysis.has_branch('rate') else None)
         return hist
 
     def draw_flux_hist(self, bin_size=1, show=True):
@@ -901,25 +901,6 @@ class AnalysisCollection(Elementary):
         self.draw_irradiation(make_irr_string(self.selection.get_irradiation()))
         self.save_plots('FluxCurrent', show=show)
         return g
-
-    def save_signal_maps(self, hitmap=False, redo=False):
-
-        name = 'signal' if not hitmap else 'hit'
-        log_message('Generating {s} maps!'.format(s=name))
-        self.start_pbar(self.NRuns)
-        histos = []
-        for i, ana in enumerate(self.collection.values(), 1):
-            histos.append(ana.draw_signal_map(show=False, hitmap=hitmap, redo=redo, prnt=False))
-            self.ProgressBar.update(i)
-        self.ProgressBar.finish()
-
-        # find min/max
-        glob_max = (int(max([h.GetMaximum() for h in histos])) + 5) / 5 * 5
-        glob_min = int(min([h.GetMinimum() for h in histos])) / 5 * 5
-        for i, h in enumerate(histos):
-            if not hitmap:
-                self.format_histo(h, z_range=[glob_min, glob_max])
-            self.save_histo(h, '{n}Map{nr}'.format(nr=str(i).zfill(2), n=name.title()), show=False, ind=i, draw_opt='colz', rm=.16, lm=.12, prnt=False)  # theta 55, phi 20
 
     def draw_cumulative_map(self, chi2=None, res=1.5, hitmap=False, redo=False, cut=None, show=True):
 
@@ -1190,26 +1171,47 @@ class AnalysisCollection(Elementary):
         self.RootObjects.append([gr, c])
 
     # endregion
+    def draw_signal_maps(self, hitmap=False, redo=False):
+        f = PadAnalysis.draw_dia_hitmap if hitmap else PadAnalysis.draw_signal_map
+        histos = self.make_plots('{} maps'.format('hit' if hitmap else 'signal'), f, {'show': False, 'prnt': False, 'redo': redo})
+        glob_max = (int(max([h.GetMaximum() for h in histos])) + 5) / 5 * 5
+        glob_min = int(min([h.GetMinimum() for h in histos])) / 5 * 5
+        for i, h in enumerate(histos):
+            self.format_histo(h, z_range=[glob_min, glob_max]) if not hitmap else do_nothing()
+            self.save_histo(h, '{n}Map{nr}'.format(nr=str(i).zfill(2), n='Hit' if hitmap else 'Signal'), show=False, ind=i, draw_opt='colz', rm=.16, lm=.12, prnt=False)
 
     def draw_currents(self, v_range=None, rel_time=False, averaging=1, with_flux=False, c_range=None, f_range=None, draw_opt='ap', show=True):
         self.Currents.draw_indep_graphs(rel_time=rel_time, v_range=v_range, averaging=averaging, with_flux=with_flux, c_range=c_range, f_range=f_range, show=show, draw_opt=draw_opt)
 
     def draw_run_currents(self):
-        log_message('Generating currents ...')
-        self.start_pbar(self.NRuns)
-        for i, ana in enumerate(self.collection.itervalues(), 1):
-            ana.draw_current(relative_time=False, show=False)
-            ana.Currents.get_current()
-            self.ProgressBar.update(i)
-        self.ProgressBar.finish()
+        self.make_plots('currents', PadAnalysis.get_current)
+        self.get_currents()
 
     def draw_chi2s(self):
+        self.make_plots('chi2s', PadAnalysis.draw_all_chi2, {'show': False, 'prnt': False})
+
+    def draw_angles(self):
+        self.make_plots('angles', PadAnalysis.draw_both_angles, {'show': False, 'prnt': False})
+
+    def draw_timing(self):
+        self.make_plots('timing', PadAnalysis.draw_timing)
+
+    def draw_occupancies(self):
+        self.make_plots('occupancies', PadAnalysis._draw_occupancies, {'show': False, 'cluster': True, 'prnt': False})
+
+    def draw_pulser_rates(self):
+        self.make_plots('pulser rates', PadAnalysis.draw_pulser_rate, {'show': False, 'prnt': False})
+
+    def make_plots(self, string, f, kwargs=None):
+        kwargs = {} if kwargs is None else kwargs
         self.start_pbar(self.NRuns)
-        log_message('Generating chi2s ...')
+        log_message('Generating {} ...'.format(string))
+        plots = []
         for i, ana in enumerate(self.collection.itervalues(), 1):
-            ana.draw_all_chi2(show=False, prnt=False)
+            plots.append(f(ana, **kwargs))
             self.ProgressBar.update(i)
         self.ProgressBar.finish()
+        return plots
 
     def get_hv_device(self):
         return self.FirstAnalysis.Currents.Name
