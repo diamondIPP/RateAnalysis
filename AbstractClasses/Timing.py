@@ -19,6 +19,7 @@ class TimingAnalysis(Elementary):
         self.Channel = self.Ana.channel
         self.Tree = self.Ana.tree
         self.Cut = self.Ana.Cut
+        self.TimingCut = self.Cut.generate_special_cut(excluded=['timing'], prnt=False, name='Timing')
         self.save_dir = self.Ana.save_dir
         self.Polarity = self.Ana.Polarity
         self.DiamondName = self.Ana.DiamondName
@@ -33,6 +34,12 @@ class TimingAnalysis(Elementary):
         self.format_histo(h, x_tit='Digitiser Bin', y_tit='Number of Entries')
         self.draw_histo(h, show=show)
         return h
+
+    def draw_all(self):
+        self.draw_peaks(show=False, prnt=False, show_cut=True)
+        self.draw_peaks_tc(cut=self.get_raw_cut(), show=False, prnt=False)
+        self.draw_comparison(show=False, prnt=False)
+        self.draw_fine_correction(show=False, prnt=False)
 
     def create_run_config(self, ch=0, off=0):
         h0 = self.draw_raw_peaks(max(5, 100 - off), 450 - off, ch=ch, show=False)
