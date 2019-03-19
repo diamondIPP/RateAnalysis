@@ -80,14 +80,9 @@ class PadAnalysis(Analysis):
         # currents
         self.Currents = Currents(self)
 
-        # histograms
-        self.PedestalHisto = None
-        self.SignalTime = None
-        self.PeakValues = None
+        self.Timing.reload_cut()
 
     def __del__(self):
-        for obj in [self.Pedestal, self.SignalTime, self.PeakValues]:
-            self.del_rootobj(obj)
         for c in gROOT.GetListOfCanvases():
             c.Close()
         for lst in self.ROOTObjects + self.ROOTObjects:
