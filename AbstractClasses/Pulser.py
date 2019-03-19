@@ -51,7 +51,7 @@ class PulserAnalysis(Elementary):
         self.Tree.Draw('pulser*100:{v}>>hpr'.format(v='time / 1000.' if vs_time else 'Entry$'), cut, 'goff')
         self.format_histo(h, x_tit='Time [hh:mm]' if vs_time else 'Event Number', y_tit='Pulser Fraction [%]', y_off=.8, fill_color=self.FillColor, y_range=[0, 105], markersize=.7, stats=0,
                           t_ax_off=self.Ana.Run.StartTime if rel_t else 0)
-        self.save_histo(h, 'PulserRate', show, lm=.08, draw_opt='bare', x_fac=1.5, y_fac=.75, prnt=prnt)
+        self.save_histo(h, 'PulserRate', show, lm=.08, draw_opt='bare', x=1.5, y=.75, prnt=prnt)
         return h
 
     def calc_fraction(self, show=False, prnt=True):

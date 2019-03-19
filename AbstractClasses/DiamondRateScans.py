@@ -541,7 +541,7 @@ class DiaScans(Elementary):
         y_vals = sorted([gr.GetY()[i] for gr in mg.GetListOfGraphs() for i in xrange(gr.GetN())])
         self.format_histo(mg, draw_first=True, y_tit='Pulse Height [au]', y_range=[0, y_vals[-1] * 1.1], tit_size=.05, lab_size=.05, y_off=.91, x_off=1.2)
         mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 3)
-        self.save_histo(mg, 'DiaScans{dia}'.format(dia=make_dia_str(self.DiamondName)), draw_opt='a', logx=True, l=legend, x_fac=1.6, lm=.092, bm=.12, gridy=True)
+        self.save_histo(mg, 'DiaScans{dia}'.format(dia=make_dia_str(self.DiamondName)), draw_opt='a', logx=True, l=legend, x=1.6, lm=.092, bm=.12, gridy=True)
 
     def draw_scaled_rate_scans(self, irr=False, y_range=.15, x_range=None, pad_height=.18):
         biases = set(self.get_bias_voltages())

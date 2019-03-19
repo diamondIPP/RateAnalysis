@@ -318,7 +318,7 @@ class AnalysisCollection(Elementary):
                 h.SetBinError(ibin, ana.Run.Flux.s)
                 ibin += 1
         self.format_histo(h, y_tit='Flux [kHz/cm^{2}]', x_tit='Time [hh:mm]', y_off=.8, fill_color=self.FillColor, stats=0, t_ax_off=self.StartTime if rel_t else 0)
-        self.save_histo(h, 'FluxTime', show=show, x_fac=1.5, y_fac=.75, lm=.065, gridy=True, logy=True, draw_opt='bar')
+        self.save_histo(h, 'FluxTime', show=show, x=1.5, y=.75, lm=.065, gridy=True, logy=True, draw_opt='bar')
         return h
 
     def draw_full_pulse_height(self, evts_per_bin=10000, show=True, rel_t=True, redo=False, with_flux=True):
@@ -388,7 +388,7 @@ class AnalysisCollection(Elementary):
         y_range1 = [.95, 1.05] if y_range is None else y_range
         self.format_histo(mg, x_tit=xtit, y_tit='Scaled Pulse Height', y_off=1.75, x_off=1.3, draw_first=True, t_ax_off=0 if vs_time else None, y_range=y_range1, ndivx=503, center_y=1)
         mg.GetXaxis().SetLimits(1, 40000) if not vs_time else do_nothing()
-        move_legend(mg.GetListOfFunctions()[0], .75, .20)
+        move_legend(mg.GetListOfFunctions()[0], .25, .20)
         self.draw_histo(mg, '', show, lm=.14, draw_opt='a', logx=not vs_time, grid=vs_time, gridy=True, bm=.18)
         self.draw_irradiation(make_irr_string(self.selection.get_irradiation()))
         self.save_plots('ScaledPulseHeights{}'.format(xtit[:4]))
@@ -685,7 +685,7 @@ class AnalysisCollection(Elementary):
                 ibin += 1
         self.format_histo(h, x_tit='Time [hh:mm]', y_tit='Beam Current [mA]', y_off=.85, fill_color=self.FillColor, stats=0, markersize=.3,
                           t_ax_off=self.FirstAnalysis.Run.StartTime if rel_t else 0)
-        self.save_histo(h, 'AllBeamRate', show=show, draw_opt='hist', x_fac=1.5, y_fac=.75, lm=.065)
+        self.save_histo(h, 'AllBeamRate', show=show, draw_opt='hist', x=1.5, y=.75, lm=.065)
 
     # ============================================
     # region CUTS
@@ -865,7 +865,7 @@ class AnalysisCollection(Elementary):
 
         hist = do_pickle(pickle_path, f)
         self.format_histo(hist, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', t_ax_off=self.StartTime if rel_time else 0, fill_color=self.FillColor, y_range=[1, 20000], stats=0)
-        self.save_histo(hist, 'FluxEvo', x_fac=1.5, y_fac=.75, show=show, logy=True, draw_opt='bar' if not self.FirstAnalysis.has_branch('rate') else None)
+        self.save_histo(hist, 'FluxEvo', x=1.5, y=.75, show=show, logy=True, draw_opt='bar' if not self.FirstAnalysis.has_branch('rate') else None)
         return hist
 
     def draw_flux_hist(self, bin_size=1, show=True):

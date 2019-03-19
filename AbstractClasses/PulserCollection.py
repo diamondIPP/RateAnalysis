@@ -80,7 +80,7 @@ class PulserCollection(Elementary):
             i_bin += 1
         self.format_histo(h1, x_tit='Time [hh:mm]', y_tit='Pulser Pulse Height [au]', y_off=.8, fill_color=self.FillColor, stats=0, y_range=[0, 105])
         set_time_axis(h1, off=self.Analysis.FirstAnalysis.Run.StartTime if rel_t else 0)
-        self.save_histo(h1, 'PulserPulseHeight{}'.format(evts_per_bin), show=show, draw_opt='hist', x_fac=1.5, y_fac=.75, lm=.065)
+        self.save_histo(h1, 'PulserPulseHeight{}'.format(evts_per_bin), show=show, draw_opt='hist', x=1.5, y=.75, lm=.065)
 
     def draw_pulse_heights(self, sigma=False, corr=True, beam_on=True, vs_time=False, do_fit=False, save_comb=True, show=True, redo=False):
 
@@ -188,7 +188,7 @@ class PulserCollection(Elementary):
             i_bin += 1
         self.format_histo(h1, x_tit='Time [hh:mm]', y_tit='Pulser Rate [%]', y_off=.8, fill_color=self.FillColor, stats=0, y_range=[0, 105])
         set_time_axis(h1, off=self.Analysis.FirstAnalysis.Run.StartTime if rel_t else 0)
-        self.save_histo(h1, 'AllPulserRate', show=show, draw_opt='hist', x_fac=1.5, y_fac=.75, lm=.065)
+        self.save_histo(h1, 'AllPulserRate', show=show, draw_opt='hist', x=1.5, y=.75, lm=.065)
 
     def draw_rates(self, show=True, vs_time=False, real=False):
         mode = self.Analysis.get_mode(vs_time)
