@@ -39,11 +39,11 @@ class TimingAnalysis(Elementary):
     # --------------------------
     # region RUN CONFIG
 
-    def draw_raw_peaks(self, xmin=100, xmax=400, ch=None, corr=False, show=True):
-        h = TH1F('h_pt', 'PeakTimings', xmax - xmin, xmin, xmax)
+    def draw_raw_peaks(self, xmin=100, xmax=400, bin_width=1, ch=None, corr=False, cut='', show=True):
+        h = TH1F('h_pt', 'Max Peak Timings', int((xmax - xmin) / bin_width), xmin, xmax)
         channel = self.Ana.channel if ch is None else ch
-        self.Tree.Draw('max_peak_{p}[{c}]>>h_pt'.format(c=channel, p='position' if not corr else 'time'), '', 'goff')
-        self.format_histo(h, x_tit='Digitiser Bin', y_tit='Number of Entries')
+        self.Tree.Draw('max_peak_{p}[{c}]>>h_pt'.format(c=channel, p='position' if not corr else 'time'), cut, 'goff')
+        self.format_histo(h, x_tit='Time [ns]' if corr else 'Digitiser Bin', y_tit='Number of Entries', fill_color=self.FillColor)
         self.draw_histo(h, show=show)
         return h
 
@@ -280,6 +280,12 @@ class TimingAnalysis(Elementary):
 
     # endregion
     # --------------------------
+
+    def draw_max_peaks(self, cut=None):
+        self.set_statbox(entries=True)
+        h = self.draw_raw_peaks(0, 512, bin_width=.5, corr=1, show=False, cut=self.TimingCut if cut is None else TCut(cut))
+        self.format_histo(h, y_off=.5, tit_size=.07, lab_size=.06)
+        self.save_histo(h, 'MaxPeakTimings', logy=True, lm=.073, rm=.045, bm=.18, x=1.5, y=.5)
 
     def draw_fit_peak_timing(self, show=True):
         xmin, xmax = [t * self.Ana.DigitiserBinWidth for t in self.Ana.SignalRegion]
