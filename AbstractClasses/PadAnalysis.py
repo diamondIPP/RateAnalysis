@@ -485,8 +485,8 @@ class PadAnalysis(Analysis):
         else:
             return string
 
-    def generate_signal_name(self, signal=None, evnt_corr=True, off_corr=False, bin_corr=False, cut=None):
-        sig_name = signal if signal is not None else self.SignalName
+    def generate_signal_name(self, signal=None, evnt_corr=True, off_corr=False, bin_corr=False, cut=None, region=None):
+        sig_name = signal if signal is not None else self.get_signal_name(region)
         # pedestal polarity is always the same as signal polarity
         ped_pol = '1'
         # change polarity if pulser has opposite polarity to signal
