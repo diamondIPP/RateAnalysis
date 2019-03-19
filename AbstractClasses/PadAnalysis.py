@@ -1000,7 +1000,7 @@ class PadAnalysis(Analysis):
         for i in xrange(1, gr.GetN()):
             bin_x = gr.GetXaxis().FindBin(i)
             gr.GetXaxis().SetBinLabel(bin_x, names[i - 1])
-        self.ROOTObjects.append(self.save_histo(gr, 'CutMeans{s}'.format(s='Short' if short else ''), show, self.save_dir, bm=.20, draw_opt='bap', lm=.12, x_fac=1.5))
+        self.ROOTObjects.append(self.save_histo(gr, 'CutMeans{s}'.format(s='Short' if short else ''), show, self.save_dir, bm=.20, draw_opt='bap', lm=.12, x=1.5))
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
 
     def draw_distance_vs_ph(self, show=True, steps=10):
@@ -1060,7 +1060,7 @@ class PadAnalysis(Analysis):
         self.ROOTObjects.append(self.save_histo(h, 'SignalEvsSignalB', show, rm=.15, lm=.13, draw_opt='colz'))
         gStyle.SetPalette(1)
 
-    def draw_waveforms(self, n=1, cut=None, start_event=None, t_corr=True, channel=None, show=True, x_range=None, y_range=None):
+    def draw_waveforms(self, n=1, cut=None, start_event=None, t_corr=True, channel=None, show=True, x_range=None, y_range=None, grid=False):
         """ Draws a stack of n waveforms. """
         channel = self.channel if channel is None else channel
         if not self.Run.wf_exists(self.channel):
@@ -1086,7 +1086,7 @@ class PadAnalysis(Analysis):
         y_range = increased_range([min(values), max(values)], .1, .2) if y_range is None else y_range
         h = self.make_tgrapherrors('g_cw', title, x=times, y=values) if n == 1 else h
         self.format_histo(h, x_tit='Time [ns]', y_tit='Signal [mV]', y_off=.5, stats=0, tit_size=.07, lab_size=.06, y_range=y_range, markersize=.5, x_range=x_range)
-        self.draw_histo(h, 'WaveForms{n}'.format(n=n), show=show, draw_opt='col' if n > 1 else 'apl', lm=.073, rm=.045, bm=.18, x=1.5, y=.5)
+        self.draw_histo(h, 'WaveForms{n}'.format(n=n), show=show, draw_opt='col' if n > 1 else 'apl', lm=.073, rm=.045, bm=.18, x=1.5, y=.5, gridy=grid, gridx=grid)
         return h, n_events
 
     def get_calibrated_times(self, trigger_cell):
@@ -1167,14 +1167,13 @@ class PadAnalysis(Analysis):
         self.draw_fiducial_cut()
         self.save_plots('RiseTimeMap')
 
-    def draw_single_waveform(self, cut='', event=None, show=True):
-        h, n = self.draw_waveforms(n=1, start_event=event, cut=cut, t_corr=True, show=False)
-        mean_noise = self.Pedestal.get_mean()
-        self.draw_histo(h, show=show, gridy=1, gridx=1, lm=.073, rm=.045, bm=.18, x=2, y=.5)
-        l = self.draw_horizontal_line(mean_noise.n, 0, 700, w=2, style=7, color=2)
-        legend = self.make_legend(.8, .4, nentries=1, scale=2)
-        legend.AddEntry(l, 'mean pedestal', 'l')
-        legend.Draw()
+    def draw_single_waveform(self, cut='', event=None, show=True, show_noise=False):
+        h, n = self.draw_waveforms(n=1, start_event=event, cut=cut, t_corr=True, show=show, grid=True)
+        if show_noise:
+            mean_noise = self.Pedestal.get_mean()
+            legend = self.make_legend(.8, .4, nentries=1, scale=2)
+            legend.AddEntry(self.draw_horizontal_line(mean_noise.n, 0, 700, w=2, style=7, color=2), 'mean pedestal', 'l')
+            legend.Draw()
         return h
 
     def show_single_waveforms(self, n=1, cut='', start_event=None):
@@ -1620,20 +1619,6 @@ class PadAnalysis(Analysis):
         print mid - 4, mid + 6
         ar.Draw()
         self.ROOTObjects.append([h, h1, gr1, gr2, gr3, ar, c])
-
-    def draw_tcal(self, show=True):
-        gr = self.make_tgrapherrors('gr_tcal', 'DRS4 Bin Sizes', marker_size=.5, x=range(len(self.Run.TCal)), y=self.Run.TCal)
-        gr.Fit('pol0', 'qs') if show else do_nothing()
-        self.format_histo(gr, x_tit='Bin number', y_tit='Length [ns]', y_off=1.5, y_range=[0, 1])
-        set_statbox(only_fit=True)
-        self.save_histo(gr, 'DRSBinSizes', x_fac=1.5, y_fac=.75, show=show)
-
-    def draw_tcal_disto(self, show=True):
-        h = TH1F('h_tcal', 'Bin Size Distribution', *self.Plots.get_tcal_bins())
-        for value in self.Run.TCal:
-            h.Fill(value)
-        self.format_histo(h, x_tit='time [ns]', y_tit='number of entries', y_off=1.5)
-        self.save_histo(h, 'DRSBinSizeDisto', show, self.save_dir)
 
     def save_felix(self):
         self.save_dir = '{info}_{rp}'.format(info=self.make_info_string().strip('_'), rp=self.RunNumber)
