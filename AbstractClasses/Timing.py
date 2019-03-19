@@ -78,9 +78,9 @@ class TimingAnalysis(Elementary):
     # --------------------------
     # region PEAK TIMING
 
-    def get_peak_name(self, corr, fine_corr=False, cut=None):
-        fine_corr = ' - {}'.format(self.make_fine_correction_str(cut)) if fine_corr else ''
-        return '{}{}{}'.format(self.Ana.get_peak_name(t_corr=corr), '*{}'.format(self.Ana.DigitiserBinWidth) if not corr else '', fine_corr)
+    def get_peak_name(self, corr, fine_corr=False, cut=None, region=None, redo=False):
+        fine_corr = ' - {}'.format(self.make_fine_correction_str(cut, redo=redo)) if fine_corr else ''
+        return '{}{}{}'.format(self.Ana.get_peak_name(t_corr=corr, region=region), '*{}'.format(self.Ana.DigitiserBinWidth) if not corr else '', fine_corr)
 
     def draw_peaks(self, fit=True, cut=None, corr=True, fine_corr=True, show=True, prnt=True, redo=False, save=True, show_cut=False):
 
