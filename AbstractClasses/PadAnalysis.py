@@ -652,11 +652,11 @@ class PadAnalysis(Analysis):
     def draw_signal_vs_peaktime(self, region=None, cut=None, show=True, corr=False, fine_corr=False, prof=True):
         suf = ' with {} Correction'.format('Fine' if fine_corr else 'Time') if corr else ''
         cut = self.Cut.all_cut if cut is None else cut
-        region = self.get_signal_region(region)
-        xbins = [(region[1] - region[0]) * (2 if corr else 1)] + list(array(region) * self.DigitiserBinWidth)
+        x = self.get_signal_region(region)
+        xbins = [(x[1] - x[0]) * (2 if corr else 1)] + list(array(x) * self.DigitiserBinWidth)
         h_args = ['hspt', 'Signal vs Peak Position{}'.format(suf)] + xbins + self.Plots.get_ph_bins()
         h = TProfile(*h_args[:5]) if prof else TH2F(*h_args)
-        self.tree.Draw('{}:{}>>hspt'.format(self.generate_signal_name(), self.Timing.get_peak_name(corr, fine_corr)), cut, 'goff')
+        self.tree.Draw('{}:{}>>hspt'.format(self.generate_signal_name(), self.Timing.get_peak_name(corr, fine_corr, region=region)), cut, 'goff')
         self.format_histo(h, x_tit='Signal Peak Position [ns]', y_tit='Pulse Height [mV]', y_off=1.4, stats=0)
         self.save_histo(h, 'SignalVsPeakPos{}{}'.format(int(corr), int(fine_corr)), show, lm=.11, draw_opt='' if prof else 'colz', rm=.03 if prof else .18)
 
@@ -743,9 +743,10 @@ class PadAnalysis(Analysis):
 
     def draw_bucket_pedestal(self, show=True, corr=True, additional_cut=''):
         gStyle.SetPalette(55)
-        cut_string = self.Cut.generate_special_cut(included=['tracks', 'pulser', 'saturated'])
+        # cut_string = self.Cut.generate_special_cut(included=['tracks', 'pulser', 'saturated'])
+        cut_string = self.Cut.generate_special_cut(excluded=['bucket', 'timing'])
         cut_string += additional_cut
-        self.draw_signal_vs_peaktime('e', cut_string, show, corr, fine_corr=corr, )
+        self.draw_signal_vs_peaktime('e', cut_string, show, corr, fine_corr=corr, prof=False)
         self.save_plots('BucketPedestal')
 
     def draw_bucket_waveforms(self, show=True, t_corr=True, start=100000):
