@@ -203,7 +203,7 @@ class Draw:
         x1, x2 = (c.GetLeftMargin(), .5) if left else (.5, 1 - c.GetRightMargin())
         return self.draw_tpavetext('Irradiation: {}'.format(irr), x1, x2, 1 - height - c.GetTopMargin(), 1 - c.GetTopMargin(), font=42, align=12, margin=0.04)
 
-    def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=.03, bm=None, tm=None, draw_opt='', x=None, y=None, all_pads=True,
+    def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=None, rm=None, bm=None, tm=None, draw_opt='', x=None, y=None, all_pads=True,
                    l=None, logy=False, logx=False, logz=False, canvas=None, grid=False, gridy=False, gridx=False, both_dias=False, prnt=True, phi=None, theta=None, ind=None):
         return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, all_pads, l, logy, logx, logz, canvas, grid, gridx, gridy, False, both_dias, ind,
                                prnt, phi, theta)
@@ -275,18 +275,17 @@ class Draw:
             log_message(out, prnt=self.Verbose)
         set_root_output(True)
 
-    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=.03, bm=None, tm=None, draw_opt='', x_fac=None, y_fac=None, all_pads=True,
+    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=None, rm=None, bm=None, tm=None, draw_opt='', x=None, y=None, all_pads=True,
                    l=None, logy=False, logx=False, logz=False, canvas=None, grid=False, gridx=False, gridy=False, save=True, both_dias=False, ind=None, prnt=True, phi=None, theta=None):
-        if tm is None:
-            tm = .1 if self.Config.getboolean('SAVE', 'activate_title') else .03
-        if bm is None:
-            bm = .1 if not self.Config.getboolean('SAVE', 'info_legend') else .17  # the info legend will automatically put a value...
-        x = self.Res if x_fac is None else int(x_fac * self.Res)
-        y = self.Res if y_fac is None else int(y_fac * self.Res)
+        x = self.Res if x is None else int(x * self.Res)
+        y = self.Res if y is None else int(y * self.Res)
         h = histo
         set_root_output(show)
         c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x, y) if canvas is None else canvas
-        c.SetMargin(lm, rm, bm, tm)
+        do(c.SetLeftMargin, lm)
+        do(c.SetRightMargin, rm if rm is not None else None if round(c.GetRightMargin(), 1) != .1 else .03)
+        do(c.SetBottomMargin, bm if bm is not None else None if round(c.GetBottomMargin(), 1) != .1 or not self.Config.getboolean('SAVE', 'info_legend') else .17)
+        do(c.SetTopMargin, tm if tm is not None else None if round(c.GetTopMargin(), 1) != .1 else .1 if self.Config.getboolean('SAVE', 'activate_title') else .03)
         c.SetLogx() if logx else do_nothing()
         c.SetLogy() if logy else do_nothing()
         c.SetLogz() if logz else do_nothing()
