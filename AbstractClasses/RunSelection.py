@@ -8,6 +8,7 @@ from ConfigParser import ConfigParser
 from itertools import chain
 from Utils import *
 from glob import glob
+from os import system
 
 
 class RunSelection(Elementary):
@@ -617,6 +618,13 @@ class RunSelection(Elementary):
                 continue
             self.Run.Converter.set_run(run)
             self.Run.Converter.copy_raw_file()
+
+    def backup_to_isg(self):
+        backup_path = join('isg:', 'home', 'ipp', self.TCDir)
+        system('rsync -aPv {} {}'.format(join(self.DataDir, self.TCDir, 'run_log.json'), backup_path))
+        system('rsync -aPv {} {}'.format(join(self.DataDir, self.TCDir, 'HV*'), backup_path))
+        system('rsync -aPv {} {}'.format(join(self.DataDir, self.TCDir, 'root', 'pads', 'TrackedRun*'), join(backup_path, 'root', 'pads')))
+        system('rsync -aPv {} {}'.format(join(self.DataDir, self.TCDir, 'root', 'pixel', 'TrackedRun*'), join(backup_path, 'root', 'pixel')))
 
 
 def verify(msg):
