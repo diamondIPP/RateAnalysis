@@ -92,7 +92,7 @@ class TimingAnalysis(Elementary):
         def f():
             set_root_warnings(False)
             h1 = TH1F(name, '{}Peak Positions'.format('Time Corrected ' if corr else ''), int((xmax - xmin + 20) * (8 if corr else 1 / self.Ana.DigitiserBinWidth)), xmin - 10, xmax + 10)
-            self.Ana.tree.Draw('{}>>{}'.format(self.get_peak_name(corr, fine_corr, cut), name), cut, 'goff')
+            self.Ana.tree.Draw('{}>>{}'.format(self.get_peak_name(corr, fine_corr, cut, redo=redo), name), cut, 'goff')
             if not h1.GetEntries():
                 return
             return h1
@@ -100,10 +100,10 @@ class TimingAnalysis(Elementary):
         h = do_pickle(pickle_path, f, redo=redo)
         if h is None:
             return
-        self.set_statbox(fit=True, n_entries=5, w=.2)
+        self.set_statbox(fit=fit, n_entries=5, w=.2, all_stat=not fit)
         if fit:
             self.fit_peaks(h)
-        self.format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)
+        self.format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=2.0, fill_color=self.FillColor)
         set_drawing_range(h, thresh=.05 * h.GetMaximum(), lfac=.1, rfac=.7)
         prefix = 'Raw' if not corr else 'Fine' if fine_corr else ''
         self.draw_histo(h, lm=.13, show=show, prnt=prnt)
@@ -146,8 +146,8 @@ class TimingAnalysis(Elementary):
             xax = h.GetXaxis()
             xax.SetLimits(xax.GetXmin() - mu, xax.GetXmax() - mu)
             stack.Add(h)
-        self.format_histo(stack, x_range=[h0.GetBinCenter(h0.FindFirstBinAbove(0)), h0.GetBinCenter(h0.FindLastBinAbove(0))], draw_first=True)
-        self.save_histo(stack, 'TimingComparison',  draw_opt='nostack', l=l, show=show, prnt=prnt)
+        self.format_histo(stack, x_range=[h0.GetBinCenter(h0.FindFirstBinAbove(0)), h0.GetBinCenter(h0.FindLastBinAbove(0))], draw_first=True, y_off=2.1)
+        self.save_histo(stack, 'TimingComparison',  draw_opt='nostack', l=l, show=show, prnt=prnt, lm=.14)
         self.reset_colors()
 
     @staticmethod
@@ -165,7 +165,7 @@ class TimingAnalysis(Elementary):
         h.GetListOfFunctions().Add(fit2)
         return fit
 
-    def draw_peaks_tc(self, corr=True, fit=True, cut=None, show=True, prnt=True, save=True):
+    def draw_peaks_tc(self, corr=True, fit=True, cut=None, show=True, prnt=True, save=True, redo=False):
 
         cut = self.Cut.generate_special_cut(excluded=['timing'], prnt=prnt) if cut is None else TCut(cut)
         pickle_path = self.make_pickle_path('Timing', 'PeakTC', self.RunNumber, self.DiamondNumber, suf=cut.GetName())
@@ -183,7 +183,7 @@ class TimingAnalysis(Elementary):
                 h.GetListOfFunctions().Add(fit_func)
             return h
 
-        histo = do_pickle(pickle_path, f)
+        histo = do_pickle(pickle_path, f, redo=redo)
         self.format_histo(histo, x_tit='Trigger Cell', y_tit='Signal Peak Time [ns]', y_off=1.8, stats=fit)
         set_statbox(only_fit=fit, x=.7)
         self.save_histo(histo, 'OriPeakPosVsTriggerCell', show, lm=.13, prnt=prnt, save=save)
@@ -194,14 +194,14 @@ class TimingAnalysis(Elementary):
         fit1 = h1.GetListOfFunctions()[2]
         return TCut('RawTiming', '({} - {}) / {} < 3'.format(self.Ana.PeakName, fit1.GetParameter(1), fit1.GetParameter(2))) + (self.TimingCut if cut is None else cut)
 
-    def calc_fine_correction(self, cut=None):
-        h = self.draw_peaks_tc(show=False, prnt=False, cut=self.get_raw_cut(cut))
+    def calc_fine_correction(self, cut=None, redo=False):
+        h = self.draw_peaks_tc(show=False, prnt=False, cut=self.get_raw_cut(cut), redo=redo)
         fit = h.GetListOfFunctions()[0]
         fine_corr = fit.GetChisquare() / fit.GetNDF() < 100 and abs(fit.GetParameter(0)) < 10  # require decent chi2 and a meaningful scaling of the sin(x)
         return self.make_fine_correction_str(cut=self.TimingCut if cut is None else cut, fit=fit) if fine_corr else '0'
 
-    def make_fine_correction_str(self, cut=None, fit=None):
-        fit = self.draw_peaks_tc(show=False, prnt=False, cut=cut).GetListOfFunctions()[0] if fit is None else fit
+    def make_fine_correction_str(self, cut=None, fit=None, redo=False):
+        fit = self.draw_peaks_tc(show=False, prnt=False, cut=cut, redo=redo).GetListOfFunctions()[0] if fit is None else fit
         return '({0} * TMath::Sin({1} * (trigger_cell - {2})))'.format(*[fit.GetParameter(i) for i in xrange(3)])
 
     def draw_fine_correction(self, canvas=None, show=True, prnt=True):
