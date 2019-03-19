@@ -212,13 +212,9 @@ class CutPad(Cut):
         t_correction, fit = self.calc_timing_range()
         if fit is None:
             return TCut('')
-        corrected_time = 'IntegralPeakTime[{num}] - {t_corr}'.format(num=self.analysis.SignalNumber, t_corr=t_correction)
-        try:
-            string = 'TMath::Abs({cor_t} - {mp}) / {sigma} < {n_sigma}'.format(cor_t=corrected_time, mp=fit.GetParameter(1), sigma=fit.GetParameter(2), n_sigma=n_sigma)
-        except Exception as err:
-            print fit
-            print err
-            raise KeyError
+        # corrected_time = '{peak} - {t_corr}'.format(peak=self.analysis.Timing.get_peak_name(corr=True, region='e'), t_corr=t_correction)  # correction for bucket cut
+        corrected_time = '{peak} - {t_corr}'.format(peak=self.analysis.Timing.get_peak_name(corr=True), t_corr=t_correction)
+        string = 'TMath::Abs({cor_t} - {mp}) / {sigma} < {n_sigma}'.format(cor_t=corrected_time, mp=fit.GetParameter(1), sigma=fit.GetParameter(2), n_sigma=n_sigma)
         return TCut(string)
 
     def generate_threshold(self):
@@ -476,14 +472,14 @@ class CutPad(Cut):
         threshold = func() if show else None
         return do_pickle(pickle_path, func, threshold)
 
-    def calc_timing_range(self):
+    def calc_timing_range(self, redo=False):
         pickle_path = self.make_pickle_path('Cuts', 'TimingRange', self.RunNumber, self.DiamondNumber)
 
         def func():
             t = self.log_info('Generating timing cut for {dia} of run {run} ...'.format(run=self.analysis.RunNumber, dia=self.analysis.DiamondName), next_line=False)
             cut = self.generate_special_cut(excluded=['timing'], prnt=False, name='timing_cut')
-            t_correction = self.analysis.Timing.calc_fine_correction()
-            h = self.analysis.Timing.draw_peaks(show=False, cut=cut, fine_corr=True, prnt=False)
+            t_correction = self.analysis.Timing.calc_fine_correction(redo=redo)
+            h = self.analysis.Timing.draw_peaks(show=False, cut=cut, fine_corr=t_correction != '0', prnt=False, redo=redo)
             fit = h.GetListOfFunctions()[2]
             if fit.GetParameter(2) > 15:  # fit failed
                 fit.SetParameter(1, h.GetBinCenter(h.GetMinimumBin()))
@@ -492,7 +488,7 @@ class CutPad(Cut):
             self.log_info('Peak Timing: Mean: {0}, sigma: {1}'.format(fit.GetParameter(1), fit.GetParameter(2)))
             return t_correction, fit
 
-        return do_pickle(pickle_path, func)
+        return do_pickle(pickle_path, func, redo=redo)
 
     def generate_consecutive_cuts(self):
         cuts = OrderedDict()
