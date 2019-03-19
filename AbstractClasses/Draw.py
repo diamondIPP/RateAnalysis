@@ -119,7 +119,10 @@ class Draw:
         return l
 
     def draw_box(self, x1, y1, x2, y2, color=1, width=1, style=1, fillstyle=None, name='box', show=True):
-        l = TCutG(name, 5, array([x1, x1, x2, x2, x1], 'd'), array([y1, y2, y2, y1, y1], 'd'))
+        return self.draw_n_box([x1, x1, x2, x2], [y1, y2, y2, y1], color, width, style, fillstyle, name, show)
+
+    def draw_n_box(self, x, y, color=1, width=1, style=1, fillstyle=None, name='box', show=True):
+        l = TCutG(name, len(x) + 1, array(x + [x[0]], 'd'), array(y + [y[0]], 'd'))
         l.SetLineColor(color)
         l.SetFillColor(color)
         l.SetLineWidth(width)
