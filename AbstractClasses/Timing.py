@@ -33,6 +33,9 @@ class TimingAnalysis(Elementary):
         self.draw_comparison(show=False, prnt=False)
         self.draw_fine_correction(show=False, prnt=False)
 
+    def reload_cut(self):
+        self.TimingCut = self.Cut.generate_special_cut(excluded=['timing'], prnt=False, name='Timing')
+
     # --------------------------
     # region RUN CONFIG
 
