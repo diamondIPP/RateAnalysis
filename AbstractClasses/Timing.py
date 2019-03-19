@@ -278,8 +278,67 @@ class TimingAnalysis(Elementary):
         self.format_histo(h, x_tit='trigger cell', y_tit='forc timing [ns]', y_off=1.4, stats=0)
         self.save_histo(h, 'TriggerCellVsFORC{0}'.format('FullRange' if full_range else ''), show, lm=.11, draw_opt='colz', rm=.15)
 
+    def draw_tcal(self, show=True):
+        gr = self.make_tgrapherrors('gr_tcal', 'DRS4 Bin Sizes', marker_size=.5, x=range(len(self.Run.TCal)), y=self.Run.TCal)
+        gr.Fit('pol0', 'qs') if show else do_nothing()
+        self.format_histo(gr, x_tit='Bin number', y_tit='Length [ns]', y_off=1.5, y_range=[0, 1])
+        set_statbox(only_fit=True)
+        self.save_histo(gr, 'DRSBinSizes', x=1.5, y=.75, show=show)
+
+    def draw_tcal_disto(self, show=True):
+        h = TH1F('h_tcal', 'Bin Size Distribution', *self.Ana.Plots.get_tcal_bins())
+        for value in self.Run.TCal:
+            h.Fill(value)
+        self.set_statbox(all_stat=1)
+        self.format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=1.5, fill_color=self.FillColor)
+        self.save_histo(h, 'DRSBinSizeDisto', show)
+
     # endregion
     # --------------------------
+
+    def draw_integration(self, event=None, region=None, integral=None, max_peak=True, pedestal=False, ped_int=False, show=True, wide=True):
+        h = self.Ana.draw_single_waveform(event=event, show=show if wide else False)
+        r = array(self.Ana.SignalRegion if region is None else region) * self.Ana.DigitiserBinWidth
+        i = array(self.Ana.PeakIntegral if integral is None or not integral else integral) * self.Ana.DigitiserBinWidth
+        if not wide:
+            self.format_histo(h, lab_size=.04, tit_size=.04, y_off=1.3, x_range=[r[0] - 20, r[1] + 20])
+            self.draw_histo(h, draw_opt='apl', lm=.11, show=show, gridx=True, gridy=True)
+        if region or region is None and integral is not None:
+            self.draw_box(r[0], -1000, r[1], 1000, color=2, style=7, fillstyle=3002, width=2)
+        x_bins = xrange(*[int(v / self.Ana.DigitiserBinWidth) for v in [r[0] - 20, r[1]]])
+        values = OrderedDict((j, h.GetY()[j]) for j in x_bins)
+        x_vals = [h.GetX()[j] for j in x_bins]
+        y_vals = values.values()
+        max_x = h.GetX()[max(values, key=lambda val: abs(values[val]))]
+        ymin, ymax = h.GetYaxis().GetXmin(), h.GetYaxis().GetXmax()
+        if max_peak and not pedestal:
+            self.draw_vertical_line(max_x, -1000, 1000, color=4, w=3)
+            self.draw_tlatex(max_x + 2, ymax - .05 * (ymax - ymin), 'Peak Position', color=4, align=12)
+        if integral or integral is None:
+            x1, x2 = max_x - i[0], max_x + i[1]
+            i1, i2 = next(j for j, val in enumerate(x_vals) if val > x1), next(j for j, val in enumerate(x_vals) if val > x2) - 1
+            y1, y2 = interpolate_two_points(x_vals[i1 - 1], y_vals[i1 - 1], x_vals[i1], y_vals[i1])(x1), interpolate_two_points(x_vals[i2], y_vals[i2], x_vals[i2 + 1], y_vals[i2 + 1])(x2)
+            x = [x1, x1] + [x_vals[j] for j in xrange(len(x_vals) - 1) if x_vals[j] > x1 and x_vals[j - 1] < x2] + [x2, x2]
+            y = [0, y1] + [y_vals[j] for j in xrange(len(x_vals) - 1) if x_vals[j] > x1 and x_vals[j - 1] < x2] + [y2, 0]
+            self.draw_n_box(x=x, y=y, color=4, name='a', fillstyle=3344)
+            y_pos = ymin + .1 * (ymax - ymin)
+            self.draw_arrow(max_x - i[0], max_x, y_pos, y_pos, col=618, width=3, opt='<', size=.02)
+            self.draw_arrow(max_x + i[1], max_x, y_pos, y_pos, col=434, width=3, opt='<', size=.02)
+        if pedestal:
+            x_pos, y_pos = r[0] - 10, -20
+            self.draw_vertical_line(x_pos, -1000, 1000, color=4, w=3)
+            self.draw_tlatex(r[0] - 8, ymin + .1 * (ymax - ymin), 'Pedestal', color=4, align=12)
+            self.draw_arrow(x_pos - i[0], x_pos, y_pos, y_pos, col=618, width=3, opt='<', size=.02)
+            self.draw_arrow(x_pos + i[1], x_pos, y_pos, y_pos, col=434, width=3, opt='<', size=.02)
+            if ped_int:
+                self.format_histo(h, y_range=[-30, 30])
+                x1, x2 = x_pos - i[0], x_pos + i[1]
+                i1, i2 = next(j for j, val in enumerate(x_vals) if val > x1), next(j for j, val in enumerate(x_vals) if val > x2) - 1
+                y1, y2 = interpolate_two_points(x_vals[i1 - 1], y_vals[i1 - 1], x_vals[i1], y_vals[i1])(x1), interpolate_two_points(x_vals[i2], y_vals[i2], x_vals[i2 + 1], y_vals[i2 + 1])(x2)
+                x = [x1, x1] + [x_vals[j] for j in xrange(len(x_vals) - 1) if x_vals[j] > x1 and x_vals[j - 1] < x2] + [x2, x2]
+                y = [0, y1] + [y_vals[j] for j in xrange(len(x_vals) - 1) if x_vals[j] > x1 and x_vals[j - 1] < x2] + [y2, 0]
+                self.draw_n_box(x=x, y=y, color=4, name='b', fillstyle=3344)
+        self.save_histo(h, 'Integtation', draw_opt='same', canvas=get_last_canvas())
 
     def draw_max_peaks(self, cut=None):
         self.set_statbox(entries=True)
