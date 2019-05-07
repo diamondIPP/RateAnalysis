@@ -151,10 +151,10 @@ class Analysis(Elementary):
     def _draw_residuals(self, roc, mode=None, cut=None, x_range=None, fit=False, show=True):
         mode = '' if mode is None else mode.lower()
         cut = TCut(cut) if cut is not None else TCut('')
-        set_statbox(only_entries=True, only_fit=True, w=0.3, entries=14) if fit else set_statbox(only_entries=True)
-        h = TH1F('htr', '{m} Residuals for Plane {n}'.format(n=roc, m=mode.title()), 800, -.4, .4)
-        self.tree.Draw('residuals{m}[{r}]>>htr'.format(m='_{m}'.format(m=mode) if mode else '', r=roc), cut, 'goff')
-        self.format_histo(h, name='Fit Result', y_off=2.0, y_tit='Number of Entries', x_tit='Distance [cm]', fill_color=self.FillColor, x_range=x_range)
+        self.set_statbox(all_stat=True, fit=fit, w=.3, entries=6 if fit else 3)
+        h = TH1F('htr', '{m} Residuals for Plane {n}'.format(n=roc, m=mode.title()), 1000, -1000, 1000)
+        self.tree.Draw('residuals{m}[{r}]*1e4>>htr'.format(m='_{m}'.format(m=mode) if mode else '', r=roc), cut, 'goff')
+        self.format_histo(h, name='Fit Result', y_off=2.0, y_tit='Number of Entries', x_tit='Distance [#mum]', fill_color=self.FillColor, x_range=x_range)
         self.draw_histo(h, '', show, lm=.16)
         if fit:
             fit = TF1('f', 'gaus(0) + gaus(3)', -.4, .4)
@@ -171,6 +171,42 @@ class Analysis(Elementary):
             self.ROOTObjects.append(f2)
         self.save_plots('{m}ResidualsRoc{n}'.format(m=mode.title(), n=roc))
         return h
+
+    def get_residual(self, roc, chi2, mode='x', redo=False):
+
+        pickle_path = self.make_pickle_path('Tracks', 'Res{}'.format(mode.title()), self.RunNumber, roc, chi2)
+
+        def f():
+            self.Cut.set_chi2(chi2)
+            n = self.tree.Draw('residuals_{m}[{r}]*1e4'.format(m=mode, r=roc), self.Cut.all_cut, 'goff')
+            values = [self.tree.GetV1()[i] for i in xrange(n)]
+            return mean_sigma(values)[1]
+
+        return do_pickle(pickle_path, f, redo=redo)
+
+    def get_residuals(self, roc, chi2s, mode='x'):
+        return [self.get_residual(roc, chi2, mode) for chi2 in chi2s]
+
+    def draw_tracking_resolution(self, roc, mode='x', step_size=10, y_range=None, show=True):
+        chi2s = arange(10, 101, step_size)
+        residuals = self.get_residuals(roc, chi2s, mode)
+        g = self.make_tgrapherrors('gcr', 'Tracking Resolution in {} for Plane {}'.format(mode.title(), roc), x=chi2s, y=residuals)
+        self.format_histo(g, x_tit='#chi^{2} [quantile]', y_tit='Residual Standard Deviation [#mum]', y_off=1.4, y_range=y_range)
+        self.save_histo(g, 'TrackRes', draw_opt='alp', show=show)
+        return g
+
+    def draw_tracking_resolutions(self, show=True):
+        mg = TMultiGraph('mgtr', 'Tracking Resolution')
+        l = self.make_legend(y2=.41, nentries=4)
+        for roc, mode in zip([1, 1, 2, 2], ['x', 'y', 'x', 'y']):
+            g = self.draw_tracking_resolution(roc, mode, show=False)
+            self.format_histo(g, color=self.get_color())
+            mg.Add(g, 'pl')
+            l.AddEntry(g, 'ROC {} in {}'.format(roc, mode.title()), 'pl')
+        y_range = [0, max(g.GetY()[i] for g in mg.GetListOfGraphs() for i in xrange(g.GetN())) * 1.1]
+        self.format_histo(mg, x_tit='#chi^{2} [quantile]', y_tit='Residual Standard Deviation [#mum]', y_off=1.5, y_range=y_range, draw_first=True)
+        self.save_histo(mg, 'EventOffsets', show, draw_opt='ap', l=l, lm=.13)
+        self.reset_colors()
 
     def _draw_cluster_size(self, roc, name=None, cut='', show=True):
         h = TH1I('h_cs', 'Cluster Size {d}'.format(d='ROC {n}'.format(n=roc) if name is None else name), 10, 0, 10)
