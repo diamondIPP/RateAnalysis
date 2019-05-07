@@ -22,7 +22,7 @@ from Utils import *
 
 
 class DiaScans(Elementary):
-    def __init__(self, selection, verbose=False, dia=None, tc=None):
+    def __init__(self, selection, dia=None, verbose=False, tc=None):
         Elementary.__init__(self, verbose=verbose)
 
         # main
@@ -33,30 +33,21 @@ class DiaScans(Elementary):
         self.Parser = self.load_diamond_parser()
 
         # info
+        self.DiamondName = self.load_diamond(dia)
         self.AllRunPlans = self.load_all_runplans()
-        self.Diamond = self.load_diamond(dia)
         self.TestCampaign = tc
         self.TestCampaigns = self.load_test_campaigns()
         self.RunInfos = self.load_runinfos()
 
-        # selection info
-        self.DiamondName = None
-        self.RunPlans = self.find_diamond_runplans()
-        self.Bias = None
-
         self.set_save_directory('Results/')
         self.save_dir = ''
-
         self.set_selection(selection)
 
     # ==========================================================================
     # region INIT
-
     def load_selections(self):
-        f = open(join(self.Dir, self.MainConfigParser.get('MISC', 'runplan_selection_file')))
-        selections = load(f, object_pairs_hook=OrderedDict)
-        f.close()
-        return selections
+        with open(join(self.Dir, self.MainConfigParser.get('MISC', 'runplan_selection_file'))) as f:
+            return load(f, object_pairs_hook=OrderedDict)
 
     def load_diamond_parser(self):
         parser = ConfigParser()
@@ -103,35 +94,6 @@ class DiaScans(Elementary):
                 run_infos[tc] = load(f)
         return run_infos
 
-    def find_diamond_runplans(self):
-        runplans = {}
-        for tc in self.TestCampaigns:
-            runplans[tc] = {}
-            for rp, dic in self.AllRunPlans[tc].iteritems():
-                runs = dic['runs']
-                for ch in xrange(1, len(self.get_rp_diamonds(tc, rp)) + 1):
-                    if all(self.DiamondName == self.load_diamond(self.RunInfos[tc][str(run)]['dia{0}'.format(ch)]) for run in runs):
-                        bias = self.RunInfos[tc][str(runs[0])]['dia{0}hv'.format(ch)]
-                        if all(self.RunInfos[tc][str(run)]['dia{0}hv'.format(ch)] == bias for run in runs):
-                            if bias not in runplans[tc]:
-                                runplans[tc][bias] = {}
-                            runplans[tc][bias][rp] = ch
-        return runplans
-
-    def get_dia_runselections(self, dia):
-        dia = self.load_diamond(dia)
-        return [RunSelection(tc, rp, self.get_rp_diamonds(tc, rp).index(dia) + 1) for tc in self.TestCampaigns for rp in sorted(self.AllRunPlans[tc]) if dia in self.get_rp_diamonds(tc, rp)]
-
-    def get_tc_runselections(self, tc):
-        return [RunSelection(tc, rp, i) for rp in sorted(self.AllRunPlans[tc]) for i in xrange(1, len(self.get_rp_diamonds(tc, rp)) + 1)]
-
-    def get_rp_diamonds(self, tc, rp):
-        dias = [item for key, item in sorted(self.RunInfos[tc][self.get_first_run(tc, rp)].iteritems()) if key.startswith('dia') and len(key) < 5]
-        return [self.load_diamond(dia) for dia in dias]
-
-    def get_first_run(self, tc, rp):
-        return str(self.AllRunPlans[tc][rp]['runs'][0])
-
     def load_run_selections(self, redo=False):
         if self.RunSelections is not None and not redo:
             return self.RunSelections
@@ -165,19 +127,6 @@ class DiaScans(Elementary):
 
     # endregion
 
-    def draw_all(self, dia, tc=None, redo=False):
-        run_selections = self.get_dia_runselections(dia)
-        for sel in run_selections:
-            if sel.TESTCAMPAIGN < '201508' or sel.TESTCAMPAIGN != tc and tc is not None:
-                continue
-            gROOT.Reset()
-            print_banner('Making plots for {}'.format(sel))
-            Elementary(sel.TCString)
-            threads = load_root_files(sel, load=True)
-            ana = AnalysisCollection(sel, threads)
-            ana.draw_little_all(redo=redo)
-            ana.delete_trees()
-
     def get_all_ana_strings(self, dia=None, tc=None, redo=False):
         if tc is None:
             selections = [sel for sel in self.get_dia_runselections(dia) if sel.TESTCAMPAIGN > '201505' and (sel.TESTCAMPAIGN == tc or tc is None)]
@@ -188,6 +137,20 @@ class DiaScans(Elementary):
 
     # ==========================================================================
     # region GET
+    def get_dia_runselections(self, dia):
+        dia = self.load_diamond(dia)
+        return [RunSelection(tc, rp, self.get_rp_diamonds(tc, rp).index(dia) + 1) for tc in self.TestCampaigns for rp in sorted(self.AllRunPlans[tc]) if dia in self.get_rp_diamonds(tc, rp)]
+
+    def get_tc_runselections(self, tc):
+        return [RunSelection(tc, rp, i) for rp in sorted(self.AllRunPlans[tc]) for i in xrange(1, len(self.get_rp_diamonds(tc, rp)) + 1)]
+
+    def get_rp_diamonds(self, tc, rp):
+        dias = [item for key, item in sorted(self.RunInfos[tc][self.get_first_run(tc, rp)].iteritems()) if key.startswith('dia') and len(key) < 5]
+        return [self.load_diamond(dia) for dia in dias]
+
+    def get_first_run(self, tc, rp):
+        return str(self.AllRunPlans[tc][rp]['runs'][0])
+
     def get_diamond_names(self):
         return [sel.SelectedDiamond for sel in self.RunSelections]
 
@@ -240,16 +203,6 @@ class DiaScans(Elementary):
 
     # ==========================================================================
     # region SHOW
-
-    def show_runplans(self):
-        for tc, vals in self.RunPlans.iteritems():
-            print_small_banner(tc.rjust(15))
-            for bias, val1s in vals.iteritems():
-                print '{0} V:'.format(int(bias))
-                for rp, ch in val1s.iteritems():
-                    print ' ', rp.ljust(5), ch
-                print
-
     def show_selections(self):
         max_l = max(len(key) for key in self.Selections)
         header = ['Name'.ljust(max_l), 'Diamond', 'Campaigns']
@@ -273,12 +226,13 @@ class DiaScans(Elementary):
             rows = []
             for sel in self.RunSelections:
                 runs = sel.get_selected_runs()
+                bias = '{0:+4.0f}V'.format(sel.SelectedBias).rjust(7) if sel.SelectedBias is not None else 'None'.rjust(7)
                 row = [sel.TCString.ljust(8)]                                               # Campaign
                 row += [sel.SelectedRunplan.rjust(7)]                                       # Run Plan
                 row += [sel.SelectedDiamond.rjust(7)]                                       # Diamond Name
                 row += [str(sel.SelectedDiamondNr).rjust(2)]                                # Diamond Number
                 row += ['{0}-{1}'.format(str(runs[0]).zfill(3), str(runs[-1]).zfill(3))]    # Selected Runs
-                row += ['{0:+4.0f}V'.format(sel.SelectedBias).rjust(7)]                     # Bias Voltage
+                row += [bias]                                                               # Bias Voltage
                 row += [sel.SelectedType.ljust(11)]                                         # Run Plan Type
                 rows.append(row)
             print_table(rows, header)
@@ -286,11 +240,12 @@ class DiaScans(Elementary):
             log_warning('Selection is empty!')
 
     def show_all_runplans(self):
-        for tc in self.TestCampaigns:
+        for tc, runplans in self.AllRunPlans.iteritems():
             print_small_banner(tc)
-            for rp, runs in sorted(self.AllRunPlans[tc]['rate_scan'].iteritems()):
-                dias = [self.load_diamond(self.RunInfos[tc][str(runs[0])]['dia{0}'.format(ch)]) for ch in [1, 2]]
-                print rp.ljust(5), '{0}-{1}'.format(str(runs[0]).zfill(3), str(runs[-1]).zfill(3)), dias[0].ljust(11), dias[1].ljust(11)
+            for name, runplan in sorted(runplans.iteritems()):
+                runs = runplan['runs']
+                dias = self.get_rp_diamonds(tc, name)
+                print name.ljust(5), '{0}-{1}'.format(str(runs[0]).zfill(3), str(runs[-1]).zfill(3)), ' '.join(dia.ljust(11) for dia in dias)
 
     # endregion
 
@@ -299,7 +254,7 @@ class DiaScans(Elementary):
     def select_runplan(self, runplan, ch=1, testcampaign=None):
         rp = make_runplan_string(runplan)
         tc = str(testcampaign) if testcampaign is not None else self.TestCampaigns[-1]
-        if rp in self.AllRunPlans[tc]['rate_scan']:
+        if rp in self.AllRunPlans[tc]:
             if tc not in self.Selection:
                 self.Selection[tc] = {}
             self.Selection[tc][rp] = ch
@@ -314,30 +269,32 @@ class DiaScans(Elementary):
         except KeyError:
             log_warning('The runplan {0} does not exist in {1}!'.format(rp, tc))
 
-    def select_runplans_by_bias(self, value):
+    def select_runplans(self, dia, bias=None):
         self.clear_selection()
-        for tc, vals in self.RunPlans.iteritems():
-            for bias, rps in vals.iteritems():
-                if abs(bias) == value:
-                    for rp, ch in rps.iteritems():
-                        self.select_runplan(rp, ch, tc)
+        run_selections = []
+        last_sel = None
+        for sel in self.get_dia_runselections(dia):
+            is_main_plan = last_sel is None or sel.TESTCAMPAIGN != last_sel.TESTCAMPAIGN or sel.get_first_selected_run() > last_sel.get_last_selected_run()
+            if (bias is None or int(bias) == sel.SelectedBias) and is_main_plan and sel.TESTCAMPAIGN > '201505':
+                self.select_runplan(sel.SelectedRunplan, sel.SelectedDiamondNr, sel.TESTCAMPAIGN)
+                run_selections.append(sel)
+            last_sel = sel
+        self.RunSelections = run_selections
 
     def clear_selection(self):
         self.Selection = {}
 
     def save_selection(self, name):
-        file_path = self.get_program_dir() + self.MainConfigParser.get('MISC', 'runplan_selection_file')
-        f = open(file_path, 'r+')
-        selections = load(f)
-        if self.Selection:
+        with open(join(self.Dir, self.MainConfigParser.get('MISC', 'runplan_selection_file')), 'r+') as f:
+            if not self.Selection:
+                log_warning('Selection is empty!')
+                return
+            selections = load(f)
             selections[name] = self.Selection
-        else:
-            log_warning('Selection is empty!')
-        f.seek(0)
-        dump(selections, f, indent=2, sort_keys=True)
-        f.truncate()
-        f.close()
-        self.Selections = selections
+            f.seek(0)
+            dump(selections, f, indent=2, sort_keys=True)
+            f.truncate()
+            self.Selections = selections
 
     # endregion
 
@@ -721,6 +678,6 @@ if __name__ == '__main__':
     main_parser.add_argument('-r', action='store_true')
     args = main_parser.parse_args()
 
-    z = DiaScans(args.sel, verbose=args.v)
+    z = DiaScans(args.sel, args.d, args.v, args.tc)
     if args.p:
         print z.get_all_ana_strings(args.d, args.tc, args.r)
