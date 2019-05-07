@@ -7,7 +7,7 @@
 from Elementary import Elementary
 from InfoLegend import InfoLegend
 from Utils import *
-from ROOT import TH1F, TF1, TCut, TH2F, TProfile, THStack
+from ROOT import TH1F, TF1, TCut, TH2F, TProfile, THStack, gPad, TSpectrum
 from numpy import pi
 
 
@@ -35,6 +35,7 @@ class TimingAnalysis(Elementary):
 
     def reload_cut(self):
         self.TimingCut = self.Cut.generate_special_cut(excluded=['timing'], prnt=False, name='Timing')
+        self.Cut = self.Ana.Cut
 
     # --------------------------
     # region RUN CONFIG
@@ -111,6 +112,7 @@ class TimingAnalysis(Elementary):
             b = self.__draw_cut(h)
             h.Draw('same')
             b.Draw('l')
+            gPad.RedrawAxis()
         self.save_plots('{}PeakPos{}'.format(prefix, 'Fit' if fit else ''), show=show, prnt=prnt, save=save)
         return h
 
