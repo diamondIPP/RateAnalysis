@@ -60,11 +60,11 @@ class Analysis(Elementary):
 
     # ============================================================================================
     # region TRACKS
-    def draw_chi2(self, mode=None, show=True, save=True, fit=False, prnt=True, show_cut=False, x_range=None):
+    def draw_chi2(self, mode=None, show=True, save=True, fit=False, prnt=True, show_cut=False, x_range=None, cut=''):
         mode = 'tracks' if mode is None else mode
         set_root_warnings(False)
         h = TH1F('hcs{}'.format(mode), '#chi^{2} in ' + mode.title(), 500, 0, 100)
-        self.tree.Draw('chi2_{m}>>hcs{m}'.format(m=mode), 'n_tracks > 0', 'goff')
+        self.tree.Draw('chi2_{m}>>hcs{m}'.format(m=mode), TCut('n_tracks > 0') + TCut(cut), 'goff')
         yq = zeros(1)
         h.GetQuantiles(1, yq, array([.99]))
         self.format_histo(h, x_tit='#chi^{2}', y_tit='Number of Entries', y_off=2, x_range=[0, yq[0]] if x_range is None else x_range)
@@ -79,7 +79,7 @@ class Analysis(Elementary):
 
     def draw_chi2_cut(self, mode):
         chi2 = self.Cut.calc_chi2(mode)
-        l = self.draw_vertical_line(chi2, -100, 1e6, style=7, w=2, color=2, name='l1')
+        l = self.draw_vertical_line(chi2, -100, 1e6, style=7, w=2, color=2, name='l1{}'.format(mode))
         legend = self.make_legend(.75, y2=.83, nentries=1, margin=.35)
         legend.AddEntry(l, 'cut ({}%)'.format(self.Cut.CutConfig['chi2{}'.format(mode.title())]), 'l')
         legend.Draw()
@@ -97,7 +97,7 @@ class Analysis(Elementary):
         set_root_output(False)
         h = TH1F('had', 'Track Angle Distribution in ' + mode.title(), 320, -4, 4)
         self.tree.Draw('{v}_{mod}>>had'.format(v='angle', mod=mode), cut, 'goff')
-        self.format_histo(h, x_tit='Track Angle {} [deg]'.format(mode.title()), y_tit='Number of Entries', y_off=2, lw=2)
+        self.format_histo(h, name='had{}'.format(mode), x_tit='Track Angle {} [deg]'.format(mode.title()), y_tit='Number of Entries', y_off=2, lw=2)
         self.set_statbox(all_stat=True, n_entries=5, w=.3)
         self.draw_histo(h, '', show, lm=.14, prnt=print_msg, both_dias=True)
         if show_cut:
@@ -107,8 +107,8 @@ class Analysis(Elementary):
 
     def draw_angle_cut(self, mode):
         xmin, xmax = self.Cut.calc_angle(mode=mode)[mode]
-        l = self.draw_vertical_line(xmin, -100, 1e6, style=7, w=2, color=2, name='l1')
-        self.draw_vertical_line(xmax, -100, 1e6, style=7, w=2, color=2)
+        l = self.draw_vertical_line(xmin, -100, 1e6, style=7, w=2, color=2, name='l1{}'.format(mode))
+        self.draw_vertical_line(xmax, -100, 1e6, style=7, w=2, color=2, name='l2{}'.format(mode))
         legend = self.make_legend(.65, y2=.73, nentries=1, margin=.35, name='la', scale=1.3)
         legend.AddEntry(l, 'cut ({} deg)'.format(self.Cut.CutConfig['slope']), 'l')
         legend.Draw()
