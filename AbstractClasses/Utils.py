@@ -552,11 +552,21 @@ def set_z_range(zmin, zmax):
     h.GetZaxis().SetRangeUser(zmin, zmax)
 
 
-def scale_axis(xmin, xmax, ymin, ymax):
+def set_axes_range(xmin, xmax, ymin, ymax):
+    set_x_range(xmin, xmax)
+    set_y_range(ymin, ymax)
+
+
+def set_x_range(xmin, xmax):
     c = get_last_canvas()
     h = c.GetListOfPrimitives()[1]
     h.GetXaxis().SetRangeUser(xmin, xmax)
-    h.GetYaxis().SetRangeUser(ymin, ymax)
+
+
+def set_y_range(ymin, ymax):
+    c = get_last_canvas()
+    h = c.GetListOfPrimitives()[1]
+    h.GetXaxis().SetRangeUser(ymin, ymax)
 
 
 def remove_letters(string):
