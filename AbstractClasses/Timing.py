@@ -296,6 +296,62 @@ class TimingAnalysis(Elementary):
     # endregion
     # --------------------------
 
+    # --------------------------
+    # region BUCKET
+    def _add_buckets(self, y1=None, y2=None, x2=512, avr_pos=-2, full_line=False, size=.03, ch=0):
+        ymin, ymax = (get_last_canvas().GetUymin(), get_last_canvas().GetUymax()) if y1 is None else y1, y2
+        start = self.Run.IntegralRegions[ch]['signal_b'][0] % 40 / 2
+        bucket0 = self.Run.IntegralRegions[0]['signal_b'][0] / 40
+        y_range = ymax - ymin
+        self.draw_tlatex(round(x2, -1), ymax - .05 * y_range, 'Buckets', align=10, color=418, size=size)
+        peak_fit = self.Run.IntegralRegions[0]['signal_a'][0] / 2.
+        for i, x in enumerate(xrange(start, x2, 20), -bucket0):
+            self.draw_vertical_line(x, ymin, ymax, 418, style=3 if full_line else 1, tline=True)
+            if x <= x2 - 20:
+                self.draw_tlatex(x + 10, ymax - .05 * y_range, str(i), align=20, color=418, size=size)
+                if peak_fit:
+                    pos = peak_fit % 20
+                    p_pos = round_down_to(x, 20) + pos
+                    p_pos += 20 if p_pos < x else 0
+                    if i == avr_pos:
+                        self.draw_tlatex(p_pos, ymin + 0.05 * y_range, 'Average Peak Position', color=807, size=size)
+                    self.draw_arrow(p_pos, p_pos, ymin + 1, ymin + 0.04 * y_range, col=807, width=2)
+
+    def draw_bucket_disto(self, fit=False, show=True):
+        h = self.Ana.draw_signal_distribution(cut=self.Cut.get_bucket_cut(), show=show)
+        # entries = h.GetEntries()
+        if fit:
+            self.fit_bucket(h, show)
+
+    @staticmethod
+    def fit_bucket(histo, show=True):
+        set_root_warnings(0)
+        h = histo
+        fit = TF1('fit', 'gaus(0) + gaus(3) + gaus(6)', h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax())
+        s = TSpectrum(3)
+        n = s.Search(h, 2.5)
+        points = [(s.GetPositionX()[i], s.GetPositionY()[i]) for i in [0, 1 if n == 2 else 2]]
+        x1, x2 = (p[0] for p in sorted(points))
+        y1, y2 = (p[1] for p in sorted(points))
+        if y1 < 20 or y1 > 1e10:
+            return  # didn't find pedestal peak!
+        diff = x2 - x1
+        fit.SetParameters(*[y2, x2, 10, y1, x1, 3, min(y1, y2) / 4, x1 + diff / 4, 5])
+        # signal
+        fit.SetParLimits(1, x2 - 5, x2 + 5)
+        # pedestal
+        fit.SetParLimits(3, 1, y1 * 2)
+        fit.SetParLimits(4, x1 - 10, x1 + 10)
+        # middle ped
+        fit.SetParLimits(6, 1, min(y1, y2) / 2)
+        fit.SetParLimits(7, x1, x1 + diff / 2)
+        for i in xrange(1):
+            h.Fit(fit, 'qs{0}'.format('' if show else '0'), '', -50, x2 + 5)
+        set_root_warnings(1)
+        return fit
+    # endregion
+    # --------------------------
+
     def draw_integration(self, event=None, region=None, integral=None, max_peak=True, pedestal=False, ped_int=False, show=True, wide=True):
         h = self.Ana.draw_single_waveform(event=event, show=show if wide else False)
         r = array(self.Ana.SignalRegion if region is None else region) * self.Ana.DigitiserBinWidth

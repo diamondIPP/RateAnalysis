@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 
-from ROOT import TCanvas, TH2F, gROOT, TH1F, TLegend, gStyle, kGreen, TCut, TF1, TGraph, TH1I, TProfile
+from ROOT import TCanvas, TH2F, gROOT, TH1F, TLegend, TCut, TF1, TGraph, TH1I, TProfile, TMultiGraph
 from numpy import log, zeros
 
 from Elementary import Elementary
@@ -57,91 +57,6 @@ class Analysis(Elementary):
             self.binning = self.__get_binning()
             self.time_binning = self.get_time_binning()
             self.n_bins = len(self.binning)
-
-        # save histograms // canvases
-        self.signal_canvas = None
-
-    # ============================================================================================
-    # region REGIONS AND PEAK INTEGRAL
-
-    def _add_buckets(self, y1=None, y2=None, x1=0, x2=512, avr_pos=-2, full_line=False, size=.03, ch=0):
-        ymin, ymax = (get_last_canvas().GetUymin(), get_last_canvas().GetUymax()) if y1 is None else y1, y2
-        start = self.Run.IntegralRegions[ch]['signal_b'][0] % 40 / 2
-        stop = x2
-        bucket0 = self.Run.IntegralRegions[0]['signal_b'][0] / 40
-        y_range = ymax - ymin
-        self.draw_tlatex(round(stop, -1), ymax - .05 * y_range, 'Buckets', align=10, color=418, size=size)
-        peak_fit = self.Run.IntegralRegions[0]['signal_a'][0] / 2.
-        for i, x in enumerate(xrange(start, stop, 20), -bucket0):
-            self.draw_vertical_line(x, ymin, ymax, 418, style=3 if full_line else 1, tline=True)
-            if x <= stop - 20:
-                self.draw_tlatex(x + 10, ymax - .05 * y_range, str(i), align=20, color=418, size=size)
-                if peak_fit:
-                    pos = peak_fit % 20
-                    p_pos = round_down_to(x, 20) + pos
-                    p_pos += 20 if p_pos < x else 0
-                    if i == avr_pos:
-                        self.draw_tlatex(p_pos, ymin + 0.05 * y_range, 'Average Peak Position', color=807, size=size)
-                    self.draw_arrow(p_pos, p_pos, ymin + 1, ymin + 0.04 * y_range, col=807, width=2)
-
-    def draw_peak_integrals(self, event=None, buckets=True, show=True, main=False):
-        old_count = self.count
-        event = self.StartEvent if event is None else event
-        h, n = self.__draw_single_wf(event=event, show=False, tcorr=True)
-        h.GetYaxis().SetNdivisions(305)
-        self.format_histo(h, title='Peak Integrals', name='wf', x_tit='Time [ns]', y_tit='Signal [mV]', markersize=.8, y_off=.5, stats=0, tit_size=.07, lab_size=.06)
-        xmin, xmax = self.Run.IntegralRegions[0]['signal_e'][0][0] / 2 - 20, self.Run.IntegralRegions[0]['signal_e'][0][1] / 2
-        h.GetXaxis().SetRangeUser(xmin, xmax)
-        self.draw_histo(h, show=show, lm=.07, rm=.045, bm=.24, x=1.5, y=.5, gridy=True, gridx=True)
-        gROOT.SetBatch(1) if not show else do_nothing()
-        sleep(.5)
-        # draw line at found peak and pedestal region
-        ymin, ymax = h.GetYaxis().GetXmin(), h.GetYaxis().GetXmax()
-        peak_pos, ped_pos = self.__draw_peak_pos(event + n - 1, ymin, ymax)
-        # draw error bars
-        gr1 = self.make_tgrapherrors('gr1', '', color=418, marker_size=0, asym_err=True, width=2)
-        gr2 = self.make_tgrapherrors('gr2', '', color=429 - 3, marker_size=0, asym_err=True, width=2, style=2)
-        gStyle.SetEndErrorSize(5)
-        i = 0
-        y = ymax - ymin
-        spacing = 7.
-        for int_, lst in self.Run.PeakIntegrals[0].iteritems():
-            if main:
-                if hasattr(self, 'PeakIntegral') and int_ != self.PeakIntegral:
-                    continue
-            if len(int_) < 3:
-                gr1.SetPoint(i, peak_pos, ymax - y * ((i + 1) / spacing + 1 / 3.))
-                gr2.SetPoint(i, ped_pos, ymax - y * ((i + 1) / spacing + 1 / 3.))
-                gr1.SetPointError(i, lst[0] / 2., lst[1] / 2., 0, 0) if lst[1] - lst[0] > 1 else gr1.SetPointError(i, .5, .5, 0, 0)
-                gr2.SetPointError(i, lst[0] / 2., lst[1] / 2., 0, 0) if lst[1] - lst[0] > 1 else gr2.SetPointError(i, .5, .5, 0, 0)
-                if not main:
-                    l1 = self.draw_tlatex(gr1.GetX()[i], gr1.GetY()[i] + 5, ' ' + int_, color=kGreen + 2, align=10)
-                    gr1.GetListOfFunctions().Add(l1)
-                i += 1
-        for gr in [gr1, gr2]:
-            gr.Draw('[]')
-            gr.Draw('p')
-        self._add_buckets(ymin, ymax, xmin, xmax, full_line=True, size=.05) if buckets else do_nothing()
-        self.save_plots('IntegralPeaks')
-        gROOT.SetBatch(0)
-        self.count = old_count
-        self.ROOTObjects.append([gr1, gr2])
-
-    def __draw_peak_pos(self, event, ymin, ymax):
-        peak_pos = self.get_peak_position(event, tcorr=True) if hasattr(self, 'get_peak_position') else self.Run.IntegralRegions[0]['signal_a'][0] / 2.
-        ped_region = self.PedestalRegion if hasattr(self, 'PedestalRegion') else 'ab'
-        ped_pos = self.Run.IntegralRegions[0]['pedestal_{}'.format(ped_region)][0][1] / 2.
-        y = ymax - ymin
-        self.draw_vertical_line(peak_pos, ymin, ymax - y / 3., color=418, w=2, name='peak')
-        self.draw_vertical_line(ped_pos, ymin, ymax - y / 3, color=429, w=2, name='ped')
-        t1 = self.draw_tlatex(peak_pos, ymax - y / 3.1, 'peak', color=418, size=.07)
-        t2 = self.draw_tlatex(ped_pos, ymax - y / 3.1, 'pedestal', color=429, size=.07)
-        t1.Draw()
-        t2.Draw()
-        self.ROOTObjects.append([t1, t2])
-        return peak_pos, ped_pos
-
-    # endregion
 
     # ============================================================================================
     # region TRACKS
