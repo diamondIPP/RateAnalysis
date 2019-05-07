@@ -251,6 +251,9 @@ class DiaScans(Elementary):
 
     # ==========================================================================
     # region SELECTION
+    def clear_selection(self):
+        self.Selection = {}
+
     def select_runplan(self, runplan, ch=1, testcampaign=None):
         rp = make_runplan_string(runplan)
         tc = str(testcampaign) if testcampaign is not None else self.TestCampaigns[-1]
@@ -281,20 +284,34 @@ class DiaScans(Elementary):
             last_sel = sel
         self.RunSelections = run_selections
 
-    def clear_selection(self):
-        self.Selection = {}
+    def add_selection(self):
+        name = raw_input('Enter the name of the selection: ')
+        self.clear_selection()
+        self.Selections[name] = {} if name not in self.Selections else self.Selections[name]
+        run_plan = raw_input('Enter test campaign, run plan number, channel: ')
+        while run_plan:
+            tc, rp, ch = [string.strip(' ') for string in run_plan.split(',')]
+            self.select_runplan(rp, int(ch), tc)
+            run_plan = raw_input('Enter test campaign, run plan number, channel (leave blank to finish): ')
+        self.save_selection(name)
 
-    def save_selection(self, name):
+    def save_selection(self, name=None):
+        name = raw_input('Enter the name of the selection: ') if name is None else name
         with open(join(self.Dir, self.MainConfigParser.get('MISC', 'runplan_selection_file')), 'r+') as f:
             if not self.Selection:
                 log_warning('Selection is empty!')
                 return
+            if name in self.Selections:
+                query = raw_input('{} does already exist. Do you want to overwrite it? (y/n) '.format(name))
+                if query.lower().strip() in ['no', 'n']:
+                    return
             selections = load(f)
             selections[name] = self.Selection
             f.seek(0)
             dump(selections, f, indent=2, sort_keys=True)
             f.truncate()
             self.Selections = selections
+            log_message('Saved {} to selections'.format(name))
 
     # endregion
 
@@ -645,27 +662,6 @@ class DiaScans(Elementary):
             g.SetPointError(i, x * .1, y.s)
         self.format_histo(g, y_tit='Beam Induced Current / Pulse Height', x_tit='Irradiation [1e14 n/cm^{2}]')
         self.save_histo(g, 'BeamInducedErrors', draw_opt='alp', show=show)
-
-    def add_selection(self):
-        name = raw_input('Enter the name of the selection: ')
-        self.Selections[name] = {} if name not in self.Selections else self.Selections[name]
-        run_plan = raw_input('Enter test campaign, run plan number, channel: ')
-        while run_plan:
-            tc, rp, ch = [string.strip(' ') for string in run_plan.split(',')]
-            rp = RunSelection.make_runplan_string(rp)
-            if tc not in self.Selections[name]:
-                self.Selections[name][tc] = {rp: int(ch)}
-            else:
-                self.Selections[name][tc][rp] = int(ch)
-            run_plan = raw_input('Enter test campaign, run plan number, channel: ')
-        self.save_selections()
-
-    def save_selections(self):
-        f = open(join(self.Dir, self.MainConfigParser.get('MISC', 'runplan_selection_file')), 'r+')
-        f.seek(0)
-        dump(self.Selections, f, indent=2, sort_keys=True)
-        f.truncate()
-        f.close()
 
 
 if __name__ == '__main__':
