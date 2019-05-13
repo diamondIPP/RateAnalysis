@@ -184,8 +184,8 @@ class PulserAnalysis(Elementary):
 
     def draw_hit_efficiency(self, xbins=200, show=True):
         xbins = self.Ana.Plots.get_pulser_bins(xbins) if type(xbins) is int else xbins
-        p = TProfile('pa{}'.format(self.RunNumber), 'Puler Hit Efficiency', *xbins)
+        p = TProfile('pa{}'.format(self.RunNumber), 'Hit Efficiency at Pulser Events', *xbins)
         self.Ana.tree.Draw('(@col.size()>1)*100:Entry$>>pa{}'.format(self.RunNumber), 'pulser', 'goff')
-        self.format_histo(p, x_tit='Event Number', y_tit='Hit Efficiency @ Pulser Events [%]', y_off=1.3, stats=0, y_range=[0, 105], fill_color=self.FillColor)
+        self.format_histo(p, x_tit='Event Number', y_tit='Hit Efficiency [%]', y_off=1.3, stats=0, y_range=[0, 105], fill_color=self.FillColor)
         self.save_histo(p, 'PulserHitEfficiency', show, self.Ana.TelSaveDir, draw_opt='hist', prnt=show, rm=.08)
         return p
