@@ -449,6 +449,11 @@ class Run(Elementary):
             last_time = t / 1000.
         return self.n_entries  # if loop doesn't find anything it has to be the last bin
 
+    def find_n_events(self, n, cut, start):
+        total_events = self.tree.Draw('event_number', cut, 'goff', self.n_entries, start)
+        evt_numbers = [self.tree.GetV1()[i] for i in xrange(total_events)]
+        return int(evt_numbers[:n][-1] + 1 - start)
+
     # endregion
 
     # ==============================================
