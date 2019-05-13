@@ -18,6 +18,7 @@ from Pulser import PulserAnalysis
 from Pedestal import PedestalAnalysis
 from Peaks import PeakAnalysis
 from Timing import TimingAnalysis
+from waveform import Waveform
 from Run import Run
 from Utils import *
 
@@ -73,6 +74,7 @@ class PadAnalysis(Analysis):
             self.Pulser = PulserAnalysis(self)
             self.Pedestal = PedestalAnalysis(self)
             self.Peaks = PeakAnalysis(self)
+            self.Waveform = Waveform(self)
 
             # alignment
             self.IsAligned = self.check_alignment(show=False)
@@ -635,7 +637,7 @@ class PadAnalysis(Analysis):
             h1 = TH1F('h_sd', 'Pulse Height {s}'.format(s='with Pedestal Correction' if evnt_corr else ''), *self.Plots.get_ph_bins(bin_width))
             sig_name = self.generate_signal_name(sig, evnt_corr, off_corr, False, cut)
             start_event = int(float(start)) if start is not None else 0
-            n_events = self.find_n_events(n=events, cut=str(cut), start=start_event) if events is not None else self.Run.n_entries
+            n_events = self.Run.find_n_events(n=events, cut=str(cut), start=start_event) if events is not None else self.Run.n_entries
             self.tree.Draw('{name}>>h_sd'.format(name=sig_name), str(cut), 'goff', n_events, start_event)
             h1.Rebin(max(1, int(h1.GetMean() / 30)))
             return h1
@@ -748,11 +750,11 @@ class PadAnalysis(Analysis):
         self.save_plots('BucketPedestal')
 
     def draw_bucket_waveforms(self, show=True, t_corr=True, start=100000):
-        good = self.draw_waveforms(1, show=False, start_event=None, t_corr=t_corr)[0]
+        good = self.Waveform.draw(1, show=False, start_event=None, t_corr=t_corr)[0]
         cut = self.Cut.generate_special_cut(excluded=['bucket', 'timing']) + TCut('!({0})'.format(self.Cut.CutStrings['bucket']))
-        bucket = self.draw_waveforms(1, cut=cut, show=False, start_event=start, t_corr=t_corr)[0]
+        bucket = self.Waveform.draw(1, cut=cut, show=False, start_event=start, t_corr=t_corr)[0]
         cut = self.Cut.generate_special_cut(excluded=['bucket', 'timing']) + TCut('{buc}&&!({old})'.format(buc=self.Cut.CutStrings['bucket'], old=self.Cut.CutStrings['old_bucket']))
-        bad_bucket = self.draw_waveforms(1, cut=cut, show=False, t_corr=t_corr, start_event=None)[0]
+        bad_bucket = self.Waveform.draw(1, cut=cut, show=False, t_corr=t_corr, start_event=None)[0]
         self.reset_colors()
         mg = TMultiGraph('mg_bw', 'Bucket Waveforms')
         l = self.make_legend(.85, .4, nentries=3)
@@ -764,9 +766,9 @@ class PadAnalysis(Analysis):
         self.format_histo(mg, draw_first=True, x_tit='Time [ns]', y_tit='Signal [mV]')
         x = [self.Run.signal_regions['e'][0] / 2, self.Run.signal_regions['e'][1] / 2 + 20]
         self.format_histo(mg, x_range=x, y_off=.7)
-        y = mg.GetYaxis().GetXmin(), mg.GetYaxis().GetXmax()
         self.draw_histo(mg, show=show, draw_opt='A', x=1.5, y=0.75, lm=.07, rm=.045, bm=.2, l=l)
-        self._add_buckets(y[0], y[1], x[0], x[1], avr_pos=-1, full_line=True)
+        # y = mg.GetYaxis().GetXmin(), mg.GetYaxis().GetXmax()
+        # self._add_buckets(y[0], y[1], x[0], x[1], avr_pos=-1, full_line=True)
         self.save_plots('BucketWaveforms')
         self.reset_colors()
 
@@ -1033,185 +1035,7 @@ class PadAnalysis(Analysis):
         self.ROOTObjects.append(self.save_histo(h, 'SignalEvsSignalB', show, rm=.15, lm=.13, draw_opt='colz'))
         gStyle.SetPalette(1)
 
-    def draw_waveforms(self, n=1, cut=None, start_event=None, t_corr=True, channel=None, show=True, x_range=None, y_range=None, grid=False):
-        """ Draws a stack of n waveforms. """
-        channel = self.channel if channel is None else channel
-        if not self.Run.wf_exists(self.channel):
-            return
-        start_event = self.count + self.StartEvent if start_event is None else start_event
-        self.log_info('Drawing {n} waveform, startint at event: {s}'.format(n=n, s=start_event))
-        cut = self.Cut.all_cut if cut is None else TCut(cut)
-        n_events = self.find_n_events(n, cut, start_event)
-        self.tree.SetEstimate(n * 1024)
-        n_entries = self.tree.Draw('wf{ch}:trigger_cell'.format(ch=channel), cut, 'goff', n_events, start_event)
-        title = '{n}{tc} Waveform{p}'.format(n=n, tc=' Time Corrected' if t_corr else '', p='s' if n > 1 else '')
-        h = TH2F('h_wf', title, 1024, 0, 512, 2048, -512, 512)
-        values = [self.tree.GetV1()[i] for i in xrange(n_entries)]
-        if t_corr:
-            times = [self.get_calibrated_times(self.tree.GetV2()[1024 * i]) for i in xrange(n)]
-            times = [v for lst in times for v in lst]
-        else:
-            times = [self.DigitiserBinWidth * i for i in xrange(1024)] * n
-        for v, t in zip(values, times):
-            h.Fill(t, v)
-        self.tree.SetEstimate()
-        self.count += n_events
-        y_range = increased_range([min(values), max(values)], .1, .2) if y_range is None else y_range
-        h = self.make_tgrapherrors('g_cw', title, x=times, y=values) if n == 1 else h
-        self.format_histo(h, x_tit='Time [ns]', y_tit='Signal [mV]', y_off=.5, stats=0, tit_size=.07, lab_size=.06, y_range=y_range, markersize=.5, x_range=x_range)
-        self.draw_histo(h, 'WaveForms{n}'.format(n=n), show=show, draw_opt='col' if n > 1 else 'apl', lm=.073, rm=.045, bm=.18, x=1.5, y=.5, gridy=grid, gridx=grid)
-        return h, n_events
-
-    def get_calibrated_times(self, trigger_cell):
-        if all(self.Run.TCal[0] == t for t in self.Run.TCal):
-            return [self.DigitiserBinWidth * i for i in xrange(self.Run.NSamples)]
-        t = [self.Run.TCal[int(trigger_cell)]]
-        for i in xrange(1, self.Run.NSamples):
-            t.append(self.Run.TCal[(int(trigger_cell) + i) % self.Run.NSamples] + t[-1])
-        return t
-
-    def draw_averaged_wf(self, n=100, cut=None, align_peaks=True, show=True):
-        p = TProfile('pawf', 'Averaged Waveform', 2000, 0, 500)
-        cut = self.Cut.all_cut if cut is None else TCut(cut)
-        values, times = self.get_wf_values(n, cut)
-        if align_peaks:
-            self.tree.Draw(self.get_peak_name(), cut, 'goff')
-            peak_times = [self.tree.GetV1()[i] for i in xrange(n)]
-            for i, t in enumerate(peak_times):
-                for j in xrange(1024):
-                    times[j + i * 1024] = times[j + i * 1024] + peak_times[0] - peak_times[i]
-
-        for t, v in zip(times, values):
-            p.Fill(t, v)
-        self.format_histo(p, x_tit='Time [ns]', y_tit='Pulse Height [mv]', y_off=1.2, stats=0, markersize=.5)
-        self.draw_histo(p, show=show)
-
-    def get_wf_values(self, n=1, cut=None, start_event=None, t_corr=True):
-        start_event = self.count + self.StartEvent if start_event is None else start_event
-        cut = self.Cut.all_cut if cut is None else TCut(cut)
-        n_events = self.find_n_events(n, cut, start_event)
-        self.tree.SetEstimate(n * 1024)
-        n_entries = self.tree.Draw('wf{ch}:trigger_cell'.format(ch=self.channel), cut, 'goff', n_events, start_event)
-        values = [self.tree.GetV1()[i] for i in xrange(n_entries)]
-        times = [self.DigitiserBinWidth * i for i in xrange(1024)] * n
-        if t_corr:
-            times = [v for lst in [self.get_calibrated_times(self.tree.GetV2()[1024 * i]) for i in xrange(n)] for v in lst]
-        self.count += n_events
-        return values, times
-
-    def calc_rise_time(self, cut=None, start_event=0):
-        values, times = self.get_wf_values(cut, start_event)
-        pedestal = self.Pedestal.draw_disto_fit(cut=cut, show=False)
-        noise, sigma = (abs(pedestal.Parameter(i)) for i in [1, 2])
-        rise_time = []
-        tmin, tmax = [t * self.DigitiserBinWidth for t in self.SignalRegion]
-        data = OrderedDict([(t, v) for t, v in zip(times, values) if tmin - 5 < t < tmax + 5])
-        for t, y in data.iteritems():
-            if abs(y) == max(abs(v) for v in data.itervalues()):  # stop at the highest point
-                break
-            if abs(y) > noise + 4 * sigma:
-                print t
-                rise_time.append(t)
-        return rise_time[-1] - rise_time[0]
-
-    def draw_rise_time(self, cut=None, show=True):
-        h = TH1F('hrt', 'Signal Rise Time', 100, 0, 10)
-        self.tree.Draw('rise_time[{}]>>hrt'.format(self.channel), self.Cut.all_cut if cut is None else TCut(cut), 'goff')
-        self.set_statbox(all_stat=True)
-        self.format_histo(h, x_tit='Rise Time [ns]', y_tit='Number of Entries', y_off=1.4)
-        self.save_histo(h, 'RiseTime', lm=.12, show=show)
-
-    def draw_fall_time(self, cut=None, show=True):
-        h = TH1F('hft', 'Signal Fall Time', 200, 0, 20)
-        self.tree.Draw('fall_time[{}]>>hft'.format(self.channel), self.Cut.all_cut if cut is None else TCut(cut), 'goff')
-        self.set_statbox(all_stat=True)
-        self.format_histo(h, x_tit='Fall Time [ns]', y_tit='Number of Entries', y_off=1.4)
-        self.save_histo(h, 'FallTime', lm=.12, show=show)
-
-    def draw_rise_time_map(self, res=sqrt(12), cut=None, show=True):
-        p = TProfile2D('prtm', 'Rise Time Map', *self.Plots.get_global_bins(res))
-        cut = self.Cut.generate_special_cut(excluded='fiducial') if cut is None else TCut(cut)
-        self.tree.Draw('rise_time[{}]:{}:{}>>prtm'.format(self.channel, *self.Cut.get_track_vars(self.DiamondNumber - 1)), cut, 'goff')
-        self.set_dia_margins(p)
-        self.set_z_range(p, n_sigma=1)
-        self.set_statbox(entries=True, x=.84)
-        self.format_histo(p, x_tit='track x [cm]', y_tit='track y [cm]', y_off=1.4, z_off=1.3, z_tit='Rise Time [ns]', ncont=20, ndivy=510, ndivx=510)
-        self.draw_histo(p, show=show, draw_opt='colz', rm=.14)
-        self.draw_fiducial_cut()
-        self.save_plots('RiseTimeMap')
-
-    def draw_single_waveform(self, cut='', event=None, show=True, show_noise=False):
-        h, n = self.draw_waveforms(n=1, start_event=event, cut=cut, t_corr=True, show=show, grid=True)
-        if show_noise:
-            mean_noise = self.Pedestal.get_mean()
-            legend = self.make_legend(.8, .4, nentries=1, scale=2)
-            legend.AddEntry(self.draw_horizontal_line(mean_noise.n, 0, 700, w=2, style=7, color=2), 'mean pedestal', 'l')
-            legend.Draw()
-        return h
-
-    def show_single_waveforms(self, n=1, cut='', start_event=None):
-        start = self.StartEvent + self.count if start_event is None else start_event + self.count
-        activated_wfs = [wf for wf in xrange(4) if self.Run.wf_exists(wf)]
-        print 'activated wafeforms:', activated_wfs
-        print 'Start at event number:', start
-        wfs = [self.draw_waveforms(n=n, start_event=start, cut=cut, show=False, channel=wf) for wf in activated_wfs]
-        n_wfs = len(activated_wfs)
-        if not gROOT.GetListOfCanvases()[-1].GetName() == 'c_wfs':
-            c = TCanvas('c_wfs', 'Waveforms', 2000, n_wfs * 500)
-            c.Divide(1, n_wfs)
-        else:
-            c = gROOT.GetListOfCanvases()[-1]
-        for i, wf in enumerate(wfs, 1):
-            wf[0].SetTitle('{nam} WaveForm'.format(nam=self.Run.DRS4Channels[activated_wfs[i - 1]]))
-            c.cd(i)
-            wf[0].Draw('aclp')
-        self.ROOTObjects.append([c, wfs])
-        cnt = wfs[0][1]
-        # if cnt is None:
-        #     return
-        self.count += cnt
-
-    def draw_regions(self, event=None, show=True):
-        h = self.draw_single_waveform(event=event, show=False)
-        h.SetTitle('Peak Finding Regions')
-        self.format_histo(h, tit_size=.05, lab_size=.05, y_off=.85)
-        self.draw_histo(h, show=show, lm=.07, rm=.045, bm=.2, x=1.5, y=.75)
-        ymin, ymax = h.GetYaxis().GetXmin(), h.GetYaxis().GetXmax()
-        ydiff = ymax - ymin
-        gr = self.make_tgrapherrors('gr', '', color=2, marker_size=0, width=3)
-        gStyle.SetEndErrorSize(4)
-        sleep(.1)
-        integral_regions = filter(lambda (region, lt): 'pedestal' in region or 'signal' in region, self.Run.IntegralRegions[self.channel].iteritems())
-        for reg, lst in integral_regions:
-            b, e = lst[0], lst[1]
-            y = ymax - ydiff * .5
-            y1 = ymax - ydiff * .49
-            color = 2 if 'signal' in reg else 4
-            if e != b:
-                y1 += ydiff * .07 * (1 + filter(lambda (r, lt): b + e == lt[1] + lt[0], integral_regions).index((reg, lst)))
-                gr.SetPoint(gr.GetN(), (b + e) / 4., y1)
-                gr.SetPointError(gr.GetN() - 1, (e - b) / 4., 0)
-                l = self.draw_tlatex(gr.GetX()[gr.GetN() - 1], y1 + ydiff * .02, reg.split('_')[-1], color=color, size=.04)
-                gr.GetListOfFunctions().Add(l)
-                self.draw_vertical_line(b / 2, ymin, y1, color=color, name=reg, w=2, style=2)
-                self.draw_vertical_line(e / 2, ymin, y1, color=color, name='{}1'.format(reg), w=2, style=2)
-            else:
-                self.draw_vertical_line(b / 2., ymin, y, color=color, w=2, name=reg)
-                self.draw_tlatex(b / 2, y1, reg.split('_')[-1], size=.04, color=color)
-        l = self.make_legend(x1=.855, x2=.955, y2=.6, nentries=2)
-        l.AddEntry(self.draw_vertical_line(-500, 0, 1, color=4, w=2, name='1'), 'pedestal', 'l')
-        l.AddEntry(self.draw_vertical_line(-500, 0, 1, color=2, w=2, name='2'), 'signal', 'l')
-        gr.Draw('p')
-        self.draw_histo(gr, draw_opt='[]', canvas=get_last_canvas(), l=l)
-        self._add_buckets(avr_pos=6, full_line=True, ch=self.channel)
-        self.save_plots('Regions')
-
     # endregion
-
-    def find_n_events(self, n, cut, start):
-        total_events = self.tree.Draw('event_number', cut, 'goff', self.Run.n_entries, start)
-        evt_numbers = [self.tree.GetV1()[i] for i in xrange(total_events)]
-        return int(evt_numbers[:n][-1] + 1 - start)
 
     def check_alignment(self, n_pulser=200, thresh=40, show=True):
         """ just check the number of pixel hits at pulser events for no offset """
