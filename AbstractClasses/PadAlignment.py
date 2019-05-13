@@ -147,7 +147,7 @@ class PadAlignment:
             return self.get_error_offsets()
         return self.find_shifting_offsets()
 
-    def find_shifting_offsets(self):
+    def find_shifting_offsets(self, show=False):
         t = self.Run.log_info('Scanning for precise offsets ... ', next_line=False)
         n = self.BucketSize
         offset = self.find_offset(0, 0)
@@ -155,8 +155,12 @@ class PadAlignment:
         offsets = OrderedDict([(0, offset)] if offset else [])
         rates = [self.calc_mean_size(0)]
         i = 1
+        g = self.Converter.Run.make_tgrapherrors('gse', 'Shifting Rate')
+        g1 = self.Converter.Run.make_tgrapherrors('gse1', 'Shifting Rate')
         while i < len(self.PulserEvents) - abs(offset) - n:
             rate = self.calc_mean_size(i, offset)
+            g.SetPoint(i - 1, i, rate)
+            g1.SetPoint(i - 1, i, self.calc_mean_size(i, 1))
             # print i, '{0:1.2f}'.format(rate)
             if rate > self.Threshold:
                 # first check if the event is in the decoding errors
@@ -180,6 +184,10 @@ class PadAlignment:
             i += 1
             if len(rates) > n:
                 del rates[0]
+        self.Run.format_histo(g, x_tit='Pulser Event', y_tit='Pulser Rate [%]', y_off=1.4)
+        self.Run.format_histo(g1, color=self.Run.colors[0])
+        self.Run.draw_histo(g, show=show)
+        self.Run.draw_histo(g1, draw_opt='pl', canvas=get_last_canvas(), show=show)
 
         self.Run.add_info(t)
         log_message('Found {n} offsets'.format(n=len(offsets)))
@@ -238,7 +246,7 @@ class PadAlignment:
 if __name__ == '__main__':
     from Run import Run
     from Converter import Converter
-    zrun = Run(31, test_campaign='201610', tree=False, verbose=True)
+    zrun = Run(259, test_campaign='201807', tree=False, verbose=True)
     zconv = Converter(zrun)
     z = PadAlignment(zconv)
     if not z.is_aligned():
