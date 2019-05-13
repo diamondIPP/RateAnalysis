@@ -17,12 +17,12 @@ from numpy import array, zeros
 
 
 class Langau:
-    def __init__(self, histo, nconv=100):
+    def __init__(self, histo, nconv=100, fit_range=None):
         self.Histo = histo
         self.Max = histo.GetMaximum()
         self.NConvolutions = nconv
         self.NSigma = 5.
-        self.FitRange = [k * histo.GetMean() for k in [.1, 3]]
+        self.FitRange = [k * histo.GetMean() for k in [.1, 3]] if fit_range is None else fit_range
         self.ParLimits = self.init_par_limits()
         self.StartValues = self.init_start_values()
 
