@@ -225,9 +225,11 @@ class CutPad(Cut):
             cut.SetLineWidth(3)
         return TCut(cut.GetName() if cut is not None else '')
 
-    def find_fid_cut(self, thresh=.8):
+    def find_fid_cut(self, thresh=.93, show=True):
         h = self.analysis.draw_signal_map(show=False)
         px = h.ProjectionX()
+        self.format_histo(px, title='Projection X of the Signal Map', y_tit='Number of Entries', y_off=1.5)
+        self.draw_histo(px, lm=.12, show=show)
         py = h.ProjectionY()
         return '"{}": [{}]'.format(self.analysis.DiamondName, ', '.join('{:0.3f}'.format(i) for i in self.find_fid_margins(px, thresh) + self.find_fid_margins(py, thresh)))
 
