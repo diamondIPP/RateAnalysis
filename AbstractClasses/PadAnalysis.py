@@ -6,9 +6,7 @@ from argparse import ArgumentParser
 from math import log
 from json import loads
 
-from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, \
-    THStack, TArrow, kOrange, TSpectrum, TMultiGraph, Long, TH2I, gRandom, Double
-
+from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, THStack, TMultiGraph, Long, TH2I, gRandom, Double
 from CutPad import CutPad
 from CurrentInfo import Currents
 from Elementary import Elementary
@@ -1317,10 +1315,6 @@ class PadAnalysis(Analysis):
 
     # ============================================
     # region MISCELLANEOUS
-    def get_cut(self):
-        """ :return: full cut_string """
-        return self.Cut.all_cut
-
     def get_all_signal_names(self, sig_type='signal'):
         names = OrderedDict()
         for region in self.Run.IntegralRegions[self.DiamondNumber - 1]:
@@ -1333,18 +1327,13 @@ class PadAnalysis(Analysis):
         return names
 
     def print_info_header(self):
-        header = ['Run', 'Type', 'Diamond', 'HV [V]', 'Region']
-        for info in header:
-            print self.adj_length(info),
-        print
+        print ''.join(self.adj_length(info) for info in ['Run', 'Type', 'Diamond', 'HV [V]', 'Region'.ljust(20), 'Integral'])
 
     def print_information(self, header=True):
         if header:
             self.print_info_header()
-        infos = [self.RunNumber, self.Run.RunInfo['type'], self.DiamondName.ljust(4), self.Bias, self.SignalRegionName + self.PeakIntegralName + '   ']
-        for info in infos:
-            print self.adj_length(info),
-        print
+        infos = [self.RunNumber, self.Run.RunInfo['runtype'], self.DiamondName.ljust(4), self.Bias, '{} ({})'.format(self.SignalRegion, self.SignalRegionName), self.PeakIntegral]
+        print ''.join(self.adj_length(info) for info in infos)
 
     def show_integral_names(self):
         for i, name in enumerate(self.IntegralNames):
@@ -1352,76 +1341,6 @@ class PadAnalysis(Analysis):
                 print str(i).zfill(3), name
 
     # endregion
-
-    def spectrum(self, it=20, noise=20):
-        decon = array(1024 * [0], 'f')
-        s = TSpectrum(25)
-        peaks = []
-        for i in xrange(it):
-            self.tree.GetEntry(300000 + i)
-            data = array([-1 * self.tree.wf0[j] for j in xrange(1024)], 'f')
-            thr = 100 * 2 * noise / max(data)
-            print thr
-            p = s.SearchHighRes(data, decon, 1024, 5, thr, True, 3, True, 5)
-            xpos = [s.GetPositionX()[i] for i in xrange(p)]
-            peaks.append(xpos)
-        return decon, s, peaks
-
-    def fixed_integrals(self):
-        tcals = [0.4813, 0.5666, 0.3698, 0.6393, 0.3862, 0.5886, 0.5101, 0.5675, 0.4033, 0.6211, 0.4563, 0.5919, 0.4781, 0.5947, 0.417, 0.5269,
-                 0.5022, 0.5984, 0.4463, 0.622, 0.4326, 0.5603, 0.3712, 0.6168, 0.5238, 0.5515, 0.514, 0.5949, 0.4198, 0.5711, 0.5344, 0.5856,
-                 0.3917, 0.6125, 0.4335, 0.5817, 0.4658, 0.5338, 0.4442, 0.5865, 0.4482, 0.5778, 0.4755, 0.6118, 0.4113, 0.5609, 0.465, 0.6188,
-                 0.3908, 0.5736, 0.5223, 0.5222, 0.5109, 0.493, 0.4421, 0.5908, 0.4555, 0.6737, 0.371, 0.5172, 0.5362, 0.5982, 0.5017, 0.4976,
-                 0.5568, 0.5519, 0.416, 0.5788, 0.476, 0.5636, 0.4424, 0.5773, 0.4472, 0.6109, 0.4123, 0.616]
-        sum_time = 0
-        times = []
-        for i in range(40):
-            times.append(sum_time)
-            sum_time += tcals[i]
-        h = TH1F('h', 'Integral Length', len(times) - 1, array(times, 'f'))
-        self.tree.GetEntry(200002)
-        peak_pos = self.tree.IntegralPeaks[self.SignalNumber]
-        wf = list(self.tree.wf0)
-        mid = times[15] + tcals[15] / 2.
-        for i in range(40):
-            h.SetBinContent(i, abs((wf[peak_pos - 16 + i])))
-
-        points_x1 = [mid - 4, mid - 4, h.GetBinLowEdge(9), h.GetBinLowEdge(9), mid - 4]
-        points_x2 = [mid + 6, mid + 6, h.GetBinLowEdge(27), h.GetBinLowEdge(27), mid + 6]
-        points_y1 = [0, -1 * wf[peak_pos - 8] - .3, -1 * wf[peak_pos - 8] - .3, 0, 0]
-        points_y2 = [0, -1 * wf[peak_pos + 11] - .3, -1 * wf[peak_pos + 11] - .3, 0, 0]
-        gr1 = TGraph(5, array(points_x1, 'd'), array(points_y1, 'd'))
-        gr2 = TGraph(5, array(points_x2, 'd'), array(points_y2, 'd'))
-        gr1.SetFillColor(kOrange + 7)
-        gr2.SetFillColor(kOrange + 7)
-        gr3 = TGraph(2, array([mid, mid], 'd'), array([0, -1 * wf[peak_pos]], 'd'))
-        gr3.SetLineWidth(2)
-        ar = TArrow(mid - 4, 50, mid + 6, 50, .015, '<|>')
-        ar.SetLineWidth(2)
-        ar.SetFillColor(1)
-        ar.SetLineColor(1)
-
-        c = TCanvas('c', 'c', 2500, 1500)
-        self.format_histo(h, x_tit='Time [ns]', y_tit='Pulse Height [au]')
-        h.SetStats(0)
-        h1 = h.Clone()
-        h1.GetXaxis().SetRangeUser(mid - 4 + .5, mid + 6 - .7)
-        h1.SetFillColor(2)
-        h.SetLineWidth(2)
-        h.Draw()
-        h1.Draw('same][')
-        gr1.Draw('f')
-        gr2.Draw('f')
-        gr3.Draw('l')
-        print mid - 4, mid + 6
-        ar.Draw()
-        self.ROOTObjects.append([h, h1, gr1, gr2, gr3, ar, c])
-
-    def save_felix(self):
-        self.save_dir = '{info}_{rp}'.format(info=self.make_info_string().strip('_'), rp=self.RunNumber)
-        self.TelSaveDir = '{info}_{rp}'.format(info=self.make_info_string().strip('_'), rp=self.RunNumber)
-        self.set_save_directory('PlotsFelix')
-        self.Pulser.save_felix()
 
     def get_mpv_fwhm(self, show=True):
         h = self.draw_signal_distribution(show=show)
@@ -1433,9 +1352,6 @@ class PadAnalysis(Analysis):
     @staticmethod
     def make_region(signal, region=''):
         return '{}{}'.format(signal, '_' + region if region else '')
-
-    def __placeholder(self):
-        pass
 
 
 if __name__ == "__main__":
