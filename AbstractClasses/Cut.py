@@ -47,6 +47,9 @@ class Cut(Elementary):
             self.generate_cut_string()
             self.all_cut = self.generate_all_cut()
 
+    def __call__(self, *args, **kwargs):
+        return self.generate_all_cut()
+
     def generate_special_cut(self, excluded=None, included=None, name='special_cut', prnt=True):
         cut = TCut(name, '')
         self.NCuts = 0
