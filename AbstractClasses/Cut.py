@@ -211,9 +211,8 @@ class Cut(Elementary):
         return cut_string
 
     def generate_chi2(self, mode='x', value=None):
-        chi2 = self.calc_chi2(mode)
-        cut_value = chi2 if value is None else value
-        return 'chi2_{mod}<{val} && chi2_{mod}>=0'.format(val=cut_value, mod=mode)
+        cut_value = self.calc_chi2(mode) if value is None else value
+        return 'chi2_{}>=0'.format(mode) + ' && chi2_{mod}<{val}'.format(val=cut_value, mod=mode) if cut_value is not None else ''
 
     def calc_chi2(self, mode='x'):
         picklepath = self.make_pickle_path('Chi2', run=self.RunNumber, suf=mode.title())
@@ -229,8 +228,8 @@ class Cut(Elementary):
 
         chi2 = do_pickle(picklepath, f)
         quantile = self.CutConfig['chi2{mod}'.format(mod=mode.title())]
-        assert type(quantile) is int and 0 < quantile <= 100, 'chi2 quantile has to be and integer between 0 and 100'
-        return chi2[quantile]
+        assert isint(quantile) and 0 < quantile <= 100, 'chi2 quantile has to be and integer between 0 and 100'
+        return chi2[quantile] if quantile != 100 else None
 
     def generate_slope(self, mode='x'):
         cut_variable = '{t}_{m}'.format(t='slope' if self.analysis.Run.has_branch('slope_x') else 'angle', m=mode)
