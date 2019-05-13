@@ -39,10 +39,10 @@ class PedestalAnalysis(Elementary):
         return self.Ana.get_all_signal_names('pedestal')
 
     def get_mean(self):
-        return make_ufloat(self.draw_disto_fit(show=False), par=1)
+        return make_ufloat(self.draw_disto_fit(show=False, prnt=False), par=1)
 
     def get_noise(self):
-        return make_ufloat(self.draw_disto_fit(show=False), par=2)
+        return make_ufloat(self.draw_disto_fit(show=False, prnt=False), par=2)
 
     def draw_disto(self, name=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True):
         show = False if not save else show
@@ -86,7 +86,7 @@ class PedestalAnalysis(Elementary):
             h.Draw('same')
             b.Draw('l')
             gPad.RedrawAxis()
-        self.save_plots('PedestalDistributionFit{}'.format(cut.GetName()), save=save)
+        self.save_plots('PedestalDistributionFit{}'.format(cut.GetName()), save=save, prnt=prnt, show=show)
         self.Histogram = h
         server_pickle(picklepath, fit_pars)
         return fit_pars
