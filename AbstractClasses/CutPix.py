@@ -59,7 +59,7 @@ class CutPix(Cut):
         self.generate_pixel_cutstrings()
 
     def set_hitmap_cuts(self, on=True):
-        self.set_cut('masks', self.generate_masks(cluster=not on))
+        self.update_cut('masks', self.generate_masks(cluster=not on))
 
     def generate_consecutive_cuts(self, cluster=True):
         self.set_hitmap_cuts(not cluster)
