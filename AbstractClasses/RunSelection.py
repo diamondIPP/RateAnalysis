@@ -260,6 +260,12 @@ class RunSelection(Elementary):
             print 'No runs selected!'
         return sorted(selected)
 
+    def get_last_selected_run(self):
+        return self.get_selected_runs()[-1]
+
+    def get_first_selected_run(self):
+        return self.get_selected_runs()[0]
+
     def show_selected_runs(self, full_comments=False):
         """ Prints an overview of all selected runs. """
         selected_runs = self.get_selected_runs()
@@ -401,6 +407,10 @@ class RunSelection(Elementary):
             return ('{min:+4.0f} ... {max:+4.0f}'.format(min=hv[ahv.index(min(ahv))], max=hv[ahv.index(max(ahv))]) for ahv, hv in zip(abs_hvs, hvs))
         return ('{v:+13.0f}'.format(v=hv[0]) for hv in hvs)
 
+    def get_selected_bias(self):
+        hvs = self.get_runinfo_values('dia{}hv'.format(self.SelectedDiamondNr), sel=True)
+        return int(hvs[0]) if len(hvs) == 1 else None
+
     def get_missing_runs(self, runs):
         all_runs = [run for run in self.RunNumbers if runs[-1] >= run >= runs[0]]
         missing_runs = [run for run in all_runs if run not in runs]
@@ -418,8 +428,8 @@ class RunSelection(Elementary):
         self.SelectedRunplan = plan
         self.SelectedType = str(self.RunPlan[plan]['type'])
         self.SelectedDiamond = parser.get('ALIASES', self.RunInfos[runs[0]]['dia{0}'.format(ch)])
-        self.SelectedBias = self.RunInfos[self.get_selected_runs()[0]]['dia{0}hv'.format(ch)]
         self.SelectedDiamondNr = ch
+        self.SelectedBias = self.get_selected_bias()
 
     def add_selection_to_runplan(self, plan_nr, run_type=None):
         """ Saves all selected runs as a run plan with name 'plan_nr'. """
