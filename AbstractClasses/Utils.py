@@ -566,15 +566,11 @@ def set_x_range(xmin, xmax):
 def set_y_range(ymin, ymax):
     c = get_last_canvas()
     h = c.GetListOfPrimitives()[1]
-    h.GetXaxis().SetRangeUser(ymin, ymax)
+    h.GetYaxis().SetRangeUser(ymin, ymax)
 
 
 def remove_letters(string):
-    new_str = ''
-    for l in string:
-        if l.isdigit():
-            new_str += l
-    return new_str
+    return filter(lambda x: x.isdigit(), string)
 
 
 def get_last_canvas():
