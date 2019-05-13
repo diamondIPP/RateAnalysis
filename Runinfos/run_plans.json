@@ -4322,6 +4322,39 @@
       ], 
       "type": "rate scan"
     }, 
+    "12.1": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "6dB_2", 
+        "pulser1": "6dB_3", 
+        "pulser2": "6dB_1"
+      }, 
+      "runs": [
+        281, 
+        282, 
+        283, 
+        285, 
+        286, 
+        287
+      ], 
+      "type": "up scan"
+    }, 
+    "12.2": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "6dB_2", 
+        "pulser1": "6dB_3", 
+        "pulser2": "6dB_1"
+      }, 
+      "runs": [
+        267, 
+        268, 
+        269, 
+        270, 
+        272
+      ], 
+      "type": "up scan"
+    }, 
     "13": {
       "attenuators": {
         "dia1": "None", 
