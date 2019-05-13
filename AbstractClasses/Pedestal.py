@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from Elementary import Elementary
-from ROOT import TH2F, gStyle, TH1F, TCut, gROOT
+from ROOT import TH2F, gStyle, TH1F, TCut, gROOT, gPad
 from Utils import set_statbox, set_drawing_range, FitRes, server_pickle, do_pickle, make_ufloat
 from copy import deepcopy
 from numpy import mean
@@ -65,12 +65,13 @@ class PedestalAnalysis(Elementary):
         self.Histogram = h
         return h
 
-    def draw_disto_fit(self, name=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True):
+    def draw_disto_fit(self, name=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True, draw_cut=False):
         cut = self.Cut.all_cut if cut is None else TCut(cut)
+        cut = self.Cut.generate_special_cut(excluded='ped_sigma') if draw_cut else cut
         suffix = '{r}_fwhm_{c}'.format(c=cut.GetName(), r=self.get_all_signal_names()[self.SignalName if name is None else name])
         picklepath = self.make_pickle_path('Pedestal', run=self.RunNumber, ch=self.DiamondNumber, suf=suffix)
         show = False if not save else show
-        set_statbox(only_fit=True, entries=8, w=.3, opt='neMR')
+        self.set_statbox(fit=True, entries=8, w=.3)
         h = self.draw_disto(name, cut, logy, show=False, save=save, redo=redo, prnt=prnt)
         set_drawing_range(h)
         fit_pars = self.fit_fwhm(h, do_fwhm=True, draw=True)
@@ -79,10 +80,25 @@ class PedestalAnalysis(Elementary):
         f.SetRange(h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax())
         f.SetLineStyle(2)
         h.GetListOfFunctions().Add(f)
-        self.save_histo(h, 'PedestalDistributionFit{}'.format(cut.GetName()), show, save=save, logy=logy, lm=.13, prnt=prnt)
+        self.draw_histo(h, '', show, logy=logy, lm=.13, prnt=prnt)
+        if draw_cut:
+            b = self.__draw_cut(h)
+            h.Draw('same')
+            b.Draw('l')
+            gPad.RedrawAxis()
+        self.save_plots('PedestalDistributionFit{}'.format(cut.GetName()), save=save)
         self.Histogram = h
         server_pickle(picklepath, fit_pars)
         return fit_pars
+
+    def __draw_cut(self, h):
+        fit = h.GetListOfFunctions()[2]
+        xmin, xmax = fit.GetParameter(1) - 3 * fit.GetParameter(2), fit.GetParameter(1) + 3 * fit.GetParameter(2)
+        b = self.draw_box(xmin, -10, xmax, 1e7, color=2, width=2, fillstyle=3001, name='ped', style=7)
+        legend = self.make_legend(.65, y2=.64, nentries=1, margin=.45, name='la', scale=1)
+        legend.AddEntry(b, 'cut (3 sigma)', 'lf')
+        legend.Draw()
+        return b
 
     def draw_sigma_selection(self, show=True, redo=False):
         self.draw_disto_fit(cut=self.Cut.generate_special_cut(excluded=['ped_sigma']), logy=True, show=show, redo=redo)
