@@ -10,6 +10,7 @@ from collections import Counter
 from math import ceil, factorial
 from numpy import corrcoef, zeros
 from decimal import Decimal
+from json import load
 
 from CurrentInfo import Currents
 from CutPix import CutPix
@@ -775,6 +776,29 @@ class PixAnalysis(Analysis):
     def get_attenuator(self):
         attenuators = self.Run.get_attenuators()
         return attenuators[self.DiamondNumber - 1] if attenuators else ''
+
+    def draw_slope(self, show=True):
+        with open(join(self.Dir, 'data', 'vcalCalibration.txt')) as f:
+            d = load(f)
+            h = TH1F('ho', 'Vcal Calibration Slopes', 30, 35, 65)
+            for value in d['slope']:
+                h.Fill(value)
+            self.set_statbox(fit=True, all_stat=True, n_entries=6, w=.3)
+            self.format_histo(h, x_tit='Slope [e]', y_tit='Number of Entries', y_off=1.2, fill_color=self.FillColor)
+            self.draw_histo(h, show=show)
+            h.Fit('gaus', 'q')
+
+    def draw_offset(self, show=True):
+        with open(join(self.Dir, 'data', 'vcalCalibration.txt')) as f:
+            d = load(f)
+            h = TH1F('ho', 'Vcal Calibration Offsets', 15, -200, 400)
+            for value in d['offset']:
+                h.Fill(value)
+            self.set_statbox(fit=True, all_stat=True, n_entries=6, w=.3)
+            self.format_histo(h, x_tit='Offset [e]', y_tit='Number of Entries', y_off=1.2, fill_color=self.FillColor)
+            self.set_statbox(fit=True, all_stat=True)
+            self.draw_histo(h, show=show)
+            h.Fit('gaus', 'q')
 
     @staticmethod
     def eff(x, p):
