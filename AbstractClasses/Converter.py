@@ -160,6 +160,7 @@ class Converter:
     def convert_run(self):
         # check whether the root file w/ our w/o tracks already exist
         if file_exists(self.get_final_file_path()):
+            self.find_plane_errors()
             return
         elif file_exists(self.get_tracking_file_path()):
             self.rename_tracking_file()
@@ -171,6 +172,7 @@ class Converter:
             self.convert_raw_to_root()
         if not self.validate_root_file():
             self.convert_raw_to_root()
+        self.find_plane_errors()
         self.align_run()
         self.add_tracking()
         remove(self.get_root_file_path())
@@ -206,6 +208,18 @@ class Converter:
             pix_align = PixAlignment(self)
             if not pix_align.IsAligned and not pix_align.check_alignment():
                 pix_align.write_aligned_tree()
+
+    def align_telescope(self):
+        # TODO implement!
+        pass
+
+    def find_plane_errors(self):
+        with open(self.get_alignment_file_path()) as f:
+            if len(f.readlines()[3].split()) == 8:  # check if errors are already in the alignment file
+                self.Run.log_info('Plane errors already added')
+                return
+            print_banner('START FINDING PLANE ERRORS FOR RUN {}'.format(self.RunNumber))
+            self.tracking_tel(action='2')
 
     def remove_pickle_files(self):
         self.Run.log_info('Removing all pickle files for run {}'.format(self.RunNumber))
