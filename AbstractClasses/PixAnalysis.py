@@ -186,7 +186,7 @@ class PixAnalysis(Analysis):
         h = do_pickle(pickle_path, f, redo=redo)
         x_range = [h.GetXaxis().GetXmin(), h.GetBinCenter(h.FindLastBinAbove(2)) * 1.2]
         self.set_statbox(all_stat=True, x=.92, w=.25, n_entries=4)
-        self.format_histo(h, x_tit='Pulse Height [{u}]'.format(u='vcal' if vcal else 'e'), y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor, x_range=x_range)
+        self.format_histo(h, x_tit='Pulse Height [{u}]'.format(u='vcal' if vcal else 'e'), y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor, x_range=x_range)
         self.draw_histo(h, show, lm=.13, prnt=prnt, rm=.06)
         if draw_thresh:
             self.draw_y_axis(1500, h.GetYaxis().GetXmin(), h.GetMaximum(), 'threshold #approx {}e  '.format(1500), off=.3, line=True, opt='-L')
@@ -452,7 +452,7 @@ class PixAnalysis(Analysis):
         g = self.make_graph_from_profile(h)
         fit = self.fix_chi2(g, .01, show)
         self.format_histo(g, x_tit='Time [hh:mm]' if vs_time else 'Event Number', y_tit='Efficiency [%]', y_off=1.4, y_range=[-5, 115], stats=0,
-                          t_ax_off=self.Run.StartTime if vs_time else 0, markersize=1.7, draw_first=True)
+                          t_ax_off=self.Run.StartTime if vs_time else 0, markersize=1.2, draw_first=True)
         self.draw_histo(g, show=show, lm=.13, gridy=True, draw_opt='apz', bm=.2)
         self.draw_stats(fit, width=.35, y2=.35, names=['Efficiency'])
         self.draw_preliminary()
@@ -481,7 +481,7 @@ class PixAnalysis(Analysis):
         cut_string = self.Cut.generate_special_cut(excluded=['masks', 'fiducial']) if cut == 'all' else cut_string
         p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DiamondName), *self.Plots.get_global_bins(res=res, mm=True))
         self.tree.Draw('(n_hits[{r}]>0)*100:{}:{}>>p_em'.format(r=self.Dut, *self.Cut.get_track_vars(self.Dut - 4, scale=10)), cut_string, 'goff')
-        self.set_statbox(entries=True, x=.81, y=.95)
+        self.set_statbox(entries=True, x=.81)
         self.format_histo(p, x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]', z_tit='Efficiency [%]', y_off=1.4, z_off=1.5)
         self.draw_histo(p, 'Efficiency Map', show, lm=.13, rm=.17, draw_opt='colz')
         self.draw_fid_cut(scale=10)
