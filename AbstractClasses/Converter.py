@@ -154,6 +154,9 @@ class Converter:
     def get_final_file_path(self):
         return join(self.RootFileDir, 'TrackedRun{run:03d}.root'.format(run=self.RunNumber))
 
+    def get_alignment_file_path(self):
+        return join(self.TrackingDir, 'ALIGNMENT', 'telescope{}.dat'.format(self.TelescopeID))
+
     def convert_run(self):
         # check whether the root file w/ our w/o tracks already exist
         if file_exists(self.get_final_file_path()):
