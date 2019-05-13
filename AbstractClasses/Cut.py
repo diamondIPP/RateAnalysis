@@ -411,18 +411,19 @@ class Cut(Elementary):
             print 'There is no cut with the name "{name}"!'.format(name=name)
         self.update_all_cut()
 
-    def set_cut(self, name, value=None):
+    def update_cut(self, name, value=None):
         if name in self.CutStrings:
             self.CutStrings[name].SetTitle('')
             self.CutStrings[name] += value
+            self.update_all_cut()
         else:
             print 'There is no cut with the name "{name}"!'.format(name=name)
 
     def set_chi2(self, value):
         self.CutConfig['chi2X'] = value
         self.CutConfig['chi2Y'] = value
-        self.set_cut('chi2X', self.generate_chi2('x'))
-        self.set_cut('chi2Y', self.generate_chi2('y'))
+        self.update_cut('chi2X', self.generate_chi2('x'))
+        self.update_cut('chi2Y', self.generate_chi2('y'))
 
     def update_all_cut(self):
         self.all_cut = self.generate_all_cut()
@@ -446,12 +447,14 @@ class Cut(Elementary):
     def generate_consecutive_cuts(self):
         pass
 
-    def draw_cut_contributions(self, flat=False, short=False, show=True):
+    def draw_contributions(self, flat=False, short=False, show=True):
         set_root_output(show)
         contr = OrderedDict()
         n_events = self.analysis.Run.n_entries
         cut_events = 0
         for i, (key, cut) in enumerate(self.generate_consecutive_cuts().iteritems()):
+            if key == 'raw':
+                continue
             events = n_events - int(self.analysis.tree.Draw('1', cut, 'goff'))
             print key.rjust(18), '{0:5d} {1:04.1f}%'.format(events - cut_events, (1. - float(events) / n_events) * 100.)
             contr[key.title().replace('_', ' ')] = (events - cut_events, self.get_color())
