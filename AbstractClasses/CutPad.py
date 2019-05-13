@@ -1,7 +1,7 @@
 from Cut import Cut
 from Extrema import Extrema2D
 from functools import partial
-from ROOT import TCut, TH1F, TH2F, TF1, TCanvas, gROOT, TProfile, THStack, TCutG, TSpectrum
+from ROOT import TCut, TH1F, TF1, TCanvas, TCutG, TSpectrum
 from Utils import *
 from json import loads
 from numpy import array
@@ -36,7 +36,7 @@ class CutPad(Cut):
         self.all_cut = self.generate_all_cut()
         self.CutStrings['AllCuts'] = self.all_cut
 
-        self.ConsecutiveCuts = self.load_consecutive_cuts()
+        self.ConsecutiveCuts = self.generate_consecutive_cuts()
 
     # ==============================================
     # region GET CONFIG
@@ -96,13 +96,6 @@ class CutPad(Cut):
 
     def set_bucket(self, value):
         self.set_cut('bucket', value)
-
-    def load_consecutive_cuts(self):
-        dic = OrderedDict()
-        for key, value in self.CutStrings.iteritems():
-            if (str(value) or key == 'raw') and key != 'AllCuts' and not key.startswith('old'):
-                dic[key] = value
-        return dic
     # endregion
 
     # ==============================================
@@ -491,149 +484,9 @@ class CutPad(Cut):
         return do_pickle(pickle_path, func, redo=redo)
 
     def generate_consecutive_cuts(self):
-        cuts = OrderedDict()
-        for i, (key, value) in enumerate([(key, value) for key, value in self.CutStrings.iteritems() if str(value) and key != 'AllCuts' and not key.startswith('old')]):
-            new_cut = (cuts.values()[i - 1] if i else TCut('')) + value
-            key = 'Beam Stops' if 'beam' in key else key
+        cuts = OrderedDict([('raw', TCut('0', ''))])
+        for i, (key, value) in enumerate([(key, value) for key, value in self.CutStrings.iteritems() if str(value) and key != 'AllCuts' and not key.startswith('old')], 1):
+            new_cut = cuts.values()[i - 1] + value
+            key = 'beam_stops' if 'beam' in key else key
             cuts[key] = TCut('{n}'.format(n=i), str(new_cut))
         return cuts
-
-    def generate_timing_cut(self, sigma=4, show=False):
-        # picklepath = 'Configuration/Individual_Configs/TimingCut/{tc}_{run}_{mod}.pickle'.format(tc=self.TESTCAMPAIGN, run=self.analysis.run.RunNumber, mod=mode.title())
-        # if not bPlot:
-        #     return TCut('')
-        print 'generate_timing_cut with %s sigma' % sigma
-        cut = self.generate_special_cut(excluded=['timing', 'bucket'])
-        # Estimate Timing
-        print ' * Estimate Timing',
-        # hTiming = TH1F('hTiming','hTiming',4096,0,512)
-        draw_string = 'IntegralPeakTime[{num}]>>hTiming'.format(num=self.analysis.SignalNumber)
-        self.analysis.tree.Draw(draw_string,cut,'goff')
-        hTiming = gROOT.FindObject('hTiming')
-        mp = hTiming.GetBinCenter(hTiming.GetMaximumBin())
-        fGaus = TF1('fGaus','gaus',mp-10,mp+10)
-        hTiming.Fit(fGaus,'Q','goff',mp-10,mp+10)
-        orignal_mp = fGaus.GetParameter(1)
-        print '  - mean',orignal_mp,'sigma',fGaus.GetParameter(2)
-
-        # Extract Timing Correction
-        print ' * Extract Timing Correction'
-        hTimingVsTriggerCell_pfy = TProfile('hTimingVsTriggerCell_pfy','Orig. Peak Position vs Trigger Cell',1024,0,1024)
-        draw_string = 'IntegralPeakTime[{num}]:trigger_cell>>hTimingVsTriggerCell_pfy'.format(num=self.analysis.SignalNumber)
-        self.analysis.tree.Draw(draw_string,cut,'pfy goff')
-        fPol2 = TF1('fPol2','pol2',0,1024)
-        gROOT.GetListOfGlobalFunctions().Add(fPol2)
-        hTimingVsTriggerCell_pfy.Fit(fPol2,'Q','goff')
-
-
-        # Define Timing Correction
-        timing_correction = '({p0} + {p1}* trigger_cell + {p2} * trigger_cell*trigger_cell)'.format(
-            p0=fPol2.GetParameter(0),
-            p1=fPol2.GetParameter(1),
-            p2=fPol2.GetParameter(2)
-        )
-
-        print ' * Time Correction: ',
-        print fPol2.GetParameter(0), fPol2.GetParameter(1), fPol2.GetParameter(2)
-        print '                  ',timing_correction
-
-        # Get Time Corrected Sigma
-        hNew = TH1F('hNewTiming','Corrected Timing; corrected Peak Time /ns;number of entries',100,-10,10)
-        hNew.SetLineColor(2)
-        draw_string = 'IntegralPeakTime[{num}]-{cor}>>hNewTiming'.format(num=self.analysis.SignalNumber,cor= timing_correction)
-        self.analysis.tree.Draw(draw_string,cut,'goff')
-        hNew.Fit(fGaus,'Q','goff')
-        hNew.SetTitle('Corrected Timing: #sigma=%.3f'%fGaus.GetParameter(2))
-        print 'New Sigma:',fGaus.GetParameter(2),'@',fGaus.GetParameter(1)
-
-
-        # Define Cut
-        lowEdge = fGaus.GetParameter(1) - sigma * fGaus.GetParameter(2)
-        upEdge  = fGaus.GetParameter(1) + sigma * fGaus.GetParameter(2)
-        peakTime = 'IntegralPeakTime[{num}]'.format(num=self.analysis.SignalNumber)
-        timingCut = TCut('{lowEdge} < {peakTime} - {correctedTime} &&{peakTime} - {correctedTime} < {upEdge}'.format(
-            lowEdge=lowEdge,upEdge=upEdge,correctedTime=timing_correction,peakTime=peakTime))
-        timingCut.SetName('timing')
-
-        gROOT.SetBatch(0)
-        if show:
-            self.analysis.histos.append(hTimingVsTriggerCell_pfy)
-            self.analysis.histos.append(hNew)
-            # Get Original Timing Distribution
-            hOrigTiming = TH1F('hOrigTiming','Original Timing; Peak Time - MP / ns; number of entries',100,-10,10)
-            c2 = TCanvas()
-            print 'orignal_mp',orignal_mp
-            draw_string = 'IntegralPeakTime[{num}]-{mp}>>hOrigTiming'.format(num=self.analysis.SignalNumber,mp=orignal_mp)
-            print draw_string
-            self.analysis.tree.Draw(draw_string,cut,'')
-
-            self.analysis.canvases['cTiming2'] = c2
-            hOrigTiming.Draw()
-            fGaus2= TF1('fGaus2','gaus',-5,5)
-            fGaus2.SetLineColor(3)
-            hOrigTiming.Fit(fGaus2,'Q','')
-            print 'Original Sigma:',fGaus2.GetParameter(2),'@',fGaus2.GetParameter(1), 'with ',hOrigTiming.GetEntries()
-            hOrigTiming.SetTitle('Original Timing: #sigma=%.3f'%fGaus2.GetParameter(2))
-            self.analysis.histos.append(hOrigTiming)
-            c2.Update()
-
-            # Get New Timing with applied Cut
-            hNewTiming2 = hNew.Clone('hNewTiming2')
-            hNewTiming2.SetTitle('Corrected Timing w Timing Cut')
-            hNewTiming2.SetLineColor(4)
-            fGaus3 = fGaus.Clone('fGaus3')
-            draw_string = 'IntegralPeakTime[{num}]-{cor}>>hNewTiming2'.format(num=self.analysis.SignalNumber,cor= timing_correction)
-            self.analysis.tree.Draw(draw_string,cut+timingCut,'goff')
-            fGaus3.SetLineColor(5)
-            fGaus3.SetLineStyle(2)
-            hNewTiming2.Fit(fGaus3,'Q')
-            self.analysis.histos.append(hNewTiming2)
-
-
-            hTimingVsTriggerCellCorrected_pfy = TProfile('hTimingVsTriggerCellCorrected_pfy','Corrected Peak Position vs Trigger Cell',1024,0,1024)
-            draw_string = 'IntegralPeakTime[{num}]-{pol}:trigger_cell>>hTimingVsTriggerCellCorrected_pfy'.format(num=self.analysis.SignalNumber,pol=timing_correction)
-            self.analysis.tree.Draw(draw_string,cut,'colz goff')
-            self.analysis.histos.append(hTimingVsTriggerCellCorrected_pfy)
-
-            hTimingVsTriggerCellCorrected2_pfy = TProfile('hTimingVsTriggerCellCorrected2_pfy','Corrected Peak Position vs Trigger Cell',1024,0,1024)
-            draw_string = 'IntegralPeakTime[{num}]-{pol}:trigger_cell>>hTimingVsTriggerCellCorrected2_pfy'.format(num=self.analysis.SignalNumber,pol=timing_correction)
-            self.analysis.tree.Draw(draw_string,cut+timingCut,'colz goff')
-            hTimingVsTriggerCellCorrected2_pfy.SetLineColor(3)
-            self.analysis.histos.append(hTimingVsTriggerCellCorrected2_pfy)
-
-
-            draw_string = 'IntegralPeakTime[{num}]-{pol}:trigger_cell>>hTimingVsTriggerCellCorrected'.format(num=self.analysis.SignalNumber,pol=timing_correction)
-            hTimingVsTriggerCellCorrected = TH2F('hTimingVsTriggerCellCorrected','Peak Position vs Trigger Cell',1024,0,1024,100,-10,10)
-            self.analysis.tree.Draw(draw_string,cut,'colz goff')
-            self.analysis.histos.append(hTimingVsTriggerCellCorrected)
-            c1 = TCanvas('cTiming','cTiming',1000,1000)
-            c1.Divide(2,2)
-
-            # Draw Orig Time vs cell with fit
-            c1.cd(1)
-            hTimingVsTriggerCell_pfy.Draw('')
-            c1.Update()
-
-            # Draw Stack of histos: hNewTiming, hOriginal, hNewTimingWithCut
-            c1.cd(3)
-            stack = THStack('stack','Time Comparison;time /ns;number of entries')
-            stack.Add(hNew)
-            stack.Add(hNewTiming2)
-            stack.Add(hOrigTiming)
-            stack.Draw('nostack')
-            c1.cd(3).BuildLegend()
-            c1.Update()
-            self.analysis.histos.append(stack)
-
-            # Draw Corrected Time vs cell with and without time cut
-            c1.cd(2)
-            hTimingVsTriggerCellCorrected_pfy.Draw()
-            hTimingVsTriggerCellCorrected2_pfy.Draw('same')
-            c1.Update()
-
-            #Draw Corrected Time vs cell  Profile
-            c1.cd(4)
-            hTimingVsTriggerCellCorrected.Draw('colz')
-            c1.Update()
-            self.analysis.canvases['cTiming'] = c1
-        return timingCut
