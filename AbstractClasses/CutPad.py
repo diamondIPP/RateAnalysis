@@ -195,9 +195,11 @@ class CutPad(Cut):
             return TCut('')
 
     def generate_bucket(self, threshold=None):
+        # TODO: bucket cut for high irradiation (low signals)
         sig = self.analysis.SignalName
         threshold = self.calc_signal_threshold(show=False) if threshold is None else threshold
         string = '!(!({old_buck}) && ({sig} < {thres}))'.format(sig=sig, thres=threshold, old_buck=self.CutStrings['old_bucket'])
+        # string = self.CutStrings['old_bucket'] if threshold == -30 else string
         cut = TCut(string) if self.CutStrings['old_bucket'].GetTitle() else TCut('')
         return cut
 
@@ -261,6 +263,11 @@ class CutPad(Cut):
         cut.SetName('Pulser{0}'.format('BeamOn' if beam_on else 'BeamOff'))
         cut += self.CutStrings['beam_interruptions'] if beam_on else '!({0})'.format(self.JumpCut)
         cut += '!({0})'.format(self.CutStrings['pulser'])
+        return cut
+
+    def get_bucket_cut(self):
+        cut = self.CutStrings['fiducial'] + self.CutStrings['pulser'] + TCut('!({})'.format(self.CutStrings['old_bucket']))
+        cut.SetName('Bucket')
         return cut
 
     def generate_channel_cutstrings(self):
@@ -408,7 +415,7 @@ class CutPad(Cut):
         h = histo
         fit = TF1('fit', 'gaus(0) + gaus(3) + gaus(6)', h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax())
         s = TSpectrum(3)
-        n = s.Search(h, 2)
+        n = s.Search(h, 2.5)
         points = [(s.GetPositionX()[i], s.GetPositionY()[i]) for i in [0, 1 if n == 2 else 2]]
         x1, x2 = (p[0] for p in sorted(points))
         y1, y2 = (p[1] for p in sorted(points))
