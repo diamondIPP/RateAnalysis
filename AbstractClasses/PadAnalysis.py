@@ -77,10 +77,10 @@ class PadAnalysis(Analysis):
             # alignment
             self.IsAligned = self.check_alignment(show=False)
 
+            self.Timing.reload_cut()
+
         # currents
         self.Currents = Currents(self)
-
-        self.Timing.reload_cut()
 
     def __del__(self):
         for c in gROOT.GetListOfCanvases():
@@ -524,7 +524,6 @@ class PadAnalysis(Analysis):
         # TODO fix errors or extract from mean
 
         sig = self.SignalName if sig is None else sig
-        bin_size = bin_size if bin_size is not None else self.BinSize
         correction = '' if not corr else '_eventwise'
         cut_str = self.Cut.all_cut if cut is None else TCut(cut)
         suffix = '{bins}{cor}_{reg}{c}'.format(bins=bin_size, cor=correction, reg=self.get_all_signal_names()[sig], c='' if cut is None else cut_str.GetName())
@@ -537,8 +536,7 @@ class PadAnalysis(Analysis):
             self.PulseHeight = prof
             return prof
 
-        p = func() if redo else None
-        p = do_pickle(picklepath, func, p)
+        p = do_pickle(picklepath, func, redo=redo)
         set_statbox(entries=2, only_fit=True, w=.3)
         y_vals = [p.GetBinContent(i) for i in xrange(2, p.GetNbinsX() + 1)]
         self.format_histo(p, name='Fit Result', x_tit='Time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6, x_range=[self.Run.StartTime, self.get_time_bins()[1][-1]],
@@ -905,42 +903,28 @@ class PadAnalysis(Analysis):
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
 
-    def compare_consecutive_cuts(self, scale=False, show=True, save_single=True, short=False, x_range=None):
-        x_range = [-50, 500] if x_range is None else x_range
-        self.reset_colors()
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
+    def compare_consecutive_cuts(self, scale=False, show=True, save_single=True, short=False, x_range=None, redo=False):
         short_cuts = ['raw', 'saturated', 'timing', 'pulser', 'tracks', 'bucket', 'fiducial']
-        legend = self.make_legend(.75 if short else .71, .88, nentries=len(self.Cut.ConsecutiveCuts) + 1 if not short else len(short_cuts) + 1)
-        cut = TCut('consecutive', '')
+        legend = self.make_legend(.75 if short else .71, .88, nentries=len(self.Cut.ConsecutiveCuts) + 1 if not short else len(short_cuts) + 1, scale=.7)
         stack = THStack('scc', 'Signal Distribution with Consecutive Cuts')
-        i = 0
         leg_style = 'l' if scale else 'f'
-        for key, value in self.Cut.ConsecutiveCuts.iteritems():
-            if short:
-                if key not in short_cuts:
-                    continue
+        for i, (key, cut) in enumerate(self.Cut.ConsecutiveCuts.iteritems()):
+            if short and key not in short_cuts:
+                continue
             self.log_info('adding cut {0}'.format(key))
-            key = 'beam_stops' if key.startswith('beam') else key
-            cut += value
-            save_name = 'signal_distribution_{n}cuts'.format(n=i)
-            h = TH1F('h_{0}'.format(i), 'signal with {n} cuts'.format(n=i), 550, *x_range)
-            self.tree.Draw('{name}>>h_{i}'.format(name=self.SignalName, i=i), cut, 'goff')
+            h = self.draw_signal_distribution(cut=cut, show=False, redo=redo)
             if scale:
                 self.scale_histo(h)
-            self.save_histo(h, save_name, show=False, save=save_single)
+            self.save_histo(h, 'signal_distribution_{n}cuts'.format(n=i), show=False, save=save_single)
             color = self.get_color()
-            self.format_histo(h, color=color, stats=0)
-            if not scale:
-                h.SetFillColor(color)
+            self.format_histo(h, color=color, stats=0, fill_color=color if not scale else None)
             stack.Add(h)
             leg_entry = '+ {0}'.format(key) if i else key
             legend.AddEntry(h, leg_entry, leg_style)
-            i += 1
         if short:
-            h = self.draw_signal_distribution(show=False, bin_width=550, x_range=x_range)
+            h = self.draw_signal_distribution(show=False, x_range=x_range)
             color = self.get_color()
-            self.format_histo(h, color=color, stats=0)
-            h.SetFillColor(color) if not scale else do_nothing()
+            self.format_histo(h, color=color, stats=0, fill_color=color if not scale else None)
             stack.Add(h)
             legend.AddEntry(h, '+ other', leg_style)
         self.format_histo(stack, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=1.9, draw_first=True)
@@ -949,7 +933,7 @@ class PadAnalysis(Analysis):
         stack.SetName(stack.GetName() + 'logy')
         # stack.SetMaximum(stack.GetMaximum() * 1.2)
         self.save_histo(stack, '{name}LogY'.format(name=save_name), show, self.save_dir, logy=True, draw_opt='nostack', lm=0.14)
-        gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
+        self.reset_colors()
 
     def draw_fiducial_cut(self, scale=1):
         self.Cut.draw_fid_cut(scale)
@@ -968,39 +952,28 @@ class PadAnalysis(Analysis):
         cut.Draw()
 
     def draw_cut_means(self, show=True, short=False):
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
         gr = self.make_tgrapherrors('gr_cm', 'Mean of Pulse Height for Consecutive Cuts')
-        cut = TCut('consecutive', '')
-        names = []
-        i = 1
         gr.SetPoint(0, 0, 0)
-        for key, value in self.Cut.CutStrings.iteritems():
-            if (str(value) or key == 'raw') and key not in ['AllCuts', 'old_bucket']:
-                if short:
-                    self.log_info('adding cut {0}'.format(key))
-                    if key not in ['raw', 'saturated', 'timing', 'bucket', 'pulser', 'tracks', 'fiducial']:
-                        continue
-                key = 'beam_stops' if key.startswith('beam') else key
-                cut += value
-                h = self.draw_signal_distribution(cut=cut, show=False)
-                self.log_info('{0}, {1}, {2}'.format(key, h.GetMean(), h.GetMeanError()))
-                gr.SetPoint(i, i, h.GetMean())
-                gr.SetPointError(i, 0, h.GetMeanError())
-                names.append(key)
-                i += 1
-        if short:
-            h = self.draw_signal_distribution(show=False)
+        short_keys = ['raw', 'saturated', 'timing', 'bucket', 'pulser', 'tracks', 'fiducial']
+        cuts = OrderedDict((key, item) for key, item in self.Cut.ConsecutiveCuts.iteritems() if not short or key in short_keys)
+        for i, (key, cut) in enumerate(cuts.iteritems(), 1):
+            self.log_info('adding cut {0}'.format(key))
+            h = self.draw_signal_distribution(cut=cut, show=False)
+            self.log_info('{0}, {1}, {2}'.format(key, h.GetMean(), h.GetMeanError()))
             gr.SetPoint(i, i, h.GetMean())
             gr.SetPointError(i, 0, h.GetMeanError())
-            names.append('other')
+        if short:
+            h = self.draw_signal_distribution(show=False)
+            gr.SetPoint(gr.GetN(), gr.GetN(), h.GetMean())
+            gr.SetPointError(gr.GetN(), 0, h.GetMeanError())
         self.format_histo(gr, markersize=.2, fill_color=17, y_tit='Mean Pulse Height [au]', y_off=1.4)
         y = [gr.GetY()[i] for i in xrange(1, gr.GetN())]
         gr.GetYaxis().SetRangeUser(min(y) - 1, max(y) + 1)
         gr.GetXaxis().SetLabelSize(.05)
         for i in xrange(1, gr.GetN()):
             bin_x = gr.GetXaxis().FindBin(i)
-            gr.GetXaxis().SetBinLabel(bin_x, names[i - 1])
-        self.ROOTObjects.append(self.save_histo(gr, 'CutMeans{s}'.format(s='Short' if short else ''), show, self.save_dir, bm=.20, draw_opt='bap', lm=.12, x=1.5))
+            gr.GetXaxis().SetBinLabel(bin_x, cuts.keys()[i - 1])
+        self.ROOTObjects.append(self.save_histo(gr, 'CutMeans{s}'.format(s='Short' if short else ''), show, self.save_dir, bm=.25, draw_opt='bap', lm=.12, x=1.5))
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
 
     def draw_distance_vs_ph(self, show=True, steps=10):
