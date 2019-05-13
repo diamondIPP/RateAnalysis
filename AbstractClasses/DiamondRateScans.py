@@ -663,6 +663,23 @@ class DiaScans(Elementary):
         self.format_histo(g, y_tit='Beam Induced Current / Pulse Height', x_tit='Irradiation [1e14 n/cm^{2}]')
         self.save_histo(g, 'BeamInducedErrors', draw_opt='alp', show=show)
 
+    def draw_means(self, y_range=None, show=True):
+        y_values = [make_ufloat(mean_sigma([dic['ph'] for dic in ph.itervalues()])) for ph in self.get_pulse_heights()]
+        g = self.make_tgrapherrors('gms', 'Pulse Height Evolution', x=range(1, len(y_values) + 1), y=y_values)
+        self.format_histo(g, x_tit='Run Plan', y_tit='Mean Pulse Height [mV]', y_off=1.2, x_range=[-3, len(y_values) + 2], x_off=2.5, y_range=y_range)
+        for i, sel in enumerate(self.RunSelections, 1):
+            g.GetXaxis().SetBinLabel(g.GetXaxis().FindBin(i), '{} - {}'.format(make_tc_str(sel.TESTCAMPAIGN, 0), sel.SelectedRunplan))
+        self.save_histo(g, 'Means{}'.format(self.Name.title().replace('-', '').replace('_', '')), show, draw_opt='ap', bm=.2, x=1.5, y=.75, gridy=True)
+
+    def draw_sigmas(self, y_range=None, show=True):
+        mean_sigmas = [mean_sigma([dic['ph'] for dic in ph.itervalues()]) for ph in self.get_pulse_heights()]
+        y_values = [make_ufloat((0, 100 * s / m)) for m, s in mean_sigmas]
+        g = self.make_tgrapherrors('gms', 'Pulse Height STD Evolution', x=range(1, len(y_values) + 1), y=y_values)
+        self.format_histo(g, x_tit='Run Plan', y_tit='Pulse Height Standard Deviation [%]', y_off=1.2, x_range=[-3, len(y_values) + 2], x_off=2.5, y_range=y_range)
+        for i, sel in enumerate(self.RunSelections, 1):
+            g.GetXaxis().SetBinLabel(g.GetXaxis().FindBin(i), '{} - {}'.format(make_tc_str(sel.TESTCAMPAIGN, 0), sel.SelectedRunplan))
+        self.save_histo(g, 'Means{}'.format(self.Name.title().replace('-', '').replace('_', '')), show, draw_opt='ap', bm=.2, x=1.5, y=.75, gridy=True)
+
 
 if __name__ == '__main__':
     main_parser = ArgumentParser()

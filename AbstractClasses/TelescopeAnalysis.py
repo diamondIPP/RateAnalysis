@@ -472,10 +472,10 @@ class Analysis(Elementary):
         return do_pickle(pickle_path, f, redo=show)
     # endregion
 
-    def fit_langau(self, h=None, nconv=30, show=True, chi_thresh=8):
+    def fit_langau(self, h=None, nconv=30, show=True, chi_thresh=8, fit_range=None):
         h = self.draw_signal_distribution(show=show) if h is None and hasattr(self, 'draw_signal_distribution') else h
         h = self.draw_pulse_height_disto(show=show) if h is None and hasattr(self, 'draw_pulse_height_disto') else h
-        fit = Langau(h, nconv)
+        fit = Langau(h, nconv, fit_range)
         fit.langaufit()
         if show:
             fit.Fit.Draw('lsame')
