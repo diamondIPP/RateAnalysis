@@ -233,14 +233,18 @@ class Converter:
     def rename_tracking_file(self):
         rename(self.get_tracking_file_path(), self.get_final_file_path())
 
-    def add_tracking(self):
-        print_banner('START TRACKING FOR RUN {}'.format(self.RunNumber))
+    def tracking_tel(self, action='0'):
+        root_file = self.get_final_file_path() if file_exists(self.get_final_file_path()) else self.get_root_file_path()
+        cmd_list = [join(self.TrackingDir, 'TrackingTelescope'), root_file, str(action), str(self.TelescopeID), '' if self.Type == 'pad' else '1']
+        print ' '.join(cmd_list)
         curr_dir = getcwd()
         chdir(self.TrackingDir)
-        cmd_list = [join(self.TrackingDir, 'TrackingTelescope'), self.get_root_file_path(), '0', str(self.TelescopeID), '' if self.Type == 'pad' else '1']
-        print ' '.join(cmd_list)
         check_call(cmd_list)
         chdir(curr_dir)
+
+    def add_tracking(self):
+        print_banner('START TRACKING FOR RUN {}'.format(self.RunNumber))
+        self.tracking_tel()
         # move file from tracking directory to data directory
         move(join(self.TrackingDir, basename(self.get_tracking_file_path())), self.RootFileDir)
         self.rename_tracking_file()
@@ -359,8 +363,8 @@ if __name__ == '__main__':
 
     p = ArgumentParser()
 
-    p.add_argument('run', nargs='?', default=324, type=int)
-    p.add_argument('-tc', '--testcampaign', nargs='?', default=None)
+    p.add_argument('run', nargs='?', default=398, type=int)
+    p.add_argument('-tc', '--testcampaign', nargs='?', default='201510')
     args = p.parse_args()
 
     zrun = Run(args.run, test_campaign=args.testcampaign, tree=False, verbose=True)
