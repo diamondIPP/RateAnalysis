@@ -355,20 +355,23 @@ class TimingAnalysis(Elementary):
     # --------------------------
 
     def draw_integration(self, event=None, region=None, integral=None, max_peak=True, pedestal=False, ped_int=False, show=True, wide=True):
-        h = self.Ana.draw_single_waveform(event=event, show=show if wide else False)
+        h = self.Ana.Waveform.draw_single(event=event, show=show if wide else False)
         r = array(self.Ana.SignalRegion if region is None else region) * self.Ana.DigitiserBinWidth
         i = array(self.Ana.PeakIntegral if integral is None or not integral else integral) * self.Ana.DigitiserBinWidth
         if not wide:
             self.format_histo(h, lab_size=.04, tit_size=.04, y_off=1.3, x_range=[r[0] - 20, r[1] + 20])
             self.draw_histo(h, draw_opt='apl', lm=.11, show=show, gridx=True, gridy=True)
-        if region or region is None and integral is not None:
-            self.draw_box(r[0], -1000, r[1], 1000, color=2, style=7, fillstyle=3002, width=2)
         x_bins = xrange(*[int(v / self.Ana.DigitiserBinWidth) for v in [r[0] - 20, r[1]]])
         values = OrderedDict((j, h.GetY()[j]) for j in x_bins)
         x_vals = [h.GetX()[j] for j in x_bins]
         y_vals = values.values()
         max_x = h.GetX()[max(values, key=lambda val: abs(values[val]))]
         ymin, ymax = h.GetYaxis().GetXmin(), h.GetYaxis().GetXmax()
+        if region or region is None and integral is not None:
+            b = self.draw_box(r[0], -1000, r[1], 1000, color=2, style=7, fillstyle=3002, width=2)
+            l = self.make_legend(x2=0.935, y2=.5, w=.15, scale=1.5)
+            l.AddEntry(b, 'Signal Region')
+            l.Draw()
         if max_peak and not pedestal:
             self.draw_vertical_line(max_x, -1000, 1000, color=4, w=3)
             self.draw_tlatex(max_x + 2, ymax - .05 * (ymax - ymin), 'Peak Position', color=4, align=12)
@@ -396,7 +399,10 @@ class TimingAnalysis(Elementary):
                 x = [x1, x1] + [x_vals[j] for j in xrange(len(x_vals) - 1) if x_vals[j] > x1 and x_vals[j - 1] < x2] + [x2, x2]
                 y = [0, y1] + [y_vals[j] for j in xrange(len(x_vals) - 1) if x_vals[j] > x1 and x_vals[j - 1] < x2] + [y2, 0]
                 self.draw_n_box(x=x, y=y, color=4, name='b', fillstyle=3344)
-        self.save_histo(h, 'Integtation', draw_opt='same', canvas=get_last_canvas())
+        self.save_histo(h, 'Integration', draw_opt='same', canvas=get_last_canvas())
+
+    def draw_signal_region(self, event=None, wide=True, show=True):
+        self.draw_integration(event=event, integral=False, max_peak=False, pedestal=False, ped_int=False, show=show, wide=wide)
 
     def draw_max_peaks(self, cut=None):
         self.set_statbox(entries=True)
