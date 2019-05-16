@@ -97,6 +97,7 @@ class Waveform(Elementary):
         if not self.Run.wf_exists(channel):
             return
         start_event = self.get_start_event(start_event)
+        self.log_info('Starting at event {}'.format(start_event))
         n_events = self.Run.find_n_events(n, cut, start_event)
         self.Tree.SetEstimate(n * 1024)
         n_entries = self.Tree.Draw('wf{ch}:trigger_cell'.format(ch=channel), cut, 'goff', n_events, start_event)
