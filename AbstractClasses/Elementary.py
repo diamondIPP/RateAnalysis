@@ -253,13 +253,6 @@ class Elementary(Draw):
             pass
 
     @staticmethod
-    def normalise_histo(histo, to100=False):
-        h = histo
-        fac = 100 if to100 else 1
-        h.Scale(fac / h.Integral(1, h.GetNbinsX()))
-        return h
-
-    @staticmethod
     def make_class_from_instance(instance):
         copy = deepcopy(instance.__dict__)
         instance_factory = type('instance_factory', (instance.__class__, ), {})
