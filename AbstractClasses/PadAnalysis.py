@@ -878,9 +878,9 @@ class PadAnalysis(Analysis):
                 c1.cd()
                 self.tree.Draw("{name}>>{histo}".format(name=self.SignalName, histo=histo_name), value)
                 if scale:
-                    histo = self.scale_histo(histo)
+                    histo = scale_histo(histo, to_max=True)
                 else:
-                    histo = self.normalise_histo(histo)
+                    histo = normalise_histo(histo, from_min=True, x_range=[0, 30])
                 histo.Draw()
                 c1.Update()
                 self.save_plots(save_name, canvas=c1, sub_dir=self.save_dir)
@@ -914,7 +914,7 @@ class PadAnalysis(Analysis):
             self.log_info('adding cut {0}'.format(key))
             h = self.draw_signal_distribution(cut=cut, show=False, redo=redo)
             if scale:
-                self.scale_histo(h)
+                scale_histo(h, to_max=True, x_range=[30, 500])
             self.save_histo(h, 'signal_distribution_{n}cuts'.format(n=i), show=False, save=save_single)
             color = self.get_color()
             self.format_histo(h, color=color, stats=0, fill_color=color if not scale else None)
@@ -1079,29 +1079,6 @@ class PadAnalysis(Analysis):
             h.Draw('same')
         self.ROOTObjects.append([histos])
         self.reset_colors()
-
-    @staticmethod
-    def normalise_histo(histo, to100=False):
-        h = histo
-        h.GetXaxis().SetRangeUser(0, 30)
-        min_bin = h.GetMinimumBin()
-        h.GetXaxis().UnZoom()
-        max_bin = h.GetNbinsX() - 1
-        integral = h.Integral(min_bin, max_bin)
-        if integral:
-            fac = 100 if to100 else 1
-            h.Scale(fac / integral)
-        return h
-
-    @staticmethod
-    def scale_histo(histo):
-        h = histo
-        h.GetXaxis().SetRangeUser(30, 500)
-        maximum = h.GetBinContent(h.GetMaximumBin())
-        h.GetXaxis().UnZoom()
-        if maximum:
-            h.Scale(1. / maximum)
-        return h
 
     def analyse_signal_histograms(self):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
