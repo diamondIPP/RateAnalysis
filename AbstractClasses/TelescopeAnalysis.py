@@ -60,14 +60,15 @@ class Analysis(Elementary):
 
     # ============================================================================================
     # region TRACKS
-    def draw_chi2(self, mode=None, show=True, save=True, fit=False, prnt=True, show_cut=False, x_range=None, cut=''):
+    def draw_chi2(self, mode=None, show=True, save=True, fit=False, prnt=True, show_cut=False, x_range=None, cut='', normalise=None):
         mode = 'tracks' if mode is None else mode
         set_root_warnings(False)
         h = TH1F('hcs{}'.format(mode), '#chi^{2} in ' + mode.title(), 500, 0, 100)
         self.tree.Draw('chi2_{m}>>hcs{m}'.format(m=mode), TCut('n_tracks > 0') + TCut(cut), 'goff')
         yq = zeros(1)
         h.GetQuantiles(1, yq, array([.99]))
-        self.format_histo(h, x_tit='#chi^{2}', y_tit='Number of Entries', y_off=2, x_range=[0, yq[0]] if x_range is None else x_range)
+        y_tit = '{} of Entries'.format('Number' if normalise is None else 'Percentage')
+        self.format_histo(h, x_tit='#chi^{2}', y_tit=y_tit, y_off=2, x_range=[0, yq[0]] if x_range is None else x_range, normalise=normalise)
         self.set_statbox(fit=fit, entries=True, n_entries=5, w=.3)
         self.draw_histo(h, show=show, prnt=prnt, lm=.13, both_dias=True)
         f = TF1('f', '[0]*TMath::GammaDist(x, {ndf}/2, 0, 2)'.format(ndf=4 if mode == 'tracks' else 2))
@@ -90,14 +91,15 @@ class Analysis(Elementary):
         self.draw_chi2('x', show_cut=True, show=show, x_range=x_range, prnt=prnt)
         self.draw_chi2('y', show_cut=True, show=show, x_range=x_range, prnt=prnt)
 
-    def draw_angle_distribution(self, mode='x', show=True, print_msg=True, cut=None, show_cut=False):
+    def draw_angle_distribution(self, mode='x', show=True, print_msg=True, cut=None, show_cut=False, normalise=None):
         """ Displays the angle distribution of the tracks. """
         assert mode in ['x', 'y']
         cut = cut if cut is not None else TCut('angle_x > -900')
         set_root_output(False)
         h = TH1F('had', 'Track Angle Distribution in ' + mode.title(), 320, -4, 4)
         self.tree.Draw('{v}_{mod}>>had'.format(v='angle', mod=mode), cut, 'goff')
-        self.format_histo(h, name='had{}'.format(mode), x_tit='Track Angle {} [deg]'.format(mode.title()), y_tit='Number of Entries', y_off=2, lw=2)
+        y_tit = '{} of Entries'.format('Number' if normalise is None else 'Percentage')
+        self.format_histo(h, name='had{}'.format(mode), x_tit='Track Angle {} [deg]'.format(mode.title()), y_tit=y_tit, y_off=2, lw=2, normalise=normalise)
         self.set_statbox(all_stat=True, n_entries=5, w=.3)
         self.draw_histo(h, '', show, lm=.14, prnt=print_msg, both_dias=True)
         if show_cut:
