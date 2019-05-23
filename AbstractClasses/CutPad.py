@@ -313,6 +313,7 @@ class CutPad(Cut):
             fid = self.CutStrings['fiducial']
             cut_string = '!({buc})&&{pul}{fid}'.format(buc=self.CutStrings['old_bucket'], pul=self.CutStrings['pulser'], fid='&&{}'.format(fid.GetTitle()) if fid.GetTitle() else '')
             self.analysis.tree.Draw(draw_string, cut_string, 'goff')
+            self.format_histo(h, x_tit='Pulse Height [mV]', y_tit='Entries', y_off=1.8, stats=0, fill_color=self.FillColor)
             entries = h.GetEntries()
             if entries < 2000:
                 self.add_info(t)
@@ -366,7 +367,6 @@ class CutPad(Cut):
                 c = TCanvas('c_all', 'Signal Threshold Overview', self.Res, self.Res)
                 c.Divide(2, 2)
             # Bucket cut plot
-            self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.8, stats=0)
             self.draw_histo(h, '', show or show_all, lm=.135, canvas=c.cd(1) if show_all else None)
             self.draw_y_axis(max_err, h.GetYaxis().GetXmin(), h.GetMaximum(), 'threshold  ', off=.3, line=True)
             ped_fit.SetLineStyle(2)
