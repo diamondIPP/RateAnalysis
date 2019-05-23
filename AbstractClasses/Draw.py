@@ -321,7 +321,10 @@ class Draw:
             set_root_output(True)
         do(h.SetTitle, title)
         do(h.SetName, name)
-        do(normalise_histo, h, normalise)
+        if normalise is not None:
+            y_tit = y_tit.replace('Number', 'Percentage')
+            h.Sumw2(True)
+            normalise_histo(h)
         try:
             h.SetStats(stats)
         except AttributeError or ReferenceError:
