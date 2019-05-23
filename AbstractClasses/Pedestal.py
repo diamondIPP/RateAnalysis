@@ -44,7 +44,7 @@ class PedestalAnalysis(Elementary):
     def get_noise(self):
         return make_ufloat(self.draw_disto_fit(show=False, prnt=False), par=2)
 
-    def draw_disto(self, name=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True):
+    def draw_disto(self, name=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True, normalise=None):
         show = False if not save else show
         cut = self.Cut.all_cut if cut is None else TCut(cut)
         signal_name = self.SignalName if name is None else name
@@ -54,26 +54,26 @@ class PedestalAnalysis(Elementary):
             self.log_info('Drawing pedestal distribution for {d} of run {r}'.format(d=self.DiamondName, r=self.RunNumber), prnt=prnt)
             h1 = TH1F('h_pd', 'Pedestal Distribution', 2400, -150, 150)
             self.Tree.Draw('{name}>>h_pd'.format(name=signal_name), cut, 'goff')
-            self.format_histo(h1, 'Pedestal', x_tit='Pedestal [au]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)
             return h1
 
-        if show or save:
-            set_statbox(opt='neMR', entries=6, w=.3)
+        if show:
+            self.set_statbox(all_stat=True, n_entries=6, w=.3)
         h = do_pickle(picklepath, func, redo=redo)
+        self.format_histo(h, 'Pedestal', x_tit='Pedestal [mV]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor, normalise=normalise)
         set_drawing_range(h, rfac=.2)
         self.save_histo(h, 'PedestalDistribution{}'.format(cut.GetName()), show, save=save, logy=logy, lm=.13, prnt=prnt)
         self.Histogram = h
         return h
 
-    def draw_disto_fit(self, name=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True, draw_cut=False):
+    def draw_disto_fit(self, name=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True, draw_cut=False, normalise=None):
         cut = self.Cut.all_cut if cut is None else TCut(cut)
         cut = self.Cut.generate_special_cut(excluded='ped_sigma') if draw_cut else cut
         suffix = '{r}_fwhm_{c}'.format(c=cut.GetName(), r=self.get_all_signal_names()[self.SignalName if name is None else name])
         picklepath = self.make_pickle_path('Pedestal', run=self.RunNumber, ch=self.DiamondNumber, suf=suffix)
         show = False if not save else show
-        self.set_statbox(fit=True, entries=8, w=.3)
-        h = self.draw_disto(name, cut, logy, show=False, save=save, redo=redo, prnt=prnt)
-        set_drawing_range(h)
+        self.set_statbox(fit=True, n_entries=6, w=.35)
+        h = self.draw_disto(name, cut, logy, show=False, save=save, redo=redo, prnt=prnt, normalise=normalise)
+        set_drawing_range(h, thresh=h.GetMaximum() * .02)
         fit_pars = self.fit_fwhm(h, do_fwhm=True, draw=True)
         f = deepcopy(h.GetFunction('gaus'))
         f.SetNpx(1000)
@@ -86,6 +86,7 @@ class PedestalAnalysis(Elementary):
             h.Draw('same')
             b.Draw('l')
             gPad.RedrawAxis()
+        h.Sumw2(False)
         self.save_plots('PedestalDistributionFit{}'.format(cut.GetName()), save=save, prnt=prnt, show=show)
         self.Histogram = h
         server_pickle(picklepath, fit_pars)
