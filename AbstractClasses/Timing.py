@@ -83,7 +83,7 @@ class TimingAnalysis(Elementary):
         fine_corr = ' - {}'.format(self.make_fine_correction_str(cut, redo=redo)) if fine_corr else ''
         return '{}{}{}'.format(self.Ana.get_peak_name(t_corr=corr, region=region), '*{}'.format(self.Ana.DigitiserBinWidth) if not corr else '', fine_corr)
 
-    def draw_peaks(self, fit=True, cut=None, corr=True, fine_corr=True, show=True, prnt=True, redo=False, save=True, show_cut=False):
+    def draw_peaks(self, fit=True, cut=None, corr=True, fine_corr=True, show=True, prnt=True, redo=False, save=True, show_cut=False, normalise=None):
 
         cut = self.TimingCut if cut is None else TCut(cut)
         pickle_path = self.make_pickle_path('Timing', 'Peak', self.RunNumber, self.DiamondNumber, suf='{}_{}{}'.format(cut.GetName(), int(corr), int(fine_corr)))
@@ -102,9 +102,9 @@ class TimingAnalysis(Elementary):
         if h is None:
             return
         self.set_statbox(fit=fit, n_entries=5, w=.2, all_stat=not fit)
+        self.format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=2.0, fill_color=self.FillColor, normalise=normalise)
         if fit:
             self.fit_peaks(h)
-        self.format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=2.0, fill_color=self.FillColor)
         set_drawing_range(h, thresh=.05 * h.GetMaximum(), lfac=.1, rfac=.7)
         prefix = 'Raw' if not corr else 'Fine' if fine_corr else ''
         self.draw_histo(h, lm=.13, show=show, prnt=prnt)
@@ -163,6 +163,8 @@ class TimingAnalysis(Elementary):
         fit2 = TF1('f1', 'gaus', mean_ - 5 * sigma, mean_ + 5 * sigma)
         fit2.SetParameters(fit.GetParameters())
         fit2.SetLineStyle(2)
+        fit.SetLineColor(1)
+        fit2.SetLineColor(1)
         h.GetListOfFunctions().Add(fit)
         h.GetListOfFunctions().Add(fit2)
         return fit
