@@ -130,7 +130,7 @@ class PedestalAnalysis(Elementary):
         self.save_histo(h, 'PedestalTime', show, lm=.12, draw_opt='colz', rm=.15)
         return h
 
-    def draw_pulse_height(self, signal_name=None, show=True, sigma=False, redo=False):
+    def draw_pulse_height_histo(self, signal_name=None, show=True, sigma=False, redo=False):
         signal_name = self.Ana.generate_signal_name(self.SignalName if signal_name is None else signal_name, evnt_corr=False)
         picklepath = self.make_pickle_path('Pedestal', 'Evolution', run=self.RunNumber, ch=self.DiamondNumber, suf=self.get_all_signal_names()[signal_name])
 
@@ -153,13 +153,13 @@ class PedestalAnalysis(Elementary):
 
     def fit_pulse_height(self, signal_name=None, show=True, sigma=False):
         set_statbox(entries=4, only_fit=True)
-        g = self.draw_pulse_height(signal_name, False, sigma)
+        g = self.draw_pulse_height_histo(signal_name, False, sigma)
         fit = g.Fit('pol0', 'qs')
         self.save_histo(g, '{n}Fit'.format(n=g.GetTitle()), show, lm=.12, draw_opt='apl')
         return FitRes(fit)
 
     def draw_sigma(self, signal_name=None):
-        return self.draw_pulse_height(signal_name, sigma=True)
+        return self.draw_pulse_height_histo(signal_name, sigma=True)
 
     def compare(self):
         g = self.make_tgrapherrors('g_cp', 'Pedestal Comparison')
