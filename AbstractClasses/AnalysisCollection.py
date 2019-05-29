@@ -3,7 +3,7 @@
 # IMPORTS
 # ==============================================
 from argparse import ArgumentParser
-from numpy import log, concatenate, zeros, sign
+from numpy import concatenate, zeros, sign
 
 from ROOT import gROOT, TCanvas, TLegend, TExec, gStyle, TMultiGraph, THStack, TF1, TH1F, TH2F, TH2I, TProfile2D, TProfile, TCut
 
@@ -791,38 +791,12 @@ class AnalysisCollection(Elementary):
 
     # ============================================
     # region 2D SIGNAL MAP
-    def draw_mean_fwhm(self, saveplots=True, flux=True, draw=True):
-        """
-        Creates the FWHM Distribution of all selected MeanSignalHistograms
-        :param saveplots: if True saves the plot
-        :param flux: draw vs flux if True else vs run
-        :param draw:
-        """
-        if not draw:
-            gROOT.SetBatch(1)
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        mode = 'Flux' if flux else 'Run'
-        prefix = 'FWHM of Mean Signal Histogram: {dia} @ {bias}V vs {mode} '.format(mode=mode, dia=self.collection.values()[0].diamond_name, bias=self.Bias)
-        gr = self.make_tgrapherrors('pedestal', prefix)
-        conversion_factor = 2 * sqrt(2 * log(2))  # sigma to FWHM
-        i = 0
-        for key, ana in self.collection.iteritems():
-            fit = ana.fit_sig_map_disto()
-            x = ana.Run.Flux if flux else key
-            gr.SetPoint(i, x, fit.Parameter(2) * conversion_factor)
-            gr.SetPointError(i, 0, fit.ParError(2) * conversion_factor)
-            i += 1
-        c = TCanvas('c', 'FWHM', 1000, 1000)
-        if flux:
-            c.SetLogx()
-        self.format_histo(gr, x_tit='Flux [kHz/cm2]', y_tit='FWHM [au]', y_off=1.1)
-        gr.Draw()
-        gROOT.SetBatch(0)
-        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        if saveplots:
-            self.save_plots('Mean_FWHM_' + mode, canvas=c, sub_dir=self.save_dir)
-        self.RootObjects.append([gr, c])
-        return gr
+    def draw_fwhm(self, arg=1, vs_time=False, show=True, redo=False):
+        y_values = [ana.draw_mpv_fwhm(show=False, redo=redo)[arg] for ana in self.collection.itervalues()]
+        x_values = self.get_times() if vs_time else self.get_fluxes()
+        g = self.make_tgrapherrors('gfm', 'Full Width Half Maximum', x=x_values.values(), y=y_values)
+        self.format_histo(g, x_tit=self.make_x_tit(vs_time), y_tit='FWHM [mV]', y_off=1.3, t_ax_off=0 if vs_time else None)
+        self.save_histo(g, 'FWHM', show, lm=.12, logx=not vs_time)
 
     def draw_log_fluxes(self):
         g1 = self.make_tgrapherrors('g_fp', 'Number of Peaks', color=self.get_color())
@@ -1231,25 +1205,6 @@ class AnalysisCollection(Elementary):
         print make_latex_table_row(['Mean'] + ['{0:3.1f}'.format(calc_mean(flux)[0]) for flux in fluxes.values()]),
         print make_latex_table_row(['Sigma'] + ['{0:3.1f}'.format(calc_mean(flux)[1]) for flux in fluxes.values()]),
         print '\\bottomrule'
-
-    def make_signal_analysis(self, saveplots=True):
-        """
-        Run all available signal analyises together and plot them in an overview.
-        :param saveplots:
-        """
-        start_time = time()
-        c = TCanvas('c', 'overview', 800, 1000)
-        c.Divide(1, 3)
-        plots = [self.draw_pulse_heights(show=False), self.draw_pedestals(show=False), self.draw_mean_fwhm(draw=False)]
-        for i, plot in enumerate(plots, 1):
-            pad = c.cd(i)
-            pad.SetLogx()
-            plot.Draw()
-        if saveplots:
-            self.save_plots('Overview Plot', sub_dir=self.save_dir, canvas=c)
-        self.RootObjects.append(c)
-
-        print '\nThe preanalysis for this selection took', print_elapsed_time(start_time)
 
     def get_systematic_error_table(self, latex=False):
         f = open('PlotsFelix/table_{tc}_{rp}_{dia}.txt'.format(tc=self.TESTCAMPAIGN, rp=self.RunPlan, dia=self.DiamondName), 'w')
