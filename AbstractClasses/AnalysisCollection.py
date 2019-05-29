@@ -380,10 +380,10 @@ class AnalysisCollection(Elementary):
                 mg.GetListOfGraphs()[0].GetListOfFunctions().Add(self.draw_tlatex(x.n, y + ey * 1.2, '{:1.0f}'.format(ana.get_flux().n), color=1, align=21, size=.02, show=0))
         return mg
 
-    def draw_scaled_pulse_heights(self, scale=1, binning=None, vs_time=False, show=True, y_range=None, redo=False):
+    def draw_scaled_pulse_heights(self, scale=1, binning=None, vs_time=False, show=True, y_range=None, redo=False, scale_to_low=False):
 
         mg = self.get_pulse_height_graph(binning, vs_time, first_last=not vs_time, redo=redo)
-        scale_multigraph(mg, scale)
+        scale_multigraph(mg, scale, scale_to_low)
         xtit = 'Time [hh:mm]' if vs_time else 'Flux [kHz/cm^{2}]'
         y_range1 = [.95, 1.05] if y_range is None else y_range
         self.format_histo(mg, x_tit=xtit, y_tit='Scaled Pulse Height', y_off=1.75, x_off=1.3, draw_first=True, t_ax_off=0 if vs_time else None, y_range=y_range1, ndivx=503, center_y=1)
