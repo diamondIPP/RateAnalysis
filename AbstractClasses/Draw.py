@@ -412,7 +412,7 @@ class Draw:
         gr.SetLineStyle(style)
         return gr
 
-    def make_legend(self, x1=.65, y2=.88, nentries=2, scale=1, name='l', y1=None, clean=False, margin=.25, x2=None, w=None):
+    def make_legend(self, x1=.65, y2=.88, nentries=2, scale=1, name='l', y1=None, clean=False, margin=.25, x2=None, w=None, cols=None):
         x2 = .95 if x2 is None else x2
         x1 = x2 - w if w is not None else x1
         y1 = y2 - nentries * .05 * scale if y1 is None else y1
@@ -421,6 +421,7 @@ class Draw:
         l.SetTextFont(42)
         l.SetTextSize(0.03 * scale)
         l.SetMargin(margin)
+        do(l.SetNColumns, cols)
         if clean:
             l.SetLineWidth(2)
             l.SetBorderSize(0)
