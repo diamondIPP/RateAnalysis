@@ -70,6 +70,7 @@ class Plots(Elementary):
         self.Settings['deltaX'] = float(self.Settings['xmax'] - self.Settings['xmin']) / self.Settings['nBinsX']
         self.Settings['deltaY'] = float(self.Settings['ymax'] - self.Settings['ymin']) / self.Settings['nBinsY']
         self.RocTel = range(4) if roc_tel is None else roc_tel
+        self.FluxRange = [1, 40000]
         self.save_dir = './'
 
     @staticmethod
