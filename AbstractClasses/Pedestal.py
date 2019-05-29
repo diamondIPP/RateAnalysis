@@ -117,6 +117,9 @@ class PedestalAnalysis(Elementary):
         self.save_histo(h, 'PedSigmaSelection', show=show, logy=True, l=l1, canvas=gROOT.GetListOfCanvases()[-1], draw_opt='same')
         # self.save_plots('PedSigmaSelection', show=show)
 
+    def draw_pulse_height(self, bin_size=None, cut=None, y_range=None, redo=False, sig=None, rel_t=True, show=True, save=True, prnt=True):
+        self.Ana.draw_pulse_height(bin_size=bin_size, cut=cut, y_range=y_range, redo=redo, corr=False, sig=self.SignalName if sig is None else sig, rel_t=rel_t, show=show, save=save, prnt=prnt)
+
     def draw_signal_time(self, signal_name=None, rel_t=False, show=True):
         signal_name = self.Ana.generate_signal_name(self.SignalName if signal_name is None else signal_name, evnt_corr=False)
         h = TH2F('h_st', 'Pedestal vs. Time', *(self.Ana.get_time_bins() + [160, -80, 80]))
