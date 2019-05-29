@@ -3,7 +3,6 @@
 # IMPORTS
 # ==============================================
 from argparse import ArgumentParser
-from math import log
 from json import loads
 
 from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TProfile2D, TH2F, TProfile, TCutG, kGreen, TF1, THStack, TMultiGraph, Long, TH2I, gRandom, Double
@@ -430,21 +429,6 @@ class PadAnalysis(Analysis):
             self.save_plots('SignalMapErrors', sub_dir=self.save_dir, canvas=c)
             self.ROOTObjects.append([h, c])
         return h
-
-    def fit_sig_map_disto(self):
-        pickle_path = self.make_pickle_path('MeanSignalFit', run=self.RunNumber, ch=self.DiamondNumber)
-
-        def func():
-            h = self.draw_sig_map_disto(show=False)
-            return FitRes(h.Fit('gaus', 'qs'))
-
-        fit = do_pickle(pickle_path, func)
-        return fit
-
-    def get_mean_fwhm(self):
-        fit = self.fit_sig_map_disto()
-        conversion_factor = 2 * sqrt(2 * log(2))  # sigma to FWHM
-        return fit.Parameter(2) * conversion_factor
 
     def __show_frame(self, bin_low, bin_high):
         frame = TCutG('frame', 4)
