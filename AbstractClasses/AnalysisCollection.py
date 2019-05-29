@@ -445,19 +445,19 @@ class AnalysisCollection(Elementary):
     def draw_pedestals(self, vs_time=False, sigma=False, cut=None, pulser=False, redo=False, show=True):
 
         mode = 'Time' if vs_time else 'Flux'
-        y_name = 'Sigma' if sigma else 'Mean'
+        y_name = 'Noise' if sigma else 'Pedestal'
         pedestals = self.get_pedestals(cut, pulser, redo)
         y_values = [dic['sigma' if sigma else 'ph'] for dic in pedestals.itervalues()]
         x_values = [dic['time' if vs_time else 'flux'] for dic in pedestals.itervalues()]
-        g = self.make_tgrapherrors('gps', '{}Pedestal {}'.format('Pulser ' if pulser else '', y_name), x=x_values, y=y_values)
-        self.format_histo(g, color=810, x_tit=self.make_x_tit(vs_time), y_tit='Pedestal {} [au]'.format(y_name), y_off=1.45, t_ax_off=0 if vs_time else None)
+        g = self.make_tgrapherrors('gps', '{} {}'.format('Pulser ' if pulser else '', y_name), x=x_values, y=y_values)
+        self.format_histo(g, color=810, x_tit=self.make_x_tit(vs_time), y_tit='{} [mV]'.format(y_name), y_off=1.45, x_off=1.3, t_ax_off=0 if vs_time else None, x_range=self.Plots.FluxRange)
         cut_name = '' if cut is None else TCut(cut).GetName()
         save_name = '{p}Pedestal{s}{mod}{cut}'.format(mod=mode, cut=cut_name, s=y_name, p='Pulser' if pulser else '')
         self.save_histo(g, save_name=save_name, show=show, logx=False if vs_time else True, lm=.12, draw_opt='ap')
         return g
 
-    def draw_noise(self, flux=True, show=True):
-        return self.draw_pedestals(vs_time=flux, show=show, sigma=True)
+    def draw_noise(self, vs_time=False, show=True):
+        return self.draw_pedestals(vs_time=vs_time, show=show, sigma=True)
 
     def draw_pulser_pedestals(self, show=True, redo=False, sigma=False):
         self.draw_pedestals(pulser=True, show=show, redo=redo, sigma=sigma)
@@ -1075,7 +1075,7 @@ class AnalysisCollection(Elementary):
         legend = TLegend(.4, .6 - self.get_number_of_analyses() * 0.03, .6, .6)
         for i, h in enumerate(histos):
             h.SetStats(0)
-            self.normalise_histo(h)
+            normalise_histo(h)
             h.SetLineColor(self.get_color())
             h.SetLineWidth(2)
             h.Draw() if not i else h.Draw('same')
@@ -1106,7 +1106,7 @@ class AnalysisCollection(Elementary):
         ymax = 0
         for i, h in enumerate(histos):
             self.format_histo(h, stats=0, color=self.get_color(), lw=2)
-            self.normalise_histo(h, to100=True)
+            normalise_histo(h)
             stack.Add(h)
             ymax = max(ymax, h.GetBinContent(h.GetMaximumBin()))
             legend.AddEntry(h, '{0: 6.0f} kHz/cm^{{2}}'.format(self.collection.values()[i].get_flux().n), 'l')
@@ -1137,7 +1137,7 @@ class AnalysisCollection(Elementary):
         stack = THStack('has', 'Track Angles in {mode}'.format(mode=mode.title()))
         for i, h in enumerate(histos):
             self.format_histo(h, stats=0, color=self.get_color())
-            self.normalise_histo(h, to100=True)
+            normalise_histo(h)
             stack.Add(h)
             legend.AddEntry(h, '{0: 6.0f} kHz/cm^{{2}}'.format(self.collection.values()[i].get_flux().n), 'l')
         self.format_histo(stack, x_tit='Angle [deg]', y_tit='Fraction of Events [%]', y_off=1.5, draw_first=True)
