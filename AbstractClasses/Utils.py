@@ -439,9 +439,9 @@ def set_time_axis(histo, form='%H:%M', off=0):
 def find_mpv_fwhm(histo, bins=15):
     max_bin = histo.GetMaximumBin()
     fit = TF1('fit', 'gaus', 0, 500)
-    histo.Fit('fit', 'qs', '', histo.GetBinCenter(max_bin - bins), histo.GetBinCenter(max_bin + bins))
-    mpv = fit.GetParameter(1)
-    fwhm = histo.FindLastBinAbove(fit(mpv) / 2) - histo.FindFirstBinAbove(fit(mpv) / 2)
+    histo.Fit('fit', 'qs0', '', histo.GetBinCenter(max_bin - bins), histo.GetBinCenter(max_bin + bins))
+    mpv = make_ufloat(fit.GetParameter(1), fit.GetparError(1))
+    fwhm = histo.FindLastBinAbove(fit(mpv.n) / 2) - histo.FindFirstBinAbove(fit(mpv.n) / 2)
     return mpv, fwhm, mpv / fwhm
 
 
