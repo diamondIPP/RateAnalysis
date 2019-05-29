@@ -1303,32 +1303,37 @@ class PadAnalysis(Analysis):
 
     # endregion
 
-    def draw_mpv_fwhm(self, bins=10, show=True):
+    def draw_mpv_fwhm(self, bins=10, show=True, redo=False):
 
-        h = self.draw_signal_distribution(show=show, normalise=True, sumw2=None)
-        sleep(.2)
-        max_bin = h.GetMaximumBin()
-        fit = TF1('fit', 'gaus', 0, 500)
-        h.Fit('fit', 'qs0', '', h.GetBinCenter(max_bin - bins), h.GetBinCenter(max_bin + bins))
-        mpv = make_ufloat((fit.GetParameter(1), fit.GetParError(1) + fit.GetParameter(1) * .02))
-        bin_width = h.GetBinWidth(1)
-        half_max = fit(mpv.n) / 2
-        x_fwhm_min, x_fwhm_max = (make_ufloat((h.GetBinCenter(i), bin_width)) for i in [h.FindFirstBinAbove(half_max), h.FindLastBinAbove(half_max)])
-        fwhm = x_fwhm_max - x_fwhm_min
-        self.draw_vertical_line(mpv.n, 0, 1e7, style=7, w=2)
-        self.draw_tlatex(mpv.n + 5, .1 * half_max, 'MPV', align=10)
-        self.draw_arrow(x_fwhm_min.n, mpv.n, half_max, half_max, col=2, width=3, opt='<', size=.02)
-        self.draw_arrow(x_fwhm_max.n, mpv.n, half_max, half_max, col=2, width=3, opt='<', size=.02)
-        self.draw_tlatex(x_fwhm_max.n + 5, half_max, 'FWHM', align=12, color=2)
-        value = fwhm / mpv
-        legend = self.make_legend(w=.3, y2=.78, nentries=1, margin=.1, cols=2, scale=1.1)
-        legend.AddEntry('', 'FWHM/MPV', '')
-        legend.AddEntry('', '{:.2f} ({:.2f})'.format(value.n, value.s), '')
-        legend.Draw()
-        self.log_info('FWHM / MPV: {}'.format(fwhm / mpv))
-        h.Sumw2(False)
-        get_last_canvas().Update()
-        return mpv, fwhm, value
+        pickle_path = self.make_pickle_path('Signal', 'FWHMMPV', self.RunNumber, ch=self.DiamondNumber)
+
+        def f():
+            h = self.draw_signal_distribution(show=show, normalise=True, sumw2=None, redo=redo)
+            sleep(.1)
+            max_bin = h.GetMaximumBin()
+            fit = TF1('fit', 'gaus', 0, 500)
+            h.Fit('fit', 'qs0', '', h.GetBinCenter(max_bin - bins), h.GetBinCenter(max_bin + bins))
+            mpv = make_ufloat((fit.GetParameter(1), fit.GetParError(1) + fit.GetParameter(1) * .02))
+            bin_width = h.GetBinWidth(1)
+            half_max = fit(mpv.n) / 2
+            x_fwhm_min, x_fwhm_max = (make_ufloat((h.GetBinCenter(i), bin_width)) for i in [h.FindFirstBinAbove(half_max), h.FindLastBinAbove(half_max)])
+            fwhm = x_fwhm_max - x_fwhm_min
+            self.draw_vertical_line(mpv.n, 0, 1e7, style=7, w=2)
+            self.draw_tlatex(mpv.n + 5, .1 * half_max, 'MPV', align=10)
+            self.draw_arrow(x_fwhm_min.n, mpv.n, half_max, half_max, col=2, width=3, opt='<', size=.02)
+            self.draw_arrow(x_fwhm_max.n, mpv.n, half_max, half_max, col=2, width=3, opt='<', size=.02)
+            self.draw_tlatex(x_fwhm_max.n + 5, half_max, 'FWHM', align=12, color=2)
+            value = fwhm / mpv
+            legend = self.make_legend(w=.3, y2=.78, nentries=1, margin=.1, cols=2, scale=1.1)
+            legend.AddEntry('', 'FWHM/MPV', '')
+            legend.AddEntry('', '{:.2f} ({:.2f})'.format(value.n, value.s), '')
+            legend.Draw()
+            self.log_info('FWHM / MPV: {}'.format(fwhm / mpv))
+            h.Sumw2(False)
+            get_last_canvas().Update()
+            return mpv, fwhm, value
+
+        return do_pickle(pickle_path, f, redo=redo or show)
 
     def get_peak_integral(self, name):
         return self.Run.PeakIntegrals[self.DiamondNumber - 1]['PeakIntegral{}'.format(name) if 'Peak' not in str(name) else name]
