@@ -1285,10 +1285,10 @@ class AnalysisCollection(Elementary):
             ana.set_channel(ch)
 
     def get_fluxes(self):
-        flux = OrderedDict()
-        for key, ana in self.collection.iteritems():
-            flux[key] = ana.get_flux()
-        return flux
+        return OrderedDict((key, ana.Run.get_flux()) for key, ana in self.collection.iteritems())
+
+    def get_times(self):
+        return OrderedDict((key, ana.Run.get_time()) for key, ana in self.collection.iteritems())
 
     @staticmethod
     def get_mode(vs_time):
