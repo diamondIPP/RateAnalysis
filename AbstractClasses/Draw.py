@@ -276,10 +276,12 @@ class Draw:
         set_root_output(True)
 
     def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=None, rm=None, bm=None, tm=None, draw_opt='', x=None, y=None, all_pads=True,
-                   l=None, logy=False, logx=False, logz=False, canvas=None, grid=False, gridx=False, gridy=False, save=True, both_dias=False, ind=None, prnt=True, phi=None, theta=None):
-        x = self.Res if x is None else int(x * self.Res)
+                   l=None, logy=False, logx=False, logz=False, canvas=None, grid=False, gridx=False, gridy=False, save=True, both_dias=False, ind=None, prnt=True, phi=None, theta=None, sumw2=False):
+        fac = 1 if self.ActivateTitle else 1.16
+        x = int(self.Res * fac) if x is None else int(x * self.Res)
         y = self.Res if y is None else int(y * self.Res)
         h = histo
+        h.Sumw2(sumw2) if 'TH' in h.ClassName() and sumw2 is not None else do_nothing()
         set_root_output(show)
         c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x, y) if canvas is None else canvas
         do(c.SetLeftMargin, lm)
