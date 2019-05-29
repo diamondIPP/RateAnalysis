@@ -332,7 +332,7 @@ class PadAnalysis(Analysis):
             self.tree.Draw('{z}{y}*10:{x}*10>>{h}'.format(z=sig + ':' if not hitmap else '', x=x_var, y=y_var, h=name), cut, 'goff')
             return h1
 
-        set_statbox(only_entries=True, x=0.82)
+        self.set_statbox(entries=True, x=0.82)
         gStyle.SetPalette(1 if hitmap else 53)
         h = do_pickle(pickle_path, func, redo=redo)
         self.set_dia_margins(h)
@@ -516,7 +516,7 @@ class PadAnalysis(Analysis):
         # pulse_heights = [make_ufloat(self.draw_pulse_height(binning=bin_size, show=False)[1], par=0) for bin_size in bin_sizes]
         pulse_heights = [make_ufloat(self.draw_ph(bin_size=bin_size, show=False)[1], par=0) for bin_size in bin_sizes]
         g = self.make_tgrapherrors('gdbs', 'Pulse Height vs Number of Events per Bin', x=bin_sizes, y=pulse_heights)
-        self.format_histo(g, x_tit='Number of Events per Bin', y_tit='Pulse Height [au]', y_off=1.2)
+        self.format_histo(g, x_tit='Number of Events per Bin', y_tit='Pulse Height [mV]', y_off=1.2)
         self.draw_histo(g, lm=.12, show=show, gridy=True, logx=True)
 
     def draw_pulse_height(self, bin_size=None, cut=None, y_range=None, redo=False, corr=True, sig=None, rel_t=True, show=True, save=True, prnt=True):
@@ -526,7 +526,7 @@ class PadAnalysis(Analysis):
         sig = self.SignalName if sig is None else sig
         correction = '' if not corr else '_eventwise'
         cut_str = self.Cut.all_cut if cut is None else TCut(cut)
-        suffix = '{bins}{cor}_{reg}{c}'.format(bins=bin_size, cor=correction, reg=self.get_all_signal_names()[sig], c='' if cut is None else cut_str.GetName())
+        suffix = '{bins}{cor}_{reg}{c}'.format(bins=bin_size, cor=correction, reg=sig.split('[')[-1][:-2], c='' if cut is None else cut_str.GetName())
         picklepath = self.make_pickle_path('Ph_fit', None, self.RunNumber, self.DiamondNumber, suf=suffix)
 
         def func():
@@ -537,9 +537,9 @@ class PadAnalysis(Analysis):
             return prof
 
         p = do_pickle(picklepath, func, redo=redo)
-        set_statbox(entries=2, only_fit=True, w=.3)
+        self.set_statbox(n_entries=4, only_fit=True, w=.3)
         y_vals = [p.GetBinContent(i) for i in xrange(2, p.GetNbinsX() + 1)]
-        self.format_histo(p, name='Fit Result', x_tit='Time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6, x_range=[self.Run.StartTime, self.get_time_bins()[1][-1]],
+        self.format_histo(p, name='Fit Result', x_tit='Time [min]', y_tit='Mean Pulse Height [mV]', y_off=1.6, x_range=[self.Run.StartTime, self.get_time_bins()[1][-1]],
                           t_ax_off=self.Run.StartTime if rel_t else 0, y_range=increased_range([min(y_vals), max(y_vals)], .5, .5) if y_range is None else y_range, ndivx=505)
         self.draw_histo(p, show=show, lm=.14, prnt=save)
         fit = self.fit_pulse_height(p, picklepath)
@@ -624,7 +624,7 @@ class PadAnalysis(Analysis):
         self.ROOTObjects.append([h2, c])
 
     def draw_signal_distribution(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None, bin_width=.5, events=None,
-                                 start=None, x_range=None, redo=False, prnt=True, save=True):
+                                 start=None, x_range=None, redo=False, prnt=True, save=True, normalise=None, sumw2=False):
         cut = self.AllCuts if cut is None else TCut(cut)
         suffix = '{b}_{c}_{cut}'.format(b=bin_width, c=int(evnt_corr), cut=cut.GetName())
         pickle_path = self.make_pickle_path('PulseHeight', 'Histo', run=self.RunNumber, ch=self.DiamondNumber, suf=suffix)
@@ -640,11 +640,11 @@ class PadAnalysis(Analysis):
             h1.Rebin(max(1, int(h1.GetMean() / 30)))
             return h1
 
-        self.set_statbox(all_stat=1)
+        self.set_statbox(all_stat=1, n_entries=5, w=.3)
         h = do_pickle(pickle_path, func, redo=redo)
         x_range = increased_range([h.GetBinCenter(i) for i in [h.FindFirstBinAbove(0), h.FindLastBinAbove(3)]], .1) if x_range is None else x_range
-        self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=2, fill_color=self.FillColor, x_range=x_range)
-        self.save_histo(h, 'SignalDistribution', lm=.15, show=show, prnt=prnt, save=save)
+        self.format_histo(h, x_tit='Pulse Height [mV]', y_tit='Number of Entries', y_off=2, fill_color=self.FillColor, x_range=x_range, normalise=normalise)
+        self.save_histo(h, 'SignalDistribution', lm=.15, show=show, prnt=prnt, save=save, sumw2=sumw2)
         return h
 
     def draw_signal_vs_peaktime(self, region=None, cut=None, show=True, corr=False, fine_corr=False, prof=True):
