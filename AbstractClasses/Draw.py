@@ -319,7 +319,7 @@ class Draw:
         h = histo
         if draw_first:
             set_root_output(False)
-            h.Draw('nostack' if h.IsA().GetName() == 'THStack' else 'a')
+            h.Draw('nostack' if h.ClassName() == 'THStack' else 'a')
             set_root_output(True)
         do(h.SetTitle, title)
         do(h.SetName, name)
@@ -357,8 +357,9 @@ class Draw:
                 x_axis.SetTitleOffset(x_off) if x_off is not None else do_nothing()
                 do(x_axis.SetTitleSize, tit_size)
                 do(x_axis.SetLabelSize, lab_size)
-                x_axis.SetRangeUser(x_range[0], x_range[1]) if x_range is not None else do_nothing()
-                x_axis.SetNdivisions(ndivx) if ndivx is not None else do_nothing()
+                if x_range is not None:
+                    x_axis.SetLimits(x_range[0], x_range[1]) if 'Graph' in h.ClassName() else x_axis.SetRangeUser(x_range[0], x_range[1])
+                do(x_axis.SetNdivisions, ndivx)
                 do(x_axis.SetLabelOffset, l_off_x)
                 do(x_axis.SetTickSize, tick_size)
                 x_axis.CenterTitle(center_x)
