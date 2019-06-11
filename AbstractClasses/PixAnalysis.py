@@ -716,6 +716,8 @@ class PixAnalysis(Analysis):
     def check_alignment(self):
         gr = self.draw_alignment(show=False)
         values = [gr.GetY()[i_ev] for i_ev in xrange(gr.GetN())]
+        if not values:
+            return
         mean_, sigma = calc_mean(values)
         if mean_ < .4:
             log_warning('Planes are not correlated!')
