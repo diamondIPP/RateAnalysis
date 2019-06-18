@@ -16,7 +16,7 @@ import pickle
 from threading import Thread
 from multiprocessing import Pool
 from uncertainties import ufloat
-from uncertainties.core import Variable
+from uncertainties.core import Variable, AffineScalarFunc
 from copy import deepcopy
 from gtts import gTTS
 from subprocess import call
@@ -294,7 +294,7 @@ def mean_sigma(values, weights=None):
         value = make_ufloat(values[0])
         return value.n, value.s
     weights = [1] * len(values) if weights is None else weights
-    if type(values[0]) is Variable:
+    if type(values[0]) in [Variable, AffineScalarFunc]:
         weights = [1 / v.s for v in values]
         values = array([v.n for v in values], 'd')
     if all(weight == 0 for weight in weights):
@@ -646,7 +646,7 @@ def log_bins(n_bins, min_val, max_val):
 
 
 def make_ufloat(tup, par=0):
-    if type(tup) is Variable:
+    if type(tup) in [Variable, AffineScalarFunc]:
         return tup
     if isinstance(tup, FitRes):
         return ufloat(tup.Parameter(par), tup.ParError(par))
