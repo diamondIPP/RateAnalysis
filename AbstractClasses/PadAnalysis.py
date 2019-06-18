@@ -1309,8 +1309,10 @@ class PadAnalysis(Analysis):
         pickle_path = self.make_pickle_path('Signal', 'FWHMMPV', self.RunNumber, ch=self.DiamondNumber)
 
         def f(h=histo):
-            fwhm_gauss = self.Pedestal.get_fwhm()
+            fwhm_gauss = self.Pedestal.get_fwhm() if histo is None else 0
             h = self.draw_signal_distribution(show=show, normalise=True, sumw2=None, redo=redo) if h is None else h
+            if histo is not None:
+                self.draw_histo(h)
             sleep(.1)
             max_bin = h.GetMaximumBin()
             fit = TF1('fit', 'gaus', 10, 500)
@@ -1339,7 +1341,7 @@ class PadAnalysis(Analysis):
             get_last_canvas().Update()
             return mpv, fwhm, value
 
-        return do_pickle(pickle_path, f, redo=redo or show)
+        return do_pickle(pickle_path, f, redo=redo or show) if histo is None else f()
 
     def get_peak_integral(self, name):
         return self.Run.PeakIntegrals[self.DiamondNumber - 1]['PeakIntegral{}'.format(name) if 'Peak' not in str(name) else name]
