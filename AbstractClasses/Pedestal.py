@@ -8,7 +8,7 @@ from Elementary import Elementary
 from ROOT import TH2F, gStyle, TH1F, TCut, gROOT, gPad
 from Utils import set_statbox, set_drawing_range, FitRes, server_pickle, do_pickle, make_ufloat
 from copy import deepcopy
-from numpy import mean
+from numpy import mean, sqrt, log
 from InfoLegend import InfoLegend
 
 
@@ -43,6 +43,9 @@ class PedestalAnalysis(Elementary):
 
     def get_noise(self):
         return make_ufloat(self.draw_disto_fit(show=False, prnt=False), par=2)
+
+    def get_fwhm(self):
+        return self.get_noise() * 2 * sqrt(2 * log(2))
 
     def draw_disto(self, name=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True, normalise=None):
         show = False if not save else show
