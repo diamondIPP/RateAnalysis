@@ -288,6 +288,16 @@ class AnalysisCollection(Elementary):
         self.format_histo(h, x_tit='Slope [mV/min]', y_tit='Number of Entries', y_off=1.3)
         self.draw_histo(h, show=show, draw_opt='alp' if gr else '')
 
+    def get_uniformities(self, redo=False):
+        pickle_path = self.make_pickle_path('Uniformity', 'Values', self.RunPlan, self.DiamondNumber)
+
+        def f():
+            self.log_info('Getting uniformities ... ')
+            values = [ana.draw_mpv_fwhm(show=False, redo=redo) for ana in self.collection.itervalues()]
+            return OrderedDict((run, v if v[0] is not None else [make_ufloat((0, 0))] * 3) for run, v in zip(self.Runs, values))
+
+        return do_pickle(pickle_path, f, redo=redo)
+
     def get_pulse_heights(self, binning=None, redo=False):
         pickle_path = self.make_pickle_path('Ph_fit', 'PhVals', self.RunPlan, ch=self.DiamondName, suf=self.FirstAnalysis.BinSize if binning is None else binning)
 
@@ -792,11 +802,29 @@ class AnalysisCollection(Elementary):
     # ============================================
     # region 2D SIGNAL MAP
     def draw_fwhm(self, arg=1, vs_time=False, show=True, redo=False):
-        y_values = [ana.draw_mpv_fwhm(show=False, redo=redo)[arg] for ana in self.collection.itervalues()]
+        y_values = [v[arg] for v in self.get_uniformities(redo).itervalues()]
         x_values = self.get_times() if vs_time else self.get_fluxes()
         g = self.make_tgrapherrors('gfm', 'Full Width Half Maximum', x=x_values.values(), y=y_values)
-        self.format_histo(g, x_tit=self.make_x_tit(vs_time), y_tit='FWHM [mV]', y_off=1.3, t_ax_off=0 if vs_time else None)
+        y_tit = 'FWHM [mV]' if arg == 1 else 'Most Probable Value [mV]' if not arg else 'FWHM/MPV'
+        self.format_histo(g, x_tit=self.make_x_tit(vs_time), y_tit=y_tit, y_off=1.3, t_ax_off=0 if vs_time else None)
         self.save_histo(g, 'FWHM', show, lm=.12, logx=not vs_time)
+        return g
+
+    def draw_mpv(self, vs_time=False, show=True, redo=False):
+        return self.draw_fwhm(0, vs_time, show, redo)
+
+    def draw_uniformity(self, vs_time=False, show=True, redo=False):
+        return self.draw_fwhm(2, vs_time, show, redo)
+
+    def get_uniformity(self, redo=False, low=False, high=False):
+        pickle_path = self.make_pickle_path('Uniformity', '', self.RunPlan, self.DiamondNumber, suf='{}{}'.format(int(low), int(high)))
+        runs = self.get_runs_below_flux(110) if low else self.get_runs_above_flux(2000) if high else self.Runs
+
+        def f():
+            values = [v for run, v in self.get_uniformities(redo).iteritems() if v[2].n and run in runs]
+            return [mean_sigma([v[i] for v in values]) for i in xrange(3)] if values else [0] * 3
+
+        return do_pickle(pickle_path, f, redo=redo)
 
     def draw_log_fluxes(self):
         g1 = self.make_tgrapherrors('g_fp', 'Number of Peaks', color=self.get_color())
