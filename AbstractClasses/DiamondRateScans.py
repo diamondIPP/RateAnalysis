@@ -157,8 +157,8 @@ class DiaScans(Elementary):
     def get_run_types(self):
         return [sel.SelectedType.lower() for sel in self.RunSelections]
 
-    def get_irradiations(self):
-        return [make_irr_string(sel.get_irradiation()) for sel in self.RunSelections]
+    def get_irradiations(self, string=True):
+        return [make_irr_string(sel.get_irradiation()) if string else float(sel.get_irradiation()) for sel in self.RunSelections]
 
     def get_bias_voltages(self):
         return [sel.SelectedBias for sel in self.RunSelections]
@@ -198,6 +198,11 @@ class DiaScans(Elementary):
     def get_deviations(self):
         for phs, sel in zip(self.get_pulse_heights(), self.RunSelections):
             print sel.TCString, sel.SelectedRunplan, mean_sigma([dic['ph'] for dic in phs.itervalues()])
+
+    def get_uniformities(self, redo=False, low=False, high=False):
+        run_selections = self.load_run_selections()
+        paths = [self.make_pickle_path('Uniformity', '', sel.SelectedRunplan, sel.SelectedDiamondNr, camp=sel.TCString, suf='{}{}'.format(int(low), int(high))) for sel in run_selections]
+        return [self.get_values(sel, AnalysisCollection.get_uniformity, paths[i], {'redo': redo, 'high': high, 'low': low}, redo=redo) for i, sel in enumerate(run_selections)]
 
     # endregion
 
@@ -679,6 +684,13 @@ class DiaScans(Elementary):
         for i, sel in enumerate(self.RunSelections, 1):
             g.GetXaxis().SetBinLabel(g.GetXaxis().FindBin(i), '{} - {}'.format(make_tc_str(sel.TESTCAMPAIGN, 0), sel.SelectedRunplan))
         self.save_histo(g, 'Means{}'.format(self.Name.title().replace('-', '').replace('_', '')), show, draw_opt='ap', bm=.2, x=1.5, y=.75, gridy=True)
+
+    def draw_uniformity(self, arg=2, redo=False, low=False, high=False):
+        y_values = [v[arg] for v in self.get_uniformities(redo=redo, low=low, high=high)]
+        x_values = [make_ufloat((v, v * .2)) for v in self.get_irradiations(string=False)]
+        g = self.make_tgrapherrors('gu', 'Uniformity', x=x_values, y=y_values)
+        self.format_histo(g, x_tit='Irradiation [n/cm^{2}]', y_tit='FWHM/MPV', y_off=1.3)
+        self.draw_histo(g, draw_opt='ap')
 
 
 if __name__ == '__main__':
