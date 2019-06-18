@@ -1261,7 +1261,10 @@ class AnalysisCollection(Elementary):
         return [key for key, ana in self.collection.iteritems() if ana.Run.RunInfo['fs11'] == fs11 and ana.Run.RunInfo['fs13'] == fsh13]
 
     def get_runs_below_flux(self, flux):
-        return [key for key, ana in self.collection.iteritems() if ana.Run.Flux < flux]
+        return [key for key, ana in self.collection.iteritems() if ana.Run.Flux <= flux]
+
+    def get_runs_above_flux(self, flux):
+        return [key for key, ana in self.collection.iteritems() if ana.Run.Flux >= flux]
 
     def select_runs_in_range(self, start, stop):
         new_collection = OrderedDict()
