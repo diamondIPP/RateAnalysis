@@ -509,6 +509,10 @@ class PadAnalysis(Analysis):
         self.format_histo(g, x_tit='Number of Events per Bin', y_tit='Pulse Height [mV]', y_off=1.2)
         self.draw_histo(g, lm=.12, show=show, gridy=True, logx=True)
 
+    def get_pulse_height(self, bin_size=None, cut=None, y_range=None, redo=False, corr=True, sig=None):
+        fit = self.draw_pulse_height(bin_size, cut, y_range, redo, corr, sig, show=False, save=False, prnt=False)[1]
+        return make_ufloat((fit.Parameter(0), fit.ParError(0)))
+
     def draw_pulse_height(self, bin_size=None, cut=None, y_range=None, redo=False, corr=True, sig=None, rel_t=True, show=True, save=True, prnt=True):
 
         # TODO fix errors or extract from mean
