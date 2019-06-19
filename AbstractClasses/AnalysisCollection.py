@@ -298,6 +298,15 @@ class AnalysisCollection(Elementary):
 
         return do_pickle(pickle_path, f, redo=redo)
 
+    def get_sm_std_devs(self, redo=False):
+        pickle_path = self.make_pickle_path('Uniformity', 'STD', self.RunPlan, self.DiamondNumber)
+
+        def f():
+            self.log_info('Getting STD of Signal Map ... ')
+            return OrderedDict((key, ana.get_sm_std_dev(redo=redo)) for key, ana in self.collection.iteritems())
+
+        return do_pickle(pickle_path, f, redo=redo)
+
     def get_pulse_heights(self, binning=None, redo=False):
         pickle_path = self.make_pickle_path('Ph_fit', 'PhVals', self.RunPlan, ch=self.DiamondName, suf=self.FirstAnalysis.BinSize if binning is None else binning)
 
@@ -823,6 +832,22 @@ class AnalysisCollection(Elementary):
         def f():
             values = [v for run, v in self.get_uniformities(redo).iteritems() if v[2].n and run in runs]
             return [mean_sigma([v[i] for v in values]) for i in xrange(3)] if values else [0] * 3
+
+        return do_pickle(pickle_path, f, redo=redo)
+
+    def draw_sm_std(self, vs_time=False, redo=False, show=True):
+        y_values = self.get_sm_std_devs(redo).values()
+        x_values = self.get_times() if vs_time else self.get_fluxes()
+        g = self.make_tgrapherrors('gstd', 'STD of the Signal Map', x=x_values.values(), y=y_values)
+        self.format_histo(g, x_tit=self.make_x_tit(vs_time), y_tit='rel. STD', y_off=1.3, t_ax_off=0 if vs_time else None)
+        self.save_histo(g, 'STDSigMap', show, lm=.12, logx=not vs_time)
+
+    def get_sm_std(self, redo=False, low=False, high=False):
+        pickle_path = self.make_pickle_path('Uniformity', 'SMSTD', self.RunPlan, self.DiamondNumber, suf='{}{}'.format(int(low), int(high)))
+        runs = self.get_runs_below_flux(110) if low else self.get_runs_above_flux(2000) if high else self.Runs
+
+        def f():
+            return mean_sigma([v for run, v in self.get_sm_std_devs(redo).iteritems() if run in runs]) if runs else make_ufloat((0, 0))
 
         return do_pickle(pickle_path, f, redo=redo)
 
