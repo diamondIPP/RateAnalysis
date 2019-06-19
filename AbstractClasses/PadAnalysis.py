@@ -318,7 +318,7 @@ class PadAnalysis(Analysis):
     def draw_signal_map(self, res=1.5, cut=None, fid=False, hitmap=False, redo=False, show=True, prnt=True, z_range=None, save=True):
         cut = self.Cut.generate_special_cut(excluded=['fiducial'], prnt=prnt) if not fid and cut is None else cut
         cut = self.Cut.all_cut if cut is None else TCut(cut)
-        suf = '{c}_{ch}'.format(c=cut.GetName(), ch=self.Cut.CutConfig['chi2X'])
+        suf = '{c}_{ch}_{res}'.format(c=cut.GetName(), ch=self.Cut.CutConfig['chi2X'], res=res)
         pickle_path = self.make_pickle_path('SignalMaps', 'Hit' if hitmap else 'Signal', run=self.RunNumber, ch=self.DiamondNumber, suf=suf)
 
         def func():
@@ -370,15 +370,20 @@ class PadAnalysis(Analysis):
         else:
             self.format_histo(h, z_range=[m - n_sigma * s, m + n_sigma * s])
 
-    def draw_sig_map_disto(self, show=True, factor=1.5, cut=None, fid=True, redo=False):
-        source = self.draw_signal_map(factor, cut, fid, hitmap=False, redo=redo, show=False)
-        h = TH1F('h_smd', 'Signal Map Distribution', 400, -50, 350)
-        [h.Fill(source.GetBinContent(ibin)) for ibin in xrange(source.GetNbinsX() * source.GetNbinsY()) if source.GetBinContent(ibin)]
-        x_range = increased_range([h.GetBinCenter(ibin) for ibin in [h.FindFirstBinAbove(5), h.FindLastBinAbove(5)]], .3, .3)
-        self.set_statbox(entries=True)
+    def draw_sig_map_disto(self, show=True, factor=1.5, cut=None, fid=True, x_range=None, redo=False, normalise=False, ret_value=False, save=True):
+        source = self.draw_signal_map(factor, cut, fid, hitmap=False, redo=redo, show=False, save=False)
+        h = TH1F('h_smd', 'Signal Map Distribution', *([400, -50, 350] if not normalise else [400, 0, 4]))
+        normalisation = 1 if not normalise else self.get_pulse_height()
+        values = [make_ufloat((source.GetBinContent(ibin), 1)) / normalisation for ibin in xrange(source.GetNbinsX() * source.GetNbinsY()) if source.GetBinContent(ibin)]
+        [h.Fill(v.n) for v in values]
+        x_range = increased_range([h.GetBinCenter(ibin) for ibin in [h.FindFirstBinAbove(5), h.FindLastBinAbove(5)]], .3, .3) if x_range is None else x_range
+        self.set_statbox(all_stat=True)
         self.format_histo(h, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=2, fill_color=self.FillColor, x_range=x_range)
-        self.save_histo(h, 'SignalMapDistribution', lm=.15, show=show)
-        return h
+        self.save_histo(h, 'SignalMapDistribution', lm=.15, show=show, save=save)
+        return mean_sigma(values) if ret_value else h
+
+    def get_sm_std_dev(self, factor=3, redo=False):
+        return self.draw_sig_map_disto(show=False, factor=factor, redo=redo, normalise=True, ret_value=True, save=False)[1]
 
     def draw_sig_map_profiles(self, mode='x', factor=1.5, cut=None, fid=False, hitmap=False, redo=False, show=True):
         s = self.draw_signal_map(factor, cut, fid, hitmap=hitmap, redo=redo, show=False)
