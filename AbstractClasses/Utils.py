@@ -650,7 +650,7 @@ def make_ufloat(tup, par=0):
         return tup
     if isinstance(tup, FitRes):
         return ufloat(tup.Parameter(par), tup.ParError(par))
-    return ufloat(tup[0], tup[1])
+    return ufloat(tup[0], tup[1]) if type(tup) in [tuple, list] else ufloat(tup, 0)
 
 
 def find_graph_margins(graphs):
