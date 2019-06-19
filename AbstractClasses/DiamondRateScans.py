@@ -204,6 +204,11 @@ class DiaScans(Elementary):
         paths = [self.make_pickle_path('Uniformity', '', sel.SelectedRunplan, sel.SelectedDiamondNr, camp=sel.TCString, suf='{}{}'.format(int(low), int(high))) for sel in run_selections]
         return [self.get_values(sel, AnalysisCollection.get_uniformity, paths[i], {'redo': redo, 'high': high, 'low': low}, redo=redo) for i, sel in enumerate(run_selections)]
 
+    def get_sm_stds(self, redo=False, low=False, high=False):
+        run_selections = self.load_run_selections()
+        paths = [self.make_pickle_path('Uniformity', 'SMSTD', sel.SelectedRunplan, sel.SelectedDiamondNr, camp=sel.TCString, suf='{}{}'.format(int(low), int(high))) for sel in run_selections]
+        return [self.get_values(sel, AnalysisCollection.get_sm_std, paths[i], {'redo': redo, 'high': high, 'low': low}, redo=redo) for i, sel in enumerate(run_selections)]
+
     # endregion
 
     # ==========================================================================
@@ -690,6 +695,13 @@ class DiaScans(Elementary):
         x_values = [make_ufloat((v, v * .2)) for v in self.get_irradiations(string=False)]
         g = self.make_tgrapherrors('gu', 'Uniformity', x=x_values, y=y_values)
         self.format_histo(g, x_tit='Irradiation [n/cm^{2}]', y_tit='FWHM/MPV', y_off=1.3)
+        self.draw_histo(g, draw_opt='ap')
+
+    def draw_sm_stds(self, redo=False, low=False, high=False):
+        y_values = self.get_sm_stds(redo=redo, low=low, high=high)
+        x_values = [make_ufloat((v, v * .2)) for v in self.get_irradiations(string=False)]
+        g = self.make_tgrapherrors('gu', 'Standard Deviations of the Signal Map', x=x_values, y=y_values)
+        self.format_histo(g, x_tit='Irradiation [n/cm^{2}]', y_tit='rel. STD', y_off=1.3)
         self.draw_histo(g, draw_opt='ap')
 
 
