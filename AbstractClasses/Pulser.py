@@ -118,7 +118,7 @@ class PulserAnalysis(Elementary):
         self.save_histo(h, 'PulserDistribution', show, lm=.12, prnt=prnt)
         return h
 
-    def draw_distribution_fit(self, show=True, redo=False, corr=True, beam_on=True, events=None, start=None, bin_width=.5, prnt=True):
+    def draw_distribution_fit(self, show=True, redo=False, corr=True, beam_on=True, events=None, start=None, bin_width=.1, prnt=True):
         start_string = '_{0}'.format(start) if start is not None else ''
         events_string = '_{0}'.format(events) if events is not None else ''
         suffix = '{corr}_{beam}{st}{ev}'.format(corr='ped_corr' if corr else '', beam='BeamOff' if not beam_on else 'BeamOn', st=start_string, ev=events_string)
@@ -167,8 +167,8 @@ class PulserAnalysis(Elementary):
         self.save_histo(stack, 'PulserPedestalComparison', show, lm=.12, l=legend, draw_opt='nostack')
         self.reset_colors()
 
-    def draw_waveforms(self, n=1, ch=None, start_event=None, show=True, t_corr=False):
-        self.Ana.draw_waveforms(n=n, start_event=start_event, cut=self.PulserCut, show=show, t_corr=t_corr, channel=ch)
+    def draw_waveforms(self, n=1, ch=None, start_event=None, show=True, t_corr=True):
+        self.Ana.Waveform.draw(n=n, start_event=start_event, cut=self.PulserCut, show=show, t_corr=t_corr, channel=ch)
 
     def save_pulser_shapes(self, n_pics=5, show=True):
         events_spacing = (self.Ana.EndEvent - self.Ana.StartEvent) / n_pics
