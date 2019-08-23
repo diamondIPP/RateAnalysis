@@ -405,6 +405,8 @@ class Run(Elementary):
         with open(self.IrradiationFile, 'r') as f:
             data = load(f)
         for dia in self.DiamondNames:
+            if self.TCString not in data:
+                log_critical('Please add "{}" to the irradiation file'.format(self.TCString))
             if dia not in data[self.TCString].keys() + ['None']:
                 log_critical('Please add "{}" to the irradiation file for {}'.format(dia, self.TCString))
         return [data[self.TCString][dia] for dia in self.DiamondNames if dia not in ['None']]
