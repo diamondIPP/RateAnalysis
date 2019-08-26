@@ -114,7 +114,7 @@ if __name__ == '__main__':
 
     parser = ArgumentParser()
     parser.add_argument('-m', action='store_true')
-    parser.add_argument('-tc', nargs='?', default='201807')
+    parser.add_argument('-tc', nargs='?', default='201908')
     parser.add_argument('e', nargs='?', default=None)
     parser.add_argument('-v', action='store_false')
     argms = parser.parse_args()

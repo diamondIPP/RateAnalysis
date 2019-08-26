@@ -409,12 +409,14 @@ class Analysis(Elementary):
         self.save_tel_histo(g, 'BeamCurrent', draw_opt='afp', lm=.08, x_fac=1.5, y_fac=.75, ind=None, show=show)
         return g
 
-    def draw_rate(self, plane=1, rel_t=True, show=True):
+    def draw_rate(self, plane=1, flux=False, rel_t=True, show=True):
         """ Draws the single plane rates versus time. The first entry of the vector corresponds to the scintillator rate """
         if not self.has_branch('rate'):
             log_warning('The "rate" branch does not exist in this tree')
             return
-        n = self.tree.Draw('rate[{p}]:time / 1000.'.format(p=plane), 'beam_current < 10000 && rate[{}]<1e9'.format(plane), 'goff')
+        area = self.Run.get_unmasked_area()[plane] if plane in self.Run.get_unmasked_area() else .01 * .015 * 4160
+        print 'rate[{p}] {a}:time / 1000.'.format(p=plane, a='/{}'.format(area) if flux else '')
+        n = self.tree.Draw('rate[{p}] {a}:time / 1000.'.format(p=plane, a='/{}'.format(area) if flux else ''), 'beam_current < 10000 && rate[{}]<1e9'.format(plane), 'goff')
         rate = [self.tree.GetV1()[i] for i in xrange(n)]
         t = [self.tree.GetV2()[i] for i in xrange(n)]
         g = self.make_tgrapherrors('gpr', 'Rate of Plane {n}'.format(n=plane), x=t + [t[-1]], y=rate + [0])
@@ -426,8 +428,9 @@ class Analysis(Elementary):
         p = TProfile('pf', 'Flux Profile', *self.Plots.get_time_binning(bin_width=bin_width))
         p1, p2 = self.get_trigger_planes()
         a1, a2 = self.Run.get_unmasked_area().values()
-        cut = TCut('beam_current < 10000 && rate[{}] < 1e9 && rate[{}] < 1e9'.format(p1 + 1, p2 + 1)) + TCut(cut)
+        cut = TCut('beam_current < 10000 && rate[{0}] < 1e9 && rate[{1}] < 1e9 && rate[{0}] && rate[{1}]'.format(p1 + 1, p2 + 1)) + TCut(cut)
         # rate[0] is scintillator
+        print '(rate[{p1}] / {a1} + rate[{p2}] / {a2}) / 2000 : time / 1000.>>pf'.format(p1=p1 + 1, p2=p2 + 1, a1=a1, a2=a2)
         self.tree.Draw('(rate[{p1}] / {a1} + rate[{p2}] / {a2}) / 2000 : time / 1000.>>pf'.format(p1=p1 + 1, p2=p2 + 1, a1=a1, a2=a2), cut, 'goff', self.Run.n_entries, 1)
         y_range = [0, p.GetMaximum() * 1.2]
         self.format_histo(p, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', fill_color=self.FillColor, markersize=1, t_ax_off=self.Run.StartTime if rel_t else 0, stats=0, y_range=y_range)

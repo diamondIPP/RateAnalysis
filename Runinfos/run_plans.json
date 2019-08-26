@@ -5193,5 +5193,74 @@
       ], 
       "type": "bcm' box2"
     }
+  }, 
+  "201908": {
+    "02": {
+      "amplifiers": "[\"C6_*\", \"C6_2\"]", 
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser1": "6dB_1", 
+        "pulser2": "6dB_2"
+      }, 
+      "runs": [
+        12, 
+        13, 
+        14, 
+        15, 
+        17, 
+        18, 
+        19, 
+        20, 
+        21, 
+        22, 
+        23
+      ], 
+      "type": "rate scan"
+    }, 
+    "03": {
+      "amplifiers": "[\"C6_*\", \"C6_2\"]", 
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser1": "6dB_1", 
+        "pulser2": "6dB_2"
+      }, 
+      "runs": [
+        24, 
+        25, 
+        26, 
+        27, 
+        28, 
+        29, 
+        30, 
+        31, 
+        32, 
+        33, 
+        34
+      ], 
+      "type": "rate scan"
+    }, 
+    "05": {
+      "attenuators": {
+        "dia1": "6dB_2", 
+        "dia2": "None", 
+        "pulser1": "6dB_1", 
+        "pulser2": "6dB_3"
+      }, 
+      "runs": [
+        95, 
+        96, 
+        97, 
+        98, 
+        99, 
+        100, 
+        101, 
+        102, 
+        103, 
+        104
+      ], 
+      "type": "rate scan"
+    }
   }
 }

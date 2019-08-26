@@ -29,7 +29,7 @@ class Converter:
         self.Run = run
         self.TestCampaign = run.TESTCAMPAIGN
         self.RunParser = run.run_config_parser
-        self.SoftConfig = self.load_soft_config()
+        self.SoftConfig = self.Run.MainConfigParser
         self.RunNumber = run.RunNumber
         self.RunInfo = run.RunInfo
         self.Type = self.load_type()
@@ -81,7 +81,7 @@ class Converter:
         return path
 
     def load_raw_file(self):
-        file_dir = join(self.DataDir, self.TcDir, 'raw')
+        file_dir = join(self.DataDir, self.TcDir, self.RunParser.get('BASIC', 'raw directory') if self.RunParser.has_option('BASIC', 'raw directory') else 'raw')
         if not dir_exists(file_dir):
             log_warning('Could not find the raw file directory: {d}'.format(d=file_dir))
         return file_dir
@@ -214,12 +214,13 @@ class Converter:
         pass
 
     def find_plane_errors(self):
-        with open(self.get_alignment_file_path()) as f:
-            if len(f.readlines()[3].split()) == 8:  # check if errors are already in the alignment file
-                self.Run.log_info('Plane errors already added')
-                return
-            print_banner('START FINDING PLANE ERRORS FOR RUN {}'.format(self.RunNumber))
-            self.tracking_tel(action='2')
+        if self.Run.MainConfigParser.get('MISC', 'plane errors'):
+            with open(self.get_alignment_file_path()) as f:
+                if len(f.readlines()[3].split()) == 8:  # check if errors are already in the alignment file
+                    self.Run.log_info('Plane errors already added')
+                    return
+                print_banner('START FINDING PLANE ERRORS FOR RUN {}'.format(self.RunNumber))
+                self.tracking_tel(action='2')
 
     def remove_pickle_files(self):
         self.Run.log_info('Removing all pickle files for run {}'.format(self.RunNumber))

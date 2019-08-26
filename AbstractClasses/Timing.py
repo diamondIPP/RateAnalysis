@@ -40,7 +40,7 @@ class TimingAnalysis(Elementary):
     # --------------------------
     # region RUN CONFIG
 
-    def draw_raw_peaks(self, xmin=100, xmax=400, bin_width=1, ch=None, corr=False, cut='', show=True):
+    def draw_raw_peaks(self, xmin=100, xmax=400, bin_width=1., ch=None, corr=False, cut='', show=True):
         h = TH1F('h_pt', 'Max Peak Timings', int((xmax - xmin) / bin_width), xmin, xmax)
         channel = self.Ana.channel if ch is None else ch
         self.Tree.Draw('max_peak_{p}[{c}]>>h_pt'.format(c=channel, p='position' if not corr else 'time'), cut, 'goff')
@@ -49,9 +49,9 @@ class TimingAnalysis(Elementary):
         return h
 
     def create_run_config(self, ch=0, off=0):
-        h0 = self.draw_raw_peaks(max(5, 100 - off), 450 - off, ch=ch, show=False)
+        h0 = self.draw_raw_peaks(max(5, 50 - off), 450 - off, ch=ch, show=False)
         h0.SetName('h0')
-        h1 = self.draw_raw_peaks(500 - off, 900 - off, ch=ch, show=False)
+        h1 = self.draw_raw_peaks(400 - off, 900 - off, ch=ch, show=False)
         sig_max_x = h0.GetBinCenter(h0.GetMaximumBin())
         self.format_histo(h0, x_range=[sig_max_x - 20, sig_max_x + 20])
         m = h0.GetMean()
@@ -152,8 +152,8 @@ class TimingAnalysis(Elementary):
         self.save_histo(stack, 'TimingComparison',  draw_opt='nostack', l=l, show=show, prnt=prnt, lm=.14)
         self.reset_colors()
 
-    @staticmethod
-    def fit_peaks(h):
+    def fit_peaks(self, h):
+        # self.format_histo(h, x_range=[193, 210])
         max_val = h.GetBinCenter(h.GetMaximumBin())
         fit1 = h.Fit('gaus', 'qs0', '', max_val - 2, max_val + 2)
         mean_, sigma = fit1.Parameter(1), fit1.Parameter(2)
@@ -408,7 +408,7 @@ class TimingAnalysis(Elementary):
 
     def draw_max_peaks(self, cut=None):
         self.set_statbox(entries=True)
-        h = self.draw_raw_peaks(0, 512, bin_width=.5, corr=1, show=False, cut=self.TimingCut if cut is None else TCut(cut))
+        h = self.draw_raw_peaks(0, 512, bin_width=.5, corr=True, show=False, cut=self.TimingCut if cut is None else TCut(cut))
         self.format_histo(h, y_off=.5, tit_size=.07, lab_size=.06)
         self.save_histo(h, 'MaxPeakTimings', logy=True, lm=.073, rm=.045, bm=.18, x=1.5, y=.5)
 

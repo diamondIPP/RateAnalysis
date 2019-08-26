@@ -15,3 +15,11 @@ info_legend = True
 runplan_file = Runinfos/run_plans.json
 runplan_selection_file = Runinfos/selection.json
 irradiation_file = Runinfos/irradiation.json
+plane errors = False
+
+[Converter]
+softwaredir = /home/micha/software
+eudaqfolder = eudaq-drs4
+converterfile = converter_waveform_integrals.conf
+alignfolder = EventAlignment
+trackingfolder = TrackingTelescope
