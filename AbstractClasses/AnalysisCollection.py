@@ -471,7 +471,7 @@ class AnalysisCollection(Elementary):
         g = self.make_tgrapherrors('gps', '{} {}'.format('Pulser ' if pulser else '', y_name), x=x_values, y=y_values)
         self.format_histo(g, color=810, x_tit=self.make_x_tit(vs_time), y_tit='{} [mV]'.format(y_name), y_off=1.45, x_off=1.3, t_ax_off=0 if vs_time else None, x_range=self.Plots.FluxRange)
         cut_name = '' if cut is None else TCut(cut).GetName()
-        save_name = '{p}Pedestal{s}{mod}{cut}'.format(mod=mode, cut=cut_name, s=y_name, p='Pulser' if pulser else '')
+        save_name = '{p}Pedestal{s}{mod}{cut}'.format(mod=mode, cut=cut_name, s='Noise' if sigma else '', p='Pulser' if pulser else '')
         self.save_histo(g, save_name=save_name, show=show, logx=False if vs_time else True, lm=.12, draw_opt='ap')
         return g
 
@@ -892,7 +892,7 @@ class AnalysisCollection(Elementary):
 
         hist = do_pickle(pickle_path, f)
         self.format_histo(hist, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', t_ax_off=self.StartTime if rel_time else 0, fill_color=self.FillColor, y_range=[1, 20000], stats=0)
-        self.save_histo(hist, 'FluxEvo', x=1.5, y=.75, show=show, logy=True, draw_opt='bar' if not self.FirstAnalysis.has_branch('rate') else None)
+        self.save_histo(hist, 'FluxEvo', x=1.5, y=.75, show=show, logy=True, draw_opt='bar' if not self.FirstAnalysis.has_branch('rate') else '')
         return hist
 
     def draw_flux_hist(self, bin_size=1, show=True):
@@ -1212,6 +1212,7 @@ class AnalysisCollection(Elementary):
 
     def draw_run_currents(self):
         self.make_plots('currents', PadAnalysis.get_current)
+        self.make_plots('currents', PadAnalysis.draw_current, {'show': False})
         self.get_currents()
 
     def draw_chi2s(self):
