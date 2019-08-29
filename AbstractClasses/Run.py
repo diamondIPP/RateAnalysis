@@ -217,7 +217,7 @@ class Run(Elementary):
             return
         parser = ConfigParser()
         parser.read(join(self.Dir, 'Configuration', 'DiamondAliases.cfg'))
-        return parser.get('ALIASES', dia.lower())
+        return parser.get('ALIASES', dia.lower()) if dia.lower() in parser.options('ALIASES') else log_critical('Please add {} to the diamond aliases!'.format(dia.encode()))
 
     def load_run_info_file(self):
         try:
