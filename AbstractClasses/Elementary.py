@@ -91,7 +91,7 @@ class Elementary(Draw):
         else:
             file_path = join(self.DataDir, self.TCDir, 'masks')
         if not dir_exists(file_path):
-            log_warning('Did not file mask file directory!')
+            log_warning('Mask file directory does not exist ({})!'.format(file_path))
         return file_path
 
     def load_run_info_path(self):
