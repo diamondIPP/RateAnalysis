@@ -400,7 +400,7 @@ class Analysis(Elementary):
         if not self.has_branch('beam_current'):
             log_warning('Branch "beam_current" does not exist!')
             return
-        n = self.tree.Draw('beam_current:time/1000.>>test', TCut('beam_current < 10000') + TCut(cut), 'goff')
+        n = self.tree.Draw('beam_current/1000.:time/1000.>>test', TCut('beam_current < 2500') + TCut(cut), 'goff')
         current = [self.tree.GetV1()[i] for i in xrange(n)]
         t = [self.tree.GetV2()[i] for i in xrange(n)]
         g = self.make_tgrapherrors('gbc', 'Beam Current', x=t + [t[-1]], y=current + [0])
@@ -415,7 +415,6 @@ class Analysis(Elementary):
             log_warning('The "rate" branch does not exist in this tree')
             return
         area = self.Run.get_unmasked_area()[plane] if plane in self.Run.get_unmasked_area() else .01 * .015 * 4160
-        print 'rate[{p}] {a}:time / 1000.'.format(p=plane, a='/{}'.format(area) if flux else '')
         n = self.tree.Draw('rate[{p}] {a}:time / 1000.'.format(p=plane, a='/{}'.format(area) if flux else ''), 'beam_current < 10000 && rate[{}]<1e9'.format(plane), 'goff')
         rate = [self.tree.GetV1()[i] for i in xrange(n)]
         t = [self.tree.GetV2()[i] for i in xrange(n)]
@@ -430,7 +429,6 @@ class Analysis(Elementary):
         a1, a2 = self.Run.get_unmasked_area().values()
         cut = TCut('beam_current < 10000 && rate[{0}] < 1e9 && rate[{1}] < 1e9 && rate[{0}] && rate[{1}]'.format(p1 + 1, p2 + 1)) + TCut(cut)
         # rate[0] is scintillator
-        print '(rate[{p1}] / {a1} + rate[{p2}] / {a2}) / 2000 : time / 1000.>>pf'.format(p1=p1 + 1, p2=p2 + 1, a1=a1, a2=a2)
         self.tree.Draw('(rate[{p1}] / {a1} + rate[{p2}] / {a2}) / 2000 : time / 1000.>>pf'.format(p1=p1 + 1, p2=p2 + 1, a1=a1, a2=a2), cut, 'goff', self.Run.n_entries, 1)
         y_range = [0, p.GetMaximum() * 1.2]
         self.format_histo(p, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', fill_color=self.FillColor, markersize=1, t_ax_off=self.Run.StartTime if rel_t else 0, stats=0, y_range=y_range)
