@@ -110,6 +110,9 @@ class PadAnalysis(Analysis):
         assert dia in [1, 2], 'You have to choose either diamond 1 or 2'
         return self.Run.Channels[dia - 1]
 
+    def get_short_regint(self, signal=None):
+        return self.get_all_signal_names()[signal]
+
     def get_integral_names(self):
         if self.Run.TreeConfig.has_section('Integral Names'):
             return [str(name) for name in loads(self.Run.TreeConfig.get('Integral Names', 'Names'))]
@@ -520,7 +523,7 @@ class PadAnalysis(Analysis):
         sig = self.SignalName if sig is None else sig
         correction = '' if not corr else '_eventwise'
         cut_str = self.Cut.all_cut if cut is None else TCut(cut)
-        suffix = '{bins}{cor}_{reg}{c}'.format(bins=bin_size, cor=correction, reg=sig.split('[')[-1][:-2], c='' if cut is None else cut_str.GetName())
+        suffix = '{bins}{cor}_{reg}{c}'.format(bins=self.BinSize, cor=correction, reg=self.get_short_regint(sig), c='' if cut is None else cut_str.GetName())
         picklepath = self.make_pickle_path('Ph_fit', None, self.RunNumber, self.DiamondNumber, suf=suffix)
 
         def func():
@@ -537,7 +540,7 @@ class PadAnalysis(Analysis):
                           t_ax_off=self.Run.StartTime if rel_t else 0, y_range=increased_range([min(y_vals), max(y_vals)], .5, .5) if y_range is None else y_range, ndivx=505)
         self.draw_histo(p, show=show, lm=.14, prnt=save)
         fit = self.fit_pulse_height(p, picklepath)
-        self.save_plots('PulseHeight{0}'.format(bin_size), show=show, save=save, prnt=prnt)
+        self.save_plots('PulseHeight{}'.format(self.BinSize), show=show, save=save, prnt=prnt)
         return p, fit
 
     def fit_pulse_height(self, p, picklepath):
