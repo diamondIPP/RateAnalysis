@@ -281,7 +281,7 @@ class Draw:
         x = int(self.Res * fac) if x is None else int(x * self.Res)
         y = self.Res if y is None else int(y * self.Res)
         h = histo
-        h.Sumw2(sumw2) if 'TH' in h.ClassName() and sumw2 is not None else do_nothing()
+        h.Sumw2(sumw2) if 'TH' in h.ClassName() and h.ClassName() not in ['THStack'] and sumw2 is not None else do_nothing()
         set_root_output(show)
         c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x, y) if canvas is None else canvas
         do(c.SetLeftMargin, lm)
