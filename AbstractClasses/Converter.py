@@ -214,7 +214,7 @@ class Converter:
         pass
 
     def find_plane_errors(self):
-        if self.Run.MainConfigParser.get('MISC', 'plane errors'):
+        if self.Run.MainConfigParser.getboolean('MISC', 'plane errors'):
             with open(self.get_alignment_file_path()) as f:
                 if len(f.readlines()[3].split()) == 8:  # check if errors are already in the alignment file
                     self.Run.log_info('Plane errors already added')
