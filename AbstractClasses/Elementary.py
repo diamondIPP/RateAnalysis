@@ -60,6 +60,9 @@ class Elementary(Draw):
 
     def load_main_config(self):
         parser = ConfigParser()
+        file_name = join(self.Dir, 'Configuration', 'main.ini')
+        if not file_exists(file_name):
+            log_critical('{} does not exist. Please copy it from the main.default and adapt it to your purpose!'.format(file_name))
         parser.read(join(self.Dir, 'Configuration', 'main.ini'))
         return parser
 
