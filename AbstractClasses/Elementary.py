@@ -63,18 +63,24 @@ class Elementary(Draw):
         file_name = join(self.Dir, 'Configuration', 'main.ini')
         if not file_exists(file_name):
             log_critical('{} does not exist. Please copy it from the main.default and adapt it to your purpose!'.format(file_name))
-        parser.read(join(self.Dir, 'Configuration', 'main.ini'))
+        parser.read(file_name)
         return parser
 
     def load_ana_config(self):
         ana_parser = ConfigParser()
-        ana_parser.read(join(self.Dir, 'Configuration', self.TCString, 'AnalysisConfig.ini'))
+        file_name = join(self.Dir, 'Configuration', self.TCString, 'AnalysisConfig.ini')
+        if not file_exists(file_name):
+            log_critical('AnalysisConfig.ini does not exist for {0}! Please create it in Configuration/{0}!'.format(self.TESTCAMPAIGN))
+        ana_parser.read(file_name)
         return ana_parser
 
     def load_run_config(self):
         run_number = self.RunNumber if hasattr(self, 'RunNumber') else None
         run_parser = ConfigParser({'excluded_runs': '[]'})  # add non default option
-        run_parser.read(join(self.Dir, 'Configuration', self.TCString, 'RunConfig.ini'))  # first read the main config file with general information for all splits
+        base_file_name = join(self.Dir, 'Configuration', self.TCString, 'RunConfig.ini')
+        if not file_exists(base_file_name):
+            log_critical('RunConfig.ini does not exist for {0}! Please create it in Configuration/{0}!'.format(self.TESTCAMPAIGN))
+        run_parser.read(base_file_name)  # first read the main config file with general information for all splits
         if self.ana_config_parser.has_section('SPLIT') and run_number is not None:
             split_runs = [0] + loads(self.ana_config_parser.get('SPLIT', 'runs')) + [inf]
             config_nr = next(i for i in xrange(1, len(split_runs)) if split_runs[i - 1] <= run_number < split_runs[i])
