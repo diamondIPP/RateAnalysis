@@ -7,3 +7,4 @@
 - progressbar
 - uncertainties
 - pytz
+- gtts
