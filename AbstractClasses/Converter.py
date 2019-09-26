@@ -291,7 +291,7 @@ class Converter:
         parser = ConfigParser()
         config_file = join(self.EudaqDir, 'conf', self.ConverterConfigFile)
         if not file_exists(config_file):
-            log_critical('EUDAQ config file: "{}" does not exist!'.format(self.ConverterConfigFile))
+            log_critical('EUDAQ config file: "{}" does not exist!'.format(config_file))
         parser.read(config_file)
         section = 'Converter.{}'.format(self.ConverterTree)
         if self.Type == 'pad':
