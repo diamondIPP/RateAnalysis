@@ -85,7 +85,7 @@ class CutPix(Cut):
     def load_pixel_config(self):
         """ Loads the pixel configuration parameters from the config file. """
         self.CutConfig['rhit'] = int(self.get_config('r_hit'))
-        self.CutConfig['trigPhase'] = loads(self.get_config('trigger_phase'))[str(self.Dut)]
+        self.CutConfig['trigPhase'] = self.load_trig_phase()
         self.CutConfig['MaskRows'] = self.load_mask('MaskRows')
         self.CutConfig['MaskCols'] = self.load_mask('MaskCols')
         self.CutConfig['MaskPixels'] = self.load_mask('MaskPixels')
@@ -94,6 +94,10 @@ class CutPix(Cut):
 
     def get_config(self, option):
         return self.ana_config_parser.get('CUT', option) if self.ana_config_parser.has_option('CUT', option) else None
+
+    def load_trig_phase(self):
+        value = self.get_config('trigger_phase')
+        return None if not value or not loads(value) else loads(value)[self.Dut]
 
     def load_mask(self, name):
         string = self.get_config('{n}ROC{d}'.format(n=name, d=self.Dut))
