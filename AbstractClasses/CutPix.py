@@ -97,7 +97,7 @@ class CutPix(Cut):
 
     def load_trig_phase(self):
         value = self.get_config('trigger_phase')
-        return None if not value or not loads(value) else loads(value)[self.Dut]
+        return None if not value or not loads(value) else loads(value)[str(self.Dut)]
 
     def load_mask(self, name):
         string = self.get_config('{n}ROC{d}'.format(n=name, d=self.Dut))
