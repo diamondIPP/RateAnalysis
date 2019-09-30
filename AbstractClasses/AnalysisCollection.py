@@ -1210,6 +1210,10 @@ class AnalysisCollection(Elementary):
     def draw_currents(self, v_range=None, rel_time=False, averaging=1, with_flux=False, c_range=None, f_range=None, draw_opt='ap', show=True):
         self.Currents.draw_indep_graphs(rel_time=rel_time, v_range=v_range, averaging=averaging, with_flux=with_flux, c_range=c_range, f_range=f_range, show=show, draw_opt=draw_opt)
 
+    def draw_iv(self, show=True):
+        g = self.Currents.draw_iv(show=False)
+        self.save_histo(g, 'IV', draw_opt='ap', logy=True, lm=.12, show=show)
+
     def draw_run_currents(self):
         self.make_plots('currents', PadAnalysis.get_current)
         self.make_plots('currents', PadAnalysis.draw_current, {'show': False})
