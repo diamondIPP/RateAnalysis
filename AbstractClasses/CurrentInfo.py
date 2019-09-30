@@ -393,6 +393,15 @@ class Currents(Elementary):
         server_pickle(self.make_pickle_path('Currents', run=self.RunNumber, ch=self.DiamondNumber), current)
         return current
 
+    def draw_iv(self, show=True):
+        self.find_data()
+        x = [v for v, c in zip(self.Voltages, self.Currents) if c != 590]
+        y = [c for c in self.Currents if c != 590]
+        g = self.make_tgrapherrors('giv', 'I-V Curve for {}'.format(self.Analysis.DiamondName), x=x, y=y)
+        self.format_histo(g, x_tit='Voltage [V]', y_tit='Current [nA]', y_off=1.4)
+        self.draw_histo(g, 'IV', draw_opt='ap', logy=True, lm=.12, show=show)
+        return g
+
     def draw_indep_graphs(self, rel_time=False, ignore_jumps=True, v_range=None, f_range=None, c_range=None, averaging=1, with_flux=False, draw_opt='ap', show=True):
         self.IgnoreJumps = ignore_jumps
         self.set_graphs(averaging)
