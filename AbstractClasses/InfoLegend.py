@@ -7,6 +7,7 @@
 from ROOT import gROOT, TLegend
 from Utils import make_tc_str, timedelta, make_rate_str, make_irr_string
 from subprocess import check_output
+from os import chdir
 
 
 class InfoLegend:
@@ -65,9 +66,9 @@ class InfoLegend:
     def get(self, canvas=None):
         return self.draw(canvas, show=False)
 
-    @staticmethod
-    def make_git_text():
+    def make_git_text(self):
         git_text = TLegend(.85, 0, 1, .025)
+        chdir(self.Analysis.Dir)
         git_text.AddEntry(0, 'git hash: {ver}'.format(ver=check_output(['git', 'describe', '--always'])), '')
         git_text.SetLineColor(0)
         return git_text

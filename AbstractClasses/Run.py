@@ -402,7 +402,7 @@ class Run(Elementary):
         return self.Flux if self.Flux else self.RunInfo['aimed flux']
 
     def get_irradiations(self):
-        with open(self.IrradiationFile, 'r') as f:
+        with open(join(self.Dir, self.IrradiationFile), 'r') as f:
             data = load(f)
         for dia in self.DiamondNames:
             if self.TCString not in data:
