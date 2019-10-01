@@ -192,6 +192,23 @@ class PadAnalysis(Analysis):
         attenuators = self.Run.get_attenuators()
         return attenuators[self.DiamondNumber - 1] if attenuators else None
 
+    def get_sm_data(self, cut=None, fid=False):
+        """ :return: signal map data as numpy array [[x], [y], [ph]] with units [[mm], [mm], [mV]]
+            :param cut: applies all cuts if None is provided.
+            :param fid: return only values within the fiducial region set in the AnalysisConfig.ini"""
+        x_var, y_var = (self.Cut.get_track_var(self.DiamondNumber - 1, v) for v in ['x', 'y'])
+        cut = self.Cut.generate_special_cut(excluded=['fiducial'], prnt=False) if not fid and cut is None else cut
+        cut = self.Cut.all_cut if cut is None else TCut(cut)
+        n = self.tree.Draw('{z}:{y}*10:{x}*10'.format(z=self.generate_signal_name(), x=x_var, y=y_var), cut, 'goff')  # *10 to get values in mm
+        return array([self.Run.get_root_vec(n, i) for i in xrange(3, 0, -1)])
+
+    def get_ph_data(self, cut=None):
+        """ :return: pulse height data as numpy array [[time] [ph]] with units [[s], [mV]]
+            :param cut: applies all cuts if None is provided."""
+        cut_str = self.Cut.all_cut if cut is None else TCut(cut)
+        n = self.tree.Draw('{sig}:time/1000.'.format(sig=self.generate_signal_name()), cut_str, 'goff')
+        return array([self.Run.get_root_vec(n, i) for i in xrange(2, 0, -1)])
+
     def make_all(self, redo=False):
         self.draw_signal_distribution(redo=redo, show=False)
         self.draw_pulse_height(redo=redo, show=False)
