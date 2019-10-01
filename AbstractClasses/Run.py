@@ -456,6 +456,11 @@ class Run(Elementary):
         evt_numbers = [self.tree.GetV1()[i] for i in xrange(total_events)]
         return int(evt_numbers[:n][-1] + 1 - start)
 
+    def get_root_vec(self, n, ind=1):
+        vec = getattr(self.tree, 'GetV{}'.format(ind))()
+        vec.SetSize(n)
+        return array(vec)
+
     # endregion
 
     # ==============================================
