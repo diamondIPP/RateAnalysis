@@ -53,7 +53,6 @@ class CutPad(Cut):
 
     def load_config_data(self, name):
         value = self.AnaConfig.get('CUT', name)
-        print value
         return int(value) if value != 'None' else None
 
     def load_dia_config(self, name, store_true=False):
