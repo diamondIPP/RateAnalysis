@@ -476,3 +476,13 @@ class Cut(Elementary):
         self.save_histo(pie, draw_opt='{0}rsc'.format('3d' if not flat else ''), show=show)
         self.reset_colors()
         return sorted_contr
+
+    def draw_fid_cut(self, scale=1):
+        cut = get_object('fid{}'.format(self.RunNumber))
+        if cut:
+            cut = deepcopy(cut)
+            cut.SetName('fid{}'.format(scale))
+            for i in xrange(cut.GetN()):
+                cut.SetPoint(i, scale * cut.GetX()[i], scale * cut.GetY()[i])
+            cut.Draw()
+            self.Objects.append(cut)

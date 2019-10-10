@@ -188,16 +188,6 @@ class CutPix(Cut):
             return ''
         return '{}{}'.format(name, self.RunNumber)
 
-    def draw_fid_cut(self, scale=1):
-        cut = get_object('fid{}'.format(self.RunNumber))
-        if cut:
-            cut = deepcopy(cut)
-            cut.SetName('fid{}'.format(scale))
-            for i in xrange(cut.GetN()):
-                cut.SetPoint(i, scale * cut.GetX()[i], scale * cut.GetY()[i])
-            cut.Draw()
-            self.ROOTObjects.append(cut)
-
     def generate_alignment(self):
         """ This adds the restrictions to the cut string such that misalignments are excluded each time the cut is applied. """
         interruptions = self.find_misaligments()
