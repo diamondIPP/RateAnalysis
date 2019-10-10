@@ -55,8 +55,6 @@ class VoltageScan(Elementary):
         return self.draw_pulse_height(binning, pulser=True, redo=redo, show=show)
 
     def draw_pulse_height(self, binning=None, pulser=False, redo=False, show=True):
-
-        marker_size = 1
         gStyle.SetEndErrorSize(4)
         ph = self.Ana.Pulser.get_pulse_heights(redo=redo) if pulser else self.Ana.get_pulse_heights(binning, redo)
         y_values = [dic['ph'] for dic in ph.itervalues()]
@@ -64,7 +62,7 @@ class VoltageScan(Elementary):
         rel_sys_error = 0  # TODO think of something else here...
         fac = 1 if self.Ana.DUTType == 'pad' else 1e-3
         y_values = [make_ufloat((v.n, v.s + rel_sys_error * v.n)) * fac for v in y_values]
-        g = self.make_tgrapherrors('gStatError', 'stat. error', self.colors[2], x=x, y=y_values, marker_size=marker_size)
+        g = self.make_tgrapherrors('gStatError', 'stat. error', self.colors[2], x=x, y=y_values, marker_size=1)
         ytit = 'Pulse Height [{}]'.format('mV' if self.Ana.DUTType == 'pad' else 'ke')
         self.format_histo(g, x_tit='Voltage [V]', y_tit=ytit, y_off=1.4, draw_first=True, y_range=[0, max(y_values).n * 1.2], x_range=[min(x).n - 10, max(x).n + 10])
         self.draw_histo(g, draw_opt='apl', lm=.14, show=show)
