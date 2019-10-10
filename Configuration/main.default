@@ -4,7 +4,7 @@ run_plan_path = Runinfos/run_plans.json
 default test campaign = 201908
 
 [SAVE]
-pickle_dir = Configuration/Individual_Configs/
+pickle directory = Configuration/Individual_Configs/
 activate_title = True
 felix = False
 short_name = False
