@@ -37,7 +37,7 @@ class PulserAnalysis(Elementary):
         return self.Ana.SignalDefinition.format(pol=self.Polarity, num=num)
 
     def get_pedestal_name(self, peak_int=None):
-        region = self.ana_config_parser.get('BASIC', 'pulser_pedestal') if self.ana_config_parser.has_option('BASIC', 'pulser_pedestal') else 'ac'
+        region = self.AnaConfig.get('BASIC', 'pulser pedestal') if self.AnaConfig.has_option('BASIC', 'pulser pedestal') else 'ac'
         return self.Ana.get_pedestal_name(region, self.Ana.PeakIntegral if None else peak_int)
 
     def load_type(self):

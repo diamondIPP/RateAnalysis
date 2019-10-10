@@ -399,7 +399,7 @@ class PixAnalysis(Analysis):
 
     def draw_pulse_height_map(self, show=True, cut=None, roc=None, fid=False, res=sqrt(12), track_coods=False):
         roc = self.Dut if roc is None else roc
-        cut_string = (self.Cut.generate_special_cut(['fiducial']) if not fid else deepcopy(z.Cut.all_cut)) if cut is None else TCut(cut)
+        cut_string = (self.Cut.generate_special_cut(['fiducial'], hitmap=False) if not fid else deepcopy(z.Cut.all_cut)) if cut is None else TCut(cut)
         set_root_output(False)
         h = TProfile2D('p_phm', 'Pulse Height Map', *self.Plots.get_global_bins(res))
         coods = 'dia_track_y_local[{0}]:dia_track_x_local[{0}]'.format(roc - 4) if track_coods else 'cluster_ypos_tel[{n}]:cluster_xpos_tel[{n}]'.format(n=roc)

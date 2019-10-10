@@ -131,8 +131,8 @@ class Currents(Elementary):
 
     def load_parser(self):
         parser = ConfigParser()
-        if self.run_config_parser.has_option('BASIC', 'hvconfigfile'):
-            file_path = self.run_config_parser.get('BASIC', 'hvconfigfile')
+        if self.RunConfig.has_option('BASIC', 'hvconfigfile'):
+            file_path = self.RunConfig.get('BASIC', 'hvconfigfile')
         else:
             file_path = join(self.DataDir, self.generate_tc_directory(), 'HV.cfg')
         if not file_exists(file_path):
@@ -155,8 +155,8 @@ class Currents(Elementary):
         return full_str.split('-')[1] if len(full_str) > 1 else '0'
 
     def find_data_path(self, old=False):
-        if self.run_config_parser.has_option('BASIC', 'hvdatapath'):
-            hv_datapath = self.run_config_parser.get('BASIC', 'hvdatapath')
+        if self.RunConfig.has_option('BASIC', 'hvdatapath'):
+            hv_datapath = self.RunConfig.get('BASIC', 'hvdatapath')
         else:
             hv_datapath = join(self.DataDir, self.generate_tc_directory(), 'HVClient')
         if not dir_exists(hv_datapath):

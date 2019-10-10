@@ -41,24 +41,24 @@ class CutPad(Cut):
     # ==============================================
     # region GET CONFIG
     def load_channel_config(self):
-        self.CutConfig['absMedian_high'] = self.load_config_data('absMedian_high')
-        self.CutConfig['pedestalsigma'] = self.load_config_data('pedestalsigma')
+        self.CutConfig['absMedian_high'] = self.load_config_data('absolute median high')
+        self.CutConfig['pedestalsigma'] = self.load_config_data('pedestal sigma')
         self.CutConfig['fiducial'] = self.load_fiducial()
         self.CutConfig['threshold'] = self.load_dia_config('threshold', store_true=True)
 
     def load_fiducial(self):
-        if self.ana_config_parser.has_option('SPLIT', 'fiducial'):
-            split_runs = loads(self.ana_config_parser.get('SPLIT', 'fiducial')) + [int(1e10)]
-            return next(self.load_dia_config('fid_cuts{n}'.format(n=i if i else '')) for i in xrange(len(split_runs)) if self.RunNumber <= split_runs[i])
-        return self.load_dia_config('fid_cuts')
+        first_cut_name = 'fiducial' if self.AnaConfig.has_option('CUT', 'fiducial') else 'fiducial 1'
+        split_runs = self.get_fiducial_splits()
+        return next(self.load_dia_config('fiducial {n}'.format(n=i + 1) if i else first_cut_name) for i in xrange(len(split_runs)) if self.RunNumber <= split_runs[i])
 
     def load_config_data(self, name):
-        value = self.ana_config_parser.getint('CUT', name)
-        return value if value > 0 else None
+        value = self.AnaConfig.get('CUT', name)
+        print value
+        return int(value) if value != 'None' else None
 
     def load_dia_config(self, name, store_true=False):
         try:
-            conf = loads(self.ana_config_parser.get('CUT', name))
+            conf = loads(self.AnaConfig.get('CUT', name))
             dia = self.analysis.DiamondName
             dia = '{}*{}'.format(dia, self.analysis.DiamondNumber) if '{}*1'.format(dia) in conf else dia
             if store_true:

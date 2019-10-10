@@ -134,14 +134,14 @@ class PadAnalysis(Analysis):
     def load_regions(self):
         all_regions = {}
         for name in ['signal', 'pedestal', 'pulser']:
-            option = '{}_region'.format(name)
-            region = '{name}_{region}'.format(name=name, region=self.ana_config_parser.get('BASIC', option)) if option in self.ana_config_parser.options('BASIC') else ''
+            option = '{} region'.format(name)
+            region = '{name}_{region}'.format(name=name, region=self.AnaConfig.get('SIGNAL', option)) if option in self.AnaConfig.options('SIGNAL') else ''
             regions = [reg for reg in self.Run.IntegralRegions[self.DiamondNumber - 1] if reg.startswith(name)]
             all_regions[name] = region if region in regions else regions[0]
         return all_regions
 
     def load_peak_integral(self):
-        peak_int = 'PeakIntegral{}'.format(self.ana_config_parser.get('BASIC', 'peak_integral'))
+        peak_int = 'PeakIntegral{}'.format(self.AnaConfig.get('SIGNAL', 'peak integral'))
         return peak_int if peak_int in self.Run.PeakIntegrals[self.DiamondNumber - 1] else self.Run.PeakIntegrals[self.DiamondNumber - 1].keys()[0]
 
     def get_signal_number(self, region=None, peak_integral=None, sig_type='signal'):
@@ -953,8 +953,9 @@ class PadAnalysis(Analysis):
         self.Cut.draw_fid_cut(scale)
 
     def draw_detector_size(self, scale=1):
-        split_runs = (loads(self.ana_config_parser.get('SPLIT', 'fiducial')) if self.ana_config_parser.has_option('SPLIT', 'fiducial') else []) + [int(1e10)]
-        values = next(self.Cut.load_dia_config('detector size{n}'.format(n=' {}'.format(i) if i else '')) for i in xrange(len(split_runs)) if self.RunNumber <= split_runs[i])
+        split_runs = self.Cut.get_fiducial_splits()
+        first_cut_name = 'detector size' if self.AnaConfig.has_option('CUT', 'detector size') else 'detector size 1'
+        values = next(self.Cut.load_dia_config('detector size {n}'.format(n=i + 1) if i else first_cut_name) for i in xrange(len(split_runs)) if self.RunNumber <= split_runs[i])
         if values is None:
             return
         x, y, lx, ly = values

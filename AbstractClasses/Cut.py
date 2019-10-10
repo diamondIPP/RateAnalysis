@@ -1,4 +1,4 @@
-import json
+from json import loads
 from numpy import zeros
 from Elementary import Elementary
 from InfoLegend import InfoLegend
@@ -27,7 +27,6 @@ class Cut(Elementary):
 
             # config
             self.DUTType = self.load_dut_type()
-            self.BeaminterruptionsDir = self.ana_config_parser.get('CUT', 'beaminterruptions_folder')
             self.CutConfig = {}
             self.NCuts = 0
 
@@ -87,8 +86,6 @@ class Cut(Elementary):
         dic['noBeamInter'] = ''
         dic['Tracks'] = ''
         dic['peakPos_high'] = ''
-        dic['spread_low'] = ''
-        dic['absMedian_high'] = ''
         dic['pedestalsigma'] = ''
         dic['alignment'] = ''
         return dic
@@ -133,18 +130,18 @@ class Cut(Elementary):
     # region GET CONFIG
     
     def load_dut_type(self):
-        dut_type = self.run_config_parser.get("BASIC", "type")
+        dut_type = self.RunConfig.get("BASIC", "type")
         assert dut_type.lower() in ["pixel", "pad"], "The DUT type {0} should be 'pixel' or 'pad'".format(dut_type)
         return dut_type
 
     def load_config(self):
         self.CutConfig['IndividualChCut'] = ''
-        self.CutConfig['JumpExcludeRange'] = json.loads(self.ana_config_parser.get('CUT', 'exclude_around_jump'))
-        self.CutConfig['ExcludeFirst'] = self.load_exclude_first(self.ana_config_parser.getfloat('CUT', 'excludefirst'))
-        self.CutConfig['EventRange'] = self.load_event_range(json.loads(self.ana_config_parser.get('CUT', 'EventRange')))
-        self.CutConfig['chi2X'] = self.ana_config_parser.getint('CUT', 'chi2X')
-        self.CutConfig['chi2Y'] = self.ana_config_parser.getint('CUT', 'chi2Y')
-        self.CutConfig['slope'] = self.ana_config_parser.getint('CUT', 'slope')
+        self.CutConfig['JumpExcludeRange'] = loads(self.AnaConfig.get('CUT', 'exclude around jump'))
+        self.CutConfig['ExcludeFirst'] = self.load_exclude_first(self.AnaConfig.getfloat('CUT', 'exclude first'))
+        self.CutConfig['EventRange'] = self.load_event_range(loads(self.AnaConfig.get('CUT', 'event range')))
+        self.CutConfig['chi2X'] = self.AnaConfig.getint('CUT', 'chi2X')
+        self.CutConfig['chi2Y'] = self.AnaConfig.getint('CUT', 'chi2Y')
+        self.CutConfig['slope'] = self.AnaConfig.getint('CUT', 'slope')
 
     def load_event_range(self, event_range=None):
         """ Gets the event range cut. If the arguments are negative, they are interpreted as time in minutes. Therefore, e.g. load_event_range(-10, 700000) means that only events are considered
@@ -180,6 +177,9 @@ class Cut(Elementary):
 
     def set_peakpos_high(self, value):
         self.CutConfig['peakPos_high'] = self.load_peakpos_high(value)
+
+    def get_fiducial_splits(self):
+        return (loads(self.AnaConfig.get('SPLIT', 'fiducial')) if self.AnaConfig.has_option('SPLIT', 'fiducial') else []) + [int(1e10)]
 
     # endregion
 
@@ -378,17 +378,10 @@ class Cut(Elementary):
         return [[self.analysis.Run.get_event_at_time(t) for t in tup] for tup in interruptions]
 
     def get_beam_interruptions(self):
-        """
-        If beam interruption data exist in beaminterruptions/data/, it will load it in order to account for beam interruptions. The data is stored as a list of jumps, dumped into a pickle file.
-        If no pickle file exists, it will perform a beam interruption analysis in order to identify the beam interruptions. The found interruptions are stored in a list at .jumps and dumped into
-        a pickle file.
-        """
-        # check if directories exist
-        ensure_dir(self.BeaminterruptionsDir)
-        ensure_dir(join(self.BeaminterruptionsDir, 'data'))
+        """ The data is stored as a list of jumps, dumped into a pickle file. If no pickle file exists, it will perform a beam interruption analysis in order to identify the beam interruptions.
+        :returns: list of interruptions including safety margin from the AnalysisConfig. """
         pickle_path = self.make_pickle_path('BeamInterruptions', run=self.RunNumber, suf='_'.join(str(i) for i in self.CutConfig['JumpExcludeRange']))
         interruptions = do_pickle(pickle_path, self.find_beam_interruptions)
-
         self.Jumps = interruptions[0]
         self.Interruptions = interruptions[1]
         return interruptions[1]
@@ -466,7 +459,7 @@ class Cut(Elementary):
         print contr
         sorted_contr = OrderedDict(sorted(OrderedDict(item for item in contr.iteritems() if item[1][0] >= (.03 * n_events if short else 0)).iteritems(), key=lambda x: x[1]))  # sort by size
         sorted_contr.update({'Other': (n_events - sum(v[0] for v in sorted_contr.values()), self.get_color())} if short else {})
-        sorted_contr = OrderedDict(sorted_contr.popitem(0 if i % 2 else -1) for i in xrange(len(sorted_contr)))  # sort by largest->smallest->next largest...
+        sorted_contr = OrderedDict(sorted_contr.popitem(not i % 2) for i in xrange(len(sorted_contr)))  # sort by largest->smallest->next largest...
         print sorted_contr
         pie = TPie('pie', 'Cut Contributions', len(sorted_contr), array([v[0] for v in sorted_contr.values()], 'f'), array([v[1] for v in sorted_contr.values()], 'i'))
         for i, label in enumerate(sorted_contr.iterkeys()):

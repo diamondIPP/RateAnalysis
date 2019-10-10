@@ -28,14 +28,14 @@ class Converter:
         # main
         self.Run = run
         self.TestCampaign = run.TESTCAMPAIGN
-        self.RunParser = run.run_config_parser
+        self.RunConfig = run.RunConfig
         self.SoftConfig = self.Run.MainConfigParser
         self.RunNumber = run.RunNumber
         self.RunInfo = run.RunInfo
         self.Type = self.load_type()
 
         # digitizer
-        self.ConverterTree = '{0}tree'.format(self.RunParser.get('BASIC', 'digitizer').lower() if self.Type == 'pad' and self.RunParser.has_option('BASIC', 'digitizer') else 'telescope')
+        self.ConverterTree = '{0}tree'.format(self.RunConfig.get('BASIC', 'digitizer').lower() if self.Type == 'pad' and self.RunConfig.has_option('BASIC', 'digitizer') else 'telescope')
         self.NChannels = 9 if self.ConverterTree.startswith('caen') else 4
 
         # directories
@@ -48,7 +48,7 @@ class Converter:
         self.AlignDir = '{soft}/{d}'.format(soft=self.SoftwareDir, d=self.SoftConfig.get('Converter', 'alignfolder'))
 
         # tracking
-        self.TelescopeID = self.RunParser.getint('BASIC', 'telescopeID') if run.RunNumber else None
+        self.TelescopeID = self.RunConfig.getint('BASIC', 'telescopeID') if run.RunNumber else None
         self.TrackingDir = join(self.SoftwareDir, self.SoftConfig.get('Converter', 'trackingfolder'))
 
         # files paths
@@ -64,7 +64,7 @@ class Converter:
         self.DecodingErrors = self.read_errors()
 
     def load_type(self):
-        return self.RunParser.get('BASIC', 'type') if self.RunParser.has_option('BASIC', 'type') else None
+        return self.RunConfig.get('BASIC', 'type') if self.RunConfig.has_option('BASIC', 'type') else None
 
     def load_soft_dir(self):
         file_dir = self.SoftConfig.get('Converter', 'softwaredir')
@@ -73,15 +73,15 @@ class Converter:
         return file_dir
 
     def load_root_file_dir(self):
-        if self.RunParser.has_option('BASIC', 'runpath'):
-            path = self.RunParser.get('BASIC', 'runpath')
+        if self.RunConfig.has_option('BASIC', 'runpath'):
+            path = self.RunConfig.get('BASIC', 'runpath')
         else:
             path = join(self.DataDir, self.TcDir, 'root', '{dut}'.format(dut='pads' if self.Type == 'pad' else 'pixel'))
         ensure_dir(path)
         return path
 
     def load_raw_file(self):
-        file_dir = join(self.DataDir, self.TcDir, self.RunParser.get('BASIC', 'raw directory') if self.RunParser.has_option('BASIC', 'raw directory') else 'raw')
+        file_dir = join(self.DataDir, self.TcDir, self.RunConfig.get('BASIC', 'raw directory') if self.RunConfig.has_option('BASIC', 'raw directory') else 'raw')
         if not dir_exists(file_dir):
             log_warning('Could not find the raw file directory: {d}'.format(d=file_dir))
         return file_dir
@@ -96,7 +96,7 @@ class Converter:
         self.Run.set_run(run_number, root_tree=False)
         self.RunNumber = run_number
         self.RunInfo = self.Run.RunInfo
-        self.RunParser = self.Run.load_run_config()
+        self.RunConfig = self.Run.load_run_config()
         self.Type = self.load_type()
         self.RootFileDir = self.load_root_file_dir()
 
@@ -111,12 +111,12 @@ class Converter:
         config = {}
         if self.RunNumber is None:
             return config
-        options = self.RunParser.options('ROOTFILE_GENERATION')
+        options = self.RunConfig.options('ROOTFILE_GENERATION')
         for opt in options:
             if any(opt.endswith(ending) for ending in ['_range', '_region', '_range_drs4']) or 'polarities' in opt:
-                config[opt] = loads(self.RunParser.get('ROOTFILE_GENERATION', opt))
+                config[opt] = loads(self.RunConfig.get('ROOTFILE_GENERATION', opt))
             elif opt not in ['excluded_runs']:
-                config[opt] = self.RunParser.getint('ROOTFILE_GENERATION', opt)
+                config[opt] = self.RunConfig.getint('ROOTFILE_GENERATION', opt)
         return OrderedDict(sorted(config.iteritems()))
 
     def get_run_info(self, run_number):
@@ -252,12 +252,12 @@ class Converter:
 
     def load_polarities(self, pulser=False):
         option = '{}polarities'.format('pulser_' if pulser else '')
-        if self.RunParser.has_option('ROOTFILE_GENERATION', option):
-            return self.RunParser.get('ROOTFILE_GENERATION', option)
+        if self.RunConfig.has_option('ROOTFILE_GENERATION', option):
+            return self.RunConfig.get('ROOTFILE_GENERATION', option)
         fac = 1
-        if self.RunParser.has_option('ROOTFILE_GENERATION', 'inverted_polarities'):
-            fac = -1 if int(self.RunParser.get('ROOTFILE_GENERATION', 'inverted_polarities')) else 1
-        active_regions = self.RunParser.getint('ROOTFILE_GENERATION', 'active_regions')
+        if self.RunConfig.has_option('ROOTFILE_GENERATION', 'inverted_polarities'):
+            fac = -1 if int(self.RunConfig.get('ROOTFILE_GENERATION', 'inverted_polarities')) else 1
+        active_regions = self.RunConfig.getint('ROOTFILE_GENERATION', 'active_regions')
         biases = deepcopy(self.Run.Bias)
         polarities = [sign(biases.pop(0)) * fac if has_bit(active_regions, i) else 0 for i in xrange(self.NChannels)]
         return str([(1 if not pol and has_bit(active_regions, i) else pol) for i, pol in enumerate(polarities)])  # pol cannot be 0, just take 1 for 0V
@@ -299,7 +299,7 @@ class Converter:
             parser.set(section, 'pulser_polarities', self.load_polarities(pulser=True))
 
         # remove unset ranges and regions
-        new_options = self.RunParser.options('ROOTFILE_GENERATION')
+        new_options = self.RunConfig.options('ROOTFILE_GENERATION')
         for opt in parser.options(section):
             if (opt.endswith('_range') or opt.endswith('_region')) and opt not in new_options:
                 parser.remove_option(section, opt)

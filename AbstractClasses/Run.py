@@ -37,12 +37,12 @@ class Run(Elementary):
         self.DUTType = self.load_dut_type()
         self.NChannels = self.load_pre_n_channels()
         self.trigger_planes = [1, 2]
-        self.treename = self.run_config_parser.get('BASIC', 'treename')
+        self.treename = self.RunConfig.get('BASIC', 'treename')
         self.runinfofile = self.load_run_info_path()
         self.IrradiationFile = self.MainConfigParser.get('MISC', 'irradiation_file')
         self.maskfilepath = self.load_mask_file_dir()
-        self.createNewROOTFiles = self.run_config_parser.getboolean('BASIC', 'createNewROOTFiles')
-        self.Digitiser = self.run_config_parser.get('BASIC', 'digitizer') if self.DUTType == 'pad' else None
+        self.createNewROOTFiles = self.RunConfig.getboolean('BASIC', 'createNewROOTFiles')
+        self.Digitiser = self.RunConfig.get('BASIC', 'digitizer') if self.DUTType == 'pad' else None
 
         # run info
         self.DefaultInfo = self.load_default_info()
@@ -99,7 +99,7 @@ class Run(Elementary):
 
     def load_pre_n_channels(self):
         if self.DUTType == 'pad':
-            return 9 if self.run_config_parser.get('BASIC', 'digitizer').lower() == 'caen' else 4
+            return 9 if self.RunConfig.get('BASIC', 'digitizer').lower() == 'caen' else 4
         else:
             return None
 
@@ -112,13 +112,13 @@ class Run(Elementary):
             if hasattr(self, 'TreeConfig'):
                 return [i for i, val in enumerate(self.TreeConfig.get('General', 'active regions').split()) if int(val)]
             # read it from the current config file if there is no tree loaded
-            binary = self.run_config_parser.getint('ROOTFILE_GENERATION', 'active_regions')
+            binary = self.RunConfig.getint('ROOTFILE_GENERATION', 'active_regions')
             return [i for i in xrange(self.NChannels) if has_bit(binary, i)]
         elif self.DUTType == 'pixel':
             return [i for i in xrange(len([key for key in self.RunInfo.iterkeys() if key.startswith('dia') and key[-1].isdigit()]))]
 
     def load_dut_type(self):
-        dut_type = self.run_config_parser.get('BASIC', 'type') if self.RunNumber is not None else None
+        dut_type = self.RunConfig.get('BASIC', 'type') if self.RunNumber is not None else None
         if dut_type not in ['pixel', 'pad', None]:
             log_critical("The DUT type {0} has to be either 'pixel' or 'pad'".format(dut_type))
         return dut_type
@@ -268,7 +268,7 @@ class Run(Elementary):
 
     def reload_run_config(self, run_number):
         self.RunNumber = run_number
-        self.run_config_parser = self.load_run_config()
+        self.RunConfig = self.load_run_config()
 
     def set_run(self, run_number, root_tree):
 

@@ -104,7 +104,7 @@ class AnalysisCollection(Elementary):
         return self.selection.Run.load_dut_type()
 
     def load_channel(self):
-        binary = self.FirstAnalysis.run_config_parser.getint('ROOTFILE_GENERATION', 'active_regions')
+        binary = self.FirstAnalysis.RunConfig.getint('ROOTFILE_GENERATION', 'active_regions')
         dia_nr = self.selection.SelectedDiamondNr
         return [i for i in xrange(16) if has_bit(binary, i)][dia_nr - 1]
 

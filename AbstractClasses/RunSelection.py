@@ -21,7 +21,7 @@ class RunSelection(Elementary):
         # info
         self.TCString = '{tc}{s}'.format(tc=self.TESTCAMPAIGN, s=self.generate_sub_set_str())
         self.RunPlanPath = join(self.get_program_dir(), self.MainConfigParser.get('MAIN', 'run_plan_path'))
-        self.ExcludedRuns = json.loads(self.run_config_parser.get('BASIC', 'excluded_runs'))
+        self.ExcludedRuns = json.loads(self.RunConfig.get('BASIC', 'excluded_runs'))
         self.RunPlan = self.load_runplan()
         self.RunNumbers = self.load_run_numbers()
         self.RunInfos = self.load_run_infos()

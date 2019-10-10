@@ -29,7 +29,7 @@ class Elementary(Draw):
         # Config
         self.Dir = self.get_program_dir()
         self.MainConfigParser = self.load_main_config()
-        self.PickleDir = join(self.Dir, self.MainConfigParser.get('SAVE', 'pickle_dir'))
+        self.PickleDir = join(self.Dir, self.MainConfigParser.get('SAVE', 'pickle directory'))
         self.DataDir = self.MainConfigParser.get('MAIN', 'data_dir')
 
         # screen resolution
@@ -45,8 +45,8 @@ class Elementary(Draw):
         Draw.__init__(self, self)
 
         # read configuration files
-        self.ana_config_parser = self.load_ana_config()
-        self.run_config_parser = self.load_run_config()
+        self.RunConfig = self.load_run_config()
+        self.AnaConfig = self.load_ana_config()
         self.TCDir = self.generate_tc_directory()
 
         # progress bar
@@ -67,25 +67,29 @@ class Elementary(Draw):
         return parser
 
     def load_ana_config(self):
-        ana_parser = ConfigParser()
+        parser = ConfigParser()
         file_name = join(self.Dir, 'Configuration', self.TCString, 'AnalysisConfig.ini')
         if not file_exists(file_name):
             log_critical('AnalysisConfig.ini does not exist for {0}! Please create it in Configuration/{0}!'.format(self.TESTCAMPAIGN))
-        ana_parser.read(file_name)
-        return ana_parser
+        parser.read(file_name)
+        # also read dut config
+        if hasattr(self, 'RunNumber'):
+            dut_type = self.RunConfig.get('BASIC', 'type')
+            parser.read(join(self.Dir, 'Configuration', self.TCString, '{}Config.ini').format(dut_type.title()))
+        return parser
 
     def load_run_config(self):
         run_number = self.RunNumber if hasattr(self, 'RunNumber') else None
-        run_parser = ConfigParser({'excluded_runs': '[]'})  # add non default option
+        parser = ConfigParser({'excluded_runs': '[]'})  # add non default option
         base_file_name = join(self.Dir, 'Configuration', self.TCString, 'RunConfig.ini')
         if not file_exists(base_file_name):
             log_critical('RunConfig.ini does not exist for {0}! Please create it in Configuration/{0}!'.format(self.TESTCAMPAIGN))
-        run_parser.read(base_file_name)  # first read the main config file with general information for all splits
-        if self.ana_config_parser.has_section('SPLIT') and run_number is not None:
-            split_runs = [0] + loads(self.ana_config_parser.get('SPLIT', 'runs')) + [inf]
+        parser.read(base_file_name)  # first read the main config file with general information for all splits
+        if parser.has_section('SPLIT') and run_number is not None:
+            split_runs = [0] + loads(parser.get('SPLIT', 'runs')) + [inf]
             config_nr = next(i for i in xrange(1, len(split_runs)) if split_runs[i - 1] <= run_number < split_runs[i])
-            run_parser.read(join(self.Dir, 'Configuration', self.TCString, 'RunConfig{nr}.ini'.format(nr=config_nr)))  # add the content of the split config
-        return run_parser
+            parser.read(join(self.Dir, 'Configuration', self.TCString, 'RunConfig{nr}.ini'.format(nr=config_nr)))  # add the content of the split config
+        return parser
 
     @staticmethod
     def load_resolution(resolution):
@@ -95,8 +99,8 @@ class Elementary(Draw):
         return g_resolution
 
     def load_mask_file_dir(self):
-        if self.run_config_parser.has_option('BASIC', 'maskfilepath'):
-            file_path = self.run_config_parser.get('BASIC', 'maskfilepath')
+        if self.RunConfig.has_option('BASIC', 'maskfilepath'):
+            file_path = self.RunConfig.get('BASIC', 'maskfilepath')
         else:
             file_path = join(self.DataDir, self.TCDir, 'masks')
         if not dir_exists(file_path):

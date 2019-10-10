@@ -436,7 +436,7 @@ class Analysis(Elementary):
         return p
 
     def get_trigger_planes(self):
-        return loads(self.ana_config_parser.get('BASIC', 'trigger planes')) if self.ana_config_parser.has_option('BASIC', 'trigger planes') else self.Run.get_unmasked_area().keys()
+        return loads(self.AnaConfig.get('BASIC', 'trigger planes')) if self.AnaConfig.has_option('BASIC', 'trigger planes') else self.Run.get_unmasked_area().keys()
 
     def draw_bc_vs_rate(self, cut='', show=True):
         g1 = self.draw_flux(cut=cut, show=False)

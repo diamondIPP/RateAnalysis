@@ -54,7 +54,7 @@ class CutPix(Cut):
         return cut
 
     def reload_cuts(self):
-        self.ana_config_parser = self.load_ana_config()
+        self.AnaConfig = self.load_ana_config()
         self.load_pixel_config()
         self.generate_pixel_cutstrings()
 
@@ -84,45 +84,37 @@ class CutPix(Cut):
 
     def load_pixel_config(self):
         """ Loads the pixel configuration parameters from the config file. """
-        self.CutConfig['rhit'] = int(self.get_config('r_hit'))
+        self.CutConfig['rhit'] = int(self.get_config('rhit'))
         self.CutConfig['trigPhase'] = self.load_trig_phase()
-        self.CutConfig['MaskRows'] = self.load_mask('MaskRows')
-        self.CutConfig['MaskCols'] = self.load_mask('MaskCols')
-        self.CutConfig['MaskPixels'] = self.load_mask('MaskPixels')
+        self.CutConfig['MaskRows'] = self.load_mask('row')
+        self.CutConfig['MaskCols'] = self.load_mask('column')
+        self.CutConfig['MaskPixels'] = self.load_mask('pixel')
         self.CutConfig['FidRegion'] = self.load_fiducial()
-        self.CutConfig['FidRegionLocal'] = self.load_fiducial('FidPixLocal')
+        self.CutConfig['FidRegionLocal'] = self.load_fiducial('pixel fiducial')
 
-    def get_config(self, option):
-        return self.ana_config_parser.get('CUT', option) if self.ana_config_parser.has_option('CUT', option) else None
+    def get_config(self, option, section='CUT'):
+        return self.AnaConfig.get(section, option) if self.AnaConfig.has_option(section, option) else None
 
     def load_trig_phase(self):
-        value = self.get_config('trigger_phase')
-        return None if not value or not loads(value) else loads(value)[str(self.Dut)]
+        value = self.get_config('trigger phase')
+        return None if not value or not loads(value) else loads(value)[self.DiamondName]
 
     def load_mask(self, name):
-        string = self.get_config('{n}ROC{d}'.format(n=name, d=self.Dut))
-        if string == '[]' or string == 'None':
-            return []
-        lst = []
-        if string is not None:
-            string = string.replace('[', '').replace(']', '')
-            tuples = string.split(';')
-            for tup in tuples:
-                lst.append([int(i) for i in tup.split('{s}'.format(s=',' if 'Pix' in name else ':'))])
-        return lst if lst else []
+        data = loads(self.get_config(name, section='MASK'))
+        return data[self.DiamondName] if self.DiamondName in data else []
 
-    def load_fiducial(self, name='FidPix'):
-        if self.ana_config_parser.has_option('CUT', name):
-            split = self.ana_config_parser.has_option('SPLIT', 'pixel fiducial')
-            split_runs = (loads(self.ana_config_parser.get('SPLIT', 'pixel fiducial')) if split else []) + [int(1e10)]
-            dic = next(loads(self.ana_config_parser.get('CUT', '{o}{n}'.format(o=name, n=i if i else ''))) for i in xrange(len(split_runs)) if self.RunNumber <= split_runs[i])
-            return dic[str(self.Dut)]
+    def load_fiducial(self, name='fiducial'):
+        if self.AnaConfig.has_option('CUT', name):
+            first_cut_name = name if self.AnaConfig.has_option('CUT', name) else '{} 1'.format(name)
+            split_runs = self.get_fiducial_splits()
+            dic = next(loads(self.AnaConfig.get('CUT', '{o} {n}'.format(o=name, n=i) if i else first_cut_name)) for i in xrange(len(split_runs)) if self.RunNumber <= split_runs[i])
+            return dic[self.DiamondName] if self.DiamondName in dic else None
 
-    def generate_special_cut(self, excluded=None, included=None, name='special_cut', cluster=True, prnt=True):
+    def generate_special_cut(self, excluded=None, included=None, name='special_cut', cluster=True, prnt=True, hitmap=True):
         cut = TCut(name, '')
         self.NCuts = 0
         excluded = [excluded] if type(excluded) is not list else excluded
-        self.set_hitmap_cuts()
+        self.set_hitmap_cuts(hitmap)
         for key, value in self.CutStrings.iteritems():
             if excluded and key in excluded:
                 continue
@@ -238,35 +230,26 @@ class CutPix(Cut):
         # self.add_info('Done', t)
         return cut_string.GetTitle()
 
-    def generate_line_mask(self, line, cluster=True):
+    def generate_line_mask(self, var, cluster=True):
         cut_string = ''
-        cut_var = 'cluster_{l}'.format(n=self.Dut, l=line) if cluster else line
-        try:
-            for tup in self.CutConfig['Mask{l}s'.format(l=line.title())]:
-                cut_string += '||' if cut_string else ''
-                if len(tup) == 2:
-                    cut_string += '{v}>={i}&&{v}<={f}'.format(i=tup[0], f=tup[1], v=cut_var)
-                elif len(tup) == 1:
-                    cut_string += '{v}=={i}'.format(i=tup[0], v=cut_var)
-            if not cut_string:
-                return ''
-        except TypeError:
-            return ''
-        plane_var = 'plane' if not cluster else 'cluster_plane'
-        cut_string = TCut(cut_string) + TCut('{p}=={r}'.format(r=self.Dut, p=plane_var))
-        return '!({c})'.format(c=cut_string.GetTitle())
+        cut_var = 'cluster_{}[{}]'.format(var, self.Dut) if cluster else var
+        for value in self.CutConfig['Mask{}s'.format(var.title())]:
+            cut_string += '||' if cut_string else ''
+            if type(value) is list:
+                cut_string += '{v}>={i}&&{v}<={f}'.format(i=value[0], f=value[1], v=cut_var)
+            else:
+                cut_string += '{v}=={i}'.format(i=value, v=cut_var)
+        cut_string = TCut(cut_string) + TCut('{p}=={r}'.format(r=self.Dut, p='plane') if not cluster else '')
+        return '!({c})'.format(c=cut_string.GetTitle()) if cut_string.GetTitle() else ''
 
     def generate_pixel_mask(self, cluster=True):
         cut_string = ''
-        cut_var1 = 'cluster_col'.format(n=self.Dut) if cluster else 'col'
-        cut_var2 = 'cluster_row'.format(n=self.Dut) if cluster else 'row'
+        cut_var1 = 'cluster_col[{n}]'.format(n=self.Dut) if cluster else 'col'
+        cut_var2 = 'cluster_row[{n}]'.format(n=self.Dut) if cluster else 'row'
         for tup in self.CutConfig['MaskPixels']:
             cut_string += '||' if cut_string else ''
             cut_string += '{v1}=={x}&&{v2}=={y}'.format(x=tup[0], y=tup[1], v1=cut_var1, v2=cut_var2)
-        if not cut_string:
-            return ''
-        plane_var = 'plane' if not cluster else 'cluster_plane'
-        cut_string = TCut(cut_string) + TCut('{p}=={r}'.format(r=self.Dut, p=plane_var))
+        cut_string = TCut(cut_string) + TCut('{p}=={r}'.format(r=self.Dut, p='plane') if not cluster else '')
         return '!({c})'.format(c=cut_string.GetTitle())
 
     def generate_pix_cut(self, col, row):
