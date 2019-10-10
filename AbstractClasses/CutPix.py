@@ -250,7 +250,7 @@ class CutPix(Cut):
             cut_string += '||' if cut_string else ''
             cut_string += '{v1}=={x}&&{v2}=={y}'.format(x=tup[0], y=tup[1], v1=cut_var1, v2=cut_var2)
         cut_string = TCut(cut_string) + TCut('{p}=={r}'.format(r=self.Dut, p='plane') if not cluster else '')
-        return '!({c})'.format(c=cut_string.GetTitle())
+        return '!({c})'.format(c=cut_string.GetTitle()) if cut_string.GetTitle() else ''
 
     def generate_pix_cut(self, col, row):
         return TCut('cluster_col[{r}]=={x} && cluster_row[{r}]=={y}'.format(r=self.Dut, x=col, y=row))
