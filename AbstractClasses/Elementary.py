@@ -73,7 +73,7 @@ class Elementary(Draw):
             log_critical('AnalysisConfig.ini does not exist for {0}! Please create it in Configuration/{0}!'.format(self.TESTCAMPAIGN))
         parser.read(file_name)
         # also read dut config
-        if hasattr(self, 'RunNumber'):
+        if hasattr(self, 'RunNumber') and self.RunNumber is not None:
             dut_type = self.RunConfig.get('BASIC', 'type')
             parser.read(join(self.Dir, 'Configuration', self.TCString, '{}Config.ini').format(dut_type.title()))
         return parser

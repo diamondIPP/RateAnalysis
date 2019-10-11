@@ -5,6 +5,7 @@ from Cut import Cut
 from json import loads
 from InfoLegend import InfoLegend
 from Utils import *
+from ConfigParser import NoOptionError
 
 
 class CutPix(Cut):
@@ -104,10 +105,13 @@ class CutPix(Cut):
         return data[self.DiamondName] if self.DiamondName in data else []
 
     def load_fiducial(self, name='fiducial'):
-        if self.AnaConfig.has_option('CUT', name):
+        if any(option.startswith(name) for option in self.AnaConfig.options('CUT')):
             first_cut_name = name if self.AnaConfig.has_option('CUT', name) else '{} 1'.format(name)
             split_runs = self.get_fiducial_splits()
-            dic = next(loads(self.AnaConfig.get('CUT', '{o} {n}'.format(o=name, n=i) if i else first_cut_name)) for i in xrange(len(split_runs)) if self.RunNumber <= split_runs[i])
+            try:
+                dic = next(loads(self.AnaConfig.get('CUT', '{o} {n}'.format(o=name, n=i + 1) if i else first_cut_name)) for i in xrange(len(split_runs)) if self.RunNumber <= split_runs[i])
+            except NoOptionError:
+                return
             return dic[self.DiamondName] if self.DiamondName in dic else None
 
     def generate_special_cut(self, excluded=None, included=None, name='special_cut', cluster=True, prnt=True, hitmap=True):
