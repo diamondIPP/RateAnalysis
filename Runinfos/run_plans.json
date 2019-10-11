@@ -5371,6 +5371,54 @@
         131
       ], 
       "type": "rate scan"
+    }, 
+    "10": {
+      "amplifiers": "[\"C6_*\", \"C6_2\"]", 
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser1": "6dB_1", 
+        "pulser2": "6dB_2"
+      }, 
+      "runs": [
+        12, 
+        13, 
+        14, 
+        15, 
+        17, 
+        18, 
+        19, 
+        20, 
+        21, 
+        22, 
+        23, 
+        24, 
+        25, 
+        26, 
+        27, 
+        28, 
+        29, 
+        30, 
+        31, 
+        32, 
+        33, 
+        34
+      ], 
+      "type": "heat comparison"
+    }, 
+    "10.0": {
+      "amplifiers": "[\"C6_*\", \"C6_2\"]", 
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser1": "6dB_1", 
+        "pulser2": "6dB_2"
+      }, 
+      "runs": [
+        23, 
+        24
+      ], 
+      "type": "comparison"
     }
   }, 
   "201909": {}
