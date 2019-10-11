@@ -46,8 +46,8 @@ class VoltageScan(Elementary):
         x = self.get_voltages()
         efficiencies = [ana.get_hit_efficiency() for ana in self.collection.itervalues()]
         g = self.make_tgrapherrors('gev', 'Efficiency vs. Voltage', x=x, y=efficiencies, color=self.colors[2])
-        self.format_histo(g, x_tit='Voltage [V]', y_tit='Hit Efficiency [%]', y_off=1.3, y_range=[0, 108], x_range=[min(x).n - 10, max(x).n + 10])
-        self.draw_histo(g, show=show, gridy=True)
+        self.format_histo(g, x_tit='Voltage [V]', y_tit='Hit Efficiency [%]', y_off=1.3, y_range=[0, 108], x_range=[min(x).n - 5, max(x).n + 5], markersize=1.3)
+        self.draw_histo(g, show=show, gridy=True, draw_opt='pa')
         self.draw_preliminary()
         self.save_plots('EfficiencyVoltage')
 
