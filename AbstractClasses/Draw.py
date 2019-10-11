@@ -490,6 +490,13 @@ class Draw:
         format_frame(fr)
         self.Objects.append(fr)
 
+    def draw_grid(self, x_vals, y_vals, width=1):
+        for x in x_vals:
+            self.draw_line(x, x, min(y_vals), max(y_vals), name='x{}'.format(x), width=width)
+        for y in y_vals:
+            self.draw_line(min(x_vals), max(x_vals), y, y, name='y{}'.format(y), width=width)
+
+
     def set_statbox(self, x=.95, y=None, w=.2, n_entries=3, only_fit=False, fit=False, entries=False, form=None, m=False, rms=False, all_stat=False):
         gStyle.SetOptFit(only_fit or fit)
         opt_stat = '100000{}{}{}0'.format(*[1 if val else 0 for val in [rms, m, entries]] if not all_stat else [1, 1, 1])
