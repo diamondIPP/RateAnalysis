@@ -378,17 +378,13 @@ class PadAnalysis(Analysis):
         xmid, ymid = [(p.GetBinCenter(p.FindFirstBinAbove(0)) + p.GetBinCenter(p.FindLastBinAbove(0))) / 2 for p in [h.ProjectionX(), h.ProjectionY()]]
         self.format_histo(h, x_range=[xmid - size, xmid + size], y_range=[ymid - size, ymid + size])
 
-    def set_z_range(self, h, n_sigma=2):
-        values = [h.GetBinContent(bin_) for bin_ in xrange(h.GetNbinsX() * h.GetNbinsY()) if h.GetBinContent(bin_)]
-        try:
-            weights = [h.GetBinEntries(bin_) for bin_ in xrange(h.GetNbinsX() * h.GetNbinsY()) if h.GetBinContent(bin_)]
-        except AttributeError:
-            weights = [1] * len(values)
+    def adapt_z_range(self, h, n_sigma=2):
+        bins = [i_bin for i_bin in xrange((h.GetNbinsX() + 2) * (h.GetNbinsY() + 2)) if h.GetBinContent(i_bin)]  # with overflow bins
+        values = [h.GetBinContent(i_bin) for i_bin in bins]
+        weights = [h.GetBinEntries(i_bin) for i_bin in bins] if hasattr(h, 'GetBinEntries') else None
         m, s = mean_sigma(values, weights)
-        if s > m:
-            self.format_histo(h, z_range=[min(values), 0.8 * max(values)])
-        else:
-            self.format_histo(h, z_range=[m - n_sigma * s, m + n_sigma * s])
+        z_range = [min(values), 0.8 * max(values)] if s > m else [m - n_sigma * s, m + n_sigma * s]
+        self.format_histo(h, z_range=z_range)
 
     def draw_sig_map_disto(self, show=True, factor=1.5, cut=None, fid=True, x_range=None, redo=False, normalise=False, ret_value=False, save=True):
         source = self.draw_signal_map(factor, cut, fid, hitmap=False, redo=redo, show=False, save=False)
