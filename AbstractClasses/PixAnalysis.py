@@ -559,12 +559,10 @@ class PixAnalysis(Analysis):
 
     def draw_hit_eff_vs_trigphase(self, roc=None, show=True):
         roc = self.Dut if roc is None else roc
-        x = range(10)
-        y = [self.get_hit_efficiency(roc=roc, cut=self.get_trigphase_cut(phase=i))[0] for i in xrange(10)]
+        y = [self.get_hit_efficiency(roc=roc, cut=self.get_trigphase_cut(phase=i)) for i in xrange(10)]
         y = [0 if i is None else i for i in y]
-        gr = self.make_tgrapherrors('gr_etp', 'Efficiency per Trigger Phase', x=x, y=y)
-        gr.GetXaxis().SetLimits(-1, 10)
-        self.format_histo(gr, fill_color=self.FillColor, x_tit='Trigger Phase', y_tit='Efficiency [%]', y_off=1.4)
+        gr = self.make_tgrapherrors('gr_etp', 'Efficiency per Trigger Phase', x=range(10), y=y)
+        self.format_histo(gr, fill_color=self.FillColor, x_tit='Trigger Phase', y_tit='Efficiency [%]', y_off=1.4, x_range=[-1, 10])
         self.save_histo(gr, 'EffVsTrigPhase', show, draw_opt='ba', lm=.13)
 
     def induce_threshold(self):
