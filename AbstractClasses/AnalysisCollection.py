@@ -1207,6 +1207,19 @@ class AnalysisCollection(Elementary):
             self.format_histo(h, z_range=[glob_min, glob_max]) if not hitmap else do_nothing()
             self.save_histo(h, '{n}Map{nr}'.format(nr=str(i).zfill(2), n='Hit' if hitmap else 'Signal'), show=False, ind=i, draw_opt='colz', rm=.16, lm=.12, prnt=False)
 
+    def draw_signal_map_ratio(self, run1, run2, m=10, n=10, grid=True, show=True):
+        h1, h2 = [self.collection[run].split_signal_map(m, n, show=False)[0] for run in [run1, run2]]
+        xbins, ybins = self.collection[run1].split_signal_map(m, n, show=False)[1:]
+        h = h1.Clone('hnew')
+        for i in xrange((h.GetNbinsX() + 2) * (h.GetNbinsY() + 2)):
+            v1, v2 = h1.GetBinContent(i), h2.GetBinContent(i)
+            h.SetBinEntries(i, 1)
+            h.SetBinContent(i, v1 / v2 if v2 else -1)
+        self.format_histo(h, z_range=[0, 3], stats=0, z_tit='Pulse Height Ratio', title='Signal Map Ratio of Run {} & {}'.format(run1, run2))
+        self.draw_histo(h, lm=.12, rm=.16, draw_opt='colzsame', show=show)
+        self.draw_grid(xbins, ybins, width=2) if grid else do_nothing()
+        self.save_plots('SigMapRatio{}{}'.format(run1, run2))
+
     def draw_currents(self, v_range=None, rel_time=False, averaging=1, with_flux=False, c_range=None, f_range=None, draw_opt='ap', show=True):
         self.Currents.draw_indep_graphs(rel_time=rel_time, v_range=v_range, averaging=averaging, with_flux=with_flux, c_range=c_range, f_range=f_range, show=show, draw_opt=draw_opt)
 

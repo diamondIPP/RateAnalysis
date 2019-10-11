@@ -19,6 +19,7 @@ from waveform import Waveform
 from Run import Run
 from Utils import *
 from uncertainties import umath
+from numpy import linspace
 
 __author__ = 'micha'
 
@@ -335,16 +336,16 @@ class PadAnalysis(Analysis):
         self.format_histo(g, x_tit='Threshold [mV]', y_tit='Efficiency [%]', y_off=1.3)
         self.save_histo(g, 'EffThresh', draw_opt='ap', lm=.12, show=show)
 
-    def draw_signal_map(self, res=1.5, cut=None, fid=False, hitmap=False, redo=False, show=True, prnt=True, z_range=None, save=True):
+    def draw_signal_map(self, res=1.5, cut=None, fid=False, hitmap=False, redo=False, show=True, prnt=True, z_range=None, save=True, bins=None):
         cut = self.Cut.generate_special_cut(excluded=['fiducial'], prnt=prnt) if not fid and cut is None else cut
         cut = self.Cut.all_cut if cut is None else TCut(cut)
-        suf = '{c}_{ch}_{res}'.format(c=cut.GetName(), ch=self.Cut.CutConfig['chi2X'], res=res)
+        suf = '{c}_{ch}_{res}'.format(c=cut.GetName(), ch=self.Cut.CutConfig['chi2X'], res=res if bins is None else '{}x{}'.format(bins[0], bins[2]))
         pickle_path = self.make_pickle_path('SignalMaps', 'Hit' if hitmap else 'Signal', run=self.RunNumber, ch=self.DiamondNumber, suf=suf)
 
         def func():
             set_root_output(0)
             name = 'h_hm' if hitmap else 'h_sm'
-            atts = [name, 'Diamond Hit Map' if hitmap else 'Signal Map'] + self.Plots.get_global_bins(res, mm=1)
+            atts = [name, 'Diamond Hit Map' if hitmap else 'Signal Map'] + (self.Plots.get_global_bins(res, mm=1) if bins is None else bins)
             h1 = TH2I(*atts) if hitmap else TProfile2D(*atts)
             self.log_info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.DiamondName, run=self.RunNumber, mode='hit' if hitmap else 'signal '), prnt=prnt)
             sig = self.generate_signal_name()
@@ -356,7 +357,7 @@ class PadAnalysis(Analysis):
         gStyle.SetPalette(1 if hitmap else 53)
         h = do_pickle(pickle_path, func, redo=redo)
         self.set_dia_margins(h)
-        self.set_z_range(h)
+        self.adapt_z_range(h)
         z_tit = 'Number of Entries' if hitmap else 'Pulse Height [mV]'
         self.format_histo(h, x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]', y_off=1.4, z_off=1.5, z_tit=z_tit, ncont=50, ndivy=510, ndivx=510, z_range=z_range)
         self.draw_histo(h, '', show, lm=.12, rm=.16, draw_opt='colzsame')
@@ -364,6 +365,20 @@ class PadAnalysis(Analysis):
         # self.draw_detector_size(scale=10)
         self.save_plots('HitMap' if hitmap else 'SignalMap2D', prnt=prnt, save=save)
         return h
+
+    def split_signal_map(self, m=2, n=2, grid=True, redo=False, show=True):
+        fid_cut = array(self.Cut.CutConfig['fiducial']) * 10
+        if not fid_cut.size:
+            log_critical('fiducial cut not defined for {}'.format(self.DiamondName))
+        x_bins = linspace(fid_cut[0], fid_cut[1], m + 1)
+        y_bins = linspace(fid_cut[2], fid_cut[3], n + 1)
+        bins = [m, x_bins, n, y_bins]
+        h = self.draw_signal_map(bins=bins, show=False, fid=True, redo=redo)
+        self.format_histo(h, x_range=[fid_cut[0], fid_cut[1] - .01], y_range=[fid_cut[2], fid_cut[3] - .01], name='hssm', stats=0)
+        self.draw_histo(h, show=show, lm=.12, rm=.16, draw_opt='colzsame')
+        self.draw_grid(x_bins, y_bins, width=2) if grid else do_nothing()
+        self.save_plots('SplitSigMap')
+        return h, x_bins, y_bins
 
     def draw_dia_hitmap(self, show=True, res=1.5, cut=None, fid=False, redo=False, prnt=True, z_range=None):
         h = self.draw_signal_map(show=False, res=res, cut=cut, fid=fid, hitmap=True, redo=redo, prnt=False, save=False)
