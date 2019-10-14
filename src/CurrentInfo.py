@@ -415,7 +415,7 @@ class Currents(Elementary):
         self.Stuff.append(c)
         run = self.Analysis.selection.SelectedRunplan if self.IsCollection else self.RunNumber
         save_name = 'Currents{}_{}_{}'.format(self.Analysis.TCString, run, self.DiamondNumber)
-        self.save_canvas(c, name=save_name, sub_dir='Currents', show=show)
+        self.save_canvas(c, name=save_name, sub_dir='currents', show=show)
 
     def zoom_pads(self, low, high):
         self.VoltageGraph.GetXaxis().SetRangeUser(low, high)

@@ -653,6 +653,7 @@ if __name__ == '__main__':
 
     p.add_argument('-tc', '--testcampaign', default=None, help='TestCampaign')
     p.add_argument('-s', '--show', action='store_true', help='activate show')
+    p.add_argument('-ms', '--master_selection', action='store_true', help='run master selection')
     p.add_argument('RunPlan', nargs='?', help='Displays the deltailed overview about a single scan', type=str, default=None)
     p.add_argument('-d', '--dia', type=str, default=None, help='diamond name')
     args = p.parse_args()
@@ -665,3 +666,6 @@ if __name__ == '__main__':
             z.show_selected_runs()
         else:
             z.show_run_plans(diamond=args.dia)
+
+    if args.master_selection:
+        z.master_selection()

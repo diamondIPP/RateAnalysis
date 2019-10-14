@@ -41,7 +41,7 @@ class Draw:
         self.ResultsDir = join(self.Dir, name)
 
     def generate_results_directory(self):
-        return join(self.Dir, 'Results{tc}'.format(tc=self.TCString))
+        return join(self.Dir, 'Results', self.TCString)
 
     def make_bias_string(self, bias=None):
         if bias is None:
