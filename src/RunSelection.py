@@ -1,14 +1,16 @@
-from Run import Run
-from Elementary import Elementary
-import json
-from datetime import datetime as dt
-from textwrap import fill
-from sys import argv
 from ConfigParser import ConfigParser
-from itertools import chain
-from Utils import *
+from argparse import ArgumentParser
+from datetime import datetime as dt
 from glob import glob
+from itertools import chain
+from textwrap import fill
+from json import load, loads, dump
+
 from os import system
+
+from Utils import *
+from Elementary import Elementary
+from Run import Run
 
 
 class RunSelection(Elementary):
@@ -21,7 +23,7 @@ class RunSelection(Elementary):
         # info
         self.TCString = '{tc}{s}'.format(tc=self.TESTCAMPAIGN, s=self.generate_sub_set_str())
         self.RunPlanPath = join(self.get_program_dir(), self.MainConfigParser.get('MAIN', 'run_plan_path'))
-        self.ExcludedRuns = json.loads(self.RunConfig.get('BASIC', 'excluded_runs'))
+        self.ExcludedRuns = loads(self.RunConfig.get('BASIC', 'excluded_runs'))
         self.RunPlan = self.load_runplan()
         self.RunNumbers = self.load_run_numbers()
         self.RunInfos = self.load_run_infos()
@@ -67,7 +69,7 @@ class RunSelection(Elementary):
 
     def load_run_numbers(self):
         f = open(self.Run.runinfofile, 'r')
-        data = json.load(f)
+        data = load(f)
         f.close()
         run_numbers = [int(key) for key in data if int(key) not in self.ExcludedRuns]
         return sorted(run_numbers)
@@ -76,7 +78,7 @@ class RunSelection(Elementary):
         """ loads all the run infos in a dict with the run numbers as keys """
         try:
             f = open(self.load_run_info_path(), 'r')
-            data = json.load(f)
+            data = load(f)
             data = {int(run): dic for run, dic in data.iteritems() if int(run) not in self.ExcludedRuns}
             f.close()
             return data
@@ -88,7 +90,7 @@ class RunSelection(Elementary):
 
     def load_runplan(self):
         f = open(self.RunPlanPath, 'r')
-        runplans = json.load(f)
+        runplans = load(f)
         f.close()
         try:
             runplan = runplans[self.TCString]
@@ -152,7 +154,7 @@ class RunSelection(Elementary):
         dia_names = self.get_diamond_names()
         name = self.Run.translate_dia(name)
         if name not in dia_names:
-            warning('"{n}" is not in the list of diamonds: {l}'.format(n=name, l=dia_names))
+            warning('"{n}" is not in the list of diamonds: {lst}'.format(n=name, lst=dia_names))
         runs = self.get_selected_runs() if only_selected_runs else self.RunNumbers
         selected_runs = 0
         unselected_runs = 0
@@ -297,11 +299,11 @@ class RunSelection(Elementary):
     # region RUN PLAN
     def save_runplan(self, runplan=None):
         f = open(self.RunPlanPath, 'r+')
-        runplans = json.load(f)
+        runplans = load(f)
         runplans[self.TCString] = self.RunPlan if runplan is None else runplan
         self.rename_runplan_numbers() if runplan is not None and runplan else do_nothing()
         f.seek(0)
-        json.dump(runplans, f, indent=2, sort_keys=True)
+        dump(runplans, f, indent=2, sort_keys=True)
         f.truncate()
         f.close()
 
@@ -490,10 +492,8 @@ class RunSelection(Elementary):
     def get_runinfo_values(self, key, sel=False):
         """ returns all different runinfos for a specified key of the selection or the full run plan """
         run_infos = self.RunInfos if not sel else self.get_selection_runinfo()
-        try:
+        if all(key in info for info in run_infos.itervalues()):
             return sorted(list(set(info[key] for info in run_infos.itervalues())))
-        except KeyError:
-            return [None]
 
     def get_selection_runinfo(self):
         dic = {}
@@ -527,7 +527,7 @@ class RunSelection(Elementary):
             runinfo[str(run)][new_key] = float(new_value) if isfloat(new_value) else new_value
         self.save_runinfo(f, runinfo)
         self.RunInfos = self.load_run_infos()
-    
+
     def add_runinfo_attenuators(self):
         runs = self.get_selected_runs()
         f, runinfo = self.get_sorted_runinfo()
@@ -562,7 +562,7 @@ class RunSelection(Elementary):
 
     def get_sorted_runinfo(self):
         f = open(self.Run.runinfofile, 'r+')
-        runinfo = json.load(f)
+        runinfo = load(f)
         sorted_runinfo = OrderedDict(sorted(runinfo.items(), key=lambda t: int(t[0])))
         return f, sorted_runinfo
 
@@ -577,13 +577,13 @@ class RunSelection(Elementary):
         dic = OrderedDict(sorted(runinfo.iteritems(), key=lambda (key, v): (int(key), v)))
         for run, value in dic.iteritems():
             dic[run] = OrderedDict(sorted(value.iteritems()))
-        json.dump(dic, f, indent=2)
+        dump(dic, f, indent=2)
         f.truncate()
         f.close()
 
     def add_irradiation(self):
         f = open(self.Run.IrradiationFile, 'r+')
-        data = json.load(f)
+        data = load(f)
         tc_str = self.generate_tc_str()
         if tc_str in data:
             self.log_info('The information of the testcampaign {tc} was already entered!'.format(tc=tc_str))
@@ -592,13 +592,13 @@ class RunSelection(Elementary):
         for dia in self.get_diamond_names():
             data[tc_str][dia] = raw_input('Enter the irradtion for the diamond {d} (e.g. 4e15): '.format(d=dia))
         f.seek(0)
-        json.dump(data, f, indent=2, sort_keys=True)
+        dump(data, f, indent=2, sort_keys=True)
         f.truncate()
         f.close()
 
     def get_irradiation(self, dia=None):
         f = open(self.Run.IrradiationFile, 'r')
-        irr = json.load(f)[self.generate_tc_str()][self.SelectedDiamond if self.SelectedDiamond is not None and dia is None else dia]
+        irr = load(f)[self.generate_tc_str()][self.SelectedDiamond if self.SelectedDiamond is not None and dia is None else dia]
         f.close()
         return irr
 
@@ -648,5 +648,20 @@ def verify(msg):
 
 
 if __name__ == '__main__':
-    tc = None if not str(argv[-1]).startswith('201') else argv[-1]
-    z = RunSelection(tc)
+
+    p = ArgumentParser(description='RunSelection tool group runs together and display information')
+
+    p.add_argument('-tc', '--testcampaign', default=None, help='TestCampaign')
+    p.add_argument('-s', '--show', action='store_true', help='activate show')
+    p.add_argument('RunPlan', nargs='?', help='Displays the deltailed overview about a single scan', type=str, default=None)
+    p.add_argument('-d', '--dia', type=str, default=None, help='diamond name')
+    args = p.parse_args()
+
+    z = RunSelection(testcampaign=args.testcampaign)
+    if args.show:
+        if args.RunPlan is not None:
+            z.print_testcampaign()
+            z.select_runs_from_runplan(args.RunPlan)
+            z.show_selected_runs()
+        else:
+            z.show_run_plans(diamond=args.dia)

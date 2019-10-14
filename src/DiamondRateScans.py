@@ -39,7 +39,7 @@ class DiaScans(Elementary):
         self.TestCampaigns = self.load_test_campaigns()
         self.RunInfos = self.load_runinfos()
 
-        self.set_save_directory('Results/')
+        self.set_save_directory(join('Results', 'selections'))
         self.save_dir = ''
         self.set_selection(selection)
 
@@ -120,7 +120,7 @@ class DiaScans(Elementary):
         self.log_info('Set Selection {0}'.format(key))
         self.DiamondName = self.load_diamond(key)
         self.Selection = self.Selections[key]
-        # self.TestCampaigns = list(set(self.Selection.keys()))
+        self.TestCampaigns = list(set(self.Selection.keys()))
         self.load_run_selections(redo=True)
         self.Name = key
         self.save_dir = key
@@ -713,8 +713,14 @@ if __name__ == '__main__':
     main_parser.add_argument('-tc', nargs='?', default=None)
     main_parser.add_argument('-p', action='store_true')
     main_parser.add_argument('-r', action='store_true')
+    main_parser.add_argument('-s', action='store_true', help='activate show single selection')
+    main_parser.add_argument('-sa', action='store_true', help='active show all selections')
     args = main_parser.parse_args()
 
     z = DiaScans(args.sel, args.d, args.v, args.tc)
     if args.p:
         print z.get_all_ana_strings(args.d, args.tc, args.r)
+    if args.s:
+        z.show_selection()
+    if args.sa:
+        z.show_selections()
