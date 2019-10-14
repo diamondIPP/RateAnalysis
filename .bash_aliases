@@ -1,0 +1,6 @@
+alias AnaCollection='ipython -i ~/software/RateAnalysis/src/AnalysisCollection.py -- $@'
+alias ShowRunplans='python ~/software/RateAnalysis/src/RunSelection.py -s'
+alias RunSelecion='ipython -i ~/software/RateAnalysis/src/RunSelection.py -- $@'
+alias DiaSelection='ipython -i ~/software/RateAnalysis/src/DiamondRateScans.py -- $@'
+alias ShowSelection='python ~/software/RateAnalysis/src/DiamondRateScans.py -s'
+alias ShowSelections='python ~/software/RateAnalysis/src/DiamondRateScans.py -sa'
