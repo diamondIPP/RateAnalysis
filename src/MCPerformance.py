@@ -177,3 +177,8 @@ class MCPerformance(Elementary):
 
     def DoGhostScan(self):
         pass
+
+
+if __name__ == '__main__':
+    MCAnalysis = MCPerformance(verbose=True)
+    MCAnalysis.DoSignalHeightScan(hits_per_height=300000)
