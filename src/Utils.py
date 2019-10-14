@@ -5,7 +5,6 @@
 
 from datetime import datetime, timedelta
 from termcolor import colored
-from ROOT import gStyle, gROOT, TF1, TColor, TFile, TMath
 from numpy import sqrt, array, average, mean, arange, log10
 from os import makedirs, _exit, remove, devnull
 from os import path as pth
@@ -21,6 +20,9 @@ from copy import deepcopy
 from gtts import gTTS
 from subprocess import call
 from pytz import timezone, utc
+import ROOT
+ROOT.PyConfig.IgnoreCommandLineOptions = True
+from ROOT import gStyle, gROOT, TF1, TColor, TFile, TMath
 
 
 OFF = False
