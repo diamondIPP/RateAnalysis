@@ -17,6 +17,8 @@ runplan_selection_file = Runinfos/selection.json
 irradiation_file = Runinfos/irradiation.json
 bin size = 10000
 plane errors = False
+# [x [cm], y [cm]]
+pixel size = [0.01, 0.015]
 
 [Converter]
 softwaredir = /home/reichmann/software
