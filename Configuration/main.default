@@ -5,11 +5,11 @@ default test campaign = 201908
 
 [SAVE]
 pickle directory = Configuration/Individual_Configs/
-activate_title = True
+activate title = True
 felix = False
-short_name = False
-git_hash = True
-info_legend = True
+git hash = True
+info legend = True
+server mount directory = mounts/psi/Diamonds
 
 [MISC]
 runplan_file = Runinfos/run_plans.json
