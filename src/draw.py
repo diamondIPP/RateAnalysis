@@ -6,14 +6,15 @@
 
 from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, kGreen, kOrange, kViolet, kYellow, kRed, kBlue, kMagenta, kAzure, \
     kCyan, kTeal, TPaveText, TPaveStats
-from Utils import *
-from os.path import dirname
 from numpy import ndarray, zeros, sign
-from uncertainties.core import Variable, AffineScalarFunc
+from os.path import expanduser
 
+from utils import *
 
 # global resolution
 g_resolution = None
+
+# TODO move related utils methods here
 
 
 class Draw:
@@ -24,7 +25,7 @@ class Draw:
         self.Verbose = verbose
         self.Dir = get_base_dir()
         self.TCString = tc_string
-        self.Config = config
+        self.MainConfig = config
         self.ResultsDir = self.get_results_dir()
         self.ServerDir = self.get_server_dir()
 
@@ -61,10 +62,10 @@ class Draw:
         self.Count = 0
 
     def get_config(self, section, option):
-        return True if self.Config is None else self.Config.getboolean(section, option)
+        return True if self.MainConfig is None else self.MainConfig.getboolean(section, option)
 
     def get_server_dir(self):
-        return expanduser(self.Config.get('SAVE', 'server mount directory')) if self.Config is not None else None
+        return expanduser(self.MainConfig.get('SAVE', 'server mount directory')) if self.MainConfig is not None else None
     # endregion
     # ----------------------------------------
 
@@ -230,7 +231,63 @@ class Draw:
                    leg=None, logy=False, logx=False, logz=False, canvas=None, grid=False, gridy=False, gridx=False, both_dias=False, prnt=True, phi=None, theta=None, ind=None):
         return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, all_pads, leg, logy, logx, logz, canvas, grid, gridx, gridy, False, both_dias, ind,
                                prnt, phi, theta)
-    # endregion
+
+    def save_combined_pulse_heights(self, mg, mg1, mg_y, show=True, name=None, pulser_leg=None,
+                                    x_range=None, y_range=None, rel_y_range=None, draw_objects=None):
+        set_root_output(show)
+        c = TCanvas('c', 'c', int(self.Res * 10 / 11.), self.Res)
+        make_transparent(c)
+        bm = .11
+        scale = 1.5
+        pm = bm + (1 - bm - .1) / 5.
+
+        # set unified x-range:
+        mg1.GetXaxis().SetLimits(1, 3e4) if x_range is None else do_nothing()
+        mg.GetXaxis().SetLimits(1, 3e4) if x_range is None else do_nothing()
+
+        # bottom pad with 20%
+        p0 = self.draw_tpad('p0', 'p0', pos=[0, 0, 1, pm], margins=[.14, .03, bm / pm, 0], transparent=True, logx=True, gridy=True)
+        scale_multigraph(mg1)
+        rel_y_range = [.7, 1.3] if rel_y_range is None else rel_y_range
+        format_histo(mg1, title='', y_range=rel_y_range, y_tit='Rel. ph [au]' if not scale > 1 else ' ', y_off=66, tit_size=.1 * scale, x_off=99, lab_size=.1 * scale)
+        mg1.GetYaxis().SetNdivisions(3)
+        hide_axis(mg1.GetXaxis())
+        mg1.Draw('alp')
+        x_range = [mg1.GetXaxis().GetXmin(), mg1.GetXaxis().GetXmax()] if x_range is None else x_range
+        self.draw_x_axis(1.3, x_range[0], x_range[1], mg1.GetXaxis().GetTitle() + ' ', opt='SG+-=', tit_size=.1, lab_size=.1 * scale, off=99, tick_size=.1, l_off=0)
+        c.cd()
+
+        # top pad with zero suppression
+        self.draw_tpad('p1', 'p1', pos=[0, pm, 1, 1], margins=[.14, .03, 0, .1], transparent=True, logx=True)
+        mg.Draw('alp')
+        hide_axis(mg.GetXaxis())
+        if pulser_leg:
+            pulser_leg()
+        if y_range:
+            mg.SetMinimum(y_range[0])
+            mg.SetMaximum(y_range[1])
+        format_histo(mg, tit_size=.04 * scale, y_off=1.75 / scale, lab_size=.04 * scale)
+        self.draw_x_axis(mg_y, x_range[0], x_range[1], mg1.GetXaxis().GetTitle() + ' ', opt='SG=', tit_size=.035 * scale, lab_size=0, off=1, l_off=99)
+        leg = mg.GetListOfFunctions()[0]
+        move_legend(leg, .17, .03)
+        leg.Draw()
+        if draw_objects is not None:
+            for obj, opt in draw_objects:
+                obj.Draw(opt)
+
+        if hasattr(self, 'InfoLegend'):
+            run_info = self.InfoLegend.draw(p0, all_pads=False)
+            scale_legend(run_info[0], txt_size=.09, height=0.098 / pm)
+            run_info[1].SetTextSize(.05)
+
+        for obj in p0.GetListOfPrimitives():
+            if obj.GetName() == 'title':
+                obj.SetTextColor(0)
+        self.save_canvas(c, name='CombinedPulseHeights' if name is None else name, show=show)
+
+        self.Objects.append([c, draw_objects])
+        set_root_output(True)
+    # endregion DRAW
     # ----------------------------------------
 
     # ----------------------------------------
@@ -396,12 +453,14 @@ class Draw:
         self.Objects.append(leg)
         return leg
 
-    def make_canvas(self, name='c', title='c', x=1., y=1., show=True, logx=None, logy=None, logz=None, gridx=None, gridy=None, transp=None):
+    def make_canvas(self, name='c', title='c', x=1., y=1., show=True, logx=None, logy=None, logz=None, gridx=None, gridy=None, transp=None, divide=None):
         set_root_output(show)
         c = TCanvas(name, title, int(x * self.Res), int(y * self.Res))
         do([c.SetLogx, c.SetLogy, c.SetLogz], [logx, logy, logz])
         do([c.SetGridx, c.SetGridy], [gridx, gridy])
         do(make_transparent, c, transp)
+        if divide is not None:
+            c.Divide(*divide if type(divide) in [list, tuple] else divide)
         self.Objects.append(c)
         return c
 
@@ -412,6 +471,21 @@ class Draw:
         return self.make_tgrapherrors('g{n}'.format(n=p.GetName()[1:]), p.GetTitle(), x=x, y=y)
     # endregion
     # ----------------------------------------
+
+    def format_statbox(self, x=.95, y=None, w=.2, n_entries=3, only_fit=False, fit=False, entries=False, form=None, m=False, rms=False, all_stat=False):
+        gStyle.SetOptFit(only_fit or fit)
+        opt_stat = '100000{}{}{}0'.format(*[1 if val else 0 for val in [rms, m, entries]] if not all_stat else [1, 1, 1])
+        if only_fit:
+            opt_stat = '0011'
+        if fit:
+            opt_stat = '1111'
+        y = (.88 if self.Title else .95) if y is None else y
+        gStyle.SetOptStat(int(opt_stat))
+        gStyle.SetFitFormat(form) if form is not None else do_nothing()
+        gStyle.SetStatX(x)
+        gStyle.SetStatY(y)
+        gStyle.SetStatW(w)
+        gStyle.SetStatH(.04 * n_entries)
     # END OF CLASS
 
 
@@ -498,22 +572,6 @@ def format_text(t, name='text', align=20, color=1, size=.05, angle=None, ndc=Non
     do(t.SetTextFont, font)
     do(t.SetNDC, ndc)
     return t
-
-
-def format_statbox(self, x=.95, y=None, w=.2, n_entries=3, only_fit=False, fit=False, entries=False, form=None, m=False, rms=False, all_stat=False):
-    gStyle.SetOptFit(only_fit or fit)
-    opt_stat = '100000{}{}{}0'.format(*[1 if val else 0 for val in [rms, m, entries]] if not all_stat else [1, 1, 1])
-    if only_fit:
-        opt_stat = '0011'
-    if fit:
-        opt_stat = '1111'
-    y = (.88 if self.Title else .95) if y is None else y
-    gStyle.SetOptStat(int(opt_stat))
-    gStyle.SetFitFormat(form) if form is not None else do_nothing()
-    gStyle.SetStatX(x)
-    gStyle.SetStatY(y)
-    gStyle.SetStatW(w)
-    gStyle.SetStatH(.04 * n_entries)
 
 
 def format_frame(frame):
