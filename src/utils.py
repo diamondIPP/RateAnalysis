@@ -752,6 +752,16 @@ def get_running_time(t):
     return now.strftime('%H:%M:%S')
 
 
+def del_rootobj(obj):
+    if obj is None:
+        return
+    try:
+        if obj.IsA().GetName() != 'TCanvas':
+            obj.Delete()
+    except AttributeError:
+        pass
+
+
 class FitRes:
     def __init__(self, fit_obj=None):
         self.Pars = list(fit_obj.Parameters()) if (fit_obj is not None and len(fit_obj.Parameters()) > 0) else [None]
