@@ -699,7 +699,7 @@ class MyThread (Thread):
         if not self.Load:
             self.Tuple = False
             return
-        log_message('Loading run {r}'.format(r=self.Run), overlay=True)
+        info('Loading run {r}'.format(r=self.Run), next_line=False)
         file_path = self.Selection.get_final_file_path(self.Run)
         if file_exists(file_path):
             self.File = TFile(file_path)
@@ -777,6 +777,39 @@ def del_rootobj(obj):
             obj.Delete()
     except AttributeError:
         pass
+
+
+def get_root_vec(tree, n, ind=0, dtype=None):
+    # vec = getattr(tree, 'GetV{}'.format(ind))()
+    vec = tree.GetVal(ind)
+    vec.SetSize(n)
+    return array(vec, dtype=dtype)
+
+
+def get_root_vecs(tree, n, n_ind, dtype=None):
+    return (get_root_vec(tree, n, i, dtype) for i in xrange(n_ind))
+
+
+def get_arg(arg, default):
+    return default if arg is None else arg
+
+
+def init_argparser(run=None, tc=None, dia=None):
+    p = ArgumentParser()
+    p.add_argument('run', nargs='?', default=run, type=int)
+    p.add_argument('dia', nargs='?', default=dia, type=int)
+    p.add_argument('-tc', '--testcampaign', nargs='?', default=tc)
+    p.add_argument('-v', '--verbose', action='store_false')
+    p.add_argument('-t', '--tree', action='store_false')
+    return p.parse_args()
+
+
+def measure_time(f, rep=1, *args):
+    print args
+    t = info('Measuring time of method {}:'.format(f.__name__), next_line=False)
+    for _ in xrange(rep):
+        f(*args)
+    add_to_info(t, '')
 
 
 class FitRes:
