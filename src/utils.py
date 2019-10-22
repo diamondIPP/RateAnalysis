@@ -3,26 +3,30 @@
 # created on May 19th 2016 by M. Reichmann
 # --------------------------------------------------------
 
+import ROOT
+ROOT.PyConfig.IgnoreCommandLineOptions = True
+from ROOT import gROOT, TF1, TColor, TFile, TMath
+
+import pickle
+from collections import OrderedDict
+from copy import deepcopy
 from datetime import datetime, timedelta
-from termcolor import colored
+from multiprocessing import Pool
+from subprocess import call
+from sys import stdout
+from threading import Thread
+from time import time, sleep
+
+from gtts import gTTS
 from numpy import sqrt, array, average, mean, arange, log10
 from os import makedirs, _exit, remove, devnull
 from os import path as pth
 from os.path import basename, join, dirname
-from time import time, sleep
-from collections import OrderedDict
-import pickle
-from threading import Thread
-from multiprocessing import Pool
+from pytz import timezone, utc
+from termcolor import colored
 from uncertainties import ufloat
 from uncertainties.core import Variable, AffineScalarFunc
-from copy import deepcopy
-from gtts import gTTS
-from subprocess import call
-from pytz import timezone, utc
-import ROOT
-ROOT.PyConfig.IgnoreCommandLineOptions = True
-from ROOT import gROOT, TF1, TColor, TFile, TMath
+from argparse import ArgumentParser
 
 
 OFF = False
@@ -53,12 +57,24 @@ def warning(msg):
     log_warning(msg)
 
 
-def log_message(msg, overlay=False, prnt=True):
-    overlay = '\033[1A\r' if overlay else ''
-    info = '{ov}{head} {t} --> {msg}{end}'.format(t=get_t_str(), msg=msg, ov=overlay, end=' ' * 10 if overlay else '', head=colored('INFO:', 'cyan', attrs=['dark']))
+def info(msg, next_line=True, prnt=True):
+    return log_info(msg, next_line, prnt)
+
+
+def log_info(msg, next_line=True, prnt=True):
+    t1 = time()
     if prnt:
-        print info
-    return info
+        t = datetime.now().strftime('%H:%M:%S')
+        print '{head} {t} --> {msg}'.format(head=colored('INFO:', 'cyan', attrs=['dark']), t=t, msg=msg),
+        stdout.flush()
+        if next_line:
+            print
+    return t1
+
+
+def add_to_info(t, msg='Done', prnt=True):
+    if prnt:
+        print '{m} ({t:2.2f} s)'.format(m=msg, t=time() - t)
 
 
 def set_root_warnings(status):
@@ -330,8 +346,9 @@ def dir_exists(path):
 
 def ensure_dir(path):
     if not pth.exists(path):
-        log_message('Creating directory: {d}'.format(d=path))
+        info('Creating directory: {d}'.format(d=path))
         makedirs(path)
+    return path
 
 
 def make_col_str(col):
