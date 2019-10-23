@@ -355,8 +355,8 @@ def make_col_str(col):
     return '{0:2d}'.format(int(col)) if int(col) > 1 else '{0:3.1f}'.format(col)
 
 
-def print_banner(msg, symbol='=', new_lines=True):
-    print '{n}{delim}\n{msg}\n{delim}{n}'.format(delim=len(str(msg)) * symbol, msg=msg, n='\n' if new_lines else '')
+def print_banner(msg, symbol='=', new_lines=1, color=None):
+    print colored('{n}{delim}\n{msg}\n{delim}{n}'.format(delim=len(str(msg)) * symbol, msg=msg, n='\n' * new_lines), color)
 
 
 def print_small_banner(msg, symbol='-'):
