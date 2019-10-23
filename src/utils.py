@@ -794,14 +794,26 @@ def get_arg(arg, default):
     return default if arg is None else arg
 
 
-def init_argparser(run=None, tc=None, dia=None):
+def init_argparser(run=None, tc=None, dia=False, tree=False, verbose=False):
     p = ArgumentParser()
-    p.add_argument('run', nargs='?', default=run, type=int)
-    p.add_argument('dia', nargs='?', default=dia, type=int)
-    p.add_argument('-tc', '--testcampaign', nargs='?', default=tc)
-    p.add_argument('-v', '--verbose', action='store_false')
-    p.add_argument('-t', '--tree', action='store_false')
+    p.add_argument('run', nargs='?', default=run, type=int, help='run number')
+    p.add_argument('dia', nargs='?', default=dia, type=int, help='diamond number [default: 1] (choose from 1,2,...)') if dia or dia is None else do_nothing()
+    p.add_argument('-tc', '--testcampaign', nargs='?', default=tc, help='YYYYMM beam test [default in main.ini]')
+    p.add_argument('-v', '--verbose', action='store_false') if verbose else do_nothing()
+    p.add_argument('-t', '--tree', action='store_false', help='do not load the ROOT TTree') if tree else do_nothing()
     return p.parse_args()
+
+
+def run_selector(run, tc, tree, verbose):
+    from run import Run
+    from pixel_run import PixelRun
+    from pad_run import PadRun
+    dummy = Run(run, tc, tree=False)
+    if dummy.Config.get('BASIC', 'type') == 'pad':
+        return PadRun(run, tc, tree, verbose=verbose)
+    elif dummy.Config.get('BASIC', 'type') == 'pixel':
+        return PixelRun(run, tc, tree, verbose=verbose)
+    critical('wrong run type: has to be in [pad, pixel]')
 
 
 def measure_time(f, rep=1, *args):
