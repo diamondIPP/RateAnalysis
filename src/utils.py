@@ -57,15 +57,15 @@ def warning(msg):
     log_warning(msg)
 
 
-def info(msg, next_line=True, prnt=True):
-    return log_info(msg, next_line, prnt)
+def info(msg, next_line=True, blank_lines=0, prnt=True):
+    return log_info(msg, next_line, blank_lines, prnt)
 
 
-def log_info(msg, next_line=True, prnt=True):
+def log_info(msg, next_line=True, blank_lines=0, prnt=True):
     t1 = time()
     if prnt:
         t = datetime.now().strftime('%H:%M:%S')
-        print '{head} {t} --> {msg}'.format(head=colored('INFO:', 'cyan', attrs=['dark']), t=t, msg=msg),
+        print '{bl}{head} {t} --> {msg}'.format(head=colored('INFO:', 'cyan', attrs=['dark']), t=t, msg=msg, bl='\n' * blank_lines),
         stdout.flush()
         if next_line:
             print
