@@ -1,12 +1,9 @@
+from draw import *
 from ConfigParser import ConfigParser
-from argparse import ArgumentParser
 from glob import glob
-from sys import stdout
 
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 
-from draw import *
-from utils import *
 
 # global test campaign
 g_test_campaign = None
@@ -17,6 +14,8 @@ class Analysis(Draw):
         It contains, among other things, the root drawing methods, the main config and information about the directory structure. """
 
     def __init__(self, testcampaign=None, verbose=False):
+
+        self.StartTime = time()
 
         # Configuration
         self.Verbose = verbose
@@ -94,19 +93,16 @@ class Analysis(Draw):
         if self.Verbose:
             print ', '.join(args)
 
-    def log_info(self, msg, next_line=True, prnt=True):
-        t1 = time()
-        if prnt and self.Verbose:
-            t = datetime.now().strftime('%H:%M:%S')
-            print '{head} {t} --> {msg}'.format(head=colored('INFO:', 'cyan', attrs=['dark']), t=t, msg=msg),
-            stdout.flush()
-            if next_line:
-                print
-        return t1
+    def info(self, msg, next_line=True):
+        return info(msg, next_line, prnt=self.Verbose)
 
-    def add_info(self, t, msg='Done'):
-        if self.Verbose:
-            print '{m} ({t:2.2f} s)'.format(m=msg, t=time() - t)
+    def add_to_info(self, t, txt='Done'):
+        return add_to_info(t, txt, prnt=self.Verbose)
+
+    def print_start(self, run=None):
+        ana_name = self.__class__.__name__.split('Ana')[0]
+        run = ' FOR RUN {}'.format(run) if run is not None else ''
+        print_banner('STARTING {} ANALYSIS{} OF {}'.format(ana_name.upper(), run, self.TCString), symbol='~', color='green')
 
     def make_pickle_path(self, sub_dir, name=None, run=None, ch=None, suf=None, camp=None):
         ensure_dir(join(self.PickleDir, sub_dir))
