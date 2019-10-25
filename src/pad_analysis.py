@@ -16,6 +16,7 @@ from Pulser import PulserAnalysis
 from Timing import TimingAnalysis
 from converter import Converter
 from waveform import Waveform
+from pad_alignment import PadAlignment
 
 
 class PadAnalysis(TelecopeAnalysis):
@@ -70,7 +71,7 @@ class PadAnalysis(TelecopeAnalysis):
             self.Waveform = Waveform(self)
 
             # alignment
-            self.IsAligned = self.check_alignment(show=False)
+            self.IsAligned = self.check_alignment()
 
             self.Timing.reload_cut()
 
@@ -959,27 +960,32 @@ class PadAnalysis(TelecopeAnalysis):
     # endregion
     # ----------------------------------------
 
-    def check_alignment(self, n_pulser=200, thresh=40, show=True):
-        """ just check the number of pixel hits at pulser events for no offset """
-        pickle_path = 'Configuration/Individual_Configs/Alignment/{tc}_{run}.pickle'.format(tc=self.TestCampaign, run=self.Run.RunNumber)
+    def check_alignment(self):
+        """ check if the events from telescope and digitiser are aligned"""
+        pickle_path = self.make_pickle_path('Alignment', run=self.RunNumber)
 
         def f():
-            xbins = self.Plots.get_pulser_bins(n_pulser)
-            p = self.Pulser.draw_hit_efficiency(xbins, show=False)
-            h = TH2F('ha{}'.format(self.RunNumber), 'Event Alignment', *(xbins + (3, 0, 3)))
-            for ibin in xrange(5, xbins[0]):
-                h.SetBinContent(ibin, 2, int(p.GetBinContent(ibin) <= thresh) + 1)
-            format_histo(h, x_tit='Event Number', y_tit='Alignment', stats=False, l_off_y=99, center_y=True)
-            gStyle.SetPalette(3, array([1, 2, 3], 'i'))
-            leg = self.make_legend(nentries=2, x2=.9, margin=.2)
-            leg.AddEntry(self.draw_box(0, 0, 0, 0, color=3, name='b1'), 'aligned', 'f')
-            leg.AddEntry(self.draw_box(0, 0, 0, 0, color=2), 'misaligned', 'f')
-            self.save_histo(h, 'EventAlignment', draw_opt='col', rm=.08, leg=leg, show=show, prnt=show)
-            return sum(p.GetBinContent(bin_) > thresh for bin_ in xrange(5, p.GetNbinsX())) < p.GetNbinsX() * .05
+            alignment = PadAlignment(self.Run.Converter, verbose=False)
+            return alignment.IsAligned
 
-        aligned = do_pickle(pickle_path, f, redo=show)
-        log_warning('\nRun {r} is misaligned :-('.format(r=self.RunNumber)) if not aligned else do_nothing()
-        return aligned
+        is_aligned = do_pickle(pickle_path, f)
+        log_warning('\nRun {r} is misaligned :-('.format(r=self.RunNumber)) if not is_aligned else do_nothing()
+        return is_aligned
+
+    def draw_alignment(self, n_pulser=200, thresh=40, show=True):
+        """ draw the aligment of telescope and digitiser events """
+        xbins = self.Plots.get_pulser_bins(n_pulser)
+        p = self.Pulser.draw_hit_efficiency(xbins, show=False)
+        h = TH2F('ha{}'.format(self.RunNumber), 'Event Alignment', *(xbins + (3, 0, 3)))
+        for ibin in xrange(1, xbins[0]):
+            h.SetBinContent(ibin, 2, int(p.GetBinContent(ibin) <= thresh) + 1)
+        format_histo(h, x_tit='Event Number', y_tit='Alignment', stats=False, l_off_y=99, center_y=True)
+        gStyle.SetPalette(3, array([1, 2, 3], 'i'))
+        leg = self.make_legend(nentries=2, x2=.9, margin=.2)
+        leg.AddEntry(self.draw_box(0, 0, 0, 0, color=3, name='b1'), 'aligned', 'f')
+        leg.AddEntry(self.draw_box(0, 0, 0, 0, color=2), 'misaligned', 'f')
+        self.save_histo(h, 'EventAlignment', draw_opt='col', rm=.08, leg=leg, show=show, prnt=show)
+        return h
 
     def analyse_signal_histograms(self):
         gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
