@@ -668,27 +668,22 @@ def get_time_vec(sel, run=None):
         return 
     tree.SetEstimate(-1)
     entries = tree.Draw('time', '', 'goff')
-    time_vec = [tree.GetV1()[i] for i in xrange(entries)]
+    time_vec = get_root_vec(tree, entries)
     fill_empty_time_entries(time_vec)
-    if any(time_vec[i + 100] < time_vec[i] for i in xrange(0, len(time_vec) - 100, 100)):
-        log_warning('Need to correct timing vector\n')
+    if any(time_vec[:-1] > time_vec[1:]):
+        warning('Need to correct timing vector\n')
         time_vec = correct_time(time_vec)
     return time_vec
 
 
+def fill_empty_time_entries(times):
+    empty_events = where(times == -1)[0]
+    times[empty_events] = times[empty_events.size]
+    return times
+
+
 def time_stamp(t):
     return float(t.strftime('%s'))
-
-
-def fill_empty_time_entries(times):
-    first_valid = 0
-    ind = 0
-    for i, t in enumerate(times):
-        if t != -1:
-            first_valid = t
-            ind = i
-            break
-    times[:ind] = [first_valid] * ind
 
 
 def correct_time(times):
