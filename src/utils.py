@@ -18,10 +18,10 @@ from threading import Thread
 from time import time, sleep
 
 from gtts import gTTS
-from numpy import sqrt, array, average, mean, arange, log10
+from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, any, count_nonzero
 from os import makedirs, _exit, remove, devnull
 from os import path as pth
-from os.path import basename, join, dirname
+from os.path import dirname
 from pytz import timezone, utc
 from termcolor import colored
 from uncertainties import ufloat
@@ -136,35 +136,6 @@ def round_up_to(num, val):
     return int(num) / val * val + val
 
 
-def scale_multigraph(mg, val=1, to_low_flux=False):
-    if val is None:
-        return
-    g = mg.GetListOfGraphs()[0]
-    points = {g.GetX()[i]: g.GetY()[i] for i in xrange(g.GetN())}
-    y_vals = [make_ufloat((g.GetY()[i], g.GetEY()[i])) for i in xrange(g.GetN())]
-    m, s = mean_sigma(y_vals)
-    scale = val / (points[min(points)] if to_low_flux else m)
-    for gr in mg.GetListOfGraphs():
-        scale_graph(gr, scale)
-    for i, l in enumerate(mg.GetListOfGraphs()[0].GetListOfFunctions()):
-        y, ey = g.GetY()[i], g.GetErrorY(i)
-        l.SetY(y - ey - .003)
-
-
-def scale_graph(gr, scale=None, val=1, to_low_flux=False):
-    if scale is None:
-        points = {gr.GetX()[i]: gr.GetY()[i] for i in xrange(gr.GetN())}
-        y_vals = [make_ufloat((gr.GetY()[i], gr.GetEY()[i])) for i in xrange(gr.GetN())]
-        m, s = mean_sigma(y_vals)
-        scale = val / (points[min(points)] if to_low_flux else m)
-    for i in xrange(gr.GetN()):
-        gr.SetPoint(i, gr.GetX()[i], gr.GetY()[i] * scale)
-        try:
-            gr.SetPointError(i, gr.GetErrorX(i), gr.GetErrorY(i) * scale)
-        except Exception as err:
-            log_warning('Error in scale multigraph: {err}'.format(err=err))
-
-
 def interpolate_two_points(x1, y1, x2, y2):
     # f = p1*x + p0
     p1 = (y1 - y2) / (x1 - x2)
@@ -204,15 +175,6 @@ def set_graph_color(mg, color=None, do_marker=True, marker_size=None):
             mg.SetMarkerColor(color)
         if marker_size:
             mg.SetMarkerSize(marker_size)
-
-
-def get_graph_data(g):
-    n = g.GetN()
-    x = [g.GetX()[i] for i in xrange(n)]
-    y = [g.GetY()[i] for i in xrange(n)]
-    ex = [g.GetEX()[i] for i in xrange(n)]
-    ey = [g.GetEY()[i] for i in xrange(n)]
-    return n, x, y, ex, ey
 
 
 def get_bias_root_string(biases):
@@ -276,14 +238,6 @@ def increased_range(ran, fac_bot=0., fac_top=0.):
     return [(1 + fac_bot) * ran[0] - fac_bot * ran[1], (1 + fac_top) * ran[1] - fac_top * ran[0]]
 
 
-def calc_mean(l):
-    l = [float(i) for i in l]
-    mean_ = sum(l) / len(l)
-    mean2 = sum(map(lambda x: x ** 2, l)) / len(l)
-    sigma = sqrt(mean2 - mean_ ** 2)
-    return mean_, sigma
-
-
 def calc_weighted_mean(means, sigmas):
     weights = map(lambda x: x ** (-2), sigmas)
     variance = 1 / sum(weights)
@@ -298,7 +252,7 @@ def mean_sigma(values, weights=None):
         return value.n, value.s
     weights = [1] * len(values) if weights is None else weights
     if type(values[0]) in [Variable, AffineScalarFunc]:
-        weights = [1 / v.s for v in values]
+        weights = [1 / v.s if v.s else 0 for v in values]
         values = array([v.n for v in values], 'd')
     if all(weight == 0 for weight in weights):
         return [0, 0]
@@ -313,11 +267,11 @@ def make_latex_table_row(row, hline=False):
 
 def make_latex_table(header, cols, endline=False):
     header = ['\\textbf{0}{1}{2}'.format('{', head, '}') if head else '' for head in header]
-    l = max([len(col) for col in cols])
+    size = max([len(col) for col in cols])
     rows = []
     for col in cols:
-        for i in xrange(l):
-            if len(rows) < l:
+        for i in xrange(size):
+            if len(rows) < size:
                 rows.append([])
             rows[i].append(col[i] if len(col) > i else '')
     out = '\\toprule\n'
@@ -355,7 +309,8 @@ def make_col_str(col):
     return '{0:2d}'.format(int(col)) if int(col) > 1 else '{0:3.1f}'.format(col)
 
 
-def print_banner(msg, symbol='=', new_lines=1, color=None):
+def print_banner(msg, symbol='~', new_lines=1, color=None):
+    msg += ' |'
     print colored('{n}{delim}\n{msg}\n{delim}{n}'.format(delim=len(str(msg)) * symbol, msg=msg, n='\n' * new_lines), color)
 
 
@@ -363,11 +318,15 @@ def print_small_banner(msg, symbol='-'):
     print '\n{delim}\n{msg}\n'.format(delim=len(str(msg)) * symbol, msg=msg)
 
 
-def print_elapsed_time(start, what='This', show=True):
-    t = '{d}'.format(d=timedelta(seconds=time() - start)).split('.')
-    string = 'Elapsed time for {w}: {d1}.{m:2d}'.format(d1=t[0], m=int(round(int(t[1][:3])) / 10.), w=what)
-    print_banner(string) if show else do_nothing()
+def print_elapsed_time(start, what='This', show=True, color=None):
+    string = 'Elapsed time for {w}: {t}'.format(t=get_elapsed_time(start), w=what)
+    print_banner(string, color=color) if show else do_nothing()
     return string
+
+
+def get_elapsed_time(start):
+    t = datetime.fromtimestamp(time() - start)
+    return '{}.{:1.0f}'.format(t.strftime('%M:%S'), t.microsecond / 1e5)
 
 
 def conv_log_time(time_str, strg=False):
