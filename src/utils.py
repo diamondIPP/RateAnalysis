@@ -725,18 +725,24 @@ def del_rootobj(obj):
 
 
 def get_root_vec(tree, n, ind=0, dtype=None):
-    # vec = getattr(tree, 'GetV{}'.format(ind))()
     vec = tree.GetVal(ind)
     vec.SetSize(n)
     return array(vec, dtype=dtype)
 
 
 def get_root_vecs(tree, n, n_ind, dtype=None):
-    return (get_root_vec(tree, n, i, dtype) for i in xrange(n_ind))
+    return [get_root_vec(tree, n, i, dtype) for i in xrange(n_ind)]
 
 
 def get_arg(arg, default):
     return default if arg is None else arg
+
+
+def calc_eff(k=0, n=0, values=None):
+    values = array(values) if values is not None else None
+    k = float(k if values is None else count_nonzero(values))
+    n = float(n if values is None else values.size)
+    return make_ufloat((100 * (k + 1) / (n + 2), 100 * sqrt(((k + 1)/(n + 2) * (k + 2)/(n + 3) - ((k + 1)**2) / ((n + 2)**2)))))
 
 
 def init_argparser(run=None, tc=None, dia=False, tree=False, verbose=False):
@@ -762,11 +768,14 @@ def run_selector(run, tc, tree, verbose):
 
 
 def measure_time(f, rep=1, *args):
-    print args
     t = info('Measuring time of method {}:'.format(f.__name__), next_line=False)
-    for _ in xrange(rep):
+    for _ in xrange(int(rep)):
         f(*args)
     add_to_info(t, '')
+
+
+def u_to_str(v, prec=2):
+    return '{{:1.{0}f}} ({{:1.{0}f}})'.format(prec).format(v.n, v.s)
 
 
 class FitRes:
