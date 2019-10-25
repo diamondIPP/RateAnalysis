@@ -72,9 +72,9 @@ class Analysis(Draw):
         self.TestCampaign = testcampaign
 
     def print_testcampaign(self, pr=True):
-        info = self.TCString.split('-')
+        data = self.TCString.split('-')
         out = self.TestCampaign.strftime('%b %Y')
-        subset = ' Part {}'.format(info[-1]) if len(info) > 1 else ''
+        subset = ' Part {}'.format(data[-1]) if len(data) > 1 else ''
         if pr:
             print '\nTESTCAMPAIGN: {}{}'.format(out, subset)
         return out
@@ -93,8 +93,8 @@ class Analysis(Draw):
         if self.Verbose:
             print ', '.join(args)
 
-    def info(self, msg, next_line=True):
-        return info(msg, next_line, prnt=self.Verbose)
+    def info(self, msg, next_line=True, prnt=True):
+        return info(msg, next_line, prnt=self.Verbose and prnt)
 
     def add_to_info(self, t, txt='Done'):
         return add_to_info(t, txt, prnt=self.Verbose)
@@ -104,9 +104,12 @@ class Analysis(Draw):
         run = ' FOR RUN {}'.format(run) if run is not None else ''
         print_banner('STARTING {} ANALYSIS{} OF {}'.format(ana_name.upper(), run, self.TCString), symbol='~', color='green')
 
+    def print_finished(self):
+        print_banner('Finished Instantiation in {}'.format(get_elapsed_time(self.StartTime)), color='green')
+
     def make_pickle_path(self, sub_dir, name=None, run=None, ch=None, suf=None, camp=None):
         ensure_dir(join(self.PickleDir, sub_dir))
-        campaign = self.TestCampaign if camp is None else camp
+        campaign = self.TCString if camp is None else camp
         run = '_{r}'.format(r=run) if run is not None else ''
         ch = '_{c}'.format(c=ch) if ch is not None else ''
         suf = '_{s}'.format(s=suf) if suf is not None else ''
