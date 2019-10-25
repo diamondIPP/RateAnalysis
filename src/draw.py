@@ -372,29 +372,29 @@ class Draw:
         self.save_plots(savename, sub_dir, canvas, all_pads, True, ind, prnt, save, show)
 
     def save_canvas(self, canvas, sub_dir=None, name=None, print_names=True, show=True):
-        sub_dir = self.save_dir if hasattr(self, 'save_dir') and sub_dir is None else sub_dir
-        sub_dir = self.TelSaveDir if hasattr(self, 'TelSaveDir') and sub_dir is None else sub_dir
+        """should not be used in analysis methods..."""
+        sub_dir = self.SubDir if sub_dir is None else sub_dir
         canvas.Update()
         file_name = canvas.GetName() if name is None else name
         file_path = join(self.ResultsDir, sub_dir, '{typ}', file_name)
         ftypes = ['root', 'png', 'pdf', 'eps']
-        out = 'Saving plots: {nam}'.format(nam=name)
+        out = 'saving plot: {nam}'.format(nam=name)
         run_number = self.RunNumber if hasattr(self, 'RunNumber') else None
         run_number = 'rp{nr}'.format(nr=self.run_plan) if hasattr(self, 'run_plan') else run_number
         set_root_output(show)
         gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
-        info = self.make_info_string()
+        info_str = self.make_info_string()
         for f in ftypes:
             ext = '.{typ}'.format(typ=f)
             if not f == 'png' and run_number is not None:
-                ext = '{str}_{run}.{typ}'.format(str=info, run=run_number, typ=f)
+                ext = '{str}_{run}.{typ}'.format(str=info_str, run=run_number, typ=f)
             ensure_dir(dirname(file_path.format(typ=f)))
             out_file = '{fname}{ext}'.format(fname=file_path, ext=ext)
             out_file = out_file.format(typ=f)
             canvas.SaveAs(out_file)
         self.save_on_server(canvas, file_name)
         if print_names:
-            log_message(out, prnt=self.Verbose)
+            log_info(out, prnt=self.Verbose)
         set_root_output(True)
 
     def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=None, rm=None, bm=None, tm=None, draw_opt='', x=None, y=None, all_pads=True,
@@ -547,13 +547,13 @@ def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=Non
         h.SetContour(ncont) if ncont is not None else do_nothing()
     except AttributeError or ReferenceError:
         pass
-    # axis titles
+    # axes
     try:
         x_args = [x_tit, x_off, tit_size, center_x, lab_size, l_off_x, x_range, ndivx, tick_size]
         y_args = [y_tit, y_off, tit_size, center_y, lab_size, l_off_y, y_range, ndivy, tick_size, yax_col]
         z_args = [z_tit, z_off, tit_size, False, lab_size, None, z_range, None, tick_size]
-        for i, axis in enumerate([getattr(h, 'Get{}axis'.format(i))() for i in ['X', 'Y', 'Z']]):
-            format_axis(axis, *[x_args, y_args, z_args][i])
+        for i, name in enumerate(['X', 'Y', 'Z']):
+            format_axis(getattr(h, 'Get{}axis'.format(name))(), *[x_args, y_args, z_args][i])
     except AttributeError or ReferenceError:
         pass
     set_time_axis(h, off=t_ax_off) if t_ax_off is not None else do_nothing()
