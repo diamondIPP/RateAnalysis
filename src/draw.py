@@ -659,5 +659,34 @@ def load_resolution():
     return g_resolution
 
 
+def get_graph_vecs(g):
+    n = g.GetN()
+    x = array([make_ufloat([g.GetX()[i], g.GetEX()[i]]) for i in xrange(n)]) if 'Error' in g.ClassName() else array([make_ufloat(g.GetX()[i]) for i in xrange(n)])
+    y = array([make_ufloat([g.GetY()[i], g.GetEY()[i]]) for i in xrange(n)]) if 'Error' in g.ClassName() else array([make_ufloat(g.GetY()[i]) for i in xrange(n)])
+    return x, y
+
+
+def scale_multigraph(mg, val=1, to_low_flux=False):
+    graphs = mg.GetListOfGraphs()
+    first_graph = graphs[0]
+    scale = scale_graph(first_graph, val=val, to_low_flux=to_low_flux)
+    for gr in graphs[1:]:
+        scale_graph(gr, scale)
+    for i, l in enumerate(first_graph.GetListOfFunctions()):
+        y, ey = first_graph.GetY()[i], first_graph.GetErrorY(i)
+        l.SetY(y - ey - .003)
+
+
+def scale_graph(gr, scale=None, val=1, to_low_flux=False):
+    x, y = get_graph_vecs(gr)
+    if scale is None:
+        m, s = mean_sigma(y)
+        scale = val / (y[where(x == min(x))[0]] if to_low_flux else m)
+    for i in xrange(x.size):
+        gr.SetPoint(i, gr.GetX()[i], gr.GetY()[i] * scale)
+        gr.SetPointError(i, gr.GetErrorX(i), gr.GetErrorY(i) * scale) if 'Error' in gr.ClassName() else do_nothing()
+    return scale
+
+
 if __name__ == '__main__':
     z = Draw()
