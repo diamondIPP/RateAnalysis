@@ -463,25 +463,22 @@ def get_resolution():
         return 1000
 
 
-def print_table(rows, header=None):
-    col_width = [len(max([header[i]] + [row[i] for row in rows], key=len)) for i in xrange(len(header))]
+def print_table(rows, header=None, prnt=True):
+    t = array(rows, dtype=str) if header is None else concatenate((array([header], dtype=str), array(rows, dtype=str)))
+    col_width = [len(max(t[:, i], key=len)) for i in xrange(t.shape[1])]
     total_width = sum(col_width) + len(col_width) * 3 + 1
-    hline = '~' * total_width
-    if header is not None:
+    hline = '{}\n'.format('~' * total_width)
+    if prnt:
+        for row in t:
+            print '{}| {r} |'.format(hline, r=' | '.join(word.ljust(n) for word, n in zip(row, col_width)))
         print hline
-        print '| {r} |'.format(r=' | '.join(word.ljust(n) for word, n in zip(header, col_width)))
-    print hline
-    for row in rows:
-        row = row if len(row) > 1 else [row[0]]
-        print '| {r} |'.format(r=' | '.join(word.ljust(n) for word, n in zip(row, col_width)).ljust(len(hline) - 4))
-    print hline
 
 
 def get_base_dir():
     return dirname(dirname(__file__))
 
 
-def do_pickle(path, func, value=None, params=None, redo=False):
+def do_pickle(path, func, value=None, redo=False, *args, **kwargs):
     if value is not None:
         with open(path, 'w') as f:
             pickle.dump(value, f)
@@ -490,16 +487,10 @@ def do_pickle(path, func, value=None, params=None, redo=False):
         with open(path, 'r') as f:
             return pickle.load(f)
     else:
-        ret_val = func() if params is None else func(params)
+        ret_val = func(*args, **kwargs)
         with open(path, 'w') as f:
             pickle.dump(ret_val, f)
         return ret_val
-
-
-def server_pickle(old_path, value):
-    if server_is_mounted():
-        picklepath = join(get_base_dir(), 'mounts', 'psi', 'Pickles', basename(dirname(old_path)), basename(old_path))
-        do_pickle(picklepath, do_nothing, value)
 
 
 def fit_poissoni(h, p0=5000, p1=1, name='f_poiss', show=True):
