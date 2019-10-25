@@ -4,12 +4,13 @@
 # created on February 15th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
+from __future__ import print_function
+from utils import *
 from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, kGreen, kOrange, kViolet, kYellow, kRed, kBlue, kMagenta, kAzure, \
     kCyan, kTeal, TPaveText, TPaveStats
 from numpy import ndarray, zeros, sign
-from os.path import expanduser
+from os.path import expanduser, join, basename
 
-from utils import *
 
 # global resolution
 g_resolution = None
@@ -27,7 +28,8 @@ class Draw:
         self.TCString = tc_string
         self.MainConfig = config
         self.ResultsDir = self.get_results_dir()
-        self.ServerDir = self.get_server_dir()
+        self.SubDir = ''
+        self.ServerDir = self.load_server_dir()
 
         # Colors
         self.Count = 0
@@ -37,13 +39,26 @@ class Draw:
         # Settings
         gStyle.SetLegendFont(42)
         self.Title = self.get_config('SAVE', 'activate title')
+        set_titles(self.Title)
         self.Legend = self.get_config('SAVE', 'info legend')
 
         self.Objects = []
 
+    # def __del__(self):
+    #     for c in gROOT.GetListOfCanvases():
+    #         c.Close()
+    #     for lst in self.Objects:
+    #         lst = lst if type(lst) is list else list(lst)
+    #         for obj in lst:
+    #             if hasattr(obj, 'Delete'):
+    #                 obj.Delete()
+
     # ----------------------------------------
     # region BASIC
     def set_save_directory(self, name):
+        self.SubDir = name
+
+    def set_results_dir(self, name):
         self.ResultsDir = join(self.Dir, name)
 
     def get_results_dir(self):
@@ -64,7 +79,7 @@ class Draw:
     def get_config(self, section, option):
         return True if self.MainConfig is None else self.MainConfig.getboolean(section, option)
 
-    def get_server_dir(self):
+    def load_server_dir(self):
         return expanduser(self.MainConfig.get('SAVE', 'server mount directory')) if self.MainConfig is not None else None
     # endregion
     # ----------------------------------------
