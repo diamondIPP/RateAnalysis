@@ -310,7 +310,7 @@ def make_col_str(col):
 
 
 def print_banner(msg, symbol='~', new_lines=1, color=None):
-    msg += ' |'
+    msg = '{} |'.format(msg)
     print colored('{n}{delim}\n{msg}\n{delim}{n}'.format(delim=len(str(msg)) * symbol, msg=msg, n='\n' * new_lines), color)
 
 
@@ -745,13 +745,14 @@ def calc_eff(k=0, n=0, values=None):
     return make_ufloat((100 * (k + 1) / (n + 2), 100 * sqrt(((k + 1)/(n + 2) * (k + 2)/(n + 3) - ((k + 1)**2) / ((n + 2)**2)))))
 
 
-def init_argparser(run=None, tc=None, dia=False, tree=False, verbose=False):
+def init_argparser(run=None, tc=None, dia=False, tree=False, verbose=False, collection=False):
     p = ArgumentParser()
     p.add_argument('run', nargs='?', default=run, type=int, help='run number')
     p.add_argument('dia', nargs='?', default=dia, type=int, help='diamond number [default: 1] (choose from 1,2,...)') if dia or dia is None else do_nothing()
     p.add_argument('-tc', '--testcampaign', nargs='?', default=tc, help='YYYYMM beam test [default in main.ini]')
     p.add_argument('-v', '--verbose', action='store_false') if verbose else do_nothing()
     p.add_argument('-t', '--tree', action='store_false', help='do not load the ROOT TTree') if tree else do_nothing()
+    p.add_argument('-c', '--collection', action='store_true', help='start analysis collection') if collection else do_nothing()
     return p.parse_args()
 
 
@@ -760,9 +761,9 @@ def run_selector(run, tc, tree, verbose):
     from pixel_run import PixelRun
     from pad_run import PadRun
     dummy = Run(run, tc, tree=False)
-    if dummy.Config.get('BASIC', 'type') == 'pad':
+    if dummy.get_type() == 'pad':
         return PadRun(run, tc, tree, verbose=verbose)
-    elif dummy.Config.get('BASIC', 'type') == 'pixel':
+    elif dummy.get_type() == 'pixel':
         return PixelRun(run, tc, tree, verbose=verbose)
     critical('wrong run type: has to be in [pad, pixel]')
 

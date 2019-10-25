@@ -3,7 +3,6 @@ from __future__ import print_function
 from telescope_analysis import *
 from json import loads
 from ROOT import TH2I, TProfile2D, Double, TH2D
-# from ROOT import TGraphErrors, TCanvas, TH2D, gStyle, TH1F, gROOT, TLegend, TCut, TGraph, TH2F, TProfile, TCutG, kGreen, TF1, THStack, TMultiGraph, Long, TH2I, gRandom, Double
 from numpy import linspace
 from uncertainties import umath
 
