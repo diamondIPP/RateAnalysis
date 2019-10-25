@@ -314,14 +314,14 @@ class Draw:
         return '_{pol}{bias:04d}'.format(pol=pol, bias=int(abs(bias))) if bias else ''
 
     def make_info_string(self):
-        info = '_{dia}'.format(dia=self.DiamondName) if hasattr(self, 'DiamondName') else ''
-        info += self.make_bias_string()
-        info += '_{tc}'.format(tc=self.TCString)
-        info = info.replace('-', '')
-        return info
+        string = '_{dia}'.format(dia=self.DiamondName) if hasattr(self, 'DiamondName') else ''
+        string += self.make_bias_string()
+        string += '_{tc}'.format(tc=self.TCString)
+        string = string.replace('-', '')
+        return string
 
     def server_is_mounted(self):
-        return dir_exists(self.ServerDir)
+        return dir_exists(join(self.ServerDir, 'Diamonds'))
 
     def save_on_server(self, canvas, file_name):
         if self.ServerDir is None:
@@ -337,9 +337,14 @@ class Draw:
                 run_string = str(self.RunNumber)
             else:
                 return
-            path = join(self.ServerDir, self.DiamondName, 'BeamTests', make_tc_str(self.TCString, long_=False), run_string, file_name)
+            path = join(self.ServerDir, 'Diamonds', self.DiamondName, 'BeamTests', make_tc_str(self.TCString, long_=False), run_string, file_name)
             canvas.SaveAs('{p}.pdf'.format(p=path))
             canvas.SaveAs('{p}.png'.format(p=path))
+
+    def server_pickle(self, old_path, value):
+        if self.server_is_mounted():
+            picklepath = join(self.ServerDir, 'Pickles', basename(dirname(old_path)), basename(old_path))
+            do_pickle(picklepath, do_nothing, value)
 
     def save_plots(self, savename, sub_dir=None, canvas=None, all_pads=True, both_dias=False, ind=None, prnt=True, save=True, show=True):
         """ Saves the canvas at the desired location. If no canvas is passed as argument, the active canvas will be saved. However for applications without graphical interface,
