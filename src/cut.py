@@ -1,11 +1,11 @@
 from json import loads
 
 from ROOT import TCut, gROOT, TH1F, TPie
-from numpy import zeros
+from numpy import zeros, histogram2d, split, histogram
 
 from InfoLegend import InfoLegend
 from utils import *
-from draw import format_histo, format_pie
+from draw import format_pie
 from plots import Plots
 
 
@@ -66,7 +66,7 @@ class Cut:
                 continue
             cut += value
             self.NCuts += 1
-        self.Analysis.log_info('generated {name} cut with {num} cuts'.format(name=name, num=self.NCuts)) if prnt else do_nothing()
+        self.Analysis.info('generated {name} cut with {num} cuts'.format(name=name, num=self.NCuts)) if prnt else do_nothing()
         return cut
 
     def generate_all_cut(self):
@@ -218,12 +218,12 @@ class Cut:
         picklepath = self.Analysis.make_pickle_path('Chi2', run=self.RunNumber, suf=mode.title())
 
         def f():
-            t = self.Analysis.log_info('calculating chi2 cut in {mod} for run {run}...'.format(run=self.Analysis.RunNumber, mod=mode), next_line=False)
+            t = self.Analysis.info('calculating chi2 cut in {mod} for run {run}...'.format(run=self.Analysis.RunNumber, mod=mode), next_line=False)
             h = TH1F('hc{}'.format(mode), '', 500, 0, 100)
             self.Analysis.Tree.Draw('chi2_{m}>>hc{m}'.format(m=mode), 'n_tracks > 0', 'goff')
             chi2s = zeros(100)
             h.GetQuantiles(100, chi2s, arange(.01, 1.01, .01))
-            self.Analysis.add_info(t)
+            self.Analysis.add_to_info(t)
             return chi2s
 
         chi2 = do_pickle(picklepath, f)
@@ -244,13 +244,13 @@ class Cut:
 
         def func():
             angle = self.CutConfig['slope']
-            t = self.Analysis.log_info('Generating angle cut in {m} for run {run} ...'.format(run=self.Analysis.RunNumber, m=mode), False)
+            t = self.Analysis.info('Generating angle cut in {m} for run {run} ...'.format(run=self.Analysis.RunNumber, m=mode), False)
             set_root_output(False)
             h = self.Analysis.draw_angle_distribution(mode=mode, show=False, print_msg=False)
             fit = fit_fwhm(h)
             mean_ = fit.Parameter(1)
             cut_vals = {mode: [mean_ - angle, mean_ + angle]}
-            self.Analysis.add_info(t)
+            self.Analysis.add_to_info(t)
             return cut_vals
 
         return do_pickle(picklepath, func)
@@ -310,57 +310,36 @@ class Cut:
     # region BEAM INTERRUPTS
     def find_beam_interruptions(self):
         dut_type = self.Analysis.Run.Config.get('BASIC', 'type')
-        return self.find_pad_beam_interruptions() if dut_type == 'pad' else self.find_pixel_beam_interruptions(show=False)
+        return self.find_pad_beam_interruptions() if dut_type == 'pad' else self.find_pixel_beam_interruptions()
 
-    def find_pixel_beam_interruptions(self, bin_width=10, rel_time=True, show=True):
-        """ Locates the beam interruptions and cuts some seconds before and some seconds after which are specified in the config file. overlapping segments are fused to one to reduce the size
-            of the string. An average of the number of event per time bin is calculated and every bin below 90% or above 120% is excluded """
-        # time is in minutes. good results found with bin size of 10 seconds
-        set_root_output(False)
-        h = TH1F('h_beam_time_', 'Beam Interruptions', *self.Plots.get_time_binning(bin_width))
-        self.Analysis.Tree.Draw('time / 1000. >> h_beam_time_'.format(off=self.Analysis.Run.StartTime), '', 'goff')
-        mean_ = mean(sorted([h.GetBinContent(i) for i in xrange(h.GetNbinsX())])[-20:-10])  # only take the ten highest values to get an estimate of the plateau
-        jumps = []
-        tup = [0, 0]
-        cut = .4
-        last_dev = 0
-        for ibin in xrange(1, h.GetNbinsX() + 1):
-            deviation = abs(1 - h.GetBinContent(ibin) / mean_)  # normalised deviation from the mean
-            if deviation > cut:
-                tup[0] = h.GetBinLowEdge(ibin)
-            elif deviation < cut < last_dev:
-                tup[1] = h.GetBinLowEdge(ibin) + bin_width
-                jumps.append(tup)
-                tup = [0, 0]
-            last_dev = deviation
-        if tup[0] != tup[1]:  # if rate did not went down before the run stopped
-            jumps.append([tup[0], self.Analysis.Run.EndTime])
-        jumps = [[self.Analysis.get_event_at_time(t - self.Analysis.Run.StartTime) for t in jump] for jump in jumps]
+    def find_pixel_beam_interruptions(self, bin_width=10, threshold=.4):
+        """ Finding beam interruptions by incestigation the event rate. """
+        t_start = self.Analysis.info('Searching for beam interruptions of run {r} ...'.format(r=self.RunNumber), next_line=False)
+        bin_values, time_bins = histogram(self.Analysis.Run.Time / 1000, bins=self.Plots.get_raw_time_binning(bin_width)[1])
+        m = mean(bin_values[bin_values.argsort()][-20:-10])  # take the mean of the 20th to the 10th highest bin to get an estimate of the plateau
+        deviating_bins = where(abs(1 - bin_values / m) > threshold)[0]
+        times = time_bins[deviating_bins] + bin_width / 2 - self.Analysis.Run.Time[0] / 1000  # shift to the center of the bin
+        not_connected = where(concatenate([[False], deviating_bins[:-1] != deviating_bins[1:] - 1]))[0]  # find the bins that are not consecutive
+        times = split(times, not_connected)
+        jumps = [[self.Analysis.get_event_at_time(v) for v in [t[0], t[0] if t.size == 1 else t[-1]]] for t in times]
         interruptions = self.__create_jump_ranges(jumps)
-        format_histo(h, x_tit='Time [min]', y_tit='Number of Events', y_off=1.7, stats=0, fill_color=self.Analysis.FillColor, t_ax_off=self.Analysis.Run.StartTime if rel_time else 0)
-        if show:
-            self.Analysis.save_histo(h, 'BeamInterruptions', show, lm=.125)
+        self.Analysis.add_to_info(t_start)
         return jumps, interruptions
 
-    def find_pad_beam_interruptions(self):
+    def find_pad_beam_interruptions(self, bin_width=100, max_thresh=.4):
         """ Looking for the beam interruptions by investigating the pulser rate. """
-        t = self.Analysis.log_info('Searching for beam interruptions of run {r} ...'.format(r=self.RunNumber), next_line=False)
-        bin_width = 200
-        rates = [self.Analysis.Run.Tree.Draw('1', 'pulser', 'goff', bin_width, i * bin_width) / float(bin_width) for i in xrange(self.Analysis.Run.NEntries / bin_width)]
-        jumps = []
-        tup = [0, 0]
-        cut = .4  # if rate goes higher than n %
-        for i, rate in enumerate(rates):
-            if rate >= cut > rates[i - 1]:
-                tup[0] = int((i + .5) * bin_width)
-            elif rate < cut <= rates[i - 1]:
-                tup[1] = int((i + .5) * bin_width)
-                jumps.append(tup)
-                tup = [0, 0]
-        if tup[0] != tup[1]:  # if rate did not went down before the run stopped
-            jumps.append([tup[0], self.Analysis.Run.NEntries - 1])
+        t = self.Analysis.info('Searching for beam interruptions of run {r} ...'.format(r=self.RunNumber), next_line=False)
+        n = self.Analysis.Tree.Draw('Entry$:pulser', '', 'goff')
+        x, y = get_root_vecs(self.Analysis.Tree, n, 2, dtype=int)
+        rates, x_bins, y_bins = histogram2d(x, y, bins=[arange(0, n, bin_width, dtype=int), 2])
+        rates = rates[:, 1] / bin_width
+        thresh = min(max_thresh, mean(rates) + .1)
+        events = x_bins[:-1][rates > thresh] + bin_width / 2
+        not_connected = where(concatenate([[False], events[:-1] != events[1:] - bin_width]))[0]  # find the events where the previous event is not related to the event (more than a bin width away)
+        events = split(events, not_connected)  # events grouped into connecting events
+        jumps = [(ev[0], ev[0]) if ev.size == 1 else (ev[0], ev[-1]) for ev in events]
         interruptions = self.__create_jump_ranges(jumps)
-        self.Analysis.add_info(t)
+        self.Analysis.add_to_info(t)
         return jumps, interruptions
 
     def __create_jump_ranges(self, jumps):
@@ -441,7 +420,12 @@ class Cut:
         return (self.get_track_var(num, v, scale) for v in ['y', 'x'])
 
     def generate_consecutive_cuts(self):
-        pass
+        cuts = OrderedDict([('raw', TCut('0', ''))])
+        for i, (key, value) in enumerate([(key, value) for key, value in self.CutStrings.iteritems() if str(value) and key != 'AllCuts' and not key.startswith('old')], 1):
+            new_cut = cuts.values()[i - 1] + value
+            key = 'beam_stops' if 'beam' in key else key
+            cuts[key] = TCut('{n}'.format(n=i), str(new_cut))
+        return cuts
 
     def draw_contributions(self, flat=False, short=False, show=True):
         set_root_output(show)
