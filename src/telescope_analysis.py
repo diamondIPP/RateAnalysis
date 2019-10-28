@@ -251,7 +251,33 @@ class TelecopeAnalysis(Analysis):
             h.Draw('colz')
         self.save_plots('HitMaps', sub_dir=self.TelSaveDir, show=show, prnt=prnt, both_dias=True)
 
-    # endregion
+    def draw_tracking_map(self, at_dut=1, res=2, cut='', show=True):
+        h = TH2I('htm{}'.format(at_dut), 'Tracking Map', *self.Plots.get_global_bins(res, mm=True))
+        x_var, y_var = [self.Cut.get_track_var(at_dut - 1, v) for v in ['x', 'y']]
+        self.Tree.Draw('{y} * 10:{x} * 10 >> htm{}'.format(at_dut, x=x_var, y=y_var), TCut(cut), 'goff')
+        format_histo(h, x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]', y_off=1.4, z_off=1.5, z_tit='Number of Hits', ncont=50, ndivy=510, ndivx=510, stats=0)
+        self.save_tel_histo(h, 'TrackMap{}'.format(at_dut), lm=.12, rm=.16, draw_opt='colz', show=show, x_fac=1.15)
+        return h
+
+    def draw_beam_profile(self, at_dut=1, mode='x', fit=True, fit_range=.8, res=2, show=True):
+        h = self.draw_tracking_map(at_dut, res, show=False)
+        p = h.ProjectionX() if mode.lower() == 'x' else h.ProjectionY()
+        format_histo(p, title='Profile {}'.format(mode.title()), y_off=1.3, y_tit='Number of Hits', fill_color=self.FillColor)
+        self.format_statbox(all_stat=True)
+        self.draw_histo(p, lm=.13, show=show)
+        if fit:
+            self.fit_beam_profile(p, fit_range)
+        self.save_plots('BeamProfile{}{}'.format(at_dut, mode.title()), both_dias=True)
+        return
+
+    @staticmethod
+    def fit_beam_profile(p, fit_range):
+        x_peak = p.GetBinCenter(p.GetMaximumBin())
+        x_min, x_max = [p.GetBinCenter(i) for i in [p.FindFirstBinAbove(0), p.FindLastBinAbove(0)]]
+        print x_peak, x_min, x_max
+        return p.Fit('gaus', 'qs', '', x_peak - (x_peak - x_min) * fit_range, x_peak + (x_max - x_peak) * fit_range)
+    # endregion PIXEL HITS
+    # ----------------------------------------
 
     def draw_trigger_phase(self, dut=True, show=True, cut=None):
         cut_string = self.Cut.generate_special_cut(excluded=['trigger_phase']) if cut is None else TCut(cut)
