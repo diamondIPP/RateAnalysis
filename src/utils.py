@@ -18,7 +18,7 @@ from threading import Thread
 from time import time, sleep
 
 from gtts import gTTS
-from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, any, count_nonzero
+from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, any, count_nonzero, full
 from os import makedirs, _exit, remove, devnull
 from os import path as pth
 from os.path import dirname
@@ -250,9 +250,10 @@ def mean_sigma(values, weights=None):
     if len(values) == 1:
         value = make_ufloat(values[0])
         return value.n, value.s
-    weights = [1] * len(values) if weights is None else weights
+    weights = full(len(values), 1) if weights is None else weights
     if type(values[0]) in [Variable, AffineScalarFunc]:
-        weights = [1 / v.s if v.s else 0 for v in values]
+        errors = array([v.s for v in values])
+        weights = full(errors.size, 1) if all(errors == errors[0]) else [1 / e if e else 0 for e in errors]
         values = array([v.n for v in values], 'd')
     if all(weight == 0 for weight in weights):
         return [0, 0]
