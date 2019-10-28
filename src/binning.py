@@ -6,7 +6,7 @@ from numpy import arange, array, delete, append, concatenate
 from utils import increased_range, get_root_vec
 
 
-class Plots:
+class Bins:
     def __init__(self, run=None, cut=None):
 
         self.Run = run
