@@ -219,22 +219,23 @@ class TelecopeAnalysis(Analysis):
             print events[:20]
         return events
 
-    # endregion
+    # endregion TRACKS
+    # ----------------------------------------
 
-    # ============================================================================================
-    # region PIXEL
+    # ----------------------------------------
+    # region PIXEL HITS
     def _draw_occupancy(self, plane, name=None, cluster=True, tel_coods=False, cut='', show=True, prnt=True):
         name = 'ROC {i}'.format(i=plane) if name is None else name
-        bins = self.Plots.get_global_bins(sqrt(12)) if tel_coods else self.Plots.Settings['2DBins']
+        bins = self.Plots.get_global_bins(sqrt(12), mm=True) if tel_coods else self.Plots.get_pixel_bins()
         set_root_warnings(False)
         h = TH2F('h_hm{i}'.format(i=plane), '{h} Occupancy {n}'.format(n=name, h='Hit' if not cluster else 'Cluster'), *bins)
         cut_string = self.Cut.AllCut if cut is None else TCut(cut)
         cut_string += 'plane == {0}'.format(plane) if not cluster else ''
         draw_string = 'cluster_row[{i}]:cluster_col[{i}]' if cluster else 'row:col'
-        draw_string = 'cluster_ypos_local[{i}]:cluster_xpos_local[{i}]' if tel_coods else draw_string
+        draw_string = 'cluster_ypos_local[{i}] * 10:cluster_xpos_local[{i}] * 10' if tel_coods else draw_string
         self.format_statbox(entries=True, x=.83)
         self.Tree.Draw('{ds}>>h_hm{i}'.format(ds=draw_string.format(i=plane), i=plane), cut_string, 'goff')
-        format_histo(h, x_tit='col', y_tit='row', y_off=1.2)
+        format_histo(h, x_tit='x [mm]' if tel_coods else 'col', y_tit='y [mm]' if tel_coods else 'row', y_off=1.2)
         self.save_tel_histo(h, 'HitMap{0}'.format(plane), show, draw_opt='colz', rm=.15, prnt=prnt)
         return h
 
