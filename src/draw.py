@@ -225,11 +225,11 @@ class Draw:
         format_frame(fr)
         self.Objects.append(fr)
 
-    def draw_grid(self, x_vals, y_vals, width=1):
+    def draw_grid(self, x_vals, y_vals, width=1, color=1):
         for x in x_vals:
-            self.draw_line(x, x, min(y_vals), max(y_vals), name='x{}'.format(x), width=width)
+            self.draw_line(x, x, min(y_vals), max(y_vals), name='x{}'.format(x), width=width, color=color)
         for y in y_vals:
-            self.draw_line(min(x_vals), max(x_vals), y, y, name='y{}'.format(y), width=width)
+            self.draw_line(min(x_vals), max(x_vals), y, y, name='y{}'.format(y), width=width, color=color)
 
     def draw_preliminary(self, canvas=None, height=.06):
         c = get_last_canvas() if canvas is None else canvas
