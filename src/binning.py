@@ -77,7 +77,7 @@ class Bins:
         if value is None:
             return
         self.BinSize = value
-        self.Binning = self.get()
+        self.Binning = self.create()
         self.TimeBinning = self.load_time_binning()
         self.NBins = len(self.Binning)
         return value
