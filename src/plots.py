@@ -23,12 +23,25 @@ class Plots:
         self.RawBinning = self.get_raw_binning(self.BinSize)
         if self.Cut is not None:
             self.Binning = self.get_binning()
-            self.TimeBinning = self.get_time_binning()
+            self.TimeBinning = self.load_time_binning()
             self.NBins = len(self.Binning) - 1
+
+        # Pixel
+        self.MaxADC = 2**8 - 1
+        self.MinPH = -5000
+        self.MaxPH = 100000
+        self.PHBinWidth = 200
+        self.MinVcal = -100
+        self.MaxVcal = 1250
+
+        # Pad
+        self.MinPadPH = -50
+        self.MaxPadPH = 500
 
         self.Settings = {'ph1Dmin': -5000,
                          'ph1Dmax': 100000,
                          'ph1Dbins': 105000 / 500,
+                         'vcalBins': [int((1350 * 47) / 500), -100, 1250],
                          'maxPadPh': 500,
                          'minPadPh': -50,
                          'ph1DbinsSi': 160,
@@ -45,23 +58,10 @@ class Plots:
                          'xmax': 3900,
                          'ymin': -4000,
                          'ymax': 4000,
-                         'nBinCol': 51,
-                         'nCols': 52,
-                         'nRows': 80,
-                         'minCol': 0,
-                         'maxCol': 51,
-                         'nBinRow': 79,
-                         'minRow': 0,
-                         'maxRow': 79,
                          'num_diff_cluster_sizes': 4,
-                         'vcalBins': [int((1350 * 47) / 500), -100, 1250],
-                         'globalCoods': [-.5025, .5175, -.505, .515],
-                         'xpix': .015,
-                         'ypix': .01}
+                         'globalCoods': [-.5025, .5175, -.505, .515]}
+
         self.Settings['phBins'] = [self.Settings['ph1Dbins'], self.Settings['ph1Dmin'], self.Settings['ph1Dmax']]
-        self.Settings['2DBins'] = [self.Settings['nCols'], - .5, self.Settings['nCols'] - .5, self.Settings['nRows'], - .5, self.Settings['nRows'] - .5]
-        self.Settings['2DBinsX'] = [self.Settings['nCols'], - .5, self.Settings['nCols'] - .5] * 2
-        self.Settings['2DBinsY'] = [self.Settings['nRows'], - .5, self.Settings['nRows'] - .5] * 2
         self.Settings['event_bins'] = int(ceil(float(self.NEntries) / 5000)) if self.NEntries <= 100000 else \
             int(ceil(float(self.NEntries) / 100)) if self.NEntries <= 500000 else int(ceil(float(self.NEntries) / self.Settings['nEventsAv']))
         self.Settings['deltaX'] = float(self.Settings['xmax'] - self.Settings['xmin']) / self.Settings['nBinsX']
@@ -94,9 +94,9 @@ class Plots:
     def get_raw_time_binning(self, bin_width, rel_time=False, start_time=0, end_time=None):
         """ returns bins with fixed time width. bin_width in secons """
         end_time = self.Run.EndTime if end_time is None else end_time
-        bins = range(self.Run.StartTime + start_time, end_time, bin_width)
-        bins += [end_time] if bins[-1] != end_time else []
-        return [len(bins) - 1, array(bins, 'd') - (self.Run.StartTime if rel_time else 0)]
+        bins = arange(self.Run.StartTime + start_time, end_time, bin_width)
+        bins = concatenate((bins, [end_time] if bins[-1] != end_time else []))
+        return [bins.size - 1, bins - (self.Run.StartTime if rel_time else 0)]
 
     def get_binning(self, evts_per_bin=None):
         evts_per_bin = self.BinSize if evts_per_bin is None else evts_per_bin
@@ -115,15 +115,37 @@ class Plots:
             return
         self.BinSize = value
         self.Binning = self.get_binning()
-        self.TimeBinning = self.get_time_binning()
+        self.TimeBinning = self.load_time_binning()
         self.NBins = len(self.Binning)
         return value
 
-    def get_time_binning(self):
-        time_bins = []
-        for event in self.Binning:
-            time_bins.append(self.Run.get_time_at_event(event))
-        return array(time_bins, 'd')
+    def load_time_binning(self):
+        return array([self.Run.get_time_at_event(event) for event in self.Binning], 'd')
+
+    def get_pixel_bins(self):
+        x, y = (arange(-.5, n) for n in self.Run.NPixels)
+        return [x.size - 1, x, y.size - 1, y]
+
+    def get_pixel_xbins(self):
+        return [self.Run.NPixels[0], arange(-.5, self.Run.NPixels[0])]
+
+    def get_pixel_ybins(self):
+        return [self.Run.NPixels[1], arange(-.5, self.Run.NPixels[1])]
+
+    def get_pix_ph_bins(self):
+        return make_bins(self.MinPH, self.MaxPH, self.PHBinWidth)
+
+    def get_pad_ph_bins(self, bin_width=1):
+        return [int(ceil((self.Settings['maxPadPh'] - self.Settings['minPadPh']) / float(bin_width))), self.Settings['minPadPh'], self.Settings['maxPadPh']]
+
+    def get_ph_bins(self, bin_width=1):
+        return self.get_pad_ph_bins(bin_width) if self.Run.get_type() == 'pad' else self.get_pix_ph_bins()
+
+    def get_adc_bins(self):
+        return [self.MaxADC, 0, self.MaxADC]
+
+    def get_vcal_bins(self):
+        pass
 
     def get_time_bins(self, evts_per_bin=None):
         self.set_bin_size(evts_per_bin)
@@ -133,8 +155,8 @@ class Plots:
         self.set_bin_size(binning)
         return [self.NBins - 1, array(self.Binning, 'd')]
 
-    def get_ph_bins(self, bin_width=1):
-        return [int(ceil((self.Settings['maxPadPh'] - self.Settings['minPadPh']) / float(bin_width))), self.Settings['minPadPh'], self.Settings['maxPadPh']]
+    def get_bins(self, binning=None, vs_time=False):
+        return self.get_time_bins(binning) if vs_time else self.get_event_bins(binning)
 
     def get_tcal_bins(self):
         return [int(round(sqrt(len(self.Run.TCal))))] + increased_range([min(self.Run.TCal), max(self.Run.TCal)], .1, .1)
@@ -156,3 +178,8 @@ class Plots:
         return bins.size - 1, bins
     # endregion BINNING
     # ----------------------------------------
+
+
+def make_bins(min_val, max_val, bin_width):
+    bins = arange(min_val, max_val + bin_width / 100., bin_width, dtype='d')
+    return [bins.size - 1, bins]
