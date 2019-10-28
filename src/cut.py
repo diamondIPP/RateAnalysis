@@ -6,7 +6,7 @@ from numpy import zeros, histogram2d, split, histogram
 from InfoLegend import InfoLegend
 from utils import *
 from draw import format_pie
-from plots import Plots
+from binning import Bins
 
 
 class Cut:
@@ -21,7 +21,7 @@ class Cut:
             self.Analysis = parent_analysis
             self.RunNumber = self.Analysis.RunNumber
             self.InfoLegend = InfoLegend(parent_analysis)
-            self.Plots = Plots(self.Analysis.Run)
+            self.Bins = Bins(self.Analysis.Run)
 
             # config
             self.Config = self.Analysis.Config
@@ -315,7 +315,7 @@ class Cut:
     def find_pixel_beam_interruptions(self, bin_width=10, threshold=.4):
         """ Finding beam interruptions by incestigation the event rate. """
         t_start = self.Analysis.info('Searching for beam interruptions of run {r} ...'.format(r=self.RunNumber), next_line=False)
-        bin_values, time_bins = histogram(self.Analysis.Run.Time / 1000, bins=self.Plots.get_raw_time_binning(bin_width)[1])
+        bin_values, time_bins = histogram(self.Analysis.Run.Time / 1000, bins=self.Bins.get_raw_time_binning(bin_width)[1])
         m = mean(bin_values[bin_values.argsort()][-20:-10])  # take the mean of the 20th to the 10th highest bin to get an estimate of the plateau
         deviating_bins = where(abs(1 - bin_values / m) > threshold)[0]
         times = time_bins[deviating_bins] + bin_width / 2 - self.Analysis.Run.Time[0] / 1000  # shift to the center of the bin
@@ -337,7 +337,7 @@ class Cut:
         events = x_bins[:-1][rates > thresh] + bin_width / 2
         not_connected = where(concatenate([[False], events[:-1] != events[1:] - bin_width]))[0]  # find the events where the previous event is not related to the event (more than a bin width away)
         events = split(events, not_connected)  # events grouped into connecting events
-        jumps = [(ev[0], ev[0]) if ev.size == 1 else (ev[0], ev[-1]) for ev in events]
+        jumps = [(ev[0], ev[0]) if ev.size == 1 else (ev[0], ev[-1]) for ev in events] if events[0].size else []
         interruptions = self.__create_jump_ranges(jumps)
         self.Analysis.add_to_info(t)
         return jumps, interruptions
