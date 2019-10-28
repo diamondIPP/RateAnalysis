@@ -35,7 +35,7 @@ class TelecopeAnalysis(Analysis):
             self.NRocs = self.Run.NPlanes
             self.StartEvent = self.Cut.CutConfig['EventRange'][0]
             self.EndEvent = self.Cut.CutConfig['EventRange'][1]
-            self.Plots = Bins(self.Run, cut=self.Cut)
+            self.Bins = Bins(self.Run, cut=self.Cut)
 
     # ----------------------------------------
     # region TRACKS
@@ -207,7 +207,7 @@ class TelecopeAnalysis(Analysis):
 
     def draw_event(self, event, plane, show=True):
         cut = 'plane == {r}'.format(r=plane)
-        h = TH2F('h_ed{i}'.format(i=plane), 'Event Hits for Plane {r}'.format(r=plane), *self.Plots.Settings['2DBins'])
+        h = TH2F('h_ed{i}'.format(i=plane), 'Event Hits for Plane {r}'.format(r=plane), *self.Bins.Settings['2DBins'])
         self.Tree.Draw('row:col>>h_ed{i}'.format(i=plane), cut, 'goff', 1, event)
         format_histo(h, x_tit='col', y_tit='row', y_off=1.3, stats=0)
         self.save_tel_histo(h, 'EventDisplay{e}_{p}'.format(e=event, p=plane), draw_opt='col', show=show)
@@ -226,7 +226,7 @@ class TelecopeAnalysis(Analysis):
     # region PIXEL HITS
     def _draw_occupancy(self, plane, name=None, cluster=True, tel_coods=False, cut='', show=True, prnt=True):
         name = 'ROC {i}'.format(i=plane) if name is None else name
-        bins = self.Plots.get_global_bins(sqrt(12), mm=True) if tel_coods else self.Plots.get_pixel_bins()
+        bins = self.Bins.get_global_bins(sqrt(12), mm=True) if tel_coods else self.Bins.get_pixel_bins()
         set_root_warnings(False)
         h = TH2F('h_hm{i}'.format(i=plane), '{h} Occupancy {n}'.format(n=name, h='Hit' if not cluster else 'Cluster'), *bins)
         cut_string = self.Cut.AllCut if cut is None else TCut(cut)
@@ -252,7 +252,7 @@ class TelecopeAnalysis(Analysis):
         self.save_plots('HitMaps', sub_dir=self.TelSaveDir, show=show, prnt=prnt, both_dias=True)
 
     def draw_tracking_map(self, at_dut=1, res=2, cut='', show=True):
-        h = TH2I('htm{}'.format(at_dut), 'Tracking Map', *self.Plots.get_global_bins(res, mm=True))
+        h = TH2I('htm{}'.format(at_dut), 'Tracking Map', *self.Bins.get_global_bins(res, mm=True))
         x_var, y_var = [self.Cut.get_track_var(at_dut - 1, v) for v in ['x', 'y']]
         self.Tree.Draw('{y} * 10:{x} * 10 >> htm{}'.format(at_dut, x=x_var, y=y_var), TCut(cut), 'goff')
         format_histo(h, x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]', y_off=1.4, z_off=1.5, z_tit='Number of Hits', ncont=50, ndivy=510, ndivx=510, stats=0)
@@ -365,7 +365,7 @@ class TelecopeAnalysis(Analysis):
 
     def draw_flux(self, bin_width=5, cut='', rel_t=True, show=True, prnt=True):
         set_root_warnings(OFF)
-        p = TProfile('pf', 'Flux Profile', *self.Plots.get_raw_time_binning(bin_width=bin_width))
+        p = TProfile('pf', 'Flux Profile', *self.Bins.get_raw_time_binning(bin_width=bin_width))
         p1, p2 = self.Run.TriggerPlanes
         a1, a2 = self.Run.get_unmasked_area().values()
         cut = TCut('beam_current < 10000 && rate[{0}] < 1e9 && rate[{1}] < 1e9 && rate[{0}] && rate[{1}]'.format(p1 + 1, p2 + 1)) + TCut(cut)
