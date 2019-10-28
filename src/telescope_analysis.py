@@ -315,7 +315,7 @@ class TelecopeAnalysis(Analysis):
         gr = TGraph(len(t), array(xrange(len(t)), 'd'), array(t, 'd'))
         gr.SetNameTitle('g_t', 'Time vs Events')
         fit = gr.Fit('pol1', 'qs0')
-        self.log_info('Average data taking rate: {r:5.1f} Hz'.format(r=1 / fit.Parameter(1)))
+        self.info('Average data taking rate: {r:5.1f} Hz'.format(r=1 / fit.Parameter(1)))
         format_histo(gr, x_tit='Entry Number', y_tit='Time [s]', y_off=1.5)
         self.draw_histo(gr, show=show, draw_opt='al', lm=.13, rm=.08)
 
@@ -426,7 +426,7 @@ class TelecopeAnalysis(Analysis):
             c.Update()
         if fit.Chi2 / fit.NDF > chi_thresh and nconv < 80:
             self.Count += 5
-            self.log_info('Chi2 too large ({c:2.2f}) -> increasing number of convolutions by 5'.format(c=fit.Chi2 / fit.NDF))
+            self.info('Chi2 too large ({c:2.2f}) -> increasing number of convolutions by 5'.format(c=fit.Chi2 / fit.NDF))
             fit = self.fit_langau(h, nconv + self.Count, chi_thresh=chi_thresh, show=show)
         print 'MPV:', fit.Parameters[1]
         self.Count = 0
@@ -437,11 +437,6 @@ class TelecopeAnalysis(Analysis):
 
 
 if __name__ == '__main__':
-    ana_parser = ArgumentParser()
-    ana_parser.add_argument('run', type=int)
-    ana_parser.add_argument('-tc', '--testcampaign', nargs='?', default=None)
-    ana_parser.add_argument('-v', '--verbose', action='store_true')
-    args = ana_parser.parse_args()
 
-    print_banner('STARTING TELESCOPE-ANALYSIS OF RUN {0}'.format(args.run))
-    z = TelecopeAnalysis(args.run, args.testcampaign, args.verbose)
+    args = init_argparser(run=23, tc='201908', tree=True, verbose=True)
+    z = TelecopeAnalysis(args.run, args.testcampaign, args.tree, args.verbose)
