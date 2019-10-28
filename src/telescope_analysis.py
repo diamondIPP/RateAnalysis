@@ -1,42 +1,43 @@
-from ROOT import TCanvas, TH2F, gROOT, TH1F, TLegend, TCut, TF1, TGraph, TH1I, TProfile, TMultiGraph
+from analysis import *
+from ROOT import TH2F, TH1F, TCut, TF1, TGraph, TH1I, TProfile, TMultiGraph, TH2I
 from numpy import log
 
 from cut import Cut
 from InfoLegend import InfoLegend
 from Langaus import Langau
-from plots import Plots
-from analysis import *
-from run import Run
+from binning import Bins
 
 
 class TelecopeAnalysis(Analysis):
     """ Class for the analysis of the telescope specific stuff of a single run. """
 
-    def __init__(self, run_number=None, test_campaign=None, verbose=False):
+    def __init__(self, run=None, test_campaign=None, tree=None, verbose=False):
         """
-        :param run_number:
+        :param run: inits a new Run instance if number is provided or takes the provided Run instance
         :param test_campaign:   if None is provided: uses default from main config
         :param verbose:
+        in order to save tel plots use argument both_dias=True in save_plots or save_tel_histo
         """
         Analysis.__init__(self, test_campaign, verbose)
+        self.print_start(run)
 
         # Run
-        self.Run = Run(run_number, self.TCString, verbose=verbose)
-        self.RunNumber = run_number
+        self.Run = run_selector(run, self.TCString, tree, verbose=verbose)
+        self.RunNumber = run
 
         # basics
-        self.TelSaveDir = str(self.RunNumber)
+        self.TelSaveDir = str(self.RunNumber).zfill(3)
         self.Tree = self.Run.Tree
         self.InfoLegend = InfoLegend(self)
 
-        if self.Tree is not None:
+        if self.Tree:
             self.Cut = Cut(self)
             self.NRocs = self.Run.NPlanes
             self.StartEvent = self.Cut.CutConfig['EventRange'][0]
             self.EndEvent = self.Cut.CutConfig['EventRange'][1]
-            self.Plots = Plots(self.Run, cut=self.Cut)
+            self.Plots = Bins(self.Run, cut=self.Cut)
 
-    # ============================================================================================
+    # ----------------------------------------
     # region TRACKS
     def draw_chi2(self, mode=None, show=True, save=True, fit=False, prnt=True, show_cut=False, x_range=None, cut='', normalise=None):
         mode = 'tracks' if mode is None else mode
