@@ -513,7 +513,7 @@ class Draw:
 # region FORMATTING
 def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=None, marker=20, color=None, line_color=None, markersize=None, x_off=None, y_off=None, z_off=None, lw=1,
                  fill_color=None, fill_style=None, stats=True, tit_size=None, lab_size=None, l_off_y=None, l_off_x=None, draw_first=False, x_range=None, y_range=None, z_range=None,
-                 do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None, tick_size=None, t_ax_off=None, center_y=False, center_x=False, yax_col=None, normalise=None):
+                 do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None, tick_size=None, t_ax_off=None, center_y=False, center_x=False, yax_col=None, normalise=None, pal=None):
     h = histo
     if draw_first:
         set_root_output(False)
@@ -521,6 +521,7 @@ def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=Non
         set_root_output(True)
     do(h.SetTitle, title)
     do(h.SetName, name)
+    do(set_palette, pal)
     if normalise is not None:
         y_tit = y_tit.replace('Number', 'Percentage')
         h.Sumw2(True)
@@ -686,6 +687,10 @@ def scale_graph(gr, scale=None, val=1, to_low_flux=False):
         gr.SetPoint(i, gr.GetX()[i], gr.GetY()[i] * scale)
         gr.SetPointError(i, gr.GetErrorX(i), gr.GetErrorY(i) * scale) if 'Error' in gr.ClassName() else do_nothing()
     return scale
+
+
+def set_palette(pal):
+    gStyle.SetPalette(pal)
 
 
 if __name__ == '__main__':
