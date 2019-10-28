@@ -61,7 +61,7 @@ class PadAnalysis(TelecopeAnalysis):
             # cuts
             self.Timing = TimingAnalysis(self)
             self.Cut = CutPad(self, self.Channel)
-            self.AllCuts = self.Cut.all_cut
+            self.AllCuts = self.Cut.AllCut
 
             # subclasses
             self.Pulser = PulserAnalysis(self)
@@ -180,19 +180,19 @@ class PadAnalysis(TelecopeAnalysis):
             :param fid: return only values within the fiducial region set in the AnalysisConfig.ini"""
         x_var, y_var = (self.Cut.get_track_var(self.DiamondNumber - 1, v) for v in ['x', 'y'])
         cut = self.Cut.generate_special_cut(excluded=['fiducial'], prnt=False) if not fid and cut is None else cut
-        cut = self.Cut.all_cut if cut is None else TCut(cut)
+        cut = self.Cut.AllCut if cut is None else TCut(cut)
         n = self.Tree.Draw('{x}*10:{y}*10:{z}'.format(z=self.generate_signal_name(), x=x_var, y=y_var), cut, 'goff')  # *10 to get values in mm
         return self.Run.get_root_vecs(n, 3)
 
     def get_ph_data(self, cut=None):
         """ :return: pulse height data as numpy array [[time] [ph]] with units [[s], [mV]]
             :param cut: applies all cuts if None is provided."""
-        cut_str = self.Cut.all_cut if cut is None else TCut(cut)
+        cut_str = self.Cut.AllCut if cut is None else TCut(cut)
         n = self.Tree.Draw('time/1000.:{sig}'.format(sig=self.generate_signal_name()), cut_str, 'goff')
         return self.Run.get_root_vecs(n, 2)
 
     def get_pulse_height(self, bin_size=None, cut=None, redo=False, corr=True, sig=None):
-        cut_str = self.Cut.all_cut if cut is None else TCut(cut)
+        cut_str = self.Cut.AllCut if cut is None else TCut(cut)
         correction = '' if not corr else '_eventwise'
         suffix = '{bins}{cor}_{reg}{c}'.format(bins=self.Bins.BinSize if bin_size is None else bin_size, cor=correction, reg=self.get_short_regint(sig), c=cut_str.GetName())
         picklepath = self.make_pickle_path('Ph_fit', 'Fit', self.RunNumber, self.DiamondNumber, suf=suffix)
@@ -220,10 +220,10 @@ class PadAnalysis(TelecopeAnalysis):
 
     # ----------------------------------------
     # region 2D SIGNAL DISTRIBUTION
-    def draw_efficiency_map(self, res=1.5, cut='all', show=True):
+    def draw_efficiency_map(self, res=None, cut='all', show=True):
         cut_string = TCut(cut) + self.Cut.CutStrings['tracks']
         cut_string = self.Cut.generate_special_cut(excluded=['fiducial']) if cut == 'all' else cut_string
-        p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DiamondName), *self.Bins.get_global_bins(res, mm=True))
+        p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DiamondName), *self.Bins.get_global(res, mm=True))
         y, x = self.Cut.get_track_vars(self.DiamondNumber - 1, scale=10)
         thresh = self.Pedestal.get_mean() * 4
         self.Tree.Draw('({s}>{t})*100:{y}:{x}>>p_em'.format(s=self.generate_signal_name(), x=x, y=y, t=thresh), cut_string, 'goff')
@@ -248,16 +248,16 @@ class PadAnalysis(TelecopeAnalysis):
         self.draw_tlatex(x=self.Pedestal.get_noise().n * 3, y=95, text=' 3 #times noise', align=10)
         self.save_plots('EffThresh')
 
-    def draw_signal_map(self, res=1.5, cut=None, fid=False, hitmap=False, redo=False, show=True, prnt=True, z_range=None, save=True, bins=None):
+    def draw_signal_map(self, res=None, cut=None, fid=False, hitmap=False, redo=False, show=True, prnt=True, z_range=None, save=True, bins=None):
         cut = self.Cut.generate_special_cut(excluded=['fiducial'], prnt=prnt) if not fid and cut is None else cut
-        cut = self.Cut.all_cut if cut is None else TCut(cut)
+        cut = self.Cut.AllCut if cut is None else TCut(cut)
         suf = '{c}_{ch}_{res}'.format(c=cut.GetName(), ch=self.Cut.CutConfig['chi2X'], res=res if bins is None else '{}x{}'.format(bins[0], bins[2]))
         pickle_path = self.make_pickle_path('SignalMaps', 'Hit' if hitmap else 'Signal', run=self.RunNumber, ch=self.DiamondNumber, suf=suf)
 
         def func():
             set_root_output(0)
             name = 'h_hm' if hitmap else 'h_sm'
-            atts = [name, 'Diamond Hit Map' if hitmap else 'Signal Map'] + (self.Bins.get_global_bins(res, mm=1) if bins is None else bins)
+            atts = [name, 'Diamond Hit Map' if hitmap else 'Signal Map'] + (self.Bins.get_global(res, mm=True) if bins is None else bins)
             h1 = TH2I(*atts) if hitmap else TProfile2D(*atts)
             self.info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.DiamondName, run=self.RunNumber, mode='hit' if hitmap else 'signal '), prnt=prnt)
             sig = self.generate_signal_name()
@@ -426,11 +426,11 @@ class PadAnalysis(TelecopeAnalysis):
             sig_name += '-{pol}*{ped}'.format(ped=self.PedestalName, pol=ped_pol)
         return sig_name
 
-    def make_signal_time_histos(self, signal_name=None, evnt_corr=False, off_corr=False, bin_corr=False, rel_t=False, show=True):
+    def make_signal_time_histos(self, bin_width=.2, signal_name=None, evnt_corr=False, off_corr=False, bin_corr=False, rel_t=False, show=True):
         signal_name = self.generate_signal_name(self.SignalName if signal_name is None else signal_name, evnt_corr, off_corr, bin_corr)
-        h = TH2F('h_st', 'Signal vs. Time', *(self.Bins.get_time_bins() + [225, -50, 500]))
+        h = TH2F('h_st', 'Signal vs. Time', *(self.Bins.get_time() + self.Bins.get_pad_ph(bin_width)))
         self.format_statbox(entries=True, x=.83)
-        self.Tree.Draw('{name}:time/1000>>h_st'.format(name=signal_name), self.Cut.all_cut, 'goff')
+        self.Tree.Draw('{name}:time/1000>>h_st'.format(name=signal_name), self.Cut.AllCut, 'goff')
         format_histo(h, x_tit='Time [min]', y_tit='Pulse Height [au]', y_off=1.4, t_ax_off=self.Run.StartTime if rel_t else 0, pal=53)
         self.save_histo(h, 'SignalTime', show, lm=.12, draw_opt='colz', rm=.15)
         return h
@@ -449,14 +449,14 @@ class PadAnalysis(TelecopeAnalysis):
 
         sig = self.SignalName if sig is None else sig
         correction = '' if not corr else '_eventwise'
-        cut_str = self.Cut.all_cut if cut is None else TCut(cut)
+        cut_str = self.Cut.AllCut if cut is None else TCut(cut)
         bin_size = self.Bins.BinSize if bin_size is None else bin_size
         suffix = '{bins}{cor}_{reg}{c}'.format(bins=bin_size, cor=correction, reg=self.get_short_regint(sig), c=cut_str.GetName())
         picklepath = self.make_pickle_path('Ph_fit', None, self.RunNumber, self.DiamondNumber, suf=suffix)
 
         def func():
-            signal = self.generate_signal_name(self.SignalName if sig is None else sig, corr)
-            prof = TProfile('pph', 'Pulse Height Evolution', *self.Bins.get_time_bins(bin_size))
+            signal = self.generate_signal_name(sig, corr)
+            prof = TProfile('pph', 'Pulse Height Evolution', *self.Bins.get_time(bin_size))
             self.Tree.Draw('{sig}:time/1000.>>pph'.format(sig=signal), cut_str, 'goff')
             self.PulseHeight = prof
             return prof
@@ -464,7 +464,7 @@ class PadAnalysis(TelecopeAnalysis):
         p = do_pickle(picklepath, func, redo=redo)
         self.format_statbox(n_entries=4, only_fit=True, w=.3)
         y_vals = [p.GetBinContent(i) for i in xrange(2, p.GetNbinsX() + 1)]
-        format_histo(p, name='Fit Result', x_tit='Time [min]', y_tit='Mean Pulse Height [mV]', y_off=1.6, x_range=[self.Run.StartTime, self.Bins.get_time_bins()[1][-1]],
+        format_histo(p, name='Fit Result', x_tit='Time [min]', y_tit='Mean Pulse Height [mV]', y_off=1.6, x_range=[self.Run.StartTime, self.Bins.get_time()[1][-1]],
                      t_ax_off=self.Run.StartTime if rel_t else 0, y_range=increased_range([min(y_vals), max(y_vals)], .5, .5) if y_range is None else y_range, ndivx=505)
         self.draw_histo(p, show=show, lm=.14, prnt=save)
         fit = self.fit_pulse_height(p, picklepath)
@@ -492,7 +492,7 @@ class PadAnalysis(TelecopeAnalysis):
     def draw_ph(self, bin_size=10000, y_range=None, rel_t=False, show=True):
         """ get pulse height by fitting every time bin disto with a Landau and then extrapolate with a pol0 """
         gr = self.make_tgrapherrors('hphl', 'Pulser Height Evolution')
-        h = TH2F('tempph', '', *[v for bins in [self.Bins.get_time_bins(bin_size), self.Bins.get_ph_bins(bin_width=20)] for v in bins])
+        h = TH2F('tempph', '', *(self.Bins.get_time(bin_size) + self.Bins.get_pad_ph(bin_width=20)))
         self.Tree.Draw('{sig}:time/1000.>>tempph'.format(sig=self.SignalName), self.AllCuts, 'goff')
         i = 0
         for xbin in xrange(2, h.GetNbinsX() + 1):  # first bin is always empty
@@ -510,33 +510,29 @@ class PadAnalysis(TelecopeAnalysis):
                 pass
         self.format_statbox(only_fit=True)
         y_vals = [gr.GetY()[i] for i in xrange(gr.GetN())]
-        format_histo(gr, x_tit='Time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6, x_range=[self.Run.StartTime, self.Bins.get_time_bins()[1][-1]],
+        format_histo(gr, x_tit='Time [min]', y_tit='Mean Pulse Height [au]', y_off=1.6, x_range=[self.Run.StartTime, self.Bins.get_time()[1][-1]],
                      t_ax_off=self.Run.StartTime if rel_t else 0, y_range=increased_range([min(y_vals), max(y_vals)], .5, .5) if y_range is None else y_range, ndivx=505)
         fit = gr.Fit('pol0', 'qs')
         self.draw_histo(gr, draw_opt='ap', show=show)
         return gr, FitRes(fit)
 
-    def draw_ph_distribution(self, binning=None, show=True, fit=True, xmin=0, xmax=270., bin_size=.5, save=True):
-        self.Bins.set_bin_size(binning)
-        sig_time = self.make_signal_time_histos(evnt_corr=True, show=False)
-        if not show:
-            gROOT.SetBatch(1)
-        means = [h_proj.GetMean() for h_proj in [sig_time.ProjectionY(str(i), i + 1, i + 1) for i in xrange(self.Bins.NBins - 1)] if h_proj.GetEntries() > 10]
-        nbins = int((xmax - xmin) / bin_size)
-        h = TH1F('h', 'Signal Bin{0} Distribution'.format(self.Bins.BinSize), nbins, xmin, xmax)  # int(log(len(means), 2) * 2), extrema[0], extrema[1] + 2)
-        for mean_ in means:
-            h.Fill(mean_)
-        format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.5, fill_color=407)
+    def draw_ph_pull(self, event_bin_width=None, fit=True, bin_width=.5, save=True, show=True):
+        self.format_statbox(all_stat=True, fit=fit)
+        p = self.draw_pulse_height(event_bin_width, show=False)[0]
+        h = TH1F('hsbd', 'Signal Bin{0} Distribution'.format(self.Bins.BinSize), *self.Bins.get_pad_ph(bin_width))
+        values = array([p.GetBinContent(ibin + 1) for ibin in xrange(p.GetNbinsX())], 'd')
+        h.FillN(values.size, values, full(values.size, 1, 'd'))
+        format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.5, fill_color=self.FillColor, draw_first=True, x_range=increased_range([values.min(), values.max()], .3, .3))
+        self.draw_histo(h, lm=.12, show=show)
         h.Fit('gaus', 'q') if fit else do_nothing()
-        if save:
-            self.save_histo(h, 'SignalBin{0}Disto'.format(self.Bins.BinSize), lm=.12)
+        self.save_plots('SignalBin{0}Disto'.format(self.Bins.BinSize), save=save)
         return h
 
     def show_ph_overview(self, binning=None):
         self.draw_pulse_height(bin_size=binning, show=False)
         h1 = self.draw_pulse_height(show=False)[0]
         format_histo(h1, y_off=1.4)
-        h2 = self.draw_ph_distribution(binning=binning, show=False)
+        h2 = self.draw_ph_pull(event_bin_width=binning, show=False)
         print(h1, h2)
         c = TCanvas('c', 'Pulse Height Distribution', 1500, 750)
         c.Divide(2, 1)
@@ -556,7 +552,7 @@ class PadAnalysis(TelecopeAnalysis):
         def func():
             self.info('Drawing signal distribution for run {run} and {dia}...'.format(run=self.RunNumber, dia=self.DiamondName), prnt=prnt)
             set_root_output(False)
-            h1 = TH1F('h_sd', 'Pulse Height {s}'.format(s='with Pedestal Correction' if evnt_corr else ''), *self.Bins.get_ph_bins(bin_width))
+            h1 = TH1F('h_sd', 'Pulse Height {s}'.format(s='with Pedestal Correction' if evnt_corr else ''), *self.Bins.get_pad_ph(bin_width))
             sig_name = self.generate_signal_name(sig, evnt_corr, off_corr, False, cut)
             start_event = int(float(start)) if start is not None else 0
             n_events = self.Run.find_n_events(n=events, cut=str(cut), start=start_event) if events is not None else self.Run.NEntries
@@ -573,7 +569,7 @@ class PadAnalysis(TelecopeAnalysis):
 
     def draw_signal_vs_peaktime(self, region=None, cut=None, show=True, corr=False, fine_corr=False, prof=True):
         suf = ' with {} Correction'.format('Fine' if fine_corr else 'Time') if corr else ''
-        cut = self.Cut.all_cut if cut is None else cut
+        cut = self.Cut.AllCut if cut is None else cut
         x = self.get_signal_region(region)
         xbins = [(x[1] - x[0]) * (2 if corr else 1)] + list(array(x) * self.DigitiserBinWidth)
         h_args = ['hspt', 'Signal vs Peak Position{}'.format(suf)] + xbins + self.Bins.get_ph_bins()
@@ -584,7 +580,7 @@ class PadAnalysis(TelecopeAnalysis):
 
     def draw_signal_vs_triggercell(self, bin_width=10, cut=None, show=True):
         p = TProfile('pstc', 'Signal vs. Trigger Cell', self.Run.NSamples / bin_width, 0, self.Run.NSamples)
-        self.Tree.Draw('{}:trigger_cell>>pstc'.format(self.generate_signal_name()), self.Cut.all_cut if cut is None else TCut(cut), 'goff')
+        self.Tree.Draw('{}:trigger_cell>>pstc'.format(self.generate_signal_name()), self.Cut.AllCut if cut is None else TCut(cut), 'goff')
         format_histo(p, x_tit='Trigger Cell', y_tit='Pulse Height [au]', y_off=1.2, stats=0)
         self.save_histo(p, 'SignalVsTriggerCell', show, lm=.11)
     # endregion PULSE HEIGHT
@@ -908,7 +904,7 @@ class PadAnalysis(TelecopeAnalysis):
         j = 0
         for i in xrange(len(xvals) - 1):
             cut = self.Cut.generate_distance(xvals[i], xvals[i + 1])
-            self.Cut.all_cut += cut
+            self.Cut.AllCut += cut
             fit = self.draw_pulse_height(show=False)[1]
             if fit.Parameter(0):
                 gr.SetPoint(j, xvals[i], fit.Parameter(0))
@@ -972,9 +968,9 @@ class PadAnalysis(TelecopeAnalysis):
 
     def draw_alignment(self, n_pulser=200, thresh=40, show=True):
         """ draw the aligment of telescope and digitiser events """
-        xbins = self.Bins.get_pulser_bins(n_pulser)
+        xbins = self.Bins.get_pulser(n_pulser)
         p = self.Pulser.draw_hit_efficiency(xbins, show=False)
-        h = TH2F('ha{}'.format(self.RunNumber), 'Event Alignment', *(xbins + (3, 0, 3)))
+        h = TH2F('ha{}'.format(self.RunNumber), 'Event Alignment', *(xbins + [3, 0, 3]))
         for ibin in xrange(1, xbins[0]):
             h.SetBinContent(ibin, 2, int(p.GetBinContent(ibin) <= thresh) + 1)
         format_histo(h, x_tit='Event Number', y_tit='Alignment', stats=False, l_off_y=99, center_y=True)
