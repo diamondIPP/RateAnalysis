@@ -232,7 +232,7 @@ class TelecopeAnalysis(Analysis):
     # region PIXEL HITS
     def _draw_occupancy(self, plane, name=None, cluster=True, tel_coods=False, cut='', show=True, prnt=True):
         name = 'ROC {i}'.format(i=plane) if name is None else name
-        bins = self.Bins.get_global(sqrt(12), mm=True) if tel_coods else self.Bins.get_pixel()
+        bins = self.Bins.get_native_global(mm=True) if tel_coods else self.Bins.get_pixel()
         set_root_warnings(False)
         h = TH2F('h_hm{i}'.format(i=plane), '{h} Occupancy {n}'.format(n=name, h='Hit' if not cluster else 'Cluster'), *bins)
         cut_string = self.Cut.AllCut if cut is None else TCut(cut)
