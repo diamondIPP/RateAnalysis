@@ -7,7 +7,7 @@
 from __future__ import print_function
 from utils import *
 from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, kGreen, kOrange, kViolet, kYellow, kRed, kBlue, kMagenta, kAzure, \
-    kCyan, kTeal, TPaveText, TPaveStats
+    kCyan, kTeal, TPaveText, TPaveStats, TH1F
 from numpy import ndarray, zeros, sign
 from os.path import expanduser, join, basename
 
@@ -687,6 +687,16 @@ def scale_graph(gr, scale=None, val=1, to_low_flux=False):
         gr.SetPoint(i, gr.GetX()[i], gr.GetY()[i] * scale)
         gr.SetPointError(i, gr.GetErrorX(i), gr.GetErrorY(i) * scale) if 'Error' in gr.ClassName() else do_nothing()
     return scale
+
+
+def get_pull(h, name, bins, fit=True):
+    h_out = TH1F('hp{}'.format(name[:3]), name, *bins)
+    values = array([h.GetBinContent(ibin + 1) for ibin in xrange(h.GetNbinsX())], 'd')
+    h_out.FillN(values.size, values, full(values.size, 1, 'd'))
+    set_root_output(False)
+    h_out.Fit('gaus', 'q') if fit else do_nothing()
+    format_histo(h_out, x_range=increased_range([values.min(), values.max()], .1, .3))
+    return h_out
 
 
 def set_palette(pal):

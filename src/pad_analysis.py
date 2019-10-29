@@ -517,15 +517,11 @@ class PadAnalysis(TelecopeAnalysis):
         return gr, FitRes(fit)
 
     def draw_ph_pull(self, event_bin_width=None, fit=True, bin_width=.5, save=True, show=True):
-        self.format_statbox(all_stat=True, fit=fit)
         p = self.draw_pulse_height(event_bin_width, show=False)[0]
-        h = TH1F('hsbd', 'Signal Bin{0} Distribution'.format(self.Bins.BinSize), *self.Bins.get_pad_ph(bin_width))
-        values = array([p.GetBinContent(ibin + 1) for ibin in xrange(p.GetNbinsX())], 'd')
-        h.FillN(values.size, values, full(values.size, 1, 'd'))
-        format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.5, fill_color=self.FillColor, draw_first=True, x_range=increased_range([values.min(), values.max()], .3, .3))
-        self.draw_histo(h, lm=.12, show=show)
-        h.Fit('gaus', 'q') if fit else do_nothing()
-        self.save_plots('SignalBin{0}Disto'.format(self.Bins.BinSize), save=save)
+        self.format_statbox(all_stat=True, fit=fit)
+        h = get_pull(p, 'Signal Bin{0} Distribution'.format(self.Bins.BinSize), bins=self.Bins.get_pad_ph(bin_width=bin_width), fit=fit)
+        format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.5, fill_color=self.FillColor, draw_first=True)
+        self.save_histo(h, 'SignalBin{0}Disto'.format(self.Bins.BinSize), save=save, lm=.12, show=show)
         return h
 
     def show_ph_overview(self, binning=None):
