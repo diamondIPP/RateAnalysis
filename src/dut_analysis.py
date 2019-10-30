@@ -30,8 +30,8 @@ class DUTAnalyis(TelecopeAnalysis):
             critical('wrong diamond number "{}". The following diamond numbers are valid: {}'.format(diamond_nr, self.Run.DiamondNumbers))
         return diamond_nr
 
-    def draw_current(self, relative_time=False, averaging=1, show=True):
-        self.Currents.draw_indep_graphs(rel_time=relative_time, averaging=averaging, show=show)
+    def draw_current(self, relative_time=False, averaging=1, show=True, v_range=None):
+        self.Currents.draw_indep_graphs(rel_time=relative_time, averaging=averaging, show=show, v_range=v_range)
 
     def get_current(self):
         return self.Currents.get_current()
