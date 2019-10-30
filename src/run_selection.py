@@ -32,8 +32,8 @@ class RunSelection:
         self.SelectedRunplan = None
         self.SelectedType = None
         self.SelectedBias = None
-        self.SelectedDiamond = None
-        self.SelectedDiamondNr = None
+        self.SelectedDUT = None
+        self.SelectedDUTNr = None
 
         self.select_runs_from_runplan(runplan, dut_nr)
         self.PBar = PBar()
@@ -41,7 +41,7 @@ class RunSelection:
     def __str__(self):
         if self.SelectedRunplan is None:
             return 'RunSelection for {}, {} runs in total.'.format(tc_to_str(self.TCString, short=False), self.RunNumbers.size)
-        return 'RunSelection with RunPlan {} of {} taken in {}'.format(self.SelectedRunplan, self.SelectedDiamond, tc_to_str(self.TCString, short=False))
+        return 'RunSelection with RunPlan {} of {} taken in {}'.format(self.SelectedRunplan, self.SelectedDUT, tc_to_str(self.TCString, short=False))
 
     # ----------------------------------------
     # region INIT
@@ -125,7 +125,7 @@ class RunSelection:
             for dia_nr in xrange(1, 4):
                 data = self.RunInfos[run]
                 if 'dia{}'.format(dia_nr) in data and name == data['dia{}'.format(dia_nr)]:
-                    self.SelectedDiamondNr = dia_nr
+                    self.SelectedDUTNr = dia_nr
                     self.select_run(run)
                     selected_runs += 1
                     selected_run = True
@@ -133,7 +133,7 @@ class RunSelection:
                     self.unselect_run(run)
                     unselected_runs += 1
             selected_run = False
-        self.SelectedDiamond = name
+        self.SelectedDUT = name
         self.Run.info('Runs containing {dia} selected ({nr1} runs selected, {nr2} unselected)'.format(dia=name, nr1=selected_runs, nr2=unselected_runs))
 
     def unselect_unless_bias(self, bias):
@@ -141,7 +141,7 @@ class RunSelection:
         assert type(bias) is int, 'Bias has to be an integer'
         unselected_runs = 0
         for run in self.get_selected_runs():
-            if self.RunInfos[run]['dia{nr}hv'.format(nr=self.SelectedDiamondNr)] != bias:
+            if self.RunInfos[run]['dia{nr}hv'.format(nr=self.SelectedDUTNr)] != bias:
                 self.unselect_run(run)
                 unselected_runs += 1
         self.Run.info('Unselected all runs and channels if bias is not {bias}V (unselected {nr} runs).'.format(bias=bias, nr=unselected_runs))
@@ -177,8 +177,8 @@ class RunSelection:
         parser = ConfigParser()
         parser.read('Configuration/DiamondAliases.cfg')
         self.SelectedType = 'CurrentInfo'
-        self.SelectedDiamondNr = dia
-        self.SelectedDiamond = parser.get('ALIASES', self.RunInfos[self.get_selected_runs()[0]]['dia{0}'.format(dia)])
+        self.SelectedDUTNr = dia
+        self.SelectedDUT = parser.get('ALIASES', self.RunInfos[self.get_selected_runs()[0]]['dia{0}'.format(dia)])
         self.SelectedBias = self.RunInfos[self.get_selected_runs()[0]]['dia{0}hv'.format(dia)]
 
     def unselect_unless_in_range(self, minrun, maxrun):
@@ -367,7 +367,7 @@ class RunSelection:
         return ('{v:+13.0f}'.format(v=hv[0]) for hv in hvs)
 
     def get_selected_bias(self):
-        hvs = self.get_runinfo_values('dia{}hv'.format(self.SelectedDiamondNr), sel=True)
+        hvs = self.get_runinfo_values('dia{}hv'.format(self.SelectedDUTNr), sel=True)
         return int(hvs[0]) if len(hvs) == 1 else None
 
     def get_missing_runs(self, runs):
@@ -386,8 +386,8 @@ class RunSelection:
         parser.read('Configuration/DiamondAliases.cfg')
         self.SelectedRunplan = plan
         self.SelectedType = str(self.RunPlan[plan]['type'])
-        self.SelectedDiamond = parser.get('ALIASES', self.RunInfos[runs[0]]['dia{0}'.format(ch)])
-        self.SelectedDiamondNr = ch
+        self.SelectedDUT = parser.get('ALIASES', self.RunInfos[runs[0]]['dia{0}'.format(ch)])
+        self.SelectedDUTNr = ch
         self.SelectedBias = self.get_selected_bias()
 
     def add_selection_to_runplan(self, plan_nr, run_type=None):
@@ -529,7 +529,7 @@ class RunSelection:
 
     def get_irradiation(self, dia=None):
         f = open(self.Run.IrradiationFile, 'r')
-        irr = load(f)[self.TCString][self.SelectedDiamond if self.SelectedDiamond is not None and dia is None else dia]
+        irr = load(f)[self.TCString][self.SelectedDUT if self.SelectedDUT is not None and dia is None else dia]
         f.close()
         return irr
 
