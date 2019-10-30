@@ -468,11 +468,13 @@ def print_table(rows, header=None, prnt=True):
     t = array(rows, dtype=str) if header is None else concatenate((array([header], dtype=str), array(rows, dtype=str)))
     col_width = [len(max(t[:, i], key=len)) for i in xrange(t.shape[1])]
     total_width = sum(col_width) + len(col_width) * 3 + 1
-    hline = '{}\n'.format('~' * total_width)
+    hline = '{}'.format('~' * total_width)
     if prnt:
-        for row in t:
-            print '{}| {r} |'.format(hline, r=' | '.join(word.ljust(n) for word, n in zip(row, col_width)))
-        print hline
+        for i, row in enumerate(t):
+            if i in [0, 1, t.size]:
+                print hline
+            print '| {r} |'.format(r=' | '.join(word.ljust(n) for word, n in zip(row, col_width)))
+        print '{}\n'.format(hline)
 
 
 def get_base_dir():
