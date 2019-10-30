@@ -27,6 +27,7 @@ from termcolor import colored
 from uncertainties import ufloat
 from uncertainties.core import Variable, AffineScalarFunc
 from argparse import ArgumentParser
+from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 
 
 OFF = False
@@ -805,6 +806,23 @@ class FitRes:
 
     def Ndf(self):
         return self.vNdf
+
+
+class PBar:
+    def __init__(self):
+        self.PBar = None
+        self.Widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
+
+    def start(self, n):
+        self.PBar = ProgressBar(widgets=self.Widgets, maxval=n).start()
+
+    def update(self, i):
+        self.PBar.update(i + 1)
+        if i == self.PBar.maxval - 1:
+            self.finish()
+
+    def finish(self):
+        self.PBar.finish()
 
 
 def do_nothing():
