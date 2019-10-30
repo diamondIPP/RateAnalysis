@@ -15,7 +15,7 @@ from utils import *
 class RunSelection:
     """ Class to group several runs of a single test campaign together to runplans as well as to show information about all the runs. """
 
-    def __init__(self, testcampaign=None, runplan=None, dia_nr=None, verbose=True):
+    def __init__(self, testcampaign=None, runplan=None, dut_nr=None, verbose=True):
         self.Run = Run(test_campaign=testcampaign, tree=False, verbose=verbose)
 
         # Info
@@ -35,7 +35,7 @@ class RunSelection:
         self.SelectedDiamond = None
         self.SelectedDiamondNr = None
 
-        self.select_runs_from_runplan(runplan, dia_nr)
+        self.select_runs_from_runplan(runplan, dut_nr)
         self.PBar = PBar()
 
     def __str__(self):
