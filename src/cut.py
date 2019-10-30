@@ -45,8 +45,8 @@ class Cut:
             self.generate_cut_string()
             self.AllCut = self.generate_all_cut()
 
-    def __call__(self, *args, **kwargs):
-        return self.generate_all_cut()
+    def __call__(self, cut=None):
+        return self.generate_all_cut() if cut is None else TCut(cut)
 
     def set_high_low_rate_run(self, high_run, low_run):
         self.LowRateRun = str(low_run)
@@ -315,7 +315,7 @@ class Cut:
     def find_pixel_beam_interruptions(self, bin_width=10, threshold=.4):
         """ Finding beam interruptions by incestigation the event rate. """
         t_start = self.Analysis.info('Searching for beam interruptions of run {r} ...'.format(r=self.RunNumber), next_line=False)
-        bin_values, time_bins = histogram(self.Analysis.Run.Time / 1000, bins=self.Bins.get_raw_time_binning(bin_width)[1])
+        bin_values, time_bins = histogram(self.Analysis.Run.Time / 1000, bins=self.Bins.get_raw_time(bin_width)[1])
         m = mean(bin_values[bin_values.argsort()][-20:-10])  # take the mean of the 20th to the 10th highest bin to get an estimate of the plateau
         deviating_bins = where(abs(1 - bin_values / m) > threshold)[0]
         times = time_bins[deviating_bins] + bin_width / 2 - self.Analysis.Run.Time[0] / 1000  # shift to the center of the bin
