@@ -6,12 +6,11 @@
 
 from utils import *
 from ROOT import TFile, vector
-from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 from numpy import split, cumsum
 
 
 class EventAligment:
-    def __init__(self, converter):
+    def __init__(self, converter, verbose=True):
 
         # Time
         self.StartTime = time()
@@ -27,6 +26,7 @@ class EventAligment:
         self.NewTree = None
 
         # Info
+        self.Verbose = verbose
         self.NEntries = int(self.InTree.GetEntries())
         self.MaxOffset = 5
         self.AtEntry = -1
@@ -38,12 +38,11 @@ class EventAligment:
         self.NHits = None
 
         # Progress Bar
-        self.Widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
-        self.ProgressBar = None
+        self.PBar = PBar()
 
     def __del__(self):
         self.InFile.Close()
-        print_elapsed_time(self.StartTime, 'Pad Alignment')
+        print_elapsed_time(self.StartTime, 'Pad Alignment', show=self.Verbose)
 
     def __call__(self):
         self.run()
@@ -66,8 +65,7 @@ class EventAligment:
 
     def load_file(self):
         f_name = self.Converter.get_eudaqfile_path()
-        if f_name is None:
-            self.Converter.convert_raw_to_root()
+        f_name = self.Converter.Run.RootFilePath if not file_exists(f_name) else f_name
         return TFile(f_name)
 
     def check_alignment(self):
@@ -175,10 +173,10 @@ class EventAligment:
         self.NewFile = TFile(self.Converter.get_eudaqfile_path(), 'RECREATE')
         self.NewTree = self.InTree.CloneTree(0)
         self.set_branch_addresses()
-        self.start_pbar(self.NEntries)
+        self.PBar.start(self.NEntries)
         offset = 0
         while self.get_next_event():
-            self.ProgressBar.update(self.AtEntry + 1)
+            self.PBar.update(self.AtEntry + 1)
             self.clear_vectors()
             if self.AtEntry in offsets:
                 offset += offsets[self.AtEntry]
@@ -186,14 +184,10 @@ class EventAligment:
                 break
             self.fill_branches(offset)
             self.NewTree.Fill()
-        self.ProgressBar.finish()
+        self.PBar.finish()
         self.save_tree()
     # endregion WRITE TREE
     # ----------------------------------------
-
-    def start_pbar(self, n):
-        self.ProgressBar = ProgressBar(widgets=self.Widgets, maxval=n)
-        self.ProgressBar.start()
 
 
 if __name__ == '__main__':
