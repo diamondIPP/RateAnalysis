@@ -513,7 +513,7 @@ class Draw:
 # region FORMATTING
 def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=None, marker=20, color=None, line_color=None, markersize=None, x_off=None, y_off=None, z_off=None, lw=1,
                  fill_color=None, fill_style=None, stats=True, tit_size=None, lab_size=None, l_off_y=None, l_off_x=None, draw_first=False, x_range=None, y_range=None, z_range=None,
-                 do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None, tick_size=None, t_ax_off=None, center_y=False, center_x=False, yax_col=None, normalise=None, pal=None):
+                 do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None, tick_size=None, t_ax_off=None, center_y=False, center_x=False, yax_col=None, normalise=None, pal=None, rebin=None):
     h = histo
     if draw_first:
         set_root_output(False)
@@ -523,13 +523,14 @@ def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=Non
     do(h.SetName, name)
     do(set_palette, pal)
     if normalise is not None:
-        y_tit = y_tit.replace('Number', 'Percentage')
+        y_tit = y_tit.replace('Number', 'Percentage') if y_tit is not None else y_tit
         h.Sumw2(True)
         normalise_histo(h)
     try:
         h.SetStats(stats)
     except AttributeError or ReferenceError:
         pass
+    do(h.Rebin, rebin) if hasattr(h, 'Rebin') else do_nothing()
     # markers
     try:
         if do_marker:
