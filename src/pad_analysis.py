@@ -1,12 +1,11 @@
 from __future__ import print_function
 
-from telescope_analysis import *
+from dut_analysis import *
 from json import loads
 from ROOT import gRandom, TProfile2D, THStack, Double, Long
 from numpy import linspace
 from uncertainties import umath
 
-from CurrentInfo import Currents
 from CutPad import CutPad
 from Extrema import Extrema2D
 from Peaks import PeakAnalysis
@@ -18,23 +17,14 @@ from waveform import Waveform
 from pad_alignment import PadAlignment
 
 
-class PadAnalysis(TelecopeAnalysis):
+class PadAnalysis(DUTAnalyis):
     def __init__(self, run_number, diamond_nr, test_campaign=None, tree=None, verbose=False):
 
-        TelecopeAnalysis.__init__(self, run_number, test_campaign, tree=tree, verbose=verbose)
+        DUTAnalyis.__init__(self, run_number, diamond_nr, test_campaign, tree=tree, verbose=verbose)
 
         # Main
-        self.DiamondNumber = self.load_diamond_nr(diamond_nr)
         self.Channel = self.Run.Channels[diamond_nr - 1]
-        self.DiamondName = self.Run.DiamondNames[diamond_nr - 1]
-        self.Bias = self.Run.Bias[diamond_nr - 1]
         self.DigitiserBinWidth = .5 if self.Run.Digitiser == 'drs4' else .4
-
-        # Config
-        self.update_config()
-        self.set_save_directory(join(self.DiamondName, str(self.RunNumber).zfill(3)))
-
-        self.Currents = Currents(self)
 
         if self.Tree:
             self.Converter = Converter(self.Run)
@@ -76,9 +66,6 @@ class PadAnalysis(TelecopeAnalysis):
 
         self.print_finished()
 
-    def draw_current(self, relative_time=False, averaging=1, show=True):
-        self.Currents.draw_indep_graphs(rel_time=relative_time, averaging=averaging, show=show)
-
     def draw_timing(self):
         self.Timing.draw_all()
 
@@ -89,11 +76,6 @@ class PadAnalysis(TelecopeAnalysis):
     # region INIT
     def update_config(self):
         self.Config.read(join(self.Dir, 'Configuration', self.TCString, 'PadConfig.ini'))
-
-    def load_diamond_nr(self, diamond_nr):
-        if diamond_nr not in self.Run.DiamondNumbers:
-            critical('wrong diamond number "{}". The following diamond numbers are valid: {}'.format(diamond_nr, self.Run.DiamondNumbers))
-        return diamond_nr
 
     def get_short_regint(self, signal=None):
         return self.get_all_signal_names()[signal if signal is not None else z.SignalName]
@@ -164,11 +146,6 @@ class PadAnalysis(TelecopeAnalysis):
 
     # ----------------------------------------
     # region GET
-    def get_current(self):
-        return self.Currents.get_current()
-
-    def get_irradiation(self):
-        return self.Run.get_irradiations()[self.DiamondNumber - 1]
 
     def get_attenuator(self):
         attenuators = self.Run.get_attenuators()
