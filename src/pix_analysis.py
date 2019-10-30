@@ -428,7 +428,7 @@ class PixAnalysis(DUTAnalyis):
         m_range = range(m1, m2 + 1, 100)
         s_range = range(s1, s2 + 1, 50)
         p = TProfile2D('g_fl', 'Find Landau', len(m_range) - 1, m_range[0], m_range[-1], len(s_range) - 1, s_range[0], s_range[-1])
-        self.start_pbar(len(m_range) * len(s_range) * aver)
+        self.PBar.start(len(m_range) * len(s_range) * aver)
         i = 0
         r_min, r_max = .5, 1.5
         for _ in xrange(aver):
@@ -436,11 +436,11 @@ class PixAnalysis(DUTAnalyis):
             for m in m_range:
                 for s in s_range:
                     i += 1
-                    self.ProgressBar.update(i)
+                    self.PBar.update(i)
                     if r_min < m / 4. / s < r_max:
                         diff = self.model_landau(seed, h, m, s, show=False, thresh=True)
                         p.Fill(m, s, diff)
-        self.ProgressBar.finish()
+        self.PBar.finish()
         self.format_statbox(entries=True, x=.82)
         format_histo(p, x_tit='MPV [e]', y_tit='Sigma [e]', z_tit='#chi^{2} to Seed Function', y_off=1.7, z_off=1.3)
         self.draw_histo(p, draw_opt='colz', lm=.13, rm=0.16)
@@ -574,7 +574,7 @@ class PixAnalysis(DUTAnalyis):
         n_graphs = 2 * rnge + 1
         graphs = [self.make_tgrapherrors('g_to{i}'.format(i=i), '', color=self.get_color(), marker_size=.5) for i in xrange(n_graphs)]
         l1 = self.make_legend(x1=.8, y2=.5, nentries=n_graphs - 1)
-        self.start_pbar(pnts * evnts - start)
+        self.PBar.start(pnts * evnts - start)
         p1 = self.Dut
         p2 = 2
         for k in xrange(pnts):
@@ -584,7 +584,7 @@ class PixAnalysis(DUTAnalyis):
             rows = [int(self.Tree.GetV2()[i]) for i in xrange(n)]
             nrs = Counter([int(self.Tree.GetV3()[i]) for i in xrange(n)])
             for ev, size in sorted(nrs.iteritems()):
-                self.ProgressBar.update(ev + 1 - start)
+                self.PBar.update(ev + 1 - start)
                 plane = [planes.pop(0) for _ in xrange(size)]
                 row = [rows.pop(0) for _ in xrange(size)]
                 if plane.count(p1) == 1:
@@ -601,7 +601,7 @@ class PixAnalysis(DUTAnalyis):
                         yts[j].append(y[ev + i])
                 corr = corrcoef(xts[j], yts[j])[0][1]
                 graphs[j].SetPoint(k, k * evnts + start, corr)
-        self.ProgressBar.finish()
+        self.PBar.finish()
         mg = TMultiGraph('m_eo', 'Correlations')
         for i, gr in enumerate(graphs):
             l1.AddEntry(gr, 'offset: {i}'.format(i=i - rnge), 'pl')
