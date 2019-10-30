@@ -148,8 +148,7 @@ class PadAnalysis(DUTAnalyis):
     # region GET
 
     def get_attenuator(self):
-        attenuators = self.Run.get_attenuators()
-        return attenuators[self.DiamondNumber - 1] if attenuators else None
+        return self.Run.get_attenuators()[self.DiamondNumber - 1] if self.Run.get_attenuators() else None
 
     def get_sm_data(self, cut=None, fid=False):
         """ :return: signal map data as numpy array [[x], [y], [ph]] with units [[mm], [mm], [mV]]
