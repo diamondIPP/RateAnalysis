@@ -2,8 +2,6 @@ from draw import *
 from ConfigParser import ConfigParser
 from glob import glob
 
-from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
-
 
 # global test campaign
 g_test_campaign = None
@@ -38,8 +36,7 @@ class Analysis(Draw):
         Draw.__init__(self, self.TCString, verbose=verbose, config=self.MainConfig)
 
         # Progress Bar
-        self.Widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
-        self.ProgressBar = None
+        self.PBar = PBar()
 
     @staticmethod
     def load_main_config():
@@ -81,12 +78,6 @@ class Analysis(Draw):
 
     def get_test_campaigns(self):
         return [basename(path).replace('_', '').strip('psi') for path in glob(join(self.DataDir, 'psi*'))]
-
-    # endregion
-
-    def start_pbar(self, n):
-        self.ProgressBar = ProgressBar(widgets=self.Widgets, maxval=n)
-        self.ProgressBar.start()
 
     def verbose_print(self, *args):
         """ Print command if verbose is activated. Print each argument separated with a comma """
