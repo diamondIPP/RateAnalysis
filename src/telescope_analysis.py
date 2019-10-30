@@ -285,13 +285,20 @@ class TelecopeAnalysis(Analysis):
     # endregion PIXEL HITS
     # ----------------------------------------
 
-    def draw_trigger_phase(self, dut=True, show=True, cut=None):
+    def _draw_trigger_phase(self, dut=False, cut=None, show=True):
         cut_string = self.Cut.generate_special_cut(excluded=['trigger_phase']) if cut is None else TCut(cut)
         h = TH1I('h_tp', 'Trigger Phase', 10, 0, 10)
         self.Tree.Draw('trigger_phase[{r}]>>h_tp'.format(r=1 if dut else 0), cut_string, 'goff')
         self.format_statbox(entries=True)
         format_histo(h, x_tit='Trigger Phase', y_tit='Number of Entries', y_off=1.95, fill_color=self.FillColor)
         self.save_tel_histo(h, '{m}TriggerPhase'.format(m='DUT' if dut else 'Tel'), show, lm=.145)
+
+    def _draw_trigger_phase_time(self, dut=False, bin_width=None, cut=None, show=True):
+        h = TProfile('htpt', 'Trigger Phase Offset vs Time - {}'.format('DUT' if dut else 'TEL'), *self.Bins.get(bin_width, vs_time=True))
+        self.Tree.Draw('trigger_phase[{}]:time/1000>>htpt'.format(1 if dut else 0), self.Cut.generate_special_cut(excluded='trigger_phase') if cut is None else cut, 'goff')
+        self.format_statbox(entries=True, y=0.88)
+        format_histo(h, x_tit='Time [hh:mm]', y_tit='Trigger Phase', y_off=1.8, fill_color=self.FillColor, t_ax_off=self.Run.StartTime)
+        self.save_histo(h, 'TPTime', show, lm=.16)
 
     def draw_pix_map(self, n=1, start=None, plane=1):
         start_event = self.StartEvent if start is None else start
