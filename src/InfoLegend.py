@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from ROOT import gROOT, TLegend
-from Utils import make_tc_str, timedelta, make_rate_str, make_irr_string
+from utils import make_tc_str, timedelta, make_rate_str, make_irr_string
 from subprocess import check_output
 from os import chdir
 
@@ -13,8 +13,8 @@ from os import chdir
 class InfoLegend:
     def __init__(self, analysis):
         self.Analysis = analysis
-        self.ShowGit = analysis.MainConfigParser.getboolean('SAVE', 'git_hash')
-        self.ShowInfo = analysis.MainConfigParser.getboolean('SAVE', 'info_legend')
+        self.ShowGit = analysis.MainConfig.getboolean('SAVE', 'git hash')
+        self.ShowInfo = analysis.MainConfig.getboolean('SAVE', 'info legend')
         self.IsCollection = hasattr(analysis, 'collection')
 
         self.Objects = []
@@ -79,7 +79,7 @@ class InfoLegend:
 
     def get_run_string(self):
         run_str = 'Run{run}: {rate}, {dur}'.format(run=self.get_runnumber_str(), rate=self.get_rate_string(), dur=self.get_duration())
-        run_str += '' if self.IsCollection else ' ({} evts)'.format(self.Analysis.Run.n_entries)
+        run_str += '' if self.IsCollection else ' ({} evts)'.format(self.Analysis.Run.NEntries)
         return run_str
 
     def get_runnumber_str(self):
@@ -99,5 +99,5 @@ class InfoLegend:
     def get_info_string(self, both_dias):
         voltage = '/'.join('{0:+4d}V'.format(i) for i in self.Analysis.Run.Bias) if both_dias else '{0:+4d}V'.format(self.Analysis.Bias)
         irradiation = '/'.join(self.Analysis.Run.get_irradiations()) if both_dias else make_irr_string(self.Analysis.get_irradiation())
-        attenuator = '' if both_dias else 'Att: {}'.format(str(self.Analysis.get_attenuator()))
+        attenuator = '' if both_dias or not self.Analysis.get_attenuator() else 'Att: {}'.format(str(self.Analysis.get_attenuator()))
         return 'Info: {v}, {i}{a}'.format(v=voltage, i=irradiation, a=', {}'.format(attenuator) if attenuator else '')

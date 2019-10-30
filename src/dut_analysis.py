@@ -39,3 +39,9 @@ class DUTAnalyis(TelecopeAnalysis):
     def get_irradiation(self):
         return self.Run.get_irradiations()[self.DiamondNumber - 1]
 
+    def get_attenuator(self):
+        return False
+
+    def draw_fid_cut(self, scale=1):
+        self.Cut.draw_fid_cut(scale)
+
