@@ -568,7 +568,7 @@ def format_axis(axis, graph, title, tit_offset, tit_size, centre_title, lab_size
     do(axis.SetLabelSize, lab_size)
     do(axis.SetLabelOffset, label_offset)
     if limits is not None:
-        axis.SetLimits(*limits) if graph else axis.SetRangeUser(*limits)
+        axis.SetLimits(*limits) if graph and 'xaxis' in axis.GetName() else axis.SetRangeUser(*limits)
     do(axis.SetNdivisions, ndiv)
     do(axis.SetTickSize, tick_size)
     do(axis.SetTitleColor, color)
