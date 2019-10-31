@@ -39,7 +39,7 @@ class Bins:
         self.PHBinWidth = 200
         self.MinVcal = -100
         self.MaxVcal = 1250
-        self.AdcToVcal = 47.
+        self.VcalToEl = 47.
 
         # Pad Pulse Height
         self.MinPadPH = -50
@@ -125,7 +125,7 @@ class Bins:
     def get_native_global(self, mm=False):
         return self.get_global(res_fac=1, mm=mm)
 
-    def get_global(self, res_fac, mm=False):
+    def get_global(self, res_fac=None, mm=False):
         return self.get_global_x(res_fac, mm) + self.get_global_y(res_fac, mm)
 
     def get_global_x(self, res_fac=None, mm=False):
@@ -133,14 +133,14 @@ class Bins:
         :param res_fac: telescope resolution in um
         :param mm: use mm as unit of return [default cm]
         :return: [nbins, bin_array] """
-        res = self.PX * (1 / sqrt(12) if res_fac is None else res_fac)
+        res = self.PX * (2 / sqrt(12) if res_fac is None else res_fac)
         bins = arange(self.GlobalCoods[0], self.GlobalCoods[1] + res / 1000., res)
-        return [bins.size, bins * (10 if mm else 1)]
+        return [bins.size - 1, bins * (10 if mm else 1)]
 
     def get_global_y(self, res_fac=None, mm=False):
-        res = self.PY * (1 / sqrt(12) if res_fac is None else res_fac)
+        res = self.PY * (2 / sqrt(12) if res_fac is None else res_fac)
         bins = arange(self.GlobalCoods[2], self.GlobalCoods[3] + res / 1000., res)
-        return [bins.size, bins * (10 if mm else 1)]
+        return [bins.size - 1, bins * (10 if mm else 1)]
 
     def get_pulser(self, n_pulser):
         if self.NPulser != n_pulser or self.Pulser is None:
@@ -156,14 +156,17 @@ class Bins:
 
     # ----------------------------------------
     # region PIXEL
-    def get_adc_bins(self):
+    def get_adc(self):
         return make_bins(0, self.MaxADC, bin_width=1)
 
-    def get_vcal_bins(self):
-        return make_bins(self.MinVcal, self.MaxVcal, int(self.PHBinWidth / self.AdcToVcal))
+    def get_vcal(self):
+        return make_bins(self.MinVcal, self.MaxVcal, int(self.PHBinWidth / self.VcalToEl))
 
-    def get_ph(self, bin_width=None):
+    def get_electrons(self, bin_width=None):
         return make_bins(self.MinPH, self.MaxPH, self.PHBinWidth if bin_width is None else bin_width)
+
+    def get_ph(self, vcal=False, adc=False, bin_width=None):
+        return self.get_vcal() if vcal else self.get_adc() if adc else self.get_electrons(bin_width)
     # endregion PIXEL
     # ----------------------------------------
 
