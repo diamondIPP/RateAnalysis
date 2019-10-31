@@ -485,14 +485,16 @@ def do_pickle(path, func, value=None, redo=False, *args, **kwargs):
         with open(path, 'w') as f:
             pickle.dump(value, f)
         return value
-    if file_exists(path) and not redo:
-        with open(path, 'r') as f:
-            return pickle.load(f)
-    else:
-        ret_val = func(*args, **kwargs)
-        with open(path, 'w') as f:
-            pickle.dump(ret_val, f)
-        return ret_val
+    try:
+        if file_exists(path) and not redo:
+            with open(path, 'r') as f:
+                return pickle.load(f)
+    except ImportError:
+        pass
+    ret_val = func(*args, **kwargs)
+    with open(path, 'w') as f:
+        pickle.dump(ret_val, f)
+    return ret_val
 
 
 def fit_poissoni(h, p0=5000, p1=1, name='f_poiss', show=True):
