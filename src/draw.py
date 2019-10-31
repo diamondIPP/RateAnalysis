@@ -314,7 +314,7 @@ class Draw:
         return '_{pol}{bias:04d}'.format(pol=pol, bias=int(abs(bias))) if bias else ''
 
     def make_info_string(self):
-        string = '_{dia}'.format(dia=self.DiamondName) if hasattr(self, 'DiamondName') else ''
+        string = '_{dia}'.format(dia=self.DUTName) if hasattr(self, 'DUTName') else ''
         string += self.make_bias_string()
         string += '_{tc}'.format(tc=self.TCString)
         string = string.replace('-', '')
@@ -329,7 +329,7 @@ class Draw:
         if not self.server_is_mounted():
             warning('Diamond server is not mounted in {}'.format(self.ServerDir))
             return
-        if hasattr(self, 'DiamondName'):
+        if hasattr(self, 'DUTName'):
             if hasattr(self, 'RunPlan'):
                 rp = self.RunPlan
                 run_string = 'RunPlan{r}'.format(r=rp[1:] if rp[0] == '0' else rp)
@@ -337,7 +337,7 @@ class Draw:
                 run_string = str(self.RunNumber)
             else:
                 return
-            path = join(self.ServerDir, 'Diamonds', self.DiamondName, 'BeamTests', make_tc_str(self.TCString, long_=False), run_string, file_name)
+            path = join(self.ServerDir, 'Diamonds', self.DUTName, 'BeamTests', make_tc_str(self.TCString, long_=False), run_string, file_name)
             canvas.SaveAs('{p}.pdf'.format(p=path))
             canvas.SaveAs('{p}.png'.format(p=path))
 
@@ -353,8 +353,11 @@ class Draw:
         if canvas is None:
             return
         if ind is None:
-            self.InfoLegend.draw(canvas, all_pads, both_dias) if hasattr(self, 'InfoLegend') else log_warning('Did not find InfoLegend class...') \
-                if not any(hasattr(self, att) for att in ['RunSelections', 'CurrentGraph']) else do_nothing()
+            try:
+                self.InfoLegend.draw(canvas, all_pads, both_dias) if hasattr(self, 'InfoLegend') else log_warning('Did not find InfoLegend class...') \
+                    if not any(hasattr(self, att) for att in ['RunSelections', 'CurrentGraph']) else do_nothing()
+            except Exception as err:
+                warning(err)
         else:
             self.collection.values()[ind].InfoLegend.draw(canvas, all_pads, both_dias) if hasattr(self, 'collection') else log_critical('sth went wrong...')
         canvas.Modified()
