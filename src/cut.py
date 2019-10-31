@@ -333,7 +333,7 @@ class Cut:
         x, y = get_root_vecs(self.Analysis.Tree, n, 2, dtype=int)
         rates, x_bins, y_bins = histogram2d(x, y, bins=[arange(0, n, bin_width, dtype=int), 2])
         rates = rates[:, 1] / bin_width
-        thresh = min(max_thresh, mean(rates) + .1)
+        thresh = min(max_thresh, mean(rates) + .2)
         events = x_bins[:-1][rates > thresh] + bin_width / 2
         not_connected = where(concatenate([[False], events[:-1] != events[1:] - bin_width]))[0]  # find the events where the previous event is not related to the event (more than a bin width away)
         events = split(events, not_connected)  # events grouped into connecting events
@@ -344,16 +344,14 @@ class Cut:
 
     def __create_jump_ranges(self, jumps):
         interruptions = []
-        i = 0
-        for tup in jumps:
-            t_start = self.Analysis.Run.get_time_at_event(tup[0]) - self.Analysis.Run.StartTime - self.CutConfig['JumpExcludeRange'][0]
+        for i, tup in enumerate(jumps):
+            t_start = max(0, self.Analysis.Run.get_time_at_event(tup[0]) - self.Analysis.Run.StartTime - self.CutConfig['JumpExcludeRange'][0])
             t_stop = self.Analysis.Run.get_time_at_event(tup[1]) - self.Analysis.Run.StartTime + self.CutConfig['JumpExcludeRange'][1]
             # if interruptions overlay just set the last stop to the current stop
             if i and t_start <= (interruptions[i - 1][1]) + 10:
                 interruptions[i - 1][1] = t_stop
                 continue
             interruptions.append([t_start, t_stop])
-            i += 1
         return [[self.Analysis.Run.get_event_at_time(t) for t in tup] for tup in interruptions]
 
     def get_beam_interruptions(self):
