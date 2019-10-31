@@ -11,7 +11,7 @@ from binning import Bins
 class TelecopeAnalysis(Analysis):
     """ Class for the analysis of the telescope specific stuff of a single run. """
 
-    def __init__(self, run=None, test_campaign=None, tree=True, verbose=False):
+    def __init__(self, run=None, test_campaign=None, tree=True, t_vec=None, verbose=False, prnt=True):
         """
         :param run: inits a new Run instance if number is provided or takes the provided Run instance
         :param test_campaign:   if None is provided: uses default from main config
@@ -19,10 +19,10 @@ class TelecopeAnalysis(Analysis):
         in order to save tel plots use argument both_dias=True in save_plots or save_tel_histo
         """
         Analysis.__init__(self, test_campaign, verbose)
-        self.print_start(run)
+        self.print_start(run, prnt)
 
         # Run
-        self.Run = run_selector(run, self.TCString, tree, verbose=verbose)
+        self.Run = run_selector(run, self.TCString, tree, t_vec, verbose)
         self.RunNumber = run
 
         # basics

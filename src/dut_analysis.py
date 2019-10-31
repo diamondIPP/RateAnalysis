@@ -9,9 +9,9 @@ from CurrentInfo import Currents
 
 
 class DUTAnalyis(TelecopeAnalysis):
-    def __init__(self, run_number, diamond_nr, test_campaign=None, tree=None, verbose=False):
+    def __init__(self, run_number, diamond_nr, test_campaign=None, tree=None, t_vec=None, verbose=False, prnt=True):
 
-        TelecopeAnalysis.__init__(self, run_number, test_campaign, tree=tree, verbose=verbose)
+        TelecopeAnalysis.__init__(self, run_number, test_campaign, tree, t_vec, verbose, prnt)
 
         self.DiamondNumber = self.load_diamond_nr(diamond_nr)
         self.DiamondName = self.Run.DiamondNames[diamond_nr - 1]

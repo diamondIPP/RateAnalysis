@@ -18,9 +18,9 @@ from pad_alignment import PadAlignment
 
 
 class PadAnalysis(DUTAnalyis):
-    def __init__(self, run_number, diamond_nr, test_campaign=None, tree=True, verbose=False):
+    def __init__(self, run_number, diamond_nr, test_campaign=None, tree=True, t_vec=None, verbose=False, prnt=True):
 
-        DUTAnalyis.__init__(self, run_number, diamond_nr, test_campaign, tree=tree, verbose=verbose)
+        DUTAnalyis.__init__(self, run_number, diamond_nr, test_campaign, tree, t_vec, verbose, prnt)
 
         # Main
         self.Channel = self.Run.Channels[diamond_nr - 1]
