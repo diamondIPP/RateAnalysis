@@ -18,7 +18,7 @@ from dut_analysis import *
 
 
 class PixAnalysis(DUTAnalyis):
-    def __init__(self, run_number, dut, test_campaign=None, tree=None, verbose=False):
+    def __init__(self, run_number, dut, test_campaign=None, tree=True, verbose=False):
 
         DUTAnalyis.__init__(self, run_number, dut, test_campaign, tree=tree, verbose=verbose)
 

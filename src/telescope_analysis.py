@@ -11,7 +11,7 @@ from binning import Bins
 class TelecopeAnalysis(Analysis):
     """ Class for the analysis of the telescope specific stuff of a single run. """
 
-    def __init__(self, run=None, test_campaign=None, tree=None, verbose=False):
+    def __init__(self, run=None, test_campaign=None, tree=True, verbose=False):
         """
         :param run: inits a new Run instance if number is provided or takes the provided Run instance
         :param test_campaign:   if None is provided: uses default from main config

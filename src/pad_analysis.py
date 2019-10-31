@@ -18,7 +18,7 @@ from pad_alignment import PadAlignment
 
 
 class PadAnalysis(DUTAnalyis):
-    def __init__(self, run_number, diamond_nr, test_campaign=None, tree=None, verbose=False):
+    def __init__(self, run_number, diamond_nr, test_campaign=None, tree=True, verbose=False):
 
         DUTAnalyis.__init__(self, run_number, diamond_nr, test_campaign, tree=tree, verbose=verbose)
 
@@ -888,17 +888,17 @@ class PadAnalysis(DUTAnalyis):
     def test_landau_stats(self):
         gr = self.make_tgrapherrors('gr_ls', 'Landau Statistics')
         set_root_output(False)
-        self.start_pbar(sum(int(pow(2, i / 2.)) for i in xrange(1, 40)))
+        self.PBar.start(sum(int(pow(2, i / 2.)) for i in xrange(1, 40)))
         k = 0
         for j, i in enumerate(xrange(1, 40)):
             h = TH1F('h', 'h', 500, 0, 1000)
             for _ in xrange(int(pow(2, i / 2.))):
                 k += 1
                 h.Fill(gRandom.Landau(80, 5))
-            self.ProgressBar.update(k)
+            self.PBar.update(k)
             gr.SetPoint(j, pow(2, i), h.GetMean())
             gr.SetPointError(j, 0, h.GetMeanError())
-        self.ProgressBar.finish()
+        self.PBar.finish()
         self.draw_histo(gr, draw_opt='alp', logx=True)
 
     def find_conv(self):
