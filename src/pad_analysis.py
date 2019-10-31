@@ -3,11 +3,9 @@ from __future__ import print_function
 from dut_analysis import *
 from json import loads
 from ROOT import gRandom, TProfile2D, THStack, Double, Long
-from numpy import linspace
 from uncertainties import umath
 
 from CutPad import CutPad
-from Extrema import Extrema2D
 from Peaks import PeakAnalysis
 from Pedestal import PedestalAnalysis
 from Pulser import PulserAnalysis
@@ -78,7 +76,7 @@ class PadAnalysis(DUTAnalyis):
         self.Config.read(join(self.Dir, 'Configuration', self.TCString, 'PadConfig.ini'))
 
     def get_short_regint(self, signal=None):
-        return self.get_all_signal_names()[signal if signal is not None else z.SignalName]
+        return self.get_all_signal_names()[signal if signal is not None else self.SignalName]
 
     def get_integral_names(self):
         if self.Run.TreeConfig.has_section('Integral Names'):
@@ -146,19 +144,11 @@ class PadAnalysis(DUTAnalyis):
 
     # ----------------------------------------
     # region GET
+    def get_ph_str(self):
+        return self.generate_signal_name()
 
     def get_attenuator(self):
         return self.Run.get_attenuators()[self.DUTNumber - 1] if self.Run.get_attenuators() else None
-
-    def get_sm_data(self, cut=None, fid=False):
-        """ :return: signal map data as numpy array [[x], [y], [ph]] with units [[mm], [mm], [mV]]
-            :param cut: applies all cuts if None is provided.
-            :param fid: return only values within the fiducial region set in the AnalysisConfig.ini"""
-        x_var, y_var = (self.Cut.get_track_var(self.DUTNumber - 1, v) for v in ['x', 'y'])
-        cut = self.Cut.generate_special_cut(excluded=['fiducial'], prnt=False) if not fid and cut is None else cut
-        cut = self.Cut.AllCut if cut is None else TCut(cut)
-        n = self.Tree.Draw('{x}*10:{y}*10:{z}'.format(z=self.generate_signal_name(), x=x_var, y=y_var), cut, 'goff')  # *10 to get values in mm
-        return self.Run.get_root_vecs(n, 3)
 
     def get_ph_data(self, cut=None):
         """ :return: pulse height data as numpy array [[time] [ph]] with units [[s], [mV]]
@@ -168,13 +158,12 @@ class PadAnalysis(DUTAnalyis):
         return self.Run.get_root_vecs(n, 2)
 
     def get_pulse_height(self, bin_size=None, cut=None, redo=False, corr=True, sig=None):
-        cut_str = self.Cut.AllCut if cut is None else TCut(cut)
         correction = '' if not corr else '_eventwise'
-        suffix = '{bins}{cor}_{reg}{c}'.format(bins=self.Bins.BinSize if bin_size is None else bin_size, cor=correction, reg=self.get_short_regint(sig), c=cut_str.GetName())
+        suffix = '{bins}{cor}_{c}'.format(bins=self.Bins.BinSize if bin_size is None else bin_size, cor=correction,reg=self.get_short_regint(sig), c=self.Cut(cut).GetName())
         picklepath = self.make_pickle_path('Ph_fit', 'Fit', self.RunNumber, self.DUTNumber, suf=suffix)
 
         def f():
-            p, fit_pars = self.draw_pulse_height(bin_size=bin_size, cut=cut, corr=corr, show=False, save=False, redo=redo)
+            p, fit_pars = self.draw_pulse_height(bin_size=bin_size, cut=self.Cut(cut), corr=corr, show=False, save=False, redo=redo)
             return fit_pars
 
         return make_ufloat(do_pickle(picklepath, f, redo=redo), par=0)
@@ -192,7 +181,7 @@ class PadAnalysis(DUTAnalyis):
         self.draw_signal_distribution(redo=redo, show=False)
         self.draw_pulse_height(redo=redo, show=False)
         self.draw_signal_map(redo=redo, show=False)
-        self.draw_dia_hitmap(redo=redo, show=False)
+        self.draw_hitmap(redo=redo, show=False)
 
     # ----------------------------------------
     # region 2D SIGNAL DISTRIBUTION
@@ -200,14 +189,14 @@ class PadAnalysis(DUTAnalyis):
         cut_string = TCut(cut) + self.Cut.CutStrings['tracks']
         cut_string = self.Cut.generate_special_cut(excluded=['fiducial']) if cut == 'all' else cut_string
         p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DUTName), *self.Bins.get_global(res, mm=True))
-        y, x = self.Cut.get_track_vars(self.DUTNumber - 1, scale=10)
+        y, x = self.Cut.get_track_vars(self.DUTNumber - 1, mm=True)
         thresh = self.Pedestal.get_mean() * 4
         self.Tree.Draw('({s}>{t})*100:{y}:{x}>>p_em'.format(s=self.generate_signal_name(), x=x, y=y, t=thresh), cut_string, 'goff')
         self.format_statbox(n_entries=4, entries=True, x=.81)
-        self.set_dia_margins(p)
+        set_2d_ranges(p, dx=3, dy=3)
         format_histo(p, x_tit='Track x [cm]', y_tit='Track y [cm]', z_tit='Efficiency [%]', y_off=1.4, z_off=1.5, ncont=100, z_range=[0, 100])
         self.draw_histo(p, show=show, lm=.13, rm=.17, draw_opt='colz', x=1.15 if self.Title else 1)
-        self.draw_fiducial_cut(scale=10)
+        self.draw_fid_cut(scale=10)
         self.draw_detector_size(scale=10)
         self.save_plots('EffMap')
 
@@ -224,164 +213,9 @@ class PadAnalysis(DUTAnalyis):
         self.draw_tlatex(x=self.Pedestal.get_noise().n * 3, y=95, text=' 3 #times noise', align=10)
         self.save_plots('EffThresh')
 
-    def draw_signal_map(self, res=None, cut=None, fid=False, hitmap=False, redo=False, show=True, prnt=True, z_range=None, save=True, bins=None):
-        cut = self.Cut.generate_special_cut(excluded=['fiducial'], prnt=prnt) if not fid and cut is None else cut
-        cut = self.Cut.AllCut if cut is None else TCut(cut)
-        suf = '{c}_{ch}_{res}'.format(c=cut.GetName(), ch=self.Cut.CutConfig['chi2X'], res=res if bins is None else '{}x{}'.format(bins[0], bins[2]))
-        pickle_path = self.make_pickle_path('SignalMaps', 'Hit' if hitmap else 'Signal', run=self.RunNumber, ch=self.DUTNumber, suf=suf)
-
-        def func():
-            set_root_output(0)
-            name = 'h_hm' if hitmap else 'h_sm'
-            atts = [name, 'Diamond Hit Map' if hitmap else 'Signal Map'] + (self.Bins.get_global(res, mm=True) if bins is None else bins)
-            h1 = TH2I(*atts) if hitmap else TProfile2D(*atts)
-            self.info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.DUTName, run=self.RunNumber, mode='hit' if hitmap else 'signal '), prnt=prnt)
-            sig = self.generate_signal_name()
-            x_var, y_var = (self.Cut.get_track_var(self.DUTNumber - 1, v) for v in ['x', 'y'])
-            self.Tree.Draw('{z}{y}*10:{x}*10>>{h}'.format(z=sig + ':' if not hitmap else '', x=x_var, y=y_var, h=name), cut, 'goff')
-            return h1
-
-        self.format_statbox(entries=True, x=0.82)
-        gStyle.SetPalette(1 if hitmap else 53)
-        h = do_pickle(pickle_path, func, redo=redo)
-        self.set_dia_margins(h)
-        self.adapt_z_range(h)
-        z_tit = 'Number of Entries' if hitmap else 'Pulse Height [mV]'
-        format_histo(h, x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]', y_off=1.4, z_off=1.5, z_tit=z_tit, ncont=50, ndivy=510, ndivx=510, z_range=z_range)
-        self.draw_histo(h, '', show, lm=.12, rm=.16, draw_opt='colzsame')
-        self.draw_fiducial_cut(scale=10)
-        # self.draw_detector_size(scale=10)
-        self.save_plots('HitMap' if hitmap else 'SignalMap2D', prnt=prnt, save=save)
-        return h
-
-    def split_signal_map(self, m=2, n=2, grid=True, redo=False, show=True):
-        fid_cut = array(self.Cut.CutConfig['fiducial']) * 10
-        if not fid_cut.size:
-            log_critical('fiducial cut not defined for {}'.format(self.DUTName))
-        x_bins = linspace(fid_cut[0], fid_cut[1], m + 1)
-        y_bins = linspace(fid_cut[2], fid_cut[3], n + 1)
-        bins = [m, x_bins, n, y_bins]
-        h = self.draw_signal_map(bins=bins, show=False, fid=True, redo=redo)
-        format_histo(h, x_range=[fid_cut[0], fid_cut[1] - .01], y_range=[fid_cut[2], fid_cut[3] - .01], name='hssm', stats=0)
-        self.draw_histo(h, show=show, lm=.12, rm=.16, draw_opt='colzsame')
-        self.draw_grid(x_bins, y_bins, width=2) if grid else do_nothing()
-        self.save_plots('SplitSigMap')
-        return h, x_bins, y_bins
-
-    def draw_dia_hitmap(self, show=True, res=1.5, cut=None, fid=False, redo=False, prnt=True, z_range=None):
-        h = self.draw_signal_map(show=False, res=res, cut=cut, fid=fid, hitmap=True, redo=redo, prnt=False, save=False)
-        return self.draw_signal_map(show=show, res=res, cut=cut, fid=fid, hitmap=True, prnt=prnt, z_range=[0, h.GetMaximum()] if z_range is None else z_range)
-
     def draw_pedestal_map(self, high=10, low=None):
         low = '&&{}>{}'.format(self.generate_signal_name(), low) if low is not None else ''
-        self.draw_dia_hitmap(redo=True, cut=TCut('{}<{}{}'.format(self.generate_signal_name(), high, low)) + self.Cut.generate_special_cut(excluded='fiducial'))
-
-    @staticmethod
-    def set_dia_margins(h, size=3):
-        # find centers in x and y
-        xmid, ymid = [(p.GetBinCenter(p.FindFirstBinAbove(0)) + p.GetBinCenter(p.FindLastBinAbove(0))) / 2 for p in [h.ProjectionX(), h.ProjectionY()]]
-        format_histo(h, x_range=[xmid - size, xmid + size], y_range=[ymid - size, ymid + size])
-
-    @staticmethod
-    def adapt_z_range(h, n_sigma=2):
-        bins = [i_bin for i_bin in xrange((h.GetNbinsX() + 2) * (h.GetNbinsY() + 2)) if h.GetBinContent(i_bin)]  # with overflow bins
-        values = [h.GetBinContent(i_bin) for i_bin in bins]
-        weights = [h.GetBinEntries(i_bin) for i_bin in bins] if hasattr(h, 'GetBinEntries') else None
-        m, s = mean_sigma(values, weights)
-        z_range = [min(values), 0.8 * max(values)] if s > m else [m - n_sigma * s, m + n_sigma * s]
-        format_histo(h, z_range=z_range)
-
-    def draw_sig_map_disto(self, show=True, factor=1.5, cut=None, fid=True, x_range=None, redo=False, normalise=False, ret_value=False, save=True):
-        source = self.draw_signal_map(factor, cut, fid, hitmap=False, redo=redo, show=False, save=False)
-        h = TH1F('h_smd', 'Signal Map Distribution', *([400, -50, 350] if not normalise else [400, 0, 4]))
-        normalisation = 1 if not normalise else self.get_pulse_height()
-        values = [make_ufloat((source.GetBinContent(ibin), 1)) / normalisation for ibin in xrange(source.GetNbinsX() * source.GetNbinsY()) if source.GetBinContent(ibin)]
-        [h.Fill(v.n) for v in values]
-        x_range = increased_range([h.GetBinCenter(ibin) for ibin in [h.FindFirstBinAbove(5), h.FindLastBinAbove(5)]], .3, .3) if x_range is None else x_range
-        self.format_statbox(all_stat=True)
-        format_histo(h, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=2, fill_color=self.FillColor, x_range=x_range)
-        self.save_histo(h, 'SignalMapDistribution', lm=.15, show=show, save=save)
-        return mean_sigma(values) if ret_value else h
-
-    def get_sm_std_dev(self, factor=3, redo=False):
-        return self.draw_sig_map_disto(show=False, factor=factor, redo=redo, normalise=True, ret_value=True, save=False)[1]
-
-    def draw_sig_map_profiles(self, mode='x', factor=1.5, cut=None, fid=False, hitmap=False, redo=False, show=True):
-        s = self.draw_signal_map(factor, cut, fid, hitmap=hitmap, redo=redo, show=False)
-        g = self.make_tgrapherrors('g_smp', 'Signal Map Profile')
-        values = [[] for _ in xrange(s.GetNbinsX() if mode == 'x' else s.GetNbinsY())]
-        for xbin in xrange(s.GetNbinsX()):
-            for ybin in xrange(s.GetNbinsY()):
-                value = s.GetBinContent(xbin, ybin)
-                if value:
-                    values[(xbin if mode == 'x' else ybin)].append(value)
-        for i, lst in enumerate(values):
-            m, sigma = mean_sigma(lst) if lst else (0., 0.)
-            xval = s.GetXaxis().GetBinCenter(i) if mode == 'x' else s.GetYaxis().GetBinCenter(i)
-            g.SetPoint(i, xval, m)
-            g.SetPointError(i, 0, sigma)
-
-        format_histo(g, x_tit='Track in {m} [cm]'.format(m=mode), y_tit='Pulse Height [au]', y_off=1.5, ndivx=515)
-        self.save_histo(g, 'SignalMapProfile', draw_opt='ap', lm=.14, show=show, gridx=True)
-
-    def make_region_cut(self):
-        return self.Cut.generate_region(self.draw_signal_map(show=False), self.draw_sig_map_disto(show=False))
-
-    def find_2d_regions(self):
-        extrema = Extrema2D(self.draw_signal_map(show=False), self.draw_sig_map_disto(show=False))
-        extrema.clear_voting_histos()
-        extrema.region_scan()
-        extrema.show_voting_histos()
-        self.save_plots('Regions2D')
-        return extrema
-
-    def find_2d_extrema(self, size=1, histo=None, show=True):
-        extrema = Extrema2D(self.draw_signal_map(show=False), self.draw_sig_map_disto(show=False))
-        extrema.clear_voting_histos()
-        extrema.square_scan(size, histo)
-        if show:
-            extrema.show_voting_histos()
-        self.save_plots('Extrema2D')
-        return extrema
-
-    def draw_error_signal_map(self, show=False):
-        h = self.draw_signal_map(show=False, fid=True).ProjectionXY('', 'c=e')
-        if show:
-            c = TCanvas('c', 'Signal Map Errors', 1000, 1000)
-            c.SetLeftMargin(0.12)
-            c.SetRightMargin(0.11)
-            format_histo(h, name='sig_map_errors', title='Signal Map Errors', x_tit='track_x [cm]', y_tit='track_y [cm]', y_off=1.6)
-            h.SetStats(0)
-            h.Draw('colz')
-            self.save_plots('SignalMapErrors', canvas=c)
-            self.Objects.append([h, c])
-        return h
-
-    def __show_frame(self, bin_low, bin_high):
-        frame = TCutG('frame', 4)
-        frame.SetLineColor(2)
-        frame.SetLineWidth(4)
-        frame.SetVarX('x')
-        frame.SetVarY('y')
-        frame.SetPoint(0, bin_low[0][0], bin_low[1][0])
-        frame.SetPoint(1, bin_high[0][-1], bin_low[1][0])
-        frame.SetPoint(2, bin_high[0][-1], bin_high[1][-1])
-        frame.SetPoint(3, bin_low[0][0], bin_high[1][-1])
-        frame.SetPoint(4, bin_low[0][0], bin_low[1][0])
-        frame.Draw('same')
-        self.Objects.append(frame)
-
-    def calc_signal_spread(self, min_percent=5, max_percent=99):
-        """ Calculates the relative spread of mean signal response from the 2D signal response map. """
-        h = self.draw_sig_map_disto(show=False)
-        q = array([min_percent / 100., max_percent / 100.])
-        y = array([0., 0.])
-        h_e = self.draw_error_signal_map(show=False)
-        e = mean([h_e.GetBinContent(i) for i in xrange(h_e.GetNbinsX() * h_e.GetNbinsY()) if h_e.GetBinContent(i)])
-        h.GetQuantiles(2, y, q)
-        max_min_ratio = (ufloat(y[1], e) / ufloat(y[0], e) - 1) * 100
-        print('Relative Signal Spread is: {} %'.format(max_min_ratio))
-        return max_min_ratio
+        self.draw_hitmap(redo=True, cut=TCut('{}<{}{}'.format(self.generate_signal_name(), high, low)) + self.Cut.generate_special_cut(excluded='fiducial'))
     # endregion 2D SIGNAL DISTRIBUTION
     # ----------------------------------------
 
@@ -825,23 +659,6 @@ class PadAnalysis(DUTAnalyis):
         # stack.SetMaximum(stack.GetMaximum() * 1.2)
         self.save_histo(stack, '{name}LogY'.format(name=save_name), show, logy=True, draw_opt='nostack', lm=0.14)
         self.reset_colors()
-
-    def draw_fiducial_cut(self, scale=1):
-        self.Cut.draw_fid_cut(scale)
-
-    def draw_detector_size(self, scale=1):
-        split_runs = self.Cut.get_fiducial_splits()
-        first_cut_name = 'detector size' if self.Config.has_option('CUT', 'detector size') else 'detector size 1'
-        values = next(self.Cut.load_dia_config('detector size {n}'.format(n=i + 1) if i else first_cut_name) for i in xrange(len(split_runs)) if self.RunNumber <= split_runs[i])
-        if values is None:
-            return
-        x, y, lx, ly = values
-        cut = TCutG('det{}'.format(scale), 5, array([x, x, x + lx, x + lx, x], 'd') * scale, array([y, y + ly, y + ly, y, y], 'd') * scale)
-        cut.SetVarX(self.Cut.get_track_var(self.DUTNumber - 1, 'x'))
-        cut.SetVarY(self.Cut.get_track_var(self.DUTNumber - 1, 'y'))
-        self.Objects.append(cut)
-        cut.SetLineWidth(3)
-        cut.Draw()
 
     def draw_cut_means(self, show=True, short=False):
         gr = self.make_tgrapherrors('gr_cm', 'Mean of Pulse Height for Consecutive Cuts')

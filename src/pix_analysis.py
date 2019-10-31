@@ -80,6 +80,19 @@ class PixAnalysis(DUTAnalyis):
 
     # ----------------------------------------
     # region GET
+    def get_ph_str(self):
+        return 'cluster_charge[{}]'.format(self.Dut)
+
+    def get_pulse_height(self, bin_size=None, cut=None, redo=False):
+        suffix = '{bins}_{c}'.format(bins=self.Bins.BinSize if bin_size is None else bin_size, c=self.Cut(cut).GetName())
+        picklepath = self.make_pickle_path('Ph_fit', 'Fit', self.RunNumber, self.DUTNumber, suf=suffix)
+
+        def f():
+            p, fit_pars = self.draw_pulse_height(bin_size=bin_size, cut=self.Cut(cut), show=False)
+            return fit_pars
+
+        return make_ufloat(do_pickle(picklepath, f, redo=redo), par=0)
+
     def get_thresholds(self, cols=None, pix=None, vcal=True):
         columns, rows = split(array(self.Cut.CutConfig['FidRegionLocal']), 2) if self.Cut.CutConfig['FidRegionLocal'] is not None else [0, self.Bins.NCols - 1], [0, self.Bins.NRows - 1]
         columns = array([cols]).flatten() if cols is not None else columns
@@ -247,18 +260,6 @@ class PixAnalysis(DUTAnalyis):
         format_histo(h, x_tit='col', y_tit='row', z_tit='ADC', y_off=1.3, z_off=1.5, z_range=[0, 1] if zero_ratio else None)
         self.save_histo(h, 'ADCMap', show, rm=.17, lm=.13, draw_opt='colz')
 
-    def draw_pulse_height_map(self, show=True, cut=None, roc=None, fid=False, res=None, track_coods=False):
-        cut_string = self.Cut.generate_special_cut(['fiducial'], hitmap=False) if not fid else self.Cut.AllCut if cut is None else TCut(cut)
-        set_root_output(False)
-        h = TProfile2D('p_phm', 'Pulse Height Map', *self.Bins.get_global(res, mm=True))
-        self.Tree.Draw('cluster_charge[{n}]:{c}>>p_phm'.format(n=roc, c=self.get_2d_coods(roc, global_=track_coods)), cut_string, 'goff')
-        self.format_statbox(entries=True, x=0.78)
-        format_histo(h, x_tit='col', y_tit='row', z_tit='Pulse Height [e]', z_off=2.1, y_off=1.4)
-        self.save_histo(h, 'PulseHeightMap', show, lm=.13, rm=.2, draw_opt='colz')
-
-    def draw_signal_map(self, show=True, cut=None, roc=None, fid=False, res=None):
-        return self.draw_pulse_height_map(show, cut, roc, fid, res, track_coods=True)
-
     def draw_threshold_map(self, vcal=True, cols=None, show=True):
         h = TProfile2D('p_tm', 'Artificial Threshold Map', *self.Bins.get_pixel())
         for (col, row), thresh in self.get_thresholds(cols, vcal=vcal).iteritems():
@@ -277,6 +278,9 @@ class PixAnalysis(DUTAnalyis):
                 h.Fill(col, row, self.Fit(vcal))
         format_histo(h, x_tit='col', y_tit='row', z_tit='Pulse Height [adc]', y_off=1.3, z_off=1.5, stats=0)
         self.save_histo(h, 'ADCMap{v}'.format(v=vcal), show, rm=.17, lm=.13, draw_opt='colz')
+
+    def draw_sig_map_disto(self, res=None, cut=None, fid=True, x_range=None, redo=False, normalise=False, ret_value=False, show=True, save=True):
+        return self._draw_sig_map_disto(res, cut, fid, x_range, redo, normalise, ret_value, ph_bins=self.Bins.get_ph(), show=show, save=save)
     # endregion 2D DISTRIBUTIONS
     # ----------------------------------------
 
@@ -358,7 +362,7 @@ class PixAnalysis(DUTAnalyis):
         cut_string = TCut(cut) + self.Cut.CutStrings['tracks']
         cut_string = self.Cut.generate_special_cut(excluded=['masks', 'fiducial']) if cut == 'all' else cut_string
         p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DUTName), *self.Bins.get_global(res_fac=res, mm=True))
-        self.Tree.Draw('(n_hits[{r}]>0)*100:{}:{}>>p_em'.format(r=self.Dut, *self.Cut.get_track_vars(self.Dut - 4, scale=10)), cut_string, 'goff')
+        self.Tree.Draw('(n_hits[{r}]>0)*100:{}:{}>>p_em'.format(r=self.Dut, *self.Cut.get_track_vars(self.Dut - 4, mm=True)), cut_string, 'goff')
         self.format_statbox(entries=True, x=.81)
         format_histo(p, x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]', z_tit='Efficiency [%]', y_off=1.4, z_off=1.5)
         self.draw_histo(p, 'Efficiency Map', show, lm=.13, rm=.17, draw_opt='colz')
@@ -367,7 +371,7 @@ class PixAnalysis(DUTAnalyis):
         self.save_plots('Efficiency Map')
 
     def get_fiducial_cell(self, n):
-        x1, x2, y1, y2 = self.Cut.CutConfig['FidRegion']
+        x1, x2, y1, y2 = self.Cut.CutConfig['fiducial']
         nx = int(round((x2 - x1) / self.PX))
         # ny = int(round((y2 - y1) / .010))
         return round(x1 + self.PX * (n % nx), 4), round(y1 + self.PY * (n / nx), 4)
@@ -633,14 +637,6 @@ class PixAnalysis(DUTAnalyis):
         self.draw_histo(pie, draw_opt='3drsc')
         self.reset_colors()
 
-    def draw_track_occupancy(self, cut='', show=True, res=None):
-        cut_string = self.Cut.AllCut if cut is None else TCut(cut) + self.Cut.CutStrings['tracks']
-        h = TH2F('h_to', 'Track Occupancy {d}'.format(d=self.DUTName), *self.Bins.get_global(res_fac=res))
-        self.Tree.Draw('dia_track_y_local[{d}][0]:dia_track_x_local[{d}][0]>>h_to'.format(d=self.Dut - 4), cut_string, 'goff')
-        self.format_statbox(entries=True, x=.81)
-        format_histo(h, x_tit='Track x [cm]', y_tit='Track y [cm]', z_tit='Number of Entries', y_off=1.4, z_off=1.5)
-        self.save_histo(h, 'TrackOccupancy', show, lm=.12, rm=.17, draw_opt='colz')
-
     def draw_cluster_size(self, cut='', show=True):
         return self._draw_cluster_size(self.Dut, self.DUTName, cut, show)
 
@@ -690,5 +686,5 @@ class PixAnalysis(DUTAnalyis):
 
 if __name__ == '__main__':
 
-    args = init_argparser(run=139, tc='201810', dia=1, verbose=True, tree=True)
-    z = PixAnalysis(args.run, args.dia, args.testcampaign, args.tree, args.verbose)
+    pargs = init_argparser(run=139, tc='201810', dia=1, verbose=True, tree=True)
+    z = PixAnalysis(pargs.run, pargs.dia, pargs.testcampaign, pargs.tree, pargs.verbose)
