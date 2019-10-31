@@ -80,9 +80,9 @@ class RunSelection:
             self.Selection[run] = True
         self.Run.info('selected all runs')
 
-    def unselect_all_runs(self):
+    def unselect_all_runs(self, prnt=True):
         self.reset_selection()
-        self.Run.info('unselected all runs')
+        self.Run.info('unselected all runs', prnt=prnt)
 
     def clear_selection(self):
         self.reset_selection()
@@ -207,6 +207,17 @@ class RunSelection:
         if verify('Do you wish to save the selection to a runplan'):
             nr = raw_input('Enter the name/number of the runplan: ')
             self.add_selection_to_runplan(nr)
+
+    def get_flux(self, run_number):
+        self.Run.reload_run_config(run_number)
+        return self.Run.calculate_flux()
+
+    def get_type(self, run_number):
+        self.Run.reload_run_config(run_number)
+        return self.Run.get_type()
+
+    def get_selected_fluxes(self):
+        return array([self.get_flux(run) for run in self.get_selected_runs()])
 
     def get_selected_runs(self):
         """ :return: list of selected run numbers. """
