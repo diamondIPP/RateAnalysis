@@ -86,8 +86,8 @@ class Bins:
 
     # ----------------------------------------
     # region GENERAL
-    def get_raw(self, bin_width=None, start_event=0, end_event=None, vs_time=False, rel_time=False, t_ev=False):
-        return self.get_raw_time(bin_width, rel_time, start_event, end_event, t_ev) if vs_time else self.get_raw_event(bin_width, start_event, end_event)
+    def get_raw(self, bin_width=None, start_event=0, end_event=None, vs_time=False, rel_time=False, t_from_event=False):
+        return self.get_raw_time(bin_width, rel_time, start_event, end_event, t_from_event) if vs_time else self.get_raw_event(bin_width, start_event, end_event)
 
     def get_raw_event(self, bin_width, start_event=0, end_event=None):
         bin_width = self.BinSize if bin_width is None else bin_width
