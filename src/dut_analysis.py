@@ -13,12 +13,12 @@ class DUTAnalyis(TelecopeAnalysis):
 
         TelecopeAnalysis.__init__(self, run_number, test_campaign, tree, t_vec, verbose, prnt)
 
-        self.DiamondNumber = self.load_diamond_nr(diamond_nr)
-        self.DiamondName = self.Run.DiamondNames[diamond_nr - 1]
+        self.DUTNumber = self.load_diamond_nr(diamond_nr)
+        self.DUTName = self.Run.DiamondNames[diamond_nr - 1]
         self.Bias = self.Run.Bias[diamond_nr - 1]
 
         self.update_config()
-        self.set_save_directory(join(self.DiamondName, str(self.RunNumber).zfill(3)))
+        self.set_save_directory(join(self.DUTName, str(self.RunNumber).zfill(3)))
 
         self.Currents = Currents(self)
 
@@ -37,7 +37,7 @@ class DUTAnalyis(TelecopeAnalysis):
         return self.Currents.get_current()
 
     def get_irradiation(self):
-        return self.Run.get_irradiations()[self.DiamondNumber - 1]
+        return self.Run.get_irradiations()[self.DUTNumber - 1]
 
     def get_attenuator(self):
         return False
