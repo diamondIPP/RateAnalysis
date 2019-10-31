@@ -91,8 +91,8 @@ class Analysis(Draw):
         return add_to_info(t, txt, prnt=self.Verbose)
 
     def print_start(self, run=None):
-        ana_name = self.__class__.__name__.split('Ana')[0]
-        run = ' FOR RUN {}'.format(run) if run is not None else ''
+        ana_name = self.__class__.__name__.replace('Analysis', '')
+        run = ' FOR RUN{} {}'.format('PLAN' if 'Coll' in ana_name else '', run) if run is not None else ''
         print_banner('STARTING {} ANALYSIS{} OF {}'.format(ana_name.upper(), run, self.TCString), symbol='~', color='green')
 
     def print_finished(self):
