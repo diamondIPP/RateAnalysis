@@ -219,6 +219,9 @@ class RunSelection:
     def get_selected_fluxes(self):
         return array([self.get_flux(run) for run in self.get_selected_runs()])
 
+    def get_selected_biases(self):
+        return [dic['dia{}hv'.format(self.SelectedDUTNr)] for dic in self.get_selection_runinfo().itervalues()]
+
     def get_selected_runs(self):
         """ :return: list of selected run numbers. """
         selected = []
@@ -246,7 +249,7 @@ class RunSelection:
         rows = []
         for run in selected_runs:
             r.set_run(run, root_tree=False)
-            d = [str(value) for value in r.load_diamond_names()]
+            d = [str(value) for value in r.load_dut_names()]
             b = ['{v:+7.0f}'.format(v=value) for value in r.load_biases()]
             dia_bias = list(chain(*[[d[i], b[i]] for i in xrange(len(d))]))
             row = ['{:3d}'.format(run), r.RunInfo['runtype']] + dia_bias + ['{:14.2f}'.format(r.Flux.n)]
