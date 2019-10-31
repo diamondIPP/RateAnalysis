@@ -15,7 +15,7 @@ class InfoLegend:
         self.Analysis = analysis
         self.ShowGit = analysis.MainConfig.getboolean('SAVE', 'git hash')
         self.ShowInfo = analysis.MainConfig.getboolean('SAVE', 'info legend')
-        self.IsCollection = hasattr(analysis, 'collection')
+        self.IsCollection = hasattr(analysis, 'Analyses')
 
         self.Objects = []
 
@@ -74,7 +74,7 @@ class InfoLegend:
         return git_text
 
     def get_duration(self):
-        dur = sum([ana.Run.Duration for ana in self.Analysis.collection.itervalues()], timedelta()) if self.IsCollection else self.Analysis.Run.Duration
+        dur = sum([ana.Run.Duration for ana in self.Analysis.Analyses.itervalues()], timedelta()) if self.IsCollection else self.Analysis.Run.Duration
         return dur - timedelta(microseconds=dur.microseconds)
 
     def get_run_string(self):
@@ -86,7 +86,7 @@ class InfoLegend:
         return 's {}-{}'.format(self.Analysis.Runs[0], self.Analysis.Runs[-1]) if self.IsCollection else ' {}'.format(self.Analysis.RunNumber)
 
     def get_dia_string(self, both_dias):
-        dia_str = ', '.join(self.Analysis.Run.DiamondNames) if both_dias else self.Analysis.DiamondName
+        dia_str = ', '.join(self.Analysis.Run.DUTNames) if both_dias else self.Analysis.DUTName
         return 'Detector{b}: {d} ({tc})'.format(b='s' if both_dias else '', tc=make_tc_str(self.Analysis.TCString), d=dia_str)
 
     def get_rate_string(self):
