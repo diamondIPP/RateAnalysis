@@ -86,16 +86,24 @@ class Bins:
 
     # ----------------------------------------
     # region GENERAL
-    def get_raw(self, evts_per_bin, start_event=0, end_event=None, time_bins=False):
-        evts_per_bin = self.BinSize if evts_per_bin is None else evts_per_bin
-        binning = arange(start_event, self.NEntries if end_event is None else end_event, self.NEntries / (self.NEntries / evts_per_bin), 'd')
-        return [len(binning) - 1, array([self.Run.get_time_at_event(int(ev)) for ev in binning], 'd') if time_bins else binning]
+    def get_raw(self, bin_width=None, start_event=0, end_event=None, vs_time=False, rel_time=False, t_ev=False):
+        return self.get_raw_time(bin_width, rel_time, start_event, end_event, t_ev) if vs_time else self.get_raw_event(bin_width, start_event, end_event)
 
-    def get_raw_time(self, bin_width, rel_time=False, start_time=0, end_time=None):
-        """ returns bins with fixed time width. bin_width in secons """
-        end_time = self.Run.EndTime if end_time is None else end_time
-        bins = arange(self.Run.StartTime + start_time, end_time, bin_width)
-        bins = concatenate((bins, [end_time] if bins[-1] != end_time else []))
+    def get_raw_event(self, bin_width, start_event=0, end_event=None):
+        bin_width = self.BinSize if bin_width is None else bin_width
+        bins = arange(start_event, self.NEntries if end_event is None else end_event, bin_width, 'd')
+        bins = concatenate((bins, [self.NEntries] if bins[-1] != self.NEntries and self.NEntries - bins[-1] > bin_width / 4 else []))
+        return [bins.size - 1, bins]
+
+    def get_raw_time(self, bin_width, rel_time=False, start_time=0, end_time=None, events=False):
+        """ returns bins with fixed time width. bin_width in seconds """
+        if events:
+            ev_bins = self.get_raw_event(bin_width, start_time, end_time)[1]
+            bins = array([self.Run.get_time_at_event(int(ev)) for ev in ev_bins], 'd')
+        else:
+            end_time = self.Run.EndTime if end_time is None else end_time
+            bins = arange(self.Run.StartTime + start_time, end_time, bin_width)
+            bins = concatenate((bins, [end_time] if bins[-1] != end_time else []))
         return [bins.size - 1, bins - (self.Run.StartTime if rel_time else 0)]
 
     def get(self, bin_width=None, vs_time=False):
