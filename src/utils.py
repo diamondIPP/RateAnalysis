@@ -66,7 +66,7 @@ def log_info(msg, next_line=True, blank_lines=0, prnt=True):
     t1 = time()
     if prnt:
         t = datetime.now().strftime('%H:%M:%S')
-        print '{bl}{head} {t} --> {msg}'.format(head=colored('INFO:', 'cyan', attrs=['dark']), t=t, msg=msg, bl='\n' * blank_lines),
+        print '{bl}\r{head} {t} --> {msg}'.format(head=colored('INFO:', 'cyan', attrs=['dark']), t=t, msg=msg, bl='\n' * blank_lines),
         stdout.flush()
         if next_line:
             print
@@ -379,10 +379,8 @@ def isfloat(string):
 
 def isint(x):
     try:
-        a = float(x)
-        b = int(a)
-        return a == b
-    except ValueError:
+        return float(x) == int(x)
+    except (ValueError, TypeError):
         return False
 
 
@@ -617,13 +615,12 @@ def find_graph_margins(graphs):
 
 def load_root_files(sel, load=True):
 
-    runs = sel.get_selected_runs()
     threads = {}
-    for run in runs:
+    for run in sel.get_selected_runs():
         thread = MyThread(sel, run, load)
         thread.start()
         threads[run] = thread
-    while any(thread.isAlive() for thread in threads.itervalues()) and load:
+    while any([thread.isAlive() for thread in threads.itervalues()]) and load:
         sleep(.1)
     if load:
         pool = Pool(len(threads))
@@ -760,15 +757,15 @@ def init_argparser(run=None, tc=None, dia=False, tree=False, verbose=False, coll
     return p if return_parser else p.parse_args()
 
 
-def run_selector(run, tc, tree, verbose):
+def run_selector(run, tc, tree, t_vec, verbose):
     from run import Run
     from pixel_run import PixelRun
     from pad_run import PadRun
     dummy = Run(run, tc, tree=False)
     if dummy.get_type() == 'pad':
-        return PadRun(run, tc, tree, verbose=verbose)
+        return PadRun(run, tc, tree, t_vec, verbose)
     elif dummy.get_type() == 'pixel':
-        return PixelRun(run, tc, tree, verbose=verbose)
+        return PixelRun(run, tc, tree, t_vec, verbose)
     critical('wrong run type: has to be in [pad, pixel]')
 
 
