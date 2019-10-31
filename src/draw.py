@@ -613,6 +613,19 @@ def format_frame(frame):
 # ----------------------------------------
 
 
+def set_2d_ranges(h, dx, dy):
+    # find centers in x and y
+    xmid, ymid = [(p.GetBinCenter(p.FindFirstBinAbove(0)) + p.GetBinCenter(p.FindLastBinAbove(0))) / 2 for p in [h.ProjectionX(), h.ProjectionY()]]
+    format_histo(h, x_range=[xmid - dx, xmid + dx], y_range=[ymid - dy, ymid + dx])
+
+
+def adapt_z_range(h, n_sigma=2):
+    values = get_2d_hist_vec(h)
+    m, s = mean_sigma(values[5:-5])
+    z_range = [min(values).n, .8 * max(values).n] if s > m else [m - n_sigma * s, m + n_sigma * s]
+    format_histo(h, z_range=z_range)
+
+
 def fix_chi2(g, prec=.01, show=True):
     it = 0
     error = 2
@@ -669,6 +682,15 @@ def get_graph_vecs(g):
     x = array([make_ufloat([g.GetX()[i], g.GetEX()[i]]) for i in xrange(n)]) if 'Error' in g.ClassName() else array([make_ufloat(g.GetX()[i]) for i in xrange(n)])
     y = array([make_ufloat([g.GetY()[i], g.GetEY()[i]]) for i in xrange(n)]) if 'Error' in g.ClassName() else array([make_ufloat(g.GetY()[i]) for i in xrange(n)])
     return x, y
+
+
+def get_hist_vec(p):
+    return array([make_ufloat([p.GetBinContent(ibin), p.GetBinError(ibin)]) for ibin in xrange(1, p.GetNbinsX() + 1)])
+
+
+def get_2d_hist_vec(h):
+    xbins, ybins = xrange(1, h.GetNbinsX() + 1), xrange(1, h.GetNbinsY() + 1)
+    return array([make_ufloat([h.GetBinContent(xbin, ybin), h.GetBinError(xbin, ybin)]) for xbin in xbins for ybin in ybins if h.GetBinContent(xbin, ybin)])
 
 
 def scale_multigraph(mg, val=1, to_low_flux=False):
