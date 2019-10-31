@@ -411,11 +411,11 @@ class Cut:
         return
 
     @staticmethod
-    def get_track_var(num, mode, scale=1):
-        return 'dia_track_{m}_local[{n}]*{s}'.format(m=mode, n=num, s=scale)
+    def get_track_var(num, mode, mm=False):
+        return 'dia_track_{m}_local[{n}]{s}'.format(m=mode, n=num, s='*10' if mm else '')
 
-    def get_track_vars(self, num, scale=1):
-        return (self.get_track_var(num, v, scale) for v in ['y', 'x'])
+    def get_track_vars(self, num, mm=False):
+        return (self.get_track_var(num, v, mm) for v in ['y', 'x'])
 
     def generate_consecutive_cuts(self):
         cuts = OrderedDict([('raw', TCut('0', ''))])
