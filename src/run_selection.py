@@ -1,3 +1,4 @@
+from utils import *
 from ConfigParser import ConfigParser
 from glob import glob
 from itertools import chain
@@ -9,7 +10,6 @@ from os import system
 from os.path import join, basename
 
 from run import Run
-from utils import *
 
 
 class RunSelection:
@@ -336,29 +336,31 @@ class RunSelection:
 
     def show_run_plans(self, diamond=None):
         """ Print a list of all run plans from the current test campaign to the console. """
+        diamond = None if diamond == 'None' else int(diamond) if isint(diamond) else diamond
         old_selection = deepcopy(self.Selection)
-        print 'RUN PLAN FOR TESTCAMPAIGN: {tc}\n'.format(tc=self.TCString)
+        print_banner('RUN PLANS FOR {tc}'.format(tc=tc_to_str(self.TCString, short=False).upper()), color='yellow')
         header = ['Nr.', 'Run Type', 'Range', 'Excluded']
-        max_dias = self.get_max_dias()
-        for i in xrange(1, max_dias + 1):
+        dia_nrs = arange(1, self.get_max_dias() + 1) if diamond is None else [diamond if isint(diamond) else 1]
+        for i in dia_nrs:
             header += ['Dia{}'.format(i), 'HV{} [V]'.format(i).rjust(13)]
         rows = []
         for plan, data in sorted(self.RunPlan.iteritems()):
-            self.unselect_all_runs()
+            self.unselect_all_runs(prnt=False)
             self.select_runs_from_runplan(plan)
-            dias = self.get_rp_diamond_names()
-            if diamond is not None and diamond not in dias:
-                continue
+            diamond_names = self.get_rp_diamond_names()
+            if diamond is not None:
+                if isint(diamond) and diamond > len(diamond_names) or not isint(diamond) and diamond not in diamond_names:
+                    continue
+            dias = diamond_names if diamond is None else [diamond_names[diamond - 1]] if isint(diamond) else [diamond]
             runs = data['runs']
             run_string = '{min:3d} - {max:3d}'.format(min=runs[0], max=runs[-1])
             row = [plan, data['type'], run_string, self.get_missing_runs(runs)]
             for dia, bias in zip(dias, self.get_rp_voltages()):
                 row += [dia, bias]
-            if len(dias) < max_dias:
-                row += ['', ''] * (max_dias - len(dias))
+            if len(dias) < len(dia_nrs):
+                row += ['', ''] * (len(dia_nrs) - len(dias))
             rows.append(row)
         print_table(rows, header)
-
         self.Selection = old_selection
 
     def get_max_dias(self):
@@ -366,7 +368,7 @@ class RunSelection:
 
     def get_rp_diamond_names(self):
         dias = [self.get_runinfo_values('dia{0}'.format(i), sel=True) for i in xrange(1, self.Run.get_n_diamonds(self.get_selected_runs()[0]) + 1)]
-        if any(len(dia) > 1 for dia in dias):
+        if any([len(dia) > 1 for dia in dias]):
             log_warning('RunPlan {rp} has more than one diamond'.format(rp=self.SelectedRunplan))
         return [dia[0] for dia in dias]
 
@@ -591,18 +593,20 @@ def verify(msg):
 
 if __name__ == '__main__':
 
-    p = init_argparser(run=None, tc=None, dia=1, collection=True, return_parser=True, verbose=True)
+    p = init_argparser(run=None, tc=None, dia=None, collection=True, return_parser=True, verbose=True)
     p.add_argument('-s', '--show', action='store_true', help='activate show')
     p.add_argument('-ms', '--master_selection', action='store_true', help='run master selection')
+    p.add_argument('-d', '--diamond', nargs='?', default=None, help='diamond for show runplans')
     args = p.parse_args()
 
+    print type(args.dia), type(args.diamond)
     z = RunSelection(args.testcampaign, args.runplan, args.dia, args.verbose)
     if args.show:
-        if args.RunPlan is not None:
+        if args.runplan is not None:
             print_banner(z.TCString)
-            z.select_runs_from_runplan(args.RunPlan)
+            z.select_runs_from_runplan(args.runplan)
             z.show_selected_runs()
         else:
-            z.show_run_plans(diamond=args.dia)
+            z.show_run_plans(diamond=args.diamond)
     if args.master_selection:
         z.master_selection()
