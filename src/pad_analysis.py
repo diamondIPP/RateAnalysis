@@ -36,10 +36,10 @@ class PadAnalysis(DUTAnalyis):
             self.IntegralNames = self.get_integral_names()
             self.IntegralRegions = self.load_regions()
             self.SignalRegionName = self.IntegralRegions['signal']
-            self.SignalRegion = self.Run.IntegralRegions[self.DiamondNumber - 1][self.SignalRegionName]
+            self.SignalRegion = self.Run.IntegralRegions[self.DUTNumber - 1][self.SignalRegionName]
             self.PedestalRegion = self.IntegralRegions['pedestal']
             self.PeakIntegralName = self.load_peak_integral()
-            self.PeakIntegral = self.Run.PeakIntegrals[self.DiamondNumber - 1][self.PeakIntegralName]
+            self.PeakIntegral = self.Run.PeakIntegrals[self.DUTNumber - 1][self.PeakIntegralName]
 
             # Signal Names
             self.SignalDefinition = '({pol}*TimeIntegralValues[{num}])'
@@ -103,13 +103,13 @@ class PadAnalysis(DUTAnalyis):
         for name in ['signal', 'pedestal', 'pulser']:
             option = '{} region'.format(name)
             region = '{name}_{region}'.format(name=name, region=self.Config.get('SIGNAL', option)) if option in self.Config.options('SIGNAL') else ''
-            regions = [reg for reg in self.Run.IntegralRegions[self.DiamondNumber - 1] if reg.startswith(name)]
+            regions = [reg for reg in self.Run.IntegralRegions[self.DUTNumber - 1] if reg.startswith(name)]
             all_regions[name] = region if region in regions else regions[0]
         return all_regions
 
     def load_peak_integral(self):
         peak_int = 'PeakIntegral{}'.format(self.Config.get('SIGNAL', 'peak integral'))
-        return peak_int if peak_int in self.Run.PeakIntegrals[self.DiamondNumber - 1] else self.Run.PeakIntegrals[self.DiamondNumber - 1].keys()[0]
+        return peak_int if peak_int in self.Run.PeakIntegrals[self.DUTNumber - 1] else self.Run.PeakIntegrals[self.DUTNumber - 1].keys()[0]
 
     def get_signal_number(self, region=None, peak_integral=None, sig_type='signal'):
         region = self.IntegralRegions[sig_type] if region is None else self.make_region(sig_type, region)
@@ -122,7 +122,7 @@ class PadAnalysis(DUTAnalyis):
         return self.SignalDefinition.format(pol=self.Polarity, num=num)
 
     def get_signal_region(self, name=None):
-        return self.Run.IntegralRegions[self.DiamondNumber - 1][self.SignalRegionName if name is None else 'signal_{}'.format(name)]
+        return self.Run.IntegralRegions[self.DUTNumber - 1][self.SignalRegionName if name is None else 'signal_{}'.format(name)]
 
     def set_signal_definitions(self, use_time=True, sig_region=None, peak_int=None):
         signal = 'TimeIntegralValues' if use_time else 'IntegralValues'
@@ -148,13 +148,13 @@ class PadAnalysis(DUTAnalyis):
     # region GET
 
     def get_attenuator(self):
-        return self.Run.get_attenuators()[self.DiamondNumber - 1] if self.Run.get_attenuators() else None
+        return self.Run.get_attenuators()[self.DUTNumber - 1] if self.Run.get_attenuators() else None
 
     def get_sm_data(self, cut=None, fid=False):
         """ :return: signal map data as numpy array [[x], [y], [ph]] with units [[mm], [mm], [mV]]
             :param cut: applies all cuts if None is provided.
             :param fid: return only values within the fiducial region set in the AnalysisConfig.ini"""
-        x_var, y_var = (self.Cut.get_track_var(self.DiamondNumber - 1, v) for v in ['x', 'y'])
+        x_var, y_var = (self.Cut.get_track_var(self.DUTNumber - 1, v) for v in ['x', 'y'])
         cut = self.Cut.generate_special_cut(excluded=['fiducial'], prnt=False) if not fid and cut is None else cut
         cut = self.Cut.AllCut if cut is None else TCut(cut)
         n = self.Tree.Draw('{x}*10:{y}*10:{z}'.format(z=self.generate_signal_name(), x=x_var, y=y_var), cut, 'goff')  # *10 to get values in mm
@@ -171,7 +171,7 @@ class PadAnalysis(DUTAnalyis):
         cut_str = self.Cut.AllCut if cut is None else TCut(cut)
         correction = '' if not corr else '_eventwise'
         suffix = '{bins}{cor}_{reg}{c}'.format(bins=self.Bins.BinSize if bin_size is None else bin_size, cor=correction, reg=self.get_short_regint(sig), c=cut_str.GetName())
-        picklepath = self.make_pickle_path('Ph_fit', 'Fit', self.RunNumber, self.DiamondNumber, suf=suffix)
+        picklepath = self.make_pickle_path('Ph_fit', 'Fit', self.RunNumber, self.DUTNumber, suf=suffix)
 
         def f():
             p, fit_pars = self.draw_pulse_height(bin_size=bin_size, cut=cut, corr=corr, show=False, save=False, redo=redo)
@@ -199,8 +199,8 @@ class PadAnalysis(DUTAnalyis):
     def draw_efficiency_map(self, res=None, cut='all', show=True):
         cut_string = TCut(cut) + self.Cut.CutStrings['tracks']
         cut_string = self.Cut.generate_special_cut(excluded=['fiducial']) if cut == 'all' else cut_string
-        p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DiamondName), *self.Bins.get_global(res, mm=True))
-        y, x = self.Cut.get_track_vars(self.DiamondNumber - 1, scale=10)
+        p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DUTName), *self.Bins.get_global(res, mm=True))
+        y, x = self.Cut.get_track_vars(self.DUTNumber - 1, scale=10)
         thresh = self.Pedestal.get_mean() * 4
         self.Tree.Draw('({s}>{t})*100:{y}:{x}>>p_em'.format(s=self.generate_signal_name(), x=x, y=y, t=thresh), cut_string, 'goff')
         self.format_statbox(n_entries=4, entries=True, x=.81)
@@ -228,16 +228,16 @@ class PadAnalysis(DUTAnalyis):
         cut = self.Cut.generate_special_cut(excluded=['fiducial'], prnt=prnt) if not fid and cut is None else cut
         cut = self.Cut.AllCut if cut is None else TCut(cut)
         suf = '{c}_{ch}_{res}'.format(c=cut.GetName(), ch=self.Cut.CutConfig['chi2X'], res=res if bins is None else '{}x{}'.format(bins[0], bins[2]))
-        pickle_path = self.make_pickle_path('SignalMaps', 'Hit' if hitmap else 'Signal', run=self.RunNumber, ch=self.DiamondNumber, suf=suf)
+        pickle_path = self.make_pickle_path('SignalMaps', 'Hit' if hitmap else 'Signal', run=self.RunNumber, ch=self.DUTNumber, suf=suf)
 
         def func():
             set_root_output(0)
             name = 'h_hm' if hitmap else 'h_sm'
             atts = [name, 'Diamond Hit Map' if hitmap else 'Signal Map'] + (self.Bins.get_global(res, mm=True) if bins is None else bins)
             h1 = TH2I(*atts) if hitmap else TProfile2D(*atts)
-            self.info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.DiamondName, run=self.RunNumber, mode='hit' if hitmap else 'signal '), prnt=prnt)
+            self.info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.DUTName, run=self.RunNumber, mode='hit' if hitmap else 'signal '), prnt=prnt)
             sig = self.generate_signal_name()
-            x_var, y_var = (self.Cut.get_track_var(self.DiamondNumber - 1, v) for v in ['x', 'y'])
+            x_var, y_var = (self.Cut.get_track_var(self.DUTNumber - 1, v) for v in ['x', 'y'])
             self.Tree.Draw('{z}{y}*10:{x}*10>>{h}'.format(z=sig + ':' if not hitmap else '', x=x_var, y=y_var, h=name), cut, 'goff')
             return h1
 
@@ -257,7 +257,7 @@ class PadAnalysis(DUTAnalyis):
     def split_signal_map(self, m=2, n=2, grid=True, redo=False, show=True):
         fid_cut = array(self.Cut.CutConfig['fiducial']) * 10
         if not fid_cut.size:
-            log_critical('fiducial cut not defined for {}'.format(self.DiamondName))
+            log_critical('fiducial cut not defined for {}'.format(self.DUTName))
         x_bins = linspace(fid_cut[0], fid_cut[1], m + 1)
         y_bins = linspace(fid_cut[2], fid_cut[3], n + 1)
         bins = [m, x_bins, n, y_bins]
@@ -428,7 +428,7 @@ class PadAnalysis(DUTAnalyis):
         cut_str = self.Cut.AllCut if cut is None else TCut(cut)
         bin_size = self.Bins.BinSize if bin_size is None else bin_size
         suffix = '{bins}{cor}_{reg}{c}'.format(bins=bin_size, cor=correction, reg=self.get_short_regint(sig), c=cut_str.GetName())
-        picklepath = self.make_pickle_path('Ph_fit', None, self.RunNumber, self.DiamondNumber, suf=suffix)
+        picklepath = self.make_pickle_path('Ph_fit', None, self.RunNumber, self.DUTNumber, suf=suffix)
 
         def func():
             signal = self.generate_signal_name(sig, corr)
@@ -519,10 +519,10 @@ class PadAnalysis(DUTAnalyis):
                                  start=None, x_range=None, redo=False, prnt=True, save=True, normalise=None, sumw2=False):
         cut = self.AllCuts if cut is None else TCut(cut)
         suffix = '{b}_{c}_{cut}'.format(b=bin_width, c=int(evnt_corr), cut=cut.GetName())
-        pickle_path = self.make_pickle_path('PulseHeight', 'Histo', run=self.RunNumber, ch=self.DiamondNumber, suf=suffix)
+        pickle_path = self.make_pickle_path('PulseHeight', 'Histo', run=self.RunNumber, ch=self.DUTNumber, suf=suffix)
 
         def func():
-            self.info('Drawing signal distribution for run {run} and {dia}...'.format(run=self.RunNumber, dia=self.DiamondName), prnt=prnt)
+            self.info('Drawing signal distribution for run {run} and {dia}...'.format(run=self.RunNumber, dia=self.DUTName), prnt=prnt)
             set_root_output(False)
             h1 = TH1F('h_sd', 'Pulse Height {s}'.format(s='with Pedestal Correction' if evnt_corr else ''), *self.Bins.get_pad_ph(bin_width))
             sig_name = self.generate_signal_name(sig, evnt_corr, off_corr, False, cut)
@@ -590,10 +590,10 @@ class PadAnalysis(DUTAnalyis):
         self.Objects.append([h, h_sig, h_ped1, h_ped2, c])
 
     def show_bucket_numbers(self, show=True):
-        pickle_path = self.PickleDir + 'Cuts/BucketEvents_{tc}_{run}_{dia}.pickle'.format(tc=self.TestCampaign, run=self.RunNumber, dia=self.DiamondName)
+        pickle_path = self.PickleDir + 'Cuts/BucketEvents_{tc}_{run}_{dia}.pickle'.format(tc=self.TestCampaign, run=self.RunNumber, dia=self.DUTName)
 
         def func():
-            print('getting number of bucket events for run {run} and {dia}...'.format(run=self.RunNumber, dia=self.DiamondName))
+            print('getting number of bucket events for run {run} and {dia}...'.format(run=self.RunNumber, dia=self.DUTName))
             n_new = self.Tree.Draw('1', '!({buc})&&{pul}'.format(buc=self.Cut.CutStrings['bucket'], pul=self.Cut.CutStrings['pulser']), 'goff')
             n_old = self.Tree.Draw('1', '!({buc})&&{pul}'.format(buc=self.Cut.CutStrings['old_bucket'], pul=self.Cut.CutStrings['pulser']), 'goff')
             if show:
@@ -662,7 +662,7 @@ class PadAnalysis(DUTAnalyis):
         self.reset_colors()
 
     def show_bucket_means(self, show=True, plot_histos=True):
-        pickle_path = self.PickleDir + 'Cuts/BucketMeans_{tc}_{run}_{dia}.pickle'.format(tc=self.TestCampaign, run=self.RunNumber, dia=self.DiamondName)
+        pickle_path = self.PickleDir + 'Cuts/BucketMeans_{tc}_{run}_{dia}.pickle'.format(tc=self.TestCampaign, run=self.RunNumber, dia=self.DUTName)
 
         def func():
             gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
@@ -837,8 +837,8 @@ class PadAnalysis(DUTAnalyis):
             return
         x, y, lx, ly = values
         cut = TCutG('det{}'.format(scale), 5, array([x, x, x + lx, x + lx, x], 'd') * scale, array([y, y + ly, y + ly, y, y], 'd') * scale)
-        cut.SetVarX(self.Cut.get_track_var(self.DiamondNumber - 1, 'x'))
-        cut.SetVarY(self.Cut.get_track_var(self.DiamondNumber - 1, 'y'))
+        cut.SetVarX(self.Cut.get_track_var(self.DUTNumber - 1, 'x'))
+        cut.SetVarY(self.Cut.get_track_var(self.DUTNumber - 1, 'y'))
         self.Objects.append(cut)
         cut.SetLineWidth(3)
         cut.Draw()
@@ -1166,9 +1166,9 @@ class PadAnalysis(DUTAnalyis):
     # region MISCELLANEOUS
     def get_all_signal_names(self, sig_type='signal'):
         names = OrderedDict()
-        for region in self.Run.IntegralRegions[self.DiamondNumber - 1]:
+        for region in self.Run.IntegralRegions[self.DUTNumber - 1]:
             if sig_type in region:
-                for integral in self.Run.PeakIntegrals[self.DiamondNumber - 1]:
+                for integral in self.Run.PeakIntegrals[self.DUTNumber - 1]:
                     name = 'ch{ch}_{reg}_{int}'.format(ch=self.Channel, reg=region, int=integral)
                     num = self.IntegralNames.index(name)
                     reg = region.replace(sig_type, '').strip('_') + integral.replace('PeakIntegral', '')
@@ -1178,7 +1178,7 @@ class PadAnalysis(DUTAnalyis):
     def print_information(self, header=True):
         header = ['Run', 'Type', 'Diamond', 'HV [V]', 'Region', 'Integral'] if header else None
         peak_int = '{} ({})'.format(self.PeakIntegral, remove_letters(self.PeakIntegralName))
-        rows = [[self.RunNumber, self.Run.RunInfo['runtype'], self.DiamondName, self.Bias, '{} ({})'.format(self.SignalRegion, self.SignalRegionName.split('_')[-1]), peak_int]]
+        rows = [[self.RunNumber, self.Run.RunInfo['runtype'], self.DUTName, self.Bias, '{} ({})'.format(self.SignalRegion, self.SignalRegionName.split('_')[-1]), peak_int]]
         print_table(rows, header)
 
     def show_integral_names(self):
@@ -1190,7 +1190,7 @@ class PadAnalysis(DUTAnalyis):
 
     def draw_mpv_fwhm(self, histo=None, bins=10, show=True, redo=False):
 
-        pickle_path = self.make_pickle_path('Signal', 'FWHMMPV', self.RunNumber, ch=self.DiamondNumber)
+        pickle_path = self.make_pickle_path('Signal', 'FWHMMPV', self.RunNumber, ch=self.DUTNumber)
 
         def f(h=histo):
             fwhm_gauss = self.Pedestal.get_fwhm() if histo is None else 0
@@ -1228,7 +1228,7 @@ class PadAnalysis(DUTAnalyis):
         return do_pickle(pickle_path, f, redo=redo or show) if histo is None else f()
 
     def get_peak_integral(self, name):
-        return self.Run.PeakIntegrals[self.DiamondNumber - 1]['PeakIntegral{}'.format(name) if 'Peak' not in str(name) else name]
+        return self.Run.PeakIntegrals[self.DUTNumber - 1]['PeakIntegral{}'.format(name) if 'Peak' not in str(name) else name]
 
     @staticmethod
     def make_region(signal, region=''):

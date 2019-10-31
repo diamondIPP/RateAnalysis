@@ -13,8 +13,8 @@ class DUTAnalyis(TelecopeAnalysis):
 
         TelecopeAnalysis.__init__(self, run_number, test_campaign, tree, t_vec, verbose, prnt)
 
-        self.DUTNumber = self.load_diamond_nr(diamond_nr)
-        self.DUTName = self.Run.DiamondNames[diamond_nr - 1]
+        self.DUTNumber = self.load_dut_nr(diamond_nr)
+        self.DUTName = self.Run.DUTNames[diamond_nr - 1]
         self.Bias = self.Run.Bias[diamond_nr - 1]
 
         self.update_config()
@@ -25,10 +25,10 @@ class DUTAnalyis(TelecopeAnalysis):
     def update_config(self):
         pass
 
-    def load_diamond_nr(self, diamond_nr):
-        if diamond_nr not in self.Run.DiamondNumbers:
-            critical('wrong diamond number "{}". The following diamond numbers are valid: {}'.format(diamond_nr, self.Run.DiamondNumbers))
-        return diamond_nr
+    def load_dut_nr(self, dut_nr):
+        if dut_nr not in self.Run.DUTNumbers:
+            critical('wrong diamond number "{}". The following diamond numbers are valid: {}'.format(dut_nr, self.Run.DUTNumbers))
+        return dut_nr
 
     def draw_current(self, relative_time=False, averaging=1, show=True, v_range=None):
         self.Currents.draw_indep_graphs(rel_time=relative_time, averaging=averaging, show=show, v_range=v_range)
