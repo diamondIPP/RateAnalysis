@@ -247,7 +247,7 @@ class PadAnalysis(DUTAnalyis):
 
     def draw_pulse_height_vs_binsize(self, show=True):
         bin_sizes = [50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
-        # pulse_heights = [make_ufloat(self.draw_pulse_height(binning=bin_size, show=False)[1], par=0) for bin_size in bin_sizes]
+        # pulse_heights = [make_ufloat(self.draw_pulse_height(bin_width=bin_size, show=False)[1], par=0) for bin_size in bin_sizes]
         pulse_heights = [make_ufloat(self.draw_ph(bin_size=bin_size, show=False)[1], par=0) for bin_size in bin_sizes]
         g = self.make_tgrapherrors('gdbs', 'Pulse Height vs Number of Events per Bin', x=bin_sizes, y=pulse_heights)
         format_histo(g, x_tit='Number of Events per Bin', y_tit='Pulse Height [mV]', y_off=1.2)
@@ -325,14 +325,6 @@ class PadAnalysis(DUTAnalyis):
         fit = gr.Fit('pol0', 'qs')
         self.draw_histo(gr, draw_opt='ap', show=show)
         return gr, FitRes(fit)
-
-    def draw_ph_pull(self, event_bin_width=None, fit=True, bin_width=.5, save=True, show=True):
-        p = self.draw_pulse_height(event_bin_width, show=False)[0]
-        self.format_statbox(all_stat=True, fit=fit)
-        h = get_pull(p, 'Signal Bin{0} Distribution'.format(self.Bins.BinSize), bins=self.Bins.get_pad_ph(bin_width=bin_width), fit=fit)
-        format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.5, fill_color=self.FillColor, draw_first=True)
-        self.save_histo(h, 'SignalBin{0}Disto'.format(self.Bins.BinSize), save=save, lm=.12, show=show)
-        return h
 
     def show_ph_overview(self, binning=None):
         self.draw_pulse_height(bin_size=binning, show=False)

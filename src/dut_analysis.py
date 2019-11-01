@@ -66,6 +66,20 @@ class DUTAnalyis(TelecopeAnalysis):
     def draw_pulse_height(self, *args, **kwargs):
         pass
 
+    def draw_ph_pull(self, *args, **kwargs):
+        return self._draw_ph_pull(*args, **kwargs)
+
+    def _draw_ph_pull(self, event_bin_width=None, fit=True, bin_width=.5, bins=None, show=True, save=True):
+        p = self.draw_pulse_height(event_bin_width, show=False)[0]
+        self.format_statbox(all_stat=True, fit=fit)
+        h = get_pull(p, 'Signal Bin{0} Distribution'.format(self.Bins.BinSize), bins=self.Bins.get_pad_ph(bin_width=bin_width) if bins is None else bins, fit=fit)
+        format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.5, fill_color=self.FillColor, draw_first=True)
+        self.save_histo(h, 'SignalBin{0}Disto'.format(self.Bins.BinSize), save=save, lm=.12, show=show)
+        return h
+
+    def draw_signal_distribution(self, *args, **kwargs):
+        pass
+
     def draw_fid_cut(self, scale=1):
         self.Cut.draw_fid_cut(scale)
 

@@ -228,12 +228,7 @@ class PixAnalysis(DUTAnalyis):
         return h, FitRes(fit_par)
 
     def draw_ph_pull(self, event_bin_width=None, fit=True, bin_width=100, save=True, show=True, adc=False):
-        p = self.draw_pulse_height(bin_size=event_bin_width, show=False, adc=adc)[0]
-        self.format_statbox(all_stat=True, fit=fit)
-        h = get_pull(p, 'Signal Bin{0} Distribution'.format(self.Bins.BinSize), bins=self.Bins.get_ph(adc=adc, bin_width=bin_width), fit=fit)
-        format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.5, fill_color=self.FillColor)
-        self.save_histo(h, 'SignalBin{0}Disto'.format(self.Bins.BinSize), save=save, lm=.12, show=show)
-        return h
+        return self._draw_ph_pull(event_bin_width, fit, bin_width, bins=self.Bins.get_ph(adc=adc, bin_width=bin_width), show=show, save=save)
 
     def draw_adc_vs_event(self, cut=None, show=True):
         return self.draw_pulse_height(cut, show=show, adc=True)
