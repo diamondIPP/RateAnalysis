@@ -678,10 +678,15 @@ def load_resolution():
 
 
 def get_graph_vecs(g):
-    n = g.GetN()
-    x = array([make_ufloat([g.GetX()[i], g.GetEX()[i]]) for i in xrange(n)]) if 'Error' in g.ClassName() else array([make_ufloat(g.GetX()[i]) for i in xrange(n)])
-    y = array([make_ufloat([g.GetY()[i], g.GetEY()[i]]) for i in xrange(n)]) if 'Error' in g.ClassName() else array([make_ufloat(g.GetY()[i]) for i in xrange(n)])
-    return x, y
+    return get_graph_x(g), get_graph_y(g)
+
+
+def get_graph_x(g):
+    return array([make_ufloat([g.GetX()[i], g.GetEX()[i]]) for i in xrange(g.GetN())]) if 'Error' in g.ClassName() else array([make_ufloat(g.GetX()[i]) for i in xrange(g.GetN())])
+
+
+def get_graph_y(g):
+    return array([make_ufloat([g.GetY()[i], g.GetEY()[i]]) for i in xrange(g.GetN())]) if 'Error' in g.ClassName() else array([make_ufloat(g.GetY()[i]) for i in xrange(g.GetN())])
 
 
 def get_hist_vec(p):
@@ -716,10 +721,10 @@ def scale_graph(gr, scale=None, val=1, to_low_flux=False):
 
 
 def get_pull(h, name, bins, fit=True):
+    set_root_output(False)
     h_out = TH1F('hp{}'.format(name[:3]), name, *bins)
     values = array([h.GetBinContent(ibin + 1) for ibin in xrange(h.GetNbinsX())], 'd')
     h_out.FillN(values.size, values, full(values.size, 1, 'd'))
-    set_root_output(False)
     h_out.Fit('gaus', 'q') if fit else do_nothing()
     format_histo(h_out, x_range=increased_range([values.min(), values.max()], .1, .3))
     return h_out
