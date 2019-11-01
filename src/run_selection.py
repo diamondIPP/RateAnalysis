@@ -216,6 +216,9 @@ class RunSelection:
         self.Run.reload_run_config(run_number)
         return self.Run.get_type()
 
+    def get_selected_type(self):
+        return self.get_type(self.get_selected_runs()[0])
+
     def get_selected_fluxes(self):
         return array([self.get_flux(run) for run in self.get_selected_runs()])
 
