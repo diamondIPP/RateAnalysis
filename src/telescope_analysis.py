@@ -349,18 +349,27 @@ class TelecopeAnalysis(Analysis):
 
     # =================================================================================================================
     # region RATE
-
-    def draw_beam_current(self, cut='', rel_t=True, show=True):
+    def draw_beam_current_prof(self, bin_width=30, cut='', rel_t=True, show=True, save=True):
         if not self.has_branch('beam_current'):
-            log_warning('Branch "beam_current" does not exist!')
-            return
-        n = self.Tree.Draw('beam_current/1000.:time/1000.>>test', TCut('beam_current < 2500') + TCut(cut), 'goff')
-        current = [self.Tree.GetV1()[i] for i in xrange(n)]
-        t = [self.Tree.GetV2()[i] for i in xrange(n)]
-        g = self.make_tgrapherrors('gbc', 'Beam Current', x=t + [t[-1]], y=current + [0])
+            return log_warning('Branch "beam_current" does not exist!')
+        set_root_output(False)
+        p = TProfile('pbc', 'Beam Current Profile', *self.Bins.get_raw_time(bin_width))
+        self.Tree.Draw('beam_current / 1000.:time / 1000.>>pbc', TCut('beam_current < 2500') + TCut(cut), 'goff')
+        self.format_statbox(all_stat=True, y=.4)
+        format_histo(p, x_tit='Time [hh:mm]', y_tit='Beam Current [mA]', fill_color=self.FillColor, markersize=.4, t_ax_off=self.Run.StartTime if rel_t else 0, y_range=[0, p.GetMaximum() * 1.1])
+        c = self.draw_histo(p, draw_opt='hist', lm=.08, x=1.5, y=.75, ind=None, show=show)
+        self.save_histo(p, 'BeamCurrentProf', canvas=c, draw_opt='esame', save=save)
+        return p
+
+    def draw_beam_current(self, cut='', rel_t=True, show=True, save=True):
+        if not self.has_branch('beam_current'):
+            return log_warning('Branch "beam_current" does not exist!')
+        n = self.Tree.Draw('beam_current/1000.:time/1000.', TCut('beam_current < 2500') + TCut(cut), 'goff')
+        current, t = self.Run.get_root_vecs(n, 2)
+        g = self.make_tgrapherrors('gbc', 'Beam Current', x=concatenate([t, [t[-1]]]), y=concatenate([current, [0]]))
         format_histo(g, x_tit='Time [hh:mm]', y_tit='Beam Current [mA]', fill_color=self.FillColor, markersize=.4, t_ax_off=self.Run.StartTime if rel_t else 0,
                      x_range=[g.GetX()[0], g.GetX()[n]])
-        self.save_tel_histo(g, 'BeamCurrent', draw_opt='afp', lm=.08, x_fac=1.5, y_fac=.75, ind=None, show=show)
+        self.save_tel_histo(g, 'BeamCurrent', draw_opt='afp', lm=.08, x_fac=1.5, y_fac=.75, ind=None, show=show, save=save)
         return g
 
     def draw_rate(self, plane=1, flux=False, rel_t=True, show=True):
