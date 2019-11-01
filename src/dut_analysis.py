@@ -63,7 +63,7 @@ class DUTAnalyis(TelecopeAnalysis):
     # endregion GET
     # ----------------------------------------
 
-    def draw_pulse_height(self):
+    def draw_pulse_height(self, *args, **kwargs):
         pass
 
     def draw_fid_cut(self, scale=1):
