@@ -62,7 +62,7 @@ class PadAnalysis(DUTAnalyis):
 
             self.Timing.reload_cut()
 
-        self.print_finished()
+        self.print_finished(prnt=prnt)
 
     def draw_timing(self):
         self.Timing.draw_all()
@@ -159,7 +159,7 @@ class PadAnalysis(DUTAnalyis):
 
     def get_pulse_height(self, bin_size=None, cut=None, redo=False, corr=True, sig=None):
         correction = '' if not corr else '_eventwise'
-        suffix = '{bins}{cor}_{c}'.format(bins=self.Bins.BinSize if bin_size is None else bin_size, cor=correction,reg=self.get_short_regint(sig), c=self.Cut(cut).GetName())
+        suffix = '{bins}{cor}_{c}'.format(bins=self.Bins.BinSize if bin_size is None else bin_size, cor=correction ,reg=self.get_short_regint(sig), c=self.Cut(cut).GetName())
         picklepath = self.make_pickle_path('Ph_fit', 'Fit', self.RunNumber, self.DUTNumber, suf=suffix)
 
         def f():

@@ -36,7 +36,7 @@ class PixAnalysis(DUTAnalyis):
             self.Vcals = self.load_vcals()
             self.Points = self.load_calibration_points()
 
-        self.print_finished()
+        self.print_finished(prnt=prnt)
 
     def __del__(self):
         for c in gROOT.GetListOfCanvases():

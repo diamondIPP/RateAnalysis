@@ -96,8 +96,9 @@ class Analysis(Draw):
             run = ' FOR RUN{} {}'.format('PLAN' if 'Coll' in ana_name else '', run) if run is not None else ''
             print_banner('STARTING {} ANALYSIS{} OF {}'.format(ana_name.upper(), run, self.TCString), symbol='~', color='green')
 
-    def print_finished(self):
-        print_banner('Finished Instantiation in {}'.format(get_elapsed_time(self.StartTime)), color='green')
+    def print_finished(self, prnt=True):
+        if prnt:
+            print_banner('Finished Instantiation in {}'.format(get_elapsed_time(self.StartTime)), color='green')
 
     def make_pickle_path(self, sub_dir, name=None, run=None, ch=None, suf=None, camp=None):
         ensure_dir(join(self.PickleDir, sub_dir))
