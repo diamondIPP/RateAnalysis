@@ -7,14 +7,15 @@
 from sys import path
 from os.path import realpath, dirname, join
 path.append(join(dirname(realpath(__file__)), 'src'))
-from utils import *
-from run import Run
+from utils import init_argparser, critical
 
 args = init_argparser(run=139, tc='201810', dia=1, tree=True, verbose=True, collection=True)
+# pargs = init_argparser(run=23, tc='201908', dia=1, tree=True, verbose=True, collection=True)
 
 if not args.collection:
     from pad_analysis import PadAnalysis
     from pix_analysis import PixAnalysis
+    from run import Run
     dummy = Run(args.runplan, args.testcampaign, tree=False)
     if dummy.get_type() == 'pad':
         z = PadAnalysis(args.runplan, args.dia, args.testcampaign, args.tree, None, args.verbose)
@@ -23,5 +24,14 @@ if not args.collection:
     else:
         critical('wrong run type: has to be in [pad, pixel]')
 else:
-    from analysis_collection import AnalysisCollection
-    z = AnalysisCollection(args.runplan, args.dia, args.testcampaign, args.tree, args.verbose)
+    from pad_collection import PadCollection
+    from pix_collection import PixCollection
+    from run_selection import RunSelection
+    dummy = RunSelection(args.testcampaign, args.runplan, args.dia, verbose=False)
+    if dummy.get_selected_type() == 'pad':
+        z = PadCollection(args.runplan, args.dia, args.testcampaign, args.tree, args.verbose)
+    elif dummy.get_selected_type() == 'pixel':
+        z = PixCollection(args.runplan, args.dia, args.testcampaign, args.tree, args.verbose)
+    else:
+        critical('wrong run type: has to be in [pad, pixel]')
+
