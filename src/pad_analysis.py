@@ -3,7 +3,6 @@ from __future__ import print_function
 from dut_analysis import *
 from json import loads
 from ROOT import gRandom, TProfile2D, THStack, Double, Long
-from uncertainties import umath
 
 from CutPad import CutPad
 from Peaks import PeakAnalysis
@@ -996,45 +995,6 @@ class PadAnalysis(DUTAnalyis):
                 print(str(i).zfill(3), name)
     # endregion MISCELLANEOUS
     # ----------------------------------------
-
-    def draw_mpv_fwhm(self, histo=None, bins=10, show=True, redo=False):
-
-        pickle_path = self.make_pickle_path('Signal', 'FWHMMPV', self.RunNumber, ch=self.DUTNumber)
-
-        def f(h=histo):
-            fwhm_gauss = self.Pedestal.get_fwhm() if histo is None else 0
-            h = self.draw_signal_distribution(show=show, normalise=True, sumw2=False, redo=redo) if h is None else h
-            if histo is not None:
-                self.draw_histo(h)
-            sleep(.1)
-            max_bin = h.GetMaximumBin()
-            fit = TF1('fit', 'gaus', 10, 500)
-            h.Fit('fit', 'qs', '', h.GetBinCenter(max_bin - bins), h.GetBinCenter(max_bin + bins))
-            mpv = make_ufloat((fit.GetParameter(1), fit.GetParError(1) + fit.GetParameter(1) * .02))
-            bin_width = h.GetBinWidth(1)
-            half_max = fit(mpv.n) / 2
-            x_fwhm_min, x_fwhm_max = (make_ufloat((h.GetBinCenter(i), bin_width)) for i in [h.FindFirstBinAbove(half_max), h.FindLastBinAbove(half_max)])
-            fwhm_total = x_fwhm_max - x_fwhm_min
-            self.draw_vertical_line(mpv.n, 0, 1e7, style=7, w=2)
-            self.draw_tlatex(mpv.n + 5, .1 * half_max, 'MPV', align=10)
-            self.draw_arrow(x_fwhm_min.n, mpv.n, half_max, half_max, col=2, width=3, opt='<', size=.02)
-            self.draw_arrow(x_fwhm_max.n, mpv.n, half_max, half_max, col=2, width=3, opt='<', size=.02)
-            self.draw_tlatex(x_fwhm_max.n + 5, half_max, 'FWHM', align=12, color=2)
-            if mpv < 2 or fwhm_total < 1:
-                log_warning('Could not determine fwhm or mpv')
-                return None, None, None
-            fwhm = umath.sqrt(fwhm_total ** 2 - fwhm_gauss ** 2)
-            value = fwhm / mpv
-            legend = self.make_legend(w=.3, y2=.78, nentries=1, margin=.1, cols=2, scale=1.1)
-            legend.AddEntry('', 'FWHM/MPV', '')
-            legend.AddEntry('', '{:.2f} ({:.2f})'.format(value.n, value.s), '')
-            legend.Draw()
-            self.info('FWHM / MPV: {}'.format(fwhm / mpv))
-            h.Sumw2(False)
-            get_last_canvas().Update()
-            return mpv, fwhm, value
-
-        return do_pickle(pickle_path, f, redo=redo or show) if histo is None else f()
 
     def get_peak_integral(self, name):
         return self.Run.PeakIntegrals[self.DUTNumber - 1]['PeakIntegral{}'.format(name) if 'Peak' not in str(name) else name]

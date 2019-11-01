@@ -8,6 +8,7 @@ from telescope_analysis import *
 from CurrentInfo import Currents
 from ROOT import TProfile2D
 from numpy import linspace
+from uncertainties import umath
 
 
 class DUTAnalyis(TelecopeAnalysis):
@@ -60,6 +61,14 @@ class DUTAnalyis(TelecopeAnalysis):
         cut = self.Cut.generate_special_cut(excluded=['fiducial'], prnt=False) if not fid and cut is None else self.Cut(cut)
         n = self.Tree.Draw('{x}:{y}:{z}'.format(z=self.get_ph_str(), x=x, y=y), cut, 'goff')  # *10 to get values in mm
         return self.Run.get_root_vecs(n, 3)
+
+    def get_uniformity(self, bins=10, redo=False):
+        pickle_path = self.make_pickle_path('Signal', 'Uniformity', self.RunNumber, ch=self.DUTNumber, suf=bins)
+
+        def f():
+            return self.draw_uniformity(bins=bins, show=False)
+
+        return do_pickle(pickle_path, f, redo=redo)
     # endregion GET
     # ----------------------------------------
 
@@ -70,7 +79,7 @@ class DUTAnalyis(TelecopeAnalysis):
         return self._draw_ph_pull(*args, **kwargs)
 
     def _draw_ph_pull(self, event_bin_width=None, fit=True, bin_width=.5, bins=None, show=True, save=True):
-        p = self.draw_pulse_height(event_bin_width, show=False)[0]
+        p = self.draw_pulse_height(event_bin_width, show=False, save=False)[0]
         self.format_statbox(all_stat=True, fit=fit)
         h = get_pull(p, 'Signal Bin{0} Distribution'.format(self.Bins.BinSize), bins=self.Bins.get_pad_ph(bin_width=bin_width) if bins is None else bins, fit=fit)
         format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.5, fill_color=self.FillColor, draw_first=True)
@@ -221,3 +230,35 @@ class DUTAnalyis(TelecopeAnalysis):
         return extrema
     # endregion SIGNAL MAP
     # ----------------------------------------
+
+    def draw_uniformity(self, histo=None, bins=10, show=True, redo=False):
+
+        fwhm_gauss = self.Pedestal.get_fwhm() if histo is None and hasattr(self, 'Pedestal') else 0
+        h = self.draw_signal_distribution(show=show, normalise=True, sumw2=False, redo=redo) if histo is None else histo
+        if histo is not None:
+            self.draw_histo(h)
+        sleep(.1)
+        fit = TF1('fit', 'gaus', 0, 10000)
+        h.Fit('fit', 'qs', '', h.GetBinCenter(h.GetMaximumBin() - bins), h.GetBinCenter(h.GetMaximumBin() + bins))
+        mpv = make_ufloat((fit.GetParameter(1), fit.GetParError(1) + fit.GetParameter(1) * .02))
+        half_max = fit(mpv.n) / 2
+        x_fwhm_min, x_fwhm_max = (make_ufloat((h.GetBinCenter(i), h.GetBinWidth(1))) for i in [h.FindFirstBinAbove(half_max), h.FindLastBinAbove(half_max)])
+        fwhm_total = x_fwhm_max - x_fwhm_min
+        self.draw_vertical_line(mpv.n, 0, 1e7, style=7, w=2)
+        self.draw_tlatex(mpv.n + 5, .1 * half_max, 'MPV', align=10)
+        self.draw_arrow(x_fwhm_min.n, mpv.n, half_max, half_max, col=2, width=3, opt='<', size=.02)
+        self.draw_arrow(x_fwhm_max.n, mpv.n, half_max, half_max, col=2, width=3, opt='<', size=.02)
+        self.draw_tlatex(x_fwhm_max.n + 5, half_max, 'FWHM', align=12, color=2)
+        if mpv < 2 or fwhm_total < 1:
+            log_warning('Could not determine fwhm or mpv')
+            return None, None, None
+        fwhm = umath.sqrt(fwhm_total ** 2 - fwhm_gauss ** 2)
+        value = fwhm / mpv
+        legend = self.make_legend(w=.3, y2=.78, nentries=1, margin=.1, cols=2, scale=1.1)
+        legend.AddEntry('', 'FWHM/MPV', '')
+        legend.AddEntry('', '{:.2f} ({:.2f})'.format(value.n, value.s), '')
+        legend.Draw()
+        self.info('FWHM / MPV: {}'.format(fwhm / mpv))
+        h.Sumw2(False)
+        get_last_canvas().Update()
+        return mpv, fwhm, value
