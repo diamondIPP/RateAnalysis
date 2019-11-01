@@ -4,6 +4,7 @@
     "type": "signal",
     "configuration": "signal",
     "mask": "-",
+    "maskfile": "",
     "masked pixels": [0, 0, 0, 0],
     "dia1": "CH_0",
     "dia2": "CH_3",
