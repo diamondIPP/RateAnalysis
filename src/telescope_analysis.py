@@ -451,5 +451,5 @@ class TelecopeAnalysis(Analysis):
 
 if __name__ == '__main__':
 
-    args = init_argparser(run=23, tc='201908', tree=True, verbose=True)
-    z = TelecopeAnalysis(args.run, args.testcampaign, args.tree, args.verbose)
+    pargs = init_argparser(run=23, tc='201908', tree=True, verbose=True)
+    z = TelecopeAnalysis(pargs.run, pargs.testcampaign, pargs.tree, pargs.verbose)
