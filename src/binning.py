@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # --------------------------------------------------------
-#       class for creating the binning for the analysis
+#       class for creating the bin_width for the analysis
 # created on Oct 28th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
@@ -52,6 +52,10 @@ class Bins:
 
         self.root_setup()
 
+    def __call__(self, bin_width=None):
+        self.set_bin_size(bin_width)
+        return self.BinSize
+
     # ----------------------------------------
     # region INIT
     def root_setup(self):
@@ -74,7 +78,7 @@ class Bins:
         return append(events, self.Cut.get_max_event()) if self.Cut.get_max_event() != events[-1] else events
 
     def set_bin_size(self, value):
-        if value is None:
+        if value is None or value == self.BinSize:
             return
         self.BinSize = value
         self.Binning = self.create()
