@@ -46,7 +46,7 @@ class AnalysisCollection(Analysis):
         self.FirstAnalysis = self.Analyses.values()[0]
         self.LastAnalysis = self.Analyses.values()[-1]
         self.Bins = self.FirstAnalysis.Bins if load_tree else None
-        self.RunStartTime = self.FirstAnalysis.Run.StartTime
+        self.StartTime = self.FirstAnalysis.Run.StartTime if self.LoadTree else self.FirstAnalysis.Run.LogStart
 
         # Directory for the Plots
         self.set_save_directory(join(self.DUTName, 'runplan{}'.format(self.RunPlan)))
@@ -108,8 +108,9 @@ class AnalysisCollection(Analysis):
         analyses = OrderedDict()
         for run in self.Runs:
             analysis = self.load_analysis(run)
-            analysis.Cut.set_high_low_rate_run(low_run=self.MinFluxRun, high_run=self.MaxFluxRun)
-            analysis.Cut.update_all_cut()
+            if self.LoadTree:
+                analysis.Cut.set_high_low_rate_run(low_run=self.MinFluxRun, high_run=self.MaxFluxRun)
+                analysis.Cut.update_all_cut()
             analyses[run] = analysis
         return analyses
 
@@ -276,7 +277,7 @@ class AnalysisCollection(Analysis):
         return '{mod}{unit}'.format(mod='Time' if vs_time else 'Flux', unit=' [hh:mm]' if vs_time else ' [kHz/cm^{2}]')
 
     def get_tax_off(self, vs_time, rel_time=False):
-        return None if not vs_time else self.RunStartTime if rel_time else 0
+        return None if not vs_time else self.StartTime if rel_time else 0
 
     def get_xrange(self, vs_time):
         return None if vs_time else self.Bins.FluxRange
@@ -411,7 +412,7 @@ class AnalysisCollection(Analysis):
             h.Scale(1 / h.GetMaximum())
             stack.Add(h)
             leg.AddEntry(h, '{0:06.1f} kHz/cm^{{2}}'.format(self.Analyses.values()[i].get_flux().n), 'l')
-            # legend.AddEntry(h, '{0:2d} V'.format(self.collection.values()[i].Bias), 'l')
+            # legend.AddEntry(h, '{0:2d} V'.format(self.has_collection.values()[i].Bias), 'l')
         format_histo(stack, y_off=1.55, draw_first=True, x_tit='Pulse Height [au]', y_tit='Number of Entries')
         log_stack = stack.Clone()
         log_stack.SetMaximum(off)
@@ -510,7 +511,7 @@ class AnalysisCollection(Analysis):
         for i, ana in enumerate(self.Analyses.itervalues()):
             h.SetBinContent(i * 2 + 1, ana.Run.Flux.n)
             h.SetBinError(i * 2 + 1, ana.Run.Flux.s)
-        format_histo(h, y_tit='Flux [kHz/cm^{2}]', x_tit='Time [hh:mm]', y_off=.8, fill_color=self.FillColor, stats=0, t_ax_off=self.RunStartTime if rel_t else 0)
+        format_histo(h, y_tit='Flux [kHz/cm^{2}]', x_tit='Time [hh:mm]', y_off=.8, fill_color=self.FillColor, stats=0, t_ax_off=self.StartTime if rel_t else 0)
         self.draw_histo(h, x=1.5, y=.75, lm=.065, gridy=True, logy=True)
         self.save_histo(h, 'FluxTime', canvas=get_last_canvas(), show=show, draw_opt='esame')
         return h
@@ -523,7 +524,7 @@ class AnalysisCollection(Analysis):
         for i, value in enumerate(values, 1):
             h.SetBinContent(i, value.n)
             h.SetBinError(i, value.s)
-        format_histo(h, x_tit='Time [hh:mm]', y_tit='Beam Current [mA]', y_off=.85, fill_color=self.FillColor, stats=0, markersize=.3, t_ax_off=self.RunStartTime if rel_t else 0)
+        format_histo(h, x_tit='Time [hh:mm]', y_tit='Beam Current [mA]', y_off=.85, fill_color=self.FillColor, stats=0, markersize=.3, t_ax_off=self.StartTime if rel_t else 0)
         self.save_histo(h, 'AllBeamRate', show=show, draw_opt='hist', x=1.5, y=.75, lm=.065)
 
     def draw_flux(self, bin_width=5, rel_time=True, show=True):
@@ -544,7 +545,7 @@ class AnalysisCollection(Analysis):
                 return h1
 
         hist = do_pickle(pickle_path, f)
-        format_histo(hist, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', t_ax_off=self.StartTime if rel_time else 0, fill_color=self.FillColor, y_range=[1, 20000], stats=0)
+        format_histo(hist, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', t_ax_off=self.InitTime if rel_time else 0, fill_color=self.FillColor, y_range=[1, 20000], stats=0)
         self.save_histo(hist, 'FluxEvo', x=1.5, y=.75, show=show, logy=True, draw_opt='bar' if not self.FirstAnalysis.has_branch('rate') else '')
         return hist
 
@@ -749,13 +750,13 @@ class AnalysisCollection(Analysis):
 
 if __name__ == '__main__':
 
-    p = init_argparser(run=10, dia=1, tree=True, verbose=True, collection=True, return_parser=True)
+    p = init_argparser(run=10, dut=1, tree=True, has_verbose=True, has_collection=True, return_parser=True)
     p.add_argument('-r', '--runs', action='store_true')
     p.add_argument('-d', '--draw', action='store_true')
     p.add_argument('-rd', '--redo', action='store_true')
     pargs = p.parse_args()
 
-    z = AnalysisCollection(pargs.runplan, pargs.dia, pargs.testcampaign, pargs.tree, pargs.verbose)
+    z = AnalysisCollection(pargs.runplan, pargs.dut, pargs.testcampaign, pargs.tree, pargs.verbose)
     z.print_loaded()
     if pargs.runs:
         z.Currents.draw_indep_graphs()
