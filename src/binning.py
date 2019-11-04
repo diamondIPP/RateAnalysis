@@ -99,9 +99,9 @@ class Bins:
         bins = concatenate((bins, [self.NEntries] if bins[-1] != self.NEntries and self.NEntries - bins[-1] > bin_width / 4 else []))
         return [bins.size - 1, bins]
 
-    def get_raw_time(self, bin_width, rel_time=False, start_time=0, end_time=None, events=False):
+    def get_raw_time(self, bin_width, rel_time=False, start_time=0, end_time=None, t_from_event=False):
         """ returns bins with fixed time width. bin_width in seconds """
-        if events:
+        if t_from_event:
             ev_bins = self.get_raw_event(bin_width, start_time, end_time)[1]
             bins = array([self.Run.get_time_at_event(int(ev)) for ev in ev_bins], 'd')
         else:
