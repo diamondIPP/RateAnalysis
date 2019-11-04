@@ -277,11 +277,5 @@ if __name__ == '__main__':
 
     args = init_argparser(run=23, tc='201908')
 
-    zrun = run_selector(args.run, args.testcampaign, tree=False, verbose=True)
-
-    # zrun = Run(args.run, test_campaign=args.testcampaign, tree=False, verbose=True)
-    # zrun.set_type()
-    # zrun.RootFileDir = join(zrun.RootFileDir, zrun.Type)
+    zrun = run_selector(args.run, args.testcampaign, tree=False, t_vec=None, verbose=True)
     z = Converter(zrun)
-
-
