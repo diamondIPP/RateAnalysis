@@ -34,7 +34,7 @@ class PixCollection(AnalysisCollection):
 
 if __name__ == '__main__':
 
-    p = init_argparser(run=5, dia=1, tree=True, verbose=True, collection=True, return_parser=True)
+    p = init_argparser(run=5, dut=1, tree=True, has_verbose=True, has_collection=True, return_parser=True)
     p.add_argument('-r', '--runs', action='store_true')
     p.add_argument('-d', '--draw', action='store_true')
     p.add_argument('-rd', '--redo', action='store_true')
