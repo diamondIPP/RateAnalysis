@@ -242,7 +242,7 @@ class Draw:
         x1, x2 = (c.GetLeftMargin(), .5) if left else (.5, 1 - c.GetRightMargin())
         return self.draw_tpavetext('Irradiation: {}'.format(irr), x1, x2, 1 - height - c.GetTopMargin(), 1 - c.GetTopMargin(), font=42, align=12, margin=0.04)
 
-    def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=None, rm=None, bm=None, tm=None, draw_opt='', x=None, y=None, all_pads=True,
+    def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=None, rm=None, bm=None, tm=None, draw_opt=None, x=None, y=None, all_pads=True,
                    leg=None, logy=False, logx=False, logz=False, canvas=None, grid=False, gridy=False, gridx=False, both_dias=False, prnt=True, phi=None, theta=None, ind=None):
         return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, all_pads, leg, logy, logx, logz, canvas, grid, gridx, gridy, False, both_dias, ind,
                                prnt, phi, theta)
@@ -359,7 +359,7 @@ class Draw:
             except Exception as err:
                 warning(err)
         else:
-            self.collection.values()[ind].InfoLegend.draw(canvas, all_pads, both_dias) if hasattr(self, 'collection') else log_critical('sth went wrong...')
+            self.Analyses.values()[ind].InfoLegend.draw(canvas, all_pads, both_dias) if hasattr(self, 'Analyses') else log_critical('sth went wrong...')
         canvas.Modified()
         canvas.Update()
         if save:
@@ -400,13 +400,13 @@ class Draw:
             log_info(out, prnt=self.Verbose)
         set_root_output(True)
 
-    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=None, rm=None, bm=None, tm=None, draw_opt='', x=None, y=None, all_pads=True,
+    def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=None, rm=None, bm=None, tm=None, draw_opt=None, x=None, y=None, all_pads=True,
                    leg=None, logy=False, logx=False, logz=False, canvas=None, grid=False, gridx=False, gridy=False, save=True, both_dias=False, ind=None, prnt=True, phi=None, theta=None, sumw2=False):
         fac = 1 if self.Title else 1.16
         x = int(self.Res * fac) if x is None else int(x * self.Res)
         y = self.Res if y is None else int(y * self.Res)
         h = histo
-        h.Sumw2(sumw2) if 'TH' in h.ClassName() and h.ClassName() not in ['THStack'] and sumw2 is not None else do_nothing()
+        h.Sumw2(sumw2) if hasattr(h, 'Sumw2') and sumw2 is not None else do_nothing()
         set_root_output(show)
         c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x, y) if canvas is None else canvas
         do(c.SetLeftMargin, lm)
@@ -420,7 +420,7 @@ class Draw:
         c.SetGridy() if gridy or grid else do_nothing()
         c.SetPhi(phi) if phi is not None else do_nothing()
         c.SetTheta(theta) if theta is not None else do_nothing()
-        h.Draw(draw_opt)
+        h.Draw(draw_opt if draw_opt is not None else 'ap' if 'Graph' in h.ClassName() else '')
         if leg is not None:
             leg = [leg] if type(leg) is not list else leg
             for i in leg:
@@ -431,7 +431,7 @@ class Draw:
         self.Objects.append(lst)
         return c
 
-    def save_tel_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=None, draw_opt='', x_fac=None, y_fac=None, all_pads=True,
+    def save_tel_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=None, draw_opt=None, x_fac=None, y_fac=None, all_pads=True,
                        leg=None, logy=False, logx=False, logz=False, canvas=None, grid=False, gridx=False, gridy=False, save=True, ind=None, prnt=True, phi=None, theta=None):
         return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x_fac, y_fac, all_pads, leg, logy, logx, logz, canvas, grid, gridx, gridy, save, True, ind, prnt, phi, theta)
 
@@ -476,14 +476,14 @@ class Draw:
         self.Objects.append(leg)
         return leg
 
-    def make_canvas(self, name='c', title='c', x=1., y=1., show=True, logx=None, logy=None, logz=None, gridx=None, gridy=None, transp=None, divide=None):
+    def make_canvas(self, name='c', title='c', x=1., y=1., logx=None, logy=None, logz=None, gridx=None, gridy=None, transp=None, divide=None, show=True):
         set_root_output(show)
         c = TCanvas(name, title, int(x * self.Res), int(y * self.Res))
         do([c.SetLogx, c.SetLogy, c.SetLogz], [logx, logy, logz])
         do([c.SetGridx, c.SetGridy], [gridx, gridy])
         do(make_transparent, c, transp)
         if divide is not None:
-            c.Divide(*divide if type(divide) in [list, tuple] else divide)
+            c.Divide(*(divide if type(divide) in [list, tuple] else [divide]))
         self.Objects.append(c)
         return c
 
@@ -515,7 +515,7 @@ class Draw:
 # ----------------------------------------
 # region FORMATTING
 def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=None, marker=20, color=None, line_color=None, markersize=None, x_off=None, y_off=None, z_off=None, lw=1,
-                 fill_color=None, fill_style=None, stats=True, tit_size=None, lab_size=None, l_off_y=None, l_off_x=None, draw_first=False, x_range=None, y_range=None, z_range=None,
+                 fill_color=None, fill_style=None, stats=True, tit_size=None, lab_size=None, l_off_y=None, l_off_x=None, draw_first=False, x_range=None, y_range=None, z_range=None, sumw2=None,
                  do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None, tick_size=None, t_ax_off=None, center_y=False, center_x=False, yax_col=None, normalise=None, pal=None, rebin=None):
     h = histo
     if draw_first:
@@ -562,6 +562,7 @@ def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=Non
     except AttributeError or ReferenceError:
         pass
     set_time_axis(h, off=t_ax_off) if t_ax_off is not None else do_nothing()
+    do(h.Sumw2, sumw2) if hasattr(h, 'Sumw2') else do_nothing()
 
 
 def format_axis(axis, graph, title, tit_offset, tit_size, centre_title, lab_size, label_offset, limits, ndiv, tick_size, color=None):
@@ -667,6 +668,7 @@ def set_titles(status=True):
 
 def load_resolution():
     global g_resolution
+    g_resolution = 800
     if g_resolution is None:
         try:
             from screeninfo import get_monitors
