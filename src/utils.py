@@ -474,6 +474,7 @@ def print_table(rows, header=None, prnt=True):
                 print hline
             print '| {r} |'.format(r=' | '.join(word.ljust(n) for word, n in zip(row, col_width)))
         print '{}\n'.format(hline)
+    return rows
 
 
 def get_base_dir():
