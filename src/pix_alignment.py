@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from ROOT import TH1F
-from numpy import linspace, split, count_nonzero, where, cumsum, concatenate
+from numpy import linspace, split, cumsum
 
 from Correlation import Correlation
 from event_alignment import EventAligment
@@ -252,7 +252,7 @@ class PixAlignment(EventAligment):
                 for i, n in enumerate(xrange(10, 100)):
                     correlation.set_bucket_size(n)
                     corrs = correlation.get_all_zero()
-                    mean_, sigma = calc_mean(corrs)
+                    mean_, sigma = mean_sigma(corrs)
                     sigmas[sigma] = n
                 # if show:
                 #     g = self.Run.make_tgrapherrors('g_bs', 'Sigma of the Bucket Sizes', x=sigmas.values(), y=sigmas.keys())
