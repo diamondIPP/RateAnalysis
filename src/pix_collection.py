@@ -16,6 +16,10 @@ class PixCollection(AnalysisCollection):
     def load_analysis(self, run_number):
         return PixAnalysis(run_number, self.DUTNumber, self.TCString, self.Threads[run_number].Tuple, self.Threads[run_number].Time, self.Verbose, prnt=False)
 
+    @staticmethod
+    def load_dummy():
+        return PixAnalysis
+
     def draw_hit_efficiencies(self, show=True):
         fits = [ana.draw_hit_efficiency(show=False) for ana in self.Analyses.itervalues()]
         y, ey = [fit.Parameter(0) for fit in fits], [fit.ParError(0) for fit in fits]
@@ -24,14 +28,9 @@ class PixCollection(AnalysisCollection):
         format_histo(g, x_tit='Flux [kHz/cm^{2}]', y_tit='Hit Efficiency [%]', y_off=1.5)
         self.save_histo(g, 'HitEfficiencies', lm=.12, draw_opt='alp', show=show, logx=True, bm=.17)
 
-    def generate_slope_pickle(self):
-        pass
-
     def generate_threshold_pickle(self):
         pass
 
-    def load_channel(self):
-        pass
 
 if __name__ == '__main__':
 
