@@ -14,10 +14,10 @@ from waveform import Waveform
 from pad_alignment import PadAlignment
 
 
-class PadAnalysis(DUTAnalyis):
+class PadAnalysis(DUTAnalysis):
     def __init__(self, run_number, diamond_nr, test_campaign=None, tree=True, t_vec=None, verbose=False, prnt=True):
 
-        DUTAnalyis.__init__(self, run_number, diamond_nr, test_campaign, tree, t_vec, verbose, prnt)
+        DUTAnalysis.__init__(self, run_number, diamond_nr, test_campaign, tree, t_vec, verbose, prnt)
 
         # Main
         self.Channel = self.Run.Channels[diamond_nr - 1]
@@ -68,6 +68,16 @@ class PadAnalysis(DUTAnalyis):
 
     def draw_pulser_rate(self, show=True, prnt=True):
         self.Pulser.draw_rate(show=show, prnt=prnt)
+
+    @staticmethod
+    def get_info_header():
+        return ['Run', 'Type', 'Diamond', 'Flux [kHz/cm2]', 'HV [V]', 'Region', 'Integral']
+
+    def show_information(self, header=True, prnt=True):
+        peak_int = '{} ({})'.format(self.PeakIntegral, remove_letters(self.PeakIntegralName))
+        region = '{} ({})'.format(self.SignalRegion, self.SignalRegionName.split('_')[-1])
+        rows = [[self.RunNumber, self.Run.RunInfo['runtype'], self.DUTName, '{:14.1f}'.format(self.Run.Flux.n), '{:+6d}'.format(self.Bias), region, peak_int]]
+        return print_table(rows, self.get_info_header() if header else None, prnt=prnt)
 
     # ----------------------------------------
     # region INIT
@@ -158,7 +168,7 @@ class PadAnalysis(DUTAnalyis):
 
     def get_pulse_height(self, bin_size=None, cut=None, redo=False, corr=True, sig=None):
         correction = '' if not corr else '_eventwise'
-        suffix = '{bins}{cor}_{c}'.format(bins=self.Bins.BinSize if bin_size is None else bin_size, cor=correction ,reg=self.get_short_regint(sig), c=self.Cut(cut).GetName())
+        suffix = '{bins}{cor}_{c}'.format(bins=self.Bins.BinSize if bin_size is None else bin_size, cor=correction, reg=self.get_short_regint(sig), c=self.Cut(cut).GetName())
         picklepath = self.make_pickle_path('Ph_fit', 'Fit', self.RunNumber, self.DUTNumber, suf=suffix)
 
         def f():
@@ -982,12 +992,6 @@ class PadAnalysis(DUTAnalyis):
                     reg = region.replace(sig_type, '').strip('_') + integral.replace('PeakIntegral', '')
                     names[self.SignalDefinition.format(pol=self.Polarity, num=num)] = reg
         return names
-
-    def print_information(self, header=True):
-        header = ['Run', 'Type', 'Diamond', 'HV [V]', 'Region', 'Integral'] if header else None
-        peak_int = '{} ({})'.format(self.PeakIntegral, remove_letters(self.PeakIntegralName))
-        rows = [[self.RunNumber, self.Run.RunInfo['runtype'], self.DUTName, self.Bias, '{} ({})'.format(self.SignalRegion, self.SignalRegionName.split('_')[-1]), peak_int]]
-        print_table(rows, header)
 
     def show_integral_names(self):
         for i, name in enumerate(self.IntegralNames):

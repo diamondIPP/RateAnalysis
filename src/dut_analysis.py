@@ -11,7 +11,7 @@ from numpy import linspace
 from uncertainties import umath
 
 
-class DUTAnalyis(TelecopeAnalysis):
+class DUTAnalysis(TelecopeAnalysis):
     def __init__(self, run_number, diamond_nr, test_campaign=None, tree=None, t_vec=None, verbose=False, prnt=True):
 
         TelecopeAnalysis.__init__(self, run_number, test_campaign, tree, t_vec, verbose, prnt)
@@ -35,6 +35,14 @@ class DUTAnalyis(TelecopeAnalysis):
 
     def draw_current(self, relative_time=False, averaging=1, show=True, v_range=None):
         self.Currents.draw_indep_graphs(rel_time=relative_time, averaging=averaging, show=show, v_range=v_range)
+
+    @staticmethod
+    def get_info_header():
+        return ['Run', 'Type', 'Diamond', 'Flux [kHz/cm2]', 'HV [V]']
+
+    def show_information(self, header=True, prnt=True):
+        rows = [[self.RunNumber, self.Run.RunInfo['runtype'], self.DUTName, '{:14.1f}'.format(self.Run.Flux.n), '{:+6d}'.format(self.Bias)]]
+        return print_table(rows, self.get_info_header() if header else None, prnt=prnt)
 
     # ----------------------------------------
     # region GET
@@ -197,15 +205,19 @@ class DUTAnalyis(TelecopeAnalysis):
         self.save_histo(h, 'SignalMapErrors', lm=.12, rm=.11, show=show, draw_opt='colz')
         return h
 
-    def calc_signal_spread(self, min_percent=5, max_percent=99):
+    def get_signal_spread(self, min_percent=5, max_percent=99, prnt=True):
         """ Calculates the relative spread of mean signal response from the 2D signal response map. """
-        h = self.draw_sig_map_disto(show=False)
-        q = array([min_percent, max_percent]) / 100.
-        y = zeros(2, 'd')
-        mean_error = mean([v.n for v in get_2d_hist_vec(self.draw_error_signal_map(show=False))])
-        h.GetQuantiles(2, y, q)
-        ratio = make_ufloat([y[1], mean_error]) / make_ufloat([y[0], mean_error]) - 1
-        self.info('Relative Signal Spread is: {:2.2f} %'.format(ratio * 100))
+        pickle_path = self.make_pickle_path('SignalMaps', 'Spread', self.RunNumber, self.DUTNumber)
+
+        def f():
+            h = self.draw_sig_map_disto(show=False)
+            q = array([min_percent, max_percent]) / 100.
+            y = zeros(2, 'd')
+            mean_error = mean([v.n for v in get_2d_hist_vec(self.draw_error_signal_map(show=False))])
+            h.GetQuantiles(2, y, q)
+            return make_ufloat([y[1], mean_error]) / make_ufloat([y[0], mean_error]) - 1
+        ratio = do_pickle(pickle_path, f)
+        self.info('Relative Signal Spread is: {:2.2f} %'.format(ratio * 100), prnt=prnt)
         return ratio
 
     # TODO check these methods
