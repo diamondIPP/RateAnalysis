@@ -17,10 +17,10 @@ from CutPix import CutPix
 from dut_analysis import *
 
 
-class PixAnalysis(DUTAnalyis):
+class PixAnalysis(DUTAnalysis):
     def __init__(self, run_number, dut, test_campaign=None, tree=True, t_vec=None, verbose=False, prnt=True):
 
-        DUTAnalyis.__init__(self, run_number, dut, test_campaign, tree, t_vec, verbose, prnt)
+        DUTAnalysis.__init__(self, run_number, dut, test_campaign, tree, t_vec, verbose, prnt)
 
         # Main
         self.Dut = dut + 3
@@ -681,5 +681,5 @@ class PixAnalysis(DUTAnalyis):
 
 if __name__ == '__main__':
 
-    pargs = init_argparser(run=139, tc='201810', dia=1, verbose=True, tree=True)
-    z = PixAnalysis(pargs.run, pargs.dia, pargs.testcampaign, pargs.tree, pargs.verbose)
+    pargs = init_argparser(run=139, tc='201810', dut=1, has_verbose=True, tree=True)
+    z = PixAnalysis(pargs.run, pargs.dut, pargs.testcampaign, pargs.tree, pargs.verbose)

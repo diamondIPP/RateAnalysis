@@ -40,7 +40,7 @@ if __name__ == '__main__':
     p.add_argument('-rd', '--redo', action='store_true')
     pargs = p.parse_args()
 
-    z = PixCollection(pargs.runplan, pargs.dia, pargs.testcampaign, pargs.tree, pargs.verbose)
+    z = PixCollection(pargs.runplan, pargs.dut, pargs.testcampaign, pargs.tree, pargs.verbose)
     z.print_loaded()
     if pargs.runs:
         z.Currents.draw_indep_graphs()

@@ -1009,7 +1009,6 @@ class PadAnalysis(DUTAnalysis):
 
 
 if __name__ == '__main__':
-    args = init_argparser(run=23, tc='201908', dia=1, tree=True, verbose=True)
 
-    print()
-    z = PadAnalysis(args.run, args.dia, args.testcampaign, args.tree, args.verbose)
+    args = init_argparser(run=23, tc='201908', dut=1, tree=True, has_verbose=True)
+    z = PadAnalysis(args.run, args.dut, args.testcampaign, args.tree, args.verbose)

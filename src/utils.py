@@ -749,14 +749,14 @@ def calc_eff(k=0, n=0, values=None):
     return make_ufloat((100 * (k + 1) / (n + 2), 100 * sqrt(((k + 1)/(n + 2) * (k + 2)/(n + 3) - ((k + 1)**2) / ((n + 2)**2)))))
 
 
-def init_argparser(run=None, tc=None, dia=False, tree=False, verbose=False, collection=False, return_parser=False):
+def init_argparser(run=None, tc=None, dut=False, tree=False, has_verbose=False, has_collection=False, return_parser=False):
     p = ArgumentParser()
-    p.add_argument('run' if not collection else 'runplan', nargs='?', default=run, type=int, help='run {}'.format('run' if not collection else 'plan'))
-    p.add_argument('dia', nargs='?', default=dia, type=int, help='diamond number [default: 1] (choose from 1,2,...)') if dia or dia is None else do_nothing()
+    p.add_argument('run' if not has_collection else 'runplan', nargs='?', default=run, type=int, help='run {}'.format('number' if not has_collection else 'plan'))
+    p.add_argument('dut', nargs='?', default=dut, type=int, help='diamond number [default: 1] (choose from 1,2,...)') if dut or dut is None else do_nothing()
     p.add_argument('-tc', '--testcampaign', nargs='?', default=tc, help='YYYYMM beam test [default in main.ini]')
-    p.add_argument('-v', '--verbose', action='store_false') if verbose else do_nothing()
+    p.add_argument('-v', '--verbose', action='store_false') if has_verbose else do_nothing()
     p.add_argument('-t', '--tree', action='store_false', help='do not load the ROOT TTree') if tree else do_nothing()
-    p.add_argument('-c', '--collection', action='store_true', help='start analysis collection') if collection else do_nothing()
+    p.add_argument('-c', '--collection', action='store_true', help='begin analysis collection') if has_collection else do_nothing()
     return p if return_parser else p.parse_args()
 
 
