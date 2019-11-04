@@ -65,7 +65,7 @@ class RunSelection:
                 warning('No runplan for {tc} available yet, creating an empty one!'.format(tc=self.TCString))
                 run_plans = self.create_new_runplan()
             return run_plans[self.TCString]
-    # region INIT
+    # endregion INIT
     # ----------------------------------------
 
     # ----------------------------------------
@@ -220,7 +220,7 @@ class RunSelection:
         return self.RunInfos[run_number]['dia{}hv'.format(self.SelectedDUTNr)]
 
     def get_duration(self, run_number):
-        return (conv_log_time(self.RunInfos[run_number]['endtime']) - conv_log_time(self.RunInfos[run_number]['starttime0'])).total_seconds()
+        return (self.get_end_time(run_number) - self.get_start_time(run_number)).total_seconds()
 
     def get_selected_type(self):
         return self.get_type(self.get_selected_runs()[0])
@@ -233,6 +233,12 @@ class RunSelection:
 
     def get_selected_durations(self):
         return [self.get_duration(run) for run in self.get_selected_runs()]
+
+    def get_start_time(self, run_number=None):
+        return conv_log_time(self.RunInfos[self.get_selected_runs()[0] if run_number is None else run_number]['starttime0'])
+
+    def get_end_time(self, run_number=None):
+        return conv_log_time(self.RunInfos[self.get_selected_runs()[-1] if run_number is None else run_number]['endtime'])
 
     def get_selected_runs(self):
         """ :return: list of selected run numbers. """
@@ -608,7 +614,7 @@ def verify(msg):
 
 if __name__ == '__main__':
 
-    p = init_argparser(run=None, tc=None, dia=None, collection=True, return_parser=True, verbose=True)
+    p = init_argparser(run=None, tc=None, dut=None, has_collection=True, return_parser=True, has_verbose=True)
     p.add_argument('-s', '--show', action='store_true', help='activate show')
     p.add_argument('-ms', '--master_selection', action='store_true', help='run master selection')
     p.add_argument('-d', '--diamond', nargs='?', default=None, help='diamond for show runplans')
