@@ -1,20 +1,20 @@
 #!/usr/bin/env python
 from ConfigParser import ConfigParser, NoOptionError
-from argparse import ArgumentParser
 from json import load, loads
 
-from ROOT import TFile, TTree
+from ROOT import TFile
 from numpy import inf, zeros
 
-from Converter import Converter
-from analysis import Analysis
+from converter import Converter
+from analysis import Analysis, join, basename
 from utils import *
+from glob import glob
 
 
 class Run:
     """ Run class containing all the information for a single run. """
 
-    def __init__(self, run_number=None, test_campaign=None, tree=None, t_vec=None, verbose=False):
+    def __init__(self, run_number=None, test_campaign=None, tree=True, t_vec=None, verbose=False):
         """
         :param run_number: if None is provided it creates a dummy run
         :param test_campaign: if None is provided ...
@@ -24,23 +24,27 @@ class Run:
         """
         # Basics
         self.RunNumber = run_number
-        self.TCString = test_campaign
         self.Verbose = verbose
-
-        # Configuration
         self.MainConfig = Analysis.load_main_config()
-        self.Config = self.load_config()
 
-        # Directories
+        # Directories / Test Campaign
         self.Dir = get_base_dir()
         self.DataDir = self.MainConfig.get('MAIN', 'data directory')
-        self.TCDir = self.generate_tc_directory()
         self.IrradiationFile = self.MainConfig.get('MISC', 'irradiation_file')
+        self.TCString = self.load_test_campaign(test_campaign)
+        self.TCDir = self.generate_tc_directory()
+
+        # Configuration & Root Files
+        self.Config = self.load_config()
+        self.RootFileDir = self.load_rootfile_dirname()
+        self.RootFilePath = self.load_rootfile_path()
 
         # Run Info
+        self.RunInfoFile = join(self.TCDir, 'run_log.json')
         self.RunInfo = self.load_run_info()
         self.RootFile = None
         self.Tree = None
+        self.TreeName = self.Config.get('BASIC', 'treename')
 
         # Settings
         self.PixelSize = loads(self.MainConfig.get('PIXEL', 'size'))
@@ -49,9 +53,10 @@ class Run:
 
         # General Information
         self.Flux = self.calculate_flux()
-        self.DiamondNames = self.load_diamond_names()
-        self.DiamondNumbers = self.load_diamond_numbers()
+        self.DUTNames = self.load_dut_names()
+        self.DUTNumbers = self.load_dut_numbers()
         self.Bias = self.load_biases()
+        self.Type = self.get_type()
 
         # Times
         self.LogStart = self.load_log_start()
@@ -84,19 +89,39 @@ class Run:
         self.Flux = self.calculate_flux()
 
         # check for conversion
-        if root_tree is None:
-            self.Converter.convert_run()
-            self.__load_rootfile()
-        elif root_tree:
+        if root_tree and type(root_tree) is tuple:
             self.RootFile = root_tree[0]
             self.Tree = root_tree[1]
+        elif root_tree:
+            self.Converter.convert_run()
+            self.load_rootfile()
         else:
             return False
-        self.validate_root_files()
+        if not self.rootfile_is_valid():
+            self.Converter.convert_run()
+            self.load_rootfile()
         return True
+
+    def get_type(self):
+        return self.Config.get('BASIC', 'type') if self.RunNumber is not None else None
 
     # ----------------------------------------
     # region INIT
+    def load_test_campaign(self, testcampaign):
+        testcampaign = self.MainConfig.get('MAIN', 'default test campaign') if testcampaign is None else testcampaign
+        if testcampaign not in self.get_test_campaigns() and self.RunNumber is not None:
+            critical('The Testcampaign {} does not exist!'.format(testcampaign))
+        return testcampaign
+
+    def get_test_campaigns(self):
+        return [basename(path).replace('_', '').strip('psi') for path in glob(join(self.DataDir, 'psi*'))]
+
+    def load_rootfile(self):
+        file_path = self.RootFilePath
+        self.info('\n\033[1A\rLoading information for rootfile: {file}'.format(file=basename(file_path)))
+        self.RootFile = TFile(file_path)
+        self.Tree = self.RootFile.Get(self.TreeName)
+
     def load_config(self):
         run_number = self.RunNumber if hasattr(self, 'RunNumber') else None
         parser = ConfigParser({'excluded_runs': '[]'})  # add non default option
@@ -110,6 +135,13 @@ class Run:
             parser.read(join(get_base_dir(), 'Configuration', self.TCString, 'RunConfig{nr}.ini'.format(nr=config_nr)))  # add the content of the split config
         return parser
 
+    def load_rootfile_path(self):
+        return join(self.RootFileDir, 'TrackedRun{run:03d}.root'.format(run=self.RunNumber)) if self.RunNumber is not None else None
+
+    def load_rootfile_dirname(self):
+        fdir = 'pads' if self.get_type() == 'pad' else self.get_type()
+        return ensure_dir(join(self.TCDir, 'root', fdir)) if self.RunNumber is not None else None
+
     def generate_tc_directory(self):
         return join(self.DataDir, 'psi_{y}_{m}'.format(y=self.TCString[:4], m=self.TCString[4:]))
 
@@ -121,8 +153,8 @@ class Run:
         run_info = self.load_run_info(run_number)
         return len([key for key in run_info if key.startswith('dia') and key[-1].isdigit()])
 
-    def load_diamond_numbers(self):
-        return [i for i in xrange(len([key for key in self.RunInfo.iterkeys() if key.startswith('dia') and key[-1].isdigit()]))]
+    def load_dut_numbers(self):
+        return [i + 1 for i in xrange(len([key for key in self.RunInfo.iterkeys() if key.startswith('dia') and key[-1].isdigit()]))]
 
     def load_dut_type(self):
         dut_type = self.Config.get('BASIC', 'type') if self.RunNumber is not None else None
@@ -135,10 +167,9 @@ class Run:
             return load(f)
 
     def load_run_info_file(self):
-        file_path = join(self.TCDir, 'run_log.json')
-        if not file_exists(file_path):
-            log_critical('Run Log File: "{f}" does not exist!'.format(f=file_path))
-        with open(file_path) as f:
+        if not file_exists(self.RunInfoFile):
+            log_critical('Run Log File: "{f}" does not exist!'.format(f=self.RunInfoFile))
+        with open(self.RunInfoFile) as f:
             return load(f)
 
     def load_run_info(self, run_number=None):
@@ -157,7 +188,7 @@ class Run:
             self.RunInfo = self.load_default_info()
             return self.RunInfo
 
-    def load_diamond_names(self):
+    def load_dut_names(self):
         return [self.RunInfo['dia{nr}'.format(nr=i)] for i in xrange(1, self.get_n_diamonds() + 1)]
 
     def load_biases(self):
@@ -271,11 +302,16 @@ class Run:
     def reload_run_config(self, run_number):
         self.RunNumber = run_number
         self.Config = self.load_config()
+        self.RunInfo = self.load_run_info()
 
-    def validate_root_files(self):
-        if self.RootFile.IsZombie() or not (self.RootFile.IsA() == TFile().IsA() and self.Tree.IsA() == TTree().IsA()):
-            self.Converter.remove_final_file()
-            log_critical('either TFile or TTree of wrong type')
+    def rootfile_is_valid(self, file_path=None):
+        tfile = self.RootFile if file_path is None else TFile(file_path)
+        ttree = self.Tree if file_path is None else tfile.Get(self.TreeName)
+        is_valid = not tfile.IsZombie() and tfile.ClassName() == 'TFile' and ttree.ClassName() == 'TTree'
+        if not is_valid:
+            warning('Invalid TFile or TTree! Deleting file {}'.format(tfile.GetName()))
+            remove_file(tfile.GetName())
+        return is_valid
 
     def calculate_flux(self):
         if self.RunNumber is None:
@@ -300,27 +336,27 @@ class Run:
 
     # ----------------------------------------
     # region GET
-    def get_flux(self):
-        return self.Flux if self.Flux else self.RunInfo['aimed flux']
+    def get_flux(self, rel_error=0.):
+        return ufloat(self.Flux.n, self.Flux.s + self.Flux.n * rel_error) if self.Flux else self.RunInfo['aimed flux']
 
     def get_time(self):
-        return make_ufloat((self.LogHalfTime, self.Duration.seconds / 2))
+        return make_ufloat((time_stamp(self.LogStart + self.Duration / 2), self.Duration.seconds / 2))
 
     def get_irradiations(self):
         with open(join(self.Dir, self.IrradiationFile), 'r') as f:
             data = load(f)
-        for dia in self.DiamondNames:
+        for dia in self.DUTNames:
             if self.TCString not in data:
                 log_critical('Please add "{}" to the {}'.format(self.TCString, self.IrradiationFile))
             if dia not in data[self.TCString].keys() + ['None']:
                 log_critical('Please add "{}" to the irradiation file for {}'.format(dia, self.TCString))
-        return [data[self.TCString][dia] for dia in self.DiamondNames if dia not in ['None']]
+        return [data[self.TCString][dia] for dia in self.DUTNames if dia not in ['None']]
 
     def get_attenuators(self):
         return [str(self.RunInfo['att_dia{}'.format(i)]) for i in xrange(1, self.get_n_diamonds() + 1) if 'att_dia1' in self.RunInfo]
 
     def get_diamond_name(self, channel):
-        return self.DiamondNames[channel]
+        return self.DUTNames[channel]
 
     def get_channel_name(self, channel):
         self.Tree.GetEntry()
