@@ -62,20 +62,20 @@ class Run:
         self.LogStart = self.load_log_start()
         self.LogEnd = self.load_log_stop()
         self.Duration = self.LogEnd - self.LogStart
-        self.LogHalfTime = time_stamp(self.LogStart + self.Duration / 2)
 
-        self.Converter = Converter(self)
+        self.Converter = Converter(self) if self.RunNumber is not None else None
         if self.set_run(run_number, tree):
             # tree info
             self.Time = get_time_vec(self.Tree) if t_vec is None else t_vec
             self.StartEvent = 0
             self.NEntries = int(self.Tree.GetEntries())
             self.EndEvent = self.NEntries - 1
-            self.StartTime = self.load_start_time()
-            self.EndTime = self.load_end_time()
+            self.StartTime = self.get_time_at_event(self.StartEvent)
+            self.EndTime = self.get_time_at_event(self.EndEvent)
             self.TotalTime = self.load_total_time()
             self.TotalMinutes = self.TotalTime / 60000.
             self.Duration = timedelta(seconds=self.TotalTime)
+            self.LogEnd = self.LogStart + self.Duration  # overwrite if we know exact duration
             self.NPlanes = self.load_n_planes()
 
     def set_run(self, run_number, root_tree):
@@ -146,7 +146,7 @@ class Run:
         return join(self.DataDir, 'psi_{y}_{m}'.format(y=self.TCString[:4], m=self.TCString[4:]))
 
     def load_trigger_planes(self):
-        default = self.get_unmasked_area().keys() if self.load_mask() is not None else [1, 2]
+        default = self.get_unmasked_area().keys() if self.load_mask() else [1, 2]
         return loads(self.Config.get('BASIC', 'trigger planes')) if self.Config.has_option('BASIC', 'trigger planes') else default
 
     def get_n_diamonds(self, run_number=None):
@@ -199,12 +199,6 @@ class Run:
 
     def load_log_stop(self):
         return conv_log_time(self.RunInfo['endtime'])
-
-    def load_start_time(self):
-        return int(round(self.get_time_at_event(self.StartEvent)))
-
-    def load_end_time(self):
-        return int(round(self.get_time_at_event(self.EndEvent)))
 
     def load_total_time(self):
         return (self.Time[-1] - self.Time[0]) / 1000
@@ -370,26 +364,15 @@ class Run:
 
     def get_time_at_event(self, event):
         """ For negative event numbers it will return the time stamp at the startevent. """
-        event = self.EndEvent if event == -1 else event
-        event = sorted((0, event, self.EndEvent))[1]  # guarantees that the event is in [0, EndEvent]
-        return self.Time[event] / 1000.
+        return self.Time[min(event, self.EndEvent)] / 1000.
 
     def get_event_at_time(self, seconds):
         """ Returns the event nunmber at time dt from beginning of the run. Accuracy: +- 1 Event """
         # return time of last event if input is too large
         if seconds >= self.TotalTime or seconds == -1:
             return self.NEntries
-        last_time = 0
-        for i, t in enumerate(self.Time):
-            if t / 1000. >= seconds + self.Time[0] / 1000 >= last_time:
-                return i
-            last_time = t / 1000.
-        return self.NEntries  # if loop doesn't find anything it has to be the last bin
+        return where(self.Time <= (self.StartTime + seconds) * 1000)[0][-1]
 
-    def get_root_vec(self, n, ind=1):
-        vec = getattr(self.Tree, 'GetV{}'.format(ind))()
-        vec.SetSize(n)
-        return array(vec)
 
     # endregion
     # ----------------------------------------
