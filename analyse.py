@@ -7,7 +7,7 @@
 from sys import path
 from os.path import realpath, dirname, join
 path.append(join(dirname(realpath(__file__)), 'src'))
-from utils import init_argparser, critical
+from draw import *
 
 args = init_argparser(run=139, tc='201810', dia=1, tree=True, verbose=True, collection=True)
 # pargs = init_argparser(run=23, tc='201908', dia=1, tree=True, verbose=True, collection=True)
