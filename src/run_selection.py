@@ -70,6 +70,9 @@ class RunSelection:
 
     # ----------------------------------------
     # region SELECT
+    def has_selected_runs(self):
+        return any(self.Selection.values())
+
     def reset_selection(self):
         """ Creates a dict of bools to store the selection, which is filled with False (no run selected). Resets the logs. """
         for run in self.RunNumbers:
