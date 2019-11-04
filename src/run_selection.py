@@ -402,7 +402,7 @@ class RunSelection:
 
     def get_selected_bias(self):
         hvs = self.get_runinfo_values('dia{}hv'.format(self.SelectedDUTNr), sel=True)
-        return int(hvs[0]) if len(hvs) == 1 else None
+        return int(hvs[0]) if hvs is not None and len(hvs) == 1 else None
 
     def get_missing_runs(self, runs):
         all_runs = [run for run in self.RunNumbers if runs[-1] >= run >= runs[0]]
@@ -420,7 +420,7 @@ class RunSelection:
         parser.read('Configuration/DiamondAliases.cfg')
         self.SelectedRunplan = plan
         self.SelectedType = str(self.RunPlan[plan]['type'])
-        self.SelectedDUT = parser.get('ALIASES', self.RunInfos[runs[0]]['dia{0}'.format(ch)])
+        self.SelectedDUT = parser.get('ALIASES', self.RunInfos[runs[0]]['dia{0}'.format(ch)]) if ch is not None else None
         self.SelectedDUTNr = ch
         self.SelectedBias = self.get_selected_bias()
 
