@@ -550,6 +550,10 @@ def remove_letters(string):
     return filter(lambda x: x.isdigit(), string)
 
 
+def remove_digits(string):
+    return filter(lambda x: not x.isdigit(), string)
+
+
 def get_last_canvas():
     try:
         return gROOT.GetListOfCanvases()[-1]
