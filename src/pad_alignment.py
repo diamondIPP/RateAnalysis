@@ -5,21 +5,21 @@
 # --------------------------------------------------------
 
 from ROOT import TProfile
-from numpy import histogram2d, sum, count_nonzero, where
+from numpy import histogram2d, sum
 
 from event_alignment import EventAligment
 from utils import *
 
 
 class PadAlignment(EventAligment):
-    def __init__(self, converter):
+    def __init__(self, converter, verbose=True):
 
         # Info
         self.Threshold = .4
         self.PulserEvents = array([])
         self.BinSize = 30
 
-        EventAligment.__init__(self, converter)
+        EventAligment.__init__(self, converter, verbose)
         self.Offsets = sorted(range(-self.MaxOffset, self.MaxOffset + 1), key=abs)
 
         if not self.IsAligned:
