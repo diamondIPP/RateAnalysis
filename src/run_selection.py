@@ -216,6 +216,12 @@ class RunSelection:
         self.Run.reload_run_config(run_number)
         return self.Run.get_type()
 
+    def get_bias(self, run_number):
+        return self.RunInfos[run_number]['dia{}hv'.format(self.SelectedDUTNr)]
+
+    def get_duration(self, run_number):
+        return (conv_log_time(self.RunInfos[run_number]['endtime']) - conv_log_time(self.RunInfos[run_number]['starttime0'])).total_seconds()
+
     def get_selected_type(self):
         return self.get_type(self.get_selected_runs()[0])
 
@@ -223,7 +229,10 @@ class RunSelection:
         return array([self.get_flux(run) for run in self.get_selected_runs()])
 
     def get_selected_biases(self):
-        return [dic['dia{}hv'.format(self.SelectedDUTNr)] for dic in self.get_selection_runinfo().itervalues()]
+        return [self.get_bias(run) for run in self.get_selected_runs()]
+
+    def get_selected_durations(self):
+        return [self.get_duration(run) for run in self.get_selected_runs()]
 
     def get_selected_runs(self):
         """ :return: list of selected run numbers. """
@@ -605,7 +614,6 @@ if __name__ == '__main__':
     p.add_argument('-d', '--diamond', nargs='?', default=None, help='diamond for show runplans')
     args = p.parse_args()
 
-    print type(args.dia), type(args.diamond)
     z = RunSelection(args.testcampaign, args.runplan, args.dia, args.verbose)
     if args.show:
         if args.runplan is not None:
