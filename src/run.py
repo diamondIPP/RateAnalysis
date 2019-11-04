@@ -223,7 +223,7 @@ class Run:
 
     def load_mask(self):
         mask_file = self.load_mask_file_path()
-        if basename(mask_file) in ['no mask', 'none', 'none!']:
+        if basename(mask_file) in ['no mask', 'none', 'none!'] or self.RunNumber is None:
             return
         mask_data = {}
         # format: cornBot roc x1 y1
@@ -373,6 +373,17 @@ class Run:
             return self.NEntries
         return where(self.Time <= (self.StartTime + seconds) * 1000)[0][-1]
 
+    def get_root_vec(self, n, ind=0, dtype=None):
+        return get_root_vec(self.Tree, n, ind, dtype)
+
+    def get_root_vecs(self, n, n_ind, dtype=None):
+        return get_root_vecs(self.Tree, n, n_ind, dtype)
+
+    def get_tree_tuple(self):
+        return (self.Tree, self.RootFile) if self.Tree is not None else False
+
+    def get_time_vec(self):
+        return self.Time if hasattr(self, 'Time') else None
 
     # endregion
     # ----------------------------------------
@@ -387,20 +398,16 @@ class Run:
     def has_branch(self, name):
         return bool(self.Tree.GetBranch(name))
 
+    def info(self, msg, next_line=True, blank_lines=0, prnt=None):
+        return info(msg, next_line, prnt=self.Verbose if prnt is None else prnt, blank_lines=blank_lines)
+
+    def add_to_info(self, t, txt='Done'):
+        return add_to_info(t, txt, prnt=self.Verbose)
     # endregion
     # ----------------------------------------
 
-    def __load_rootfile(self):
-        file_path = self.Converter.get_final_file_path()
-        print '\033[1A\rLoading information for rootfile: {file}'.format(file=file_path.split('/')[-1])
-        self.RootFile = TFile(file_path)
-        self.Tree = self.RootFile.Get(self.Config.get('BASIC', 'treename'))
-
 
 if __name__ == '__main__':
-    p = ArgumentParser()
-    p.add_argument('run', nargs='?', default=392, type=int)
-    p.add_argument('-tc', '--testcampaign', nargs='?', default='201510')
-    p.add_argument('-t', '--tree', action='store_true')
-    args = p.parse_args()
-    z = Run(args.run, tree=None if not args.tree else False, test_campaign=args.testcampaign)
+
+    args = init_argparser(run=23, tc=None, tree=True)
+    z = Run(args.run, tree=args.tree, test_campaign=args.testcampaign)
