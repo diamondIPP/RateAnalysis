@@ -13,7 +13,7 @@ class Analysis(Draw):
 
     def __init__(self, testcampaign=None, verbose=False):
 
-        self.StartTime = time()
+        self.InitTime = time()
 
         # Configuration
         self.Verbose = verbose
@@ -98,7 +98,7 @@ class Analysis(Draw):
 
     def print_finished(self, prnt=True):
         if prnt:
-            print_banner('Finished Instantiation in {}'.format(get_elapsed_time(self.StartTime)), color='green')
+            print_banner('Finished Instantiation in {}'.format(get_elapsed_time(self.InitTime)), color='green')
 
     def make_pickle_path(self, sub_dir, name=None, run=None, ch=None, suf=None, camp=None):
         ensure_dir(join(self.PickleDir, sub_dir))
@@ -111,8 +111,6 @@ class Analysis(Draw):
 
 
 if __name__ == '__main__':
-    arg_parser = ArgumentParser(description='Basic analysis class')
-    arg_parser.add_argument('-tc', '--testcampaign', nargs='?', default=None)
-    arg_parser.add_argument('-v', '--verbose', action='store_true')
-    pargs = arg_parser.parse_args()
+
+    pargs = init_argparser(has_verbose=True)
     z = Analysis(pargs.testcampaign, verbose=pargs.verbose)
