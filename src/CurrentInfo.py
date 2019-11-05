@@ -1,16 +1,13 @@
-# ====================================
-# IMPORTS
-# ====================================
+from __future__ import print_function
 from glob import glob
-from json import load
 
-from Elementary import Elementary
-from RunSelection import RunSelection
-from ROOT import TCanvas, TGraph, TProfile, TH1F, TH2F
+from analysis import Analysis, format_histo, join, basename
+from run_selection import RunSelection
+from ROOT import TGraph, TProfile, TH1F, TH2F
 from ConfigParser import ConfigParser
-from argparse import ArgumentParser
+from numpy import genfromtxt, isnan, datetime64, vectorize, invert, zeros
 
-from Utils import *
+from utils import *
 
 # ====================================
 # CONSTANTS
@@ -24,61 +21,49 @@ pad_margins = [.065, .09, .15, .1]
 marker_size = .3
 
 
-# ====================================
-# CLASS FOR THE DATA
-# ====================================
-class Currents(Elementary):
+class Currents(Analysis):
     """reads in information from the keithley log file"""
 
-    def __init__(self, analysis, averaging=False, points=10, start_run=None, verbose=False):
+    def __init__(self, analysis=None, test_campaign=None, dut=None, begin=None, end=None, averaging=None, verbose=False):
+        Analysis.__init__(self, test_campaign if analysis is None else analysis.TCString, verbose=verbose)
+
+        # Settings
+        self.Averaging = averaging
+        self.TimeZone = timezone('Europe/Zurich')
+
+        # Config
         self.Analysis = analysis
         self.IsCollection = hasattr(analysis, 'Runs')
-        self.IsSelection = isinstance(analysis, RunSelection)
-        Elementary.__init__(self, verbose=verbose)
-
-        self.DoAveraging = averaging
-        self.Points = points
-
-        # config
-        self.ConfigParser = self.load_parser()
-        if self.ConfigParser is None:
-            return
-
-        # analysis/run info
-        if self.IsCollection:
-            self.RunPlan = analysis.RunPlan
-            self.set_save_directory('Results/')
-        self.RunLogs = self.load_runlogs()
+        self.RunSelection = RunSelection(testcampaign=self.TCString)
+        self.RunLogs = self.RunSelection.FullRunInfos
+        self.Run = self.RunSelection.Run
+        self.RunPlan = self.load_run_plan()  # required for plotting
+        self.HVConfig = self.load_parser()
+        self.set_save_directory('currents')
         self.RunNumber = self.load_run_number()
-        if not self.IsSelection:
-            self.RunInfo = analysis.Run.RunInfo if not self.IsCollection else analysis.FirstAnalysis.RunInfo
-            self.Channel = analysis.channel
-            if 'dia1supply' not in self.RunInfo:
-                return
-        # todo: add a method to extract the currents for may
-        self.DiamondName = self.load_dia_name()
-        self.DiamondNumber = self.load_dia_number()
         self.Bias = self.load_bias()
-        self.StartRun = start_run
-        self.TimeZone = timezone('Europe/Zurich')
-        self.StartTime = self.load_start_time()
-        self.StopTime = self.load_stop_time()
 
-        # device info
-        self.Number = self.get_device_nr()
+        # Times
+        self.Begin, self.End = self.load_times(begin, end)
+
+        # DUT
+        self.DUTNumber = dut if self.Analysis is None else self.Analysis.DUTNumber
+        self.DUTName = self.get_dut_name()
+
+        # HV Device Info
+        self.Number = self.get_device_number()
         self.Channel = self.get_device_channel()
-        self.Brand = self.ConfigParser.get('HV' + self.Number, 'name').split('-')[0].strip('0123456789')
-        self.Model = self.ConfigParser.get('HV' + self.Number, 'model')
-        self.Name = '{0} {1}'.format(self.Brand, self.Model)
+        self.Name = self.HVConfig.get('HV{}'.format(self.Number), 'name')
+        self.Brand = remove_digits(self.Name.split('-')[0])
+        self.Model = self.HVConfig.get('HV{}'.format(self.Number), 'model')
         self.Precision = .005 if '237' in self.Name else .05
 
         self.DataPath = self.find_data_path()
-        self.OldDataPath = self.find_data_path(old=True)
-        self.LogNames = None
 
         # data
-        self.Currents = []
+        self.LogNames = None
         self.IgnoreJumps = True
+        self.Currents = []
         self.Voltages = []
         self.Time = []
         self.MeanCurrent = 0
@@ -97,260 +82,148 @@ class Currents(Elementary):
         self.Histos = {}
         self.Stuff = []
 
-    # ==========================================================================
+    # ----------------------------------------
     # region INIT
-    def load_dia_name(self):
-        return self.Analysis.DiamondName if not self.IsSelection else self.Analysis.SelectedDiamond
-
-    def load_dia_number(self):
-        if not self.IsSelection:
-            return self.Analysis.DiamondNumber if not self.IsCollection else self.Analysis.FirstAnalysis.DiamondNumber
-        return self.Analysis.SelectedDiamondNr
-
     def load_bias(self):
-        if hasattr(self.Analysis, 'Type') and 'voltage' in self.Analysis.Type or self.IsSelection:
-            return ''
-        elif self.Analysis is not None:
-            return self.Analysis.Bias
+        return self.Analysis.Bias if hasattr(self.Analysis, 'Bias') else None
 
     def load_run_number(self):
-        if not self.IsSelection:
-            return self.Analysis.RunNumber if not self.IsCollection else self.Analysis.RunPlan
+        return None if self.Analysis is None else self.Analysis.RunNumber if not self.IsCollection else self.Analysis.RunPlan
 
-    def load_runlogs(self):
-        filename = self.Analysis.Run.runinfofile if not self.IsCollection or self.IsSelection else self.Analysis.FirstAnalysis.Run.runinfofile
-        try:
-            f = open(filename)
-            data = load(f)
-            f.close()
-        except IOError as err:
-            log_warning('{err}\nCould not load default RunInfo!'.format(err=err))
-            return None
-        run_logs = OrderedDict(sorted(data.iteritems()))
-        return run_logs
+    def load_run_plan(self):
+        return self.RunSelection.SelectedRunplan if self.Analysis is None else self.Analysis.RunPlan if self.IsCollection else None
 
     def load_parser(self):
         parser = ConfigParser()
-        if self.RunConfig.has_option('BASIC', 'hvconfigfile'):
-            file_path = self.RunConfig.get('BASIC', 'hvconfigfile')
-        else:
-            file_path = join(self.DataDir, self.generate_tc_directory(), 'HV.cfg')
+        file_path = self.MainConfig.get('BASIC', 'hvconfigfile') if self.MainConfig.has_option('BASIC', 'hvconfigfile') else join(self.Run.TCDir, 'HV.cfg')
         if not file_exists(file_path):
-            log_warning('HV info file "{f}" does not exist'.format(f=file_path))
-            return None
+            critical('HV info file "{f}" does not exist'.format(f=file_path))
         parser.read(file_path)
-        self.log_info('HV Devices: {0}'.format([name for name in parser.sections() if name.startswith('HV')]))
+        self.info('HV Devices: {}'.format(', '.join(name for name in parser.sections() if name.startswith('HV'))))
         return parser
 
-    def get_device_nr(self):
-        if self.IsSelection:
-            return str(self.Analysis.get_selection_runinfo().values()[0]['dia{}supply'.format(self.DiamondNumber)].split('-')[0])
-        return str(self.RunInfo['dia{dia}supply'.format(dia=self.DiamondNumber)].split('-')[0])
+    def load_times(self, begin, end):
+        if self.Analysis is None:
+            if str(begin).isdigit():  # run number or run plan is provided
+                self.RunSelection.select_runs_in_range(begin, end if end is not None else begin) if end or end is None else self.RunSelection.select_runs_from_runplan(begin)
+                return self.RunSelection.get_start_time(), self.RunSelection.get_end_time()
+            else:  # actual time strings are provided
+                return (self.TimeZone.localize(datetime.strptime('{}-{}'.format(self.TestCampaign.year, t), '%Y-%m/%d-%H:%M:%S')) for t in [begin, end])
+        return self.load_ana_start_time(), self.load_ana_end_time()
+
+    def get_dut_name(self):
+        if self.Analysis is not None:
+            return self.Analysis.DUTName
+        elif self.RunSelection.has_selected_runs():
+            return self.RunSelection.get_diamond_names(sel=True)[0]
+        return next(log['dia{}'.format(self.DUTNumber)] for log in self.RunLogs.itervalues() if conv_log_time(log['starttime0']) > self.Begin)
+
+    def get_device_str(self):
+        if self.Analysis is not None:
+            run_info = self.Analysis.FirstAnalysis.Run.RunInfo if self.IsCollection else self.Analysis.Run.RunInfo
+        elif self.RunSelection.has_selected_runs():
+            run_info = self.RunLogs[str(self.RunSelection.get_selected_runs()[0])]
+        else:
+            run_info = next(log for log in self.RunLogs.itervalues() if conv_log_time(log['starttime0']) > self.Begin)
+        return str(run_info['dia{}supply'.format(self.DUTNumber)])
+
+    def get_device_number(self):
+        return self.get_device_str().split('-')[0]
 
     def get_device_channel(self):
-        if self.IsSelection:
-            full_str = self.Analysis.get_selection_runinfo().values()[0]['dia{}supply'.format(self.DiamondNumber)]
-        else:
-            full_str = self.RunInfo['dia{dia}supply'.format(dia=self.DiamondNumber)]
-        return full_str.split('-')[1] if len(full_str) > 1 else '0'
+        words = self.get_device_str().split('-')
+        return words[1] if len(words) > 1 else '0'
 
-    def find_data_path(self, old=False):
-        if self.RunConfig.has_option('BASIC', 'hvdatapath'):
-            hv_datapath = self.RunConfig.get('BASIC', 'hvdatapath')
-        else:
-            hv_datapath = join(self.DataDir, self.generate_tc_directory(), 'HVClient')
-        if not dir_exists(hv_datapath):
-            log_warning('HV data path "{p}" does not exist!'.format(p=hv_datapath))
-        hv_datapath = join(hv_datapath, '{dev}_CH{ch}' if not old else '{dev}')
-        return hv_datapath.format(dev=self.ConfigParser.get('HV' + self.Number, 'name'), ch=self.Channel)
+    def find_data_path(self):
+        hv_dir = self.MainConfig.get('BASIC', 'hvdatapath') if self.MainConfig.has_option('BASIC', 'hvdatapath') else join(self.Run.TCDir, 'HVClient')
+        data_dir = join(hv_dir, '{}_CH{}'.format(self.Name, self.Channel))
+        if not dir_exists(data_dir):
+            critical('HV data path "{}" does not exist!'.format(data_dir))
+        return data_dir
 
-    def load_start_time(self):
-        if self.IsSelection:
-            return
-        ana = self.Analysis.FirstAnalysis if self.IsCollection else self.Analysis
-        t = self.TimeZone.localize(datetime.fromtimestamp(ana.Run.StartTime)) if hasattr(ana.Run, 'StartTime') else ana.Run.LogStart
-        return ana.Run.LogStart if t.year < 2000 or t.day != ana.Run.LogStart.day else t
+    def load_time(self, t, t_log):
+        t = self.TimeZone.localize(datetime.fromtimestamp(t)) if t is not None else t_log
+        return t_log if t.year < 2000 or t.day != t_log.day else t
 
-    def load_stop_time(self):
-        if self.IsSelection:
-            return
-        ana = self.Analysis.get_last_analysis() if self.IsCollection else self.Analysis
-        t = self.TimeZone.localize(datetime.fromtimestamp(ana.Run.EndTime)) if hasattr(ana.Run, 'EndTime') else ana.Run.LogEnd
-        return ana.Run.LogEnd if t.year < 2000 or t.day != ana.Run.LogEnd.day else t
+    def load_ana_start_time(self):
+        ana = self.Analysis if not self.IsCollection else self.Analysis.FirstAnalysis
+        return self.load_time(ana.Run.StartTime if hasattr(ana.Run, 'StartTime') else None, ana.Run.LogStart)
 
-    def set_start_stop(self, sta, sto=None):
-        if not sta.isdigit():
-            start_string = '{y}/{s}'.format(y=self.TESTCAMPAIGN[:4], s=sta)
-            stop_string = '{y}/{e}'.format(y=self.TESTCAMPAIGN[:4], e=sto)
-            self.StartTime = datetime.strptime(start_string, '%Y/%m/%d-%H:%M:%S')
-            self.StopTime = datetime.strptime(stop_string, '%Y/%m/%d-%H:%M:%S')
-        elif sto is None:
-            self.StartRun = sta
-            run = sta
-            if not self.run_exists(run):
-                return
-            log = self.RunLogs[run]
-            self.StartTime = datetime.strptime('{d} {t}'.format(d=log['begin date'], t=log['start time']), '%m/%d/%Y %H:%M:%S')
-            self.StopTime = datetime.strptime('{d} {t}'.format(d=log['begin date'], t=log['stop time']), '%m/%d/%Y %H:%M:%S')
-            if self.StartTime > self.StopTime:
-                self.StopTime += timedelta(days=1)
-        else:
-            self.StartRun = sta
-            log1 = self.RunLogs[sta]
-            log2 = self.RunLogs[sto]
-            try:
-                self.StartTime = datetime.strptime('{d} {t}'.format(d=log1['begin date'], t=log1['start time']), '%m/%d/%Y %H:%M:%S')
-                self.StopTime = datetime.strptime('{d} {t}'.format(d=log2['begin date'], t=log2['stop time']), '%m/%d/%Y %H:%M:%S')
-            except KeyError:
-                self.StartTime = datetime.strptime(log1['starttime0'], '%Y-%m-%dT%H:%M:%SZ') + timedelta(hours=1)
-                self.StopTime = datetime.strptime(log2['endtime'], '%Y-%m-%dT%H:%M:%SZ') + timedelta(hours=1)
-
-    def set_device(self):
-        self.reset_data()
-        self.Number = self.get_device_nr()
-        self.Channel = self.get_device_channel()
-        self.Brand = self.ConfigParser.get('HV' + self.Number, 'name').split('-')[0].strip('0123456789')
-        self.Model = self.ConfigParser.get('HV' + self.Number, 'model')
-        self.Name = '{0} {1}'.format(self.Brand, self.Model)
-        self.DataPath = self.find_data_path()
+    def load_ana_end_time(self):
+        ana = self.Analysis if not self.IsCollection else self.Analysis.LastAnalysis
+        return self.load_time(ana.Run.EndTime if hasattr(ana.Run, 'EndTime') else None, ana.Run.LogEnd)
 
     def reset_data(self):
         self.Currents = []
         self.Voltages = []
         self.Time = []
-    # endregion
+    # endregion INIT
+    # ----------------------------------------
 
-    # ==========================================================================
+    # ----------------------------------------
     # region DATA ACQUISITION
-    def get_logs_from_start(self):
-        log_names = sorted([name for name in glob(join(self.DataPath, '*'))] + [name for name in glob(join(self.OldDataPath, '*'))])
-        start_log = None
-        for i, name in enumerate(log_names):
-            log_date = self.get_log_date(name)
-            if log_date >= self.StartTime:
-                break
-            start_log = i
-        self.log_info('Starting with log: {0}'.format(basename(log_names[start_log])))
-        return log_names[start_log:]
-
-    def get_first_log(self):
-        return self.get_logs_from_start()[0]
+    def get_log_names(self):
+        log_names = sorted([name for name in glob(join(self.DataPath, '*'))])
+        start_log = next((i for i, log_name in enumerate(log_names) if self.get_log_date(log_name) >= self.Begin), 1) - 1
+        end_log = next((i for i, log_name in enumerate(log_names) if self.get_log_date(log_name) >= self.End), -1)
+        return log_names[start_log:end_log]
 
     def get_log_date(self, name):
         log_date = ''.join(basename(name).split('_')[-6:])
         return self.TimeZone.localize(datetime.strptime(log_date, '%Y%m%d%H%M%S.log'))
 
-    def set_start(self, zero=False):
-        self.Currents.append(self.Currents[-1] if not zero else 0)
-        self.Voltages.append(self.Voltages[-1] if not zero else 0)
-        self.Time.append(time_stamp(self.StartTime))
-
-    def set_stop(self, zero=False):
-        self.Currents.append(self.Currents[-1] if not zero else 0)
-        self.Voltages.append(self.Voltages[-1] if not zero else 0)
-        self.Time.append(time_stamp(self.StopTime))
-
     def find_data(self):
-        if self.Currents:
+        if len(self.Currents) > 0:
             return
-        self.LogNames = self.get_logs_from_start()
-        for i, log_file_name in enumerate(self.LogNames):
+        f = vectorize(time_stamp)
+        for i, log_file_name in enumerate(self.get_log_names()):
+            data = genfromtxt(log_file_name, usecols=arange(3), dtype=[object, float, float])
+            data = data[where(invert(isnan(data['f1'])))[0]]  # remove text entries
             log_date = self.get_log_date(log_file_name)
-            with open(log_file_name) as f:
-                self.goto_start(f) if not i else do_nothing()  # jump to the correct line of the first file
-                for line in f:
-                    if not self.save_data(line, log_date):
-                        break
-            if self.FoundStop:
-                break
-        if self.Currents:
-            self.set_stop()
-        if not self.Currents:
-            self.set_start(zero=True)
-            self.set_stop(zero=True)
+            data['f0'] = f((log_date.strftime('%Y-%m-%d ') + data['f0']).astype(datetime64).astype(datetime), log_date.utcoffset().seconds)
+            data = data[where((data['f0'] >= time_stamp(self.Begin, off=True)) & (data['f0'] <= time_stamp(self.End, off=True)))]
+            data = data[where(abs(data['f2']) < 1e-3)]  # filter our very high unphysical currents > 3mA
+            if self.IgnoreJumps:  # filter out jumps
+                data = data[where(abs(data['f2'][:-1]) * 100 > abs(data['f2'][1:]))]
+            self.Time = concatenate([self.Time, data['f0'].astype('i4') + self.Begin.utcoffset().seconds])  # in local start time
+            self.Voltages = concatenate([self.Voltages, data['f1']])
+            self.Currents = concatenate([self.Currents, data['f2'] * 1e9])  # unit nA
+        if not self.Currents.size:
+            self.Time = array([time_stamp(self.Begin), time_stamp(self.End)])
+            self.Currents = zeros(2)
+            self.Voltages = zeros(2)
         if mean(self.Currents) < 0:
-            self.Currents = [cur * -1 for cur in self.Currents]
+            self.Currents *= -1
+        if self.Analysis is not None:
+            self.Time -= self.Time[0] - self.Analysis.StartTime  # synchronise time vectors
+    # endregion DATA ACQUISITION
+    # ----------------------------------------
 
-    def save_data(self, line, log_date, shifting=False):
-        info = line.split()
-        if not isfloat(info[1]) or len(info) < 3:  # goto next line if there is device info in the line
-            return True
-        t = self.get_time_from_log(info[0], log_date)
-        current, voltage = float(info[2]) * 1e9, float(info[1])
-        if t >= self.StopTime:
-            self.FoundStop = True
-            return False
-        if self.StartTime < t < self.StopTime and current < 1e6:  # filter out unphysical currents
-            if self.DoAveraging:
-                if not shifting:
-                    self.MeanCurrent += current
-                    self.MeanVoltage += voltage
-                    self.NAveragedEvents += 1
-                    if self.NAveragedEvents % self.Points == 0:
-                        if mean(self.Currents) < 5 * self.MeanCurrent / self.Points:
-                            self.Currents.append(self.MeanCurrent / self.Points)
-                            self.Time.append(time_stamp(t))
-                            self.Voltages.append(self.MeanVoltage / self.Points)
-                            self.MeanCurrent = 0
-                            self.MeanVoltage = 0
-            else:
-                if self.IgnoreJumps:
-                    if len(self.Currents) > 100 and abs(self.Currents[-1] * 100) < abs(current):
-                        if abs(self.Currents[-1]) > 0.01:
-                            return True
-                self.Currents.append(current)
-                self.Time.append(time_stamp(t))
-                self.Voltages.append(voltage)
-        return True
-
-    def goto_start(self, data, iterations=14):
-        log_date = self.get_log_date(self.LogNames[0])
-        lines = data.readlines()
-        n_lines = len(lines)
-        data.seek(0)
-        if len(lines) < 1000:
-            return
-        at_line = n_lines / 2
-        for i in xrange(iterations):
-            while True:
-                info = lines[at_line].split()[0]
-                if info[:2].isdigit():  # check if the time really starts with numbers
-                    now = self.get_time_from_log(info, log_date)
-                    at_line += (1 if now < self.StartTime else -1) * n_lines / 2 ** (i + 2)
-                    break
-                at_line += 1
-        for _ in xrange(at_line - n_lines / 2 ** (iterations - 1)):  # value has to bigger than the width of the previous iteration
-            data.readline()
-
-    def convert_to_relative_time(self):
-        zero = self.Time[0]
-        for i in xrange(len(self.Time)):
-            self.Time[i] = self.Time[i] - zero
-
-    # endregion
-
-    # ==========================================================================
+    # ----------------------------------------
     # region PLOTTING
+    def get_x_bins(self, bw=5):
+        bins = arange(self.Time[0], self.Time[-1], bw) if self.Analysis is None else self.Analysis.get_raw_time_bins(bw)[1] if self.IsCollection else self.Analysis.Bins.get_raw_time(bw)[1]
+        return [bins.size - 1, bins]
 
-    def draw_hist(self, bin_size=1, show=True):
+    def draw_profile(self, bin_width=5, show=True):
         self.find_data()
-        p = TProfile('hpr', 'Leakage Current', int((self.Time[-1] - self.Time[0]) / bin_size), self.Time[0], self.Time[-1])
+        p = TProfile('hpr', 'Leakage Current', *self.get_x_bins(bin_width))
         for t, c in zip(self.Time, self.Currents):
             p.Fill(t, c)
-        self.format_histo(p, x_tit='Time [hh:mm]', y_tit='Current [nA]', y_off=.8, markersize=.7, stats=0, t_ax_off=0)
+        format_histo(p, x_tit='Time [hh:mm]', y_tit='Current [nA]', y_off=.8, markersize=.7, stats=0, t_ax_off=0)
         self.draw_histo(p, '', show, lm=.08, draw_opt='p', x=1.5, y=.75)
         return p
 
-    def draw_flux_correlation(self, show=True):
-        p1 = self.draw_hist(show=False)
-        p2 = self.Analysis.draw_flux_hist(show=False)
-        ybins = log_bins(int(sqrt(p1.GetNbinsX())) * 3, .1, p1.GetMaximum() * 2)
-        xbins = log_bins(int(sqrt(p1.GetNbinsX())), .1, p2.GetMaximum() * 2)
+    def draw_flux_correlation(self, bin_fac=1, show=True):
+        p1 = self.draw_profile(show=False)
+        p2 = self.Analysis.draw_flux(show=False)
+        ybins = log_bins(int(sqrt(p1.GetNbinsX()) * bin_fac) * 3, .1, p1.GetMaximum() * 2)
+        xbins = log_bins(int(sqrt(p1.GetNbinsX()) * bin_fac), .1, p2.GetMaximum() * 2)
         h = TH2F('gfcc', 'Correlation of Flux and Current', *(xbins + ybins))
         for i in xrange(p1.GetNbinsX()):
             if p1.GetBinContent(i) and p2.GetBinContent(i):
                 h.Fill(p2.GetBinContent(i), p1.GetBinContent(i))
-        self.format_histo(h, y_tit='Current [nA]', x_tit='Flux [kHz/cm^{2}', stats=0, y_off=1.2)
+        format_histo(h, y_tit='Current [nA]', x_tit='Flux [kHz/cm^{2}', stats=0, y_off=1.2)
         self.save_histo(h, 'FluxCurrent', draw_opt='colz', rm=.18, show=show, lm=.12, logy=True, logx=True)
 
     def set_graphs(self, averaging=1):
@@ -369,7 +242,7 @@ class Currents(Elementary):
         h = TH1F('hcd', 'Current Distribution', min(5 * int(sqrt(len(self.Currents))), max_bins), xmin, xmax)
         for current in self.Currents:
             h.Fill(current)
-        self.format_histo(h, x_tit='Current [nA]', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
+        format_histo(h, x_tit='Current [nA]', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
         self.draw_histo(h, '', show, lm=.13)
         return h
 
@@ -390,15 +263,15 @@ class Currents(Elementary):
                 current = ufloat(fm, fs + self.Precision + .03 * fm)  # add .05 as uncertainty of the device and 5% systematic error
             else:
                 current = ufloat(h.GetMean(), h.GetMeanError() + .05 + .05 * h.GetMean())
-        server_pickle(self.make_pickle_path('Currents', run=self.RunNumber, ch=self.DiamondNumber), current)
+        self.Analysis.server_pickle(self.make_pickle_path('Currents', run=self.RunNumber, ch=self.DUTNumber), current)
         return current
 
     def draw_iv(self, show=True):
         self.find_data()
         x = [v for v, c in zip(self.Voltages, self.Currents) if c != 590]
         y = [c for c in self.Currents if c != 590]
-        g = self.make_tgrapherrors('giv', 'I-V Curve for {}'.format(self.Analysis.DiamondName), x=x, y=y)
-        self.format_histo(g, x_tit='Voltage [V]', y_tit='Current [nA]', y_off=1.4)
+        g = self.make_tgrapherrors('giv', 'I-V Curve for {}'.format(self.Analysis.DUTName), x=x, y=y)
+        format_histo(g, x_tit='Voltage [V]', y_tit='Current [nA]', y_off=1.4)
         self.draw_histo(g, 'IV', draw_opt='ap', logy=True, lm=.12, show=show)
         return g
 
@@ -406,15 +279,15 @@ class Currents(Elementary):
         self.IgnoreJumps = ignore_jumps
         self.set_graphs(averaging)
         set_root_output(show)
-        c = TCanvas('c', 'Keithley Currents for Run {0}'.format(self.RunNumber), int(self.Res * 1.5), int(self.Res * .75))
+        c = self.make_canvas('cc', 'Keithley Currents for Run {0}'.format(self.RunNumber), x=1.5, y=.75)
         self.draw_flux_pad(f_range, rel_time, draw_opt) if with_flux else self.draw_voltage_pad(v_range, draw_opt)
         self.draw_title_pad()
         self.draw_current_pad(rel_time, c_range, draw_opt)
         if self.IsCollection:
-            self.draw_irradiation(make_irr_string(self.Analysis.selection.get_irradiation()))
+            self.draw_irradiation(make_irr_string(self.Analysis.RunSelection.get_irradiation()))
         self.Stuff.append(c)
-        run = self.Analysis.selection.SelectedRunplan if self.IsCollection else self.RunNumber
-        save_name = 'Currents{}_{}_{}'.format(self.Analysis.TCString, run, self.DiamondNumber)
+        run = self.Analysis.RunPlan if self.IsCollection else self.RunNumber
+        save_name = 'Currents{}_{}_{}'.format(self.TCString, run, self.DUTNumber)
         self.save_canvas(c, name=save_name, sub_dir='currents', show=show)
 
     def zoom_pads(self, low, high):
@@ -424,32 +297,32 @@ class Currents(Elementary):
     def draw_current_pad(self, rel_t, c_range, draw_opt):
         self.draw_tpad('p3', gridx=True, margins=pad_margins, transparent=True)
         g = self.CurrentGraph
-        self.format_histo(g, x_tit='#font[22]{Time [hh:mm]}', lab_size=label_size, x_off=1.05, tit_size=axis_title_size, t_ax_off=self.Time[0] if rel_t else 0, y_off=.55, yax_col=col_cur,
-                          y_tit='#font[22]{Current [nA]}', center_y=True, x_range=[self.Time[0], self.Time[-1]], y_range=c_range, color=col_cur, markersize=marker_size)
+        format_histo(g, x_tit='#font[22]{Time [hh:mm]}', lab_size=label_size, x_off=1.05, tit_size=axis_title_size, t_ax_off=self.Time[0] if rel_t else 0, y_off=.55, yax_col=col_cur,
+                     y_tit='#font[22]{Current [nA]}', center_y=True, x_range=[self.Time[0], self.Time[-1]], y_range=c_range, color=col_cur, markersize=marker_size)
         self.CurrentGraph.Draw(draw_opt)
 
     def draw_voltage_pad(self, v_range, draw_opt='ap'):
         self.draw_tpad('p1', gridy=True, margins=pad_margins, transparent=True)
         g = self.VoltageGraph
         v_range = [-1100, 1100] if v_range is None else v_range
-        self.format_histo(g, y_range=v_range, y_tit='#font[22]{Voltage [V]}', x_range=[self.Time[0], self.Time[-1]], tit_size=axis_title_size, tick_size=0, x_off=99, l_off_x=99, center_y=True,
-                          color=col_vol, y_off=title_offset, markersize=marker_size, yax_col=col_vol, lw=3, lab_size=label_size)
+        format_histo(g, y_range=v_range, y_tit='#font[22]{Voltage [V]}', x_range=[self.Time[0], self.Time[-1]], tit_size=axis_title_size, tick_size=0, x_off=99, l_off_x=99, center_y=True,
+                     color=col_vol, y_off=title_offset, markersize=marker_size, yax_col=col_vol, lw=3, lab_size=label_size)
         g.Draw('{}y+'.format(draw_opt))
 
     def draw_flux_pad(self, f_range, rel_t=False, draw_opt='ap'):
         pad = self.draw_tpad('pr', margins=pad_margins, transparent=True, logy=True)
-        h = self.Analysis.draw_fluxes(rel_time=rel_t, show=False)
+        h = self.Analysis.draw_flux(rel_time=rel_t, show=False)
         pad.cd()
         f_range = [1, 20000] if f_range is None else f_range
-        self.format_histo(h, title=' ', y_tit='#font[22]{Flux [kHz/cm^{2}]}', fill_color=4000, fill_style=4000, lw=3, y_range=f_range, stats=0, x_off=99, l_off_x=99, tick_size=0,
-                          center_y=True, tit_size=axis_title_size, y_off=.7)
+        format_histo(h, title=' ', y_tit='#font[22]{Flux [kHz/cm^{2}]}', fill_color=4000, fill_style=4000, lw=3, y_range=f_range, stats=0, x_off=99, l_off_x=99, tick_size=0,
+                     center_y=True, tit_size=axis_title_size, y_off=.7)
         h.Draw('{}y+'.format(draw_opt) if 'TGraph' in h.Class_Name() else 'histy+')
 
     def draw_title_pad(self):
         self.draw_tpad('p2', transparent=True)
         bias_str = 'at {b} V'.format(b=self.Bias) if self.Bias else ''
         run_str = '{n}'.format(n=self.RunNumber) if not self.IsCollection else 'Plan {rp}'.format(rp=self.Analysis.RunPlan)
-        text = 'Currents of {dia} {b} - Run {r} - {n}'.format(dia=self.DiamondName, b=bias_str, r=run_str, n=self.Name)
+        text = 'Currents of {dia} {b} - Run {r} - {n}'.format(dia=self.DUTName, b=bias_str, r=run_str, n=self.Name)
         self.draw_tlatex(pad_margins[0], 1.02 - pad_margins[-1], text, align=11, size=.06)
 
     def find_margins(self):
@@ -468,12 +341,12 @@ class Currents(Elementary):
         # current
         y = array(average_list(self.Currents, averaging))
         g1 = TGraph(len(xc), xc, y)
-        self.format_histo(g1, 'Current', '', color=col_cur, markersize=.5)
+        format_histo(g1, 'Current', '', color=col_cur, markersize=.5)
         g1.SetTitle('')
         # voltage
         y = array(self.Voltages)
         g2 = TGraph(len(xv), xv, y)
-        self.format_histo(g2, 'Voltage', '', color=col_vol, markersize=.5)
+        format_histo(g2, 'Voltage', '', color=col_vol, markersize=.5)
         self.CurrentGraph = g1
         self.VoltageGraph = g2
 
@@ -497,36 +370,22 @@ class Currents(Elementary):
         if not self.run_exists(run):
             return
         log = self.RunLogs[run]
-        out = '{date}: {start}-{stop}'.format(date=log['begin date'], start=log['start time'], stop=log['stop time'])
-        print out
+        out = '{date}: {start}-{stop}'.format(date=log['begin date'], start=log['begin time'], stop=log['stop time'])
+        print(out)
 
     def get_time_from_log(self, t_str, year_str):
         return self.TimeZone.localize(datetime.strptime(year_str.strftime('%Y%m%d') + t_str, '%Y%m%d%H:%M:%S'))
 
 
-if __name__ == "__main__":
-    pars = ArgumentParser()
-    pars.add_argument('start', nargs='?', default='01/01-00:00:00')
-    pars.add_argument('stop', nargs='?', default=None)
-    pars.add_argument('-d', '--dia', nargs='?', default='bcmprime-c1')
-    pars.add_argument('-tc', '--testcampaign', nargs='?', default='')
-    pars.add_argument('-v', '--verbose', action='store_false')
-    pars.add_argument('-rp', '--runplan', nargs='?', default=None)
-    args = pars.parse_args()
-    tc = args.testcampaign if args.testcampaign.startswith('201') else None
-    a = Elementary(tc)
-    print_banner('STARTING CURRENT TOOL')
-    a.print_testcampaign()
-    start, end = args.start, args.stop
-    sel = RunSelection(testcampaign=tc)
-    if args.runplan is not None:
-        sel.select_runs_from_runplan(args.runplan)
-        start = str(sel.get_selected_runs()[0])
-        end = str(sel.get_selected_runs()[-1])
-    else:
-        sel.select_diamond_runs(args.dia)
-        if args.start.isdigit():
-            sel.unselect_all_runs()
-            sel.select_runs_in_range(int(args.start), int(args.stop))
-    z = Currents(sel, start_run=start, verbose=args.verbose)
-    z.set_start_stop(start, end)
+if __name__ == '__main__':
+
+    aparser = ArgumentParser()
+    aparser.add_argument('dut', nargs='?', default=1, type=int, help='dut number [default: 1] (choose from 1,2,...)')
+    aparser.add_argument('begin', nargs='?', default=12)
+    aparser.add_argument('end', nargs='?', default=None)
+    aparser.add_argument('-tc', '--testcampaign', nargs='?', default=None, help='YYYYMM beam test [default in main.ini]')
+    aparser.add_argument('-v', '--verbose', action='store_false')
+    aparser.add_argument('-c', '--collection', action='store_true', help='begin analysis collection')
+    pargs = aparser.parse_args()
+
+    z = Currents(test_campaign=pargs.testcampaign, dut=pargs.dut, begin=pargs.begin, end=pargs.end if not pargs.collection else False, verbose=pargs.verbose)
