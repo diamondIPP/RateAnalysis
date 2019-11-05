@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 from Extrema import Extrema2D
 from telescope_analysis import *
-from CurrentInfo import Currents
+from currents import Currents
 from ROOT import TProfile2D
 from numpy import linspace
 from uncertainties import umath

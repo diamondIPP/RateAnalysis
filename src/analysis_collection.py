@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 from ROOT import THStack, TF1, TProfile2D
 
-from CurrentInfo import Currents
+from currents import Currents
 from InfoLegend import InfoLegend
 from run_selection import RunSelection
 from VoltageScan import VoltageScan
