@@ -690,8 +690,9 @@ def fill_empty_time_entries(times):
     return times
 
 
-def time_stamp(t):
-    return float(t.strftime('%s'))
+def time_stamp(dt, off=None):
+    t = float(dt.strftime('%s'))
+    return t if off is None else t - (off if off > 1 else dt.utcoffset().seconds)
 
 
 def correct_time(times):
@@ -776,10 +777,10 @@ def run_selector(run, tc, tree, t_vec, verbose):
     critical('wrong run type: has to be in [pad, pixel]')
 
 
-def measure_time(f, rep=1, *args):
+def measure_time(f, rep=1, *args, **kwargs):
     t = info('Measuring time of method {}:'.format(f.__name__), next_line=False)
     for _ in xrange(int(rep)):
-        f(*args)
+        f(*args, **kwargs)
     add_to_info(t, '')
 
 
