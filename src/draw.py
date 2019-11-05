@@ -330,9 +330,8 @@ class Draw:
             warning('Diamond server is not mounted in {}'.format(self.ServerDir))
             return
         if hasattr(self, 'DUTName'):
-            if hasattr(self, 'RunPlan'):
-                rp = self.RunPlan
-                run_string = 'RunPlan{r}'.format(r=rp[1:] if rp[0] == '0' else rp)
+            if hasattr(self, 'RunPlan') and self.RunPlan is not None:
+                run_string = 'RunPlan{}'.format(self.RunPlan.lstrip('0'))
             elif hasattr(self, 'RunNumber'):
                 run_string = str(self.RunNumber)
             else:
