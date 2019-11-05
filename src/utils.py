@@ -789,13 +789,23 @@ def u_to_str(v, prec=2):
 
 
 class FitRes:
-    def __init__(self, fit_obj=None):
-        self.Pars = list(fit_obj.Parameters()) if (fit_obj is not None and len(fit_obj.Parameters()) > 0) else [None]
-        self.Errors = list(fit_obj.Errors()) if (fit_obj is not None and len(fit_obj.Parameters()) > 0) else [None]
-        self.NPars = len(self.Pars)
-        self.Names = [fit_obj.ParName(i) for i in xrange(self.NPars)] if fit_obj is not None else [None]
-        self.vChi2 = fit_obj.Chi2() if fit_obj is not None else None
-        self.vNdf = fit_obj.Ndf() if fit_obj is not None else None
+    def __init__(self, f=None):
+        self.Pars = [None]
+        self.Errors = [None]
+        self.Names = None
+        self.vChi2 = None
+        self.vNdf = None
+        if f is None:
+            return
+        is_tf1 = 'TF1' in f.ClassName()
+        self.NPar = f.GetNpar() if is_tf1 else f.NPar()
+        if self.NPar < 1:
+            return
+        self.Pars = [f.GetParameter(i) for i in xrange(self.NPar)] if is_tf1 else list(f.Parameters())
+        self.Errors = [f.GetParError(i) for i in xrange(self.NPar)] if is_tf1 else list(f.Errors())
+        self.Names = [f.GetParName(0) if is_tf1 else f.ParName(i) for i in xrange(self.NPar)]
+        self.vChi2 = f.GetChisquare if is_tf1 else f.Chi2()
+        self.vNdf = f.GetNDF if is_tf1 else f.Ndf()
 
     def Parameter(self, arg):
         return self.Pars[arg]
