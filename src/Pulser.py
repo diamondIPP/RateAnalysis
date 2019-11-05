@@ -55,6 +55,17 @@ class PulserAnalysis(Analysis):
         fit = do_pickle(pickle_path, partial(self.draw_distribution_fit, show=False, prnt=False, corr=corr, redo=redo, bin_width=bin_width), redo=redo)
         return make_ufloat(fit, par=1)
 
+    def get_pedestal(self, par=1, redo=False):
+        pickle_path = self.make_pickle_path('Pulser', 'Pedestal', self.RunNumber, self.DUTNumber)
+        fit = do_pickle(pickle_path, partial(self.draw_pedestal, show=False, prnt=False, redo=redo))
+        return make_ufloat(fit, par=par)
+
+    def get_pedestal_mean(self, redo=False):
+        return self.get_pedestal(par=1, redo=redo)
+
+    def get_pedestal_sigma(self, redo=False):
+        return self.get_pedestal(par=2, redo=redo)
+
     def draw_rate(self, evts_per_bin=1000, cut=None, vs_time=True, rel_t=True, show=True, prnt=True):
         """ Shows the fraction of pulser events as a function of the event number. Peaks appearing in this graph are most likely beam interruptions. """
         cut = '' if cut is None else TCut(cut)
