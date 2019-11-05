@@ -36,6 +36,15 @@ class TimingAnalysis(Analysis):
         self.TimingCut = self.Cut.generate_special_cut(excluded=['timing'], prnt=False, name='Timing')
         self.Cut = self.Ana.Cut
 
+    def get(self, par=1, redo=False):
+        pickle_path = self.make_pickle_path('Timing', 'PeakVals', self.RunNumber, self.DUTNumber)
+
+        def f():
+            h = self.draw_peaks(show=False, prnt=False, redo=redo)
+            return FitRes(h.GetListOfFunctions()[0])
+
+        return make_ufloat(do_pickle(pickle_path, f, redo=redo), par=par)
+
     # --------------------------
     # region RUN CONFIG
 
@@ -165,7 +174,6 @@ class TimingAnalysis(Analysis):
         fit2.SetLineStyle(2)
         fit.SetLineColor(1)
         fit2.SetLineColor(1)
-        h.GetListOfFunctions().Add(fit)
         h.GetListOfFunctions().Add(fit2)
         return fit
 
