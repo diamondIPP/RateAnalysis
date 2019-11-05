@@ -66,7 +66,8 @@ class Run:
         self.Converter = Converter(self) if self.RunNumber is not None else None
         if self.set_run(run_number, tree):
             # tree info
-            self.Time = get_time_vec(self.Tree) if t_vec is None else t_vec
+            self.TimeOffset = None
+            self.Time = self.load_time_vec(t_vec)
             self.StartEvent = 0
             self.NEntries = int(self.Tree.GetEntries())
             self.EndEvent = self.NEntries - 1
@@ -82,7 +83,7 @@ class Run:
         if run_number is None:
             return False
         if run_number < 0 and type(run_number) is not int:
-            critical('incorrect run_number')
+            critical('incorrect run number')
 
         self.RunNumber = run_number
         self.load_run_info()
@@ -210,6 +211,12 @@ class Run:
         else:
             return 4
 
+    def load_time_vec(self, t_vec):
+        t = get_time_vec(self.Tree) if t_vec is None else t_vec
+        t0 = datetime.fromtimestamp(t[0] / 1000)
+        self.TimeOffset = None if t0.year > 2000 and t0.day == self.LogStart.day else t[0] - time_stamp(self.LogStart) * 1000
+        return t if self.TimeOffset is None else t - self.TimeOffset
+
     # endregion
     # ----------------------------------------
 
@@ -290,7 +297,7 @@ class Run:
         if dia is None or dia.lower() in ['unknown', 'none']:
             return
         parser = ConfigParser()
-        parser.read(join(self.Dir, 'Configuration', 'DiamondAliases.cfg'))
+        parser.read(join(self.Dir, 'Configuration', 'DiamondAliases.ini'))
         return parser.get('ALIASES', dia.lower()) if dia.lower() in parser.options('ALIASES') else log_critical('Please add {} to the diamond aliases!'.format(dia.encode()))
 
     def reload_run_config(self, run_number):
