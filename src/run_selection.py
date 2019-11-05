@@ -1,5 +1,4 @@
 from utils import *
-from ConfigParser import ConfigParser
 from glob import glob
 from itertools import chain
 from json import load, loads, dump
@@ -171,18 +170,16 @@ class RunSelection:
 
     def select_runs_in_range(self, minrun, maxrun):
         for run in self.RunNumbers:
-            if maxrun >= run >= minrun:
+            if int(maxrun) >= run >= int(minrun):
                 self.select_run(run)
 
-    def select_runs(self, run_list, dia=1):
+    def select_runs(self, run_list, dut=1):
         for run in run_list:
             self.select_run(run)
-        parser = ConfigParser()
-        parser.read('Configuration/DiamondAliases.cfg')
         self.SelectedType = 'CurrentInfo'
-        self.SelectedDUTNr = dia
-        self.SelectedDUT = parser.get('ALIASES', self.RunInfos[self.get_selected_runs()[0]]['dia{0}'.format(dia)])
-        self.SelectedBias = self.RunInfos[self.get_selected_runs()[0]]['dia{0}hv'.format(dia)]
+        self.SelectedDUTNr = dut
+        self.SelectedDUT = self.get_diamond_names(sel=True, lower=False)[0]
+        self.SelectedBias = self.get_selected_biases()[0]
 
     def unselect_unless_in_range(self, minrun, maxrun):
         for run in self.get_selected_runs():
@@ -403,29 +400,20 @@ class RunSelection:
             return ('{min:+4.0f} ... {max:+4.0f}'.format(min=hv[ahv.index(min(ahv))], max=hv[ahv.index(max(ahv))]) for ahv, hv in zip(abs_hvs, hvs))
         return ('{v:+13.0f}'.format(v=hv[0]) for hv in hvs)
 
-    def get_selected_bias(self):
-        hvs = self.get_runinfo_values('dia{}hv'.format(self.SelectedDUTNr), sel=True)
-        return int(hvs[0]) if hvs is not None and len(hvs) == 1 else None
-
     def get_missing_runs(self, runs):
         all_runs = [run for run in self.RunNumbers if runs[-1] >= run >= runs[0]]
         missing_runs = [run for run in all_runs if run not in runs]
         return str(missing_runs if len(missing_runs) <= 3 else '{0}, ...]'.format(str(missing_runs[:2]).strip(']'))) if missing_runs else ''
 
-    def select_runs_from_runplan(self, plan_nr, ch=1):
+    def select_runs_from_runplan(self, plan_nr, dut=1):
         if plan_nr is None:
             return
         plan = self.make_runplan_string(plan_nr)
         runs = self.RunPlan[plan]['runs']
 
-        self.select_runs(runs)
-        parser = ConfigParser()
-        parser.read('Configuration/DiamondAliases.cfg')
+        self.select_runs(runs, dut=dut)
         self.SelectedRunplan = plan
         self.SelectedType = str(self.RunPlan[plan]['type'])
-        self.SelectedDUT = parser.get('ALIASES', self.RunInfos[runs[0]]['dia{0}'.format(ch)]) if ch is not None else None
-        self.SelectedDUTNr = ch
-        self.SelectedBias = self.get_selected_bias()
 
     def add_selection_to_runplan(self, plan_nr, run_type=None):
         """ Saves all selected runs as a run plan with name 'plan_nr'. """
@@ -460,10 +448,10 @@ class RunSelection:
         nr = str(nr)
         return nr.zfill(2) if len(nr) <= 2 else nr.zfill(4)
 
-    def get_diamond_names(self, sel=False):
+    def get_diamond_names(self, sel=False, lower=True):
         keys = ['dia{}'.format(i + 1) for i in xrange(self.get_max_dias())]
         dias = [self.Run.translate_dia(dia) for key in keys for dia in self.get_runinfo_values(key, sel)]
-        return list(set(dia.lower() for dia in dias if dia is not None))
+        return list(set(dia.lower() if lower else dia for dia in dias if dia is not None))
 
     def show_diamond_names(self, sel=False):
         print 'Diamondnames:'
@@ -472,8 +460,7 @@ class RunSelection:
 
     def show_run_types(self, sel=False):
         print 'Types:'
-        for type_ in self.get_runinfo_values('type', sel=sel):
-            print '  ' + type_
+        ', '.join(self.get_runinfo_values('type', sel=sel))
 
     def get_attenuator(self, key):
         atts = self.get_runinfo_values(key, sel=True)
@@ -488,6 +475,7 @@ class RunSelection:
         run_infos = self.RunInfos if not sel else self.get_selection_runinfo()
         if all(key in data for data in run_infos.itervalues()):
             return sorted(list(set(data[key] for data in run_infos.itervalues())))
+        return []
 
     def get_selection_runinfo(self):
         dic = {}
