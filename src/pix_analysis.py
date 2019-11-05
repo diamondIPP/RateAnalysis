@@ -118,7 +118,7 @@ class PixAnalysis(DUTAnalysis):
         self.Bins.set_bin_size(binning)
         cut_string = self.Cut.generate_special_cut(excluded='fiducial' if not fid else [], cluster=False) if cut is None else TCut(cut)
         h = TH3F('h_to', 'to', *(self.Bins.get_time() + self.Bins.get_pixel()))
-        self.Tree.Draw('row:col:time/1000.>>h_to', cut_string, 'goff')
+        self.Tree.Draw('row:col:{}>>h_to'.format(self.get_t_var()), cut_string, 'goff')
         format_histo(h, y_tit='col', z_tit='row')
         gx, gy = [self.make_tgrapherrors('g_to{}'.format(i), 'Mean {}'.format(i.title())) for i in ['x', 'y']]
         for ibin in xrange(h.GetNbinsX() - 1):
@@ -220,7 +220,7 @@ class PixAnalysis(DUTAnalysis):
         cut_string += self.Cut.generate_masks(cluster=False) if adc else ''
         h = TProfile('hpht', '{} -  {}'.format('ADC' if adc else 'Pulse Height', self.DUTName), *self.Bins.get_time(bin_size))
         self.format_statbox(only_fit=True, w=.3)
-        self.Tree.Draw('{}:time / 1000. >> hpht'.format('cluster_charge[{}]'.format(self.Dut) if not adc else 'adc'), cut_string, 'goff')
+        self.Tree.Draw('{}:{} >> hpht'.format(self.get_ph_str() if not adc else 'adc', self.get_t_var()), cut_string, 'goff')
         self.draw_histo(h, show=show)
         fit_par = h.Fit('pol0', 'qs')
         format_histo(h, name='Fit Result', y_off=1.9, y_tit='Pulse Height [e]', x_tit='Time [hh:mm]', markersize=.6, t_ax_off=self.Run.StartTime)
@@ -341,7 +341,7 @@ class PixAnalysis(DUTAnalysis):
         set_root_output(False)
         h = TProfile('h_he', 'Hit Efficiency {s}'.format(s=self.Dut), *self.Bins.get(bin_width, vs_time))
         cut_string = self.Cut.generate_special_cut(excluded=['masks']) if cut is None else TCut(cut)
-        x_var = 'time / 1000.' if vs_time else 'event_number'
+        x_var = self.get_t_var() if vs_time else 'event_number'
         self.Tree.Draw('(n_hits[{r}]>0)*100:{x} >> h_he'.format(r=self.Dut, x=x_var), cut_string, 'goff', int(n), start)
         g = self.make_graph_from_profile(h)
         fit = fix_chi2(g, .01, show)
@@ -412,7 +412,7 @@ class PixAnalysis(DUTAnalysis):
 
     def draw_trigphase_off_time(self, bin_width=30000, cut=None, show=True):
         h = TProfile('htpot', 'Trigger Phase vs Time', *self.Bins.get(bin_width, vs_time=True))
-        self.Tree.Draw('(trigger_phase[1] - trigger_phase[0]):time/1000>>htpot', self.Cut.generate_special_cut(excluded='trigger_phase') if cut is None else cut, 'goff')
+        self.Tree.Draw('(trigger_phase[1] - trigger_phase[0]):{}>>htpot'.format(self.get_t_var()), self.Cut.generate_special_cut(excluded='trigger_phase') if cut is None else cut, 'goff')
         self.format_statbox(entries=True, y=0.88)
         format_histo(h, x_tit='Time [hh:mm]', y_tit='Trigger Phase', y_off=1.8, fill_color=self.FillColor, t_ax_off=self.Run.StartTime)
         self.save_histo(h, 'TPOffTime', show, lm=.16)
@@ -527,7 +527,7 @@ class PixAnalysis(DUTAnalysis):
             h = TH3F('hpa', 'pa', *(self.Bins.get(binning, vs_time=vs_time) + self.Bins.get_global(res_fac=sqrt(12), mode=mode, arrays=True)))
             y, z_ = ('cluster_{m}pos_tel[{r}]'.format(m=mode, r=plane) for plane in [plane1, plane2])
             cut_string = TCut('n_clusters[{p1}]==1 && n_clusters[{p2}]==1'.format(p1=plane1, p2=plane2)) + TCut(self.Cut.generate_chi2(mode, chi2))
-            self.Tree.Draw('{z}:{y}:{x}>>hpa'.format(z=z_, y=y, x='time / 1000.' if vs_time else 'Entry$'), cut_string, 'goff')
+            self.Tree.Draw('{z}:{y}:{x}>>hpa'.format(z=z_, y=y, x=self.get_t_var() if vs_time else 'Entry$'), cut_string, 'goff')
             g = self.make_tgrapherrors('g_pa', 'Plane Correlation {p1} {p2}'.format(p1=plane1, p2=plane2), marker_size=.5)
             for ibin in xrange(h.GetNbinsX() - 1):
                 h.GetXaxis().SetRange(ibin, ibin + 1)

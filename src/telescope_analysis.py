@@ -1,5 +1,5 @@
 from analysis import *
-from ROOT import TH2F, TH1F, TCut, TF1, TGraph, TH1I, TProfile, TMultiGraph, TH2I
+from ROOT import TH2F, TH1F, TCut, TF1, TGraph, TH1I, TProfile, TMultiGraph, TH2I, THStack
 from numpy import log
 
 from cut import Cut
@@ -29,6 +29,7 @@ class TelecopeAnalysis(Analysis):
         self.TelSaveDir = str(self.RunNumber).zfill(3)
         self.Tree = self.Run.Tree
         self.InfoLegend = InfoLegend(self)
+        self.StartTime = self.Run.StartTime if self.Tree else time_stamp(self.Run.LogStart)
 
         if self.Tree:
             self.Cut = Cut(self)
@@ -36,6 +37,9 @@ class TelecopeAnalysis(Analysis):
             self.StartEvent = self.Cut.CutConfig['EventRange'][0]
             self.EndEvent = self.Cut.CutConfig['EventRange'][1]
             self.Bins = Bins(self.Run, cut=self.Cut)
+
+    def get_t_var(self):
+        return 'time / 1000.' if self.Run.TimeOffset is None else '(time - {}) / 1000.'.format(self.Run.TimeOffset)
 
     # ----------------------------------------
     # region TRACKS
@@ -70,7 +74,7 @@ class TelecopeAnalysis(Analysis):
         self.draw_chi2('x', show_cut=True, show=show, x_range=x_range, prnt=prnt)
         self.draw_chi2('y', show_cut=True, show=show, x_range=x_range, prnt=prnt)
 
-    def draw_angle_distribution(self, mode='x', show=True, print_msg=True, cut=None, show_cut=False, normalise=None):
+    def draw_angle_distribution(self, mode='x', cut=None, show_cut=False, normalise=None, show=True, prnt=True):
         """ Displays the angle distribution of the tracks. """
         assert mode in ['x', 'y']
         cut = cut if cut is not None else TCut('angle_x > -900')
@@ -80,11 +84,19 @@ class TelecopeAnalysis(Analysis):
         y_tit = '{} of Entries'.format('Number' if normalise is None else 'Percentage')
         format_histo(h, name='had{}'.format(mode), x_tit='Track Angle {} [deg]'.format(mode.title()), y_tit=y_tit, y_off=2, lw=2, normalise=normalise)
         self.format_statbox(all_stat=True, n_entries=5, w=.3)
-        self.draw_histo(h, '', show, lm=.14, prnt=print_msg, both_dias=True)
+        self.draw_histo(h, '', show, lm=.14, prnt=prnt, both_dias=True)
         if show_cut:
             self.draw_angle_cut(mode)
-        self.save_plots('TrackAngle{mod}'.format(mod=mode.upper()), both_dias=True, prnt=print_msg)
+        self.save_plots('TrackAngle{mod}'.format(mod=mode.upper()), both_dias=True, prnt=prnt)
         return h
+
+    def get_mean_angle(self, mode='x'):
+        picklepath = self.make_pickle_path('TrackAngle', 'mean_{}'.format(mode), self.RunNumber)
+
+        def f():
+            h = self.draw_angle_distribution(mode=mode, show=False, prnt=False)
+            return ufloat(h.GetMean(), h.GetMeanError()), ufloat(h.GetStdDev(), h.GetStdDevError())
+        return do_pickle(picklepath, f)
 
     def draw_angle_cut(self, mode):
         xmin, xmax = self.Cut.calc_angle(mode=mode)[mode]
@@ -94,9 +106,15 @@ class TelecopeAnalysis(Analysis):
         legend.AddEntry(line, 'cut ({} deg)'.format(self.Cut.CutConfig['slope']), 'l')
         legend.Draw()
 
-    def draw_both_angles(self, show=True, prnt=True):
-        self.draw_angle_distribution('x', show=show, print_msg=prnt, show_cut=True)
-        self.draw_angle_distribution('y', show=show, print_msg=prnt, show_cut=True)
+    def draw_both_angles(self):
+        histos = [self.draw_angle_distribution(mode, show=False) for mode in ['x', 'y']]
+        leg = self.make_legend(nentries=2, w=.25)
+        stack = THStack('has', 'Track Angles')
+        for h in histos:
+            format_histo(h, stats=False, color=self.get_color())
+            leg.AddEntry(h, 'Angle in {}'.format(h.GetTitle()[-1]), 'l')
+            stack.Add(h)
+        self.save_tel_histo(stack, 'TrackAngles', sub_dir=self.TelSaveDir, lm=.14, leg=leg, draw_opt='nostack')
 
     def draw_track_length(self, show=True, save=True, t_dia=500):
         h = TH1F('htd', 'Track Distance in Diamond', 200, t_dia, t_dia + 1)
@@ -107,27 +125,6 @@ class TelecopeAnalysis(Analysis):
         h.GetXaxis().SetNdivisions(405)
         self.save_tel_histo(h, 'DistanceInDia', show, lm=.16, save=save)
         return h
-
-    def show_both_angles(self):
-        gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
-        self.get_color()
-        histos = [self.draw_angle_distribution(mode, show=False) for mode in ['x', 'y']]
-        c = TCanvas('c', 'Chi2', 1000, 1000)
-        c.SetLeftMargin(.13)
-        max_angle = int(max([h.GetMaximum() for h in histos])) / 1000 * 1000 + 1000
-        histos[0].GetYaxis().SetRangeUser(0, max_angle)
-        legend = TLegend(.7, .7, .9, .9)
-        leg_names = ['Angle in ' + mode for mode in ['x', 'y']]
-        for i, h in enumerate(histos):
-            h.SetStats(0)
-            h.SetTitle('Track Angle Distributions')
-            h.SetLineColor(self.get_color())
-            h.Draw() if not i else h.Draw('same')
-            legend.AddEntry(h, leg_names[i], 'l')
-        legend.Draw()
-        gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
-        self.Objects.append([legend, c, histos])
-        self.save_plots('TrackAngles', sub_dir=self.TelSaveDir)
 
     def _draw_residuals(self, roc, mode=None, cut=None, x_range=None, fit=False, show=True):
         mode = '' if mode is None else mode.lower()
@@ -245,7 +242,7 @@ class TelecopeAnalysis(Analysis):
         self.save_tel_histo(h, 'HitMap{0}'.format(plane), show, draw_opt='colz', rm=.15, prnt=prnt)
         return h
 
-    def _draw_occupancies(self, planes=None, cut='', cluster=True, show=True, prnt=True):
+    def draw_occupancies(self, planes=None, cut='', cluster=True, show=True, prnt=True):
         planes = range(4) if planes is None else list(planes)
         histos = [self._draw_occupancy(plane, cluster=cluster, cut=cut, show=False, prnt=False) for plane in planes]
         set_root_output(show)
@@ -257,30 +254,30 @@ class TelecopeAnalysis(Analysis):
             h.Draw('colz')
         self.save_plots('HitMaps', sub_dir=self.TelSaveDir, show=show, prnt=prnt, both_dias=True)
 
-    def draw_tracking_map(self, at_dut=1, res=2, cut='', show=True):
+    def draw_tracking_map(self, at_dut=1, res=.7, cut='', show=True, prnt=True):
+        set_root_output(False)
         h = TH2I('htm{}'.format(at_dut), 'Tracking Map', *self.Bins.get_global(res, mm=True))
         x_var, y_var = [self.Cut.get_track_var(at_dut - 1, v) for v in ['x', 'y']]
         self.Tree.Draw('{y} * 10:{x} * 10 >> htm{}'.format(at_dut, x=x_var, y=y_var), TCut(cut), 'goff')
         format_histo(h, x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]', y_off=1.4, z_off=1.5, z_tit='Number of Hits', ncont=50, ndivy=510, ndivx=510, stats=0)
-        self.save_tel_histo(h, 'TrackMap{}'.format(at_dut), lm=.12, rm=.16, draw_opt='colz', show=show, x_fac=1.15)
+        self.save_tel_histo(h, 'TrackMap{}'.format(at_dut), lm=.12, rm=.16, draw_opt='colz', show=show, x_fac=1.15, prnt=prnt)
         return h
 
-    def draw_beam_profile(self, at_dut=1, mode='x', fit=True, fit_range=.8, res=2, show=True):
-        h = self.draw_tracking_map(at_dut, res, show=False)
+    def draw_beam_profile(self, at_dut=1, mode='x', fit=True, fit_range=.8, res=.7, show=True, prnt=True):
+        h = self.draw_tracking_map(at_dut, res, show=False, prnt=prnt)
         p = h.ProjectionX() if mode.lower() == 'x' else h.ProjectionY()
-        format_histo(p, title='Profile {}'.format(mode.title()), y_off=1.3, y_tit='Number of Hits', fill_color=self.FillColor)
+        format_histo(p, title='Profile {}'.format(mode.title()), name='pbp{}'.format(self.RunNumber), y_off=1.3, y_tit='Number of Hits', fill_color=self.FillColor)
         self.format_statbox(all_stat=True)
         self.draw_histo(p, lm=.13, show=show)
         if fit:
-            self.fit_beam_profile(p, fit_range)
-        self.save_plots('BeamProfile{}{}'.format(at_dut, mode.title()), both_dias=True)
-        return
+            fit = self.fit_beam_profile(p, fit_range)
+        self.save_plots('BeamProfile{}{}'.format(at_dut, mode.title()), both_dias=True, prnt=prnt)
+        return FitRes(fit) if fit else p
 
     @staticmethod
     def fit_beam_profile(p, fit_range):
         x_peak = p.GetBinCenter(p.GetMaximumBin())
         x_min, x_max = [p.GetBinCenter(i) for i in [p.FindFirstBinAbove(0), p.FindLastBinAbove(0)]]
-        print x_peak, x_min, x_max
         return p.Fit('gaus', 'qs', '', x_peak - (x_peak - x_min) * fit_range, x_peak + (x_max - x_peak) * fit_range)
     # endregion PIXEL HITS
     # ----------------------------------------
@@ -295,7 +292,7 @@ class TelecopeAnalysis(Analysis):
 
     def _draw_trigger_phase_time(self, dut=False, bin_width=None, cut=None, show=True):
         h = TProfile('htpt', 'Trigger Phase Offset vs Time - {}'.format('DUT' if dut else 'TEL'), *self.Bins.get(bin_width, vs_time=True))
-        self.Tree.Draw('trigger_phase[{}]:time/1000>>htpt'.format(1 if dut else 0), self.Cut.generate_special_cut(excluded='trigger_phase') if cut is None else cut, 'goff')
+        self.Tree.Draw('trigger_phase[{}]:{}>>htpt'.format(1 if dut else 0, self.get_t_var()), self.Cut.generate_special_cut(excluded='trigger_phase') if cut is None else cut, 'goff')
         self.format_statbox(entries=True, y=0.88)
         format_histo(h, x_tit='Time [hh:mm]', y_tit='Trigger Phase', y_off=1.8, fill_color=self.FillColor, t_ax_off=self.Run.StartTime)
         self.save_histo(h, 'TPTime', show, lm=.16)
@@ -322,7 +319,7 @@ class TelecopeAnalysis(Analysis):
     # region TIME AND BINNING
 
     def draw_time(self, show=True):
-        entries = self.Tree.Draw('time', '', 'goff')
+        entries = self.Tree.Draw(self.get_t_var(), '', 'goff')
         t = [self.Tree.GetV1()[i] for i in xrange(entries)]
         t = [(i - t[0]) / 1000 for i in t if i - t[0]]
         gr = TGraph(len(t), array(xrange(len(t)), 'd'), array(t, 'd'))
@@ -354,7 +351,7 @@ class TelecopeAnalysis(Analysis):
             return log_warning('Branch "beam_current" does not exist!')
         set_root_output(False)
         p = TProfile('pbc', 'Beam Current Profile', *self.Bins.get_raw_time(bin_width))
-        self.Tree.Draw('beam_current / 1000.:time / 1000.>>pbc', TCut('beam_current < 2500') + TCut(cut), 'goff')
+        self.Tree.Draw('beam_current / 1000.:{}>>pbc'.format(self.get_t_var()), TCut('beam_current < 2500') + TCut(cut), 'goff')
         self.format_statbox(all_stat=True, y=.4)
         format_histo(p, x_tit='Time [hh:mm]', y_tit='Beam Current [mA]', fill_color=self.FillColor, markersize=.4, t_ax_off=self.Run.StartTime if rel_t else 0, y_range=[0, p.GetMaximum() * 1.1])
         c = self.draw_histo(p, draw_opt='hist', lm=.08, x=1.5, y=.75, ind=None, show=show)
@@ -364,7 +361,7 @@ class TelecopeAnalysis(Analysis):
     def draw_beam_current(self, cut='', rel_t=True, show=True, save=True):
         if not self.has_branch('beam_current'):
             return log_warning('Branch "beam_current" does not exist!')
-        n = self.Tree.Draw('beam_current/1000.:time/1000.', TCut('beam_current < 2500') + TCut(cut), 'goff')
+        n = self.Tree.Draw('beam_current/1000.:{}'.format(self.get_t_var()), TCut('beam_current < 2500') + TCut(cut), 'goff')
         current, t = self.Run.get_root_vecs(n, 2)
         g = self.make_tgrapherrors('gbc', 'Beam Current', x=concatenate([t, [t[-1]]]), y=concatenate([current, [0]]))
         format_histo(g, x_tit='Time [hh:mm]', y_tit='Beam Current [mA]', fill_color=self.FillColor, markersize=.4, t_ax_off=self.Run.StartTime if rel_t else 0,
@@ -378,7 +375,7 @@ class TelecopeAnalysis(Analysis):
             log_warning('The "rate" branch does not exist in this tree')
             return
         area = self.Run.get_unmasked_area()[plane] if plane in self.Run.get_unmasked_area() else .01 * .015 * 4160
-        n = self.Tree.Draw('rate[{p}] {a}:time / 1000.'.format(p=plane, a='/{}'.format(area) if flux else ''), 'beam_current < 10000 && rate[{}]<1e9'.format(plane), 'goff')
+        n = self.Tree.Draw('rate[{p}] {a}:{t}'.format(p=plane, a='/{}'.format(area) if flux else '', t=self.get_t_var()), 'beam_current < 10000 && rate[{}]<1e9'.format(plane), 'goff')
         rate = [self.Tree.GetV1()[i] for i in xrange(n)]
         t = [self.Tree.GetV2()[i] for i in xrange(n)]
         g = self.make_tgrapherrors('gpr', 'Rate of Plane {n}'.format(n=plane), x=t + [t[-1]], y=rate + [0])
@@ -392,7 +389,7 @@ class TelecopeAnalysis(Analysis):
         a1, a2 = self.Run.get_unmasked_area().values()
         cut = TCut('beam_current < 10000 && rate[{0}] < 1e9 && rate[{1}] < 1e9 && rate[{0}] && rate[{1}]'.format(p1 + 1, p2 + 1)) + TCut(cut)
         # rate[0] is scintillator
-        self.Tree.Draw('(rate[{p1}] / {a1} + rate[{p2}] / {a2}) / 2000 : time / 1000.>>pf'.format(p1=p1 + 1, p2=p2 + 1, a1=a1, a2=a2), cut, 'goff', self.Run.NEntries, 1)
+        self.Tree.Draw('(rate[{p1}] / {a1} + rate[{p2}] / {a2}) / 2000 : {t}>>pf'.format(p1=p1 + 1, p2=p2 + 1, a1=a1, a2=a2, t=self.get_t_var()), cut, 'goff', self.Run.NEntries, 1)
         y_range = [0, p.GetMaximum() * 1.2]
         format_histo(p, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', fill_color=self.FillColor, markersize=1, t_ax_off=self.Run.StartTime if rel_t else 0, stats=0, y_range=y_range)
         self.save_tel_histo(p, 'FluxProfile', draw_opt='hist', lm=.08, x_fac=1.5, y_fac=.75, ind=None, show=show, prnt=prnt)
@@ -460,5 +457,5 @@ class TelecopeAnalysis(Analysis):
 
 if __name__ == '__main__':
 
-    pargs = init_argparser(run=23, tc='201908', tree=True, verbose=True)
+    pargs = init_argparser(run=23, tc='201908', tree=True, has_verbose=True)
     z = TelecopeAnalysis(pargs.run, pargs.testcampaign, pargs.tree, pargs.verbose)

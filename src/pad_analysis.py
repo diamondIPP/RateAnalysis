@@ -163,7 +163,7 @@ class PadAnalysis(DUTAnalysis):
         """ :return: pulse height data as numpy array [[time] [ph]] with units [[s], [mV]]
             :param cut: applies all cuts if None is provided."""
         cut_str = self.Cut.AllCut if cut is None else TCut(cut)
-        n = self.Tree.Draw('time/1000.:{sig}'.format(sig=self.generate_signal_name()), cut_str, 'goff')
+        n = self.Tree.Draw('{}:{}'.format(self.get_t_var(), self.generate_signal_name()), cut_str, 'goff')
         return self.Run.get_root_vecs(n, 2)
 
     def get_pulse_height(self, bin_size=None, cut=None, redo=False, corr=True, sig=None):
@@ -249,7 +249,7 @@ class PadAnalysis(DUTAnalysis):
         signal_name = self.generate_signal_name(self.SignalName if signal_name is None else signal_name, evnt_corr, off_corr, bin_corr)
         h = TH2F('h_st', 'Signal vs. Time', *(self.Bins.get_time() + self.Bins.get_pad_ph(bin_width)))
         self.format_statbox(entries=True, x=.83)
-        self.Tree.Draw('{name}:time/1000>>h_st'.format(name=signal_name), self.Cut.AllCut, 'goff')
+        self.Tree.Draw('{}:{}>>h_st'.format(signal_name, self.get_t_var()), self.Cut.AllCut, 'goff')
         format_histo(h, x_tit='Time [min]', y_tit='Pulse Height [au]', y_off=1.4, t_ax_off=self.Run.StartTime if rel_t else 0, pal=53)
         self.save_histo(h, 'SignalTime', show, lm=.12, draw_opt='colz', rm=.15)
         return h
@@ -276,14 +276,14 @@ class PadAnalysis(DUTAnalysis):
         def func():
             signal = self.generate_signal_name(sig, corr)
             prof = TProfile('pph', 'Pulse Height Evolution', *self.Bins.get_time(bin_size))
-            self.Tree.Draw('{sig}:time/1000.>>pph'.format(sig=signal), cut_str, 'goff')
+            self.Tree.Draw('{}:{}>>pph'.format(signal, self.get_t_var()), cut_str, 'goff')
             self.PulseHeight = prof
             return prof
 
         p = do_pickle(picklepath, func, redo=redo)
         self.format_statbox(n_entries=4, only_fit=True, w=.3)
         y_vals = [p.GetBinContent(i) for i in xrange(2, p.GetNbinsX() + 1)]
-        format_histo(p, name='Fit Result', x_tit='Time [min]', y_tit='Mean Pulse Height [mV]', y_off=1.6, x_range=[self.Run.StartTime, self.Bins.get_time()[1][-1]],
+        format_histo(p, name='Fit Result', x_tit='Time [hh:mm]', y_tit='Mean Pulse Height [mV]', y_off=1.6, x_range=[self.Run.StartTime, self.Bins.get_time()[1][-1]],
                      t_ax_off=self.Run.StartTime if rel_t else 0, y_range=increased_range([min(y_vals), max(y_vals)], .5, .5) if y_range is None else y_range, ndivx=505)
         self.draw_histo(p, show=show, lm=.14, prnt=save)
         fit = self.fit_pulse_height(p, picklepath)
@@ -312,7 +312,7 @@ class PadAnalysis(DUTAnalysis):
         """ get pulse height by fitting every time bin disto with a Landau and then extrapolate with a pol0 """
         gr = self.make_tgrapherrors('hphl', 'Pulser Height Evolution')
         h = TH2F('tempph', '', *(self.Bins.get_time(bin_size) + self.Bins.get_pad_ph(bin_width=20)))
-        self.Tree.Draw('{sig}:time/1000.>>tempph'.format(sig=self.SignalName), self.AllCuts, 'goff')
+        self.Tree.Draw('{}:{}>>tempph'.format(self.SignalName, self.get_t_var()), self.AllCuts, 'goff')
         i = 0
         for xbin in xrange(2, h.GetNbinsX() + 1):  # first bin is always empty
             py = h.ProjectionY('_py{}'.format(xbin), xbin, xbin)

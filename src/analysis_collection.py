@@ -46,7 +46,7 @@ class AnalysisCollection(Analysis):
         self.FirstAnalysis = self.Analyses.values()[0]
         self.LastAnalysis = self.Analyses.values()[-1]
         self.Bins = self.FirstAnalysis.Bins if load_tree else None
-        self.StartTime = self.FirstAnalysis.Run.StartTime if self.LoadTree else self.FirstAnalysis.Run.LogStart
+        self.StartTime = self.FirstAnalysis.Run.StartTime if self.LoadTree else time_stamp(self.FirstAnalysis.Run.LogStart)
 
         # Directory for the Plots
         self.set_save_directory(join(self.DUTName, 'runplan{}'.format(self.RunPlan)))
