@@ -21,7 +21,7 @@ from gtts import gTTS
 from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, any, count_nonzero, full
 from os import makedirs, _exit, remove, devnull
 from os import path as pth
-from os.path import dirname
+from os.path import dirname, realpath
 from pytz import timezone, utc
 from termcolor import colored
 from uncertainties import ufloat
@@ -478,7 +478,7 @@ def print_table(rows, header=None, prnt=True):
 
 
 def get_base_dir():
-    return dirname(dirname(__file__))
+    return dirname(dirname(realpath(__file__)))
 
 
 def do_pickle(path, func, value=None, redo=False, *args, **kwargs):
