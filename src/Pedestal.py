@@ -37,17 +37,17 @@ class PedestalAnalysis(Analysis):
     def get_all_signal_names(self):
         return self.Ana.get_all_signal_names('pedestal')
 
-    def get_par(self, par=1, cut=None):
+    def get_par(self, par=1, cut=None, redo=False):
         cut = self.Cut.AllCut if cut is None else TCut(cut)
         suffix = '{r}_fwhm_{c}'.format(c=cut.GetName(), r=self.get_all_signal_names()[self.SignalName])
         picklepath = self.make_pickle_path('Pedestal', run=self.RunNumber, ch=self.DUTNumber, suf=suffix)
-        return make_ufloat(do_pickle(picklepath, partial(self.draw_disto_fit, cut=cut, show=False)), par=par)
+        return make_ufloat(do_pickle(picklepath, partial(self.draw_disto_fit, cut=cut, show=False), redo=redo), par=par)
 
-    def get_mean(self, cut=None):
-        return self.get_par(1, cut)
+    def get_mean(self, cut=None, redo=False):
+        return self.get_par(1, cut, redo)
 
-    def get_noise(self, cut=None):
-        return self.get_par(2, cut)
+    def get_noise(self, cut=None, redo=False):
+        return self.get_par(2, cut, redo)
 
     def get_fwhm(self):
         return self.get_noise() * 2 * sqrt(2 * log(2))
