@@ -4,24 +4,23 @@
 # created on May 13th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from Elementary import Elementary
+from analysis import *
 from InfoLegend import InfoLegend
-from Utils import *
 from ROOT import TCut, TH2F, TProfile, TH1F, TProfile2D
 
 
-class Waveform(Elementary):
+class Waveform(Analysis):
     def __init__(self, pad_analysis):
         self.Ana = pad_analysis
-        Elementary.__init__(self, verbose=self.Ana.verbose)
+        Analysis.__init__(self, verbose=self.Ana.Verbose)
         self.Run = self.Ana.Run
-        self.Channel = self.Ana.channel
-        self.Tree = self.Ana.tree
+        self.Channel = self.Ana.Channel
+        self.Tree = self.Ana.Tree
         self.Cut = self.Ana.Cut
-        self.save_dir = self.Ana.save_dir
+        self.set_save_directory(self.Ana.SubDir)
         self.Polarity = self.Ana.Polarity
-        self.DiamondName = self.Ana.DiamondName
-        self.DiamondNumber = self.Ana.DiamondNumber
+        self.DUTName = self.Ana.DUTName
+        self.DUTNumber = self.Ana.DUTNumber
         self.RunNumber = self.Ana.RunNumber
         self.InfoLegend = InfoLegend(pad_analysis)
 
@@ -39,7 +38,7 @@ class Waveform(Elementary):
             h.Fill(t, v)
         y_range = increased_range([min(values), max(values)], .1, .2) if y_range is None else y_range
         h = self.make_tgrapherrors('g_cw', title, x=times, y=values) if n == 1 else h
-        self.format_histo(h, x_tit='Time [ns]', y_tit='Signal [mV]', y_off=.5, stats=0, tit_size=.07, lab_size=.06, y_range=y_range, markersize=.5, x_range=x_range)
+        format_histo(h, x_tit='Time [ns]', y_tit='Signal [mV]', y_off=.5, stats=0, tit_size=.07, lab_size=.06, y_range=y_range, markersize=.5, x_range=x_range)
         self.draw_histo(h, 'WaveForms{n}'.format(n=n), show=show, draw_opt='col' if n > 1 else 'apl', lm=.073, rm=.045, bm=.18, x=1.5, y=.5, gridy=grid, gridx=grid)
         return h, self.Count - start_count
 
@@ -63,7 +62,7 @@ class Waveform(Elementary):
 
     def draw_average(self, n=100, cut=None, align_peaks=True, show=True, show_noise=False):
         p = TProfile('pawf', 'Averaged Waveform', 2000, 0, 500)
-        cut = self.Cut.all_cut if cut is None else TCut(cut)
+        cut = self.Cut.AllCut if cut is None else TCut(cut)
         values, times = self.get_values(n, cut)
         if align_peaks:
             self.Tree.Draw(self.Ana.PeakName, cut, 'goff')
@@ -73,7 +72,7 @@ class Waveform(Elementary):
                     times[j + i * 1024] = times[j + i * 1024] + peak_times[0] - peak_times[i]
         for t, v in zip(times, values):
             p.Fill(t, v)
-        self.format_histo(p, x_tit='Time [ns]', y_tit='Pulse Height [mv]', y_off=1.2, stats=0, markersize=.5)
+        format_histo(p, x_tit='Time [ns]', y_tit='Pulse Height [mv]', y_off=1.2, stats=0, markersize=.5)
         self.draw_histo(p, show=show)
         if show_noise:
             self.__draw_noise()
@@ -97,7 +96,7 @@ class Waveform(Elementary):
         if not self.Run.wf_exists(channel):
             return
         start_event = self.get_start_event(start_event)
-        self.log_info('Starting at event {}'.format(start_event))
+        self.info('Starting at event {}'.format(start_event))
         n_events = self.Run.find_n_events(n, cut, start_event)
         self.Tree.SetEstimate(n * 1024)
         n_entries = self.Tree.Draw('wf{ch}:trigger_cell'.format(ch=channel), cut, 'goff', n_events, start_event)
@@ -136,26 +135,26 @@ class Waveform(Elementary):
 
     def draw_rise_time(self, cut=None, show=True):
         h = TH1F('hrt', 'Signal Rise Time', 100, 0, 10)
-        self.Tree.Draw('rise_time[{}]>>hrt'.format(self.Channel), self.Cut.all_cut if cut is None else TCut(cut), 'goff')
-        self.set_statbox(all_stat=True)
-        self.format_histo(h, x_tit='Rise Time [ns]', y_tit='Number of Entries', y_off=1.4)
+        self.Tree.Draw('rise_time[{}]>>hrt'.format(self.Channel), self.Cut.AllCut if cut is None else TCut(cut), 'goff')
+        self.format_statbox(all_stat=True)
+        format_histo(h, x_tit='Rise Time [ns]', y_tit='Number of Entries', y_off=1.4)
         self.save_histo(h, 'RiseTime', lm=.12, show=show)
 
     def draw_fall_time(self, cut=None, show=True):
         h = TH1F('hft', 'Signal Fall Time', 200, 0, 20)
-        self.Tree.Draw('fall_time[{}]>>hft'.format(self.Channel), self.Cut.all_cut if cut is None else TCut(cut), 'goff')
-        self.set_statbox(all_stat=True)
-        self.format_histo(h, x_tit='Fall Time [ns]', y_tit='Number of Entries', y_off=1.4)
+        self.Tree.Draw('fall_time[{}]>>hft'.format(self.Channel), self.Cut.AllCut if cut is None else TCut(cut), 'goff')
+        self.format_statbox(all_stat=True)
+        format_histo(h, x_tit='Fall Time [ns]', y_tit='Number of Entries', y_off=1.4)
         self.save_histo(h, 'FallTime', lm=.12, show=show)
 
     def draw_rise_time_map(self, res=sqrt(12), cut=None, show=True):
-        p = TProfile2D('prtm', 'Rise Time Map', *self.Ana.Plots.get_global_bins(res))
+        p = TProfile2D('prtm', 'Rise Time Map', *self.Ana.Bins.get_global(res))
         cut = self.Cut.generate_special_cut(excluded='fiducial') if cut is None else TCut(cut)
-        self.Tree.Draw('rise_time[{}]:{}:{}>>prtm'.format(self.Channel, *self.Cut.get_track_vars(self.DiamondNumber - 1)), cut, 'goff')
+        self.Tree.Draw('rise_time[{}]:{}:{}>>prtm'.format(self.Channel, *self.Cut.get_track_vars(self.DUTNumber - 1)), cut, 'goff')
         self.Ana.set_dia_margins(p)
         # self.Ana.set_z_range(p, n_sigma=1)
-        self.set_statbox(entries=True, x=.84)
-        self.format_histo(p, x_tit='track x [cm]', y_tit='track y [cm]', y_off=1.4, z_off=1.3, z_tit='Rise Time [ns]', ncont=20, ndivy=510, ndivx=510)
+        self.format_statbox(entries=True, x=.84)
+        format_histo(p, x_tit='track x [cm]', y_tit='track y [cm]', y_off=1.4, z_off=1.3, z_tit='Rise Time [ns]', ncont=20, ndivy=510, ndivx=510)
         self.draw_histo(p, show=show, draw_opt='colz', rm=.14)
         self.Ana.draw_fiducial_cut()
         self.save_plots('RiseTimeMap')
