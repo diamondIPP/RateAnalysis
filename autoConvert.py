@@ -9,18 +9,18 @@ from os import stat, sys
 from os.path import join, dirname, realpath
 file_dir = dirname(realpath(__file__))
 sys.path.append(join(file_dir, 'AbstractClasses'))
-from Converter import Converter
-from Run import Run
+from converter import Converter
+from run import Run
 from multiprocessing import cpu_count
-from argparse import ArgumentParser
-from Utils import *
+from utils import *
 
 
 class AutoConvert:
 
     def __init__(self, multi, end_run=None, test_campaign=None, verbose=False):
 
-        self.Converter = Converter(Run(None, test_campaign=test_campaign, tree=False, verbose=verbose))
+        self.Run = Run(None, test_campaign=test_campaign, tree=False, verbose=verbose)
+        self.Converter = Converter(self.Run)
         self.RunInfos = self.load_run_infos()
 
         self.Dir = file_dir
@@ -51,16 +51,16 @@ class AutoConvert:
         self.Converter.set_run(run)
 
         # check if we have to convert the run
-        if file_exists(self.Converter.get_final_file_path()) or self.RunInfos[run]['runtype'] in ['test', 'crap', 'schrott']:
+        if file_exists(self.Run.RootFilePath) or self.RunInfos[run]['runtype'] in ['test', 'crap', 'schrott']:
             print '{}: final file exists'.format(run)
             return
-        raw_file = self.Converter.get_raw_file_path(crit=False)
+        raw_file = self.Converter.RawFilePath(crit=False)
         if not file_exists(raw_file, warn=True):
             return
 
         t = time()
         while file_is_beeing_written(raw_file):
-            log_message('waiting until run {} is finished since {}'.format(run, get_running_time(t)), overlay=True)
+            info('waiting until run {} is finished since {}'.format(run, get_running_time(t)), next_line=False)
             sleep(1)
         print
         Run(run, self.Converter.Run.TCString)
@@ -74,7 +74,7 @@ class AutoConvert:
             # wait until a new run was added to the run log
             t = time()
             while run == max(self.RunInfos):
-                log_message('waiting for new run ... {} since {}'.format(run + 1, get_running_time(t)), overlay=True)
+                info('waiting for new run ... {} since {}'.format(run + 1, get_running_time(t)), next_line=False)
                 self.RunInfos = self.load_run_infos()
                 sleep(1)
 
