@@ -188,17 +188,23 @@ class AnalysisCollection(Analysis):
     def get_currents(self):
         return OrderedDict((key, ana.Currents.get_current()) for key, ana in self.Analyses.iteritems())
 
-    def get_values(self, string, f, pbar=True, *args, **kwargs):
-        return self.generate_plots(string, f, pbar, *args, **kwargs)
+    def get_run_values(self, string, f, runs=None, pbar=True, *args, **kwargs):
+        return self.generate_run_plots(string, f, runs, pbar, *args, **kwargs)
 
-    def generate_plots(self, string, f, pbar=True, *args, **kwargs):
+    def get_values(self, string, f, pbar=True, *args, **kwargs):
+        return self.generate_run_plots(string, f, runs=None, pbar=pbar, *args, **kwargs)
+
+    def generate_run_plots(self, string, f, runs=None, pbar=True, *args, **kwargs):
         self.info('Generating {} ...'.format(string), prnt=pbar)
-        self.PBar.start(self.NRuns) if pbar else do_nothing()
+        self.PBar.start(self.NRuns if runs is None else len(runs)) if pbar else do_nothing()
         plots = []
-        for i, ana in enumerate(self.get_analyses()):
+        for i, ana in enumerate(self.get_analyses(runs)):
             plots.append(f(ana, *args, **kwargs))
             self.PBar.update(i) if pbar else do_nothing()
         return plots
+
+    def generate_plots(self, string, f, pbar=True, *args, **kwargs):
+        return self.generate_run_plots(string, f, runs=None, pbar=pbar, *args, **kwargs)
 
     @staticmethod
     def get_mode(vs_time):
@@ -282,7 +288,7 @@ class AnalysisCollection(Analysis):
     def get_xrange(self, vs_time):
         return None if vs_time else self.Bins.FluxRange
 
-    def get_x_args(self, vs_time, rel_time):
+    def get_x_args(self, vs_time, rel_time=False):
         return {'x_tit': self.get_x_tit(vs_time), 't_ax_off': self.get_tax_off(vs_time, rel_time), 'x_range': self.get_xrange(vs_time)}
 
     # endregion GET
