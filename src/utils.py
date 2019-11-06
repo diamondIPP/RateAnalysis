@@ -803,9 +803,9 @@ class FitRes:
             return
         self.Pars = [f.GetParameter(i) for i in xrange(self.NPar)] if is_tf1 else list(f.Parameters())
         self.Errors = [f.GetParError(i) for i in xrange(self.NPar)] if is_tf1 else list(f.Errors())
-        self.Names = [f.GetParName(0) if is_tf1 else f.ParName(i) for i in xrange(self.NPar)]
-        self.vChi2 = f.GetChisquare if is_tf1 else f.Chi2()
-        self.vNdf = f.GetNDF if is_tf1 else f.Ndf()
+        self.Names = [f.GetParName(i) if is_tf1 else f.ParName(i) for i in xrange(self.NPar)]
+        self.vChi2 = f.GetChisquare() if is_tf1 else f.Chi2()
+        self.vNdf = f.GetNDF() if is_tf1 else f.Ndf()
 
     def Parameter(self, arg):
         return self.Pars[arg]
