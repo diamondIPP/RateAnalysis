@@ -70,3 +70,21 @@ class VoltageScan(Analysis):
         self.draw_preliminary()
         self.save_plots('{s}VoltageScan'.format(s='Signal' if not pulser else 'Pulser'))
         return g
+
+    def draw_slope(self, gr=False, show=True):
+        h = TH1F('hSV', 'PH Slope Distribution', 10, -1, 1) if not gr else self.make_tgrapherrors('gSV', 'PH Slope vs. Voltage')
+
+        self.PBar.start(self.Ana.NRuns)
+        for i, ana in enumerate(self.Analyses.itervalues()):
+            ana.draw_pulse_height(corr=True, show=False)
+            fit = ana.PulseHeight.Fit('pol1', 'qs0')
+            if gr:
+                h.SetPoint(i, ana.Bias, fit.Parameter(1))
+                h.SetPointError(i, 0, fit.ParError(1))
+            else:
+                self.format_statbox(entries=4, only_fit=True)
+                h.Fill(fit.Parameter(1))
+                h.Fit('gaus', 'q')
+            self.PBar.update(i)
+        format_histo(h, x_tit='Slope [mV/min]', y_tit='Number of Entries', y_off=1.3)
+        self.draw_histo(h, show=show, draw_opt='alp' if gr else '')
