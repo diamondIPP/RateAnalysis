@@ -41,6 +41,12 @@ class TelecopeAnalysis(Analysis):
     def get_t_var(self):
         return 'time / 1000.' if self.Run.TimeOffset is None else '(time - {}) / 1000.'.format(self.Run.TimeOffset)
 
+    def get_flux(self, show=False):
+        return self._get_flux(prnt=False, show=show) if self.has_branch('rate') else self.Run.get_flux()
+
+    def has_branch(self, branch):
+        return self.Run.has_branch(branch)
+
     # ----------------------------------------
     # region TRACKS
     def draw_chi2(self, mode=None, show=True, save=True, fit=False, prnt=True, show_cut=False, x_range=None, cut='', normalise=None):
@@ -315,9 +321,8 @@ class TelecopeAnalysis(Analysis):
         self.Objects.append([c, h])
         self.save_plots('PixMapPlane{pln}{evts}'.format(pln=plane, evts=n), sub_dir=self.TelSaveDir)
 
-    # ==============================================
-    # region TIME AND BINNING
-
+    # ----------------------------------------
+    # region TIME
     def draw_time(self, show=True):
         entries = self.Tree.Draw(self.get_t_var(), '', 'goff')
         t = [self.Tree.GetV1()[i] for i in xrange(entries)]
@@ -331,20 +336,10 @@ class TelecopeAnalysis(Analysis):
 
     def get_event_at_time(self, time_sec):
         return self.Run.get_event_at_time(time_sec)
+    # endregion TIME
+    # ----------------------------------------
 
-    # endregion
-
-    # =================================================================================================================
-    # region RUN METHODS
-    def get_flux(self, show=False):
-        return self._get_flux(prnt=False, show=show) if self.has_branch('rate') else self.Run.get_flux()
-
-    def has_branch(self, branch):
-        return self.Run.has_branch(branch)
-
-    # endregion
-
-    # =================================================================================================================
+    # ----------------------------------------
     # region RATE
     def draw_beam_current_prof(self, bin_width=30, cut='', rel_t=True, show=True, save=True):
         if not self.has_branch('beam_current'):
@@ -430,8 +425,27 @@ class TelecopeAnalysis(Analysis):
             return make_ufloat((m, s + .05 * m))
 
         return do_pickle(pickle_path, f, redo=show)
+    # endregion RATE
+    # ----------------------------------------
 
-    # endregion
+    def save_tree(self, cut=None):
+        f = TFile('test.root', 'RECREATE')
+        t = self.Tree.CloneTree(0)
+        n = self.Tree.Draw('Entry$', self.Cut(cut), 'goff')
+        good_events = self.Run.get_root_vec(n, dtype='i4')
+        self.PBar.start(n)
+        for i, ev in enumerate(good_events):
+            self.Tree.GetEntry(ev)
+            t.Fill()
+            self.PBar.update(i)
+        f.cd()
+        t.Write()
+        macro = self.Run.RootFile.Get('region_information')
+        if macro:
+            macro.Write()
+        f.Write()
+        f.Close()
+        self.info('successfully saved tree with only cut events.')
 
     def fit_langau(self, h=None, nconv=30, show=True, chi_thresh=8, fit_range=None):
         h = self.draw_signal_distribution(show=show) if h is None and hasattr(self, 'draw_signal_distribution') else h
@@ -451,8 +465,6 @@ class TelecopeAnalysis(Analysis):
         self.Count = 0
         self.Objects.append(fit)
         return fit
-
-    # endregion
 
 
 if __name__ == '__main__':
