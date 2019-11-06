@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-from ROOT import THStack, TF1, TProfile2D
+from ROOT import THStack, TF1, TProfile2D, TMultiGraph
 
 from currents import Currents
 from InfoLegend import InfoLegend
@@ -161,8 +161,8 @@ class AnalysisCollection(Analysis):
     def get_ana(self, ind):
         return self.Analyses.values()[ind]
 
-    def get_analyses(self):
-        return self.Analyses.itervalues()
+    def get_analyses(self, runs=None):
+        return self.Analyses.itervalues() if runs is None else [ana for key, ana in self.Analyses.iteritems() if key in runs]
 
     def get_hv_name(self):
         return self.Currents.Name
