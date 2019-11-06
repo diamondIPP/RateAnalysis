@@ -38,10 +38,9 @@ class PedestalAnalysis(Analysis):
         return self.Ana.get_all_signal_names('pedestal')
 
     def get_par(self, par=1, cut=None, redo=False):
-        cut = self.Cut.AllCut if cut is None else TCut(cut)
-        suffix = '{r}_fwhm_{c}'.format(c=cut.GetName(), r=self.get_all_signal_names()[self.SignalName])
+        suffix = '{r}_fwhm_{c}'.format(c=self.Cut(cut).GetName(), r=self.get_all_signal_names()[self.SignalName])
         picklepath = self.make_pickle_path('Pedestal', run=self.RunNumber, ch=self.DUTNumber, suf=suffix)
-        return make_ufloat(do_pickle(picklepath, partial(self.draw_disto_fit, cut=cut, show=False), redo=redo), par=par)
+        return make_ufloat(do_pickle(picklepath, partial(self.draw_disto_fit, cut=self.Cut(cut), show=False), redo=redo), par=par)
 
     def get_mean(self, cut=None, redo=False):
         return self.get_par(1, cut, redo)
