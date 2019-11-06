@@ -177,8 +177,14 @@ class PadAnalysis(DUTAnalysis):
 
         return make_ufloat(do_pickle(picklepath, f, redo=redo), par=0)
 
+    def get_pedestal(self, pulser=False, par=1, redo=False):
+        return self.Pulser.get_pedestal(par, redo) if pulser else self.Pedestal.get_par(par, redo=redo)
+
     def get_results(self):
         return [self.get_pulse_height(), self.Pedestal.get_mean(), self.Pulser.get_pulse_height()]
+
+    def get_peak_timing(self, par=1, redo=False):
+        return self.Timing.get(par, redo)
 
     def print_results(self, prnt=True):
         rows = [[u_to_str(v, prec=2) for v in self.get_results()]]
