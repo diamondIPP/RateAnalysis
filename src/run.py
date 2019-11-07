@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from ConfigParser import ConfigParser, NoOptionError
+from ConfigParser import NoOptionError
 from json import load, loads
 
 from ROOT import TFile
@@ -30,7 +30,7 @@ class Run:
         # Directories / Test Campaign
         self.Dir = get_base_dir()
         self.DataDir = self.MainConfig.get('MAIN', 'data directory')
-        self.IrradiationFile = self.MainConfig.get('MISC', 'irradiation_file')
+        self.IrradiationFile = self.MainConfig.get('MISC', 'irradiation file')
         self.TCString = self.load_test_campaign(test_campaign)
         self.TCDir = self.generate_tc_directory()
 
@@ -63,7 +63,7 @@ class Run:
         self.LogEnd = self.load_log_stop()
         self.Duration = self.LogEnd - self.LogStart
 
-        self.Converter = Converter(self) if self.RunNumber is not None else None
+        self.Converter = Converter(self)
         if self.set_run(run_number, tree):
             # tree info
             self.TimeOffset = None
@@ -115,7 +115,7 @@ class Run:
         return testcampaign
 
     def get_test_campaigns(self):
-        return [basename(path).replace('_', '').strip('psi') for path in glob(join(self.DataDir, 'psi*'))]
+        return sorted([basename(path).replace('_', '').strip('psi') for path in glob(join(self.DataDir, 'psi*'))])
 
     def load_rootfile(self):
         file_path = self.RootFilePath
@@ -304,6 +304,9 @@ class Run:
         self.RunNumber = run_number
         self.Config = self.load_config()
         self.RunInfo = self.load_run_info()
+        self.RootFileDir = self.load_rootfile_dirname()
+        self.RootFilePath = self.load_rootfile_path()
+        return self.Config
 
     def rootfile_is_valid(self, file_path=None):
         tfile = self.RootFile if file_path is None else TFile(file_path)
