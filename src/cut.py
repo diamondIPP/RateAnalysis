@@ -330,7 +330,7 @@ class Cut:
         """ Looking for the beam interruptions by investigating the pulser rate. """
         t = self.Analysis.info('Searching for beam interruptions of run {r} ...'.format(r=self.RunNumber), next_line=False)
         n = self.Analysis.Tree.Draw('Entry$:pulser', '', 'goff')
-        x, y = get_root_vecs(self.Analysis.Tree, n, 2, dtype=int)
+        x, y = get_root_vecs(self.Analysis.Tree, n, 2, dtype='i4')
         rates, x_bins, y_bins = histogram2d(x, y, bins=[arange(0, n, bin_width, dtype=int), 2])
         rates = rates[:, 1] / bin_width
         thresh = min(max_thresh, mean(rates) + .2)
@@ -348,8 +348,8 @@ class Cut:
             t_start = max(0, self.Analysis.Run.get_time_at_event(tup[0]) - self.Analysis.Run.StartTime - self.CutConfig['JumpExcludeRange'][0])
             t_stop = self.Analysis.Run.get_time_at_event(tup[1]) - self.Analysis.Run.StartTime + self.CutConfig['JumpExcludeRange'][1]
             # if interruptions overlay just set the last stop to the current stop
-            if i and t_start <= (interruptions[i - 1][1]) + 10:
-                interruptions[i - 1][1] = t_stop
+            if i and t_start <= (interruptions[-1][1]) + 10:
+                interruptions[-1][1] = t_stop
                 continue
             interruptions.append([t_start, t_stop])
         return [[self.Analysis.Run.get_event_at_time(t) for t in tup] for tup in interruptions]
