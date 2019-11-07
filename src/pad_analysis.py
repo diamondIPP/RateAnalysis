@@ -385,7 +385,7 @@ class PadAnalysis(DUTAnalysis):
         cut = self.Cut.AllCut if cut is None else cut
         x = self.get_signal_region(region)
         xbins = [(x[1] - x[0]) * (2 if corr else 1)] + list(array(x) * self.DigitiserBinWidth)
-        h_args = ['hspt', 'Signal vs Peak Position{}'.format(suf)] + xbins + self.Bins.get_ph_bins()
+        h_args = ['hspt', 'Signal vs Peak Position{}'.format(suf)] + xbins + self.Bins.get_pad_ph()
         h = TProfile(*h_args[:5]) if prof else TH2F(*h_args)
         self.Tree.Draw('{}:{}>>hspt'.format(self.generate_signal_name(), self.Timing.get_peak_name(corr, fine_corr, region=region)), cut, 'goff')
         format_histo(h, x_tit='Signal Peak Position [ns]', y_tit='Pulse Height [mV]', y_off=1.4, stats=0)
@@ -405,7 +405,7 @@ class PadAnalysis(DUTAnalysis):
         h = TH1F('h', 'Bucket Cut Histograms', 250, -50, 300)
         self.Tree.Draw('{name}>>h'.format(name=self.SignalName), '!({buc})&&{pul}'.format(buc=self.Cut.CutStrings['old_bucket'], pul=self.Cut.CutStrings['pulser']), 'goff')
         h1 = deepcopy(h)
-        fit = self.Cut.fit_bucket(h1, show=False)
+        fit = fit_bucket(h1, show=False)
         sig_fit = TF1('f1', 'gaus', -50, 300)
         sig_fit.SetParameters(fit.GetParameters())
         ped1_fit = TF1('f2', 'gaus', -50, 300)
