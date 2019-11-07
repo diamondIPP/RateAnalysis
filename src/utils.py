@@ -28,6 +28,7 @@ from uncertainties import ufloat
 from uncertainties.core import Variable, AffineScalarFunc
 from argparse import ArgumentParser
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
+from ConfigParser import ConfigParser
 
 
 OFF = False
@@ -316,8 +317,8 @@ def print_banner(msg, symbol='~', new_lines=1, color=None):
     print colored('{n}{delim}\n{msg}\n{delim}{n}'.format(delim=len(str(msg)) * symbol, msg=msg, n='\n' * new_lines), color)
 
 
-def print_small_banner(msg, symbol='-'):
-    print '\n{delim}\n{msg}\n'.format(delim=len(str(msg)) * symbol, msg=msg)
+def print_small_banner(msg, symbol='-', color=None):
+    print colored('\n{delim}\n{msg}\n'.format(delim=len(str(msg)) * symbol, msg=msg), color)
 
 
 def print_elapsed_time(start, what='This', show=True, color=None):
@@ -328,7 +329,8 @@ def print_elapsed_time(start, what='This', show=True, color=None):
 
 def get_elapsed_time(start):
     t = datetime.fromtimestamp(time() - start)
-    return '{}.{:1.0f}'.format(t.strftime('%M:%S'), t.microsecond / 1e5)
+    print t.microsecond, t.microsecond / 1e5
+    return '{}.{:1.0f}'.format(t.strftime('%M:%S'), t.microsecond / 100000)
 
 
 def conv_log_time(time_str, strg=False):
@@ -756,7 +758,7 @@ def calc_eff(k=0, n=0, values=None):
 
 def init_argparser(run=None, tc=None, dut=False, tree=False, has_verbose=False, has_collection=False, return_parser=False):
     p = ArgumentParser()
-    p.add_argument('run' if not has_collection else 'runplan', nargs='?', default=run, type=int, help='run {}'.format('number' if not has_collection else 'plan'))
+    p.add_argument('run' if not has_collection else 'runplan', nargs='?', default=run, type=str if has_collection else int, help='run {}'.format('number' if not has_collection else 'plan'))
     p.add_argument('dut', nargs='?', default=dut, type=int, help='diamond number [default: 1] (choose from 1,2,...)') if dut or dut is None else do_nothing()
     p.add_argument('-tc', '--testcampaign', nargs='?', default=tc, help='YYYYMM beam test [default in main.ini]')
     p.add_argument('-v', '--verbose', action='store_false') if has_verbose else do_nothing()
@@ -765,16 +767,10 @@ def init_argparser(run=None, tc=None, dut=False, tree=False, has_verbose=False, 
     return p if return_parser else p.parse_args()
 
 
-def run_selector(run, tc, tree, t_vec, verbose):
-    from run import Run
-    from pixel_run import PixelRun
-    from pad_run import PadRun
-    dummy = Run(run, tc, tree=False)
-    if dummy.get_type() == 'pad':
-        return PadRun(run, tc, tree, t_vec, verbose)
-    elif dummy.get_type() == 'pixel':
-        return PixelRun(run, tc, tree, t_vec, verbose)
-    critical('wrong run type: has to be in [pad, pixel]')
+def load_parser(name):
+    p = ConfigParser()
+    p.read(name)
+    return p
 
 
 def measure_time(f, rep=1, *args, **kwargs):
