@@ -6,7 +6,7 @@
 
 from analysis import *
 from InfoLegend import InfoLegend
-from ROOT import TH1F, TF1, TCut, TH2F, TProfile, THStack, gPad, TSpectrum
+from ROOT import TH1F, TF1, TCut, TH2F, TProfile, THStack, gPad
 from numpy import pi
 
 
@@ -203,7 +203,7 @@ class TimingAnalysis(Analysis):
 
     def get_raw_cut(self, cut=None):
         h1 = self.draw_peaks(show=False, fine_corr=False, prnt=False, cut=self.TimingCut, save=False)
-        fit1 = h1.GetListOfFunctions()[2]
+        fit1 = h1.GetListOfFunctions()[1]
         return TCut('RawTiming', '({} - {}) / {} < 3'.format(self.Ana.PeakName, fit1.GetParameter(1), fit1.GetParameter(2))) + (self.TimingCut if cut is None else cut)
 
     def calc_fine_correction(self, cut=None, redo=False):
@@ -333,34 +333,7 @@ class TimingAnalysis(Analysis):
         h = self.Ana.draw_signal_distribution(cut=self.Cut.get_bucket_cut(), show=show)
         # entries = h.GetEntries()
         if fit:
-            self.fit_bucket(h, show)
-
-    @staticmethod
-    def fit_bucket(histo, show=True):
-        set_root_warnings(0)
-        h = histo
-        fit = TF1('fit', 'gaus(0) + gaus(3) + gaus(6)', h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax())
-        s = TSpectrum(3)
-        n = s.Search(h, 2.5)
-        points = [(s.GetPositionX()[i], s.GetPositionY()[i]) for i in [0, 1 if n == 2 else 2]]
-        x1, x2 = (p[0] for p in sorted(points))
-        y1, y2 = (p[1] for p in sorted(points))
-        if y1 < 20 or y1 > 1e10:
-            return  # didn't find pedestal peak!
-        diff = x2 - x1
-        fit.SetParameters(*[y2, x2, 10, y1, x1, 3, min(y1, y2) / 4, x1 + diff / 4, 5])
-        # signal
-        fit.SetParLimits(1, x2 - 5, x2 + 5)
-        # pedestal
-        fit.SetParLimits(3, 1, y1 * 2)
-        fit.SetParLimits(4, x1 - 10, x1 + 10)
-        # middle ped
-        fit.SetParLimits(6, 1, min(y1, y2) / 2)
-        fit.SetParLimits(7, x1, x1 + diff / 2)
-        for i in xrange(1):
-            h.Fit(fit, 'qs{0}'.format('' if show else '0'), '', -50, x2 + 5)
-        set_root_warnings(1)
-        return fit
+            fit_bucket(h, show)
     # endregion
     # --------------------------
 

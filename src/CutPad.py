@@ -6,7 +6,7 @@ from utils import *
 from json import loads
 from numpy import array
 from ConfigParser import NoOptionError
-from draw import format_histo
+from draw import format_histo, fit_bucket
 
 
 class CutPad(Cut):
@@ -303,12 +303,11 @@ class CutPad(Cut):
                 self.Analysis.add_to_info(t)
                 return -30
             # extract fit functions
-            set_root_output(False)
-            fit = self.fit_bucket(h)
+            fit = fit_bucket(h)
             if fit is None:
                 self.Analysis.add_to_info(t)
                 return -30
-            if fit is None or any(abs(fit.GetParameter(i)) < 20 for i in [0, 3]) or fit.GetParameter(1) < fit.GetParameter(4) or fit.GetParameter(1) > 500:
+            if fit is None or any([abs(fit.GetParameter(i)) < 20 for i in [0, 3]]) or fit.GetParameter(1) < fit.GetParameter(4) or fit.GetParameter(1) > 500:
                 warning('bucket cut fit failed')
                 self.Analysis.draw_histo(h, show=show)
                 self.Analysis.add_to_info(t)
@@ -357,7 +356,7 @@ class CutPad(Cut):
             sig_fit.SetLineColor(4)
             sig_fit.SetLineStyle(3)
             sig_fit.Draw('same')
-            self.Analysis.save_plots('BucketCut', sub_dir=self.Analysis.save_dir, canvas=c.cd(1) if show_all else get_last_canvas(), prnt=show)
+            self.Analysis.save_plots('BucketCut', canvas=c.cd(1) if show_all else get_last_canvas(), prnt=show)
 
             # Efficiency plot
             format_histo(gr1, title='Efficiencies', x_tit='Threshold', y_tit='Efficiency', markersize=.2)
@@ -391,33 +390,6 @@ class CutPad(Cut):
         threshold = func() if show or show_all else None
         threshold = do_pickle(pickle_path, func, threshold)
         return threshold
-
-    @staticmethod
-    def fit_bucket(histo, show=True):
-        set_root_warnings(0)
-        h = histo
-        fit = TF1('fit', 'gaus(0) + gaus(3) + gaus(6)', h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax())
-        s = TSpectrum(3)
-        n = s.Search(h, 2.5)
-        points = [(s.GetPositionX()[i], s.GetPositionY()[i]) for i in [0, 1 if n == 2 else 2]]
-        x1, x2 = (p[0] for p in sorted(points))
-        y1, y2 = (p[1] for p in sorted(points))
-        if y1 < 20 or y1 > 1e10:
-            return  # didn't find pedestal peak!
-        diff = x2 - x1
-        fit.SetParameters(*[y2, x2, 10, y1, x1, 3, min(y1, y2) / 4, x1 + diff / 4, 5])
-        # signal
-        fit.SetParLimits(1, x2 - 5, x2 + 5)
-        # pedestal
-        fit.SetParLimits(3, 1, y1 * 2)
-        fit.SetParLimits(4, x1 - 10, x1 + 10)
-        # middle ped
-        fit.SetParLimits(6, 1, min(y1, y2) / 2)
-        fit.SetParLimits(7, x1, x1 + diff / 2)
-        for i in xrange(1):
-            h.Fit(fit, 'qs{0}'.format('' if show else '0'), '', -50, x2 + 5)
-        set_root_warnings(1)
-        return fit
 
     def __calc_pedestal_range(self, sigma_range):
         picklepath = self.Analysis.make_pickle_path('Pedestal', 'Cut', self.RunNumber, self.channel)
@@ -465,7 +437,7 @@ class CutPad(Cut):
             cut = self.generate_special_cut(excluded=['timing'], prnt=False, name='timing_cut')
             t_correction = self.Analysis.Timing.calc_fine_correction(redo=redo)
             h = self.Analysis.Timing.draw_peaks(show=False, cut=cut, fine_corr=t_correction != '0', prnt=False, redo=redo)
-            fit = h.GetListOfFunctions()[2]
+            fit = h.GetListOfFunctions()[1]
             if fit.GetParameter(2) > 15:  # fit failed
                 fit.SetParameter(1, h.GetBinCenter(h.GetMinimumBin()))
                 fit.SetParameter(2, 15)

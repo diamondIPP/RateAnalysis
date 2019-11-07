@@ -7,7 +7,7 @@
 from __future__ import print_function
 from utils import *
 from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, kGreen, kOrange, kViolet, kYellow, kRed, kBlue, kMagenta, kAzure, \
-    kCyan, kTeal, TPaveText, TPaveStats, TH1F
+    kCyan, kTeal, TPaveText, TPaveStats, TH1F, TSpectrum
 from numpy import ndarray, zeros, sign
 from os.path import expanduser, join, basename
 
@@ -729,6 +729,34 @@ def get_pull(h, name, bins, fit=True):
     h_out.Fit('gaus', 'q') if fit else do_nothing()
     format_histo(h_out, x_range=increased_range([values.min(), values.max()], .1, .3))
     return h_out
+
+
+def fit_bucket(histo, show=True):
+    set_root_warnings(False)
+    h = histo
+    format_histo(h, rebin=int(h.GetBinCenter(h.FindLastBinAbove(h.GetMaximum() * .02))) / 40)
+    fit = TF1('fit', 'gaus(0) + gaus(3) + gaus(6)', h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax())
+    s = TSpectrum(3)
+    n = s.Search(h, 2.5)
+    points = [(s.GetPositionX()[i], s.GetPositionY()[i]) for i in [0, 1 if n == 2 else 2]]
+    x1, x2 = (p[0] for p in sorted(points))
+    y1, y2 = (p[1] for p in sorted(points))
+    if y1 < 20 or y1 > 1e10:
+        return  # didn't find pedestal peak!
+    diff = x2 - x1
+    fit.SetParameters(*[y2, x2, 10, y1, x1, 3, min(y1, y2) / 4, x1 + diff / 4, 5])
+    # signal
+    fit.SetParLimits(1, x2 - 5, x2 + 5)
+    # pedestal
+    fit.SetParLimits(3, 1, y1 * 2)
+    fit.SetParLimits(4, x1 - 10, x1 + 10)
+    # middle ped
+    fit.SetParLimits(6, 1, min(y1, y2) / 2)
+    fit.SetParLimits(7, x1, x1 + diff / 2)
+    for i in xrange(1):
+        h.Fit(fit, 'qs{0}'.format('' if show else '0'), '', -50, x2 + 5)
+    set_root_warnings(1)
+    return fit
 
 
 def set_palette(pal):
