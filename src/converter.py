@@ -86,8 +86,9 @@ class Converter:
         self.Run.set_run(run_number, root_tree=False)
         self.RunNumber = run_number
         self.RunInfo = self.Run.RunInfo
-        self.RunConfig = self.Run.load_run_config()
+        self.RunConfig = self.Run.reload_run_config(run_number)
         self.Type = self.Run.get_type()
+        self.RawFilePath = join(self.RawFileDir, 'run{run:06d}.raw'.format(run=self.RunNumber))
 
     def load_config(self):
         config = {}
@@ -274,6 +275,7 @@ class Converter:
 if __name__ == '__main__':
 
     from argparse import ArgumentParser
+    from selector import run_selector
 
     args = init_argparser(run=23, tc='201908')
 
