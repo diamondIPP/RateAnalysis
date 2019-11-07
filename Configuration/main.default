@@ -14,9 +14,8 @@ info legend = True
 server mount directory = ~/mounts/psi
 
 [MISC]
-runplan_file = Runinfos/run_plans.json
-runplan_selection_file = Runinfos/selection.json
-irradiation_file = Runinfos/irradiation.json
+runplan selection file = Runinfos/selection.json
+irradiation file = Runinfos/irradiation.json
 plane errors = False
 
 [PIXEL]
