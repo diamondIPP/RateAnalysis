@@ -8,7 +8,7 @@
 from os import stat, sys
 from os.path import join, dirname, realpath
 file_dir = dirname(realpath(__file__))
-sys.path.append(join(file_dir, 'AbstractClasses'))
+sys.path.append(join(file_dir, 'src'))
 from converter import Converter
 from run import Run
 from multiprocessing import cpu_count
@@ -54,7 +54,7 @@ class AutoConvert:
         if file_exists(self.Run.RootFilePath) or self.RunInfos[run]['runtype'] in ['test', 'crap', 'schrott']:
             print '{}: final file exists'.format(run)
             return
-        raw_file = self.Converter.RawFilePath(crit=False)
+        raw_file = self.Converter.RawFilePath
         if not file_exists(raw_file, warn=True):
             return
 
@@ -81,9 +81,9 @@ class AutoConvert:
     def multi(self):
         """parallel conversion"""
         n_cpus = cpu_count()
-        self.Converter.Run.log_info('We got {0} CPUs\n'.format(n_cpus))
-        self.Converter.Run.log_info('Creating pool with {0} processes\n'.format(n_cpus))
-        self.Converter.Run.log_info('End conversion at run {}'.format(self.EndRun))
+        self.Converter.Run.info('We got {0} CPUs\n'.format(n_cpus))
+        self.Converter.Run.info('Creating pool with {0} processes\n'.format(n_cpus))
+        self.Converter.Run.info('End conversion at run {}'.format(self.EndRun))
 
         pool = Pool(n_cpus)
 
