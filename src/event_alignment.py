@@ -138,9 +138,9 @@ class EventAligment:
     # ----------------------------------------
     # region WRITE TREE
     def get_next_event(self):
+        self.AtEntry += 1
         if self.AtEntry == self.NEntries:
             return False
-        self.AtEntry += 1
         self.InTree.GetEntry(self.AtEntry)
         return True
 
@@ -162,7 +162,7 @@ class EventAligment:
             vec.clear()
 
     def show_branches(self):
-        for i,j in self.Branches.iteritems():
+        for i, j in self.Branches.iteritems():
             print i, list(j)
 
     def fill_branches(self, offset):
@@ -176,7 +176,8 @@ class EventAligment:
         self.PBar.start(self.NEntries)
         offset = 0
         while self.get_next_event():
-            self.PBar.update(self.AtEntry + 1)
+            print self.NEntries, self.AtEntry
+            self.PBar.update(self.AtEntry)
             self.clear_vectors()
             if self.AtEntry in offsets:
                 offset += offsets[self.AtEntry]
