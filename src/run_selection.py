@@ -173,7 +173,7 @@ class RunSelection:
             self.select_run(run)
         self.SelectedType = 'CurrentInfo'
         self.SelectedDUTNr = dut
-        self.SelectedDUT = self.get_diamond_names(sel=True, lower=False)[0]
+        self.SelectedDUT = self.get_selected_dut()
         self.SelectedBias = self.get_selected_biases()[0]
 
     def unselect_unless_in_range(self, minrun, maxrun):
@@ -212,10 +212,13 @@ class RunSelection:
         return self.Run.get_type()
 
     def get_bias(self, run_number):
-        return self.RunInfos[run_number]['dia{}hv'.format(self.SelectedDUTNr)]
+        return self.RunInfos[run_number]['dia{}hv'.format(self.SelectedDUTNr)] if self.SelectedDUTNr is not None else None
 
     def get_duration(self, run_number):
         return (self.get_end_time(run_number) - self.get_start_time(run_number)).total_seconds()
+
+    def get_dut_name(self, run_number):
+        return self.Run.translate_dia(self.RunInfos[run_number]['dia{}'.format(self.SelectedDUTNr)]) if self.SelectedDUTNr is not None else None
 
     def get_selected_type(self):
         return self.get_type(self.get_selected_runs()[0])
@@ -225,6 +228,9 @@ class RunSelection:
 
     def get_selected_biases(self):
         return [self.get_bias(run) for run in self.get_selected_runs()]
+
+    def get_selected_dut(self):
+        return self.get_dut_name(self.get_selected_runs()[0])
 
     def get_selected_durations(self):
         return [self.get_duration(run) for run in self.get_selected_runs()]
@@ -356,14 +362,14 @@ class RunSelection:
         old_selection = deepcopy(self.Selection)
         print_banner('RUN PLANS FOR {tc}'.format(tc=tc_to_str(self.TCString, short=False).upper()), color='yellow')
         header = ['Nr.', 'Run Type', 'Range', 'Excluded']
-        dia_nrs = arange(1, self.get_max_dias() + 1) if diamond is None else [diamond if isint(diamond) else 1]
+        dia_nrs = arange(1, self.MaxDuts + 1) if diamond is None else [diamond if isint(diamond) else 1]
         for i in dia_nrs:
             header += ['Dia{}'.format(i), 'HV{} [V]'.format(i).rjust(13)]
         rows = []
         for plan, data in sorted(self.RunPlan.iteritems()):
             self.unselect_all_runs(prnt=False)
             self.select_runs_from_runplan(plan)
-            diamond_names = self.get_rp_diamond_names()
+            diamond_names = self.get_diamond_names(sel=True, lower=False)
             if diamond is not None:
                 if isint(diamond) and diamond > len(diamond_names) or not isint(diamond) and diamond not in diamond_names:
                     continue
@@ -371,7 +377,7 @@ class RunSelection:
             runs = data['runs']
             run_string = '{min:3d} - {max:3d}'.format(min=runs[0], max=runs[-1])
             row = [plan, data['type'], run_string, self.get_missing_runs(runs)]
-            for dia, bias in zip(dias, self.get_rp_voltages()):
+            for dia, bias in zip(dias, self.get_selected_voltages()):
                 row += [dia, bias]
             if len(dias) < len(dia_nrs):
                 row += ['', ''] * (len(dia_nrs) - len(dias))
@@ -397,7 +403,9 @@ class RunSelection:
         missing_runs = [run for run in all_runs if run not in runs]
         return str(missing_runs if len(missing_runs) <= 3 else '{0}, ...]'.format(str(missing_runs[:2]).strip(']'))) if missing_runs else ''
 
-    def select_runs_from_runplan(self, plan_nr, dut=1):
+    def select_runs_from_runplan(self, plan_nr, dut=1, unselect=False):
+        if unselect:
+            self.unselect_all_runs(prnt=False)
         if plan_nr is None:
             return
         plan = self.make_runplan_string(plan_nr)
@@ -406,6 +414,7 @@ class RunSelection:
         self.select_runs(runs, dut=dut)
         self.SelectedRunplan = plan
         self.SelectedType = str(self.RunPlan[plan]['type'])
+        return self
 
     def add_selection_to_runplan(self, plan_nr, run_type=None):
         """ Saves all selected runs as a run plan with name 'plan_nr'. """
