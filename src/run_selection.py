@@ -1,7 +1,7 @@
 from utils import *
 from glob import glob
 from itertools import chain
-from json import load, loads, dump
+from json import load, dump
 from textwrap import fill
 from numpy import sort
 
@@ -20,9 +20,7 @@ class RunSelection:
         # Info
         self.TCString = self.Run.TCString
         self.RunPlanPath = join(self.Run.Dir, self.Run.MainConfig.get('MAIN', 'run plan path'))
-        self.ExcludedRuns = loads(self.Run.Config.get('BASIC', 'excluded_runs'))
         self.RunPlan = self.load_runplan()
-        self.FullRunInfos = self.load_full_run_infos()
         self.RunInfos = self.load_run_infos()
         self.RunNumbers = sort(array(self.RunInfos.keys(), int))
 
@@ -44,15 +42,11 @@ class RunSelection:
 
     # ----------------------------------------
     # region INIT
-    def load_full_run_infos(self):
-        dic = OrderedDict(sorted(self.Run.load_run_info_file().iteritems(), key=lambda (key, v): (int(key), v)))
-        for run, value in dic.iteritems():
-            dic[run] = OrderedDict(sorted(value.iteritems()))
-        return dic
-
     def load_run_infos(self):
-        """ loads all the run infos in a dict with the run numbers as keys """
-        return {int(run): dic for run, dic in self.FullRunInfos.iteritems() if int(run) not in self.ExcludedRuns}
+        dic = OrderedDict()
+        for run, value in sorted(self.Run.load_run_info_file().iteritems(), key=lambda (key, v): (int(key), v)):
+            dic[int(run)] = OrderedDict(sorted(value.iteritems()))
+        return dic
 
     def init_selection(self):
         return {run: False for run in self.RunNumbers}
@@ -480,35 +474,35 @@ class RunSelection:
     def get_selection_runinfo(self):
         dic = {}
         for run, data in self.RunInfos.iteritems():
-            if self.Selection[run]:
-                dic[run] = data
+            if self.Selection[int(run)]:
+                dic[int(run)] = data
         return dic
 
     def change_runinfo_key(self):
-        keys = self.FullRunInfos[str(self.RunNumbers[0])].keys()
+        keys = self.RunInfos[self.RunNumbers[0]].keys()
         print keys
         change_key = raw_input('Enter the key you want to change: ')
         assert change_key in keys, 'The entered key does not exist!'
         print 'old values:'
         for run in self.get_selected_runs():
-            print '{run}:  {value}'.format(run=run, value=self.FullRunInfos[str(run)][change_key])
+            print '{run}:  {value}'.format(run=run, value=self.RunInfos[run][change_key])
         change_value = raw_input('Enter the new value: ')
         for run in self.get_selected_runs():
-            self.FullRunInfos[str(run)][change_key] = float(change_value) if isfloat(change_value) else change_value.strip('\'\"')
+            self.RunInfos[run][change_key] = float(change_value) if isfloat(change_value) else change_value.strip('\'\"')
         self.save_runinfo()
 
     def add_runinfo_key(self):
         new_key = raw_input('Enter the key you want to add: ')
         new_value = raw_input('Enter the new value: ')
         for run in self.get_selected_runs():
-            self.FullRunInfos[str(run)][new_key] = float(new_value) if isfloat(new_value) else new_value
+            self.RunInfos[run][new_key] = float(new_value) if isfloat(new_value) else new_value
         self.save_runinfo()
 
     def add_runinfo_attenuators(self):
         for key in ['att_dia1', 'att_dia2', 'att_pul1', 'att_pul2']:
             value = raw_input('Enter the value for {k}: '.format(k=key))
             for run in self.get_selected_runs():
-                self.FullRunInfos[str(run)][key] = value
+                self.RunInfos[run][key] = value
         self.save_runinfo()
 
     def add_n_entries(self):
@@ -517,7 +511,7 @@ class RunSelection:
             file_path = self.get_final_file_path(run)
             if file_exists(file_path):
                 f = TFile(file_path)
-                self.FullRunInfos[str(run)]['events'] = int(f.Get(self.Run.TreeName).GetEntries())
+                self.RunInfos[run]['events'] = int(f.Get(self.Run.TreeName).GetEntries())
             self.PBar.update(i)
         self.PBar.finish()
         self.save_runinfo()
@@ -526,7 +520,7 @@ class RunSelection:
         runs = self.get_selected_runs()
         pop_key = raw_input('Enter the key you want to remove: ')
         for run in runs:
-            self.FullRunInfos[str(run)].pop(pop_key)
+            self.RunInfos[run].pop(pop_key)
         self.save_runinfo()
 
     def get_final_file_path(self, run_number):
@@ -536,7 +530,7 @@ class RunSelection:
 
     def save_runinfo(self):
         with open(self.Run.RunInfoFile, 'w') as f:
-            dump(self.FullRunInfos, f, indent=2)
+            dump(self.RunInfos, f, indent=2)
         self.RunInfos = self.load_run_infos()
 
     def add_irradiation(self):
