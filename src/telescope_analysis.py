@@ -6,6 +6,7 @@ from cut import Cut
 from InfoLegend import InfoLegend
 from Langaus import Langau
 from binning import Bins
+from selector import run_selector
 
 
 class TelecopeAnalysis(Analysis):
