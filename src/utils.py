@@ -329,7 +329,6 @@ def print_elapsed_time(start, what='This', show=True, color=None):
 
 def get_elapsed_time(start):
     t = datetime.fromtimestamp(time() - start)
-    print t.microsecond, t.microsecond / 1e5
     return '{}.{:1.0f}'.format(t.strftime('%M:%S'), t.microsecond / 100000)
 
 
