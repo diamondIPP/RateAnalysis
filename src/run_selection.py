@@ -23,6 +23,7 @@ class RunSelection:
         self.RunPlan = self.load_runplan()
         self.RunInfos = self.load_run_infos()
         self.RunNumbers = sort(array(self.RunInfos.keys(), int))
+        self.MaxDuts = self.get_max_duts()
 
         # Selection
         self.Selection = self.init_selection()
@@ -378,16 +379,13 @@ class RunSelection:
         print_table(rows, header)
         self.Selection = old_selection
 
-    def get_max_dias(self):
-        return max(self.Run.get_n_diamonds(data['runs'][0]) for data in self.RunPlan.itervalues())
+    def get_n_duts(self, run_number):
+        return len(filter(lambda x: x.startswith('dia') and len(x) == 4, self.RunInfos[run_number].iterkeys()))
 
-    def get_rp_diamond_names(self):
-        dias = [self.get_runinfo_values('dia{0}'.format(i), sel=True) for i in xrange(1, self.Run.get_n_diamonds(self.get_selected_runs()[0]) + 1)]
-        if any([len(dia) > 1 for dia in dias]):
-            log_warning('RunPlan {rp} has more than one diamond'.format(rp=self.SelectedRunplan))
-        return [dia[0] for dia in dias]
+    def get_max_duts(self):
+        return max(self.get_n_duts(run_number) for run_number in self.RunNumbers)
 
-    def get_rp_voltages(self):
+    def get_selected_voltages(self):
         hvs = [[float(hv) for hv in self.get_runinfo_values('dia{0}hv'.format(i), sel=True)] for i in xrange(1, self.Run.get_n_diamonds(self.get_selected_runs()[0]) + 1)]
         if any(len(hv) > 1 for hv in hvs):
             abs_hvs = [[abs(v) for v in hv] for hv in hvs]
@@ -443,7 +441,7 @@ class RunSelection:
         return nr.zfill(2) if len(nr) <= 2 else nr.zfill(4)
 
     def get_diamond_names(self, sel=False, lower=True):
-        keys = ['dia{}'.format(i + 1) for i in xrange(self.get_max_dias())]
+        keys = ['dia{}'.format(i + 1) for i in xrange(self.MaxDuts)]
         dias = [self.Run.translate_dia(dia) for key in keys for dia in self.get_runinfo_values(key, sel)]
         return list(set(dia.lower() if lower else dia for dia in dias if dia is not None))
 
