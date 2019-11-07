@@ -4,7 +4,6 @@ from glob import glob
 from analysis import Analysis, format_histo, join, basename
 from run_selection import RunSelection
 from ROOT import TGraph, TProfile, TH1F, TH2F
-from ConfigParser import ConfigParser
 from numpy import genfromtxt, isnan, datetime64, vectorize, invert, zeros
 
 from utils import *
@@ -35,7 +34,7 @@ class Currents(Analysis):
         self.Analysis = analysis
         self.IsCollection = hasattr(analysis, 'Runs')
         self.RunSelection = RunSelection(testcampaign=self.TCString)
-        self.RunLogs = self.RunSelection.FullRunInfos
+        self.RunLogs = self.RunSelection.RunInfos
         self.Run = self.RunSelection.Run
         self.RunPlan = self.load_run_plan()  # required for plotting
         self.HVConfig = self.load_parser()

@@ -138,7 +138,7 @@ class PadAlignment(EventAligment):
 
     def fill_branches(self, offset):
         for i, name in enumerate(self.Branches.iterkeys()):
-            for value in z.Variables[self.AtEntry + offset][i]:
+            for value in self.Variables[self.AtEntry + offset][i]:
                 self.Branches[name].push_back(value)
 
 
