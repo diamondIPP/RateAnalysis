@@ -1,4 +1,3 @@
-from ConfigParser import ConfigParser
 from glob import glob
 from json import loads
 from shutil import move
@@ -37,9 +36,6 @@ class Converter:
         self.ConverterTree = self.load_converter_tree()
         self.NChannels = 9 if self.ConverterTree.startswith('caen') else 4
 
-        # Tracking Software
-        self.TelescopeID = self.RunConfig.getint('BASIC', 'telescopeID')
-
         # Directories
         self.DataDir = run.DataDir
         self.TCDir = run.TCDir
@@ -48,14 +44,18 @@ class Converter:
         self.EudaqDir = self.load_dirname(self.SoftwareDir, 'eudaq')
         self.TrackingDir = self.load_dirname(self.SoftwareDir, 'tracking')
 
-        # Files
-        self.RawFilePath = join(self.RawFileDir, 'run{run:06d}.raw'.format(run=self.RunNumber))
-        self.ConverterConfigFile = self.load_filename(join(self.EudaqDir, 'conf'), 'converter config')
-        self.NewConfigFile = join(self.EudaqDir, 'conf', '{}.ini'.format(self.RunNumber))
-        self.ErrorFile = join(self.Run.RootFileDir, 'Errors{:03d}.txt'.format(self.RunNumber if self.RunNumber is not None else 0))
+        if self.RunNumber is not None:
+            # Tracking Software
+            self.TelescopeID = self.RunConfig.getint('BASIC', 'telescopeID')
 
-        # Event Alignment
-        self.DecodingErrors = self.read_errors()
+            # Files
+            self.RawFilePath = join(self.RawFileDir, 'run{run:06d}.raw'.format(run=self.RunNumber))
+            self.ConverterConfigFile = self.load_filename(join(self.EudaqDir, 'conf'), 'converter config')
+            self.NewConfigFile = join(self.EudaqDir, 'conf', '{}.ini'.format(self.RunNumber))
+            self.ErrorFile = join(self.Run.RootFileDir, 'Errors{:03d}.txt'.format(self.RunNumber if self.RunNumber is not None else 0))
+
+            # Event Alignment
+            self.DecodingErrors = self.read_errors()
 
     def load_dirname(self, base, option):
         path = join(base, expanduser(self.MainConfig.get('Directories', option)))
