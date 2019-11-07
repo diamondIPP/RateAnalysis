@@ -65,9 +65,6 @@ class Analysis(Draw):
             critical('The Testcampaign {} does not exist!'.format(g_test_campaign))
         return g_test_campaign
 
-    def set_test_campaign(self, testcampaign):
-        self.TestCampaign = testcampaign
-
     def print_testcampaign(self, pr=True):
         data = self.TCString.split('-')
         out = self.TestCampaign.strftime('%b %Y')
@@ -90,11 +87,12 @@ class Analysis(Draw):
     def add_to_info(self, t, txt='Done'):
         return add_to_info(t, txt, prnt=self.Verbose)
 
-    def print_start(self, run=None, prnt=True):
+    def print_start(self, run=None, prnt=True, tc=True):
         if prnt:
             ana_name = self.__class__.__name__.replace('Analysis', '')
             run = ' FOR RUN{} {}'.format('PLAN' if 'Coll' in ana_name else '', run) if run is not None else ''
-            print_banner('STARTING {} ANALYSIS{} OF {}'.format(ana_name.upper(), run, self.TCString), symbol='~', color='green')
+            tc = ' OF {}'.format(self.TCString) if tc else ''
+            print_banner('STARTING {} ANALYSIS{}{}'.format(ana_name.upper(), run, tc), symbol='~', color='green')
 
     def print_finished(self, prnt=True):
         if prnt:
