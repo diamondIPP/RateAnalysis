@@ -288,9 +288,9 @@ class PadAnalysis(DUTAnalysis):
 
         p = do_pickle(picklepath, func, redo=redo)
         self.format_statbox(n_entries=4, only_fit=True, w=.3)
-        y_vals = [p.GetBinContent(i) for i in xrange(2, p.GetNbinsX() + 1)]
+        y = get_hist_vec(p)
         format_histo(p, name='Fit Result', x_tit='Time [hh:mm]', y_tit='Mean Pulse Height [mV]', y_off=1.6, x_range=[self.Run.StartTime, self.Bins.get_time()[1][-1]],
-                     t_ax_off=self.Run.StartTime if rel_t else 0, y_range=increased_range([min(y_vals), max(y_vals)], .5, .5) if y_range is None else y_range, ndivx=505)
+                     t_ax_off=self.Run.StartTime if rel_t else 0, y_range=increased_range([y.min().n, y.max().n], .5, .5) if y_range is None else y_range, ndivx=505)
         self.draw_histo(p, show=show, lm=.14, prnt=save)
         fit = self.fit_pulse_height(p, picklepath)
         self.save_plots('PulseHeight{}'.format(bin_size), show=show, save=save, prnt=prnt)
