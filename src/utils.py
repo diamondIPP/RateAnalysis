@@ -329,7 +329,7 @@ def print_elapsed_time(start, what='This', show=True, color=None):
 
 def get_elapsed_time(start):
     t = datetime.fromtimestamp(time() - start)
-    return '{}.{:1.0f}'.format(t.strftime('%M:%S'), t.microsecond / 100000)
+    return '{}.{:02.0f}'.format(t.strftime('%M:%S'), t.microsecond / 10000)
 
 
 def conv_log_time(time_str, strg=False):
@@ -664,6 +664,7 @@ class MyThread (Thread):
             self.File = TFile(file_path)
             self.Tree = self.File.Get('tree')
             self.Tuple = (self.File, self.Tree)
+        self.Tree.SetEstimate(-1)
         return self.Tree
 
 
