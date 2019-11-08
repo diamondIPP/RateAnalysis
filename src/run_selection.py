@@ -388,7 +388,8 @@ class RunSelection:
         print_table(rows, header)
         self.Selection = old_selection
 
-    def get_n_duts(self, run_number):
+    def get_n_duts(self, run_number=None, run_plan=None):
+        run_number = run_number if run_plan is None else self.RunPlan[make_runplan_string(run_plan)]['runs'][0]
         return len(filter(lambda x: x.startswith('dia') and len(x) == 4, self.RunInfos[run_number].iterkeys()))
 
     def get_max_duts(self):
@@ -557,10 +558,8 @@ class RunSelection:
             f.truncate()
 
     def get_irradiation(self, dia=None):
-        f = open(self.Run.IrradiationFile, 'r')
-        irr = load(f)[self.TCString][self.SelectedDUT if self.SelectedDUT is not None and dia is None else dia]
-        f.close()
-        return irr
+        with open(self.Run.IrradiationFile) as f:
+            return load(f)[self.TCString][self.SelectedDUT if self.SelectedDUT is not None and dia is None else dia]
 
     def get_runplan_runs(self):
         return sorted(list(set(run for dic in self.RunPlan.itervalues() for run in dic['runs'])))
