@@ -290,7 +290,7 @@ class CutPad(Cut):
         pickle_path = self.Analysis.make_pickle_path('Cuts', 'SignalThreshold', run, self.DUTNumber)
         show = False if show_all else show
 
-        def func():
+        def f():
             t = self.Analysis.info('Calculating signal threshold for bucket cut of run {run} and {d} ...'.format(run=self.Analysis.RunNumber, d=self.DUTName), next_line=False)
             h = TH1F('h', 'Bucket Cut', 200, -50, 150)
             draw_string = '{name}>>h'.format(name=self.Analysis.SignalName)
@@ -387,9 +387,7 @@ class CutPad(Cut):
             self.Analysis.add_to_info(t)
             return max_err
 
-        threshold = func() if show or show_all else None
-        threshold = do_pickle(pickle_path, func, threshold)
-        return threshold
+        return do_pickle(pickle_path, f, redo=show or show_all)
 
     def __calc_pedestal_range(self, sigma_range):
         picklepath = self.Analysis.make_pickle_path('Pedestal', 'Cut', self.RunNumber, self.channel)

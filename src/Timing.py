@@ -125,7 +125,7 @@ class TimingAnalysis(Analysis):
         return h
 
     def __draw_cut(self, h):
-        fit = h.GetListOfFunctions()[2]
+        fit = h.GetListOfFunctions()[1]
         xmin, xmax = fit.GetParameter(1) - 3 * fit.GetParameter(2), fit.GetParameter(1) + 3 * fit.GetParameter(2)
         b = self.draw_box(xmin, -10, xmax, 1e7, color=2, width=2, fillstyle=3001, name='timing', style=7)
         legend = self.make_legend(.59, y2=.43, nentries=1, margin=.45, name='la', scale=1.25)
