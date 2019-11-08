@@ -33,8 +33,8 @@ class DUTAnalysis(TelecopeAnalysis):
             critical('wrong diamond number "{}". The following diamond numbers are valid: {}'.format(dut_nr, self.Run.DUTNumbers))
         return dut_nr
 
-    def draw_current(self, relative_time=False, averaging=1, show=True, v_range=None):
-        self.Currents.draw_indep_graphs(rel_time=relative_time, averaging=averaging, show=show, v_range=v_range)
+    def draw_current(self, relative_time=False, averaging=1, show=True, v_range=None, draw_opt='al'):
+        self.Currents.draw_indep_graphs(rel_time=relative_time, averaging=averaging, show=show, v_range=v_range, draw_opt=draw_opt)
 
     @staticmethod
     def get_info_header():
@@ -147,7 +147,7 @@ class DUTAnalysis(TelecopeAnalysis):
 
     def draw_hitmap(self, res=None, cut=None, fid=False, redo=False, z_range=None, size=None, show=True, save=True, prnt=True):
         cut = self.Cut.CutStrings['tracks'] if cut is None else self.Cut(cut)
-        self.draw_signal_map(res, cut, fid, hitmap=True, redo=redo, bins=None, z_range=z_range, size=size, show=show, save=save, prnt=prnt)
+        return self.draw_signal_map(res, cut, fid, hitmap=True, redo=redo, bins=None, z_range=z_range, size=size, show=show, save=save, prnt=prnt)
 
     def split_signal_map(self, m=2, n=2, grid=True, redo=False, show=True):
         fid_cut = array(self.Cut.CutConfig['fiducial']) * 10
