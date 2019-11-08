@@ -27,6 +27,10 @@ class PadCollection(AnalysisCollection):
     def load_dummy():
         return PadAnalysis
 
+    def generate_threshold_pickle(self):
+        if not file_exists(self.make_pickle_path('Cuts', 'SignalThreshold', run=self.MaxFluxRun, ch=self.DUTNumber)):
+            PadAnalysis(self.MaxFluxRun, self.DUTNumber, self.TCString, self.Verbose, prnt=False)
+
     # ----------------------------------------
     # region RESULTS
     def print_all_off_results(self):
@@ -37,12 +41,12 @@ class PadCollection(AnalysisCollection):
 
     def draw_all(self, redo=False):
         t0 = self.info('Generate all plots ... ')
-        old_verbose = self.FirstAnalysis.verbose
+        old_verbose = self.FirstAnalysis.Verbose
         self.set_verbose(False)
         if self.Type == 'voltage scan':
             self.VoltageScan.draw_all(redo)
         else:
-            self.draw_pulse_heights(show=False, redo=redo)
+            self.draw_pulse_heights(show=False, redo=redo, prnt=False)
             self.draw_scaled_pulse_heights(show=False)
             self.draw_scaled_pulse_heights(show=False, vs_time=True)
             self.Pulser.draw_pulse_heights(show=False, redo=redo)
@@ -55,7 +59,7 @@ class PadCollection(AnalysisCollection):
         self.draw_ph_with_currents(show=False)
         self.draw_signal_distributions(show=False, redo=redo)
         self.draw_signal_maps(redo=redo)
-        self.draw_signal_maps(hitmap=True, redo=redo)
+        self.draw_hitmaps(redo=redo)
         self.draw_run_currents()
         self.draw_chi2s()
         self.draw_angles()
