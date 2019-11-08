@@ -246,7 +246,7 @@ class AnalysisCollection(Analysis):
 
     def get_repr_error(self, flux, show=True, redo=False):
 
-        pickle_path = self.make_pickle_path('Errors', 'Repr', self.RunPlan, self.DUTName, suf=flux)
+        pickle_path = self.make_pickle_path('Errors', 'Repr', self.RunPlan, self.DUTNumber, suf=flux)
 
         def f():
             runs = self.get_runs_below_flux(flux)
@@ -366,7 +366,7 @@ class AnalysisCollection(Analysis):
         self.save_plots('ScaledPulseHeights{}'.format(xtit[:4]))
         return mg.GetListOfGraphs()[0]
 
-    def draw_pulse_heights(self, binning=None, vs_time=False, show=True, show_first_last=True, save_comb=True, y_range=None, redo=False):
+    def draw_pulse_heights(self, binning=None, vs_time=False, show=True, show_first_last=True, save_comb=True, y_range=None, redo=False, prnt=True):
 
         mode = 'Time' if vs_time else 'Flux'
         mg = self.get_pulse_height_graph(binning, vs_time, show_first_last, redo)
@@ -392,7 +392,7 @@ class AnalysisCollection(Analysis):
         if save_comb:
             y_min = increased_range([ymin, ymax], .5)[0] if y_range is None else y_range[0]
             # TODO fix vs time and comb plot
-            self.save_combined_pulse_heights(mg, mg1, y_min, show=show, pulser_leg=self.draw_signal_legend)
+            self.save_combined_pulse_heights(mg, mg1, y_min, show=show, pulser_leg=self.draw_signal_legend, prnt=prnt)
 
         return mg
 
@@ -406,7 +406,7 @@ class AnalysisCollection(Analysis):
         self.info('Generating signal distributions ...')
         histos = []
         self.PBar.start(self.NRuns)
-        for i, ana in enumerate(self.Analyses.itervalues(), 1):
+        for i, ana in enumerate(self.Analyses.itervalues()):
             h = ana.draw_signal_distribution(show=False, redo=redo, prnt=False)
             format_histo(h, fill_color=0, fill_style=4000)
             histos.append(h)
@@ -481,7 +481,7 @@ class AnalysisCollection(Analysis):
 
     # ----------------------------------------
     # region MISCELLANEOUS DRAW
-    def draw_currents(self, v_range=None, rel_time=False, averaging=1, with_flux=False, c_range=None, f_range=None, draw_opt='ap', show=True):
+    def draw_currents(self, v_range=None, rel_time=False, averaging=1, with_flux=False, c_range=None, f_range=None, draw_opt='al', show=True):
         self.Currents.draw_indep_graphs(rel_time=rel_time, v_range=v_range, averaging=averaging, with_flux=with_flux, c_range=c_range, f_range=f_range, show=show, draw_opt=draw_opt)
 
     def draw_iv(self, show=True):
@@ -531,7 +531,7 @@ class AnalysisCollection(Analysis):
         format_histo(h, x_tit='Time [hh:mm]', y_tit='Beam Current [mA]', y_off=.85, fill_color=self.FillColor, stats=0, markersize=.3, t_ax_off=self.StartTime if rel_t else 0)
         self.save_histo(h, 'AllBeamRate', show=show, draw_opt='hist', x=1.5, y=.75, lm=.065)
 
-    def draw_flux(self, bin_width=5, rel_time=True, show=True):
+    def draw_flux(self, bin_width=5, rel_time=True, show=True, redo=False):
 
         pickle_path = self.make_pickle_path('Flux', 'FullFlux', self.RunPlan, self.DUTNumber, bin_width)
 
@@ -548,7 +548,7 @@ class AnalysisCollection(Analysis):
                     h1.SetBinError(i, value.s)
                 return h1
 
-        hist = do_pickle(pickle_path, f)
+        hist = do_pickle(pickle_path, f, redo=redo)
         format_histo(hist, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', t_ax_off=self.InitTime if rel_time else 0, fill_color=self.FillColor, y_range=[1, 20000], stats=0)
         self.save_histo(hist, 'FluxEvo', x=1.5, y=.75, show=show, logy=True, draw_opt='bar' if not self.FirstAnalysis.has_branch('rate') else '')
         return hist
@@ -588,13 +588,16 @@ class AnalysisCollection(Analysis):
         self.save_plots('Cumulative{s}Map'.format(s='Hit' if hitmap else 'Signal'))
 
     def draw_signal_maps(self, hitmap=False, redo=False):
-        f = PadAnalysis.draw_hitmap if hitmap else PadAnalysis.draw_signal_map
+        f = DUTAnalysis.draw_hitmap if hitmap else DUTAnalysis.draw_signal_map
         histos = self.generate_plots('{} maps'.format('hit' if hitmap else 'signal'), f, show=False, prnt=False, redo=redo)
         glob_max = (int(max([h.GetMaximum() for h in histos])) + 5) / 5 * 5
         glob_min = int(min([h.GetMinimum() for h in histos])) / 5 * 5
         for i, h in enumerate(histos):
             format_histo(h, z_range=[glob_min, glob_max]) if not hitmap else do_nothing()
             self.save_histo(h, '{n}Map{nr}'.format(nr=str(i).zfill(2), n='Hit' if hitmap else 'Signal'), show=False, ind=i, draw_opt='colz', rm=.16, lm=.12, prnt=False)
+
+    def draw_hitmaps(self, redo=False):
+        self.draw_signal_maps(hitmap=True, redo=redo)
 
     def draw_signal_map_ratio(self, run1, run2, m=10, n=10, grid=True, show=True):
         h1, h2 = [self.Analyses[run].split_signal_map(m, n, show=False)[0] for run in [run1, run2]]
