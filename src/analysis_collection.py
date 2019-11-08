@@ -74,9 +74,9 @@ class AnalysisCollection(Analysis):
     # region INIT
     def print_start_info(self):
         bias = ['{:+8.0f}'.format(bias) for bias in self.RunSelection.get_selected_biases()]
-        times = [datetime.fromtimestamp(duration).strftime('%H:%M').rjust(15) for duration in self.RunSelection.get_selected_durations()]
-        rows = zip(self.Runs, ['{:14.1f}'.format(flux.n) for flux in self.Fluxes], bias, times)
-        print_table(header=['Run', 'Flux [kHz/cm2]', 'Bias [V]', 'Duration [hh:mm]'], rows=rows, prnt=self.Verbose)
+        times = [datetime.fromtimestamp(duration - 3600).strftime('%H:%M').rjust(15) for duration in self.RunSelection.get_selected_durations()]
+        rows = zip(self.Runs, ['{:14.1f}'.format(flux.n) for flux in self.Fluxes], bias, self.RunSelection.get_selected_start_times(), times)
+        print_table(header=['Run', 'Flux [kHz/cm2]', 'Bias [V]', 'Start', 'Duration [hh:mm]'], rows=rows, prnt=self.Verbose)
 
     def get_high_low_rate_runs(self):
         return self.Runs[where(self.Fluxes == self.Fluxes.min())[0]][0], self.Runs[where(self.Fluxes == self.Fluxes.max())[0]][0]
