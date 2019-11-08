@@ -4,31 +4,37 @@
 # created on Oct 28th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
+from json import loads
+
 from ROOT import gStyle
 from numpy import arange, array, delete, append, concatenate, sqrt
 
 from utils import get_root_vec
+from run import Run
 
 
 class Bins:
     def __init__(self, run=None, cut=None):
 
-        self.Run = run
+        self.Run = run if run is not None else Run(tree=False)
         self.Cut = cut
-        self.Config = run.MainConfig
+        self.Config = self.Run.MainConfig
 
-        self.NDevices = run.NPlanes
-        self.NEntries = run.NEntries
-        self.NCols, self.NRows = run.NPixels
-        self.PX, self.PY = run.PixelSize
-
-        # Binning
+        self.NCols, self.NRows = self.Run.NPixels
+        self.PX, self.PY = self.Run.PixelSize
         self.BinSize = self.Config.getint('PLOTS', 'bin size')
-        self.RawBinning = self.get_raw(self.BinSize)
-        if self.Cut is not None:
-            self.Binning = self.create()
-            self.TimeBinning = self.load_time_binning()
-            self.NBins = len(self.Binning) - 1
+
+        if run is not None:
+            # Run Info
+            self.NDevices = run.NPlanes
+            self.NEntries = run.NEntries
+
+            # Binning
+            self.RawBinning = self.get_raw(self.BinSize)
+            if self.Cut is not None:
+                self.Binning = self.create()
+                self.TimeBinning = self.load_time_binning()
+                self.NBins = len(self.Binning) - 1
         self.NPulser = None
         self.Pulser = None
 
@@ -48,7 +54,7 @@ class Bins:
 
         # Miscellaneous
         self.GlobalCoods = [-.5025, .5175, -.505, .515]  # range in x and y in telescope coordinates [cm]
-        self.FluxRange = [1, 40000]
+        self.FluxRange = loads(self.Config.get('PLOTS', 'flux range'))
 
         self.root_setup()
 
