@@ -2,10 +2,13 @@
 #       methods to select which run or collection to take
 # created on Nov 7th 2019 by M. Reichmann
 # --------------------------------------------------------
-from utils import critical
+from utils import critical, get_base_dir
+from os import chdir
+from os.path import join
 
 
 def run_selector(run, tc, tree, t_vec, verbose):
+    chdir(join(get_base_dir(), 'src'))
     from pixel_run import PixelRun
     from pad_run import PadRun
     from run import Run
@@ -18,6 +21,7 @@ def run_selector(run, tc, tree, t_vec, verbose):
 
 
 def analysis_selector(run, dut, tc, tree, verbose=False):
+    chdir(join(get_base_dir(), 'src'))
     from run import Run
     from pad_analysis import PadAnalysis
     from pix_analysis import PixAnalysis
@@ -31,6 +35,7 @@ def analysis_selector(run, dut, tc, tree, verbose=False):
 
 
 def collection_selector(rp, dut, tc, tree, verbose=False):
+    chdir(join(get_base_dir(), 'src'))
     from pad_collection import PadCollection
     from pix_collection import PixCollection
     from run_selection import RunSelection
