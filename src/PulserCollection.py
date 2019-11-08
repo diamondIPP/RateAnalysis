@@ -121,7 +121,7 @@ class PulserCollection(Analysis):
 
     def draw_legend(self):
         try:
-            typ = self.Analysis.FirstAnalysis.RunInfo['pulser']
+            typ = self.Analysis.FirstAnalysis.Run.RunInfo['pulser']
             pol = 'positive' if self.Analysis.FirstAnalysis.PulserPolarity > 0 else 'negative'
             sig = 'positive' if self.Analysis.FirstAnalysis.Polarity > 0 else 'negative'
             leg = self.make_legend(.17, .88, nentries=3, margin=.05, clean=True, x2=.5)
