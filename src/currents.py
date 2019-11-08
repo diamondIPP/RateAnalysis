@@ -183,7 +183,7 @@ class Currents(Analysis):
             data = data[where((data['f0'] >= time_stamp(self.Begin, off=True)) & (data['f0'] <= time_stamp(self.End, off=True)))]
             data = data[where(abs(data['f2']) < 1e-3)]  # filter our very high unphysical currents > 3mA
             if self.IgnoreJumps:  # filter out jumps
-                data = data[where(abs(data['f2'][:-1]) * 100 > abs(data['f2'][1:]))]
+                data = data[where(abs(data['f2'][:-1]) * 100 > abs(data['f2'][1:]))[0] + 1]
             self.Time = concatenate([self.Time, data['f0'].astype('i4') + self.Begin.utcoffset().seconds])  # in local start time
             self.Voltages = concatenate([self.Voltages, data['f1']])
             self.Currents = concatenate([self.Currents, data['f2'] * 1e9])  # unit nA
@@ -277,8 +277,7 @@ class Currents(Analysis):
     def draw_indep_graphs(self, rel_time=False, ignore_jumps=True, v_range=None, f_range=None, c_range=None, averaging=1, with_flux=False, draw_opt='ap', show=True):
         self.IgnoreJumps = ignore_jumps
         self.set_graphs(averaging)
-        set_root_output(show)
-        c = self.make_canvas('cc', 'Keithley Currents for Run {0}'.format(self.RunNumber), x=1.5, y=.75)
+        c = self.make_canvas('cc', 'Keithley Currents for Run {0}'.format(self.RunNumber), x=1.5, y=.75, show=show)
         self.draw_flux_pad(f_range, rel_time, draw_opt) if with_flux else self.draw_voltage_pad(v_range, draw_opt)
         self.draw_title_pad()
         self.draw_current_pad(rel_time, c_range, draw_opt)
@@ -287,7 +286,7 @@ class Currents(Analysis):
         self.Stuff.append(c)
         run = self.Analysis.RunPlan if self.IsCollection else self.RunNumber
         save_name = 'Currents{}_{}_{}'.format(self.TCString, run, self.DUTNumber)
-        self.save_canvas(c, name=save_name, sub_dir='currents', show=show)
+        self.save_canvas(c, name=save_name, sub_dir='currents', show=show, ftype='png')
 
     def zoom_pads(self, low, high):
         self.VoltageGraph.GetXaxis().SetRangeUser(low, high)
@@ -309,7 +308,7 @@ class Currents(Analysis):
         g.Draw('{}y+'.format(draw_opt))
 
     def draw_flux_pad(self, f_range, rel_t=False, draw_opt='ap'):
-        pad = self.draw_tpad('pr', margins=pad_margins, transparent=True, logy=True)
+        pad = self.draw_tpad('p1', margins=pad_margins, transparent=True, logy=True)
         h = self.Analysis.draw_flux(rel_time=rel_t, show=False)
         pad.cd()
         f_range = [1, 20000] if f_range is None else f_range
