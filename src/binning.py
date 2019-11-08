@@ -34,7 +34,7 @@ class Bins:
             if self.Cut is not None:
                 self.Binning = self.create()
                 self.TimeBinning = self.load_time_binning()
-                self.NBins = len(self.Binning) - 1
+                self.NBins = len(self.Binning)
         self.NPulser = None
         self.Pulser = None
 
