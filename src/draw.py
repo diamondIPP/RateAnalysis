@@ -6,7 +6,7 @@
 
 from __future__ import print_function
 from utils import *
-from ROOT import gROOT, TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, kGreen, kOrange, kViolet, kYellow, kRed, kBlue, kMagenta, kAzure, \
+from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, kGreen, kOrange, kViolet, kYellow, kRed, kBlue, kMagenta, kAzure, \
     kCyan, kTeal, TPaveText, TPaveStats, TH1F, TSpectrum
 from numpy import ndarray, zeros, sign
 from os.path import expanduser, join, basename
@@ -186,8 +186,8 @@ class Draw:
 
     def draw_tpavetext(self, text, x1, x2, y1, y2, font=42, align=0, size=0, angle=0, margin=.05, color=1):
         p = TPaveText(x1, y1, x2, y2, 'ndc')
-        p.SetFillColor(0)
-        p.SetFillStyle(0)
+        p.SetFillColor(4000)
+        p.SetFillStyle(4000)
         p.SetBorderSize(0)
         p.SetMargin(margin)
         t = p.AddText(text)
@@ -248,7 +248,7 @@ class Draw:
                                prnt, phi, theta)
 
     def save_combined_pulse_heights(self, mg, mg1, mg_y, show=True, name=None, pulser_leg=None,
-                                    x_range=None, y_range=None, rel_y_range=None, draw_objects=None):
+                                    x_range=None, y_range=None, rel_y_range=None, draw_objects=None, prnt=True):
         set_root_output(show)
         c = TCanvas('c', 'c', int(self.Res * 10 / 11.), self.Res)
         make_transparent(c)
@@ -298,7 +298,7 @@ class Draw:
         for obj in p0.GetListOfPrimitives():
             if obj.GetName() == 'title':
                 obj.SetTextColor(0)
-        self.save_canvas(c, name='CombinedPulseHeights' if name is None else name, show=show)
+        self.save_canvas(c, name='CombinedPulseHeights' if name is None else name, show=show, print_names=prnt)
 
         self.Objects.append([c, draw_objects])
         set_root_output(True)
@@ -323,7 +323,7 @@ class Draw:
     def server_is_mounted(self):
         return dir_exists(join(self.ServerDir, 'Diamonds'))
 
-    def save_on_server(self, canvas, file_name):
+    def save_on_server(self, canvas, file_name, ftype=None):
         if self.ServerDir is None:
             return
         if not self.server_is_mounted():
@@ -337,8 +337,8 @@ class Draw:
             else:
                 return
             path = join(self.ServerDir, 'Diamonds', self.DUTName, 'BeamTests', make_tc_str(self.TCString, long_=False), run_string, file_name)
-            canvas.SaveAs('{p}.pdf'.format(p=path))
-            canvas.SaveAs('{p}.png'.format(p=path))
+            for ft in ['pdf', 'png'] if ftype is None else [ftype]:
+                canvas.SaveAs('{}.{}'.format(path, ft))
 
     def server_pickle(self, old_path, value):
         if self.server_is_mounted():
@@ -373,18 +373,18 @@ class Draw:
     def save_tel_plots(self, savename, sub_dir=None, canvas=None, all_pads=True, ind=None, prnt=True, save=True, show=True):
         self.save_plots(savename, sub_dir, canvas, all_pads, True, ind, prnt, save, show)
 
-    def save_canvas(self, canvas, sub_dir=None, name=None, print_names=True, show=True):
+    def save_canvas(self, canvas, sub_dir=None, name=None, print_names=True, show=True, ftype=None):
         """should not be used in analysis methods..."""
         sub_dir = self.SubDir if sub_dir is None else sub_dir
         canvas.Update()
         file_name = canvas.GetName() if name is None else name
         file_path = join(self.ResultsDir, sub_dir, '{typ}', file_name)
-        ftypes = ['root', 'png', 'pdf', 'eps']
+        ftypes = ['root', 'png', 'pdf', 'eps'] if ftype is None else [ftype]
         out = 'saving plot: {nam}'.format(nam=name)
         run_number = self.RunNumber if hasattr(self, 'RunNumber') else None
         run_number = 'rp{nr}'.format(nr=self.run_plan) if hasattr(self, 'run_plan') else run_number
-        set_root_output(show)
-        gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
+        set_root_output(show)  # needs to be in the same batch so that the pictures are created, takes forever...
+        set_root_warnings(False)
         info_str = self.make_info_string()
         for f in ftypes:
             ext = '.{typ}'.format(typ=f)
@@ -394,7 +394,7 @@ class Draw:
             out_file = '{fname}{ext}'.format(fname=file_path, ext=ext)
             out_file = out_file.format(typ=f)
             canvas.SaveAs(out_file)
-        self.save_on_server(canvas, file_name)
+        self.save_on_server(canvas, file_name, ftype)
         if print_names:
             log_info(out, prnt=self.Verbose)
         set_root_output(True)
@@ -495,7 +495,7 @@ class Draw:
     # ----------------------------------------
 
     def format_statbox(self, x=.95, y=None, w=.2, n_entries=3, only_fit=False, fit=False, entries=False, form=None, m=False, rms=False, all_stat=False):
-        gStyle.SetOptFit(only_fit or fit)
+        gStyle.SetOptFit(int(only_fit or fit))
         opt_stat = '100000{}{}{}0'.format(*[1 if val else 0 for val in [rms, m, entries]] if not all_stat else [1, 1, 1])
         if only_fit:
             opt_stat = '0011'
@@ -732,7 +732,7 @@ def get_pull(h, name, bins, fit=True):
 
 
 def fit_bucket(histo, show=True):
-    set_root_warnings(False)
+    set_root_output(False)
     h = histo
     format_histo(h, rebin=int(h.GetBinCenter(h.FindLastBinAbove(h.GetMaximum() * .02))) / 40)
     fit = TF1('fit', 'gaus(0) + gaus(3) + gaus(6)', h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax())
