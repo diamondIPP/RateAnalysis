@@ -1,4 +1,5 @@
 #! /usr/bin/env python
+from __future__ import print_function
 from ROOT import THStack, TF1, TProfile2D, TMultiGraph
 
 from currents import Currents
@@ -8,7 +9,6 @@ from VoltageScan import VoltageScan
 from analysis import *
 from dut_analysis import DUTAnalysis
 from telescope_analysis import TelecopeAnalysis
-from pad_analysis import PadAnalysis
 
 
 class AnalysisCollection(Analysis):
@@ -17,7 +17,7 @@ class AnalysisCollection(Analysis):
     def __init__(self, run_plan, dut_nr, test_campaign=None, load_tree=True, verbose=False):
 
         Analysis.__init__(self, test_campaign, verbose)
-        self.print_start(run_plan)
+        self.print_start(run_plan, prnt=load_tree)
 
         # Run Selection Info
         self.RunSelection = RunSelection(self.TCString, run_plan, dut_nr, verbose)
@@ -56,10 +56,10 @@ class AnalysisCollection(Analysis):
         self.InfoLegend = InfoLegend(self)
         self.Currents = Currents(self)
 
-        self.print_finished()
+        self.print_finished() if verbose else print()
 
     def __del__(self):
-        print '\n good bye... '
+        print('\n good bye... ')
 
     def draw_all(self, redo=False):
         pass
@@ -68,7 +68,7 @@ class AnalysisCollection(Analysis):
         print_table(rows=concatenate(self.get_values('', self.Analysis.show_information, pbar=False, prnt=False)), header=self.FirstAnalysis.get_info_header())
 
     def print_loaded(self):
-        print '\033[1A\rRuns {0}-{1} were successfully loaded!{2}\n'.format(self.Runs[0], self.Runs[-1], 20 * ' ')
+        print('\033[1A\rRuns {0}-{1} were successfully loaded!{2}\n'.format(self.Runs[0], self.Runs[-1], 20 * ' '))
 
     # ----------------------------------------
     # region INIT
