@@ -113,15 +113,15 @@ class TelecopeAnalysis(Analysis):
         legend.AddEntry(line, 'cut ({} deg)'.format(self.Cut.CutConfig['slope']), 'l')
         legend.Draw()
 
-    def draw_both_angles(self):
-        histos = [self.draw_angle_distribution(mode, show=False) for mode in ['x', 'y']]
+    def draw_both_angles(self, show=True, prnt=True):
+        histos = [self.draw_angle_distribution(mode, show=False, prnt=False) for mode in ['x', 'y']]
         leg = self.make_legend(nentries=2, w=.25)
         stack = THStack('has', 'Track Angles')
         for h in histos:
             format_histo(h, stats=False, color=self.get_color())
             leg.AddEntry(h, 'Angle in {}'.format(h.GetTitle()[-1]), 'l')
             stack.Add(h)
-        self.save_tel_histo(stack, 'TrackAngles', sub_dir=self.TelSaveDir, lm=.14, leg=leg, draw_opt='nostack')
+        self.save_tel_histo(stack, 'TrackAngles', sub_dir=self.TelSaveDir, lm=.14, leg=leg, draw_opt='nostack', show=show, prnt=prnt)
 
     def draw_track_length(self, show=True, save=True, t_dia=500):
         h = TH1F('htd', 'Track Distance in Diamond', 200, t_dia, t_dia + 1)
@@ -253,13 +253,13 @@ class TelecopeAnalysis(Analysis):
         planes = range(4) if planes is None else list(planes)
         histos = [self._draw_occupancy(plane, cluster=cluster, cut=cut, show=False, prnt=False) for plane in planes]
         set_root_output(show)
-        c = self.make_canvas('c_hm', 'Hitmaps', x=1.5, y=1.5, divide=(2, 2))
+        c = self.make_canvas('c_hm', 'Hitmaps', x=1.5, y=1.5, divide=(2, 2), show=show)
         for i, h in enumerate(histos, 1):
             h.SetStats(0)
             pad = c.cd(i)
             pad.SetBottomMargin(.15)
             h.Draw('colz')
-        self.save_plots('HitMaps', sub_dir=self.TelSaveDir, show=show, prnt=prnt, both_dias=True)
+        self.save_tel_plots('HitMaps', sub_dir=self.TelSaveDir, show=show, prnt=prnt)
 
     def draw_tracking_map(self, at_dut=1, res=.7, cut='', show=True, prnt=True):
         set_root_output(False)
