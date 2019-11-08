@@ -89,12 +89,10 @@ class AnalysisCollection(Analysis):
     def generate_slope_pickle(self):
         picklepath = self.make_pickle_path('TrackAngle', 'x', run=self.MinFluxRun)
         if not file_exists(picklepath):
-            TelecopeAnalysis(self.MinFluxRun, self.TCString, verbose=self.Verbose)
+            TelecopeAnalysis(self.MinFluxRun, self.TCString, verbose=self.Verbose, prnt=False)
 
     def generate_threshold_pickle(self):
-        picklepath = self.make_pickle_path('Cuts', 'SignalThreshold', run=self.MaxFluxRun, ch=self.DUTNumber)
-        if not file_exists(picklepath) and self.RunSelection.get_type(self.MaxFluxRun) == 'pad':
-            PadAnalysis(self.MaxFluxRun, self.DUTNumber, self.TCString, self.Verbose)
+        pass
 
     def load_analysis(self, run_number):
         return DUTAnalysis(run_number, self.DUTNumber, self.TCString, self.Threads[run_number].Tuple, self.Threads[run_number].Time, self.Verbose, prnt=False)
