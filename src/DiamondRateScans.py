@@ -4,273 +4,246 @@
 # created on June 24th 2016 by M. Reichmann
 # --------------------------------------------------------
 
-from ConfigParser import ConfigParser, NoOptionError
-from ROOT import TMultiGraph, TGraphErrors, gStyle, TF1, TH2F, TH1F, TGraph2DErrors, gROOT
-from argparse import ArgumentParser
+from __future__ import print_function
+from analysis import *
 from collections import Counter
-from json import load, dump, loads
-from operator import itemgetter
+from json import load, dump
+
+from ROOT import TMultiGraph, TH2F, TH1F, TGraph2DErrors
 from re import split as splitname
 
-from uncertainties.unumpy import uarray
+from pad_collection import AnalysisCollection
+from run import Run
+from run_selection import RunSelection
+from selector import collection_selector
+from functools import partial
+from binning import Bins
 
-from AnalysisCollection import AnalysisCollection
-from Elementary import Elementary
-from Run import Run
-from RunSelection import RunSelection
-from Utils import *
 
+class DiaScans(Analysis):
+    def __init__(self, selection_name=None, verbose=False):
+        Analysis.__init__(self, verbose=verbose)
 
-class DiaScans(Elementary):
-    def __init__(self, selection, dia=None, verbose=False, tc=None):
-        Elementary.__init__(self, verbose=verbose)
+        self.print_start(run=selection_name, tc=False, prnt=verbose)
 
-        # main
+        # Main
+        self.Name = selection_name
         self.Selections = self.load_selections()
-        self.Selection = {}
-        self.RunSelections = None
-        self.Name = None
-        self.Parser = self.load_diamond_parser()
+        self.Selection = self.load_selection(selection_name)
 
-        # info
-        self.DiamondName = self.load_diamond(dia)
-        self.AllRunPlans = self.load_all_runplans()
-        self.TestCampaign = tc
+        # Config
+        self.DUTParser = load_parser(join(self.Dir, 'Configuration', 'DiamondAliases.ini'))
+
+        # Info
+        self.RS = RunSelection()  # dummy for information
+        self.DUTName = self.load_dut_name()
+        self.RunPlans = self.load_runplans()
         self.TestCampaigns = self.load_test_campaigns()
-        self.RunInfos = self.load_runinfos()
+        self.RunSelections = self.load_run_selections()
+        self.RunInfos = self.load_run_infos()
+        self.Info = self.load_selection_info()
+        self.NPlans = len(self.Info) if self.Info else None
 
-        self.set_save_directory(join('Results', 'selections'))
-        self.save_dir = ''
-        self.set_selection(selection)
+        self.set_results_dir(join('Results', 'selections', '' if self.Name is None else self.Name))
 
-    # ==========================================================================
+        self.print_finished(prnt=verbose)
+
+    # ----------------------------------------
     # region INIT
     def load_selections(self):
-        with open(join(self.Dir, self.MainConfigParser.get('MISC', 'runplan_selection_file'))) as f:
+        with open(join(self.Dir, self.MainConfig.get('MISC', 'runplan selection file'))) as f:
             return load(f, object_pairs_hook=OrderedDict)
 
-    def load_diamond_parser(self):
-        parser = ConfigParser()
-        parser.read('{0}/Configuration/DiamondAliases.cfg'.format(self.get_program_dir()))
-        return parser
-
-    def load_diamond(self, name):
+    def load_selection(self, name):
         if name is None:
             return
-        dia = name
-        if 'all' in dia:
-            return 'All'
-        if 'test' in dia:
-            return 'Test'
-        if name.lower() not in self.Parser.options('ALIASES'):
-            dia = splitname('[-_]', name)[0]
-        if dia.lower() not in self.Parser.options('ALIASES'):
-            dia = '-'.join(splitname('[-_]', name)[:2])
-        try:
-            return self.Parser.get('ALIASES', dia)
-        except NoOptionError:
-            log_warning('{0} is not a known diamond name! Please choose one from \n{1}'.format(dia, self.Parser.options('ALIASES')))
-
-    def load_test_campaigns(self, tcs=None):
-        if tcs is None:
-            return sorted(tc for tc in self.get_test_campaigns() if (tc == self.TestCampaign or self.TestCampaign is None) and tc in self.AllRunPlans)
-        valid_tcs = self.get_test_campaigns()
-        tcs = [tcs] if type(tcs) is not list else tcs
-        if not all(tc in valid_tcs for tc in tcs):
-            log_warning('You entered and invalid test campaign! Aborting!')
-            exit()
-        return sorted(tcs)
-
-    def load_all_runplans(self):
-        with open(join(self.Dir, self.MainConfigParser.get('MISC', 'runplan_file'))) as f:
-            return load(f)
-
-    def load_runinfos(self):
-        run_infos = {}
-        for tc in self.TestCampaigns:
-            self.set_test_campaign(tc)
-            self.TCDir = self.generate_tc_directory()
-            with open(self.load_run_info_path()) as f:
-                run_infos[tc] = load(f)
-        return run_infos
-
-    def load_run_selections(self, redo=False):
-        if self.RunSelections is not None and not redo:
-            return self.RunSelections
-        run_selections = []
-        for tc, rps in self.Selection.iteritems():
-            for rp, ch in rps.iteritems():
-                channels = ch if type(ch) == list else [ch]
-                for channel in channels:
-                    sel = RunSelection(tc)
-                    sel.select_runs_from_runplan(rp, ch=channel)
-                    self.log_info('Loaded runplan {rp} of testcampaign {tc} and ch {ch} ({dia})'.format(rp=rp.rjust(4), tc=make_tc_str(tc), ch=channel, dia=sel.SelectedDiamond))
-                    run_selections.append(sel)
-        self.RunSelections = run_selections
-        return run_selections
-
-    def set_selection(self, key=None):
-        if key is None:
-            key = self.DiamondName
-        if key not in self.Selections.keys():
-            log_warning('"{sel} does not exist in:'.format(sel=key))
-            for sel in sorted(self.Selections.keys()):
-                print sel
+        if name not in self.Selections.keys():
+            warning('"{} does not exist in:\n{} '.format(name, sorted(self.Selections.iterkeys())))
+            self.Name = None
             return
-        self.log_info('Set Selection {0}'.format(key))
-        self.DiamondName = self.load_diamond(key)
-        self.Selection = self.Selections[key]
-        self.TestCampaigns = list(set(self.Selection.keys()))
-        self.load_run_selections(redo=True)
-        self.Name = key
-        self.save_dir = key
+        return self.Selections[name]
 
-    # endregion
+    def load_dut_name(self, name=None):
+        name = self.Name if name is None else name
+        if name is None:
+            return
+        if any([word in name.lower() for word in ['all', 'test']]):
+            return name.title()
+        dut = name.lower()
+        if dut not in self.DUTParser.options('ALIASES'):
+            dut = splitname('[-_]', name)[0]
+        if dut.lower() not in self.DUTParser.options('ALIASES'):
+            dut = '-'.join(splitname('[-_]', name)[:2])
+        if dut.lower() not in self.DUTParser.options('ALIASES'):
+            warning('No diamond name found in "{}". Please choose one from \n{}'.format(name, ', '.join(self.DUTParser.options('ALIASES'))))
+        return self.DUTParser.get('ALIASES', dut)
 
-    def get_all_ana_strings(self, dia=None, tc=None, redo=False):
-        if tc is None:
-            selections = [sel for sel in self.get_dia_runselections(dia) if sel.TESTCAMPAIGN > '201505' and (sel.TESTCAMPAIGN == tc or tc is None)]
-        else:
-            selections = self.get_tc_runselections(tc)
-        redo = ' -rd' if redo else ''
-        return '_'.join(['AbstractClasses/AnalysisCollection.py {} {} -tc {} -d{}'.format(sel.SelectedRunplan, sel.SelectedDiamondNr, sel.TESTCAMPAIGN, redo) for sel in selections])
+    def load_runplans(self):
+        with open(self.RS.RunPlanPath) as f:
+            return load(f, object_pairs_hook=OrderedDict)
 
-    # ==========================================================================
+    def load_test_campaigns(self):
+        return sorted(self.RunPlans.iterkeys() if self.Name is None else list(set(self.Selection.iterkeys())))
+
+    def load_run_selections(self):
+        return OrderedDict((tc, RunSelection(tc)) for tc in self.TestCampaigns)
+
+    def load_run_infos(self):
+        return OrderedDict((tc, rs.RunInfos) for tc, rs in self.RunSelections.iteritems())
+
+    def load_selection_info(self):
+        selections = []
+        if self.Selection is None:
+            return
+        for tc, rps in self.Selection.iteritems():
+            for rp, dut_nrs in rps.iteritems():
+                for dut_nr in array([dut_nrs]).flatten():
+                    selections.append(SelectionInfo(self.RunSelections[tc].select_runs_from_runplan(rp, dut_nr, unselect=True)))
+        return selections
+    # endregion INIT
+    # ----------------------------------------
+
+    # ----------------------------------------
     # region GET
-    def get_dia_runselections(self, dia):
-        dia = self.load_diamond(dia)
-        return [RunSelection(tc, rp, self.get_rp_diamonds(tc, rp).index(dia) + 1) for tc in self.TestCampaigns for rp in sorted(self.AllRunPlans[tc]) if dia in self.get_rp_diamonds(tc, rp)]
-
-    def get_tc_runselections(self, tc):
-        return [RunSelection(tc, rp, i) for rp in sorted(self.AllRunPlans[tc]) for i in xrange(1, len(self.get_rp_diamonds(tc, rp)) + 1)]
-
     def get_rp_diamonds(self, tc, rp):
-        dias = [item for key, item in sorted(self.RunInfos[tc][self.get_first_run(tc, rp)].iteritems()) if key.startswith('dia') and len(key) < 5]
-        return [self.load_diamond(dia) for dia in dias]
+        sel = self.RunSelections[tc].select_runs_from_runplan(rp, unselect=True)
+        return sel.get_dut_names()
 
     def get_first_run(self, tc, rp):
-        return str(self.AllRunPlans[tc][rp]['runs'][0])
-
-    def get_diamond_names(self):
-        return [sel.SelectedDiamond for sel in self.RunSelections]
-
-    def get_run_types(self):
-        return [sel.SelectedType.lower() for sel in self.RunSelections]
-
-    def get_irradiations(self, string=True):
-        return [make_irr_string(sel.get_irradiation()) if string else float(sel.get_irradiation()) for sel in self.RunSelections]
-
-    def get_bias_voltages(self):
-        return [sel.SelectedBias for sel in self.RunSelections]
+        return self.get_runs(rp, tc)[0]
 
     def get_runs(self, rp, tc):
-        return self.AllRunPlans[tc][rp]['runs']
+        return self.RunPlans[tc][rp]['runs']
 
-    @staticmethod
-    def get_values(sel, f, picklepath='', kwargs=None, redo=False, load_tree=True):
-        kwargs = {} if kwargs is None else kwargs
-        sel.verbose = False
+    def get_dut_names(self):
+        return [sel.DUT for sel in self.Info]
+
+    def get_run_types(self):
+        return [sel.Type.lower() for sel in self.Info]
+
+    def get_irradiations(self, string=True):
+        return [make_irr_string(sel.Irradiation) if string else float(sel.Irradiation) for sel in self.Info]
+
+    def get_bias_voltages(self):
+        return [sel.Bias for sel in self.Info]
+
+    def get_rp_values(self, sel, f, pickle_info=None, redo=False, load_tree=True, *args, **kwargs):
+        pickle_path = self.make_pickle_path(pickle_info.SubDir, pickle_info.Name, sel.RunPlan, sel.DUTNr, pickle_info.Suffix, sel.TCString) if pickle_info else ''
+        if file_exists(pickle_path) and not redo:
+            with open(pickle_path) as f:
+                return pickle.load(f)
+        self.info('Did not find {}'.format(pickle_path), prnt=pickle_path)
+        ana = collection_selector(sel.RunPlan, sel.DUTNr, sel.TCString, load_tree)
         try:
-            if redo:
-                raise IOError
-            f = open(picklepath, 'r')
-            values = pickle.load(f)
-            f.close()
-        except IOError:
-            log_message('Did not find {}'.format(picklepath), prnt=picklepath)
-            Elementary(sel.generate_tc_str())
-            print
-            t = load_root_files(sel, load=load_tree)
-            ana = AnalysisCollection(sel, t)
-            values = f(ana, **kwargs)
-        return values
+            pf = partial(f, ana, redo=redo, *args, **kwargs)
+            return do_pickle(pickle_path, pf, redo=redo) if pickle_info else pf()
+        except TypeError:
+            pf = partial(f, ana, *args, **kwargs)
+            return do_pickle(pickle_path, pf, redo=redo) if pickle_info else pf()
+
+    def get_values(self, f, pickle_info=None, redo=False, load_tree=True, *args, **kwargs):
+        return [self.get_rp_values(sel, f, pickle_info, redo, load_tree, *args, **kwargs) for sel in self.Info]
 
     def get_pulse_heights(self, redo=False):
-        run_selections = self.load_run_selections()
-        paths = [self.make_pickle_path('Ph_fit', 'PhVals', sel.SelectedRunplan, sel.SelectedDiamond, 10000, sel.TCString) for sel in run_selections]
-        return [self.get_values(sel, AnalysisCollection.get_pulse_heights, paths[i], {'redo': redo}, redo=redo) for i, sel in enumerate(run_selections)]
+        return self.get_values(AnalysisCollection.get_pulse_heights, PickleInfo('Ph_fit', 'PhVals', 10000), redo=redo)
 
     def get_rel_errors(self, flux=105, redo=False):
-        run_selections = self.load_run_selections()
-        paths = [self.make_pickle_path('Errors', 'Repr', sel.SelectedRunplan, sel.SelectedDiamond, flux, sel.TCString) for sel in run_selections]
-        return [self.get_values(sel, AnalysisCollection.get_repr_error, paths[i], {'redo': redo, 'show': False, 'flux': flux}, redo=redo) for i, sel in enumerate(run_selections)]
+        return self.get_values(AnalysisCollection.get_repr_error, PickleInfo('Errors', 'Repr', flux), redo=redo, show=False, flux=flux)
 
-    def get_deviations(self):
-        for phs, sel in zip(self.get_pulse_heights(), self.RunSelections):
-            print sel.TCString, sel.SelectedRunplan, mean_sigma([dic['ph'] for dic in phs.itervalues()])
+    def get_mean_uniformities(self, redo=False, low=False, high=False):
+        return self.get_values(AnalysisCollection.get_mean_uniformity, PickleInfo('Uniformity', '', '{}{}'.format(int(low), int(high))), redo=redo, high_flux=high, low_flux=low)
 
     def get_uniformities(self, redo=False, low=False, high=False):
-        run_selections = self.load_run_selections()
-        paths = [self.make_pickle_path('Uniformity', '', sel.SelectedRunplan, sel.SelectedDiamondNr, camp=sel.TCString, suf='{}{}'.format(int(low), int(high))) for sel in run_selections]
-        return [self.get_values(sel, AnalysisCollection.get_uniformity, paths[i], {'redo': redo, 'high': high, 'low': low}, redo=redo) for i, sel in enumerate(run_selections)]
+        return self.get_values(AnalysisCollection.get_uniformities, PickleInfo('Uniformity', 'SMSTD', '{}{}'.format(int(low), int(high))), redo=redo, high_flux=high, low_flux=low)
 
-    def get_sm_stds(self, redo=False, low=False, high=False):
-        run_selections = self.load_run_selections()
-        paths = [self.make_pickle_path('Uniformity', 'SMSTD', sel.SelectedRunplan, sel.SelectedDiamondNr, camp=sel.TCString, suf='{}{}'.format(int(low), int(high))) for sel in run_selections]
-        return [self.get_values(sel, AnalysisCollection.get_sm_std, paths[i], {'redo': redo, 'high': high, 'low': low}, redo=redo) for i, sel in enumerate(run_selections)]
+    def get_currents(self):
+        return self.get_values(AnalysisCollection.get_currents, PickleInfo('Currents', 'Vals'))
 
-    # endregion
+    def get_fluxes(self):
+        return self.get_values(AnalysisCollection.get_fluxes, PickleInfo('Flux', 'Vals'))
 
-    # ==========================================================================
+    def get_all_infos(self):
+        return [sel for tc in self.RunPlans.iterkeys() for sel in self.get_tc_infos(tc)]
+
+    def get_dia_infos(self, dut_name):
+        dut_name = self.RS.Run.translate_dia(dut_name)
+        return [sel for tc in self.RunPlans.iterkeys() for sel in self.get_tc_infos(tc) if dut_name == sel.DUT]
+
+    def get_tc_infos(self, tc):
+        rs = self.RunSelections[tc] if tc in self.RunSelections else RunSelection(tc)
+        return [SelectionInfo(rs.select_runs_from_runplan(rp, dut + 1, unselect=True)) for rp in sorted(self.RunPlans[tc]) for dut in xrange(rs.get_n_duts(run_plan=rp))]
+
+    def get_all_ana_strings(self, dut=None, tc=None, redo=False):
+        selections = self.get_all_infos() if dut is None and tc is None else self.get_dia_infos(dut) if tc is None else self.get_tc_infos(tc)
+        selections = [sel for sel in selections if self.RS.Run.translate_dia(dut) == sel.DUT] if dut is not None else selections
+        redo = ' -rd' if redo else ''
+        return '_'.join(['analyse {} {} -c -tc {} -d{}'.format(sel.RunPlan, sel.DUTNr, sel.TCString, redo) for sel in selections])
+    # endregion GET
+    # ----------------------------------------
+
+    # ----------------------------------------
     # region SHOW
     def show_selections(self):
-        max_l = max(len(key) for key in self.Selections)
-        header = ['Name'.ljust(max_l), 'Diamond', 'Campaigns']
+        header = ['Name', 'Diamond', 'Campaigns']
         rows = []
-        for key in self.Selections.iterkeys():
-            self.set_selection(key)
-            row = [key.ljust(max_l)]
-            row += [self.DiamondName.ljust(7)]
-            row += [', '.join(str(campaign) for campaign in sorted(self.TestCampaigns))]
+        old_sel = deepcopy(self.Name)
+        for name in self.Selections.iterkeys():
+            self.set_selection_name(name)
+            row = [name, self.load_dut_name(), ', '.join(str(tc) for tc in self.load_test_campaigns())]
             rows.append(row)
+        self.set_selection_name(old_sel)
         print_table(rows, header)
-
-    def show_selection_names(self):
-        for key in self.Selections.iterkeys():
-            print key
 
     def show_selection(self):
         """ Gives detailed information about the chosen selection """
-        if self.Selection:
-            header = ['Campaign', 'RunPlan', 'Diamond', 'Nr', 'Runs'.ljust(7), 'Voltage', 'Type'.ljust(11)]
-            rows = []
-            for sel in self.RunSelections:
-                runs = sel.get_selected_runs()
-                bias = '{0:+4.0f}V'.format(sel.SelectedBias).rjust(7) if sel.SelectedBias is not None else 'None'.rjust(7)
-                row = [sel.TCString.ljust(8)]                                               # Campaign
-                row += [sel.SelectedRunplan.rjust(7)]                                       # Run Plan
-                row += [sel.SelectedDiamond.rjust(7)]                                       # Diamond Name
-                row += [str(sel.SelectedDiamondNr).rjust(2)]                                # Diamond Number
-                row += ['{0}-{1}'.format(str(runs[0]).zfill(3), str(runs[-1]).zfill(3))]    # Selected Runs
-                row += [bias]                                                               # Bias Voltage
-                row += [sel.SelectedType.ljust(11)]                                         # Run Plan Type
-                rows.append(row)
-            print_table(rows, header)
-        else:
-            log_warning('Selection is empty!')
+        print_table(rows=[sel() for sel in self.Info], header=['TC', 'RunPlan', 'DUT', 'Nr', 'Runs', 'Bias', 'Type']) if self.Info else warning('Selection is empty!')
 
     def show_all_runplans(self):
-        for tc, runplans in self.AllRunPlans.iteritems():
-            print_small_banner(tc)
-            for name, runplan in sorted(runplans.iteritems()):
-                runs = runplan['runs']
-                dias = self.get_rp_diamonds(tc, name)
-                print name.ljust(5), '{0}-{1}'.format(str(runs[0]).zfill(3), str(runs[-1]).zfill(3)), ' '.join(dia.ljust(11) for dia in dias)
+        old_sel = deepcopy(self.Name)
+        self.set_selection(None)
+        for tc, runplans in sorted(self.RunPlans.iteritems()):
+            if runplans:
+                print_small_banner(tc, color='yellow')
+                header = ['Runplan', 'Runs', 'Diamonds']
+                rows = []
+                for rp, dic in sorted(runplans.iteritems()):
+                    runs = dic['runs']
+                    rows.append([rp, '{:03d}-{:03d}'.format(runs[0], runs[-1]), ', '.join(self.get_rp_diamonds(tc, rp))])
+                print_table(rows, header)
+        self.set_selection_name(old_sel)
 
-    # endregion
+    def show_pulse_heights(self):
+        rows = [[sel.TCString, sel.RunPlan] + ['{:2.2f}'.format(i) for i in mean_sigma([dic['ph'] for dic in phs.itervalues()])] for phs, sel in zip(self.get_pulse_heights(), self.Info)]
+        print_table(rows, header=['Test Campaign', 'Run Plan', 'PH [mv]', 'STD [mV]'])
+    # endregion SHOW
+    # ----------------------------------------
 
-    # ==========================================================================
+    # ----------------------------------------
     # region SELECTION
+    def set_selection(self, name):
+        self.info('Set Selection {0}'.format(name))
+        self.Name = name
+        self.DUTName = self.load_dut_name()
+        self.Selection = self.load_selection(name)
+        self.TestCampaigns = self.load_test_campaigns()
+        self.RunSelections = self.load_run_selections()
+        self.RunInfos = [rs.RunInfos for rs in self.RunSelections.itervalues()]
+        self.set_results_dir(join('Results', 'selections', self.Name)) if name else do_nothing()
+
+    def set_selection_name(self, name):
+        self.Name = name
+        self.Selection = self.load_selection(name)
+
     def clear_selection(self):
         self.Selection = {}
 
-    def select_runplan(self, runplan, ch=1, testcampaign=None):
+    def select_runplan(self, runplan, dut=1, testcampaign=None):
         rp = make_runplan_string(runplan)
         tc = str(testcampaign) if testcampaign is not None else self.TestCampaigns[-1]
-        if rp in self.AllRunPlans[tc]:
+        if rp in self.RunPlans[tc]:
             if tc not in self.Selection:
                 self.Selection[tc] = {}
-            self.Selection[tc][rp] = ch
+            self.Selection[tc][rp] = dut
         else:
             log_warning('The runplan {0} does not exist in {1}!'.format(rp, tc))
 
@@ -281,18 +254,6 @@ class DiaScans(Elementary):
             self.Selection[tc].pop(rp)
         except KeyError:
             log_warning('The runplan {0} does not exist in {1}!'.format(rp, tc))
-
-    def select_runplans(self, dia, bias=None):
-        self.clear_selection()
-        run_selections = []
-        last_sel = None
-        for sel in self.get_dia_runselections(dia):
-            is_main_plan = last_sel is None or sel.TESTCAMPAIGN != last_sel.TESTCAMPAIGN or sel.get_first_selected_run() > last_sel.get_last_selected_run()
-            if (bias is None or int(bias) == sel.SelectedBias) and is_main_plan and sel.TESTCAMPAIGN > '201505':
-                self.select_runplan(sel.SelectedRunplan, sel.SelectedDiamondNr, sel.TESTCAMPAIGN)
-                run_selections.append(sel)
-            last_sel = sel
-        self.RunSelections = run_selections
 
     def add_selection(self):
         name = raw_input('Enter the name of the selection: ')
@@ -307,100 +268,22 @@ class DiaScans(Elementary):
 
     def save_selection(self, name=None):
         name = raw_input('Enter the name of the selection: ') if name is None else name
-        with open(join(self.Dir, self.MainConfigParser.get('MISC', 'runplan_selection_file')), 'r+') as f:
-            if not self.Selection:
-                log_warning('Selection is empty!')
-                return
+        if not self.Selection:
+            warning('Selection is empty!')
+            return
+        with open(join(self.Dir, self.MainConfig.get('MISC', 'runplan selection file')), 'w') as f:
             if name in self.Selections:
                 query = raw_input('{} does already exist. Do you want to overwrite it? (y/n) '.format(name))
                 if query.lower().strip() in ['no', 'n']:
                     return
-            selections = load(f)
-            selections[name] = self.Selection
-            f.seek(0)
-            dump(selections, f, indent=2, sort_keys=True)
-            f.truncate()
-            self.Selections = selections
-            log_message('Saved {} to selections'.format(name))
+            self.Selections[name] = self.Selection
+            dump(self.Selection, f, indent=2, sort_keys=True)
+            self.info('Saved {} to selections'.format(name))
+    # endregion SELECTION
+    # ----------------------------------------
 
-    # endregion
-
-    @staticmethod
-    def get_ph_below_flux(mg, flux=80, keys=None):
-        keys = ['gFullError', 'data'] if keys is None else keys
-        try:
-            for g in mg.GetListOfGraphs():
-                if g.GetName() in keys:
-                    return DiaScans.get_ph_below_flux(g, flux)
-            log_warning('cannot find correct data {0}'.format([g.GetName() for g in mg.GetListOfGraphs()]))
-        except AttributeError:
-            g = mg
-            n, x, y, ex, ey = get_graph_data(g)
-            ey = [0] * n if not hasattr(g, 'GetEY') else ey
-            xy = zip(x, y)
-            xy_filtered = filter(lambda x1: x1[0] < flux, xy)
-            mean_flux = calc_mean(map(itemgetter(1), xy_filtered))
-            ymin = min(map(lambda val, err: val - err, y, ey))
-            ymax = max(map(lambda val, err: val + err, y, ey))
-            return mean_flux + (ymin, ymax)
-
-    def draw_hysteresis_graph(self, scans, limits=None):
-        limits = [0, 30, 80, 250, 800, 2000, 4000, 1e10] if limits is None else limits
-
-        def get_bucket(x_val, lim):
-            for j in xrange(len(lim) - 1):
-                if lim[j] < x_val < lim[j + 1]:
-                    return j
-            raise Exception()
-
-        def calc_weighted_diff(x_val, y_val):
-            x_val = list(x_val)
-            y_val = list(y_val)
-            retval = [0] * 4
-            retval[0] = ((x_val[0][0] + y_val[0][0]) / 2)
-            retval[1] = sqrt(x_val[0][1] ** 2 + y_val[0][1] ** 2) / 2
-            retval[2] = ((x_val[1][0] - y_val[1][0]) / 2)
-            retval[3] = sqrt(x_val[1][1] ** 2 + y_val[1][1] ** 2) / 2
-            return retval
-
-        n = len(limits) - 1
-        keys = scans.keys()
-        data = [{}] * 4
-        values = None
-        for key, d in scans.iteritems():
-            values = [[]] * n
-            for x, y, ex, ey in zip(d['x'], d['y'], d['ex'], d['ey']):
-                i = get_bucket(x, limits)
-                values[i].append([(x, ex), (y, ey)])
-            for v in values:
-                vv = zip(*v)
-                xx = zip(*vv[0])
-                yy = zip(*vv[1])
-                x = calc_mean(xx[0])
-                y = calc_weighted_mean(yy[0], yy[1])
-                i = values.index(v)
-                data[i][key] = (x, y)
-
-        g = TGraphErrors(len(values))
-        g.SetName('gHysteresis')
-        tit = 'Flux_{{{k0}}} #minus Flux_{{{k1}}}'.format(k0=keys[0], k1=keys[1])
-        g.SetTitle(tit + ';flux[kHz/cm^{2}];' + tit + ' [au]')
-        for d in data:
-            x = d[keys[0]]
-            y = d[keys[1]]
-            val = calc_weighted_diff(x, y)
-            i = data.index(d)
-            g.SetPoint(i, val[0], val[2])
-            g.SetPointError(i, val[1], val[3])
-        self.format_histo(g, y_off=1.4, x_off=1.3, x_tit='Flux [kHz/cm^{2}]', y_tit='hysteresis: ' + tit + ' [au]', draw_first=True)
-        pname = 'Hysteresis_{key}'.format(key=self.Name)
-        self.draw_histo(g, pname, lm=.14, draw_opt='ALP', logx=True, gridy=True)
-        g.GetYaxis().SetNdivisions(509)
-        fit = TF1('fit', 'pol0', 0, g.GetXaxis().GetXmax())
-        gStyle.SetOptFit(11)
-        g.Fit(fit, 'QS')
-        self.save_plots(pname)
-
+    # ----------------------------------------
+    # region DRAWING
     def draw_collimator_settings(self, show=True):
         h = TH2F('h_cs', 'Collimator Settings', 125, 50, 300, 75, 0, 150)
         for tc in self.TestCampaigns:
@@ -409,7 +292,7 @@ class DiaScans(Elementary):
                     h.Fill(data['fs11'], data['fs13'])
                 except KeyError:
                     pass
-        self.format_histo(h, x_tit='fs11', y_tit='fsh13', y_off=1.3, stats=0, z_off=1.1, z_tit='Number of Entries', z_range=[0, 80])
+        format_histo(h, x_tit='fs11', y_tit='fsh13', y_off=1.3, stats=0, z_off=1.1, z_tit='Number of Entries', z_range=[0, 80])
         self.save_histo(h, 'CollimatorSettings', show, draw_opt='colz', lm=.12, rm=.16)
 
     def draw_flux_vs_collimators(self, show=True):
@@ -419,17 +302,17 @@ class DiaScans(Elementary):
         i = 0
         for col, nr in col_settings.iteritems():
             if nr > 10:
-                flux_fit = z.draw_flux_distribution(col[0], col[1], show=False)
+                flux_fit = self.draw_flux_distribution(col[0], col[1], show=False)
                 if flux_fit is not None:
                     gr.SetPoint(i, col[0], col[1], flux_fit.Parameter(1))
                     gr.SetPointError(i, 0, 0, flux_fit.Parameter(2))
                     i += 1
         self.draw_histo(gr, 'FluxVsCollimators', show, draw_opt='surf1', lm=.15, phi=17, theta=35)
-        self.format_histo(gr, x_tit='fs11', x_off=1.3, y_tit='fsh13', y_off=1.9, stats=0, z_off=1.9, z_tit='Flux kHz/cm^{2}', markersize=2, y_range=[0, 130])
+        format_histo(gr, x_tit='fs11', x_off=1.3, y_tit='fsh13', y_off=1.9, stats=0, z_off=1.9, z_tit='Flux kHz/cm^{2}', markersize=2, y_range=[0, 130])
         self.save_plots('FluxVsCollimators', show=show, prnt=False)
         h = gr.Clone()
         h.Draw('samep')
-        self.ROOTObjects.append(h)
+        self.Objects.append(h)
         self.save_plots('FluxVsCollimators', show=show)
 
     def draw_flux_variations(self, show=True, rel_sigma=False):
@@ -438,7 +321,7 @@ class DiaScans(Elementary):
         i = 0
         for col, nr in sorted(col_settings.iteritems()):
             if nr > 30:
-                flux_fit = z.draw_flux_distribution(col[0], col[1], show=False)
+                flux_fit = self.draw_flux_distribution(col[0], col[1], show=False)
                 if flux_fit is not None:
                     gr.SetPoint(i, flux_fit.Parameter(1), flux_fit.Parameter(2) if not rel_sigma else flux_fit.Parameter(2) / flux_fit.Parameter(1))
                     yerr = flux_fit.ParError(2) + .5 * flux_fit.Parameter(2)
@@ -449,7 +332,7 @@ class DiaScans(Elementary):
                     l1 = self.draw_tlatex(gr.GetX()[i] * 1.05, gr.GetY()[i], '{0}/{1}'.format(make_col_str(col[0]), make_col_str(col[1])), color=1, align=10, size=.03)
                     gr.GetListOfFunctions().Add(l1)
                     i += 1
-        self.format_histo(gr, x_tit='Mean Flux [au]', y_tit='{0}Sigma [au]'.format('Relative ' if rel_sigma else ''), y_off=1.3)
+        format_histo(gr, x_tit='Mean Flux [au]', y_tit='{0}Sigma [au]'.format('Relative ' if rel_sigma else ''), y_off=1.3)
         self.draw_histo(gr, 'FluxVariations', show, draw_opt='alp', logx=True, logy=not rel_sigma, lm=.12)
         gr.GetXaxis().SetLimits(gr.GetX()[0] / 2, gr.GetX()[gr.GetN() - 1] * 4)
         self.save_plots('FluxVariations{0}'.format('Rel' if rel_sigma else ''), show=show)
@@ -478,8 +361,8 @@ class DiaScans(Elementary):
         h = TH1F('h_fd', 'Flux Distribution for {0}/{1}'.format(fs11, fsh13), int(sqrt(len(values))) + 5, min(values) - .2 * spread, max(values) + .2 * spread)
         for val in values:
             h.Fill(val)
-        set_statbox(only_fit=True, w=.25) if do_fit else do_nothing()
-        self.format_histo(h, x_tit='Flux in kHz/cm^{2}', y_tit='Number of Entries', y_off=1.3, stats=0 if not do_fit else 1)
+        self.format_statbox(only_fit=True, w=.25) if do_fit else do_nothing()
+        format_histo(h, x_tit='Flux in kHz/cm^{2}', y_tit='Number of Entries', y_off=1.3, stats=0 if not do_fit else 1)
         self.draw_histo(h, '', show)
         fit = None
         if do_fit:
@@ -489,142 +372,101 @@ class DiaScans(Elementary):
         self.save_plots('FluxDistribution{0}_{1}'.format(int(fs11), int(fsh13)), show=show)
         return fit
 
-    def draw_dia_rate_scans(self):
-        run_selections = self.load_run_selections()
+    def draw_dia_rate_scans(self, redo=False):
         biases = self.get_bias_voltages()
         bias_str = ' at {bias} V'.format(bias=biases[0]) if len(biases) == 1 else ''
-        mg = TMultiGraph('mg_ph', '{dia} Rate Scans{b};Flux [kHz/cm^{{2}}]; pulse height [au]'.format(dia=self.DiamondName, b=bias_str))
-        legend = self.make_legend(.75, .4, nentries=4, clean=True)
-        legend.SetNColumns(2) if len(biases) > 1 else do_nothing()
+        mg = TMultiGraph('mg_ph', '{dia} Rate Scans{b};Flux [kHz/cm^{{2}}]; pulse height [au]'.format(dia=self.DUTName, b=bias_str))
+        legend = self.make_legend(.75, .4, nentries=4, clean=True, cols=2 if len(biases) > 1 else None)
         colors = [4, 419, 2, 800, 3]
-        # tits = [make_irr_string(v, p) for v, p in [(0, 0), (5, 14), (1.5, 15)]]
         tits = self.get_irradiations()
-        for i, sel in enumerate(run_selections):
-            path = self.make_pickle_path('Ph_fit', 'PulseHeights', sel.SelectedRunplan, self.DiamondName, 10000, sel.TESTCAMPAIGN)
-            try:
-                f = open(path, 'r')
-                mg_ph_ana = pickle.load(f)
-                f.close()
-            except IOError:
-                print 'Did not find', path
-                Elementary(sel.generate_tc_str())
-                t = load_root_files(sel, load=True)
-                ana = AnalysisCollection(sel, threads=t)
-                mg_ph_ana = ana.draw_pulse_heights(show=False)
-                ana.close_files()
-            for g in mg_ph_ana.GetListOfGraphs():
-                self.format_histo(g, color=colors[i], markersize=1.5, lw=2)
+        mgs = self.get_values(AnalysisCollection.draw_pulse_heights, PickleInfo('Ph_fit', 'MG', 10000), redo=redo, show=False, prnt=False)
+        for i, (mgi, sel) in enumerate(zip(mgs, self.Info)):
+            for g in mgi.GetListOfGraphs():
+                format_histo(g, color=colors[i], markersize=1.5, lw=2)
                 if g.GetName() == 'gFirst':
-                    self.format_histo(g, color=1, marker=26, markersize=2)
+                    format_histo(g, color=1, marker=26, markersize=2)
                 elif g.GetName() == 'gLast':
-                    self.format_histo(g, color=1, marker=23, markersize=2)
-            legend.AddEntry(mg_ph_ana.GetListOfGraphs()[0], tits[i], 'lp')
-            legend.AddEntry(0, get_bias_root_string(sel.SelectedBias), '') if len(biases) > 1 else do_nothing()
-            mg.Add(mg_ph_ana)
-        x_vals = sorted([gr.GetX()[i] for gr in mg.GetListOfGraphs() for i in xrange(gr.GetN())])
-        y_vals = sorted([gr.GetY()[i] for gr in mg.GetListOfGraphs() for i in xrange(gr.GetN())])
-        self.format_histo(mg, draw_first=True, y_tit='Pulse Height [au]', y_range=[0, y_vals[-1] * 1.1], tit_size=.05, lab_size=.05, y_off=.91, x_off=1.2)
-        mg.GetXaxis().SetLimits(x_vals[0] * 0.8, x_vals[-1] * 3)
-        self.save_histo(mg, 'DiaScans{dia}'.format(dia=make_dia_str(self.DiamondName)), draw_opt='a', logx=True, l=legend, x=1.6, lm=.092, bm=.12, gridy=True)
+                    format_histo(g, color=1, marker=23, markersize=2)
+            legend.AddEntry(mgi.GetListOfGraphs()[0], tits[i], 'lp')
+            legend.AddEntry(0, get_bias_root_string(sel.Bias), '') if len(biases) > 1 else do_nothing()
+            mg.Add(mgi)
+        y = concatenate([get_graph_y(g) for g in mg.GetListOfGraphs()])
+        format_histo(mg, draw_first=True, y_tit='Pulse Height [au]', y_range=[0, y.max().n * 1.1], tit_size=.05, lab_size=.05, y_off=.91, x_off=1.2, x_range=Bins().FluxRange)
+        self.save_histo(mg, 'DiaScans{dia}'.format(dia=make_dia_str(self.DUTName)), draw_opt='a', logx=True, leg=legend, x=1.6, lm=.092, bm=.12, gridy=True)
 
-    def draw_scaled_rate_scans(self, irr=False, y_range=.15, x_range=None, pad_height=.18):
-        biases = set(self.get_bias_voltages())
-        bias_str = ' at {b}'.format(b=make_bias_str(biases.pop())) if len(biases) == 1 else ''
-        phs = self.get_pulse_heights()
-        colors = get_color_gradient(len(self.RunSelections))
-        x_vals = sorted(dic['flux'] for ph in phs for dic in ph.itervalues())
-        limits = [x_vals[0].n * 0.8, x_vals[-1].n * 3] if x_range is None else x_range
-        y_range = [1 - y_range, 1 + y_range]
+    def draw_title_pad(self, h, x0, lm, c_height):
+        if self.Title:
+            biases = list(set(self.get_bias_voltages()))
+            bias_str = ' at {b}'.format(b=make_bias_str(biases[0])) if len(biases) == 1 else ''
+            self.draw_tpad('p0', 'p0', pos=[x0, 1 - h / c_height, 1, 1], margins=[0, 0, 0, 0], transparent=True)
+            self.draw_tpavetext('{dia} Rate Scans{b}'.format(dia=self.DUTName, b=bias_str), lm, 1, 0, 1, font=62, align=13, size=.5, margin=0)
+            get_last_canvas().cd()
 
-        has_title = self.Config.getboolean('SAVE', 'activate_title')
-        title_height = pad_height / 2. if has_title else .03  # half of a pad for title
-        c_height = (len(phs) + .5) * pad_height + title_height  # half of a pad for the x-axis
+    def draw_scaled_rate_scans(self, irr=False, y_range=.07, pad_height=.18, scale=1):
+        title_height = pad_height / 2 if self.Title else .03  # half of a pad for title
+        c_height = (self.NPlans + .5) * pad_height + title_height  # half of a pad for the x-axis
         c_width = 1.3 * pad_height / .2  # keep aspect ratio for standard pad_height
         c = self.make_canvas(name='csr', x=c_width, y=c_height, transp=True, logx=True, gridy=True)
-        lm, rm = .05, .02
-        lp = .08
-        if has_title:
-            self.draw_tpad('p0', 'p0', pos=[lp, 1 - title_height / c_height, 1, 1], margins=[0, 0, 0, 0], transparent=True)                         # title pad
-            self.draw_tpavetext('{dia} Rate Scans{b}'.format(dia=self.DiamondName, b=bias_str), lm, 1, 0, 1, font=62, align=13, size=.5, margin=0)  # title
-        c.cd()
-        self.draw_tpad('p1', 'p1', pos=[0, pad_height / 2 / c_height, lp, 1 - title_height / c_height], margins=[0, 0, 0, 0], transparent=True)     # info pad
-        self.draw_tpavetext('Scaled Pulse Height', 0, 1, 0, 1, align=22, size=.5, angle=90, margin=0)                                               # y-axis title
-        c.cd()
-        size = .22
+        lm, rm, x0, size = .07, .02, .08, .22
 
-        rel_errors = self.get_rel_errors()
-        for i, ph in enumerate(phs):
-            y0, y1 = [c_height - title_height - pad_height * (i + j) for j in [1, 0]]
-            self.draw_tpad('p{i}'.format(i=i + 3), '', pos=[lp, y0 / c_height, 1, y1 / c_height], margins=[lm, rm, 0, 0], logx=True, gridy=True, gridx=True)
-            y_values = [dic['ph'] for dic in ph.itervalues()]
-            y_values = [make_ufloat((v.n, v.s + rel_errors[i] * v.n)) for v in y_values]
-            x_values = [dic['flux'] for dic in ph.itervalues()]
-            g = self.make_tgrapherrors('gsph{}'.format(i), '', x=x_values, y=y_values)
-            scale_graph(g, val=1)
-            self.format_histo(g, title=' ', color=colors[i], x_range=limits, y_range=y_range, marker=markers(i), lab_size=size, ndivy=505, markersize=2, tick_size=size)
-            g.GetXaxis().SetLimits(*limits)
-            g.Draw('ap')
+        self.draw_title_pad(title_height, x0, lm, c_height)
+        self.draw_tpad('p1', 'p1', pos=[0, 0, x0, 1], margins=[0, 0, 0, 0], transparent=True)           # info pad
+        self.draw_tpavetext('Scaled Pulse Height', 0, 1, 0, 1, align=22, size=.5, angle=90, margin=0)   # y-axis title
+        c.cd()
+
+        for i, (ph, error, color) in enumerate(zip(self.get_pulse_heights(), self.get_rel_errors(), get_color_gradient(self.NPlans))):
+            y0, y1 = [(c_height - title_height - pad_height * (i + j)) / c_height for j in [1, 0]]
+            p = self.draw_tpad('p{i}'.format(i=i + 3), '', pos=[x0, y0, 1, y1], margins=[lm, rm, 0, 0], logx=True, gridy=True, gridx=True)
+            y_values = [make_ufloat((v.n, v.s + error * v.n)) for v in [dic['ph'] for dic in ph.itervalues()]]
+            g = self.make_tgrapherrors('gsph{}'.format(i), '', x=[dic['flux'] for dic in ph.itervalues()], y=y_values)
+            scale_graph(g, val=scale) if scale else do_nothing()
+            format_histo(g, title=' ', color=color, x_range=Bins().FluxRange, y_range=[1 - y_range, 1 + y_range], marker=markers(i), lab_size=size, ndivy=505, markersize=1.5, tick_size=.05)
+            self.draw_histo(g, draw_opt='ap', canvas=p)
             self.draw_legend(i, g, irr, rm)
             c.cd()
-            self.ROOTObjects.append(g)
 
-        self.draw_tpad('p2', pos=[lp, 0, 1, pad_height / 2 / c_height], margins=[lm, rm, 0, 0], transparent=True)                                   # x-axis pad
-        self.draw_x_axis(1, lm, 1 - rm, 'Flux [kHz/cm^{2}]', limits, opt='', log=True, tick_size=0, lab_size=size * 2, tit_size=size * 2, off=1.1)
-        c.cd()
+        self.draw_tpad('p2', pos=[x0, 0, 1, pad_height / 2 / c_height], margins=[lm, rm, 0, 0], transparent=True)  # x-axis pad
+        self.draw_x_axis(1, lm, 1 - rm, 'Flux [kHz/cm^{2}]', Bins().FluxRange, opt='', log=True, tick_size=0, lab_size=size * 2, tit_size=size * 2, off=1.1)
+        self.save_plots('ScaledDiaScans{dia}'.format(dia=make_dia_str(self.DUTName)))
 
-        self.save_plots('ScaledDiaScans{dia}'.format(dia=make_dia_str(self.DiamondName)))
-
-    def make_plots(self, name, f, kwargs):
-        for sel in self.RunSelections:
-            log_message('Creating {} Plots for {}'.format(name, sel.TCString))
-            self.get_values(sel, f, kwargs=kwargs)
-            self.draw_irradiation(make_irr_string(sel.get_irradiation()), gROOT.FindObject('p1'), left=False)
-            self.save_plots('{}{}_{}_{}'.format(name, sel.TCString, sel.SelectedRunplan, sel.SelectedDiamondNr))
+    def make_plots(self, name, f, irr_pad=None, canvas=None, **kwargs):
+        for sel in self.Info:
+            self.info('Creating {} Plots for {}'.format(name, sel.TCString))
+            self.get_rp_values(sel, f, **kwargs)
+            self.draw_irradiation(make_irr_string(sel.Irradiation), irr_pad, left=False) if irr_pad is not None else do_nothing()
+            self.save_plots('{}{}_{}_{}'.format(name, sel.TCString, sel.RunPlan, sel.DUTNr), canvas=get_object(canvas))
 
     def make_pulse_height_plots(self, y_range=None):
-        self.make_plots('PH', AnalysisCollection.draw_pulse_heights, kwargs={'show': False, 'y_range': y_range})
+        self.make_plots('PH', AnalysisCollection.draw_pulse_heights, show=False, y_range=y_range, irr_pad=get_object('p1'))
 
     def make_current_plots(self, c_range=None):
-        for sel in self.RunSelections:
-            log_message('Creating Current Plots for {}'.format(sel.TCString))
-            self.get_values(sel, AnalysisCollection.draw_currents, kwargs={'show': False, 'with_flux': False, 'c_range': c_range, 'draw_opt': 'al'})
-            self.save_canvas(get_last_canvas(), name='Currents{}_{}_{}'.format(sel.TCString, sel.SelectedRunplan, sel.SelectedDiamondNr))
+        self.make_plots('Currents', AnalysisCollection.draw_currents, show=False, c_range=c_range, draw_opt='al')
 
     def make_current_flux_plots(self, c_range=None):
-        for sel in self.RunSelections:
-            log_message('Creating Current Flux Plot for {}'.format(sel.TCString))
-            self.get_values(sel, AnalysisCollection.draw_current_flux, kwargs={'show': False, 'c_range': c_range})
-            self.save_plots('CF{}_{}_{}'.format(sel.TCString, sel.SelectedRunplan, sel.SelectedDiamondNr), show=False)
+        self.make_plots('CF', AnalysisCollection.draw_currents, show=False, c_range=c_range, draw_opt='al', with_flux=True, canvas='cc')
 
     def draw_currents(self, align=False, show=True):
         mg = TMultiGraph('mgc', 'Leakage Current vs. Flux')
-        legend = self.make_legend(nentries=len(self.RunSelections))
-        currents = []
-        fluxes = []
-        for i, sel in enumerate(self.RunSelections):
-            g = self.get_values(sel, AnalysisCollection.draw_current_flux, kwargs={'fit': align, 'show': False})
-            currents.append([ufloat(g.GetY()[k], g.GetEY()[k]) for k in xrange(g.GetN())])
-            fluxes.append([ufloat(g.GetX()[k], g.GetEX()[k]) for k in xrange(g.GetN())])
+        legend = self.make_legend(nentries=len(self.RunSelections), w=.4, x2=.52)
+        currents = [c.values() for c in self.get_currents()]
+        fluxes = [f.values() for f in self.get_fluxes()]
+        for i, (x, y) in enumerate(zip(fluxes, currents)):
+            g = self.make_tgrapherrors('gf', 'gf', x=x, y=y)
             if align:
                 fit = g.Fit('pol1', 'qs0')
                 g = self.make_tgrapherrors('gc{}'.format(i), '', y=array(currents[i]) - fit.Parameter(0) + .1, x=fluxes[i])
-            self.format_histo(g, color=self.get_color())
-            legend.AddEntry(g, '{tc} - {hv}'.format(tc=sel.TCString, hv=self.get_values(sel, AnalysisCollection.get_hv_name, load_tree=False)), 'pl')
+            format_histo(g, color=self.get_color())
+            legend.AddEntry(g, '{tc} - {hv}'.format(tc=self.Info[i].TCString, hv=self.get_rp_values(self.Info[i], AnalysisCollection.get_hv_name, load_tree=False)), 'pl')
             mg.Add(g, 'p')
-        currents = array([v for l in currents for v in l])
-        self.format_histo(mg, draw_first=True, y_tit='Current [nA]', x_tit='Flux [kHz/cm^{2}]', y_range=[.1, array(currents).max().n * 2])
-        mg.GetXaxis().SetLimits(1, 20000)
-        self.save_histo(mg, 'CurrentFlux{}'.format(self.Name), draw_opt='a', logx=True, logy=True, l=legend, bm=.17, show=show)
+        format_histo(mg, draw_first=True, y_tit='Current [nA]', x_tit='Flux [kHz/cm^{2}]', y_range=[.1, array(currents).max().n * 2], x_range=Bins().FluxRange)
+        self.save_histo(mg, 'CurrentFlux{}'.format(self.Name), draw_opt='a', logx=True, logy=True, leg=legend, bm=.17, show=show)
 
     def get_titles(self, irr=False):
-        if len(set(self.get_diamond_names())) > 1:
-            return self.get_diamond_names()
-        if irr:
-            tits = self.get_irradiations()
-        else:
-            tits = [make_tc_str(self.RunSelections[i].TCString) for i in xrange(len(self.RunSelections))]
-        if 'rand' in self.get_run_types():
-            for i, sel in enumerate(self.RunSelections):
+        if len(set(self.get_dut_names())) > 1:
+            return self.get_dut_names()
+        tits = self.get_irradiations() if irr else [make_tc_str(tc) for tc in self.TestCampaigns]
+        if any(['rand' in word for word in self.get_run_types()]):
+            for i, sel in enumerate(self.Info):
                 tits[i] += ' (random)' if 'rand' in sel.Type.lower() else '         '
         return tits
 
@@ -639,88 +481,82 @@ class DiaScans(Elementary):
             legend.SetNColumns(2)
             legend.AddEntry('', biases[ind], '')
         legend.Draw()
-        self.ROOTObjects.append(legend)
 
-    @staticmethod
-    def scale_to(dic, scale=1):
-        fluxes = [d['flux'] for d in dic.itervalues()]
-        min_ind = fluxes.index(min(fluxes))
-        err_scale = scale / dic.values()[min_ind]['ph'].Parameter(0)
-        scale = scale / dic.values()[min_ind]['ph'].Parameter(0) if scale is not None else 1
-        values = [d['ph'].Parameter(0) * scale for d in dic.itervalues()]
-        errors = [d['ph'].ParError(0) * err_scale for d in dic.itervalues()]
-        return values, errors
-
-    def draw_beam_induced_currents(self, show=True):
-        parser = ConfigParser()
-        parser.read(join(self.Dir, 'Runinfos', 'beam_induced_currents.ini'))
-        ymin, ymax, rate, tcs, min_err, max_err, phs = [array(loads(parser.get('MAIN', opt))) for opt in ['min', 'max', 'rate', 'tc', 'min_err', 'max_err', 'pulse_height']]
-        ymin, ymax = uarray(ymin, min_err), uarray(ymax, max_err)
-        rate = uarray(rate, rate * .1)
-        phs = uarray(phs, phs * .02)
-        yvals = (ymax - ymin) / rate / phs
-        yvals = yvals / yvals[0].n
-        irrads = {}
-        sel = self.RunSelections[0]
-        for tc in tcs:
-            sel.set_test_campaign(tc)
-            irrads[tc] = float(sel.get_irradiation('II6-B2')) / 1e14
-        xvals = [irrads[tc] for tc in tcs]
-        g = self.make_tgrapherrors('gbic', 'Beam Induced Currents')
-        for i, (x, y) in enumerate(zip(xvals, yvals)):
-            g.SetPoint(i, x, y.n)
-            g.SetPointError(i, x * .1, y.s)
-        self.format_histo(g, y_tit='Beam Induced Current / Pulse Height', x_tit='Irradiation [1e14 n/cm^{2}]')
-        self.save_histo(g, 'BeamInducedErrors', draw_opt='alp', show=show)
+    def set_bin_labels(self, h):
+        for i, sel in enumerate(self.Info):
+            h.GetXaxis().SetBinLabel(h.GetXaxis().FindBin(i), '{} - {}'.format(make_tc_str(sel.TCString, 0), sel.RunPlan))
 
     def draw_means(self, y_range=None, show=True):
-        y_values = [make_ufloat(mean_sigma([dic['ph'] for dic in ph.itervalues()])) for ph in self.get_pulse_heights()]
-        g = self.make_tgrapherrors('gms', 'Pulse Height Evolution', x=range(1, len(y_values) + 1), y=y_values)
-        self.format_histo(g, x_tit='Run Plan', y_tit='Mean Pulse Height [mV]', y_off=1.2, x_range=[-3, len(y_values) + 2], x_off=2.5, y_range=y_range)
-        for i, sel in enumerate(self.RunSelections, 1):
-            g.GetXaxis().SetBinLabel(g.GetXaxis().FindBin(i), '{} - {}'.format(make_tc_str(sel.TESTCAMPAIGN, 0), sel.SelectedRunplan))
+        y = array([make_ufloat(mean_sigma([dic['ph'] for dic in ph.itervalues()])) for ph in self.get_pulse_heights()])
+        g = self.make_tgrapherrors('gms', 'Pulse Height Evolution', x=arange(y.size), y=y)
+        format_histo(g, x_tit='Run Plan', y_tit='Mean Pulse Height [mV]', y_off=1.2, x_range=increased_range([0, y.size - 1], .3, .3), x_off=2.5, y_range=y_range)
+        self.set_bin_labels(g)
         self.save_histo(g, 'Means{}'.format(self.Name.title().replace('-', '').replace('_', '')), show, draw_opt='ap', bm=.2, x=1.5, y=.75, gridy=True)
 
     def draw_sigmas(self, y_range=None, show=True):
         mean_sigmas = [mean_sigma([dic['ph'] for dic in ph.itervalues()]) for ph in self.get_pulse_heights()]
-        y_values = [make_ufloat((0, 100 * s / m)) for m, s in mean_sigmas]
-        g = self.make_tgrapherrors('gms', 'Pulse Height STD Evolution', x=range(1, len(y_values) + 1), y=y_values)
-        self.format_histo(g, x_tit='Run Plan', y_tit='Pulse Height Standard Deviation [%]', y_off=1.2, x_range=[-3, len(y_values) + 2], x_off=2.5, y_range=y_range)
-        for i, sel in enumerate(self.RunSelections, 1):
-            g.GetXaxis().SetBinLabel(g.GetXaxis().FindBin(i), '{} - {}'.format(make_tc_str(sel.TESTCAMPAIGN, 0), sel.SelectedRunplan))
+        y = array([make_ufloat((0, 100 * s / m)) for m, s in mean_sigmas])
+        g = self.make_tgrapherrors('gms', 'Pulse Height STD Evolution', x=arange(y.size), y=y)
+        format_histo(g, x_tit='Run Plan', y_tit='Pulse Height Standard Deviation [%]', y_off=1.2, x_range=increased_range([0, y.size - 1], .3, .3), x_off=2.5, y_range=y_range)
+        self.set_bin_labels(g)
         self.save_histo(g, 'Means{}'.format(self.Name.title().replace('-', '').replace('_', '')), show, draw_opt='ap', bm=.2, x=1.5, y=.75, gridy=True)
 
     def draw_uniformity(self, arg=2, redo=False, low=False, high=False):
-        y_values = [v[arg] for v in self.get_uniformities(redo=redo, low=low, high=high)]
+        y_values = [v[arg] for v in self.get_mean_uniformities(redo=redo, low=low, high=high)]
         x_values = [make_ufloat((v, v * .2)) for v in self.get_irradiations(string=False)]
         g = self.make_tgrapherrors('gu', 'Uniformity', x=x_values, y=y_values)
-        self.format_histo(g, x_tit='Irradiation [n/cm^{2}]', y_tit='FWHM/MPV', y_off=1.3)
+        format_histo(g, x_tit='Irradiation [n/cm^{2}]', y_tit='FWHM/MPV', y_off=1.3)
         self.draw_histo(g, draw_opt='ap')
+    # endregion DRAWING
+    # ----------------------------------------
 
-    def draw_sm_stds(self, redo=False, low=False, high=False):
-        y_values = self.get_sm_stds(redo=redo, low=low, high=high)
-        x_values = [make_ufloat((v, v * .2)) for v in self.get_irradiations(string=False)]
-        g = self.make_tgrapherrors('gu', 'Standard Deviations of the Signal Map', x=x_values, y=y_values)
-        self.format_histo(g, x_tit='Irradiation [n/cm^{2}]', y_tit='rel. STD', y_off=1.3)
-        self.draw_histo(g, draw_opt='ap')
+
+class SelectionInfo:
+    def __init__(self, sel):
+        self.TCString = sel.TCString
+        self.RunPlan = sel.SelectedRunplan
+        self.DUT = sel.SelectedDUT
+        self.DUTNr = sel.SelectedDUTNr
+        self.Verbose = sel.Run.Verbose
+        self.Bias = sel.SelectedBias
+        self.Irradiation = sel.get_irradiation()
+        self.Type = sel.SelectedType.lower()
+        self.Runs = sel.get_selected_runs()
+
+    def __str__(self):
+        return 'Selection instance: {} {} {}'.format(self.TCString, self.RunPlan, self.DUT)
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __call__(self):
+        return [self.TCString, self.RunPlan, self.DUT, self.DUTNr, '{:03d}-{:03d}'.format(self.Runs[0], self.Runs[-1]), '{:+4.0f}V'.format(self.Bias), self.Type]
+
+
+class PickleInfo:
+    def __init__(self, sub_dir, name, suf=None):
+        self.SubDir = sub_dir
+        self.Name = name
+        self.Suffix = '' if suf is None else str(suf)
 
 
 if __name__ == '__main__':
-    main_parser = ArgumentParser()
-    main_parser.add_argument('sel', nargs='?', default='test')
-    main_parser.add_argument('-v', action='store_true')
-    main_parser.add_argument('-d', nargs='?', default='S129')
-    main_parser.add_argument('-tc', nargs='?', default=None)
-    main_parser.add_argument('-p', action='store_true')
-    main_parser.add_argument('-r', action='store_true')
-    main_parser.add_argument('-s', action='store_true', help='activate show single selection')
-    main_parser.add_argument('-sa', action='store_true', help='active show all selections')
-    args = main_parser.parse_args()
 
-    z = DiaScans(args.sel, args.d, args.v, args.tc)
-    if args.p:
-        print z.get_all_ana_strings(args.d, args.tc, args.r)
-    if args.s:
+    aparser = ArgumentParser()
+    aparser.add_argument('sel', nargs='?', default=None, help='name of the selection')
+    aparser.add_argument('-d', nargs='?', default=None, help='dut')
+    aparser.add_argument('-tc', nargs='?', default=None, help='test campaign')
+    aparser.add_argument('-v', '--verbose', action='store_false')
+    aparser.add_argument('-p', action='store_true', help='print analysis strings')
+    aparser.add_argument('-r', action='store_true', help='redo')
+    aparser.add_argument('-s', action='store_true', help='activate show single selection')
+    aparser.add_argument('-sa', action='store_true', help='active show all selections')
+    pargs = aparser.parse_args()
+
+    z = DiaScans(pargs.sel, pargs.verbose)
+    if pargs.p:
+        print(z.get_all_ana_strings(pargs.d, pargs.tc, pargs.r))
+    if pargs.s:
         z.show_selection()
-    if args.sa:
+    if pargs.sa:
         z.show_selections()
