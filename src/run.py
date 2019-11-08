@@ -30,7 +30,7 @@ class Run:
         # Directories / Test Campaign
         self.Dir = get_base_dir()
         self.DataDir = self.MainConfig.get('MAIN', 'data directory')
-        self.IrradiationFile = self.MainConfig.get('MISC', 'irradiation file')
+        self.IrradiationFile = join(self.Dir, self.MainConfig.get('MISC', 'irradiation file'))
         self.TCString = self.load_test_campaign(test_campaign)
         self.TCDir = self.generate_tc_directory()
 
