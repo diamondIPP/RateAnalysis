@@ -235,6 +235,9 @@ class RunSelection:
     def get_selected_durations(self):
         return [self.get_duration(run) for run in self.get_selected_runs()]
 
+    def get_selected_start_times(self):
+        return [self.get_start_time(run) for run in self.get_selected_runs()]
+
     def get_start_time(self, run_number=None):
         return conv_log_time(self.RunInfos[self.get_selected_runs()[0] if run_number is None else run_number]['starttime0'])
 
