@@ -205,7 +205,7 @@ class Converter:
 
     def copy_raw_file(self, redo=False):
         if not file_exists(self.RawFilePath) or redo:
-            main_data_path = join('isg:', 'home', 'ipp', self.TCDir, 'raw', basename(self.RawFilePath))
+            main_data_path = join('isg:', 'home', 'ipp', basename(self.TCDir), 'raw', basename(self.RawFilePath))
             self.Run.info('Trying to copy {}'.format(basename(self.RawFilePath)))
             system('rsync -aPv {} {}'.format(main_data_path, self.RawFileDir))
 
