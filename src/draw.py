@@ -186,8 +186,8 @@ class Draw:
 
     def draw_tpavetext(self, text, x1, x2, y1, y2, font=42, align=0, size=0, angle=0, margin=.05, color=1):
         p = TPaveText(x1, y1, x2, y2, 'ndc')
-        p.SetFillColor(4000)
-        p.SetFillStyle(4000)
+        p.SetFillColor(0)
+        p.SetFillStyle(0)
         p.SetBorderSize(0)
         p.SetMargin(margin)
         t = p.AddText(text)
