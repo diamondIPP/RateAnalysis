@@ -236,16 +236,14 @@ class PadAnalysis(DUTAnalysis):
 
     # ----------------------------------------
     # region PULSE HEIGHT
-    def generate_signal_name(self, signal=None, evnt_corr=True, off_corr=False, bin_corr=False, cut=None, region=None):
+    def generate_signal_name(self, signal=None, evnt_corr=True, off_corr=False, cut=None, region=None):
         sig_name = signal if signal is not None else self.get_signal_name(region)
         # pedestal polarity is always the same as signal polarity
         ped_pol = '1'
         # change polarity if pulser has opposite polarity to signal
         if hasattr(self, 'Pulser') and signal == self.Pulser.SignalName:
             ped_pol = '-1' if self.PulserPolarity != self.Polarity else ped_pol
-        if bin_corr:
-            return sig_name
-        elif off_corr:
+        if off_corr:
             sig_name += '-{pol}*{ped}'.format(ped=self.Pedestal.get_mean(cut).n, pol=ped_pol)
         elif evnt_corr:
             sig_name += '-{pol}*{ped}'.format(ped=self.PedestalName, pol=ped_pol)
@@ -366,7 +364,7 @@ class PadAnalysis(DUTAnalysis):
             self.info('Drawing signal distribution for run {run} and {dia}...'.format(run=self.RunNumber, dia=self.DUTName), prnt=prnt)
             set_root_output(False)
             h1 = TH1F('h_sd', 'Pulse Height {s}'.format(s='with Pedestal Correction' if evnt_corr else ''), *self.Bins.get_pad_ph(bin_width))
-            sig_name = self.generate_signal_name(sig, evnt_corr, off_corr, False, cut)
+            sig_name = self.generate_signal_name(sig, evnt_corr, off_corr, cut)
             start_event = int(float(start)) if start is not None else 0
             n_events = self.Run.find_n_events(n=events, cut=str(cut), start=start_event) if events is not None else self.Run.NEntries
             self.Tree.Draw('{name}>>h_sd'.format(name=sig_name), str(cut), 'goff', n_events, start_event)
