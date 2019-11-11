@@ -75,7 +75,7 @@ class PadCollection(AnalysisCollection):
     def get_pedestals(self, pulser=False, redo=False, runs=None):
         means = self.get_run_values('{}pedestals'.format('pulser ' if pulser else ''), self.Analysis.get_pedestal, runs=runs, pulser=pulser, par=1, redo=redo)
         sigmas = self.get_run_values('', self.Analysis.get_pedestal, runs=runs, pbar=False, pulser=pulser, par=2)
-        return means, sigmas
+        return array(means), array(sigmas)
     # endregion GET
     # ----------------------------------------
 
