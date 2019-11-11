@@ -18,7 +18,7 @@ from threading import Thread
 from time import time, sleep
 
 from gtts import gTTS
-from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, any, count_nonzero, full
+from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, any, count_nonzero, full, ndarray
 from os import makedirs, _exit, remove, devnull
 from os import path as pth
 from os.path import dirname, realpath
@@ -610,7 +610,9 @@ def make_ufloat(tup, par=0):
         return tup
     if isinstance(tup, FitRes):
         return ufloat(tup.Parameter(par), tup.ParError(par))
-    return ufloat(tup[0], tup[1]) if type(tup) in [tuple, list] else ufloat(tup, 0)
+    if type(tup) in [tuple, list, ndarray]:
+        return ufloat(*tup) if type(tup[0]) not in [Variable, AffineScalarFunc] else ufloat(tup[0].n, tup[1].n)
+    return ufloat(tup, 0)
 
 
 def find_graph_margins(graphs):
