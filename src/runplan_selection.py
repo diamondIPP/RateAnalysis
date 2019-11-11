@@ -44,6 +44,8 @@ class DiaScans(Analysis):
         self.Info = self.load_selection_info()
         self.NPlans = len(self.Info) if self.Info else None
 
+        self.Colors = get_color_gradient(self.NPlans) if self.Info else None
+
         self.set_results_dir(join('Results', 'selections', '' if self.Name is None else self.Name))
 
         self.print_finished(prnt=verbose)
