@@ -507,6 +507,13 @@ class DiaScans(Analysis):
         for i, sel in enumerate(self.Info):
             h.GetXaxis().SetBinLabel(h.GetXaxis().FindBin(i), '{} - {}'.format(make_tc_str(sel.TCString, 0), sel.RunPlan))
 
+    def draw_mean_pedestals(self, redo=False, show=True):
+        y = array([make_ufloat(mean(tc_values, axis=1)) for tc_values in self.get_pedestals(redo)])
+        g = self.make_tgrapherrors('gmp', 'Mean Pedestals', x=arange(y.size), y=y)
+        format_histo(g, x_tit='Run Plan', y_tit='Pulse Height [mV]', y_off=1.2, x_range=increased_range([0, y.size - 1], .3, .3), x_off=2.5)
+        self.set_bin_labels(g)
+        self.save_histo(g, 'PedestalMeans{}'.format(self.Name.title().replace('-', '').replace('_', '')), show, draw_opt='ap', bm=.2, x=1.5, y=.75, gridy=True)
+
     def draw_means(self, y_range=None, show=True):
         y = array([make_ufloat(mean_sigma([dic['ph'] for dic in ph.itervalues()])) for ph in self.get_pulse_heights()])
         g = self.make_tgrapherrors('gms', 'Pulse Height Evolution', x=arange(y.size), y=y)
