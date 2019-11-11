@@ -12,7 +12,7 @@ from json import load, dump
 from ROOT import TMultiGraph, TH2F, TH1F, TGraph2DErrors
 from re import split as splitname
 
-from pad_collection import AnalysisCollection
+from pad_collection import AnalysisCollection, PadCollection
 from run import Run
 from run_selection import RunSelection
 from selector import collection_selector
@@ -149,6 +149,9 @@ class DiaScans(Analysis):
     def get_pulse_heights(self, redo=False):
         return self.get_values(AnalysisCollection.get_pulse_heights, PickleInfo('Ph_fit', 'PhVals', 10000), redo=redo)
 
+    def get_pedestals(self, redo=False):
+        return self.get_values(PadCollection.get_pedestals, PickleInfo('Pedestal', 'Values'), redo=redo)
+
     def get_rel_errors(self, flux=105, redo=False):
         return self.get_values(AnalysisCollection.get_repr_error, PickleInfo('Errors', 'Repr', flux), redo=redo, show=False, flux=flux)
 
@@ -174,6 +177,9 @@ class DiaScans(Analysis):
     def get_tc_infos(self, tc):
         rs = self.RunSelections[tc] if tc in self.RunSelections else RunSelection(tc)
         return [SelectionInfo(rs.select_runs_from_runplan(rp, dut + 1, unselect=True)) for rp in sorted(self.RunPlans[tc]) for dut in xrange(rs.get_n_duts(run_plan=rp))]
+
+    def get_bias_str(self):
+        return ' at {bias} V'.format(bias=self.Info[0].Bias) if len(set(self.get_bias_voltages())) == 1 else ''
 
     def get_all_ana_strings(self, dut=None, tc=None, redo=False):
         selections = self.get_all_infos() if dut is None and tc is None else self.get_dia_infos(dut) if tc is None else self.get_tc_infos(tc)
