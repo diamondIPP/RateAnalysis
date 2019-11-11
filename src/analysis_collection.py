@@ -356,37 +356,30 @@ class AnalysisCollection(Analysis):
 
         mg = self.get_pulse_height_graph(binning, vs_time, first_last=not vs_time, redo=redo)
         scale_multigraph(mg, scale, scale_to_low)
-        xtit = 'Time [hh:mm]' if vs_time else 'Flux [kHz/cm^{2}]'
-        y_range1 = [.95, 1.05] if y_range is None else y_range
-        format_histo(mg, x_tit=xtit, y_tit='Scaled Pulse Height', y_off=1.75, x_off=1.3, draw_first=True, t_ax_off=0 if vs_time else None, y_range=y_range1, ndivx=503, center_y=1)
-        mg.GetXaxis().SetLimits(1, 40000) if not vs_time else do_nothing()
+        y_range = [.95, 1.05] if y_range is None else y_range
+        format_histo(mg, y_tit='Scaled Pulse Height', y_off=1.75, x_off=1.3, draw_first=True, y_range=y_range, ndivx=503, center_y=True, **self.get_x_args(vs_time))
         move_legend(mg.GetListOfFunctions()[0], .25, .20)
         self.draw_histo(mg, '', show, lm=.14, draw_opt='a', logx=not vs_time, grid=vs_time, gridy=True, bm=.18)
         self.draw_irradiation(make_irr_string(self.RunSelection.get_irradiation()))
-        self.save_plots('ScaledPulseHeights{}'.format(xtit[:4]))
+        self.save_plots('ScaledPulseHeights{}'.format('Time' if vs_time else 'Flux'))
         return mg.GetListOfGraphs()[0]
 
     def draw_pulse_heights(self, binning=None, vs_time=False, show=True, show_first_last=True, save_comb=True, y_range=None, redo=False, prnt=True):
 
-        mode = 'Time' if vs_time else 'Flux'
         mg = self.get_pulse_height_graph(binning, vs_time, show_first_last, redo)
 
         # small range
-        format_histo(mg, color=None, x_tit='Time [hh:mm]' if vs_time else 'Flux [kHz/cm^{2}]', y_tit='Signal Pulse Height [mV]', y_off=1.75, x_off=1.3, draw_first=True,
-                     t_ax_off=0 if vs_time else None)
-        ymin, ymax = mg.GetYaxis().GetXmin(), mg.GetYaxis().GetXmax()
-        yrange = increased_range([ymin, ymax], .5, .15) if y_range is None else y_range
-        mg.GetYaxis().SetRangeUser(*yrange)
-        mg.GetXaxis().SetLimits(1, 40000) if not vs_time else do_nothing()
-        self.save_histo(mg, 'PulseHeight{mod}'.format(mod=mode), show=False, lm=.14, draw_opt='A', logx=not vs_time, grid=vs_time)
+        ymin, ymax = [getattr(mg.GetListOfGraphs()[0].GetYaxis(), 'GetX{}'.format(w))() for w in ['min', 'max']]
+        y_range = increased_range([ymin, ymax], .5, .15) if y_range is None else y_range
+        format_histo(mg, color=None, y_tit='Signal Pulse Height [mV]', y_off=1.75, x_off=1.3, draw_first=True, y_range=y_range, **self.get_x_args(vs_time))
+        self.save_histo(mg, 'PulseHeight{mod}'.format(mod=self.get_mode(vs_time)), show=False, lm=.14, draw_opt='A', logx=not vs_time, grid=vs_time)
 
         # no zero suppression
         mg1 = mg.Clone()
         mg1.GetListOfFunctions().Clear()
-        mg1.SetName('mg1_ph')
+        format_histo(mg1, 'mg1_ph', draw_first=True, y_range=[0, ymax * 1.1])
         mg1.GetListOfGraphs()[0].SetLineColor(self.Colors[0])
-        mg1.GetYaxis().SetRangeUser(0, ymax * 1.1)
-        self.save_histo(mg1, 'PulseHeightZero{mod}'.format(mod=mode), not save_comb, lm=.14, draw_opt='Al', logx=not vs_time)
+        self.save_histo(mg1, 'PulseHeightZero{mod}'.format(mod=self.get_mode(vs_time)), not save_comb, lm=.14, draw_opt='Al', logx=not vs_time)
         self.reset_colors()
 
         if save_comb:
