@@ -4,129 +4,122 @@
 # created on August 15th 2016 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from time import sleep
-from AbstractClasses.Utils import file_exists, print_banner, log_message
-from os import stat, chdir, system
-from json import load
-from multiprocessing import cpu_count, Pool
-from argparse import ArgumentParser
-from os.path import realpath, dirname
+
+from os import stat, sys
+from os.path import join, dirname, realpath
+file_dir = dirname(realpath(__file__))
+sys.path.append(join(file_dir, 'src'))
+from converter import Converter
+from run import Run
+from multiprocessing import cpu_count
+from utils import *
 
 
-tc = '201708-2'
-prog_dir = dirname(realpath(__file__))
-data_dir = '/data/psi_{0}_{1}'.format(tc[:4], tc[4:])
-raw_dir = '{0}/raw'.format(data_dir)
-final_dir = '{0}/root/pads'.format(data_dir)
-lc = '{dir}/last_converted.txt'.format(dir=prog_dir)
-lc_exists = file_exists(lc)
-f_lc = open(lc, 'r+') if lc_exists else open(lc, 'w')
-next_run = int(f_lc.read()) + 1 if lc_exists else 1
-f_lc.close()
-print_banner('Starting Pad Autoconversion at run {0}!'.format(next_run))
+class AutoConvert:
 
+    def __init__(self, multi, end_run=None, test_campaign=None, verbose=False):
 
-def load_runinfos():
-    f = open('{0}/run_log.json'.format(data_dir))
-    infos = load(f)
-    f.close()
-    return infos
+        self.Run = Run(None, test_campaign=test_campaign, tree=False, verbose=verbose)
+        self.Converter = Converter(self.Run)
+        self.RunInfos = self.load_run_infos()
 
+        self.Dir = file_dir
+        self.LastConvertedFile = join(self.Dir, '.last_converted.txt')
 
-run_infos = load_runinfos()
+        self.Multi = multi
+        self.FirstRun = self.load_last_converted()
+        self.EndRun = max(self.RunInfos) if end_run is None else int(end_run)
+        self.Converter.set_run(self.FirstRun)
 
+    def load_last_converted(self):
+        if not file_exists(self.LastConvertedFile):
+            return self.RunInfos.keys()[0]
+        with open(self.LastConvertedFile) as f:
+            last_run = int(f.read())
+            return next(run for run in self.RunInfos if run >= last_run)
 
-def save_last_converted(run, reset=False):
-    f = open(lc, 'w')
-    f.seek(0)
-    f.write(str(run) if not reset else 0)
-    f.close()
+    def save_last_converted(self, run, reset=False):
+        with open(self.LastConvertedFile, 'w') as f:
+            f.seek(0)
+            f.write(str(run) if not reset else 0)
 
+    def load_run_infos(self):
+        return OrderedDict(sorted((int(key), value) for key, value in self.Converter.Run.load_run_info_file().iteritems()))
 
-def file_is_beeing_written(path):
-    size1 = stat(path)
-    sleep(4)
-    size2 = stat(path)
-    return size1 != size2
+    def convert_run(self, run):
 
+        self.Converter.set_run(run)
 
-def make_raw_run_str(run, old=False):
-    return '{1}/run{2}{0}.raw'.format(str(run).zfill(5 if old else 6), raw_dir, tc[2:] if old else '')
+        # check if we have to convert the run
+        if file_exists(self.Run.RootFilePath) or self.RunInfos[run]['runtype'] in ['test', 'crap', 'schrott']:
+            print '{}: final file exists'.format(run)
+            return
+        raw_file = self.Converter.RawFilePath
+        if not file_exists(raw_file, warn=True):
+            return
 
+        t = time()
+        while file_is_beeing_written(raw_file):
+            info('waiting until run {} is finished since {}'.format(run, get_running_time(t)), next_line=False)
+            sleep(1)
+        print
+        Run(run, self.Converter.Run.TCString)
+        self.save_last_converted(run)
 
-def make_final_run_str(run):
-    return '{1}/TrackedRun{0}.root'.format(run, final_dir)
+    def auto_convert(self):
+        """Sequential conversion with check if the file is currently written. For usage during beam tests."""
+        for run in self.RunInfos:
+            if run >= self.FirstRun:
+                self.convert_run(run)
+            # wait until a new run was added to the run log
+            t = time()
+            while run == max(self.RunInfos):
+                info('waiting for new run ... {} since {}'.format(run + 1, get_running_time(t)), next_line=False)
+                self.RunInfos = self.load_run_infos()
+                sleep(1)
 
+    def multi(self):
+        """parallel conversion"""
+        n_cpus = cpu_count()
+        self.Converter.Run.info('We got {0} CPUs\n'.format(n_cpus))
+        self.Converter.Run.info('Creating pool with {0} processes\n'.format(n_cpus))
+        self.Converter.Run.info('End conversion at run {}'.format(self.EndRun))
 
-def convert_run(run):
-    global run_infos, next_run
-    run_infos = load_runinfos()
-    run_infos = {int(key): value for key, value in run_infos.iteritems()}
-    if run not in run_infos or run_infos[run]['runtype'] in ['test', 'crap', 'schrott']:
-        if int(sorted(run_infos.keys())[-1]) in xrange(next_run, 1000):
-            next_run += 1
-            return False
-        else:
-            return 3
-    raw = make_raw_run_str(run)
-    old_raw = make_raw_run_str(run, True)
-    final = make_final_run_str(run)
-    if not file_exists(final):
+        pool = Pool(n_cpus)
 
-        if file_exists(raw) or file_exists(old_raw):
-            raw = raw if file_exists(raw) else old_raw
-            if not file_is_beeing_written(raw):
-                chdir(prog_dir)
-                cmd = 'python AbstractClasses/Run.py {0} -t -tc {1}'.format(run, tc)
-                print cmd
-                system(cmd)
-            else:
-                return 3
-    save_last_converted(run)
-    next_run += 1
-    return 2
+        tasks = [(self, [run]) for run in self.RunInfos if self.FirstRun <= run <= self.EndRun]
+        results = [pool.apply_async(execute, t) for t in tasks]
+        for res in results:
+            print res.get(timeout=2 * 24 * 60 * 60)
 
+    def run(self):
+        self.multi() if self.Multi else self.auto_convert()
 
-def auto_convert():
-    n_loops = 0
-    print
-    while n_loops < 14400:
-        log_message('checking for new run ... {0} {1}'.format(next_run, '(' + str(n_loops) + ')' if n_loops else ''), overlay=True)
-        for run in xrange(next_run, 1000):
-            typ = convert_run(run)
-            if typ == 2:
-                n_loops = 0
-                continue
-            elif typ == 3:
-                n_loops += 1
-                break
-
-        sleep(5)
+    def __call__(self, run):
+        return self.convert_run(run)
 
 
 def execute(func, args):
     func(*args)
 
 
-def multi():
-    n_cpus = cpu_count()
-    print 'We got {0} CPUs\n'.format(n_cpus)
+def file_is_beeing_written(file_path):
+    size1 = stat(file_path)
+    sleep(4)
+    size2 = stat(file_path)
+    return size1 != size2
 
-    print 'Creating pool with {0} processes\n'.format(n_cpus)
-    pool = Pool(n_cpus)
-    print
 
-    tasks = [(convert_run, [run]) for run in xrange(next_run, 1000)]
+if __name__ == '__main__':
 
-    results = [pool.apply_async(execute, t) for t in tasks]
-    for res in results:
-        print res.get(timeout=5000)
+    parser = ArgumentParser()
+    parser.add_argument('-m', action='store_true')
+    parser.add_argument('-tc', nargs='?', default='201908')
+    parser.add_argument('e', nargs='?', default=None)
+    parser.add_argument('-v', action='store_false')
+    argms = parser.parse_args()
 
-parser = ArgumentParser()
-parser.add_argument('-m', action='store_true')
-arg = parser.parse_args()
-
-if arg.m:
-    multi()
-else:
-    auto_convert()
+    z = AutoConvert(argms.m, argms.e, argms.tc, argms.v)
+    print_banner('Starting {m} Conversion at run {r}'.format(m='Multi' if z.Multi else 'Auto', r=z.FirstRun))
+    z.run()
+    print_banner('Finished Conversion!')

@@ -5,4 +5,20 @@
 - numpy
 - screeninfo
 - progressbar
-- dispy
+- uncertainties
+- pytz
+- gtts
+
+## Add aliases
+- source .bash_aliases
+- adds following aliases:
+    - ShowRunplans
+    - MasterSelection
+    - ShowSelection
+    - ShowSelections
+    - RunSelecion
+    - DiaSelection
+    - padAna
+    - pixAna
+    - padCollection
+    - pixCollection

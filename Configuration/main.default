@@ -1,0 +1,38 @@
+[MAIN]
+data_dir = /scratch2/psi
+run_plan_path = Runinfos/run_plans.json
+default test campaign = 201908
+;hv config file = ''
+;hv data path = ''
+
+[SAVE]
+pickle directory = Configuration/Individual_Configs/
+activate title = True
+felix = False
+git hash = True
+info legend = True
+server mount directory = ~/mounts/psi
+
+[MISC]
+runplan selection file = Runinfos/selection.json
+irradiation file = Runinfos/irradiation.json
+plane errors = False
+
+[PIXEL]
+# [x [cm], y [cm]]
+size = [0.015, 0.010]
+# [columns, row]
+amount = [52, 80]
+
+[Directories]
+software = ~/..
+eudaq = eudaq-drs4
+converter config = converter_waveform_integrals.conf
+tracking = TrackingTelescope
+eudaq prefix = test
+
+[PLOTS]
+bin size = 10000
+palette = 55
+contours = 255
+flux range = [1, 40000]
