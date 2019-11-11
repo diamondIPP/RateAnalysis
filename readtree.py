@@ -1,25 +1,27 @@
 #!/usr/bin/env python
 from ROOT import TFile, gROOT, TGraph, TH2F, gStyle, TCanvas, TCut, TH1F
 from sys import argv, path
-path.append('AbstractClasses')
-from Utils import *
+path.append('src')
+from utils import *
 from json import load
-from Run import Run
+from run import Run
 from datetime import datetime
 from ConfigParser import ConfigParser, NoSectionError
 from numpy import mean
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 from argparse import ArgumentParser
 from os import chdir, system
-from os.path import dirname
+from os.path import dirname, join
+from draw import Draw, format_histo
 
 widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
+plotter = Draw()
 
 
 def load_runinfo():
-    info = {}
+    run_info = {}
     try:
-        fi = open(run.runinfofile, 'r')
+        fi = open(run.RunInfoFile, 'r')
         data = load(fi)
         fi.close()
     except NoSectionError as err:
@@ -27,8 +29,8 @@ def load_runinfo():
         return None
 
     if run >= 0:
-        info = data.get(str(run))
-    return info
+        run_info = data.get(str(run))
+    return run_info
 
 
 def draw_hitmap(show=True, cut=None, plane=None):
@@ -38,7 +40,7 @@ def draw_hitmap(show=True, cut=None, plane=None):
     for plane in planes:
         cut_string = cut + TCut('plane == {0}'.format(plane))
         t.Draw('row:col>>h_hm{0}'.format(plane), cut_string, 'goff')
-        run.format_histo(histos[plane], x_tit='col', y_tit='row')
+        format_histo(histos[plane], x_tit='col', y_tit='row')
     run.set_root_output(show)
     c = TCanvas('c_hm', 'Hitmaps', 2000, 2000)
     c.Divide(2, 2)
@@ -63,8 +65,8 @@ def trig_edges(nwf=None):
             # print i * 1204 + j, int(buf[i * 1204 + j])
             if abs(buf[i * 1024 + k] - buf[i * 1024 + k + 1]) > 50:
                 h.Fill(k)
-    run.format_histo(h, x_tit='Bin Number', y_tit='Number of Entries', y_off=1.4, stats=0, fill_color=407)
-    run.draw_histo(h, lm=.12)
+    format_histo(h, x_tit='Bin Number', y_tit='Number of Entries', y_off=1.4, stats=0, fill_color=407)
+    plotter.draw_histo(h, lm=.12)
 
 
 def draw_waveforms(n=1000, start_event=0, cut_string='', show=True, fixed_range=None, ch=0):
@@ -91,8 +93,8 @@ def draw_waveforms(n=1000, start_event=0, cut_string='', show=True, fixed_range=
         h.GetYaxis().SetRangeUser(fixed_range[0], fixed_range[1])
     if show:
         gROOT.SetBatch(0)
-    run.format_histo(h, title='Waveform', name='wf', x_tit='Time [ns]', y_tit='Signal [mV]', markersize=.4, y_off=.4, stats=0, tit_size=.05)
-    run.draw_histo(h, '', show, lm=.06, rm=.045, draw_opt='alp' if n == 1 else 'col', x=1.5, y=.5)
+    format_histo(h, title='Waveform', name='wf', x_tit='Time [ns]', y_tit='Signal [mV]', markersize=.4, y_off=.4, stats=0, tit_size=.05)
+    plotter.draw_histo(h, '', show, lm=.06, rm=.045, draw_opt='alp' if n == 1 else 'col', x=1.5, y=.5)
     count += n_events
     return h, n_events
 
@@ -136,20 +138,20 @@ def find_n_events(n, cut, start):
 def wf_exists(channel):
     wf_exist = True if t.FindBranch('wf{ch}'.format(ch=channel)) else False
     if not wf_exist:
-        print 'The waveform for channel {ch} is not stored in the tree'.format(ch=channel)
+        print 'The waveform for Channel {ch} is not stored in the tree'.format(ch=channel)
     return wf_exist
 
 
 def get_branch(n, name='IntegralPeaks[13]'):
     t.GetEntry(n)
-    info = None
+    data = None
     exec 'info = t.{br}'.format(br=name)
-    print info
+    print data
 
 
 def load_diamond_name(ch):
     p = ConfigParser()
-    p.read('Configuration/DiamondAliases.cfg')
+    p.read('Configuration/DiamondAliases.ini')
     dia = runinfo['dia{0}'.format(ch)]
     return p.get('ALIASES', dia)
 
@@ -174,19 +176,19 @@ def get_bias(ch):
 
 def draw_runinfo_legend(ch):
     testcamp = datetime.strptime(tc, '%Y%m')
-    l = run.make_legend(.005, .156, y1=.003, x2=.39, nentries=2, clean=False, scale=1, margin=.05)
-    l.SetTextSize(.05)
-    l.AddEntry(0, 'Test Campaign: {tc}, Run {run} @ {rate:2.1f} kHz/cm^{{2}}'.format(tc=testcamp.strftime('%b %Y'), run=run, rate=run.calc_flux()), '')
-    l.AddEntry(0, 'Diamond: {diamond} @ {bias:+}V'.format(diamond=load_diamond_name(ch), bias=get_bias(ch)), '')
-    l.Draw()
-    stuff.append(l)
+    leg = run.make_legend(.005, .156, y1=.003, x2=.39, nentries=2, clean=False, scale=1, margin=.05)
+    leg.SetTextSize(.05)
+    leg.AddEntry(0, 'Test Campaign: {tc}, Run {run} @ {rate:2.1f} kHz/cm^{{2}}'.format(tc=testcamp.strftime('%b %Y'), run=run, rate=run.calc_flux()), '')
+    leg.AddEntry(0, 'Diamond: {diamond} @ {bias:+}V'.format(diamond=load_diamond_name(ch), bias=get_bias(ch)), '')
+    leg.Draw()
+    stuff.append(leg)
 
 
 def draw_peak_timings(xmin=100, xmax=400, ch=0, corr=False):
     h = TH1F('h_pt', 'PeakTimings', xmax - xmin, xmin, xmax)
     t.Draw('max_peak_{p}[{c}]>>h_pt'.format(c=ch, p='position' if not corr else 'time'), '', 'goff')
-    run.format_histo(h, x_tit='Digitiser Bin', y_tit='Number of Entries')
-    run.draw_histo(h)
+    format_histo(h, x_tit='Digitiser Bin', y_tit='Number of Entries')
+    plotter.draw_histo(h)
 
 
 def draw_both_wf(ch, show=True):
@@ -197,8 +199,8 @@ def draw_both_wf(ch, show=True):
     s_proj = signal.ProjectionY()
     s = [s_proj.GetBinCenter(p_proj.FindFirstBinAbove(0)), s_proj.GetBinCenter(p_proj.FindLastBinAbove(0))]
     y = [min(p + s) - 10, max(p + s) + 10]
-    run.format_histo(pulser, y_range=y, stats=0, markersize=.4, y_off=.5, tit_size=.05)
-    run.draw_histo(pulser, '', show, lm=.06, rm=.045, bm=.2, draw_opt='col', x=1.5, y=.5)
+    format_histo(pulser, y_range=y, stats=0, markersize=.4, y_off=.5, tit_size=.05)
+    plotter.draw_histo(pulser, '', show, lm=.06, rm=.045, bm=.2, draw_opt='col', x=1.5, y=.5)
     signal.Draw('samecol')
     leg_ch = 1 if not ch else 2
     draw_runinfo_legend(leg_ch)
@@ -223,13 +225,13 @@ def read_macro(f):
 def draw_peak_values(ch=0, show=True):
     h = TH1F('h_pv', 'PH', 100, -450, -350)
     t.Draw('max_peak_position[{c}]>>h_pv'.format(c=ch), '', 'goff')
-    run.format_histo(h, x_tit='Peak Value [mV]', y_tit='Number of Entries', y_off=1.4)
-    run.draw_histo(h, show=show)
+    format_histo(h, x_tit='Peak Value [mV]', y_tit='Number of Entries', y_off=1.4)
+    plotter.draw_histo(h, show=show)
     return h
 
 
 def fit_peak_values(ch=0, show=True):
-    set_statbox(only_fit=True)
+    plotter.format_statbox(only_fit=True)
     h = draw_peak_values(ch, show)
     fit = h.Fit('gaus', 'sq')
     return fit
@@ -238,13 +240,13 @@ def fit_peak_values(ch=0, show=True):
 def draw_pedestal(ch=0, show=True):
     h = TH1F('h_pd', 'PH', 120, -30, 30)
     t.Draw('pedestals[{c}]>>h_pd'.format(c=ch), '', 'goff')
-    run.format_histo(h, x_tit='Peak Value [mV]', y_tit='Number of Entries', y_off=1.4)
-    run.draw_histo(h, show=show)
+    format_histo(h, x_tit='Peak Value [mV]', y_tit='Number of Entries', y_off=1.4)
+    plotter.draw_histo(h, show=show)
     return h
 
 
 def fit_pedestal(ch=0, show=True):
-    set_statbox(only_fit=True)
+    plotter.format_statbox(only_fit=True)
     h = draw_pedestal(ch, show)
     fit = h.Fit('gaus', 'sq')
     return fit
@@ -253,13 +255,13 @@ def fit_pedestal(ch=0, show=True):
 def draw_pulser_pulse_height(ch=0, show=True):
     h = TH1F('h_ph', 'PH', 2000, -500, 500)
     t.Draw('peak_values[{c}] - pedestals[{c}]>>h_ph'.format(c=ch), '', 'goff')
-    run.format_histo(h, x_tit='Pulser Pulse Height [mV]', y_tit='Number of Entries', y_off=1.4, x_range=[h.GetMean() - 10, h.GetMean() + 20])
-    run.draw_histo(h, show=show)
+    format_histo(h, x_tit='Pulser Pulse Height [mV]', y_tit='Number of Entries', y_off=1.4, x_range=[h.GetMean() - 10, h.GetMean() + 20])
+    plotter.draw_histo(h, show=show)
     return h
 
 
 def fit_pulser_ph(ch=0, show=True):
-    set_statbox(only_fit=True, entries=4, w=.3)
+    plotter.format_statbox(only_fit=True, entries=4, w=.3)
     h = draw_pulser_pulse_height(ch, show)
     fit = h.Fit('gaus', 'sq')
     print fit.Parameter(1), fit.Parameter(2)
@@ -269,13 +271,13 @@ def fit_pulser_ph(ch=0, show=True):
 def draw_integral(ch=0, show=True):
     h = TH1F('h_int', 'PH', 2000, -500, 500)
     t.Draw('peak_integrals[{c}] - pedestals[{c}]>>h_int'.format(c=ch), '', 'goff')
-    run.format_histo(h, x_tit='Pulser Pulse Height [mV]', y_tit='Number of Entries', y_off=1.4, x_range=[h.GetMean() - 10, h.GetMean() + 20])
-    run.draw_histo(h, show=show)
+    format_histo(h, x_tit='Pulser Pulse Height [mV]', y_tit='Number of Entries', y_off=1.4, x_range=[h.GetMean() - 10, h.GetMean() + 20])
+    plotter.draw_histo(h, show=show)
     return h
 
 
 def fit_integral(ch=0, show=True):
-    set_statbox(only_fit=True, entries=4, w=.3)
+    plotter.format_statbox(only_fit=True, entries=4, w=.3)
     h = draw_integral(ch, show)
     fit = h.Fit('gaus', 'sq')
     print fit.Parameter(1), fit.Parameter(2)
@@ -300,7 +302,7 @@ def get_real_zero(nwf=0, channel=0):
         n = t.Draw('wf{ch}:Iteration$'.format(ch=channel), '', 'goff', 1, nwf)
         wf = [t.GetV1()[i] for i in xrange(n)]
         diff = [wf[i + 1] - wf[i] for i in xrange(len(wf) - 2)]
-        m, s = calc_mean(diff[5:200])
+        m, s = mean_sigma(diff[5:200])
         start = next(diff.index(d) for d in diff[5:] if d > 6 * s)
         return wf[start]
     except StopIteration:
@@ -310,7 +312,7 @@ def get_real_zero(nwf=0, channel=0):
 def get_real_zeros(ch=0):
     zeros = [get_real_zero(i, ch) for i in xrange(entries)]
     # peaks = t.Draw('peak_values[{c}]:pedestals[{c}]'.format(c=ch), '', 'goff')
-    m, s = calc_mean([t.GetV1()[i] - t.GetV2()[i] - zeros[i] for i in xrange(entries)])
+    m, s = mean_sigma([t.GetV1()[i] - t.GetV2()[i] - zeros[i] for i in xrange(entries)])
     return m, s
 
 
@@ -319,7 +321,7 @@ def convert(file_name):
         file_dir = dirname(file_name)
         chdir(file_dir)
         raw_file = file_name.replace('test', 'run').replace('root', 'raw')
-        cmd = '~/scripts/Converter.py -t waveformtree -p {r}'.format(r=raw_file)
+        cmd = '~/scripts/converter.py -t waveformtree -p {r}'.format(r=raw_file)
         print cmd
         system(cmd)
 

@@ -1,9 +1,10 @@
 #! /bin/bash
 
 IFS='_'
-cmds=($(AbstractClasses/DiamondRateScans.py -p $@))
+cmds=($(src/runplan_selection.py -p -v $@))
 for cmd in ${cmds[@]}
 do
-    eval ${cmd};
+    echo ${cmd};
+#    eval ${cmd};
     sleep 1;
 done
