@@ -383,7 +383,7 @@ class DiaScans(Analysis):
         self.save_plots('FluxDistribution{0}_{1}'.format(int(fs11), int(fsh13)), show=show)
         return fit
 
-    def draw_dia_rate_scans(self, redo=False):
+    def draw_dia_rate_scans(self, redo=False, irr=True):
         mg = TMultiGraph('mg_ph', '{dia} Rate Scans{b};Flux [kHz/cm^{{2}}]; Pulse Height [mV]'.format(dia=self.DUTName, b=self.get_bias_str()))
         mgs = self.get_values(AnalysisCollection.draw_pulse_heights, PickleInfo('Ph_fit', 'MG', 10000), redo=redo, show=False, prnt=False)
         for i, (mgi, sel) in enumerate(zip(mgs, self.Info)):
@@ -394,12 +394,12 @@ class DiaScans(Analysis):
                 elif g.GetName() == 'gLast':
                     format_histo(g, color=1, marker=23, markersize=2)
             mg.Add(mgi)
-        legend = self.make_full_legend([mgi.GetListOfGraphs()[0] for mgi in mgs])
+        legend = self.make_full_legend([mgi.GetListOfGraphs()[0] for mgi in mgs], irr)
         y = concatenate([get_graph_y(g) for g in mg.GetListOfGraphs()])
         format_histo(mg, draw_first=True, y_tit='Pulse Height [au]', y_range=[0, y.max().n * 1.1], tit_size=.05, lab_size=.05, y_off=.91, x_off=1.2, x_range=Bins().FluxRange)
         self.save_histo(mg, 'DiaScans{dia}'.format(dia=make_dia_str(self.DUTName)), draw_opt='a', logx=True, leg=legend, x=1.6, lm=.092, bm=.12, gridy=True)
 
-    def draw_pedestals(self, rel=False, redo=False, show=True):
+    def draw_pedestals(self, rel=False, redo=False, show=True, irr=True):
         mg = TMultiGraph('mg_ph', '{dia} Pedestals{b};Flux [kHz/cm^{{2}}]; Pulse Height [mV]'.format(dia=self.DUTName, b=self.get_bias_str()))
         for i, (values, sel, fluxes) in enumerate(zip(self.get_pedestals(redo), self.Info, self.get_fluxes())):
             pedestals = array([make_ufloat(*tup) for tup in array(values).T])
@@ -407,16 +407,17 @@ class DiaScans(Analysis):
                 pedestals /= array([dic['ph'] for dic in self.get_rp_pulse_heights(sel, redo).itervalues()]) * .01
             g = self.make_tgrapherrors('gp{}'.format(i), '', x=fluxes.values(), y=pedestals, color=self.Colors[i])
             mg.Add(g, 'pl')
-        legend = self.make_full_legend(mg.GetListOfGraphs())
-        format_histo(mg, draw_first=True, y_tit='Relative Pedestal [%]' if rel else 'Pulse Height [au]', tit_size=.05, lab_size=.05, y_off=.91, x_off=1.2, x_range=Bins().FluxRange)
-        self.save_histo(mg, '{}Pedestals{}'.format(self.Name, 'Rel' if rel else ''), draw_opt='a', logx=True, leg=legend, x=1.6, lm=.092, bm=.12, gridy=True, show=show)
+        legend = self.make_full_legend(mg.GetListOfGraphs(), irr)
+        format_histo(mg, draw_first=True, y_tit='Pulse Height [au]', tit_size=.05, lab_size=.05, y_off=.91, x_off=1.2, x_range=Bins().FluxRange)
+        self.save_histo(mg, '{}Pedestals'.format(self.Name), draw_opt='a', logx=True, leg=legend, x=1.6, lm=.092, bm=.12, gridy=True, show=show)
 
-    def make_full_legend(self, graphs):
+    def make_full_legend(self, graphs, irr=True):
         same_bias = len(set(self.get_bias_voltages())) == 1
-        legend = self.make_legend(.75, .4, w=.4, nentries=4, clean=True, cols=3 if not same_bias else 2)
+        cols = 1 + (not same_bias) + irr
+        legend = self.make_legend(.75, .4, w=.2 * cols, nentries=4, clean=True, cols=cols)
         for i, (g, sel) in enumerate(zip(graphs, self.Info)):
             legend.AddEntry(g, '{} - {}'.format(sel.RunPlan, make_tc_str(sel.TCString)), 'lp')
-            legend.AddEntry(0, make_irr_string(sel.Irradiation), '')
+            legend.AddEntry(0, make_irr_string(sel.Irradiation), '') if irr else do_nothing()
             legend.AddEntry(0, get_bias_root_string(sel.Bias), '') if not same_bias else do_nothing()
         return legend
 
