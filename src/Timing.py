@@ -50,7 +50,7 @@ class TimingAnalysis(Analysis):
 
     def draw_raw_peaks(self, xmin=100, xmax=400, bin_width=1., ch=None, corr=False, cut='', show=True):
         h = TH1F('h_pt', 'Max Peak Timings', int((xmax - xmin) / bin_width), xmin, xmax)
-        channel = self.Ana.channel if ch is None else ch
+        channel = self.Ana.Channel if ch is None else ch
         self.Tree.Draw('max_peak_{p}[{c}]>>h_pt'.format(c=channel, p='position' if not corr else 'time'), cut, 'goff')
         format_histo(h, x_tit='Time [ns]' if corr else 'Digitiser Bin', y_tit='Number of Entries', fill_color=self.FillColor)
         self.draw_histo(h, show=show)

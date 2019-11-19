@@ -70,7 +70,7 @@ class PulserAnalysis(Analysis):
         """ Shows the fraction of pulser events as a function of the event number. Peaks appearing in this graph are most likely beam interruptions. """
         cut = '' if cut is None else TCut(cut)
         set_root_output(False)
-        h = TProfile('hpr', 'Pulser Rate', *self.Ana.Bins.get_raw(evts_per_bin, time_bins=vs_time))
+        h = TProfile('hpr', 'Pulser Rate', *self.Ana.Bins.get_raw(evts_per_bin, vs_time=vs_time, t_from_event=True))
         self.Tree.Draw('pulser*100:{v}>>hpr'.format(v=self.Ana.get_t_var() if vs_time else 'Entry$'), cut, 'goff')
         format_histo(h, x_tit='Time [hh:mm]' if vs_time else 'Event Number', y_tit='Pulser Fraction [%]', y_off=.8, fill_color=self.FillColor, y_range=[0, 105], markersize=.7, stats=0,
                      t_ax_off=self.Ana.Run.StartTime if rel_t else 0)

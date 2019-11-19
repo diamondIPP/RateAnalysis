@@ -228,9 +228,9 @@ class PadAnalysis(DUTAnalysis):
         self.draw_tlatex(x=self.Pedestal.get_noise().n * 3, y=95, text=' 3 #times noise', align=10)
         self.save_plots('EffThresh')
 
-    def draw_pedestal_map(self, high=10, low=None):
+    def draw_pedestal_map(self, high=10, low=None, fid=False):
         low = '&&{}>{}'.format(self.generate_signal_name(), low) if low is not None else ''
-        self.draw_hitmap(redo=True, cut=TCut('{}<{}{}'.format(self.generate_signal_name(), high, low)) + self.Cut.generate_special_cut(excluded='fiducial'))
+        self.draw_hitmap(redo=True, cut=TCut('{}<{}{}'.format(self.generate_signal_name(), high, low)) + (self.Cut.generate_special_cut(excluded='fiducial') if not fid else self.Cut()))
     # endregion 2D SIGNAL DISTRIBUTION
     # ----------------------------------------
 
