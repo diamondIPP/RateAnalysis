@@ -326,7 +326,7 @@ class Cut:
         self.Analysis.add_to_info(t_start)
         return jumps, interruptions
 
-    def find_pad_beam_interruptions(self, bin_width=100, max_thresh=.4):
+    def find_pad_beam_interruptions(self, bin_width=100, max_thresh=.6):
         """ Looking for the beam interruptions by investigating the pulser rate. """
         t = self.Analysis.info('Searching for beam interruptions of run {r} ...'.format(r=self.RunNumber), next_line=False)
         n = self.Analysis.Tree.Draw('Entry$:pulser', '', 'goff')
