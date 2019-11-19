@@ -298,8 +298,7 @@ class CutPad(Cut):
             cut_string = '!({buc})&&{pul}{fid}'.format(buc=self.CutStrings['old_bucket'], pul=self.CutStrings['pulser'], fid='&&{}'.format(fid.GetTitle()) if fid.GetTitle() else '')
             self.Analysis.Tree.Draw(draw_string, cut_string, 'goff')
             format_histo(h, x_tit='Pulse Height [mV]', y_tit='Entries', y_off=1.8, stats=0, fill_color=self.Analysis.FillColor)
-            entries = h.GetEntries()
-            if entries < 2000:
+            if h.GetEntries() / self.Analysis.Run.NEntries < .01:
                 self.Analysis.add_to_info(t)
                 return -30
             # extract fit functions
