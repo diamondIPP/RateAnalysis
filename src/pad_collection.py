@@ -76,6 +76,9 @@ class PadCollection(AnalysisCollection):
         means = self.get_run_values('{}pedestals'.format('pulser ' if pulser else ''), self.Analysis.get_pedestal, runs=runs, pulser=pulser, par=1, redo=redo)
         sigmas = self.get_run_values('', self.Analysis.get_pedestal, runs=runs, pbar=False, pulser=pulser, par=2)
         return array(means), array(sigmas)
+
+    def get_pulse_heights(self, bin_width=None, redo=False, runs=None, corr=True):
+        return self.get_run_values('pulse heights', PadAnalysis.get_pulse_height, runs, corr=corr, bin_size=bin_width, redo=redo)
     # endregion GET
     # ----------------------------------------
 
@@ -90,7 +93,7 @@ class PadCollection(AnalysisCollection):
         return increased_range(y, .3, .2)
 
     def draw_ph_with_currents(self, show=True, scale=1):
-        ph = self.get_pulse_height_graph(vs_time=True, first_last=False, binning=10000, legend=False)
+        ph = self.get_pulse_height_graph(vs_time=True, first_last=False, bin_width=10000, legend=False)
         self.Currents.set_graphs()
         cur = self.Currents.CurrentGraph.Clone()
         cur_range = self.scale_current_gr(cur)
