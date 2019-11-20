@@ -227,7 +227,7 @@ class AnalysisCollection(Analysis):
         return do_pickle(pickle_path, f, redo=redo)
 
     def get_pulse_heights(self, bin_width=None, redo=False, runs=None, corr=None):
-        return self.get_run_values('pulse heights', DUTAnalysis.get_pulse_height, runs, bin_size=bin_width, redo=redo)
+        return self.get_run_values('pulse heights', self.Analysis.get_pulse_height, runs, bin_size=bin_width, redo=redo, corr=corr)
 
     def get_runs_by_collimator(self, fs11=65, fsh13=.5):
         return [key for key, ana in self.Analyses.iteritems() if ana.Run.RunInfo['fs11'] == fs11 and ana.Run.RunInfo['fs13'] == fsh13]

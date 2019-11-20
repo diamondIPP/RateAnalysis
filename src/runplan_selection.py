@@ -146,11 +146,11 @@ class DiaScans(Analysis):
     def get_values(self, f, pickle_info=None, redo=False, load_tree=True, *args, **kwargs):
         return [self.get_rp_values(sel, f, pickle_info, redo, load_tree, *args, **kwargs) for sel in self.Info]
 
-    def get_pulse_heights(self, redo=False):
-        return self.get_values(AnalysisCollection.get_pulse_heights, PickleInfo('Ph_fit', 'PhVals', 10000), redo=redo)
+    def get_pulse_heights(self, corr=True, redo=False):
+        return self.get_values(AnalysisCollection.get_pulse_heights, PickleInfo('Ph_fit', 'PhVals', '10000_{}'.format(corr)), redo=redo, corr=corr)
 
-    def get_rp_pulse_heights(self, sel, redo=False):
-        return self.get_rp_values(sel, AnalysisCollection.get_pulse_heights, PickleInfo('Ph_fit', 'PhVals', 10000), redo=redo)
+    def get_rp_pulse_heights(self, sel, corr=True, redo=False):
+        return self.get_rp_values(sel, AnalysisCollection.get_pulse_heights, PickleInfo('Ph_fit', 'PhVals', '10000_{}'.format(corr)), redo=redo, corr=corr)
 
     def get_pedestals(self, redo=False):
         return self.get_values(PadCollection.get_pedestals, PickleInfo('Pedestal', 'Values'), redo=redo)
@@ -383,9 +383,9 @@ class DiaScans(Analysis):
         self.save_plots('FluxDistribution{0}_{1}'.format(int(fs11), int(fsh13)), show=show)
         return fit
 
-    def draw_dia_rate_scans(self, redo=False, irr=True):
+    def draw_dia_rate_scans(self, redo=False, irr=True, corr=True):
         mg = TMultiGraph('mg_ph', '{dia} Rate Scans{b};Flux [kHz/cm^{{2}}]; Pulse Height [mV]'.format(dia=self.DUTName, b=self.get_bias_str()))
-        mgs = self.get_values(AnalysisCollection.draw_pulse_heights, PickleInfo('Ph_fit', 'MG', 10000), redo=redo, show=False, prnt=False)
+        mgs = self.get_values(AnalysisCollection.draw_pulse_heights, PickleInfo('Ph_fit', 'MG', '10000_{}'.format(corr)), redo=redo, show=False, prnt=False)
         for i, (mgi, sel) in enumerate(zip(mgs, self.Info)):
             for g in mgi.GetListOfGraphs():
                 format_histo(g, color=self.Colors[i], markersize=1.5, lw=2)
@@ -429,7 +429,7 @@ class DiaScans(Analysis):
             self.draw_tpavetext('{dia} Rate Scans{b}'.format(dia=self.DUTName, b=bias_str), lm, 1, 0, 1, font=62, align=13, size=.5, margin=0)
             get_last_canvas().cd()
 
-    def draw_scaled_rate_scans(self, irr=False, y_range=.07, pad_height=.18, scale=1):
+    def draw_scaled_rate_scans(self, irr=False, y_range=.07, pad_height=.18, scale=1, corr=True):
         title_height = pad_height / 2 if self.Title else .03  # half of a pad for title
         c_height = (self.NPlans + .5) * pad_height + title_height  # half of a pad for the x-axis
         c_width = 1.3 * pad_height / .2  # keep aspect ratio for standard pad_height
@@ -441,11 +441,11 @@ class DiaScans(Analysis):
         self.draw_tpavetext('Scaled Pulse Height', 0, 1, 0, 1, align=22, size=.5, angle=90, margin=0)   # y-axis title
         c.cd()
 
-        for i, (ph, error, color) in enumerate(zip(self.get_pulse_heights(), self.get_rel_errors(), get_color_gradient(self.NPlans))):
+        for i, (ph, error, flux, color) in enumerate(zip(self.get_pulse_heights(corr=corr), self.get_rel_errors(), self.get_fluxes(), get_color_gradient(self.NPlans))):
             y0, y1 = [(c_height - title_height - pad_height * (i + j)) / c_height for j in [1, 0]]
             p = self.draw_tpad('p{i}'.format(i=i + 3), '', pos=[x0, y0, 1, y1], margins=[lm, rm, 0, 0], logx=True, gridy=True, gridx=True)
-            y_values = [make_ufloat((v.n, v.s + error * v.n)) for v in [dic['ph'] for dic in ph.itervalues()]]
-            g = self.make_tgrapherrors('gsph{}'.format(i), '', x=[dic['flux'] for dic in ph.itervalues()], y=y_values)
+            y_values = [make_ufloat((v.n, v.s + error * v.n)) for v in ph]
+            g = self.make_tgrapherrors('gsph{}'.format(i), '', x=flux, y=y_values)
             scale_graph(g, val=scale) if scale else do_nothing()
             format_histo(g, title=' ', color=color, x_range=Bins().FluxRange, y_range=[1 - y_range, 1 + y_range], marker=markers(i), lab_size=size, ndivy=505, markersize=1.5, tick_size=.05)
             self.draw_histo(g, draw_opt='ap', canvas=p)
