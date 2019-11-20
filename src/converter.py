@@ -1,7 +1,7 @@
 from glob import glob
 from json import loads
 from shutil import move
-from subprocess import check_call, CalledProcessError
+from subprocess import check_call
 
 from numpy import sign
 from os import getcwd, chdir, rename, system
@@ -100,6 +100,9 @@ class Converter:
         return OrderedDict(sorted(config.iteritems()))
 
     def get_eudaqfile_path(self):
+        file_names = glob(join(self.Run.RootFileDir, '{}*{:03d}.root'.format(self.MainConfig.get('Directories', 'eudaq prefix'), self.RunNumber)))
+        if file_names:
+            return file_names[0]
         return join(self.Run.RootFileDir, '{prefix}{run:06d}.root'.format(prefix=self.MainConfig.get('Directories', 'eudaq prefix'), run=self.RunNumber))
 
     def get_trackingfile_path(self):
@@ -139,14 +142,9 @@ class Converter:
         self.set_converter_configfile()
         print_banner('START CONVERTING RAW FILE FOR RUN {0}'.format(self.RunNumber))
         print ' '.join(cmd_list)
-        tries = 0
-        while tries < 30:  # the command crashes randomly...
-            try:
-                check_call(cmd_list)
-                break
-            except CalledProcessError:
-                tries += 1
+        check_call(cmd_list)
         self.remove_new_configfile()
+        self.remove_decodingfile()
         chdir(curr_dir)
 
     def align_run(self):
@@ -218,6 +216,10 @@ class Converter:
 
     def remove_new_configfile(self):
         remove_file(self.NewConfigFile)
+
+    def remove_decodingfile(self):
+        for file_name in glob(join(self.Run.RootFileDir, 'decoding*{:03d}.root'.format(self.RunNumber))):
+            remove_file(file_name)
 
     def set_converter_configfile(self):
         parser = ConfigParser()
