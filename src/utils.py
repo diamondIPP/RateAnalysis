@@ -575,9 +575,8 @@ def get_color_gradient(n):
     green = array([0. / 255., 200. / 255., 80. / 255.], 'd')
     blue = array([0. / 255., 0. / 255., 0. / 255.], 'd')
     red = array([180. / 255., 200. / 255., 0. / 255.], 'd')
-    # gStyle.SetNumberContours(20)
-    bla = TColor.CreateGradientColorTable(len(stops), stops, red, green, blue, 255)
-    color_table = [bla + ij for ij in xrange(255)]
+    color_gradient = TColor.CreateGradientColorTable(len(stops), stops, red, green, blue, 255)
+    color_table = [color_gradient + ij for ij in xrange(255)]
     return color_table[0::(len(color_table) + 1) / n]
 
 
