@@ -308,6 +308,8 @@ class PadAnalysis(DUTAnalysis):
         for i in xrange(2, h.GetNbinsX() + 1):
             sum_ph += h.GetBinContent(i)
             if h.GetBinContent(i) < .7 * sum_ph / (i + 1):
+                if not h.GetBinEntries(i):
+                    continue  # if the bin is empty
                 log_warning('Found huge ph fluctiation! Stopping Fit! y value = {y}, mean_y = {m}'.format(y=h.GetBinContent(i), m=sum_ph / (i + 1)))
                 return h.GetBinCenter(i - 1)
         return h.GetBinCenter(h.GetNbinsX()) + 1000
