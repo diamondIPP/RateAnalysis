@@ -1,6 +1,6 @@
 from analysis import *
 from ROOT import TH2F, TH1F, TCut, TF1, TGraph, TH1I, TProfile, TMultiGraph, TH2I, THStack
-from numpy import log
+from numpy import log, split, polyfit, polyval, genfromtxt, arctan, sin, cos, tan, rad2deg
 
 from cut import Cut
 from InfoLegend import InfoLegend
@@ -231,6 +231,82 @@ class TelecopeAnalysis(Analysis):
         if prnt:
             print events[:20]
         return events
+
+    def get_plane_hits(self):
+        t = self.info('getting plane hits...', next_line=False)
+        self.Tree.SetEstimate(self.Tree.GetEntries(self.Cut.CutStrings['tracks'].GetTitle()) * self.NRocs)
+        n = self.Tree.Draw('cluster_xpos_local:cluster_ypos_local', self.Cut.CutStrings['tracks'], 'goff')
+        x, y = [array(split(vec, arange(self.NRocs, n, self.NRocs))).T * 10 for vec in self.Run.get_root_vecs(n, 2)]
+        z_positions = genfromtxt(join(self.Run.Converter.TrackingDir, 'ALIGNMENT', 'telescope{}.dat'.format(self.Run.Converter.TelescopeID)), skip_header=1, usecols=[1, 5])
+        z_positions = z_positions[where(z_positions[:, 0] > -1)][:, 1] * 10
+        self.add_to_info(t)
+        return x, y, z_positions
+
+    def calculate_residuals(self, x, y, z_positions, steps=0):
+        dx, dy, da = None, None, None
+        for _ in xrange(steps + 1):
+            dx, dy = self.calc_residual_step(x, y, z_positions)
+            da = self.align(x, y, dx, dy)
+        return dx, dy, da
+
+    @staticmethod
+    def align(x, y, dx, dy):
+        bins = [arange(-4, 4.01, .2), arange(-1, 1.02, .03), arange(-4, 4.15, .15), arange(-1, 1.02, .02)]
+        histos = [[TH2F('h{}{}'.format(i, j), 'rotres', bins[i].size - 1, bins[i], bins[i + 1].size - 1, bins[i + 1]) for i in arange(0, 4, 2)] for j in xrange(x.shape[0])]
+        angles = []
+        for h, ix, iy, idx, idy in zip(histos, x, y, dx, dy):
+            h[0].FillN(ix.size, ix.astype('d'), idy.astype('d'), full(ix.size, 1, dtype='d'))
+            h[1].FillN(ix.size, iy.astype('d'), idx.astype('d'), full(ix.size, 1, dtype='d'))
+            [format_histo(h[i], x_tit='X [mm]', y_tit='dY [mm]', y_off=1.3, pal=53) for i in xrange(2)]
+            fits = [h[i].Fit('pol1', 'qs0') for i in xrange(2)]
+            angles.append([fits[i].Parameter(1) for i in xrange(2)])
+        angles = arctan(((array(angles)[:, 0] - array(angles)[:, 1]) / 2))  # calculate the mean of the two angles (one has the opposite sign of the other)
+        rot = array([[[cos(a), -sin(a)], [sin(a), cos(a)]] for a in angles])
+        for i, irot in enumerate(rot):
+            x[i], y[i] = irot.dot(array([x[i], y[i]]))
+        # self.format_statbox(entries=True, x=.82)
+        # self.draw_histo(histos[0][0], draw_opt='colz', rm=.16)
+        x += mean(dx, axis=1).reshape((x.shape[0], 1))
+        y += mean(dy, axis=1).reshape((x.shape[0], 1))
+        return angles
+
+    @staticmethod
+    def calc_residual_step(x, y, z_positions):
+        x_fits, y_fits = [polyfit(z_positions, vec, 1) for vec in [x, y]]
+        return [polyval(fits, z_positions.reshape((x.shape[0], 1))) - vec for fits, vec in [(x_fits, x), (y_fits, y)]]
+
+    def draw_raw_residuals(self, roc=None, steps=0, show=True):
+        x, y, z_positions = self.get_plane_hits()
+        dx, dy, da = self.calculate_residuals(x, y, z_positions, steps)
+        x_bins, y_bins = arange(-1, 1.03, .03),  arange(-1, 1.02, .02)
+        histos = [TH2F('h{}'.format(i), 'Raw Residuals ROC {}'.format(i), x_bins.size - 1, x_bins, y_bins.size - 1, y_bins) for i in xrange(dx.shape[0])]
+        self.format_statbox(entries=True, x=.82)
+        for h, ix, iy in zip(histos, dx, dy):
+            h.FillN(ix.size, ix.astype('d'), iy.astype('d'), full(ix.size, 1, dtype='d'))
+            format_histo(h, x_tit='dX [mm]', y_tit='dY [mm]', y_off=1.3, pal=53)
+        if roc is not None:
+            self.draw_histo(histos[roc], draw_opt='colz', lm=.12, rm=.16, show=show, logz=True)
+        else:
+            c = self.make_canvas('crr', 'Raw Residuals', 1.5, 1.5, show=show, divide=(2, 2))
+            for i, h in enumerate(histos, 1):
+                self.draw_histo(h, draw_opt='colz', lm=.12, rm=.16, show=show, canvas=c.cd(i), logz=True)
+            self.save_plots('RawResisudal', canvas=c, show=show)
+        return dx, dy, da
+
+    def draw_mean_residuals(self, roc=0, mode='x', steps=5):
+        x, y, z_positions = self.get_plane_hits()
+        values = array([[abs(mean(vec[roc])) for vec in self.calculate_residuals(x, y, z_positions)][:2] for _ in xrange(steps)])
+        g = self.make_tgrapherrors('gmr', 'Mean Residual in {} for Each Step'.format(mode.title()), x=arange(steps), y=values[:, 0 if mode == 'x' else 1])
+        format_histo(g, x_tit='Step #', y_tit='Mean Residual [mm]', y_off=1.5, x_range=[-.5, steps - .5], ndivx=505)
+        self.draw_histo(g, draw_opt='ap', lm=.13)
+        return array([[sum(values[:, 0])], [sum(values[:, 1])]])
+
+    def draw_residual_angles(self, roc=0, steps=10):
+        x, y, z_positions = self.get_plane_hits()
+        angles = array([abs(rad2deg(tan(self.calculate_residuals(x, y, z_positions)[-1][roc]))) for _ in xrange(steps)])
+        g = self.make_tgrapherrors('gmra', 'Residual Angles for Each Step', x=arange(steps), y=angles)
+        format_histo(g, x_tit='Step #', y_tit='Residual Angle [#circ]', y_off=1.5, x_range=[-.5, steps - .5], ndivx=505)
+        self.draw_histo(g, draw_opt='ap', lm=.13)
 
     # endregion TRACKS
     # ----------------------------------------
