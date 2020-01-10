@@ -258,7 +258,7 @@ class AnalysisCollection(Analysis):
             runs = self.get_runs_below_flux(flux)
             if not runs:
                 return 0
-            values = self.get_pulse_heights(runs=runs)
+            values = self.get_pulse_heights(runs=runs, redo=redo)
             gr = self.make_tgrapherrors('gr_re', 'Pulse Heights Below {f} kHz/cm^{{2}}'.format(f=flux), x=self.get_fluxes(runs=runs), y=values)
             self.format_statbox(entries=2, only_fit=True)
             gr.Fit('pol0', 'qs{s}'.format(s='' if show else '0'))
@@ -327,14 +327,14 @@ class AnalysisCollection(Analysis):
             h.Draw('histy+')
         self.save_plots('FullPulseHeight')
 
-    def get_pulse_height_graph(self, bin_width=None, vs_time=False, first_last=True, redo=False, legend=True, corr=True):
+    def get_pulse_height_graph(self, bin_width=None, vs_time=False, first_last=True, redo=False, legend=True, corr=True, err=True):
 
         marker_size = 1
         gStyle.SetEndErrorSize(4)
         values = self.get_pulse_heights(bin_width, redo, corr=corr)
         x = self.get_x_var(vs_time)
         g = self.make_tgrapherrors('g', 'stat. error', self.get_color(), marker_size=marker_size, x=x, y=values)
-        rel_sys_error = self.get_repr_error(105, show=False)
+        rel_sys_error = self.get_repr_error(105, show=False) if err else 0
         values = [make_ufloat((v.n, v.s + rel_sys_error * abs(v.n))) for v in values]
         g_errors = self.make_tgrapherrors('gerr', 'full error', marker=0, color=602, marker_size=0, x=x, y=values)
         g_first, g_last = [self.make_tgrapherrors('g1', 'first run', marker=22, color=2, marker_size=marker_size, x=[x[i].n], y=[values[i].n]) for i in [0, -1]]
@@ -367,9 +367,9 @@ class AnalysisCollection(Analysis):
         self.save_plots('ScaledPulseHeights{}'.format('Time' if vs_time else 'Flux'))
         return mg.GetListOfGraphs()[0]
 
-    def draw_pulse_heights(self, bin_width=None, vs_time=False, show=True, show_first_last=True, save_comb=True, y_range=None, corr=True, redo=False, prnt=True):
+    def draw_pulse_heights(self, bin_width=None, vs_time=False, show=True, show_first_last=True, save_comb=True, y_range=None, corr=True, redo=False, prnt=True, err=True):
 
-        mg = self.get_pulse_height_graph(bin_width, vs_time, show_first_last, redo, corr=corr)
+        mg = self.get_pulse_height_graph(bin_width, vs_time, show_first_last, redo, corr=corr, err=err)
 
         # small range
         ymin, ymax = [getattr(mg.GetListOfGraphs()[0].GetYaxis(), 'GetX{}'.format(w))() for w in ['min', 'max']]
