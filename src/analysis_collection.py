@@ -9,6 +9,7 @@ from VoltageScan import VoltageScan
 from analysis import *
 from dut_analysis import DUTAnalysis
 from telescope_analysis import TelecopeAnalysis
+from numpy import histogram, cumsum, sort
 
 
 class AnalysisCollection(Analysis):
@@ -166,7 +167,18 @@ class AnalysisCollection(Analysis):
         return self.Currents.Name
 
     def get_fluxes(self, rel_error=0., runs=None):
-        return self.get_run_values('fluxes', DUTAnalysis.get_flux, runs, pbar=False, rel_error=rel_error)
+        return array(self.get_run_values('fluxes', DUTAnalysis.get_flux, runs, pbar=False, rel_error=rel_error))
+
+    def get_flux_splits(self, show=True):
+        values = sort([flux.n for flux in self.get_fluxes()])
+        h = TH1F('hmf', 'Fluxes', *log_bins(40, 1, 1e5))
+        h.FillN(values.size, values, full(values.size, 1, 'd'))
+        format_histo(h, x_tit='Flux [kHz/cm^{2}]', y_tit='Number of Entries', y_off=1.2)
+        self.draw_histo(h, lm=.11, logx=True, show=show)
+        s = TSpectrum(20)
+        s.Search(h, 1)
+        bins = sorted(s.GetPositionX()[i] for i in xrange(s.GetNPeaks()))
+        return cumsum(histogram(values, array([0] + [pow(10, (log10(bins[i]) + log10(bins[i + 1])) / 2.) for i in xrange(len(bins) - 1)]))[0])
 
     def get_times(self, runs=None):
         return self.get_run_values('times', DUTAnalysis.get_time, runs, pbar=False)
