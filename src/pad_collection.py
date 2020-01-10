@@ -5,6 +5,7 @@ from Extrema import Extrema2D
 from PulserCollection import PulserCollection
 from analysis_collection import *
 from pad_analysis import PadAnalysis
+from numpy import split
 
 
 class PadCollection(AnalysisCollection):
@@ -152,6 +153,24 @@ class PadCollection(AnalysisCollection):
         save_name = '{p}Pedestal{s}{mod}'.format(mod=self.get_mode(vs_time), s='Noise' if sigma else '', p='Pulser' if pulser else '')
         self.save_histo(g, save_name=save_name, show=show, logx=False if vs_time else True, lm=.12, draw_opt='ap')
         return g
+
+    def draw_ped_spread(self, pulser=False, redo=False, show=True):
+        values = self.get_pedestals(pulser, redo=redo)[0][self.get_fluxes().argsort()]  # sort pedestal by ascending fluxes
+        h = TH1F('hps', 'Relative Pedestal Spread', 20, -.5, .5)
+        for lst in split(values, self.get_flux_splits(show=False)):
+            for value in lst:
+                h.Fill((value - mean(lst)).n)
+        self.format_statbox(all_stat=True)
+        format_histo(h, x_tit='Relative Pedestal', y_tit='Number of Entries', y_off=1.2)
+        self.save_histo(h, 'PedestalSpread', lm=.11, show=show)
+
+    def draw_noise_spread(self, pulser=False, redo=False, show=True):
+        h = TH1F('hns', 'Relative Noise Spread', 20, -.3, .3)
+        values = self.get_pedestals(pulser, redo=redo)[1]
+        h.FillN(self.NRuns, array([(v - mean(values)).n for v in values], 'd'), full(self.NRuns, 1, 'd'))
+        self.format_statbox(all_stat=True)
+        format_histo(h, x_tit='Relative Noise', y_tit='Number of Entries', y_off=1.2)
+        self.save_histo(h, 'NoiseSpread', lm=.11, show=show)
 
     def draw_noise(self, vs_time=False, show=True):
         return self.draw_pedestals(vs_time=vs_time, show=show, sigma=True)
