@@ -7,7 +7,7 @@
 from __future__ import print_function
 from utils import *
 from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, kGreen, kOrange, kViolet, kYellow, kRed, kBlue, kMagenta, kAzure, \
-    kCyan, kTeal, TPaveText, TPaveStats, TH1F, TSpectrum
+    kCyan, kTeal, TPaveText, TPaveStats, TH1F, TSpectrum, TEllipse
 from numpy import ndarray, zeros, sign
 from os.path import expanduser, join, basename
 
@@ -231,6 +231,17 @@ class Draw:
         for y in y_vals:
             self.draw_line(min(x_vals), max(x_vals), y, y, name='y{}'.format(y), width=width, color=color)
 
+    def draw_ellipse(self, a, b=0, x_off=0, y_off=0, color=2, w=2):
+        e = TEllipse(x_off, y_off, a, b)
+        do(e.SetLineColor, color)
+        do(e.SetLineWidth, w)
+        e.SetFillStyle(4000)
+        e.Draw()
+        self.Objects.append(e)
+
+    def draw_circle(self, r, x_off=0, y_off=0, color=None, w=None):
+        self.draw_ellipse(r, 0, x_off, y_off, color, w)
+
     def draw_preliminary(self, canvas=None, height=.06):
         c = get_last_canvas() if canvas is None else canvas
         c.cd()
@@ -433,8 +444,7 @@ class Draw:
     def save_tel_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=None, draw_opt=None, x_fac=None, y_fac=None, all_pads=True,
                        leg=None, logy=False, logx=False, logz=False, canvas=None, grid=False, gridx=False, gridy=False, save=True, ind=None, prnt=True, phi=None, theta=None):
         return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x_fac, y_fac, all_pads, leg, logy, logx, logz, canvas, grid, gridx, gridy, save, True, ind, prnt, phi, theta)
-
-    # endregion
+    # endregion SAVE
     # ----------------------------------------
 
     # ----------------------------------------
@@ -491,7 +501,7 @@ class Draw:
         x = [make_ufloat([p.GetBinCenter(i), p.GetBinWidth(i) / 2]) for i in x_range]
         y = [make_ufloat([p.GetBinContent(i), p.GetBinError(i)]) for i in x_range]
         return self.make_tgrapherrors('g{n}'.format(n=p.GetName()[1:]), p.GetTitle(), x=x, y=y)
-    # endregion
+    # endregion CREATE
     # ----------------------------------------
 
     def format_statbox(self, x=.95, y=None, w=.2, n_entries=3, only_fit=False, fit=False, entries=False, form=None, m=False, rms=False, all_stat=False):
