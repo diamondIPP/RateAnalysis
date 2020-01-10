@@ -299,18 +299,17 @@ class PadAnalysis(DUTAnalysis):
         self.server_pickle(picklepath, FitRes(fit))
         return FitRes(fit)
 
-    @staticmethod
-    def __get_max_fit_pos(h):
+    def __get_max_fit_pos(self, h):
         """ look for huge fluctiations in ph graph and return last stable point"""
         if mean([h.GetBinContent(i) for i in xrange(h.GetNbinsX())]) < 10:  # if the pulse height is very low there will be always big fluctuations!
             return h.GetBinCenter(h.GetNbinsX()) + 1000
         sum_ph = h.GetBinContent(1)
         for i in xrange(2, h.GetNbinsX() + 1):
             sum_ph += h.GetBinContent(i)
-            if h.GetBinContent(i) < .7 * sum_ph / (i + 1):
+            if h.GetBinContent(i) < .8 * sum_ph / (i + 1):
                 if not h.GetBinEntries(i):
                     continue  # if the bin is empty
-                log_warning('Found huge ph fluctiation! Stopping Fit! y value = {y}, mean_y = {m}'.format(y=h.GetBinContent(i), m=sum_ph / (i + 1)))
+                log_warning('Found PH fluctiation in run {}! Stopping fit after {:2.0f}%'.format(self.RunNumber, 100. * (i - 1) / h.GetNbinsX()))
                 return h.GetBinCenter(i - 1)
         return h.GetBinCenter(h.GetNbinsX()) + 1000
 
