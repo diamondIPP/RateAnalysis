@@ -48,36 +48,8 @@ class Cut:
     def __call__(self, cut=None):
         return self.generate_all_cut() if cut is None else TCut(cut)
 
-    def set_high_low_rate_run(self, high_run, low_run):
-        self.LowRateRun = str(low_run)
-        self.HighRateRun = str(high_run)
-
-    def generate_special_cut(self, excluded=None, included=None, name='special_cut', prnt=True):
-        cut = TCut(name, '')
-        self.NCuts = 0
-        for key, value in self.CutStrings.iteritems():
-            if excluded and key in excluded:
-                continue
-            if included and key not in included:
-                continue
-            if key.startswith('old') or key.startswith('AllCut'):
-                continue
-            if value.GetTitle() == '':
-                continue
-            cut += value
-            self.NCuts += 1
-        self.Analysis.info('generated {name} cut with {num} cuts'.format(name=name, num=self.NCuts)) if prnt else do_nothing()
-        return cut
-
-    def generate_all_cut(self):
-        cut = TCut('AllCuts', '')
-        self.NCuts = 0
-        for key, value in self.CutStrings.iteritems():
-            if not key.startswith('old') and not key.startswith('AllCut'):
-                cut += value
-                self.NCuts += 1
-        return cut
-
+    # ----------------------------------------
+    # region INIT
     @staticmethod
     def init_easy_cutstrings():
         dic = OrderedDict()
@@ -128,9 +100,11 @@ class Cut:
         dic['fiducial'] = TCut('fiducial', '')
         dic['AllCuts'] = TCut('AllCuts', '')
         return dic
+    # endregion INIT
+    # ----------------------------------------
 
-    # ==============================================
-    # region GET CONFIG
+    # ----------------------------------------
+    # region CONFIG
     def load_config(self):
         self.CutConfig['IndividualChCut'] = ''
         self.CutConfig['JumpExcludeRange'] = loads(self.Config.get('CUT', 'exclude around jump'))
@@ -177,9 +151,11 @@ class Cut:
 
     def get_fiducial_splits(self):
         return (loads(self.Config.get('SPLIT', 'fiducial')) if self.Config.has_option('SPLIT', 'fiducial') else []) + [int(1e10)]
+    # endregion CONFIG
+    # ----------------------------------------
 
-    # endregion
-
+    # ----------------------------------------
+    # region GET
     def get_event_range(self):
         """
         Returns a the lowest and highest event numbers to consider in the analysis.
@@ -200,8 +176,86 @@ class Cut:
         """ :return: maximum event number """
         return self.CutConfig["EventRange"][1]
 
-    # ==============================================
+    def get_easy_cutstring(self):
+        """ Returns a short, more user-friendly cut string, which can be used to display the cut configuration as terminal prompt or inside a canvas. """
+        string_ = ""
+        for type_ in self.EasyCutStrings.keys():
+            if self.EasyCutStrings[type_] != "":
+                string_ += self.EasyCutStrings[type_] + ", "
+        if string_ != "":
+            string_ = string_[:-2]
+        return string_
+
+    @staticmethod
+    def get_track_var(num, mode, mm=False):
+        return 'dia_track_{m}_local[{n}]{s}'.format(m=mode, n=num, s='*10' if mm else '')
+
+    def get_track_vars(self, num, mm=False):
+        return (self.get_track_var(num, v, mm) for v in ['y', 'x'])
+    # endregion GET
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region SET
+    def set_high_low_rate_run(self, high_run, low_run):
+        self.LowRateRun = str(low_run)
+        self.HighRateRun = str(high_run)
+
+    def reset_cut(self, name):
+        if name in self.CutStrings:
+            self.CutStrings[name].SetTitle('')
+        else:
+            print 'There is no cut with the name "{name}"!'.format(name=name)
+        self.update_all_cut()
+
+    def update_cut(self, name, value=None):
+        if name in self.CutStrings:
+            self.CutStrings[name].SetTitle('')
+            self.CutStrings[name] += value
+            self.update_all_cut()
+        else:
+            print 'There is no cut with the name "{name}"!'.format(name=name)
+
+    def set_chi2(self, value):
+        self.CutConfig['chi2X'] = value
+        self.CutConfig['chi2Y'] = value
+        self.update_cut('chi2X', self.generate_chi2('x'))
+        self.update_cut('chi2Y', self.generate_chi2('y'))
+
+    def update_all_cut(self):
+        self.AllCut = self.generate_all_cut()
+        self.Analysis.AllCuts = self.AllCut
+    # endregion SET
+    # ----------------------------------------
+
+    # ----------------------------------------
     # region GENERATE CUT STRINGS
+    def generate_special_cut(self, excluded=None, included=None, name='special_cut', prnt=True):
+        cut = TCut(name, '')
+        self.NCuts = 0
+        for key, value in self.CutStrings.iteritems():
+            if excluded and key in excluded:
+                continue
+            if included and key not in included:
+                continue
+            if key.startswith('old') or key.startswith('AllCut'):
+                continue
+            if value.GetTitle() == '':
+                continue
+            cut += value
+            self.NCuts += 1
+        self.Analysis.info('generated {name} cut with {num} cuts'.format(name=name, num=self.NCuts)) if prnt else do_nothing()
+        return cut
+
+    def generate_all_cut(self):
+        cut = TCut('AllCuts', '')
+        self.NCuts = 0
+        for key, value in self.CutStrings.iteritems():
+            if not key.startswith('old') and not key.startswith('AllCut'):
+                cut += value
+                self.NCuts += 1
+        return cut
+
     def generate_event_range(self):
         cut_string = ''
         if self.CutConfig['EventRange']:
@@ -304,9 +358,18 @@ class Cut:
 
     def generate_flux_cut(self):
         return self.generate_special_cut(included=['beam_interruptions', 'event_range'], name='flux', prnt=False)
-    # endregion
 
-    # ==============================================
+    def generate_consecutive_cuts(self):
+        cuts = OrderedDict([('raw', TCut('0', ''))])
+        for i, (key, value) in enumerate([(key, value) for key, value in self.CutStrings.iteritems() if str(value) and key != 'AllCuts' and not key.startswith('old')], 1):
+            new_cut = cuts.values()[i - 1] + value
+            key = 'beam_stops' if 'beam' in key else key
+            cuts[key] = TCut('{n}'.format(n=i), str(new_cut))
+        return cuts
+    # endregion GENERATE CUT STRINGS
+    # ----------------------------------------
+
+    # ----------------------------------------
     # region BEAM INTERRUPTS
     def find_beam_interruptions(self):
         dut_type = self.Analysis.Run.Config.get('BASIC', 'type')
@@ -363,45 +426,10 @@ class Cut:
         self.Interruptions = interruptions[1]
         return interruptions[1]
     # endregion
+    # ----------------------------------------
 
-    def get_easy_cutstring(self):
-        """
-        Returns a short, more user-friendly cut string, which can be used to display the cut configuration as terminal prompt or inside a canvas.
-        :return:
-        """
-        string_ = ""
-        for type_ in self.EasyCutStrings.keys():
-            if self.EasyCutStrings[type_] != "":
-                string_ += self.EasyCutStrings[type_] + ", "
-        if string_ != "":
-            string_ = string_[:-2]
-        return string_
-
-    def reset_cut(self, name):
-        if name in self.CutStrings:
-            self.CutStrings[name].SetTitle('')
-        else:
-            print 'There is no cut with the name "{name}"!'.format(name=name)
-        self.update_all_cut()
-
-    def update_cut(self, name, value=None):
-        if name in self.CutStrings:
-            self.CutStrings[name].SetTitle('')
-            self.CutStrings[name] += value
-            self.update_all_cut()
-        else:
-            print 'There is no cut with the name "{name}"!'.format(name=name)
-
-    def set_chi2(self, value):
-        self.CutConfig['chi2X'] = value
-        self.CutConfig['chi2Y'] = value
-        self.update_cut('chi2X', self.generate_chi2('x'))
-        self.update_cut('chi2Y', self.generate_chi2('y'))
-
-    def update_all_cut(self):
-        self.AllCut = self.generate_all_cut()
-        self.Analysis.AllCuts = self.AllCut
-
+    # ----------------------------------------
+    # region SHOW & ANALYSE
     def show_cuts(self, easy=True):
         cuts = self.EasyCutStrings if easy else self.CutStrings
         max_len = max(len(key) for key, value in cuts.iteritems() if str(value))
@@ -409,21 +437,6 @@ class Cut:
             if not key == 'AllCuts' and str(value):
                 print '{key}:'.format(key=key.rjust(max_len)), value
         return
-
-    @staticmethod
-    def get_track_var(num, mode, mm=False):
-        return 'dia_track_{m}_local[{n}]{s}'.format(m=mode, n=num, s='*10' if mm else '')
-
-    def get_track_vars(self, num, mm=False):
-        return (self.get_track_var(num, v, mm) for v in ['y', 'x'])
-
-    def generate_consecutive_cuts(self):
-        cuts = OrderedDict([('raw', TCut('0', ''))])
-        for i, (key, value) in enumerate([(key, value) for key, value in self.CutStrings.iteritems() if str(value) and key != 'AllCuts' and not key.startswith('old')], 1):
-            new_cut = cuts.values()[i - 1] + value
-            key = 'beam_stops' if 'beam' in key else key
-            cuts[key] = TCut('{n}'.format(n=i), str(new_cut))
-        return cuts
 
     def draw_contributions(self, flat=False, short=False, show=True):
         set_root_output(show)
@@ -461,3 +474,6 @@ class Cut:
                 cut.SetPoint(i, scale * cut.GetX()[i], scale * cut.GetY()[i])
             cut.Draw()
             self.Analysis.Objects.append(cut)
+    # endregion SHOW & ANALYSE
+    # ----------------------------------------
+
