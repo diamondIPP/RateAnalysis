@@ -276,6 +276,9 @@ class CutPad(Cut):
         # --PEAK POSITION TIMING--
         self.CutStrings['timing'] += self.generate_timing()
 
+        # --SIGNAL DROPS--
+        self.update_cut('event_range', self.generate_event_range(None, self.find_zero_ph_event()))  # update event range if drop is found
+
         # --BUCKET --
         self.CutStrings['old_bucket'] += self.generate_old_bucket()
         self.CutStrings['bucket'] += self.generate_bucket()
@@ -295,7 +298,7 @@ class CutPad(Cut):
             h = TH1F('h', 'Bucket Cut', 200, -50, 150)
             draw_string = '{name}>>h'.format(name=self.Analysis.SignalName)
             fid = self.CutStrings['fiducial']
-            cut_string = '!({buc})&&{pul}{fid}'.format(buc=self.CutStrings['old_bucket'], pul=self.CutStrings['pulser'], fid='&&{}'.format(fid.GetTitle()) if fid.GetTitle() else '')
+            cut_string = '!({})&&{}&&{}{fid}'.format(fid='&&{}'.format(fid.GetTitle()) if fid.GetTitle() else '', *[self.CutStrings[s] for s in ['old_bucket', 'pulser', 'event_range']])
             self.Analysis.Tree.Draw(draw_string, cut_string, 'goff')
             format_histo(h, x_tit='Pulse Height [mV]', y_tit='Entries', y_off=1.8, stats=0, fill_color=self.Analysis.FillColor)
             if h.GetEntries() / self.Analysis.Run.NEntries < .01:
