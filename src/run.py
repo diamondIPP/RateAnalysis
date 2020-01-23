@@ -376,12 +376,12 @@ class Run:
         """ For negative event numbers it will return the time stamp at the startevent. """
         return self.Time[min(event, self.EndEvent)] / 1000.
 
-    def get_event_at_time(self, seconds):
+    def get_event_at_time(self, seconds, rel=False):
         """ Returns the event nunmber at time dt from beginning of the run. Accuracy: +- 1 Event """
         # return time of last event if input is too large
-        if seconds >= self.TotalTime or seconds == -1:
+        if seconds - (self.StartTime if rel else 0) >= self.TotalTime or seconds == -1:
             return self.NEntries
-        return where(self.Time <= (self.StartTime + seconds) * 1000)[0][-1]
+        return where(self.Time <= (seconds + (0 if rel else self.StartTime)) * 1000)[0][-1]
 
     def get_root_vec(self, n, ind=0, dtype=None):
         return get_root_vec(self.Tree, n, ind, dtype)

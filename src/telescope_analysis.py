@@ -62,7 +62,7 @@ class TelecopeAnalysis(Analysis):
         h.GetQuantiles(1, yq, array([.99]))
         y_tit = '{} of Entries'.format('Number' if normalise is None else 'Percentage')
         format_histo(h, x_tit='#chi^{2}', y_tit=y_tit, y_off=2, x_range=[0, yq[0]] if x_range is None else x_range, normalise=normalise)
-        self.format_statbox(fit=fit, entries=True, n_entries=5, w=.3)
+        self.format_statbox(fit=fit, entries=True, w=.3)
         self.draw_histo(h, show=show, prnt=prnt, lm=.13, both_dias=True)
         f = TF1('f', '[0]*TMath::GammaDist(x, {ndf}/2, 0, 2)'.format(ndf=4 if mode == 'tracks' else 2))
         h.Fit(f, 'qs{}'.format('' if fit else 0))
@@ -93,7 +93,7 @@ class TelecopeAnalysis(Analysis):
         self.Tree.Draw('{v}_{mod}>>had'.format(v='angle', mod=mode), cut, 'goff')
         y_tit = '{} of Entries'.format('Number' if normalise is None else 'Percentage')
         format_histo(h, name='had{}'.format(mode), x_tit='Track Angle {} [deg]'.format(mode.title()), y_tit=y_tit, y_off=2, lw=2, normalise=normalise)
-        self.format_statbox(all_stat=True, n_entries=5, w=.3)
+        self.format_statbox(all_stat=True, w=.3)
         self.draw_histo(h, '', show, lm=.14, prnt=prnt, both_dias=True)
         if show_cut:
             self.draw_angle_cut(mode)
@@ -414,8 +414,8 @@ class TelecopeAnalysis(Analysis):
         format_histo(gr, x_tit='Entry Number', y_tit='Time [s]', y_off=1.5)
         self.draw_histo(gr, show=show, draw_opt='al', lm=.13, rm=.08)
 
-    def get_event_at_time(self, time_sec):
-        return self.Run.get_event_at_time(time_sec)
+    def get_event_at_time(self, time_sec, rel=False):
+        return self.Run.get_event_at_time(time_sec, rel)
     # endregion TIME
     # ----------------------------------------
 
