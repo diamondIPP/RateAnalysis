@@ -292,11 +292,11 @@ class AnalysisCollection(Analysis):
     def get_tax_off(self, vs_time, rel_time=False):
         return None if not vs_time else self.StartTime if rel_time else 0
 
-    def get_xrange(self, vs_time):
-        return None if vs_time else self.Bins.FluxRange
+    def get_xrange(self, vs_time, x_range=None):
+        return x_range if vs_time else self.Bins.FluxRange
 
-    def get_x_args(self, vs_time, rel_time=False):
-        return {'x_tit': self.get_x_tit(vs_time), 't_ax_off': self.get_tax_off(vs_time, rel_time), 'x_range': self.get_xrange(vs_time)}
+    def get_x_args(self, vs_time, rel_time=False, x_range=None):
+        return {'x_tit': self.get_x_tit(vs_time), 't_ax_off': self.get_tax_off(vs_time, rel_time), 'x_range': self.get_xrange(vs_time, x_range)}
 
     # endregion GET
     # ----------------------------------------
@@ -339,17 +339,18 @@ class AnalysisCollection(Analysis):
         values = self.get_pulse_heights(bin_width, redo, corr=corr)
         x = self.get_x_var(vs_time)
         g = self.make_tgrapherrors('g', 'stat. error', self.get_color(), marker_size=marker_size, x=x, y=values)
-        rel_sys_error = self.get_repr_error(105, show=False) if err else 0
-        values = [make_ufloat((v.n, v.s + rel_sys_error * abs(v.n))) for v in values]
+        e_sys = self.get_repr_error(redo) if err else 0
+        e_sys = self.get_repr_error_old(105, show=False) if e_sys is None else e_sys
+        values = [make_ufloat((v.n, v.s + e_sys)) for v in values]
         g_errors = self.make_tgrapherrors('gerr', 'full error', marker=0, color=602, marker_size=0, x=x, y=values)
-        g_first, g_last = [self.make_tgrapherrors('g1', 'first run', marker=22, color=2, marker_size=marker_size, x=[x[i].n], y=[values[i].n]) for i in [0, -1]]
+        g1, g_last = [self.make_tgrapherrors('g{}'.format(i), '{} run'.format('last' if i else 'first'), marker=22 - i, color=2, marker_size=1.5, x=[x[i].n], y=[values[i].n]) for i in [0, -1]]
         graphs = [g, g_errors]
-        graphs += [g_first, g_last] if first_last else []
-        leg = self.make_legend(.75, .37, nentries=len(graphs))
+        graphs += [g1, g_last] if first_last else []
+        leg = self.make_legend(x2=.37, y2=.33, nentries=len(graphs), w=.2)
         mg = TMultiGraph('mg_ph', 'Pulse Height vs {mod} - {dia}'.format(mod='Time' if vs_time else 'Flux', dia=self.DUTName))
         for gr in graphs:
-            leg.AddEntry(gr, gr.GetTitle(), 'l' if gr.GetName() == 'gerr' else 'p')
-            mg.Add(gr, 'pl')
+            leg.AddEntry(gr, gr.GetTitle(), 'l' if gr.GetName() in ['gerr', 'g'] else 'p')
+            mg.Add(gr, 'p')
         if legend:
             mg.GetListOfFunctions().Add(leg)
         self.reset_colors()
@@ -379,15 +380,16 @@ class AnalysisCollection(Analysis):
         # small range
         ymin, ymax = [getattr(mg.GetListOfGraphs()[0].GetYaxis(), 'GetX{}'.format(w))() for w in ['min', 'max']]
         y_range = increased_range([ymin, ymax], .5, .15) if y_range is None else y_range
-        format_histo(mg, color=None, y_tit='Signal Pulse Height [mV]', y_off=1.75, x_off=1.3, draw_first=True, y_range=y_range, **self.get_x_args(vs_time))
+        format_histo(mg, color=None, y_tit='Signal Pulse Height [mV]', y_off=1.75, x_off=1.3, draw_first=True, y_range=y_range, **self.get_x_args(vs_time, self.Bins.FluxRange))
         self.save_histo(mg, 'PulseHeight{mod}'.format(mod=self.get_mode(vs_time)), show=False, lm=.14, draw_opt='A', logx=not vs_time, grid=vs_time)
 
         # no zero suppression
         mg1 = mg.Clone()
+        leg = deepcopy(mg1.GetListOfFunctions()[0])
         mg1.GetListOfFunctions().Clear()
-        format_histo(mg1, 'mg1_ph', draw_first=True, y_range=[0, ymax * 1.1])
+        format_histo(mg1, 'mg1_ph', draw_first=True, y_range=[0, ymax * 1.1], x_range=self.Bins.FluxRange)
         mg1.GetListOfGraphs()[0].SetLineColor(self.Colors[0])
-        self.save_histo(mg1, 'PulseHeightZero{mod}'.format(mod=self.get_mode(vs_time)), not save_comb, lm=.14, draw_opt='Al', logx=not vs_time)
+        self.save_histo(mg1, 'PulseHeightZero{mod}'.format(mod=self.get_mode(vs_time)), not save_comb, lm=.14, draw_opt='a', logx=not vs_time, leg=[self.draw_signal_legend(), leg])
         self.reset_colors()
 
         if save_comb:
