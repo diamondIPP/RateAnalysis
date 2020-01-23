@@ -1,11 +1,10 @@
 from json import loads
 
-from ROOT import TCut, gROOT, TH1F, TPie
-from numpy import zeros, histogram2d, split, histogram
+from ROOT import TCut, gROOT, TH1F, TPie, TProfile
+from numpy import histogram2d, split, histogram
 
 from InfoLegend import InfoLegend
-from utils import *
-from draw import format_pie
+from draw import *
 from binning import Bins
 
 
@@ -256,13 +255,9 @@ class Cut:
                 self.NCuts += 1
         return cut
 
-    def generate_event_range(self):
-        cut_string = ''
-        if self.CutConfig['EventRange']:
-            cut_string = '(event_number<={max}&&event_number>={min})'.format(min=self.CutConfig['EventRange'][0], max=self.CutConfig['EventRange'][1])
-        elif self.CutConfig['ExcludeFirst']:
-            cut_string = 'event_number>={min}'.format(min=self.CutConfig['ExcludeFirst'])
-        return cut_string
+    def generate_event_range(self, min_event=None, max_event=None):
+        event_range = [cfg if arg is None else arg for cfg, arg in zip(self.CutConfig['EventRange'], [min_event, max_event])]
+        return 'event_number>={} && event_number<={}'.format(*event_range)
 
     def generate_chi2(self, mode='x', value=None):
         cut_value = self.calc_chi2(mode) if value is None else value
