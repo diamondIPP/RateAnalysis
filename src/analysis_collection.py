@@ -9,7 +9,7 @@ from VoltageScan import VoltageScan
 from analysis import *
 from dut_analysis import DUTAnalysis
 from telescope_analysis import TelecopeAnalysis
-from numpy import histogram, cumsum, sort
+from numpy import histogram, cumsum, sort, split
 
 
 class AnalysisCollection(Analysis):
@@ -241,7 +241,7 @@ class AnalysisCollection(Analysis):
         return do_pickle(pickle_path, f, redo=redo)
 
     def get_pulse_heights(self, bin_width=None, redo=False, runs=None, corr=None):
-        return self.get_run_values('pulse heights', self.Analysis.get_pulse_height, runs, bin_size=bin_width, redo=redo, corr=corr)
+        return array(self.get_run_values('pulse heights', self.Analysis.get_pulse_height, runs, bin_size=bin_width, redo=redo, corr=corr))
 
     def get_runs_by_collimator(self, fs11=65, fsh13=.5):
         return [key for key, ana in self.Analyses.iteritems() if ana.Run.RunInfo['fs11'] == fs11 and ana.Run.RunInfo['fs13'] == fsh13]
@@ -252,7 +252,11 @@ class AnalysisCollection(Analysis):
     def get_runs_above_flux(self, flux):
         return [key for key, ana in self.Analyses.iteritems() if ana.Run.Flux >= flux]
 
-    def get_repr_error(self, flux, show=True, redo=False):
+    def get_repr_error(self, redo=False):
+        values = self.draw_signal_spread(redo, show=False)
+        return None if values is None else mean_sigma(values)[1]
+
+    def get_repr_error_old(self, flux, show=True, redo=False):
 
         pickle_path = self.make_pickle_path('Errors', 'Repr', self.RunPlan, self.DUTNumber, suf=flux)
 
@@ -268,8 +272,7 @@ class AnalysisCollection(Analysis):
             self.save_histo(gr, 'ReprErrors', show, draw_opt='ap', lm=.14, prnt=show)
             if len(values) == 1:
                 return .01  # take 1% if there is only one measurement below the given flux
-            m, s = mean_sigma(values)
-            return s / m
+            return mean_sigma(values)[1]
 
         return do_pickle(pickle_path, f, redo=redo)
 
@@ -474,6 +477,19 @@ class AnalysisCollection(Analysis):
         format_histo(ls, y_range=[0, get_hist_vec(ls).max().n * 1.1])
         self.save_plots('PulseHeightDistributions')
         return ls.GetMean(), ls.GetStdDev()
+
+    def draw_signal_spread(self, redo=False, show=True):
+        values = self.get_pulse_heights(redo=redo)[self.get_fluxes().argsort()]  # sort pedestal by ascending fluxes
+        rel_values = array([value - mean(lst) for lst in split(values, self.get_flux_splits(show=False)) for value in lst if lst.size > 1])
+        if rel_values.size < 2:
+            warning('Not enough data for signal spread ...')
+            return
+        h = TH1F('hps', 'Relative Signal Spread', 20, -1, 1)
+        h.FillN(rel_values.size, array([v.n for v in rel_values], 'd'), full(rel_values.size, 1, 'd'))
+        self.format_statbox(all_stat=True)
+        format_histo(h, x_tit='Relative Signal', y_tit='Number of Entries', y_off=1.2)
+        self.save_histo(h, 'SignalSpread', lm=.11, show=show)
+        return rel_values
     # endregion PULSE HEIGHT
     # ----------------------------------------
 
