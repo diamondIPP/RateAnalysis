@@ -309,6 +309,23 @@ class Cut:
         d_string = '{t}*TMath::Sqrt(TMath::Power(TMath::Sin(TMath::DegToRad()*slope_x), 2) + TMath::Power(TMath::Sin(TMath::DegToRad()*slope_y), 2) + 1)'.format(t=thickness)
         return TCut('distance', '{d}>{min}&&{d}<={max}'.format(d=d_string, min=dmin, max=dmax))
 
+    def find_zero_ph_event(self, redo=False):
+        pickle_path = self.Analysis.make_pickle_path('Cuts', 'EventMax', self.Analysis.RunNumber, self.Analysis.DUTNumber)
+
+        def f():
+            t = self.Analysis.info('Looking for signal drops of run {} ...'.format(self.Analysis.RunNumber), next_line=False)
+            signal = self.Analysis.generate_signal_name()
+            p = TProfile('pphc', 'Pulse Height Evolution', *self.Analysis.Bins.get_raw_time(30))
+            self.Analysis.Tree.Draw('{}:{}>>pphc'.format(signal, self.Analysis.get_t_var()), self.generate_all_cut(), 'goff')
+            values = array([p.GetBinContent(i) for i in xrange(1, p.GetNbinsX() + 1)])
+            i_start = next(i for i, v in enumerate(values) if v) + 1  # find the index of the first bin that is not zero
+            ph = mean(values[i_start:(values.size + 9 * i_start) / 10])  # take the mean of the first 10% of the bins
+            i_break = next((i for i, v in enumerate(values[i_start:]) if v < .2 * ph), None) + i_start
+            self.Analysis.add_to_info(t)
+            return None if ph < 10 or i_break is None else self.Analysis.get_event_at_time(p.GetBinCenter(i_break - 2), rel=True)
+
+        return do_pickle(pickle_path, f, redo=redo)
+
     def generate_cut_string(self):
         """ Creates the cut string. """
         gROOT.SetBatch(1)
@@ -329,8 +346,6 @@ class Cut:
         # -- BEAM INTERRUPTION CUT --
         self.CutStrings['beam_interruptions'] += self.generate_beam_interruptions()
         self.JumpCut += self.generate_jump_cut()
-
-        gROOT.SetBatch(0)
 
     def generate_beam_interruptions(self):
         """ This adds the restrictions to the cut string such that beam interruptions are excluded each time the cut is applied. """
@@ -471,4 +486,3 @@ class Cut:
             self.Analysis.Objects.append(cut)
     # endregion SHOW & ANALYSE
     # ----------------------------------------
-
