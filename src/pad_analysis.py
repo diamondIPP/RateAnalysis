@@ -207,7 +207,7 @@ class PadAnalysis(DUTAnalysis):
         y, x = self.Cut.get_track_vars(self.DUTNumber - 1, mm=True)
         thresh = self.Pedestal.get_mean() * 4
         self.Tree.Draw('({s}>{t})*100:{y}:{x}>>p_em'.format(s=self.generate_signal_name(), x=x, y=y, t=thresh), cut_string, 'goff')
-        self.format_statbox(n_entries=4, entries=True, x=.81)
+        self.format_statbox(entries=True, x=.81)
         set_2d_ranges(p, dx=3, dy=3)
         format_histo(p, x_tit='Track x [cm]', y_tit='Track y [cm]', z_tit='Efficiency [%]', y_off=1.4, z_off=1.5, ncont=100, z_range=[0, 100])
         self.draw_histo(p, show=show, lm=.13, rm=.17, draw_opt='colz', x=1.15 if self.Title else 1)
@@ -285,7 +285,7 @@ class PadAnalysis(DUTAnalysis):
             return prof
 
         p = do_pickle(picklepath, func, redo=redo)
-        self.format_statbox(n_entries=4, only_fit=True, w=.3)
+        self.format_statbox(only_fit=True, w=.3)
         y = get_hist_vec(p)
         format_histo(p, name='Fit Result', x_tit='Time [hh:mm]', y_tit='Mean Pulse Height [mV]', y_off=1.6, x_range=[self.Run.StartTime, self.Bins.get_time()[1][-1]],
                      t_ax_off=self.Run.StartTime if rel_t else 0, y_range=increased_range([y.min().n, y.max().n], .5, .5) if y_range is None else y_range, ndivx=505)
@@ -372,7 +372,7 @@ class PadAnalysis(DUTAnalysis):
             h1.Rebin(max(1, int(h1.GetMean() / 30)))
             return h1
 
-        self.format_statbox(all_stat=1, n_entries=5, w=.3)
+        self.format_statbox(all_stat=1, w=.3)
         h = do_pickle(pickle_path, func, redo=redo)
         x_range = increased_range([h.GetBinCenter(i) for i in [h.FindFirstBinAbove(0), h.FindLastBinAbove(3)]], .1) if x_range is None else x_range
         format_histo(h, x_tit='Pulse Height [mV]', y_tit='Number of Entries', y_off=2, fill_color=self.FillColor, x_range=x_range, normalise=normalise)

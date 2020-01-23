@@ -64,7 +64,7 @@ class PedestalAnalysis(Analysis):
             return h1
 
         if show:
-            self.format_statbox(all_stat=True, n_entries=6, w=.3)
+            self.format_statbox(all_stat=True, w=.3)
         h = do_pickle(picklepath, func, redo=redo)
         format_histo(h, 'Pedestal', x_tit='Pedestal [mV]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor, normalise=normalise)
         set_drawing_range(h, rfac=.2)
@@ -79,7 +79,7 @@ class PedestalAnalysis(Analysis):
         suffix = '{r}_fwhm_{c}'.format(c=cut.GetName(), r=self.get_all_signal_names()[self.SignalName if name is None else name])
         picklepath = self.make_pickle_path('Pedestal', run=self.RunNumber, ch=self.DUTNumber, suf=suffix)
         show = False if not save else show
-        self.format_statbox(fit=True, n_entries=6, w=.35)
+        self.format_statbox(fit=True, w=.35)
         h = self.draw_disto(name, cut, logy, show=False, save=save, redo=redo, prnt=prnt, normalise=normalise)
         set_drawing_range(h, thresh=h.GetMaximum() * .02)
 

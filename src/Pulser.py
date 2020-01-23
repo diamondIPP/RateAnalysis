@@ -80,7 +80,7 @@ class PulserAnalysis(Analysis):
     def calc_fraction(self, show=False, prnt=True):
         """ :returns the fitted value of the fraction of pulser events with event range and beam interruptions cuts and its fit error. """
         cut = self.Cut.generate_special_cut(included=['beam_interruptions'], prnt=prnt)
-        self.format_statbox(only_fit=True, n_entries=2, x=.9, w=.2)
+        self.format_statbox(only_fit=True, x=.9, w=.2)
         h = self.draw_rate(show=show, cut=cut, prnt=prnt)
         format_histo(h, 'Fit Result', markersize=None)
         fit = h.Fit('pol0', 'qs')
@@ -114,7 +114,7 @@ class PulserAnalysis(Analysis):
             return gr
 
         g = do_pickle(pickle_path, f, redo=redo)
-        self.format_statbox(n_entries=2, only_fit=True, form='1.2f')
+        self.format_statbox(only_fit=True, form='1.2f')
         fit_res = g.Fit('pol0', 'qs')
         values = [g.GetY()[i] for i in xrange(g.GetN()) if g.GetY()[i]]
         y_range = increased_range([min(values), max(values)], .7, .7) if y_range is None else y_range

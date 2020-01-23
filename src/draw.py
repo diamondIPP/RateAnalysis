@@ -504,7 +504,7 @@ class Draw:
     # endregion CREATE
     # ----------------------------------------
 
-    def format_statbox(self, x=.95, y=None, w=.2, n_entries=3, only_fit=False, fit=False, entries=False, form=None, m=False, rms=False, all_stat=False):
+    def format_statbox(self, x=.95, y=None, w=.2, h=.15, only_fit=False, fit=False, entries=False, form=None, m=False, rms=False, all_stat=False):
         gStyle.SetOptFit(int(only_fit or fit))
         opt_stat = '100000{}{}{}0'.format(*[1 if val else 0 for val in [rms, m, entries]] if not all_stat else [1, 1, 1])
         if only_fit:
@@ -517,7 +517,7 @@ class Draw:
         gStyle.SetStatX(x)
         gStyle.SetStatY(y)
         gStyle.SetStatW(w)
-        gStyle.SetStatH(.04 * n_entries)
+        gStyle.SetStatH(h)
     # END OF CLASS
 
 

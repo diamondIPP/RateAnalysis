@@ -10,7 +10,7 @@ from collections import Counter
 from json import load
 
 from ROOT import TFormula, THStack, TProfile2D, TPie, gRandom, TH3F, TMultiGraph
-from numpy import corrcoef, ceil, split, genfromtxt
+from numpy import corrcoef, ceil
 from numpy.random import rand
 
 from CutPix import CutPix
@@ -83,7 +83,7 @@ class PixAnalysis(DUTAnalysis):
     def get_ph_str(self):
         return 'cluster_charge[{}]'.format(self.Dut)
 
-    def get_pulse_height(self, bin_size=None, cut=None, redo=False):
+    def get_pulse_height(self, bin_size=None, cut=None, redo=False, corr=None):
         suffix = '{bins}_{c}'.format(bins=self.Bins.BinSize if bin_size is None else bin_size, c=self.Cut(cut).GetName())
         picklepath = self.make_pickle_path('Ph_fit', 'Fit', self.RunNumber, self.DUTNumber, suf=suffix)
 
@@ -184,7 +184,7 @@ class PixAnalysis(DUTAnalysis):
 
         h = do_pickle(pickle_path, f, redo=redo)
         x_range = [h.GetXaxis().GetXmin(), h.GetBinCenter(h.FindLastBinAbove(2)) * 1.2]
-        self.format_statbox(all_stat=True, x=.92, w=.25, n_entries=4)
+        self.format_statbox(all_stat=True, x=.92, w=.25)
         format_histo(h, x_tit='Pulse Height [{u}]'.format(u='vcal' if vcal else 'e'), y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor, x_range=x_range)
         self.draw_histo(h, show=show, lm=.13, rm=.06)
         if draw_thresh:
@@ -644,7 +644,7 @@ class PixAnalysis(DUTAnalysis):
             h = TH1F('ho', 'Vcal Calibration Slopes', 30, 35, 65)
             for value in d['slope']:
                 h.Fill(value)
-            self.format_statbox(fit=True, all_stat=True, n_entries=6, w=.3)
+            self.format_statbox(fit=True, all_stat=True, w=.3)
             format_histo(h, x_tit='Slope [e]', y_tit='Number of Entries', y_off=1.2, fill_color=self.FillColor)
             self.draw_histo(h, show=show)
             h.Fit('gaus', 'q')
@@ -655,7 +655,7 @@ class PixAnalysis(DUTAnalysis):
             h = TH1F('ho', 'Vcal Calibration Offsets', 15, -200, 400)
             for value in d['offset']:
                 h.Fill(value)
-            self.format_statbox(fit=True, all_stat=True, n_entries=6, w=.3)
+            self.format_statbox(fit=True, all_stat=True, w=.3)
             format_histo(h, x_tit='Offset [e]', y_tit='Number of Entries', y_off=1.2, fill_color=self.FillColor)
             self.format_statbox(fit=True, all_stat=True)
             self.draw_histo(h, show=show)

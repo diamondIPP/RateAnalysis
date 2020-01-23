@@ -5,7 +5,6 @@ from Extrema import Extrema2D
 from PulserCollection import PulserCollection
 from analysis_collection import *
 from pad_analysis import PadAnalysis
-from numpy import split
 
 
 class PadCollection(AnalysisCollection):
@@ -116,9 +115,9 @@ class PadCollection(AnalysisCollection):
 
         # Drawing
         lab_size = .12
-        for l in ph.GetListOfGraphs()[0].GetListOfFunctions():
-            l.SetTextSize(.09)
-            l.SetY(l.GetY() - .01)
+        for f in ph.GetListOfGraphs()[0].GetListOfFunctions():
+            f.SetTextSize(.09)
+            f.SetY(f.GetY() - .01)
         format_histo(ph, draw_first=True, lab_size=lab_size, tit_size=lab_size, y_off=.33)
         format_histo(cur, x_tit='Time [hh:mm]', lab_size=lab_size * 27 / 36., tit_size=lab_size * 27 / 36., y_off=.33 * 36 / 27.)
         format_histo(pul, color=859, draw_first=True, lab_size=lab_size, tit_size=lab_size, y_off=.33)
@@ -209,13 +208,14 @@ class PadCollection(AnalysisCollection):
 
     def draw_signal_legend(self):
         sig = 'positive' if self.FirstAnalysis.Polarity > 0 else 'negative'
-        l1 = self.make_legend(.17, .88, nentries=2, margin=.05, clean=True, x2=.5, cols=2)
+        l1 = self.make_legend(.17, .88 if self.Title else .95, nentries=2, margin=.05, clean=True, x2=.52, cols=2)
         l1.AddEntry(0, 'Signal Polarity:', '')
         l1.AddEntry(0, sig, '').SetTextAlign(12)
         l1.AddEntry(0, 'Pedestal Substraction:', '')
         l1.AddEntry(0, 'yes', '').SetTextAlign(12)
         l1.Draw()
         self.Objects.append(l1)
+        return l1
 
     def compare_pedestals(self, show=True):
         gr1 = self.draw_pedestals(show=False)

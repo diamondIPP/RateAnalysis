@@ -109,7 +109,7 @@ class TimingAnalysis(Analysis):
         h = do_pickle(pickle_path, f, redo=redo)
         if h is None:
             return
-        self.format_statbox(fit=fit, n_entries=5, w=.2, all_stat=not fit)
+        self.format_statbox(fit=fit, w=.2, all_stat=not fit)
         format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=2.0, fill_color=self.FillColor, normalise=normalise)
         if fit:
             self.fit_peaks(h)
@@ -250,7 +250,7 @@ class TimingAnalysis(Analysis):
     def draw_intlength_vs_triggercell(self, show=True, bin_width=4):
         h = TProfile('hltc', 'Integral Length vs. Triggercell', 1024 / bin_width, 0, 1024)
         self.Ana.Tree.Draw('IntegralLength[{num}]:trigger_cell>>hltc'.format(num=self.Ana.SignalNumber), self.Cut.AllCut, 'goff')
-        self.format_statbox(only_fit=True, n_entries=5, w=.25)
+        self.format_statbox(only_fit=True, w=.25)
         format_histo(h, x_tit='Triggercell', y_tit='Integral Length [ns]', y_off=1.6, z_tit='Number of Entries')
         self.draw_histo(h, 'IntLengthVsTriggerCell', show, lm=.12)
         fit = TF1('f', '[0] * sin([1] * (x - [2])) + [3]')
