@@ -171,14 +171,16 @@ class AnalysisCollection(Analysis):
 
     def get_flux_splits(self, show=True):
         values = sort([flux.n for flux in self.get_fluxes()])
-        h = TH1F('hmf', 'Fluxes', *log_bins(40, 1, 1e5))
+        h = TH1F('hmf', 'Fluxes', *log_bins(50, 1, 1e5))
         h.FillN(values.size, values, full(values.size, 1, 'd'))
-        format_histo(h, x_tit='Flux [kHz/cm^{2}]', y_tit='Number of Entries', y_off=1.2)
-        self.draw_histo(h, lm=.11, logx=True, show=show)
+        self.format_statbox(entries=True, h=.2)
+        format_histo(h, x_tit='Flux [kHz/cm^{2}]', y_tit='Number of Entries', y_off=.5, x_off=1.2, lab_size=.05, tit_size=.05)
+        self.draw_histo(h, lm=.07, logx=True, show=show, y=.75, x=1.5, bm=.14)
         s = TSpectrum(20)
         s.Search(h, 1)
         bins = sorted(s.GetPositionX()[i] for i in xrange(s.GetNPeaks()))
-        return cumsum(histogram(values, array([0] + [pow(10, (log10(bins[i]) + log10(bins[i + 1])) / 2.) for i in xrange(len(bins) - 1)]))[0])
+        split_bins = histogram(values, concatenate(([0], [[ibin / 10**.1, ibin * 10**.1] for ibin in bins], [1e5]), axis=None))[0]
+        return cumsum(split_bins[where(split_bins > 0)])
 
     def get_times(self, runs=None):
         return self.get_run_values('times', DUTAnalysis.get_time, runs, pbar=False)
