@@ -20,7 +20,6 @@ class TelecopeAnalysis(Analysis):
         in order to save tel plots use argument both_dias=True in save_plots or save_tel_histo
         """
         Analysis.__init__(self, test_campaign, verbose)
-        self.print_start(run, prnt)
 
         # Run
         self.Run = run_selector(run, self.TCString, tree, t_vec, verbose)

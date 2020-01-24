@@ -20,6 +20,8 @@ class DUTAnalysis(TelecopeAnalysis):
         self.DUTName = self.Run.DUTNames[diamond_nr - 1]
         self.Bias = self.Run.Bias[diamond_nr - 1]
 
+        self.print_start(run_number, prnt, dut=self.DUTName)
+
         self.update_config()
         self.set_save_directory(join(self.DUTName, str(self.RunNumber).zfill(3)))
 

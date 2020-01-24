@@ -18,7 +18,6 @@ class AnalysisCollection(Analysis):
     def __init__(self, run_plan, dut_nr, test_campaign=None, load_tree=True, verbose=False):
 
         Analysis.__init__(self, test_campaign, verbose)
-        self.print_start(run_plan, prnt=load_tree)
 
         # Run Selection Info
         self.RunSelection = RunSelection(self.TCString, run_plan, dut_nr, verbose)
@@ -26,6 +25,7 @@ class AnalysisCollection(Analysis):
         self.NRuns = len(self.Runs)
         self.RunPlan = self.RunSelection.SelectedRunplan
         self.DUTName = self.RunSelection.SelectedDUT
+        self.print_start(run_plan, prnt=load_tree, dut=self.DUTName)
         self.DUTNumber = self.RunSelection.SelectedDUTNr
         self.Bias = self.RunSelection.SelectedBias
         self.Type = self.RunSelection.SelectedType
