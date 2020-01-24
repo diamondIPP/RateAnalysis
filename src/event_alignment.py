@@ -85,6 +85,7 @@ class EventAligment:
         return dic
 
     def load_n_hits(self, n_entries=None, first_entry=0):
+        self.InTree.SetEstimate(self.NEntries)
         n = self.InTree.Draw('@plane.size()', '', 'goff', self.NEntries if n_entries is None else n_entries, first_entry)
         return get_root_vec(self.InTree, n, dtype='u1')
 
@@ -176,7 +177,6 @@ class EventAligment:
         self.PBar.start(self.NEntries)
         offset = 0
         while self.get_next_event():
-            print self.NEntries, self.AtEntry
             self.PBar.update(self.AtEntry)
             self.clear_vectors()
             if self.AtEntry in offsets:
