@@ -320,7 +320,7 @@ class Cut:
             values = array([p.GetBinContent(i) for i in xrange(1, p.GetNbinsX() + 1)])
             i_start = next(i for i, v in enumerate(values) if v) + 1  # find the index of the first bin that is not zero
             ph = mean(values[i_start:(values.size + 9 * i_start) / 10])  # take the mean of the first 10% of the bins
-            i_break = next((i for i, v in enumerate(values[i_start:]) if v < .2 * ph), None) + i_start
+            i_break = next((i + i_start for i, v in enumerate(values[i_start:]) if v < .2 * ph and v), None)
             self.Analysis.add_to_info(t)
             return None if ph < 10 or i_break is None else self.Analysis.get_event_at_time(p.GetBinCenter(i_break - 2), rel=True)
 
