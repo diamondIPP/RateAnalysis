@@ -207,7 +207,7 @@ class DiaScans(Analysis):
 
     def show_selection(self):
         """ Gives detailed information about the chosen selection """
-        print_table(rows=[sel() for sel in self.Info], header=['TC', 'RunPlan', 'DUT', 'Nr', 'Runs', 'Bias', 'Type']) if self.Info else warning('Selection is empty!')
+        print_table(rows=[sel() for sel in self.Info], header=['TC', 'RunPlan', 'DUT', 'Nr', 'Runs', 'Bias', 'Type', 'Irrad']) if self.Info else warning('Selection is empty!')
 
     def show_all_runplans(self):
         old_sel = deepcopy(self.Name)
@@ -564,7 +564,7 @@ class SelectionInfo:
         return self.__str__()
 
     def __call__(self):
-        return [self.TCString, self.RunPlan, self.DUT, self.DUTNr, '{:03d}-{:03d}'.format(self.Runs[0], self.Runs[-1]), '{:+4.0f}V'.format(self.Bias), self.Type]
+        return [self.TCString, self.RunPlan, self.DUT, self.DUTNr, '{:03d}-{:03d}'.format(self.Runs[0], self.Runs[-1]), '{:+4.0f}V'.format(self.Bias), self.Type, self.Irradiation]
 
 
 class PickleInfo:
