@@ -240,8 +240,17 @@ class AnalysisCollection(Analysis):
 
         return do_pickle(pickle_path, f, redo=redo)
 
-    def get_pulse_heights(self, bin_width=None, redo=False, runs=None, corr=None):
-        return array(self.get_run_values('pulse heights', self.Analysis.get_pulse_height, runs, bin_size=bin_width, redo=redo, corr=corr))
+    def get_pulse_heights(self, bin_width=None, redo=False, runs=None, corr=True, pbar=True):
+        return array(self.get_run_values('pulse heights', self.Analysis.get_pulse_height, runs, pbar, bin_size=bin_width, redo=redo, corr=corr))
+
+    def get_rate_dependence(self, redo=False):
+        values = self.get_pulse_heights(redo=redo, pbar=False)
+        return mean_sigma(values)[1] / mean(values), (max(values) - min(values)) / mean(values)
+
+    def print_rate_dependence(self):
+        s1, s2 = self.get_rate_dependence()
+        print('Rel STD:    {:2.1f}'.format(s1.n * 100))
+        print('Rel Spread: {:2.1f} \\pm {:0.1f}'.format(s2.n * 100, s2.s * 100))
 
     def get_runs_by_collimator(self, fs11=65, fsh13=.5):
         return [key for key, ana in self.Analyses.iteritems() if ana.Run.RunInfo['fs11'] == fs11 and ana.Run.RunInfo['fs13'] == fsh13]
@@ -387,7 +396,7 @@ class AnalysisCollection(Analysis):
         mg1 = mg.Clone()
         leg = deepcopy(mg1.GetListOfFunctions()[0])
         mg1.GetListOfFunctions().Clear()
-        format_histo(mg1, 'mg1_ph', draw_first=True, y_range=[0, ymax * 1.1], x_range=self.Bins.FluxRange)
+        format_histo(mg1, 'mg1_ph', draw_first=True, y_range=[0, ymax * 1.1])
         mg1.GetListOfGraphs()[0].SetLineColor(self.Colors[0])
         self.save_histo(mg1, 'PulseHeightZero{mod}'.format(mod=self.get_mode(vs_time)), not save_comb, lm=.14, draw_opt='a', logx=not vs_time, leg=[self.draw_signal_legend(), leg])
         self.reset_colors()
