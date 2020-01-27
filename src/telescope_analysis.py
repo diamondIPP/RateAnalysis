@@ -402,15 +402,15 @@ class TelecopeAnalysis(Analysis):
 
     # ----------------------------------------
     # region TIME
-    def draw_time(self, show=True):
-        entries = self.Tree.Draw(self.get_t_var(), '', 'goff')
-        t = [self.Tree.GetV1()[i] for i in xrange(entries)]
-        t = [(i - t[0]) / 1000 for i in t if i - t[0]]
-        gr = TGraph(len(t), array(xrange(len(t)), 'd'), array(t, 'd'))
-        gr.SetNameTitle('g_t', 'Time vs Events')
-        fit = gr.Fit('pol1', 'qs0')
+    def draw_time(self, show=True, corr=False):
+        n = self.Tree.Draw(self.get_t_var(), '', 'goff')
+        t = self.Run.get_root_vec(n) if not corr else self.Run.Time / 1000.
+        t -= t[0]
+        # gr = self.make_tgrapherrors('g_t', 'Time vs Events', x=arange(t.size, dtype='d'), y=t)
+        gr = TGraph(t.size, arange(t.size, dtype='d'), t)
+        fit = gr.Fit('pol1', 'qs')
         self.info('Average data taking rate: {r:5.1f} Hz'.format(r=1 / fit.Parameter(1)))
-        format_histo(gr, x_tit='Entry Number', y_tit='Time [s]', y_off=1.5)
+        format_histo(gr, 'g_t', 'Time vs Events', x_tit='Event Number', y_tit='Time [s]', y_off=1.5)
         self.draw_histo(gr, show=show, draw_opt='al', lm=.13, rm=.08)
 
     def get_event_at_time(self, time_sec, rel=False):
