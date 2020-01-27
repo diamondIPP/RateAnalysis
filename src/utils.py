@@ -211,20 +211,20 @@ def resize_markers(mg, default_size=0, marker_sizes=None):
         mg.SetMarkerSize(marker_sizes.get(mg.GetName(), default_size))
 
 
-def move_legend(l, x1, y1):
-    xdiff = l.GetX2NDC() - l.GetX1NDC()
-    ydiff = l.GetY2NDC() - l.GetY1NDC()
-    l.SetX1NDC(x1)
-    l.SetX2NDC(x1 + xdiff)
-    l.SetY1NDC(y1)
-    l.SetY2NDC(y1 + ydiff)
+def move_legend(leg, x1, y1):
+    xdiff = leg.GetX2NDC() - leg.GetX1NDC()
+    ydiff = leg.GetY2NDC() - leg.GetY1NDC()
+    leg.SetX1NDC(x1)
+    leg.SetX2NDC(x1 + xdiff)
+    leg.SetY1NDC(y1)
+    leg.SetY2NDC(y1 + ydiff)
 
 
-def scale_legend(l, txt_size=None, width=None, height=None):
+def scale_legend(leg, txt_size=None, width=None, height=None):
     sleep(.05)
-    l.SetY2NDC(height) if height is not None else do_nothing()
-    l.SetX2NDC(width) if width is not None else do_nothing()
-    l.SetTextSize(txt_size) if txt_size is not None else do_nothing()
+    leg.SetY2NDC(height) if height is not None else do_nothing()
+    leg.SetX2NDC(width) if width is not None else do_nothing()
+    leg.SetTextSize(txt_size) if txt_size is not None else do_nothing()
 
 
 def make_irr_string(val):
@@ -681,9 +681,7 @@ def get_time_vec(sel, run=None):
     entries = tree.Draw('time', '', 'goff')
     time_vec = get_root_vec(tree, entries)
     fill_empty_time_entries(time_vec)
-    if any(time_vec[:-1] > time_vec[1:]):
-        warning('Need to correct timing vector\n')
-        time_vec = correct_time(time_vec)
+    time_vec = correct_time(time_vec, run)
     return time_vec
 
 
@@ -698,13 +696,15 @@ def time_stamp(dt, off=None):
     return t if off is None else t - (off if off > 1 else dt.utcoffset().seconds)
 
 
-def correct_time(times):
-    times = times
-    for i in xrange(1, len(times)):
-        diff = times[i] - times[i - 1]
-        if diff < 0:
-            times = times[:i] + list(array(times[i:]) - diff + 500)  # one TU step should be 500 ms
-    return list(times)
+def correct_time(times, run):
+    i_off = where(times[:-1] > times[1:])[0]
+    i_off = i_off[0] if i_off else None
+    if i_off is not None:
+        warning('Need to correct timing vector for run {}\n'.format(run))
+        diff = times[i_off + 1] - times[i_off]
+        i_off += 1  # because range does not include the last index
+        return concatenate((times[:i_off], times[i_off:] - diff + 500))  # one TU step should be 500 ms
+    return times
 
 
 def say(txt):
