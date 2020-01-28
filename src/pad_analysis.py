@@ -401,8 +401,9 @@ class PadAnalysis(DUTAnalysis):
     # ----------------------------------------
     # region CUTS
     def show_bucket_histos(self):
-        h = TH1F('h', 'Bucket Cut Histograms', 250, -50, 300)
-        self.Tree.Draw('{name}>>h'.format(name=self.SignalName), '!({buc})&&{pul}'.format(buc=self.Cut.CutStrings['old_bucket'], pul=self.Cut.CutStrings['pulser']), 'goff')
+        h = TH1F('h', 'Bucket Cut Histograms', 350, -50, 300)
+        self.Tree.Draw('{name}>>h'.format(name=self.SignalName), self.Cut.get_bucket_cut(), 'goff')
+        self.draw_histo(h)
         h1 = deepcopy(h)
         fit = fit_bucket(h1, show=False)
         sig_fit = TF1('f1', 'gaus', -50, 300)
