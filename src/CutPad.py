@@ -32,8 +32,8 @@ class CutPad(Cut):
 
         self.ConsecutiveCuts = self.generate_consecutive_cuts()
 
-    # ==============================================
-    # region GET CONFIG
+    # ----------------------------------------
+    # region CONFIG
     def load_channel_config(self):
         self.CutConfig['absMedian_high'] = self.load_config_data('absolute median high')
         self.CutConfig['pedestalsigma'] = self.load_config_data('pedestal sigma')
@@ -59,10 +59,22 @@ class CutPad(Cut):
             return conf[dia]
         except (KeyError, NoOptionError):
             log_warning('No option {0} in the analysis config for {1}!'.format(name, make_tc_str(self.TCString)))
+    # endregion CONFIG
+    # ----------------------------------------
 
-    # endregion
+    # ----------------------------------------
+    # region GET
+    def get_raw_pedestal(self):
+        n = self.Analysis.Tree.Draw(self.Analysis.get_signal_name(sig_type='pedestal'), self.generate_all_cut(), 'goff')
+        return make_ufloat(mean_sigma(self.Analysis.Run.get_root_vec(n)))
 
-    # ==============================================
+    def get_raw_snr(self):
+        ped = self.get_raw_pedestal()
+        return self.get_raw_pulse_height() / ped.s, ped
+    # endregion GET
+    # ----------------------------------------
+
+    # ----------------------------------------
     # region SET CUTS
     def set_cut(self, name, value=None):
         if name not in self.CutStrings:
@@ -249,7 +261,7 @@ class CutPad(Cut):
         return cut
 
     def get_bucket_cut(self):
-        cut = self.CutStrings['fiducial'] + self.CutStrings['pulser'] + TCut('!({})'.format(self.CutStrings['old_bucket']))
+        cut = self.CutStrings['fiducial'] + self.CutStrings['pulser'] + TCut('!({})'.format(self.CutStrings['old_bucket'])) + self.CutStrings['event_range']
         cut.SetName('Bucket')
         return cut
 
@@ -304,6 +316,10 @@ class CutPad(Cut):
             if h.GetEntries() / self.Analysis.Run.NEntries < .01:
                 self.Analysis.add_to_info(t)
                 return -30
+            snr, ped = self.get_raw_snr()
+            if snr < 4:  # impossible to separate for the small signal to noise ratios...
+                warning('Signal to noise ration is too low... -> taking noise based value for bucket cut!')
+                return ped.n + 2 * ped.s
             # extract fit functions
             fit = fit_bucket(h)
             if fit is None:

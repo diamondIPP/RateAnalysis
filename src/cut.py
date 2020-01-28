@@ -326,6 +326,10 @@ class Cut:
 
         return do_pickle(pickle_path, f, redo=redo)
 
+    def get_raw_pulse_height(self):
+        n = self.Analysis.Tree.Draw(self.Analysis.generate_signal_name(), self.generate_all_cut(), 'goff')
+        return make_ufloat(mean_sigma(self.Analysis.Run.get_root_vec(n)))
+
     def generate_cut_string(self):
         """ Creates the cut string. """
         gROOT.SetBatch(1)
