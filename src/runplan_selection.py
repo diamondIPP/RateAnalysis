@@ -149,6 +149,15 @@ class DiaScans(Analysis):
     def get_pulse_heights(self, corr=True, redo=False):
         return self.get_values(AnalysisCollection.get_pulse_heights, PickleInfo('Ph_fit', 'PhVals', '10000_{}'.format(corr)), redo=redo, corr=corr)
 
+    def get_rate_dependcies(self, redo=False):
+        return self.get_values(AnalysisCollection.get_rate_dependence, PickleInfo('Ph_fit', 'RD'), redo=redo)
+
+    def print_rate_dependencies(self):
+        for i, (s1, s2) in zip(self.Info, self.get_rate_dependcies()):
+            print(i)
+            print('  Rel STD:    {:2.1f}'.format(s1.n * 100))
+            print('  Rel Spread: {:2.1f} \\pm {:0.1f}'.format(s2.n * 100, s2.s * 100))
+
     def get_rp_pulse_heights(self, sel, corr=True, redo=False):
         return self.get_rp_values(sel, AnalysisCollection.get_pulse_heights, PickleInfo('Ph_fit', 'PhVals', '10000_{}'.format(corr)), redo=redo, corr=corr)
 
@@ -156,7 +165,7 @@ class DiaScans(Analysis):
         return self.get_values(PadCollection.get_pedestals, PickleInfo('Pedestal', 'Values'), redo=redo)
 
     def get_rel_errors(self, flux=105, redo=False):
-        return self.get_values(AnalysisCollection.get_repr_error, PickleInfo('Errors', 'Repr', flux), redo=redo, show=False, flux=flux)
+        return self.get_values(AnalysisCollection.get_repr_error, PickleInfo('Errors', 'Repr', flux), redo=redo, flux=flux)
 
     def get_mean_uniformities(self, redo=False, low=False, high=False):
         return self.get_values(AnalysisCollection.get_mean_uniformity, PickleInfo('Uniformity', '', '{}{}'.format(int(low), int(high))), redo=redo, high_flux=high, low_flux=low)
@@ -444,7 +453,7 @@ class DiaScans(Analysis):
         for i, (ph, error, flux, color) in enumerate(zip(self.get_pulse_heights(corr=corr), self.get_rel_errors(), self.get_fluxes(), get_color_gradient(self.NPlans))):
             y0, y1 = [(c_height - title_height - pad_height * (i + j)) / c_height for j in [1, 0]]
             p = self.draw_tpad('p{i}'.format(i=i + 3), '', pos=[x0, y0, 1, y1], margins=[lm, rm, 0, 0], logx=True, gridy=True, gridx=True)
-            y_values = [make_ufloat((v.n, v.s + error * v.n)) for v in ph]
+            y_values = [make_ufloat((v.n, v.s + error)) for v in ph]
             g = self.make_tgrapherrors('gsph{}'.format(i), '', x=flux, y=y_values)
             scale_graph(g, val=scale) if scale else do_nothing()
             format_histo(g, title=' ', color=color, x_range=Bins().FluxRange, y_range=[1 - y_range, 1 + y_range], marker=markers(i), lab_size=size, ndivy=505, markersize=1.5, tick_size=.05)
@@ -502,7 +511,7 @@ class DiaScans(Analysis):
         tits = self.get_titles(irr)
         biases = [make_bias_str(bias) for bias in self.get_bias_voltages()] if add_bias else [''] * len(tits)
         x1 = 1 - max([(12 if irr else len(tit)) + len(bias) for tit, bias in zip(tits, biases)]) * .022
-        legend = self.make_legend(x1, 1, x2=1 - rm, nentries=.8, scale=6)
+        legend = self.make_legend(x1, 1, x2=1 - rm, nentries=1, scale=5)
         legend.AddEntry(gr, tits[ind], 'pe')
         if add_bias:
             legend.SetNColumns(2)
