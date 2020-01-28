@@ -268,19 +268,20 @@ class Draw:
         pm = bm + (1 - bm - .1) / 5.
 
         # set unified x-range:
-        mg1.GetXaxis().SetLimits(1, 3e4) if x_range is None else do_nothing()
+        mgn = mg1.Clone()
+        mgn.GetXaxis().SetLimits(1, 3e4) if x_range is None else do_nothing()
         mg.GetXaxis().SetLimits(1, 3e4) if x_range is None else do_nothing()
 
         # bottom pad with 20%
         p0 = self.draw_tpad('p0', 'p0', pos=[0, 0, 1, pm], margins=[.14, .03, bm / pm, 0], transparent=True, logx=True, gridy=True)
-        scale_multigraph(mg1)
+        scale_multigraph(mgn)
         rel_y_range = [.7, 1.3] if rel_y_range is None else rel_y_range
-        format_histo(mg1, title='', y_range=rel_y_range, y_tit='Rel. ph [au]' if not scale > 1 else ' ', y_off=66, tit_size=.1 * scale, x_off=99, lab_size=.1 * scale)
-        mg1.GetYaxis().SetNdivisions(3)
-        hide_axis(mg1.GetXaxis())
-        mg1.Draw('alp')
-        x_range = [mg1.GetXaxis().GetXmin(), mg1.GetXaxis().GetXmax()] if x_range is None else x_range
-        self.draw_x_axis(1.3, x_range[0], x_range[1], mg1.GetXaxis().GetTitle() + ' ', opt='SG+-=', tit_size=.1, lab_size=.1 * scale, off=99, tick_size=.1, l_off=0)
+        format_histo(mgn, title='', y_range=rel_y_range, y_tit='Rel. ph [au]' if not scale > 1 else ' ', y_off=66, tit_size=.1 * scale, x_off=99, lab_size=.1 * scale)
+        mgn.GetYaxis().SetNdivisions(3)
+        hide_axis(mgn.GetXaxis())
+        mgn.Draw('alp')
+        x_range = [mgn.GetXaxis().GetXmin(), mgn.GetXaxis().GetXmax()] if x_range is None else x_range
+        self.draw_x_axis(1.3, x_range[0], x_range[1], mgn.GetXaxis().GetTitle() + ' ', opt='SG+-=', tit_size=.1, lab_size=.1 * scale, off=99, tick_size=.1, l_off=0)
         c.cd()
 
         # top pad with zero suppression
@@ -293,7 +294,7 @@ class Draw:
             mg.SetMinimum(y_range[0])
             mg.SetMaximum(y_range[1])
         format_histo(mg, tit_size=.04 * scale, y_off=1.75 / scale, lab_size=.04 * scale)
-        self.draw_x_axis(mg_y, x_range[0], x_range[1], mg1.GetXaxis().GetTitle() + ' ', opt='SG=', tit_size=.035 * scale, lab_size=0, off=1, l_off=99)
+        self.draw_x_axis(mg_y, x_range[0], x_range[1], mgn.GetXaxis().GetTitle() + ' ', opt='SG=', tit_size=.035 * scale, lab_size=0, off=1, l_off=99)
         leg = mg.GetListOfFunctions()[0]
         move_legend(leg, .17, .03)
         leg.Draw()
