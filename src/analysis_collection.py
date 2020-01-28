@@ -261,9 +261,9 @@ class AnalysisCollection(Analysis):
     def get_runs_above_flux(self, flux):
         return [key for key, ana in self.Analyses.iteritems() if ana.Run.Flux >= flux]
 
-    def get_repr_error(self, redo=False):
+    def get_repr_error(self, flux=None, redo=False):
         values = self.draw_signal_spread(redo, show=False)
-        return None if values is None else mean_sigma(values)[1]
+        return self.get_repr_error_old(flux, show=False) if values is None else mean_sigma(values)[1]
 
     def get_repr_error_old(self, flux, show=True, redo=False):
 
@@ -348,8 +348,7 @@ class AnalysisCollection(Analysis):
         values = self.get_pulse_heights(bin_width, redo, corr=corr)
         x = self.get_x_var(vs_time)
         g = self.make_tgrapherrors('g', 'stat. error', self.get_color(), marker_size=marker_size, x=x, y=values)
-        e_sys = self.get_repr_error(redo) if err else 0
-        e_sys = self.get_repr_error_old(105, show=False) if e_sys is None else e_sys
+        e_sys = self.get_repr_error(105, redo) if err else 0
         values = [make_ufloat((v.n, v.s + e_sys)) for v in values]
         g_errors = self.make_tgrapherrors('gerr', 'full error', marker=0, color=602, marker_size=0, x=x, y=values)
         g1, g_last = [self.make_tgrapherrors('g{}'.format(i), '{} run'.format('last' if i else 'first'), marker=22 - i, color=2, marker_size=1.5, x=[x[i].n], y=[values[i].n]) for i in [0, -1]]
@@ -382,7 +381,7 @@ class AnalysisCollection(Analysis):
         self.save_plots('ScaledPulseHeights{}'.format('Time' if vs_time else 'Flux'))
         return mg.GetListOfGraphs()[0]
 
-    def draw_pulse_heights(self, bin_width=None, vs_time=False, show=True, show_first_last=True, save_comb=True, y_range=None, corr=True, redo=False, prnt=True, err=True):
+    def draw_pulse_heights(self, bin_width=None, vs_time=False, show=True, show_first_last=True, save_comb=False, y_range=None, corr=True, redo=False, prnt=True, err=True):
 
         mg = self.get_pulse_height_graph(bin_width, vs_time, show_first_last, redo, corr=corr, err=err)
 
@@ -404,7 +403,7 @@ class AnalysisCollection(Analysis):
         if save_comb:
             y_min = increased_range([ymin, ymax], .5)[0] if y_range is None else y_range[0]
             # TODO fix vs time and comb plot
-            self.save_combined_pulse_heights(mg, mg1, y_min, show=show, pulser_leg=self.draw_signal_legend, prnt=prnt)
+            self.save_combined_pulse_heights(mg, mg1, y_min, show=save_comb, pulser_leg=self.draw_signal_legend, prnt=prnt)
 
         return mg
 
@@ -490,12 +489,12 @@ class AnalysisCollection(Analysis):
         return ls.GetMean(), ls.GetStdDev()
 
     def draw_signal_spread(self, redo=False, show=True):
-        values = self.get_pulse_heights(redo=redo)[self.get_fluxes().argsort()]  # sort pedestal by ascending fluxes
+        values = self.get_pulse_heights(redo=redo, pbar=False)[self.get_fluxes().argsort()]  # sort pedestal by ascending fluxes
         rel_values = array([value - mean(lst) for lst in split(values, self.get_flux_splits(show=False)) for value in lst if lst.size > 1])
         if rel_values.size < 2:
             warning('Not enough data for signal spread ...')
             return
-        h = TH1F('hps', 'Relative Signal Spread', 20, -1, 1)
+        h = TH1F('hps', 'Relative Signal Spread', 40, -2, 2)
         h.FillN(rel_values.size, array([v.n for v in rel_values], 'd'), full(rel_values.size, 1, 'd'))
         self.format_statbox(all_stat=True)
         format_histo(h, x_tit='Relative Signal', y_tit='Number of Entries', y_off=1.2)
