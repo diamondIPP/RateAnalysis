@@ -146,8 +146,9 @@ class DiaScans(Analysis):
     def get_values(self, f, pickle_info=None, redo=False, load_tree=True, *args, **kwargs):
         return [self.get_rp_values(sel, f, pickle_info, redo, load_tree, *args, **kwargs) for sel in self.Info]
 
-    def get_pulse_heights(self, corr=True, redo=False):
-        return self.get_values(AnalysisCollection.get_pulse_heights, PickleInfo('Ph_fit', 'PhVals', '10000_{}'.format(corr)), redo=redo, corr=corr)
+    def get_pulse_heights(self, corr=True, redo=False, err=False):
+        values = self.get_values(AnalysisCollection.get_pulse_heights, PickleInfo('Ph_fit', 'PhVals', '10000_{}'.format(corr)), redo=redo, corr=corr)
+        return [phs + ufloat(0, e) for phs, e in zip(values, self.get_rel_errors(redo=redo))] if err else values
 
     def get_rate_dependcies(self, redo=False):
         return self.get_values(AnalysisCollection.get_rate_dependence, PickleInfo('Ph_fit', 'RD'), redo=redo)
@@ -465,6 +466,15 @@ class DiaScans(Analysis):
         self.draw_tpad('p2', pos=[x0, 0, 1, pad_height / 2 / c_height], margins=[lm, rm, 0, 0], transparent=True)  # x-axis pad
         self.draw_x_axis(1, lm, 1 - rm, 'Flux [kHz/cm^{2}]', Bins().FluxRange, opt='', log=True, tick_size=0, lab_size=size * 2, tit_size=size * 2, off=1.1)
         self.save_plots('ScaledDiaScans{dia}'.format(dia=make_dia_str(self.DUTName)))
+
+    def draw_scaled_distribution(self, excluded=None):
+        values = concatenate(([vals / mean_sigma(vals)[0] for i, vals in enumerate(self.get_pulse_heights(err=True)) if i not in [excluded]]))
+        h = TH1F('hsd', 'Scaled Pulse Height Distribution', 40, .9, 1.1)
+        h.FillN(values.size, array([v.n for v in values], 'd'), full(values.size, 1, 'd'))
+        self.format_statbox(all_stat=1)
+        format_histo(h, x_tit='Scaled Pulse Height', y_tit='Number of Entries', y_off=1.2, fill_color=self.FillColor)
+        self.draw_histo(h, lm=.12)
+        return values
 
     def make_plots(self, name, f, irr_pad=None, canvas=None, **kwargs):
         for sel in self.Info:
