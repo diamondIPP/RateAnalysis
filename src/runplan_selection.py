@@ -248,6 +248,7 @@ class DiaScans(Analysis):
         self.TestCampaigns = self.load_test_campaigns()
         self.RunSelections = self.load_run_selections()
         self.RunInfos = [rs.RunInfos for rs in self.RunSelections.itervalues()]
+        self.Info = self.load_selection_info()
         self.set_results_dir(join('Results', 'selections', self.Name)) if name else do_nothing()
 
     def set_selection_name(self, name):
