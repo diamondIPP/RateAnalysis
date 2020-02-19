@@ -27,7 +27,7 @@ class PixAnalysis(DUTAnalysis):
         self.PX, self.PY = self.Run.PixelSize
 
         if self.Tree:
-            self.Cut = CutPix(self)
+            self.Cut = CutPix.from_parent(self.Cut)
             self.IsAligned = self.check_alignment()
 
             # Pulse Height Calibrations

@@ -47,7 +47,7 @@ class PadAnalysis(DUTAnalysis):
 
             # cuts
             self.Timing = TimingAnalysis(self)
-            self.Cut = CutPad(self, self.Channel)
+            self.Cut = CutPad.from_parent(self.Cut)
             self.AllCuts = self.Cut.AllCut
 
             # subclasses
