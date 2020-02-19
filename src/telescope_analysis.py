@@ -12,7 +12,7 @@ from selector import run_selector
 class TelecopeAnalysis(Analysis):
     """ Class for the analysis of the telescope specific stuff of a single run. """
 
-    def __init__(self, run=None, test_campaign=None, tree=True, t_vec=None, verbose=False, prnt=True):
+    def __init__(self, run=None, test_campaign=None, tree=True, t_vec=None, verbose=False):
         """
         :param run: inits a new Run instance if number is provided or takes the provided Run instance
         :param test_campaign:   if None is provided: uses default from main config
@@ -34,8 +34,8 @@ class TelecopeAnalysis(Analysis):
         if self.Tree:
             self.Cut = Cut(self)
             self.NRocs = self.Run.NPlanes
-            self.StartEvent = self.Cut.CutConfig['EventRange'][0]
-            self.EndEvent = self.Cut.CutConfig['EventRange'][1]
+            self.StartEvent = self.Cut.get_min_event()
+            self.EndEvent = self.Cut.get_max_event()
             self.Bins = Bins(self.Run, cut=self.Cut)
 
     def get_t_var(self):
@@ -413,8 +413,8 @@ class TelecopeAnalysis(Analysis):
         format_histo(gr, 'g_t', 'Time vs Events', x_tit='Event Number', y_tit='Time [s]', y_off=1.5)
         self.draw_histo(gr, show=show, draw_opt='al', lm=.13, rm=.08)
 
-    def get_event_at_time(self, time_sec, rel=False):
-        return self.Run.get_event_at_time(time_sec, rel)
+    def get_event_at_time(self, seconds, rel=False):
+        return self.Run.get_event_at_time(seconds, rel)
     # endregion TIME
     # ----------------------------------------
 

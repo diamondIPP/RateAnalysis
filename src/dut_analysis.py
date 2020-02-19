@@ -14,7 +14,7 @@ from uncertainties import umath
 class DUTAnalysis(TelecopeAnalysis):
     def __init__(self, run_number, diamond_nr, test_campaign=None, tree=None, t_vec=None, verbose=False, prnt=True):
 
-        TelecopeAnalysis.__init__(self, run_number, test_campaign, tree, t_vec, verbose, prnt)
+        TelecopeAnalysis.__init__(self, run_number, test_campaign, tree, t_vec, verbose)
 
         self.DUTNumber = self.load_dut_nr(diamond_nr)
         self.DUTName = self.Run.DUTNames[diamond_nr - 1]
