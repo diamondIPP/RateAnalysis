@@ -75,7 +75,7 @@ class Bins:
         evts_per_bin = self.BinSize if evts_per_bin is None else evts_per_bin
         if self.Cut is None:
             return self.get_raw(evts_per_bin)
-        jumps = filter(lambda x: x[1] > self.Cut.get_min_event(), self.Cut.Interruptions)  # filter out interruptions outside event range
+        jumps = filter(lambda x: x[1] > self.Cut.get_min_event(), self.Cut.get_interruptions_ranges())  # filter out interruptions outside event range
         first_jump_end = jumps[0][1] if jumps else 0
         events = arange(min(self.Cut.get_min_event(), first_jump_end), self.Cut.get_max_event())
         for start, stop in jumps:  # remove beam interruptions from events
