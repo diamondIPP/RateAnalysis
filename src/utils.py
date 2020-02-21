@@ -33,6 +33,7 @@ from ConfigParser import ConfigParser
 
 OFF = False
 ON = True
+DEGREE_SIGN = u'\N{DEGREE SIGN}'
 
 
 # ==============================================
@@ -288,6 +289,10 @@ def make_latex_table(header, cols, endline=False):
 def make_dia_str(dia):
     dia = dia.replace('-', '')
     return '{0}{1}'.format(dia[0].title(), dia[1:])
+
+
+def make_list(value):
+    return array([value]).flatten()
 
 
 def file_exists(path, warn=False):
@@ -736,7 +741,9 @@ def del_rootobj(obj):
         pass
 
 
-def get_root_vec(tree, n, ind=0, dtype=None):
+def get_root_vec(tree, n=0, ind=0, dtype=None, var=None):
+    if var is not None:
+        n = tree.Draw(var, '', 'goff')
     vec = tree.GetVal(ind)
     vec.SetSize(n)
     return array(vec, dtype=dtype)
