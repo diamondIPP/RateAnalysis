@@ -19,13 +19,12 @@ class PeakAnalysis(Analysis):
         self.Channel = self.Ana.Channel
         self.DUTNumber = self.Ana.DUTNumber
         self.Tree = self.Ana.Tree
-        self.AllCut = self.Ana.AllCuts
         self.set_save_directory(self.Ana.SubDir)
 
     def draw_n_peaks(self, spec=False, show=True, fit=False):
         h = TH1F('h_pn', 'Number of Peaks', 10, 0, 10)
         draw_var = '@peaks{ch}_x.size()>>h_pn' if spec and self.Run.has_branch('peaks{ch}_x'.format(ch=self.Channel)) else 'n_peaks[{ch}] - 1>>h_pn'
-        self.Tree.Draw(draw_var.format(ch=self.Channel), self.AllCut, 'goff')
+        self.Tree.Draw(draw_var.format(ch=self.Channel), self.Ana.Cut(), 'goff')
         self.format_statbox(only_fit=True, w=.3) if fit else self.format_statbox(entries=True)
         format_histo(h, x_tit='Number of Peaks', y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor, lw=2)
         self.save_histo(h, 'PeakNumbers', show, logy=True, lm=.11)

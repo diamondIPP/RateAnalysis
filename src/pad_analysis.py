@@ -48,7 +48,6 @@ class PadAnalysis(DUTAnalysis):
             # cuts
             self.Timing = TimingAnalysis(self)
             self.Cut = CutPad.from_parent(self.Cut)
-            self.AllCuts = self.Cut.AllCut
 
             # subclasses
             self.Pulser = PulserAnalysis(self)
@@ -202,7 +201,7 @@ class PadAnalysis(DUTAnalysis):
     # region 2D SIGNAL DISTRIBUTION
     def draw_efficiency_map(self, res=None, cut='all', show=True):
         cut_string = TCut(cut) + self.Cut.CutStrings['tracks']
-        cut_string = self.Cut.generate_special_cut(excluded=['fiducial']) if cut == 'all' else cut_string
+        cut_string = self.Cut.generate_custom(exclude=['fiducial']) if cut == 'all' else cut_string
         p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DUTName), *self.Bins.get_global(res, mm=True))
         y, x = self.Cut.get_track_vars(self.DUTNumber - 1, mm=True)
         thresh = self.Pedestal.get_mean() * 4
@@ -230,7 +229,7 @@ class PadAnalysis(DUTAnalysis):
 
     def draw_pedestal_map(self, high=10, low=None, fid=False):
         low = '&&{}>{}'.format(self.generate_signal_name(), low) if low is not None else ''
-        self.draw_hitmap(redo=True, cut=TCut('{}<{}{}'.format(self.generate_signal_name(), high, low)) + (self.Cut.generate_special_cut(excluded='fiducial') if not fid else self.Cut()))
+        self.draw_hitmap(redo=True, cut=TCut('{}<{}{}'.format(self.generate_signal_name(), high, low)) + (self.Cut.generate_custom(exclude='fiducial') if not fid else self.Cut()))
     # endregion 2D SIGNAL DISTRIBUTION
     # ----------------------------------------
 
@@ -317,7 +316,7 @@ class PadAnalysis(DUTAnalysis):
         """ get pulse height by fitting every time bin disto with a Landau and then extrapolate with a pol0 """
         gr = self.make_tgrapherrors('hphl', 'Pulser Height Evolution')
         h = TH2F('tempph', '', *(self.Bins.get_time(bin_size) + self.Bins.get_pad_ph(bin_width=20)))
-        self.Tree.Draw('{}:{}>>tempph'.format(self.SignalName, self.get_t_var()), self.AllCuts, 'goff')
+        self.Tree.Draw('{}:{}>>tempph'.format(self.SignalName, self.get_t_var()), self.Cut(), 'goff')
         i = 0
         for xbin in xrange(2, h.GetNbinsX() + 1):  # first bin is always empty
             py = h.ProjectionY('_py{}'.format(xbin), xbin, xbin)
@@ -357,8 +356,8 @@ class PadAnalysis(DUTAnalysis):
 
     def draw_signal_distribution(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None, bin_width=.5, events=None,
                                  start=None, x_range=None, redo=False, prnt=True, save=True, normalise=None, sumw2=False):
-        cut = self.AllCuts if cut is None else TCut(cut)
-        suffix = '{b}_{c}_{cut}'.format(b=bin_width, c=int(evnt_corr), cut=cut.GetName())
+        cut = self.Cut(cut)
+        suffix = '{b}_{c}_{cut}'.format(b=bin_width, c=int(evnt_corr), cut=cut)
         pickle_path = self.make_pickle_path('PulseHeight', 'Histo', run=self.RunNumber, ch=self.DUTNumber, suf=suffix)
 
         def func():
@@ -474,16 +473,16 @@ class PadAnalysis(DUTAnalysis):
     def draw_bucket_pedestal(self, show=True, corr=True, additional_cut=''):
         gStyle.SetPalette(55)
         # cut_string = self.Cut.generate_special_cut(included=['tracks', 'pulser', 'saturated'])
-        cut_string = self.Cut.generate_special_cut(excluded=['bucket', 'timing'])
+        cut_string = self.Cut.generate_custom(exclude=['bucket', 'timing'])
         cut_string += additional_cut
         self.draw_signal_vs_peaktime('e', cut_string, show, corr, fine_corr=corr, prof=False)
         self.save_plots('BucketPedestal')
 
     def draw_bucket_waveforms(self, show=True, t_corr=True, start=100000):
         good = self.Waveform.draw(1, show=False, start_event=None, t_corr=t_corr)[0]
-        cut = self.Cut.generate_special_cut(excluded=['bucket', 'timing']) + TCut('!({0})'.format(self.Cut.CutStrings['bucket']))
+        cut = self.Cut.generate_custom(exclude=['bucket', 'timing']) + TCut('!({0})'.format(self.Cut.CutStrings['bucket']))
         bucket = self.Waveform.draw(1, cut=cut, show=False, start_event=start, t_corr=t_corr)[0]
-        cut = self.Cut.generate_special_cut(excluded=['bucket', 'timing']) + TCut('{buc}&&!({old})'.format(buc=self.Cut.CutStrings['bucket'], old=self.Cut.CutStrings['old_bucket']))
+        cut = self.Cut.generate_custom(exclude=['bucket', 'timing']) + TCut('{buc}&&!({old})'.format(buc=self.Cut.CutStrings['bucket'], old=self.Cut.CutStrings['old_bucket']))
         bad_bucket = self.Waveform.draw(1, cut=cut, show=False, t_corr=t_corr, start_event=None)[0]
         self.reset_colors()
         mg = TMultiGraph('mg_bw', 'Bucket Waveforms')
@@ -739,7 +738,7 @@ class PadAnalysis(DUTAnalysis):
     # region SHOW
     def draw_signal_vs_signale(self, show=True):
         gStyle.SetPalette(53)
-        cut = self.Cut.generate_special_cut(excluded=['bucket'])
+        cut = self.Cut.generate_custom(exclude=['bucket'])
         num = self.get_signal_number(region='e')
         cut += TCut('IntegralPeakTime[{0}]<94&&IntegralPeakTime[{0}]>84'.format(num))
         h = TH2F('hsse', 'Signal b vs Signal e', 62, -50, 200, 50, 0, 200)

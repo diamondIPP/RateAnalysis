@@ -18,7 +18,7 @@ class TimingAnalysis(Analysis):
         self.Channel = self.Ana.Channel
         self.Tree = self.Ana.Tree
         self.Cut = self.Ana.Cut
-        self.TimingCut = self.Cut.generate_special_cut(excluded=['timing'], prnt=False, name='Timing')
+        self.TimingCut = self.Cut.generate_custom(exclude=['timing'], prnt=False, name='Timing')
         self.Polarity = self.Ana.Polarity
         self.DUTName = self.Ana.DUTName
         self.DUTNumber = self.Ana.DUTNumber
@@ -33,7 +33,7 @@ class TimingAnalysis(Analysis):
         self.draw_fine_correction(show=False, prnt=False)
 
     def reload_cut(self):
-        self.TimingCut = self.Cut.generate_special_cut(excluded=['timing'], prnt=False, name='Timing')
+        self.TimingCut = self.Cut.generate_custom(exclude=['timing'], prnt=False, name='Timing')
         self.Cut = self.Ana.Cut
 
     def get(self, par=1, redo=False):
@@ -179,7 +179,7 @@ class TimingAnalysis(Analysis):
 
     def draw_peaks_tc(self, corr=True, fit=True, cut=None, show=True, prnt=True, save=True, redo=False):
 
-        cut = self.Cut.generate_special_cut(excluded=['timing'], prnt=prnt) if cut is None else TCut(cut)
+        cut = self.Cut.generate_custom(exclude=['timing'], prnt=prnt) if cut is None else TCut(cut)
         pickle_path = self.make_pickle_path('Timing', 'PeakTC', self.RunNumber, self.DUTNumber, suf=cut.GetName())
 
         def f():
@@ -457,7 +457,7 @@ class TimingAnalysis(Analysis):
 
     def draw_signal_peak(self, cut=None, corr=False, show=True):
         h = TH1F('hspt', 'Signal Peak Timings', 2000 * (2 if corr else 1), 0, 500)
-        cut = self.Cut.generate_special_cut(excluded=['timing']) if cut is None else TCut(cut)
+        cut = self.Cut.generate_custom(exclude=['timing']) if cut is None else TCut(cut)
         corr = '+rf_phase' if corr else ''
         self.Tree.Draw('signal_peak_time[{ch}]{c}>>hspt'.format(ch=self.Ana.channel, c=corr), cut, 'goff')
         self.format_statbox(w=.3, entries=6)

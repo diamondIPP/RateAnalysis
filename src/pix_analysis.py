@@ -32,9 +32,10 @@ class PixAnalysis(DUTAnalysis):
 
             # Pulse Height Calibrations
             self.Fit = TF1('ErFit', '[3] * (TMath::Erf((x - [0]) / [1]) + [2])', -500, 255 * 7)
-            self.Parameters = self.load_calibration_fitpars()
-            self.Vcals = self.load_vcals()
-            self.Points = self.load_calibration_points()
+            if self.check_calibration_files():
+                self.Parameters = self.load_calibration_fitpars()
+                self.Vcals = self.load_vcals()
+                self.Points = self.load_calibration_points()
 
         self.print_finished(prnt=prnt)
 
@@ -116,7 +117,7 @@ class PixAnalysis(DUTAnalysis):
 
     def draw_time_occupancy(self, cut=None, fid=False, binning=None, show=True, show_vid=False):
         self.Bins.set_bin_size(binning)
-        cut_string = self.Cut.generate_special_cut(excluded='fiducial' if not fid else [], cluster=False) if cut is None else TCut(cut)
+        cut_string = self.Cut.generate_custom(exclude='fiducial' if not fid else [], cluster=False) if cut is None else TCut(cut)
         h = TH3F('h_to', 'to', *(self.Bins.get_time() + self.Bins.get_pixel()))
         self.Tree.Draw('row:col:{}>>h_to'.format(self.get_t_var()), cut_string, 'goff')
         format_histo(h, y_tit='col', z_tit='row')
@@ -173,7 +174,7 @@ class PixAnalysis(DUTAnalysis):
 
     def draw_signal_distribution(self, cut=None, show=True, prnt=True, roc=None, vcal=False, redo=False, draw_thresh=False):
         roc = self.Dut if roc is None else roc
-        cut_string = self.Cut.generate_special_cut(excluded='masks') if cut is None else TCut(cut)
+        cut_string = self.Cut.generate_custom(exclude='masks') if cut is None else TCut(cut)
         pickle_path = self.make_pickle_path('PulseHeight', run=self.RunNumber, suf='{}_{}'.format(roc, cut_string.GetName()))
 
         def f():
@@ -318,7 +319,7 @@ class PixAnalysis(DUTAnalysis):
     # ----------------------------------------
     # region EFFICIENCY
     def get_efficiency_cut(self, trig_phase=True):
-        return self.Cut.generate_special_cut(included=['fiducial', 'rhit', 'tracks', 'chi2X', 'chi2Y', 'aligned', 'event_range', 'beam_interruptions'] + (['trigger_phase'] if trig_phase else []))
+        return self.Cut.generate_custom(include=['fiducial', 'rhit', 'tracks', 'chi2X', 'chi2Y', 'aligned', 'event_range', 'beam_interruptions'] + (['trigger_phase'] if trig_phase else []))
 
     def get_hit_efficiency(self, roc=None, cut=None):
         cut_string = self.get_efficiency_cut() if cut is None else TCut(cut)
@@ -340,7 +341,7 @@ class PixAnalysis(DUTAnalysis):
     def draw_hit_efficiency(self, save=True, cut=None, vs_time=True, bin_width=5000, n=1e9, start=0, show=True):
         set_root_output(False)
         h = TProfile('h_he', 'Hit Efficiency {s}'.format(s=self.Dut), *self.Bins.get(bin_width, vs_time))
-        cut_string = self.Cut.generate_special_cut(excluded=['masks']) if cut is None else TCut(cut)
+        cut_string = self.Cut.generate_custom(exclude=['masks']) if cut is None else TCut(cut)
         x_var = self.get_t_var() if vs_time else 'event_number'
         self.Tree.Draw('(n_hits[{r}]>0)*100:{x} >> h_he'.format(r=self.Dut, x=x_var), cut_string, 'goff', int(n), start)
         g = self.make_graph_from_profile(h)
@@ -355,7 +356,7 @@ class PixAnalysis(DUTAnalysis):
 
     def draw_efficiency_map(self, res=None, cut='all', show=True):
         cut_string = TCut(cut) + self.Cut.CutStrings['tracks']
-        cut_string = self.Cut.generate_special_cut(excluded=['masks', 'fiducial']) if cut == 'all' else cut_string
+        cut_string = self.Cut.generate_custom(exclude=['masks', 'fiducial']) if cut == 'all' else cut_string
         p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DUTName), *self.Bins.get_global(res_fac=res, mm=True))
         self.Tree.Draw('(n_hits[{r}]>0)*100:{}:{}>>p_em'.format(r=self.Dut, *self.Cut.get_track_vars(self.Dut - 4, mm=True)), cut_string, 'goff')
         self.format_statbox(entries=True, x=.81)
@@ -373,7 +374,7 @@ class PixAnalysis(DUTAnalysis):
 
     def draw_cell_efficiency(self, cell=0, res=2, show=True):
         # x, y = self.get_fiducial_cell(cell)
-        cut_string = self.Cut.generate_special_cut(excluded=['masks'])
+        cut_string = self.Cut.generate_custom(exclude=['masks'])
         p = TProfile2D('pce', 'Efficiency for Fiducial Cell {}'.format(cell), res, 0, self.PX, res, 0, self.PY)
         n = self.Tree.Draw('(n_hits[{r}]>0)*100:dia_track_y_local[{r1}]:dia_track_x_local[{r1}]>>pce'.format(r=self.Dut, r1=self.Dut - 4), cut_string, 'goff')
         effs = [self.Tree.GetV1()[i] for i in xrange(n)]
@@ -398,21 +399,21 @@ class PixAnalysis(DUTAnalysis):
     # ----------------------------------------
     # region TRIGGER PHASE
     def draw_trigger_phase(self, cut=None, show=True):
-        return self._draw_trigger_phase(dut=True, cut=self.Cut.generate_special_cut(excluded='trigger_phase') if cut is None else cut, show=show)
+        return self._draw_trigger_phase(dut=True, cut=self.Cut.generate_custom(exclude='trigger_phase') if cut is None else cut, show=show)
 
     def draw_trigger_phase_time(self, bin_width=30000, cut=None, show=True):
         return self._draw_trigger_phase_time(dut=True, bin_width=bin_width, cut=cut, show=show)
 
     def draw_trigphase_offset(self, cut=None, show=True):
         h = TH1I('h_tp', 'Trigger Phase Offset', 18, -9.5, 8.5)
-        self.Tree.Draw('trigger_phase[1] - trigger_phase[0]>>h_tp', self.Cut.generate_special_cut(excluded='trigger_phase') if cut is None else cut, 'goff')
+        self.Tree.Draw('trigger_phase[1] - trigger_phase[0]>>h_tp', self.Cut.generate_custom(exclude='trigger_phase') if cut is None else cut, 'goff')
         self.format_statbox(entries=True, y=0.88)
         format_histo(h, x_tit='Trigger Phase', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor, ndivx=20)
         self.save_histo(h, 'TPOff', show, lm=.16)
 
     def draw_trigphase_off_time(self, bin_width=30000, cut=None, show=True):
         h = TProfile('htpot', 'Trigger Phase vs Time', *self.Bins.get(bin_width, vs_time=True))
-        self.Tree.Draw('(trigger_phase[1] - trigger_phase[0]):{}>>htpot'.format(self.get_t_var()), self.Cut.generate_special_cut(excluded='trigger_phase') if cut is None else cut, 'goff')
+        self.Tree.Draw('(trigger_phase[1] - trigger_phase[0]):{}>>htpot'.format(self.get_t_var()), self.Cut.generate_custom(exclude='trigger_phase') if cut is None else cut, 'goff')
         self.format_statbox(entries=True, y=0.88)
         format_histo(h, x_tit='Time [hh:mm]', y_tit='Trigger Phase', y_off=1.8, fill_color=self.FillColor, t_ax_off=self.Run.StartTime)
         self.save_histo(h, 'TPOffTime', show, lm=.16)

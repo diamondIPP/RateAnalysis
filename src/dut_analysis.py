@@ -68,7 +68,7 @@ class DUTAnalysis(TelecopeAnalysis):
             :param cut: applies all cuts if None is provided.
             :param fid: return only values within the fiducial region set in the AnalysisConfig.ini"""
         y, x = self.Cut.get_track_vars(self.DUTNumber - 1, mm=True)
-        cut = self.Cut.generate_special_cut(excluded=['fiducial'], prnt=False) if not fid and cut is None else self.Cut(cut)
+        cut = self.Cut.generate_custom(exclude=['fiducial'], prnt=False) if not fid and cut is None else self.Cut(cut)
         n = self.Tree.Draw('{x}:{y}:{z}'.format(z=self.get_ph_str(), x=x, y=y), cut, 'goff')  # *10 to get values in mm
         return self.Run.get_root_vecs(n, 3)
 
@@ -120,7 +120,7 @@ class DUTAnalysis(TelecopeAnalysis):
     # region SIGNAL MAP
     def draw_signal_map(self, res=None, cut=None, fid=False, hitmap=False, redo=False, bins=None, z_range=None, size=None, show=True, save=True, prnt=True):
 
-        cut = self.Cut.generate_special_cut(excluded=['fiducial'], prnt=prnt) if not fid and cut is None else self.Cut(cut)
+        cut = self.Cut.generate_custom(exclude=['fiducial'], prnt=prnt) if not fid and cut is None else self.Cut(cut)
         suf = '{c}_{ch}_{res}'.format(c=cut.GetName(), ch=self.Cut.CutConfig['chi2X'], res=res if bins is None else '{}x{}'.format(bins[0], bins[2]))
         pickle_path = self.make_pickle_path('SignalMaps', 'Hit' if hitmap else 'Signal', run=self.RunNumber, ch=self.DUTNumber, suf=suf)
 

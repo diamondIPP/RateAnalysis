@@ -149,7 +149,7 @@ class Waveform(Analysis):
 
     def draw_rise_time_map(self, res=sqrt(12), cut=None, show=True):
         p = TProfile2D('prtm', 'Rise Time Map', *self.Ana.Bins.get_global(res))
-        cut = self.Cut.generate_special_cut(excluded='fiducial') if cut is None else TCut(cut)
+        cut = self.Cut.generate_custom(exclude='fiducial') if cut is None else TCut(cut)
         self.Tree.Draw('rise_time[{}]:{}:{}>>prtm'.format(self.Channel, *self.Cut.get_track_vars(self.DUTNumber - 1)), cut, 'goff')
         self.Ana.set_dia_margins(p)
         # self.Ana.set_z_range(p, n_sigma=1)

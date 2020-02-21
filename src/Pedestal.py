@@ -75,7 +75,7 @@ class PedestalAnalysis(Analysis):
 
     def draw_disto_fit(self, name=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True, draw_cut=False, normalise=None):
         cut = self.Cut.AllCut if cut is None else TCut(cut)
-        cut = self.Cut.generate_special_cut(excluded='ped_sigma') if draw_cut else cut
+        cut = self.Cut.generate_custom(exclude='ped_sigma') if draw_cut else cut
         suffix = '{r}_fwhm_{c}'.format(c=cut.GetName(), r=self.get_all_signal_names()[self.SignalName if name is None else name])
         picklepath = self.make_pickle_path('Pedestal', run=self.RunNumber, ch=self.DUTNumber, suf=suffix)
         show = False if not save else show
@@ -114,7 +114,7 @@ class PedestalAnalysis(Analysis):
         return b
 
     def draw_sigma_selection(self, show=True, redo=False):
-        self.draw_disto_fit(cut=self.Cut.generate_special_cut(excluded=['ped_sigma']), logy=True, show=show, redo=redo)
+        self.draw_disto_fit(cut=self.Cut.generate_custom(exclude=['ped_sigma']), logy=True, show=show, redo=redo)
         h = self.Histogram
         x = self.Cut.ped_range
         g = self.draw_box(x[0], -1e9, x[1], 1e9, color=self.FillColor, width=2, fillstyle=3001, show=False)

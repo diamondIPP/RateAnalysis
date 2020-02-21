@@ -368,7 +368,7 @@ class TelecopeAnalysis(Analysis):
     # ----------------------------------------
 
     def _draw_trigger_phase(self, dut=False, cut=None, show=True):
-        cut_string = self.Cut.generate_special_cut(excluded=['trigger_phase']) if cut is None else TCut(cut)
+        cut_string = self.Cut.generate_custom(exclude=['trigger_phase']) if cut is None else TCut(cut)
         h = TH1I('h_tp', 'Trigger Phase', 10, 0, 10)
         self.Tree.Draw('trigger_phase[{r}]>>h_tp'.format(r=1 if dut else 0), cut_string, 'goff')
         self.format_statbox(entries=True)
@@ -377,7 +377,7 @@ class TelecopeAnalysis(Analysis):
 
     def _draw_trigger_phase_time(self, dut=False, bin_width=None, cut=None, show=True):
         h = TProfile('htpt', 'Trigger Phase Offset vs Time - {}'.format('DUT' if dut else 'TEL'), *self.Bins.get(bin_width, vs_time=True))
-        self.Tree.Draw('trigger_phase[{}]:{}>>htpt'.format(1 if dut else 0, self.get_t_var()), self.Cut.generate_special_cut(excluded='trigger_phase') if cut is None else cut, 'goff')
+        self.Tree.Draw('trigger_phase[{}]:{}>>htpt'.format(1 if dut else 0, self.get_t_var()), self.Cut.generate_custom(exclude='trigger_phase') if cut is None else cut, 'goff')
         self.format_statbox(entries=True, y=0.88)
         format_histo(h, x_tit='Time [hh:mm]', y_tit='Trigger Phase', y_off=1.8, fill_color=self.FillColor, t_ax_off=self.Run.StartTime)
         self.save_histo(h, 'TPTime', show, lm=.16)
@@ -489,7 +489,7 @@ class TelecopeAnalysis(Analysis):
 
         def f():
             self.format_statbox(fit=True, entries=6)
-            h = self.draw_flux(cut=self.Cut.generate_special_cut(included=['beam_interruptions', 'event_range'], prnt=prnt), show=False, prnt=prnt)
+            h = self.draw_flux(cut=self.Cut.generate_custom(include=['beam_interruptions', 'event_range'], prnt=prnt), show=False, prnt=prnt)
             values = [h.GetBinContent(i) for i in xrange(h.GetNbinsX()) if h.GetBinContent(i) and h.GetBinContent(i) < 1e6]
             m, s = mean_sigma(values)
             h = TH1F('hfl', 'Flux Distribution', int(sqrt(h.GetNbinsX()) * 2), m - 3 * s, m + 4 * s)
