@@ -132,8 +132,8 @@ class Cut:
     def set_chi2(self, value):
         self.CutConfig['chi2_x'] = value
         self.CutConfig['chi2_y'] = value
-        self.update('chi2_x', self.generate_chi2('x'))
-        self.update('chi2_y', self.generate_chi2('y'))
+        self.update('chi2_x', self.generate_chi2('x').Value)
+        self.update('chi2_y', self.generate_chi2('y').Value)
 
     # endregion SET
     # ----------------------------------------
