@@ -9,6 +9,7 @@ from currents import Currents
 from ROOT import TProfile2D
 from numpy import linspace
 from uncertainties import umath
+from dut import DUT
 
 
 class DUTAnalysis(TelecopeAnalysis):
@@ -16,14 +17,12 @@ class DUTAnalysis(TelecopeAnalysis):
 
         TelecopeAnalysis.__init__(self, run_number, test_campaign, tree, t_vec, verbose)
 
-        self.DUTNumber = self.load_dut_nr(diamond_nr)
-        self.DUTName = self.Run.DUTNames[diamond_nr - 1]
-        self.Bias = self.Run.Bias[diamond_nr - 1]
+        self.DUT = DUT(diamond_nr, self.Run.RunInfo)
 
-        self.print_start(run_number, prnt, dut=self.DUTName)
+        self.print_start(run_number, prnt, dut=self.DUT.Name)
 
         self.update_config()
-        self.set_save_directory(join(self.DUTName, str(self.RunNumber).zfill(3)))
+        self.set_save_directory(join(self.DUT.Name, str(self.RunNumber).zfill(3)))
 
         self.Currents = Currents(self)
 
@@ -31,8 +30,8 @@ class DUTAnalysis(TelecopeAnalysis):
         pass
 
     def load_dut_nr(self, dut_nr):
-        if dut_nr not in self.Run.DUTNumbers:
-            critical('wrong diamond number "{}". The following diamond numbers are valid: {}'.format(dut_nr, self.Run.DUTNumbers))
+        if dut_nr not in self.Run.DUT.Numbers:
+            critical('wrong diamond number "{}". The following diamond numbers are valid: {}'.format(dut_nr, self.Run.DUT.Numbers))
         return dut_nr
 
     def draw_current(self, relative_time=False, averaging=1, show=True, v_range=None, draw_opt='al'):
@@ -43,7 +42,7 @@ class DUTAnalysis(TelecopeAnalysis):
         return ['Run', 'Type', 'Diamond', 'Flux [kHz/cm2]', 'HV [V]']
 
     def show_information(self, header=True, prnt=True):
-        rows = [[self.RunNumber, self.Run.RunInfo['runtype'], self.DUTName, '{:14.1f}'.format(self.Run.Flux.n), '{:+6d}'.format(self.Bias)]]
+        rows = [[self.RunNumber, self.Run.RunInfo['runtype'], self.DUT.Name, '{:14.1f}'.format(self.Run.Flux.n), '{:+6d}'.format(self.DUT.Bias)]]
         return print_table(rows, self.get_info_header() if header else None, prnt=prnt)
 
     # ----------------------------------------
@@ -52,7 +51,7 @@ class DUTAnalysis(TelecopeAnalysis):
         return self.Currents.get_current()
 
     def get_irradiation(self):
-        return self.Run.get_irradiations()[self.DUTNumber - 1]
+        return self.DUT.get_irradiation(self.TCString)
 
     def get_attenuator(self):
         return False
@@ -67,13 +66,13 @@ class DUTAnalysis(TelecopeAnalysis):
         """ :return: signal map data as numpy array [[x], [y], [ph]] with units [[mm], [mm], [mV]]
             :param cut: applies all cuts if None is provided.
             :param fid: return only values within the fiducial region set in the AnalysisConfig.ini"""
-        y, x = self.Cut.get_track_vars(self.DUTNumber - 1, mm=True)
+        y, x = self.Cut.get_track_vars(self.DUT.Number - 1, mm=True)
         cut = self.Cut.generate_custom(exclude=['fiducial'], prnt=False) if not fid and cut is None else self.Cut(cut)
         n = self.Tree.Draw('{x}:{y}:{z}'.format(z=self.get_ph_str(), x=x, y=y), cut, 'goff')  # *10 to get values in mm
         return self.Run.get_root_vecs(n, 3)
 
     def get_uniformity(self, bins=10, redo=False):
-        pickle_path = self.make_pickle_path('Signal', 'Uniformity', self.RunNumber, ch=self.DUTNumber, suf=bins)
+        pickle_path = self.make_pickle_path('Signal', 'Uniformity', self.RunNumber, ch=self.DUT.Number, suf=bins)
 
         def f():
             return self.draw_uniformity(bins=bins, show=False)
@@ -110,8 +109,8 @@ class DUTAnalysis(TelecopeAnalysis):
             return
         x, y, lx, ly = values
         cut = TCutG('det{}'.format(scale), 5, array([x, x, x + lx, x + lx, x], 'd') * scale, array([y, y + ly, y + ly, y, y], 'd') * scale)
-        cut.SetVarX(self.Cut.get_track_var(self.DUTNumber - 1, 'x'))
-        cut.SetVarY(self.Cut.get_track_var(self.DUTNumber - 1, 'y'))
+        cut.SetVarX(self.Cut.get_track_var(self.DUT.Number - 1, 'x'))
+        cut.SetVarY(self.Cut.get_track_var(self.DUT.Number - 1, 'y'))
         self.Objects.append(cut)
         cut.SetLineWidth(3)
         cut.Draw()
@@ -122,15 +121,15 @@ class DUTAnalysis(TelecopeAnalysis):
 
         cut = self.Cut.generate_custom(exclude=['fiducial'], prnt=prnt) if not fid and cut is None else self.Cut(cut)
         suf = '{c}_{ch}_{res}'.format(c=cut.GetName(), ch=self.Cut.CutConfig['chi2_x'], res=res if bins is None else '{}x{}'.format(bins[0], bins[2]))
-        pickle_path = self.make_pickle_path('SignalMaps', 'Hit' if hitmap else 'Signal', run=self.RunNumber, ch=self.DUTNumber, suf=suf)
+        pickle_path = self.make_pickle_path('SignalMaps', 'Hit' if hitmap else 'Signal', run=self.RunNumber, ch=self.DUT.Number, suf=suf)
 
         def func():
             set_root_output(0)
             name = 'h_hm' if hitmap else 'h_sm'
             atts = [name, 'Track Hit Map' if hitmap else 'Signal Map'] + (self.Bins.get_global(res, mm=True) if bins is None else bins)
             h1 = TH2I(*atts) if hitmap else TProfile2D(*atts)
-            self.info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.DUTName, run=self.RunNumber, mode='hit' if hitmap else 'signal '), prnt=prnt)
-            y, x = self.Cut.get_track_vars(self.DUTNumber - 1, mm=True)
+            self.info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.DUT.Name, run=self.RunNumber, mode='hit' if hitmap else 'signal '), prnt=prnt)
+            y, x = self.Cut.get_track_vars(self.DUT.Number - 1, mm=True)
             self.Tree.Draw('{z}{y}:{x}>>{h}'.format(z=self.get_ph_str() + ':' if not hitmap else '', x=x, y=y, h=name), cut, 'goff')
             set_2d_ranges(h1, *([3, 3] if size is None else size))
             adapt_z_range(h1) if not hitmap else do_nothing()
@@ -154,7 +153,7 @@ class DUTAnalysis(TelecopeAnalysis):
     def split_signal_map(self, m=2, n=2, grid=True, redo=False, show=True):
         fid_cut = array(self.Cut.CutConfig['fiducial']) * 10
         if not fid_cut.size:
-            log_critical('fiducial cut not defined for {}'.format(self.DUTName))
+            log_critical('fiducial cut not defined for {}'.format(self.DUT.Name))
         x_bins = linspace(fid_cut[0], fid_cut[1], m + 1)
         y_bins = linspace(fid_cut[2], fid_cut[3], n + 1)
         bins = [m, x_bins, n, y_bins]
@@ -209,7 +208,7 @@ class DUTAnalysis(TelecopeAnalysis):
 
     def get_signal_spread(self, min_percent=5, max_percent=99, prnt=True):
         """ Calculates the relative spread of mean signal response from the 2D signal response map. """
-        pickle_path = self.make_pickle_path('SignalMaps', 'Spread', self.RunNumber, self.DUTNumber)
+        pickle_path = self.make_pickle_path('SignalMaps', 'Spread', self.RunNumber, self.DUT.Number)
 
         def f():
             h = self.draw_sig_map_disto(show=False)

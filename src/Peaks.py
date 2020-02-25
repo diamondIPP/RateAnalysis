@@ -17,7 +17,7 @@ class PeakAnalysis(Analysis):
         Analysis.__init__(self, verbose=self.Ana.Verbose)
         self.Run = self.Ana.Run
         self.Channel = self.Ana.Channel
-        self.DUTNumber = self.Ana.DUTNumber
+        self.DUT = self.Ana.DUT.Number
         self.Tree = self.Ana.Tree
         self.set_save_directory(self.Ana.SubDir)
 
@@ -52,7 +52,7 @@ class PeakAnalysis(Analysis):
 
     def get_area(self):
         """ return the total area of the BCM' pad sizes """
-        i = int(self.Ana.DUTName.split('-')[-1]) - 1
+        i = int(self.Ana.DUT.Name.split('-')[-1]) - 1
         base_length = 0.0928125  # [cm]
         spacing = 0.0025
         radius = 0.0049568

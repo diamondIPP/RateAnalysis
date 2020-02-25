@@ -46,8 +46,7 @@ class Currents(Analysis):
         self.Begin, self.End = self.load_times(begin, end)
 
         # DUT
-        self.DUTNumber = dut if self.Analysis is None else self.Analysis.DUTNumber
-        self.DUTName = self.get_dut_name()
+        self.DUT = self.get_dut(dut)
 
         # HV Device Info
         self.Number = self.get_device_number()
@@ -110,12 +109,13 @@ class Currents(Analysis):
                 return (self.TimeZone.localize(datetime.strptime('{}-{}'.format(self.TestCampaign.year, t), '%Y-%m/%d-%H:%M:%S')) for t in [begin, end])
         return self.load_ana_start_time(), self.load_ana_end_time()
 
-    def get_dut_name(self):
+    def get_dut(self, number):
         if self.Analysis is not None:
-            return self.Analysis.DUTName
+            return self.Analysis.DUT
         elif self.RunSelection.has_selected_runs():
-            return self.RunSelection.get_diamond_names(sel=True)[0]
-        return next(log['dia{}'.format(self.DUTNumber)] for log in self.RunLogs.itervalues() if conv_log_time(log['starttime0']) > self.Begin)
+            return self.RunSelection.SelectedDUT
+        from dut_analysis import DUT
+        return DUT(number, next(log['dia{}'.format(self.DUT.Number)] for log in self.RunLogs.itervalues() if conv_log_time(log['starttime0']) > self.Begin))
 
     def get_device_str(self):
         if self.Analysis is not None:
@@ -124,7 +124,7 @@ class Currents(Analysis):
             run_info = self.RunLogs[str(self.RunSelection.get_selected_runs()[0])]
         else:
             run_info = next(log for log in self.RunLogs.itervalues() if conv_log_time(log['starttime0']) > self.Begin)
-        return str(run_info['dia{}supply'.format(self.DUTNumber)])
+        return str(run_info['dia{}supply'.format(self.DUT.Number)])
 
     def get_device_number(self):
         return self.get_device_str().split('-')[0]
@@ -262,14 +262,14 @@ class Currents(Analysis):
                 current = ufloat(fm, fs + self.Precision + .03 * fm)  # add .05 as uncertainty of the device and 5% systematic error
             else:
                 current = ufloat(h.GetMean(), h.GetMeanError() + .05 + .05 * h.GetMean())
-        self.Analysis.server_pickle(self.make_pickle_path('Currents', run=self.RunNumber, ch=self.DUTNumber), current)
+        self.Analysis.server_pickle(self.make_pickle_path('Currents', run=self.RunNumber, ch=self.DUT.Number), current)
         return current
 
     def draw_iv(self, show=True):
         self.find_data()
         x = [v for v, c in zip(self.Voltages, self.Currents) if c != 590]
         y = [c for c in self.Currents if c != 590]
-        g = self.make_tgrapherrors('giv', 'I-V Curve for {}'.format(self.Analysis.DUTName), x=x, y=y)
+        g = self.make_tgrapherrors('giv', 'I-V Curve for {}'.format(self.Analysis.DUT.Name), x=x, y=y)
         format_histo(g, x_tit='Voltage [V]', y_tit='Current [nA]', y_off=1.4)
         self.draw_histo(g, 'IV', draw_opt='ap', logy=True, lm=.12, show=show)
         return g
@@ -285,7 +285,7 @@ class Currents(Analysis):
             self.draw_irradiation(make_irr_string(self.Analysis.RunSelection.get_irradiation()))
         self.Stuff.append(c)
         run = self.Analysis.RunPlan if self.IsCollection else self.RunNumber
-        save_name = 'Currents{}_{}_{}'.format(self.TCString, run, self.DUTNumber)
+        save_name = 'Currents{}_{}_{}'.format(self.TCString, run, self.DUT.Number)
         self.save_canvas(c, name=save_name, sub_dir='currents', show=show, ftype='png')
 
     def zoom_pads(self, low, high):
@@ -320,7 +320,7 @@ class Currents(Analysis):
         self.draw_tpad('p2', transparent=True)
         bias_str = 'at {b} V'.format(b=self.Bias) if self.Bias else ''
         run_str = '{n}'.format(n=self.RunNumber) if not self.IsCollection else 'Plan {rp}'.format(rp=self.Analysis.RunPlan)
-        text = 'Currents of {dia} {b} - Run {r} - {n}'.format(dia=self.DUTName, b=bias_str, r=run_str, n=self.Name)
+        text = 'Currents of {dia} {b} - Run {r} - {n}'.format(dia=self.DUT.Name, b=bias_str, r=run_str, n=self.Name)
         self.draw_tlatex(pad_margins[0], 1.02 - pad_margins[-1], text, align=11, size=.06)
 
     def find_margins(self):

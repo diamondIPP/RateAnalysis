@@ -14,7 +14,7 @@ class PixCollection(AnalysisCollection):
         AnalysisCollection.__init__(self, run_plan, dut_nr, test_campaign, load_tree, verbose)
 
     def load_analysis(self, run_number):
-        return PixAnalysis(run_number, self.DUTNumber, self.TCString, self.Threads[run_number].Tuple, self.Threads[run_number].Time, self.Verbose, prnt=False)
+        return PixAnalysis(run_number, self.DUT.Number, self.TCString, self.Threads[run_number].Tuple, self.Threads[run_number].Time, self.Verbose, prnt=False)
 
     @staticmethod
     def load_dummy():

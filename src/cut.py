@@ -73,7 +73,7 @@ class Cut:
     def load_dut_config(self, option, store_true=False):
         try:
             conf = loads(self.Config.get('CUT', option))
-            dia = self.Analysis.DUTName
+            dia = self.Analysis.DUT.Name
             return dia in conf if store_true else conf[dia]
         except (KeyError, NoOptionError):
             log_warning('No option {} in the analysis config for {}!'.format(option, make_tc_str(self.TCString)))
@@ -212,8 +212,8 @@ class Cut:
             return CutString('fiducial', '', '')
         xy = self.CutConfig['fiducial'] + (([self.Bins.PX / 2] * 2 + [self.Bins.PY / 2] * 2) if center else 0)
         cut = self.Analysis.draw_box(xy[0], xy[2], xy[1], xy[3], line_color=kRed, width=3, name='fid{}'.format(self.RunNumber), show=False)
-        cut.SetVarX(self.get_track_var(self.Analysis.DUTNumber - 1, 'x'))
-        cut.SetVarY(self.get_track_var(self.Analysis.DUTNumber - 1, 'y'))
+        cut.SetVarX(self.get_track_var(self.Analysis.DUT.Number - 1, 'x'))
+        cut.SetVarY(self.get_track_var(self.Analysis.DUT.Number - 1, 'y'))
         self.Analysis.Objects.append(cut)
         xy *= 10
         dx, dy = xy[1] - xy[0], xy[3] - xy[2]
@@ -286,7 +286,7 @@ class Cut:
         return make_ufloat(mean_sigma(self.Analysis.Run.get_root_vec(n)))
 
     def find_zero_ph_event(self, redo=False):
-        pickle_path = self.Analysis.make_pickle_path('Cuts', 'EventMax', self.Analysis.RunNumber, self.Analysis.DUTNumber)
+        pickle_path = self.Analysis.make_pickle_path('Cuts', 'EventMax', self.Analysis.RunNumber, self.Analysis.DUT.Number)
 
         def f():
             t = self.Analysis.info('Looking for signal drops of run {} ...'.format(self.Analysis.RunNumber), next_line=False)

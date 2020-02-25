@@ -20,8 +20,7 @@ class TimingAnalysis(Analysis):
         self.Cut = self.Ana.Cut
         self.TimingCut = self.Cut.generate_custom(exclude=['timing'], prnt=False, name='Timing')
         self.Polarity = self.Ana.Polarity
-        self.DUTName = self.Ana.DUTName
-        self.DUTNumber = self.Ana.DUTNumber
+        self.DUT = self.Ana.DUT
         self.RunNumber = self.Ana.RunNumber
         self.InfoLegend = InfoLegend(pad_analysis)
         self.set_save_directory(self.Ana.SubDir)
@@ -37,7 +36,7 @@ class TimingAnalysis(Analysis):
         self.Cut = self.Ana.Cut
 
     def get(self, par=1, redo=False):
-        pickle_path = self.make_pickle_path('Timing', 'PeakVals', self.RunNumber, self.DUTNumber)
+        pickle_path = self.make_pickle_path('Timing', 'PeakVals', self.RunNumber, self.DUT.Number)
 
         def f():
             h = self.draw_peaks(show=False, prnt=False, redo=redo)
@@ -94,7 +93,7 @@ class TimingAnalysis(Analysis):
     def draw_peaks(self, fit=True, cut=None, corr=True, fine_corr=True, show=True, prnt=True, redo=False, save=True, show_cut=False, normalise=None):
 
         cut = self.TimingCut if cut is None else TCut(cut)
-        pickle_path = self.make_pickle_path('Timing', 'Peak', self.RunNumber, self.DUTNumber, suf='{}_{}{}'.format(cut.GetName(), int(corr), int(fine_corr)))
+        pickle_path = self.make_pickle_path('Timing', 'Peak', self.RunNumber, self.DUT.Number, suf='{}_{}{}'.format(cut.GetName(), int(corr), int(fine_corr)))
         xmin, xmax = [value * self.Ana.DigitiserBinWidth for value in self.Ana.SignalRegion]
         name = 'htrc{}{}'.format(int(corr), int(fine_corr))
 
@@ -180,7 +179,7 @@ class TimingAnalysis(Analysis):
     def draw_peaks_tc(self, corr=True, fit=True, cut=None, show=True, prnt=True, save=True, redo=False):
 
         cut = self.Cut.generate_custom(exclude=['timing'], prnt=prnt) if cut is None else TCut(cut)
-        pickle_path = self.make_pickle_path('Timing', 'PeakTC', self.RunNumber, self.DUTNumber, suf=cut.GetName())
+        pickle_path = self.make_pickle_path('Timing', 'PeakTC', self.RunNumber, self.DUT.Number, suf=cut.GetName())
 
         def f():
             set_root_warnings(False)

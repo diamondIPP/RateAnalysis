@@ -9,6 +9,7 @@ from os import system
 from os.path import join, basename
 
 from run import Run
+from dut import DUT
 
 
 class RunSelection:
@@ -29,9 +30,7 @@ class RunSelection:
         self.Selection = self.init_selection()
         self.SelectedRunplan = None
         self.SelectedType = None
-        self.SelectedBias = None
         self.SelectedDUT = None
-        self.SelectedDUTNr = None
 
         self.select_runs_from_runplan(runplan, dut_nr)
         self.PBar = PBar()
@@ -122,7 +121,6 @@ class RunSelection:
             for dia_nr in xrange(1, 4):
                 data = self.RunInfos[run]
                 if 'dia{}'.format(dia_nr) in data and name == data['dia{}'.format(dia_nr)]:
-                    self.SelectedDUTNr = dia_nr
                     self.select_run(run)
                     selected_runs += 1
                     selected_run = True
@@ -130,7 +128,9 @@ class RunSelection:
                     self.unselect_run(run)
                     unselected_runs += 1
             selected_run = False
-        self.SelectedDUT = name
+        run0 = self.get_selected_runs()[0]
+        nr0 = next(self.RunInfos[run0]['dia{}'.format(i)] for i in xrange(1, self.get_n_duts(run0) + 1) if self.RunInfos[run0]['dia{}'.format(i) == name])
+        self.SelectedDUT = DUT(nr0, self.RunInfos[run0])
         self.Run.info('Runs containing {dia} selected ({nr1} runs selected, {nr2} unselected)'.format(dia=name, nr1=selected_runs, nr2=unselected_runs))
 
     def unselect_unless_bias(self, bias):
@@ -138,7 +138,7 @@ class RunSelection:
         assert type(bias) is int, 'Bias has to be an integer'
         unselected_runs = 0
         for run in self.get_selected_runs():
-            if self.RunInfos[run]['dia{nr}hv'.format(nr=self.SelectedDUTNr)] != bias:
+            if self.RunInfos[run]['dia{nr}hv'.format(nr=self.SelectedDUT.Number)] != bias:
                 self.unselect_run(run)
                 unselected_runs += 1
         self.Run.info('Unselected all runs and channels if bias is not {bias}V (unselected {nr} runs).'.format(bias=bias, nr=unselected_runs))
@@ -171,10 +171,8 @@ class RunSelection:
     def select_runs(self, run_list, dut=1):
         for run in run_list:
             self.select_run(run)
+        self.SelectedDUT = DUT(dut, self.RunInfos[run_list[0]])
         self.SelectedType = 'CurrentInfo'
-        self.SelectedDUTNr = dut
-        self.SelectedDUT = self.get_selected_dut()
-        self.SelectedBias = self.get_selected_biases()[0]
 
     def unselect_unless_in_range(self, minrun, maxrun):
         for run in self.get_selected_runs():
@@ -212,13 +210,13 @@ class RunSelection:
         return self.Run.get_type()
 
     def get_bias(self, run_number):
-        return self.RunInfos[run_number]['dia{}hv'.format(self.SelectedDUTNr)] if self.SelectedDUTNr is not None else None
+        return self.RunInfos[run_number]['dia{}hv'.format(self.SelectedDUT.Number)] if self.SelectedDUT.Number is not None else None
 
     def get_duration(self, run_number):
         return (self.get_end_time(run_number) - self.get_start_time(run_number)).total_seconds()
 
     def get_dut_name(self, run_number):
-        return self.Run.translate_dia(self.RunInfos[run_number]['dia{}'.format(self.SelectedDUTNr)]) if self.SelectedDUTNr is not None else None
+        return self.Run.translate_dia(self.RunInfos[run_number]['dia{}'.format(self.SelectedDUT.Number)]) if self.SelectedDUT.Number is not None else None
 
     def get_selected_type(self):
         return self.get_type(self.get_selected_runs()[0])

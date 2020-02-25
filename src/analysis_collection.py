@@ -24,10 +24,8 @@ class AnalysisCollection(Analysis):
         self.Runs = array(self.RunSelection.get_selected_runs())
         self.NRuns = len(self.Runs)
         self.RunPlan = self.RunSelection.SelectedRunplan
-        self.DUTName = self.RunSelection.SelectedDUT
-        self.print_start(run_plan, prnt=load_tree, dut=self.DUTName)
-        self.DUTNumber = self.RunSelection.SelectedDUTNr
-        self.Bias = self.RunSelection.SelectedBias
+        self.DUT = self.RunSelection.SelectedDUT
+        self.print_start(run_plan, prnt=load_tree, dut=self.DUT.Name)
         self.Type = self.RunSelection.SelectedType
         self.Fluxes = self.RunSelection.get_selected_fluxes()
 
@@ -50,7 +48,7 @@ class AnalysisCollection(Analysis):
         self.StartTime = self.FirstAnalysis.Run.StartTime if self.LoadTree else time_stamp(self.FirstAnalysis.Run.LogStart)
 
         # Directory for the Plots
-        self.set_save_directory(join(self.DUTName, 'runplan{}'.format(self.RunPlan)))
+        self.set_save_directory(join(self.DUT.Name, 'runplan{}'.format(self.RunPlan)))
 
         # Sub Classes
         self.VoltageScan = VoltageScan(self)
@@ -96,7 +94,7 @@ class AnalysisCollection(Analysis):
         pass
 
     def load_analysis(self, run_number):
-        return DUTAnalysis(run_number, self.DUTNumber, self.TCString, self.Threads[run_number].Tuple, self.Threads[run_number].Time, self.Verbose, prnt=False)
+        return DUTAnalysis(run_number, self.DUT.Number, self.TCString, self.Threads[run_number].Tuple, self.Threads[run_number].Time, self.Verbose, prnt=False)
 
     @staticmethod
     def load_dummy():
@@ -109,7 +107,7 @@ class AnalysisCollection(Analysis):
             analysis = self.load_analysis(run)
             if self.LoadTree:
                 analysis.Cut.set_high_low_rate_run(low_run=self.MinFluxRun, high_run=self.MaxFluxRun)
-                analysis.Cut.update_all_cut()
+                analysis.Cut.reload()
             analyses[run] = analysis
         return analyses
 
@@ -223,7 +221,7 @@ class AnalysisCollection(Analysis):
         return 'Time' if vs_time else 'Flux'
 
     def get_sm_std_devs(self, redo=False):
-        pickle_path = self.make_pickle_path('Uniformity', 'STD', self.RunPlan, self.DUTNumber)
+        pickle_path = self.make_pickle_path('Uniformity', 'STD', self.RunPlan, self.DUT.Number)
 
         def f():
             self.info('Getting STD of Signal Map ... ')
@@ -232,7 +230,7 @@ class AnalysisCollection(Analysis):
         return do_pickle(pickle_path, f, redo=redo)
 
     def get_sm_std(self, redo=False, low=False, high=False):
-        pickle_path = self.make_pickle_path('Uniformity', 'SMSTD', self.RunPlan, self.DUTNumber, suf='{}{}'.format(int(low), int(high)))
+        pickle_path = self.make_pickle_path('Uniformity', 'SMSTD', self.RunPlan, self.DUT.Number, suf='{}{}'.format(int(low), int(high)))
         runs = self.get_runs_below_flux(110) if low else self.get_runs_above_flux(2000) if high else self.Runs
 
         def f():
@@ -267,7 +265,7 @@ class AnalysisCollection(Analysis):
 
     def get_repr_error_old(self, flux, show=True, redo=False):
 
-        pickle_path = self.make_pickle_path('Errors', 'Repr', self.RunPlan, self.DUTNumber, suf=flux)
+        pickle_path = self.make_pickle_path('Errors', 'Repr', self.RunPlan, self.DUT.Number, suf=flux)
 
         def f():
             runs = self.get_runs_below_flux(flux)
@@ -314,7 +312,7 @@ class AnalysisCollection(Analysis):
     # region PULSE HEIGHT
     def draw_full_pulse_height(self, bin_width=10000, show=True, rel_t=True, redo=False, with_flux=True):
 
-        pickle_path = self.make_pickle_path('PulseHeight', 'FullPH', self.RunPlan, ch=self.DUTNumber, suf=bin_width)
+        pickle_path = self.make_pickle_path('PulseHeight', 'FullPH', self.RunPlan, ch=self.DUT.Number, suf=bin_width)
 
         def f():
             pulse_heights = [get_hist_vec(ana.draw_pulse_height(bin_width, corr=True, redo=redo, show=False)[0]) for ana in self.Analyses.itervalues()]
@@ -355,7 +353,7 @@ class AnalysisCollection(Analysis):
         graphs = [g, g_errors]
         graphs += [g1, g_last] if first_last else []
         leg = self.make_legend(x2=.37, y2=.33, nentries=len(graphs), w=.2)
-        mg = TMultiGraph('mg_ph', 'Pulse Height vs {mod} - {dia}'.format(mod='Time' if vs_time else 'Flux', dia=self.DUTName))
+        mg = TMultiGraph('mg_ph', 'Pulse Height vs {mod} - {dia}'.format(mod='Time' if vs_time else 'Flux', dia=self.DUT.Name))
         for gr in graphs:
             leg.AddEntry(gr, gr.GetTitle(), 'l' if gr.GetName() in ['gerr', 'g'] else 'p')
             mg.Add(gr, 'p')
@@ -448,7 +446,7 @@ class AnalysisCollection(Analysis):
 
     def draw_all_ph_distributions(self, bin_width=None, show=False):
 
-        pickle_path = self.make_pickle_path('ph_fit', 'PhDistoFits', run=self.RunPlan, ch=self.DUTNumber, suf=self.Bins.BinSize if bin_width is None else bin_width)
+        pickle_path = self.make_pickle_path('ph_fit', 'PhDistoFits', run=self.RunPlan, ch=self.DUT.Number, suf=self.Bins.BinSize if bin_width is None else bin_width)
 
         def f():
             collimator_settings = set([(ana.Run.RunInfo['fs11'], ana.Run.RunInfo['fsh13']) for key, ana in self.Analyses.iteritems()])
@@ -460,7 +458,7 @@ class AnalysisCollection(Analysis):
         return self.draw_combined_ph_distributions(runs, binning, show)
 
     def draw_ph_distributions_below_flux(self, bin_width=None, flux=150, show=True):
-        pickle_path = self.make_pickle_path('Ph_fit', 'PhDistoBel', self.RunPlan, self.DUTNumber, suf='{bin}_{flux}'.format(bin=self.Bins(bin_width), flux=flux))
+        pickle_path = self.make_pickle_path('Ph_fit', 'PhDistoBel', self.RunPlan, self.DUT.Number, suf='{bin}_{flux}'.format(bin=self.Bins(bin_width), flux=flux))
 
         def f():
             runs = self.get_runs_below_flux(flux)
@@ -557,7 +555,7 @@ class AnalysisCollection(Analysis):
 
     def draw_flux(self, bin_width=5, rel_time=True, show=True, redo=False):
 
-        pickle_path = self.make_pickle_path('Flux', 'FullFlux', self.RunPlan, self.DUTNumber, bin_width)
+        pickle_path = self.make_pickle_path('Flux', 'FullFlux', self.RunPlan, self.DUT.Number, bin_width)
 
         def f():
             if not self.FirstAnalysis.has_branch('rate'):

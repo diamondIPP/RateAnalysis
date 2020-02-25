@@ -14,10 +14,10 @@ class DUT:
         self.Dir = get_base_dir()
 
         # Info
-        self.Number = number
-        self.Name = run_info['dia{}'.format(number)]
-        self.Bias = run_info['dia{}hv'.format(number)]
-        self.Attenuator = run_info['att_dia{}'.format(number)] if 'att_dia{}'.format(number) in run_info else None
+        self.Number = 1 if number is None else number
+        self.Name = run_info['dia{}'.format(self.Number)]
+        self.Bias = run_info['dia{}hv'.format(self.Number)]
+        self.Attenuator = run_info['att_dia{}'.format(self.Number)] if 'att_dia{}'.format(self.Number) in run_info else None
 
         # Specs
         self.Specs = load_parser(join(self.Config.get('MAIN', 'data directory'), 'diaSpecs.ini'))

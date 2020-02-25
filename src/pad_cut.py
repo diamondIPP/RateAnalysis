@@ -14,8 +14,7 @@ class PadCut(Cut):
     def __init__(self, analysis):
         Cut.__init__(self, analysis)
         self.Channel = self.Analysis.Channel
-        self.DUTName = analysis.DUTName
-        self.DUTNumber = analysis.DUTNumber
+        self.DUT = analysis.DUT
 
         self.update_config()
         self.generate_dut()
@@ -142,7 +141,7 @@ class PadCut(Cut):
         format_histo(px, title='Projection X of the Signal Map', y_tit='Number of Entries', y_off=1.5)
         self.Analysis.draw_histo(px, lm=.12, show=show)
         py = h.ProjectionY()
-        return '"{}": [{}]'.format(self.Analysis.DUTName, ', '.join('{:0.3f}'.format(i) for i in self.find_fid_margins(px, thresh) + self.find_fid_margins(py, thresh)))
+        return '"{}": [{}]'.format(self.Analysis.DUT.Name, ', '.join('{:0.3f}'.format(i) for i in self.find_fid_margins(px, thresh) + self.find_fid_margins(py, thresh)))
 
     @staticmethod
     def find_fid_margins(proj, thresh):
@@ -154,11 +153,11 @@ class PadCut(Cut):
 
     def calc_signal_threshold(self, use_bg=False, show=True, show_all=False):
         run = self.HighRateRun if self.HighRateRun is not None else self.RunNumber
-        pickle_path = self.Analysis.make_pickle_path('Cuts', 'SignalThreshold', run, self.DUTNumber)
+        pickle_path = self.Analysis.make_pickle_path('Cuts', 'SignalThreshold', run, self.DUT.Number)
         show = False if show_all else show
 
         def f():
-            t = self.Analysis.info('Calculating signal threshold for bucket cut of run {run} and {d} ...'.format(run=self.Analysis.RunNumber, d=self.DUTName), next_line=False)
+            t = self.Analysis.info('Calculating signal threshold for bucket cut of run {run} and {d} ...'.format(run=self.Analysis.RunNumber, d=self.DUT.Name), next_line=False)
             h = TH1F('h', 'Bucket Cut', 200, -50, 150)
             self.Analysis.Tree.Draw('{name}>>h'.format(name=self.Analysis.SignalName), self.get_bucket(), 'goff')
             format_histo(h, x_tit='Pulse Height [mV]', y_tit='Entries', y_off=1.8, stats=0, fill_color=self.Analysis.FillColor)
@@ -260,7 +259,7 @@ class PadCut(Cut):
         picklepath = self.Analysis.make_pickle_path('Pedestal', 'Cut', self.RunNumber, self.Channel)
 
         def func():
-            t = self.Analysis.info('generating pedestal cut for {dia} of run {run} ...'.format(run=self.Analysis.RunNumber, dia=self.Analysis.DUTName), next_line=False)
+            t = self.Analysis.info('generating pedestal cut for {dia} of run {run} ...'.format(run=self.Analysis.RunNumber, dia=self.Analysis.DUT.Name), next_line=False)
             h1 = TH1F('h_pdc', 'Pedestal Distribution', 600, -150, 150)
             self.Analysis.Tree.Draw('{name}>>h_pdc'.format(name=self.Analysis.PedestalName), '', 'goff')
             fit_pars = fit_fwhm(h1, do_fwhm=True, draw=False)
@@ -295,10 +294,10 @@ class PadCut(Cut):
         return do_pickle(pickle_path, func, threshold)
 
     def calc_timing_range(self, redo=False):
-        pickle_path = self.Analysis.make_pickle_path('Cuts', 'TimingRange', self.RunNumber, self.DUTNumber)
+        pickle_path = self.Analysis.make_pickle_path('Cuts', 'TimingRange', self.RunNumber, self.DUT.Number)
 
         def func():
-            t = self.Analysis.info('generating timing cut for {dia} of run {run} ...'.format(run=self.Analysis.RunNumber, dia=self.Analysis.DUTName), next_line=False)
+            t = self.Analysis.info('generating timing cut for {dia} of run {run} ...'.format(run=self.Analysis.RunNumber, dia=self.Analysis.DUT.Name), next_line=False)
             cut = self.generate_custom(exclude=['timing'], prnt=False, name='timing_cut')
             t_correction = self.Analysis.Timing.calc_fine_correction(redo=redo)
             h = self.Analysis.Timing.draw_peaks(show=False, cut=cut, fine_corr=t_correction != '0', prnt=False, redo=redo)

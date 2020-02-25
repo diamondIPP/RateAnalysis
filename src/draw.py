@@ -326,7 +326,7 @@ class Draw:
         return '_{pol}{bias:04d}'.format(pol=pol, bias=int(abs(bias))) if bias else ''
 
     def make_info_string(self):
-        string = '_{dia}'.format(dia=self.DUTName) if hasattr(self, 'DUTName') else ''
+        string = '_{dia}'.format(dia=self.DUT.Name) if hasattr(self, 'DUTName') else ''
         string += self.make_bias_string()
         string += '_{tc}'.format(tc=self.TCString)
         string = string.replace('-', '')
@@ -348,7 +348,7 @@ class Draw:
                 run_string = str(self.RunNumber)
             else:
                 return
-            path = join(self.ServerDir, 'Diamonds', self.DUTName, 'BeamTests', make_tc_str(self.TCString, long_=False), run_string, file_name)
+            path = join(self.ServerDir, 'Diamonds', self.DUT.Name, 'BeamTests', make_tc_str(self.TCString, long_=False), run_string, file_name)
             for ft in ['pdf', 'png'] if ftype is None else [ftype]:
                 canvas.SaveAs('{}.{}'.format(path, ft))
 

@@ -86,7 +86,7 @@ class PixAnalysis(DUTAnalysis):
 
     def get_pulse_height(self, bin_size=None, cut=None, redo=False, corr=None):
         suffix = '{bins}_{c}'.format(bins=self.Bins.BinSize if bin_size is None else bin_size, c=self.Cut(cut).GetName())
-        picklepath = self.make_pickle_path('Ph_fit', 'Fit', self.RunNumber, self.DUTNumber, suf=suffix)
+        picklepath = self.make_pickle_path('Ph_fit', 'Fit', self.RunNumber, self.DUT.Number, suf=suffix)
 
         def f():
             p, fit_pars = self.draw_pulse_height(bin_size=bin_size, cut=self.Cut(cut), show=False)
@@ -111,7 +111,7 @@ class PixAnalysis(DUTAnalysis):
     # region OCCUPANCY
     def draw_occupancy(self, roc=None, name=None, cluster=True, tel_coods=False, cut='', show=True):
         """ draw hitmap or cluster map """
-        name = self.DUTName if roc is None else name
+        name = self.DUT.Name if roc is None else name
         roc = self.Dut if roc is None else roc
         return self._draw_occupancy(roc, name, cluster, tel_coods, cut, show)
 
@@ -151,7 +151,7 @@ class PixAnalysis(DUTAnalysis):
     # ----------------------------------------
     # region DISTRIBUTIONS
     def draw_adc_distribution(self, cut=None, show=True, col=None, pix=None):
-        h = TH1I('h_adc', 'ADC Distribution {d}'.format(d=self.DUTName), *self.Bins.get_adc())
+        h = TH1I('h_adc', 'ADC Distribution {d}'.format(d=self.DUT.Name), *self.Bins.get_adc())
         cut_string = self.Cut(cut) + self.Cut.generate_masks(col=col, pixels=pix, exclude=False)()
         self.format_statbox(entries=True)
         self.Tree.Draw('adc>>h_adc', cut_string, 'goff')
@@ -160,7 +160,7 @@ class PixAnalysis(DUTAnalysis):
         return h
 
     def draw_vcal_distribution(self, cut=None, col=None, pix=None, vcal=True, show=True):
-        h = TH1F('h_vcal', 'vcal Distribution {d}'.format(d=self.DUTName), *self.Bins.get_ph(vcal))
+        h = TH1F('h_vcal', 'vcal Distribution {d}'.format(d=self.DUT.Name), *self.Bins.get_ph(vcal))
         cut_string = self.Cut(cut) + self.Cut.generate_masks(col=col, pixels=pix, exclude=False)()
         n = self.Tree.Draw('col:row:adc', cut_string, 'goff')
         cols, rows, adcs = self.Run.get_root_vecs(n, 3, dtype=int)
@@ -179,7 +179,7 @@ class PixAnalysis(DUTAnalysis):
 
         def f():
             set_root_output(False)
-            h1 = TH1F('h_phd', 'Pulse Height Distribution - {d}'.format(d=self.DUTName), *self.Bins.get_ph(vcal))
+            h1 = TH1F('h_phd', 'Pulse Height Distribution - {d}'.format(d=self.DUT.Name), *self.Bins.get_ph(vcal))
             self.Tree.Draw('cluster_charge[{d}]{v}>>h_phd'.format(d=self.Dut, v='/{}'.format(self.Bins.VcalToEl) if vcal else ''), cut_string, 'goff')
             return h1
 
@@ -219,7 +219,7 @@ class PixAnalysis(DUTAnalysis):
         """ Pulse height analysis vs event for a given cut. If no cut is provided it will take all. """
         cut_string = self.Cut(cut)
         cut_string += self.Cut.generate_masks(cluster=False) if adc else ''
-        h = TProfile('hpht', '{} -  {}'.format('ADC' if adc else 'Pulse Height', self.DUTName), *self.Bins.get_time(bin_size))
+        h = TProfile('hpht', '{} -  {}'.format('ADC' if adc else 'Pulse Height', self.DUT.Name), *self.Bins.get_time(bin_size))
         self.format_statbox(only_fit=True, w=.3)
         self.Tree.Draw('{}:{} >> hpht'.format(self.get_ph_str() if not adc else 'adc', self.get_t_var()), cut_string, 'goff')
         self.draw_histo(h, show=show)
@@ -357,7 +357,7 @@ class PixAnalysis(DUTAnalysis):
     def draw_efficiency_map(self, res=None, cut='all', show=True):
         cut_string = TCut(cut) + self.Cut.CutStrings['tracks']
         cut_string = self.Cut.generate_custom(exclude=['masks', 'fiducial']) if cut == 'all' else cut_string
-        p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DUTName), *self.Bins.get_global(res_fac=res, mm=True))
+        p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DUT.Name), *self.Bins.get_global(res_fac=res, mm=True))
         self.Tree.Draw('(n_hits[{r}]>0)*100:{}:{}>>p_em'.format(r=self.Dut, *self.Cut.get_track_vars(self.Dut - 4, mm=True)), cut_string, 'goff')
         self.format_statbox(entries=True, x=.81)
         format_histo(p, x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]', z_tit='Efficiency [%]', y_off=1.4, z_off=1.5)
@@ -618,13 +618,13 @@ class PixAnalysis(DUTAnalysis):
         h = TH2F('h_hd', 'Number of Hits', 40, 0, 40, 40, 0, 40)
         self.Tree.Draw('n_hits[{}]:n_hits[{}]>>h_hd'.format(dut2, dut1), self.Cut(cut), 'goff')
         self.format_statbox(entries=True, x=.81)
-        x_tit, y_tit = ('Number of Hits in {}'.format(self.Run.DUTNames[dut - 4]) for dut in [dut1, dut2])
+        x_tit, y_tit = ('Number of Hits in {}'.format(self.Run.DUT.Names[dut - 4]) for dut in [dut1, dut2])
         format_histo(h, x_tit=x_tit, y_tit=y_tit, y_off=1.3, z_tit='Number of Entries', z_off=1.4, x_range=[0, h.FindLastBinAbove(0, 1) + 1], y_range=[0, h.FindLastBinAbove(0, 2) + 1])
         self.save_histo(h, 'HitsDiaSil', show, draw_opt='colz', rm=0.17, lm=.13, logz=True)
 
     def draw_hit_pie(self, d2=5):
         zero, dia, dut2, both = (self.Tree.GetEntries(s.format(d2)) for s in ['n_hits[4]==0&&n_hits[{}]==0', 'n_hits[4]>0&&n_hits[{}]==0', 'n_hits[4]==0&&n_hits[{}]>0', 'n_hits[4]>0&&n_hits[{}]>0'])
-        names = ['No Hits', '{} Hit'.format(self.DUTName), '{} Hit'.format(self.Run.DUTNames[d2 - 4]), 'Both Hits']
+        names = ['No Hits', '{} Hit'.format(self.DUT.Name), '{} Hit'.format(self.Run.DUT.Names[d2 - 4]), 'Both Hits']
         pie = TPie('pie', 'Hit Contributions', 4, array([zero, dia, dut2, both], 'f'), array(self.get_colors(4), 'i'))
         for i, label in enumerate(names):
             pie.SetEntryRadiusOffset(i, .05)
@@ -634,7 +634,7 @@ class PixAnalysis(DUTAnalysis):
         self.reset_colors()
 
     def draw_cluster_size(self, cut='', show=True):
-        return self._draw_cluster_size(self.Dut, self.DUTName, cut, show)
+        return self._draw_cluster_size(self.Dut, self.DUT.Name, cut, show)
 
     def draw_residuals(self, mode=None, cut=None, show=True, x_range=None):
         return self._draw_residuals(self.Dut, mode=mode, cut=cut, show=show, x_range=x_range)

@@ -9,6 +9,7 @@ from converter import Converter
 from analysis import Analysis, join, basename
 from utils import *
 from glob import glob
+from dut import DUT
 
 
 class Run:
@@ -45,6 +46,7 @@ class Run:
         self.RootFile = None
         self.Tree = None
         self.TreeName = self.Config.get('BASIC', 'treename')
+        self.DUTs = [DUT(i + 1, self.RunInfo) for i in xrange(self.get_n_diamonds())]
 
         # Settings
         self.PixelSize = loads(self.MainConfig.get('PIXEL', 'size'))
@@ -53,9 +55,6 @@ class Run:
 
         # General Information
         self.Flux = self.calculate_flux()
-        self.DUTNames = self.load_dut_names()
-        self.DUTNumbers = self.load_dut_numbers()
-        self.Bias = self.load_biases()
         self.Type = self.get_type()
 
         # Times
@@ -345,22 +344,6 @@ class Run:
 
     def get_time(self):
         return make_ufloat((time_stamp(self.LogStart + self.Duration / 2), self.Duration.seconds / 2))
-
-    def get_irradiations(self):
-        with open(join(self.Dir, self.IrradiationFile), 'r') as f:
-            data = load(f)
-        for dia in self.DUTNames:
-            if self.TCString not in data:
-                log_critical('Please add "{}" to the {}'.format(self.TCString, self.IrradiationFile))
-            if dia not in data[self.TCString].keys() + ['None']:
-                log_critical('Please add "{}" to the irradiation file for {}'.format(dia, self.TCString))
-        return [data[self.TCString][dia] for dia in self.DUTNames if dia not in ['None']]
-
-    def get_attenuators(self):
-        return [str(self.RunInfo['att_dia{}'.format(i)]) for i in xrange(1, self.get_n_diamonds() + 1) if 'att_dia1' in self.RunInfo]
-
-    def get_diamond_name(self, channel):
-        return self.DUTNames[channel]
 
     def get_channel_name(self, channel):
         self.Tree.GetEntry()

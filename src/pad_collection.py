@@ -21,15 +21,15 @@ class PadCollection(AnalysisCollection):
         self.Pulser = PulserCollection(self)
 
     def load_analysis(self, run_number):
-        return PadAnalysis(run_number, self.DUTNumber, self.TCString, self.Threads[run_number].Tuple, self.Threads[run_number].Time, self.Verbose, prnt=False)
+        return PadAnalysis(run_number, self.DUT.Number, self.TCString, self.Threads[run_number].Tuple, self.Threads[run_number].Time, self.Verbose, prnt=False)
 
     @staticmethod
     def load_dummy():
         return PadAnalysis
 
     def generate_threshold_pickle(self):
-        if not file_exists(self.make_pickle_path('Cuts', 'SignalThreshold', run=self.MaxFluxRun, ch=self.DUTNumber)):
-            PadAnalysis(self.MaxFluxRun, self.DUTNumber, self.TCString, self.Verbose, prnt=False)
+        if not file_exists(self.make_pickle_path('Cuts', 'SignalThreshold', run=self.MaxFluxRun, ch=self.DUT.Number)):
+            PadAnalysis(self.MaxFluxRun, self.DUT.Number, self.TCString, self.Verbose, prnt=False)
 
     # ----------------------------------------
     # region RESULTS

@@ -27,8 +27,7 @@ class PulserAnalysis(Analysis):
         self.PedestalName = self.get_pedestal_name()
         self.Type = self.load_type()
 
-        self.DUTName = self.Ana.DUTName
-        self.DUTNumber = self.Ana.DUTNumber
+        self.DUT = self.Ana.DUT.Number
         self.RunNumber = self.Ana.RunNumber
         self.InfoLegend = InfoLegend(pad_analysis)
 
@@ -51,12 +50,12 @@ class PulserAnalysis(Analysis):
         return rate
 
     def get_pulse_height(self, corr=True, bin_width=.1, redo=False):
-        pickle_path = self.make_pickle_path('Pulser', 'HistoFit', self.RunNumber, self.DUTNumber, suf='{}_{}'.format('ped_corr' if corr else '', 'BeamOn'))
+        pickle_path = self.make_pickle_path('Pulser', 'HistoFit', self.RunNumber, self.DUT.Number, suf='{}_{}'.format('ped_corr' if corr else '', 'BeamOn'))
         fit = do_pickle(pickle_path, partial(self.draw_distribution_fit, show=False, prnt=False, corr=corr, redo=redo, bin_width=bin_width), redo=redo)
         return make_ufloat(fit, par=1)
 
     def get_pedestal(self, par=1, redo=False):
-        pickle_path = self.make_pickle_path('Pulser', 'Pedestal', self.RunNumber, self.DUTNumber)
+        pickle_path = self.make_pickle_path('Pulser', 'Pedestal', self.RunNumber, self.DUT.Number)
         fit = do_pickle(pickle_path, partial(self.draw_pedestal, show=False, prnt=False, redo=redo))
         return make_ufloat(fit, par=par)
 
@@ -95,7 +94,7 @@ class PulserAnalysis(Analysis):
 
     def draw_pulse_height(self, bin_size=10000, y_range=None, show=True, redo=False):
         """ Shows the average pulse height of the pulser as a function of time """
-        pickle_path = self.make_pickle_path('Pulser', 'PH', self.RunNumber, self.Ana.DUTNumber, bin_size)
+        pickle_path = self.make_pickle_path('Pulser', 'PH', self.RunNumber, self.Ana.DUT.Number, bin_size)
         print self.RunNumber
 
         def f():
@@ -145,7 +144,7 @@ class PulserAnalysis(Analysis):
         start_string = '_{0}'.format(start) if start is not None else ''
         events_string = '_{0}'.format(events) if events is not None else ''
         suffix = '{corr}_{beam}{st}{ev}'.format(corr='ped_corr' if corr else '', beam='BeamOff' if not beam_on else 'BeamOn', st=start_string, ev=events_string)
-        pickle_path = self.make_pickle_path('Pulser', 'HistoFit', self.RunNumber, self.DUTNumber, suf=suffix)
+        pickle_path = self.make_pickle_path('Pulser', 'HistoFit', self.RunNumber, self.DUT.Number, suf=suffix)
         self.format_statbox(.95, .88, entries=4, only_fit=True, w=.5)
         h = self.draw_distribution(show=show, corr=corr, beam_on=beam_on, bin_width=bin_width, events=events, start=start, stats=True, redo=redo, prnt=prnt)
         h.SetName('Fit Result')

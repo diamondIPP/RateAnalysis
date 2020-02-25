@@ -7,8 +7,8 @@ class CutPix(Cut):
     def __init__(self, analysis):
         Cut.__init__(self, analysis)
 
-        self.DUTNumber = analysis.DUTNumber + 3
-        self.DUTName = analysis.DUTName
+        self.DUT = analysis.DUT
+        self.DUT.set_number(self.DUT.Number + 3)
 
         self.Bins = self.Analysis.Bins
 
@@ -34,7 +34,7 @@ class CutPix(Cut):
 
     def load_mask(self, name):
         data = loads(self.get_config(name, section='MASK'))
-        return data[self.DUTName] if self.DUTName in data else []
+        return data[self.DUT.Name] if self.DUT.Name in data else []
     # endregion CONFIG
     # ----------------------------------------
 
@@ -50,7 +50,7 @@ class CutPix(Cut):
 
     def generate_aligned(self):
         description = '{:.1f}% of the events excluded'.format(100. * self.find_n_misaligned() / self.Analysis.Run.NEntries) if self.find_n_misaligned() else ''
-        return CutString('aligned', 'aligned[{}]'.format(self.Analysis.DUTNumber) if self.find_n_misaligned() else '', description)
+        return CutString('aligned', 'aligned[{}]'.format(self.Analysis.DUT.Number) if self.find_n_misaligned() else '', description)
 
     def generate_trigger_phase(self):
         cut_range = self.CutConfig['trigger_phase']
@@ -72,30 +72,30 @@ class CutPix(Cut):
 
     def generate_line_mask(self, var, lines=None, exclude=True):
         lines = self.CutConfig['{}_mask'.format(var)] if lines is None else make_list(lines)
-        cut_var = 'cluster_{}[{}]'.format(var, self.DUTNumber)
+        cut_var = 'cluster_{}[{}]'.format(var, self.DUT.Number)
         cut_string = ' || '.join(('{v}>={} && {v}<={}' if type(line) is list else '{v}=={}').format(v=cut_var, *make_list(line)) for line in lines)
         return '' if not cut_string else invert(cut_string) if exclude else cut_string
 
     def generate_pixel_mask(self, pixels=None, exclude=True):
         pixels = self.CutConfig['pixel_mask'] if pixels is None else pixels if type(pixels[0]) is list else [pixels]
-        cut_string = ' || '.join('cluster_col[{n}]=={} && cluster_row[{n}]=={}'.format(n=self.DUTNumber, *tup) for tup in pixels)
+        cut_string = ' || '.join('cluster_col[{n}]=={} && cluster_row[{n}]=={}'.format(n=self.DUT.Number, *tup) for tup in pixels)
         return '' if not cut_string else invert(cut_string) if exclude else cut_string
 
     def generate_rhit(self, value=None):
         value = self.CutConfig['rhit'] if value is None else value
         cut_value = self.compute_rhit(value)
-        return CutString('rhit', 's_residuals[{d}] < {val}'.format(d=self.DUTNumber, val=cut_value), 'residual < {:1.1f}mm ({}% quantile)'.format(cut_value * 10, value))
+        return CutString('rhit', 's_residuals[{d}] < {val}'.format(d=self.DUT.Number, val=cut_value), 'residual < {:1.1f}mm ({}% quantile)'.format(cut_value * 10, value))
     # endregion GENERATE
     # ----------------------------------------
 
     # ----------------------------------------
     # region COMPUTE
     def compute_rhit(self, value, redo=False):
-        pickle_path = self.Analysis.make_pickle_path('Cuts', 'RHit', run=self.Analysis.RunNumber, ch=self.DUTNumber)
+        pickle_path = self.Analysis.make_pickle_path('Cuts', 'RHit', run=self.Analysis.RunNumber, ch=self.DUT.Number)
 
         def func():
             t = self.Analysis.info('generating rhit cut in for run {run}...'.format(run=self.Analysis.RunNumber), next_line=False)
-            values = get_root_vec(self.Analysis.Tree, var='residuals[{}]'.format(self.DUTNumber))
+            values = get_root_vec(self.Analysis.Tree, var='residuals[{}]'.format(self.DUT.Number))
             self.Analysis.add_to_info(t)
             return get_quantiles(values, linspace(0, .2, 2001))
 
@@ -107,7 +107,7 @@ class CutPix(Cut):
         pickle_path = self.Analysis.make_pickle_path('Cuts', 'align', self.RunNumber)
 
         def f():
-            return where(get_root_vec(self.Analysis.Tree, var='aligned[{}]'.format(self.DUTNumber + 3), dtype=bool) == 0)[0].size
+            return where(get_root_vec(self.Analysis.Tree, var='aligned[{}]'.format(self.DUT.Number + 3), dtype=bool) == 0)[0].size
         return do_pickle(pickle_path, f)
 
     def find_n_masked(self):
