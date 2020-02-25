@@ -18,7 +18,7 @@ from threading import Thread
 from time import time, sleep
 
 from gtts import gTTS
-from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, any, count_nonzero, full, ndarray
+from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, any, count_nonzero, full, ndarray, histogram, searchsorted, cumsum
 from os import makedirs, _exit, remove, devnull
 from os import path as pth
 from os.path import dirname, realpath
@@ -625,6 +625,12 @@ def find_graph_margins(graphs):
         if g.Class().GetName().startswith('TMulti'):
             graphs[i] = g.GetListOfGraphs()[0]
     return min([min(gr.GetY()[i] for i in xrange(gr.GetN()) if gr.GetY()[i] >= 0.01) for gr in graphs]), max([TMath.MaxElement(gr.GetN(), gr.GetY()) for gr in graphs])
+
+
+def get_quantiles(values, bins):
+    entries, bins = histogram(values, bins)
+    bin_width = (bins[1] - bins[0]) / 2.
+    return (bins + bin_width)[searchsorted(cumsum(entries), arange(0, 100, .01) * sum(entries))]
 
 
 def load_root_files(sel, load=True):
