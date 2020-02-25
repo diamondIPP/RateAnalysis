@@ -18,8 +18,7 @@ aparser.add_argument('-rd', '--redo', action='store_true', help='redo all plots'
 pargs = aparser.parse_args()
 
 if not pargs.collection:
-    c = analysis_selector(pargs.runplan, pargs.dut, pargs.testcampaign, pargs.tree, pargs.verbose)
-    z = c.Cut
+    z = analysis_selector(pargs.runplan, pargs.dut, pargs.testcampaign, pargs.tree, pargs.verbose)
 else:
     z = collection_selector(pargs.runplan, pargs.dut, pargs.testcampaign, pargs.tree, pargs.verbose)
     if pargs.draw:
