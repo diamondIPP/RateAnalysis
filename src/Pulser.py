@@ -21,7 +21,7 @@ class PulserAnalysis(Analysis):
         self.Tree = self.Ana.Tree
         self.Cut = self.Ana.Cut
         self.set_save_directory(self.Ana.SubDir)
-        self.PulserCut = self.Cut.generate_pulser_cut()
+        self.PulserCut = self.Cut.get_pulser()
         self.Polarity = self.Ana.PulserPolarity
         self.SignalName = self.get_signal_name()
         self.PedestalName = self.get_pedestal_name()
@@ -133,7 +133,7 @@ class PulserAnalysis(Analysis):
 
     def draw_distribution(self, show=True, corr=True, beam_on=True, bin_width=.1, events=None, start=None, stats=False, redo=False, prnt=True):
         """ Shows the distribution of the pulser integrals. """
-        cut = self.Cut.generate_pulser_cut(beam_on=beam_on)
+        cut = self.Cut.get_pulser(beam_on=beam_on)
         x = self.find_range(corr)
         h = self.Ana.draw_signal_distribution(cut=cut, sig=self.SignalName, show=False, off_corr=corr, evnt_corr=False, bin_width=bin_width, events=events,
                                               start=start, redo=redo, x_range=x, prnt=prnt, save=False)

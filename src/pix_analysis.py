@@ -13,7 +13,7 @@ from ROOT import TFormula, THStack, TProfile2D, TPie, gRandom, TH3F, TMultiGraph
 from numpy import corrcoef, ceil
 from numpy.random import rand
 
-from CutPix import CutPix
+from pix_cut import CutPix
 from dut_analysis import *
 
 
@@ -95,7 +95,7 @@ class PixAnalysis(DUTAnalysis):
         return make_ufloat(do_pickle(picklepath, f, redo=redo), par=0)
 
     def get_thresholds(self, cols=None, pix=None, vcal=True):
-        columns, rows = split(array(self.Cut.CutConfig['FidRegionLocal']), 2) if self.Cut.CutConfig['FidRegionLocal'] is not None else [0, self.Bins.NCols - 1], [0, self.Bins.NRows - 1]
+        columns, rows = split(array(self.Cut.CutConfig['local_fiducial']), 2) if self.Cut.CutConfig['local_fiducial'] is not None else [0, self.Bins.NCols - 1], [0, self.Bins.NRows - 1]
         columns = array([cols]).flatten() if cols is not None else columns
         columns, rows = (full(2, pix[0]), full(2, pix[1])) if pix is not None else (columns, rows)
         dic = {}
@@ -267,7 +267,7 @@ class PixAnalysis(DUTAnalysis):
     def draw_adc_fixed_vcal_map(self, roc=None, vcal=200, show=True):
         roc = self.Dut if roc is None else roc
         h = TProfile2D('p_pm', 'ADC Map for Vcal {v}'.format(v=vcal), *self.Bins.get_pixel())
-        cols, rows = split(array(self.Cut.CutConfig['FidRegionLocal']), 2) if self.Cut.CutConfig['FidRegionLocal'] is not None else [0, self.Bins.NCols - 1], [0, self.Bins.NRows - 1]
+        cols, rows = split(array(self.Cut.CutConfig['local_fiducial']), 2) if self.Cut.CutConfig['local_fiducial'] is not None else [0, self.Bins.NCols - 1], [0, self.Bins.NRows - 1]
         for col in xrange(cols[0], cols[1] + 1):
             for row in xrange(rows[0], rows[1] + 1):
                 self.Fit.SetParameters(*self.Parameters[roc][col][row])
@@ -319,7 +319,7 @@ class PixAnalysis(DUTAnalysis):
     # ----------------------------------------
     # region EFFICIENCY
     def get_efficiency_cut(self, trig_phase=True):
-        return self.Cut.generate_custom(include=['fiducial', 'rhit', 'tracks', 'chi2X', 'chi2Y', 'aligned', 'event_range', 'beam_interruptions'] + (['trigger_phase'] if trig_phase else []))
+        return self.Cut.generate_custom(include=['fiducial', 'rhit', 'tracks', 'chi2_x', 'chi2_y', 'aligned', 'event_range', 'beam_interruptions'] + (['trigger_phase'] if trig_phase else []))
 
     def get_hit_efficiency(self, roc=None, cut=None):
         cut_string = self.get_efficiency_cut() if cut is None else TCut(cut)
@@ -558,7 +558,7 @@ class PixAnalysis(DUTAnalysis):
         return m > .4
 
     def draw_correlation(self, plane1=2, plane2=None, mode='y', chi2=None, res=.7, start=0, evts=int(1e10), cut=None, show=True):
-        old_chi2 = self.Cut.CutConfig['chi2X']
+        old_chi2 = self.Cut.CutConfig['chi2_x']
         self.Cut.set_chi2(old_chi2 if chi2 is None else chi2)
         plane2 = self.Dut if plane2 is None else plane2
         h = TH2F('h_pc', 'Plane Correlation', *self.Bins.get_global(res_fac=res))

@@ -47,7 +47,7 @@ class CutPix(Cut):
         self.CutStrings.register(self.generate_hit(), 60)
         self.CutStrings.register(self.generate_masks(), 61)
         self.CutStrings.register(self.generate_rhit(), 80)
-        self.CutStrings.register(self.generate_fiducial(), 90)
+        self.CutStrings.register(self.generate_fiducial(center=True), 90)
 
     def generate_aligned(self):
         description = '{:.1f}% of the events excluded'.format(100. * self.find_n_misaligned() / self.Analysis.Run.NEntries) if self.find_n_misaligned() else ''

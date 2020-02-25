@@ -127,7 +127,7 @@ class TimingAnalysis(Analysis):
     def __draw_cut(self, h):
         fit = h.GetListOfFunctions()[1]
         xmin, xmax = fit.GetParameter(1) - 3 * fit.GetParameter(2), fit.GetParameter(1) + 3 * fit.GetParameter(2)
-        b = self.draw_box(xmin, -10, xmax, 1e7, color=2, width=2, fillstyle=3001, name='timing', style=7)
+        b = self.draw_box(xmin, -10, xmax, 1e7, line_color=2, width=2, fillstyle=3001, name='timing', style=7)
         legend = self.make_legend(.59, y2=.43, nentries=1, margin=.45, name='la', scale=1.25)
         legend.AddEntry(b, 'cut (3 sigma)', 'lf')
         legend.Draw()
@@ -330,7 +330,7 @@ class TimingAnalysis(Analysis):
                     self.draw_arrow(p_pos, p_pos, ymin + 1, ymin + 0.04 * y_range, col=807, width=2)
 
     def draw_bucket_disto(self, fit=False, show=True):
-        h = self.Ana.draw_signal_distribution(cut=self.Cut.get_bucket_cut(), show=show)
+        h = self.Ana.draw_signal_distribution(cut=self.Cut.get_bucket(), show=show)
         # entries = h.GetEntries()
         if fit:
             fit_bucket(h, show)
@@ -351,7 +351,7 @@ class TimingAnalysis(Analysis):
         max_x = h.GetX()[max(values, key=lambda val: abs(values[val]))]
         ymin, ymax = h.GetYaxis().GetXmin(), h.GetYaxis().GetXmax()
         if region or region is None and integral is not None:
-            b = self.draw_box(r[0], -1000, r[1], 1000, color=2, style=7, fillstyle=3002, width=2)
+            b = self.draw_box(r[0], -1000, r[1], 1000, line_color=2, style=7, fillstyle=3002, width=2)
             leg = self.make_legend(x2=0.935, y2=.5, w=.15, scale=1.5)
             leg.AddEntry(b, 'Signal Region')
             leg.Draw()
@@ -364,7 +364,7 @@ class TimingAnalysis(Analysis):
             y1, y2 = interpolate_two_points(x_vals[i1 - 1], y_vals[i1 - 1], x_vals[i1], y_vals[i1])(x1), interpolate_two_points(x_vals[i2], y_vals[i2], x_vals[i2 + 1], y_vals[i2 + 1])(x2)
             x = [x1, x1] + [x_vals[j] for j in xrange(len(x_vals) - 1) if x_vals[j] > x1 and x_vals[j - 1] < x2] + [x2, x2]
             y = [0, y1] + [y_vals[j] for j in xrange(len(x_vals) - 1) if x_vals[j] > x1 and x_vals[j - 1] < x2] + [y2, 0]
-            self.draw_n_box(x=x, y=y, color=4, name='a', fillstyle=3344)
+            self.draw_n_box(x=x, y=y, line_color=4, name='a', fillstyle=3344)
             y_pos = ymin + .1 * (ymax - ymin)
             self.draw_arrow(max_x - i[0], max_x, y_pos, y_pos, col=618, width=3, opt='<', size=.02)
             self.draw_arrow(max_x + i[1], max_x, y_pos, y_pos, col=434, width=3, opt='<', size=.02)
@@ -381,7 +381,7 @@ class TimingAnalysis(Analysis):
                 y1, y2 = interpolate_two_points(x_vals[i1 - 1], y_vals[i1 - 1], x_vals[i1], y_vals[i1])(x1), interpolate_two_points(x_vals[i2], y_vals[i2], x_vals[i2 + 1], y_vals[i2 + 1])(x2)
                 x = [x1, x1] + [x_vals[j] for j in xrange(len(x_vals) - 1) if x_vals[j] > x1 and x_vals[j - 1] < x2] + [x2, x2]
                 y = [0, y1] + [y_vals[j] for j in xrange(len(x_vals) - 1) if x_vals[j] > x1 and x_vals[j - 1] < x2] + [y2, 0]
-                self.draw_n_box(x=x, y=y, color=4, name='b', fillstyle=3344)
+                self.draw_n_box(x=x, y=y, line_color=4, name='b', fillstyle=3344)
         self.save_histo(h, 'Integration', draw_opt='same', canvas=get_last_canvas())
 
     def draw_signal_region(self, event=None, wide=True, show=True):

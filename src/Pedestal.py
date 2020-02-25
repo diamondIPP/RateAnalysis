@@ -107,7 +107,7 @@ class PedestalAnalysis(Analysis):
     def __draw_cut(self, h):
         fit = h.GetListOfFunctions()[2]
         xmin, xmax = fit.GetParameter(1) - 3 * fit.GetParameter(2), fit.GetParameter(1) + 3 * fit.GetParameter(2)
-        b = self.draw_box(xmin, -10, xmax, 1e7, color=2, width=2, fillstyle=3001, name='ped', style=7)
+        b = self.draw_box(xmin, -10, xmax, 1e7, line_color=2, width=2, fillstyle=3001, name='ped', style=7)
         legend = self.make_legend(.65, y2=.64, nentries=1, margin=.45, name='la', scale=1)
         legend.AddEntry(b, 'cut (3 sigma)', 'lf')
         legend.Draw()
@@ -117,7 +117,7 @@ class PedestalAnalysis(Analysis):
         self.draw_disto_fit(cut=self.Cut.generate_custom(exclude=['ped_sigma']), logy=True, show=show, redo=redo)
         h = self.Histogram
         x = self.Cut.ped_range
-        g = self.draw_box(x[0], -1e9, x[1], 1e9, color=self.FillColor, width=2, fillstyle=3001, show=False)
+        g = self.draw_box(x[0], -1e9, x[1], 1e9, line_color=self.FillColor, width=2, fillstyle=3001, show=False)
         l1 = self.make_legend(.7, .63, nentries=3)
         l1.AddEntry(g, 'Pedestal Cut', 'fl')
         l1.AddEntry(h.GetListOfFunctions()[1], 'Fitting Range', 'l')

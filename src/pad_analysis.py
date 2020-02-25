@@ -4,7 +4,7 @@ from dut_analysis import *
 from json import loads
 from ROOT import gRandom, TProfile2D, THStack, Double, Long
 
-from CutPad import CutPad
+from pad_cut import PadCut
 from Peaks import PeakAnalysis
 from Pedestal import PedestalAnalysis
 from Pulser import PulserAnalysis
@@ -47,7 +47,7 @@ class PadAnalysis(DUTAnalysis):
 
             # cuts
             self.Timing = TimingAnalysis(self)
-            self.Cut = CutPad.from_parent(self.Cut)
+            self.Cut = PadCut.from_parent(self.Cut)
 
             # subclasses
             self.Pulser = PulserAnalysis(self)
@@ -401,7 +401,7 @@ class PadAnalysis(DUTAnalysis):
     # region CUTS
     def show_bucket_histos(self):
         h = TH1F('h', 'Bucket Cut Histograms', 350, -50, 300)
-        self.Tree.Draw('{name}>>h'.format(name=self.SignalName), self.Cut.get_bucket_cut(), 'goff')
+        self.Tree.Draw('{name}>>h'.format(name=self.SignalName), self.Cut.get_bucket(), 'goff')
         self.draw_histo(h)
         h1 = deepcopy(h)
         fit = fit_bucket(h1, show=False)
@@ -771,8 +771,8 @@ class PadAnalysis(DUTAnalysis):
         format_histo(h, x_tit='Event Number', y_tit='Alignment', stats=False, l_off_y=99, center_y=True)
         gStyle.SetPalette(3, array([1, 2, 3], 'i'))
         leg = self.make_legend(nentries=2, x2=.9, margin=.2)
-        leg.AddEntry(self.draw_box(0, 0, 0, 0, color=3, name='b1'), 'aligned', 'f')
-        leg.AddEntry(self.draw_box(0, 0, 0, 0, color=2), 'misaligned', 'f')
+        leg.AddEntry(self.draw_box(0, 0, 0, 0, line_color=3, name='b1'), 'aligned', 'f')
+        leg.AddEntry(self.draw_box(0, 0, 0, 0, line_color=2), 'misaligned', 'f')
         self.save_histo(h, 'EventAlignment', draw_opt='col', rm=.08, leg=leg, show=show, prnt=show)
         return h
 

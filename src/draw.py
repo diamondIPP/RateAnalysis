@@ -133,13 +133,13 @@ class Draw:
         self.Objects.append(line)
         return line
 
-    def draw_box(self, x1, y1, x2, y2, color=1, width=1, style=1, fillstyle=None, name='box', show=True):
-        return self.draw_n_box([x1, x1, x2, x2], [y1, y2, y2, y1], color, width, style, fillstyle, name, show)
+    def draw_box(self, x1, y1, x2, y2, line_color=1, width=1, style=1, fillstyle=None, name='box', show=True):
+        return self.draw_n_box([x1, x1, x2, x2], [y1, y2, y2, y1], line_color, width, style, fillstyle, name, show)
 
-    def draw_n_box(self, x, y, color=1, width=1, style=1, fillstyle=None, name='box', show=True):
+    def draw_n_box(self, x, y, line_color=1, width=1, style=1, fillstyle=None, name='box', show=True, fill_color=None):
         line = TCutG(name, len(x) + 1, array(x + [x[0]], 'd'), array(y + [y[0]], 'd'))
-        line.SetLineColor(color)
-        line.SetFillColor(color)
+        line.SetLineColor(line_color)
+        do(line.SetFillColor, fill_color)
         line.SetLineWidth(width)
         line.SetLineStyle(style)
         line.SetFillStyle(fillstyle) if fillstyle is not None else do_nothing()
