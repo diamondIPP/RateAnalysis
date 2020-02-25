@@ -1,6 +1,5 @@
 from utils import *
-from numpy import linspace
-from cut import Cut, CutString, loads, invert, TCut
+from cut import Cut, CutString, loads, invert, TCut, linspace
 
 
 class CutPix(Cut):

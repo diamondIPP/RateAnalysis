@@ -5,11 +5,11 @@
 from __future__ import print_function
 from draw import *
 from json import loads
-from ROOT import TCut, TH1F, TPie, TProfile
+from ROOT import TCut, TPie, TProfile
 from InfoLegend import InfoLegend
 from binning import Bins
 from ConfigParser import NoOptionError
-from numpy import histogram, histogram2d, split, where
+from numpy import histogram, histogram2d, split, where, linspace
 
 
 class Cut:
@@ -249,27 +249,24 @@ class Cut:
 
     # ----------------------------------------
     # region COMPUTE
-    def calc_chi2(self, mode='x'):
-        picklepath = self.Analysis.make_pickle_path('Chi2', run=self.RunNumber, suf=mode.title())
+    def calc_chi2(self, mode='x', quantile=None):
+        picklepath = self.Analysis.make_pickle_path('Cuts', 'Chi2', run=self.RunNumber, suf=mode.title())
 
         def f():
             t = self.Analysis.info('calculating chi2 cut in {mod} for run {run}...'.format(run=self.Analysis.RunNumber, mod=mode), next_line=False)
-            h = TH1F('hc{}'.format(mode), '', 500, 0, 100)
-            self.Analysis.Tree.Draw('chi2_{m}>>hc{m}'.format(m=mode), 'n_tracks > 0', 'goff')
-            chi2s = zeros(100)
-            h.GetQuantiles(100, chi2s, arange(.01, 1.01, .01))
+            values = get_root_vec(self.Analysis.Tree, var='chi2_{}'.format(mode))
+            chi2s = get_quantiles(values[values > -500], linspace(0, 100, 501))
             self.Analysis.add_to_info(t)
             return chi2s
 
         chi2 = do_pickle(picklepath, f)
-        quantile = self.CutConfig['chi2_{mod}'.format(mod=mode.lower())]
-        assert isint(quantile) and 0 < quantile <= 100, 'chi2 quantile has to be and integer between 0 and 100'
-        return chi2[quantile] if quantile != 100 else None
+        q = self.CutConfig['chi2_{mod}'.format(mod=mode.lower())] if quantile is None else quantile
+        return chi2[q] if q != 100 else None
 
     def calc_angle(self, mode='x'):
         # take the pickle of the run with a low rate if provided (for ana collection)
         run = self.LowRateRun if self.LowRateRun is not None else self.RunNumber
-        picklepath = self.Analysis.make_pickle_path('TrackAngle', mode, run=run)
+        picklepath = self.Analysis.make_pickle_path('Cuts', 'TrackSlope{}'.format(mode.title()), run=run)
 
         def func():
             angle = self.CutConfig['slope']

@@ -3,7 +3,7 @@
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from utils import *
-from ROOT import TCut, TH1F, TF1, TCutG, TSpectrum
+from ROOT import TCut, TH1F, TF1, TSpectrum
 from cut import Cut, CutString, loads, invert
 from draw import format_histo, fit_bucket
 
@@ -46,7 +46,7 @@ class PadCut(Cut):
         return (conf[1] - conf[0]) * (conf[3] - conf[2])
 
     def get_bucket(self):
-        return CutString('bucket', self.generate_custom(include=['pulser', 'fiducial', 'event_range'], prnt=False) + invert(self.generate_pre_bucket()))
+        return CutString('bucket', self.generate_custom(include=['pulser', 'fiducial', 'event_range'], prnt=False) + invert(self.generate_pre_bucket()))()
 
     def get_pulser(self, beam_on=True):
         cut = self.generate_custom(include=['ped_sigma', 'event_range'], prnt=False) + invert(self.get('pulser'))
@@ -68,11 +68,11 @@ class PadCut(Cut):
         self.CutStrings.register(self.generate_threshold(), 31)
         self.CutStrings.register(self.generate_timing(), 35)
 
-        # --BUCKET --
-        self.CutStrings.register(self.generate_bucket(), 36)
-
         # -- FIDUCIAL --
         self.CutStrings.register(self.generate_fiducial(), 90)
+
+        # --BUCKET --
+        self.CutStrings.register(self.generate_bucket(), 36)
 
         # --SIGNAL DROPS--
         self.update('event_range', self.generate_event_range(None, self.find_zero_ph_event()).Value)  # update event range if drop is found
@@ -130,11 +130,11 @@ class PadCut(Cut):
     # region COMPUTE
     def find_n_pulser(self, cut, redo=False):
         pickle_path = self.Analysis.make_pickle_path('Cuts', 'NPulser', self.RunNumber)
-        return int(do_pickle(pickle_path, self.Analysis.Tree.GetEntries, None, redo, cut))
+        return int(do_pickle(pickle_path, self.Analysis.Tree.GetEntries, None, redo, str(cut)))
 
     def find_n_saturated(self, cut, redo=False):
         pickle_path = self.Analysis.make_pickle_path('Cuts', 'NSaturated', self.RunNumber)
-        return int(do_pickle(pickle_path, self.Analysis.Tree.GetEntries, None, redo, cut))
+        return int(do_pickle(pickle_path, self.Analysis.Tree.GetEntries, None, redo, str(cut)))
 
     def find_fid_cut(self, thresh=.93, show=True):
         h = self.Analysis.draw_signal_map(show=False)
@@ -160,10 +160,7 @@ class PadCut(Cut):
         def f():
             t = self.Analysis.info('Calculating signal threshold for bucket cut of run {run} and {d} ...'.format(run=self.Analysis.RunNumber, d=self.DUTName), next_line=False)
             h = TH1F('h', 'Bucket Cut', 200, -50, 150)
-            draw_string = '{name}>>h'.format(name=self.Analysis.SignalName)
-            fid = self.CutStrings['fiducial']
-            cut_string = '!({})&&{}&&{}{fid}'.format(fid='&&{}'.format(fid.GetTitle()) if fid.GetTitle() else '', *[self.CutStrings[s] for s in ['old_bucket', 'pulser', 'event_range']])
-            self.Analysis.Tree.Draw(draw_string, cut_string, 'goff')
+            self.Analysis.Tree.Draw('{name}>>h'.format(name=self.Analysis.SignalName), self.get_bucket(), 'goff')
             format_histo(h, x_tit='Pulse Height [mV]', y_tit='Entries', y_off=1.8, stats=0, fill_color=self.Analysis.FillColor)
             if h.GetEntries() / self.Analysis.Run.NEntries < .01:
                 self.Analysis.add_to_info(t)
@@ -283,7 +280,7 @@ class PadCut(Cut):
             self.Analysis.Tree.Draw(self.Analysis.SignalName, '', 'goff', 5000)
             xvals = sorted([self.Analysis.Tree.GetV1()[i] for i in xrange(5000)])
             x_range = [xvals[0] - 5, xvals[-5]]
-            h = self.Analysis.draw_signal_distribution(show=show, cut=self.generate_fiducial(), x_range=x_range, bin_width=1)
+            h = self.Analysis.draw_signal_distribution(show=show, cut=self.generate_fiducial()(), x_range=x_range, bin_width=1)
             s = TSpectrum(3)
             s.Search(h)
             peaks = [s.GetPositionX()[i] for i in xrange(s.GetNPeaks())]
