@@ -78,6 +78,10 @@ class DUTAnalysis(TelecopeAnalysis):
             return self.draw_uniformity(bins=bins, show=False)
 
         return do_pickle(pickle_path, f, redo=redo)
+
+    def get_track_length_var(self):
+        dx2, dy2 = ['TMath::Power(TMath::Tan(TMath::DegToRad() * {}_{}), 2)'.format('slope' if self.Run.has_branch('slope_x') else 'angle', direction) for direction in ['x', 'y']]
+        return '{} * TMath::Sqrt({} + {} + 1)'.format(self.DUT.Thickness, dx2, dy2)
     # endregion GET
     # ----------------------------------------
 
@@ -114,6 +118,13 @@ class DUTAnalysis(TelecopeAnalysis):
         self.Objects.append(cut)
         cut.SetLineWidth(3)
         cut.Draw()
+
+    def draw_track_length(self, show=True, save=True):
+        h = TH1F('htd', 'Track Distance in Diamond', 200, self.DUT.Thickness, self.DUT.Thickness + 1)
+        self.Tree.Draw('{}>>htd'.format(self.get_track_length_var()), 'n_tracks', 'goff')
+        format_histo(h, x_tit='Distance [#mum]', y_tit='Entries', y_off=2, lw=2, stats=0, fill_color=self.FillColor, ndivx=405)
+        self.save_histo(h, 'DistanceInDia', show, lm=.16, save=save)
+        return h
 
     # ----------------------------------------
     # region SIGNAL MAP

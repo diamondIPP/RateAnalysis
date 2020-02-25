@@ -689,21 +689,12 @@ class PadAnalysis(DUTAnalysis):
         self.Objects.append(self.save_histo(gr, 'CutMeans{s}'.format(s='Short' if short else ''), show, bm=.25, draw_opt='bap', lm=.12, x=1.5))
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
 
-    def draw_distance_vs_ph(self, show=True, steps=10):
-        h = self.draw_track_length(show=False, save=False)
-        xmin, xmax = [h.GetBinCenter(i) for i in [h.FindFirstBinAbove(5), h.FindLastBinAbove(5)]]
-        xvals = [xmin + i * (xmax - xmin) / steps for i in xrange(steps + 1)]
-        gr = self.make_tgrapherrors('gr_aph', 'Pulse Height Vs Distance in Diamond')
-        j = 0
-        for i in xrange(len(xvals) - 1):
-            cut = self.Cut() + self.Cut.generate_distance(xvals[i], xvals[i + 1])
-            fit = self.draw_pulse_height(show=False)[1]
-            if fit.Parameter(0):
-                gr.SetPoint(j, xvals[i], fit.Parameter(0))
-                gr.SetPointError(j, 0, fit.ParError(0))
-                j += 1
-            self.Cut.update_all_cut()
-        self.draw_histo(gr, show)
+    def draw_distance_vs_ph(self, show=True, bins=10):
+        p = TProfile('pdph', 'Pulse Height vs. Track Distance', bins, self.DUT.Thickness, self.DUT.Thickness + 1)
+        self.Tree.Draw('{}:{}>>pdph'.format(self.get_signal_name(), self.get_track_length_var()), self.Cut.generate_custom(exclude=['slope_x', 'slope_y']), 'goff')
+        self.format_statbox(all_stat=True)
+        format_histo(p, x_tit='Distance [#mum]', y_tit='Pulse Height [mV]', y_off=1.3, ndivx=405)
+        self.save_histo(p, 'PHTrackLength', show, lm=.11)
 
     def test_landau_stats(self):
         gr = self.make_tgrapherrors('gr_ls', 'Landau Statistics')

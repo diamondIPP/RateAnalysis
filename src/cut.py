@@ -220,11 +220,6 @@ class Cut:
         description = 'x: [{},{}], y: [{},{}], area: {:.1f}mm x {:.1f}mm = {:.1f}mm2'.format(*concatenate([xy, [dx, dy, dx * dy]]))
         return CutString('fiducial', TCut(cut.GetName()) if cut is not None else '', description)
 
-    @staticmethod
-    def generate_distance(dmin, dmax, thickness=500):
-        d_string = '{t}*TMath::Sqrt(TMath::Power(TMath::Sin(TMath::DegToRad()*slope_x), 2) + TMath::Power(TMath::Sin(TMath::DegToRad()*slope_y), 2) + 1)'.format(t=thickness)
-        return TCut('distance', '{d}>{min}&&{d}<={max}'.format(d=d_string, min=dmin, max=dmax))
-
     def generate_jump_cut(self):
         cut_string = ''
         start_event = self.CutConfig['event_range'][0]

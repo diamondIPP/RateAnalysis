@@ -125,16 +125,6 @@ class TelecopeAnalysis(Analysis):
             stack.Add(h)
         self.save_tel_histo(stack, 'TrackAngles', sub_dir=self.TelSaveDir, lm=.14, leg=leg, draw_opt='nostack', show=show, prnt=prnt)
 
-    def draw_track_length(self, show=True, save=True, thickness=500):
-        h = TH1F('htd', 'Track Distance in Diamond', 200, thickness, thickness + 1)
-        draw_var = 'slope' if self.Run.has_branch('slope_x') else 'angle'
-        length = '{t}*TMath::Sqrt(TMath::Power(TMath::Tan(TMath::DegToRad()*{v}_x), 2) + TMath::Power(TMath::Tan(TMath::DegToRad()*{v}_y), 2) + 1)'.format(t=thickness, v=draw_var)
-        self.Tree.Draw('{}>>hdd'.format(length), 'n_tracks', 'goff')
-        format_histo(h, x_tit='Distance [#mum]', y_tit='Entries', y_off=2, lw=2, stats=0, fill_color=self.FillColor)
-        h.GetXaxis().SetNdivisions(405)
-        self.save_tel_histo(h, 'DistanceInDia', show, lm=.16, save=save)
-        return h
-
     def _draw_residuals(self, roc, mode=None, cut=None, x_range=None, fit=False, show=True):
         mode = '' if mode is None else mode.lower()
         cut = TCut(cut) if cut is not None else TCut('')
