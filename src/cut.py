@@ -58,6 +58,9 @@ class Cut:
     def set_config(self, key, value):
         self.CutConfig[key] = value
 
+    def get_config(self, option, section='CUT', typ=None):
+        return None if not self.Config.has_option(section, option) else self.Config.get(section, option) if typ is None else typ(self.Config.get(section, option))
+
     def set_event_range(self, event_range):
         self.set_config('event_range', self.load_event_range(event_range))
 
@@ -65,7 +68,7 @@ class Cut:
         splits = (loads(self.Config.get('SPLIT', 'fiducial')) if self.Config.has_option('SPLIT', 'fiducial') else []) + [int(1e10)]
         n = next(i + 1 for i in xrange(len(splits)) if self.RunNumber <= splits[i])
         option = name if self.Config.has_option('CUT', name) and n == 1 else '{} {}'.format(name, n)
-        return self.load_dut_config(option)
+        return array(self.load_dut_config(option)) if self.load_dut_config(option) is not None else None
 
     def load_dut_config(self, option, store_true=False):
         try:
@@ -119,6 +122,9 @@ class Cut:
 
     # ----------------------------------------
     # region SET
+    def set(self, name, value):
+        self.CutStrings.set(name, value)
+
     def set_high_low_rate_run(self, high_run, low_run):
         self.LowRateRun = str(low_run)
         self.HighRateRun = str(high_run)
@@ -135,6 +141,12 @@ class Cut:
         self.update('chi2_x', self.generate_chi2('x').Value)
         self.update('chi2_y', self.generate_chi2('y').Value)
 
+    def reload(self):
+        self.CutConfig = self.load_config()
+        self.update_config()
+        self.CutStrings.reset_all()
+        self.generate()
+        self.generate_dut()
     # endregion SET
     # ----------------------------------------
 
@@ -156,6 +168,9 @@ class Cut:
         self.CutStrings.register(self.generate_chi2('y'), 73)
         self.CutStrings.register(self.generate_slope('x'), 74)
         self.CutStrings.register(self.generate_slope('y'), 75)
+
+    def generate_dut(self):
+        pass
 
     @staticmethod
     def generate_tracks():
@@ -191,6 +206,19 @@ class Cut:
         """ Cut to exclude events with a wrong event alignment. """
         description = '{:.1f}% of the events excluded'.format(100. * self.find_n_misaligned() / self.Analysis.Run.NEntries) if self.find_n_misaligned() else ''
         return CutString('aligned', 'aligned[0]' if self.find_n_misaligned() else '', description)
+
+    def generate_fiducial(self, center=False):
+        if self.CutConfig['fiducial'] is None:
+            return CutString('fiducial', '', '')
+        xy = self.CutConfig['fiducial'] + (([self.Bins.PX / 2] * 2 + [self.Bins.PY / 2] * 2) if center else 0)
+        cut = self.Analysis.draw_box(xy[0], xy[2], xy[1], xy[3], line_color=kRed, width=3, name='fid{}'.format(self.RunNumber), show=False)
+        cut.SetVarX(self.get_track_var(self.Analysis.DUTNumber - 1, 'x'))
+        cut.SetVarY(self.get_track_var(self.Analysis.DUTNumber - 1, 'y'))
+        self.Analysis.Objects.append(cut)
+        xy *= 10
+        dx, dy = xy[1] - xy[0], xy[3] - xy[2]
+        description = 'x: [{},{}], y: [{},{}], area: {:.1f}mm x {:.1f}mm = {:.1f}mm2'.format(*concatenate([xy, [dx, dy, dx * dy]]))
+        return CutString('fiducial', TCut(cut.GetName()) if cut is not None else '', description)
 
     @staticmethod
     def generate_distance(dmin, dmax, thickness=500):
@@ -404,7 +432,7 @@ class CutString:
         return self
 
 
-class CutStrings:
+class CutStrings(object):
 
     def __init__(self):
         self.Strings = OrderedDict()
@@ -414,6 +442,9 @@ class CutStrings:
         for cut in self.get_strings():
             cut_string += cut()
         return cut_string
+
+    def __getitem__(self, item):
+        return self.Strings.values()[item]
 
     def register(self, cut, level):
         self.Strings[cut.Name] = cut.set_level(level)
@@ -451,6 +482,10 @@ class CutStrings:
     def reset(self, name):
         self.Strings[name].reset() if self.has_cut(name) else warning('There is no cut with the name "{name}"!'.format(name=name))
 
+    def reset_all(self):
+        for cut in self.get_strings():
+            cut.reset()
+
     def set(self, name, value):
         self.Strings[name].set(value) if self.has_cut(name) else warning('There is no cut with the name "{name}"!'.format(name=name))
 
@@ -464,3 +499,7 @@ class CutStrings:
                 continue
             cut_string += cut()
         return cut_string
+
+
+def invert(cut):
+    return TCut('!({})'.format(str(cut)))
