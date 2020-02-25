@@ -74,7 +74,7 @@ class TelecopeAnalysis(Analysis):
         chi2 = self.Cut.calc_chi2(mode)
         line = self.draw_vertical_line(chi2, -100, 1e6, style=7, w=2, color=2, name='l1{}'.format(mode))
         legend = self.make_legend(.75, y2=.83, nentries=1, margin=.35)
-        legend.AddEntry(line, 'cut ({}%)'.format(self.Cut.CutConfig['chi2{}'.format(mode.title())]), 'l')
+        legend.AddEntry(line, 'cut ({}%)'.format(self.Cut.CutConfig['chi2_{}'.format(mode)]), 'l')
         legend.Draw()
 
     def draw_all_chi2(self, show=True, prnt=True):
@@ -125,10 +125,10 @@ class TelecopeAnalysis(Analysis):
             stack.Add(h)
         self.save_tel_histo(stack, 'TrackAngles', sub_dir=self.TelSaveDir, lm=.14, leg=leg, draw_opt='nostack', show=show, prnt=prnt)
 
-    def draw_track_length(self, show=True, save=True, t_dia=500):
-        h = TH1F('htd', 'Track Distance in Diamond', 200, t_dia, t_dia + 1)
+    def draw_track_length(self, show=True, save=True, thickness=500):
+        h = TH1F('htd', 'Track Distance in Diamond', 200, thickness, thickness + 1)
         draw_var = 'slope' if self.Run.has_branch('slope_x') else 'angle'
-        length = '{t}*TMath::Sqrt(TMath::Power(TMath::Tan(TMath::DegToRad()*{v}_x), 2) + TMath::Power(TMath::Tan(TMath::DegToRad()*{v}_y), 2) + 1)'.format(t=t_dia, v=draw_var)
+        length = '{t}*TMath::Sqrt(TMath::Power(TMath::Tan(TMath::DegToRad()*{v}_x), 2) + TMath::Power(TMath::Tan(TMath::DegToRad()*{v}_y), 2) + 1)'.format(t=thickness, v=draw_var)
         self.Tree.Draw('{}>>hdd'.format(length), 'n_tracks', 'goff')
         format_histo(h, x_tit='Distance [#mum]', y_tit='Entries', y_off=2, lw=2, stats=0, fill_color=self.FillColor)
         h.GetXaxis().SetNdivisions(405)
@@ -165,7 +165,7 @@ class TelecopeAnalysis(Analysis):
 
         def f():
             self.Cut.set_chi2(chi2)
-            n = self.Tree.Draw('residuals_{m}[{r}]*1e4'.format(m=mode, r=roc), self.Cut.AllCut, 'goff')
+            n = self.Tree.Draw('residuals_{m}[{r}]*1e4'.format(m=mode, r=roc), self.Cut(), 'goff')
             values = [self.Tree.GetV1()[i] for i in xrange(n)]
             return mean_sigma(values)[1]
 
@@ -317,7 +317,7 @@ class TelecopeAnalysis(Analysis):
         bins = self.Bins.get_native_global(mm=True) if tel_coods else self.Bins.get_pixel()
         set_root_warnings(False)
         h = TH2F('h_hm{i}'.format(i=plane), '{h} Occupancy {n}'.format(n=name, h='Hit' if not cluster else 'Cluster'), *bins)
-        cut_string = self.Cut.AllCut if cut is None else TCut(cut)
+        cut_string = self.Cut() if cut is None else TCut(cut)
         cut_string += 'plane == {0}'.format(plane) if not cluster else ''
         draw_string = 'cluster_row[{i}]:cluster_col[{i}]' if cluster else 'row:col'
         draw_string = 'cluster_ypos_local[{i}] * 10:cluster_xpos_local[{i}] * 10' if tel_coods else draw_string

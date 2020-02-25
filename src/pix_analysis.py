@@ -152,7 +152,7 @@ class PixAnalysis(DUTAnalysis):
     # region DISTRIBUTIONS
     def draw_adc_distribution(self, cut=None, show=True, col=None, pix=None):
         h = TH1I('h_adc', 'ADC Distribution {d}'.format(d=self.DUTName), *self.Bins.get_adc())
-        cut_string = (self.Cut.AllCut if cut is None else TCut(cut)) + TCut(self.Cut.generate_masks(cluster=False, col=col, pixels=pix, exclude=False))
+        cut_string = self.Cut(cut) + self.Cut.generate_masks(col=col, pixels=pix, exclude=False)()
         self.format_statbox(entries=True)
         self.Tree.Draw('adc>>h_adc', cut_string, 'goff')
         format_histo(h, x_tit='adc', y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor)
@@ -161,7 +161,7 @@ class PixAnalysis(DUTAnalysis):
 
     def draw_vcal_distribution(self, cut=None, col=None, pix=None, vcal=True, show=True):
         h = TH1F('h_vcal', 'vcal Distribution {d}'.format(d=self.DUTName), *self.Bins.get_ph(vcal))
-        cut_string = (self.Cut.AllCut if cut is None else TCut(cut)) + TCut(self.Cut.generate_masks(cluster=False, col=col, pixels=pix, exclude=False))
+        cut_string = self.Cut(cut) + self.Cut.generate_masks(col=col, pixels=pix, exclude=False)()
         n = self.Tree.Draw('col:row:adc', cut_string, 'goff')
         cols, rows, adcs = self.Run.get_root_vecs(n, 3, dtype=int)
         for i, (col, row, adc) in enumerate(zip(cols, rows, adcs)):
@@ -217,7 +217,7 @@ class PixAnalysis(DUTAnalysis):
     # region PULSE HEIGHT
     def draw_pulse_height(self, cut=None, bin_size=30000, show=True, adc=False):
         """ Pulse height analysis vs event for a given cut. If no cut is provided it will take all. """
-        cut_string = self.Cut.AllCut if cut is None else TCut(cut)
+        cut_string = self.Cut(cut)
         cut_string += self.Cut.generate_masks(cluster=False) if adc else ''
         h = TProfile('hpht', '{} -  {}'.format('ADC' if adc else 'Pulse Height', self.DUTName), *self.Bins.get_time(bin_size))
         self.format_statbox(only_fit=True, w=.3)
@@ -248,7 +248,7 @@ class PixAnalysis(DUTAnalysis):
         return coods.format(r=self.Dut if roc is None else roc, f=fac)
 
     def draw_adc_map(self, show=True, cut=None, zero_ratio=False):
-        cut_string = (self.Cut.AllCut if cut is None else TCut(cut)) + TCut(self.Cut.generate_masks(cluster=False))
+        cut_string = self.Cut(cut) + self.Cut.generate_masks(cluster=False)()
         set_root_output(False)
         h = TProfile2D('p_am', 'ADC Map', *self.Bins.get_pixel())
         self.Tree.Draw('adc{}:row:col >> p_am'.format('<0' if zero_ratio else ''), cut_string, 'goff')
@@ -562,7 +562,7 @@ class PixAnalysis(DUTAnalysis):
         self.Cut.set_chi2(old_chi2 if chi2 is None else chi2)
         plane2 = self.Dut if plane2 is None else plane2
         h = TH2F('h_pc', 'Plane Correlation', *self.Bins.get_global(res_fac=res))
-        cut = self.Cut.AllCut if cut is None else TCut(cut)
+        cut = self.Cut(cut)
         self.Tree.Draw('cluster_{m}pos_tel[{p1}]:cluster_{m}pos_tel[{p2}]>>h_pc'.format(m=mode, p1=plane1, p2=plane2), cut, 'goff', evts, start)
         self.info('Correlation Factor: {f:4.3f}'.format(f=h.GetCorrelationFactor()))
         format_histo(h, x_tit='{m} Plane {p}'.format(p=plane1, m=mode), y_tit='{m} Plane {p}'.format(p=plane2, m=mode), y_off=1.5, stats=0, z_tit='Number of Entries', z_off=1.5)

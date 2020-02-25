@@ -62,7 +62,7 @@ class Waveform(Analysis):
 
     def draw_average(self, n=100, cut=None, align_peaks=True, show=True, show_noise=False):
         p = TProfile('pawf', 'Averaged Waveform', 2000, 0, 500)
-        cut = self.Cut.AllCut if cut is None else TCut(cut)
+        cut = self.Cut(cut)
         values, times = self.get_values(n, cut)
         if align_peaks:
             self.Tree.Draw(self.Ana.PeakName, cut, 'goff')
@@ -135,14 +135,14 @@ class Waveform(Analysis):
 
     def draw_rise_time(self, cut=None, show=True):
         h = TH1F('hrt', 'Signal Rise Time', 100, 0, 10)
-        self.Tree.Draw('rise_time[{}]>>hrt'.format(self.Channel), self.Cut.AllCut if cut is None else TCut(cut), 'goff')
+        self.Tree.Draw('rise_time[{}]>>hrt'.format(self.Channel), self.Cut(cut), 'goff')
         self.format_statbox(all_stat=True)
         format_histo(h, x_tit='Rise Time [ns]', y_tit='Number of Entries', y_off=1.4)
         self.save_histo(h, 'RiseTime', lm=.12, show=show)
 
     def draw_fall_time(self, cut=None, show=True):
         h = TH1F('hft', 'Signal Fall Time', 200, 0, 20)
-        self.Tree.Draw('fall_time[{}]>>hft'.format(self.Channel), self.Cut.AllCut if cut is None else TCut(cut), 'goff')
+        self.Tree.Draw('fall_time[{}]>>hft'.format(self.Channel), self.Cut(cut), 'goff')
         self.format_statbox(all_stat=True)
         format_histo(h, x_tit='Fall Time [ns]', y_tit='Number of Entries', y_off=1.4)
         self.save_histo(h, 'FallTime', lm=.12, show=show)

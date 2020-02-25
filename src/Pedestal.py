@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from analysis import *
-from ROOT import TH2F, gStyle, TH1F, TCut, gROOT, gPad
+from ROOT import TH2F, gStyle, TH1F, gROOT, gPad
 from utils import set_drawing_range, FitRes, do_pickle, make_ufloat
 from copy import deepcopy
 from numpy import mean, sqrt, log
@@ -53,7 +53,7 @@ class PedestalAnalysis(Analysis):
 
     def draw_disto(self, name=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True, normalise=None):
         show = False if not save else show
-        cut = self.Cut.AllCut if cut is None else TCut(cut)
+        cut = self.Cut(cut)
         signal_name = self.SignalName if name is None else name
         picklepath = self.make_pickle_path('Pedestal', 'Disto', run=self.RunNumber, ch=self.DUTNumber, suf='{c}_{r}'.format(c=cut.GetName(), r=self.get_all_signal_names()[signal_name]))
 
@@ -74,8 +74,7 @@ class PedestalAnalysis(Analysis):
         return h
 
     def draw_disto_fit(self, name=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True, draw_cut=False, normalise=None):
-        cut = self.Cut.AllCut if cut is None else TCut(cut)
-        cut = self.Cut.generate_custom(exclude='ped_sigma') if draw_cut else cut
+        cut = self.Cut.generate_custom(exclude='ped_sigma') if draw_cut else self.Cut(cut)
         suffix = '{r}_fwhm_{c}'.format(c=cut.GetName(), r=self.get_all_signal_names()[self.SignalName if name is None else name])
         picklepath = self.make_pickle_path('Pedestal', run=self.RunNumber, ch=self.DUTNumber, suf=suffix)
         show = False if not save else show
@@ -137,7 +136,7 @@ class PedestalAnalysis(Analysis):
         h = TH2F('h_st', 'Pedestal vs. Time', *(self.Ana.get_time() + [160, -80, 80]))
         self.format_statbox(entries=True, x=.83)
         gStyle.SetPalette(53)
-        self.Tree.Draw('{}:{} >> h_st'.format(signal_name, self.Ana.get_t_var()), self.Cut.AllCut, 'goff')
+        self.Tree.Draw('{}:{} >> h_st'.format(signal_name, self.Ana.get_t_var()), self.Cut(), 'goff')
         format_histo(h, x_tit='Time [min]', y_tit='Pulse Height [au]', y_off=1.4, t_ax_off=self.Ana.run.StartTime if rel_t else 0)
         self.save_histo(h, 'PedestalTime', show, lm=.12, draw_opt='colz', rm=.15)
         return h

@@ -90,7 +90,7 @@ class AnalysisCollection(Analysis):
     def generate_slope_pickle(self):
         picklepath = self.make_pickle_path('TrackAngle', 'x', run=self.MinFluxRun)
         if not file_exists(picklepath):
-            TelecopeAnalysis(self.MinFluxRun, self.TCString, verbose=self.Verbose, prnt=False)
+            TelecopeAnalysis(self.MinFluxRun, self.TCString, verbose=self.Verbose)
 
     def generate_threshold_pickle(self):
         pass
@@ -686,7 +686,7 @@ class AnalysisCollection(Analysis):
     def draw_chi2(self, mode=None, fit=False, show=True):
         mod_str = '' if mode is None else mode
         histos = self.generate_plots('chi squares {}'.format(mod_str), self.Analysis.draw_chi2, show=False, prnt=False, mode=mode)
-        cut_val = self.FirstAnalysis.Cut.CutConfig['chi2{}'.format(mod_str.title() if mod_str else 'X')]
+        cut_val = self.FirstAnalysis.Cut.CutConfig['chi2_{}'.format(mod_str if mod_str else 'X')]
         cuts = zeros((self.NRuns, 2))
         for i, h in enumerate(histos):
             h.GetQuantiles(2, cuts[i], array([cut_val / 100., .93]))

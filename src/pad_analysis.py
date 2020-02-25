@@ -161,8 +161,7 @@ class PadAnalysis(DUTAnalysis):
     def get_ph_data(self, cut=None):
         """ :return: pulse height data as numpy array [[time] [ph]] with units [[s], [mV]]
             :param cut: applies all cuts if None is provided."""
-        cut_str = self.Cut.AllCut if cut is None else TCut(cut)
-        n = self.Tree.Draw('{}:{}'.format(self.get_t_var(), self.generate_signal_name()), cut_str, 'goff')
+        n = self.Tree.Draw('{}:{}'.format(self.get_t_var(), self.generate_signal_name()), self.Cut(cut), 'goff')
         return self.Run.get_root_vecs(n, 2)
 
     def get_pulse_height(self, bin_size=None, cut=None, redo=False, corr=True, sig=None):
@@ -252,7 +251,7 @@ class PadAnalysis(DUTAnalysis):
         signal_name = self.generate_signal_name(self.SignalName if signal_name is None else signal_name, evnt_corr, off_corr, bin_corr)
         h = TH2F('h_st', 'Signal vs. Time', *(self.Bins.get_time() + self.Bins.get_pad_ph(bin_width)))
         self.format_statbox(entries=True, x=.83)
-        self.Tree.Draw('{}:{}>>h_st'.format(signal_name, self.get_t_var()), self.Cut.AllCut, 'goff')
+        self.Tree.Draw('{}:{}>>h_st'.format(signal_name, self.get_t_var()), self.Cut(), 'goff')
         format_histo(h, x_tit='Time [min]', y_tit='Pulse Height [au]', y_off=1.4, t_ax_off=self.Run.StartTime if rel_t else 0, pal=53)
         self.save_histo(h, 'SignalTime', show, lm=.12, draw_opt='colz', rm=.15)
         return h
@@ -271,7 +270,7 @@ class PadAnalysis(DUTAnalysis):
 
         sig = self.SignalName if sig is None else sig
         correction = '' if not corr else '_eventwise'
-        cut_str = self.Cut.AllCut if cut is None else TCut(cut)
+        cut_str = self.Cut(cut)
         bin_size = self.Bins.BinSize if bin_size is None else bin_size
         suffix = '{bins}{cor}_{reg}{c}'.format(bins=bin_size, cor=correction, reg=self.get_short_regint(sig), c=cut_str.GetName())
         picklepath = self.make_pickle_path('Ph_fit', None, self.RunNumber, self.DUTNumber, suf=suffix)
@@ -357,7 +356,7 @@ class PadAnalysis(DUTAnalysis):
     def draw_signal_distribution(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None, bin_width=.5, events=None,
                                  start=None, x_range=None, redo=False, prnt=True, save=True, normalise=None, sumw2=False):
         cut = self.Cut(cut)
-        suffix = '{b}_{c}_{cut}'.format(b=bin_width, c=int(evnt_corr), cut=cut)
+        suffix = '{b}_{c}_{cut}'.format(b=bin_width, c=int(evnt_corr), cut=cut.GetName())
         pickle_path = self.make_pickle_path('PulseHeight', 'Histo', run=self.RunNumber, ch=self.DUTNumber, suf=suffix)
 
         def func():
@@ -380,18 +379,17 @@ class PadAnalysis(DUTAnalysis):
 
     def draw_signal_vs_peaktime(self, region=None, cut=None, show=True, corr=False, fine_corr=False, prof=True):
         suf = ' with {} Correction'.format('Fine' if fine_corr else 'Time') if corr else ''
-        cut = self.Cut.AllCut if cut is None else cut
         x = self.get_signal_region(region)
         xbins = [(x[1] - x[0]) * (2 if corr else 1)] + list(array(x) * self.DigitiserBinWidth)
         h_args = ['hspt', 'Signal vs Peak Position{}'.format(suf)] + xbins + self.Bins.get_pad_ph()
         h = TProfile(*h_args[:5]) if prof else TH2F(*h_args)
-        self.Tree.Draw('{}:{}>>hspt'.format(self.generate_signal_name(), self.Timing.get_peak_name(corr, fine_corr, region=region)), cut, 'goff')
+        self.Tree.Draw('{}:{}>>hspt'.format(self.generate_signal_name(), self.Timing.get_peak_name(corr, fine_corr, region=region)), self.Cut(cut), 'goff')
         format_histo(h, x_tit='Signal Peak Position [ns]', y_tit='Pulse Height [mV]', y_off=1.4, stats=0)
         self.save_histo(h, 'SignalVsPeakPos{}{}'.format(int(corr), int(fine_corr)), show, lm=.11, draw_opt='' if prof else 'colz', rm=.03 if prof else .18)
 
     def draw_signal_vs_triggercell(self, bin_width=10, cut=None, show=True):
         p = TProfile('pstc', 'Signal vs. Trigger Cell', self.Run.NSamples / bin_width, 0, self.Run.NSamples)
-        self.Tree.Draw('{}:trigger_cell>>pstc'.format(self.generate_signal_name()), self.Cut.AllCut if cut is None else TCut(cut), 'goff')
+        self.Tree.Draw('{}:trigger_cell>>pstc'.format(self.generate_signal_name()), self.Cut(cut), 'goff')
         format_histo(p, x_tit='Trigger Cell', y_tit='Pulse Height [au]', y_off=1.2, stats=0)
         self.save_histo(p, 'SignalVsTriggerCell', show, lm=.11)
     # endregion PULSE HEIGHT
@@ -698,8 +696,7 @@ class PadAnalysis(DUTAnalysis):
         gr = self.make_tgrapherrors('gr_aph', 'Pulse Height Vs Distance in Diamond')
         j = 0
         for i in xrange(len(xvals) - 1):
-            cut = self.Cut.generate_distance(xvals[i], xvals[i + 1])
-            self.Cut.AllCut += cut
+            cut = self.Cut() + self.Cut.generate_distance(xvals[i], xvals[i + 1])
             fit = self.draw_pulse_height(show=False)[1]
             if fit.Parameter(0):
                 gr.SetPoint(j, xvals[i], fit.Parameter(0))
