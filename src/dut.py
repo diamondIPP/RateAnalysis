@@ -22,7 +22,7 @@ class DUT:
         # Specs
         self.Specs = load_parser(join(self.Config.get('MAIN', 'data directory'), 'diaSpecs.ini'))
         self.Irradiation = self.load_irradiation()
-        self.Thickness = self.load_spec('Thickness', typ=int)
+        self.Thickness = self.load_spec('Thickness', typ=int, default=500)
         self.CCD = self.load_spec('CCD', typ=int)
         self.Size = loads(self.load_spec('Size')) if self.load_spec('Size') is not None else None
 
@@ -40,8 +40,8 @@ class DUT:
     def get_irradiation(self, tc):
         return self.Irradiation[tc] if tc in self.Irradiation else critical('Please add "{}" to the irradiation file for {}'.format(self.Name, tc))
 
-    def load_spec(self, section, typ=None):
-        return None if not self.Specs.has_option(section, self.Name) else self.Specs.get(section, self.Name) if typ is None else typ(self.Specs.get(section, self.Name))
+    def load_spec(self, section, typ=None, default=None):
+        return default if not self.Specs.has_option(section, self.Name) else self.Specs.get(section, self.Name) if typ is None else typ(self.Specs.get(section, self.Name))
 
     def set_number(self, value):
         self.Number = value
