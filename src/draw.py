@@ -326,7 +326,7 @@ class Draw:
         return '_{pol}{bias:04d}'.format(pol=pol, bias=int(abs(bias))) if bias else ''
 
     def make_info_string(self):
-        string = '_{dia}'.format(dia=self.DUT.Name) if hasattr(self, 'DUTName') else ''
+        string = '_{dia}'.format(dia=self.DUT.Name) if hasattr(self, 'DUT') else ''
         string += self.make_bias_string()
         string += '_{tc}'.format(tc=self.TCString)
         string = string.replace('-', '')
@@ -341,7 +341,7 @@ class Draw:
         if not self.server_is_mounted():
             warning('Diamond server is not mounted in {}'.format(self.ServerDir))
             return
-        if hasattr(self, 'DUTName'):
+        if hasattr(self, 'DUT'):
             if hasattr(self, 'RunPlan') and self.RunPlan is not None:
                 run_string = 'RunPlan{}'.format(self.RunPlan.lstrip('0'))
             elif hasattr(self, 'RunNumber'):

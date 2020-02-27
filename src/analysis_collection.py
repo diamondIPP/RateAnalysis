@@ -352,7 +352,7 @@ class AnalysisCollection(Analysis):
         g1, g_last = [self.make_tgrapherrors('g{}'.format(i), '{} run'.format('last' if i else 'first'), marker=22 - i, color=2, marker_size=1.5, x=[x[i].n], y=[values[i].n]) for i in [0, -1]]
         graphs = [g, g_errors]
         graphs += [g1, g_last] if first_last else []
-        leg = self.make_legend(x2=.37, y2=.33, nentries=len(graphs), w=.2)
+        leg = self.make_legend(x2=.37, y2=.4 if self.Legend else .33, nentries=len(graphs), w=.2)
         mg = TMultiGraph('mg_ph', 'Pulse Height vs {mod} - {dia}'.format(mod='Time' if vs_time else 'Flux', dia=self.DUT.Name))
         for gr in graphs:
             leg.AddEntry(gr, gr.GetTitle(), 'l' if gr.GetName() in ['gerr', 'g'] else 'p')

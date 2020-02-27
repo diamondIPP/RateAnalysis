@@ -96,7 +96,7 @@ class PadCollection(AnalysisCollection):
         cur_range = self.scale_current_gr(cur)
         pul = self.Pulser.get_pulse_height_graph(vs_time=True, legend=False, show_flux=False)
         pul_fac = pul.GetListOfGraphs()[0].GetY()[0] if scale else ph.GetListOfGraphs()[0].GetY()[0] / pul.GetListOfGraphs()[0].GetY()[0]
-        ph_fac = ph.GetListOfGraphs()[0].GetY()[0] if scale else sign(self.Bias)
+        ph_fac = ph.GetListOfGraphs()[0].GetY()[0] if scale else sign(self.DUT.Bias)
         scale_multigraph(pul, ph.GetListOfGraphs()[0].GetY()[0] if scale is None else scale)
         scale_multigraph(ph, scale)
 
@@ -208,7 +208,7 @@ class PadCollection(AnalysisCollection):
 
     def draw_signal_legend(self):
         sig = 'positive' if self.FirstAnalysis.Polarity > 0 else 'negative'
-        l1 = self.make_legend(.17, .88 if self.Title else .95, nentries=2, margin=.05, clean=True, x2=.52, cols=2)
+        l1 = self.make_legend(.17, .88 if self.Title else .95, nentries=2, margin=.05, clean=True, x2=.57 if self.Legend else .52, cols=2)
         l1.AddEntry(0, 'Signal Polarity:', '')
         l1.AddEntry(0, sig, '').SetTextAlign(12)
         l1.AddEntry(0, 'Pedestal Substraction:', '')
@@ -295,7 +295,7 @@ class PadCollection(AnalysisCollection):
         """ Shows the means of the signal peak distributions. """
         g = self.make_tgrapherrors('gr', 'Peak Times', x=self.get_x_var(vs_time), y=self.get_values('peak timings', self.Analysis.get_peak_timing, redo=redo))
         format_histo(g, y_tit='Peak Time [ns]', y_off=1.9, **self.get_x_args(vs_time))
-        self.save_histo(g, 'PeakTimes', lm=.14, logx=not vs_time)
+        self.save_histo(g, 'PeakTimes', lm=.14, logx=not vs_time, show=show)
 
     def show_peak_distribution(self, show=True):
         """ Shows the positions of the peaks of the 2D map. """
