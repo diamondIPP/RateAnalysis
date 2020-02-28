@@ -404,6 +404,22 @@ class AnalysisCollection(Analysis):
 
         return mg
 
+    def fit_pulse_height(self):
+        values = self.get_pulse_heights(pbar=False)
+        g = self.make_tgrapherrors('gfph', 'Pulse Height Fit', x=self.get_fluxes(), y=values)
+        f = TF1('fph', '[0] - [1] * exp(-x/[2]*log(2)) + [3] * exp(-x/[4]*log(2))', .1, 1e6)
+        f.SetParNames('c', 'c_{1}', '#tau_{1}', 'c_{2}', '#tau_{2}')
+        f.SetParLimits(0, 0, values.max().n)  # limit for x->inf
+        f.SetParLimits(1, 0.1, values.max().n * .2)  # limit for x->0: p0 - p1 + p3
+        f.SetParLimits(3, 1e-3, values.max().n * .2)  # limit for x->0: p0 - p1 + p3
+        f.SetParLimits(2, 1, 500)  # half life for first exp
+        f.SetParLimits(4, 1e3, 1e7)  # half life for second exp
+        set_root_output(False)
+        g.Fit(f, 'q')
+        format_histo(g, x_tit='Flux [kHz/cm^{2}]', y_tit='Pulse Height [mV]', y_off=1.4, x_range=self.Bins.FluxRange)
+        self.format_statbox(only_fit=True, x=.5, y=.45)
+        self.draw_histo(g, logx=True, lm=.12)
+
     def draw_signal_legend(self):
         pass
 
