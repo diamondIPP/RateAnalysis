@@ -238,8 +238,9 @@ class AnalysisCollection(Analysis):
 
         return do_pickle(pickle_path, f, redo=redo)
 
-    def get_pulse_heights(self, bin_width=None, redo=False, runs=None, corr=True, pbar=True):
-        return array(self.get_run_values('pulse heights', self.Analysis.get_pulse_height, runs, pbar, bin_size=bin_width, redo=redo, corr=corr))
+    def get_pulse_heights(self, bin_width=None, redo=False, runs=None, corr=True, err=True, pbar=True):
+        error = self.get_repr_error(110, redo) if err else 0
+        return array([ufloat(v.n, v.s + error) for v in self.get_run_values('pulse heights', self.Analysis.get_pulse_height, runs, pbar, bin_size=bin_width, redo=redo, corr=corr)])
 
     def get_rate_dependence(self, redo=False):
         values = self.get_pulse_heights(redo=redo, pbar=False)
@@ -260,7 +261,7 @@ class AnalysisCollection(Analysis):
         return [key for key, ana in self.Analyses.iteritems() if ana.Run.Flux >= flux]
 
     def get_repr_error(self, flux=None, redo=False):
-        values = self.draw_signal_spread(redo, show=False)
+        values = self.draw_signal_spread(redo, show=False, save=False)
         return self.get_repr_error_old(flux, show=False) if values is None else mean_sigma(values)[1]
 
     def get_repr_error_old(self, flux, show=True, redo=False):
@@ -271,7 +272,7 @@ class AnalysisCollection(Analysis):
             runs = self.get_runs_below_flux(flux)
             if not runs:
                 return 0
-            values = self.get_pulse_heights(runs=runs, redo=redo)
+            values = self.get_pulse_heights(runs=runs, redo=redo, err=False)
             gr = self.make_tgrapherrors('gr_re', 'Pulse Heights Below {f} kHz/cm^{{2}}'.format(f=flux), x=self.get_fluxes(runs=runs), y=values)
             self.format_statbox(entries=2, only_fit=True)
             gr.Fit('pol0', 'qs{s}'.format(s='' if show else '0'))
@@ -343,11 +344,9 @@ class AnalysisCollection(Analysis):
 
         marker_size = 1
         gStyle.SetEndErrorSize(4)
-        values = self.get_pulse_heights(bin_width, redo, corr=corr)
         x = self.get_x_var(vs_time)
-        g = self.make_tgrapherrors('g', 'stat. error', self.get_color(), marker_size=marker_size, x=x, y=values)
-        e_sys = self.get_repr_error(105, redo) if err else 0
-        values = [make_ufloat((v.n, v.s + e_sys)) for v in values]
+        g = self.make_tgrapherrors('g', 'stat. error', self.get_color(), marker_size=marker_size, x=x, y=self.get_pulse_heights(bin_width, redo, corr=corr, err=False))
+        values = self.get_pulse_heights(bin_width, redo, corr=corr, err=err)
         g_errors = self.make_tgrapherrors('gerr', 'full error', marker=0, color=602, marker_size=0, x=x, y=values)
         g1, g_last = [self.make_tgrapherrors('g{}'.format(i), '{} run'.format('last' if i else 'first'), marker=22 - i, color=2, marker_size=1.5, x=[x[i].n], y=[values[i].n]) for i in [0, -1]]
         graphs = [g, g_errors]
@@ -486,8 +485,8 @@ class AnalysisCollection(Analysis):
         self.save_plots('PulseHeightDistributions')
         return ls.GetMean(), ls.GetStdDev()
 
-    def draw_signal_spread(self, redo=False, show=True):
-        values = self.get_pulse_heights(redo=redo, pbar=False)[self.get_fluxes().argsort()]  # sort pedestal by ascending fluxes
+    def draw_signal_spread(self, redo=False, show=True, save=True):
+        values = self.get_pulse_heights(redo=redo, pbar=False, err=False)[self.get_fluxes().argsort()]  # sort pedestal by ascending fluxes
         rel_values = array([value - mean(lst) for lst in split(values, self.get_flux_splits(show=False)) for value in lst if lst.size > 1])
         if rel_values.size < 2:
             warning('Not enough data for signal spread ...')
@@ -496,7 +495,7 @@ class AnalysisCollection(Analysis):
         h.FillN(rel_values.size, array([v.n for v in rel_values], 'd'), full(rel_values.size, 1, 'd'))
         self.format_statbox(all_stat=True)
         format_histo(h, x_tit='Relative Signal', y_tit='Number of Entries', y_off=1.2)
-        self.save_histo(h, 'SignalSpread', lm=.11, show=show)
+        self.save_histo(h, 'SignalSpread', lm=.11, show=show, save=save)
         return rel_values
     # endregion PULSE HEIGHT
     # ----------------------------------------
