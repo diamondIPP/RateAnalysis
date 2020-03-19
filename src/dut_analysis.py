@@ -315,4 +315,3 @@ class DUTAnalysis(TelecopeAnalysis):
     @staticmethod
     def decay(n, t):
         return count_nonzero(rand(n) <= exp(-1. / t))
-

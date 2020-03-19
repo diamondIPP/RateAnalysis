@@ -837,12 +837,16 @@ class PBar:
     def __init__(self):
         self.PBar = None
         self.Widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
+        self.Step = 0
 
     def start(self, n):
+        self.Step = 0
         self.PBar = ProgressBar(widgets=self.Widgets, maxval=n).start()
 
-    def update(self, i):
+    def update(self, i=None):
+        i = self.Step if i is None else i
         self.PBar.update(i + 1)
+        self.Step += 1
         if i == self.PBar.maxval - 1:
             self.finish()
 
