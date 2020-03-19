@@ -7,7 +7,8 @@ from Extrema import Extrema2D
 from telescope_analysis import *
 from currents import Currents
 from ROOT import TProfile2D
-from numpy import linspace
+from numpy import linspace, exp, vectorize
+from numpy.random import rand
 from uncertainties import umath
 from dut import DUT
 
@@ -42,7 +43,7 @@ class DUTAnalysis(TelecopeAnalysis):
         return ['Run', 'Type', 'Diamond', 'Flux [kHz/cm2]', 'HV [V]']
 
     def show_information(self, header=True, prnt=True):
-        rows = [[self.RunNumber, self.Run.RunInfo['runtype'], self.DUT.Name, '{:14.1f}'.format(self.Run.Flux.n), '{:+6d}'.format(self.DUT.Bias)]]
+        rows = [[self.RunNumber, self.Run.RunInfo['runtype'], self.DUT.Name, '{:14.1f}'.format(self.Run.Flux.n), '{:+6.0f}'.format(self.DUT.Bias)]]
         return print_table(rows, self.get_info_header() if header else None, prnt=prnt)
 
     # ----------------------------------------
@@ -286,3 +287,32 @@ class DUTAnalysis(TelecopeAnalysis):
         h.Sumw2(False)
         get_last_canvas().Update()
         return mpv, fwhm, value
+
+    def model_trap_number(self, f=1000, t=1, max_traps=10000, steps=20, show=True):
+        filled_traps = zeros(steps, dtype=int)
+        decay = vectorize(self.decay)
+        n_traps = []
+        for i in xrange(steps):
+            filled_traps[i] = f
+            filled_traps = decay(filled_traps, t)
+            n_traps.append(min(sum(filled_traps), max_traps))
+            print filled_traps
+        g = self.make_tgrapherrors('gt', 'Number of Filled Traps', x=arange(steps), y=n_traps)
+        format_histo(g, x_tit='Time [s]', y_tit='Number of Traps', y_off=1.7)
+        self.draw_histo(g, draw_opt='ap', lm=.13, show=show)
+        return n_traps[-1]
+
+    def draw_n_traps(self, t, max_traps=1e5, bins=20):
+        x, y = log_bins(bins, 100, 1e6)[1], []
+        self.PBar.start(x.size)
+        for f in x:
+            y.append(self.model_trap_number(f, t, max_traps, show=False))
+            self.PBar.update()
+        g = self.make_tgrapherrors('gnt', 'Number of Filled Traps vs Flux', x=x / 1000, y=y)
+        format_histo(g, x_tit='Flux [kHz/cm^{2}]', y_tit='Number of Filled Traps', y_off=1.7)
+        self.draw_histo(g, draw_opt='ap', lm=.13, logx=True)
+
+    @staticmethod
+    def decay(n, t):
+        return count_nonzero(rand(n) <= exp(-1. / t))
+
