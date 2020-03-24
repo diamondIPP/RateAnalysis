@@ -366,8 +366,8 @@ class Run:
             return self.NEntries
         return where(self.Time <= (seconds + (0 if rel else self.StartTime)) * 1000)[0][-1]
 
-    def get_root_vec(self, n, ind=0, dtype=None):
-        return get_root_vec(self.Tree, n, ind, dtype)
+    def get_root_vec(self, n=0, ind=0, dtype=None, var=None, cut=None):
+        return get_root_vec(self.Tree, n, ind, dtype, var, cut)
 
     def get_root_vecs(self, n, n_ind, dtype=None):
         return get_root_vecs(self.Tree, n, n_ind, dtype)
