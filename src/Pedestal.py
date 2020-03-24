@@ -24,7 +24,7 @@ class PedestalAnalysis(Analysis):
         self.set_save_directory(self.Ana.SubDir)
         self.Polarity = self.Ana.Polarity
         self.SignalName = self.get_signal_name()
-        self.DUT = self.Ana.DUT.Number
+        self.DUT = self.Ana.DUT
         self.RunNumber = self.Ana.RunNumber
         self.InfoLegend = InfoLegend(pad_analysis)
 
