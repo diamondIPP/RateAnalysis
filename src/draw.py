@@ -11,7 +11,6 @@ from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyl
 from numpy import ndarray, zeros, sign
 from os.path import expanduser, join, basename
 
-
 # global resolution
 g_resolution = None
 
@@ -470,6 +469,8 @@ class Draw:
     def make_legend(self, x1=.65, y2=.88, nentries=2, scale=1, name='l', y1=None, clean=False, margin=.25, x2=None, w=None, cols=None):
         x2 = .95 if x2 is None else x2
         x1 = x2 - w if w is not None else x1
+        y2 = y2 + .07 if not self.Title and y2 > .7 else y2
+        y2 = y2 - .07 if not self.Legend and y2 < .7 else y2
         y1 = y2 - nentries * .05 * scale if y1 is None else y1
         leg = TLegend(x1, y1, x2, y2)
         leg.SetName(name)
