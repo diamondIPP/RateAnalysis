@@ -31,6 +31,7 @@ from argparse import ArgumentParser
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 from ConfigParser import ConfigParser
 from scipy.optimize import curve_fit
+import h5py
 
 OFF = False
 ON = True
@@ -503,6 +504,16 @@ def do_pickle(path, func, value=None, redo=False, *args, **kwargs):
     with open(path, 'w') as f:
         pickle.dump(ret_val, f)
     return ret_val
+
+
+def load_hdf5(path, func, redo=False, *args, **kwargs):
+    if file_exists(path) and not redo:
+        return h5py.File(path, 'r')['data']
+    else:
+        data = func(*args, **kwargs)
+        f = h5py.File(path, 'w')
+        f.create_dataset('data', data=data)
+        return f['data']
 
 
 def fit_poissoni(h, p0=5000, p1=1, name='f_poiss', show=True):
