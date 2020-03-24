@@ -208,7 +208,7 @@ class PadCollection(AnalysisCollection):
 
     def draw_signal_legend(self):
         sig = 'positive' if self.FirstAnalysis.Polarity > 0 else 'negative'
-        l1 = self.make_legend(.17, .88 if self.Title else .95, nentries=2, margin=.05, clean=True, x2=.57 if self.Legend else .52, cols=2)
+        l1 = self.make_legend(.17, .88, nentries=2, margin=.05, clean=True, x2=.57 if self.Legend else .52, cols=2)
         l1.AddEntry(0, 'Signal Polarity:', '')
         l1.AddEntry(0, sig, '').SetTextAlign(12)
         l1.AddEntry(0, 'Pedestal Substraction:', '')

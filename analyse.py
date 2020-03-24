@@ -11,7 +11,7 @@ from draw import *
 from selector import analysis_selector, collection_selector
 
 # pargs = init_argparser(run_number=23, tc='201908', dut=1, tree=True, has_verbose=True, has_collection=True)
-aparser = init_argparser(run=139, tc=None, dut=1, tree=True, has_verbose=True, has_collection=True, return_parser=True)
+aparser = init_argparser(run=88, tc=None, dut=1, tree=True, has_verbose=True, has_collection=True, return_parser=True)
 
 aparser.add_argument('-d', '--draw', action='store_true', help='make all plots')
 aparser.add_argument('-rd', '--redo', action='store_true', help='redo all plots')
