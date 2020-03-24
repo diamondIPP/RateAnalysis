@@ -602,7 +602,7 @@ def markers(i):
 
 
 def average_list(lst, n):
-    return [mean(lst[i:i+n]) for i in arange(0, len(lst), n)] if n > 1 else lst
+    return [mean(lst[i:i + n]) for i in arange(0, len(lst), n)] if n > 1 else lst
 
 
 def log_bins(n_bins, min_val, max_val):
@@ -635,7 +635,6 @@ def get_quantiles(values, bins):
 
 
 def load_root_files(sel, load=True):
-
     threads = {}
     for run in sel.get_selected_runs():
         thread = MyThread(sel, run, load)
@@ -653,7 +652,7 @@ def load_root_files(sel, load=True):
     return threads
 
 
-class MyThread (Thread):
+class MyThread(Thread):
     def __init__(self, sel, run, load=True):
         Thread.__init__(self)
         self.Load = load
@@ -688,7 +687,7 @@ def get_time_vec(sel, run=None):
         t = MyThread(sel, run)
         tree = t.load_tree()
     if tree is None:
-        return 
+        return
     tree.SetEstimate(-1)
     entries = tree.Draw('time', '', 'goff')
     time_vec = get_root_vec(tree, entries)
@@ -748,9 +747,9 @@ def del_rootobj(obj):
         pass
 
 
-def get_root_vec(tree, n=0, ind=0, dtype=None, var=None):
+def get_root_vec(tree, n=0, ind=0, dtype=None, var=None, cut=''):
     if var is not None:
-        n = tree.Draw(var, '', 'goff')
+        n = tree.Draw(var, cut, 'goff')
     vec = tree.GetVal(ind)
     vec.SetSize(n)
     return array(vec, dtype=dtype)
@@ -768,7 +767,7 @@ def calc_eff(k=0, n=0, values=None):
     values = array(values) if values is not None else None
     k = float(k if values is None else count_nonzero(values))
     n = float(n if values is None else values.size)
-    return make_ufloat((100 * (k + 1) / (n + 2), 100 * sqrt(((k + 1)/(n + 2) * (k + 2)/(n + 3) - ((k + 1)**2) / ((n + 2)**2)))))
+    return make_ufloat((100 * (k + 1) / (n + 2), 100 * sqrt(((k + 1) / (n + 2) * (k + 2) / (n + 3) - ((k + 1) ** 2) / ((n + 2) ** 2)))))
 
 
 def init_argparser(run=None, tc=None, dut=False, tree=False, has_verbose=False, has_collection=False, return_parser=False):
