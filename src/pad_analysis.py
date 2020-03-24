@@ -5,7 +5,7 @@ from json import loads
 from ROOT import gRandom, TProfile2D, THStack, Double, Long
 
 from pad_cut import PadCut
-from Peaks import PeakAnalysis
+from peaks import PeakAnalysis
 from Pedestal import PedestalAnalysis
 from Pulser import PulserAnalysis
 from Timing import TimingAnalysis
@@ -71,12 +71,6 @@ class PadAnalysis(DUTAnalysis):
     @staticmethod
     def get_info_header():
         return ['Run', 'Type', 'Diamond', 'Flux [kHz/cm2]', 'HV [V]', 'Region', 'Integral']
-
-    def show_information(self, header=True, prnt=True):
-        peak_int = '{} ({})'.format(self.PeakIntegral, remove_letters(self.PeakIntegralName))
-        region = '{} ({})'.format(self.SignalRegion, self.SignalRegionName.split('_')[-1])
-        rows = [[self.RunNumber, self.Run.RunInfo['runtype'], self.DUT.Name, '{:14.1f}'.format(self.Run.Flux.n), '{:+6d}'.format(self.DUT.Bias), region, peak_int]]
-        return print_table(rows, self.get_info_header() if header else None, prnt=prnt)
 
     # ----------------------------------------
     # region INIT
@@ -734,7 +728,18 @@ class PadAnalysis(DUTAnalysis):
         format_histo(h, x_tit='Signal s_b [au]', y_tit='Signal s_e [au]', z_tit='Number of Entries', z_off=1.1, y_off=1.5, stats=0)
         self.Objects.append(self.save_histo(h, 'SignalEvsSignalB', show, rm=.15, lm=.13, draw_opt='colz'))
         gStyle.SetPalette(1)
-    # endregion
+
+    def show_integral_names(self):
+        for i, name in enumerate(self.IntegralNames):
+            if name.startswith('ch{}'.format(self.Channel)):
+                print(str(i).zfill(3), name)
+
+    def show_information(self, header=True, prnt=True):
+        peak_int = '{} ({})'.format(self.PeakIntegral, remove_letters(self.PeakIntegralName))
+        region = '{} ({})'.format(self.SignalRegion, self.SignalRegionName.split('_')[-1])
+        rows = [[self.RunNumber, self.Run.RunInfo['runtype'], self.DUT.Name, '{:14.1f}'.format(self.Run.Flux.n), '{:+5.0f}'.format(self.DUT.Bias), region, peak_int]]
+        print_table(rows, self.get_info_header() if header else None, prnt=prnt)
+    # endregion SHOW
     # ----------------------------------------
 
     def check_alignment(self):
@@ -985,11 +990,6 @@ class PadAnalysis(DUTAnalysis):
                     reg = region.replace(sig_type, '').strip('_') + integral.replace('PeakIntegral', '')
                     names[self.SignalDefinition.format(pol=self.Polarity, num=num)] = reg
         return names
-
-    def show_integral_names(self):
-        for i, name in enumerate(self.IntegralNames):
-            if name.startswith('ch{}'.format(self.Channel)):
-                print(str(i).zfill(3), name)
     # endregion MISCELLANEOUS
     # ----------------------------------------
 
