@@ -108,6 +108,9 @@ class Analysis(Draw):
         name = '{n}_'.format(n=name) if name is not None else ''
         return join(self.PickleDir, sub_dir, '{name}{tc}{run}{ch}{suf}.pickle'.format(name=name, tc=campaign, run=run, ch=ch, suf=suf))
 
+    def make_hdf5_path(self, sub_dir, name=None, run=None, ch=None, suf=None, camp=None):
+        return self.make_pickle_path(sub_dir, name, run, ch, suf, camp).replace('pickle', 'hdf5')
+
 
 if __name__ == '__main__':
 
