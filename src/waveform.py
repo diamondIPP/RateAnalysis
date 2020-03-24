@@ -41,6 +41,18 @@ class Waveform(Analysis):
         self.draw_histo(h, 'WaveForms{n}'.format(n=n), show=show, draw_opt='col' if n > 1 else 'apl', lm=.073, rm=.045, bm=.18, x=1.5, y=.5, gridy=grid, gridx=grid)
         return h, self.Count - start_count
 
+    def get_all(self):
+        def f():
+            waveforms = []
+            events = self.Run.get_root_vec(var='Entry$', cut=self.Cut(), dtype=int)
+            self.Ana.PBar.start(events.size)
+            for event in events:
+                self.Tree.GetBranch('wf0').GetEntry(event)
+                waveforms.append(self.Ana.Polarity * array(getattr(self.Tree, 'wf{}'.format(self.Channel)), dtype='f2'))
+                self.Ana.PBar.update()
+            return array(waveforms)
+        return load_hdf5(self.make_hdf5_path('WF', ch=self.Channel), f)
+
     def draw_single(self, cut='', event=None, show=True, show_noise=False):
         h, n = self.draw(n=1, start_event=event, cut=cut, t_corr=True, show=show, grid=True)
         if show_noise:
