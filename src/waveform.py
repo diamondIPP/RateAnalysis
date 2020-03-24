@@ -115,6 +115,9 @@ class Waveform(Analysis):
             t.append(self.Run.TCal[(int(trigger_cell) + i) % self.Run.NSamples] + t[-1])
         return t
 
+    def get_calibrated_time(self, trigger_cell, bin_nr):
+        return sum(self.Run.TCal[trigger_cell:trigger_cell + bin_nr + 1]) + (sum(self.Run.TCal[:bin_nr - (1024 - trigger_cell) + 1]) if trigger_cell + bin_nr > 1024 else 0)
+
     def reset(self):
         self.Count = 0
 
