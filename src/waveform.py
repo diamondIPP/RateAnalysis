@@ -90,7 +90,7 @@ class Waveform(Analysis):
 
     def get_values(self, n=1, cut=None, start_event=None, t_corr=True, channel=None):
         """ return lists of the values and times of the waveform. """
-        cut = self.Cut() if cut is None else TCut(cut)
+        cut = self.Cut(cut)
         channel = self.Channel if channel is None else channel
         if not self.Run.wf_exists(channel):
             return
@@ -99,7 +99,7 @@ class Waveform(Analysis):
         n_events = self.Run.find_n_events(n, cut, start_event)
         self.Tree.SetEstimate(n * 1024)
         n_entries = self.Tree.Draw('wf{ch}:trigger_cell'.format(ch=channel), cut, 'goff', n_events, start_event)
-        values = [self.Tree.GetV1()[i] for i in xrange(n_entries)]
+        values = self.Run.get_root_vec(n_entries)
         times = [self.BinWidth * i for i in xrange(1024)] * n
         if t_corr:
             times = [v for lst in [self.get_calibrated_times(self.Tree.GetV2()[1024 * i]) for i in xrange(n)] for v in lst]
