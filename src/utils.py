@@ -4,6 +4,7 @@
 # --------------------------------------------------------
 
 import ROOT
+
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 from ROOT import gROOT, TF1, TColor, TFile, TMath
 
@@ -18,7 +19,7 @@ from threading import Thread
 from time import time, sleep
 
 from gtts import gTTS
-from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, any, count_nonzero, full, ndarray, histogram, searchsorted, cumsum
+from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, any, count_nonzero, full, ndarray, histogram, searchsorted, cumsum, exp
 from os import makedirs, _exit, remove, devnull
 from os import path as pth
 from os.path import dirname, realpath
@@ -29,7 +30,7 @@ from uncertainties.core import Variable, AffineScalarFunc
 from argparse import ArgumentParser
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 from ConfigParser import ConfigParser
-
+from scipy.optimize import curve_fit
 
 OFF = False
 ON = True
@@ -852,6 +853,15 @@ class PBar:
 
     def finish(self):
         self.PBar.finish()
+
+
+def gauss(x, scale, mean_, sigma):
+    return scale * exp(-((x - mean_) / sigma) ** 2)
+
+
+def fit_data(f, y, x=None, p=None):
+    x = arange(y.shape[0]) if x is None else x
+    return curve_fit(f, x, y, p0=p)
 
 
 def do_nothing():
