@@ -9,7 +9,7 @@ from StringIO import StringIO
 from collections import OrderedDict
 from json import dumps, loads
 
-from numpy import array
+from numpy import array, concatenate, cumsum
 
 from run import Run, join
 from utils import has_bit, critical, warning, ensure_dir, init_argparser
@@ -42,6 +42,7 @@ class PadRun(Run):
             self.IntegralRegions = self.load_regions()
             self.PeakIntegrals = self.load_peak_integrals()
             self.TCal = self.load_tcal()
+            self.TCalSum = cumsum(concatenate([[0], self.TCal, self.TCal])).astype('f4')
             self.NSamples = len(self.TCal)
             self.Channels = self.load_channels()
 
@@ -109,7 +110,7 @@ class PadRun(Run):
         tcal = loads(self.TreeConfig.get('Time Calibration', 'tcal').replace('nan', '0'))
         if len(tcal) < 1024:
             tcal.append(2 * tcal[-1] - tcal[-2])
-        return tcal[:1024]
+        return array(tcal[:1024], dtype='f4')
 
     def get_calibrated_time(self, trigger_cell, ibin):
         v = self.TCal[int(trigger_cell)]
