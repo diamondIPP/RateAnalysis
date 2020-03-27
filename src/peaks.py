@@ -7,7 +7,7 @@
 from analysis import *
 from ROOT import TH1F, TCut, gROOT
 from scipy.signal import find_peaks, savgol_filter
-from numpy import polyfit, pi, RankWarning
+from numpy import polyfit, pi, RankWarning, vectorize
 from warnings import simplefilter
 
 
@@ -21,23 +21,47 @@ class PeakAnalysis(Analysis):
         self.DUT = self.Ana.DUT
         self.Tree = self.Ana.Tree
         self.NoiseThreshold = abs(self.Ana.Pedestal.get_mean() + 5 * self.Ana.Pedestal.get_noise())  # threshold of the peaks = five times above the noise
+        self.Cut = self.Ana.Cut.generate_custom(exclude='timing', name='Peaks', prnt=False)
+        self.Cut = self.Ana.Cut()
 
-    def find_all(self):
-        events = self.Run.get_root_vec(var='Entry$', cut=self.Ana.Cut(), dtype=int)
-        peak_times = []
-        simplefilter('ignore', RankWarning)
-        self.Ana.PBar.start(events.size)
-        for event in events:
-            peak_times.append(self.find(event))
-            self.Ana.PBar.update()
-        return peak_times
+    def draw(self, corr=True, show=True, redo=False):
+        h = TH1F('hp', 'Peak Times', 512 * 4, 0, 512)
+        values = self.find_all(redo=redo)
+        if corr:
+            v0 = values[0]
+        values = concatenate(values)
+        h.FillN(values.size, values, full(values.size, 1, 'd'))
+        format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
+        self.draw_histo(h, lm=.12, show=show)
+
+    def get_signal_peak(self, peaks):
+        s_min, s_max = array(self.Ana.SignalRange) * self.Ana.BinWidth
+        return peaks[(peaks > s_min) & (peaks < s_max)]
+
+    def test(self):
+        return [find_peaks(l, height=20, prominence=10)[0] for l in self.Ana.Waveform.get_all()]
+
+    def find_all(self, redo=False):
+        def f():
+            events = self.Run.get_root_vec(var='Entry$', cut=self.Cut, dtype=int)
+            peak_times = []
+            simplefilter('ignore', RankWarning)
+            self.Ana.PBar.start(events.size)
+            for event in events:
+                peak_times.append(self.find(event))
+                self.Ana.PBar.update()
+            return peak_times
+        return do_pickle(self.make_pickle_path('Peaks', ch=self.Channel), f, redo=redo)
 
     def find(self, event=1819):
         self.Tree.GetBranch('wf0').GetEntry(event)
         self.Tree.GetBranch('trigger_cell').GetEntry(event)
+        # self.Tree.GetEntry(event)
         values = self.Ana.Polarity * array(getattr(self.Tree, 'wf{}'.format(self.Channel)))
-        x = array(self.Ana.Waveform.get_calibrated_times(self.Tree.trigger_cell))
         peak_values = find_peaks(values, height=self.NoiseThreshold, distance=2, prominence=20)[0]
+        f = vectorize(self.Ana.Waveform.get_calibrated_time)
+        return f(self.Tree.trigger_cell, peak_values) if peak_values.size else []
+        x = array(self.Ana.Waveform.get_calibrated_times(self.Tree.trigger_cell))
         peak_values = peak_values[(peak_values > 10) & (peak_values < 1014)]
         time_peaks = []
         # g = self.make_tgrapherrors('gp', 'Signal Peaks', x=x, y=values)
