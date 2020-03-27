@@ -121,6 +121,7 @@ class Waveform(Analysis):
         return values, times
 
     def get_calibrated_times(self, trigger_cell):
+        # TODO: revise and fix this method use cumsum
         if all(self.Run.TCal[0] == t for t in self.Run.TCal):
             return [self.BinWidth * i for i in xrange(self.Run.NSamples)]
         t = [self.Run.TCal[int(trigger_cell)]]

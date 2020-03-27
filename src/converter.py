@@ -197,7 +197,7 @@ class Converter:
         if self.RunConfig.has_option('ROOTFILE_GENERATION', 'inverted_polarities'):
             fac = -1 if int(self.RunConfig.get('ROOTFILE_GENERATION', 'inverted_polarities')) else 1
         active_regions = self.RunConfig.getint('ROOTFILE_GENERATION', 'active_regions')
-        biases = deepcopy(self.Run.Bias)
+        biases = self.Run.load_biases()
         polarities = [sign(biases.pop(0)) * fac if has_bit(active_regions, i) else 0 for i in xrange(self.NChannels)]
         return str([(1 if not pol and has_bit(active_regions, i) else pol) for i, pol in enumerate(polarities)])  # pol cannot be 0, just take 1 for 0V
 
