@@ -27,12 +27,13 @@ class Waveform(Analysis):
         self.StartEvent = self.Ana.StartEvent
         self.BinWidth = self.Ana.DigitiserBinWidth
 
-    def draw(self, n=1, cut=None, start_event=None, t_corr=True, channel=None, show=True, x_range=None, y_range=None, grid=False):
+    def draw(self, n=1, cut=None, start_event=None, t_corr=True, channel=None, show=True, x_range=None, y_range=None, grid=False, x=None):
         """ Draws a stack of n waveforms. """
         title = '{n}{tc} Waveform{p}'.format(n=n, tc=' Time Corrected' if t_corr else '', p='s' if n > 1 else '')
         h = TH2F('h_wf', title, 1024, 0, 512, 2048, -512, 512)
         start_count = deepcopy(self.Count)
         values, times = self.get_values(n, cut, start_event, t_corr, channel)
+        values = values if x is None else x
         for v, t in zip(values, times):
             h.Fill(t, v)
         y_range = increased_range([min(values), max(values)], .1, .2) if y_range is None else y_range
@@ -127,8 +128,11 @@ class Waveform(Analysis):
             t.append(self.Run.TCal[(int(trigger_cell) + i) % self.Run.NSamples] + t[-1])
         return t
 
-    def get_calibrated_time(self, trigger_cell, bin_nr):
-        return sum(self.Run.TCal[trigger_cell:trigger_cell + bin_nr + 1]) + (sum(self.Run.TCal[:bin_nr - (1024 - trigger_cell) + 1]) if trigger_cell + bin_nr > 1024 else 0)
+    def get_calibrated_time_old(self, trigger_cell, bin_nr):
+        return sum(self.Run.TCal[trigger_cell+1:trigger_cell + bin_nr]) + (sum(self.Run.TCal[:bin_nr - (1024 - trigger_cell) + 1]) if trigger_cell + bin_nr > 1024 else 0)
+
+    def get_calibrated_time(self, t, b):
+        return self.Run.TCalSum[t + b] - self.Run.TCalSum[t]
 
     def reset(self):
         self.Count = 0
