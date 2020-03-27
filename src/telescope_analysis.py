@@ -214,12 +214,8 @@ class TelecopeAnalysis(Analysis):
         n, x, n, y = self.Bins.get_pixel()
         self.draw_grid(x, y, color=921)
 
-    def get_events(self, cut='', prnt=False):
-        n = self.Tree.Draw('event_number', TCut(cut), 'goff')
-        events = [self.Tree.GetV1()[i] for i in xrange(n)]
-        if prnt:
-            print events[:20]
-        return events
+    def get_events(self, cut=None):
+        return self.Run.get_root_vec(dtype='i4', var='Entry$', cut=self.Cut(cut))
 
     def get_plane_hits(self):
         t = self.info('getting plane hits...', next_line=False)
