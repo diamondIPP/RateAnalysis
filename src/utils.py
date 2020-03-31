@@ -506,7 +506,7 @@ def do_pickle(path, func, value=None, redo=False, *args, **kwargs):
     return ret_val
 
 
-def load_hdf5(path, func, redo=False, *args, **kwargs):
+def do_hdf5(path, func, redo=False, *args, **kwargs):
     if file_exists(path) and not redo:
         return h5py.File(path, 'r')['data']
     else:
