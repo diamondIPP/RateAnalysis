@@ -313,7 +313,7 @@ class Cut:
         events = split(events, not_connected)  # events grouped into connecting events
         interruptions = [(ev[0], ev[0]) if ev.size == 1 else (ev[0], ev[-1]) for ev in events] if events[0].size else []
         self.Analysis.add_to_info(t)
-        return interruptions
+        return array(interruptions, 'i4')
 
     def find_pixel_beam_interruptions(self, bin_width=10, threshold=.4):
         """ Finding beam interruptions by incestigation the event rate. """
