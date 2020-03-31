@@ -141,7 +141,7 @@ class Converter:
         cmd_list = [join(self.EudaqDir, 'bin', 'Converter.exe'), '-t', self.ConverterTree, '-c', join(self.EudaqDir, 'conf', self.NewConfigFile), self.RawFilePath]
         self.set_converter_configfile()
         print_banner('START CONVERTING RAW FILE FOR RUN {0}'.format(self.RunNumber))
-        print ' '.join(cmd_list)
+        info('{}\n'.format(' '.join(cmd_list)))
         check_call(cmd_list)
         self.remove_new_configfile()
         self.remove_decodingfile()
@@ -279,7 +279,7 @@ if __name__ == '__main__':
     from argparse import ArgumentParser
     from selector import run_selector
 
-    args = init_argparser(run=23, tc='201908')
+    args = init_argparser(run=88, tc='201908')
 
     zrun = run_selector(args.run, args.testcampaign, tree=False, t_vec=None, verbose=True)
     z = Converter(zrun)
