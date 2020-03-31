@@ -1,14 +1,13 @@
 [MAIN]
-data_dir = /scratch2/psi
-run_plan_path = Runinfos/run_plans.json
+data directory = /scratch/psi
 default test campaign = 201908
+run plan path = Runinfos/run_plans.json
 ;hv config file = ''
 ;hv data path = ''
 
 [SAVE]
 pickle directory = Configuration/Individual_Configs/
 activate title = True
-felix = False
 git hash = True
 info legend = True
 server mount directory = ~/mounts/psi
