@@ -52,6 +52,12 @@ class TelecopeAnalysis(Analysis):
 
     # ----------------------------------------
     # region TRACKS
+    def draw_tracks(self, show=True):
+        p = TProfile('ptt', 'Number of Tracks vs. Time', *self.Bins.get_raw_time(10))
+        self.Tree.Draw('n_tracks:{}>>ptt'.format(self.get_t_var()), '', 'goff')
+        format_histo(p, x_tit='Time [hh:mm}', y_tit='Number of Tracks', y_off=1.3, t_ax_off=0, fill_color=self.FillColor)
+        self.save_histo(p, 'NTracksTime', draw_opt='hist', show=show)
+
     def draw_chi2(self, mode=None, show=True, save=True, fit=False, prnt=True, show_cut=False, x_range=None, cut='', normalise=None):
         mode = 'tracks' if mode is None else mode
         set_root_warnings(False)
