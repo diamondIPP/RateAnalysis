@@ -31,11 +31,17 @@ from argparse import ArgumentParser
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 from ConfigParser import ConfigParser
 from scipy.optimize import curve_fit
+from scipy import constants
 import h5py
 
 OFF = False
 ON = True
 DEGREE_SIGN = u'\N{DEGREE SIGN}'
+
+M_PI = 139.57018
+M_MU = constants.physical_constants['muon mass'][0] / constants.e * constants.c**2 / 1e6
+M_E = constants.m_e / constants.e * constants.c**2 / 1e6
+M_P = constants.m_p / constants.e * constants.c**2 / 1e6
 
 
 # ==============================================
@@ -872,6 +878,22 @@ def gauss(x, scale, mean_, sigma):
 def fit_data(f, y, x=None, p=None):
     x = arange(y.shape[0]) if x is None else x
     return curve_fit(f, x, y, p0=p)
+
+
+def calc_speed(p, m):
+    return 1 / sqrt(1 + m**2 / p**2)
+
+
+def t_diff(s, p, m1, m2):
+    return s * (1 / calc_speed(p, m1) - 1 / calc_speed(p, m2)) / constants.c * 1e9
+
+
+def gamma_factor(v):
+    return 1 / sqrt(1 - v**2)
+
+
+def momentum(m, v):
+    return m * v * gamma_factor(v)
 
 
 def do_nothing():
