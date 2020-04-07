@@ -1,7 +1,7 @@
 from draw import *
 from ConfigParser import ConfigParser
 from glob import glob
-
+from numpy import deg2rad, rad2deg, arange
 
 # global test campaign
 g_test_campaign = None
@@ -19,6 +19,10 @@ class Analysis(Draw):
         self.Verbose = verbose
         self.ConfigDir = join(get_base_dir(), 'Configuration')
         self.MainConfig = self.load_main_config()
+        self.Momentum = self.MainConfig.getfloat('BEAM', 'momentum')
+        self.PathLength = self.MainConfig.getfloat('BEAM', 'path length')
+        self.BeamFrequency = self.MainConfig.getfloat('BEAM', 'frequency') * 1e6  # [HZ]
+        self.BunchSpacing = 1 / self.BeamFrequency * 1e9  # [ns]
 
         # Directories
         self.Dir = get_base_dir()
@@ -111,8 +115,74 @@ class Analysis(Draw):
     def make_hdf5_path(self, sub_dir, name=None, run=None, ch=None, suf=None, camp=None):
         return self.make_pickle_path(sub_dir, name, run, ch, suf, camp).replace('pickle', 'hdf5')
 
+    def calc_time_difference(self, m1, m2, p=None):
+        return t_diff(self.PathLength, self.Momentum if p is None else p, m1, m2) % self.BunchSpacing
+
+    def calc_td(self, p, pars):
+        return t_diff(self.PathLength, p[0], pars[0], pars[1]) % self.BunchSpacing - 19.7
+
+    def draw_time_differences(self):
+        leg = self.make_legend(w=.2)
+        for m, n in zip([M_E, M_MU, M_P], ['positron', 'muon', 'proton']):
+            f = TF1('f{}'.format(n), self.calc_td, 200, 300, 2)
+            f.SetParameters(M_PI, m)
+            format_histo(f, x_tit='Momentum [MeV/c]', y_tit='Time Difference [ns]', y_off=1.3, color=self.get_color(), lw=2, y_range=[3, 18])
+            self.draw_histo(f, grid=True, lm=.12, draw_opt='' if m == M_E else 'same', canvas=None if m == M_E else get_last_canvas())
+            t0 = self.calc_time_difference(M_PI, m)
+            self.draw_tlatex(self.Momentum * 1.02, t0, text='{:2.1f}'.format(t0), size=.04)
+            leg.AddEntry(f, n, 'l')
+        get_object('fproton').SetNpx(1000)
+        self.draw_vertical_line(260, 0, 20, w=2, color=2)
+        leg.Draw()
+        self.reset_colors()
+
+    def get_decay_ratio(self, p=None, d=None):
+        r = decay_ratio(self.Momentum if p is None else p, M_PI, self.PathLength if d is None else d, TAU_PI)
+        print('{:1.1f}% of the particles are left...'.format(r * 100))
+        return r
+
+    def draw_decay_angle(self, p=None, show=True):
+        def f(a, pars):
+            return rad2deg(decay_angle(deg2rad(a[0]), m=M_PI, m1=M_MU, p=pars[0]))
+        f = TF1('fda', f, 0, 180, 1)
+        f.SetParameter(0, self.Momentum if p is None else p)
+        format_histo(f, x_tit='Decay Angle [deg]', y_tit='Boosted Angle [deg]', y_off=1.2, color=self.get_color(), lw=2)
+        self.draw_histo(f, show=show)
+        return f
+
+    def draw_decay_angles(self, momenta=None):
+        momenta = arange(200, 301, 20) if momenta is None else array(momenta, dtype='d')
+        leg = self.make_legend(nentries=momenta.size)
+        graphs = [(p, self.draw_decay_angle(p, show=False)) for p in momenta]
+        c = self.draw_histo(graphs[0][1], grid=True, lm=.121)
+        leg.AddEntry(graphs[0][1], 'p = {} MeV/c'.format(momenta[0]), 'l')
+        for p, f in graphs[1:]:
+            self.draw_histo(f, draw_opt='same', canvas=c)
+            leg.AddEntry(f, str(p), 'l')
+        leg.Draw()
+        self.reset_colors()
+
+    def draw_decay_ratio(self, p=None, show=True):
+        def f(d, pars):
+            return decay_ratio(pars[0], M_PI, d[0], TAU_PI) * 100
+        f = TF1('fdr', f, 6, 7, 1)
+        f.SetParameter(0, self.Momentum if p is None else p)
+        format_histo(f, x_tit='Travel Distance [m]', y_tit='Decay Ratio [%]', y_off=1.2, color=self.get_color(), lw=2)
+        self.draw_histo(f, show=show)
+        return f
+
+    def draw_decay_ratios(self):
+        leg = self.make_legend(nentries=6)
+        graphs = [(p, self.draw_decay_ratio(p, show=False)) for p in arange(200, 301, 20)]
+        c = self.draw_histo(graphs[0][1], grid=True, lm=.12)
+        leg.AddEntry(graphs[0][1], 'p = 200 MeV/c', 'l')
+        for p, f in graphs[1:]:
+            self.draw_histo(f, draw_opt='same', canvas=c)
+            leg.AddEntry(f, str(p), 'l')
+        leg.Draw()
+        self.reset_colors()
+
 
 if __name__ == '__main__':
-
     pargs = init_argparser(has_verbose=True)
     z = Analysis(pargs.testcampaign, verbose=pargs.verbose)
