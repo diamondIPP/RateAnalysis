@@ -19,7 +19,7 @@ from threading import Thread
 from time import time, sleep
 
 from gtts import gTTS
-from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, any, count_nonzero, full, ndarray, histogram, searchsorted, cumsum, exp
+from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, any, count_nonzero, full, ndarray, histogram, searchsorted, cumsum, exp, sin, cos, arctan
 from os import makedirs, _exit, remove, devnull
 from os import path as pth
 from os.path import dirname, realpath
@@ -38,10 +38,11 @@ OFF = False
 ON = True
 DEGREE_SIGN = u'\N{DEGREE SIGN}'
 
-M_PI = 139.57018
+M_PI = 139.57018  # MeV/c^2
 M_MU = constants.physical_constants['muon mass'][0] / constants.e * constants.c**2 / 1e6
 M_E = constants.m_e / constants.e * constants.c**2 / 1e6
 M_P = constants.m_p / constants.e * constants.c**2 / 1e6
+TAU_PI = 26.033  # ns
 
 
 # ==============================================
@@ -894,6 +895,24 @@ def gamma_factor(v):
 
 def momentum(m, v):
     return m * v * gamma_factor(v)
+
+
+def decay_ratio(p, m, d, tau):
+    return exp(-d * m / (tau * 1e-9 * p * constants.c))
+
+
+def decay_momentum(m, m1, m2=0):
+    return sqrt((m**2 + m1**2 + m2**2)**2 - 4 * m**2 * m1**2) / (2 * m)
+
+
+def decay_energy(m, m1, m2=0):
+    return (m**2 + m1**2 - m2**2) / (2 * m)
+
+
+def decay_angle(theta, p, m, m1, m2=0):
+    p1 = decay_momentum(m, m1, m2)
+    v = calc_speed(p, m)
+    return arctan(p1 * sin(theta) / (gamma_factor(v) * (p1 * cos(theta) + v * decay_energy(m, m1, m2))))
 
 
 def do_nothing():
