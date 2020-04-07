@@ -5,6 +5,14 @@ run plan path = Runinfos/run_plans.json
 ;hv config file = ''
 ;hv data path = ''
 
+[BEAM]
+# [MeV/c]
+momentum = 260
+# [m]
+path length = 23.1
+# [MHz]
+frequency = 50.6
+
 [SAVE]
 pickle directory = Configuration/Individual_Configs/
 activate title = True
