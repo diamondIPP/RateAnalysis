@@ -42,6 +42,18 @@ class Waveform(Analysis):
         self.draw_histo(h, 'WaveForms{n}'.format(n=n), show=show, draw_opt='col' if n > 1 else 'apl', lm=.073, rm=.045, bm=.18, x=1.5, y=.5, gridy=grid, gridx=grid)
         return h, self.Count - start_count
 
+    def draw_all(self, corr=True, n=-1, x_range=None, y_range=None, show=True):
+        h = TH2F('h_wf', 'All Waveforms', 1024, 0, 512, 2048, -512, 512)
+        times = concatenate(self.get_all_times(corr=corr)).astype('d')[:n]
+        values = concatenate(self.get_all()).astype('d')[:n]
+        h.FillN(values.size, times, values, ones(values.size))
+        y_range = increased_range([min(values), max(values)], .1, .2) if y_range is None else y_range
+        format_histo(h, x_tit='Time [ns]', y_tit='Signal [mV]', y_off=.5, stats=0, tit_size=.07, lab_size=.06, markersize=.5, x_range=x_range, y_range=y_range)
+        self.draw_histo(h, 'WaveForms{n}'.format(n='e'), show=show, draw_opt='col', lm=.073, rm=.045, bm=.18, x=1.5, y=.5, grid=1, logz=True)
+
+    def get_trigger_cells(self):
+        return self.Run.get_root_vec(var='trigger_cell', cut=self.Ana.Cut(), dtype='i2')
+
     def get_all(self):
         """ extracts all dut waveforms after all cuts from the root tree and saves it as an hdf5 file """
         def f():
