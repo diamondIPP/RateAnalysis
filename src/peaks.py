@@ -24,6 +24,9 @@ class PeakAnalysis(Analysis):
         self.Cut = self.Ana.Cut.generate_custom(exclude='timing', name='Peaks', prnt=False)
         self.Cut = self.Ana.Cut()
 
+    def get_all(self):
+        return do_hdf5(self.make_hdf5_path('Peaks', 'V1', self.Ana.RunNumber, self.Channel), self.Run.get_root_vec, var=self.Ana.PeakName, cut=self.Ana.Cut(), dtype='f2')
+
     def draw(self, corr=True, show=True, redo=False):
         h = TH1F('hp', 'Peak Times', 512 * 4, 0, 512)
         values = self.find_all(redo=redo)
