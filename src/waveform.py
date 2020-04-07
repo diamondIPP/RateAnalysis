@@ -7,6 +7,7 @@
 from analysis import *
 from InfoLegend import InfoLegend
 from ROOT import TCut, TH2F, TProfile, TH1F, TProfile2D
+from numpy import ones
 
 
 class Waveform(Analysis):
@@ -61,11 +62,16 @@ class Waveform(Analysis):
             events = self.Run.get_root_vec(var='Entry$', cut=self.Cut(), dtype=int)
             self.Ana.PBar.start(events.size)
             for event in events:
-                self.Tree.GetBranch('wf0').GetEntry(event)
+                self.Tree.GetBranch('wf{}'.format(self.Channel)).GetEntry(event)
                 waveforms.append(self.Ana.Polarity * array(getattr(self.Tree, 'wf{}'.format(self.Channel)), dtype='f2'))
                 self.Ana.PBar.update()
             return array(waveforms)
-        return do_hdf5(self.make_hdf5_path('WF', ch=self.Channel), f)
+        return do_hdf5(self.make_hdf5_path('WF', run=self.RunNumber, ch=self.Channel), f)
+
+    def get_all_times(self, corr=False):
+        times = array([self.get_calibrated_times(trigger_cell) for trigger_cell in self.get_trigger_cells()])
+        peaks = self.Ana.Peaks.get_all() if corr else []
+        return times - (peaks - peaks[0]).reshape(peaks.size, 1) if corr else times
 
     def draw_single(self, cut='', event=None, show=True, show_noise=False):
         h, n = self.draw(n=1, start_event=event, cut=cut, t_corr=True, show=show, grid=True)
@@ -128,19 +134,16 @@ class Waveform(Analysis):
         values = self.Run.get_root_vec(n_entries)
         times = [self.BinWidth * i for i in xrange(1024)] * n
         if t_corr:
-            times = [v for lst in [self.get_calibrated_times(self.Tree.GetV2()[1024 * i]) for i in xrange(n)] for v in lst]
+            times = [v for lst in [self.get_calibrated_times(int(self.Tree.GetV2()[1024 * i])) for i in xrange(n)] for v in lst]
         self.Tree.SetEstimate()
         self.Count += n_events
         return values, times
 
     def get_calibrated_times(self, trigger_cell):
-        # TODO: revise and fix this method use cumsum
-        if all(self.Run.TCal[0] == t for t in self.Run.TCal):
+        # TODO: try directly with TCalSum
+        if all(self.Run.TCal == self.Run.TCal[0]):
             return [self.BinWidth * i for i in xrange(self.Run.NSamples)]
-        t = [self.Run.TCal[int(trigger_cell)]]
-        for i in xrange(1, self.Run.NSamples):
-            t.append(self.Run.TCal[(int(trigger_cell) + i) % self.Run.NSamples] + t[-1])
-        return t
+        return cumsum(concatenate([[0], self.Run.TCal[trigger_cell:], self.Run.TCal[0:trigger_cell - 1]])) if trigger_cell else cumsum(concatenate([[0], self.Run.TCal[:-1]]))
 
     def get_calibrated_time_old(self, trigger_cell, bin_nr):
         return sum(self.Run.TCal[trigger_cell+1:trigger_cell + bin_nr]) + (sum(self.Run.TCal[:bin_nr - (1024 - trigger_cell) + 1]) if trigger_cell + bin_nr > 1024 else 0)
