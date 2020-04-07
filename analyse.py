@@ -6,6 +6,7 @@
 
 from sys import path
 from os.path import realpath, dirname, join
+from os import chdir
 path.append(join(dirname(realpath(__file__)), 'src'))
 from draw import *
 from selector import analysis_selector, collection_selector
@@ -19,6 +20,7 @@ pargs = aparser.parse_args()
 
 if not pargs.collection:
     z = analysis_selector(pargs.runplan, pargs.dut, pargs.testcampaign, pargs.tree, pargs.verbose)
+    chdir('..')
 else:
     z = collection_selector(pargs.runplan, pargs.dut, pargs.testcampaign, pargs.tree, pargs.verbose)
     if pargs.draw:
