@@ -7,7 +7,7 @@
 from analysis import *
 from ROOT import TH1F, TCut, gROOT
 from scipy.signal import find_peaks, savgol_filter
-from numpy import polyfit, pi, RankWarning, vectorize
+from numpy import polyfit, pi, RankWarning, vectorize, size, split
 from warnings import simplefilter
 
 
@@ -28,43 +28,46 @@ class PeakAnalysis(Analysis):
         return do_hdf5(self.make_hdf5_path('Peaks', 'V1', self.Ana.RunNumber, self.Channel), self.Run.get_root_vec, var=self.Ana.PeakName, cut=self.Ana.Cut(), dtype='f2')
 
     def draw(self, corr=True, show=True, redo=False):
-        h = TH1F('hp', 'Peak Times', 512 * 4, 0, 512)
-        values = self.find_all(redo=redo)
+        h = TH1F('hp', 'Peak Times', 512 * 2, 0, 512)
+        values, n_peaks = self.find_all(redo=redo)
         if corr:
-            v0 = values[0]
-        values = concatenate(values)
-        h.FillN(values.size, values, full(values.size, 1, 'd'))
+            values = array(split(values, cumsum(n_peaks)[:-1]))
+            peaks = self.get_all()
+            for i in xrange(values.size):
+                values[i] -= peaks[i] - peaks[0]
+            values = concatenate(values)
+        h.FillN(values.size, array(values), full(values.size, 1, 'd'))
         format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
         self.draw_histo(h, lm=.12, show=show)
 
-    def get_signal_peak(self, peaks):
-        s_min, s_max = array(self.Ana.SignalRange) * self.Ana.BinWidth
-        return peaks[(peaks > s_min) & (peaks < s_max)]
-
-    def test(self):
-        return [find_peaks(l, height=20, prominence=10)[0] for l in self.Ana.Waveform.get_all()]
-
     def find_all(self, redo=False):
-        def f():
-            events = self.Run.get_root_vec(var='Entry$', cut=self.Cut, dtype=int)
-            peak_times = []
-            simplefilter('ignore', RankWarning)
-            self.Ana.PBar.start(events.size)
-            for event in events:
-                peak_times.append(self.find(event))
-                self.Ana.PBar.update()
-            return peak_times
-        return do_pickle(self.make_pickle_path('Peaks', ch=self.Channel), f, redo=redo)
+        hdf5_path = self.make_hdf5_path('Peaks', ch=self.Channel)
+        if file_exists(hdf5_path) and not redo:
+            f = h5py.File(hdf5_path, 'r')
+            return f['values'], f['n_peaks']
+        peak_times = []
+        simplefilter('ignore', RankWarning)
+        wfs = self.Ana.Waveform.get_all()
+        self.Ana.PBar.start(wfs.shape[0])
+        for wf, tc in zip(wfs, self.Ana.Waveform.get_trigger_cells()):
+            peak_times.append(self.find(wf, tc))
+            self.Ana.PBar.update()
+        find_n_peaks = vectorize(size)
+        values, n_peaks = concatenate(peak_times), find_n_peaks(peak_times)
+        f = h5py.File(hdf5_path, 'w')
+        f.create_dataset('values', data=values)
+        f.create_dataset('n_peaks', data=n_peaks)
+        return f['values'], f['n_peaks']
 
-    def find(self, event=1819):
+    def find(self, values, trigger_cell):
+        peak_values = find_peaks(values, height=self.NoiseThreshold, distance=2, prominence=20)[0]
+        return array([self.Ana.Waveform.get_calibrated_time(trigger_cell, value) for value in peak_values])
+
+    def find_from_event(self, event=1819):
         self.Tree.GetBranch('wf0').GetEntry(event)
         self.Tree.GetBranch('trigger_cell').GetEntry(event)
-        # self.Tree.GetEntry(event)
         values = self.Ana.Polarity * array(getattr(self.Tree, 'wf{}'.format(self.Channel)))
-        peak_values = find_peaks(values, height=self.NoiseThreshold, distance=2, prominence=20)[0]
-        f = vectorize(self.Ana.Waveform.get_calibrated_time)
-        return f(self.Tree.trigger_cell, peak_values) if peak_values.size else []
-        x = array(self.Ana.Waveform.get_calibrated_times(self.Tree.trigger_cell))
+        return self.find(values, self.Tree.trigger_cell)
         peak_values = peak_values[(peak_values > 10) & (peak_values < 1014)]
         time_peaks = []
         # g = self.make_tgrapherrors('gp', 'Signal Peaks', x=x, y=values)
