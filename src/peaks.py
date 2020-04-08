@@ -9,6 +9,7 @@ from ROOT import TH1F, TCut, gROOT
 from scipy.signal import find_peaks, savgol_filter
 from numpy import polyfit, pi, RankWarning, vectorize, size, split
 from warnings import simplefilter
+from InfoLegend import InfoLegend
 
 
 class PeakAnalysis(Analysis):
@@ -23,25 +24,27 @@ class PeakAnalysis(Analysis):
         self.NoiseThreshold = abs(self.Ana.Pedestal.get_mean() + 5 * self.Ana.Pedestal.get_noise())  # threshold of the peaks = five times above the noise
         self.Cut = self.Ana.Cut.generate_custom(exclude='timing', name='Peaks', prnt=False)
         self.Cut = self.Ana.Cut()
+        self.InfoLegend = InfoLegend(pad_analysis)
 
     def get_all(self):
         return do_hdf5(self.make_hdf5_path('Peaks', 'V1', self.Ana.RunNumber, self.Channel), self.Run.get_root_vec, var=self.Ana.PeakName, cut=self.Ana.Cut(), dtype='f2')
 
-    def draw(self, corr=True, show=True, redo=False):
+    def draw(self, corr=True, show=True, redo=False, fit=True):
         h = TH1F('hp', 'Peak Times', 512 * 2, 0, 512)
-        values, n_peaks = self.find_all(redo=redo)
+        values, n_peaks = self.find_all(redo=redo, fit=fit)
         if corr:
             values = array(split(values, cumsum(n_peaks)[:-1]))
             peaks = self.get_all()
             for i in xrange(values.size):
                 values[i] -= peaks[i] - peaks[0]
             values = concatenate(values)
-        h.FillN(values.size, array(values), full(values.size, 1, 'd'))
-        format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
-        self.draw_histo(h, lm=.12, show=show)
+        h.FillN(values.size, array(values, 'd'), full(values.size, 1, 'd'))
+        self.format_statbox(entries=True)
+        format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor, stats=0)
+        self.draw_histo(h, lm=.12, show=show, x=1.5, y=0.75, logy=True)
 
-    def find_all(self, redo=False):
-        hdf5_path = self.make_hdf5_path('Peaks', ch=self.Channel)
+    def find_all(self, redo=False, fit=False):
+        hdf5_path = self.make_hdf5_path('Peaks', run=self.Ana.RunNumber, ch=self.Channel, suf=int(fit))
         if file_exists(hdf5_path) and not redo:
             f = h5py.File(hdf5_path, 'r')
             return f['values'], f['n_peaks']
@@ -50,7 +53,7 @@ class PeakAnalysis(Analysis):
         wfs = self.Ana.Waveform.get_all()
         self.Ana.PBar.start(wfs.shape[0])
         for wf, tc in zip(wfs, self.Ana.Waveform.get_trigger_cells()):
-            peak_times.append(self.find(wf, tc))
+            peak_times.append(self.find(wf, tc, fit=fit))
             self.Ana.PBar.update()
         find_n_peaks = vectorize(size)
         values, n_peaks = concatenate(peak_times), find_n_peaks(peak_times)
@@ -59,32 +62,31 @@ class PeakAnalysis(Analysis):
         f.create_dataset('n_peaks', data=n_peaks)
         return f['values'], f['n_peaks']
 
-    def find(self, values, trigger_cell):
+    def find(self, values, trigger_cell, fit=False):
         peak_values = find_peaks(values, height=self.NoiseThreshold, distance=2, prominence=20)[0]
+        if fit:
+            return self.fit(values, peak_values, trigger_cell)
         return array([self.Ana.Waveform.get_calibrated_time(trigger_cell, value) for value in peak_values])
 
-    def find_from_event(self, event=1819):
+    def fit(self, values, peaks, trigger_cell):
+        peaks = peaks[(peaks > 10) & (peaks < 1014)]
+        t = self.Ana.Waveform.get_calibrated_times(trigger_cell)
+        time_peaks = []
+        for peak in peaks:
+            y = savgol_filter(values[peak - 10:peak + 12], 15, 3)
+            p_max = where(y == y.max())[0][0]
+            if p_max < 5 or p_max > 15:
+                continue
+            t0 = t[peak - 10:peak + 12]
+            p2, p1, p0 = polyfit(t0[p_max - 1:p_max + 2], y[p_max - 1:p_max + 2], deg=2)
+            time_peaks.append(-p1 / 2 / p2)
+        return time_peaks
+
+    def find_from_event(self, event=1819, fit=False):
         self.Tree.GetBranch('wf0').GetEntry(event)
         self.Tree.GetBranch('trigger_cell').GetEntry(event)
         values = self.Ana.Polarity * array(getattr(self.Tree, 'wf{}'.format(self.Channel)))
-        return self.find(values, self.Tree.trigger_cell)
-        peak_values = peak_values[(peak_values > 10) & (peak_values < 1014)]
-        time_peaks = []
-        # g = self.make_tgrapherrors('gp', 'Signal Peaks', x=x, y=values)
-        # self.draw_histo(g)
-        for peak in peak_values:
-            x1 = x[peak - 10:peak + 12]
-            y = savgol_filter(values[peak - 10:peak + 12], 15, 3)
-            p_max = where(y == y.max())[0][0]
-            if 5 > p_max < 15:
-                continue
-            p2, p1, p0 = polyfit(x1[p_max - 1:p_max + 2], y[p_max - 1:p_max + 2], deg=2)
-            # f = TF1('f', 'pol2', x1[0], x1[-1])
-            # f.SetParameters(p0, p1, p2)
-            # f.SetNpx(1000)
-            # self.draw_histo(f, draw_opt='same', canvas=get_last_canvas())
-            time_peaks.append(-p1/2/p2)
-        return time_peaks
+        return self.find(values, self.Tree.trigger_cell, fit)
 
     def draw_n_peaks(self, spec=False, show=True, do_fit=False):
         h = TH1F('h_pn', 'Number of Peaks', 10, 0, 10)
