@@ -12,7 +12,7 @@ import pickle
 from collections import OrderedDict
 from copy import deepcopy
 from datetime import datetime, timedelta
-from multiprocessing import Pool
+from multiprocessing import Pool, cpu_count
 from subprocess import call
 from sys import stdout
 from threading import Thread
@@ -33,6 +33,8 @@ from ConfigParser import ConfigParser
 from scipy.optimize import curve_fit
 from scipy import constants
 import h5py
+import copy_reg
+import types
 
 OFF = False
 ON = True
@@ -913,6 +915,11 @@ def decay_angle(theta, p, m, m1, m2=0):
     p1 = decay_momentum(m, m1, m2)
     v = calc_speed(p, m)
     return arctan(p1 * sin(theta) / (gamma_factor(v) * (p1 * cos(theta) + v * decay_energy(m, m1, m2))))
+
+
+def call_it(instance, name, *args, **kwargs):
+    """indirect caller for instance methods and multiprocessing"""
+    return getattr(instance, name)(*args, **kwargs)
 
 
 def do_nothing():
