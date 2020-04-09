@@ -70,7 +70,7 @@ class Draw:
         return color
 
     def get_colors(self, n):
-        return array([self.get_color() for _ in xrange(n)], 'i')
+        return array([self.get_color() for _ in range(n)], 'i')
 
     def reset_colors(self):
         self.Count = 0
@@ -80,6 +80,17 @@ class Draw:
 
     def load_server_dir(self):
         return expanduser(self.MainConfig.get('SAVE', 'server mount directory')) if self.MainConfig is not None else None
+
+    def add(self, *args):
+        for obj in args:
+            if obj not in self.Objects:
+                self.Objects.append(obj)
+        self.clean()
+
+    def clean(self):
+        n_none = sum(str(obj) == 'None' for obj in self.Objects)
+        for _ in range(n_none):
+            self.Objects.remove(None)
     # endregion
     # ----------------------------------------
 
@@ -105,7 +116,7 @@ class Draw:
         a.SetNdivisions(0) if line else do_nothing()
         a.SetLabelOffset(l_off)
         a.Draw()
-        self.Objects.append(a)
+        self.add(a)
         return a
 
     def draw_y_axis(self, x, ymin, ymax, tit, limits=None, name='ax', col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035, tick_size=0.03, l_off=.01, line=False, log=False):
@@ -120,7 +131,7 @@ class Draw:
         line.SetLineWidth(width)
         line.SetLineStyle(style)
         line.Draw('same')
-        self.Objects.append(line)
+        self.add(line)
         return line
 
     def draw_tline(self, x1, x2, y1, y2, color=1, width=1, style=1):
@@ -129,7 +140,7 @@ class Draw:
         line.SetLineWidth(width)
         line.SetLineStyle(style)
         line.Draw()
-        self.Objects.append(line)
+        self.add(line)
         return line
 
     def draw_box(self, x1, y1, x2, y2, line_color=1, width=1, style=1, fillstyle=None, name='box', show=True):
@@ -145,7 +156,7 @@ class Draw:
         if show:
             line.Draw('l')
             line.Draw('f')
-        self.Objects.append(line)
+        self.add(line)
         return line
 
     def draw_vertical_line(self, x, ymin, ymax, color=1, w=1, style=1, name='li', tline=False):
@@ -158,7 +169,7 @@ class Draw:
         tlatex = TLatex(x, y, text)
         format_text(tlatex, name, align, color, size, angle, ndc, font)
         tlatex.Draw() if show else do_nothing()
-        self.Objects.append(tlatex)
+        self.add(tlatex)
         return tlatex
 
     def draw_arrow(self, x1, x2, y1, y2, col=1, width=1, opt='<|', size=.005):
@@ -167,7 +178,7 @@ class Draw:
         ar.SetLineColor(col)
         ar.SetFillColor(col)
         ar.Draw()
-        self.Objects.append(ar)
+        self.add(ar)
 
     def draw_tpad(self, name, tit='', pos=None, fill_col=0, gridx=None, gridy=None, margins=None, transparent=False, logy=None, logx=None, logz=None):
         margins = [.1, .1, .1, .1] if margins is None else margins
@@ -180,7 +191,7 @@ class Draw:
         make_transparent(p) if transparent else do_nothing()
         p.Draw()
         p.cd()
-        self.Objects.append(p)
+        self.add(p)
         return p
 
     def draw_tpavetext(self, text, x1, x2, y1, y2, font=42, align=0, size=0, angle=0, margin=.05, color=1):
@@ -192,7 +203,7 @@ class Draw:
         t = p.AddText(text)
         format_text(t, 'pave', align, color, size, angle, ndc=True, font=font)
         p.Draw()
-        self.Objects.append(p)
+        self.add(p)
         return p
 
     def draw_stats(self, fit, y2=None, width=.3, prec='5.1f', names=None):
@@ -208,10 +219,10 @@ class Draw:
         leg.SetTextFont(42)
         ls = p.GetListOfLines()
         ls.Add(self.draw_tlatex(0, 0, '#chi^{{2}} / ndf  = {chi2:{p}} / {ndf}'.format(ndf=fit.Ndf(), chi2=fit.Chi2(), p=prec), size=0, align=0, font=42))
-        for i in xrange(fit.NPars):
+        for i in range(fit.NPars):
             ls.Add(self.draw_tlatex(0, 0, '{n}  = {v:{p}} #pm {e:{p}}'.format(n=names[i], v=fit.Parameter(i), e=fit.ParError(i), p=prec), size=0, align=0, font=42))
         p.Draw()
-        self.Objects.append(p)
+        self.add(p)
         return p
 
     def draw_frame(self, pad, xmin, xmax, ymin, ymax, tit, div=None, y_cent=None):
@@ -222,7 +233,7 @@ class Draw:
         do(fr.GetYaxis().CenterTitle, y_cent)
         fr.GetYaxis().SetNdivisions(div) if div is not None else do_nothing()
         format_frame(fr)
-        self.Objects.append(fr)
+        self.add(fr)
 
     def draw_grid(self, x_vals, y_vals, width=1, color=1):
         for x in x_vals:
@@ -236,7 +247,7 @@ class Draw:
         do(e.SetLineWidth, w)
         e.SetFillStyle(4000)
         e.Draw()
-        self.Objects.append(e)
+        self.add(e)
 
     def draw_circle(self, r, x_off=0, y_off=0, color=None, w=None):
         self.draw_ellipse(r, 0, x_off, y_off, color, w)
@@ -311,7 +322,7 @@ class Draw:
                 obj.SetTextColor(0)
         self.save_canvas(c, name='CombinedPulseHeights' if name is None else name, show=show, print_names=prnt)
 
-        self.Objects.append([c, draw_objects])
+        self.add(c, *draw_objects)
         set_root_output(True)
     # endregion DRAW
     # ----------------------------------------
@@ -377,7 +388,7 @@ class Draw:
                 if both_dias and sub_dir is None:
                     sub_dir = self.TelSaveDir if hasattr(self, 'TelSaveDir') else sub_dir
                 self.save_canvas(canvas, sub_dir=sub_dir, name=savename, print_names=prnt, show=show)
-                self.Objects.append(canvas)
+                self.add(canvas)
             except Exception as inst:
                 log_warning('Error in save_canvas:\n{0}'.format(inst))
 
@@ -437,8 +448,7 @@ class Draw:
                 i.Draw()
         self.save_plots(save_name, sub_dir=sub_dir, both_dias=both_dias, all_pads=all_pads, ind=ind, prnt=prnt, save=save, show=show)
         set_root_output(True)
-        lst = [c, h, leg] if leg is not None else [c, h]
-        self.Objects.append(lst)
+        self.add(c, h, leg)
         return c
 
     def save_tel_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=None, draw_opt=None, x_fac=None, y_fac=None, all_pads=True,
@@ -463,7 +473,7 @@ class Draw:
         gr.SetMarkerSize(marker_size)
         gr.SetLineWidth(width)
         gr.SetLineStyle(style)
-        self.Objects.append(gr)
+        self.add(gr)
         return gr
 
     def make_legend(self, x1=.65, y2=.88, nentries=2, scale=1, name='l', y1=None, clean=False, margin=.25, x2=None, w=None, cols=None):
@@ -484,7 +494,7 @@ class Draw:
             leg.SetFillColor(0)
             leg.SetFillStyle(0)
             leg.SetTextAlign(12)
-        self.Objects.append(leg)
+        self.add(leg)
         return leg
 
     def make_canvas(self, name='c', title='c', x=1., y=1., logx=None, logy=None, logz=None, gridx=None, gridy=None, transp=None, divide=None, show=True):
@@ -495,11 +505,11 @@ class Draw:
         do(make_transparent, c, transp)
         if divide is not None:
             c.Divide(*(divide if type(divide) in [list, tuple] else [divide]))
-        self.Objects.append(c)
+        self.add(c)
         return c
 
     def make_graph_from_profile(self, p):
-        x_range = [i for i in xrange(p.GetNbinsX()) if p.GetBinContent(i)]
+        x_range = [i for i in range(p.GetNbinsX()) if p.GetBinContent(i)]
         x = [make_ufloat([p.GetBinCenter(i), p.GetBinWidth(i) / 2]) for i in x_range]
         y = [make_ufloat([p.GetBinContent(i), p.GetBinError(i)]) for i in x_range]
         return self.make_tgrapherrors('g{n}'.format(n=p.GetName()[1:]), p.GetTitle(), x=x, y=y)
@@ -644,7 +654,7 @@ def fix_chi2(g, prec=.01, show=True):
     chi2 = 0
     fit = None
     while abs(chi2 - 1) > prec and it < 20:
-        for i in xrange(g.GetN()):
+        for i in range(g.GetN()):
             g.SetPointError(i, g.GetErrorX(i), error)
         fit = g.Fit('pol0', 'qs{}'.format('' if show else 0))
         chi2 = fit.Chi2() / fit.Ndf()
@@ -695,19 +705,19 @@ def get_graph_vecs(g):
 
 
 def get_graph_x(g):
-    return array([make_ufloat([g.GetX()[i], g.GetEX()[i]]) for i in xrange(g.GetN())]) if 'Error' in g.ClassName() else array([make_ufloat(g.GetX()[i]) for i in xrange(g.GetN())])
+    return array([make_ufloat([g.GetX()[i], g.GetEX()[i]]) for i in range(g.GetN())]) if 'Error' in g.ClassName() else array([make_ufloat(g.GetX()[i]) for i in range(g.GetN())])
 
 
 def get_graph_y(g):
-    return array([make_ufloat([g.GetY()[i], g.GetEY()[i]]) for i in xrange(g.GetN())]) if 'Error' in g.ClassName() else array([make_ufloat(g.GetY()[i]) for i in xrange(g.GetN())])
+    return array([make_ufloat([g.GetY()[i], g.GetEY()[i]]) for i in range(g.GetN())]) if 'Error' in g.ClassName() else array([make_ufloat(g.GetY()[i]) for i in range(g.GetN())])
 
 
-def get_hist_vec(p):
-    return array([make_ufloat([p.GetBinContent(ibin), p.GetBinError(ibin)]) for ibin in xrange(1, p.GetNbinsX() + 1)])
+def get_hist_vec(p, err=True):
+    return array([make_ufloat([p.GetBinContent(ibin), p.GetBinError(ibin)]) if err else p.GetBinContent(ibin) for ibin in range(1, p.GetNbinsX() + 1)])
 
 
 def get_2d_hist_vec(h):
-    xbins, ybins = xrange(1, h.GetNbinsX() + 1), xrange(1, h.GetNbinsY() + 1)
+    xbins, ybins = range(1, h.GetNbinsX() + 1), range(1, h.GetNbinsY() + 1)
     return array([make_ufloat([h.GetBinContent(xbin, ybin), h.GetBinError(xbin, ybin)]) for xbin in xbins for ybin in ybins if h.GetBinContent(xbin, ybin)])
 
 
@@ -727,7 +737,7 @@ def scale_graph(gr, scale=None, val=1, to_low_flux=False):
     if scale is None:
         m, s = mean_sigma(y)
         scale = val / (y[where(x == min(x))[0]] if to_low_flux else m)
-    for i in xrange(x.size):
+    for i in range(x.size):
         gr.SetPoint(i, gr.GetX()[i], gr.GetY()[i] * scale)
         gr.SetPointError(i, gr.GetErrorX(i), gr.GetErrorY(i) * scale) if 'Error' in gr.ClassName() else do_nothing()
     return scale
@@ -736,7 +746,7 @@ def scale_graph(gr, scale=None, val=1, to_low_flux=False):
 def get_pull(h, name, bins, fit=True):
     set_root_output(False)
     h_out = TH1F('hp{}'.format(name[:3]), name, *bins)
-    values = array([h.GetBinContent(ibin + 1) for ibin in xrange(h.GetNbinsX())], 'd')
+    values = array([h.GetBinContent(ibin + 1) for ibin in range(h.GetNbinsX())], 'd')
     h_out.FillN(values.size, values, full(values.size, 1, 'd'))
     h_out.Fit('gaus', 'q') if fit else do_nothing()
     format_histo(h_out, x_range=increased_range([values.min(), values.max()], .1, .3))
@@ -765,7 +775,7 @@ def fit_bucket(histo, show=True):
     # middle ped
     fit.SetParLimits(6, 1, min(y1, y2) / 2)
     fit.SetParLimits(7, x1, x1 + diff / 2)
-    for i in xrange(1):
+    for i in range(1):
         h.Fit(fit, 'qs{0}'.format('' if show else '0'), '', -50, x2 + 5)
     set_root_warnings(1)
     return fit
