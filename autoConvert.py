@@ -9,10 +9,10 @@ from os import stat, sys
 from os.path import join, dirname, realpath
 file_dir = dirname(realpath(__file__))
 sys.path.append(join(file_dir, 'src'))
+from utils import *
 from converter import Converter
 from run import Run
 from multiprocessing import cpu_count
-from utils import *
 
 
 class AutoConvert:
@@ -113,13 +113,13 @@ def file_is_beeing_written(file_path):
 if __name__ == '__main__':
 
     parser = ArgumentParser()
-    parser.add_argument('-m', action='store_true')
+    parser.add_argument('-m', action='store_true', help='turn parallel processing ON')
     parser.add_argument('-tc', nargs='?', default='201908')
-    parser.add_argument('e', nargs='?', default=None)
-    parser.add_argument('-v', action='store_false')
-    argms = parser.parse_args()
+    parser.add_argument('e', nargs='?', default=None, help='run number where to stop, default [None]')
+    parser.add_argument('-v', action='store_false', help='turn verbose OFF')
+    args = parser.parse_args()
 
-    z = AutoConvert(argms.m, argms.e, argms.tc, argms.v)
+    z = AutoConvert(args.m, args.e, args.tc, args.v)
     print_banner('Starting {m} Conversion at run {r}'.format(m='Multi' if z.Multi else 'Auto', r=z.FirstRun))
     z.run()
     print_banner('Finished Conversion!')
