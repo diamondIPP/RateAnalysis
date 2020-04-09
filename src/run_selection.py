@@ -249,7 +249,7 @@ class RunSelection:
             if self.Selection[run]:
                 selected.append(run)
         if not selected:
-            print 'No runs selected!'
+            warning('No runs selected!')
         return sorted(selected)
 
     def get_last_selected_run(self):
@@ -395,10 +395,11 @@ class RunSelection:
 
     def get_selected_voltages(self):
         hvs = [[float(hv) for hv in self.get_runinfo_values('dia{0}hv'.format(i), sel=True)] for i in xrange(1, self.Run.get_n_diamonds(self.get_selected_runs()[0]) + 1)]
-        if any(len(hv) > 1 for hv in hvs):
-            abs_hvs = [[abs(v) for v in hv] for hv in hvs]
-            return ('{min:+4.0f} ... {max:+4.0f}'.format(min=hv[ahv.index(min(ahv))], max=hv[ahv.index(max(ahv))]) for ahv, hv in zip(abs_hvs, hvs))
-        return ('{v:+13.0f}'.format(v=hv[0]) for hv in hvs)
+        strings = []
+        for lst in hvs:
+            sorted_lst = sorted(lst, key=abs if all(array(lst) <= 0) else None)
+            strings.append('{:+13.0f}'.format(lst[0]) if len(lst) == 1 else '{:+4.0f} ... {:+4.0f}'.format(sorted_lst[0], sorted_lst[-1]))
+        return strings
 
     def get_missing_runs(self, runs):
         all_runs = [run for run in self.RunNumbers if runs[-1] >= run >= runs[0]]
