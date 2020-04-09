@@ -12,7 +12,6 @@ sys.path.append(join(file_dir, 'src'))
 from utils import *
 from converter import Converter
 from run import Run
-from multiprocessing import cpu_count
 
 
 class AutoConvert:
@@ -87,8 +86,8 @@ class AutoConvert:
 
         pool = Pool(n_cpus)
 
-        tasks = [(self, [run]) for run in self.RunInfos if self.FirstRun <= run <= self.EndRun]
-        results = [pool.apply_async(execute, t) for t in tasks]
+        runs = [run for run in self.RunInfos if self.FirstRun <= run <= self.EndRun]
+        results = [pool.apply_async(self, [run]) for run in runs]
         for res in results:
             print res.get(timeout=2 * 24 * 60 * 60)
 
@@ -97,10 +96,6 @@ class AutoConvert:
 
     def __call__(self, run):
         return self.convert_run(run)
-
-
-def execute(func, args):
-    func(*args)
 
 
 def file_is_beeing_written(file_path):
