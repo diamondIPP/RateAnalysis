@@ -345,7 +345,7 @@ class PadAnalysis(DUTAnalysis):
             pad.SetBottomMargin(.15)
             h.Draw()
         self.save_plots('PHEvolutionOverview{0}'.format(self.Bins.BinSize))
-        self.Objects.append([h2, c])
+        self.add(h2, c)
 
     def draw_signal_distribution(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None, bin_width=.5, events=None,
                                  start=None, x_range=None, redo=False, prnt=True, save=True, normalise=None, sumw2=False):
@@ -419,7 +419,7 @@ class PadAnalysis(DUTAnalysis):
             h.SetLineWidth(2)
             h.Draw('same') if i else h.Draw()
         self.save_plots('BucketHistos')
-        self.Objects.append([h, h_sig, h_ped1, h_ped2, c])
+        self.add(h, h_sig, h_ped1, h_ped2, c)
 
     def show_bucket_numbers(self, show=True):
         pickle_path = self.PickleDir + 'Cuts/BucketEvents_{tc}_{run}_{dia}.pickle'.format(tc=self.TestCampaign, run=self.RunNumber, dia=self.DUT.Name)
@@ -459,7 +459,7 @@ class PadAnalysis(DUTAnalysis):
             h.GetXaxis().SetRangeUser(zero_bins[0][0], zero_bins[0][-1])
             h.GetYaxis().SetRangeUser(zero_bins[1][0], zero_bins[1][-1])
             h.Draw('colz')
-            self.Objects.append([h, c])
+            self.add(h, c)
         return h
 
     def draw_bucket_pedestal(self, show=True, corr=True, additional_cut=''):
@@ -622,7 +622,7 @@ class PadAnalysis(DUTAnalysis):
             h.SetStats(False)
         name = '{0}Cuts'.format('Normalised' if not scale else 'Scaled')
         format_histo(stack, y_off=1.4, x_off=1.1)
-        self.Objects.append(self.save_histo(stack, name, show, lm=.15, leg=legend, draw_opt='nostack'))
+        self.save_histo(stack, name, show, lm=.15, leg=legend, draw_opt='nostack')
         gROOT.ProcessLine("gErrorIgnoreLevel = 0;")
         gROOT.SetBatch(0)
 

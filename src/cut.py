@@ -214,7 +214,7 @@ class Cut:
         cut = self.Analysis.draw_box(xy[0], xy[2], xy[1], xy[3], line_color=kRed, width=3, name='fid{}'.format(self.RunNumber), show=False)
         cut.SetVarX(self.get_track_var(self.Analysis.DUT.Number - 1, 'x'))
         cut.SetVarY(self.get_track_var(self.Analysis.DUT.Number - 1, 'y'))
-        self.Analysis.Objects.append(cut)
+        self.Analysis.add(cut)
         xy *= 10
         dx, dy = xy[1] - xy[0], xy[3] - xy[2]
         description = 'x: [{},{}], y: [{},{}], area: {:.1f}mm x {:.1f}mm = {:.1f}mm2'.format(*concatenate([xy, [dx, dy, dx * dy]]))
