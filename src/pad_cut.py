@@ -162,6 +162,7 @@ class PadCut(Cut):
             self.Analysis.Tree.Draw('{name}>>h'.format(name=self.Analysis.SignalName), self.get_bucket(), 'goff')
             format_histo(h, x_tit='Pulse Height [mV]', y_tit='Entries', y_off=1.8, stats=0, fill_color=self.Analysis.FillColor)
             if h.GetEntries() / self.Analysis.Run.NEntries < .01:
+                log_info('Not enough bucket events ({:.1f}%)'.format(h.GetEntries() / self.Analysis.Run.NEntries))
                 self.Analysis.add_to_info(t)
                 return -30
             snr, ped = self.get_raw_snr()
@@ -170,9 +171,6 @@ class PadCut(Cut):
                 return ped.n + 2 * ped.s
             # extract fit functions
             fit = fit_bucket(h)
-            if fit is None:
-                self.Analysis.add_to_info(t)
-                return -30
             if fit is None or any([abs(fit.GetParameter(i)) < 20 for i in [0, 3]]) or fit.GetParameter(1) < fit.GetParameter(4) or fit.GetParameter(1) > 500:
                 warning('bucket cut fit failed')
                 self.Analysis.draw_histo(h, show=show)
