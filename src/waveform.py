@@ -17,7 +17,7 @@ class Waveform(Analysis):
         self.Run = self.Ana.Run
         self.Channel = self.Ana.Channel
         self.Tree = self.Ana.Tree
-        self.Cut = self.Ana.Cut
+        self.Cut = self.Ana.Cut()
         self.set_save_directory(self.Ana.SubDir)
         self.Polarity = self.Ana.Polarity
         self.DUT = self.Ana.DUT.Number
@@ -53,20 +53,20 @@ class Waveform(Analysis):
         self.draw_histo(h, 'WaveForms{n}'.format(n='e'), show=show, draw_opt='col', lm=.073, rm=.045, bm=.18, x=1.5, y=.5, grid=1, logz=True)
 
     def get_trigger_cells(self):
-        return self.Run.get_root_vec(var='trigger_cell', cut=self.Ana.Cut(), dtype='i2')
+        return self.Run.get_root_vec(var='trigger_cell', cut=self.Cut, dtype='i2')
 
-    def get_all(self):
+    def get_all(self, redo=False):
         """ extracts all dut waveforms after all cuts from the root tree and saves it as an hdf5 file """
         def f():
             waveforms = []
-            events = self.Run.get_root_vec(var='Entry$', cut=self.Cut(), dtype=int)
+            events = self.Run.get_root_vec(var='Entry$', cut=self.Cut, dtype=int)
             self.Ana.PBar.start(events.size)
             for event in events:
                 self.Tree.GetBranch('wf{}'.format(self.Channel)).GetEntry(event)
                 waveforms.append(self.Ana.Polarity * array(getattr(self.Tree, 'wf{}'.format(self.Channel)), dtype='f2'))
                 self.Ana.PBar.update()
             return array(waveforms)
-        return do_hdf5(self.make_hdf5_path('WF', run=self.RunNumber, ch=self.Channel), f)
+        return do_hdf5(self.make_hdf5_path('WF', run=self.RunNumber, ch=self.Channel), f, redo=redo)
 
     def get_all_times(self, corr=False):
         times = array([self.get_calibrated_times(trigger_cell) for trigger_cell in self.get_trigger_cells()])
@@ -93,7 +93,7 @@ class Waveform(Analysis):
 
     def draw_average(self, n=100, cut=None, align_peaks=True, show=True, show_noise=False):
         p = TProfile('pawf', 'Averaged Waveform', 2000, 0, 500)
-        cut = self.Cut(cut)
+        cut = self.Ana.Cut(cut)
         values, times = self.get_values(n, cut)
         if align_peaks:
             self.Tree.Draw(self.Ana.PeakName, cut, 'goff')
@@ -122,7 +122,7 @@ class Waveform(Analysis):
 
     def get_values(self, n=1, cut=None, start_event=None, t_corr=True, channel=None):
         """ return lists of the values and times of the waveform. """
-        cut = self.Cut(cut)
+        cut = self.Ana.Cut(cut)
         channel = self.Channel if channel is None else channel
         if not self.Run.wf_exists(channel):
             return
@@ -170,22 +170,22 @@ class Waveform(Analysis):
 
     def draw_rise_time(self, cut=None, show=True):
         h = TH1F('hrt', 'Signal Rise Time', 100, 0, 10)
-        self.Tree.Draw('rise_time[{}]>>hrt'.format(self.Channel), self.Cut(cut), 'goff')
+        self.Tree.Draw('rise_time[{}]>>hrt'.format(self.Channel), self.Ana.Cut(cut), 'goff')
         self.format_statbox(all_stat=True)
         format_histo(h, x_tit='Rise Time [ns]', y_tit='Number of Entries', y_off=1.4)
         self.save_histo(h, 'RiseTime', lm=.12, show=show)
 
     def draw_fall_time(self, cut=None, show=True):
         h = TH1F('hft', 'Signal Fall Time', 200, 0, 20)
-        self.Tree.Draw('fall_time[{}]>>hft'.format(self.Channel), self.Cut(cut), 'goff')
+        self.Tree.Draw('fall_time[{}]>>hft'.format(self.Channel), self.Ana.Cut(cut), 'goff')
         self.format_statbox(all_stat=True)
         format_histo(h, x_tit='Fall Time [ns]', y_tit='Number of Entries', y_off=1.4)
         self.save_histo(h, 'FallTime', lm=.12, show=show)
 
     def draw_rise_time_map(self, res=sqrt(12), cut=None, show=True):
         p = TProfile2D('prtm', 'Rise Time Map', *self.Ana.Bins.get_global(res))
-        cut = self.Cut.generate_custom(exclude='fiducial') if cut is None else TCut(cut)
-        self.Tree.Draw('rise_time[{}]:{}:{}>>prtm'.format(self.Channel, *self.Cut.get_track_vars(self.DUT.Number - 1)), cut, 'goff')
+        cut = self.Ana.Cut.generate_custom(exclude='fiducial') if cut is None else TCut(cut)
+        self.Tree.Draw('rise_time[{}]:{}:{}>>prtm'.format(self.Channel, *self.Ana.Cut.get_track_vars(self.DUT.Number - 1)), cut, 'goff')
         self.Ana.set_dia_margins(p)
         # self.Ana.set_z_range(p, n_sigma=1)
         self.format_statbox(entries=True, x=.84)
