@@ -178,6 +178,10 @@ class PadAnalysis(DUTAnalysis):
     def get_peak_timing(self, par=1, redo=False):
         return self.Timing.get(par, redo)
 
+    def get_min_signal(self):
+        h = self.draw_signal_distribution(show=False, save=False)
+        return h.GetBinCenter(h.FindFirstBinAbove(h.GetMaximum() * .01))
+
     def print_results(self, prnt=True):
         rows = [[u_to_str(v, prec=2) for v in self.get_results()]]
         print_table(header=['Signal [mV]', 'Pedestal [mV]', 'Pulser [mV]'], rows=rows, prnt=prnt)
