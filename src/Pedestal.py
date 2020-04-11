@@ -24,6 +24,7 @@ class PedestalAnalysis(Analysis):
         self.set_save_directory(self.Ana.SubDir)
         self.Polarity = self.Ana.Polarity
         self.SignalName = self.get_signal_name()
+        self.RawName = self.get_signal_name(peak_int=1)
         self.DUT = self.Ana.DUT
         self.RunNumber = self.Ana.RunNumber
         self.InfoLegend = InfoLegend(pad_analysis)
@@ -36,19 +37,26 @@ class PedestalAnalysis(Analysis):
     def get_all_signal_names(self):
         return self.Ana.get_all_signal_names('pedestal')
 
-    def get_par(self, par=1, cut=None, redo=False):
-        suffix = '{r}_fwhm_{c}'.format(c=self.Cut(cut).GetName(), r=self.get_all_signal_names()[self.SignalName])
+    def get_par(self, par=1, name=None, cut=None, redo=False):
+        name = self.SignalName if name is None else name
+        suffix = '{r}_fwhm_{c}'.format(c=self.Cut(cut).GetName(), r=self.get_all_signal_names()[name])
         picklepath = self.make_pickle_path('Pedestal', run=self.RunNumber, ch=self.DUT.Number, suf=suffix)
-        return make_ufloat(do_pickle(picklepath, partial(self.draw_disto_fit, cut=self.Cut(cut), show=False), redo=redo), par=par)
+        return make_ufloat(do_pickle(picklepath, partial(self.draw_disto_fit, name=name, cut=self.Cut(cut), show=False), redo=redo), par=par)
 
-    def get_mean(self, cut=None, redo=False):
-        return self.get_par(1, cut, redo)
+    def get_mean(self, name=None, cut=None, redo=False):
+        return self.get_par(1, name, cut, redo)
 
-    def get_noise(self, cut=None, redo=False):
-        return self.get_par(2, cut, redo)
+    def get_noise(self, name=None, cut=None, redo=False):
+        return self.get_par(2, name, cut, redo)
 
     def get_fwhm(self):
         return self.get_noise() * 2 * sqrt(2 * log(2))
+
+    def get_raw_mean(self, cut=None, redo=False):
+        return self.get_mean(self.RawName, cut, redo)
+
+    def get_raw_noise(self, cut=None, redo=False):
+        return self.get_noise(self.RawName, cut, redo)
 
     def draw_disto(self, name=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True, normalise=None):
         show = False if not save else show
