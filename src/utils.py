@@ -920,11 +920,13 @@ def decay_angle(theta, p, m, m1, m2=0):
 def multi_threading(lst, timeout=60 * 60 * 2):
     """ runs several threads in parallel. [lst] must contain tuples of the methods and the arguments as list."""
     t0 = info('Run multithreading on {} tasks ... '.format(len(lst)), next_line=False)
-    lst = [(f, []) for f in lst] if type(lst[0]) not in [list, tuple, ndarray] else lst
+    lst = [(f, [], {}) for f in lst] if type(lst[0]) not in [list, tuple, ndarray] else lst
+    if len(lst[0]) == 2:
+        lst = [(f, args, {}) for f, args in lst] if type(lst[0][1]) not in [dict, OrderedDict] else [(f, [], d) for f, d in lst]
     threads = []
     queue = Queue()  # use a queue to get the results
-    for f, args in lst:
-        t = Thread(target=lambda q, a: q.put(f(*a)), args=(queue, make_list(args)))
+    for f, args, kwargs in lst:
+        t = Thread(target=lambda q, a, k: q.put(f(*a, **k)), args=(queue, make_list(args), kwargs))
         t.start()
         threads.append(t)
     for thread in threads:
