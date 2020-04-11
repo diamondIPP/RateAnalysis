@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 from __future__ import print_function
-from ROOT import THStack, TF1, TProfile2D, TMultiGraph
+from ROOT import THStack, TF1, TProfile2D, TMultiGraph, TMath
 
 from currents import Currents
 from InfoLegend import InfoLegend
@@ -9,7 +9,7 @@ from VoltageScan import VoltageScan
 from analysis import *
 from dut_analysis import DUTAnalysis
 from telescope_analysis import TelecopeAnalysis
-from numpy import histogram, cumsum, sort, split
+from numpy import histogram, cumsum, sort, split, exp, log
 
 
 class AnalysisCollection(Analysis):
@@ -109,6 +109,7 @@ class AnalysisCollection(Analysis):
                 analysis.Cut.set_high_low_rate_run(low_run=self.MinFluxRun, high_run=self.MaxFluxRun)
                 analysis.Cut.reload()
             analyses[run] = analysis
+        self.Threads = None
         return analyses
 
     def close_files(self):
@@ -159,7 +160,7 @@ class AnalysisCollection(Analysis):
         return self.Analyses.values()[ind]
 
     def get_analyses(self, runs=None):
-        return self.Analyses.itervalues() if runs is None else [ana for key, ana in self.Analyses.iteritems() if key in runs]
+        return self.Analyses.values() if runs is None else [ana for key, ana in self.Analyses.iteritems() if key in runs]
 
     def get_hv_name(self):
         return self.Currents.Name
@@ -177,7 +178,7 @@ class AnalysisCollection(Analysis):
         s = TSpectrum(20)
         s.Search(h, 1)
         bins = sorted(s.GetPositionX()[i] for i in xrange(s.GetNPeaks()))
-        split_bins = histogram(values, concatenate(([0], [[ibin / 10**.1, ibin * 10**.1] for ibin in bins], [1e5]), axis=None))[0]
+        split_bins = histogram(values, concatenate(([0], [[ibin / 10 ** .1, ibin * 10 ** .1] for ibin in bins], [1e5]), axis=None))[0]
         return cumsum(split_bins[where(split_bins > 0)])
 
     def get_times(self, runs=None):
@@ -351,7 +352,7 @@ class AnalysisCollection(Analysis):
         g1, g_last = [self.make_tgrapherrors('g{}'.format(i), '{} run'.format('last' if i else 'first'), marker=22 - i, color=2, marker_size=1.5, x=[x[i].n], y=[values[i].n]) for i in [0, -1]]
         graphs = [g, g_errors]
         graphs += [g1, g_last] if first_last else []
-        leg = self.make_legend(x2=.37, y2=.4 if self.Legend else .33, nentries=len(graphs), w=.2)
+        leg = self.make_legend(x2=.37, y2=.4, nentries=len(graphs), w=.2)
         mg = TMultiGraph('mg_ph', 'Pulse Height vs {mod} - {dia}'.format(mod='Time' if vs_time else 'Flux', dia=self.DUT.Name))
         for gr in graphs:
             leg.AddEntry(gr, gr.GetTitle(), 'l' if gr.GetName() in ['gerr', 'g'] else 'p')
@@ -394,7 +395,7 @@ class AnalysisCollection(Analysis):
         mg1.GetListOfFunctions().Clear()
         format_histo(mg1, 'mg1_ph', draw_first=True, y_range=[0, ymax * 1.1])
         mg1.GetListOfGraphs()[0].SetLineColor(self.Colors[0])
-        self.save_histo(mg1, 'PulseHeightZero{mod}'.format(mod=self.get_mode(vs_time)), not save_comb, lm=.14, draw_opt='a', logx=not vs_time, leg=[self.draw_signal_legend(), leg])
+        self.save_histo(mg1, 'PulseHeightZero{mod}'.format(mod=self.get_mode(vs_time)), not save_comb and show, lm=.14, draw_opt='a', logx=not vs_time, leg=[self.draw_signal_legend(), leg])
         self.reset_colors()
 
         if save_comb:
@@ -415,6 +416,7 @@ class AnalysisCollection(Analysis):
         def f3(x, pars):
             v = pars[0] * x[0] + pars[1]
             return (v if x[0] < pars[2] else pars[0] * pars[2] + pars[1]) + exp(-x[0] / pars[3] * log(2)) * pars[4] + pars[5]
+
         f1 = TF1('f1', f1, 0.1, 1e5, 3)
         f2 = TF1('f2', f2, 0.1, 1e5, 3)
         f3 = TF1('f3', f3, 0.1, 1e5, 6)
@@ -508,6 +510,7 @@ class AnalysisCollection(Analysis):
         def f():
             collimator_settings = set([(ana.Run.RunInfo['fs11'], ana.Run.RunInfo['fsh13']) for key, ana in self.Analyses.iteritems()])
             return {s: self.draw_ph_distributions(bin_width, show=show, fs11=s[0], fsh13=s[1]) for s in collimator_settings}
+
         return do_pickle(pickle_path, f)
 
     def draw_ph_distributions(self, binning=None, fsh13=.5, fs11=65, show=True):
