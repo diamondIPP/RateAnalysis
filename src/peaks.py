@@ -21,10 +21,13 @@ class PeakAnalysis(Analysis):
         self.Channel = self.Ana.Channel
         self.DUT = self.Ana.DUT
         self.Tree = self.Ana.Tree
-        self.NoiseThreshold = abs(self.Ana.Pedestal.get_mean() + 5 * self.Ana.Pedestal.get_noise())  # threshold of the peaks = five times above the noise
-        self.Cut = self.Ana.Cut.generate_custom(exclude='timing', name='Peaks', prnt=False)
+        self.NoiseThreshold = self.calc_threshold()
         self.Cut = self.Ana.Cut()
         self.InfoLegend = InfoLegend(pad_analysis)
+
+    def calc_threshold(self):
+        """ return peak threshold, 6 times the raw noise or the minimum singnal, whatever is higher. """
+        return max(abs(self.Ana.Pedestal.get_raw_mean() + 6 * self.Ana.Pedestal.get_raw_noise()), self.Ana.get_min_signal())
 
     def get_all(self):
         return do_hdf5(self.make_hdf5_path('Peaks', 'V1', self.Ana.RunNumber, self.Channel), self.Run.get_root_vec, var=self.Ana.PeakName, cut=self.Ana.Cut(), dtype='f2')
