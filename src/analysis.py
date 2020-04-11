@@ -1,7 +1,7 @@
 from draw import *
 from ConfigParser import ConfigParser
 from glob import glob
-from numpy import deg2rad, rad2deg, arange
+from numpy import deg2rad, rad2deg, arange, round_
 
 # global test campaign
 g_test_campaign = None
@@ -119,7 +119,11 @@ class Analysis(Draw):
         return t_diff(self.PathLength, self.Momentum if p is None else p, m1, m2) % self.BunchSpacing
 
     def calc_td(self, p, pars):
-        return t_diff(self.PathLength, p[0], pars[0], pars[1]) % self.BunchSpacing - 19.7
+        return t_diff(self.PathLength, p[0], pars[0], pars[1]) % self.BunchSpacing
+
+    def get_time_differences(self, p=None):
+        t0 = array([self.calc_time_difference(M_PI, m, p) for m in [M_MU, M_E]])
+        return round_(sorted(abs(concatenate([t0, t0 - self.BunchSpacing]))), 1)
 
     def draw_time_differences(self):
         leg = self.make_legend(w=.2)
