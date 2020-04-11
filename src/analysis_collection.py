@@ -404,21 +404,63 @@ class AnalysisCollection(Analysis):
 
         return mg
 
-    def fit_pulse_height(self):
+    def show_models(self, a=.001, b=50, c=2000, d=400, e=10, f=20):
+        def f1(x, pars):
+            v = pars[0] * x[0] + pars[1]
+            return v if x[0] < pars[2] else pars[0] * pars[2] + pars[1]
+
+        def f2(x, pars):
+            return exp(-x[0] / pars[0] * log(2)) * pars[1] + pars[2]
+
+        def f3(x, pars):
+            v = pars[0] * x[0] + pars[1]
+            return (v if x[0] < pars[2] else pars[0] * pars[2] + pars[1]) + exp(-x[0] / pars[3] * log(2)) * pars[4] + pars[5]
+        f1 = TF1('f1', f1, 0.1, 1e5, 3)
+        f2 = TF1('f2', f2, 0.1, 1e5, 3)
+        f3 = TF1('f3', f3, 0.1, 1e5, 6)
+        f1.SetParameters(a, b, c)
+        f2.SetParameters(d, e, f)
+        f3.SetParameters(a, b, c, d, e, f)
+        self.draw_histo(f1, logx=True)
+        format_histo(f1, y_range=[0, 2 * b], lw=2, x_range=[.1, 1e5])
+        f2.Draw('same')
+        f3.SetLineStyle(7)
+        f3.Draw('same')
+        self.add(f2, f3)
+
+    def fit_pulse_height(self, logx=True):
         values = self.get_pulse_heights(pbar=False)
         g = self.make_tgrapherrors('gfph', 'Pulse Height Fit', x=self.get_fluxes(), y=values)
-        f = TF1('fph', '[0] - [1] * exp(-x/[2]*log(2)) + [3] * exp(-x/[4]*log(2))', .1, 1e6)
-        f.SetParNames('c', 'c_{1}', '#tau_{1}', 'c_{2}', '#tau_{2}')
-        f.SetParLimits(0, 0, values.max().n)  # limit for x->inf
-        f.SetParLimits(1, 0.1, values.max().n * .2)  # limit for x->0: p0 - p1 + p3
-        f.SetParLimits(3, 1e-3, values.max().n * .2)  # limit for x->0: p0 - p1 + p3
-        f.SetParLimits(2, 1, 500)  # half life for first exp
-        f.SetParLimits(4, 1e3, 1e7)  # half life for second exp
+
+        def f1(x, pars):
+            v = pars[0] * x[0] + pars[1]
+            # return (v if v < pars[2] else pars[2]) + exp(-x[0] * log(2) / pars[3]) + pars[4]
+            return (v if x[0] < pars[2] else pars[0] * pars[2] + pars[1]) - pars[3] * TMath.Erf(pars[4] * (x[0] - pars[5]))
+
+        f = TF1('f1', f1, .1, 1e6, 6)
+        # f = TF1('fph', '[0] - [1] * exp(-x/[2]*log(2)) + [3] * exp(-x/[4]*log(2))', .1, 1e6)
+        f.SetParNames('m', 'c_{1}', 'c_{max}', 'scale', 'width', 'offset')
+        f.SetParLimits(0, 0.0001, 0.1)  # slope of the linear part
+        f.SetParLimits(1, 100, 130)  # offset of the linear part
+        f.SetParLimits(2, 10, 3000)  # constant of the linear part
+        f.SetParLimits(3, 1, 50)  # half life for the exp
+        f.SetParLimits(4, 1e-6, 1e-3)  # asymptote for of the exp
+        f.SetParLimits(5, 100, 5e3)  # asymptote for of the exp
         set_root_output(False)
         g.Fit(f, 'q')
-        format_histo(g, x_tit='Flux [kHz/cm^{2}]', y_tit='Pulse Height [mV]', y_off=1.4, x_range=self.Bins.FluxRange)
-        self.format_statbox(only_fit=True, x=.5, y=.45)
-        self.draw_histo(g, logx=True, lm=.12)
+        format_histo(g, x_tit='Flux [kHz/cm^{2}]', y_tit='Pulse Height [mV]', y_off=1.4, x_range=self.Bins.FluxRange if logx else [0, 10100])
+        self.format_statbox(only_fit=True, x=.5, y=.45 if self.Title else .38)
+        self.draw_histo(g, logx=logx, lm=.12)
+        l1 = self.draw_horizontal_line(f.GetParameter(0), .1, 1e6, color=2, style=7, w=2)
+        l2 = self.draw_horizontal_line(f.GetParameter(0) - f.GetParameter(1) + f.GetParameter(3), .1, 1e6, color=4, style=7, w=2, name='as')
+        leg = self.make_legend(w=.2)
+        leg.AddEntry(l1, 'c', 'l')
+        leg.AddEntry(l2, 'c - c_{1} + c_{2}', 'l')
+        leg.Draw()
+        f.SetLineStyle(7)
+        f.Draw('same')
+        g.GetListOfFunctions()[-1].Draw()  # redraw stats
+        return f
 
     def draw_signal_legend(self):
         pass
