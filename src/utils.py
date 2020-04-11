@@ -33,8 +33,8 @@ from ConfigParser import ConfigParser
 from scipy.optimize import curve_fit
 from scipy import constants
 import h5py
-import copy_reg
-import types
+from functools import partial
+from Queue import Queue
 
 OFF = False
 ON = True
@@ -915,6 +915,33 @@ def decay_angle(theta, p, m, m1, m2=0):
     p1 = decay_momentum(m, m1, m2)
     v = calc_speed(p, m)
     return arctan(p1 * sin(theta) / (gamma_factor(v) * (p1 * cos(theta) + v * decay_energy(m, m1, m2))))
+
+
+def multi_threading(lst, timeout=60 * 60 * 2):
+    """ runs several threads in parallel. [lst] must contain tuples of the methods and the arguments as list."""
+    t0 = info('Run multithreading on {} tasks ... '.format(len(lst)), next_line=False)
+    lst = [(f, []) for f in lst] if type(lst[0]) not in [list, tuple, ndarray] else lst
+    threads = []
+    queue = Queue()  # use a queue to get the results
+    for f, args in lst:
+        t = Thread(target=lambda q, a: q.put(f(*a)), args=(queue, make_list(args)))
+        t.start()
+        threads.append(t)
+    for thread in threads:
+        thread.join(timeout)
+    add_to_info(t0)
+    return [queue.get() for _ in range(queue.qsize())]
+
+
+def parallelise(instances, method, args, timeout=60 * 60):
+    t = info('Run parallelisation on {} tasks ... '.format(len(args)), next_line=False)
+    pool = Pool(cpu_count())
+    # tasks = [partial(call_it, make_list(instances)[0], method.__name__, *make_list(arg)) for arg in args]
+    tasks = [partial(call_it, instance, method.__name__, *make_list(arg)) for instance, arg in zip(instances, args)]
+    workers = [pool.apply_async(task) for task in tasks]
+    results = [worker.get(timeout) for worker in workers]
+    add_to_info(t)
+    return results
 
 
 def call_it(instance, name, *args, **kwargs):
