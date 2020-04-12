@@ -400,8 +400,8 @@ class Draw:
         sub_dir = self.SubDir if sub_dir is None else sub_dir
         canvas.Update()
         file_name = canvas.GetName() if name is None else name
-        file_path = join(self.ResultsDir if res_dir is None else res_dir, sub_dir, '{typ}', file_name)
         ftypes = ['root', 'png', 'pdf', 'eps'] if ftype is None else [ftype]
+        file_path = join(self.ResultsDir if res_dir is None else res_dir, sub_dir, '{typ}' if len(ftypes) > 1 else '', file_name)
         out = 'saving plot: {nam}'.format(nam=name)
         run_number = self.RunNumber if hasattr(self, 'RunNumber') else None
         run_number = 'rp{nr}'.format(nr=self.run_plan) if hasattr(self, 'run_plan') else run_number
