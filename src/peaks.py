@@ -53,15 +53,15 @@ class PeakAnalysis(Analysis):
             self.draw_histo(h, lm=.12, show=show, x=1.5, y=0.75, logy=True)
         return h
 
-    def find_additional(self):
+    def find_additional(self, show=True):
         start = int(self.Run.IntegralRegions[self.DUT.Number - 1]['signal_a'][0] + self.Ana.BunchSpacing * 2.5 / self.Ana.DigitiserBinWidth)  # move 2.5 bunches from the signal
         values = get_hist_vec(self.draw(show=False))[start:]
         peaks = find_peaks([v.n for v in values], height=max(values).n / 2., distance=self.Ana.BunchSpacing)
         g = self.make_tgrapherrors('ga', 'Additional Peak Heights', x=(peaks[0] + start) / 2., y=values[peaks[0]])
         self.format_statbox(fit=True)
-        g.Fit('pol0')
-        self.draw_histo(g)
-        return values[peaks[0]]
+        g.Fit('pol0', 'qs')
+        self.draw_histo(g, show=show, x=1.5, y=.75, gridy=1)
+        return mean(values[peaks[0]])
 
     def find_all(self, redo=False, fit=False):
         hdf5_path = self.make_hdf5_path('Peaks', run=self.Ana.RunNumber, ch=self.Channel, suf=int(fit))
