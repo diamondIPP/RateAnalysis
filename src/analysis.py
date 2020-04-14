@@ -130,7 +130,7 @@ class Analysis(Draw):
         for m, n in zip([M_E, M_MU, M_P], ['positron', 'muon', 'proton']):
             f = TF1('f{}'.format(n), self.calc_td, 200, 300, 2)
             f.SetParameters(M_PI, m)
-            format_histo(f, x_tit='Momentum [MeV/c]', y_tit='Time Difference [ns]', y_off=1.3, color=self.get_color(), lw=2, y_range=[3, 18])
+            format_histo(f, title='Time Differences', x_tit='Momentum [MeV/c]', y_tit='Time Difference [ns]', y_off=1.3, color=self.get_color(), lw=2, y_range=[3, 18])
             self.draw_histo(f, grid=True, lm=.12, draw_opt='' if m == M_E else 'same', canvas=None if m == M_E else get_last_canvas())
             t0 = self.calc_time_difference(M_PI, m)
             self.draw_tlatex(self.Momentum * 1.02, t0, text='{:2.1f}'.format(t0), size=.04)
