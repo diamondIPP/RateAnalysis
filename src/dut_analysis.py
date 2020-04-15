@@ -48,6 +48,13 @@ class DUTAnalysis(TelecopeAnalysis):
 
     # ----------------------------------------
     # region GET
+    def get_events(self, cut=None, redo=False):
+        cut = self.Cut(cut)
+        return do_hdf5(self.make_hdf5_path('Events', run=self.RunNumber, ch=self.DUT.Number, suf=cut.GetName()), self.Run.get_root_vec, redo, dtype='i4', var='Entry$', cut=cut)
+
+    def get_n_entries(self, cut):
+        return self.Tree.GetEntries(self.Cut(cut).GetTitle())
+
     def get_current(self):
         return self.Currents.get_current()
 
@@ -83,6 +90,16 @@ class DUTAnalysis(TelecopeAnalysis):
     def get_track_length_var(self):
         dx2, dy2 = ['TMath::Power(TMath::Tan(TMath::DegToRad() * {}_{}), 2)'.format('slope' if self.Run.has_branch('slope_x') else 'angle', direction) for direction in ['x', 'y']]
         return '{} * TMath::Sqrt({} + {} + 1)'.format(self.DUT.Thickness, dx2, dy2)
+
+    def get_flux(self, corr=True, rel_error=0, show=False):
+        return (self._get_flux(prnt=False, show=show) if self.Tree and self.has_branch('rate') else self.Run.get_flux(rel_error)) * (self.get_flux_correction() if corr else 1)
+
+    def get_flux_correction(self):
+        def f():
+            n1, n2 = self.get_n_entries(self.Cut.generate_custom(include=['tracks', 'fiducial'], prnt=False)), self.get_n_entries(self.Cut.get('tracks'))
+            a1, a2 = self.Cut.get_fiducial_area() / 100., min(self.Run.get_unmasked_area().values())
+            return n1 / a1 * a2 / n2
+        return do_pickle(self.make_pickle_path('Flux', 'Corr', self.RunNumber, self.DUT.Number), f)
     # endregion GET
     # ----------------------------------------
 
@@ -159,7 +176,7 @@ class DUTAnalysis(TelecopeAnalysis):
         return h
 
     def draw_hitmap(self, res=None, cut=None, fid=False, redo=False, z_range=None, size=None, show=True, save=True, prnt=True):
-        cut = self.Cut.CutStrings['tracks'] if cut is None else self.Cut(cut)
+        cut = self.Cut.get('tracks') if cut is None else self.Cut(cut)
         return self.draw_signal_map(res, cut, fid, hitmap=True, redo=redo, bins=None, z_range=z_range, size=size, show=show, save=save, prnt=prnt)
 
     def split_signal_map(self, m=2, n=2, grid=True, redo=False, show=True):

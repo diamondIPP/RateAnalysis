@@ -117,6 +117,14 @@ class Cut:
         """ :returns: list of interruptions including safety margin from the AnalysisConfig. """
         range_pickle = self.Analysis.make_pickle_path('BeamInterruptions', 'Ranges', run=self.RunNumber, suf='_'.join(str(i) for i in self.CutConfig['jump_range']))
         return do_pickle(range_pickle, self.create_interruption_ranges, interruptions=self.get_beam_interruptions())
+
+    def get_fiducial_size(self):
+        xy = self.CutConfig['fiducial'] * 10  # in mm
+        dx, dy = xy[1] - xy[0], xy[3] - xy[2]
+        return concatenate([xy, [dx, dy, dx * dy]])
+
+    def get_fiducial_area(self):
+        return self.get_fiducial_size()[-1]
     # endregion GET
     # ----------------------------------------
 
@@ -215,9 +223,7 @@ class Cut:
         cut.SetVarX(self.get_track_var(self.Analysis.DUT.Number - 1, 'x'))
         cut.SetVarY(self.get_track_var(self.Analysis.DUT.Number - 1, 'y'))
         self.Analysis.add(cut)
-        xy *= 10
-        dx, dy = xy[1] - xy[0], xy[3] - xy[2]
-        description = 'x: [{},{}], y: [{},{}], area: {:.1f}mm x {:.1f}mm = {:.1f}mm2'.format(*concatenate([xy, [dx, dy, dx * dy]]))
+        description = 'x: [{},{}], y: [{},{}], area: {:.1f}mm x {:.1f}mm = {:.1f}mm2'.format(*self.get_fiducial_size())
         return CutString('fiducial', TCut(cut.GetName()) if cut is not None else '', description)
 
     def generate_jump_cut(self):

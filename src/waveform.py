@@ -59,11 +59,11 @@ class Waveform(Analysis):
         """ extracts all dut waveforms after all cuts from the root tree and saves it as an hdf5 file """
         def f():
             waveforms = []
-            events = self.Run.get_root_vec(var='Entry$', cut=self.Cut, dtype=int)
+            events = self.Ana.get_events(cut=self.Cut)
             self.Ana.PBar.start(events.size)
-            for event in events:
-                self.Tree.GetBranch('wf{}'.format(self.Channel)).GetEntry(event)
-                waveforms.append(self.Ana.Polarity * array(getattr(self.Tree, 'wf{}'.format(self.Channel)), dtype='f2'))
+            for ev in events:
+                n = self.Tree.Draw('wf0', '', 'goff', 1, ev)
+                waveforms.append(self.Ana.Polarity * self.Run.get_root_vec(n, dtype='f2'))
                 self.Ana.PBar.update()
             return array(waveforms)
         return do_hdf5(self.make_hdf5_path('WF', run=self.RunNumber, ch=self.Channel), f, redo=redo)

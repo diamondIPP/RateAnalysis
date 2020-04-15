@@ -5,9 +5,9 @@
 # --------------------------------------------------------
 
 from analysis import *
-from ROOT import TH1F, TCut, gROOT
+from ROOT import TH1F, TCut
 from scipy.signal import find_peaks, savgol_filter
-from numpy import polyfit, pi, RankWarning, vectorize, size, split
+from numpy import polyfit, pi, RankWarning, vectorize, size, split, ones
 from warnings import simplefilter
 from InfoLegend import InfoLegend
 
@@ -24,17 +24,25 @@ class PeakAnalysis(Analysis):
         self.NoiseThreshold = self.calc_threshold()
         self.Cut = self.Ana.Cut()
         self.InfoLegend = InfoLegend(pad_analysis)
+        self.StartAdditional = self.get_start_additional()
+        self.NBunches = self.calc_n_bunches()
 
     def calc_threshold(self):
         """ return peak threshold, 6 times the raw noise or the minimum singnal, whatever is higher. """
         return max(abs(self.Ana.Pedestal.get_raw_mean() + 6 * self.Ana.Pedestal.get_raw_noise()), self.Ana.get_min_signal())
 
+    def get_start_additional(self):
+        """Set the start of the additional peaks 2.5 bunches after the signal peak to avoid the biased bunches after the signal."""
+        return int(self.Run.IntegralRegions[self.DUT.Number - 1]['signal_a'][0] + self.Ana.BunchSpacing * 2.5 / self.Ana.DigitiserBinWidth)
+
+    def calc_n_bunches(self):
+        return int((self.Run.NSamples - self.StartAdditional) * self.Ana.DigitiserBinWidth / self.Ana.BunchSpacing)
+
     def get_all(self):
         return do_hdf5(self.make_hdf5_path('Peaks', 'V1', self.Ana.RunNumber, self.Channel), self.Run.get_root_vec, var=self.Ana.PeakName, cut=self.Cut, dtype='f2')
 
-    def draw(self, corr=True, scale=False, fit=False, y_range=None, show=True, redo=False):
+    def draw(self, corr=True, scale=False, fit=False, split_=1, y_range=None, show=True, redo=False):
         def f():
-            h1 = TH1F('hp{}'.format(self.Ana.RunNumber), 'Peak Times', 512 * 2, 0, 512)
             values, n_peaks = self.find_all(redo=redo, fit=fit)
             if corr:
                 values = array(split(values, cumsum(n_peaks)[:-1]))
@@ -42,9 +50,13 @@ class PeakAnalysis(Analysis):
                 for i in xrange(values.size):
                     values[i] -= peaks[i] - peaks[0]
                 values = concatenate(values)
-            h1.FillN(values.size, array(values, 'd'), full(values.size, 1, 'd'))
-            return h1
-        h = do_pickle(self.make_pickle_path('Peaks', 'Histo', self.Ana.RunNumber, self.Channel), f, redo=redo)
+            values = split(values, split_)
+            hs = [TH1F('hp{}{}'.format(self.Ana.RunNumber, i), 'Peak Times', 512 * 2, 0, 512) for i in range(split_)]
+            for i in range(split_):
+                v = values[i]
+                hs[i].FillN(v.size, array(v, 'd'), ones(v.size))
+            return hs[0] if split_ == 1 else hs
+        h = do_pickle(self.make_pickle_path('Peaks', 'Histo', self.Ana.RunNumber, self.Channel, suf=None if split_ == 1 else split_), f, redo=redo)
         if scale:
             h.Scale(1e5 / self.Ana.Waveform.get_all().shape[0])
         if show:
@@ -53,15 +65,30 @@ class PeakAnalysis(Analysis):
             self.draw_histo(h, lm=.12, show=show, x=1.5, y=0.75, logy=True)
         return h
 
-    def find_additional(self, show=True):
-        start = int(self.Run.IntegralRegions[self.DUT.Number - 1]['signal_a'][0] + self.Ana.BunchSpacing * 2.5 / self.Ana.DigitiserBinWidth)  # move 2.5 bunches from the signal
-        values = get_hist_vec(self.draw(show=False))[start:]
+    def find_additional(self, h=None, scale=False, show=True):
+        values = get_hist_vec(self.draw(scale=scale, show=False) if h is None else h)[self.StartAdditional:]
         peaks = find_peaks([v.n for v in values], height=max(values).n / 2., distance=self.Ana.BunchSpacing)
-        g = self.make_tgrapherrors('ga', 'Additional Peak Heights', x=(peaks[0] + start) / 2., y=values[peaks[0]])
+        g = self.make_tgrapherrors('ga', 'Additional Peak Heights', x=(peaks[0] + self.StartAdditional) / 2., y=values[peaks[0]])
         self.format_statbox(fit=True)
         g.Fit('pol0', 'qs')
         self.draw_histo(g, show=show, x=1.5, y=.75, gridy=1)
-        return values[peaks[0]]
+        return mean(values[peaks[0]])
+
+    def find_n_additional(self):
+        values, n_peaks = self.find_all()
+        values = array(split(values, cumsum(n_peaks)[:-1]))
+        for i in range(values.size):
+            values[i] = values[i][values[i] > self.StartAdditional * self.Ana.DigitiserBinWidth]
+        return array([lst.size for lst in values], dtype='u2')
+
+    def draw_additional_disto(self, show=True):
+        hs = self.draw(split_=4)
+        h0 = TH1F('ht', 'Peak Heights', 20, 170, 260)
+        for h in hs:
+            for v in self.find_additional(h):
+                h0.Fill(v.n)
+        format_histo(h0, x_tit='Peak Height', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
+        self.draw_histo(h0, show=show)
 
     def find_all(self, redo=False, fit=False):
         hdf5_path = self.make_hdf5_path('Peaks', run=self.Ana.RunNumber, ch=self.Channel, suf=int(fit))
@@ -75,7 +102,7 @@ class PeakAnalysis(Analysis):
         for wf, tc in zip(wfs, self.Ana.Waveform.get_trigger_cells()):
             peak_times.append(self.find(wf, tc, fit=fit))
             self.Ana.PBar.update()
-        find_n_peaks = vectorize(size)
+        find_n_peaks = vectorize(size, otypes=['u2'])
         values, n_peaks = concatenate(peak_times), find_n_peaks(peak_times)
         f = h5py.File(hdf5_path, 'w')
         f.create_dataset('values', data=values)
@@ -108,36 +135,29 @@ class PeakAnalysis(Analysis):
         values = self.Ana.Polarity * array(getattr(self.Tree, 'wf{}'.format(self.Channel)))
         return self.find(values, self.Tree.trigger_cell, fit)
 
-    def draw_n_peaks(self, spec=False, show=True, do_fit=False):
+    def draw_n(self, do_fit=False, show=True):
+        n_peaks = self.find_n_additional()
         h = TH1F('h_pn', 'Number of Peaks', 10, 0, 10)
-        draw_var = '@peaks{ch}_x.size()>>h_pn' if spec and self.Run.has_branch('peaks{ch}_x'.format(ch=self.Channel)) else 'n_peaks[{ch}] - 1>>h_pn'
-        self.Tree.Draw(draw_var.format(ch=self.Channel), self.Cut, 'goff')
+        h.FillN(n_peaks.size, n_peaks.astype('d'), ones(n_peaks.size))
         self.format_statbox(only_fit=True, w=.3) if do_fit else self.format_statbox(entries=True)
+        if do_fit:
+            fit_poissoni(h, show=show)
         format_histo(h, x_tit='Number of Peaks', y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor, lw=2)
-        self.save_histo(h, 'PeakNumbers', show, logy=True, lm=.11)
+        self.save_histo(h, 'PeakNumbers{}'.format('Fit' if do_fit else ''), show, logy=True, lm=.11)
+        self.get_flux(n_peaks)
         return h
 
-    def draw_n_peaks_fit(self, show=True, spec=False):
-        h = self.draw_n_peaks(spec, show=False, do_fit=True)
-        format_histo(h, 'Fit Result')
-        self.draw_histo(h, '', show, logy=True, lm=.11)
-        fit_func = fit_poissoni(h, show=show)
-        self.save_histo(h, 'PeakNumbersFit', show, logy=True, lm=.11, draw_opt='e1same', canvas=gROOT.GetListOfCanvases()[-1])
-        self.get_flux(fit_func=fit_func)
-        return fit_func
+    def get_flux(self, n_peaks=None):
+        n_peaks = self.find_n_additional() if n_peaks is None else n_peaks
+        lambda_ = ufloat(mean(n_peaks), sqrt(mean(n_peaks) / n_peaks.size))
+        flux = lambda_ / (self.Ana.BunchSpacing * self.NBunches * self.get_area()) * 1e6
+        info('Estimated Flux by number of peaks: {}'.format(make_flux_string(flux)))
+        return flux
 
-    def get_flux(self, fit_func=None):
-        fit_func = self.draw_n_peaks_fit(show=False) if fit_func is None else fit_func
-        lambda_ = fit_func.GetParameter(1)
-        err = fit_func.GetParError(1)
-        n_bunches = 25
-        proc_frequency = 50.6e6
-        flux = lambda_ * proc_frequency / (n_bunches * self.get_area()) / 1000.
-        err *= proc_frequency / (n_bunches * self.get_area()) / 1000.
-        print 'Estimated Flux by number of peaks: {f:0.4f} kHz/cm2'.format(f=flux)
-        return flux, err
+    def get_area(self, bcm=False):
+        return self.get_bcm_area() if bcm else .35 ** 2
 
-    def get_area(self):
+    def get_bcm_area(self):
         """ return the total area of the BCM' pad sizes """
         i = int(self.Ana.DUT.Name.split('-')[-1]) - 1
         base_length = 0.0928125  # [cm]

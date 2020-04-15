@@ -375,10 +375,14 @@ def tc_to_str(tc, short=True):
     return '{tc}{s}'.format(tc=datetime.strptime(tc_str, '%Y%m').strftime('%b%y' if short else '%B %Y'), s=sub_str)
 
 
-def make_rate_str(rate):
+def make_flux_string(rate):
     unit = '{}/cm^{{2}}'.format('MHz' if rate > 1000 else 'kHz')
-    rate = round(rate / 1000., 1) if rate > 1000 else int(round(rate, 0))
-    return '{rate} {unit}'.format(rate=rate, unit=unit)
+    rate /= 1000. if rate > 1000 else 1
+    return '{: 2.1f} {}'.format(rate, unit)
+
+
+def make_bias_str(bias):
+    return '{s}{bias}V'.format(bias=int(bias), s='+' if bias > 0 else '')
 
 
 def make_runplan_string(nr):
@@ -611,10 +615,6 @@ def do(fs, pars, exe=-1):
     exe = pars if exe == -1 else [exe]
     for f, p, e in zip(fs, pars, exe):
         f(p) if e is not None else do_nothing()
-
-
-def make_bias_str(bias):
-    return '{s}{bias}V'.format(bias=int(bias), s='+' if bias > 0 else '')
 
 
 def markers(i):
@@ -865,6 +865,8 @@ class PBar:
 
     def update(self, i=None):
         i = self.Step if i is None else i
+        if i >= self.PBar.maxval:
+            return
         self.PBar.update(i + 1)
         self.Step += 1
         if i == self.PBar.maxval - 1:

@@ -349,12 +349,6 @@ class Run:
         self.Tree.GetEntry()
         return self.Tree.sensor_name[channel]
 
-    def get_rate_string(self):
-        rate = self.Flux
-        unit = 'MHz/cm^{2}' if rate > 1000 else 'kHz/cm^{2}'
-        rate = round(float(rate / 1000.), 1) if rate > 1000 else int(round(float(rate), 0))
-        return '{rate:>3} {unit}'.format(rate=rate, unit=unit)
-
     def get_time_at_event(self, event):
         """ For negative event numbers it will return the time stamp at the startevent. """
         return self.Time[min(event, self.EndEvent)] / 1000.

@@ -40,10 +40,6 @@ class PadCut(Cut):
         ped = self.get_raw_pedestal()
         return self.get_raw_pulse_height() / ped.s, ped
 
-    def get_fid_area(self):
-        conf = self.CutConfig['fiducial']
-        return (conf[1] - conf[0]) * (conf[3] - conf[2])
-
     def get_bucket(self):
         return CutString('bucket', self.generate_custom(include=['pulser', 'fiducial', 'event_range'], prnt=False) + invert(self.generate_pre_bucket()))()
 

@@ -326,12 +326,30 @@ class PadCollection(AnalysisCollection):
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         gROOT.SetBatch(0)
         self.Objects.append([c, ex])
+
+    def save_additional(self):
+        for i, ana in enumerate(self.get_analyses()):
+            ana.Peaks.find_additional(show=False)
+            self.save_canvas(get_last_canvas(), '', 'r{}'.format(i), res_dir='', ftype='pdf')
+
+    def draw_peaks_vs_rate(self, show=True, log_=True):
+        peak_heights = [ana.Peaks.find_additional(scale=True, show=False) for ana in self.get_analyses()]
+        g = self.make_tgrapherrors('gpr', 'Number of Additional Peaks vs Flux', x=self.get_fluxes(), y=peak_heights)
+        self.format_statbox(fit=True, x=.52)
+        g.Fit('pol1', 'qs')
+        format_histo(g, y_tit='Number of Additional Peaks', y_off=1.3, **self.get_x_args(False))
+        self.draw_histo(g, show=show, lm=.12, logy=log_, logx=log_)
+
+    def compare_fluxes(self, log_=True, show=True):
+        f1 = [ana.Peaks.get_flux() for ana in self.get_analyses()]
+        g = self.make_tgrapherrors('gff', 'FAST-OR Flux vs Peak Flux', x=self.get_fluxes(), y=f1)
+        format_histo(g, x_tit='FAST-OR Flux [kHz/cm^{2}]', y_tit='Peak Flux [kHz/cm^{2}]', y_off=1.3)
+        self.draw_histo(g, show=show, lm=.12, logx=log_, logy=log_)
     # endregion TIMING
     # ----------------------------------------
 
     # ============================================
     # region 2D SIGNAL MAP
-
     def draw_flux_comparison(self):
         g1 = self.make_tgrapherrors('g_fp', 'Number of Peaks', color=self.get_color())
         pixel_fluxes = [ana.Run.Flux / 1000. for ana in self.Analyses.values()]
