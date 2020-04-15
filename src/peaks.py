@@ -74,7 +74,7 @@ class PeakAnalysis(Analysis):
         self.draw_histo(g, show=show, x=1.5, y=.75, gridy=1)
         return mean(values[peaks[0]])
 
-    def get_additional(self):
+    def find_n_additional(self):
         values, n_peaks = self.find_all()
         values = array(split(values, cumsum(n_peaks)[:-1]))
         for i in range(values.size):
@@ -136,26 +136,26 @@ class PeakAnalysis(Analysis):
         return self.find(values, self.Tree.trigger_cell, fit)
 
     def draw_n(self, do_fit=False, show=True):
-        n_peaks = self.get_additional()
+        n_peaks = self.find_n_additional()
         h = TH1F('h_pn', 'Number of Peaks', 10, 0, 10)
         h.FillN(n_peaks.size, n_peaks.astype('d'), ones(n_peaks.size))
         self.format_statbox(only_fit=True, w=.3) if do_fit else self.format_statbox(entries=True)
         if do_fit:
-            return fit_poissoni(h, show=show)
+            fit_poissoni(h, show=show)
         format_histo(h, x_tit='Number of Peaks', y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor, lw=2)
         self.save_histo(h, 'PeakNumbers{}'.format('Fit' if do_fit else ''), show, logy=True, lm=.11)
         self.get_flux(n_peaks)
         return h
 
     def get_flux(self, n_peaks=None):
-        n_peaks = self.get_additional() if n_peaks is None else n_peaks
+        n_peaks = self.find_n_additional() if n_peaks is None else n_peaks
         lambda_ = ufloat(mean(n_peaks), sqrt(mean(n_peaks) / n_peaks.size))
         flux = lambda_ / (self.Ana.BunchSpacing * self.NBunches * self.get_area()) * 1e6
         info('Estimated Flux by number of peaks: {}'.format(make_flux_string(flux)))
         return flux
 
     def get_area(self, bcm=False):
-        return self.get_bcm_area() if bcm else self.Ana.Cut.get_fiducial_size()[-1] / 100.
+        return self.get_bcm_area() if bcm else .35 ** 2
 
     def get_bcm_area(self):
         """ return the total area of the BCM' pad sizes """
