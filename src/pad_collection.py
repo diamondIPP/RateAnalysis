@@ -332,12 +332,13 @@ class PadCollection(AnalysisCollection):
             ana.Peaks.find_additional(show=False)
             self.save_canvas(get_last_canvas(), '', 'r{}'.format(i), res_dir='', ftype='pdf')
 
-    def draw_peaks_vs_rate(self, show=True):
-        peak_heights = [ana.Peaks.find_additional(show=False) for ana in self.get_analyses()]
+    def draw_peaks_vs_rate(self, show=True, log_=True):
+        peak_heights = [ana.Peaks.find_additional(scale=True, show=False) for ana in self.get_analyses()]
         g = self.make_tgrapherrors('gpr', 'Number of Additional Peaks vs Flux', x=self.get_fluxes(), y=peak_heights)
+        self.format_statbox(fit=True, x=.52)
+        g.Fit('pol1', 'qs')
         format_histo(g, y_tit='Number of Additional Peaks', y_off=1.3, **self.get_x_args(False))
-        self.draw_histo(g, show=show, lm=.12)
-
+        self.draw_histo(g, show=show, lm=.12, logy=log_, logx=log_)
     # endregion TIMING
     # ----------------------------------------
 
