@@ -24,10 +24,19 @@ class PeakAnalysis(Analysis):
         self.NoiseThreshold = self.calc_threshold()
         self.Cut = self.Ana.Cut()
         self.InfoLegend = InfoLegend(pad_analysis)
+        self.StartAdditional = self.get_start_additional()
+        self.NBunches = self.calc_n_bunches()
 
     def calc_threshold(self):
         """ return peak threshold, 6 times the raw noise or the minimum singnal, whatever is higher. """
         return max(abs(self.Ana.Pedestal.get_raw_mean() + 6 * self.Ana.Pedestal.get_raw_noise()), self.Ana.get_min_signal())
+
+    def get_start_additional(self):
+        """Set the start of the additional peaks 2.5 bunches after the signal peak to avoid the biased bunches after the signal."""
+        return int(self.Run.IntegralRegions[self.DUT.Number - 1]['signal_a'][0] + self.Ana.BunchSpacing * 2.5 / self.Ana.DigitiserBinWidth)
+
+    def calc_n_bunches(self):
+        return int((self.Run.NSamples - self.StartAdditional) * self.Ana.DigitiserBinWidth / self.Ana.BunchSpacing)
 
     def get_all(self):
         return do_hdf5(self.make_hdf5_path('Peaks', 'V1', self.Ana.RunNumber, self.Channel), self.Run.get_root_vec, var=self.Ana.PeakName, cut=self.Cut, dtype='f2')
