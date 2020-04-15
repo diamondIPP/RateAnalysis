@@ -48,6 +48,10 @@ class DUTAnalysis(TelecopeAnalysis):
 
     # ----------------------------------------
     # region GET
+    def get_events(self, cut=None, redo=False):
+        cut = self.Cut(cut)
+        return do_hdf5(self.make_hdf5_path('Events', run=self.RunNumber, ch=self.DUT.Number, suf=cut.GetName()), self.Run.get_root_vec, redo, dtype='i4', var='Entry$', cut=cut)
+
     def get_current(self):
         return self.Currents.get_current()
 

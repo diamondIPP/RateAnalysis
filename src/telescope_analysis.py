@@ -220,7 +220,7 @@ class TelecopeAnalysis(Analysis):
         n, x, n, y = self.Bins.get_pixel()
         self.draw_grid(x, y, color=921)
 
-    def get_events(self, cut=None):
+    def get_events(self, cut=None, redo=False):
         return self.Run.get_root_vec(dtype='i4', var='Entry$', cut=self.Cut(cut))
 
     def get_plane_hits(self):
