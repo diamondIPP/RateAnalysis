@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from analysis import *
-from ROOT import TH1F, TCut, gROOT
+from ROOT import TH1F, TCut
 from scipy.signal import find_peaks, savgol_filter
 from numpy import polyfit, pi, RankWarning, vectorize, size, split, ones
 from warnings import simplefilter
@@ -102,7 +102,7 @@ class PeakAnalysis(Analysis):
         for wf, tc in zip(wfs, self.Ana.Waveform.get_trigger_cells()):
             peak_times.append(self.find(wf, tc, fit=fit))
             self.Ana.PBar.update()
-        find_n_peaks = vectorize(size)
+        find_n_peaks = vectorize(size, otypes=['u2'])
         values, n_peaks = concatenate(peak_times), find_n_peaks(peak_times)
         f = h5py.File(hdf5_path, 'w')
         f.create_dataset('values', data=values)
@@ -135,36 +135,29 @@ class PeakAnalysis(Analysis):
         values = self.Ana.Polarity * array(getattr(self.Tree, 'wf{}'.format(self.Channel)))
         return self.find(values, self.Tree.trigger_cell, fit)
 
-    def draw_n_peaks(self, spec=False, show=True, do_fit=False):
+    def draw_n(self, do_fit=False, show=True):
+        n_peaks = self.get_additional()
         h = TH1F('h_pn', 'Number of Peaks', 10, 0, 10)
-        draw_var = '@peaks{ch}_x.size()>>h_pn' if spec and self.Run.has_branch('peaks{ch}_x'.format(ch=self.Channel)) else 'n_peaks[{ch}] - 1>>h_pn'
-        self.Tree.Draw(draw_var.format(ch=self.Channel), self.Cut, 'goff')
+        h.FillN(n_peaks.size, n_peaks.astype('d'), ones(n_peaks.size))
         self.format_statbox(only_fit=True, w=.3) if do_fit else self.format_statbox(entries=True)
+        if do_fit:
+            return fit_poissoni(h, show=show)
         format_histo(h, x_tit='Number of Peaks', y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor, lw=2)
-        self.save_histo(h, 'PeakNumbers', show, logy=True, lm=.11)
+        self.save_histo(h, 'PeakNumbers{}'.format('Fit' if do_fit else ''), show, logy=True, lm=.11)
+        self.get_flux(n_peaks)
         return h
 
-    def draw_n_peaks_fit(self, show=True, spec=False):
-        h = self.draw_n_peaks(spec, show=False, do_fit=True)
-        format_histo(h, 'Fit Result')
-        self.draw_histo(h, '', show, logy=True, lm=.11)
-        fit_func = fit_poissoni(h, show=show)
-        self.save_histo(h, 'PeakNumbersFit', show, logy=True, lm=.11, draw_opt='e1same', canvas=gROOT.GetListOfCanvases()[-1])
-        self.get_flux(fit_func=fit_func)
-        return fit_func
+    def get_flux(self, n_peaks=None):
+        n_peaks = self.get_additional() if n_peaks is None else n_peaks
+        lambda_ = ufloat(mean(n_peaks), sqrt(mean(n_peaks) / n_peaks.size))
+        flux = lambda_ / (self.Ana.BunchSpacing * self.NBunches * self.get_area()) * 1e6
+        info('Estimated Flux by number of peaks: {}'.format(make_flux_string(flux)))
+        return flux
 
-    def get_flux(self, fit_func=None):
-        fit_func = self.draw_n_peaks_fit(show=False) if fit_func is None else fit_func
-        lambda_ = fit_func.GetParameter(1)
-        err = fit_func.GetParError(1)
-        n_bunches = 25
-        proc_frequency = 50.6e6
-        flux = lambda_ * proc_frequency / (n_bunches * self.get_area()) / 1000.
-        err *= proc_frequency / (n_bunches * self.get_area()) / 1000.
-        print 'Estimated Flux by number of peaks: {f:0.4f} kHz/cm2'.format(f=flux)
-        return flux, err
+    def get_area(self, bcm=False):
+        return self.get_bcm_area() if bcm else self.Ana.Cut.get_fiducial_size()[-1] / 100.
 
-    def get_area(self):
+    def get_bcm_area(self):
         """ return the total area of the BCM' pad sizes """
         i = int(self.Ana.DUT.Name.split('-')[-1]) - 1
         base_length = 0.0928125  # [cm]
