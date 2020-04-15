@@ -66,14 +66,20 @@ class PeakAnalysis(Analysis):
         return h
 
     def find_additional(self, h=None, scale=False, show=True):
-        start = int(self.Run.IntegralRegions[self.DUT.Number - 1]['signal_a'][0] + self.Ana.BunchSpacing * 2.5 / self.Ana.DigitiserBinWidth)  # move 2.5 bunches from the signal
-        values = get_hist_vec(self.draw(scale=scale, show=False) if h is None else h)[start:]
+        values = get_hist_vec(self.draw(scale=scale, show=False) if h is None else h)[self.StartAdditional:]
         peaks = find_peaks([v.n for v in values], height=max(values).n / 2., distance=self.Ana.BunchSpacing)
-        g = self.make_tgrapherrors('ga', 'Additional Peak Heights', x=(peaks[0] + start) / 2., y=values[peaks[0]])
+        g = self.make_tgrapherrors('ga', 'Additional Peak Heights', x=(peaks[0] + self.StartAdditional) / 2., y=values[peaks[0]])
         self.format_statbox(fit=True)
         g.Fit('pol0', 'qs')
         self.draw_histo(g, show=show, x=1.5, y=.75, gridy=1)
         return mean(values[peaks[0]])
+
+    def get_additional(self):
+        values, n_peaks = self.find_all()
+        values = array(split(values, cumsum(n_peaks)[:-1]))
+        for i in range(values.size):
+            values[i] = values[i][values[i] > self.StartAdditional * self.Ana.DigitiserBinWidth]
+        return array([lst.size for lst in values], dtype='u2')
 
     def draw_additional_disto(self, show=True):
         hs = self.draw(split_=4)
