@@ -41,7 +41,7 @@ class TelecopeAnalysis(Analysis):
     def get_t_var(self):
         return 'time / 1000.' if self.Run.TimeOffset is None else '(time - {}) / 1000.'.format(self.Run.TimeOffset)
 
-    def get_flux(self, rel_error=0, show=False):
+    def get_flux(self, corr=False, rel_error=0, show=False):
         return self._get_flux(prnt=False, show=show) if self.Tree and self.has_branch('rate') else self.Run.get_flux(rel_error)
 
     def get_time(self):

@@ -91,10 +91,15 @@ class DUTAnalysis(TelecopeAnalysis):
         dx2, dy2 = ['TMath::Power(TMath::Tan(TMath::DegToRad() * {}_{}), 2)'.format('slope' if self.Run.has_branch('slope_x') else 'angle', direction) for direction in ['x', 'y']]
         return '{} * TMath::Sqrt({} + {} + 1)'.format(self.DUT.Thickness, dx2, dy2)
 
+    def get_flux(self, corr=True, rel_error=0, show=False):
+        return (self._get_flux(prnt=False, show=show) if self.Tree and self.has_branch('rate') else self.Run.get_flux(rel_error)) * (self.get_flux_correction() if corr else 1)
+
     def get_flux_correction(self):
-        n1, n2 = self.get_n_entries(self.Cut.generate_custom(include=['tracks', 'fiducial'], prnt=False)), self.get_n_entries(self.Cut.get('tracks'))
-        a1, a2 = self.Cut.get_fiducial_area() / 100., min(self.Run.get_unmasked_area().values())
-        return n1 / a1 * a2 / n2
+        def f():
+            n1, n2 = self.get_n_entries(self.Cut.generate_custom(include=['tracks', 'fiducial'], prnt=False)), self.get_n_entries(self.Cut.get('tracks'))
+            a1, a2 = self.Cut.get_fiducial_area() / 100., min(self.Run.get_unmasked_area().values())
+            return n1 / a1 * a2 / n2
+        return do_pickle(self.make_pickle_path('Flux', 'Corr', self.RunNumber, self.DUT.Number), f)
     # endregion GET
     # ----------------------------------------
 
