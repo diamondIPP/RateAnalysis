@@ -7,7 +7,7 @@
 from analysis import *
 from ROOT import TH1F, TCut, gROOT
 from scipy.signal import find_peaks, savgol_filter
-from numpy import polyfit, pi, RankWarning, vectorize, size, split
+from numpy import polyfit, pi, RankWarning, vectorize, size, split, ones
 from warnings import simplefilter
 from InfoLegend import InfoLegend
 
@@ -32,9 +32,8 @@ class PeakAnalysis(Analysis):
     def get_all(self):
         return do_hdf5(self.make_hdf5_path('Peaks', 'V1', self.Ana.RunNumber, self.Channel), self.Run.get_root_vec, var=self.Ana.PeakName, cut=self.Cut, dtype='f2')
 
-    def draw(self, corr=True, scale=False, fit=False, y_range=None, show=True, redo=False):
+    def draw(self, corr=True, scale=False, fit=False, split_=1, y_range=None, show=True, redo=False):
         def f():
-            h1 = TH1F('hp{}'.format(self.Ana.RunNumber), 'Peak Times', 512 * 2, 0, 512)
             values, n_peaks = self.find_all(redo=redo, fit=fit)
             if corr:
                 values = array(split(values, cumsum(n_peaks)[:-1]))
@@ -42,9 +41,13 @@ class PeakAnalysis(Analysis):
                 for i in xrange(values.size):
                     values[i] -= peaks[i] - peaks[0]
                 values = concatenate(values)
-            h1.FillN(values.size, array(values, 'd'), full(values.size, 1, 'd'))
-            return h1
-        h = do_pickle(self.make_pickle_path('Peaks', 'Histo', self.Ana.RunNumber, self.Channel), f, redo=redo)
+            values = split(values, split_)
+            hs = [TH1F('hp{}{}'.format(self.Ana.RunNumber, i), 'Peak Times', 512 * 2, 0, 512) for i in range(split_)]
+            for i in range(split_):
+                v = values[i]
+                hs[i].FillN(v.size, array(v, 'd'), ones(v.size))
+            return hs[0] if split_ == 1 else hs
+        h = do_pickle(self.make_pickle_path('Peaks', 'Histo', self.Ana.RunNumber, self.Channel, suf=None if split_ == 1 else split_), f, redo=redo)
         if scale:
             h.Scale(1e5 / self.Ana.Waveform.get_all().shape[0])
         if show:
@@ -53,15 +56,24 @@ class PeakAnalysis(Analysis):
             self.draw_histo(h, lm=.12, show=show, x=1.5, y=0.75, logy=True)
         return h
 
-    def find_additional(self, show=True):
+    def find_additional(self, h=None, scale=False, show=True):
         start = int(self.Run.IntegralRegions[self.DUT.Number - 1]['signal_a'][0] + self.Ana.BunchSpacing * 2.5 / self.Ana.DigitiserBinWidth)  # move 2.5 bunches from the signal
-        values = get_hist_vec(self.draw(show=False))[start:]
+        values = get_hist_vec(self.draw(scale=scale, show=False) if h is None else h)[start:]
         peaks = find_peaks([v.n for v in values], height=max(values).n / 2., distance=self.Ana.BunchSpacing)
         g = self.make_tgrapherrors('ga', 'Additional Peak Heights', x=(peaks[0] + start) / 2., y=values[peaks[0]])
         self.format_statbox(fit=True)
         g.Fit('pol0', 'qs')
         self.draw_histo(g, show=show, x=1.5, y=.75, gridy=1)
         return mean(values[peaks[0]])
+
+    def draw_additional_disto(self, show=True):
+        hs = self.draw(split_=4)
+        h0 = TH1F('ht', 'Peak Heights', 20, 170, 260)
+        for h in hs:
+            for v in self.find_additional(h):
+                h0.Fill(v.n)
+        format_histo(h0, x_tit='Peak Height', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
+        self.draw_histo(h0, show=show)
 
     def find_all(self, redo=False, fit=False):
         hdf5_path = self.make_hdf5_path('Peaks', run=self.Ana.RunNumber, ch=self.Channel, suf=int(fit))
