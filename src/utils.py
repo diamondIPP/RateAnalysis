@@ -865,6 +865,8 @@ class PBar:
 
     def update(self, i=None):
         i = self.Step if i is None else i
+        if i >= self.PBar.maxval:
+            return
         self.PBar.update(i + 1)
         self.Step += 1
         if i == self.PBar.maxval - 1:
