@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from ROOT import gROOT, TLegend
-from utils import make_tc_str, timedelta, make_rate_str, make_irr_string
+from utils import make_tc_str, timedelta, make_flux_string, make_irr_string
 from subprocess import check_output
 from os import chdir
 
@@ -92,9 +92,9 @@ class InfoLegend:
     def get_rate_string(self):
         if self.IsCollection:
             fluxes = [flux.n for flux in self.Analysis.get_fluxes()]
-            return '{} - {}'.format(make_rate_str(min(fluxes)), make_rate_str(max(fluxes)))
+            return '{} - {}'.format(make_flux_string(min(fluxes)), make_flux_string(max(fluxes)))
         else:
-            return make_rate_str(self.Analysis.Run.Flux.n)
+            return make_flux_string(self.Analysis.Run.Flux.n)
 
     def get_info_string(self, both_dias):
         voltage = '/'.join('{0:+4.0f}V'.format(dut.Bias) for dut in self.Analysis.Run.DUTs) if both_dias else '{0:+4.0f}V'.format(self.Analysis.DUT.Bias)
