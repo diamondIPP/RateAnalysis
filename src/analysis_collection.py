@@ -165,8 +165,8 @@ class AnalysisCollection(Analysis):
     def get_hv_name(self):
         return self.Currents.Name
 
-    def get_fluxes(self, rel_error=0., runs=None):
-        return array(self.get_run_values('fluxes', DUTAnalysis.get_flux, runs, pbar=False, rel_error=rel_error))
+    def get_fluxes(self, rel_error=0., corr=True, runs=None):
+        return array(self.get_run_values('fluxes', DUTAnalysis.get_flux, runs, pbar=False, rel_error=rel_error, corr=corr))
 
     def get_flux_splits(self, show=True):
         values = sort([flux.n for flux in self.get_fluxes()])
