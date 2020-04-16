@@ -340,10 +340,13 @@ class PadCollection(AnalysisCollection):
         format_histo(g, y_tit='Number of Additional Peaks', y_off=1.3, **self.get_x_args(False))
         self.draw_histo(g, show=show, lm=.12, logy=log_, logx=log_)
 
-    def compare_fluxes(self, log_=True, show=True):
-        f1 = [ana.Peaks.get_flux() for ana in self.get_analyses()]
-        g = self.make_tgrapherrors('gff', 'FAST-OR Flux vs Peak Flux', x=self.get_fluxes(), y=f1)
-        format_histo(g, x_tit='FAST-OR Flux [kHz/cm^{2}]', y_tit='Peak Flux [kHz/cm^{2}]', y_off=1.3)
+    def compare_fluxes(self, fit=True, log_=True, corr=True, show=True):
+        f1 = [ana.Peaks.get_flux(prnt=False) for ana in self.get_analyses()]
+        g = self.make_tgrapherrors('gff', 'FAST-OR Flux vs Peak Flux', x=self.get_fluxes(corr=corr), y=f1)
+        format_histo(g, x_tit='FAST-OR Flux [kHz/cm^{2}]', y_tit='Peak Flux [kHz/cm^{2}]', y_off=1.3, x_off=1.2)
+        if fit:
+            self.format_statbox(only_fit=True, w=.2, x=.5)
+            g.Fit('pol1', 'qs')
         self.draw_histo(g, show=show, lm=.12, logx=log_, logy=log_)
     # endregion TIMING
     # ----------------------------------------
