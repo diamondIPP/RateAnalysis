@@ -147,15 +147,18 @@ class PeakAnalysis(Analysis):
         self.get_flux(n_peaks)
         return h
 
-    def get_flux(self, n_peaks=None):
-        n_peaks = self.find_n_additional() if n_peaks is None else n_peaks
-        lambda_ = ufloat(mean(n_peaks), sqrt(mean(n_peaks) / n_peaks.size))
-        flux = lambda_ / (self.Ana.BunchSpacing * self.NBunches * self.get_area()) * 1e6
-        info('Estimated Flux by number of peaks: {}'.format(make_flux_string(flux)))
-        return flux
+    def get_flux(self, n_peaks=None, redo=False, prnt=True):
+        def f():
+            n = self.find_n_additional() if n_peaks is None else n_peaks
+            lambda_ = ufloat(mean(n), sqrt(mean(n) / n.size))
+            flux = lambda_ / (self.Ana.BunchSpacing * self.NBunches * self.get_area()) * 1e6
+            return flux
+        value = do_pickle(self.make_pickle_path('Peaks', 'Flux', self.Ana.RunNumber, self.Channel), f, redo=redo)
+        self.info('Estimated Flux by number of peaks: {}'.format(make_flux_string(value)), prnt=prnt)
+        return value
 
     def get_area(self, bcm=False):
-        return self.get_bcm_area() if bcm else .35 ** 2
+        return self.get_bcm_area() if bcm else ufloat(self.MainConfig.getfloat('PAD', 'size'), .03) ** 2
 
     def get_bcm_area(self):
         """ return the total area of the BCM' pad sizes """
