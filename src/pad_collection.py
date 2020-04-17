@@ -332,22 +332,34 @@ class PadCollection(AnalysisCollection):
             ana.Peaks.find_additional(show=False)
             self.save_canvas(get_last_canvas(), '', 'r{}'.format(i), res_dir='', ftype='pdf')
 
-    def draw_peaks_vs_rate(self, show=True, log_=True):
-        peak_heights = [ana.Peaks.find_additional(scale=True, show=False) for ana in self.get_analyses()]
-        g = self.make_tgrapherrors('gpr', 'Number of Additional Peaks vs Flux', x=self.get_fluxes(), y=peak_heights)
-        self.format_statbox(fit=True, x=.52)
-        g.Fit('pol1', 'qs')
-        format_histo(g, y_tit='Number of Additional Peaks', y_off=1.3, **self.get_x_args(False))
-        self.draw_histo(g, show=show, lm=.12, logy=log_, logx=log_)
+    def draw_peaks_vs_rate(self, normalise=False, log_=True, show=True):
+        fluxes = self.get_fluxes()
+        peak_heights = array([ana.Peaks.find_additional(scale=True, show=False) for ana in self.get_analyses()]) / (fluxes if normalise else 1)
+        peak_heights /= mean(peak_heights) if normalise else 1
+        g = self.make_tgrapherrors('gpr', 'Number of Additional Peaks vs Flux', x=fluxes, y=peak_heights)
+        if not normalise:
+            self.format_statbox(fit=True, x=.52)
+            g.Fit('pol1', 'qs')
+        format_histo(g, y_tit='Number of Additional Peaks {}'.format('/ Flux' if normalise else ''), y_off=1.5, **self.get_x_args(False))
+        self.draw_histo(g, show=show, lm=.12, logy=log_ and not normalise, logx=log_)
 
-    def compare_fluxes(self, fit=True, log_=True, corr=True, show=True):
-        f1 = [ana.Peaks.get_flux(prnt=False) for ana in self.get_analyses()]
-        g = self.make_tgrapherrors('gff', 'FAST-OR Flux vs Peak Flux', x=self.get_fluxes(corr=corr), y=f1)
-        format_histo(g, x_tit='FAST-OR Flux [kHz/cm^{2}]', y_tit='Peak Flux [kHz/cm^{2}]', y_off=1.3, x_off=1.2)
+    def draw_ph_vs_peaks(self, show=True):
+        peak_heights = array([ana.Peaks.find_additional(scale=True, show=False) for ana in self.get_analyses()]) / self.get_fluxes()
+        peak_heights /= mean(peak_heights)
+        pulse_heights = self.get_pulse_heights()
+        g = self.make_tgrapherrors('gpr', 'Pulse Height vs Normalised Peak Height', y=pulse_heights, x=peak_heights)
+        format_histo(g, y_tit='Pulse Height', x_tit='Normalised Peak Height')
+        self.draw_histo(g, show=show, lm=.12)
+
+    def compare_fluxes(self, normalise=False, fit=True, log_=True, corr=False, redo=False, show=True):
+        f0 = self.get_fluxes(corr=corr)
+        f1 = array([ana.Peaks.get_flux(prnt=False, redo=redo) for ana in self.get_analyses()]) / (f0 if normalise else 1)
+        g = self.make_tgrapherrors('gff', 'FAST-OR Flux vs Peak Flux', x=f0, y=f1)
+        format_histo(g, x_tit='FAST-OR Flux [kHz/cm^{2}]', y_tit='Peak Flux {}'.format('/ FAST-OR Flux' if normalise else '[kHz/cm^{2}]'), y_off=1.3, x_off=1.2)
         if fit:
             self.format_statbox(only_fit=True, w=.2, x=.5)
             g.Fit('pol1', 'qs')
-        self.draw_histo(g, show=show, lm=.12, logx=log_, logy=log_)
+        self.draw_histo(g, show=show, lm=.12, logx=log_, logy=log_ and not normalise)
     # endregion TIMING
     # ----------------------------------------
 
