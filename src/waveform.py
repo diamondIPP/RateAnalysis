@@ -62,7 +62,7 @@ class Waveform(Analysis):
             events = self.Ana.get_events(cut=self.Cut)
             self.Ana.PBar.start(events.size)
             for ev in events:
-                n = self.Tree.Draw('wf0', '', 'goff', 1, ev)
+                n = self.Tree.Draw('wf{}'.format(self.Channel), '', 'goff', 1, ev)
                 waveforms.append(self.Ana.Polarity * self.Run.get_root_vec(n, dtype='f2'))
                 self.Ana.PBar.update()
             return array(waveforms)
