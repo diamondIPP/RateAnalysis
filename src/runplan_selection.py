@@ -118,7 +118,7 @@ class DiaScans(Analysis):
         return self.RunPlans[tc][rp]['runs']
 
     def get_dut_names(self):
-        return [sel.DUT for sel in self.Info]
+        return [sel.DUTName for sel in self.Info]
 
     def get_run_types(self):
         return [sel.Type.lower() for sel in self.Info]
@@ -185,7 +185,7 @@ class DiaScans(Analysis):
 
     def get_dia_infos(self, dut_name):
         dut_name = self.RS.Run.translate_dia(dut_name)
-        return [sel for tc in self.RunPlans.iterkeys() for sel in self.get_tc_infos(tc) if dut_name == sel.DUT]
+        return [sel for tc in self.RunPlans.iterkeys() for sel in self.get_tc_infos(tc) if dut_name == sel.DUTName]
 
     def get_tc_infos(self, tc):
         rs = self.RunSelections[tc] if tc in self.RunSelections else RunSelection(tc)
@@ -196,7 +196,7 @@ class DiaScans(Analysis):
 
     def get_all_ana_strings(self, dut=None, tc=None, redo=False):
         selections = self.get_all_infos() if dut is None and tc is None else self.get_dia_infos(dut) if tc is None else self.get_tc_infos(tc)
-        selections = [sel for sel in selections if self.RS.Run.translate_dia(dut) == sel.DUT] if dut is not None else selections
+        selections = [sel for sel in selections if self.RS.Run.translate_dia(dut) == sel.DUTName] if dut is not None else selections
         redo = ' -rd' if redo else ''
         return '_'.join(['analyse {} {} -c -tc {} -d{}'.format(sel.RunPlan, sel.DUTNr, sel.TCString, redo) for sel in selections])
     # endregion GET
@@ -561,6 +561,20 @@ class DiaScans(Analysis):
         g = self.make_tgrapherrors('gu', 'Uniformity', x=x_values, y=y_values)
         format_histo(g, x_tit='Irradiation [n/cm^{2}]', y_tit='FWHM/MPV', y_off=1.3)
         self.draw_histo(g, draw_opt='ap')
+
+    def draw_additional_peaks(self, show=True):
+        leg = self.make_legend(x2=.45, w=.3)
+        mg = TMultiGraph('mgph', 'Scaled Peak Heights')
+        values_list = self.get_values(AnalysisCollection.get_additional_peak_heights, PickleInfo('Peaks', 'Heights'))
+        flux_list = self.get_fluxes()
+        for sel, values, fluxes in zip(self.Info, values_list, flux_list):
+            g = self.make_tgrapherrors('g{}'.format(sel.RunPlan), '', x=fluxes, y=values)
+            format_histo(g, color=self.get_color())
+            leg.AddEntry(g, '{} @ {:+1.0f}V'.format(sel.DUTName, sel.Bias), 'pl')
+            mg.Add(g, 'p')
+        x, y = concatenate(flux_list), concatenate(values_list)
+        format_histo(mg, draw_first=True, y_tit='Scaled Peak Height', x_tit='Flux [kHz/cm^{2}]', x_range=[.5 * min(x).n, 1.2 * max(x).n], y_off=1.4, y_range=[.5 * min(y).n, 1.2 * max(y).n])
+        self.save_histo(mg, 'PeakHeights{}'.format(self.Name), draw_opt='a', leg=leg, show=show, lm=.13)
     # endregion DRAWING
     # ----------------------------------------
 
@@ -570,21 +584,22 @@ class SelectionInfo:
         self.TCString = sel.TCString
         self.RunPlan = sel.SelectedRunplan
         self.DUT = sel.SelectedDUT
-        self.DUTNr = sel.SelectedDUTNr
+        self.DUTName = self.DUT.Name
+        self.DUTNr = self.DUT.Number
         self.Verbose = sel.Run.Verbose
-        self.Bias = sel.SelectedBias
-        self.Irradiation = sel.get_irradiation()
+        self.Bias = self.DUT.Bias
+        self.Irradiation = self.DUT.get_irradiation(self.TCString)
         self.Type = sel.SelectedType.lower()
         self.Runs = sel.get_selected_runs()
 
     def __str__(self):
-        return 'Selection instance: {} {} {}'.format(self.TCString, self.RunPlan, self.DUT)
+        return 'Selection instance: {} {} {}'.format(self.TCString, self.RunPlan, self.DUTName)
 
     def __repr__(self):
         return self.__str__()
 
     def __call__(self):
-        return [self.TCString, self.RunPlan, self.DUT, self.DUTNr, '{:03d}-{:03d}'.format(self.Runs[0], self.Runs[-1]), '{:+4.0f}V'.format(self.Bias), self.Type, self.Irradiation]
+        return [self.TCString, self.RunPlan, self.DUTName, self.DUTNr, '{:03d}-{:03d}'.format(self.Runs[0], self.Runs[-1]), '{:+4.0f}V'.format(self.Bias), self.Type, self.Irradiation]
 
 
 class PickleInfo:
