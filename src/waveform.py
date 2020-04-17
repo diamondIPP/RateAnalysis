@@ -28,12 +28,12 @@ class Waveform(Analysis):
         self.StartEvent = self.Ana.StartEvent
         self.BinWidth = self.Ana.DigitiserBinWidth
 
-    def draw(self, n=1, cut=None, start_event=None, t_corr=True, channel=None, show=True, x_range=None, y_range=None, grid=False, x=None):
+    def draw(self, n=1, cut=None, start_event=None, t_corr=True, channel=None, show=True, x_range=None, y_range=None, grid=False, x=None, raw=False):
         """ Draws a stack of n waveforms. """
         title = '{n}{tc} Waveform{p}'.format(n=n, tc=' Time Corrected' if t_corr else '', p='s' if n > 1 else '')
         h = TH2F('h_wf', title, 1024, 0, 512, 2048, -512, 512)
         start_count = deepcopy(self.Count)
-        values, times = self.get_values(n, cut, start_event, t_corr, channel)
+        values, times = self.get_values(n, cut, start_event, t_corr, channel, raw)
         values = values if x is None else x
         for v, t in zip(values, times):
             h.Fill(t, v)
@@ -120,7 +120,7 @@ class Waveform(Analysis):
     def get_start_event(self, start_event):
         return self.Count + self.StartEvent if start_event is None else start_event
 
-    def get_values(self, n=1, cut=None, start_event=None, t_corr=True, channel=None):
+    def get_values(self, n=1, cut=None, start_event=None, t_corr=True, channel=None, raw=False):
         """ return lists of the values and times of the waveform. """
         cut = self.Ana.Cut(cut)
         channel = self.Channel if channel is None else channel
@@ -132,7 +132,7 @@ class Waveform(Analysis):
         self.Tree.SetEstimate(n * 1024)
         n_entries = self.Tree.Draw('wf{ch}:trigger_cell'.format(ch=channel), cut, 'goff', n_events, start_event)
         values = self.Run.get_root_vec(n_entries)
-        times = [self.BinWidth * i for i in xrange(1024)] * n
+        times = arange(self.Run.NSamples, dtype='u2') * (1 if raw else self.BinWidth)
         if t_corr:
             times = [v for lst in [self.get_calibrated_times(int(self.Tree.GetV2()[1024 * i])) for i in xrange(n)] for v in lst]
         self.Tree.SetEstimate()
