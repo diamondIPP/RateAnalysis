@@ -64,6 +64,7 @@ class PeakAnalysis(Analysis):
             return hs[0] if split_ == 1 else hs
         h = do_pickle(self.make_pickle_path('Peaks', 'Histo', self.Ana.RunNumber, self.Channel, suf=None if split_ == 1 else split_), f, redo=redo)
         if scale:
+            h.Sumw2()
             h.Scale(1e5 / self.Ana.Waveform.get_all().shape[0])
         if show:
             self.format_statbox(entries=True)
