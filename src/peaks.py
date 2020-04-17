@@ -47,8 +47,10 @@ class PeakAnalysis(Analysis):
             if corr:
                 values = array(split(values, cumsum(n_peaks)[:-1]))
                 peaks = self.get_all()
+                self.PBar.start(values.size)
                 for i in xrange(values.size):
                     values[i] -= peaks[i] - peaks[0]
+                    self.PBar.update()
                 values = concatenate(values)
             values = split(values, split_)
             hs = [TH1F('hp{}{}'.format(self.Ana.RunNumber, i), 'Peak Times', 512 * 2, 0, 512) for i in range(split_)]
