@@ -310,6 +310,8 @@ class AnalysisCollection(Analysis):
     def get_x_args(self, vs_time, rel_time=False, x_range=None):
         return {'x_tit': self.get_x_tit(vs_time), 't_ax_off': self.get_tax_off(vs_time, rel_time), 'x_range': self.get_xrange(vs_time, x_range)}
 
+    def get_cmd_strings(self, cmd, kwargs):
+        return '?'.join(['python analyse.py {} {} -tc {} -d -cmd {} -kw {}'.format(run, self.DUT.Number, self.TCString, cmd, kwargs) for run in self.Runs])
     # endregion GET
     # ----------------------------------------
 
@@ -846,12 +848,17 @@ if __name__ == '__main__':
     p.add_argument('-r', '--runs', action='store_true')
     p.add_argument('-d', '--draw', action='store_true')
     p.add_argument('-rd', '--redo', action='store_true')
+    p.add_argument('-p', '--prnt', action='store_true')
+    p.add_argument('-cmd', '--command', nargs='?', help='method to be executed')
+    p.add_argument('-kw', '--kwargs', nargs='?', help='key word arguments as dict {"show": 1}', default='{}')
     pargs = p.parse_args()
 
-    z = AnalysisCollection(pargs.runplan, pargs.dut, pargs.testcampaign, pargs.tree, pargs.verbose)
+    z = AnalysisCollection(pargs.runplan, pargs.dut, pargs.testcampaign, pargs.tree and not pargs.prnt, pargs.verbose)
     z.print_loaded()
     if pargs.runs:
         z.Currents.draw_indep_graphs()
         raw_input('Press any button to exit')
     if pargs.draw:
         z.draw_all(pargs.redo)
+    if pargs.prnt:
+        print(z.get_cmd_strings(pargs.command, pargs.kwargs))
