@@ -97,9 +97,12 @@ class DUTAnalysis(TelecopeAnalysis):
     def get_flux_correction(self):
         def f():
             n1, n2 = self.get_n_entries(self.Cut.generate_custom(include=['tracks', 'fiducial'], prnt=False)), self.get_n_entries(self.Cut.get('tracks'))
-            a1, a2 = self.Cut.get_fiducial_area() / 100., min(self.Run.get_unmasked_area().values())
-            return n1 / a1 * a2 / n2
+            a1, a2 = self.Cut.get_fiducial_area(), min(self.Run.get_unmasked_area().values())
+            return 1 if a1 is None else n1 / a1 * a2 / n2
         return do_pickle(self.make_pickle_path('Flux', 'Corr', self.RunNumber, self.DUT.Number), f)
+
+    def get_additional_peak_height(self):
+        pass
     # endregion GET
     # ----------------------------------------
 

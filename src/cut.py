@@ -124,7 +124,7 @@ class Cut:
         return concatenate([xy, [dx, dy, dx * dy]])
 
     def get_fiducial_area(self):
-        return self.get_fiducial_size()[-1]
+        return None if self.CutConfig['fiducial'] is None else self.get_fiducial_size()[-1] / 100.
     # endregion GET
     # ----------------------------------------
 
