@@ -557,8 +557,10 @@ class RunSelection:
             f.truncate()
 
     def get_irradiation(self, dia=None):
+        if self.SelectedDUT is not None and dia is None:
+            return self.SelectedDUT.get_irradiation(self.TCString)
         with open(self.Run.IrradiationFile) as f:
-            return load(f)[self.TCString][self.SelectedDUT if self.SelectedDUT is not None and dia is None else dia]
+            return load(f)[self.TCString][dia]
 
     def get_runplan_runs(self):
         return sorted(list(set(run for dic in self.RunPlan.itervalues() for run in dic['runs'])))
