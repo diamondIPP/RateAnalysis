@@ -939,7 +939,23 @@ def multi_threading(lst, timeout=60 * 60 * 2):
     return [queue.get() for _ in range(queue.qsize())]
 
 
-def parallelise(instances, method, args, timeout=60 * 60):
+def get_attribute(instance, string):
+    if '.' in string:
+        s = string.split('.')
+        return getattr(getattr(instance, s[0]), s[1])
+    return getattr(instance, string)
+
+
+def parallelise(f, args_list, timeout=60 * 60):
+    t = info('Run parallelisation on {} tasks ... '.format(len(args_list)), next_line=False)
+    pool = Pool(cpu_count())
+    workers = [pool.apply_async(f, make_list(args)) for args in args_list]
+    results = [worker.get(timeout) for worker in workers]
+    add_to_info(t)
+    return results
+
+
+def parallelise_instance(instances, method, args, timeout=60 * 60):
     t = info('Run parallelisation on {} tasks ... '.format(len(args)), next_line=False)
     pool = Pool(cpu_count())
     # tasks = [partial(call_it, make_list(instances)[0], method.__name__, *make_list(arg)) for arg in args]
