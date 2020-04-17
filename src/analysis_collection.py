@@ -243,6 +243,9 @@ class AnalysisCollection(Analysis):
         error = self.get_repr_error(110, redo) if err else 0
         return array([ufloat(v.n, v.s + error) for v in self.get_run_values('pulse heights', self.Analysis.get_pulse_height, runs, pbar, bin_size=bin_width, redo=redo, corr=corr)])
 
+    def get_pulse_height(self):
+        return mean_sigma(self.get_pulse_heights())
+
     def get_rate_dependence(self, redo=False):
         values = self.get_pulse_heights(redo=redo, pbar=False)
         return mean_sigma(values)[1] / mean(values), (max(values) - min(values)) / mean(values)
