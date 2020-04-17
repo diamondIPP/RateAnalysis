@@ -136,7 +136,7 @@ class PeakAnalysis(Analysis):
         return time_peaks
 
     def find_from_event(self, event=1819, fit=False):
-        self.Tree.GetBranch('wf0').GetEntry(event)
+        self.Tree.GetBranch('wf{}'.format(self.Channel)).GetEntry(event)
         self.Tree.GetBranch('trigger_cell').GetEntry(event)
         values = self.Ana.Polarity * array(getattr(self.Tree, 'wf{}'.format(self.Channel)))
         return self.find(values, self.Tree.trigger_cell, fit)
