@@ -182,6 +182,9 @@ class PadAnalysis(DUTAnalysis):
         h = self.draw_signal_distribution(show=False, save=False)
         return h.GetBinCenter(h.FindFirstBinAbove(h.GetMaximum() * .01))
 
+    def get_additional_peak_height(self):
+        return self.Peaks.find_additional(scale=True, show=False)
+
     def print_results(self, prnt=True):
         rows = [[u_to_str(v, prec=2) for v in self.get_results()]]
         print_table(header=['Signal [mV]', 'Pedestal [mV]', 'Pulser [mV]'], rows=rows, prnt=prnt)

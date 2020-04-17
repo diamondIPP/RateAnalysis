@@ -294,6 +294,9 @@ class AnalysisCollection(Analysis):
         values = self.get_uniformities(bins, redo, low_flux, high_flux)
         return [mean_sigma(values[:, i][where(values[:, i] > 0)[0]]) for i in xrange(values[0].size)]
 
+    def get_additional_peak_heights(self):
+        return self.get_values('Peak Heights', f=self.Analysis.get_additional_peak_height)
+
     @staticmethod
     def get_x_tit(vs_time):
         return '{mod}{unit}'.format(mod='Time' if vs_time else 'Flux', unit=' [hh:mm]' if vs_time else ' [kHz/cm^{2}]')
