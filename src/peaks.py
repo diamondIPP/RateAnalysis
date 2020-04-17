@@ -41,6 +41,10 @@ class PeakAnalysis(Analysis):
     def get_all(self):
         return do_hdf5(self.make_hdf5_path('Peaks', 'V1', self.Ana.RunNumber, self.Channel), self.Run.get_root_vec, var=self.Ana.PeakName, cut=self.Cut, dtype='f2')
 
+    def get(self):
+        values, n_peaks = self.find_all()
+        return array(split(values, cumsum(n_peaks)[:-1]))
+
     def draw(self, corr=True, scale=False, fit=False, split_=1, y_range=None, show=True, redo=False):
         def f():
             values, n_peaks = self.find_all(redo=redo, fit=fit)
