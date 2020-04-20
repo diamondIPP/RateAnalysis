@@ -300,6 +300,9 @@ class AnalysisCollection(Analysis):
     def get_additional_peak_heights(self):
         return self.get_values('Peak Heights', f=self.Analysis.get_additional_peak_height)
 
+    def get_peak_flux(self):
+        return self.get_values('Peak Flux', f=self.Analysis.get_peak_flux)
+
     @staticmethod
     def get_x_tit(vs_time):
         return '{mod}{unit}'.format(mod='Time' if vs_time else 'Flux', unit=' [hh:mm]' if vs_time else ' [kHz/cm^{2}]')

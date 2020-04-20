@@ -103,6 +103,9 @@ class DUTAnalysis(TelecopeAnalysis):
 
     def get_additional_peak_height(self):
         pass
+
+    def get_peak_flux(self):
+        pass
     # endregion GET
     # ----------------------------------------
 

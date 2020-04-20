@@ -562,10 +562,10 @@ class DiaScans(Analysis):
         format_histo(g, x_tit='Irradiation [n/cm^{2}]', y_tit='FWHM/MPV', y_off=1.3)
         self.draw_histo(g, draw_opt='ap')
 
-    def draw_additional_peaks(self, show=True):
+    def draw_peak_flux(self, show=True):
         leg = self.make_legend(x2=.45, w=.3)
-        mg = TMultiGraph('mgph', 'Scaled Peak Heights')
-        values_list = self.get_values(AnalysisCollection.get_additional_peak_heights, PickleInfo('Peaks', 'Heights'))
+        mg = TMultiGraph('mgph', 'Peak Flux vs. FAST-OR Flux')
+        values_list = self.get_values(AnalysisCollection.get_peak_flux, PickleInfo('Peaks', 'Flux'))
         flux_list = self.get_fluxes()
         for sel, values, fluxes in zip(self.Info, values_list, flux_list):
             g = self.make_tgrapherrors('g{}'.format(sel.RunPlan), '', x=fluxes, y=values)
@@ -573,8 +573,9 @@ class DiaScans(Analysis):
             leg.AddEntry(g, '{} @ {:+1.0f}V'.format(sel.DUTName, sel.Bias), 'pl')
             mg.Add(g, 'p')
         x, y = concatenate(flux_list), concatenate(values_list)
-        format_histo(mg, draw_first=True, y_tit='Scaled Peak Height', x_tit='Flux [kHz/cm^{2}]', x_range=[.5 * min(x).n, 1.2 * max(x).n], y_off=1.4, y_range=[.5 * min(y).n, 1.2 * max(y).n])
-        self.save_histo(mg, 'PeakHeights{}'.format(self.Name), draw_opt='a', leg=leg, show=show, lm=.13)
+        x_range, y_range = [.5 * min(x).n, 1.2 * max(x).n], [.5 * min(y).n, 1.2 * max(y).n]
+        format_histo(mg, draw_first=True, y_tit='Peak Flux [kHz/cm^{2}] ', x_tit='FAST-OR Flux [kHz/cm^{2}]', x_range=x_range, y_off=1.8, y_range=y_range)
+        self.save_histo(mg, 'PeakFluxes{}'.format(self.Name), draw_opt='a', leg=leg, show=show, lm=.13)
     # endregion DRAWING
     # ----------------------------------------
 

@@ -246,7 +246,7 @@ class Currents(Analysis):
         return h
 
     def get_current(self):
-        if self.Analysis is not None and not self.Analysis.Bias:
+        if self.Analysis is not None and not self.Analysis.DUT.Bias:
             warning('Bias of run {} is 0!'.format(self.Analysis.RunNumber))
             current = make_ufloat((0, 0))
         else:

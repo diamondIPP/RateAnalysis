@@ -24,8 +24,8 @@ pargs = aparser.parse_args()
 
 if not pargs.collection:
     z = analysis_selector(pargs.runplan, pargs.dut, pargs.testcampaign, pargs.tree, pargs.verbose)
-    p = z.Peaks
-    w = z.Waveform
+    p = z.Peaks if pargs.tree else None
+    w = z.Waveform if pargs.tree else None
     chdir('..')
     if pargs.draw:
         get_attribute(z, pargs.command)(**loads(pargs.kwargs))
