@@ -326,7 +326,11 @@ class PadCollection(AnalysisCollection):
         gROOT.ProcessLine('gErrorIgnoreLevel = 0;')
         gROOT.SetBatch(0)
         self.Objects.append([c, ex])
+    # endregion TIMING
+    # ----------------------------------------
 
+    # ----------------------------------------
+    # region PEAKS
     def save_additional(self):
         for i, ana in enumerate(self.get_analyses()):
             ana.Peaks.find_additional(show=False)
@@ -362,10 +366,17 @@ class PadCollection(AnalysisCollection):
             self.format_statbox(only_fit=True, w=.2, x=.5)
             g.Fit('pol1', 'qs')
         self.draw_histo(g, show=show, lm=.12, logx=log_, logy=log_ and not normalise)
-    # endregion TIMING
-    # ----------------------------------------
 
-    # ============================================
+    def draw_bunch_systematics(self, bunch=0, show=True):
+        all_bunches = self.get_values('All bunches', self.Analysis.get_n_peaks) / self.FirstAnalysis.Peaks.NBunches
+        single_bunch = self.get_values('Single bunch', self.Analysis.get_n_peaks, start_bunch=bunch, end_bunch=bunch + 1)
+        g = self.make_tgrapherrors('gps', 'Systematics of the Number of Peaks of Bunch {}'.format(bunch), x=self.get_fluxes(), y=single_bunch / all_bunches)
+        format_histo(g, y_tit='N Peaks in Bunch {} / Average N Peaks per Bunch'.format(bunch), y_off=1.3, **self.get_x_args(False))
+        self.draw_histo(g, lm=.12, show=show, logx=True)
+    # ----------------------------------------
+    # endregion PEAKS
+
+    # ----------------------------------------
     # region 2D SIGNAL MAP
     def draw_flux_comparison(self):
         g1 = self.make_tgrapherrors('g_fp', 'Number of Peaks', color=self.get_color())
