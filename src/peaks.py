@@ -18,6 +18,7 @@ class PeakAnalysis(Analysis):
         self.Ana = pad_analysis
         Analysis.__init__(self, verbose=self.Ana.Verbose)
         self.Run = self.Ana.Run
+        self.RunNumber = self.Run.RunNumber
         self.Channel = self.Ana.Channel
         self.DUT = self.Ana.DUT
         self.Tree = self.Ana.Tree
@@ -26,14 +27,15 @@ class PeakAnalysis(Analysis):
         self.InfoLegend = InfoLegend(pad_analysis)
         self.StartAdditional = self.get_start_additional()
         self.NBunches = self.calc_n_bunches()
+        self.set_pickle_sub_dir('Peaks')
 
     def calc_threshold(self):
         """ return peak threshold, 6 times the raw noise or the minimum singnal, whatever is higher. """
         return max(abs(self.Ana.Pedestal.get_raw_mean() + 6 * self.Ana.Pedestal.get_raw_noise()), self.Ana.get_min_signal())
 
-    def get_start_additional(self):
+    def get_start_additional(self, bunch=2):
         """Set the start of the additional peaks 2.5 bunches after the signal peak to avoid the biased bunches after the signal."""
-        return int(self.Run.IntegralRegions[self.DUT.Number - 1]['signal_a'][0] + self.Ana.BunchSpacing * 2.5 / self.Ana.DigitiserBinWidth)
+        return int(self.Run.IntegralRegions[self.DUT.Number - 1]['signal_a'][0] + self.Ana.BunchSpacing * (bunch + 0.5) / self.Ana.DigitiserBinWidth)
 
     def calc_n_bunches(self):
         return int((self.Run.NSamples - self.StartAdditional) * self.Ana.DigitiserBinWidth / self.Ana.BunchSpacing)
@@ -81,12 +83,21 @@ class PeakAnalysis(Analysis):
         self.draw_histo(g, show=show, x=1.5, y=.75, gridy=1)
         return mean(values[peaks[0]])
 
-    def find_n_additional(self):
+    def find_n_additional(self, start_bunch=None, end_bunch=None):
         values, n_peaks = self.find_all()
         values = array(split(values, cumsum(n_peaks)[:-1]))
+        start = (self.StartAdditional if start_bunch is None else self.get_start_additional(start_bunch)) * self.Ana.DigitiserBinWidth
+        end = (self.Run.NSamples if end_bunch is None else self.get_start_additional(end_bunch)) * self.Ana.DigitiserBinWidth
         for i in range(values.size):
-            values[i] = values[i][values[i] > self.StartAdditional * self.Ana.DigitiserBinWidth]
+            values[i] = values[i][(values[i] > start) & (values[i] < end)]
         return array([lst.size for lst in values], dtype='u2')
+
+    def get_n_additional(self, start_bunch=None, end_bunch=None):
+        def f():
+            values = self.find_n_additional(start_bunch, end_bunch)
+            m = mean(values)
+            return ufloat(m, sqrt(m / values.size))
+        return do_pickle(self.make_simple_pickle_path('NAdd', '{}_{}'.format(start_bunch, end_bunch) if start_bunch is not None else ''), f)
 
     def draw_additional_disto(self, show=True):
         hs = self.draw(split_=4)

@@ -188,6 +188,9 @@ class PadAnalysis(DUTAnalysis):
     def get_peak_flux(self, prnt=True, redo=False):
         return self.Peaks.get_flux(prnt=prnt, redo=redo)
 
+    def get_n_peaks(self, start_bunch=None, end_bunch=None):
+        return self.Peaks.get_n_additional(start_bunch, end_bunch)
+
     def print_results(self, prnt=True):
         rows = [[u_to_str(v, prec=2) for v in self.get_results()]]
         print_table(header=['Signal [mV]', 'Pedestal [mV]', 'Pulser [mV]'], rows=rows, prnt=prnt)
