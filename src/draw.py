@@ -432,8 +432,8 @@ class Draw:
         c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x, y) if canvas is None else canvas
         do(c.SetLeftMargin, lm)
         do(c.SetRightMargin, rm if rm is not None else None if round(c.GetRightMargin(), 1) != .1 else .03)
-        do(c.SetBottomMargin, bm if bm is not None else None if round(c.GetBottomMargin(), 1) != .1 or not self.Legend else .17)
-        do(c.SetTopMargin, tm if tm is not None else None if round(c.GetTopMargin(), 1) != .1 else .1 if self.Title else .03)
+        do(c.SetBottomMargin, None if round(c.GetBottomMargin(), 1) != .1 else (.17 if bm is None else bm) - (.07 if not self.Legend else 0))
+        do(c.SetTopMargin, None if round(c.GetTopMargin(), 1) != .1 else (.1 if tm is None else tm) - (0 if self.Title else .07))
         c.SetLogx() if logx else do_nothing()
         c.SetLogy() if logy else do_nothing()
         c.SetLogz() if logz else do_nothing()
@@ -479,10 +479,11 @@ class Draw:
     def make_legend(self, x1=.65, y2=.88, nentries=2, scale=1, name='l', y1=None, clean=False, margin=.25, x2=None, w=None, cols=None):
         x2 = .95 if x2 is None else x2
         x1 = x2 - w if w is not None else x1
-        y2 = y2 + .07 if not self.Title and y2 > .7 else y2
-        y2 = y2 - .07 if not self.Legend and y2 < .7 else y2
-        y1 = y2 - nentries * .05 * scale if y1 is None else y1
-        leg = TLegend(x1, y1, x2, y2)
+        h = nentries * .05 * scale
+        y = array([y2 - h if y1 is None else y1, y1 + h if y1 is not None else y2])
+        y += .07 if not self.Title and y[1] > .7 else 0
+        y -= .07 if not self.Legend and y[1] < .7 else 0
+        leg = TLegend(x1, y[0], x2, y[1])
         leg.SetName(name)
         leg.SetTextFont(42)
         leg.SetTextSize(0.03 * scale)
