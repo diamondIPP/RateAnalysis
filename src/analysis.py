@@ -28,6 +28,7 @@ class Analysis(Draw):
         self.Dir = get_base_dir()
         self.PickleDir = join(self.Dir, self.MainConfig.get('SAVE', 'pickle directory'))
         self.DataDir = self.MainConfig.get('MAIN', 'data directory')
+        self.PickleSubDir = ''
 
         # Test Campaign
         self.TCString = self.load_test_campaign(testcampaign)
@@ -103,7 +104,10 @@ class Analysis(Draw):
         if prnt:
             print_banner('Finished Instantiation in {}'.format(get_elapsed_time(self.InitTime)), color='green')
 
-    def make_pickle_path(self, sub_dir, name=None, run=None, ch=None, suf=None, camp=None):
+    def set_pickle_sub_dir(self, name):
+        self.PickleSubDir = name
+
+    def make_pickle_path(self, sub_dir=None, name=None, run=None, ch=None, suf=None, camp=None):
         ensure_dir(join(self.PickleDir, sub_dir))
         campaign = self.TCString if camp is None else camp
         run = '_{r}'.format(r=run) if run is not None else ''
@@ -112,9 +116,18 @@ class Analysis(Draw):
         name = '{n}_'.format(n=name) if name is not None else ''
         return join(self.PickleDir, sub_dir, '{name}{tc}{run}{ch}{suf}.pickle'.format(name=name, tc=campaign, run=run, ch=ch, suf=suf))
 
+    def make_simple_pickle_path(self, name='', suf='', sub_dir=None, run=None, dut=None, camp=None):
+        directory = join(self.PickleDir, self.PickleSubDir if sub_dir is None else sub_dir)
+        campaign = self.TCString if camp is None else camp
+        run = str(run if run is not None else self.RunNumber if hasattr(self, 'RunNumber') else '')
+        # noinspection PyUnresolvedReferences
+        dut = str(dut if dut is not None else self.DUT.Number if hasattr(self, 'DUT') and hasattr(self.DUT, 'Number') else '')
+        return join(directory, '{}.pickle'.format('_'.join([v for v in [name, campaign, run, dut, suf] if v])))
+
     def make_hdf5_path(self, sub_dir, name=None, run=None, ch=None, suf=None, camp=None):
         return self.make_pickle_path(sub_dir, name, run, ch, suf, camp).replace('pickle', 'hdf5')
 
+    # TODO: move to higher analysis
     def calc_time_difference(self, m1, m2, p=None):
         return t_diff(self.PathLength, self.Momentum if p is None else p, m1, m2) % self.BunchSpacing
 
