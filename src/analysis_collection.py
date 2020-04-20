@@ -165,8 +165,8 @@ class AnalysisCollection(Analysis):
     def get_hv_name(self):
         return self.Currents.Name
 
-    def get_fluxes(self, rel_error=0., corr=True, runs=None):
-        return array(self.get_run_values('fluxes', DUTAnalysis.get_flux, runs, pbar=False, rel_error=rel_error, corr=corr))
+    def get_fluxes(self, rel_error=0., corr=True, runs=None, avrg=False):
+        return self.get_run_values('fluxes', DUTAnalysis.get_flux, runs, pbar=False, avrg=avrg, rel_error=rel_error, corr=corr)
 
     def get_flux_splits(self, show=True):
         values = sort([flux.n for flux in self.get_fluxes()])
@@ -179,7 +179,11 @@ class AnalysisCollection(Analysis):
         s.Search(h, 1)
         bins = sorted(s.GetPositionX()[i] for i in xrange(s.GetNPeaks()))
         split_bins = histogram(values, concatenate(([0], [[ibin / 10 ** .1, ibin * 10 ** .1] for ibin in bins], [1e5]), axis=None))[0]
-        return cumsum(split_bins[where(split_bins > 0)])
+        return cumsum(split_bins[where(split_bins > 0)])[:-1]
+
+    def get_flux_average(self, values):
+        values = values[self.get_fluxes().argsort()]  # sort by ascending fluxes
+        return array([mean(lst) for lst in split(values, self.get_flux_splits(show=False))])  # split into sub-lists of similar flux and take average
 
     def get_times(self, runs=None):
         return self.get_run_values('times', DUTAnalysis.get_time, runs, pbar=False)
@@ -199,20 +203,20 @@ class AnalysisCollection(Analysis):
     def get_currents(self):
         return OrderedDict((key, ana.Currents.get_current()) for key, ana in self.Analyses.iteritems())
 
-    def get_run_values(self, string, f, runs=None, pbar=True, *args, **kwargs):
-        return self.generate_run_plots(string, f, runs, pbar, *args, **kwargs)
+    def get_run_values(self, string, f, runs=None, pbar=True, avrg=False, *args, **kwargs):
+        return self.generate_run_plots(string, f, runs, pbar, avrg, *args, **kwargs)
 
-    def get_values(self, string, f, pbar=True, *args, **kwargs):
-        return self.generate_run_plots(string, f, runs=None, pbar=pbar, *args, **kwargs)
+    def get_values(self, string, f, pbar=True, avrg=False, *args, **kwargs):
+        return self.generate_run_plots(string, f, runs=None, pbar=pbar, avrg=avrg, *args, **kwargs)
 
-    def generate_run_plots(self, string, f, runs=None, pbar=True, *args, **kwargs):
+    def generate_run_plots(self, string, f, runs=None, pbar=True, avrg=False, *args, **kwargs):
         self.info('Generating {} ...'.format(string), prnt=pbar)
         self.PBar.start(self.NRuns if runs is None else len(runs)) if pbar else do_nothing()
         plots = []
-        for i, ana in enumerate(self.get_analyses(runs)):
+        for ana in self.get_analyses(runs):
             plots.append(f(ana, *args, **kwargs))
-            self.PBar.update(i) if pbar else do_nothing()
-        return plots
+            self.PBar.update() if pbar else do_nothing()
+        return array(self.get_flux_average(array(plots)) if avrg else plots)
 
     def generate_plots(self, string, f, pbar=True, *args, **kwargs):
         return self.generate_run_plots(string, f, runs=None, pbar=pbar, *args, **kwargs)
@@ -239,9 +243,9 @@ class AnalysisCollection(Analysis):
 
         return do_pickle(pickle_path, f, redo=redo)
 
-    def get_pulse_heights(self, bin_width=None, redo=False, runs=None, corr=True, err=True, pbar=True):
+    def get_pulse_heights(self, bin_width=None, redo=False, runs=None, corr=True, err=True, pbar=True, avrg=False):
         error = self.get_repr_error(110, redo) if err else 0
-        return array([ufloat(v.n, v.s + error) for v in self.get_run_values('pulse heights', self.Analysis.get_pulse_height, runs, pbar, bin_size=bin_width, redo=redo, corr=corr)])
+        return array([ufloat(v.n, v.s + error) for v in self.get_run_values('pulse heights', self.Analysis.get_pulse_height, runs, pbar, avrg, bin_size=bin_width, redo=redo, corr=corr)])
 
     def get_pulse_height(self):
         return mean_sigma(self.get_pulse_heights())
@@ -558,7 +562,7 @@ class AnalysisCollection(Analysis):
         return ls.GetMean(), ls.GetStdDev()
 
     def draw_signal_spread(self, redo=False, show=True, save=True):
-        values = self.get_pulse_heights(redo=redo, pbar=False, err=False)[self.get_fluxes().argsort()]  # sort pedestal by ascending fluxes
+        values = self.get_pulse_heights(redo=redo, pbar=False, err=False)[self.get_fluxes().argsort()]  # sort by ascending fluxes
         rel_values = array([value - mean(lst) for lst in split(values, self.get_flux_splits(show=False)) for value in lst if lst.size > 1])
         if rel_values.size < 2:
             warning('Not enough data for signal spread ...')
