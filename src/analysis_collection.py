@@ -188,8 +188,8 @@ class AnalysisCollection(Analysis):
     def get_times(self, runs=None):
         return self.get_run_values('times', DUTAnalysis.get_time, runs, pbar=False)
 
-    def get_x_var(self, vs_time=False, rel_time=False, rel_error=0.):
-        return array(self.get_times()) - (time_stamp(self.FirstAnalysis.Run.LogStart) + 3600 if rel_time else 0) if vs_time else array(self.get_fluxes(rel_error))
+    def get_x_var(self, vs_time=False, rel_time=False, rel_error=0., avrg=False):
+        return array(self.get_times()) - (time_stamp(self.FirstAnalysis.Run.LogStart) + 3600 if rel_time else 0) if vs_time else array(self.get_fluxes(rel_error, avrg=avrg))
 
     def get_irradiation(self):
         return self.FirstAnalysis.get_irradiation()
@@ -356,18 +356,19 @@ class AnalysisCollection(Analysis):
             h.Draw('histy+')
         self.save_plots('FullPulseHeight')
 
-    def get_pulse_height_graph(self, bin_width=None, vs_time=False, first_last=True, redo=False, legend=True, corr=True, err=True):
+    def get_pulse_height_graph(self, bin_width=None, vs_time=False, first_last=True, redo=False, legend=True, corr=True, err=True, avrg=False):
 
         marker_size = 1
         gStyle.SetEndErrorSize(4)
-        x = self.get_x_var(vs_time)
-        g = self.make_tgrapherrors('g', 'stat. error', self.get_color(), marker_size=marker_size, x=x, y=self.get_pulse_heights(bin_width, redo, corr=corr, err=False))
-        values = self.get_pulse_heights(bin_width, redo, corr=corr, err=err)
+        x = self.get_x_var(vs_time, avrg=avrg)
+        g = self.make_tgrapherrors('g', 'stat. error', self.get_color(), marker_size=marker_size, x=x, y=self.get_pulse_heights(bin_width, redo, corr=corr, err=False, avrg=avrg))
+        values = self.get_pulse_heights(bin_width, redo, corr=corr, err=err, avrg=avrg)
         g_errors = self.make_tgrapherrors('gerr', 'full error', marker=0, color=602, marker_size=0, x=x, y=values)
         g1, g_last = [self.make_tgrapherrors('g{}'.format(i), '{} run'.format('last' if i else 'first'), marker=22 - i, color=2, marker_size=1.5, x=[x[i].n], y=[values[i].n]) for i in [0, -1]]
         graphs = [g, g_errors]
+        first_last = first_last and not avrg
         graphs += [g1, g_last] if first_last else []
-        leg = self.make_legend(x2=.37, y2=.4, nentries=len(graphs), w=.2)
+        leg = self.make_legend(x2=.37, y1=.21, nentries=len(graphs), w=.2)
         mg = TMultiGraph('mg_ph', 'Pulse Height vs {mod} - {dia}'.format(mod='Time' if vs_time else 'Flux', dia=self.DUT.Name))
         for gr in graphs:
             leg.AddEntry(gr, gr.GetTitle(), 'l' if gr.GetName() in ['gerr', 'g'] else 'p')
@@ -382,13 +383,12 @@ class AnalysisCollection(Analysis):
                 mg.GetListOfGraphs()[0].GetListOfFunctions().Add(self.draw_tlatex(ix.n, y + ey * 1.2, '{:1.0f}'.format(ana.get_flux().n), color=1, align=21, size=.02, show=0))
         return mg
 
-    def draw_scaled_pulse_heights(self, scale=1, binning=None, vs_time=False, show=True, y_range=None, redo=False, scale_to_low=False):
+    def draw_scaled_pulse_heights(self, scale=1, binning=None, vs_time=False, show=True, y_range=None, redo=False, scale_to_low=False, avrg=False):
 
-        mg = self.get_pulse_height_graph(binning, vs_time, first_last=not vs_time, redo=redo)
+        mg = self.get_pulse_height_graph(binning, vs_time, first_last=not vs_time, redo=redo, avrg=avrg)
         scale_multigraph(mg, scale, scale_to_low)
         y_range = [.95, 1.05] if y_range is None else y_range
         format_histo(mg, y_tit='Scaled Pulse Height', y_off=1.75, x_off=1.3, draw_first=True, y_range=y_range, ndivx=503, center_y=True, **self.get_x_args(vs_time))
-        move_legend(mg.GetListOfFunctions()[0], .25, .20)
         self.draw_histo(mg, '', show, lm=.14, draw_opt='a', logx=not vs_time, grid=vs_time, gridy=True, bm=.18)
         self.draw_irradiation(make_irr_string(self.RunSelection.get_irradiation()))
         self.save_plots('ScaledPulseHeights{}'.format('Time' if vs_time else 'Flux'))
