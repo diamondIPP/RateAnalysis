@@ -47,9 +47,9 @@ class PeakAnalysis(Analysis):
         values, n_peaks = self.find_all()
         return array(split(values, cumsum(n_peaks)[:-1]))
 
-    def draw(self, corr=True, scale=False, fit=False, split_=1, y_range=None, show=True, redo=False):
+    def draw(self, corr=True, scale=False, fit=False, split_=1, thresh=None, y_range=None, show=True, redo=False):
         def f():
-            values, n_peaks = self.find_all(redo=redo, fit=fit)
+            values, n_peaks = self.find_all(redo=redo, fit=fit, thresh=thresh)
             if corr:
                 values = array(split(values, cumsum(n_peaks)[:-1]))
                 peaks = self.get_all()
@@ -64,7 +64,7 @@ class PeakAnalysis(Analysis):
                 v = values[i]
                 hs[i].FillN(v.size, array(v, 'd'), ones(v.size))
             return hs[0] if split_ == 1 else hs
-        h = do_pickle(self.make_pickle_path('Peaks', 'Histo', self.Ana.RunNumber, self.Channel, suf=None if split_ == 1 else split_), f, redo=redo)
+        h = do_pickle(self.make_simple_pickle_path('Histo', '{}{}'.format('' if split_ == 1 else split_, '' if thresh is None else '_{:1.0f}'.format(thresh))), f, redo=redo)
         if scale:
             h.Sumw2()
             h.Scale(1e5 / self.Ana.Waveform.get_all().shape[0])
@@ -108,8 +108,8 @@ class PeakAnalysis(Analysis):
         format_histo(h0, x_tit='Peak Height', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
         self.draw_histo(h0, show=show)
 
-    def find_all(self, redo=False, fit=False):
-        hdf5_path = self.make_hdf5_path('Peaks', run=self.Ana.RunNumber, ch=self.Channel, suf=int(fit))
+    def find_all(self, redo=False, fit=False, thresh=None):
+        hdf5_path = self.make_simple_hdf5_path(suf='{}{}'.format(int(fit), '' if thresh is None else '_{:1.0f}'.format(thresh)))
         if file_exists(hdf5_path) and not redo:
             f = h5py.File(hdf5_path, 'r')
             return f['values'], f['n_peaks']
@@ -118,7 +118,7 @@ class PeakAnalysis(Analysis):
         wfs = self.Ana.Waveform.get_all()
         self.Ana.PBar.start(wfs.shape[0])
         for wf, tc in zip(wfs, self.Ana.Waveform.get_trigger_cells()):
-            peak_times.append(self.find(wf, tc, fit=fit))
+            peak_times.append(self.find(wf, tc, fit=fit, thresh=thresh))
             self.Ana.PBar.update()
         find_n_peaks = vectorize(size, otypes=['u2'])
         values, n_peaks = concatenate(peak_times), find_n_peaks(peak_times)
@@ -127,8 +127,8 @@ class PeakAnalysis(Analysis):
         f.create_dataset('n_peaks', data=n_peaks)
         return f['values'], f['n_peaks']
 
-    def find(self, values, trigger_cell, fit=False):
-        peak_values = find_peaks(values, height=self.NoiseThreshold, distance=2, prominence=20)[0]
+    def find(self, values, trigger_cell, fit=False, thresh=None):
+        peak_values = find_peaks(values, height=self.NoiseThreshold if thresh is None else thresh, distance=2, prominence=20)[0]
         if fit:
             return self.fit(values, peak_values, trigger_cell)
         return array([self.Ana.Waveform.get_calibrated_time(trigger_cell, value) for value in peak_values])
