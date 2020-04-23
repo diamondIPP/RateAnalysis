@@ -127,6 +127,9 @@ class Analysis(Draw):
     def make_hdf5_path(self, sub_dir, name=None, run=None, ch=None, suf=None, camp=None):
         return self.make_pickle_path(sub_dir, name, run, ch, suf, camp).replace('pickle', 'hdf5')
 
+    def make_simple_hdf5_path(self, *args, **kwargs):
+        return self.make_simple_pickle_path(*args, **kwargs).replace('pickle', 'hdf5')
+
     # TODO: move to higher analysis
     def calc_time_difference(self, m1, m2, p=None):
         return t_diff(self.PathLength, self.Momentum if p is None else p, m1, m2) % self.BunchSpacing
