@@ -28,6 +28,10 @@ class Waveform(Analysis):
         self.StartEvent = self.Ana.StartEvent
         self.BinWidth = self.Ana.DigitiserBinWidth
 
+    def get_binning(self, bin_size=.5):
+        bins = arange(0, self.Run.NSamples * self.Ana.DigitiserBinWidth, bin_size)
+        return [bins.size, bins]
+
     def draw(self, n=1, cut=None, start_event=None, t_corr=True, channel=None, show=True, x_range=None, y_range=None, grid=False, x=None, raw=False):
         """ Draws a stack of n waveforms. """
         title = '{n}{tc} Waveform{p}'.format(n=n, tc=' Time Corrected' if t_corr else '', p='s' if n > 1 else '')
@@ -150,6 +154,10 @@ class Waveform(Analysis):
 
     def get_calibrated_time(self, t, b):
         return self.Run.TCalSum[t + b] - self.Run.TCalSum[t]
+
+    def get_bin(self, tc, t):
+        lst = where(self.Run.TCalSum == t + self.Run.TCalSum[tc])[0]
+        return lst[0] - tc if lst.size else None
 
     def reset(self):
         self.Count = 0
