@@ -30,7 +30,7 @@ class Waveform(Analysis):
 
     def get_binning(self, bin_size=.5):
         bins = arange(0, self.Run.NSamples * self.Ana.DigitiserBinWidth, bin_size)
-        return [bins.size, bins]
+        return [bins.size - 1, bins]
 
     def draw(self, n=1, cut=None, start_event=None, t_corr=True, channel=None, show=True, x_range=None, y_range=None, grid=False, x=None, raw=False):
         """ Draws a stack of n waveforms. """
