@@ -27,6 +27,8 @@ class PeakAnalysis(Analysis):
         self.InfoLegend = InfoLegend(pad_analysis)
         self.StartAdditional = self.get_start_additional()
         self.NBunches = self.calc_n_bunches()
+        self.BinWidth = self.Ana.DigitiserBinWidth
+        self.BunchSpacing = self.Ana.BunchSpacing
         self.set_pickle_sub_dir('Peaks')
 
     def calc_threshold(self):
