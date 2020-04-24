@@ -188,7 +188,7 @@ class PeakAnalysis(Analysis):
         self.get_flux(n_peaks)
         return h
 
-    def draw_n_bunch(self, b=0, show=True):
+    def draw_n_bunch(self, b=0, y_range=None, show=True):
         bunches = self.find_bunches()
         times = self.get_n_signals(n=2)
         times = times[[any((bunches[b] < lst) & (lst < bunches[b + 1])) for lst in times]]  # select events with a peak in bunch b
@@ -196,11 +196,12 @@ class PeakAnalysis(Analysis):
         h = TH1F('h2a', '2 Additional Peaks for Bunch {}'.format(b), *self.get_binning())
         h.FillN(times.size, times.astype('d'), ones(times.size))
         self.format_statbox(entries=True)
-        format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
+        format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor, y_range=y_range)
         self.draw_histo(h, lm=.12, show=show, x=1.5, y=0.75, logy=True)
         return times
 
-    def draw_bunch_systematics(self, n=3, show=True):
+    def draw_bunch_systematics(self, n=None, show=True):
+        n = self.NBunches - 1 if n is None else n
         bunches = self.find_bunches()
         times = self.get_n_signals(n=2)
         peaks_per_bunch = zeros(n + 1, dtype='u4')
@@ -214,7 +215,8 @@ class PeakAnalysis(Analysis):
                             peaks_per_bunch[i] += 1
             self.PBar.update()
         peaks_per_bunch = [ufloat(v, sqrt(v)) for v in peaks_per_bunch] / arange(self.NBunches, self.NBunches - n - 1, -1)  # add errors and normalise
-        g = self.make_tgrapherrors('g', 'Bunch Systematics', x=arange(peaks_per_bunch.size), y=peaks_per_bunch)
+        n_peaks = peaks_per_bunch[1:]  # exclude the signal peak
+        g = self.make_tgrapherrors('g', 'Bunch Systematics', x=arange(1, n_peaks.size + 1), y=n_peaks)
         format_histo(g, x_tit='Bunch after a Signal', y_tit='Average Number of Peaks', y_off=1.3)
         self.draw_histo(g, lm=.12, show=show)
 
