@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from analysis import *
-from ROOT import TH1F, TCut
+from ROOT import TH1F, TCut, TProfile
 from scipy.signal import find_peaks, savgol_filter
 from numpy import polyfit, pi, RankWarning, vectorize, size, split, ones
 from warnings import simplefilter
@@ -28,7 +28,7 @@ class PeakAnalysis(Analysis):
         self.StartAdditional = self.get_start_additional()
         self.NBunches = self.calc_n_bunches()
         self.BinWidth = self.Ana.DigitiserBinWidth
-        self.BunchSpacing = self.Ana.BunchSpacing
+        self.BunchSpacing = self.Ana.BunychSpacing
         self.set_pickle_sub_dir('Peaks')
 
     def calc_threshold(self):
@@ -72,6 +72,23 @@ class PeakAnalysis(Analysis):
             format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor, y_range=y_range)
             self.draw_histo(h, lm=.12, show=show, x=1.5, y=0.75, logy=True)
         return h
+
+    def correct_times(self, times, n_peaks):
+        times = array(split(times, cumsum(n_peaks)[:-1]))
+        peaks = self.get_all()
+        self.PBar.start(times.size)
+        for i in xrange(times.size):
+            times[i] -= peaks[i] - peaks[0]
+            self.PBar.update()
+        return concatenate(times)
+
+    def draw_heights(self, bin_size=1, corr=True, show=True):
+        times, heights, n_peaks = self.find_all()
+        times = self.correct_times(times, n_peaks) if corr else times
+        p = TProfile('pph', 'Peak Heights', *self.get_binning(bin_size))
+        p.FillN(times.size, array(times).astype('d'), array(heights).astype('d'), ones(times.size))
+        format_histo(p, x_tit='Time [ns]', y_tit='Peak Height [mV]', y_off=1.3)
+        self.draw_histo(p, lm=.12, show=show, x=1.5, y=0.75)
 
     def find_additional(self, h=None, scale=False, show=True):
         values = get_hist_vec(self.draw(scale=scale, show=False) if h is None else h)[self.StartAdditional:]
@@ -165,6 +182,13 @@ class PeakAnalysis(Analysis):
         self.save_histo(h, 'PeakNumbers{}'.format('Fit' if do_fit else ''), show, logy=True, lm=.11)
         self.get_flux(n_peaks)
         return h
+
+    def draw_n_bunch(self, show=True):
+        times = self.get()
+        for i in range(times.size):
+            times[i] = times[i][(times[i] > self.StartAdditional * self.BinWidth)]
+
+        return array([lst.size for lst in times], dtype='u2')
 
     def get_flux(self, n_peaks=None, redo=False, prnt=True):
         def f():
