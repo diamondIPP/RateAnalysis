@@ -46,7 +46,7 @@ class Run:
         self.RootFile = None
         self.Tree = None
         self.TreeName = self.Config.get('BASIC', 'treename')
-        self.DUTs = [DUT(i + 1, self.RunInfo) for i in xrange(self.get_n_diamonds())]
+        self.DUTs = [DUT(i + 1, self.RunInfo) for i in xrange(self.get_n_diamonds())] if self.RunNumber is not None else None
 
         # Settings
         self.PixelSize = loads(self.MainConfig.get('PIXEL', 'size'))
