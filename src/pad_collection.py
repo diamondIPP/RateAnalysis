@@ -356,11 +356,12 @@ class PadCollection(AnalysisCollection):
         self.draw_histo(g, show=show, lm=.12)
 
     def compare_fluxes(self, normalise=False, fit=True, log_=True, corr=False, avrg=False, redo=False, y_range=None, show=True):
-        f0 = self.get_fluxes(corr=corr, avrg=avrg, rel_error=-.09)
+        f0 = self.get_fluxes(corr=corr, avrg=avrg, rel_error=-.07)
         f1 = self.get_values('Peak fluxes', self.Analysis.get_peak_flux, avrg=avrg, prnt=False, redo=redo) / (f0 if normalise else 1)
         f1 /= mean(f1) if normalise else 1.
         g = self.make_tgrapherrors('gff', 'FAST-OR Flux vs Peak Flux', x=f0, y=f1)
         x_range = self.Bins.FluxRange
+        y_range = self.Bins.FluxRange if y_range is None else y_range
         format_histo(g, x_tit='FAST-OR Flux [kHz/cm^{2}]', y_tit='Peak Flux {}'.format('/ FAST-OR Flux' if normalise else '[kHz/cm^{2}]'), y_off=1.3, x_off=1.2, y_range=y_range, x_range=x_range)
         if fit:
             self.format_statbox(only_fit=True, w=.2, x=.5)
