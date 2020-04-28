@@ -2,7 +2,7 @@
 #       cut sub class to handle all the cut strings for the DUTs with digitiser
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from analysis import load_json, get_base_dir, OrderedDict, critical, Analysis, join
+from analysis import load_json, get_base_dir, OrderedDict, critical, Analysis, join, ufloat
 from json import load, loads
 
 
@@ -25,7 +25,8 @@ class DUT:
         self.Thickness = self.load_spec('thickness', typ=int, default=500)
         self.CCD = self.load_spec('CCD', typ=int)
         self.Size = self.load_spec('size', lst=True)
-        self.Metal = self.load_spec('metal', typ=float)
+        self.PadSize = self.load_spec('metal', typ=float, error=.02)
+        self.ActiveArea = self.PadSize ** 2 if self.PadSize is not None else None
         self.GuardRing = self.load_spec('guard ring', typ=float)
 
     def __str__(self):
@@ -42,9 +43,9 @@ class DUT:
     def get_irradiation(self, tc):
         return self.Irradiation[tc] if tc in self.Irradiation else critical('Please add "{}" to the irradiation file for {}'.format(self.Name, tc))
 
-    def load_spec(self, section, typ=None, lst=False, default=None):
+    def load_spec(self, section, typ=None, lst=False, error=None, default=None):
         spec = default if section not in self.Specs or self.Specs[section] == 'None' else self.Specs[section] if typ is None else typ(self.Specs[section])
-        return loads(spec) if lst and spec is not None else spec
+        return loads(spec) if lst and spec is not None else ufloat(spec, error) if error is not None and spec is not None else spec
 
     def set_number(self, value):
         self.Number = value

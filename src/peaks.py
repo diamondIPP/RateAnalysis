@@ -256,7 +256,8 @@ class PeakAnalysis(Analysis):
         return value
 
     def get_area(self, bcm=False):
-        return self.get_bcm_area() if bcm else ufloat(self.MainConfig.getfloat('PAD', 'size'), .003) ** 2
+        """ :returns area of the DUT in cm^2"""
+        return self.get_bcm_area() if bcm else self.DUT.ActiveArea * .01
 
     def get_bcm_area(self):
         """ return the total area of the BCM' pad sizes """
