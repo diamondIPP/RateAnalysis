@@ -35,6 +35,7 @@ from scipy import constants
 import h5py
 from functools import partial
 from Queue import Queue
+from json import load
 
 OFF = False
 ON = True
@@ -656,15 +657,15 @@ def get_quantiles(values, bins):
     return (bins + bin_width)[searchsorted(cumsum(entries), arange(0, 100, .01) * sum(entries))]
 
 
-def load_root_files(sel, load=True):
+def load_root_files(sel, init=True):
     threads = {}
     for run in sel.get_selected_runs():
-        thread = MyThread(sel, run, load)
+        thread = MyThread(sel, run, init)
         thread.start()
         threads[run] = thread
-    while any([thread.isAlive() for thread in threads.itervalues()]) and load:
+    while any([thread.isAlive() for thread in threads.itervalues()]) and init:
         sleep(.1)
-    if load:
+    if init:
         pool = Pool(len(threads))
         results = [pool.apply_async(get_time_vec, (thread.Selection, thread.Run)) for thread in threads.itervalues()]
         times = [result.get(60) for result in results]
@@ -675,9 +676,9 @@ def load_root_files(sel, load=True):
 
 
 class MyThread(Thread):
-    def __init__(self, sel, run, load=True):
+    def __init__(self, sel, run, init=True):
         Thread.__init__(self)
-        self.Load = load
+        self.Load = init
         self.Run = run
         self.Selection = sel
         self.File = None
@@ -807,6 +808,11 @@ def load_parser(name):
     p = ConfigParser()
     p.read(name)
     return p
+
+
+def load_json(name):
+    with open(name) as f:
+        return load(f)
 
 
 def measure_time(f, rep=1, *args, **kwargs):
