@@ -113,9 +113,10 @@ class PeakAnalysis(Analysis):
         self.draw_histo(g, show=show, x=1.5, y=.75, gridy=1)
         return mean(values[peaks[0]])
 
-    def find_bunches(self):
+    def find_bunches(self, center=False):
         values = get_hist_vec(self.draw(show=False))[self.StartAdditional:]
-        bunches = (find_peaks([v.n for v in values], height=max(values).n / 2., distance=self.Ana.BunchSpacing)[0] + self.StartAdditional - self.BunchSpacing / self.BinWidth / 2.) * self.BinWidth
+        bunches = (find_peaks([v.n for v in values], height=max(values).n / 2., distance=self.Ana.BunchSpacing)[0] + self.StartAdditional) * self.BinWidth
+        bunches -= self.BunchSpacing / 2. if not center else 0
         return concatenate([bunches, [bunches[-1] + self.BunchSpacing]])
 
     def find_n_additional(self, start_bunch=None, end_bunch=None):
