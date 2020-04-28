@@ -31,10 +31,6 @@ size = [0.015, 0.010]
 # [columns, row]
 amount = [52, 80]
 
-[PAD]
-# cm
-size = 0.38
-
 [Directories]
 software = ~/..
 eudaq = eudaq-drs4
