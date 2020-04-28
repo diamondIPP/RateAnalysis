@@ -205,7 +205,7 @@ class PeakAnalysis(Analysis):
 
     def draw_n_bunch(self, b=0, y_range=None, show=True):
         bunches = self.find_bunches()
-        times = self.get_n_signals(n=2)
+        times = self.get_n_times(n=2)
         times = times[[any((bunches[b] < lst) & (lst < bunches[b + 1])) for lst in times]]  # select events with a peak in bunch b
         times = concatenate(times)
         h = TH1F('h2a', '2 Additional Peaks for Bunch {}'.format(b), *self.get_binning())
@@ -218,7 +218,7 @@ class PeakAnalysis(Analysis):
     def draw_bunch_systematics(self, n=None, show=True):
         n = self.NBunches - 1 if n is None else n
         bunches = self.find_bunches()
-        times = self.get_n_signals(n=2)
+        times = self.get_n_times(n=2)
         peaks_per_bunch = zeros(n + 1, dtype='u4')
         self.PBar.start(self.NBunches)
         for b in range(self.NBunches):
@@ -235,11 +235,15 @@ class PeakAnalysis(Analysis):
         format_histo(g, x_tit='Bunch after a Signal', y_tit='Average Number of Peaks', y_off=1.3)
         self.draw_histo(g, lm=.12, show=show)
 
-    def get_n_signals(self, n=2):
+    def get_n_times(self, n=2, ret_indices=False):
+        """ :returns all times with exactly [n] additional peaks. """
         times = self.get()
         for i in range(times.size):
             times[i] = times[i][(times[i] > self.StartAdditional * self.BinWidth)]
-        return times[array([lst.size for lst in times]) == n]  # select all events with two additional peaks
+        return where(array([lst.size for lst in times]) == n)[0] if ret_indices else times[array([lst.size for lst in times]) == n]  # select all events with two additional peaks
+
+    def get_n(self, n=1):
+        return self.get_n_times(n, ret_indices=True)
 
     def get_flux(self, n_peaks=None, redo=False, prnt=True):
         def f():
