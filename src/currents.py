@@ -115,7 +115,7 @@ class Currents(Analysis):
         elif self.RunSelection.has_selected_runs():
             return self.RunSelection.SelectedDUT
         from dut_analysis import DUT
-        return DUT(number, next(log['dia{}'.format(self.DUT.Number)] for log in self.RunLogs.itervalues() if conv_log_time(log['starttime0']) > self.Begin))
+        return DUT(number, next(log for log in self.RunLogs.itervalues() if conv_log_time(log['starttime0']) > self.Begin))
 
     def get_device_str(self):
         if self.Analysis is not None:
