@@ -93,6 +93,17 @@ class PeakAnalysis(Analysis):
         format_histo(p, x_tit='Time [ns]', y_tit='Peak Height [mV]', y_off=1.3, stats=0, fill_color=self.FillColor)
         self.draw_histo(p, lm=.12, show=show, x=1.5, y=0.75)
 
+    def draw_combined_heights(self, hist=False, show=True):
+        s1_indices = self.get_n()
+        times, heights = concatenate(self.get()[s1_indices]), concatenate(self.get_heights()[s1_indices])
+        x = self.correct_times_for_events(times[times > self.StartAdditional * self.BinWidth] % self.BunchSpacing, s1_indices)
+        y = heights[times > self.StartAdditional * self.BinWidth]
+        p = TProfile('pcph', 'Combined Bunch Pulse Heights', int(ceil(self.BunchSpacing)) * 2, 0, ceil(self.BunchSpacing))
+        p = TH1F('hcph', 'Combined Number of Peaks for all Bunches', int(ceil(self.BunchSpacing)) * 2, 0, ceil(self.BunchSpacing)) if hist else p
+        p.FillN(x.size, x.astype('d'), ones(x.size)) if hist else p.FillN(x.size, x.astype('d'), y.astype('d'), ones(x.size))
+        format_histo(p, x_tit='Time [ns]', y_tit='Number of Peaks' if hist else 'Peak Height [mV]', y_off=1.6, stats=0, fill_color=self.FillColor)
+        self.draw_histo(p, lm=.12, show=show)
+
     def find_additional(self, h=None, scale=False, show=True):
         values = get_hist_vec(self.draw(scale=scale, show=False) if h is None else h)[self.StartAdditional:]
         peaks = find_peaks([v.n for v in values], height=max(values).n / 2., distance=self.Ana.BunchSpacing)
