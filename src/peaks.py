@@ -52,6 +52,10 @@ class PeakAnalysis(Analysis):
         times, heights, n_peaks = self.find_all()
         return array(split(times, cumsum(n_peaks)[:-1]))
 
+    def get_heights(self):
+        times, heights, n_peaks = self.find_all()
+        return array(split(heights, cumsum(n_peaks)[:-1]))
+
     def draw(self, corr=True, scale=False, split_=1, thresh=None, y_range=None, show=True, redo=False):
         def f():
             times, heights, n_peaks = self.find_all(redo=redo, thresh=thresh)
