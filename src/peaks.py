@@ -251,7 +251,7 @@ class PeakAnalysis(Analysis):
             lambda_ = ufloat(mean(n), sqrt(mean(n) / n.size))
             flux = lambda_ / (self.Ana.BunchSpacing * self.NBunches * self.get_area()) * 1e6
             return flux
-        value = do_pickle(self.make_pickle_path('Peaks', 'Flux', self.Ana.RunNumber, self.Channel), f, redo=redo)
+        value = do_pickle(self.make_simple_pickle_path('Flux'), f, redo=redo)
         self.info('Estimated Flux by number of peaks: {}'.format(make_flux_string(value)), prnt=prnt)
         return value
 
