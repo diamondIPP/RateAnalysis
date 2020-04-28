@@ -7,7 +7,7 @@
 from analysis import *
 from ROOT import TH1F, TCut, TProfile
 from scipy.signal import find_peaks, savgol_filter
-from numpy import polyfit, pi, RankWarning, vectorize, size, split, ones
+from numpy import polyfit, pi, RankWarning, vectorize, size, split, ones, ceil, repeat
 from warnings import simplefilter
 from InfoLegend import InfoLegend
 
@@ -73,25 +73,24 @@ class PeakAnalysis(Analysis):
             h.Scale(1e5 / self.Ana.Waveform.get_all().shape[0])
         if show:
             self.format_statbox(entries=True)
-            format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor, y_range=y_range)
+            format_histo(h, x_tit='Time [ns]', y_tit='Number of Peaks', y_off=1.3, fill_color=self.FillColor, y_range=y_range)
             self.draw_histo(h, lm=.12, show=show, x=1.5, y=0.75, logy=True)
         return h
 
     def correct_times(self, times, n_peaks):
-        times = array(split(times, cumsum(n_peaks)[:-1]))
-        peaks = self.get_all()
-        self.PBar.start(times.size)
-        for i in xrange(times.size):
-            times[i] -= peaks[i] - peaks[0]
-            self.PBar.update()
-        return concatenate(times)
+        correction = repeat(self.get_all(), n_peaks) - self.get_all()[0]
+        return times - correction
 
-    def draw_heights(self, bin_size=1, corr=True, show=True):
+    def correct_times_for_events(self, times, indices):
+        correction = array(self.get_all())[indices] - self.get_all()[0]
+        return times - correction
+
+    def draw_heights(self, bin_size=.5, corr=True, show=True):
         times, heights, n_peaks = self.find_all()
         times = self.correct_times(times, n_peaks) if corr else times
         p = TProfile('pph', 'Peak Heights', *self.get_binning(bin_size))
         p.FillN(times.size, array(times).astype('d'), array(heights).astype('d'), ones(times.size))
-        format_histo(p, x_tit='Time [ns]', y_tit='Peak Height [mV]', y_off=1.3)
+        format_histo(p, x_tit='Time [ns]', y_tit='Peak Height [mV]', y_off=1.3, stats=0, fill_color=self.FillColor)
         self.draw_histo(p, lm=.12, show=show, x=1.5, y=0.75)
 
     def find_additional(self, h=None, scale=False, show=True):
