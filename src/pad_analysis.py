@@ -158,7 +158,7 @@ class PadAnalysis(DUTAnalysis):
         n = self.Tree.Draw('{}:{}'.format(self.get_t_var(), self.generate_signal_name()), self.Cut(cut), 'goff')
         return self.Run.get_root_vecs(n, 2)
 
-    def get_pulse_height(self, bin_size=None, cut=None, redo=False, corr=True, sig=None):
+    def get_pulse_height(self, bin_size=None, cut=None, redo=False, corr=True, sig=None, sys_err=0):
         correction = '' if not corr else '_eventwise'
         suffix = '{bins}{cor}_{c}'.format(bins=self.Bins.BinSize if bin_size is None else bin_size, cor=correction, reg=self.get_short_regint(sig), c=self.Cut(cut).GetName())
         picklepath = self.make_pickle_path('Ph_fit', 'Fit', self.RunNumber, self.DUT.Number, suf=suffix)
@@ -167,7 +167,8 @@ class PadAnalysis(DUTAnalysis):
             p, fit_pars = self.draw_pulse_height(bin_size=bin_size, cut=self.Cut(cut), corr=corr, show=False, save=False, redo=redo)
             return fit_pars
 
-        return make_ufloat(do_pickle(picklepath, f, redo=redo), par=0)
+        ph = make_ufloat(do_pickle(picklepath, f, redo=redo), par=0)
+        return ufloat(ph.n, ph.s + sys_err)
 
     def get_pedestal(self, pulser=False, par=1, redo=False):
         return self.Pulser.get_pedestal(par, redo) if pulser else self.Pedestal.get_par(par, redo=redo)

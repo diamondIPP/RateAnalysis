@@ -67,7 +67,7 @@ class DUTAnalysis(TelecopeAnalysis):
     def get_ph_str(self):
         pass
 
-    def get_pulse_height(self, bin_size=None, cut=None, redo=False, corr=None):
+    def get_pulse_height(self, *args, **kwargs):
         pass
 
     def get_sm_data(self, cut=None, fid=False):
