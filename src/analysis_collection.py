@@ -247,7 +247,7 @@ class AnalysisCollection(Analysis):
 
     def get_pulse_heights(self, bin_width=None, redo=False, runs=None, corr=True, err=True, pbar=True, avrg=False):
         error = self.get_repr_error(110, redo) if err else 0
-        return array([ufloat(v.n, v.s + error) for v in self.get_run_values('pulse heights', self.Analysis.get_pulse_height, runs, pbar, avrg, bin_size=bin_width, redo=redo, corr=corr)])
+        return self.get_run_values('pulse heights', self.Analysis.get_pulse_height, runs, pbar, avrg, bin_size=bin_width, redo=redo, corr=corr, sys_err=error)
 
     def get_pulse_height(self):
         return mean_sigma(self.get_pulse_heights())
@@ -396,9 +396,9 @@ class AnalysisCollection(Analysis):
         self.save_plots('ScaledPulseHeights{}'.format('Time' if vs_time else 'Flux'))
         return mg.GetListOfGraphs()[0]
 
-    def draw_pulse_heights(self, bin_width=None, vs_time=False, show=True, show_first_last=True, save_comb=False, y_range=None, corr=True, redo=False, prnt=True, err=True):
+    def draw_pulse_heights(self, bin_width=None, vs_time=False, show=True, show_first_last=True, save_comb=False, y_range=None, corr=True, redo=False, prnt=True, err=True, avrg=False):
 
-        mg = self.get_pulse_height_graph(bin_width, vs_time, show_first_last, redo, corr=corr, err=err)
+        mg = self.get_pulse_height_graph(bin_width, vs_time, show_first_last, redo, corr=corr, err=err, avrg=avrg)
 
         # small range
         ymin, ymax = [getattr(mg.GetListOfGraphs()[0].GetYaxis(), 'GetX{}'.format(w))() for w in ['min', 'max']]
@@ -569,11 +569,12 @@ class AnalysisCollection(Analysis):
         if rel_values.size < 2:
             warning('Not enough data for signal spread ...')
             return
-        h = TH1F('hps', 'Relative Signal Spread', 40, -2, 2)
-        h.FillN(rel_values.size, array([v.n for v in rel_values], 'd'), full(rel_values.size, 1, 'd'))
-        self.format_statbox(all_stat=True)
-        format_histo(h, x_tit='Relative Signal', y_tit='Number of Entries', y_off=1.2)
-        self.save_histo(h, 'SignalSpread', lm=.11, show=show, save=save)
+        if show:
+            h = TH1F('hps', 'Relative Signal Spread', 40, -2, 2)
+            h.FillN(rel_values.size, array([v.n for v in rel_values], 'd'), ones(rel_values.size))
+            self.format_statbox(all_stat=True)
+            format_histo(h, x_tit='Relative Signal', y_tit='Number of Entries', y_off=1.2)
+            self.save_histo(h, 'SignalSpread', lm=.11, show=show, save=save)
         return rel_values
     # endregion PULSE HEIGHT
     # ----------------------------------------
