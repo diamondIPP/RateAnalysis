@@ -363,21 +363,20 @@ class AnalysisCollection(Analysis):
         marker_size = 1
         gStyle.SetEndErrorSize(4)
         x = self.get_x_var(vs_time, avrg=avrg)
-        g = self.make_tgrapherrors('g', 'stat. error', self.get_color(), marker_size=marker_size, x=x, y=self.get_pulse_heights(bin_width, redo, corr=corr, err=False, avrg=avrg))
+        g = self.make_tgrapherrors('g', 'stat. error', self.Colors[0], marker_size=marker_size, x=x, y=self.get_pulse_heights(bin_width, redo, corr=corr, err=False, avrg=avrg))
         values = self.get_pulse_heights(bin_width, redo, corr=corr, err=err, avrg=avrg)
-        g_errors = self.make_tgrapherrors('gerr', 'full error', marker=0, color=602, marker_size=0, x=x, y=values)
+        g_errors = self.make_tgrapherrors('gerr', 'full error', marker=0, color=self.Colors[5], marker_size=0, x=x, y=values)
         g1, g_last = [self.make_tgrapherrors('g{}'.format(i), '{} run'.format('last' if i else 'first'), marker=22 - i, color=2, marker_size=1.5, x=[x[i].n], y=[values[i].n]) for i in [0, -1]]
         graphs = [g, g_errors]
         first_last = first_last and not avrg
         graphs += [g1, g_last] if first_last else []
         leg = self.make_legend(x2=.37, y1=.21, nentries=len(graphs), w=.2)
         mg = TMultiGraph('mg_ph', 'Pulse Height vs {mod} - {dia}'.format(mod='Time' if vs_time else 'Flux', dia=self.DUT.Name))
-        for gr in graphs:
+        for i, gr in enumerate(graphs):
             leg.AddEntry(gr, gr.GetTitle(), 'l' if gr.GetName() in ['gerr', 'g'] else 'p')
             mg.Add(gr, 'p')
         if legend:
             mg.GetListOfFunctions().Add(leg)
-        self.reset_colors()
         if vs_time:
             g = mg.GetListOfGraphs()[0]
             for i, (ana, ix) in enumerate(zip(self.Analyses.itervalues(), x)):
@@ -396,7 +395,7 @@ class AnalysisCollection(Analysis):
         self.save_plots('ScaledPulseHeights{}'.format('Time' if vs_time else 'Flux'))
         return mg.GetListOfGraphs()[0]
 
-    def draw_pulse_heights(self, bin_width=None, vs_time=False, show=True, show_first_last=True, save_comb=False, y_range=None, corr=True, redo=False, prnt=True, err=True, avrg=False):
+    def draw_pulse_heights(self, bin_width=None, vs_time=False, show=True, show_first_last=True, save_comb=False, y_range=None, corr=True, redo=False, prnt=True, err=True, avrg=False, fit=False):
 
         mg = self.get_pulse_height_graph(bin_width, vs_time, show_first_last, redo, corr=corr, err=err, avrg=avrg)
 
@@ -410,10 +409,11 @@ class AnalysisCollection(Analysis):
         mg1 = mg.Clone()
         leg = deepcopy(mg1.GetListOfFunctions()[0])
         mg1.GetListOfFunctions().Clear()
-        format_histo(mg1, 'mg1_ph', draw_first=True, y_range=[0, ymax * 1.1])
-        mg1.GetListOfGraphs()[0].SetLineColor(self.Colors[0])
+        format_histo(mg1, 'mg1_ph', draw_first=True, y_range=[0, ymax * 1.1] if y_range is None else y_range)
+        if fit:
+            self.format_statbox(only_fit=1, form='2.1f')
+            mg1.GetListOfGraphs()[1].Fit('pol0', 'qs')
         self.save_histo(mg1, 'PulseHeightZero{mod}'.format(mod=self.get_mode(vs_time)), not save_comb and show, lm=.14, draw_opt='a', logx=not vs_time, leg=[self.draw_signal_legend(), leg])
-        self.reset_colors()
 
         if save_comb:
             y_min = increased_range([ymin, ymax], .5)[0] if y_range is None else y_range[0]
