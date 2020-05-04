@@ -9,7 +9,7 @@ from VoltageScan import VoltageScan
 from analysis import *
 from dut_analysis import DUTAnalysis
 from telescope_analysis import TelecopeAnalysis
-from numpy import histogram, cumsum, sort, split, exp, log
+from numpy import histogram, cumsum, sort, split, exp, log, ones
 
 
 class AnalysisCollection(Analysis):
@@ -168,18 +168,20 @@ class AnalysisCollection(Analysis):
     def get_fluxes(self, rel_error=0., corr=True, runs=None, avrg=False):
         return self.get_run_values('fluxes', DUTAnalysis.get_flux, runs, pbar=False, avrg=avrg, rel_error=rel_error, corr=corr)
 
-    def get_flux_splits(self, show=True):
-        values = sort([flux.n for flux in self.get_fluxes()])
-        h = TH1F('hmf', 'Fluxes', *log_bins(50, 1, 1e5))
-        h.FillN(values.size, values, full(values.size, 1, 'd'))
-        self.format_statbox(entries=True, h=.2)
-        format_histo(h, x_tit='Flux [kHz/cm^{2}]', y_tit='Number of Entries', y_off=.5, x_off=1.2, lab_size=.05, tit_size=.05)
-        self.draw_histo(h, lm=.07, logx=True, show=show, y=.75, x=1.5, bm=.14)
-        s = TSpectrum(20)
-        s.Search(h, 1)
-        bins = sorted(s.GetPositionX()[i] for i in xrange(s.GetNPeaks()))
-        split_bins = histogram(values, concatenate(([0], [[ibin / 10 ** .1, ibin * 10 ** .1] for ibin in bins], [1e5]), axis=None))[0]
-        return cumsum(split_bins[where(split_bins > 0)])[:-1]
+    def get_flux_splits(self, redo=False, show=True):
+        def f():
+            values = sort([flux.n for flux in self.get_fluxes()])
+            h = TH1F('hmf', 'Fluxes', *log_bins(50, 1, 1e5))
+            h.FillN(values.size, values, full(values.size, 1, 'd'))
+            self.format_statbox(entries=True, h=.2)
+            format_histo(h, x_tit='Flux [kHz/cm^{2}]', y_tit='Number of Entries', y_off=.5, x_off=1.2, lab_size=.05, tit_size=.05)
+            self.draw_histo(h, lm=.07, logx=True, show=show, y=.75, x=1.5, bm=.14)
+            s = TSpectrum(20)
+            s.Search(h, 1)
+            bins = sorted(s.GetPositionX()[i] for i in xrange(s.GetNPeaks()))
+            split_bins = histogram(values, concatenate(([0], [[ibin / 10 ** .1, ibin * 10 ** .1] for ibin in bins], [1e5]), axis=None))[0]
+            return cumsum(split_bins[where(split_bins > 0)])[:-1]
+        return do_pickle(self.make_simple_pickle_path('Splits', sub_dir='Flux'), f, redo=redo or show)
 
     def get_flux_average(self, values):
         values = values[self.get_fluxes().argsort()]  # sort by ascending fluxes
