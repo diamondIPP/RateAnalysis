@@ -119,10 +119,11 @@ class Analysis(Draw):
     def make_simple_pickle_path(self, name='', suf='', sub_dir=None, run=None, dut=None, camp=None):
         directory = join(self.PickleDir, self.PickleSubDir if sub_dir is None else sub_dir)
         campaign = self.TCString if camp is None else camp
-        run = str(run if run is not None else self.RunNumber if hasattr(self, 'RunNumber') else '')
+        run_str = str(run) if run is not None else self.RunPlan if hasattr(self, 'RunPlan') else ''
+        run_str = run_str if run is not None or run_str else str(self.RunNumber) if hasattr(self, 'RunNumber') else ''
         # noinspection PyUnresolvedReferences
         dut = str(dut if dut is not None else self.DUT.Number if hasattr(self, 'DUT') and hasattr(self.DUT, 'Number') else '')
-        return join(directory, '{}.pickle'.format('_'.join([v for v in [name, campaign, run, dut, suf] if v])))
+        return join(directory, '{}.pickle'.format('_'.join([v for v in [name, campaign, run_str, dut, suf] if v])))
 
     def make_hdf5_path(self, sub_dir, name=None, run=None, ch=None, suf=None, camp=None):
         return self.make_pickle_path(sub_dir, name, run, ch, suf, camp).replace('pickle', 'hdf5')
