@@ -146,9 +146,8 @@ class DiaScans(Analysis):
     def get_values(self, f, pickle_info=None, redo=False, load_tree=True, *args, **kwargs):
         return [self.get_rp_values(sel, f, pickle_info, redo, load_tree, *args, **kwargs) for sel in self.Info]
 
-    def get_pulse_heights(self, corr=True, redo=False, err=False):
-        values = self.get_values(AnalysisCollection.get_pulse_heights, PickleInfo('Ph_fit', 'PhVals', '10000_{}'.format(corr)), redo=redo, corr=corr)
-        return [phs + ufloat(0, e) for phs, e in zip(values, self.get_rel_errors(redo=redo))] if err else values
+    def get_pulse_heights(self, avrg=False, redo=False):
+        return self.get_values(AnalysisCollection.get_pulse_heights, PickleInfo('Ph_fit', 'PhVals', '{}'.format(int(avrg))), redo=redo, avrg=avrg)
 
     def get_rate_dependcies(self, redo=False):
         return self.get_values(AnalysisCollection.get_rate_dependence, PickleInfo('Ph_fit', 'RD'), redo=redo)
@@ -177,8 +176,8 @@ class DiaScans(Analysis):
     def get_currents(self):
         return self.get_values(AnalysisCollection.get_currents, PickleInfo('Currents', 'Vals'))
 
-    def get_fluxes(self):
-        return self.get_values(AnalysisCollection.get_fluxes, PickleInfo('Flux', 'Vals'))
+    def get_fluxes(self, avrg=False):
+        return self.get_values(AnalysisCollection.get_fluxes, PickleInfo('Flux', 'Vals', suf='{}'.format(int(avrg)) if avrg else ''), avrg=avrg)
 
     def get_all_infos(self):
         return [sel for tc in self.RunPlans.iterkeys() for sel in self.get_tc_infos(tc)]
@@ -440,7 +439,7 @@ class DiaScans(Analysis):
             self.draw_tpavetext('{dia} Rate Scans{b}'.format(dia=self.DUTName, b=bias_str), lm, 1, 0, 1, font=62, align=13, size=.5, margin=0)
             get_last_canvas().cd()
 
-    def draw_scaled_rate_scans(self, irr=False, y_range=.07, pad_height=.18, scale=1, corr=True):
+    def draw_scaled_rate_scans(self, irr=False, y_range=.07, pad_height=.18, scale=1, avrg=False):
         title_height = pad_height / 2 if self.Title else .03  # half of a pad for title
         c_height = (self.NPlans + .5) * pad_height + title_height  # half of a pad for the x-axis
         c_width = 1.3 * pad_height / .2  # keep aspect ratio for standard pad_height
@@ -452,11 +451,11 @@ class DiaScans(Analysis):
         self.draw_tpavetext('Scaled Pulse Height', 0, 1, 0, 1, align=22, size=.5, angle=90, margin=0)   # y-axis title
         c.cd()
 
-        for i, (ph, error, flux, color) in enumerate(zip(self.get_pulse_heights(corr=corr), self.get_rel_errors(), self.get_fluxes(), get_color_gradient(self.NPlans))):
+        for i, (ph, flux, color) in enumerate(zip(self.get_pulse_heights(avrg=avrg), self.get_fluxes(avrg=avrg), get_color_gradient(self.NPlans))):
+            c.cd()
             y0, y1 = [(c_height - title_height - pad_height * (i + j)) / c_height for j in [1, 0]]
             p = self.draw_tpad('p{i}'.format(i=i + 3), '', pos=[x0, y0, 1, y1], margins=[lm, rm, 0, 0], logx=True, gridy=True, gridx=True)
-            y_values = [make_ufloat((v.n, v.s + error)) for v in ph]
-            g = self.make_tgrapherrors('gsph{}'.format(i), '', x=flux, y=y_values)
+            g = self.make_tgrapherrors('gsph{}'.format(i), '', x=flux, y=ph)
             scale_graph(g, val=scale) if scale else do_nothing()
             format_histo(g, title=' ', color=color, x_range=Bins().FluxRange, y_range=[1 - y_range, 1 + y_range], marker=markers(i), lab_size=size, ndivy=505, markersize=1.5, tick_size=.05)
             self.draw_histo(g, draw_opt='ap', canvas=p)
@@ -468,7 +467,7 @@ class DiaScans(Analysis):
         self.save_plots('ScaledDiaScans{dia}'.format(dia=make_dia_str(self.DUTName)))
 
     def draw_scaled_distribution(self, excluded=None):
-        values = concatenate(([vals / mean_sigma(vals)[0] for i, vals in enumerate(self.get_pulse_heights(err=True)) if i not in [excluded]]))
+        values = concatenate(([vals / mean_sigma(vals)[0] for i, vals in enumerate(self.get_pulse_heights()) if i not in [excluded]]))
         h = TH1F('hsd', 'Scaled Pulse Height Distribution', 40, .9, 1.1)
         h.FillN(values.size, array([v.n for v in values], 'd'), full(values.size, 1, 'd'))
         self.format_statbox(all_stat=1)
