@@ -483,7 +483,7 @@ class Draw:
         y = array([y2 - h if y1 is None else y1, y1 + h if y1 is not None else y2])
         y += .07 if not self.Title and y[1] > .7 else 0
         y -= .07 if not self.Legend and y[1] < .7 else 0
-        leg = TLegend(x1, y[0], x2, y[1])
+        leg = TLegend(x1, max(y[0], 0), x2, min(y[1], 1))
         leg.SetName(name)
         leg.SetTextFont(42)
         leg.SetTextSize(0.03 * scale)
