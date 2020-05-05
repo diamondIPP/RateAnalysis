@@ -7,7 +7,7 @@
 from analysis import *
 from InfoLegend import InfoLegend
 from ROOT import TH1F, TF1, TCut, TH2F, TProfile, THStack, gPad
-from numpy import pi
+from numpy import pi, ones
 
 
 class TimingAnalysis(Analysis):
@@ -99,8 +99,10 @@ class TimingAnalysis(Analysis):
 
         def f():
             set_root_warnings(False)
-            h1 = TH1F(name, '{}Peak Positions'.format('Time Corrected ' if corr else ''), int((xmax - xmin + 20) * (8 if corr else 1 / self.Ana.DigitiserBinWidth)), xmin - 10, xmax + 10)
-            self.Ana.Tree.Draw('{}>>{}'.format(self.get_peak_name(corr, fine_corr, cut, redo=redo), name), cut, 'goff')
+            values = self.Run.get_root_vec(var=self.get_peak_name(corr, fine_corr, cut, redo=redo), cut=cut)
+            n_bins = int((xmax - xmin + 20) * (8 / mean_sigma(values)[1]) if corr else 1 / self.Ana.DigitiserBinWidth)  # adjust bins depending on the width of the distribution
+            h1 = TH1F(name, '{}Peak Positions'.format('Time Corrected ' if corr else ''), n_bins, xmin - 10, xmax + 10)
+            h1.FillN(values.size, values, ones(values.size))
             if not h1.GetEntries():
                 return
             return h1
@@ -178,7 +180,7 @@ class TimingAnalysis(Analysis):
 
     def draw_peaks_tc(self, corr=True, fit=True, cut=None, show=True, prnt=True, save=True, redo=False):
 
-        cut = self.Cut.generate_custom(exclude=['timing'], prnt=prnt) if cut is None else TCut(cut)
+        cut = self.TimingCut if cut is None else self.Cut(cut)
         pickle_path = self.make_pickle_path('Timing', 'PeakTC', self.RunNumber, self.DUT.Number, suf=cut.GetName())
 
         def f():
