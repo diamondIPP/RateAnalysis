@@ -440,10 +440,11 @@ class DiaScans(Analysis):
             get_last_canvas().cd()
 
     def draw_scaled_rate_scans(self, irr=False, y_range=.07, pad_height=.18, scale=1, avrg=False):
+        data = zip(self.get_pulse_heights(avrg=avrg), self.get_fluxes(avrg=avrg), get_color_gradient(self.NPlans))
         title_height = pad_height / 2 if self.Title else .03  # half of a pad for title
         c_height = (self.NPlans + .5) * pad_height + title_height  # half of a pad for the x-axis
         c_width = 1.3 * pad_height / .2  # keep aspect ratio for standard pad_height
-        c = self.make_canvas(name='csr', x=c_width, y=c_height, transp=True, logx=True, gridy=True)
+        c = self.make_canvas(name='csrc', x=c_width, y=c_height, transp=True, logx=True, gridy=True)
         lm, rm, x0, size = .07, .02, .08, .22
 
         self.draw_title_pad(title_height, x0, lm, c_height)
@@ -451,13 +452,13 @@ class DiaScans(Analysis):
         self.draw_tpavetext('Scaled Pulse Height', 0, 1, 0, 1, align=22, size=.5, angle=90, margin=0)   # y-axis title
         c.cd()
 
-        for i, (ph, flux, color) in enumerate(zip(self.get_pulse_heights(avrg=avrg), self.get_fluxes(avrg=avrg), get_color_gradient(self.NPlans))):
+        for i, (ph, flux, color) in enumerate(data):
             c.cd()
             y0, y1 = [(c_height - title_height - pad_height * (i + j)) / c_height for j in [1, 0]]
             p = self.draw_tpad('p{i}'.format(i=i + 3), '', pos=[x0, y0, 1, y1], margins=[lm, rm, 0, 0], logx=True, gridy=True, gridx=True)
             g = self.make_tgrapherrors('gsph{}'.format(i), '', x=flux, y=ph)
             scale_graph(g, val=scale) if scale else do_nothing()
-            format_histo(g, title=' ', color=color, x_range=Bins().FluxRange, y_range=[1 - y_range, 1 + y_range], marker=markers(i), lab_size=size, ndivy=505, markersize=1.5, tick_size=.05)
+            format_histo(g, title=' ', color=color, x_range=Bins().FluxRange, y_range=[1 - y_range, 1 + y_range], marker=markers(i), lab_size=size, ndivy=505, markersize=1.5, x_ticks=.15)
             self.draw_histo(g, draw_opt='ap', canvas=p)
             self.draw_legend(i, g, irr, rm)
             c.cd()
@@ -521,7 +522,7 @@ class DiaScans(Analysis):
         tits = self.get_titles(irr)
         biases = [make_bias_str(bias) for bias in self.get_bias_voltages()] if add_bias else [''] * len(tits)
         x1 = 1 - max([(12 if irr else len(tit)) + len(bias) for tit, bias in zip(tits, biases)]) * .022
-        legend = self.make_legend(x1, 1, x2=1 - rm, nentries=1, scale=5)
+        legend = self.make_legend(x1, 1, x2=1 - rm, nentries=1.2, scale=5)
         legend.AddEntry(gr, tits[ind], 'pe')
         if add_bias:
             legend.SetNColumns(2)
