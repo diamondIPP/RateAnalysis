@@ -165,10 +165,10 @@ class Converter:
                 self.tracking_tel(action='2')
 
     def remove_pickle_files(self):
-        self.Run.info('Removing all pickle files for run {}'.format(self.RunNumber))
-        files = glob(join(self.Run.Dir, 'Configuration', 'Individual_Configs', '*', '*{tc}*_{run}_*'.format(run=self.RunNumber, tc=self.Run.TCString)))
+        files = glob(join(self.Run.Dir, 'Configuration', 'Individual_Configs', '*', '*{tc}*_{run}*'.format(run=self.RunNumber, tc=self.Run.TCString)))
+        self.Run.info('Removing {} pickle files for run {}'.format(len(files), self.RunNumber))
         for f in files:
-            remove(f)
+            remove_file(f)
 
     def rename_tracking_file(self):
         rename(self.get_trackingfile_path(), self.Run.RootFilePath)
