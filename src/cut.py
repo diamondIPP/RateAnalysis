@@ -38,6 +38,9 @@ class Cut:
     def __call__(self, cut=None):
         return self.CutStrings() if cut is None else TCut(cut)
 
+    def has(self, name):
+        return bool(self.get(name).GetTitle())
+
     # ----------------------------------------
     # region CONFIG
     def load_config(self):
