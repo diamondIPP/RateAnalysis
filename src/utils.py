@@ -620,10 +620,6 @@ def do(fs, pars, exe=-1):
         f(p) if e is not None else do_nothing()
 
 
-def markers(i):
-    return (range(20, 24) + [29, 33, 34])[i]
-
-
 def average_list(lst, n):
     return [mean(lst[i:i + n]) for i in arange(0, len(lst), n)] if n > 1 else lst
 

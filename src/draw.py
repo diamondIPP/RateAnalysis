@@ -755,6 +755,10 @@ def get_pull(h, name, bins, fit=True):
     return h_out
 
 
+def markers(i):
+    return ((range(20, 24) + [29, 33, 34]) * 2)[i]
+
+
 def fit_bucket(histo, show=True):
     set_root_output(False)
     h = histo
