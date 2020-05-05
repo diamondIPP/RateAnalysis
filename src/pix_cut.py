@@ -30,7 +30,7 @@ class CutPix(Cut):
         self.CutConfig['col_mask'] = self.load_mask('column')
         self.CutConfig['pixel_mask'] = self.load_mask('pixel')
         self.CutConfig['fiducial'] = self.load_fiducial()
-        self.CutConfig['local_fiducial'] = self.load_fiducial('pixel fiducial')
+        self.CutConfig['local_fiducial'] = self.load_fiducial('pixel fiducial', warn=self.CutConfig['fiducial'] is None)
 
     def load_mask(self, name):
         data = loads(self.get_config(name, section='MASK'))

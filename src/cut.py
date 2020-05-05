@@ -67,19 +67,20 @@ class Cut:
     def set_event_range(self, event_range):
         self.set_config('event_range', self.load_event_range(event_range))
 
-    def load_fiducial(self, name='fiducial'):
+    def load_fiducial(self, name='fiducial', warn=True):
         splits = (loads(self.Config.get('SPLIT', 'fiducial')) if self.Config.has_option('SPLIT', 'fiducial') else []) + [int(1e10)]
         n = next(i + 1 for i in xrange(len(splits)) if self.RunNumber <= splits[i])
         option = name if self.Config.has_option('CUT', name) and n == 1 else '{} {}'.format(name, n)
-        return array(self.load_dut_config(option)) if self.load_dut_config(option) is not None else None
+        return array(self.load_dut_config(option, warn=warn)) if self.load_dut_config(option, warn=warn) is not None else None
 
-    def load_dut_config(self, option, store_true=False):
+    def load_dut_config(self, option, store_true=False, warn=True):
         try:
             conf = loads(self.Config.get('CUT', option))
             dia = self.Analysis.DUT.Name
             return dia in conf if store_true else conf[dia]
         except (KeyError, NoOptionError):
-            log_warning('No option {} in the analysis config for {}!'.format(option, make_tc_str(self.TCString)))
+            if warn:
+                log_warning('No option {} in the analysis config for {}!'.format(option, make_tc_str(self.TCString)))
     # endregion CONFIG
     # ----------------------------------------
 
@@ -392,7 +393,7 @@ class Cut:
         self.Analysis.reset_colors()
         return sorted_contr
 
-    def draw_fid_cut(self, scale=1):
+    def draw_fid_cut(self, scale=10):
         cut = get_object('fid{}'.format(self.RunNumber))
         if cut:
             cut = deepcopy(cut)

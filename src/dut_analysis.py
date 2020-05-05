@@ -128,7 +128,7 @@ class DUTAnalysis(TelecopeAnalysis):
     def draw_signal_distribution(self, *args, **kwargs):
         pass
 
-    def draw_fid_cut(self, scale=1):
+    def draw_fid_cut(self, scale=10):
         self.Cut.draw_fid_cut(scale)
 
     def draw_detector_size(self, scale=1):
