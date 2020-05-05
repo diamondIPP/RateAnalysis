@@ -347,9 +347,9 @@ class PadAnalysis(DUTAnalysis):
         return gr, FitRes(fit)
 
     def draw_ph_vs_time(self):
-        p = TProfile('ppht', 'Pulse Height vs. Peaking Time', 40, 80, 90)
+        p = TProfile('ppht', 'Pulse Height vs. Peaking Time', 40, *(array(self.SignalRegion) * self.DigitiserBinWidth).astype('i'))
         self.Tree.Draw('{}:{}>>ppht'.format(self.generate_signal_name(), self.Timing.get_peak_name(1, 1)), self.Cut.generate_custom(exclude='timing'), 'goff')
-        format_histo(p, x_tit='Peak Timing [ns]', y_tit='Pulse Height [mV]', y_off=1.3)
+        format_histo(p, x_tit='Peak Timing [ns]', y_tit='Pulse Height [mV]', y_off=1.3, stats=0)
         self.draw_histo(p, lm=.12)
 
     def show_ph_overview(self, binning=None):
