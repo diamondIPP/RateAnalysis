@@ -29,10 +29,10 @@ if not pargs.collection:
         w = z.Waveform if pargs.tree else None
     except AttributeError:
         pass
-    chdir('..')
     if pargs.draw:
         get_attribute(z, pargs.command)(**loads(pargs.kwargs))
 else:
     z = collection_selector(pargs.runplan, pargs.dut, pargs.testcampaign, pargs.tree, pargs.verbose)
     if pargs.draw:
         z.draw_all(redo=pargs.redo)
+chdir('..')
