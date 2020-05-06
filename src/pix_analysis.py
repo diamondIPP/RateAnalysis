@@ -105,6 +105,10 @@ class PixAnalysis(DUTAnalysis):
                 self.Fit.SetParameters(*self.Parameters[self.Dut][col][row])
                 dic[(col, row)] = self.Fit.GetX(0) * (self.Bins.VcalToEl if not vcal else 1)
         return dic
+
+    def get_vcal(self, redo=False):
+        h = self.draw_vcal_distribution(show=False, redo=redo)
+        return ufloat(h.GetMean(), h.GetMeanError())
     # endregion GET
     # ----------------------------------------
 
