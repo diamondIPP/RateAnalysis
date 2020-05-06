@@ -118,6 +118,7 @@ class Analysis(Draw):
 
     def make_simple_pickle_path(self, name='', suf='', sub_dir=None, run=None, dut=None, camp=None):
         directory = join(self.PickleDir, self.PickleSubDir if sub_dir is None else sub_dir)
+        ensure_dir(directory)
         campaign = self.TCString if camp is None else camp
         run_str = str(run) if run is not None else self.RunPlan if hasattr(self, 'RunPlan') else ''
         run_str = run_str if run is not None or run_str else str(self.RunNumber) if hasattr(self, 'RunNumber') else ''
