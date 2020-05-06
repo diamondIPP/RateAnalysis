@@ -172,7 +172,8 @@ class AnalysisCollection(Analysis):
         return self.Currents.Name
 
     def get_fluxes(self, rel_error=0., corr=True, runs=None, avrg=False):
-        return self.get_run_values('fluxes', DUTAnalysis.get_flux, runs, pbar=False, avrg=avrg, rel_error=rel_error, corr=corr)
+        picklepath = self.make_simple_pickle_path(sub_dir='Flux', run='{}', dut='')
+        return self.get_run_values('fluxes', DUTAnalysis.get_flux, runs, avrg=avrg, picklepath=picklepath, rel_error=rel_error, corr=corr)
 
     def get_flux_splits(self, redo=False, show=True):
         def f():
@@ -211,13 +212,15 @@ class AnalysisCollection(Analysis):
     def get_currents(self):
         return OrderedDict((key, ana.Currents.get_current()) for key, ana in self.Analyses.iteritems())
 
-    def get_run_values(self, string, f, runs=None, pbar=True, avrg=False, *args, **kwargs):
-        return self.generate_run_plots(string, f, runs, pbar, avrg, *args, **kwargs)
+    def get_run_values(self, string, f, runs=None, pbar=None, avrg=False, picklepath=None, *args, **kwargs):
+        return self.generate_run_plots(string, f, runs, pbar, avrg, picklepath, *args, **kwargs)
 
-    def get_values(self, string, f, pbar=True, avrg=False, *args, **kwargs):
-        return self.generate_run_plots(string, f, runs=None, pbar=pbar, avrg=avrg, *args, **kwargs)
+    def get_values(self, string, f, pbar=True, avrg=False, picklepath=None, *args, **kwargs):
+        return self.generate_run_plots(string, f, None, pbar, avrg, picklepath, *args, **kwargs)
 
-    def generate_run_plots(self, string, f, runs=None, pbar=True, avrg=False, *args, **kwargs):
+    def generate_run_plots(self, string, f, runs=None, pbar=None, avrg=False, picklepath=None, *args, **kwargs):
+        pbar = not all(file_exists(picklepath.format(run)) for run in self.Runs) if picklepath is not None and pbar is None else pbar
+        pbar = True if 'redo' in kwargs and kwargs['redo'] else pbar
         self.info('Generating {} ...'.format(string), prnt=pbar)
         self.PBar.start(self.NRuns if runs is None else len(runs)) if pbar else do_nothing()
         plots = []
@@ -251,9 +254,10 @@ class AnalysisCollection(Analysis):
 
         return do_pickle(pickle_path, f, redo=redo)
 
-    def get_pulse_heights(self, bin_width=None, redo=False, runs=None, corr=True, err=True, pbar=True, avrg=False):
+    def get_pulse_heights(self, bin_width=None, redo=False, runs=None, corr=True, err=True, pbar=None, avrg=False):
         error = self.get_repr_error(110, redo) if err else 0
-        return self.get_run_values('pulse heights', self.Analysis.get_pulse_height, runs, pbar, avrg, bin_size=bin_width, redo=redo, corr=corr, sys_err=error)
+        picklepath = self.make_simple_pickle_path(sub_dir='VCAL', run='{}')
+        return self.get_run_values('pulse heights', self.Analysis.get_pulse_height, runs, pbar, avrg, picklepath, bin_size=bin_width, redo=redo, corr=corr, sys_err=error)
 
     def get_pulse_height(self):
         return mean_sigma(self.get_pulse_heights())
@@ -570,7 +574,7 @@ class AnalysisCollection(Analysis):
         return ls.GetMean(), ls.GetStdDev()
 
     def draw_signal_spread(self, redo=False, show=True, save=True):
-        values = self.get_pulse_heights(redo=redo, pbar=False, err=False)[self.get_fluxes().argsort()]  # sort by ascending fluxes
+        values = self.get_pulse_heights(redo=redo, err=False)[self.get_fluxes().argsort()]  # sort by ascending fluxes
         rel_values = array([value - mean(lst) for lst in split(values, self.get_flux_splits(show=False)) for value in lst if lst.size > 1])
         if rel_values.size < 2:
             warning('Not enough data for signal spread ...')
