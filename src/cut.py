@@ -219,13 +219,13 @@ class Cut:
         description = '{:.1f}% of the events excluded'.format(100. * self.find_n_misaligned() / self.Analysis.Run.NEntries) if self.find_n_misaligned() else ''
         return CutString('aligned', 'aligned[0]' if self.find_n_misaligned() else '', description)
 
-    def generate_fiducial(self, center=False):
+    def generate_fiducial(self, center=False, n_planes=0):
         if self.CutConfig['fiducial'] is None:
             return CutString('fiducial', '', '')
         xy = self.CutConfig['fiducial'] + (([self.Bins.PX / 2] * 2 + [self.Bins.PY / 2] * 2) if center else 0)
         cut = self.Analysis.draw_box(xy[0], xy[2], xy[1], xy[3], line_color=kRed, width=3, name='fid{}'.format(self.RunNumber), show=False)
-        cut.SetVarX(self.get_track_var(self.Analysis.DUT.Number - 1, 'x'))
-        cut.SetVarY(self.get_track_var(self.Analysis.DUT.Number - 1, 'y'))
+        cut.SetVarX(self.get_track_var(self.Analysis.DUT.Number - 1 - n_planes, 'x'))
+        cut.SetVarY(self.get_track_var(self.Analysis.DUT.Number - 1 - n_planes, 'y'))
         self.Analysis.add(cut)
         description = 'x: [{},{}], y: [{},{}], area: {:.1f}mm x {:.1f}mm = {:.1f}mm2'.format(*self.get_fiducial_size())
         return CutString('fiducial', TCut(cut.GetName()) if cut is not None else '', description)
@@ -334,7 +334,7 @@ class Cut:
         times = time_bins[deviating_bins] + bin_width / 2 - self.Analysis.Run.Time[0] / 1000  # shift to the center of the bin
         not_connected = where(concatenate([[False], deviating_bins[:-1] != deviating_bins[1:] - 1]))[0]  # find the bins that are not consecutive
         times = split(times, not_connected)
-        interruptions = [[self.Analysis.get_event_at_time(v) for v in [t[0], t[0] if t.size == 1 else t[-1]]] for t in times]
+        interruptions = [[self.Analysis.get_event_at_time(v) for v in [t[0], t[0] if t.size == 1 else t[-1]]] for t in times] if len(times[0]) else []
         self.Analysis.add_to_info(t_start)
         return interruptions
 
@@ -379,17 +379,15 @@ class Cut:
             contr[key.title().replace('_', ' ')] = (events - cut_events, self.Analysis.get_color())
             cut_events = events
         contr['Good Events'] = (n_events - cut_events, self.Analysis.get_color())
-        print(contr)
         sorted_contr = OrderedDict(sorted(OrderedDict(item for item in contr.iteritems() if item[1][0] >= (.03 * n_events if short else 0)).iteritems(), key=lambda x: x[1]))  # sort by size
         sorted_contr.update({'Other': (n_events - sum(v[0] for v in sorted_contr.values()), self.Analysis.get_color())} if short else {})
         sorted_contr = OrderedDict(sorted_contr.popitem(not i % 2) for i in xrange(len(sorted_contr)))  # sort by largest->smallest->next largest...
-        print(sorted_contr)
         pie = TPie('pie', 'Cut Contributions', len(sorted_contr), array([v[0] for v in sorted_contr.values()], 'f'), array([v[1] for v in sorted_contr.values()], 'i'))
         for i, label in enumerate(sorted_contr.iterkeys()):
             pie.SetEntryRadiusOffset(i, .05)
             pie.SetEntryLabel(i, label)
         format_pie(pie, h=.04, r=.2, text_size=.025, angle3d=70, label_format='%txt (%perc)', angle_off=250)
-        self.Analysis.save_histo(pie, draw_opt='{0}rsc'.format('3d' if not flat else ''), show=show)
+        self.Analysis.save_histo(pie, 'CutContributions', draw_opt='{0}rsc'.format('3d' if not flat else ''), show=show)
         self.Analysis.reset_colors()
         return sorted_contr
 
