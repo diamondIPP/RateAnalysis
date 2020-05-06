@@ -4904,6 +4904,26 @@
       ], 
       "type": "rate scan"
     }, 
+    "04.1": {
+      "attenuators": {
+        "dia1": "None", 
+        "dia2": "None", 
+        "pulser1": "None", 
+        "pulser2": "None"
+      }, 
+      "runs": [
+        69, 
+        70, 
+        71, 
+        72, 
+        73, 
+        74, 
+        75, 
+        76, 
+        77
+      ], 
+      "type": "up scan"
+    }, 
     "05": {
       "attenuators": {
         "dia1": "None", 
