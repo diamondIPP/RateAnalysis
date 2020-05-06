@@ -7,14 +7,12 @@
 from __future__ import print_function
 
 from collections import Counter
-from json import load
 
 from ROOT import TFormula, THStack, TProfile2D, TPie, gRandom, TH3F, TMultiGraph
 from numpy import corrcoef, ceil
-from numpy.random import rand
 
-from pix_cut import CutPix
 from dut_analysis import *
+from pix_cut import CutPix
 
 
 class PixAnalysis(DUTAnalysis):
@@ -55,9 +53,12 @@ class PixAnalysis(DUTAnalysis):
             return [join(calibration_dir, line.strip('\n ') if fits else 'phCalibration_C{}.dat'.format(i)) for i, line in enumerate(f.readlines())]
 
     def check_calibration_files(self):
-        for f1, f2 in zip(self.load_calibration_files(), self.load_calibration_files(fits=True)):
-            log_warning('Calibration file {} does not exist...'.format(basename(f1))) if not file_exists(f1) else do_nothing()
-            log_warning('Calibration file {} does not exist...'.format(basename(f2))) if not file_exists(f2) else do_nothing()
+        files = concatenate([self.load_calibration_files(), self.load_calibration_files(fits=True)])
+        for f in files:
+            if not file_exists(f):
+                log_warning('Calibration file {} does not exist...'.format(basename(f)))
+                return False
+        return True
 
     def load_calibration_fitpars(self, redo=False):
         def f():
