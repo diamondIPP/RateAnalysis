@@ -146,6 +146,9 @@ class Bins:
     def get_global(self, res_fac=None, mm=False):
         return self.get_global_x(res_fac, mm) + self.get_global_y(res_fac, mm)
 
+    def get_global_cood(self, mode, res_fac=None, mm=False):
+        return self.get_global_x(res_fac, mm) if mode == 'x' else self.get_global_y(res_fac, mm)
+
     def get_global_x(self, res_fac=None, mm=False):
         """ calculates the global telescope bins
         :param res_fac: telescope resolution in um
