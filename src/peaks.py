@@ -7,7 +7,7 @@
 from analysis import *
 from ROOT import TH1F, TCut, TProfile
 from scipy.signal import find_peaks, savgol_filter
-from numpy import polyfit, pi, RankWarning, vectorize, size, split, ones, ceil, repeat
+from numpy import polyfit, pi, RankWarning, vectorize, size, split, ones, ceil, repeat, linspace
 from warnings import simplefilter
 from InfoLegend import InfoLegend
 
@@ -22,7 +22,8 @@ class PeakAnalysis(Analysis):
         self.Channel = self.Ana.Channel
         self.DUT = self.Ana.DUT
         self.Tree = self.Ana.Tree
-        self.NoiseThreshold = self.calc_threshold()
+        self.NoiseThreshold = self.calc_noise_threshold()
+        self.Threshold = max(self.NoiseThreshold, self.Ana.get_min_signal(self.Ana.get_signal_name(peak_integral=1)))
         self.Cut = self.Ana.Cut()
         self.InfoLegend = InfoLegend(pad_analysis)
         self.StartAdditional = self.get_start_additional()
@@ -31,9 +32,9 @@ class PeakAnalysis(Analysis):
         self.BunchSpacing = self.Ana.BunchSpacing
         self.set_pickle_sub_dir('Peaks')
 
-    def calc_threshold(self):
-        """ return peak threshold, 6 times the raw noise or the minimum singnal, whatever is higher. """
-        return max(abs(self.Ana.Pedestal.get_raw_mean() + 6 * self.Ana.Pedestal.get_raw_noise()), self.Ana.get_min_signal())
+    def calc_noise_threshold(self):
+        """ return peak threshold, 5 times the raw noise + mean of the noise. """
+        return abs(self.Ana.Pedestal.get_raw_mean() + 5 * self.Ana.Pedestal.get_raw_noise()).n
 
     def get_start_additional(self, bunch=2):
         """Set the start of the additional peaks 2.5 bunches after the signal peak to avoid the biased bunches after the signal."""
@@ -125,8 +126,8 @@ class PeakAnalysis(Analysis):
         bunches -= self.BunchSpacing / 2. if not center else 0
         return concatenate([bunches, [bunches[-1] + self.BunchSpacing]])
 
-    def find_n_additional(self, start_bunch=None, end_bunch=None):
-        times, heights, n_peaks = self.find_all()
+    def find_n_additional(self, start_bunch=None, end_bunch=None, thresh=None):
+        times, heights, n_peaks = self.find_all(thresh=thresh)
         times = array(split(times, cumsum(n_peaks)[:-1]))
         start = (self.StartAdditional if start_bunch is None else self.get_start_additional(start_bunch)) * self.Ana.DigitiserBinWidth
         end = (self.Run.NSamples if end_bunch is None else self.get_start_additional(end_bunch)) * self.Ana.DigitiserBinWidth
@@ -134,12 +135,13 @@ class PeakAnalysis(Analysis):
             times[i] = times[i][(times[i] > start) & (times[i] < end)]
         return array([lst.size for lst in times], dtype='u2')
 
-    def get_n_additional(self, start_bunch=None, end_bunch=None):
+    def get_n_additional(self, start_bunch=None, end_bunch=None, thresh=None):
         def f():
-            values = self.find_n_additional(start_bunch, end_bunch)
+            values = self.find_n_additional(start_bunch, end_bunch, thresh)
             m = mean(values)
             return ufloat(m, sqrt(m / values.size))
-        return do_pickle(self.make_simple_pickle_path('NAdd', '{}_{}'.format(start_bunch, end_bunch) if start_bunch is not None else ''), f)
+        suffix = '{}_{}'.format(start_bunch, end_bunch) if start_bunch is not None else ''
+        return do_pickle(self.make_simple_pickle_path('NAdd', '{}{}'.format(suffix, '' if thresh is None else '{:1.0f}'.format(thresh))), f)
 
     def draw_additional_disto(self, show=True):
         hs = self.draw(split_=4)
@@ -174,7 +176,7 @@ class PeakAnalysis(Analysis):
         return f['times'], f['heights'], f['n_peaks']
 
     def find(self, values, trigger_cell, thresh=None):
-        peaks = find_peaks(values, height=self.NoiseThreshold if thresh is None else thresh, distance=2, prominence=20)
+        peaks = find_peaks(values, height=self.Threshold if thresh is None else thresh, distance=2, prominence=20)
         return array([array([self.Ana.Waveform.get_calibrated_time(trigger_cell, value) for value in peaks[0]]), peaks[1]['peak_heights']])
 
     def fit(self, values, peaks, trigger_cell):
@@ -251,15 +253,22 @@ class PeakAnalysis(Analysis):
     def get_n(self, n=1):
         return self.get_n_times(n, ret_indices=True)
 
-    def get_flux(self, n_peaks=None, redo=False, prnt=True):
+    def get_flux(self, n_peaks=None, l=None, redo=False, prnt=True):
         def f():
-            n = self.find_n_additional() if n_peaks is None else n_peaks
-            lambda_ = ufloat(mean(n), sqrt(mean(n) / n.size))
+            n = self.find_n_additional() if n_peaks is None and l is None else n_peaks
+            lambda_ = ufloat(mean(n), sqrt(mean(n) / n.size)) if l is None else l
             flux = lambda_ / (self.Ana.BunchSpacing * self.NBunches * self.get_area()) * 1e6
             return flux
         value = do_pickle(self.make_simple_pickle_path('Flux'), f, redo=redo)
         self.info('Estimated Flux by number of peaks: {}'.format(make_flux_string(value)), prnt=prnt)
         return value
+
+    def draw_flux_vs_threshold(self, steps=20):
+        x = linspace(self.NoiseThreshold, self.Threshold, steps)
+        y = array([self.get_flux(l=self.get_n_additional(thresh=ix), redo=1) for ix in x]) / 1000.
+        g = self.make_tgrapherrors('gft', 'Flux vs. Peak Threshold', x=x, y=y)
+        format_histo(g, x_tit='Peak Finding Threshold [mV]', y_tit='Flux [MHz/cm^{2}]', y_off=1.3)
+        self.draw_histo(g, draw_opt='ap', lm=.12)
 
     def get_area(self, bcm=False):
         """ :returns area of the DUT in cm^2"""
