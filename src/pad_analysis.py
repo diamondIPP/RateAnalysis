@@ -218,7 +218,7 @@ class PadAnalysis(DUTAnalysis):
         format_histo(p, x_tit='Track x [cm]', y_tit='Track y [cm]', z_tit='Efficiency [%]', y_off=1.4, z_off=1.5, ncont=100, z_range=[0, 100])
         self.draw_histo(p, show=show, lm=.13, rm=.17, draw_opt='colz', x=1.15 if self.Title else 1)
         self.draw_fid_cut(scale=10)
-        self.draw_detector_size(scale=10)
+        self.draw_detector_size()
         self.save_plots('EffMap')
 
     def draw_efficiency_vs_threshold(self, thresh=None, bin_width=.5, show=True):
@@ -234,9 +234,21 @@ class PadAnalysis(DUTAnalysis):
         self.draw_tlatex(x=self.Pedestal.get_noise().n * 3, y=95, text=' 3 #times noise', align=10)
         self.save_plots('EffThresh')
 
-    def draw_pedestal_map(self, high=10, low=None, fid=False):
+    def draw_pedestal_map(self, high=10, low=None, fid=False, cut=None, hit_map=True):
         low = '&&{}>{}'.format(self.generate_signal_name(), low) if low is not None else ''
-        self.draw_hitmap(redo=True, cut=TCut('{}<{}{}'.format(self.generate_signal_name(), high, low)) + (self.Cut.generate_custom(exclude='fiducial') if not fid else self.Cut()))
+        fid_cut = self.Cut.generate_custom(exclude='fiducial') if cut is None else self.Cut(cut)
+        kwargs = {'redo': True, 'cut': TCut('{}<{}{}'.format(self.generate_signal_name(), high, low)) + (self.Cut(cut) if fid else fid_cut)}
+        self.draw_hitmap(**kwargs) if hit_map else self.draw_signal_map(**kwargs)
+
+    def find_center(self, redo=False):
+        def f():
+            h = self.draw_signal_map(cut='', show=False)
+            px, py = h.ProjectionX(), h.ProjectionY()
+            mx = mean([px.GetBinCenter(b) for b in [px.FindFirstBinAbove(px.GetMaximum() / 2), px.FindLastBinAbove(px.GetMaximum() / 2)]])
+            my = mean([py.GetBinCenter(b) for b in [py.FindFirstBinAbove(py.GetMaximum() / 2), py.FindLastBinAbove(py.GetMaximum() / 2)]])
+            return array([mx, my])
+        return do_pickle(self.make_simple_pickle_path('Center', sub_dir='Center'), f, redo=redo)
+
     # endregion 2D SIGNAL DISTRIBUTION
     # ----------------------------------------
 
