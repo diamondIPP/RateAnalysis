@@ -58,6 +58,13 @@ class PedestalAnalysis(Analysis):
     def get_raw_noise(self, cut=None, redo=False):
         return self.get_noise(self.RawName, cut, redo)
 
+    def draw_signal_pedestal(self, name=None, show=True):
+        h = TH1F('h_spd', 'Signal Pedestal', 2400, -150, 150)
+        self.Tree.Draw('{}>>h_spd'.format(self.Ana.SignalName if name is None else name), 'pulser', 'goff')
+        format_histo(h, x_tit='Pedestal [mV]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)
+        set_drawing_range(h, rfac=.2)
+        self.draw_histo(h, show=show, lm=.13)
+
     def draw_disto(self, name=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True, normalise=None):
         show = False if not save else show
         cut = self.Cut(cut)
