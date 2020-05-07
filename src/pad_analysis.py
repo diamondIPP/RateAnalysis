@@ -77,8 +77,8 @@ class PadAnalysis(DUTAnalysis):
     def update_config(self):
         self.Config.read(join(self.Dir, 'Configuration', self.TCString, 'PadConfig.ini'))
 
-    def get_short_regint(self, signal=None):
-        return self.get_all_signal_names()[signal if signal is not None else self.SignalName]
+    def get_short_regint(self, signal=None, signal_type='signal'):
+        return self.get_all_signal_names(signal_type)[signal if signal is not None else self.SignalName]
 
     def get_integral_names(self):
         if self.Run.TreeConfig.has_section('Integral Names'):
@@ -179,8 +179,8 @@ class PadAnalysis(DUTAnalysis):
     def get_peak_timing(self, par=1, redo=False):
         return self.Timing.get(par, redo)
 
-    def get_min_signal(self):
-        h = self.draw_signal_distribution(show=False, save=False)
+    def get_min_signal(self, name=None):
+        h = self.draw_signal_distribution(show=False, save=False, sig=name)
         return h.GetBinCenter(h.FindFirstBinAbove(h.GetMaximum() * .01))
 
     def get_additional_peak_height(self):
@@ -382,7 +382,7 @@ class PadAnalysis(DUTAnalysis):
     def draw_signal_distribution(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None, bin_width=.5, events=None,
                                  start=None, x_range=None, redo=False, prnt=True, save=True, normalise=None, sumw2=False):
         cut = self.Cut(cut)
-        suffix = '{b}_{c}_{cut}'.format(b=bin_width, c=int(evnt_corr), cut=cut.GetName())
+        suffix = '{b}_{c}_{cut}_{n}'.format(b=bin_width, c=int(evnt_corr), cut=cut.GetName(), n=self.get_short_regint(sig))
         pickle_path = self.make_pickle_path('PulseHeight', 'Histo', run=self.RunNumber, ch=self.DUT.Number, suf=suffix)
 
         def func():
