@@ -131,20 +131,6 @@ class DUTAnalysis(TelecopeAnalysis):
     def draw_fid_cut(self, scale=10):
         self.Cut.draw_fid_cut(scale)
 
-    def draw_detector_size(self, scale=1):
-        split_runs = self.Cut.get_fiducial_splits()
-        first_cut_name = 'detector size' if self.Config.has_option('CUT', 'detector size') else 'detector size 1'
-        values = next(self.Cut.load_dia_config('detector size {n}'.format(n=i + 1) if i else first_cut_name) for i in xrange(len(split_runs)) if self.RunNumber <= split_runs[i])
-        if values is None:
-            return
-        x, y, lx, ly = values
-        cut = TCutG('det{}'.format(scale), 5, array([x, x, x + lx, x + lx, x], 'd') * scale, array([y, y + ly, y + ly, y, y], 'd') * scale)
-        cut.SetVarX(self.Cut.get_track_var(self.DUT.Number - 1, 'x'))
-        cut.SetVarY(self.Cut.get_track_var(self.DUT.Number - 1, 'y'))
-        self.Objects.append(cut)
-        cut.SetLineWidth(3)
-        cut.Draw()
-
     def draw_track_length(self, show=True, save=True):
         h = TH1F('htd', 'Track Distance in Diamond', 200, self.DUT.Thickness, self.DUT.Thickness + 1)
         self.Tree.Draw('{}>>htd'.format(self.get_track_length_var()), 'n_tracks', 'goff')

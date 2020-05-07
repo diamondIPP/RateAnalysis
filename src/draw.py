@@ -155,7 +155,7 @@ class Draw:
         line.SetFillStyle(fillstyle) if fillstyle is not None else do_nothing()
         if show:
             line.Draw('l')
-            line.Draw('f')
+            line.Draw('f') if fillstyle < 4000 else do_nothing()
         self.add(line)
         return line
 
