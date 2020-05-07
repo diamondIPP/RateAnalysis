@@ -750,6 +750,31 @@ class PadAnalysis(DUTAnalysis):
 
     # ----------------------------------------
     # region SHOW
+    def draw_size(self, size=None, color=1, name=''):
+        if size is None:
+            warning('The {} size of "{}" was not specified in the dia info'.format(' {}'.format(name) if name else '', self.DUT.Name))
+            return
+        cx, cy = self.find_center()
+        x, y = size
+        self.draw_box(cx - x / 2, cy - y / 2, cx + x / 2, cy + y / 2, line_color=color, width=3, name=name, fillstyle=4000)
+
+    def draw_detector_size(self):
+        self.draw_size(self.DUT.Size, color=432, name='detector')
+
+    def draw_metal_size(self):
+        size = [self.DUT.PadSize.n] * 2 if self.DUT.PadSize is not None else None
+        self.draw_size(size, color=923, name='metal')
+
+    def draw_guard_ring(self):
+        size = [self.DUT.GuardRing] * 2 if self.DUT.GuardRing is not None else None
+        self.draw_size(size, color=417, name='guard ring')
+
+    def draw_all_sizes(self):
+        self.draw_fid_cut()
+        self.draw_detector_size()
+        self.draw_metal_size()
+        self.draw_guard_ring()
+
     def draw_signal_vs_signale(self, show=True):
         gStyle.SetPalette(53)
         cut = self.Cut.generate_custom(exclude=['bucket'])
