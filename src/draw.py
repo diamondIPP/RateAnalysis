@@ -25,7 +25,7 @@ class Draw:
         self.Verbose = verbose
         self.Dir = get_base_dir()
         self.TCString = tc_string
-        self.MainConfig = self.load_config(config)
+        self.MainConfig = self.init_main_config(config)
         self.ResultsDir = self.get_results_dir()
         self.SubDir = ''
         self.ServerDir = self.load_server_dir()
@@ -43,7 +43,7 @@ class Draw:
 
         self.Objects = []
 
-    def load_config(self, config):
+    def init_main_config(self, config):
         return load_parser(join(self.Dir, 'Configuration', 'main.ini')) if config is None else config
 
     # ----------------------------------------
