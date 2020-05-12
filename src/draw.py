@@ -25,7 +25,7 @@ class Draw:
         self.Verbose = verbose
         self.Dir = get_base_dir()
         self.TCString = tc_string
-        self.MainConfig = config
+        self.MainConfig = self.load_config(config)
         self.ResultsDir = self.get_results_dir()
         self.SubDir = ''
         self.ServerDir = self.load_server_dir()
@@ -43,14 +43,8 @@ class Draw:
 
         self.Objects = []
 
-    # def __del__(self):
-    #     for c in gROOT.GetListOfCanvases():
-    #         c.Close()
-    #     for lst in self.Objects:
-    #         lst = lst if type(lst) is list else list(lst)
-    #         for obj in lst:
-    #             if hasattr(obj, 'Delete'):
-    #                 obj.Delete()
+    def load_config(self, config):
+        return load_parser(join(self.Dir, 'Configuration', 'main.ini')) if config is None else config
 
     # ----------------------------------------
     # region BASIC
@@ -716,6 +710,18 @@ def get_graph_y(g):
 
 def get_hist_vec(p, err=True):
     return array([make_ufloat([p.GetBinContent(ibin), p.GetBinError(ibin)]) if err else p.GetBinContent(ibin) for ibin in range(1, p.GetNbinsX() + 1)])
+
+
+def get_hist_args(p, err=True):
+    return array([make_ufloat([p.GetBinCenter(ibin), p.GetBinWidth(ibin) / 2]) if err else p.GetBinCenter(ibin) for ibin in range(1, p.GetNbinsX() + 1)])
+
+
+def get_h_values(h):
+    return get_graph_y(h) if 'Graph' in h.ClassName() else get_hist_vec(h)
+
+
+def get_h_args(h):
+    return get_graph_x(h) if 'Graph' in h.ClassName() else get_hist_args(h)
 
 
 def get_2d_hist_vec(h):
