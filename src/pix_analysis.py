@@ -167,7 +167,7 @@ class PixAnalysis(DUTAnalysis):
     def draw_vcal_distribution(self, cut=None, mcol=None, mpix=None, vcal=True, show=True, redo=False):
         def f():
             h1 = TH1F('h_vcal', 'vcal Distribution {d}'.format(d=self.DUT.Name), *self.Bins.get_ph(vcal))
-            cut_string = self.Cut(cut) + self.Cut.generate_masks(col=mcol, pixels=mpix, exclude=False)()
+            cut_string = self.Cut(cut) + self.Cut.generate_masks(col=mcol, pixels=mpix, exclude=False)() + TCut('n_hits[{}] == 1'.format(self.Dut))
             n = self.Tree.Draw('col:row:adc', cut_string, 'goff')
             cols, rows, adcs = self.Run.get_root_vecs(n, 3, dtype=int)
             for i, (col, row, adc) in enumerate(zip(cols, rows, adcs)):
