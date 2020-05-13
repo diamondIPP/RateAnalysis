@@ -151,11 +151,13 @@ def round_up_to(num, val):
     return int(num) / val * val + val
 
 
-def interpolate_two_points(x1, y1, x2, y2):
+def interpolate_two_points(x1, y1, x2, y2, name=''):
     # f = p1*x + p0
     p1 = (y1 - y2) / (x1 - x2)
     p0 = y1 - x1 * p1
-    f = TF1('fpol1', 'pol1', -1000, 1000)
+    w = abs(x2 - x1)
+    fit_range = array(sorted([x1, x2])) + [-w / 3., w / 3.]
+    f = TF1('fpol1{}'.format(name), 'pol1', *fit_range)
     f.SetParameters(p0, p1)
     return f
 
@@ -880,8 +882,8 @@ class PBar:
         self.PBar.finish()
 
 
-def gauss(x, scale, mean_, sigma):
-    return scale * exp(-((x - mean_) / sigma) ** 2)
+def gauss(x, scale, mean_, sigma, off=0):
+    return scale * exp(-.5 * ((x - mean_) / sigma) ** 2) + off
 
 
 def fit_data(f, y, x=None, p=None):
