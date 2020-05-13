@@ -199,10 +199,7 @@ class Waveform(Analysis):
         return values, times
 
     def get_calibrated_times(self, trigger_cell):
-        # TODO: try directly with TCalSum
-        if all(self.Run.TCal == self.Run.TCal[0]):
-            return [self.BinWidth * i for i in xrange(self.Run.NSamples)]
-        return cumsum(concatenate([[0], self.Run.TCal[trigger_cell:], self.Run.TCal[0:trigger_cell - 1]])) if trigger_cell else cumsum(concatenate([[0], self.Run.TCal[:-1]]))
+        return self.Run.TCalSum[trigger_cell:trigger_cell + self.Run.NSamples] - self.Run.TCalSum[trigger_cell]
 
     def get_calibrated_time_old(self, trigger_cell, bin_nr):
         return sum(self.Run.TCal[trigger_cell+1:trigger_cell + bin_nr]) + (sum(self.Run.TCal[:bin_nr - (1024 - trigger_cell) + 1]) if trigger_cell + bin_nr > 1024 else 0)
