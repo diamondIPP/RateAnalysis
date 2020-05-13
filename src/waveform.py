@@ -38,7 +38,7 @@ class Waveform(Analysis):
         title = '{n}{tc} Waveform{p}'.format(n=n, tc=' Time Corrected' if t_corr else '', p='s' if n > 1 else '')
         h = TH2F('h_wf', title, 1024, 0, 512, 2048, -512, 512)
         start_count = deepcopy(self.Count)
-        values, times = self.get_values(n, cut, start_event, t_corr, channel, raw)
+        values, times = self.get_tree_values(n, cut, start_event, t_corr, channel, raw)
         values = values if x is None else x
         for v, t in zip(values, times):
             h.Fill(t, v)
@@ -50,9 +50,8 @@ class Waveform(Analysis):
 
     def draw_all(self, corr=True, n=-1, x_range=None, y_range=None, ind=None, show=True):
         h = TH2F('h_wf', 'All Waveforms', 1024, 0, 512, 2048, -512, 512)
-        times = concatenate(self.get_all_times(corr=corr)[ind]).astype('d')[:n]
-        values = concatenate(self.get_all()[ind]).astype('d')[:n]
-        h.FillN(values.size, times, values, ones(values.size))
+        values = self.get_values(ind)[:n]
+        h.FillN(values.size, self.get_times(corr, ind).astype('d')[:n], values.astype('d'), ones(values.size))
         y_range = increased_range([min(values), max(values)], .1, .2) if y_range is None else y_range
         format_histo(h, x_tit='Time [ns]', y_tit='Signal [mV]', y_off=.5, stats=0, tit_size=.07, lab_size=.06, markersize=.5, x_range=x_range, y_range=y_range)
         self.draw_histo(h, 'WaveForms{n}'.format(n='e'), show=show, draw_opt='col', lm=.073, rm=.045, bm=.18, x=1.5, y=.5, grid=1, logz=True)
@@ -95,8 +94,8 @@ class Waveform(Analysis):
             self.__draw_noise(pol=False)
         return p
 
-    def get_trigger_cells(self):
-        return self.Run.get_root_vec(var='trigger_cell', cut=self.Cut, dtype='i2')
+    def get_trigger_cells(self, redo=False):
+        return do_hdf5(self.make_simple_hdf5_path('TC'), self.Run.get_root_vec, redo=redo, var='trigger_cell', cut=self.Cut, dtype='i2')
 
     def get_all(self, redo=False):
         """ extracts all dut waveforms after all cuts from the root tree and saves it as an hdf5 file """
@@ -111,10 +110,27 @@ class Waveform(Analysis):
             return array(waveforms)
         return do_hdf5(self.make_hdf5_path('WF', run=self.RunNumber, ch=self.Channel), f, redo=redo)
 
-    def get_all_times(self, corr=False):
-        times = array([self.get_calibrated_times(trigger_cell) for trigger_cell in self.get_trigger_cells()])
+    def get_values(self, ind=None):
+        v = array(self.get_all()).flatten()
+        return v[ind] if ind is not None else v
+
+    def get_times(self, corr=True, ind=None):
+        t = array(self.get_all_times(corr)).flatten()
+        return t[ind] if ind is not None else t
+
+    def get_all_times(self, corr=False, redo=False):
+        def f():
+            self.PBar.start(self.get_trigger_cells().size)
+            times = []
+            for i, tc in enumerate(self.get_trigger_cells()):
+                times.append(self.get_calibrated_times(tc).astype('f2'))
+                if not i % 100:
+                    self.PBar.update(i)
+            self.PBar.finish()
+            return array(times)
+        t = do_hdf5(self.make_simple_hdf5_path('Times'), f, redo=redo)
         peaks = self.Ana.Peaks.get_all() if corr else []
-        return times - (peaks - peaks[0]).reshape(peaks.size, 1) if corr else times
+        return array(t) - (peaks - peaks[0]).reshape(peaks.size, 1) if corr else t
 
     def draw_single(self, cut='', event=None, show=True, show_noise=False):
         h, n = self.draw(n=1, start_event=event, cut=cut, t_corr=True, show=show, grid=True)
@@ -137,7 +153,7 @@ class Waveform(Analysis):
     def draw_average(self, n=100, cut=None, align_peaks=True, show=True, show_noise=False):
         p = TProfile('pawf', 'Averaged Waveform', 2000, 0, 500)
         cut = self.Ana.Cut(cut)
-        values, times = self.get_values(n, cut)
+        values, times = self.get_tree_values(n, cut)
         if align_peaks:
             self.Tree.Draw(self.Ana.PeakName, cut, 'goff')
             peak_times = [self.Tree.GetV1()[i] for i in xrange(n)]
@@ -151,19 +167,19 @@ class Waveform(Analysis):
         if show_noise:
             self.__draw_noise()
 
-    def __draw_noise(self):
+    def __draw_noise(self, pol=True):
         c = get_last_canvas()
         mean_noise = self.Ana.Pedestal.get_mean()
-        legend = self.make_legend(.8, .4, nentries=1, scale=2)
+        legend = self.make_legend()
         c.cd()
-        legend.AddEntry(self.draw_horizontal_line(self.Polarity * mean_noise.n, 0, 700, w=2, style=7, color=2), 'mean pedestal', 'l')
+        legend.AddEntry(self.draw_horizontal_line(mean_noise.n * (self.Polarity if pol else 1), 0, 700, w=2, style=7, color=2), 'mean pedestal', 'l')
         legend.Draw()
         c.Update()
 
     def get_start_event(self, start_event):
         return self.Count + self.StartEvent if start_event is None else start_event
 
-    def get_values(self, n=1, cut=None, start_event=None, t_corr=True, channel=None, raw=False):
+    def get_tree_values(self, n=1, cut=None, start_event=None, t_corr=True, channel=None, raw=False):
         """ return lists of the values and times of the waveform. """
         cut = self.Ana.Cut(cut)
         channel = self.Channel if channel is None else channel
@@ -202,7 +218,7 @@ class Waveform(Analysis):
         self.Count = 0
 
     def calc_rise_time(self, cut=None, start_event=0):
-        values, times = self.get_values(1, cut, start_event)
+        values, times = self.get_tree_values(1, cut, start_event)
         pedestal = self.Ana.Pedestal.draw_disto_fit(cut=cut, show=False)
         noise, sigma = (abs(pedestal.Parameter(i)) for i in [1, 2])
         rise_time = []
