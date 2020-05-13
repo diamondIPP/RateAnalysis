@@ -4,9 +4,10 @@ from numpy import log, split, polyfit, polyval, genfromtxt, arctan, sin, cos, ta
 
 from cut import Cut
 from InfoLegend import InfoLegend
-from Langaus import Langau
+# from Langaus import Langau
 from binning import Bins
 from selector import run_selector
+from fit import Langau
 
 
 class TelecopeAnalysis(Analysis):
@@ -520,21 +521,18 @@ class TelecopeAnalysis(Analysis):
 
     def fit_langau(self, h=None, nconv=30, show=True, chi_thresh=8, fit_range=None):
         h = self.draw_signal_distribution(show=show) if h is None and hasattr(self, 'draw_signal_distribution') else h
-        h = self.draw_pulse_height_disto(show=show) if h is None and hasattr(self, 'draw_pulse_height_disto') else h
         fit = Langau(h, nconv, fit_range)
-        fit.langaufit()
-        if show:
-            fit.Fit.Draw('lsame')
-            c = get_last_canvas()
-            c.Modified()
-            c.Update()
-        if fit.Chi2 / fit.NDF > chi_thresh and nconv < 80:
+        fit.get_parameters()
+        fit(show=show)
+        get_last_canvas().Modified()
+        get_last_canvas().Update()
+        if fit.get_chi2() > chi_thresh and nconv < 80:
             self.Count += 5
-            self.info('Chi2 too large ({c:2.2f}) -> increasing number of convolutions by 5'.format(c=fit.Chi2 / fit.NDF))
+            self.info('Chi2 too large ({c:2.2f}) -> increasing number of convolutions by 5'.format(c=fit.get_chi2()))
             fit = self.fit_langau(h, nconv + self.Count, chi_thresh=chi_thresh, show=show)
-        print 'MPV:', fit.Parameters[1]
+        print('MPV: {:1.1f}'.format(fit.get_mpv()))
         self.Count = 0
-        self.Objects.append(fit)
+        self.add(fit)
         return fit
 
 
