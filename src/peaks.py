@@ -78,6 +78,24 @@ class PeakAnalysis(Analysis):
             self.draw_histo(h, lm=.12, show=show, x=1.5, y=0.75, logy=True)
         return h
 
+    def draw_signal(self, bin_size=.5, show=True):
+        values = self.get_all()
+        h = TH1F('hsp', 'Signal Peak Times', *self.get_t_bins(bin_size))
+        h.FillN(values.size, array(values).astype('d'), ones(values.size))
+        format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
+        self.draw_histo(h, lm=.12, show=show)
+        return h
+
+    def get_t_bins(self, bin_size=.5):
+        m, s = mean_sigma(self.get_all())
+        bins = arange(m - 5 * s, m + 5 * s, bin_size)
+        return bins.size - 1, bins
+
+    def get_t_indices(self, bin_size=.5):
+        s, bins = self.get_t_bins(bin_size)
+        values = array(self.get_all())
+        return [where((bins[i] < values) & (values < bins[i + 1]))[0] for i in range(s)]
+
     def correct_times(self, times, n_peaks):
         correction = repeat(self.get_all(), n_peaks) - self.get_all()[0]
         return times - correction
