@@ -6,14 +6,12 @@
 
 from sys import path
 from os.path import realpath, dirname, join
-from os import chdir
 path.append(join(dirname(realpath(__file__)), 'src'))
 from draw import *
 from selector import analysis_selector, collection_selector
 from json import loads
 
 
-# pargs = init_argparser(run_number=23, tc='201908', dut=1, tree=True, has_verbose=True, has_collection=True)
 aparser = init_argparser(run=88, tc=None, dut=1, tree=True, has_verbose=True, has_collection=True, return_parser=True)
 
 aparser.add_argument('-d', '--draw', action='store_true', help='make all plots')
@@ -35,4 +33,3 @@ else:
     z = collection_selector(pargs.runplan, pargs.dut, pargs.testcampaign, pargs.tree, pargs.verbose)
     if pargs.draw:
         z.draw_all(redo=pargs.redo)
-chdir('..')
