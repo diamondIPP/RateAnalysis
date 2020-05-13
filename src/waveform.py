@@ -27,6 +27,7 @@ class Waveform(Analysis):
         self.Count = 0
         self.StartEvent = self.Ana.StartEvent
         self.BinWidth = self.Ana.DigitiserBinWidth
+        self.set_pickle_sub_dir('WF')
 
     def get_binning(self, bin_size=.5):
         bins = arange(0, self.Run.NSamples * self.Ana.DigitiserBinWidth, bin_size)
@@ -55,6 +56,44 @@ class Waveform(Analysis):
         y_range = increased_range([min(values), max(values)], .1, .2) if y_range is None else y_range
         format_histo(h, x_tit='Time [ns]', y_tit='Signal [mV]', y_off=.5, stats=0, tit_size=.07, lab_size=.06, markersize=.5, x_range=x_range, y_range=y_range)
         self.draw_histo(h, 'WaveForms{n}'.format(n='e'), show=show, draw_opt='col', lm=.073, rm=.045, bm=.18, x=1.5, y=.5, grid=1, logz=True)
+        return h
+
+    def fit_average(self, fit_range=None, n=3, show=True):
+        max_x = self.Ana.Timing.draw_peaks(show=0).GetListOfFunctions()[1].GetParameter(1)
+        h = self.draw_all_average(show=show)
+        fit_range = [max_x - 15, max_x + 4] if fit_range is None else fit_range
+        from fit import ErfLand
+        c = ErfLand(h, fit_range=fit_range)
+        c.fit(n, show)
+        format_histo(h, x_range=increased_range(fit_range, .5, .5), stats=0)
+        return c
+
+    def get_average_rise_time(self, p=.1, show=False):
+        h = self.draw_all_average(show=show)
+        maxval = h.GetMaximum() - self.Ana.get_pedestal().n
+        bins = [h.FindFirstBinAbove(ip * maxval) for ip in [1 - p, p]]
+        coods = [(h.GetBinCenter(ib), h.GetBinContent(ib), h.GetBinCenter(ib - 1), h.GetBinContent(ib - 1), ib) for ib in bins]
+        f1, f2 = [interpolate_two_points(*icood) for icood in coods]
+        if show:
+            self.add(f1, f2)
+            self.draw_vertical_line(f1.GetX((1 - p) * maxval), -100, 1e4, name='1')
+            self.draw_vertical_line(f2.GetX(p * maxval), -100, 1e4, name='2')
+            f1.Draw('same')
+            f2.Draw('same')
+        return f1.GetX((1 - p) * maxval) - f2.GetX(p * maxval)
+
+    def draw_all_average(self, corr=True, n=-1, ind=None, x_range=None, show=True, show_noise=False, redo=False):
+        def f():
+            p1 = TProfile('paawf', 'Averaged Waveform', 1000, 0, 500)
+            values = self.get_values(ind)[:n]
+            p1.FillN(values.size, self.get_times(corr, ind).astype('d')[:n], values.astype('d'), ones(values.size))
+            return p1
+        p = do_pickle(self.make_simple_pickle_path('AWF', '' if ind is None else len(ind)), f, redo=redo)
+        format_histo(p, x_tit='Time [ns]', y_tit='Pulse Height [mv]', y_off=1.2, stats=0, markersize=.5, x_range=x_range)
+        self.draw_histo(p, show=show)
+        if show_noise:
+            self.__draw_noise(pol=False)
+        return p
 
     def get_trigger_cells(self):
         return self.Run.get_root_vec(var='trigger_cell', cut=self.Cut, dtype='i2')
