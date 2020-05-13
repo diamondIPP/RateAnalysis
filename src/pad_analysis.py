@@ -33,8 +33,8 @@ class PadAnalysis(DUTAnalysis):
             self.IntegralNames = self.get_integral_names()
             self.IntegralRegions = self.load_regions()
             self.SignalRegionName = self.IntegralRegions['signal']
-            self.SignalRegion = self.Run.IntegralRegions[self.DUT.Number - 1][self.SignalRegionName]
-            self.PedestalRegion = self.IntegralRegions['pedestal']
+            self.SignalRegion = array(self.Run.IntegralRegions[self.DUT.Number - 1][self.SignalRegionName])
+            self.PedestalRegion = array(self.IntegralRegions['pedestal'])
             self.PeakIntegralName = self.load_peak_integral()
             self.PeakIntegral = self.Run.PeakIntegrals[self.DUT.Number - 1][self.PeakIntegralName]
 
@@ -359,8 +359,10 @@ class PadAnalysis(DUTAnalysis):
         return gr, FitRes(fit)
 
     def draw_ph_vs_time(self):
-        p = TProfile('ppht', 'Pulse Height vs. Peaking Time', 40, *(array(self.SignalRegion) * self.DigitiserBinWidth).astype('i'))
-        self.Tree.Draw('{}:{}>>ppht'.format(self.generate_signal_name(), self.Timing.get_peak_name(1, 1)), self.Cut.generate_custom(exclude='timing'), 'goff')
+        xmin, xmax = self.SignalRegion * self.DigitiserBinWidth
+        n_bins = int((xmax - xmin + 20) * 8. / self.Timing.draw_peaks(show=0).GetListOfFunctions()[1].GetParameter(2))
+        p = TProfile('ppht', 'Pulse Height vs. Peaking Time', n_bins, xmin - 10, xmax + 10)
+        self.Tree.Draw('{}:{}>>ppht'.format(self.generate_signal_name(), self.Timing.get_peak_name(1, 1)), self.Cut(), 'goff')
         format_histo(p, x_tit='Peak Timing [ns]', y_tit='Pulse Height [mV]', y_off=1.3, stats=0)
         self.draw_histo(p, lm=.12)
 
