@@ -57,9 +57,9 @@ class Waveform(Analysis):
         self.draw_histo(h, 'WaveForms{n}'.format(n='e'), show=show, draw_opt='col', lm=.073, rm=.045, bm=.18, x=1.5, y=.5, grid=1, logz=True)
         return h
 
-    def fit_average(self, fit_range=None, n=3, show=True):
+    def fit_average(self, fit_range=None, n=3, ind=None, show=True):
         max_x = self.Ana.Timing.draw_peaks(show=0).GetListOfFunctions()[1].GetParameter(1)
-        h = self.draw_all_average(show=show)
+        h = self.draw_all_average(show=show, ind=ind)
         fit_range = [max_x - 15, max_x + 4] if fit_range is None else fit_range
         from fit import ErfLand
         c = ErfLand(h, fit_range=fit_range)
@@ -67,8 +67,8 @@ class Waveform(Analysis):
         format_histo(h, x_range=increased_range(fit_range, .5, .5), stats=0)
         return c
 
-    def get_average_rise_time(self, p=.1, show=False):
-        h = self.draw_all_average(show=show)
+    def get_average_rise_time(self, p=.1, ind=None, show=False):
+        h = self.draw_all_average(show=show, ind=ind)
         maxval = h.GetMaximum() - self.Ana.get_pedestal().n
         bins = [h.FindFirstBinAbove(ip * maxval) for ip in [1 - p, p]]
         coods = [(h.GetBinCenter(ib), h.GetBinContent(ib), h.GetBinCenter(ib - 1), h.GetBinContent(ib - 1), ib) for ib in bins]
@@ -111,12 +111,10 @@ class Waveform(Analysis):
         return do_hdf5(self.make_hdf5_path('WF', run=self.RunNumber, ch=self.Channel), f, redo=redo)
 
     def get_values(self, ind=None):
-        v = array(self.get_all()).flatten()
-        return v[ind] if ind is not None else v
+        return array(self.get_all())[ind].flatten()
 
     def get_times(self, corr=True, ind=None):
-        t = array(self.get_all_times(corr)).flatten()
-        return t[ind] if ind is not None else t
+        return array(self.get_all_times(corr))[ind].flatten()
 
     def get_all_times(self, corr=False, redo=False):
         def f():
