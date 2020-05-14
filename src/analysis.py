@@ -124,7 +124,7 @@ class Analysis(Draw):
         run_str = run_str if run is not None or run_str else str(self.RunNumber) if hasattr(self, 'RunNumber') else ''
         # noinspection PyUnresolvedReferences
         dut = str(dut if dut is not None else self.DUT.Number if hasattr(self, 'DUT') and hasattr(self.DUT, 'Number') else '')
-        return join(directory, '{}.pickle'.format('_'.join([v for v in [name, campaign, run_str, dut, suf] if v])))
+        return join(directory, '{}.pickle'.format('_'.join([v for v in [name, campaign, run_str, dut, str(suf)] if v])))
 
     def make_hdf5_path(self, sub_dir, name=None, run=None, ch=None, suf=None, camp=None):
         return self.make_pickle_path(sub_dir, name, run, ch, suf, camp).replace('pickle', 'hdf5')
