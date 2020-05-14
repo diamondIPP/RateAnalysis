@@ -122,6 +122,9 @@ class ErfLand(Fit):
         self.Fit.SetParameters(c0, mpv, sigma, c1, xoff, w, yoff)
         self.draw_histo(self.Fit)
 
+    def get_rise_time(self, p=.1, show=False):
+        return self._get_rise_time(p, show, off_par=6)
+
     def set_par_limits(self):
         if self.Histo is not None:
             maxval = max(self.Values).n
