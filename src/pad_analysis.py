@@ -358,13 +358,14 @@ class PadAnalysis(DUTAnalysis):
         self.draw_histo(gr, draw_opt='ap', show=show)
         return gr, FitRes(fit)
 
-    def draw_ph_vs_time(self):
+    def draw_ph_vs_time(self, fine_corr=False, bins=None, show=True):
         xmin, xmax = self.SignalRegion * self.DigitiserBinWidth
-        n_bins = int((xmax - xmin + 20) * 8. / self.Timing.draw_peaks(show=0).GetListOfFunctions()[1].GetParameter(2))
-        p = TProfile('ppht', 'Pulse Height vs. Peaking Time', n_bins, xmin - 10, xmax + 10)
-        self.Tree.Draw('{}:{}>>ppht'.format(self.generate_signal_name(), self.Timing.get_peak_name(1, 1)), self.Cut(), 'goff')
+        bins = [int((xmax - xmin + 20) * 8. / self.Timing.draw_peaks(show=0).GetListOfFunctions()[1].GetParameter(2)), xmin - 10, xmax + 10] if bins is None else bins
+        p = TProfile('ppht', 'Pulse Height vs. Peaking Time', *bins)
+        self.Tree.Draw('{}:{}>>ppht'.format(self.generate_signal_name(), self.Timing.get_peak_name(1, fine_corr)), self.Cut(), 'goff')
         format_histo(p, x_tit='Peak Timing [ns]', y_tit='Pulse Height [mV]', y_off=1.3, stats=0)
-        self.draw_histo(p, lm=.12)
+        self.draw_histo(p, lm=.12, show=show)
+        return p
 
     def show_ph_overview(self, binning=None):
         self.draw_pulse_height(bin_size=binning, show=False)
