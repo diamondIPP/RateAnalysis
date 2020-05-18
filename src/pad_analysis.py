@@ -358,15 +358,6 @@ class PadAnalysis(DUTAnalysis):
         self.draw_histo(gr, draw_opt='ap', show=show)
         return gr, FitRes(fit)
 
-    def draw_ph_vs_time(self, fine_corr=False, bins=None, show=True):
-        xmin, xmax = self.SignalRegion * self.DigitiserBinWidth
-        bins = [int((xmax - xmin + 20) * 8. / self.Timing.draw_peaks(show=0).GetListOfFunctions()[1].GetParameter(2)), xmin - 10, xmax + 10] if bins is None else bins
-        p = TProfile('ppht', 'Pulse Height vs. Peaking Time', *bins)
-        self.Tree.Draw('{}:{}>>ppht'.format(self.generate_signal_name(), self.Timing.get_peak_name(1, fine_corr)), self.Cut(), 'goff')
-        format_histo(p, x_tit='Peak Timing [ns]', y_tit='Pulse Height [mV]', y_off=1.3, stats=0)
-        self.draw_histo(p, lm=.12, show=show)
-        return p
-
     def show_ph_overview(self, binning=None):
         self.draw_pulse_height(bin_size=binning, show=False)
         h1 = self.draw_pulse_height(show=False)[0]
@@ -406,15 +397,15 @@ class PadAnalysis(DUTAnalysis):
         self.save_histo(h, 'SignalDistribution', lm=.15, show=show, prnt=prnt, save=save, sumw2=sumw2)
         return h
 
-    def draw_signal_vs_peaktime(self, region=None, cut=None, show=True, corr=False, fine_corr=False, prof=True):
-        suf = ' with {} Correction'.format('Fine' if fine_corr else 'Time') if corr else ''
-        x = self.get_signal_region(region)
-        xbins = [(x[1] - x[0]) * (2 if corr else 1)] + list(array(x) * self.DigitiserBinWidth)
-        h_args = ['hspt', 'Signal vs Peak Position{}'.format(suf)] + xbins + self.Bins.get_pad_ph()
-        h = TProfile(*h_args[:5]) if prof else TH2F(*h_args)
+    def draw_signal_vs_peaktime(self, region=None, cut=None, show=True, corr=True, fine_corr=False, prof=True, bins=None):
+        xmin, xmax = self.SignalRegion * self.DigitiserBinWidth
+        bins = [int((xmax - xmin + 20) * 8. / self.Timing.draw_peaks(show=0).GetListOfFunctions()[1].GetParameter(2)), xmin - 10, xmax + 10] if bins is None else bins
+        title = 'Signal vs Peak Position{}'.format(' with {} Correction'.format('Fine' if fine_corr else 'Time') if corr else '')
+        h = (TProfile if prof else TH2F)('hspt', title, *(bins if prof else list(bins) + self.Bins.get_pad_ph()))
         self.Tree.Draw('{}:{}>>hspt'.format(self.generate_signal_name(), self.Timing.get_peak_name(corr, fine_corr, region=region)), self.Cut(cut), 'goff')
         format_histo(h, x_tit='Signal Peak Position [ns]', y_tit='Pulse Height [mV]', y_off=1.4, stats=0)
         self.save_histo(h, 'SignalVsPeakPos{}{}'.format(int(corr), int(fine_corr)), show, lm=.11, draw_opt='' if prof else 'colz', rm=.03 if prof else .18)
+        return h
 
     def draw_signal_vs_triggercell(self, bin_width=10, cut=None, show=True):
         p = TProfile('pstc', 'Signal vs. Trigger Cell', self.Run.NSamples / bin_width, 0, self.Run.NSamples)
