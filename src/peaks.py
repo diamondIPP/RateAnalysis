@@ -82,10 +82,16 @@ class PeakAnalysis(Analysis):
         values = self.get_all()
         h = TH1F('hsp', 'Signal Peak Times', *self.get_t_bins(bin_size))
         h.FillN(values.size, array(values).astype('d'), ones(values.size))
-        format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
-        self.draw_histo(h, lm=.12, show=show)
+        format_histo(h, x_tit='Signal Peak Time [ns]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)
+        self.format_statbox(entries=1, x=.86 if draw_ph else .95)
+        c = self.draw_histo(h, lm=.13, show=show, rm=.12 if draw_ph else None)
         if draw_ph:
-            self.Ana.draw_ph_vs_time(show=False, bins=self.get_t_bins(bin_size))
+            p = self.Ana.draw_signal_vs_peaktime(show=False, bins=self.get_t_bins(bin_size))
+            values = get_hist_vec(p, err=False)
+            format_histo(p, title=' ', stats=0, x_tit='', l_off_x=1, y_range=increased_range([min(values[values > 0]), max(values)], .3, .3))
+            c.cd()
+            self.draw_tpad('psph', transparent=True, lm=.13, rm=.12)
+            p.Draw('y+')
         return h
 
     def get_t_bins(self, bin_size=.5):
