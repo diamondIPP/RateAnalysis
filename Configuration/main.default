@@ -18,6 +18,7 @@ pickle directory = Configuration/Individual_Configs/
 activate title = True
 git hash = True
 info legend = True
+save = True
 server mount directory = ~/mounts/psi
 
 [MISC]

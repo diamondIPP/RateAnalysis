@@ -40,6 +40,7 @@ class Draw:
         self.Title = self.get_config('SAVE', 'activate title')
         set_titles(self.Title)
         self.Legend = self.get_config('SAVE', 'info legend')
+        self.Save = self.get_config('SAVE', 'save')
 
         self.Objects = []
 
@@ -85,6 +86,12 @@ class Draw:
         n_none = sum(str(obj) == 'None' for obj in self.Objects)
         for _ in range(n_none):
             self.Objects.remove(None)
+
+    def set_pad_margins(self, c=None, l=None, r=None, b=None, t=None):
+        do(c.SetLeftMargin, l)
+        do(c.SetRightMargin, r if r is not None else None if round(c.GetRightMargin(), 1) != .1 else .03 )
+        do(c.SetBottomMargin, None if round(c.GetBottomMargin(), 1) != .1 else (.17 if b is None else b) - (.07 if not self.Legend else 0))
+        do(c.SetTopMargin, None if round(c.GetTopMargin(), 1) != .1 else (.1 if t is None else t) - (0 if self.Title else .07))
     # endregion
     # ----------------------------------------
 
@@ -174,12 +181,11 @@ class Draw:
         ar.Draw()
         self.add(ar)
 
-    def draw_tpad(self, name, tit='', pos=None, fill_col=0, gridx=None, gridy=None, margins=None, transparent=False, logy=None, logx=None, logz=None):
-        margins = [.1, .1, .1, .1] if margins is None else margins
+    def draw_tpad(self, name, tit='', pos=None, fill_col=0, gridx=None, gridy=None, margins=None, transparent=False, logy=None, logx=None, logz=None, lm=None, rm=None, bm=None, tm=None):
         pos = [0, 0, 1, 1] if pos is None else pos
         p = TPad(name, tit, *pos)
         p.SetFillColor(fill_col)
-        p.SetMargin(*margins)
+        self.set_pad_margins(p, *(margins if all(m is None for m in [lm, rm, bm, tm]) else [lm, rm, bm, tm]))
         do([p.SetLogx, p.SetLogy, p.SetLogz], [logx, logy, logz])
         do([p.SetGridx, p.SetGridy], [gridx, gridy])
         make_transparent(p) if transparent else do_nothing()
@@ -377,7 +383,7 @@ class Draw:
             self.Analyses.values()[ind].InfoLegend.draw(canvas, all_pads, both_dias) if hasattr(self, 'Analyses') else log_critical('sth went wrong...')
         canvas.Modified()
         canvas.Update()
-        if save:
+        if save and self.Save:
             try:
                 if both_dias and sub_dir is None:
                     sub_dir = self.TelSaveDir if hasattr(self, 'TelSaveDir') else sub_dir
@@ -424,10 +430,7 @@ class Draw:
         h.Sumw2(sumw2) if hasattr(h, 'Sumw2') and sumw2 is not None else do_nothing()
         set_root_output(show)
         c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x, y) if canvas is None else canvas
-        do(c.SetLeftMargin, lm)
-        do(c.SetRightMargin, rm if rm is not None else None if round(c.GetRightMargin(), 1) != .1 else .03)
-        do(c.SetBottomMargin, None if round(c.GetBottomMargin(), 1) != .1 else (.17 if bm is None else bm) - (.07 if not self.Legend else 0))
-        do(c.SetTopMargin, None if round(c.GetTopMargin(), 1) != .1 else (.1 if tm is None else tm) - (0 if self.Title else .07))
+        self.set_pad_margins(c, lm, rm, bm, tm)
         c.SetLogx() if logx else do_nothing()
         c.SetLogy() if logy else do_nothing()
         c.SetLogz() if logz else do_nothing()
