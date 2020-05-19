@@ -536,7 +536,7 @@ class Draw:
 def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=None, marker=20, color=None, line_color=None, markersize=None, x_off=None, y_off=None, z_off=None, lw=1,
                  fill_color=None, fill_style=None, stats=True, tit_size=None, lab_size=None, l_off_y=None, l_off_x=None, draw_first=False, x_range=None, y_range=None, z_range=None, sumw2=None,
                  do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None, tick_size=None, t_ax_off=None, center_y=False, center_x=False, yax_col=None, normalise=None, pal=None, rebin=None,
-                 y_ticks=None, x_ticks=None, z_ticks=None):
+                 y_ticks=None, x_ticks=None, z_ticks=None, opacity=None):
     h = histo
     if draw_first:
         set_root_output(False)
@@ -566,7 +566,8 @@ def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=Non
     try:
         h.SetLineColor(line_color) if line_color is not None else h.SetLineColor(color) if color is not None else do_nothing()
         h.SetLineWidth(lw)
-        h.SetFillColor(fill_color) if fill_color is not None else do_nothing()
+        h.SetFillColor(fill_color) if fill_color is not None and opacity is None else do_nothing()
+        h.SetFillColorAlpha(fill_color, opacity) if fill_color is not None and opacity is not None else do_nothing()
         h.SetFillStyle(fill_style) if fill_style is not None else do_nothing()
         h.SetFillStyle(style) if style is not None else do_nothing()
         h.SetContour(ncont) if ncont is not None else do_nothing()
