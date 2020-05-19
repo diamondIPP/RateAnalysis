@@ -67,10 +67,12 @@ class Waveform(Analysis):
         format_histo(h, x_range=increased_range(fit_range, .5, .5), stats=0)
         return c
 
-    def get_average_rise_time(self, p=.1, ind=None, show=False):
-        h = self.draw_all_average(show=show, ind=ind)
-        maxval = h.GetMaximum() - self.Ana.get_pedestal().n
+    def get_average_rise_time(self, p=.1, ind=None, x_range=None, y_range=None, show=False):
+        h = self.draw_all_average(show=show, ind=ind, x_range=x_range, y_range=y_range)
+        maxval = h.GetBinContent(h.GetMaximumBin()) - self.Ana.get_pedestal().n
+        print(maxval)
         bins = [h.FindFirstBinAbove(ip * maxval) for ip in [1 - p, p]]
+        print(bins)
         coods = [(h.GetBinCenter(ib), h.GetBinContent(ib), h.GetBinCenter(ib - 1), h.GetBinContent(ib - 1), ib) for ib in bins]
         f1, f2 = [interpolate_two_points(*icood) for icood in coods]
         if show:
@@ -81,14 +83,14 @@ class Waveform(Analysis):
             f2.Draw('same')
         return f1.GetX((1 - p) * maxval) - f2.GetX(p * maxval)
 
-    def draw_all_average(self, corr=True, n=-1, ind=None, x_range=None, show=True, show_noise=False, redo=False):
+    def draw_all_average(self, corr=True, n=-1, ind=None, x_range=None, y_range=None, show=True, show_noise=False, redo=False):
         def f():
             p1 = TProfile('paawf', 'Averaged Waveform', 1000, 0, 500)
             values = self.get_values(ind)[:n]
             p1.FillN(values.size, self.get_times(corr, ind).astype('d')[:n], values.astype('d'), ones(values.size))
             return p1
         p = do_pickle(self.make_simple_pickle_path('AWF', '' if ind is None else len(ind)), f, redo=redo)
-        format_histo(p, x_tit='Time [ns]', y_tit='Pulse Height [mV]', y_off=1.2, stats=0, markersize=.5, x_range=x_range)
+        format_histo(p, x_tit='Time [ns]', y_tit='Pulse Height [mV]', y_off=1.2, stats=0, markersize=.5, x_range=x_range, y_range=y_range)
         self.draw_histo(p, show=show)
         if show_noise:
             self.__draw_noise(pol=False)
