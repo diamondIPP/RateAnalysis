@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from analysis import *
-from ROOT import TH1F, TCut, TProfile
+from ROOT import TH1F, TCut, TProfile, THStack
 from scipy.signal import find_peaks, savgol_filter
 from numpy import polyfit, pi, RankWarning, vectorize, size, split, ones, ceil, repeat, linspace
 from warnings import simplefilter
@@ -354,3 +354,17 @@ class PeakAnalysis(Analysis):
         print [self.Tree.GetV1()[j] / 2 for j in xrange(a)], [self.Tree.GetV2()[j] for j in xrange(a)][0]
         a = self.Tree.Draw('peaks3_x', '', 'goff', 1, self.Ana.StartEvent + self.Ana.count - 1)
         print [i / 2. for i in [self.Tree.GetV1()[j] for j in xrange(a)]]
+
+    def compare_signal_distributions(self, bins, bin_size=None, x_range=None):
+        histos = [self.Ana.draw_signal_distribution(show=False, cut=self.get_tbin_cut(ibin, bin_size) + self.Ana.Cut()) for ibin in bins]
+        stack = THStack('ssdt', 'Time Comparison;Time [ns];Number of Entries')
+        leg = self.make_legend(nentries=2, w=.25)
+        l_names = ['low pulse height', 'high pulse height']
+        histos.reverse()
+        for i, h in enumerate(histos):
+            color = get_color_gradient(2)[i]
+            format_histo(h, stats=0, color=color, fill_color=color, normalise=True, sumw2=False, opacity=.6)
+            leg.AddEntry(h, l_names[i], 'l')
+            stack.Add(h)
+        format_histo(stack, draw_first=True, x_range=x_range, y_off=1.4)
+        self.draw_histo(stack, 'TimingComparison', draw_opt='nostack', leg=leg, lm=.12)
