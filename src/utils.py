@@ -615,6 +615,10 @@ def get_color_gradient(n):
     return color_table[0::(len(color_table) + 1) / n]
 
 
+def get_color(n, i):
+    return get_color_gradient(n)[i]
+
+
 def do(fs, pars, exe=-1):
     fs, pars = ([fs], [pars]) if type(fs) is not list else (fs, pars)
     exe = pars if exe == -1 else [exe]
@@ -897,6 +901,10 @@ def calc_speed(p, m):
 
 def t_diff(s, p, m1, m2):
     return s * (1 / calc_speed(p, m1) - 1 / calc_speed(p, m2)) / constants.c * 1e9
+
+
+def e_kin(p, m):
+    return sqrt(p**2 + m**2) - m
 
 
 def gamma_factor(v):
