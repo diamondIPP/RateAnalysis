@@ -94,15 +94,20 @@ class PeakAnalysis(Analysis):
             p.Draw('y+')
         return h
 
-    def get_t_bins(self, bin_size=.5):
+    def get_t_bins(self, bin_size=None):
         m, s = mean_sigma(self.get_all())
-        bins = arange(m - 5 * s, m + 5 * s, bin_size)
+        bins = arange(m - 5 * s, m + 5 * s, .5 if bin_size is None else bin_size)
         return bins.size - 1, bins
 
-    def get_t_indices(self, bin_size=.5):
-        s, bins = self.get_t_bins(bin_size)
+    def get_tbin_cut(self, ibin, bin_size=None, corr=True, fine_corr=False):
+        cut_name = self.Ana.Timing.get_peak_name(corr, fine_corr)
+        vmin, vmax = self.get_t_bins(bin_size)[1][ibin:ibin + 2]
+        return TCut('tbin{}'.format(ibin), '{0} < {n} && {n} < {1}'.format(vmin, vmax, n=cut_name))
+
+    def get_t_indices(self, ibin, bin_size=None):
+        bins = self.get_t_bins(bin_size)[1]
         values = array(self.get_all())
-        return [where((bins[i] < values) & (values < bins[i + 1]))[0] for i in range(s)]
+        return where((bins[ibin] <= values) & (values < bins[ibin + 1]))[0]
 
     def correct_times(self, times, n_peaks):
         correction = repeat(self.get_all(), n_peaks) - self.get_all()[0]
