@@ -88,11 +88,21 @@ class Waveform(Analysis):
             p1.FillN(values.size, self.get_times(corr, ind).astype('d')[:n], values.astype('d'), ones(values.size))
             return p1
         p = do_pickle(self.make_simple_pickle_path('AWF', '' if ind is None else len(ind)), f, redo=redo)
-        format_histo(p, x_tit='Time [ns]', y_tit='Pulse Height [mv]', y_off=1.2, stats=0, markersize=.5, x_range=x_range)
+        format_histo(p, x_tit='Time [ns]', y_tit='Pulse Height [mV]', y_off=1.2, stats=0, markersize=.5, x_range=x_range)
         self.draw_histo(p, show=show)
         if show_noise:
             self.__draw_noise(pol=False)
         return p
+
+    def compare_averages(self, bins, bin_size=None, x_range=None, show=True):
+        g0, g1 = [self.make_graph_from_profile(self.draw_all_average(show=False, ind=self.Ana.Peaks.get_t_indices(ibin, bin_size))) for ibin in bins]
+        format_histo(g0, color=get_color(2, 1), x_tit='Peak Time [ns]', y_tit='Signal [mV]', x_range=x_range, y_off=1.2)
+        format_histo(g1, color=get_color(2, 0))
+        leg = self.make_legend(nentries=2, w=.25)
+        leg.AddEntry(g0, 'high pulse height', 'l')
+        leg.AddEntry(g1, 'low pulse height', 'l')
+        self.draw_histo(g0, draw_opt='ac', show=show, leg=leg, lm=.11)
+        g1.Draw('c')
 
     def get_trigger_cells(self, redo=False):
         return do_hdf5(self.make_simple_hdf5_path('TC'), self.Run.get_root_vec, redo=redo, var='trigger_cell', cut=self.Cut, dtype='i2')
