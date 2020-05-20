@@ -48,13 +48,17 @@ class Waveform(Analysis):
         self.draw_histo(h, 'WaveForms{n}'.format(n=n), show=show, draw_opt='col' if n > 1 else 'apl', lm=.073, rm=.045, bm=.18, x=1.5, y=.5, gridy=grid, gridx=grid)
         return h, self.Count - start_count
 
-    def draw_all(self, corr=True, n=-1, x_range=None, y_range=None, ind=None, show=True):
-        h = TH2F('h_wf', 'All Waveforms', 1024, 0, 512, 2048, -512, 512)
-        values = self.get_values(ind)[:n]
-        h.FillN(values.size, self.get_times(corr, ind).astype('d')[:n], values.astype('d'), ones(values.size))
+    def draw_all(self, corr=True, n=-1, x_range=None, y_range=None, ind=None, channel=None, show=True):
+        n = 1024 * n if n != -1 else n
+        values, times = self.get_values(ind, channel)[:n], self.get_times(corr, ind)[:n]
+        if values.size > self.Run.NSamples:
+            h = TH2F('hwf', 'All Waveforms', 1024, 0, 512, 2048, -512, 512)
+            h.FillN(values.size, times.astype('d'), values.astype('d'), ones(values.size))
+        else:
+            h = self.make_tgrapherrors('gaw', 'Waveform', x=times, y=values)
         y_range = increased_range([min(values), max(values)], .1, .2) if y_range is None else y_range
         format_histo(h, x_tit='Time [ns]', y_tit='Signal [mV]', y_off=.5, stats=0, tit_size=.07, lab_size=.06, markersize=.5, x_range=x_range, y_range=y_range)
-        self.draw_histo(h, 'WaveForms{n}'.format(n='e'), show=show, draw_opt='col', lm=.073, rm=.045, bm=.18, x=1.5, y=.5, grid=1, logz=True)
+        self.draw_histo(h, 'WaveForms{n}'.format(n='e'), show=show, draw_opt='col' if values.size > self.Run.NSamples else 'ap', lm=.073, rm=.045, bm=.18, x=1.5, y=.5, grid=1, logz=True)
         return h
 
     def fit_average(self, fit_range=None, n=3, ind=None, show=True):
