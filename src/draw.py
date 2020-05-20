@@ -720,6 +720,10 @@ def get_hist_args(p, err=True):
     return array([make_ufloat([p.GetBinCenter(ibin), p.GetBinWidth(ibin) / 2]) if err else p.GetBinCenter(ibin) for ibin in range(1, p.GetNbinsX() + 1)])
 
 
+def get_hist_vecs(p, err=True):
+    return get_hist_args(p, err), get_hist_vec(p, err)
+
+
 def get_h_values(h):
     return get_graph_y(h) if 'Graph' in h.ClassName() else get_hist_vec(h)
 
