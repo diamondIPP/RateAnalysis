@@ -162,6 +162,12 @@ def interpolate_two_points(x1, y1, x2, y2, name=''):
     return f
 
 
+def interpolate_x(x1, x2, y1, y2, y):
+    p1 = (y1 - y2) / (x1 - x2)
+    p0 = y1 - x1 * p1
+    return (y - p0) / p1
+
+
 def move_element(odict, thekey, newpos):
     odict[thekey] = odict.pop(thekey)
     for i, (key, value) in enumerate(odict.items()):
