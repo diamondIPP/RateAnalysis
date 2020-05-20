@@ -12,6 +12,7 @@ from Timing import TimingAnalysis
 from converter import Converter
 from waveform import Waveform
 from pad_alignment import PadAlignment
+from numpy import ones
 
 
 class PadAnalysis(DUTAnalysis):
@@ -52,8 +53,8 @@ class PadAnalysis(DUTAnalysis):
             # subclasses
             self.Pulser = PulserAnalysis(self)
             self.Pedestal = PedestalAnalysis(self)
-            self.Peaks = PeakAnalysis(self)
             self.Waveform = Waveform(self)
+            self.Peaks = PeakAnalysis(self)
 
             # alignment
             self.IsAligned = self.check_alignment()
@@ -406,6 +407,14 @@ class PadAnalysis(DUTAnalysis):
         format_histo(h, x_tit='Signal Peak Position [ns]', y_tit='Pulse Height [mV]', y_off=1.4, stats=0)
         self.save_histo(h, 'SignalVsPeakPos{}{}'.format(int(corr), int(fine_corr)), show, lm=.11, draw_opt='' if prof else 'colz', rm=.03 if prof else .18)
         return h
+
+    def draw_signal_vs_cfd(self, bin_size=None, thresh=.5, show=True):
+        p = TProfile('pscfd', 'Signal vs {:.0f}% Constant Fraction Time'.format(thresh * 100), *self.Peaks.get_t_bins(bin_size, off=self.Waveform.get_average_rise_time()))
+        times = self.Peaks.get_all_cfd(thresh)
+        p.FillN(times.size, times.astype('d'), self.Run.get_root_vec(var=self.generate_signal_name(), cut=self.Cut()), ones(times.size))
+        format_histo(p, x_tit='Constant Fraction Time [ns]', y_tit='Pulse Height [mV]', y_off=1.4, stats=0)
+        self.draw_histo(p, show=show, lm=.12)
+        return p
 
     def draw_signal_vs_triggercell(self, bin_width=10, cut=None, show=True):
         p = TProfile('pstc', 'Signal vs. Trigger Cell', self.Run.NSamples / bin_width, 0, self.Run.NSamples)
