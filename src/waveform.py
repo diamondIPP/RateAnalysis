@@ -74,9 +74,7 @@ class Waveform(Analysis):
     def get_average_rise_time(self, p=.1, ind=None, x_range=None, y_range=None, show=False):
         h = self.draw_all_average(show=show, ind=ind, x_range=x_range, y_range=y_range)
         maxval = h.GetBinContent(h.GetMaximumBin()) - self.Ana.get_pedestal().n
-        print(maxval)
         bins = [h.FindFirstBinAbove(ip * maxval) for ip in [1 - p, p]]
-        print(bins)
         coods = [(h.GetBinCenter(ib), h.GetBinContent(ib), h.GetBinCenter(ib - 1), h.GetBinContent(ib - 1), ib) for ib in bins]
         f1, f2 = [interpolate_two_points(*icood) for icood in coods]
         if show:
@@ -113,21 +111,21 @@ class Waveform(Analysis):
     def get_trigger_cells(self, redo=False):
         return do_hdf5(self.make_simple_hdf5_path('TC'), self.Run.get_root_vec, redo=redo, var='trigger_cell', cut=self.Cut, dtype='i2')
 
-    def get_all(self, redo=False):
+    def get_all(self, channel=None, redo=False):
         """ extracts all dut waveforms after all cuts from the root tree and saves it as an hdf5 file """
         def f():
             waveforms = []
             events = self.Ana.get_events(cut=self.Cut)
             self.Ana.PBar.start(events.size)
             for ev in events:
-                n = self.Tree.Draw('wf{}'.format(self.Channel), '', 'goff', 1, ev)
+                n = self.Tree.Draw('wf{}'.format(self.Channel if channel is None else channel), '', 'goff', 1, ev)
                 waveforms.append(self.Ana.Polarity * self.Run.get_root_vec(n, dtype='f2'))
                 self.Ana.PBar.update()
             return array(waveforms)
-        return do_hdf5(self.make_hdf5_path('WF', run=self.RunNumber, ch=self.Channel), f, redo=redo)
+        return do_hdf5(self.make_simple_hdf5_path(dut=self.Channel if channel is None else channel), f, redo=redo)
 
-    def get_values(self, ind=None):
-        return array(self.get_all())[ind].flatten()
+    def get_values(self, ind=None, channel=None):
+        return array(self.get_all(channel=channel))[ind].flatten()
 
     def get_times(self, corr=True, ind=None):
         return array(self.get_all_times(corr))[ind].flatten()
