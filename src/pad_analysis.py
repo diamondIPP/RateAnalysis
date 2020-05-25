@@ -408,6 +408,28 @@ class PadAnalysis(DUTAnalysis):
         self.save_histo(h, 'SignalVsPeakPos{}{}'.format(int(corr), int(fine_corr)), show, lm=.11, draw_opt='' if prof else 'colz', rm=.03 if prof else .18)
         return h
 
+    def draw_signal_vs_tot(self, show=True):
+        values = self.Peaks.get_all_tot()
+        x = self.Run.get_root_vec(var=self.generate_signal_name(), cut=self.Cut())
+        v = values[(values > 0) & (values < 3 * mean(values))]
+        x = x[(values > 0) & (values < 3 * mean(values))]
+        m, s = mean_sigma(v)
+        h = TH2F('hstot', 'Pulse Height vs. Time over Threshold', 200, *(increased_range([m - 3 * s, m + 3 * s], .3, .3) + self.Bins.get_pad_ph()))
+        h.FillN(x.size, v.astype('d'), x, ones(x.size))
+        self.format_statbox(entries=True)
+        format_histo(h, y_tit='Pulse Height [mV]', x_tit='Time over Threshold [ns]', y_off=1.4)
+        self.draw_histo(h, show=show, lm=.11, draw_opt='colz')
+
+    def draw_tot_vs_peaktime(self, corr=True, fine_corr=False, bin_size=None, show=True):
+        values = self.Peaks.get_all_tot()
+        x = self.Run.get_root_vec(var=self.Timing.get_peak_name(corr, fine_corr), cut=self.Cut())
+        v = values[(values > 0) & (values < 3 * mean(values))]
+        x = x[(values > 0) & (values < 3 * mean(values))]
+        p = TProfile('ptotpt', 'ToT vs. Peaktime', *self.Peaks.get_t_bins(bin_size))
+        p.FillN(x.size, x, v.astype('d'), ones(x.size))
+        format_histo(p, x_tit='Signal Peak Position [ns]', y_tit='Time over Threshold [ns]', y_off=1.4, stats=0)
+        self.save_histo(p, 'ToTVsPeakPos{}{}'.format(int(corr), int(fine_corr)), show, lm=.11)
+
     def draw_signal_vs_cfd(self, bin_size=None, thresh=.5, show=True):
         p = TProfile('pscfd', 'Signal vs {:.0f}% Constant Fraction Time'.format(thresh * 100), *self.Peaks.get_t_bins(bin_size, off=self.Waveform.get_average_rise_time()))
         times = self.Peaks.get_all_cfd(thresh)
