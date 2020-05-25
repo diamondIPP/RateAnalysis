@@ -119,10 +119,10 @@ class PeakAnalysis(Analysis):
             p.Draw('y+')
         return h
 
-    def get_t_bins(self, bin_size=None):
+    def get_t_bins(self, bin_size=None, off=0):
         m, s = mean_sigma(self.get_all())
         bins = arange(m - 5 * s, m + 5 * s, .5 if bin_size is None else bin_size)
-        return bins.size - 1, bins
+        return bins.size - 1, bins - off
 
     def get_tbin_cut(self, ibin, bin_size=None, corr=True, fine_corr=False):
         cut_name = self.Ana.Timing.get_peak_name(corr, fine_corr)
