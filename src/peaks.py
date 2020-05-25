@@ -22,6 +22,7 @@ class PeakAnalysis(Analysis):
         self.Channel = self.Ana.Channel
         self.DUT = self.Ana.DUT
         self.Tree = self.Ana.Tree
+        self.WF = self.Ana.Waveform
         self.NoiseThreshold = self.calc_noise_threshold()
         self.Threshold = max(self.NoiseThreshold, self.Ana.get_min_signal(self.Ana.get_signal_name(peak_integral=1)))
         self.Cut = self.Ana.Cut()
@@ -48,6 +49,30 @@ class PeakAnalysis(Analysis):
 
     def get_all(self):
         return do_hdf5(self.make_hdf5_path('Peaks', 'V1', self.Ana.RunNumber, self.Channel), self.Run.get_root_vec, var=self.Ana.PeakName, cut=self.Cut, dtype='f2')
+
+    def get_signal_values(self, f, *args, **kwargs):
+        ind, noind = self.get_signal_indices(), self.get_no_signal_indices()
+        return insert(array(f(*args, **kwargs))[ind], array(noind), -999)
+
+    def get_all_cfd(self, thresh=.5):
+        return self.get_signal_values(self.find_all_cfd, thresh)
+
+    def get_all_tot(self, thresh=None, fixed=True):
+        return self.get_signal_values(self.calc_all_tot, thresh, fixed)
+
+    def get_signal_indices(self):
+        values, m = self.find_all()[0], mean(self.get_all())
+        w = self.BunchSpacing / 2
+        return where((m - w < values) & (values < m + w))[0]
+
+    def get_no_signal_indices(self, redo=False):
+        def f():
+            values, m = self.get(), mean(self.get_all())
+            w = self.BunchSpacing / 2
+            nvalues = array([where((m - w < lst) & (lst < m + w))[0].size for lst in values])
+            indices = where(nvalues == 0)[0]
+            return indices - arange(indices.size)  # we need the positions where these indices are missing
+        return do_hdf5(self.make_simple_hdf5_path('NoSig'), f, redo=redo)
 
     def get(self):
         times, heights, n_peaks = self.find_all()
