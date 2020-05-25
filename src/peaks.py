@@ -58,7 +58,7 @@ class PeakAnalysis(Analysis):
 
     def get_signal_values(self, f, *args, **kwargs):
         ind, noind = self.get_signal_indices(), self.get_no_signal_indices()
-        return insert(array(f(*args, **kwargs))[ind], array(noind), -999)
+        return insert(array(f(*args, **kwargs))[ind], array(noind), -1)
 
     def get_all_cfd(self, thresh=.5):
         return self.get_signal_values(self.find_all_cfd, thresh)
@@ -314,7 +314,8 @@ class PeakAnalysis(Analysis):
             l, r = argmax(vl > thresh), argmax(vr < thresh)  # find indices crossing the threshold
             tl = interpolate_x(x[i + l - 21], x[i + l - 20], vl[l - 1], vl[l], thresh)
             tr = interpolate_x(x[i + r - 1], x[i + r], vr[r - 1], vr[r], thresh)
-            tot.append(tr - tl)
+            v = tr - tl
+            tot.append(v if v < 1000 else -1)
             if show:
                 self.WF.draw_single(ind=ind)
                 self.draw_horizontal_line(thresh, 0, 2000, name='thresh')
@@ -330,7 +331,7 @@ class PeakAnalysis(Analysis):
         h.FillN(values.size, values.astype('d'), ones(values.size))
         format_histo(h, x_tit='ToT [ns]', y_tit='Number of Entries', y_off=1.5, fill_color=self.FillColor)
         self.draw_histo(h, show=show, lm=.13)
-    # endregion CREATE
+    # endregion TOT
     # ----------------------------------------
 
     def fit(self, values, peaks, trigger_cell):
