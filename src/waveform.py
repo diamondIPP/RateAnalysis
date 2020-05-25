@@ -59,7 +59,25 @@ class Waveform(Analysis):
         y_range = increased_range([min(values), max(values)], .1, .2) if y_range is None else y_range
         format_histo(h, x_tit='Time [ns]', y_tit='Signal [mV]', y_off=.5, stats=0, tit_size=.07, lab_size=.06, markersize=.5, x_range=x_range, y_range=y_range)
         self.draw_histo(h, 'WaveForms{n}'.format(n='e'), show=show, draw_opt='col' if values.size > self.Run.NSamples else 'ap', lm=.073, rm=.045, bm=.18, x=1.5, y=.5, grid=1, logz=True)
+        return h, n
+
+    def draw_single(self, cut='', event=None, ind=None, show=True, show_noise=False):
+        h, n = self.draw(n=1, start_event=event, cut=cut, t_corr=True, show=show, grid=True) if ind is None else self.draw_all(n=1, ind=ind)
+        if show_noise:
+            self.__draw_noise()
         return h
+
+    def draw_all_single(self, n=1, cut='', start_event=None):
+        activated_wfs = [wf for wf in xrange(4) if self.Run.wf_exists(wf)]
+        print 'activated wafeforms:', activated_wfs
+        wfs = [self.draw(n=n, start_event=start_event, cut=cut, show=False, channel=wf)[0] for wf in activated_wfs]
+        n_wfs = len(activated_wfs)
+        c = self.make_canvas('c_wfs', 'Waveforms', 2, n_wfs * .5)
+        c.Divide(1, n_wfs)
+        for i, wf in enumerate(wfs):
+            wf.SetTitle('{nam} WaveForm'.format(nam=self.Run.DigitizerChannels[activated_wfs[i]]))
+            c.cd(i + 1)
+            wf.Draw('aclp')
 
     def fit_average(self, fit_range=None, n=3, ind=None, show=True):
         max_x = self.Ana.Timing.draw_peaks(show=0).GetListOfFunctions()[1].GetParameter(1)
@@ -143,24 +161,6 @@ class Waveform(Analysis):
         t = do_hdf5(self.make_simple_hdf5_path('Times'), f, redo=redo)
         peaks = self.Ana.Peaks.get_all() if corr else []
         return array(t) - (peaks - peaks[0]).reshape(peaks.size, 1) if corr else t
-
-    def draw_single(self, cut='', event=None, show=True, show_noise=False):
-        h, n = self.draw(n=1, start_event=event, cut=cut, t_corr=True, show=show, grid=True)
-        if show_noise:
-            self.__draw_noise()
-        return h
-
-    def draw_all_single(self, n=1, cut='', start_event=None):
-        activated_wfs = [wf for wf in xrange(4) if self.Run.wf_exists(wf)]
-        print 'activated wafeforms:', activated_wfs
-        wfs = [self.draw(n=n, start_event=start_event, cut=cut, show=False, channel=wf)[0] for wf in activated_wfs]
-        n_wfs = len(activated_wfs)
-        c = self.make_canvas('c_wfs', 'Waveforms', 2, n_wfs * .5)
-        c.Divide(1, n_wfs)
-        for i, wf in enumerate(wfs):
-            wf.SetTitle('{nam} WaveForm'.format(nam=self.Run.DigitizerChannels[activated_wfs[i]]))
-            c.cd(i + 1)
-            wf.Draw('aclp')
 
     def draw_average(self, n=100, cut=None, align_peaks=True, show=True, show_noise=False):
         p = TProfile('pawf', 'Averaged Waveform', 2000, 0, 500)
