@@ -33,6 +33,8 @@ class PeakAnalysis(Analysis):
         self.BunchSpacing = self.Ana.BunchSpacing
         self.set_pickle_sub_dir('Peaks')
 
+    # ----------------------------------------
+    # region INIT
     def calc_noise_threshold(self):
         """ return peak threshold, 5 times the raw noise + mean of the noise. """
         return abs(self.Ana.Pedestal.get_raw_mean() + 5 * self.Ana.Pedestal.get_raw_noise()).n
@@ -43,7 +45,11 @@ class PeakAnalysis(Analysis):
 
     def calc_n_bunches(self):
         return int((self.Run.NSamples - self.StartAdditional) * self.Ana.DigitiserBinWidth / self.Ana.BunchSpacing)
+    # endregion INIT
+    # ----------------------------------------
 
+    # ----------------------------------------
+    # region GET
     def get_binning(self, bin_size=.5):
         return self.Ana.Waveform.get_binning(bin_size)
 
@@ -82,6 +88,40 @@ class PeakAnalysis(Analysis):
         times, heights, n_peaks = self.find_all()
         return array(split(heights, cumsum(n_peaks)[:-1]))
 
+    def get_t_bins(self, bin_size=None, off=0):
+        m, s = mean_sigma(self.get_all())
+        bins = arange(m - 5 * s, m + 5 * s, .5 if bin_size is None else bin_size)
+        return bins.size - 1, bins - off
+
+    def get_tbin_cut(self, ibin, bin_size=None, corr=True, fine_corr=False):
+        cut_name = self.Ana.Timing.get_peak_name(corr, fine_corr)
+        vmin, vmax = self.get_t_bins(bin_size)[1][ibin:ibin + 2]
+        return TCut('tbin{}'.format(ibin), '{0} < {n} && {n} < {1}'.format(vmin, vmax, n=cut_name))
+
+    def get_t_indices(self, ibin, bin_size=None):
+        bins = self.get_t_bins(bin_size)[1]
+        values = array(self.get_all())
+        return where((bins[ibin] <= values) & (values < bins[ibin + 1]))[0]
+
+    def get_indices(self, t_min, t_max):
+        s1_indices = self.get_n()
+        times = concatenate(self.get()[s1_indices])
+        x = self.correct_times_for_events(times[times > self.StartAdditional * self.BinWidth] % self.BunchSpacing, s1_indices)
+        return s1_indices[where((t_min <= x) & (x <= t_max))]
+
+    def get_event(self, i):
+        return self.WF.get_all_times()[i], self.WF.get_all()[i], self.get_heights()[i], self.get()[i]
+
+    def get_n_additional(self, start_bunch=None, end_bunch=None, thresh=None):
+        def f():
+            values = self.find_n_additional(start_bunch, end_bunch, thresh)
+            m = mean(values)
+            return ufloat(m, sqrt(m / values.size))
+        suffix = '{}_{}'.format(start_bunch, end_bunch) if start_bunch is not None else ''
+        return do_pickle(self.make_simple_pickle_path('NAdd', '{}{}'.format(suffix, '' if thresh is None else '{:1.0f}'.format(thresh))), f)
+    # endregion GET
+    # ----------------------------------------
+
     def draw(self, corr=True, scale=False, split_=1, thresh=None, y_range=None, show=True, redo=False):
         def f():
             times, heights, n_peaks = self.find_all(redo=redo, thresh=thresh)
@@ -119,21 +159,6 @@ class PeakAnalysis(Analysis):
             p.Draw('y+')
         return h
 
-    def get_t_bins(self, bin_size=None, off=0):
-        m, s = mean_sigma(self.get_all())
-        bins = arange(m - 5 * s, m + 5 * s, .5 if bin_size is None else bin_size)
-        return bins.size - 1, bins - off
-
-    def get_tbin_cut(self, ibin, bin_size=None, corr=True, fine_corr=False):
-        cut_name = self.Ana.Timing.get_peak_name(corr, fine_corr)
-        vmin, vmax = self.get_t_bins(bin_size)[1][ibin:ibin + 2]
-        return TCut('tbin{}'.format(ibin), '{0} < {n} && {n} < {1}'.format(vmin, vmax, n=cut_name))
-
-    def get_t_indices(self, ibin, bin_size=None):
-        bins = self.get_t_bins(bin_size)[1]
-        values = array(self.get_all())
-        return where((bins[ibin] <= values) & (values < bins[ibin + 1]))[0]
-
     def correct_times(self, times, n_peaks):
         correction = repeat(self.get_all(), n_peaks) - self.get_all()[0]
         return times - correction
@@ -149,15 +174,6 @@ class PeakAnalysis(Analysis):
         p.FillN(times.size, array(times).astype('d'), array(heights).astype('d'), ones(times.size))
         format_histo(p, x_tit='Time [ns]', y_tit='Peak Height [mV]', y_off=1.3, stats=0, fill_color=self.FillColor)
         self.draw_histo(p, lm=.12, show=show, x=1.5, y=0.75)
-
-    def get_indices(self, t_min, t_max):
-        s1_indices = self.get_n()
-        times = concatenate(self.get()[s1_indices])
-        x = self.correct_times_for_events(times[times > self.StartAdditional * self.BinWidth] % self.BunchSpacing, s1_indices)
-        return s1_indices[where((t_min <= x) & (x <= t_max))]
-
-    def get_event(self, i):
-        return self.WF.get_all_times()[i], self.WF.get_all()[i], self.get_heights()[i], self.get()[i]
 
     def draw_combined_heights(self, hist=False, show=True):
         s1_indices = self.get_n()
@@ -193,14 +209,6 @@ class PeakAnalysis(Analysis):
         for i in range(times.size):
             times[i] = times[i][(times[i] > start) & (times[i] < end)]
         return array([lst.size for lst in times], dtype='u2')
-
-    def get_n_additional(self, start_bunch=None, end_bunch=None, thresh=None):
-        def f():
-            values = self.find_n_additional(start_bunch, end_bunch, thresh)
-            m = mean(values)
-            return ufloat(m, sqrt(m / values.size))
-        suffix = '{}_{}'.format(start_bunch, end_bunch) if start_bunch is not None else ''
-        return do_pickle(self.make_simple_pickle_path('NAdd', '{}{}'.format(suffix, '' if thresh is None else '{:1.0f}'.format(thresh))), f)
 
     def draw_additional_disto(self, show=True):
         hs = self.draw(split_=4)
@@ -238,6 +246,8 @@ class PeakAnalysis(Analysis):
         peaks = find_peaks(values, height=self.Threshold if thresh is None else thresh, distance=10, prominence=20)
         return array([array([self.Ana.Waveform.get_calibrated_time(trigger_cell, value) for value in peaks[0]]), peaks[1]['peak_heights']])
 
+    # ----------------------------------------
+    # region CFD
     @staticmethod
     def find_cfd(values, times, peaks, peak_times, thresh=.5):
         x, y, p, t = times, values, peaks, peak_times
@@ -276,7 +286,11 @@ class PeakAnalysis(Analysis):
             self.draw_tpad('psph', transparent=True, lm=.13, rm=.12)
             p.Draw('y+')
         return h
+    # endregion CFD
+    # ----------------------------------------
 
+    # ----------------------------------------
+    # region TOT
     def calc_all_tot(self, thresh=None, fixed=True, redo=False):
         def f():
             self.info('calculating time over threshold ...')
@@ -316,6 +330,8 @@ class PeakAnalysis(Analysis):
         h.FillN(values.size, values.astype('d'), ones(values.size))
         format_histo(h, x_tit='ToT [ns]', y_tit='Number of Entries', y_off=1.5, fill_color=self.FillColor)
         self.draw_histo(h, show=show, lm=.13)
+    # endregion CREATE
+    # ----------------------------------------
 
     def fit(self, values, peaks, trigger_cell):
         peaks = peaks[(peaks > 10) & (peaks < 1014)]
