@@ -7,7 +7,7 @@
 from analysis import *
 from ROOT import TH1F, TCut, TProfile, THStack
 from scipy.signal import find_peaks, savgol_filter
-from numpy import polyfit, pi, RankWarning, vectorize, size, split, ones, ceil, repeat, linspace
+from numpy import polyfit, pi, RankWarning, vectorize, size, split, ones, ceil, repeat, linspace, argmax, insert, inf
 from warnings import simplefilter
 from InfoLegend import InfoLegend
 
@@ -234,6 +234,80 @@ class PeakAnalysis(Analysis):
     def find(self, values, trigger_cell, thresh=None):
         peaks = find_peaks(values, height=self.Threshold if thresh is None else thresh, distance=10, prominence=20)
         return array([array([self.Ana.Waveform.get_calibrated_time(trigger_cell, value) for value in peaks[0]]), peaks[1]['peak_heights']])
+
+    @staticmethod
+    def find_cfd(values, times, peaks, peak_times, thresh=.5):
+        x, y, p, t = times, values, peaks, peak_times
+        cfds = []
+        for ip, it in zip(p, t):
+            i = where(x == it)[0][0]
+            v = y[max(0, i - 20): i]
+            j = argmax(v > ip * thresh)  # find next index greater than threshold
+            cfds.append(interpolate_x(x[i + j - 21], x[i + j - 20], v[j - 1], v[j], ip * thresh))
+        return cfds
+
+    def find_all_cfd(self, thresh=.5, redo=False):
+        def f():
+            self.info('calculating constant fraction discrimination times ...')
+            values, times, peaks, peak_times = self.WF.get_all(), self.WF.get_all_times(), self.get_heights(), self.get()
+            self.PBar.start(values.shape[0])
+            cfds = []
+            for i in range(values.shape[0]):
+                cfds.append(self.find_cfd(values[i], times[i], peaks[i], peak_times[i], thresh=thresh))
+                self.PBar.update()
+            return concatenate(cfds).astype('f2')
+        return do_hdf5(self.make_simple_hdf5_path('CFD', '{:.0f}'.format(thresh * 100)), f, redo=redo)
+
+    def draw_cfd(self, thresh=.5, bin_size=.2, show=True, draw_ph=False):
+        h = TH1F('hcfd', '{:.0f}% Constrant Fraction Times'.format(thresh * 100), *self.get_t_bins(.2, off=self.WF.get_average_rise_time()))
+        values = self.get_all_cfd(thresh)
+        h.FillN(values.size, array(values).astype('d'), ones(values.size))
+        format_histo(h, x_tit='Constrant Fraction Time [ns]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)
+        self.format_statbox(entries=1, x=.86 if draw_ph else .95)
+        c = self.draw_histo(h, show=show, lm=.13, rm=.12 if draw_ph else None)
+        if draw_ph:
+            p = self.Ana.draw_signal_vs_cfd(show=False, bin_size=bin_size)
+            values = get_hist_vec(p, err=False)
+            format_histo(p, title='  ', stats=0, x_tit='', l_off_x=1, y_range=increased_range([min(values[values > 0]), max(values)], .3, .3))
+            c.cd()
+            self.draw_tpad('psph', transparent=True, lm=.13, rm=.12)
+            p.Draw('y+')
+        return h
+
+    def calc_all_tot(self, thresh=None, fixed=True, redo=False):
+        def f():
+            self.info('calculating time over threshold ...')
+            values, times, peaks, peak_times = self.WF.get_all(), self.WF.get_all_times(), self.get_heights(), self.get()
+            self.PBar.start(values.shape[0])
+            tots = []
+            for i in range(values.shape[0]):
+                tots.append(self.calc_tot(values[i], times[i], peaks[i], peak_times[i], thresh=thresh, fixed=fixed))
+                self.PBar.update()
+            return concatenate(tots).astype('f2')
+        suffix = '' if thresh is None else '{:.0f}'.format(thresh if fixed else thresh * 100)
+        return do_hdf5(self.make_simple_hdf5_path('TOT', suffix), f, redo=redo)
+
+    def calc_tot(self, values, times, peaks, peak_times, thresh=None, fixed=True):
+        x, y, p, t = times, values, peaks, peak_times
+        tot = []
+        for ip, it in zip(p, t):
+            thresh = ip * thresh if not fixed else self.Threshold / 2 if thresh is None else thresh
+            i = where(x == it)[0][0]
+            vl, vr = y[max(0, i - 20):i], y[i:i + 20]  # get left and right side of the peak
+            l, r = argmax(vl > thresh), argmax(vr < thresh)  # find indices crossing the threshold
+            tl = interpolate_x(x[i + l - 21], x[i + l - 20], vl[l - 1], vl[l], thresh)
+            tr = interpolate_x(x[i + r - 1], x[i + r], vr[r - 1], vr[r], thresh)
+            tot.append(tr - tl)
+        return tot
+
+    def draw_tot(self, thresh=None, fixed=True, show=True):
+        values = array(self.get_all_tot(thresh, fixed))
+        m, s = mean_sigma(values[(values > -1) & (values < inf)])
+        thresh = '{:.0f}{}'.format(self.NoiseThreshold if thresh is None else thresh if not fixed else 100 * thresh, '%' if fixed else '')
+        h = TH1F('htot', 'Time over {} threshold'.format(thresh), 200, *increased_range([m - 3 * s, m + 3 * s], .3, .3))
+        h.FillN(values.size, values.astype('d'), ones(values.size))
+        format_histo(h, x_tit='ToT [ns]', y_tit='Number of Entries', y_off=1.5, fill_color=self.FillColor)
+        self.draw_histo(h, show=show, lm=.13)
 
     def fit(self, values, peaks, trigger_cell):
         peaks = peaks[(peaks > 10) & (peaks < 1014)]
