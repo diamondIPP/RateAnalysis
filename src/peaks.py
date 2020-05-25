@@ -7,7 +7,7 @@
 from analysis import *
 from ROOT import TH1F, TCut, TProfile, THStack
 from scipy.signal import find_peaks, savgol_filter
-from numpy import polyfit, pi, RankWarning, vectorize, size, split, ones, ceil, repeat, linspace, argmax, insert, inf
+from numpy import polyfit, pi, RankWarning, vectorize, size, split, ones, ceil, repeat, linspace, argmax, insert
 from warnings import simplefilter
 from InfoLegend import InfoLegend
 
@@ -156,6 +156,9 @@ class PeakAnalysis(Analysis):
         x = self.correct_times_for_events(times[times > self.StartAdditional * self.BinWidth] % self.BunchSpacing, s1_indices)
         return s1_indices[where((t_min <= x) & (x <= t_max))]
 
+    def get_event(self, i):
+        return self.WF.get_all_times()[i], self.WF.get_all()[i], self.get_heights()[i], self.get()[i]
+
     def draw_combined_heights(self, hist=False, show=True):
         s1_indices = self.get_n()
         times, heights = concatenate(self.get()[s1_indices]), concatenate(self.get_heights()[s1_indices])
@@ -287,23 +290,28 @@ class PeakAnalysis(Analysis):
         suffix = '' if thresh is None else '{:.0f}'.format(thresh if fixed else thresh * 100)
         return do_hdf5(self.make_simple_hdf5_path('TOT', suffix), f, redo=redo)
 
-    def calc_tot(self, values, times, peaks, peak_times, thresh=None, fixed=True):
-        x, y, p, t = times, values, peaks, peak_times
+    def calc_tot(self, values=None, times=None, peaks=None, peak_times=None, ind=None, thresh=None, fixed=True, show=False):
+        x, y, p, t = (times, values, peaks, peak_times) if ind is None else self.get_event(ind)
         tot = []
-        for ip, it in zip(p, t):
+        for i, (ip, it) in enumerate(zip(p, t)):
             thresh = ip * thresh if not fixed else self.Threshold / 2 if thresh is None else thresh
             i = where(x == it)[0][0]
-            vl, vr = y[max(0, i - 20):i], y[i:i + 20]  # get left and right side of the peak
+            vl, vr = y[max(0, i - 20):i], y[i:i + 40]  # get left and right side of the peak
             l, r = argmax(vl > thresh), argmax(vr < thresh)  # find indices crossing the threshold
             tl = interpolate_x(x[i + l - 21], x[i + l - 20], vl[l - 1], vl[l], thresh)
             tr = interpolate_x(x[i + r - 1], x[i + r], vr[r - 1], vr[r], thresh)
             tot.append(tr - tl)
+            if show:
+                self.WF.draw_single(ind=ind)
+                self.draw_horizontal_line(thresh, 0, 2000, name='thresh')
+                self.draw_vertical_line(tl, 0, 1000, name='l{}'.format(i))
+                self.draw_vertical_line(tr, 0, 1000, name='r{}'.format(i))
         return tot
 
     def draw_tot(self, thresh=None, fixed=True, show=True):
         values = array(self.get_all_tot(thresh, fixed))
-        m, s = mean_sigma(values[(values > -1) & (values < inf)])
-        thresh = '{:.0f}{}'.format(self.NoiseThreshold if thresh is None else thresh if not fixed else 100 * thresh, '%' if fixed else '')
+        m, s = mean_sigma(sorted(values[(values > 0) & (values < 1e5)])[100:-100])
+        thresh = '{:.0f}{}'.format(self.NoiseThreshold if thresh is None else thresh if not fixed else 100 * thresh, '%' if not fixed else 'mV')
         h = TH1F('htot', 'Time over {} threshold'.format(thresh), 200, *increased_range([m - 3 * s, m + 3 * s], .3, .3))
         h.FillN(values.size, values.astype('d'), ones(values.size))
         format_histo(h, x_tit='ToT [ns]', y_tit='Number of Entries', y_off=1.5, fill_color=self.FillColor)
