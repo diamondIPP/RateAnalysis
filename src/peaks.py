@@ -232,7 +232,7 @@ class PeakAnalysis(Analysis):
         return f['times'], f['heights'], f['n_peaks']
 
     def find(self, values, trigger_cell, thresh=None):
-        peaks = find_peaks(values, height=self.Threshold if thresh is None else thresh, distance=2, prominence=20)
+        peaks = find_peaks(values, height=self.Threshold if thresh is None else thresh, distance=10, prominence=20)
         return array([array([self.Ana.Waveform.get_calibrated_time(trigger_cell, value) for value in peaks[0]]), peaks[1]['peak_heights']])
 
     def fit(self, values, peaks, trigger_cell):
