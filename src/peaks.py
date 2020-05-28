@@ -113,7 +113,7 @@ class PeakAnalysis(Analysis):
     def get_indices(self, t_min, t_max):
         s1_indices = self.get_n()
         times = concatenate(self.get()[s1_indices])
-        x = self.correct_times_for_events(times[times > self.StartAdditional * self.BinWidth] % self.BunchSpacing, s1_indices)
+        x = self.get_corrected_times(times[times > self.StartAdditional * self.BinWidth] % self.BunchSpacing, events=s1_indices)
         return s1_indices[where((t_min <= x) & (x <= t_max))]
 
     def get_event(self, i):
@@ -126,13 +126,61 @@ class PeakAnalysis(Analysis):
             return ufloat(m, sqrt(m / values.size))
         suffix = '{}_{}'.format(start_bunch, end_bunch) if start_bunch is not None else ''
         return do_pickle(self.make_simple_pickle_path('NAdd', '{}{}'.format(suffix, '' if thresh is None else '{:1.0f}'.format(thresh))), f)
+
+    def get_corrected_times(self, times, n_peaks=None, events=None):
+        signal_peak_times = repeat(self.get_from_tree(), n_peaks) if events is None else array(self.get_from_tree())[events]
+        return times - (signal_peak_times - self.get_from_tree()[0])
+
+    def get_n_times(self, n=2, ret_indices=False):
+        """ :returns all times with exactly [n] additional peaks. """
+        times = self.get()
+        for i in range(times.size):
+            times[i] = times[i][(times[i] > self.StartAdditional * self.BinWidth)]
+        return where(array([lst.size for lst in times]) == n)[0] if ret_indices else times[array([lst.size for lst in times]) == n]  # select all events with two additional peaks
+
+    def get_n(self, n=1):
+        return self.get_n_times(n, ret_indices=True)
+
+    def get_flux(self, n_peaks=None, l=None, redo=False, prnt=True):
+        def f():
+            n = self.find_n_additional() if n_peaks is None and l is None else n_peaks
+            lambda_ = ufloat(mean(n), sqrt(mean(n) / n.size)) if l is None else l
+            flux = lambda_ / (self.Ana.BunchSpacing * self.NBunches * self.get_area()) * 1e6
+            return flux
+        value = do_pickle(self.make_simple_pickle_path('Flux'), f, redo=redo)
+        self.info('Estimated Flux by number of peaks: {}'.format(make_flux_string(value)), prnt=prnt)
+        return value
+
+    def get_area(self, bcm=False):
+        """ :returns area of the DUT in cm^2"""
+        return self.get_bcm_area() if bcm else self.DUT.ActiveArea * .01
+
+    def get_bcm_area(self):
+        """ return the total area of the BCM' pad sizes """
+        i = int(self.Ana.DUT.Name.split('-')[-1]) - 1
+        base_length = 0.0928125  # [cm]
+        spacing = 0.0025
+        radius = 0.0049568
+        rounded_edge = radius ** 2 * (4 - pi)
+        area = base_length ** 2
+        return 2 ** i * area + self.get_spacings(i, spacing, base_length) - rounded_edge
+
+    def get_spacings(self, i, spacing, length):
+        """ return the additional spacings for the BCM' pad sizes """
+        if i > 0:
+            j = 2 ** (i / 2)
+            return spacing * (j * length + (j - 1) * spacing) + 2 * self.get_spacings(i - 1, spacing, length)
+        else:
+            return 0
     # endregion GET
     # ----------------------------------------
 
+    # ----------------------------------------
+    # region DRAW
     def draw(self, corr=True, scale=False, split_=1, thresh=None, y_range=None, show=True, redo=False):
         def f():
             times, heights, n_peaks = self.find_all(redo=redo, thresh=thresh)
-            times = self.correct_times(times, n_peaks) if corr else times
+            times = self.get_corrected_times(times, n_peaks) if corr else times
             times = split(times, split_)
             hs = [TH1F('hp{}{}'.format(self.Ana.RunNumber, i), 'Peak Times', 512 * 2, 0, 512) for i in range(split_)]
             for i in range(split_):
@@ -166,17 +214,9 @@ class PeakAnalysis(Analysis):
             p.Draw('y+')
         return h
 
-    def correct_times(self, times, n_peaks):
-        correction = repeat(self.get_from_tree(), n_peaks) - self.get_from_tree()[0]
-        return times - correction
-
-    def correct_times_for_events(self, times, indices):
-        correction = array(self.get_from_tree())[indices] - self.get_from_tree()[0]
-        return times - correction
-
     def draw_heights_vs_time(self, bin_size=.5, corr=True, cfd=False, show=True):
         times, heights, n_peaks = self.find_all()
-        times = self.correct_times(times, n_peaks) if corr else self.find_all_cfd() if cfd else times
+        times = self.get_corrected_times(times, n_peaks) if corr else self.find_all_cfd() if cfd else times
         p = TProfile('pph', 'Peak Heights', *self.get_binning(bin_size))
         p.FillN(times.size, array(times).astype('d'), array(heights).astype('d'), ones(times.size))
         format_histo(p, x_tit='Time [ns]', y_tit='Peak Height [mV]', y_off=1.3, stats=0, fill_color=self.FillColor)
@@ -185,7 +225,7 @@ class PeakAnalysis(Analysis):
     def draw_combined_heights(self, hist=False, show=True):
         s1_indices = self.get_n()
         times, heights = concatenate(self.get()[s1_indices]), concatenate(self.get_heights()[s1_indices])
-        x = self.correct_times_for_events(times[times > self.StartAdditional * self.BinWidth] % self.BunchSpacing, s1_indices)
+        x = self.get_corrected_times(times[times > self.StartAdditional * self.BinWidth] % self.BunchSpacing, events=s1_indices)
         y = heights[times > self.StartAdditional * self.BinWidth]
         p = TProfile('pcph', 'Combined Bunch Pulse Heights', int(ceil(self.BunchSpacing)) * 2, 0, ceil(self.BunchSpacing))
         p = TH1F('hcph', 'Combined Number of Peaks for all Bunches', int(ceil(self.BunchSpacing)) * 2, 0, ceil(self.BunchSpacing)) if hist else p
@@ -193,6 +233,69 @@ class PeakAnalysis(Analysis):
         format_histo(p, x_tit='Time [ns]', y_tit='Number of Peaks' if hist else 'Peak Height [mV]', y_off=1.6, stats=0, fill_color=self.FillColor)
         self.draw_histo(p, lm=.12, show=show)
 
+    def draw_n(self, do_fit=False, show=True):
+        n_peaks = self.find_n_additional()
+        h = TH1F('h_pn', 'Number of Peaks', 10, 0, 10)
+        h.FillN(n_peaks.size, n_peaks.astype('d'), ones(n_peaks.size))
+        self.format_statbox(only_fit=True, w=.3) if do_fit else self.format_statbox(entries=True)
+        if do_fit:
+            fit_poissoni(h, show=show)
+        format_histo(h, x_tit='Number of Peaks', y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor, lw=2)
+        self.save_histo(h, 'PeakNumbers{}'.format('Fit' if do_fit else ''), show, logy=True, lm=.11)
+        self.get_flux(n_peaks)
+        return h
+
+    def draw_n_bunch(self, b=0, y_range=None, show=True):
+        bunches = self.find_bunches()
+        times = self.get_n_times(n=2)
+        times = times[[any((bunches[b] < lst) & (lst < bunches[b + 1])) for lst in times]]  # select events with a peak in bunch b
+        times = concatenate(times)
+        h = TH1F('h2a', '2 Additional Peaks for Bunch {}'.format(b), *self.get_binning())
+        h.FillN(times.size, times.astype('d'), ones(times.size))
+        self.format_statbox(entries=True)
+        format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor, y_range=y_range)
+        self.draw_histo(h, lm=.12, show=show, x=1.5, y=0.75, logy=True)
+        return times
+
+    def draw_bunch_systematics(self, n=None, show=True):
+        n = self.NBunches - 1 if n is None else n
+        bunches = self.find_bunches()
+        times = self.get_n_times(n=2)
+        peaks_per_bunch = zeros(n + 1, dtype='u4')
+        self.PBar.start(self.NBunches)
+        for b in range(self.NBunches):
+            t = times[[any((bunches[b] < lst) & (lst < bunches[b + 1])) for lst in times]]  # select events with a peak in bunch b
+            for lst in t:
+                for i in arange(n + 1):
+                    if b + i < self.NBunches:
+                        if any((bunches[i + b] < lst) & (lst < bunches[i + b + 1])):
+                            peaks_per_bunch[i] += 1
+            self.PBar.update()
+        peaks_per_bunch = [ufloat(v, sqrt(v)) for v in peaks_per_bunch] / arange(self.NBunches, self.NBunches - n - 1, -1)  # add errors and normalise
+        n_peaks = peaks_per_bunch[1:]  # exclude the signal peak
+        g = self.make_tgrapherrors('g', 'Bunch Systematics', x=arange(1, n_peaks.size + 1), y=n_peaks)
+        format_histo(g, x_tit='Bunch after a Signal', y_tit='Average Number of Peaks', y_off=1.3)
+        self.draw_histo(g, lm=.12, show=show)
+
+    def draw_height_disto(self, show=True):
+        h = TH1F('hsh', 'Signal Heights', *self.Ana.Bins.get_pad_ph())
+        values = self.get_signal_heights()
+        h.FillN(values.size, values.astype('d'), ones(values.size))
+        self.format_statbox(entries=True)
+        format_histo(h, x_tit='Peak Height [mV]', y_tit='Number of Entries', y_off=1.2, fill_color=self.FillColor)
+        self.draw_histo(h, show=show, lm=.11)
+
+    def draw_flux_vs_threshold(self, steps=20):
+        x = linspace(self.NoiseThreshold, self.Threshold, steps)
+        y = array([self.get_flux(l=self.get_n_additional(thresh=ix), redo=1) for ix in x]) / 1000.
+        g = self.make_tgrapherrors('gft', 'Flux vs. Peak Threshold', x=x, y=y)
+        format_histo(g, x_tit='Peak Finding Threshold [mV]', y_tit='Flux [MHz/cm^{2}]', y_off=1.3)
+        self.draw_histo(g, draw_opt='ap', lm=.12)
+    # endregion DRAW
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region FIND
     def find_additional(self, h=None, scale=False, show=True):
         values = get_hist_vec(self.draw(scale=scale, show=False) if h is None else h)[self.StartAdditional:]
         peaks = find_peaks([v.n for v in values], height=max(values).n / 2., distance=self.Ana.BunchSpacing)
@@ -252,6 +355,14 @@ class PeakAnalysis(Analysis):
     def find(self, values, trigger_cell, thresh=None):
         peaks = find_peaks(values, height=self.Threshold if thresh is None else thresh, distance=10, prominence=20)
         return array([array([self.Ana.Waveform.get_calibrated_time(trigger_cell, value) for value in peaks[0]]), peaks[1]['peak_heights']])
+
+    def find_from_event(self, event=1819, fit=False):
+        self.Tree.GetBranch('wf{}'.format(self.Channel)).GetEntry(event)
+        self.Tree.GetBranch('trigger_cell').GetEntry(event)
+        values = self.Ana.Polarity * array(getattr(self.Tree, 'wf{}'.format(self.Channel)))
+        return self.find(values, self.Tree.trigger_cell, fit)
+    # endregion FIND
+    # ----------------------------------------
 
     # ----------------------------------------
     # region CFD
@@ -363,113 +474,6 @@ class PeakAnalysis(Analysis):
             p2, p1, p0 = polyfit(t0[p_max - 1:p_max + 2], y[p_max - 1:p_max + 2], deg=2)
             time_peaks.append(-p1 / 2 / p2)
         return time_peaks
-
-    def find_from_event(self, event=1819, fit=False):
-        self.Tree.GetBranch('wf{}'.format(self.Channel)).GetEntry(event)
-        self.Tree.GetBranch('trigger_cell').GetEntry(event)
-        values = self.Ana.Polarity * array(getattr(self.Tree, 'wf{}'.format(self.Channel)))
-        return self.find(values, self.Tree.trigger_cell, fit)
-
-    def draw_n(self, do_fit=False, show=True):
-        n_peaks = self.find_n_additional()
-        h = TH1F('h_pn', 'Number of Peaks', 10, 0, 10)
-        h.FillN(n_peaks.size, n_peaks.astype('d'), ones(n_peaks.size))
-        self.format_statbox(only_fit=True, w=.3) if do_fit else self.format_statbox(entries=True)
-        if do_fit:
-            fit_poissoni(h, show=show)
-        format_histo(h, x_tit='Number of Peaks', y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor, lw=2)
-        self.save_histo(h, 'PeakNumbers{}'.format('Fit' if do_fit else ''), show, logy=True, lm=.11)
-        self.get_flux(n_peaks)
-        return h
-
-    def draw_n_bunch(self, b=0, y_range=None, show=True):
-        bunches = self.find_bunches()
-        times = self.get_n_times(n=2)
-        times = times[[any((bunches[b] < lst) & (lst < bunches[b + 1])) for lst in times]]  # select events with a peak in bunch b
-        times = concatenate(times)
-        h = TH1F('h2a', '2 Additional Peaks for Bunch {}'.format(b), *self.get_binning())
-        h.FillN(times.size, times.astype('d'), ones(times.size))
-        self.format_statbox(entries=True)
-        format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor, y_range=y_range)
-        self.draw_histo(h, lm=.12, show=show, x=1.5, y=0.75, logy=True)
-        return times
-
-    def draw_bunch_systematics(self, n=None, show=True):
-        n = self.NBunches - 1 if n is None else n
-        bunches = self.find_bunches()
-        times = self.get_n_times(n=2)
-        peaks_per_bunch = zeros(n + 1, dtype='u4')
-        self.PBar.start(self.NBunches)
-        for b in range(self.NBunches):
-            t = times[[any((bunches[b] < lst) & (lst < bunches[b + 1])) for lst in times]]  # select events with a peak in bunch b
-            for lst in t:
-                for i in arange(n + 1):
-                    if b + i < self.NBunches:
-                        if any((bunches[i + b] < lst) & (lst < bunches[i + b + 1])):
-                            peaks_per_bunch[i] += 1
-            self.PBar.update()
-        peaks_per_bunch = [ufloat(v, sqrt(v)) for v in peaks_per_bunch] / arange(self.NBunches, self.NBunches - n - 1, -1)  # add errors and normalise
-        n_peaks = peaks_per_bunch[1:]  # exclude the signal peak
-        g = self.make_tgrapherrors('g', 'Bunch Systematics', x=arange(1, n_peaks.size + 1), y=n_peaks)
-        format_histo(g, x_tit='Bunch after a Signal', y_tit='Average Number of Peaks', y_off=1.3)
-        self.draw_histo(g, lm=.12, show=show)
-
-    def get_n_times(self, n=2, ret_indices=False):
-        """ :returns all times with exactly [n] additional peaks. """
-        times = self.get()
-        for i in range(times.size):
-            times[i] = times[i][(times[i] > self.StartAdditional * self.BinWidth)]
-        return where(array([lst.size for lst in times]) == n)[0] if ret_indices else times[array([lst.size for lst in times]) == n]  # select all events with two additional peaks
-
-    def get_n(self, n=1):
-        return self.get_n_times(n, ret_indices=True)
-
-    def get_flux(self, n_peaks=None, l=None, redo=False, prnt=True):
-        def f():
-            n = self.find_n_additional() if n_peaks is None and l is None else n_peaks
-            lambda_ = ufloat(mean(n), sqrt(mean(n) / n.size)) if l is None else l
-            flux = lambda_ / (self.Ana.BunchSpacing * self.NBunches * self.get_area()) * 1e6
-            return flux
-        value = do_pickle(self.make_simple_pickle_path('Flux'), f, redo=redo)
-        self.info('Estimated Flux by number of peaks: {}'.format(make_flux_string(value)), prnt=prnt)
-        return value
-
-    def draw_flux_vs_threshold(self, steps=20):
-        x = linspace(self.NoiseThreshold, self.Threshold, steps)
-        y = array([self.get_flux(l=self.get_n_additional(thresh=ix), redo=1) for ix in x]) / 1000.
-        g = self.make_tgrapherrors('gft', 'Flux vs. Peak Threshold', x=x, y=y)
-        format_histo(g, x_tit='Peak Finding Threshold [mV]', y_tit='Flux [MHz/cm^{2}]', y_off=1.3)
-        self.draw_histo(g, draw_opt='ap', lm=.12)
-
-    def get_area(self, bcm=False):
-        """ :returns area of the DUT in cm^2"""
-        return self.get_bcm_area() if bcm else self.DUT.ActiveArea * .01
-
-    def get_bcm_area(self):
-        """ return the total area of the BCM' pad sizes """
-        i = int(self.Ana.DUT.Name.split('-')[-1]) - 1
-        base_length = 0.0928125  # [cm]
-        spacing = 0.0025
-        radius = 0.0049568
-        rounded_edge = radius ** 2 * (4 - pi)
-        area = base_length ** 2
-        return 2 ** i * area + self.get_spacings(i, spacing, base_length) - rounded_edge
-
-    def get_spacings(self, i, spacing, length):
-        """ return the additional spacings for the BCM' pad sizes """
-        if i > 0:
-            j = 2 ** (i / 2)
-            return spacing * (j * length + (j - 1) * spacing) + 2 * self.get_spacings(i - 1, spacing, length)
-        else:
-            return 0
-
-    def draw_height_disto(self, show=True):
-        h = TH1F('hsh', 'Signal Heights', *self.Ana.Bins.get_pad_ph())
-        values = self.get_signal_heights()
-        h.FillN(values.size, values.astype('d'), ones(values.size))
-        self.format_statbox(entries=True)
-        format_histo(h, x_tit='Peak Height [mV]', y_tit='Number of Entries', y_off=1.2, fill_color=self.FillColor)
-        self.draw_histo(h, show=show, lm=.11)
 
     def compare_signal_distributions(self, bins, bin_size=None, x_range=None):
         histos = [self.Ana.draw_signal_distribution(show=False, cut=self.get_tbin_cut(ibin, bin_size) + self.Ana.Cut()) for ibin in bins]
