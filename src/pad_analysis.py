@@ -443,6 +443,17 @@ class PadAnalysis(DUTAnalysis):
         self.draw_histo(p, show=show, lm=.12)
         return p
 
+    def draw_signal_vs_times(self, bin_size=.2, show=True):
+        p = TProfile2D('hscfp', 'Signal vs. CFD and Peak Time', *(self.Peaks.get_t_bins(bin_size) + self.Peaks.get_t_bins(bin_size, off=self.Waveform.get_average_rise_time())))
+        x = array(self.Peaks.get_from_tree())
+        y = self.Peaks.get_all_cfd()
+        zz = self.Run.get_root_vec(var=self.generate_signal_name(), cut=self.Cut())
+        for i in range(x.size):
+            p.Fill(x[i], y[i], zz[i])
+        format_histo(p, y_tit='Constant Fraction Time [ns]', x_tit='Peak Time [ns]', z_tit='Pulse Height [mV]', y_off=1.4, stats=0)
+        self.format_statbox(entries=True)
+        self.draw_histo(p, show=show, lm=.12, rm=.13, draw_opt='colz')
+
     def draw_signal_vs_triggercell(self, bin_width=10, cut=None, show=True):
         p = TProfile('pstc', 'Signal vs. Trigger Cell', self.Run.NSamples / bin_width, 0, self.Run.NSamples)
         self.Tree.Draw('{}:trigger_cell>>pstc'.format(self.generate_signal_name()), self.Cut(cut), 'goff')
