@@ -116,8 +116,11 @@ class Waveform(Analysis):
             self.__draw_noise(pol=False)
         return p
 
-    def compare_averages(self, bins, bin_size=None, x_range=None, show=True):
-        g0, g1 = [self.make_graph_from_profile(self.draw_all_average(show=False, ind=self.Ana.Peaks.get_t_indices(ibin, bin_size))) for ibin in bins]
+    def compare_averages(self, ind1, ind2, x_range=None, normalise=False, show=True):
+        g0, g1 = [self.make_graph_from_profile(self.draw_all_average(show=False, ind=i)) for i in [ind1, ind2]]
+        if normalise:
+            scale_graph(g0, 1 / max(get_graph_y(g0)).n)
+            scale_graph(g1, 1 / max(get_graph_y(g1)).n)
         format_histo(g0, color=get_color(2, 1), x_tit='Peak Time [ns]', y_tit='Signal [mV]', x_range=x_range, y_off=1.2)
         format_histo(g1, color=get_color(2, 0))
         leg = self.make_legend(nentries=2, w=.25)
