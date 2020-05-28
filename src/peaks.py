@@ -83,18 +83,18 @@ class PeakAnalysis(Analysis):
             return indices - arange(indices.size)  # we need the positions where these indices are missing
         return do_hdf5(self.make_simple_hdf5_path('NoSig'), f, redo=redo)
 
-    def get(self):
+    def get(self, flat=False):
         times, heights, n_peaks = self.find_all()
-        return array(split(times, cumsum(n_peaks)[:-1]))
+        return array(times) if flat else array(split(times, cumsum(n_peaks)[:-1]))
 
     def get_heights(self, flat=False):
         times, heights, n_peaks = self.find_all()
-        return heights if flat else array(split(heights, cumsum(n_peaks)[:-1]))
+        return array(heights) if flat else array(split(heights, cumsum(n_peaks)[:-1]))
 
     def get_t_bins(self, bin_size=None, off=0):
         m, s = mean_sigma(self.get_from_tree())
         bins = arange(m - 5 * s, m + 5 * s, .5 if bin_size is None else bin_size)
-        return bins.size - 1, bins - off
+        return [bins.size - 1, bins - off]
 
     def get_tbin_cut(self, ibin, bin_size=None, corr=True, fine_corr=False):
         cut_name = self.Ana.Timing.get_peak_name(corr, fine_corr)
@@ -174,9 +174,9 @@ class PeakAnalysis(Analysis):
         correction = array(self.get_from_tree())[indices] - self.get_from_tree()[0]
         return times - correction
 
-    def draw_heights(self, bin_size=.5, corr=True, show=True):
+    def draw_heights_vs_time(self, bin_size=.5, corr=True, cfd=False, show=True):
         times, heights, n_peaks = self.find_all()
-        times = self.correct_times(times, n_peaks) if corr else times
+        times = self.correct_times(times, n_peaks) if corr else self.find_all_cfd() if cfd else times
         p = TProfile('pph', 'Peak Heights', *self.get_binning(bin_size))
         p.FillN(times.size, array(times).astype('d'), array(heights).astype('d'), ones(times.size))
         format_histo(p, x_tit='Time [ns]', y_tit='Peak Height [mV]', y_off=1.3, stats=0, fill_color=self.FillColor)
@@ -293,6 +293,15 @@ class PeakAnalysis(Analysis):
             self.draw_tpad('psph', transparent=True, lm=.13, rm=.12)
             p.Draw('y+')
         return h
+
+    def draw_cfd_vs_time(self, bin_size=.2, signal=False, show=True):
+        h = TH2F('hcfdt', 'Constant Fraction vs. Peak Time', *(self.get_t_bins(bin_size) + self.get_t_bins(bin_size, off=self.WF.get_average_rise_time())))
+        x = array(self.get_from_tree()) if signal else self.get(flat=True)
+        y = self.get_all_cfd() if signal else array(self.find_all_cfd()).astype('d')
+        h.FillN(x.size, x.astype('d'), y.astype('d'), ones(x.size))
+        format_histo(h, y_tit='Constrant Fraction Time [ns]', x_tit='Peak Time [ns]', y_off=1.3)
+        self.format_statbox(entries=True, x=.86)
+        self.draw_histo(h, show=show, lm=.11, draw_opt='colz', rm=.12)
     # endregion CFD
     # ----------------------------------------
 
@@ -454,29 +463,6 @@ class PeakAnalysis(Analysis):
         else:
             return 0
 
-    def draw_positions(self, cut='', corr=False, show=True):
-        if not self.Ana.has_branch('peak_positions'):
-            warning('The peak_positions branch does not exist!')
-            return
-        h = TH1F('h_pt', 'Peak {m}'.format(m='Timings' if corr else 'Positions'), 1024, 0, 512 if corr else 1024)
-        self.Tree.Draw('peak_{p}[{c}]>>h_pt'.format(c=self.Channel, p='positions' if not corr else 'times'), TCut(cut) + TCut('!pulser'), 'goff')
-        format_histo(h, x_tit='Time [ns]' if corr else 'Digitiser Bin', y_tit='Number of Entries', y_off=.4, fill_color=self.FillColor, lw=1, tit_size=.05, stats=0)
-        self.save_histo(h, 'PeakTimings', show, logy=True, lm=.045, rm=.045, x=4, y=.5)
-        return h
-
-    def draw_timings(self, cut='', show=True):
-        self.draw_positions(cut, corr=True, show=show)
-
-    def draw_max_position(self, cut='', corr=False, show=True):
-        h = TH1F('h_pt', 'Max Peak {m}'.format(m='Timings' if corr else 'Positions'), 1024, 0, 512 if corr else 1024)
-        cut = TCut(cut) + TCut('!pulser') if 'pulser' not in cut else TCut(cut)
-        self.Tree.Draw('max_peak_{p}[{c}]>>h_pt'.format(c=self.Channel, p='position' if not corr else 'time'), cut, 'goff')
-        format_histo(h, x_tit='Time [ns]' if corr else 'Digitiser Bin', y_tit='Number of Entries', y_off=.4, fill_color=self.FillColor, lw=1, tit_size=.07, stats=0, lab_size=.06)
-        self.save_histo(h, 'MaxPeak{m}'.format(m='Timings' if corr else 'Positions'), show, logy=True, lm=.073, rm=.045, x=2, y=.5)
-
-    def draw_max_timing(self, cut='', show=True):
-        self.draw_max_position(cut, corr=True, show=show)
-
     def draw_height_disto(self, show=True):
         h = TH1F('hsh', 'Signal Heights', *self.Ana.Bins.get_pad_ph())
         values = self.get_signal_heights()
@@ -484,15 +470,6 @@ class PeakAnalysis(Analysis):
         self.format_statbox(entries=True)
         format_histo(h, x_tit='Peak Height [mV]', y_tit='Number of Entries', y_off=1.2, fill_color=self.FillColor)
         self.draw_histo(h, show=show, lm=.11)
-
-    def check_peaks(self):
-        h, n = self.Ana.draw_waveforms(t_corr=False)
-        self.Tree.GetEntry(self.Ana.StartEvent + self.Count - 1)
-        print n, self.Ana.StartEvent, self.Ana.count
-        a = self.Tree.Draw('peak_positions[{ch}]:n_peaks[{ch}]'.format(ch=self.Channel), '', 'goff', 1, self.Ana.StartEvent + self.Ana.count - 1)
-        print [self.Tree.GetV1()[j] / 2 for j in xrange(a)], [self.Tree.GetV2()[j] for j in xrange(a)][0]
-        a = self.Tree.Draw('peaks3_x', '', 'goff', 1, self.Ana.StartEvent + self.Ana.count - 1)
-        print [i / 2. for i in [self.Tree.GetV1()[j] for j in xrange(a)]]
 
     def compare_signal_distributions(self, bins, bin_size=None, x_range=None):
         histos = [self.Ana.draw_signal_distribution(show=False, cut=self.get_tbin_cut(ibin, bin_size) + self.Ana.Cut()) for ibin in bins]
