@@ -385,21 +385,26 @@ class PeakAnalysis(Analysis):
 
     # ----------------------------------------
     # region CFD
-    @staticmethod
-    def find_cfd(values, times, peaks, peak_times, thresh=.5):
-        x, y, p, t = times, values, peaks, peak_times
+    def find_cfd(self, values=None, times=None, peaks=None, peak_times=None, ind=None, thresh=.5, show=False):
+        x, y, p, t = (times, values, peaks, peak_times) if ind is None else self.get_event(ind)
         cfds = []
-        for ip, it in zip(p, t):
+        for k, (ip, it) in enumerate(zip(p, t)):
             i = where(x == it)[0][0]
             v = y[max(0, i - 20): i]
             j = argmax(v > ip * thresh)  # find next index greater than threshold
-            cfds.append(interpolate_x(x[i + j - 21], x[i + j - 20], v[j - 1], v[j], ip * thresh))
+            cfd = interpolate_x(x[i + j - 21], x[i + j - 20], v[j - 1], v[j], ip * thresh)
+            cfds.append(cfd)
+            if show:
+                # self.WF.draw_single(ind=ind, x_range=self.Ana.get_signal_range(), draw_opt='alp') if not k else do_nothing()
+                self.WF.draw_single(ind=ind, draw_opt='alp') if not k else do_nothing()
+                self.draw_horizontal_line(ip * thresh, 0, 2000, name='thresh{}'.format(k), color=4)
+                self.draw_vertical_line(cfd, -1000, 1000, name='cfd{}'.format(k), color=2)
         return cfds
 
     def find_all_cfd(self, thresh=.5, redo=False):
         def f():
             self.info('calculating constant fraction discrimination times ...')
-            values, times, peaks, peak_times = self.WF.get_from_tree(), self.WF.get_all_times(), self.get_heights(), self.get()
+            values, times, peaks, peak_times = self.WF.get_all(), self.WF.get_all_times(), self.get_heights(), self.get()
             self.PBar.start(values.shape[0])
             cfds = []
             for i in range(values.shape[0]):
@@ -409,7 +414,7 @@ class PeakAnalysis(Analysis):
         return do_hdf5(self.make_simple_hdf5_path('CFD', '{:.0f}'.format(thresh * 100)), f, redo=redo)
 
     def draw_cfd(self, thresh=.5, bin_size=.2, show=True, draw_ph=False):
-        h = TH1F('hcfd', '{:.0f}% Constrant Fraction Times'.format(thresh * 100), *self.get_t_bins(.2, off=self.WF.get_average_rise_time()))
+        h = TH1F('hcfd', '{:.0f}% Constrant Fraction Times'.format(thresh * 100), *self.get_t_bins(bin_size, off=self.WF.get_average_rise_time()))
         values = self.get_all_cfd(thresh)
         h.FillN(values.size, array(values).astype('d'), ones(values.size))
         format_histo(h, x_tit='Constrant Fraction Time [ns]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)
@@ -440,7 +445,7 @@ class PeakAnalysis(Analysis):
     def calc_all_tot(self, thresh=None, fixed=True, redo=False):
         def f():
             self.info('calculating time over threshold ...')
-            values, times, peaks, peak_times = self.WF.get_from_tree(), self.WF.get_all_times(), self.get_heights(), self.get()
+            values, times, peaks, peak_times = self.WF.get_all(), self.WF.get_all_times(), self.get_heights(), self.get()
             self.PBar.start(values.shape[0])
             tots = []
             for i in range(values.shape[0]):
