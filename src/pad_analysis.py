@@ -404,6 +404,11 @@ class PadAnalysis(DUTAnalysis):
         title = 'Signal vs Peak Position{}'.format(' with {} Correction'.format('Fine' if fine_corr else 'Time') if corr else '')
         h = (TProfile if prof else TH2F)('hspt', title, *(bins if prof else list(bins) + self.Bins.get_pad_ph()))
         self.Tree.Draw('{}:{}>>hspt'.format(self.generate_signal_name(), self.Timing.get_peak_name(corr, fine_corr, region=region)), self.Cut(cut), 'goff')
+        if not prof:
+            px = h.ProjectionX()
+            for xbin in range(h.GetNbinsX()):
+                for ybin in range(h.GetNbinsY()):
+                    h.SetBinContent(xbin, ybin, h.GetBinContent(xbin, ybin) / (px.GetBinContent(xbin) if px.GetBinContent(xbin) else 1))
         format_histo(h, x_tit='Signal Peak Position [ns]', y_tit='Pulse Height [mV]', y_off=1.4, stats=0)
         self.save_histo(h, 'SignalVsPeakPos{}{}'.format(int(corr), int(fine_corr)), show, lm=.11, draw_opt='' if prof else 'colz', rm=.03 if prof else .18)
         return h
@@ -416,9 +421,9 @@ class PadAnalysis(DUTAnalysis):
         m, s = mean_sigma(v)
         h = TH2F('hstot', 'Pulse Height vs. Time over Threshold', 200, *(increased_range([m - 3 * s, m + 3 * s], .3, .3) + self.Bins.get_pad_ph()))
         h.FillN(x.size, v.astype('d'), x, ones(x.size))
-        self.format_statbox(entries=True)
-        format_histo(h, y_tit='Pulse Height [mV]', x_tit='Time over Threshold [ns]', y_off=1.4)
-        self.draw_histo(h, show=show, lm=.11, draw_opt='colz')
+        self.format_statbox(entries=True, x=.83)
+        format_histo(h, y_tit='Pulse Height [mV]', x_tit='Time over Threshold [ns]', y_off=1.4, z_tit='Number of Entries', z_off=1.1)
+        self.draw_histo(h, show=show, lm=.11, draw_opt='colz', rm=.15)
 
     def draw_tot_vs_peaktime(self, corr=True, fine_corr=False, bin_size=None, show=True):
         values = self.Peaks.get_all_tot()

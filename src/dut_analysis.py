@@ -156,13 +156,13 @@ class DUTAnalysis(TelecopeAnalysis):
             self.Tree.Draw('{z}{y}:{x}>>{h}'.format(z=self.get_ph_str() + ':' if not hitmap else '', x=x, y=y, h=name), cut, 'goff')
             set_2d_ranges(h1, *([3, 3] if size is None else size))
             adapt_z_range(h1) if not hitmap else do_nothing()
-            z_tit = 'Number of Entries' if hitmap else 'Pulse Height [mV]'
-            format_histo(h1, x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]', y_off=1.4, z_off=1.5, z_tit=z_tit, ncont=50, ndivy=510, ndivx=510, z_range=z_range)
             return h1
 
         set_palette(pal=1 if hitmap else 53)
         self.format_statbox(entries=True, x=0.82)
         h = do_pickle(pickle_path, func, redo=redo)
+        z_tit = 'Number of Entries' if hitmap else 'Pulse Height [mV]'
+        format_histo(h, x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]', y_off=1.4, z_off=1.5, z_tit=z_tit, ncont=50, ndivy=510, ndivx=510, z_range=z_range)
         self.draw_histo(h, '', show, lm=.12, rm=.16, draw_opt='colzsame')
         self.draw_fid_cut(scale=10)
         # self.draw_detector_size(scale=10)
