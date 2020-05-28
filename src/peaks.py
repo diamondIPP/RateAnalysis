@@ -53,7 +53,7 @@ class PeakAnalysis(Analysis):
     def get_binning(self, bin_size=.5):
         return self.Ana.Waveform.get_binning(bin_size)
 
-    def get_all(self):
+    def get_from_tree(self):
         return do_hdf5(self.make_hdf5_path('Peaks', 'V1', self.Ana.RunNumber, self.Channel), self.Run.get_root_vec, var=self.Ana.PeakName, cut=self.Cut, dtype='f2')
 
     def get_signal_values(self, f, default=-1, *args, **kwargs):
@@ -70,13 +70,13 @@ class PeakAnalysis(Analysis):
         return self.get_signal_values(self.get_heights, -999, flat=True)
 
     def get_signal_indices(self):
-        values, m = self.find_all()[0], mean(self.get_all())
+        values, m = self.find_all()[0], mean(self.get_from_tree())
         w = self.BunchSpacing / 2
         return where((m - w < values) & (values < m + w))[0]
 
     def get_no_signal_indices(self, redo=False):
         def f():
-            values, m = self.get(), mean(self.get_all())
+            values, m = self.get(), mean(self.get_from_tree())
             w = self.BunchSpacing / 2
             nvalues = array([where((m - w < lst) & (lst < m + w))[0].size for lst in values])
             indices = where(nvalues == 0)[0]
@@ -92,7 +92,7 @@ class PeakAnalysis(Analysis):
         return heights if flat else array(split(heights, cumsum(n_peaks)[:-1]))
 
     def get_t_bins(self, bin_size=None, off=0):
-        m, s = mean_sigma(self.get_all())
+        m, s = mean_sigma(self.get_from_tree())
         bins = arange(m - 5 * s, m + 5 * s, .5 if bin_size is None else bin_size)
         return bins.size - 1, bins - off
 
@@ -103,7 +103,7 @@ class PeakAnalysis(Analysis):
 
     def get_t_indices(self, ibin, bin_size=None):
         bins = self.get_t_bins(bin_size)[1]
-        values = array(self.get_all())
+        values = array(self.get_from_tree())
         return where((bins[ibin] <= values) & (values < bins[ibin + 1]))[0]
 
     def get_ph_indices(self, pmin, pmax):
@@ -117,7 +117,7 @@ class PeakAnalysis(Analysis):
         return s1_indices[where((t_min <= x) & (x <= t_max))]
 
     def get_event(self, i):
-        return self.WF.get_all_times()[i], self.WF.get_all()[i], self.get_heights()[i], self.get()[i]
+        return self.WF.get_all_times()[i], self.WF.get_from_tree()[i], self.get_heights()[i], self.get()[i]
 
     def get_n_additional(self, start_bunch=None, end_bunch=None, thresh=None):
         def f():
@@ -143,7 +143,7 @@ class PeakAnalysis(Analysis):
         h = do_pickle(self.make_simple_pickle_path('Histo', suffix), f, redo=redo)
         if scale:
             h.Sumw2()
-            h.Scale(1e5 / self.Ana.Waveform.get_all().shape[0])
+            h.Scale(1e5 / self.Ana.Waveform.get_from_tree().shape[0])
         if show:
             self.format_statbox(entries=True)
             format_histo(h, x_tit='Time [ns]', y_tit='Number of Peaks', y_off=1.3, fill_color=self.FillColor, y_range=y_range)
@@ -151,7 +151,7 @@ class PeakAnalysis(Analysis):
         return h
 
     def draw_signal(self, bin_size=.5, show=True, draw_ph=False):
-        values = self.get_all()
+        values = self.get_from_tree()
         h = TH1F('hsp', 'Signal Peak Times', *self.get_t_bins(bin_size))
         h.FillN(values.size, array(values).astype('d'), ones(values.size))
         format_histo(h, x_tit='Signal Peak Time [ns]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)
@@ -167,11 +167,11 @@ class PeakAnalysis(Analysis):
         return h
 
     def correct_times(self, times, n_peaks):
-        correction = repeat(self.get_all(), n_peaks) - self.get_all()[0]
+        correction = repeat(self.get_from_tree(), n_peaks) - self.get_from_tree()[0]
         return times - correction
 
     def correct_times_for_events(self, times, indices):
-        correction = array(self.get_all())[indices] - self.get_all()[0]
+        correction = array(self.get_from_tree())[indices] - self.get_from_tree()[0]
         return times - correction
 
     def draw_heights(self, bin_size=.5, corr=True, show=True):
@@ -235,7 +235,7 @@ class PeakAnalysis(Analysis):
             remove_file(hdf5_path)
         times, heights = [], []
         simplefilter('ignore', RankWarning)
-        wave_forms, trigger_cells = self.Ana.Waveform.get_all(), self.Ana.Waveform.get_trigger_cells()
+        wave_forms, trigger_cells = self.Ana.Waveform.get_from_tree(), self.Ana.Waveform.get_trigger_cells()
         self.Ana.PBar.start(trigger_cells.size)
         for i in xrange(trigger_cells.size):
             t, p = self.find(wave_forms[i], trigger_cells[i], thresh=thresh)
@@ -269,7 +269,7 @@ class PeakAnalysis(Analysis):
     def find_all_cfd(self, thresh=.5, redo=False):
         def f():
             self.info('calculating constant fraction discrimination times ...')
-            values, times, peaks, peak_times = self.WF.get_all(), self.WF.get_all_times(), self.get_heights(), self.get()
+            values, times, peaks, peak_times = self.WF.get_from_tree(), self.WF.get_all_times(), self.get_heights(), self.get()
             self.PBar.start(values.shape[0])
             cfds = []
             for i in range(values.shape[0]):
@@ -301,7 +301,7 @@ class PeakAnalysis(Analysis):
     def calc_all_tot(self, thresh=None, fixed=True, redo=False):
         def f():
             self.info('calculating time over threshold ...')
-            values, times, peaks, peak_times = self.WF.get_all(), self.WF.get_all_times(), self.get_heights(), self.get()
+            values, times, peaks, peak_times = self.WF.get_from_tree(), self.WF.get_all_times(), self.get_heights(), self.get()
             self.PBar.start(values.shape[0])
             tots = []
             for i in range(values.shape[0]):

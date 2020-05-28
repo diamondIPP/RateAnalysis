@@ -162,7 +162,7 @@ class Waveform(Analysis):
             self.PBar.finish()
             return array(times)
         t = do_hdf5(self.make_simple_hdf5_path('Times'), f, redo=redo)
-        peaks = self.Ana.Peaks.get_all() if corr else []
+        peaks = self.Ana.Peaks.get_from_tree() if corr else []
         return array(t) - (peaks - peaks[0]).reshape(peaks.size, 1) if corr else t
 
     def draw_average(self, n=100, cut=None, align_peaks=True, show=True, show_noise=False):
