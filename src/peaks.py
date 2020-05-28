@@ -69,6 +69,9 @@ class PeakAnalysis(Analysis):
     def get_signal_heights(self):
         return self.get_signal_values(self.get_heights, -999, flat=True)
 
+    def get_signal_times(self):
+        return self.get_signal_values(self.get, -999, flat=True)
+
     def get_signal_indices(self):
         values, m = self.find_all()[0], mean(self.get_from_tree())
         w = self.BunchSpacing / 2
@@ -110,6 +113,11 @@ class PeakAnalysis(Analysis):
         heights = self.get_signal_heights()
         return where((pmin <= heights) & (heights <= pmax))[0]
 
+    def get_cfd_indices(self, ibin, thresh=None, bin_size=None):
+        bins = self.get_t_bins(bin_size, off=self.WF.get_average_rise_time())[1]
+        values = self.get_all_cfd(thresh)
+        return where((bins[ibin] <= values) & (values < bins[ibin + 1]))[0]
+
     def get_indices(self, t_min, t_max):
         s1_indices = self.get_n()
         times = concatenate(self.get()[s1_indices])
@@ -117,7 +125,7 @@ class PeakAnalysis(Analysis):
         return s1_indices[where((t_min <= x) & (x <= t_max))]
 
     def get_event(self, i):
-        return self.WF.get_all_times()[i], self.WF.get_from_tree()[i], self.get_heights()[i], self.get()[i]
+        return self.WF.get_all_times()[i], self.WF.get_all()[i], self.get_heights()[i], self.get()[i]
 
     def get_n_additional(self, start_bunch=None, end_bunch=None, thresh=None):
         def f():
@@ -291,6 +299,17 @@ class PeakAnalysis(Analysis):
         g = self.make_tgrapherrors('gft', 'Flux vs. Peak Threshold', x=x, y=y)
         format_histo(g, x_tit='Peak Finding Threshold [mV]', y_tit='Flux [MHz/cm^{2}]', y_off=1.3)
         self.draw_histo(g, draw_opt='ap', lm=.12)
+
+    def draw_peak_spacing(self, overlay=False, show=True):
+        bf = self.BunchSpacing
+        values = concatenate(self.get() - self.get_signal_times())
+        values = values[values != 0]
+        values = ((values + bf / 2) % bf + bf / 2) if overlay else values
+        h = TH1F('hbs', 'Peak Spacing', *([50, bf / 2, bf * 3 / 2] if overlay else [25 * 50, 0, self.Run.NSamples * self.BinWidth]))
+        h.FillN(values.size, values.astype('d'), ones(values.size))
+        self.format_statbox(entries=True)
+        format_histo(h, x_tit='Peak Distance [ns]', y_tit='Number of Entries', y_off=1.2, fill_color=self.FillColor)
+        self.draw_histo(h, show=show, lm=.11)
     # endregion DRAW
     # ----------------------------------------
 
