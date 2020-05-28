@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from analysis import *
-from ROOT import TH1F, TCut, TProfile, THStack
+from ROOT import TH1F, TCut, TProfile, THStack, TH2F
 from scipy.signal import find_peaks, savgol_filter
 from numpy import polyfit, pi, RankWarning, vectorize, size, split, ones, ceil, repeat, linspace, argmax, insert
 from warnings import simplefilter
@@ -314,8 +314,8 @@ class PeakAnalysis(Analysis):
     def calc_tot(self, values=None, times=None, peaks=None, peak_times=None, ind=None, thresh=None, fixed=True, show=False):
         x, y, p, t = (times, values, peaks, peak_times) if ind is None else self.get_event(ind)
         tot = []
-        for i, (ip, it) in enumerate(zip(p, t)):
-            thresh = ip * thresh if not fixed else self.Threshold / 2 if thresh is None else thresh
+        for j, (ip, it) in enumerate(zip(p, t)):
+            thresh = ip * thresh if not fixed else self.Threshold * .75 if thresh is None else thresh
             i = where(x == it)[0][0]
             vl, vr = y[max(0, i - 20):i], y[i:i + 40]  # get left and right side of the peak
             l, r = argmax(vl > thresh), argmax(vr < thresh)  # find indices crossing the threshold
@@ -324,16 +324,16 @@ class PeakAnalysis(Analysis):
             v = tr - tl
             tot.append(v if v < 1000 else -1)
             if show:
-                self.WF.draw_single(ind=ind)
-                self.draw_horizontal_line(thresh, 0, 2000, name='thresh')
-                self.draw_vertical_line(tl, 0, 1000, name='l{}'.format(i))
-                self.draw_vertical_line(tr, 0, 1000, name='r{}'.format(i))
+                self.WF.draw_single(ind=ind) if not j else do_nothing()
+                self.draw_horizontal_line(thresh, 0, 2000, name='thresh', color=4)
+                self.draw_vertical_line(tl, -1000, 1000, name='l{}'.format(j), color=2)
+                self.draw_vertical_line(tr, -1000, 1000, name='r{}'.format(j), color=2)
         return tot
 
     def draw_tot(self, thresh=None, fixed=True, show=True):
         values = array(self.get_all_tot(thresh, fixed))
         m, s = mean_sigma(sorted(values[(values > 0) & (values < 1e5)])[100:-100])
-        thresh = '{:.0f}{}'.format(self.NoiseThreshold if thresh is None else thresh if not fixed else 100 * thresh, '%' if not fixed else 'mV')
+        thresh = '{:.0f}{}'.format(self.Threshold * .75 if thresh is None else thresh if not fixed else 100 * thresh, '%' if not fixed else 'mV')
         h = TH1F('htot', 'Time over {} threshold'.format(thresh), 200, *increased_range([m - 3 * s, m + 3 * s], .3, .3))
         h.FillN(values.size, values.astype('d'), ones(values.size))
         format_histo(h, x_tit='ToT [ns]', y_tit='Number of Entries', y_off=1.5, fill_color=self.FillColor)
@@ -477,6 +477,14 @@ class PeakAnalysis(Analysis):
     def draw_max_timing(self, cut='', show=True):
         self.draw_max_position(cut, corr=True, show=show)
 
+    def draw_height_disto(self, show=True):
+        h = TH1F('hsh', 'Signal Heights', *self.Ana.Bins.get_pad_ph())
+        values = self.get_signal_heights()
+        h.FillN(values.size, values.astype('d'), ones(values.size))
+        self.format_statbox(entries=True)
+        format_histo(h, x_tit='Peak Height [mV]', y_tit='Number of Entries', y_off=1.2, fill_color=self.FillColor)
+        self.draw_histo(h, show=show, lm=.11)
+
     def check_peaks(self):
         h, n = self.Ana.draw_waveforms(t_corr=False)
         self.Tree.GetEntry(self.Ana.StartEvent + self.Count - 1)
@@ -494,8 +502,17 @@ class PeakAnalysis(Analysis):
         histos.reverse()
         for i, h in enumerate(histos):
             color = get_color_gradient(2)[i]
-            format_histo(h, stats=0, color=color, fill_color=color, normalise=True, sumw2=False, opacity=.6)
+            h.Scale(1 / h.GetMaximum())
+            format_histo(h, stats=0, color=color, fill_color=color, opacity=.6)
             leg.AddEntry(h, l_names[i], 'l')
             stack.Add(h)
         format_histo(stack, draw_first=True, x_range=x_range, y_off=1.4)
         self.draw_histo(stack, 'TimingComparison', draw_opt='nostack', leg=leg, lm=.12)
+
+    def compare_hit_maps(self, bins, res=2, show=True):
+        h0, h1 = [self.Ana.draw_hitmap(cut=self.get_tbin_cut(ibin) + self.Cut, res=res, show=False) for ibin in bins]
+        h2 = TH2F()
+        h0.Copy(h2)
+        h2.Divide(h1)
+        self.draw_histo(h2, show=show, draw_opt='colz', rm=.15)
+        self.Ana.draw_fid_cut()
