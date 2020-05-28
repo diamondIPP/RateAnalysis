@@ -103,15 +103,16 @@ class Waveform(Analysis):
             f2.Draw('same')
         return f1.GetX((1 - p) * maxval) - f2.GetX(p * maxval)
 
-    def draw_all_average(self, corr=True, n=-1, ind=None, x_range=None, y_range=None, show=True, show_noise=False, redo=False):
+    def draw_all_average(self, corr=True, n=-1, ind=None, prof=True, x_range=None, y_range=None, show=True, show_noise=False, redo=False):
         def f():
-            p1 = TProfile('paawf', 'Averaged Waveform', 1000, 0, 500)
+            p1 = TProfile('paawf', 'Averaged Waveform', 1024, 0, 512) if prof else TH2F('haawf', 'Overlayed Waveforms', 1024, 0, 512, *self.Ana.Bins.get_pad_ph(4))
             values = self.get_values(ind)[:n]
             p1.FillN(values.size, self.get_times(corr, ind).astype('d')[:n], values.astype('d'), ones(values.size))
             return p1
-        p = do_pickle(self.make_simple_pickle_path('AWF', '' if ind is None else len(ind)), f, redo=redo)
+        p = do_pickle(self.make_simple_pickle_path('AWF', '{}_{}'.format(len(ind) if ind is not None else '', int(prof))), f, redo=redo)
+        x_range = increased_range(self.Ana.SignalRegion * self.BinWidth, 0, .3) if x_range is None else x_range
         format_histo(p, x_tit='Time [ns]', y_tit='Pulse Height [mV]', y_off=1.2, stats=0, markersize=.5, x_range=x_range, y_range=y_range)
-        self.draw_histo(p, show=show)
+        self.draw_histo(p, show=show, draw_opt='' if prof else 'col')
         if show_noise:
             self.__draw_noise(pol=False)
         return p
