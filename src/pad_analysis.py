@@ -125,6 +125,9 @@ class PadAnalysis(DUTAnalysis):
     def get_signal_region(self, name=None):
         return self.Run.IntegralRegions[self.DUT.Number - 1][self.SignalRegionName if name is None else 'signal_{}'.format(name)]
 
+    def get_signal_range(self, lfac=0, rfac=.3):
+        return increased_range(self.SignalRegion * self.DigitiserBinWidth, lfac, rfac)
+
     def set_signal_definitions(self, use_time=True, sig_region=None, peak_int=None):
         signal = 'TimeIntegralValues' if use_time else 'IntegralValues'
         signal = '({{pol}}*{sig}[{{num}}])'.format(sig=signal)
