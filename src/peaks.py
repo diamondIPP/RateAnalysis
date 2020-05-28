@@ -56,15 +56,18 @@ class PeakAnalysis(Analysis):
     def get_all(self):
         return do_hdf5(self.make_hdf5_path('Peaks', 'V1', self.Ana.RunNumber, self.Channel), self.Run.get_root_vec, var=self.Ana.PeakName, cut=self.Cut, dtype='f2')
 
-    def get_signal_values(self, f, *args, **kwargs):
+    def get_signal_values(self, f, default=-1, *args, **kwargs):
         ind, noind = self.get_signal_indices(), self.get_no_signal_indices()
-        return insert(array(f(*args, **kwargs))[ind], array(noind), -1)
+        return insert(array(f(*args, **kwargs))[ind], array(noind), default)
 
     def get_all_cfd(self, thresh=.5):
         return self.get_signal_values(self.find_all_cfd, thresh)
 
     def get_all_tot(self, thresh=None, fixed=True):
         return self.get_signal_values(self.calc_all_tot, thresh, fixed)
+
+    def get_signal_heights(self):
+        return self.get_signal_values(self.get_heights, -999, flat=True)
 
     def get_signal_indices(self):
         values, m = self.find_all()[0], mean(self.get_all())
@@ -84,9 +87,9 @@ class PeakAnalysis(Analysis):
         times, heights, n_peaks = self.find_all()
         return array(split(times, cumsum(n_peaks)[:-1]))
 
-    def get_heights(self):
+    def get_heights(self, flat=False):
         times, heights, n_peaks = self.find_all()
-        return array(split(heights, cumsum(n_peaks)[:-1]))
+        return heights if flat else array(split(heights, cumsum(n_peaks)[:-1]))
 
     def get_t_bins(self, bin_size=None, off=0):
         m, s = mean_sigma(self.get_all())
@@ -102,6 +105,10 @@ class PeakAnalysis(Analysis):
         bins = self.get_t_bins(bin_size)[1]
         values = array(self.get_all())
         return where((bins[ibin] <= values) & (values < bins[ibin + 1]))[0]
+
+    def get_ph_indices(self, pmin, pmax):
+        heights = self.get_signal_heights()
+        return where((pmin <= heights) & (heights <= pmax))[0]
 
     def get_indices(self, t_min, t_max):
         s1_indices = self.get_n()
