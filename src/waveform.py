@@ -62,8 +62,8 @@ class Waveform(Analysis):
         self.draw_histo(h, 'WaveForms{n}'.format(n='e'), show=show, draw_opt=draw_opt, lm=.073, rm=.045, bm=.18, x=1.5, y=.5, grid=1, logz=True)
         return h, n
 
-    def draw_single(self, cut='', event=None, ind=None, x_range=None, draw_opt=None, show=True, show_noise=False):
-        h, n = self.draw(n=1, start_event=event, cut=cut, t_corr=True, show=show, grid=True) if ind is None else self.draw_all(n=1, ind=ind, x_range=x_range, draw_opt=draw_opt, corr=False)
+    def draw_single(self, cut='', event=None, ind=None, x_range=None, y_range=None, draw_opt=None, show=True, show_noise=False):
+        h, n = self.draw(n=1, start_event=event, cut=cut, t_corr=True, show=show, grid=True) if ind is None else self.draw_all(False, 1, x_range, y_range, ind, draw_opt=draw_opt)
         if show_noise:
             self.__draw_noise()
         return h
