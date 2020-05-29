@@ -69,8 +69,8 @@ class PeakAnalysis(Analysis):
     def get_signal_heights(self):
         return self.get_signal_values(self.get_heights, -999, flat=True)
 
-    def get_signal_times(self):
-        return self.get_signal_values(self.get, -999, flat=True)
+    def get_signal_times(self, fit=False):
+        return self.get_signal_values(self.get, -999, flat=True, fit=fit)
 
     def get_signal_indices(self):
         values, m = self.find_all()[0], mean(self.get_from_tree())
@@ -86,8 +86,8 @@ class PeakAnalysis(Analysis):
             return indices - arange(indices.size)  # we need the positions where these indices are missing
         return do_hdf5(self.make_simple_hdf5_path('NoSig'), f, redo=redo)
 
-    def get(self, flat=False):
-        times, heights, n_peaks = self.find_all()
+    def get(self, flat=False, fit=False):
+        times, heights, n_peaks = self.find_all(fit=fit)
         return array(times) if flat else array(split(times, cumsum(n_peaks)[:-1]))
 
     def get_heights(self, flat=False):
@@ -206,8 +206,8 @@ class PeakAnalysis(Analysis):
             self.draw_histo(h, lm=.12, show=show, x=1.5, y=0.75, logy=True)
         return h
 
-    def draw_signal(self, bin_size=.5, show=True, draw_ph=False):
-        values = self.get_from_tree()
+    def draw_signal(self, bin_size=.5, ind=None, fit=False, show=True, draw_ph=False):
+        values = self.get_signal_times() if ind is None else self.get_signal_times()[ind]
         h = TH1F('hsp', 'Signal Peak Times', *self.get_t_bins(bin_size))
         h.FillN(values.size, array(values).astype('d'), ones(values.size))
         format_histo(h, x_tit='Signal Peak Time [ns]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)
@@ -348,8 +348,9 @@ class PeakAnalysis(Analysis):
         format_histo(h0, x_tit='Peak Height', y_tit='Number of Entries', y_off=1.3, fill_color=self.FillColor)
         self.draw_histo(h0, show=show)
 
-    def find_all(self, redo=False, thresh=None):
-        hdf5_path = self.make_simple_hdf5_path(suf='' if thresh is None else '{:1.0f}'.format(thresh), dut=self.Channel)
+    def find_all(self, redo=False, thresh=None, fit=False):
+        suf = '' if thresh is None and not fit else '{:1.0f}_{}'.format(thresh, int(fit)) if thresh is not None else int(fit)
+        hdf5_path = self.make_simple_hdf5_path(suf=suf, dut=self.Channel)
         if file_exists(hdf5_path) and not redo:
             f = h5py.File(hdf5_path, 'r')
             return f['times'], f['heights'], f['n_peaks']
@@ -357,11 +358,11 @@ class PeakAnalysis(Analysis):
             remove_file(hdf5_path)
         times, heights = [], []
         simplefilter('ignore', RankWarning)
-        wave_forms, trigger_cells = self.Ana.Waveform.get_from_tree(), self.Ana.Waveform.get_trigger_cells()
+        wave_forms, trigger_cells = self.WF.get_all(), self.WF.get_trigger_cells()
         self.Ana.PBar.start(trigger_cells.size)
         for i in xrange(trigger_cells.size):
-            t, p = self.find(wave_forms[i], trigger_cells[i], thresh=thresh)
-            times.append(t)
+            j, t, p = self.find(wave_forms[i], trigger_cells[i], thresh=thresh)
+            times.append(self.fit_landau(i, j) if fit else t)
             heights.append(p)
             self.Ana.PBar.update()
         find_n_peaks = vectorize(size, otypes=['u2'])
@@ -373,7 +374,7 @@ class PeakAnalysis(Analysis):
 
     def find(self, values, trigger_cell, thresh=None):
         peaks = find_peaks(values, height=self.Threshold if thresh is None else thresh, distance=10, prominence=20)
-        return array([array([self.Ana.Waveform.get_calibrated_time(trigger_cell, value) for value in peaks[0]]), peaks[1]['peak_heights']])
+        return array([peaks[0], array([self.Ana.Waveform.get_calibrated_time(trigger_cell, value) for value in peaks[0]]), peaks[1]['peak_heights']])
 
     def find_from_event(self, event=1819, fit=False):
         self.Tree.GetBranch('wf{}'.format(self.Channel)).GetEntry(event)
@@ -484,6 +485,18 @@ class PeakAnalysis(Analysis):
         self.draw_histo(h, show=show, lm=.13)
     # endregion TOT
     # ----------------------------------------
+
+    def fit_landau(self, i, peak_indices):
+        values, times = self.WF.get_all()[i], self.WF.get_all_times()[i]
+        t = []
+        f = TF1('f', 'landau', 0, 512)
+        for ip in peak_indices.astype('i2'):
+            g = self.make_tgrapherrors('g', 'g', x=times[max(0, ip - 6):ip + 8], y=values[max(0, ip - 6):ip + 8])
+            g.Fit(f, 'q0')
+            t.append(f.GetMaximumX())
+            g.Delete()
+        f.Delete()
+        return t
 
     def fit(self, values, peaks, trigger_cell):
         peaks = peaks[(peaks > 10) & (peaks < 1014)]
