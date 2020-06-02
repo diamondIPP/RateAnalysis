@@ -163,9 +163,17 @@ def interpolate_two_points(x1, y1, x2, y2, name=''):
 
 
 def interpolate_x(x1, x2, y1, y2, y):
-    p1 = (y1 - y2) / (x1 - x2)
-    p0 = y1 - x1 * p1
+    p1 = get_p1(x1, x2, y1, y2)
+    p0 = get_p0(x1, y1, p1)
     return (y - p0) / p1
+
+
+def get_p1(x1, x2, y1, y2):
+    return (y1 - y2) / (x1 - x2)
+
+
+def get_p0(x1, y1, p1):
+    return y1 - x1 * p1
 
 
 def move_element(odict, thekey, newpos):
