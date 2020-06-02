@@ -63,7 +63,7 @@ class Waveform(Analysis):
         return h, n
 
     def draw_single(self, cut='', event=None, ind=None, x_range=None, y_range=None, draw_opt=None, show=True, show_noise=False):
-        h, n = self.draw(n=1, start_event=event, cut=cut, t_corr=True, show=show, grid=True) if ind is None else self.draw_all(False, 1, x_range, y_range, ind, draw_opt=draw_opt)
+        h, n = self.draw(n=1, start_event=event, cut=cut, t_corr=True, show=show, grid=True) if ind is None else self.draw_all(False, 1, x_range, y_range, ind, draw_opt=draw_opt, show=show)
         if show_noise:
             self.__draw_noise()
         return h
@@ -90,19 +90,21 @@ class Waveform(Analysis):
         format_histo(h, x_range=increased_range(fit_range, .5, .5), stats=0)
         return c
 
-    def get_average_rise_time(self, p=.1, ind=None, x_range=None, y_range=None, show=False):
-        h = self.draw_all_average(show=show, ind=ind, x_range=x_range, y_range=y_range)
-        maxval = h.GetBinContent(h.GetMaximumBin()) - self.Ana.get_pedestal().n
-        bins = [h.FindFirstBinAbove(ip * maxval) for ip in [1 - p, p]]
-        coods = [(h.GetBinCenter(ib), h.GetBinContent(ib), h.GetBinCenter(ib - 1), h.GetBinContent(ib - 1), ib) for ib in bins]
-        f1, f2 = [interpolate_two_points(*icood) for icood in coods]
-        if show:
-            self.add(f1, f2)
-            self.draw_vertical_line(f1.GetX((1 - p) * maxval), -100, 1e4, name='1')
-            self.draw_vertical_line(f2.GetX(p * maxval), -100, 1e4, name='2')
-            f1.Draw('same')
-            f2.Draw('same')
-        return f1.GetX((1 - p) * maxval) - f2.GetX(p * maxval)
+    def get_average_rise_time(self, p=.1, ind=None, x_range=None, y_range=None, show=False, redo=False):
+        def f():
+            h = self.draw_all_average(show=show, ind=ind, x_range=x_range, y_range=y_range)
+            maxval = h.GetBinContent(h.GetMaximumBin()) - self.Ana.get_pedestal().n
+            bins = [h.FindFirstBinAbove(ip * maxval) for ip in [1 - p, p]]
+            coods = [(h.GetBinCenter(ib), h.GetBinContent(ib), h.GetBinCenter(ib - 1), h.GetBinContent(ib - 1), ib) for ib in bins]
+            f1, f2 = [interpolate_two_points(*icood) for icood in coods]
+            if show:
+                self.add(f1, f2)
+                self.draw_vertical_line(f1.GetX((1 - p) * maxval), -100, 1e4, name='1')
+                self.draw_vertical_line(f2.GetX(p * maxval), -100, 1e4, name='2')
+                f1.Draw('same')
+                f2.Draw('same')
+            return f1.GetX((1 - p) * maxval) - f2.GetX(p * maxval)
+        return do_pickle(self.make_simple_pickle_path('RT'), f, redo=redo)
 
     def draw_all_average(self, corr=True, n=-1, ind=None, prof=True, x_range=None, y_range=None, show=True, show_noise=False, redo=False):
         def f():
