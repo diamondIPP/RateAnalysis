@@ -288,21 +288,20 @@ class PadCut(Cut):
         return do_pickle(pickle_path, func, threshold)
 
     def calc_timing_range(self, redo=False):
-        pickle_path = self.Analysis.make_pickle_path('Cuts', 'TimingRange', self.RunNumber, self.DUT.Number)
-
-        def func():
+        def f():
             t = self.Analysis.info('generating timing cut for {dia} of run {run} ...'.format(run=self.Analysis.RunNumber, dia=self.Analysis.DUT.Name), next_line=False)
             cut = self.generate_custom(exclude=['timing'], prnt=False, name='timing_cut')
             t_correction = self.Analysis.Timing.calc_fine_correction(redo=redo)
             h = self.Analysis.Timing.draw_peaks(show=False, cut=cut, fine_corr=t_correction != '0', prnt=False, redo=redo)
             fit = h.GetListOfFunctions()[1]
-            if fit.GetParameter(2) > 15:  # fit failed
+            x_min, x_max = self.Analysis.SignalRegion * self.Analysis.DigitiserBinWidth
+            if fit.GetParameter(2) > 15 or x_min + 3 > fit.GetParameter(1) or x_max - 3 < fit.GetParameter(1):  # fit failed
                 fit.SetParameter(1, h.GetBinCenter(h.GetMinimumBin()))
                 fit.SetParameter(2, 15)
             self.Analysis.add_to_info(t)
             self.Analysis.info('Peak Timing: Mean: {0}, sigma: {1}'.format(fit.GetParameter(1), fit.GetParameter(2)))
             return t_correction, fit
 
-        return do_pickle(pickle_path, func, redo=redo)
+        return do_pickle(self.Analysis.make_simple_pickle_path('TimingRange', sub_dir='Cuts'), f, redo=redo)
     # endregion COMPUTE
     # ----------------------------------------
