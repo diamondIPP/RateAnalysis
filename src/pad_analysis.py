@@ -401,12 +401,14 @@ class PadAnalysis(DUTAnalysis):
         self.save_histo(h, 'SignalDistribution', lm=.15, show=show, prnt=prnt, save=save, sumw2=sumw2)
         return h
 
-    def draw_signal_vs_peaktime(self, region=None, cut=None, show=True, corr=True, fine_corr=False, prof=True, bins=None):
-        xmin, xmax = self.SignalRegion * self.DigitiserBinWidth
-        bins = [int((xmax - xmin + 20) * 8. / self.Timing.draw_peaks(show=0).GetListOfFunctions()[1].GetParameter(2)), xmin - 10, xmax + 10] if bins is None else bins
+    def draw_signal_vs_peaktime(self, region=None, cut=None, show=True, corr=True, fine_corr=False, prof=True, bin_size=None, fit_peaks=False, x=None, y=None):
+        bins = self.Peaks.get_t_bins(bin_size)
         title = 'Signal vs Peak Position{}'.format(' with {} Correction'.format('Fine' if fine_corr else 'Time') if corr else '')
         h = (TProfile if prof else TH2F)('hspt', title, *(bins if prof else list(bins) + self.Bins.get_pad_ph()))
-        self.Tree.Draw('{}:{}>>hspt'.format(self.generate_signal_name(), self.Timing.get_peak_name(corr, fine_corr, region=region)), self.Cut(cut), 'goff')
+        ph = self.get_ph_data(cut)[1] if y is None else array(y)
+        peak_times = self.Peaks.get_signal_times(fit_peaks) if x is None else array(x)
+        h.FillN(ph.size, peak_times.astype('d'), ph.astype('d'), ones(ph.size))
+        # self.Tree.Draw('{}:{}>>hspt'.format(self.generate_signal_name(), self.Timing.get_peak_name(corr, fine_corr, region=region)), self.Cut(cut), 'goff')
         if not prof:
             px = h.ProjectionX()
             for xbin in range(h.GetNbinsX()):

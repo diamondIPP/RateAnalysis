@@ -24,6 +24,7 @@ class TimingAnalysis(Analysis):
         self.RunNumber = self.Ana.RunNumber
         self.InfoLegend = InfoLegend(pad_analysis)
         self.set_save_directory(self.Ana.SubDir)
+        self.set_pickle_sub_dir('Timing')
 
     def draw_all(self):
         self.draw_peaks(show=False, prnt=False, show_cut=True)
@@ -93,8 +94,8 @@ class TimingAnalysis(Analysis):
     def draw_peaks(self, fit=True, cut=None, corr=True, fine_corr=True, show=True, prnt=True, redo=False, save=True, show_cut=False, normalise=None):
 
         cut = self.TimingCut if cut is None else TCut(cut)
-        pickle_path = self.make_pickle_path('Timing', 'Peak', self.RunNumber, self.DUT.Number, suf='{}_{}{}'.format(cut.GetName(), int(corr), int(fine_corr)))
-        xmin, xmax = [value * self.Ana.DigitiserBinWidth for value in self.Ana.SignalRegion]
+        pickle_path = self.make_simple_pickle_path('Peak', '{}_{}{}'.format(cut.GetName(), int(corr), int(fine_corr)))
+        xmin, xmax = self.Ana.SignalRegion * self.Ana.DigitiserBinWidth
         name = 'htrc{}{}'.format(int(corr), int(fine_corr))
 
         def f():
