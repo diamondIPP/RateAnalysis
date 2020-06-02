@@ -5,9 +5,11 @@
 # --------------------------------------------------------
 
 from analysis import *
-from ROOT import TH1F, TCut, TProfile, THStack, TH2F
+from ROOT import TH1F, TCut, TProfile, THStack, TH2F, TMath
+from ROOT.gRandom import Landau
 from scipy.signal import find_peaks, savgol_filter
 from numpy import polyfit, pi, RankWarning, vectorize, size, split, ones, ceil, repeat, linspace, argmax, insert
+from numpy.random import normal
 from warnings import simplefilter
 from InfoLegend import InfoLegend
 
@@ -501,6 +503,113 @@ class PeakAnalysis(Analysis):
         format_histo(h, x_tit='ToT [ns]', y_tit='Number of Entries', y_off=1.5, fill_color=self.FillColor)
         self.draw_histo(h, show=show, lm=.13)
     # endregion TOT
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region MODEL
+    def find_scale(self, n=20, redo=False):
+        def f():
+            times, heights = self.get_signal_times()[:n], self.get_signal_heights()[:n]
+            c = []
+            for i in range(n):
+                g = self.WF.draw_single(ind=i, show=False)
+                fit = g.Fit('landau', 'qs0', '', times[i] - 4, times[i] + 5)
+                c.append(make_ufloat(FitRes(fit), par=0))
+            g = self.make_tgrapherrors('gsm', 'Model Scale', x=heights, y=c)
+            fit = g.Fit('pol1', 'qs0')
+            return fit.Parameter(1)
+        return do_pickle(self.make_simple_pickle_path('ModelScale'), f, redo=redo)
+
+    @staticmethod
+    def _signal(x, height, peak_time, rise_time, rise_fac):
+        x0, y0 = peak_time, height
+        x1, x2 = x0 - rise_time, x0 + rise_fac * rise_time
+        p1 = get_p1(x0, x1 if x < x0 else x2, y0, 0)
+        return p1 * x + get_p0(x0, y0, p1) if x1 <= x <= x2 else 0
+
+    def signal1(self, height, peak_time, scale, landau_width=3, noise=4):
+        x0, x1 = increased_range([peak_time - 2 * landau_width, peak_time + 4 * landau_width], .5, .5)
+        x = arange(x0, x1, self.BinWidth, dtype='d')
+        y = array([height * scale * TMath.Landau(ix, peak_time, landau_width) for ix in x])
+        return x, y + normal(scale=noise, size=x.size)
+
+    def signal0(self, height, peak_time, rise_time=None, rise_fac=3, noise=None):
+        noise = self.Ana.Pedestal.get_raw_noise().n if noise is None else noise
+        rise_time = self.WF.get_average_rise_time() if rise_time is None else rise_time
+        x0, x1 = increased_range([peak_time - rise_time, peak_time + rise_time * rise_fac], .5, .5)
+        x = arange(x0, x1, self.BinWidth, dtype='d')
+        y = array([self._signal(ix, height, peak_time, rise_time, rise_fac) for ix in x])
+        return x, y + normal(scale=noise, size=x.size)
+
+    def get_signal(self, n, *args, **kwargs):
+        return self.signal0(*args, **kwargs) if not n else self.signal1(*args, **kwargs)
+
+    def draw_model_signal(self, model=0, *args, **kwargs):
+        x, y = self.get_signal(model, *args, **kwargs)
+        g = self.make_tgrapherrors('gms', 'Model Signal', x=x, y=y)
+        format_histo(g, x_tit='Time [ns]', y_tit='Signal [mV]', y_off=.5, stats=0, tit_size=.07, lab_size=.06, markersize=.5)
+        self.draw_histo(g, lm=.073, rm=.045, bm=.18, x=1.5, y=.5, grid=1)
+
+    def draw_model_signal1(self, height=None, peak_time=None, landau_width=3):
+        scale = self.find_scale()
+        height = self.get_mpv_sigma_heights()[0] if height is None else height
+        peak_time = self.get_mean_sigma()[0] if peak_time is None else peak_time
+        self.draw_model_signal(1, height, peak_time, scale, landau_width, self.Ana.Pedestal.get_raw_noise().n)
+
+    def draw_raw_model(self, n=1e6, model=1, show=True, *args, **kwargs):
+        times = []
+        self.PBar.start(n)
+        for _ in range(int(n)):
+            x, y = self.get_signal(model, *args, **kwargs)
+            times.append(x[argmax(y)])
+            self.PBar.update()
+        times = array(times)
+        h = TH1F('hrm', 'Raw Model Peak Times', *self.get_t_bins())
+        h.FillN(times.size, times, ones(times.size))
+        format_histo(h, x_tit='Signal Peak Time [ns]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)
+        self.format_statbox(entries=1)
+        self.draw_histo(h, lm=.13, show=show)
+
+    def model1(self, n=1e6, redo=False, scale=None, landau_width=3, cfd=False):
+        scale = self.find_scale() if scale is None else scale
+        return self.model(n, model=1, cfd=cfd, redo=redo, scale=scale, landau_width=landau_width)
+
+    def model0(self, n=1e6, redo=False, rise_time=None, rise_fac=3, sigma=None):
+        return self.model(n, 0, redo, )
+
+    def model(self, n=1e6, model=1, noise=None, cfd=False, redo=False, *args, **kwargs):
+        n = int(n)
+        hdf5_path = self.make_simple_hdf5_path('M', '{}_{}_{}'.format(n, model, int(cfd)))
+        if file_exists(hdf5_path) and not redo:
+            f = h5py.File(hdf5_path, 'r')
+            return f['times'], f['heights']
+        if redo and file_exists(hdf5_path):
+            remove_file(hdf5_path)
+        Landau(5, 2)  # first value is always crap
+        noise = self.Ana.Pedestal.get_raw_noise().n if noise is None else noise
+        m, s = self.get_mean_sigma()
+        mpv, sl = self.get_mpv_sigma_heights()
+        t, v = [], []
+        self.PBar.start(n)
+        peak_times = normal(scale=s, size=n) + m
+        for i in range(int(n)):
+            x, y = self.get_signal(model, min(500, Landau(mpv, sl)), peak_times[i], noise=noise, *args, **kwargs)
+            peak_time = x[argmax(y)]
+            peak_height = max(y)
+            t.append(peak_time if not cfd else self.find_cfd(y, x, [peak_height], [peak_time]))
+            v.append(peak_height)
+            self.PBar.update()
+        t, v = array(t), array(v)
+        f = h5py.File(hdf5_path, 'w')
+        f.create_dataset('times', data=array(t).astype('f2'))
+        f.create_dataset('heights', data=array(v).astype('f4'))
+        return f['times'], f['heights']
+
+    def draw_model(self, n=1e6, model=1, cfd=False, draw_ph=False, show=True):
+        x, y = self.model1(n, cfd=cfd) if model == 1 else self.model0(n)
+        self.draw_signal(x=array(x), y=array(y), off=self.WF.get_average_rise_time() if cfd else 0, draw_ph=draw_ph, show=show)
+
+    # endregion MODEL
     # ----------------------------------------
 
     def fit_landau(self, i, peak_indices):
