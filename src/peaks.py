@@ -180,6 +180,18 @@ class PeakAnalysis(Analysis):
             return spacing * (j * length + (j - 1) * spacing) + 2 * self.get_spacings(i - 1, spacing, length)
         else:
             return 0
+
+    def get_mean_sigma(self):
+        v = self.get_signal_times()
+        return mean_sigma(v[v > 0])
+
+    def get_mpv_sigma_heights(self, redo=False):
+        def f():
+            h = self.draw_height_disto(show=False)
+            max_bin = h.GetMaximumBin()
+            fit = h.Fit('landau', 'qs0', '', h.GetBinCenter(max_bin - 10), h.GetBinCenter(max_bin + 30))
+            return fit.Parameter(1), fit.Parameter(2)
+        return do_pickle(self.make_simple_pickle_path('H'), f, redo=redo)
     # endregion GET
     # ----------------------------------------
 
