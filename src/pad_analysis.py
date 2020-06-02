@@ -401,8 +401,8 @@ class PadAnalysis(DUTAnalysis):
         self.save_histo(h, 'SignalDistribution', lm=.15, show=show, prnt=prnt, save=save, sumw2=sumw2)
         return h
 
-    def draw_signal_vs_peaktime(self, region=None, cut=None, show=True, corr=True, fine_corr=False, prof=True, bin_size=None, fit_peaks=False, x=None, y=None):
-        bins = self.Peaks.get_t_bins(bin_size)
+    def draw_signal_vs_peaktime(self, region=None, cut=None, show=True, corr=True, fine_corr=False, prof=True, bin_size=None, fit_peaks=False, x=None, y=None, off=0):
+        bins = self.Peaks.get_t_bins(bin_size, off=off)
         title = 'Signal vs Peak Position{}'.format(' with {} Correction'.format('Fine' if fine_corr else 'Time') if corr else '')
         h = (TProfile if prof else TH2F)('hspt', title, *(bins if prof else list(bins) + self.Bins.get_pad_ph()))
         ph = self.get_ph_data(cut)[1] if y is None else array(y)
