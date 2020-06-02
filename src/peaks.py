@@ -218,15 +218,16 @@ class PeakAnalysis(Analysis):
             self.draw_histo(h, lm=.12, show=show, x=1.5, y=0.75, logy=True)
         return h
 
-    def draw_signal(self, bin_size=.5, ind=None, fit=False, show=True, draw_ph=False):
-        values = self.get_signal_times() if ind is None else self.get_signal_times()[ind]
-        h = TH1F('hsp', 'Signal Peak Times', *self.get_t_bins(bin_size))
+    def draw_signal(self, bin_size=.5, off=0, ind=None, fit=False, y=None, x=None, show=True, draw_ph=False):
+        values = self.get_signal_times(fit) if ind is None else self.get_signal_times(fit)[ind]
+        values = values if y is None else x
+        h = TH1F('hsp', 'Signal Peak Times' if not off else 'Constant Fraction Times', *self.get_t_bins(bin_size, off=off))
         h.FillN(values.size, array(values).astype('d'), ones(values.size))
-        format_histo(h, x_tit='Signal Peak Time [ns]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)
+        format_histo(h, x_tit='{} Time [ns]'.format('Constant Fraction' if off else 'Signal Peak'), y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)
         self.format_statbox(entries=1, x=.86 if draw_ph else .95)
         c = self.draw_histo(h, lm=.13, show=show, rm=.12 if draw_ph else None)
         if draw_ph:
-            p = self.Ana.draw_signal_vs_peaktime(show=False, bins=self.get_t_bins(bin_size))
+            p = self.Ana.draw_signal_vs_peaktime(show=False, bin_size=bin_size, fit_peaks=fit, x=x, y=y, off=off)
             values = get_hist_vec(p, err=False)
             format_histo(p, title=' ', stats=0, x_tit='', l_off_x=1, y_range=increased_range([min(values[values > 0]), max(values)], .3, .3))
             c.cd()
@@ -304,6 +305,7 @@ class PeakAnalysis(Analysis):
         self.format_statbox(entries=True)
         format_histo(h, x_tit='Peak Height [mV]', y_tit='Number of Entries', y_off=1.2, fill_color=self.FillColor)
         self.draw_histo(h, show=show, lm=.11)
+        return h
 
     def draw_flux_vs_threshold(self, steps=20):
         x = linspace(self.NoiseThreshold, self.Threshold, steps)
@@ -312,16 +314,19 @@ class PeakAnalysis(Analysis):
         format_histo(g, x_tit='Peak Finding Threshold [mV]', y_tit='Flux [MHz/cm^{2}]', y_off=1.3)
         self.draw_histo(g, draw_opt='ap', lm=.12)
 
-    def draw_peak_spacing(self, overlay=False, show=True):
+    def draw_peak_spacing(self, overlay=False, bin_size=.5, show=True):
         bf = self.BunchSpacing
         values = concatenate(self.get() - self.get_signal_times())
         values = values[values != 0]
         values = ((values + bf / 2) % bf + bf / 2) if overlay else values
-        h = TH1F('hbs', 'Peak Spacing', *([50, bf / 2, bf * 3 / 2] if overlay else [25 * 50, 0, self.Run.NSamples * self.BinWidth]))
+        m, w = mean(values), self.get_t_bins()[1][-1] - self.get_t_bins()[1][0]
+        bins = arange(m - w / 2, m + w / 2, bin_size) if overlay else arange(0, self.Run.NSamples * self.BinWidth, bin_size)
+        h = TH1F('hbs', 'Peak Spacing', bins.size - 1, bins)
         h.FillN(values.size, values.astype('d'), ones(values.size))
         self.format_statbox(entries=True)
         format_histo(h, x_tit='Peak Distance [ns]', y_tit='Number of Entries', y_off=1.2, fill_color=self.FillColor)
-        self.draw_histo(h, show=show, lm=.11)
+        x, y = [None, None] if overlay else [1.5, .75]
+        self.draw_histo(h, show=show, lm=.11, x=x, y=y)
     # endregion DRAW
     # ----------------------------------------
 
