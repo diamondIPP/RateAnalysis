@@ -8,7 +8,7 @@ from __future__ import print_function
 from utils import *
 from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, kGreen, kOrange, kViolet, kYellow, kRed, kBlue, kMagenta, kAzure, \
     kCyan, kTeal, TPaveText, TPaveStats, TH1F, TSpectrum, TEllipse
-from numpy import ndarray, zeros, sign
+from numpy import ndarray, zeros, sign, linspace, ones
 from os.path import expanduser, join, basename
 
 # global resolution
@@ -97,7 +97,6 @@ class Draw:
 
     # ----------------------------------------
     # region DRAWING
-
     def draw_axis(self, x1, x2, y1, y2, title, limits=None, name='ax', col=1, width=1, off=.15, tit_size=.035, lab_size=0.035, tick_size=0.03, line=False, opt='+SU', l_off=.01, log=False):
         limits = ([y1, y2] if x1 == x2 else [x1, x2]) if limits is None else limits
         a = TGaxis(x1, y1, x2, y2, limits[0], limits[1], 510, opt + ('G' if log else ''))
@@ -324,6 +323,20 @@ class Draw:
 
         self.add(c, *draw_objects)
         set_root_output(True)
+
+    def draw_disto(self, values, title='', bins=None, thresh=.02, lm=None, **kwargs):
+        values = array(values, dtype='d')
+        if bins is None:
+            b = linspace(*(find_range(values, thresh=thresh) + [int(sqrt(values.size))]))
+            bins = [b.size - 1, b]
+        kwargs['fill_color'] = self.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
+        kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
+        kwargs['y_tit'] = 'Number of Entries' if 'y_tit' not in kwargs else kwargs['y_tit']
+        h = TH1F('h{}'.format(title.lower()[:3]), title, *bins)
+        h.FillN(values.size, values, ones(values.size))
+        format_histo(h, **kwargs)
+        self.draw_histo(h, lm=lm)
+
     # endregion DRAW
     # ----------------------------------------
 
@@ -646,6 +659,12 @@ def adapt_z_range(h, n_sigma=2):
     m, s = mean_sigma(values[5:-5])
     z_range = [min(values).n, .8 * max(values).n] if s > m else [m - n_sigma * s, m + n_sigma * s]
     format_histo(h, z_range=z_range)
+
+
+def find_range(values, lfac=.2, rfac=.2, thresh=.02):
+    v = array(sorted(values))
+    xmin, xmax = v[int(thresh * v.size)], v[int(v.size - thresh * v.size)]
+    return increased_range([xmin, xmax], lfac, rfac)
 
 
 def fix_chi2(g, prec=.01, show=True):
