@@ -4,8 +4,7 @@ from numpy import log, split, polyfit, polyval, genfromtxt, arctan, sin, cos, ta
 
 from cut import Cut
 from InfoLegend import InfoLegend
-# from Langaus import Langau
-from binning import Bins
+from binning import *
 from selector import run_selector
 from fit import Langau
 
