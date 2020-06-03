@@ -58,12 +58,13 @@ class PeakAnalysis(Analysis):
     def get_from_tree(self):
         return do_hdf5(self.make_hdf5_path('Peaks', 'V1', self.Ana.RunNumber, self.Channel), self.Run.get_root_vec, var=self.Ana.PeakName, cut=self.Cut, dtype='f2')
 
-    def get_signal_values(self, f, default=-1, *args, **kwargs):
-        ind, noind = self.get_signal_indices(), self.get_no_signal_indices()
-        return insert(array(f(*args, **kwargs))[ind], array(noind), default)
+    def get_signal_values(self, f, ind=None, default=-1, *args, **kwargs):
+        signal_ind, noind = self.get_signal_indices(), self.get_no_signal_indices()
+        values = insert(array(f(*args, **kwargs))[signal_ind], array(noind), default)
+        return values if ind is None else values[ind]
 
     def get_all_cfd(self, thresh=.5):
-        return self.get_signal_values(self.find_all_cfd, thresh)
+        return self.get_signal_values(self.find_all_cfd, thresh=thresh)
 
     def get_all_tot(self, thresh=None, fixed=True):
         return self.get_signal_values(self.calc_all_tot, thresh, fixed)
@@ -71,8 +72,8 @@ class PeakAnalysis(Analysis):
     def get_signal_heights(self):
         return self.get_signal_values(self.get_heights, -999, flat=True)
 
-    def get_signal_times(self, fit=False):
-        return self.get_signal_values(self.get, -999, flat=True, fit=fit)
+    def get_signal_times(self, fit=False, ind=None):
+        return self.get_signal_values(self.get, ind, -999, flat=True, fit=fit)
 
     def get_signal_indices(self):
         values, m = self.find_all()[0], mean(self.get_from_tree())
@@ -96,18 +97,13 @@ class PeakAnalysis(Analysis):
         times, heights, n_peaks = self.find_all()
         return array(heights) if flat else array(split(heights, cumsum(n_peaks)[:-1]))
 
-    def get_t_bins(self, bin_size=None, off=0):
-        m, s = mean_sigma(self.get_from_tree())
-        bins = arange(m - 5 * s, m + 5 * s, .5 if bin_size is None else bin_size)
-        return [bins.size - 1, bins - off]
-
     def get_tbin_cut(self, ibin, bin_size=None, corr=True, fine_corr=False):
         cut_name = self.Ana.Timing.get_peak_name(corr, fine_corr)
-        vmin, vmax = self.get_t_bins(bin_size)[1][ibin:ibin + 2]
+        vmin, vmax = self.Ana.get_t_bins(bin_size)[1][ibin:ibin + 2]
         return TCut('tbin{}'.format(ibin), '{0} < {n} && {n} < {1}'.format(vmin, vmax, n=cut_name))
 
     def get_t_indices(self, ibin, bin_size=None):
-        bins = self.get_t_bins(bin_size)[1]
+        bins = self.Ana.get_t_bins(bin_size)[1]
         values = array(self.get_from_tree())
         return where((bins[ibin] <= values) & (values < bins[ibin + 1]))[0]
 
@@ -116,7 +112,7 @@ class PeakAnalysis(Analysis):
         return where((pmin <= heights) & (heights <= pmax))[0]
 
     def get_cfd_indices(self, ibin, thresh=None, bin_size=None):
-        bins = self.get_t_bins(bin_size, off=self.WF.get_average_rise_time())[1]
+        bins = self.Ana.get_t_bins(bin_size)[1]
         values = self.get_all_cfd(thresh)
         return where((bins[ibin] <= values) & (values < bins[ibin + 1]))[0]
 
@@ -220,22 +216,23 @@ class PeakAnalysis(Analysis):
             self.draw_histo(h, lm=.12, show=show, x=1.5, y=0.75, logy=True)
         return h
 
-    def draw_signal(self, bin_size=.5, off=0, ind=None, fit=False, y=None, x=None, show=True, draw_ph=False):
-        values = self.get_signal_times(fit) if ind is None else self.get_signal_times(fit)[ind]
-        values = values if y is None else x
-        h = TH1F('hsp', 'Signal Peak Times' if not off else 'Constant Fraction Times', *self.get_t_bins(bin_size, off=off))
-        h.FillN(values.size, array(values).astype('d'), ones(values.size))
-        format_histo(h, x_tit='{} Time [ns]'.format('Constant Fraction' if off else 'Signal Peak'), y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)
+    def draw_signal(self, bin_size=.5, ind=None, fit=False, y=None, x=None, show=True, draw_ph=False):
+        h = TH1F('hsp', 'Signal Peak Times', *self.Ana.get_t_bins(bin_size))
+        fill_hist(h, choose(x, self.get_signal_times, fit, ind))
+        format_histo(h, x_tit='Signal Peak Time [ns]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)
         self.format_statbox(entries=1, x=.86 if draw_ph else .95)
         c = self.draw_histo(h, lm=.13, show=show, rm=.12 if draw_ph else None)
-        if draw_ph:
-            p = self.Ana.draw_signal_vs_peaktime(show=False, bin_size=bin_size, fit_peaks=fit, x=x, y=y, off=off)
+        self.draw_ph(c, bin_size, x, y, draw_ph)
+        return h
+
+    def draw_ph(self, c, bin_size, x, y, show):
+        if show:
+            p = self.Ana.draw_signal_vs_peaktime(show=False, bin_size=bin_size, x=x, y=y)
             values = get_hist_vec(p, err=False)
             format_histo(p, title=' ', stats=0, x_tit='', l_off_x=1, y_range=increased_range([min(values[values > 0]), max(values)], .3, .3))
             c.cd()
             self.draw_tpad('psph', transparent=True, lm=.13, rm=.12)
             p.Draw('y+')
-        return h
 
     def draw_heights_vs_time(self, bin_size=.5, corr=True, cfd=False, show=True):
         times, heights, n_peaks = self.find_all()
@@ -321,7 +318,7 @@ class PeakAnalysis(Analysis):
         values = concatenate(self.get() - self.get_signal_times())
         values = values[values != 0]
         values = ((values + bf / 2) % bf + bf / 2) if overlay else values
-        m, w = mean(values), self.get_t_bins()[1][-1] - self.get_t_bins()[1][0]
+        m, w = mean(values), self.Ana.get_t_bins()[1][-1] - self.Ana.get_t_bins()[1][0]
         bins = arange(m - w / 2, m + w / 2, bin_size) if overlay else arange(0, self.Run.NSamples * self.BinWidth, bin_size)
         h = TH1F('hbs', 'Peak Spacing', bins.size - 1, bins)
         h.FillN(values.size, values.astype('d'), ones(values.size))
@@ -433,24 +430,18 @@ class PeakAnalysis(Analysis):
             return concatenate(cfds).astype('f2')
         return do_hdf5(self.make_simple_hdf5_path('CFD', '{:.0f}'.format(thresh * 100)), f, redo=redo)
 
-    def draw_cfd(self, thresh=.5, bin_size=.2, show=True, draw_ph=False):
-        h = TH1F('hcfd', '{:.0f}% Constrant Fraction Times'.format(thresh * 100), *self.get_t_bins(bin_size, off=self.WF.get_average_rise_time()))
-        values = self.get_all_cfd(thresh)
-        h.FillN(values.size, array(values).astype('d'), ones(values.size))
+    def draw_cfd(self, thresh=.5, bin_size=.2, show=True, draw_ph=False, x=None, y=None):
+        h = TH1F('hcfd', '{:.0f}% Constrant Fraction Times'.format(thresh * 100), *self.Ana.get_t_bins(bin_size))
+        values = choose(x, self.get_all_cfd, thresh)
+        fill_hist(h, values)
         format_histo(h, x_tit='Constrant Fraction Time [ns]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)
         self.format_statbox(entries=1, x=.86 if draw_ph else .95)
         c = self.draw_histo(h, show=show, lm=.13, rm=.12 if draw_ph else None)
-        if draw_ph:
-            p = self.Ana.draw_signal_vs_cfd(show=False, bin_size=bin_size)
-            values = get_hist_vec(p, err=False)
-            format_histo(p, title='  ', stats=0, x_tit='', l_off_x=1, y_range=increased_range([min(values[values > 0]), max(values)], .3, .3))
-            c.cd()
-            self.draw_tpad('psph', transparent=True, lm=.13, rm=.12)
-            p.Draw('y+')
+        self.draw_ph(c, bin_size, values, y, show=draw_ph)
         return h
 
     def draw_cfd_vs_time(self, bin_size=.2, signal=False, show=True):
-        h = TH2F('hcfdt', 'Constant Fraction vs. Peak Time', *(self.get_t_bins(bin_size) + self.get_t_bins(bin_size, off=self.WF.get_average_rise_time())))
+        h = TH2F('hcfdt', 'Constant Fraction vs. Peak Time', *(self.Ana.get_t_bins(bin_size) + self.Ana.get_t_bins(bin_size)))
         x = array(self.get_from_tree()) if signal else self.get(flat=True)
         y = self.get_all_cfd() if signal else array(self.find_all_cfd()).astype('d')
         h.FillN(x.size, x.astype('d'), y.astype('d'), ones(x.size))
@@ -564,7 +555,7 @@ class PeakAnalysis(Analysis):
             times.append(x[argmax(y)])
             self.PBar.update()
         times = array(times)
-        h = TH1F('hrm', 'Raw Model Peak Times', *self.get_t_bins())
+        h = TH1F('hrm', 'Raw Model Peak Times', *self.Ana.get_t_bins())
         h.FillN(times.size, times, ones(times.size))
         format_histo(h, x_tit='Signal Peak Time [ns]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)
         self.format_statbox(entries=1)
@@ -607,7 +598,7 @@ class PeakAnalysis(Analysis):
 
     def draw_model(self, n=1e6, model=1, cfd=False, draw_ph=False, show=True):
         x, y = self.model1(n, cfd=cfd) if model == 1 else self.model0(n)
-        self.draw_signal(x=array(x), y=array(y), off=self.WF.get_average_rise_time() if cfd else 0, draw_ph=draw_ph, show=show)
+        self.draw_signal(x=array(x), y=array(y), draw_ph=draw_ph, show=show)
 
     # endregion MODEL
     # ----------------------------------------
