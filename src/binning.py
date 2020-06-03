@@ -191,8 +191,12 @@ class Bins:
     # endregion PIXEL
     # ----------------------------------------
 
+    # ----------------------------------------
+    # region PAD
     def get_pad_ph(self, bin_width=None):
         return make_bins(self.MinPadPH, self.MaxPadPH, self.PadPHBinWidth if bin_width is None else bin_width)
+    # endregion PAD
+    # ----------------------------------------
 
 
 def make_bins(min_val, max_val, bin_width):
