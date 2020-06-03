@@ -409,21 +409,19 @@ class PadAnalysis(DUTAnalysis):
         self.save_histo(h, 'SignalDistribution', lm=.15, show=show, prnt=prnt, save=save, sumw2=sumw2)
         return h
 
-    def draw_signal_vs_peaktime(self, region=None, cut=None, show=True, corr=True, fine_corr=False, prof=True, bin_size=None, fit_peaks=False, x=None, y=None, off=0):
-        bins = self.Peaks.get_t_bins(bin_size, off=off)
-        title = 'Signal vs Peak Position{}'.format(' with {} Correction'.format('Fine' if fine_corr else 'Time') if corr else '')
-        h = (TProfile if prof else TH2F)('hspt', title, *(bins if prof else list(bins) + self.Bins.get_pad_ph()))
-        ph = self.get_ph_data(cut)[1] if y is None else array(y)
-        peak_times = self.Peaks.get_signal_times(fit_peaks) if x is None else array(x)
-        h.FillN(ph.size, peak_times.astype('d'), ph.astype('d'), ones(ph.size))
-        # self.Tree.Draw('{}:{}>>hspt'.format(self.generate_signal_name(), self.Timing.get_peak_name(corr, fine_corr, region=region)), self.Cut(cut), 'goff')
+    def draw_signal_vs_peaktime(self, region=None, cut=None, bin_size=None, fine_corr=False, prof=True, x=None, y=None, show=True):
+        h = (TProfile if prof else TH2F)('hspt', 'Signal vs Peak Position', *(self.get_t_bins(bin_size) + ([] if prof else self.Bins.get_pad_ph())))
+        n = 0
+        if x is None or y is None:
+            n = self.Tree.Draw('{}:{}'.format(self.generate_signal_name(), self.Timing.get_peak_name(corr=True, fine_corr=fine_corr, region=region)), self.Cut(cut), 'goff')
+        fill_hist(h, choose(x, self.Run.get_root_vec, n, 1), choose(y, self.Run.get_root_vec, n, 0))
         if not prof:
             px = h.ProjectionX()
             for xbin in range(h.GetNbinsX()):
                 for ybin in range(h.GetNbinsY()):
                     h.SetBinContent(xbin, ybin, h.GetBinContent(xbin, ybin) / (px.GetBinContent(xbin) if px.GetBinContent(xbin) else 1))
         format_histo(h, x_tit='Signal Peak Position [ns]', y_tit='Pulse Height [mV]', y_off=1.4, stats=0)
-        self.save_histo(h, 'SignalVsPeakPos{}{}'.format(int(corr), int(fine_corr)), show, lm=.11, draw_opt='' if prof else 'colz', rm=.03 if prof else .18)
+        self.save_histo(h, 'SignalVsPeakPos', show, lm=.11, draw_opt='' if prof else 'colz', rm=.03 if prof else .18)
         return h
 
     def draw_signal_vs_tot(self, show=True):
@@ -448,10 +446,9 @@ class PadAnalysis(DUTAnalysis):
         format_histo(p, x_tit='Signal Peak Position [ns]', y_tit='Time over Threshold [ns]', y_off=1.4, stats=0)
         self.save_histo(p, 'ToTVsPeakPos{}{}'.format(int(corr), int(fine_corr)), show, lm=.11)
 
-    def draw_signal_vs_cfd(self, bin_size=None, thresh=.5, show=True):
-        p = TProfile('pscfd', 'Signal vs {:.0f}% Constant Fraction Time'.format(thresh * 100), *self.Peaks.get_t_bins(bin_size, off=self.Waveform.get_average_rise_time()))
-        times = self.Peaks.get_all_cfd(thresh)
-        p.FillN(times.size, times.astype('d'), self.Run.get_root_vec(var=self.generate_signal_name(), cut=self.Cut()), ones(times.size))
+    def draw_signal_vs_cfd(self, bin_size=None, thresh=.5, x=None, y=None, show=True):
+        p = TProfile('pscfd', 'Signal vs {:.0f}% Constant Fraction Time'.format(thresh * 100), *self.get_t_bins(bin_size))
+        fill_hist(p, choose(x, self.Peaks.get_all_cfd(thresh)), choose(y, self.get_ph_values()))
         format_histo(p, x_tit='Constant Fraction Time [ns]', y_tit='Pulse Height [mV]', y_off=1.4, stats=0)
         self.draw_histo(p, show=show, lm=.12)
         return p
@@ -549,11 +546,10 @@ class PadAnalysis(DUTAnalysis):
         return h
 
     def draw_bucket_pedestal(self, show=True, corr=True, additional_cut=''):
-        gStyle.SetPalette(55)
-        # cut_string = self.Cut.generate_special_cut(included=['tracks', 'pulser', 'saturated'])
+        set_palette(55)
         cut_string = self.Cut.generate_custom(exclude=['bucket', 'timing'])
         cut_string += additional_cut
-        self.draw_signal_vs_peaktime('e', cut_string, show, corr, fine_corr=corr, prof=False)
+        self.draw_signal_vs_peaktime('e', cut_string, fine_corr=corr, prof=False, show=show)
         self.save_plots('BucketPedestal')
 
     def draw_bucket_waveforms(self, show=True, t_corr=True, start=100000):
