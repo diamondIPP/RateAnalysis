@@ -820,6 +820,19 @@ def fit_bucket(histo, show=True):
     return fit
 
 
+def fill_hist(h, x, y=None, zz=None):
+    x, y, zz = array(x).astype('d'), array(y).astype('d'), array(zz).astype('d')
+    if h.ClassName == 'TProfile2D':
+        for i in range(x.size):
+            h.Fill(x[i], y[i], zz[i])
+    elif 'TH1' in h.ClassName():
+        h.FillN(x.size, x, ones(x.size))
+    elif any(name in h.ClassName() for name in ['TH2', 'TProfile']):
+        h.FillN(x.size, x, y, ones(x.size))
+    else:
+        h.FillN(x.size, x, y, zz, ones(x.size))
+
+
 def set_palette(pal):
     gStyle.SetPalette(pal)
 
