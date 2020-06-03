@@ -162,6 +162,10 @@ class PadAnalysis(DUTAnalysis):
         n = self.Tree.Draw('{}:{}'.format(self.get_t_var(), self.generate_signal_name()), self.Cut(cut), 'goff')
         return self.Run.get_root_vecs(n, 2)
 
+    def get_ph_values(self, region=None, name=None, cut=None):
+        """ :returns: all pulse height values for a given cut. """
+        return self.Run.get_root_vec(var=self.generate_signal_name(name, cut=cut, region=region), cut=self.Cut(cut))
+
     def get_pulse_height(self, bin_size=None, cut=None, redo=False, corr=True, sig=None, sys_err=0):
         correction = '' if not corr else '_eventwise'
         suffix = '{bins}{cor}_{c}'.format(bins=self.Bins.BinSize if bin_size is None else bin_size, cor=correction, reg=self.get_short_regint(sig), c=self.Cut(cut).GetName())
@@ -195,6 +199,10 @@ class PadAnalysis(DUTAnalysis):
 
     def get_n_peaks(self, start_bunch=None, end_bunch=None):
         return self.Peaks.get_n_additional(start_bunch, end_bunch)
+
+    def get_t_bins(self, bin_size=None):
+        xmin, xmax = self.SignalRegion * self.DigitiserBinWidth
+        return make_bins(xmin, xmax, choose(bin_size, default=self.DigitiserBinWidth))
 
     def print_results(self, prnt=True):
         rows = [[u_to_str(v, prec=2) for v in self.get_results()]]
