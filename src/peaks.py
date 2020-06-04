@@ -436,7 +436,7 @@ class PeakAnalysis(Analysis):
         values = choose(x, self.get_all_cfd, thresh)
         title = '{:.0f}% Constrant Fraction Times'.format(thresh * 100)
         h = self.draw_disto(values, title, self.Ana.get_t_bins(bin_size), lm=.13, rm=.12 if draw_ph else None, show=show, x_tit='Constant Fraction Time [ns]', y_off=1.8)
-        self.draw_ph(get_last_canvas(), bin_size, x, y, y_range, show=draw_ph)
+        self.draw_ph(get_last_canvas(), bin_size, values, y, y_range, show=draw_ph)
         return h
 
     def draw_cfd_vs_time(self, bin_size=.2, signal=False, show=True):
