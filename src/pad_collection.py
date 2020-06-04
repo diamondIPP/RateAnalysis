@@ -236,6 +236,29 @@ class PadCollection(AnalysisCollection):
         gROOT.SetBatch(0)
         self.save_plots('PulserPedestalComparison')
         self.Objects.append([c, graphs, legend])
+
+    def compare_signal_vs_peak_height(self, i0=0, i1=-1, ym=.05, show=True, redo=False):
+        def f():
+            x0, y0, x1, y1 = [j for ind in [i0, i1] for j in get_hist_vecs(self.get_ana(ind).draw_signal_vs_peaktime(show=False))]
+            y0 = where(y0 == 0, 1e10, y0)
+            return x0, y1 / y0
+        x, y = do_pickle(self.make_simple_pickle_path('SigPeakRatio', sub_dir='Peaks', dut='{}{}'.format(i0, i1)), f, redo=redo)
+        flux0, flux1 = [make_flux_string(self.get_ana(i).get_flux()) for i in [i0, i1]]
+        g = self.make_tgrapherrors('gcspt', 'Signal Ratio Vs Peak Time at {} and {}'.format(flux0, flux1), x=x, y=y)
+        format_histo(g, x_tit='Signal Peak Time [ns]', y_tit='Signal Ratio', y_off=1.7, y_range=array([-ym, ym]) + 1)
+        self.draw_histo(g, show=show, lm=.13, gridy=True)
+        return mean_sigma(y[y > .1])
+
+    def compare_all_sig_vs_peakheight(self, ym=.05, show=True):
+        values = []
+        self.PBar.start(self.NRuns - 1)
+        for i in range(1, self.NRuns):
+            values.append(self.compare_signal_vs_peak_height(0, i, show=False))
+            self.PBar.update()
+        g = self.make_tgrapherrors('gasphr', 'Signal Ration Vs Flux', x=self.get_fluxes()[1:], y=values)
+        format_histo(g, y_tit='Signal Ratio', y_off=1.7, y_range=array([-ym, ym]) + 1, **self.get_x_args(False))
+        self.draw_histo(g, show=show, lm=.13, logx=True, gridy=True)
+
     # endregion SIGNAL/PEDESTAL
     # ----------------------------------------
 
@@ -374,8 +397,8 @@ class PadCollection(AnalysisCollection):
         g = self.make_tgrapherrors('gps', 'Systematics of the Number of Peaks of Bunch {}'.format(bunch), x=self.get_fluxes(), y=single_bunch / all_bunches)
         format_histo(g, y_tit='N Peaks in Bunch {} / Average N Peaks per Bunch'.format(bunch), y_off=1.3, **self.get_x_args(False))
         self.draw_histo(g, lm=.12, show=show, logx=True)
-    # ----------------------------------------
     # endregion PEAKS
+    # ----------------------------------------
 
     # ----------------------------------------
     # region 2D SIGNAL MAP
