@@ -223,23 +223,22 @@ class PeakAnalysis(Analysis):
             self.draw_histo(h, lm=.12, show=show, x=1.5, y=0.75, logy=True)
         return h
 
-    def draw_signal(self, bin_size=.5, ind=None, fit=False, y=None, x=None, show=True, draw_ph=False):
-        h = TH1F('hsp', 'Signal Peak Times', *self.Ana.get_t_bins(bin_size))
-        fill_hist(h, choose(x, self.get_signal_times, fit, ind))
-        format_histo(h, x_tit='Signal Peak Time [ns]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)
+    def draw_signal(self, bin_size=.5, ind=None, fit=False, y=None, x=None, y_range=None, show=True, draw_ph=False):
         self.format_statbox(entries=1, x=.86 if draw_ph else .95)
-        c = self.draw_histo(h, lm=.13, show=show, rm=.12 if draw_ph else None)
-        self.draw_ph(c, bin_size, x, y, draw_ph)
+        values = choose(x, self.get_signal_times, fit, ind)
+        h = self.draw_disto(values, 'Signal Peak Times', self.Ana.get_t_bins(bin_size), lm=.13, rm=.12 if draw_ph else None, show=show, x_tit='Signal Peak Time [ns]', y_off=1.8)
+        self.draw_ph(get_last_canvas(), bin_size, x, y, y_range, draw_ph)
         return h
 
-    def draw_ph(self, c, bin_size, x, y, show):
+    def draw_ph(self, c, bin_size, x, y, y_range, show):
         if show:
             p = self.Ana.draw_signal_vs_peaktime(show=False, bin_size=bin_size, x=x, y=y)
             values = get_hist_vec(p, err=False)
-            format_histo(p, title=' ', stats=0, x_tit='', l_off_x=1, y_range=increased_range([min(values[values > 0]), max(values)], .3, .3))
+            format_histo(p, title=' ', stats=0, x_tit='', l_off_x=1, y_range=choose(y_range, increased_range([min(values[values > 0]), max(values)], .3, .3)))
             c.cd()
             self.draw_tpad('psph', transparent=True, lm=.13, rm=.12)
             p.Draw('y+')
+            update_canvas(c)
 
     def draw_heights_vs_time(self, bin_size=.5, corr=True, cfd=False, show=True):
         times, heights, n_peaks = self.find_all()
@@ -432,14 +431,12 @@ class PeakAnalysis(Analysis):
             return concatenate(cfds).astype('f2')
         return do_hdf5(self.make_simple_hdf5_path('CFD', '{:.0f}'.format(thresh * 100)), f, redo=redo)
 
-    def draw_cfd(self, thresh=.5, bin_size=.2, show=True, draw_ph=False, x=None, y=None):
-        h = TH1F('hcfd', '{:.0f}% Constrant Fraction Times'.format(thresh * 100), *self.Ana.get_t_bins(bin_size))
-        values = choose(x, self.get_all_cfd, thresh)
-        fill_hist(h, values)
-        format_histo(h, x_tit='Constrant Fraction Time [ns]', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor)
+    def draw_cfd(self, thresh=.5, bin_size=.2, show=True, draw_ph=False, x=None, y=None, y_range=None):
         self.format_statbox(entries=1, x=.86 if draw_ph else .95)
-        c = self.draw_histo(h, show=show, lm=.13, rm=.12 if draw_ph else None)
-        self.draw_ph(c, bin_size, values, y, show=draw_ph)
+        values = choose(x, self.get_all_cfd, thresh)
+        title = '{:.0f}% Constrant Fraction Times'.format(thresh * 100)
+        h = self.draw_disto(values, title, self.Ana.get_t_bins(bin_size), lm=.13, rm=.12 if draw_ph else None, show=show, x_tit='Constant Fraction Time [ns]', y_off=1.8)
+        self.draw_ph(get_last_canvas(), bin_size, x, y, y_range, show=draw_ph)
         return h
 
     def draw_cfd_vs_time(self, bin_size=.2, signal=False, show=True):
