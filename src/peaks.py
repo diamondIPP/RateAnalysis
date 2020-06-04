@@ -70,10 +70,10 @@ class PeakAnalysis(Analysis):
         return self.get_signal_values(self.calc_all_tot, thresh, fixed)
 
     def get_signal_heights(self):
-        return self.get_signal_values(self.get_heights, -999, flat=True)
+        return self.get_signal_values(self.get_heights, default=-999, flat=True)
 
     def get_signal_times(self, fit=False, ind=None):
-        return self.get_signal_values(self.get, ind, -999, flat=True, fit=fit)
+        return self.get_signal_values(self.get, ind, default=-999, flat=True, fit=fit)
 
     def get_signal_indices(self):
         values, m = self.find_all()[0], mean(self.get_from_tree())
