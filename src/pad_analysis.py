@@ -411,7 +411,7 @@ class PadAnalysis(DUTAnalysis):
         self.save_histo(h, 'SignalDistribution', lm=.15, show=show, prnt=prnt, save=save, sumw2=sumw2)
         return h
 
-    def draw_signal_vs_peaktime(self, region=None, cut=None, bin_size=None, fine_corr=False, prof=True, x=None, y=None, show=True):
+    def draw_signal_vs_peaktime(self, region=None, cut=None, bin_size=None, fine_corr=False, prof=True, x=None, y=None, y_range=None, show=True):
         h = (TProfile if prof else TH2F)('hspt', 'Signal vs Peak Position', *(self.get_t_bins(bin_size) + ([] if prof else self.Bins.get_pad_ph())))
         n = 0
         if x is None or y is None:
@@ -422,7 +422,7 @@ class PadAnalysis(DUTAnalysis):
             for xbin in range(h.GetNbinsX()):
                 for ybin in range(h.GetNbinsY()):
                     h.SetBinContent(xbin, ybin, h.GetBinContent(xbin, ybin) / (px.GetBinContent(xbin) if px.GetBinContent(xbin) else 1))
-        format_histo(h, x_tit='Signal Peak Position [ns]', y_tit='Pulse Height [mV]', y_off=1.4, stats=0)
+        format_histo(h, x_tit='Signal Peak Position [ns]', y_tit='Pulse Height [mV]', y_off=1.4, stats=0, y_range=y_range)
         self.save_histo(h, 'SignalVsPeakPos', show, lm=.11, draw_opt='' if prof else 'colz', rm=.03 if prof else .18)
         return h
 
