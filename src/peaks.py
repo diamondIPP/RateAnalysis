@@ -196,7 +196,7 @@ class PeakAnalysis(Analysis):
         weights, bins = histogram(values, self.Ana.Bins.get_pad_ph()[1])
         bin_centers = (bins + (bins[1] - bins[0]) / 2)[:-1]
         m, s = mean_sigma(bin_centers, weights)
-        return ufloat(m, s / sqrt(values.size))
+        return ufloat(m, s / sqrt(values.size)) - self.Ana.Pedestal.get_raw_mean()
     # endregion GET
     # ----------------------------------------
 
