@@ -171,9 +171,9 @@ class AnalysisCollection(Analysis):
     def get_hv_name(self):
         return self.Currents.Name
 
-    def get_fluxes(self, rel_error=0., corr=True, runs=None, avrg=False):
+    def get_fluxes(self, rel_error=0., corr=True, runs=None, avrg=False, pbar=True):
         picklepath = self.make_simple_pickle_path(sub_dir='Flux', run='{}', dut='')
-        return self.get_run_values('fluxes', DUTAnalysis.get_flux, runs, avrg=avrg, picklepath=picklepath, rel_error=rel_error, corr=corr)
+        return self.get_run_values('fluxes', DUTAnalysis.get_flux, runs, pbar, avrg=avrg, picklepath=picklepath, rel_error=rel_error, corr=corr)
 
     def get_flux_splits(self, redo=False, show=True):
         def f():
