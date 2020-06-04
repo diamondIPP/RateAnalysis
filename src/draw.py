@@ -324,7 +324,7 @@ class Draw:
         self.add(c, *draw_objects)
         set_root_output(True)
 
-    def draw_disto(self, values, title='', bins=None, thresh=.02, lm=None, show=True, **kwargs):
+    def draw_disto(self, values, title='', bins=None, thresh=.02, lm=None, rm=None, show=True, **kwargs):
         values = array(values, dtype='d')
         if bins is None:
             b = linspace(*(find_range(values, thresh=thresh) + [int(sqrt(values.size))]))
@@ -335,7 +335,7 @@ class Draw:
         h = TH1F('h{}'.format(title.lower()[:3]), title, *bins)
         h.FillN(values.size, values, ones(values.size))
         format_histo(h, **kwargs)
-        self.draw_histo(h, lm=lm, show=show)
+        self.draw_histo(h, lm=lm, rm=rm, show=show)
         return h
 
     # endregion DRAW
@@ -840,6 +840,12 @@ def set_palette(pal):
 
 def is_graph(h):
     return 'Graph' in h.ClassName()
+
+
+def update_canvas(c=None):
+    c = choose(c, get_last_canvas())
+    c.Modified()
+    c.Update()
 
 
 if __name__ == '__main__':
