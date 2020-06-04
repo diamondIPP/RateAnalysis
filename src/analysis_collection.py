@@ -173,6 +173,7 @@ class AnalysisCollection(Analysis):
 
     def get_fluxes(self, rel_error=0., corr=True, runs=None, avrg=False, pbar=True):
         picklepath = self.make_simple_pickle_path(sub_dir='Flux', run='{}', dut='')
+        pbar = False if not self.FirstAnalysis.has_branch('rate') else pbar
         return self.get_run_values('fluxes', DUTAnalysis.get_flux, runs, pbar, avrg=avrg, picklepath=picklepath, rel_error=rel_error, corr=corr)
 
     def get_flux_splits(self, redo=False, show=True):
@@ -254,10 +255,11 @@ class AnalysisCollection(Analysis):
 
         return do_pickle(pickle_path, f, redo=redo)
 
-    def get_pulse_heights(self, bin_width=None, redo=False, runs=None, corr=True, err=True, pbar=None, avrg=False):
-        error = self.get_repr_error(110, redo) if err else 0
-        picklepath = self.make_simple_pickle_path(sub_dir='VCAL', run='{}')
-        return self.get_run_values('pulse heights', self.Analysis.get_pulse_height, runs, pbar, avrg, picklepath, bin_size=bin_width, redo=redo, corr=corr, sys_err=error)
+    def get_pulse_heights(self, bin_width=None, redo=False, runs=None, corr=True, err=True, pbar=None, avrg=False, peaks=False):
+        error = self.get_repr_error(110, peaks, redo) if err else 0
+        picklepath = self.make_simple_pickle_path('Fit', '{}_eventwise_AllCuts'.format(self.Bins.BinSize), run='{}', sub_dir='Ph_fit')
+        pbar = False if peaks else pbar
+        return self.get_run_values('pulse heights', self.Analysis.get_pulse_height, runs, pbar, avrg, picklepath, bin_size=bin_width, redo=redo, corr=corr, sys_err=error, peaks=peaks)
 
     def get_pulse_height(self):
         return mean_sigma(self.get_pulse_heights())
@@ -280,8 +282,8 @@ class AnalysisCollection(Analysis):
     def get_runs_above_flux(self, flux):
         return [key for key, ana in self.Analyses.iteritems() if ana.Run.Flux >= flux]
 
-    def get_repr_error(self, flux=None, redo=False):
-        values = self.draw_signal_spread(redo, show=False, save=False)
+    def get_repr_error(self, flux=None, peaks=False, redo=False):
+        values = self.draw_signal_spread(peaks, redo, show=False, save=False)
         return self.get_repr_error_old(flux, show=False) if values is None else mean_sigma(values)[1]
 
     def get_repr_error_old(self, flux, show=True, redo=False):
@@ -368,13 +370,13 @@ class AnalysisCollection(Analysis):
             h.Draw('histy+')
         self.save_plots('FullPulseHeight')
 
-    def get_pulse_height_graph(self, bin_width=None, vs_time=False, first_last=True, redo=False, legend=True, corr=True, err=True, avrg=False):
+    def get_pulse_height_graph(self, bin_width=None, vs_time=False, first_last=True, redo=False, legend=True, corr=True, err=True, avrg=False, peaks=False):
 
         marker_size = 1
         gStyle.SetEndErrorSize(4)
         x = self.get_x_var(vs_time, avrg=avrg)
-        g = self.make_tgrapherrors('g', 'stat. error', self.Colors[0], marker_size=marker_size, x=x, y=self.get_pulse_heights(bin_width, redo, corr=corr, err=False, avrg=avrg))
-        values = self.get_pulse_heights(bin_width, redo, corr=corr, err=err, avrg=avrg)
+        g = self.make_tgrapherrors('g', 'stat. error', self.Colors[0], marker_size=marker_size, x=x, y=self.get_pulse_heights(bin_width, redo, corr=corr, err=False, avrg=avrg, peaks=peaks))
+        values = self.get_pulse_heights(bin_width, redo, corr=corr, err=err, avrg=avrg, peaks=peaks)
         g_errors = self.make_tgrapherrors('gerr', 'full error', marker=0, color=self.Colors[5], marker_size=0, x=x, y=values)
         g1, g_last = [self.make_tgrapherrors('g{}'.format(i), '{} run'.format('last' if i else 'first'), marker=22 - i, color=2, marker_size=1.5, x=[x[i].n], y=[values[i].n]) for i in [0, -1]]
         graphs = [g, g_errors]
@@ -394,9 +396,9 @@ class AnalysisCollection(Analysis):
                 mg.GetListOfGraphs()[0].GetListOfFunctions().Add(self.draw_tlatex(ix.n, y + ey * 1.2, '{:1.0f}'.format(ana.get_flux().n), color=1, align=21, size=.02, show=0))
         return mg
 
-    def draw_scaled_pulse_heights(self, scale=1, binning=None, vs_time=False, show=True, y_range=None, redo=False, scale_to_low=False, avrg=False):
+    def draw_scaled_pulse_heights(self, scale=1, binning=None, vs_time=False, show=True, y_range=None, redo=False, scale_to_low=False, avrg=False, peaks=False):
 
-        mg = self.get_pulse_height_graph(binning, vs_time, first_last=not vs_time, redo=redo, avrg=avrg)
+        mg = self.get_pulse_height_graph(binning, vs_time, first_last=not vs_time, redo=redo, avrg=avrg, peaks=peaks)
         scale_multigraph(mg, scale, scale_to_low)
         y_range = [.95, 1.05] if y_range is None else y_range
         format_histo(mg, y_tit='Scaled Pulse Height', y_off=1.75, x_off=1.3, draw_first=True, y_range=y_range, ndivx=503, center_y=True, **self.get_x_args(vs_time))
@@ -405,9 +407,10 @@ class AnalysisCollection(Analysis):
         self.save_plots('ScaledPulseHeights{}'.format('Time' if vs_time else 'Flux'))
         return mg.GetListOfGraphs()[0]
 
-    def draw_pulse_heights(self, bin_width=None, vs_time=False, show=True, show_first_last=True, save_comb=False, y_range=None, corr=True, redo=False, prnt=True, err=True, avrg=False, fit=False):
+    def draw_pulse_heights(self, bin_width=None, vs_time=False, show=True, show_first_last=True, save_comb=False, y_range=None, corr=True, redo=False, prnt=True, err=True, avrg=False,
+                           fit=False, peaks=False):
 
-        mg = self.get_pulse_height_graph(bin_width, vs_time, show_first_last, redo, corr=corr, err=err, avrg=avrg)
+        mg = self.get_pulse_height_graph(bin_width, vs_time, show_first_last, redo, corr=corr, err=err, avrg=avrg, peaks=peaks)
 
         # small range
         ymin, ymax = [getattr(mg.GetListOfGraphs()[0].GetYaxis(), 'GetX{}'.format(w))() for w in ['min', 'max']]
@@ -573,8 +576,8 @@ class AnalysisCollection(Analysis):
         self.save_plots('PulseHeightDistributions')
         return ls.GetMean(), ls.GetStdDev()
 
-    def draw_signal_spread(self, redo=False, show=True, save=True):
-        values = self.get_pulse_heights(redo=redo, err=False)[self.get_fluxes().argsort()]  # sort by ascending fluxes
+    def draw_signal_spread(self, peaks=False, redo=False, show=True, save=True):
+        values = self.get_pulse_heights(redo=redo, err=False, peaks=peaks)[self.get_fluxes().argsort()]  # sort by ascending fluxes
         rel_values = array([value - mean(lst) for lst in split(values, self.get_flux_splits(show=False)) for value in lst if lst.size > 1])
         if rel_values.size < 2:
             warning('Not enough data for signal spread ...')

@@ -166,10 +166,12 @@ class PadAnalysis(DUTAnalysis):
         """ :returns: all pulse height values for a given cut. """
         return self.Run.get_root_vec(var=self.generate_signal_name(name, cut=cut, region=region), cut=self.Cut(cut))
 
-    def get_pulse_height(self, bin_size=None, cut=None, redo=False, corr=True, sig=None, sys_err=0):
+    def get_pulse_height(self, bin_size=None, cut=None, redo=False, corr=True, sig=None, sys_err=0, peaks=False):
+        if peaks:
+            return self.Peaks.get_signal_ph()
         correction = '' if not corr else '_eventwise'
         suffix = '{bins}{cor}_{c}'.format(bins=self.Bins.BinSize if bin_size is None else bin_size, cor=correction, reg=self.get_short_regint(sig), c=self.Cut(cut).GetName())
-        picklepath = self.make_pickle_path('Ph_fit', 'Fit', self.RunNumber, self.DUT.Number, suf=suffix)
+        picklepath = self.make_simple_pickle_path('Fit', suffix, sub_dir='Ph_fit')
 
         def f():
             p, fit_pars = self.draw_pulse_height(bin_size=bin_size, cut=self.Cut(cut), corr=corr, show=False, save=False, redo=redo)
