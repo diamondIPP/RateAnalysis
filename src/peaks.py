@@ -305,12 +305,8 @@ class PeakAnalysis(Analysis):
         self.draw_histo(g, lm=.12, show=show)
 
     def draw_height_disto(self, show=True):
-        h = TH1F('hsh', 'Signal Heights', *self.Ana.Bins.get_pad_ph())
-        fill_hist(h, self.get_signal_heights())
         self.format_statbox(all_stat=True)
-        format_histo(h, x_tit='Peak Height [mV]', y_tit='Number of Entries', y_off=1.2, fill_color=self.FillColor)
-        self.draw_histo(h, show=show, lm=.11)
-        return h
+        return self.draw_disto(self.get_signal_heights(), 'Signal Heights', self.Ana.Bins.get_pad_ph(), lm=.12, show=show, x_tit='Peak Height [mV]', y_off=1.5)
 
     def draw_flux_vs_threshold(self, steps=20):
         x = linspace(self.NoiseThreshold, self.Threshold, steps)

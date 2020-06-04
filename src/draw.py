@@ -324,7 +324,7 @@ class Draw:
         self.add(c, *draw_objects)
         set_root_output(True)
 
-    def draw_disto(self, values, title='', bins=None, thresh=.02, lm=None, **kwargs):
+    def draw_disto(self, values, title='', bins=None, thresh=.02, lm=None, show=True, **kwargs):
         values = array(values, dtype='d')
         if bins is None:
             b = linspace(*(find_range(values, thresh=thresh) + [int(sqrt(values.size))]))
@@ -335,7 +335,8 @@ class Draw:
         h = TH1F('h{}'.format(title.lower()[:3]), title, *bins)
         h.FillN(values.size, values, ones(values.size))
         format_histo(h, **kwargs)
-        self.draw_histo(h, lm=lm)
+        self.draw_histo(h, lm=lm, show=show)
+        return h
 
     # endregion DRAW
     # ----------------------------------------
