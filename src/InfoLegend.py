@@ -91,7 +91,7 @@ class InfoLegend:
 
     def get_rate_string(self):
         if self.IsCollection:
-            fluxes = [flux.n for flux in self.Analysis.get_fluxes()]
+            fluxes = [flux.n for flux in self.Analysis.get_fluxes(pbar=False)]
             return '{} - {}'.format(make_flux_string(min(fluxes)), make_flux_string(max(fluxes)))
         else:
             return make_flux_string(self.Analysis.Run.Flux.n)
