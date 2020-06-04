@@ -441,7 +441,7 @@ class PadAnalysis(DUTAnalysis):
         x = self.Run.get_root_vec(var=self.Timing.get_peak_name(corr, fine_corr), cut=self.Cut())
         v = values[(values > 0) & (values < 3 * mean(values))]
         x = x[(values > 0) & (values < 3 * mean(values))]
-        p = TProfile('ptotpt', 'ToT vs. Peaktime', *self.Peaks.get_t_bins(bin_size))
+        p = TProfile('ptotpt', 'ToT vs. Peaktime', *self.get_t_bins(bin_size))
         p.FillN(x.size, x, v.astype('d'), ones(x.size))
         format_histo(p, x_tit='Signal Peak Position [ns]', y_tit='Time over Threshold [ns]', y_off=1.4, stats=0)
         self.save_histo(p, 'ToTVsPeakPos{}{}'.format(int(corr), int(fine_corr)), show, lm=.11)
@@ -454,7 +454,7 @@ class PadAnalysis(DUTAnalysis):
         return p
 
     def draw_signal_vs_times(self, bin_size=.2, show=True):
-        p = TProfile2D('hscfp', 'Signal vs. CFD and Peak Time', *(self.Peaks.get_t_bins(bin_size) + self.Peaks.get_t_bins(bin_size, off=self.Waveform.get_average_rise_time())))
+        p = TProfile2D('hscfp', 'Signal vs. CFD and Peak Time', *(self.get_t_bins(bin_size) + self.get_t_bins(bin_size)))
         x = array(self.Peaks.get_from_tree())
         y = self.Peaks.get_all_cfd()
         zz = self.Run.get_root_vec(var=self.generate_signal_name(), cut=self.Cut())
