@@ -190,6 +190,13 @@ class PeakAnalysis(Analysis):
             fit = h.Fit('landau', 'qs0', '', h.GetBinCenter(max_bin - 10), h.GetBinCenter(max_bin + 30))
             return fit.Parameter(1), fit.Parameter(2)
         return do_pickle(self.make_simple_pickle_path('H'), f, redo=redo)
+
+    def get_signal_ph(self):
+        values = self.get_signal_heights()
+        weights, bins = histogram(values, self.Ana.Bins.get_pad_ph()[1])
+        bin_centers = (bins + (bins[1] - bins[0]) / 2)[:-1]
+        m, s = mean_sigma(bin_centers, weights)
+        return ufloat(m, s / sqrt(values.size))
     # endregion GET
     # ----------------------------------------
 
@@ -299,9 +306,8 @@ class PeakAnalysis(Analysis):
 
     def draw_height_disto(self, show=True):
         h = TH1F('hsh', 'Signal Heights', *self.Ana.Bins.get_pad_ph())
-        values = self.get_signal_heights()
-        h.FillN(values.size, values.astype('d'), ones(values.size))
-        self.format_statbox(entries=True)
+        fill_hist(h, self.get_signal_heights())
+        self.format_statbox(all_stat=True)
         format_histo(h, x_tit='Peak Height [mV]', y_tit='Number of Entries', y_off=1.2, fill_color=self.FillColor)
         self.draw_histo(h, show=show, lm=.11)
         return h
