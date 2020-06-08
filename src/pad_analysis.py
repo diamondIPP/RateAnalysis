@@ -462,7 +462,7 @@ class PadAnalysis(DUTAnalysis):
         zz = self.Run.get_root_vec(var=self.generate_signal_name(), cut=self.Cut())
         for i in range(x.size):
             p.Fill(x[i], y[i], zz[i])
-        format_histo(p, y_tit='Constant Fraction Time [ns]', x_tit='Peak Time [ns]', z_tit='Pulse Height [mV]', y_off=1.4, stats=0)
+        format_histo(p, y_tit='Constant Fraction Time [ns]', x_tit='Peak Time [ns]', z_tit='Pulse Height [mV]', y_off=1.4, stats=0, z_off=1.2)
         self.format_statbox(entries=True)
         self.draw_histo(p, show=show, lm=.12, rm=.13, draw_opt='colz')
 
