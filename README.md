@@ -17,13 +17,11 @@ sudo pip install termcolor scipy screeninfo progressbar uncertainties pytz gtts 
 ## Add aliases
 - source .bash_aliases
 - adds following aliases:
+    - analyse (for all single runs and runplans)
+    - DrawCurrents
     - ShowRunplans
     - MasterSelection
     - ShowSelection
     - ShowSelections
     - RunSelecion
     - DiaSelection
-    - padAna
-    - pixAna
-    - padCollection
-    - pixCollection
