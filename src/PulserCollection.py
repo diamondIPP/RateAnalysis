@@ -19,15 +19,14 @@ class PulserCollection(Analysis):
         self.Analysis = ana_collection
 
         self.Analyses = self.Analysis.Analyses
-        self.DUTName = self.Analysis.DUTName
-        self.DUTNumber = self.Analysis.DUTNumber
+        self.DUT = self.Analysis.DUT.Number
         self.RunPlan = self.Analysis.RunPlan
         self.InfoLegend = InfoLegend(ana_collection)
         self.ResultsDir = self.Analysis.ResultsDir
 
     def get_pulse_heights(self, corr=True, beam_on=True, redo=False):
 
-        pickle_path = self.make_pickle_path('Pulser', 'PH', run=self.RunPlan, ch=self.DUTNumber, suf='{}{}'.format(int(corr), int(beam_on)))
+        pickle_path = self.make_pickle_path('Pulser', 'PH', run=self.RunPlan, ch=self.DUT.Number, suf='{}{}'.format(int(corr), int(beam_on)))
 
         def f():
             self.info('Getting pulser pulse heights ... ')
@@ -52,7 +51,7 @@ class PulserCollection(Analysis):
         g_last = self.make_tgrapherrors('g2', 'last run', marker=23, color=2, marker_size=marker_size, x=[x_values[-1].n], y=[y_values[-1].n])
         graphs = [g] if vs_time else [g, g_first, g_last]
         leg = self.make_legend(.17, .35, nentries=3, x2=.4)
-        mg = TMultiGraph('mg_pph', 'Pulser Pulse Height vs {mod} - {dia}'.format(mod='Time' if vs_time else 'Flux', dia=self.DUTName))
+        mg = TMultiGraph('mg_pph', 'Pulser Pulse Height vs {mod} - {dia}'.format(mod='Time' if vs_time else 'Flux', dia=self.DUT.Name))
         for gr in graphs:
             leg.AddEntry(gr, gr.GetTitle(), 'l' if gr.GetName() == 'gerr' else 'p')
             mg.Add(gr, 'p')
@@ -106,7 +105,7 @@ class PulserCollection(Analysis):
     def draw_scaled_pulse_heights(self, sigma=False, vs_time=False, redo=False, y_range=None, scale=1, show=True):
 
         mode = 'Time' if vs_time else 'Flux'
-        pickle_path = self.make_pickle_path('Pulser', 'PulseHeights', self.RunPlan, self.DUTName, '{}_{}'.format(mode, sigma))
+        pickle_path = self.make_pickle_path('Pulser', 'PulseHeights', self.RunPlan, self.DUT.Name, '{}_{}'.format(mode, sigma))
         f = partial(self.get_pulse_height_graph, sigma, vs_time, redo=redo)
         mg = do_pickle(pickle_path, f, redo=redo)
         scale_multigraph(mg, scale)

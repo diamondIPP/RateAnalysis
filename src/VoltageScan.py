@@ -19,8 +19,7 @@ class VoltageScan(Analysis):
         self.set_save_directory(self.Ana.ResultsDir)
         self.Analyses = self.Ana.Analyses
         self.RunPlan = self.Ana.RunPlan
-        self.DUTName = self.Ana.DUTName
-        self.DUTNumber = self.Ana.DUTNumber
+        self.DUT = self.Ana.DUT
         self.InfoLegend = InfoLegend(ana_collection)
 
     def get_voltages(self):

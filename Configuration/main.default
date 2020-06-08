@@ -1,16 +1,24 @@
 [MAIN]
-data_dir = /scratch2/psi
-run_plan_path = Runinfos/run_plans.json
+data directory = /scratch/psi
 default test campaign = 201908
+run plan path = Runinfos/run_plans.json
 ;hv config file = ''
 ;hv data path = ''
+
+[BEAM]
+# [MeV/c]
+momentum = 260
+# [m]
+path length = 23.1
+# [MHz]
+frequency = 50.6
 
 [SAVE]
 pickle directory = Configuration/Individual_Configs/
 activate title = True
-felix = False
 git hash = True
 info legend = True
+save = True
 server mount directory = ~/mounts/psi
 
 [MISC]

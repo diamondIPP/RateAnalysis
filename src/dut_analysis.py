@@ -7,21 +7,23 @@ from Extrema import Extrema2D
 from telescope_analysis import *
 from currents import Currents
 from ROOT import TProfile2D
-from numpy import linspace
+from numpy import linspace, exp, vectorize
+from numpy.random import rand
 from uncertainties import umath
+from dut import DUT
 
 
 class DUTAnalysis(TelecopeAnalysis):
     def __init__(self, run_number, diamond_nr, test_campaign=None, tree=None, t_vec=None, verbose=False, prnt=True):
 
-        TelecopeAnalysis.__init__(self, run_number, test_campaign, tree, t_vec, verbose, prnt)
+        TelecopeAnalysis.__init__(self, run_number, test_campaign, tree, t_vec, verbose)
 
-        self.DUTNumber = self.load_dut_nr(diamond_nr)
-        self.DUTName = self.Run.DUTNames[diamond_nr - 1]
-        self.Bias = self.Run.Bias[diamond_nr - 1]
+        self.DUT = DUT(diamond_nr, self.Run.RunInfo)
+
+        self.print_start(run_number, prnt, dut=self.DUT.Name)
 
         self.update_config()
-        self.set_save_directory(join(self.DUTName, str(self.RunNumber).zfill(3)))
+        self.set_save_directory(join(self.DUT.Name, str(self.RunNumber).zfill(3)))
 
         self.Currents = Currents(self)
 
@@ -29,8 +31,8 @@ class DUTAnalysis(TelecopeAnalysis):
         pass
 
     def load_dut_nr(self, dut_nr):
-        if dut_nr not in self.Run.DUTNumbers:
-            critical('wrong diamond number "{}". The following diamond numbers are valid: {}'.format(dut_nr, self.Run.DUTNumbers))
+        if dut_nr not in self.Run.DUT.Numbers:
+            critical('wrong diamond number "{}". The following diamond numbers are valid: {}'.format(dut_nr, self.Run.DUT.Numbers))
         return dut_nr
 
     def draw_current(self, relative_time=False, averaging=1, show=True, v_range=None, draw_opt='al'):
@@ -41,16 +43,23 @@ class DUTAnalysis(TelecopeAnalysis):
         return ['Run', 'Type', 'Diamond', 'Flux [kHz/cm2]', 'HV [V]']
 
     def show_information(self, header=True, prnt=True):
-        rows = [[self.RunNumber, self.Run.RunInfo['runtype'], self.DUTName, '{:14.1f}'.format(self.Run.Flux.n), '{:+6d}'.format(self.Bias)]]
+        rows = [[self.RunNumber, self.Run.RunInfo['runtype'], self.DUT.Name, '{:14.1f}'.format(self.Run.Flux.n), '{:+6.0f}'.format(self.DUT.Bias)]]
         return print_table(rows, self.get_info_header() if header else None, prnt=prnt)
 
     # ----------------------------------------
     # region GET
+    def get_events(self, cut=None, redo=False):
+        cut = self.Cut(cut)
+        return do_hdf5(self.make_hdf5_path('Events', run=self.RunNumber, ch=self.DUT.Number, suf=cut.GetName()), self.Run.get_root_vec, redo, dtype='i4', var='Entry$', cut=cut)
+
+    def get_n_entries(self, cut):
+        return self.Tree.GetEntries(self.Cut(cut).GetTitle())
+
     def get_current(self):
         return self.Currents.get_current()
 
     def get_irradiation(self):
-        return self.Run.get_irradiations()[self.DUTNumber - 1]
+        return self.DUT.get_irradiation(self.TCString)
 
     def get_attenuator(self):
         return False
@@ -58,25 +67,47 @@ class DUTAnalysis(TelecopeAnalysis):
     def get_ph_str(self):
         pass
 
-    def get_pulse_height(self, bin_size=None, cut=None, redo=False):
+    def get_pulse_height(self, *args, **kwargs):
         pass
 
     def get_sm_data(self, cut=None, fid=False):
         """ :return: signal map data as numpy array [[x], [y], [ph]] with units [[mm], [mm], [mV]]
             :param cut: applies all cuts if None is provided.
             :param fid: return only values within the fiducial region set in the AnalysisConfig.ini"""
-        y, x = self.Cut.get_track_vars(self.DUTNumber - 1, mm=True)
-        cut = self.Cut.generate_special_cut(excluded=['fiducial'], prnt=False) if not fid and cut is None else self.Cut(cut)
+        y, x = self.Cut.get_track_vars(self.DUT.Number - 1, mm=True)
+        cut = self.Cut.generate_custom(exclude=['fiducial'], prnt=False) if not fid and cut is None else self.Cut(cut)
         n = self.Tree.Draw('{x}:{y}:{z}'.format(z=self.get_ph_str(), x=x, y=y), cut, 'goff')  # *10 to get values in mm
         return self.Run.get_root_vecs(n, 3)
 
     def get_uniformity(self, bins=10, redo=False):
-        pickle_path = self.make_pickle_path('Signal', 'Uniformity', self.RunNumber, ch=self.DUTNumber, suf=bins)
+        pickle_path = self.make_pickle_path('Signal', 'Uniformity', self.RunNumber, ch=self.DUT.Number, suf=bins)
 
         def f():
             return self.draw_uniformity(bins=bins, show=False)
 
         return do_pickle(pickle_path, f, redo=redo)
+
+    def get_track_length_var(self):
+        dx2, dy2 = ['TMath::Power(TMath::Tan(TMath::DegToRad() * {}_{}), 2)'.format('slope' if self.Run.has_branch('slope_x') else 'angle', direction) for direction in ['x', 'y']]
+        return '{} * TMath::Sqrt({} + {} + 1)'.format(self.DUT.Thickness, dx2, dy2)
+
+    def get_flux(self, corr=True, rel_error=0, show=False):
+        return (self._get_flux(prnt=False, show=show) if self.Tree and self.has_branch('rate') else self.Run.get_flux(rel_error)) * (self.get_flux_correction() if corr else 1)
+
+    def get_flux_correction(self):
+        def f():
+            if not self.Cut.has('fiducial'):
+                return 1
+            n1, n2 = self.get_n_entries(self.Cut.generate_custom(include=['tracks', 'fiducial'], prnt=False)), self.get_n_entries(self.Cut.get('tracks'))
+            a1, a2 = self.Cut.get_fiducial_area(), min(self.Run.get_unmasked_area().values())
+            return n1 / a1 * a2 / n2
+        return do_pickle(self.make_pickle_path('Flux', 'Corr', self.RunNumber, self.DUT.Number), f)
+
+    def get_additional_peak_height(self):
+        pass
+
+    def get_peak_flux(self):
+        pass
     # endregion GET
     # ----------------------------------------
 
@@ -97,48 +128,41 @@ class DUTAnalysis(TelecopeAnalysis):
     def draw_signal_distribution(self, *args, **kwargs):
         pass
 
-    def draw_fid_cut(self, scale=1):
+    def draw_fid_cut(self, scale=10):
         self.Cut.draw_fid_cut(scale)
 
-    def draw_detector_size(self, scale=1):
-        split_runs = self.Cut.get_fiducial_splits()
-        first_cut_name = 'detector size' if self.Config.has_option('CUT', 'detector size') else 'detector size 1'
-        values = next(self.Cut.load_dia_config('detector size {n}'.format(n=i + 1) if i else first_cut_name) for i in xrange(len(split_runs)) if self.RunNumber <= split_runs[i])
-        if values is None:
-            return
-        x, y, lx, ly = values
-        cut = TCutG('det{}'.format(scale), 5, array([x, x, x + lx, x + lx, x], 'd') * scale, array([y, y + ly, y + ly, y, y], 'd') * scale)
-        cut.SetVarX(self.Cut.get_track_var(self.DUTNumber - 1, 'x'))
-        cut.SetVarY(self.Cut.get_track_var(self.DUTNumber - 1, 'y'))
-        self.Objects.append(cut)
-        cut.SetLineWidth(3)
-        cut.Draw()
+    def draw_track_length(self, show=True, save=True):
+        h = TH1F('htd', 'Track Distance in Diamond', 200, self.DUT.Thickness, self.DUT.Thickness + 1)
+        self.Tree.Draw('{}>>htd'.format(self.get_track_length_var()), 'n_tracks', 'goff')
+        format_histo(h, x_tit='Distance [#mum]', y_tit='Entries', y_off=2, lw=2, stats=0, fill_color=self.FillColor, ndivx=405)
+        self.save_histo(h, 'DistanceInDia', show, lm=.16, save=save)
+        return h
 
     # ----------------------------------------
     # region SIGNAL MAP
     def draw_signal_map(self, res=None, cut=None, fid=False, hitmap=False, redo=False, bins=None, z_range=None, size=None, show=True, save=True, prnt=True):
 
-        cut = self.Cut.generate_special_cut(excluded=['fiducial'], prnt=prnt) if not fid and cut is None else self.Cut(cut)
-        suf = '{c}_{ch}_{res}'.format(c=cut.GetName(), ch=self.Cut.CutConfig['chi2X'], res=res if bins is None else '{}x{}'.format(bins[0], bins[2]))
-        pickle_path = self.make_pickle_path('SignalMaps', 'Hit' if hitmap else 'Signal', run=self.RunNumber, ch=self.DUTNumber, suf=suf)
+        cut = self.Cut.generate_custom(exclude=['fiducial'], prnt=prnt) if not fid and cut is None else self.Cut(cut)
+        suf = '{c}_{ch}_{res}'.format(c=cut.GetName(), ch=self.Cut.CutConfig['chi2_x'], res=res if bins is None else '{}x{}'.format(bins[0], bins[2]))
+        pickle_path = self.make_pickle_path('SignalMaps', 'Hit' if hitmap else 'Signal', run=self.RunNumber, ch=self.DUT.Number, suf=suf)
 
         def func():
             set_root_output(0)
             name = 'h_hm' if hitmap else 'h_sm'
             atts = [name, 'Track Hit Map' if hitmap else 'Signal Map'] + (self.Bins.get_global(res, mm=True) if bins is None else bins)
             h1 = TH2I(*atts) if hitmap else TProfile2D(*atts)
-            self.info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.DUTName, run=self.RunNumber, mode='hit' if hitmap else 'signal '), prnt=prnt)
-            y, x = self.Cut.get_track_vars(self.DUTNumber - 1, mm=True)
+            self.info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.DUT.Name, run=self.RunNumber, mode='hit' if hitmap else 'signal '), prnt=prnt)
+            y, x = self.Cut.get_track_vars(self.DUT.Number - 1, mm=True)
             self.Tree.Draw('{z}{y}:{x}>>{h}'.format(z=self.get_ph_str() + ':' if not hitmap else '', x=x, y=y, h=name), cut, 'goff')
             set_2d_ranges(h1, *([3, 3] if size is None else size))
             adapt_z_range(h1) if not hitmap else do_nothing()
-            z_tit = 'Number of Entries' if hitmap else 'Pulse Height [mV]'
-            format_histo(h1, x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]', y_off=1.4, z_off=1.5, z_tit=z_tit, ncont=50, ndivy=510, ndivx=510, z_range=z_range)
             return h1
 
         set_palette(pal=1 if hitmap else 53)
         self.format_statbox(entries=True, x=0.82)
         h = do_pickle(pickle_path, func, redo=redo)
+        z_tit = 'Number of Entries' if hitmap else 'Pulse Height [mV]'
+        format_histo(h, x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]', y_off=1.4, z_off=1.5, z_tit=z_tit, ncont=50, ndivy=510, ndivx=510, z_range=z_range)
         self.draw_histo(h, '', show, lm=.12, rm=.16, draw_opt='colzsame')
         self.draw_fid_cut(scale=10)
         # self.draw_detector_size(scale=10)
@@ -146,13 +170,13 @@ class DUTAnalysis(TelecopeAnalysis):
         return h
 
     def draw_hitmap(self, res=None, cut=None, fid=False, redo=False, z_range=None, size=None, show=True, save=True, prnt=True):
-        cut = self.Cut.CutStrings['tracks'] if cut is None else self.Cut(cut)
+        cut = self.Cut.get('tracks') if cut is None else self.Cut(cut)
         return self.draw_signal_map(res, cut, fid, hitmap=True, redo=redo, bins=None, z_range=z_range, size=size, show=show, save=save, prnt=prnt)
 
     def split_signal_map(self, m=2, n=2, grid=True, redo=False, show=True):
         fid_cut = array(self.Cut.CutConfig['fiducial']) * 10
         if not fid_cut.size:
-            log_critical('fiducial cut not defined for {}'.format(self.DUTName))
+            log_critical('fiducial cut not defined for {}'.format(self.DUT.Name))
         x_bins = linspace(fid_cut[0], fid_cut[1], m + 1)
         y_bins = linspace(fid_cut[2], fid_cut[3], n + 1)
         bins = [m, x_bins, n, y_bins]
@@ -207,7 +231,7 @@ class DUTAnalysis(TelecopeAnalysis):
 
     def get_signal_spread(self, min_percent=5, max_percent=99, prnt=True):
         """ Calculates the relative spread of mean signal response from the 2D signal response map. """
-        pickle_path = self.make_pickle_path('SignalMaps', 'Spread', self.RunNumber, self.DUTNumber)
+        pickle_path = self.make_pickle_path('SignalMaps', 'Spread', self.RunNumber, self.DUT.Number)
 
         def f():
             h = self.draw_sig_map_disto(show=False)
@@ -274,3 +298,31 @@ class DUTAnalysis(TelecopeAnalysis):
         h.Sumw2(False)
         get_last_canvas().Update()
         return mpv, fwhm, value
+
+    def model_trap_number(self, f=1000, t=1, max_traps=10000, steps=20, show=True):
+        filled_traps = zeros(steps, dtype=int)
+        decay = vectorize(self.decay)
+        n_traps = []
+        for i in xrange(steps):
+            filled_traps[i] = f
+            filled_traps = decay(filled_traps, t)
+            n_traps.append(min(sum(filled_traps), max_traps))
+            print filled_traps
+        g = self.make_tgrapherrors('gt', 'Number of Filled Traps', x=arange(steps), y=n_traps)
+        format_histo(g, x_tit='Time [s]', y_tit='Number of Traps', y_off=1.7)
+        self.draw_histo(g, draw_opt='ap', lm=.13, show=show)
+        return n_traps[-1]
+
+    def draw_n_traps(self, t, max_traps=1e5, bins=20):
+        x, y = log_bins(bins, 100, 1e6)[1], []
+        self.PBar.start(x.size)
+        for f in x:
+            y.append(self.model_trap_number(f, t, max_traps, show=False))
+            self.PBar.update()
+        g = self.make_tgrapherrors('gnt', 'Number of Filled Traps vs Flux', x=x / 1000, y=y)
+        format_histo(g, x_tit='Flux [kHz/cm^{2}]', y_tit='Number of Filled Traps', y_off=1.7)
+        self.draw_histo(g, draw_opt='ap', lm=.13, logx=True)
+
+    @staticmethod
+    def decay(n, t):
+        return count_nonzero(rand(n) <= exp(-1. / t))

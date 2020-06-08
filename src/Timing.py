@@ -7,7 +7,7 @@
 from analysis import *
 from InfoLegend import InfoLegend
 from ROOT import TH1F, TF1, TCut, TH2F, TProfile, THStack, gPad
-from numpy import pi
+from numpy import pi, ones
 
 
 class TimingAnalysis(Analysis):
@@ -18,13 +18,13 @@ class TimingAnalysis(Analysis):
         self.Channel = self.Ana.Channel
         self.Tree = self.Ana.Tree
         self.Cut = self.Ana.Cut
-        self.TimingCut = self.Cut.generate_special_cut(excluded=['timing'], prnt=False, name='Timing')
+        self.TimingCut = self.Cut.generate_custom(exclude=['timing'], prnt=False, name='Timing')
         self.Polarity = self.Ana.Polarity
-        self.DUTName = self.Ana.DUTName
-        self.DUTNumber = self.Ana.DUTNumber
+        self.DUT = self.Ana.DUT
         self.RunNumber = self.Ana.RunNumber
         self.InfoLegend = InfoLegend(pad_analysis)
         self.set_save_directory(self.Ana.SubDir)
+        self.set_pickle_sub_dir('Timing')
 
     def draw_all(self):
         self.draw_peaks(show=False, prnt=False, show_cut=True)
@@ -33,11 +33,11 @@ class TimingAnalysis(Analysis):
         self.draw_fine_correction(show=False, prnt=False)
 
     def reload_cut(self):
-        self.TimingCut = self.Cut.generate_special_cut(excluded=['timing'], prnt=False, name='Timing')
+        self.TimingCut = self.Cut.generate_custom(exclude=['timing'], prnt=False, name='Timing')
         self.Cut = self.Ana.Cut
 
     def get(self, par=1, redo=False):
-        pickle_path = self.make_pickle_path('Timing', 'PeakVals', self.RunNumber, self.DUTNumber)
+        pickle_path = self.make_pickle_path('Timing', 'PeakVals', self.RunNumber, self.DUT.Number)
 
         def f():
             h = self.draw_peaks(show=False, prnt=False, redo=redo)
@@ -50,7 +50,7 @@ class TimingAnalysis(Analysis):
 
     def draw_raw_peaks(self, xmin=100, xmax=400, bin_width=1., ch=None, corr=False, cut='', show=True):
         h = TH1F('h_pt', 'Max Peak Timings', int((xmax - xmin) / bin_width), xmin, xmax)
-        channel = self.Ana.channel if ch is None else ch
+        channel = self.Ana.Channel if ch is None else ch
         self.Tree.Draw('max_peak_{p}[{c}]>>h_pt'.format(c=channel, p='position' if not corr else 'time'), cut, 'goff')
         format_histo(h, x_tit='Time [ns]' if corr else 'Digitiser Bin', y_tit='Number of Entries', fill_color=self.FillColor)
         self.draw_histo(h, show=show)
@@ -94,14 +94,16 @@ class TimingAnalysis(Analysis):
     def draw_peaks(self, fit=True, cut=None, corr=True, fine_corr=True, show=True, prnt=True, redo=False, save=True, show_cut=False, normalise=None):
 
         cut = self.TimingCut if cut is None else TCut(cut)
-        pickle_path = self.make_pickle_path('Timing', 'Peak', self.RunNumber, self.DUTNumber, suf='{}_{}{}'.format(cut.GetName(), int(corr), int(fine_corr)))
-        xmin, xmax = [value * self.Ana.DigitiserBinWidth for value in self.Ana.SignalRegion]
+        pickle_path = self.make_simple_pickle_path('Peak', '{}_{}{}'.format(cut.GetName(), int(corr), int(fine_corr)))
+        xmin, xmax = self.Ana.SignalRegion * self.Ana.DigitiserBinWidth
         name = 'htrc{}{}'.format(int(corr), int(fine_corr))
 
         def f():
             set_root_warnings(False)
-            h1 = TH1F(name, '{}Peak Positions'.format('Time Corrected ' if corr else ''), int((xmax - xmin + 20) * (8 if corr else 1 / self.Ana.DigitiserBinWidth)), xmin - 10, xmax + 10)
-            self.Ana.Tree.Draw('{}>>{}'.format(self.get_peak_name(corr, fine_corr, cut, redo=redo), name), cut, 'goff')
+            values = self.Run.get_root_vec(var=self.get_peak_name(corr, fine_corr, cut, redo=redo), cut=cut)
+            n_bins = int((xmax - xmin + 20) * (8 / mean_sigma(values)[1]) if corr else 1 / self.Ana.DigitiserBinWidth)  # adjust bins depending on the width of the distribution
+            h1 = TH1F(name, '{}Peak Positions'.format('Time Corrected ' if corr else ''), n_bins, xmin - 10, xmax + 10)
+            h1.FillN(values.size, values, ones(values.size))
             if not h1.GetEntries():
                 return
             return h1
@@ -109,7 +111,7 @@ class TimingAnalysis(Analysis):
         h = do_pickle(pickle_path, f, redo=redo)
         if h is None:
             return
-        self.format_statbox(fit=fit, n_entries=5, w=.2, all_stat=not fit)
+        self.format_statbox(fit=fit, w=.2, all_stat=not fit)
         format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=2.0, fill_color=self.FillColor, normalise=normalise)
         if fit:
             self.fit_peaks(h)
@@ -127,7 +129,7 @@ class TimingAnalysis(Analysis):
     def __draw_cut(self, h):
         fit = h.GetListOfFunctions()[1]
         xmin, xmax = fit.GetParameter(1) - 3 * fit.GetParameter(2), fit.GetParameter(1) + 3 * fit.GetParameter(2)
-        b = self.draw_box(xmin, -10, xmax, 1e7, color=2, width=2, fillstyle=3001, name='timing', style=7)
+        b = self.draw_box(xmin, -10, xmax, 1e7, line_color=2, width=2, fillstyle=3001, name='timing', style=7)
         legend = self.make_legend(.59, y2=.43, nentries=1, margin=.45, name='la', scale=1.25)
         legend.AddEntry(b, 'cut (3 sigma)', 'lf')
         legend.Draw()
@@ -179,8 +181,8 @@ class TimingAnalysis(Analysis):
 
     def draw_peaks_tc(self, corr=True, fit=True, cut=None, show=True, prnt=True, save=True, redo=False):
 
-        cut = self.Cut.generate_special_cut(excluded=['timing'], prnt=prnt) if cut is None else TCut(cut)
-        pickle_path = self.make_pickle_path('Timing', 'PeakTC', self.RunNumber, self.DUTNumber, suf=cut.GetName())
+        cut = self.TimingCut if cut is None else self.Cut(cut)
+        pickle_path = self.make_pickle_path('Timing', 'PeakTC', self.RunNumber, self.DUT.Number, suf=cut.GetName())
 
         def f():
             set_root_warnings(False)
@@ -240,7 +242,7 @@ class TimingAnalysis(Analysis):
 
     def draw_trigger_cell(self, show=True, cut=None):
         h = TH1F('tc', 'Trigger Cell', 1024, 0, 1024)
-        self.Ana.Tree.Draw('trigger_cell>>tc', self.Cut.AllCut if cut is None else cut, 'goff')
+        self.Ana.Tree.Draw('trigger_cell>>tc', self.Cut(cut), 'goff')
         self.format_statbox(fit=True, y=.4)
         format_histo(h, x_tit='trigger cell', y_tit='Entries', y_off=1.7, fill_color=self.FillColor, y_range=[0, h.GetMaximum() * 1.05])
         self.draw_histo(h, show=show, lm=.11)
@@ -249,8 +251,8 @@ class TimingAnalysis(Analysis):
 
     def draw_intlength_vs_triggercell(self, show=True, bin_width=4):
         h = TProfile('hltc', 'Integral Length vs. Triggercell', 1024 / bin_width, 0, 1024)
-        self.Ana.Tree.Draw('IntegralLength[{num}]:trigger_cell>>hltc'.format(num=self.Ana.SignalNumber), self.Cut.AllCut, 'goff')
-        self.format_statbox(only_fit=True, n_entries=5, w=.25)
+        self.Ana.Tree.Draw('IntegralLength[{num}]:trigger_cell>>hltc'.format(num=self.Ana.SignalNumber), self.Cut(), 'goff')
+        self.format_statbox(only_fit=True, w=.25)
         format_histo(h, x_tit='Triggercell', y_tit='Integral Length [ns]', y_off=1.6, z_tit='Number of Entries')
         self.draw_histo(h, 'IntLengthVsTriggerCell', show, lm=.12)
         fit = TF1('f', '[0] * sin([1] * (x - [2])) + [3]')
@@ -263,8 +265,8 @@ class TimingAnalysis(Analysis):
     def draw_intdiff_vs_triggercell(self, show=True, prof=False):
         h = TH2F('hdtc', 'Difference of the Integral Definitions vs Triggercell', 1024 / 2, 0, 1024, 200, 0, 25)
         hprof = TProfile('hdtc_p', 'Difference of the Integral Definitions vs Triggercell', 1024 / 8, 0, 1024)
-        self.Ana.Tree.Draw('(TimeIntegralValues[{num}]-IntegralValues[{num}]):trigger_cell>>hdtc'.format(num=self.Ana.SignalNumber), self.Cut.AllCut, 'goff')
-        self.Ana.Tree.Draw('(TimeIntegralValues[{num}]-IntegralValues[{num}]):trigger_cell>>hdtc_p'.format(num=self.Ana.SignalNumber), self.Cut.AllCut, 'goff')
+        self.Ana.Tree.Draw('(TimeIntegralValues[{num}]-IntegralValues[{num}]):trigger_cell>>hdtc'.format(num=self.Ana.SignalNumber), self.Cut(), 'goff')
+        self.Ana.Tree.Draw('(TimeIntegralValues[{num}]-IntegralValues[{num}]):trigger_cell>>hdtc_p'.format(num=self.Ana.SignalNumber), self.Cut(), 'goff')
         gStyle.SetPalette(53)
         format_histo(h, x_tit='Triggercell', y_tit='Integral2 - Integral1 [au]', z_tit='Number of Entries', stats=0, y_off=1.4, z_off=1.1)
         self.Objects.append(self.draw_histo(h, '', show, draw_opt='colz', lm=.12, rm=.15))
@@ -286,7 +288,7 @@ class TimingAnalysis(Analysis):
         h = TH2D('tcf', 'Trigger Cell vs. FORC Timing', 1024, 0, 1024, x[1] - x[0], x[0] / 2., x[1] / 2.)
         gStyle.SetPalette(55)
         forc = 'forc_pos/2.' if not corr else 'forc_time'
-        self.Ana.Tree.Draw('{forc}:trigger_cell>>tcf'.format(forc=forc), self.Cut.AllCut if cut is None else cut, 'goff')
+        self.Ana.Tree.Draw('{forc}:trigger_cell>>tcf'.format(forc=forc), self.Cut(cut), 'goff')
         format_histo(h, x_tit='trigger cell', y_tit='forc timing [ns]', y_off=1.4, stats=0)
         self.save_histo(h, 'TriggerCellVsFORC{0}'.format('FullRange' if full_range else ''), show, lm=.11, draw_opt='colz', rm=.15)
 
@@ -330,7 +332,7 @@ class TimingAnalysis(Analysis):
                     self.draw_arrow(p_pos, p_pos, ymin + 1, ymin + 0.04 * y_range, col=807, width=2)
 
     def draw_bucket_disto(self, fit=False, show=True):
-        h = self.Ana.draw_signal_distribution(cut=self.Cut.get_bucket_cut(), show=show)
+        h = self.Ana.draw_signal_distribution(cut=self.Cut.get_bucket(), show=show)
         # entries = h.GetEntries()
         if fit:
             fit_bucket(h, show)
@@ -351,7 +353,7 @@ class TimingAnalysis(Analysis):
         max_x = h.GetX()[max(values, key=lambda val: abs(values[val]))]
         ymin, ymax = h.GetYaxis().GetXmin(), h.GetYaxis().GetXmax()
         if region or region is None and integral is not None:
-            b = self.draw_box(r[0], -1000, r[1], 1000, color=2, style=7, fillstyle=3002, width=2)
+            b = self.draw_box(r[0], -1000, r[1], 1000, line_color=2, style=7, fillstyle=3002, width=2)
             leg = self.make_legend(x2=0.935, y2=.5, w=.15, scale=1.5)
             leg.AddEntry(b, 'Signal Region')
             leg.Draw()
@@ -364,7 +366,7 @@ class TimingAnalysis(Analysis):
             y1, y2 = interpolate_two_points(x_vals[i1 - 1], y_vals[i1 - 1], x_vals[i1], y_vals[i1])(x1), interpolate_two_points(x_vals[i2], y_vals[i2], x_vals[i2 + 1], y_vals[i2 + 1])(x2)
             x = [x1, x1] + [x_vals[j] for j in xrange(len(x_vals) - 1) if x_vals[j] > x1 and x_vals[j - 1] < x2] + [x2, x2]
             y = [0, y1] + [y_vals[j] for j in xrange(len(x_vals) - 1) if x_vals[j] > x1 and x_vals[j - 1] < x2] + [y2, 0]
-            self.draw_n_box(x=x, y=y, color=4, name='a', fillstyle=3344)
+            self.draw_n_box(x=x, y=y, line_color=4, name='a', fillstyle=3344)
             y_pos = ymin + .1 * (ymax - ymin)
             self.draw_arrow(max_x - i[0], max_x, y_pos, y_pos, col=618, width=3, opt='<', size=.02)
             self.draw_arrow(max_x + i[1], max_x, y_pos, y_pos, col=434, width=3, opt='<', size=.02)
@@ -381,7 +383,7 @@ class TimingAnalysis(Analysis):
                 y1, y2 = interpolate_two_points(x_vals[i1 - 1], y_vals[i1 - 1], x_vals[i1], y_vals[i1])(x1), interpolate_two_points(x_vals[i2], y_vals[i2], x_vals[i2 + 1], y_vals[i2 + 1])(x2)
                 x = [x1, x1] + [x_vals[j] for j in xrange(len(x_vals) - 1) if x_vals[j] > x1 and x_vals[j - 1] < x2] + [x2, x2]
                 y = [0, y1] + [y_vals[j] for j in xrange(len(x_vals) - 1) if x_vals[j] > x1 and x_vals[j - 1] < x2] + [y2, 0]
-                self.draw_n_box(x=x, y=y, color=4, name='b', fillstyle=3344)
+                self.draw_n_box(x=x, y=y, line_color=4, name='b', fillstyle=3344)
         self.save_histo(h, 'Integration', draw_opt='same', canvas=get_last_canvas())
 
     def draw_signal_region(self, event=None, wide=True, show=True):
@@ -396,14 +398,14 @@ class TimingAnalysis(Analysis):
     def draw_fit_peak_timing(self, show=True):
         xmin, xmax = [t * self.Ana.DigitiserBinWidth for t in self.Ana.SignalRegion]
         h = TH1F('hfpt', 'Fitted Peak Positions', int((xmax - xmin) * 4), xmin, xmax)
-        self.Ana.Tree.Draw('fit_peak_time[{}]>>hfpt'.format(self.Ana.channel), self.Cut.AllCut, 'goff')
+        self.Ana.Tree.Draw('fit_peak_time[{}]>>hfpt'.format(self.Ana.channel), self.Cut(), 'goff')
         self.format_statbox(all_stat=True)
         format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=1.3)
         self.draw_histo(h, show=show, lm=.12)
 
     def draw_peaking_time(self, show=True):
         h = TH1F('hpt', 'Peaking Time', 400, 0, 20)
-        self.Ana.Tree.Draw('peaking_time[{}]>>hpt'.format(self.Ana.channel), self.Cut.AllCut, 'goff')
+        self.Ana.Tree.Draw('peaking_time[{}]>>hpt'.format(self.Ana.channel), self.Cut(), 'goff')
         self.format_statbox(all_stat=True)
         format_histo(h, x_tit='Time [ns]', y_tit='Number of Entries', y_off=1.3)
         self.draw_histo(h, show=show, lm=.12)
@@ -414,7 +416,7 @@ class TimingAnalysis(Analysis):
         x = [int(htemp.GetBinCenter(htemp.FindFirstBinAbove(5000))) - 10, int(htemp.GetBinCenter(htemp.FindLastBinAbove(5000))) + 10]
         h = TH1F('ft', 'FORC Timing', x[1] - x[0], x[0] / 2., x[1] / 2.)
         forc = 'forc_pos/2.' if not corr else 'forc_time'
-        self.Ana.Tree.Draw('{forc}>>ft'.format(forc=forc), self.Cut.AllCut, 'goff')
+        self.Ana.Tree.Draw('{forc}>>ft'.format(forc=forc), self.Cut(), 'goff')
         format_histo(h, x_tit='Time [ns]', y_tit='Entries', y_off=2, fill_color=self.FillColor)
         self.save_histo(h, 'FORCTiming', show, lm=.14)
 
@@ -440,7 +442,7 @@ class TimingAnalysis(Analysis):
         self.save_histo(g, 'RFPhases', show=show)
 
     def draw_rf_period(self, cut=None, show=True):
-        cut = self.Cut.AllCut if cut is None else TCut(cut)
+        cut = self.Cut(cut)
         h = TH1F('hrfp', 'Beam Period', 500, 19.7, 19.8)
         self.Tree.Draw('rf_period>>hrfp', cut, 'goff')
         self.format_statbox(entries=4)
@@ -448,7 +450,7 @@ class TimingAnalysis(Analysis):
         self.save_histo(h, 'RFPeriod', lm=.12, show=show)
 
     def draw_rf_phase(self, cut=None, show=True):
-        cut = self.Cut.AllCut + TCut('rf_chi2<100') if cut is None else TCut(cut)
+        cut = self.Cut() + TCut('rf_chi2<100') if cut is None else TCut(cut)
         h = TH1F('hrfph', 'RF Phase', 500, -30, 30)
         self.Tree.Draw('rf_phase>>hrfph', cut, 'goff')
         self.format_statbox(entries=4)
@@ -457,7 +459,7 @@ class TimingAnalysis(Analysis):
 
     def draw_signal_peak(self, cut=None, corr=False, show=True):
         h = TH1F('hspt', 'Signal Peak Timings', 2000 * (2 if corr else 1), 0, 500)
-        cut = self.Cut.generate_special_cut(excluded=['timing']) if cut is None else TCut(cut)
+        cut = self.Cut.generate_custom(exclude=['timing']) if cut is None else TCut(cut)
         corr = '+rf_phase' if corr else ''
         self.Tree.Draw('signal_peak_time[{ch}]{c}>>hspt'.format(ch=self.Ana.channel, c=corr), cut, 'goff')
         self.format_statbox(w=.3, entries=6)
@@ -467,7 +469,7 @@ class TimingAnalysis(Analysis):
 
     def draw_rf_vs_peak(self, show=True):
         h = TH2F('hsprf', 'RF Phase vs. Peak Timings', 4000, 0, 500, 240, -12, 12)
-        cut = self.Cut.AllCut + TCut('rf_chi2<100')
+        cut = self.Cut() + TCut('rf_chi2<100')
         self.Tree.Draw('rf_phase:signal_peak_time[{ch}]>>hsprf'.format(ch=self.Ana.channel), cut, 'goff')
         x_range = increased_range([h.GetXaxis().GetBinCenter(ibin) for ibin in [h.FindFirstBinAbove(1), h.FindLastBinAbove(5)]], .2, .2)
         y_range = increased_range([h.GetYaxis().GetBinCenter(ibin) for ibin in [h.FindFirstBinAbove(5, 2), h.FindLastBinAbove(5, 2)]], .2, .2)
@@ -478,7 +480,7 @@ class TimingAnalysis(Analysis):
         channel = self.Ana.channel if channel is None else channel
         h = TH1F('hrt', 'Inflexion Time', 2000 * (2 if corr else 1), 0, 500)
         corr = '+rf_phase' if corr else ''
-        self.Tree.Draw('rise_time[{ch}]{c}>>hrt'.format(ch=channel, c=corr), self.Cut.AllCut + TCut('rise_time[{ch}]'.format(ch=channel)), 'goff')
+        self.Tree.Draw('rise_time[{ch}]{c}>>hrt'.format(ch=channel, c=corr), self.Cut() + TCut('rise_time[{ch}]'.format(ch=channel)), 'goff')
         self.format_statbox(w=.3, entries=6)
         x_range = increased_range([h.GetBinCenter(ibin) for ibin in [h.FindFirstBinAbove(5), h.FindLastBinAbove(5)]], .1, .3)
         format_histo(h, x_tit='Rise Time [ns]', y_tit='Number of Entries', y_off=1.2, fill_color=self.FillColor, x_range=x_range)
@@ -489,7 +491,7 @@ class TimingAnalysis(Analysis):
 
     def draw_peak_width(self, show=True):
         h = TH1F('hpw', 'Peak Width', 500, 0, 1)
-        self.Tree.Draw('abs(rise_width[{ch}])>>hpw'.format(ch=self.Ana.channel), self.Cut.AllCut, 'goff')
+        self.Tree.Draw('abs(rise_width[{ch}])>>hpw'.format(ch=self.Ana.channel), self.Cut(), 'goff')
         self.format_statbox(w=.3, entries=6)
         x_range = increased_range([h.GetBinCenter(ibin) for ibin in [h.FindFirstBinAbove(5), h.FindLastBinAbove(5)]], .1, .3)
         format_histo(h, x_tit='Rise Width [au]', y_tit='Number of Entries', y_off=1.2, fill_color=self.FillColor, x_range=x_range)
@@ -499,7 +501,7 @@ class TimingAnalysis(Analysis):
         channel = self.Ana.channel if channel is None else channel
         h = TH1F('hrt', 'Signal over Threshold', 2000 * (2 if corr else 1), 0, 500)
         corr = '+rf_phase' if corr else ''
-        self.Tree.Draw('t_thresh[{ch}]{c}>>hrt'.format(ch=channel, c=corr), self.Cut.AllCut + TCut('t_thresh[{ch}] > 10'.format(ch=channel)), 'goff')
+        self.Tree.Draw('t_thresh[{ch}]{c}>>hrt'.format(ch=channel, c=corr), self.Cut() + TCut('t_thresh[{ch}] > 10'.format(ch=channel)), 'goff')
         self.format_statbox(w=.3, entries=6)
         x_range = increased_range([h.GetBinCenter(ibin) for ibin in [h.FindFirstBinAbove(5), h.FindLastBinAbove(5)]], .1, .3)
         format_histo(h, x_tit='Threshold Time [ns]', y_tit='Number of Entries', y_off=1.2, fill_color=self.FillColor, x_range=x_range)
@@ -510,7 +512,7 @@ class TimingAnalysis(Analysis):
 
     def draw_inter_dia_corr(self, show=True):
         h = TH2F('hidc', 'Inflextion Times of Diamond Signals', 4000, 0, 500, 4000, 0, 500)
-        cut = self.Cut.AllCut + TCut('rise_time[{c1}]'.format(c1=self.Run.Channels[0]))
+        cut = self.Cut() + TCut('rise_time[{c1}]'.format(c1=self.Run.Channels[0]))
         self.Tree.Draw('rise_time[{c1}]:rise_time[{c2}]>>hidc'.format(c1=self.Run.Channels[0], c2=self.Run.Channels[1]), cut, 'goff')
         x_range = increased_range([h.GetXaxis().GetBinCenter(ibin) for ibin in [h.FindFirstBinAbove(1), h.FindLastBinAbove(1)]], .2, .2)
         y_range = increased_range([h.GetYaxis().GetBinCenter(ibin) for ibin in [h.FindFirstBinAbove(1, 2), h.FindLastBinAbove(1, 2)]], .2, .2)
@@ -519,7 +521,7 @@ class TimingAnalysis(Analysis):
 
     def draw_inter_dia(self, show=True):
         h = TH1F('hid', 'Inter Diamond Timing Correction', 200, -10, 10)
-        cut = self.Cut.AllCut + TCut('rise_time[{c1}]'.format(c1=self.Run.Channels[0]))
+        cut = self.Cut() + TCut('rise_time[{c1}]'.format(c1=self.Run.Channels[0]))
         self.Tree.Draw('rise_time[{c1}] - rise_time[{c2}]>>hid'.format(c1=self.Run.Channels[0], c2=self.Run.Channels[1]), cut, 'goff')
         x_range = increased_range([h.GetBinCenter(ibin) for ibin in [h.FindFirstBinAbove(5), h.FindLastBinAbove(5)]], .1, .3)
         self.format_statbox(entries=4)

@@ -7,10 +7,9 @@
 from __future__ import print_function
 from utils import *
 from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, kGreen, kOrange, kViolet, kYellow, kRed, kBlue, kMagenta, kAzure, \
-    kCyan, kTeal, TPaveText, TPaveStats, TH1F, TSpectrum
-from numpy import ndarray, zeros, sign
+    kCyan, kTeal, TPaveText, TPaveStats, TH1F, TSpectrum, TEllipse
+from numpy import ndarray, zeros, sign, linspace, ones
 from os.path import expanduser, join, basename
-
 
 # global resolution
 g_resolution = None
@@ -26,7 +25,7 @@ class Draw:
         self.Verbose = verbose
         self.Dir = get_base_dir()
         self.TCString = tc_string
-        self.MainConfig = config
+        self.MainConfig = self.init_main_config(config)
         self.ResultsDir = self.get_results_dir()
         self.SubDir = ''
         self.ServerDir = self.load_server_dir()
@@ -41,17 +40,12 @@ class Draw:
         self.Title = self.get_config('SAVE', 'activate title')
         set_titles(self.Title)
         self.Legend = self.get_config('SAVE', 'info legend')
+        self.Save = self.get_config('SAVE', 'save')
 
         self.Objects = []
 
-    # def __del__(self):
-    #     for c in gROOT.GetListOfCanvases():
-    #         c.Close()
-    #     for lst in self.Objects:
-    #         lst = lst if type(lst) is list else list(lst)
-    #         for obj in lst:
-    #             if hasattr(obj, 'Delete'):
-    #                 obj.Delete()
+    def init_main_config(self, config):
+        return load_parser(join(self.Dir, 'Configuration', 'main.ini')) if config is None else config
 
     # ----------------------------------------
     # region BASIC
@@ -71,7 +65,7 @@ class Draw:
         return color
 
     def get_colors(self, n):
-        return array([self.get_color() for _ in xrange(n)], 'i')
+        return array([self.get_color() for _ in range(n)], 'i')
 
     def reset_colors(self):
         self.Count = 0
@@ -81,12 +75,28 @@ class Draw:
 
     def load_server_dir(self):
         return expanduser(self.MainConfig.get('SAVE', 'server mount directory')) if self.MainConfig is not None else None
+
+    def add(self, *args):
+        for obj in args:
+            if obj not in self.Objects:
+                self.Objects.append(obj)
+        self.clean()
+
+    def clean(self):
+        n_none = sum(str(obj) == 'None' for obj in self.Objects)
+        for _ in range(n_none):
+            self.Objects.remove(None)
+
+    def set_pad_margins(self, c=None, l=None, r=None, b=None, t=None):
+        do(c.SetLeftMargin, l)
+        do(c.SetRightMargin, r if r is not None else None if round(c.GetRightMargin(), 1) != .1 else .03 )
+        do(c.SetBottomMargin, None if round(c.GetBottomMargin(), 1) != .1 else (.17 if b is None else b) - (.07 if not self.Legend else 0))
+        do(c.SetTopMargin, None if round(c.GetTopMargin(), 1) != .1 else (.1 if t is None else t) - (0 if self.Title else .07))
     # endregion
     # ----------------------------------------
 
     # ----------------------------------------
     # region DRAWING
-
     def draw_axis(self, x1, x2, y1, y2, title, limits=None, name='ax', col=1, width=1, off=.15, tit_size=.035, lab_size=0.035, tick_size=0.03, line=False, opt='+SU', l_off=.01, log=False):
         limits = ([y1, y2] if x1 == x2 else [x1, x2]) if limits is None else limits
         a = TGaxis(x1, y1, x2, y2, limits[0], limits[1], 510, opt + ('G' if log else ''))
@@ -106,7 +116,7 @@ class Draw:
         a.SetNdivisions(0) if line else do_nothing()
         a.SetLabelOffset(l_off)
         a.Draw()
-        self.Objects.append(a)
+        self.add(a)
         return a
 
     def draw_y_axis(self, x, ymin, ymax, tit, limits=None, name='ax', col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035, tick_size=0.03, l_off=.01, line=False, log=False):
@@ -121,7 +131,7 @@ class Draw:
         line.SetLineWidth(width)
         line.SetLineStyle(style)
         line.Draw('same')
-        self.Objects.append(line)
+        self.add(line)
         return line
 
     def draw_tline(self, x1, x2, y1, y2, color=1, width=1, style=1):
@@ -130,23 +140,23 @@ class Draw:
         line.SetLineWidth(width)
         line.SetLineStyle(style)
         line.Draw()
-        self.Objects.append(line)
+        self.add(line)
         return line
 
-    def draw_box(self, x1, y1, x2, y2, color=1, width=1, style=1, fillstyle=None, name='box', show=True):
-        return self.draw_n_box([x1, x1, x2, x2], [y1, y2, y2, y1], color, width, style, fillstyle, name, show)
+    def draw_box(self, x1, y1, x2, y2, line_color=1, width=1, style=1, fillstyle=None, name='box', show=True):
+        return self.draw_n_box([x1, x1, x2, x2], [y1, y2, y2, y1], line_color, width, style, fillstyle, name, show)
 
-    def draw_n_box(self, x, y, color=1, width=1, style=1, fillstyle=None, name='box', show=True):
+    def draw_n_box(self, x, y, line_color=1, width=1, style=1, fillstyle=None, name='box', show=True, fill_color=None):
         line = TCutG(name, len(x) + 1, array(x + [x[0]], 'd'), array(y + [y[0]], 'd'))
-        line.SetLineColor(color)
-        line.SetFillColor(color)
+        line.SetLineColor(line_color)
+        do(line.SetFillColor, fill_color)
         line.SetLineWidth(width)
         line.SetLineStyle(style)
         line.SetFillStyle(fillstyle) if fillstyle is not None else do_nothing()
         if show:
             line.Draw('l')
-            line.Draw('f')
-        self.Objects.append(line)
+            line.Draw('f') if fillstyle < 4000 else do_nothing()
+        self.add(line)
         return line
 
     def draw_vertical_line(self, x, ymin, ymax, color=1, w=1, style=1, name='li', tline=False):
@@ -159,7 +169,7 @@ class Draw:
         tlatex = TLatex(x, y, text)
         format_text(tlatex, name, align, color, size, angle, ndc, font)
         tlatex.Draw() if show else do_nothing()
-        self.Objects.append(tlatex)
+        self.add(tlatex)
         return tlatex
 
     def draw_arrow(self, x1, x2, y1, y2, col=1, width=1, opt='<|', size=.005):
@@ -168,20 +178,19 @@ class Draw:
         ar.SetLineColor(col)
         ar.SetFillColor(col)
         ar.Draw()
-        self.Objects.append(ar)
+        self.add(ar)
 
-    def draw_tpad(self, name, tit='', pos=None, fill_col=0, gridx=None, gridy=None, margins=None, transparent=False, logy=None, logx=None, logz=None):
-        margins = [.1, .1, .1, .1] if margins is None else margins
+    def draw_tpad(self, name, tit='', pos=None, fill_col=0, gridx=None, gridy=None, margins=None, transparent=False, logy=None, logx=None, logz=None, lm=None, rm=None, bm=None, tm=None):
         pos = [0, 0, 1, 1] if pos is None else pos
         p = TPad(name, tit, *pos)
         p.SetFillColor(fill_col)
-        p.SetMargin(*margins)
+        self.set_pad_margins(p, *(margins if all(m is None for m in [lm, rm, bm, tm]) else [lm, rm, bm, tm]))
         do([p.SetLogx, p.SetLogy, p.SetLogz], [logx, logy, logz])
         do([p.SetGridx, p.SetGridy], [gridx, gridy])
         make_transparent(p) if transparent else do_nothing()
         p.Draw()
         p.cd()
-        self.Objects.append(p)
+        self.add(p)
         return p
 
     def draw_tpavetext(self, text, x1, x2, y1, y2, font=42, align=0, size=0, angle=0, margin=.05, color=1):
@@ -193,7 +202,7 @@ class Draw:
         t = p.AddText(text)
         format_text(t, 'pave', align, color, size, angle, ndc=True, font=font)
         p.Draw()
-        self.Objects.append(p)
+        self.add(p)
         return p
 
     def draw_stats(self, fit, y2=None, width=.3, prec='5.1f', names=None):
@@ -209,10 +218,10 @@ class Draw:
         leg.SetTextFont(42)
         ls = p.GetListOfLines()
         ls.Add(self.draw_tlatex(0, 0, '#chi^{{2}} / ndf  = {chi2:{p}} / {ndf}'.format(ndf=fit.Ndf(), chi2=fit.Chi2(), p=prec), size=0, align=0, font=42))
-        for i in xrange(fit.NPars):
+        for i in range(fit.NPars):
             ls.Add(self.draw_tlatex(0, 0, '{n}  = {v:{p}} #pm {e:{p}}'.format(n=names[i], v=fit.Parameter(i), e=fit.ParError(i), p=prec), size=0, align=0, font=42))
         p.Draw()
-        self.Objects.append(p)
+        self.add(p)
         return p
 
     def draw_frame(self, pad, xmin, xmax, ymin, ymax, tit, div=None, y_cent=None):
@@ -223,13 +232,24 @@ class Draw:
         do(fr.GetYaxis().CenterTitle, y_cent)
         fr.GetYaxis().SetNdivisions(div) if div is not None else do_nothing()
         format_frame(fr)
-        self.Objects.append(fr)
+        self.add(fr)
 
     def draw_grid(self, x_vals, y_vals, width=1, color=1):
         for x in x_vals:
             self.draw_line(x, x, min(y_vals), max(y_vals), name='x{}'.format(x), width=width, color=color)
         for y in y_vals:
             self.draw_line(min(x_vals), max(x_vals), y, y, name='y{}'.format(y), width=width, color=color)
+
+    def draw_ellipse(self, a, b=0, x_off=0, y_off=0, color=2, w=2):
+        e = TEllipse(x_off, y_off, a, b)
+        do(e.SetLineColor, color)
+        do(e.SetLineWidth, w)
+        e.SetFillStyle(4000)
+        e.Draw()
+        self.add(e)
+
+    def draw_circle(self, r, x_off=0, y_off=0, color=None, w=None):
+        self.draw_ellipse(r, 0, x_off, y_off, color, w)
 
     def draw_preliminary(self, canvas=None, height=.06):
         c = get_last_canvas() if canvas is None else canvas
@@ -257,19 +277,20 @@ class Draw:
         pm = bm + (1 - bm - .1) / 5.
 
         # set unified x-range:
-        mg1.GetXaxis().SetLimits(1, 3e4) if x_range is None else do_nothing()
+        mgn = mg1.Clone()
+        mgn.GetXaxis().SetLimits(1, 3e4) if x_range is None else do_nothing()
         mg.GetXaxis().SetLimits(1, 3e4) if x_range is None else do_nothing()
 
         # bottom pad with 20%
         p0 = self.draw_tpad('p0', 'p0', pos=[0, 0, 1, pm], margins=[.14, .03, bm / pm, 0], transparent=True, logx=True, gridy=True)
-        scale_multigraph(mg1)
+        scale_multigraph(mgn)
         rel_y_range = [.7, 1.3] if rel_y_range is None else rel_y_range
-        format_histo(mg1, title='', y_range=rel_y_range, y_tit='Rel. ph [au]' if not scale > 1 else ' ', y_off=66, tit_size=.1 * scale, x_off=99, lab_size=.1 * scale)
-        mg1.GetYaxis().SetNdivisions(3)
-        hide_axis(mg1.GetXaxis())
-        mg1.Draw('alp')
-        x_range = [mg1.GetXaxis().GetXmin(), mg1.GetXaxis().GetXmax()] if x_range is None else x_range
-        self.draw_x_axis(1.3, x_range[0], x_range[1], mg1.GetXaxis().GetTitle() + ' ', opt='SG+-=', tit_size=.1, lab_size=.1 * scale, off=99, tick_size=.1, l_off=0)
+        format_histo(mgn, title='', y_range=rel_y_range, y_tit='Rel. ph [au]' if not scale > 1 else ' ', y_off=66, tit_size=.1 * scale, x_off=99, lab_size=.1 * scale)
+        mgn.GetYaxis().SetNdivisions(3)
+        hide_axis(mgn.GetXaxis())
+        mgn.Draw('alp')
+        x_range = [mgn.GetXaxis().GetXmin(), mgn.GetXaxis().GetXmax()] if x_range is None else x_range
+        self.draw_x_axis(1.3, x_range[0], x_range[1], mgn.GetXaxis().GetTitle() + ' ', opt='SG+-=', tit_size=.1, lab_size=.1 * scale, off=99, tick_size=.1, l_off=0)
         c.cd()
 
         # top pad with zero suppression
@@ -282,7 +303,7 @@ class Draw:
             mg.SetMinimum(y_range[0])
             mg.SetMaximum(y_range[1])
         format_histo(mg, tit_size=.04 * scale, y_off=1.75 / scale, lab_size=.04 * scale)
-        self.draw_x_axis(mg_y, x_range[0], x_range[1], mg1.GetXaxis().GetTitle() + ' ', opt='SG=', tit_size=.035 * scale, lab_size=0, off=1, l_off=99)
+        self.draw_x_axis(mg_y, x_range[0], x_range[1], mgn.GetXaxis().GetTitle() + ' ', opt='SG=', tit_size=.035 * scale, lab_size=0, off=1, l_off=99)
         leg = mg.GetListOfFunctions()[0]
         move_legend(leg, .17, .03)
         leg.Draw()
@@ -300,8 +321,23 @@ class Draw:
                 obj.SetTextColor(0)
         self.save_canvas(c, name='CombinedPulseHeights' if name is None else name, show=show, print_names=prnt)
 
-        self.Objects.append([c, draw_objects])
+        self.add(c, *draw_objects)
         set_root_output(True)
+
+    def draw_disto(self, values, title='', bins=None, thresh=.02, lm=None, rm=None, show=True, **kwargs):
+        values = array(values, dtype='d')
+        if bins is None:
+            b = linspace(*(find_range(values, thresh=thresh) + [int(sqrt(values.size))]))
+            bins = [b.size - 1, b]
+        kwargs['fill_color'] = self.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
+        kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
+        kwargs['y_tit'] = 'Number of Entries' if 'y_tit' not in kwargs else kwargs['y_tit']
+        h = TH1F('h{}'.format(title.lower()[:3]), title, *bins)
+        h.FillN(values.size, values, ones(values.size))
+        format_histo(h, **kwargs)
+        self.draw_histo(h, lm=lm, rm=rm, show=show)
+        return h
+
     # endregion DRAW
     # ----------------------------------------
 
@@ -314,7 +350,7 @@ class Draw:
         return '_{pol}{bias:04d}'.format(pol=pol, bias=int(abs(bias))) if bias else ''
 
     def make_info_string(self):
-        string = '_{dia}'.format(dia=self.DUTName) if hasattr(self, 'DUTName') else ''
+        string = '_{dia}'.format(dia=self.DUT.Name) if hasattr(self, 'DUT') else ''
         string += self.make_bias_string()
         string += '_{tc}'.format(tc=self.TCString)
         string = string.replace('-', '')
@@ -329,14 +365,14 @@ class Draw:
         if not self.server_is_mounted():
             warning('Diamond server is not mounted in {}'.format(self.ServerDir))
             return
-        if hasattr(self, 'DUTName'):
+        if hasattr(self, 'DUT'):
             if hasattr(self, 'RunPlan') and self.RunPlan is not None:
                 run_string = 'RunPlan{}'.format(self.RunPlan.lstrip('0'))
             elif hasattr(self, 'RunNumber'):
                 run_string = str(self.RunNumber)
             else:
                 return
-            path = join(self.ServerDir, 'Diamonds', self.DUTName, 'BeamTests', make_tc_str(self.TCString, long_=False), run_string, file_name)
+            path = join(self.ServerDir, 'Diamonds', self.DUT.Name, 'BeamTests', make_tc_str(self.TCString, long_=False), run_string, file_name)
             for ft in ['pdf', 'png'] if ftype is None else [ftype]:
                 canvas.SaveAs('{}.{}'.format(path, ft))
 
@@ -361,25 +397,25 @@ class Draw:
             self.Analyses.values()[ind].InfoLegend.draw(canvas, all_pads, both_dias) if hasattr(self, 'Analyses') else log_critical('sth went wrong...')
         canvas.Modified()
         canvas.Update()
-        if save:
+        if save and self.Save:
             try:
                 if both_dias and sub_dir is None:
                     sub_dir = self.TelSaveDir if hasattr(self, 'TelSaveDir') else sub_dir
                 self.save_canvas(canvas, sub_dir=sub_dir, name=savename, print_names=prnt, show=show)
-                self.Objects.append(canvas)
+                self.add(canvas)
             except Exception as inst:
                 log_warning('Error in save_canvas:\n{0}'.format(inst))
 
     def save_tel_plots(self, savename, sub_dir=None, canvas=None, all_pads=True, ind=None, prnt=True, save=True, show=True):
         self.save_plots(savename, sub_dir, canvas, all_pads, True, ind, prnt, save, show)
 
-    def save_canvas(self, canvas, sub_dir=None, name=None, print_names=True, show=True, ftype=None):
+    def save_canvas(self, canvas, sub_dir=None, name=None, print_names=True, show=True, ftype=None, res_dir=None):
         """should not be used in analysis methods..."""
         sub_dir = self.SubDir if sub_dir is None else sub_dir
         canvas.Update()
         file_name = canvas.GetName() if name is None else name
-        file_path = join(self.ResultsDir, sub_dir, '{typ}', file_name)
         ftypes = ['root', 'png', 'pdf', 'eps'] if ftype is None else [ftype]
+        file_path = join(self.ResultsDir if res_dir is None else res_dir, sub_dir, '{typ}' if len(ftypes) > 1 else '', file_name)
         out = 'saving plot: {nam}'.format(nam=name)
         run_number = self.RunNumber if hasattr(self, 'RunNumber') else None
         run_number = 'rp{nr}'.format(nr=self.run_plan) if hasattr(self, 'run_plan') else run_number
@@ -408,10 +444,7 @@ class Draw:
         h.Sumw2(sumw2) if hasattr(h, 'Sumw2') and sumw2 is not None else do_nothing()
         set_root_output(show)
         c = TCanvas('c_{0}'.format(h.GetName()), h.GetTitle().split(';')[0], x, y) if canvas is None else canvas
-        do(c.SetLeftMargin, lm)
-        do(c.SetRightMargin, rm if rm is not None else None if round(c.GetRightMargin(), 1) != .1 else .03)
-        do(c.SetBottomMargin, bm if bm is not None else None if round(c.GetBottomMargin(), 1) != .1 or not self.Legend else .17)
-        do(c.SetTopMargin, tm if tm is not None else None if round(c.GetTopMargin(), 1) != .1 else .1 if self.Title else .03)
+        self.set_pad_margins(c, lm, rm, bm, tm)
         c.SetLogx() if logx else do_nothing()
         c.SetLogy() if logy else do_nothing()
         c.SetLogz() if logz else do_nothing()
@@ -426,15 +459,13 @@ class Draw:
                 i.Draw()
         self.save_plots(save_name, sub_dir=sub_dir, both_dias=both_dias, all_pads=all_pads, ind=ind, prnt=prnt, save=save, show=show)
         set_root_output(True)
-        lst = [c, h, leg] if leg is not None else [c, h]
-        self.Objects.append(lst)
+        self.add(c, h, leg)
         return c
 
     def save_tel_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=None, draw_opt=None, x_fac=None, y_fac=None, all_pads=True,
                        leg=None, logy=False, logx=False, logz=False, canvas=None, grid=False, gridx=False, gridy=False, save=True, ind=None, prnt=True, phi=None, theta=None):
         return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x_fac, y_fac, all_pads, leg, logy, logx, logz, canvas, grid, gridx, gridy, save, True, ind, prnt, phi, theta)
-
-    # endregion
+    # endregion SAVE
     # ----------------------------------------
 
     # ----------------------------------------
@@ -453,14 +484,17 @@ class Draw:
         gr.SetMarkerSize(marker_size)
         gr.SetLineWidth(width)
         gr.SetLineStyle(style)
-        self.Objects.append(gr)
+        self.add(gr)
         return gr
 
     def make_legend(self, x1=.65, y2=.88, nentries=2, scale=1, name='l', y1=None, clean=False, margin=.25, x2=None, w=None, cols=None):
         x2 = .95 if x2 is None else x2
         x1 = x2 - w if w is not None else x1
-        y1 = y2 - nentries * .05 * scale if y1 is None else y1
-        leg = TLegend(x1, y1, x2, y2)
+        h = nentries * .05 * scale
+        y = array([y2 - h if y1 is None else y1, y1 + h if y1 is not None else y2])
+        y += .07 if not self.Title and y[1] > .7 else 0
+        y -= .07 if not self.Legend and y[1] < .7 else 0
+        leg = TLegend(x1, max(y[0], 0), x2, min(y[1], 1))
         leg.SetName(name)
         leg.SetTextFont(42)
         leg.SetTextSize(0.03 * scale)
@@ -472,7 +506,7 @@ class Draw:
             leg.SetFillColor(0)
             leg.SetFillStyle(0)
             leg.SetTextAlign(12)
-        self.Objects.append(leg)
+        self.add(leg)
         return leg
 
     def make_canvas(self, name='c', title='c', x=1., y=1., logx=None, logy=None, logz=None, gridx=None, gridy=None, transp=None, divide=None, show=True):
@@ -483,18 +517,18 @@ class Draw:
         do(make_transparent, c, transp)
         if divide is not None:
             c.Divide(*(divide if type(divide) in [list, tuple] else [divide]))
-        self.Objects.append(c)
+        self.add(c)
         return c
 
     def make_graph_from_profile(self, p):
-        x_range = [i for i in xrange(p.GetNbinsX()) if p.GetBinContent(i)]
+        x_range = [i for i in range(p.GetNbinsX()) if p.GetBinContent(i)]
         x = [make_ufloat([p.GetBinCenter(i), p.GetBinWidth(i) / 2]) for i in x_range]
         y = [make_ufloat([p.GetBinContent(i), p.GetBinError(i)]) for i in x_range]
         return self.make_tgrapherrors('g{n}'.format(n=p.GetName()[1:]), p.GetTitle(), x=x, y=y)
-    # endregion
+    # endregion CREATE
     # ----------------------------------------
 
-    def format_statbox(self, x=.95, y=None, w=.2, n_entries=3, only_fit=False, fit=False, entries=False, form=None, m=False, rms=False, all_stat=False):
+    def format_statbox(self, x=.95, y=None, w=.2, h=.15, only_fit=False, fit=False, entries=False, form=None, m=False, rms=False, all_stat=False):
         gStyle.SetOptFit(int(only_fit or fit))
         opt_stat = '100000{}{}{}0'.format(*[1 if val else 0 for val in [rms, m, entries]] if not all_stat else [1, 1, 1])
         if only_fit:
@@ -507,7 +541,7 @@ class Draw:
         gStyle.SetStatX(x)
         gStyle.SetStatY(y)
         gStyle.SetStatW(w)
-        gStyle.SetStatH(.04 * n_entries)
+        gStyle.SetStatH(h)
     # END OF CLASS
 
 
@@ -515,7 +549,8 @@ class Draw:
 # region FORMATTING
 def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=None, marker=20, color=None, line_color=None, markersize=None, x_off=None, y_off=None, z_off=None, lw=1,
                  fill_color=None, fill_style=None, stats=True, tit_size=None, lab_size=None, l_off_y=None, l_off_x=None, draw_first=False, x_range=None, y_range=None, z_range=None, sumw2=None,
-                 do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None, tick_size=None, t_ax_off=None, center_y=False, center_x=False, yax_col=None, normalise=None, pal=None, rebin=None):
+                 do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None, tick_size=None, t_ax_off=None, center_y=False, center_x=False, yax_col=None, normalise=None, pal=None, rebin=None,
+                 y_ticks=None, x_ticks=None, z_ticks=None, opacity=None):
     h = histo
     if draw_first:
         set_root_output(False)
@@ -545,7 +580,8 @@ def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=Non
     try:
         h.SetLineColor(line_color) if line_color is not None else h.SetLineColor(color) if color is not None else do_nothing()
         h.SetLineWidth(lw)
-        h.SetFillColor(fill_color) if fill_color is not None else do_nothing()
+        h.SetFillColor(fill_color) if fill_color is not None and opacity is None else do_nothing()
+        h.SetFillColorAlpha(fill_color, opacity) if fill_color is not None and opacity is not None else do_nothing()
         h.SetFillStyle(fill_style) if fill_style is not None else do_nothing()
         h.SetFillStyle(style) if style is not None else do_nothing()
         h.SetContour(ncont) if ncont is not None else do_nothing()
@@ -553,9 +589,9 @@ def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=Non
         pass
     # axes
     try:
-        x_args = [x_tit, x_off, tit_size, center_x, lab_size, l_off_x, x_range, ndivx, tick_size, ]
-        y_args = [y_tit, y_off, tit_size, center_y, lab_size, l_off_y, y_range, ndivy, tick_size, yax_col]
-        z_args = [z_tit, z_off, tit_size, False, lab_size, None, z_range, None, tick_size]
+        x_args = [x_tit, x_off, tit_size, center_x, lab_size, l_off_x, x_range, ndivx, max(tick_size, x_ticks), ]
+        y_args = [y_tit, y_off, tit_size, center_y, lab_size, l_off_y, y_range, ndivy, max(tick_size, y_ticks), yax_col]
+        z_args = [z_tit, z_off, tit_size, False, lab_size, None, z_range, None, max(tick_size, z_ticks)]
         for i, name in enumerate(['X', 'Y', 'Z']):
             format_axis(getattr(h, 'Get{}axis'.format(name))(), is_graph(h), *[x_args, y_args, z_args][i])
     except AttributeError or ReferenceError:
@@ -626,13 +662,19 @@ def adapt_z_range(h, n_sigma=2):
     format_histo(h, z_range=z_range)
 
 
+def find_range(values, lfac=.2, rfac=.2, thresh=.02):
+    v = array(sorted(values))
+    xmin, xmax = v[int(thresh * v.size)], v[int(v.size - thresh * v.size)]
+    return increased_range([xmin, xmax], lfac, rfac)
+
+
 def fix_chi2(g, prec=.01, show=True):
     it = 0
     error = 2
     chi2 = 0
     fit = None
     while abs(chi2 - 1) > prec and it < 20:
-        for i in xrange(g.GetN()):
+        for i in range(g.GetN()):
             g.SetPointError(i, g.GetErrorX(i), error)
         fit = g.Fit('pol0', 'qs{}'.format('' if show else 0))
         chi2 = fit.Chi2() / fit.Ndf()
@@ -683,19 +725,35 @@ def get_graph_vecs(g):
 
 
 def get_graph_x(g):
-    return array([make_ufloat([g.GetX()[i], g.GetEX()[i]]) for i in xrange(g.GetN())]) if 'Error' in g.ClassName() else array([make_ufloat(g.GetX()[i]) for i in xrange(g.GetN())])
+    return array([make_ufloat([g.GetX()[i], g.GetEX()[i]]) for i in range(g.GetN())]) if 'Error' in g.ClassName() else array([make_ufloat(g.GetX()[i]) for i in range(g.GetN())])
 
 
 def get_graph_y(g):
-    return array([make_ufloat([g.GetY()[i], g.GetEY()[i]]) for i in xrange(g.GetN())]) if 'Error' in g.ClassName() else array([make_ufloat(g.GetY()[i]) for i in xrange(g.GetN())])
+    return array([make_ufloat([g.GetY()[i], g.GetEY()[i]]) for i in range(g.GetN())]) if 'Error' in g.ClassName() else array([make_ufloat(g.GetY()[i]) for i in range(g.GetN())])
 
 
-def get_hist_vec(p):
-    return array([make_ufloat([p.GetBinContent(ibin), p.GetBinError(ibin)]) for ibin in xrange(1, p.GetNbinsX() + 1)])
+def get_hist_vec(p, err=True):
+    return array([make_ufloat([p.GetBinContent(ibin), p.GetBinError(ibin)]) if err else p.GetBinContent(ibin) for ibin in range(1, p.GetNbinsX() + 1)])
+
+
+def get_hist_args(p, err=True):
+    return array([make_ufloat([p.GetBinCenter(ibin), p.GetBinWidth(ibin) / 2]) if err else p.GetBinCenter(ibin) for ibin in range(1, p.GetNbinsX() + 1)])
+
+
+def get_hist_vecs(p, err=True):
+    return get_hist_args(p, err), get_hist_vec(p, err)
+
+
+def get_h_values(h):
+    return get_graph_y(h) if 'Graph' in h.ClassName() else get_hist_vec(h)
+
+
+def get_h_args(h):
+    return get_graph_x(h) if 'Graph' in h.ClassName() else get_hist_args(h)
 
 
 def get_2d_hist_vec(h):
-    xbins, ybins = xrange(1, h.GetNbinsX() + 1), xrange(1, h.GetNbinsY() + 1)
+    xbins, ybins = range(1, h.GetNbinsX() + 1), range(1, h.GetNbinsY() + 1)
     return array([make_ufloat([h.GetBinContent(xbin, ybin), h.GetBinError(xbin, ybin)]) for xbin in xbins for ybin in ybins if h.GetBinContent(xbin, ybin)])
 
 
@@ -715,7 +773,7 @@ def scale_graph(gr, scale=None, val=1, to_low_flux=False):
     if scale is None:
         m, s = mean_sigma(y)
         scale = val / (y[where(x == min(x))[0]] if to_low_flux else m)
-    for i in xrange(x.size):
+    for i in range(x.size):
         gr.SetPoint(i, gr.GetX()[i], gr.GetY()[i] * scale)
         gr.SetPointError(i, gr.GetErrorX(i), gr.GetErrorY(i) * scale) if 'Error' in gr.ClassName() else do_nothing()
     return scale
@@ -724,11 +782,15 @@ def scale_graph(gr, scale=None, val=1, to_low_flux=False):
 def get_pull(h, name, bins, fit=True):
     set_root_output(False)
     h_out = TH1F('hp{}'.format(name[:3]), name, *bins)
-    values = array([h.GetBinContent(ibin + 1) for ibin in xrange(h.GetNbinsX())], 'd')
+    values = array([h.GetBinContent(ibin + 1) for ibin in range(h.GetNbinsX())], 'd')
     h_out.FillN(values.size, values, full(values.size, 1, 'd'))
     h_out.Fit('gaus', 'q') if fit else do_nothing()
     format_histo(h_out, x_range=increased_range([values.min(), values.max()], .1, .3))
     return h_out
+
+
+def markers(i):
+    return ((range(20, 24) + [29, 33, 34]) * 2)[i]
 
 
 def fit_bucket(histo, show=True):
@@ -753,10 +815,23 @@ def fit_bucket(histo, show=True):
     # middle ped
     fit.SetParLimits(6, 1, min(y1, y2) / 2)
     fit.SetParLimits(7, x1, x1 + diff / 2)
-    for i in xrange(1):
+    for i in range(1):
         h.Fit(fit, 'qs{0}'.format('' if show else '0'), '', -50, x2 + 5)
     set_root_warnings(1)
     return fit
+
+
+def fill_hist(h, x, y=None, zz=None):
+    x, y, zz = array(x).astype('d'), array(y).astype('d'), array(zz).astype('d')
+    if h.ClassName == 'TProfile2D':
+        for i in range(x.size):
+            h.Fill(x[i], y[i], zz[i])
+    elif 'TH1' in h.ClassName():
+        h.FillN(x.size, x, ones(x.size))
+    elif any(name in h.ClassName() for name in ['TH2', 'TProfile']):
+        h.FillN(x.size, x, y, ones(x.size))
+    else:
+        h.FillN(x.size, x, y, zz, ones(x.size))
 
 
 def set_palette(pal):
@@ -765,6 +840,12 @@ def set_palette(pal):
 
 def is_graph(h):
     return 'Graph' in h.ClassName()
+
+
+def update_canvas(c=None):
+    c = choose(c, get_last_canvas())
+    c.Modified()
+    c.Update()
 
 
 if __name__ == '__main__':

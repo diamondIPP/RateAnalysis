@@ -21,15 +21,15 @@ class PadCollection(AnalysisCollection):
         self.Pulser = PulserCollection(self)
 
     def load_analysis(self, run_number):
-        return PadAnalysis(run_number, self.DUTNumber, self.TCString, self.Threads[run_number].Tuple, self.Threads[run_number].Time, self.Verbose, prnt=False)
+        return PadAnalysis(run_number, self.DUT.Number, self.TCString, self.Threads[run_number].Tuple, self.Threads[run_number].Time, self.Verbose, prnt=False)
 
     @staticmethod
     def load_dummy():
         return PadAnalysis
 
     def generate_threshold_pickle(self):
-        if not file_exists(self.make_pickle_path('Cuts', 'SignalThreshold', run=self.MaxFluxRun, ch=self.DUTNumber)):
-            PadAnalysis(self.MaxFluxRun, self.DUTNumber, self.TCString, self.Verbose, prnt=False)
+        if not file_exists(self.make_pickle_path('Cuts', 'SignalThreshold', run=self.MaxFluxRun, ch=self.DUT.Number)):
+            PadAnalysis(self.MaxFluxRun, self.DUT.Number, self.TCString, self.Verbose, prnt=False)
 
     # ----------------------------------------
     # region RESULTS
@@ -90,13 +90,13 @@ class PadCollection(AnalysisCollection):
         return increased_range(y, .3, .2)
 
     def draw_ph_with_currents(self, show=True, scale=1):
-        ph = self.get_pulse_height_graph(vs_time=True, first_last=False, binning=10000, legend=False)
+        ph = self.get_pulse_height_graph(vs_time=True, first_last=False, bin_width=10000, legend=False)
         self.Currents.set_graphs()
         cur = self.Currents.CurrentGraph.Clone()
         cur_range = self.scale_current_gr(cur)
         pul = self.Pulser.get_pulse_height_graph(vs_time=True, legend=False, show_flux=False)
         pul_fac = pul.GetListOfGraphs()[0].GetY()[0] if scale else ph.GetListOfGraphs()[0].GetY()[0] / pul.GetListOfGraphs()[0].GetY()[0]
-        ph_fac = ph.GetListOfGraphs()[0].GetY()[0] if scale else sign(self.Bias)
+        ph_fac = ph.GetListOfGraphs()[0].GetY()[0] if scale else sign(self.DUT.Bias)
         scale_multigraph(pul, ph.GetListOfGraphs()[0].GetY()[0] if scale is None else scale)
         scale_multigraph(ph, scale)
 
@@ -115,9 +115,9 @@ class PadCollection(AnalysisCollection):
 
         # Drawing
         lab_size = .12
-        for l in ph.GetListOfGraphs()[0].GetListOfFunctions():
-            l.SetTextSize(.09)
-            l.SetY(l.GetY() - .01)
+        for f in ph.GetListOfGraphs()[0].GetListOfFunctions():
+            f.SetTextSize(.09)
+            f.SetY(f.GetY() - .01)
         format_histo(ph, draw_first=True, lab_size=lab_size, tit_size=lab_size, y_off=.33)
         format_histo(cur, x_tit='Time [hh:mm]', lab_size=lab_size * 27 / 36., tit_size=lab_size * 27 / 36., y_off=.33 * 36 / 27.)
         format_histo(pul, color=859, draw_first=True, lab_size=lab_size, tit_size=lab_size, y_off=.33)
@@ -152,6 +152,24 @@ class PadCollection(AnalysisCollection):
         save_name = '{p}Pedestal{s}{mod}'.format(mod=self.get_mode(vs_time), s='Noise' if sigma else '', p='Pulser' if pulser else '')
         self.save_histo(g, save_name=save_name, show=show, logx=False if vs_time else True, lm=.12, draw_opt='ap')
         return g
+
+    def draw_ped_spread(self, pulser=False, redo=False, show=True):
+        values = self.get_pedestals(pulser, redo=redo)[0][self.get_fluxes().argsort()]  # sort pedestal by ascending fluxes
+        h = TH1F('hps', 'Relative Pedestal Spread', 20, -.5, .5)
+        for lst in split(values, self.get_flux_splits(show=False)):
+            for value in lst:
+                h.Fill((value - mean(lst)).n)
+        self.format_statbox(all_stat=True)
+        format_histo(h, x_tit='Relative Pedestal', y_tit='Number of Entries', y_off=1.2)
+        self.save_histo(h, 'PedestalSpread', lm=.11, show=show)
+
+    def draw_noise_spread(self, pulser=False, redo=False, show=True):
+        h = TH1F('hns', 'Relative Noise Spread', 20, -.3, .3)
+        values = self.get_pedestals(pulser, redo=redo)[1]
+        h.FillN(self.NRuns, array([(v - mean(values)).n for v in values], 'd'), full(self.NRuns, 1, 'd'))
+        self.format_statbox(all_stat=True)
+        format_histo(h, x_tit='Relative Noise', y_tit='Number of Entries', y_off=1.2)
+        self.save_histo(h, 'NoiseSpread', lm=.11, show=show)
 
     def draw_noise(self, vs_time=False, show=True):
         return self.draw_pedestals(vs_time=vs_time, show=show, sigma=True)
@@ -190,13 +208,14 @@ class PadCollection(AnalysisCollection):
 
     def draw_signal_legend(self):
         sig = 'positive' if self.FirstAnalysis.Polarity > 0 else 'negative'
-        l1 = self.make_legend(.17, .88, nentries=2, margin=.05, clean=True, x2=.5, cols=2)
+        l1 = self.make_legend(.17, .88, nentries=2, margin=.05, clean=True, x2=.57 if self.Legend else .52, cols=2)
         l1.AddEntry(0, 'Signal Polarity:', '')
         l1.AddEntry(0, sig, '').SetTextAlign(12)
         l1.AddEntry(0, 'Pedestal Substraction:', '')
         l1.AddEntry(0, 'yes', '').SetTextAlign(12)
         l1.Draw()
         self.Objects.append(l1)
+        return l1
 
     def compare_pedestals(self, show=True):
         gr1 = self.draw_pedestals(show=False)
@@ -217,6 +236,29 @@ class PadCollection(AnalysisCollection):
         gROOT.SetBatch(0)
         self.save_plots('PulserPedestalComparison')
         self.Objects.append([c, graphs, legend])
+
+    def compare_signal_vs_peak_height(self, i0=0, i1=-1, ym=.05, show=True, redo=False):
+        def f():
+            x0, y0, x1, y1 = [j for ind in [i0, i1] for j in get_hist_vecs(self.get_ana(ind).draw_signal_vs_peaktime(show=False))]
+            y0 = where(y0 == 0, 1e10, y0)
+            return x0, y1 / y0
+        x, y = do_pickle(self.make_simple_pickle_path('SigPeakRatio', sub_dir='Peaks', dut='{}{}'.format(i0, i1)), f, redo=redo)
+        flux0, flux1 = [make_flux_string(self.get_ana(i).get_flux()) for i in [i0, i1]]
+        g = self.make_tgrapherrors('gcspt', 'Signal Ratio Vs Peak Time at {} and {}'.format(flux0, flux1), x=x, y=y)
+        format_histo(g, x_tit='Signal Peak Time [ns]', y_tit='Signal Ratio', y_off=1.7, y_range=array([-ym, ym]) + 1)
+        self.draw_histo(g, show=show, lm=.13, gridy=True)
+        return mean_sigma(y[y > .1])
+
+    def compare_all_sig_vs_peakheight(self, ym=.05, show=True):
+        values = []
+        self.PBar.start(self.NRuns - 1)
+        for i in range(1, self.NRuns):
+            values.append(self.compare_signal_vs_peak_height(0, i, show=False))
+            self.PBar.update()
+        g = self.make_tgrapherrors('gasphr', 'Signal Ration Vs Flux', x=self.get_fluxes()[1:], y=values)
+        format_histo(g, y_tit='Signal Ratio', y_off=1.7, y_range=array([-ym, ym]) + 1, **self.get_x_args(False))
+        self.draw_histo(g, show=show, lm=.13, logx=True, gridy=True)
+
     # endregion SIGNAL/PEDESTAL
     # ----------------------------------------
 
@@ -276,7 +318,7 @@ class PadCollection(AnalysisCollection):
         """ Shows the means of the signal peak distributions. """
         g = self.make_tgrapherrors('gr', 'Peak Times', x=self.get_x_var(vs_time), y=self.get_values('peak timings', self.Analysis.get_peak_timing, redo=redo))
         format_histo(g, y_tit='Peak Time [ns]', y_off=1.9, **self.get_x_args(vs_time))
-        self.save_histo(g, 'PeakTimes', lm=.14, logx=not vs_time)
+        self.save_histo(g, 'PeakTimes', lm=.14, logx=not vs_time, show=show)
 
     def show_peak_distribution(self, show=True):
         """ Shows the positions of the peaks of the 2D map. """
@@ -310,9 +352,56 @@ class PadCollection(AnalysisCollection):
     # endregion TIMING
     # ----------------------------------------
 
-    # ============================================
-    # region 2D SIGNAL MAP
+    # ----------------------------------------
+    # region PEAKS
+    def save_additional(self):
+        for i, ana in enumerate(self.get_analyses()):
+            ana.Peaks.find_additional(show=False)
+            self.save_canvas(get_last_canvas(), '', 'r{}'.format(i), res_dir='', ftype='pdf')
 
+    def draw_peaks_vs_rate(self, normalise=False, log_=True, show=True):
+        fluxes = self.get_fluxes()
+        peak_heights = array([ana.Peaks.find_additional(scale=True, show=False) for ana in self.get_analyses()]) / (fluxes if normalise else 1)
+        peak_heights /= mean(peak_heights) if normalise else 1
+        g = self.make_tgrapherrors('gpr', 'Number of Additional Peaks vs Flux', x=fluxes, y=peak_heights)
+        if not normalise:
+            self.format_statbox(fit=True, x=.52)
+            g.Fit('pol1', 'qs')
+        format_histo(g, y_tit='Number of Additional Peaks {}'.format('/ Flux' if normalise else ''), y_off=1.5, **self.get_x_args(False))
+        self.draw_histo(g, show=show, lm=.12, logy=log_ and not normalise, logx=log_)
+
+    def draw_ph_vs_peaks(self, show=True):
+        peak_heights = array([ana.Peaks.find_additional(scale=True, show=False) for ana in self.get_analyses()]) / self.get_fluxes()
+        peak_heights /= mean(peak_heights)
+        pulse_heights = self.get_pulse_heights()
+        g = self.make_tgrapherrors('gpr', 'Pulse Height vs Normalised Peak Height', y=pulse_heights, x=peak_heights)
+        format_histo(g, y_tit='Pulse Height', x_tit='Normalised Peak Height')
+        self.draw_histo(g, show=show, lm=.12)
+
+    def compare_fluxes(self, normalise=False, fit=True, log_=True, corr=False, avrg=False, redo=False, y_range=None, show=True):
+        f0 = self.get_fluxes(corr=corr, avrg=avrg, rel_error=-.07)
+        f1 = self.get_values('Peak fluxes', self.Analysis.get_peak_flux, avrg=avrg, prnt=False, redo=redo) / (f0 if normalise else 1)
+        f1 /= mean(f1) if normalise else 1.
+        g = self.make_tgrapherrors('gff', 'FAST-OR Flux vs Peak Flux', x=f0, y=f1)
+        x_range = self.Bins.FluxRange
+        y_range = self.Bins.FluxRange if y_range is None else y_range
+        format_histo(g, x_tit='FAST-OR Flux [kHz/cm^{2}]', y_tit='Peak Flux {}'.format('/ FAST-OR Flux' if normalise else '[kHz/cm^{2}]'), y_off=1.3, x_off=1.2, y_range=y_range, x_range=x_range)
+        if fit:
+            self.format_statbox(only_fit=True, w=.2, x=.5)
+            g.Fit('pol1', 'qs')
+        self.draw_histo(g, show=show, lm=.12, logx=log_, logy=log_ and not normalise)
+
+    def draw_bunch_systematics(self, bunch=0, show=True):
+        all_bunches = self.get_values('All bunches', self.Analysis.get_n_peaks) / self.FirstAnalysis.Peaks.NBunches
+        single_bunch = self.get_values('Single bunch', self.Analysis.get_n_peaks, start_bunch=bunch, end_bunch=bunch + 1)
+        g = self.make_tgrapherrors('gps', 'Systematics of the Number of Peaks of Bunch {}'.format(bunch), x=self.get_fluxes(), y=single_bunch / all_bunches)
+        format_histo(g, y_tit='N Peaks in Bunch {} / Average N Peaks per Bunch'.format(bunch), y_off=1.3, **self.get_x_args(False))
+        self.draw_histo(g, lm=.12, show=show, logx=True)
+    # endregion PEAKS
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region 2D SIGNAL MAP
     def draw_flux_comparison(self):
         g1 = self.make_tgrapherrors('g_fp', 'Number of Peaks', color=self.get_color())
         pixel_fluxes = [ana.Run.Flux / 1000. for ana in self.Analyses.values()]

@@ -9,6 +9,7 @@ from converter import Converter
 from analysis import Analysis, join, basename
 from utils import *
 from glob import glob
+from dut import DUT
 
 
 class Run:
@@ -45,6 +46,7 @@ class Run:
         self.RootFile = None
         self.Tree = None
         self.TreeName = self.Config.get('BASIC', 'treename')
+        self.DUTs = [DUT(i + 1, self.RunInfo) for i in xrange(self.get_n_diamonds())] if self.RunNumber is not None else None
 
         # Settings
         self.PixelSize = loads(self.MainConfig.get('PIXEL', 'size'))
@@ -53,9 +55,6 @@ class Run:
 
         # General Information
         self.Flux = self.calculate_flux()
-        self.DUTNames = self.load_dut_names()
-        self.DUTNumbers = self.load_dut_numbers()
-        self.Bias = self.load_biases()
         self.Type = self.get_type()
 
         # Times
@@ -346,45 +345,23 @@ class Run:
     def get_time(self):
         return make_ufloat((time_stamp(self.LogStart + self.Duration / 2), self.Duration.seconds / 2))
 
-    def get_irradiations(self):
-        with open(join(self.Dir, self.IrradiationFile), 'r') as f:
-            data = load(f)
-        for dia in self.DUTNames:
-            if self.TCString not in data:
-                log_critical('Please add "{}" to the {}'.format(self.TCString, self.IrradiationFile))
-            if dia not in data[self.TCString].keys() + ['None']:
-                log_critical('Please add "{}" to the irradiation file for {}'.format(dia, self.TCString))
-        return [data[self.TCString][dia] for dia in self.DUTNames if dia not in ['None']]
-
-    def get_attenuators(self):
-        return [str(self.RunInfo['att_dia{}'.format(i)]) for i in xrange(1, self.get_n_diamonds() + 1) if 'att_dia1' in self.RunInfo]
-
-    def get_diamond_name(self, channel):
-        return self.DUTNames[channel]
-
     def get_channel_name(self, channel):
         self.Tree.GetEntry()
         return self.Tree.sensor_name[channel]
-
-    def get_rate_string(self):
-        rate = self.Flux
-        unit = 'MHz/cm^{2}' if rate > 1000 else 'kHz/cm^{2}'
-        rate = round(float(rate / 1000.), 1) if rate > 1000 else int(round(float(rate), 0))
-        return '{rate:>3} {unit}'.format(rate=rate, unit=unit)
 
     def get_time_at_event(self, event):
         """ For negative event numbers it will return the time stamp at the startevent. """
         return self.Time[min(event, self.EndEvent)] / 1000.
 
-    def get_event_at_time(self, seconds):
+    def get_event_at_time(self, seconds, rel=False):
         """ Returns the event nunmber at time dt from beginning of the run. Accuracy: +- 1 Event """
         # return time of last event if input is too large
-        if seconds >= self.TotalTime or seconds == -1:
+        if seconds - (self.StartTime if rel else 0) >= self.TotalTime or seconds == -1:
             return self.NEntries
-        return where(self.Time <= (self.StartTime + seconds) * 1000)[0][-1]
+        return where(self.Time <= (seconds + (0 if rel else self.StartTime)) * 1000)[0][-1]
 
-    def get_root_vec(self, n, ind=0, dtype=None):
-        return get_root_vec(self.Tree, n, ind, dtype)
+    def get_root_vec(self, n=0, ind=0, dtype=None, var=None, cut=None):
+        return get_root_vec(self.Tree, n, ind, dtype, var, cut)
 
     def get_root_vecs(self, n, n_ind, dtype=None):
         return get_root_vecs(self.Tree, n, n_ind, dtype)

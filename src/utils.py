@@ -4,6 +4,7 @@
 # --------------------------------------------------------
 
 import ROOT
+
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 from ROOT import gROOT, TF1, TColor, TFile, TMath
 
@@ -11,14 +12,14 @@ import pickle
 from collections import OrderedDict
 from copy import deepcopy
 from datetime import datetime, timedelta
-from multiprocessing import Pool
+from multiprocessing import Pool, cpu_count
 from subprocess import call
 from sys import stdout
 from threading import Thread
 from time import time, sleep
 
 from gtts import gTTS
-from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, any, count_nonzero, full, ndarray
+from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, any, count_nonzero, full, ndarray, histogram, searchsorted, cumsum, exp, sin, cos, arctan
 from os import makedirs, _exit, remove, devnull
 from os import path as pth
 from os.path import dirname, realpath
@@ -29,10 +30,22 @@ from uncertainties.core import Variable, AffineScalarFunc
 from argparse import ArgumentParser
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
 from ConfigParser import ConfigParser
-
+from scipy.optimize import curve_fit
+from scipy import constants
+import h5py
+from functools import partial
+from Queue import Queue
+from json import load
 
 OFF = False
 ON = True
+DEGREE_SIGN = u'\N{DEGREE SIGN}'
+
+M_PI = 139.57018  # MeV/c^2
+M_MU = constants.physical_constants['muon mass'][0] / constants.e * constants.c**2 / 1e6
+M_E = constants.m_e / constants.e * constants.c**2 / 1e6
+M_P = constants.m_p / constants.e * constants.c**2 / 1e6
+TAU_PI = 26.033  # ns
 
 
 # ==============================================
@@ -138,13 +151,29 @@ def round_up_to(num, val):
     return int(num) / val * val + val
 
 
-def interpolate_two_points(x1, y1, x2, y2):
+def interpolate_two_points(x1, y1, x2, y2, name=''):
     # f = p1*x + p0
     p1 = (y1 - y2) / (x1 - x2)
     p0 = y1 - x1 * p1
-    f = TF1('fpol1', 'pol1', -1000, 1000)
+    w = abs(x2 - x1)
+    fit_range = array(sorted([x1, x2])) + [-w / 3., w / 3.]
+    f = TF1('fpol1{}'.format(name), 'pol1', *fit_range)
     f.SetParameters(p0, p1)
     return f
+
+
+def interpolate_x(x1, x2, y1, y2, y):
+    p1 = get_p1(x1, x2, y1, y2)
+    p0 = get_p0(x1, y1, p1)
+    return (y - p0) / p1
+
+
+def get_p1(x1, x2, y1, y2):
+    return (y1 - y2) / (x1 - x2)
+
+
+def get_p0(x1, y1, p1):
+    return y1 - x1 * p1
 
 
 def move_element(odict, thekey, newpos):
@@ -211,20 +240,20 @@ def resize_markers(mg, default_size=0, marker_sizes=None):
         mg.SetMarkerSize(marker_sizes.get(mg.GetName(), default_size))
 
 
-def move_legend(l, x1, y1):
-    xdiff = l.GetX2NDC() - l.GetX1NDC()
-    ydiff = l.GetY2NDC() - l.GetY1NDC()
-    l.SetX1NDC(x1)
-    l.SetX2NDC(x1 + xdiff)
-    l.SetY1NDC(y1)
-    l.SetY2NDC(y1 + ydiff)
+def move_legend(leg, x1, y1):
+    xdiff = leg.GetX2NDC() - leg.GetX1NDC()
+    ydiff = leg.GetY2NDC() - leg.GetY1NDC()
+    leg.SetX1NDC(x1)
+    leg.SetX2NDC(x1 + xdiff)
+    leg.SetY1NDC(y1)
+    leg.SetY2NDC(y1 + ydiff)
 
 
-def scale_legend(l, txt_size=None, width=None, height=None):
+def scale_legend(leg, txt_size=None, width=None, height=None):
     sleep(.05)
-    l.SetY2NDC(height) if height is not None else do_nothing()
-    l.SetX2NDC(width) if width is not None else do_nothing()
-    l.SetTextSize(txt_size) if txt_size is not None else do_nothing()
+    leg.SetY2NDC(height) if height is not None else do_nothing()
+    leg.SetX2NDC(width) if width is not None else do_nothing()
+    leg.SetTextSize(txt_size) if txt_size is not None else do_nothing()
 
 
 def make_irr_string(val):
@@ -288,6 +317,10 @@ def make_latex_table(header, cols, endline=False):
 def make_dia_str(dia):
     dia = dia.replace('-', '')
     return '{0}{1}'.format(dia[0].title(), dia[1:])
+
+
+def make_list(value):
+    return array([value]).flatten()
 
 
 def file_exists(path, warn=False):
@@ -359,10 +392,14 @@ def tc_to_str(tc, short=True):
     return '{tc}{s}'.format(tc=datetime.strptime(tc_str, '%Y%m').strftime('%b%y' if short else '%B %Y'), s=sub_str)
 
 
-def make_rate_str(rate):
+def make_flux_string(rate):
     unit = '{}/cm^{{2}}'.format('MHz' if rate > 1000 else 'kHz')
-    rate = round(rate / 1000., 1) if rate > 1000 else int(round(rate, 0))
-    return '{rate} {unit}'.format(rate=rate, unit=unit)
+    rate /= 1000. if rate > 1000 else 1
+    return '{: 2.1f} {}'.format(rate, unit)
+
+
+def make_bias_str(bias):
+    return '{s}{bias}V'.format(bias=int(bias), s='+' if bias > 0 else '')
 
 
 def make_runplan_string(nr):
@@ -499,6 +536,18 @@ def do_pickle(path, func, value=None, redo=False, *args, **kwargs):
     return ret_val
 
 
+def do_hdf5(path, func, redo=False, *args, **kwargs):
+    if file_exists(path) and redo:
+        remove_file(path)
+    if file_exists(path) and not redo:
+        return h5py.File(path, 'r')['data']
+    else:
+        data = func(*args, **kwargs)
+        f = h5py.File(path, 'w')
+        f.create_dataset('data', data=data)
+        return f['data']
+
+
 def fit_poissoni(h, p0=5000, p1=1, name='f_poiss', show=True):
     fit = TF1(name, '[0] * TMath::PoissonI(x, [1])', 0, 30)
     fit.SetParNames('Constant', 'Lambda')
@@ -575,10 +624,13 @@ def get_color_gradient(n):
     green = array([0. / 255., 200. / 255., 80. / 255.], 'd')
     blue = array([0. / 255., 0. / 255., 0. / 255.], 'd')
     red = array([180. / 255., 200. / 255., 0. / 255.], 'd')
-    # gStyle.SetNumberContours(20)
-    bla = TColor.CreateGradientColorTable(len(stops), stops, red, green, blue, 255)
-    color_table = [bla + ij for ij in xrange(255)]
+    color_gradient = TColor.CreateGradientColorTable(len(stops), stops, red, green, blue, 255)
+    color_table = [color_gradient + ij for ij in xrange(255)]
     return color_table[0::(len(color_table) + 1) / n]
+
+
+def get_color(n, i):
+    return get_color_gradient(n)[i]
 
 
 def do(fs, pars, exe=-1):
@@ -588,16 +640,14 @@ def do(fs, pars, exe=-1):
         f(p) if e is not None else do_nothing()
 
 
-def make_bias_str(bias):
-    return '{s}{bias}V'.format(bias=int(bias), s='+' if bias > 0 else '')
-
-
-def markers(i):
-    return (range(20, 24) + [29, 33, 34])[i]
+def choose(v, default, *args, **kwargs):
+    if callable(default) and v is None:
+        default = default(*args, **kwargs)
+    return default if v is None else v
 
 
 def average_list(lst, n):
-    return [mean(lst[i:i+n]) for i in arange(0, len(lst), n)] if n > 1 else lst
+    return [mean(lst[i:i + n]) for i in arange(0, len(lst), n)] if n > 1 else lst
 
 
 def log_bins(n_bins, min_val, max_val):
@@ -623,16 +673,21 @@ def find_graph_margins(graphs):
     return min([min(gr.GetY()[i] for i in xrange(gr.GetN()) if gr.GetY()[i] >= 0.01) for gr in graphs]), max([TMath.MaxElement(gr.GetN(), gr.GetY()) for gr in graphs])
 
 
-def load_root_files(sel, load=True):
+def get_quantiles(values, bins):
+    entries, bins = histogram(values, bins)
+    bin_width = (bins[1] - bins[0]) / 2.
+    return (bins + bin_width)[searchsorted(cumsum(entries), arange(0, 100, .01) * sum(entries))]
 
+
+def load_root_files(sel, init=True):
     threads = {}
     for run in sel.get_selected_runs():
-        thread = MyThread(sel, run, load)
+        thread = MyThread(sel, run, init)
         thread.start()
         threads[run] = thread
-    while any([thread.isAlive() for thread in threads.itervalues()]) and load:
+    while any([thread.isAlive() for thread in threads.itervalues()]) and init:
         sleep(.1)
-    if load:
+    if init:
         pool = Pool(len(threads))
         results = [pool.apply_async(get_time_vec, (thread.Selection, thread.Run)) for thread in threads.itervalues()]
         times = [result.get(60) for result in results]
@@ -642,10 +697,10 @@ def load_root_files(sel, load=True):
     return threads
 
 
-class MyThread (Thread):
-    def __init__(self, sel, run, load=True):
+class MyThread(Thread):
+    def __init__(self, sel, run, init=True):
         Thread.__init__(self)
-        self.Load = load
+        self.Load = init
         self.Run = run
         self.Selection = sel
         self.File = None
@@ -677,14 +732,12 @@ def get_time_vec(sel, run=None):
         t = MyThread(sel, run)
         tree = t.load_tree()
     if tree is None:
-        return 
+        return
     tree.SetEstimate(-1)
     entries = tree.Draw('time', '', 'goff')
     time_vec = get_root_vec(tree, entries)
     fill_empty_time_entries(time_vec)
-    if any(time_vec[:-1] > time_vec[1:]):
-        warning('Need to correct timing vector\n')
-        time_vec = correct_time(time_vec)
+    time_vec = correct_time(time_vec, run)
     return time_vec
 
 
@@ -699,13 +752,15 @@ def time_stamp(dt, off=None):
     return t if off is None else t - (off if off > 1 else dt.utcoffset().seconds)
 
 
-def correct_time(times):
-    times = times
-    for i in xrange(1, len(times)):
-        diff = times[i] - times[i - 1]
-        if diff < 0:
-            times = times[:i] + list(array(times[i:]) - diff + 500)  # one TU step should be 500 ms
-    return list(times)
+def correct_time(times, run):
+    i_off = where(times[:-1] > times[1:])[0]
+    i_off = i_off[0] if i_off else None
+    if i_off is not None:
+        warning('Need to correct timing vector for run {}\n'.format(run))
+        diff = times[i_off + 1] - times[i_off]
+        i_off += 1  # because range does not include the last index
+        return concatenate((times[:i_off], times[i_off:] - diff + 500))  # one TU step should be 500 ms
+    return times
 
 
 def say(txt):
@@ -737,7 +792,9 @@ def del_rootobj(obj):
         pass
 
 
-def get_root_vec(tree, n, ind=0, dtype=None):
+def get_root_vec(tree, n=0, ind=0, dtype=None, var=None, cut=''):
+    if var is not None:
+        n = tree.Draw(var, cut, 'goff')
     vec = tree.GetVal(ind)
     vec.SetSize(n)
     return array(vec, dtype=dtype)
@@ -755,7 +812,7 @@ def calc_eff(k=0, n=0, values=None):
     values = array(values) if values is not None else None
     k = float(k if values is None else count_nonzero(values))
     n = float(n if values is None else values.size)
-    return make_ufloat((100 * (k + 1) / (n + 2), 100 * sqrt(((k + 1)/(n + 2) * (k + 2)/(n + 3) - ((k + 1)**2) / ((n + 2)**2)))))
+    return make_ufloat((100 * (k + 1) / (n + 2), 100 * sqrt(((k + 1) / (n + 2) * (k + 2) / (n + 3) - ((k + 1) ** 2) / ((n + 2) ** 2)))))
 
 
 def init_argparser(run=None, tc=None, dut=False, tree=False, has_verbose=False, has_collection=False, return_parser=False):
@@ -773,6 +830,11 @@ def load_parser(name):
     p = ConfigParser()
     p.read(name)
     return p
+
+
+def load_json(name):
+    with open(name) as f:
+        return load(f)
 
 
 def measure_time(f, rep=1, *args, **kwargs):
@@ -825,17 +887,120 @@ class PBar:
     def __init__(self):
         self.PBar = None
         self.Widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
+        self.Step = 0
 
     def start(self, n):
+        self.Step = 0
         self.PBar = ProgressBar(widgets=self.Widgets, maxval=n).start()
 
-    def update(self, i):
+    def update(self, i=None):
+        i = self.Step if i is None else i
+        if i >= self.PBar.maxval:
+            return
         self.PBar.update(i + 1)
+        self.Step += 1
         if i == self.PBar.maxval - 1:
             self.finish()
 
     def finish(self):
         self.PBar.finish()
+
+
+def gauss(x, scale, mean_, sigma, off=0):
+    return scale * exp(-.5 * ((x - mean_) / sigma) ** 2) + off
+
+
+def fit_data(f, y, x=None, p=None):
+    x = arange(y.shape[0]) if x is None else x
+    return curve_fit(f, x, y, p0=p)
+
+
+def calc_speed(p, m):
+    return 1 / sqrt(1 + m**2 / p**2)
+
+
+def t_diff(s, p, m1, m2):
+    return s * (1 / calc_speed(p, m1) - 1 / calc_speed(p, m2)) / constants.c * 1e9
+
+
+def e_kin(p, m):
+    return sqrt(p**2 + m**2) - m
+
+
+def gamma_factor(v):
+    return 1 / sqrt(1 - v**2)
+
+
+def momentum(m, v):
+    return m * v * gamma_factor(v)
+
+
+def decay_ratio(p, m, d, tau):
+    return exp(-d * m / (tau * 1e-9 * p * constants.c))
+
+
+def decay_momentum(m, m1, m2=0):
+    return sqrt((m**2 + m1**2 + m2**2)**2 - 4 * m**2 * m1**2) / (2 * m)
+
+
+def decay_energy(m, m1, m2=0):
+    return (m**2 + m1**2 - m2**2) / (2 * m)
+
+
+def decay_angle(theta, p, m, m1, m2=0):
+    p1 = decay_momentum(m, m1, m2)
+    v = calc_speed(p, m)
+    return arctan(p1 * sin(theta) / (gamma_factor(v) * (p1 * cos(theta) + v * decay_energy(m, m1, m2))))
+
+
+def multi_threading(lst, timeout=60 * 60 * 2):
+    """ runs several threads in parallel. [lst] must contain tuples of the methods and the arguments as list."""
+    t0 = info('Run multithreading on {} tasks ... '.format(len(lst)), next_line=False)
+    lst = [(f, [], {}) for f in lst] if type(lst[0]) not in [list, tuple, ndarray] else lst
+    if len(lst[0]) == 2:
+        lst = [(f, args, {}) for f, args in lst] if type(lst[0][1]) not in [dict, OrderedDict] else [(f, [], d) for f, d in lst]
+    threads = []
+    queue = Queue()  # use a queue to get the results
+    for f, args, kwargs in lst:
+        t = Thread(target=lambda q, a, k: q.put(f(*a, **k)), args=(queue, make_list(args), kwargs))
+        t.start()
+        threads.append(t)
+    for thread in threads:
+        thread.join(timeout)
+    add_to_info(t0)
+    return [queue.get() for _ in range(queue.qsize())]
+
+
+def get_attribute(instance, string):
+    if '.' in string:
+        s = string.split('.')
+        return getattr(getattr(instance, s[0]), s[1])
+    return getattr(instance, string)
+
+
+def parallelise(f, args_list, timeout=60 * 60):
+    t = info('Run parallelisation on {} tasks ... '.format(len(args_list)), next_line=False)
+    pool = Pool(cpu_count())
+    workers = [pool.apply_async(f, make_list(args)) for args in args_list]
+    results = [worker.get(timeout) for worker in workers]
+    add_to_info(t)
+    return results
+
+
+def parallelise_instance(instances, method, args, timeout=60 * 60):
+    t = info('Run parallelisation on {} tasks ... '.format(len(args)), next_line=False)
+    pool = Pool(cpu_count())
+    # tasks = [partial(call_it, make_list(instances)[0], method.__name__, *make_list(arg)) for arg in args]
+    tasks = [partial(call_it, instance, method.__name__, *make_list(arg)) for instance, arg in zip(instances, args)]
+    workers = [pool.apply_async(task) for task in tasks]
+    results = [worker.get(timeout) for worker in workers]
+    add_to_info(t)
+    return results
+
+
+def call_it(instance, name, *args, **kwargs):
+    """indirect caller for instance methods and multiprocessing"""
+    return getattr(instance, name)(*args, **kwargs)
 
 
 def do_nothing():

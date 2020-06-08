@@ -360,7 +360,6 @@ if __name__ == '__main__':
     t.SetEstimate(entries * 1024)
     stuff = []
     count = 0
-    bla = 5
     save_dir = 'WaveForms/'
 
     if len(argv) > 2:

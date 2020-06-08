@@ -21,14 +21,13 @@ class PulserAnalysis(Analysis):
         self.Tree = self.Ana.Tree
         self.Cut = self.Ana.Cut
         self.set_save_directory(self.Ana.SubDir)
-        self.PulserCut = self.Cut.generate_pulser_cut()
+        self.PulserCut = self.Cut.get_pulser()
         self.Polarity = self.Ana.PulserPolarity
         self.SignalName = self.get_signal_name()
         self.PedestalName = self.get_pedestal_name()
         self.Type = self.load_type()
 
-        self.DUTName = self.Ana.DUTName
-        self.DUTNumber = self.Ana.DUTNumber
+        self.DUT = self.Ana.DUT.Number
         self.RunNumber = self.Ana.RunNumber
         self.InfoLegend = InfoLegend(pad_analysis)
 
@@ -51,12 +50,12 @@ class PulserAnalysis(Analysis):
         return rate
 
     def get_pulse_height(self, corr=True, bin_width=.1, redo=False):
-        pickle_path = self.make_pickle_path('Pulser', 'HistoFit', self.RunNumber, self.DUTNumber, suf='{}_{}'.format('ped_corr' if corr else '', 'BeamOn'))
+        pickle_path = self.make_pickle_path('Pulser', 'HistoFit', self.RunNumber, self.DUT.Number, suf='{}_{}'.format('ped_corr' if corr else '', 'BeamOn'))
         fit = do_pickle(pickle_path, partial(self.draw_distribution_fit, show=False, prnt=False, corr=corr, redo=redo, bin_width=bin_width), redo=redo)
         return make_ufloat(fit, par=1)
 
     def get_pedestal(self, par=1, redo=False):
-        pickle_path = self.make_pickle_path('Pulser', 'Pedestal', self.RunNumber, self.DUTNumber)
+        pickle_path = self.make_pickle_path('Pulser', 'Pedestal', self.RunNumber, self.DUT.Number)
         fit = do_pickle(pickle_path, partial(self.draw_pedestal, show=False, prnt=False, redo=redo))
         return make_ufloat(fit, par=par)
 
@@ -70,7 +69,7 @@ class PulserAnalysis(Analysis):
         """ Shows the fraction of pulser events as a function of the event number. Peaks appearing in this graph are most likely beam interruptions. """
         cut = '' if cut is None else TCut(cut)
         set_root_output(False)
-        h = TProfile('hpr', 'Pulser Rate', *self.Ana.Bins.get_raw(evts_per_bin, time_bins=vs_time))
+        h = TProfile('hpr', 'Pulser Rate', *self.Ana.Bins.get_raw(evts_per_bin, vs_time=vs_time, t_from_event=True))
         self.Tree.Draw('pulser*100:{v}>>hpr'.format(v=self.Ana.get_t_var() if vs_time else 'Entry$'), cut, 'goff')
         format_histo(h, x_tit='Time [hh:mm]' if vs_time else 'Event Number', y_tit='Pulser Fraction [%]', y_off=.8, fill_color=self.FillColor, y_range=[0, 105], markersize=.7, stats=0,
                      t_ax_off=self.Ana.Run.StartTime if rel_t else 0)
@@ -79,8 +78,8 @@ class PulserAnalysis(Analysis):
 
     def calc_fraction(self, show=False, prnt=True):
         """ :returns the fitted value of the fraction of pulser events with event range and beam interruptions cuts and its fit error. """
-        cut = self.Cut.generate_special_cut(included=['beam_interruptions'], prnt=prnt)
-        self.format_statbox(only_fit=True, n_entries=2, x=.9, w=.2)
+        cut = self.Cut.generate_custom(include=['beam_interruptions'], prnt=prnt)
+        self.format_statbox(only_fit=True, x=.9, w=.2)
         h = self.draw_rate(show=show, cut=cut, prnt=prnt)
         format_histo(h, 'Fit Result', markersize=None)
         fit = h.Fit('pol0', 'qs')
@@ -95,7 +94,7 @@ class PulserAnalysis(Analysis):
 
     def draw_pulse_height(self, bin_size=10000, y_range=None, show=True, redo=False):
         """ Shows the average pulse height of the pulser as a function of time """
-        pickle_path = self.make_pickle_path('Pulser', 'PH', self.RunNumber, self.Ana.DUTNumber, bin_size)
+        pickle_path = self.make_pickle_path('Pulser', 'PH', self.RunNumber, self.Ana.DUT.Number, bin_size)
         print self.RunNumber
 
         def f():
@@ -114,7 +113,7 @@ class PulserAnalysis(Analysis):
             return gr
 
         g = do_pickle(pickle_path, f, redo=redo)
-        self.format_statbox(n_entries=2, only_fit=True, form='1.2f')
+        self.format_statbox(only_fit=True, form='1.2f')
         fit_res = g.Fit('pol0', 'qs')
         values = [g.GetY()[i] for i in xrange(g.GetN()) if g.GetY()[i]]
         y_range = increased_range([min(values), max(values)], .7, .7) if y_range is None else y_range
@@ -133,7 +132,7 @@ class PulserAnalysis(Analysis):
 
     def draw_distribution(self, show=True, corr=True, beam_on=True, bin_width=.1, events=None, start=None, stats=False, redo=False, prnt=True):
         """ Shows the distribution of the pulser integrals. """
-        cut = self.Cut.generate_pulser_cut(beam_on=beam_on)
+        cut = self.Cut.get_pulser(beam_on=beam_on)
         x = self.find_range(corr)
         h = self.Ana.draw_signal_distribution(cut=cut, sig=self.SignalName, show=False, off_corr=corr, evnt_corr=False, bin_width=bin_width, events=events,
                                               start=start, redo=redo, x_range=x, prnt=prnt, save=False)
@@ -145,7 +144,7 @@ class PulserAnalysis(Analysis):
         start_string = '_{0}'.format(start) if start is not None else ''
         events_string = '_{0}'.format(events) if events is not None else ''
         suffix = '{corr}_{beam}{st}{ev}'.format(corr='ped_corr' if corr else '', beam='BeamOff' if not beam_on else 'BeamOn', st=start_string, ev=events_string)
-        pickle_path = self.make_pickle_path('Pulser', 'HistoFit', self.RunNumber, self.DUTNumber, suf=suffix)
+        pickle_path = self.make_pickle_path('Pulser', 'HistoFit', self.RunNumber, self.DUT.Number, suf=suffix)
         self.format_statbox(.95, .88, entries=4, only_fit=True, w=.5)
         h = self.draw_distribution(show=show, corr=corr, beam_on=beam_on, bin_width=bin_width, events=events, start=start, stats=True, redo=redo, prnt=prnt)
         h.SetName('Fit Result')

@@ -3,6 +3,7 @@ Results*
 Plots*/
 *.json
 *.pickle
+*.hdf5
 *~
 *.png
 *.pdf

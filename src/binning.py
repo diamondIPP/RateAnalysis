@@ -75,7 +75,7 @@ class Bins:
         evts_per_bin = self.BinSize if evts_per_bin is None else evts_per_bin
         if self.Cut is None:
             return self.get_raw(evts_per_bin)
-        jumps = filter(lambda x: x[1] > self.Cut.get_min_event(), self.Cut.Interruptions)  # filter out interruptions outside event range
+        jumps = filter(lambda x: x[1] > self.Cut.get_min_event(), self.Cut.get_interruptions_ranges())  # filter out interruptions outside event range
         first_jump_end = jumps[0][1] if jumps else 0
         events = arange(min(self.Cut.get_min_event(), first_jump_end), self.Cut.get_max_event())
         for start, stop in jumps:  # remove beam interruptions from events
@@ -146,6 +146,9 @@ class Bins:
     def get_global(self, res_fac=None, mm=False):
         return self.get_global_x(res_fac, mm) + self.get_global_y(res_fac, mm)
 
+    def get_global_cood(self, mode, res_fac=None, mm=False):
+        return self.get_global_x(res_fac, mm) if mode == 'x' else self.get_global_y(res_fac, mm)
+
     def get_global_x(self, res_fac=None, mm=False):
         """ calculates the global telescope bins
         :param res_fac: telescope resolution in um
@@ -188,8 +191,12 @@ class Bins:
     # endregion PIXEL
     # ----------------------------------------
 
+    # ----------------------------------------
+    # region PAD
     def get_pad_ph(self, bin_width=None):
         return make_bins(self.MinPadPH, self.MaxPadPH, self.PadPHBinWidth if bin_width is None else bin_width)
+    # endregion PAD
+    # ----------------------------------------
 
 
 def make_bins(min_val, max_val, bin_width):

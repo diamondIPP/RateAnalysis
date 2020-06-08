@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from ROOT import gROOT, TLegend
-from utils import make_tc_str, timedelta, make_rate_str, make_irr_string
+from utils import make_tc_str, timedelta, make_flux_string, make_irr_string
 from subprocess import check_output
 from os import chdir
 
@@ -86,18 +86,18 @@ class InfoLegend:
         return 's {}-{}'.format(self.Analysis.Runs[0], self.Analysis.Runs[-1]) if self.IsCollection else ' {}'.format(self.Analysis.RunNumber)
 
     def get_dia_string(self, both_dias):
-        dia_str = ', '.join(self.Analysis.Run.DUTNames) if both_dias else self.Analysis.DUTName
+        dia_str = ', '.join(dut.Name for dut in self.Analysis.Run.DUTs) if both_dias else self.Analysis.DUT.Name
         return 'Detector{b}: {d} ({tc})'.format(b='s' if both_dias else '', tc=make_tc_str(self.Analysis.TCString), d=dia_str)
 
     def get_rate_string(self):
         if self.IsCollection:
-            fluxes = [flux.n for flux in self.Analysis.get_fluxes().values()]
-            return '{} - {}'.format(make_rate_str(min(fluxes)), make_rate_str(max(fluxes)))
+            fluxes = [flux.n for flux in self.Analysis.get_fluxes(pbar=False)]
+            return '{} - {}'.format(make_flux_string(min(fluxes)), make_flux_string(max(fluxes)))
         else:
-            return make_rate_str(self.Analysis.Run.Flux.n)
+            return make_flux_string(self.Analysis.Run.Flux.n)
 
     def get_info_string(self, both_dias):
-        voltage = '/'.join('{0:+4.0f}V'.format(i) for i in self.Analysis.Run.Bias) if both_dias else '{0:+4.0f}V'.format(self.Analysis.Bias)
-        irradiation = '/'.join(self.Analysis.Run.get_irradiations()) if both_dias else make_irr_string(self.Analysis.get_irradiation())
-        attenuator = '' if both_dias or not self.Analysis.get_attenuator() else 'Att: {}'.format(str(self.Analysis.get_attenuator()))
+        voltage = '/'.join('{0:+4.0f}V'.format(dut.Bias) for dut in self.Analysis.Run.DUTs) if both_dias else '{0:+4.0f}V'.format(self.Analysis.DUT.Bias)
+        irradiation = '/'.join(make_irr_string(dut.get_irradiation(self.Analysis.TCString)) for dut in self.Analysis.Run.DUTs) if both_dias else make_irr_string(self.Analysis.get_irradiation())
+        attenuator = '' if both_dias or not self.Analysis.get_attenuator() else 'Att: {}'.format(str(self.Analysis.DUT.Attenuator))
         return 'Info: {v}, {i}{a}'.format(v=voltage, i=irradiation, a=', {}'.format(attenuator) if attenuator else '')

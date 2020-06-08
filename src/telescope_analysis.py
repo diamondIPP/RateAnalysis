@@ -1,18 +1,18 @@
 from analysis import *
 from ROOT import TH2F, TH1F, TCut, TF1, TGraph, TH1I, TProfile, TMultiGraph, TH2I, THStack
-from numpy import log
+from numpy import log, split, polyfit, polyval, genfromtxt, arctan, sin, cos, tan, rad2deg
 
 from cut import Cut
 from InfoLegend import InfoLegend
-from Langaus import Langau
-from binning import Bins
+from binning import *
 from selector import run_selector
+from fit import Langau
 
 
 class TelecopeAnalysis(Analysis):
     """ Class for the analysis of the telescope specific stuff of a single run. """
 
-    def __init__(self, run=None, test_campaign=None, tree=True, t_vec=None, verbose=False, prnt=True):
+    def __init__(self, run=None, test_campaign=None, tree=True, t_vec=None, verbose=False):
         """
         :param run: inits a new Run instance if number is provided or takes the provided Run instance
         :param test_campaign:   if None is provided: uses default from main config
@@ -20,7 +20,6 @@ class TelecopeAnalysis(Analysis):
         in order to save tel plots use argument both_dias=True in save_plots or save_tel_histo
         """
         Analysis.__init__(self, test_campaign, verbose)
-        self.print_start(run, prnt)
 
         # Run
         self.Run = run_selector(run, self.TCString, tree, t_vec, verbose)
@@ -35,21 +34,30 @@ class TelecopeAnalysis(Analysis):
         if self.Tree:
             self.Cut = Cut(self)
             self.NRocs = self.Run.NPlanes
-            self.StartEvent = self.Cut.CutConfig['EventRange'][0]
-            self.EndEvent = self.Cut.CutConfig['EventRange'][1]
+            self.StartEvent = self.Cut.get_min_event()
+            self.EndEvent = self.Cut.get_max_event()
             self.Bins = Bins(self.Run, cut=self.Cut)
 
     def get_t_var(self):
         return 'time / 1000.' if self.Run.TimeOffset is None else '(time - {}) / 1000.'.format(self.Run.TimeOffset)
 
-    def get_flux(self, show=False):
-        return self._get_flux(prnt=False, show=show) if self.has_branch('rate') else self.Run.get_flux()
+    def get_flux(self, corr=False, rel_error=0, show=False):
+        return self._get_flux(prnt=False, show=show) if self.Tree and self.has_branch('rate') else self.Run.get_flux(rel_error)
+
+    def get_time(self):
+        return self.Run.get_time()
 
     def has_branch(self, branch):
         return self.Run.has_branch(branch)
 
     # ----------------------------------------
     # region TRACKS
+    def draw_tracks(self, show=True):
+        p = TProfile('ptt', 'Number of Tracks vs. Time', *self.Bins.get_raw_time(10))
+        self.Tree.Draw('n_tracks:{}>>ptt'.format(self.get_t_var()), '', 'goff')
+        format_histo(p, x_tit='Time [hh:mm}', y_tit='Number of Tracks', y_off=1.3, t_ax_off=0, fill_color=self.FillColor)
+        self.save_histo(p, 'NTracksTime', draw_opt='hist', show=show)
+
     def draw_chi2(self, mode=None, show=True, save=True, fit=False, prnt=True, show_cut=False, x_range=None, cut='', normalise=None):
         mode = 'tracks' if mode is None else mode
         set_root_warnings(False)
@@ -59,7 +67,7 @@ class TelecopeAnalysis(Analysis):
         h.GetQuantiles(1, yq, array([.99]))
         y_tit = '{} of Entries'.format('Number' if normalise is None else 'Percentage')
         format_histo(h, x_tit='#chi^{2}', y_tit=y_tit, y_off=2, x_range=[0, yq[0]] if x_range is None else x_range, normalise=normalise)
-        self.format_statbox(fit=fit, entries=True, n_entries=5, w=.3)
+        self.format_statbox(fit=fit, entries=True, w=.3)
         self.draw_histo(h, show=show, prnt=prnt, lm=.13, both_dias=True)
         f = TF1('f', '[0]*TMath::GammaDist(x, {ndf}/2, 0, 2)'.format(ndf=4 if mode == 'tracks' else 2))
         h.Fit(f, 'qs{}'.format('' if fit else 0))
@@ -72,7 +80,7 @@ class TelecopeAnalysis(Analysis):
         chi2 = self.Cut.calc_chi2(mode)
         line = self.draw_vertical_line(chi2, -100, 1e6, style=7, w=2, color=2, name='l1{}'.format(mode))
         legend = self.make_legend(.75, y2=.83, nentries=1, margin=.35)
-        legend.AddEntry(line, 'cut ({}%)'.format(self.Cut.CutConfig['chi2{}'.format(mode.title())]), 'l')
+        legend.AddEntry(line, 'cut ({}%)'.format(self.Cut.CutConfig['chi2_{}'.format(mode)]), 'l')
         legend.Draw()
 
     def draw_all_chi2(self, show=True, prnt=True):
@@ -90,7 +98,7 @@ class TelecopeAnalysis(Analysis):
         self.Tree.Draw('{v}_{mod}>>had'.format(v='angle', mod=mode), cut, 'goff')
         y_tit = '{} of Entries'.format('Number' if normalise is None else 'Percentage')
         format_histo(h, name='had{}'.format(mode), x_tit='Track Angle {} [deg]'.format(mode.title()), y_tit=y_tit, y_off=2, lw=2, normalise=normalise)
-        self.format_statbox(all_stat=True, n_entries=5, w=.3)
+        self.format_statbox(all_stat=True, w=.3)
         self.draw_histo(h, '', show, lm=.14, prnt=prnt, both_dias=True)
         if show_cut:
             self.draw_angle_cut(mode)
@@ -123,16 +131,6 @@ class TelecopeAnalysis(Analysis):
             stack.Add(h)
         self.save_tel_histo(stack, 'TrackAngles', sub_dir=self.TelSaveDir, lm=.14, leg=leg, draw_opt='nostack', show=show, prnt=prnt)
 
-    def draw_track_length(self, show=True, save=True, t_dia=500):
-        h = TH1F('htd', 'Track Distance in Diamond', 200, t_dia, t_dia + 1)
-        draw_var = 'slope' if self.Run.has_branch('slope_x') else 'angle'
-        length = '{t}*TMath::Sqrt(TMath::Power(TMath::Tan(TMath::DegToRad()*{v}_x), 2) + TMath::Power(TMath::Tan(TMath::DegToRad()*{v}_y), 2) + 1)'.format(t=t_dia, v=draw_var)
-        self.Tree.Draw('{}>>hdd'.format(length), 'n_tracks', 'goff')
-        format_histo(h, x_tit='Distance [#mum]', y_tit='Entries', y_off=2, lw=2, stats=0, fill_color=self.FillColor)
-        h.GetXaxis().SetNdivisions(405)
-        self.save_tel_histo(h, 'DistanceInDia', show, lm=.16, save=save)
-        return h
-
     def _draw_residuals(self, roc, mode=None, cut=None, x_range=None, fit=False, show=True):
         mode = '' if mode is None else mode.lower()
         cut = TCut(cut) if cut is not None else TCut('')
@@ -163,7 +161,7 @@ class TelecopeAnalysis(Analysis):
 
         def f():
             self.Cut.set_chi2(chi2)
-            n = self.Tree.Draw('residuals_{m}[{r}]*1e4'.format(m=mode, r=roc), self.Cut.AllCut, 'goff')
+            n = self.Tree.Draw('residuals_{m}[{r}]*1e4'.format(m=mode, r=roc), self.Cut(), 'goff')
             values = [self.Tree.GetV1()[i] for i in xrange(n)]
             return mean_sigma(values)[1]
 
@@ -222,12 +220,84 @@ class TelecopeAnalysis(Analysis):
         n, x, n, y = self.Bins.get_pixel()
         self.draw_grid(x, y, color=921)
 
-    def get_events(self, cut='', prnt=False):
-        n = self.Tree.Draw('event_number', TCut(cut), 'goff')
-        events = [self.Tree.GetV1()[i] for i in xrange(n)]
-        if prnt:
-            print events[:20]
-        return events
+    def get_events(self, cut=None, redo=False):
+        return self.Run.get_root_vec(dtype='i4', var='Entry$', cut=self.Cut(cut))
+
+    def get_plane_hits(self):
+        t = self.info('getting plane hits...', next_line=False)
+        self.Tree.SetEstimate(self.Tree.GetEntries(self.Cut.CutStrings['tracks'].GetTitle()) * self.NRocs)
+        n = self.Tree.Draw('cluster_xpos_local:cluster_ypos_local', self.Cut.CutStrings['tracks'], 'goff')
+        x, y = [array(split(vec, arange(self.NRocs, n, self.NRocs))).T * 10 for vec in self.Run.get_root_vecs(n, 2)]
+        z_positions = genfromtxt(join(self.Run.Converter.TrackingDir, 'ALIGNMENT', 'telescope{}.dat'.format(self.Run.Converter.TelescopeID)), skip_header=1, usecols=[1, 5])
+        z_positions = z_positions[where(z_positions[:, 0] > -1)][:, 1] * 10
+        self.add_to_info(t)
+        return x, y, z_positions
+
+    def calculate_residuals(self, x, y, z_positions, steps=0):
+        dx, dy, da = None, None, None
+        for _ in xrange(steps + 1):
+            dx, dy = self.calc_residual_step(x, y, z_positions)
+            da = self.align(x, y, dx, dy)
+        return dx, dy, da
+
+    @staticmethod
+    def align(x, y, dx, dy):
+        bins = [arange(-4, 4.01, .2), arange(-1, 1.02, .03), arange(-4, 4.15, .15), arange(-1, 1.02, .02)]
+        histos = [[TH2F('h{}{}'.format(i, j), 'rotres', bins[i].size - 1, bins[i], bins[i + 1].size - 1, bins[i + 1]) for i in arange(0, 4, 2)] for j in xrange(x.shape[0])]
+        angles = []
+        for h, ix, iy, idx, idy in zip(histos, x, y, dx, dy):
+            h[0].FillN(ix.size, ix.astype('d'), idy.astype('d'), full(ix.size, 1, dtype='d'))
+            h[1].FillN(ix.size, iy.astype('d'), idx.astype('d'), full(ix.size, 1, dtype='d'))
+            [format_histo(h[i], x_tit='X [mm]', y_tit='dY [mm]', y_off=1.3, pal=53) for i in xrange(2)]
+            fits = [h[i].Fit('pol1', 'qs0') for i in xrange(2)]
+            angles.append([fits[i].Parameter(1) for i in xrange(2)])
+        angles = arctan(((array(angles)[:, 0] - array(angles)[:, 1]) / 2))  # calculate the mean of the two angles (one has the opposite sign of the other)
+        rot = array([[[cos(a), -sin(a)], [sin(a), cos(a)]] for a in angles])
+        for i, irot in enumerate(rot):
+            x[i], y[i] = irot.dot(array([x[i], y[i]]))
+        # self.format_statbox(entries=True, x=.82)
+        # self.draw_histo(histos[0][0], draw_opt='colz', rm=.16)
+        x += mean(dx, axis=1).reshape((x.shape[0], 1))
+        y += mean(dy, axis=1).reshape((x.shape[0], 1))
+        return angles
+
+    @staticmethod
+    def calc_residual_step(x, y, z_positions):
+        x_fits, y_fits = [polyfit(z_positions, vec, 1) for vec in [x, y]]
+        return [polyval(fits, z_positions.reshape((x.shape[0], 1))) - vec for fits, vec in [(x_fits, x), (y_fits, y)]]
+
+    def draw_raw_residuals(self, roc=None, steps=0, show=True):
+        x, y, z_positions = self.get_plane_hits()
+        dx, dy, da = self.calculate_residuals(x, y, z_positions, steps)
+        x_bins, y_bins = arange(-1, 1.03, .03),  arange(-1, 1.02, .02)
+        histos = [TH2F('h{}'.format(i), 'Raw Residuals ROC {}'.format(i), x_bins.size - 1, x_bins, y_bins.size - 1, y_bins) for i in xrange(dx.shape[0])]
+        self.format_statbox(entries=True, x=.82)
+        for h, ix, iy in zip(histos, dx, dy):
+            h.FillN(ix.size, ix.astype('d'), iy.astype('d'), full(ix.size, 1, dtype='d'))
+            format_histo(h, x_tit='dX [mm]', y_tit='dY [mm]', y_off=1.3, pal=53)
+        if roc is not None:
+            self.draw_histo(histos[roc], draw_opt='colz', lm=.12, rm=.16, show=show, logz=True)
+        else:
+            c = self.make_canvas('crr', 'Raw Residuals', 1.5, 1.5, show=show, divide=(2, 2))
+            for i, h in enumerate(histos, 1):
+                self.draw_histo(h, draw_opt='colz', lm=.12, rm=.16, show=show, canvas=c.cd(i), logz=True)
+            self.save_plots('RawResisudal', canvas=c, show=show)
+        return dx, dy, da
+
+    def draw_mean_residuals(self, roc=0, mode='x', steps=5):
+        x, y, z_positions = self.get_plane_hits()
+        values = array([[abs(mean(vec[roc])) for vec in self.calculate_residuals(x, y, z_positions)][:2] for _ in xrange(steps)])
+        g = self.make_tgrapherrors('gmr', 'Mean Residual in {} for Each Step'.format(mode.title()), x=arange(steps), y=values[:, 0 if mode == 'x' else 1])
+        format_histo(g, x_tit='Step #', y_tit='Mean Residual [mm]', y_off=1.5, x_range=[-.5, steps - .5], ndivx=505)
+        self.draw_histo(g, draw_opt='ap', lm=.13)
+        return array([[sum(values[:, 0])], [sum(values[:, 1])]])
+
+    def draw_residual_angles(self, roc=0, steps=10):
+        x, y, z_positions = self.get_plane_hits()
+        angles = array([abs(rad2deg(tan(self.calculate_residuals(x, y, z_positions)[-1][roc]))) for _ in xrange(steps)])
+        g = self.make_tgrapherrors('gmra', 'Residual Angles for Each Step', x=arange(steps), y=angles)
+        format_histo(g, x_tit='Step #', y_tit='Residual Angle [#circ]', y_off=1.5, x_range=[-.5, steps - .5], ndivx=505)
+        self.draw_histo(g, draw_opt='ap', lm=.13)
 
     # endregion TRACKS
     # ----------------------------------------
@@ -239,7 +309,7 @@ class TelecopeAnalysis(Analysis):
         bins = self.Bins.get_native_global(mm=True) if tel_coods else self.Bins.get_pixel()
         set_root_warnings(False)
         h = TH2F('h_hm{i}'.format(i=plane), '{h} Occupancy {n}'.format(n=name, h='Hit' if not cluster else 'Cluster'), *bins)
-        cut_string = self.Cut.AllCut if cut is None else TCut(cut)
+        cut_string = self.Cut() if cut is None else TCut(cut)
         cut_string += 'plane == {0}'.format(plane) if not cluster else ''
         draw_string = 'cluster_row[{i}]:cluster_col[{i}]' if cluster else 'row:col'
         draw_string = 'cluster_ypos_local[{i}] * 10:cluster_xpos_local[{i}] * 10' if tel_coods else draw_string
@@ -290,7 +360,7 @@ class TelecopeAnalysis(Analysis):
     # ----------------------------------------
 
     def _draw_trigger_phase(self, dut=False, cut=None, show=True):
-        cut_string = self.Cut.generate_special_cut(excluded=['trigger_phase']) if cut is None else TCut(cut)
+        cut_string = self.Cut.generate_custom(exclude=['trigger_phase']) if cut is None else TCut(cut)
         h = TH1I('h_tp', 'Trigger Phase', 10, 0, 10)
         self.Tree.Draw('trigger_phase[{r}]>>h_tp'.format(r=1 if dut else 0), cut_string, 'goff')
         self.format_statbox(entries=True)
@@ -299,7 +369,7 @@ class TelecopeAnalysis(Analysis):
 
     def _draw_trigger_phase_time(self, dut=False, bin_width=None, cut=None, show=True):
         h = TProfile('htpt', 'Trigger Phase Offset vs Time - {}'.format('DUT' if dut else 'TEL'), *self.Bins.get(bin_width, vs_time=True))
-        self.Tree.Draw('trigger_phase[{}]:{}>>htpt'.format(1 if dut else 0, self.get_t_var()), self.Cut.generate_special_cut(excluded='trigger_phase') if cut is None else cut, 'goff')
+        self.Tree.Draw('trigger_phase[{}]:{}>>htpt'.format(1 if dut else 0, self.get_t_var()), self.Cut.generate_custom(exclude='trigger_phase') if cut is None else cut, 'goff')
         self.format_statbox(entries=True, y=0.88)
         format_histo(h, x_tit='Time [hh:mm]', y_tit='Trigger Phase', y_off=1.8, fill_color=self.FillColor, t_ax_off=self.Run.StartTime)
         self.save_histo(h, 'TPTime', show, lm=.16)
@@ -324,19 +394,19 @@ class TelecopeAnalysis(Analysis):
 
     # ----------------------------------------
     # region TIME
-    def draw_time(self, show=True):
-        entries = self.Tree.Draw(self.get_t_var(), '', 'goff')
-        t = [self.Tree.GetV1()[i] for i in xrange(entries)]
-        t = [(i - t[0]) / 1000 for i in t if i - t[0]]
-        gr = TGraph(len(t), array(xrange(len(t)), 'd'), array(t, 'd'))
-        gr.SetNameTitle('g_t', 'Time vs Events')
-        fit = gr.Fit('pol1', 'qs0')
+    def draw_time(self, show=True, corr=False):
+        n = self.Tree.Draw(self.get_t_var(), '', 'goff')
+        t = self.Run.get_root_vec(n) if not corr else self.Run.Time / 1000.
+        t -= t[0]
+        # gr = self.make_tgrapherrors('g_t', 'Time vs Events', x=arange(t.size, dtype='d'), y=t)
+        gr = TGraph(t.size, arange(t.size, dtype='d'), t)
+        fit = gr.Fit('pol1', 'qs')
         self.info('Average data taking rate: {r:5.1f} Hz'.format(r=1 / fit.Parameter(1)))
-        format_histo(gr, x_tit='Entry Number', y_tit='Time [s]', y_off=1.5)
+        format_histo(gr, 'g_t', 'Time vs Events', x_tit='Event Number', y_tit='Time [s]', y_off=1.5)
         self.draw_histo(gr, show=show, draw_opt='al', lm=.13, rm=.08)
 
-    def get_event_at_time(self, time_sec):
-        return self.Run.get_event_at_time(time_sec)
+    def get_event_at_time(self, seconds, rel=False):
+        return self.Run.get_event_at_time(seconds, rel)
     # endregion TIME
     # ----------------------------------------
 
@@ -411,7 +481,7 @@ class TelecopeAnalysis(Analysis):
 
         def f():
             self.format_statbox(fit=True, entries=6)
-            h = self.draw_flux(cut=self.Cut.generate_special_cut(included=['beam_interruptions', 'event_range'], prnt=prnt), show=False, prnt=prnt)
+            h = self.draw_flux(cut=self.Cut.generate_custom(include=['beam_interruptions', 'event_range'], prnt=prnt), show=False, prnt=prnt)
             values = [h.GetBinContent(i) for i in xrange(h.GetNbinsX()) if h.GetBinContent(i) and h.GetBinContent(i) < 1e6]
             m, s = mean_sigma(values)
             h = TH1F('hfl', 'Flux Distribution', int(sqrt(h.GetNbinsX()) * 2), m - 3 * s, m + 4 * s)
@@ -450,21 +520,18 @@ class TelecopeAnalysis(Analysis):
 
     def fit_langau(self, h=None, nconv=30, show=True, chi_thresh=8, fit_range=None):
         h = self.draw_signal_distribution(show=show) if h is None and hasattr(self, 'draw_signal_distribution') else h
-        h = self.draw_pulse_height_disto(show=show) if h is None and hasattr(self, 'draw_pulse_height_disto') else h
         fit = Langau(h, nconv, fit_range)
-        fit.langaufit()
-        if show:
-            fit.Fit.Draw('lsame')
-            c = get_last_canvas()
-            c.Modified()
-            c.Update()
-        if fit.Chi2 / fit.NDF > chi_thresh and nconv < 80:
+        fit.get_parameters()
+        fit(show=show)
+        get_last_canvas().Modified()
+        get_last_canvas().Update()
+        if fit.get_chi2() > chi_thresh and nconv < 80:
             self.Count += 5
-            self.info('Chi2 too large ({c:2.2f}) -> increasing number of convolutions by 5'.format(c=fit.Chi2 / fit.NDF))
+            self.info('Chi2 too large ({c:2.2f}) -> increasing number of convolutions by 5'.format(c=fit.get_chi2()))
             fit = self.fit_langau(h, nconv + self.Count, chi_thresh=chi_thresh, show=show)
-        print 'MPV:', fit.Parameters[1]
+        print('MPV: {:1.1f}'.format(fit.get_mpv()))
         self.Count = 0
-        self.Objects.append(fit)
+        self.add(fit)
         return fit
 
 

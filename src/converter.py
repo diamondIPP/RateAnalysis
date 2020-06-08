@@ -1,7 +1,7 @@
 from glob import glob
 from json import loads
 from shutil import move
-from subprocess import check_call, CalledProcessError
+from subprocess import check_call
 
 from numpy import sign
 from os import getcwd, chdir, rename, system
@@ -100,6 +100,9 @@ class Converter:
         return OrderedDict(sorted(config.iteritems()))
 
     def get_eudaqfile_path(self):
+        file_names = glob(join(self.Run.RootFileDir, '{}*{:03d}.root'.format(self.MainConfig.get('Directories', 'eudaq prefix'), self.RunNumber)))
+        if file_names:
+            return file_names[0]
         return join(self.Run.RootFileDir, '{prefix}{run:06d}.root'.format(prefix=self.MainConfig.get('Directories', 'eudaq prefix'), run=self.RunNumber))
 
     def get_trackingfile_path(self):
@@ -138,15 +141,10 @@ class Converter:
         cmd_list = [join(self.EudaqDir, 'bin', 'Converter.exe'), '-t', self.ConverterTree, '-c', join(self.EudaqDir, 'conf', self.NewConfigFile), self.RawFilePath]
         self.set_converter_configfile()
         print_banner('START CONVERTING RAW FILE FOR RUN {0}'.format(self.RunNumber))
-        print ' '.join(cmd_list)
-        tries = 0
-        while tries < 30:  # the command crashes randomly...
-            try:
-                check_call(cmd_list)
-                break
-            except CalledProcessError:
-                tries += 1
+        info('{}\n'.format(' '.join(cmd_list)))
+        check_call(cmd_list)
         self.remove_new_configfile()
+        self.remove_decodingfile()
         chdir(curr_dir)
 
     def align_run(self):
@@ -167,10 +165,10 @@ class Converter:
                 self.tracking_tel(action='2')
 
     def remove_pickle_files(self):
-        self.Run.info('Removing all pickle files for run {}'.format(self.RunNumber))
-        files = glob(join(self.Run.Dir, 'Configuration', 'Individual_Configs', '*', '*{tc}*_{run}_*'.format(run=self.RunNumber, tc=self.Run.TCString)))
+        files = glob(join(self.Run.Dir, 'Configuration', 'Individual_Configs', '*', '*{tc}*_{run}*'.format(run=self.RunNumber, tc=self.Run.TCString)))
+        self.Run.info('Removing {} pickle files for run {}'.format(len(files), self.RunNumber))
         for f in files:
-            remove(f)
+            remove_file(f)
 
     def rename_tracking_file(self):
         rename(self.get_trackingfile_path(), self.Run.RootFilePath)
@@ -199,7 +197,7 @@ class Converter:
         if self.RunConfig.has_option('ROOTFILE_GENERATION', 'inverted_polarities'):
             fac = -1 if int(self.RunConfig.get('ROOTFILE_GENERATION', 'inverted_polarities')) else 1
         active_regions = self.RunConfig.getint('ROOTFILE_GENERATION', 'active_regions')
-        biases = deepcopy(self.Run.Bias)
+        biases = self.Run.load_biases()
         polarities = [sign(biases.pop(0)) * fac if has_bit(active_regions, i) else 0 for i in xrange(self.NChannels)]
         return str([(1 if not pol and has_bit(active_regions, i) else pol) for i, pol in enumerate(polarities)])  # pol cannot be 0, just take 1 for 0V
 
@@ -218,6 +216,10 @@ class Converter:
 
     def remove_new_configfile(self):
         remove_file(self.NewConfigFile)
+
+    def remove_decodingfile(self):
+        for file_name in glob(join(self.Run.RootFileDir, 'decoding*{:03d}.root'.format(self.RunNumber))):
+            remove_file(file_name)
 
     def set_converter_configfile(self):
         parser = ConfigParser()
@@ -277,7 +279,7 @@ if __name__ == '__main__':
     from argparse import ArgumentParser
     from selector import run_selector
 
-    args = init_argparser(run=23, tc='201908')
+    args = init_argparser(run=88, tc='201908')
 
     zrun = run_selector(args.run, args.testcampaign, tree=False, t_vec=None, verbose=True)
     z = Converter(zrun)

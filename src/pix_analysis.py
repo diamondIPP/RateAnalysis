@@ -7,14 +7,12 @@
 from __future__ import print_function
 
 from collections import Counter
-from json import load
 
 from ROOT import TFormula, THStack, TProfile2D, TPie, gRandom, TH3F, TMultiGraph
-from numpy import corrcoef, ceil, split, genfromtxt
-from numpy.random import rand
+from numpy import corrcoef, ceil
 
-from CutPix import CutPix
 from dut_analysis import *
+from pix_cut import CutPix
 
 
 class PixAnalysis(DUTAnalysis):
@@ -27,14 +25,15 @@ class PixAnalysis(DUTAnalysis):
         self.PX, self.PY = self.Run.PixelSize
 
         if self.Tree:
-            self.Cut = CutPix(self)
+            self.Cut = CutPix.from_parent(self.Cut)
             self.IsAligned = self.check_alignment()
 
             # Pulse Height Calibrations
             self.Fit = TF1('ErFit', '[3] * (TMath::Erf((x - [0]) / [1]) + [2])', -500, 255 * 7)
-            self.Parameters = self.load_calibration_fitpars()
-            self.Vcals = self.load_vcals()
-            self.Points = self.load_calibration_points()
+            if self.check_calibration_files():
+                self.Parameters = self.load_calibration_fitpars()
+                self.Vcals = self.load_vcals()
+                self.Points = self.load_calibration_points()
 
         self.print_finished(prnt=prnt)
 
@@ -54,9 +53,12 @@ class PixAnalysis(DUTAnalysis):
             return [join(calibration_dir, line.strip('\n ') if fits else 'phCalibration_C{}.dat'.format(i)) for i, line in enumerate(f.readlines())]
 
     def check_calibration_files(self):
-        for f1, f2 in zip(self.load_calibration_files(), self.load_calibration_files(fits=True)):
-            log_warning('Calibration file {} does not exist...'.format(basename(f1))) if not file_exists(f1) else do_nothing()
-            log_warning('Calibration file {} does not exist...'.format(basename(f2))) if not file_exists(f2) else do_nothing()
+        files = concatenate([self.load_calibration_files(), self.load_calibration_files(fits=True)])
+        for f in files:
+            if not file_exists(f):
+                log_warning('Calibration file {} does not exist...'.format(basename(f)))
+                return False
+        return True
 
     def load_calibration_fitpars(self, redo=False):
         def f():
@@ -83,9 +85,9 @@ class PixAnalysis(DUTAnalysis):
     def get_ph_str(self):
         return 'cluster_charge[{}]'.format(self.Dut)
 
-    def get_pulse_height(self, bin_size=None, cut=None, redo=False):
+    def get_pulse_height(self, bin_size=None, cut=None, redo=False, corr=None):
         suffix = '{bins}_{c}'.format(bins=self.Bins.BinSize if bin_size is None else bin_size, c=self.Cut(cut).GetName())
-        picklepath = self.make_pickle_path('Ph_fit', 'Fit', self.RunNumber, self.DUTNumber, suf=suffix)
+        picklepath = self.make_pickle_path('Ph_fit', 'Fit', self.RunNumber, self.DUT.Number, suf=suffix)
 
         def f():
             p, fit_pars = self.draw_pulse_height(bin_size=bin_size, cut=self.Cut(cut), show=False)
@@ -94,7 +96,7 @@ class PixAnalysis(DUTAnalysis):
         return make_ufloat(do_pickle(picklepath, f, redo=redo), par=0)
 
     def get_thresholds(self, cols=None, pix=None, vcal=True):
-        columns, rows = split(array(self.Cut.CutConfig['FidRegionLocal']), 2) if self.Cut.CutConfig['FidRegionLocal'] is not None else [0, self.Bins.NCols - 1], [0, self.Bins.NRows - 1]
+        columns, rows = split(array(self.Cut.CutConfig['local_fiducial']), 2) if self.Cut.CutConfig['local_fiducial'] is not None else [0, self.Bins.NCols - 1], [0, self.Bins.NRows - 1]
         columns = array([cols]).flatten() if cols is not None else columns
         columns, rows = (full(2, pix[0]), full(2, pix[1])) if pix is not None else (columns, rows)
         dic = {}
@@ -103,6 +105,10 @@ class PixAnalysis(DUTAnalysis):
                 self.Fit.SetParameters(*self.Parameters[self.Dut][col][row])
                 dic[(col, row)] = self.Fit.GetX(0) * (self.Bins.VcalToEl if not vcal else 1)
         return dic
+
+    def get_vcal(self, redo=False):
+        h = self.draw_vcal_distribution(show=False, redo=redo)
+        return ufloat(h.GetMean(), h.GetMeanError())
     # endregion GET
     # ----------------------------------------
 
@@ -110,13 +116,13 @@ class PixAnalysis(DUTAnalysis):
     # region OCCUPANCY
     def draw_occupancy(self, roc=None, name=None, cluster=True, tel_coods=False, cut='', show=True):
         """ draw hitmap or cluster map """
-        name = self.DUTName if roc is None else name
+        name = self.DUT.Name if roc is None else name
         roc = self.Dut if roc is None else roc
         return self._draw_occupancy(roc, name, cluster, tel_coods, cut, show)
 
     def draw_time_occupancy(self, cut=None, fid=False, binning=None, show=True, show_vid=False):
         self.Bins.set_bin_size(binning)
-        cut_string = self.Cut.generate_special_cut(excluded='fiducial' if not fid else [], cluster=False) if cut is None else TCut(cut)
+        cut_string = self.Cut.generate_custom(exclude='fiducial' if not fid else [], cluster=False) if cut is None else TCut(cut)
         h = TH3F('h_to', 'to', *(self.Bins.get_time() + self.Bins.get_pixel()))
         self.Tree.Draw('row:col:{}>>h_to'.format(self.get_t_var()), cut_string, 'goff')
         format_histo(h, y_tit='col', z_tit='row')
@@ -150,46 +156,50 @@ class PixAnalysis(DUTAnalysis):
     # ----------------------------------------
     # region DISTRIBUTIONS
     def draw_adc_distribution(self, cut=None, show=True, col=None, pix=None):
-        h = TH1I('h_adc', 'ADC Distribution {d}'.format(d=self.DUTName), *self.Bins.get_adc())
-        cut_string = (self.Cut.AllCut if cut is None else TCut(cut)) + TCut(self.Cut.generate_masks(cluster=False, col=col, pixels=pix, exclude=False))
+        h = TH1I('h_adc', 'ADC Distribution {d}'.format(d=self.DUT.Name), *self.Bins.get_adc())
+        cut_string = self.Cut(cut) + self.Cut.generate_masks(col=col, pixels=pix, exclude=False)()
         self.format_statbox(entries=True)
         self.Tree.Draw('adc>>h_adc', cut_string, 'goff')
         format_histo(h, x_tit='adc', y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor)
         self.save_histo(h, 'ADCDisto', show, lm=.13, logy=True)
         return h
 
-    def draw_vcal_distribution(self, cut=None, col=None, pix=None, vcal=True, show=True):
-        h = TH1F('h_vcal', 'vcal Distribution {d}'.format(d=self.DUTName), *self.Bins.get_ph(vcal))
-        cut_string = (self.Cut.AllCut if cut is None else TCut(cut)) + TCut(self.Cut.generate_masks(cluster=False, col=col, pixels=pix, exclude=False))
-        n = self.Tree.Draw('col:row:adc', cut_string, 'goff')
-        cols, rows, adcs = self.Run.get_root_vecs(n, 3, dtype=int)
-        for i, (col, row, adc) in enumerate(zip(cols, rows, adcs)):
-            self.Fit.SetParameters(*self.Parameters[self.Dut][col][row])
-            h.Fill(self.Fit.GetX(adc) * (self.Bins.VcalToEl if not vcal else 1))
-        self.format_statbox(all_stat=True)
-        format_histo(h, x_tit='Pulse Height [{u}]'.format(u='vcal' if vcal else 'e'), y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor)
-        self.save_histo(h, '{p}Disto'.format(p='Ph' if not vcal else 'Vcal'), show, lm=0.13)
+    def draw_vcal_distribution(self, cut=None, mcol=None, mpix=None, vcal=True, show=True, redo=False):
+        def f():
+            h1 = TH1F('h_vcal', 'vcal Distribution {d}'.format(d=self.DUT.Name), *self.Bins.get_ph(vcal))
+            cut_string = self.Cut(cut) + self.Cut.generate_masks(col=mcol, pixels=mpix, exclude=False)() + TCut('n_hits[{}] == 1'.format(self.Dut))
+            n = self.Tree.Draw('col:row:adc', cut_string, 'goff')
+            cols, rows, adcs = self.Run.get_root_vecs(n, 3, dtype=int)
+            for i, (col, row, adc) in enumerate(zip(cols, rows, adcs)):
+                self.Fit.SetParameters(*self.Parameters[self.Dut][col][row])
+                h1.Fill(self.Fit.GetX(adc) * (self.Bins.VcalToEl if not vcal else 1))
+            return h1
+        h = do_pickle(self.make_simple_pickle_path(sub_dir='VCAL'), f, redo=redo)
+        if show:
+            self.format_statbox(all_stat=True)
+            format_histo(h, x_tit='Pulse Height [{u}]'.format(u='vcal' if vcal else 'e'), y_tit='Number of Entries', y_off=1.4, fill_color=self.FillColor)
+            self.save_histo(h, '{p}Disto'.format(p='Ph' if not vcal else 'Vcal'), show, lm=0.13)
         return h
 
     def draw_signal_distribution(self, cut=None, show=True, prnt=True, roc=None, vcal=False, redo=False, draw_thresh=False):
         roc = self.Dut if roc is None else roc
-        cut_string = self.Cut.generate_special_cut(excluded='masks') if cut is None else TCut(cut)
-        pickle_path = self.make_pickle_path('PulseHeight', run=self.RunNumber, suf='{}_{}'.format(roc, cut_string.GetName()))
+        cut_string = self.Cut.generate_custom(exclude='masks') if cut is None else TCut(cut)
+        pickle_path = self.make_pickle_path('PulseHeight', run=self.RunNumber, suf='{}_{}_{}'.format(roc, cut_string.GetName(), int(vcal)))
 
         def f():
             set_root_output(False)
-            h1 = TH1F('h_phd', 'Pulse Height Distribution - {d}'.format(d=self.DUTName), *self.Bins.get_ph(vcal))
+            h1 = TH1F('h_phd', 'Pulse Height Distribution - {d}'.format(d=self.DUT.Name), *self.Bins.get_ph(vcal))
             self.Tree.Draw('cluster_charge[{d}]{v}>>h_phd'.format(d=self.Dut, v='/{}'.format(self.Bins.VcalToEl) if vcal else ''), cut_string, 'goff')
             return h1
 
         h = do_pickle(pickle_path, f, redo=redo)
         x_range = [h.GetXaxis().GetXmin(), h.GetBinCenter(h.FindLastBinAbove(2)) * 1.2]
-        self.format_statbox(all_stat=True, x=.92, w=.25, n_entries=4)
+        self.format_statbox(all_stat=True, x=.92, w=.25)
         format_histo(h, x_tit='Pulse Height [{u}]'.format(u='vcal' if vcal else 'e'), y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor, x_range=x_range)
         self.draw_histo(h, show=show, lm=.13, rm=.06)
         if draw_thresh:
             self.draw_y_axis(1500, h.GetYaxis().GetXmin(), h.GetMaximum(), 'threshold #approx {}e  '.format(1500), off=.3, line=True, opt='-L')
-        self.save_plots('PulseHeightDisto{c}'.format(c=make_cut_string(cut, self.Cut.NCuts)), prnt=prnt)
+        self.save_plots('PulseHeightDisto', prnt=prnt)
         return h
 
     def draw_cluster_disto(self, n=1, cut=None, redo=False, show=True, prnt=True):
@@ -216,11 +226,9 @@ class PixAnalysis(DUTAnalysis):
     # region PULSE HEIGHT
     def draw_pulse_height(self, cut=None, bin_size=30000, show=True, adc=False):
         """ Pulse height analysis vs event for a given cut. If no cut is provided it will take all. """
-        cut_string = self.Cut.AllCut if cut is None else TCut(cut)
-        cut_string += self.Cut.generate_masks(cluster=False) if adc else ''
-        h = TProfile('hpht', '{} -  {}'.format('ADC' if adc else 'Pulse Height', self.DUTName), *self.Bins.get_time(bin_size))
+        h = TProfile('hpht', '{} -  {}'.format('ADC' if adc else 'Pulse Height', self.DUT.Name), *self.Bins.get_time(bin_size))
         self.format_statbox(only_fit=True, w=.3)
-        self.Tree.Draw('{}:{} >> hpht'.format(self.get_ph_str() if not adc else 'adc', self.get_t_var()), cut_string, 'goff')
+        self.Tree.Draw('{}:{} >> hpht'.format(self.get_ph_str() if not adc else 'adc', self.get_t_var()), self.Cut(cut), 'goff')
         self.draw_histo(h, show=show)
         fit_par = h.Fit('pol0', 'qs')
         format_histo(h, name='Fit Result', y_off=1.9, y_tit='Pulse Height [e]', x_tit='Time [hh:mm]', markersize=.6, t_ax_off=self.Run.StartTime)
@@ -247,7 +255,7 @@ class PixAnalysis(DUTAnalysis):
         return coods.format(r=self.Dut if roc is None else roc, f=fac)
 
     def draw_adc_map(self, show=True, cut=None, zero_ratio=False):
-        cut_string = (self.Cut.AllCut if cut is None else TCut(cut)) + TCut(self.Cut.generate_masks(cluster=False))
+        cut_string = self.Cut(cut) + self.Cut.generate_masks(cluster=False)()
         set_root_output(False)
         h = TProfile2D('p_am', 'ADC Map', *self.Bins.get_pixel())
         self.Tree.Draw('adc{}:row:col >> p_am'.format('<0' if zero_ratio else ''), cut_string, 'goff')
@@ -266,7 +274,7 @@ class PixAnalysis(DUTAnalysis):
     def draw_adc_fixed_vcal_map(self, roc=None, vcal=200, show=True):
         roc = self.Dut if roc is None else roc
         h = TProfile2D('p_pm', 'ADC Map for Vcal {v}'.format(v=vcal), *self.Bins.get_pixel())
-        cols, rows = split(array(self.Cut.CutConfig['FidRegionLocal']), 2) if self.Cut.CutConfig['FidRegionLocal'] is not None else [0, self.Bins.NCols - 1], [0, self.Bins.NRows - 1]
+        cols, rows = split(array(self.Cut.CutConfig['local_fiducial']), 2) if self.Cut.CutConfig['local_fiducial'] is not None else [0, self.Bins.NCols - 1], [0, self.Bins.NRows - 1]
         for col in xrange(cols[0], cols[1] + 1):
             for row in xrange(rows[0], rows[1] + 1):
                 self.Fit.SetParameters(*self.Parameters[roc][col][row])
@@ -318,7 +326,7 @@ class PixAnalysis(DUTAnalysis):
     # ----------------------------------------
     # region EFFICIENCY
     def get_efficiency_cut(self, trig_phase=True):
-        return self.Cut.generate_special_cut(included=['fiducial', 'rhit', 'tracks', 'chi2X', 'chi2Y', 'aligned', 'event_range', 'beam_interruptions'] + (['trigger_phase'] if trig_phase else []))
+        return self.Cut.generate_custom(include=['fiducial', 'rhit', 'tracks', 'chi2_x', 'chi2_y', 'aligned', 'event_range', 'beam_interruptions'] + (['trigger_phase'] if trig_phase else []))
 
     def get_hit_efficiency(self, roc=None, cut=None):
         cut_string = self.get_efficiency_cut() if cut is None else TCut(cut)
@@ -340,7 +348,7 @@ class PixAnalysis(DUTAnalysis):
     def draw_hit_efficiency(self, save=True, cut=None, vs_time=True, bin_width=5000, n=1e9, start=0, show=True):
         set_root_output(False)
         h = TProfile('h_he', 'Hit Efficiency {s}'.format(s=self.Dut), *self.Bins.get(bin_width, vs_time))
-        cut_string = self.Cut.generate_special_cut(excluded=['masks']) if cut is None else TCut(cut)
+        cut_string = self.Cut.generate_custom(exclude=['masks']) if cut is None else TCut(cut)
         x_var = self.get_t_var() if vs_time else 'event_number'
         self.Tree.Draw('(n_hits[{r}]>0)*100:{x} >> h_he'.format(r=self.Dut, x=x_var), cut_string, 'goff', int(n), start)
         g = self.make_graph_from_profile(h)
@@ -355,8 +363,8 @@ class PixAnalysis(DUTAnalysis):
 
     def draw_efficiency_map(self, res=None, cut='all', show=True):
         cut_string = TCut(cut) + self.Cut.CutStrings['tracks']
-        cut_string = self.Cut.generate_special_cut(excluded=['masks', 'fiducial']) if cut == 'all' else cut_string
-        p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DUTName), *self.Bins.get_global(res_fac=res, mm=True))
+        cut_string = self.Cut.generate_custom(exclude=['masks', 'fiducial']) if cut == 'all' else cut_string
+        p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DUT.Name), *self.Bins.get_global(res_fac=res, mm=True))
         self.Tree.Draw('(n_hits[{r}]>0)*100:{}:{}>>p_em'.format(r=self.Dut, *self.Cut.get_track_vars(self.Dut - 4, mm=True)), cut_string, 'goff')
         self.format_statbox(entries=True, x=.81)
         format_histo(p, x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]', z_tit='Efficiency [%]', y_off=1.4, z_off=1.5)
@@ -373,7 +381,7 @@ class PixAnalysis(DUTAnalysis):
 
     def draw_cell_efficiency(self, cell=0, res=2, show=True):
         # x, y = self.get_fiducial_cell(cell)
-        cut_string = self.Cut.generate_special_cut(excluded=['masks'])
+        cut_string = self.Cut.generate_custom(exclude=['masks'])
         p = TProfile2D('pce', 'Efficiency for Fiducial Cell {}'.format(cell), res, 0, self.PX, res, 0, self.PY)
         n = self.Tree.Draw('(n_hits[{r}]>0)*100:dia_track_y_local[{r1}]:dia_track_x_local[{r1}]>>pce'.format(r=self.Dut, r1=self.Dut - 4), cut_string, 'goff')
         effs = [self.Tree.GetV1()[i] for i in xrange(n)]
@@ -398,21 +406,21 @@ class PixAnalysis(DUTAnalysis):
     # ----------------------------------------
     # region TRIGGER PHASE
     def draw_trigger_phase(self, cut=None, show=True):
-        return self._draw_trigger_phase(dut=True, cut=self.Cut.generate_special_cut(excluded='trigger_phase') if cut is None else cut, show=show)
+        return self._draw_trigger_phase(dut=True, cut=self.Cut.generate_custom(exclude='trigger_phase') if cut is None else cut, show=show)
 
     def draw_trigger_phase_time(self, bin_width=30000, cut=None, show=True):
         return self._draw_trigger_phase_time(dut=True, bin_width=bin_width, cut=cut, show=show)
 
     def draw_trigphase_offset(self, cut=None, show=True):
         h = TH1I('h_tp', 'Trigger Phase Offset', 18, -9.5, 8.5)
-        self.Tree.Draw('trigger_phase[1] - trigger_phase[0]>>h_tp', self.Cut.generate_special_cut(excluded='trigger_phase') if cut is None else cut, 'goff')
+        self.Tree.Draw('trigger_phase[1] - trigger_phase[0]>>h_tp', self.Cut.generate_custom(exclude='trigger_phase') if cut is None else cut, 'goff')
         self.format_statbox(entries=True, y=0.88)
         format_histo(h, x_tit='Trigger Phase', y_tit='Number of Entries', y_off=1.8, fill_color=self.FillColor, ndivx=20)
         self.save_histo(h, 'TPOff', show, lm=.16)
 
     def draw_trigphase_off_time(self, bin_width=30000, cut=None, show=True):
         h = TProfile('htpot', 'Trigger Phase vs Time', *self.Bins.get(bin_width, vs_time=True))
-        self.Tree.Draw('(trigger_phase[1] - trigger_phase[0]):{}>>htpot'.format(self.get_t_var()), self.Cut.generate_special_cut(excluded='trigger_phase') if cut is None else cut, 'goff')
+        self.Tree.Draw('(trigger_phase[1] - trigger_phase[0]):{}>>htpot'.format(self.get_t_var()), self.Cut.generate_custom(exclude='trigger_phase') if cut is None else cut, 'goff')
         self.format_statbox(entries=True, y=0.88)
         format_histo(h, x_tit='Time [hh:mm]', y_tit='Trigger Phase', y_off=1.8, fill_color=self.FillColor, t_ax_off=self.Run.StartTime)
         self.save_histo(h, 'TPOffTime', show, lm=.16)
@@ -524,9 +532,9 @@ class PixAnalysis(DUTAnalysis):
 
         def func():
             start = self.info('Checking for alignment between plane {p1} and {p2} ... '.format(p1=plane1, p2=plane2), next_line=False)
-            h = TH3F('hpa', 'pa', *(self.Bins.get(binning, vs_time=vs_time) + self.Bins.get_global(res_fac=sqrt(12), mode=mode, arrays=True)))
+            h = TH3F('hpa', 'pa', *(self.Bins.get(binning, vs_time=vs_time) + 2 * self.Bins.get_global_cood(mode, res_fac=sqrt(12))))
             y, z_ = ('cluster_{m}pos_tel[{r}]'.format(m=mode, r=plane) for plane in [plane1, plane2])
-            cut_string = TCut('n_clusters[{p1}]==1 && n_clusters[{p2}]==1'.format(p1=plane1, p2=plane2)) + TCut(self.Cut.generate_chi2(mode, chi2))
+            cut_string = TCut('n_clusters[{p1}]==1 && n_clusters[{p2}]==1'.format(p1=plane1, p2=plane2)) + self.Cut.generate_chi2(mode, chi2)()
             self.Tree.Draw('{z}:{y}:{x}>>hpa'.format(z=z_, y=y, x=self.get_t_var() if vs_time else 'Entry$'), cut_string, 'goff')
             g = self.make_tgrapherrors('g_pa', 'Plane Correlation {p1} {p2}'.format(p1=plane1, p2=plane2), marker_size=.5)
             for ibin in xrange(h.GetNbinsX() - 1):
@@ -557,11 +565,11 @@ class PixAnalysis(DUTAnalysis):
         return m > .4
 
     def draw_correlation(self, plane1=2, plane2=None, mode='y', chi2=None, res=.7, start=0, evts=int(1e10), cut=None, show=True):
-        old_chi2 = self.Cut.CutConfig['chi2X']
+        old_chi2 = self.Cut.CutConfig['chi2_x']
         self.Cut.set_chi2(old_chi2 if chi2 is None else chi2)
         plane2 = self.Dut if plane2 is None else plane2
         h = TH2F('h_pc', 'Plane Correlation', *self.Bins.get_global(res_fac=res))
-        cut = self.Cut.AllCut if cut is None else TCut(cut)
+        cut = self.Cut(cut)
         self.Tree.Draw('cluster_{m}pos_tel[{p1}]:cluster_{m}pos_tel[{p2}]>>h_pc'.format(m=mode, p1=plane1, p2=plane2), cut, 'goff', evts, start)
         self.info('Correlation Factor: {f:4.3f}'.format(f=h.GetCorrelationFactor()))
         format_histo(h, x_tit='{m} Plane {p}'.format(p=plane1, m=mode), y_tit='{m} Plane {p}'.format(p=plane2, m=mode), y_off=1.5, stats=0, z_tit='Number of Entries', z_off=1.5)
@@ -617,13 +625,13 @@ class PixAnalysis(DUTAnalysis):
         h = TH2F('h_hd', 'Number of Hits', 40, 0, 40, 40, 0, 40)
         self.Tree.Draw('n_hits[{}]:n_hits[{}]>>h_hd'.format(dut2, dut1), self.Cut(cut), 'goff')
         self.format_statbox(entries=True, x=.81)
-        x_tit, y_tit = ('Number of Hits in {}'.format(self.Run.DUTNames[dut - 4]) for dut in [dut1, dut2])
+        x_tit, y_tit = ('Number of Hits in {}'.format(self.Run.DUT.Names[dut - 4]) for dut in [dut1, dut2])
         format_histo(h, x_tit=x_tit, y_tit=y_tit, y_off=1.3, z_tit='Number of Entries', z_off=1.4, x_range=[0, h.FindLastBinAbove(0, 1) + 1], y_range=[0, h.FindLastBinAbove(0, 2) + 1])
         self.save_histo(h, 'HitsDiaSil', show, draw_opt='colz', rm=0.17, lm=.13, logz=True)
 
     def draw_hit_pie(self, d2=5):
         zero, dia, dut2, both = (self.Tree.GetEntries(s.format(d2)) for s in ['n_hits[4]==0&&n_hits[{}]==0', 'n_hits[4]>0&&n_hits[{}]==0', 'n_hits[4]==0&&n_hits[{}]>0', 'n_hits[4]>0&&n_hits[{}]>0'])
-        names = ['No Hits', '{} Hit'.format(self.DUTName), '{} Hit'.format(self.Run.DUTNames[d2 - 4]), 'Both Hits']
+        names = ['No Hits', '{} Hit'.format(self.DUT.Name), '{} Hit'.format(self.Run.DUT.Names[d2 - 4]), 'Both Hits']
         pie = TPie('pie', 'Hit Contributions', 4, array([zero, dia, dut2, both], 'f'), array(self.get_colors(4), 'i'))
         for i, label in enumerate(names):
             pie.SetEntryRadiusOffset(i, .05)
@@ -633,7 +641,7 @@ class PixAnalysis(DUTAnalysis):
         self.reset_colors()
 
     def draw_cluster_size(self, cut='', show=True):
-        return self._draw_cluster_size(self.Dut, self.DUTName, cut, show)
+        return self._draw_cluster_size(self.Dut, self.DUT.Name, cut, show)
 
     def draw_residuals(self, mode=None, cut=None, show=True, x_range=None):
         return self._draw_residuals(self.Dut, mode=mode, cut=cut, show=show, x_range=x_range)
@@ -644,7 +652,7 @@ class PixAnalysis(DUTAnalysis):
             h = TH1F('ho', 'Vcal Calibration Slopes', 30, 35, 65)
             for value in d['slope']:
                 h.Fill(value)
-            self.format_statbox(fit=True, all_stat=True, n_entries=6, w=.3)
+            self.format_statbox(fit=True, all_stat=True, w=.3)
             format_histo(h, x_tit='Slope [e]', y_tit='Number of Entries', y_off=1.2, fill_color=self.FillColor)
             self.draw_histo(h, show=show)
             h.Fit('gaus', 'q')
@@ -655,7 +663,7 @@ class PixAnalysis(DUTAnalysis):
             h = TH1F('ho', 'Vcal Calibration Offsets', 15, -200, 400)
             for value in d['offset']:
                 h.Fill(value)
-            self.format_statbox(fit=True, all_stat=True, n_entries=6, w=.3)
+            self.format_statbox(fit=True, all_stat=True, w=.3)
             format_histo(h, x_tit='Offset [e]', y_tit='Number of Entries', y_off=1.2, fill_color=self.FillColor)
             self.format_statbox(fit=True, all_stat=True)
             self.draw_histo(h, show=show)
