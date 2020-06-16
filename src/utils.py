@@ -640,10 +640,11 @@ def do(fs, pars, exe=-1):
         f(p) if e is not None else do_nothing()
 
 
-def choose(v, default, *args, **kwargs):
-    if callable(default) and v is None:
+def choose(v, default, decider='None', *args, **kwargs):
+    use_default = decider is None if decider != 'None' else v is None
+    if callable(default) and use_default:
         default = default(*args, **kwargs)
-    return default if v is None else v
+    return default if use_default else v
 
 
 def average_list(lst, n):
