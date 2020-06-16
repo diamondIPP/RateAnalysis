@@ -416,7 +416,7 @@ class PadAnalysis(DUTAnalysis):
         n = 0
         if x is None or y is None:
             n = self.Tree.Draw('{}:{}'.format(self.generate_signal_name(), self.Timing.get_peak_name(corr=True, fine_corr=fine_corr, region=region)), self.Cut(cut), 'goff')
-        fill_hist(h, choose(x, self.Run.get_root_vec, n, 1), choose(y, self.Run.get_root_vec, n, 0))
+        fill_hist(h, choose(x, self.Run.get_root_vec, n=n, ind=1), choose(y, self.Run.get_root_vec, n=n, ind=0))
         if not prof:
             px = h.ProjectionX()
             for xbin in range(h.GetNbinsX()):
