@@ -247,7 +247,9 @@ class PadCollection(AnalysisCollection):
         g = self.make_tgrapherrors('gcspt', 'Signal Ratio Vs Peak Time at {} and {}'.format(flux0, flux1), x=x, y=y)
         format_histo(g, x_tit='Signal Peak Time [ns]', y_tit='Signal Ratio', y_off=1.7, y_range=array([-ym, ym]) + 1)
         self.draw_histo(g, show=show, lm=.13, gridy=True)
-        return mean_sigma(y[y > .1])
+        y = y[y > .1]
+        m, s = mean_sigma(y)
+        return ufloat(m, s / sqrt(y.size))
 
     def compare_all_sig_vs_peakheight(self, ym=.05, show=True):
         values = []
@@ -255,7 +257,7 @@ class PadCollection(AnalysisCollection):
         for i in range(1, self.NRuns):
             values.append(self.compare_signal_vs_peak_height(0, i, show=False))
             self.PBar.update()
-        g = self.make_tgrapherrors('gasphr', 'Signal Ration Vs Flux', x=self.get_fluxes()[1:], y=values)
+        g = self.make_tgrapherrors('gasphr', 'Signal Ratio Vs Flux', x=self.get_fluxes()[1:], y=values)
         format_histo(g, y_tit='Signal Ratio', y_off=1.7, y_range=array([-ym, ym]) + 1, **self.get_x_args(False))
         self.draw_histo(g, show=show, lm=.13, logx=True, gridy=True)
 
