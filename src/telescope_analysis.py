@@ -96,7 +96,7 @@ class TelecopeAnalysis(Analysis):
         y_tit = '{} of Entries'.format('Number' if normalise is None else 'Percentage')
         format_histo(h, x_tit='Track Angle {} [deg]'.format(mode.title()), y_tit=y_tit, y_off=2, normalise=normalise, fill_color=self.FillColor)
         self.format_statbox(all_stat=True, w=.3)
-        self.draw_histo(h, '', show, lm=.14, prnt=prnt, both_dias=True)
+        self.draw_histo(h, show, lm=.14, prnt=prnt, both_dias=True)
         if show_cut:
             self.draw_angle_cut(mode)
         self.save_plots('TrackAngle{mod}'.format(mod=mode.upper()), both_dias=True, prnt=prnt)
@@ -111,11 +111,11 @@ class TelecopeAnalysis(Analysis):
         return do_pickle(picklepath, f)
 
     def draw_angle_cut(self, mode):
-        xmin, xmax = self.Cut.calc_angle(mode=mode)[mode]
+        xmin, xmax = -self.Cut.CutConfig['track angle'], self.Cut.CutConfig['track angle']
         line = self.draw_vertical_line(xmin, -100, 1e6, style=7, w=2, color=2, name='l1{}'.format(mode))
         self.draw_vertical_line(xmax, -100, 1e6, style=7, w=2, color=2, name='l2{}'.format(mode))
         legend = self.make_legend(.65, y2=.73, nentries=1, margin=.35, name='la', scale=1.3)
-        legend.AddEntry(line, 'cut ({} deg)'.format(self.Cut.CutConfig['slope']), 'l')
+        legend.AddEntry(line, 'cut ({} deg)'.format(xmax), 'l')
         legend.Draw()
 
     def draw_both_angles(self, show=True, prnt=True):

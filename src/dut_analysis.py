@@ -52,7 +52,7 @@ class DUTAnalysis(TelecopeAnalysis):
         cut = self.Cut(cut)
         return do_hdf5(self.make_hdf5_path('Events', run=self.RunNumber, ch=self.DUT.Number, suf=cut.GetName()), self.Run.get_root_vec, redo, dtype='i4', var='Entry$', cut=cut)
 
-    def get_n_entries(self, cut):
+    def get_n_entries(self, cut=None):
         return self.Tree.GetEntries(self.Cut(cut).GetTitle())
 
     def get_current(self):
