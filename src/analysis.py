@@ -3,9 +3,6 @@ from ConfigParser import ConfigParser
 from glob import glob
 from numpy import deg2rad, rad2deg, arange, round_
 
-# global test campaign
-g_test_campaign = None
-
 
 class Analysis(Draw):
     """ This class provides default behaviour objects in the analysis framework and is the parent of all analyses.
@@ -32,7 +29,7 @@ class Analysis(Draw):
 
         # Test Campaign
         self.TCString = self.load_test_campaign(testcampaign)
-        self.TestCampaign = datetime.strptime(self.TCString.split('-')[0], '%Y%M')
+        self.TestCampaign = datetime.strptime(self.TCString.split('-')[0], '%Y%m')
 
         # Analysis Config
         self.Config = self.load_config()
@@ -61,14 +58,10 @@ class Analysis(Draw):
         return parser
 
     def load_test_campaign(self, testcampaign):
-        global g_test_campaign
-        if g_test_campaign is None and testcampaign is None:
-            g_test_campaign = self.MainConfig.get('MAIN', 'default test campaign')
-        elif testcampaign is not None:
-            g_test_campaign = testcampaign
-        if g_test_campaign not in self.get_test_campaigns():
-            critical('The Testcampaign {} does not exist!'.format(g_test_campaign))
-        return g_test_campaign
+        tc = testcampaign if testcampaign is not None else self.MainConfig.get('MAIN', 'default test campaign')
+        if tc not in self.get_test_campaigns():
+            critical('The Testcampaign {} does not exist!'.format(tc))
+        return tc
 
     def print_testcampaign(self, pr=True):
         data = self.TCString.split('-')
