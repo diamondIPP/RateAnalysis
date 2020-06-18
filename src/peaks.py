@@ -63,8 +63,8 @@ class PeakAnalysis(Analysis):
         values = insert(array(f(*args, **kwargs))[signal_ind], array(noind), default)
         return values if ind is None else values[ind]
 
-    def get_all_cfd(self, thresh=.5):
-        return self.get_signal_values(self.find_all_cfd, thresh=thresh)
+    def get_all_cft(self, thresh=.5):
+        return self.get_signal_values(self.find_all_cft, thresh=thresh)
 
     def get_all_tot(self, thresh=None, fixed=True):
         return self.get_signal_values(self.calc_all_tot, thresh, fixed)
@@ -111,9 +111,9 @@ class PeakAnalysis(Analysis):
         heights = self.get_signal_heights()
         return where((pmin <= heights) & (heights <= pmax))[0]
 
-    def get_cfd_indices(self, ibin, thresh=None, bin_size=None):
+    def get_cft_indices(self, ibin, thresh=None, bin_size=None):
         bins = self.Ana.get_t_bins(bin_size)[1]
-        values = self.get_all_cfd(thresh)
+        values = self.get_all_cft(thresh)
         return where((bins[ibin] <= values) & (values < bins[ibin + 1]))[0]
 
     def get_indices(self, t_min, t_max):
@@ -147,10 +147,10 @@ class PeakAnalysis(Analysis):
     def get_n(self, n=1):
         return self.get_n_times(n, ret_indices=True)
 
-    def get_flux(self, n_peaks=None, l=None, redo=False, prnt=True):
+    def get_flux(self, n_peaks=None, lam=None, redo=False, prnt=True):
         def f():
-            n = self.find_n_additional() if n_peaks is None and l is None else n_peaks
-            lambda_ = ufloat(mean(n), sqrt(mean(n) / n.size)) if l is None else l
+            n = self.find_n_additional() if n_peaks is None and lam is None else n_peaks
+            lambda_ = ufloat(mean(n), sqrt(mean(n) / n.size)) if lam is None else lam
             flux = lambda_ / (self.Ana.BunchSpacing * self.NBunches * self.get_area()) * 1e6
             return flux
         value = do_pickle(self.make_simple_pickle_path('Flux'), f, redo=redo)
@@ -241,9 +241,9 @@ class PeakAnalysis(Analysis):
             p.Draw('y+')
             update_canvas(c)
 
-    def draw_heights_vs_time(self, bin_size=.5, corr=True, cfd=False, show=True):
+    def draw_heights_vs_time(self, bin_size=.5, corr=True, cft=False, show=True):
         times, heights, n_peaks = self.find_all()
-        times = self.get_corrected_times(times, n_peaks) if corr else self.find_all_cfd() if cfd else times
+        times = self.get_corrected_times(times, n_peaks) if corr else self.find_all_cft() if cft else times
         p = TProfile('pph', 'Peak Heights', *self.get_binning(bin_size))
         p.FillN(times.size, array(times).astype('d'), array(heights).astype('d'), ones(times.size))
         format_histo(p, x_tit='Time [ns]', y_tit='Peak Height [mV]', y_off=1.3, stats=0, fill_color=self.FillColor)
@@ -310,7 +310,7 @@ class PeakAnalysis(Analysis):
 
     def draw_flux_vs_threshold(self, steps=20):
         x = linspace(self.NoiseThreshold, self.Threshold, steps)
-        y = array([self.get_flux(l=self.get_n_additional(thresh=ix), redo=1) for ix in x]) / 1000.
+        y = array([self.get_flux(lam=self.get_n_additional(thresh=ix), redo=1) for ix in x]) / 1000.
         g = self.make_tgrapherrors('gft', 'Flux vs. Peak Threshold', x=x, y=y)
         format_histo(g, x_tit='Peak Finding Threshold [mV]', y_tit='Flux [MHz/cm^{2}]', y_off=1.3)
         self.draw_histo(g, draw_opt='ap', lm=.12)
@@ -403,53 +403,53 @@ class PeakAnalysis(Analysis):
     # ----------------------------------------
 
     # ----------------------------------------
-    # region CFD
-    def find_cfd(self, values=None, times=None, peaks=None, peak_times=None, ind=None, thresh=.5, show=False):
+    # region cft
+    def find_cft(self, values=None, times=None, peaks=None, peak_times=None, ind=None, thresh=.5, show=False):
         x, y, p, t = (times, values, peaks, peak_times) if ind is None else self.get_event(ind)
-        cfds = []
+        cfts = []
         for k, (ip, it) in enumerate(zip(p, t)):
             i = where(x == it)[0][0]
             v = y[max(0, i - 20): i]
             j = argmax(v > ip * thresh)  # find next index greater than threshold
-            cfd = interpolate_x(x[i + j - 21], x[i + j - 20], v[j - 1], v[j], ip * thresh)
-            cfds.append(cfd)
+            cft = interpolate_x(x[i + j - 21], x[i + j - 20], v[j - 1], v[j], ip * thresh)
+            cfts.append(cft)
             if show:
                 # self.WF.draw_single(ind=ind, x_range=self.Ana.get_signal_range(), draw_opt='alp') if not k else do_nothing()
                 self.WF.draw_single(ind=ind, draw_opt='alp') if not k else do_nothing()
                 self.draw_horizontal_line(ip * thresh, 0, 2000, name='thresh{}'.format(k), color=4)
-                self.draw_vertical_line(cfd, -1000, 1000, name='cfd{}'.format(k), color=2)
-        return cfds
+                self.draw_vertical_line(cft, -1000, 1000, name='cft{}'.format(k), color=2)
+        return cfts
 
-    def find_all_cfd(self, thresh=.5, redo=False):
+    def find_all_cft(self, thresh=.5, redo=False):
         def f():
             self.info('calculating constant fraction discrimination times ...')
             values, times, peaks, peak_times = self.WF.get_all(), self.WF.get_all_times(), self.get_heights(), self.get()
             self.PBar.start(values.shape[0])
-            cfds = []
+            cfts = []
             for i in range(values.shape[0]):
-                cfds.append(self.find_cfd(values[i], times[i], peaks[i], peak_times[i], thresh=thresh))
+                cfts.append(self.find_cft(values[i], times[i], peaks[i], peak_times[i], thresh=thresh))
                 self.PBar.update()
-            return concatenate(cfds).astype('f2')
-        return do_hdf5(self.make_simple_hdf5_path('CFD', '{:.0f}'.format(thresh * 100)), f, redo=redo)
+            return concatenate(cfts).astype('f2')
+        return do_hdf5(self.make_simple_hdf5_path('cft', '{:.0f}'.format(thresh * 100)), f, redo=redo)
 
-    def draw_cfd(self, thresh=.5, bin_size=.5, show=True, draw_ph=False, x=None, y=None, y_range=None, smear=None):
+    def draw_cft(self, thresh=.5, bin_size=.5, show=True, draw_ph=False, x=None, y=None, y_range=None, smear=None):
         self.format_statbox(entries=1, x=.86 if draw_ph else .95)
-        times = choose(x, self.get_all_cfd, thresh=thresh)
+        times = choose(x, self.get_all_cft, thresh=thresh)
         self.smear_times(times, smear)
         title = '{:.0f}% Constrant Fraction Times'.format(thresh * 100)
         h = self.draw_disto(times, title, self.Ana.get_t_bins(bin_size), lm=.13, rm=.12 if draw_ph else None, show=show, x_tit='Constant Fraction Time [ns]', y_off=1.8)
         self.draw_ph(get_last_canvas(), bin_size, times, y, y_range, show=draw_ph)
         return h
 
-    def draw_cfd_vs_time(self, bin_size=.2, signal=False, show=True):
-        h = TH2F('hcfdt', 'Constant Fraction vs. Peak Time', *(self.Ana.get_t_bins(bin_size) + self.Ana.get_t_bins(bin_size)))
+    def draw_cft_vs_time(self, bin_size=.2, signal=False, show=True):
+        h = TH2F('hcftt', 'Constant Fraction vs. Peak Time', *(self.Ana.get_t_bins(bin_size) + self.Ana.get_t_bins(bin_size)))
         x = array(self.get_from_tree()) if signal else self.get(flat=True)
-        y = self.get_all_cfd() if signal else array(self.find_all_cfd()).astype('d')
+        y = self.get_all_cft() if signal else array(self.find_all_cft()).astype('d')
         h.FillN(x.size, x.astype('d'), y.astype('d'), ones(x.size))
         format_histo(h, y_tit='Constrant Fraction Time [ns]', x_tit='Peak Time [ns]', y_off=1.3)
         self.format_statbox(entries=True, x=.86)
         self.draw_histo(h, show=show, lm=.11, draw_opt='colz', rm=.12)
-    # endregion CFD
+    # endregion cft
     # ----------------------------------------
 
     # ----------------------------------------
@@ -562,16 +562,16 @@ class PeakAnalysis(Analysis):
         self.format_statbox(entries=1)
         self.draw_histo(h, lm=.13, show=show)
 
-    def model1(self, n=1e6, redo=False, scale=None, landau_width=3, cfd=False):
+    def model1(self, n=1e6, redo=False, scale=None, landau_width=3, cft=False):
         scale = self.find_scale() if scale is None else scale
-        return self.model(n, model=1, cfd=cfd, redo=redo, scale=scale, landau_width=landau_width)
+        return self.model(n, model=1, cft=cft, redo=redo, scale=scale, landau_width=landau_width)
 
     def model0(self, n=1e6, redo=False, rise_time=None, rise_fac=3, sigma=None):
         return self.model(n, 0, redo, )
 
-    def model(self, n=1e6, model=1, noise=None, cfd=False, redo=False, *args, **kwargs):
+    def model(self, n=1e6, model=1, noise=None, cft=False, redo=False, *args, **kwargs):
         n = int(n)
-        hdf5_path = self.make_simple_hdf5_path('M', '{}_{}_{}'.format(n, model, int(cfd)))
+        hdf5_path = self.make_simple_hdf5_path('M', '{}_{}_{}'.format(n, model, int(cft)))
         if file_exists(hdf5_path) and not redo:
             f = h5py.File(hdf5_path, 'r')
             return f['times'], f['heights']
@@ -588,7 +588,7 @@ class PeakAnalysis(Analysis):
             x, y = self.get_signal(model, min(500, Landau(mpv, sl)), peak_times[i], noise=noise, *args, **kwargs)
             peak_time = x[argmax(y)]
             peak_height = max(y)
-            t.append(peak_time if not cfd else self.find_cfd(y, x, [peak_height], [peak_time]))
+            t.append(peak_time if not cft else self.find_cft(y, x, [peak_height], [peak_time]))
             v.append(peak_height)
             self.PBar.update()
         t, v = array(t), array(v)
@@ -597,8 +597,8 @@ class PeakAnalysis(Analysis):
         f.create_dataset('heights', data=array(v).astype('f4'))
         return f['times'], f['heights']
 
-    def draw_model(self, n=1e6, model=1, cfd=False, draw_ph=False, show=True):
-        x, y = self.model1(n, cfd=cfd) if model == 1 else self.model0(n)
+    def draw_model(self, n=1e6, model=1, cft=False, draw_ph=False, show=True):
+        x, y = self.model1(n, cft=cft) if model == 1 else self.model0(n)
         self.draw_signal(x=array(x), y=array(y), draw_ph=draw_ph, show=show)
 
     # endregion MODEL
