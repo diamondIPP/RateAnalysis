@@ -226,9 +226,7 @@ class PeakAnalysis(Analysis):
     def draw_signal(self, bin_size=.5, ind=None, fit=False, y=None, x=None, y_range=None, show=True, draw_ph=False, smear=None):
         self.format_statbox(entries=1, x=.86 if draw_ph else .95)
         times = choose(x, self.get_signal_times, fit=fit, ind=ind)
-        # times += normal(0, smear, times.size) if smear else 0  # gaussian smear
-        times += rand(times.size) * smear - smear / 2 if smear else 0
-        times[::5] += normal(0, smear / 2, times.size // 5 + 1) if smear else 0
+        self.smear_times(times, smear)
         h = self.draw_disto(times, 'Signal Peak Times', self.Ana.get_t_bins(bin_size), lm=.13, rm=.12 if draw_ph else None, show=show, x_tit='Signal Peak Time [ns]', y_off=1.8)
         self.draw_ph(get_last_canvas(), bin_size, times, y, y_range, draw_ph)
         return h
@@ -434,12 +432,13 @@ class PeakAnalysis(Analysis):
             return concatenate(cfds).astype('f2')
         return do_hdf5(self.make_simple_hdf5_path('CFD', '{:.0f}'.format(thresh * 100)), f, redo=redo)
 
-    def draw_cfd(self, thresh=.5, bin_size=.5, show=True, draw_ph=False, x=None, y=None, y_range=None):
+    def draw_cfd(self, thresh=.5, bin_size=.5, show=True, draw_ph=False, x=None, y=None, y_range=None, smear=None):
         self.format_statbox(entries=1, x=.86 if draw_ph else .95)
-        values = choose(x, self.get_all_cfd, thresh=thresh)
+        times = choose(x, self.get_all_cfd, thresh=thresh)
+        self.smear_times(times, smear)
         title = '{:.0f}% Constrant Fraction Times'.format(thresh * 100)
-        h = self.draw_disto(values, title, self.Ana.get_t_bins(bin_size), lm=.13, rm=.12 if draw_ph else None, show=show, x_tit='Constant Fraction Time [ns]', y_off=1.8)
-        self.draw_ph(get_last_canvas(), bin_size, values, y, y_range, show=draw_ph)
+        h = self.draw_disto(times, title, self.Ana.get_t_bins(bin_size), lm=.13, rm=.12 if draw_ph else None, show=show, x_tit='Constant Fraction Time [ns]', y_off=1.8)
+        self.draw_ph(get_last_canvas(), bin_size, times, y, y_range, show=draw_ph)
         return h
 
     def draw_cfd_vs_time(self, bin_size=.2, signal=False, show=True):
@@ -653,3 +652,13 @@ class PeakAnalysis(Analysis):
         h2.Divide(h1)
         self.draw_histo(h2, show=show, draw_opt='colz', rm=.15)
         self.Ana.draw_fid_cut()
+    
+    @staticmethod
+    def smear_times(times, width=2.5, n=5, gaus=False):
+        if width is None:
+            return
+        if gaus:  # only Gaussian smear
+            times += normal(0, width, times.size) if width else 0  # gaussian width
+        else:  # flat plus Gaussian smear
+            times += rand(times.size) * width - width / 2 if width else 0
+            times[::n] += normal(0, width / 2, times.size // 5 + 1)[:times[::n].size] if width else 0
