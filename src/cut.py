@@ -48,7 +48,7 @@ class Cut:
                 'event_range': self.load_event_range(loads(self.Config.get('CUT', 'event range'))),
                 'chi2_x': self.Config.getint('CUT', 'chi2X'),
                 'chi2_y': self.Config.getint('CUT', 'chi2Y'),
-                'slope': self.Config.getint('CUT', 'slope')}
+                'track angle': self.Config.getint('CUT', 'track angle')}
 
     def update_config(self):
         pass
@@ -178,8 +178,8 @@ class Cut:
         self.CutStrings.register(self.generate_tracks(), 22)
         self.CutStrings.register(self.generate_chi2('x'), 72)
         self.CutStrings.register(self.generate_chi2('y'), 73)
-        self.CutStrings.register(self.generate_slope('x'), 74)
-        self.CutStrings.register(self.generate_slope('y'), 75)
+        self.CutStrings.register(self.generate_track_angle('x'), 74)
+        self.CutStrings.register(self.generate_track_angle('y'), 75)
 
     def generate_dut(self):
         pass
@@ -198,12 +198,11 @@ class Cut:
         description = 'chi2 in {} < {:1.1f} ({:d}% quantile)'.format(mode, cut_value, self.CutConfig['chi2_{}'.format(mode)])
         return CutString('chi2_{}'.format(mode), 'chi2_{}>=0'.format(mode) + ' && chi2_{mod}<{val}'.format(val=cut_value, mod=mode) if cut_value is not None else '', description)
 
-    def generate_slope(self, mode='x'):
-        cut_variable = '{t}_{m}'.format(t='slope' if self.Analysis.Run.has_branch('slope_x') else 'angle', m=mode)
-        angles = self.calc_angle(mode)[mode]
-        string = '{v}>{min}&&{v}<{max}'.format(v=cut_variable, min=angles[0], max=angles[1])
-        description = '{:1.1f} < tracking angle in {} < {:1.1f} [degrees]'.format(angles[0], mode, angles[1])
-        return CutString('slope_{}'.format(mode), string if self.CutConfig['slope'] > 0 else '', description)
+    def generate_track_angle(self, mode='x'):
+        amin, amax = -self.CutConfig['track angle'], self.CutConfig['track angle']
+        string = '{v}>{} && {v}<{}'.format(amin, amax, v='angle_{}'.format(mode))
+        description = '{:1.1f} < tracking angle in {} < {:1.1f} [degrees]'.format(amin, mode, amax)
+        return CutString('track_angle_{}'.format(mode), string if self.CutConfig['track angle'] > 0 else '', description)
 
     def generate_beam_interruptions(self):
         """ This adds the restrictions to the cut string such that beam interruptions are excluded each time the cut is applied. """
@@ -267,24 +266,6 @@ class Cut:
         chi2 = do_pickle(picklepath, f)
         q = self.CutConfig['chi2_{mod}'.format(mod=mode.lower())] if quantile is None else quantile
         return chi2[q] if q != 100 else None
-
-    def calc_angle(self, mode='x'):
-        # take the pickle of the run with a low rate if provided (for ana collection)
-        run = self.LowRateRun if self.LowRateRun is not None else self.RunNumber
-        picklepath = self.Analysis.make_pickle_path('Cuts', 'TrackSlope{}'.format(mode.title()), run=run)
-
-        def func():
-            angle = self.CutConfig['slope']
-            t = self.Analysis.info('Generating angle cut in {m} for run {run} ...'.format(run=self.Analysis.RunNumber, m=mode), False)
-            set_root_output(False)
-            h = self.Analysis.draw_angle_distribution(mode=mode, show=False, prnt=False)
-            fit = fit_fwhm(h)
-            mean_ = fit.Parameter(1)
-            cut_vals = {mode: [mean_ - angle, mean_ + angle]}
-            self.Analysis.add_to_info(t)
-            return cut_vals
-
-        return do_pickle(picklepath, func)
 
     def get_raw_pulse_height(self):
         n = self.Analysis.Tree.Draw(self.Analysis.generate_signal_name(), self.CutStrings(), 'goff')
