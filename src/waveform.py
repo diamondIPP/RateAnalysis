@@ -7,7 +7,7 @@
 from analysis import *
 from InfoLegend import InfoLegend
 from ROOT import TCut, TH2F, TProfile, TH1F, TProfile2D
-from numpy import ones
+from numpy import fft
 
 
 class Waveform(Analysis):
@@ -67,6 +67,10 @@ class Waveform(Analysis):
         if show_noise:
             self.__draw_noise()
         return h
+
+    def draw_fft(self, ind):
+        # TODO: finish
+        values = fft.fft(self.get_values(ind))
 
     def draw_all_single(self, n=1, cut='', start_event=None):
         activated_wfs = [wf for wf in xrange(4) if self.Run.wf_exists(wf)]
