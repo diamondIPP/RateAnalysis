@@ -108,6 +108,16 @@ class DUTAnalysis(TelecopeAnalysis):
 
     def get_peak_flux(self):
         pass
+
+    def get_ph_values(self, *args, **kwargs):
+        """ :returns: all pulse height values for a given cut. [numpy.ndarray] """
+
+    def get_signal_name(self, *args, **kwargs):
+        """ :returns: the pulse height variable in the tree. [str] """
+
+    def generate_signal_name(self, *args, **kwargs):
+        """ :returns: the pulse height variable in the tree + corrections. [str] """
+
     # endregion GET
     # ----------------------------------------
 
@@ -137,6 +147,13 @@ class DUTAnalysis(TelecopeAnalysis):
         format_histo(h, x_tit='Distance [#mum]', y_tit='Entries', y_off=2, lw=2, stats=0, fill_color=self.FillColor, ndivx=405)
         self.save_histo(h, 'DistanceInDia', show, lm=.16, save=save)
         return h
+
+    def draw_signal_vs_angle(self, mode='x', bin_size=.1, show=True):
+        p = TProfile('psa{}'.format(mode), 'Pulse Height vs. Angle in {}'.format(mode.title()), *self.Bins.get_angle(bin_size))
+        self.Tree.Draw('{}:angle_{m}>>psa{m}'.format(self.generate_signal_name(), m=mode), self.Cut(), 'goff')
+        self.format_statbox(entries=True)
+        format_histo(p, x_tit='Track Angle [deg]', y_tit='Pulse Height [mV]', y_off=1.5)
+        self.draw_histo(p, show, lm=.12)
 
     # ----------------------------------------
     # region SIGNAL MAP
