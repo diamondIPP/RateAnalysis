@@ -262,9 +262,9 @@ class Draw:
         x1, x2 = (c.GetLeftMargin(), .5) if left else (.5, 1 - c.GetRightMargin())
         return self.draw_tpavetext('Irradiation: {}'.format(irr), x1, x2, 1 - height - c.GetTopMargin(), 1 - c.GetTopMargin(), font=42, align=12, margin=0.04)
 
-    def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=None, rm=None, bm=None, tm=None, draw_opt=None, x=None, y=None, all_pads=True,
+    def draw_histo(self, histo, show=True, sub_dir=None, lm=None, rm=None, bm=None, tm=None, draw_opt=None, x=None, y=None, all_pads=True,
                    leg=None, logy=False, logx=False, logz=False, canvas=None, grid=False, gridy=False, gridx=False, both_dias=False, prnt=True, phi=None, theta=None, ind=None):
-        return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, all_pads, leg, logy, logx, logz, canvas, grid, gridx, gridy, False, both_dias, ind,
+        return self.save_histo(histo, '', show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, all_pads, leg, logy, logx, logz, canvas, grid, gridx, gridy, False, both_dias, ind,
                                prnt, phi, theta)
 
     def save_combined_pulse_heights(self, mg, mg1, mg_y, show=True, name=None, pulser_leg=None,
