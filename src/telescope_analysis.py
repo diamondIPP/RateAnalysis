@@ -90,14 +90,11 @@ class TelecopeAnalysis(Analysis):
         self.draw_chi2('y', show_cut=True, show=show, x_range=x_range, prnt=prnt)
 
     def draw_angle_distribution(self, mode='x', cut=None, show_cut=False, normalise=None, show=True, prnt=True):
-        """ Displays the angle distribution of the tracks. """
-        assert mode in ['x', 'y']
-        cut = cut if cut is not None else TCut('angle_x > -900')
-        set_root_output(False)
-        h = TH1F('had', 'Track Angle Distribution in ' + mode.title(), 320, -4, 4)
-        self.Tree.Draw('{v}_{mod}>>had'.format(v='angle', mod=mode), cut, 'goff')
+        """ Shows the angle distribution of the tracks. """
+        h = TH1F('had{}'.format(mode), 'Track Angle Distribution in {}'.format(mode.title()), *self.Bins.get_angle())
+        self.Tree.Draw('angle_{m}>>had{m}'.format(m=mode), self.Cut('angle_{}>-900'.format(mode) if cut is None else cut), 'goff')
         y_tit = '{} of Entries'.format('Number' if normalise is None else 'Percentage')
-        format_histo(h, name='had{}'.format(mode), x_tit='Track Angle {} [deg]'.format(mode.title()), y_tit=y_tit, y_off=2, lw=2, normalise=normalise)
+        format_histo(h, x_tit='Track Angle {} [deg]'.format(mode.title()), y_tit=y_tit, y_off=2, normalise=normalise, fill_color=self.FillColor)
         self.format_statbox(all_stat=True, w=.3)
         self.draw_histo(h, '', show, lm=.14, prnt=prnt, both_dias=True)
         if show_cut:
