@@ -448,10 +448,11 @@ class PadAnalysis(DUTAnalysis):
         format_histo(p, x_tit='Signal Peak Position [ns]', y_tit='Time over Threshold [ns]', y_off=1.4, stats=0)
         self.save_histo(p, 'ToTVsPeakPos{}{}'.format(int(corr), int(fine_corr)), show, lm=.11)
 
-    def draw_signal_vs_cfd(self, bin_size=None, thresh=.5, x=None, y=None, show=True):
+    def draw_signal_vs_cft(self, bin_size=None, thresh=.5, x=None, y=None, show=True):
         p = TProfile('pscfd', 'Signal vs {:.0f}% Constant Fraction Time'.format(thresh * 100), *self.get_t_bins(bin_size))
+        self.format_statbox(all_stat=True)
         fill_hist(p, choose(x, self.Peaks.get_all_cfd(thresh)), choose(y, self.get_ph_values()))
-        format_histo(p, x_tit='Constant Fraction Time [ns]', y_tit='Pulse Height [mV]', y_off=1.4, stats=0)
+        format_histo(p, x_tit='Constant Fraction Time [ns]', y_tit='Pulse Height [mV]', y_off=1.4)
         self.draw_histo(p, show=show, lm=.12)
         return p
 
