@@ -237,12 +237,13 @@ class PadCollection(AnalysisCollection):
         self.save_plots('PulserPedestalComparison')
         self.Objects.append([c, graphs, legend])
 
-    def compare_signal_vs_peak_height(self, i0=0, i1=-1, ym=.05, show=True, redo=False):
+    def compare_signal_vs_peak_height(self, i0=0, i1=-1, ym=.05, cft=False, show=True, redo=False):
         def f():
-            x0, y0, x1, y1 = [j for ind in [i0, i1] for j in get_hist_vecs(self.get_ana(ind).draw_signal_vs_peaktime(show=False))]
+            func = self.Analysis.draw_signal_vs_cft if cft else self.Analysis.draw_signal_vs_peaktime
+            x0, y0, x1, y1 = [j for ind in [i0, i1] for j in get_hist_vecs(func(self.get_ana(ind), show=False))]
             y0 = where(y0 == 0, 1e10, y0)
             return x0, y1 / y0
-        x, y = do_pickle(self.make_simple_pickle_path('SigPeakRatio', sub_dir='Peaks', dut='{}{}'.format(i0, i1)), f, redo=redo)
+        x, y = do_pickle(self.make_simple_pickle_path('SigPeakRatio', int(cft), sub_dir='Peaks', dut='{}{}'.format(i0, i1)), f, redo=redo)
         flux0, flux1 = [make_flux_string(self.get_ana(i).get_flux()) for i in [i0, i1]]
         g = self.make_tgrapherrors('gcspt', 'Signal Ratio Vs Peak Time at {} and {}'.format(flux0, flux1), x=x, y=y)
         format_histo(g, x_tit='Signal Peak Time [ns]', y_tit='Signal Ratio', y_off=1.7, y_range=array([-ym, ym]) + 1)
@@ -250,6 +251,9 @@ class PadCollection(AnalysisCollection):
         y = y[y > .1]
         m, s = mean_sigma(y)
         return ufloat(m, s / sqrt(y.size))
+
+    def compare_signal_vs_cft(self, i0=0, i1=-1, ym=.05, show=True, redo=False):
+        return self.compare_signal_vs_peak_height(i0, i1, ym, True, show, redo)
 
     def compare_all_sig_vs_peakheight(self, ym=.05, show=True):
         values = []
