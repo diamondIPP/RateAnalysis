@@ -14,7 +14,7 @@ class Analysis(Draw):
 
         # Configuration
         self.Verbose = verbose
-        self.ConfigDir = join(get_base_dir(), 'Configuration')
+        self.ConfigDir = join(get_base_dir(), 'config')
         self.MainConfig = self.load_main_config()
         self.Momentum = self.MainConfig.getfloat('BEAM', 'momentum')
         self.PathLength = self.MainConfig.getfloat('BEAM', 'path length')
@@ -43,7 +43,7 @@ class Analysis(Draw):
     @staticmethod
     def load_main_config():
         parser = ConfigParser()
-        file_name = join(get_base_dir(), 'Configuration', 'main.ini')
+        file_name = join(get_base_dir(), 'config', 'main.ini')
         if not file_exists(file_name):
             log_critical('{} does not exist. Please copy it from the main.default and adapt it to your purpose!'.format(file_name))
         parser.read(file_name)
@@ -53,7 +53,7 @@ class Analysis(Draw):
         parser = ConfigParser()
         file_name = join(self.ConfigDir, self.TCString, 'AnalysisConfig.ini')
         if not file_exists(file_name):
-            log_critical('AnalysisConfig.ini does not exist for {0}! Please create it in Configuration/{0}!'.format(self.TestCampaign))
+            log_critical('AnalysisConfig.ini does not exist for {0}! Please create it in config/{0}!'.format(self.TestCampaign))
         parser.read(file_name)
         return parser
 

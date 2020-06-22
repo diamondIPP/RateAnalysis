@@ -45,7 +45,7 @@ class Draw:
         self.Objects = []
 
     def init_main_config(self, config):
-        return load_parser(join(self.Dir, 'Configuration', 'main.ini')) if config is None else config
+        return load_parser(join(self.Dir, 'config', 'main.ini')) if config is None else config
 
     # ----------------------------------------
     # region BASIC

@@ -60,7 +60,7 @@ class Converter:
     def load_dirname(self, base, option):
         path = join(base, expanduser(self.MainConfig.get('Directories', option)))
         if not dir_exists(path) and not file_exists(path):
-            critical('"{}" does not exist. Please set it correctly in Configuration/main.ini.'.format(path))
+            critical('"{}" does not exist. Please set it correctly in config/main.ini.'.format(path))
         return path
 
     def load_rawfile_dirname(self):
@@ -165,7 +165,7 @@ class Converter:
                 self.tracking_tel(action='2')
 
     def remove_pickle_files(self):
-        files = glob(join(self.Run.Dir, 'Configuration', 'Individual_Configs', '*', '*{tc}*_{run}*'.format(run=self.RunNumber, tc=self.Run.TCString)))
+        files = glob(join(self.Run.Dir, 'metadata', '*', '*{tc}*_{run}*'.format(run=self.RunNumber, tc=self.Run.TCString)))
         self.Run.info('Removing {} pickle files for run {}'.format(len(files), self.RunNumber))
         for f in files:
             remove_file(f)

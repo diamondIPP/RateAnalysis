@@ -32,7 +32,7 @@ class DiaScans(Analysis):
         self.Selection = self.load_selection(selection_name)
 
         # Config
-        self.DUTParser = load_parser(join(self.Dir, 'Configuration', 'DiamondAliases.ini'))
+        self.DUTParser = load_parser(join(self.Dir, 'config', 'DiamondAliases.ini'))
 
         # Info
         self.RS = RunSelection()  # dummy for information

@@ -43,7 +43,7 @@ class MCRun(Run):
 
     def LoadMCConfig(self):
         parser = ConfigParser.ConfigParser()
-        parser.read('Configuration/MonteCarloConfig.cfg')
+        parser.read('config/MonteCarloConfig.cfg')
         SignalMode = parser.get('SIGNAL-DISTRIBUTION','SignalMode')
 
         # LOAD SIGNAL DISTRIBUTION SETTINGS

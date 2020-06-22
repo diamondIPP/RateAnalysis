@@ -151,7 +151,7 @@ def get_branch(n, name='IntegralPeaks[13]'):
 
 def load_diamond_name(ch):
     p = ConfigParser()
-    p.read('Configuration/DiamondAliases.ini')
+    p.read('config/DiamondAliases.ini')
     dia = runinfo['dia{0}'.format(ch)]
     return p.get('ALIASES', dia)
 

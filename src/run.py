@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from ConfigParser import NoOptionError
-from json import load, loads
+from json import loads
 
 from ROOT import TFile
 from numpy import inf, zeros
@@ -125,14 +125,14 @@ class Run:
     def load_config(self):
         run_number = self.RunNumber if hasattr(self, 'RunNumber') else None
         parser = ConfigParser({'excluded_runs': '[]'})  # add non default option
-        base_file_name = join(get_base_dir(), 'Configuration', self.TCString, 'RunConfig.ini')
+        base_file_name = join(get_base_dir(), 'config', self.TCString, 'RunConfig.ini')
         if not file_exists(base_file_name):
-            log_critical('RunConfig.ini does not exist for {0}! Please create it in Configuration/{0}!'.format(self.TCString))
+            log_critical('RunConfig.ini does not exist for {0}! Please create it in config/{0}!'.format(self.TCString))
         parser.read(base_file_name)  # first read the main config file with general information for all splits
         if parser.has_section('SPLIT') and run_number is not None:
             split_runs = [0] + loads(parser.get('SPLIT', 'runs')) + [inf]
             config_nr = next(i for i in xrange(1, len(split_runs)) if split_runs[i - 1] <= run_number < split_runs[i])
-            parser.read(join(get_base_dir(), 'Configuration', self.TCString, 'RunConfig{nr}.ini'.format(nr=config_nr)))  # add the content of the split config
+            parser.read(join(get_base_dir(), 'config', self.TCString, 'RunConfig{nr}.ini'.format(nr=config_nr)))  # add the content of the split config
         return parser
 
     def load_rootfile_path(self):
@@ -296,7 +296,7 @@ class Run:
         if dia is None or dia.lower() in ['unknown', 'none']:
             return
         parser = ConfigParser()
-        parser.read(join(self.Dir, 'Configuration', 'DiamondAliases.ini'))
+        parser.read(join(self.Dir, 'config', 'DiamondAliases.ini'))
         return parser.get('ALIASES', dia.lower()) if dia.lower() in parser.options('ALIASES') else log_critical('Please add {} to the diamond aliases!'.format(dia.encode()))
 
     def reload_run_config(self, run_number):

@@ -44,7 +44,7 @@ class PixAnalysis(DUTAnalysis):
     # ----------------------------------------
     # region INIT
     def update_config(self):
-        self.Config.read(join(self.Dir, 'Configuration', self.TCString, 'PixelConfig.ini'))
+        self.Config.read(join(self.Dir, 'config', self.TCString, 'PixelConfig.ini'))
 
     def load_calibration_files(self, fits=False):
         calibration_list_dir = join(self.Run.Converter.TrackingDir, 'calibration_lists', 'GKCalibrationList_Telescope{n}.txt'.format(n=self.Run.Converter.TelescopeID))

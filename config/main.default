@@ -14,7 +14,7 @@ path length = 23.1
 frequency = 50.6
 
 [SAVE]
-pickle directory = Configuration/Individual_Configs/
+pickle directory = metadata
 activate title = True
 git hash = True
 info legend = True

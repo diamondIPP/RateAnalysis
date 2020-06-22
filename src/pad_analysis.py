@@ -76,7 +76,7 @@ class PadAnalysis(DUTAnalysis):
     # ----------------------------------------
     # region INIT
     def update_config(self):
-        self.Config.read(join(self.Dir, 'Configuration', self.TCString, 'PadConfig.ini'))
+        self.Config.read(join(self.Dir, 'config', self.TCString, 'PadConfig.ini'))
 
     def get_short_regint(self, signal=None, signal_type='signal'):
         return self.get_all_signal_names(signal_type)[signal if signal is not None else self.SignalName]

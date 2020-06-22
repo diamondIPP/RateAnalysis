@@ -70,7 +70,7 @@ class AnalysisCollection(Analysis):
         print('\033[1A\rRuns {0}-{1} were successfully loaded!{2}\n'.format(self.Runs[0], self.Runs[-1], 20 * ' '))
 
     def remove_pickles(self):
-        files = glob(join(self.Dir, 'Configuration', 'Individual_Configs', '*', '*{}*_{}*'.format(self.TCString, self.RunPlan)))
+        files = glob(join(self.PickleDir, '*', '*{}*_{}*'.format(self.TCString, self.RunPlan)))
         self.info('Removing {} pickle files for run plan {}'.format(len(files), self.RunPlan))
         for f in files:
             remove_file(f)
