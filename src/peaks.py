@@ -198,7 +198,7 @@ class PeakAnalysis(Analysis):
         return ufloat(m, s / sqrt(values.size)) - self.Ana.Pedestal.get_raw_mean()
 
     def get_cut_name(self):
-        self.Cut.GetName() if not self.Cut.GetName().startswith('All') else ''
+        return self.Cut.GetName() if not self.Cut.GetName().startswith('All') else ''
     # endregion GET
     # ----------------------------------------
 
