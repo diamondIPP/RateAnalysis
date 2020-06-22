@@ -393,8 +393,8 @@ class CutString:
         self.Level = level
         self.Description = description
 
-    def __call__(self):
-        return TCut(self.Name, self.Value)
+    def __call__(self, cut=None):
+        return TCut(self.Name, self.Value) if cut is None else TCut('')
 
     def __str__(self):
         return '{:2d}: {} cut'.format(self.Level, self.Name.replace('_', ' '))
