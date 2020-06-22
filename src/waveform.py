@@ -47,8 +47,8 @@ class Waveform(Analysis):
         self.save_histo(h, 'WaveForms{n}'.format(n=n), show, draw_opt='col' if n > 1 else 'apl', lm=.073, rm=.045, bm=.18, x=1.5, y=.5, gridy=grid, gridx=grid)
         return h, self.Count - start_count
 
-    def draw_all(self, corr=True, n=-1, x_range=None, y_range=None, ind=None, channel=None, draw_opt=None, show=True):
-        n = 1024 * n if n != -1 else n
+    def draw_all(self, corr=True, n=None, x_range=None, y_range=None, ind=None, channel=None, draw_opt=None, show=True):
+        n = -1 if n is None else 1024 * n
         values, times = self.get_values(ind, channel)[:n], self.get_times(corr, ind)[:n]
         if values.size > self.Run.NSamples:
             h = TH2F('hwf', 'All Waveforms', 1024, 0, 512, 2048, -512, 512)
@@ -137,7 +137,7 @@ class Waveform(Analysis):
         g1.Draw('c')
 
     def get_trigger_cells(self, redo=False):
-        return do_hdf5(self.make_simple_hdf5_path('TC'), self.Run.get_root_vec, redo=redo, var='trigger_cell', cut=self.Cut, dtype='i2')
+        return do_hdf5(self.make_simple_hdf5_path('TC', self.get_cut_name()), self.Run.get_root_vec, redo=redo, var='trigger_cell', cut=self.Cut, dtype='i2')
 
     def get_all(self, channel=None, redo=False):
         """ extracts all dut waveforms after all cuts from the root tree and saves it as an hdf5 file """
@@ -150,7 +150,10 @@ class Waveform(Analysis):
                 waveforms.append(self.Ana.Polarity * self.Run.get_root_vec(n, dtype='f2'))
                 self.Ana.PBar.update()
             return array(waveforms)
-        return do_hdf5(self.make_simple_hdf5_path(dut=self.Channel if channel is None else channel), f, redo=redo)
+        return do_hdf5(self.make_simple_hdf5_path(suf=self.get_cut_name(), dut=self.Channel if channel is None else channel), f, redo=redo)
+
+    def get_cut_name(self):
+        return self.Cut.GetName() if not self.Cut.GetName().startswith('All') else ''
 
     def get_values(self, ind=None, channel=None):
         return array(self.get_all(channel=channel))[ind].flatten()
@@ -168,7 +171,7 @@ class Waveform(Analysis):
                     self.PBar.update(i)
             self.PBar.finish()
             return array(times)
-        t = do_hdf5(self.make_simple_hdf5_path('Times'), f, redo=redo)
+        t = do_hdf5(self.make_simple_hdf5_path('Times', self.get_cut_name()), f, redo=redo)
         peaks = self.Ana.Peaks.get_from_tree() if corr else []
         return array(t) - (peaks - peaks[0]).reshape(peaks.size, 1) if corr else t
 
