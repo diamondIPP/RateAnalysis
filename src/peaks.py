@@ -86,7 +86,7 @@ class PeakAnalysis(Analysis):
             nvalues = array([where((m - w < lst) & (lst < m + w))[0].size for lst in values])
             indices = where(nvalues == 0)[0]
             return indices - arange(indices.size)  # we need the positions where these indices are missing
-        return do_hdf5(self.make_simple_hdf5_path('NoSig'), f, redo=redo)
+        return do_hdf5(self.make_simple_hdf5_path('NoSig', self.get_cut_name()), f, redo=redo)
 
     def get(self, flat=False, fit=False):
         times, heights, n_peaks = self.find_all(fit=fit)
@@ -196,6 +196,9 @@ class PeakAnalysis(Analysis):
         bin_centers = (bins + (bins[1] - bins[0]) / 2)[:-1]
         m, s = mean_sigma(bin_centers, weights)
         return ufloat(m, s / sqrt(values.size)) - self.Ana.Pedestal.get_raw_mean()
+
+    def get_cut_name(self):
+        self.Cut.GetName() if not self.Cut.GetName().startswith('All') else ''
     # endregion GET
     # ----------------------------------------
 
@@ -367,7 +370,7 @@ class PeakAnalysis(Analysis):
 
     def find_all(self, redo=False, thresh=None, fit=False):
         suf = '' if thresh is None and not fit else '{:1.0f}_{}'.format(thresh, int(fit)) if thresh is not None else int(fit)
-        hdf5_path = self.make_simple_hdf5_path(suf=suf, dut=self.Channel)
+        hdf5_path = self.make_simple_hdf5_path(suf=suf + self.get_cut_name(), dut=self.Channel)
         if file_exists(hdf5_path) and not redo:
             f = h5py.File(hdf5_path, 'r')
             return f['times'], f['heights'], f['n_peaks']
@@ -429,7 +432,7 @@ class PeakAnalysis(Analysis):
                 cfts.append(self.find_cft(values[i], times[i], peaks[i], peak_times[i], thresh=thresh))
                 self.PBar.update()
             return concatenate(cfts).astype('f2')
-        return do_hdf5(self.make_simple_hdf5_path('cft', '{:.0f}'.format(thresh * 100)), f, redo=redo)
+        return do_hdf5(self.make_simple_hdf5_path('cft', '{:.0f}{}'.format(thresh * 100, self.get_cut_name())), f, redo=redo)
 
     def draw_cft(self, thresh=.5, bin_size=.5, show=True, draw_ph=False, x=None, y=None, y_range=None, smear=None):
         self.format_statbox(entries=1, x=.86 if draw_ph else .95)
@@ -464,7 +467,7 @@ class PeakAnalysis(Analysis):
                 self.PBar.update()
             return concatenate(tots).astype('f2')
         suffix = '' if thresh is None else '{:.0f}'.format(thresh if fixed else thresh * 100)
-        return do_hdf5(self.make_simple_hdf5_path('TOT', suffix), f, redo=redo)
+        return do_hdf5(self.make_simple_hdf5_path('TOT', suffix + self.get_cut_name()), f, redo=redo)
 
     def calc_tot(self, values=None, times=None, peaks=None, peak_times=None, ind=None, thresh=None, fixed=True, show=False):
         x, y, p, t = (times, values, peaks, peak_times) if ind is None else self.get_event(ind)
