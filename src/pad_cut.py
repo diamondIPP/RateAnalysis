@@ -46,7 +46,7 @@ class PadCut(Cut):
     def get_pulser(self, beam_on=True):
         cut = self.generate_custom(include=['ped_sigma', 'event_range'], prnt=False) + invert(self.get('pulser'))
         cut += self.get('beam_interruptions') if beam_on else invert(self.generate_jump_cut())
-        return CutString('PulserBeam{}'.format('On' if beam_on else 'Off'), cut)
+        return CutString('PulserBeam{}'.format('On' if beam_on else 'Off'), cut)()
     # endregion GET
     # ----------------------------------------
 
