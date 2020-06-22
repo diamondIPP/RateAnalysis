@@ -15,16 +15,16 @@ from dut import DUT
 class Run:
     """ Run class containing all the information for a single run. """
 
-    def __init__(self, run_number=None, test_campaign=None, tree=True, t_vec=None, verbose=False):
+    def __init__(self, number=None, test_campaign=None, tree=True, t_vec=None, verbose=False):
         """
-        :param run_number: if None is provided it creates a dummy run
+        :param number: if None is provided it creates a dummy run
         :param test_campaign: if None is provided ...
         :param tree: root_tree object, if None is given it will start the converter
         :param t_vec: time sequence of the run, if None is provide it will generate a corrected one
         :param verbose: turn on more output
         """
         # Basics
-        self.RunNumber = run_number
+        self.Number = number
         self.Verbose = verbose
         self.MainConfig = Analysis.load_main_config()
 
@@ -46,7 +46,7 @@ class Run:
         self.RootFile = None
         self.Tree = None
         self.TreeName = self.Config.get('BASIC', 'treename')
-        self.DUTs = [DUT(i + 1, self.RunInfo) for i in xrange(self.get_n_diamonds())] if self.RunNumber is not None else None
+        self.DUTs = [DUT(i + 1, self.RunInfo) for i in xrange(self.get_n_diamonds())] if self.Number is not None else None
 
         # Settings
         self.PixelSize = loads(self.MainConfig.get('PIXEL', 'size'))
@@ -63,7 +63,7 @@ class Run:
         self.Duration = self.LogEnd - self.LogStart
 
         self.Converter = Converter(self)
-        if self.set_run(run_number, tree):
+        if self.set_run(number, tree):
             # tree info
             self.TimeOffset = None
             self.Time = self.load_time_vec(t_vec)
@@ -78,13 +78,13 @@ class Run:
             self.LogEnd = self.LogStart + self.Duration  # overwrite if we know exact duration
             self.NPlanes = self.load_n_planes()
 
-    def set_run(self, run_number, root_tree):
-        if run_number is None:
+    def set_run(self, number, root_tree):
+        if number is None:
             return False
-        if run_number < 0 and type(run_number) is not int:
+        if number < 0 and type(number) is not int:
             critical('incorrect run number')
 
-        self.RunNumber = run_number
+        self.Number = number
         self.load_run_info()
         self.Flux = self.calculate_flux()
 
@@ -103,13 +103,13 @@ class Run:
         return True
 
     def get_type(self):
-        return self.Config.get('BASIC', 'type') if self.RunNumber is not None else None
+        return self.Config.get('BASIC', 'type') if self.Number is not None else None
 
     # ----------------------------------------
     # region INIT
     def load_test_campaign(self, testcampaign):
         testcampaign = self.MainConfig.get('MAIN', 'default test campaign') if testcampaign is None else testcampaign
-        if testcampaign not in self.get_test_campaigns() and self.RunNumber is not None:
+        if testcampaign not in self.get_test_campaigns() and self.Number is not None:
             critical('The Testcampaign {} does not exist!'.format(testcampaign))
         return testcampaign
 
@@ -123,24 +123,23 @@ class Run:
         self.Tree = self.RootFile.Get(self.TreeName)
 
     def load_config(self):
-        run_number = self.RunNumber if hasattr(self, 'RunNumber') else None
         parser = ConfigParser({'excluded_runs': '[]'})  # add non default option
         base_file_name = join(get_base_dir(), 'config', self.TCString, 'RunConfig.ini')
         if not file_exists(base_file_name):
             log_critical('RunConfig.ini does not exist for {0}! Please create it in config/{0}!'.format(self.TCString))
         parser.read(base_file_name)  # first read the main config file with general information for all splits
-        if parser.has_section('SPLIT') and run_number is not None:
+        if parser.has_section('SPLIT') and self.Number is not None:
             split_runs = [0] + loads(parser.get('SPLIT', 'runs')) + [inf]
-            config_nr = next(i for i in xrange(1, len(split_runs)) if split_runs[i - 1] <= run_number < split_runs[i])
+            config_nr = next(i for i in xrange(1, len(split_runs)) if split_runs[i - 1] <= self.Number < split_runs[i])
             parser.read(join(get_base_dir(), 'config', self.TCString, 'RunConfig{nr}.ini'.format(nr=config_nr)))  # add the content of the split config
         return parser
 
     def load_rootfile_path(self):
-        return join(self.RootFileDir, 'TrackedRun{run:03d}.root'.format(run=self.RunNumber)) if self.RunNumber is not None else None
+        return join(self.RootFileDir, 'TrackedRun{run:03d}.root'.format(run=self.Number)) if self.Number is not None else None
 
     def load_rootfile_dirname(self):
         fdir = 'pads' if self.get_type() == 'pad' else self.get_type()
-        return ensure_dir(join(self.TCDir, 'root', fdir)) if self.RunNumber is not None else None
+        return ensure_dir(join(self.TCDir, 'root', fdir)) if self.Number is not None else None
 
     def generate_tc_directory(self):
         return join(self.DataDir, 'psi_{y}_{m}'.format(y=self.TCString[:4], m=self.TCString[4:]))
@@ -157,7 +156,7 @@ class Run:
         return [i + 1 for i in xrange(len([key for key in self.RunInfo.iterkeys() if key.startswith('dia') and key[-1].isdigit()]))]
 
     def load_dut_type(self):
-        dut_type = self.Config.get('BASIC', 'type') if self.RunNumber is not None else None
+        dut_type = self.Config.get('BASIC', 'type') if self.Number is not None else None
         if dut_type not in ['pixel', 'pad', None]:
             log_critical("The DUT type {0} has to be either 'pixel' or 'pad'".format(dut_type))
         return dut_type
@@ -175,7 +174,7 @@ class Run:
     def load_run_info(self, run_number=None):
         data = self.load_run_info_file()
 
-        run_number = self.RunNumber if run_number is None else run_number
+        run_number = self.Number if run_number is None else run_number
         if run_number >= 0:
             run_info = data.get(str(run_number))
             if run_info is None:  # abort if the run is still not found
@@ -229,7 +228,7 @@ class Run:
 
     def load_mask(self):
         mask_file = self.load_mask_file_path()
-        if basename(mask_file) in ['no mask', 'none', 'none!'] or self.RunNumber is None:
+        if basename(mask_file) in ['no mask', 'none', 'none!'] or self.Number is None:
             return
         mask_data = {}
         # format: cornBot roc x1 y1
@@ -255,7 +254,7 @@ class Run:
         return mask_data
 
     def get_unmasked_area(self):
-        if self.RunNumber is None:
+        if self.Number is None:
             return
         mask = self.load_mask()
         # default pixel
@@ -300,7 +299,7 @@ class Run:
         return parser.get('ALIASES', dia.lower()) if dia.lower() in parser.options('ALIASES') else log_critical('Please add {} to the diamond aliases!'.format(dia.encode()))
 
     def reload_run_config(self, run_number):
-        self.RunNumber = run_number
+        self.Number = run_number
         self.Config = self.load_config()
         self.RunInfo = self.load_run_info()
         self.RootFileDir = self.load_rootfile_dirname()
@@ -317,7 +316,7 @@ class Run:
         return is_valid
 
     def calculate_flux(self):
-        if self.RunNumber is None:
+        if self.Number is None:
             return
         fluxes = []
         if self.find_for_in_comment():
@@ -378,7 +377,7 @@ class Run:
     # ----------------------------------------
     # region SHOW
     def show_run_info(self):
-        print 'Run information for run', self.RunNumber
+        print 'Run information for run', self.Number
         for key, value in sorted(self.RunInfo.iteritems()):
             print '{k}: {v}'.format(k=key.ljust(13), v=value)
 

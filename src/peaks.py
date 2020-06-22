@@ -20,7 +20,6 @@ class PeakAnalysis(Analysis):
         self.Ana = pad_analysis
         Analysis.__init__(self, verbose=self.Ana.Verbose)
         self.Run = self.Ana.Run
-        self.RunNumber = self.Run.RunNumber
         self.Channel = self.Ana.Channel
         self.DUT = self.Ana.DUT
         self.Tree = self.Ana.Tree
@@ -56,7 +55,7 @@ class PeakAnalysis(Analysis):
         return self.Ana.Waveform.get_binning(bin_size)
 
     def get_from_tree(self):
-        return do_hdf5(self.make_hdf5_path('Peaks', 'V1', self.Ana.RunNumber, self.Channel), self.Run.get_root_vec, var=self.Ana.PeakName, cut=self.Cut, dtype='f2')
+        return do_hdf5(self.make_hdf5_path('Peaks', 'V1', self.Run.Number, self.Channel), self.Run.get_root_vec, var=self.Ana.PeakName, cut=self.Cut, dtype='f2')
 
     def get_signal_values(self, f, ind=None, default=-1, *args, **kwargs):
         signal_ind, noind = self.get_signal_indices(), self.get_no_signal_indices()
@@ -207,7 +206,7 @@ class PeakAnalysis(Analysis):
             times, heights, n_peaks = self.find_all(redo=redo, thresh=thresh)
             times = self.get_corrected_times(times, n_peaks) if corr else times
             times = split(times, split_)
-            hs = [TH1F('hp{}{}'.format(self.Ana.RunNumber, i), 'Peak Times', 512 * 2, 0, 512) for i in range(split_)]
+            hs = [TH1F('hp{}{}'.format(self.Run.Number, i), 'Peak Times', 512 * 2, 0, 512) for i in range(split_)]
             for i in range(split_):
                 v = times[i]
                 hs[i].FillN(v.size, array(v, 'd'), ones(v.size))

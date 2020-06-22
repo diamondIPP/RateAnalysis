@@ -307,7 +307,7 @@ class PadAnalysis(DUTAnalysis):
         cut_str = self.Cut(cut)
         bin_size = self.Bins.BinSize if bin_size is None else bin_size
         suffix = '{bins}{cor}_{reg}{c}'.format(bins=bin_size, cor=correction, reg=self.get_short_regint(sig), c=cut_str.GetName())
-        picklepath = self.make_pickle_path('Ph_fit', None, self.RunNumber, self.DUT.Number, suf=suffix)
+        picklepath = self.make_pickle_path('Ph_fit', None, self.Run.Number, self.DUT.Number, suf=suffix)
 
         def func():
             signal = self.generate_signal_name(sig, corr)
@@ -341,7 +341,7 @@ class PadAnalysis(DUTAnalysis):
             if h.GetBinContent(i) < .8 * sum_ph / (i + 1):
                 if not h.GetBinEntries(i):
                     continue  # if the bin is empty
-                log_warning('Found PH fluctiation in run {}! Stopping fit after {:2.0f}%'.format(self.RunNumber, 100. * (i - 1) / h.GetNbinsX()))
+                log_warning('Found PH fluctiation in run {}! Stopping fit after {:2.0f}%'.format(self.Run.Number, 100. * (i - 1) / h.GetNbinsX()))
                 return h.GetBinCenter(i - 1)
         return h.GetBinCenter(h.GetNbinsX()) + 1000
 
@@ -391,10 +391,10 @@ class PadAnalysis(DUTAnalysis):
                                  start=None, x_range=None, redo=False, prnt=True, save=True, normalise=None, sumw2=False):
         cut = self.Cut(cut)
         suffix = '{b}_{c}_{cut}_{n}'.format(b=bin_width, c=int(evnt_corr), cut=cut.GetName(), n=self.get_short_regint(sig))
-        pickle_path = self.make_pickle_path('PulseHeight', 'Histo', run=self.RunNumber, ch=self.DUT.Number, suf=suffix)
+        pickle_path = self.make_pickle_path('PulseHeight', 'Histo', run=self.Run.Number, ch=self.DUT.Number, suf=suffix)
 
         def func():
-            self.info('Drawing signal distribution for run {run} and {dia}...'.format(run=self.RunNumber, dia=self.DUT.Name), prnt=prnt)
+            self.info('Drawing signal distribution for run {run} and {dia}...'.format(run=self.Run.Number, dia=self.DUT.Name), prnt=prnt)
             set_root_output(False)
             h1 = TH1F('h_sd', 'Pulse Height {s}'.format(s='with Pedestal Correction' if evnt_corr else ''), *self.Bins.get_pad_ph(bin_width))
             sig_name = self.generate_signal_name(sig, evnt_corr, off_corr, cut)
@@ -451,7 +451,7 @@ class PadAnalysis(DUTAnalysis):
     def draw_signal_vs_cft(self, bin_size=None, thresh=.5, x=None, y=None, show=True):
         p = TProfile('pscfd', 'Signal vs {:.0f}% Constant Fraction Time'.format(thresh * 100), *self.get_t_bins(bin_size))
         self.format_statbox(all_stat=True)
-        fill_hist(p, choose(x, self.Peaks.get_all_cfd(thresh)), choose(y, self.get_ph_values()))
+        fill_hist(p, choose(x, self.Peaks.get_all_cft(thresh)), choose(y, self.get_ph_values()))
         format_histo(p, x_tit='Constant Fraction Time [ns]', y_tit='Pulse Height [mV]', y_off=1.4)
         self.draw_histo(p, show=show, lm=.12)
         return p
@@ -459,7 +459,7 @@ class PadAnalysis(DUTAnalysis):
     def draw_signal_vs_times(self, bin_size=.2, show=True):
         p = TProfile2D('hscfp', 'Signal vs. CFD and Peak Time', *(self.get_t_bins(bin_size) + self.get_t_bins(bin_size)))
         x = array(self.Peaks.get_from_tree())
-        y = self.Peaks.get_all_cfd()
+        y = self.Peaks.get_all_cft()
         zz = self.Run.get_root_vec(var=self.generate_signal_name(), cut=self.Cut())
         for i in range(x.size):
             p.Fill(x[i], y[i], zz[i])
@@ -508,10 +508,10 @@ class PadAnalysis(DUTAnalysis):
         self.add(h, h_sig, h_ped1, h_ped2, c)
 
     def show_bucket_numbers(self, show=True):
-        pickle_path = self.PickleDir + 'Cuts/BucketEvents_{tc}_{run}_{dia}.pickle'.format(tc=self.TestCampaign, run=self.RunNumber, dia=self.DUT.Name)
+        pickle_path = self.PickleDir + 'Cuts/BucketEvents_{tc}_{run}_{dia}.pickle'.format(tc=self.TestCampaign, run=self.Run.Number, dia=self.DUT.Name)
 
         def func():
-            print('getting number of bucket events for run {run} and {dia}...'.format(run=self.RunNumber, dia=self.DUT.Name))
+            print('getting number of bucket events for run {run} and {dia}...'.format(run=self.Run.Number, dia=self.DUT.Name))
             n_new = self.Tree.Draw('1', '!({buc})&&{pul}'.format(buc=self.Cut.CutStrings['bucket'], pul=self.Cut.CutStrings['pulser']), 'goff')
             n_old = self.Tree.Draw('1', '!({buc})&&{pul}'.format(buc=self.Cut.CutStrings['old_bucket'], pul=self.Cut.CutStrings['pulser']), 'goff')
             if show:
@@ -579,7 +579,7 @@ class PadAnalysis(DUTAnalysis):
         self.reset_colors()
 
     def show_bucket_means(self, show=True, plot_histos=True):
-        pickle_path = self.PickleDir + 'Cuts/BucketMeans_{tc}_{run}_{dia}.pickle'.format(tc=self.TestCampaign, run=self.RunNumber, dia=self.DUT.Name)
+        pickle_path = self.PickleDir + 'Cuts/BucketMeans_{tc}_{run}_{dia}.pickle'.format(tc=self.TestCampaign, run=self.Run.Number, dia=self.DUT.Name)
 
         def func():
             gROOT.ProcessLine('gErrorIgnoreLevel = kError;')
@@ -847,28 +847,28 @@ class PadAnalysis(DUTAnalysis):
     def show_information(self, header=True, prnt=True):
         peak_int = '{} ({})'.format(self.PeakIntegral, remove_letters(self.PeakIntegralName))
         region = '{} ({})'.format(self.SignalRegion, self.SignalRegionName.split('_')[-1])
-        rows = [[self.RunNumber, self.Run.RunInfo['runtype'], self.DUT.Name, '{:14.1f}'.format(self.Run.Flux.n), '{:+5.0f}'.format(self.DUT.Bias), region, peak_int]]
+        rows = [[self.Run.Number, self.Run.RunInfo['runtype'], self.DUT.Name, '{:14.1f}'.format(self.Run.Flux.n), '{:+5.0f}'.format(self.DUT.Bias), region, peak_int]]
         print_table(rows, self.get_info_header() if header else None, prnt=prnt)
     # endregion SHOW
     # ----------------------------------------
 
     def check_alignment(self):
         """ check if the events from telescope and digitiser are aligned"""
-        pickle_path = self.make_pickle_path('Alignment', run=self.RunNumber)
+        pickle_path = self.make_pickle_path('Alignment', run=self.Run.Number)
 
         def f():
             alignment = PadAlignment(self.Run.Converter, verbose=False)
             return alignment.IsAligned
 
         is_aligned = do_pickle(pickle_path, f)
-        log_warning('\nRun {r} is misaligned :-('.format(r=self.RunNumber)) if not is_aligned else do_nothing()
+        log_warning('\nRun {r} is misaligned :-('.format(r=self.Run.Number)) if not is_aligned else do_nothing()
         return is_aligned
 
     def draw_alignment(self, n_pulser=200, thresh=40, show=True):
         """ draw the aligment of telescope and digitiser events """
         xbins = self.Bins.get_pulser(n_pulser)
         p = self.Pulser.draw_hit_efficiency(xbins, show=False)
-        h = TH2F('ha{}'.format(self.RunNumber), 'Event Alignment', *(xbins + [3, 0, 3]))
+        h = TH2F('ha{}'.format(self.Run.Number), 'Event Alignment', *(xbins + [3, 0, 3]))
         for ibin in xrange(1, xbins[0]):
             h.SetBinContent(ibin, 2, int(p.GetBinContent(ibin) <= thresh) + 1)
         format_histo(h, x_tit='Event Number', y_tit='Alignment', stats=False, l_off_y=99, center_y=True)

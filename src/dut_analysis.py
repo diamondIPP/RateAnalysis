@@ -23,7 +23,7 @@ class DUTAnalysis(TelecopeAnalysis):
         self.print_start(run_number, prnt, dut=self.DUT.Name)
 
         self.update_config()
-        self.set_save_directory(join(self.DUT.Name, str(self.RunNumber).zfill(3)))
+        self.set_save_directory(join(self.DUT.Name, str(self.Run.Number).zfill(3)))
 
         self.Currents = Currents(self)
 
@@ -43,14 +43,14 @@ class DUTAnalysis(TelecopeAnalysis):
         return ['Run', 'Type', 'Diamond', 'Flux [kHz/cm2]', 'HV [V]']
 
     def show_information(self, header=True, prnt=True):
-        rows = [[self.RunNumber, self.Run.RunInfo['runtype'], self.DUT.Name, '{:14.1f}'.format(self.Run.Flux.n), '{:+6.0f}'.format(self.DUT.Bias)]]
+        rows = [[self.Run.Number, self.Run.RunInfo['runtype'], self.DUT.Name, '{:14.1f}'.format(self.Run.Flux.n), '{:+6.0f}'.format(self.DUT.Bias)]]
         return print_table(rows, self.get_info_header() if header else None, prnt=prnt)
 
     # ----------------------------------------
     # region GET
     def get_events(self, cut=None, redo=False):
         cut = self.Cut(cut)
-        return do_hdf5(self.make_hdf5_path('Events', run=self.RunNumber, ch=self.DUT.Number, suf=cut.GetName()), self.Run.get_root_vec, redo, dtype='i4', var='Entry$', cut=cut)
+        return do_hdf5(self.make_hdf5_path('Events', run=self.Run.Number, ch=self.DUT.Number, suf=cut.GetName()), self.Run.get_root_vec, redo, dtype='i4', var='Entry$', cut=cut)
 
     def get_n_entries(self, cut=None):
         return self.Tree.GetEntries(self.Cut(cut).GetTitle())
@@ -80,7 +80,7 @@ class DUTAnalysis(TelecopeAnalysis):
         return self.Run.get_root_vecs(n, 3)
 
     def get_uniformity(self, bins=10, redo=False):
-        pickle_path = self.make_pickle_path('Signal', 'Uniformity', self.RunNumber, ch=self.DUT.Number, suf=bins)
+        pickle_path = self.make_pickle_path('Signal', 'Uniformity', self.Run.Number, ch=self.DUT.Number, suf=bins)
 
         def f():
             return self.draw_uniformity(bins=bins, show=False)
@@ -101,7 +101,7 @@ class DUTAnalysis(TelecopeAnalysis):
             n1, n2 = self.get_n_entries(self.Cut.generate_custom(include=['tracks', 'fiducial'], prnt=False)), self.get_n_entries(self.Cut.get('tracks'))
             a1, a2 = self.Cut.get_fiducial_area(), min(self.Run.get_unmasked_area().values())
             return n1 / a1 * a2 / n2
-        return do_pickle(self.make_pickle_path('Flux', 'Corr', self.RunNumber, self.DUT.Number), f)
+        return do_pickle(self.make_pickle_path('Flux', 'Corr', self.Run.Number, self.DUT.Number), f)
 
     def get_additional_peak_height(self):
         pass
@@ -161,14 +161,14 @@ class DUTAnalysis(TelecopeAnalysis):
 
         cut = self.Cut.generate_custom(exclude=['fiducial'], prnt=prnt) if not fid and cut is None else self.Cut(cut)
         suf = '{c}_{ch}_{res}'.format(c=cut.GetName(), ch=self.Cut.CutConfig['chi2_x'], res=res if bins is None else '{}x{}'.format(bins[0], bins[2]))
-        pickle_path = self.make_pickle_path('SignalMaps', 'Hit' if hitmap else 'Signal', run=self.RunNumber, ch=self.DUT.Number, suf=suf)
+        pickle_path = self.make_pickle_path('SignalMaps', 'Hit' if hitmap else 'Signal', run=self.Run.Number, ch=self.DUT.Number, suf=suf)
 
         def func():
             set_root_output(0)
             name = 'h_hm' if hitmap else 'h_sm'
             atts = [name, 'Track Hit Map' if hitmap else 'Signal Map'] + (self.Bins.get_global(res, mm=True) if bins is None else bins)
             h1 = TH2I(*atts) if hitmap else TProfile2D(*atts)
-            self.info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.DUT.Name, run=self.RunNumber, mode='hit' if hitmap else 'signal '), prnt=prnt)
+            self.info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.DUT.Name, run=self.Run.Number, mode='hit' if hitmap else 'signal '), prnt=prnt)
             y, x = self.Cut.get_track_vars(self.DUT.Number - 1, mm=True)
             self.Tree.Draw('{z}{y}:{x}>>{h}'.format(z=self.get_ph_str() + ':' if not hitmap else '', x=x, y=y, h=name), cut, 'goff')
             set_2d_ranges(h1, *([3, 3] if size is None else size))
@@ -248,7 +248,7 @@ class DUTAnalysis(TelecopeAnalysis):
 
     def get_signal_spread(self, min_percent=5, max_percent=99, prnt=True):
         """ Calculates the relative spread of mean signal response from the 2D signal response map. """
-        pickle_path = self.make_pickle_path('SignalMaps', 'Spread', self.RunNumber, self.DUT.Number)
+        pickle_path = self.make_pickle_path('SignalMaps', 'Spread', self.Run.Number, self.DUT.Number)
 
         def f():
             h = self.draw_sig_map_disto(show=False)

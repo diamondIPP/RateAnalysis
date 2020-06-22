@@ -23,10 +23,9 @@ class TelecopeAnalysis(Analysis):
 
         # Run
         self.Run = run_selector(run, self.TCString, tree, t_vec, verbose)
-        self.RunNumber = run
 
         # basics
-        self.TelSaveDir = str(self.RunNumber).zfill(3)
+        self.TelSaveDir = str(self.Run.Number).zfill(3)
         self.Tree = self.Run.Tree
         self.InfoLegend = InfoLegend(self)
         self.StartTime = self.Run.StartTime if self.Tree else time_stamp(self.Run.LogStart)
@@ -103,7 +102,7 @@ class TelecopeAnalysis(Analysis):
         return h
 
     def get_mean_angle(self, mode='x'):
-        picklepath = self.make_pickle_path('TrackAngle', 'mean_{}'.format(mode), self.RunNumber)
+        picklepath = self.make_pickle_path('TrackAngle', 'mean_{}'.format(mode), self.Run.Number)
 
         def f():
             h = self.draw_angle_distribution(mode=mode, show=False, prnt=False)
@@ -154,7 +153,7 @@ class TelecopeAnalysis(Analysis):
 
     def get_residual(self, roc, chi2, mode='x', redo=False):
 
-        pickle_path = self.make_pickle_path('Tracks', 'Res{}'.format(mode.title()), self.RunNumber, roc, chi2)
+        pickle_path = self.make_pickle_path('Tracks', 'Res{}'.format(mode.title()), self.Run.Number, roc, chi2)
 
         def f():
             self.Cut.set_chi2(chi2)
@@ -340,7 +339,7 @@ class TelecopeAnalysis(Analysis):
     def draw_beam_profile(self, at_dut=1, mode='x', fit=True, fit_range=.8, res=.7, show=True, prnt=True):
         h = self.draw_tracking_map(at_dut, res, show=False, prnt=prnt)
         p = h.ProjectionX() if mode.lower() == 'x' else h.ProjectionY()
-        format_histo(p, title='Profile {}'.format(mode.title()), name='pbp{}'.format(self.RunNumber), y_off=1.3, y_tit='Number of Hits', fill_color=self.FillColor)
+        format_histo(p, title='Profile {}'.format(mode.title()), name='pbp{}'.format(self.Run.Number), y_off=1.3, y_tit='Number of Hits', fill_color=self.FillColor)
         self.format_statbox(all_stat=True)
         self.draw_histo(p, lm=.13, show=show)
         if fit:
@@ -474,7 +473,7 @@ class TelecopeAnalysis(Analysis):
 
     def _get_flux(self, show=False, prnt=True):
 
-        pickle_path = self.make_pickle_path('Flux', run=self.RunNumber)
+        pickle_path = self.make_pickle_path('Flux', run=self.Run.Number)
 
         def f():
             self.format_statbox(fit=True, entries=6)

@@ -21,7 +21,6 @@ class Waveform(Analysis):
         self.set_save_directory(self.Ana.SubDir)
         self.Polarity = self.Ana.Polarity
         self.DUT = self.Ana.DUT.Number
-        self.RunNumber = self.Ana.RunNumber
         self.InfoLegend = InfoLegend(pad_analysis)
 
         self.Count = 0
@@ -45,7 +44,7 @@ class Waveform(Analysis):
         y_range = increased_range([min(values), max(values)], .1, .2) if y_range is None else y_range
         h = self.make_tgrapherrors('g_cw', title, x=times, y=values) if n == 1 else h
         format_histo(h, x_tit='Time [ns]', y_tit='Signal [mV]', y_off=.5, stats=0, tit_size=.07, lab_size=.06, y_range=y_range, markersize=.5, x_range=x_range)
-        self.draw_histo(h, 'WaveForms{n}'.format(n=n), show=show, draw_opt='col' if n > 1 else 'apl', lm=.073, rm=.045, bm=.18, x=1.5, y=.5, gridy=grid, gridx=grid)
+        self.save_histo(h, 'WaveForms{n}'.format(n=n), show, draw_opt='col' if n > 1 else 'apl', lm=.073, rm=.045, bm=.18, x=1.5, y=.5, gridy=grid, gridx=grid)
         return h, self.Count - start_count
 
     def draw_all(self, corr=True, n=-1, x_range=None, y_range=None, ind=None, channel=None, draw_opt=None, show=True):
@@ -59,7 +58,7 @@ class Waveform(Analysis):
         y_range = increased_range([min(values), max(values)], .1, .2) if y_range is None else y_range
         format_histo(h, x_tit='Time [ns]', y_tit='Signal [mV]', y_off=.5, stats=0, tit_size=.07, lab_size=.06, markersize=.5, x_range=x_range, y_range=y_range)
         draw_opt = draw_opt if draw_opt is not None else 'col' if values.size > self.Run.NSamples else 'ap'
-        self.draw_histo(h, 'WaveForms{n}'.format(n='e'), show=show, draw_opt=draw_opt, lm=.073, rm=.045, bm=.18, x=1.5, y=.5, grid=1, logz=True)
+        self.draw_histo(h, show, draw_opt=draw_opt, lm=.073, rm=.045, bm=.18, x=1.5, y=.5, grid=1, logz=True)
         return h, n
 
     def draw_single(self, cut='', event=None, ind=None, x_range=None, y_range=None, draw_opt=None, show=True, show_noise=False):

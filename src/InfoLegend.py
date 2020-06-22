@@ -83,7 +83,7 @@ class InfoLegend:
         return run_str
 
     def get_runnumber_str(self):
-        return 's {}-{}'.format(self.Analysis.Runs[0], self.Analysis.Runs[-1]) if self.IsCollection else ' {}'.format(self.Analysis.RunNumber)
+        return 's {}-{}'.format(self.Analysis.Runs[0], self.Analysis.Runs[-1]) if self.IsCollection else ' {}'.format(self.Analysis.Run.Number)
 
     def get_dia_string(self, both_dias):
         dia_str = ', '.join(dut.Name for dut in self.Analysis.Run.DUTs) if both_dias else self.Analysis.DUT.Name

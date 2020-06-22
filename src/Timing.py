@@ -21,7 +21,6 @@ class TimingAnalysis(Analysis):
         self.TimingCut = self.Cut.generate_custom(exclude=['timing'], prnt=False, name='Timing')
         self.Polarity = self.Ana.Polarity
         self.DUT = self.Ana.DUT
-        self.RunNumber = self.Ana.RunNumber
         self.InfoLegend = InfoLegend(pad_analysis)
         self.set_save_directory(self.Ana.SubDir)
         self.set_pickle_sub_dir('Timing')
@@ -37,7 +36,7 @@ class TimingAnalysis(Analysis):
         self.Cut = self.Ana.Cut
 
     def get(self, par=1, redo=False):
-        pickle_path = self.make_pickle_path('Timing', 'PeakVals', self.RunNumber, self.DUT.Number)
+        pickle_path = self.make_pickle_path('Timing', 'PeakVals', self.Run.Number, self.DUT.Number)
 
         def f():
             h = self.draw_peaks(show=False, prnt=False, redo=redo)
@@ -182,7 +181,7 @@ class TimingAnalysis(Analysis):
     def draw_peaks_tc(self, corr=True, fit=True, cut=None, show=True, prnt=True, save=True, redo=False):
 
         cut = self.TimingCut if cut is None else self.Cut(cut)
-        pickle_path = self.make_pickle_path('Timing', 'PeakTC', self.RunNumber, self.DUT.Number, suf=cut.GetName())
+        pickle_path = self.make_pickle_path('Timing', 'PeakTC', self.Run.Number, self.DUT.Number, suf=cut.GetName())
 
         def f():
             set_root_warnings(False)

@@ -3,12 +3,9 @@
 # created on June 16th 2016 by M. Reichmann
 # --------------------------------------------------------
 
-from analysis import *
 from ROOT import TProfile, gROOT, THStack, TCut, TH2F
-from copy import deepcopy
-from numpy import mean
 from InfoLegend import InfoLegend
-from functools import partial
+from analysis import *
 
 
 class PulserAnalysis(Analysis):
@@ -27,8 +24,7 @@ class PulserAnalysis(Analysis):
         self.PedestalName = self.get_pedestal_name()
         self.Type = self.load_type()
 
-        self.DUT = self.Ana.DUT.Number
-        self.RunNumber = self.Ana.RunNumber
+        self.DUT = self.Ana.DUT
         self.InfoLegend = InfoLegend(pad_analysis)
 
     def get_signal_name(self, peak_int=None):
@@ -43,19 +39,18 @@ class PulserAnalysis(Analysis):
         return str(self.Ana.Run.RunInfo['pulser']) if 'pulser' in self.Ana.Run.RunInfo else None
 
     def get_rate(self):
-        n = self.Tree.Draw('pulser', self.Cut.CutStrings['beam_interruptions'], 'goff')
-        values = self.Run.get_root_vec(n, dtype=bool)
+        values = self.Run.get_root_vec(dtype=bool, var='pulser', cut=self.Cut.CutStrings.get('beam_interruptions'))
         rate = calc_eff(values=values)
         self.info('pulser rate: {:1.2f} ({:1.2f}) %'.format(rate.n, rate.s))
         return rate
 
     def get_pulse_height(self, corr=True, bin_width=.1, redo=False):
-        pickle_path = self.make_pickle_path('Pulser', 'HistoFit', self.RunNumber, self.DUT.Number, suf='{}_{}'.format('ped_corr' if corr else '', 'BeamOn'))
+        pickle_path = self.make_pickle_path('Pulser', 'HistoFit', self.Run.Number, self.DUT.Number, suf='{}_{}'.format('ped_corr' if corr else '', 'BeamOn'))
         fit = do_pickle(pickle_path, partial(self.draw_distribution_fit, show=False, prnt=False, corr=corr, redo=redo, bin_width=bin_width), redo=redo)
         return make_ufloat(fit, par=1)
 
     def get_pedestal(self, par=1, redo=False):
-        pickle_path = self.make_pickle_path('Pulser', 'Pedestal', self.RunNumber, self.DUT.Number)
+        pickle_path = self.make_pickle_path('Pulser', 'Pedestal', self.Run.Number, self.DUT.Number)
         fit = do_pickle(pickle_path, partial(self.draw_pedestal, show=False, prnt=False, redo=redo))
         return make_ufloat(fit, par=par)
 
@@ -94,8 +89,7 @@ class PulserAnalysis(Analysis):
 
     def draw_pulse_height(self, bin_size=10000, y_range=None, show=True, redo=False):
         """ Shows the average pulse height of the pulser as a function of time """
-        pickle_path = self.make_pickle_path('Pulser', 'PH', self.RunNumber, self.Ana.DUT.Number, bin_size)
-        print self.RunNumber
+        pickle_path = self.make_pickle_path('Pulser', 'PH', self.Run.Number, self.Ana.DUT.Number, bin_size)
 
         def f():
             gr = self.make_tgrapherrors('gpph', 'Pulser Pulse Height')
@@ -144,7 +138,7 @@ class PulserAnalysis(Analysis):
         start_string = '_{0}'.format(start) if start is not None else ''
         events_string = '_{0}'.format(events) if events is not None else ''
         suffix = '{corr}_{beam}{st}{ev}'.format(corr='ped_corr' if corr else '', beam='BeamOff' if not beam_on else 'BeamOn', st=start_string, ev=events_string)
-        pickle_path = self.make_pickle_path('Pulser', 'HistoFit', self.RunNumber, self.DUT.Number, suf=suffix)
+        pickle_path = self.make_pickle_path('Pulser', 'HistoFit', self.Run.Number, self.DUT.Number, suf=suffix)
         self.format_statbox(.95, .88, entries=4, only_fit=True, w=.5)
         h = self.draw_distribution(show=show, corr=corr, beam_on=beam_on, bin_width=bin_width, events=events, start=start, stats=True, redo=redo, prnt=prnt)
         h.SetName('Fit Result')
@@ -206,8 +200,8 @@ class PulserAnalysis(Analysis):
 
     def draw_hit_efficiency(self, xbins=200, show=True):
         xbins = self.Ana.Bins.get_pulser(xbins) if type(xbins) is int else xbins
-        p = TProfile('pa{}'.format(self.RunNumber), 'Hit Efficiency at Pulser Events', *xbins)
-        self.Ana.Tree.Draw('(@col.size()>1)*100:Entry$>>pa{}'.format(self.RunNumber), 'pulser', 'goff')
+        p = TProfile('pa{}'.format(self.Run.Number), 'Hit Efficiency at Pulser Events', *xbins)
+        self.Ana.Tree.Draw('(@col.size()>1)*100:Entry$>>pa{}'.format(self.Run.Number), 'pulser', 'goff')
         format_histo(p, x_tit='Event Number', y_tit='Hit Efficiency [%]', y_off=1.3, stats=0, y_range=[0, 105], fill_color=self.FillColor)
         self.save_histo(p, 'PulserHitEfficiency', show, self.Ana.TelSaveDir, draw_opt='hist', prnt=show, rm=.08)
         return p

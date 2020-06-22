@@ -26,7 +26,6 @@ class PedestalAnalysis(Analysis):
         self.SignalName = self.get_signal_name()
         self.RawName = self.get_signal_name(peak_int=1)
         self.DUT = self.Ana.DUT
-        self.RunNumber = self.Ana.RunNumber
         self.InfoLegend = InfoLegend(pad_analysis)
 
         self.Histogram = None
@@ -40,7 +39,7 @@ class PedestalAnalysis(Analysis):
     def get_par(self, par=1, name=None, cut=None, redo=False):
         name = self.SignalName if name is None else name
         suffix = '{r}_fwhm_{c}'.format(c=self.Cut(cut).GetName(), r=self.get_all_signal_names()[name])
-        picklepath = self.make_pickle_path('Pedestal', run=self.RunNumber, ch=self.DUT.Number, suf=suffix)
+        picklepath = self.make_pickle_path('Pedestal', run=self.Run.Number, ch=self.DUT.Number, suf=suffix)
         return make_ufloat(do_pickle(picklepath, partial(self.draw_disto_fit, name=name, cut=self.Cut(cut), show=False), redo=redo), par=par)
 
     def get_mean(self, name=None, cut=None, redo=False):
@@ -69,10 +68,10 @@ class PedestalAnalysis(Analysis):
         show = False if not save else show
         cut = self.Cut(cut)
         signal_name = self.SignalName if name is None else name
-        picklepath = self.make_pickle_path('Pedestal', 'Disto', run=self.RunNumber, ch=self.DUT.Number, suf='{c}_{r}'.format(c=cut.GetName(), r=self.get_all_signal_names()[signal_name]))
+        picklepath = self.make_pickle_path('Pedestal', 'Disto', run=self.Run.Number, ch=self.DUT.Number, suf='{c}_{r}'.format(c=cut.GetName(), r=self.get_all_signal_names()[signal_name]))
 
         def func():
-            info('Drawing pedestal distribution for {d} of run {r}'.format(d=self.DUT.Name, r=self.RunNumber), prnt=prnt)
+            info('Drawing pedestal distribution for {d} of run {r}'.format(d=self.DUT.Name, r=self.Run.Number), prnt=prnt)
             h1 = TH1F('h_pd', 'Pedestal Distribution', 2400, -150, 150)
             self.Tree.Draw('{name}>>h_pd'.format(name=signal_name), cut, 'goff')
             return h1
@@ -90,7 +89,7 @@ class PedestalAnalysis(Analysis):
     def draw_disto_fit(self, name=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True, draw_cut=False, normalise=None):
         cut = self.Cut.generate_custom(exclude='ped_sigma') if draw_cut else self.Cut(cut)
         suffix = '{r}_fwhm_{c}'.format(c=cut.GetName(), r=self.get_all_signal_names()[self.SignalName if name is None else name])
-        picklepath = self.make_pickle_path('Pedestal', run=self.RunNumber, ch=self.DUT.Number, suf=suffix)
+        picklepath = self.make_pickle_path('Pedestal', run=self.Run.Number, ch=self.DUT.Number, suf=suffix)
         show = False if not save else show
         self.format_statbox(fit=True, w=.35)
         h = self.draw_disto(name, cut, logy, show=False, save=save, redo=redo, prnt=prnt, normalise=normalise)
@@ -157,7 +156,7 @@ class PedestalAnalysis(Analysis):
 
     def draw_pulse_height_histo(self, signal_name=None, show=True, sigma=False, redo=False):
         signal_name = self.Ana.generate_signal_name(self.SignalName if signal_name is None else signal_name, evnt_corr=False)
-        picklepath = self.make_pickle_path('Pedestal', 'Evolution', run=self.RunNumber, ch=self.DUT.Number, suf=self.get_all_signal_names()[signal_name])
+        picklepath = self.make_pickle_path('Pedestal', 'Evolution', run=self.Run.Number, ch=self.DUT.Number, suf=self.get_all_signal_names()[signal_name])
 
         def func():
             h = self.draw_signal_time(signal_name, False)

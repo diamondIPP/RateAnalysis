@@ -27,7 +27,6 @@ class Converter:
 
         # Basics
         self.Run = run
-        self.RunNumber = run.RunNumber
         self.TestCampaign = run.TCString
         self.RunInfo = run.RunInfo
         self.Type = run.Type
@@ -44,15 +43,15 @@ class Converter:
         self.EudaqDir = self.load_dirname(self.SoftwareDir, 'eudaq')
         self.TrackingDir = self.load_dirname(self.SoftwareDir, 'tracking')
 
-        if self.RunNumber is not None:
+        if self.Run.Number is not None:
             # Tracking Software
             self.TelescopeID = self.RunConfig.getint('BASIC', 'telescopeID')
 
             # Files
-            self.RawFilePath = join(self.RawFileDir, 'run{run:06d}.raw'.format(run=self.RunNumber))
+            self.RawFilePath = join(self.RawFileDir, 'run{run:06d}.raw'.format(run=self.Run.Number))
             self.ConverterConfigFile = self.load_filename(join(self.EudaqDir, 'conf'), 'converter config')
-            self.NewConfigFile = join(self.EudaqDir, 'conf', '{}.ini'.format(self.RunNumber))
-            self.ErrorFile = join(self.Run.RootFileDir, 'Errors{:03d}.txt'.format(self.RunNumber if self.RunNumber is not None else 0))
+            self.NewConfigFile = join(self.EudaqDir, 'conf', '{}.ini'.format(self.Run.Number))
+            self.ErrorFile = join(self.Run.RootFileDir, 'Errors{:03d}.txt'.format(self.Run.Number if self.Run.Number is not None else 0))
 
             # Event Alignment
             self.DecodingErrors = self.read_errors()
@@ -84,11 +83,10 @@ class Converter:
 
     def set_run(self, run_number):
         self.Run.set_run(run_number, root_tree=False)
-        self.RunNumber = run_number
         self.RunInfo = self.Run.RunInfo
         self.RunConfig = self.Run.reload_run_config(run_number)
         self.Type = self.Run.get_type()
-        self.RawFilePath = join(self.RawFileDir, 'run{run:06d}.raw'.format(run=self.RunNumber))
+        self.RawFilePath = join(self.RawFileDir, 'run{run:06d}.raw'.format(run=self.Run.Number))
 
     def load_config(self):
         config = {}
@@ -100,10 +98,10 @@ class Converter:
         return OrderedDict(sorted(config.iteritems()))
 
     def get_eudaqfile_path(self):
-        file_names = glob(join(self.Run.RootFileDir, '{}*{:03d}.root'.format(self.MainConfig.get('Directories', 'eudaq prefix'), self.RunNumber)))
+        file_names = glob(join(self.Run.RootFileDir, '{}*{:03d}.root'.format(self.MainConfig.get('Directories', 'eudaq prefix'), self.Run.Number)))
         if file_names:
             return file_names[0]
-        return join(self.Run.RootFileDir, '{prefix}{run:06d}.root'.format(prefix=self.MainConfig.get('Directories', 'eudaq prefix'), run=self.RunNumber))
+        return join(self.Run.RootFileDir, '{prefix}{run:06d}.root'.format(prefix=self.MainConfig.get('Directories', 'eudaq prefix'), run=self.Run.Number))
 
     def get_trackingfile_path(self):
         return self.get_eudaqfile_path().replace('.root', '_withTracks.root')
@@ -140,7 +138,7 @@ class Converter:
         # prepare converter command
         cmd_list = [join(self.EudaqDir, 'bin', 'Converter.exe'), '-t', self.ConverterTree, '-c', join(self.EudaqDir, 'conf', self.NewConfigFile), self.RawFilePath]
         self.set_converter_configfile()
-        print_banner('START CONVERTING RAW FILE FOR RUN {0}'.format(self.RunNumber))
+        print_banner('START CONVERTING RAW FILE FOR RUN {0}'.format(self.Run.Number))
         info('{}\n'.format(' '.join(cmd_list)))
         check_call(cmd_list)
         self.remove_new_configfile()
@@ -161,12 +159,12 @@ class Converter:
                 if len(f.readlines()[3].split()) == 8:  # check if errors are already in the alignment file
                     self.Run.info('Plane errors already added')
                     return
-                print_banner('START FINDING PLANE ERRORS FOR RUN {}'.format(self.RunNumber))
+                print_banner('START FINDING PLANE ERRORS FOR RUN {}'.format(self.Run.Number))
                 self.tracking_tel(action='2')
 
     def remove_pickle_files(self):
-        files = glob(join(self.Run.Dir, 'metadata', '*', '*{tc}*_{run}*'.format(run=self.RunNumber, tc=self.Run.TCString)))
-        self.Run.info('Removing {} pickle files for run {}'.format(len(files), self.RunNumber))
+        files = glob(join(self.Run.Dir, 'metadata', '*', '*{tc}*_{run}*'.format(run=self.Run.Number, tc=self.Run.TCString)))
+        self.Run.info('Removing {} pickle files for run {}'.format(len(files), self.Run.Number))
         for f in files:
             remove_file(f)
 
@@ -183,7 +181,7 @@ class Converter:
         chdir(curr_dir)
 
     def add_tracking(self):
-        print_banner('START TRACKING FOR RUN {}'.format(self.RunNumber))
+        print_banner('START TRACKING FOR RUN {}'.format(self.Run.Number))
         self.tracking_tel()
         # move file from tracking directory to data directory
         move(join(self.TrackingDir, basename(self.get_trackingfile_path())), self.Run.RootFileDir)
@@ -218,7 +216,7 @@ class Converter:
         remove_file(self.NewConfigFile)
 
     def remove_decodingfile(self):
-        for file_name in glob(join(self.Run.RootFileDir, 'decoding*{:03d}.root'.format(self.RunNumber))):
+        for file_name in glob(join(self.Run.RootFileDir, 'decoding*{:03d}.root'.format(self.Run.Number))):
             remove_file(file_name)
 
     def set_converter_configfile(self):

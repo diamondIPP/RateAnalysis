@@ -11,9 +11,9 @@ from utils import ensure_dir, init_argparser
 class PixelRun(Run):
     """ Run class containing all the information for a single run. """
 
-    def __init__(self, run_number=None, test_campaign=None, tree=True, t_vec=None, verbose=False):
+    def __init__(self, number=None, test_campaign=None, tree=True, t_vec=None, verbose=False):
         """
-        :param run_number: if None is provided it creates a dummy run
+        :param number: if None is provided it creates a dummy run
         :param test_campaign: if None is provided ...
         :param tree: root_tree object, if None is given it will start the converter
         :param t_vec: time sequence of the run, if None is provide it will generate a corrected one
@@ -23,7 +23,7 @@ class PixelRun(Run):
         # Settings
         self.Type = 'pixel'
 
-        Run.__init__(self, run_number, test_campaign, tree, t_vec, verbose)
+        Run.__init__(self, number, test_campaign, tree, t_vec, verbose)
 
     def load_rootfile_dirname(self):
         return ensure_dir(join(self.TCDir, 'root', self.Type))

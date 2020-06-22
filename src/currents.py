@@ -39,7 +39,6 @@ class Currents(Analysis):
         self.RunPlan = self.load_run_plan()  # required for plotting
         self.HVConfig = self.load_parser()
         self.set_save_directory('currents')
-        self.RunNumber = self.load_run_number()
         self.Bias = self.load_bias()
 
         # Times
@@ -86,7 +85,7 @@ class Currents(Analysis):
         return self.Analysis.Bias if hasattr(self.Analysis, 'Bias') else None
 
     def load_run_number(self):
-        return None if self.Analysis is None else self.Analysis.RunNumber if not self.IsCollection else self.Analysis.RunPlan
+        return None if self.Analysis is None else self.Run.Number if not self.IsCollection else self.Analysis.RunPlan
 
     def load_run_plan(self):
         return self.RunSelection.SelectedRunplan if self.Analysis is None else self.Analysis.RunPlan if self.IsCollection else None
@@ -247,7 +246,7 @@ class Currents(Analysis):
 
     def get_current(self):
         if self.Analysis is not None and not self.Analysis.DUT.Bias:
-            warning('Bias of run {} is 0!'.format(self.Analysis.RunNumber))
+            warning('Bias of run {} is 0!'.format(self.Run.Number))
             current = make_ufloat((0, 0))
         else:
             h = self.draw_distribution(show=False)
@@ -262,7 +261,7 @@ class Currents(Analysis):
                 current = ufloat(fm, fs + self.Precision + .03 * fm)  # add .05 as uncertainty of the device and 5% systematic error
             else:
                 current = ufloat(h.GetMean(), h.GetMeanError() + .05 + .05 * h.GetMean())
-        self.Analysis.server_pickle(self.make_pickle_path('Currents', run=self.RunNumber, ch=self.DUT.Number), current)
+        self.Analysis.server_pickle(self.make_pickle_path('Currents', run=self.Run.Number, ch=self.DUT.Number), current)
         return current
 
     def draw_iv(self, show=True):
@@ -271,20 +270,20 @@ class Currents(Analysis):
         y = [c for c in self.Currents if c != 590]
         g = self.make_tgrapherrors('giv', 'I-V Curve for {}'.format(self.Analysis.DUT.Name), x=x, y=y)
         format_histo(g, x_tit='Voltage [V]', y_tit='Current [nA]', y_off=1.4)
-        self.draw_histo(g, 'IV', draw_opt='ap', logy=True, lm=.12, show=show)
+        self.draw_histo(g, draw_opt='ap', logy=True, lm=.12, show=show)
         return g
 
     def draw_indep_graphs(self, rel_time=False, ignore_jumps=True, v_range=None, f_range=None, c_range=None, averaging=1, with_flux=False, draw_opt='ap', show=True):
         self.IgnoreJumps = ignore_jumps
         self.set_graphs(averaging)
-        c = self.make_canvas('cc', 'Keithley Currents for Run {0}'.format(self.RunNumber), x=1.5, y=.75, show=show)
+        c = self.make_canvas('cc', 'Keithley Currents for Run {0}'.format(self.Run.Number), x=1.5, y=.75, show=show)
         self.draw_flux_pad(f_range, rel_time, draw_opt) if with_flux else self.draw_voltage_pad(v_range, draw_opt)
         self.draw_title_pad()
         self.draw_current_pad(rel_time, c_range, draw_opt)
         if self.IsCollection:
             self.draw_irradiation(make_irr_string(self.Analysis.RunSelection.get_irradiation()))
         self.Stuff.append(c)
-        run = self.Analysis.RunPlan if self.IsCollection else self.RunNumber
+        run = self.Analysis.RunPlan if self.IsCollection else self.Run.Number
         save_name = 'Currents{}_{}_{}'.format(self.TCString, run, self.DUT.Number)
         self.save_canvas(c, name=save_name, sub_dir='currents', show=show, ftype='png')
 
@@ -319,7 +318,7 @@ class Currents(Analysis):
     def draw_title_pad(self):
         self.draw_tpad('p2', transparent=True)
         bias_str = 'at {b} V'.format(b=self.Bias) if self.Bias else ''
-        run_str = '{n}'.format(n=self.RunNumber) if not self.IsCollection else 'Plan {rp}'.format(rp=self.Analysis.RunPlan)
+        run_str = '{n}'.format(n=self.Run.Number) if not self.IsCollection else 'Plan {rp}'.format(rp=self.Analysis.RunPlan)
         text = 'Currents of {dia} {b} - Run {r} - {n}'.format(dia=self.DUT.Name, b=bias_str, r=run_str, n=self.Name)
         self.draw_tlatex(pad_margins[0], 1.02 - pad_margins[-1], text, align=11, size=.06)
 

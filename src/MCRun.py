@@ -10,7 +10,7 @@ import ConfigParser
 class MCRun(Run):
 
     def __init__(self, validate = True, run_number = None, verbose=False):
-        Run.__init__(self, validate=validate, run_number=run_number, verbose=verbose)
+        Run.__init__(self, validate=validate, number=run_number, verbose=verbose)
         self.MCAttributes = {
             'NPeaks': None,
             'PeakHeight': 0.5,
