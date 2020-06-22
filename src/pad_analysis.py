@@ -7,7 +7,7 @@ from ROOT import gRandom, TProfile2D, THStack, Double, Long
 from pad_cut import PadCut
 from peaks import PeakAnalysis
 from Pedestal import PedestalAnalysis
-from Pulser import PulserAnalysis
+from pulser import PulserAnalysis
 from Timing import TimingAnalysis
 from converter import Converter
 from waveform import Waveform
@@ -51,8 +51,8 @@ class PadAnalysis(DUTAnalysis):
             self.Cut = PadCut.from_parent(self.Cut)
 
             # subclasses
-            self.Pulser = PulserAnalysis(self)
             self.Pedestal = PedestalAnalysis(self)
+            self.Pulser = PulserAnalysis(self)
             self.Waveform = Waveform(self)
             self.Peaks = PeakAnalysis(self)
 
@@ -276,7 +276,7 @@ class PadAnalysis(DUTAnalysis):
         if hasattr(self, 'Pulser') and signal == self.Pulser.SignalName:
             ped_pol = '-1' if self.PulserPolarity != self.Polarity else ped_pol
         if off_corr:
-            sig_name += '-{pol}*{ped}'.format(ped=self.Pedestal.get_mean(cut).n, pol=ped_pol)
+            sig_name += '-{pol}*{ped}'.format(ped=self.Pedestal.get_mean(cut=cut).n, pol=ped_pol)
         elif evnt_corr:
             sig_name += '-{pol}*{ped}'.format(ped=self.PedestalName, pol=ped_pol)
         return sig_name

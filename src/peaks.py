@@ -226,7 +226,7 @@ class PeakAnalysis(Analysis):
         return h
 
     def draw_signal(self, bin_size=.5, ind=None, fit=False, y=None, x=None, y_range=None, show=True, draw_ph=False, smear=None):
-        self.format_statbox(entries=1, x=.86 if draw_ph else .95)
+        self.format_statbox(all_stat=True, x=.86 if draw_ph else .95)
         times = choose(x, self.get_signal_times, fit=fit, ind=ind)
         self.smear_times(times, smear)
         h = self.draw_disto(times, 'Signal Peak Times', self.Ana.get_t_bins(bin_size), lm=.13, rm=.12 if draw_ph else None, show=show, x_tit='Signal Peak Time [ns]', y_off=1.8)

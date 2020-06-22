@@ -90,7 +90,6 @@ class PedestalAnalysis(Analysis):
         cut = self.Cut.generate_custom(exclude='ped_sigma') if draw_cut else self.Cut(cut)
         suffix = '{r}_fwhm_{c}'.format(c=cut.GetName(), r=self.get_all_signal_names()[self.SignalName if name is None else name])
         picklepath = self.make_pickle_path('Pedestal', run=self.Run.Number, ch=self.DUT.Number, suf=suffix)
-        show = False if not save else show
         self.format_statbox(fit=True, w=.35)
         h = self.draw_disto(name, cut, logy, show=False, save=save, redo=redo, prnt=prnt, normalise=normalise)
         set_drawing_range(h, thresh=h.GetMaximum() * .02)
@@ -104,7 +103,7 @@ class PedestalAnalysis(Analysis):
         f.SetRange(h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax())
         f.SetLineStyle(2)
         h.GetListOfFunctions().Add(f)
-        self.draw_histo(h, '', show, logy=logy, lm=.13, prnt=prnt)
+        self.draw_histo(h, show, logy=logy, lm=.13, prnt=prnt)
         if draw_cut:
             b = self.__draw_cut(h)
             h.Draw('same')
