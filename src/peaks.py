@@ -225,19 +225,19 @@ class PeakAnalysis(Analysis):
             self.draw_histo(h, lm=.12, show=show, x=1.5, y=0.75, logy=True)
         return h
 
-    def draw_signal(self, bin_size=.5, ind=None, fit=False, y=None, x=None, y_range=None, show=True, draw_ph=False, smear=None):
+    def draw_signal(self, bin_size=.5, ind=None, fit=False, y=None, x=None, x_range=None, y_range=None, show=True, draw_ph=False, smear=None):
         self.format_statbox(all_stat=True, x=.86 if draw_ph else .95)
         times = choose(x, self.get_signal_times, fit=fit, ind=ind)
         self.smear_times(times, smear)
-        h = self.draw_disto(times, 'Signal Peak Times', self.Ana.get_t_bins(bin_size), lm=.13, rm=.12 if draw_ph else None, show=show, x_tit='Signal Peak Time [ns]', y_off=1.8)
-        self.draw_ph(get_last_canvas(), bin_size, times, y, y_range, draw_ph)
+        h = self.draw_disto(times, 'Signal Peak Times', self.Ana.get_t_bins(bin_size), lm=.13, rm=.12 if draw_ph else None, show=show, x_tit='Signal Peak Time [ns]', y_off=1.8, x_range=x_range)
+        self.draw_ph(get_last_canvas(), bin_size, times, y, x_range, y_range, draw_ph)
         return h
 
-    def draw_ph(self, c, bin_size, x, y, y_range, show):
+    def draw_ph(self, c, bin_size, x, y, x_range, y_range, show):
         if show:
             p = self.Ana.draw_signal_vs_peaktime(show=False, bin_size=bin_size, x=x, y=y)
             values = get_hist_vec(p, err=False)
-            format_histo(p, title=' ', stats=0, x_tit='', l_off_x=1, y_range=choose(y_range, increased_range([min(values[values > 0]), max(values)], .3, .3)))
+            format_histo(p, title=' ', stats=0, x_tit='', l_off_x=1, y_range=choose(y_range, increased_range([min(values[values > 0]), max(values)], .3, .3)), x_range=x_range)
             c.cd()
             self.draw_tpad('psph', transparent=True, lm=.13, rm=.12)
             p.Draw('y+')
@@ -440,7 +440,7 @@ class PeakAnalysis(Analysis):
         self.smear_times(times, smear)
         title = '{:.0f}% Constrant Fraction Times'.format(thresh * 100)
         h = self.draw_disto(times, title, self.Ana.get_t_bins(bin_size), lm=.13, rm=.12 if draw_ph else None, show=show, x_tit='Constant Fraction Time [ns]', y_off=1.8)
-        self.draw_ph(get_last_canvas(), bin_size, times, y, y_range, show=draw_ph)
+        self.draw_ph(get_last_canvas(), bin_size, times, y, None, y_range, show=draw_ph)
         return h
 
     def draw_cft_vs_time(self, bin_size=.2, signal=False, show=True):
