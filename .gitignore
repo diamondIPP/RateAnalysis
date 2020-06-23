@@ -6,6 +6,7 @@ Plots*/
 *.hdf5
 *~
 *.png
+*.jpg
 *.pdf
 .idea/
 test*
