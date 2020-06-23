@@ -411,8 +411,8 @@ class PadAnalysis(DUTAnalysis):
         self.save_histo(h, 'SignalDistribution', lm=.15, show=show, prnt=prnt, save=save, sumw2=sumw2)
         return h
 
-    def draw_signal_vs_peaktime(self, region=None, cut=None, bin_size=None, fine_corr=False, prof=True, x=None, y=None, y_range=None, show=True):
-        h = (TProfile if prof else TH2F)('hspt', 'Signal vs Peak Position', *(self.get_t_bins(bin_size) + ([] if prof else self.Bins.get_pad_ph())))
+    def draw_signal_vs_peaktime(self, region=None, cut=None, bin_size=None, fine_corr=False, prof=True, x=None, y=None, y_range=None, xbins=None, show=True):
+        h = (TProfile if prof else TH2F)('hspt', 'Signal vs Peak Position', *(choose(xbins, self.get_t_bins(bin_size)) + ([] if prof else self.Bins.get_pad_ph())))
         n = 0
         if x is None or y is None:
             n = self.Tree.Draw('{}:{}'.format(self.generate_signal_name(), self.Timing.get_peak_name(corr=True, fine_corr=fine_corr, region=region)), self.Cut(cut), 'goff')
