@@ -29,6 +29,7 @@ class PulserAnalysis(Analysis):
         self.PedestalName = self.load_pedestal_name()
         self.Type = self.load_type()
 
+        self.Bins = self.Ana.Bins
         self.DUT = self.Ana.DUT
         self.StartEvent = self.Ana.StartEvent
         self.DigitiserBinWidth = self.Ana.DigitiserBinWidth
@@ -36,6 +37,7 @@ class PulserAnalysis(Analysis):
         self.Pedestal = self.Ana.Pedestal
         self.PeakName = self.Ana.get_peak_name(type_='pulser')
         self.Peaks = PeakAnalysis(self)
+        self.Peaks.Threshold = 14
         self.InfoLegend = InfoLegend(pad_analysis)
         self.set_pickle_sub_dir('Pulser')
 
@@ -96,6 +98,12 @@ class PulserAnalysis(Analysis):
     def get_values(self, cut=None, redo=False):
         cut = self.Cut(cut)
         return do_hdf5(self.make_simple_hdf5_path('V', cut.GetName()), self.Run.get_root_vec, redo, var=self.generate_signal_name(cut=cut), cut=cut, dtype='f2')
+
+    def get_cft(self, ind=None):
+        cft = self.Peaks.get_cft(ind=ind)
+        tmin, tmax = self.SignalRegion * self.DigitiserBinWidth
+        cft = array([[t for t in lst if tmin <= t <= tmax] for lst in cft])
+        return array([lst[0] if len(lst) else 0 for lst in cft])
 
     def get_ms(self, cut=None):
         values = array(self.get_values(cut))
@@ -238,8 +246,14 @@ class PulserAnalysis(Analysis):
     def draw_signal_vs_peaktime(self, bin_size=None, x=None, y=None, show=True):
         return self.Ana.draw_signal_vs_peaktime(x=choose(x, self.Peaks.get_from_tree()), y=choose(y, self.get_values()), xbins=self.get_t_bins(bin_size), show=show)
 
-    def draw_signal_times(self, bin_size=None, x_range=None, y_range=None, draw_ph=False):
+    def draw_peak_times(self, bin_size=None, x_range=None, y_range=None, draw_ph=False):
         ind = self.get_signal_indices()
         return self.Peaks.draw_signal(bin_size, x_range=x_range, y_range=y_range, x=array(self.Peaks.get_from_tree())[ind], y=array(self.get_values())[ind], draw_ph=draw_ph)
+
+    def draw_cft(self, bin_size=None, show=True):
+        h = self.draw_disto(self.get_cft(self.get_signal_indices()), 'Pulser Constant Fraction Times', self.get_t_bins(bin_size), x_tit='Constant Fraction Time [ns]', show=show)
+        self.format_statbox(fit=True, entries=True, h=.2)
+        h.Fit('gaus')
+        update_canvas()
     # endregion DRAW
     # ----------------------------------------
