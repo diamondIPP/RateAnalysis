@@ -125,6 +125,12 @@ class PulserAnalysis(Analysis):
 
     def generate_signal_name(self, name=None, event_corr=False, off_corr=True, cut=None):
         return self.Ana.generate_signal_name(choose(name, self.SignalName), evnt_corr=event_corr, off_corr=off_corr, cut=self.Cut(cut))
+
+    def get_attenuator(self):
+        return self.Ana.get_attenuator()
+
+    def get_irradiation(self):
+        return self.Ana.get_irradiation()
     # endregion GET
     # ----------------------------------------
 
