@@ -65,6 +65,13 @@ class PeakAnalysis(Analysis):
     def get_all_cft(self, thresh=.5):
         return self.get_signal_values(self.find_all_cft, thresh=thresh)
 
+    def get_cft(self, flat=False, ind=None):
+        cft, n_peaks = self.find_all_cft(), self.find_all()[-1]
+        if flat:
+            return array(cft)
+        cft = array(split(cft, cumsum(n_peaks)[:-1]))
+        return cft if ind is None else cft[ind]
+
     def get_all_tot(self, thresh=None, fixed=True):
         return self.get_signal_values(self.calc_all_tot, thresh, fixed)
 
@@ -434,14 +441,21 @@ class PeakAnalysis(Analysis):
             return concatenate(cfts).astype('f2')
         return do_hdf5(self.make_simple_hdf5_path('cft', '{:.0f}{}'.format(thresh * 100, self.get_cut_name())), f, redo=redo)
 
-    def draw_cft(self, thresh=.5, bin_size=.5, show=True, draw_ph=False, x=None, y=None, y_range=None, smear=None):
-        self.format_statbox(entries=1, x=.86 if draw_ph else .95)
+    def draw_cft(self, thresh=.5, bin_size=.5, show=True, draw_ph=False, x=None, y=None, x_range=None, y_range=None, smear=None):
+        self.format_statbox(all_stat=True, x=.86 if draw_ph else .95)
         times = choose(x, self.get_all_cft, thresh=thresh)
         self.smear_times(times, smear)
         title = '{:.0f}% Constrant Fraction Times'.format(thresh * 100)
         h = self.draw_disto(times, title, self.Ana.get_t_bins(bin_size), lm=.13, rm=.12 if draw_ph else None, show=show, x_tit='Constant Fraction Time [ns]', y_off=1.8)
-        self.draw_ph(get_last_canvas(), bin_size, times, y, None, y_range, show=draw_ph)
+        self.draw_ph(get_last_canvas(), bin_size, times, y, x_range, y_range, show=draw_ph)
         return h
+
+    def draw_height_vs_cft(self, bin_size=None, show=True):
+        p = TProfile('phcft', 'Peak Height vs. Constant Fraction Time', *self.Ana.get_t_bins(bin_size))
+        x, y = array(self.find_all_cft()), array(self.get_heights(flat=True))
+        fill_hist(p, x=x[y < 30], y=y[y < 30])
+        format_histo(p, x_tit='Constrant Fraction Time [ns]', y_tit='Peak Height [mV]', y_off=1.4)
+        self.draw_histo(p, show, lm=.12)
 
     def draw_cft_vs_time(self, bin_size=.2, signal=False, show=True):
         h = TH2F('hcftt', 'Constant Fraction vs. Peak Time', *(self.Ana.get_t_bins(bin_size) + self.Ana.get_t_bins(bin_size)))
