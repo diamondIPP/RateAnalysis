@@ -180,8 +180,8 @@ class PulserAnalysis(Analysis):
     def draw_distribution_fit(self, show=True, redo=False, corr=True, beam_on=True, bin_width=.2, prnt=True):
         suffix = '{corr}_{beam}'.format(corr='ped_corr' if corr else '', beam='BeamOff' if not beam_on else 'BeamOn')
         pickle_path = self.make_pickle_path('Pulser', 'HistoFit', self.Run.Number, self.DUT.Number, suf=suffix)
-        h = self.draw_distribution(show=show, corr=corr, beam_on=beam_on, bin_width=bin_width)
-        self.format_statbox(only_fit=True, w=.5, h=.4)
+        self.format_statbox(only_fit=True, w=.3, h=.2)
+        h = self.draw_distribution(show=show, corr=corr, beam_on=beam_on, bin_width=bin_width, redo=redo)
         h.SetName('Fit Result')
         same_pols = self.Polarity == self.Ana.Polarity
 
