@@ -59,6 +59,10 @@ class PulserAnalysis(Analysis):
     def get_events(self, cut=None):
         return self.Ana.get_events(cut)
 
+    def get_signal_indices(self):
+        """ :returns: indices that are smaller then the smallest signals """
+        return where(array(self.get_values()) < self.Ana.get_min_signal() - 5)[0]
+
     def get_rate(self):
         values = self.Run.get_root_vec(dtype=bool, var='pulser', cut=self.AnaCut.CutStrings.get('beam_interruptions'))
         rate = calc_eff(values=values)
@@ -230,5 +234,12 @@ class PulserAnalysis(Analysis):
         format_histo(p, x_tit='Event Number', y_tit='Hit Efficiency [%]', y_off=1.3, stats=0, y_range=[0, 105], fill_color=self.FillColor)
         self.save_histo(p, 'PulserHitEfficiency', show, self.Ana.TelSaveDir, draw_opt='hist', prnt=show, rm=.08)
         return p
+
+    def draw_signal_vs_peaktime(self, bin_size=None, x=None, y=None, show=True):
+        return self.Ana.draw_signal_vs_peaktime(x=choose(x, self.Peaks.get_from_tree()), y=choose(y, self.get_values()), xbins=self.get_t_bins(bin_size), show=show)
+
+    def draw_signal_times(self, bin_size=None, x_range=None, y_range=None, draw_ph=False):
+        ind = self.get_signal_indices()
+        return self.Peaks.draw_signal(bin_size, x_range=x_range, y_range=y_range, x=array(self.Peaks.get_from_tree())[ind], y=array(self.get_values())[ind], draw_ph=draw_ph)
     # endregion DRAW
     # ----------------------------------------
