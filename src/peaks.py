@@ -58,7 +58,7 @@ class PeakAnalysis(Analysis):
         return do_hdf5(self.make_simple_hdf5_path('Peaks', self.get_cut_name()), self.Run.get_root_vec, var=self.Ana.PeakName, cut=self.Cut, dtype='f2')
 
     def get_signal_values(self, f, ind=None, default=-1, *args, **kwargs):
-        signal_ind, noind = self.get_signal_indices(), self.get_no_signal_indices()
+        signal_ind, noind = self.get_signal_indices()
         values = insert(array(f(*args, **kwargs))[signal_ind], array(noind), default)
         return values if ind is None else values[ind]
 
@@ -82,18 +82,14 @@ class PeakAnalysis(Analysis):
         return self.get_signal_values(self.get, ind, default=-999, flat=True, fit=fit)
 
     def get_signal_indices(self):
-        values, m = self.find_all()[0], mean(self.get_from_tree())
+        """ :returns: all indices of the times in the signal region and the indices with no too many signals """
+        values, n, m = self.get(flat=True), self.find_all()[2], mean(self.get_from_tree())
         w = self.BunchSpacing / 2
-        return where((m - w < values) & (values < m + w))[0]
-
-    def get_no_signal_indices(self, redo=False):
-        def f():
-            values, m = self.get(), mean(self.get_from_tree())
-            w = self.BunchSpacing / 2
-            nvalues = array([where((m - w < lst) & (lst < m + w))[0].size for lst in values])
-            indices = where(nvalues == 0)[0]
-            return indices - arange(indices.size)  # we need the positions where these indices are missing
-        return do_hdf5(self.make_simple_hdf5_path('NoSig', self.get_cut_name()), f, redo=redo)
+        signals = split((m - w < values) & (values < m + w), cumsum(n)[:-1])  # check if the times are in the signal region
+        n_signals = array([count_nonzero(i) for i in signals])  # get the number of signals in the signal region
+        no_signals = where((n_signals == 0) | (n_signals > 1))[0]
+        n_signals = repeat(n_signals, n)
+        return where((m - w < values) & (values < m + w) & (n_signals == 1))[0], no_signals - arange(no_signals.size)
 
     def get(self, flat=False, fit=False):
         times, heights, n_peaks = self.find_all(fit=fit)
