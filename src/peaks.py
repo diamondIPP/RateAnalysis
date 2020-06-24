@@ -8,7 +8,7 @@ from analysis import *
 from ROOT import TH1F, TCut, TProfile, THStack, TH2F, TMath
 from ROOT.gRandom import Landau
 from scipy.signal import find_peaks, savgol_filter
-from numpy import polyfit, pi, RankWarning, vectorize, size, split, ones, ceil, repeat, linspace, argmax, insert
+from numpy import polyfit, pi, RankWarning, vectorize, size, split, ones, ceil, repeat, linspace, argmax, insert, roll
 from numpy.random import normal, rand
 from warnings import simplefilter
 from InfoLegend import InfoLegend
@@ -432,6 +432,34 @@ class PeakAnalysis(Analysis):
                 self.draw_horizontal_line(ip * thresh, 0, 2000, name='thresh{}'.format(k), color=4)
                 self.draw_vertical_line(cft, -1000, 1000, name='cft{}'.format(k), color=2)
         return cfts
+
+    def find_cft0(self, values=None, times=None, fac=.5, delay=None, show=False, i=None):
+        delay = choose(delay, int(self.WF.get_average_rise_time() / self.BinWidth))  # [number of bins]
+        s, e = self.Ana.SignalRegion
+        v = (values if i is None else self.WF.get_all()[i])[s:e]
+        t = (times if i is None else self.WF.get_all_times()[i])[s:e]
+        v -= roll(v, -delay) * fac
+        ineg = argmax(v < 0)  # find index with the  first negative value
+        i = argmax(v[ineg:] > 0) + ineg  # find the next index greater than 0 and ignore the first positive ones
+        x0 = interpolate_x(t[i - 1], t[i], v[i - 1], v[i], 0)
+        if show:
+            g = self.make_tgrapherrors('g', 'g', x=t, y=v)
+            self.draw_histo(g, draw_opt='apl')
+            self.draw_horizontal_line(0, 0, 1000, name='h')
+            self.draw_vertical_line(x0, -500, 500, name='v')
+            update_canvas()
+        return x0
+
+    def find_all_cft0(self, fac=.5, delay=None, redo=False):
+        def f():
+            values, times = self.WF.get_all(), self.WF.get_all_times()
+            self.PBar.start(values.shape[0])
+            cfts = []
+            for i in range(values.shape[0]):
+                cfts.append(self.find_cft0(values[i], times[i], fac, delay))
+                self.PBar.update()
+            return cfts
+        return do_hdf5(self.make_simple_hdf5_path('cft0', '{:.0f}'.format(fac * 100)), f, redo=redo)
 
     def find_all_cft(self, thresh=.5, redo=False):
         def f():
