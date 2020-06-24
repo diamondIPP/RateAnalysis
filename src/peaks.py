@@ -258,6 +258,14 @@ class PeakAnalysis(Analysis):
         format_histo(p, x_tit='Time [ns]', y_tit='Peak Height [mV]', y_off=1.3, stats=0, fill_color=self.FillColor)
         self.draw_histo(p, lm=.12, show=show, x=1.5, y=0.75)
 
+    def draw_signal_height_vs_time(self, bin_size=None, show=True):
+        self.format_statbox(entries=True)
+        p = TProfile('pspt', 'Peak Height vs. Constant Fraction Time', *self.Ana.get_t_bins(bin_size))
+        fill_hist(p, x=self.get(flat=True), y=self.get_heights(flat=True))
+        format_histo(p, x_tit='Constrant Fraction Time [ns]', y_tit='Peak Height [mV]', y_off=1.4)
+        self.draw_histo(p, show, lm=.12)
+        return p
+
     def draw_combined_heights(self, hist=False, show=True):
         s1_indices = self.get_n()
         times, heights = concatenate(self.get()[s1_indices]), concatenate(self.get_heights()[s1_indices])
@@ -453,7 +461,7 @@ class PeakAnalysis(Analysis):
     def draw_height_vs_cft(self, bin_size=None, show=True):
         p = TProfile('phcft', 'Peak Height vs. Constant Fraction Time', *self.Ana.get_t_bins(bin_size))
         x, y = array(self.find_all_cft()), array(self.get_heights(flat=True))
-        fill_hist(p, x=x[y < 30], y=y[y < 30])
+        fill_hist(p, x=x, y=y)
         format_histo(p, x_tit='Constrant Fraction Time [ns]', y_tit='Peak Height [mV]', y_off=1.4)
         self.draw_histo(p, show, lm=.12)
 
