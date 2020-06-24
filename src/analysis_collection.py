@@ -401,8 +401,8 @@ class AnalysisCollection(Analysis):
         mg = self.get_pulse_height_graph(binning, vs_time, first_last=not vs_time, redo=redo, avrg=avrg, peaks=peaks)
         scale_multigraph(mg, scale, scale_to_low)
         y_range = [.95, 1.05] if y_range is None else y_range
-        format_histo(mg, y_tit='Scaled Pulse Height', y_off=1.75, x_off=1.3, draw_first=True, y_range=y_range, ndivx=503, center_y=True, **self.get_x_args(vs_time))
-        self.draw_histo(mg, '', show, lm=.14, draw_opt='a', logx=not vs_time, grid=vs_time, gridy=True, bm=.18)
+        format_histo(mg, y_tit='Scaled Pulse Height', y_off=1.75, draw_first=True, y_range=y_range, ndivx=503, center_y=True, **self.get_x_args(vs_time))
+        self.draw_histo(mg, show, lm=.14, draw_opt='a', logx=not vs_time, grid=vs_time, gridy=True, bm=.18)
         self.draw_irradiation(make_irr_string(self.RunSelection.get_irradiation()))
         self.save_plots('ScaledPulseHeights{}'.format('Time' if vs_time else 'Flux'))
         return mg.GetListOfGraphs()[0]
