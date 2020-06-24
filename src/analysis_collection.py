@@ -415,7 +415,7 @@ class AnalysisCollection(Analysis):
         # small range
         ymin, ymax = [getattr(mg.GetListOfGraphs()[0].GetYaxis(), 'GetX{}'.format(w))() for w in ['min', 'max']]
         y_range = increased_range([ymin, ymax], .5, .15) if y_range is None else y_range
-        format_histo(mg, color=None, y_tit='Signal Pulse Height [mV]', y_off=1.75, x_off=1.3, draw_first=True, y_range=y_range, **self.get_x_args(vs_time, self.Bins.FluxRange))
+        format_histo(mg, color=None, y_tit='Signal Pulse Height [mV]', y_off=1.75, draw_first=True, y_range=y_range, **self.get_x_args(vs_time, self.Bins.FluxRange))
         self.save_histo(mg, 'PulseHeight{mod}'.format(mod=self.get_mode(vs_time)), show=False, lm=.14, draw_opt='A', logx=not vs_time, grid=vs_time)
 
         # no zero suppression
