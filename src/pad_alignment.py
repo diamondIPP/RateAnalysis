@@ -30,7 +30,7 @@ class PadAlignment(EventAligment):
     # region INIT
 
     def print_start(self):
-        print_banner('STARTING PAD EVENT ALIGNMENT OF RUN {}'.format(self.Converter.RunNumber))
+        print_banner('STARTING PAD EVENT ALIGNMENT OF RUN {}'.format(self.Run.Number))
 
     def update_variables(self):
         """ get additional vectors"""
@@ -46,7 +46,7 @@ class PadAlignment(EventAligment):
         bins = histogram2d(x, y, bins=[self.NEntries / bin_size, [0, .5, 50]])[0]
         bin_average = bins[:, 1] / sum(bins, axis=1)
         misaligned = count_nonzero(bin_average > self.Threshold)
-        self.Run.info('{:1.0f} % of the events are misalignment :-('.format(100. * misaligned / len(bins)) if misaligned else 'Run {} is perfectly aligned :-)'.format(self.Run.RunNumber))
+        self.Run.info('{:1.0f} % of the events are misalignment :-('.format(100. * misaligned / len(bins)) if misaligned else 'Run {} is perfectly aligned :-)'.format(self.Run.Number))
         return misaligned == 0
     # endregion INIT
     # ----------------------------------------

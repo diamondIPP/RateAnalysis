@@ -23,7 +23,7 @@ pargs = aparser.parse_args()
 if not pargs.collection:
     z = analysis_selector(pargs.runplan, pargs.dut, pargs.testcampaign, pargs.tree, pargs.verbose)
     try:
-        p = z.Pulser if pargs.tree else None
+        p = z.Peaks if pargs.tree else None
         w = z.Waveform if pargs.tree else None
     except AttributeError:
         pass
