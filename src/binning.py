@@ -203,6 +203,6 @@ class Bins:
     # ----------------------------------------
 
 
-def make_bins(min_val, max_val, bin_width):
+def make_bins(min_val, max_val, bin_width=1):
     bins = arange(min_val, max_val + bin_width / 100., bin_width, dtype='d')
     return [bins.size - 1, bins]
