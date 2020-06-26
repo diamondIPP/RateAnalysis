@@ -6,8 +6,7 @@
 
 from __future__ import print_function
 from utils import *
-from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, kGreen, kOrange, kViolet, kYellow, kRed, kBlue, kMagenta, kAzure, \
-    kCyan, kTeal, TPaveText, TPaveStats, TH1F, TSpectrum, TEllipse
+from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TH1F, TSpectrum, TEllipse, TColor, TProfile
 from numpy import ndarray, zeros, sign, linspace, ones
 from os.path import expanduser, join, basename
 
@@ -16,6 +15,7 @@ g_resolution = None
 
 # TODO move related utils methods here
 
+    Count = 0
 
 class Draw:
     def __init__(self, tc_string='', verbose=True, config=None):
@@ -324,19 +324,36 @@ class Draw:
         self.add(c, *draw_objects)
         set_root_output(True)
 
+    @staticmethod
+    def make_bins(values, thresh=.02):
+        bins = linspace(*(find_range(values, thresh=thresh) + [int(sqrt(values.size))]))
+        return [bins.size - 1, bins]
+
+    @staticmethod
+    def get_count():
+        Draw.Count += 1
+        return Draw.Count
+
     def draw_disto(self, values, title='', bins=None, thresh=.02, lm=None, rm=None, show=True, **kwargs):
         values = array(values, dtype='d')
-        if bins is None:
-            b = linspace(*(find_range(values, thresh=thresh) + [int(sqrt(values.size))]))
-            bins = [b.size - 1, b]
         kwargs['fill_color'] = self.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         kwargs['y_tit'] = 'Number of Entries' if 'y_tit' not in kwargs else kwargs['y_tit']
-        h = TH1F('h{}'.format(title.lower()[:3]), title, *bins)
-        h.FillN(values.size, values, ones(values.size))
+        h = TH1F('h{}'.format(self.get_count()), title, *choose(bins, self.make_bins, values=values, thresh=thresh))
+        fill_hist(h, values)
         format_histo(h, **kwargs)
-        self.draw_histo(h, lm=lm, rm=rm, show=show)
+        self.draw_histo(h, show, lm, rm)
         return h
+
+    def draw_profile(self, x, y, bins=None, title='', thresh=.02, lm=None, rm=None, show=True, **kwargs):
+        x, y = array(x, dtype='d'), array(y, dtype='d')
+        kwargs['fill_color'] = self.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
+        kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
+        p = TProfile('p{}'.format(self.get_count()), title, *choose(bins, self.make_bins, values=x, thresh=thresh))
+        fill_hist(p, x, y)
+        format_histo(p, **kwargs)
+        self.draw_histo(p, show, lm, rm)
+        return p
 
     # endregion DRAW
     # ----------------------------------------
