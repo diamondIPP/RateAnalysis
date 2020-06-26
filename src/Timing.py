@@ -8,6 +8,7 @@ from analysis import *
 from InfoLegend import InfoLegend
 from ROOT import TH1F, TF1, TCut, TH2F, TProfile, THStack, gPad
 from numpy import pi, ones
+from binning import make_bins
 
 
 class TimingAnalysis(Analysis):
@@ -80,12 +81,44 @@ class TimingAnalysis(Analysis):
             c.cd(i)
             h.Draw()
 
-    # endregion
+    # endregion RUN CONFIG
+    # --------------------------
+
+    # --------------------------
+    # region CONSTANT FRACTION
+    def get_cft_name(self):
+        return 'cft[{}]'.format(self.DUT.Number - 1)
+
+    def draw_cft(self, bin_size=.1, corr=False, cut=None, show=True):
+        corr = '- {}'.format(self.get_tc_correction()) if corr else ''
+        values = self.Run.get_root_vec(var='{}{}'.format(self.get_cft_name(), corr), cut=self.Cut(cut))
+        self.draw_disto(values, 'Constant Fraction Time', self.Ana.get_t_bins(bin_size), x_tit='Constant Fraction Time [ns]', show=show)
+
+    def draw_cft_vs_triggercell(self, bin_size=10, show=True):
+        x, y = self.Ana.get_tree_vecs(['trigger_cell', self.get_cft_name()])
+        return self.draw_profile(x, y, make_bins(0, self.Run.NSamples, bin_size), 'CFT vs. Trigger Cell', x_tit='Trigger Cell', y_tit='Constant Fraction Time [ns]', show=show)
+
+    def get_tc_correction(self, redo=False, show=False):
+        def f():
+            p = self.draw_cft_vs_triggercell(show=show)
+            fit = TF1('f0', '[0]*TMath::Sin([1]*(x - [2])) + [3]', -50, 1024)
+            fit.SetParameters(1, 1, 100, mean(get_hist_vec(p, err=False)))
+            fit.FixParameter(1, 1 / 1024. * 2 * pi)
+            p.Fit(fit, 'q{}'.format('' if show else 0))
+            return '({0} * TMath::Sin({1} * (trigger_cell - {2})))'.format(*[fit.GetParameter(i) for i in xrange(3)])
+        return do_pickle(self.make_simple_pickle_path('CFTTC'), f, redo=redo or show)
+
+    def draw_signal_vs_cft(self, bin_size=.1, show=True):
+        self.format_statbox(all_stat=True)
+        p = TProfile('pscft', 'Signal vs. Constant Fraction Time', *self.Ana.get_t_bins(bin_size))
+        self.Ana.Tree.Draw('{}:{}>>pscft'.format(self.Ana.generate_signal_name(), self.get_cft_name()), self.Cut(), 'goff')
+        format_histo(p, x_tit='Constant Fraction Time [ns]', y_tit='Pulse Height [mV]', y_off=1.3)
+        self.draw_histo(p, show, .12)
+    # endregion CONSTANT FRACTION
     # --------------------------
 
     # --------------------------
     # region PEAK TIMING
-
     def get_peak_name(self, corr, fine_corr=False, cut=None, region=None, redo=False):
         fine_corr = ' - {}'.format(self.make_fine_correction_str(cut, redo=redo)) if fine_corr else ''
         return '{}{}{}'.format(self.Ana.get_peak_name(t_corr=corr, region=region), '*{}'.format(self.Ana.DigitiserBinWidth) if not corr else '', fine_corr)
@@ -143,7 +176,7 @@ class TimingAnalysis(Analysis):
         h0.Scale(.25)
         leg.AddEntry(h0, l_names[0], 'l')
         for i, h in enumerate(histos):
-            format_histo(h, stats=0, color=self.get_color(), fill_color=0)
+            format_histo(h, stats=0, color=self.get_color(3), fill_color=0)
             if list(h.GetListOfFunctions()):
                 fit = h.GetListOfFunctions()[-1]
                 fit.SetLineColor(h.GetLineColor())
@@ -159,7 +192,6 @@ class TimingAnalysis(Analysis):
             stack.Add(h)
         format_histo(stack, x_range=[h0.GetBinCenter(h0.FindFirstBinAbove(0)), h0.GetBinCenter(h0.FindLastBinAbove(0))], draw_first=True, y_off=2.1)
         self.save_histo(stack, 'TimingComparison', draw_opt='nostack', leg=leg, show=show, prnt=prnt, lm=.14)
-        self.reset_colors()
 
     @staticmethod
     def fit_peaks(h):
@@ -224,13 +256,13 @@ class TimingAnalysis(Analysis):
         self.Ana.Tree.Draw('{}:trigger_cell>>p1'.format(self.Ana.PeakName), self.TimingCut, 'goff')
         self.Ana.Tree.Draw('{} - {}:trigger_cell>>p2'.format(self.Ana.PeakName, self.calc_fine_correction()), self.get_raw_cut(), 'goff')
         y_range = increased_range([min(p1.GetMinimum(), p2.GetMinimum()), max(p1.GetMaximum(), p2.GetMaximum())], .1, .1)
-        format_histo(p1, x_tit='Trigger Cell', y_tit='Signal Peak Times [ns]', y_off=1.8, color=self.get_color(), markersize=.5, y_range=y_range, line_color=1, stats=0, )
-        format_histo(p2, color=self.get_color(), markersize=.5, line_color=1, stats=0)
+        format_histo(p1, x_tit='Trigger Cell', y_tit='Signal Peak Times [ns]', y_off=1.8, color=self.get_color(2), markersize=.5, y_range=y_range, line_color=1, stats=0, )
+        format_histo(p2, color=self.get_color(2), markersize=.5, line_color=1, stats=0)
         leg = self.make_legend(nentries=2)
         leg.AddEntry(p1, 'Uncorrected')
         leg.AddEntry(p2, 'Fine Correction')
-        self.draw_histo(p1, '', show, leg=leg, canvas=canvas)
-        self.draw_histo(p2, '', show, draw_opt='same', canvas=get_last_canvas(), lm=.14)
+        self.draw_histo(p1, show, leg=leg, canvas=canvas)
+        self.draw_histo(p2, show, draw_opt='same', canvas=get_last_canvas(), lm=.14)
         self.save_plots('FineCorrection', canvas=get_last_canvas(), prnt=prnt)
 
     # endregion
@@ -238,7 +270,6 @@ class TimingAnalysis(Analysis):
 
     # --------------------------
     # region TRIGGER CELL
-
     def draw_trigger_cell(self, show=True, cut=None):
         h = TH1F('tc', 'Trigger Cell', 1024, 0, 1024)
         self.Ana.Tree.Draw('trigger_cell>>tc', self.Cut(cut), 'goff')
@@ -253,7 +284,7 @@ class TimingAnalysis(Analysis):
         self.Ana.Tree.Draw('IntegralLength[{num}]:trigger_cell>>hltc'.format(num=self.Ana.SignalNumber), self.Cut(), 'goff')
         self.format_statbox(only_fit=True, w=.25)
         format_histo(h, x_tit='Triggercell', y_tit='Integral Length [ns]', y_off=1.6, z_tit='Number of Entries')
-        self.draw_histo(h, 'IntLengthVsTriggerCell', show, lm=.12)
+        self.draw_histo(h, show, lm=.12)
         fit = TF1('f', '[0] * sin([1] * (x - [2])) + [3]')
         fit.SetParNames('Scale', 'Period', 'Phase', 'Offset')
         fit.SetParLimits(0, .1, 3)
@@ -268,7 +299,7 @@ class TimingAnalysis(Analysis):
         self.Ana.Tree.Draw('(TimeIntegralValues[{num}]-IntegralValues[{num}]):trigger_cell>>hdtc_p'.format(num=self.Ana.SignalNumber), self.Cut(), 'goff')
         gStyle.SetPalette(53)
         format_histo(h, x_tit='Triggercell', y_tit='Integral2 - Integral1 [au]', z_tit='Number of Entries', stats=0, y_off=1.4, z_off=1.1)
-        self.Objects.append(self.draw_histo(h, '', show, draw_opt='colz', lm=.12, rm=.15))
+        self.Objects.append(self.draw_histo(h, show, draw_opt='colz', lm=.12, rm=.15))
         format_histo(hprof, lw=3, color=600)
         hprof.Draw('hist same') if prof else do_nothing()
         p = h.ProjectionY()
