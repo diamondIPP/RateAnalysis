@@ -49,6 +49,11 @@ class TelecopeAnalysis(Analysis):
     def has_branch(self, branch):
         return self.Run.has_branch(branch)
 
+    def get_tree_vecs(self, strings, cut=None, dtypes=None):
+        n = self.Tree.Draw(':'.join(strings), self.Cut(cut), 'goff')
+        dtypes = [None] * len(strings) if dtypes is None else dtypes
+        return [self.Run.get_root_vec(n, i, dtype) for i, dtype in enumerate(dtypes)]
+
     # ----------------------------------------
     # region TRACKS
     def draw_tracks(self, show=True):
@@ -122,7 +127,7 @@ class TelecopeAnalysis(Analysis):
         leg = self.make_legend(nentries=2, w=.25)
         stack = THStack('has', 'Track Angles')
         for h in histos:
-            format_histo(h, stats=False, color=self.get_color())
+            format_histo(h, stats=False, color=self.get_color(2))
             leg.AddEntry(h, 'Angle in {}'.format(h.GetTitle()[-1]), 'l')
             stack.Add(h)
         self.save_tel_histo(stack, 'TrackAngles', sub_dir=self.TelSaveDir, lm=.14, leg=leg, draw_opt='nostack', show=show, prnt=prnt)
@@ -134,7 +139,7 @@ class TelecopeAnalysis(Analysis):
         h = TH1F('htr', '{m} Residuals for Plane {n}'.format(n=roc, m=mode.title()), 1000, -1000, 1000)
         self.Tree.Draw('residuals{m}[{r}]*1e4>>htr'.format(m='_{m}'.format(m=mode) if mode else '', r=roc), cut, 'goff')
         format_histo(h, name='Fit Result', y_off=2.0, y_tit='Number of Entries', x_tit='Distance [#mum]', fill_color=self.FillColor, x_range=x_range)
-        self.draw_histo(h, '', show, lm=.16)
+        self.draw_histo(h, show, .16)
         if fit:
             fit = TF1('f', 'gaus(0) + gaus(3)', -.4, .4)
             sigma = get_fwhm(h) / (2 * sqrt(2 * log(2)))
@@ -179,13 +184,12 @@ class TelecopeAnalysis(Analysis):
         leg = self.make_legend(y2=.41, nentries=4)
         for roc, mode in zip([1, 1, 2, 2], ['x', 'y', 'x', 'y']):
             g = self.draw_tracking_resolution(roc, mode, show=False)
-            format_histo(g, color=self.get_color())
+            format_histo(g, color=self.get_color(4))
             mg.Add(g, 'pl')
             leg.AddEntry(g, 'ROC {} in {}'.format(roc, mode.title()), 'pl')
         y_range = [0, max(g.GetY()[i] for g in mg.GetListOfGraphs() for i in xrange(g.GetN())) * 1.1]
         format_histo(mg, x_tit='#chi^{2} [quantile]', y_tit='Residual Standard Deviation [#mum]', y_off=1.5, y_range=y_range, draw_first=True)
         self.save_histo(mg, 'EventOffsets', show, draw_opt='ap', leg=leg, lm=.13)
-        self.reset_colors()
 
     def _draw_cluster_size(self, roc, name=None, cut='', show=True):
         h = TH1I('h_cs', 'Cluster Size {d}'.format(d='ROC {n}'.format(n=roc) if name is None else name), 10, 0, 10)

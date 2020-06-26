@@ -222,7 +222,7 @@ class Cut:
         if self.CutConfig['fiducial'] is None:
             return CutString('fiducial', '', '')
         xy = self.CutConfig['fiducial'] + (([self.Bins.PX / 2] * 2 + [self.Bins.PY / 2] * 2) if center else 0)
-        cut = self.Analysis.draw_box(xy[0], xy[2], xy[1], xy[3], line_color=kRed, width=3, name='fid{}'.format(self.Run.Number), show=False)
+        cut = self.Analysis.draw_box(xy[0], xy[2], xy[1], xy[3], line_color=2, width=3, name='fid{}'.format(self.Run.Number), show=False)
         cut.SetVarX(self.get_track_var(self.Analysis.DUT.Number - 1 - n_planes, 'x'))
         cut.SetVarY(self.get_track_var(self.Analysis.DUT.Number - 1 - n_planes, 'y'))
         self.Analysis.add(cut)
