@@ -6,7 +6,7 @@
 import ROOT
 
 ROOT.PyConfig.IgnoreCommandLineOptions = True
-from ROOT import gROOT, TF1, TColor, TFile, TMath
+from ROOT import gROOT, TF1, TFile, TMath
 
 import pickle
 from collections import OrderedDict
@@ -617,20 +617,6 @@ def close_last_canvas():
 
 def get_object(name):
     return gROOT.FindObject(name)
-
-
-def get_color_gradient(n):
-    stops = array([0., .5, 1], 'd')
-    green = array([0. / 255., 200. / 255., 80. / 255.], 'd')
-    blue = array([0. / 255., 0. / 255., 0. / 255.], 'd')
-    red = array([180. / 255., 200. / 255., 0. / 255.], 'd')
-    color_gradient = TColor.CreateGradientColorTable(len(stops), stops, red, green, blue, 255)
-    color_table = [color_gradient + ij for ij in xrange(255)]
-    return color_table[0::(len(color_table) + 1) / n]
-
-
-def get_color(n, i):
-    return get_color_gradient(n)[i]
 
 
 def do(fs, pars, exe=-1):
