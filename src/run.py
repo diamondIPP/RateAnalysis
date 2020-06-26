@@ -134,15 +134,21 @@ class Run:
             parser.read(join(get_base_dir(), 'config', self.TCString, 'RunConfig{nr}.ini'.format(nr=config_nr)))  # add the content of the split config
         return parser
 
+    @staticmethod
+    def make_root_filename(run):
+        return 'TrackedRun{:03d}.root'.format(run)
+
+    def make_root_subdir(self):
+        return join('root', 'pads' if self.get_type() == 'pad' else self.get_type())
+
     def load_rootfile_path(self):
-        return join(self.RootFileDir, 'TrackedRun{run:03d}.root'.format(run=self.Number)) if self.Number is not None else None
+        return join(self.RootFileDir, self.make_root_filename(self.Number)) if self.Number is not None else None
 
     def load_rootfile_dirname(self):
-        fdir = 'pads' if self.get_type() == 'pad' else self.get_type()
-        return ensure_dir(join(self.TCDir, 'root', fdir)) if self.Number is not None else None
+        return ensure_dir(join(self.TCDir, self.make_root_subdir())) if self.Number is not None else None
 
-    def generate_tc_directory(self):
-        return join(self.DataDir, 'psi_{y}_{m}'.format(y=self.TCString[:4], m=self.TCString[4:]))
+    def generate_tc_directory(self, data_dir=None):
+        return join(choose(data_dir, default=self.DataDir), 'psi_{y}_{m}'.format(y=self.TCString[:4], m=self.TCString[4:]))
 
     def load_trigger_planes(self):
         default = self.get_unmasked_area().keys() if self.load_mask() else [1, 2]
