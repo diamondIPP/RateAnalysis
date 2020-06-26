@@ -6,6 +6,7 @@ from textwrap import fill
 from numpy import sort
 
 from os import system
+from subprocess import check_call
 from os.path import join, basename
 
 from run import Run
@@ -588,6 +589,13 @@ class RunSelection:
                 continue
             self.Run.Converter.set_run(run)
             self.Run.Converter.copy_raw_file()
+
+    def copy_final_files(self, server, server_data_dir):
+        runs = self.get_selected_runs()
+        self.Run.reload_run_config(runs[0])
+        for run in self.get_selected_runs():
+            server_root_file = join(self.Run.generate_tc_directory(server_data_dir), self.Run.make_root_subdir(), Run.make_root_filename(run))
+            check_call(['rsync', '-aP', '{}:{}'.format(server, server_root_file), self.Run.RootFileDir])
 
     def backup_to_isg(self):
         backup_path = join('isg:', 'home', 'ipp', self.Run.TCDir)
