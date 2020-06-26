@@ -62,6 +62,7 @@ class PadCut(Cut):
         self.CutStrings.register(self.generate_pedestal_sigma(), 30)
         self.CutStrings.register(self.generate_threshold(), 31)
         # self.CutStrings.register(self.generate_timing(), 35)
+        # self.CutStrings.register(self.generate_cft(), 36)
 
         # -- FIDUCIAL --
         self.CutStrings.register(self.generate_fiducial(), 90)
@@ -105,6 +106,13 @@ class PadCut(Cut):
         string = '!(!({old_buck}) && ({sig} < {thres}))'.format(sig=sig, thres=threshold, old_buck=self.generate_pre_bucket())
         description = 'bucket events with threshold < {:.1f}mV'.format(threshold)
         return CutString('bucket', string if self.generate_pre_bucket() else '', description)
+
+    def generate_cft(self, n_sigma=3):
+        fit = self.fit_cft()
+        m, s = fit.Parameter(1), fit.Parameter(2)
+        description = '{:1.1f}ns < constant fraction time < {:.1f}ns'.format(m - n_sigma * s, m + n_sigma * s)
+        var = self.Analysis.Timing.get_cft_name()
+        return CutString('cft', '{} < {v} && {v} < {}'.format(m - n_sigma * s, m + n_sigma * s, v=var), description)
 
     def generate_timing(self, n_sigma=3):
         t_correction, fit = self.calc_timing_range()
@@ -286,6 +294,16 @@ class PadCut(Cut):
 
         threshold = func() if show else None
         return do_pickle(pickle_path, func, threshold)
+
+    def fit_cft(self, show=False, redo=False):
+        def f():
+            t = self.Analysis.info('generating cft cut for {dia} of run {run} ...'.format(run=self.Run.Number, dia=self.Analysis.DUT.Name), next_line=False)
+            cut = self.generate_custom(exclude=['cft'], prnt=False, name='cft_cut')
+            h = self.Analysis.Timing.draw_cft(cut=cut, show=show)
+            fit = h.Fit('gaus', 'qs')
+            self.Analysis.add_to_info(t)
+            return FitRes(fit)
+        return do_pickle(self.Analysis.make_simple_pickle_path('CFTFit', sub_dir='Cuts'), f, redo=redo)
 
     def calc_timing_range(self, redo=False):
         def f():

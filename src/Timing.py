@@ -89,7 +89,7 @@ class TimingAnalysis(Analysis):
     def draw_cft(self, bin_size=.1, corr=False, cut=None, show=True):
         corr = '- {}'.format(self.get_tc_correction()) if corr else ''
         values = self.Run.get_root_vec(var='{}{}'.format(self.get_cft_name(), corr), cut=self.Cut(cut))
-        self.draw_disto(values, 'Constant Fraction Time', self.Ana.get_t_bins(bin_size), x_tit='Constant Fraction Time [ns]', show=show)
+        return self.draw_disto(values, 'Constant Fraction Time', self.Ana.get_t_bins(bin_size), x_tit='Constant Fraction Time [ns]', show=show)
 
     def draw_cft_vs_triggercell(self, bin_size=10, show=True):
         x, y = self.Ana.get_tree_vecs(['trigger_cell', self.get_cft_name()])
