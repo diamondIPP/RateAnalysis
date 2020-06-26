@@ -44,10 +44,8 @@ class TimingAnalysis(Analysis):
             return FitRes(h.GetListOfFunctions()[0])
 
         return make_ufloat(do_pickle(pickle_path, f, redo=redo), par=par)
-
     # --------------------------
     # region RUN CONFIG
-
     def draw_raw_peaks(self, xmin=100, xmax=400, bin_width=1., ch=None, corr=False, cut='', show=True):
         h = TH1F('h_pt', 'Max Peak Timings', int((xmax - xmin) / bin_width), xmin, xmax)
         channel = self.Ana.Channel if ch is None else ch
@@ -80,7 +78,6 @@ class TimingAnalysis(Analysis):
         for i, h in enumerate((h0, h1), 1):
             c.cd(i)
             h.Draw()
-
     # endregion RUN CONFIG
     # --------------------------
 
@@ -110,10 +107,8 @@ class TimingAnalysis(Analysis):
 
     def draw_signal_vs_cft(self, bin_size=.1, show=True):
         self.format_statbox(all_stat=True)
-        p = TProfile('pscft', 'Signal vs. Constant Fraction Time', *self.Ana.get_t_bins(bin_size))
-        self.Ana.Tree.Draw('{}:{}>>pscft'.format(self.Ana.generate_signal_name(), self.get_cft_name()), self.Cut(), 'goff')
-        format_histo(p, x_tit='Constant Fraction Time [ns]', y_tit='Pulse Height [mV]', y_off=1.3)
-        self.draw_histo(p, show, .12)
+        x, y = self.Ana.get_tree_vecs([self.get_cft_name(), self.Ana.generate_signal_name()])
+        self.draw_profile(x, y, self.Ana.get_t_bins(bin_size), 'Signal vs. Constant Fraction Time', x_tit='Constant Fraction Time [ns]', y_tit='Pulse Height [mV]', show=show)
     # endregion CONSTANT FRACTION
     # --------------------------
 
