@@ -11,6 +11,7 @@ from ROOT import gROOT, TLegend
 from utils import make_tc_str, timedelta, make_flux_string, make_irr_string
 from subprocess import check_output
 from os import chdir
+from draw import Draw
 
 
 class InfoLegend(object):
@@ -47,8 +48,8 @@ class InfoLegend(object):
         info_str = self.get_info_string(both_dias)
         # width = len(run_str) * min(canvas.GetWw(), canvas.GetWh()) * .01
         # if canvas.GetWw() > canvas.GetWh():
-        width = float(max(len(run_str), len(info_str))) / canvas.GetWw() * self.Analysis.Res / 1000 * 10.5
-        legend = self.Analysis.make_legend(.005, .1, y1=.003, x2=width, nentries=3, clean=False, scale=.75, margin=.05)
+        width = float(max(len(run_str), len(info_str))) / canvas.GetWw() * Draw.Res / 1000 * 10.5
+        legend = Draw.make_legend(.005, .1, y1=.003, x2=width, nentries=3, clean=False, scale=.75, margin=.05)
 
         legend.AddEntry(0, run_str, '')                         # Run String
         legend.AddEntry(0, self.get_dia_string(both_dias), '')  # Detector and Test Campaign
