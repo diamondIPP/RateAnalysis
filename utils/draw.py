@@ -218,7 +218,8 @@ class Draw(object):
         pos = [0, 0, 1, 1] if pos is None else pos
         p = TPad(name, tit, *pos)
         p.SetFillColor(fill_col)
-        Draw.set_pad_margins(p, *(margins if all(m is None for m in [lm, rm, bm, tm]) else [lm, rm, bm, tm]))
+        margins = margins if all(m is None for m in [lm, rm, bm, tm]) else [lm, rm, bm, tm]
+        Draw.set_pad_margins(p, *full(4, .1) if margins is None else margins)
         do([p.SetLogx, p.SetLogy, p.SetLogz], [logx, logy, logz])
         do([p.SetGridx, p.SetGridy], [gridx, gridy])
         make_transparent(p) if transparent else do_nothing()
