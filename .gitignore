@@ -11,5 +11,5 @@ Plots*/
 .idea/
 test*
 .last_converted.txt
-Configuration/soft.ini
-Configuration/main.ini
+config/soft.ini
+config/main.ini

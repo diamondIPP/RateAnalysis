@@ -44,3 +44,5 @@ bin size = 10000
 palette = 55
 contours = 255
 flux range = [1, 40000]
+fill color = 821
+legend font = 42
