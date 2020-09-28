@@ -530,17 +530,17 @@ def get_base_dir():
 
 def do_pickle(path, func, value=None, redo=False, *args, **kwargs):
     if value is not None:
-        with open(path, 'w') as f:
+        with open(path, 'wb') as f:
             pickle.dump(value, f)
         return value
     try:
         if file_exists(path) and not redo:
-            with open(path, 'r') as f:
+            with open(path, 'rb') as f:
                 return pickle.load(f)
     except ImportError:
         pass
     ret_val = func(*args, **kwargs)
-    with open(path, 'w') as f:
+    with open(path, 'wb') as f:
         pickle.dump(ret_val, f)
     return ret_val
 
@@ -793,7 +793,7 @@ def get_root_vec(tree, n=0, ind=0, dtype=None, var=None, cut=''):
         n = tree.Draw(var, cut, 'goff')
     vec = tree.GetVal(ind)
     vec.SetSize(n)
-    return array(vec, dtype=dtype)
+    return array(list(vec), dtype=dtype)
 
 
 def get_root_vecs(tree, n, n_ind, dtype=None):
