@@ -22,7 +22,7 @@ class DUTAnalysis(Analysis):
 
         self.DUT = self.Run.DUTs[diamond_nr - 1]
         self.Tree = self.Run.Tree
-        self.StartTime = self.Run.StartTime if self.Tree else time_stamp(self.Run.LogStart)
+        self.StartTime = self.Run.StartTime if self.Tree.Hash() else time_stamp(self.Run.LogStart)
 
         self.print_start(run_number, prnt, dut=self.DUT.Name)
         self.update_config()
@@ -31,7 +31,7 @@ class DUTAnalysis(Analysis):
         # Sub-Analyses
         self.Currents = Currents(self)
 
-        if self.Tree:
+        if self.Tree.Hash():
             self.Cut = Cut(self)
             self.NRocs = self.Run.NPlanes
             self.StartEvent = self.Cut.get_min_event()
@@ -191,9 +191,9 @@ class DUTAnalysis(Analysis):
         self.Draw.save_plots('HitMap' if hitmap else 'SignalMap2D', prnt=prnt)
         return h
 
-    def draw_hitmap(self, res=None, cut=None, fid=False, redo=False, z_range=None, size=None, show=True, save=True, prnt=True):
+    def draw_hitmap(self, res=None, cut=None, fid=False, redo=False, z_range=None, size=None, show=True, prnt=True):
         cut = self.Cut.get('tracks') if cut is None else self.Cut(cut)
-        return self.draw_signal_map(res, cut, fid, hitmap=True, redo=redo, binning=None, z_range=z_range, size=size, show=show, save=save, prnt=prnt)
+        return self.draw_signal_map(res, cut, fid, hitmap=True, redo=redo, binning=None, z_range=z_range, size=size, show=show, prnt=prnt)
 
     def split_signal_map(self, m=2, n=2, grid=True, redo=False, show=True):
         fid_cut = array(self.Cut.CutConfig['fiducial']) * 10
@@ -213,7 +213,7 @@ class DUTAnalysis(Analysis):
         return self._draw_sig_map_disto(*args, **kwargs)
 
     def _draw_sig_map_disto(self, res=None, cut=None, fid=True, x_range=None, redo=False, normalise=False, ret_value=False, ph_bins=None, show=True, save=True):
-        source = self.draw_signal_map(res, cut, fid, redo=redo, show=False, save=False)
+        source = self.draw_signal_map(res, cut, fid, redo=redo, show=False)
         h = TH1F('h_smd', 'Signal Map Distribution', *([400, 0, 4] if normalise else self.Bins.get_pad_ph(bin_width=.2) if ph_bins is None else ph_bins))
         normalisation = 1 if not normalise else self.get_pulse_height()
         values = get_2d_hist_vec(source) / normalisation
