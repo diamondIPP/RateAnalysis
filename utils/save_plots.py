@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from os.path import expanduser, basename
-from InfoLegend import InfoLegend
+from info_legend import InfoLegend
 from draw import *
 
 
