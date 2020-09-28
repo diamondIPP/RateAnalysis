@@ -15,6 +15,7 @@ class SaveDraw(Draw):
     TCString = None
 
     ServerMountDir = None
+    MountExists = None
 
     def __init__(self, analysis=None, results_dir=None, sub_dir=''):
         super(SaveDraw, self).__init__(analysis.MainConfig.FileName)
@@ -31,6 +32,7 @@ class SaveDraw(Draw):
 
         # Server
         SaveDraw.ServerMountDir = expanduser(Draw.Config.get_value('SAVE', 'server mount directory', default=None))
+        SaveDraw.server_is_mounted()
         self.ServerDir = SaveDraw.load_server_save_dir(analysis)
 
     def __call__(self, *args, **kwargs):
@@ -38,31 +40,32 @@ class SaveDraw(Draw):
 
     # ----------------------------------------
     # region SET
-    def set_save_directory(self, name):
+    def set_sub_dir(self, name):
         self.SubDir = name
 
     def set_results_dir(self, name):
-        self.ResultsDir = join(Draw.Dir, name)
+        self.ResultsDir = join(Draw.Dir, 'Results', name)
     # endregion SET
     # ----------------------------------------
 
     @staticmethod
     def server_is_mounted():
-        return dir_exists(join(SaveDraw.ServerMountDir, 'Diamonds'))
+        if SaveDraw.MountExists is not None:
+            return SaveDraw.MountExists
+        SaveDraw.MountExists = dir_exists(join(SaveDraw.ServerMountDir, 'Diamonds'))
+        if not SaveDraw.MountExists:
+            warning('Diamond server is not mounted in {}'.format(SaveDraw.ServerMountDir))
 
     @staticmethod
     def load_server_save_dir(ana):
-        if not SaveDraw.server_is_mounted():
-            warning('Diamond server is not mounted in {}'.format(SaveDraw.ServerMountDir))
-            return
-        if SaveDraw.ServerMountDir is None or not hasattr(ana, 'DUT'):
+        if not SaveDraw.MountExists or SaveDraw.ServerMountDir is None or not hasattr(ana, 'DUT'):
             return
         run_string = 'RunPlan{}'.format(ana.RunPlan.lstrip('0')) if hasattr(ana, 'RunPlan') else str(ana.RunNumber)
         return join(SaveDraw.ServerMountDir, 'Diamonds', ana.DUT.Name, 'BeamTests', make_tc_str(SaveDraw.TCString, long_=False), run_string)
 
     # ----------------------------------------
     # region SAVE
-    def histo(self, h, file_name=None, all_duts=False, all_pads=False, prnt=True, show=True, *args, **kwargs):
+    def histo(self, h, file_name=None, show=True, all_duts=False, all_pads=False, prnt=True, *args, **kwargs):
         c = super(SaveDraw, self).histo(h, show, *args, **kwargs)
         self.Legend.draw(c, all_pads, all_duts)
         if file_name is not None and SaveDraw.Save:
