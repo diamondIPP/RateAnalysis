@@ -4,14 +4,11 @@
 # created on February 15th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import division, print_function
 
 from numpy import sign, linspace, ones
-from os.path import expanduser, join, basename
 from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TH1F, TSpectrum, TEllipse, TColor, TProfile
-from past.utils import old_div
-from utils.utils import *
+from utils import *
 import binning as bins
 
 
@@ -34,43 +31,38 @@ def load_resolution(default=800):
         return default
 
 
-class Draw:
+class Draw(object):
 
+    Verbose = False
+    Config = None
     Count = 0
     Res = load_resolution()
     Colors = get_color_gradient(10)
     Objects = []
     Dir = get_base_dir()
-    ServerDir = None
 
     Title = True
     Legend = False
     FillColor = 871
     Font = 42
 
-    def __init__(self, config, results_dir='', sub_dir='', verbose=True):
+    def __init__(self, config='', verbose=True):
 
         # Basics
         Draw.Verbose = verbose
         Draw.Config = Config(choose(config, default=join(Draw.Dir, 'config', 'main.ini')))
 
-        # Results
-        self.ResultsDir = join(Draw.Dir, 'Results', results_dir)
-        self.SubDir = sub_dir
-        Draw.ServerDir = expanduser(Draw.Config.get_value('SAVE', 'server mount directory', default=None))
-
         # Settings
         self.IColor = 0  # color index
-        Draw.FillColor = Draw.Config.get_value('PLOTS', 'fill color', default=821)
         Draw.Title = Draw.Config.get_value('SAVE', 'activate title', default=True)
         Draw.Legend = Draw.Config.get_value('SAVE', 'info legend', default=False)
-        Draw.Save = Draw.Config.get_value('SAVE', 'save', default=False)
+        Draw.FillColor = Draw.Config.get_value('PLOTS', 'fill color', default=821)
         Draw.Font = Draw.Config.get_value('PLOTS', 'legend font', default=42)
         gStyle.SetLegendFont(Draw.Font)
         gStyle.SetOptTitle(Draw.Title)
 
     def __call__(self, *args, **kwargs):
-        return Draw.object(**kwargs)
+        return Draw.histo(**kwargs)
 
     @staticmethod
     def add(*args):
@@ -88,12 +80,6 @@ class Draw:
 
     # ----------------------------------------
     # region SET
-    def set_save_directory(self, name):
-        self.SubDir = name
-
-    def set_results_dir(self, name):
-        self.ResultsDir = join(Draw.Dir, name)
-
     @staticmethod
     def set_pad_margins(c=None, l_=None, r=None, b=None, t=None):
         do(c.SetLeftMargin, l_)
@@ -118,6 +104,7 @@ class Draw:
     def get_count():
         Draw.Count += 1
         return Draw.Count
+
     # endregion GET
     # ----------------------------------------
 
@@ -314,24 +301,23 @@ class Draw:
         x1, x2 = (c.GetLeftMargin(), .5) if left else (.5, 1 - c.GetRightMargin())
         return Draw.tpavetext('Irradiation: {}'.format(irr), x1, x2, 1 - height - c.GetTopMargin(), 1 - c.GetTopMargin(), font=42, align=12, margin=0.04)
 
-    def object(self, th, show=True, lm=None, rm=None, bm=None, tm=None, draw_opt=None, w=1, h=1, logy=False, logx=False, logz=False, grid=False, gridy=False, gridx=False, phi=None, theta=None,
-               leg=None, canvas=None, sumw2=None, all_pads=True, both_dias=False, prnt=True, ind=None, save_name=None):
+    @staticmethod
+    def histo(th, show=True, lm=None, rm=None, bm=None, tm=None, draw_opt=None, w=1, h=1, logy=False, logx=False, logz=False, grid=False, gridy=False, gridx=False, phi=None, theta=None,
+              leg=None, canvas=None, sumw2=None):
         w += .16 if not Draw.Title and w == 1 else 0  # rectify if there is no title
         th.Sumw2(sumw2) if hasattr(th, 'Sumw2') and sumw2 is not None else do_nothing()
         set_root_output(show)
         c = Draw.canvas(th.GetTitle().split(';')[0], None, None, w, h, logx, logy, logz, gridx or grid, gridy or grid, show=show) if canvas is None else canvas
         Draw.set_pad_margins(c, lm, rm, bm, tm)
-        do([c.SetLogx(), c.SetLogy(), c.SetLogz()], [logx, logy, logz])
-        do([c.SetGridx(), c.SetGridy()], [gridx or grid, gridy or grid])
-        do([c.SetPhi(), c.SetTheta()], [phi, theta])
-        th.Draw(draw_opt if draw_opt is not None else 'ap' if 'Graph' in th.ClassName() else '')
+        do([c.SetLogx, c.SetLogy, c.SetLogz], [logx, logy, logz])
+        do([c.SetGridx, c.SetGridy], [gridx or grid, gridy or grid])
+        do([c.SetPhi, c.SetTheta], [phi, theta])
+        th.Draw(draw_opt if draw_opt is not None else 'ap' if is_graph(th) else '')
         if leg is not None:
             for i_leg in make_list(leg):
                 i_leg.Draw()
-        if save_name is not None:
-            self.save_plots(save_name, both_dias=both_dias, all_pads=all_pads, ind=ind, prnt=prnt, show=show)
         set_root_output(True)
-        return Draw.add(c, h, leg)[0]
+        return Draw.add(c, th, leg)[0]
 
     def save_combined_pulse_heights(self, mg, mg1, mg_y, show=True, name=None, pulser_leg=None,
                                     x_range=None, y_range=None, rel_y_range=None, draw_objects=None, prnt=True):
@@ -348,7 +334,7 @@ class Draw:
         mg.GetXaxis().SetLimits(1, 3e4) if x_range is None else do_nothing()
 
         # bottom pad with 20%
-        p0 = self.tpad('p0', 'p0', pos=[0, 0, 1, pm], margins=[.14, .03, old_div(bm, pm), 0], transparent=True, logx=True, gridy=True)
+        p0 = self.tpad('p0', 'p0', pos=[0, 0, 1, pm], margins=[.14, .03, bm / pm, 0], transparent=True, logx=True, gridy=True)
         scale_multigraph(mgn)
         rel_y_range = [.7, 1.3] if rel_y_range is None else rel_y_range
         format_histo(mgn, title='', y_range=rel_y_range, y_tit='Rel. ph [au]' if not scale > 1 else ' ', y_off=66, tit_size=.1 * scale, x_off=99, lab_size=.1 * scale)
@@ -398,7 +384,7 @@ class Draw:
         h = TH1F('h{}'.format(Draw.get_count()), title, *choose(binning, make_bins, values=values, thresh=thresh))
         fill_hist(h, values)
         format_histo(h, **kwargs)
-        self.object(h, show, lm, rm)
+        self.histo(h, show, lm, rm)
         return h
 
     def profile(self, x, y, binning=None, title='', thresh=.02, lm=None, rm=None, cx=1, cy=1, show=True, **kwargs):
@@ -408,7 +394,7 @@ class Draw:
         p = TProfile('p{}'.format(Draw.get_count()), title, *choose(binning, make_bins, values=x, thresh=thresh))
         fill_hist(p, x, y)
         format_histo(p, **kwargs)
-        self.object(p, show, lm, rm, w=cx, h=cy)
+        self.histo(p, show, lm, rm, w=cx, h=cy)
         return p
 
     def prof2d(self, x, y, zz, binning=None, title='', lm=None, rm=.15, cx=1, cy=1, show=True, draw_opt='colz', **kwargs):
@@ -419,7 +405,7 @@ class Draw:
         p = TProfile2D('p{}'.format(self.get_count()), title, *choose(binning, dflt_bins))
         fill_hist(p, x, y, zz)
         format_histo(p, **kwargs)
-        self.object(p, show, lm, rm, w=cx, h=cy, draw_opt=draw_opt)
+        self.histo(p, show, lm, rm, w=cx, h=cy, draw_opt=draw_opt)
         return p
 
     def histo_2d(self, x, y, binning=None, title='', lm=None, rm=.15, show=True, draw_opt='colz', **kwargs):
@@ -431,7 +417,7 @@ class Draw:
         h = TH2F('h{}'.format(self.get_count()), title, *choose(binning, dflt_bins))
         fill_hist(h, x, y)
         format_histo(h, **kwargs)
-        self.object(h, show, lm, rm, draw_opt=draw_opt)
+        self.histo(h, show, lm, rm, draw_opt=draw_opt)
         return h
 
     def efficiency(self, x, e, binning=None, title='', lm=None, show=True, **kwargs):
@@ -441,113 +427,11 @@ class Draw:
         values = [[p.GetBinContent(ibin), p.GetBinEntries(ibin)] for ibin in range(1, p.GetNbinsX() + 1)]
         e = array([calc_eff(p0 / 100 * n, n) for p0, n in values])
         ey = array([e[:, 1], e[:, 2]])
-        g = self.make_tgrapherrors('g{}'.format(self.Count), title, x=x, y=e[:, 0], ey=ey, asym_err=True)
-        format_histo(g, **kwargs)
-        self.object(g, show, lm, draw_opt='ap')
+        g = self.make_tgrapherrors(x=x, y=e[:, 0], ey=ey, asym_err=True)
+        format_histo(g, title=title, **kwargs)
+        self.histo(g, show, lm, draw_opt='ap')
         return g
     # endregion DRAW
-    # ----------------------------------------
-
-    # ----------------------------------------
-    # region SAVE
-    def make_bias_string(self, bias=None):
-        if bias is None:
-            return self.make_bias_string(self.bias) if hasattr(self, 'bias') else ''
-        pol = 'm' if bias < 0 else 'p'
-        return '_{pol}{bias:04d}'.format(pol=pol, bias=int(abs(bias))) if bias else ''
-
-    def make_info_string(self):
-        string = '_{dia}'.format(dia=self.DUT.Name) if hasattr(self, 'DUT') else ''
-        string += self.make_bias_string()
-        string += '_{tc}'.format(tc=self.TCString)
-        string = string.replace('-', '')
-        return string
-
-    @staticmethod
-    def server_is_mounted():
-        return dir_exists(join(Draw.ServerDir, 'Diamonds'))
-
-    def save_on_server(self, canvas, file_name, ftype=None):
-        if Draw.ServerDir is None:
-            return
-        if not Draw.server_is_mounted():
-            warning('Diamond server is not mounted in {}'.format(Draw.ServerDir))
-            return
-        if hasattr(self, 'DUT'):
-            if hasattr(self, 'RunPlan') and self.RunPlan is not None:
-                run_string = 'RunPlan{}'.format(self.RunPlan.lstrip('0'))
-            elif hasattr(self, 'RunNumber'):
-                run_string = str(self.RunNumber)
-            else:
-                return
-            path = join(self.ServerDir, 'Diamonds', self.DUT.Name, 'BeamTests', make_tc_str(self.TCString, long_=False), run_string, file_name)
-            for ft in ['pdf', 'png'] if ftype is None else [ftype]:
-                canvas.SaveAs('{}.{}'.format(path, ft))
-
-    @staticmethod
-    def server_pickle(old_path, value):
-        if Draw.server_is_mounted():
-            picklepath = join(Draw.ServerDir, 'Pickles', basename(dirname(old_path)), basename(old_path))
-            do_pickle(picklepath, do_nothing, value)
-
-    def save_plots(self, savename, sub_dir=None, canvas=None, all_pads=True, both_dias=False, ind=None, prnt=True, save=True, show=True):
-        """ Saves the canvas at the desired location. If no canvas is passed as argument, the active canvas will be saved. However for applications without graphical interface,
-         such as in SSl terminals, it is recommended to pass the canvas to the method. """
-        canvas = get_last_canvas() if canvas is None else canvas
-        if canvas is None:
-            return
-        if ind is None:
-            try:
-                self.InfoLegend.draw(canvas, all_pads, both_dias) if hasattr(self, 'InfoLegend') else log_warning('Did not find InfoLegend class...') \
-                    if not any(hasattr(self, att) for att in ['RunSelections', 'CurrentGraph']) else do_nothing()
-            except Exception as err:
-                warning(err)
-        else:
-            list(self.Analyses.values())[ind].InfoLegend.draw(canvas, all_pads, both_dias) if hasattr(self, 'Analyses') else log_critical('sth went wrong...')
-        canvas.Modified()
-        canvas.Update()
-        if save and self.Save:
-            try:
-                if both_dias and sub_dir is None:
-                    sub_dir = self.TelSaveDir if hasattr(self, 'TelSaveDir') else sub_dir
-                self.save_canvas(canvas, sub_dir=sub_dir, name=savename, print_names=prnt, show=show)
-                Draw.add(canvas)
-            except Exception as inst:
-                log_warning('Error in save_canvas:\n{0}'.format(inst))
-
-    def save_tel_plots(self, savename, sub_dir=None, canvas=None, all_pads=True, ind=None, prnt=True, save=True, show=True):
-        self.save_plots(savename, sub_dir, canvas, all_pads, True, ind, prnt, save, show)
-
-    def save_canvas(self, canvas, sub_dir=None, name=None, print_names=True, show=True, ftype=None, res_dir=None):
-        """should not be used in analysis methods..."""
-        sub_dir = self.SubDir if sub_dir is None else sub_dir
-        canvas.Update()
-        file_name = canvas.GetName() if name is None else name
-        ftypes = ['root', 'png', 'pdf', 'eps'] if ftype is None else [ftype]
-        file_path = join(self.ResultsDir if res_dir is None else res_dir, sub_dir, '{typ}' if len(ftypes) > 1 else '', file_name)
-        out = 'saving plot: {nam}'.format(nam=name)
-        run_number = self.RunNumber if hasattr(self, 'RunNumber') else None
-        run_number = 'rp{nr}'.format(nr=self.run_plan) if hasattr(self, 'run_plan') else run_number
-        set_root_output(show)  # needs to be in the same batch so that the pictures are created, takes forever...
-        set_root_warnings(False)
-        info_str = self.make_info_string()
-        for f in ftypes:
-            ext = '.{typ}'.format(typ=f)
-            if not f == 'png' and run_number is not None:
-                ext = '{str}_{run}.{typ}'.format(str=info_str, run=run_number, typ=f)
-            ensure_dir(dirname(file_path.format(typ=f)))
-            out_file = '{fname}{ext}'.format(fname=file_path, ext=ext)
-            out_file = out_file.format(typ=f)
-            canvas.SaveAs(out_file)
-        self.save_on_server(canvas, file_name, ftype)
-        if print_names:
-            log_info(out, prnt=Draw.Verbose)
-        set_root_output(True)
-
-    def save_tel_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=None, draw_opt=None, x_fac=None, y_fac=None, all_pads=True,
-                       leg=None, logy=False, logx=False, logz=False, canvas=None, grid=False, gridx=False, gridy=False, save=True, ind=None, prnt=True, phi=None, theta=None):
-        return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x_fac, y_fac, all_pads, leg, logy, logx, logz, canvas, grid, gridx, gridy, save, True, ind, prnt, phi, theta)
-    # endregion SAVE
     # ----------------------------------------
 
     # ----------------------------------------
@@ -561,7 +445,7 @@ class Draw:
     @staticmethod
     def make_graph_from_profile(p):
         x_range = [i for i in range(p.GetNbinsX()) if p.GetBinContent(i)]
-        x = [make_ufloat([p.GetBinCenter(i), old_div(p.GetBinWidth(i), 2)]) for i in x_range]
+        x = [make_ufloat([p.GetBinCenter(i), p.GetBinWidth(i) / 2]) for i in x_range]
         y = [make_ufloat([p.GetBinContent(i), p.GetBinError(i)]) for i in x_range]
         return Draw.make_tgrapherrors(x, y)
 
@@ -729,7 +613,7 @@ def fill_hist(h, x, y=None, zz=None):
 
 def set_2d_ranges(h, dx, dy):
     # find centers in x and y
-    xmid, ymid = [old_div((p.GetBinCenter(p.FindFirstBinAbove(0)) + p.GetBinCenter(p.FindLastBinAbove(0))), 2) for p in [h.ProjectionX(), h.ProjectionY()]]
+    xmid, ymid = [(p.GetBinCenter(p.FindFirstBinAbove(0)) + p.GetBinCenter(p.FindLastBinAbove(0))) / 2 for p in [h.ProjectionX(), h.ProjectionY()]]
     format_histo(h, x_range=[xmid - dx, xmid + dx], y_range=[ymid - dy, ymid + dx])
 
 
@@ -760,7 +644,7 @@ def fix_chi2(g, prec=.01, show=True):
         for i in range(g.GetN()):
             g.SetPointError(i, g.GetErrorX(i), error)
         fit = g.Fit('pol0', 'qs{}'.format('' if show else 0))
-        chi2 = old_div(fit.Chi2(), fit.Ndf())
+        chi2 = fit.Chi2() / fit.Ndf()
         error += .5 ** it * sign(chi2 - 1)
         it += 1
     return FitRes(fit) if fit is not None else FitRes()
@@ -839,7 +723,7 @@ def scale_graph(gr, scale=None, val=1, to_low_flux=False):
     x, y = get_graph_vecs(gr)
     if scale is None:
         m, s = mean_sigma(y)
-        scale = old_div(val, (y[where(x == min(x))[0]] if to_low_flux else m))
+        scale = val / (y[where(x == min(x))[0]] if to_low_flux else m)
     for i in range(x.size):
         gr.SetPoint(i, gr.GetX()[i], gr.GetY()[i] * scale)
         gr.SetPointError(i, gr.GetErrorX(i), gr.GetErrorY(i) * scale) if 'Error' in gr.ClassName() else do_nothing()
@@ -864,7 +748,7 @@ def fit_bucket(histo, show=True):
     # TODO move to appropriate spot and revise
     set_root_output(False)
     h = histo
-    format_histo(h, rebin=old_div(int(h.GetBinCenter(h.FindLastBinAbove(h.GetMaximum() * .02))), 40))
+    format_histo(h, rebin=int(h.GetBinCenter(h.FindLastBinAbove(h.GetMaximum() * .02))) / 40)
     fit = TF1('fit', 'gaus(0) + gaus(3) + gaus(6)', h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax())
     s = TSpectrum(3)
     n = s.Search(h, 2.5)
@@ -874,15 +758,15 @@ def fit_bucket(histo, show=True):
     if y1 < 20 or y1 > 1e10:
         return  # didn't find pedestal peak!
     diff = x2 - x1
-    fit.SetParameters(*[y2, x2, 10, y1, x1, 3, old_div(min(y1, y2), 4), x1 + old_div(diff, 4), 5])
+    fit.SetParameters(*[y2, x2, 10, y1, x1, 3, min(y1, y2) / 4, x1 + diff / 4, 5])
     # signal
     fit.SetParLimits(1, x2 - 5, x2 + 5)
     # pedestal
     fit.SetParLimits(3, 1, y1 * 2)
     fit.SetParLimits(4, x1 - 10, x1 + 10)
     # middle ped
-    fit.SetParLimits(6, 1, old_div(min(y1, y2), 2))
-    fit.SetParLimits(7, x1, x1 + old_div(diff, 2))
+    fit.SetParLimits(6, 1, min(y1, y2) / 2)
+    fit.SetParLimits(7, x1, x1 + diff / 2)
     for i in range(1):
         h.Fit(fit, 'qs{0}'.format('' if show else '0'), '', -50, x2 + 5)
     set_root_warnings(1)
