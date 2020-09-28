@@ -4,14 +4,17 @@
 # created on Jan 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
+from __future__ import division
+from builtins import str
+from builtins import object
 from ROOT import gROOT, TLegend
 from utils import make_tc_str, timedelta, make_flux_string, make_irr_string
 from subprocess import check_output
 from os import chdir
 
 
-class InfoLegend:
-    def __init__(self, analysis):
+class InfoLegend(object):
+    def __init__(self, analysis=None):
         self.Analysis = analysis
         self.ShowGit = analysis.MainConfig.getboolean('SAVE', 'git hash')
         self.ShowInfo = analysis.MainConfig.getboolean('SAVE', 'info legend')
@@ -19,12 +22,17 @@ class InfoLegend:
 
         self.Objects = []
 
+    def is_active(self):
+        return hasattr(self.Analysis, 'DUT')
+
     def draw(self, canvas=None, all_pads=True, both_dias=False, show=True):
         """
         Draws the run infos inside the canvas. If no canvas is given, it will be drawn into the active Pad.
         :param all_pads: sets if the legens shall be drawn in all subpads or just the provided canvas
         :return: [run info legend, git text]
         """
+        if not self.is_active():
+            return
         if canvas is not None:
             canvas.cd()
             if show and canvas.GetBottomMargin() < .105 and self.ShowInfo:
@@ -74,7 +82,7 @@ class InfoLegend:
         return git_text
 
     def get_duration(self):
-        dur = sum([ana.Run.Duration for ana in self.Analysis.Analyses.values()], timedelta()) if self.IsCollection else self.Analysis.Run.Duration
+        dur = sum([ana.Run.Duration for ana in list(self.Analysis.Analyses.values())], timedelta()) if self.IsCollection else self.Analysis.Run.Duration
         return dur - timedelta(microseconds=dur.microseconds)
 
     def get_run_string(self):

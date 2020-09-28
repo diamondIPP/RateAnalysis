@@ -2,8 +2,15 @@
 #       UTILITY FUNCTIONS
 # created on May 19th 2016 by M. Reichmann
 # --------------------------------------------------------
+from __future__ import division, print_function, absolute_import
 
-from __future__ import division, print_function
+import sys
+from os.path import join, dirname, realpath
+file_dir = dirname(dirname(realpath(__file__)))
+sys.path.append(join(file_dir, 'src'))
+sys.path.append(join(file_dir, 'utils'))
+
+
 from future import standard_library
 standard_library.install_aliases()
 from builtins import zip
@@ -900,10 +907,13 @@ class Config(ConfigParser):
     def __init__(self, file_name, **kwargs):
         super(Config, self).__init__(**kwargs)
         self.read(file_name)
+        self.FileName = file_name
 
     def get_value(self, section, option, dtype=str, default=None):
         dtype = type(default) if default is not None else dtype
         try:
+            if dtype is bool:
+                return self.getboolean(section, option)
             v = self.get(section, option)
             return loads(v) if dtype == list or '[' in v and dtype is not str else dtype(v)
         except (NoOptionError, NoSectionError):
