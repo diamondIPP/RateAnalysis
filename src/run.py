@@ -1,52 +1,46 @@
 #!/usr/bin/env python
-from ConfigParser import NoOptionError
-from json import loads
+from __future__ import division, print_function
 
-from ROOT import TFile
-from numpy import inf, zeros
-
+from numpy import inf
+from ROOT import TFile, TTree
+from builtins import next
+from analysis import Analysis, basename
 from converter import Converter
-from analysis import Analysis, join, basename
-from utils import *
-from glob import glob
 from dut import DUT
+from utils import *
 
 
-class Run:
+class Run(Analysis):
     """ Run class containing all the information for a single run. """
 
-    def __init__(self, number=None, test_campaign=None, tree=True, t_vec=None, verbose=False):
+    def __init__(self, number=None, testcampaign=None, tree=True, t_vec=None, verbose=False):
         """
         :param number: if None is provided it creates a dummy run
-        :param test_campaign: if None is provided ...
+        :param testcampaign: if None is provided ...
         :param tree: root_tree object, if None is given it will start the converter
         :param t_vec: time sequence of the run, if None is provide it will generate a corrected one
         :param verbose: turn on more output
         """
         # Basics
+        super(Run, self).__init__(testcampaign, verbose)
         self.Number = number
-        self.Verbose = verbose
-        self.MainConfig = Analysis.load_main_config()
 
         # Directories / Test Campaign
-        self.Dir = get_base_dir()
-        self.DataDir = self.MainConfig.get('MAIN', 'data directory')
         self.IrradiationFile = join(self.Dir, self.MainConfig.get('MISC', 'irradiation file'))
-        self.TCString = self.load_test_campaign(test_campaign)
         self.TCDir = self.generate_tc_directory()
 
         # Configuration & Root Files
-        self.Config = self.load_config()
+        self.Config = self.load_run_config()
         self.RootFileDir = self.load_rootfile_dirname()
         self.RootFilePath = self.load_rootfile_path()
 
         # Run Info
-        self.RunInfoFile = join(self.TCDir, 'run_log.json')
-        self.RunInfo = self.load_run_info()
+        self.InfoFile = join(self.TCDir, 'run_log.json')
+        self.Info = self.load_run_info()
         self.RootFile = None
-        self.Tree = None
+        self.Tree = TTree()
         self.TreeName = self.Config.get('BASIC', 'treename')
-        self.DUTs = [DUT(i + 1, self.RunInfo) for i in xrange(self.get_n_diamonds())] if self.Number is not None else None
+        self.DUTs = [DUT(i + 1, self.Info) for i in range(self.get_n_diamonds())] if self.Number is not None else None
 
         # Settings
         self.PixelSize = loads(self.MainConfig.get('PIXEL', 'size'))
@@ -107,30 +101,19 @@ class Run:
 
     # ----------------------------------------
     # region INIT
-    def load_test_campaign(self, testcampaign):
-        testcampaign = self.MainConfig.get('MAIN', 'default test campaign') if testcampaign is None else testcampaign
-        if testcampaign not in self.get_test_campaigns() and self.Number is not None:
-            critical('The Testcampaign {} does not exist!'.format(testcampaign))
-        return testcampaign
-
-    def get_test_campaigns(self):
-        return sorted([basename(path).replace('_', '').strip('psi') for path in glob(join(self.DataDir, 'psi*'))])
-
     def load_rootfile(self):
-        file_path = self.RootFilePath
-        self.info('\n\033[1A\rLoading information for rootfile: {file}'.format(file=basename(file_path)))
-        self.RootFile = TFile(file_path)
+        self.info('\n\033[1A\rLoading information for rootfile: {file}'.format(file=basename(self.RootFilePath)))
+        self.RootFile = TFile(self.RootFilePath)
         self.Tree = self.RootFile.Get(self.TreeName)
 
-    def load_config(self):
-        parser = ConfigParser({'excluded_runs': '[]'})  # add non default option
+    def load_run_config(self):
         base_file_name = join(get_base_dir(), 'config', self.TCString, 'RunConfig.ini')
         if not file_exists(base_file_name):
             log_critical('RunConfig.ini does not exist for {0}! Please create it in config/{0}!'.format(self.TCString))
-        parser.read(base_file_name)  # first read the main config file with general information for all splits
+        parser = Config(base_file_name)  # first read the main config file with general information for all splits
         if parser.has_section('SPLIT') and self.Number is not None:
             split_runs = [0] + loads(parser.get('SPLIT', 'runs')) + [inf]
-            config_nr = next(i for i in xrange(1, len(split_runs)) if split_runs[i - 1] <= self.Number < split_runs[i])
+            config_nr = next(i for i in range(1, len(split_runs)) if split_runs[i - 1] <= self.Number < split_runs[i])
             parser.read(join(get_base_dir(), 'config', self.TCString, 'RunConfig{nr}.ini'.format(nr=config_nr)))  # add the content of the split config
         return parser
 
@@ -151,7 +134,7 @@ class Run:
         return join(choose(data_dir, default=self.DataDir), 'psi_{y}_{m}'.format(y=self.TCString[:4], m=self.TCString[4:]))
 
     def load_trigger_planes(self):
-        default = self.get_unmasked_area().keys() if self.load_mask() else [1, 2]
+        default = list(self.get_unmasked_area().keys()) if self.load_mask() else [1, 2]
         return loads(self.Config.get('BASIC', 'trigger planes')) if self.Config.has_option('BASIC', 'trigger planes') else default
 
     def get_n_diamonds(self, run_number=None):
@@ -159,7 +142,7 @@ class Run:
         return len([key for key in run_info if key.startswith('dia') and key[-1].isdigit()])
 
     def load_dut_numbers(self):
-        return [i + 1 for i in xrange(len([key for key in self.RunInfo.iterkeys() if key.startswith('dia') and key[-1].isdigit()]))]
+        return [i + 1 for i in range(len([key for key in self.Info.keys() if key.startswith('dia') and key[-1].isdigit()]))]
 
     def load_dut_type(self):
         dut_type = self.Config.get('BASIC', 'type') if self.Number is not None else None
@@ -172,38 +155,38 @@ class Run:
             return load(f)
 
     def load_run_info_file(self):
-        if not file_exists(self.RunInfoFile):
-            log_critical('Run Log File: "{f}" does not exist!'.format(f=self.RunInfoFile))
-        with open(self.RunInfoFile) as f:
+        if not file_exists(self.InfoFile):
+            log_critical('Run Log File: "{f}" does not exist!'.format(f=self.InfoFile))
+        with open(self.InfoFile) as f:
             return load(f)
 
     def load_run_info(self, run_number=None):
         data = self.load_run_info_file()
 
         run_number = self.Number if run_number is None else run_number
-        if run_number >= 0:
+        if run_number is not None:
             run_info = data.get(str(run_number))
             if run_info is None:  # abort if the run is still not found
                 log_critical('Run {} not found in json run log file!'.format(run_number))
-            self.RunInfo = run_info
-            self.RunInfo['masked pixels'] = [0] * 4
+            self.Info = run_info
+            self.Info['masked pixels'] = [0] * 4
             self.translate_diamond_names()
             return run_info
         else:
-            self.RunInfo = self.load_default_info()
-            return self.RunInfo
+            self.Info = self.load_default_info()
+            return self.Info
 
     def load_dut_names(self):
-        return [self.RunInfo['dia{nr}'.format(nr=i)] for i in xrange(1, self.get_n_diamonds() + 1)]
+        return [self.Info['dia{nr}'.format(nr=i)] for i in range(1, self.get_n_diamonds() + 1)]
 
     def load_biases(self):
-        return [int(self.RunInfo['dia{nr}hv'.format(nr=i)]) for i in xrange(1, self.get_n_diamonds() + 1)]
+        return [int(self.Info['dia{nr}hv'.format(nr=i)]) for i in range(1, self.get_n_diamonds() + 1)]
 
     def load_log_start(self):
-        return conv_log_time(self.RunInfo['starttime0'])
+        return conv_log_time(self.Info['starttime0'])
 
     def load_log_stop(self):
-        return conv_log_time(self.RunInfo['endtime'])
+        return conv_log_time(self.Info['endtime'])
 
     def load_total_time(self):
         return (self.Time[-1] - self.Time[0]) / 1000
@@ -230,7 +213,7 @@ class Run:
         mask_dir = self.MainConfig.get('MAIN', 'maskfile directory') if self.MainConfig.has_option('MAIN', 'maskfile directory') else join(self.DataDir, self.TCDir, 'masks')
         if not dir_exists(mask_dir):
             log_warning('Mask file directory does not exist ({})!'.format(mask_dir))
-        return join(mask_dir, basename(self.RunInfo['maskfile']))
+        return join(mask_dir, basename(self.Info['maskfile']))
 
     def load_mask(self):
         mask_file = self.load_mask_file_path()
@@ -271,43 +254,36 @@ class Run:
         if mask is None:
             return {plane: full_area for plane in self.TriggerPlanes}
         # format {plane: [x1, y1, x2, y2]}
-        return {plane: pixel_area * (v[2] - v[0] + 1) * (v[3] - v[1] + 1) for plane, v in mask.iteritems()}
+        return {plane: pixel_area * (v[2] - v[0] + 1) * (v[3] - v[1] + 1) for plane, v in mask.items()}
 
     def find_for_in_comment(self):
         for name in ['for1', 'for2']:
-            if name not in self.RunInfo:
-                for cmt in self.RunInfo['comments'].split('\r\n'):
+            if name not in self.Info:
+                for cmt in self.Info['comments'].split('\r\n'):
                     cmt = cmt.replace(':', '')
                     cmt = cmt.split(' ')
                     if str(cmt[0].lower()) == name:
-                        self.RunInfo[name] = int(cmt[1])
-        return 'for1' in self.RunInfo
+                        self.Info[name] = int(cmt[1])
+        return 'for1' in self.Info
     # endregion
     # ----------------------------------------
 
     # ----------------------------------------
     # region HELPERS
     def translate_diamond_names(self):
-        for key in self.RunInfo:
-            if not (key.startswith('dia') and key[-1].isdigit()):
-                continue
-            dia = self.RunInfo[key]
-            try:
-                self.RunInfo[key] = self.translate_dia(dia)
-            except NoOptionError as err:
-                log_warning(err)
+        for key, value in [(key, value) for key, value in self.Info.items() if key.startswith('dia') and key[-1].isdigit()]:
+            self.Info[key] = self.translate_dia(value)
 
     def translate_dia(self, dia):
         if dia is None or dia.lower() in ['unknown', 'none']:
             return
-        parser = ConfigParser()
-        parser.read(join(self.Dir, 'config', 'DiamondAliases.ini'))
-        return parser.get('ALIASES', dia.lower()) if dia.lower() in parser.options('ALIASES') else log_critical('Please add {} to the diamond aliases!'.format(dia.encode()))
+        parser = Config(join(self.Dir, 'config', 'DiamondAliases.ini'))
+        return parser.get('ALIASES', dia.lower()) if dia.lower() in parser.options('ALIASES') else log_critical('Please add {} to confg/DiamondAliases.ini!'.format(dia.encode()))
 
     def reload_run_config(self, run_number):
         self.Number = run_number
         self.Config = self.load_config()
-        self.RunInfo = self.load_run_info()
+        self.Info = self.load_run_info()
         self.RootFileDir = self.load_rootfile_dirname()
         self.RootFilePath = self.load_rootfile_path()
         return self.Config
@@ -326,17 +302,17 @@ class Run:
             return
         fluxes = []
         if self.find_for_in_comment():
-            for i, area in enumerate(self.get_unmasked_area().itervalues(), 1):
-                fluxes.append(self.RunInfo['for{num}'.format(num=i)] / area / 1000)  # in kHz/cm^2
+            for i, area in enumerate(self.get_unmasked_area().values(), 1):
+                fluxes.append(self.Info['for{num}'.format(num=i)] / area / 1000)  # in kHz/cm^2
         else:
-            fluxes.append(self.RunInfo['measuredflux'])
+            fluxes.append(self.Info['measuredflux'])
         flux = mean(fluxes)
-        self.RunInfo['mean flux'] = flux
+        self.Info['mean flux'] = flux
         return make_ufloat((flux, .1 * flux))
 
     def find_n_events(self, n, cut, start):
         total_events = self.Tree.Draw('event_number', cut, 'goff', self.NEntries, start)
-        evt_numbers = [self.Tree.GetV1()[i] for i in xrange(total_events)]
+        evt_numbers = [self.Tree.GetV1()[i] for i in range(total_events)]
         return int(evt_numbers[:n][-1] + 1 - start)
 
     # ----------------------------------------
@@ -345,7 +321,7 @@ class Run:
     # ----------------------------------------
     # region GET
     def get_flux(self, rel_error=0.):
-        return ufloat(self.Flux.n, self.Flux.s + self.Flux.n * rel_error) if self.Flux else self.RunInfo['aimed flux']
+        return ufloat(self.Flux.n, self.Flux.s + self.Flux.n * rel_error) if self.Flux else self.Info['aimed flux']
 
     def get_time(self):
         return make_ufloat((time_stamp(self.LogStart + self.Duration / 2), self.Duration.seconds / 2))
@@ -383,9 +359,9 @@ class Run:
     # ----------------------------------------
     # region SHOW
     def show_run_info(self):
-        print 'Run information for run', self.Number
-        for key, value in sorted(self.RunInfo.iteritems()):
-            print '{k}: {v}'.format(k=key.ljust(13), v=value)
+        print('Run information for run', self.Number)
+        for key, value in sorted(self.Info.items()):
+            print('{k}: {v}'.format(k=key.ljust(13), v=value))
 
     def has_branch(self, name):
         return bool(self.Tree.GetBranch(name))
@@ -401,5 +377,5 @@ class Run:
 
 if __name__ == '__main__':
 
-    args = init_argparser(run=23, tc=None, tree=True)
-    z = Run(args.run, tree=args.tree, test_campaign=args.testcampaign)
+    args = init_argparser(run=171, tc=None, tree=True)
+    z = Run(args.run, tree=args.tree, testcampaign=args.testcampaign)
