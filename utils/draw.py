@@ -522,9 +522,9 @@ def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=Non
         pass
     # axes
     try:
-        x_args = [x_tit, x_off, tit_size, center_x, lab_size, l_off_x, x_range, ndivx, max(tick_size, x_ticks), ]
-        y_args = [y_tit, y_off, tit_size, center_y, lab_size, l_off_y, y_range, ndivy, max(tick_size, y_ticks), yax_col]
-        z_args = [z_tit, z_off, tit_size, False, lab_size, None, z_range, None, max(tick_size, z_ticks)]
+        x_args = [x_tit, x_off, tit_size, center_x, lab_size, l_off_x, x_range, ndivx, choose(x_ticks, tick_size), ]
+        y_args = [y_tit, y_off, tit_size, center_y, lab_size, l_off_y, y_range, ndivy, choose(y_ticks, tick_size), yax_col]
+        z_args = [z_tit, z_off, tit_size, False, lab_size, None, z_range, None, choose(z_ticks, tick_size)]
         for i, name in enumerate(['X', 'Y', 'Z']):
             format_axis(getattr(h, 'Get{}axis'.format(name))(), is_graph(h), *[x_args, y_args, z_args][i])
     except AttributeError or ReferenceError:
