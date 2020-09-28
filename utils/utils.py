@@ -3,6 +3,13 @@
 # created on May 19th 2016 by M. Reichmann
 # --------------------------------------------------------
 
+from __future__ import division, print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 import ROOT
 
 ROOT.PyConfig.IgnoreCommandLineOptions = True
@@ -19,7 +26,7 @@ from threading import Thread
 from time import time, sleep
 
 from gtts import gTTS
-from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, any, count_nonzero, full, ndarray, histogram, searchsorted, cumsum, exp, sin, cos, arctan
+from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, any, count_nonzero, full, ndarray, histogram, searchsorted, cumsum, exp, sin, cos, arctan, zeros
 from os import makedirs, _exit, remove, devnull
 from os import path as pth
 from os.path import dirname, realpath
@@ -29,13 +36,13 @@ from uncertainties import ufloat
 from uncertainties.core import Variable, AffineScalarFunc
 from argparse import ArgumentParser
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
-from ConfigParser import ConfigParser
+from configparser import ConfigParser, NoSectionError, NoOptionError
 from scipy.optimize import curve_fit
 from scipy import constants
 import h5py
 from functools import partial
-from Queue import Queue
-from json import load
+from queue import Queue
+from json import load, loads
 
 OFF = False
 ON = True
@@ -56,11 +63,11 @@ def get_t_str():
 
 
 def log_warning(msg):
-    print '{head} {t} --> {msg}'.format(t=get_t_str(), msg=msg, head=colored('WARNING:', 'yellow'))
+    print('{head} {t} --> {msg}'.format(t=get_t_str(), msg=msg, head=colored('WARNING:', 'yellow')))
 
 
 def log_critical(msg):
-    print '{head} {t} --> {msg}\n'.format(t=get_t_str(), msg=msg, head=colored('CRITICAL:', 'red'))
+    print('{head} {t} --> {msg}\n'.format(t=get_t_str(), msg=msg, head=colored('CRITICAL:', 'red')))
     _exit(1)
 
 
@@ -68,8 +75,9 @@ def critical(msg):
     log_critical(msg)
 
 
-def warning(msg):
-    log_warning(msg)
+def warning(msg, prnt=True):
+    if prnt:
+        log_warning(msg)
 
 
 def info(msg, next_line=True, blank_lines=0, prnt=True):
@@ -80,16 +88,16 @@ def log_info(msg, next_line=True, blank_lines=0, prnt=True):
     t1 = time()
     if prnt:
         t = datetime.now().strftime('%H:%M:%S')
-        print '{bl}\r{head} {t} --> {msg}'.format(head=colored('INFO:', 'cyan', attrs=['dark']), t=t, msg=msg, bl='\n' * blank_lines),
+        print('{bl}\r{head} {t} --> {msg}'.format(head=colored('INFO:', 'cyan', attrs=['dark']), t=t, msg=msg, bl='\n' * blank_lines))
         stdout.flush()
         if next_line:
-            print
+            print()
     return t1
 
 
 def add_to_info(t, msg='Done', prnt=True):
     if prnt:
-        print '{m} ({t:2.2f} s)'.format(m=msg, t=time() - t)
+        print('{m} ({t:2.2f} s)'.format(m=msg, t=time() - t))
 
 
 def set_root_warnings(status):
@@ -144,11 +152,11 @@ def format_base_frame(frame, x_tit, y_tit):
 
 
 def round_down_to(num, val):
-    return int(num) / val * val
+    return int(num) // val * val
 
 
 def round_up_to(num, val):
-    return int(num) / val * val + val
+    return int(num) // val * val + val
 
 
 def interpolate_two_points(x1, y1, x2, y2, name=''):
@@ -269,13 +277,6 @@ def increased_range(ran, fac_bot=0., fac_top=0.):
     return [(1 + fac_bot) * ran[0] - fac_bot * ran[1], (1 + fac_top) * ran[1] - fac_top * ran[0]]
 
 
-def calc_weighted_mean(means, sigmas):
-    weights = map(lambda x: x ** (-2), sigmas)
-    variance = 1 / sum(weights)
-    mean_ = sum(map(lambda x, y: x * y, means, weights))
-    return mean_ * variance, sqrt(variance)
-
-
 def mean_sigma(values, weights=None):
     """ Return the weighted average and standard deviation. values, weights -- Numpy ndarrays with the same shape. """
     if len(values) == 1:
@@ -302,7 +303,7 @@ def make_latex_table(header, cols, endline=False):
     size = max([len(col) for col in cols])
     rows = []
     for col in cols:
-        for i in xrange(size):
+        for i in range(size):
             if len(rows) < size:
                 rows.append([])
             rows[i].append(col[i] if len(col) > i else '')
@@ -347,11 +348,11 @@ def make_col_str(col):
 
 def print_banner(msg, symbol='~', new_lines=1, color=None):
     msg = '{} |'.format(msg)
-    print colored('{n}{delim}\n{msg}\n{delim}{n}'.format(delim=len(str(msg)) * symbol, msg=msg, n='\n' * new_lines), color)
+    print(colored('{n}{delim}\n{msg}\n{delim}{n}'.format(delim=len(str(msg)) * symbol, msg=msg, n='\n' * new_lines), color))
 
 
 def print_small_banner(msg, symbol='-', color=None):
-    print colored('\n{delim}\n{msg}\n'.format(delim=len(str(msg)) * symbol, msg=msg), color)
+    print(colored('\n{delim}\n{msg}\n'.format(delim=len(str(msg)) * symbol, msg=msg), color))
 
 
 def print_elapsed_time(start, what='This', show=True, color=None):
@@ -423,7 +424,7 @@ def isint(x):
 
 
 def set_drawing_range(h, legend=True, lfac=None, rfac=None, thresh=10):
-    for i in xrange(1, 4):
+    for i in range(1, 4):
         h.SetBinContent(i, 0)
     range_ = [h.GetBinCenter(i) for i in [h.FindFirstBinAbove(thresh), h.FindLastBinAbove(thresh)]]
     lfac = lfac if lfac is not None else .2
@@ -501,17 +502,18 @@ def get_resolution():
         return 1000
 
 
-def print_table(rows, header=None, prnt=True):
-    t = array(rows, dtype=str) if header is None else concatenate((array([header], dtype=str), array(rows, dtype=str)))
-    col_width = [len(max(t[:, i], key=len)) for i in xrange(t.shape[1])]
+def print_table(rows, header=None, footer=None, prnt=True):
+    head, foot = [choose([v], zeros((0, len(rows[0]))), v) for v in [header, footer]]
+    t = concatenate([head, rows, foot]).astype('str')
+    col_width = [len(max(t[:, i], key=len)) for i in range(t.shape[1])]
     total_width = sum(col_width) + len(col_width) * 3 + 1
     hline = '{}'.format('~' * total_width)
     if prnt:
         for i, row in enumerate(t):
-            if i in [0, 1, t.size]:
-                print hline
-            print '| {r} |'.format(r=' | '.join(word.ljust(n) for word, n in zip(row, col_width)))
-        print '{}\n'.format(hline)
+            if i in [0] + choose([1], [], header) + choose([t.shape[0] - 1], [], footer):
+                print(hline)
+            print('| {r} |'.format(r=' | '.join(word.ljust(n) for word, n in zip(row, col_width))))
+        print('{}\n'.format(hline))
     return rows
 
 
@@ -566,8 +568,8 @@ def int_to_roman(integer):
     dic = OrderedDict([(1000, 'M'), (900, 'CM'), (500, 'D'), (400, 'CD'), (100, 'C'), (90, 'XC'), (50, 'L'), (40, 'XL'),
                        (10, 'X'), (9, 'IX'), (5, 'V'), (4, 'IV'), (1, 'I')])
     result = ''
-    for i, num in dic.iteritems():
-        count = int(integer / i)
+    for i, num in dic.items():
+        count = int(integer // i)
         result += num * count
         integer -= i * count
     return result
@@ -597,18 +599,18 @@ def set_y_range(ymin, ymax):
 
 
 def remove_letters(string):
-    return filter(lambda x: x.isdigit(), string)
+    return [x for x in string if x.isdigit()]
 
 
 def remove_digits(string):
-    return filter(lambda x: not x.isdigit(), string)
+    return [x for x in string if not x.isdigit()]
 
 
-def get_last_canvas():
+def get_last_canvas(warn=True):
     try:
         return gROOT.GetListOfCanvases()[-1]
     except IndexError:
-        log_warning('There is no canvas is in the list...')
+        warning('There is no canvas is in the list...', prnt=warn)
 
 
 def close_last_canvas():
@@ -639,7 +641,7 @@ def average_list(lst, n):
 
 def log_bins(n_bins, min_val, max_val):
     width = (log10(max_val) - log10(min_val)) / float(n_bins)
-    return [n_bins, array([pow(10, log10(min_val) + i * width) for i in xrange(n_bins + 1)])]
+    return [n_bins, array([pow(10, log10(min_val) + i * width) for i in range(n_bins + 1)])]
 
 
 def make_ufloat(tup, par=0):
@@ -657,7 +659,7 @@ def find_graph_margins(graphs):
     for i, g in enumerate(graphs):
         if g.Class().GetName().startswith('TMulti'):
             graphs[i] = g.GetListOfGraphs()[0]
-    return min([min(gr.GetY()[i] for i in xrange(gr.GetN()) if gr.GetY()[i] >= 0.01) for gr in graphs]), max([TMath.MaxElement(gr.GetN(), gr.GetY()) for gr in graphs])
+    return min([min(gr.GetY()[i] for i in range(gr.GetN()) if gr.GetY()[i] >= 0.01) for gr in graphs]), max([TMath.MaxElement(gr.GetN(), gr.GetY()) for gr in graphs])
 
 
 def get_quantiles(values, bins):
@@ -672,13 +674,13 @@ def load_root_files(sel, init=True):
         thread = MyThread(sel, run, init)
         thread.start()
         threads[run] = thread
-    while any([thread.isAlive() for thread in threads.itervalues()]) and init:
+    while any([thread.isAlive() for thread in threads.values()]) and init:
         sleep(.1)
     if init:
         pool = Pool(len(threads))
-        results = [pool.apply_async(get_time_vec, (thread.Selection, thread.Run)) for thread in threads.itervalues()]
+        results = [pool.apply_async(get_time_vec, (thread.Selection, thread.Run)) for thread in threads.values()]
         times = [result.get(60) for result in results]
-        for thread, t in zip(threads.itervalues(), times):
+        for thread, t in zip(iter(threads.values()), times):
             thread.Time = t
         pool.close()
     return threads
@@ -788,7 +790,7 @@ def get_root_vec(tree, n=0, ind=0, dtype=None, var=None, cut=''):
 
 
 def get_root_vecs(tree, n, n_ind, dtype=None):
-    return [get_root_vec(tree, n, i, dtype) for i in xrange(n_ind)]
+    return [get_root_vec(tree, n, i, dtype) for i in range(n_ind)]
 
 
 def get_arg(arg, default):
@@ -826,7 +828,7 @@ def load_json(name):
 
 def measure_time(f, rep=1, *args, **kwargs):
     t = info('Measuring time of method {}:'.format(f.__name__), next_line=False)
-    for _ in xrange(int(rep)):
+    for _ in range(int(rep)):
         f(*args, **kwargs)
     add_to_info(t, '')
 
@@ -835,7 +837,7 @@ def u_to_str(v, prec=2):
     return '{{:1.{0}f}} ({{:1.{0}f}})'.format(prec).format(v.n, v.s)
 
 
-class FitRes:
+class FitRes(object):
     def __init__(self, f=None):
         self.Pars = [None]
         self.Errors = [None]
@@ -848,9 +850,9 @@ class FitRes:
         self.NPar = f.GetNpar() if is_tf1 else f.NPar()
         if self.NPar < 1:
             return
-        self.Pars = [f.GetParameter(i) for i in xrange(self.NPar)] if is_tf1 else list(f.Parameters())
-        self.Errors = [f.GetParError(i) for i in xrange(self.NPar)] if is_tf1 else list(f.Errors())
-        self.Names = [f.GetParName(i) if is_tf1 else f.ParName(i) for i in xrange(self.NPar)]
+        self.Pars = [f.GetParameter(i) for i in range(self.NPar)] if is_tf1 else list(f.Parameters())
+        self.Errors = [f.GetParError(i) for i in range(self.NPar)] if is_tf1 else list(f.Errors())
+        self.Names = [f.GetParName(i) if is_tf1 else f.ParName(i) for i in range(self.NPar)]
         self.vChi2 = f.GetChisquare() if is_tf1 else f.Chi2()
         self.vNdf = f.GetNDF() if is_tf1 else f.Ndf()
 
@@ -870,7 +872,7 @@ class FitRes:
         return self.vNdf
 
 
-class PBar:
+class PBar(object):
     def __init__(self):
         self.PBar = None
         self.Widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
@@ -893,6 +895,21 @@ class PBar:
         self.PBar.finish()
 
 
+class Config(ConfigParser):
+
+    def __init__(self, file_name, **kwargs):
+        super(Config, self).__init__(**kwargs)
+        self.read(file_name)
+
+    def get_value(self, section, option, dtype=str, default=None):
+        dtype = type(default) if default is not None else dtype
+        try:
+            v = self.get(section, option)
+            return loads(v) if dtype == list or '[' in v and dtype is not str else dtype(v)
+        except (NoOptionError, NoSectionError):
+            return default
+
+
 def gauss(x, scale, mean_, sigma, off=0):
     return scale * exp(-.5 * ((x - mean_) / sigma) ** 2) + off
 
@@ -903,7 +920,7 @@ def fit_data(f, y, x=None, p=None):
 
 
 def calc_speed(p, m):
-    return 1 / sqrt(1 + m**2 / p**2)
+    return 1 / sqrt(1 + m * m / (p * p))
 
 
 def t_diff(s, p, m1, m2):
@@ -915,7 +932,7 @@ def e_kin(p, m):
 
 
 def gamma_factor(v):
-    return 1 / sqrt(1 - v**2)
+    return 1 / sqrt(1 - v * v)
 
 
 def momentum(m, v):
