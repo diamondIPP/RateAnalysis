@@ -1,5 +1,6 @@
 
 from glob import glob
+from numpy import deg2rad, rad2deg, round_
 from helpers.save_plots import *
 
 
@@ -16,6 +17,7 @@ class Analysis(object):
 
     Dir = get_base_dir()
     MainConfig = load_main_config()
+    Verbose = False
 
     # Beam
     Momentum = MainConfig.getfloat('BEAM', 'momentum')
@@ -31,7 +33,7 @@ class Analysis(object):
 
         self.InitTime = time()
 
-        self.Verbose = verbose
+        Analysis.Verbose = verbose
         self.PickleSubDir = ''
 
         # Test Campaign
@@ -105,7 +107,7 @@ class Analysis(object):
         ensure_dir(directory)
         campaign = self.TCString if camp is None else camp
         run_str = str(run) if run is not None else self.RunPlan if hasattr(self, 'RunPlan') else ''
-        run_str = run_str if run is not None or run_str else str(self.Run.Number) if hasattr(self.Run, 'Number') else ''
+        run_str = run_str if run is not None or run_str else str(self.Run.Number) if hasattr(self, 'Run') and hasattr(self.Run, 'Number') else ''
         dut = str(dut if dut is not None else self.DUT.Number if hasattr(self, 'DUT') and hasattr(self.DUT, 'Number') else '')
         return join(directory, '{}.pickle'.format('_'.join([v for v in [name, campaign, run_str, dut, str(suf)] if v])))
 
