@@ -1,15 +1,13 @@
 #!/usr/bin/env python
-
 from ROOT import TF1, Math, TMath
-from draw import *
-from scipy.special import erf
 from numpy import pi
+from scipy.special import erf
+from helpers.draw import *
 
 
-class Fit(Draw):
+class Fit(object):
     """ general class to perform fits on a histgram"""
-    def __init__(self, name, h=None, fit_range=None, npx=1000, invert=False):
-        Draw.__init__(self)
+    def __init__(self, name='fit', h=None, fit_range=None, npx=1000, invert=False):
         self.Name = name
         self.Histo = h
 
@@ -38,7 +36,7 @@ class Fit(Draw):
             old.Delete()
 
     def init_fit(self):
-        pass
+        return TF1()
 
     def set_par_names(self):
         pass
@@ -57,20 +55,20 @@ class Fit(Draw):
 
     def get_parameters(self):
         for i in range(self.NPars):
-            print '{}: {:2.1f}'.format(self.Fit.GetParName(i), self.Fit.GetParameter(i))
+            print('{}: {:2.1f}'.format(self.Fit.GetParName(i), self.Fit.GetParameter(i)))
 
     def _get_rise_time(self, p=.1, show=False, off_par=6):
         maxval = self.Fit.GetMaximum() - self.Fit.GetParameter(off_par)
         t1, t0 = self.Fit.GetX((1 - p) * maxval, 0, self.Fit.GetX(maxval)), self.Fit.GetX(p * maxval)
         if show:
-            self.draw_vertical_line(t1, -100, 1e5, name='0')
-            self.draw_vertical_line(t0, -100, 1e5)
+            Draw.vertical_line(t1, -100, 1e5, name='0')
+            Draw.vertical_line(t0, -100, 1e5)
         return t1 - t0
 
     def fit(self, n=1, show=True, minuit=True):
         if minuit:
             Math.MinimizerOptions.SetDefaultMinimizer('Minuit2', 'Migrad')
-        for i in range(n):
+        for _ in range(n):
             self.Histo.Fit(self.Fit, 'qs0', '', self.XMin, self.XMax)
         if show:
             self.Fit.Draw('same')
@@ -92,7 +90,7 @@ class Crystalball(Fit):
 
     def draw(self, c=1, alpha=1, n=1, m=20, sigma=2, off=0):
         self.Fit.SetParameters(c, alpha, n, m, sigma, off)
-        self.draw_histo(self.Fit)
+        Draw.histo(self.Fit)
 
     def set_par_limits(self):
         if self.Histo is not None:
@@ -120,7 +118,7 @@ class ErfLand(Fit):
 
     def draw(self, c0=1, mpv=7, sigma=2, c1=1, xoff=3, w=2, yoff=0):
         self.Fit.SetParameters(c0, mpv, sigma, c1, xoff, w, yoff)
-        self.draw_histo(self.Fit)
+        Draw.histo(self.Fit)
 
     def get_rise_time(self, p=.1, show=False):
         return self._get_rise_time(p, show, off_par=6)
