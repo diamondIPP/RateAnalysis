@@ -5,8 +5,8 @@
 # --------------------------------------------------------
 
 from os.path import expanduser, basename
-from info_legend import InfoLegend
-from draw import *
+from helpers.info_legend import InfoLegend
+from helpers.draw import *
 
 
 class SaveDraw(Draw):
@@ -112,5 +112,5 @@ class SaveDraw(Draw):
 
 if __name__ == '__main__':
 
-    from analysis import Analysis
+    from src.analysis import Analysis
     z = SaveDraw(Analysis(), join(Draw.Dir, 'config', 'main.ini'))

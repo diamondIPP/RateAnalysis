@@ -4,14 +4,10 @@
 # created on Jan 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from __future__ import division
-from builtins import str
-from builtins import object
-from ROOT import gROOT, TLegend
-from utils import make_tc_str, timedelta, make_flux_string, make_irr_string
-from subprocess import check_output
 from os import chdir
-from draw import Draw
+from subprocess import check_output
+from ROOT import gROOT, TLegend
+from helpers.draw import Draw, make_tc_str, timedelta, make_flux_string, make_irr_string
 
 
 class InfoLegend(object):
@@ -29,7 +25,8 @@ class InfoLegend(object):
     def draw(self, canvas=None, all_pads=True, both_dias=False, show=True):
         """
         Draws the run infos inside the canvas. If no canvas is given, it will be drawn into the active Pad.
-        :param all_pads: sets if the legens shall be drawn in all subpads or just the provided canvas
+        :param both_dias: legend info for both diamonds
+        :param all_pads: draw info legends in all subpads or just the provided canvas
         :return: [run info legend, git text]
         """
         if not self.is_active():

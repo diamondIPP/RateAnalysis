@@ -2,23 +2,7 @@
 #       UTILITY FUNCTIONS
 # created on May 19th 2016 by M. Reichmann
 # --------------------------------------------------------
-from __future__ import division, print_function, absolute_import
-
-import sys
-from os.path import join, dirname, realpath
-file_dir = dirname(dirname(realpath(__file__)))
-sys.path.append(join(file_dir, 'src'))
-sys.path.append(join(file_dir, 'utils'))
-
-
-from future import standard_library
-standard_library.install_aliases()
-from builtins import zip
-from builtins import str
-from builtins import range
-from builtins import object
 import ROOT
-
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 from ROOT import gROOT, TF1, TFile, TMath
 
@@ -759,8 +743,8 @@ def correct_time(times, run):
     return times
 
 
-def say(txt):
-    tts = gTTS(text=txt.decode('utf-8'), lang='en')
+def say(txt, lang='en'):
+    tts = gTTS(text=txt, lang=lang)
     tts.save('good.mp3')
     with open(devnull, 'w') as FNULL:
         call(['mpg321', 'good.mp3'], stdout=FNULL)

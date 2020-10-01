@@ -4,12 +4,11 @@
 # created on February 15th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from __future__ import division, print_function
-
-from numpy import sign, linspace, ones
+from os.path import join
 from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TH1F, TSpectrum, TEllipse, TColor, TProfile
-from utils import *
-import binning as bins
+from numpy import sign, linspace, ones
+import src.binning as bins
+from helpers.utils import *
 
 
 def get_color_gradient(n):
@@ -320,6 +319,7 @@ class Draw(object):
         set_root_output(True)
         return Draw.add(c, th, leg)[0]
 
+    # TODO: revise and put at correct place
     def save_combined_pulse_heights(self, mg, mg1, mg_y, show=True, name=None, pulser_leg=None,
                                     x_range=None, y_range=None, rel_y_range=None, draw_objects=None, prnt=True):
         set_root_output(show)

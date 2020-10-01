@@ -1,17 +1,6 @@
-from __future__ import print_function, division
-from future import standard_library
-standard_library.install_aliases()
-
-import sys
-from os.path import join, dirname, realpath
-file_dir = dirname(dirname(realpath(__file__)))
-sys.path.append(join(file_dir, 'src'))
-sys.path.append(join(file_dir, 'utils'))
 
 from glob import glob
-from numpy import deg2rad, rad2deg, round_
-
-from save_plots import *
+from helpers.save_plots import *
 
 
 def load_main_config(config='main', ext='ini'):
