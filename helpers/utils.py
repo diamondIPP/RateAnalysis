@@ -267,8 +267,8 @@ def mean_sigma(values, weights=None):
     if all(weight == 0 for weight in weights):
         return [0, 0]
     avrg = average(values, weights=weights)
-    variance = average((values - avrg) ** 2, weights=weights)  # Fast and numerically precise
-    return avrg, sqrt(variance)
+    sigma = sqrt(average((values - avrg) ** 2, weights=weights))  # Fast and numerically precise
+    return ufloat(avrg, sigma / (sqrt(len(values)) - 1)), ufloat(sigma, sigma / sqrt(2 * len(values)))
 
 
 def make_latex_table_row(row, hline=False):
