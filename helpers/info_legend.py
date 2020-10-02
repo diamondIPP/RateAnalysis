@@ -38,7 +38,7 @@ class InfoLegend(object):
         else:
             canvas = gROOT.GetSelectedPad()
             if not canvas:
-                self.Analysis.log_warning('Cannot access an active Pad')
+                self.Analysis.warning('Cannot access an active Pad')
                 return
 
         run_str = self.get_run_string()
@@ -85,7 +85,7 @@ class InfoLegend(object):
 
     def get_run_string(self):
         run_str = 'Run{run}: {rate}, {dur}'.format(run=self.get_runnumber_str(), rate=self.get_rate_string(), dur=self.get_duration())
-        run_str += '' if self.IsCollection else ' ({} evts)'.format(self.Analysis.Run.NEntries)
+        run_str += '' if self.IsCollection else ' ({} evts)'.format(self.Analysis.Run.NEvents)
         return run_str
 
     def get_runnumber_str(self):
