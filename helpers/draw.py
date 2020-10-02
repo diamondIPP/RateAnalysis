@@ -450,9 +450,9 @@ class Draw(object):
         return Draw.add(h)
 
     @staticmethod
-    def make_tgrapherrors(x=None, y=None, ex=None, ey=None, asym_err=False):
+    def make_tgrapherrors(x=None, y=None, ex=None, ey=None, asym_err=False, title=''):
         g = (TGraphAsymmErrors if asym_err else TGraphErrors)(*make_graph_args(x, y, ex, ey, asym_err))
-        format_histo(g, 'g{}'.format(Draw.get_count()), marker=20, markersize=1)
+        format_histo(g, 'g{}'.format(Draw.get_count()), title, marker=20, markersize=1)
         return Draw.add(g)
 
     @staticmethod
