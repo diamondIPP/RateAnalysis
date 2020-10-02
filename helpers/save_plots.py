@@ -28,7 +28,7 @@ class SaveDraw(Draw):
 
         # Results
         self.ResultsDir = join(Draw.Dir, 'Results', choose(results_dir, default=SaveDraw.TCString))
-        self.SubDir = sub_dir
+        self.SubDir = str(sub_dir)
 
         # Server
         SaveDraw.ServerMountDir = expanduser(Draw.Config.get_value('SAVE', 'server mount directory', default=None))
