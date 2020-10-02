@@ -12,7 +12,6 @@ from copy import deepcopy
 from datetime import datetime, timedelta
 from multiprocessing import Pool, cpu_count
 from subprocess import call
-from sys import stdout
 from threading import Thread
 from time import time, sleep
 
@@ -53,37 +52,24 @@ def get_t_str():
     return datetime.now().strftime('%H:%M:%S')
 
 
-def log_warning(msg):
-    print('{head} {t} --> {msg}'.format(t=get_t_str(), msg=msg, head=colored('WARNING:', 'yellow')))
-
-
-def log_critical(msg):
-    print('{head} {t} --> {msg}\n'.format(t=get_t_str(), msg=msg, head=colored('CRITICAL:', 'red')))
-    _exit(1)
+def warning(msg, prnt=True):
+    if prnt:
+        print(prepare_msg(msg, 'WARNING', 'yellow'))
 
 
 def critical(msg):
-    log_critical(msg)
+    print(prepare_msg(msg, 'CRITICAL', 'red'))
+    _exit(1)
 
 
-def warning(msg, prnt=True):
+def prepare_msg(msg, head, color=None, attrs=None, blank_lines=0):
+    return '{}\r{} {} --> {}'.format('\n' * blank_lines, colored(head, color, attrs=choose(make_list(attrs), None, attrs)), get_t_str(), msg)
+
+
+def info(msg, endl=True, blank_lines=0, prnt=True):
     if prnt:
-        log_warning(msg)
-
-
-def info(msg, next_line=True, blank_lines=0, prnt=True):
-    return log_info(msg, next_line, blank_lines, prnt)
-
-
-def log_info(msg, next_line=True, blank_lines=0, prnt=True):
-    t1 = time()
-    if prnt:
-        t = datetime.now().strftime('%H:%M:%S')
-        print('{bl}\r{head} {t} --> {msg}'.format(head=colored('INFO:', 'cyan', attrs=['dark']), t=t, msg=msg, bl='\n' * blank_lines))
-        stdout.flush()
-        if next_line:
-            print()
-    return t1
+        print(prepare_msg(msg, 'INFO', 'cyan', 'dark', blank_lines), flush=True, end='\n' if endl else ' ')
+    return time()
 
 
 def add_to_info(t, msg='Done', prnt=True):
@@ -489,7 +475,7 @@ def get_resolution():
         m = get_monitors()
         return round_down_to(m[0].height, 500)
     except Exception as exc:
-        log_warning('Could not get resolution! Using default ...\n\t{e}'.format(e=exc))
+        warning('Could not get resolution! Using default ...\n\t{e}'.format(e=exc))
         return 1000
 
 
@@ -695,7 +681,7 @@ class MyThread(Thread):
         if not self.Load:
             self.Tuple = False
             return
-        info('Loading run {r}'.format(r=self.Run), next_line=False)
+        info('Loading run {r}'.format(r=self.Run), endl=False)
         file_path = self.Selection.get_final_file_path(self.Run)
         if file_exists(file_path):
             self.File = TFile(file_path)
@@ -753,7 +739,7 @@ def say(txt, lang='en'):
 
 def remove_file(file_path):
     if file_exists(file_path):
-        log_warning('removing {}'.format(file_path))
+        warning('removing {}'.format(file_path))
         remove(file_path)
 
 
@@ -818,7 +804,7 @@ def load_json(name):
 
 
 def measure_time(f, rep=1, *args, **kwargs):
-    t = info('Measuring time of method {}:'.format(f.__name__), next_line=False)
+    t = info('Measuring time of method {}:'.format(f.__name__), endl=False)
     for _ in range(int(rep)):
         f(*args, **kwargs)
     add_to_info(t, '')
@@ -953,7 +939,7 @@ def decay_angle(theta, p, m, m1, m2=0):
 
 def multi_threading(lst, timeout=60 * 60 * 2):
     """ runs several threads in parallel. [lst] must contain tuples of the methods and the arguments as list."""
-    t0 = info('Run multithreading on {} tasks ... '.format(len(lst)), next_line=False)
+    t0 = info('Run multithreading on {} tasks ... '.format(len(lst)), endl=False)
     lst = [(f, [], {}) for f in lst] if type(lst[0]) not in [list, tuple, ndarray] else lst
     if len(lst[0]) == 2:
         lst = [(f, args, {}) for f, args in lst] if type(lst[0][1]) not in [dict, OrderedDict] else [(f, [], d) for f, d in lst]
@@ -977,7 +963,7 @@ def get_attribute(instance, string):
 
 
 def parallelise(f, args_list, timeout=60 * 60):
-    t = info('Run parallelisation on {} tasks ... '.format(len(args_list)), next_line=False)
+    t = info('Run parallelisation on {} tasks ... '.format(len(args_list)), endl=False)
     pool = Pool(cpu_count())
     workers = [pool.apply_async(f, make_list(args)) for args in args_list]
     results = [worker.get(timeout) for worker in workers]
@@ -986,7 +972,7 @@ def parallelise(f, args_list, timeout=60 * 60):
 
 
 def parallelise_instance(instances, method, args, timeout=60 * 60):
-    t = info('Run parallelisation on {} tasks ... '.format(len(args)), next_line=False)
+    t = info('Run parallelisation on {} tasks ... '.format(len(args)), endl=False)
     pool = Pool(cpu_count())
     # tasks = [partial(call_it, make_list(instances)[0], method.__name__, *make_list(arg)) for arg in args]
     tasks = [partial(call_it, instance, method.__name__, *make_list(arg)) for instance, arg in zip(instances, args)]
