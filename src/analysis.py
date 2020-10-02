@@ -1,13 +1,14 @@
 
 from glob import glob
 from numpy import deg2rad, rad2deg, round_
-from helpers.save_plots import *
+from helpers.utils import *
+from helpers.save_plots import SaveDraw, join, basename, Draw, format_histo, update_canvas
 
 
 def load_main_config(config='main', ext='ini'):
     file_name = join(get_base_dir(), 'config', '{}.{}'.format(config.split('.')[0], ext.strip('.')))
     if not file_exists(file_name):
-        log_critical('{} does not exist. Please copy it from the main.default and adapt it to your purpose!'.format(file_name))
+        critical('{} does not exist. Please copy it from the main.default and adapt it to your purpose!'.format(file_name))
     return Config(file_name)
 
 
@@ -29,30 +30,26 @@ class Analysis(object):
     PickleDir = join(Dir, MainConfig.get('SAVE', 'pickle directory'))
     DataDir = MainConfig.get('MAIN', 'data directory')
 
-    def __init__(self, testcampaign=None, verbose=False):
+    def __init__(self, testcampaign=None, results_dir='', pickle_dir='', verbose=None):
 
         self.InitTime = time()
 
-        Analysis.Verbose = verbose
-        self.PickleSubDir = ''
+        Analysis.Verbose = choose(verbose, Analysis.Verbose)
+        self.PickleSubDir = pickle_dir
 
         # Test Campaign
         self.TCString = self.load_test_campaign(testcampaign)
         self.TestCampaign = datetime.strptime(self.TCString.split('-')[0], '%Y%m')
 
-        # Analysis Config
+        # Modules
         self.Config = self.load_config()
-
-        # Drawing Class
-        self.Draw = SaveDraw(self, results_dir='')
-
-        # Progress Bar
+        self.Draw = SaveDraw(self, sub_dir=results_dir)
         self.PBar = PBar()
 
     def load_config(self):
         file_name = join(self.Dir, 'config', self.TCString, 'AnalysisConfig.ini')
         if not file_exists(file_name):
-            log_critical('AnalysisConfig.ini does not exist for {0}! Please create it in config/{0}!'.format(self.TestCampaign))
+            critical('AnalysisConfig.ini does not exist for {0}! Please create it in config/{0}!'.format(self.TestCampaign))
         return Config(file_name)
 
     def load_test_campaign(self, testcampaign):
