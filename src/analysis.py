@@ -69,8 +69,8 @@ class Analysis(object):
     def get_test_campaigns(self):
         return [basename(path).replace('_', '').strip('psi') for path in glob(join(self.DataDir, 'psi*'))]
 
-    def info(self, msg, next_line=True, prnt=True):
-        return info(msg, next_line, prnt=self.Verbose and prnt)
+    def info(self, msg, endl=True, prnt=True):
+        return info(msg, endl, prnt=self.Verbose and prnt)
 
     def add_to_info(self, t, txt='Done'):
         return add_to_info(t, txt, prnt=self.Verbose)
