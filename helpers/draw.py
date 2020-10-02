@@ -445,9 +445,14 @@ class Draw(object):
     # ----------------------------------------
     # region CREATE
     @staticmethod
+    def make_histo(title, *bins):
+        h = TH1F('h{}'.format(Draw.get_count()), title, *bins)
+        return Draw.add(h)
+
+    @staticmethod
     def make_tgrapherrors(x=None, y=None, ex=None, ey=None, asym_err=False):
         g = (TGraphAsymmErrors if asym_err else TGraphErrors)(*make_graph_args(x, y, ex, ey, asym_err))
-        format_histo(g, 'g{}'.format(Draw.Count), marker=20, markersize=1)
+        format_histo(g, 'g{}'.format(Draw.get_count()), marker=20, markersize=1)
         return Draw.add(g)
 
     @staticmethod
@@ -746,6 +751,13 @@ def get_pull(h, name, binning, fit=True):
     h_out.Fit('gaus', 'q') if fit else do_nothing()
     format_histo(h_out, x_range=increased_range([values.min(), values.max()], .1, .3))
     return h_out
+
+
+def get_quantile(h, q):
+    quantiles = make_list(q)
+    v = zeros(quantiles.size)
+    h.GetQuantiles(v.size, v, quantiles)
+    return v[0] if v.size == 1 else v
 
 
 def markers(i):
