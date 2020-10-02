@@ -7,7 +7,7 @@
 from os.path import join
 from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TH1F, TSpectrum, TEllipse, TColor, TProfile
 from numpy import sign, linspace, ones
-import src.binning as bins
+from src.binning import Bins
 from helpers.utils import *
 
 
@@ -57,8 +57,8 @@ class Draw(object):
         Draw.Legend = Draw.Config.get_value('SAVE', 'info legend', default=False)
         Draw.FillColor = Draw.Config.get_value('PLOTS', 'fill color', default=821)
         Draw.Font = Draw.Config.get_value('PLOTS', 'legend font', default=42)
-        gStyle.SetLegendFont(Draw.Font)
-        gStyle.SetOptTitle(Draw.Title)
+
+        Draw.setup()
 
     def __call__(self, *args, **kwargs):
         return Draw.histo(**kwargs)
@@ -79,6 +79,13 @@ class Draw(object):
 
     # ----------------------------------------
     # region SET
+    @staticmethod
+    def setup():
+        gStyle.SetLegendFont(Draw.Font)
+        gStyle.SetOptTitle(Draw.Title)
+        gStyle.SetPalette(Draw.Config.get_value('PLOTS', 'palette', default=1))
+        gStyle.SetNumberContours(Draw.Config.get_value('PLOTS', 'contours', default=20))
+
     @staticmethod
     def set_pad_margins(c=None, l_=None, r=None, b=None, t=None):
         do(c.SetLeftMargin, l_)
@@ -402,7 +409,7 @@ class Draw(object):
         x, y, zz = array(x, dtype='d'), array(y, dtype='d'), array(zz, dtype='d')
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         kwargs['z_off'] = 1.2 if 'z_off' not in kwargs else kwargs['z_off']
-        dflt_bins = bins.make(min(x), max(x), sqrt(x.size)) + bins.make(min(y), max(y), sqrt(x.size))
+        dflt_bins = Bins.make(min(x), max(x), sqrt(x.size)) + Bins.make(min(y), max(y), sqrt(x.size))
         p = TProfile2D('p{}'.format(self.get_count()), title, *choose(binning, dflt_bins))
         fill_hist(p, x, y, zz)
         format_histo(p, **kwargs)
@@ -414,7 +421,7 @@ class Draw(object):
         kwargs['z_off'] = 1.2 if 'z_off' not in kwargs else kwargs['z_off']
         kwargs['z_tit'] = 'Number of Entries' if 'z_tit' not in kwargs else kwargs['z_tit']
         x, y = array(x, dtype='d'), array(y, dtype='d')
-        dflt_bins = bins.make(min(x), max(x), sqrt(x.size)) + bins.make(min(y), max(y), sqrt(x.size))
+        dflt_bins = Bins.make(min(x), max(x), sqrt(x.size)) + Bins.make(min(y), max(y), sqrt(x.size))
         h = TH2F('h{}'.format(self.get_count()), title, *choose(binning, dflt_bins))
         fill_hist(h, x, y)
         format_histo(h, **kwargs)
@@ -422,7 +429,7 @@ class Draw(object):
         return h
 
     def efficiency(self, x, e, binning=None, title='', lm=None, show=True, **kwargs):
-        binning = choose(binning, bins.make, min(x), max(x), (max(x) - min(x)) / sqrt(x.size))
+        binning = choose(binning, Bins.make, min(x), max(x), (max(x) - min(x)) / sqrt(x.size))
         p = self.profile(x, e, binning, show=False)
         x = get_hist_args(p, err=False)
         values = [[p.GetBinContent(ibin), p.GetBinEntries(ibin)] for ibin in range(1, p.GetNbinsX() + 1)]
