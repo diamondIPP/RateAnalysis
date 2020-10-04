@@ -70,10 +70,7 @@ class Bins:
         if self.Cut is None:
             return self.get_raw(evts_per_bin)
         jumps = [r for r in self.Cut.get_interruptions_ranges() if r[1] > self.Cut.get_min_event()]  # filter out interruptions outside event range
-        first_jump_end = jumps[0][1] if jumps else 0
-        events = arange(min(self.Cut.get_min_event(), first_jump_end), self.Cut.get_max_event())
-        for start, stop in jumps:  # remove beam interruptions from events
-            events = delete(events, arange(start, stop + 1))
+        events = delete(arange(self.Cut.get_max_event()), concatenate([arange(self.Cut.get_min_event()), concatenate([arange(start, stop + 1) for start, stop in jumps])]))
         events = events[::evts_per_bin]  # slice out every nth entry
         return append(events, self.Cut.get_max_event()) if self.Cut.get_max_event() != events[-1] else events
 
