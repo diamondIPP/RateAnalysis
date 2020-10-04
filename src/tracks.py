@@ -5,28 +5,23 @@
 # --------------------------------------------------------
 
 from ROOT import TProfile, TCut, TF1, TMultiGraph
-from numpy import log, arange, sqrt
-from analysis import Analysis, Draw, format_histo, calc_eff, choose, mean_sigma
-from helpers.draw import format_statbox, get_quantile, get_last_canvas, do_pickle, get_fwhm
+from numpy import log
+from sub_analysis import SubAnanlysis
+from helpers.draw import *
 
 
-class Tracks(Analysis):
+class Tracks(SubAnanlysis):
 
     def __init__(self, analysis):
-
-        super().__init__(analysis.TCString, results_dir=analysis.Run.Number, pickle_dir='Tracks')
-        self.Ana = analysis
-        self.Run = self.Ana.Run
-        self.Tree = self.Ana.Tree
-        self.Bins = self.Ana.Bins
+        super().__init__(analysis, results_dir=analysis.Run.Number, pickle_dir='Tracks')
 
     # ----------------------------------------
     # region GET
     def get_efficiency(self):
-        return calc_eff(values=self.Ana.get_root_vec(var='n_tracks'))
+        return calc_eff(values=self.get_root_vec(var='n_tracks'))
 
     def get_angles(self, mode='x'):
-        a = self.Ana.get_root_vec(var='angle_{}'.format(mode))
+        a = self.get_root_vec(var='angle_{}'.format(mode))
         return a[a != -999]
 
     def get_mean_angle(self, mode='x'):
@@ -36,8 +31,8 @@ class Tracks(Analysis):
 
     def get_residual(self, roc, chi2, mode='x', redo=False):
         def f():
-            self.Ana.Cut.set_chi2(chi2)
-            values = self.Ana.get_root_vec(var='residuals_{m}[{r}]*1e4'.format(m=mode, r=roc), cut=self.Ana.Cut())
+            self.Cut.set_chi2(chi2)
+            values = self.get_root_vec(var='residuals_{m}[{r}]*1e4'.format(m=mode, r=roc), cut=self.Cut())
             return mean_sigma(values)[1]
         return do_pickle(self.make_simple_pickle_path('Res{}'.format(mode.title()), chi2, dut=roc), f, redo=redo)
 
@@ -71,10 +66,10 @@ class Tracks(Analysis):
 
     def draw_chi2_cut(self, mode, show=True):
         if show:
-            chi2 = self.Ana.Cut.calc_chi2(mode)
+            chi2 = self.Cut.calc_chi2(mode)
             line = Draw.vertical_line(chi2, -100, 1e6, style=7, w=2, color=2, name='l1{}'.format(mode))
             legend = Draw.make_legend(.75, y2=.83, nentries=1, margin=.35)
-            legend.AddEntry(line, 'cut ({}%)'.format(self.Ana.Cut.CutConfig['chi2_{}'.format(mode)]), 'l')
+            legend.AddEntry(line, 'cut ({}%)'.format(self.Cut.CutConfig['chi2_{}'.format(mode)]), 'l')
             legend.Draw()
 
     def draw_chi2s(self, show=True, prnt=True):
@@ -86,7 +81,7 @@ class Tracks(Analysis):
     def draw_angle(self, mode='x', cut=None, show_cut=False, normalise=None, show=True, prnt=True):
         """ Shows the angle distribution of the tracks. """
         h = Draw.make_histo('Track Angle Distribution in {}'.format(mode.title()), *self.Bins.get_angle())
-        self.Tree.Draw('angle_{}>>{}'.format(mode, h.GetName()), self.Ana.Cut('angle_{}>-900'.format(mode) if cut is None else cut), 'goff')
+        self.Tree.Draw('angle_{}>>{}'.format(mode, h.GetName()), self.Cut('angle_{}>-900'.format(mode) if cut is None else cut), 'goff')
         y_tit = '{} of Entries'.format('Number' if normalise is None else 'Percentage')
         format_histo(h, x_tit='Track Angle {} [deg]'.format(mode.title()), y_tit=y_tit, y_off=2, normalise=normalise, fill_color=Draw.FillColor)
         format_statbox(all_stat=True, w=.3)
@@ -97,7 +92,7 @@ class Tracks(Analysis):
 
     def draw_angle_cut(self, mode, show=True):
         if show:
-            xmax = -self.Ana.Cut.CutConfig['track angle']
+            xmax = -self.Cut.CutConfig['track angle']
             line = Draw.vertical_line(-xmax, -100, 1e6, style=7, w=2, color=2, name='l1{}'.format(mode))
             Draw.vertical_line(xmax, -100, 1e6, style=7, w=2, color=2, name='l2{}'.format(mode))
             legend = Draw.make_legend(.65, y2=.73, nentries=1, margin=.35, name='la', scale=1.3)
@@ -118,7 +113,7 @@ class Tracks(Analysis):
         mode = '' if mode is None else mode.lower()
         format_statbox(all_stat=True, fit=fit, w=.2, entries=6 if fit else 3)
         h = Draw.make_histo('{m} Residuals for Plane {n}'.format(n=roc, m=mode.title()), 1000, -1000, 1000)
-        self.Tree.Draw('residuals{}[{}]*1e4>>{}'.format('_{}'.format(mode) if mode else '', roc, h.GetName()), self.Ana.Cut(cut), 'goff')
+        self.Tree.Draw('residuals{}[{}]*1e4>>{}'.format('_{}'.format(mode) if mode else '', roc, h.GetName()), self.Cut(cut), 'goff')
         format_histo(h, name='Fit Result', y_off=2.0, y_tit='Number of Entries', x_tit='Distance [#mum]', fill_color=Draw.FillColor, x_range=x_range)
         self.Draw(h, show, .16)
         self.fit_residual(h, show=fit)
