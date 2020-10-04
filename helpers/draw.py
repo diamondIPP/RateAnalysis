@@ -670,10 +670,9 @@ def make_graph_args(x, y, ex=None, ey=None, asym_errors=False):
         warning('Arrays have different size!')
         return []
     s = len(x)
-    if type(x[0]) is Variable:
-        return [s, array([v.n for v in x], 'd'), array([v.n for v in y], 'd'), array([v.s for v in x], 'd'), array([v.s for v in y], 'd')]
-    e = [zeros((2, s) if asym_errors else s) if v is None else array(v, 'd') for v in [ex, ey]]
-    return [s, array(x, 'd'), array(y, 'd')] + ([e[0][0], e[0][1], e[1][0], e[1][1]] if asym_errors else e)
+    ex, ey = [array([v.s for v in vals], 'd') if type(vals[0]) is Variable else zeros((2, s) if asym_errors else s) if ers is None else array(ers, 'd') for vals, ers in zip([x, y], [ex, ey])]
+    x, y = [array([v.n for v in vals] if type(vals[0]) is Variable else vals, 'd') for vals in [x, y]]
+    return [s, array(x, 'd'), array(y, 'd')] + ([ex[0], ex[1], ey[0], ey[1]] if asym_errors else [ex, ey])
 
 
 def set_titles(status=True):
