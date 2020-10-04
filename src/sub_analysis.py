@@ -16,6 +16,7 @@ class SubAnanlysis(Analysis):
         self.Run = analysis.Run
         self.Tree = analysis.Tree
         self.Bins = analysis.Bins
+        self.Cut = analysis.Cut
 
     def get_root_vec(self, n=0, ind=0, dtype=None, var=None, cut=''):
         return self.Run.get_root_vec(n, ind, dtype, var, cut)
