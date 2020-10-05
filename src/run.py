@@ -1,19 +1,15 @@
 #!/usr/bin/env python
-from __future__ import division, print_function
-
-from numpy import inf
 from ROOT import TFile, TTree
-from builtins import next
-from analysis import Analysis, basename
-from converter import Converter
+from numpy import inf
+from analysis import Analysis
+from converter import *
 from dut import DUT
-from utils import *
 
 
 class Run(Analysis):
     """ Run class containing all the information for a single run. """
 
-    def __init__(self, number=None, testcampaign=None, tree=True, t_vec=None, verbose=False):
+    def __init__(self, number=None, testcampaign=None, tree=True, t_vec=None, verbose=None):
         """
         :param number: if None is provided it creates a dummy run
         :param testcampaign: if None is provided ...
@@ -22,7 +18,7 @@ class Run(Analysis):
         :param verbose: turn on more output
         """
         # Basics
-        super(Run, self).__init__(testcampaign, verbose)
+        super(Run, self).__init__(testcampaign, verbose=verbose)
         self.Number = number
 
         # Directories / Test Campaign
@@ -62,8 +58,8 @@ class Run(Analysis):
             self.TimeOffset = None
             self.Time = self.load_time_vec(t_vec)
             self.StartEvent = 0
-            self.NEntries = int(self.Tree.GetEntries())
-            self.EndEvent = self.NEntries - 1
+            self.NEvents = int(self.Tree.GetEntries())
+            self.EndEvent = self.NEvents - 1
             self.StartTime = self.get_time_at_event(self.StartEvent)
             self.EndTime = self.get_time_at_event(self.EndEvent)
             self.TotalTime = self.load_total_time()
@@ -102,14 +98,15 @@ class Run(Analysis):
     # ----------------------------------------
     # region INIT
     def load_rootfile(self):
-        self.info('\n\033[1A\rLoading information for rootfile: {file}'.format(file=basename(self.RootFilePath)))
+        # self.info('\n\033[1A\rLoading information for rootfile: {file}'.format(file=basename(self.RootFilePath)))
+        self.info('Loading information for rootfile: {file}'.format(file=basename(self.RootFilePath)), endl=False)
         self.RootFile = TFile(self.RootFilePath)
         self.Tree = self.RootFile.Get(self.TreeName)
 
     def load_run_config(self):
         base_file_name = join(get_base_dir(), 'config', self.TCString, 'RunConfig.ini')
         if not file_exists(base_file_name):
-            log_critical('RunConfig.ini does not exist for {0}! Please create it in config/{0}!'.format(self.TCString))
+            critical('RunConfig.ini does not exist for {0}! Please create it in config/{0}!'.format(self.TCString))
         parser = Config(base_file_name)  # first read the main config file with general information for all splits
         if parser.has_section('SPLIT') and self.Number is not None:
             split_runs = [0] + loads(parser.get('SPLIT', 'runs')) + [inf]
@@ -135,7 +132,7 @@ class Run(Analysis):
 
     def load_trigger_planes(self):
         default = list(self.get_unmasked_area().keys()) if self.load_mask() else [1, 2]
-        return loads(self.Config.get('BASIC', 'trigger planes')) if self.Config.has_option('BASIC', 'trigger planes') else default
+        return array(loads(self.Config.get('BASIC', 'trigger planes')) if self.Config.has_option('BASIC', 'trigger planes') else default)
 
     def get_n_diamonds(self, run_number=None):
         run_info = self.load_run_info(run_number)
@@ -147,7 +144,7 @@ class Run(Analysis):
     def load_dut_type(self):
         dut_type = self.Config.get('BASIC', 'type') if self.Number is not None else None
         if dut_type not in ['pixel', 'pad', None]:
-            log_critical("The DUT type {0} has to be either 'pixel' or 'pad'".format(dut_type))
+            critical("The DUT type {0} has to be either 'pixel' or 'pad'".format(dut_type))
         return dut_type
 
     def load_default_info(self):
@@ -156,7 +153,7 @@ class Run(Analysis):
 
     def load_run_info_file(self):
         if not file_exists(self.InfoFile):
-            log_critical('Run Log File: "{f}" does not exist!'.format(f=self.InfoFile))
+            critical('Run Log File: "{f}" does not exist!'.format(f=self.InfoFile))
         with open(self.InfoFile) as f:
             return load(f)
 
@@ -167,7 +164,7 @@ class Run(Analysis):
         if run_number is not None:
             run_info = data.get(str(run_number))
             if run_info is None:  # abort if the run is still not found
-                log_critical('Run {} not found in json run log file!'.format(run_number))
+                critical('Run {} not found in json run log file!'.format(run_number))
             self.Info = run_info
             self.Info['masked pixels'] = [0] * 4
             self.translate_diamond_names()
@@ -212,7 +209,7 @@ class Run(Analysis):
     def load_mask_file_path(self):
         mask_dir = self.MainConfig.get('MAIN', 'maskfile directory') if self.MainConfig.has_option('MAIN', 'maskfile directory') else join(self.DataDir, self.TCDir, 'masks')
         if not dir_exists(mask_dir):
-            log_warning('Mask file directory does not exist ({})!'.format(mask_dir))
+            warning('Mask file directory does not exist ({})!'.format(mask_dir))
         return join(mask_dir, basename(self.Info['maskfile']))
 
     def load_mask(self):
@@ -227,7 +224,7 @@ class Run(Analysis):
                 for line in f:
                     if len(line) > 3 and not line.startswith('#'):
                         if not line.startswith('corn'):
-                            log_warning('Invalid mask file: "{}". Not taking any mask!'.format(mask_file))
+                            warning('Invalid mask file: "{}". Not taking any mask!'.format(mask_file))
                             return
                         data = line.split()
                         plane = int(data[1])
@@ -238,23 +235,24 @@ class Run(Analysis):
                         if line.startswith('cornTop'):
                             mask_data[plane][2:] = [int(data[i]) for i in [2, 3]]
         except Exception as err:
-            log_warning(err)
-            log_warning('Could not read mask file... not taking any mask!')
+            warning(err)
+            warning('Could not read mask file... not taking any mask!')
         return mask_data
+
+    def get_pixel_area(self):
+        return self.PixelSize[0] * self.PixelSize[1]
+
+    def get_full_area(self):
+        return self.NPixels[0] * self.NPixels[1] * self.get_pixel_area()
 
     def get_unmasked_area(self):
         if self.Number is None:
             return
         mask = self.load_mask()
-        # default pixel
-        pix_x, pix_y = self.PixelSize
-        n_pix_x, n_pix_y = self.NPixels
-        pixel_area = pix_x * pix_y
-        full_area = n_pix_x * n_pix_y * pixel_area
         if mask is None:
-            return {plane: full_area for plane in self.TriggerPlanes}
+            return {plane: self.get_full_area() for plane in self.TriggerPlanes}
         # format {plane: [x1, y1, x2, y2]}
-        return {plane: pixel_area * (v[2] - v[0] + 1) * (v[3] - v[1] + 1) for plane, v in mask.items()}
+        return {plane: self.get_pixel_area() * (v[2] - v[0] + 1) * (v[3] - v[1] + 1) for plane, v in mask.items()}
 
     def find_for_in_comment(self):
         for name in ['for1', 'for2']:
@@ -278,7 +276,7 @@ class Run(Analysis):
         if dia is None or dia.lower() in ['unknown', 'none']:
             return
         parser = Config(join(self.Dir, 'config', 'DiamondAliases.ini'))
-        return parser.get('ALIASES', dia.lower()) if dia.lower() in parser.options('ALIASES') else log_critical('Please add {} to confg/DiamondAliases.ini!'.format(dia.encode()))
+        return parser.get('ALIASES', dia.lower()) if dia.lower() in parser.options('ALIASES') else critical('Please add {} to confg/DiamondAliases.ini!'.format(dia.encode()))
 
     def reload_run_config(self, run_number):
         self.Number = run_number
@@ -311,7 +309,7 @@ class Run(Analysis):
         return make_ufloat((flux, .1 * flux))
 
     def find_n_events(self, n, cut, start):
-        total_events = self.Tree.Draw('event_number', cut, 'goff', self.NEntries, start)
+        total_events = self.Tree.Draw('event_number', cut, 'goff', self.NEvents, start)
         evt_numbers = [self.Tree.GetV1()[i] for i in range(total_events)]
         return int(evt_numbers[:n][-1] + 1 - start)
 
@@ -338,10 +336,10 @@ class Run(Analysis):
         """ Returns the event nunmber at time dt from beginning of the run. Accuracy: +- 1 Event """
         # return time of last event if input is too large
         if seconds - (self.StartTime if rel else 0) >= self.TotalTime or seconds == -1:
-            return self.NEntries
+            return self.NEvents
         return where(self.Time <= (seconds + (0 if rel else self.StartTime)) * 1000)[0][-1]
 
-    def get_root_vec(self, n=0, ind=0, dtype=None, var=None, cut=None):
+    def get_root_vec(self, n=0, ind=0, dtype=None, var=None, cut=''):
         return get_root_vec(self.Tree, n, ind, dtype, var, cut)
 
     def get_root_vecs(self, n, n_ind, dtype=None):
@@ -366,8 +364,8 @@ class Run(Analysis):
     def has_branch(self, name):
         return bool(self.Tree.GetBranch(name))
 
-    def info(self, msg, next_line=True, blank_lines=0, prnt=None):
-        return info(msg, next_line, prnt=self.Verbose if prnt is None else prnt, blank_lines=blank_lines)
+    def info(self, msg, endl=False, blank_lines=0, prnt=None):
+        return info(msg, endl, prnt=self.Verbose if prnt is None else prnt, blank_lines=blank_lines)
 
     def add_to_info(self, t, txt='Done'):
         return add_to_info(t, txt, prnt=self.Verbose)
