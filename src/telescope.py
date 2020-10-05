@@ -16,7 +16,6 @@ class Telescope(SubAnanlysis):
     def __init__(self, analysis):
         super().__init__(analysis, results_dir=analysis.Run.Number, pickle_dir='Telescope')
 
-        self.NRocs = analysis.NRocs
         self.StartTime = self.Run.StartTime if self.Tree else time_stamp(self.Run.LogStart)
 
     # ----------------------------------------
@@ -109,7 +108,7 @@ class Telescope(SubAnanlysis):
         format_statbox(entries=True, y=0.88)
         values, t = self.get_root_vec(var=['trigger_phase[{}]'.format(1 if dut else 0), self.get_t_var()], cut=self.Cut.generate_custom(exclude=['trigger_phase']) if cut is None else TCut(cut))
         p = self.Draw.profile(t, values, self.Bins.get_time(bin_width), '{} Trigger Phase vs Time'.format('DUT' if dut else 'TEL'), show=show, lm=.16)
-        format_histo(p, x_tit='Time [hh:mm]', y_tit='Trigger Phase', y_off=1.8, fill_color=Draw.FillColor, t_ax_off=self.Run.StartTime)
+        format_histo(p, x_tit='Time [hh:mm]', y_tit='Trigger Phase', y_off=1.8, fill_color=Draw.FillColor, t_ax_off=self.StartTime)
 
     def draw_time(self, show=True, corr=False):
         t = self.Run.Time / 1000 if corr else self.get_root_vec(var=self.get_t_var())
@@ -132,7 +131,7 @@ class Telescope(SubAnanlysis):
             h = self.Draw.profile(t, values, self.Bins.get_raw_time(bin_width), 'Beam Current [mA]', w=1.5, h=.75, lm=.08, draw_opt='hist', fill_color=Draw.FillColor)
         else:
             h = self.Draw.graph(concatenate([t, [t[-1]]]), concatenate([values, [0]]), w=1.5, h=.75, title='Beam Current [mA]', lm=.08, draw_opt='afp', fill_color=Draw.FillColor)
-        format_histo(h, x_tit='Time [hh:mm]', y_tit='Beam Current [mA]', markersize=.4, t_ax_off=self.Run.StartTime if rel_t else 0, x_range=None if prof else [h.GetX()[0], h.GetX()[t.size]])
+        format_histo(h, x_tit='Time [hh:mm]', y_tit='Beam Current [mA]', markersize=.4, t_ax_off=self.StartTime if rel_t else 0, x_range=None if prof else [h.GetX()[0], h.GetX()[t.size]])
         self.Draw.save_plots('BeamCurrent{}'.format(h.ClassName()[1]), show=show, save=save)
         return h
 
@@ -140,7 +139,7 @@ class Telescope(SubAnanlysis):
         """ Draws the single plane rates versus time. The first entry of the vector corresponds to the scintillator rate """
         rate, t = self.get_root_vec(var=[self.get_rate_var(plane, flux), self.get_t_var()], cut='beam_current < 10000 && rate[{}]<1e9'.format(plane + 1))
         g = self.Draw.graph(concatenate([t, [t[-1]]]), concatenate([rate, [0]]), title='Rate of Plane {n}'.format(n=plane), draw_opt='afp', lm=.08, w=1.5, h=.75, show=show)
-        format_histo(g, x_tit='Time [hh:mm]', y_tit='{} [Hz]'.format('Flux' if flux else 'Rate'), fill_color=Draw.FillColor, markersize=.4, t_ax_off=self.Run.StartTime if rel_t else 0)
+        format_histo(g, x_tit='Time [hh:mm]', y_tit='{} [Hz]'.format('Flux' if flux else 'Rate'), fill_color=Draw.FillColor, markersize=.4, t_ax_off=self.StartTime if rel_t else 0)
         update_canvas()
 
     def draw_flux(self, bin_width=5, cut='', rel_t=True, show=True, prnt=True):
@@ -148,7 +147,7 @@ class Telescope(SubAnanlysis):
         flux1, flux2, t = self.get_root_vec(var=[self.get_flux_var(p) for p in self.Run.TriggerPlanes] + [self.get_t_var()], cut=cut)
         flux = mean([flux1, flux2], axis=0)[1:] / 1000
         p = self.Draw.profile(t[1:], flux, self.Bins.get_raw_time(bin_width=bin_width), 'Flux Profile', fill_color=Draw.FillColor, draw_opt='hist', lm=.08, w=1.5, h=.75, show=show)
-        format_histo(p, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', markersize=1, t_ax_off=self.Run.StartTime if rel_t else 0, stats=0, y_range=[0, p.GetMaximum() * 1.2])
+        format_histo(p, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', markersize=1, t_ax_off=self.StartTime if rel_t else 0, stats=0, y_range=[0, p.GetMaximum() * 1.2])
         self.Draw.save_plots('FluxProfile', prnt=prnt, show=show)
         return p
 
