@@ -254,7 +254,7 @@ def increased_range(ran, fac_bot=0., fac_top=0.):
     return [(1 + fac_bot) * ran[0] - fac_bot * ran[1], (1 + fac_top) * ran[1] - fac_top * ran[0]]
 
 
-def mean_sigma(values, weights=None):
+def mean_sigma(values, weights=None, err=True):
     """ Return the weighted average and standard deviation. values, weights -- Numpy ndarrays with the same shape. """
     if len(values) == 1:
         value = make_ufloat(values[0])
@@ -268,7 +268,8 @@ def mean_sigma(values, weights=None):
         return [0, 0]
     avrg = average(values, weights=weights)
     sigma = sqrt(average((values - avrg) ** 2, weights=weights))  # Fast and numerically precise
-    return ufloat(avrg, sigma / (sqrt(len(values)) - 1)), ufloat(sigma, sigma / sqrt(2 * len(values)))
+    m, s = ufloat(avrg, sigma / (sqrt(len(values)) - 1)), ufloat(sigma, sigma / sqrt(2 * len(values)))
+    return (m, s) if err else m.n, s.n
 
 
 def make_latex_table_row(row, hline=False):
