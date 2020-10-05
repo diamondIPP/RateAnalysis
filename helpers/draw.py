@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from os.path import join
-from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TH1F, TSpectrum, TEllipse, TColor, TProfile
+from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TH1F, TSpectrum, TEllipse, TColor, TProfile, TH2F
 from numpy import sign, linspace, ones
 from src.binning import Bins
 from helpers.utils import *
@@ -395,17 +395,24 @@ class Draw(object):
         self.histo(h, show, lm, rm)
         return h
 
-    def profile(self, x, y, binning=None, title='', thresh=.02, lm=None, rm=None, cx=1, cy=1, show=True, **kwargs):
+    def graph(self, x, y, ex=None, ey=None, asym_errors=False, title='', lm=None, rm=None, tm=None, w=1, h=1, show=True, draw_opt=None, **kwargs):
+        g = Draw.make_tgrapherrors(x, y, ex, ey, asym_errors, title)
+        kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
+        format_histo(g, **kwargs)
+        self.histo(g, show=show, lm=lm, rm=rm, tm=tm, w=w, h=h, draw_opt=draw_opt)
+        return g
+
+    def profile(self, x, y, binning=None, title='', thresh=.02, lm=None, rm=None, w=1, h=1, show=True, draw_opt=None, **kwargs):
         x, y = array(x, dtype='d'), array(y, dtype='d')
         kwargs['fill_color'] = Draw.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         p = TProfile('p{}'.format(Draw.get_count()), title, *choose(binning, make_bins, values=x, thresh=thresh))
         fill_hist(p, x, y)
         format_histo(p, **kwargs)
-        self.histo(p, show, lm, rm, w=cx, h=cy)
+        self.histo(p, show=show, lm=lm, rm=rm, w=w, h=h, draw_opt=draw_opt)
         return p
 
-    def prof2d(self, x, y, zz, binning=None, title='', lm=None, rm=.15, cx=1, cy=1, show=True, draw_opt='colz', **kwargs):
+    def prof2d(self, x, y, zz, binning=None, title='', lm=None, rm=.15, w=1, h=1, show=True, draw_opt='colz', **kwargs):
         x, y, zz = array(x, dtype='d'), array(y, dtype='d'), array(zz, dtype='d')
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         kwargs['z_off'] = 1.2 if 'z_off' not in kwargs else kwargs['z_off']
@@ -413,7 +420,7 @@ class Draw(object):
         p = TProfile2D('p{}'.format(self.get_count()), title, *choose(binning, dflt_bins))
         fill_hist(p, x, y, zz)
         format_histo(p, **kwargs)
-        self.histo(p, show, lm, rm, w=cx, h=cy, draw_opt=draw_opt)
+        self.histo(p, show=show, lm=lm, rm=rm, w=w, h=h, draw_opt=draw_opt)
         return p
 
     def histo_2d(self, x, y, binning=None, title='', lm=None, rm=.15, show=True, draw_opt='colz', **kwargs):
@@ -425,7 +432,7 @@ class Draw(object):
         h = TH2F('h{}'.format(self.get_count()), title, *choose(binning, dflt_bins))
         fill_hist(h, x, y)
         format_histo(h, **kwargs)
-        self.histo(h, show, lm, rm, draw_opt=draw_opt)
+        self.histo(h, show=show, lm=lm, rm=rm, draw_opt=draw_opt)
         return h
 
     def efficiency(self, x, e, binning=None, title='', lm=None, show=True, **kwargs):
@@ -437,7 +444,7 @@ class Draw(object):
         ey = array([e[:, 1], e[:, 2]])
         g = self.make_tgrapherrors(x=x, y=e[:, 0], ey=ey, asym_err=True)
         format_histo(g, title=title, **kwargs)
-        self.histo(g, show, lm, draw_opt='ap')
+        self.histo(g, show=show, lm=lm, draw_opt='ap')
         return g
     # endregion DRAW
     # ----------------------------------------
@@ -543,6 +550,7 @@ def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=Non
         pass
     set_time_axis(h, off=t_ax_off) if t_ax_off is not None else do_nothing()
     do(h.Sumw2, sumw2) if hasattr(h, 'Sumw2') else do_nothing()
+    update_canvas()
 
 
 def format_statbox(x=.95, y=None, w=.2, h=.15, only_fit=False, fit=False, entries=False, form=None, m=False, rms=False, all_stat=False):
@@ -801,9 +809,10 @@ def is_graph(h):
 
 
 def update_canvas(c=None):
-    c = choose(c, get_last_canvas())
-    c.Modified()
-    c.Update()
+    c = choose(c, get_last_canvas(warn=False))
+    if c is not None:
+        c.Modified()
+        c.Update()
 
 
 if __name__ == '__main__':
