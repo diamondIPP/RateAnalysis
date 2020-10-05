@@ -384,7 +384,7 @@ class Draw(object):
         Draw.add(c, *draw_objects)
         set_root_output(True)
 
-    def distribution(self, values, binning=None, title='', thresh=.02, lm=None, rm=None, show=True, **kwargs):
+    def distribution(self, values, binning=None, title='', thresh=.02, lm=None, rm=None, show=True, logy=None, **kwargs):
         values = array(values, dtype='d')
         kwargs['fill_color'] = Draw.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
@@ -392,14 +392,14 @@ class Draw(object):
         h = TH1F('h{}'.format(Draw.get_count()), title, *choose(binning, make_bins, values=values, thresh=thresh))
         fill_hist(h, values)
         format_histo(h, **kwargs)
-        self.histo(h, show, lm, rm)
+        self.histo(h, show=show, lm=lm, rm=rm, logy=logy)
         return h
 
-    def graph(self, x, y, ex=None, ey=None, asym_errors=False, title='', lm=None, rm=None, tm=None, w=1, h=1, show=True, draw_opt=None, **kwargs):
+    def graph(self, x, y, ex=None, ey=None, asym_errors=False, title='', lm=None, rm=None, tm=None, w=1, h=1, show=True, draw_opt=None, logy=False, **kwargs):
         g = Draw.make_tgrapherrors(x, y, ex, ey, asym_errors, title)
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         format_histo(g, **kwargs)
-        self.histo(g, show=show, lm=lm, rm=rm, tm=tm, w=w, h=h, draw_opt=draw_opt)
+        self.histo(g, show=show, lm=lm, rm=rm, tm=tm, w=w, h=h, draw_opt=draw_opt, logy=logy)
         return g
 
     def profile(self, x, y, binning=None, title='', thresh=.02, lm=None, rm=None, w=1, h=1, show=True, draw_opt=None, **kwargs):
