@@ -200,8 +200,7 @@ class Run(Analysis):
         t0 = datetime.fromtimestamp(t[0] / 1000)
         self.TimeOffset = None if t0.year > 2000 and t0.day == self.LogStart.day else t[0] - time_stamp(self.LogStart) * 1000
         return t if self.TimeOffset is None else t - self.TimeOffset
-
-    # endregion
+    # endregion INIT
     # ----------------------------------------
 
     # ----------------------------------------
@@ -263,7 +262,7 @@ class Run(Analysis):
                     if str(cmt[0].lower()) == name:
                         self.Info[name] = int(cmt[1])
         return 'for1' in self.Info
-    # endregion
+    # endregion MASK
     # ----------------------------------------
 
     # ----------------------------------------
@@ -312,9 +311,8 @@ class Run(Analysis):
         total_events = self.Tree.Draw('event_number', cut, 'goff', self.NEvents, start)
         evt_numbers = [self.Tree.GetV1()[i] for i in range(total_events)]
         return int(evt_numbers[:n][-1] + 1 - start)
-
+    # endregion HELPERS
     # ----------------------------------------
-    # endregion
 
     # ----------------------------------------
     # region GET
@@ -350,8 +348,7 @@ class Run(Analysis):
 
     def get_time_vec(self):
         return self.Time if hasattr(self, 'Time') else None
-
-    # endregion
+    # endregion GET
     # ----------------------------------------
 
     # ----------------------------------------
@@ -369,7 +366,7 @@ class Run(Analysis):
 
     def add_to_info(self, t, txt='Done'):
         return add_to_info(t, txt, prnt=self.Verbose)
-    # endregion
+    # endregion SHOW
     # ----------------------------------------
 
 
