@@ -2,14 +2,9 @@
 #       general class to handle all the cut strings for the analysis
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from __future__ import print_function
-from draw import *
-from json import loads
-from ROOT import TCut, TPie, TProfile
-from InfoLegend import InfoLegend
-from binning import Bins
-from ConfigParser import NoOptionError
-from numpy import histogram, histogram2d, split, where, linspace
+from numpy import histogram2d, split, quantile
+from ROOT import TCut, TPie
+from helpers.draw import *
 
 
 class Cut:
@@ -20,7 +15,6 @@ class Cut:
         self.Analysis = parent
         self.Run = self.Analysis.Run
         self.TCString = self.Analysis.TCString
-        self.InfoLegend = InfoLegend(parent)
         self.Bins = Bins(self.Run)
 
         # Configuration
@@ -37,6 +31,9 @@ class Cut:
 
     def __call__(self, cut=None):
         return self.CutStrings() if cut is None else TCut(cut)
+
+    def __getitem__(self, name):
+        return self.get(name)
 
     def has(self, name):
         return bool(self.get(name).GetTitle())
@@ -55,8 +52,8 @@ class Cut:
 
     def load_event_range(self, event_range=None):
         """ Generates the event range. Negative values are interpreted as minutes. Example: [-10, 700k] => 10 min < events < 700k. """
-        event_range = [0, 0] if event_range is None else [self.Analysis.get_event_at_time(seconds=abs(value * 60)) if value < 0 else value for value in event_range]
-        return [event_range[0], self.Run.NEntries if not event_range[1] else event_range[1]]
+        event_range = [0, 0] if event_range is None else [self.Analysis.Run.get_event_at_time(seconds=abs(value * 60)) if value < 0 else value for value in event_range]
+        return [event_range[0], self.Run.NEvents if not event_range[1] else event_range[1]]
 
     def set_config(self, key, value):
         self.CutConfig[key] = value
@@ -69,7 +66,7 @@ class Cut:
 
     def load_fiducial(self, name='fiducial', warn=True):
         splits = (loads(self.Config.get('SPLIT', 'fiducial')) if self.Config.has_option('SPLIT', 'fiducial') else []) + [int(1e10)]
-        n = next(i + 1 for i in xrange(len(splits)) if self.Run.Number <= splits[i])
+        n = next(i + 1 for i in range(len(splits)) if self.Run.Number <= splits[i])
         option = name if self.Config.has_option('CUT', name) and n == 1 else '{} {}'.format(name, n)
         return array(self.load_dut_config(option, warn=warn)) if self.load_dut_config(option, warn=warn) is not None else None
 
@@ -80,7 +77,7 @@ class Cut:
             return dia in conf if store_true else conf[dia]
         except (KeyError, NoOptionError):
             if warn:
-                log_warning('No option {} in the analysis config for {}!'.format(option, make_tc_str(self.TCString)))
+                warning('No option {} in the analysis config for {}!'.format(option, make_tc_str(self.TCString)))
     # endregion CONFIG
     # ----------------------------------------
 
@@ -88,6 +85,9 @@ class Cut:
     # region GET
     def get(self, name):
         return self.CutStrings.get(name)
+
+    def get_size(self, name):
+        return self.Analysis.Tree.GetEntries(name.GetTitle() if type(name) is TCut else self.get(name).GetTitle())
 
     def get_event_range(self):
         """ :return: event range [fist event, last event], type [ndarray] """
@@ -195,8 +195,10 @@ class Cut:
 
     def generate_chi2(self, mode='x', value=None):
         cut_value = self.calc_chi2(mode) if value is None else value
+        if cut_value is None:
+            return CutString('chi2_{}'.format(mode), '')
         description = 'chi2 in {} < {:1.1f} ({:d}% quantile)'.format(mode, cut_value, self.CutConfig['chi2_{}'.format(mode)])
-        return CutString('chi2_{}'.format(mode), 'chi2_{}>=0'.format(mode) + ' && chi2_{mod}<{val}'.format(val=cut_value, mod=mode) if cut_value is not None else '', description)
+        return CutString('chi2_{}'.format(mode), 'chi2_{}>=0'.format(mode) + ' && chi2_{mod}<{val}'.format(val=cut_value, mod=mode), description)
 
     def generate_track_angle(self, mode='x'):
         amin, amax = -self.CutConfig['track angle'], self.CutConfig['track angle']
@@ -210,19 +212,19 @@ class Cut:
         cut_string = TCut('')
         for interr in interruptions:
             cut_string += TCut('event_number<{low}||event_number>{high}'.format(low=interr[0], high=interr[1]))
-        description = '{} ({:.1f}% of the events excluded)'.format(len(interruptions), 100. * sum(j - i for i, j in interruptions) / self.Run.NEntries)
+        description = '{} ({:.1f}% of the events excluded)'.format(len(interruptions), 100. * sum(j - i for i, j in interruptions) / self.Run.NEvents)
         return CutString('beam_interruptions', cut_string, description)
 
     def generate_aligned(self):
         """ Cut to exclude events with a wrong event alignment. """
-        description = '{:.1f}% of the events excluded'.format(100. * self.find_n_misaligned() / self.Run.NEntries) if self.find_n_misaligned() else ''
+        description = '{:.1f}% of the events excluded'.format(100. * self.find_n_misaligned() / self.Run.NEvents) if self.find_n_misaligned() else ''
         return CutString('aligned', 'aligned[0]' if self.find_n_misaligned() else '', description)
 
     def generate_fiducial(self, center=False, n_planes=0):
         if self.CutConfig['fiducial'] is None:
             return CutString('fiducial', '', '')
         xy = self.CutConfig['fiducial'] + (([self.Bins.PX / 2] * 2 + [self.Bins.PY / 2] * 2) if center else 0)
-        cut = self.Analysis.draw_box(xy[0], xy[2], xy[1], xy[3], line_color=2, width=3, name='fid{}'.format(self.Run.Number), show=False)
+        cut = self.Analysis.box(xy[0], xy[2], xy[1], xy[3], line_color=2, width=3, name='fid{}'.format(self.Run.Number), show=False)
         cut.SetVarX(self.get_track_var(self.Analysis.DUT.Number - 1 - n_planes, 'x'))
         cut.SetVarY(self.get_track_var(self.Analysis.DUT.Number - 1 - n_planes, 'y'))
         self.Analysis.add(cut)
@@ -253,33 +255,30 @@ class Cut:
 
     # ----------------------------------------
     # region COMPUTE
-    def calc_chi2(self, mode='x', quantile=None):
-        picklepath = self.Analysis.make_pickle_path('Cuts', 'Chi2', run=self.Run.Number, suf=mode.title())
-
+    def calc_chi2(self, mode='x', q=None):
         def f():
-            t = self.Analysis.info('calculating chi2 cut in {mod} for run {run}...'.format(run=self.Run.Number, mod=mode), next_line=False)
+            t = self.Analysis.info('calculating chi2 cut in {mod} for run {run} ...'.format(run=self.Run.Number, mod=mode), endl=False)
             values = get_root_vec(self.Analysis.Tree, var='chi2_{}'.format(mode))
-            chi2s = get_quantiles(values[values > -500], linspace(0, 100, 501))
+            chi2s = quantile(values[values > -500], linspace(0, 1, 101))
             self.Analysis.add_to_info(t)
             return chi2s
 
-        chi2 = do_pickle(picklepath, f)
-        q = self.CutConfig['chi2_{mod}'.format(mod=mode.lower())] if quantile is None else quantile
+        chi2 = do_hdf5(self.Analysis.make_simple_hdf5_path('Chi2', sub_dir='Cuts'), f)
+        q = self.CutConfig['chi2_{mod}'.format(mod=mode.lower())] if q is None else int(q)
         return chi2[q] if q != 100 else None
 
     def get_raw_pulse_height(self):
-        n = self.Analysis.Tree.Draw(self.Analysis.generate_signal_name(), self.CutStrings(), 'goff')
-        return make_ufloat(mean_sigma(self.Run.get_root_vec(n)))
+        return ufloat(*mean_sigma(self.Run.get_root_vec(var=self.Analysis.generate_signal_name(), cut=self()), err=False))
 
     def find_zero_ph_event(self, redo=False):
         pickle_path = self.Analysis.make_pickle_path('Cuts', 'EventMax', self.Run.Number, self.Analysis.DUT.Number)
 
         def f():
-            t = self.Analysis.info('Looking for signal drops of run {} ...'.format(self.Run.Number), next_line=False)
+            t = self.Analysis.info('Looking for signal drops of run {} ...'.format(self.Run.Number), endl=False)
             signal = self.Analysis.generate_signal_name()
             p = TProfile('pphc', 'Pulse Height Evolution', *self.Analysis.Bins.get_raw_time(30))
             self.Analysis.Tree.Draw('{}:{}>>pphc'.format(signal, self.Analysis.get_t_var()), self.CutStrings(), 'goff')
-            values = array([p.GetBinContent(i) for i in xrange(1, p.GetNbinsX() + 1)])
+            values = array([p.GetBinContent(i) for i in range(1, p.GetNbinsX() + 1)])
             i_start = next(i for i, v in enumerate(values) if v) + 1  # find the index of the first bin that is not zero
             ph = mean(values[i_start:(values.size + 9 * i_start) / 10])  # take the mean of the first 10% of the bins
             i_break = next((i + i_start for i, v in enumerate(values[i_start:]) if v < .2 * ph and v), None)
@@ -293,7 +292,7 @@ class Cut:
 
     def find_pad_beam_interruptions(self, bin_width=100, max_thresh=.6):
         """ Looking for the beam interruptions by investigating the pulser rate. """
-        t = self.Analysis.info('Searching for beam interruptions of run {r} ...'.format(r=self.Run.Number), next_line=False)
+        t = self.Analysis.info('Searching for beam interruptions of run {r} ...'.format(r=self.Run.Number), endl=False)
         n = self.Analysis.Tree.Draw('Entry$:pulser', '', 'goff')
         x, y = get_root_vecs(self.Analysis.Tree, n, 2, dtype='i4')
         rates, x_bins, y_bins = histogram2d(x, y, bins=[arange(0, n, bin_width, dtype=int), 2])
@@ -308,7 +307,7 @@ class Cut:
 
     def find_pixel_beam_interruptions(self, bin_width=10, threshold=.4):
         """ Finding beam interruptions by incestigation the event rate. """
-        t_start = self.Analysis.info('Searching for beam interruptions of run {r} ...'.format(r=self.Run.Number), next_line=False)
+        t_start = self.Analysis.info('Searching for beam interruptions of run {r} ...'.format(r=self.Run.Number), endl=False)
         bin_values, time_bins = histogram(self.Run.Time / 1000, bins=self.Bins.get_raw_time(bin_width)[1])
         m = mean(bin_values[bin_values.argsort()][-20:-10])  # take the mean of the 20th to the 10th highest bin to get an estimate of the plateau
         deviating_bins = where(abs(1 - bin_values / m) > threshold)[0]
@@ -350,9 +349,9 @@ class Cut:
     def draw_contributions(self, flat=False, short=False, show=True):
         set_root_output(show)
         contr = OrderedDict()
-        n_events = self.Run.NEntries
+        n_events = self.Run.NEvents
         cut_events = 0
-        for i, (key, cut) in enumerate(self.generate_consecutive().iteritems()):
+        for i, (key, cut) in enumerate(self.generate_consecutive().items()):
             if key == 'raw':
                 continue
             events = n_events - int(self.Analysis.Tree.Draw('1', cut, 'goff'))
@@ -360,11 +359,11 @@ class Cut:
             contr[key.title().replace('_', ' ')] = (events - cut_events, self.Analysis.get_color())
             cut_events = events
         contr['Good Events'] = (n_events - cut_events, self.Analysis.get_color())
-        sorted_contr = OrderedDict(sorted(OrderedDict(item for item in contr.iteritems() if item[1][0] >= (.03 * n_events if short else 0)).iteritems(), key=lambda x: x[1]))  # sort by size
+        sorted_contr = OrderedDict(sorted(OrderedDict(item for item in contr.items() if item[1][0] >= (.03 * n_events if short else 0)).items(), key=lambda x: x[1]))  # sort by size
         sorted_contr.update({'Other': (n_events - sum(v[0] for v in sorted_contr.values()), self.Analysis.get_color())} if short else {})
-        sorted_contr = OrderedDict(sorted_contr.popitem(not i % 2) for i in xrange(len(sorted_contr)))  # sort by largest->smallest->next largest...
+        sorted_contr = OrderedDict(sorted_contr.popitem(not i % 2) for i in range(len(sorted_contr)))  # sort by largest->smallest->next largest...
         pie = TPie('pie', 'Cut Contributions', len(sorted_contr), array([v[0] for v in sorted_contr.values()], 'f'), array([v[1] for v in sorted_contr.values()], 'i'))
-        for i, label in enumerate(sorted_contr.iterkeys()):
+        for i, label in enumerate(sorted_contr.keys()):
             pie.SetEntryRadiusOffset(i, .05)
             pie.SetEntryLabel(i, label)
         format_pie(pie, h=.04, r=.2, text_size=.025, angle3d=70, label_format='%txt (%perc)', angle_off=250)
@@ -377,7 +376,7 @@ class Cut:
         if cut:
             cut = deepcopy(cut)
             cut.SetName('fid{}'.format(scale))
-            for i in xrange(cut.GetN()):
+            for i in range(cut.GetN()):
                 cut.SetPoint(i, scale * cut.GetX()[i], scale * cut.GetY()[i])
             cut.Draw()
             self.Analysis.Objects.append(cut)
@@ -425,14 +424,14 @@ class CutStrings(object):
         return cut_string
 
     def __getitem__(self, item):
-        return self.Strings.values()[item]
+        return self.get(item)
 
     def register(self, cut, level):
         self.Strings[cut.Name] = cut.set_level(level)
         self.sort()
 
     def sort(self):
-        self.Strings = OrderedDict(sorted(self.Strings.iteritems(), key=lambda x: x[1].Level))
+        self.Strings = OrderedDict(sorted(self.Strings.items(), key=lambda x: x[1].Level))
 
     def names(self):
         return self.Strings.keys()
@@ -452,7 +451,7 @@ class CutStrings(object):
     def consecutive(self):
         cuts = OrderedDict([('raw', TCut('0', ''))])
         for i, cut in enumerate(self.get_strings(), 1):
-            new_cut = cuts.values()[i - 1] + cut()
+            new_cut = list(cuts.values())[i - 1] + cut()
             cut.Name.replace('interruptions', 'stops')
             cuts[cut.Name] = TCut('{n}'.format(n=i), str(new_cut))
         return cuts
