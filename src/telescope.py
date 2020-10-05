@@ -13,7 +13,6 @@ from sub_analysis import SubAnanlysis
 class Telescope(SubAnanlysis):
     """ Class for the analysis of the telescope specific stuff of a single run. """
 
-    # TODO make subclass and not inherited class...
     def __init__(self, analysis):
         super().__init__(analysis, results_dir=analysis.Run.Number, pickle_dir='Telescope')
 
