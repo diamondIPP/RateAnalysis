@@ -3,30 +3,34 @@
 #       parent class for the analysis of a single device under test
 # created on Oct 30th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from __future__ import print_function
 
-from telescope_analysis import *
-from currents import Currents
-from ROOT import TProfile2D
-from numpy import linspace, exp, vectorize
+from ROOT import TProfile2D, TH2I
+from numpy import vectorize
 from numpy.random import rand
 from uncertainties import umath
+
+from currents import Currents
+from cut import Cut
 from run import Run
+from tracks import Tracks
+from telescope import Telescope
+from helpers.save_plots import *
+from analysis import Analysis
+from helpers.fit import Langau
 
 
 class DUTAnalysis(Analysis):
-    def __init__(self, run_number=None, diamond_nr=1, testcampaign=None, tree=None, t_vec=None, verbose=False, prnt=True):
+    def __init__(self, run_number, diamond_nr=1, testcampaign=None, tree=None, t_vec=None, verbose=False, prnt=True):
 
-        super(DUTAnalysis, self).__init__(testcampaign, verbose)
         self.Run = Run(run_number, testcampaign, tree, t_vec, verbose)
-
         self.DUT = self.Run.DUTs[diamond_nr - 1]
+        super(DUTAnalysis, self).__init__(testcampaign, results_dir=join(self.DUT.Name, str(self.Run.Number).zfill(3)), verbose=verbose)
+
         self.Tree = self.Run.Tree
         self.StartTime = self.Run.StartTime if self.Tree.Hash() else time_stamp(self.Run.LogStart)
 
         self.print_start(run_number, prnt, dut=self.DUT.Name)
         self.update_config()
-        self.Draw = SaveDraw(self, results_dir=join(self.TCString, self.DUT.Name, str(self.Run.Number).zfill(3)))
 
         # Sub-Analyses
         self.Currents = Currents(self)
@@ -37,6 +41,8 @@ class DUTAnalysis(Analysis):
             self.StartEvent = self.Cut.get_min_event()
             self.EndEvent = self.Cut.get_max_event()
             self.Bins = Bins(self.Run, cut=self.Cut)
+            self.Tracks = Tracks(self)
+            self.Tel = Telescope(self)
 
     def update_config(self):
         pass
@@ -54,9 +60,21 @@ class DUTAnalysis(Analysis):
 
     # ----------------------------------------
     # region GET
+    def has_branch(self, branch):
+        return self.Run.has_branch(branch)
+
+    def get_t_var(self):
+        return 'time / 1000.' if self.Run.TimeOffset is None else '(time - {}) / 1000.'.format(self.Run.TimeOffset)
+
+    def get_root_vec(self, n=0, ind=0, dtype=None, var=None, cut=''):
+        return self.Run.get_root_vec(n, ind, dtype, var, cut)
+
     def get_events(self, cut=None, redo=False):
         cut = self.Cut(cut)
-        return do_hdf5(self.make_hdf5_path('Events', run=self.Run.Number, ch=self.DUT.Number, suf=cut.GetName()), self.Run.get_root_vec, redo, dtype='i4', var='Entry$', cut=cut)
+        return do_hdf5(self.make_simple_hdf5_path('Events', suf=cut.GetName()), self.get_root_vec, redo, dtype='i4', var='Entry$', cut=cut)
+
+    def get_event_at_time(self, seconds, rel=False):
+        return self.Run.get_event_at_time(seconds, rel)
 
     def get_n_entries(self, cut=None):
         return self.Tree.GetEntries(self.Cut(cut).GetTitle())
@@ -98,16 +116,16 @@ class DUTAnalysis(Analysis):
         return '{} * TMath::Sqrt({} + {} + 1)'.format(self.DUT.Thickness, dx2, dy2)
 
     def get_flux(self, corr=True, rel_error=0, show=False):
-        return (self._get_flux(prnt=False, show=show) if self.Tree and self.has_branch('rate') else self.Run.get_flux(rel_error)) * (self.get_flux_correction() if corr else 1)
+        return (self.get_flux(show=show) if self.Tree and self.has_branch('rate') else self.Run.get_flux(rel_error)) * self.get_flux_correction(corr)
 
-    def get_flux_correction(self):
+    def get_flux_correction(self, correct=True):
         def f():
             if not self.Cut.has('fiducial'):
                 return 1
             n1, n2 = self.get_n_entries(self.Cut.generate_custom(include=['tracks', 'fiducial'], prnt=False)), self.get_n_entries(self.Cut.get('tracks'))
             a1, a2 = self.Cut.get_fiducial_area(), min(self.Run.get_unmasked_area().values())
             return n1 / a1 * a2 / n2
-        return do_pickle(self.make_pickle_path('Flux', 'Corr', self.Run.Number, self.DUT.Number), f)
+        return do_pickle(self.make_pickle_path('Flux', 'Corr', self.Run.Number, self.DUT.Number), f) if correct else 1
 
     def get_additional_peak_height(self):
         pass
@@ -134,10 +152,10 @@ class DUTAnalysis(Analysis):
 
     def _draw_ph_pull(self, event_bin_width=None, fit=True, bin_width=.5, binning=None, show=True, save=True):
         p = self.draw_pulse_height(event_bin_width, show=False, save=False)[0]
-        self.format_statbox(all_stat=True, fit=fit)
-        h = get_pull(p, 'Signal Bin{0} Distribution'.format(self.Bins.BinSize), binning=self.Bins.get_pad_ph(bin_width=bin_width) if binning is None else binning, fit=fit)
-        format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.5, fill_color=self.FillColor, draw_first=True)
-        self.save_histo(h, 'SignalBin{0}Disto'.format(self.Bins.BinSize), save=save, lm=.12, show=show)
+        format_statbox(all_stat=True, fit=fit)
+        h = get_pull(p, 'Signal Bin{0} Distribution'.format(Bins.Size), binning=self.Bins.get_pad_ph(bin_width=bin_width) if binning is None else binning, fit=fit)
+        format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.5, fill_color=Draw.FillColor, draw_first=True)
+        self.Draw(h, 'SignalBin{0}Disto'.format(Bins.Size), save=save, lm=.12, show=show)
         return h
 
     def draw_signal_distribution(self, *args, **kwargs):
@@ -198,7 +216,7 @@ class DUTAnalysis(Analysis):
     def split_signal_map(self, m=2, n=2, grid=True, redo=False, show=True):
         fid_cut = array(self.Cut.CutConfig['fiducial']) * 10
         if not fid_cut.size:
-            log_critical('fiducial cut not defined for {}'.format(self.DUT.Name))
+            critical('fiducial cut not defined for {}'.format(self.DUT.Name))
         x_bins = linspace(fid_cut[0], fid_cut[1], m + 1)
         y_bins = linspace(fid_cut[2], fid_cut[3], n + 1)
         binning = [m, x_bins, n, y_bins]
@@ -208,6 +226,23 @@ class DUTAnalysis(Analysis):
         Draw.grid(x_bins, y_bins, width=2) if grid else do_nothing()
         self.Draw.save_plots('SplitSigMap')
         return h, x_bins, y_bins
+
+    def draw_beam_profile(self, mode='x', fit=True, fit_range=.8, res=.7, show=True, prnt=True):
+        h = self.draw_hitmap(res, show=False, prnt=prnt)
+        p = h.ProjectionX() if mode.lower() == 'x' else h.ProjectionY()
+        format_statbox(all_stat=True)
+        format_histo(p, title='Profile {}'.format(mode.title()), name='pbp{}'.format(self.Run.Number), y_off=1.3, y_tit='Number of Hits', fill_color=Draw.FillColor)
+        self.Draw(p, lm=.13, show=show)
+        if fit:
+            fit = self.fit_beam_profile(p, fit_range)
+        self.Draw.save_plots('BeamProfile{}'.format(mode.title()), prnt=prnt)
+        return FitRes(fit) if fit else p
+
+    @staticmethod
+    def fit_beam_profile(p, fit_range):
+        x_peak = p.GetBinCenter(p.GetMaximumBin())
+        x_min, x_max = [p.GetBinCenter(i) for i in [p.FindFirstBinAbove(0), p.FindLastBinAbove(0)]]
+        return p.Fit('gaus', 'qs', '', x_peak - (x_peak - x_min) * fit_range, x_peak + (x_max - x_peak) * fit_range)
 
     def draw_sig_map_disto(self, *args, **kwargs):
         return self._draw_sig_map_disto(*args, **kwargs)
@@ -220,7 +255,7 @@ class DUTAnalysis(Analysis):
         [h.Fill(v.n) for v in values]
         x_range = increased_range([h.GetBinCenter(ibin) for ibin in [h.FindFirstBinAbove(5), h.FindLastBinAbove(5)]], .3, .3) if x_range is None else x_range
         format_statbox(all_stat=True)
-        format_histo(h, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=2, fill_color=self.FillColor, x_range=x_range)
+        format_histo(h, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=2, fill_color=Draw.FillColor, x_range=x_range)
         self.Draw(h, 'SignalMapDistribution', lm=.15, show=show, save=save)
         return mean_sigma(values) if ret_value else h
 
@@ -287,7 +322,7 @@ class DUTAnalysis(Analysis):
         Draw.arrow(x_fwhm_max.n, mpv.n, half_max, half_max, col=2, width=3, opt='<', size=.02)
         Draw.tlatex(x_fwhm_max.n + 5, half_max, 'FWHM', align=12, color=2)
         if mpv < 2 or fwhm_total < 1:
-            log_warning('Could not determine fwhm or mpv')
+            warning('Could not determine fwhm or mpv')
             return None, None, None
         fwhm = umath.sqrt(fwhm_total ** 2 - fwhm_gauss ** 2)
         value = fwhm / mpv
@@ -327,7 +362,42 @@ class DUTAnalysis(Analysis):
     def decay(n, t):
         return count_nonzero(rand(n) <= exp(-1. / t))
 
+    def save_tree(self, cut=None):
+        f = TFile('test.root', 'RECREATE')
+        t = self.Tree.CloneTree(0)
+        n = self.Tree.Draw('Entry$', self.Cut(cut), 'goff')
+        good_events = self.Run.get_root_vec(n, dtype='i4')
+        self.PBar.start(n)
+        for i, ev in enumerate(good_events):
+            self.Tree.GetEntry(ev)
+            t.Fill()
+            self.PBar.update(i)
+        f.cd()
+        t.Write()
+        macro = self.Run.RootFile.Get('region_information')
+        if macro:
+            macro.Write()
+        f.Write()
+        f.Close()
+        self.info('successfully saved tree with only cut events.')
+
+    def fit_langau(self, h=None, nconv=30, show=True, chi_thresh=8, fit_range=None):
+        h = self.draw_signal_distribution(show=show) if h is None and hasattr(self, 'draw_signal_distribution') else h
+        fit = Langau(h, nconv, fit_range)
+        fit.get_parameters()
+        fit(show=show)
+        get_last_canvas().Modified()
+        get_last_canvas().Update()
+        if fit.get_chi2() > chi_thresh and nconv < 80:
+            Draw.Count += 5
+            self.info('Chi2 too large ({c:2.2f}) -> increasing number of convolutions by 5'.format(c=fit.get_chi2()))
+            fit = self.fit_langau(h, nconv + Draw.Count, chi_thresh=chi_thresh, show=show)
+        print('MPV: {:1.1f}'.format(fit.get_mpv()))
+        self.Draw.Count = 0
+        self.Draw.add(fit)
+        return fit
+
 
 if __name__ == '__main__':
-    pargs = init_argparser(run=171, has_verbose=True, tree=True, dut=True)
-    z = DUTAnalysis(pargs.run, pargs.dut, pargs.testcampaign, pargs.tree, verbose=pargs.verbose)
+    pargs = init_argparser(run=88, has_verbose=True, tree=True, dut=True)
+    z = DUTAnalysis(pargs.run, pargs.dut, pargs.testcampaign, pargs.tree, verbose=True)
