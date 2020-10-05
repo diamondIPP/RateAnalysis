@@ -72,12 +72,11 @@ class InfoLegend(object):
     def get(self, canvas=None):
         return self.draw(canvas, show=False)
 
-    def make_git_text(self):
-        git_text = TLegend(.85, 0, 1, .025)
-        chdir(self.Analysis.Dir)
-        git_text.AddEntry(0, 'git hash: {ver}'.format(ver=check_output(['git', 'describe', '--always'])), '')
-        git_text.SetLineColor(0)
-        return git_text
+    @staticmethod
+    def make_git_text():
+        chdir(Draw.Dir)
+        txt = 'git hash: {ver}'.format(ver=check_output(['git', 'describe', '--always']).decode('utf-8').strip('\n'))
+        return Draw.tlatex(.9, .02, txt, show=False, ndc=True, size=.02)
 
     def get_duration(self):
         dur = sum([ana.Run.Duration for ana in list(self.Analysis.Analyses.values())], timedelta()) if self.IsCollection else self.Analysis.Run.Duration
