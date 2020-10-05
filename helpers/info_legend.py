@@ -16,16 +16,16 @@ class InfoLegend(object):
         self.ShowGit = analysis.MainConfig.getboolean('SAVE', 'git hash')
         self.ShowInfo = analysis.MainConfig.getboolean('SAVE', 'info legend')
         self.IsCollection = hasattr(analysis, 'Analyses')
+        self.HasDUT = hasattr(analysis, 'DUT')
 
         self.Objects = []
 
     def is_active(self):
-        return hasattr(self.Analysis, 'DUT')
+        return hasattr(self.Analysis, 'Run')
 
-    def draw(self, canvas=None, all_pads=True, both_dias=False, show=True):
+    def draw(self, canvas=None, all_pads=True, show=True):
         """
         Draws the run infos inside the canvas. If no canvas is given, it will be drawn into the active Pad.
-        :param both_dias: legend info for both diamonds
         :param all_pads: draw info legends in all subpads or just the provided canvas
         :return: [run info legend, git text]
         """
@@ -42,14 +42,14 @@ class InfoLegend(object):
                 return
 
         run_str = self.get_run_string()
-        info_str = self.get_info_string(both_dias)
+        info_str = self.get_info_string()
         # width = len(run_str) * min(canvas.GetWw(), canvas.GetWh()) * .01
         # if canvas.GetWw() > canvas.GetWh():
         width = float(max(len(run_str), len(info_str))) / canvas.GetWw() * Draw.Res / 1000 * 10.5
         legend = Draw.make_legend(.005, .1, y1=.003, x2=width, nentries=3, clean=False, scale=.75, margin=.05)
 
         legend.AddEntry(0, run_str, '')                         # Run String
-        legend.AddEntry(0, self.get_dia_string(both_dias), '')  # Detector and Test Campaign
+        legend.AddEntry(0, self.get_dia_string(), '')  # Detector and Test Campaign
         legend.AddEntry(0, info_str, '')                        # Info String (bias, attenuator, irr)
 
         git_text = self.make_git_text()
@@ -91,9 +91,9 @@ class InfoLegend(object):
     def get_runnumber_str(self):
         return 's {}-{}'.format(self.Analysis.Runs[0], self.Analysis.Runs[-1]) if self.IsCollection else ' {}'.format(self.Analysis.Run.Number)
 
-    def get_dia_string(self, both_dias):
-        dia_str = ', '.join(dut.Name for dut in self.Analysis.Run.DUTs) if both_dias else self.Analysis.DUT.Name
-        return 'Detector{b}: {d} ({tc})'.format(b='s' if both_dias else '', tc=make_tc_str(self.Analysis.TCString), d=dia_str)
+    def get_dia_string(self):
+        dia_str = self.Analysis.DUT.Name if self.HasDUT else ', '.join(dut.Name for dut in self.Analysis.Run.DUTs)
+        return 'Detector{b}: {d} ({tc})'.format(b='' if self.HasDUT else 's', tc=make_tc_str(self.Analysis.TCString), d=dia_str)
 
     def get_rate_string(self):
         if self.IsCollection:
@@ -102,8 +102,8 @@ class InfoLegend(object):
         else:
             return make_flux_string(self.Analysis.Run.Flux.n)
 
-    def get_info_string(self, both_dias):
-        voltage = '/'.join('{0:+4.0f}V'.format(dut.Bias) for dut in self.Analysis.Run.DUTs) if both_dias else '{0:+4.0f}V'.format(self.Analysis.DUT.Bias)
-        irradiation = '/'.join(make_irr_string(dut.get_irradiation(self.Analysis.TCString)) for dut in self.Analysis.Run.DUTs) if both_dias else make_irr_string(self.Analysis.get_irradiation())
-        attenuator = '' if both_dias or not self.Analysis.get_attenuator() else 'Att: {}'.format(str(self.Analysis.DUT.Attenuator))
+    def get_info_string(self):
+        voltage = '{0:+4.0f}V'.format(self.Analysis.DUT.Bias) if self.HasDUT else '/'.join('{0:+4.0f}V'.format(dut.Bias) for dut in self.Analysis.Run.DUTs)
+        irradiation = make_irr_string(self.Analysis.get_irradiation()) if self.HasDUT else '/'.join(make_irr_string(dut.get_irradiation(self.Analysis.TCString)) for dut in self.Analysis.Run.DUTs)
+        attenuator = 'Att: {}'.format(str(self.Analysis.DUT.Attenuator)) if self.HasDUT and self.Analysis.get_attenuator() else ''
         return 'Info: {v}, {i}{a}'.format(v=voltage, i=irradiation, a=', {}'.format(attenuator) if attenuator else '')
