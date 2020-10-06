@@ -16,7 +16,7 @@ from threading import Thread
 from time import time, sleep
 
 from gtts import gTTS
-from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, any, count_nonzero, full, ndarray, histogram, searchsorted, cumsum, exp, sin, cos, arctan, zeros
+from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, any, count_nonzero, full, ndarray, exp, sin, cos, arctan, zeros
 from os import makedirs, _exit, remove, devnull
 from os import path as pth
 from os.path import dirname, realpath
@@ -269,7 +269,7 @@ def mean_sigma(values, weights=None, err=True):
     avrg = average(values, weights=weights)
     sigma = sqrt(average((values - avrg) ** 2, weights=weights))  # Fast and numerically precise
     m, s = ufloat(avrg, sigma / (sqrt(len(values)) - 1)), ufloat(sigma, sigma / sqrt(2 * len(values)))
-    return (m, s) if err else m.n, s.n
+    return (m, s) if err else (m.n, s.n)
 
 
 def make_latex_table_row(row, hline=False):
