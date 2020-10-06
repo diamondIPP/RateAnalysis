@@ -3,14 +3,13 @@
 #       general class for event alignment
 # created on October 18th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
+from ROOT import TFile, vector, AddressOf
+from numpy import split
+from helpers.utils import *
 
-from utils import *
-from ROOT import TFile, vector
-from numpy import split, cumsum
 
-
-class EventAligment:
-    def __init__(self, converter, verbose=True):
+class EventAligment(object):
+    def __init__(self, converter=None, verbose=True):
 
         # Time
         self.StartTime = time()
@@ -91,7 +90,7 @@ class EventAligment:
 
     def load_variables(self):
         """ get all the telescope branches in vectors"""
-        t = self.Run.info('Loading information from tree ... ', next_line=False)
+        t = self.Run.info('Loading information from tree ... ', endl=False)
         n_hits = self.InTree.Draw('plane', '', 'goff')
         self.InTree.SetEstimate(n_hits)
         self.InTree.Draw('plane:col:row:adc:charge', '', 'paragoff')
@@ -146,8 +145,8 @@ class EventAligment:
         return True
 
     def set_branch_addresses(self):
-        for name, branch in self.Branches.iteritems():
-            self.NewTree.SetBranchAddress(name, branch)
+        for name, branch in self.Branches.items():
+            self.NewTree.SetBranchAddress(name, AddressOf(branch))
 
     def save_tree(self):
         self.NewFile.cd()
@@ -159,12 +158,12 @@ class EventAligment:
         self.Run.info('successfully aligned the tree and saved it to {}'.format(self.NewFile.GetName()))
 
     def clear_vectors(self):
-        for vec in self.Branches.itervalues():
+        for vec in self.Branches.values():
             vec.clear()
 
     def show_branches(self):
-        for i, j in self.Branches.iteritems():
-            print i, list(j)
+        for i, j in self.Branches.items():
+            print(i, list(j))
 
     def fill_branches(self, offset):
         pass
@@ -197,5 +196,5 @@ if __name__ == '__main__':
     from converter import Converter
 
     args = init_argparser(run=23, tc='201908')
-    zrun = PadRun(args.run, test_campaign=args.testcampaign, tree=False, verbose=True)
+    zrun = PadRun(args.run, testcampaign=args.testcampaign, tree=False, verbose=True)
     z = EventAligment(Converter(zrun))
