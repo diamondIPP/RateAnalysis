@@ -1,34 +1,30 @@
 from glob import glob
-from json import loads
+from os import getcwd, chdir, rename, system
+from os.path import expanduser, basename, join
+from re import sub
 from shutil import move
 from subprocess import check_call
-
 from numpy import sign
-from os import getcwd, chdir, rename, system
-from os.path import expanduser, join, basename
-from re import sub
 
 from pad_alignment import PadAlignment
-from pix_alignment import PixAlignment
-from utils import *
+from pix_alignment import *
 
 
-class Converter:
+class Converter(object):
     """ The Converter checks if the root files exist and starts the conversion if neccessary.
         The conversion sequence is: raw file -> EUDAQ Converter -> Event Aligner -> Tracking Telescope.
         Every step adds information to the root file. If any of the intermediate root files exist it will start converting from this point."""
 
-    def __init__(self, run):
+    def __init__(self, run=None):
 
         # Configuration
         self.RunConfig = run.Config
         self.MainConfig = run.MainConfig
-        self.Config = self.load_config()
 
         # Basics
         self.Run = run
         self.TestCampaign = run.TCString
-        self.RunInfo = run.RunInfo
+        self.RunInfo = run.Info
         self.Type = run.Type
 
         # EUDAQ Converter
@@ -49,8 +45,8 @@ class Converter:
 
             # Files
             self.RawFilePath = join(self.RawFileDir, 'run{run:06d}.raw'.format(run=self.Run.Number))
-            self.ConverterConfigFile = self.load_filename(join(self.EudaqDir, 'conf'), 'converter config')
             self.NewConfigFile = join(self.EudaqDir, 'conf', '{}.ini'.format(self.Run.Number))
+            self.EudaqConfigFile = self.NewConfigFile if file_exists(self.NewConfigFile) else self.load_filename(join(self.EudaqDir, 'conf'), 'converter config')
             self.ErrorFile = join(self.Run.RootFileDir, 'Errors{:03d}.txt'.format(self.Run.Number if self.Run.Number is not None else 0))
 
             # Event Alignment
@@ -63,9 +59,9 @@ class Converter:
         return path
 
     def load_rawfile_dirname(self):
-        file_dir = join(self.TCDir, self.Config.get('BASIC', 'raw directory') if self.RunConfig.has_option('BASIC', 'raw directory') else 'raw')
+        file_dir = join(self.TCDir, self.MainConfig.get_value('Directories', 'raw', default='raw'))
         if not dir_exists(file_dir):
-            log_warning('Could not find the raw file directory: {d}'.format(d=file_dir))
+            warning('Could not find the raw file directory: {d}'.format(d=file_dir))
         return file_dir
 
     def load_filename(self, base, option):
@@ -83,19 +79,10 @@ class Converter:
 
     def set_run(self, run_number):
         self.Run.set_run(run_number, root_tree=False)
-        self.RunInfo = self.Run.RunInfo
+        self.RunInfo = self.Run.Info
         self.RunConfig = self.Run.reload_run_config(run_number)
         self.Type = self.Run.get_type()
         self.RawFilePath = join(self.RawFileDir, 'run{run:06d}.raw'.format(run=self.Run.Number))
-
-    def load_config(self):
-        config = {}
-        for option in filter(lambda x: x not in ['excluded_runs'], self.RunConfig.options('ROOTFILE_GENERATION')):
-            try:
-                config[option] = loads(self.RunConfig.get('ROOTFILE_GENERATION', option))
-            except ValueError:
-                config[option] = self.RunConfig.getint('ROOTFILE_GENERATION', option)
-        return OrderedDict(sorted(config.iteritems()))
 
     def get_eudaqfile_path(self):
         file_names = glob(join(self.Run.RootFileDir, '{}*{:03d}.root'.format(self.MainConfig.get('Directories', 'eudaq prefix'), self.Run.Number)))
@@ -174,7 +161,7 @@ class Converter:
     def tracking_tel(self, action='0'):
         root_file = self.Run.RootFilePath if file_exists(self.Run.RootFilePath) else self.get_eudaqfile_path()
         cmd_list = [join(self.TrackingDir, 'TrackingTelescope'), root_file, str(action), str(self.TelescopeID), '' if self.Type == 'pad' else '1']
-        print ' '.join(cmd_list)
+        print(' '.join(cmd_list))
         curr_dir = getcwd()
         chdir(self.TrackingDir)
         check_call(cmd_list)
@@ -196,7 +183,7 @@ class Converter:
             fac = -1 if int(self.RunConfig.get('ROOTFILE_GENERATION', 'inverted_polarities')) else 1
         active_regions = self.RunConfig.getint('ROOTFILE_GENERATION', 'active_regions')
         biases = self.Run.load_biases()
-        polarities = [sign(biases.pop(0)) * fac if has_bit(active_regions, i) else 0 for i in xrange(self.NChannels)]
+        polarities = [sign(biases.pop(0)) * fac if has_bit(active_regions, i) else 0 for i in range(self.NChannels)]
         return str([(1 if not pol and has_bit(active_regions, i) else pol) for i, pol in enumerate(polarities)])  # pol cannot be 0, just take 1 for 0V
 
     def copy_raw_file(self, redo=False):
@@ -220,11 +207,9 @@ class Converter:
             remove_file(file_name)
 
     def set_converter_configfile(self):
-        parser = ConfigParser()
-        config_file = join(self.EudaqDir, 'conf', self.ConverterConfigFile)
-        if not file_exists(config_file):
-            log_critical('EUDAQ config file: "{}" does not exist!'.format(config_file))
-        parser.read(config_file)
+        if not file_exists(self.EudaqConfigFile):
+            critical('EUDAQ config file: "{}" does not exist!'.format(self.EudaqConfigFile))
+        parser = Config(self.EudaqConfigFile)
         section = 'Converter.{}'.format(self.ConverterTree)
         if self.Type == 'pad':
             parser.set(section, 'polarities', self.load_polarities())
@@ -236,14 +221,12 @@ class Converter:
             if (opt.endswith('_range') or opt.endswith('_region')) and opt not in new_options:
                 parser.remove_option(section, opt)
         # set the new settings
-        for key, value in self.Config.iteritems():
-            parser.set('Converter.telescopetree' if key.startswith('decoding') else section, key, value)
+        for key, value in self.RunConfig.items('ROOTFILE_GENERATION'):
+            parser.set(section, key, value)
 
         # write changes
-        f = open(self.NewConfigFile, 'w')
-        parser.write(f)
-        f.close()
-
+        with open(self.NewConfigFile, 'w') as f:
+            parser.write(f)
         self.format_converter_configfile()
 
     def format_converter_configfile(self):
@@ -259,7 +242,7 @@ class Converter:
 
             section_indices = [i for i, line in enumerate(content) if line.startswith('[')] + [1000]
             sorted_content = []
-            for i in xrange(len(section_indices) - 1):
+            for i in range(len(section_indices) - 1):
                 sorted_content.append(content[section_indices[i]])
                 sorted_content += sorted(content[section_indices[i]+1:section_indices[i+1]])[1:]
                 sorted_content.append('\n')
@@ -267,9 +250,6 @@ class Converter:
             f.seek(0)
             f.writelines(sorted_content)
             f.truncate()
-
-    def set_max_events(self, n):
-        self.Config['max_event_number'] = int(n)
 
 
 if __name__ == '__main__':
