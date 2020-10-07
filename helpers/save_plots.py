@@ -65,11 +65,11 @@ class SaveDraw(Draw):
 
     # ----------------------------------------
     # region SAVE
-    def histo(self, histo, file_name=None, show=True, all_pads=False, prnt=True, *args, **kwargs):
+    def histo(self, histo, file_name=None, show=True, all_pads=False, prnt=True, save=True, *args, **kwargs):
         c = super(SaveDraw, self).histo(histo, show, *args, **kwargs)
         self.Legend.draw(c, all_pads, show)
         if file_name is not None and SaveDraw.Save:
-            self.save_plots(file_name, prnt=prnt, show=show)
+            self.save_plots(file_name, prnt=prnt, show=show, save=save)
         return c
 
     def save_plots(self, savename, sub_dir=None, canvas=None, prnt=True, ftype=None, show=True, save=True):
