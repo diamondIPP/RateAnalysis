@@ -22,7 +22,7 @@ from helpers.fit import Langau
 class DUTAnalysis(Analysis):
     def __init__(self, run_number, diamond_nr=1, testcampaign=None, tree=None, t_vec=None, verbose=False, prnt=True):
 
-        self.Run = Run(run_number, testcampaign, tree, t_vec, verbose)
+        self.Run = self.init_run(run_number, testcampaign, tree, t_vec)
         self.DUT = self.Run.DUTs[diamond_nr - 1]
         super(DUTAnalysis, self).__init__(testcampaign, results_dir=join(self.DUT.Name, str(self.Run.Number).zfill(3)), verbose=verbose)
 
@@ -44,6 +44,10 @@ class DUTAnalysis(Analysis):
             self.Tracks = Tracks(self)
             self.Tel = Telescope(self)
 
+    @staticmethod
+    def init_run(run_number, testcampaign, tree, t_vec):
+        return Run(run_number, testcampaign, tree, t_vec)
+
     def update_config(self):
         pass
 
@@ -63,8 +67,8 @@ class DUTAnalysis(Analysis):
     def get_t_var(self):
         return 'time / 1000.' if self.Run.TimeOffset is None else '(time - {}) / 1000.'.format(self.Run.TimeOffset)
 
-    def get_root_vec(self, n=0, ind=0, dtype=None, var=None, cut=''):
-        return self.Run.get_root_vec(n, ind, dtype, var, cut)
+    def get_root_vec(self, n=0, ind=0, dtype=None, var=None, cut='', nentries=None, firstentry=0):
+        return self.Run.get_root_vec(n, ind, dtype, var, cut, nentries, firstentry)
 
     def get_events(self, cut=None, redo=False):
         cut = self.Cut(cut)
