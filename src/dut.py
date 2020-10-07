@@ -2,7 +2,7 @@
 #       cut sub class to handle all the cut strings for the DUTs with digitiser
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from analysis import load_json, get_base_dir, OrderedDict, critical, Analysis, join, ufloat
+from analysis import load_json, get_base_dir, OrderedDict, critical, load_main_config, join, ufloat
 from json import load, loads
 
 
@@ -10,7 +10,7 @@ class DUT:
     """ Class with all information about a single DUT. """
     def __init__(self, number, run_info):
 
-        self.Config = Analysis.load_main_config()
+        self.Config = load_main_config()
         self.Dir = get_base_dir()
 
         # Info
