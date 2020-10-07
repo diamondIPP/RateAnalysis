@@ -42,10 +42,6 @@ class PadRun(Run):
             self.NSamples = len(self.TCal)
             self.Channels = self.load_channels()
 
-    @classmethod
-    def from_parent(cls, parent: Run):
-        return cls(parent.Number, parent.TCString, tree=(parent.RootFile, parent.Tree), t_vec=parent.Time)
-
     def load_rootfile_dirname(self):
         return ensure_dir(join(self.TCDir, 'root', 'pads'))
 
@@ -119,6 +115,5 @@ class PadRun(Run):
 
 
 if __name__ == '__main__':
-    args = init_argparser(run=88, tc='201908', tree=True)
-    r = Run(args.run, tree=args.tree, testcampaign=args.testcampaign, verbose=1)
-    z = PadRun.from_parent(r)
+    args = init_argparser(run=88, tc='201908', tree=True, has_verbose=True)
+    z = PadRun(args.run, tree=args.tree, testcampaign=args.testcampaign, verbose=args.verbose)
