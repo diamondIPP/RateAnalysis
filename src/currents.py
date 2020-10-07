@@ -33,7 +33,7 @@ class Currents(Analysis):
         self.Bias = self.Ana.Bias if hasattr(self.Ana, 'Bias') else None
 
         # Times
-        self.Begin, self.End = self.load_times(begin, end)
+        self.Begin, self.End = self.load_times(begin, end, dut)
 
         # DUT
         self.DUT = self.init_dut(dut)
@@ -81,10 +81,10 @@ class Currents(Analysis):
         self.info('HV Devices: {}'.format(', '.join(name for name in parser.sections() if name.startswith('HV'))))
         return parser
 
-    def load_times(self, begin, end):
+    def load_times(self, begin, end, dut=1):
         if self.Ana is None:
             if str(begin).isdigit():  # run number or run plan is provided
-                self.RunSelection.select_runs_in_range(begin, end if end is not None else begin) if end or end is None else self.RunSelection.select_runs_from_runplan(begin)
+                self.RunSelection.select_runs_in_range(begin, end if end is not None else begin, dut) if end or end is None else self.RunSelection.select_runs_from_runplan(begin)
                 return self.RunSelection.get_start_time(), self.RunSelection.get_end_time()
             else:  # actual time strings are provided
                 return (self.TimeZone.localize(datetime.strptime('{}-{}'.format(self.TestCampaign.year, t), '%Y-%m/%d-%H:%M:%S')) for t in [begin, end])
@@ -114,7 +114,7 @@ class Currents(Analysis):
         if self.Ana is not None:
             run_info = self.Ana.FirstAnalysis.Run.Info if self.IsCollection else self.Ana.Run.Info
         elif self.RunSelection.has_selected_runs():
-            run_info = self.RunLogs[str(self.RunSelection.get_selected_runs()[0])]
+            run_info = self.RunLogs[self.RunSelection.get_selected_runs()[0]]
         else:
             run_info = next(log for log in self.RunLogs.values() if conv_log_time(log['starttime0']) > self.Begin)
         return str(run_info['dia{}supply'.format(self.DUT.Number)])
@@ -187,6 +187,10 @@ class Currents(Analysis):
         for i, name in enumerate(names):
             if self.get_log_date(name) > self.Begin:
                 return names[i - 1]
+
+    def get_run_number(self):
+        return None if self.Ana is None else self.Ana.RunPlan if self.IsCollection else self.Ana.Run.Number
+
     # endregion GET
     # ----------------------------------------
 
@@ -204,7 +208,7 @@ class Currents(Analysis):
         self.Draw(gv, show=show, m=m, w=1.5, h=.75, draw_opt='{}y+'.format(draw_opt))
         Draw.tpad('pc', transparent=True, margins=m)
         gc.Draw(draw_opt)
-        save_name = '{}_{}'.format(self.Ana.RunPlan if self.IsCollection else self.Ana.Run.Number, self.DUT.Name)
+        save_name = '{}_{}'.format(self.get_run_number(), self.DUT.Name)
         self.Draw.save_plots(save_name, show=show, ftype='png')
 
     def draw_profile(self, bin_width=5, show=True):
