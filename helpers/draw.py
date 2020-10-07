@@ -309,13 +309,13 @@ class Draw(object):
         return Draw.tpavetext('Irradiation: {}'.format(irr), x1, x2, 1 - height - c.GetTopMargin(), 1 - c.GetTopMargin(), font=42, align=12, margin=0.04)
 
     @staticmethod
-    def histo(th, show=True, lm=None, rm=None, bm=None, tm=None, draw_opt=None, w=1, h=1, logy=False, logx=False, logz=False, grid=False, gridy=False, gridx=False, phi=None, theta=None,
+    def histo(th, show=True, lm=None, rm=None, bm=None, tm=None, m=None, draw_opt=None, w=1, h=1, logy=False, logx=False, logz=False, grid=False, gridy=False, gridx=False, phi=None, theta=None,
               leg=None, canvas=None, sumw2=None):
         w += .16 if not Draw.Title and w == 1 else 0  # rectify if there is no title
         th.Sumw2(sumw2) if hasattr(th, 'Sumw2') and sumw2 is not None else do_nothing()
         set_root_output(show)
         c = Draw.canvas(th.GetTitle().split(';')[0], None, None, w, h, logx, logy, logz, gridx or grid, gridy or grid, show=show) if canvas is None else canvas
-        Draw.set_pad_margins(c, lm, rm, bm, tm)
+        Draw.set_pad_margins(c, *[lm, rm, bm, tm] if m is None else m)
         do([c.SetLogx, c.SetLogy, c.SetLogz], [logx, logy, logz])
         do([c.SetGridx, c.SetGridy], [gridx or grid, gridy or grid])
         do([c.SetPhi, c.SetTheta], [phi, theta])
