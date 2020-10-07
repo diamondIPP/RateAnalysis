@@ -128,11 +128,11 @@ def format_base_frame(frame, x_tit, y_tit):
     fr.GetYaxis().SetTitle(y_tit)
 
 
-def round_down_to(num, val):
+def round_down_to(num, val=1):
     return int(num) // val * val
 
 
-def round_up_to(num, val):
+def round_up_to(num, val=1):
     return int(num) // val * val + val
 
 
