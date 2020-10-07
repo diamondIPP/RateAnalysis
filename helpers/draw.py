@@ -395,8 +395,8 @@ class Draw(object):
         self.histo(h, show=show, lm=lm, rm=rm, logy=logy)
         return h
 
-    def graph(self, x, y, ex=None, ey=None, asym_errors=False, title='', lm=None, rm=None, tm=None, w=1, h=1, show=True, draw_opt=None, logy=False, **kwargs):
-        g = Draw.make_tgrapherrors(x, y, ex, ey, asym_errors, title)
+    def graph(self, x, y, ex=None, ey=None, asym_errors=False, lm=None, rm=None, tm=None, w=1, h=1, show=True, draw_opt=None, logy=False, **kwargs):
+        g = Draw.make_tgrapherrors(x, y, ex, ey, asym_errors)
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         format_histo(g, **kwargs)
         self.histo(g, show=show, lm=lm, rm=rm, tm=tm, w=w, h=h, draw_opt=draw_opt, logy=logy)
@@ -457,9 +457,11 @@ class Draw(object):
         return Draw.add(h)
 
     @staticmethod
-    def make_tgrapherrors(x=None, y=None, ex=None, ey=None, asym_err=False, title=None):
+    def make_tgrapherrors(x=None, y=None, ex=None, ey=None, asym_err=False, **kwargs):
         g = (TGraphAsymmErrors if asym_err else TGraphErrors)(*make_graph_args(x, y, ex, ey, asym_err))
-        format_histo(g, 'g{}'.format(Draw.get_count()), title, marker=20, markersize=1)
+        kwargs['marker'] = 20 if 'marker' not in kwargs else kwargs['marker']
+        kwargs['markersize'] = 1 if 'markersize' not in kwargs else kwargs['markersize']
+        format_histo(g, 'g{}'.format(Draw.get_count()), **kwargs)
         return Draw.add(g)
 
     @staticmethod
