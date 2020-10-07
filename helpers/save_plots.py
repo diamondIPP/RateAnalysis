@@ -72,7 +72,7 @@ class SaveDraw(Draw):
             self.save_plots(file_name, prnt=prnt, show=show)
         return c
 
-    def save_plots(self, savename, sub_dir=None, canvas=None, prnt=True, show=True, save=True):
+    def save_plots(self, savename, sub_dir=None, canvas=None, prnt=True, ftype=None, show=True, save=True):
         """ Saves the canvas at the desired location. If no canvas is passed as argument, the active canvas will be saved. However for applications without graphical interface,
          such as in SSl terminals, it is recommended to pass the canvas to the method. """
         if not save:
@@ -80,7 +80,7 @@ class SaveDraw(Draw):
         canvas = get_last_canvas() if canvas is None else canvas
         update_canvas(canvas)
         try:
-            self.__save_canvas(canvas, sub_dir=sub_dir, file_name=savename, prnt=prnt, show=show)
+            self.__save_canvas(canvas, sub_dir=sub_dir, file_name=savename, ftype=ftype, prnt=prnt, show=show)
             return Draw.add(canvas)
         except Exception as inst:
             warning('Error saving plots ...:\n  {}'.format(inst))
