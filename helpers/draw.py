@@ -442,7 +442,7 @@ class Draw(object):
         values = [[p.GetBinContent(ibin), p.GetBinEntries(ibin)] for ibin in range(1, p.GetNbinsX() + 1)]
         e = array([calc_eff(p0 / 100 * n, n) for p0, n in values])
         ey = array([e[:, 1], e[:, 2]])
-        g = self.make_tgrapherrors(x=x, y=e[:, 0], ey=ey, asym_err=True)
+        g = Draw.make_tgrapherrors(x=x, y=e[:, 0], ey=ey, asym_err=True)
         format_histo(g, title=title, **kwargs)
         self.histo(g, show=show, lm=lm, draw_opt='ap')
         return g
@@ -642,7 +642,7 @@ def set_2d_ranges(h, dx, dy):
 
 def adapt_z_range(h, n_sigma=2):
     values = get_2d_hist_vec(h)
-    m, s = mean_sigma(values[5:-5])
+    m, s = mean_sigma(values[5:-5], err=False)
     z_range = [min(values).n, .8 * max(values).n] if s > m else [m - n_sigma * s, m + n_sigma * s]
     format_histo(h, z_range=z_range)
 
@@ -778,7 +778,7 @@ def fit_bucket(histo, show=True):
     # TODO move to appropriate spot and revise
     set_root_output(False)
     h = histo
-    format_histo(h, rebin=int(h.GetBinCenter(h.FindLastBinAbove(h.GetMaximum() * .02))) / 40)
+    format_histo(h, rebin=int(h.GetBinCenter(h.FindLastBinAbove(h.GetMaximum() * .02))) // 40)
     fit = TF1('fit', 'gaus(0) + gaus(3) + gaus(6)', h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax())
     s = TSpectrum(3)
     n = s.Search(h, 2.5)
