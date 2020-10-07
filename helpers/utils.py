@@ -753,9 +753,9 @@ def del_rootobj(obj):
         pass
 
 
-def get_root_vec(tree, n=0, ind=0, dtype=None, var=None, cut=''):
+def get_root_vec(tree, n=0, ind=0, dtype=None, var=None, cut='', nentries=None, firstentry=0):
     if var is not None:
-        n = tree.Draw(':'.join(make_list(var)), cut, 'goff')
+        n = tree.Draw(':'.join(make_list(var)), cut, 'goff', choose(nentries, tree.kMaxEntries), firstentry)
         vals = [get_root_vec(tree, n, i, dtype) for i in range(make_list(var).size)]
         return vals[0] if len(vals) == 1 else vals
     vec = tree.GetVal(ind)

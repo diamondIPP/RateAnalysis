@@ -19,8 +19,8 @@ class SubAnanlysis(Analysis):
         self.NRocs = analysis.NRocs
         super().__init__(analysis.TCString, results_dir, pickle_dir)
 
-    def get_root_vec(self, n=0, ind=0, dtype=None, var=None, cut=''):
-        return self.Run.get_root_vec(n, ind, dtype, var, cut)
+    def get_root_vec(self, n=0, ind=0, dtype=None, var=None, cut='', nentries=None, firstentry=0):
+        return self.Run.get_root_vec(n, ind, dtype, var, cut, nentries, firstentry)
 
     def has_branch(self, branch):
         return self.Run.has_branch(branch)
