@@ -47,9 +47,6 @@ class DUTAnalysis(Analysis):
     def update_config(self):
         pass
 
-    def draw_current(self, relative_time=False, averaging=1, show=True, v_range=None, draw_opt='al'):
-        self.Currents.draw_indep_graphs(rel_time=relative_time, averaging=averaging, show=show, v_range=v_range, draw_opt=draw_opt)
-
     @staticmethod
     def get_info_header():
         return ['Run', 'Type', 'Diamond', 'Flux [kHz/cm2]', 'HV [V]']
