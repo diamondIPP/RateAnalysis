@@ -23,7 +23,6 @@ class Run(Analysis):
 
         # Directories / Test Campaign
         self.IrradiationFile = join(self.Dir, self.MainConfig.get('MISC', 'irradiation file'))
-        self.TCDir = self.generate_tc_directory()
 
         # Configuration & Root Files
         self.Config = self.load_run_config()
@@ -126,9 +125,6 @@ class Run(Analysis):
 
     def load_rootfile_dirname(self):
         return ensure_dir(join(self.TCDir, self.make_root_subdir())) if self.Number is not None else None
-
-    def generate_tc_directory(self, data_dir=None):
-        return join(choose(data_dir, default=self.DataDir), 'psi_{y}_{m}'.format(y=self.TCString[:4], m=self.TCString[4:]))
 
     def load_trigger_planes(self):
         default = list(self.get_unmasked_area().keys()) if self.load_mask() else [1, 2]

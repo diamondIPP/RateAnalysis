@@ -40,6 +40,7 @@ class Analysis(object):
         # Test Campaign
         self.TCString = self.load_test_campaign(testcampaign)
         self.TestCampaign = datetime.strptime(self.TCString.split('-')[0], '%Y%m')
+        self.TCDir = self.load_tc_directory()
 
         # Modules
         self.Config = self.load_config()
@@ -68,6 +69,9 @@ class Analysis(object):
 
     def get_test_campaigns(self):
         return [basename(path).replace('_', '').strip('psi') for path in glob(join(self.DataDir, 'psi*'))]
+
+    def load_tc_directory(self, data_dir=None):
+        return join(choose(data_dir, default=self.DataDir), 'psi_{y}_{m}'.format(y=self.TCString[:4], m=self.TCString[4:]))
 
     def info(self, msg, endl=True, prnt=True):
         return info(msg, endl, prnt=self.Verbose and prnt)
