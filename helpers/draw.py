@@ -472,13 +472,13 @@ class Draw(object):
         return Draw.make_tgrapherrors(x, y)
 
     @staticmethod
-    def make_legend(x1=.65, y2=.88, nentries=2, scale=1, name='l', y1=None, clean=False, margin=.25, x2=None, w=None, cols=None):
+    def make_legend(x1=.65, y2=.88, nentries=2, scale=1, name='l', y1=None, clean=False, margin=.25, x2=None, w=None, cols=None, fix=False):
         x2 = .95 if x2 is None else x2
         x1 = x2 - w if w is not None else x1
         h = nentries * .05 * scale
-        y = array([y2 - h if y1 is None else y1, y1 + h if y1 is not None else y2])
-        y += .07 if not Draw.Title and y[1] > .7 else 0
-        y -= .07 if not Draw.Legend and y[1] < .7 else 0
+        y = array([y2 - h if y1 is None else y1, y1 + h if y1 is not None and y2 is None else y2])
+        y += .07 if not Draw.Title and y[1] > .7 and not fix else 0
+        y -= .07 if not Draw.Legend and y[1] < .7 and not fix else 0
         leg = TLegend(x1, max(y[0], 0), x2, min(y[1], 1))
         leg.SetName(name)
         leg.SetTextFont(42)

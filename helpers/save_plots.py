@@ -23,8 +23,7 @@ class SaveDraw(Draw):
         # INFO
         SaveDraw.Save = Draw.Config.get_value('SAVE', 'save', default=False)
         SaveDraw.TCString = analysis.TCString
-        self.Legend = InfoLegend(analysis)
-        Draw.Legend = self.Legend.is_active() and Draw.Legend
+        self.Legends = InfoLegend(analysis)
 
         # Results
         self.ResultsDir = join(Draw.Dir, 'Results', choose(results_dir, default=SaveDraw.TCString))
@@ -67,7 +66,7 @@ class SaveDraw(Draw):
     # region SAVE
     def histo(self, histo, file_name=None, show=True, all_pads=False, prnt=True, save=True, *args, **kwargs):
         c = super(SaveDraw, self).histo(histo, show, *args, **kwargs)
-        self.Legend.draw(c, all_pads, show)
+        self.Legends.draw(c, all_pads, show and Draw.Legend)
         if file_name is not None and SaveDraw.Save:
             self.save_plots(file_name, prnt=prnt, show=show, save=save)
         return c
