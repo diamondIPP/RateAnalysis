@@ -6,7 +6,7 @@
 
 from os import chdir
 from subprocess import check_output
-from ROOT import gROOT, TLegend
+from ROOT import gROOT
 from helpers.draw import Draw, make_tc_str, timedelta, make_flux_string, make_irr_string
 
 
@@ -21,12 +21,14 @@ class InfoLegend(object):
         self.Objects = []
 
     def is_active(self):
-        return hasattr(self.Analysis, 'Run')
+        return hasattr(self.Analysis, 'Run') and self.Analysis.Run.Number is not None
 
     def draw(self, canvas=None, all_pads=True, show=True):
         """
         Draws the run infos inside the canvas. If no canvas is given, it will be drawn into the active Pad.
+        :param canvas: canvas or pad to draw the legend on (get last active of none is provided)
         :param all_pads: draw info legends in all subpads or just the provided canvas
+        :param show: wether or not to draw the legend
         :return: [run info legend, git text]
         """
         if not self.is_active():
