@@ -3,16 +3,15 @@
 #       Class to handle correlations of telescope planes
 # created on March 28th 2017 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-
 from collections import OrderedDict
-from numpy import corrcoef, arange
-from ROOT import TProfile
 from copy import deepcopy
+from ROOT import TProfile
+from numpy import corrcoef, arange
 
 
 class Correlation(object):
 
-    def __init__(self, alignment, bucket_size=None, n_offsets=2):
+    def __init__(self, alignment=None, bucket_size=None, n_offsets=2):
 
         self.Alignment = alignment
         self.BinSize = bucket_size if bucket_size is not None else self.Alignment.BinSize
@@ -48,7 +47,7 @@ class Correlation(object):
                 self.TelRow[off].append(self.Alignment.TelRow[event])
                 self.DUTRow[off].append(self.Alignment.DUTRow[this_ev])
                 self.Events[off].append(event)
-        self.NBuckets = len(self.Events[0]) / self.BinSize
+        self.NBuckets = len(self.Events[0]) // self.BinSize
 
     def fill_n(self, events, offset=0, tel_row=None, dia_row=None):
         for event in events:
@@ -106,7 +105,7 @@ class Correlation(object):
         e = int(s + self.BinSize / bucket_division) if bucket_division else len(self.Events[offset])  # go one bucket further by default
         corr = correlate(self.TelRow[offset][s:e], self.DUTRow[offset][s:e])
         if debug:
-            print start_bucket, len(self.Events[offset]), self.Events[offset][s], self.Events[offset][e if e < len(self.Events[offset]) else -1], corr
+            print(start_bucket, len(self.Events[offset]), self.Events[offset][s], self.Events[offset][e if e < len(self.Events[offset]) else -1], corr)
         return corr
 
     def get_all(self):
@@ -116,19 +115,19 @@ class Correlation(object):
         correlations = self.get_all_sliding()
         # need to sort the correlations into bins to be able to compare the different events
         profs = {}
-        z_events = correlations[0].keys()
-        nbins, s, e = len(z_events) / 2, z_events[0] / 50 * 50, z_events[-1] / 50 * 50 + 50
-        for off, dic in correlations.iteritems():
+        z_events = list(correlations[0].keys())
+        nbins, s, e = len(z_events) // 2, z_events[0] // 50 * 50, z_events[-1] // 50 * 50 + 50
+        for off, dic in correlations.items():
             p = TProfile(str(off), 'p', nbins, s, e)
-            for ev, corr in dic.iteritems():
+            for ev, corr in list(dic.items()):
                 p.Fill(ev, corr)
             profs[off] = p
         # now get the correlation between the offset correlations
         correlations = {}
-        z_list = [profs[0].GetBinContent(ibin) for ibin in xrange(profs[0].GetNbinsX())]
-        for off, p in profs.iteritems():
+        z_list = [profs[0].GetBinContent(ibin) for ibin in range(profs[0].GetNbinsX())]
+        for off, p in list(profs.items()):
             if off:
-                off_list = [p.GetBinContent(ibin) for ibin in xrange(p.GetNbinsX())]
+                off_list = [p.GetBinContent(ibin) for ibin in range(p.GetNbinsX())]
                 # sort out statistical fluctuation below threshold
                 if any(value > self.Alignment.Threshold for value in off_list):
                     # sort out the zeros
@@ -144,19 +143,19 @@ class Correlation(object):
     def get_shifted(self):
         """ get all the correlations for zero offset shifting through three buckets and the respective last events of the buckets"""
         n = self.BinSize
-        correlations = {self.Events[0][-n * 3 + k]: self.get(0, start_bucket=-4, evt_offset=k) for k in xrange(2 * n)}
-        return OrderedDict(sorted(correlations.iteritems()))
+        correlations = {self.Events[0][-n * 3 + k]: self.get(0, start_bucket=-4, evt_offset=k) for k in range(2 * n)}
+        return OrderedDict(sorted(correlations.items()))
 
     def get_sliding(self, offset=0):
         """ get all the correlations for zero offset sliding through all buckets and the respective last events of the buckets"""
         correlations = {}
-        for k in xrange(self.NBuckets * self.BinSize):  # try one bucket too much since not every list hast the same amount of entries
+        for k in range(self.NBuckets * self.BinSize):  # try one bucket too much since not every list hast the same amount of entries
             try:
                 ev = self.Events[offset][k + self.BinSize - 1]
                 correlations[ev] = self.get(offset=offset, evt_offset=k)
             except IndexError:
                 pass
-        return OrderedDict(sorted(correlations.iteritems()))
+        return OrderedDict(sorted(correlations.items()))
 
     def get_all_sliding(self):
         return {off: self.get_sliding(off) for off in self.Offsets}
@@ -164,38 +163,38 @@ class Correlation(object):
     def get_shifted_long(self, last_offset):
         """ get all the correlations for zero offset shifting through three buckets """
         n = self.BinSize
-        correlations = {self.Events[0][-n * 2 + k]: self.get(0, start_bucket=-3, evt_offset=k) for k in xrange(n)}
-        for k in xrange(n):
+        correlations = {self.Events[0][-n * 2 + k]: self.get(0, start_bucket=-3, evt_offset=k) for k in range(n)}
+        for k in range(n):
             correlations[self.Events[last_offset][-n * 3 + k]] = self.get(last_offset, start_bucket=-4, evt_offset=k)
-        return OrderedDict(sorted(correlations.iteritems()))
+        return OrderedDict(sorted(correlations.items()))
 
     def get_off_all(self):
         # everything from -1.5 buckets till the end
-        return {self.get(off, start_bucket=-3/2, bucket_division=0): off for off in self.Offsets if off}
+        return {self.get(off, start_bucket=-3/2., bucket_division=0): off for off in self.Offsets if off}
 
     def get_all_sliced_offs(self, off_event):
         # sliced correlation from the off event until the end
         dic = {}
         old_size = self.BinSize
-        self.set_bucket_size(old_size / 2)
+        self.set_bucket_size(old_size // 2)
         n = self.BinSize
         for offset in self.Offsets:
             start_event = next(ev for ev in self.Events[offset] if ev >= off_event)
             evt_offset = self.Events[offset].index(start_event)
-            print offset, start_event, evt_offset
-            correlations = {self.Events[offset][(b + 1) * n - 1]: self.get(offset=offset, start_bucket=b, evt_offset=evt_offset) for b in xrange((self.get_events() - evt_offset) / n)}
-            dic[offset] = OrderedDict(sorted(correlations.iteritems()))
+            print(offset, start_event, evt_offset)
+            correlations = {self.Events[offset][(b + 1) * n - 1]: self.get(offset=offset, start_bucket=b, evt_offset=evt_offset) for b in range(self.get_events() - evt_offset // n)}
+            dic[offset] = OrderedDict(sorted(correlations.items()))
         self.set_bucket_size(old_size)
         return dic
 
     def get_all_zero(self):
         # all correlations for the zero offset
-        return [self.get(0, start_bucket=j) for j in xrange(len(self.TelRow[0]) / self.BinSize)]
+        return [self.get(0, start_bucket=j) for j in range(len(self.TelRow[0]) // self.BinSize)]
 
     def get_detailed(self, division=5):
         n = self.BinSize
         # start at -1.5 buckets and make sub buckets
-        return {off: [self.get(off, start_bucket=-3/2, bucket_division=division, evt_offset=i) for i in xrange(0, n, n / division)] for off in self.Offsets}
+        return {off: [self.get(off, start_bucket=-3/2., bucket_division=division, evt_offset=i) for i in range(0, n, n // division)] for off in self.Offsets}
 
 
 def correlate(l1, l2):
