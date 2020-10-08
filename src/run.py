@@ -348,6 +348,9 @@ class Run(Analysis):
 
     def get_time_vec(self):
         return self.Time if hasattr(self, 'Time') else None
+
+    def get_bias_strings(self):
+        return [str(b) for b in self.load_biases()]
     # endregion GET
     # ----------------------------------------
 
