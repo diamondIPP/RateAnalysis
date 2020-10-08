@@ -2,8 +2,7 @@
 #       cut sub class to handle all the cut strings for the DUTs with digitiser
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from analysis import load_json, get_base_dir, OrderedDict, critical, load_main_config, join, ufloat
-from json import load, loads
+from src.analysis import load_json, get_base_dir, OrderedDict, critical, load_main_config, join, ufloat, load, loads
 
 
 class DUT:
@@ -38,7 +37,7 @@ class DUT:
     def load_irradiation(self):
         with open(join(self.Dir, self.Config.get('MISC', 'irradiation file'))) as f:
             data = load(f)
-            return OrderedDict([(key, dic[self.Name]) for key, dic in sorted(data.iteritems()) if self.Name in dic])
+            return OrderedDict([(key, dic[self.Name]) for key, dic in sorted(data.items()) if self.Name in dic])
 
     def get_irradiation(self, tc):
         return self.Irradiation[tc] if tc in self.Irradiation else critical('Please add "{}" to the irradiation file for {}'.format(self.Name, tc))

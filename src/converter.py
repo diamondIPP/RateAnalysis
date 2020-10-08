@@ -6,8 +6,8 @@ from shutil import move
 from subprocess import check_call
 from numpy import sign
 
-from pad_alignment import PadAlignment
-from pix_alignment import *
+from src.pad_alignment import PadAlignment
+from src.pix_alignment import *
 
 
 class Converter(object):
@@ -250,14 +250,3 @@ class Converter(object):
             f.seek(0)
             f.writelines(sorted_content)
             f.truncate()
-
-
-if __name__ == '__main__':
-
-    from argparse import ArgumentParser
-    from selector import run_selector
-
-    args = init_argparser(run=88, tc='201908')
-
-    zrun = run_selector(args.run, args.testcampaign, tree=False, t_vec=None, verbose=True)
-    z = Converter(zrun)

@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 from ROOT import TProfile
 from numpy import histogram2d, sum
-from event_alignment import *
+from src.event_alignment import *
 
 
 class PadAlignment(EventAligment):
