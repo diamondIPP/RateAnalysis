@@ -5,7 +5,8 @@
 # --------------------------------------------------------
 
 from os.path import join
-from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TH1F, TSpectrum, TEllipse, TColor, TProfile, TH2F
+from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TH1F, TSpectrum, TEllipse, TColor, TProfile
+from ROOT import TProfile2D, TH2F
 from numpy import sign, linspace, ones
 from src.binning import Bins
 from helpers.utils import *
@@ -419,7 +420,7 @@ class Draw(object):
         dflt_bins = Bins.make(min(x), max(x), sqrt(x.size)) + Bins.make(min(y), max(y), sqrt(x.size))
         p = TProfile2D('p{}'.format(self.get_count()), title, *choose(binning, dflt_bins))
         fill_hist(p, x, y, zz)
-        format_histo(p, **kwargs)
+        format_histo(p, pal=55, **kwargs)
         self.histo(p, show=show, lm=lm, rm=rm, w=w, h=h, draw_opt=draw_opt)
         return p
 
@@ -680,9 +681,10 @@ def make_graph_args(x, y, ex=None, ey=None, asym_errors=False):
         warning('Arrays have different size!')
         return []
     s = len(x)
+    utypes = [Variable, AffineScalarFunc]
     ex, ey = [full(s, v) if type(v) not in [list, ndarray] else v for v in [ex, ey]]
-    ex, ey = [array([v.s for v in vals], 'd') if type(vals[0]) is Variable else zeros((2, s) if asym_errors else s) if ers is None else array(ers, 'd') for vals, ers in zip([x, y], [ex, ey])]
-    x, y = [array([v.n for v in vals] if type(vals[0]) is Variable else vals, 'd') for vals in [x, y]]
+    ex, ey = [array([v.s for v in vals], 'd') if type(vals[0]) in utypes else zeros((2, s) if asym_errors else s) if ers is None else array(ers, 'd') for vals, ers in zip([x, y], [ex, ey])]
+    x, y = [array([v.n for v in vals] if type(vals[0]) in utypes else vals, 'd') for vals in [x, y]]
     return [s, array(x, 'd'), array(y, 'd')] + ([ex[0], ex[1], ey[0], ey[1]] if asym_errors else [ex, ey])
 
 
