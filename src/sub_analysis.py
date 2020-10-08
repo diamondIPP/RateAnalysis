@@ -32,3 +32,9 @@ class SubAnanlysis(Analysis):
 
     def get_event_at_time(self, seconds, rel=False):
         return self.Run.get_event_at_time(seconds, rel)
+
+    def get_attenuator(self):
+        return self.Ana.get_attenuator()
+
+    def get_irradiation(self):
+        return self.Ana.get_irradiation()
