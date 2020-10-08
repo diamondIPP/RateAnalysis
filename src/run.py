@@ -334,7 +334,7 @@ class Run(Analysis):
         """ Returns the event nunmber at time dt from beginning of the run. Accuracy: +- 1 Event """
         # return time of last event if input is too large
         if seconds - (self.StartTime if rel else 0) >= self.TotalTime or seconds == -1:
-            return self.NEvents
+            return self.NEvents - 1
         return where(self.Time <= (seconds + (0 if rel else self.StartTime)) * 1000)[0][-1]
 
     def get_root_vec(self, n=0, ind=0, dtype=None, var=None, cut='', nentries=None, firstentry=0):
