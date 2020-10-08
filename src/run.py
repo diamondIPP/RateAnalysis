@@ -279,7 +279,7 @@ class Run(Analysis):
 
     def reload_run_config(self, run_number):
         self.Number = run_number
-        self.Config = self.load_config()
+        self.Config = self.load_run_config()
         self.Info = self.load_run_info()
         self.RootFileDir = self.load_rootfile_dirname()
         self.RootFilePath = self.load_rootfile_path()
