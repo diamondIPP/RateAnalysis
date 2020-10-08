@@ -12,7 +12,6 @@ from helpers.draw import *
 class SaveDraw(Draw):
 
     Save = True
-    TCString = None
 
     ServerMountDir = None
     MountExists = None
@@ -22,11 +21,10 @@ class SaveDraw(Draw):
 
         # INFO
         SaveDraw.Save = Draw.Config.get_value('SAVE', 'save', default=False)
-        SaveDraw.TCString = analysis.TCString
         self.Legends = InfoLegend(analysis)
 
         # Results
-        self.ResultsDir = join(Draw.Dir, 'Results', choose(results_dir, default=SaveDraw.TCString))
+        self.ResultsDir = join(Draw.Dir, 'Results', choose(results_dir, default=analysis.TCString))
         self.SubDir = str(sub_dir)
 
         # Server
@@ -60,7 +58,7 @@ class SaveDraw(Draw):
         if not SaveDraw.MountExists or SaveDraw.ServerMountDir is None or not hasattr(ana, 'DUT'):
             return
         run_string = 'RunPlan{}'.format(ana.RunPlan.lstrip('0')) if hasattr(ana, 'RunPlan') else str(ana.Run.Number)
-        return join(SaveDraw.ServerMountDir, 'Diamonds', ana.DUT.Name, 'BeamTests', make_tc_str(SaveDraw.TCString, long_=False), run_string)
+        return join(SaveDraw.ServerMountDir, 'Diamonds', ana.DUT.Name, 'BeamTests', make_tc_str(ana.TCString, long_=False), run_string)
 
     # ----------------------------------------
     # region SAVE
