@@ -150,6 +150,26 @@ class DUTAnalysis(Analysis):
         """ :returns: the pulse height variable in the tree + corrections. [str] """
     # endregion GET
     # ----------------------------------------
+    def draw_chi2(self, *args, **kwargs):
+        return self.Tracks.draw_chi2(*args, **kwargs)
+
+    def draw_chi2s(self, *args, **kwargs):
+        return self.Tracks.draw_chi2s(*args, **kwargs)
+
+    def draw_angle(self, *args, **kwargs):
+        return self.Tracks.draw_angle(*args, **kwargs)
+
+    def draw_angles(self, *args, **kwargs):
+        return self.Tracks.draw_angles(*args, **kwargs)
+
+    def draw_occupancies(self, *args, **kwargs):
+        return self.Tel.draw_occupancies(*args, **kwargs)
+
+    def get_mean_angle(self, mode):
+        return self.Tracks.get_mean_angle(mode)
+
+    def draw_current(self, *args, **kwargs):
+        return self.Currents.draw(*args, **kwargs)
 
     def draw_pulse_height(self, *args, **kwargs):
         return TProfile()
