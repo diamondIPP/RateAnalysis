@@ -2,7 +2,7 @@
 #       general class to handle all the cut strings for the analysis
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import histogram2d, split, quantile
+from numpy import histogram2d, split, quantile, histogram
 from ROOT import TCut, TPie
 from helpers.draw import *
 
@@ -224,10 +224,10 @@ class Cut:
         if self.CutConfig['fiducial'] is None:
             return CutString('fiducial', '', '')
         xy = self.CutConfig['fiducial'] + (([self.Bins.PX / 2] * 2 + [self.Bins.PY / 2] * 2) if center else 0)
-        cut = self.Analysis.box(xy[0], xy[2], xy[1], xy[3], line_color=2, width=3, name='fid{}'.format(self.Run.Number), show=False)
+        cut = Draw.box(xy[0], xy[2], xy[1], xy[3], line_color=2, width=3, name='fid{}'.format(self.Run.Number), show=False)
         cut.SetVarX(self.get_track_var(self.Analysis.DUT.Number - 1 - n_planes, 'x'))
         cut.SetVarY(self.get_track_var(self.Analysis.DUT.Number - 1 - n_planes, 'y'))
-        self.Analysis.add(cut)
+        Draw.add(cut)
         description = 'x: [{},{}], y: [{},{}], area: {:.1f}mm x {:.1f}mm = {:.1f}mm2'.format(*self.get_fiducial_size())
         return CutString('fiducial', TCut(cut.GetName()) if cut is not None else '', description)
 
@@ -274,16 +274,14 @@ class Cut:
         pickle_path = self.Analysis.make_pickle_path('Cuts', 'EventMax', self.Run.Number, self.Analysis.DUT.Number)
 
         def f():
-            t = self.Analysis.info('Looking for signal drops of run {} ...'.format(self.Run.Number), endl=False)
-            signal = self.Analysis.generate_signal_name()
-            p = TProfile('pphc', 'Pulse Height Evolution', *self.Analysis.Bins.get_raw_time(30))
-            self.Analysis.Tree.Draw('{}:{}>>pphc'.format(signal, self.Analysis.get_t_var()), self.CutStrings(), 'goff')
-            values = array([p.GetBinContent(i) for i in range(1, p.GetNbinsX() + 1)])
+            t0 = self.Analysis.info('Looking for signal drops of run {} ...'.format(self.Run.Number), endl=False)
+            ph, t = self.Analysis.get_root_vec(var=[self.Analysis.SignalName, self.Analysis.get_t_var()], cut=self())
+            values = get_hist_vec(self.Analysis.Draw.profile(t, ph, self.Analysis.Bins.get_raw_time(30), show=False), err=False)
             i_start = next(i for i, v in enumerate(values) if v) + 1  # find the index of the first bin that is not zero
-            ph = mean(values[i_start:(values.size + 9 * i_start) / 10])  # take the mean of the first 10% of the bins
+            ph = mean(values[i_start:(values.size + 9 * i_start) // 10])  # take the mean of the first 10% of the bins
             i_break = next((i + i_start for i, v in enumerate(values[i_start:]) if v < .2 * ph and v), None)
-            self.Analysis.add_to_info(t)
-            return None if ph < 10 or i_break is None else self.Analysis.get_event_at_time(p.GetBinCenter(i_break - 2), rel=True)
+            self.Analysis.add_to_info(t0)
+            return None if ph < 10 or i_break is None else self.Analysis.get_event_at_time(values[i_break - 1], rel=True)
 
         return do_pickle(pickle_path, f, redo=redo)
 
@@ -379,7 +377,7 @@ class Cut:
             for i in range(cut.GetN()):
                 cut.SetPoint(i, scale * cut.GetX()[i], scale * cut.GetY()[i])
             cut.Draw()
-            self.Analysis.Objects.append(cut)
+            Draw.add(cut)
     # endregion SHOW & ANALYSE
     # ----------------------------------------
 
