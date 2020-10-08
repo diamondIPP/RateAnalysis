@@ -67,6 +67,10 @@ class Run(Analysis):
             self.LogEnd = self.LogStart + self.Duration  # overwrite if we know exact duration
             self.NPlanes = self.load_n_planes()
 
+    def __call__(self, number, root_tree=False):
+        self.set_run(number, root_tree)
+        return self
+
     def set_run(self, number, root_tree):
         if number is None:
             return False
