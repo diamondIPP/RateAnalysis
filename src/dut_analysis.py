@@ -64,6 +64,9 @@ class DUTAnalysis(Analysis):
     def has_branch(self, branch):
         return self.Run.has_branch(branch)
 
+    def get_time(self):
+        return self.Run.get_time()
+
     def get_t_var(self):
         return 'time / 1000.' if self.Run.TimeOffset is None else '(time - {}) / 1000.'.format(self.Run.TimeOffset)
 
