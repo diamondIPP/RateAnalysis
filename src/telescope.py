@@ -14,7 +14,7 @@ class Telescope(SubAnanlysis):
     """ Class for the analysis of the telescope specific stuff of a single run. """
 
     def __init__(self, analysis):
-        super().__init__(analysis, results_dir=analysis.Run.Number, pickle_dir='Telescope')
+        super().__init__(analysis, results_dir=analysis.Run.Number, pickle_dir='Telescope', dut=False)
 
         self.StartTime = self.Run.StartTime if self.Tree else time_stamp(self.Run.LogStart)
 

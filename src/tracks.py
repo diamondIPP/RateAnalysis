@@ -13,7 +13,7 @@ from helpers.draw import *
 class Tracks(SubAnanlysis):
 
     def __init__(self, analysis):
-        super().__init__(analysis, results_dir=analysis.Run.Number, pickle_dir='Tracks')
+        super().__init__(analysis, results_dir=analysis.Run.Number, pickle_dir='Tracks', dut=False)
 
     # ----------------------------------------
     # region GET
