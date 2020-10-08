@@ -1,30 +1,28 @@
-from utils import *
 from glob import glob
-from itertools import chain
-from json import load, dump
+from json import dump
+from os import system
+from os.path import join, basename
+from subprocess import check_call
 from textwrap import fill
 from numpy import sort
 
-from os import system
-from subprocess import check_call
-from os.path import join, basename
-
-from run import Run
-from dut import DUT
+from src.dut import DUT
+from helpers.utils import *
+from src.run import Run
 
 
-class RunSelection:
+class RunSelection(object):
     """ Class to group several runs of a single test campaign together to runplans as well as to show information about all the runs. """
 
     def __init__(self, testcampaign=None, runplan=None, dut_nr=None, verbose=True):
-        self.Run = Run(test_campaign=testcampaign, tree=False, verbose=verbose)
+        self.Run = Run(testcampaign=testcampaign, tree=False, verbose=verbose)
 
         # Info
         self.TCString = self.Run.TCString
         self.RunPlanPath = join(self.Run.Dir, self.Run.MainConfig.get('MAIN', 'run plan path'))
         self.RunPlan = self.load_runplan()
         self.RunInfos = self.load_run_infos()
-        self.RunNumbers = sort(array(self.RunInfos.keys(), int))
+        self.RunNumbers = sort(array(list(self.RunInfos.keys()), int))
         self.MaxDuts = self.get_max_duts()
 
         # Selection
@@ -45,8 +43,8 @@ class RunSelection:
     # region INIT
     def load_run_infos(self):
         dic = OrderedDict()
-        for run, value in sorted(self.Run.load_run_info_file().iteritems(), key=lambda (key, v): (int(key), v)):
-            dic[int(run)] = OrderedDict(sorted(value.iteritems()))
+        for run, value in sorted(list(self.Run.load_run_info_file().items()), key=lambda item: int(item[0])):
+            dic[int(run)] = OrderedDict(sorted(value.items()))
         return dic
 
     def init_selection(self):
@@ -65,7 +63,7 @@ class RunSelection:
     # ----------------------------------------
     # region SELECT
     def has_selected_runs(self):
-        return any(self.Selection.values())
+        return any(list(self.Selection.values()))
 
     def reset_selection(self):
         """ Creates a dict of bools to store the selection, which is filled with False (no run selected). Resets the logs. """
@@ -119,7 +117,7 @@ class RunSelection:
         unselected_runs = 0
         selected_run = False
         for run in runs:
-            for dia_nr in xrange(1, 4):
+            for dia_nr in range(1, 4):
                 data = self.RunInfos[run]
                 if 'dia{}'.format(dia_nr) in data and name == data['dia{}'.format(dia_nr)]:
                     self.select_run(run)
@@ -130,7 +128,7 @@ class RunSelection:
                     unselected_runs += 1
             selected_run = False
         run0 = self.get_selected_runs()[0]
-        nr0 = next(self.RunInfos[run0]['dia{}'.format(i)] for i in xrange(1, self.get_n_duts(run0) + 1) if self.RunInfos[run0]['dia{}'.format(i) == name])
+        nr0 = next(self.RunInfos[run0]['dia{}'.format(i)] for i in range(1, self.get_n_duts(run0) + 1) if self.RunInfos[run0]['dia{}'.format(i) == name])
         self.SelectedDUT = DUT(nr0, self.RunInfos[run0])
         self.Run.info('Runs containing {dia} selected ({nr1} runs selected, {nr2} unselected)'.format(dia=name, nr1=selected_runs, nr2=unselected_runs))
 
@@ -146,7 +144,7 @@ class RunSelection:
 
     def select_run(self, run_number, unselect=False):
         if run_number not in self.RunNumbers:
-            log_warning('Run {run} not found in list of run numbers. Check run_log json file!'.format(run=run_number))
+            warning('Run {run} not found in list of run numbers. Check run_log json file!'.format(run=run_number))
             return
         self.Selection[run_number] = not unselect
 
@@ -164,10 +162,8 @@ class RunSelection:
             else:
                 warning('{run} was not selected'.format(run=run))
 
-    def select_runs_in_range(self, minrun, maxrun):
-        for run in self.RunNumbers:
-            if int(maxrun) >= run >= int(minrun):
-                self.select_run(run)
+    def select_runs_in_range(self, minrun, maxrun, dut=1):
+        self.select_runs([run for run in self.RunNumbers if int(maxrun) >= run >= int(minrun)], dut)
 
     def select_runs(self, run_list, dut=1):
         for run in run_list:
@@ -183,23 +179,23 @@ class RunSelection:
     def master_selection(self):
         self.unselect_all_runs()
         self.show_diamond_names()
-        dia = raw_input('Which diamond do you want to select? ')
+        dia = input('Which diamond do you want to select? ')
         self.select_diamond_runs(dia)
         # self.show_hv_values(sel=True)
-        hv = int(float(raw_input('Which hv do you want to select? ')))
+        hv = int(float(input('Which hv do you want to select? ')))
         self.unselect_unless_bias(hv)
         if len(self.get_runinfo_values('type', sel=True)) > 1:
             self.show_run_types(sel=True)
             if verify('Do you wish to unselect a run type'):
-                run_type = raw_input('Which type to you want to unselect? ')
+                run_type = input('Which type to you want to unselect? ')
                 self.unselect_runs_of_type(run_type)
         self.show_selected_runs(full_comments=True)
         while verify('Do you wish to unselect a run'):
-            run = raw_input('Which run do you want to unselect? ')
+            run = input('Which run do you want to unselect? ')
             self.unselect_run(int(run))
         self.show_run_plans()
         if verify('Do you wish to save the selection to a runplan'):
-            nr = raw_input('Enter the name/number of the runplan: ')
+            nr = input('Enter the name/number of the runplan: ')
             self.add_selection_to_runplan(nr)
 
     def get_flux(self, run_number):
@@ -261,32 +257,28 @@ class RunSelection:
 
     def show_selected_runs(self, full_comments=False):
         """ Prints an overview of all selected runs. """
-        selected_runs = self.get_selected_runs()
-        print 'The selections contains {n} runs\n'.format(n=len(selected_runs))
-        r = self.Run
-        r.set_run(selected_runs[0], root_tree=False)
-        dia_bias = list(chain(*[['Dia {}'.format(i + 1), 'HV {} [V]'.format(i + 1)] for i in xrange(self.Run.get_n_diamonds())]))
+        print_banner('Selection with {} runs:'.format(len(self.get_selected_runs())))
+        r = self.Run(self.get_selected_runs()[0])
+        dia_bias = list(concatenate([['Dia {}'.format(i + 1), 'HV {} [V]'.format(i + 1)] for i in range(r.get_n_diamonds())]))
         header = ['Nr.', 'Type'] + dia_bias + ['Flux [kHz/cm2]'] + (['Comments'] if not full_comments else [])
         rows = []
-        for run in selected_runs:
+        for run in self.get_selected_runs():
             r.set_run(run, root_tree=False)
-            d = [str(value) for value in r.load_dut_names()]
-            b = ['{v:+7.0f}'.format(v=value) for value in r.load_biases()]
-            dia_bias = list(chain(*[[d[i], b[i]] for i in xrange(len(d))]))
-            row = ['{:3d}'.format(run), r.RunInfo['runtype']] + dia_bias + ['{:14.2f}'.format(r.Flux.n)]
+            dia_bias = concatenate([r.load_dut_names(), r.get_bias_strings()])[[0, 2, 1, 3]]
+            row = ['{:3d}'.format(run), r.Info['runtype']] + list(dia_bias) + ['{:14.2f}'.format(r.Flux.n)]
             if not full_comments:
-                row += ['{c}{s}'.format(c=r.RunInfo['comments'][:20].replace('\r\n', ' '), s='*' if len(r.RunInfo['comments']) > 20 else ' ' * 21)]
+                row += ['{c}{s}'.format(c=r.Info['comments'][:20].replace('\r\n', ' '), s='*' if len(r.Info['comments']) > 20 else ' ' * 21)]
                 rows.append(row)
             else:
                 rows.append(row)
-                if r.RunInfo['comments']:
-                    rows.append(['Comments: {c}'.format(c=fill(r.RunInfo['comments'], len('   '.join(header))))])
+                if r.Info['comments']:
+                    rows.append(['Comments: {c}'.format(c=fill(r.Info['comments'], len('   '.join(header))))])
                     rows.append(['~' * len('   '.join(rows[0]))])
         print_table(rows, header)
     # endregion SELECT
     # ----------------------------------------
 
-    # ============================================
+    # ----------------------------------------
     # region RUN PLAN
     def save_runplan(self, runplan=None):
         with open(self.RunPlanPath, 'r+') as f:
@@ -302,15 +294,15 @@ class RunSelection:
         return self.save_runplan({})
 
     def add_runplan_descriptions(self):
-        for rp in sorted(self.RunPlan.iterkeys()):
+        for rp in sorted(self.RunPlan.keys()):
             self.add_runplan_description(rp, ask=False)
 
     def add_runplan_description(self, rp=None, name=None, ask=True):
-        rp = raw_input('Enter run plan number: ') if ask else rp
+        rp = input('Enter run plan number: ') if ask else rp
         rp_str = self.make_runplan_string(rp)
         runs = self.RunPlan[rp_str]
         if ask:
-            name = raw_input('Enter description: ')
+            name = input('Enter description: ')
         else:
             if 'type' in self.RunInfos[runs[0]]:
                 name = self.RunInfos[runs[0]]['type'].replace('_', ' ')
@@ -322,19 +314,19 @@ class RunSelection:
         self.save_runplan()
 
     def add_amplifier(self, rp=None):
-        rp = self.make_runplan_string(raw_input('Enter run plan number: ')) if rp is None else rp
-        print 'Common amplifiers: Cx_1 C6_1 C6_2'
-        print 'leave blank for OSU amps'
-        amp1 = raw_input('Enter amplifier for detector 1: ')
-        amp2 = raw_input('Enter amplifier for detector 2: ')
+        rp = self.make_runplan_string(input('Enter run plan number: ')) if rp is None else rp
+        print('Common amplifiers: Cx_1 C6_1 C6_2')
+        print('leave blank for OSU amps')
+        amp1 = input('Enter amplifier for detector 1: ')
+        amp2 = input('Enter amplifier for detector 2: ')
         if amp1 or amp2:
             self.add_runplan_info(rp, 'amplifiers', '["{}", "{}"]'.format(amp1, amp2))
 
     def add_runplan_key(self):
-        rp = self.make_runplan_string(raw_input('Enter run plan number: '))
-        print 'Current keys: {}'.format(self.RunPlan[rp].keys())
-        new_key = raw_input('Which key do you want to add? ')
-        value = raw_input('Enter the value: ')
+        rp = self.make_runplan_string(input('Enter run plan number: '))
+        print('Current keys: {}'.format(list(self.RunPlan[rp].keys())))
+        new_key = input('Which key do you want to add? ')
+        value = input('Enter the value: ')
         self.add_runplan_info(rp, new_key, value)
 
     def add_runplan_info(self, rp, key, value):
@@ -342,19 +334,19 @@ class RunSelection:
         self.save_runplan()
 
     def add_attenuators(self, rp=None, attenuator=None, ask=True):
-        rp = self.make_runplan_string(raw_input('Enter run plan number: ') if ask else rp)
+        rp = self.make_runplan_string(input('Enter run plan number: ') if ask else rp)
         data = self.RunInfos[self.RunPlan[rp]['runs'][0]]
-        at_d1 = raw_input('Enter attenuator for {dia1}: '.format(dia1=data['dia1'])) if attenuator is None else attenuator[0]
-        at_d2 = raw_input('Enter attenuator for {dia2}: '.format(dia2=data['dia2'])) if attenuator is None else attenuator[1]
-        at_pul1 = raw_input('Enter attenuator for the pulser1: ') if attenuator is None else attenuator[2]
-        at_pul2 = raw_input('Enter attenuator for the pulser2: ') if attenuator is None else attenuator[3]
+        at_d1 = input('Enter attenuator for {dia1}: '.format(dia1=data['dia1'])) if attenuator is None else attenuator[0]
+        at_d2 = input('Enter attenuator for {dia2}: '.format(dia2=data['dia2'])) if attenuator is None else attenuator[1]
+        at_pul1 = input('Enter attenuator for the pulser1: ') if attenuator is None else attenuator[2]
+        at_pul2 = input('Enter attenuator for the pulser2: ') if attenuator is None else attenuator[3]
         self.RunPlan[rp]['attenuators'] = {'dia1': at_d1, 'dia2': at_d2, 'pulser1': at_pul1}
         if at_pul2:
             self.RunPlan[rp]['attenuators']['pulser2'] = at_pul2
         self.save_runplan()
 
     def rename_runplan_numbers(self):
-        for type_, plan in self.RunPlan.iteritems():
+        for type_, plan in self.RunPlan.items():
             for nr in plan:
                 self.RunPlan[type_][nr.zfill(2)] = self.RunPlan[type_].pop(nr)
 
@@ -368,7 +360,7 @@ class RunSelection:
         for i in dia_nrs:
             header += ['Dia{}'.format(i), 'HV{} [V]'.format(i).rjust(13)]
         rows = []
-        for plan, data in sorted(self.RunPlan.iteritems()):
+        for plan, data in sorted(self.RunPlan.items()):
             self.unselect_all_runs(prnt=False)
             self.select_runs_from_runplan(plan)
             diamond_names = self.get_diamond_names(sel=True, lower=False)
@@ -389,13 +381,13 @@ class RunSelection:
 
     def get_n_duts(self, run_number=None, run_plan=None):
         run_number = run_number if run_plan is None else self.RunPlan[make_runplan_string(run_plan)]['runs'][0]
-        return len(filter(lambda x: x.startswith('dia') and len(x) == 4, self.RunInfos[run_number].iterkeys()))
+        return len([x for x in (self.RunInfos[run_number].keys()) if x.startswith('dia') and len(x) == 4])
 
     def get_max_duts(self):
         return max(self.get_n_duts(run_number) for run_number in self.RunNumbers)
 
     def get_selected_voltages(self):
-        hvs = [[float(hv) for hv in self.get_runinfo_values('dia{0}hv'.format(i), sel=True)] for i in xrange(1, self.Run.get_n_diamonds(self.get_selected_runs()[0]) + 1)]
+        hvs = [[float(hv) for hv in self.get_runinfo_values('dia{0}hv'.format(i), sel=True)] for i in range(1, self.Run.get_n_diamonds(self.get_selected_runs()[0]) + 1)]
         strings = []
         for lst in hvs:
             sorted_lst = sorted(lst, key=abs if all(array(lst) <= 0) else None)
@@ -423,7 +415,7 @@ class RunSelection:
     def add_selection_to_runplan(self, plan_nr, run_type=None):
         """ Saves all selected runs as a run plan with name 'plan_nr'. """
         if not self.Selection:
-            log_warning('You did not select any run!')
+            warning('You did not select any run!')
             return
         plan_nr = self.make_runplan_string(plan_nr)
         self.RunPlan[plan_nr] = {'runs': self.get_selected_runs(), 'type': self.get_run_type(run_type)}
@@ -436,7 +428,7 @@ class RunSelection:
 
     def get_attenuators_from_runcofig(self):
         dic = {}
-        for i in xrange(1, len(self.get_diamond_names(sel=True)) + 1):
+        for i in range(1, len(self.get_diamond_names(sel=True)) + 1):
             dic['dia{}'.format(i)] = self.get_attenuator('att_dia{}'.format(i))
             dic['pulser{}'.format(i)] = self.get_attenuator('att_pul{}'.format(i))
         return dic
@@ -445,8 +437,8 @@ class RunSelection:
         plan = self.make_runplan_string(plan_nr)
         self.RunPlan.pop(plan)
         self.save_runplan()
-
-    # endregion
+    # endregion RUN PLAN
+    # ----------------------------------------
 
     @staticmethod
     def make_runplan_string(nr):
@@ -454,17 +446,17 @@ class RunSelection:
         return nr.zfill(2) if len(nr) <= 2 else nr.zfill(4)
 
     def get_diamond_names(self, sel=False, lower=True):
-        keys = ['dia{}'.format(i + 1) for i in xrange(self.MaxDuts)]
+        keys = ['dia{}'.format(i + 1) for i in range(self.MaxDuts)]
         dias = [self.Run.translate_dia(dia) for key in keys for dia in self.get_runinfo_values(key, sel)]
         return list(set(dia.lower() if lower else dia for dia in dias if dia is not None))
 
     def show_diamond_names(self, sel=False):
-        print 'Diamondnames:'
+        print('Diamondnames:')
         for name in self.get_diamond_names(sel=sel):
-            print '  ' + name
+            print('  ' + name)
 
     def show_run_types(self, sel=False):
-        print 'Types:'
+        print('Types:')
         ', '.join(self.get_runinfo_values('type', sel=sel))
 
     def get_attenuator(self, key):
@@ -478,40 +470,40 @@ class RunSelection:
     def get_runinfo_values(self, key, sel=False):
         """ returns all different runinfos for a specified key of the selection or the full run plan """
         run_infos = self.RunInfos if not sel else self.get_selection_runinfo()
-        if all(key in data for data in run_infos.itervalues()):
-            return sorted(list(set(data[key] for data in run_infos.itervalues())))
+        if all(key in data for data in run_infos.values()):
+            return sorted(list(set(data[key] for data in run_infos.values())))
         return []
 
     def get_selection_runinfo(self):
         dic = {}
-        for run, data in self.RunInfos.iteritems():
+        for run, data in self.RunInfos.items():
             if self.Selection[int(run)]:
                 dic[int(run)] = data
         return dic
 
     def change_runinfo_key(self):
-        keys = self.RunInfos[self.RunNumbers[0]].keys()
-        print keys
-        change_key = raw_input('Enter the key you want to change: ')
+        keys = list(self.RunInfos[self.RunNumbers[0]].keys())
+        print(keys)
+        change_key = input('Enter the key you want to change: ')
         assert change_key in keys, 'The entered key does not exist!'
-        print 'old values:'
+        print('old values:')
         for run in self.get_selected_runs():
-            print '{run}:  {value}'.format(run=run, value=self.RunInfos[run][change_key])
-        change_value = raw_input('Enter the new value: ')
+            print('{run}:  {value}'.format(run=run, value=self.RunInfos[run][change_key]))
+        change_value = input('Enter the new value: ')
         for run in self.get_selected_runs():
             self.RunInfos[run][change_key] = float(change_value) if isfloat(change_value) else change_value.strip('\'\"')
         self.save_runinfo()
 
     def add_runinfo_key(self):
-        new_key = raw_input('Enter the key you want to add: ')
-        new_value = raw_input('Enter the new value: ')
+        new_key = input('Enter the key you want to add: ')
+        new_value = input('Enter the new value: ')
         for run in self.get_selected_runs():
             self.RunInfos[run][new_key] = float(new_value) if isfloat(new_value) else new_value
         self.save_runinfo()
 
     def add_runinfo_attenuators(self):
         for key in ['att_dia1', 'att_dia2', 'att_pul1', 'att_pul2']:
-            value = raw_input('Enter the value for {k}: '.format(k=key))
+            value = input('Enter the value for {k}: '.format(k=key))
             for run in self.get_selected_runs():
                 self.RunInfos[run][key] = value
         self.save_runinfo()
@@ -529,7 +521,7 @@ class RunSelection:
 
     def remove_runinfo_key(self):
         runs = self.get_selected_runs()
-        pop_key = raw_input('Enter the key you want to remove: ')
+        pop_key = input('Enter the key you want to remove: ')
         for run in runs:
             self.RunInfos[run].pop(pop_key)
         self.save_runinfo()
@@ -540,7 +532,7 @@ class RunSelection:
         return join(self.Run.DataDir, self.Run.TCDir, root_file_dir, 'TrackedRun{run:03d}.root'.format(run=run_number))
 
     def save_runinfo(self):
-        with open(self.Run.RunInfoFile, 'w') as f:
+        with open(self.Run.InfoFile, 'w') as f:
             dump(self.RunInfos, f, indent=2)
         self.RunInfos = self.load_run_infos()
 
@@ -552,7 +544,7 @@ class RunSelection:
                 return
             data[self.TCString] = {}
             for dia in self.get_diamond_names():
-                data[self.TCString][dia] = raw_input('Enter the irradtion for the diamond {d} (e.g. 4e15): '.format(d=dia))
+                data[self.TCString][dia] = input('Enter the irradtion for the diamond {d} (e.g. 4e15): '.format(d=dia))
             f.seek(0)
             dump(data, f, indent=2, sort_keys=True)
             f.truncate()
@@ -564,14 +556,14 @@ class RunSelection:
             return load(f)[self.TCString][dia]
 
     def get_runplan_runs(self):
-        return sorted(list(set(run for dic in self.RunPlan.itervalues() for run in dic['runs'])))
+        return sorted(list(set(run for dic in self.RunPlan.values() for run in dic['runs'])))
 
     def remove_redundant_raw_files(self):
         run_plan_runs = self.get_runplan_runs()
         for file_path in sorted(glob(join(self.Run.Converter.RawFileDir, 'run0*'))):
             run = int(remove_letters(basename(file_path)))
             if run not in run_plan_runs:
-                log_warning('removing {}'.format(file_path))
+                warning('removing {}'.format(file_path))
                 remove(file_path)
 
     def remove_tracked_files(self, sel=False):
@@ -594,7 +586,7 @@ class RunSelection:
         runs = self.get_selected_runs()
         self.Run.reload_run_config(runs[0])
         for run in self.get_selected_runs():
-            server_root_file = join(self.Run.generate_tc_directory(server_data_dir), self.Run.make_root_subdir(), Run.make_root_filename(run))
+            server_root_file = join(self.Run.load_tc_directory(server_data_dir), self.Run.make_root_subdir(), Run.make_root_filename(run))
             check_call(['rsync', '-aP', '{}:{}'.format(server, server_root_file), self.Run.RootFileDir])
 
     def backup_to_isg(self):
@@ -606,8 +598,8 @@ class RunSelection:
 
 
 def verify(msg):
-    for n in xrange(3):
-        prompt = raw_input('{0} (y/n)? '.format(msg))
+    for n in range(3):
+        prompt = input('{0} (y/n)? '.format(msg))
         if prompt.lower() in ['yes', 'ja', 'y', 'j']:
             return True
         elif prompt.lower() in ['no', 'n']:
