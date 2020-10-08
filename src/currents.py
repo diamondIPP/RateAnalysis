@@ -196,16 +196,19 @@ class Currents(Analysis):
 
     # ----------------------------------------
     # region PLOTTING
-    def draw(self, rel_time=False, ignore_jumps=True, v_range=None, c_range=None, averaging=1, draw_opt='al', show=True):
+    def draw(self, rel_time=False, ignore_jumps=True, v_range=None, c_range=None, averaging=1, draw_opt='al', with_flux=False, f_range=None, show=True):
         self.reload_data(ignore_jumps)
         t, c, v = (average_list(self.Data[n], averaging) for n in ['timestamps', 'currents', 'voltages'])
         gv = self.Draw.graph(t, v, title=self.get_title(), y_tit='Voltage [nA]', yax_col=self.VCol, color=self.VCol, y_range=choose(v_range, [-1100, 1100]), l_off_x=10, x_ticks=0, show=False)
+        if with_flux:
+            gv = self.Ana.Tel.draw_flux(rel_t=rel_time, show=False)
+            format_histo(gv, title=self.get_title(), fill_color=4000, fill_style=4000, lw=3, y_range=choose(f_range, [5, 20000]), y_tit='Flux [kHz/cm^{2}]')
         gc = Draw.make_tgrapherrors(t, c)
         format_histo(gc, x_tit='Time [hh:mm]', y_tit='Current [nA]', yax_col=self.CCol, color=self.CCol, y_range=choose(c_range, [round_down_to(min(c)), round_up_to(max(c))]))
         for g in [gc, gv]:
-            format_histo(g, lab_size=.05, x_off=1.05, tit_size=.06, t_ax_off=t[0] if rel_time else 0, y_off=.8, center_y=True, x_range=[t[0], t[-1]], markersize=self.MS)
+            format_histo(g, lab_size=.05, x_off=1.05, tit_size=.06, t_ax_off=t[0] if rel_time else 0, y_off=.8, center_y=True, x_range=[t[0], t[-1]], markersize=self.MS, stats=0)
         m = [.09, .09, .2, .1]
-        self.Draw(gv, show=show, m=m, w=1.5, h=.75, draw_opt='{}y+'.format(draw_opt))
+        self.Draw(gv, show=show, m=m, w=1.5, h=.75, draw_opt='{}y+'.format('' if with_flux else draw_opt), logy=with_flux)
         Draw.tpad('pc', transparent=True, margins=m)
         gc.Draw(draw_opt)
         save_name = '{}_{}'.format(self.get_run_number(), self.DUT.Name)
