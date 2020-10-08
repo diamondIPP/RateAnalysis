@@ -72,7 +72,7 @@ class SaveDraw(Draw):
     def save_plots(self, savename, sub_dir=None, canvas=None, prnt=True, ftype=None, show=True, save=True):
         """ Saves the canvas at the desired location. If no canvas is passed as argument, the active canvas will be saved. However for applications without graphical interface,
          such as in SSl terminals, it is recommended to pass the canvas to the method. """
-        if not save:
+        if not save or not SaveDraw.Save:
             return
         canvas = get_last_canvas() if canvas is None else canvas
         update_canvas(canvas)
