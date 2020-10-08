@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 from ROOT import TFile, TTree
 from numpy import inf
-from analysis import Analysis
-from converter import *
-from dut import DUT
+from src.analysis import Analysis
+from src.converter import *
+from src.dut import DUT
 
 
 class Run(Analysis):
@@ -368,5 +368,5 @@ class Run(Analysis):
 
 if __name__ == '__main__':
 
-    args = init_argparser(run=171, tc=None, tree=True)
+    args = init_argparser(run=88, tc=None, tree=True)
     z = Run(args.run, tree=args.tree, testcampaign=args.testcampaign)

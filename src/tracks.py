@@ -6,7 +6,7 @@
 
 from ROOT import TProfile, TCut, TF1, TMultiGraph
 from numpy import log, genfromtxt, split, rad2deg, polyfit, polyval, tan
-from sub_analysis import SubAnanlysis
+from src.sub_analysis import SubAnanlysis
 from helpers.draw import *
 
 
@@ -211,7 +211,7 @@ class Tracks(SubAnanlysis):
         rot = array([[[cos(a), -sin(a)], [sin(a), cos(a)]] for a in angles])
         for i, irot in enumerate(rot):
             x[i], y[i] = irot.dot(array([x[i], y[i]]))
-        # self.format_statbox(entries=True, x=.82)
+        # format_statbox(entries=True, x=.82)
         # self.draw_histo(histos[0][0], draw_opt='colz', rm=.16)
         x += mean(dx, axis=1).reshape((x.shape[0], 1))
         y += mean(dy, axis=1).reshape((x.shape[0], 1))

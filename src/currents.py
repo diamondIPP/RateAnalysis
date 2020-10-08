@@ -3,8 +3,8 @@ from os.path import getsize
 from ROOT import TH2F
 from numpy import genfromtxt, isnan, datetime64, invert, uint32, char
 from helpers.save_plots import *
-from analysis import Analysis
-from run_selection import RunSelection
+from src.analysis import Analysis
+from src.run_selection import RunSelection
 
 
 class Currents(Analysis):

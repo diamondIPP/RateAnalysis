@@ -5,9 +5,9 @@
 # --------------------------------------------------------
 from ROOT import TH1F, TCut
 from numpy import arange, concatenate, mean, sqrt
-from binning import Bins
+from src.binning import Bins
 from helpers.draw import Draw, format_histo, format_statbox, get_hist_vec, fill_hist, warning, time_stamp, do_nothing, update_canvas, mean_sigma, ufloat, do_pickle
-from sub_analysis import SubAnanlysis
+from src.sub_analysis import SubAnanlysis
 
 
 class Telescope(SubAnanlysis):

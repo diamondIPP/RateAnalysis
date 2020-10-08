@@ -8,7 +8,7 @@ from configparser import ConfigParser
 from json import loads
 from numpy import array, concatenate, cumsum
 from helpers.utils import has_bit, critical, warning, ensure_dir, init_argparser
-from run import Run, join
+from src.run import Run, join
 
 
 class PadRun(Run):

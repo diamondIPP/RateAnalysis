@@ -3,7 +3,7 @@
 # created on Oct 4th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from analysis import Analysis
+from src.analysis import Analysis
 
 
 class SubAnanlysis(Analysis):
