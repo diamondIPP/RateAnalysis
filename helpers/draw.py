@@ -747,7 +747,7 @@ def scale_multigraph(mg, val=1, to_low_flux=False):
 def scale_graph(gr, scale=None, val=1, to_low_flux=False):
     x, y = get_graph_vecs(gr)
     if scale is None:
-        m, s = mean_sigma(y)
+        m, s = mean_sigma(y, err=False)
         scale = val / (y[where(x == min(x))[0]] if to_low_flux else m)
     for i in range(x.size):
         gr.SetPoint(i, gr.GetX()[i], gr.GetY()[i] * scale)
