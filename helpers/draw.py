@@ -97,6 +97,10 @@ class Draw(object):
 
     # ----------------------------------------
     # region GET
+    @staticmethod
+    def color(n, i):
+        return Draw.get_colors(n)[i]
+
     def get_color(self, n, i=None):
         color = Draw.get_colors(n)[choose(i, self.IColor)]
         self.IColor = self.IColor + 1 if self.IColor < n - 1 else 0
@@ -680,7 +684,7 @@ def make_graph_args(x, y, ex=None, ey=None, asym_errors=False):
         return []
     s = len(x)
     utypes = [Variable, AffineScalarFunc]
-    ex, ey = [full(s, v) if type(v) not in [list, ndarray] else v for v in [ex, ey]]
+    ex, ey = [v if type(v) in [list, ndarray] or v is None else full(s, v) for v in [ex, ey]]
     ex, ey = [array([v.s for v in vals], 'd') if type(vals[0]) in utypes else zeros((2, s) if asym_errors else s) if ers is None else array(ers, 'd') for vals, ers in zip([x, y], [ex, ey])]
     x, y = [array([v.n for v in vals] if type(vals[0]) in utypes else vals, 'd') for vals in [x, y]]
     return [s, array(x, 'd'), array(y, 'd')] + ([ex[0], ex[1], ey[0], ey[1]] if asym_errors else [ex, ey])
