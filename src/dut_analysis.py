@@ -280,9 +280,8 @@ class DUTAnalysis(Analysis):
         normalisation = 1 if not normalise else self.get_pulse_height()
         values = get_2d_hist_vec(source) / normalisation
         [h.Fill(v.n) for v in values]
-        x_range = increased_range([h.GetBinCenter(ibin) for ibin in [h.FindFirstBinAbove(5), h.FindLastBinAbove(5)]], .3, .3) if x_range is None else x_range
         format_statbox(all_stat=True)
-        format_histo(h, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=2, fill_color=Draw.FillColor, x_range=x_range)
+        format_histo(h, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=2, fill_color=Draw.FillColor, x_range=choose(x_range, ax_range(5, 5, .3, .3, h)))
         self.Draw(h, 'SignalMapDistribution', lm=.15, show=show, save=save)
         return mean_sigma(values) if ret_value else h
 
