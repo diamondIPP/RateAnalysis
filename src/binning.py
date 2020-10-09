@@ -10,14 +10,16 @@ from helpers.utils import get_root_vec, choose
 
 
 class Bins:
-    
+
+    Config = None
     Size = 10000
+    FluxRange = [5, 20000]
 
     def __init__(self, run=None, cut=None):
 
         self.Run = run
         self.Cut = cut
-        self.Config = self.Run.MainConfig
+        Bins.Config = self.Run.MainConfig
 
         self.NCols, self.NRows = self.Run.NPixels
         self.PX, self.PY = self.Run.PixelSize
@@ -53,7 +55,7 @@ class Bins:
 
         # Miscellaneous
         self.GlobalCoods = [-.5025, .5175, -.505, .515]  # range in x and y in telescope coordinates [cm]
-        self.FluxRange = loads(self.Config.get('PLOTS', 'flux range'))
+        Bins.FluxRange = loads(Bins.Config.get('PLOTS', 'flux range'))
 
     def __call__(self, bin_width=None):
         self.set_bin_size(bin_width)
