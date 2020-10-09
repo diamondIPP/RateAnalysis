@@ -833,13 +833,14 @@ def show_colors(colors):
 
 def ax_range(low, high=None, fl=0, fh=0, h=None, rnd=False):
     if type(low) in [list, ndarray]:
-        return ax_range(low[0], low[1], fl, fh) if len(low) == 2 else ax_range(min(low), max(low), fl, fh)
+        return ax_range(low[0], low[1], fl, fh) if len(low) == 2 else ax_range(min(low), max(low), fl, fh, rnd=rnd)
     if h is not None:
         if type(h) in [list, ndarray]:
             return ax_range(min(h), max(h), fl, fh)
         if 'TH2' in h.ClassName() or '2D' in h.ClassName():
-            return [ax_range(axis.GetBinCenter(h.FindFirstBinAbove(low, i)), axis.GetBinCenter(h.FindLastBinAbove(high, i)), fl, fh) for i, axis in enumerate([h.GetXaxis(), h.GetYaxis()], 1)]
-        return ax_range(h.GetBinCenter(h.FindFirstBinAbove(low)), h.GetBinCenter(h.FindLastBinAbove(high)), fl, fh)
+            axes = enumerate([h.GetXaxis(), h.GetYaxis()], 1)
+            return [ax_range(ax.GetBinCenter(h.FindFirstBinAbove(low, i)), ax.GetBinCenter(h.FindLastBinAbove(high, i)), fl, fh, rnd=rnd) for i, ax in axes]
+        return ax_range(h.GetBinCenter(h.FindFirstBinAbove(low)), h.GetBinCenter(h.FindLastBinAbove(high)), fl, fh, rnd=rnd)
     d = abs(high - low)
     l, h = low - d * fl, high + d * fh
     return [int(l), int(ceil(h))] if rnd else [l, h]
