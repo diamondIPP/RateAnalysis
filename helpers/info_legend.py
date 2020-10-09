@@ -15,13 +15,13 @@ class InfoLegend(object):
         self.Analysis = analysis
         self.ShowGit = analysis.MainConfig.getboolean('SAVE', 'git hash')
         self.ShowInfo = analysis.MainConfig.getboolean('SAVE', 'info legend')
-        self.IsCollection = hasattr(analysis, 'Analyses')
+        self.IsCollection = hasattr(analysis, 'RunSelection')
         self.HasDUT = hasattr(analysis, 'DUT')
 
         self.Objects = []
 
     def is_active(self):
-        return hasattr(self.Analysis, 'Run') and self.Analysis.Run.Number is not None
+        return True if self.IsCollection else hasattr(self.Analysis, 'Run') and self.Analysis.Run.Number is not None
 
     def draw(self, canvas=None, all_pads=True, show=True):
         """
