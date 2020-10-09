@@ -250,10 +250,6 @@ def make_irr_string(val):
     return '{v:1.1f}#upoint10^{p} n/cm^{{2}}'.format(v=val, p='{{{}}}'.format(int(power)))
 
 
-def increased_range(ran, fac_bot=0., fac_top=0.):
-    return [(1 + fac_bot) * ran[0] - fac_bot * ran[1], (1 + fac_top) * ran[1] - fac_top * ran[0]]
-
-
 def mean_sigma(values, weights=None, err=True):
     """ Return the weighted average and standard deviation. values, weights -- Numpy ndarrays with the same shape. """
     if len(values) == 1:

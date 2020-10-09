@@ -658,7 +658,7 @@ def make_bins(values, thresh=.02):
 def find_range(values, lfac=.2, rfac=.2, thresh=.02):
     v = array(sorted(values))
     xmin, xmax = v[int(thresh * v.size)], v[int(v.size - thresh * v.size)]
-    return increased_range([xmin, xmax], lfac, rfac)
+    return ax_range(xmin, xmax, lfac, rfac)
 
 
 def fix_chi2(g, prec=.01, show=True):
@@ -763,7 +763,7 @@ def get_pull(h, name, binning, fit=True):
     values = array([h.GetBinContent(ibin + 1) for ibin in range(h.GetNbinsX())], 'd')
     h_out.FillN(values.size, values, full(values.size, 1, 'd'))
     h_out.Fit('gaus', 'q') if fit else do_nothing()
-    format_histo(h_out, x_range=increased_range([values.min(), values.max()], .1, .3))
+    format_histo(h_out, x_range=ax_range(values.min(), values.max(), .1, .3))
     return h_out
 
 
@@ -829,6 +829,15 @@ def show_colors(colors):
         c.cd(i)
         Draw.box(0, 0, 1, 1, fillstyle=1001, fillcolor=col)
         Draw.tlatex(.5, .5, str(i - 1), align=22, size=.2)
+
+
+def ax_range(low, high, fl=0, fh=0, h=None):
+    if h is not None:
+        if 'TH2' in h.ClassName() or '2D' in h.ClassName():
+            return [ax_range(axis.GetBinCenter(h.FindFirstBinAbove(low, i)), axis.GetBinCenter(h.FindLastBinAbove(high, i)), fl, fh) for i, axis in enumerate([h.GetXaxis(), h.GetYaxis()], 1)]
+        return ax_range(h.GetBinCenter(h.FindFirstBinAbove(low)), h.GetBinCenter(h.FindLastBinAbove(high)), fl, fh)
+    d = abs(high - low)
+    return [low - d * fl, high + d * fh]
 
 
 if __name__ == '__main__':
