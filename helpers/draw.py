@@ -550,7 +550,7 @@ def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=Non
         y_args = [y_tit, y_off, tit_size, center_y, lab_size, l_off_y, y_range, ndivy, choose(y_ticks, tick_size), yax_col]
         z_args = [z_tit, z_off, tit_size, False, lab_size, None, z_range, None, choose(z_ticks, tick_size)]
         for i, name in enumerate(['X', 'Y', 'Z']):
-            format_axis(getattr(h, 'Get{}axis'.format(name))(), is_graph(h), *[x_args, y_args, z_args][i])
+            format_axis(getattr(h, 'Get{}axis'.format(name))(), h, *[x_args, y_args, z_args][i])
     except AttributeError or ReferenceError:
         pass
     set_time_axis(h, off=t_ax_off) if t_ax_off is not None else do_nothing()
@@ -572,7 +572,7 @@ def format_statbox(x=.95, y=None, w=.2, h=.15, only_fit=False, fit=False, entrie
     gStyle.SetStatH(h)
 
 
-def format_axis(axis, graph, title, tit_offset, tit_size, centre_title, lab_size, label_offset, limits, ndiv, tick_size, color=None):
+def format_axis(axis, h, title, tit_offset, tit_size, centre_title, lab_size, label_offset, limits, ndiv, tick_size, color=None):
     do(axis.SetTitle, title)
     do(axis.SetTitleOffset, tit_offset)
     do(axis.SetTitleSize, tit_size)
@@ -580,7 +580,7 @@ def format_axis(axis, graph, title, tit_offset, tit_size, centre_title, lab_size
     do(axis.SetLabelSize, lab_size)
     do(axis.SetLabelOffset, label_offset)
     if limits is not None:
-        axis.SetLimits(*limits) if graph and 'xaxis' in axis.GetName() else axis.SetRangeUser(*limits)
+        axis.SetLimits(*limits) if is_graph(h) and 'xaxis' in axis.GetName() else axis.SetRangeUser(*limits)
     do(axis.SetNdivisions, ndiv)
     do(axis.SetTickSize, tick_size)
     do(axis.SetTitleColor, color)
