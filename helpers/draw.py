@@ -7,19 +7,18 @@
 from os.path import join
 from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TH1F, TSpectrum, TEllipse, TColor, TProfile
 from ROOT import TProfile2D, TH2F
-from numpy import sign, linspace, ones
+from numpy import sign, linspace, ones, ceil
 from src.binning import Bins
 from helpers.utils import *
 
 
-def get_color_gradient(n):
+def get_color_gradient():
     stops = array([0., .5, 1], 'd')
     green = array([0. / 255., 200. / 255., 80. / 255.], 'd')
     blue = array([0. / 255., 0. / 255., 0. / 255.], 'd')
     red = array([180. / 255., 200. / 255., 0. / 255.], 'd')
     color_gradient = TColor.CreateGradientColorTable(len(stops), stops, red, green, blue, 255)
-    color_table = [color_gradient + ij for ij in range(255)]
-    return color_table[0::(len(color_table) + 1) // n]
+    return array([color_gradient + ij for ij in range(255)])
 
 
 def load_resolution(default=800):
@@ -37,7 +36,7 @@ class Draw(object):
     Config = None
     Count = 0
     Res = load_resolution()
-    Colors = get_color_gradient(10)
+    Colors = get_color_gradient()
     Objects = []
     Dir = get_base_dir()
 
@@ -99,19 +98,18 @@ class Draw(object):
     # ----------------------------------------
     # region GET
     def get_color(self, n, i=None):
-        color = get_color_gradient(n)[choose(i, self.IColor)]
+        color = Draw.get_colors(n)[choose(i, self.IColor)]
         self.IColor = self.IColor + 1 if self.IColor < n - 1 else 0
         return color
 
     @staticmethod
     def get_colors(n):
-        return get_color_gradient(n)
+        return Draw.Colors[linspace(0, Draw.Colors.size - 1, n).round().astype(int)].tolist()
 
     @staticmethod
     def get_count():
         Draw.Count += 1
         return Draw.Count
-
     # endregion GET
     # ----------------------------------------
 
@@ -188,8 +186,8 @@ class Draw(object):
         return Draw.line(xmin, xmax, y, y, color, w, style, name) if not tline else Draw.tline(xmin, xmax, y, y, color, w, style)
 
     @staticmethod
-    def polygon(x, y, line_color=1, width=1, style=1, fillstyle=None, name='box', show=True, fill_color=None):
-        line = TCutG(name, len(x) + 1, array(x + [x[0]], 'd'), array(y + [y[0]], 'd'))
+    def polygon(x, y, line_color=1, width=1, style=1, name=None, fillstyle=None, fill_color=None, show=True):
+        line = TCutG(choose(name, 'poly{}'.format(Draw.get_count())), len(x) + 1, array(x + [x[0]], 'd'), array(y + [y[0]], 'd'))
         line.SetLineColor(line_color)
         do(line.SetFillColor, fill_color)
         line.SetLineWidth(width)
@@ -197,12 +195,12 @@ class Draw(object):
         do(line.SetFillStyle, fillstyle)
         if show:
             line.Draw('l')
-            line.Draw('f') if fillstyle < 4000 and fillstyle is not None else do_nothing()
+            line.Draw('f') if fill_color is not None or fillstyle is not None and fillstyle < 4000 else do_nothing()
         return Draw.add(line)
 
     @staticmethod
-    def box(x1, y1, x2, y2, line_color=1, width=1, style=1, fillstyle=None, name='box', show=True):
-        return Draw.polygon([x1, x1, x2, x2], [y1, y2, y2, y1], line_color, width, style, fillstyle, name, show)
+    def box(x1, y1, x2, y2, line_color=1, width=1, style=1, name=None, fillstyle=None, fillcolor=None, show=True):
+        return Draw.polygon([x1, x1, x2, x2], [y1, y2, y2, y1], line_color, width, style, name, fillstyle, fillcolor, show)
 
     @staticmethod
     def tlatex(x, y, text, name='text', align=20, color=1, size=.05, angle=None, ndc=None, font=None, show=True):
@@ -477,7 +475,7 @@ class Draw(object):
         x2 = .95 if x2 is None else x2
         x1 = x2 - w if w is not None else x1
         h = nentries * .05 * scale
-        y = array([y2 - h if y1 is None else y1, y1 + h if y1 is not None and y2 is None else y2])
+        y = array([y2 - h if y1 is None else y1, y1 + h if y1 is not None else y2])
         y += .07 if not Draw.Title and y[1] > .7 and not fix else 0
         y -= .07 if not Draw.Legend and y[1] < .7 and not fix else 0
         leg = TLegend(x1, max(y[0], 0), x2, min(y[1], 1))
@@ -818,6 +816,15 @@ def update_canvas(c=None):
     if c is not None:
         c.Modified()
         c.Update()
+
+
+def show_colors(colors):
+    n = len(colors)
+    c = Draw.canvas(divide=(int(ceil(sqrt(n))), int(ceil(sqrt(n)))))
+    for i, col in enumerate(colors, 1):
+        c.cd(i)
+        Draw.box(0, 0, 1, 1, fillstyle=1001, fillcolor=col)
+        Draw.tlatex(.5, .5, str(i - 1), align=22, size=.2)
 
 
 if __name__ == '__main__':
