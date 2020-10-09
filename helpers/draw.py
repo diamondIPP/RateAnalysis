@@ -455,7 +455,7 @@ class Draw(object):
     # ----------------------------------------
     # region CREATE
     @staticmethod
-    def make_histo(title, *bins):
+    def make_histo(title, bins):
         h = TH1F('h{}'.format(Draw.get_count()), title, *bins)
         return Draw.add(h)
 
@@ -556,6 +556,7 @@ def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=Non
     set_time_axis(h, off=t_ax_off) if t_ax_off is not None else do_nothing()
     do(h.Sumw2, sumw2) if hasattr(h, 'Sumw2') else do_nothing()
     update_canvas()
+    return h
 
 
 def format_statbox(x=.95, y=None, w=.2, h=.15, only_fit=False, fit=False, entries=False, form=None, m=False, rms=False, all_stat=False):
