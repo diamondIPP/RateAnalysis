@@ -367,10 +367,10 @@ def tc_to_str(tc, short=True):
     return '{tc}{s}'.format(tc=datetime.strptime(tc_str, '%Y%m').strftime('%b%y' if short else '%B %Y'), s=sub_str)
 
 
-def make_flux_string(rate):
+def make_flux_string(rate, prec=1):
     unit = '{}/cm^{{2}}'.format('MHz' if rate > 1000 else 'kHz')
     rate /= 1000. if rate > 1000 else 1
-    return '{: 2.1f} {}'.format(rate, unit)
+    return '{{: 2.{}f}} {{}}'.format(prec).format(rate, unit)
 
 
 def make_bias_str(bias):
@@ -395,15 +395,6 @@ def isint(x):
         return float(x) == int(x)
     except (ValueError, TypeError):
         return False
-
-
-def set_drawing_range(h, legend=True, lfac=None, rfac=None, thresh=10):
-    for i in range(1, 4):
-        h.SetBinContent(i, 0)
-    range_ = [h.GetBinCenter(i) for i in [h.FindFirstBinAbove(thresh), h.FindLastBinAbove(thresh)]]
-    lfac = lfac if lfac is not None else .2
-    rfac = rfac if rfac is not None else .55 if legend else .1
-    h.GetXaxis().SetRangeUser(*increased_range(range_, lfac, rfac))
 
 
 def set_time_axis(histo, form='%H:%M', off=0):
