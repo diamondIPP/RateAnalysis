@@ -847,5 +847,14 @@ def ax_range(low, high=None, fl=0, fh=0, h=None, rnd=False):
     return [int(l), int(ceil(h))] if rnd else [l, h]
 
 
+def set_drawing_range(h, legend=True, lfac=None, rfac=None, thresh=10):
+    for i in range(1, 4):
+        h.SetBinContent(i, 0)
+    range_ = [h.GetBinCenter(i) for i in [h.FindFirstBinAbove(thresh), h.FindLastBinAbove(thresh)]]
+    lfac = lfac if lfac is not None else .2
+    rfac = rfac if rfac is not None else .55 if legend else .1
+    h.GetXaxis().SetRangeUser(*ax_range(range_, lfac, rfac))
+
+
 if __name__ == '__main__':
     z = Draw(join(Draw.Dir, 'config', 'main.ini'))
