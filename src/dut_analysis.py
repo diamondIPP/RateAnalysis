@@ -171,6 +171,9 @@ class DUTAnalysis(Analysis):
     def draw_current(self, *args, **kwargs):
         return self.Currents.draw(*args, **kwargs)
 
+    def draw_flux(self, *args, **kwargs):
+        return self.Tel.draw_flux(*args, **kwargs)
+
     def draw_pulse_height(self, *args, **kwargs):
         return TProfile()
 
