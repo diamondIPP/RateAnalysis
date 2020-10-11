@@ -505,7 +505,7 @@ class Draw(object):
 # ----------------------------------------
 # region FORMATTING
 def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=None, marker=20, color=None, line_color=None, markersize=None, x_off=None, y_off=None, z_off=None, lw=1,
-                 fill_color=None, fill_style=None, stats=True, tit_size=None, lab_size=None, l_off_y=None, l_off_x=None, draw_first=False, x_range=None, y_range=None, z_range=None, sumw2=None,
+                 fill_color=None, fill_style=None, stats=None, tit_size=None, lab_size=None, l_off_y=None, l_off_x=None, draw_first=False, x_range=None, y_range=None, z_range=None, sumw2=None,
                  do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None, tick_size=None, t_ax_off=None, center_y=False, center_x=False, yax_col=None, normalise=None, pal=None, rebin=None,
                  y_ticks=None, x_ticks=None, z_ticks=None, opacity=None):
     h = histo
@@ -521,7 +521,7 @@ def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=Non
         h.Sumw2(True)
         normalise_histo(h)
     try:
-        h.SetStats(stats)
+        do(h.SetStats, stats)
     except AttributeError or ReferenceError:
         pass
     do(h.Rebin, rebin) if hasattr(h, 'Rebin') else do_nothing()
