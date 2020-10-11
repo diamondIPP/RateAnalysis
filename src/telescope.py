@@ -4,7 +4,7 @@
 # revised on Oct 4th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from ROOT import TH1F, TCut
-from numpy import arange, concatenate, mean, sqrt
+from numpy import arange, concatenate, mean, sqrt, full
 from src.binning import Bins
 from helpers.draw import Draw, format_histo, format_statbox, get_hist_vec, fill_hist, warning, time_stamp, do_nothing, update_canvas, mean_sigma, ufloat, do_pickle
 from src.sub_analysis import SubAnanlysis
@@ -142,12 +142,15 @@ class Telescope(SubAnanlysis):
         format_histo(g, x_tit='Time [hh:mm]', y_tit='{} [Hz]'.format('Flux' if flux else 'Rate'), fill_color=Draw.FillColor, markersize=.4, t_ax_off=self.StartTime if rel_t else 0)
         update_canvas()
 
-    def draw_flux(self, bin_width=5, cut='', rel_t=True, show=True, prnt=True):
+    def draw_flux(self, bin_width=5, cut='', rel_time=True, show=True, prnt=True):
         cut = TCut('beam_current < 10000 && rate[{0}] < 1e9 && rate[{1}] < 1e9 && rate[{0}] && rate[{1}]'.format(*self.Run.TriggerPlanes + 1)) + TCut(cut)
-        flux1, flux2, t = self.get_root_vec(var=[self.get_flux_var(p) for p in self.Run.TriggerPlanes] + [self.get_t_var()], cut=cut)
-        flux = mean([flux1, flux2], axis=0)[1:] / 1000
+        if self.has_branch('rate'):
+            flux1, flux2, t = self.get_root_vec(var=[self.get_flux_var(p) for p in self.Run.TriggerPlanes] + [self.get_t_var()], cut=cut)
+            flux = mean([flux1, flux2], axis=0)[1:] / 1000
+        else:
+            t, flux = self.Run.Time / 1000, full(self.Run.NEvents - 1, self.get_flux().n)
         p = self.Draw.profile(t[1:], flux, self.Bins.get_raw_time(bin_width=bin_width), 'Flux Profile', fill_color=Draw.FillColor, draw_opt='hist', lm=.08, w=1.5, h=.75, show=show)
-        format_histo(p, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', markersize=1, t_ax_off=self.StartTime if rel_t else 0, stats=0, y_range=[0, p.GetMaximum() * 1.2])
+        format_histo(p, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', markersize=1, t_ax_off=self.StartTime if rel_time else 0, stats=0, y_range=[0, p.GetMaximum() * 1.2])
         self.Draw.save_plots('FluxProfile', prnt=prnt, show=show)
         return p
 
