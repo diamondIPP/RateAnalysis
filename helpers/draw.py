@@ -398,11 +398,11 @@ class Draw(object):
         self.histo(h, show=show, lm=lm, rm=rm, logy=logy)
         return h
 
-    def graph(self, x, y, ex=None, ey=None, asym_errors=False, lm=None, rm=None, tm=None, w=1, h=1, show=True, draw_opt=None, logy=False, **kwargs):
+    def graph(self, x, y, ex=None, ey=None, asym_errors=False, lm=None, rm=None, tm=None, w=1, h=1, show=True, draw_opt=None, logx=False, logy=False, **kwargs):
         g = Draw.make_tgrapherrors(x, y, ex, ey, asym_errors)
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         format_histo(g, **kwargs)
-        self.histo(g, show=show, lm=lm, rm=rm, tm=tm, w=w, h=h, draw_opt=draw_opt, logy=logy)
+        self.histo(g, show=show, lm=lm, rm=rm, tm=tm, w=w, h=h, draw_opt=draw_opt, logx=logx, logy=logy)
         return g
 
     def profile(self, x, y, binning=None, title='', thresh=.02, lm=None, rm=None, w=1, h=1, show=True, draw_opt=None, **kwargs):
