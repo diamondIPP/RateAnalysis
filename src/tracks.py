@@ -24,10 +24,10 @@ class Tracks(SubAnanlysis):
         a = self.get_root_vec(var='angle_{}'.format(mode))
         return a[a != -999]
 
-    def get_mean_angle(self, mode='x'):
+    def get_mean_angle(self, mode='x', redo=False):
         def f():
             return mean_sigma(self.get_angles(mode))
-        return do_pickle(self.make_simple_pickle_path('TrackAngle{}'.format(mode)), f)
+        return do_pickle(self.make_simple_pickle_path('TrackAngle{}'.format(mode)), f, redo=redo)
 
     def get_residual(self, roc, chi2, mode='x', redo=False):
         def f():

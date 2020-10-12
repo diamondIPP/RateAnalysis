@@ -160,8 +160,8 @@ class DUTAnalysis(Analysis):
     def draw_occupancies(self, *args, **kwargs):
         return self.Tel.draw_occupancies(*args, **kwargs)
 
-    def get_mean_angle(self, mode):
-        return self.Tracks.get_mean_angle(mode)
+    def get_mean_angle(self, mode, redo):
+        return self.Tracks.get_mean_angle(mode, redo)
 
     def draw_current(self, *args, **kwargs):
         return self.Currents.draw(*args, **kwargs)
