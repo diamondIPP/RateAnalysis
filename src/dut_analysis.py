@@ -332,37 +332,26 @@ class DUTAnalysis(Analysis):
     # endregion SIGNAL MAP
     # ----------------------------------------
 
-    def draw_uniformity(self, histo=None, nbins=10, show=True, redo=False):
-
-        fwhm_gauss = self.Pedestal.get_fwhm() if histo is None and hasattr(self, 'Pedestal') else 0
-        h = self.draw_signal_distribution(show=show, normalise=True, sumw2=False, redo=redo) if histo is None else histo
-        if histo is not None:
-            self.Draw(h)
-        sleep(.1)
-        fit = TF1('fit', 'gaus', 0, 10000)
-        h.Fit('fit', 'qs', '', h.GetBinCenter(h.GetMaximumBin() - nbins), h.GetBinCenter(h.GetMaximumBin() + nbins))
-        mpv = make_ufloat((fit.GetParameter(1), fit.GetParError(1) + fit.GetParameter(1) * .02))
-        half_max = fit(mpv.n) / 2
-        x_fwhm_min, x_fwhm_max = (make_ufloat((h.GetBinCenter(i), h.GetBinWidth(1))) for i in [h.FindFirstBinAbove(half_max), h.FindLastBinAbove(half_max)])
-        fwhm_total = x_fwhm_max - x_fwhm_min
-        Draw.vertical_line(mpv.n, 0, 1e7, style=7, w=2)
-        Draw.tlatex(mpv.n + 5, .1 * half_max, 'MPV', align=10)
-        Draw.arrow(x_fwhm_min.n, mpv.n, half_max, half_max, col=2, width=3, opt='<', size=.02)
-        Draw.arrow(x_fwhm_max.n, mpv.n, half_max, half_max, col=2, width=3, opt='<', size=.02)
-        Draw.tlatex(x_fwhm_max.n + 5, half_max, 'FWHM', align=12, color=2)
-        if mpv < 2 or fwhm_total < 1:
-            warning('Could not determine fwhm or mpv')
-            return None, None, None
-        fwhm = umath.sqrt(fwhm_total ** 2 - fwhm_gauss ** 2)
-        value = fwhm / mpv
-        legend = Draw.make_legend(w=.3, y2=.78, nentries=1, margin=.1, cols=2, scale=1.1)
-        legend.AddEntry('', 'FWHM/MPV', '')
+    def draw_uniformity(self, histo=None, use_fwc=False, show=True):
+        noise = self.Pedestal.get_fwhm() if histo is None and hasattr(self, 'Pedestal') else 0
+        h = self.draw_signal_distribution(show=show, normalise=True, sumw2=True) if histo is None else histo
+        (low, high), m = get_fwhm(h, ret_edges=True), get_fw_center(h) if use_fwc else ufloat(h.GetMean(), h.GetMeanError())
+        Draw.vertical_line(m.n, 0, 1e7, style=7, w=2)
+        fwhm, half_max = high - low, h.GetMaximum() / 2
+        Draw.tlatex(m.n + 5, .1 * half_max, 'FWC' if use_fwc else 'Mean', align=10)
+        Draw.arrow(low.n, m.n, half_max, half_max, col=2, width=3, opt='<', size=.02)
+        Draw.arrow(high.n, m.n, half_max, half_max, col=2, width=3, opt='<', size=.02)
+        Draw.tlatex(high.n + 5, half_max, 'FWHM', align=12, color=2)
+        fwhm = umath.sqrt(fwhm ** 2 - noise ** 2)
+        value = fwhm / m
+        legend = Draw.make_legend(w=.3, y2=.768, nentries=1, margin=.1, cols=2, scale=1.1)
+        legend.AddEntry('', 'FWHM/{}'.format('FWC' if use_fwc else 'Mean'), '')
         legend.AddEntry('', '{:.2f} ({:.2f})'.format(value.n, value.s), '')
         legend.Draw()
-        self.info('FWHM / MPV: {}'.format(fwhm / mpv))
+        self.info('FWHM / MPV: {}'.format(value))
         h.Sumw2(False)
-        get_last_canvas().Update()
-        return mpv, fwhm, value
+        update_canvas()
+        return m, fwhm, value
 
     def model_trap_number(self, f=1000, t=1, max_traps=10000, steps=20, show=True):
         filled_traps = zeros(steps, dtype=int)
