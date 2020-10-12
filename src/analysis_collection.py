@@ -24,7 +24,7 @@ class AnalysisCollection(Analysis):
         self.Type = self.RunSelection.SelectedType
         self.Fluxes = self.RunSelection.get_selected_fluxes()
 
-        super(AnalysisCollection, self).__init__(testcampaign, results_dir=join(self.DUT.Name, 'RP{}'.format(self.RunPlan)), verbose=verbose)
+        super(AnalysisCollection, self).__init__(testcampaign, sub_dir=join(self.DUT.Name, 'RP{}'.format(self.RunPlan)), verbose=verbose)
         self.print_start(run_plan, prnt=load_tree, dut=self.DUT.Name)
         self.print_start_info()
 
@@ -94,7 +94,7 @@ class AnalysisCollection(Analysis):
     def generate_slope_pickle(self):
         picklepath = self.make_pickle_path('TrackAngle', 'x', run=self.MinFluxRun)
         if not file_exists(picklepath):
-            DUTAnalysis(self.MinFluxRun, self.DUT.Number, self.TCString)
+            DUTAnalysis(self.MinFluxRun, self.DUT.Number, self.TCString, prnt=False)
 
     def generate_threshold_pickle(self):
         pass
@@ -208,6 +208,9 @@ class AnalysisCollection(Analysis):
 
     def get_hv_device(self):
         return self.FirstAnalysis.Currents.Name
+
+    def get_currents(self):
+        return [ana.Currents.get_current() for ana in self.get_analyses()]
 
     def get_run_values(self, string, f, runs=None, pbar=None, avrg=False, picklepath=None, *args, **kwargs):
         return array(self.generate_run_plots(string, f, runs, pbar, avrg, picklepath, *args, **kwargs))
