@@ -110,8 +110,8 @@ class DUTAnalysis(Analysis):
         n = self.Tree.Draw('{x}:{y}:{z}'.format(z=self.get_ph_str(), x=x, y=y), cut, 'goff')  # *10 to get values in mm
         return self.Run.get_root_vecs(n, 3)
 
-    def get_uniformity(self, redo=False):
-        return do_pickle(self.make_simple_pickle_path('Uniformity', sub_dir='Signal'), self.draw_uniformity, redo=redo, show=False)
+    def get_uniformity(self, use_fwc=True, redo=False):
+        return do_pickle(self.make_simple_pickle_path('Uniformity', int(use_fwc), 'Signal'), self.draw_uniformity, redo=redo, show=False, use_fwc=use_fwc)
 
     def get_track_length_var(self):
         dx2, dy2 = ['TMath::Power(TMath::Tan(TMath::DegToRad() * {}_{}), 2)'.format('slope' if self.Run.has_branch('slope_x') else 'angle', direction) for direction in ['x', 'y']]
