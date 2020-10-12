@@ -30,7 +30,7 @@ class PadRun(Run):
         self.Digitiser = self.Config.get('BASIC', 'digitizer').lower()
         self.Channels = self.load_channels()
 
-        if self.Tree is not None:
+        if self.Tree.Hash():
             self.validate_region_information()
             self.TreeConfig = self.load_tree_config()
             self.DigitizerChannels = self.load_digitizer_channels()
