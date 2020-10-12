@@ -63,7 +63,7 @@ class Tracks(SubAnanlysis):
 
     def draw_chi2(self, mode=None, fit=False, x_range=None, cut='', normalise=None, show=True, save=True, prnt=True, show_cut=False):
         mode = 'tracks' if mode is None else mode
-        h = Draw.make_histo('Chisquare {}'.format(mode.title()), 500, 0, 100)
+        h = Draw.make_histo('Chisquare {}'.format(mode.title()), [500, 0, 100])
         self.Tree.Draw('chi2_{}>>{}'.format(mode, h.GetName()), TCut('n_tracks > 0') + TCut(cut), 'goff')
         y_tit = '{} of Entries'.format('Number' if normalise is None else 'Percentage')
         format_histo(h, x_tit='#chi^{2}', y_tit=y_tit, y_off=2, x_range=choose(x_range, [0, get_quantile(h, .99)]), normalise=normalise, fill_color=Draw.FillColor)
@@ -146,7 +146,7 @@ class Tracks(SubAnanlysis):
     def draw_residual(self, roc, mode=None, cut=None, x_range=None, fit=False, show=True):
         mode = '' if mode is None else mode.lower()
         format_statbox(all_stat=True, fit=fit, w=.2, entries=6 if fit else 3)
-        h = Draw.make_histo('{m} Residuals for Plane {n}'.format(n=roc, m=mode.title()), 1000, -1000, 1000)
+        h = Draw.make_histo('{m} Residuals for Plane {n}'.format(n=roc, m=mode.title()), [1000, -1000, 1000])
         self.Tree.Draw('residuals{}[{}]*1e4>>{}'.format('_{}'.format(mode) if mode else '', roc, h.GetName()), self.Cut(cut), 'goff')
         format_histo(h, name='Fit Result', y_off=2.0, y_tit='Number of Entries', x_tit='Distance [#mum]', fill_color=Draw.FillColor, x_range=x_range)
         self.Draw(h, show, .16)
