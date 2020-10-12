@@ -189,7 +189,7 @@ class Currents(Analysis):
                 return names[i - 1]
 
     def get_run_number(self):
-        return None if self.Ana is None else self.Ana.RunPlan if self.IsCollection else self.Ana.Run.Number
+        return None if self.Ana is None else 'RP{}'.format(self.Ana.RunPlan) if self.IsCollection else self.Ana.Run.Number
 
     # endregion GET
     # ----------------------------------------
@@ -212,7 +212,7 @@ class Currents(Analysis):
         self.Draw(gv, show=show, m=m, w=1.5, h=.75, draw_opt='{}y+'.format('hist' if with_flux else draw_opt), logy=with_flux)
         Draw.tpad('pc', transparent=True, margins=m)
         gc.Draw(draw_opt)
-        save_name = '{}_{}'.format(self.get_run_number(), self.DUT.Name)
+        save_name = '{}_{}{}'.format(self.get_run_number(), self.DUT.Name, 'Flux' if with_flux else '')
         self.Draw.save_plots(save_name, show=show, ftype='png')
 
     def draw_profile(self, bin_width=5, show=True):
