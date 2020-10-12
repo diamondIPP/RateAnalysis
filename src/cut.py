@@ -129,6 +129,15 @@ class Cut:
 
     def get_fiducial_area(self):
         return None if self.CutConfig['fiducial'] is None else self.get_fiducial_size()[-1] / 100.
+
+    def get_fid(self, scale=10):
+        cut = get_object('fid{}'.format(self.Run.Number))
+        if cut:
+            cut = deepcopy(cut)
+            cut.SetName('fid{}{}'.format(self.Run.Number, scale))
+            for i in range(cut.GetN()):
+                cut.SetPoint(i, scale * cut.GetX()[i], scale * cut.GetY()[i])
+            return Draw.add(cut)
     # endregion GET
     # ----------------------------------------
 
@@ -369,15 +378,8 @@ class Cut:
         self.Analysis.reset_colors()
         return sorted_contr
 
-    def draw_fid_cut(self, scale=10):
-        cut = get_object('fid{}'.format(self.Run.Number))
-        if cut:
-            cut = deepcopy(cut)
-            cut.SetName('fid{}'.format(scale))
-            for i in range(cut.GetN()):
-                cut.SetPoint(i, scale * cut.GetX()[i], scale * cut.GetY()[i])
-            cut.Draw()
-            Draw.add(cut)
+    def draw_fid(self, scale=10):
+        self.get_fid(scale).Draw()
     # endregion SHOW & ANALYSE
     # ----------------------------------------
 
