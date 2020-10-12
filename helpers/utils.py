@@ -412,23 +412,26 @@ def find_mpv_fwhm(histo, bins=15):
     return mpv, fwhm, mpv / fwhm
 
 
-def get_fwhm(h):
-    max_v = h.GetMaximum()
-    return h.GetBinCenter(h.FindLastBinAbove(max_v / 2)) - h.GetBinCenter(h.FindFirstBinAbove(max_v / 2))
+def find_fw_center(h):
+    low, high = get_fwhm(h, ret_edges=True)
+    fwc = low + (high - low) * .5  # center of fwhm as mpv
+    return fwc
 
 
-def fit_fwhm(histo, fitfunc='gaus', do_fwhm=True, draw=False):
-    h = histo
-    if do_fwhm:
-        peak_pos = h.GetBinCenter(h.GetMaximumBin())
-        bin1 = h.FindFirstBinAbove(h.GetMaximum() / 2)
-        bin2 = h.FindLastBinAbove(h.GetMaximum() / 2)
-        fwhm = h.GetBinLowEdge(bin2 + 2) - h.GetBinLowEdge(bin1 - 1)
-        option = 'qs' if draw else 'qs0'
-        fit = h.Fit(fitfunc, option, '', peak_pos - fwhm / 2, peak_pos + fwhm / 2)
-    else:
-        fit = h.Fit(fitfunc, 'qs')
-    return FitRes(fit)
+def get_fwhm(h, fit_range=.8, ret_edges=False):
+    half_max0 = h.GetMaximum() * fit_range
+    # fit the top with a gaussian to get better maxvalue
+    fit = FitRes(h.Fit('gaus', 'qs', '', *[h.GetBinCenter(i) for i in [h.FindFirstBinAbove(half_max0), h.FindLastBinAbove(half_max0)]]))
+    half_max = make_ufloat(fit, par=0) * .5
+    blow, bhigh, w = h.FindFirstBinAbove(half_max.n), h.FindLastBinAbove(half_max.n), h.GetBinWidth(1)
+    low = interpolate_x(h.GetBinCenter(blow - 1), h.GetBinCenter(blow), h.GetBinContent(blow - 1), h.GetBinContent(blow), half_max)
+    high = interpolate_x(h.GetBinCenter(bhigh), h.GetBinCenter(bhigh + 1), h.GetBinContent(bhigh), h.GetBinContent(bhigh + 1), half_max)
+    return (low, high) if ret_edges else high - low
+
+
+def fit_fwhm(h, fitfunc='gaus', show=False):
+    low, high = get_fwhm(h, ret_edges=True)
+    return FitRes(h.Fit(fitfunc, 'qs{}'.format('' if show else 0), '', low.n, high.n))
 
 
 def scale_histo(histo, value=None, to_max=False, x_range=None):
