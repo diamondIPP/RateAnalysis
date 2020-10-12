@@ -30,7 +30,7 @@ class Analysis(object):
     PickleDir = join(Dir, MainConfig.get('SAVE', 'pickle directory'))
     DataDir = MainConfig.get('MAIN', 'data directory')
 
-    def __init__(self, testcampaign=None, results_dir='', pickle_dir='', verbose=None):
+    def __init__(self, testcampaign=None, results_dir=None, sub_dir='', pickle_dir='', verbose=None):
 
         self.InitTime = time()
 
@@ -44,7 +44,7 @@ class Analysis(object):
 
         # Modules
         self.Config = self.load_config()
-        self.Draw = SaveDraw(self, sub_dir=results_dir)
+        self.Draw = SaveDraw(self, results_dir, sub_dir)
         self.PBar = PBar()
 
     def load_config(self):

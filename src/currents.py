@@ -15,7 +15,7 @@ class Currents(Analysis):
     MS = .3
 
     def __init__(self, analysis=None, test_campaign=None, dut=None, begin=None, end=None, averaging=None, verbose=False):
-        Analysis.__init__(self, test_campaign if analysis is None else analysis.TCString, verbose=verbose, results_dir='currents')
+        Analysis.__init__(self, test_campaign if analysis is None else analysis.TCString, verbose=verbose, sub_dir='currents')
 
         # Settings
         self.Averaging = averaging

@@ -24,7 +24,7 @@ class DUTAnalysis(Analysis):
 
         self.Run = self.init_run(run_number, testcampaign, tree, t_vec, verbose)
         self.DUT = self.Run.DUTs[diamond_nr - 1]
-        super(DUTAnalysis, self).__init__(testcampaign, results_dir=join(self.DUT.Name, str(self.Run.Number)), verbose=verbose)
+        super(DUTAnalysis, self).__init__(testcampaign, sub_dir=join(self.DUT.Name, str(self.Run.Number)), verbose=verbose)
 
         self.Tree = self.Run.Tree
         self.StartTime = self.Run.StartTime if self.Tree.Hash() else time_stamp(self.Run.LogStart)

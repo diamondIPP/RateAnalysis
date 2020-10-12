@@ -9,7 +9,7 @@ from src.analysis import Analysis, choose
 class SubAnanlysis(Analysis):
     """ small module to create all required fields for the subanalyses. """
 
-    def __init__(self, analysis, results_dir=None, pickle_dir='', dut=True):
+    def __init__(self, analysis, sub_dir=None, pickle_dir='', dut=True):
 
         self.Ana = analysis
         self.Run = analysis.Run
@@ -19,7 +19,7 @@ class SubAnanlysis(Analysis):
         self.NRocs = analysis.NRocs
         if dut and hasattr(analysis, 'DUT'):
             self.DUT = analysis.DUT
-        super().__init__(analysis.TCString, choose(results_dir, analysis.Draw.SubDir), pickle_dir)
+        super().__init__(analysis.TCString, sub_dir=choose(sub_dir, analysis.Draw.SubDir), pickle_dir=pickle_dir)
 
     def get_root_vec(self, n=0, ind=0, dtype=None, var=None, cut='', nentries=None, firstentry=0):
         return self.Run.get_root_vec(n, ind, dtype, var, cut, nentries, firstentry)
