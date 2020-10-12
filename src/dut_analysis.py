@@ -118,7 +118,7 @@ class DUTAnalysis(Analysis):
         return '{} * TMath::Sqrt({} + {} + 1)'.format(self.DUT.Thickness, dx2, dy2)
 
     def get_flux(self, corr=True, rel_error=0, show=False):
-        return (self.get_flux(show=show) if self.Tree and self.has_branch('rate') else self.Run.get_flux(rel_error)) * self.get_flux_correction(corr)
+        return (self.Tel.get_flux(show=show) if self.Tree and self.has_branch('rate') else self.Run.get_flux(rel_error)) * self.get_flux_correction(corr)
 
     def get_flux_correction(self, correct=True):
         def f():
@@ -187,7 +187,7 @@ class DUTAnalysis(Analysis):
         pass
 
     def draw_fid_cut(self, scale=10):
-        self.Cut.draw_fid_cut(scale)
+        return self.Cut.draw_fid(scale)
 
     def draw_track_length(self, show=True):
         h = TH1F('htd', 'Track Distance in Diamond', 200, self.DUT.Thickness, self.DUT.Thickness + 1)

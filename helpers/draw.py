@@ -324,6 +324,7 @@ class Draw(object):
         do([c.SetPhi, c.SetTheta], [phi, theta])
         th.Draw(draw_opt if draw_opt is not None else 'ap' if is_graph(th) else '')
         if leg is not None:
+            update_canvas()
             for i_leg in make_list(leg):
                 i_leg.Draw()
         set_root_output(True)
