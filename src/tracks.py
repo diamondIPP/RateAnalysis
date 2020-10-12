@@ -4,7 +4,7 @@
 # created on Oct 30th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from ROOT import TProfile, TCut, TF1, TMultiGraph
+from ROOT import TProfile, TCut, TF1, TMultiGraph, THStack
 from numpy import log, genfromtxt, split, rad2deg, polyfit, polyval, tan
 from src.sub_analysis import SubAnanlysis
 from helpers.draw import *
@@ -90,7 +90,7 @@ class Tracks(SubAnanlysis):
 
     def draw_angle(self, mode='x', cut=None, show_cut=False, normalise=None, show=True, prnt=True):
         """ Shows the angle distribution of the tracks. """
-        h = Draw.make_histo('Track Angle Distribution in {}'.format(mode.title()), *self.Bins.get_angle())
+        h = Draw.make_histo('Track Angle Distribution in {}'.format(mode.title()), self.Bins.get_angle())
         self.Tree.Draw('angle_{}>>{}'.format(mode, h.GetName()), self.Cut('angle_{}>-900'.format(mode) if cut is None else cut), 'goff')
         y_tit = '{} of Entries'.format('Number' if normalise is None else 'Percentage')
         format_histo(h, x_tit='Track Angle {} [deg]'.format(mode.title()), y_tit=y_tit, y_off=2, normalise=normalise, fill_color=Draw.FillColor)
