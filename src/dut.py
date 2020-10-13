@@ -40,7 +40,7 @@ class DUT:
             return OrderedDict([(key, dic[self.Name]) for key, dic in sorted(data.items()) if self.Name in dic])
 
     def get_irradiation(self, tc):
-        return self.Irradiation[tc] if tc in self.Irradiation else critical('Please add "{}" to the irradiation file for {}'.format(self.Name, tc))
+        return self.Irradiation[tc] if tc in self.Irradiation else critical('Please make an irradiation entry in the dia_info.json for "{}" in {}'.format(self.Name, tc))
 
     def load_spec(self, section, typ=None, lst=False, error=None, default=None):
         spec = default if section not in self.Specs or self.Specs[section] == 'None' else self.Specs[section] if typ is None else typ(self.Specs[section])
