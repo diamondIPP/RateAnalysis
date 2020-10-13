@@ -13,3 +13,5 @@ test*
 .last_converted.txt
 config/soft.ini
 config/main.ini
+venv
+*.egg-info
