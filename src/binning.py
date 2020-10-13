@@ -72,7 +72,8 @@ class Bins:
         if self.Cut is None:
             return self.get_raw(evts_per_bin)
         jumps = [r for r in self.Cut.get_interruptions_ranges() if r[1] > self.Cut.get_min_event()]  # filter out interruptions outside event range
-        events = delete(arange(self.Cut.get_max_event()), concatenate([arange(self.Cut.get_min_event()), concatenate([arange(start, stop + 1) for start, stop in jumps])]))
+        delete_events = concatenate([arange(self.Cut.get_min_event()), [] if not len(jumps) else concatenate([arange(start, stop + 1) for start, stop in jumps])])
+        events = delete(arange(self.Cut.get_max_event()), delete_events) if delete_events.size else arange(self.Cut.get_max_event())
         events = events[::evts_per_bin]  # slice out every nth entry
         return append(events, self.Cut.get_max_event()) if self.Cut.get_max_event() != events[-1] else events
 
