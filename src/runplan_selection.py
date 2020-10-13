@@ -35,7 +35,6 @@ class DiaScans(Analysis):
         self.DUTName = self.load_dut_name()
         self.RunPlans = self.load_runplans()
         self.TestCampaigns = self.load_test_campaigns()
-        self.TestCampaigns = ['201510']
         self.Info = self.load_selection_info()
         self.NPlans = len(self.Info) if self.Info else None
 
