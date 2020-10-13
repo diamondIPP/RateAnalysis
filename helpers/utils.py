@@ -256,7 +256,7 @@ def mean_sigma(values, weights=None, err=True):
         value = make_ufloat(values[0])
         return value.n, value.s
     weights = full(len(values), 1) if weights is None else weights
-    if type(values[0]) in [Variable, AffineScalarFunc]:
+    if is_ufloat(values[0]):
         errors = array([v.s for v in values])
         weights = full(errors.size, 1) if all(errors == errors[0]) else [1 / e if e else 0 for e in errors]
         values = array([v.n for v in values], 'd')
@@ -613,13 +613,17 @@ def log_bins(n_bins, min_val, max_val):
 
 
 def make_ufloat(tup, par=0):
-    if type(tup) in [Variable, AffineScalarFunc]:
+    if is_ufloat(tup):
         return tup
     if isinstance(tup, FitRes):
         return ufloat(tup.Parameter(par), tup.ParError(par))
     if type(tup) in [tuple, list, ndarray]:
-        return ufloat(*tup) if type(tup[0]) not in [Variable, AffineScalarFunc] else ufloat(tup[0].n, tup[1].n)
+        return ufloat(*tup) if not is_ufloat(tup[0]) else ufloat(tup[0].n, tup[1].n)
     return ufloat(tup, 0)
+
+
+def is_ufloat(value):
+    return type(value) in [Variable, AffineScalarFunc]
 
 
 def find_graph_margins(graphs):
