@@ -116,14 +116,14 @@ class Converter(object):
         self.add_tracking()
         remove(self.get_eudaqfile_path())
 
-    def convert_raw_to_root(self):
+    def convert_raw_to_root(self, tree=None):
         if not file_exists(self.RawFilePath):
             critical('The raw file {} does not exist ...'.format(self.RawFilePath))
         self.remove_pickle_files()
         curr_dir = getcwd()
         chdir(self.Run.RootFileDir)  # go to root directory
         # prepare converter command
-        cmd_list = [join(self.EudaqDir, 'bin', 'Converter.exe'), '-t', self.ConverterTree, '-c', join(self.EudaqDir, 'conf', self.NewConfigFile), self.RawFilePath]
+        cmd_list = [join(self.EudaqDir, 'bin', 'Converter.exe'), '-t', choose(tree, self.ConverterTree), '-c', join(self.EudaqDir, 'conf', self.NewConfigFile), self.RawFilePath]
         self.set_converter_configfile()
         print_banner('START CONVERTING RAW FILE FOR RUN {0}'.format(self.Run.Number))
         info('{}\n'.format(' '.join(cmd_list)))
