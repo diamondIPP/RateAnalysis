@@ -330,66 +330,8 @@ class Draw(object):
         set_root_output(True)
         return Draw.add(c, th, leg)[0]
 
-    # TODO: revise and put at correct place
-    def save_combined_pulse_heights(self, mg, mg1, mg_y, show=True, name=None, pulser_leg=None,
-                                    x_range=None, y_range=None, rel_y_range=None, draw_objects=None, prnt=True):
-        set_root_output(show)
-        c = TCanvas('c', 'c', int(Draw.Res * 10 / 11.), Draw.Res)
-        make_transparent(c)
-        bm = .11
-        scale = 1.5
-        pm = bm + (1 - bm - .1) / 5.
-
-        # set unified x-range:
-        mgn = mg1.Clone()
-        mgn.GetXaxis().SetLimits(1, 3e4) if x_range is None else do_nothing()
-        mg.GetXaxis().SetLimits(1, 3e4) if x_range is None else do_nothing()
-
-        # bottom pad with 20%
-        p0 = self.tpad('p0', 'p0', pos=[0, 0, 1, pm], margins=[.14, .03, bm / pm, 0], transparent=True, logx=True, gridy=True)
-        scale_multigraph(mgn)
-        rel_y_range = [.7, 1.3] if rel_y_range is None else rel_y_range
-        format_histo(mgn, title='', y_range=rel_y_range, y_tit='Rel. ph [au]' if not scale > 1 else ' ', y_off=66, tit_size=.1 * scale, x_off=99, lab_size=.1 * scale)
-        mgn.GetYaxis().SetNdivisions(3)
-        hide_axis(mgn.GetXaxis())
-        mgn.Draw('alp')
-        x_range = [mgn.GetXaxis().GetXmin(), mgn.GetXaxis().GetXmax()] if x_range is None else x_range
-        self.x_axis(1.3, x_range[0], x_range[1], mgn.GetXaxis().GetTitle() + ' ', opt='SG+-=', tit_size=.1, lab_size=.1 * scale, off=99, tick_size=.1, l_off=0)
-        c.cd()
-
-        # top pad with zero suppression
-        self.tpad('p1', 'p1', pos=[0, pm, 1, 1], margins=[.14, .03, 0, .1], transparent=True, logx=True)
-        mg.Draw('alp')
-        hide_axis(mg.GetXaxis())
-        if pulser_leg:
-            pulser_leg()
-        if y_range:
-            mg.SetMinimum(y_range[0])
-            mg.SetMaximum(y_range[1])
-        format_histo(mg, tit_size=.04 * scale, y_off=1.75 / scale, lab_size=.04 * scale)
-        self.x_axis(mg_y, x_range[0], x_range[1], mgn.GetXaxis().GetTitle() + ' ', opt='SG=', tit_size=.035 * scale, lab_size=0, off=1, l_off=99)
-        leg = mg.GetListOfFunctions()[0]
-        move_legend(leg, .17, .03)
-        leg.Draw()
-        if draw_objects is not None:
-            for obj, opt in draw_objects:
-                obj.Draw(opt)
-
-        if hasattr(self, 'InfoLegend'):
-            run_info = self.InfoLegend.draw(p0, all_pads=False)
-            scale_legend(run_info[0], txt_size=.09, height=0.098 / pm)
-            run_info[1].SetTextSize(.05)
-
-        for obj in p0.GetListOfPrimitives():
-            if obj.GetName() == 'title':
-                obj.SetTextColor(0)
-        self.save_canvas(c, name='CombinedPulseHeights' if name is None else name, show=show, print_names=prnt)
-
-        Draw.add(c, *draw_objects)
-        set_root_output(True)
-
     def distribution(self, values, binning=None, title='', thresh=.02, lm=None, rm=None, show=True, logy=None, **kwargs):
-        values = array(values, dtype='d')
+        values = make_darray(values)
         kwargs['fill_color'] = Draw.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         kwargs['y_tit'] = 'Number of Entries' if 'y_tit' not in kwargs else kwargs['y_tit']
@@ -676,6 +618,10 @@ def fix_chi2(g, prec=.01, show=True):
         error += .5 ** it * sign(chi2 - 1)
         it += 1
     return FitRes(fit) if fit is not None else FitRes()
+
+
+def make_darray(values):
+    return array([v.n for v in values] if is_ufloat(values[0]) else values, dtype = 'd')
 
 
 def make_graph_args(x, y, ex=None, ey=None, asym_errors=False):
