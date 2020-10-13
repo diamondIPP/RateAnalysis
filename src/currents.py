@@ -58,6 +58,8 @@ class Currents(Analysis):
             self.convert_data()
         data = h5py.File(data_file, 'r')['{}_CH{}'.format(self.Name, self.Channel)]
         data = data[(data['timestamps'] >= time_stamp(self.Begin)) & (data['timestamps'] <= time_stamp(self.End))]
+        if not data.size:
+            return None
         if self.IgnoreJumps:  # filter out jumps
             data = data[where(abs(data['currents'][:-1]) * 100 > abs(data['currents'][1:]))[0] + 1]  # take out the events that are 100 larger than the previous
         data['currents'] *= 1e9 * sign(mean(data['currents']))  # convert to nA and flip sign if current is negative
