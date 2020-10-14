@@ -600,7 +600,7 @@ def choose(v, default, decider='None', *args, **kwargs):
     use_default = decider is None if decider != 'None' else v is None
     if callable(default) and use_default:
         default = default(*args, **kwargs)
-    return default if use_default else v
+    return default if use_default else v(*args, **kwargs) if callable(v) else v
 
 
 def average_list(lst, n):
