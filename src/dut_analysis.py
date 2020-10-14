@@ -205,16 +205,16 @@ class DUTAnalysis(Analysis):
 
     # ----------------------------------------
     # region SIGNAL MAP
-    def draw_signal_map(self, res=None, cut=None, fid=False, hitmap=False, redo=False, binning=None, z_range=None, size=None, show=True, prnt=True):
+    def draw_signal_map(self, res=None, cut=None, fid=False, hitmap=False, redo=False, bins=None, z_range=None, size=None, show=True, save=True, prnt=True):
 
         cut = self.Cut.generate_custom(exclude=['fiducial'], prnt=prnt) if not fid and cut is None else self.Cut(cut)
-        suf = '{c}_{ch}_{res}'.format(c=cut.GetName(), ch=self.Cut.CutConfig['chi2_x'], res=res if binning is None else '{}x{}'.format(binning[0], binning[2]))
+        suf = '{c}_{ch}_{res}'.format(c=cut.GetName(), ch=self.Cut.CutConfig['chi2_x'], res=res if bins is None else '{}x{}'.format(bins[0], bins[2]))
         pickle_path = self.make_pickle_path('SignalMaps', 'Hit' if hitmap else 'Signal', run=self.Run.Number, ch=self.DUT.Number, suf=suf)
 
         def func():
             set_root_output(0)
             name = 'h_hm' if hitmap else 'h_sm'
-            atts = [name, 'Track Hit Map' if hitmap else 'Signal Map'] + (self.Bins.get_global(res, mm=True) if binning is None else binning)
+            atts = [name, 'Track Hit Map' if hitmap else 'Signal Map'] + (self.Bins.get_global(res, mm=True) if bins is None else bins)
             h1 = TH2I(*atts) if hitmap else TProfile2D(*atts)
             self.info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.DUT.Name, run=self.Run.Number, mode='hit' if hitmap else 'signal '), prnt=prnt)
             y, x = self.Cut.get_track_vars(self.DUT.Number - 1, mm=True)
@@ -231,22 +231,25 @@ class DUTAnalysis(Analysis):
         self.Draw(h, show=show, lm=.12, rm=.16, draw_opt='colzsame')
         self.draw_fid_cut(scale=10)
         # self.draw_detector_size(scale=10)
-        self.Draw.save_plots('HitMap' if hitmap else 'SignalMap2D', prnt=prnt)
+        self.Draw.save_plots('HitMap' if hitmap else 'SignalMap2D', prnt=prnt, save=save)
         return h
 
     def draw_hitmap(self, res=None, cut=None, fid=False, redo=False, z_range=None, size=None, show=True, prnt=True):
         cut = self.Cut.get('tracks') if cut is None else self.Cut(cut)
-        return self.draw_signal_map(res, cut, fid, hitmap=True, redo=redo, binning=None, z_range=z_range, size=size, show=show, prnt=prnt)
+        return self.draw_signal_map(res, cut, fid, hitmap=True, redo=redo, bins=None, z_range=z_range, size=size, show=show, prnt=prnt)
 
-    def split_signal_map(self, m=2, n=2, grid=True, redo=False, show=True):
+    def get_fid_bins(self, m, n):
         fid_cut = array(self.Cut.CutConfig['fiducial']) * 10
         if not fid_cut.size:
             critical('fiducial cut not defined for {}'.format(self.DUT.Name))
         x_bins = linspace(fid_cut[0], fid_cut[1], m + 1)
         y_bins = linspace(fid_cut[2], fid_cut[3], n + 1)
-        binning = [m, x_bins, n, y_bins]
-        h = self.draw_signal_map(binning=binning, show=False, fid=True, redo=redo)
-        format_histo(h, x_range=[fid_cut[0], fid_cut[1] - .01], y_range=[fid_cut[2], fid_cut[3] - .01], name='hssm', stats=0)
+        return [m, x_bins, n, y_bins]
+
+    def split_signal_map(self, m=2, n=2, grid=True, redo=False, show=True):
+        m, x_bins, n, y_bins = self.get_fid_bins(m, n)
+        h = self.draw_signal_map(bins=[m, x_bins, n, y_bins], show=False, fid=True, redo=redo)
+        format_histo(h, x_range=[x_bins[0], x_bins[-1] - .01], y_range=[y_bins[0], y_bins[-1] - .01], name='hssm', stats=0)
         self.Draw(h, show=show, lm=.12, rm=.16, draw_opt='colzsame')
         Draw.grid(x_bins, y_bins, width=2) if grid else do_nothing()
         self.Draw.save_plots('SplitSigMap')
