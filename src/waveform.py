@@ -163,7 +163,8 @@ class Waveform(SubAnanlysis):
             t, v = self.get_times(corr, ind, n), self.get_values(ind, n=n)
             bins = self.get_binning() + ([] if prof else self.Ana.Bins.get_pad_ph(4))
             return (self.Draw.profile if prof else self.Draw.histo_2d)(t, v, bins, '{} Waveform'.format('Averaged' if prof else 'Overlayed'), show=False)
-        p = do_pickle(self.make_simple_pickle_path('AWF', '{}{}'.format('{}{}_'.format(len(ind), ind[0]) if ind is not None else '', int(prof))), f, redo=redo)
+        suf = '{}{}'.format('{}{}_'.format(ind.nonzero()[0].size if ind.dtype == bool else len(ind), ind[0]) if ind is not None else '', int(prof))
+        p = do_pickle(self.make_simple_pickle_path('AWF', suf), f, redo=redo)
         x_range = ax_range(self.Ana.get_signal_range(), fl=0, fh=1) if x_range is None else x_range
         format_histo(p, x_tit='Time [ns]', y_tit='Pulse Height [mV]', y_off=1.2, stats=0, markersize=.5, x_range=x_range, y_range=y_range)
         self.Draw(p, show=show, draw_opt='' if prof else 'col')
