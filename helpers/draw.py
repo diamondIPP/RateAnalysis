@@ -589,7 +589,7 @@ def set_2d_ranges(h, dx, dy):
 
 def adapt_z_range(h, n_sigma=2):
     values = get_2d_hist_vec(h)
-    m, s = mean_sigma(values[5:-5], err=False)
+    m, s = mean_sigma(values[5:-5] if values.size > 20 else values, err=False)
     z_range = [min(values).n, .8 * max(values).n] if s > m else [m - n_sigma * s, m + n_sigma * s]
     format_histo(h, z_range=z_range)
 
