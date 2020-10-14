@@ -80,6 +80,13 @@ class DUTAnalysis(Analysis):
         cut = self.Cut(cut)
         return do_hdf5(self.make_simple_hdf5_path('Events', suf=cut.GetName()), self.get_root_vec, redo, dtype='i4', var='Entry$', cut=cut)
 
+    def get_sub_events(self, cut):
+        e = array(self.get_events())
+        s = array(self.get_events(cut))
+        cut = zeros(self.Run.NEvents + 1, bool)
+        cut[s] = True
+        return cut[e]
+
     def get_event_at_time(self, seconds, rel=False):
         return self.Run.get_event_at_time(seconds, rel)
 
@@ -245,6 +252,11 @@ class DUTAnalysis(Analysis):
         x_bins = linspace(fid_cut[0], fid_cut[1], m + 1)
         y_bins = linspace(fid_cut[2], fid_cut[3], n + 1)
         return [m, x_bins, n, y_bins]
+
+    def get_fid_bin_events(self, m, n, mi, ni):
+        m, x, n, y = self.get_fid_bins(m, n)
+        cut = self.Cut.generate_sub_fid('f{}{}{}{}'.format(m, n, mi, ni), *array([x[mi], x[mi + 1], y[ni], y[ni + 1]]) / 10)
+        return self.get_sub_events(cut)
 
     def split_signal_map(self, m=2, n=2, grid=True, redo=False, show=True):
         m, x_bins, n, y_bins = self.get_fid_bins(m, n)
