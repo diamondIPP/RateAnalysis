@@ -65,14 +65,17 @@ class SaveDraw(Draw):
     def histo(self, histo, file_name=None, show=True, all_pads=False, prnt=True, save=True, *args, **kwargs):
         c = super(SaveDraw, self).histo(histo, show, *args, **kwargs)
         self.Legends.draw(c, all_pads, show and Draw.Legend)
-        if file_name is not None and SaveDraw.Save:
-            self.save_plots(file_name, prnt=prnt, show=show, save=save)
-        return c
+        return self.save_plots(file_name, prnt=prnt, show=show, save=save)
+
+    def distribution(self, values, binning=None, title='', file_name=None, show=True, prnt=True, save=True, *args, **kwargs):
+        h = super(SaveDraw, self).distribution(values, binning, title, *args, **kwargs)
+        self.save_plots(file_name, prnt=prnt, show=show, save=save)
+        return h
 
     def save_plots(self, savename, sub_dir=None, canvas=None, prnt=True, ftype=None, show=True, save=True):
         """ Saves the canvas at the desired location. If no canvas is passed as argument, the active canvas will be saved. However for applications without graphical interface,
          such as in SSl terminals, it is recommended to pass the canvas to the method. """
-        if not save or not SaveDraw.Save:
+        if not save or not SaveDraw.Save or savename is None:
             return
         canvas = get_last_canvas() if canvas is None else canvas
         update_canvas(canvas)
