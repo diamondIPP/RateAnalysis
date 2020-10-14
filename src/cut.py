@@ -229,16 +229,19 @@ class Cut:
         description = '{:.1f}% of the events excluded'.format(100. * self.find_n_misaligned() / self.Run.NEvents) if self.find_n_misaligned() else ''
         return CutString('aligned', 'aligned[0]' if self.find_n_misaligned() else '', description)
 
-    def generate_fiducial(self, center=False, n_planes=0):
+    def generate_fiducial(self, center=False, n_planes=0, xy=None, name=None):
         if self.CutConfig['fiducial'] is None:
             return CutString('fiducial', '', '')
-        xy = self.CutConfig['fiducial'] + (([self.Bins.PX / 2] * 2 + [self.Bins.PY / 2] * 2) if center else 0)
-        cut = Draw.box(xy[0], xy[2], xy[1], xy[3], line_color=2, width=3, name='fid{}'.format(self.Run.Number), show=False)
+        xy = choose(xy, self.CutConfig['fiducial'] + (([self.Bins.PX / 2] * 2 + [self.Bins.PY / 2] * 2) if center else 0))
+        cut = Draw.box(xy[0], xy[2], xy[1], xy[3], line_color=2, width=3, name=choose(name, 'fid{}'.format(self.Run.Number)), show=False)
         cut.SetVarX(self.get_track_var(self.Analysis.DUT.Number - 1 - n_planes, 'x'))
         cut.SetVarY(self.get_track_var(self.Analysis.DUT.Number - 1 - n_planes, 'y'))
         Draw.add(cut)
         description = 'x: [{},{}], y: [{},{}], area: {:.1f}mm x {:.1f}mm = {:.1f}mm2'.format(*self.get_fiducial_size())
-        return CutString('fiducial', TCut(cut.GetName()) if cut is not None else '', description)
+        return CutString(choose(name, 'fiducial'), TCut(cut.GetName()) if cut is not None else '', description)
+
+    def generate_sub_fid(self, name, x1, x2, y1, y2):
+        return self.generate_fiducial(xy=[x1, x2, y1, y2], name=name)() + self()
 
     def generate_jump_cut(self):
         cut_string = ''
