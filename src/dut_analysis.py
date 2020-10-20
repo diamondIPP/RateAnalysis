@@ -152,6 +152,7 @@ class DUTAnalysis(Analysis):
         """ :returns: the pulse height variable in the tree + corrections. [str] """
     # endregion GET
     # ----------------------------------------
+
     def draw_chi2(self, *args, **kwargs):
         return self.Tracks.draw_chi2(*args, **kwargs)
 
