@@ -312,7 +312,7 @@ class Draw(object):
         return Draw.tpavetext('Irradiation: {}'.format(irr), x1, x2, 1 - height - c.GetTopMargin(), 1 - c.GetTopMargin(), font=42, align=12, margin=0.04)
 
     @staticmethod
-    def histo(th, show=True, lm=None, rm=None, bm=None, tm=None, m=None, draw_opt=None, w=1, h=1, logy=False, logx=False, logz=False, grid=False, gridy=False, gridx=False, phi=None, theta=None,
+    def histo(th, show=True, lm=None, rm=None, bm=None, tm=None, m=None, draw_opt=None, w=1, h=1, logx=None, logy=None, logz=None, grid=None, gridy=None, gridx=None, phi=None, theta=None,
               leg=None, canvas=None, sumw2=None):
         w += .16 if not Draw.Title and w == 1 else 0  # rectify if there is no title
         th.Sumw2(sumw2) if hasattr(th, 'Sumw2') and sumw2 is not None else do_nothing()
@@ -621,7 +621,7 @@ def fix_chi2(g, prec=.01, show=True):
 
 
 def make_darray(values):
-    return array([v.n for v in values] if is_ufloat(values[0]) else values, dtype = 'd')
+    return array([v.n for v in values] if is_ufloat(values[0]) else values, dtype='d')
 
 
 def make_graph_args(x, y, ex=None, ey=None, asym_errors=False):
@@ -781,7 +781,8 @@ def show_colors(colors):
 
 def ax_range(low, high=None, fl=0, fh=0, h=None, rnd=False):
     if type(low) in [list, ndarray]:
-        return ax_range(low[0], low[1], fl, fh) if len(low) == 2 else ax_range(min(low), max(low), fl, fh, rnd=rnd)
+        utypes = [Variable, AffineScalarFunc]
+        return ax_range(low[0], low[1], fl, fh) if len(low) == 2 else ax_range(min(low).n if type(low[0]) in utypes else min(low), max(low).n if type(low[0]) in utypes else max(low), fl, fh, rnd=rnd)
     if h is not None:
         if type(h) in [list, ndarray]:
             return ax_range(min(h), max(h), fl, fh)
