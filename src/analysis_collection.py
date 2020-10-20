@@ -596,11 +596,11 @@ class AnalysisCollection(Analysis):
 
     def draw_signal_maps(self, hitmap=False, redo=False):
         histos = self.generate_plots('{} maps'.format('hit' if hitmap else 'signal'), self.Analysis.draw_signal_map, show=False, prnt=False, redo=redo, hitmap=hitmap)
-        glob_max = round_up_to(max([h.GetMaximum() for h in histos]), 5)
-        glob_min = round_down_to(min([h.GetMinimum() for h in histos]), 5)
+        glob_max = round_up_to(max([h.GetMaximum() for h in histos]), 5) + 5
+        glob_min = round_down_to(min([h.GetMinimum() for h in histos]), 5) - 5
         for i, h in enumerate(histos):
             format_histo(h, z_range=[glob_min, glob_max]) if not hitmap else do_nothing()
-            self.Draw(h, '{n}Map{nr}'.format(nr=str(i).zfill(2), n='Hit' if hitmap else 'Signal'), show=False, ind=i, draw_opt='colz', rm=.16, lm=.12, prnt=False)
+            self.Draw(h, '{n}Map{nr}'.format(nr=str(i).zfill(2), n='Hit' if hitmap else 'Signal'), show=False, draw_opt='colz', rm=.16, lm=.12, prnt=False)
 
     def draw_hitmaps(self, redo=False):
         self.draw_signal_maps(hitmap=True, redo=redo)
