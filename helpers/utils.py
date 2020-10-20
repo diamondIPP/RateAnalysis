@@ -254,7 +254,7 @@ def mean_sigma(values, weights=None, err=True):
     """ Return the weighted average and standard deviation. values, weights -- Numpy ndarrays with the same shape. """
     if len(values) == 1:
         value = make_ufloat(values[0])
-        return value, ufloat(value.s, 0) if err else value.n, value.s
+        return (value, ufloat(value.s, 0)) if err else (value.n, value.s)
     weights = full(len(values), 1) if weights is None else weights
     if is_ufloat(values[0]):
         errors = array([v.s for v in values])
