@@ -268,6 +268,11 @@ class DUTAnalysis(Analysis):
         self.Draw.save_plots('SplitSigMap')
         return h, x_bins, y_bins
 
+    def draw_split_means(self, n=10):
+        x = arange(1, n + 1).tolist()
+        y = [mean_sigma(get_2d_hist_vec(h))[0] for h in [self.split_signal_map(i, i, show=False)[0] for i in x]]
+        self.Draw.graph(x, y, title='Split Means', x_tit='Division', y_tit='Pulse Height [mV]', draw_opt='ap')
+
     def draw_beam_profile(self, mode='x', fit=True, fit_range=.8, res=.7, show=True, prnt=True):
         h = self.draw_hitmap(res, show=False, prnt=prnt)
         p = h.ProjectionX() if mode.lower() == 'x' else h.ProjectionY()
