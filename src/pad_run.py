@@ -4,10 +4,9 @@
 # created on Oct 15th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from collections import OrderedDict
-from configparser import ConfigParser
 from json import loads
 from numpy import array, concatenate, cumsum
-from helpers.utils import has_bit, critical, warning, ensure_dir, init_argparser
+from helpers.utils import has_bit, critical, warning, ensure_dir, init_argparser, Config
 from src.run import Run, join
 
 
@@ -56,13 +55,10 @@ class PadRun(Run):
         return [i for i in range(self.NChannels) if has_bit(binary, i)]
 
     def load_tree_config(self):
-        macro = self.RootFile.Get('region_information')
-        info = [str(line).strip('\n') for line in macro.GetListOfLines()]
+        info = [str(line).strip('\n') for line in self.RootFile.Get('region_information').GetListOfLines()]
         if not info[0].startswith('['):
             critical('very old data! rerun conversion!')
-        config = ConfigParser()
-        config.read_file(info)
-        return config
+        return Config(info)
 
     def load_digitizer_channels(self):
         return loads(self.TreeConfig.get('Sensor Names', 'Names'))
