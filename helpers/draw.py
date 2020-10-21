@@ -683,6 +683,10 @@ def get_2d_hist_vec(h, err=True, flat=True):
     return values[values != 0] if flat else values.reshape(len(xbins), len(ybins))
 
 
+def get_h_entries(h):
+    return array([h.GetBinEntries(ibin) for ibin in range(1, h.GetNbinsX() + 1)])
+
+
 def scale_multigraph(mg, val=1, to_low_flux=False):
     graphs = mg.GetListOfGraphs()
     first_graph = graphs[0]
