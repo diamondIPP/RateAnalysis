@@ -868,7 +868,7 @@ class Config(ConfigParser):
     def __init__(self, file_name, **kwargs):
         super(Config, self).__init__(**kwargs)
         self.FileName = file_name
-        self.read(file_name) if file_exists(file_name) else self.read_file(file_name)
+        self.read(file_name) if type(file_name) is not list else self.read_file(file_name)
 
     def get_value(self, section, option, dtype=str, default=None):
         dtype = type(default) if default is not None else dtype
