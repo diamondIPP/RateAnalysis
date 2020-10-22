@@ -288,12 +288,12 @@ class Cut:
         def f():
             t0 = self.Analysis.info('Looking for signal drops of run {} ...'.format(self.Run.Number), endl=False)
             ph, t = self.Analysis.get_root_vec(var=[self.Analysis.SignalName, self.Analysis.get_t_var()], cut=self())
-            values = get_hist_vec(self.Analysis.Draw.profile(t, ph, self.Analysis.Bins.get_raw_time(30), show=False), err=False)
+            time_bins, values = get_hist_vecs(self.Analysis.Draw.profile(t, ph, self.Analysis.Bins.get_raw_time(30), show=False), err=False)
             i_start = next(i for i, v in enumerate(values) if v) + 1  # find the index of the first bin that is not zero
             ph = mean(values[i_start:(values.size + 9 * i_start) // 10])  # take the mean of the first 10% of the bins
             i_break = next((i + i_start for i, v in enumerate(values[i_start:]) if v < .2 * ph and v), None)
             self.Analysis.add_to_info(t0)
-            return None if ph < 10 or i_break is None else self.Analysis.get_event_at_time(values[i_break - 1], rel=True)
+            return None if ph < 10 or i_break is None else self.Analysis.get_event_at_time(time_bins[i_break - 1])
 
         return do_pickle(pickle_path, f, redo=redo)
 
