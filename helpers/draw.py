@@ -799,9 +799,10 @@ def ax_range(low, high=None, fl=0, fh=0, h=None, rnd=False):
     return [int(l), int(ceil(h))] if rnd else [l, h]
 
 
-def set_drawing_range(h, legend=True, lfac=None, rfac=None, thresh=10):
+def set_drawing_range(h, legend=True, lfac=None, rfac=None, thresh=None):
     for i in range(1, 4):
         h.SetBinContent(i, 0)
+    thresh = choose(thresh, .05 * h.GetMaximum())
     range_ = [h.GetBinCenter(i) for i in [h.FindFirstBinAbove(thresh), h.FindLastBinAbove(thresh)]]
     lfac = lfac if lfac is not None else .2
     rfac = rfac if rfac is not None else .55 if legend else .1
