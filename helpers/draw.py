@@ -808,5 +808,22 @@ def set_drawing_range(h, legend=True, lfac=None, rfac=None, thresh=10):
     h.GetXaxis().SetRangeUser(*ax_range(range_, lfac, rfac))
 
 
+def normalise_histo(histo, x_range=None, from_min=False):
+    h = histo
+    x_axis = h.GetXaxis()
+    x_axis.SetRangeUser(*x_range) if x_range is not None else do_nothing()
+    min_bin = h.GetMinimumBin() if from_min else 0
+    integral = h.Integral(min_bin, h.GetNbinsX() - 1)
+    return scale_histo(h, integral)
+
+
+def normalise_bins(h):
+    px = h.ProjectionX()
+    for xbin in range(h.GetNbinsX()):
+        for ybin in range(h.GetNbinsY()):
+            h.SetBinContent(xbin, ybin, h.GetBinContent(xbin, ybin) / (px.GetBinContent(xbin) if px.GetBinContent(xbin) else 1))
+    update_canvas()
+
+
 if __name__ == '__main__':
     z = Draw(join(Draw.Dir, 'config', 'main.ini'))

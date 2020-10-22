@@ -447,15 +447,6 @@ def scale_histo(histo, value=None, to_max=False, x_range=None):
     return h
 
 
-def normalise_histo(histo, x_range=None, from_min=False):
-    h = histo
-    x_axis = h.GetXaxis()
-    x_axis.SetRangeUser(*x_range) if x_range is not None else do_nothing()
-    min_bin = h.GetMinimumBin() if from_min else 0
-    integral = h.Integral(min_bin, h.GetNbinsX() - 1)
-    return scale_histo(h, integral)
-
-
 def make_cut_string(cut, n):
     return '{n}Cuts'.format(n=str(n).zfill(2)) if cut is not None else ''
 
