@@ -148,6 +148,10 @@ class DiaScans(Analysis):
     def get_pedestals(self, redo=False):
         return self.get_values(PadCollection.get_pedestals, PickleInfo('Pedestal', 'Values'), redo=redo)
 
+    def get_noise_spread(self, redo=False):
+        noise = array(self.get_pedestals(redo), object)[:, 1]
+        return mean_sigma([v - mean_sigma(lst)[0] for lst in noise for v in lst])[1]
+
     def get_rel_errors(self, flux=105, redo=False):
         return self.get_values(AnalysisCollection.get_repr_error, PickleInfo('Errors', 'Repr', flux), redo=redo, flux=flux)
 
