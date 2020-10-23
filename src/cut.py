@@ -414,6 +414,9 @@ class CutString:
         self.Level = level
         return self
 
+    def invert(self):
+        return TCut('!{}'.format(self.Name), '!({})'.format(self.Value))
+
 
 class CutStrings(object):
 
