@@ -404,6 +404,10 @@ class CutString:
     def __repr__(self):
         return self.__str__()
 
+    def __add__(self, other):
+        self.Value = (self() + (other() if type(other) is CutString else TCut(other))).GetTitle()
+        return self
+
     def reset(self):
         self.Value = ''
 
