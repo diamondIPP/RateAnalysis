@@ -348,14 +348,14 @@ class Draw(object):
         self.histo(g, show=show, lm=lm, rm=rm, tm=tm, w=w, h=h, draw_opt=draw_opt, logx=logx, logy=logy)
         return g
 
-    def profile(self, x, y, binning=None, title='', thresh=.02, lm=None, rm=None, w=1, h=1, show=True, draw_opt=None, **kwargs):
+    def profile(self, x, y, binning=None, title='', thresh=.02, lm=None, rm=None, w=1, h=1, show=True, draw_opt=None, logz=None, **kwargs):
         x, y = array(x, dtype='d'), array(y, dtype='d')
         kwargs['fill_color'] = Draw.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         p = TProfile('p{}'.format(Draw.get_count()), title, *choose(binning, make_bins, values=x, thresh=thresh))
         fill_hist(p, x, y)
         format_histo(p, **kwargs)
-        self.histo(p, show=show, lm=lm, rm=rm, w=w, h=h, draw_opt=draw_opt)
+        self.histo(p, show=show, lm=lm, rm=rm, w=w, h=h, draw_opt=draw_opt, logz=logz)
         return p
 
     def prof2d(self, x, y, zz, binning=None, title='', lm=None, rm=.15, w=1, h=1, show=True, draw_opt='colz', **kwargs):
@@ -369,7 +369,7 @@ class Draw(object):
         self.histo(p, show=show, lm=lm, rm=rm, w=w, h=h, draw_opt=draw_opt)
         return p
 
-    def histo_2d(self, x, y, binning=None, title='', lm=None, rm=.15, show=True, draw_opt='colz', **kwargs):
+    def histo_2d(self, x, y, binning=None, title='', lm=None, rm=.15, show=True, logz=None, draw_opt='colz', **kwargs):
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         kwargs['z_off'] = 1.2 if 'z_off' not in kwargs else kwargs['z_off']
         kwargs['z_tit'] = 'Number of Entries' if 'z_tit' not in kwargs else kwargs['z_tit']
@@ -378,7 +378,7 @@ class Draw(object):
         h = TH2F('h{}'.format(self.get_count()), title, *choose(binning, dflt_bins))
         fill_hist(h, x, y)
         format_histo(h, **kwargs)
-        self.histo(h, show=show, lm=lm, rm=rm, draw_opt=draw_opt)
+        self.histo(h, show=show, lm=lm, rm=rm, draw_opt=draw_opt, logz=logz)
         return h
 
     def efficiency(self, x, e, binning=None, title='', lm=None, show=True, **kwargs):
