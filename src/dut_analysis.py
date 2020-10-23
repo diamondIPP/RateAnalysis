@@ -67,6 +67,9 @@ class DUTAnalysis(Analysis):
     def get_time(self):
         return self.Run.get_time()
 
+    def get_track_vars(self, mm=True):
+        return self.Cut.get_track_vars(self.DUT.Number - 1, mm)
+
     def get_t_var(self):
         return 'time / 1000.' if self.Run.TimeOffset is None else '(time - {}) / 1000.'.format(self.Run.TimeOffset)
 
@@ -78,7 +81,7 @@ class DUTAnalysis(Analysis):
 
     def get_events(self, cut=None, redo=False):
         cut = self.Cut(cut)
-        return do_hdf5(self.make_simple_hdf5_path('Events', suf=cut.GetName()), self.get_root_vec, redo, dtype='i4', var='Entry$', cut=cut)
+        return do_hdf5(self.make_simple_hdf5_path('', cut.GetName(), 'Events'), self.get_root_vec, redo, dtype='i4', var='Entry$', cut=cut)
 
     def get_sub_events(self, cut):
         e = array(self.get_events())
