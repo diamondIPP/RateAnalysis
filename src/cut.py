@@ -83,8 +83,8 @@ class Cut:
 
     # ----------------------------------------
     # region GET
-    def get(self, name):
-        return self.CutStrings.get(name)
+    def get(self, name, invert=False):
+        return self.CutStrings.get(name, invert)
 
     def get_size(self, name):
         return self.Analysis.Tree.GetEntries(name.GetTitle() if type(name) is TCut else self.get(name).GetTitle())
@@ -450,8 +450,8 @@ class CutStrings(object):
     def names(self):
         return self.Strings.keys()
 
-    def get(self, name):
-        return self.Strings[name]() if self.has_cut(name) else warning('There is no cut with the name "{name}"!'.format(name=name))
+    def get(self, name, invert=False):
+        return (self.Strings[name].invert() if invert else self.Strings[name]()) if self.has_cut(name) else warning('There is no cut with the name "{name}"!'.format(name=name))
 
     def get_strings(self):
         return [cut for cut in self.Strings.values() if cut.Value]
