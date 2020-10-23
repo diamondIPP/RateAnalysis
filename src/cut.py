@@ -256,9 +256,9 @@ class Cut:
     def generate_flux_cut(self):
         return self.generate_custom(include=['beam_interruptions', 'event_range'], name='flux', prnt=False)
 
-    def generate_custom(self, exclude=None, include=None, name='custom', prnt=True):
+    def generate_custom(self, exclude=None, include=None, invert=None, name='custom', prnt=True):
         self.Analysis.info('generated {name} cut with {num} cuts'.format(name=name, num=self.CutStrings.get_n_custom(exclude, include)), prnt=prnt)
-        return self.CutStrings.generate_custom(exclude, include, name)
+        return self.CutStrings.generate_custom(exclude, include, invert, name)
 
     def generate_consecutive(self):
         return self.CutStrings.consecutive()
@@ -386,6 +386,10 @@ class Cut:
     # endregion SHOW & ANALYSE
     # ----------------------------------------
 
+    @staticmethod
+    def invert(cut):
+        return TCut('!({})'.format(str(cut)))
+
 
 class CutString:
 
@@ -482,14 +486,10 @@ class CutStrings(object):
     def set_description(self, name, txt):
         self.Strings[name].set_description(txt) if self.has_cut(name) else warning('There is no cut with the name "{name}"!'.format(name=name))
 
-    def generate_custom(self, exclude=None, include=None, name='custom'):
+    def generate_custom(self, exclude=None, include=None, invert=None, name='custom'):
         cut_string = TCut(name, '')
         for cut in [cut for cut in self.get_strings() if cut.Name not in make_list(exclude)]:
             if include is not None and cut.Name not in include or not cut.Value:
                 continue
-            cut_string += cut()
+            cut_string += cut() if cut.Name not in make_list(invert) else cut.invert()
         return cut_string
-
-
-def invert(cut):
-    return TCut('!({})'.format(str(cut)))
