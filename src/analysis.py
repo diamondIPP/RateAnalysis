@@ -118,6 +118,11 @@ class Analysis(object):
     def make_simple_hdf5_path(self, *args, **kwargs):
         return self.make_simple_pickle_path(*args, **kwargs).replace('pickle', 'hdf5')
 
+    def remove_metadata(self):
+        if hasattr(self, 'Run'):
+            for f in glob(join(self.PickleDir, self.PickleSubDir, '*{}*_{}*'.format(self.Run.Number, self.TCString))):
+                remove_file(f)
+
     # TODO: move to higher analysis
     def calc_time_difference(self, m1, m2, p=None):
         return t_diff(self.PathLength, self.Momentum if p is None else p, m1, m2) % self.BunchSpacing
