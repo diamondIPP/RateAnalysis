@@ -13,9 +13,8 @@ setuptools.setup(
     long_description=long_description,
     author='Michael Reichmann',
     author_email='micha.reichmann@gmail.com',
-    url='https://github.com/diamondIPP/HVClient',
+    url='https://github.com/diamondIPP/RateAnalysis',
 
-    # All versions are fixed just for case. Once in while try to check for new versions.
     install_requires=[
         'ipython',
         'scipy',
