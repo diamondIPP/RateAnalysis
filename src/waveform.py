@@ -3,7 +3,7 @@
 #       waveform analysis
 # created on May 13th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from ROOT import TCut
+from ROOT import TCut, TMultiGraph
 from numpy import fft
 from src.sub_analysis import SubAnanlysis
 from helpers.draw import *
@@ -153,6 +153,20 @@ class Waveform(SubAnanlysis):
         for i, wf in enumerate(wfs):
             format_histo(wf, title='{} WaveForm'.format(self.Run.DigitizerChannels[activated_wfs[i]]))
             Draw.histo(wf, canvas=c.cd(i + 1), draw_opt='aclp')
+
+    def draw_bucket(self, show=True, t_corr=True, start=100000):
+        good = self.draw(1, show=False, start_event=start, t_corr=t_corr)[0]
+        bucket = self.draw(1, cut=self.Cut.generate_custom(invert='bucket'), show=False, start_event=start, t_corr=t_corr)[0]
+        bad_bucket = self.draw(1, cut=self.Cut.get_bad_bucket(), show=False, t_corr=t_corr, start_event=start)[0]
+        mg = TMultiGraph('mg_bw', 'Bucket Waveforms')
+        leg = Draw.make_legend(.85, .4, nentries=3)
+        names = ['good wf', 'bucket wf', 'both wf']
+        for i, gr in enumerate([good, bucket, bad_bucket]):
+            format_histo(gr, color=self.Draw.get_color(3), markersize=.5)
+            mg.Add(gr, 'lp')
+            leg.AddEntry(gr, names[i], 'lp')
+        self.Draw(mg, show=show, draw_opt='A', w=1.5, h=0.75, lm=.07, rm=.045, bm=.2, leg=leg)
+        format_histo(mg, x_range=ax_range(array(self.Run.IntegralRegions[self.DUT.Number - 1]['signal_e']) * self.BinWidth, None, 0, .3), y_off=.7, x_tit='Time [ns]', y_tit='Signal [mV]')
     # endregion WAVEFORMS
     # ----------------------------------------
 
