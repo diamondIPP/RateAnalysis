@@ -86,6 +86,9 @@ class Cut:
     def get(self, name, invert=False):
         return self.CutStrings.get(name, invert)
 
+    def get_all(self):
+        return self.CutStrings.Strings
+
     def get_size(self, name):
         return self.Analysis.Tree.GetEntries(name.GetTitle() if type(name) is TCut else self.get(name).GetTitle())
 
@@ -110,7 +113,7 @@ class Cut:
         return 'dia_track_{m}_local[{n}]{s}'.format(m=mode, n=num, s='*10' if mm else '')
 
     def get_track_vars(self, num, mm=False):
-        return (self.get_track_var(num, v, mm) for v in ['y', 'x'])
+        return [self.get_track_var(num, v, mm) for v in ['y', 'x']]
 
     def get_beam_interruptions(self):
         """ :returns: list of raw interruptions, type [list[tup]]"""
@@ -441,20 +444,21 @@ class CutStrings(object):
         return self.get(item)
 
     def register(self, cut, level):
-        self.Strings[cut.Name] = cut.set_level(level)
-        self.sort()
+        if cut.Value:
+            self.Strings[cut.Name] = cut.set_level(level)
+            self.sort()
 
     def sort(self):
         self.Strings = OrderedDict(sorted(self.Strings.items(), key=lambda x: x[1].Level))
 
-    def names(self):
-        return self.Strings.keys()
+    def get_names(self):
+        return list(self.Strings)
 
     def get(self, name, invert=False):
         return (self.Strings[name].invert() if invert else self.Strings[name]()) if self.has_cut(name) else warning('There is no cut with the name "{name}"!'.format(name=name))
 
     def get_strings(self):
-        return [cut for cut in self.Strings.values() if cut.Value]
+        return list(self.Strings.values())
 
     def get_n(self):
         return sum(cut.Value != '' for cut in self.get_strings())
