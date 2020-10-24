@@ -86,8 +86,11 @@ class Cut:
     def get(self, name, invert=False):
         return self.CutStrings.get(name, invert)
 
-    def get_all(self):
-        return self.CutStrings.Strings
+    def get_strings(self):
+        return self.CutStrings.get_strings()
+
+    def get_names(self):
+        return self.CutStrings.get_names()
 
     def get_size(self, name):
         return self.Analysis.Tree.GetEntries(name.GetTitle() if type(name) is TCut else self.get(name).GetTitle())
