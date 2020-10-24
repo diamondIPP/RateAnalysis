@@ -2,7 +2,7 @@
 #       general class to handle all the cut strings for the analysis
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import histogram2d, split, quantile, histogram
+from numpy import histogram2d, split, quantile, histogram, diff
 from ROOT import TCut, TPie
 from helpers.draw import *
 
@@ -89,11 +89,23 @@ class Cut:
     def get_strings(self):
         return self.CutStrings.get_strings()
 
+    def get_all(self):
+        return [cut() for cut in self.get_strings()]
+
     def get_names(self):
         return self.CutStrings.get_names()
 
     def get_size(self, name):
-        return self.Analysis.Tree.GetEntries(name.GetTitle() if type(name) is TCut else self.get(name).GetTitle())
+        return self.Run.NEvents - self.Analysis.get_n_entries(name)
+
+    def get_sizes(self, consecutive=True, redo=False):
+        def f():
+            return array([self.get_size(cut) for cut in (self.CutStrings.consecutive().values() if consecutive else self.get_all())])
+        return do_pickle(self.Analysis.make_simple_pickle_path('Sizes', int(consecutive), 'Cuts'), f, redo=redo)
+
+    def get_short(self, n=6, redo=False):
+        """get a list of names of the n biggest cuts"""
+        return array(self.get_names())[diff(self.get_sizes(redo=redo)).argsort()][-n:]
 
     def get_event_range(self):
         """ :return: event range [fist event, last event], type [ndarray] """
