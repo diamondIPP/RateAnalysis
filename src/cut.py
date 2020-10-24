@@ -95,8 +95,9 @@ class Cut:
     def get_names(self):
         return self.CutStrings.get_names()
 
-    def get_consecutive(self):
-        return self.CutStrings.consecutive()
+    def get_consecutive(self, short=False):
+        cuts = self.CutStrings.consecutive()
+        return {key: cut for key, cut in cuts.items() if key in self.get_short()} if short else cuts
 
     def get_size(self, name):
         return self.Run.NEvents - self.Analysis.get_n_entries(name)
@@ -108,7 +109,7 @@ class Cut:
 
     def get_short(self, n=6, redo=False):
         """get a list of names of the n biggest cuts"""
-        return array(self.get_names())[diff(self.get_sizes(redo=redo)).argsort()][-n:]
+        return ['raw'] + list(array(self.get_names())[diff(self.get_sizes(redo=redo)).argsort()][-n:])
 
     def get_event_range(self):
         """ :return: event range [fist event, last event], type [ndarray] """
@@ -280,9 +281,6 @@ class Cut:
     def generate_custom(self, exclude=None, include=None, invert=None, name='custom', prnt=True):
         self.Analysis.info('generated {name} cut with {num} cuts'.format(name=name, num=self.CutStrings.get_n_custom(exclude, include)), prnt=prnt)
         return self.CutStrings.generate_custom(exclude, include, invert, name)
-
-    def generate_consecutive(self):
-        return self.CutStrings.consecutive()
     # endregion GENERATE
     # ----------------------------------------
 
@@ -382,7 +380,7 @@ class Cut:
         contr = OrderedDict()
         n_events = self.Run.NEvents
         cut_events = 0
-        for i, (key, cut) in enumerate(self.generate_consecutive().items()):
+        for i, (key, cut) in enumerate(self.get_consecutive().items()):
             if key == 'raw':
                 continue
             events = n_events - int(self.Analysis.Tree.Draw('1', cut, 'goff'))
