@@ -393,15 +393,17 @@ class Draw(object):
         self.histo(g, show=show, lm=lm, draw_opt='ap')
         return g
 
-    def stack(self, histos, title, leg_titles, draw_opt='nostack', *args, **kwargs):
+    def stack(self, histos, title, leg_titles, scale=False, draw_opt='nostack', *args, **kwargs):
         s = THStack('s{}'.format(self.get_count()), title)
         leg = Draw.make_legend(nentries=len(histos), w=.2)
         for h, tit in zip(histos, leg_titles):
             s.Add(h, 'hist')
             leg.AddEntry(h, tit, 'l')
             format_histo(h, color=self.get_color(len(histos)), fill_color=0, fill_style=4000, stats=0, *args, **kwargs)
-        h = histos[0]
-        format_histo(s, draw_first=True, x_tit=h.GetXaxis().GetTitle(), y_tit=h.GetYaxis().GetTitle(), y_off=h.GetYaxis().GetTitleOffset())
+            if scale:
+                h.Scale(1 / h.GetMaximum())
+        h0 = histos[0]
+        format_histo(s, draw_first=True, x_tit=h0.GetXaxis().GetTitle(), y_tit=h0.GetYaxis().GetTitle(), y_off=h0.GetYaxis().GetTitleOffset())
         self.histo(s, draw_opt=draw_opt, leg=leg, lm=get_last_canvas().GetLeftMargin())
         return s
     # endregion DRAW
