@@ -188,8 +188,8 @@ class Bins:
 
     # ----------------------------------------
     # region PAD
-    def get_pad_ph(self, bin_width=None):
-        return Bins.make(self.MinPadPH, self.MaxPadPH, self.PadPHBinWidth if bin_width is None else bin_width)
+    def get_pad_ph(self, bin_width=None, mean_ph=None):
+        return Bins.make(self.MinPadPH, self.MaxPadPH, choose(bin_width, self.PadPHBinWidth if mean_ph is None else mean_ph / 40))
     # endregion PAD
     # ----------------------------------------
 
