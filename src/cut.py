@@ -95,12 +95,15 @@ class Cut:
     def get_names(self):
         return self.CutStrings.get_names()
 
+    def get_consecutive(self):
+        return self.CutStrings.consecutive()
+
     def get_size(self, name):
         return self.Run.NEvents - self.Analysis.get_n_entries(name)
 
     def get_sizes(self, consecutive=True, redo=False):
         def f():
-            return array([self.get_size(cut) for cut in (self.CutStrings.consecutive().values() if consecutive else self.get_all())])
+            return array([self.get_size(cut) for cut in (self.get_consecutive().values() if consecutive else self.get_all())])
         return do_pickle(self.Analysis.make_simple_pickle_path('Sizes', int(consecutive), 'Cuts'), f, redo=redo)
 
     def get_short(self, n=6, redo=False):
