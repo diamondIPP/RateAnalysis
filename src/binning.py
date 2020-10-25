@@ -5,8 +5,8 @@
 # --------------------------------------------------------
 
 from json import loads
-from numpy import arange, array, delete, append, concatenate, sqrt, zeros
-from helpers.utils import get_root_vec, choose
+from numpy import arange, array, delete, append, concatenate, sqrt, zeros, ndarray
+from helpers.utils import choose
 
 
 class Bins:
@@ -195,8 +195,10 @@ class Bins:
 
     @staticmethod
     def make(min_val, max_val=None, bin_width=1, last=False):
-        min_val, max_val = choose(min_val, 0, decider=max_val), choose(max_val, min_val)
-        bins = arange(min_val, max_val + (bin_width if last else 0), bin_width, dtype='d')
+        bins = array(min_val, 'd')
+        if type(min_val) not in [ndarray, list]:
+            min_val, max_val = choose(min_val, 0, decider=max_val), choose(max_val, min_val)
+            bins = arange(min_val, max_val + (bin_width if last else 0), bin_width, dtype='d')
         return [bins.size - 1, bins]
 
     @staticmethod
