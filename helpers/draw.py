@@ -674,12 +674,14 @@ def get_hist_vec(p, err=True):
     return array([make_ufloat([p.GetBinContent(ibin), p.GetBinError(ibin)]) if err else p.GetBinContent(ibin) for ibin in range(1, p.GetNbinsX() + 1)])
 
 
-def get_hist_args(p, err=True):
-    return array([make_ufloat([p.GetBinCenter(ibin), p.GetBinWidth(ibin) / 2]) if err else p.GetBinCenter(ibin) for ibin in range(1, p.GetNbinsX() + 1)])
+def get_hist_args(h, err=True, raw=False):
+    if raw:
+        return array([h.GetBinLowEdge(i) for i in range(1, h.GetNbinsX() + 2)], 'd')
+    return array([make_ufloat([h.GetBinCenter(ibin), h.GetBinWidth(ibin) / 2]) if err else h.GetBinCenter(ibin) for ibin in range(1, h.GetNbinsX() + 1)])
 
 
-def get_hist_vecs(p, err=True):
-    return get_hist_args(p, err), get_hist_vec(p, err)
+def get_hist_vecs(p, err=True, raw=False):
+    return get_hist_args(p, err, raw), get_hist_vec(p, err)
 
 
 def get_h_values(h):
