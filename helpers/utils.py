@@ -740,8 +740,10 @@ def del_rootobj(obj):
 
 def get_root_vec(tree, n=0, ind=0, dtype=None, var=None, cut='', nentries=None, firstentry=0):
     if var is not None:
-        n = tree.Draw(':'.join(make_list(var)), cut, 'goff', choose(nentries, tree.kMaxEntries), firstentry)
-        vals = [get_root_vec(tree, n, i, dtype) for i in range(make_list(var).size)]
+        strings = make_list(var)
+        n = tree.Draw(':'.join(strings), cut, 'goff', choose(nentries, tree.kMaxEntries), firstentry)
+        dtypes = dtype if type(dtype) in [list, ndarray] else full(strings.size, dtype)
+        vals = [get_root_vec(tree, n, i, dtypes[i]) for i in range(strings.size)]
         return vals[0] if len(vals) == 1 else vals
     vec = tree.GetVal(ind)
     vec.SetSize(n)
