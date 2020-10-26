@@ -79,9 +79,7 @@ class Currents(Analysis):
         file_path = join(self.DataDir, 'config.ini')
         if not file_exists(file_path):
             critical('HV info file "{f}" does not exist'.format(f=file_path))
-        parser = Config(file_path)
-        self.info('HV Devices: {}'.format(', '.join(name for name in parser.sections() if name.startswith('HV'))))
-        return parser
+        return Config(file_path)
 
     def load_times(self, begin, end, dut=1):
         if self.Ana is None:
