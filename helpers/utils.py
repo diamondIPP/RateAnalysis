@@ -873,6 +873,9 @@ class Config(ConfigParser):
         except (NoOptionError, NoSectionError):
             return default
 
+    def get_list(self, section, option, default=None):
+        return array(self.get_value(section, option, list, choose(default, [])))
+
 
 def gauss(x, scale, mean_, sigma, off=0):
     return scale * exp(-.5 * ((x - mean_) / sigma) ** 2) + off
