@@ -7,7 +7,7 @@
 from os.path import join
 from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TH1F, TSpectrum, TEllipse, TColor, TProfile
 from ROOT import TProfile2D, TH2F, THStack
-from numpy import sign, linspace, ones, ceil
+from numpy import sign, linspace, ones, ceil, append
 from src.binning import Bins
 from helpers.utils import *
 
@@ -191,7 +191,7 @@ class Draw(object):
 
     @staticmethod
     def polygon(x, y, line_color=1, width=1, style=1, name=None, fillstyle=None, fill_color=None, show=True):
-        line = TCutG(choose(name, 'poly{}'.format(Draw.get_count())), len(x) + 1, array(x + [x[0]], 'd'), array(y + [y[0]], 'd'))
+        line = TCutG(choose(name, 'poly{}'.format(Draw.get_count())), len(x) + 1, append(x, x[0]).astype('d'), append(y, y[0]).astype('d'))
         line.SetLineColor(line_color)
         do(line.SetFillColor, fill_color)
         line.SetLineWidth(width)
@@ -204,7 +204,7 @@ class Draw(object):
 
     @staticmethod
     def box(x1, y1, x2, y2, line_color=1, width=1, style=1, name=None, fillstyle=None, fillcolor=None, show=True):
-        return Draw.polygon([x1, x1, x2, x2], [y1, y2, y2, y1], line_color, width, style, name, fillstyle, fillcolor, show)
+        return Draw.polygon(*make_box_args(x1, y1, x2, y2), line_color, width, style, name, fillstyle, fillcolor, show)
 
     @staticmethod
     def tlatex(x, y, text, name='text', align=20, color=1, size=.05, angle=None, ndc=None, font=None, show=True):
@@ -650,6 +650,10 @@ def make_graph_args(x, y, ex=None, ey=None, asym_errors=False):
     ex, ey = [array([v.s for v in vals], 'd') if type(vals[0]) in utypes else zeros((2, s) if asym_errors else s) if ers is None else array(ers, 'd') for vals, ers in zip([x, y], [ex, ey])]
     x, y = [array([v.n for v in vals] if type(vals[0]) in utypes else vals, 'd') for vals in [x, y]]
     return [s, array(x, 'd'), array(y, 'd')] + ([ex[0], ex[1], ey[0], ey[1]] if asym_errors else [ex, ey])
+
+
+def make_box_args(x1, y1, x2, y2):
+    return array([[x1, x1, x2, x2], [y1, y2, y2, y1]])
 
 
 def set_titles(status=True):
