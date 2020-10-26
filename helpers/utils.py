@@ -16,7 +16,7 @@ from threading import Thread
 from time import time, sleep
 
 from gtts import gTTS
-from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, any, count_nonzero, full, ndarray, exp, sin, cos, arctan, zeros
+from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, any, count_nonzero, full, ndarray, exp, sin, cos, arctan, zeros, dot, roll
 from os import makedirs, _exit, remove, devnull
 from os import path as pth
 from os.path import dirname, realpath
@@ -798,6 +798,10 @@ def u_to_str(v, prec=2):
     return '{{:1.{0}f}} ({{:1.{0}f}})'.format(prec).format(v.n, v.s)
 
 
+def poly_area(x, y):
+    return .5 * abs(dot(x, roll(y, 1)) - dot(y, roll(x, 1)))
+
+
 class FitRes(object):
     def __init__(self, f=None):
         self.Pars = [None]
@@ -874,7 +878,7 @@ class Config(ConfigParser):
             return default
 
     def get_list(self, section, option, default=None):
-        return array(self.get_value(section, option, list, choose(default, [])))
+        return self.get_value(section, option, list, choose(default, []))
 
 
 def gauss(x, scale, mean_, sigma, off=0):
