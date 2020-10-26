@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from json import loads
-from numpy import arange, array, delete, append, concatenate, sqrt, zeros, ndarray
+from numpy import arange, array, delete, append, concatenate, sqrt, zeros, ndarray, linspace
 from helpers.utils import choose
 
 
@@ -194,11 +194,11 @@ class Bins:
     # ----------------------------------------
 
     @staticmethod
-    def make(min_val, max_val=None, bin_width=1, last=False):
+    def make(min_val, max_val=None, bin_width=1, last=False, n=None):
         bins = array(min_val, 'd')
         if type(min_val) not in [ndarray, list]:
             min_val, max_val = choose(min_val, 0, decider=max_val), choose(max_val, min_val)
-            bins = arange(min_val, max_val + (bin_width if last else 0), bin_width, dtype='d')
+            bins = arange(min_val, max_val + (bin_width if last else 0), bin_width, dtype='d') if n is None else linspace(min_val, max_val, n + 1, endpoint=True)
         return [bins.size - 1, bins]
 
     @staticmethod
