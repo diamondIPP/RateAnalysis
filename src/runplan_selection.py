@@ -109,7 +109,7 @@ class DiaScans(Analysis):
         return [sel.Type.lower() for sel in self.Info]
 
     def get_irradiations(self, string=True):
-        return [make_irr_string(sel.Irradiation) if string else float(sel.Irradiation) for sel in self.Info]
+        return array([make_irr_string(sel.Irradiation) if string else float(sel.Irradiation) for sel in self.Info])
 
     def get_bias_voltages(self):
         return [sel.Bias for sel in self.Info]
@@ -432,12 +432,16 @@ class DiaScans(Analysis):
         for i, sel in enumerate(self.Info):
             h.GetXaxis().SetBinLabel(h.GetXaxis().FindBin(i), '{} - {}'.format(make_tc_str(sel.TCString, 0), sel.RunPlan))
 
-    def draw_mean_pedestals(self, redo=False, show=True):
-        y = array([make_ufloat(mean(tc_values, axis=1)) for tc_values in self.get_pedestals(redo)])
-        g = Draw.make_tgrapherrors(arange(y.size), y, title='Mean Pedestals', x_tit='Run Plan', y_tit='Pulse Height [mV]')
-        format_histo(g, y_off=1.2, x_range=ax_range(0, y.size - 1, .3, .3), x_off=2.5)
-        self.set_bin_labels(g)
+    def draw_mean_pedestals(self, sigma=False, irr=False, redo=False, show=True):
+        y = array([mean_sigma(tc_values[1 if sigma else 0])[0] for tc_values in self.get_pedestals(redo)])
+        x = self.get_irradiations(string=False) / 1e14 if irr else arange(y.size)
+        g = Draw.make_tgrapherrors(x, y, title='Mean {}'.format('Noise' if sigma else 'Pedestals'), x_tit='Irradation [10^{14} n/cm^{2}]' if irr else 'Run Plan', y_tit='Pulse Height [mV]')
+        format_histo(g, y_off=1.2, x_range=ax_range(x, fl=.1, fh=.1) if irr else ax_range(0, y.size - 1, .3, .3), x_off=2.5)
+        self.set_bin_labels(g) if not irr else do_nothing()
         self.Draw(g, self.get_savename('PedestalMeans'), show, draw_opt='ap', bm=.2, w=1.5, h=.75, gridy=True)
+
+    def draw_mean_noise(self, irr=False, redo=False, show=True):
+        self.draw_mean_pedestals(True, irr, redo, show)
 
     def draw_means(self, y_range=None, show=True):
         y = array([make_ufloat(mean_sigma(ph_list, err=False)) for ph_list in self.get_pulse_heights()])
