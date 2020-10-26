@@ -7,7 +7,7 @@
 from os.path import join
 from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TH1F, TSpectrum, TEllipse, TColor, TProfile
 from ROOT import TProfile2D, TH2F, THStack
-from numpy import sign, linspace, ones, ceil, append
+from numpy import sign, linspace, ones, ceil, append, pi, tile
 from src.binning import Bins
 from helpers.utils import *
 
@@ -654,6 +654,11 @@ def make_graph_args(x, y, ex=None, ey=None, asym_errors=False):
 
 def make_box_args(x1, y1, x2, y2):
     return array([[x1, x1, x2, x2], [y1, y2, y2, y1]])
+
+
+def make_star(cx=0, cy=0, r=1, n=5):
+    coods = pol2cart(tile([r, r / (2 * cos(pi / n) + 1)], n), linspace(0, 2 * pi, 2 * n, endpoint=False) - pi / 2)
+    return (coods.T + array([cx, cy])).T
 
 
 def set_titles(status=True):
