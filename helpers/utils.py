@@ -558,11 +558,11 @@ def set_y_range(ymin, ymax):
 
 
 def remove_letters(string):
-    return [x for x in string if x.isdigit()]
+    return ''.join(x for x in string if x.isdigit())
 
 
 def remove_digits(string):
-    return [x for x in string if not x.isdigit()]
+    return ''.join(x for x in string if not x.isdigit())
 
 
 def get_last_canvas(warn=True):
