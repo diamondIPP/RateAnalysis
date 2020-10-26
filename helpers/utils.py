@@ -16,7 +16,7 @@ from threading import Thread
 from time import time, sleep
 
 from gtts import gTTS
-from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, any, count_nonzero, full, ndarray, exp, sin, cos, arctan, zeros, dot, roll
+from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, any, count_nonzero, full, ndarray, exp, sin, cos, arctan, zeros, dot, roll, arctan2
 from os import makedirs, _exit, remove, devnull
 from os import path as pth
 from os.path import dirname, realpath
@@ -395,6 +395,14 @@ def isint(x):
         return float(x) == int(x)
     except (ValueError, TypeError):
         return False
+
+
+def cart2pol(x, y):
+    return array([sqrt(x ** 2 + y ** 2), arctan2(y, x)])
+
+
+def pol2cart(rho, phi):
+    return array([rho * cos(phi), rho * sin(phi)])
 
 
 def set_time_axis(histo, form='%H:%M', off=0):
