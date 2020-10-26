@@ -293,19 +293,12 @@ class DUTAnalysis(Analysis):
         x_min, x_max = [p.GetBinCenter(i) for i in [p.FindFirstBinAbove(0), p.FindLastBinAbove(0)]]
         return p.Fit('gaus', 'qs', '', x_peak - (x_peak - x_min) * fit_range, x_peak + (x_max - x_peak) * fit_range)
 
-    def draw_sig_map_disto(self, *args, **kwargs):
-        return self._draw_sig_map_disto(*args, **kwargs)
-
-    def _draw_sig_map_disto(self, res=None, cut=None, fid=True, x_range=None, redo=False, normalise=False, ret_value=False, ph_bins=None, show=True, save=True):
-        source = self.draw_signal_map(res, cut, fid, redo=redo, show=False)
-        h = TH1F('h_smd', 'Signal Map Distribution', *([400, 0, 4] if normalise else self.Bins.get_pad_ph(bin_width=.2) if ph_bins is None else ph_bins))
-        normalisation = 1 if not normalise else self.get_pulse_height()
-        values = get_2d_hist_vec(source) / normalisation
-        [h.Fill(v.n) for v in values]
+    def draw_sig_map_disto(self, res=None, cut=None, fid=True, x_range=None, redo=False, normalise=False, ret_value=False, ph_bins=None, show=True, save=True):
+        x = get_2d_hist_vec(self.draw_signal_map(res, cut, fid, redo=redo, show=False), err=False) / (self.get_pulse_height() if normalise else 1)
+        x_range = choose(x_range, ax_range(x, fl=.1, fh=.1))
         format_statbox(all_stat=True)
-        format_histo(h, x_tit='Pulse Height [au]', y_tit='Number of Entries', y_off=2, fill_color=Draw.FillColor, x_range=choose(x_range, ax_range(5, 5, .3, .3, h)))
-        self.Draw(h, 'SignalMapDistribution', lm=.15, show=show, save=save)
-        return mean_sigma(values) if ret_value else h
+        h = self.Draw.distribution(x, Bins.make(*x_range, n=sqrt(x.size)), 'Signal Map Distribution', x_tit='Pulse Height [mV]', y_off=2, lm=.15, show=show, save=save)
+        return mean_sigma(x) if ret_value else h
 
     def get_sm_std(self, res=None, redo=False):
         return self.draw_sig_map_disto(show=False, res=res, redo=redo, normalise=True, ret_value=True, save=False)[1]
