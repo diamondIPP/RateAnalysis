@@ -235,7 +235,7 @@ class DUTAnalysis(Analysis):
         format_histo(h, x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]', y_off=1.4, z_off=1.5, z_tit=z_tit, ncont=50, ndivy=510, ndivx=510, z_range=z_range, pal=1 if hitmap else 53)
         self.Draw(h, show=show, lm=.12, rm=.16, draw_opt='colzsame')
         self.draw_fid_cut(scale=10)
-        self.Draw.save_plots('HitMap' if hitmap else 'SignalMap2D', prnt=prnt, save=save)
+        self.Draw.save_plots('HitMap' if hitmap else 'SignalMap2D', prnt=prnt, save=save, show=show)
         return h
 
     def centre_sm(self, s=4):
@@ -248,11 +248,9 @@ class DUTAnalysis(Analysis):
         return self.draw_signal_map(res, cut, fid, hitmap=True, redo=redo, bins=None, z_range=z_range, size=size, show=show, prnt=prnt)
 
     def get_fid_bins(self, m, n):
-        fid_cut = array(self.Cut.CutConfig['fiducial']) * 10
-        if not fid_cut.size:
-            critical('fiducial cut not defined for {}'.format(self.DUT.Name))
-        x_bins = linspace(fid_cut[0], fid_cut[1], m + 1)
-        y_bins = linspace(fid_cut[2], fid_cut[3], n + 1)
+        x, y = self.Cut.load_fiducial() * 10
+        x_bins = linspace(x[0], x[2], m + 1)
+        y_bins = linspace(y[0], y[2], n + 1)
         return [m, x_bins, n, y_bins]
 
     def get_fid_bin_events(self, m, n, mi, ni):
