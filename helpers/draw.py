@@ -407,7 +407,7 @@ class Draw(object):
         self.histo(s, draw_opt=draw_opt, leg=leg, lm=get_last_canvas().GetLeftMargin())
         return s
 
-    def multigraph(self, graphs, title, leg_titles, bin_labels=None, x_tit=None, y_tit=None, draw_opt='ap', *args, **kwargs):
+    def multigraph(self, graphs, title, leg_titles, bin_labels=None, x_tit=None, y_tit=None, draw_opt='ap', gridy=None, lm=None, *args, **kwargs):
         g0 = graphs[0]
         m = TMultiGraph('mg{}'.format(self.get_count()), ';'.join([title, choose(x_tit, g0.GetXaxis().GetTitle()), choose(y_tit, g0.GetYaxis().GetTitle())]))
         leg = Draw.make_legend(nentries=len(graphs), w=.2)
@@ -419,7 +419,7 @@ class Draw(object):
         if bin_labels is not None:
             for i, label in enumerate(bin_labels):
                 m.GetXaxis().SetBinLabel(m.GetXaxis().FindBin(i), label)
-        self.histo(m, draw_opt=draw_opt, leg=leg, lm=get_last_canvas().GetLeftMargin(), bm=choose(.26, None, bin_labels))
+        self.histo(m, draw_opt=draw_opt, leg=leg, lm=choose(lm, get_last_canvas().GetLeftMargin()), bm=choose(.26, None, bin_labels), gridy=gridy)
         return m
     # endregion DRAW
     # ----------------------------------------
