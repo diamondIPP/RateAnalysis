@@ -162,6 +162,11 @@ class Cut:
     def set(self, name, value):
         self.CutStrings.set(name, value)
 
+    def set_fiducial(self, name):
+        cut = self.generate_fiducial(name, fid_name=name)
+        self.set('fiducial', cut.Value)
+        self.CutStrings.set_description('fiducial', cut.Description)
+
     def set_high_low_rate_run(self, high_run, low_run):
         self.LowRateRun = str(low_run)
         self.HighRateRun = str(high_run)
@@ -245,9 +250,9 @@ class Cut:
         description = '{:.1f}% of the events excluded'.format(100. * self.find_n_misaligned() / self.Run.NEvents) if self.find_n_misaligned() else ''
         return CutString('aligned', 'aligned[0]' if self.find_n_misaligned() else '', description)
 
-    def generate_fiducial(self, center=False, n_planes=0, x=None, y=None, name=None):
-        x = choose(x, self.load_fiducial()[0]) + (self.Bins.PX / 2 if center else 0)
-        y = choose(y, self.load_fiducial()[1]) + (self.Bins.PY / 2 if center else 0)
+    def generate_fiducial(self, center=False, n_planes=0, x=None, y=None, name=None, fid_name='fiducial'):
+        x = choose(x, self.load_fiducial(fid_name)[0]) + (self.Bins.PX / 2 if center else 0)
+        y = choose(y, self.load_fiducial(fid_name)[1]) + (self.Bins.PY / 2 if center else 0)
         cut = Draw.polygon(x, y, line_color=2, width=3, name=choose(name, 'fid{}'.format(self.Run.Number)), show=False)
         cut.SetVarX(self.get_track_var(self.Analysis.DUT.Number - 1 - n_planes, 'x'))
         cut.SetVarY(self.get_track_var(self.Analysis.DUT.Number - 1 - n_planes, 'y'))
@@ -364,7 +369,7 @@ class Cut:
 
     # ----------------------------------------
     # region SHOW & ANALYSE
-    def show_cuts(self, raw=False):
+    def show(self, raw=False):
         rows = [[cut.Name, '{:5d}'.format(cut.Level), cut.Value if raw else cut.Description] for cut in self.CutStrings.get_strings()]
         print_table([row for row in rows if row[2]], ['Cut Name', 'Level', 'Description'])
 
@@ -429,6 +434,9 @@ class CutString:
 
     def set(self, value):
         self.Value = value
+
+    def set_description(self, txt):
+        self.Description = txt
 
     def set_level(self, level):
         self.Level = level
