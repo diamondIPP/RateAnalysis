@@ -6,7 +6,7 @@
 
 from os.path import join
 from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TH1F, TSpectrum, TEllipse, TColor, TProfile
-from ROOT import TProfile2D, TH2F, THStack
+from ROOT import TProfile2D, TH2F, THStack, TMultiGraph
 from numpy import sign, linspace, ones, ceil, append, pi, tile
 from src.binning import Bins
 from helpers.utils import *
@@ -406,6 +406,21 @@ class Draw(object):
         format_histo(s, draw_first=True, x_tit=h0.GetXaxis().GetTitle(), y_tit=h0.GetYaxis().GetTitle(), y_off=h0.GetYaxis().GetTitleOffset())
         self.histo(s, draw_opt=draw_opt, leg=leg, lm=get_last_canvas().GetLeftMargin())
         return s
+
+    def multigraph(self, graphs, title, leg_titles, bin_labels=None, x_tit=None, y_tit=None, draw_opt='ap', *args, **kwargs):
+        g0 = graphs[0]
+        m = TMultiGraph('mg{}'.format(self.get_count()), ';'.join([title, choose(x_tit, g0.GetXaxis().GetTitle()), choose(y_tit, g0.GetYaxis().GetTitle())]))
+        leg = Draw.make_legend(nentries=len(graphs), w=.2)
+        for g, tit in zip(graphs, leg_titles):
+            m.Add(g, 'p')
+            leg.AddEntry(g, tit, 'p')
+            format_histo(g, color=self.get_color(len(graphs)), stats=0, *args, **kwargs)
+        format_histo(m, draw_first=True, y_off=g0.GetYaxis().GetTitleOffset(), x_tit=choose('', None, bin_labels))
+        if bin_labels is not None:
+            for i, label in enumerate(bin_labels):
+                m.GetXaxis().SetBinLabel(m.GetXaxis().FindBin(i), label)
+        self.histo(m, draw_opt=draw_opt, leg=leg, lm=get_last_canvas().GetLeftMargin(), bm=choose(.26, None, bin_labels))
+        return m
     # endregion DRAW
     # ----------------------------------------
 
