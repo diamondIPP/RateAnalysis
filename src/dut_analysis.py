@@ -340,9 +340,9 @@ class DUTAnalysis(Analysis):
     # endregion SIGNAL MAP
     # ----------------------------------------
 
-    def draw_uniformity(self, histo=None, use_fwc=False, show=True):
+    def draw_uniformity(self, histo=None, use_fwc=False, show=True, redo=False):
         noise = self.Pedestal.get_fwhm() if histo is None and hasattr(self, 'Pedestal') else 0
-        h = self.draw_signal_distribution(show=show, normalise=True, sumw2=True) if histo is None else histo
+        h = self.draw_signal_distribution(show=show, normalise=True, sumw2=True, redo=redo) if histo is None else histo
         (low, high), m = get_fwhm(h, ret_edges=True), get_fw_center(h) if use_fwc else ufloat(h.GetMean(), h.GetMeanError())
         Draw.vertical_line(m.n, 0, 1e7, style=7, w=2)
         fwhm, half_max = high - low, h.GetMaximum() / 2
