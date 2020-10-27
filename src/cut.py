@@ -85,11 +85,11 @@ class Cut:
     def get(self, name, invert=False):
         return self.CutStrings.get(name, invert)
 
-    def get_strings(self):
-        return self.CutStrings.get_strings()
+    def get_strings(self, with_raw=False):
+        return self.CutStrings.get_strings(with_raw)
 
-    def get_all(self):
-        return [cut() for cut in self.get_strings()]
+    def get_all(self, with_raw=False):
+        return [cut() for cut in self.get_strings(with_raw)]
 
     def get_names(self):
         return self.CutStrings.get_names()
@@ -468,14 +468,14 @@ class CutStrings(object):
     def sort(self):
         self.Strings = OrderedDict(sorted(self.Strings.items(), key=lambda x: x[1].Level))
 
-    def get_names(self):
-        return list(self.Strings)
+    def get_names(self, with_raw=False):
+        return (['raw'] if with_raw else []) + list(self.Strings)
 
     def get(self, name, invert=False):
         return (self.Strings[name].invert() if invert else self.Strings[name]()) if self.has_cut(name) else warning('There is no cut with the name "{name}"!'.format(name=name))
 
-    def get_strings(self):
-        return list(self.Strings.values())
+    def get_strings(self, with_raw=False):
+        return ([CutString('raw', '', 'raw values')] if with_raw else []) + list(self.Strings.values())
 
     def get_n(self):
         return sum(cut.Value != '' for cut in self.get_strings())
