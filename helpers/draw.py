@@ -723,6 +723,14 @@ def get_2d_hist_vec(h, err=True, flat=True):
     return values[values != 0] if flat else values.reshape(len(xbins), len(ybins))
 
 
+def get_2d_args(h):
+    return array([[getattr(h, 'Get{}axis'.format(ax))().GetBinCenter(ibin) for ibin in range(1, getattr(h, 'GetNbins{}'.format(ax))() + 1)] for ax in ['X', 'Y']])
+
+
+def get_2d_vecs(h, err=True, flat=False):
+    return get_2d_args(h), get_2d_hist_vec(h, err, flat)
+
+
 def get_h_entries(h):
     return array([h.GetBinEntries(ibin) for ibin in range(1, h.GetNbinsX() + 1)])
 
