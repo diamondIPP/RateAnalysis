@@ -831,6 +831,13 @@ def show_colors(colors):
         Draw.tlatex(.5, .5, str(i - 1), align=22, size=.2)
 
 
+def show_wheel():
+    from ROOT import TColorWheel
+    t = TColorWheel()
+    t.Draw()
+    Draw.add(t)
+
+
 def ax_range(low, high=None, fl=0, fh=0, h=None, rnd=False):
     if type(low) in [list, ndarray]:
         utypes = [Variable, AffineScalarFunc]
