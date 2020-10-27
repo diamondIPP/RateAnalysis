@@ -91,8 +91,8 @@ class Cut:
     def get_all(self, with_raw=False):
         return [cut() for cut in self.get_strings(with_raw)]
 
-    def get_names(self):
-        return self.CutStrings.get_names()
+    def get_names(self, with_raw=False):
+        return self.CutStrings.get_names(with_raw)
 
     def get_consecutive(self, short=False):
         cuts = self.CutStrings.consecutive()
