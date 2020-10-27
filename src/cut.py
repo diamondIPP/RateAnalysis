@@ -64,20 +64,19 @@ class Cut:
     def set_event_range(self, event_range):
         self.set_config('event_range', self.load_event_range(event_range))
 
-    def load_fiducial(self, name='fiducial', warn=True):
-        splits = (loads(self.Config.get('SPLIT', 'fiducial')) if self.Config.has_option('SPLIT', 'fiducial') else []) + [int(1e10)]
-        n = next(i + 1 for i in range(len(splits)) if self.Run.Number <= splits[i])
+    def load_fiducial(self, name='fiducial'):
+        splits = array(self.Config.get_list('SPLIT', 'fiducial'))
+        n = next(iter(where(splits > self.Run.Number)[0]), splits.size) + 1
         option = name if self.Config.has_option('CUT', name) and n == 1 else '{} {}'.format(name, n)
-        return array(self.load_dut_config(option, warn=warn)) if self.load_dut_config(option, warn=warn) is not None else None
+        v = self.load_dut_config(option, warn=False)
+        if v is None:
+            critical('fiducial cut not defined!')
+        return make_box_args(*array(v)[[0, 2, 1, 3]]) if len(v) == 4 else array(v)
 
-    def load_dut_config(self, option, store_true=False, warn=True):
-        try:
-            conf = loads(self.Config.get('CUT', option))
-            dia = self.Analysis.DUT.Name
-            return dia in conf if store_true else conf[dia]
-        except (KeyError, NoOptionError):
-            if warn:
-                warning('No option {} in the analysis config for {}!'.format(option, make_tc_str(self.TCString)))
+    def load_dut_config(self, option, warn=True):
+        if option not in self.Config.options('CUT'):
+            return warning('No option {} in the analysis config for {}!'.format(option, make_tc_str(self.TCString)), prnt=warn)
+        return self.Config.get_list('CUT', option)[self.Analysis.DUT.Name]
     # endregion CONFIG
     # ----------------------------------------
 
@@ -144,13 +143,8 @@ class Cut:
         range_pickle = self.Analysis.make_pickle_path('BeamInterruptions', 'Ranges', run=self.Run.Number, suf='_'.join(str(i) for i in self.CutConfig['jump_range']))
         return do_pickle(range_pickle, self.create_interruption_ranges, interruptions=self.get_beam_interruptions())
 
-    def get_fiducial_size(self):
-        xy = self.CutConfig['fiducial'] * 10  # in mm
-        dx, dy = xy[1] - xy[0], xy[3] - xy[2]
-        return concatenate([xy, [dx, dy, dx * dy]])
-
     def get_fiducial_area(self):
-        return None if self.CutConfig['fiducial'] is None else self.get_fiducial_size()[-1] / 100.
+        return poly_area(*self.load_fiducial())
 
     def get_fid(self, scale=10):
         cut = get_object('fid{}'.format(self.Run.Number))
@@ -251,19 +245,18 @@ class Cut:
         description = '{:.1f}% of the events excluded'.format(100. * self.find_n_misaligned() / self.Run.NEvents) if self.find_n_misaligned() else ''
         return CutString('aligned', 'aligned[0]' if self.find_n_misaligned() else '', description)
 
-    def generate_fiducial(self, center=False, n_planes=0, xy=None, name=None):
-        if self.CutConfig['fiducial'] is None:
-            return CutString('fiducial', '', '')
-        xy = choose(xy, self.CutConfig['fiducial'] + (([self.Bins.PX / 2] * 2 + [self.Bins.PY / 2] * 2) if center else 0))
-        cut = Draw.box(xy[0], xy[2], xy[1], xy[3], line_color=2, width=3, name=choose(name, 'fid{}'.format(self.Run.Number)), show=False)
+    def generate_fiducial(self, center=False, n_planes=0, x=None, y=None, name=None):
+        x = choose(x, self.load_fiducial()[0]) + (self.Bins.PX / 2 if center else 0)
+        y = choose(y, self.load_fiducial()[1]) + (self.Bins.PY / 2 if center else 0)
+        cut = Draw.polygon(x, y, line_color=2, width=3, name=choose(name, 'fid{}'.format(self.Run.Number)), show=False)
         cut.SetVarX(self.get_track_var(self.Analysis.DUT.Number - 1 - n_planes, 'x'))
         cut.SetVarY(self.get_track_var(self.Analysis.DUT.Number - 1 - n_planes, 'y'))
-        Draw.add(cut)
-        description = 'x: [{},{}], y: [{},{}], area: {:.1f}mm x {:.1f}mm = {:.1f}mm2'.format(*self.get_fiducial_size())
+        description = 'x: {}, y: {}, area: {:.1f} mm2'.format(x * 10, y * 10, poly_area(x, y) * 100)
         return CutString(choose(name, 'fiducial'), TCut(cut.GetName()) if cut is not None else '', description)
 
     def generate_sub_fid(self, name, x1, x2, y1, y2):
-        return self.generate_fiducial(xy=[x1, x2, y1, y2], name=name)() + self()
+        x, y = make_box_args(x1, x2, y1, y2)
+        return self.generate_fiducial(x=x, y=y, name=name)() + self()
 
     def generate_jump_cut(self):
         cut_string = ''
