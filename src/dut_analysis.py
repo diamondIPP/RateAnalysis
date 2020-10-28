@@ -4,7 +4,7 @@
 # created on Oct 30th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from numpy import vectorize
+from numpy import vectorize, meshgrid, diff, digitize, cumsum , histogram2d, split, lexsort
 from numpy.random import rand
 from uncertainties import umath
 
@@ -271,6 +271,30 @@ class DUTAnalysis(Analysis):
         x = arange(1, n + 1).tolist()
         y = [mean_sigma(get_2d_hist_vec(h))[0] for h in [self.split_signal_map(i, i, show=False)[0] for i in x]]
         self.Draw.graph(x, y, title='Split Means', x_tit='Division', y_tit='Pulse Height [mV]', draw_opt='ap')
+
+    def get_ph_bins(self, n=10, pmin=90, pmax=95, show=True):
+        h = self.split_signal_map(n, n, show=show, grid=False)[0]
+        (x, y), v = get_2d_vecs(h)
+        wx, wy = diff(x)[0] / 2, diff(y)[0] / 2
+        points = array(meshgrid(x, y)).T[where((v >= pmin) & (v < pmax))]
+        for ix, iy in points:
+            Draw.box(ix - wx, iy - wy, ix + wx, iy + wy, line_color=840, width=4, show=show)
+        return points, wx, wy
+
+    def draw_ph_bin_disto(self, n=10, pmin=90, pmax=95, x_range=None, show=True):
+        ph, y, x = self.get_root_vec(var=[self.get_ph_str()] + self.get_track_vars(), cut=self.Cut())
+        points, wx, wy = self.get_ph_bins(n, pmin, pmax, show=False)
+        cut = any([(x > ix - wx) & (x < ix + wx) & (y > iy - wy) & (x < iy + wy) for ix, iy in points], axis=0)
+        format_statbox(all_stat=True)
+        return self.Draw.distribution(ph[cut], self.Bins.get_pad_ph(mean_ph=mean(ph)), 'Pulse Height of Areas in [{}, {}] mV'.format(pmin, pmax), x_tit='Pulse Height [mV]', show=show, x_range=x_range)
+
+    def draw_normal_distribution(self, m=20, n=30, show=True):
+        ph, y, x = self.get_root_vec(var=[self.get_ph_str()] + self.get_track_vars(), cut=self.Cut())
+        ix, bx, iy, by = self.get_fid_bins(m, n)
+        n = cumsum(histogram2d(x, y, [bx, by])[0].flatten().astype('i'))[:-1]  # get the number of events for each bin
+        values = split(ph[lexsort((digitize(x, bx), digitize(y, by)))], n)  # bin x and y and sort then ph according to bins
+        values = concatenate([lst / mean(lst) * mean(ph) for lst in values if lst.size > 2])  # normalise the values of each bin
+        return self.Draw.distribution(values, self.Bins.get_pad_ph(mean_ph=mean(values)), 'Signal Distribution Normalised by area mean', x_tit='Pulse Height [mV]', show=show)
 
     def draw_beam_profile(self, mode='x', fit=True, fit_range=.8, res=.7, show=True, prnt=True):
         h = self.draw_hitmap(res, show=False, prnt=prnt)
