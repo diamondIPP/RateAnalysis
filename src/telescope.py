@@ -163,7 +163,7 @@ class Telescope(SubAnanlysis):
     def calculate_flux(self, show=False, prnt=True):
         def f():
             format_statbox(fit=True, entries=6)
-            h = self.draw_flux(cut=self.Cut.generate_custom(include=['beam_interruptions', 'event_range'], prnt=prnt), show=False, prnt=prnt)
+            h = self.draw_flux(cut=self.Cut.generate_custom(include=['beam stops', 'event_range'], prnt=prnt), show=False, prnt=prnt)
             values = get_hist_vec(h, err=False)
             m, s = mean_sigma(values[values > 0], err=False)
             h = TH1F('hfl', 'Flux Distribution', int(sqrt(h.GetNbinsX()) * 2), m - 3 * s, m + 4 * s)
