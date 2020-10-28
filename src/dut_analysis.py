@@ -150,11 +150,16 @@ class DUTAnalysis(Analysis):
     def get_signal_name(self, *args, **kwargs):
         """ :returns: the pulse height variable in the tree. [str] """
 
-    def generate_signal_name(self, *args, **kwargs):
+    def get_signal_var(self, *args, **kwargs):
         """ :returns: the pulse height variable in the tree + corrections. [str] """
+
+    def get_alignment(self, *args, **kwargs):
+        return array([0, 1]), array([False])
     # endregion GET
     # ----------------------------------------
 
+    # ----------------------------------------
+    # region ALIASES
     def draw_chi2(self, *args, **kwargs):
         return self.Tracks.draw_chi2(*args, **kwargs)
 
@@ -182,6 +187,64 @@ class DUTAnalysis(Analysis):
     def draw_pulse_height(self, *args, **kwargs):
         return TProfile()
 
+    def draw_signal_distribution(self, *args, **kwargs):
+        pass
+
+    def draw_fid_cut(self, scale=10):
+        return self.Cut.draw_fid(scale)
+
+    def check_alignment(self, redo):
+        pass
+    # endregion ALIASES
+    # ----------------------------------------
+
+    def draw_size(self, size=None, color=1, name=''):
+        if size is None:
+            return warning('The {} size of "{}" was not specified in the dia info'.format(' {}'.format(name) if name else '', self.DUT.Name))
+        cx, cy = self.find_center()
+        x, y = size
+        Draw.box(cx - x / 2, cy - y / 2, cx + x / 2, cy + y / 2, line_color=color, width=3, name=name, fillstyle=4000)
+
+    def draw_detector_size(self):
+        self.draw_size(self.DUT.Size, color=432, name='detector')
+
+    def draw_metal_size(self):
+        size = [self.DUT.PadSize.n] * 2 if self.DUT.PadSize is not None else None
+        self.draw_size(size, color=923, name='metal')
+
+    def draw_guard_ring(self):
+        size = [self.DUT.GuardRing] * 2 if self.DUT.GuardRing is not None else None
+        self.draw_size(size, color=417, name='guard ring')
+
+    def draw_all_sizes(self):
+        self.draw_fid_cut()
+        self.draw_detector_size()
+        self.draw_metal_size()
+        self.draw_guard_ring()
+
+    def find_center(self, redo=False):
+        def f():
+            h = self.draw_signal_map(cut='', show=False)
+            px, py = h.ProjectionX(), h.ProjectionY()
+            mx = mean([px.GetBinCenter(b) for b in [px.FindFirstBinAbove(px.GetMaximum() / 2), px.FindLastBinAbove(px.GetMaximum() / 2)]])
+            my = mean([py.GetBinCenter(b) for b in [py.FindFirstBinAbove(py.GetMaximum() / 2), py.FindLastBinAbove(py.GetMaximum() / 2)]])
+            return array([mx, my])
+        return do_pickle(self.make_simple_pickle_path('Center', sub_dir='Center'), f, redo=redo)
+
+    def draw_alignment(self, bin_size=200, thresh=40, show=True):
+        """ draw the aligment of telescope and DUT events """
+        x, y = self.get_alignment(bin_size, thresh)
+        h = TH2F('h{}'.format(self.Draw.get_count), 'Event Alignment', *(Bins.make(x) + [3, 0, 3]))
+        for ibin, v in enumerate(y, 1):
+            h.SetBinContent(ibin, 2, int(v) + 1)
+        format_histo(h, x_tit='Event Number', y_tit='Alignment', stats=False, l_off_y=99, center_y=True)
+        gStyle.SetPalette(3, array([1, 633, 418], 'i'))
+        leg = Draw.make_legend(nentries=2, x2=.93, margin=.2)
+        leg.AddEntry(Draw.box(0, 0, 0, 0, line_color=418, fillcolor=418, name='b1'), 'aligned', 'f')
+        leg.AddEntry(Draw.box(0, 0, 0, 0, line_color=633, fillcolor=633), 'misaligned', 'f')
+        self.Draw(h, 'EventAlignment', draw_opt='col', rm=.06, leg=leg, show=show, prnt=show)
+        return h
+
     def draw_ph_pull(self, *args, **kwargs):
         return self._draw_ph_pull(*args, **kwargs)
 
@@ -193,12 +256,6 @@ class DUTAnalysis(Analysis):
         self.Draw(h, 'SignalBin{0}Disto'.format(Bins.Size), save=save, lm=.12, show=show)
         return h
 
-    def draw_signal_distribution(self, *args, **kwargs):
-        pass
-
-    def draw_fid_cut(self, scale=10):
-        return self.Cut.draw_fid(scale)
-
     def draw_track_length(self, show=True):
         h = TH1F('htd', 'Track Distance in Diamond', 200, self.DUT.Thickness, self.DUT.Thickness + 1)
         self.Tree.Draw('{}>>htd'.format(self.get_track_length_var()), 'n_tracks', 'goff')
@@ -208,7 +265,7 @@ class DUTAnalysis(Analysis):
 
     def draw_signal_vs_angle(self, mode='x', bin_size=.1, show=True):
         p = TProfile('psa{}'.format(mode), 'Pulse Height vs. Angle in {}'.format(mode.title()), *self.Bins.get_angle(bin_size))
-        self.Tree.Draw('{}:angle_{m}>>psa{m}'.format(self.generate_signal_name(), m=mode), self.Cut(), 'goff')
+        self.Tree.Draw('{}:angle_{m}>>psa{m}'.format(self.get_signal_var(), m=mode), self.Cut(), 'goff')
         format_statbox(entries=True)
         format_histo(p, x_tit='Track Angle [deg]', y_tit='Pulse Height [mV]', y_off=1.5)
         self.Draw(p, show=show, lm=.12)
