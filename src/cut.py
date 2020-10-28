@@ -9,6 +9,7 @@ from helpers.draw import *
 
 class Cut:
     """ Contains methods to generate the cut strings for the TelescopeAnalysis and holds the dictionaries for the settings and all cut strings. """
+    # TODO: make sub-analysis and move methods here
 
     def __init__(self, parent):
 
@@ -163,7 +164,7 @@ class Cut:
         self.CutStrings.set(name, value)
 
     def set_fiducial(self, name):
-        cut = self.generate_fiducial(name, fid_name=name)
+        cut = self.generate_fiducial(fid_name=name)
         self.set('fiducial', cut.Value)
         self.CutStrings.set_description('fiducial', cut.Description)
 
@@ -243,7 +244,7 @@ class Cut:
         for interr in interruptions:
             cut_string += TCut('event_number<{low}||event_number>{high}'.format(low=interr[0], high=interr[1]))
         description = '{} ({:.1f}% of the events excluded)'.format(len(interruptions), 100. * sum(j - i for i, j in interruptions) / self.Run.NEvents)
-        return CutString('beam_interruptions', cut_string, description)
+        return CutString('beam stops', cut_string, description)
 
     def generate_aligned(self):
         """ Cut to exclude events with a wrong event alignment. """
@@ -274,7 +275,7 @@ class Cut:
         return TCut(cut_string)
 
     def generate_flux_cut(self):
-        return self.generate_custom(include=['beam_interruptions', 'event_range'], name='flux', prnt=False)
+        return self.generate_custom(include=['beam stops', 'event_range'], name='flux', prnt=False)
 
     def generate_custom(self, exclude=None, include=None, invert=None, name='custom', prnt=True):
         self.Analysis.info('generated {name} cut with {num} cuts'.format(name=name, num=self.CutStrings.get_n_custom(exclude, include)), prnt=prnt)
@@ -297,7 +298,7 @@ class Cut:
         return chi2[q] if q != 100 else None
 
     def get_raw_pulse_height(self):
-        return ufloat(*mean_sigma(self.Run.get_root_vec(var=self.Analysis.generate_signal_name(), cut=self()), err=False))
+        return ufloat(*mean_sigma(self.Run.get_root_vec(var=self.Analysis.get_signal_var(), cut=self()), err=False))
 
     def find_zero_ph_event(self, redo=False):
         pickle_path = self.Analysis.make_pickle_path('Cuts', 'EventMax', self.Run.Number, self.Analysis.DUT.Number)
@@ -307,8 +308,8 @@ class Cut:
             ph, t = self.Analysis.get_root_vec(var=[self.Analysis.SignalName, self.Analysis.get_t_var()], cut=self())
             time_bins, values = get_hist_vecs(self.Analysis.Draw.profile(t, ph, self.Analysis.Bins.get_raw_time(30), show=False), err=False)
             i_start = next(i for i, v in enumerate(values) if v) + 1  # find the index of the first bin that is not zero
-            ph = mean(values[i_start:(values.size + 9 * i_start) // 10])  # take the mean of the first 10% of the bins
-            i_break = next((i + i_start for i, v in enumerate(values[i_start:]) if v < .2 * ph and v), None)
+            ph = abs(mean(values[i_start:(values.size + 9 * i_start) // 10]))  # take the mean of the first 10% of the bins
+            i_break = next((i + i_start for i, v in enumerate(values[i_start:]) if abs(v) < .2 * ph and v), None)
             self.Analysis.add_to_info(t0)
             return None if ph < 10 or i_break is None else self.Analysis.get_event_at_time(time_bins[i_break - 1])
 
