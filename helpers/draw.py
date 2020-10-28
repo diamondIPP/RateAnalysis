@@ -358,7 +358,7 @@ class Draw(object):
         self.histo(p, show=show, lm=lm, rm=rm, w=w, h=h, draw_opt=draw_opt, logz=logz)
         return p
 
-    def prof2d(self, x, y, zz, binning=None, title='', lm=None, rm=.15, w=1, h=1, show=True, draw_opt='colz', **kwargs):
+    def prof2d(self, x, y, zz, binning=None, title='', lm=None, rm=.15, bm=None, w=1, h=1, show=True, phi=None, theta=None, draw_opt='colz', **kwargs):
         x, y, zz = array(x, dtype='d'), array(y, dtype='d'), array(zz, dtype='d')
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         kwargs['z_off'] = 1.2 if 'z_off' not in kwargs else kwargs['z_off']
@@ -366,7 +366,7 @@ class Draw(object):
         p = TProfile2D('p{}'.format(self.get_count()), title, *choose(binning, dflt_bins))
         fill_hist(p, x, y, zz)
         format_histo(p, pal=55, **kwargs)
-        self.histo(p, show=show, lm=lm, rm=rm, w=w, h=h, draw_opt=draw_opt)
+        self.histo(p, show=show, lm=lm, rm=rm, bm=bm, w=w, h=h, phi=phi, theta=theta, draw_opt=draw_opt)
         return p
 
     def histo_2d(self, x, y, binning=None, title='', lm=None, rm=.15, show=True, logz=None, draw_opt='colz', **kwargs):
