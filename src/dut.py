@@ -23,8 +23,8 @@ class DUT:
         self.Irradiation = self.load_spec('irradiation')
         self.Thickness = self.load_spec('thickness', typ=int, default=500)
         self.CCD = self.load_spec('CCD', typ=int)
-        self.Size = self.load_spec('size', lst=True)
-        self.PadSize = self.load_spec('metal', typ=float, error=.02)
+        self.Size = self.load_spec('size', lst=True, default=[5, 5])
+        self.PadSize = self.load_spec('metal', typ=float, error=.02, default=ufloat(3.5, .2))
         self.ActiveArea = self.PadSize ** 2 if self.PadSize is not None else None
         self.GuardRing = self.load_spec('guard ring', typ=float)
 
@@ -43,7 +43,9 @@ class DUT:
         return self.Irradiation[tc] if tc in self.Irradiation else critical('Please make an irradiation entry in the dia_info.json for "{}" in {}'.format(self.Name, tc))
 
     def load_spec(self, section, typ=None, lst=False, error=None, default=None):
-        spec = default if section not in self.Specs or self.Specs[section] == 'None' else self.Specs[section] if typ is None else typ(self.Specs[section])
+        if section not in self.Specs or self.Specs[section] == 'None':
+            return default
+        spec = self.Specs[section] if typ is None else typ(self.Specs[section])
         return loads(spec) if lst and spec is not None else ufloat(spec, error) if error is not None and spec is not None else spec
 
     def set_number(self, value):
