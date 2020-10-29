@@ -413,7 +413,7 @@ class CutString:
 
     def __init__(self, name, value, description='', level=1):
         self.Name = name
-        self.Value = str(value)
+        self.Value = value.GetTitle() if type(value) is TCut else str(value)
         self.Level = level
         self.Description = description
 
