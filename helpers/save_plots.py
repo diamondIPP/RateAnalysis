@@ -67,10 +67,10 @@ class SaveDraw(Draw):
         self.Legends.draw(c, all_pads, show and Draw.Legend)
         return self.save_plots(file_name, prnt=prnt, show=show, save=save)
 
-    def distribution(self, values, binning=None, title='', file_name=None, show=True, prnt=True, save=True, *args, **kwargs):
-        h = super(SaveDraw, self).distribution(values, binning, title, show=show, *args, **kwargs)
+    def distribution(self, values, binning=None, title='', file_name=None, show=True, prnt=True, save=True, w=1, h=1, *args, **kwargs):
+        th = super(SaveDraw, self).distribution(values, binning, title, show=show, w=w, h=h, *args, **kwargs)
         self.save_plots(file_name, prnt=prnt, show=show, save=save)
-        return h
+        return th
 
     def save_plots(self, savename, sub_dir=None, canvas=None, prnt=True, ftype=None, show=True, save=True):
         """ Saves the canvas at the desired location. If no canvas is passed as argument, the active canvas will be saved. However for applications without graphical interface,

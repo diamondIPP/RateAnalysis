@@ -330,16 +330,16 @@ class Draw(object):
         set_root_output(True)
         return Draw.add(c, th, leg)[0]
 
-    def distribution(self, values, binning=None, title='', thresh=.02, lm=None, rm=None, show=True, logy=None, **kwargs):
+    def distribution(self, values, binning=None, title='', thresh=.02, lm=None, rm=None, show=True, logy=None, w=1, h=1, **kwargs):
         values = make_darray(values)
         kwargs['fill_color'] = Draw.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         kwargs['y_tit'] = 'Number of Entries' if 'y_tit' not in kwargs else kwargs['y_tit']
-        h = TH1F('h{}'.format(Draw.get_count()), title, *choose(binning, make_bins, values=values, thresh=thresh))
-        fill_hist(h, values)
-        format_histo(h, **kwargs)
-        self.histo(h, show=show, lm=lm, rm=rm, logy=logy)
-        return h
+        th = TH1F('h{}'.format(Draw.get_count()), title, *choose(binning, make_bins, values=values, thresh=thresh))
+        fill_hist(th, values)
+        format_histo(th, **kwargs)
+        self.histo(th, show=show, lm=lm, rm=rm, logy=logy, w=w, h=h)
+        return th
 
     def graph(self, x, y, ex=None, ey=None, asym_errors=False, lm=None, rm=None, bm=None, tm=None, w=1, h=1, show=True, draw_opt=None, gridy=None, logx=False, logy=False, **kwargs):
         g = Draw.make_tgrapherrors(x, y, ex, ey, asym_errors)
