@@ -406,14 +406,18 @@ class Cut:
 
     @staticmethod
     def invert(cut):
-        return TCut('!({})'.format(str(cut)))
+        return TCut('!({})'.format(Cut.to_string(cut)))
+
+    @staticmethod
+    def to_string(cut):
+        return cut.GetTitle() if type(cut) is TCut else str(cut)
 
 
 class CutString:
 
     def __init__(self, name, value, description='', level=1):
         self.Name = name
-        self.Value = value.GetTitle() if type(value) is TCut else str(value)
+        self.Value = Cut.to_string(value)
         self.Level = level
         self.Description = description
 
@@ -489,7 +493,7 @@ class CutStrings(object):
         for i, cut in enumerate(self.get_strings(), 1):
             new_cut = list(cuts.values())[i - 1] + cut()
             cut.Name.replace('interruptions', 'stops')
-            cuts[cut.Name] = TCut('{n}'.format(n=i), str(new_cut))
+            cuts[cut.Name] = TCut('{n}'.format(n=i), new_cut.GetTitle())
         return cuts
 
     def has_cut(self, name):
