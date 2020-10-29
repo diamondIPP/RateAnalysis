@@ -38,3 +38,12 @@ class SubAnanlysis(Analysis):
 
     def get_irradiation(self):
         return self.Ana.get_irradiation()
+
+
+class PadSubAnalysis(SubAnanlysis):
+
+    def __init__(self, analysis, sub_dir=None, pickle_dir='', dut=True):
+
+        self.Channel = analysis.Channel
+        self.Polarity = analysis.Polarity
+        super().__init__(analysis, sub_dir, pickle_dir, dut)

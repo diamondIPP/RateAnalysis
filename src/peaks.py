@@ -10,15 +10,14 @@ from numpy import polyfit, RankWarning, vectorize, size, split, repeat, argmax, 
 from numpy.random import normal, rand
 from scipy.signal import find_peaks, savgol_filter
 
-from src.sub_analysis import SubAnanlysis
+from src.sub_analysis import PadSubAnalysis
 from helpers.draw import *
 
 
-class PeakAnalysis(SubAnanlysis):
+class PeakAnalysis(PadSubAnalysis):
 
     def __init__(self, pad_analysis):
         super().__init__(pad_analysis, pickle_dir='Peaks')
-        self.Channel = self.Ana.Channel
         self.WF = self.Ana.Waveform
         self.NoiseThreshold = self.calc_noise_threshold()
         self.Threshold = max(self.NoiseThreshold, self.Ana.get_min_signal(self.Ana.get_signal_name(peak_int=1)))

@@ -5,18 +5,16 @@
 # --------------------------------------------------------
 from ROOT import TCut, TMultiGraph
 from numpy import fft
-from src.sub_analysis import SubAnanlysis
+from src.sub_analysis import PadSubAnalysis
 from helpers.draw import *
 from helpers.fit import ErfLand
 
 
-class Waveform(SubAnanlysis):
+class Waveform(PadSubAnalysis):
     def __init__(self, pad_analysis):
         super().__init__(pad_analysis, pickle_dir='WF')
         self.NChannels = self.Run.NChannels
         self.NSamples = self.Run.NSamples
-        self.Channel = self.Ana.Channel
-        self.Polarity = self.Ana.Polarity
 
         self.Count = 0
         self.StartEvent = self.Ana.StartEvent
