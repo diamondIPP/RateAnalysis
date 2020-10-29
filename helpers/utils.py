@@ -16,7 +16,7 @@ from threading import Thread
 from time import time, sleep
 
 from gtts import gTTS
-from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, any, count_nonzero, full, ndarray, exp, sin, cos, arctan, zeros, dot, roll, arctan2
+from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, any, count_nonzero, full, ndarray, exp, sin, cos, arctan, zeros, dot, roll, arctan2, frombuffer
 from os import makedirs, _exit, remove, devnull
 from os import path as pth
 from os.path import dirname, realpath
@@ -639,7 +639,7 @@ def load_root_files(sel, init=True):
         thread = MyThread(sel, run, init)
         thread.start()
         threads[run] = thread
-    while any([thread.isAlive() for thread in threads.values()]) and init:
+    while any([thread.is_alive() for thread in threads.values()]) and init:
         sleep(.1)
     if init:
         pool = Pool(len(threads))
@@ -753,9 +753,8 @@ def get_root_vec(tree, n=0, ind=0, dtype=None, var=None, cut='', nentries=None, 
         dtypes = dtype if type(dtype) in [list, ndarray] else full(strings.size, dtype)
         vals = [get_root_vec(tree, n, i, dtypes[i]) for i in range(strings.size)]
         return vals[0] if len(vals) == 1 else vals
-    vec = tree.GetVal(ind)
-    vec.SetSize(n)
-    return array(list(vec), dtype=dtype)
+    buffer = tree.GetVal(ind)
+    return frombuffer(buffer, dtype=buffer.typecode, count=n).astype(dtype)
 
 
 def get_root_vecs(tree, n, n_ind, dtype=None):
