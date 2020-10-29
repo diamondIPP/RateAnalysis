@@ -8,5 +8,5 @@ alias ShowSelection='python ~/software/RateAnalysis/src/runplan_selection.py -s 
 alias ShowSelections='python ~/software/RateAnalysis/src/runplan_selection.py -sa -v'
 alias RunSelection='ipython -i ~/software/RateAnalysis/src/run_selection.py -- $@'
 alias DiaSelection='ipython -i ~/software/RateAnalysis/src/runplan_selection.py -- $@'
-source $DIR/../root6/build/bin/thisroot.sh
+source $DIR/../root6/rootinstall/bin/thisroot.sh
 source $DIR/venv/bin/activate
