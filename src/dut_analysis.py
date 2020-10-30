@@ -4,7 +4,7 @@
 # created on Oct 30th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from numpy import vectorize, meshgrid, diff, digitize, cumsum , histogram2d, split, lexsort
+from numpy import vectorize, meshgrid, diff, digitize, cumsum, histogram2d, split, lexsort
 from numpy.random import rand
 from uncertainties import umath
 
@@ -74,6 +74,9 @@ class DUTAnalysis(Analysis):
 
     def get_t_off(self, rel_time):
         return self.Run.StartTime if rel_time else 0
+
+    def get_t_args(self, rel_time):
+        return {'x_tit': 'Time [mm::hh]', 't_ax_off': self.get_t_off(rel_time)}
 
     def get_root_vec(self, n=0, ind=0, dtype=None, var=None, cut='', nentries=None, firstentry=0):
         return self.Run.get_root_vec(n, ind, dtype, var, cut, nentries, firstentry)

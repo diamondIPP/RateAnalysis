@@ -30,6 +30,9 @@ class SubAnanlysis(Analysis):
     def get_t_var(self):
         return self.Ana.get_t_var()
 
+    def get_t_args(self, rel_time):
+        return self.Ana.get_t_args(rel_time)
+
     def get_event_at_time(self, seconds, rel=False):
         return self.Run.get_event_at_time(seconds, rel)
 
