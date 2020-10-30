@@ -838,10 +838,14 @@ def show_wheel():
     Draw.add(t)
 
 
-def ax_range(low, high=None, fl=0, fh=0, h=None, rnd=False):
+def ax_range(low, high=None, fl=0, fh=0, h=None, rnd=False, thresh=None):
     if type(low) in [list, ndarray]:
         utypes = [Variable, AffineScalarFunc]
-        return ax_range(low[0], low[1], fl, fh) if len(low) == 2 else ax_range(min(low).n if type(low[0]) in utypes else min(low), max(low).n if type(low[0]) in utypes else max(low), fl, fh, rnd=rnd)
+        if len(low) == 2:
+            return ax_range(low[0], low[1], fl, fh)
+        m, s = mean_sigma(low)
+        v = low[abs(low - m) < thresh * s] if thresh is not None else low
+        return ax_range(min(v).n if type(v[0]) in utypes else min(v), max(v).n if type(v[0]) in utypes else max(v), fl, fh, rnd=rnd)
     if h is not None:
         if type(h) in [list, ndarray]:
             return ax_range(min(h), max(h), fl, fh)
