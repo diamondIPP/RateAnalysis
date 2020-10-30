@@ -416,9 +416,7 @@ class Draw(object):
             leg.AddEntry(g, tit, 'p')
             format_histo(g, color=self.get_color(len(graphs)), stats=0, *args, **kwargs)
         format_histo(m, draw_first=True, y_off=g0.GetYaxis().GetTitleOffset(), x_tit=choose('', None, bin_labels))
-        if bin_labels is not None:
-            for i, label in enumerate(bin_labels):
-                m.GetXaxis().SetBinLabel(m.GetXaxis().FindBin(i), label)
+        set_bin_labels(m, bin_labels)
         self.histo(m, draw_opt=draw_opt, leg=leg, lm=choose(lm, get_last_canvas().GetLeftMargin()), bm=choose(.26, None, bin_labels), gridy=gridy)
         return m
     # endregion DRAW
@@ -665,6 +663,13 @@ def make_graph_args(x, y, ex=None, ey=None, asym_errors=False):
     ex, ey = [array([v.s for v in vals], 'd') if type(vals[0]) in utypes else zeros((2, s) if asym_errors else s) if ers is None else array(ers, 'd') for vals, ers in zip([x, y], [ex, ey])]
     x, y = [array([v.n for v in vals] if type(vals[0]) in utypes else vals, 'd') for vals in [x, y]]
     return [s, array(x, 'd'), array(y, 'd')] + ([ex[0], ex[1], ey[0], ey[1]] if asym_errors else [ex, ey])
+
+
+def set_bin_labels(g, labels):
+    if labels is not None:
+        for i, label in enumerate(labels):
+            g.GetXaxis().SetBinLabel(g.GetXaxis().FindBin(i), label)
+        update_canvas()
 
 
 def make_box_args(x1, y1, x2, y2):
