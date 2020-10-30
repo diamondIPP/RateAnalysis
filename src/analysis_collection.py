@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 from ROOT import THStack, TF1, TMultiGraph, TMath
-from numpy import histogram, cumsum, sort, split, log, argmin, argmax, append
+from numpy import sort, log, argmin, argmax
 
 from src.VoltageScan import VoltageScan
 from src.analysis import Analysis, glob
