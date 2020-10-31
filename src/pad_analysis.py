@@ -1,7 +1,7 @@
 from ROOT import gRandom, TCut
 from numpy import log2, quantile, insert, sum
 
-from src.Pedestal import PedestalAnalysis
+from src.pedestal import PedestalAnalysis
 from src.Timing import TimingAnalysis
 from src.dut_analysis import *
 from src.pad_cut import PadCut
