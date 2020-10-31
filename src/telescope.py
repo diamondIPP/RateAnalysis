@@ -7,10 +7,10 @@ from ROOT import TH1F, TCut
 from numpy import arange, concatenate, mean, sqrt, full
 from src.binning import Bins
 from helpers.draw import Draw, format_histo, format_statbox, get_hist_vec, fill_hist, warning, time_stamp, do_nothing, update_canvas, mean_sigma, ufloat, do_pickle
-from src.sub_analysis import SubAnanlysis
+from src.sub_analysis import SubAnalysis
 
 
-class Telescope(SubAnanlysis):
+class Telescope(SubAnalysis):
     """ Class for the analysis of the telescope specific stuff of a single run. """
 
     def __init__(self, analysis):

@@ -5,12 +5,12 @@
 # --------------------------------------------------------
 
 from ROOT import TProfile, TCut, TF1, TMultiGraph, THStack
-from numpy import log, genfromtxt, split, rad2deg, polyfit, polyval, tan
-from src.sub_analysis import SubAnanlysis
+from numpy import log, genfromtxt, rad2deg, polyfit, polyval, tan
+from src.sub_analysis import SubAnalysis
 from helpers.draw import *
 
 
-class Tracks(SubAnanlysis):
+class Tracks(SubAnalysis):
 
     def __init__(self, analysis):
         super().__init__(analysis, sub_dir=analysis.Run.Number, pickle_dir='Tracks', dut=False)

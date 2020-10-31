@@ -6,7 +6,7 @@
 from src.analysis import Analysis, choose
 
 
-class SubAnanlysis(Analysis):
+class SubAnalysis(Analysis):
     """ small module to create all required fields for the subanalyses. """
 
     def __init__(self, analysis, sub_dir=None, pickle_dir='', dut=True):
@@ -43,7 +43,7 @@ class SubAnanlysis(Analysis):
         return self.Ana.get_irradiation()
 
 
-class PadSubAnalysis(SubAnanlysis):
+class PadSubAnalysis(SubAnalysis):
 
     def __init__(self, analysis, sub_dir=None, pickle_dir='', dut=True):
 
